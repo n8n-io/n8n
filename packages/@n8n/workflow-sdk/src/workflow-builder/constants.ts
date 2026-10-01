@@ -24,6 +24,14 @@ export const NODE_Y_SPACING = GRID_SIZE * 6; // 96
 export const SUBGRAPH_SPACING = GRID_SIZE * 8; // 128
 export const AI_X_SPACING = GRID_SIZE * 3; // 48
 export const AI_Y_SPACING = GRID_SIZE * 8; // 128
+/**
+ * Clearance below the nodes a sticky wraps.
+ *
+ * Bigger than STICKY_PADDING because a node paints its name and subtitle below
+ * its 96px tile — about 47px of it — so a 32px gap lets the label hang outside
+ * the note. Matches STICKY_BOTTOM_PADDING in the editor's own canvas layout, so
+ * pressing Tidy Up does not move the note.
+ */
 export const STICKY_BOTTOM_PADDING = GRID_SIZE * 4; // 64
 
 export const STICKY_NODE_TYPE = 'n8n-nodes-base.stickyNote';

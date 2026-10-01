@@ -129,6 +129,30 @@ describe('sticky note placement with tidyUp', () => {
 		}
 	});
 
+	it('keeps an unanchored sticky clear of the nodes', () => {
+		const { start, fetch, compute, post, record } = buildChain();
+
+		const json = workflow('wf', 'Test')
+			.add(start.to(fetch).to(compute).to(post).to(record))
+			.add(sticky('## Ingest', { name: 'One' }))
+			.add(sticky('## Deliver', { name: 'Two' }))
+			.toJSON({ tidyUp: true });
+
+		const nodeNames = [
+			'Every Friday',
+			'Active teams',
+			'Compute week',
+			'DM pre-brief',
+			'Record run',
+		];
+		for (const stickyName of ['One', 'Two']) {
+			const box = stickyBox(json, stickyName);
+			for (const nodeName of nodeNames) {
+				expect(overlaps(box, nodeBox(json, nodeName))).toBe(false);
+			}
+		}
+	});
+
 	it('keeps an explicit position and size the caller passed', () => {
 		const { start, fetch } = buildChain();
 		const note = sticky('## Pinned', [start, fetch], {
@@ -197,6 +221,107 @@ describe('sticky note placement with tidyUp', () => {
 		expect(box.width).toBe(800);
 		expect(contains(box, nodeBox(json, 'Every Friday'))).toBe(true);
 		expect(contains(box, nodeBox(json, 'Active teams'))).toBe(true);
+	});
+
+	it('separates many unanchored stickies without running out of steps', () => {
+		const { start, fetch, compute, post, record } = buildChain();
+
+		// One separation step is needed per obstacle, so a long run of notes must not
+		// hit a fixed ceiling and leave the tail stacked.
+		const count = 60;
+		let wf = workflow('wf', 'Test').add(start.to(fetch).to(compute).to(post).to(record));
+		for (let i = 0; i < count; i++) {
+			wf = wf.add(sticky(`## Note ${i}`, { name: `note-${i}` }));
+		}
+		const json = wf.toJSON({ tidyUp: true });
+
+		const boxes = Array.from({ length: count }, (_, i) => stickyBox(json, `note-${i}`));
+		for (const [i, a] of boxes.entries()) {
+			for (const b of boxes.slice(i + 1)) {
+				expect(overlaps(a, b)).toBe(false);
+			}
+		}
+	});
+
+	it('keeps a hand-placed sticky where it is when a saved workflow is laid out again', () => {
+		const { start, fetch } = buildChain();
+		// Deliberately overlapping the nodes: re-layout must not "rescue" it, or every
+		// edit would shuffle the canvas the user arranged.
+		const pinned = sticky('## Placed by hand', {
+			name: 'Hand placed',
+			position: [180, -40],
+			width: 500,
+			height: 300,
+		});
+
+		let json = workflow('wf', 'Test').add(start.to(fetch)).add(pinned).toJSON({ tidyUp: true });
+		const first = stickyBox(json, 'Hand placed');
+
+		for (let i = 0; i < 3; i++) {
+			json = workflow.fromJSON(json).toJSON({ tidyUp: true });
+			expect(stickyBox(json, 'Hand placed')).toEqual(first);
+		}
+	});
+
+	it('keeps wrapping its anchors after the node ids are regenerated', () => {
+		const { start, fetch, compute, post, record } = buildChain();
+		const ingest = sticky('## Ingest', [start, fetch], { name: 'Ingest note' });
+		const deliver = sticky('## Deliver', [post, record], { name: 'Deliver note' });
+
+		const builder = workflow('wf', 'Test')
+			.add(start.to(fetch).to(compute).to(post).to(record))
+			.add(ingest)
+			.add(deliver);
+
+		// The code-builder renumbers every node before serializing. Anchors name their
+		// nodes by id, so they have to be remapped or the notes quietly stop wrapping.
+		builder.regenerateNodeIds();
+		const json = builder.toJSON({ tidyUp: true });
+
+		const ingestBox = stickyBox(json, 'Ingest note');
+		expect(contains(ingestBox, nodeBox(json, 'Every Friday'))).toBe(true);
+		expect(contains(ingestBox, nodeBox(json, 'Active teams'))).toBe(true);
+
+		const deliverBox = stickyBox(json, 'Deliver note');
+		expect(contains(deliverBox, nodeBox(json, 'DM pre-brief'))).toBe(true);
+		expect(contains(deliverBox, nodeBox(json, 'Record run'))).toBe(true);
+	});
+
+	it('keeps a sticky clear of nodes the basic layout could not place', () => {
+		// A graph with no root gets no positions from the basic layout, so every node
+		// serializes at the same fallback spot. The note must still give way to them.
+		const a = node({ type: 'n8n-nodes-base.set', version: 3.4, config: { name: 'A' } });
+		const b = node({ type: 'n8n-nodes-base.set', version: 3.4, config: { name: 'B' } });
+
+		const json = workflow('wf', 'Test')
+			.add(a.to(b))
+			.add(b.to(a))
+			.add(sticky('## Free', { name: 'Free note' }))
+			.toJSON();
+
+		const box = stickyBox(json, 'Free note');
+		expect(overlaps(box, nodeBox(json, 'A'))).toBe(false);
+		expect(overlaps(box, nodeBox(json, 'B'))).toBe(false);
+	});
+
+	it('leaves room under the nodes for their names', () => {
+		// A node paints its name and subtitle below its 96px tile, about 47px of it.
+		// A gap the size of the side padding lets that label hang outside the note.
+		const { start, fetch } = buildChain();
+		const json = workflow('wf', 'Test')
+			.add(start.to(fetch))
+			.add(sticky('## Ingest', [start, fetch], { name: 'Ingest note' }))
+			.toJSON({ tidyUp: true });
+
+		const box = stickyBox(json, 'Ingest note');
+		const lowestNodeBottom = Math.max(
+			...['Every Friday', 'Active teams'].map((name) => {
+				const nb = nodeBox(json, name);
+				return nb.y + nb.height;
+			}),
+		);
+		const LABEL_HEIGHT = 47;
+		expect(box.y + box.height - lowestNodeBottom).toBeGreaterThanOrEqual(LABEL_HEIGHT);
 	});
 
 	it('emits every sticky as a sticky note node', () => {

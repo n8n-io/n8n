@@ -687,7 +687,12 @@ function toPoint(position?: [number, number]): { x: number; y: number } | undefi
 	return position && { x: position[0], y: position[1] };
 }
 
-/** The box that wraps a sticky's anchors, with room above for the note's own text. */
+/**
+ * The box that wraps a sticky's anchors: room above for the note's own text, and
+ * room below for the nodes' names. The bottom gap is larger than the sides
+ * because a node paints its label under its tile, and the same value the editor
+ * uses, so Tidy Up leaves the note where it is.
+ */
 function wrappingBoxFor(anchorBoxes: BoundingBox[]): BoundingBox | undefined {
 	if (anchorBoxes.length === 0) return undefined;
 	const wrapped = compositeBoundingBox(anchorBoxes);
@@ -695,14 +700,24 @@ function wrappingBoxFor(anchorBoxes: BoundingBox[]): BoundingBox | undefined {
 		x: snapToGrid(wrapped.x - STICKY_PADDING),
 		y: snapToGrid(wrapped.y - STICKY_PADDING - STICKY_HEADER_HEIGHT),
 		width: snapToGrid(wrapped.width + STICKY_PADDING * 2),
-		height: snapToGrid(wrapped.height + STICKY_PADDING * 2 + STICKY_HEADER_HEIGHT),
+		height: snapToGrid(
+			wrapped.height + STICKY_PADDING + STICKY_HEADER_HEIGHT + STICKY_BOTTOM_PADDING,
+		),
 	};
 }
 
-/** Push a box down until it clears every box already placed. */
+/**
+ * Push a box down until it clears every box already placed.
+ *
+ * Each step drops the box below one collider, which also clears every box that
+ * ends at or above that collider. One step per obstacle is therefore always
+ * enough, and the walk still carries a hard bound so a pathological graph
+ * cannot spin.
+ */
 function separateFrom(placed: BoundingBox[], box: BoundingBox): BoundingBox {
 	let separated = box;
-	for (let step = 0; step < MAX_STICKY_SEPARATION_STEPS; step++) {
+	const maxSteps = Math.max(MAX_STICKY_SEPARATION_STEPS, placed.length + 1);
+	for (let step = 0; step < maxSteps; step++) {
 		const collision = placed.find((placedBox) => boxesOverlap(placedBox, separated));
 		if (!collision) break;
 		separated = {
@@ -747,8 +762,11 @@ export function resolveStickyGeometry(
 	const boxOfNode = (name: string): BoundingBox | undefined => {
 		const graphNode = nodes.get(name);
 		if (!graphNode) return undefined;
-		const position = graphNode.instance.config?.position ?? positions.get(name);
-		if (!position) return undefined;
+		// Fall back the way the serializer does. A graph with no root gets no positions
+		// from the basic layout, and those nodes still reach the canvas at the fallback
+		// spot — so they are real obstacles, and a note must not be placed on them.
+		const position = graphNode.instance.config?.position ??
+			positions.get(name) ?? [START_X, DEFAULT_Y];
 		const { width, height } = getNodeDimensions(name, aiParentNames, aiConfigNames, nodes);
 		return { x: position[0], y: position[1], width, height };
 	};
@@ -799,7 +817,18 @@ export function resolveStickyGeometry(
 		});
 	};
 
-	const placed = resolved.filter((sticky) => sticky.pinned).map(({ box }) => box);
+	// Nodes are obstacles too: a note that lands on one is hidden behind it, because
+	// the canvas always draws sticky notes below nodes. Anchored and author-placed
+	// notes are exempt — they are meant to sit where they are.
+	const nodeBoxes = [...nodes.keys()]
+		.filter((name) => nodes.get(name)?.instance.type !== STICKY_NODE_TYPE)
+		.map(boxOfNode)
+		.filter((box): box is BoundingBox => box !== undefined);
+
+	const placed = [
+		...nodeBoxes,
+		...resolved.filter((sticky) => sticky.pinned).map(({ box }) => box),
+	];
 	for (const { name, box, sizedByAnchors, pinned } of resolved) {
 		if (pinned) {
 			record(name, box, sizedByAnchors);
