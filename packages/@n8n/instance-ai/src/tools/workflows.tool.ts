@@ -15,7 +15,11 @@ import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
+import { nodeTypeOf } from '@n8n/nodes-base-next';
+import type { ContractFactory } from '@n8n/workflow-sdk/next';
+
 import { approvalSummarySchema, formatApprovalMessage } from './approval-copy';
+import { nextActions } from './next-modules';
 import { sanitizeInputSchema } from '../agent/sanitize-mcp-schemas';
 import { WorkflowSnapshotChangedError } from '../errors/workflow-snapshot-changed.error';
 import type { FolderResolutionFailure, InstanceAiContext, SetupItemsEmitter } from '../types';
@@ -76,6 +80,7 @@ import {
 	indexSourceNodes,
 	materializeWorkflowSource,
 	type MaterializedSourceStatus,
+	type SourceNodeIndexEntry,
 } from './workflows/workflow-source-materializer';
 
 // ── Action schemas ──────────────────────────────────────────────────────────
@@ -804,12 +809,54 @@ async function readConsistentWorkflowSnapshot(
 	throw new WorkflowSnapshotChangedError(workflowId);
 }
 
+/** The typed module factory of each contract node type, for `decompileWorkflow`. */
+const contractFactories = () =>
+	new Map<string, ContractFactory>(
+		nextActions.map((action) => [
+			nodeTypeOf(action),
+			{
+				module: action.node.id,
+				from: `@n8n/nodes/${action.node.id}`,
+				path: action.id.split('.').slice(1).join('.'),
+				version: action.version,
+				inputKeys: Object.keys(action.input),
+			},
+		]),
+	);
+
+const NEXT_SDK_IMPORT = "from '@n8n/workflow-sdk/next'";
+
+/** Node lines of typed source. The legacy index looks for `config: { name }` and finds none. */
+async function indexNextSourceNodes(
+	json: WorkflowJSON,
+	source: string,
+): Promise<SourceNodeIndexEntry[]> {
+	const { locateNextNodes } = await import('@n8n/workflow-sdk/next');
+	const located = locateNextNodes(source);
+	const lineOf = (name: string) => located.find((entry) => entry.name === name)?.line ?? 0;
+	return (json.nodes ?? []).map((node) => ({
+		name: node.name ?? '',
+		type: node.type,
+		line: lineOf(node.name ?? ''),
+	}));
+}
+
 async function handleGetAsCode(
 	context: InstanceAiContext,
 	input: Extract<Input, { action: 'get-as-code' }>,
 ) {
 	const { generateWorkflowCode, buildImports } = await import('@n8n/workflow-sdk');
-	const toCode = (json: WorkflowJSON): string => {
+	// Node contracts: edit in the typed format when it can express the saved workflow.
+	const toNextCode = async (json: WorkflowJSON): Promise<string | undefined> => {
+		if (context.nodeContractsEnabled !== true) return undefined;
+		const { decompileWorkflow } = await import('@n8n/workflow-sdk/next');
+		return decompileWorkflow(json, contractFactories());
+	};
+	const indexNodes = async (json: WorkflowJSON, source: string) =>
+		context.nodeContractsEnabled === true && source.includes(NEXT_SDK_IMPORT)
+			? await indexNextSourceNodes(json, source)
+			: await indexSourceNodes(json, source);
+	const toLegacyCode = (json: WorkflowJSON): string => {
 		// Emit node ids: this code is edited and built back into the same saved workflow,
 		// and carrying the ids through is what keeps node identity stable. Positions stay
 		// out: build-workflow restores the saved layout by id, so a position in the file
@@ -823,6 +870,7 @@ async function handleGetAsCode(
 		const importLine = buildImports(body);
 		return importLine ? `${importLine}\n\n${body}` : body;
 	};
+	const toCode = async (json: WorkflowJSON) => (await toNextCode(json)) ?? toLegacyCode(json);
 	try {
 		// Historical reads are not bound to a file and must not advance the
 		// optimistic-concurrency lock; they stay inline.
@@ -831,18 +879,18 @@ async function handleGetAsCode(
 				input.workflowId,
 				input.versionId,
 			);
-			const code = toCode(json);
+			const code = await toCode(json);
 			return {
 				workflowId: input.workflowId,
 				name: json.name,
 				nodeCount: json.nodes?.length ?? 0,
-				nodes: await indexSourceNodes(json, code),
+				nodes: await indexNodes(json, code),
 				code,
 			};
 		}
 
 		const { json, saved } = await readConsistentWorkflowSnapshot(context, input.workflowId);
-		const code = toCode(json);
+		const code = await toCode(json);
 		const nodeCount = json.nodes?.length ?? 0;
 		const base = { workflowId: input.workflowId, name: json.name, nodeCount };
 
@@ -853,7 +901,7 @@ async function handleGetAsCode(
 				versionId: saved.versionId,
 				checksum: saved.checksum,
 			});
-			return { ...base, nodes: await indexSourceNodes(json, code), code };
+			return { ...base, nodes: await indexNodes(json, code), code };
 		}
 
 		const materialized = await materializeWorkflowSource(context, {
@@ -877,7 +925,7 @@ async function handleGetAsCode(
 			filePath: materialized.filePath,
 			status: materialized.status,
 			// Index what is on disk: for `current` and `conflict` that is not the regenerated code.
-			nodes: await indexSourceNodes(json, materialized.content),
+			nodes: await indexNodes(json, materialized.content),
 			note: SOURCE_FILE_NOTES[materialized.status],
 			...(materialized.status !== 'conflict' && code.length <= INLINE_SOURCE_LIMIT_CHARS
 				? { code }

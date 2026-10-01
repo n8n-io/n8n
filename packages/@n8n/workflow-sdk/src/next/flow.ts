@@ -102,6 +102,36 @@ export interface Step<In, Ctx, Out, N extends string> {
 /** Keys both branches share, so `$("Node")` after a join names a node every path ran. */
 type Common<A, B> = Pick<A, keyof A & keyof B>;
 
+export const MANUAL_NODE = { type: 'n8n-nodes-base.manualTrigger', version: 1 };
+export const BRANCH_NODE = { type: 'n8n-nodes-base.if', version: 2.2 };
+export const SET_NODE = { type: 'n8n-nodes-base.set', version: 3.4 };
+
+/** The IF node parameters of `Flow.branch` for the compiled JavaScript of its condition. */
+export const branchParameters = (condition: string) => ({
+	conditions: {
+		options: { caseSensitive: true, leftValue: '', typeValidation: 'strict', version: 2 },
+		conditions: [
+			{
+				id: 'condition-0',
+				leftValue: `={{ ${condition} }}`,
+				rightValue: '',
+				operator: { type: 'boolean', operation: 'true', singleValue: true },
+			},
+		],
+		combinator: 'and',
+	},
+	options: {},
+});
+
+/** The Set node parameters of `set` for its compiled `"key": js` entries. */
+export const setParameters = (entries: readonly string[], keepAll: boolean) => ({
+	mode: 'raw',
+	jsonOutput: `={{ ({ ${entries.join(', ')} }) }}`,
+	includeOtherFields: keepAll,
+	...(keepAll ? { include: 'all' } : {}),
+	options: {},
+});
+
 const isDataObject = (value: unknown): value is IDataObject =>
 	typeof value === 'object' && value !== null && !Array.isArray(value);
 
@@ -165,24 +195,10 @@ export class Flow<Item, Ctx> {
 		const condition = config.if;
 		const spec: NodeSpec = {
 			name: config.name,
-			type: 'n8n-nodes-base.if',
-			version: 2.2,
+			type: BRANCH_NODE.type,
+			version: BRANCH_NODE.version,
 			outputs: 2,
-			parameters: (compiler) => ({
-				conditions: {
-					options: { caseSensitive: true, leftValue: '', typeValidation: 'strict', version: 2 },
-					conditions: [
-						{
-							id: 'condition-0',
-							leftValue: `={{ ${compiler.js(condition)} }}`,
-							rightValue: '',
-							operator: { type: 'boolean', operation: 'true', singleValue: true },
-						},
-					],
-					combinator: 'and',
-				},
-				options: {},
-			}),
+			parameters: (compiler) => branchParameters(compiler.js(condition)),
 		};
 		const graph = attach(this.graph, this.tails, spec);
 		const onTrue = config.then(new Flow(graph, [{ node: config.name, output: 0 }]));

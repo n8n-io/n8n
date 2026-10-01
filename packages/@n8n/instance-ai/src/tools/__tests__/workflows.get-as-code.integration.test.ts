@@ -14,6 +14,60 @@ interface GetAsCodeResult {
 	name: string;
 	code: string;
 	error?: string;
+	filePath?: string;
+	nodes?: Array<{ name: string; type: string; line: number }>;
+}
+
+/** A workflow as the node contracts build saves it. */
+function makeContractWorkflow(): WorkflowJSON {
+	return {
+		id: 'wf-managed',
+		name: 'Notion done pages report',
+		nodes: [
+			{
+				id: 'n1',
+				name: 'Start',
+				type: 'n8n-nodes-base.manualTrigger',
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: {},
+			},
+			{
+				id: 'n2',
+				name: 'Get Done Pages',
+				type: '@n8n/nodes-base-next.notionDatabasePageGetAll',
+				typeVersion: 1,
+				position: [224, 0],
+				parameters: {
+					database: '5b9e2c1d-0a7f-4c3e-9d21-7f6a8b9c0d1e',
+					where: {
+						match: 'all',
+						conditions: [
+							{ property: 'Status', type: 'status', condition: { op: 'equals', value: 'Done' } },
+						],
+					},
+					authentication: 'notionApi',
+				},
+				credentials: { notionApi: { id: 'c1', name: 'Notion account' } },
+			},
+			{
+				id: 'n3',
+				name: 'Post Done Page',
+				type: '@n8n/nodes-base-next.httpRequestSend',
+				typeVersion: 1,
+				position: [448, 0],
+				parameters: {
+					method: 'POST',
+					url: 'https://reports.example.com/api/done',
+					body: { kind: 'json', json: '={{ ({name:$json.name,url:$json.url}) }}' },
+				},
+			},
+		],
+		connections: {
+			Start: { main: [[{ node: 'Get Done Pages', type: 'main', index: 0 }]] },
+			'Get Done Pages': { main: [[{ node: 'Post Done Page', type: 'main', index: 0 }]] },
+		},
+	};
 }
 
 function makeManagedWorkflow(): WorkflowJSON {
@@ -100,6 +154,60 @@ describe('workflows get-as-code integration', () => {
 		await expect(getWorkflowSourceFileBinding(context, filePath)).resolves.toMatchObject({
 			workflowVersionId: 'v-current',
 			workflowChecksum: 'checksum-current',
+		});
+	});
+
+	describe('with node contracts', () => {
+		it('returns typed source for a contract workflow and indexes its nodes', async () => {
+			const files = new Map<string, string>();
+			const context = makeContext(makeContractWorkflow(), files);
+			context.nodeContractsEnabled = true;
+			const tool = createWorkflowsTool(context);
+
+			const result = await executeTool<GetAsCodeResult>(tool, {
+				action: 'get-as-code',
+				workflowId: 'wf-managed',
+			});
+
+			expect(result.error).toBeUndefined();
+			expect(result.code).toMatch(
+				/^import \{ workflow, manual \} from '@n8n\/workflow-sdk\/next';\n/,
+			);
+			expect(result.code).toContain("import { notion } from '@n8n/nodes/notion';");
+			expect(result.code).toContain('notion.databasePage.getAll({');
+			expect(result.code).toContain('httpRequest.send({');
+			expect(result.code).toContain('json: (item) => ({name:item.name,url:item.url}),');
+			// The build sets `authentication` from the bound credential.
+			expect(result.code).not.toContain('authentication');
+			expect(files.get(result.filePath ?? '')).toBe(result.code);
+			const lines = result.code.split('\n');
+			expect(result.nodes).toHaveLength(3);
+			// Each line is the node's call; its name is on that line or the next.
+			for (const node of result.nodes ?? []) {
+				expect(node.line).toBeGreaterThan(0);
+				expect(lines.slice(node.line - 1, node.line + 1).join('\n')).toContain(
+					JSON.stringify(node.name),
+				);
+			}
+		});
+
+		it('returns SDK code when the typed format cannot express the workflow', async () => {
+			const files = new Map<string, string>();
+			const workflow = makeContractWorkflow();
+			const context = makeContext(
+				{ ...workflow, nodes: workflow.nodes.map((node) => ({ ...node, retryOnFail: true })) },
+				files,
+			);
+			context.nodeContractsEnabled = true;
+			const tool = createWorkflowsTool(context);
+
+			const result = await executeTool<GetAsCodeResult>(tool, {
+				action: 'get-as-code',
+				workflowId: 'wf-managed',
+			});
+
+			expect(result.error).toBeUndefined();
+			expect(result.code).toMatch(/^import \{[^}]+\} from '@n8n\/workflow-sdk';\n/);
 		});
 	});
 });

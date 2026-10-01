@@ -1,0 +1,107 @@
+{
+	"complexity": "simple",
+	"tags": ["edit", "seeded", "node-contracts-poc", "notion", "filter", "output-shape"],
+	"triggerType": "manual",
+	"credentials": [
+		{
+			"type": "notionApi",
+			"name": "Notion account"
+		}
+	],
+	"conversation": [
+		{
+			"role": "user",
+			"text": "Change my Notion done pages report: also require Priority (a select property) to be High, and add url (the page URL) to the JSON body of the POST. Keep everything else as it is.",
+			"attach": { "workflow": "wfNotionEditSeed01" }
+		}
+	],
+	"seed": {
+		"mode": "inline",
+		"source": {
+			"note": "Synthetic seed: the workflow that the node contracts build saves for nc-notion-filter-and-read, with nodes-base-next node types."
+		},
+		"workflows": [
+			{
+				"id": "wfNotionEditSeed01",
+				"name": "Notion done pages report",
+				"nodes": [
+					{
+						"id": "eeee6666-0001-4000-8000-000000000001",
+						"name": "Start",
+						"type": "n8n-nodes-base.manualTrigger",
+						"typeVersion": 1,
+						"position": [0, 0],
+						"parameters": {}
+					},
+					{
+						"id": "eeee6666-0002-4000-8000-000000000002",
+						"name": "Get Done Pages",
+						"type": "@n8n/nodes-base-next.notionDatabasePageGetAll",
+						"typeVersion": 1,
+						"position": [224, 0],
+						"parameters": {
+							"database": "5b9e2c1d-0a7f-4c3e-9d21-7f6a8b9c0d1e",
+							"where": {
+								"match": "all",
+								"conditions": [
+									{
+										"property": "Status",
+										"type": "status",
+										"condition": { "op": "equals", "value": "Done" }
+									},
+									{
+										"property": "Completed",
+										"type": "date",
+										"condition": { "op": "on_or_after", "value": "2026-09-01" }
+									},
+									{
+										"property": "Owners",
+										"type": "people",
+										"condition": {
+											"op": "contains",
+											"value": "7c3e1a2b-4d5f-4a6b-8c9d-0e1f2a3b4c5d"
+										}
+									}
+								]
+							}
+						}
+					},
+					{
+						"id": "eeee6666-0003-4000-8000-000000000003",
+						"name": "Post Done Page",
+						"type": "@n8n/nodes-base-next.httpRequestSend",
+						"typeVersion": 1,
+						"position": [448, 0],
+						"parameters": {
+							"method": "POST",
+							"url": "https://reports.example.com/api/done",
+							"body": {
+								"kind": "json",
+								"json": "={{ ({ name: $json.name, owners: $json.property_owners.join(\", \"), completed: $json.property_completed?.start?.slice(0, 10) }) }}"
+							}
+						}
+					}
+				],
+				"connections": {
+					"Start": { "main": [[{ "node": "Get Done Pages", "type": "main", "index": 0 }]] },
+					"Get Done Pages": { "main": [[{ "node": "Post Done Page", "type": "main", "index": 0 }]] }
+				}
+			}
+		],
+		"dataTables": []
+	},
+	"description": "Edit round trip for node contracts. The seed is the saved Notion done pages workflow with nodes-base-next node types, so the node contracts arm reads it back with get-as-code and edits it in the typed format. The live turn adds a fourth filter condition on a select property and a new POST body field. Run it on the node contracts arm only: an instance without the flag does not load nodes-base-next.",
+	"executionScenarios": [
+		{
+			"name": "added-filter-and-field",
+			"description": "The query carries the three seeded conditions plus Priority, and the POSTs carry the new url field.",
+			"dataSetup": "The Notion API data source query (POST /v1/data_sources/5b9e2c1d-0a7f-4c3e-9d21-7f6a8b9c0d1e/query) returns { \"object\": \"list\", \"has_more\": false, \"next_cursor\": null, \"results\": [{\"object\": \"page\", \"id\": \"1f2a3b4c-5d6e-7f80-9123-456789abcdef\", \"url\": \"https://www.notion.so/1f2a3b4c5d6e7f809123456789abcdef\", \"properties\": {\"Name\": {\"id\": \"title\", \"type\": \"title\", \"title\": [{\"type\": \"text\", \"plain_text\": \"Ship billing v3\", \"text\": {\"content\": \"Ship billing v3\"}}]}, \"Status\": {\"id\": \"s\", \"type\": \"status\", \"status\": {\"name\": \"Done\"}}, \"Priority\": {\"id\": \"p\", \"type\": \"select\", \"select\": {\"name\": \"High\"}}, \"Completed\": {\"id\": \"c\", \"type\": \"date\", \"date\": {\"start\": \"2026-09-10\", \"end\": null, \"time_zone\": null}}, \"Owners\": {\"id\": \"o\", \"type\": \"people\", \"people\": [{\"object\": \"user\", \"id\": \"7c3e1a2b-4d5f-4a6b-8c9d-0e1f2a3b4c5d\", \"name\": \"Dana Scully\", \"type\": \"person\", \"person\": {\"email\": \"dana@acme.test\"}}]}}}] }. Return these raw API objects unchanged. The reports endpoint returns 200 { \"ok\": true } for any POST.",
+			"successCriteria": "The Notion query filter ANDs Status status equals Done, Completed date on_or_after 2026-09-01, Owners people contains 7c3e1a2b-4d5f-4a6b-8c9d-0e1f2a3b4c5d, and Priority select equals High. The POST carries name 'Ship billing v3', owners 'dana@acme.test', completed '2026-09-10', and url 'https://www.notion.so/1f2a3b4c5d6e7f809123456789abcdef'. A dropped seeded condition or field FAILS."
+		}
+	],
+	"outcomeExpectations": [
+		"The Notion node keeps the three seeded conditions and adds Priority select equals High, all combined with AND.",
+		"The POST body keeps name, owners and completed, and adds url from the page URL.",
+		"The edited workflow keeps the nodes-base-next Notion and HTTP Request node types."
+	]
+}

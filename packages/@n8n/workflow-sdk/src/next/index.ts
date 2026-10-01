@@ -13,9 +13,19 @@
  * );
  * ```
  */
-import { startFlow, type Dollar, type Flow, type Loose, type Step } from './flow';
+import {
+	MANUAL_NODE,
+	SET_NODE,
+	setParameters,
+	startFlow,
+	type Dollar,
+	type Flow,
+	type Loose,
+	type Step,
+} from './flow';
 
 export { workflow, Flow, contractStep } from './flow';
+export { decompileWorkflow, locateNextNodes, type ContractFactory } from './decompile';
 export type {
 	DateTime,
 	Dollar,
@@ -51,8 +61,7 @@ export function manual<const N extends string = 'Start'>(config?: {
 }): Flow<Record<string, never>, Record<N, Record<string, never>>> {
 	return startFlow({
 		name: config?.name ?? 'Start',
-		type: 'n8n-nodes-base.manualTrigger',
-		version: 1,
+		...MANUAL_NODE,
 		parameters: () => ({}),
 	});
 }
@@ -77,20 +86,14 @@ export function set<
 		name,
 		spec: {
 			name,
-			type: 'n8n-nodes-base.set',
-			version: 3.4,
-			parameters: (compiler) => {
-				const entries = Object.entries(fields).map(
-					([key, value]) => `${JSON.stringify(key)}: ${compiler.js(value)}`,
-				);
-				return {
-					mode: 'raw',
-					jsonOutput: `={{ ({ ${entries.join(', ')} }) }}`,
-					includeOtherFields: keep === 'all',
-					...(keep === 'all' ? { include: 'all' } : {}),
-					options: {},
-				};
-			},
+			...SET_NODE,
+			parameters: (compiler) =>
+				setParameters(
+					Object.entries(fields).map(
+						([key, value]) => `${JSON.stringify(key)}: ${compiler.js(value)}`,
+					),
+					keep === 'all',
+				),
 		},
 	};
 }

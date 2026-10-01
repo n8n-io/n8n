@@ -36,7 +36,9 @@ visible output until the final step, unless blocked.
    `postBuildFlow.instructions`.
 
 For an existing workflow, call `workflows(action="get-as-code", workflowId)`,
-make the smallest change, and build with the returned `filePath`.
+make the smallest change, and build with the returned `filePath`. The file uses
+this typed format. Keep its `node()` calls and its `'={{ … }}'` strings
+(n8n expressions) unless the change needs them.
 
 ## Imports
 

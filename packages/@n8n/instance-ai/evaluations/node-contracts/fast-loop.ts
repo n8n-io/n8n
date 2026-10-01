@@ -707,84 +707,127 @@ async function nextNotionFilter(
 	return valueAt(query, 'body.filter') ?? {};
 }
 
-const gradeNotionFilterAndRead: Grader = async (workflow) => {
-	const runtime = notionRuntime();
-	const notion = workflow.nodes.find(
-		(node) =>
-			(node.type === 'n8n-nodes-base.notion' && node.parameters?.operation === 'getAll') ||
-			node.type === NEXT_NOTION_GET_ALL,
-	);
-	if (!notion) return [{ name: 'notion-node', pass: false, detail: 'no Notion getAll node' }];
-	const parameters = notion.parameters ?? {};
-	const isNext = notion.type === NEXT_NOTION_GET_ALL;
+/** What a Notion case adds to the base filter-and-read task. */
+interface NotionTask {
+	/** More filter conditions, each as a list of accepted forms. */
+	conditions: unknown[][];
+	/** More POST body fields, by page title. */
+	body: (title: string) => Record<string, unknown>;
+	/** The edit keeps the typed nodes-base-next nodes of the seed. */
+	typed: boolean;
+}
 
-	const version = notion.typeVersion ?? 2;
-	const conditions = isRecord(parameters.filters) ? parameters.filters.conditions : undefined;
-	const sent = isNext
-		? await nextNotionFilter(workflow, notion)
-		: ((): unknown => {
-				try {
-					if (parameters.filterType === 'manual') {
-						return runtime.filterBody(
-							Array.isArray(conditions) ? conditions : [],
-							parameters.matchType,
-							version,
-						);
-					}
-					if (parameters.filterType === 'json' && typeof parameters.filterJson === 'string') {
-						const parsed: unknown = JSON.parse(parameters.filterJson.replace(/^=/, ''));
-						return parsed;
-					}
-					return {};
-				} catch (error) {
-					return `<node throws: ${error instanceof Error ? error.message : String(error)}>`;
-				}
-			})();
-	// The legacy v3 node sends dates as UTC timestamps; the next node sends the date as given.
-	const completedDates = isNext ? ['2026-09-01', '2026-09-01T00:00:00Z'] : ['2026-09-01T00:00:00Z'];
-	const expected = [
-		[{ property: 'Status', status: { equals: 'Done' } }],
-		completedDates.map((date) => ({ property: 'Completed', date: { on_or_after: date } })),
-		[{ property: 'Owners', people: { contains: NOTION_USER } }],
-	];
-	const sentConditions = isRecord(sent) && Array.isArray(sent.and) ? sent.and : [];
-	const sentKeys = sentConditions.map(sortedJson).sort();
-	const filterPass =
-		sentConditions.length === expected.length &&
-		expected.every((choices) =>
-			choices.some((condition) => sentKeys.includes(sortedJson(condition))),
+const notionGrader =
+	(task: NotionTask): Grader =>
+	async (workflow) => {
+		const runtime = notionRuntime();
+		const notion = workflow.nodes.find(
+			(node) =>
+				(node.type === 'n8n-nodes-base.notion' && node.parameters?.operation === 'getAll') ||
+				node.type === NEXT_NOTION_GET_ALL,
 		);
+		if (!notion) return [{ name: 'notion-node', pass: false, detail: 'no Notion getAll node' }];
+		const parameters = notion.parameters ?? {};
+		const isNext = notion.type === NEXT_NOTION_GET_ALL;
 
-	// The next node emits the v3 simplified page.
-	const items =
-		parameters.simple === false && !isNext
-			? [notionPage('p1', 'Ship billing v3'), notionPage('p2', 'Retire old API')]
-			: runtime.simplifyObjects(
-					[notionPage('p1', 'Ship billing v3'), notionPage('p2', 'Retire old API')],
-					isNext ? 3 : (notion.typeVersion ?? 2),
-				);
-	const outputItems = (Array.isArray(items) ? items : []).filter(isDataObject);
+		const version = notion.typeVersion ?? 2;
+		const conditions = isRecord(parameters.filters) ? parameters.filters.conditions : undefined;
+		const sent = isNext
+			? await nextNotionFilter(workflow, notion)
+			: ((): unknown => {
+					try {
+						if (parameters.filterType === 'manual') {
+							return runtime.filterBody(
+								Array.isArray(conditions) ? conditions : [],
+								parameters.matchType,
+								version,
+							);
+						}
+						if (parameters.filterType === 'json' && typeof parameters.filterJson === 'string') {
+							const parsed: unknown = JSON.parse(parameters.filterJson.replace(/^=/, ''));
+							return parsed;
+						}
+						return {};
+					} catch (error) {
+						return `<node throws: ${error instanceof Error ? error.message : String(error)}>`;
+					}
+				})();
+		// The legacy v3 node sends dates as UTC timestamps; the next node sends the date as given.
+		const completedDates = isNext
+			? ['2026-09-01', '2026-09-01T00:00:00Z']
+			: ['2026-09-01T00:00:00Z'];
+		const expected = [
+			[{ property: 'Status', status: { equals: 'Done' } }],
+			completedDates.map((date) => ({ property: 'Completed', date: { on_or_after: date } })),
+			[{ property: 'Owners', people: { contains: NOTION_USER } }],
+			...task.conditions,
+		];
+		const sentConditions = isRecord(sent) && Array.isArray(sent.and) ? sent.and : [];
+		const sentKeys = sentConditions.map(sortedJson).sort();
+		const filterPass =
+			sentConditions.length === expected.length &&
+			expected.every((choices) =>
+				choices.some((condition) => sentKeys.includes(sortedJson(condition))),
+			);
 
-	const { node: http, walked, path: via } = await followToHttp(workflow, notion.name, outputItems);
-	const bodies = http ? await httpBodies(http, walked) : [];
-	const expectBody = (name: string) => (body: unknown) =>
-		isRecord(body) &&
-		body.name === name &&
-		typeof body.owners === 'string' &&
-		body.owners.replace(/\s/g, '') === 'dana@acme.test,fox@acme.test' &&
-		body.completed === '2026-09-10';
-	const readsPass =
-		bodies.length === 2 &&
-		expectBody('Ship billing v3')(bodies[0]) &&
-		expectBody('Retire old API')(bodies[1]);
+		// The next node emits the v3 simplified page.
+		const items =
+			parameters.simple === false && !isNext
+				? [notionPage('p1', 'Ship billing v3'), notionPage('p2', 'Retire old API')]
+				: runtime.simplifyObjects(
+						[notionPage('p1', 'Ship billing v3'), notionPage('p2', 'Retire old API')],
+						isNext ? 3 : (notion.typeVersion ?? 2),
+					);
+		const outputItems = (Array.isArray(items) ? items : []).filter(isDataObject);
 
-	return [
-		{ name: 'filter', pass: filterPass, detail: JSON.stringify(sent) },
-		http
-			? { name: 'reads', pass: readsPass, detail: `${via} ${JSON.stringify(bodies)}` }
-			: { name: 'reads', pass: false, ungraded: true, detail: via },
-	];
+		const {
+			node: http,
+			walked,
+			path: via,
+		} = await followToHttp(workflow, notion.name, outputItems);
+		const bodies = http ? await httpBodies(http, walked) : [];
+		const expectBody = (name: string) => (body: unknown) =>
+			isRecord(body) &&
+			body.name === name &&
+			typeof body.owners === 'string' &&
+			body.owners.replace(/\s/g, '') === 'dana@acme.test,fox@acme.test' &&
+			body.completed === '2026-09-10' &&
+			Object.entries(task.body(name)).every(([key, value]) => body[key] === value);
+		const readsPass =
+			bodies.length === 2 &&
+			expectBody('Ship billing v3')(bodies[0]) &&
+			expectBody('Retire old API')(bodies[1]);
+
+		const types = [notion.type, http?.type ?? 'no HTTP Request'];
+		return [
+			{ name: 'filter', pass: filterPass, detail: JSON.stringify(sent) },
+			http
+				? { name: 'reads', pass: readsPass, detail: `${via} ${JSON.stringify(bodies)}` }
+				: { name: 'reads', pass: false, ungraded: true, detail: via },
+			...(task.typed
+				? [
+						{
+							name: 'typed',
+							pass: isNext && http?.type === NEXT_HTTP_SEND,
+							detail: types.join(', '),
+						},
+					]
+				: []),
+		];
+	};
+
+const gradeNotionFilterAndRead = notionGrader({ conditions: [], body: () => ({}), typed: false });
+
+const NOTION_PAGE_URLS: Record<string, string> = {
+	'Ship billing v3': 'https://www.notion.so/p1',
+	'Retire old API': 'https://www.notion.so/p2',
 };
+
+const gradeNotionEditAddFilter = notionGrader({
+	conditions: [[{ property: 'Priority', select: { equals: 'High' } }]],
+	body: (title) => ({ url: NOTION_PAGE_URLS[title] }),
+	typed: true,
+});
 
 /** The POST check shared by graders: method and URL after defaults, then the sent bodies. */
 async function postedBodies(workflow: WorkflowResponse, startName: string, items: IDataObject[]) {
@@ -1188,6 +1231,7 @@ const gradeIfStringAmountThreshold: Grader = async (workflow) => {
 
 const GRADERS: Record<string, Grader> = {
 	'nc-notion-filter-and-read': gradeNotionFilterAndRead,
+	'nc-notion-edit-add-filter': gradeNotionEditAddFilter,
 	'nc-sheets-lookup-first-match': gradeSheetsLookupFirstMatch,
 	'nc-http-cursor-pagination': gradeHttpCursorPagination,
 	'nc-gmail-send-then-post': gradeGmailSendThenPost,
@@ -1701,6 +1745,8 @@ async function runBuild(
 	const build = await buildWorkflow({
 		client: session.client,
 		conversation: testCase.testCase.conversation,
+		// An edit case starts from a seeded workflow.
+		seed: testCase.testCase.seed,
 		credentials: testCase.testCase.credentials,
 		createdCredentialIds: session.createdCredentialIds,
 		preRunWorkflowIds: session.preRunWorkflowIds,

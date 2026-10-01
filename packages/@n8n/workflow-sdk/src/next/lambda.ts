@@ -33,7 +33,7 @@ const GLOBALS = new Set([
 ]);
 
 /** `$.<key>` in a lambda compiles to this n8n expression text. */
-const BUILTINS: Record<string, string> = {
+export const BUILTINS: Record<string, string> = {
 	now: '$now',
 	today: '$today',
 	execution: '$execution',
@@ -55,7 +55,7 @@ interface Params {
 	dollar?: string;
 }
 
-const isAstNode = (value: unknown): value is acorn.AnyNode =>
+export const isAstNode = (value: unknown): value is acorn.AnyNode =>
 	typeof value === 'object' &&
 	value !== null &&
 	'type' in value &&
@@ -63,7 +63,7 @@ const isAstNode = (value: unknown): value is acorn.AnyNode =>
 	'start' in value &&
 	typeof value.start === 'number';
 
-const childNodes = (node: acorn.AnyNode): acorn.AnyNode[] =>
+export const childNodes = (node: acorn.AnyNode): acorn.AnyNode[] =>
 	Object.values(node).flatMap((value: unknown) =>
 		Array.isArray(value) ? value.filter(isAstNode) : isAstNode(value) ? [value] : [],
 	);
@@ -266,7 +266,15 @@ export function compileLambda(
 	nodeNames: ReadonlySet<string>,
 	root: LambdaRoot = '$json',
 ): LambdaResult {
-	const source = fn.toString();
+	return compileLambdaSource(fn.toString(), nodeNames, root);
+}
+
+/** Compile lambda source text, as `compileLambda` does with the text of a function. */
+export function compileLambdaSource(
+	source: string,
+	nodeNames: ReadonlySet<string>,
+	root: LambdaRoot = '$json',
+): LambdaResult {
 	const parsed = (() => {
 		try {
 			return parseFunction(source);
