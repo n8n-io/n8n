@@ -88,6 +88,10 @@ export class MigrationFindingSyncService {
 	private async runSync(targetVersion: BreakingChangeVersion): Promise<void> {
 		this.logger.debug('Starting migration finding sync', { targetVersion });
 
+		// The record is written again only after every batch succeeded. A sync that stops
+		// early (failed batch, lost leadership, error) leaves none, so the next read syncs again.
+		await this.syncRepository.deleteForVersion(targetVersion, {});
+
 		// One full, uncached scan. Batch rules need every workflow to produce a result,
 		// so the scan runs first and the table is updated from its output afterwards.
 		const { report, failedChecks } = await this.breakingChangeService.detect(targetVersion);
@@ -114,7 +118,7 @@ export class MigrationFindingSyncService {
 			workflowIds = await this.workflowRepository.getIdsAfter(afterId, take);
 
 			// The scan can take long. A follower must not write, so leadership is
-			// checked again before every batch; the sync record stays unwritten.
+			// checked again before every batch; the sync record stays cleared.
 			if (!this.instanceSettings.isLeader) {
 				this.logger.info('Stopping migration finding sync, this instance is no longer the leader', {
 					targetVersion,
@@ -125,8 +129,8 @@ export class MigrationFindingSyncService {
 			try {
 				await this.syncBatch(targetVersion, workflowIds, hitsByWorkflow, unknownByWorkflow);
 			} catch (error) {
-				// One bad batch must not lose the rest. The sync record is withheld
-				// below, so the next sync visits this batch again.
+				// One bad batch must not lose the rest. The sync record stays cleared
+				// below, so the next read syncs and visits this batch again.
 				failedBatches++;
 				this.logger.warn('Migration finding sync batch failed, continuing with the next batch', {
 					targetVersion,

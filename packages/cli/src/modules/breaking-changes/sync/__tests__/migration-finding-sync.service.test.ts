@@ -342,6 +342,85 @@ describe('MigrationFindingSyncService', () => {
 		expect(order).toEqual(['batch', 'batch', 'sync-record']);
 	});
 
+	it('clears the previous sync record before the scan and the first batch', async () => {
+		givenWorkflows(150);
+		const order: string[] = [];
+		syncRepository.deleteForVersion.mockImplementation(async () => {
+			order.push('clear-record');
+		});
+		breakingChangeService.detect.mockImplementation(async () => {
+			order.push('detect');
+			return detectionResult([]);
+		});
+		txRunner.run.mockImplementation(async (ctx, fn) => {
+			order.push('batch');
+			return await fn(ctx);
+		});
+		syncRepository.upsertForVersion.mockImplementation(async () => {
+			order.push('sync-record');
+		});
+
+		await service.sync(TARGET_VERSION);
+
+		expect(syncRepository.deleteForVersion).toHaveBeenCalledWith(TARGET_VERSION, expect.anything());
+		expect(order).toEqual(['clear-record', 'detect', 'batch', 'batch', 'sync-record']);
+	});
+
+	describe('recovery from an interrupted sync', () => {
+		/** Backs the sync repository mock with one in-memory record, so the next read sees the writes. */
+		function givenPersistedSyncRecord() {
+			let record: MigrationFindingSync | null = {
+				targetVersion: TARGET_VERSION,
+				syncedAt: new Date(),
+				ruleSetFingerprint: computeRuleSetFingerprint(['rule-a', 'rule-b']),
+			} as MigrationFindingSync;
+			syncRepository.getForVersion.mockImplementation(async () => record);
+			syncRepository.deleteForVersion.mockImplementation(async () => {
+				record = null;
+			});
+			syncRepository.upsertForVersion.mockImplementation(async (next) => {
+				record = next as MigrationFindingSync;
+			});
+		}
+
+		it('leaves no record after a failed batch, so the next read syncs again', async () => {
+			givenWorkflows(250);
+			givenPersistedSyncRecord();
+			txRunner.run
+				.mockImplementationOnce(async (ctx, fn) => await fn(ctx))
+				.mockImplementationOnce(async () => {
+					throw new Error('batch failed');
+				});
+
+			await service.sync(TARGET_VERSION);
+			expect(await syncRepository.getForVersion(TARGET_VERSION, {})).toBeNull();
+
+			await service.syncIfStale(TARGET_VERSION);
+
+			expect(breakingChangeService.detect).toHaveBeenCalledTimes(2);
+			expect(await syncRepository.getForVersion(TARGET_VERSION, {})).not.toBeNull();
+		});
+
+		it('leaves no record after a leadership loss, so the next read on the leader syncs again', async () => {
+			givenWorkflows(250);
+			givenPersistedSyncRecord();
+			txRunner.run.mockImplementationOnce(async (ctx, fn) => {
+				const result = await fn(ctx);
+				isLeader = false;
+				return result;
+			});
+
+			await service.sync(TARGET_VERSION);
+			expect(await syncRepository.getForVersion(TARGET_VERSION, {})).toBeNull();
+
+			isLeader = true;
+			await service.syncIfStale(TARGET_VERSION);
+
+			expect(breakingChangeService.detect).toHaveBeenCalledTimes(2);
+			expect(await syncRepository.getForVersion(TARGET_VERSION, {})).not.toBeNull();
+		});
+	});
+
 	describe('rule set fingerprint', () => {
 		it('is the same regardless of rule order', () => {
 			expect(computeRuleSetFingerprint(['rule-b', 'rule-a'])).toBe(
