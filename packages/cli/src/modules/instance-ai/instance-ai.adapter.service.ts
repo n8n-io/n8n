@@ -786,6 +786,7 @@ export class InstanceAiAdapterService {
 			},
 			recordRejection: (reason, textLength, scope) => {
 				this.telemetry.track(TELEMETRY_EVENT.CONTEXT.PREFERENCE_WRITE_REJECTED, {
+					user_id: user.id,
 					surface: 'aia',
 					reason,
 					// From the tool input, so the reported scope follows the tool instead of a constant

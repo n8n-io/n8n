@@ -7765,15 +7765,22 @@ describe('createContext: aiPreferenceService', () => {
 
 		expect(telemetry.track).toHaveBeenCalledWith(
 			TELEMETRY_EVENT.CONTEXT.PREFERENCE_CONFIRMATION_SHOWN,
-			{ surface: 'aia', scope_type: 'user', text_length: 19 },
+			{ user_id: 'user-1', surface: 'aia', scope_type: 'user', text_length: 19 },
 		);
 		expect(telemetry.track).toHaveBeenCalledWith(
 			TELEMETRY_EVENT.CONTEXT.PREFERENCE_CONFIRMATION_RESOLVED,
-			{ surface: 'aia', outcome: 'accepted', scope_type: 'user', text_length: 19 },
+			{
+				user_id: 'user-1',
+				surface: 'aia',
+				outcome: 'accepted',
+				scope_type: 'user',
+				text_length: 19,
+			},
 		);
 		expect(telemetry.track).toHaveBeenCalledWith(
 			TELEMETRY_EVENT.CONTEXT.PREFERENCE_SCOPE_ACCEPTED,
 			{
+				user_id: 'user-1',
 				surface: 'aia',
 				offered_scope: 'user',
 				accepted_scope: 'user',
@@ -7783,6 +7790,7 @@ describe('createContext: aiPreferenceService', () => {
 		expect(telemetry.track).toHaveBeenCalledWith(
 			TELEMETRY_EVENT.CONTEXT.ASSISTANT_SAVED_PREFERENCE,
 			{
+				user_id: 'user-1',
 				surface: 'aia',
 				scope_type: 'user',
 				text_length: 19,
@@ -7802,6 +7810,7 @@ describe('createContext: aiPreferenceService', () => {
 		expect(telemetry.track).toHaveBeenCalledWith(
 			TELEMETRY_EVENT.CONTEXT.PREFERENCE_WRITE_REJECTED,
 			{
+				user_id: 'user-1',
 				surface: 'aia',
 				reason: 'duplicate',
 				scope_type: 'user',
@@ -7822,6 +7831,7 @@ describe('createContext: aiPreferenceService', () => {
 			expect(telemetry.track).toHaveBeenCalledWith(
 				TELEMETRY_EVENT.CONTEXT.PREFERENCE_WRITE_REJECTED,
 				{
+					user_id: 'user-1',
 					surface: 'aia',
 					reason,
 					scope_type: 'user',
