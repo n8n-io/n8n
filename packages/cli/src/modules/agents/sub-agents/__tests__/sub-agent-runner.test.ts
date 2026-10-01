@@ -6,6 +6,7 @@ import {
 	type CredentialProvider,
 	type StreamChunk,
 	type StreamResult,
+	type ToolApprovalContext,
 } from '@n8n/agents';
 import type {
 	ResolvedSubAgentSource,
@@ -16,6 +17,7 @@ import type { Logger } from '@n8n/backend-common';
 import type { AiConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
@@ -23,6 +25,7 @@ import type { AgentExecutionService } from '../../agent-execution.service';
 import type { AgentMessageQueueService } from '../../agent-message-queue.service';
 import type { AgentChatExecutionService } from '../../agent-chat-execution.service';
 import { AgentTurnExecutionService } from '../../agent-turn-execution.service';
+import type { AgentToolApprovalService } from '../../agent-tool-approval.service';
 import { AgentRuntimeReconstructionService } from '../../agent-runtime-reconstruction.service';
 import {
 	encodeAgentSandboxHostMetadata,
@@ -37,6 +40,7 @@ import type {
 } from '../sub-agent-source-resolver';
 
 const aiConfigMock = mock<AiConfig>();
+const toolApprovalService = mock<AgentToolApprovalService>();
 
 const projectId = 'project-1';
 const parentThreadId = 'parent-thread-1';
@@ -153,10 +157,12 @@ describe('SubAgentRunner', () => {
 				mock<AgentChatExecutionService>(),
 				mock<AgentMessageQueueService>(),
 				mock<AgentMessageSteeringService>(),
+				toolApprovalService,
 			),
 			checkpointStorage,
 			logger,
 			aiConfigMock,
+			toolApprovalService,
 		);
 
 		childAgent = mock<BuiltAgent>();
@@ -659,6 +665,30 @@ describe('SubAgentRunner', () => {
 		expect(childAgent.close).toHaveBeenCalledTimes(1);
 	});
 
+	it('reports a guardrail stop as a completion that carries the finish reason', async () => {
+		childAgent.stream.mockResolvedValue(
+			makeStreamResult([
+				{ type: 'text-delta', id: 'text-1', delta: 'Partial answer' },
+				{ type: 'finish', finishReason: 'guardrail', guardrail: { code: 'budget.session' } },
+			]),
+		);
+
+		await expect(
+			runner.run(spawnRequest, {
+				parentAgentId,
+				projectId,
+				credentialProvider,
+				runType: 'production',
+			}),
+		).resolves.toMatchObject({
+			status: 'completed',
+			result: {
+				runId: 'child-run-1',
+				finishReason: 'guardrail',
+			},
+		});
+	});
+
 	it('applies the self-delegation model while preserving the parent draft', async () => {
 		const parentConfig: RunnableAgentJsonConfig = {
 			...runnableConfig,
@@ -716,13 +746,23 @@ describe('SubAgentRunner', () => {
 	});
 
 	it('resumes a draft child in the same thread', async () => {
+		const approvalContext = { approvedKeys: new Set<string>(), onDecision: vi.fn() };
+		toolApprovalService.createContext.mockResolvedValueOnce(approvalContext);
+		const toolRegistry = new Map([
+			['child_request', { kind: 'node' as const, nodeParameters: { method: 'GET' } }],
+		]);
+		reconstructionService.reconstructFromResolvedSource.mockResolvedValueOnce({
+			agent: childAgent as never,
+			toolRegistry,
+			mcpServerAttributions: new Map(),
+		});
 		const result = await runner.resumeForeground(
 			{
 				...delegatedRequest,
 				childRunId: 'child-run-1',
 				childToolCallId: 'tool-call-1',
 				childThreadId: 'child-thread-1',
-				resumeData: { approved: true },
+				resumeData: { approved: true, scope: 'session' },
 				resumeContext: { agentId: 'agent-1' },
 				parentThreadId,
 			},
@@ -740,8 +780,15 @@ describe('SubAgentRunner', () => {
 		);
 		expect(childAgent.resume).toHaveBeenCalledWith(
 			'stream',
-			{ approved: true },
-			expect.objectContaining({ runId: 'child-run-1', toolCallId: 'tool-call-1' }),
+			{ approved: true, scope: 'session' },
+			expect.objectContaining({ runId: 'child-run-1', toolCallId: 'tool-call-1', approvalContext }),
+		);
+		expect(toolApprovalService.createContext).toHaveBeenCalledWith(
+			expect.objectContaining({ threadId: 'child-thread-1', agentId: 'agent-1' }),
+			toolRegistry,
+		);
+		expect(toolApprovalService.createContext.mock.invocationCallOrder[0]).toBeGreaterThan(
+			agentExecutionService.startExecutionRecording.mock.invocationCallOrder[0],
 		);
 		expect(result).toMatchObject({
 			taskPath: '/root/research_api_0',
@@ -761,7 +808,7 @@ describe('SubAgentRunner', () => {
 						expect.objectContaining({
 							type: 'hitl-response',
 							toolCallId: 'tool-call-1',
-							response: { approved: true },
+							response: { approved: true, scope: 'session' },
 						}),
 					]),
 				}),
@@ -928,6 +975,59 @@ describe('SubAgentRunner', () => {
 			expect.objectContaining({ record: expect.objectContaining({ error: error.message }) }),
 		);
 	});
+
+	it.each(['run', 'resume'] as const)(
+		'does not %s a child when cancelled during the grant lookup',
+		async (operation) => {
+			const parentAbort = new AbortController();
+			const grantLookup = createDeferredPromise<ToolApprovalContext>();
+			toolApprovalService.createContext.mockReturnValueOnce(grantLookup.promise);
+			const context = {
+				parentAgentId,
+				projectId,
+				credentialProvider,
+				runType: 'production' as const,
+				abortSignal: parentAbort.signal,
+			};
+			const execution =
+				operation === 'run'
+					? runner.run(spawnRequest, context)
+					: runner.resumeForeground(
+							{
+								...delegatedRequest,
+								childRunId: 'child-run-1',
+								childToolCallId: 'tool-call-1',
+								childThreadId: 'child-thread-1',
+								resumeData: { approved: true, scope: 'session' },
+								resumeContext: { agentId: 'agent-1' },
+								parentThreadId,
+							},
+							context,
+						);
+
+			await vi.waitFor(() => expect(toolApprovalService.createContext).toHaveBeenCalled());
+			parentAbort.abort();
+			grantLookup.resolve({ approvedKeys: new Set(), onDecision: vi.fn() });
+
+			await expect(execution).rejects.toMatchObject({ name: 'AbortError' });
+			expect(childAgent.stream).not.toHaveBeenCalled();
+			expect(childAgent.resume).not.toHaveBeenCalled();
+			expect(agentExecutionService.finalizeExecution).toHaveBeenCalledWith(
+				'agent-execution-1',
+				expect.objectContaining({
+					hitlStatus: undefined,
+					record: expect.objectContaining({
+						finishReason: 'cancelled',
+						error: null,
+						timeline: expect.not.arrayContaining([
+							expect.objectContaining({ type: 'hitl-response' }),
+						]),
+					}),
+				}),
+			);
+			expect(childAgent.close).toHaveBeenCalledOnce();
+		},
+	);
 
 	it('aborts the child run when the parent run is cancelled', async () => {
 		const parentAbort = new AbortController();

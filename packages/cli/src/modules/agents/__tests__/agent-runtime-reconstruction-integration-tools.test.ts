@@ -22,6 +22,7 @@ import { CredentialsService } from '@/credentials/credentials.service';
 import type { EphemeralNodeExecutor } from '@/node-execution';
 import type { NodeTypes } from '@/node-types';
 import type { OauthService } from '@/oauth/oauth.service';
+import type { ProjectScopeService } from '@/permissions.ee/project-scope.service';
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
 import type { AiGatewayService } from '@/services/ai-gateway.service';
 import type { AiService } from '@/services/ai.service';
@@ -48,6 +49,7 @@ import type { AgentSetupCompletionService } from '../agent-setup-completion.serv
 import type { AgentRunTracingService } from '../agent-run-tracing.service';
 import { AgentRuntimeCacheService } from '../agent-runtime-cache.service';
 import { AgentTurnExecutionService } from '../agent-turn-execution.service';
+import type { AgentToolApprovalService } from '../agent-tool-approval.service';
 import { AgentRuntimeReconstructionService } from '../agent-runtime-reconstruction.service';
 import type { AgentSandboxRuntimeService } from '../agent-sandbox-runtime.service';
 import { AgentSkillsService } from '../agent-skills.service';
@@ -288,6 +290,7 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 				mock<AgentChatExecutionService>(),
 				mock<AgentMessageQueueService>(),
 				mock<AgentMessageSteeringService>(),
+				mock<AgentToolApprovalService>(),
 			),
 			telemetry,
 			runtimeCacheService,
@@ -349,6 +352,7 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			mock<EventService>(),
 			agentExecutionService,
 			credentialsService,
+			mock<ProjectScopeService>(),
 		);
 		service = agentExecutionOrchestratorService;
 		markSharedTestSetupAsUsed(

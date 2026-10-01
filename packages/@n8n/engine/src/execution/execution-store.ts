@@ -59,12 +59,17 @@ export interface ExecutionStore {
 	/**
 	 * Record an execution's outcome: writes the final status and the finish time
 	 * together, as a compare-and-set on the live statuses, so they can't be
-	 * observed apart.
+	 * observed apart. Returns the finish time it wrote, so the caller reports the
+	 * time the row records, or `null` when the compare-and-set lost.
 	 */
-	finishExecution(id: string, status: 'completed' | 'failed'): Promise<boolean>;
+	finishExecution(id: string, status: 'completed' | 'failed'): Promise<{ finishedAt: Date } | null>;
 
-	/** End an execution on request, from any status that has not ended. */
-	cancelExecution(id: string): Promise<boolean>;
+	/**
+	 * End an execution on request, from any status that has not ended. Returns
+	 * the finish time it wrote, so the caller reports the time the row records,
+	 * or `null` when the execution had already ended.
+	 */
+	cancelExecution(id: string): Promise<{ finishedAt: Date } | null>;
 
 	/**
 	 * Sets a live execution's status from the state of its steps: `waiting` when

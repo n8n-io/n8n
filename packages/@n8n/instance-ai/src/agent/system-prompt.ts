@@ -18,6 +18,8 @@ interface SystemPromptOptions {
 	licenseHints?: string[];
 	/** When true, the instance is in read-only mode (source control branchReadOnly). */
 	branchReadOnly?: boolean;
+	/** When true, data sharing is off: parameter values are hidden and workflow writes are blocked. */
+	parameterValuesHidden?: boolean;
 	projectId?: string;
 	/** Absolute or host-relative sandbox workspace root for `<workspace_root>` paths in prompts. */
 	workspaceRoot?: string;
@@ -141,6 +143,17 @@ A request to build something genuinely new goes straight to the build path — n
 `;
 }
 
+/**
+ * The turn sends the tabs block only when the open tabs change, so the model
+ * needs to know what a user message without one means.
+ */
+function getPreviewTabsSection(): string {
+	return `
+## Preview Tabs
+
+The latest \`<thread-artifacts>\` block lists the tabs the user has open now. A user message without one means the tabs did not change. When a tab from an earlier block is missing from the latest one, the user closed it: you can still work on it if the user asks, but do not assume the user is looking at it.`;
+}
+
 function getConversationRecallSection(): string {
 	return `
 ## Past Conversations
@@ -196,6 +209,21 @@ If the user asks for a blocked operation, explain that the instance is in read-o
 `;
 }
 
+function getLimitedModeSection(parameterValuesHidden?: boolean): string {
+	if (!parameterValuesHidden) return '';
+	return `
+## Limited Mode
+
+Data sharing is turned off on this instance, so you run in **limited mode**. You cannot see node parameter values or execution data. You cannot create or edit workflows. The tools that save workflows will return errors, so do not write workflow code or call them.
+
+The following remains available:
+- Explaining n8n concepts and suggesting nodes
+- Finding workflows and describing them by their structure (nodes and connections)
+
+If the user asks for a blocked action, explain that data sharing is turned off. Tell them that an instance owner or admin can turn on "Send actual data values" in Settings > AI usage. On self-hosted instances, the \`N8N_AI_ALLOW_SENDING_PARAMETER_VALUES\` environment variable may also need to be removed.
+`;
+}
+
 /**
  * Setup panel v2 changes what `workflows(action="setup")` does: it announces the
  * checklist and returns instead of opening a card. Instance-wide flag, so the
@@ -221,6 +249,7 @@ export function createSystemPromptRenderer(communicationStyleSection: string) {
 			mcpToolSearchEnabled,
 			licenseHints,
 			branchReadOnly,
+			parameterValuesHidden,
 			projectId,
 			workspaceRoot,
 			conversationHistoryEnabled,
@@ -233,6 +262,7 @@ export function createSystemPromptRenderer(communicationStyleSection: string) {
 ${workspaceRoot ? `${getSandboxWorkspaceSection(workspaceRoot)}` : ''}
 ${getProjectScopeSection(projectId)}
 ${getExistingResourcesSection()}
+${getPreviewTabsSection()}
 ${conversationHistoryEnabled ? getConversationRecallSection() : ''}
 ${preferenceSavingEnabled ? getPreferenceSavingSection() : ''}
 ${SECRET_ASK_GUARDRAIL}
@@ -271,6 +301,7 @@ ${UNTRUSTED_CONTENT_DOCTRINE}
 ${getComputerUsePrompt({ state: computerUseState })}
 ${getLicenseLimitationsSection(licenseHints)}
 ${getReadOnlySection(branchReadOnly)}
+${getLimitedModeSection(parameterValuesHidden)}
 
 ## Reply language
 

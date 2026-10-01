@@ -216,6 +216,13 @@ watch(
 	},
 	{ immediate: true },
 );
+// The agent sees the open tabs, not every artifact the thread produced. Until the
+// stored tabs load, the default tabs can still hold closed ones, so send none.
+watch(
+	[() => preview.openTabs.value, () => preview.tabsLoaded.value],
+	([tabs, loaded]) => thread.setOpenTabs(loaded ? tabs : null),
+	{ immediate: true },
+);
 // --- Setup panel (checklist docked above the composer) ---
 // Early setup announcements can arrive before the first workflow artifact.
 const setupPanelWorkflowId = computed(() => {
@@ -678,10 +685,12 @@ function handleAgentPreviewAssistantHandoff(params: AgentPreviewHandoffParams) {
 	// preview chat open reads as two places to ask the same thing.
 	isAgentPreviewDockOpen.value = false;
 
-	conversationRef.value?.applyHandoff(
+	if (!conversationRef.value) return;
+	conversationRef.value.applyHandoff(
 		buildInstanceAiAgentPreviewHandoffContext(params),
 		params.initialDraft,
 	);
+	params.onAccepted?.();
 }
 
 /**
@@ -959,7 +968,10 @@ function handleNewThreadClick() {
 							:preview-toggle-label="artifactsPreviewToggleLabel"
 							@toggle-preview="toggleArtifactsPreview"
 							@toggle-expanded="togglePreviewExpanded"
+							:project-id="thread.projectId"
 							@close-tab="preview.closeTab"
+							@open-tab="preview.openTab"
+							@reorder-tab="preview.reorderTab"
 						/>
 						<div :class="$style.previewContent">
 							<InstanceAiWorkflowPreview

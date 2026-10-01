@@ -87,6 +87,27 @@ describe('in-memory execution responses', () => {
 		expect(seen).toEqual([{ type: 'response', executionId: 'exec-1', payload }]);
 	});
 
+	it('sends a chunk with the execution ID', () => {
+		const channel = new InMemoryExecutionResponseChannel();
+		const publish = vi.spyOn(channel, 'publish');
+		const sender = new InMemoryExecutionResponseSender(channel, mockLogger());
+
+		sender.send({
+			type: 'chunk',
+			executionId: 'exec-1',
+			payload: { type: 'item', content: 'hello' },
+		});
+
+		expect(publish).toHaveBeenCalledExactlyOnceWith(
+			'exec-1',
+			JSON.stringify({
+				type: 'chunk',
+				executionId: 'exec-1',
+				payload: { type: 'item', content: 'hello' },
+			}),
+		);
+	});
+
 	it('validates a response before delivering it', async () => {
 		const channel = new InMemoryExecutionResponseChannel();
 		const receiver = new InMemoryExecutionResponseReceiver(channel, mockLogger());

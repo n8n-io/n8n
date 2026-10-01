@@ -1,7 +1,7 @@
 import type { CallerContext, ExecutionMode, StepSlots, WaitDeclaration } from '../execution';
 import type { GraphNode } from '../graph';
 import type { LifecycleEventCallback } from '../lifecycle-events';
-import type { ResponseEmitter } from '../response-channel';
+import type { ResponseEmitter, ResponseExpectation } from '../response-channel';
 
 /**
  * Host integration seam — how the engine reaches capabilities it does not own.
@@ -34,6 +34,11 @@ export interface StepExecutionContext {
 	iteration: number;
 	/** Supplied by the host at start. Opaque to the engine, which only forwards it. */
 	callerContext: CallerContext;
+	/**
+	 * What kind of a response the caller expects. A step executor reads it to
+	 * decide whether a node may stream. The emitter in `respond` obeys it too.
+	 */
+	responseExpectation: ResponseExpectation;
 }
 
 /** A single step handed to an executor. */
@@ -91,9 +96,29 @@ export interface IStepExecutor {
  * Step types that are native to the engine (`wait`, `subworkflow`, `batch`)
  * do not go through this interface.
  */
+/** Where the files of one execution are stored: the pair every binary file path starts with. */
+export interface ExecutionLocation {
+	workflowId: string;
+	executionId: string;
+}
+
+/**
+ * Deletes every file stored under the location of an execution. The engine
+ * calls it before it deletes the execution's rows, so a rejection keeps the
+ * rows for a later retry. A repeat call for the same execution must succeed,
+ * as the files may be gone.
+ */
+export type ExecutionFilesDeleter = (execution: ExecutionLocation) => Promise<void>;
+
 export interface ExternalDependencies {
 	/** Executes `v1-node` steps — supplied by the host in integrated mode. */
 	v1StepExecutor?: IStepExecutor;
 	/** Ships lifecycle events to the host. A failed delivery never fails a step. */
 	lifecycleEventCallback?: LifecycleEventCallback;
+	/**
+	 * Deletes the binary files of a pruned execution. The engine has no store of
+	 * its own, so the host that owns the store deletes them. A host that runs no
+	 * `v1-node` steps writes no files and can omit it.
+	 */
+	deleteExecutionFiles?: ExecutionFilesDeleter;
 }
