@@ -290,6 +290,16 @@ describe('EngineDataPlaneClient', () => {
 			});
 		});
 
+		it.each([
+			['no details', { error: 'not_cancellable' }],
+			['no status', { error: 'not_cancellable', details: {} }],
+			['an unknown status', { error: 'not_cancellable', details: { status: 'paused' } }],
+		])('throws on a refusal that names %s', async (_case, body) => {
+			respondWith(409, body);
+
+			await expect(client.cancelExecution(EXECUTION_ID)).rejects.toThrow(OperationalError);
+		});
+
 		it('returns undefined for an execution the engine does not have', async () => {
 			respondWith(404, { error: 'not_found' });
 
