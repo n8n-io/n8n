@@ -132,7 +132,7 @@ const emit = defineEmits<{
 }
 
 .deactivated {
-	background: light-dark(var(--background--disabled), var(--background--surface));
+	opacity: 0.5;
 }
 
 .warning {
