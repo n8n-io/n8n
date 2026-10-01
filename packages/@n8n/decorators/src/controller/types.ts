@@ -36,10 +36,8 @@ export interface MultipartUploadLimits {
 }
 
 /**
- * Options `@Body` accepts for each request-body media type it supports. Adding a media type here is
- * the first step to supporting it - `RequestBodyMediaType` and `RequestBodyMedia` are both derived
- * from this map, and `packages/cli/src/public-api/media-types/request-body/index.ts`'s
- * `REQUEST_BODY_HANDLERS` won't compile until a handler is registered for the new key.
+ * Accepted options for `@Body` media type. This is where supported media types are first
+ * registered.
  */
 export interface RequestBodyMediaOptions {
 	'application/json': object;

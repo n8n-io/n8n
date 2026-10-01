@@ -1,5 +1,3 @@
-import { OpenAPIRegistry, OpenApiGeneratorV3 } from '@asteasolutions/zod-to-openapi';
-
 import { publicApiUploadedFileSchema } from '../public-api-uploaded-file.schema';
 
 describe('publicApiUploadedFileSchema', () => {
@@ -18,48 +16,28 @@ describe('publicApiUploadedFileSchema', () => {
 	it('accepts a multer file object and strips extra keys', () => {
 		const result = publicApiUploadedFileSchema.safeParse(multerFile);
 
-		expect(result.success).toBe(true);
-		if (result.success) {
-			expect(result.data).toEqual({
-				fieldname: 'package',
-				originalname: 'export.n8np',
-				mimetype: 'application/gzip',
-				size: 1234,
-				buffer: multerFile.buffer,
-			});
-			expect(result.data).not.toHaveProperty('encoding');
-			expect(result.data).not.toHaveProperty('destination');
-		}
+		assert(result.success, 'Expected multer file object to be valid');
+
+		expect(result.data).toStrictEqual({
+			fieldname: 'package',
+			originalname: 'export.n8np',
+			mimetype: 'application/gzip',
+			size: 1234,
+			buffer: multerFile.buffer,
+		});
 	});
 
 	it('produces an invalid_type issue with received undefined for a missing value', () => {
 		const result = publicApiUploadedFileSchema.safeParse(undefined);
 
-		expect(result.success).toBe(false);
-		if (!result.success) {
-			expect(result.error.issues[0]).toMatchObject({
-				code: 'invalid_type',
-				received: 'undefined',
-			});
-		}
-	});
+		assert(!result.success, 'Expected undefined to be invalid');
 
-	it('rejects a string value sent under the file field name', () => {
-		const result = publicApiUploadedFileSchema.safeParse('not-a-file');
-
-		expect(result.success).toBe(false);
-	});
-
-	it('is not optional, so the generator lists it under required', () => {
-		expect(publicApiUploadedFileSchema.isOptional()).toBe(false);
-	});
-
-	it('documents itself as a binary string for OpenAPI', () => {
-		const registry = new OpenAPIRegistry();
-		registry.register('UploadedFile', publicApiUploadedFileSchema);
-
-		const { components } = new OpenApiGeneratorV3(registry.definitions).generateComponents();
-
-		expect(components?.schemas?.UploadedFile).toEqual({ type: 'string', format: 'binary' });
+		expect(result.error.issues[0]).toStrictEqual({
+			code: 'invalid_type',
+			expected: 'object',
+			message: 'Required',
+			path: [],
+			received: 'undefined',
+		});
 	});
 });

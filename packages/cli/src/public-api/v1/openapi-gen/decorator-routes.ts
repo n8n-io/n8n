@@ -241,8 +241,6 @@ function buildResponses(
 		responses[400] = ERROR_RESPONSE_REFS[400];
 	}
 	if (route.requestBodyDto) {
-		// Each media type documents its own error statuses (JSON: 415; multipart: 413 and 415, ...),
-		// so adding a media type never means touching this function.
 		const handler = requestBodyHandlerFor(route.requestBodyMedia ?? JSON_REQUEST_BODY_MEDIA);
 		for (const status of handler.errorStatuses) {
 			if (!isDocumentedErrorStatus(status)) {

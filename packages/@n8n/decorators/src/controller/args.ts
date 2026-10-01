@@ -16,15 +16,6 @@ const ArgDecorator =
 
 export type BodyOptions = { required?: boolean } & (RequestBodyMedia | { mediaType?: undefined });
 
-/** Narrows `options` to the branch carrying a declared media type, so `toRequestBodyMedia` never casts. */
-function hasMediaType(
-	options: BodyOptions | undefined,
-): options is RequestBodyMedia & { required?: boolean } {
-	return options?.mediaType !== undefined;
-}
-
-/** Public API only: every media type's own options, switched exhaustively - the compiler enforces
- * a new branch here whenever `RequestBodyMediaOptions` grows a key. */
 function toRequestBodyMedia(options: RequestBodyMedia): RequestBodyMedia {
 	switch (options.mediaType) {
 		case 'application/json':
@@ -51,13 +42,16 @@ export function Body(
 		return ArgDecorator({ type: 'body' })(targetOrOptions as object, propertyKey, parameterIndex);
 	}
 
-	// Factory form e.g. `@Body() body: MyDto`, `@Body({ required: true }) body: MyDto`, or
-	// `@Body({ mediaType: 'multipart/form-data', uploadLimits }) body: MyDto` (public API only)
+	// Factory form e.g. `@Body() body: MyDto` or `@Body({ required: true })` (public API only)
 	const options = targetOrOptions as BodyOptions | undefined;
 	const arg: Arg = { type: 'body' };
 
-	if (options?.required !== undefined) arg.required = options.required;
-	if (hasMediaType(options)) arg.media = toRequestBodyMedia(options);
+	if (options?.required !== undefined) {
+		arg.required = options.required;
+	}
+	if (options?.mediaType !== undefined) {
+		arg.media = toRequestBodyMedia(options);
+	}
 
 	return ArgDecorator(arg);
 }

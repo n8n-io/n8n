@@ -1,6 +1,6 @@
 import type { Request, Response } from 'express';
 import { mock } from 'vitest-mock-extended';
-import type { ZodError } from 'zod';
+import { z } from 'zod';
 
 vi.mock('../multipart-parser', () => ({ loadMultipartParser: vi.fn() }));
 
@@ -9,15 +9,8 @@ import { multipartRequestBody } from '../multipart.request-body';
 
 const mockLoadMultipartParser = vi.mocked(loadMultipartParser);
 
-function fakeFile(
-	fieldname: string,
-	overrides: Partial<Express.Multer.File> = {},
-): Express.Multer.File {
-	return mock<Express.Multer.File>({ fieldname, ...overrides });
-}
-
-function zodError(issues: ZodError['errors']): ZodError {
-	return { errors: issues } as ZodError;
+function fakeFile(fieldname: string): Express.Multer.File {
+	return mock<Express.Multer.File>({ fieldname });
 }
 
 describe('multipartRequestBody.readInput', () => {
@@ -92,27 +85,25 @@ describe('multipartRequestBody.readInput', () => {
 
 describe('multipartRequestBody.formatValidationError', () => {
 	it('reports an unrecognized key as an unexpected form field', () => {
-		const message = multipartRequestBody.formatValidationError(
-			zodError([{ code: 'unrecognized_keys', keys: ['evil'], path: [], message: 'x' }]),
-		);
+		const schema = z.object({ workflowConflictPolicy: z.string() }).strict();
+		const result = schema.safeParse({ workflowConflictPolicy: 'new-version', evil: 'x' });
 
-		expect(message).toBe('Unexpected form field "evil"');
+		assert(!result.success, 'expected an unrecognized-key error');
+
+		expect(multipartRequestBody.formatValidationError(result.error)).toBe(
+			'Unexpected form field "evil"',
+		);
 	});
 
 	it('falls back to the default formatter for any other issue', () => {
-		const message = multipartRequestBody.formatValidationError(
-			zodError([
-				{
-					code: 'invalid_type',
-					expected: 'string',
-					received: 'undefined',
-					path: ['workflowConflictPolicy'],
-					message: 'Required',
-				},
-			]),
-		);
+		const schema = z.object({ workflowConflictPolicy: z.string() }).strict();
+		const result = schema.safeParse({});
 
-		expect(message).toBe("request/body must have required property 'workflowConflictPolicy'");
+		assert(!result.success, 'expected a required-property error');
+
+		expect(multipartRequestBody.formatValidationError(result.error)).toBe(
+			"request/body must have required property 'workflowConflictPolicy'",
+		);
 	});
 });
 

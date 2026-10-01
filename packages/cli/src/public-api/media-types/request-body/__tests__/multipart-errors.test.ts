@@ -1,41 +1,29 @@
 import { BadRequestError, ContentTooLargeError, InternalServerError } from '@n8n/errors';
+import { MulterError } from 'multer';
 
 import { toPublicApiError } from '../multipart-errors';
 
-class FakeMulterError extends Error {
-	code: string;
-
-	constructor(code: string, message: string) {
-		super(message);
-		this.name = 'MulterError';
-		this.code = code;
-	}
-}
-
 describe('toPublicApiError', () => {
-	it.each(['LIMIT_FILE_SIZE', 'LIMIT_FILE_COUNT', 'LIMIT_PART_COUNT'])(
-		'maps %s to a 413 ContentTooLargeError',
-		(code) => {
-			const error = toPublicApiError(new FakeMulterError(code, 'too big'));
+	it.each([
+		['LIMIT_FILE_SIZE', 'File too large'],
+		['LIMIT_FILE_COUNT', 'Too many files'],
+		['LIMIT_PART_COUNT', 'Too many parts'],
+	] as const)('maps %s to a 413 ContentTooLargeError', (code, message) => {
+		const error = toPublicApiError(new MulterError(code));
 
-			expect(error).toBeInstanceOf(ContentTooLargeError);
-			expect(error.message).toBe('too big');
-		},
-	);
+		expect(error).toBeInstanceOf(ContentTooLargeError);
+		expect(error.message).toBe(message);
+	});
 
 	it('maps LIMIT_UNEXPECTED_FILE to a 500 InternalServerError', () => {
-		const error = toPublicApiError(
-			new FakeMulterError('LIMIT_UNEXPECTED_FILE', 'Unexpected field'),
-		);
+		const error = toPublicApiError(new MulterError('LIMIT_UNEXPECTED_FILE'));
 
 		expect(error).toBeInstanceOf(InternalServerError);
 		expect(error.message).toBe('Unexpected field');
 	});
 
 	it('maps any other multer error to a 400 BadRequestError', () => {
-		const error = toPublicApiError(
-			new FakeMulterError('LIMIT_FIELD_VALUE', 'Field value too long'),
-		);
+		const error = toPublicApiError(new MulterError('LIMIT_FIELD_VALUE'));
 
 		expect(error).toBeInstanceOf(BadRequestError);
 		expect(error.message).toBe('Field value too long');
@@ -48,7 +36,7 @@ describe('toPublicApiError', () => {
 		expect(error.message).toBe('multipart file(s) required');
 	});
 
-	it('wraps an unrecognised error in an unmasked 500 InternalServerError', () => {
+	it('wraps an unrecognized error in an unmasked 500 InternalServerError', () => {
 		const error = toPublicApiError(new Error('Unexpected end of form'));
 
 		expect(error).toBeInstanceOf(InternalServerError);

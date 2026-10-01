@@ -11,9 +11,8 @@ import type { LastActiveAtService } from '@/services/last-active-at.service';
 import { RateLimitService } from '@/services/rate-limit.service';
 
 /**
- * A non-JSON `@Body` media type is parsed only by the public API registry
- * (`PublicApiControllerRegistry`); an internal `@RestController` route declaring one would reach its
- * handler with an unparsed body, so this is rejected at registration instead.
+ * Guard test suite ensuring Internal API controllers cannot declare a multipart `@Body`.
+ * This is only supported for Public API controllers. We may change that in future.
  */
 describe('ControllerRegistry - @Body media guard', () => {
 	const authService = mock<AuthService>();
@@ -48,7 +47,8 @@ describe('ControllerRegistry - @Body media guard', () => {
 		}
 
 		expect(() => activate()).toThrow(
-			/TestController\.method declares @Body\({ mediaType: 'multipart\/form-data' }\)/,
+			"TestController.method declares @Body({ mediaType: 'multipart/form-data' }), which only " +
+				'@PublicApiController routes support.',
 		);
 	});
 

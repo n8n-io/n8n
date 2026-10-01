@@ -312,61 +312,77 @@ describe('PublicApiControllerRegistry', () => {
 	});
 
 	describe('request media type', () => {
-		function registerOptionalBodyRoute() {
-			@Service()
-			class WidgetsPublicController {
-				@Post('/')
-				@ApiResponse(200)
-				method(_req: unknown, _res: unknown, @Body body: OptionalWidgetBodyDto) {
-					return body;
-				}
-			}
-			markPublicApiController(WidgetsPublicController as Controller, '/widgets');
+		const namesNoMediaType: Array<[string, string | undefined]> = [
+			['a request with no Content-Type', undefined],
+			['a request with an empty Content-Type', ''],
+			['a request with a whitespace Content-Type', ' '],
+		];
+
+		function postWithContentType(header: string | undefined, path: string) {
+			const pending = request(activate()).post(`/api/v1/widgets/${path}`);
+
+			return header === undefined ? pending : pending.set('Content-Type', header);
 		}
 
-		function registerBodyRoute() {
+		class PackageBodyDto extends Z.class(
+			{ package: publicApiUploadedFileSchema, workflowConflictPolicy: z.string() },
+			{ strict: true },
+		) {}
+
+		function registerWidgetsController() {
 			@Service()
 			class WidgetsPublicController {
-				@Post('/')
+				@Post('/required')
 				@ApiResponse(200)
-				method(_req: unknown, _res: unknown, @Body body: WidgetBodyDto) {
+				required(_req: unknown, _res: unknown, @Body body: WidgetBodyDto) {
 					return body;
 				}
-			}
-			markPublicApiController(WidgetsPublicController as Controller, '/widgets');
-		}
 
-		function registerRequiredOptionalBodyRoute() {
-			@Service()
-			class WidgetsPublicController {
-				@Post('/')
+				@Post('/optional')
 				@ApiResponse(200)
-				method(
+				optional(_req: unknown, _res: unknown, @Body body: OptionalWidgetBodyDto) {
+					return body;
+				}
+
+				@Post('/required-optional')
+				@ApiResponse(200)
+				requiredOptional(
 					_req: unknown,
 					_res: unknown,
 					@Body({ required: true }) body: OptionalWidgetBodyDto,
 				) {
 					return body;
 				}
+
+				@Post('/upload')
+				@ApiResponse(200)
+				upload(
+					_req: unknown,
+					_res: unknown,
+					@Body({ mediaType: 'multipart/form-data', uploadLimits: () => ({}) })
+					body: PackageBodyDto,
+				) {
+					return { workflowConflictPolicy: body.workflowConflictPolicy, size: body.package.size };
+				}
 			}
 			markPublicApiController(WidgetsPublicController as Controller, '/widgets');
 		}
 
-		it('accepts application/json', async () => {
-			registerBodyRoute();
+		beforeEach(() => {
+			registerWidgetsController();
+		});
 
+		it('accepts application/json', async () => {
 			await request(activate())
-				.post('/api/v1/widgets')
+				.post('/api/v1/widgets/required')
 				.set('Content-Type', 'application/json')
 				.send({ name: 'a' })
 				.expect(200);
 		});
 
 		it('accepts application/json with parameters', async () => {
-			registerBodyRoute();
-
 			await request(activate())
-				.post('/api/v1/widgets')
+				.post('/api/v1/widgets/required')
 				.set('Content-Type', 'application/json; charset=utf-8')
 				.send({ name: 'a' })
 				.expect(200);
@@ -380,10 +396,8 @@ describe('PublicApiControllerRegistry', () => {
 			['text/PlAiN; charset=UTF-8', 'text/plain; charset=utf-8'],
 			['multipart/form-data; boundary=XYZ', 'multipart/form-data'],
 		])('rejects %s with 415', async (sent, reported) => {
-			registerBodyRoute();
-
 			const response = await request(activate())
-				.post('/api/v1/widgets')
+				.post('/api/v1/widgets/required')
 				.set('Content-Type', sent)
 				.send('a')
 				.expect(415);
@@ -392,10 +406,8 @@ describe('PublicApiControllerRegistry', () => {
 		});
 
 		it('rejects a non-JSON media type when no body follows', async () => {
-			registerBodyRoute();
-
 			const response = await request(activate())
-				.post('/api/v1/widgets')
+				.post('/api/v1/widgets/required')
 				.set('Content-Type', 'application/x-www-form-urlencoded')
 				.expect(415);
 
@@ -404,31 +416,15 @@ describe('PublicApiControllerRegistry', () => {
 			);
 		});
 
-		const namesNoMediaType: Array<[string, string | undefined]> = [
-			['a request with no Content-Type', undefined],
-			['a request with an empty Content-Type', ''],
-			['a request with a whitespace Content-Type', ' '],
-		];
-
-		function postWithContentType(header: string | undefined) {
-			const pending = request(activate()).post('/api/v1/widgets');
-
-			return header === undefined ? pending : pending.set('Content-Type', header);
-		}
-
 		it.each(namesNoMediaType)(
 			'accepts %s when every body field is optional',
 			async (_label, header) => {
-				registerOptionalBodyRoute();
-
-				await postWithContentType(header).expect(200);
+				await postWithContentType(header, 'optional').expect(200);
 			},
 		);
 
 		it.each(namesNoMediaType)('rejects %s when the body is required', async (_label, header) => {
-			registerBodyRoute();
-
-			const response = await postWithContentType(header).expect(415);
+			const response = await postWithContentType(header, 'required').expect(415);
 
 			expect(response.body.message).toBe('unsupported media type undefined');
 		});
@@ -436,196 +432,177 @@ describe('PublicApiControllerRegistry', () => {
 		it.each(namesNoMediaType)(
 			'rejects %s when @Body({ required: true }) overrides an otherwise-optional DTO',
 			async (_label, header) => {
-				registerRequiredOptionalBodyRoute();
-
-				const response = await postWithContentType(header).expect(415);
+				const response = await postWithContentType(header, 'required-optional').expect(415);
 
 				expect(response.body.message).toBe('unsupported media type undefined');
 			},
 		);
 
 		it('accepts application/json with an empty object when @Body({ required: true }) is set', async () => {
-			registerRequiredOptionalBodyRoute();
-
 			await request(activate())
-				.post('/api/v1/widgets')
+				.post('/api/v1/widgets/required-optional')
 				.set('Content-Type', 'application/json')
 				.send({})
 				.expect(200);
 		});
 
 		it('accepts application/json carrying an unrelated parameter', async () => {
-			registerBodyRoute();
-
 			await request(activate())
-				.post('/api/v1/widgets')
+				.post('/api/v1/widgets/required')
 				.set('Content-Type', 'application/json; Foo=BAR')
 				.send({ name: 'a' })
 				.expect(200);
 		});
-	});
 
-	describe('multipart request bodies', () => {
-		class PackageBodyDto extends Z.class(
-			{ package: publicApiUploadedFileSchema, workflowConflictPolicy: z.string() },
-			{ strict: true },
-		) {}
+		describe('multipart request bodies', () => {
+			it('parses a multipart body, merging the uploaded file with text fields', async () => {
+				const response = await request(activate())
+					.post('/api/v1/widgets/upload')
+					.field('workflowConflictPolicy', 'new-version')
+					.attach('package', Buffer.from('hello'), 'export.n8np')
+					.expect(200);
 
-		function registerUploadRoute(uploadLimits: () => MultipartUploadLimits = () => ({})) {
-			@Service()
-			class WidgetsPublicController {
-				@Post('/')
-				@ApiResponse(200)
-				method(
-					_req: unknown,
-					_res: unknown,
-					@Body({ mediaType: 'multipart/form-data', uploadLimits }) body: PackageBodyDto,
-				) {
-					return { workflowConflictPolicy: body.workflowConflictPolicy, size: body.package.size };
-				}
-			}
-			markPublicApiController(WidgetsPublicController as Controller, '/widgets');
-		}
-
-		it('parses a multipart body, merging the uploaded file with text fields', async () => {
-			registerUploadRoute();
-
-			const response = await request(activate())
-				.post('/api/v1/widgets')
-				.field('workflowConflictPolicy', 'new-version')
-				.attach('package', Buffer.from('hello'), 'export.n8np')
-				.expect(200);
-
-			expect(response.body).toEqual({ workflowConflictPolicy: 'new-version', size: 5 });
-		});
-
-		it('rejects a JSON body with 415 for a multipart-only route', async () => {
-			registerUploadRoute();
-
-			const response = await request(activate())
-				.post('/api/v1/widgets')
-				.set('Content-Type', 'application/json')
-				.send({ workflowConflictPolicy: 'new-version' })
-				.expect(415);
-
-			expect(response.body.message).toBe('unsupported media type application/json');
-		});
-
-		it('rejects a request missing the required file with 400', async () => {
-			registerUploadRoute();
-
-			const response = await request(activate())
-				.post('/api/v1/widgets')
-				.field('workflowConflictPolicy', 'new-version')
-				.expect(400);
-
-			expect(response.body.message).toBe("request/body must have required property 'package'");
-		});
-
-		it('rejects an unknown form field with 400', async () => {
-			registerUploadRoute();
-
-			const response = await request(activate())
-				.post('/api/v1/widgets')
-				.field('workflowConflictPolicy', 'new-version')
-				.field('evil', 'x')
-				.attach('package', Buffer.from('hello'), 'export.n8np')
-				.expect(400);
-
-			expect(response.body.message).toBe('Unexpected form field "evil"');
-		});
-
-		it('rejects an oversized file with 413', async () => {
-			registerUploadRoute(() => ({ fileSize: 2 }));
-
-			const response = await request(activate())
-				.post('/api/v1/widgets')
-				.field('workflowConflictPolicy', 'new-version')
-				.attach('package', Buffer.from('hello'), 'export.n8np')
-				.expect(413);
-
-			expect(response.body.message).toBe('File too large');
-		});
-
-		it('keeps 401 ahead of multipart parsing for an unauthenticated caller', async () => {
-			authStrategyRegistry.authenticate.mockResolvedValue(false);
-			registerUploadRoute(() => ({ fileSize: 2 }));
-
-			// The file is bigger than the configured limit; a 413 here would mean the body was parsed
-			// before authentication ran.
-			await request(activate())
-				.post('/api/v1/widgets')
-				.field('workflowConflictPolicy', 'new-version')
-				.attach('package', Buffer.from('hello'), 'export.n8np')
-				.expect(401);
-		});
-
-		it('keeps the scope check ahead of multipart parsing', async () => {
-			authStrategyRegistry.authenticate.mockImplementation(async (req: AuthenticatedRequest) => {
-				req.user = authenticatedUser;
-				req.tokenGrant = { scopes: [], apiKeyScopes: [], subject: authenticatedUser };
-				return true;
+				expect(response.body).toEqual({ workflowConflictPolicy: 'new-version', size: 5 });
 			});
 
-			@Service()
-			class WidgetsPublicController {
-				@Post('/')
-				@ApiResponse(200)
-				@ApiKeyScope('workflow:import')
-				method(
-					_req: unknown,
-					_res: unknown,
-					@Body({ mediaType: 'multipart/form-data', uploadLimits: () => ({ fileSize: 2 }) })
-					body: PackageBodyDto,
-				) {
-					return body;
+			it('rejects a JSON body with 415 for a multipart-only route', async () => {
+				const response = await request(activate())
+					.post('/api/v1/widgets/upload')
+					.set('Content-Type', 'application/json')
+					.send({ workflowConflictPolicy: 'new-version' })
+					.expect(415);
+
+				expect(response.body.message).toBe('unsupported media type application/json');
+			});
+
+			it('rejects a request missing the required file with 400', async () => {
+				const response = await request(activate())
+					.post('/api/v1/widgets/upload')
+					.field('workflowConflictPolicy', 'new-version')
+					.expect(400);
+
+				expect(response.body.message).toBe("request/body must have required property 'package'");
+			});
+
+			it('rejects an unknown form field with 400', async () => {
+				const response = await request(activate())
+					.post('/api/v1/widgets/upload')
+					.field('workflowConflictPolicy', 'new-version')
+					.field('evil', 'x')
+					.attach('package', Buffer.from('hello'), 'export.n8np')
+					.expect(400);
+
+				expect(response.body.message).toBe('Unexpected form field "evil"');
+			});
+
+			function registerUploadLimitedRoute(uploadLimits: () => MultipartUploadLimits) {
+				@Service()
+				class WidgetsUploadLimitedPublicController {
+					@Post('/upload-limited')
+					@ApiResponse(200)
+					method(
+						_req: unknown,
+						_res: unknown,
+						@Body({ mediaType: 'multipart/form-data', uploadLimits }) body: PackageBodyDto,
+					) {
+						return { workflowConflictPolicy: body.workflowConflictPolicy, size: body.package.size };
+					}
 				}
+				markPublicApiController(WidgetsUploadLimitedPublicController as Controller, '/widgets');
 			}
-			markPublicApiController(WidgetsPublicController as Controller, '/widgets');
 
-			// Same oversized file as above: a 413 here would mean the body was parsed before the scope
-			// check ran.
-			const response = await request(activate())
-				.post('/api/v1/widgets')
-				.field('workflowConflictPolicy', 'new-version')
-				.attach('package', Buffer.from('hello'), 'export.n8np')
-				.expect(403);
+			it('rejects an oversized file with 413', async () => {
+				registerUploadLimitedRoute(() => ({ fileSize: 2 }));
 
-			expect(response.body).toEqual({ message: 'Forbidden' });
-		});
+				const response = await request(activate())
+					.post('/api/v1/widgets/upload-limited')
+					.field('workflowConflictPolicy', 'new-version')
+					.attach('package', Buffer.from('hello'), 'export.n8np')
+					.expect(413);
 
-		it('hands the parsed body to a controller middleware, not only to the handler', async () => {
-			const middlewareSaw: unknown[] = [];
+				expect(response.body.message).toBe('File too large');
+			});
 
-			@Service()
-			class WidgetsPublicController {
-				@Middleware()
-				capture(req: express.Request, _res: express.Response, next: express.NextFunction) {
-					middlewareSaw.push(req.body);
-					next();
+			it('keeps 401 ahead of multipart parsing for an unauthenticated caller', async () => {
+				authStrategyRegistry.authenticate.mockResolvedValue(false);
+				registerUploadLimitedRoute(() => ({ fileSize: 2 }));
+
+				// The file is bigger than the configured limit; a 413 here would mean the body was
+				// parsed before authentication ran.
+				await request(activate())
+					.post('/api/v1/widgets/upload-limited')
+					.field('workflowConflictPolicy', 'new-version')
+					.attach('package', Buffer.from('hello'), 'export.n8np')
+					.expect(401);
+			});
+
+			it('keeps the scope check ahead of multipart parsing', async () => {
+				authStrategyRegistry.authenticate.mockImplementation(async (req: AuthenticatedRequest) => {
+					req.user = authenticatedUser;
+					req.tokenGrant = { scopes: [], apiKeyScopes: [], subject: authenticatedUser };
+					return true;
+				});
+
+				@Service()
+				class WidgetsUploadScopedPublicController {
+					@Post('/upload-scoped')
+					@ApiResponse(200)
+					@ApiKeyScope('workflow:import')
+					method(
+						_req: unknown,
+						_res: unknown,
+						@Body({ mediaType: 'multipart/form-data', uploadLimits: () => ({ fileSize: 2 }) })
+						body: PackageBodyDto,
+					) {
+						return body;
+					}
 				}
+				markPublicApiController(WidgetsUploadScopedPublicController as Controller, '/widgets');
 
-				@Post('/')
-				@ApiResponse(200)
-				method(
-					_req: unknown,
-					_res: unknown,
-					@Body({ mediaType: 'multipart/form-data', uploadLimits: () => ({}) })
-					body: PackageBodyDto,
-				) {
-					return { ok: true, size: body.package.size };
+				// Same oversized file as above: a 413 here would mean the body was parsed before the
+				// scope check ran.
+				const response = await request(activate())
+					.post('/api/v1/widgets/upload-scoped')
+					.field('workflowConflictPolicy', 'new-version')
+					.attach('package', Buffer.from('hello'), 'export.n8np')
+					.expect(403);
+
+				expect(response.body).toEqual({ message: 'Forbidden' });
+			});
+
+			it('hands the parsed body to a controller middleware, not only to the handler', async () => {
+				const middlewareSaw: unknown[] = [];
+
+				@Service()
+				class WidgetsUploadMiddlewarePublicController {
+					@Middleware()
+					capture(req: express.Request, _res: express.Response, next: express.NextFunction) {
+						middlewareSaw.push(req.body);
+						next();
+					}
+
+					@Post('/upload-middleware')
+					@ApiResponse(200)
+					method(
+						_req: unknown,
+						_res: unknown,
+						@Body({ mediaType: 'multipart/form-data', uploadLimits: () => ({}) })
+						body: PackageBodyDto,
+					) {
+						return { ok: true, size: body.package.size };
+					}
 				}
-			}
-			markPublicApiController(WidgetsPublicController as Controller, '/widgets');
+				markPublicApiController(WidgetsUploadMiddlewarePublicController as Controller, '/widgets');
 
-			await request(activate())
-				.post('/api/v1/widgets')
-				.field('workflowConflictPolicy', 'new-version')
-				.attach('package', Buffer.from('hello'), 'export.n8np')
-				.expect(200);
+				await request(activate())
+					.post('/api/v1/widgets/upload-middleware')
+					.field('workflowConflictPolicy', 'new-version')
+					.attach('package', Buffer.from('hello'), 'export.n8np')
+					.expect(200);
 
-			expect(middlewareSaw).toHaveLength(1);
-			expect(middlewareSaw[0]).toMatchObject({ workflowConflictPolicy: 'new-version' });
+				expect(middlewareSaw).toHaveLength(1);
+				expect(middlewareSaw[0]).toMatchObject({ workflowConflictPolicy: 'new-version' });
+			});
 		});
 	});
 

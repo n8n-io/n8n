@@ -1,28 +1,13 @@
 import { jsonRequestBody } from '../json.request-body';
 import { multipartRequestBody } from '../multipart.request-body';
-import { JSON_REQUEST_BODY_MEDIA, REQUEST_BODY_HANDLERS, requestBodyHandlerFor } from '../index';
-
-describe('REQUEST_BODY_HANDLERS', () => {
-	it('has one handler per declarable media type', () => {
-		expect(REQUEST_BODY_HANDLERS['application/json']).toBe(jsonRequestBody);
-		expect(REQUEST_BODY_HANDLERS['multipart/form-data']).toBe(multipartRequestBody);
-	});
-});
-
-describe('JSON_REQUEST_BODY_MEDIA', () => {
-	it('is the application/json media type', () => {
-		expect(JSON_REQUEST_BODY_MEDIA).toEqual({ mediaType: 'application/json' });
-	});
-});
+import { type RequestBodyHandler, requestBodyHandlerFor } from '../index';
+import type { RequestBodyMedia } from '@n8n/decorators';
 
 describe('requestBodyHandlerFor', () => {
-	it('resolves the JSON handler', () => {
-		expect(requestBodyHandlerFor({ mediaType: 'application/json' })).toBe(jsonRequestBody);
-	});
-
-	it('resolves the multipart handler', () => {
-		expect(
-			requestBodyHandlerFor({ mediaType: 'multipart/form-data', uploadLimits: () => ({}) }),
-		).toBe(multipartRequestBody);
+	it.each<[RequestBodyMedia, RequestBodyHandler]>([
+		[{ mediaType: 'application/json' }, jsonRequestBody],
+		[{ mediaType: 'multipart/form-data', uploadLimits: () => ({}) }, multipartRequestBody],
+	])('resolves the handler for $mediaType', (media, handler) => {
+		expect(requestBodyHandlerFor(media)).toBe(handler);
 	});
 });

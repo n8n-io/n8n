@@ -1,5 +1,4 @@
-import type { RequestBodyMedia } from '@n8n/decorators';
-import { UnexpectedError } from '@n8n/errors';
+import { UnexpectedError, UnsupportedMediaTypeError } from '@n8n/errors';
 import type { Request } from 'express';
 import type { ZodError } from 'zod';
 
@@ -9,13 +8,7 @@ import { sendPublicApiErrorResponse } from '@/public-api/v1/public-api-error-res
 import { assertContentType } from '../content-type';
 import { toPublicApiError } from './multipart-errors';
 import { loadMultipartParser } from './multipart-parser';
-import type { RequestBodyHandler } from './request-body-handler';
-
-function isMultipartMedia(
-	media: RequestBodyMedia,
-): media is RequestBodyMedia & { mediaType: 'multipart/form-data' } {
-	return media.mediaType === 'multipart/form-data';
-}
+import type { RequestBodyHandler } from './types';
 
 function listFiles(files: Request['files']): Express.Multer.File[] {
 	if (!files) return [];
@@ -32,18 +25,23 @@ function listFiles(files: Request['files']): Express.Multer.File[] {
  * like any other unknown field, instead of it silently vanishing.
  */
 function mergeMultipartInput(req: Request): Record<string, unknown> {
-	const input: Record<string, unknown> = Object.create(null) as Record<string, unknown>;
+	const input: Record<string, unknown> = Object.create(null);
 
 	for (const [key, value] of Object.entries(req.body ?? {})) {
 		input[key] = value;
 	}
 
 	const filesByField = new Map<string, Express.Multer.File[]>();
+
 	for (const file of listFiles(req.files)) {
 		const existing = filesByField.get(file.fieldname);
-		if (existing) existing.push(file);
-		else filesByField.set(file.fieldname, [file]);
+		if (existing) {
+			existing.push(file);
+		} else {
+			filesByField.set(file.fieldname, [file]);
+		}
 	}
+
 	for (const [fieldname, files] of filesByField) {
 		input[fieldname] = files.length === 1 ? files[0] : files;
 	}
@@ -57,8 +55,8 @@ export const multipartRequestBody: RequestBodyHandler = {
 	discoverable: false,
 
 	createMiddleware(media, bodyRequired) {
-		if (!isMultipartMedia(media)) {
-			// Can't happen: `REQUEST_BODY_HANDLERS` only ever calls a handler with its own media type.
+		// Early throw if media type does not match this handler
+		if (media.mediaType !== 'multipart/form-data') {
 			throw new UnexpectedError(
 				'multipartRequestBody.createMiddleware called with a non-multipart media type',
 			);
@@ -67,13 +65,16 @@ export const multipartRequestBody: RequestBodyHandler = {
 		return async (req, res, next) => {
 			let matched: boolean;
 			try {
-				matched = assertContentType(
-					req.headers['content-type'],
-					'multipart/form-data',
+				matched = assertContentType({
+					header: req.headers['content-type'],
+					expected: 'multipart/form-data',
 					bodyRequired,
-				);
+				});
 			} catch (error) {
-				sendPublicApiErrorResponse(res, error instanceof Error ? error : new Error(String(error)));
+				sendPublicApiErrorResponse(
+					res,
+					error instanceof UnsupportedMediaTypeError ? error : new Error(String(error)),
+				);
 				return;
 			}
 

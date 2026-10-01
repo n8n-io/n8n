@@ -104,16 +104,16 @@ export class PublicApiControllerRegistry {
 						continue;
 					}
 
-					const input =
-						arg.type === 'body' && bodyHandler ? bodyHandler.readInput(req) : req[arg.type];
+					const isBodyArgWithHandler = arg.type === 'body' && bodyHandler;
+					const input = isBodyArgWithHandler ? bodyHandler.readInput(req) : req[arg.type];
+
 					const output = arg.dto.safeParse(input);
 					if (output.success) {
 						args.push(output.data);
 					} else {
-						const message =
-							arg.type === 'body' && bodyHandler
-								? bodyHandler.formatValidationError(output.error)
-								: formatValidationError(arg.type, output.error);
+						const message = isBodyArgWithHandler
+							? bodyHandler.formatValidationError(output.error)
+							: formatValidationError(arg.type, output.error);
 						throw new BadRequestError(message);
 					}
 				}
@@ -164,8 +164,7 @@ export class PublicApiControllerRegistry {
 				middlewares.push(this.createUserQuotaMiddleware());
 			}
 
-			// Runs after every access gate, so a caller the gates would reject never has their body
-			// parsed - and before controller/route middlewares, so one reading the body sees it parsed.
+			// After every access gate, the body is pared and validated.
 			if (bodyHandler) {
 				middlewares.push(bodyHandler.createMiddleware(bodyMedia, bodyRequired));
 			}

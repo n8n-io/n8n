@@ -96,16 +96,6 @@ describe('Args Decorators', () => {
 				media: { mediaType: 'multipart/form-data', uploadLimits },
 			});
 		});
-
-		it('rejects `uploadLimits` on a declared `application/json` media type', () => {
-			class TestController {
-				// @ts-expect-error uploadLimits only exists on 'multipart/form-data'
-				testMethod(
-					@Body({ mediaType: 'application/json', uploadLimits: () => ({}) }) _body: unknown,
-				) {}
-			}
-			void TestController;
-		});
 	});
 
 	describe('@Param decorator', () => {

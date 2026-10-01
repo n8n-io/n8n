@@ -10,12 +10,18 @@ function readMediaType(header: string): { mediaType: string; reported: string } 
 	const mediaType = rawMediaType.trim().toLowerCase();
 	const parameters = new Map<string, string>();
 
+	// Parameter sorting & returning of the reported string is kept only for parity
+	// with the EOV handler, we may be able to remove and simplify this method in future.
 	for (const part of parameterParts) {
 		const separator = part.indexOf('=');
-		if (separator === -1) continue;
+		if (separator === -1) {
+			continue;
+		}
 
 		const name = part.slice(0, separator).trim().toLowerCase();
-		if (name === 'boundary') continue;
+		if (name === 'boundary') {
+			continue;
+		}
 
 		const value = part.slice(separator + 1);
 		parameters.set(name, name === 'charset' ? value.toLowerCase() : value);
@@ -29,23 +35,29 @@ function readMediaType(header: string): { mediaType: string; reported: string } 
 }
 
 /**
- * Checks a request's `Content-Type` against the one media type a route's `@Body` declares. Returns
- * whether the header matched - telling the caller whether there's a body of that type to parse - and
- * throws for anything else.
+ * Checks a request's `Content-Type` against the media type a route's `@Body` declares. Returns
+ * whether the header matched telling the caller whether there's a body of that type to parse otherwise
+ * throws an error.
  *
  * The legacy validator accepted only JSON. It reported a header that names no media type — absent,
  * empty, or whitespace — as the literal `undefined`, and rejected it only when the body was
- * required. Every media type keeps both behaviours and the messages that came with them.
+ * required. Every media type keeps both behaviors and the messages that came with them.
  */
-export function assertContentType(
-	header: string | undefined,
-	expected: RequestBodyMediaType,
-	bodyRequired: boolean,
-): boolean {
+export function assertContentType({
+	header,
+	expected,
+	bodyRequired,
+}: {
+	header: string | undefined;
+	expected: RequestBodyMediaType;
+	bodyRequired: boolean;
+}): boolean {
 	const { mediaType, reported } = readMediaType(header ?? '');
 
 	if (mediaType === '') {
-		if (bodyRequired) throw new UnsupportedMediaTypeError('unsupported media type undefined');
+		if (bodyRequired) {
+			throw new UnsupportedMediaTypeError('unsupported media type undefined');
+		}
 		return false;
 	}
 

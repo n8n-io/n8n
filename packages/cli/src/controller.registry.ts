@@ -29,6 +29,7 @@ import { AbstractServer } from './abstract-server';
 import { CorsService } from './services/cors-service';
 import { LastActiveAtService } from './services/last-active-at.service';
 import { RateLimitService } from './services/rate-limit.service';
+import { BodyArg } from './public-api/public-api-route-resolver';
 
 @Service()
 export class ControllerRegistry {
@@ -80,15 +81,16 @@ export class ControllerRegistry {
 
 		// Register regular routes
 		for (const [handlerName, route] of metadata.routes) {
-			// A non-JSON @Body media type (e.g. multipart/form-data) is parsed by the public API
-			// registry only - an internal route declaring one would have its body left unparsed here.
-			for (const arg of route.args) {
-				if (arg?.type === 'body' && arg.media && arg.media.mediaType !== 'application/json') {
-					throw new UnexpectedError(
-						`${controllerClass.name}.${handlerName} declares @Body({ mediaType: ` +
-							`'${arg.media.mediaType}' }), which only @PublicApiController routes support.`,
-					);
-				}
+			// Guard against internal API using non-JSON body media types.
+			// We may support non-JSON media types in the future, but for now they are only supported on `@PublicApiController` routes.
+			const nonJsonBodyArg = route.args.find<BodyArg>(
+				(arg): arg is BodyArg => arg.type === 'body' && arg.media?.mediaType !== 'application/json',
+			);
+			if (nonJsonBodyArg) {
+				throw new UnexpectedError(
+					`${controllerClass.name}.${handlerName} declares @Body({ mediaType: ` +
+						`'${nonJsonBodyArg.media?.mediaType}' }), which only @PublicApiController routes support.`,
+				);
 			}
 
 			// Original handler logic for non-router routes
