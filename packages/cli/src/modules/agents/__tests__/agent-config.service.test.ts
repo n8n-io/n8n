@@ -589,6 +589,19 @@ describe('AgentConfigService', () => {
 			expect(result.config).not.toHaveProperty('credential');
 		});
 
+		it('keeps a stored empty description when the write omits it', async () => {
+			const { service, agentRepository } = makeService();
+			const agent = makeAgent({
+				schema: { ...baseConfig, description: '' } as unknown as AgentJsonConfig,
+			});
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+
+			await service.updateConfig(agentId, projectId, { ...baseConfig }, user, fencedOn(agent));
+
+			const saved = agentRepository.saveDraftFenced.mock.calls.at(-1)?.[0] as Agent;
+			expect(saved.schema).toHaveProperty('description', '');
+		});
+
 		it('deletes the resources of omitted tools, skills, and tasks when clearOmittedOptionalFields is set', async () => {
 			const { service, agentRepository, agentTaskRepository } = makeService();
 			const agent = makeAgent({

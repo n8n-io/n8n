@@ -378,7 +378,7 @@ export class AgentConfigService {
 
 		// Both are trimmed by the schema; an empty string clears the stored value.
 		for (const field of ['description', 'modelDeploymentName'] as const) {
-			if (nextSchema[field] === '') delete nextSchema[field];
+			if (decomposedSchema[field] === '') delete nextSchema[field];
 		}
 		return nextSchema;
 	}
