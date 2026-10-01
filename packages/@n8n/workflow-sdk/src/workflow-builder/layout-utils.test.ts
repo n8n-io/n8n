@@ -28,12 +28,14 @@ function createGraphNode(
 	position?: [number, number],
 	parameters?: Record<string, unknown>,
 	version: string | number = 1,
+	id?: string,
 ): GraphNode {
 	return {
 		instance: {
 			type,
 			name,
 			version,
+			...(id ? { id } : {}),
 			config: {
 				...(position ? { position } : {}),
 				...(parameters ? { parameters } : {}),
@@ -500,6 +502,62 @@ describe('calculateNodePositionsDagre', () => {
 			expect(x + 400).toBeGreaterThanOrEqual(500 + DEFAULT_NODE_SIZE[0]);
 			expect(y).toBeLessThanOrEqual(600);
 			expect(y + 300).toBeGreaterThanOrEqual(600 + DEFAULT_NODE_SIZE[1]);
+		});
+	});
+
+	describe('node groups', () => {
+		it('lays out the surviving members when a persisted member ID is unresolved', () => {
+			const triggerConnections = makeMainConns([[0, [makeTarget('first')]]]);
+			const firstConnections = makeMainConns([[0, [makeTarget('second')]]]);
+			const nodes = new Map<string, GraphNode>([
+				[
+					'trigger',
+					createGraphNode(
+						'trigger',
+						'n8n-nodes-base.manualTrigger',
+						triggerConnections,
+						undefined,
+						undefined,
+						1,
+						'trigger-id',
+					),
+				],
+				[
+					'first',
+					createGraphNode(
+						'first',
+						'n8n-nodes-base.set',
+						firstConnections,
+						undefined,
+						undefined,
+						1,
+						'first-id',
+					),
+				],
+				[
+					'second',
+					createGraphNode(
+						'second',
+						'n8n-nodes-base.set',
+						undefined,
+						undefined,
+						undefined,
+						1,
+						'second-id',
+					),
+				],
+			]);
+
+			const withoutGroup = calculateNodePositionsDagre(nodes);
+			const withUnresolvedMember = calculateNodePositionsDagre(nodes, [
+				{ name: 'Stage', memberIds: ['first-id', 'missing-id'] },
+			]);
+			const withOnlySurvivingMember = calculateNodePositionsDagre(nodes, [
+				{ name: 'Stage', memberIds: ['first-id'] },
+			]);
+
+			expect(withUnresolvedMember).toEqual(withOnlySurvivingMember);
+			expect(withUnresolvedMember).not.toEqual(withoutGroup);
 		});
 	});
 });
