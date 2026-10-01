@@ -8,6 +8,7 @@ import type {
 import type { JsonSchema7Type } from 'zod-to-json-schema';
 
 import type { AgentDbMessage, AgentMessage, ContentMetadata } from './message';
+import type { ToolApprovalContext } from './tool';
 import type { ProviderId, ProviderCredentials } from '../../runtime/model/provider-credentials';
 import type {
 	AgentEvent,
@@ -19,12 +20,13 @@ import type {
 import type { SerializedMessageList } from '../runtime/message-list';
 import type { BuiltTelemetry } from '../telemetry';
 import type { JSONObject, JSONValue } from '../utils/json';
-
+import type { GuardrailsOptions, GuardrailStop } from './guardrail';
 export type SmoothStreamOptions = NonNullable<Parameters<typeof smoothStream>[0]>;
 
 export const FINISH_REASONS = [
 	'stop',
 	'max-iterations',
+	'guardrail',
 	'length',
 	'content-filter',
 	'tool-calls',
@@ -161,6 +163,7 @@ export type StreamChunk = ContentMetadata &
 				usage?: TokenUsage;
 				model?: string;
 				structuredOutput?: unknown;
+				guardrail?: GuardrailStop;
 		  }
 		| { type: 'error'; error: unknown }
 		| {
@@ -214,6 +217,7 @@ export interface AgentInputBoundary {
 	messages: AgentDbMessage[];
 	lastCreatedAt: number;
 	completing: boolean;
+	/** False when the run cannot accept more input: max iterations reached, or a terminal stop such as a guardrail refusal. */
 	canContinue: boolean;
 }
 
@@ -267,6 +271,8 @@ export interface ExecutionOptions {
 	 * Best-effort: a host failure here must not break the run.
 	 */
 	onSideCallUsage?: (report: SideCallUsageReport) => void | Promise<void>;
+	/** Thread allowances supplied for this execution. Not stored in checkpoints. */
+	approvalContext?: ToolApprovalContext;
 	onStepStart?: (event: GenerateTextStepStartEvent) => void | Promise<void>;
 	onStepEnd?: (event: GenerateTextStepEndEvent) => void | Promise<void>;
 	/** @deprecated Use `onStepEnd` instead. */
@@ -278,6 +284,7 @@ export interface ExecutionOptions {
 	 * persistence-backed CheckpointStore; recover via `crashResume()`.
 	 */
 	stepCheckpoints?: boolean;
+	guardrails?: GuardrailsOptions;
 }
 
 export interface PersistedExecutionOptions {
@@ -338,6 +345,7 @@ export interface GenerateResult {
 	/** The model ID used for this generation (e.g. 'anthropic/claude-haiku-4-5'). */
 	model?: string;
 	finishReason?: FinishReason;
+	guardrail?: GuardrailStop;
 	providerMetadata?: Record<string, unknown>;
 	/** Tool calls made during the run (with merged results when available). */
 	toolCalls?: ToolResultEntry[];

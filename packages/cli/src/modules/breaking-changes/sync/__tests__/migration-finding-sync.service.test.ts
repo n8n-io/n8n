@@ -25,6 +25,14 @@ import {
 	computeRuleSetFingerprint,
 } from '../migration-finding-sync.service';
 
+const reportTarget = vi.hoisted(() => ({ version: 'v3' as BreakingChangeVersion | null }));
+vi.mock('@n8n/api-types', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@n8n/api-types')>()),
+	get MIGRATION_REPORT_TARGET_VERSION() {
+		return reportTarget.version;
+	},
+}));
+
 const TARGET_VERSION: BreakingChangeVersion = 'v2';
 
 function detectionResult(
@@ -492,6 +500,181 @@ describe('MigrationFindingSyncService', () => {
 		await service.sync(TARGET_VERSION);
 
 		expect(breakingChangeService.detect).toHaveBeenCalledTimes(2);
+	});
+
+	describe('syncWorkflow()', () => {
+		const WORKFLOW_ID = 'wf-0001';
+		const REPORT_VERSION: BreakingChangeVersion = 'v3';
+
+		function row(
+			id: number,
+			ruleId: string,
+			status: MigrationFindingStatus,
+			workflowId = WORKFLOW_ID,
+		) {
+			return { id, targetVersion: REPORT_VERSION, ruleId, workflowId, status } as MigrationFinding;
+		}
+
+		beforeEach(() => {
+			reportTarget.version = REPORT_VERSION;
+			breakingChangeService.detectWorkflowHits.mockResolvedValue({ hits: [], failedChecks: [] });
+		});
+
+		afterEach(() => {
+			// A per-workflow sync is not a full scan, so it must never claim one.
+			expect(syncRepository.upsertForVersion).not.toHaveBeenCalled();
+		});
+
+		it('inserts an open finding for a workflow that now trips a rule, on any main', async () => {
+			isLeader = false;
+			breakingChangeService.detectWorkflowHits.mockResolvedValue({
+				hits: [{ ruleId: 'rule-a', workflowId: WORKFLOW_ID }],
+				failedChecks: [],
+			});
+
+			await service.syncWorkflow(WORKFLOW_ID);
+
+			expect(breakingChangeService.detectWorkflowHits).toHaveBeenCalledWith(
+				REPORT_VERSION,
+				WORKFLOW_ID,
+			);
+			expect(findingRepository.insertMany).toHaveBeenCalledWith(
+				[{ targetVersion: REPORT_VERSION, ruleId: 'rule-a', workflowId: WORKFLOW_ID }],
+				expect.anything(),
+			);
+			expect(findingRepository.markFixedForIds).not.toHaveBeenCalled();
+			expect(findingRepository.updateStatusForIds).not.toHaveBeenCalled();
+		});
+
+		it('marks the finding fixed when the issue is gone', async () => {
+			findingRepository.listForWorkflows.mockResolvedValue([row(1, 'rule-a', 'open')]);
+
+			await service.syncWorkflow(WORKFLOW_ID);
+
+			expect(findingRepository.markFixedForIds).toHaveBeenCalledWith([1], expect.anything());
+			expect(findingRepository.insertMany).not.toHaveBeenCalled();
+		});
+
+		it('reopens a fixed finding when the issue returns', async () => {
+			breakingChangeService.detectWorkflowHits.mockResolvedValue({
+				hits: [{ ruleId: 'rule-a', workflowId: WORKFLOW_ID }],
+				failedChecks: [],
+			});
+			findingRepository.listForWorkflows.mockResolvedValue([row(1, 'rule-a', 'fixed')]);
+
+			await service.syncWorkflow(WORKFLOW_ID);
+
+			expect(findingRepository.updateStatusForIds).toHaveBeenCalledWith(
+				[1],
+				'open',
+				undefined,
+				expect.anything(),
+			);
+			expect(findingRepository.insertMany).not.toHaveBeenCalled();
+		});
+
+		it('reads and writes only the rows of that workflow, in one transaction', async () => {
+			findingRepository.listForWorkflows.mockResolvedValue([
+				row(1, 'rule-a', 'open'),
+				row(2, 'rule-a', 'open', 'wf-0002'),
+			]);
+
+			await service.syncWorkflow(WORKFLOW_ID);
+
+			expect(txRunner.run).toHaveBeenCalledTimes(1);
+			expect(workflowRepository.findExistingIds).toHaveBeenCalledWith(
+				[WORKFLOW_ID],
+				expect.anything(),
+			);
+			expect(findingRepository.listForWorkflows).toHaveBeenCalledWith(
+				REPORT_VERSION,
+				[WORKFLOW_ID],
+				expect.anything(),
+			);
+			expect(findingRepository.markFixedForIds).toHaveBeenCalledWith([1], expect.anything());
+		});
+
+		it('leaves the pair of a failed rule check untouched and still syncs the other rules', async () => {
+			breakingChangeService.detectWorkflowHits.mockResolvedValue({
+				hits: [{ ruleId: 'rule-b', workflowId: WORKFLOW_ID }],
+				failedChecks: [{ ruleId: 'rule-a', workflowId: WORKFLOW_ID }],
+			});
+			findingRepository.listForWorkflows.mockResolvedValue([
+				row(1, 'rule-a', 'open'),
+				row(2, 'rule-c', 'open'),
+			]);
+
+			await service.syncWorkflow(WORKFLOW_ID);
+
+			expect(findingRepository.insertMany).toHaveBeenCalledWith(
+				[{ targetVersion: REPORT_VERSION, ruleId: 'rule-b', workflowId: WORKFLOW_ID }],
+				expect.anything(),
+			);
+			expect(findingRepository.markFixedForIds).toHaveBeenCalledWith([2], expect.anything());
+		});
+
+		it('leaves the finding of a batch rule as it is, since only a full sync decides it', async () => {
+			ruleRegistry.getRules.mockReturnValue([
+				...rules('rule-a'),
+				{ id: 'rule-batch', collectWorkflowData: vi.fn() } as unknown as IBreakingChangeRule,
+			]);
+			findingRepository.listForWorkflows.mockResolvedValue([
+				row(1, 'rule-batch', 'open'),
+				row(2, 'rule-a', 'open'),
+			]);
+
+			await service.syncWorkflow(WORKFLOW_ID);
+
+			expect(findingRepository.markFixedForIds).toHaveBeenCalledWith([2], expect.anything());
+			expect(findingRepository.insertMany).not.toHaveBeenCalled();
+		});
+
+		it('runs overlapping re-checks of one workflow one after the other', async () => {
+			let releaseFirst!: () => void;
+			breakingChangeService.detectWorkflowHits.mockImplementationOnce(
+				async () =>
+					await new Promise((resolve) => {
+						releaseFirst = () => resolve({ hits: [], failedChecks: [] });
+					}),
+			);
+
+			const first = service.syncWorkflow(WORKFLOW_ID);
+			const second = service.syncWorkflow(WORKFLOW_ID);
+			await new Promise(setImmediate);
+
+			// The second re-check has not started while the first one is still detecting.
+			expect(breakingChangeService.detectWorkflowHits).toHaveBeenCalledTimes(1);
+			expect(txRunner.run).not.toHaveBeenCalled();
+
+			releaseFirst();
+			await Promise.all([first, second]);
+
+			expect(breakingChangeService.detectWorkflowHits).toHaveBeenCalledTimes(2);
+			expect(txRunner.run).toHaveBeenCalledTimes(2);
+		});
+
+		it('does nothing when there is no report target version', async () => {
+			reportTarget.version = null;
+
+			await service.syncWorkflow(WORKFLOW_ID);
+
+			expect(breakingChangeService.detectWorkflowHits).not.toHaveBeenCalled();
+			expect(txRunner.run).not.toHaveBeenCalled();
+		});
+
+		it('reports a failure instead of throwing it', async () => {
+			breakingChangeService.detectWorkflowHits.mockRejectedValue(new Error('db down'));
+
+			await expect(service.syncWorkflow(WORKFLOW_ID)).resolves.toBeUndefined();
+
+			expect(errorReporter.error).toHaveBeenCalledWith(
+				expect.any(Error),
+				expect.objectContaining({
+					extra: { targetVersion: REPORT_VERSION, workflowId: WORKFLOW_ID },
+				}),
+			);
+			expect(txRunner.run).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('syncIfStale', () => {

@@ -1,4 +1,8 @@
-import type { BreakingChangeVersion, BreakingChangeWorkflowRuleResult } from '@n8n/api-types';
+import {
+	MIGRATION_REPORT_TARGET_VERSION,
+	type BreakingChangeVersion,
+	type BreakingChangeWorkflowRuleResult,
+} from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { TransactionRunner, WorkflowRepository, type OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -19,8 +23,9 @@ export function computeRuleSetFingerprint(ruleIds: string[]): string {
 }
 
 /**
- * Brings the `migration_finding` table in step with a fresh detection scan.
- * The report routes read from the table, so they call this first.
+ * Brings the `migration_finding` table in step with detection results: a full
+ * scan over every workflow, or a re-check of one workflow after it was saved.
+ * The report routes read from the table, so they run the full sync first.
  */
 @Service()
 export class MigrationFindingSyncService {
@@ -28,6 +33,9 @@ export class MigrationFindingSyncService {
 
 	/** In-flight runs per target version, so concurrent callers share one scan. */
 	private readonly ongoingSyncs = new Map<BreakingChangeVersion, Promise<void>>();
+
+	/** The latest re-check per workflow, so re-checks of one workflow run in save order. */
+	private readonly ongoingWorkflowSyncs = new Map<string, Promise<void>>();
 
 	constructor(
 		private readonly breakingChangeService: BreakingChangeService,
@@ -169,6 +177,58 @@ export class MigrationFindingSyncService {
 		);
 
 		this.logger.debug('Migration finding sync completed', { targetVersion });
+	}
+
+	/**
+	 * Re-checks one workflow and updates its findings in one transaction.
+	 * It runs on whichever main handled the save, so it is not leader-gated: the
+	 * write is small and scoped to one workflow, and a later full sync corrects
+	 * any drift. The sync record marks a full scan, so this path never writes it.
+	 * Errors are reported, not thrown, so the save that triggered it is unaffected.
+	 */
+	async syncWorkflow(workflowId: string): Promise<void> {
+		// Saves of one workflow can overlap. Running their re-checks one after the
+		// other keeps the table on the result of the latest save.
+		const previous = this.ongoingWorkflowSyncs.get(workflowId) ?? Promise.resolve();
+		const run = previous.then(async () => await this.runWorkflowSync(workflowId));
+		this.ongoingWorkflowSyncs.set(workflowId, run);
+		try {
+			await run;
+		} finally {
+			if (this.ongoingWorkflowSyncs.get(workflowId) === run) {
+				this.ongoingWorkflowSyncs.delete(workflowId);
+			}
+		}
+	}
+
+	private async runWorkflowSync(workflowId: string): Promise<void> {
+		const targetVersion = MIGRATION_REPORT_TARGET_VERSION;
+		if (!targetVersion) return;
+
+		try {
+			const { hits, failedChecks } = await this.breakingChangeService.detectWorkflowHits(
+				targetVersion,
+				workflowId,
+			);
+			// A batch rule decides from all workflows at once, so only a full sync
+			// may change its rows. Here they are out of scope and stay as they are.
+			const batchRulePairs = this.ruleRegistry
+				.getRules(targetVersion)
+				.filter((rule) => 'collectWorkflowData' in rule)
+				.map((rule) => ({ ruleId: rule.id, workflowId }));
+			await this.syncBatch(
+				targetVersion,
+				[workflowId],
+				groupByWorkflow(hits),
+				groupByWorkflow([...failedChecks, ...batchRulePairs]),
+			);
+		} catch (error) {
+			this.logger.warn('Migration finding sync for one workflow failed', {
+				targetVersion,
+				workflowId,
+			});
+			this.errorReporter.error(error, { extra: { targetVersion, workflowId } });
+		}
 	}
 
 	/** Reads, diffs, and writes one batch inside a single transaction. */
