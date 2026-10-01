@@ -28,6 +28,7 @@ function createSettings(
 		},
 		localGatewayDisabled: false,
 		browserUseEnabled: true,
+		cloudBrowserEnabled: false,
 		...overrides,
 	};
 }

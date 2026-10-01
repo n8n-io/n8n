@@ -2492,6 +2492,76 @@ describe('InstanceAiSettingsService', () => {
 		});
 	});
 
+	describe('cloud browser', () => {
+		const user = (instanceAi: Record<string, unknown> = {}) =>
+			({ id: 'user-1', settings: { instanceAi } }) as unknown as User;
+
+		beforeEach(() => {
+			globalConfig.instanceAi.cloudBrowserEnabled = false;
+			settingsRepository.upsert.mockResolvedValue(undefined as never);
+		});
+
+		it('is off by default', () => {
+			expect(service.isCloudBrowserEnabled()).toBe(false);
+		});
+
+		it('follows the admin switch when it is updated', async () => {
+			await service.updateAdminSettings({ cloudBrowserEnabled: true });
+
+			expect(service.isCloudBrowserEnabled()).toBe(true);
+		});
+
+		it('round-trips the admin switch through getAdminSettings', async () => {
+			const result = await service.updateAdminSettings({ cloudBrowserEnabled: true });
+
+			expect(result.cloudBrowserEnabled).toBe(true);
+			expect((await service.getAdminSettings()).cloudBrowserEnabled).toBe(true);
+		});
+
+		it('applies a persisted admin switch when loading from the database', async () => {
+			settingsRepository.findByKey.mockResolvedValue({
+				key: 'instanceAi.settings',
+				value: JSON.stringify({ cloudBrowserEnabled: true }),
+				loadOnStartup: true,
+			} as never);
+
+			await service.loadFromDb();
+
+			expect(service.isCloudBrowserEnabled()).toBe(true);
+		});
+
+		it('returns the saved browser preference', async () => {
+			await expect(
+				service.getUserPreferences(user({ browserUsePreference: 'cloud' })),
+			).resolves.toMatchObject({ browserUsePreference: 'cloud' });
+		});
+
+		it('defaults to no saved browser preference', async () => {
+			await expect(service.getUserPreferences(user())).resolves.toMatchObject({
+				browserUsePreference: null,
+			});
+		});
+
+		it('saves the browser preference', async () => {
+			await service.updateUserPreferences(user(), { browserUsePreference: 'local' });
+
+			expect(userService.updateSettings).toHaveBeenCalledWith('user-1', {
+				instanceAi: { browserUsePreference: 'local' },
+			});
+		});
+
+		it('clears the browser preference when it is set to null', async () => {
+			await service.updateUserPreferences(
+				user({ localGatewayDisabled: true, browserUsePreference: 'local' }),
+				{ browserUsePreference: null },
+			);
+
+			expect(userService.updateSettings).toHaveBeenCalledWith('user-1', {
+				instanceAi: { localGatewayDisabled: true, browserUsePreference: null },
+			});
+		});
+	});
+
 	describe('cloud-managed fields', () => {
 		beforeEach(() => {
 			globalConfig.deployment.type = 'cloud';

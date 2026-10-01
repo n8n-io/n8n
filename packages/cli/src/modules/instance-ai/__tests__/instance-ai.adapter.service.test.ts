@@ -65,6 +65,7 @@ import {
 	CANVAS_NODE_CONTEXT_FLAG,
 	CONFIG_EVALUATIONS_FLAG,
 	INSTANCE_AI_CONVERSATION_HISTORY_FLAG,
+	INSTANCE_AI_CLOUD_BROWSER_FLAG,
 	INSTANCE_AI_NODE_USAGE_FLAG,
 	INSTANCE_ACTIVITY_CONTEXT_FLAG,
 	INSTANCE_AI_CONVERSATION_HISTORY_ENABLED_VARIANT,
@@ -7060,6 +7061,7 @@ describe('resolveExperimentGates', () => {
 		[AI_ASSISTANT_AT_MENTIONS_FLAG]: true,
 		[INSTANCE_AI_FOLDER_EXPLORATION_FLAG]: INSTANCE_AI_FOLDER_EXPLORATION_ENABLED_VARIANT,
 		[CONTEXT_PREFERENCES_FLAG]: CONTEXT_PREFERENCES_ENABLED_VARIANT,
+		[INSTANCE_AI_CLOUD_BROWSER_FLAG]: true,
 	};
 
 	it('resolves per-user gates with one user flag fetch', async () => {
@@ -7078,6 +7080,7 @@ describe('resolveExperimentGates', () => {
 			folderExplorationEnabled: true,
 			aiPreferencesEnabled: true,
 			instanceContextEnabled: false,
+			cloudBrowserFlagEnabled: true,
 		});
 		expect(getFeatureFlags).toHaveBeenCalledTimes(1);
 		expect(getFeatureFlags).toHaveBeenCalledWith(user);
@@ -7132,6 +7135,7 @@ describe('resolveExperimentGates', () => {
 			instanceContextEnabled: true,
 			nodeUsageEnabled: false,
 			nodeContextEnabled: false,
+			cloudBrowserFlagEnabled: false,
 		});
 	});
 
@@ -7173,6 +7177,7 @@ describe('resolveExperimentGates', () => {
 			folderExplorationEnabled: false,
 			aiPreferencesEnabled: false,
 			instanceContextEnabled: false,
+			cloudBrowserFlagEnabled: false,
 		});
 	});
 
@@ -7232,6 +7237,7 @@ describe('resolveExperimentGates', () => {
 			folderExplorationEnabled: false,
 			aiPreferencesEnabled: false,
 			instanceContextEnabled: false,
+			cloudBrowserFlagEnabled: false,
 		});
 	});
 
@@ -7251,6 +7257,7 @@ describe('resolveExperimentGates', () => {
 			folderExplorationEnabled: false,
 			aiPreferencesEnabled: false,
 			instanceContextEnabled: false,
+			cloudBrowserFlagEnabled: false,
 		});
 	});
 });

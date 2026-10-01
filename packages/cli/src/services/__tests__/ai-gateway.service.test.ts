@@ -902,6 +902,60 @@ describe('AiGatewayService', () => {
 		});
 	});
 
+	describe('sendGatewayRequestForUser()', () => {
+		it('throws UserError when baseUrl is not configured', async () => {
+			const service = makeService({ baseUrl: null });
+			await expect(
+				service.sendGatewayRequestForUser(USER_ID, { method: 'GET', path: '/wallet' }, 'Failed'),
+			).rejects.toThrow(UserError);
+		});
+
+		it('sends the request under the gateway prefix with the user token and extra headers', async () => {
+			requestMock
+				.mockResolvedValueOnce(ok({ token: 'mock-jwt', expiresIn: 3600 }))
+				.mockResolvedValueOnce(ok({ id: 'sess-1' }));
+			const service = makeService();
+
+			const result = await service.sendGatewayRequestForUser(
+				USER_ID,
+				{
+					method: 'POST',
+					path: '/browserbase/v1/sessions',
+					headers: { 'x-extra': 'value' },
+					body: { a: 1 },
+				},
+				'Failed',
+			);
+
+			expect(result).toEqual({ id: 'sess-1' });
+			expect(requestMock).toHaveBeenNthCalledWith(
+				2,
+				expect.objectContaining({
+					method: 'POST',
+					url: `${BASE_URL}/v1/gateway/browserbase/v1/sessions`,
+					headers: { 'x-extra': 'value', Authorization: 'Bearer mock-jwt' },
+					body: { a: 1 },
+					json: true,
+				}),
+			);
+		});
+
+		it('throws UserError with the error message when the gateway returns a non-ok status', async () => {
+			requestMock
+				.mockResolvedValueOnce(ok({ token: 'mock-jwt', expiresIn: 3600 }))
+				.mockResolvedValueOnce(fail(402));
+			const service = makeService();
+
+			await expect(
+				service.sendGatewayRequestForUser(
+					USER_ID,
+					{ method: 'GET', path: '/wallet' },
+					'Failed thing',
+				),
+			).rejects.toThrow('Failed thing: HTTP 402');
+		});
+	});
+
 	describe('getUsage()', () => {
 		const MOCK_USAGE_RESPONSE = {
 			entries: [{ provider: 'google', model: 'gemini-pro', timestamp: 1700000000, cost: 2 }],

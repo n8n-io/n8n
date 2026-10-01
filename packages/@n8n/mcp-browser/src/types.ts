@@ -27,7 +27,7 @@ export const configSchema = z.object({
 	defaultBrowser: browserNameSchema.default('chrome'),
 	browsers: z.record(browserNameSchema, browserOverrideSchema).default({}),
 	adapter: z.enum(['playwright', 'agent-browser']).default('agent-browser'),
-	mode: z.enum(['local', 'remote']).default('local'),
+	mode: z.enum(['local', 'remote', 'direct-cdp']).default('local'),
 });
 
 export type Config = z.input<typeof configSchema>;
@@ -42,7 +42,7 @@ export interface ResolvedConfig {
 	defaultBrowser: BrowserName;
 	browsers: Map<BrowserName, ResolvedBrowserInfo>;
 	adapter: 'playwright' | 'agent-browser';
-	mode: 'local' | 'remote';
+	mode: 'local' | 'remote' | 'direct-cdp';
 }
 
 // ---------------------------------------------------------------------------

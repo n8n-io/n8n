@@ -65,6 +65,10 @@ export class InstanceAiConfig {
 	@Env('N8N_INSTANCE_AI_BROWSER_USE_ENABLED')
 	browserUseEnabled: boolean = true;
 
+	/** Let the agent start cloud browser sessions, billed to Assistant credits. */
+	@Env('N8N_INSTANCE_AI_CLOUD_BROWSER_ENABLED')
+	cloudBrowserEnabled: boolean = false;
+
 	/** Enable sandbox for code execution. When true, the agent can run shell commands and code. */
 	@Env('N8N_INSTANCE_AI_SANDBOX_ENABLED')
 	sandboxEnabled: boolean = false;

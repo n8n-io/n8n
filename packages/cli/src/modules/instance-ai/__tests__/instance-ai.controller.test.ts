@@ -82,6 +82,7 @@ import type { ProjectService } from '@/services/project.service.ee';
 import type { UrlService } from '@n8n/backend-services';
 
 import type { InstanceAiBrowserSessionService } from '../browser/instance-ai-browser-session.service';
+import type { CloudBrowserService } from '../browser/cloud-browser.service';
 import type { EvalAgentExecutionService } from '../eval/agent-execution.service';
 import type { EvalExecutionService } from '../eval/execution.service';
 import { EvalThreadCredentialAllowlistService } from '../eval/thread-credential-allowlist.service';
@@ -147,6 +148,7 @@ describe('InstanceAiController', () => {
 	const preferenceCardService = mock<InstanceAiPreferenceCardService>();
 	const onboarding = mock<InstanceAiOnboardingService>();
 	const threadTabsService = mock<InstanceAiThreadTabsService>();
+	const cloudBrowserService = mock<CloudBrowserService>();
 
 	const controller = new InstanceAiController(
 		instanceAiService,
@@ -175,6 +177,7 @@ describe('InstanceAiController', () => {
 		preferenceCardService,
 		globalConfig,
 		threadTabsService,
+		cloudBrowserService,
 	);
 
 	const req = mock<AuthenticatedRequest>({ user: { id: USER_ID } });
@@ -1936,7 +1939,20 @@ describe('InstanceAiController', () => {
 			expect(settingsService.getAdminSettings).not.toHaveBeenCalled();
 			expect(moduleRegistry.refreshModuleSettings).toHaveBeenCalledWith('instance-ai');
 			expect(browserSessionService.shutdown).toHaveBeenCalled();
+			expect(cloudBrowserService.shutdown).toHaveBeenCalled();
 			expect(gatewayService.disconnectAllGateways).toHaveBeenCalled();
+		});
+
+		it('should end cloud browser sessions only when just the cloud browser is turned off', async () => {
+			settingsService.isInstanceAiEnabled.mockReturnValue(true);
+			settingsService.isBrowserUseEnabled.mockReturnValue(true);
+			settingsService.isCloudBrowserEnabled.mockReturnValue(false);
+			settingsService.isLocalGatewayDisabled.mockReturnValue(false);
+
+			await controller.reloadAdminSettings();
+
+			expect(cloudBrowserService.shutdown).toHaveBeenCalled();
+			expect(browserSessionService.shutdown).not.toHaveBeenCalled();
 		});
 	});
 
@@ -2822,6 +2838,7 @@ describe('InstanceAiController — durable-log SSE replay', () => {
 		mock<InstanceAiPreferenceCardService>(),
 		globalConfig,
 		mock<InstanceAiThreadTabsService>(),
+		mock<CloudBrowserService>(),
 	);
 
 	beforeEach(() => {

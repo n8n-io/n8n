@@ -4481,6 +4481,9 @@ export type NpsSurveyWaitingState = {
 };
 export type NpsSurveyState = NpsSurveyRespondedState | NpsSurveyWaitingState;
 
+/** The browser a user picked when both the extension and the cloud browser are available. */
+export type BrowserUsePreference = 'local' | 'cloud';
+
 export interface IUserSettings {
 	isOnboarded?: boolean;
 	firstSuccessfulWorkflowId?: string;
@@ -4495,6 +4498,7 @@ export interface IUserSettings {
 		credentialId?: string | null;
 		modelName?: string;
 		localGatewayDisabled?: boolean;
+		browserUsePreference?: BrowserUsePreference | null;
 	};
 	mcpJsonNudge?: {
 		impressions: number;

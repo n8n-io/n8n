@@ -246,6 +246,7 @@ interface PersistedAdminSettings {
 	n8nSandboxServiceUrl?: string | null;
 	localGatewayDisabled?: boolean;
 	browserUseEnabled?: boolean;
+	cloudBrowserEnabled?: boolean;
 }
 
 interface PreparedConnection {
@@ -481,6 +482,7 @@ export class InstanceAiSettingsService {
 			},
 			localGatewayDisabled: this.isLocalGatewayDisabled(),
 			browserUseEnabled: this.isBrowserUseEnabled(),
+			cloudBrowserEnabled: this.isCloudBrowserEnabled(),
 		};
 	}
 
@@ -1056,6 +1058,7 @@ export class InstanceAiSettingsService {
 			credentialName,
 			modelName: prefs.modelName || this.extractModelName(this.config.model),
 			localGatewayDisabled: prefs.localGatewayDisabled ?? false,
+			browserUsePreference: prefs.browserUsePreference ?? null,
 		};
 	}
 
@@ -1073,6 +1076,8 @@ export class InstanceAiSettingsService {
 		if (update.modelName !== undefined) prefs.modelName = update.modelName;
 		if (update.localGatewayDisabled !== undefined)
 			prefs.localGatewayDisabled = update.localGatewayDisabled;
+		if (update.browserUsePreference !== undefined)
+			prefs.browserUsePreference = update.browserUsePreference;
 		await this.userService.updateSettings(user.id, { instanceAi: prefs });
 		user.settings = { ...(user.settings ?? {}), instanceAi: prefs };
 		return await this.getUserPreferences(user);
@@ -1283,6 +1288,10 @@ export class InstanceAiSettingsService {
 
 	isBrowserUseEnabled(): boolean {
 		return this.config.browserUseEnabled;
+	}
+
+	isCloudBrowserEnabled(): boolean {
+		return this.config.cloudBrowserEnabled;
 	}
 
 	/** Whether this instance is in the activation-capped trial cohort. */
@@ -1769,6 +1778,8 @@ export class InstanceAiSettingsService {
 			c.localGatewayDisabled = persisted.localGatewayDisabled;
 		if (persisted.browserUseEnabled !== undefined)
 			c.browserUseEnabled = persisted.browserUseEnabled;
+		if (persisted.cloudBrowserEnabled !== undefined)
+			c.cloudBrowserEnabled = persisted.cloudBrowserEnabled;
 	}
 
 	private readUserPreferences(user: User): UserInstanceAiPreferences {
@@ -1791,6 +1802,7 @@ export class InstanceAiSettingsService {
 			n8nSandboxServiceUrl: this.adminN8nSandboxServiceUrl,
 			localGatewayDisabled: c.localGatewayDisabled,
 			browserUseEnabled: c.browserUseEnabled,
+			cloudBrowserEnabled: c.cloudBrowserEnabled,
 		};
 	}
 

@@ -69,3 +69,73 @@ describe('PlaywrightAdapter remote mode', () => {
 		});
 	});
 });
+
+describe('PlaywrightAdapter direct-cdp mode', () => {
+	const directConfig: ResolvedConfig = { ...config, mode: 'direct-cdp' };
+	const endpoint = 'wss://connect.example.com/session?token=abc';
+
+	function fakePage(url = 'https://example.com/') {
+		return {
+			url: () => url,
+			title: vi.fn().mockResolvedValue('Example'),
+			on: vi.fn(),
+			close: vi.fn().mockResolvedValue(undefined),
+		};
+	}
+
+	function fakeDirectBrowser(pages: Array<ReturnType<typeof fakePage>>) {
+		return {
+			contexts: () => [{ on: vi.fn(), pages: () => pages }],
+			newContext: vi.fn(),
+			on: vi.fn(),
+		};
+	}
+
+	it('connects to the cdpEndpoint with the supplied headers', async () => {
+		connectOverCDP.mockResolvedValue(fakeDirectBrowser([]));
+		const adapter = new PlaywrightAdapter(directConfig, {
+			cdpEndpoint: endpoint,
+			cdpConnectHeaders: { authorization: 'tok' },
+		});
+
+		await adapter.launch({ browser: 'chrome' });
+
+		expect(connectOverCDP).toHaveBeenCalledWith(endpoint, {
+			headers: { authorization: 'tok' },
+			noDefaults: true,
+		});
+	});
+
+	it('lists the pages already open in the browser', async () => {
+		connectOverCDP.mockResolvedValue(fakeDirectBrowser([fakePage('https://example.com/')]));
+		const adapter = new PlaywrightAdapter(directConfig, { cdpEndpoint: endpoint });
+
+		await adapter.launch({ browser: 'chrome' });
+
+		expect(await adapter.listTabs()).toEqual([
+			expect.objectContaining({ title: 'Example', url: 'https://example.com/' }),
+		]);
+	});
+
+	it('closes the page itself when asked to close a tab', async () => {
+		const page = fakePage();
+		connectOverCDP.mockResolvedValue(fakeDirectBrowser([page]));
+		const adapter = new PlaywrightAdapter(directConfig, { cdpEndpoint: endpoint });
+		await adapter.launch({ browser: 'chrome' });
+		const [tab] = await adapter.listTabs();
+
+		await adapter.closePage(tab.id);
+
+		expect(page.close).toHaveBeenCalled();
+		expect(await adapter.listTabs()).toEqual([]);
+	});
+
+	it('throws when no cdpEndpoint is provided', async () => {
+		const adapter = new PlaywrightAdapter(directConfig);
+
+		await expect(adapter.launch({ browser: 'chrome' })).rejects.toThrow(
+			'Direct CDP mode requires a cdpEndpoint',
+		);
+		expect(connectOverCDP).not.toHaveBeenCalled();
+	});
+});

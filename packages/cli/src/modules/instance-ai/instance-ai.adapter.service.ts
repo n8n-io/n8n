@@ -10,6 +10,7 @@ import {
 	CONTEXT_PREFERENCES_ENABLED_VARIANT,
 	INSTANCE_AI_FOLDER_EXPLORATION_ENABLED_VARIANT,
 	INSTANCE_AI_FOLDER_EXPLORATION_FLAG,
+	INSTANCE_AI_CLOUD_BROWSER_FLAG,
 	INSTANCE_AI_NODE_USAGE_FLAG,
 	INSTANCE_ACTIVITY_CONTEXT_FLAG,
 	TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE,
@@ -708,6 +709,8 @@ export class InstanceAiAdapterService {
 		credentialDescriptionsEnabled: boolean;
 		/** Shared activity recording and retrieval use the same instance gate. */
 		instanceContextEnabled: boolean;
+		/** Rollout gate for the cloud browser. The cloud and plan checks are in the settings service. */
+		cloudBrowserFlagEnabled: boolean;
 	}> {
 		let flags: Awaited<ReturnType<PostHogClient['getFeatureFlags']>> = {};
 		let instanceContextEnabled = false;
@@ -746,6 +749,7 @@ export class InstanceAiAdapterService {
 				INSTANCE_AI_FOLDER_EXPLORATION_ENABLED_VARIANT,
 			aiPreferencesEnabled: flags[CONTEXT_PREFERENCES_FLAG] === CONTEXT_PREFERENCES_ENABLED_VARIANT,
 			instanceContextEnabled,
+			cloudBrowserFlagEnabled: flags[INSTANCE_AI_CLOUD_BROWSER_FLAG] === true,
 		};
 	}
 

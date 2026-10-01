@@ -1,4 +1,5 @@
 import { instanceAiApprovalDetailsSchema } from './instance-ai-approval.schema';
+import type { BrowserUsePreference } from 'n8n-workflow';
 import { z } from 'zod';
 
 import type { AiPreferenceDto, AiPreferenceScope } from './ai-preference.schema';
@@ -2502,6 +2503,7 @@ export interface InstanceAiAdminSettingsResponse {
 	envManaged: InstanceAiEnvManagedFields;
 	localGatewayDisabled: boolean;
 	browserUseEnabled: boolean;
+	cloudBrowserEnabled: boolean;
 }
 
 export type InstanceAiComponentSource = 'ui' | 'env' | 'none';
@@ -2614,6 +2616,7 @@ export class InstanceAiAdminSettingsUpdateRequest extends Z.class({
 	n8nSandboxServiceUrl: z.string().url().nullable().optional(),
 	localGatewayDisabled: z.boolean().optional(),
 	browserUseEnabled: z.boolean().optional(),
+	cloudBrowserEnabled: z.boolean().optional(),
 }) {}
 
 export const instanceAiVerificationFailureSchema = z.enum([
@@ -2661,18 +2664,25 @@ export type InstanceAiVerificationResponse =
 // User preferences — per-user, self-service
 // ---------------------------------------------------------------------------
 
+const browserUsePreferenceSchema = z.enum([
+	'local',
+	'cloud',
+]) satisfies z.ZodType<BrowserUsePreference>;
+
 export interface InstanceAiUserPreferencesResponse {
 	credentialId: string | null;
 	credentialType: string | null;
 	credentialName: string | null;
 	modelName: string;
 	localGatewayDisabled: boolean;
+	browserUsePreference: BrowserUsePreference | null;
 }
 
 export class InstanceAiUserPreferencesUpdateRequest extends Z.class({
 	credentialId: z.string().nullable().optional(),
 	modelName: z.string().optional(),
 	localGatewayDisabled: z.boolean().optional(),
+	browserUsePreference: browserUsePreferenceSchema.nullable().optional(),
 }) {}
 
 export interface InstanceAiProviderConnection {
@@ -2857,6 +2867,9 @@ export const INSTANCE_AI_FOLDER_EXPLORATION_FLAG = '110_instance_ai_folder_explo
 
 /** Instance rollout gate for shared activity recording and retrieval. */
 export const INSTANCE_ACTIVITY_CONTEXT_FLAG = '114_instance_activity_context';
+
+/** Per-user rollout gate for the cloud browser. Placeholder key until the PostHog flag exists. */
+export const INSTANCE_AI_CLOUD_BROWSER_FLAG = '1xx_instance_ai_cloud_browser';
 
 /**
  * `110_instance_ai_folder_exploration` is multivariate — the enabled arm is a

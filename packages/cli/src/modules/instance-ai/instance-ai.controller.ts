@@ -68,6 +68,7 @@ import {
 } from '@n8n/instance-ai/parsers';
 import type { NextFunction, Request, Response } from 'express';
 import { randomUUID, timingSafeEqual } from 'node:crypto';
+import { CloudBrowserService } from './browser/cloud-browser.service';
 import { InstanceAiBrowserSessionService } from './browser/instance-ai-browser-session.service';
 import { EvalAgentExecutionService } from './eval/agent-execution.service';
 import { EvalExecutionService } from './eval/execution.service';
@@ -130,6 +131,7 @@ export class InstanceAiController {
 		private readonly preferenceCardService: InstanceAiPreferenceCardService,
 		globalConfig: GlobalConfig,
 		private readonly threadTabsService: InstanceAiThreadTabsService,
+		private readonly cloudBrowserService: CloudBrowserService,
 	) {
 		this.gatewayApiKey = globalConfig.instanceAi.gatewayApiKey;
 	}
@@ -798,6 +800,7 @@ export class InstanceAiController {
 		await this.applyAdminSettingsSideEffects({
 			enabled: this.settingsService.isInstanceAiEnabled(),
 			browserUseEnabled: this.settingsService.isBrowserUseEnabled(),
+			cloudBrowserEnabled: this.settingsService.isCloudBrowserEnabled(),
 			localGatewayDisabled: this.settingsService.isLocalGatewayDisabled(),
 		});
 	}
@@ -805,7 +808,7 @@ export class InstanceAiController {
 	private async applyAdminSettingsSideEffects(
 		settings: Pick<
 			InstanceAiAdminSettingsResponse,
-			'enabled' | 'browserUseEnabled' | 'localGatewayDisabled'
+			'enabled' | 'browserUseEnabled' | 'cloudBrowserEnabled' | 'localGatewayDisabled'
 		>,
 	) {
 		const sideEffects: Array<() => Promise<void> | void> = [
@@ -818,6 +821,9 @@ export class InstanceAiController {
 		];
 		if (!settings.enabled || !settings.browserUseEnabled) {
 			sideEffects.push(async () => await this.browserSessionService.shutdown());
+		}
+		if (!settings.enabled || !settings.browserUseEnabled || !settings.cloudBrowserEnabled) {
+			sideEffects.push(async () => await this.cloudBrowserService.shutdown());
 		}
 
 		if (!settings.enabled || settings.localGatewayDisabled) {

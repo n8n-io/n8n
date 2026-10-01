@@ -318,6 +318,34 @@ export class AiGatewayService {
 		return this.parseWalletResponse(data);
 	}
 
+	/**
+	 * Sends an authenticated request for the given user to a path under the gateway's
+	 * `/v1/gateway` prefix. Callers pass only a path, so the request cannot leave the gateway.
+	 */
+	async sendGatewayRequestForUser<T>(
+		userId: string,
+		options: {
+			method: IHttpRequestMethods;
+			path: string;
+			headers?: Record<string, string>;
+			body?: unknown;
+		},
+		errorMessage: string,
+	): Promise<T> {
+		const baseUrl = this.requireBaseUrl();
+		const jwt = await this.getOrFetchToken(userId);
+
+		return await this.gatewayRequest<T>(
+			{
+				method: options.method,
+				url: `${baseUrl}${AiGatewayService.GATEWAY_PATH_PREFIX}${options.path}`,
+				headers: { ...options.headers, Authorization: `Bearer ${jwt}` },
+				body: options.body,
+			},
+			errorMessage,
+		);
+	}
+
 	private parseWalletResponse(data: unknown): AiGatewayWalletResponse {
 		const d = data as { budget?: unknown; balance?: unknown; hasEverToppedUp?: unknown };
 		if (typeof d.budget !== 'number' || typeof d.balance !== 'number') {

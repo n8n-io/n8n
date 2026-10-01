@@ -142,6 +142,19 @@ export class PlaywrightAdapter {
 	async launch(config: ConnectConfig): Promise<void> {
 		log.debug('launch: browser =', config.browser);
 
+		if (this.resolvedConfig.mode === 'direct-cdp') {
+			// Direct mode - the endpoint is the browser itself (e.g. a cloud browser
+			// session), so there is no relay and no lazy tab activation.
+			if (!this.externalCdpEndpoint) {
+				throw new Error('Direct CDP mode requires a cdpEndpoint');
+			}
+			await this.connectPlaywright(this.externalCdpEndpoint);
+			for (const page of this.requireContext().pages()) {
+				if (!this.findPageState(page)) this.trackPage(page);
+			}
+			return;
+		}
+
 		if (this.externalRelay) {
 			// Remote mode - the extension connects to an externally managed relay
 			// (e.g. exposed by the n8n server). No local browser is launched.
@@ -194,9 +207,9 @@ export class PlaywrightAdapter {
 		await this.connectPlaywright(this.relay.cdpEndpoint(port));
 	}
 
-	/** Connect Playwright over CDP through the relay and wire up handlers. */
+	/** Connect Playwright over CDP (through the relay, if any) and wire up handlers. */
 	private async connectPlaywright(cdpEndpoint: string): Promise<void> {
-		const relay = this.relay!;
+		const relay = this.relay;
 		log.debug('connecting Playwright over CDP:', cdpEndpoint);
 		this.browser = await chromium.connectOverCDP(cdpEndpoint, {
 			headers: this.cdpConnectHeaders,
@@ -233,24 +246,26 @@ export class PlaywrightAdapter {
 			this.onDisconnect?.('browser_closed');
 		});
 
-		// In remote mode the relay outlives us, so chain onto the embedder's handlers
-		// and restore them on close. One closure so neither can be forgotten.
-		const previousDisconnect = relay.onExtensionDisconnect;
-		const previousBlocked = relay.onTabBlocked;
-		relay.onExtensionDisconnect = (reason, details) => {
-			log.debug('relay: extension disconnected, reason:', reason);
-			previousDisconnect?.(reason, details);
-			this.onDisconnect?.(reason, details);
-		};
-		relay.onTabBlocked = (details) => {
-			log.debug('relay: tab blocked by', details.blockingExtensionIds);
-			previousBlocked?.(details);
-			this.onBlocked?.(details);
-		};
-		this.restoreRelayHandlers = () => {
-			relay.onExtensionDisconnect = previousDisconnect;
-			relay.onTabBlocked = previousBlocked;
-		};
+		if (relay) {
+			// In remote mode the relay outlives us, so chain onto the embedder's handlers
+			// and restore them on close. One closure so neither can be forgotten.
+			const previousDisconnect = relay.onExtensionDisconnect;
+			const previousBlocked = relay.onTabBlocked;
+			relay.onExtensionDisconnect = (reason, details) => {
+				log.debug('relay: extension disconnected, reason:', reason);
+				previousDisconnect?.(reason, details);
+				this.onDisconnect?.(reason, details);
+			};
+			relay.onTabBlocked = (details) => {
+				log.debug('relay: tab blocked by', details.blockingExtensionIds);
+				previousBlocked?.(details);
+				this.onBlocked?.(details);
+			};
+			this.restoreRelayHandlers = () => {
+				relay.onExtensionDisconnect = previousDisconnect;
+				relay.onTabBlocked = previousBlocked;
+			};
+		}
 
 		log.debug('launch complete, context ready for lazy activation');
 	}
@@ -305,7 +320,14 @@ export class PlaywrightAdapter {
 
 	async closePage(pageId: string): Promise<void> {
 		// Clean up local Playwright state if tracked (may not be if never activated)
+		const state = this.pageStates.get(pageId);
 		this.pageStates.delete(pageId);
+
+		// Direct mode - there is no relay and Playwright owns the page, so close it directly.
+		if (this.resolvedConfig.mode === 'direct-cdp') {
+			await state?.page.close();
+			return;
+		}
 
 		// Close via relay → extension → chrome.tabs.remove.
 		// The relay sends Target.detachedFromTarget to Playwright, which internally

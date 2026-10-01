@@ -11,6 +11,12 @@ import type { Adapter, DisconnectDetails } from '../types';
 
 configureLogger({ level: 'silent' });
 
+const { connectOverCDP } = vi.hoisted(() => ({ connectOverCDP: vi.fn() }));
+
+vi.mock('playwright-core', () => ({
+	chromium: { connectOverCDP },
+}));
+
 /**
  * `connect()` needs a real browser, so drive the connection through the handlers
  * it installs on its adapter instead — that is the surface a lost session uses.
@@ -153,5 +159,36 @@ describe('BrowserConnection extension block', () => {
 		expect(connection.explainFailure(new Error('unrelated'))).toBeInstanceOf(
 			ExtensionConflictError,
 		);
+	});
+});
+
+describe('BrowserConnection direct-cdp mode', () => {
+	const endpoint = 'wss://connect.example.com/session?token=abc';
+
+	it('fails to connect without a cdpEndpoint', async () => {
+		const connection = new BrowserConnection({ mode: 'direct-cdp' });
+
+		await expect(connection.connect()).rejects.toThrow('Direct CDP mode requires a cdpEndpoint');
+		expect(connectOverCDP).not.toHaveBeenCalled();
+	});
+
+	it('connects without a locally installed browser and starts on the open page', async () => {
+		const page = { url: () => 'https://example.com/', title: async () => 'Example', on: vi.fn() };
+		connectOverCDP.mockResolvedValue({
+			contexts: () => [{ on: vi.fn(), pages: () => [page] }],
+			on: vi.fn(),
+		});
+		const connection = new BrowserConnection(
+			{ mode: 'direct-cdp', browsers: {} },
+			{ cdpEndpoint: endpoint },
+		);
+		vi.spyOn(connection, 'getAvailableBrowsers').mockReturnValue([]);
+
+		const result = await connection.connect();
+
+		expect(connectOverCDP).toHaveBeenCalledWith(endpoint, expect.anything());
+		expect(result.pages).toEqual([
+			expect.objectContaining({ title: 'Example', url: 'https://example.com/' }),
+		]);
 	});
 });
