@@ -78,18 +78,29 @@ test.describe(
 	},
 	() => {
 		const cleanupWorkflowIds: string[] = [];
+		const cleanupCredentialIds: string[] = [];
 
 		test.afterEach(async ({ api }) => {
-			// The published case leaves a daily schedule active, which would keep
+			// The published cases leave a daily schedule active, which would keep
 			// firing on a persistent stack.
 			while (cleanupWorkflowIds.length > 0) {
-				const workflowId = cleanupWorkflowIds.pop();
+				const workflowId = cleanupWorkflowIds.pop() as string;
+
+				// A refusal case never activated, so this is expected to fail there.
 				try {
-					await api.workflows.deactivate(workflowId!);
-					await api.workflows.delete(workflowId!);
+					await api.workflows.deactivate(workflowId);
 				} catch {
-					// ignore potential errors in the cleanup process
+					// not active
 				}
+
+				// Archive first. The API refuses to delete a workflow that is not
+				// archived, so deleting straight away leaves the row behind.
+				await api.workflows.archive(workflowId);
+				await api.workflows.delete(workflowId);
+			}
+
+			while (cleanupCredentialIds.length > 0) {
+				await api.credentials.deleteCredential(cleanupCredentialIds.pop() as string);
 			}
 		});
 
@@ -239,6 +250,7 @@ test.describe(
 				type: 'anthropicApi',
 				data: { apiKey: 'sk-ant-not-a-real-key' },
 			});
+			cleanupCredentialIds.push(credential.id);
 
 			// A Structured Output Parser dragged onto the canvas with Auto-Fix Format on
 			// and never wired to anything. Its own `Model` input is required and unmet,
