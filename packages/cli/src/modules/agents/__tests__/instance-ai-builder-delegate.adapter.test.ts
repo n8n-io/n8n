@@ -39,7 +39,16 @@ function setup(options: { useEvalModelCatalog?: boolean } = {}) {
 	const agentSkills = mock<AgentSkillsService>();
 	const credentialService = mock<InstanceAiCredentialService>();
 	const settingsRepository = mock<SettingsRepository>();
-	const agentsSettingsService = new AgentsSettingsService(settingsRepository);
+	const agentsSettingsService = new AgentsSettingsService(
+		settingsRepository,
+		mock(),
+		mock(),
+		mock(),
+		mock(),
+		mock(),
+		mock(),
+		mock(),
+	);
 
 	const service = new InstanceAiBuilderDelegateAdapterService(
 		agentsService,

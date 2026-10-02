@@ -5626,7 +5626,7 @@
 	"settings.agents.docsLabel": "Agents docs",
 	"settings.agents.docsLeadingText": "Read about setup and current limits in the ",
 	"settings.agents.enable.label": "Enable Agents",
-	"settings.agents.enable.description": "Allow users to build and run agents. Turning this off blocks new runs. Active runs can finish, and saved agents and history stay available when you enable Agents again.",
+	"settings.agents.enable.description": "Allow users to build and run agents. Turning this off blocks new runs and cancels pending messages. Active runs can finish. Saved agents and history stay available when you enable Agents again.",
 	"settings.agents.loadError": "Could not load Agents settings",
 	"settings.agents.saveError": "Could not save Agents settings",
 	"settings.agents.sandbox.title": "Shared sandbox",

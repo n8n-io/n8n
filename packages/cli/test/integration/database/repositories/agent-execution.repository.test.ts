@@ -168,9 +168,6 @@ describe('AgentExecutionRepository', () => {
 			connection ?? repository.manager.connection,
 			mockLogger(),
 		);
-		const settingsService = new AgentsSettingsService(
-			new SettingsRepository(connection ?? repository.manager.connection, txRunner),
-		);
 		const executions = connection ? new AgentExecutionRepository(connection, txRunner) : repository;
 		const threads = connection
 			? new AgentExecutionThreadRepository(connection, txRunner)
@@ -213,6 +210,16 @@ describe('AgentExecutionRepository', () => {
 			messageRepository,
 		);
 		const queueUpdates = mock<AgentExecutionUpdateBroadcaster>();
+		const settingsService = new AgentsSettingsService(
+			new SettingsRepository(connection ?? repository.manager.connection, txRunner),
+			txRunner,
+			queueRepository,
+			threads,
+			messageRepository,
+			attachmentService,
+			queueUpdates,
+			mockLogger(),
+		);
 		const steering = new AgentMessageSteeringService(
 			txRunner,
 			queueRepository,
@@ -1599,8 +1606,8 @@ describe('AgentExecutionRepository', () => {
 			services: ReturnType<typeof recordingServices>,
 			item: ClaimedAgentMessage,
 			finishReason: 'stop' | 'error' | 'cancelled' = 'stop',
+			recorder = new ExecutionRecorder(),
 		) {
-			const recorder = new ExecutionRecorder();
 			if (finishReason === 'error') recorder.record({ type: 'error', error: new Error('Failed') });
 			await services.executionService.finalizeExecution(item.admission.executionId, {
 				...item.recording,
@@ -1609,27 +1616,103 @@ describe('AgentExecutionRepository', () => {
 			await services.queue.settle(item.thread.id, item.admission.executionId);
 		}
 
-		it('finishes active work and pauses pending messages across processes while Agents is off', async () => {
+		it.each([false, true])(
+			'finishes active work and cancels pending messages when Agents turns off (attachment cleanup fails: %s)',
+			async (cleanupFails) => {
+				const local = recordingServices();
+				const remote = recordingServices(undefined, peer);
+				const threadId = uuid();
+				await enqueue(local, input(threadId, 'Active', 'new'));
+				const active = await claim(local, threadId);
+				const pendingInput = input(threadId, 'Pending');
+				pendingInput.payload.attachments = [
+					{ id: 'pending-file', fileName: 'pending.txt', mimeType: 'text/plain', sizeBytes: 1 },
+				];
+				const pending = await enqueue(remote, pendingInput);
+				const steered = await enqueue(remote, input(threadId, 'Accepted steering'));
+				const target = { projectId, agentId, threadId, userId: owner.id, kind: 'preview' as const };
+				await local.queue.steer({
+					...target,
+					queueId: steered.id,
+					executionId: active.admission.executionId,
+				});
+
+				if (cleanupFails) {
+					local.attachmentService.deleteByIds.mockRejectedValueOnce(new Error('Cleanup failed'));
+				}
+				await local.settingsService.setEnabled(false);
+				expect(await remote.queueRepository.findHead(threadId, {})).toMatchObject({
+					id: active.item.id,
+					executionId: active.admission.executionId,
+				});
+				expect(
+					await remote.messageRepository.findOneByOrFail({ id: pending.messageId }),
+				).toMatchObject({
+					content: { role: 'user', content: [] },
+					modelContextAt: null,
+				});
+				expect(local.attachmentService.deleteByIds).toHaveBeenCalledWith(['pending-file']);
+				expect((await remote.queue.listPending(target)).items).toMatchObject([
+					{ id: steered.id, steeringExecutionId: active.admission.executionId },
+				]);
+				const recorder = new ExecutionRecorder();
+				const consumed = await local.steering.consume(
+					{ ...target, executionId: active.admission.executionId },
+					{ messages: [], lastCreatedAt: 0, completing: false, canContinue: true },
+					recorder,
+					new AbortController().signal,
+				);
+				expect(consumed.messages.map(({ id }) => id)).toEqual([steered.messageId]);
+				await finish(local, active, 'stop', recorder);
+
+				expect(await remote.queue.claimNext(threadId, async () => true)).toBeNull();
+				expect(await remote.queueRepository.findHead(threadId, {})).toBeNull();
+				await expect(remote.queue.enqueue(input(threadId, 'New'))).rejects.toThrow(
+					'Agents are disabled',
+				);
+
+				await local.settingsService.setEnabled(true);
+				expect(await remote.queue.claimNext(threadId, async () => true)).toBeNull();
+				const next = await enqueue(remote, input(threadId, 'New'));
+				const started = await claim(remote, threadId);
+				expect(started.item.id).toBe(next.id);
+				await finish(remote, started);
+			},
+		);
+
+		it('cancels a pending turn accepted concurrently with disabling Agents', async () => {
 			const local = recordingServices();
 			const remote = recordingServices(undefined, peer);
-			const threadId = uuid();
-			await enqueue(local, input(threadId, 'Active', 'new'));
-			const active = await claim(local, threadId);
-			const pending = await enqueue(remote, input(threadId, 'Pending'));
-
-			await local.settingsService.setEnabled(false);
-			await finish(local, active);
-
-			expect(await remote.queue.claimNext(threadId, async () => true)).toBeNull();
-			expect(await remote.queueRepository.findHead(threadId, {})).toMatchObject({ id: pending.id });
-			await expect(remote.queue.enqueue(input(threadId, 'New'))).rejects.toThrow(
-				'Agents are disabled',
-			);
-
 			await local.settingsService.setEnabled(true);
-			const resumed = await claim(remote, threadId);
-			expect(resumed.item.id).toBe(pending.id);
-			await finish(remote, resumed);
+			const threadId = uuid();
+			const inserted = createDeferredPromise<OperationContext>();
+			const release = createDeferredPromise();
+			const insert = local.queueRepository.enqueue.bind(local.queueRepository);
+			const spy = vi
+				.spyOn(local.queueRepository, 'enqueue')
+				.mockImplementationOnce(async (...args) => {
+					const item = await insert(...args);
+					inserted.resolve(args[3]);
+					await release.promise;
+					return item;
+				});
+			const competing = observePeerTransaction();
+			try {
+				const accepting = enqueue(local, input(threadId, 'Pending', 'new'));
+				const ctx = await inserted.promise;
+				const disabling = remote.settingsService.setEnabled(false);
+				await competing.started;
+				await waitForPeerLock(ctx);
+				release.resolve();
+				await Promise.all([accepting, disabling]);
+				expect(await local.queueRepository.findHead(threadId, {})).toBeNull();
+				await remote.settingsService.setEnabled(true);
+				expect(await local.queue.claimNext(threadId, async () => true)).toBeNull();
+			} finally {
+				release.resolve();
+				spy.mockRestore();
+				competing.restore();
+			}
 		});
 
 		it.each([

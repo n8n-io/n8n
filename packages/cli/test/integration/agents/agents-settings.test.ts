@@ -1,7 +1,8 @@
 import { Logger, ModuleRegistry } from '@n8n/backend-common';
-import { mockInstance } from '@n8n/backend-test-utils';
+import { mockInstance, testModules } from '@n8n/backend-test-utils';
 import { SettingsRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { mock } from 'vitest-mock-extended';
 
 import '@/modules/agents/agents-settings.controller';
 import { AgentsSettingsService } from '@/modules/agents/agents-settings.service';
@@ -11,6 +12,10 @@ import { FrontendService } from '@/services/frontend.service';
 import { createAdmin, createMember, createOwner } from '../shared/db/users';
 import type { SuperAgentTest } from '../shared/types';
 import { setupTestServer } from '../shared/utils';
+
+beforeAll(async () => {
+	await testModules.loadModules(['agents']);
+});
 
 describe('Agents instance settings', () => {
 	const registry = Container.get(ModuleRegistry);
@@ -51,7 +56,16 @@ describe('Agents instance settings', () => {
 			const repository = Container.get(SettingsRepository);
 			await repository.upsertByKey('instanceAi.settings', '{"enabled":false}', true, {});
 			await repository.upsertByKey('agents.enabled', 'false', true, {});
-			const peer = new AgentsSettingsService(repository);
+			const peer = new AgentsSettingsService(
+				repository,
+				mock(),
+				mock(),
+				mock(),
+				mock(),
+				mock(),
+				mock(),
+				mock(),
+			);
 			await expect(peer.getEnabled()).resolves.toBe(false);
 
 			const response = await admin.put('/agents/settings').send({ enabled: true }).expect(200);

@@ -22,6 +22,7 @@ import {
 import { AgentExecutionOrchestratorService } from './agent-execution-orchestrator.service';
 import { AgentChangePublisher } from './agent-change-publisher.service';
 import { AgentUpdateBroadcaster } from './agent-update-broadcaster';
+import { AgentsSettingsService } from './agents-settings.service';
 import { AgentTaskJobRegistrar } from './scheduling/agent-task-job-registrar';
 import { knownTaskTimezone } from './scheduling/task-timezone';
 import { Agent } from './entities/agent.entity';
@@ -77,6 +78,7 @@ export class AgentTaskService {
 		private readonly modificationTelemetry: AgentModificationTelemetryService,
 		private readonly durableJobRegistrar: AgentTaskJobRegistrar,
 		private readonly agentUpdateBroadcaster: AgentUpdateBroadcaster,
+		private readonly settingsService: AgentsSettingsService,
 	) {}
 
 	// ── CRUD ──────────────────────────────────────────────────────────────
@@ -471,7 +473,9 @@ export class AgentTaskService {
 	async startScheduledRun(
 		agentId: string,
 		taskId: string,
-	): Promise<'started' | 'skipped-active' | 'stale'> {
+	): Promise<'started' | 'skipped-active' | 'skipped-disabled' | 'stale'> {
+		if (!(await this.settingsService.getEnabled())) return 'skipped-disabled';
+
 		// Body comes from the PUBLISHED snapshot row, so name/objective/cron
 		// reflect publish time rather than live draft edits.
 		const agent = await this.agentRepository.findOne({ where: { id: agentId } });
