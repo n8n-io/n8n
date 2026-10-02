@@ -286,7 +286,7 @@ describe('getDecoratorGeneratedOperations', () => {
 			$ref: '../../../../shared/spec/responses/unsupportedMediaType.yml',
 		});
 		// Multer's parsing errors can themselves 500 (an unmasked parse failure, or
-		// LIMIT_UNEXPECTED_FILE) - see multipart-errors.ts.
+		// LIMIT_UNEXPECTED_FILE) - see multipart.request-body.ts's `toPublicApiError`.
 		expect(operation.config.responses[500]).toEqual({
 			$ref: '../../../../shared/spec/responses/internalServerError.yml',
 		});
