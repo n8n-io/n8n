@@ -9,6 +9,8 @@ import { createLocalJWKSet, jwtVerify } from 'jose';
 import { Cipher, InstanceSettings } from 'n8n-core';
 import { generateKeyPairSync } from 'node:crypto';
 
+import { JwtService } from '@/services/jwt.service';
+
 import {
 	OAUTH_SIGNING_ALGORITHM,
 	OAUTH_SIGNING_KEY_TYPE,
@@ -29,11 +31,13 @@ const createProcess = () =>
 		Container.get(Cipher),
 		new CacheService(Container.get(GlobalConfig)),
 		Container.get(Logger),
+		Container.get(JwtService),
 	);
 
+/** The audience is passed to `signAccessToken` on its own. */
 const claims = () => {
 	const now = Math.floor(Date.now() / 1000);
-	return { iss: ISSUER, aud: AUDIENCE, sub: 'user-1', iat: now, exp: now + 3600 };
+	return { iss: ISSUER, sub: 'user-1', iat: now, exp: now + 3600 };
 };
 
 const activeRows = async () =>
@@ -117,7 +121,7 @@ describe('OAuthSigningKeyService (integration)', () => {
 			expect(keys.map((k) => k.kid)).toEqual([rows[0].id]);
 			// Both processes sign with the winner's private key.
 			await expect(
-				jwtVerify(p.signAccessToken(claims()), createLocalJWKSet({ keys }), {
+				jwtVerify(p.signAccessToken(claims(), AUDIENCE), createLocalJWKSet({ keys }), {
 					issuer: ISSUER,
 					audience: AUDIENCE,
 				}),
@@ -133,7 +137,7 @@ describe('OAuthSigningKeyService (integration)', () => {
 		expect(Object.keys(keys[0]).sort()).toEqual(['alg', 'crv', 'kid', 'kty', 'use', 'x', 'y']);
 
 		const { payload } = await jwtVerify(
-			service.signAccessToken(claims()),
+			service.signAccessToken(claims(), AUDIENCE),
 			createLocalJWKSet({ keys }),
 			{
 				issuer: ISSUER,

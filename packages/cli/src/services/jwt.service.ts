@@ -2,7 +2,7 @@ import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { isRecord } from '@n8n/utils/is-record';
-import { createHash } from 'crypto';
+import { createHash, type KeyObject } from 'crypto';
 import jwt from 'jsonwebtoken';
 import { InstanceSettings, type DeploymentStateRepo } from 'n8n-core';
 
@@ -82,6 +82,19 @@ export class JwtService {
 	 */
 	signForResource(payload: object, audience: string, options: PurposedSignOptions = {}): string {
 		return jwt.sign(payload, this.jwtSecret, { ...options, audience });
+	}
+
+	/**
+	 * Like {@link signForResource}, but signs with an asymmetric key that the
+	 * caller owns, such as the OAuth access-token signing key.
+	 */
+	signForResourceWithKey(
+		payload: object,
+		audience: string,
+		privateKey: KeyObject,
+		options: PurposedSignOptions = {},
+	): string {
+		return jwt.sign(payload, privateKey, { ...options, audience });
 	}
 
 	/**
