@@ -331,21 +331,19 @@ defineExpose({ focusItem });
 @use '@n8n/design-system/css/mixins/mixins';
 
 .messageQueue {
-	min-width: 0;
-	--text-color: light-dark(var(--color--neutral-600), var(--text-color--subtler));
-	--icon-color: var(--color--neutral-400);
+	--n8n--message-queue--radius: var(--radius--xl) var(--radius--xl) 0 0;
 
+	display: flex;
+	flex-direction: column;
+	min-width: 0;
 	margin-inline: var(--spacing--xs);
 	transform: translateY(var(--spacing--sm));
 	padding-bottom: var(--spacing--sm);
 	background: var(--background--subtle);
-	border-radius: var(--radius--xl) var(--radius--xl) 0 0;
+	border-radius: var(--n8n--message-queue--radius);
 	border: var(--border);
 	border-bottom: 0;
 	background-clip: padding-box;
-
-	display: flex;
-	flex-direction: column;
 }
 
 .messageQueue :global(.n8n-icon) {
@@ -400,11 +398,15 @@ defineExpose({ focusItem });
 	padding: var(--spacing--xs);
 	border: 0;
 	background: transparent;
-	color: var(--text-color);
+	border-radius: var(--n8n--message-queue--radius);
 	font: inherit;
 	cursor: pointer;
 
-	> :global(.n8n-icon) {
+	&:hover {
+		background-color: var(--background--hover);
+	}
+
+	> :last-child {
 		flex-shrink: 0;
 		margin-inline-end: var(--spacing--3xs);
 	}
