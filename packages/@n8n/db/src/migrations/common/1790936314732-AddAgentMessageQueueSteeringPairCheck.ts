@@ -5,7 +5,7 @@ import type { MigrationContext, ReversibleMigration } from '../migration-types';
 const table = 'agent_message_queue';
 const check = 'agent_message_queue_steering_pair';
 
-export class AddAgentMessageQueueSteeringPairCheck1790844660471 implements ReversibleMigration {
+export class AddAgentMessageQueueSteeringPairCheck1790936314732 implements ReversibleMigration {
 	async up({ escape, runQuery, queryRunner, tablePrefix }: MigrationContext) {
 		const executionId = escape.columnName('steeringExecutionId');
 		const order = escape.columnName('steeringOrder');
