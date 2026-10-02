@@ -59,6 +59,14 @@ export class DuplicateTaskHandlerError extends Error {
 	}
 }
 
+/** Raised when a lease heartbeat is given a lease duration that is not a positive integer. */
+export class InvalidLeaseDurationError extends Error {
+	constructor(readonly leaseDurationMs: number) {
+		super('The lease duration must be a positive integer of milliseconds');
+		this.name = 'InvalidLeaseDurationError';
+	}
+}
+
 /**
  * Raised when a stored row is missing a column its `kind` guarantees should be
  * set (a corrupt or hand-edited row), while assembling its `Schedule` from the
