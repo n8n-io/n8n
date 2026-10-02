@@ -84,6 +84,7 @@ export class LeaseHeartbeat {
 			remainingMs > MAX_INTEGER_32BITS_SIGNED
 				? setTimeout(() => this.armExpiry(leaseSetAt), MAX_INTEGER_32BITS_SIGNED)
 				: setTimeout(() => this.hooks.onRenewal?.('expired'), Math.max(0, remainingMs));
+		this.expiryTimer.unref();
 	}
 
 	private scheduleBeat(): void {
@@ -93,6 +94,7 @@ export class LeaseHeartbeat {
 			},
 			Math.min(this.intervalMs, MAX_INTEGER_32BITS_SIGNED),
 		);
+		this.beatTimer.unref();
 	}
 
 	private async beat(): Promise<void> {
