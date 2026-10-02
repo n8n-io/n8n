@@ -21,24 +21,30 @@ function fail(id: string, message: string): never {
 	throw new AgentPlanValidationError(`Plan item ${id}: ${message}`);
 }
 
+/** Create an index of all tasks and groups to access by ID */
 function indexPlan(document: AgentPlanDocument): PlanIndex {
 	const index: PlanIndex = new Map();
+
 	const add = (item: AgentPlanItem, parentId: string | null) => {
 		if (index.has(item.id)) fail(item.id, 'IDs must be unique');
 		index.set(item.id, { item, parentId });
 	};
+
 	for (const item of document.items) {
 		add(item, null);
 		if (item.kind === 'group') {
 			for (const task of item.tasks) add(task, item.id);
 		}
 	}
+
 	return index;
 }
 
+/** Traverse all nodes and check for cycles */
 function assertAcyclic(edges: Map<string, string[]>) {
 	const visited = new Set<string>();
 	const visiting = new Set<string>();
+
 	const visit = (id: string) => {
 		if (visiting.has(id)) fail(id, 'References must not form a cycle');
 		if (visited.has(id)) return;
@@ -47,11 +53,14 @@ function assertAcyclic(edges: Map<string, string[]>) {
 		visiting.delete(id);
 		visited.add(id);
 	};
+
 	for (const id of edges.keys()) visit(id);
 }
 
+/** Check that nodes has maximum one reference in "fallbackFor" of some other node */
 function getReplacements(index: PlanIndex): Map<string, string> {
 	const replacements = new Map<string, string>();
+
 	for (const { item, parentId } of index.values()) {
 		if (item.kind !== 'task' || !item.fallbackFor) continue;
 		const original = index.get(item.fallbackFor);
@@ -66,9 +75,11 @@ function getReplacements(index: PlanIndex): Map<string, string> {
 		if (replacements.has(item.fallbackFor)) fail(item.id, 'A task can have only one replacement');
 		replacements.set(item.fallbackFor, item.id);
 	}
+
 	assertAcyclic(
 		new Map([...replacements].map(([original, replacement]) => [original, [replacement]])),
 	);
+
 	return replacements;
 }
 
@@ -79,16 +90,20 @@ function blockedBy({ item, parentId }: Entry, index: PlanIndex): string[] {
 
 function validateGraph(index: PlanIndex) {
 	getReplacements(index);
+
 	for (const entry of index.values()) {
 		const { item, parentId } = entry;
+
 		if (new Set(item.dependsOn).size !== item.dependsOn.length) {
 			fail(item.id, 'Dependencies must be unique');
 		}
+
 		for (const dependency of item.dependsOn) {
 			if (dependency === item.id || index.get(dependency)?.parentId !== parentId) {
 				fail(item.id, 'Dependencies must reference other items at the same level');
 			}
 		}
+
 		if (
 			item.kind === 'group' &&
 			isFinal(item.status) &&
@@ -100,19 +115,23 @@ function validateGraph(index: PlanIndex) {
 			fail(item.id, 'Prerequisites must be Done before work starts or completes');
 		}
 	}
+
 	assertAcyclic(new Map([...index].map(([id, { item }]) => [id, item.dependsOn])));
 }
 
 export function getAgentPlanReadiness(document: AgentPlanDocument): AgentPlanReadiness {
 	const index = indexPlan(document);
 	validateGraph(index);
+
 	const readiness: AgentPlanReadiness = { ready: [], blocked: [] };
+
 	for (const entry of index.values()) {
 		if (entry.item.status !== 'pending') continue;
 		const dependencies = blockedBy(entry, index);
 		if (dependencies.length) readiness.blocked.push({ id: entry.item.id, blockedBy: dependencies });
 		else readiness.ready.push(entry.item.id);
 	}
+
 	return readiness;
 }
 
@@ -126,11 +145,13 @@ export function prepareAgentPlan(
 	const index = indexPlan(document);
 	const previousIndex = previous ? indexPlan(previous) : new Map<string, Entry>();
 	const replacements = getReplacements(index);
+
 	for (const { item } of index.values()) {
 		if (item.status !== 'pending') continue;
 		if (new Set(item.dependsOn).size !== item.dependsOn.length) {
 			fail(item.id, 'Dependencies must be unique');
 		}
+
 		item.dependsOn = [
 			...new Set(
 				item.dependsOn.map((id) => {
@@ -145,6 +166,7 @@ export function prepareAgentPlan(
 			),
 		];
 	}
+
 	for (const [id, { item }] of previousIndex) {
 		if (
 			!index.has(id) &&
@@ -154,6 +176,7 @@ export function prepareAgentPlan(
 			fail(id, 'Only Pending items with no started tasks can be removed');
 		}
 	}
+
 	for (const [id, { item, parentId }] of index) {
 		const old = previousIndex.get(id);
 		if (
@@ -193,6 +216,8 @@ export function prepareAgentPlan(
 		}
 		if (!isFinal(old.item.status) && isFinal(item.status)) item.endedAt = now.toISOString();
 	}
+
 	validateGraph(index);
+
 	return document;
 }
