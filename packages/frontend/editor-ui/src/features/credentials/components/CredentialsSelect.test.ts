@@ -19,41 +19,27 @@ vi.mock('@n8n/design-system', async () => {
 	const { defineComponent } = await import('vue');
 
 	return {
-		N8nSelect: defineComponent({
-			props: {
-				modelValue: { type: String, default: '' },
-				filterable: { type: Boolean, default: false },
-				size: { type: String, default: '' },
-				placeholder: { type: String, default: '' },
-				disabled: { type: Boolean, default: false },
-				title: { type: String, default: '' },
-			},
-			emits: ['update:modelValue'],
-			template: `<div><slot /></div>`,
-		}),
 		N8nSelect2: defineComponent({
 			props: {
 				modelValue: { type: String, default: '' },
-				items: { type: Array, default: () => [] },
+				items: {
+					type: Array as () => Array<{ value: string; label: string }>,
+					default: () => [],
+				},
 				size: { type: String, default: '' },
 				placeholder: { type: String, default: '' },
 				disabled: { type: Boolean, default: false },
 				title: { type: String, default: '' },
 			},
-			template: `<div />`,
-		}),
-		N8nOption: defineComponent({
-			props: {
-				value: { type: String, required: true },
-				label: { type: String, required: true },
-				disabled: { type: Boolean, default: false },
-			},
 			template: `
-				<div
-					data-test-id="credential-select-option"
-					:data-credential-name="value"
-					:data-label="label"
-				><slot /></div>
+				<div>
+					<div
+						v-for="item in items"
+						:key="item.value"
+						data-test-id="credential-select-option"
+						:data-credential-name="item.value"
+					>{{ item.label }}</div>
+				</div>
 			`,
 		}),
 	};
