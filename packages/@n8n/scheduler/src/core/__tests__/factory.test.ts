@@ -1866,6 +1866,30 @@ describe('createScheduler metrics', () => {
 			expect(metrics.recordLeaseRenewal).not.toHaveBeenCalled();
 			finish();
 		});
+
+		it('warns once when a run is still pending after sixty leases', async () => {
+			const { taskStore, onEvent, finish } = await fireLongHandler(mock<SchedulerMetrics>());
+			taskStore.renewLease.mockResolvedValue(true);
+			const stuckWarning = {
+				level: 'warn',
+				message: 'Scheduler task is still running after many leases; it may be stuck',
+				context: {
+					taskId: claimedTask().id,
+					taskType: 'test-task',
+					runningSeconds: 60 * LEASE_SECONDS,
+				},
+			};
+
+			await vi.advanceTimersByTimeAsync(60 * LEASE_SECONDS * 1_000 - 1);
+			expect(onEvent).not.toHaveBeenCalledWith(stuckWarning);
+
+			await vi.advanceTimersByTimeAsync(60_000);
+			const warnings = onEvent.mock.calls.filter(
+				([event]) => event.message === stuckWarning.message,
+			);
+			expect(warnings).toEqual([[stuckWarning]]);
+			finish();
+		});
 	});
 
 	it('does not let a throwing metrics sink break a pass', async () => {

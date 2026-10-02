@@ -319,6 +319,13 @@ export function createScheduler(deps: SchedulerDeps): Scheduler & SchedulerPasse
 					error: described(error),
 				});
 			},
+			onLongRunningTask: (task, runningSeconds) => {
+				emit('warn', 'Scheduler task is still running after many leases; it may be stuck', {
+					taskId: task.id,
+					taskType: task.taskType,
+					runningSeconds,
+				});
+			},
 			onDispatch: (taskType, lagSeconds) => {
 				recordMetric(() => {
 					metrics.recordDispatch(taskType);
