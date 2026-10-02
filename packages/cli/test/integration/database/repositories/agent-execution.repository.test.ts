@@ -511,12 +511,12 @@ describe('AgentExecutionRepository', () => {
 				if (!approval) throw new Error('Expected a pending approval');
 				return { job, approval };
 			};
+			await vi.waitFor(() => expect(wake.requestWake).toHaveBeenCalledWith(parent.id));
 			await initialSuspensionPersisted.promise;
 			expect(await jobs.findById(receipt.jobId)).toMatchObject({
 				status: 'suspended',
 				error: null,
 			});
-			expect(wake.requestWake).toHaveBeenCalledWith(parent.id);
 			return {
 				...main,
 				...(await readApproval()),
