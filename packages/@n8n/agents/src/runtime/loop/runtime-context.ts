@@ -170,10 +170,16 @@ export class RuntimeContextBuilder {
 			instructionProviderOptions,
 			combinedVolatileInstructions || undefined,
 			supportsSplitSystemMessages(this.config.model),
-			activeSkills?.instructions(),
+			{
+				instructions: activeSkills?.instructions(),
+				providerOptions: buildInstructionPromptCacheOptions(
+					this.config.promptCaching,
+					this.modelId,
+				),
+			},
 		);
 		// Cache breakpoints apply to this call only. Do not change stored messages or tools.
-		const cached = applyRuntimeCacheBreakpoints({
+		return applyRuntimeCacheBreakpoints({
 			system,
 			messages: activeSkills?.modelMessages(messages, list) ?? messages,
 			aiTools: tools.aiTools,
@@ -181,7 +187,6 @@ export class RuntimeContextBuilder {
 			modelId: this.modelId,
 			staticToolCacheName: tools.staticToolCacheName,
 		});
-		return { system, ...cached };
 	}
 
 	/**

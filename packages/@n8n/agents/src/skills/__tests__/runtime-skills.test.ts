@@ -916,4 +916,57 @@ describe('reference skills', () => {
 			'Skill "agents" shares unknown reference "missing"',
 		);
 	});
+
+	describe('in-memory reference metadata', () => {
+		const owner = { id: 'builder', name: 'builder', description: 'Build.', instructions: 'Build.' };
+		const reference = {
+			id: 'models',
+			name: 'models',
+			description: 'Models.',
+			instructions: 'Models.',
+		};
+
+		it('accepts parents and reference together', () => {
+			const registry = createRuntimeSkillRegistry([
+				owner,
+				{
+					...reference,
+					parents: ['builder'],
+					reference: { owner: 'builder', path: 'references/models.md' },
+				},
+			]);
+
+			expect(registry.skills.find((skill) => skill.id === 'models')?.parents).toEqual(['builder']);
+		});
+
+		it('rejects parents without a reference location', () => {
+			expect(() =>
+				createRuntimeSkillSource([owner, { ...reference, parents: ['builder'] }]),
+			).toThrow('Reference "models" must set both parents and reference');
+		});
+
+		it('rejects a reference location without parents', () => {
+			expect(() =>
+				createRuntimeSkillSource([
+					owner,
+					{ ...reference, reference: { owner: 'builder', path: 'references/models.md' } },
+				]),
+			).toThrow('Reference "models" must set both parents and reference');
+		});
+
+		it('keeps a reference whose owner is filtered out but a sharer remains', () => {
+			const source = createRuntimeSkillSource([
+				{ id: 'agents', name: 'agents', description: 'Agents.', instructions: 'Agents.' },
+				{
+					...reference,
+					parents: ['builder', 'agents'],
+					reference: { owner: 'builder', path: 'references/models.md' },
+				},
+			]);
+
+			expect(source.registry.skills.find((skill) => skill.id === 'models')?.parents).toEqual([
+				'agents',
+			]);
+		});
+	});
 });

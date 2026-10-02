@@ -399,4 +399,78 @@ describe('applyRuntimeCacheBreakpoints', () => {
 			anthropic: { cacheControl: { type: 'ephemeral', ttl: '1h' } },
 		});
 	});
+
+	describe('skill system message breakpoint', () => {
+		const skillSystem: SystemModelMessage = {
+			role: 'system',
+			content: '\n\n<active_skills>Skill body</active_skills>',
+			providerOptions: ANTHROPIC_CACHE_CONTROL,
+		};
+		const volatileSystem: SystemModelMessage = { role: 'system', content: '\n\nVolatile' };
+
+		it('keeps the skill marker when the budget has room after the runtime breakpoints', () => {
+			const system = [anthropicSystem, skillSystem, volatileSystem];
+
+			const result = applyRuntimeCacheBreakpoints({
+				system,
+				messages: [makeUserMessage('hi')],
+				aiTools: { tool_a: makeTool() },
+				promptCaching: { enabled: true },
+				modelId: 'anthropic/claude-sonnet-4-5',
+				staticToolCacheName: 'tool_a',
+			});
+
+			// Instruction (1) + skill (1) + last message (1) + static tool (1) = 4.
+			expect(result.system).toBe(system);
+			expect(result.messages[0]?.providerOptions).toBeDefined();
+			expect(result.aiTools.tool_a?.providerOptions).toBeDefined();
+		});
+
+		it('drops the skill marker before a caller or conversation breakpoint', () => {
+			const messages = [
+				makeUserMessage('a', ANTHROPIC_CACHE_CONTROL),
+				makeUserMessage('b', ANTHROPIC_CACHE_CONTROL),
+			];
+			const aiTools = { tool_a: makeTool(ANTHROPIC_CACHE_CONTROL) };
+
+			// Caller markers: instruction (1) + 2 messages (2) + tool_a (1) = 4.
+			const result = applyRuntimeCacheBreakpoints({
+				system: [anthropicSystem, skillSystem, volatileSystem],
+				messages,
+				aiTools,
+				promptCaching: { enabled: true },
+				modelId: 'anthropic/claude-sonnet-4-5',
+				staticToolCacheName: undefined,
+			});
+
+			expect(result.system).toEqual([
+				anthropicSystem,
+				{ role: 'system', content: skillSystem.content },
+				volatileSystem,
+			]);
+		});
+
+		it('gives the last slot to the conversation breakpoint, not the skill marker', () => {
+			const messages = [makeUserMessage('a', ANTHROPIC_CACHE_CONTROL), makeUserMessage('b')];
+			const aiTools = { tool_a: makeTool(ANTHROPIC_CACHE_CONTROL) };
+
+			// Caller markers: instruction (1) + first message (1) + tool_a (1) = 3.
+			const result = applyRuntimeCacheBreakpoints({
+				system: [anthropicSystem, skillSystem],
+				messages,
+				aiTools,
+				promptCaching: { enabled: true },
+				modelId: 'anthropic/claude-sonnet-4-5',
+				staticToolCacheName: undefined,
+			});
+
+			expect(result.messages[1]?.providerOptions).toEqual({
+				anthropic: { cacheControl: { type: 'ephemeral', ttl: '1h' } },
+			});
+			expect(result.system).toEqual([
+				anthropicSystem,
+				{ role: 'system', content: skillSystem.content },
+			]);
+		});
+	});
 });
