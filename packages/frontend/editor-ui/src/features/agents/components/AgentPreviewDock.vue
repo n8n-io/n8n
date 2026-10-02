@@ -299,6 +299,7 @@ defineExpose({ clearBudgetStops });
 				:before-send="props.beforeSend"
 				:budget-cards="props.budgetCards"
 				:increase-budget="props.increaseBudget"
+				:stub-queue="true"
 				@continue-loaded="emit('continue-loaded', $event)"
 				@session-created="emit('session-created', $event)"
 				@open-build="emit('open-build')"

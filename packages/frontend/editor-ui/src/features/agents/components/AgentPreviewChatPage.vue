@@ -26,6 +26,7 @@ const props = withDefaults(
 		canSendToAssistant?: boolean;
 		dismissedFixToolCallIds?: string[];
 		beforeSend?: () => Promise<void> | void;
+		stubQueue?: boolean;
 		layout?: 'page' | 'dock';
 		budgetCards?: boolean;
 		/** Persists a raised budget cap. Omitted when the agent is read-only. */
@@ -103,6 +104,7 @@ defineExpose({ focusInput, getConversationMarkdown, clearBudgetStops });
 				:before-send="beforeSend"
 				:budget-cards="budgetCards"
 				:increase-budget="increaseBudget"
+				:stub-queue="stubQueue"
 				@continue-loaded="emit('continue-loaded', $event)"
 				@session-created="emit('session-created', $event)"
 				@initial-consumed="emit('initial-consumed')"
