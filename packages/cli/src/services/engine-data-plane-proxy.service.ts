@@ -26,8 +26,8 @@ export const isStartRefusedBeforeSave = (error: unknown): boolean =>
 	error instanceof EngineRejectedWorkflowError || error instanceof EngineDidNotAdmitError;
 
 /**
- * What a cancel request did. `cancelled: false` carries the status the
- * execution had already ended with.
+ * Outcome of the cancellation request. `cancelled: false` carries the status
+ * the execution had already ended with.
  */
 export type CancelExecutionOutcome =
 	| { cancelled: true }

@@ -1,0 +1,17 @@
+Scope: all 89 workspace projects
+✓ Lockfile at ../../../pnpm-lock.yaml passes supply-chain policies (verified 24m ago)
+../../..                                 | Progress: resolved 1, reused 0, downloaded 0, added 0
+../../..                                 | Progress: resolved 1, reused 1, downloaded 0, added 1, done
+.../node_modules/isolated-vm install$ node-gyp-build 'node-gyp rebuild -j 4 --release -v' || node-gyp rebuild --release -j max
+.../node_modules/isolated-vm install: Done
+../../.. preinstall$ node scripts/block-npm-install.js
+../../.. preinstall: Done
+../../.. prepare$ node scripts/prepare.mjs
+../../.. prepare: sync hooks: ✔️ (post-rewrite, post-merge, pre-commit, post-checkout)
+../../.. prepare: Done
+
+devDependencies:
+- n8n-containers link:../../testing/containers
++ n8n-containers link:../../quality/environments/containers
+
+Done in 6.6s using pnpm v12.4.2

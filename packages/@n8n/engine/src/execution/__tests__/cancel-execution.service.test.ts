@@ -55,7 +55,13 @@ function makeService(executionStore: ExecutionStore) {
 
 describe('CancelExecutionService', () => {
 	it('ends the execution, sweeps its pending steps, and announces the end once', async () => {
-		const executionStore = makeExecutionStore();
+		const executionStore = makeExecutionStore({
+			loadExecution: vi.fn().mockResolvedValue({
+				...execution,
+				status: 'cancelled',
+				responseExpectation: { kind: 'runEnd' },
+			}),
+		});
 		const { service, stepStore, publisher, responseSender } = makeService(executionStore);
 
 		const result = await service.cancel('exec-1');
@@ -76,6 +82,17 @@ describe('CancelExecutionService', () => {
 			status: 'cancelled',
 			lastStep: null,
 		});
+	});
+
+	it('sends no ended message when the caller expects none', async () => {
+		const executionStore = makeExecutionStore();
+		const { service, publisher, responseSender } = makeService(executionStore);
+
+		await service.cancel('exec-1');
+
+		// The run still ends: only the response is left out.
+		expect(publisher.publish).toHaveBeenCalledTimes(1);
+		expect(responseSender.send).not.toHaveBeenCalled();
 	});
 
 	it.each<ExecutionStatus>(['completed', 'failed', 'cancelled'])(

@@ -37,13 +37,15 @@ export class CancelExecutionService {
 				at: cancelled.finishedAt.toISOString(),
 			});
 			// Releases whoever waits on the run. No step settled, so there is no last step.
-			this.responseSender.send({
-				type: 'ended',
-				executionId,
-				workflowId: execution.workflowId,
-				status: 'cancelled',
-				lastStep: null,
-			});
+			if (execution.responseExpectation.kind !== 'none') {
+				this.responseSender.send({
+					type: 'ended',
+					executionId,
+					workflowId: execution.workflowId,
+					status: 'cancelled',
+					lastStep: null,
+				});
+			}
 		}
 
 		return { status: execution.status };

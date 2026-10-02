@@ -137,7 +137,10 @@ test.describe(
 			await n8n.canvas.clickExecuteWorkflowButton();
 
 			await expect(n8n.canvas.stopExecutionButton()).toBeVisible();
-			await assertNodeExecutionStates(n8n, [{ nodeName: 'Manual', success: 'visible' }]);
+			await assertNodeExecutionStates(n8n, [
+				{ nodeName: 'Manual', success: 'visible' },
+				{ nodeName: 'Wait', running: 'visible' },
+			]);
 
 			await n8n.canvas.stopExecutionButton().click();
 
