@@ -1,7 +1,8 @@
 import type { AuthenticatedRequest, TokenGrant, User } from '@n8n/db';
 import type { ApiKeyScope } from '@n8n/permissions';
-import { mock, mockDeep } from 'jest-mock-extended';
 import type { NextFunction, Response } from 'express';
+import type { Mocked, MockedFunction } from 'vitest';
+import { mock, mockDeep } from 'vitest-mock-extended';
 
 import * as middlewares from '../shared/middlewares/global.middleware';
 
@@ -10,14 +11,14 @@ function buildReq(tokenGrant?: TokenGrant): AuthenticatedRequest {
 }
 
 describe('publicApiScope', () => {
-	let res: jest.Mocked<Response>;
-	let next: jest.MockedFunction<NextFunction>;
+	let res: Mocked<Response>;
+	let next: MockedFunction<NextFunction>;
 
 	beforeEach(() => {
 		res = mockDeep<Response>();
 		res.status.mockReturnThis();
 		res.json.mockReturnThis();
-		next = jest.fn();
+		next = vi.fn() as MockedFunction<NextFunction>;
 	});
 
 	it('tags the returned middleware with the provided scope', () => {

@@ -1,6 +1,6 @@
 import type { ModuleRegistry } from '@n8n/backend-common';
 import type { AuthenticatedRequest } from '@n8n/db';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import type { OtelLifecycleHandler } from '../otel-lifecycle-handler';
 import { OtelSettingsController } from '../otel-settings.controller';
@@ -19,6 +19,7 @@ const res = mock<Response>();
 
 const baseSettings: OtelConfig = {
 	enabled: true,
+	exporterProtocol: 'http/protobuf',
 	exporterEndpoint: 'https://collector.example.com',
 	exporterTracingPath: '/v1/traces',
 	exporterHeaders: '',
@@ -41,7 +42,7 @@ describe('OtelSettingsController', () => {
 	let controller: OtelSettingsController;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		otelSettingsService = mock<OtelSettingsService>();
 		otelService = mock<OtelService>();
 		otelLifecycleHandler = mock<OtelLifecycleHandler>();
@@ -131,6 +132,7 @@ describe('OtelSettingsController', () => {
 
 	describe('testTrace', () => {
 		const dto: OtelConnectionParams = {
+			exporterProtocol: 'http/protobuf',
 			exporterEndpoint: 'https://collector.example.com',
 			exporterTracingPath: '/v1/traces',
 			exporterServiceName: 'n8n-prod',

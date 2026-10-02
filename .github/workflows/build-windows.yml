@@ -23,6 +23,7 @@ on:
     paths:
       - '**/package.json'
       - '**/turbo.json'
+      - 'packages/cli/scripts/build.mjs'
       - '.github/workflows/build-windows.yml'
       - '.github/actions/setup-nodejs/**'
 
@@ -32,12 +33,16 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Setup Node.js and Build
         uses: ./.github/actions/setup-nodejs
         with:
-          build-command: pnpm build
+          # Windows runners intermittently hit OS-level process-init crashes
+          # (STATUS_DLL_INIT_FAILED) when turbo fans out many tsc processes at once.
+          # Cap concurrency to ease the pressure and retry once — turbo's cache makes
+          # the retry rebuild only the crashed package.
+          build-command: node .github/scripts/retry.mjs --attempts 2 --delay 5 -- pnpm build --concurrency=5
 
       - name: Smoke test pnpm start -- -- --version
         shell: pwsh

@@ -9,6 +9,8 @@ import {
 } from '@n8n/db';
 import { OnShutdown } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
+import type { InferTelemetryProps, TelemetryEventDef } from '@n8n/telemetry';
+import { redactTelemetryProperties, TELEMETRY_EVENT } from '@n8n/telemetry';
 import type RudderStack from '@rudderstack/rudder-sdk-node';
 import type { AxiosRequestConfig } from 'axios';
 import { ErrorReporter, InstanceSettings } from 'n8n-core';
@@ -16,6 +18,7 @@ import type { ITelemetryTrackProperties } from 'n8n-workflow';
 
 import { LOWEST_SHUTDOWN_PRIORITY, N8N_VERSION } from '@/constants';
 import type {
+	AgentRunTelemetryType,
 	IAgentConfigurationTelemetryProperties,
 	IAgentExecutionTrackProperties,
 	IAgentTurnFinishedTrackProperties,
@@ -25,6 +28,7 @@ import { License } from '@/license';
 import { PostHogClient } from '@/posthog';
 
 import { SourceControlPreferencesService } from '../modules/source-control.ee/source-control-preferences.service.ee';
+import { USER_CALLED_MCP_TOOL_EVENT } from '../modules/mcp/mcp.constants';
 
 type ExecutionTrackDataKey =
 	| 'manual_error'
@@ -71,6 +75,7 @@ interface IAgentExecutionCountsBuffer {
 	[bufferKey: string]: {
 		agent_id: string;
 		user_id?: string;
+		run_type: AgentRunTelemetryType;
 		message_count: number;
 		token_count: number;
 		tool_call_count: number;
@@ -80,6 +85,7 @@ interface IAgentExecutionCountsBuffer {
 interface IAgentSessionMetrics {
 	latency_ms: number;
 	cost: number;
+	token_count: number;
 	tool_call_count: number;
 	num_skills: number;
 	turn_count: number;
@@ -88,6 +94,8 @@ interface IAgentSessionMetrics {
 interface IAgentSessionMetricsBuffer {
 	[bufferKey: string]: {
 		agent_id: string;
+		user_id?: string;
+		agent_type: IAgentTurnFinishedTrackProperties['agent_type'];
 		run_type: IAgentTurnFinishedTrackProperties['run_type'];
 		turn_status: IAgentTurnFinishedTrackProperties['turn_status'];
 		configuration: IAgentConfigurationTelemetryProperties;
@@ -99,7 +107,7 @@ interface IAgentSessionMetricsBuffer {
 export class Telemetry {
 	private rudderStack?: RudderStack;
 
-	private pulseIntervalReference: NodeJS.Timeout;
+	private userCloudId?: string;
 
 	private executionCountsBuffer: IExecutionsBuffer = {};
 
@@ -108,6 +116,9 @@ export class Telemetry {
 	private agentExecutionCountsBuffer: IAgentExecutionCountsBuffer = {};
 
 	private agentSessionMetricsBuffer: IAgentSessionMetricsBuffer = {};
+
+	/** Event names already reported by `warnAboutMissingUserId`, so each one is said once. */
+	private readonly eventsMissingUserId = new Set<string>();
 
 	constructor(
 		private readonly logger: Logger,
@@ -182,7 +193,7 @@ export class Telemetry {
 
 			const { httpAgent, httpsAgent } = this.outboundHttp
 				.transport({
-					ssrf: 'disabled', // The data-plane host is fixed and the SDK owns the request lifecycle, so SSRF is disabled.
+					useDefaultSsrfPolicy: 'unsafe', // The data-plane host is fixed and the SDK owns the request lifecycle, so SSRF is disabled.
 				})
 				.getNodeAgent();
 			const axiosConfig: AxiosRequestConfig = {
@@ -200,21 +211,14 @@ export class Telemetry {
 					this.errorReporter.error(error);
 				},
 			});
-
-			this.startPulse();
 		}
 	}
 
-	private startPulse() {
-		this.pulseIntervalReference = setInterval(
-			async () => {
-				void this.pulse();
-			},
-			6 * 60 * 60 * 1000,
-		); // every 6 hours
-	}
-
-	private async pulse() {
+	/**
+	 * Sends the events buffered in this process and empties the buffers. Does
+	 * nothing while diagnostics are off, because nothing buffers then.
+	 */
+	flushBuffers(): void {
 		if (!this.rudderStack) {
 			return;
 		}
@@ -222,21 +226,18 @@ export class Telemetry {
 		this.flushWorkflowExecutionCounts();
 		this.flushAgentExecutionCounts();
 		this.flushAgentSessionMetrics();
+		this.flushApiInvocations();
+	}
 
-		// Flush API invocation counts
-		for (const userId of Object.keys(this.apiInvocationsBuffer)) {
-			const entry = this.apiInvocationsBuffer[userId];
-			if (entry.total_calls > 0) {
-				this.track('Public API usage', {
-					user_id: userId,
-					total_calls: entry.total_calls,
-					first: entry.first,
-					endpoints: JSON.stringify(entry.endpoints),
-					user_agents: JSON.stringify(entry.user_agents),
-				});
-			}
+	/**
+	 * Sends one `pulse` packet of license and usage counters. The counters
+	 * describe the whole instance, so a second sender reports the same numbers
+	 * again. Does nothing while diagnostics are off.
+	 */
+	async sendPulsePacket(): Promise<void> {
+		if (!this.rudderStack) {
+			return;
 		}
-		this.apiInvocationsBuffer = {};
 
 		const sourceControlPreferences = Container.get(
 			SourceControlPreferencesService,
@@ -256,6 +257,22 @@ export class Telemetry {
 		};
 
 		this.track('pulse', pulsePacket);
+	}
+
+	private flushApiInvocations() {
+		for (const userId of Object.keys(this.apiInvocationsBuffer)) {
+			const entry = this.apiInvocationsBuffer[userId];
+			if (entry.total_calls > 0) {
+				this.track('Public API usage', {
+					user_id: userId,
+					total_calls: entry.total_calls,
+					first: entry.first,
+					endpoints: JSON.stringify(entry.endpoints),
+					user_agents: JSON.stringify(entry.user_agents),
+				});
+			}
+		}
+		this.apiInvocationsBuffer = {};
 	}
 
 	private flushWorkflowExecutionCounts() {
@@ -283,8 +300,12 @@ export class Telemetry {
 		this.executionCountsBuffer = {};
 	}
 
-	private getAgentExecutionCountsBufferKey(agentId: string, userId?: string) {
-		return userId ? `${agentId}:${userId}` : agentId;
+	private getAgentExecutionCountsBufferKey(
+		agentId: string,
+		runType: AgentRunTelemetryType,
+		userId?: string,
+	) {
+		return userId ? `${agentId}:${runType}:${userId}` : `${agentId}:${runType}`;
 	}
 
 	private flushAgentExecutionCounts() {
@@ -294,13 +315,15 @@ export class Telemetry {
 		});
 
 		for (const bufferKey of keysToReport) {
-			// Agent-level aggregate window keyed by persisted agent ID plus optional n8n user ID.
-			// A resume-only window may legitimately report tokens or tools with message_count = 0.
-			const { agent_id, user_id, ...counts } = this.agentExecutionCountsBuffer[bufferKey];
-			this.track('Agent execution count', {
-				event_version: '1',
+			// Agent-level aggregate window keyed by persisted agent ID, run type and optional
+			// n8n user ID. A resume-only window may legitimately report tokens or tools with
+			// message_count = 0.
+			const { agent_id, user_id, run_type, ...counts } = this.agentExecutionCountsBuffer[bufferKey];
+			this.track(TELEMETRY_EVENT.AGENTS.AGENT_EXECUTION_COUNT, {
+				event_version: '2',
 				agent_id,
 				...(user_id ? { user_id } : {}),
+				run_type,
 				...counts,
 			});
 		}
@@ -311,6 +334,7 @@ export class Telemetry {
 	private getAgentSessionMetricsBufferKey(properties: IAgentTurnFinishedTrackProperties) {
 		return [
 			properties.agent_id,
+			properties.user_id,
 			properties.run_type,
 			properties.turn_status,
 			JSON.stringify(properties.configuration),
@@ -324,6 +348,7 @@ export class Telemetry {
 
 			const latencyMsSum = sessions.reduce((total, session) => total + session.latency_ms, 0);
 			const costSum = sessions.reduce((total, session) => total + session.cost, 0);
+			const tokenCountSum = sessions.reduce((total, session) => total + session.token_count, 0);
 			const toolCallCountSum = sessions.reduce(
 				(total, session) => total + session.tool_call_count,
 				0,
@@ -331,9 +356,11 @@ export class Telemetry {
 			const numSkillsSum = sessions.reduce((total, session) => total + session.num_skills, 0);
 			const turnCount = sessions.reduce((total, session) => total + session.turn_count, 0);
 
-			this.track('Agent session metrics', {
+			this.track(TELEMETRY_EVENT.AGENTS.AGENT_SESSION_METRICS, {
 				event_version: '1',
 				agent_id: bucket.agent_id,
+				...(bucket.user_id ? { user_id: bucket.user_id } : {}),
+				...(bucket.agent_type ? { agent_type: bucket.agent_type } : {}),
 				...bucket.configuration,
 				run_type: bucket.run_type,
 				turn_status: bucket.turn_status,
@@ -341,6 +368,7 @@ export class Telemetry {
 				turn_count: turnCount,
 				latency_ms_sum: latencyMsSum,
 				cost_sum: costSum,
+				token_count_sum: tokenCountSum,
 				tool_call_count_sum: toolCallCountSum,
 				num_skills_sum: numSkillsSum,
 			});
@@ -382,8 +410,8 @@ export class Telemetry {
 				this.addExecutionTrackData(workflowId, sourceKey, execTime);
 			}
 
-			if (properties.used_private_credentials) {
-				this.track('Workflow execution with private credentials', properties);
+			if (properties.used_end_user_credentials) {
+				this.track('Workflow execution with end-user credentials', properties);
 			}
 
 			if (
@@ -415,15 +443,17 @@ export class Telemetry {
 		const {
 			agent_id,
 			user_id,
+			run_type,
 			message_count = 0,
 			token_count = 0,
 			tool_call_count = 0,
 		} = properties;
-		const bufferKey = this.getAgentExecutionCountsBufferKey(agent_id, user_id);
+		const bufferKey = this.getAgentExecutionCountsBufferKey(agent_id, run_type, user_id);
 
 		this.agentExecutionCountsBuffer[bufferKey] = this.agentExecutionCountsBuffer[bufferKey] ?? {
 			agent_id,
 			...(user_id ? { user_id } : {}),
+			run_type,
 			message_count: 0,
 			token_count: 0,
 			tool_call_count: 0,
@@ -441,6 +471,8 @@ export class Telemetry {
 		const bufferKey = this.getAgentSessionMetricsBufferKey(properties);
 		this.agentSessionMetricsBuffer[bufferKey] = this.agentSessionMetricsBuffer[bufferKey] ?? {
 			agent_id: properties.agent_id,
+			user_id: properties.user_id,
+			agent_type: properties.agent_type,
 			run_type: properties.run_type,
 			turn_status: properties.turn_status,
 			configuration: properties.configuration,
@@ -451,6 +483,7 @@ export class Telemetry {
 		const session = bucket.sessions[properties.thread_id] ?? {
 			latency_ms: 0,
 			cost: 0,
+			token_count: 0,
 			tool_call_count: 0,
 			num_skills: properties.configuration.num_skills,
 			turn_count: 0,
@@ -458,6 +491,7 @@ export class Telemetry {
 
 		session.latency_ms += properties.latency_ms;
 		session.cost += properties.cost;
+		session.token_count += properties.token_count;
 		session.tool_call_count += properties.tool_call_count;
 		session.turn_count++;
 		bucket.sessions[properties.thread_id] = session;
@@ -488,8 +522,6 @@ export class Telemetry {
 
 	@OnShutdown(LOWEST_SHUTDOWN_PRIORITY)
 	async stopTracking(): Promise<void> {
-		clearInterval(this.pulseIntervalReference);
-
 		await Promise.all([this.postHog.stop(), this.rudderStack?.flush()]);
 	}
 
@@ -549,7 +581,20 @@ export class Telemetry {
 		}
 	}
 
-	track(eventName: string, properties: ITelemetryTrackProperties = {}) {
+	setUserCloudId(userCloudId?: string) {
+		this.userCloudId = userCloudId;
+	}
+
+	track<T extends TelemetryEventDef>(event: T, properties: InferTelemetryProps<T>): void;
+	track(eventName: string, properties?: ITelemetryTrackProperties): void;
+	track(event: string | TelemetryEventDef, properties: ITelemetryTrackProperties = {}) {
+		const eventName = typeof event === 'string' ? event : event.name;
+
+		if (typeof event !== 'string') {
+			const validationError = event.getValidationError(properties);
+			if (validationError) this.logger.warn(validationError);
+		}
+
 		if (!this.rudderStack) {
 			return;
 		}
@@ -557,7 +602,9 @@ export class Telemetry {
 		const { instanceId } = this.instanceSettings;
 		const { user_id } = properties;
 		const updatedProperties = {
-			...properties,
+			...(eventName === USER_CALLED_MCP_TOOL_EVENT
+				? redactTelemetryProperties(properties)
+				: properties),
 			instance_id: instanceId,
 			user_id: user_id ?? undefined,
 			version_cli: N8N_VERSION,
@@ -567,7 +614,7 @@ export class Telemetry {
 			userId: `${instanceId}${user_id ? `#${user_id}` : ''}`,
 			event: eventName,
 			properties: updatedProperties,
-			context: {},
+			context: this.userCloudId ? { traits: { user_cloud_id: this.userCloudId } } : {},
 		};
 
 		// Build the actual payload that will be sent to RudderStack (with fake IP)
@@ -585,9 +632,31 @@ export class Telemetry {
 			return;
 		}
 
+		if (typeof event !== 'string' && !user_id) {
+			this.warnAboutMissingUserId(eventName);
+		}
+
 		this.postHog?.track(payload);
 
 		return this.rudderStack.track(rudderStackPayload);
+	}
+
+	/**
+	 * A registered event whose properties carry no `user_id` composes a distinct id of the bare
+	 * instance id, which `PostHogClient.track` drops to keep a phantom person profile out of
+	 * PostHog (#32344). The event still reaches RudderStack, so the loss is silent and only a
+	 * warehouse comparison finds it. This says so once for each event name, which is enough to
+	 * name the emit site and few enough to leave the logs readable.
+	 *
+	 * Only registered events are checked. A plain string event has no schema stating that it
+	 * describes a user action, and some of them are instance-level on purpose.
+	 */
+	private warnAboutMissingUserId(eventName: string): void {
+		if (this.eventsMissingUserId.has(eventName)) return;
+		this.eventsMissingUserId.add(eventName);
+		this.logger.warn(
+			`Telemetry event "${eventName}" carries no user_id, so PostHog drops it. Pass user_id in the event properties at the emit site.`,
+		);
 	}
 
 	// test helpers

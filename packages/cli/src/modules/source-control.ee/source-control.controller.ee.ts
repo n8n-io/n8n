@@ -1,10 +1,10 @@
-import { IWorkflowToImport } from '@/interfaces';
 import {
 	PullWorkFolderRequestDto,
 	PushWorkFolderRequestDto,
 	type GitCommitInfo,
 	type SourceControlledFile,
 } from '@n8n/api-types';
+import { EventService } from '@n8n/backend-services';
 import { AuthenticatedRequest } from '@n8n/db';
 import { Get, Post, Patch, RestController, GlobalScope, Body } from '@n8n/decorators';
 import { hasGlobalScope } from '@n8n/permissions';
@@ -23,9 +23,8 @@ import { SourceControlRequest } from './types/requests';
 import { SourceControlGetStatus } from './types/source-control-get-status';
 import type { SourceControlPreferences } from './types/source-control-preferences';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { EventService } from '@/events/event.service';
+import { BadRequestError, ForbiddenError } from '@n8n/errors';
+import { IWorkflowToImport } from '@/interfaces';
 
 @RestController('/source-control')
 export class SourceControlController {
@@ -202,11 +201,6 @@ export class SourceControlController {
 		await this.sourceControlScopedService.ensureIsAllowedToPush(req);
 
 		try {
-			await this.sourceControlService.setGitUserDetails(
-				`${req.user.firstName} ${req.user.lastName}`,
-				req.user.email,
-			);
-
 			const result = await this.sourceControlService.pushWorkfolder(req.user, payload);
 			res.statusCode = result.statusCode;
 

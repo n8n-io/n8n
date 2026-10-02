@@ -9,12 +9,13 @@ on:
         type: string
         required: true
 
-permissions:
-  contents: write
-  pull-requests: write
+permissions: {}
 
 jobs:
   approve-and-automerge:
+    permissions:
+      contents: write
+      pull-requests: write
     if: |
       inputs.pull-request-number != ''
     runs-on: ubuntu-slim

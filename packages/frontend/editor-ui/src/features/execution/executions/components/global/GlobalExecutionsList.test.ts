@@ -16,7 +16,8 @@ import {
 } from '@/__tests__/utils';
 import { createComponentRenderer } from '@/__tests__/render';
 import { waitFor } from '@testing-library/vue';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
+import { useExecutionsStore } from '../../executions.store';
 import type { ExecutionFilterType, ExecutionSummaryWithScopes } from '../../executions.types';
 
 vi.mock('vue-router', () => ({
@@ -31,10 +32,8 @@ vi.mock('@n8n/i18n', async (importOriginal) => ({
 	...(await importOriginal()),
 	useI18n: () => ({
 		displayTimer: (timer: number) => timer,
-		baseText: (key: string, options: { interpolate: { count: string } }) => {
-			if (key === 'generic.list.selected') {
-				return `${options.interpolate.count} executions selected`;
-			} else if (key === 'executionsList.retryOf') {
+		baseText: (key: string) => {
+			if (key === 'executionsList.retryOf') {
 				return 'Retry of';
 			} else if (key === 'executionsList.successRetry') {
 				return 'Success retry';
@@ -80,7 +79,6 @@ const generateExecutionsData = () =>
 	Array.from({ length: 2 }, () => ({
 		count: 20,
 		results: Array.from({ length: 10 }, executionDataFactory),
-		estimated: false,
 	}));
 
 const renderComponent = createComponentRenderer(ExecutionsList, {
@@ -88,6 +86,7 @@ const renderComponent = createComponentRenderer(ExecutionsList, {
 		initialState: {
 			[STORES.EXECUTIONS]: {
 				executions: [],
+				initialLoadComplete: true,
 			},
 			[STORES.SETTINGS]: {
 				settings: merge(SETTINGS_STORE_DEFAULT_STATE.settings, {
@@ -111,7 +110,6 @@ describe('GlobalExecutionsList', () => {
 	let executionsData: Array<{
 		count: number;
 		results: ExecutionSummary[];
-		estimated: boolean;
 	}>;
 
 	beforeEach(() => {
@@ -125,7 +123,6 @@ describe('GlobalExecutionsList', () => {
 				executions: [],
 				filters: {} as ExecutionFilterType,
 				total: 0,
-				estimated: false,
 			},
 		});
 		await waitAllPromises();
@@ -144,7 +141,6 @@ describe('GlobalExecutionsList', () => {
 				executions: executionsData[0].results as ExecutionSummaryWithScopes[],
 				total: executionsData[0].count,
 				filters: {} as ExecutionFilterType,
-				estimated: false,
 			},
 		});
 		await waitAllPromises();
@@ -195,6 +191,29 @@ describe('GlobalExecutionsList', () => {
 		expect(queryByTestId('select-all-executions-checkbox')).not.toBeInTheDocument();
 	}, 10000);
 
+	it('should stop offering "load more" once all executions are shown, even on a large instance', async () => {
+		const executionsStore = mockedStore(useExecutionsStore);
+
+		// On large tables the reported total is an inflated estimate; the user must
+		// still see "all loaded" rather than a load-more button that fetches nothing.
+		executionsStore.hasMoreExecutions = false;
+		const { queryByTestId, getByText } = renderComponent({
+			props: {
+				executions: executionsData[0].results as ExecutionSummaryWithScopes[],
+				total: 100_000,
+				filters: {} as ExecutionFilterType,
+			},
+		});
+		await waitAllPromises();
+
+		expect(queryByTestId('load-more-button')).not.toBeInTheDocument();
+		expect(getByText('executionsList.loadedAll')).toBeInTheDocument();
+
+		executionsStore.hasMoreExecutions = true;
+		await waitAllPromises();
+		expect(queryByTestId('load-more-button')).toBeInTheDocument();
+	});
+
 	it('should show "retry" data when appropriate', async () => {
 		const retryOf = executionsData[0].results.filter((execution) => execution.retryOf);
 		const retrySuccessId = executionsData[0].results.filter(
@@ -206,7 +225,6 @@ describe('GlobalExecutionsList', () => {
 				executions: executionsData[0].results as ExecutionSummaryWithScopes[],
 				total: executionsData[0].count,
 				filters: {} as ExecutionFilterType,
-				estimated: false,
 			},
 		});
 		await waitAllPromises();

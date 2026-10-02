@@ -19,7 +19,7 @@
 
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { ExpressionEvaluator } from '../evaluator/expression-evaluator';
-import { IsolatedVmBridge } from '../bridge/isolated-vm-bridge';
+import { createBridge } from './test-bridge';
 
 describe("Typed RPC: $('Foo').first() routes via getNodeFirst", () => {
 	let evaluator: ExpressionEvaluator;
@@ -27,7 +27,7 @@ describe("Typed RPC: $('Foo').first() routes via getNodeFirst", () => {
 
 	beforeAll(async () => {
 		evaluator = new ExpressionEvaluator({
-			createBridge: () => new IsolatedVmBridge({ timeout: 5000 }),
+			createBridge,
 			maxCodeCacheSize: 64,
 		});
 		await evaluator.initialize();
@@ -150,7 +150,7 @@ describe("Typed RPC: $('Foo').last() routes via getNodeLast", () => {
 
 	beforeAll(async () => {
 		evaluator = new ExpressionEvaluator({
-			createBridge: () => new IsolatedVmBridge({ timeout: 5000 }),
+			createBridge,
 			maxCodeCacheSize: 64,
 		});
 		await evaluator.initialize();
@@ -216,7 +216,7 @@ describe("Typed RPC: $('Foo').all() routes via getNodeAll", () => {
 
 	beforeAll(async () => {
 		evaluator = new ExpressionEvaluator({
-			createBridge: () => new IsolatedVmBridge({ timeout: 5000 }),
+			createBridge,
 			maxCodeCacheSize: 64,
 		});
 		await evaluator.initialize();
@@ -271,7 +271,7 @@ describe("Typed RPC: $('Foo') proxy fallthrough and `in` checks", () => {
 
 	beforeAll(async () => {
 		evaluator = new ExpressionEvaluator({
-			createBridge: () => new IsolatedVmBridge({ timeout: 5000 }),
+			createBridge,
 			maxCodeCacheSize: 64,
 		});
 		await evaluator.initialize();
@@ -323,7 +323,7 @@ describe('Typed RPC: $input.{first,last,all} route via getInput*', () => {
 
 	beforeAll(async () => {
 		evaluator = new ExpressionEvaluator({
-			createBridge: () => new IsolatedVmBridge({ timeout: 5000 }),
+			createBridge,
 			maxCodeCacheSize: 64,
 		});
 		await evaluator.initialize();
@@ -438,7 +438,7 @@ describe('Typed RPC: $items() routes via getItems', () => {
 
 	beforeAll(async () => {
 		evaluator = new ExpressionEvaluator({
-			createBridge: () => new IsolatedVmBridge({ timeout: 5000 }),
+			createBridge,
 			maxCodeCacheSize: 64,
 		});
 		await evaluator.initialize();
@@ -512,7 +512,7 @@ describe('Typed RPC: $fromAI() routes via fromAi', () => {
 
 	beforeAll(async () => {
 		evaluator = new ExpressionEvaluator({
-			createBridge: () => new IsolatedVmBridge({ timeout: 5000 }),
+			createBridge,
 			maxCodeCacheSize: 64,
 		});
 		await evaluator.initialize();
@@ -606,7 +606,7 @@ describe("Typed RPC: $('Foo').pairedItem / .itemMatching / .item route via getNo
 
 	beforeAll(async () => {
 		evaluator = new ExpressionEvaluator({
-			createBridge: () => new IsolatedVmBridge({ timeout: 5000 }),
+			createBridge,
 			maxCodeCacheSize: 64,
 		});
 		await evaluator.initialize();
@@ -725,7 +725,7 @@ describe('Typed RPC: $evaluateExpression() routes via evaluateExpression', () =>
 
 	beforeAll(async () => {
 		evaluator = new ExpressionEvaluator({
-			createBridge: () => new IsolatedVmBridge({ timeout: 5000 }),
+			createBridge,
 			maxCodeCacheSize: 64,
 		});
 		await evaluator.initialize();
@@ -778,7 +778,7 @@ describe('Typed RPC: $getPairedItem() routes via getPairedItem', () => {
 
 	beforeAll(async () => {
 		evaluator = new ExpressionEvaluator({
-			createBridge: () => new IsolatedVmBridge({ timeout: 5000 }),
+			createBridge,
 			maxCodeCacheSize: 64,
 		});
 		await evaluator.initialize();
@@ -834,5 +834,68 @@ describe('Typed RPC: $getPairedItem() routes via getPairedItem', () => {
 			caller,
 		);
 		expect(result).toBeUndefined();
+	});
+});
+
+describe('Typed RPC: nested special values in results', () => {
+	let evaluator: ExpressionEvaluator;
+	const caller = {};
+
+	beforeAll(async () => {
+		evaluator = new ExpressionEvaluator({
+			createBridge,
+			maxCodeCacheSize: 64,
+		});
+		await evaluator.initialize();
+		await evaluator.acquire(caller);
+	});
+
+	afterAll(async () => {
+		await evaluator.release(caller);
+		await evaluator.dispose();
+	});
+
+	const when = new Date('2026-01-02T03:04:05.678Z');
+	const data: Record<string, unknown> = {
+		$: (_nodeName: string) => ({
+			first: () => ({
+				json: {
+					when,
+					n: NaN,
+					m: new Map([['a', 1]]),
+					s: new Set([1, 2]),
+					marked: { __isNaN: true },
+				},
+			}),
+		}),
+	};
+
+	it('delivers nested Date/NaN/Map/Set to the guest as real values', () => {
+		expect(
+			evaluator.evaluate("{{ $('SourceNode').first().json.when instanceof Date }}", data, caller),
+		).toBe(true);
+		expect(evaluator.evaluate("{{ typeof $('SourceNode').first().json.n }}", data, caller)).toBe(
+			'number',
+		);
+		expect(
+			evaluator.evaluate("{{ $('SourceNode').first().json.m instanceof Map }}", data, caller),
+		).toBe(true);
+		expect(
+			evaluator.evaluate("{{ $('SourceNode').first().json.s instanceof Set }}", data, caller),
+		).toBe(true);
+	});
+
+	it('round-trips nested special values back to the host', () => {
+		const result = evaluator.evaluate("{{ $('SourceNode').first().json }}", data, caller) as Record<
+			string,
+			unknown
+		>;
+
+		expect(result.when).toBeInstanceOf(Date);
+		expect((result.when as Date).toISOString()).toBe('2026-01-02T03:04:05.678Z');
+		expect(result.n).toBeNaN();
+		expect(result.m).toBeInstanceOf(Map);
+		expect(result.s).toBeInstanceOf(Set);
+		expect(result.marked).toEqual({ __isNaN: true });
 	});
 });

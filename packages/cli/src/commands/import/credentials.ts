@@ -1,25 +1,35 @@
+import { credentialDescriptionSchema } from '@n8n/api-types';
 import {
 	CredentialsEntity,
+	CredentialsRepository,
+	DbLock,
+	DbLockService,
 	Project,
 	User,
 	SharedCredentials,
+	SharedCredentialsRepository,
 	ProjectRepository,
+	UserRepository,
 	GLOBAL_OWNER_ROLE,
+	type OperationContext,
 } from '@n8n/db';
-import { Command } from '@n8n/decorators';
+import { Command, type PolicyCleared } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
-// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import type { EntityManager } from '@n8n/typeorm';
 import glob from 'fast-glob';
 import fs from 'fs';
 import omit from 'lodash/omit';
 import pick from 'lodash/pick';
 import { Cipher } from 'n8n-core';
-import { jsonParse, UserError } from 'n8n-workflow';
+import { jsonParse, UserError, type ICredentialDataDecryptedObject } from 'n8n-workflow';
 import { z } from 'zod';
 
+import { CredentialDescriptionsService } from '@/credentials/credential-descriptions.service';
 import { UM_FIX_INSTRUCTION } from '@/constants';
+import { CredentialsService } from '@/credentials/credentials.service';
+import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
+import { PolicyViolationError } from '@/policy/policy-violation.error';
 
 import { BaseCommand } from '../base-command';
 
@@ -60,8 +70,22 @@ const flagsSchema = z.object({
 
 type ImportableCredentialProperty = Exclude<
 	Extract<keyof CredentialsEntity, string>,
-	'shared' | 'toJSON' | 'generateId' | 'setUpdateDate'
+	'shared' | 'toJSON' | 'generateId' | 'setUpdateDate' | 'pendingAuthorizationExpiresAt'
 >;
+
+const isCredentialData = (data: unknown): data is ICredentialDataDecryptedObject =>
+	typeof data === 'object' && data !== null && !Array.isArray(data);
+
+type ExistingCredential = Pick<CredentialsEntity, 'id' | 'type' | 'usageScope'>;
+
+/** A credential the policy cleared, with what the write needs: a concrete type and the clearance. */
+type AdmittedCredential = {
+	credential: Partial<CredentialsEntity> & Pick<CredentialsEntity, 'type'>;
+	existing: ExistingCredential | null;
+	cleared: PolicyCleared<'contentImport'>;
+};
+
+type SkippedCredential = { id?: string; name?: string; violations: string[] };
 
 @Command({
 	name: 'import:credentials',
@@ -78,7 +102,11 @@ type ImportableCredentialProperty = Exclude<
 	flagsSchema,
 })
 export class ImportCredentialsCommand extends BaseCommand<z.infer<typeof flagsSchema>> {
-	private transactionManager: EntityManager;
+	async init() {
+		await super.init();
+		await this.initLicense();
+		await this.initPolicyEnforcement();
+	}
 
 	async run(): Promise<void> {
 		const { flags } = this;
@@ -119,24 +147,40 @@ export class ImportCredentialsCommand extends BaseCommand<z.infer<typeof flagsSc
 			exclude,
 		});
 
-		const { manager: dbManager } = Container.get(ProjectRepository);
-		await dbManager.transaction(async (transactionManager) => {
-			this.transactionManager = transactionManager;
+		// Admission runs before the lock: the policy check reads its scopes through its own pool
+		// connection, and with a single-connection pool it would wait on the lock transaction forever.
+		const project = await this.getProject(flags.userId, flags.projectId);
 
-			const project = await this.getProject(flags.userId, flags.projectId);
+		const admitted: AdmittedCredential[] = [];
+		const skipped: SkippedCredential[] = [];
+		for (const credential of credentials) {
+			const outcome = await this.admitCredential(credential, project);
+			if ('cleared' in outcome) admitted.push(outcome);
+			else skipped.push(outcome);
+		}
 
-			const result = await this.checkRelations(credentials, flags.projectId, flags.userId);
+		await Container.get(DbLockService).withLock(
+			DbLock.INSTANCE_AI_SETTINGS,
+			async (transactionManager, ctx) => {
+				const result = await this.checkRelations(
+					transactionManager,
+					admitted.map(({ credential }) => credential),
+					project.id,
+					flags,
+				);
 
-			if (!result.success) {
-				throw new UserError(result.message);
-			}
+				if (!result.success) {
+					throw new UserError(result.message);
+				}
 
-			for (const credential of credentials) {
-				await this.storeCredential(credential, project);
-			}
-		});
+				for (const entry of admitted) {
+					await this.storeCredential(transactionManager, entry, project, ctx);
+				}
+			},
+		);
 
-		this.reportSuccess(credentials.length);
+		this.reportSuccess(credentials.length - skipped.length);
+		this.reportSkipped(skipped);
 	}
 
 	async catch(error: Error) {
@@ -152,19 +196,159 @@ export class ImportCredentialsCommand extends BaseCommand<z.infer<typeof flagsSc
 		);
 	}
 
-	private async storeCredential(credential: Partial<CredentialsEntity>, project: Project) {
-		const result = await this.transactionManager.upsert(CredentialsEntity, credential, ['id']);
+	private reportSkipped(skipped: SkippedCredential[]) {
+		if (skipped.length === 0) return;
 
-		const sharingExists = await this.transactionManager.existsBy(SharedCredentials, {
-			credentialsId: credential.id,
+		this.logger.warn(
+			`Skipped ${skipped.length} ${skipped.length === 1 ? 'credential' : 'credentials'} blocked by policy:`,
+		);
+		for (const { id, name, violations } of skipped) {
+			this.logger.warn(`  - ${name ?? id ?? 'unknown'}: ${violations.join(', ')}`);
+		}
+	}
+
+	/**
+	 * Everything that must be known before the write, resolved with plain reads of committed
+	 * state: the effective type, the project whose policy applies, and the policy decision itself.
+	 */
+	private async admitCredential(
+		credential: Partial<CredentialsEntity>,
+		project: Project,
+	): Promise<AdmittedCredential | SkippedCredential> {
+		await Container.get(CredentialDescriptionsService).stripIfDisabled(credential);
+		if (credential.description !== undefined) {
+			const parsed = credentialDescriptionSchema.safeParse(credential.description);
+
+			if (!parsed.success) {
+				throw new UserError(
+					`Credential "${credential.id ?? credential.name ?? 'unknown'}": ${parsed.error.issues[0].message}`,
+				);
+			}
+
+			credential.description = parsed.data;
+		}
+
+		// UsageScope is instance-local state; imports never change it for existing credentials.
+		let existing: ExistingCredential | null = null;
+		if (credential.id) {
+			existing = await Container.get(CredentialsRepository).findOne({
+				where: { id: credential.id },
+				select: ['id', 'usageScope', 'type'],
+			});
+			if (existing) {
+				credential.usageScope = existing.usageScope;
+				if (
+					existing.usageScope === 'instance' &&
+					credential.type !== undefined &&
+					credential.type !== existing.type
+				) {
+					throw new UserError(
+						'Provider connection type cannot be changed. Create a new connection instead.',
+					);
+				}
+			}
+		}
+		credential.usageScope ??= 'project';
+		// Only the OAuth flow that created the row may hold it pending; an imported copy has no such flow.
+		credential.pendingAuthorizationExpiresAt = null;
+
+		// The payload may omit `type` on an update that doesn't change it (e.g. --exclude=type);
+		// the policy check and the sealed write both need a concrete type to bind to.
+		const type = credential.type ?? existing?.type;
+		if (type === undefined) {
+			throw new UserError(
+				`Credential "${credential.id ?? credential.name ?? 'unknown'}" is missing a type`,
+			);
+		}
+		credential.type = type;
+
+		// An existing credential keeps its owner project, so its policy applies, not the batch target.
+		let landingProjectId = project.id;
+		if (existing) {
+			const ownerProject = await Container.get(
+				SharedCredentialsRepository,
+			).findCredentialOwningProject(existing.id);
+			if (ownerProject) landingProjectId = ownerProject.id;
+		}
+
+		let cleared: PolicyCleared<'contentImport'>;
+		try {
+			cleared = await Container.get(PolicyEnforcementService).enforceContentImport(
+				{
+					credential: { id: credential.id ?? null, type },
+					projectId: credential.usageScope === 'instance' ? null : landingProjectId,
+					transport: 'cli',
+				},
+				{ kind: 'system', reason: 'cli-import' },
+			);
+		} catch (error) {
+			if (!(error instanceof PolicyViolationError)) throw error;
+
+			this.logger.warn(
+				`Skipping credential ${credential.id ?? credential.name ?? 'unknown'}: blocked by policy`,
+			);
+
+			return {
+				id: credential.id,
+				name: credential.name,
+				violations: error.violations.map((violation) => violation.message),
+			};
+		}
+
+		return { credential: { ...credential, type }, existing, cleared };
+	}
+
+	private async storeCredential(
+		transactionManager: EntityManager,
+		{ credential, existing, cleared }: AdmittedCredential,
+		project: Project,
+		ctx: OperationContext,
+	): Promise<void> {
+		// Validated after the policy gate, so a blocked provider connection is skipped even when
+		// its stored data can't be read.
+		if (credential.usageScope === 'instance') {
+			if (
+				credential.isGlobal ||
+				credential.isResolvable ||
+				credential.isManaged ||
+				credential.resolvableAllowFallback ||
+				credential.resolverId
+			) {
+				throw new UserError(
+					'Provider connections cannot be global, managed, or dynamically resolved',
+				);
+			}
+			Object.assign(credential, {
+				isGlobal: false,
+				isResolvable: false,
+				isManaged: false,
+				resolvableAllowFallback: false,
+				resolverId: null,
+			});
+			await this.validateInstanceCredentialData(transactionManager, credential, existing, ctx);
+		}
+
+		const credentialsId = await Container.get(CredentialsRepository).upsertImportedContent(
+			credential,
+			{ ...ctx, policyCleared: cleared },
+		);
+
+		if (credential.usageScope === 'instance') {
+			// Instance credentials are instance-owned and must not retain project sharing rows.
+			await transactionManager.delete(SharedCredentials, { credentialsId });
+			return;
+		}
+
+		const sharingExists = await transactionManager.existsBy(SharedCredentials, {
+			credentialsId,
 			role: 'credential:owner',
 		});
 
 		if (!sharingExists) {
-			await this.transactionManager.upsert(
+			await transactionManager.upsert(
 				SharedCredentials,
 				{
-					credentialsId: result.identifiers[0].id as string,
+					credentialsId,
 					role: 'credential:owner',
 					projectId: project.id,
 				},
@@ -173,10 +357,51 @@ export class ImportCredentialsCommand extends BaseCommand<z.infer<typeof flagsSc
 		}
 	}
 
+	private async validateInstanceCredentialData(
+		transactionManager: EntityManager,
+		credential: Partial<CredentialsEntity>,
+		existing: ExistingCredential | null,
+		ctx: OperationContext,
+	) {
+		let data: unknown = credential.data;
+		if (data === undefined && credential.id) {
+			data = (
+				await transactionManager.findOne(CredentialsEntity, {
+					where: { id: credential.id },
+					select: { data: true },
+				})
+			)?.data;
+		}
+		if (data === undefined) return;
+		if (data === null || data === '') {
+			throw new UserError('Provider connection data cannot be empty');
+		}
+
+		const decrypted =
+			typeof data === 'string'
+				? jsonParse<unknown>(await Container.get(Cipher).decryptV2(data))
+				: data;
+		if (!isCredentialData(decrypted)) {
+			throw new UserError('Provider connection data must be a JSON object');
+		}
+		const credentialsService = Container.get(CredentialsService);
+		if (existing?.usageScope === 'instance') {
+			await credentialsService.validateInstanceCredentialUpdate(
+				existing,
+				decrypted,
+				undefined,
+				ctx,
+			);
+		} else {
+			credentialsService.validateInstanceCredentialData(decrypted);
+		}
+	}
+
 	private async checkRelations(
+		transactionManager: EntityManager,
 		credentials: Array<Pick<Partial<CredentialsEntity>, 'id'>>,
-		projectId?: string,
-		userId?: string,
+		targetProjectId: string,
+		{ userId, projectId }: { userId?: string; projectId?: string },
 	) {
 		// The credential is not supposed to be re-owned.
 		if (!projectId && !userId) {
@@ -191,17 +416,20 @@ export class ImportCredentialsCommand extends BaseCommand<z.infer<typeof flagsSc
 				continue;
 			}
 
-			if (!(await this.credentialExists(credential.id))) {
+			if (!(await this.credentialExists(transactionManager, credential.id))) {
 				continue;
 			}
 
-			const { user, project: ownerProject } = await this.getCredentialOwner(credential.id);
+			const { user, project: ownerProject } = await this.getCredentialOwner(
+				transactionManager,
+				credential.id,
+			);
 
 			if (!ownerProject) {
 				continue;
 			}
 
-			if (ownerProject.id !== projectId) {
+			if (ownerProject.id !== targetProjectId) {
 				const currentOwner =
 					ownerProject.type === 'personal'
 						? `the user with the ID "${user.id}"`
@@ -268,7 +496,7 @@ export class ImportCredentialsCommand extends BaseCommand<z.infer<typeof flagsSc
 		return await Promise.all(
 			credentials.map(async (credential) => {
 				const filteredCredential = this.filterCredentialProperties(credential, include, exclude);
-				if (typeof filteredCredential.data === 'object') {
+				if (isCredentialData(filteredCredential.data)) {
 					// plain data / decrypted input. Should be encrypted first.
 					filteredCredential.data = await cipher.encryptV2(filteredCredential.data);
 				}
@@ -344,6 +572,7 @@ export class ImportCredentialsCommand extends BaseCommand<z.infer<typeof flagsSc
 			updatedAt: true,
 			id: true,
 			name: true,
+			description: true,
 			data: true,
 			type: true,
 			isManaged: true,
@@ -351,19 +580,20 @@ export class ImportCredentialsCommand extends BaseCommand<z.infer<typeof flagsSc
 			isResolvable: true,
 			resolvableAllowFallback: true,
 			resolverId: true,
+			usageScope: true,
 		} satisfies Record<ImportableCredentialProperty, true>;
 
 		return property in importableProperties;
 	}
 
-	private async getCredentialOwner(credentialsId: string) {
-		const sharedCredential = await this.transactionManager.findOne(SharedCredentials, {
+	private async getCredentialOwner(transactionManager: EntityManager, credentialsId: string) {
+		const sharedCredential = await transactionManager.findOne(SharedCredentials, {
 			where: { credentialsId, role: 'credential:owner' },
 			relations: { project: true },
 		});
 
 		if (sharedCredential && sharedCredential.project.type === 'personal') {
-			const user = await this.transactionManager.findOneByOrFail(User, {
+			const user = await transactionManager.findOneByOrFail(User, {
 				projectRelations: {
 					role: { slug: PROJECT_OWNER_ROLE_SLUG },
 					projectId: sharedCredential.projectId,
@@ -376,17 +606,17 @@ export class ImportCredentialsCommand extends BaseCommand<z.infer<typeof flagsSc
 		return {};
 	}
 
-	private async credentialExists(credentialId: string) {
-		return await this.transactionManager.existsBy(CredentialsEntity, { id: credentialId });
+	private async credentialExists(transactionManager: EntityManager, credentialId: string) {
+		return await transactionManager.existsBy(CredentialsEntity, { id: credentialId });
 	}
 
 	private async getProject(userId?: string, projectId?: string) {
 		if (projectId) {
-			return await this.transactionManager.findOneByOrFail(Project, { id: projectId });
+			return await Container.get(ProjectRepository).findOneByOrFail({ id: projectId });
 		}
 
 		if (!userId) {
-			const owner = await this.transactionManager.findOneBy(User, {
+			const owner = await Container.get(UserRepository).findOneBy({
 				role: {
 					slug: GLOBAL_OWNER_ROLE.slug,
 				},
@@ -397,9 +627,6 @@ export class ImportCredentialsCommand extends BaseCommand<z.infer<typeof flagsSc
 			userId = owner.id;
 		}
 
-		return await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
-			userId,
-			this.transactionManager,
-		);
+		return await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(userId);
 	}
 }

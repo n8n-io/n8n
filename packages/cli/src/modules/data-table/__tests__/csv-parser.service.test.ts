@@ -1,9 +1,9 @@
 import { testModules } from '@n8n/backend-test-utils';
 import type { GlobalConfig } from '@n8n/config';
 import { mkdtempSync, writeFileSync, rmSync } from 'fs';
-import { mock } from 'jest-mock-extended';
 import { tmpdir } from 'os';
 import { join } from 'path';
+import { mock } from 'vitest-mock-extended';
 
 import { CsvParserService } from '../csv-parser.service';
 

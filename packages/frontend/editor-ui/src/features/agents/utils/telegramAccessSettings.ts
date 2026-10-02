@@ -3,6 +3,7 @@ import type { AgentIntegrationSettings, AgentTelegramIntegrationSettings } from 
 export const DEFAULT_TELEGRAM_PUBLIC_SETTINGS = {
 	accessMode: 'public',
 	allowedUsers: [],
+	sessionIdleTimeoutMinutes: null,
 } satisfies AgentTelegramIntegrationSettings;
 
 /**
@@ -16,7 +17,7 @@ export function resolveSavedTelegramSettings(
 	connected: boolean,
 ): AgentTelegramIntegrationSettings | undefined {
 	if (!connected) return undefined;
-	return settings ?? DEFAULT_TELEGRAM_PUBLIC_SETTINGS;
+	return settings && 'accessMode' in settings ? settings : DEFAULT_TELEGRAM_PUBLIC_SETTINGS;
 }
 
 export type TelegramSettingsValidationError = 'required' | 'invalid';

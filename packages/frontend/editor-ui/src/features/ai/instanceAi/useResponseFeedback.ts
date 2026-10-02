@@ -1,5 +1,6 @@
 import { ref, computed, type Ref } from 'vue';
 import { isSafeObjectKey } from '@n8n/api-types';
+import { redactTelemetryText } from '@n8n/telemetry';
 import type { InstanceAiMessage, InstanceAiAgentNode } from '@n8n/api-types';
 import type { RatingFeedback } from '@n8n/design-system';
 import type { ITelemetryTrackProperties } from 'n8n-workflow';
@@ -128,7 +129,10 @@ export function useResponseFeedback({
 			telemetry.track('User submitted workflow generation feedback', {
 				thread_id: threadId,
 				response_id: responseId,
-				feedback: payload.feedback,
+				// A free-text box the user types into, and this event goes to
+				// RudderStack *and* PostHog straight from the browser — no backend
+				// hop can scrub it.
+				feedback: redactTelemetryText(payload.feedback),
 			});
 
 			feedbackByResponseId.value[responseId] = {

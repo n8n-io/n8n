@@ -154,9 +154,11 @@ function hasSafeEventKeys(event: InstanceAiEvent): boolean {
 			return event.payload.messageGroupId ? isSafeObjectKey(event.payload.messageGroupId) : true;
 		case 'agent-spawned':
 			return isSafeObjectKey(event.payload.parentId);
+		case 'tool-input-start':
 		case 'tool-call':
 		case 'tool-result':
 		case 'tool-error':
+		case 'tool-interrupted':
 		case 'confirmation-request':
 			return isSafeObjectKey(event.payload.toolCallId);
 		default:
@@ -197,7 +199,12 @@ export function handleEvent(state: InstanceAiReducerState, event: InstanceAiEven
 	// Mid-run replay guard: if we receive events for a runId that has no
 	// message yet (e.g., reconnect missed the run-start), create the message
 	// on the fly so subsequent events aren't dropped.
-	if (event.type !== 'run-start') {
+	//
+	// A thread-level fact carries an empty runId, because it belongs to the
+	// thread and not to a run (the title refinement after the opening turn is
+	// one). It must not invent a turn: the placeholder would sit after the real
+	// message and make the transcript tail the wrong one.
+	if (event.type !== 'run-start' && event.runId !== '') {
 		const { msg, groupId } = resolveTarget(state, event.runId);
 		if (!msg) {
 			const rootAgentId = event.type === 'agent-spawned' ? event.payload.parentId : event.agentId;
@@ -255,7 +262,11 @@ export function handleEvent(state: InstanceAiReducerState, event: InstanceAiEven
 			return event.runId;
 		}
 
-		case 'text-delta': {
+		// text-block: a coalesced segment from the durable log. Live it appends
+		// like a delta; on replay the shared reducer REPLACES the segment's
+		// streamed deltas (keyed by responseId), so nothing renders twice.
+		case 'text-delta':
+		case 'text-block': {
 			const { msg, runState } = resolveTarget(state, event.runId);
 			if (runState) {
 				reduceRunEvent(runState, event);
@@ -268,6 +279,7 @@ export function handleEvent(state: InstanceAiReducerState, event: InstanceAiEven
 			return state.activeRunId;
 		}
 
+		case 'reasoning-block':
 		case 'reasoning-delta': {
 			const { msg, runState } = resolveTarget(state, event.runId);
 			if (runState) {
@@ -279,13 +291,19 @@ export function handleEvent(state: InstanceAiReducerState, event: InstanceAiEven
 			return state.activeRunId;
 		}
 
+		case 'tool-input-start':
 		case 'tool-call':
 		case 'tool-result':
 		case 'tool-error':
+		case 'tool-interrupted':
 		case 'agent-spawned':
 		case 'agent-completed':
 		case 'confirmation-request':
 		case 'tasks-update':
+		case 'setup-items':
+		// Apply context events during live runs as well as history replay.
+		case 'instance-context':
+		case 'preference-card':
 		case 'status': {
 			const { runState } = resolveTarget(state, event.runId);
 			if (runState) {
@@ -308,6 +326,7 @@ export function handleEvent(state: InstanceAiReducerState, event: InstanceAiEven
 						...(event.payload.statusCode !== undefined
 							? { statusCode: event.payload.statusCode }
 							: {}),
+						...(event.payload.code ? { code: event.payload.code } : {}),
 						...(event.payload.provider ? { provider: event.payload.provider } : {}),
 						...(event.payload.technicalDetails
 							? { technicalDetails: event.payload.technicalDetails }
@@ -323,12 +342,16 @@ export function handleEvent(state: InstanceAiReducerState, event: InstanceAiEven
 			return state.activeRunId;
 		}
 
+		// `preferences-applied` names the saved preferences the turn carried. The thread
+		// runtime keeps the latest payload for the plus menu. It changes no run state.
 		case 'filesystem-request':
 		case 'thread-title-updated':
+		case 'preferences-applied':
 			return state.activeRunId;
 
 		case 'run-finish': {
 			const { msg, runState } = resolveTarget(state, event.runId);
+			const isActiveRunFinishing = event.runId === state.activeRunId;
 			if (runState) {
 				reduceRunEvent(runState, event);
 				const { status, reason } = event.payload;
@@ -338,15 +361,15 @@ export function handleEvent(state: InstanceAiReducerState, event: InstanceAiEven
 				if (root && status === 'error' && reason && !root.error) {
 					root.error = reason;
 				}
-				if (msg) msg.isStreaming = false;
+				if (msg && isActiveRunFinishing) msg.isStreaming = false;
 			} else if (msg) {
-				msg.isStreaming = false;
+				if (isActiveRunFinishing) msg.isStreaming = false;
 				const { status, reason } = event.payload;
 				if (status === 'error' && reason) {
 					msg.content += '\n\n*Error: ' + reason + '*';
 				}
 			}
-			return null;
+			return isActiveRunFinishing ? null : state.activeRunId;
 		}
 
 		default:

@@ -1,12 +1,17 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
 import { NodeConnectionTypes, type INodeTypeDescription } from 'n8n-workflow';
 
+import * as activityNotification from './activityNotification';
 import * as channel from './channel';
 import * as channelMessage from './channelMessage';
+import * as chat from './chat';
+import * as chatMember from './chatMember';
 import * as chatMessage from './chatMessage';
+import * as onlineMeeting from './onlineMeeting';
 import * as task from './task';
 import { sendAndWaitWebhooksDescription } from '../../../../../utils/sendAndWait/descriptions';
 import { SEND_AND_WAIT_WAITING_TOOLTIP } from '../../../../../utils/sendAndWait/utils';
+import { SERVICE_PRINCIPAL_AUTH } from '../transport';
 
 export const versionDescription: INodeTypeDescription = {
 	displayName: 'Microsoft Teams',
@@ -40,6 +45,15 @@ export const versionDescription: INodeTypeDescription = {
 				},
 			},
 		},
+		{
+			name: SERVICE_PRINCIPAL_AUTH,
+			required: true,
+			displayOptions: {
+				show: {
+					authentication: [SERVICE_PRINCIPAL_AUTH],
+				},
+			},
+		},
 	],
 	waitingNodeTooltip: SEND_AND_WAIT_WAITING_TOOLTIP,
 	webhooks: sendAndWaitWebhooksDescription,
@@ -58,7 +72,13 @@ export const versionDescription: INodeTypeDescription = {
 					name: 'Microsoft OAuth2 (Graph)',
 					value: 'microsoftOAuth2Api',
 					description:
-						'Generic Microsoft Graph credential. Add the Teams Graph scopes (e.g. Chat.ReadWrite, ChannelMessage.Read.All, Group.ReadWrite.All) and grant admin consent on the credential. See the docs for the full scope string.',
+						'Generic Microsoft Graph credential. Add the Teams Graph scopes (e.g. Chat.ReadWrite, ChannelMessage.Read.All, Group.ReadWrite.All, OnlineMeetings.ReadWrite, User.Read.All, TeamworkTag.Read, TeamsActivity.Send) and grant admin consent on the credential. See the docs for the full scope string.',
+				},
+				{
+					name: 'Service Principal (App-Only)',
+					value: SERVICE_PRINCIPAL_AUTH,
+					description:
+						'App-only access via a Microsoft Entra app registration. App-only Graph cannot act as a signed-in user, so chat actions and chat triggers are unavailable. Online meetings act on the user chosen under "Organizer". Grant the relevant application permissions (e.g. Team.ReadBasic.All, Channel.ReadBasic.All, Tasks.ReadWrite.All, OnlineMeetings.ReadWrite.All, User.Read.All, TeamsActivity.Send) and admin consent on the credential.',
 				},
 			],
 			default: 'microsoftTeamsOAuth2Api',
@@ -70,6 +90,10 @@ export const versionDescription: INodeTypeDescription = {
 			noDataExpression: true,
 			options: [
 				{
+					name: 'Activity Notification',
+					value: 'activityNotification',
+				},
+				{
 					name: 'Channel',
 					value: 'channel',
 				},
@@ -78,8 +102,20 @@ export const versionDescription: INodeTypeDescription = {
 					value: 'channelMessage',
 				},
 				{
+					name: 'Chat',
+					value: 'chat',
+				},
+				{
+					name: 'Chat Member',
+					value: 'chatMember',
+				},
+				{
 					name: 'Chat Message',
 					value: 'chatMessage',
+				},
+				{
+					name: 'Online Meeting',
+					value: 'onlineMeeting',
 				},
 				{
 					name: 'Task',
@@ -89,9 +125,13 @@ export const versionDescription: INodeTypeDescription = {
 			default: 'channel',
 		},
 
+		...activityNotification.description,
 		...channel.description,
 		...channelMessage.description,
+		...chat.description,
+		...chatMember.description,
 		...chatMessage.description,
+		...onlineMeeting.description,
 		...task.description,
 	],
 };

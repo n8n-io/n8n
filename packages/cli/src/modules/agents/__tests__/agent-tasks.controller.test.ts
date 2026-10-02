@@ -1,10 +1,12 @@
-import { mock } from 'jest-mock-extended';
+import type { Mocked } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { NotFoundError } from '@n8n/errors';
 
 import type { AgentTaskService } from '../agent-task.service';
 import { AgentTasksController } from '../agent-tasks.controller';
 import type { AgentRepository } from '../repositories/agent.repository';
+import type { CollaborationService } from '@/collaboration/collaboration.service';
 import {
 	expectProjectScopedAgentRoutes,
 	getRoutesByHandlerName,
@@ -13,12 +15,14 @@ import {
 function makeController({
 	agentTaskService = mock<AgentTaskService>(),
 	agentRepository = mock<AgentRepository>(),
+	collaborationService = mock<CollaborationService>(),
 }: {
-	agentTaskService?: jest.Mocked<AgentTaskService>;
-	agentRepository?: jest.Mocked<AgentRepository>;
+	agentTaskService?: Mocked<AgentTaskService>;
+	agentRepository?: Mocked<AgentRepository>;
+	collaborationService?: Mocked<CollaborationService>;
 } = {}) {
 	return {
-		controller: new AgentTasksController(agentTaskService, agentRepository),
+		controller: new AgentTasksController(agentTaskService, agentRepository, collaborationService),
 		agentTaskService,
 		agentRepository,
 	};
@@ -42,7 +46,7 @@ describe('AgentTasksController route access scopes', () => {
 
 describe('AgentTasksController tasks', () => {
 	const agent = { id: 'agent-1', projectId: 'project-1' } as never;
-	const req = { params: { projectId: 'project-1' } } as never;
+	const req = { params: { projectId: 'project-1' }, user: { id: 'user-1' } } as never;
 
 	it('lists tasks for the agent', async () => {
 		const { controller, agentTaskService, agentRepository } = makeController();
@@ -80,7 +84,10 @@ describe('AgentTasksController tasks', () => {
 
 		const result = await controller.createTask(req, undefined as never, 'agent-1', payload);
 
-		expect(agentTaskService.create).toHaveBeenCalledWith('agent-1', payload);
+		expect(agentTaskService.create).toHaveBeenCalledWith('agent-1', 'project-1', payload, {
+			user: { id: 'user-1' },
+			modifiedBy: 'user',
+		});
 		expect(result).toBe(created);
 	});
 
@@ -99,7 +106,16 @@ describe('AgentTasksController tasks', () => {
 			payload,
 		);
 
-		expect(agentTaskService.update).toHaveBeenCalledWith('agent-1', 'task-1', payload);
+		expect(agentTaskService.update).toHaveBeenCalledWith(
+			'agent-1',
+			'project-1',
+			'task-1',
+			payload,
+			{
+				user: { id: 'user-1' },
+				modifiedBy: 'user',
+			},
+		);
 		expect(result).toBe(updated);
 	});
 
@@ -109,7 +125,10 @@ describe('AgentTasksController tasks', () => {
 
 		const result = await controller.deleteTask(req, undefined as never, 'agent-1', 'task-1');
 
-		expect(agentTaskService.delete).toHaveBeenCalledWith('agent-1', 'task-1');
+		expect(agentTaskService.delete).toHaveBeenCalledWith('agent-1', 'project-1', 'task-1', {
+			user: { id: 'user-1' },
+			modifiedBy: 'user',
+		});
 		expect(result).toEqual({ success: true });
 	});
 
@@ -130,7 +149,7 @@ describe('AgentTasksController tasks', () => {
 
 		const result = await controller.runTaskNow(runReq, undefined as never, 'agent-1', 'task-1');
 
-		expect(agentTaskService.runNow).toHaveBeenCalledWith('agent-1', 'task-1', 'user-1');
+		expect(agentTaskService.runNow).toHaveBeenCalledWith('agent-1', 'task-1', { id: 'user-1' });
 		expect(result).toEqual({ success: true });
 	});
 

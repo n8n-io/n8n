@@ -96,14 +96,45 @@ describe('Microsoft Outlook Trigger GenericFunctions', () => {
 				it('should handle simple output format in manual mode', async () => {
 					const result = await getPollResponse.call(mockPollFunctions, pollStartDate, pollEndDate);
 
-					expect(microsoftApiRequest).toHaveBeenCalledWith('GET', '/messages', undefined, {
+					expect(microsoftApiRequest).toHaveBeenCalledWith('GET', '/messages', 0, undefined, {
 						$select:
 							'id,conversationId,subject,bodyPreview,from,toRecipients,categories,hasAttachments',
 						$top: 1,
+						$orderby: 'receivedDateTime desc',
 					});
 					expect(simplifyOutputMessages).toHaveBeenCalledWith([mockMessages[0]]);
 					expect(result).toHaveLength(2);
 					expect(result[0].json).toEqual(mockMessages[0]);
+				});
+
+				it('should prepend a receivedDateTime clause to user filters in manual mode', async () => {
+					const customFilter = 'isRead eq false';
+					(prepareFilterString as Mock).mockReturnValue(customFilter);
+
+					await getPollResponse.call(mockPollFunctions, pollStartDate, pollEndDate);
+
+					expect(microsoftApiRequest).toHaveBeenCalledWith('GET', '/messages', 0, undefined, {
+						$select:
+							'id,conversationId,subject,bodyPreview,from,toRecipients,categories,hasAttachments',
+						$top: 1,
+						$orderby: 'receivedDateTime desc',
+						$filter: `receivedDateTime ge 1900-01-01T00:00:00Z and (${customFilter})`,
+					});
+				});
+
+				it('should wrap user filters in parentheses so or does not mix with the date clause', async () => {
+					const customFilter = "isRead eq false or from/emailAddress/address eq 'test@example.com'";
+					(prepareFilterString as Mock).mockReturnValue(customFilter);
+
+					await getPollResponse.call(mockPollFunctions, pollStartDate, pollEndDate);
+
+					expect(microsoftApiRequest).toHaveBeenCalledWith('GET', '/messages', 0, undefined, {
+						$select:
+							'id,conversationId,subject,bodyPreview,from,toRecipients,categories,hasAttachments',
+						$top: 1,
+						$orderby: 'receivedDateTime desc',
+						$filter: `receivedDateTime ge 1900-01-01T00:00:00Z and (${customFilter})`,
+					});
 				});
 
 				it('should handle fields output format in manual mode', async () => {
@@ -122,9 +153,10 @@ describe('Microsoft Outlook Trigger GenericFunctions', () => {
 
 					const result = await getPollResponse.call(mockPollFunctions, pollStartDate, pollEndDate);
 
-					expect(microsoftApiRequest).toHaveBeenCalledWith('GET', '/messages', undefined, {
+					expect(microsoftApiRequest).toHaveBeenCalledWith('GET', '/messages', 0, undefined, {
 						$select: 'id,subject,from',
 						$top: 1,
+						$orderby: 'receivedDateTime desc',
 					});
 					expect(simplifyOutputMessages).not.toHaveBeenCalled();
 					expect(result).toHaveLength(1);
@@ -152,11 +184,12 @@ describe('Microsoft Outlook Trigger GenericFunctions', () => {
 
 					const result = await getPollResponse.call(mockPollFunctions, pollStartDate, pollEndDate);
 
-					expect(microsoftApiRequest).toHaveBeenCalledWith('GET', '/messages', undefined, {
+					expect(microsoftApiRequest).toHaveBeenCalledWith('GET', '/messages', 0, undefined, {
 						$select: 'id,subject,from,hasAttachments',
 						$top: 1,
+						$orderby: 'receivedDateTime desc',
 					});
-					expect(downloadAttachments).toHaveBeenCalledWith([mockMessages[0]], 'attachment_');
+					expect(downloadAttachments).toHaveBeenCalledWith([mockMessages[0]], 'attachment_', 0);
 					expect(result).toEqual(mockExecutionData);
 				});
 			});
@@ -174,6 +207,7 @@ describe('Microsoft Outlook Trigger GenericFunctions', () => {
 						'value',
 						'GET',
 						'/messages',
+						0,
 						undefined,
 						{
 							$select:
@@ -204,6 +238,7 @@ describe('Microsoft Outlook Trigger GenericFunctions', () => {
 						'value',
 						'GET',
 						'/messages',
+						0,
 						undefined,
 						{
 							$select: 'id,subject,receivedDateTime',
@@ -224,6 +259,7 @@ describe('Microsoft Outlook Trigger GenericFunctions', () => {
 						'value',
 						'GET',
 						'/messages',
+						0,
 						undefined,
 						{
 							$select:
@@ -255,7 +291,7 @@ describe('Microsoft Outlook Trigger GenericFunctions', () => {
 
 					const result = await getPollResponse.call(mockPollFunctions, pollStartDate, pollEndDate);
 
-					expect(downloadAttachments).toHaveBeenCalledWith(mockMessages, 'custom_');
+					expect(downloadAttachments).toHaveBeenCalledWith(mockMessages, 'custom_', 0);
 					expect(result).toEqual(mockExecutionData);
 				});
 
@@ -281,7 +317,7 @@ describe('Microsoft Outlook Trigger GenericFunctions', () => {
 
 					await getPollResponse.call(mockPollFunctions, pollStartDate, pollEndDate);
 
-					expect(downloadAttachments).toHaveBeenCalledWith(mockMessages, 'attachment_');
+					expect(downloadAttachments).toHaveBeenCalledWith(mockMessages, 'attachment_', 0);
 				});
 			});
 
@@ -313,6 +349,7 @@ describe('Microsoft Outlook Trigger GenericFunctions', () => {
 							'value',
 							'GET',
 							`/mailFolders/${folderId1}/messages`,
+							0,
 							undefined,
 							{
 								$select:
@@ -352,6 +389,7 @@ describe('Microsoft Outlook Trigger GenericFunctions', () => {
 							'value',
 							'GET',
 							`/mailFolders/${folderId1}/messages`,
+							0,
 							undefined,
 							expect.objectContaining({ $filter: expect.any(String) }),
 						);
@@ -359,6 +397,7 @@ describe('Microsoft Outlook Trigger GenericFunctions', () => {
 							'value',
 							'GET',
 							`/mailFolders/${folderId2}/messages`,
+							0,
 							undefined,
 							expect.objectContaining({ $filter: expect.any(String) }),
 						);
@@ -402,6 +441,7 @@ describe('Microsoft Outlook Trigger GenericFunctions', () => {
 							'value',
 							'GET',
 							'/messages',
+							0,
 							undefined,
 							expect.objectContaining({ $filter: expect.any(String) }),
 						);
@@ -432,21 +472,25 @@ describe('Microsoft Outlook Trigger GenericFunctions', () => {
 						expect(microsoftApiRequest).toHaveBeenCalledWith(
 							'GET',
 							`/mailFolders/${folderId1}/messages`,
+							0,
 							undefined,
 							{
 								$select:
 									'id,conversationId,subject,bodyPreview,from,toRecipients,categories,hasAttachments',
 								$top: 1,
+								$orderby: 'receivedDateTime desc',
 							},
 						);
 						expect(microsoftApiRequest).toHaveBeenCalledWith(
 							'GET',
 							`/mailFolders/${folderId2}/messages`,
+							0,
 							undefined,
 							{
 								$select:
 									'id,conversationId,subject,bodyPreview,from,toRecipients,categories,hasAttachments',
 								$top: 1,
+								$orderby: 'receivedDateTime desc',
 							},
 						);
 						expect(microsoftApiRequestAllItems).not.toHaveBeenCalled();
@@ -500,8 +544,9 @@ describe('Microsoft Outlook Trigger GenericFunctions', () => {
 
 					const result = await getPollResponse.call(mockPollFunctions, pollStartDate, pollEndDate);
 
-					expect(microsoftApiRequest).toHaveBeenCalledWith('GET', '/messages', undefined, {
+					expect(microsoftApiRequest).toHaveBeenCalledWith('GET', '/messages', 0, undefined, {
 						$top: 1,
+						$orderby: 'receivedDateTime desc',
 					});
 					expect(simplifyOutputMessages).not.toHaveBeenCalled();
 					expect(result).toHaveLength(1);
@@ -550,9 +595,10 @@ describe('Microsoft Outlook Trigger GenericFunctions', () => {
 
 					await getPollResponse.call(mockPollFunctions, pollStartDate, pollEndDate);
 
-					expect(microsoftApiRequest).toHaveBeenCalledWith('GET', '/messages', undefined, {
+					expect(microsoftApiRequest).toHaveBeenCalledWith('GET', '/messages', 0, undefined, {
 						$select: 'id,subject,hasAttachments',
 						$top: 1,
+						$orderby: 'receivedDateTime desc',
 					});
 				});
 			});
@@ -719,9 +765,10 @@ describe('Microsoft Outlook Trigger GenericFunctions', () => {
 
 				const result = await getPollResponse.call(mockPollFunctions, pollStartDate, pollEndDate);
 
-				expect(microsoftApiRequest).toHaveBeenCalledWith('GET', '/messages', undefined, {
+				expect(microsoftApiRequest).toHaveBeenCalledWith('GET', '/messages', 0, undefined, {
 					$select: '',
 					$top: 1,
+					$orderby: 'receivedDateTime desc',
 				});
 				expect(result).toHaveLength(1);
 			});
@@ -754,6 +801,7 @@ describe('Microsoft Outlook Trigger GenericFunctions', () => {
 					'value',
 					'GET',
 					'/messages',
+					0,
 					undefined,
 					{
 						$select: 'id,subject,from,isRead',
@@ -792,13 +840,14 @@ describe('Microsoft Outlook Trigger GenericFunctions', () => {
 					'value',
 					'GET',
 					'/messages',
+					0,
 					undefined,
 					{
 						$select: 'id,subject,hasAttachments',
 						$filter: `isRead eq false and receivedDateTime ge ${pollStartDate} and receivedDateTime lt ${pollEndDate}`,
 					},
 				);
-				expect(downloadAttachments).toHaveBeenCalledWith(mockMessages, 'prefix_');
+				expect(downloadAttachments).toHaveBeenCalledWith(mockMessages, 'prefix_', 0);
 				expect(result).toEqual(mockExecutionData);
 			});
 		});

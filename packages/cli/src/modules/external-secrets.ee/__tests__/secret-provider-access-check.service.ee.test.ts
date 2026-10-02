@@ -3,13 +3,12 @@ import type {
 	SecretsProviderConnectionRepository,
 	User,
 } from '@n8n/db';
-import { mock } from 'jest-mock-extended';
 import type { Scope } from '@n8n/permissions';
+import { mock } from 'vitest-mock-extended';
 
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { ForbiddenError, NotFoundError } from '@n8n/errors';
 import type { ProjectService } from '@/services/project.service.ee';
-import type { RoleService } from '@/services/role.service';
+import type { RoleService } from '@n8n/backend-services';
 
 import { SecretsProviderAccessCheckService } from '../secret-provider-access-check.service.ee';
 
@@ -48,7 +47,7 @@ describe('SecretsProviderAccessCheckService', () => {
 	const projectId = 'project-1';
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('assertConnectionAccess', () => {

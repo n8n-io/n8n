@@ -1,18 +1,17 @@
 import type { Logger } from '@n8n/backend-common';
 import type { ApiKey, ApiKeyRepository, User } from '@n8n/db';
 import { hasGlobalScope } from '@n8n/permissions';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { BadRequestError, NotFoundError } from '@n8n/errors';
 import type { UserManagementMailer } from '@/user-management/email';
 
 import type { JwtService } from '../jwt.service';
 import { PublicApiKeyService } from '../public-api-key.service';
 
-jest.mock('@n8n/permissions', () => ({
-	...jest.requireActual('@n8n/permissions'),
-	hasGlobalScope: jest.fn(),
+vi.mock('@n8n/permissions', async () => ({
+	...(await vi.importActual<typeof import('@n8n/permissions')>('@n8n/permissions')),
+	hasGlobalScope: vi.fn(),
 }));
 
 describe('PublicApiKeyService', () => {
@@ -23,10 +22,10 @@ describe('PublicApiKeyService', () => {
 
 	const service = new PublicApiKeyService(apiKeyRepository, jwtService, mailer, logger);
 
-	const hasGlobalScopeMock = jest.mocked(hasGlobalScope);
+	const hasGlobalScopeMock = vi.mocked(hasGlobalScope);
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		mailer.notifyApiKeyRevoked.mockResolvedValue({ emailSent: true });
 	});
 
@@ -105,12 +104,13 @@ describe('PublicApiKeyService', () => {
 			});
 
 			apiKeyRepository.findOne.mockResolvedValue(existingKey);
-			jwtService.decode.mockReturnValue({ exp: futureExp });
+			jwtService.decodeUnverified.mockReturnValue({ exp: futureExp });
 			jwtService.sign.mockReturnValue('new-token');
 
 			const result = await service.rotateApiKey(owner, 'key-1');
 
 			expect(jwtService.sign).toHaveBeenCalledWith(
+				'publicApiKey',
 				expect.objectContaining({ sub: 'owner-1' }),
 				expect.objectContaining({ expiresIn: expect.any(Number) }),
 			);
@@ -138,7 +138,7 @@ describe('PublicApiKeyService', () => {
 			apiKeyRepository.findOne.mockResolvedValue(
 				mock<ApiKey>({ id: 'key-1', userId: 'owner-1', apiKey: 'old-token' }),
 			);
-			jwtService.decode.mockReturnValue({ exp: pastExp });
+			jwtService.decodeUnverified.mockReturnValue({ exp: pastExp });
 
 			await expect(service.rotateApiKey(owner, 'key-1')).rejects.toThrow(BadRequestError);
 			expect(apiKeyRepository.update).not.toHaveBeenCalled();

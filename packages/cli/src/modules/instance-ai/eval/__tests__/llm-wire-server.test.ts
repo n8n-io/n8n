@@ -2,14 +2,15 @@ import type { Logger } from '@n8n/backend-common';
 import type { EvalLlmMockHandler } from 'n8n-core';
 import type { INode } from 'n8n-workflow';
 import OpenAI from 'openai';
+import type { Mock } from 'vitest';
 
 import { type InterceptedTurn, LlmWireServer } from '../llm-wire-server';
 
 const mockLogger = {
-	info: jest.fn(),
-	warn: jest.fn(),
-	error: jest.fn(),
-	debug: jest.fn(),
+	info: vi.fn(),
+	warn: vi.fn(),
+	error: vi.fn(),
+	debug: vi.fn(),
 } as unknown as Logger;
 
 async function postChatCompletion(url: string, path: string, body: unknown): Promise<Response> {
@@ -126,8 +127,8 @@ describe('LlmWireServer', () => {
 		const subNode = makeSubNode({ name: 'OpenAI Chat Model' });
 
 		it('calls the mock handler with the synthetic OpenAI request shape', async () => {
-			const mockHandler = jest
-				.fn<ReturnType<EvalLlmMockHandler>, Parameters<EvalLlmMockHandler>>()
+			const mockHandler = vi
+				.fn<(...args: Parameters<EvalLlmMockHandler>) => ReturnType<EvalLlmMockHandler>>()
 				.mockResolvedValue({
 					body: { content: 'handler said hi' },
 					headers: { 'content-type': 'application/json' },
@@ -157,7 +158,7 @@ describe('LlmWireServer', () => {
 		});
 
 		it('forwards the handler content into the chat.completion envelope', async () => {
-			const mockHandler = jest.fn().mockResolvedValue({
+			const mockHandler = vi.fn().mockResolvedValue({
 				body: { content: 'mocked assistant reply' },
 				headers: {},
 				statusCode: 200,
@@ -184,7 +185,7 @@ describe('LlmWireServer', () => {
 
 		it('fires onIntercept with the rootName attribution key', async () => {
 			const intercepts: InterceptedTurn[] = [];
-			const mockHandler = jest.fn().mockResolvedValue({
+			const mockHandler = vi.fn().mockResolvedValue({
 				body: { content: 'reply' },
 				headers: {},
 				statusCode: 200,
@@ -207,12 +208,48 @@ describe('LlmWireServer', () => {
 			expect(intercepts[0].rootName).toBe('LLM Chain');
 			expect(intercepts[0].method).toBe('POST');
 			expect(intercepts[0].nodeType).toBe(subNode.type);
-			expect(intercepts[0].mockResponse).toEqual({ content: 'reply' });
+			// The ledger records the wire envelope the SDK received, not the mock
+			// handler's `{ content }` shorthand — judges read this as the wire body.
+			expect(intercepts[0].mockResponse).toMatchObject({
+				object: 'chat.completion',
+				choices: [{ message: { role: 'assistant', content: 'reply' } }],
+			});
+		});
+
+		it('keeps the _evalMockError sentinel at the ledger top level so mock_issue stays attributable', async () => {
+			const intercepts: InterceptedTurn[] = [];
+			const mockHandler = vi.fn().mockResolvedValue({
+				body: { _evalMockError: true, message: 'Mock generation failed: upstream 429' },
+				headers: {},
+				statusCode: 200,
+			}) as unknown as EvalLlmMockHandler;
+
+			server = new LlmWireServer({
+				logger: mockLogger,
+				mockHandler,
+				rootToSubNode: new Map([['Agent', subNode]]),
+				onIntercept: (t) => intercepts.push(t),
+			});
+			const url = await server.start();
+
+			await postChatCompletion(url, '/eval/Agent/v1/chat/completions', {
+				model: 'gpt-4o',
+				messages: [{ role: 'user', content: 'ping' }],
+			});
+
+			// Consumers test `'_evalMockError' in mockResponse`; a translated chat
+			// envelope would bury the sentinel in choices[0].message.content and the
+			// failure would be misattributed to the builder.
+			expect(intercepts).toHaveLength(1);
+			expect(intercepts[0].mockResponse).toEqual({
+				_evalMockError: true,
+				message: 'Mock generation failed: upstream 429',
+			});
 		});
 
 		it('still returns 200 with a valid envelope when onIntercept throws (ledger failure is isolated)', async () => {
-			const warn = jest.fn();
-			const mockHandler = jest.fn().mockResolvedValue({
+			const warn = vi.fn();
+			const mockHandler = vi.fn().mockResolvedValue({
 				body: { content: 'reply' },
 				headers: {},
 				statusCode: 200,
@@ -224,7 +261,7 @@ describe('LlmWireServer', () => {
 				onIntercept: () => {
 					throw new Error('ledger disk full');
 				},
-				logger: { warn } as unknown as Logger,
+				logger: { warn, info: vi.fn() } as unknown as Logger,
 			});
 			const url = await server.start();
 
@@ -249,7 +286,7 @@ describe('LlmWireServer', () => {
 
 		it('records a per-request body in the ledger that does not bleed across requests', async () => {
 			const intercepts: InterceptedTurn[] = [];
-			const mockHandler = jest.fn().mockResolvedValue({
+			const mockHandler = vi.fn().mockResolvedValue({
 				body: { content: 'reply' },
 				headers: {},
 				statusCode: 200,
@@ -290,8 +327,8 @@ describe('LlmWireServer', () => {
 		});
 
 		it('returns 500 with an OpenAI error envelope when the mock handler throws', async () => {
-			const error = jest.fn();
-			const mockHandler = jest
+			const error = vi.fn();
+			const mockHandler = vi
 				.fn()
 				.mockRejectedValue(new Error('LLM rate-limited')) as unknown as EvalLlmMockHandler;
 
@@ -316,8 +353,8 @@ describe('LlmWireServer', () => {
 		});
 
 		it('falls back to a synthetic sub-node when rootToSubNode has no entry', async () => {
-			const warn = jest.fn();
-			const mockHandler = jest.fn().mockResolvedValue({
+			const warn = vi.fn();
+			const mockHandler = vi.fn().mockResolvedValue({
 				body: { content: 'reply' },
 				headers: {},
 				statusCode: 200,
@@ -325,7 +362,7 @@ describe('LlmWireServer', () => {
 			server = new LlmWireServer({
 				mockHandler,
 				rootToSubNode: new Map(),
-				logger: { warn } as unknown as Logger,
+				logger: { warn, info: vi.fn() } as unknown as Logger,
 			});
 			const url = await server.start();
 
@@ -336,13 +373,13 @@ describe('LlmWireServer', () => {
 
 			expect(warn).toHaveBeenCalledTimes(1);
 			expect(warn.mock.calls[0][0]).toContain('Unmapped');
-			const [, node] = (mockHandler as unknown as jest.Mock).mock.calls[0];
+			const [, node] = (mockHandler as unknown as Mock).mock.calls[0];
 			expect(node.name).toBe('Unmapped');
 			expect(node.type).toBe('@n8n/eval-wire-server.unknown-vendor-llm');
 		});
 
 		it('decodes URL-encoded root names with special characters', async () => {
-			const mockHandler = jest.fn().mockResolvedValue({
+			const mockHandler = vi.fn().mockResolvedValue({
 				body: { content: 'reply' },
 				headers: {},
 				statusCode: 200,
@@ -362,7 +399,7 @@ describe('LlmWireServer', () => {
 			);
 
 			expect(response.status).toBe(200);
-			expect((mockHandler as unknown as jest.Mock).mock.calls[0][1]).toBe(subNode);
+			expect((mockHandler as unknown as Mock).mock.calls[0][1]).toBe(subNode);
 		});
 
 		it.each([
@@ -370,7 +407,7 @@ describe('LlmWireServer', () => {
 			['encoded % sequence in the root name', '50%25 cohort'],
 			['only-special-chars root', '%&?#='],
 		])('handles %s without a double-decode (no URIError)', async (_label, rootName) => {
-			const mockHandler = jest.fn().mockResolvedValue({
+			const mockHandler = vi.fn().mockResolvedValue({
 				body: { content: 'reply' },
 				headers: {},
 				statusCode: 200,
@@ -393,7 +430,7 @@ describe('LlmWireServer', () => {
 			// and the response would have surfaced as 500 (or worse, a 404 if
 			// the route never matched).
 			expect(response.status).toBe(200);
-			expect((mockHandler as unknown as jest.Mock).mock.calls[0][1]).toBe(subNode);
+			expect((mockHandler as unknown as Mock).mock.calls[0][1]).toBe(subNode);
 		});
 	});
 
@@ -439,7 +476,7 @@ describe('LlmWireServer', () => {
 		}
 
 		it('returns Content-Type: text/event-stream and a [DONE] terminator', async () => {
-			const mockHandler = jest.fn().mockResolvedValue({
+			const mockHandler = vi.fn().mockResolvedValue({
 				body: { content: 'streamed reply' },
 				headers: {},
 				statusCode: 200,
@@ -463,7 +500,7 @@ describe('LlmWireServer', () => {
 		});
 
 		it('emits chat.completion.chunk frames terminated with a stop finish_reason', async () => {
-			const mockHandler = jest.fn().mockResolvedValue({
+			const mockHandler = vi.fn().mockResolvedValue({
 				body: { content: 'hello via SSE' },
 				headers: {},
 				statusCode: 200,
@@ -495,7 +532,7 @@ describe('LlmWireServer', () => {
 		});
 
 		it('streams tool_calls with first-chunk id+name and a terminal tool_calls finish_reason', async () => {
-			const mockHandler = jest.fn().mockResolvedValue({
+			const mockHandler = vi.fn().mockResolvedValue({
 				body: {
 					tool_calls: [
 						{ id: 'call_1', function: { name: 'get_weather', arguments: '{"city":"NYC"}' } },
@@ -545,7 +582,7 @@ describe('LlmWireServer', () => {
 
 		it('attributes the streamed turn against the requested root in onIntercept', async () => {
 			const intercepts: InterceptedTurn[] = [];
-			const mockHandler = jest.fn().mockResolvedValue({
+			const mockHandler = vi.fn().mockResolvedValue({
 				body: { content: 'streamed' },
 				headers: {},
 				statusCode: 200,
@@ -566,6 +603,11 @@ describe('LlmWireServer', () => {
 
 			expect(intercepts).toHaveLength(1);
 			expect(intercepts[0].rootName).toBe('Agent');
+			// Streamed turns record the equivalent non-streamed wire envelope.
+			expect(intercepts[0].mockResponse).toMatchObject({
+				object: 'chat.completion',
+				choices: [{ message: { content: 'streamed' } }],
+			});
 		});
 
 		it('uses the no-handler stub for streaming when no mock handler is attached', async () => {
@@ -608,7 +650,7 @@ describe('LlmWireServer', () => {
 			}
 
 			it('non-streaming chat completion parses through the SDK reducer', async () => {
-				const mockHandler = jest.fn().mockResolvedValue({
+				const mockHandler = vi.fn().mockResolvedValue({
 					body: { content: 'hello via SDK' },
 					headers: {},
 					statusCode: 200,
@@ -632,7 +674,7 @@ describe('LlmWireServer', () => {
 			});
 
 			it('streaming content yields chunks through the SDK async iterator', async () => {
-				const mockHandler = jest.fn().mockResolvedValue({
+				const mockHandler = vi.fn().mockResolvedValue({
 					body: { content: 'streamed via SDK' },
 					headers: {},
 					statusCode: 200,
@@ -674,7 +716,7 @@ describe('LlmWireServer', () => {
 				// owns `id` + `function.name`, later chunks contribute
 				// `function.arguments`. A drift here (e.g. repeating `id` on
 				// later chunks) throws a `BadStream` error, not a soft skip.
-				const mockHandler = jest.fn().mockResolvedValue({
+				const mockHandler = vi.fn().mockResolvedValue({
 					body: {
 						tool_calls: [
 							{
@@ -734,7 +776,7 @@ describe('LlmWireServer', () => {
 		});
 
 		it('returns a JSON error envelope (not SSE) when the mock handler throws on a streaming request', async () => {
-			const mockHandler = jest
+			const mockHandler = vi
 				.fn()
 				.mockRejectedValue(new Error('LLM offline')) as unknown as EvalLlmMockHandler;
 			server = new LlmWireServer({
@@ -765,7 +807,7 @@ describe('LlmWireServer', () => {
 		const subNode = makeSubNode({ name: 'OpenAI Chat Model' });
 
 		it('emits tool_calls + content:null + finish_reason: tool_calls on the message', async () => {
-			const mockHandler = jest.fn().mockResolvedValue({
+			const mockHandler = vi.fn().mockResolvedValue({
 				body: {
 					tool_calls: [{ id: 'call_1', function: { name: 'lookup', arguments: '{"q":"hi"}' } }],
 				},
@@ -819,7 +861,7 @@ describe('LlmWireServer', () => {
 		const subNode = makeSubNode({ name: 'OpenAI Chat Model' });
 
 		it('returns a `response` envelope with annotations:[] on output_text content', async () => {
-			const mockHandler = jest.fn().mockResolvedValue({
+			const mockHandler = vi.fn().mockResolvedValue({
 				body: { output_text: 'hello via responses' },
 				headers: {},
 				statusCode: 200,
@@ -855,7 +897,7 @@ describe('LlmWireServer', () => {
 		});
 
 		it('emits a function_call output item when the mock handler returns tool_calls', async () => {
-			const mockHandler = jest.fn().mockResolvedValue({
+			const mockHandler = vi.fn().mockResolvedValue({
 				body: {
 					tool_calls: [{ id: 'call_1', function: { name: 'lookup', arguments: '{"q":"x"}' } }],
 				},
@@ -885,7 +927,7 @@ describe('LlmWireServer', () => {
 		});
 
 		it('streams response.* SSE events when stream:true', async () => {
-			const mockHandler = jest.fn().mockResolvedValue({
+			const mockHandler = vi.fn().mockResolvedValue({
 				body: { output_text: 'streamed reply' },
 				headers: {},
 				statusCode: 200,
@@ -924,7 +966,7 @@ describe('LlmWireServer', () => {
 
 		it('attributes the turn via onIntercept with the parsed root', async () => {
 			const intercepts: InterceptedTurn[] = [];
-			const mockHandler = jest.fn().mockResolvedValue({
+			const mockHandler = vi.fn().mockResolvedValue({
 				body: { output_text: 'ok' },
 				headers: {},
 				statusCode: 200,
@@ -944,6 +986,12 @@ describe('LlmWireServer', () => {
 
 			expect(intercepts).toHaveLength(1);
 			expect(intercepts[0].rootName).toBe('My Agent');
+			// The ledger records the canonical Responses envelope the SDK received —
+			// output[].content[].text — not the handler's internal shorthand.
+			expect(intercepts[0].mockResponse).toMatchObject({
+				object: 'response',
+				output: [{ type: 'message', content: [{ type: 'output_text', text: 'ok' }] }],
+			});
 			// Reverse translator uses the canonical OpenAI URL so mock-handler's
 			// service/endpoint extraction derives `/v1/responses` correctly.
 			expect(intercepts[0].url).toBe('https://api.openai.com/v1/responses');

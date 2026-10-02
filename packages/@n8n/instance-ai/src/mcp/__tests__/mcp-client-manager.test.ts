@@ -6,6 +6,7 @@ vi.mock('@n8n/agents', () => ({
 		return {
 			listTools: vi.fn().mockResolvedValue([]),
 			close: vi.fn().mockResolvedValue(undefined),
+			getConnectionFailures: vi.fn().mockReturnValue([]),
 		};
 	}),
 }));
@@ -15,7 +16,8 @@ vi.mock('../../agent/sanitize-mcp-schemas', () => ({
 }));
 
 import { McpClient } from '@n8n/agents';
-import { createResultError, createResultOk, UserError } from 'n8n-workflow';
+import { createResultError, createResultOk } from '@n8n/utils/result';
+import { UserError } from 'n8n-workflow';
 
 import { sanitizeMcpToolSchemas } from '../../agent/sanitize-mcp-schemas';
 import type { SsrfUrlValidator } from '../mcp-client-manager';
@@ -343,6 +345,85 @@ describe('McpClientManager', () => {
 			await expect(manager.getRegularTools(configs, mockLogger)).resolves.toBeDefined();
 			expect(mockedMcpClient).toHaveBeenCalledTimes(2);
 		});
+
+		it('surfaces per-server connection failures without aborting the run', async () => {
+			const onConnectionFailed = vi.fn();
+			const manager = new McpClientManager(undefined, { onConnectionFailed });
+			const configs = [{ name: 'dead', url: 'https://dead.example.com/' }];
+
+			mockedMcpClient.mockImplementationOnce(function () {
+				return {
+					listTools: vi.fn().mockResolvedValue([]),
+					close: vi.fn().mockResolvedValue(undefined),
+					getConnectionFailures: vi
+						.fn()
+						.mockReturnValue([{ server: 'dead', error: 'fetch failed' }]),
+				};
+			});
+
+			const result = await manager.getRegularTools(configs, mockLogger);
+			expect(result).toBeDefined();
+			expect(result.connectionFailures).toEqual([
+				{ server: { name: 'dead', url: 'https://dead.example.com/' }, error: 'fetch failed' },
+			]);
+			expect(onConnectionFailed).toHaveBeenCalledWith({
+				server: { name: 'dead', url: 'https://dead.example.com/' },
+				error: 'fetch failed',
+			});
+		});
+	});
+
+	describe('connection failure scoping', () => {
+		it('returns the requesting config own failures on a cache hit, not another config\u2019s', async () => {
+			const manager = new McpClientManager();
+			const configA = [{ name: 'dead', url: 'https://dead.example.com/' }];
+			const configB = [{ name: 'ok', url: 'https://ok.example.com/' }];
+
+			// First call for A: cache miss, server 'dead' fails.
+			mockedMcpClient.mockImplementationOnce(function () {
+				return {
+					listTools: vi.fn().mockResolvedValue([]),
+					close: vi.fn().mockResolvedValue(undefined),
+					getConnectionFailures: vi
+						.fn()
+						.mockReturnValue([{ server: 'dead', error: 'fetch failed' }]),
+				};
+			});
+			const resultA1 = await manager.getRegularTools(configA, mockLogger);
+			expect(resultA1.connectionFailures).toHaveLength(1);
+
+			// Call for B: different config, cache miss, no failures.
+			const resultB = await manager.getRegularTools(configB, mockLogger);
+			expect(resultB.connectionFailures).toEqual([]);
+
+			// Call for A again: cache hit. Must return A's own failures, not B's (empty).
+			const resultA2 = await manager.getRegularTools(configA, mockLogger);
+			expect(resultA2.connectionFailures).toEqual([
+				{ server: { name: 'dead', url: 'https://dead.example.com/' }, error: 'fetch failed' },
+			]);
+			// A and B each built once; A's second call hit the cache.
+			expect(mockedMcpClient).toHaveBeenCalledTimes(2);
+		});
+
+		it('reports no failures for a run with zero MCP servers, even after a prior failing run', async () => {
+			const manager = new McpClientManager();
+
+			mockedMcpClient.mockImplementationOnce(function () {
+				return {
+					listTools: vi.fn().mockResolvedValue([]),
+					close: vi.fn().mockResolvedValue(undefined),
+					getConnectionFailures: vi.fn().mockReturnValue([{ server: 'dead', error: 'boom' }]),
+				};
+			});
+			await manager.getRegularTools(
+				[{ name: 'dead', url: 'https://dead.example.com/' }],
+				mockLogger,
+			);
+
+			// A subsequent run with no MCP servers must not inherit the prior failure.
+			const empty = await manager.getRegularTools([], mockLogger);
+			expect(empty.connectionFailures).toEqual([]);
+		});
 	});
 
 	describe('disconnect interaction with in-flight work', () => {
@@ -383,30 +464,94 @@ describe('McpClientManager', () => {
 		});
 	});
 
-	describe('tool approval', () => {
-		const configs = [{ name: 'a', url: 'https://a.example.com/' }];
-
-		it('marks every server config as requiring approval by default', async () => {
+	describe('tool permissions', () => {
+		it('configures permissions from live tool annotations', async () => {
 			const manager = new McpClientManager();
-			await manager.getRegularTools(configs, mockLogger);
-			expect(mockedMcpClient).toHaveBeenCalledWith(
-				expect.arrayContaining([expect.objectContaining({ requireApproval: true })]),
+			await manager.getRegularTools(
+				[
+					{
+						name: 'a',
+						url: 'https://a.example.com/',
+						toolPermissions: {
+							categories: { read: 'always_allow', write: 'require_approval' },
+						},
+					},
+				],
+				mockLogger,
 			);
+
+			const [nativeConfigs] = mockedMcpClient.mock.lastCall ?? [];
+			const configureTools = nativeConfigs[0].configureTools;
+			expect(
+				configureTools([
+					{ name: 'lookup', annotations: { readOnlyHint: true } },
+					{ name: 'change', annotations: { readOnlyHint: false } },
+				]),
+			).toEqual({
+				toolFilter: { mode: 'exclude', tools: [] },
+				requireApproval: ['change'],
+			});
 		});
 
-		it('propagates requireApproval=false onto every server config', async () => {
+		it('uses run permissions when a server has no policy', async () => {
 			const manager = new McpClientManager();
-			await manager.getRegularTools(configs, mockLogger, false);
-			expect(mockedMcpClient).toHaveBeenCalledWith(
-				expect.arrayContaining([expect.objectContaining({ requireApproval: false })]),
-			);
+			await manager.getRegularTools([{ name: 'a', url: 'https://a.example.com/' }], mockLogger, {
+				mcpRead: 'blocked',
+				mcpWrite: 'always_allow',
+			});
+
+			const [nativeConfigs] = mockedMcpClient.mock.lastCall ?? [];
+			const configureTools = nativeConfigs[0].configureTools;
+			expect(
+				configureTools([
+					{ name: 'lookup', annotations: { readOnlyHint: true } },
+					{ name: 'change', annotations: { readOnlyHint: false } },
+				]),
+			).toEqual({
+				toolFilter: { mode: 'exclude', tools: ['lookup'] },
+				requireApproval: [],
+			});
 		});
 
-		it('caches separately per approval mode', async () => {
+		it('reloads tools when run permissions change', async () => {
 			const manager = new McpClientManager();
-			await manager.getRegularTools(configs, mockLogger, true);
-			await manager.getRegularTools(configs, mockLogger, false);
+			const configs = [{ name: 'a', url: 'https://a.example.com/' }];
+
+			await manager.getRegularTools(configs, mockLogger, {
+				mcpRead: 'always_allow',
+				mcpWrite: 'require_approval',
+			});
+			await manager.getRegularTools(configs, mockLogger, {
+				mcpRead: 'always_allow',
+				mcpWrite: 'blocked',
+			});
+
 			expect(mockedMcpClient).toHaveBeenCalledTimes(2);
+		});
+	});
+
+	describe('tool call callback', () => {
+		it('forwards native tool call events with the source server config', async () => {
+			const onToolCallSettled = vi.fn();
+			const manager = new McpClientManager(undefined, { onToolCallSettled });
+			const config = {
+				name: 'registry',
+				url: 'https://registry.example.com/mcp',
+				metadata: { serverSlug: 'linear', userId: 'user-1' },
+			};
+
+			await manager.getRegularTools([config], mockLogger);
+
+			const mcpClientCalls = mockedMcpClient.mock.calls as Array<
+				[Array<{ onToolCallSettled?: (event: { toolName: string; success: boolean }) => void }>]
+			>;
+			mcpClientCalls[0][0][0].onToolCallSettled?.({ toolName: 'search', success: true });
+
+			expect(onToolCallSettled).toHaveBeenCalledWith({
+				server: config,
+				toolName: 'search',
+				success: true,
+			});
 		});
 	});
 });

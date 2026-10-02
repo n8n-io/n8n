@@ -13,6 +13,7 @@ const makeContext = (overrides: Partial<RedactionContext> = {}): RedactionContex
 	redactExecutionData: undefined,
 	userCanReveal: false,
 	enforceDynCredRedaction: false,
+	enforceCredentialUsabilityRedaction: false,
 	memo: new Map(),
 	...overrides,
 });
@@ -70,7 +71,7 @@ describe('NodeDefinedFieldRedactionStrategy', () => {
 	});
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		strategy = new NodeDefinedFieldRedactionStrategy(logger, nodeTypes);
 	});
 

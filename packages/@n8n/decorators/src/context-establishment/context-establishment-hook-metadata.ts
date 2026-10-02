@@ -8,6 +8,18 @@ type ContextEstablishmentHookOptions = {
 	 * trigger node type (i.e. `isApplicableToTriggerNode` is not consulted).
 	 */
 	alwaysExecute: boolean;
+
+	/**
+	 * If true, the hook is also re-run for sub-workflow executions, which otherwise
+	 * inherit their parent's context verbatim. Opt in only when the hook must
+	 * re-derive context from the child workflow itself (e.g. its redaction policy).
+	 *
+	 * Sub-executions pass no trigger items and ignore any the hook returns — the
+	 * child keeps the input it inherited from its parent — so such a hook must
+	 * derive its result from the workflow/inherited context, not from trigger data,
+	 * and must not overwrite context the child legitimately inherited.
+	 */
+	runForSubExecution?: boolean;
 };
 
 /**
@@ -105,6 +117,12 @@ export class ContextEstablishmentHookMetadata {
 	getGlobalClasses() {
 		return [...this.contextEstablishmentHooks.values()]
 			.filter((entry) => entry.options?.alwaysExecute ?? false)
+			.map((entry) => entry.class);
+	}
+
+	getSubExecutionClasses() {
+		return [...this.contextEstablishmentHooks.values()]
+			.filter((entry) => entry.options?.runForSubExecution ?? false)
 			.map((entry) => entry.class);
 	}
 }

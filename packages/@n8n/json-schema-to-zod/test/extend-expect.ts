@@ -15,3 +15,9 @@ expect.extend({
 		};
 	},
 });
+
+declare module 'vitest' {
+	interface Matchers<R, T> {
+		toMatchZod(expected: z.ZodTypeAny): R;
+	}
+}

@@ -1,15 +1,15 @@
 <script lang="ts" setup>
 import ProjectCardBadge from '@/features/collaboration/projects/components/ProjectCardBadge.vue';
 import { useLoadingService } from '@/app/composables/useLoadingService';
-import { useTelemetry } from '@/app/composables/useTelemetry';
-import { useToast } from '@/app/composables/useToast';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
+import { useToast } from '@n8n/composables/useToast';
 import { VIEWS } from '@/app/constants';
 import { SOURCE_CONTROL_PUSH_MODAL_KEY } from '../sourceControl.constants';
 import type { WorkflowResource } from '@/Interface';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useSourceControlStore } from '../sourceControl.store';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import type {
 	ProjectListItem,
 	ProjectSharingData,
@@ -43,6 +43,7 @@ import 'vue-virtual-scroller/dist/vue-virtual-scroller.css';
 import Modal from '@/app/components/Modal.vue';
 import ProjectSharing from '@/features/collaboration/projects/components/ProjectSharing.vue';
 import { useAvailableProjectSearch } from '@/features/collaboration/projects/projects.utils';
+import { getResourcePermissions } from '@n8n/permissions';
 import {
 	N8nBadge,
 	N8nButton,
@@ -134,7 +135,7 @@ const projectAdminCalloutDismissed = useStorage(
 
 const searchFnForFilters = useAvailableProjectSearch();
 const filterFnForFilters = (project: ProjectListItem) =>
-	!project.role || project.role === 'project:admin';
+	Boolean(getResourcePermissions(project.scopes)?.sourceControl?.push);
 
 onBeforeMount(async () => {
 	// Load projects for file→project mapping display and for member search
@@ -356,8 +357,12 @@ const sortedWorkflows = useSourceControlFileList({
 			return true;
 		}
 
-		const workflowPath = (workflow.folderPath ?? []).join('/');
-		return workflowPath === folderFilter || workflowPath.startsWith(`${folderFilter}/`);
+		// Match both the current and prior folder so a moved-out workflow stays visible.
+		const matchesFolder = (path: string[] | undefined) => {
+			const workflowPath = (path ?? []).join('/');
+			return workflowPath === folderFilter || workflowPath.startsWith(`${folderFilter}/`);
+		};
+		return matchesFolder(workflow.folderPath) || matchesFolder(workflow.remoteFolderPath);
 	},
 });
 
@@ -525,6 +530,18 @@ function close() {
 
 function renderUpdatedAt(file: SourceControlledFile) {
 	return formatSourceControlUpdatedAt(file.updatedAt);
+}
+
+// Non-empty only when the workflow's folder changed vs. the remote, i.e. it was moved.
+function renderMovedTooltip(file: SourceControlledFile) {
+	const to = (file.folderPath ?? []).join('/');
+	const from = (file.remoteFolderPath ?? []).join('/');
+	if (file.remoteFolderPath === undefined || from === to) {
+		return '';
+	}
+	return i18n.baseText('settings.sourceControl.modals.push.movedWorkflow', {
+		interpolate: { from: from || '/', to: to || '/' },
+	});
 }
 
 async function onCommitKeyDownEnter() {
@@ -936,7 +953,7 @@ onMounted(async () => {
 								:active="Boolean(filterCount)"
 								data-test-id="source-control-filter-dropdown"
 							>
-								<N8nBadge v-if="filterCount" theme="primary" class="mr-4xs">
+								<N8nBadge v-if="filterCount" variant="primary" class="mr-4xs">
 									{{ filterCount }}
 								</N8nBadge>
 							</N8nButton>
@@ -1221,12 +1238,15 @@ onMounted(async () => {
 																	:show-badge-border="false"
 																/>
 															</template>
-															<N8nBadge
-																:theme="getStatusTheme(row.file.status)"
-																style="height: 25px"
+															<N8nTooltip
+																:content="renderMovedTooltip(row.file)"
+																:disabled="!renderMovedTooltip(row.file)"
+																placement="top"
 															>
-																{{ getStatusText(row.file.status) }}
-															</N8nBadge>
+																<N8nBadge :variant="getStatusTheme(row.file.status)" size="xsmall">
+																	{{ getStatusText(row.file.status) }}
+																</N8nBadge>
+															</N8nTooltip>
 															<template v-if="isWorkflowDiffsEnabled">
 																<N8nTooltip
 																	v-if="row.file.type === SOURCE_CONTROL_FILE_TYPE.workflow"

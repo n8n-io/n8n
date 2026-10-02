@@ -1,5 +1,6 @@
 import { AgentJsonConfigSchema } from '../agent-json-config.schema';
-import { sanitizeAgentJsonConfig } from '../sanitize-agent-json-config';
+import { agentSkillSchema } from '../agent-skill.schema';
+import { sanitizeAgentJsonConfig, sanitizeAgentSkillBodies } from '../sanitize-agent-json-config';
 import { SUB_AGENT_MAX_CHILDREN_MAX, SUB_AGENT_MAX_CHILDREN_MIN } from '../sub-agent.schema';
 
 const baseConfig = {
@@ -62,6 +63,13 @@ describe('sanitizeAgentJsonConfig', () => {
 			config: {
 				toolCallConcurrency: 2,
 				webSearch: { enabled: true, provider: 'native', legacyProviderSetting: true },
+				promptCaching: {
+					enabled: true,
+					// anthropic.ttl is a real schema field; the made-up key inside it
+					// and the sibling made-up field are both stripped.
+					anthropic: { ttl: '1h', legacyAnthropicSetting: true },
+					legacyPromptCachingSetting: true,
+				},
 				nodeTools: { enabled: true, legacyNodeToolSetting: true },
 				legacyRuntimeSetting: true,
 			},
@@ -76,6 +84,7 @@ describe('sanitizeAgentJsonConfig', () => {
 			config: {
 				toolCallConcurrency: 2,
 				webSearch: { enabled: true, provider: 'native' },
+				promptCaching: { enabled: true, anthropic: { ttl: '1h' } },
 			},
 		});
 		expect(AgentJsonConfigSchema.safeParse(sanitized).success).toBe(true);
@@ -87,7 +96,8 @@ describe('sanitizeAgentJsonConfig', () => {
 			tools: [
 				{
 					type: 'workflow',
-					workflow: 'wf-1',
+					workflowId: 'wf-1',
+					workflow: 'Run workflow',
 					name: 'Run workflow',
 					legacyWorkflowField: true,
 				},
@@ -121,7 +131,8 @@ describe('sanitizeAgentJsonConfig', () => {
 			tools: [
 				{
 					type: 'workflow',
-					workflow: 'wf-1',
+					workflowId: 'wf-1',
+					workflow: 'Run workflow',
 					name: 'Run workflow',
 				},
 				{
@@ -140,6 +151,50 @@ describe('sanitizeAgentJsonConfig', () => {
 								id: 'cred-1',
 								name: 'Slack',
 							},
+						},
+					},
+				},
+			],
+		});
+		expect(AgentJsonConfigSchema.safeParse(sanitized).success).toBe(true);
+	});
+
+	it('strips unknown keys from a managed node-tool credential while keeping its marker', () => {
+		const sanitized = sanitizeAgentJsonConfig({
+			...baseConfig,
+			tools: [
+				{
+					type: 'node',
+					name: 'Send message',
+					node: {
+						nodeType: 'n8n-nodes-base.slack',
+						nodeTypeVersion: 1,
+						nodeParameters: {},
+						credentials: {
+							slackApi: {
+								id: null,
+								name: 'n8n credits',
+								__aiGatewayManaged: true,
+								legacyCredentialField: true,
+							},
+						},
+					},
+				},
+			],
+		});
+
+		expect(sanitized).toEqual({
+			...baseConfig,
+			tools: [
+				{
+					type: 'node',
+					name: 'Send message',
+					node: {
+						nodeType: 'n8n-nodes-base.slack',
+						nodeTypeVersion: 1,
+						nodeParameters: {},
+						credentials: {
+							slackApi: { id: null, name: 'n8n credits', __aiGatewayManaged: true },
 						},
 					},
 				},
@@ -586,5 +641,46 @@ describe('sanitizeAgentJsonConfig', () => {
 			},
 		});
 		expect(AgentJsonConfigSchema.safeParse(sanitized).success).toBe(true);
+	});
+});
+
+describe('sanitizeAgentSkillBodies', () => {
+	const validBody = {
+		name: 'Triage',
+		description: 'Triage incoming requests',
+		instructions: 'Categorize the request and route it.',
+		allowedTools: ['lookup_orders'],
+		references: [{ path: 'references/guide.md', content: '# Guide' }],
+	};
+
+	it('returns non-record payloads unchanged', () => {
+		expect(sanitizeAgentSkillBodies(null)).toBe(null);
+		expect(sanitizeAgentSkillBodies('skills')).toBe('skills');
+		expect(sanitizeAgentSkillBodies([validBody])).toEqual([validBody]);
+	});
+
+	it('leaves clean bodies unchanged and keeps their keys', () => {
+		const bodies = { skill_triage: validBody };
+
+		const sanitized = sanitizeAgentSkillBodies(bodies);
+
+		expect(sanitized).toEqual(bodies);
+		expect(agentSkillSchema.safeParse((sanitized as typeof bodies).skill_triage).success).toBe(
+			true,
+		);
+	});
+
+	it('strips unknown body fields so retired schema keys degrade gracefully', () => {
+		const sanitized = sanitizeAgentSkillBodies({
+			skill_triage: { ...validBody, retiredField: 'saved by an older schema' },
+		});
+
+		expect(sanitized).toEqual({ skill_triage: validBody });
+	});
+
+	it('passes malformed bodies through for validation to reject', () => {
+		expect(sanitizeAgentSkillBodies({ skill_triage: 'not a body' })).toEqual({
+			skill_triage: 'not a body',
+		});
 	});
 });

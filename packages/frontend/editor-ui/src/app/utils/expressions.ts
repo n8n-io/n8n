@@ -1,14 +1,125 @@
 import { i18n } from '@n8n/i18n';
 import type { ResolvableState } from '@/app/types/expressions';
-import {
-	ExpressionError,
-	ExpressionParser,
-	isExpression,
-	type IPinData,
-	type Result,
-} from 'n8n-workflow';
+import type { Result } from '@n8n/utils/result';
+import { ExpressionError, ExpressionParser, isExpression, type IPinData } from 'n8n-workflow';
+import { isObject } from '@/app/utils/objectUtils';
 
 export { isExpression };
+
+type ExternalSecretReferenceState = 'none' | 'known' | 'missing' | 'unknown';
+
+const SECRET_REFERENCE = /\$secrets\b/;
+
+// ponytail: regex heuristic — flags an expression that reads execution item
+// data. Ceiling: also matches "$json" inside a string literal. Upgrade path:
+// have the resolver report whether redacted data was actually read.
+const DATA_ACCESSOR = /\$json|\$binary|\$input\b|\$items\b|\$node\b|\$thisItem\b|\$\(/;
+
+/** Whether an expression reads execution item data (and so is emptied by redaction). */
+export const referencesExecutionData = (expression: string): boolean =>
+	DATA_ACCESSOR.test(expression);
+
+/**
+ * True when the expression is a single `{{ }}` block with no literal text around
+ * it. A mixed expression (literal text plus a block) is not single. Used to tell
+ * a fallback (`{{ $json.x ?? 'd' }}`, one block that still resolves to a value)
+ * apart from a mixed expression whose value comes from its literal text.
+ */
+export const isSingleResolvable = (expression: string): boolean => {
+	const chunks = ExpressionParser.splitExpression(removeExpressionPrefix(expression));
+	const codeChunks = chunks.filter((chunk) => chunk.type === 'code');
+	const hasLiteralText = chunks.some(
+		(chunk) => chunk.type === 'text' && chunk.text.trim().length > 0,
+	);
+	return codeChunks.length === 1 && !hasLiteralText;
+};
+/** The only key forms we can read at edit time: `.key`, `['key']`, `["key"]`. */
+const LITERAL_KEY_ACCESS =
+	/^\s*(?:\.\s*(?<dotKey>[a-zA-Z_$][\w$]*)|\[\s*(?<quote>['"])(?<quotedKey>[^\\]*?)\k<quote>\s*\])/;
+/** Any further access, e.g. `[$vars.key]`, `?.key`, `['a\'b']`. */
+const UNREAD_ACCESS = /^\s*(?:\?\.|\.|\[)/;
+
+/**
+ * Reads the keys directly after a `$secrets` occurrence, so `.vault['key']` yields
+ * `['vault', 'key']`. `hasUnreadAccess` flags a chain that goes on in some other form.
+ */
+const readLiteralKeys = (afterReference: string): { keys: string[]; hasUnreadAccess: boolean } => {
+	const keys: string[] = [];
+	let rest = afterReference;
+
+	let access = LITERAL_KEY_ACCESS.exec(rest);
+
+	while (access) {
+		keys.push(access.groups?.dotKey ?? access.groups?.quotedKey ?? '');
+		rest = rest.slice(access[0].length);
+		access = LITERAL_KEY_ACCESS.exec(rest);
+	}
+
+	return { keys, hasUnreadAccess: UNREAD_ACCESS.test(rest) };
+};
+
+/**
+ * Walks the keys through the masked secrets metadata: `['vault', 'key']` in
+ * `{ vault: { key: '***' } }` is `known`, an absent key is `missing`, anything else `unknown`.
+ */
+const lookUpKeys = (
+	keys: string[],
+	secrets: unknown,
+): Exclude<ExternalSecretReferenceState, 'none'> => {
+	let value: unknown = secrets;
+
+	for (const key of keys) {
+		if (!isObject(value)) return 'unknown';
+		// Metadata that never loaded is empty, which must not read as a wrong path.
+		if (Object.keys(value).length === 0) return 'unknown';
+		if (!Object.hasOwn(value, key)) return 'missing';
+		value = value[key];
+	}
+
+	return typeof value === 'string' ? 'known' : 'unknown';
+};
+
+/**
+ * Looks up every `$secrets` reference in the expression's code against the secrets metadata,
+ * reporting `known` only when each one reads in full and lands on an existing secret.
+ */
+const getExternalSecretReferenceState = (
+	expression: string,
+	secrets: unknown,
+): ExternalSecretReferenceState => {
+	let state: ExternalSecretReferenceState = 'none';
+
+	for (const { type, text: code } of ExpressionParser.splitExpression(expression)) {
+		if (type === 'text') continue;
+
+		const [, ...afterReferences] = code.split(SECRET_REFERENCE);
+
+		for (const afterReference of afterReferences) {
+			const { keys, hasUnreadAccess } = readLiteralKeys(afterReference);
+			const keyState = lookUpKeys(keys, secrets);
+			const referenceState = hasUnreadAccess && keyState === 'known' ? 'unknown' : keyState;
+
+			if (referenceState !== 'known') return referenceState;
+			state = 'known';
+		}
+	}
+
+	return state;
+};
+
+export const getExternalSecretPreview = (
+	expression: string,
+	secrets: unknown,
+): { text: string; exists: boolean } | undefined => {
+	switch (getExternalSecretReferenceState(expression, secrets)) {
+		case 'known':
+			return { text: i18n.baseText('expressionModalInput.evaluatedDuringExecution'), exists: true };
+		case 'missing':
+			return { text: i18n.baseText('expressionModalInput.secretNotFound'), exists: false };
+		default:
+			return undefined;
+	}
+};
 
 export const isEmptyExpression = (expr: string) => {
 	return /\{\{\s*\}\}/.test(expr);

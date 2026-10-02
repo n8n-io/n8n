@@ -1,4 +1,4 @@
-import { shallowRef } from 'vue';
+import { ref, shallowRef } from 'vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import { flushPromises } from '@vue/test-utils';
 import SetupWorkflowCredentialsButton from './SetupWorkflowCredentialsButton.vue';
@@ -301,6 +301,31 @@ describe('SetupWorkflowCredentialsButton', () => {
 			expect(getByTestId('setup-credentials-button')).toBeVisible();
 		});
 
+		it('does not render the compact button by default', () => {
+			workflowsStore.workflowId = workflowWithNodes.id;
+			setWorkflowDocumentStoreState(workflowWithNodes.meta, workflowWithNodes.nodes);
+			setupPanelStore.isFeatureEnabled = true;
+			mockDoesNodeHaveAllCredentialsFilled.mockReturnValue(false);
+
+			const { getByTestId, queryByTestId } = renderComponent();
+			expect(getByTestId('setup-credentials-button')).toBeVisible();
+			expect(queryByTestId('setup-credentials-button-compact')).toBeNull();
+		});
+
+		it('renders a compact icon-only button with the label as aria-label when collapsible', () => {
+			workflowsStore.workflowId = workflowWithNodes.id;
+			setWorkflowDocumentStoreState(workflowWithNodes.meta, workflowWithNodes.nodes);
+			setupPanelStore.isFeatureEnabled = true;
+			mockDoesNodeHaveAllCredentialsFilled.mockReturnValue(false);
+
+			const { getByTestId } = renderComponent({ props: { collapsible: true } });
+			expect(getByTestId('setup-credentials-button')).toBeInTheDocument();
+			expect(getByTestId('setup-credentials-button-compact')).toHaveAttribute(
+				'aria-label',
+				'Set up template',
+			);
+		});
+
 		it('ignores disabled nodes when deciding whether all credentials are filled', () => {
 			const nodes = [
 				{
@@ -477,6 +502,43 @@ describe('SetupWorkflowCredentialsButton', () => {
 			renderComponent();
 
 			expect(uiStore.openModal).not.toHaveBeenCalled();
+		});
+
+		it('opens modal once conditions become true after mount (nodes load late)', async () => {
+			// Nodes/node types load asynchronously, so the auto-open conditions can
+			// only hold after mount. The modal must still open reactively.
+			const nodesRef = ref<unknown[]>([]);
+			const workflowDocumentStore = useWorkflowDocumentStore(
+				createWorkflowDocumentId(workflowWithUnfilledCredentials.id),
+			);
+			Object.defineProperty(workflowDocumentStore, 'meta', {
+				value: workflowWithUnfilledCredentials.meta,
+				configurable: true,
+			});
+			Object.defineProperty(workflowDocumentStore, 'allNodes', {
+				get: () => nodesRef.value,
+				configurable: true,
+			});
+			workflowsStore.workflowId = workflowWithUnfilledCredentials.id;
+			workflowDocumentStoreRef.value = workflowDocumentStore;
+
+			mockDoesNodeHaveAllCredentialsFilled.mockReturnValue(false);
+			mockGetVariant.mockReturnValue(TEMPLATE_SETUP_EXPERIENCE.variant);
+			readyToRunStore.isReadyToRunTemplateId.mockReturnValue(false);
+			setupPanelStore.isFeatureEnabled = false;
+			mockRouteQuery.mockReturnValue({ templateId: '123' });
+
+			renderComponent();
+			await flushPromises();
+
+			// No nodes yet -> all credentials appear filled -> modal stays closed.
+			expect(uiStore.openModal).not.toHaveBeenCalled();
+
+			// Nodes finish loading with unfilled credentials.
+			nodesRef.value = workflowWithUnfilledCredentials.nodes;
+			await flushPromises();
+
+			expect(uiStore.openModal).toHaveBeenCalledWith(SETUP_CREDENTIALS_MODAL_KEY);
 		});
 
 		it('does not open modal for ready-to-run workflows', () => {

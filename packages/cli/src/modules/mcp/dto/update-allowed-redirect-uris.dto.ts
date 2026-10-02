@@ -2,7 +2,7 @@ import { Z } from '@n8n/api-types';
 import { z } from 'zod';
 
 const isLocalhost = (hostname: string): boolean =>
-	hostname === 'localhost' || hostname === '127.0.0.1';
+	hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '[::1]';
 
 const redirectUriSchema = z
 	.string()

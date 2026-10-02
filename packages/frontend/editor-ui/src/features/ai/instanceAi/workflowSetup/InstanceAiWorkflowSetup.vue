@@ -1,9 +1,10 @@
 <script lang="ts" setup>
-import { toRef } from 'vue';
+import { provide, toRef } from 'vue';
 import type { InstanceAiCredentialFlow, InstanceAiWorkflowSetupNode } from '@n8n/api-types';
 import WorkflowSetupWizard from './components/WorkflowSetupWizard.vue';
 import WorkflowSetupStatus from './components/WorkflowSetupStatus.vue';
 import { provideWorkflowSetupContext } from './composables/useWorkflowSetupContext';
+import { ResourceLocatorDropdownTeleportedKey } from '@/app/constants';
 
 const props = defineProps<{
 	requestId: string;
@@ -12,6 +13,8 @@ const props = defineProps<{
 	workflowId?: string;
 	credentialFlow?: InstanceAiCredentialFlow;
 }>();
+
+provide(ResourceLocatorDropdownTeleportedKey, true);
 
 const ctx = provideWorkflowSetupContext({
 	requestId: toRef(props, 'requestId'),
@@ -28,6 +31,6 @@ const ctx = provideWorkflowSetupContext({
 			v-if="ctx.isReady.value && ctx.terminalState.value"
 			:state="ctx.terminalState.value"
 		/>
-		<WorkflowSetupWizard v-else-if="ctx.isReady.value && ctx.steps.value.length" />
+		<WorkflowSetupWizard v-else-if="ctx.isReady.value && ctx.activeSection.value" />
 	</div>
 </template>

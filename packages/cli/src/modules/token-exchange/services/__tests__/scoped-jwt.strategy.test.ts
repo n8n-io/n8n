@@ -1,7 +1,8 @@
 import type { AuthenticatedRequest, User, UserRepository } from '@n8n/db';
-import { ALL_API_KEY_SCOPES, type Scope as ScopeType } from '@n8n/permissions';
-import { mock } from 'jest-mock-extended';
+import { getApiKeyScopesForRole, type Scope as ScopeType } from '@n8n/permissions';
 import type { InstanceSettings } from 'n8n-core';
+import type { Mocked } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import { JwtService } from '@/services/jwt.service';
 
@@ -9,27 +10,34 @@ import { TOKEN_EXCHANGE_ISSUER, type IssuedJwtPayload } from '../../token-exchan
 import { ScopedJwtStrategy } from '../scoped-jwt.strategy';
 
 const instanceSettings = mock<InstanceSettings>({ encryptionKey: 'test-key' });
-const jwtService = new JwtService(instanceSettings, mock());
+const jwtService = new JwtService(instanceSettings, mock(), mock());
 const otherJwtService = new JwtService(
 	mock<InstanceSettings>({ encryptionKey: 'different-key' }),
 	mock(),
+	mock(),
 );
 
-/** Create a mock user with role.scopes pre-populated for scope assertions. */
-function makeUser(id: string, scopeSlugs: string[] = [], disabled = false): User {
+/** Create a mock user with role.slug and role.scopes pre-populated for scope assertions. */
+function makeUser(
+	id: string,
+	scopeSlugs: string[] = [],
+	disabled = false,
+	roleSlug: User['role']['slug'] = 'global:member',
+): User {
 	return {
 		...mock<User>(),
 		id,
 		disabled,
 		role: {
 			...mock<User['role']>(),
+			slug: roleSlug,
 			scopes: scopeSlugs.map((slug) => ({ ...mock(), slug: slug as ScopeType })),
 		},
 	};
 }
 
 function makeTokenExchangeJwt(payload: Partial<IssuedJwtPayload> = {}): string {
-	return jwtService.sign({
+	return jwtService.sign('tokenExchange', {
 		iss: TOKEN_EXCHANGE_ISSUER,
 		sub: 'subject-id',
 		iat: Math.floor(Date.now() / 1000),
@@ -47,7 +55,7 @@ function makeBearerReq(token: string): AuthenticatedRequest {
 
 describe('ScopedJwtStrategy', () => {
 	let strategy: ScopedJwtStrategy;
-	let userRepository: jest.Mocked<UserRepository>;
+	let userRepository: Mocked<UserRepository>;
 
 	beforeEach(() => {
 		userRepository = mock<UserRepository>();
@@ -58,21 +66,27 @@ describe('ScopedJwtStrategy', () => {
 		it.each([
 			['empty token', ''],
 			['non-JWT garbage', 'not-a-jwt'],
-			['JWT with a non-token-exchange issuer', jwtService.sign({ iss: 'n8n', sub: '123' })],
-			['JWT with a foreign issuer', jwtService.sign({ iss: 'https://idp.example.com', sub: '1' })],
+			[
+				'JWT with a non-token-exchange issuer',
+				jwtService.sign('tokenExchange', { iss: 'n8n', sub: '123' }),
+			],
+			[
+				'JWT with a foreign issuer',
+				jwtService.sign('tokenExchange', { iss: 'https://idp.example.com', sub: '1' }),
+			],
 		])('returns null (abstains) for %s', async (_name, token) => {
 			expect(await strategy.buildTokenGrant(token)).toBeNull();
 		});
 
 		it('returns false when signature or expiry fail', async () => {
-			const expired = jwtService.sign({
+			const expired = jwtService.sign('tokenExchange', {
 				iss: TOKEN_EXCHANGE_ISSUER,
 				sub: 'subject-id',
 				iat: Math.floor(Date.now() / 1000) - 7200,
 				exp: Math.floor(Date.now() / 1000) - 1,
 				jti: 'test-jti',
 			});
-			const badSignature = otherJwtService.sign({
+			const badSignature = otherJwtService.sign('tokenExchange', {
 				iss: TOKEN_EXCHANGE_ISSUER,
 				sub: 'subject-id',
 				iat: Math.floor(Date.now() / 1000),
@@ -112,7 +126,21 @@ describe('ScopedJwtStrategy', () => {
 			expect(grant.subject).toBe(subject);
 			expect(grant.actor).toBeUndefined();
 			expect(grant.scopes).toEqual(['workflow:read', 'workflow:create']);
-			expect(grant.apiKeyScopes).toEqual(Array.from(ALL_API_KEY_SCOPES));
+			// apiKeyScopes are derived from the acting role, never the full set.
+			expect(grant.apiKeyScopes).toEqual(getApiKeyScopesForRole(subject));
+			for (const elevated of ['user:create', 'user:delete', 'user:changeRole'] as const) {
+				expect(grant.apiKeyScopes).not.toContain(elevated);
+			}
+		});
+
+		it('limits apiKeyScopes to those permitted by the acting role', async () => {
+			const subject = makeUser('subject-id', ['workflow:read'], false, 'global:chatUser');
+			userRepository.findOne.mockResolvedValue(subject);
+
+			const grant = await strategy.buildTokenGrant(makeTokenExchangeJwt());
+
+			if (!grant) throw new Error('expected grant');
+			expect(grant.apiKeyScopes).toEqual([]);
 		});
 
 		it('builds a grant with actor scopes when the act claim resolves', async () => {
@@ -128,6 +156,7 @@ describe('ScopedJwtStrategy', () => {
 			expect(grant.actor).toBe(actor);
 			// Scopes come from the acting principal (actor) when one is resolved.
 			expect(grant.scopes).toEqual(['credential:read', 'credential:create']);
+			expect(grant.apiKeyScopes).toEqual(getApiKeyScopesForRole(actor));
 		});
 
 		it('falls back to subject scopes when the act claim is present but actor is not found', async () => {
@@ -147,7 +176,7 @@ describe('ScopedJwtStrategy', () => {
 			const subject = makeUser('subject-id', ['workflow:read']);
 			userRepository.findOne.mockResolvedValue(subject);
 
-			const token = jwtService.sign({
+			const token = jwtService.sign('tokenExchange', {
 				iss: 'custom-issuer',
 				sub: 'subject-id',
 				iat: Math.floor(Date.now() / 1000),

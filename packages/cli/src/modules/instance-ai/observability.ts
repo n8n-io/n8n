@@ -1,8 +1,10 @@
-import type { InstanceAiTraceContext } from '@n8n/instance-ai';
+import { isEndpointModelConfig, modelConfigId } from '@n8n/instance-ai';
+import type { InstanceAiTraceContext, ModelConfig } from '@n8n/instance-ai';
 
 export type InstanceAiObservabilityContext = {
 	threadId: string;
-	runId: string;
+	runId?: string;
+	projectId?: string;
 	tracing?: InstanceAiTraceContext;
 	agentId?: string;
 	userId?: string;
@@ -18,7 +20,8 @@ export function buildInstanceAiObservabilityContext(
 	return {
 		source: 'instance-ai',
 		threadId: context.threadId,
-		runId: context.runId,
+		...(context.runId ? { runId: context.runId } : {}),
+		...(context.projectId ? { projectId: context.projectId } : {}),
 		...(context.tracing?.rootRun?.otelTraceId
 			? { traceId: context.tracing.rootRun.otelTraceId }
 			: {}),
@@ -32,4 +35,15 @@ export function buildInstanceAiObservabilityContext(
 		...(context.taskId ? { taskId: context.taskId } : {}),
 		...(context.role ? { role: context.role } : {}),
 	};
+}
+
+/**
+ * `model` is a Prometheus label on the Instance AI run metrics, so it has to stay
+ * low-cardinality. Managed models (built-in ids and the pre-built AI SDK
+ * instances the proxy hands over) come from a fixed set and are reported as-is;
+ * a user-configured endpoint's model id is free-form, so it collapses to 'custom'.
+ */
+export function runMetricsModelLabel(modelId: ModelConfig | undefined): string {
+	if (modelId === undefined || isEndpointModelConfig(modelId)) return 'custom';
+	return modelConfigId(modelId) ?? 'custom';
 }

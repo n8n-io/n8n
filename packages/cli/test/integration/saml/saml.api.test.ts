@@ -1,9 +1,9 @@
-// Global mocks in test/setup-mocks.ts replace `node:fs` with jest auto-mocks,
+// Global mocks in test/setup-mocks.ts replace `node:fs` with vi auto-mocks,
 // which breaks express view lookup in the SAML connection-test round-trip.
 // Restore the real fs so the ACS handler can render its handlebars template.
-jest.unmock('node:fs');
+vi.unmock('node:fs');
 
-import type { SamlPreferences } from '@n8n/api-types';
+import { BLOCK_ACCESS_ASSIGNMENT, type SamlPreferences } from '@n8n/api-types';
 import { type LocalServer, startServer } from '@n8n/backend-network/testing';
 import {
 	createTeamProject,
@@ -26,7 +26,7 @@ import type express from 'express';
 import { CREDENTIAL_BLANKING_VALUE } from 'n8n-workflow';
 
 import { TEMPLATES_DIR } from '@/constants';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { BadRequestError, ForbiddenError } from '@n8n/errors';
 import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
 import {
 	EC_TEST_CERTIFICATE,
@@ -35,8 +35,10 @@ import {
 	RSA_TEST_CERTIFICATE,
 	RSA_TEST_PRIVATE_KEY,
 } from '@/modules/sso-saml/__tests__/saml-signing-test-fixtures';
+import { SamlEmailNotVerifiedError } from '@/modules/sso-saml/errors/saml-email-not-verified.error';
 import { setSamlLoginEnabled } from '@/modules/sso-saml/saml-helpers';
 import { SamlService } from '@/modules/sso-saml/saml.service.ee';
+import type { SamlUserAttributes } from '@/modules/sso-saml/types';
 import {
 	getCurrentAuthenticationMethod,
 	setCurrentAuthenticationMethod,
@@ -64,7 +66,7 @@ async function attachSamlIdentity(user: User, providerId: string) {
 }
 
 const testServer = utils.setupTestServer({
-	endpointGroups: ['me', 'saml'],
+	endpointGroups: ['me', 'saml', 'changeEmail'],
 	enabledFeatures: ['feat:saml'],
 });
 
@@ -97,17 +99,30 @@ describe('Instance owner', () => {
 				})
 				.expect(200);
 		});
+	});
 
+	describe('POST /change-email', () => {
 		test('should throw BadRequestError if email is changed when SAML is enabled', async () => {
 			await enableSaml(true);
 			await authOwnerAgent
-				.patch('/me')
-				.send({
-					email: randomEmail(),
-					firstName: randomName(),
-					lastName: randomName(),
-				})
+				.post('/change-email')
+				.send({ email: randomEmail() })
 				.expect(400, { code: 400, message: 'SAML user may not change their email' });
+		});
+
+		test('should allow a user with a SAML auth_identity to change email once SAML is disabled', async () => {
+			// The SAML identity is still attached but inactive, so the SSO guard must pass.
+			await enableSaml(false);
+			const newEmail = randomEmail();
+
+			await authSamlUserAgent
+				.post('/change-email')
+				.send({ email: newEmail, currentPassword: samlUserPassword })
+				.expect(200);
+
+			const refreshed = await Container.get(UserRepository).findOneByOrFail({ id: samlUser.id });
+			expect(refreshed.email).toBe(newEmail);
+			samlUser.email = newEmail;
 		});
 	});
 
@@ -146,25 +161,6 @@ describe('Instance owner', () => {
 			expect(refreshed.lastName).toBe(newLastName);
 			samlUser.firstName = newFirstName;
 			samlUser.lastName = newLastName;
-		});
-
-		test('should allow email change once SAML is disabled', async () => {
-			await enableSaml(false);
-			const newEmail = randomEmail();
-
-			await authSamlUserAgent
-				.patch('/me')
-				.send({
-					email: newEmail,
-					firstName: samlUser.firstName,
-					lastName: samlUser.lastName,
-					currentPassword: samlUserPassword,
-				})
-				.expect(200);
-
-			const refreshed = await Container.get(UserRepository).findOneByOrFail({ id: samlUser.id });
-			expect(refreshed.email).toBe(newEmail);
-			samlUser.email = newEmail;
 		});
 	});
 
@@ -251,7 +247,7 @@ describe('Instance owner', () => {
 				.send({
 					loginEnabled: true,
 				})
-				.expect(500);
+				.expect(400);
 
 			expect(getCurrentAuthenticationMethod()).toBe('ldap');
 			await setCurrentAuthenticationMethod('saml');
@@ -825,7 +821,7 @@ describe('SAML email validation', () => {
 	describe('handleSamlLogin', () => {
 		test('should throw BadRequestError for invalid email format', async () => {
 			// Mock getAttributesFromLoginResponse to return invalid email
-			jest.spyOn(samlService, 'getAttributesFromLoginResponse').mockResolvedValue({
+			vi.spyOn(samlService, 'getAttributesFromLoginResponse').mockResolvedValue({
 				mapped: {
 					email: 'invalid-email-format',
 					firstName: 'John',
@@ -846,7 +842,7 @@ describe('SAML email validation', () => {
 		test.each([['not-an-email'], ['@missinglocal.com'], ['missing@.com'], ['spaces in@email.com']])(
 			'should throw BadRequestError for invalid email <%s>',
 			async (invalidEmail) => {
-				jest.spyOn(samlService, 'getAttributesFromLoginResponse').mockResolvedValue({
+				vi.spyOn(samlService, 'getAttributesFromLoginResponse').mockResolvedValue({
 					mapped: {
 						email: invalidEmail,
 						firstName: 'John',
@@ -873,7 +869,7 @@ describe('SAML email validation', () => {
 		])('should handle valid email <%s> successfully', async (validEmail) => {
 			const mockRequest = {} as express.Request;
 
-			jest.spyOn(samlService, 'getAttributesFromLoginResponse').mockResolvedValue({
+			vi.spyOn(samlService, 'getAttributesFromLoginResponse').mockResolvedValue({
 				mapped: {
 					email: validEmail,
 					firstName: 'John',
@@ -893,7 +889,7 @@ describe('SAML email validation', () => {
 		test('should convert email to lowercase before validation', async () => {
 			const upperCaseEmail = 'USER@EXAMPLE.COM';
 
-			jest.spyOn(samlService, 'getAttributesFromLoginResponse').mockResolvedValue({
+			vi.spyOn(samlService, 'getAttributesFromLoginResponse').mockResolvedValue({
 				mapped: {
 					email: upperCaseEmail,
 					firstName: 'John',
@@ -956,7 +952,7 @@ describe('SAML SSO provisioning', () => {
 			}),
 		);
 
-		jest.spyOn(samlService, 'getAttributesFromLoginResponse').mockResolvedValue({
+		vi.spyOn(samlService, 'getAttributesFromLoginResponse').mockResolvedValue({
 			mapped: {
 				email: 'saml-expr-instance@example.com',
 				firstName: 'SAML',
@@ -977,6 +973,133 @@ describe('SAML SSO provisioning', () => {
 		expect(userFromDB!.role.slug).toEqual('global:admin');
 	});
 
+	it('should deny the login and create no account when no rule matches and the default condition is block access', async () => {
+		const adminRole = await roleRepository.findOneOrFail({ where: { slug: 'global:admin' } });
+		await roleMappingRuleRepository.save(
+			roleMappingRuleRepository.create({
+				expression: "{{ $claims.department === 'it' }}",
+				role: adminRole,
+				type: 'instance',
+				order: 0,
+			}),
+		);
+		const provisioningService = Container.get(ProvisioningService);
+		// @ts-expect-error - provisioningConfig is private
+		provisioningService.provisioningConfig.defaultInstanceRole = BLOCK_ACCESS_ASSIGNMENT;
+
+		vi.spyOn(samlService, 'getAttributesFromLoginResponse').mockResolvedValue({
+			mapped: {
+				email: 'saml-blocked-fallback@example.com',
+				firstName: 'SAML',
+				lastName: 'User',
+				userPrincipalName: 'saml-blocked-fallback',
+			},
+			raw: { email: 'saml-blocked-fallback@example.com', department: 'sales' },
+		});
+
+		await expect(samlService.handleSamlLogin({} as express.Request, 'post')).rejects.toThrow(
+			ForbiddenError,
+		);
+
+		const userFromDB = await userRepository.findOne({
+			where: { email: 'saml-blocked-fallback@example.com' },
+		});
+		expect(userFromDB).toBeNull();
+	});
+
+	it('should deny an existing user without touching their account when the default condition is block access', async () => {
+		const adminRole = await roleRepository.findOneOrFail({ where: { slug: 'global:admin' } });
+		await roleMappingRuleRepository.save(
+			roleMappingRuleRepository.create({
+				expression: "{{ $claims.department === 'it' }}",
+				role: adminRole,
+				type: 'instance',
+				order: 0,
+			}),
+		);
+		const provisioningService = Container.get(ProvisioningService);
+		// @ts-expect-error - provisioningConfig is private
+		provisioningService.provisioningConfig.defaultInstanceRole = BLOCK_ACCESS_ASSIGNMENT;
+
+		const existingUser = await createUser({ password: randomValidPassword() });
+
+		vi.spyOn(samlService, 'getAttributesFromLoginResponse').mockResolvedValue({
+			mapped: {
+				email: existingUser.email,
+				firstName: existingUser.firstName,
+				lastName: existingUser.lastName,
+				userPrincipalName: existingUser.email,
+			},
+			raw: { email: existingUser.email, department: 'sales' },
+		});
+
+		await expect(samlService.handleSamlLogin({} as express.Request, 'post')).rejects.toThrow(
+			ForbiddenError,
+		);
+
+		// The account is kept as-is: not deactivated, role unchanged
+		const reloaded = await userRepository.findOneOrFail({
+			where: { id: existingUser.id },
+			relations: ['role'],
+		});
+		expect(reloaded.role.slug).toBe('global:member');
+		expect(reloaded.disabled).toBe(false);
+	});
+
+	it('should log in with the mapped role when a rule matches even though the default condition is block access', async () => {
+		const adminRole = await roleRepository.findOneOrFail({ where: { slug: 'global:admin' } });
+		await roleMappingRuleRepository.save(
+			roleMappingRuleRepository.create({
+				expression: "{{ $claims.department === 'it' }}",
+				role: adminRole,
+				type: 'instance',
+				order: 0,
+			}),
+		);
+		const provisioningService = Container.get(ProvisioningService);
+		// @ts-expect-error - provisioningConfig is private
+		provisioningService.provisioningConfig.defaultInstanceRole = BLOCK_ACCESS_ASSIGNMENT;
+
+		vi.spyOn(samlService, 'getAttributesFromLoginResponse').mockResolvedValue({
+			mapped: {
+				email: 'saml-mapped-role@example.com',
+				firstName: 'SAML',
+				lastName: 'User',
+				userPrincipalName: 'saml-mapped-role',
+			},
+			raw: { email: 'saml-mapped-role@example.com', department: 'it' },
+		});
+
+		const result = await samlService.handleSamlLogin({} as express.Request, 'post');
+		expect(result.authenticatedUser).toBeDefined();
+
+		const userFromDB = await userRepository.findOneOrFail({
+			where: { email: 'saml-mapped-role@example.com' },
+			relations: ['role'],
+		});
+		expect(userFromDB.role.slug).toBe('global:admin');
+	});
+
+	it('should redirect a blocked login to the sign-in page instead of answering with an error', async () => {
+		const provisioningService = Container.get(ProvisioningService);
+		// @ts-expect-error - provisioningConfig is private
+		provisioningService.provisioningConfig.defaultInstanceRole = BLOCK_ACCESS_ASSIGNMENT;
+
+		vi.spyOn(samlService, 'getAttributesFromLoginResponse').mockResolvedValue({
+			mapped: {
+				email: 'saml-blocked-over-http@example.com',
+				firstName: 'SAML',
+				lastName: 'User',
+				userPrincipalName: 'saml-blocked-over-http',
+			},
+			raw: { email: 'saml-blocked-over-http@example.com', department: 'sales' },
+		});
+
+		const response = await authOwnerAgent.post('/sso/saml/acs').expect(302);
+
+		expect(response.headers.location).toContain('/signin?ssoError=access-denied');
+	});
+
 	it('should provision project role via expression mapping', async () => {
 		const project = await createTeamProject('saml-expr-project-role-test');
 
@@ -990,7 +1113,7 @@ describe('SAML SSO provisioning', () => {
 		rule.projects = [project];
 		await roleMappingRuleRepository.save(rule);
 
-		jest.spyOn(samlService, 'getAttributesFromLoginResponse').mockResolvedValue({
+		vi.spyOn(samlService, 'getAttributesFromLoginResponse').mockResolvedValue({
 			mapped: {
 				email: 'saml-expr-project@example.com',
 				firstName: 'SAML',
@@ -1009,5 +1132,98 @@ describe('SAML SSO provisioning', () => {
 
 		const projectRole = await getProjectRoleForUser(project.id, result.authenticatedUser!.id);
 		expect(projectRole).toEqual('project:editor');
+	});
+});
+
+describe('SAML account linking', () => {
+	let samlService: SamlService;
+	type PrivatePrefs = { _samlPreferences: SamlPreferences };
+
+	const setEmailVerifiedRequired = (value: boolean) => {
+		(samlService as unknown as PrivatePrefs)._samlPreferences.emailVerifiedRequired = value;
+	};
+
+	const loginWith = async (
+		attributes: Partial<SamlUserAttributes> &
+			Pick<SamlUserAttributes, 'email' | 'userPrincipalName'>,
+	) => {
+		vi.spyOn(samlService, 'getAttributesFromLoginResponse').mockResolvedValue({
+			mapped: { firstName: 'Saml', lastName: 'User', ...attributes },
+			raw: {},
+		});
+		return await samlService.handleSamlLogin({} as express.Request, 'post');
+	};
+
+	const samlIdentitiesOf = async (user: User) =>
+		await Container.get(AuthIdentityRepository).findBy({ userId: user.id, providerType: 'saml' });
+
+	beforeAll(() => {
+		samlService = Container.get(SamlService);
+	});
+
+	afterEach(() => {
+		setEmailVerifiedRequired(false);
+		vi.restoreAllMocks();
+	});
+
+	test('logs in the user that owns the SAML identity when the response carries the email of another user', async () => {
+		const identityOwner = await createUser();
+		const otherUser = await createUser();
+		const upn = `upn-${identityOwner.id}`;
+		await attachSamlIdentity(identityOwner, upn);
+
+		const result = await loginWith({ email: otherUser.email, userPrincipalName: upn });
+
+		expect(result.authenticatedUser?.id).toBe(identityOwner.id);
+		expect(await samlIdentitiesOf(otherUser)).toHaveLength(0);
+	});
+
+	test('links a SAML identity to an existing user by email when the response carries no verification attribute', async () => {
+		const user = await createUser();
+		const upn = `upn-${user.id}`;
+
+		const result = await loginWith({ email: user.email, userPrincipalName: upn });
+
+		expect(result.authenticatedUser?.id).toBe(user.id);
+		expect(await samlIdentitiesOf(user)).toEqual([expect.objectContaining({ providerId: upn })]);
+	});
+
+	test('does not link an existing user by email when the identity provider marks the email as not verified', async () => {
+		const user = await createUser({ firstName: 'Local', lastName: 'Account' });
+
+		await expect(
+			loginWith({ email: user.email, userPrincipalName: `upn-${user.id}`, emailVerified: 'false' }),
+		).rejects.toThrow(SamlEmailNotVerifiedError);
+
+		expect(await samlIdentitiesOf(user)).toHaveLength(0);
+		const stored = await Container.get(UserRepository).findOneByOrFail({ id: user.id });
+		expect(stored.firstName).toBe('Local');
+		expect(stored.lastName).toBe('Account');
+	});
+
+	test('does not link an existing user by email when verification is required and the attribute is absent', async () => {
+		setEmailVerifiedRequired(true);
+		const user = await createUser();
+
+		await expect(
+			loginWith({ email: user.email, userPrincipalName: `upn-${user.id}` }),
+		).rejects.toThrow(SamlEmailNotVerifiedError);
+
+		expect(await samlIdentitiesOf(user)).toHaveLength(0);
+	});
+
+	test('links an existing user by email when verification is required and the identity provider verified the email', async () => {
+		setEmailVerifiedRequired(true);
+		const user = await createUser();
+		const upn = `upn-${user.id}`;
+
+		const result = await loginWith({
+			email: user.email,
+			userPrincipalName: upn,
+			emailVerified: 'true',
+		});
+
+		expect(result.authenticatedUser?.id).toBe(user.id);
+		expect(await samlIdentitiesOf(user)).toEqual([expect.objectContaining({ providerId: upn })]);
 	});
 });

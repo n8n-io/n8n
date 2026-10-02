@@ -1,11 +1,13 @@
 import {
 	redactText,
-	SUPPORTED_PII_CATEGORIES,
 	type AttributeValue,
 	type RedactionOptions,
 	type RuntimeSkillRegistry,
 } from '@n8n/agents';
-import { isRecord } from '@n8n/utils';
+import type { InstanceAiPromptConfiguration } from '@n8n/api-types';
+import { isRecord } from '@n8n/utils/is-record';
+import { SUPPORTED_PII_CATEGORIES } from '@n8n/utils/redaction/pii-patterns';
+import { isSensitiveKey } from '@n8n/utils/redaction/sensitive-key';
 import { createHash } from 'node:crypto';
 
 import {
@@ -16,16 +18,18 @@ import {
 } from '../tools/tool-ids';
 import type { InstanceAiToolRegistry } from '../types';
 import { formatAgentRoleLabel, formatTraceLabel } from './trace-labels';
+import { modelConfigId } from '../utils/model-config-id';
 
 const MAX_TRACE_DEPTH = 4;
 const MAX_PROMPT_SCHEMA_TRACE_DEPTH = 12;
 const MAX_TOOL_IO_TRACE_DEPTH = 8;
+/** Recursion bound for raw machine payloads (compiled-workflow event) — far
+ *  beyond real workflow nesting; scrubbing still applies at every level. */
+const MAX_RAW_PAYLOAD_TRACE_DEPTH = 64;
 const MAX_TRACE_STRING_LENGTH = 2_000;
 const MAX_TOOL_ACTION_DISPLAY_LENGTH = 64;
 const MAX_TRACE_ARRAY_ITEMS = 20;
 const MAX_TRACE_OBJECT_KEYS = 30;
-const SENSITIVE_TELEMETRY_KEY_PATTERN =
-	/(api[_-]?key|authorization|bearer|cookie|credentials?|password|secret|access[_-]?token|refresh[_-]?token|id[_-]?token|session[_-]?token|auth[_-]?token|(?:^|[._-])token$)/i;
 
 /**
  * LangSmith structural identifier attributes. These carry the run/trace/span IDs
@@ -59,16 +63,19 @@ function isStructuralTelemetryIdKey(key: string): boolean {
 }
 
 /**
- * Telemetry/tracing redaction policy. Deliberately stricter than the
- * user-facing output policy `DEFAULT_OUTPUT_REDACTION_OPTIONS`.
+ * Telemetry/tracing redaction policy: secrets plus every supported PII
+ * category, since traces egress to third-party tooling.
+ * `preserveUrlStructure`: whole-URL redaction destroyed traced workflow
+ * definitions without adding protection (secrets in URLs are caught first).
  */
 export const DEFAULT_TELEMETRY_REDACTION_OPTIONS: RedactionOptions = {
 	secrets: true,
 	detect: SUPPORTED_PII_CATEGORIES,
+	preserveUrlStructure: true,
 };
 
 /** Redact secrets + all PII from a free-text telemetry value before it egresses. */
-function scrubTelemetryText(value: string): string {
+export function scrubTelemetryText(value: string): string {
 	return redactText(value, DEFAULT_TELEMETRY_REDACTION_OPTIONS).text;
 }
 
@@ -91,6 +98,7 @@ const LLM_AI_SDK_OPERATION_IDS = new Set([
 ]);
 
 export interface AgentTraceInputOptions {
+	promptConfiguration?: InstanceAiPromptConfiguration;
 	systemPrompt?: string;
 	tools?: InstanceAiToolRegistry;
 	deferredTools?: InstanceAiToolRegistry;
@@ -178,7 +186,7 @@ function redactTelemetryJsonValue(
 		return '[redacted-depth-limit]';
 	}
 
-	if (keyHint && SENSITIVE_TELEMETRY_KEY_PATTERN.test(keyHint)) {
+	if (keyHint && isSensitiveKey(keyHint)) {
 		return '[redacted]';
 	}
 
@@ -217,18 +225,21 @@ function maxRedactionDepthForAttribute(key: string): number {
 	return MAX_TRACE_DEPTH;
 }
 
-function redactTelemetryAttribute(key: string, value: unknown): unknown {
+function redactTelemetryAttribute(key: string, value: unknown, completionDepth?: number): unknown {
 	// Structural run/trace/span identifiers must pass through untouched — scrubbing
 	// them corrupts the IDs, breaking LangSmith ingestion (422) and run correlation.
 	if (isStructuralTelemetryIdKey(key)) {
 		return value;
 	}
 
-	if (SENSITIVE_TELEMETRY_KEY_PATTERN.test(key)) {
+	if (isSensitiveKey(key)) {
 		return '[redacted]';
 	}
 
-	const maxDepth = maxRedactionDepthForAttribute(key);
+	const maxDepth =
+		key === GEN_AI_COMPLETION && completionDepth !== undefined
+			? completionDepth
+			: maxRedactionDepthForAttribute(key);
 
 	if (typeof value !== 'string') {
 		return redactTelemetryJsonValue(value, key, 0, maxDepth);
@@ -816,6 +827,17 @@ function inferNativeLlmRole(attributes: Record<string, unknown>): string | undef
 }
 
 function displayNameForNativeLlmSpan(attributes: Record<string, unknown>): string {
+	// Memory-task LLM calls inherit the host run's agent_role metadata (e.g.
+	// 'orchestrator'), so the functionId suffix — not the role — is what
+	// distinguishes them; check it first so they don't render as their host
+	// agent's own loop calls.
+	const suffixedFunctionId = readStringAttribute(attributes, [
+		'ai.telemetry.functionId',
+		'resource.name',
+	]);
+	if (suffixedFunctionId?.endsWith('.memory-observer')) return 'llm: memory observer';
+	if (suffixedFunctionId?.endsWith('.memory-reflector')) return 'llm: memory reflector';
+
 	const role = inferNativeLlmRole(attributes);
 	if (role === 'thread_title') {
 		return 'llm: title';
@@ -991,9 +1013,18 @@ export function redactLangSmithTelemetrySpan(span: unknown): unknown {
 		return span;
 	}
 
+	// Raw machine payloads (compiled-workflow event) need lossless structure —
+	// lift the structural depth cap on the completion attribute. Keyed on the
+	// producer-set metadata flag, not the span name, which any tool could claim.
+	// Scrubbing still applies throughout.
+	const completionDepth =
+		span.attributes['langsmith.metadata.raw_trace_payload'] === true
+			? MAX_RAW_PAYLOAD_TRACE_DEPTH
+			: undefined;
+
 	const attributes: Record<string, unknown> = {};
 	for (const [key, value] of Object.entries(span.attributes)) {
-		attributes[key] = redactTelemetryAttribute(key, value);
+		attributes[key] = redactTelemetryAttribute(key, value, completionDepth);
 	}
 	enrichLangSmithPromptAttribute(attributes);
 	normalizeUsageForLangSmith(attributes);
@@ -1001,6 +1032,19 @@ export function redactLangSmithTelemetrySpan(span: unknown): unknown {
 	renameNativeToolSpanForLangSmith(span, attributes);
 	moveNonLlmUsageAttributes(attributes);
 	span.attributes = attributes;
+	if (isRecord(span.status) && typeof span.status.message === 'string') {
+		span.status = {
+			...span.status,
+			message: truncateString(scrubTelemetryText(span.status.message)),
+		};
+	}
+	if (Array.isArray(span.events)) {
+		span.events = span.events.map((event: unknown) =>
+			isRecord(event) && isRecord(event.attributes)
+				? { ...event, attributes: redactTelemetryJsonValue(event.attributes) }
+				: event,
+		);
+	}
 	return span;
 }
 
@@ -1298,13 +1342,27 @@ export function sanitizeTracePayload(value: unknown): Record<string, unknown> {
 	return { value: sanitizeTraceValue(value) };
 }
 
-export function serializeModelIdForTrace(modelId: unknown): unknown {
-	if (typeof modelId === 'string' && modelId.length > 0) {
-		return truncateString(modelId);
+/** Shape a payload like {@link sanitizeTracePayload} but WITHOUT structural
+ *  sanitization — for pre-bounded machine payloads (compiled-workflow event). */
+export function rawTracePayload(value: unknown): Record<string, unknown> {
+	if (isRecord(value)) {
+		return value;
 	}
 
-	if (isRecord(modelId) && typeof modelId.id === 'string') {
-		return truncateString(modelId.id);
+	if (value === undefined) {
+		return {};
+	}
+
+	return { value };
+}
+
+export function serializeModelIdForTrace(modelId: unknown): unknown {
+	// Falling through to `sanitizeTraceValue` dumps the whole model instance —
+	// config, zod chunk schema, bound functions — into the span attribute, so
+	// every recognizable variant has to be handled by `modelConfigId`.
+	const id = modelConfigId(modelId);
+	if (id !== undefined) {
+		return truncateString(id);
 	}
 
 	return sanitizeTraceValue(modelId);
@@ -1325,6 +1383,14 @@ export function mergeTraceInputs(
 
 export function buildAgentTraceInputs(options: AgentTraceInputOptions): Record<string, unknown> {
 	return sanitizeTracePayload({
+		...(options.promptConfiguration
+			? {
+					prompt_configuration: options.promptConfiguration,
+					system_prompt_hash: createHash('sha256')
+						.update(options.systemPrompt ?? '')
+						.digest('hex'),
+				}
+			: {}),
 		...(options.systemPrompt ? { system_prompt: serializeTraceText(options.systemPrompt) } : {}),
 		...(options.modelId !== undefined ? { model: serializeModelIdForTrace(options.modelId) } : {}),
 		...(options.toolSearchEnabled !== undefined

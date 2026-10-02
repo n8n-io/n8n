@@ -1,4 +1,5 @@
 import { mockLogger } from '@n8n/backend-test-utils';
+import { Container } from '@n8n/di';
 
 import {
 	DummyProvider,
@@ -7,11 +8,13 @@ import {
 	MockProviders,
 } from '@test/external-secrets/utils';
 
+import { ExternalSecretsConfig } from '../external-secrets.config';
 import { ExternalSecretsProviderLifecycle } from '../provider-lifecycle.service';
 
 describe('ProviderLifecycle', () => {
 	let lifecycle: ExternalSecretsProviderLifecycle;
 	let mockProviders: MockProviders;
+	const connectTimeoutMs = Container.get(ExternalSecretsConfig).connectTimeout * 1000;
 
 	const providerSettings = {
 		connected: true,
@@ -36,7 +39,7 @@ describe('ProviderLifecycle', () => {
 		});
 
 		it('should call provider init with settings', async () => {
-			const initSpy = jest.spyOn(DummyProvider.prototype, 'init');
+			const initSpy = vi.spyOn(DummyProvider.prototype, 'init');
 
 			await lifecycle.initialize('dummy', providerSettings);
 
@@ -90,7 +93,7 @@ describe('ProviderLifecycle', () => {
 
 			let stateBeforeConnect: string | undefined;
 			const originalConnect = provider.connect.bind(provider);
-			jest.spyOn(provider, 'connect').mockImplementation(async function (this: DummyProvider) {
+			vi.spyOn(provider, 'connect').mockImplementation(async function (this: DummyProvider) {
 				stateBeforeConnect = this.state;
 				return await originalConnect();
 			});
@@ -98,6 +101,64 @@ describe('ProviderLifecycle', () => {
 			await lifecycle.connect(provider);
 
 			expect(stateBeforeConnect).toBe('connecting');
+		});
+
+		it('should not hang when connect exceeds the connect timeout', async () => {
+			class BlackholeConnectProvider extends DummyProvider {
+				protected override async doConnect(): Promise<void> {
+					await new Promise<void>(() => {});
+				}
+			}
+
+			const provider = new BlackholeConnectProvider();
+			await provider.init(providerSettings);
+
+			vi.useFakeTimers();
+			try {
+				const connectPromise = lifecycle.connect(provider);
+				await vi.advanceTimersByTimeAsync(connectTimeoutMs);
+
+				const result = await connectPromise;
+				expect(result.success).toBe(false);
+				expect(result.error?.message).toContain('Timed out connecting');
+				expect(provider.state).toBe('error');
+			} finally {
+				vi.useRealTimers();
+			}
+		});
+
+		it('should ignore a timed-out connect that fails after a later attempt succeeded', async () => {
+			let failFirstAttempt!: () => void;
+			let attempts = 0;
+
+			class LateFailingFirstConnectProvider extends DummyProvider {
+				protected override async doConnect(): Promise<void> {
+					if (attempts++ > 0) return;
+					await new Promise<void>((_, reject) => {
+						failFirstAttempt = () => reject(new Error('late failure'));
+					});
+				}
+			}
+
+			const provider = new LateFailingFirstConnectProvider();
+			await provider.init(providerSettings);
+
+			vi.useFakeTimers();
+			try {
+				const timedOut = lifecycle.connect(provider);
+				await vi.advanceTimersByTimeAsync(connectTimeoutMs);
+				expect((await timedOut).success).toBe(false);
+
+				expect((await lifecycle.connect(provider)).success).toBe(true);
+				expect(provider.state).toBe('connected');
+
+				failFirstAttempt();
+				await vi.advanceTimersByTimeAsync(0);
+
+				expect(provider.state).toBe('connected');
+			} finally {
+				vi.useRealTimers();
+			}
 		});
 
 		it('should handle connection failure', async () => {
@@ -116,14 +177,14 @@ describe('ProviderLifecycle', () => {
 			await provider.init(providerSettings);
 
 			// Mock connect to set state to error
-			jest.spyOn(provider, 'connect').mockImplementation(async function (this: DummyProvider) {
+			vi.spyOn(provider, 'connect').mockImplementation(async function (this: DummyProvider) {
 				this.setState('error', new Error('Connection failed'));
 			});
 
 			const result = await lifecycle.connect(provider);
 
 			expect(result.success).toBe(false);
-			expect(result.error).toEqual(new Error('Provider entered error state during connection'));
+			expect(result.error).toEqual(new Error('Connection failed'));
 		});
 	});
 
@@ -133,7 +194,7 @@ describe('ProviderLifecycle', () => {
 			await provider.init(providerSettings);
 			await provider.connect();
 
-			const disconnectSpy = jest.spyOn(provider, 'disconnect');
+			const disconnectSpy = vi.spyOn(provider, 'disconnect');
 
 			await lifecycle.disconnect(provider);
 
@@ -142,7 +203,7 @@ describe('ProviderLifecycle', () => {
 
 		it('should handle disconnect errors gracefully', async () => {
 			const provider = new DummyProvider();
-			jest.spyOn(provider, 'disconnect').mockRejectedValue(new Error('Disconnect failed'));
+			vi.spyOn(provider, 'disconnect').mockRejectedValue(new Error('Disconnect failed'));
 
 			await expect(lifecycle.disconnect(provider)).resolves.not.toThrow();
 		});
@@ -154,7 +215,7 @@ describe('ProviderLifecycle', () => {
 			await provider.init(providerSettings);
 			await provider.connect();
 
-			const disconnectSpy = jest.spyOn(provider, 'disconnect');
+			const disconnectSpy = vi.spyOn(provider, 'disconnect');
 
 			const result = await lifecycle.reload(provider, providerSettings);
 

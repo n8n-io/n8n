@@ -5,7 +5,7 @@
  * for manually configured session keys.
  */
 
-import { isRecord } from '@n8n/utils';
+import { isRecord } from '@n8n/utils/is-record';
 
 import type { GraphNode, NodeInstance } from '../../../types/base';
 import type { ValidatorPlugin, ValidationIssue, PluginContext } from '../types';

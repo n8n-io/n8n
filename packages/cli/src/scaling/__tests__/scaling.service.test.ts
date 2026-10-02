@@ -1,31 +1,63 @@
+import type { Logger } from '@n8n/backend-common';
 import { mockLogger, mockInstance } from '@n8n/backend-test-utils';
-import { GlobalConfig } from '@n8n/config';
+import { GlobalConfig, WorkerPoolConfig } from '@n8n/config';
 import type { ExecutionRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import * as BullModule from 'bull';
-import { mock } from 'jest-mock-extended';
-import { InstanceSettings } from 'n8n-core';
-import { ApplicationError } from 'n8n-workflow';
+import { ENCODED_BUFFER_KEY, InstanceSettings } from 'n8n-core';
+import type { ErrorReporter } from 'n8n-core';
+import { OperationalError, UnexpectedError } from 'n8n-workflow';
+import type { MockInstance } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import type { ActiveExecutions } from '@/active-executions';
+import { ExecutionCrashService } from '@/executions/execution-crash.service';
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
 
-import { JOB_TYPE_NAME, QUEUE_NAME } from '../constants';
+import { JOB_TYPE_NAME } from '../constants';
+import { JobOutcomeTracker } from '../job-outcome-tracker';
 import type { JobProcessor } from '../job-processor';
 import { ScalingService } from '../scaling.service';
 import type { Job, JobData, JobId, JobQueue } from '../scaling.types';
+import type { WebhookResponseRelay } from '../webhook-response-relay';
 
 const queue = mock<JobQueue>({
-	client: { ping: jest.fn() },
+	name: 'jobs',
+	client: { ping: vi.fn() },
 });
 
-jest.mock('bull', () => ({
+vi.mock('bull', () => ({
 	__esModule: true,
-	default: jest.fn(() => queue),
+	// Source does `new BullQueue(...)`; Vitest constructs the implementation, and
+	// arrows aren't constructable. Use a regular function.
+	default: vi.fn(function () {
+		return queue;
+	}),
+}));
+
+const { mcpServer } = vi.hoisted(() => ({
+	mcpServer: {
+		hasSession: vi.fn(),
+		hasPendingResponse: vi.fn(),
+		handleWorkerResponse: vi.fn(),
+		setSessionStore: vi.fn(),
+		setExecutionStrategy: vi.fn(),
+		getPendingCallsManager: vi.fn(),
+	},
+}));
+
+vi.mock('@n8n/n8n-nodes-langchain/mcp/core', () => ({
+	McpServer: { instance: () => mcpServer },
+	RedisSessionStore: vi.fn(function () {
+		return {};
+	}),
+	QueuedExecutionStrategy: vi.fn(function () {
+		return {};
+	}),
 }));
 
 describe('ScalingService', () => {
-	const Bull = jest.mocked(BullModule.default);
+	const Bull = vi.mocked(BullModule.default);
 
 	const globalConfig = mockInstance(GlobalConfig, {
 		queue: {
@@ -39,6 +71,7 @@ describe('ScalingService', () => {
 					tls: false,
 				},
 			},
+			workerPool: Object.assign(new WorkerPoolConfig(), { enabled: true, name: '' }),
 		},
 		endpoints: {
 			metrics: {
@@ -56,24 +89,35 @@ describe('ScalingService', () => {
 				keepLastFailed: 0,
 			},
 		},
+		generic: {
+			gracefulShutdownTimeout: 30,
+		},
 	});
 
 	const instanceSettings = Container.get(InstanceSettings);
+	// The service scopes its logger on construction, so assertions go to the scoped mock.
+	const scopedLogger = mock<Logger>();
+	const logger = mock<Logger>({ scoped: () => scopedLogger });
+	const errorReporter = mock<ErrorReporter>();
+	const activeExecutions = mock<ActiveExecutions>();
 	const jobProcessor = mock<JobProcessor>();
 	const executionRepository = mock<ExecutionRepository>();
 	const executionPersistence = mock<ExecutionPersistence>();
+	const executionCrashService = mockInstance(ExecutionCrashService);
+	const jobOutcomeTracker = mock<JobOutcomeTracker>();
+	const webhookResponseRelay = mock<WebhookResponseRelay>();
 
 	let scalingService: ScalingService;
 
-	let registerMainOrWebhookListenersSpy: jest.SpyInstance;
-	let registerWorkerListenersSpy: jest.SpyInstance;
-	let scheduleQueueRecoverySpy: jest.SpyInstance;
-	let stopQueueRecoverySpy: jest.SpyInstance;
-	let stopQueueMetricsSpy: jest.SpyInstance;
-	let getRunningJobsCountSpy: jest.SpyInstance;
+	let registerMainOrWebhookListenersSpy: MockInstance;
+	let registerWorkerListenersSpy: MockInstance;
+	let scheduleQueueRecoverySpy: MockInstance;
+	let stopQueueRecoverySpy: MockInstance;
+	let stopQueueMetricsSpy: MockInstance;
+	let getRunningJobsCountSpy: MockInstance;
 
-	const bullConstructorArgs = [
-		QUEUE_NAME,
+	const expectedBullArgs = (queueName: string) => [
+		queueName,
 		{
 			prefix: globalConfig.queue.bull.prefix,
 			settings: { ...globalConfig.queue.bull.settings, maxStalledCount: 0 },
@@ -81,42 +125,47 @@ describe('ScalingService', () => {
 		},
 	];
 
+	const defaultBullArgs = expectedBullArgs('jobs');
+
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		// @ts-expect-error readonly property
 		instanceSettings.instanceType = 'main';
 		instanceSettings.markAsLeader();
+		activeExecutions.getRunningExecutionIds.mockReturnValue([]);
+		activeExecutions.cancelRunningExecutions.mockResolvedValue([]);
+		jobProcessor.getRunningJobsSummary.mockReturnValue([]);
+		globalConfig.generic.gracefulShutdownTimeout = 30;
 
 		scalingService = new ScalingService(
-			mockLogger(),
-			mock(),
-			mock(),
+			logger,
+			errorReporter,
+			activeExecutions,
 			jobProcessor,
 			globalConfig,
 			executionRepository,
 			executionPersistence,
 			instanceSettings,
 			mock(),
+			webhookResponseRelay,
+			executionCrashService,
+			jobOutcomeTracker,
 		);
 
-		getRunningJobsCountSpy = jest.spyOn(scalingService, 'getRunningJobsCount');
+		getRunningJobsCountSpy = vi.spyOn(scalingService, 'getRunningJobsCount');
 
 		// @ts-expect-error Private method
-		ScalingService.prototype.scheduleQueueRecovery = jest.fn();
-		registerMainOrWebhookListenersSpy = jest.spyOn(
-			scalingService,
-			// @ts-expect-error Private method
-			'registerMainOrWebhookListeners',
-		);
-		// @ts-expect-error Private method
-		registerWorkerListenersSpy = jest.spyOn(scalingService, 'registerWorkerListeners');
-		// @ts-expect-error Private method
-		scheduleQueueRecoverySpy = jest.spyOn(scalingService, 'scheduleQueueRecovery');
-		// @ts-expect-error Private method
-		stopQueueRecoverySpy = jest.spyOn(scalingService, 'stopQueueRecovery');
+		ScalingService.prototype.scheduleQueueRecovery = vi.fn();
+		registerMainOrWebhookListenersSpy = vi.spyOn(scalingService, 'registerMainOrWebhookListeners');
+		registerWorkerListenersSpy = vi.spyOn(scalingService, 'registerWorkerListeners');
+		scheduleQueueRecoverySpy = vi.spyOn(scalingService, 'scheduleQueueRecovery');
+		stopQueueRecoverySpy = vi.spyOn(scalingService, 'stopQueueRecovery');
 
-		// @ts-expect-error Private method
-		stopQueueMetricsSpy = jest.spyOn(scalingService, 'stopQueueMetrics');
+		stopQueueMetricsSpy = vi.spyOn(scalingService, 'stopQueueMetrics');
+	});
+
+	afterEach(() => {
+		vi.useRealTimers();
 	});
 
 	describe('setupQueue', () => {
@@ -124,10 +173,23 @@ describe('ScalingService', () => {
 			it('should set up queue + listeners + queue recovery', async () => {
 				await scalingService.setupQueue();
 
-				expect(Bull).toHaveBeenCalledWith(...bullConstructorArgs);
+				expect(Bull).toHaveBeenCalledWith(...defaultBullArgs);
 				expect(registerMainOrWebhookListenersSpy).toHaveBeenCalled();
 				expect(registerWorkerListenersSpy).not.toHaveBeenCalled();
 				expect(scheduleQueueRecoverySpy).toHaveBeenCalledWith(0);
+			});
+
+			it('should recheck pending job waits when the Redis connection recovers', async () => {
+				await scalingService.setupQueue();
+				const { RedisClientService } = await import('@n8n/backend-services');
+
+				// Completion events sent while the connection was down are lost
+				// The service debounces its emits, so the event lands on the next second
+				vi.useFakeTimers();
+				Container.get(RedisClientService).emit('connection-recovered');
+				await vi.advanceTimersByTimeAsync(1000);
+
+				expect(jobOutcomeTracker.recheckAll).toHaveBeenCalled();
 			});
 		});
 
@@ -137,7 +199,7 @@ describe('ScalingService', () => {
 
 				await scalingService.setupQueue();
 
-				expect(Bull).toHaveBeenCalledWith(...bullConstructorArgs);
+				expect(Bull).toHaveBeenCalledWith(...defaultBullArgs);
 				expect(registerMainOrWebhookListenersSpy).toHaveBeenCalled();
 				expect(registerWorkerListenersSpy).not.toHaveBeenCalled();
 				expect(scheduleQueueRecoverySpy).not.toHaveBeenCalled();
@@ -151,7 +213,7 @@ describe('ScalingService', () => {
 
 				await scalingService.setupQueue();
 
-				expect(Bull).toHaveBeenCalledWith(...bullConstructorArgs);
+				expect(Bull).toHaveBeenCalledWith(...defaultBullArgs);
 				expect(registerWorkerListenersSpy).toHaveBeenCalled();
 				expect(registerMainOrWebhookListenersSpy).not.toHaveBeenCalled();
 			});
@@ -164,9 +226,66 @@ describe('ScalingService', () => {
 
 				await scalingService.setupQueue();
 
-				expect(Bull).toHaveBeenCalledWith(...bullConstructorArgs);
+				expect(Bull).toHaveBeenCalledWith(...defaultBullArgs);
 				expect(registerWorkerListenersSpy).not.toHaveBeenCalled();
 				expect(registerMainOrWebhookListenersSpy).toHaveBeenCalled();
+			});
+		});
+
+		describe('queue name resolution', () => {
+			afterEach(() => {
+				globalConfig.queue.workerPool.name = '';
+				globalConfig.queue.workerPool.enabled = true;
+			});
+
+			it('uses "jobs" on worker when pool is empty', async () => {
+				// @ts-expect-error readonly property
+				instanceSettings.instanceType = 'worker';
+
+				await scalingService.setupQueue();
+
+				expect(Bull).toHaveBeenCalledWith(...expectedBullArgs('jobs'));
+			});
+
+			it('uses "jobs-<pool>" on worker when pool is set', async () => {
+				// @ts-expect-error readonly property
+				instanceSettings.instanceType = 'worker';
+				globalConfig.queue.workerPool.name = 'gpu';
+
+				await scalingService.setupQueue();
+
+				expect(Bull).toHaveBeenCalledWith(...expectedBullArgs('jobs-gpu'));
+			});
+
+			it('uses "jobs" on worker when a pool is set but pools are disabled', async () => {
+				// @ts-expect-error readonly property
+				instanceSettings.instanceType = 'worker';
+				globalConfig.queue.workerPool.name = 'gpu';
+				globalConfig.queue.workerPool.enabled = false;
+
+				await scalingService.setupQueue();
+
+				expect(Bull).toHaveBeenCalledWith(...expectedBullArgs('jobs'));
+			});
+
+			it('ignores pool name on main and uses "jobs"', async () => {
+				// @ts-expect-error readonly property
+				instanceSettings.instanceType = 'main';
+				globalConfig.queue.workerPool.name = 'gpu';
+
+				await scalingService.setupQueue();
+
+				expect(Bull).toHaveBeenCalledWith(...expectedBullArgs('jobs'));
+			});
+
+			it('ignores pool name on webhook and uses "jobs"', async () => {
+				// @ts-expect-error readonly property
+				instanceSettings.instanceType = 'webhook';
+				globalConfig.queue.workerPool.name = 'gpu';
+
+				await scalingService.setupQueue();
+
+				expect(Bull).toHaveBeenCalledWith(...expectedBullArgs('jobs'));
 			});
 		});
 	});
@@ -195,6 +314,28 @@ describe('ScalingService', () => {
 
 			expect(() => scalingService.setupWorker(5)).toThrow();
 		});
+
+		it('should report the original error even if notifying main of the failure fails', async () => {
+			// @ts-expect-error readonly property
+			instanceSettings.instanceType = 'worker';
+			await scalingService.setupQueue();
+			scalingService.setupWorker(5);
+			const processFn = queue.process.mock.calls[0][2] as unknown as (job: Job) => Promise<void>;
+
+			const job = mock<Job>({ id: '1', data: { executionId: '123', loadStaticData: false } });
+			const originalError = new Error('execution errored');
+			jobProcessor.processJob.mockRejectedValueOnce(originalError);
+			// e.g. the job key was already deleted from Redis by a stall sweep
+			job.progress.mockRejectedValueOnce(new Error('Missing key for job 1 updateProgress'));
+
+			await expect(processFn(job)).rejects.toThrow(originalError);
+
+			expect(scopedLogger.warn).toHaveBeenCalledWith(
+				'Failed to notify main of failed execution 123 (job 1)',
+				expect.objectContaining({ executionId: '123', jobId: '1' }),
+			);
+			expect(errorReporter.error).toHaveBeenCalledWith(originalError, { executionId: '123' });
+		});
 	});
 
 	describe('stop', () => {
@@ -205,7 +346,7 @@ describe('ScalingService', () => {
 				await scalingService.setupQueue();
 				// @ts-expect-error readonly property
 				scalingService.queueRecoveryContext.timeout = 1;
-				jest.spyOn(scalingService, 'isQueueMetricsEnabled', 'get').mockReturnValue(true);
+				vi.spyOn(scalingService, 'isQueueMetricsEnabled', 'get').mockReturnValue(true);
 
 				await scalingService.stop();
 
@@ -213,6 +354,17 @@ describe('ScalingService', () => {
 				expect(queue.pause).toHaveBeenCalledWith(true, true);
 				expect(stopQueueRecoverySpy).toHaveBeenCalled();
 				expect(stopQueueMetricsSpy).toHaveBeenCalled();
+			});
+
+			it('should keep pending job waits so the active executions drain can settle them', async () => {
+				// @ts-expect-error readonly property
+				instanceSettings.instanceType = 'main';
+				await scalingService.setupQueue();
+
+				await scalingService.stop();
+
+				expect(jobOutcomeTracker.clear).not.toHaveBeenCalled();
+				expect(jobOutcomeTracker.drop).not.toHaveBeenCalled();
 			});
 		});
 
@@ -229,6 +381,254 @@ describe('ScalingService', () => {
 				expect(queue.pause).toHaveBeenCalled();
 				expect(stopQueueRecoverySpy).not.toHaveBeenCalled();
 			});
+
+			it('should log the execution IDs it is waiting for while draining', async () => {
+				vi.useFakeTimers();
+				// @ts-expect-error readonly property
+				instanceSettings.instanceType = 'worker';
+				await scalingService.setupQueue();
+				jobProcessor.getRunningJobIds.mockReturnValueOnce(['1']).mockReturnValue([]);
+				jobProcessor.getRunningJobsSummary.mockReturnValue([mock({ executionId: 'exec-1' })]);
+
+				const stopped = scalingService.stop();
+				await vi.advanceTimersByTimeAsync(500);
+				await stopped;
+
+				expect(scopedLogger.info).toHaveBeenCalledWith(
+					'Waiting for 1 active executions to finish... (execution IDs: exec-1)',
+					{ executionIds: ['exec-1'] },
+				);
+			});
+
+			it('should keep waiting for an in-process execution that has no queue job', async () => {
+				vi.useFakeTimers();
+				// @ts-expect-error readonly property
+				instanceSettings.instanceType = 'worker';
+				await scalingService.setupQueue();
+				jobProcessor.getRunningJobIds.mockReturnValue([]);
+
+				let inProcessExecutionIds = ['exec-1'];
+				activeExecutions.getRunningExecutionIds.mockImplementation(() => inProcessExecutionIds);
+
+				let hasStopped = false;
+				const stopped = scalingService.stop().then(() => (hasStopped = true));
+
+				await vi.advanceTimersByTimeAsync(2_000);
+
+				expect(hasStopped).toBe(false);
+				expect(scopedLogger.info).toHaveBeenCalledWith(
+					'Waiting for 1 in-process executions to finish... (execution IDs: exec-1)',
+					{ executionIds: ['exec-1'] },
+				);
+
+				inProcessExecutionIds = [];
+				await vi.advanceTimersByTimeAsync(500);
+				await stopped;
+
+				expect(hasStopped).toBe(true);
+				expect(scopedLogger.warn).not.toHaveBeenCalled();
+			});
+
+			it('should stop waiting and cancel the executions once the drain budget is spent', async () => {
+				vi.useFakeTimers();
+				// @ts-expect-error readonly property
+				instanceSettings.instanceType = 'worker';
+				// The budget is 80% of the shutdown window, so 4s of the 5s here.
+				globalConfig.generic.gracefulShutdownTimeout = 5;
+				await scalingService.setupQueue();
+				jobProcessor.getRunningJobIds.mockReturnValue([]);
+				activeExecutions.getRunningExecutionIds.mockReturnValue(['exec-1']);
+				activeExecutions.cancelRunningExecutions.mockResolvedValue(['exec-1']);
+
+				let hasStopped = false;
+				const stopped = scalingService.stop().then(() => (hasStopped = true));
+
+				await vi.advanceTimersByTimeAsync(3_500);
+
+				expect(hasStopped).toBe(false);
+				expect(activeExecutions.cancelRunningExecutions).not.toHaveBeenCalled();
+
+				await vi.advanceTimersByTimeAsync(500);
+				await stopped;
+
+				expect(hasStopped).toBe(true);
+				expect(activeExecutions.cancelRunningExecutions).toHaveBeenCalled();
+				expect(scopedLogger.warn).toHaveBeenCalledWith(
+					'Drain timeout reached after 4s, shutting down with executions still active...',
+				);
+				expect(scopedLogger.warn).toHaveBeenCalledWith(
+					'Cancelled 1 in-process executions that could not finish before shutdown (execution IDs: exec-1)',
+					{ executionIds: ['exec-1'] },
+				);
+			});
+
+			it('should not finish the drain until the cancellation has settled', async () => {
+				vi.useFakeTimers();
+				// @ts-expect-error readonly property
+				instanceSettings.instanceType = 'worker';
+				globalConfig.generic.gracefulShutdownTimeout = 5;
+				await scalingService.setupQueue();
+				jobProcessor.getRunningJobIds.mockReturnValue([]);
+				activeExecutions.getRunningExecutionIds.mockReturnValue(['exec-1']);
+
+				let finishCancellation: (executionIds: string[]) => void = () => {};
+				activeExecutions.cancelRunningExecutions.mockReturnValue(
+					new Promise((resolve) => (finishCancellation = resolve)),
+				);
+
+				let hasStopped = false;
+				const stopped = scalingService.stop().then(() => (hasStopped = true));
+
+				await vi.advanceTimersByTimeAsync(4_000);
+
+				expect(activeExecutions.cancelRunningExecutions).toHaveBeenCalled();
+				expect(hasStopped).toBe(false);
+
+				finishCancellation(['exec-1']);
+				await stopped;
+
+				expect(hasStopped).toBe(true);
+				expect(scopedLogger.warn).toHaveBeenCalledWith(
+					'Cancelled 1 in-process executions that could not finish before shutdown (execution IDs: exec-1)',
+					{ executionIds: ['exec-1'] },
+				);
+			});
+
+			it('should still drain for part of a one-second shutdown window', async () => {
+				vi.useFakeTimers();
+				// @ts-expect-error readonly property
+				instanceSettings.instanceType = 'worker';
+				globalConfig.generic.gracefulShutdownTimeout = 1;
+				await scalingService.setupQueue();
+				jobProcessor.getRunningJobIds.mockReturnValue([]);
+
+				let inProcessExecutionIds = ['exec-1'];
+				activeExecutions.getRunningExecutionIds.mockImplementation(() => inProcessExecutionIds);
+
+				let hasStopped = false;
+				const stopped = scalingService.stop().then(() => (hasStopped = true));
+
+				await vi.advanceTimersByTimeAsync(0);
+
+				expect(hasStopped).toBe(false);
+
+				inProcessExecutionIds = [];
+				await vi.advanceTimersByTimeAsync(500);
+				await stopped;
+
+				expect(hasStopped).toBe(true);
+				expect(activeExecutions.cancelRunningExecutions).not.toHaveBeenCalled();
+				expect(scopedLogger.warn).not.toHaveBeenCalled();
+			});
+
+			// The two warnings are the drain timeout and the cancellation summary.
+			it.each([
+				{ inProcessExecutionIds: [], expectedCancelCalls: 0, expectedWarnings: 0 },
+				{ inProcessExecutionIds: ['exec-1'], expectedCancelCalls: 1, expectedWarnings: 2 },
+			])(
+				'should wait for queued jobs past the drain budget, then cancel in-process executions only if any are left (in-process: $inProcessExecutionIds)',
+				async ({ inProcessExecutionIds, expectedCancelCalls, expectedWarnings }) => {
+					vi.useFakeTimers();
+					// @ts-expect-error readonly property
+					instanceSettings.instanceType = 'worker';
+					globalConfig.generic.gracefulShutdownTimeout = 2;
+					await scalingService.setupQueue();
+
+					let runningJobIds = ['1'];
+					jobProcessor.getRunningJobIds.mockImplementation(() => runningJobIds);
+					activeExecutions.getRunningExecutionIds.mockReturnValue(inProcessExecutionIds);
+					activeExecutions.cancelRunningExecutions.mockResolvedValue(inProcessExecutionIds);
+
+					let hasStopped = false;
+					const stopped = scalingService.stop().then(() => (hasStopped = true));
+
+					await vi.advanceTimersByTimeAsync(10_000);
+
+					expect(hasStopped).toBe(false);
+					expect(activeExecutions.cancelRunningExecutions).not.toHaveBeenCalled();
+					expect(scopedLogger.warn).not.toHaveBeenCalled();
+
+					runningJobIds = [];
+					await vi.advanceTimersByTimeAsync(500);
+					await stopped;
+
+					expect(hasStopped).toBe(true);
+					expect(activeExecutions.cancelRunningExecutions).toHaveBeenCalledTimes(
+						expectedCancelCalls,
+					);
+					expect(scopedLogger.warn).toHaveBeenCalledTimes(expectedWarnings);
+				},
+			);
+
+			it('should cancel within the shutdown window when the window is short', async () => {
+				vi.useFakeTimers();
+				// @ts-expect-error readonly property
+				instanceSettings.instanceType = 'worker';
+				// The budget is 800ms, which the force-exit timer at 1s must not beat.
+				globalConfig.generic.gracefulShutdownTimeout = 1;
+				await scalingService.setupQueue();
+				jobProcessor.getRunningJobIds.mockReturnValue([]);
+				activeExecutions.getRunningExecutionIds.mockReturnValue(['exec-1']);
+				activeExecutions.cancelRunningExecutions.mockResolvedValue(['exec-1']);
+
+				let hasStopped = false;
+				const stopped = scalingService.stop().then(() => (hasStopped = true));
+
+				await vi.advanceTimersByTimeAsync(800);
+
+				expect(hasStopped).toBe(true);
+				expect(activeExecutions.cancelRunningExecutions).toHaveBeenCalled();
+
+				await stopped;
+			});
+
+			it('should not drain or warn when the shutdown window is zero', async () => {
+				vi.useFakeTimers();
+				// @ts-expect-error readonly property
+				instanceSettings.instanceType = 'worker';
+				globalConfig.generic.gracefulShutdownTimeout = 0;
+				await scalingService.setupQueue();
+				jobProcessor.getRunningJobIds.mockReturnValue([]);
+				activeExecutions.getRunningExecutionIds.mockReturnValue(['exec-1']);
+
+				let hasStopped = false;
+				const stopped = scalingService.stop().then(() => (hasStopped = true));
+
+				await vi.advanceTimersByTimeAsync(0);
+				await stopped;
+
+				expect(hasStopped).toBe(true);
+				expect(activeExecutions.cancelRunningExecutions).not.toHaveBeenCalled();
+				expect(scopedLogger.warn).not.toHaveBeenCalled();
+			});
+
+			it.each([
+				{ shutdownTimeout: 30, expectedDeadlineMs: 3_000, case: 'the ceiling on a wide window' },
+				{
+					shutdownTimeout: 10,
+					expectedDeadlineMs: 1_000,
+					case: 'half of a short window remainder',
+				},
+				{ shutdownTimeout: 1, expectedDeadlineMs: 100, case: 'half of a tiny window remainder' },
+			])(
+				'should give the cancellation write $case',
+				async ({ shutdownTimeout, expectedDeadlineMs }) => {
+					vi.useFakeTimers();
+					// @ts-expect-error readonly property
+					instanceSettings.instanceType = 'worker';
+					globalConfig.generic.gracefulShutdownTimeout = shutdownTimeout;
+					await scalingService.setupQueue();
+					jobProcessor.getRunningJobIds.mockReturnValue([]);
+					activeExecutions.getRunningExecutionIds.mockReturnValue(['exec-1']);
+					activeExecutions.cancelRunningExecutions.mockResolvedValue(['exec-1']);
+
+					const stopped = scalingService.stop();
+					await vi.advanceTimersByTimeAsync(shutdownTimeout * 1_000);
+					await stopped;
+
+					expect(activeExecutions.cancelRunningExecutions).toHaveBeenCalledWith(expectedDeadlineMs);
+				},
+			);
 		});
 	});
 
@@ -318,7 +718,7 @@ describe('ScalingService', () => {
 	describe('stopJob', () => {
 		it('should stop an active job by sending abort signal only', async () => {
 			await scalingService.setupQueue();
-			const job = mock<Job>({ isActive: jest.fn().mockResolvedValue(true) });
+			const job = mock<Job>({ isActive: vi.fn().mockResolvedValue(true) });
 
 			const result = await scalingService.stopJob(job);
 
@@ -330,7 +730,7 @@ describe('ScalingService', () => {
 
 		it('should stop an inactive job', async () => {
 			await scalingService.setupQueue();
-			const job = mock<Job>({ isActive: jest.fn().mockResolvedValue(false) });
+			const job = mock<Job>({ isActive: vi.fn().mockResolvedValue(false) });
 
 			const result = await scalingService.stopJob(job);
 
@@ -341,8 +741,8 @@ describe('ScalingService', () => {
 		it('should report failure to stop a job', async () => {
 			await scalingService.setupQueue();
 			const job = mock<Job>({
-				isActive: jest.fn().mockImplementation(() => {
-					throw new ApplicationError('Something went wrong');
+				isActive: vi.fn().mockImplementation(() => {
+					throw new UnexpectedError('Something went wrong');
 				}),
 			});
 
@@ -365,6 +765,9 @@ describe('ScalingService', () => {
 				mock(),
 				instanceSettings,
 				mock(),
+				webhookResponseRelay,
+				executionCrashService,
+				jobOutcomeTracker,
 			);
 
 			await scalingService.setupQueue();
@@ -402,6 +805,9 @@ describe('ScalingService', () => {
 				mock(),
 				instanceSettings,
 				mock(),
+				webhookResponseRelay,
+				executionCrashService,
+				jobOutcomeTracker,
 			);
 
 			await scalingService.setupQueue();
@@ -434,6 +840,9 @@ describe('ScalingService', () => {
 				mock(),
 				instanceSettings,
 				mock(),
+				webhookResponseRelay,
+				executionCrashService,
+				jobOutcomeTracker,
 			);
 
 			await scalingService.setupQueue();
@@ -456,6 +865,177 @@ describe('ScalingService', () => {
 				statusCode: 500,
 			});
 		});
+		describe('job outcome wiring', () => {
+			const getHandler = (event: string) =>
+				queue.on.mock.calls.find(([name]) => (name as string) === event)?.[1] as (
+					...args: unknown[]
+				) => void;
+
+			beforeEach(async () => {
+				await scalingService.setupQueue();
+			});
+
+			it('should record a v2 job-finished result with its dates and waitTill', () => {
+				const waitTill = new Date('2026-07-25T12:00:00.000Z');
+				// Bull delivers progress messages JSON-serialized, so dates arrive as ISO strings
+				getHandler('global:progress')('job-789', {
+					kind: 'job-finished',
+					version: 2,
+					executionId: 'exec-123',
+					workerId: 'worker-456',
+					success: true,
+					status: 'waiting',
+					startedAt: '2026-07-25T11:59:00.000Z',
+					stoppedAt: '2026-07-25T11:59:30.000Z',
+					waitTill: waitTill.toISOString(),
+				});
+
+				expect(jobOutcomeTracker.recordFinished).toHaveBeenCalledWith(
+					'exec-123',
+					expect.objectContaining({
+						status: 'waiting',
+						startedAt: new Date('2026-07-25T11:59:00.000Z'),
+						// A missing waitTill makes main treat a waiting execution as finished and
+						// delete it when the workflow does not save successful executions
+						waitTill,
+					}),
+				);
+			});
+
+			it('should record a v1 job-finished message without a result', () => {
+				getHandler('global:progress')('job-789', {
+					kind: 'job-finished',
+					executionId: 'exec-123',
+					workerId: 'worker-456',
+					success: true,
+				});
+
+				expect(jobOutcomeTracker.recordFinished).toHaveBeenCalledWith('exec-123', undefined);
+			});
+
+			it('should record a job-failed report as a handled error', () => {
+				getHandler('global:progress')('job-789', {
+					kind: 'job-failed',
+					executionId: 'exec-123',
+					workerId: 'worker-456',
+					errorMsg: 'boom',
+					errorStack: '',
+				});
+
+				expect(jobOutcomeTracker.recordFailed).toHaveBeenCalledWith(
+					'exec-123',
+					expect.any(OperationalError),
+				);
+				expect(jobOutcomeTracker.recordFailed.mock.calls[0][1].message).toBe('boom');
+			});
+
+			it('should settle the wait for a job Bull reports as failed, by queue and job ID', () => {
+				getHandler('global:failed')('job-1', 'job stalled more than maxStalledCount');
+
+				expect(jobOutcomeTracker.settleByJobKey).toHaveBeenCalledWith(
+					'jobs',
+					'job-1',
+					expect.any(OperationalError),
+				);
+			});
+
+			it('should settle the wait for a job Bull reports as completed, by queue and job ID', () => {
+				getHandler('global:completed')('job-1');
+
+				expect(jobOutcomeTracker.settleByJobKey).toHaveBeenCalledWith('jobs', 'job-1');
+			});
+
+			it('should end the wait when an older worker reports the job as finished', async () => {
+				// A real tracker, so the handler and the tracker are checked together
+				const realTracker = new JobOutcomeTracker(mockLogger(), activeExecutions, mock(), mock());
+				const service = new ScalingService(
+					logger,
+					errorReporter,
+					activeExecutions,
+					jobProcessor,
+					globalConfig,
+					executionRepository,
+					executionPersistence,
+					instanceSettings,
+					mock(),
+					webhookResponseRelay,
+					executionCrashService,
+					realTracker,
+				);
+				await service.setupQueue();
+				const onProgress = queue.on.mock.calls
+					.filter(([event]) => (event as string) === 'global:progress')
+					.at(-1)?.[1] as (jobId: JobId, msg: unknown) => void;
+
+				const job = mock<Job>({
+					id: 'job-1',
+					data: { executionId: 'exec-1' },
+					queue: { name: 'jobs' },
+				});
+				const wait = service.waitForJob(job);
+
+				// A v1 message carries no result, only the fact that the job ended
+				onProgress('job-1', {
+					kind: 'job-finished',
+					executionId: 'exec-1',
+					workerId: 'worker-1',
+					success: true,
+				});
+
+				await expect(wait).resolves.toBeUndefined();
+				expect(service.popJobResult('exec-1')).toBeUndefined();
+			});
+		});
+	});
+
+	describe('getDiagnosticCounts', () => {
+		it('should report stored job results, queue listeners, and running jobs', async () => {
+			const activeExecutions = mock<ActiveExecutions>();
+			activeExecutions.has.mockReturnValue(true);
+			const outcomeTracker = new JobOutcomeTracker(mockLogger(), activeExecutions, mock(), mock());
+			scalingService = new ScalingService(
+				mockLogger(),
+				mock(),
+				activeExecutions,
+				jobProcessor,
+				globalConfig,
+				mock(),
+				mock(),
+				instanceSettings,
+				mock(),
+				webhookResponseRelay,
+				executionCrashService,
+				outcomeTracker,
+			);
+			await scalingService.setupQueue();
+			queue.eventNames.mockReturnValue(['global:progress', 'global:completed']);
+			queue.listenerCount.mockImplementation((event) => (event === 'global:completed' ? 2 : 1));
+			jobProcessor.getRunningJobIds.mockReturnValue(['job-1']);
+
+			const messageHandler = queue.on.mock.calls.find(
+				([event]) => (event as string) === 'global:progress',
+			)?.[1] as (jobId: JobId, msg: unknown) => void;
+			messageHandler('job-789', {
+				kind: 'job-finished',
+				version: 2,
+				executionId: 'exec-123',
+				workerId: 'worker-456',
+				success: true,
+				status: 'success',
+				startedAt: '2026-07-25T11:59:00.000Z',
+				stoppedAt: '2026-07-25T11:59:30.000Z',
+			});
+
+			expect(scalingService.getDiagnosticCounts()).toEqual({
+				jobResults: 1,
+				queueListeners: 3,
+				runningJobs: 1,
+			});
+
+			scalingService.popJobResult('exec-123');
+
+			expect(scalingService.getDiagnosticCounts().jobResults).toBe(0);
+		});
 	});
 
 	describe('recoverFromQueue', () => {
@@ -466,7 +1046,7 @@ describe('ScalingService', () => {
 
 			await scalingService.recoverFromQueue();
 
-			expect(executionRepository.markAsCrashed).toHaveBeenCalledWith(['123']);
+			expect(executionCrashService.markAsCrashed).toHaveBeenCalledWith(['123'], 'queue-recovery');
 		});
 
 		it('should mark running executions as crashed if they are missing from the queue and queue is not empty', async () => {
@@ -476,7 +1056,7 @@ describe('ScalingService', () => {
 
 			await scalingService.recoverFromQueue();
 
-			expect(executionRepository.markAsCrashed).toHaveBeenCalledWith(['123']);
+			expect(executionCrashService.markAsCrashed).toHaveBeenCalledWith(['123'], 'queue-recovery');
 		});
 
 		it('should not mark running executions as crashed if they are present in the queue', async () => {
@@ -486,7 +1066,7 @@ describe('ScalingService', () => {
 
 			await scalingService.recoverFromQueue();
 
-			expect(executionRepository.markAsCrashed).not.toHaveBeenCalled();
+			expect(executionCrashService.markAsCrashed).not.toHaveBeenCalled();
 		});
 	});
 
@@ -535,6 +1115,143 @@ describe('ScalingService', () => {
 
 			// Should not throw for trigger type either
 			expect(() => messageHandler('job-trigger', mcpTriggerResponseMessage)).not.toThrow();
+		});
+
+		it('should restore an offloaded body without reclaiming it on the session-owning main', async () => {
+			await scalingService.setupQueue();
+			mcpServer.hasSession.mockReturnValue(true);
+			webhookResponseRelay.restoreOffloadedBody.mockImplementation(async (response) => response);
+
+			const messageHandler = queue.on.mock.calls.find(
+				([event]) => (event as string) === 'global:progress',
+			)?.[1] as (jobId: JobId, msg: unknown) => void;
+
+			const response = {
+				body: { binaryData: { id: 'database:abc' } },
+				headers: {},
+				statusCode: 200,
+			};
+
+			messageHandler('job-trigger', {
+				kind: 'mcp-response',
+				executionId: 'exec-456',
+				mcpType: 'trigger',
+				sessionId: 'session-trigger',
+				messageId: 'msg-trigger',
+				response,
+				workerId: 'worker-xyz',
+			});
+
+			await vi.waitFor(() =>
+				expect(webhookResponseRelay.restoreOffloadedBody).toHaveBeenCalledWith(response, {
+					reclaim: false,
+					context: { executionId: 'exec-456' },
+				}),
+			);
+			expect(mcpServer.handleWorkerResponse).toHaveBeenCalledWith(
+				'session-trigger',
+				'msg-trigger',
+				response,
+			);
+		});
+
+		it('should decode a Buffer body the worker base64-encoded to relay it', async () => {
+			await scalingService.setupQueue();
+			mcpServer.hasSession.mockReturnValue(true);
+			webhookResponseRelay.restoreOffloadedBody.mockImplementation(async (response) => response);
+
+			const messageHandler = queue.on.mock.calls.find(
+				([event]) => (event as string) === 'global:progress',
+			)?.[1] as (jobId: JobId, msg: unknown) => void;
+
+			messageHandler('job-trigger', {
+				kind: 'mcp-response',
+				executionId: 'exec-456',
+				mcpType: 'trigger',
+				sessionId: 'session-trigger',
+				messageId: 'msg-trigger',
+				response: {
+					body: { [ENCODED_BUFFER_KEY]: Buffer.from('tool output').toString('base64') },
+					headers: {},
+					statusCode: 200,
+				},
+				workerId: 'worker-xyz',
+			});
+
+			await vi.waitFor(() =>
+				expect(webhookResponseRelay.restoreOffloadedBody).toHaveBeenCalledWith(
+					expect.objectContaining({ body: Buffer.from('tool output') }),
+					{ reclaim: false, context: { executionId: 'exec-456' } },
+				),
+			);
+		});
+
+		it('should not restore an offloaded body on a main that does not hold the session', async () => {
+			await scalingService.setupQueue();
+			mcpServer.hasSession.mockReturnValue(false);
+			mcpServer.hasPendingResponse.mockReturnValue(false);
+
+			const messageHandler = queue.on.mock.calls.find(
+				([event]) => (event as string) === 'global:progress',
+			)?.[1] as (jobId: JobId, msg: unknown) => void;
+
+			messageHandler('job-trigger', {
+				kind: 'mcp-response',
+				executionId: 'exec-456',
+				mcpType: 'trigger',
+				sessionId: 'session-trigger',
+				messageId: 'msg-trigger',
+				response: {
+					body: { binaryData: { id: 'database:abc' } },
+					headers: {},
+					statusCode: 200,
+				},
+				workerId: 'worker-xyz',
+			});
+
+			await vi.waitFor(() => expect(mcpServer.hasSession).toHaveBeenCalledWith('session-trigger'));
+			expect(mcpServer.hasPendingResponse).toHaveBeenCalledWith('session-trigger', 'msg-trigger');
+			expect(webhookResponseRelay.restoreOffloadedBody).not.toHaveBeenCalled();
+			expect(mcpServer.handleWorkerResponse).not.toHaveBeenCalled();
+		});
+
+		it('should deliver a response a pending call awaits when the transport is gone', async () => {
+			await scalingService.setupQueue();
+			mcpServer.hasSession.mockReturnValue(false);
+			mcpServer.hasPendingResponse.mockReturnValue(true);
+			webhookResponseRelay.restoreOffloadedBody.mockImplementation(async (response) => response);
+
+			const messageHandler = queue.on.mock.calls.find(
+				([event]) => (event as string) === 'global:progress',
+			)?.[1] as (jobId: JobId, msg: unknown) => void;
+
+			const response = {
+				body: { binaryData: { id: 'database:abc' } },
+				headers: {},
+				statusCode: 200,
+			};
+
+			messageHandler('job-trigger', {
+				kind: 'mcp-response',
+				executionId: 'exec-456',
+				mcpType: 'trigger',
+				sessionId: 'session-trigger',
+				messageId: 'msg-trigger',
+				response,
+				workerId: 'worker-xyz',
+			});
+
+			await vi.waitFor(() =>
+				expect(mcpServer.handleWorkerResponse).toHaveBeenCalledWith(
+					'session-trigger',
+					'msg-trigger',
+					response,
+				),
+			);
+			expect(webhookResponseRelay.restoreOffloadedBody).toHaveBeenCalledWith(response, {
+				reclaim: false,
+				context: { executionId: 'exec-456' },
+			});
 		});
 	});
 });

@@ -11,6 +11,78 @@ import * as path from 'path';
 
 import type * as GenerateTypesModule from '../generate-types/generate-types';
 
+/**
+ * Return every member name that a `{ ... }` block declares more than once.
+ * This is what `tsc` reports as TS2300 for the generated files. The installed
+ * TypeScript 7 package has no JavaScript compiler API, so a small scanner
+ * does the walk: every `{` opens a scope, and a member is a plain or quoted
+ * name followed by an optional `?` and a `:`. Comments and string literals
+ * are skipped.
+ */
+function findDuplicateTypeMembers(source: string): string[] {
+	const memberPattern = /^(?:([A-Za-z_$][\w$]*)|'((?:\\.|[^'\\\n])*)')\s*\??\s*:/;
+	const duplicates: string[] = [];
+	const scopes: Array<Set<string>> = [];
+	let expectMember = false;
+	let i = 0;
+
+	const skipTo = (needle: string, from: number): number => {
+		const index = source.indexOf(needle, from);
+		return index === -1 ? source.length : index + needle.length;
+	};
+
+	while (i < source.length) {
+		const ch = source[i];
+		const rest = source.slice(i, i + 2);
+
+		if (rest === '/*') {
+			i = skipTo('*/', i + 2);
+			continue;
+		}
+		if (rest === '//') {
+			i = skipTo('\n', i + 2);
+			continue;
+		}
+
+		if (expectMember) {
+			const match = memberPattern.exec(source.slice(i));
+			if (match) {
+				const name = match[1] ?? match[2];
+				const scope = scopes[scopes.length - 1];
+				if (scope.has(name)) duplicates.push(name);
+				scope.add(name);
+				i += match[0].length;
+				expectMember = false;
+				continue;
+			}
+		}
+
+		if (ch === "'" || ch === '"' || ch === '`') {
+			i++;
+			while (i < source.length && source[i] !== ch) {
+				i += source[i] === '\\' ? 2 : 1;
+			}
+			i++;
+			expectMember = false;
+			continue;
+		}
+
+		if (ch === '{') {
+			scopes.push(new Set());
+			expectMember = true;
+		} else if (ch === '}') {
+			scopes.pop();
+			expectMember = false;
+		} else if (ch === ';' || ch === ',') {
+			expectMember = scopes.length > 0;
+		} else if (!/\s/.test(ch)) {
+			expectMember = false;
+		}
+		i++;
+	}
+	return duplicates;
+}
+
 // We'll import these functions once implemented
 // For now, we define the expected interfaces and test structure
 
@@ -43,6 +115,10 @@ interface NestedOption {
 	default?: unknown;
 	// Nested options can themselves have options (e.g., options type inside a collection)
 	options?: NestedOption[];
+	displayOptions?: {
+		show?: Record<string, unknown[]>;
+		hide?: Record<string, unknown[]>;
+	};
 }
 
 interface NodeProperty {
@@ -78,8 +154,8 @@ interface NodeTypeDescription {
 	defaultVersion?: number;
 	properties: NodeProperty[];
 	credentials?: Array<{ name: string; required?: boolean }>;
-	inputs: string[] | Array<{ type: string; displayName?: string; required?: boolean }>;
-	outputs: string[] | Array<{ type: string; displayName?: string }>;
+	inputs: string | string[] | Array<{ type: string; displayName?: string; required?: boolean }>;
+	outputs: string | string[] | Array<{ type: string; displayName?: string }>;
 	subtitle?: string;
 	usableAsTool?: boolean;
 	hidden?: boolean;
@@ -362,7 +438,7 @@ describe('generate-types', () => {
 	beforeAll(async () => {
 		// Dynamic import to handle module not existing yet
 		try {
-			generateTypes = await import('../generate-types/generate-types');
+			generateTypes = await import('../generate-types/generate-types.js');
 		} catch {
 			// Module doesn't export functions yet - tests will fail as expected in TDD
 		}
@@ -473,6 +549,21 @@ describe('generate-types', () => {
 			expect(result).toBe(
 				"{ __rl: true; mode: 'list' | 'url' | 'id'; value: string; cachedResultName?: string }",
 			);
+		});
+
+		it('should map agentSelector type to the resource-locator shape (not unknown), like workflowSelector', () => {
+			const prop = {
+				name: 'agentId',
+				displayName: 'Agent',
+				type: 'agentSelector',
+				default: { mode: 'list', value: '' },
+			} as unknown as NodeProperty;
+			const result = generateTypes.mapPropertyType(prop);
+			expect(result).not.toBe('unknown');
+			expect(result).toContain('__rl: true');
+			expect(result).toContain("mode: 'list' | 'id'");
+			expect(result).toContain('cachedResultName?: string');
+			expect(result).toContain('Expression<string>');
 		});
 
 		it('should map filter type', () => {
@@ -622,6 +713,183 @@ describe('generate-types', () => {
 			expect(result).toContain('parameters?:');
 			expect(result).toContain('name?:');
 			expect(result).toContain('value?:');
+		});
+
+		describe('same-named nested declarations', () => {
+			const collectionWith = (options: NodeProperty[]): NodeProperty => ({
+				name: 'otherOptions',
+				displayName: 'Options',
+				type: 'collection',
+				default: {},
+				options,
+			});
+
+			const fieldName = (displayOptions: NodeProperty['displayOptions']): NodeProperty => ({
+				displayName: 'Field Name',
+				name: 'fieldName',
+				type: 'string',
+				default: '',
+				displayOptions,
+			});
+
+			it('should emit one key with every condition when the types are identical', () => {
+				const result = generateTypes.mapPropertyType(
+					collectionWith([
+						fieldName({ show: { fieldType: ['text'] } }),
+						fieldName({ show: { fieldSource: ['manual'] } }),
+					]),
+				);
+
+				expect(result.match(/fieldName\?:/g)).toHaveLength(1);
+				expect(result).toContain('@displayOptions.show { fieldType: ["text"] }');
+				expect(result).toContain('@displayOptions.show { fieldSource: ["manual"] }');
+				expect(findDuplicateTypeMembers(`type T = ${result};`)).toEqual([]);
+			});
+
+			it('should collapse a hide/show fork of one key into one condition', () => {
+				// The Form node's fieldName: hidden for html, shown again for hiddenField
+				const result = generateTypes.mapPropertyType(
+					collectionWith([
+						fieldName({ hide: { fieldType: ['html'] } }),
+						fieldName({ show: { fieldType: ['hiddenField'] } }),
+					]),
+				);
+
+				expect(result.match(/@displayOptions/g)).toHaveLength(1);
+				expect(result).toContain('@displayOptions.hide { fieldType: ["html"] }');
+			});
+
+			it('should union the values when show conditions differ in one key', () => {
+				const result = generateTypes.mapPropertyType(
+					collectionWith([
+						fieldName({ show: { fieldType: ['text'], mode: ['manual'] } }),
+						fieldName({ show: { fieldType: ['number'], mode: ['manual'] } }),
+					]),
+				);
+
+				expect(result.match(/@displayOptions/g)).toHaveLength(1);
+				expect(result).toContain(
+					'@displayOptions.show { fieldType: ["text", "number"], mode: ["manual"] }',
+				);
+			});
+
+			it('should emit a union with per-member JSDoc when the types differ', () => {
+				// Slack's message.post `ephemeral`: a fixedCollection for channels, a boolean for users
+				const result = generateTypes.mapPropertyType(
+					collectionWith([
+						{
+							displayName: 'Send as Ephemeral Message',
+							name: 'ephemeral',
+							type: 'fixedCollection',
+							default: {},
+							displayOptions: { show: { '/select': ['channel'] } },
+							options: [
+								{
+									displayName: 'Send as Ephemeral Message',
+									name: 'ephemeralValues',
+									values: [{ displayName: 'User', name: 'user', type: 'string', default: '' }],
+								},
+							],
+						},
+						{
+							displayName: 'Send as Ephemeral Message',
+							name: 'ephemeral',
+							type: 'boolean',
+							default: true,
+							displayOptions: { show: { '/select': ['user'] } },
+						},
+					]),
+				);
+
+				expect(result.match(/\n\s*ephemeral\?:/g)).toHaveLength(1);
+				expect(result).toMatch(
+					/ephemeral\?:\n\s*\/\*\*[^]*?@displayOptions\.show \{ \/select: \["channel"\] \}[^]*?\*\/\n\s*\| \{/,
+				);
+				expect(result).toMatch(
+					/@displayOptions\.show \{ \/select: \["user"\] \}[^]*?\*\/\n\s*\| boolean \| Expression<boolean>/,
+				);
+				expect(findDuplicateTypeMembers(`type T = ${result};`)).toEqual([]);
+			});
+
+			it('should drop a nested value that the combination can never show', () => {
+				// Freshdesk contact: `email` under additionalFields is shown only for update
+				const prop = collectionWith([
+					{ displayName: 'Address', name: 'address', type: 'string', default: '' },
+					{
+						displayName: 'Email',
+						name: 'email',
+						type: 'string',
+						default: '',
+						displayOptions: { show: { '/operation': ['update'] } },
+					},
+				]);
+
+				const createResult = generateTypes.mapPropertyType(prop, { operation: 'create' });
+				expect(createResult).toContain('address?:');
+				expect(createResult).not.toContain('email?:');
+
+				const updateResult = generateTypes.mapPropertyType(prop, { operation: 'update' });
+				expect(updateResult).toContain('email?:');
+				expect(updateResult).not.toContain('@displayOptions');
+			});
+
+			it('should drop the conditions when one variant is unconditional', () => {
+				const result = generateTypes.mapPropertyType(
+					collectionWith([
+						{ displayName: 'Timeout', name: 'timeout', type: 'number', default: 10 },
+						{
+							displayName: 'Timeout',
+							name: 'timeout',
+							type: 'number',
+							default: 10,
+							displayOptions: { show: { batching: [true] } },
+						},
+					]),
+				);
+
+				expect(result.match(/timeout\?:/g)).toHaveLength(1);
+				expect(result).not.toContain('@displayOptions');
+			});
+
+			it('should merge same-named fixedCollection values', () => {
+				const prop: NodeProperty = {
+					name: 'filters',
+					displayName: 'Filters',
+					type: 'fixedCollection',
+					default: {},
+					options: [
+						{
+							displayName: 'Conditions',
+							name: 'conditions',
+							values: [
+								{
+									displayName: 'Condition',
+									name: 'condition',
+									type: 'options',
+									default: 'equals',
+									options: [{ name: 'Equals', value: 'equals' }],
+									displayOptions: { show: { type: ['text'] } },
+								},
+								{
+									displayName: 'Condition',
+									name: 'condition',
+									type: 'options',
+									default: 'equals',
+									options: [{ name: 'Greater Than', value: 'greater_than' }],
+									displayOptions: { show: { type: ['number'] } },
+								},
+							],
+						},
+					],
+				};
+
+				const result = generateTypes.mapPropertyType(prop);
+
+				expect(result.match(/\n\s*condition\?:/g)).toHaveLength(1);
+				expect(result).toContain("| 'equals' | Expression<string>");
+				expect(result).toContain("| 'greater_than' | Expression<string>");
+				expect(findDuplicateTypeMembers(`type T = ${result};`)).toEqual([]);
+			});
 		});
 
 		it('should map nested string fields with multipleValues to array types', () => {
@@ -2035,6 +2303,38 @@ describe('generate-types', () => {
 			expect(result).toContain('@builderHint AI Agent — wire subnodes via the config object');
 		});
 
+		it('should mark a hidden node as deprecated above its description', () => {
+			const node = { ...mockGmailNode, hidden: true };
+
+			const result = generateTypes.generateNodeJSDoc(node);
+
+			expect(result).toContain('@deprecated');
+			expect(result).toContain('Do not use it in a new workflow');
+			// The reader must meet the marker before the parameters.
+			expect(result.indexOf('@deprecated')).toBeLessThan(
+				result.indexOf('Send and receive emails using Gmail'),
+			);
+		});
+
+		it('should name the replacement node from the builder hint of a hidden node', () => {
+			const node = {
+				...mockGmailNode,
+				hidden: true,
+				builderHint: { searchHint: 'Use `n8n-nodes-base.httpRequestTool` instead.' },
+			};
+
+			const result = generateTypes.generateNodeJSDoc(node);
+
+			expect(result).toContain('@deprecated');
+			expect(result).toContain('@builderHint Use `n8n-nodes-base.httpRequestTool` instead.');
+		});
+
+		it('should not mark a visible node as deprecated', () => {
+			const result = generateTypes.generateNodeJSDoc(mockGmailNode);
+
+			expect(result).not.toContain('@deprecated');
+		});
+
 		it('should emit unconditional extraTypeDefContent variations at the file header but skip gated ones', () => {
 			const node = {
 				...mockGmailNode,
@@ -2178,6 +2478,253 @@ describe('generate-types', () => {
 			expect(generateTypes.propertyAppliesToVersion(prop, 2.1)).toBe(false);
 			expect(generateTypes.propertyAppliesToVersion(prop, 3)).toBe(false);
 		});
+
+		it('should handle eq (equal) version condition', () => {
+			const prop: NodeProperty = {
+				name: 'modelName',
+				displayName: 'Model',
+				type: 'options',
+				default: 'models/gemini-2.5-flash',
+				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { eq: 1 } }],
+					},
+				},
+			};
+			expect(generateTypes.propertyAppliesToVersion(prop, 1)).toBe(true);
+			expect(generateTypes.propertyAppliesToVersion(prop, 1.1)).toBe(false);
+			expect(generateTypes.propertyAppliesToVersion(prop, 2)).toBe(false);
+		});
+
+		it('should handle not (not equal) version condition', () => {
+			const prop: NodeProperty = {
+				name: 'text',
+				displayName: 'Text',
+				type: 'string',
+				default: '',
+				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { not: 2 } }],
+					},
+				},
+			};
+			expect(generateTypes.propertyAppliesToVersion(prop, 1)).toBe(true);
+			expect(generateTypes.propertyAppliesToVersion(prop, 2)).toBe(false);
+			expect(generateTypes.propertyAppliesToVersion(prop, 2.1)).toBe(true);
+		});
+
+		it('should handle between version condition', () => {
+			const prop: NodeProperty = {
+				name: 'text',
+				displayName: 'Text',
+				type: 'string',
+				default: '',
+				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { between: { from: 2, to: 3 } } }],
+					},
+				},
+			};
+			expect(generateTypes.propertyAppliesToVersion(prop, 2)).toBe(true);
+			expect(generateTypes.propertyAppliesToVersion(prop, 2.5)).toBe(true);
+			expect(generateTypes.propertyAppliesToVersion(prop, 3)).toBe(true);
+			expect(generateTypes.propertyAppliesToVersion(prop, 1.9)).toBe(false);
+			expect(generateTypes.propertyAppliesToVersion(prop, 3.1)).toBe(false);
+		});
+	});
+
+	describe('filterPropertiesForVersion with per-version default overrides', () => {
+		// The light-versioning pattern: the same property is declared twice with
+		// version-gated defaults (e.g. LmChatGoogleGemini's modelName). An `eq`
+		// gate that isn't enforced leaks the old property into newer versions'
+		// typedefs, where the emitter keeps the first (old) duplicate.
+		const oldDefault: NodeProperty = {
+			name: 'modelName',
+			displayName: 'Model',
+			type: 'options',
+			default: 'models/old-model',
+			displayOptions: {
+				show: {
+					'@version': [{ _cnd: { eq: 1 } }],
+				},
+			},
+		};
+		const newDefault: NodeProperty = {
+			...oldDefault,
+			default: 'models/new-model',
+			displayOptions: {
+				show: {
+					'@version': [{ _cnd: { gte: 1.1 } }],
+				},
+			},
+		};
+
+		it('should keep only the matching duplicate for each version', () => {
+			const v1 = generateTypes.filterPropertiesForVersion([oldDefault, newDefault], 1);
+			expect(v1.map((p) => p.default)).toEqual(['models/old-model']);
+
+			const v11 = generateTypes.filterPropertiesForVersion([oldDefault, newDefault], 1.1);
+			expect(v11.map((p) => p.default)).toEqual(['models/new-model']);
+		});
+
+		it('should emit the version-correct @default in the generated type file', () => {
+			const node: NodeTypeDescription = {
+				name: '@n8n/n8n-nodes-langchain.lmChatExample',
+				displayName: 'Example Chat Model',
+				description: 'Example',
+				group: ['transform'],
+				version: [1, 1.1],
+				inputs: [],
+				outputs: ['ai_languageModel'],
+				properties: [oldDefault, newDefault],
+			};
+
+			const content = generateTypes.generateSingleVersionTypeFile(node, 1.1);
+			expect(content).toContain('@default models/new-model');
+			expect(content).not.toContain('@default models/old-model');
+		});
+	});
+
+	describe('filterPropertiesForVersion with nested @version gates', () => {
+		const botProfile = (version: unknown, description: string): NodeProperty => ({
+			displayName: 'Bot Profile',
+			name: 'botProfile',
+			type: 'string',
+			default: '',
+			description,
+			displayOptions: { show: { '@version': [version] } },
+		});
+		const otherOptions: NodeProperty = {
+			name: 'otherOptions',
+			displayName: 'Options',
+			type: 'collection',
+			default: {},
+			options: [
+				{ displayName: 'Link Names', name: 'link_names', type: 'boolean', default: false },
+				botProfile({ _cnd: { lte: 2.5 } }, 'old'),
+				botProfile({ _cnd: { gte: 2.6 } }, 'new'),
+			],
+		};
+		const formFields: NodeProperty = {
+			name: 'formFields',
+			displayName: 'Form Fields',
+			type: 'fixedCollection',
+			default: {},
+			options: [
+				{
+					displayName: 'Values',
+					name: 'values',
+					values: [
+						botProfile({ _cnd: { lt: 2.4 } }, 'old'),
+						botProfile({ _cnd: { gte: 2.4 } }, 'new'),
+					],
+				},
+			],
+		};
+
+		it('should filter collection options by version', () => {
+			const [result] = generateTypes.filterPropertiesForVersion([otherOptions], 2.7);
+			expect(result.options?.map((o) => o.description ?? o.name)).toEqual(['link_names', 'new']);
+		});
+
+		it('should filter fixedCollection values by version', () => {
+			const [result] = generateTypes.filterPropertiesForVersion([formFields], 2.3);
+			expect(result.options?.[0].values?.map((v) => v.description)).toEqual(['old']);
+		});
+
+		it('should return the same object when nothing is gated', () => {
+			const plain: NodeProperty = {
+				name: 'options',
+				displayName: 'Options',
+				type: 'collection',
+				default: {},
+				options: [{ displayName: 'Timeout', name: 'timeout', type: 'number', default: 10 }],
+			};
+			const [result] = generateTypes.filterPropertiesForVersion([plain], 1);
+			expect(result).toBe(plain);
+		});
+
+		it('should emit only the version-correct nested variant in the type file', () => {
+			const node: NodeTypeDescription = {
+				name: 'n8n-nodes-base.slackLike',
+				displayName: 'Slack Like',
+				group: ['output'],
+				version: [2.5, 2.7],
+				inputs: ['main'],
+				outputs: ['main'],
+				properties: [otherOptions],
+			};
+
+			const content = generateTypes.generateSingleVersionTypeFile(node, 2.7);
+			expect(content.match(/botProfile\?:/g)).toHaveLength(1);
+			expect(content).toContain('/** new');
+			expect(content).not.toContain('/** old');
+		});
+	});
+
+	describe('generatePropertyLine with conditional requirements', () => {
+		const text: NodeProperty = {
+			name: 'text',
+			displayName: 'Message Text',
+			type: 'string',
+			default: '',
+			required: true,
+			displayOptions: {
+				show: { resource: ['message'], operation: ['post'], messageType: ['text'] },
+			},
+		};
+
+		it('should make a property optional when a residual condition gates it', () => {
+			const line = generateTypes.generatePropertyLine(text, false, {
+				resource: 'message',
+				operation: 'post',
+			});
+			expect(line).toContain('text?: string | Expression<string>;');
+			expect(line).toContain('@displayOptions.show { messageType: ["text"] }');
+			expect(line).toContain('@required when the displayOptions conditions above match');
+		});
+
+		it('should keep a property required when the combination satisfies every condition', () => {
+			const line = generateTypes.generatePropertyLine(text, false, {
+				resource: 'message',
+				operation: 'post',
+				messageType: 'text',
+			});
+			expect(line).toContain('text: string | Expression<string>;');
+			expect(line).not.toContain('@required');
+		});
+
+		it('should treat a hide on a discriminator the combination does not match as decided', () => {
+			// Oracle-style: `table` is hidden for execute, so in the insert file it is unconditional.
+			const table: NodeProperty = {
+				name: 'table',
+				displayName: 'Table',
+				type: 'string',
+				default: '',
+				required: true,
+				displayOptions: { hide: { operation: ['execute'] } },
+			};
+			const line = generateTypes.generatePropertyLine(table, false, { operation: 'insert' });
+			expect(line).toContain('table: string | Expression<string>;');
+			expect(line).not.toContain('@displayOptions');
+			expect(line).not.toContain('@required');
+		});
+
+		it('should keep a property required when only @version gates it', () => {
+			const prop: NodeProperty = {
+				...text,
+				displayOptions: { show: { '@version': [{ _cnd: { gte: 2 } }] } },
+			};
+			const line = generateTypes.generatePropertyLine(prop, false);
+			expect(line).toContain('text: string | Expression<string>;');
+			expect(line).not.toContain('@required');
+		});
+
+		it('should not add the @required tag to an optional property', () => {
+			const line = generateTypes.generatePropertyLine({ ...text, required: false }, true);
+			expect(line).toContain('text?: string | Expression<string>;');
+			expect(line).not.toContain('@required');
+		});
 	});
 
 	describe('groupVersionsByProperties', () => {
@@ -2266,6 +2813,10 @@ describe('generate-types', () => {
 			// Should have credentials type
 			expect(result).toContain('GmailV21Credentials');
 			expect(result).toContain('gmailOAuth2');
+			expect(result).toContain(
+				'config: NodeConfig<GmailV21Params> & { credentials?: GmailV21Credentials }',
+			);
+			expect(result).not.toContain('credentials?: GmailV21Credentials;\n');
 
 			// Should have node type
 			expect(result).toContain('GmailNode');
@@ -2309,6 +2860,64 @@ describe('generate-types', () => {
 			const result = generateTypes.generateNodeTypeFile(subToolNode);
 
 			expect(result).not.toContain('isTrigger: true');
+		});
+
+		it('should generate types for constant expression connections (community node pattern)', () => {
+			// Community nodes often wrap static connections in an expression
+			// (e.g. firecrawl's `={{["main"]}}`); generation must not depend on
+			// evaluating it.
+			const dynamicNode: NodeTypeDescription = {
+				name: 'n8n-nodes-firecrawl.firecrawl',
+				displayName: 'Firecrawl',
+				description: 'Scrape and crawl websites',
+				group: ['transform'],
+				version: 1,
+				inputs: '={{["main"]}}',
+				outputs: '={{["main"]}}',
+				properties: [{ name: 'url', displayName: 'URL', type: 'string', default: '' }],
+			};
+
+			const result = generateTypes.generateNodeTypeFile(dynamicNode);
+
+			expect(result).toContain("type: 'n8n-nodes-firecrawl.firecrawl'");
+			expect(result).toContain('url');
+			// No ai_* literals in the expression: no subnode config, not a trigger
+			expect(result).not.toContain('SubnodeConfig');
+			expect(result).not.toContain('isTrigger: true');
+		});
+
+		it('should generate types for dynamic expression inputs (agent pattern)', () => {
+			const dynamicAgentNode: NodeTypeDescription = {
+				name: 'n8n-nodes-custom.customAgent',
+				displayName: 'Custom Agent',
+				description: 'Agent with parameter-dependent inputs',
+				group: ['transform'],
+				version: 1,
+				inputs: `={{
+					((hasMemory) => {
+						const inputs = [{ type: "main" }, { type: "ai_languageModel", required: true }];
+						if (hasMemory) inputs.push({ type: "ai_memory" });
+						return inputs;
+					})($parameter.hasMemory)
+				}}`,
+				outputs: ['main'],
+				properties: [{ name: 'prompt', displayName: 'Prompt', type: 'string', default: '' }],
+			};
+
+			// Legacy single-file generator (runtime synthesis path): generates
+			// the parameter types; it emits no subnode config for any node.
+			const legacyResult = generateTypes.generateNodeTypeFile(dynamicAgentNode);
+			expect(legacyResult).toContain('CustomAgentV1Params');
+			expect(legacyResult).toContain('prompt');
+
+			// Per-version generator (build-time path): ai_* types are extracted
+			// lexically from the expression source. Required status can't be
+			// reliably determined from expressions, so all are optional unless
+			// declared via builderHint.inputs.
+			const versionResult = generateTypes.generateSingleVersionTypeFile(dynamicAgentNode, 1);
+			expect(versionResult).toContain('SubnodeConfig');
+			expect(versionResult).toContain('model?: LanguageModelInstance');
+			expect(versionResult).toContain('memory?: MemoryInstance');
 		});
 
 		it('should emit helper type for resourceMapper properties', () => {
@@ -2464,6 +3073,106 @@ describe('generate-types', () => {
 		});
 	});
 
+	describe('generated type members are unique', () => {
+		it('findDuplicateTypeMembers should report a repeated member', () => {
+			expect(
+				findDuplicateTypeMembers('type T = { a?: string; b?: { c?: 1; c?: 2 }; a?: 1 };'),
+			).toEqual(['c', 'a']);
+		});
+
+		it('should emit no duplicate members for same-named nested declarations', () => {
+			const node: NodeTypeDescription = {
+				name: 'n8n-nodes-base.slackLike',
+				displayName: 'Slack Like',
+				group: ['output'],
+				version: 2.7,
+				inputs: ['main'],
+				outputs: ['main'],
+				properties: [
+					{
+						name: 'select',
+						displayName: 'Send Message To',
+						type: 'options',
+						default: 'channel',
+						options: [
+							{ name: 'Channel', value: 'channel' },
+							{ name: 'User', value: 'user' },
+						],
+					},
+					{
+						name: 'otherOptions',
+						displayName: 'Options',
+						type: 'collection',
+						default: {},
+						options: [
+							{
+								displayName: 'Ephemeral',
+								name: 'ephemeral',
+								type: 'fixedCollection',
+								default: {},
+								displayOptions: { show: { '/select': ['channel'] } },
+								options: [
+									{
+										displayName: 'Values',
+										name: 'ephemeralValues',
+										values: [{ displayName: 'User', name: 'user', type: 'string', default: '' }],
+									},
+								],
+							},
+							{
+								displayName: 'Ephemeral',
+								name: 'ephemeral',
+								type: 'boolean',
+								default: true,
+								displayOptions: { show: { '/select': ['user'] } },
+							},
+						],
+					},
+				],
+			};
+
+			const content = generateTypes.generateSingleVersionTypeFile(node, 2.7);
+			expect(findDuplicateTypeMembers(content)).toEqual([]);
+		});
+
+		// Needs a built nodes-base. Skip, rather than pass, when it is absent so
+		// the corpus check is visibly unrun.
+		const corpusNodesPath = path.resolve(__dirname, '../../../../nodes-base/dist/types/nodes.json');
+
+		it.skipIf(!fs.existsSync(corpusNodesPath))(
+			'should emit no duplicate members across the real node corpus',
+			async () => {
+				const outputDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'n8n-node-defs-'));
+				try {
+					const nodes = JSON.parse(
+						await fs.promises.readFile(corpusNodesPath, 'utf-8'),
+					) as NodeTypeDescription[];
+					await generateTypes.orchestrateGeneration({ nodes, outputDir });
+
+					const duplicates: string[] = [];
+					const walk = async (dir: string): Promise<void> => {
+						for (const entry of await fs.promises.readdir(dir, { withFileTypes: true })) {
+							const entryPath = path.join(dir, entry.name);
+							if (entry.isDirectory()) {
+								await walk(entryPath);
+							} else if (entry.name.endsWith('.ts')) {
+								const source = await fs.promises.readFile(entryPath, 'utf-8');
+								for (const name of findDuplicateTypeMembers(source)) {
+									duplicates.push(`${path.relative(outputDir, entryPath)}: ${name}`);
+								}
+							}
+						}
+					};
+					await walk(outputDir);
+					expect(duplicates).toEqual([]);
+				} finally {
+					await fs.promises.rm(outputDir, { recursive: true, force: true });
+				}
+			},
+			120_000,
+		);
+	});
+
 	// =========================================================================
 	// credentialsSelect Type Handling Tests
 	// =========================================================================
@@ -2495,9 +3204,22 @@ describe('generate-types', () => {
 			expect(result).toContain("'httpHeaderAuth'");
 			expect(result).toContain("'httpQueryAuth'");
 			expect(result).toContain("'httpCustomAuth'");
+			expect(result).toContain("'httpTemplatedCustomAuth'");
 			expect(result).toContain("'oAuth1Api'");
 			expect(result).toContain("'oAuth2Api'");
 			expect(result).toContain('Expression<string>');
+		});
+
+		it('should emit steering JSDoc for genericAuthType', () => {
+			const prop: NodeProperty = {
+				name: 'genericAuthType',
+				displayName: 'Generic Auth Type',
+				type: 'credentialsSelect',
+				default: '',
+			};
+			const line = generateTypes.generatePropertyLine(prop, true);
+			expect(line).toContain('httpTemplatedCustomAuth');
+			expect(line).toContain('do NOT use httpBearerAuth');
 		});
 
 		it('should NOT skip credentialsSelect properties in type generation', () => {
@@ -3613,6 +4335,7 @@ describe('generate-types', () => {
 				// Should have credentials
 				expect(content).toContain('FreshserviceV1Credentials');
 				expect(content).toContain('freshserviceApi');
+				expect(content).not.toContain('credentials?: FreshserviceV1Credentials');
 
 				// Should have base type
 				expect(content).toContain('FreshserviceV1NodeBase');
@@ -3765,8 +4488,11 @@ describe('generate-types', () => {
 				// freshserviceApi is marked as required: true in the mock, so no ? mark
 				expect(content).toContain('freshserviceApi: CredentialReference');
 
-				// Node type should reference credentials (credentials field itself is always optional)
-				expect(content).toContain('credentials?: Credentials');
+				// Node type should place credentials inside config, matching the builder API.
+				expect(content).toContain(
+					'config: NodeConfig<FreshserviceV1TicketGetParams> & { credentials?: Credentials };',
+				);
+				expect(content).not.toContain('\n  credentials?: Credentials;\n');
 			});
 
 			it('should inline helper types when properties need them', () => {
@@ -4814,6 +5540,10 @@ describe('generate-types', () => {
 				);
 
 				expect(content).toContain('interface Credentials');
+				expect(content).toContain(
+					'config: NodeConfig<GmailV2MessageSendParams> & { credentials?: Credentials };',
+				);
+				expect(content).not.toContain('\n  credentials?: Credentials;\n');
 				expect(content).toContain('export type');
 			});
 		});
@@ -4948,6 +5678,137 @@ describe('generate-types', () => {
 			}
 		});
 
+		it('exact-matches fractional typeVersions against minor-versioned dirs', () => {
+			const nodeName = '__TestMinorVersionExact__';
+			const schema = { type: 'object', properties: { id: { type: 'string' } } };
+
+			try {
+				createTestSchemaDir(nodeName, 'v2.0.0', {
+					'contact/get.json': JSON.stringify({ type: 'object', properties: {} }),
+				});
+				createTestSchemaDir(nodeName, 'v2.3.0', {
+					'contact/get.json': JSON.stringify(schema),
+				});
+
+				const result = generateTypes.discoverSchemasForNode(
+					`n8n-nodes-base.${nodeName}`,
+					2.3,
+					nodeName,
+				);
+
+				expect(result).toHaveLength(1);
+				expect(result[0].schema).toEqual(schema);
+			} finally {
+				cleanupTestDir(nodeName);
+			}
+		});
+
+		it('falls back to the closest LOWER version comparing full X.Y.Z tuples', () => {
+			const nodeName = '__TestMinorVersionFallback__';
+			const older = { type: 'object', properties: { a: { type: 'string' } } };
+			const closest = { type: 'object', properties: { b: { type: 'string' } } };
+			const newer = { type: 'object', properties: { c: { type: 'string' } } };
+
+			try {
+				createTestSchemaDir(nodeName, 'v2.0.0', { 'contact/get.json': JSON.stringify(older) });
+				createTestSchemaDir(nodeName, 'v2.2.0', { 'contact/get.json': JSON.stringify(closest) });
+				createTestSchemaDir(nodeName, 'v2.4.0', { 'contact/get.json': JSON.stringify(newer) });
+
+				// 2.3 has no exact dir: must pick v2.2.0 (closest lower), never v2.4.0.
+				const result = generateTypes.discoverSchemasForNode(
+					`n8n-nodes-base.${nodeName}`,
+					2.3,
+					nodeName,
+				);
+
+				expect(result).toHaveLength(1);
+				expect(result[0].schema).toEqual(closest);
+			} finally {
+				cleanupTestDir(nodeName);
+			}
+		});
+
+		it('resolves to a higher same-major minor before dropping to an older major', () => {
+			const nodeName = '__TestSameMajorAbove__';
+			const v1Schema = { type: 'object', properties: { legacy: { type: 'string' } } };
+			const v22Schema = { type: 'object', properties: { current: { type: 'string' } } };
+
+			try {
+				// The Notion shape: node versions 2 and 2.1 share the class behind
+				// v2.2.0 — falling to v1.0.0 would silently lose their schemas.
+				createTestSchemaDir(nodeName, 'v1.0.0', {
+					'contact/get.json': JSON.stringify(v1Schema),
+				});
+				createTestSchemaDir(nodeName, 'v2.2.0', {
+					'contact/get.json': JSON.stringify(v22Schema),
+				});
+
+				for (const version of [2, 2.1]) {
+					const result = generateTypes.discoverSchemasForNode(
+						`n8n-nodes-base.${nodeName}`,
+						version,
+						nodeName,
+					);
+
+					expect(result).toHaveLength(1);
+					expect(result[0].schema).toEqual(v22Schema);
+				}
+			} finally {
+				cleanupTestDir(nodeName);
+			}
+		});
+
+		it('fills gaps per file from lower minors when the exact dir is sparse', () => {
+			const nodeName = '__TestPerFileFallback__';
+			const searchSchema = { type: 'object', properties: { matches: { type: 'array' } } };
+			const postSchema = { type: 'object', properties: { ts: { type: 'string' } } };
+			const stalePostSchema = { type: 'object', properties: { old: { type: 'boolean' } } };
+
+			try {
+				// The Slack shape: v2.7.0 exists but only holds message/search.json,
+				// while v2.3.0 holds message/post.json — post must resolve from v2.3.0.
+				createTestSchemaDir(nodeName, 'v2.3.0', {
+					'message/post.json': JSON.stringify(postSchema),
+					'message/search.json': JSON.stringify(stalePostSchema),
+				});
+				createTestSchemaDir(nodeName, 'v2.7.0', {
+					'message/search.json': JSON.stringify(searchSchema),
+				});
+
+				const result = generateTypes.discoverSchemasForNode(
+					`n8n-nodes-base.${nodeName}`,
+					2.7,
+					nodeName,
+				);
+
+				expect(result).toHaveLength(2);
+				expect(result.find((s) => s.operation === 'search')?.schema).toEqual(searchSchema);
+				expect(result.find((s) => s.operation === 'post')?.schema).toEqual(postSchema);
+			} finally {
+				cleanupTestDir(nodeName);
+			}
+		});
+
+		it('never falls forward to a newer major', () => {
+			const nodeName = '__TestNoNewerMajor__';
+
+			try {
+				createTestSchemaDir(nodeName, 'v3.0.0', {
+					'contact/get.json': JSON.stringify({ type: 'object' }),
+				});
+
+				const result = generateTypes.discoverSchemasForNode(
+					`n8n-nodes-base.${nodeName}`,
+					2,
+					nodeName,
+				);
+
+				expect(result).toHaveLength(0);
+			} finally {
+				cleanupTestDir(nodeName);
+			}
+		});
+
 		it('discovers both root-level JSON files and resource subdirectories', () => {
 			const nodeName = '__TestMixedNodeBoth__';
 			const rootSchema = { type: 'object', properties: { id: { type: 'string' } } };
@@ -4982,6 +5843,52 @@ describe('generate-types', () => {
 				});
 			} finally {
 				cleanupTestDir(nodeName);
+			}
+		});
+
+		it('matches schema folders case-insensitively (chainLlm -> ChainLLM)', () => {
+			const nodeName = '__testchainllm__';
+			const schema = { type: 'object', properties: { text: { type: 'string' } } };
+
+			try {
+				createTestSchemaDir('Nested/__TESTCHAINLLM__', 'v1.9.0', {
+					'output.json': JSON.stringify(schema),
+				});
+
+				const result = generateTypes.discoverSchemasForNode(
+					`@n8n/n8n-nodes-langchain.${nodeName}`,
+					1.9,
+				);
+
+				expect(result).toHaveLength(1);
+				expect(result[0].schema).toEqual(schema);
+			} finally {
+				cleanupTestDir('Nested');
+			}
+		});
+
+		it('discovers schemas from the current package before falling back to nodes-base', () => {
+			const nodeName = '__TestOwnPackageSchema__';
+			const ownSchema = { type: 'object', properties: { output: { type: 'object' } } };
+			const packageDir = fs.mkdtempSync(path.join(os.tmpdir(), 'schema-root-test-'));
+			const originalCwd = process.cwd();
+
+			try {
+				const schemaDir = path.join(packageDir, 'dist/nodes/chains', nodeName, '__schema__/v1.2.0');
+				fs.mkdirSync(schemaDir, { recursive: true });
+				fs.writeFileSync(path.join(schemaDir, 'output.json'), JSON.stringify(ownSchema));
+
+				process.chdir(packageDir);
+				const result = generateTypes.discoverSchemasForNode(
+					`@n8n/n8n-nodes-langchain.${nodeName}`,
+					1.2,
+				);
+
+				expect(result).toHaveLength(1);
+				expect(result[0]).toEqual({ resource: '', operation: 'output', schema: ownSchema });
+			} finally {
+				process.chdir(originalCwd);
+				fs.rmSync(packageDir, { recursive: true, force: true });
 			}
 		});
 
@@ -5086,7 +5993,7 @@ describe('orchestrateGeneration', () => {
 	let mod: typeof GenerateTypesModule;
 
 	beforeAll(async () => {
-		mod = await import('../generate-types/generate-types');
+		mod = await import('../generate-types/generate-types.js');
 		// Cold module compilation can exceed the default 10s hook timeout on a
 		// loaded CI runner, so give the import ample headroom.
 	}, 30_000);

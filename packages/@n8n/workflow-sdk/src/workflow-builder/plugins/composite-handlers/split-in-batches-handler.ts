@@ -83,10 +83,11 @@ export const splitInBatchesHandler: CompositeHandlerPlugin<SplitInBatchesBuilder
 		// Collect from SIB node
 		collector(input.sibNode);
 
-		// Note: We don't collect from _doneTarget/_eachTarget here because they are
-		// handled via addBranchToGraph which processes them as chains/composites.
-		// The pin data for those nodes will be collected when they are visited
-		// in the chain's allNodes iteration.
+		// _doneNodes/_eachNodes hold the flattened nodes of both branch targets
+		// (chains and nested builders already expanded), for all three builder impls.
+		for (const branchNode of [...input._doneNodes, ...input._eachNodes]) {
+			collector(branchNode);
+		}
 	},
 
 	addNodes(input: SplitInBatchesBuilderShape, ctx: MutablePluginContext): string {
@@ -130,7 +131,29 @@ export const splitInBatchesHandler: CompositeHandlerPlugin<SplitInBatchesBuilder
 			processingSibBuilders.delete(input);
 		}
 	},
+
+	handleThen(
+		input: SplitInBatchesBuilderShape,
+		currentNode: string,
+	): {
+		currentNode: string;
+		currentOutput: number;
+	} {
+		return {
+			currentNode,
+			currentOutput: hasConfiguredTargets(input) ? 0 : 1,
+		};
+	},
 };
+
+function hasConfiguredTargets(input: SplitInBatchesBuilderShape): boolean {
+	return (
+		'_doneTarget' in input ||
+		'_eachTarget' in input ||
+		(input._doneBatches !== undefined && input._doneBatches.length > 0) ||
+		(input._eachBatches !== undefined && input._eachBatches.length > 0)
+	);
+}
 
 /**
  * Process named syntax: splitInBatches(sibNode, { done: ..., each: ... })

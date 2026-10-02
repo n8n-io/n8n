@@ -1,17 +1,8 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, defineAsyncComponent, shallowRef } from 'vue';
+import { computed, defineAsyncComponent } from 'vue';
 import type { Component } from 'vue';
-import * as modalRegistry from '@/app/moduleInitializer/modalRegistry';
+import { modalRegistry } from '@n8n/frontend-module-sdk';
 import ModalRoot from '@/app/components/ModalRoot.vue';
-
-// Keep track of registered modals
-// Using shallowRef() to fix "Vue received a Component that was made a reactive object. This can lead to unnecessary performance overhead..."
-const registeredModals = shallowRef<
-	Array<{
-		key: string;
-		component: Component;
-	}>
->([]);
 
 // Type guard to check if component is an async component factory
 const isAsyncComponentFactory = (
@@ -20,37 +11,19 @@ const isAsyncComponentFactory = (
 	return typeof component === 'function';
 };
 
-const updateModals = () => {
-	const modals: Array<{
-		key: string;
-		component: Component;
-	}> = [];
-
-	modalRegistry.getAll().forEach((modalDef, key) => {
-		// Create async component wrapper if it's a function
-		const component = isAsyncComponentFactory(modalDef.component)
+// Derived straight from the registry, which is shallow-reactive — registering or
+// unregistering a modal re-renders this list with no subscription to keep in sync.
+// Neither the registry (shallow) nor a computed's value wraps what it holds, so
+// components stay out of the reactive graph ("Vue received a Component that was
+// made a reactive object...").
+const registeredModals = computed(() =>
+	Array.from(modalRegistry.getAll(), ([key, modalDef]) => ({
+		key,
+		component: isAsyncComponentFactory(modalDef.component)
 			? defineAsyncComponent(modalDef.component)
-			: modalDef.component;
-
-		modals.push({ key, component });
-	});
-
-	registeredModals.value = modals;
-};
-
-// Subscribe to registry changes
-let unsubscribe: (() => void) | undefined;
-
-onMounted(() => {
-	updateModals(); // Initial load
-	unsubscribe = modalRegistry.subscribe(() => {
-		updateModals();
-	});
-});
-
-onUnmounted(() => {
-	unsubscribe?.();
-});
+			: modalDef.component,
+	})),
+);
 </script>
 
 <template>

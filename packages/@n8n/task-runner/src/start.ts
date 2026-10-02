@@ -1,10 +1,14 @@
 import { Container } from '@n8n/di';
-import { ensureError, setGlobalState } from 'n8n-workflow';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
+import { setGlobalState } from 'n8n-workflow';
 
 import { MainConfig } from './config/main-config';
 import type { HealthCheckServer } from './health-check-server';
 import { JsTaskRunner } from './js-task-runner/js-task-runner';
 import { TaskRunnerSentry } from './task-runner-sentry';
+import { onUnhandledRejection } from './unhandled-rejection';
+
+process.title = 'n8n task-runner';
 
 // Initialize module paths from NODE_PATH environment variable.
 // This is necessary because Node.js doesn't automatically pick up NODE_PATH
@@ -67,6 +71,7 @@ function createSignalHandler(
 }
 
 void (async function start() {
+	process.on('unhandledRejection', onUnhandledRejection);
 	const config = Container.get(MainConfig);
 
 	setGlobalState({
@@ -94,7 +99,7 @@ void (async function start() {
 	const { enabled, host, port } = config.baseRunnerConfig.healthcheckServer;
 
 	if (enabled) {
-		const { HealthCheckServer } = await import('./health-check-server');
+		const { HealthCheckServer } = await import('./health-check-server.js');
 		healthCheckServer = new HealthCheckServer();
 		await healthCheckServer.start(host, port);
 	}

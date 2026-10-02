@@ -1,8 +1,8 @@
 import type { PreviewWorkflow } from './types';
 import { scoreMyLeadsWorkflow } from './score-my-leads';
 import { processInvoicesWorkflow } from './process-invoices';
-import { whatsappSupportWorkflow } from './whatsapp-support';
 import { scheduleSocialPostsWorkflow } from './schedule-social-posts';
+import { telegramAgentWorkflow } from './telegram-agent';
 
 export type {
 	PreviewWorkflow,
@@ -18,8 +18,8 @@ export type {
 const workflowRegistry: Record<string, PreviewWorkflow> = {
 	'score-my-leads': scoreMyLeadsWorkflow,
 	'process-invoices': processInvoicesWorkflow,
-	'whatsapp-support': whatsappSupportWorkflow,
 	'schedule-social-posts': scheduleSocialPostsWorkflow,
+	'telegram-agent': telegramAgentWorkflow,
 };
 
 export function getPreviewWorkflow(workflowFile: string): PreviewWorkflow | undefined {

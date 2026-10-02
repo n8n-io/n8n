@@ -1,26 +1,24 @@
 import type {
 	IExecuteFunctions,
-	ICredentialDataDecryptedObject,
-	ICredentialsDecrypted,
-	ICredentialTestFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
-	INodeCredentialTestResult,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError, toPathSegment } from 'n8n-workflow';
 
 import {
+	appendFilterStringToEndpoint,
 	buildGetQuery,
 	buildOrQuery,
 	buildQuery,
+	getApiDefinition,
 	getSchemaHeader,
+	getSupabaseProjects,
 	mapPairedItemsFrom,
 	supabaseApiRequest,
-	validateCredentials,
 } from './GenericFunctions';
 import { rowFields, rowOperations } from './RowDescription';
 
@@ -48,7 +46,20 @@ export class Supabase implements INodeType {
 			{
 				name: 'supabaseApi',
 				required: true,
-				testedBy: 'supabaseApiCredentialTest',
+				displayOptions: {
+					show: {
+						authentication: ['secretKey'],
+					},
+				},
+			},
+			{
+				name: 'supabaseOAuth2Api',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: ['oAuth2'],
+					},
+				},
 			},
 		],
 		hints: [
@@ -62,6 +73,53 @@ export class Supabase implements INodeType {
 			},
 		],
 		properties: [
+			{
+				displayName: 'Authentication',
+				name: 'authentication',
+				type: 'options',
+				options: [
+					{
+						name: 'Secret Key',
+						value: 'secretKey',
+					},
+					{
+						name: 'OAuth2',
+						value: 'oAuth2',
+					},
+				],
+				default: 'secretKey',
+			},
+			{
+				displayName: 'Resource',
+				name: 'resource',
+				type: 'options',
+				noDataExpression: true,
+				options: [
+					{
+						name: 'Row',
+						value: 'row',
+					},
+				],
+				default: 'row',
+			},
+			...rowOperations,
+			{
+				displayName: 'Project Name or ID',
+				name: 'projectRef',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getProjects',
+				},
+				required: true,
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
+				displayOptions: {
+					show: {
+						authentication: ['oAuth2'],
+					},
+				},
+				default: '',
+			},
 			{
 				displayName: 'Use Custom Schema',
 				name: 'useCustomSchema',
@@ -80,39 +138,23 @@ export class Supabase implements INodeType {
 				noDataExpression: false,
 				displayOptions: { show: { useCustomSchema: [true] } },
 			},
-			{
-				displayName: 'Resource',
-				name: 'resource',
-				type: 'options',
-				noDataExpression: true,
-				options: [
-					{
-						name: 'Row',
-						value: 'row',
-					},
-				],
-				default: 'row',
-			},
-			...rowOperations,
 			...rowFields,
 		],
 	};
 
 	methods = {
 		loadOptions: {
+			async getProjects(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const projects = await getSupabaseProjects.call(this);
+				return projects.map((project) => ({
+					name: project.name,
+					value: project.ref,
+				}));
+			},
 			async getTables(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const header = getSchemaHeader(this, 'GET', 'loadOptions');
-				const { paths } = await supabaseApiRequest.call(
-					this,
-					'GET',
-					'/',
-					{},
-					{},
-					undefined,
-					header,
-				);
-				for (const path of Object.keys(paths as IDataObject)) {
+				const { paths } = await getApiDefinition.call(this);
+				for (const path of Object.keys(paths ?? {})) {
 					// omit introspection path and skip RPCs, leaving only tables
 					if (path === '/' || path.startsWith('/rpc/')) {
 						continue;
@@ -128,20 +170,9 @@ export class Supabase implements INodeType {
 			async getTableColumns(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 				const tableName = this.getCurrentNodeParameter('tableId') as string;
-				const header = getSchemaHeader(this, 'GET', 'loadOptions');
-				const { definitions } = await supabaseApiRequest.call(
-					this,
-					'GET',
-					'/',
-					{},
-					{},
-					undefined,
-					header,
-				);
+				const { definitions } = await getApiDefinition.call(this);
 
-				const properties = definitions[tableName]?.properties as
-					| { [column: string]: { type: string } }
-					| undefined;
+				const properties = definitions?.[tableName]?.properties;
 				if (!properties) {
 					return returnData;
 				}
@@ -155,26 +186,6 @@ export class Supabase implements INodeType {
 				return returnData;
 			},
 		},
-		credentialTest: {
-			async supabaseApiCredentialTest(
-				this: ICredentialTestFunctions,
-				credential: ICredentialsDecrypted,
-			): Promise<INodeCredentialTestResult> {
-				try {
-					await validateCredentials.call(this, credential.data as ICredentialDataDecryptedObject);
-				} catch (error) {
-					return {
-						status: 'Error',
-						message: 'The Service Key is invalid',
-					};
-				}
-
-				return {
-					status: 'OK',
-					message: 'Connection successful!',
-				};
-			},
-		},
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
@@ -186,7 +197,7 @@ export class Supabase implements INodeType {
 		const operation = this.getNodeParameter('operation', 0);
 
 		if (resource === 'row') {
-			const tableId = this.getNodeParameter('tableId', 0) as string;
+			const tableId = toPathSegment(this.getNodeParameter('tableId', 0));
 
 			if (operation === 'create') {
 				const records: IDataObject[] = [];
@@ -266,8 +277,8 @@ export class Supabase implements INodeType {
 						}
 
 						if (matchType === 'allFilters') {
-							const data = keys.reduce((obj, value) => buildQuery(obj, value), {});
-							Object.assign(qs, data);
+							const filters = keys.reduce(buildQuery, new Map<string, string>());
+							qs = Object.fromEntries(filters);
 						}
 						if (matchType === 'anyFilter') {
 							const data = keys.map((key) => buildOrQuery(key));
@@ -276,8 +287,7 @@ export class Supabase implements INodeType {
 					}
 
 					if (filterType === 'string') {
-						const filterString = this.getNodeParameter('filterString', i) as string;
-						endpoint = `${endpoint}?${encodeURI(filterString)}`;
+						endpoint = appendFilterStringToEndpoint(this, endpoint, i);
 					}
 
 					let rows;
@@ -291,6 +301,7 @@ export class Supabase implements INodeType {
 							qs,
 							undefined,
 							header,
+							i,
 						);
 					} catch (error) {
 						if (this.continueOnFail()) {
@@ -318,8 +329,8 @@ export class Supabase implements INodeType {
 
 				for (let i = 0; i < length; i++) {
 					const keys = this.getNodeParameter('filters.conditions', i, []) as IDataObject[];
-					const data = keys.reduce((obj, value) => buildGetQuery(obj, value), {});
-					Object.assign(qs, data);
+					const filters = keys.reduce(buildGetQuery, new Map<string, string>());
+					qs = Object.fromEntries(filters);
 					let rows;
 
 					if (!keys.length) {
@@ -331,7 +342,16 @@ export class Supabase implements INodeType {
 					}
 
 					try {
-						rows = await supabaseApiRequest.call(this, 'GET', endpoint, {}, qs, undefined, header);
+						rows = await supabaseApiRequest.call(
+							this,
+							'GET',
+							endpoint,
+							{},
+							qs,
+							undefined,
+							header,
+							i,
+						);
 					} catch (error) {
 						if (this.continueOnFail()) {
 							const executionData = this.helpers.constructExecutionMetaData(
@@ -378,8 +398,7 @@ export class Supabase implements INodeType {
 					}
 
 					if (filterType === 'string') {
-						const filterString = this.getNodeParameter('filterString', i) as string;
-						endpoint = `${endpoint}?${encodeURI(filterString)}`;
+						endpoint = appendFilterStringToEndpoint(this, endpoint, i);
 					}
 
 					const requestedLimit = !returnAll
@@ -407,6 +426,7 @@ export class Supabase implements INodeType {
 								qs,
 								undefined,
 								header,
+								i,
 							);
 							responseLength = newRows.length;
 							rows = rows.concat(newRows);
@@ -454,8 +474,8 @@ export class Supabase implements INodeType {
 						}
 
 						if (matchType === 'allFilters') {
-							const data = keys.reduce((obj, value) => buildQuery(obj, value), {});
-							Object.assign(qs, data);
+							const filters = keys.reduce(buildQuery, new Map<string, string>());
+							qs = Object.fromEntries(filters);
 						}
 						if (matchType === 'anyFilter') {
 							const data = keys.map((key) => buildOrQuery(key));
@@ -464,8 +484,7 @@ export class Supabase implements INodeType {
 					}
 
 					if (filterType === 'string') {
-						const filterString = this.getNodeParameter('filterString', i) as string;
-						endpoint = `${endpoint}?${encodeURI(filterString)}`;
+						endpoint = appendFilterStringToEndpoint(this, endpoint, i);
 					}
 
 					const record: IDataObject = {};
@@ -499,6 +518,7 @@ export class Supabase implements INodeType {
 							qs,
 							undefined,
 							header,
+							i,
 						);
 						const executionData = this.helpers.constructExecutionMetaData(
 							this.helpers.returnJsonArray(updatedRow as IDataObject[]),

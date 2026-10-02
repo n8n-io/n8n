@@ -2,24 +2,34 @@ import { mockLogger } from '@n8n/backend-test-utils';
 import type { GlobalConfig } from '@n8n/config';
 import type { DbConnection } from '@n8n/db';
 import type express from 'express';
-import { mock } from 'jest-mock-extended';
+import type { NextFunction, Request, Response } from 'express';
 import type { InstanceSettings } from 'n8n-core';
 import { AssertionError } from 'node:assert';
 import * as http from 'node:http';
+import { mock } from 'vitest-mock-extended';
 
+import type { CredentialsOverwrites } from '@/credentials-overwrites';
 import type { ExternalHooks } from '@/external-hooks';
 import type { PrometheusMetricsService } from '@/metrics/prometheus';
 import { bodyParser, rawBodyReader } from '@/middlewares';
-import type { RedisClientService } from '@/services/redis-client.service';
+import type { RedisClientService } from '@n8n/backend-services';
 
 import { WorkerServer } from '../worker-server';
-import type { CredentialsOverwrites } from '@/credentials-overwrites';
-import type { NextFunction, Request, Response } from 'express';
 
 const app = mock<express.Application>();
+const e2eFlags = vi.hoisted(() => ({ inE2ETests: false }));
 
-jest.mock('node:http');
-jest.mock('express', () => ({ __esModule: true, default: () => app }));
+vi.mock('node:http');
+vi.mock('express', () => ({ __esModule: true, default: () => app }));
+vi.mock('@/services/e2e-diagnostics.router', () => ({
+	createE2EDiagnosticsRouter: vi.fn(() => vi.fn()),
+}));
+vi.mock('@/constants', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@/constants')>()),
+	get inE2ETests() {
+		return e2eFlags.inE2ETests;
+	},
+}));
 
 const addressInUseError = () => {
 	const error: NodeJS.ErrnoException = new Error('Port already in use');
@@ -51,6 +61,7 @@ describe('WorkerServer', () => {
 		);
 
 	beforeEach(() => {
+		e2eFlags.inE2ETests = false;
 		globalConfig = mock<GlobalConfig>({
 			path: '/',
 			queue: {
@@ -63,8 +74,8 @@ describe('WorkerServer', () => {
 				health: '/internal/health',
 			},
 		});
-		jest.restoreAllMocks();
-		jest.clearAllMocks();
+		vi.restoreAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('constructor', () => {
@@ -86,11 +97,9 @@ describe('WorkerServer', () => {
 
 		it('should exit if port taken', async () => {
 			const server = mock<http.Server>();
-			const processExitSpy = jest
-				.spyOn(process, 'exit')
-				.mockImplementation(() => undefined as never);
+			const processExitSpy = vi.spyOn(process, 'exit').mockImplementation(() => undefined as never);
 
-			jest.spyOn(http, 'createServer').mockReturnValue(server);
+			vi.spyOn(http, 'createServer').mockReturnValue(server);
 
 			server.on.mockImplementation((event: string, callback: (...args: unknown[]) => void) => {
 				if (event === 'error') callback(addressInUseError());
@@ -108,7 +117,7 @@ describe('WorkerServer', () => {
 	describe('init', () => {
 		it('should mount all endpoints when all are enabled', async () => {
 			const server = mock<http.Server>();
-			jest.spyOn(http, 'createServer').mockReturnValue(server);
+			vi.spyOn(http, 'createServer').mockReturnValue(server);
 
 			server.listen.mockImplementation((...args: unknown[]) => {
 				const callback = args.find((arg) => typeof arg === 'function');
@@ -135,7 +144,7 @@ describe('WorkerServer', () => {
 
 		it('should mount credential overwrite middleware if configured', async () => {
 			const server = mock<http.Server>();
-			jest.spyOn(http, 'createServer').mockReturnValue(server);
+			vi.spyOn(http, 'createServer').mockReturnValue(server);
 
 			server.listen.mockImplementation((...args: unknown[]) => {
 				const callback = args.find((arg) => typeof arg === 'function');
@@ -165,7 +174,7 @@ describe('WorkerServer', () => {
 
 		it('should mount only health and overwrites endpoints if only those are enabled', async () => {
 			const server = mock<http.Server>();
-			jest.spyOn(http, 'createServer').mockReturnValue(server);
+			vi.spyOn(http, 'createServer').mockReturnValue(server);
 
 			server.listen.mockImplementation((...args: unknown[]) => {
 				const callback = args.find((arg) => typeof arg === 'function');
@@ -184,7 +193,7 @@ describe('WorkerServer', () => {
 
 		it('should throw if no endpoints are enabled', async () => {
 			const server = mock<http.Server>();
-			jest.spyOn(http, 'createServer').mockReturnValue(server);
+			vi.spyOn(http, 'createServer').mockReturnValue(server);
 
 			const workerServer = newWorkerServer();
 			await expect(
@@ -192,9 +201,26 @@ describe('WorkerServer', () => {
 			).rejects.toThrowError(AssertionError);
 		});
 
+		it('should mount E2E diagnostics when no other endpoints are enabled', async () => {
+			e2eFlags.inE2ETests = true;
+			globalConfig.endpoints.rest = 'rest';
+			const server = mock<http.Server>();
+			vi.spyOn(http, 'createServer').mockReturnValue(server);
+			server.listen.mockImplementation((...args: unknown[]) => {
+				const callback = args.find((arg) => typeof arg === 'function');
+				if (callback) callback();
+				return server;
+			});
+
+			await newWorkerServer().init({ health: false, overwrites: false, metrics: false });
+
+			expect(app.use).toHaveBeenCalledWith('/rest/e2e', expect.any(Function));
+			expect(server.listen).toHaveBeenCalled();
+		});
+
 		it('should call `worker.ready` external hook', async () => {
 			const server = mock<http.Server>();
-			jest.spyOn(http, 'createServer').mockReturnValue(server);
+			vi.spyOn(http, 'createServer').mockReturnValue(server);
 
 			const workerServer = newWorkerServer();
 
@@ -215,7 +241,7 @@ describe('WorkerServer', () => {
 
 		async function initWithReadiness({ markReady = true } = {}) {
 			const server = mock<http.Server>();
-			jest.spyOn(http, 'createServer').mockReturnValue(server);
+			vi.spyOn(http, 'createServer').mockReturnValue(server);
 
 			server.listen.mockImplementation((...args: unknown[]) => {
 				const callback = args.find((arg) => typeof arg === 'function');

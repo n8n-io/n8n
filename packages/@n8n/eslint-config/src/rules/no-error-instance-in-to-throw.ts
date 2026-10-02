@@ -5,7 +5,7 @@ export const NoErrorInstanceInToThrowRule = ESLintUtils.RuleCreator.withoutDocs(
 		type: 'problem',
 		docs: {
 			description:
-				'Disallow passing error instances to `.toThrow()` and `.toThrowError`. Jest compares by reference, not message, making assertions flaky. Pass the error class and message string separately instead.',
+				'Disallow passing error instances to `.toThrow()` and `.toThrowError`. Passing an instance makes the assertion ambiguous and flaky. Pass the error class and message string separately instead.',
 		},
 		messages: {
 			noErrorInstance:

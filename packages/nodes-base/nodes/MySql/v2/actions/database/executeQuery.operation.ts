@@ -9,7 +9,11 @@ import { NodeOperationError } from 'n8n-workflow';
 import { getResolvables, updateDisplayOptions } from '@utils/utilities';
 
 import type { QueryRunner, QueryWithValues } from '../../helpers/interfaces';
-import { prepareQueryAndReplacements, replaceEmptyStringsByNulls } from '../../helpers/utils';
+import {
+	prepareErrorItem,
+	prepareQueryAndReplacements,
+	replaceEmptyStringsByNulls,
+} from '../../helpers/utils';
 import { optionsCollection } from '../common.descriptions';
 
 const properties: INodeProperties[] = [
@@ -53,46 +57,60 @@ export async function execute(
 	const queries: QueryWithValues[] = [];
 
 	for (let i = 0; i < items.length; i++) {
-		let rawQuery = this.getNodeParameter('query', i) as string;
+		try {
+			let rawQuery = this.getNodeParameter('query', i) as string;
 
-		for (const resolvable of getResolvables(rawQuery)) {
-			rawQuery = rawQuery.replace(resolvable, this.evaluateExpression(resolvable, i) as string);
+			for (const resolvable of getResolvables(rawQuery)) {
+				rawQuery = rawQuery.replace(resolvable, this.evaluateExpression(resolvable, i) as string);
+			}
+
+			const options = this.getNodeParameter('options', i, {});
+
+			const nodeVersion = Number(nodeOptions.nodeVersion);
+
+			let values;
+			let queryReplacement = options.queryReplacement || [];
+
+			if (typeof queryReplacement === 'string') {
+				queryReplacement = queryReplacement.split(',').map((entry) => entry.trim());
+			}
+
+			if (Array.isArray(queryReplacement)) {
+				values = queryReplacement as IDataObject[];
+			} else {
+				throw new NodeOperationError(
+					this.getNode(),
+					'Query Replacement must be a string of comma-separated values, or an array of values',
+					{ itemIndex: i },
+				);
+			}
+
+			const preparedQuery = prepareQueryAndReplacements(rawQuery, nodeVersion, values);
+
+			if ((nodeOptions.nodeVersion as number) >= 2.3) {
+				const parsedNumbers = preparedQuery.values.map((value) => {
+					return Number(value) ? Number(value) : value;
+				});
+				preparedQuery.values = parsedNumbers;
+			}
+
+			preparedQuery.itemIndex = i;
+			queries.push(preparedQuery);
+		} catch (error) {
+			if (!this.continueOnFail()) throw error;
+
+			const nodeError =
+				error instanceof NodeOperationError
+					? error
+					: new NodeOperationError(this.getNode(), error as Error, { itemIndex: i });
+
+			returnData.push(prepareErrorItem(items[i].json, nodeError, i));
 		}
-
-		const options = this.getNodeParameter('options', i, {});
-
-		const nodeVersion = Number(nodeOptions.nodeVersion);
-
-		let values;
-		let queryReplacement = options.queryReplacement || [];
-
-		if (typeof queryReplacement === 'string') {
-			queryReplacement = queryReplacement.split(',').map((entry) => entry.trim());
-		}
-
-		if (Array.isArray(queryReplacement)) {
-			values = queryReplacement as IDataObject[];
-		} else {
-			throw new NodeOperationError(
-				this.getNode(),
-				'Query Replacement must be a string of comma-separated values, or an array of values',
-				{ itemIndex: i },
-			);
-		}
-
-		const preparedQuery = prepareQueryAndReplacements(rawQuery, nodeVersion, values);
-
-		if ((nodeOptions.nodeVersion as number) >= 2.3) {
-			const parsedNumbers = preparedQuery.values.map((value) => {
-				return Number(value) ? Number(value) : value;
-			});
-			preparedQuery.values = parsedNumbers;
-		}
-
-		queries.push(preparedQuery);
 	}
 
-	returnData = await runQueries(queries);
+	if (queries.length > 0) {
+		returnData = returnData.concat(await runQueries(queries));
+	}
 
 	return returnData;
 }

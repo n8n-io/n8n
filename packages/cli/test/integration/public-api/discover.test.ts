@@ -1,5 +1,7 @@
 import type { User } from '@n8n/db';
 
+import { AUTH_COOKIE_NAME } from '@/constants';
+
 import { createMemberWithApiKey, createOwnerWithApiKey } from '../shared/db/users';
 import type { SuperAgentTest } from '../shared/types';
 import * as utils from '../shared/utils/';
@@ -38,6 +40,25 @@ describe('GET /discover', () => {
 
 	test('should fail due to invalid API Key', testWithAPIKey('get', '/discover', 'abcXYZ'));
 
+	test('should return discover data via session cookie, without an API key', async () => {
+		const response = await testServer.publicApiAgentWithCookie(owner).get('/discover');
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data).toBeDefined();
+		expect(response.body.data.scopes).toBeInstanceOf(Array);
+		expect(response.body.data.scopes.length).toBeGreaterThan(0);
+		expect(response.body.data.resources).toBeDefined();
+		expect(response.body.data.specUrl).toBe('/api/v1/openapi.yml');
+	});
+
+	test('should fail with an invalid session cookie', async () => {
+		const agent = testServer.publicApiAgentWithoutApiKey();
+		agent.jar.setCookie(`${AUTH_COOKIE_NAME}=invalid`);
+
+		const response = await agent.get('/discover');
+		expect(response.statusCode).toBe(401);
+	});
+
 	test('should return discover data for owner', async () => {
 		const response = await authOwnerAgent.get('/discover');
 
@@ -47,6 +68,24 @@ describe('GET /discover', () => {
 		expect(response.body.data.scopes.length).toBeGreaterThan(0);
 		expect(response.body.data.resources).toBeDefined();
 		expect(response.body.data.specUrl).toBe('/api/v1/openapi.yml');
+	});
+
+	test('should filter discover data by the API key scopes', async () => {
+		const scopedOwner = await createOwnerWithApiKey({ scopes: ['tag:list'] });
+		const response = await testServer.publicApiAgentFor(scopedOwner).get('/discover');
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data.scopes).toEqual(['tag:list']);
+		expect(
+			response.body.data.resources.tags.endpoints.some(
+				(endpoint: { operationId: string }) => endpoint.operationId === 'getTags',
+			),
+		).toBe(true);
+		expect(
+			response.body.data.resources.tags.endpoints.some(
+				(endpoint: { operationId: string }) => endpoint.operationId === 'createTag',
+			),
+		).toBe(false);
 	});
 
 	test('should return discover data for member', async () => {
@@ -128,5 +167,47 @@ describe('GET /discover', () => {
 		const response = await authOwnerAgent.get('/discover?resource=nonexistent');
 		expect(response.statusCode).toBe(200);
 		expect(response.body.data.resources).toEqual({});
+	});
+
+	test('should keep only create endpoints with ?operation=create', async () => {
+		const response = await authOwnerAgent.get('/discover?operation=create');
+		expect(response.statusCode).toBe(200);
+
+		const resources = Object.values(response.body.data.resources) as Array<{
+			operations: string[];
+		}>;
+		expect(resources.length).toBeGreaterThan(0);
+		for (const resource of resources) {
+			expect(resource.operations.map((o) => o.toLowerCase())).toEqual(['create']);
+		}
+	});
+
+	// The legacy validator also answered 400 here: a repeated parameter arrives as an array,
+	// and the parameter is declared as a string.
+	test('should return 400 for a repeated query parameter', async () => {
+		const response = await authOwnerAgent.get('/discover?resource=tags&resource=workflow');
+
+		expect(response.statusCode).toBe(400);
+		expect(response.body).toEqual({
+			message: 'request/query/resource Expected string, received array',
+		});
+	});
+
+	test.each([
+		[
+			'an invalid include value',
+			{ include: 'invalid' },
+			'request/query/include must be equal to one of the allowed values: schemas',
+		],
+		[
+			'an unknown query parameter',
+			{ unknown: 'value' },
+			"request/query Unrecognized key(s) in object: 'unknown'",
+		],
+	])('should return 400 for %s', async (_name, query, message) => {
+		const response = await authOwnerAgent.get('/discover').query(query);
+
+		expect(response.statusCode).toBe(400);
+		expect(response.body).toEqual({ message });
 	});
 });

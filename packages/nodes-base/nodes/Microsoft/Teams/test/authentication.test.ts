@@ -1,7 +1,12 @@
-import type { INodeCredentialDescription, INodeProperties } from 'n8n-workflow';
+import type {
+	INodeCredentialDescription,
+	INodeProperties,
+	INodePropertyOptions,
+} from 'n8n-workflow';
 
 import { MicrosoftTeamsTrigger } from '../MicrosoftTeamsTrigger.node';
 import { versionDescription } from '../v2/actions/versionDescription';
+import { SERVICE_PRINCIPAL_AUTH } from '../v2/transport';
 
 /**
  * These tests pin the backward-compatibility contract introduced alongside the
@@ -36,12 +41,13 @@ describe.each(cases)('$name authentication selector', ({ properties, credentials
 		expect(authProperty?.noDataExpression).toBe(true);
 	});
 
-	it('should offer both the Teams and the generic Microsoft credential', () => {
+	it('should offer the Teams, generic Microsoft, and Service Principal credentials', () => {
 		const values = (authProperty?.options ?? []).map((option) =>
 			'value' in option ? option.value : undefined,
 		);
 		expect(values).toContain('microsoftTeamsOAuth2Api');
 		expect(values).toContain('microsoftOAuth2Api');
+		expect(values).toContain(SERVICE_PRINCIPAL_AUTH);
 	});
 
 	it('should default to the Teams credential (backward compatibility)', () => {
@@ -64,11 +70,37 @@ describe.each(cases)('$name authentication selector', ({ properties, credentials
 		expect(genericCredential?.required).toBe(true);
 	});
 
+	it('should gate the Service Principal credential behind its authentication value', () => {
+		const spCredential = credentials.find(
+			(credential) => credential.name === SERVICE_PRINCIPAL_AUTH,
+		);
+
+		expect(spCredential?.displayOptions?.show?.authentication).toEqual([SERVICE_PRINCIPAL_AUTH]);
+		expect(spCredential?.required).toBe(true);
+	});
+
 	it('should keep the default aligned with the Teams credential gate value', () => {
 		const credentialGatedByDefault = credentials.find((credential) =>
 			credential.displayOptions?.show?.authentication?.includes(authProperty?.default as string),
 		);
 
 		expect(credentialGatedByDefault?.name).toBe('microsoftTeamsOAuth2Api');
+	});
+});
+
+// Outside the describe.each above: the trigger carries its own separately-worded
+// description, which this contract does not cover.
+describe('Microsoft Teams action (v2) generic credential scope hint', () => {
+	it('names User.Read.All in the microsoftOAuth2Api option', () => {
+		const authProperty = versionDescription.properties.find(
+			(property) => property.name === 'authentication',
+		);
+		const genericOption = (authProperty?.options ?? []).find(
+			(option) => 'value' in option && option.value === 'microsoftOAuth2Api',
+		);
+
+		expect(genericOption).toBeDefined();
+		const description = (genericOption as INodePropertyOptions).description ?? '';
+		expect(description).toContain('User.Read.All');
 	});
 });

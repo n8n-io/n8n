@@ -40,6 +40,12 @@ export interface AzureOpenAIBaseModelConfig {
 	azureOpenAIApiInstanceName: string;
 	azureOpenAIApiVersion: string;
 	azureOpenAIEndpoint?: string;
+	/**
+	 * Full OpenAI-compatible base URL for Azure AI Foundry
+	 * (`*.services.ai.azure.com/openai/v1`). When set, the node uses ChatOpenAI
+	 * against this URL instead of AzureChatOpenAI's deployment-based path.
+	 */
+	azureFoundryBaseURL?: string;
 }
 
 /**
@@ -57,6 +63,16 @@ export interface AzureOpenAIOAuth2ModelConfig extends AzureOpenAIBaseModelConfig
 	azureOpenAIApiKey?: undefined;
 	azureADTokenProvider: () => Promise<string>;
 }
+
+/** Audience for the node's inference requests. */
+export const AZURE_OPENAI_INFERENCE_AUDIENCE = 'https://cognitiveservices.azure.com';
+
+/**
+ * Audience for the Foundry deployments-list call. Each tenant's Entra ID app
+ * registration grants access per audience, so this is requested only for the
+ * call that needs it, not for every token the node mints.
+ */
+export const AZURE_AI_FOUNDRY_AUDIENCE = 'https://ai.azure.com';
 
 /**
  * Authentication types supported by Azure OpenAI node
@@ -86,9 +102,11 @@ type TokenData = OAuth2CredentialData['oauthTokenData'] & {
 export type AzureEntraCognitiveServicesOAuth2ApiCredential = OAuth2CredentialData & {
 	customScopes: boolean;
 	authentication: string;
-	apiVersion: string;
-	endpoint: string;
-	resourceName: string;
+	apiVersion?: string;
+	endpoint?: string;
+	resourceName?: string;
+	endpointType?: 'classic' | 'foundry';
+	foundryEndpoint?: string;
 	tenantId: string;
-	oauthTokenData: TokenData;
+	oauthTokenData?: TokenData;
 };

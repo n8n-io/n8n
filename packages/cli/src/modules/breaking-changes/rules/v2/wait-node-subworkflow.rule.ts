@@ -4,10 +4,10 @@ import type {
 	BreakingChangeWorkflowIssue,
 } from '@n8n/api-types';
 import type { WorkflowEntity } from '@n8n/db';
+import { BreakingChangeRule } from '@n8n/decorators';
 import type { INode, INodeParameters } from 'n8n-workflow';
 import { SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
 
-import { BreakingChangeRule } from '@n8n/decorators';
 import type {
 	BatchWorkflowDetectionReport,
 	BreakingChangeRuleMetadata,
@@ -69,9 +69,9 @@ export class WaitNodeSubworkflowRule implements IBreakingChangeBatchWorkflowRule
 			description:
 				'Parent workflows calling sub-workflows with waiting nodes (Wait, Form, HITL) now receive correct data. Previously, incorrect results were returned when the sub-workflow entered a waiting state.',
 			category: BreakingChangeCategory.workflow,
-			severity: 'medium',
+			impact: 'behaviorChanges',
 			documentationUrl:
-				'https://docs.n8n.io/2-0-breaking-changes/#return-expected-sub-workflow-data-when-the-sub-workflow-resumes-from-waiting-waiting-for-webhook-forms-hitl-etc',
+				'https://docs.n8n.io/2-0-breaking-changes/#return-expected-sub-workflow-data-when-the-sub-workflow-resumes-from-waiting-waiting-for-webhook-for',
 		};
 	}
 

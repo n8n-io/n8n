@@ -7,7 +7,7 @@ import type {
 	InstanceAiEditorActionSource,
 	InstanceAiEditorCapability,
 } from '@/app/composables/useInstanceAiEditorCapability';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { createExecutionDataId, useExecutionDataStore } from '@/app/stores/executionData.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
@@ -15,7 +15,11 @@ import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 
-import { INSTANCE_AI_VIEW } from '../constants';
+import {
+	INSTANCE_AI_PROJECT_ID_QUERY,
+	INSTANCE_AI_SOURCE_QUERY,
+	INSTANCE_AI_VIEW,
+} from '../constants';
 import { useInstanceAiStore } from '../instanceAi.store';
 import {
 	buildInstanceAiCredentialHandoffContext,
@@ -38,7 +42,7 @@ export function useInstanceAiHandoffCapability(): InstanceAiEditorCapability {
 	const route = useRoute();
 	const router = useRouter();
 	const telemetry = useTelemetry();
-	const { startThread } = useInstanceAiHandoff();
+	const { startThread, openWorkflowThread } = useInstanceAiHandoff();
 
 	/**
 	 * The execution currently shown in the editor: the debug route's execution,
@@ -60,20 +64,31 @@ export function useInstanceAiHandoffCapability(): InstanceAiEditorCapability {
 	}
 
 	/**
+	 * `initializeWorkspaceForNewWorkflow` seeds homeProject from the current project, so
+	 * this holds for an unsaved canvas too. Sharing-unlicensed instances omit homeProject
+	 * from the workflow response, so fall back to the personal project (their only one).
+	 */
+	function resolveEditorProjectId(): string | undefined {
+		return documentStore.value.homeProject?.id ?? projectsStore.personalProject?.id;
+	}
+
+	/**
 	 * Whether the editor's workflow exists on the backend — a new workflow has a
 	 * temporary id before it's saved, so the id alone isn't enough.
 	 */
 	function persistedWorkflow(): { workflowId: string; projectId: string } | null {
-		const doc = documentStore.value;
-		const workflowId = doc.workflowId;
-		const projectId = doc.homeProject?.id;
+		const workflowId = documentStore.value.workflowId;
+		const projectId = resolveEditorProjectId();
 		const isPersisted = !!workflowId && !!workflowsListStore.getWorkflowById(workflowId)?.id;
 		return isPersisted && workflowId && projectId ? { workflowId, projectId } : null;
 	}
 
 	/**
 	 * Hand the editor's (persisted) workflow off to a new thread: attach it (+ the
-	 * shown execution), seed both for the artifact, and send `message` as the opening turn.
+	 * shown execution), seed both for the artifact, and — when there is a real
+	 * ask (failed execution) — send `message` as the opening turn. A plain hand-
+	 * off opens the thread without an LLM greeting; the workflow rides the user's
+	 * first prompt.
 	 */
 	async function handOffWorkflow(
 		message: string,
@@ -88,7 +103,7 @@ export function useInstanceAiHandoffCapability(): InstanceAiEditorCapability {
 			type: 'workflow',
 			id: workflowId,
 			name: doc.name || undefined,
-			executionId,
+			...(executionId ? { executionId } : {}),
 		};
 		// Snapshot now — the editor's stores are disposed on teardown — so the artifact
 		// seeds it without a refetch. Omitted if not loaded, leaving a fetch fallback.
@@ -96,8 +111,7 @@ export function useInstanceAiHandoffCapability(): InstanceAiEditorCapability {
 			? useExecutionDataStore(createExecutionDataId(executionId)).getExecutionSnapshot()
 			: null;
 		// An error hand-off (the node-error view, or a failed run shown on the canvas)
-		// asks the agent to investigate; a plain hand-off keeps the empty message so the
-		// editor-context block has it just greet.
+		// asks the agent to investigate; a plain hand-off opens without an opening turn.
 		const executionFailed =
 			executionSnapshot?.status === 'error' || executionSnapshot?.status === 'crashed';
 		const openingMessage =
@@ -114,19 +128,36 @@ export function useInstanceAiHandoffCapability(): InstanceAiEditorCapability {
 			ndvStore.unsetActiveNodeName();
 			await nextTick();
 		}
-		await startThread(
-			projectId,
-			openingMessage,
-			[attachment],
-			(threadId) => {
-				instanceAiStore.getOrCreateRuntime(threadId, projectId).setPendingHandoff({
-					workflowId,
-					workflow: doc.getSnapshot(),
-					execution: executionSnapshot?.workflowId === workflowId ? executionSnapshot : undefined,
-				});
+
+		const prepare = (threadId: string) => {
+			instanceAiStore.getOrCreateRuntime(threadId, projectId).setPendingHandoff({
+				workflowId,
+				workflow: doc.getSnapshot(),
+				execution: executionSnapshot?.workflowId === workflowId ? executionSnapshot : undefined,
+			});
+		};
+		const launch = {
+			source,
+			origin: 'internal' as const,
+			sourceContext: {
+				workflowId,
+				...(executionId ? { executionId } : {}),
 			},
-			{ newTab },
-		);
+		};
+
+		if (openingMessage) {
+			await startThread(
+				projectId,
+				openingMessage,
+				{ kind: 'prefill', prefillType: 'handoff_execution_error' },
+				launch,
+				[attachment],
+				prepare,
+				{ newTab },
+			);
+		} else {
+			await openWorkflowThread(projectId, attachment, launch, prepare);
+		}
 		telemetry.track('Instance AI opened from editor', {
 			source,
 			workflow_id: workflowId,
@@ -139,12 +170,22 @@ export function useInstanceAiHandoffCapability(): InstanceAiEditorCapability {
 		// Hand off only persisted workflows — the agent can't act on one the server
 		// doesn't know, and an unsaved canvas is a "build something new" intent.
 		if (!persisted) {
+			const projectId = resolveEditorProjectId();
 			telemetry.track('Instance AI opened from editor', {
 				source,
 				workflow_id: null,
 				execution_id: null,
 			});
-			await router.push({ name: INSTANCE_AI_VIEW });
+			// EmptyView creates the thread on the first message, so both have to survive the
+			// navigation. The source keeps the eventual syncThread from attributing the
+			// thread to assistant_page instead of the canvas entry point.
+			await router.push({
+				name: INSTANCE_AI_VIEW,
+				query: {
+					[INSTANCE_AI_SOURCE_QUERY]: source,
+					...(projectId ? { [INSTANCE_AI_PROJECT_ID_QUERY]: projectId } : {}),
+				},
+			});
 			return;
 		}
 		await handOffWorkflow('', source, persisted.workflowId, persisted.projectId);
@@ -155,17 +196,28 @@ export function useInstanceAiHandoffCapability(): InstanceAiEditorCapability {
 		source: InstanceAiEditorActionSource,
 	): Promise<boolean> {
 		const question = buildInstanceAiCredentialQuestion(credential);
-		// New tab with just the question (no workflow/execution) so the user keeps the
-		// credential form open beside the chat. Scope to the editor's project, else personal.
-		const projectId = persistedWorkflow()?.projectId ?? projectsStore.personalProject?.id;
+		// A new tab with just the question (no workflow/execution) so the user keeps the
+		// credential form open beside the chat.
+		const projectId = resolveEditorProjectId();
 		if (!projectId) {
-			await router.push({ name: INSTANCE_AI_VIEW });
+			await router.push({
+				name: INSTANCE_AI_VIEW,
+				query: { [INSTANCE_AI_SOURCE_QUERY]: source },
+			});
 			return false;
 		}
-		await startThread(projectId, question, undefined, undefined, {
-			newTab: true,
-			context: buildInstanceAiCredentialHandoffContext(credential),
-		});
+		await startThread(
+			projectId,
+			question,
+			{ kind: 'prefill', prefillType: 'handoff_credential_setup' },
+			{ source, origin: 'internal' },
+			undefined,
+			undefined,
+			{
+				newTab: true,
+				context: buildInstanceAiCredentialHandoffContext(credential),
+			},
+		);
 		telemetry.track('Instance AI opened from editor', {
 			source,
 			workflow_id: null,

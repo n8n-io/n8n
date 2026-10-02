@@ -6,16 +6,18 @@ import {
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { ensureHostsBypassProxy } from '@n8n/backend-network/proxy';
-import { ExecutionsConfig } from '@n8n/config';
-import type { User } from '@n8n/db';
+import { ExecutionsConfig, InstanceAiConfig } from '@n8n/config';
+import { ProcessedDataRepository, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
-import type { WorkflowJSON } from '@n8n/workflow-sdk';
+import { sleep } from '@n8n/utils/sleep';
+import type { DataTableColumnInfo, WorkflowJSON } from '@n8n/workflow-sdk';
 import { normalizePinData } from '@n8n/workflow-sdk';
 import {
 	BinaryDataService,
 	type EvalLlmMockHandler,
 	type EvalMockHttpResponse,
 	synthesizeBinaryFixture,
+	WorkflowHasIssuesError,
 } from 'n8n-core';
 import {
 	type IBinaryData,
@@ -34,27 +36,44 @@ import {
 	createRunExecutionData,
 	fileTypeFromMimeType,
 	NodeHelpers,
+	TimeoutExecutionCancelledError,
 	UserError,
 	Workflow,
+	type IWorkflowIssues,
 } from 'n8n-workflow';
 import { randomUUID } from 'node:crypto';
 
 import { ActiveExecutions } from '@/active-executions';
+import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import { DataTableService } from '@/modules/data-table/data-table.service';
 import { NodeTypes } from '@/node-types';
 import { PostHogClient } from '@/posthog';
+import { OwnershipService } from '@/services/ownership.service';
 import { WorkflowRunner } from '@/workflow-runner';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 
+import { createLlmCompletionMockHandler } from './llm-completion-mock';
 import { EvalMockedCredentialsHelper } from './eval-mocked-credentials-helper';
+import { EvalTimings } from './eval-timings';
+import { snapshotLedgerBody } from './ledger-snapshot';
 import { type InterceptedTurn, LlmWireServer } from './llm-wire-server';
 import { createLlmMockHandler } from './mock-handler';
+import {
+	extractResponsesRequestModel,
+	isOpenAiResponsesUrl,
+	normalizeOpenAiResponsesMockResponse,
+} from './openai-responses-envelope';
+import { applyDataTableReadParameters } from './data-table-pin-filter';
 import { generatePinData } from './pin-data-generator';
 import {
 	buildVendorLlmRouting,
 	detectBinaryDependencies,
+	emitsDataTableRows,
 	generateMockHints,
 	identifyNodesForHints,
 	identifyNodesForPinData,
+	isDataTableRead,
 	type MockHints,
 	partitionAiRoots,
 	type TriggerBinaryRequirement,
@@ -67,6 +86,25 @@ import {
 
 /** Max output items per branch kept in the artifact. The full count lives in `outputCount`. */
 const MAX_OUTPUT_ITEMS_PER_BRANCH = 10;
+
+/** A caller's run budget as a wall-clock deadline; setup counts against it, so
+ *  the run gets what is left. `totalMs` is kept for the message. */
+interface RunBudget {
+	totalMs: number;
+	deadlineAt: number;
+}
+
+/** A Data Table node's locator: the id it carries, or the name when it is in `name` mode. */
+function dataTableLocator(node: INode): { mode: 'name' | 'id'; value: string } | undefined {
+	const locator = node.parameters?.dataTableId as
+		| { mode?: unknown; value?: unknown }
+		| string
+		| undefined;
+	const value = typeof locator === 'string' ? locator : locator?.value;
+	if (typeof value !== 'string' || value.length === 0) return undefined;
+	const byName = typeof locator !== 'string' && locator?.mode === 'name';
+	return { mode: byName ? 'name' : 'id', value };
+}
 
 // ---------------------------------------------------------------------------
 // Service
@@ -86,6 +124,12 @@ export class EvalExecutionService {
 		private readonly activeExecutions: ActiveExecutions,
 		private readonly executionsConfig: ExecutionsConfig,
 		private readonly binaryDataService: BinaryDataService,
+		private readonly workflowStaticDataService: WorkflowStaticDataService,
+		private readonly loadNodesAndCredentials: LoadNodesAndCredentials,
+		private readonly ownershipService: OwnershipService,
+		private readonly dataTableService: DataTableService,
+		private readonly processedDataRepository: ProcessedDataRepository,
+		private readonly instanceAiConfig: InstanceAiConfig,
 	) {}
 
 	async executeWithLlmMock(
@@ -93,6 +137,13 @@ export class EvalExecutionService {
 		user: User,
 		options: InstanceAiEvalExecutionRequest = {},
 	): Promise<InstanceAiEvalExecutionResult> {
+		// Anchored at receipt, before any setup: setup is LLM calls, so a budget
+		// anchored later would expire after the caller's own deadline.
+		const budget: RunBudget | undefined =
+			options.timeoutMs === undefined
+				? undefined
+				: { totalMs: options.timeoutMs, deadlineAt: Date.now() + options.timeoutMs };
+
 		// Eval routes through WorkflowRunner with a configureAdditionalData closure
 		// that doesn't survive queue serialization. Refuse upfront so vendor calls
 		// can never leak to real providers from a worker that never wires the mock.
@@ -109,7 +160,7 @@ export class EvalExecutionService {
 		]);
 		if (!workflowEntity) {
 			for (const delayMs of [200, 500, 1000]) {
-				await new Promise((resolve) => setTimeout(resolve, delayMs));
+				await sleep(delayMs);
 				workflowEntity = await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
 					'workflow:execute',
 				]);
@@ -156,7 +207,23 @@ export class EvalExecutionService {
 		}
 
 		const unpinSet = unpinNodes.length > 0 ? new Set(unpinNodes) : undefined;
-		const hints = await this.analyzeWorkflow(workflowEntity, options.scenarioHints, unpinSet);
+		const timings = new EvalTimings();
+		let hints: MockHints;
+		try {
+			hints = await this.analyzeWorkflow(
+				workflowEntity,
+				timings,
+				options.scenarioHints,
+				unpinSet,
+				options.seededDataTableIds,
+			);
+		} catch (error) {
+			const message = error instanceof Error ? error.message : String(error);
+			return this.errorResult(
+				randomUUID(),
+				message.startsWith('FRAMEWORK ISSUE:') ? message : `FRAMEWORK ISSUE: ${message}`,
+			);
+		}
 		const vendorLlmRouting = interceptionEnabled
 			? buildVendorLlmRouting(workflowEntity, unpinNodes)
 			: undefined;
@@ -165,9 +232,11 @@ export class EvalExecutionService {
 			workflowEntity,
 			user,
 			hints,
+			timings,
 			options.scenarioHints,
 			interceptionEnabled,
 			vendorLlmRouting,
+			budget,
 		);
 	}
 
@@ -188,8 +257,10 @@ export class EvalExecutionService {
 
 	private async analyzeWorkflow(
 		workflowEntity: IWorkflowBase,
+		timings: EvalTimings,
 		scenarioHints?: string,
 		unpinSet?: Set<string>,
+		seededDataTableIds?: string[],
 	): Promise<MockHints> {
 		// Phase 1: Generate mock hints for HTTP-interceptible nodes
 		const hintNodes = identifyNodesForHints(workflowEntity);
@@ -199,11 +270,24 @@ export class EvalExecutionService {
 			`[EvalMock] Generating hints for ${nodeNames.length} nodes: ${nodeNames.join(', ')}`,
 		);
 
-		const hints = await generateMockHints({
-			workflow: workflowEntity,
-			nodeNames,
-			scenarioHints,
-		});
+		const hints = await timings.time(
+			'hints',
+			undefined,
+			async () =>
+				await generateMockHints({
+					workflow: workflowEntity,
+					nodeNames,
+					scenarioHints,
+				}),
+		);
+
+		// A trigger pinned without content runs with no items and blames every downstream miss on the builder.
+		const triggerStart = this.triggerStartNode(workflowEntity, hints);
+		if (triggerStart && lacksTriggerContent(hints)) {
+			throw new Error(
+				`FRAMEWORK ISSUE: Phase 1 produced no trigger content for start node "${triggerStart.name}" (${hints.warnings.join('; ') || 'no details'}); the scenario cannot run without a trigger event`,
+			);
+		}
 
 		if (!hints.globalContext && nodeNames.length > 0) {
 			this.logger.warn(
@@ -216,7 +300,11 @@ export class EvalExecutionService {
 		);
 
 		// Phase 1.5: Generate pin data for nodes that bypass the HTTP mock layer
-		const bypassNodes = identifyNodesForPinData(workflowEntity, unpinSet);
+		const liveReads = await this.liveDataTableReads(workflowEntity, seededDataTableIds);
+		if (liveReads.size > 0) {
+			this.logger.debug(`[EvalMock] Reading seeded Data Tables live: ${[...liveReads].join(', ')}`);
+		}
+		const bypassNodes = identifyNodesForPinData(workflowEntity, unpinSet, liveReads);
 		const bypassNodeNames = bypassNodes.map((n) => n.name);
 
 		if (bypassNodeNames.length > 0) {
@@ -227,6 +315,8 @@ export class EvalExecutionService {
 				workflowEntity,
 				bypassNodeNames,
 				hints.globalContext,
+				timings,
+				hints.warnings,
 				scenarioHints,
 			);
 			this.logger.debug(
@@ -248,28 +338,160 @@ export class EvalExecutionService {
 		workflowEntity: IWorkflowBase,
 		bypassNodeNames: string[],
 		globalContext: string,
+		timings: EvalTimings,
+		warnings: string[],
 		scenarioHints?: string,
 	): Promise<IPinData> {
 		if (bypassNodeNames.length === 0) return {};
 
 		try {
-			const dataDescription = [globalContext, scenarioHints].filter(Boolean).join('\n\n');
-			const result = await generatePinData({
-				workflow: workflowEntity as unknown as WorkflowJSON,
-				nodeNames: bypassNodeNames,
-				instructions: dataDescription ? { dataDescription } : undefined,
-			});
+			const dataTableColumns = await this.resolveDataTableColumns(workflowEntity, bypassNodeNames);
 
-			return normalizePinData(result as unknown as IPinData);
+			// Keep the scenario separate from the general context: the pin generator
+			// treats "Test Scenario" as authoritative, and merging them into one blob
+			// lets invented context override scenario-specified stored state.
+			const result = await timings.time(
+				'bypass-pin',
+				undefined,
+				async () =>
+					await generatePinData({
+						workflow: workflowEntity as unknown as WorkflowJSON,
+						nodeNames: bypassNodeNames,
+						instructions:
+							globalContext || scenarioHints
+								? { dataDescription: globalContext, testScenario: scenarioHints }
+								: undefined,
+						outputSchemaLookup: this.loadNodesAndCredentials.createOutputSchemaLookup(),
+						dataTableColumns,
+					}),
+			);
+
+			const normalized = normalizePinData(result as unknown as IPinData);
+
+			// A MISSING bypass entry would let the node execute for real — for AI
+			// roots the vendor SDK then makes real network calls (observed in CI:
+			// un-mocked Anthropic request → "Authorization failed"). An EMPTY array
+			// is different: the execution engine honors it as "pinned, zero items"
+			// (presence check, not length), and zero-item scenario premises depend
+			// on it — never replace [] with a phantom item (TRUST-343).
+			for (const nodeName of bypassNodeNames) {
+				if (!normalized[nodeName]) {
+					this.logger.warn(
+						`[EvalMock] Phase 1.5 produced no pin data for bypass node "${nodeName}" — pinning empty to prevent real execution`,
+					);
+					normalized[nodeName] = [];
+				}
+			}
+
+			const bypassSet = new Set(bypassNodeNames);
+			for (const node of workflowEntity.nodes) {
+				if (!bypassSet.has(node.name) || !emitsDataTableRows(node)) continue;
+				const filtered = applyDataTableReadParameters(node, normalized[node.name]);
+				normalized[node.name] = filtered.items;
+				for (const warning of filtered.warnings) this.logger.warn(`[EvalMock] ${warning}`);
+				warnings.push(...filtered.flags);
+			}
+
+			return normalized;
 		} catch (error) {
 			const errorMsg = error instanceof Error ? error.message : String(error);
 			this.logger.error(`[EvalMock] Phase 1.5 pin data generation failed: ${errorMsg}`);
-			return normalizePinData(
-				Object.fromEntries(
-					bypassNodeNames.map((nodeName) => [nodeName, [{ json: {} }]]),
-				) as IPinData,
-			);
+			throw new Error(`FRAMEWORK ISSUE: Phase 1.5 pin data generation failed: ${errorMsg}`);
 		}
+	}
+
+	/**
+	 * Real column names for each pinned dataTable-read node, read from the
+	 * builder-created table itself. They are the authoritative row shape —
+	 * without them the pin generator invents plausible-but-wrong column names
+	 * (`email` where the table says `contact_email`) and correctly-built
+	 * downstream expressions resolve undefined. Best-effort: a missing table or
+	 * unresolved id degrades that node to prompt-only generation.
+	 *
+	 * Only row-emitting reads qualify — `rowExists`/`rowNotExists` pass the input
+	 * item through, so enforcing table columns on them would demand a fixture the
+	 * real node never emits.
+	 */
+	private async resolveDataTableColumns(
+		workflowEntity: IWorkflowBase,
+		bypassNodeNames: string[],
+	): Promise<Record<string, DataTableColumnInfo[]> | undefined> {
+		const bypassSet = new Set(bypassNodeNames);
+		const readNodes = workflowEntity.nodes.filter(
+			(node) => bypassSet.has(node.name) && emitsDataTableRows(node),
+		);
+		if (readNodes.length === 0) return undefined;
+
+		const columnsByNode: Record<string, DataTableColumnInfo[]> = {};
+		let projectId: string | undefined;
+		for (const node of readNodes) {
+			try {
+				projectId ??= (await this.ownershipService.getWorkflowProjectCached(workflowEntity.id)).id;
+				const tableId = await this.resolveDataTableNodeId(node, projectId);
+				if (!tableId) {
+					this.logger.warn(
+						`[EvalMock] No Data Table found for node "${node.name}" — pinned rows fall back to prompt-only generation`,
+					);
+					continue;
+				}
+
+				const columns = await this.dataTableService.getColumns(tableId, projectId);
+				columnsByNode[node.name] = columns.map(({ name, type }) => ({ name, type }));
+			} catch (error) {
+				this.logger.warn(
+					`[EvalMock] Could not resolve Data Table columns for node "${node.name}" — pinned rows fall back to prompt-only generation`,
+					{ error: error instanceof Error ? error.message : String(error) },
+				);
+			}
+		}
+
+		return Object.keys(columnsByNode).length > 0 ? columnsByNode : undefined;
+	}
+
+	/** Data Table reads bound to a table the caller reseeded for this scenario. That
+	 *  table holds the scenario's rows, so the read runs live and also sees the
+	 *  writes the run makes before it. */
+	private async liveDataTableReads(
+		workflowEntity: IWorkflowBase,
+		seededDataTableIds: string[] | undefined,
+	): Promise<Set<string>> {
+		const live = new Set<string>();
+		if (!seededDataTableIds?.length) return live;
+		const seeded = new Set(seededDataTableIds);
+		// The node resolves a `name` locator case-insensitively at run time
+		// (`LOWER(name) LIKE LOWER(:name)`), so the seeded tables are matched the
+		// same way, or a read spelt in another case would stay pinned.
+		const seededByLowerName = new Map<string, string>();
+		for (const table of await this.dataTableService.findDataTablesByIds(seededDataTableIds)) {
+			seededByLowerName.set(table.name.toLowerCase(), table.id);
+		}
+		for (const node of workflowEntity.nodes) {
+			if (!isDataTableRead(node)) continue;
+			const locator = dataTableLocator(node);
+			if (!locator) continue;
+			const tableId =
+				locator.mode === 'name'
+					? seededByLowerName.get(locator.value.toLowerCase())
+					: locator.value;
+			if (tableId !== undefined && seeded.has(tableId)) live.add(node.name);
+		}
+		return live;
+	}
+
+	/** The table a Data Table node binds, for the column shapes. `name` mode is
+	 *  looked up in the project the way the node does, case-insensitively. */
+	private async resolveDataTableNodeId(
+		node: INode,
+		projectId: string,
+	): Promise<string | undefined> {
+		const locator = dataTableLocator(node);
+		if (!locator) return undefined;
+		if (locator.mode !== 'name') return locator.value;
+		const matches = await this.dataTableService.findDataTablesByNamesInProject(projectId, [
+			locator.value,
+		]);
+		const wanted = locator.value.toLowerCase();
+		return (matches.find((m) => m.name.toLowerCase() === wanted) ?? matches.at(0))?.id;
 	}
 
 	// ── Phase 2: Mock execution ────────────────────────────────────────────
@@ -278,14 +500,54 @@ export class EvalExecutionService {
 		workflowEntity: IWorkflowBase,
 		user: User,
 		hints: MockHints,
+		timings: EvalTimings,
 		scenarioHints?: string,
 		interceptionEnabled = false,
 		vendorLlmRouting?: VendorLlmRouting,
+		/** Caller's budget; unbounded when omitted. See awaitRunWithinBudget. */
+		budget?: RunBudget,
 	): Promise<InstanceAiEvalExecutionResult> {
-		const nodeResults: Record<string, InstanceAiEvalNodeResult> = {};
+		// Null-prototype map: node names are the keys here and come from workflow
+		// input, so a reserved name (`__proto__`, `constructor`, ...) must land as an
+		// own key instead of resolving up the prototype chain. Without this, the
+		// `nodeResults[name] ??= {}` + nested-write sinks below would assign onto
+		// `Object.prototype`.
+		const nodeResults: Record<string, InstanceAiEvalNodeResult> = Object.create(null);
+
+		// Fill setup-pending resource locators BEFORE the first normalization pass:
+		// Workflow construction runs getNodeParameters(returnNoneDisplayed=false),
+		// which STRIPS params whose displayOptions depend on a selected resource
+		// (e.g. Google Sheets `columns` vanishes while documentId/sheetName are
+		// empty) — destroying the builder's full column mapping before the patcher
+		// runs; the engine later re-adds such params from bare defaults and the
+		// node crashes. Production never executes in this state — users complete
+		// setup first — so filling here mirrors a completed setup.
+		for (const node of workflowEntity.nodes) {
+			if (node.disabled || !node.parameters) continue;
+			fillSetupPendingResourceLocators(node.parameters);
+		}
+
+		// Time-based Wait nodes park the execution until a future timestamp
+		// (specificTime) or sleep away the scenario budget (timeInterval), so
+		// downstream nodes never run inside the eval window even when the built
+		// workflow is correct. Zero them — execution order and branch structure
+		// stay observable, and the verifier still sees the builder's original
+		// wait config in the workflow JSON. Webhook/form-resume waits are left
+		// untouched (they model an external event, not the passage of time).
+		for (const node of workflowEntity.nodes) {
+			if (node.disabled || node.type !== 'n8n-nodes-base.wait') continue;
+			const resume = node.parameters?.resume;
+			if (resume === 'webhook' || resume === 'form') continue;
+			node.parameters = { ...node.parameters, resume: 'timeInterval', amount: 0, unit: 'seconds' };
+		}
 
 		const workflow = this.buildWorkflow(workflowEntity);
-		const startNode = this.findStartNode(workflow);
+		// Multi-trigger workflows: Phase 1 picks the trigger the scenario targets
+		// (firing the wrong one leaves the scenario's branch dormant and fails it).
+		const hintedStart = hints.startNodeName
+			? this.asTriggerNode(workflow.nodes[hints.startNodeName])
+			: undefined;
+		const startNode = hintedStart ?? this.findStartNode(workflow);
 
 		if (!startNode) {
 			return this.errorResult(randomUUID(), 'No trigger or start node found in the workflow');
@@ -295,6 +557,7 @@ export class EvalExecutionService {
 			scenarioHints,
 			globalContext: hints.globalContext,
 			nodeHints: hints.nodeHints,
+			pinnedOutputs: summarizePinnedOutputs(hints.bypassPinData),
 		});
 
 		const binaryRequirement = detectBinaryDependencies(workflowEntity);
@@ -302,13 +565,33 @@ export class EvalExecutionService {
 			startNode,
 			hints.triggerContent,
 			binaryRequirement,
+			hints.triggerEmitsNoItems,
 		);
 		const pinData: IPinData = { ...triggerPinData, ...hints.bypassPinData };
 		const pinDataNodeNames = Object.keys(pinData);
 
-		// Check config completeness before execution — detect missing required parameters
-		this.checkNodeConfig(workflow, nodeResults, pinDataNodeNames);
+		// Patch setup-pending params first, THEN record remaining config issues.
+		// Issues the patcher resolves (empty locators awaiting user setup, eval
+		// placeholders) must not fail the scenario — collectConfigIssueErrors folds
+		// recorded issues into errors and flips success:false, so recording
+		// pre-patch state failed runs the harness had already made executable.
+		// Genuinely unresolved misconfigurations are still recorded and still fail.
 		this.patchParameterIssuesForEval(workflow, pinDataNodeNames);
+		this.checkNodeConfig(workflow, nodeResults, pinDataNodeNames);
+
+		// The engine drops a refused execution before the runner can await it, so report the refusal first.
+		const blockingIssues = this.issuesBlockingRun(workflow, startNode, pinDataNodeNames);
+		if (blockingIssues) {
+			const reason = new WorkflowHasIssuesError(blockingIssues, workflow.nodes).message;
+			this.logger.warn(`[EvalMock] Workflow cannot start: ${reason}`);
+			return this.buildPartialFailureResult(
+				randomUUID(),
+				new Error(`n8n refused to start the workflow: ${reason}`),
+				nodeResults,
+				hints,
+				undefined,
+			);
+		}
 		const executionData = this.buildExecutionData(startNode, pinData);
 
 		// Mark the trigger node as pinned (it gets its output from pin data, not execution).
@@ -328,8 +611,20 @@ export class EvalExecutionService {
 		try {
 			let serverUrl: string | undefined;
 			if (interceptionEnabled) {
+				// Wire server mocks the agent's own model turns (not HTTP APIs) → LLM completion mock.
+				const llmCompletionMockHandler = createLlmCompletionMockHandler({
+					scenarioHints,
+					globalContext: hints.globalContext,
+					nodeHints: hints.nodeHints,
+				});
+				const timedAiTurnHandler: EvalLlmMockHandler = async (request, node) =>
+					await timings.time(
+						'ai-turn',
+						node.type,
+						async () => await llmCompletionMockHandler(request, node),
+					);
 				wireServer = new LlmWireServer({
-					mockHandler,
+					mockHandler: timedAiTurnHandler,
 					rootToSubNode: vendorLlmRouting?.rootToSubNode,
 					onIntercept: (turn) => this.recordWireServerTurn(turn, nodeResults),
 					logger: this.logger,
@@ -341,7 +636,8 @@ export class EvalExecutionService {
 
 			const runData: IWorkflowExecutionDataProcess = {
 				executionMode: 'evaluation',
-				workflowData: workflowEntity,
+				// Builder-verify runs persist staticData (e.g. dedup cursors); scenarios assume it starts empty.
+				workflowData: { ...workflowEntity, staticData: undefined },
 				userId: user.id,
 				executionData,
 				pinData,
@@ -356,12 +652,15 @@ export class EvalExecutionService {
 					additionalData.evalLlmMockHandler = this.createInterceptingHandler(
 						mockHandler,
 						nodeResults,
+						timings,
 					);
 				},
 			};
 
+			// Builder-verify runs and earlier scenarios can leave Remove Duplicates keys behind.
+			await this.clearDeduplicationState(workflowEntity.id);
 			dbExecutionId = await this.workflowRunner.run(runData);
-			const runResult = await this.activeExecutions.getPostExecutePromise(dbExecutionId);
+			const runResult = await this.awaitRunWithinBudget(dbExecutionId, budget);
 
 			if (!runResult) {
 				return this.buildPartialFailureResult(
@@ -399,6 +698,40 @@ export class EvalExecutionService {
 					});
 				}
 			}
+			await this.blankPersistedStaticData(workflowEntity.id);
+			await this.clearDeduplicationState(workflowEntity.id);
+			timings.summary(this.logger);
+		}
+	}
+
+	/**
+	 * 'evaluation'-mode runs persist getWorkflowStaticData() writes back to the
+	 * workflow row — blank it after the run so scenarios leave no state behind.
+	 */
+	private async blankPersistedStaticData(workflowId: string): Promise<void> {
+		try {
+			await this.workflowStaticDataService.saveStaticDataById(workflowId, {});
+		} catch (error) {
+			this.logger.warn('[EvalMock] Failed to blank workflow staticData after run', {
+				workflowId,
+				error: error instanceof Error ? error.message : String(error),
+			});
+		}
+	}
+
+	/** Remove Duplicates keeps the keys it has seen in processed_data, per workflow,
+	 *  so they outlive the run; clear them so each scenario starts from its own state. */
+	private async clearDeduplicationState(workflowId: string): Promise<void> {
+		// Only an instance that declares itself an eval instance may erase a workflow's
+		// history: on a normal instance the workflow is real and its cursors stay.
+		if (!this.instanceAiConfig.evalInstance) return;
+		try {
+			await this.processedDataRepository.deleteForWorkflow(workflowId);
+		} catch (error) {
+			this.logger.warn('[EvalMock] Failed to clear workflow deduplication state', {
+				workflowId,
+				error: error instanceof Error ? error.message : String(error),
+			});
 		}
 	}
 
@@ -424,6 +757,49 @@ export class EvalExecutionService {
 	 */
 	private findStartNode(workflow: Workflow): INode | undefined {
 		return workflow.getStartNode() ?? this.findWebhookNode(workflow);
+	}
+
+	private triggerStartNode(workflowEntity: IWorkflowBase, hints: MockHints): INode | undefined {
+		const hinted = hints.startNodeName
+			? workflowEntity.nodes.find((node) => node.name === hints.startNodeName)
+			: undefined;
+		return (
+			this.asTriggerNode(hinted) ??
+			this.asTriggerNode(this.findStartNode(this.buildWorkflow(workflowEntity)))
+		);
+	}
+
+	// Same rule as `WorkflowExecute.checkReadyForExecution`.
+	private issuesBlockingRun(
+		workflow: Workflow,
+		startNode: INode,
+		pinDataNodeNames: string[],
+	): IWorkflowIssues | null {
+		const issues: IWorkflowIssues = {};
+		for (const nodeName of [...workflow.getChildNodes(startNode.name), startNode.name]) {
+			const node = workflow.nodes[nodeName];
+			if (!node || node.disabled) continue;
+			const nodeType = this.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
+			const nodeIssues = nodeType
+				? NodeHelpers.getNodeParametersIssues(
+						nodeType.description.properties,
+						node,
+						nodeType.description,
+						pinDataNodeNames,
+					)
+				: { typeUnknown: true };
+			if (nodeIssues) issues[node.name] = nodeIssues;
+		}
+		return Object.keys(issues).length > 0 ? issues : null;
+	}
+
+	/** Accept a Phase-1 start-node hint only when it names a real, enabled trigger-capable node. */
+	private asTriggerNode(node: INode | undefined): INode | undefined {
+		if (!node || node.disabled) return undefined;
+		const nodeType = this.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
+		if (!nodeType) return undefined;
+		const isTriggerCapable = 'trigger' in nodeType || 'poll' in nodeType || 'webhook' in nodeType;
+		return isTriggerCapable ? node : undefined;
 	}
 
 	private findWebhookNode(workflow: Workflow): INode | undefined {
@@ -456,7 +832,15 @@ export class EvalExecutionService {
 				pinDataNodeNames,
 			);
 
-			if (issues?.parameters && Object.keys(issues.parameters).length > 0) {
+			const parameterIssues = { ...(issues?.parameters ?? {}) };
+			// '__evalMockValue' marks a required param the patcher could only blind-fill — still a genuine config issue.
+			for (const [paramName, value] of Object.entries(node.parameters ?? {})) {
+				if (value === '__evalMockValue') {
+					parameterIssues[paramName] ??= [`Parameter "${paramName}" is required.`];
+				}
+			}
+
+			if (Object.keys(parameterIssues).length > 0) {
 				const entry = (nodeResults[node.name] ??= {
 					outputs: {},
 					outputCount: 0,
@@ -464,7 +848,7 @@ export class EvalExecutionService {
 					interceptedRequests: [],
 					executionMode: 'real',
 				});
-				entry.configIssues = issues.parameters;
+				entry.configIssues = parameterIssues;
 			}
 		}
 	}
@@ -480,6 +864,9 @@ export class EvalExecutionService {
 
 			if (node.parameters) {
 				node.parameters = scrubPlaceholderValues(node.parameters) as INodeParameters;
+				for (const change of patchSetupPendingResourceMappers(node.parameters)) {
+					this.logger.info(`[EvalMock] resourceMapper patch on "${node.name}": ${change}`);
+				}
 			}
 
 			const nodeType = this.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
@@ -499,6 +886,7 @@ export class EvalExecutionService {
 			for (const paramName of Object.keys(paramIssues)) {
 				params[paramName] = synthesizeMissingParamValue(
 					params[paramName],
+					paramName,
 				) as INodeParameters[string];
 			}
 			node.parameters = params;
@@ -516,7 +904,12 @@ export class EvalExecutionService {
 		startNode: INode,
 		triggerContent: Record<string, unknown>,
 		binaryRequirement?: TriggerBinaryRequirement,
+		triggerEmitsNoItems = false,
 	): IPinData {
+		// A pinned empty array is "this node emitted nothing": downstream nodes stay idle,
+		// which is the point of a "no new items" scenario. No pin at all would instead
+		// start the trigger with one injected empty item.
+		if (triggerEmitsNoItems) return { [startNode.name]: [] };
 		if (Object.keys(triggerContent).length === 0 && !binaryRequirement) return {};
 
 		// Mirror any LLM-embedded binary map as real item-level binary; json stays
@@ -618,6 +1011,7 @@ export class EvalExecutionService {
 	private createInterceptingHandler(
 		mockHandler: EvalLlmMockHandler,
 		nodeResults: Record<string, InstanceAiEvalNodeResult>,
+		timings: EvalTimings,
 	): EvalLlmMockHandler {
 		return async (
 			requestOptions: IHttpRequestOptions,
@@ -633,14 +1027,39 @@ export class EvalExecutionService {
 				executionMode: 'mocked',
 			});
 			entry.executionMode = 'mocked';
-			const response = await mockHandler(requestOptions, node);
+			let response = await timings.time(
+				'http-mock',
+				node.name,
+				async () => await mockHandler(requestOptions, node),
+			);
+
+			// Responses-API calls from the openAi node bypass the wire-server
+			// protocol adapters — coerce the generated body to the canonical
+			// envelope so the node's real parser accepts it.
+			if (response && response.statusCode < 400 && isOpenAiResponsesUrl(requestOptions.url)) {
+				const normalized = normalizeOpenAiResponsesMockResponse(
+					response,
+					extractResponsesRequestModel(requestOptions.body),
+				);
+				if (normalized !== response) {
+					// Triage breadcrumb: the recorded mockResponse below is the coerced
+					// body, not the generator's raw output.
+					this.logger.debug(
+						`[EvalMock] Applied Responses-envelope normalization for "${node.name}"`,
+					);
+				}
+				response = normalized;
+			}
 
 			entry.interceptedRequests.push({
-				url: requestOptions.url,
+				// Broken routing (resource/operation missing on the node type) emits a
+				// request with no URL — store a readable marker; the verifier prompt
+				// and the HTML report both key on it, and undefined crashes the report.
+				url: requestOptions.url ?? '(no URL)',
 				method: requestOptions.method ?? 'GET',
 				nodeType: node.type,
 				requestBody: requestOptions.body,
-				mockResponse: response?.body,
+				mockResponse: snapshotLedgerBody(response?.body),
 			});
 
 			this.logger.debug(
@@ -674,6 +1093,60 @@ export class EvalExecutionService {
 	}
 
 	/**
+	 * Await the execution, stopping it once the budget elapses. Eval mode skips
+	 * concurrency reservation (see `ActiveExecutions.add`), so nothing else would,
+	 * and an abandoned run keeps burning CPU on a shared instance. Omit to wait.
+	 */
+	private async awaitRunWithinBudget(
+		executionId: string,
+		budget: RunBudget | undefined,
+	): Promise<IRun | undefined> {
+		const postExecute = this.activeExecutions.getPostExecutePromise(executionId);
+		if (!budget) return await postExecute;
+
+		// Race loser: our timer's cancellation must not surface as unhandled.
+		postExecute.catch(() => {});
+
+		// Clamped: setup may have eaten the budget, which stops the run at once.
+		const remainingMs = Math.max(budget.deadlineAt - Date.now(), 0);
+		const seconds = Math.round(budget.totalMs / 1000);
+		const budgetError = () =>
+			new Error(`Execution exceeded its ${seconds}s eval budget and was stopped`);
+
+		// `stopExecution` rejects the promise being raced, so report off this flag
+		// rather than whichever arm won — else a budget stop reads as any other
+		// cancellation.
+		let stoppedForBudget = false;
+
+		let deadline: NodeJS.Timeout | undefined;
+		try {
+			return await Promise.race([
+				postExecute,
+				new Promise<never>((_resolve, reject) => {
+					deadline = setTimeout(() => {
+						stoppedForBudget = true;
+						this.logger.warn(
+							`[EvalMock] Execution ${executionId} exceeded its ${seconds}s budget — stopping it`,
+						);
+						// No try/catch: `stopExecution` returns early for an unknown id
+						// rather than throwing, so an execution that finished between the
+						// timer firing and this call needs no handling here.
+						this.activeExecutions.stopExecution(
+							executionId,
+							new TimeoutExecutionCancelledError(executionId),
+						);
+						reject(budgetError());
+					}, remainingMs);
+				}),
+			]);
+		} catch (error) {
+			throw stoppedForBudget ? budgetError() : error;
+		} finally {
+			if (deadline) clearTimeout(deadline);
+		}
+	}
+
+	/**
 	 * Build the failure result returned when execution threw partway through —
 	 * preserves the accumulated `nodeResults`, `hints`, and credential
 	 * diagnostics rather than discarding them like `errorResult` does. Lifted
@@ -694,7 +1167,7 @@ export class EvalExecutionService {
 			success: false,
 			nodeResults,
 			errors: [`Execution failed: ${message}`],
-			hints,
+			hints: withInterceptionGaps(hints, credentialsHelper),
 			mockedCredentials: credentialsHelper?.mockedCredentials ?? [],
 			rewrittenCredentials: credentialsHelper?.rewrittenCredentials ?? [],
 		};
@@ -804,7 +1277,7 @@ export class EvalExecutionService {
 			success: allErrors.length === 0,
 			nodeResults,
 			errors: allErrors,
-			hints,
+			hints: withInterceptionGaps(hints, credentialsHelper),
 			mockedCredentials: credentialsHelper?.mockedCredentials ?? [],
 			rewrittenCredentials: credentialsHelper?.rewrittenCredentials ?? [],
 		};
@@ -827,6 +1300,20 @@ export class EvalExecutionService {
 			rewrittenCredentials: [],
 		};
 	}
+}
+
+function lacksTriggerContent(hints: MockHints): boolean {
+	return !hints.triggerEmitsNoItems && Object.keys(hints.triggerContent).length === 0;
+}
+
+/** `warnings` is the channel the verification artifact renders as FRAMEWORK ISSUE flags. */
+function withInterceptionGaps(
+	hints: MockHints,
+	credentialsHelper: EvalMockedCredentialsHelper | undefined,
+): MockHints {
+	const gaps = credentialsHelper?.interceptionGaps ?? [];
+	if (gaps.length === 0) return hints;
+	return { ...hints, warnings: [...hints.warnings, ...gaps] };
 }
 
 /** Synthesize a structurally valid binary entry (real bytes, base64-inlined). */
@@ -898,6 +1385,8 @@ function synthesizePlaceholderValue(hint: string): string {
 	if (h.includes('slack channel') || h.includes('channel')) return 'C00000000EVAL';
 	if (h.includes('chat') && h.includes('id')) return '100000000';
 	if (h.includes('telegram')) return '100000000';
+	// Page, account and object ids: the node validates the shape, so a word is rejected.
+	if (/\bid\b/.test(h) || h.includes('account')) return '100000000';
 	const selectedResourceValue = synthesizeSelectedResourcePlaceholderValue(h);
 	if (selectedResourceValue) return selectedResourceValue;
 	return '__evalMockValue';
@@ -933,7 +1422,46 @@ function scrubPlaceholderValues(value: unknown): unknown {
 	return value;
 }
 
-function synthesizeMissingParamValue(current: unknown): unknown {
+/**
+ * Empty resource locators are the builder's correct "user picks at setup"
+ * state — filling them with one opaque token crashes nodes that resolve the
+ * value client-side against mock metadata (e.g. Google Sheets resolves the
+ * sheet gid locally; '__evalMockResource' can never match the mock's sheetId
+ * 0). Pick the value the mock environment consistently serves, keyed off the
+ * parameter name; fall back to the generic token.
+ */
+function synthesizeResourceLocatorValue(paramName: string): string {
+	const h = paramName.toLowerCase();
+	if (h.includes('spreadsheet') || h.includes('document')) return 'eval-spreadsheet-id';
+	if (h.includes('sheet')) return '0';
+	if (h.includes('calendar')) return 'eval-calendar-id';
+	if (h.includes('folder')) return 'eval-folder-id';
+	if (h.includes('file')) return 'eval-file-id';
+	if (h.includes('drive')) return 'eval-drive-id';
+	if (h.includes('channel')) return 'C00000000EVAL';
+	return '__evalMockResource';
+}
+
+/**
+ * Fill empty resource-locator values on the raw entity nodes. Must run before
+ * any Workflow construction — see the call site in execute() for why.
+ */
+function fillSetupPendingResourceLocators(parameters: INodeParameters): void {
+	for (const [key, raw] of Object.entries(parameters)) {
+		if (raw === null || typeof raw !== 'object' || Array.isArray(raw)) continue;
+		const rl = raw as Record<string, unknown>;
+		if (!('__rl' in rl)) continue;
+		const value = rl.value;
+		const isEmpty = value === undefined || value === null || value === '';
+		if (!isEmpty) continue;
+		parameters[key] = {
+			...rl,
+			value: synthesizeResourceLocatorValue(key),
+		};
+	}
+}
+
+function synthesizeMissingParamValue(current: unknown, paramName = ''): unknown {
 	if (
 		current !== null &&
 		typeof current === 'object' &&
@@ -949,7 +1477,7 @@ function synthesizeMissingParamValue(current: unknown): unknown {
 		return {
 			...rl,
 			mode,
-			value: hasValue ? rawValue : '__evalMockResource',
+			value: hasValue ? rawValue : synthesizeResourceLocatorValue(paramName),
 		};
 	}
 
@@ -957,6 +1485,92 @@ function synthesizeMissingParamValue(current: unknown): unknown {
 	if (current === null || current === undefined) return '__evalMockValue';
 
 	return current;
+}
+
+/**
+ * Resource-mapper params (e.g. Google Sheets `columns`) crash at runtime when
+ * `mappingMode: 'defineBelow'` lacks `schema` — an artifact only the
+ * setup-time schema fetch can supply once the real resource exists. The
+ * defined mapping IS the builder's content: synthesize the schema from its
+ * keys, mirroring what the fetch would return. With no mappings at all, fall
+ * back to automatic input mapping. The node raises this at runtime, so
+ * pre-execution paramIssues never flags it — scan every node's params
+ * directly.
+ */
+function patchSetupPendingResourceMappers(parameters: INodeParameters): string[] {
+	const changes: string[] = [];
+	for (const [key, raw] of Object.entries(parameters)) {
+		if (raw === null || typeof raw !== 'object' || Array.isArray(raw)) continue;
+		const mapper = raw as Record<string, unknown>;
+		if (!('mappingMode' in mapper) || mapper.mappingMode !== 'defineBelow') continue;
+
+		const value = mapper.value;
+		const mappingKeys =
+			value !== null && typeof value === 'object' && !Array.isArray(value)
+				? Object.keys(value)
+				: [];
+
+		if (mappingKeys.length === 0) {
+			// Keep a schema key even when empty: Google Sheets appendOrUpdate
+			// (v4.4+) reads `columns.schema` without a fallback regardless of
+			// mapping mode — an absent key crashes with "Could not get parameter".
+			parameters[key] = {
+				...mapper,
+				mappingMode: 'autoMapInputData',
+				value: null,
+				schema: Array.isArray(mapper.schema) ? mapper.schema : [],
+			};
+			changes.push(`${key}: defineBelow without mappings → autoMapInputData`);
+			continue;
+		}
+
+		const schema = mapper.schema;
+		if (Array.isArray(schema) && schema.length > 0) continue;
+
+		changes.push(`${key}: synthesized schema from ${String(mappingKeys.length)} mapping keys`);
+		parameters[key] = {
+			...mapper,
+			schema: mappingKeys.map((id) => ({
+				id,
+				displayName: id,
+				required: false,
+				defaultMatch: false,
+				display: true,
+				type: 'string',
+				canBeUsedToMatch: true,
+			})),
+		};
+	}
+	return changes;
+}
+
+/**
+ * Compact per-node summary of Phase-1.5 pinned outputs for the runtime mock
+ * prompt — HTTP mocks must stay consistent with pinned stored state (same
+ * entities/timestamps), else "stored matches current" scenarios can never pass.
+ */
+function summarizePinnedOutputs(pinData: IPinData | undefined): string | undefined {
+	if (!pinData) return undefined;
+	const lines: string[] = [];
+	for (const [nodeName, items] of Object.entries(pinData)) {
+		// Guaranteed-pin placeholders ({json:{}}) are execution guards, not
+		// scenario data — presenting them to the mock LLM as authoritative
+		// facts would bias HTTP mocks toward empty data exactly in the runs
+		// where pin generation under-delivered.
+		const meaningful = items.filter(
+			(item) => Object.keys(item.json ?? {}).length > 0 || item.binary !== undefined,
+		);
+		if (meaningful.length === 0) continue;
+		let json = '';
+		try {
+			json = JSON.stringify(meaningful);
+		} catch {
+			continue;
+		}
+		if (json.length > 1500) json = json.slice(0, 1500) + '…';
+		lines.push(`- ${nodeName}: ${json}`);
+	}
+	return lines.length > 0 ? lines.join('\n') : undefined;
 }
 
 function collectConfigIssueErrors(nodeResults: Record<string, InstanceAiEvalNodeResult>): string[] {

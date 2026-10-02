@@ -1,5 +1,5 @@
 import {
-	ApplicationError,
+	NodeOperationError,
 	type ILoadOptionsFunctions,
 	type INodeListSearchResult,
 } from 'n8n-workflow';
@@ -138,7 +138,7 @@ describe('AWS Cognito Functions', () => {
 				getNode: vi.fn(),
 			} as unknown as ILoadOptionsFunctions;
 
-			await expect(searchGroups.call(mockContext)).rejects.toThrow(ApplicationError);
+			await expect(searchGroups.call(mockContext)).rejects.toThrow(NodeOperationError);
 		});
 	});
 

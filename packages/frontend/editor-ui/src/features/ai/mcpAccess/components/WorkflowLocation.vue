@@ -2,9 +2,9 @@
 import { computed } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { N8nLink, N8nText } from '@n8n/design-system';
-import { VIEWS } from '@/app/constants';
-import router from '@/app/router';
-import type { ProjectSharingData } from '@/features/collaboration/projects/projects.types';
+import { VIEWS } from '@n8n/frontend-constants/views';
+import type { ProjectSharingData } from 'n8n-workflow';
+import { useRouter } from 'vue-router';
 
 type ParentFolder = {
 	id: string;
@@ -30,6 +30,7 @@ const props = withDefaults(
 );
 
 const i18n = useI18n();
+const router = useRouter();
 
 const projectName = computed(() => {
 	if (props.homeProject?.type === 'personal') {

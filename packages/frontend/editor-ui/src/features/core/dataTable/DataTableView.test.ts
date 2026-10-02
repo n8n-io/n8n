@@ -1,10 +1,11 @@
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore, waitAllPromises } from '@/__tests__/utils';
-import { fireEvent } from '@testing-library/vue';
+import { fireEvent, waitFor } from '@testing-library/vue';
 import { useProjectPages } from '@/features/collaboration/projects/composables/useProjectPages';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import DataTableView from '@/features/core/dataTable/DataTableView.vue';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
+import { promotionEventBus } from '@/features/integrations/promotions.ee/promotions.eventBus';
 import { STORES } from '@n8n/stores';
 import { createTestingPinia } from '@pinia/testing';
 import { createRouter, createWebHistory } from 'vue-router';
@@ -34,9 +35,10 @@ vi.mock('@n8n/i18n', async (importOriginal) => {
 			baseText: vi.fn((key: string) => {
 				if (key === 'dataTable.dataTables') return 'Data Tables';
 				if (key === 'projects.menu.personal') return 'Personal';
-				if (key === 'dataTable.empty.label') return 'No data tables';
-				if (key === 'dataTable.empty.description') return 'No data tables description';
-				if (key === 'dataTable.empty.button.label') return 'Create data table';
+				if (key === 'dataTable.empty.heading') return 'Create your first data table';
+				if (key === 'dataTable.empty.description')
+					return 'Add your first data table to get started';
+				if (key === 'dataTable.add.button.label') return 'Create data table';
 				if (key === 'generic.rename') return 'Rename';
 				if (key === 'generic.delete') return 'Delete';
 				if (key === 'generic.clear') return 'Clear';
@@ -55,7 +57,7 @@ vi.mock('@n8n/i18n', async (importOriginal) => {
 const mockToast = {
 	showError: vi.fn(),
 };
-vi.mock('@/app/composables/useToast', () => ({
+vi.mock('@n8n/composables/useToast', () => ({
 	useToast: vi.fn(() => mockToast),
 }));
 
@@ -70,7 +72,8 @@ const mockDebounce = {
 	callDebounced: vi.fn((fn) => fn()),
 	debounce: vi.fn(),
 };
-vi.mock('@/app/composables/useDebounce', () => ({
+vi.mock('@n8n/composables/useDebounce', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@n8n/composables/useDebounce')>()),
 	useDebounce: vi.fn(() => mockDebounce),
 }));
 
@@ -188,6 +191,18 @@ describe('DataTableView', () => {
 
 			expect(mockToast.showError).toHaveBeenCalledWith(error, 'Error loading data tables');
 		});
+
+		it('should reload the data tables after a package was applied', async () => {
+			renderComponent({ pinia });
+			await waitAllPromises();
+			const fetches = dataTableStore.fetchDataTables.mock.calls.length;
+
+			promotionEventBus.emit('applied', { projectId: 'test-project' });
+
+			await waitFor(() =>
+				expect(dataTableStore.fetchDataTables.mock.calls.length).toBeGreaterThan(fetches),
+			);
+		});
 	});
 
 	describe('empty state', () => {
@@ -206,14 +221,17 @@ describe('DataTableView', () => {
 			const { getByTestId } = renderComponent({ pinia });
 			await waitAllPromises();
 
-			expect(getByTestId('empty-data-table-action-box')).toBeInTheDocument();
+			const emptyBox = getByTestId('empty-resources-list');
+			expect(emptyBox).toBeInTheDocument();
+			expect(emptyBox).toHaveTextContent('Create your first data table');
+			expect(emptyBox).toHaveTextContent('Create data table');
 		});
 
 		it('should enable the create button when user can create and env is not read-only', async () => {
 			const { getByTestId } = renderComponent({ pinia });
 			await waitAllPromises();
 
-			const button = getByTestId('empty-data-table-action-box').querySelector('button');
+			const button = getByTestId('empty-resources-list').querySelector('button');
 			expect(button).not.toBeDisabled();
 		});
 
@@ -239,7 +257,7 @@ describe('DataTableView', () => {
 			const { getByTestId } = renderWithInlineTooltip();
 			await waitAllPromises();
 
-			const box = getByTestId('empty-data-table-action-box');
+			const box = getByTestId('empty-resources-list');
 			expect(box.querySelector('button')).toBeDisabled();
 			expect(box).toHaveTextContent('readOnlyEnv.cantAdd.any');
 		});
@@ -252,7 +270,7 @@ describe('DataTableView', () => {
 			const { getByTestId } = renderWithInlineTooltip();
 			await waitAllPromises();
 
-			const box = getByTestId('empty-data-table-action-box');
+			const box = getByTestId('empty-resources-list');
 			expect(box.querySelector('button')).toBeDisabled();
 			expect(box).toHaveTextContent('dataTable.empty.button.disabled.tooltip');
 		});
@@ -267,7 +285,7 @@ describe('DataTableView', () => {
 			const { getByTestId } = renderComponent({ pinia });
 			await waitAllPromises();
 
-			const emptyBox = getByTestId('empty-data-table-action-box');
+			const emptyBox = getByTestId('empty-resources-list');
 			expect(emptyBox).toBeInTheDocument();
 		});
 	});

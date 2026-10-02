@@ -7,6 +7,7 @@ import type {
 
 import {
 	CANNED_METRICS,
+	getCanonicalEvaluationName,
 	LLM_JUDGE_METRIC_KEYS,
 	LM_SUBNODE_TYPE_TO_CHATHUB_PROVIDER,
 	type CannedMetricKey,
@@ -60,7 +61,7 @@ export function buildEvaluationConfigDto(input: BuildDtoInput): BuildDtoResult {
 	return {
 		ok: true,
 		dto: {
-			name: `Evaluation: ${input.workflowName}`.slice(0, 128),
+			name: getCanonicalEvaluationName(input.workflowName),
 			startNodeName: input.startNodeName,
 			endNodeName: input.endNodeName,
 			metrics,

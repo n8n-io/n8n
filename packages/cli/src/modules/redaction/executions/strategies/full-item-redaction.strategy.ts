@@ -28,9 +28,11 @@ export class FullItemRedactionStrategy implements IExecutionRedactionStrategy {
 
 		const reason = context.enforceDynCredRedaction
 			? 'dynamic_credentials'
-			: context.redactExecutionData === true
-				? 'user_requested'
-				: 'workflow_redaction_policy';
+			: context.enforceCredentialUsabilityRedaction
+				? 'credential_inaccessible'
+				: context.redactExecutionData === true
+					? 'user_requested'
+					: 'workflow_redaction_policy';
 
 		for (const nodeName of Object.keys(runData)) {
 			for (const taskData of runData[nodeName]) {
@@ -51,6 +53,22 @@ export class FullItemRedactionStrategy implements IExecutionRedactionStrategy {
 		if (resultData.error) {
 			resultData.redactedError = this.redactError(resultData.error);
 			delete resultData.error;
+		}
+
+		const executionData = execution.data.executionData;
+
+		if (executionData) {
+			for (const executeData of executionData.nodeExecutionStack ?? []) {
+				if (executeData.data) {
+					this.redactConnections(executeData.data, reason);
+				}
+			}
+
+			for (const runIndexMap of Object.values(executionData.waitingExecution ?? {})) {
+				for (const waitingExecution of Object.values(runIndexMap)) {
+					this.redactConnections(waitingExecution, reason);
+				}
+			}
 		}
 
 		execution.data.redactionInfo = {

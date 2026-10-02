@@ -6,10 +6,16 @@ import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import useEnvironmentsStore from '@/features/settings/environments.ee/environments.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
+import { ToolConfigCredentialSelectedKey } from '@/app/constants';
+import { createWorkflowDocumentId } from '@/app/stores/workflowDocument.store';
+import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { useAiGatewayStore } from '@/app/stores/aiGateway.store';
 import NodeToolSettingsContent from '../NodeToolSettingsContent.vue';
 import { NodeHelpers, type INode, type INodeTypeDescription } from 'n8n-workflow';
 import { waitFor } from '@testing-library/vue';
+import userEvent from '@testing-library/user-event';
+import { defineComponent, inject, type PropType } from 'vue';
 
 vi.mock('@n8n/i18n', () => {
 	const i18n = {
@@ -21,6 +27,9 @@ vi.mock('@n8n/i18n', () => {
 			placeholder: (parameter: { placeholder?: string }) => parameter.placeholder,
 			hint: (parameter: { hint?: string }) => parameter.hint,
 			optionsOptionName: (parameter: { name: string }) => parameter.name,
+			// Real ParameterInput renders option dropdowns via this getter; the base
+			// i18n instance falls back to the option's own name, so mirror that here.
+			optionsOptionDisplayName: (_parameter: unknown, option: { name: string }) => option.name,
 			optionsOptionDescription: (parameter: { description?: string }) => parameter.description,
 			collectionOptionName: (parameter: { displayName: string }) => parameter.displayName,
 			credentialsSelectAuthDisplayName: (parameter: { displayName: string }) =>
@@ -121,7 +130,8 @@ const renderComponent = createComponentRenderer(NodeToolSettingsContent, {
 	global: {
 		stubs: {
 			ParameterInputList: {
-				template: '<div data-test-id="parameter-input-list"><slot /></div>',
+				template:
+					'<div data-test-id="parameter-input-list">{{ JSON.stringify(parameters) }}<slot /></div>',
 				props: ['parameters', 'nodeValues', 'isReadOnly', 'hideDelete', 'node', 'path'],
 			},
 			NodeCredentials: {
@@ -155,10 +165,56 @@ describe('NodeToolSettingsContent', () => {
 		credentialsStore.allCredentials = [];
 		credentialsStore.setCredentials = vi.fn();
 		credentialsStore.fetchCredentialTypes = vi.fn().mockResolvedValue(undefined);
-		credentialsStore.fetchAllCredentialsForWorkflow = vi.fn().mockResolvedValue(undefined);
+		credentialsStore.fetchUsableCredentials = vi.fn().mockResolvedValue(undefined);
 		projectsStore.personalProject = { id: 'personal-project', name: 'Personal' } as never;
 		projectsStore.setCurrentProject = vi.fn();
 		projectsStore.fetchAndSetProject = vi.fn().mockResolvedValue(undefined);
+	});
+
+	it('should hide resource and operation options listed in hiddenOperations', () => {
+		const nodeTypeWithHiddenOptions: INodeTypeDescription = {
+			...MOCK_NODE_TYPE,
+			properties: [
+				{
+					displayName: 'Resource',
+					name: 'resource',
+					type: 'options',
+					options: [
+						{ name: 'Row', value: 'row' },
+						{ name: 'Custom API Call', value: '__CUSTOM_API_CALL__' },
+					],
+					default: 'row',
+					noDataExpression: true,
+				},
+				{
+					displayName: 'Operation',
+					name: 'operation',
+					type: 'options',
+					options: [
+						{ name: 'Create', value: 'create' },
+						{ name: 'Send and Wait', value: 'sendAndWait' },
+					],
+					default: 'sendAndWait',
+					noDataExpression: true,
+				},
+			],
+		};
+		nodeTypesStore.getNodeType = vi.fn().mockReturnValue(nodeTypeWithHiddenOptions);
+
+		const { getAllByTestId } = renderComponent({
+			props: {
+				initialNode: createMockNode({ parameters: {} }),
+				hiddenOperations: ['sendAndWait', '__CUSTOM_API_CALL__'],
+			},
+		});
+
+		const renderedParameters = getAllByTestId('parameter-input-list')
+			.map((element) => element.textContent ?? '')
+			.join('');
+		expect(renderedParameters).toContain('"value":"row"');
+		expect(renderedParameters).toContain('create');
+		expect(renderedParameters).not.toContain('sendAndWait');
+		expect(renderedParameters).not.toContain('__CUSTOM_API_CALL__');
 	});
 
 	it('should hide settings tab when there are no settings', () => {
@@ -200,6 +256,25 @@ describe('NodeToolSettingsContent', () => {
 		});
 
 		expect(getAllByTestId('parameter-input-list').length).toBeGreaterThan(0);
+	});
+
+	it('syncs parameter changes to the scoped NDV when enabled', async () => {
+		const initialNode = createMockNode();
+		const { rerender } = renderComponent({
+			props: { initialNode, syncNodeToNdv: true },
+		});
+		const toolNdvStore = useNDVStore(createWorkflowDocumentId('node-tool-workflow'));
+
+		expect(toolNdvStore.activeNode?.parameters).toEqual(initialNode.parameters);
+
+		const updatedNode = createMockNode({
+			parameters: { ...initialNode.parameters, nameField: 'updated-value' },
+		});
+		await rerender({ initialNode: updatedNode });
+
+		await waitFor(() =>
+			expect(toolNdvStore.activeNode?.parameters).toEqual(updatedNode.parameters),
+		);
 	});
 
 	it('should render NodeCredentials inside the parameters tab', () => {
@@ -272,7 +347,39 @@ describe('NodeToolSettingsContent', () => {
 
 		await waitFor(() => {
 			expect(credentialsStore.fetchCredentialTypes).toHaveBeenCalledWith(false);
-			expect(credentialsStore.fetchAllCredentialsForWorkflow).toHaveBeenCalledWith({
+			expect(credentialsStore.fetchUsableCredentials).toHaveBeenCalledWith({
+				projectId: 'personal-project',
+			});
+		});
+	});
+
+	it('falls back to the personal project when the provided project id is empty', async () => {
+		// useAgentScopeProjectId resolves to '' before project state has loaded on
+		// first open; the empty string must not suppress the credential fetch.
+		renderComponent({
+			props: { initialNode: createMockNode(), projectId: '' },
+		});
+
+		await waitFor(() => {
+			expect(credentialsStore.fetchUsableCredentials).toHaveBeenCalledWith({
+				projectId: 'personal-project',
+			});
+		});
+	});
+
+	it('loads the personal project when the id is empty and it is not yet available', async () => {
+		projectsStore.personalProject = null as never;
+		projectsStore.getPersonalProject = vi.fn().mockImplementation(() => {
+			projectsStore.personalProject = { id: 'personal-project', name: 'Personal' } as never;
+		});
+
+		renderComponent({
+			props: { initialNode: createMockNode(), projectId: '' },
+		});
+
+		await waitFor(() => {
+			expect(projectsStore.getPersonalProject).toHaveBeenCalled();
+			expect(credentialsStore.fetchUsableCredentials).toHaveBeenCalledWith({
 				projectId: 'personal-project',
 			});
 		});
@@ -296,11 +403,13 @@ describe('NodeToolSettingsContent', () => {
 		});
 
 		await waitFor(() => {
-			expect(credentialsStore.setCredentials).toHaveBeenCalledWith([]);
-			expect(credentialsStore.fetchAllCredentialsForWorkflow).toHaveBeenCalledWith({
+			expect(credentialsStore.fetchUsableCredentials).toHaveBeenCalledWith({
 				projectId: 'personal-project',
 			});
 		});
+		// The refetch REPLACES the store on resolve; clearing it up front would
+		// blank every credential-driven control still visible behind the modal.
+		expect(credentialsStore.setCredentials).not.toHaveBeenCalledWith([]);
 	});
 
 	it('fetches workflow-scoped credentials for the provided project even when the shared store is already populated', async () => {
@@ -321,11 +430,11 @@ describe('NodeToolSettingsContent', () => {
 		});
 
 		await waitFor(() => {
-			expect(credentialsStore.setCredentials).toHaveBeenCalledWith([]);
-			expect(credentialsStore.fetchAllCredentialsForWorkflow).toHaveBeenCalledWith({
+			expect(credentialsStore.fetchUsableCredentials).toHaveBeenCalledWith({
 				projectId: 'team-project',
 			});
 		});
+		expect(credentialsStore.setCredentials).not.toHaveBeenCalledWith([]);
 	});
 
 	describe('makeUniqueName', () => {
@@ -422,6 +531,123 @@ describe('NodeToolSettingsContent', () => {
 
 			vi.restoreAllMocks();
 		});
+
+		it('applies credentials from ToolConfigCredentialSelectedKey onto the local node', async () => {
+			const httpLikeNodeType: INodeTypeDescription = {
+				...MOCK_NODE_TYPE,
+				properties: [
+					{
+						displayName: 'Name Field',
+						name: 'nameField',
+						type: 'string',
+						default: '',
+					},
+					{
+						displayName: 'Authentication',
+						name: 'authentication',
+						type: 'options',
+						options: [
+							{ name: 'None', value: 'none' },
+							{ name: 'Generic Credential Type', value: 'genericCredentialType' },
+						],
+						default: 'none',
+					},
+					{
+						displayName: 'Generic Auth Type',
+						name: 'genericAuthType',
+						type: 'credentialsSelect',
+						default: '',
+						displayOptions: {
+							show: { authentication: ['genericCredentialType'] },
+						},
+					},
+				],
+				// Non-empty credentials array is required for getNodeCredentialIssues to
+				// evaluate generic auth (HTTP Request declares httpSslAuth the same way).
+				credentials: [
+					{
+						name: 'httpSslAuth',
+						required: true,
+						displayOptions: { show: { provideSslCertificates: [true] } },
+					},
+				],
+			};
+			nodeTypesStore.getNodeType = vi.fn().mockReturnValue(httpLikeNodeType);
+			credentialsStore.getCredentialTypeByName = vi.fn().mockReturnValue({
+				name: 'httpHeaderAuth',
+				displayName: 'Header Auth',
+			});
+
+			const toolName = 'HTTP Tool';
+			const ParameterInputListStub = defineComponent({
+				props: {
+					node: { type: Object as PropType<INode | null>, default: null },
+				},
+				setup() {
+					const onCredentialSelected = inject(ToolConfigCredentialSelectedKey, undefined);
+					return { onCredentialSelected };
+				},
+				template: `
+					<div data-test-id="parameter-input-list">
+						<slot />
+						<button
+							data-test-id="simulate-credential-selected"
+							@click="onCredentialSelected?.({
+								name: node?.name ?? '',
+								properties: {
+									credentials: { httpHeaderAuth: { id: 'cred-1', name: 'Darwin Webhook Auth' } },
+								},
+							})"
+						/>
+					</div>
+				`,
+			});
+
+			const renderWithCredentialSelect = createComponentRenderer(NodeToolSettingsContent, {
+				global: {
+					stubs: {
+						ParameterInputList: ParameterInputListStub,
+						NodeCredentials: {
+							template: '<div data-test-id="node-credentials" />',
+							props: ['node', 'readonly', 'showAll', 'hideIssues'],
+						},
+					},
+				},
+			});
+
+			const { emitted, getAllByTestId } = renderWithCredentialSelect({
+				props: {
+					initialNode: createMockNode({
+						name: toolName,
+						parameters: {
+							nameField: 'test',
+							authentication: 'genericCredentialType',
+							genericAuthType: 'httpHeaderAuth',
+						},
+					}),
+				},
+			});
+
+			await waitFor(() => {
+				const validEmissions = emitted('update:valid') as boolean[][];
+				expect(validEmissions.at(-1)?.[0]).toBe(false);
+			});
+
+			// Params + settings tabs each render ParameterInputList.
+			getAllByTestId('simulate-credential-selected')[0].click();
+
+			await waitFor(() => {
+				const validEmissions = emitted('update:valid') as boolean[][];
+				expect(validEmissions.at(-1)?.[0]).toBe(true);
+
+				const nodeEmissions = emitted('update:node') as INode[][];
+				const latestNode = nodeEmissions.at(-1)?.[0];
+				expect(latestNode?.credentials?.httpHeaderAuth).toEqual({
+					id: 'cred-1',
+					name: 'Darwin Webhook Auth',
+				});
+			});
+		});
 	});
 
 	describe('customTelemetryTags', () => {
@@ -476,6 +702,208 @@ describe('NodeToolSettingsContent', () => {
 				const lastEmission = nameEmissions[nameEmissions.length - 1];
 				expect(lastEmission[0]).toBe('Second Tool');
 			});
+		});
+	});
+
+	describe('dependent parameter reset', () => {
+		// Node type whose operation options depend on the selected resource.
+		const RESOURCE_DEPENDENT_NODE_TYPE: INodeTypeDescription = {
+			...MOCK_NODE_TYPE,
+			properties: [
+				{
+					displayName: 'Resource',
+					name: 'resource',
+					type: 'options',
+					options: [
+						{ name: 'Contact', value: 'contact' },
+						{ name: 'Deal', value: 'deal' },
+					],
+					default: 'contact',
+					noDataExpression: true,
+				},
+				{
+					displayName: 'Operation',
+					name: 'operation',
+					type: 'options',
+					displayOptions: { show: { resource: ['contact'] } },
+					options: [
+						{ name: 'Create', value: 'create' },
+						{ name: 'Get', value: 'get' },
+					],
+					default: 'create',
+					noDataExpression: true,
+				},
+				{
+					displayName: 'Operation',
+					name: 'operation',
+					type: 'options',
+					displayOptions: { show: { resource: ['deal'] } },
+					options: [
+						{ name: 'Close', value: 'close' },
+						{ name: 'Reopen', value: 'reopen' },
+					],
+					default: 'close',
+					noDataExpression: true,
+				},
+			],
+		};
+
+		const renderWithEmittingList = createComponentRenderer(NodeToolSettingsContent, {
+			global: {
+				stubs: {
+					ParameterInputList: defineComponent({
+						emits: ['value-changed'],
+						template: `
+							<div data-test-id="parameter-input-list">
+								<slot />
+								<button
+									data-test-id="change-resource"
+									@click="$emit('value-changed', { name: 'resource', value: 'deal' })"
+								/>
+							</div>
+						`,
+					}),
+					NodeCredentials: {
+						template: '<div data-test-id="node-credentials" />',
+						props: ['node', 'readonly', 'showAll', 'hideIssues'],
+					},
+				},
+			},
+		});
+
+		it('resets a stale operation to the new resource default when resource changes', async () => {
+			nodeTypesStore.getNodeType = vi.fn().mockReturnValue(RESOURCE_DEPENDENT_NODE_TYPE);
+
+			const { emitted, getAllByTestId } = renderWithEmittingList({
+				props: {
+					initialNode: createMockNode({
+						name: 'My Tool',
+						parameters: { resource: 'contact', operation: 'get' },
+					}),
+				},
+			});
+
+			getAllByTestId('change-resource')[0].click();
+
+			await waitFor(() => {
+				const nodeEmissions = emitted('update:node') as INode[][];
+				const latest = nodeEmissions.at(-1)?.[0];
+				expect(latest?.parameters.resource).toBe('deal');
+				// `get` is not valid for the `deal` resource, so it resets to `close`.
+				expect(latest?.parameters.operation).toBe('close');
+			});
+		});
+	});
+
+	describe('AI gateway action filtering (integration)', () => {
+		// The standalone tool-config form renders ParameterInputList with the
+		// default empty path root, so the top-level resource/operation params
+		// arrive at ParameterInput as bare `resource`/`operation`. This exercises the
+		// REAL ParameterInputList + ParameterInput + useAiGatewayStore path end to
+		// end, so the gateway filter that hides unsupported actions is proven, not
+		// stubbed away.
+		const GATEWAY_NODE_TYPE: INodeTypeDescription = {
+			...MOCK_NODE_TYPE,
+			properties: [
+				{
+					displayName: 'Resource',
+					name: 'resource',
+					type: 'options',
+					options: [
+						{ name: 'Record', value: 'record' },
+						{ name: 'Base', value: 'base' },
+					],
+					default: 'record',
+					noDataExpression: true,
+				},
+				{
+					displayName: 'Operation',
+					name: 'operation',
+					type: 'options',
+					displayOptions: { show: { resource: ['record'] } },
+					options: [
+						{ name: 'Create', value: 'create' },
+						{ name: 'Delete', value: 'delete' },
+					],
+					default: 'create',
+					noDataExpression: true,
+				},
+			],
+			credentials: [{ name: 'testApi', required: true }],
+		};
+
+		// A node whose credential is minted by the gateway. The store's
+		// isActionOptionVisible only filters when such a credential is present.
+		const managedNode = () =>
+			createMockNode({
+				parameters: { resource: 'record', operation: 'create' },
+				credentials: {
+					testApi: { id: null, name: 'Gateway credits', __aiGatewayManaged: true },
+				},
+			});
+
+		const renderWithRealParameterList = createComponentRenderer(NodeToolSettingsContent, {
+			global: {
+				stubs: {
+					// Leave ParameterInputList (and ParameterInput) real so the gateway
+					// filter runs; only stub the credential picker, which is not the
+					// subject here and drags in extra fetch machinery.
+					NodeCredentials: {
+						template: '<div data-test-id="node-credentials" />',
+						props: ['node', 'readonly', 'showAll', 'hideIssues'],
+					},
+				},
+			},
+		});
+
+		function optionHeadlines(root: Element): string[] {
+			return Array.from(root.querySelectorAll('.list-option .option-headline')).map(
+				(el) => el.textContent?.trim() ?? '',
+			);
+		}
+
+		it('hides gateway-unsupported resource and operation options end to end', async () => {
+			nodeTypesStore.getNodeType = vi.fn().mockReturnValue(GATEWAY_NODE_TYPE);
+
+			// `base` resource and `delete` operation are unsupported by the gateway.
+			const aiGatewayStore = useAiGatewayStore();
+			aiGatewayStore.config = {
+				nodes: [],
+				credentialTypes: ['testApi'],
+				providerConfig: {},
+				supportedActions: {
+					'n8n-nodes-base.testTool': { record: ['create'] },
+				},
+			};
+
+			const { container, baseElement } = renderWithRealParameterList({
+				props: { initialNode: managedNode() },
+			});
+
+			// The params tab renders the resource select first, then the operation
+			// select (nameField is a text input with no `.select-trigger`).
+			const triggers = () =>
+				Array.from(container.querySelectorAll('.select-trigger')) as HTMLElement[];
+			await waitFor(() => expect(triggers().length).toBeGreaterThanOrEqual(2));
+
+			// Resource dropdown: `Base` is filtered out, `Record` (current value) stays.
+			await userEvent.click(triggers()[0]);
+			await waitFor(() => expect(optionHeadlines(baseElement).length).toBeGreaterThan(0));
+			let resourceOptions = optionHeadlines(baseElement);
+			expect(resourceOptions).toContain('Record');
+			expect(resourceOptions).not.toContain('Base');
+
+			// Close the resource dropdown before opening the next one.
+			await userEvent.click(triggers()[0]);
+
+			// Operation dropdown: `Delete` is filtered out, `Create` (current value) stays.
+			await userEvent.click(triggers()[1]);
+			await waitFor(() =>
+				expect(optionHeadlines(baseElement)).toEqual(expect.arrayContaining(['Create'])),
+			);
+			const operationOptions = optionHeadlines(baseElement);
+			expect(operationOptions).toContain('Create');
+			expect(operationOptions).not.toContain('Delete');
 		});
 	});
 });

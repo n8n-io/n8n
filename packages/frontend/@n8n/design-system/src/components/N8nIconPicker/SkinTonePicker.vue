@@ -4,6 +4,8 @@ import { computed, nextTick, ref } from 'vue';
 import { useI18n } from '../../composables/useI18n';
 import N8nButton from '../N8nButton';
 import N8nPopover from '../N8nPopover';
+import N8nToggle from '../N8nToggle';
+import N8nToggleGroup from '../N8nToggleGroup';
 
 defineOptions({ name: 'SkinTonePicker' });
 
@@ -42,10 +44,9 @@ defineExpose({ isOpen });
 	<N8nPopover
 		v-model:open="isOpen"
 		side="bottom"
-		align="end"
+		align="start"
+		:content-class="$style.popover"
 		:enable-scrolling="false"
-		:suppress-auto-focus="true"
-		:teleported="false"
 	>
 		<template #trigger>
 			<N8nButton
@@ -60,80 +61,40 @@ defineExpose({ isOpen });
 			</N8nButton>
 		</template>
 		<template #content>
-			<div
-				:class="$style.toneRow"
-				role="radiogroup"
+			<N8nToggleGroup
+				:model-value="model"
+				variant="ghost"
 				:aria-label="t('iconPicker.skinTone.tooltip')"
 				data-test-id="emoji-skin-tone-popover"
 			>
-				<button
-					v-for="tone in tones"
-					:key="tone.index"
-					:class="[$style.toneSwatch, { [$style.active]: model === tone.index }]"
-					type="button"
-					role="radio"
-					:aria-checked="model === tone.index"
-					:aria-label="t(tone.labelKey)"
-					:title="t(tone.labelKey)"
-					:data-test-id="`skin-tone-${tone.index}`"
-					@click="selectTone(tone.index)"
-				>
-					<span :class="$style.toneEmoji">{{ tone.emoji }}</span>
-				</button>
-			</div>
+				<template #default="slotProps">
+					<N8nToggle
+						v-for="tone in tones"
+						:key="tone.index"
+						:value="tone.index"
+						:label="t(tone.labelKey)"
+						:data-test-id="`skin-tone-${tone.index}`"
+						:show-tooltip="false"
+						v-bind="slotProps"
+						@click="selectTone(tone.index)"
+					>
+						<span :class="$style.toneEmoji">{{ tone.emoji }}</span>
+					</N8nToggle>
+				</template>
+			</N8nToggleGroup>
 		</template>
 	</N8nPopover>
 </template>
 
 <style module lang="scss">
-.triggerButton {
-	flex-shrink: 0;
+.popover {
+	padding: var(--spacing--4xs);
 }
-
 .triggerEmoji {
 	font-size: var(--font-size--lg);
-	line-height: 1;
-	font-family:
-		'Segoe UI Emoji', 'Segoe UI Symbol', 'Segoe UI', 'Apple Color Emoji', 'Twemoji Mozilla',
-		'Noto Color Emoji', 'Android Emoji', sans-serif;
-}
-
-.toneRow {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--4xs);
-	padding: var(--spacing--2xs);
-}
-
-.toneSwatch {
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	width: var(--icon-picker--skin-tone-swatch--size, 34px);
-	height: var(--icon-picker--skin-tone-swatch--size, 34px);
-	padding: 0;
-	border: var(--border-width) solid transparent;
-	border-radius: var(--radius--sm);
-	cursor: pointer;
-	background: none;
-	transition:
-		border-color 0.15s ease,
-		background-color 0.15s ease;
-
-	&:hover {
-		background-color: var(--color--background--shade-1);
-	}
-
-	&.active {
-		border-color: var(--color--primary);
-	}
 }
 
 .toneEmoji {
 	font-size: var(--font-size--xl);
-	line-height: 1;
-	font-family:
-		'Segoe UI Emoji', 'Segoe UI Symbol', 'Segoe UI', 'Apple Color Emoji', 'Twemoji Mozilla',
-		'Noto Color Emoji', 'Android Emoji', sans-serif;
 }
 </style>

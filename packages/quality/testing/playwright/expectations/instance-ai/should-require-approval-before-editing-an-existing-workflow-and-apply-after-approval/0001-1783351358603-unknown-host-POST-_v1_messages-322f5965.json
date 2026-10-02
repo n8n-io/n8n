@@ -1,0 +1,102 @@
+{
+  "httpRequest": {
+    "method": "POST",
+    "path": "/v1/messages",
+    "body": {
+      "type": "REGEX",
+      "regex": "[\\s\\S]*You are the n8n Instance Agent — an AI assistant embedded in an n8n instance\\. Yo[\\s\\S]*\"role\"\\s*:\\s*\"user\"[\\s\\S]{0,15000}\"type\"\\s*:\\s*\"tool_result\"[\\s\\S]{0,100000}\\[\\{\\\\\"type\\\\\":\\\\\"text\\\\\",\\\\\"text\\\\\":\\\\\"\\[Skill: \\\\\\\\\\\\\"workflow-builder\\\\\\\\\\\\\"\\]\\\\\\\\n\\[Skill directory: \\\\\\\\\\\\\"/home/user/workspace/skills/workflow-builder\\\\\\\\[\\s\\S]*"
+    }
+  },
+  "httpResponse": {
+    "statusCode": 200,
+    "reasonPhrase": "OK",
+    "headers": {
+      "vary": [
+        "Accept-Encoding"
+      ],
+      "traceresponse": [
+        "00-3cd36cccf1faa72c93fc505386beab6e-8d9165b12462b155-01"
+      ],
+      "strict-transport-security": [
+        "max-age=31536000; includeSubDomains; preload"
+      ],
+      "request-id": [
+        "req_011Ccm2ouSvxbZefYz5GwweN"
+      ],
+      "cf-cache-status": [
+        "DYNAMIC"
+      ],
+      "anthropic-ratelimit-tokens-reset": [
+        "2026-07-06T15:21:54Z"
+      ],
+      "anthropic-ratelimit-tokens-remaining": [
+        "17990000"
+      ],
+      "anthropic-ratelimit-tokens-limit": [
+        "18000000"
+      ],
+      "anthropic-ratelimit-requests-reset": [
+        "2026-07-06T15:21:54Z"
+      ],
+      "anthropic-ratelimit-requests-remaining": [
+        "19999"
+      ],
+      "anthropic-ratelimit-requests-limit": [
+        "20000"
+      ],
+      "anthropic-ratelimit-output-tokens-reset": [
+        "2026-07-06T15:21:54Z"
+      ],
+      "anthropic-ratelimit-output-tokens-remaining": [
+        "3000000"
+      ],
+      "anthropic-ratelimit-output-tokens-limit": [
+        "3000000"
+      ],
+      "anthropic-ratelimit-input-tokens-reset": [
+        "2026-07-06T15:21:54Z"
+      ],
+      "anthropic-ratelimit-input-tokens-remaining": [
+        "14990000"
+      ],
+      "anthropic-ratelimit-input-tokens-limit": [
+        "15000000"
+      ],
+      "X-Robots-Tag": [
+        "none"
+      ],
+      "Server": [
+        "cloudflare"
+      ],
+      "Date": [
+        "Mon, 06 Jul 2026 15:21:55 GMT"
+      ],
+      "Content-Type": [
+        "text/event-stream; charset=utf-8"
+      ],
+      "Content-Security-Policy": [
+        "default-src 'none'; frame-ancestors 'none'"
+      ],
+      "Cache-Control": [
+        "no-cache"
+      ],
+      "CF-RAY": [
+        "a16f9a10a8d3aa4b-BCN"
+      ]
+    },
+    "body": {
+      "type": "STRING",
+      "string": "event: message_start\ndata: {\"type\":\"message_start\",\"message\":{\"model\":\"claude-sonnet-4-6\",\"id\":\"msg_01Met5CyEK5561kLkL1FqbD9\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[],\"stop_reason\":null,\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":1,\"cache_creation_input_tokens\":8819,\"cache_read_input_tokens\":17578,\"cache_creation\":{\"ephemeral_5m_input_tokens\":8819,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":4,\"service_tier\":\"standard\",\"inference_geo\":\"global\"}}              }\n\nevent: content_block_start\ndata: {\"type\":\"content_block_start\",\"index\":0,\"content_block\":{\"type\":\"text\",\"text\":\"\"}         }\n\nevent: ping\ndata: {\"type\": \"ping\"}\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"text_delta\",\"text\":\"Now let me get\"}            }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"text_delta\",\"text\":\" the current workflow code so I can make the targeted edit.\"}              }\n\nevent: content_block_stop\ndata: {\"type\":\"content_block_stop\",\"index\":0   }\n\nevent: content_block_start\ndata: {\"type\":\"content_block_start\",\"index\":1,\"content_block\":{\"type\":\"tool_use\",\"id\":\"toolu_01657zm4sDnJbPbVQBgj9Rwn\",\"name\":\"workflows\",\"input\":{},\"caller\":{\"type\":\"direct\"}}          }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":1,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\"\"}         }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":1,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\"{\\\"action\\\": \\\"\"}        }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":1,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\"get-\"}   }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":1,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\"as-cod\"}  }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":1,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\"e\\\"\"}  }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":1,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\", \\\"w\"}        }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":1,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\"orkfl\"}        }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":1,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\"owId\\\": \\\"hC39\"}             }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":1,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\"7S83USUp95\"}          }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":1,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\"97\\\"}\"}         }\n\nevent: content_block_stop\ndata: {\"type\":\"content_block_stop\",\"index\":1   }\n\nevent: message_delta\ndata: {\"type\":\"message_delta\",\"delta\":{\"stop_reason\":\"tool_use\",\"stop_sequence\":null,\"stop_details\":null},\"usage\":{\"input_tokens\":1,\"cache_creation_input_tokens\":8819,\"cache_read_input_tokens\":17578,\"output_tokens\":100,\"output_tokens_details\":{\"thinking_tokens\":0}}     }\n\nevent: message_stop\ndata: {\"type\":\"message_stop\"           }\n\n",
+      "rawBytes": "ZXZlbnQ6IG1lc3NhZ2Vfc3RhcnQKZGF0YTogeyJ0eXBlIjoibWVzc2FnZV9zdGFydCIsIm1lc3NhZ2UiOnsibW9kZWwiOiJjbGF1ZGUtc29ubmV0LTQtNiIsImlkIjoibXNnXzAxTWV0NUN5RUs1NTYxa0xrTDFGcWJEOSIsInR5cGUiOiJtZXNzYWdlIiwicm9sZSI6ImFzc2lzdGFudCIsImNvbnRlbnQiOltdLCJzdG9wX3JlYXNvbiI6bnVsbCwic3RvcF9zZXF1ZW5jZSI6bnVsbCwic3RvcF9kZXRhaWxzIjpudWxsLCJ1c2FnZSI6eyJpbnB1dF90b2tlbnMiOjEsImNhY2hlX2NyZWF0aW9uX2lucHV0X3Rva2VucyI6ODgxOSwiY2FjaGVfcmVhZF9pbnB1dF90b2tlbnMiOjE3NTc4LCJjYWNoZV9jcmVhdGlvbiI6eyJlcGhlbWVyYWxfNW1faW5wdXRfdG9rZW5zIjo4ODE5LCJlcGhlbWVyYWxfMWhfaW5wdXRfdG9rZW5zIjowfSwib3V0cHV0X3Rva2VucyI6NCwic2VydmljZV90aWVyIjoic3RhbmRhcmQiLCJpbmZlcmVuY2VfZ2VvIjoiZ2xvYmFsIn19ICAgICAgICAgICAgICB9CgpldmVudDogY29udGVudF9ibG9ja19zdGFydApkYXRhOiB7InR5cGUiOiJjb250ZW50X2Jsb2NrX3N0YXJ0IiwiaW5kZXgiOjAsImNvbnRlbnRfYmxvY2siOnsidHlwZSI6InRleHQiLCJ0ZXh0IjoiIn0gICAgICAgICB9CgpldmVudDogcGluZwpkYXRhOiB7InR5cGUiOiAicGluZyJ9CgpldmVudDogY29udGVudF9ibG9ja19kZWx0YQpkYXRhOiB7InR5cGUiOiJjb250ZW50X2Jsb2NrX2RlbHRhIiwiaW5kZXgiOjAsImRlbHRhIjp7InR5cGUiOiJ0ZXh0X2RlbHRhIiwidGV4dCI6Ik5vdyBsZXQgbWUgZ2V0In0gICAgICAgICAgICB9CgpldmVudDogY29udGVudF9ibG9ja19kZWx0YQpkYXRhOiB7InR5cGUiOiJjb250ZW50X2Jsb2NrX2RlbHRhIiwiaW5kZXgiOjAsImRlbHRhIjp7InR5cGUiOiJ0ZXh0X2RlbHRhIiwidGV4dCI6IiB0aGUgY3VycmVudCB3b3JrZmxvdyBjb2RlIHNvIEkgY2FuIG1ha2UgdGhlIHRhcmdldGVkIGVkaXQuIn0gICAgICAgICAgICAgIH0KCmV2ZW50OiBjb250ZW50X2Jsb2NrX3N0b3AKZGF0YTogeyJ0eXBlIjoiY29udGVudF9ibG9ja19zdG9wIiwiaW5kZXgiOjAgICB9CgpldmVudDogY29udGVudF9ibG9ja19zdGFydApkYXRhOiB7InR5cGUiOiJjb250ZW50X2Jsb2NrX3N0YXJ0IiwiaW5kZXgiOjEsImNvbnRlbnRfYmxvY2siOnsidHlwZSI6InRvb2xfdXNlIiwiaWQiOiJ0b29sdV8wMTY1N3ptNHNEbkpiUGJWUUJnajlSd24iLCJuYW1lIjoid29ya2Zsb3dzIiwiaW5wdXQiOnt9LCJjYWxsZXIiOnsidHlwZSI6ImRpcmVjdCJ9fSAgICAgICAgICB9CgpldmVudDogY29udGVudF9ibG9ja19kZWx0YQpkYXRhOiB7InR5cGUiOiJjb250ZW50X2Jsb2NrX2RlbHRhIiwiaW5kZXgiOjEsImRlbHRhIjp7InR5cGUiOiJpbnB1dF9qc29uX2RlbHRhIiwicGFydGlhbF9qc29uIjoiIn0gICAgICAgICB9CgpldmVudDogY29udGVudF9ibG9ja19kZWx0YQpkYXRhOiB7InR5cGUiOiJjb250ZW50X2Jsb2NrX2RlbHRhIiwiaW5kZXgiOjEsImRlbHRhIjp7InR5cGUiOiJpbnB1dF9qc29uX2RlbHRhIiwicGFydGlhbF9qc29uIjoie1wiYWN0aW9uXCI6IFwiIn0gICAgICAgIH0KCmV2ZW50OiBjb250ZW50X2Jsb2NrX2RlbHRhCmRhdGE6IHsidHlwZSI6ImNvbnRlbnRfYmxvY2tfZGVsdGEiLCJpbmRleCI6MSwiZGVsdGEiOnsidHlwZSI6ImlucHV0X2pzb25fZGVsdGEiLCJwYXJ0aWFsX2pzb24iOiJnZXQtIn0gICB9CgpldmVudDogY29udGVudF9ibG9ja19kZWx0YQpkYXRhOiB7InR5cGUiOiJjb250ZW50X2Jsb2NrX2RlbHRhIiwiaW5kZXgiOjEsImRlbHRhIjp7InR5cGUiOiJpbnB1dF9qc29uX2RlbHRhIiwicGFydGlhbF9qc29uIjoiYXMtY29kIn0gIH0KCmV2ZW50OiBjb250ZW50X2Jsb2NrX2RlbHRhCmRhdGE6IHsidHlwZSI6ImNvbnRlbnRfYmxvY2tfZGVsdGEiLCJpbmRleCI6MSwiZGVsdGEiOnsidHlwZSI6ImlucHV0X2pzb25fZGVsdGEiLCJwYXJ0aWFsX2pzb24iOiJlXCIifSAgfQoKZXZlbnQ6IGNvbnRlbnRfYmxvY2tfZGVsdGEKZGF0YTogeyJ0eXBlIjoiY29udGVudF9ibG9ja19kZWx0YSIsImluZGV4IjoxLCJkZWx0YSI6eyJ0eXBlIjoiaW5wdXRfanNvbl9kZWx0YSIsInBhcnRpYWxfanNvbiI6IiwgXCJ3In0gICAgICAgIH0KCmV2ZW50OiBjb250ZW50X2Jsb2NrX2RlbHRhCmRhdGE6IHsidHlwZSI6ImNvbnRlbnRfYmxvY2tfZGVsdGEiLCJpbmRleCI6MSwiZGVsdGEiOnsidHlwZSI6ImlucHV0X2pzb25fZGVsdGEiLCJwYXJ0aWFsX2pzb24iOiJvcmtmbCJ9ICAgICAgICB9CgpldmVudDogY29udGVudF9ibG9ja19kZWx0YQpkYXRhOiB7InR5cGUiOiJjb250ZW50X2Jsb2NrX2RlbHRhIiwiaW5kZXgiOjEsImRlbHRhIjp7InR5cGUiOiJpbnB1dF9qc29uX2RlbHRhIiwicGFydGlhbF9qc29uIjoib3dJZFwiOiBcImhDMzkifSAgICAgICAgICAgICB9CgpldmVudDogY29udGVudF9ibG9ja19kZWx0YQpkYXRhOiB7InR5cGUiOiJjb250ZW50X2Jsb2NrX2RlbHRhIiwiaW5kZXgiOjEsImRlbHRhIjp7InR5cGUiOiJpbnB1dF9qc29uX2RlbHRhIiwicGFydGlhbF9qc29uIjoiN1M4M1VTVXA5NSJ9ICAgICAgICAgIH0KCmV2ZW50OiBjb250ZW50X2Jsb2NrX2RlbHRhCmRhdGE6IHsidHlwZSI6ImNvbnRlbnRfYmxvY2tfZGVsdGEiLCJpbmRleCI6MSwiZGVsdGEiOnsidHlwZSI6ImlucHV0X2pzb25fZGVsdGEiLCJwYXJ0aWFsX2pzb24iOiI5N1wifSJ9ICAgICAgICAgfQoKZXZlbnQ6IGNvbnRlbnRfYmxvY2tfc3RvcApkYXRhOiB7InR5cGUiOiJjb250ZW50X2Jsb2NrX3N0b3AiLCJpbmRleCI6MSAgIH0KCmV2ZW50OiBtZXNzYWdlX2RlbHRhCmRhdGE6IHsidHlwZSI6Im1lc3NhZ2VfZGVsdGEiLCJkZWx0YSI6eyJzdG9wX3JlYXNvbiI6InRvb2xfdXNlIiwic3RvcF9zZXF1ZW5jZSI6bnVsbCwic3RvcF9kZXRhaWxzIjpudWxsfSwidXNhZ2UiOnsiaW5wdXRfdG9rZW5zIjoxLCJjYWNoZV9jcmVhdGlvbl9pbnB1dF90b2tlbnMiOjg4MTksImNhY2hlX3JlYWRfaW5wdXRfdG9rZW5zIjoxNzU3OCwib3V0cHV0X3Rva2VucyI6MTAwLCJvdXRwdXRfdG9rZW5zX2RldGFpbHMiOnsidGhpbmtpbmdfdG9rZW5zIjowfX0gICAgIH0KCmV2ZW50OiBtZXNzYWdlX3N0b3AKZGF0YTogeyJ0eXBlIjoibWVzc2FnZV9zdG9wIiAgICAgICAgICAgfQoK",
+      "contentType": "text/event-stream; charset=utf-8"
+    }
+  },
+  "id": "0001-1783351358603-unknown-host-POST-_v1_messages-322f5965.json",
+  "priority": 0,
+  "timeToLive": {
+    "unlimited": true
+  },
+  "times": {
+    "unlimited": true
+  }
+}

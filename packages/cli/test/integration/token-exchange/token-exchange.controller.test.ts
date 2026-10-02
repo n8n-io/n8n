@@ -3,6 +3,7 @@ import { AuthIdentityRepository, ProjectRepository, UserRepository } from '@n8n/
 import { Container } from '@n8n/di';
 import { generateKeyPairSync, randomUUID } from 'crypto';
 import jwt from 'jsonwebtoken';
+import { InstanceSettings } from 'n8n-core';
 
 import { qualifiedProviderId } from '@/modules/token-exchange/services/identity-resolution.service';
 import { TrustedKeyService } from '@/modules/token-exchange/services/trusted-key.service';
@@ -14,7 +15,6 @@ import {
 	type TokenExchangeSuccessResponse,
 } from '@/modules/token-exchange/token-exchange.types';
 import { JwtService } from '@/services/jwt.service';
-import { InstanceSettings } from 'n8n-core';
 
 import { createUser } from '../shared/db/users';
 import * as utils from '../shared/utils';
@@ -43,6 +43,7 @@ function makeExternalJwt(
 		exp: number;
 		jti: string;
 		email: string;
+		email_verified: boolean;
 		given_name: string;
 		family_name: string;
 		role: string;
@@ -58,6 +59,7 @@ function makeExternalJwt(
 			iat: now,
 			exp: now + 300,
 			jti: randomUUID(),
+			email_verified: true,
 			...overrides,
 		},
 		privateKey,
@@ -124,10 +126,6 @@ beforeEach(async () => {
 	await Container.get(TrustedKeyService).initialize();
 });
 
-afterEach(() => {
-	Container.get(TrustedKeyService).stopRefresh();
-});
-
 const postToken = (body: Record<string, string>) =>
 	testServer.authlessAgent.post('/auth/oauth/token').send(body);
 
@@ -160,7 +158,7 @@ describe('POST /auth/oauth/token', () => {
 		);
 
 		// Issued token is valid and has correct claims
-		const decoded = jwtService.verify<IssuedJwtPayload>(body.access_token);
+		const decoded = jwtService.verify<IssuedJwtPayload>('tokenExchange', body.access_token);
 		expect(decoded.iss).toBe(TOKEN_EXCHANGE_ISSUER);
 		expect(decoded.sub).toEqual(expect.any(String));
 		expect(decoded.act).toBeUndefined();
@@ -213,9 +211,11 @@ describe('POST /auth/oauth/token', () => {
 		}).expect(200);
 
 		const decodedA = jwtService.verify<IssuedJwtPayload>(
+			'tokenExchange',
 			(responseA.body as TokenExchangeSuccessResponse).access_token,
 		);
 		const decodedB = jwtService.verify<IssuedJwtPayload>(
+			'tokenExchange',
 			(responseB.body as TokenExchangeSuccessResponse).access_token,
 		);
 
@@ -258,6 +258,7 @@ describe('POST /auth/oauth/token', () => {
 		}).expect(200);
 
 		const decoded = jwtService.verify<IssuedJwtPayload>(
+			'tokenExchange',
 			(response.body as TokenExchangeSuccessResponse).access_token,
 		);
 
@@ -290,6 +291,7 @@ describe('POST /auth/oauth/token', () => {
 		}).expect(200);
 
 		const decoded = jwtService.verify<IssuedJwtPayload>(
+			'tokenExchange',
 			(response.body as TokenExchangeSuccessResponse).access_token,
 		);
 		expect(decoded.scope).toBe('workflow:read');

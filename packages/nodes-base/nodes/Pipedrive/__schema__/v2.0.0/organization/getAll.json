@@ -1,0 +1,39 @@
+{
+	"properties": {
+		"add_time": {
+			"type": "string"
+		},
+		"address": {},
+		"annual_revenue": {},
+		"custom_fields": {
+			"type": "object"
+		},
+		"employee_count": {},
+		"id": {
+			"type": "number"
+		},
+		"industry": {},
+		"is_deleted": {
+			"type": "boolean"
+		},
+		"label_ids": {
+			"items": {},
+			"type": "array"
+		},
+		"linkedin": {},
+		"name": {
+			"type": "string"
+		},
+		"owner_id": {
+			"type": "number"
+		},
+		"update_time": {
+			"type": "string"
+		},
+		"visible_to": {
+			"type": "number"
+		},
+		"website": {}
+	},
+	"type": "object"
+}

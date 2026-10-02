@@ -1,9 +1,14 @@
 import { testDb } from '@n8n/backend-test-utils';
 import { ApiKeyRepository, GLOBAL_MEMBER_ROLE, GLOBAL_OWNER_ROLE } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { getOwnerOnlyApiKeyScopes, type ApiKeyScope } from '@n8n/permissions';
-import { mock } from 'jest-mock-extended';
+import {
+	getOwnerOnlyApiKeyScopes,
+	MEMBER_API_KEY_SCOPES,
+	type ApiKeyScope,
+} from '@n8n/permissions';
 import type { InstanceSettings } from 'n8n-core';
+import { mock } from 'vitest-mock-extended';
+
 import { createAdminWithApiKey, createOwnerWithApiKey } from '@test-integration/db/users';
 
 import { JwtService } from '../jwt.service';
@@ -11,7 +16,7 @@ import { PublicApiKeyService } from '../public-api-key.service';
 
 const instanceSettings = mock<InstanceSettings>({ encryptionKey: 'test-key' });
 
-const jwtService = new JwtService(instanceSettings, mock());
+const jwtService = new JwtService(instanceSettings, mock(), mock());
 
 let apiKeyRepository: ApiKeyRepository;
 let publicApiKeyService: PublicApiKeyService;
@@ -19,7 +24,7 @@ let publicApiKeyService: PublicApiKeyService;
 describe('PublicApiKeyService', () => {
 	beforeEach(async () => {
 		await testDb.truncate(['User']);
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	beforeAll(async () => {
@@ -68,6 +73,18 @@ describe('PublicApiKeyService', () => {
 			expect(ownerOnlyScopes.some((ownerScope) => apiKeyOnDb.scopes.includes(ownerScope))).toBe(
 				false,
 			);
+		});
+
+		it('should keep every scope a member may hold', async () => {
+			const adminUser = await createAdminWithApiKey({
+				scopes: [...MEMBER_API_KEY_SCOPES, 'user:create'],
+			});
+			const apiKeyId = adminUser.apiKeys[0].id;
+
+			await publicApiKeyService.removeOwnerOnlyScopesFromApiKeys(adminUser);
+
+			const apiKeyOnDb = await apiKeyRepository.findOneByOrFail({ id: apiKeyId });
+			expect(apiKeyOnDb.scopes).toEqual(MEMBER_API_KEY_SCOPES);
 		});
 	});
 
@@ -142,6 +159,17 @@ describe('PublicApiKeyService', () => {
 			// Assert
 
 			expect(result).toBe(false);
+		});
+
+		it('should let a member grant every member scope', async () => {
+			const result = publicApiKeyService.apiKeyHasValidScopesForRole(
+				{
+					role: GLOBAL_MEMBER_ROLE,
+				},
+				MEMBER_API_KEY_SCOPES,
+			);
+
+			expect(result).toBe(true);
 		});
 	});
 });

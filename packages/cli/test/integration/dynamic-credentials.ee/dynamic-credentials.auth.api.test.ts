@@ -3,18 +3,27 @@ import { mockInstance, getPersonalProject, testDb } from '@n8n/backend-test-util
 import type { CredentialsEntity, User } from '@n8n/db';
 import { GLOBAL_OWNER_ROLE } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { mock } from 'jest-mock-extended';
+import { Cipher } from 'n8n-core';
 import nock from 'nock';
+import { mock } from 'vitest-mock-extended';
 
-import * as utils from '../shared/utils';
+import { CredentialsHelper } from '@/credentials-helper';
+import {
+	SYSTEM_RESOLVER_ID,
+	SYSTEM_RESOLVER_NAME,
+	SYSTEM_RESOLVER_TYPE,
+} from '@/modules/dynamic-credentials.ee/constants';
+import { DynamicCredentialUserEntryStorage } from '@/modules/dynamic-credentials.ee/credential-resolvers/storage/dynamic-credential-user-entry-storage';
+import type { DynamicCredentialResolver } from '@/modules/dynamic-credentials.ee/database/entities/credential-resolver';
+import { DynamicCredentialResolverRepository } from '@/modules/dynamic-credentials.ee/database/repositories/credential-resolver.repository';
+import { DynamicCredentialUserEntryRepository } from '@/modules/dynamic-credentials.ee/database/repositories/dynamic-credential-user-entry.repository';
+import { DynamicCredentialsConfig } from '@/modules/dynamic-credentials.ee/dynamic-credentials.config';
 import { DynamicCredentialResolverService } from '@/modules/dynamic-credentials.ee/services/credential-resolver.service';
 import { Telemetry } from '@/telemetry';
-import { saveCredential } from '../shared/db/credentials';
-import { DynamicCredentialsConfig } from '@/modules/dynamic-credentials.ee/dynamic-credentials.config';
-import { CredentialsHelper } from '@/credentials-helper';
 
+import { saveCredential } from '../shared/db/credentials';
 import { createUser } from '../shared/db/users';
-import type { DynamicCredentialResolver } from '@/modules/dynamic-credentials.ee/database/entities/credential-resolver';
+import * as utils from '../shared/utils';
 
 mockInstance(Telemetry);
 
@@ -271,27 +280,180 @@ describe('Dynamic Credentials API', () => {
 			});
 		});
 
-		describe("when an unrelated authenticated member targets another user's credential", () => {
-			it('should not return an authorization URL for a credential the member cannot access', async () => {
+		describe('when the identity is taken from the session cookie', () => {
+			it('should refuse to authorize against a resolver that does not resolve n8n users', async () => {
+				const response = await testServer
+					.authAgentFor(owner)
+					.post(`/credentials/${savedCredential.id}/authorize`)
+					.query({ resolverId: resolver.id, authSource: 'cookie' })
+					.expect(400);
+
+				expect(response.body.message).toContain('resolves credentials per external user');
+				expect(response.body.data).toBeUndefined();
+			});
+
+			it('should refuse to revoke against a resolver that does not resolve n8n users', async () => {
+				const response = await testServer
+					.authAgentFor(owner)
+					.delete(`/credentials/${savedCredential.id}/revoke`)
+					.query({ resolverId: resolver.id, authSource: 'cookie' })
+					.expect(400);
+
+				expect(response.body.message).toContain('resolves credentials per external user');
+			});
+
+			it('should refuse when no Authorization header is present at all', async () => {
+				await testServer
+					.authAgentFor(owner)
+					.post(`/credentials/${savedCredential.id}/authorize`)
+					.query({ resolverId: resolver.id })
+					.expect(400);
+			});
+		});
+
+		describe('when an authenticated member holds no project role on the credential', () => {
+			it('should return an authorization URL for an end-user credential', async () => {
 				const response = await testServer
 					.authAgentFor(unrelatedMember)
 					.post(`/credentials/${savedCredential.id}/authorize`)
 					.query({ resolverId: resolver.id })
-					.set('Authorization', 'Bearer test-token');
+					.set('Authorization', 'Bearer test-token')
+					.expect(200);
 
-				expect([403, 404]).toContain(response.status);
-				expect(response.body?.data).toBeUndefined();
+				expect(response.body.data).toContain('https://test.domain/oauth2/auth');
 			});
 
-			it('should not revoke a credential the member cannot access', async () => {
-				const response = await testServer
+			it('should revoke their own connection to an end-user credential', async () => {
+				await testServer
 					.authAgentFor(unrelatedMember)
 					.delete(`/credentials/${savedCredential.id}/revoke`)
 					.query({ resolverId: resolver.id })
-					.set('Authorization', 'Bearer test-token');
-
-				expect([403, 404]).toContain(response.status);
+					.set('Authorization', 'Bearer test-token')
+					.expect(204);
 			});
+		});
+
+		describe('when the credential is not an end-user credential', () => {
+			let fixedCredential: CredentialsEntity;
+
+			beforeAll(async () => {
+				// Same shape as `savedCredential`, but a fixed credential: its OAuth token
+				// lives on the shared row, so these routes must not reach it.
+				fixedCredential = await saveCredential(
+					{
+						name: 'Test Fixed Credential',
+						type: 'oAuth2Api',
+						data: {
+							clientId: 'test-client-id',
+							clientSecret: 'test-client-secret',
+							authUrl: 'https://test.domain/oauth2/auth',
+							accessTokenUrl: 'https://test.domain/oauth2/token',
+							grantType: 'authorizationCode',
+						},
+					},
+					{ user: owner, role: 'credential:owner' },
+				);
+			});
+
+			it('should refuse to authorize it, indistinguishably from an unknown id', async () => {
+				const fixed = await testServer
+					.authAgentFor(owner)
+					.post(`/credentials/${fixedCredential.id}/authorize`)
+					.query({ resolverId: resolver.id })
+					.set('Authorization', 'Bearer test-token')
+					.expect(404);
+
+				const unknown = await testServer
+					.authAgentFor(owner)
+					.post('/credentials/no-such-credential/authorize')
+					.query({ resolverId: resolver.id })
+					.set('Authorization', 'Bearer test-token')
+					.expect(404);
+
+				expect(fixed.body?.data).toBeUndefined();
+				expect(fixed.body.message).toBe(unknown.body.message);
+			});
+
+			it('should refuse to revoke it, indistinguishably from an unknown id', async () => {
+				const fixed = await testServer
+					.authAgentFor(owner)
+					.delete(`/credentials/${fixedCredential.id}/revoke`)
+					.query({ resolverId: resolver.id })
+					.set('Authorization', 'Bearer test-token')
+					.expect(404);
+
+				const unknown = await testServer
+					.authAgentFor(owner)
+					.delete('/credentials/no-such-credential/revoke')
+					.query({ resolverId: resolver.id })
+					.set('Authorization', 'Bearer test-token')
+					.expect(404);
+
+				expect(fixed.body.message).toBe(unknown.body.message);
+			});
+		});
+	});
+
+	describe('DELETE /credentials/:id/revoke with the n8n resolver', () => {
+		let userEntryRepository: DynamicCredentialUserEntryRepository;
+		let storage: DynamicCredentialUserEntryStorage;
+		let outsider: User;
+		let bystander: User;
+
+		beforeAll(async () => {
+			// The outer truncate drops the seeded system resolver, so put it back.
+			const resolverRepository = Container.get(DynamicCredentialResolverRepository);
+			await resolverRepository.save(
+				resolverRepository.create({
+					id: SYSTEM_RESOLVER_ID,
+					name: SYSTEM_RESOLVER_NAME,
+					type: SYSTEM_RESOLVER_TYPE,
+					config: await Container.get(Cipher).encryptV2({}),
+				}),
+			);
+
+			userEntryRepository = Container.get(DynamicCredentialUserEntryRepository);
+			storage = Container.get(DynamicCredentialUserEntryStorage);
+
+			// Neither user has any project relation to the owner's credential.
+			outsider = await createUser();
+			bystander = await createUser();
+		});
+
+		beforeEach(async () => {
+			await storage.setCredentialData(
+				savedCredential.id,
+				outsider.id,
+				SYSTEM_RESOLVER_ID,
+				'outsider-token',
+				{},
+			);
+			await storage.setCredentialData(
+				savedCredential.id,
+				bystander.id,
+				SYSTEM_RESOLVER_ID,
+				'bystander-token',
+				{},
+			);
+		});
+
+		it("should clear only the calling user's connection", async () => {
+			await testServer
+				.authAgentFor(outsider)
+				.delete(`/credentials/${savedCredential.id}/revoke`)
+				.query({ resolverId: SYSTEM_RESOLVER_ID, authSource: 'cookie' })
+				.expect(204);
+
+			await expect(
+				userEntryRepository.find({
+					where: { credentialId: savedCredential.id, userId: outsider.id },
+				}),
+			).resolves.toHaveLength(0);
+			await expect(
+				userEntryRepository.find({
+					where: { credentialId: savedCredential.id, userId: bystander.id },
+				}),
+			).resolves.toHaveLength(1);
 		});
 	});
 });

@@ -4,18 +4,17 @@ import {
 	NEW_VARIABLE_KEY_REGEX,
 } from '@n8n/api-types';
 import { LicenseState } from '@n8n/backend-common';
+import { UNLIMITED_LICENSE_QUOTA } from '@n8n/constants';
 import type { User, Variables } from '@n8n/db';
 import { generateNanoId, VariablesRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { hasGlobalScope, Scope } from '@n8n/permissions';
 
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { ForbiddenError, NotFoundError } from '@n8n/errors';
 import { VariableCountLimitReachedError } from '@/errors/variable-count-limit-reached.error';
 import { VariableValidationError } from '@/errors/variable-validation.error';
-import { EventService } from '@/events/event.service';
-import { CacheService } from '@/services/cache/cache.service';
+import { CacheService, EventService } from '@n8n/backend-services';
 import { ProjectService } from '@/services/project.service.ee';
 
 const projectVariableScopes: Partial<Record<Scope, Scope>> = {
@@ -181,20 +180,21 @@ export class VariablesService {
 		await this.updateCache();
 	}
 
+	async getRemainingVariableQuota(): Promise<{ limit: number; remaining: number } | null> {
+		const limit = this.licenseState.getMaxVariables();
+		if (limit === UNLIMITED_LICENSE_QUOTA) return null;
+
+		const variablesCount = (await this.getAllCached()).length;
+		return { limit, remaining: Math.max(0, limit - variablesCount) };
+	}
+
 	private async canCreateNewVariable() {
 		if (!this.licenseState.isVariablesLicensed()) {
 			throw new FeatureNotLicensedError('feat:variables');
 		}
 
-		// This defaults to -1 which is what we want if we've enabled
-		// variables via the config
-		const limit = this.licenseState.getMaxVariables();
-		if (limit === -1) {
-			return;
-		}
-
-		const variablesCount = (await this.getAllCached()).length;
-		if (limit <= variablesCount) {
+		const quota = await this.getRemainingVariableQuota();
+		if (quota && quota.remaining === 0) {
 			throw new VariableCountLimitReachedError('Variables limit reached');
 		}
 	}

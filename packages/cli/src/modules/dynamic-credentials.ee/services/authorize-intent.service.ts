@@ -2,7 +2,7 @@ import { Service } from '@n8n/di';
 import { randomBytes } from 'node:crypto';
 
 import { MAX_CSRF_AGE } from '@/oauth/types';
-import { CacheService } from '@/services/cache/cache.service';
+import { CacheService } from '@n8n/backend-services';
 
 /**
  * A pending dynamic-credential authorization, captured at credential-gate time and
@@ -15,6 +15,12 @@ export type AuthorizeIntent = {
 	resolverId: string;
 	/** Caller identity (the bearer/subject) the credential connection must be bound to. */
 	identity: string;
+	/**
+	 * The n8n user the link was issued for, when the resolver maps to one. Set only
+	 * for resolvers implementing `resolveOwningUserId`; absent for external-subject
+	 * resolvers, which leaves the link unbound (any clicker with the token proceeds).
+	 */
+	userId?: string;
 	metadata?: Record<string, unknown>;
 };
 

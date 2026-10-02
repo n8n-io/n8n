@@ -1,12 +1,12 @@
 import type { HttpRequestDefaultHeaders } from './client-default-headers';
-import type { SsrfOption } from './node-agents';
+import type { UseDefaultSsrfPolicy } from './use-default-ssrf-policy';
 
 export interface HttpRequestClientOptions {
 	/**
-	 * SSRF protection level. Defaults to the container's `SsrfProtectionService`.
-	 * Pass `'disabled'` to explicitly opt out.
+	 * Whether this client enforces the instance's outbound network policy.
+	 * Defaults to `'safe'`. Pass `'unsafe'` to explicitly opt out.
 	 */
-	ssrf?: SsrfOption;
+	useDefaultSsrfPolicy?: UseDefaultSsrfPolicy;
 
 	/**
 	 * Base URL joined to each request's relative `url`.

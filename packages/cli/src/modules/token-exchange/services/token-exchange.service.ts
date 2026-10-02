@@ -149,6 +149,7 @@ export class TokenExchangeService {
 		const user = await this.identityResolutionService.resolve(claims, resolvedKey.allowedRoles, {
 			kid: resolvedKey.kid,
 			issuer: resolvedKey.issuer,
+			requireVerifiedEmail: resolvedKey.requireVerifiedEmail,
 		});
 		return { user, subject: claims.sub, issuer: resolvedKey.issuer, kid: resolvedKey.kid };
 	}
@@ -201,7 +202,7 @@ export class TokenExchangeService {
 			jti: randomUUID(),
 		};
 
-		const accessToken = this.jwtService.sign(payload);
+		const accessToken = this.jwtService.sign('tokenExchange', payload);
 
 		return {
 			accessToken,

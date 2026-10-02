@@ -88,14 +88,10 @@ const onClaimCreditsClicked = async () => {
 	<N8nCallout v-else-if="showSuccess" theme="success" icon="circle-check" class="mt-xs">
 		<N8nText size="small">
 			{{
-				i18n.baseText('freeAi.credits.callout.success.title.part1', {
+				i18n.baseText('freeAi.credits.callout.success.title', {
 					interpolate: { credits: aiCreditsQuota },
 				})
 			}}
-		</N8nText>
-		&nbsp;
-		<N8nText size="small" :bold="true">
-			{{ i18n.baseText('freeAi.credits.callout.success.title.part2') }}
 		</N8nText>
 	</N8nCallout>
 	<div v-else />

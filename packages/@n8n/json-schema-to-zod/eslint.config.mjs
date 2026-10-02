@@ -1,12 +1,10 @@
 import { defineConfig } from 'eslint/config';
-import { nodeConfig } from '@n8n/eslint-config/node';
+import { baseConfig } from '@n8n/eslint-config/base';
 
 export default defineConfig(
-	nodeConfig,
+	baseConfig,
 	{
 		rules: {
-			'unicorn/filename-case': ['error', { case: 'kebabCase' }],
-			'@typescript-eslint/no-duplicate-imports': 'off',
 			'import-x/no-cycle': 'off',
 			complexity: 'error',
 
@@ -20,7 +18,7 @@ export default defineConfig(
 			'@typescript-eslint/no-unused-expressions': 'warn',
 			'@typescript-eslint/naming-convention': 'warn',
 			'@typescript-eslint/no-unsafe-assignment': 'warn',
-			'@typescript-eslint/ban-ts-comment': ['warn', { 'ts-ignore': true }],
+			'@typescript-eslint/ban-ts-comment': 'off',
 		},
 	},
 );

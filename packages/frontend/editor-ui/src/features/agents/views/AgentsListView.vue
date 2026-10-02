@@ -2,27 +2,31 @@
 import debounce from 'lodash/debounce';
 import { ref, computed, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { N8nActionBox } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { DEBOUNCE_TIME, DEFAULT_WORKFLOW_PAGE_SIZE, getDebounceTime } from '@/app/constants';
-import { useDebounce } from '@/app/composables/useDebounce';
+import { useToast } from '@n8n/composables/useToast';
+import { DEBOUNCE_TIME, DEFAULT_WORKFLOW_PAGE_SIZE } from '@/app/constants';
+import { getDebounceTime, useDebounce } from '@n8n/composables/useDebounce';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import { useUIStore } from '@/app/stores/ui.store';
 import ProjectHeader from '@/features/collaboration/projects/components/ProjectHeader.vue';
 import ResourcesListLayout from '@/app/components/layouts/ResourcesListLayout.vue';
-import InsightsSummary from '@/features/execution/insights/components/InsightsSummary.vue';
-import { useInsightsStore } from '@/features/execution/insights/insights.store';
+import ResourcesListEmptyState from '@/app/components/layouts/ResourcesListEmptyState.vue';
+import { InsightsSummary, useInsightsStore } from '@n8n/frontend-module-insights';
 import { useProjectPages } from '@/features/collaboration/projects/composables/useProjectPages';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import {
+	duplicateAgent,
 	listAgentsPage,
 	listAgentsPageGlobal,
 	type ListAgentsSortBy,
 } from '../composables/useAgentApi';
+import { upsertProjectAgentsListCache } from '../composables/useProjectAgentsList';
 import { useAgentPermissions } from '../composables/useAgentPermissions';
 import { useAgentTelemetry } from '../composables/useAgentTelemetry';
+import { useCreateAgent } from '../composables/useCreateAgent';
 import type { AgentResource } from '../types';
-import { AGENT_BUILDER_VIEW, NEW_AGENT_VIEW } from '../constants';
+import { AGENT_BUILDER_VIEW, AGENT_DUPLICATE_MODAL_KEY, NEW_SESSION_PARAM } from '../constants';
 import AgentCard from '../components/AgentCard.vue';
 import type { BaseFilters, SortingAndPaginationUpdates } from '@/Interface';
 
@@ -46,7 +50,10 @@ const rootStore = useRootStore();
 const projectsStore = useProjectsStore();
 const insightsStore = useInsightsStore();
 const projectPages = useProjectPages();
+const uiStore = useUIStore();
+const toast = useToast();
 const agentTelemetry = useAgentTelemetry();
+const { createAgent } = useCreateAgent();
 const { callDebounced } = useDebounce();
 
 const homeProject = computed(() => projectsStore.currentProject ?? projectsStore.personalProject);
@@ -111,6 +118,67 @@ function onSelectAgent(agentId: string, agentProjectId: string) {
 	});
 }
 
+function onNewAgentChat(agentId: string, agentProjectId: string) {
+	void router.push({
+		name: AGENT_BUILDER_VIEW,
+		params: { projectId: agentProjectId, agentId },
+		query: { [NEW_SESSION_PARAM]: 'true' },
+	});
+}
+
+function onAgentDuplicate(agentId: string) {
+	const agent = allAgents.value.find((a) => a.id === agentId);
+	if (!agent) return;
+	// An unconfigured agent has no config to clone — duplicating it would only
+	// yield an empty draft, so inform the user instead of opening the modal.
+	if (!agent.schema) {
+		toast.showMessage({
+			title: locale.baseText('agents.duplicate.modal.unconfigured'),
+			type: 'info',
+		});
+		return;
+	}
+	uiStore.openModalWithData({
+		name: AGENT_DUPLICATE_MODAL_KEY,
+		data: {
+			projectId: agent.projectId,
+			agentId: agent.id,
+			name: agent.name,
+			existingNames: allAgents.value.map((a) => a.name),
+			onConfirm: async (newName: string) => {
+				try {
+					const duplicated = await duplicateAgent(
+						rootStore.restApiContext,
+						agent.projectId,
+						agent.id,
+						newName,
+					);
+					// A duplicate is born configured, so the backend creation events
+					// never fire for it (its first edit reports a modification).
+					// Track the duplicate directly, mirroring "User duplicated
+					// workflow" — the source agent id distinguishes it from an
+					// organic creation. Routed through the safe wrapper so a
+					// telemetry failure can't misreport a successful duplicate.
+					agentTelemetry.trackDuplicatedAgent({
+						sourceAgentId: agent.id,
+						agentId: duplicated.id,
+						projectId: agent.projectId,
+					});
+					upsertProjectAgentsListCache(agent.projectId, duplicated);
+					toast.showMessage({
+						title: locale.baseText('agents.duplicate.modal.success'),
+						type: 'success',
+					});
+					onSelectAgent(duplicated.id, agent.projectId);
+				} catch (error) {
+					toast.showError(error, locale.baseText('agents.duplicate.modal.error'));
+					throw error;
+				}
+			},
+		},
+	});
+}
+
 function onAgentPublished(updated: AgentResource) {
 	allAgents.value = allAgents.value.map((a) => (a.id === updated.id ? updated : a));
 	void fetchAgents();
@@ -163,9 +231,8 @@ async function setPaginationAndSort(payload: SortingAndPaginationUpdates) {
 }
 
 function onCreateAgentClick() {
-	agentTelemetry.trackClickedNewAgent('button');
-	const targetProjectId = projectId.value ?? projectsStore.personalProject?.id;
-	void router.push({ name: NEW_AGENT_VIEW, query: { projectId: targetProjectId } });
+	const targetProjectId = projectId.value ?? projectsStore.personalProject?.id ?? '';
+	createAgent('button', targetProjectId);
 }
 
 onMounted(async () => {
@@ -208,20 +275,11 @@ onMounted(async () => {
 		</template>
 
 		<template #empty>
-			<N8nActionBox
-				data-test-id="empty-agents-action-box"
-				:heading="locale.baseText('agents.list.empty.heading')"
-				:description="locale.baseText('agents.list.empty.description')"
-				:button-text="locale.baseText('agents.list.empty.button.label')"
-				button-type="secondary"
+			<ResourcesListEmptyState
+				resource-key="agents"
 				:button-disabled="!canCreateAgent"
-				:button-icon="!canCreateAgent ? 'lock' : undefined"
 				@click:button="onCreateAgentClick"
-			>
-				<template #disabledButtonTooltip>
-					{{ locale.baseText('agents.list.empty.button.disabled.tooltip') }}
-				</template>
-			</N8nActionBox>
+			/>
 		</template>
 
 		<template #item="{ item: data }">
@@ -231,9 +289,11 @@ onMounted(async () => {
 				:agent="data"
 				:project-id="data.projectId"
 				@select="onSelectAgent(data.id, data.projectId)"
+				@new-chat="onNewAgentChat"
 				@published="onAgentPublished"
 				@unpublished="onAgentUnpublished"
 				@deleted="onAgentDeleted"
+				@duplicate="onAgentDuplicate"
 			/>
 		</template>
 	</ResourcesListLayout>

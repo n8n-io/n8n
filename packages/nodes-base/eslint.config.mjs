@@ -1,11 +1,21 @@
 import { defineConfig, globalIgnores } from 'eslint/config';
-import { nodeConfig } from '@n8n/eslint-config/node';
-import nodesBasePlugin from 'eslint-plugin-n8n-nodes-base';
+import { nodesConfig } from '@n8n/eslint-config/nodes';
 import { n8nCommunityNodesPlugin } from '@n8n/eslint-plugin-community-nodes';
 
+import { databricksUserAgentRestriction } from './nodes/Databricks/eslint-user-agent-restriction.mjs';
+import { kafkaImportRestrictions } from './nodes/Kafka/eslint-import-restrictions.mjs';
+
 export default defineConfig(
-	nodeConfig,
-	globalIgnores(['scenarios/**', 'scripts/**']),
+	nodesConfig,
+	// This config fragment lives under nodes/ so it sits next to the code it
+	// governs, but it's not lintable TS source — same reason eslint.config.mjs
+	// itself is never linted.
+	globalIgnores([
+		'scenarios/**',
+		'scripts/**',
+		'./nodes/Databricks/eslint-user-agent-restriction.mjs',
+		'./nodes/Kafka/eslint-import-restrictions.mjs',
+	]),
 	{
 		plugins: {
 			'@n8n/community-nodes': n8nCommunityNodesPlugin,
@@ -15,62 +25,27 @@ export default defineConfig(
 			'@n8n/community-nodes/credential-documentation-url': ['error', { allowSlugs: true }],
 			'@n8n/community-nodes/node-class-description-icon-missing': 'warn',
 			'@n8n/community-nodes/cred-class-field-icon-missing': 'warn',
+			'n8n-local-rules/no-dynamic-regexp': 'error',
+			'n8n-local-rules/require-escaped-query-values': 'error',
 
-			// TODO: remove all the following rules
-			eqeqeq: 'warn',
-			'id-denylist': 'warn',
-			'no-empty': 'warn',
-			'no-useless-escape': 'warn',
-			'no-prototype-builtins': 'warn',
-			'no-case-declarations': 'warn',
 			'no-ex-assign': 'warn',
 			'no-control-regex': 'warn',
 			'no-constant-condition': 'warn',
-			'no-async-promise-executor': 'warn',
 			'no-dupe-else-if': 'warn',
-			'no-extra-boolean-cast': 'warn',
 			'no-fallthrough': 'warn',
 
-			'import-x/extensions': 'warn',
-			'import-x/no-default-export': 'warn',
 			'import-x/export': 'warn',
-			'import-x/order': 'warn',
-			'import-x/no-default-export': 'warn',
 			'import-x/no-extraneous-dependencies': 'warn',
 
-			'n8n-local-rules/no-argument-spread': 'warn', // TODO: mark error
 			'@n8n/community-nodes/no-builder-hint-leakage': 'error',
 
-			'@typescript-eslint/ban-ts-comment': ['warn', { 'ts-ignore': true }],
-			'@typescript-eslint/naming-convention': ['warn'],
-			'@typescript-eslint/no-explicit-any': 'warn', //812 warnings, better to fix in separate PR
-			'@typescript-eslint/no-non-null-assertion': 'warn', //665 errors, better to fix in separate PR
-			'@typescript-eslint/no-unsafe-assignment': 'warn', //7084 problems, better to fix in separate PR
-			'@typescript-eslint/no-unsafe-call': 'warn', //541 errors, better to fix in separate PR
-			'@typescript-eslint/no-unsafe-member-access': 'warn', //4591 errors, better to fix in separate PR
-			'@typescript-eslint/no-unsafe-return': 'warn', //438 errors, better to fix in separate PR
+			'@typescript-eslint/ban-ts-comment': 'off',
 			'@typescript-eslint/no-unused-expressions': ['error', { allowTernary: true }],
-			'@typescript-eslint/restrict-template-expressions': 'warn', //1152 errors, better to fix in separate PR
-			'@typescript-eslint/unbound-method': 'warn',
-			'@typescript-eslint/prefer-nullish-coalescing': 'warn',
-			'@typescript-eslint/no-base-to-string': 'warn',
-			'@typescript-eslint/no-redundant-type-constituents': 'warn',
-			'@typescript-eslint/no-unsafe-argument': 'warn',
-			'@typescript-eslint/no-unsafe-function-type': 'warn',
-			'@typescript-eslint/prefer-optional-chain': 'warn',
-			'@typescript-eslint/restrict-plus-operands': 'warn',
-			'@typescript-eslint/no-unnecessary-type-assertion': 'warn',
-			'@typescript-eslint/require-await': 'warn',
-			'@typescript-eslint/no-duplicate-type-constituents': 'warn',
-			'@typescript-eslint/no-empty-object-type': 'warn',
 			'@typescript-eslint/prefer-promise-reject-errors': 'warn',
 		},
 	},
 	{
 		files: ['./credentials/*.ts'],
-		plugins: {
-			'n8n-nodes-base': nodesBasePlugin,
-		},
 		rules: {
 			'n8n-nodes-base/cred-class-field-authenticate-type-assertion': 'error',
 			'n8n-nodes-base/cred-class-field-display-name-missing-oauth2': 'error',
@@ -88,9 +63,6 @@ export default defineConfig(
 	},
 	{
 		files: ['./nodes/**/*.ts'],
-		plugins: {
-			'n8n-nodes-base': nodesBasePlugin,
-		},
 		rules: {
 			'n8n-nodes-base/node-class-description-credentials-name-unsuffixed': 'error',
 			'n8n-nodes-base/node-class-description-display-name-unsuffixed-trigger-node': 'error',
@@ -185,6 +157,10 @@ export default defineConfig(
 		rules: {
 			'import-x/no-extraneous-dependencies': 'off',
 			'n8n-nodes-base/node-filename-against-convention': 'off',
+			'n8n-local-rules/no-dynamic-regexp': 'off',
+			'n8n-local-rules/require-escaped-query-values': 'off',
 		},
 	},
+	...databricksUserAgentRestriction,
+	...kafkaImportRestrictions,
 );

@@ -1,4 +1,4 @@
-import { isRecord } from '@n8n/utils';
+import { isRecord } from '@n8n/utils/is-record';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 
 import type { ValidationWarning } from './workflow-validation-warnings';
@@ -30,8 +30,7 @@ const VIA_VARIABLE = new RegExp(
 
 function treatsJsonAsArray(jsCode: string): boolean {
 	if (DIRECT.test(jsCode)) return true;
-	const assigned = VIA_VARIABLE.exec(jsCode);
-	if (assigned) {
+	for (const assigned of jsCode.matchAll(new RegExp(VIA_VARIABLE.source, 'g'))) {
 		const v = assigned[1];
 		const usedAsArray = new RegExp(
 			String.raw`\b${v}\s*(?:\.\s*(?:${ARRAY_OP})\s*\(|\[)|Array\.isArray\(\s*${v}\b`,

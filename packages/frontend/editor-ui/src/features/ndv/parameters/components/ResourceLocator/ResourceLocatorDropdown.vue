@@ -1,12 +1,14 @@
 <script setup lang="ts">
-import { useDebounce } from '@/app/composables/useDebounce';
+import { useDebounce } from '@n8n/composables/useDebounce';
 import type { IResourceLocatorResultExpanded } from '@/Interface';
 import { N8nBadge, N8nIcon, N8nInput, N8nLoading, N8nPopover, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { EventBus } from '@n8n/utils/event-bus';
 import { createEventBus } from '@n8n/utils/event-bus';
 import type { INodeParameterResourceLocator } from 'n8n-workflow';
-import { computed, onBeforeUnmount, onMounted, ref, useCssModule, watch } from 'vue';
+import { computed, inject, onBeforeUnmount, onMounted, ref, useCssModule, watch } from 'vue';
+import { ResourceLocatorDropdownTeleportedKey } from '@/app/constants';
+import { openSafeUrl } from '@/app/utils/htmlUtils';
 
 const SEARCH_BAR_HEIGHT_PX = 40;
 const SCROLL_MARGIN_PX = 10;
@@ -49,6 +51,7 @@ const props = withDefaults(defineProps<Props>(), {
 
 const emit = defineEmits<{
 	'update:modelValue': [value: INodeParameterResourceLocator['value']];
+	'update:show': [value: boolean];
 	loadMore: [];
 	filter: [filter: string];
 	addResourceClick: [];
@@ -64,6 +67,8 @@ const debouncedLoadMore = debounce(
 
 const i18n = useI18n();
 const $style = useCssModule();
+
+const teleported = inject(ResourceLocatorDropdownTeleportedKey, false);
 
 const hoverIndex = ref(0);
 const showHoverUrl = ref(false);
@@ -141,11 +146,14 @@ function openUrl(event: MouseEvent, url: string) {
 	event.preventDefault();
 	event.stopPropagation();
 
-	window.open(url, '_blank');
+	openSafeUrl(url);
 }
 
 function onKeyDown(e: KeyboardEvent) {
-	if (e.key === 'ArrowDown') {
+	if (e.key === 'Escape') {
+		e.stopPropagation();
+		emit('update:show', false);
+	} else if (e.key === 'ArrowDown') {
 		// hoverIndex 0 is reserved for the "add new resource" item
 		if (hoverIndex.value < sortedResources.value.length) {
 			hoverIndex.value++;
@@ -269,7 +277,7 @@ watch(
 		:width="props.width ? `${props.width}px` : undefined"
 		:content-class="$style.popover"
 		:open="props.show"
-		:teleported="false"
+		:teleported="teleported"
 		:enable-scrolling="false"
 		data-test-id="resource-locator-dropdown"
 	>
@@ -304,7 +312,7 @@ watch(
 				</N8nInput>
 			</div>
 			<div
-				v-if="props.filterRequired && !props.filter && !props.errorView && !props.loading"
+				v-if="props.filterRequired && !props.filter && !props.errorView"
 				:class="$style.searchRequired"
 			>
 				{{ i18n.baseText('resourceLocator.mode.list.searchRequired') }}
@@ -368,7 +376,7 @@ watch(
 							:is-hovered="showHoverUrl && hoverIndex === i + 1"
 						></slot>
 						<span v-if="result.isArchived" :class="$style.badgesContainer">
-							<N8nBadge class="ml-3xs" theme="tertiary" bold data-test-id="workflow-archived-tag">
+							<N8nBadge class="ml-3xs" variant="outline" data-test-id="workflow-archived-tag">
 								{{ i18n.baseText('workflows.item.archived') }}
 							</N8nBadge>
 						</span>
@@ -490,10 +498,9 @@ watch(
 
 .searchRequired {
 	height: 50px;
-	margin-top: 40px;
 	padding-left: var(--spacing--xs);
 	font-size: var(--font-size--xs);
-	color: var(--color--text);
+	color: var(--color--text--tint-1);
 	display: flex;
 	align-items: center;
 }

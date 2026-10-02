@@ -31,19 +31,21 @@ import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import * as utils from '@/app/utils/credentialOnlyNodes';
 import { groupNodeTypesByNameAndType } from '@/app/utils/nodeTypes/nodeTypeTransforms';
-import { computed, ref } from 'vue';
+import { computed, shallowRef } from 'vue';
 import { useActionsGenerator } from '@/features/shared/nodeCreator/composables/useActionsGeneration';
 import { removePreviewToken } from '@/features/shared/nodeCreator/nodeCreator.utils';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { isDataWorkerEnabled } from '@/app/workers/isDataWorkerEnabled';
 import type { WorkflowObjectAccessors } from '../types';
 
 export type NodeTypesStore = ReturnType<typeof useNodeTypesStore>;
 
 export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
-	const nodeTypes = ref<NodeTypesByTypeNameAndVersion>({});
+	// The catalog is immutable and only ever wholesale-replaced, so skip deep
+	// reactivity to avoid proxying thousands of nested schema objects.
+	const nodeTypes = shallowRef<NodeTypesByTypeNameAndVersion>({});
 
-	const vettedCommunityNodeTypes = ref<Map<string, CommunityNodeType>>(new Map());
+	const vettedCommunityNodeTypes = shallowRef<Map<string, CommunityNodeType>>(new Map());
 
 	const rootStore = useRootStore();
 
@@ -502,6 +504,16 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 		}
 	};
 
+	// True for types the instance does not load (NODES_EXCLUDE, NODES_INCLUDE). Vetted community
+	// types stay available: the node creator offers them for installation. Before the types load,
+	// nothing counts as unavailable, so callers do not hide or skip every node.
+	function isNodeTypeUnavailable(nodeTypeName: string): boolean {
+		if (Object.keys(nodeTypes.value).length === 0) return false;
+		return (
+			!getNodeType.value(removePreviewToken(nodeTypeName)) && !communityNodeType.value(nodeTypeName)
+		);
+	}
+
 	const getIsNodeInstalled = computed(() => {
 		return (nodeTypeName: string) => {
 			const cleanedNodeTypeName = removePreviewToken(nodeTypeName);
@@ -529,7 +541,7 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 					description: nodeTypeDescription,
 					// As we do not have the trigger/poll functions available in the frontend
 					// we use the information available to figure out what are trigger nodes
-					// @ts-ignore
+					// @ts-expect-error frontend flags triggers with a boolean
 					trigger:
 						(![ERROR_TRIGGER_NODE_TYPE].includes(nodeType) &&
 							nodeTypeDescription.inputs.length === 0 &&
@@ -562,7 +574,10 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 		visibleNodeTypesByInputConnectionTypeNames,
 		isConfigurableNode,
 		communityNodesAndActions,
+		vettedCommunityNodeTypes,
 		communityNodeType,
+		officialCommunityNodeTypes,
+		unofficialCommunityNodeTypes,
 		fetchCommunityNodePreviews,
 		getResourceMapperFields,
 		getLocalResourceMapperFields,
@@ -579,5 +594,6 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 		removeNodeTypes,
 		getCommunityNodeAttributes,
 		getIsNodeInstalled,
+		isNodeTypeUnavailable,
 	};
 });

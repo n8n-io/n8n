@@ -39,7 +39,7 @@ describe('ProjectRepository', () => {
 			// ASSERT
 			//
 			if (!personalProject) {
-				fail('Expected personalProject to be defined.');
+				expect.fail('Expected personalProject to be defined.');
 			}
 			expect(personalProject).toBeDefined();
 			expect(personalProject.id).toBe(ownerPersonalProject.id);
@@ -88,7 +88,7 @@ describe('ProjectRepository', () => {
 			// ASSERT
 			//
 			if (!personalProject) {
-				fail('Expected personalProject to be defined.');
+				expect.fail('Expected personalProject to be defined.');
 			}
 			expect(personalProject).toBeDefined();
 			expect(personalProject.id).toBe(ownerPersonalProject.id);
@@ -457,6 +457,33 @@ describe('ProjectRepository', () => {
 			// ACT & ASSERT
 			//
 			await expect(Container.get(UserRepository).save(user)).resolves.not.toThrow();
+		});
+	});
+
+	describe('findTeamProjects', () => {
+		it('returns every team project, whether or not the caller is a member', async () => {
+			const owner = await createOwner();
+			const member = await createMember();
+			const joined = await createTeamProject('Joined', owner);
+			await linkUserToProject(member, joined, 'project:editor');
+			const notJoined = await createTeamProject('Not joined', owner);
+
+			const projects = await Container.get(ProjectRepository).findTeamProjects();
+
+			expect(projects.map((project) => project.id).sort()).toEqual(
+				[joined.id, notJoined.id].sort(),
+			);
+		});
+
+		it('does not return personal projects', async () => {
+			const owner = await createOwner();
+			await createMember();
+			const team = await createTeamProject('Team', owner);
+
+			const projects = await Container.get(ProjectRepository).findTeamProjects();
+
+			expect(projects.map((project) => project.id)).toEqual([team.id]);
+			expect(projects.every((project) => project.type === 'team')).toBe(true);
 		});
 	});
 });

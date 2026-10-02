@@ -2,10 +2,10 @@ import type { InstanceRegistration } from '@n8n/api-types';
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { GlobalConfig } from '@n8n/config';
 import type { Redis as SingleNodeClient } from 'ioredis';
-import { mock } from 'jest-mock-extended';
 import { jsonStringify } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
-import type { RedisClientService } from '@/services/redis-client.service';
+import type { RedisClientService } from '@n8n/backend-services';
 
 import { REDIS_KEY_PATTERNS, REGISTRY_CONSTANTS } from '../../instance-registry.types';
 import {
@@ -42,7 +42,7 @@ describe('RedisInstanceStorage', () => {
 	let storage: RedisInstanceStorage;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		storage = new RedisInstanceStorage(logger, globalConfig, redisClientService);
 	});
 
@@ -195,12 +195,11 @@ describe('RedisInstanceStorage', () => {
 			expect(result).toEqual([]);
 		});
 
-		it('should return empty array on error', async () => {
-			client.eval.mockRejectedValueOnce(new Error('timeout'));
+		it('should reject when the read script fails', async () => {
+			const error = new Error('timeout');
+			client.eval.mockRejectedValueOnce(error);
 
-			const result = await storage.getAllRegistrations();
-
-			expect(result).toEqual([]);
+			await expect(storage.getAllRegistrations()).rejects.toBe(error);
 		});
 
 		it('should preserve unknown fields via passthrough', async () => {
@@ -302,12 +301,11 @@ describe('RedisInstanceStorage', () => {
 			expect(result.has('main-1')).toBe(true);
 		});
 
-		it('should return empty Map on error', async () => {
-			client.get.mockRejectedValueOnce(new Error('timeout'));
+		it('should reject when the state read fails', async () => {
+			const error = new Error('timeout');
+			client.get.mockRejectedValueOnce(error);
 
-			const result = await storage.getLastKnownState();
-
-			expect(result).toEqual(new Map());
+			await expect(storage.getLastKnownState()).rejects.toBe(error);
 		});
 	});
 
@@ -326,15 +324,11 @@ describe('RedisInstanceStorage', () => {
 			);
 		});
 
-		it('should log warning on error', async () => {
-			client.set.mockRejectedValueOnce(new Error('timeout'));
+		it('should reject when the state save fails', async () => {
+			const error = new Error('timeout');
+			client.set.mockRejectedValueOnce(error);
 
-			await storage.saveLastKnownState(new Map());
-
-			expect(logger.scoped(['instance-registry', 'redis']).warn).toHaveBeenCalledWith(
-				'Failed to save last known state',
-				expect.any(Object),
-			);
+			await expect(storage.saveLastKnownState(new Map())).rejects.toBe(error);
 		});
 	});
 
@@ -360,12 +354,11 @@ describe('RedisInstanceStorage', () => {
 			expect(result).toBe(3);
 		});
 
-		it('should return 0 on error', async () => {
-			client.eval.mockRejectedValueOnce(new Error('timeout'));
+		it('should reject when the cleanup script fails', async () => {
+			const error = new Error('timeout');
+			client.eval.mockRejectedValueOnce(error);
 
-			const result = await storage.cleanupStaleMembers();
-
-			expect(result).toBe(0);
+			await expect(storage.cleanupStaleMembers()).rejects.toBe(error);
 		});
 	});
 });

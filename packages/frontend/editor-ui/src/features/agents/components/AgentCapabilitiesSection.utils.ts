@@ -1,4 +1,4 @@
-import type { IconName } from '@n8n/design-system/components/N8nIcon';
+import type { IconName } from '@n8n/design-system';
 
 import type { AgentJsonToolRef } from '../types';
 import type {
@@ -13,28 +13,41 @@ export const MIN_GROUPED_TOOLS_PER_TYPE = 2;
 
 type BaseToolRow = {
 	index: number;
+	enabled: boolean;
 	label: string;
 	typeLabel: string;
 	nodeType: ToolRowNodeType;
 	fallbackIcon: IconName;
 	toolType: AgentJsonToolRef['type'] | 'mcpServer';
 	openTarget: ToolOpenTarget;
+	invalid: boolean;
+	invalidReasons: string[];
+	warning: boolean;
+	warningReasons: string[];
 };
 
 function toUngroupedToolRow(row: BaseToolRow): ToolRow {
 	const item: ToolRowItem = {
 		index: row.index,
+		enabled: row.enabled,
 		label: row.label,
 		nodeType: row.nodeType,
 		openTarget: row.openTarget,
+		invalid: row.invalid,
+		invalidReasons: row.invalidReasons,
 	};
 
 	return {
 		index: row.index,
+		enabled: row.enabled,
 		label: row.label,
 		typeLabel: row.typeLabel,
 		nodeType: row.nodeType,
 		fallbackIcon: row.fallbackIcon,
+		invalid: row.invalid,
+		invalidReasons: row.invalidReasons,
+		warning: row.warning,
+		warningReasons: row.warningReasons,
 		isGrouped: false,
 		tool: item,
 	};
@@ -45,16 +58,24 @@ function toGroupedToolRow(group: BaseToolRow[]): GroupedToolRow {
 
 	return {
 		index: first.index,
+		enabled: group.some((row) => row.enabled),
 		label: `${group.length} ${first.typeLabel}`,
 		typeLabel: first.typeLabel,
 		nodeType: first.nodeType,
 		fallbackIcon: first.fallbackIcon,
+		invalid: group.some((row) => row.invalid),
+		invalidReasons: [...new Set(group.flatMap((row) => row.invalidReasons))],
+		warning: group.some((row) => row.warning),
+		warningReasons: [...new Set(group.flatMap((row) => row.warningReasons))],
 		isGrouped: true,
 		tools: group.map((row) => ({
 			index: row.index,
+			enabled: row.enabled,
 			label: row.label,
 			nodeType: row.nodeType,
 			openTarget: row.openTarget,
+			invalid: row.invalid,
+			invalidReasons: row.invalidReasons,
 		})),
 	};
 }

@@ -2,6 +2,7 @@ import {
 	UserError,
 	NodeOperationError,
 	EVALUATION_TRIGGER_NODE_TYPE,
+	EVALUATION_TRIGGER_METADATA_FIELDS,
 	jsonStringify,
 } from 'n8n-workflow';
 import type {
@@ -121,8 +122,12 @@ export async function setOutputs(this: IExecuteFunctions): Promise<INodeExecutio
 	const rowNumber =
 		evaluationTrigger.row_number === 'row_number' ? 1 : evaluationTrigger.row_number;
 
+	// `columnNames` only ever feeds the googleSheets branch below (the sheet's
+	// header row and its write-offset list) — the dataTable branch works off
+	// `outputs`/`data` directly — so this only needs the fields the trigger
+	// always adds, never the Data table-only bookkeeping columns.
 	const columnNames = Object.keys(evaluationTrigger).filter(
-		(key) => key !== 'row_number' && key !== '_rowsLeft',
+		(key) => !(EVALUATION_TRIGGER_METADATA_FIELDS as readonly string[]).includes(key),
 	);
 
 	outputFields.forEach(({ outputName }) => {

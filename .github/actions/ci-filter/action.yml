@@ -27,11 +27,14 @@ outputs:
   changed-files:
     description: 'Newline-separated list of changed files (filter mode only)'
     value: ${{ steps.run.outputs.changed-files }}
+  added-files:
+    description: 'Newline-separated list of files added in this PR (filter mode only)'
+    value: ${{ steps.run.outputs.added-files }}
   base-ref:
     description: 'Resolved base ref used for the diff (filter mode only)'
     value: ${{ steps.run.outputs.base-ref }}
   merge-base:
-    description: 'Merge-base SHA between FETCH_HEAD and HEAD (filter mode only)'
+    description: 'Merge-base SHA between the base ref and the PR head (filter mode only)'
     value: ${{ steps.run.outputs.merge-base }}
 
 runs:

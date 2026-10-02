@@ -3,7 +3,7 @@ import { describe, expect, test, vi } from 'vitest';
 import { INSTANCE_AI_EMPTY_STATE_SUGGESTIONS_VERSION } from '../emptyStateSuggestions';
 import { createInstanceAiPromptSuggestionsTelemetry } from '../instanceAiPromptSuggestions.telemetry';
 
-vi.mock('@/app/composables/useTelemetry', () => ({
+vi.mock('@n8n/composables/useTelemetry', () => ({
 	useTelemetry: () => ({ track: vi.fn() }),
 }));
 
@@ -63,7 +63,7 @@ describe('instance ai prompt suggestions telemetry', () => {
 				suggestion_source: 'matrix',
 				metadata_load_state: 'loaded',
 				variant: 'variant-cards',
-				'$feature/090_instance_ai_personalized_prompt_suggestions': 'variant-cards',
+				'$feature/093_instance_ai_personalized_prompt_suggestions': 'variant-cards',
 			},
 		});
 
@@ -74,7 +74,7 @@ describe('instance ai prompt suggestions telemetry', () => {
 			suggestion_source: 'matrix',
 			metadata_load_state: 'loaded',
 			variant: 'variant-cards',
-			'$feature/090_instance_ai_personalized_prompt_suggestions': 'variant-cards',
+			'$feature/093_instance_ai_personalized_prompt_suggestions': 'variant-cards',
 		});
 	});
 

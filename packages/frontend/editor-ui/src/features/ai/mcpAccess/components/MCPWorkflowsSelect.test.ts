@@ -2,15 +2,15 @@ import { nextTick } from 'vue';
 import { createTestingPinia } from '@pinia/testing';
 import { waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
-import { createComponentRenderer } from '@/__tests__/render';
-import { mockedStore, type MockedStore } from '@/__tests__/utils';
+import { createComponentRenderer, mockedStore, type MockedStore } from '@n8n/frontend-test-utils';
 import MCPWorkflowsSelect from '@/features/ai/mcpAccess/components/MCPWorkflowsSelect.vue';
 import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
 import { createWorkflow } from '@/features/ai/mcpAccess/mcp.test.utils';
-import type { WorkflowListItem } from '@/Interface';
+import type { McpWorkflow } from '@/features/ai/mcpAccess/mcp.types';
 
-vi.mock('@/app/router', () => ({
-	default: {
+vi.mock('vue-router', async (importOriginal) => ({
+	...(await importOriginal()),
+	useRouter: () => ({
 		resolve: vi.fn(({ name, params }) => {
 			if (name === 'NodeViewExisting') {
 				return { fullPath: `/workflows/${params.workflowId}` };
@@ -20,7 +20,7 @@ vi.mock('@/app/router', () => ({
 			}
 			return { fullPath: '/' };
 		}),
-	},
+	}),
 }));
 
 let pinia: ReturnType<typeof createTestingPinia>;
@@ -60,8 +60,11 @@ describe('MCPWorkflowsSelect', () => {
 			await nextTick();
 
 			const select = getByTestId('mcp-workflows-select');
-			const input = select.querySelector('input');
-			expect(input).toHaveAttribute('placeholder', 'Search workflows...');
+			// In multiple mode the placeholder lives on the main input, not the inline filter input
+			const inputs = Array.from(select.querySelectorAll('input'));
+			expect(
+				inputs.some((input) => input.getAttribute('placeholder') === 'Search workflows...'),
+			).toBe(true);
 		});
 
 		it('should render as disabled when disabled prop is true', async () => {
@@ -76,14 +79,6 @@ describe('MCPWorkflowsSelect', () => {
 			// The disabled class is applied to the inner el-select element
 			const elSelect = container.querySelector('.el-select');
 			expect(elSelect).toHaveClass('el-select--disabled');
-		});
-
-		it('should render search icon in prepend slot', async () => {
-			const { container } = createComponent({ pinia });
-			await nextTick();
-
-			const searchIcon = container.querySelector('[data-icon="search"]');
-			expect(searchIcon).toBeInTheDocument();
 		});
 	});
 
@@ -100,7 +95,7 @@ describe('MCPWorkflowsSelect', () => {
 
 		it('should handle async workflow fetching', async () => {
 			// Create a promise that doesn't resolve immediately
-			let resolvePromise: (value: { count: number; data: WorkflowListItem[] }) => void;
+			let resolvePromise: (value: { count: number; data: McpWorkflow[] }) => void;
 			mcpStore.getMcpEligibleWorkflows.mockImplementation(
 				async () =>
 					await new Promise((resolve) => {
@@ -217,10 +212,13 @@ describe('MCPWorkflowsSelect', () => {
 	});
 
 	describe('v-model binding', () => {
-		it('should update modelValue when an option is selected', async () => {
-			const workflows = [createWorkflow({ id: 'wf-1', name: 'Selectable Workflow' })];
+		it('should collect selected options into the modelValue array', async () => {
+			const workflows = [
+				createWorkflow({ id: 'wf-1', name: 'Selectable Workflow' }),
+				createWorkflow({ id: 'wf-2', name: 'Another Workflow' }),
+			];
 			mcpStore.getMcpEligibleWorkflows.mockResolvedValue({
-				count: 1,
+				count: 2,
 				data: workflows,
 			});
 
@@ -237,17 +235,21 @@ describe('MCPWorkflowsSelect', () => {
 
 			await waitFor(() => {
 				const options = document.querySelectorAll('.el-select-dropdown__item');
-				expect(options.length).toBe(1);
+				expect(options.length).toBe(2);
 			});
 
-			const option = document.querySelector('.el-select-dropdown__item');
-			if (option) {
-				await userEvent.click(option);
-			}
+			const options = document.querySelectorAll('.el-select-dropdown__item');
+			await userEvent.click(options[0]);
 
 			await waitFor(() => {
 				expect(emitted('update:modelValue')).toBeTruthy();
-				expect(emitted('update:modelValue')[0]).toEqual(['wf-1']);
+				expect(emitted('update:modelValue')[0]).toEqual([['wf-1']]);
+			});
+
+			await userEvent.click(options[1]);
+
+			await waitFor(() => {
+				expect(emitted('update:modelValue')[1]).toEqual([['wf-1', 'wf-2']]);
 			});
 		});
 	});

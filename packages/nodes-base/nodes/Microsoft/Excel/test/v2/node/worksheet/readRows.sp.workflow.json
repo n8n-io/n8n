@@ -1,0 +1,91 @@
+{
+	"name": "microsoft excel 365 - read rows (service principal)",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "2e1ec8f6-a2e2-4aa9-909c-d0a279584131",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [820, 380]
+		},
+		{
+			"parameters": {
+				"authentication": "microsoftEntraServicePrincipalApi",
+				"userTarget": {
+					"__rl": true,
+					"value": "jane@contoso.com",
+					"mode": "id"
+				},
+				"resource": "worksheet",
+				"operation": "readRows",
+				"workbook": {
+					"__rl": true,
+					"value": "01FUWX3BQ4ATCOZNR265GLA6IJEZDQUE4I",
+					"mode": "id"
+				},
+				"worksheet": {
+					"__rl": true,
+					"value": "{A0883CFE-D27E-4ECC-B94B-981830AAD55B}",
+					"mode": "id"
+				},
+				"options": {}
+			},
+			"id": "86f2a240-3acf-45c2-b97f-63dd655d296b",
+			"name": "Microsoft Excel 365",
+			"type": "n8n-nodes-base.microsoftExcel",
+			"typeVersion": 2,
+			"position": [1100, 260],
+			"credentials": {
+				"microsoftEntraServicePrincipalApi": {
+					"id": "1",
+					"name": "Microsoft Entra Service Principal account"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Microsoft Excel 365": [
+			{
+				"json": {
+					"id": 1,
+					"name": "Sam",
+					"age": 33,
+					"data": "data 1"
+				}
+			},
+			{
+				"json": {
+					"id": 2,
+					"name": "Jon",
+					"age": 44,
+					"data": "data 2"
+				}
+			},
+			{
+				"json": {
+					"id": 3,
+					"name": "Ron",
+					"age": 55,
+					"data": "data 3"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Microsoft Excel 365",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {},
+	"tags": []
+}

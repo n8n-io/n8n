@@ -1,6 +1,34 @@
 import { Time } from '@n8n/constants';
+import { z } from 'zod';
 
 import { Config, Env, Nested } from '../decorators';
+
+const workerPoolNameSchema = z
+	.string()
+	.regex(
+		/^([a-z0-9][a-z0-9-]{0,62})?$/,
+		'N8N_WORKER_POOL_NAME must be empty or 1-63 chars of lowercase alphanumeric and hyphens, starting with alphanumeric',
+	);
+
+@Config
+export class WorkerPoolConfig {
+	/**
+	 * Whether worker pools are enabled. When off, all executions route to the default queue and the pool UI is hidden.
+	 *
+	 * **Experimental** - Use at your own risk.
+	 */
+	@Env('N8N_WORKER_POOLS_ENABLED')
+	enabled: boolean = false;
+
+	/**
+	 * Label identifying the worker pool this worker belongs to.
+	 * Empty (default) means the worker listens to the unlabeled `jobs` queue.
+	 * When set, the worker listens to `jobs-<name>` instead.
+	 * Read only on worker instances; ignored on main and webhook.
+	 */
+	@Env('N8N_WORKER_POOL_NAME', workerPoolNameSchema)
+	name: string = '';
+}
 
 @Config
 class HealthConfig {
@@ -17,6 +45,21 @@ class HealthConfig {
 	/** IP address the worker server binds to. Use `::` for all interfaces. */
 	@Env('N8N_WORKER_SERVER_ADDRESS')
 	address: string = '::';
+}
+
+@Config
+class RedisTlsConfig {
+	/** SNI extension servername for TLS handshake. */
+	@Env('QUEUE_BULL_REDIS_TLS_SERVERNAME')
+	serverName: string = '';
+
+	/**
+	 * When TLS enabled validate certificates.
+	 * - true (default): Recommended for secure production deployments to ensure redis connections are not vulnerable to MITM attacks.
+	 * - false: Accept any certificate presented by the server for local development or self-signed certificate scenarios.
+	 */
+	@Env('QUEUE_BULL_REDIS_TLS_VALIDATE_CERTIFICATE')
+	rejectUnauthorized: boolean = true;
 }
 
 @Config
@@ -59,6 +102,9 @@ class RedisConfig {
 	/** Whether to enable TLS on Redis connections. */
 	@Env('QUEUE_BULL_REDIS_TLS')
 	tls: boolean = false;
+
+	@Nested
+	tlsConfig: RedisTlsConfig;
 
 	/**
 	 * DNS resolution strategy for Redis hostnames on initial client connection.
@@ -133,4 +179,7 @@ export class ScalingModeConfig {
 
 	@Nested
 	bull: BullConfig;
+
+	@Nested
+	workerPool: WorkerPoolConfig;
 }

@@ -5,7 +5,7 @@
  * This module provides an async alternative that streams the JSON in 64KB
  * chunks, yielding to the event loop between chunks via setImmediate.
  */
-import { ensureError } from 'n8n-workflow';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { Readable } from 'stream';
 import { parser } from 'stream-json';
 import Asm from 'stream-json/Assembler';
@@ -22,8 +22,7 @@ const object = 'object';
 const ignore = {};
 const noop = (_: string, value: unknown) => value;
 
-const primitives = (value: unknown) =>
-	value instanceof Primitive ? Primitive(value as string) : value;
+const primitives = (value: unknown) => (value instanceof Primitive ? Primitive(value) : value);
 
 const revive = (
 	input: unknown[],

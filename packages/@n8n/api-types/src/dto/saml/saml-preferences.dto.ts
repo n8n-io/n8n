@@ -13,6 +13,15 @@ const SignatureConfigSchema = z.object({
 	}),
 });
 
+/** Same shape without defaults — required for full-object Public API PUTs. */
+const SignatureConfigRequiredSchema = z.object({
+	prefix: z.string(),
+	location: z.object({
+		reference: z.string(),
+		action: z.enum(['before', 'after', 'prepend', 'append']),
+	}),
+});
+
 export class SamlPreferencesAttributeMapping extends Z.class({
 	/** SAML attribute mapped to the user's email. */
 	email: z.string(),
@@ -22,6 +31,11 @@ export class SamlPreferencesAttributeMapping extends Z.class({
 	lastName: z.string(),
 	/** SAML attribute mapped to the user's principal name. */
 	userPrincipalName: z.string(),
+	/**
+	 * SAML attribute that states whether the identity provider verified the user's email.
+	 * Accepted values are `true` and `false`, case-insensitive.
+	 */
+	emailVerified: z.string().optional(),
 	/** SAML attribute mapped to the n8n instance role. */
 	n8nInstanceRole: z.string().optional(),
 	/** Each element in the array is formatted like "<projectId>:<role>" */
@@ -45,6 +59,12 @@ export class SamlPreferences extends Z.class({
 	authnRequestsSigned: z.boolean().default(false),
 	wantAssertionsSigned: z.boolean().default(true),
 	wantMessageSigned: z.boolean().default(true),
+	/**
+	 * Whether the identity provider must assert a verified email before a login is
+	 * linked to an existing user by email. When disabled, only an explicit negative
+	 * assertion is rejected. Optional so that stored settings and the UI stay valid.
+	 */
+	emailVerifiedRequired: z.boolean().optional(),
 
 	/** PEM-encoded private key for signing SAML AuthnRequests. Stored encrypted at rest. */
 	signingPrivateKey: z.string().optional(),
@@ -61,4 +81,35 @@ export class SamlPreferences extends Z.class({
 	}),
 
 	relayState: z.string().default(''),
+}) {}
+
+/**
+ * Public API PUT body for SAML configuration. Clients must send every writable
+ * field; use empty strings / empty arrays when a value is unset.
+ */
+export class UpdateSamlConfigurationDto extends Z.class({
+	mapping: z.object({
+		email: z.string(),
+		firstName: z.string(),
+		lastName: z.string(),
+		userPrincipalName: z.string(),
+		emailVerified: z.string(),
+		n8nInstanceRole: z.string(),
+		n8nProjectRoles: z.array(z.string()),
+	}),
+	metadata: z.string(),
+	metadataUrl: z.string(),
+	ignoreSSL: z.boolean(),
+	loginBinding: SamlLoginBindingSchema,
+	loginEnabled: z.boolean(),
+	loginLabel: z.string(),
+	authnRequestsSigned: z.boolean(),
+	wantAssertionsSigned: z.boolean(),
+	wantMessageSigned: z.boolean(),
+	emailVerifiedRequired: z.boolean(),
+	signingPrivateKey: z.string(),
+	signingCertificate: z.string(),
+	acsBinding: SamlLoginBindingSchema,
+	signatureConfig: SignatureConfigRequiredSchema,
+	relayState: z.string(),
 }) {}

@@ -1,4 +1,5 @@
-import { NodeConnectionTypes, parseErrorMetadata, sleep } from 'n8n-workflow';
+import { sleep } from '@n8n/utils/sleep';
+import { NodeConnectionTypes, parseErrorMetadata } from 'n8n-workflow';
 import {
 	type IExecuteFunctions,
 	type INodeExecutionData,

@@ -9,10 +9,33 @@ import {
 	escapeSingleCurlyBrackets,
 	getConnectedTools,
 	mergeCustomHeaders,
+	parseJsonParameter,
 	unwrapNestedOutput,
 	getSessionId,
 } from '../helpers';
 import { N8nTool } from '../N8nTool';
+
+describe('parseJsonParameter', () => {
+	it('should parse a JSON string', () => {
+		expect(parseJsonParameter('{"a":1}', 'failed')).toEqual({ a: 1 });
+	});
+
+	it('should return an object value as-is', () => {
+		const value = { type: 'object', properties: { a: { type: 'number' } } };
+		expect(parseJsonParameter(value, 'failed')).toBe(value);
+	});
+
+	it('should return an array value as-is', () => {
+		const value = ['vs_1', 'vs_2'];
+		expect(parseJsonParameter(value, 'failed')).toBe(value);
+	});
+
+	it('should throw the given error message on invalid JSON', () => {
+		expect(() => parseJsonParameter('not json', 'Failed to parse schema')).toThrow(
+			'Failed to parse schema',
+		);
+	});
+});
 
 describe('escapeSingleCurlyBrackets', () => {
 	it('should return undefined when input is undefined', () => {
@@ -269,17 +292,17 @@ describe('getConnectedTools', () => {
 			{
 				name: 'tool1',
 				description: 'desc1',
-				metadata: { isFromToolkit: false, sourceNodeName: undefined },
+				metadata: { isFromToolkit: false, sourceNodeName: 'tool1' },
 			},
 			{
 				name: 'toolkitTool1',
 				description: 'toolkitToolDesc1',
-				metadata: { isFromToolkit: true, sourceNodeName: undefined },
+				metadata: { isFromToolkit: true, sourceNodeName: 'toolkitTool1' },
 			},
 			{
 				name: 'toolkitTool2',
 				description: 'toolkitToolDesc2',
-				metadata: { isFromToolkit: true, sourceNodeName: undefined },
+				metadata: { isFromToolkit: true, sourceNodeName: 'toolkitTool2' },
 			},
 		]);
 	});
@@ -342,6 +365,84 @@ describe('getConnectedTools', () => {
 		});
 	});
 
+	describe('toolkit detection across duplicated n8n-core copies', () => {
+		class ForeignStructuredToolkit {
+			constructor(readonly tools: Tool[]) {}
+
+			getTools(): Tool[] {
+				return this.tools;
+			}
+		}
+
+		it('should flatten a toolkit whose class identity differs from the local StructuredToolkit', async () => {
+			const gatedTool = { name: 'gmail_send', description: 'Send an email' } as Tool;
+
+			mockExecuteFunctions.getInputConnectionData = vi
+				.fn()
+				.mockResolvedValue([new ForeignStructuredToolkit([gatedTool])]);
+			mockExecuteFunctions.getParentNodes = vi.fn().mockReturnValue([{ name: 'Gmail HITL' }]);
+
+			const tools = await getConnectedTools(mockExecuteFunctions, false);
+
+			expect(tools).toHaveLength(1);
+			expect(tools[0].name).toBe('gmail_send');
+			expect(tools[0].metadata).toEqual({
+				isFromToolkit: true,
+				sourceNodeName: 'Gmail HITL',
+			});
+		});
+
+		it('should keep plain tools untouched when connected alongside a foreign-identity toolkit', async () => {
+			const directTool = { name: 'direct_tool', description: 'Direct tool' } as Tool;
+			const gatedTool1 = { name: 'gated_tool_1', description: 'Gated tool 1' } as Tool;
+			const gatedTool2 = { name: 'gated_tool_2', description: 'Gated tool 2' } as Tool;
+
+			mockExecuteFunctions.getInputConnectionData = vi
+				.fn()
+				.mockResolvedValue([directTool, new ForeignStructuredToolkit([gatedTool1, gatedTool2])]);
+			mockExecuteFunctions.getParentNodes = vi
+				.fn()
+				.mockReturnValue([{ name: 'Direct Tool' }, { name: 'Gmail HITL' }]);
+
+			const tools = await getConnectedTools(mockExecuteFunctions, false);
+
+			expect(tools.map((tool) => tool.name)).toEqual([
+				'direct_tool',
+				'gated_tool_1',
+				'gated_tool_2',
+			]);
+			expect(tools[0].metadata).toEqual({
+				isFromToolkit: false,
+				sourceNodeName: 'Direct Tool',
+			});
+			expect(tools[1].metadata).toEqual({
+				isFromToolkit: true,
+				sourceNodeName: 'Gmail HITL',
+			});
+			expect(tools[2].metadata).toEqual({
+				isFromToolkit: true,
+				sourceNodeName: 'Gmail HITL',
+			});
+		});
+
+		it('should fall back to the tool name when no parent node is found for a toolkit', async () => {
+			const gatedTool = { name: 'gmail_send', description: 'Send an email' } as Tool;
+
+			mockExecuteFunctions.getInputConnectionData = vi
+				.fn()
+				.mockResolvedValue([new ForeignStructuredToolkit([gatedTool])]);
+			mockExecuteFunctions.getParentNodes = vi.fn().mockReturnValue([]);
+
+			const tools = await getConnectedTools(mockExecuteFunctions, false);
+
+			expect(tools).toHaveLength(1);
+			expect(tools[0].metadata).toEqual({
+				isFromToolkit: true,
+				sourceNodeName: 'gmail_send',
+			});
+		});
+	});
+
 	it('should map source node names correctly when a disabled tool node is still connected', async () => {
 		// getParentNodes returns ALL parents including disabled ones,
 		// while getInputConnectionData filters disabled nodes out.
@@ -356,8 +457,8 @@ describe('getConnectedTools', () => {
 			{ name: 'charlie', description: 'desc-charlie' },
 		];
 
-		mockExecuteFunctions.getInputConnectionData = jest.fn().mockResolvedValue(mockTools);
-		mockExecuteFunctions.getParentNodes = jest.fn().mockReturnValue(mockParentNodes);
+		mockExecuteFunctions.getInputConnectionData = vi.fn().mockResolvedValue(mockTools);
+		mockExecuteFunctions.getParentNodes = vi.fn().mockReturnValue(mockParentNodes);
 
 		const tools = await getConnectedTools(mockExecuteFunctions, false);
 
@@ -492,6 +593,55 @@ describe('getSessionId', () => {
 
 		const sessionId = getSessionId(mockCtx, 0);
 		expect(sessionId).toBe('12345');
+	});
+
+	it('should reject a non-primitive sessionId from bodyData', () => {
+		mockCtx.getBodyData = vi.fn();
+		mockCtx.getNodeParameter.mockReturnValue('fromInput');
+		mockCtx.getBodyData.mockReturnValue({ sessionId: { $ne: null } });
+
+		expect(() => getSessionId(mockCtx, 0)).toThrow(NodeOperationError);
+	});
+
+	it('should reject an array sessionId from bodyData', () => {
+		mockCtx.getBodyData = vi.fn();
+		mockCtx.getNodeParameter.mockReturnValue('fromInput');
+		mockCtx.getBodyData.mockReturnValue({ sessionId: [{ $regex: '^a' }] });
+
+		expect(() => getSessionId(mockCtx, 0)).toThrow(NodeOperationError);
+	});
+
+	it('should coerce a numeric sessionId from bodyData to a string', () => {
+		mockCtx.getBodyData = vi.fn();
+		mockCtx.getNodeParameter.mockReturnValue('fromInput');
+		mockCtx.getBodyData.mockReturnValue({ sessionId: 12345 });
+
+		const sessionId = getSessionId(mockCtx, 0);
+		expect(sessionId).toBe('12345');
+	});
+
+	it('should coerce a boolean sessionId from bodyData to a string', () => {
+		mockCtx.getBodyData = vi.fn();
+		mockCtx.getNodeParameter.mockReturnValue('fromInput');
+		mockCtx.getBodyData.mockReturnValue({ sessionId: false });
+
+		const sessionId = getSessionId(mockCtx, 0);
+		expect(sessionId).toBe('false');
+	});
+
+	it('should throw "No session ID found" for a null sessionId from bodyData', () => {
+		mockCtx.getBodyData = vi.fn();
+		mockCtx.getNodeParameter.mockReturnValue('fromInput');
+		mockCtx.getBodyData.mockReturnValue({ sessionId: null });
+
+		expect(() => getSessionId(mockCtx, 0)).toThrow(NodeOperationError);
+	});
+
+	it('should reject a non-primitive sessionId resolved from an expression', () => {
+		mockCtx.getNodeParameter.mockReturnValue('fromInput');
+		mockCtx.evaluateExpression.mockReturnValue({ $ne: null });
+
+		expect(() => getSessionId(mockCtx, 0)).toThrow(NodeOperationError);
 	});
 
 	it('should retrieve sessionId from chat trigger', () => {

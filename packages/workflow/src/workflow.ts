@@ -354,13 +354,7 @@ export class Workflow {
 			const returnArray: any[] = [];
 
 			for (const currentValue of parameterValue) {
-				returnArray.push(
-					this.renameNodeInParameterValue(
-						currentValue as NodeParameterValueType,
-						currentName,
-						newName,
-					),
-				);
+				returnArray.push(this.renameNodeInParameterValue(currentValue, currentName, newName));
 			}
 
 			return returnArray;

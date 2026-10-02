@@ -72,9 +72,10 @@ export class TokenExchangeJtiRepository extends Repository<TokenExchangeJti> {
 	/**
 	 * Delete expired JTI rows in batches. Returns the number of deleted rows.
 	 *
-	 * Postgres uses a CTE with DELETE...RETURNING + COUNT(*) in a single query.
-	 * SQLite uses a transactional 2-query approach (DELETE + SELECT changes())
-	 * for the same reason as atomicConsume (see above).
+	 * Postgres uses a CTE with DELETE...RETURNING + COUNT(*) in a single query;
+	 * the subquery locks its rows with SKIP LOCKED, so concurrent batches take
+	 * disjoint rows. SQLite uses a transactional 2-query approach (DELETE +
+	 * SELECT changes()) for the same reason as atomicConsume (see above).
 	 */
 	async deleteExpiredBatch(batchSize: number): Promise<number> {
 		const esc = (name: string) => this.manager.connection.driver.escape(name);
@@ -88,6 +89,7 @@ export class TokenExchangeJtiRepository extends Repository<TokenExchangeJti> {
 						SELECT ${esc('jti')} FROM ${tableName}
 						WHERE ${esc('expiresAt')} < NOW()
 						LIMIT $1
+						FOR UPDATE SKIP LOCKED
 					)
 					RETURNING ${esc('jti')}
 				)

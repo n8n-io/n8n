@@ -8,11 +8,11 @@ import { VIEWS } from '@/app/constants';
 import type { PermissionsRecord } from '@n8n/permissions';
 import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
 import { checkExhaustive } from '@/app/utils/typeGuards';
-import type { IconColor } from '@n8n/design-system/types/icon';
+import type { IconColor } from '@n8n/design-system';
 import type { ExecutionStatus, ExecutionSummary } from 'n8n-workflow';
-import { WAIT_INDEFINITELY } from 'n8n-workflow';
+import { isIndefiniteWait } from 'n8n-workflow';
 import { computed, ref, useCssModule } from 'vue';
-import { type IconName } from '@n8n/design-system/components/N8nIcon/icons';
+import { type IconName } from '@n8n/design-system';
 
 import { ElDropdown, ElDropdownItem, ElDropdownMenu } from 'element-plus';
 import {
@@ -23,6 +23,7 @@ import {
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
+import PrivateCredentialIcon from '@/features/resolvers/components/PrivateCredentialIcon.vue';
 type Command = 'retrySaved' | 'retryOriginal' | 'delete';
 
 const emit = defineEmits<{
@@ -40,12 +41,14 @@ const props = withDefaults(
 		selected?: boolean;
 		workflowName?: string;
 		workflowPermissions: PermissionsRecord['workflow'];
+		executionPermissions?: PermissionsRecord['execution'];
 		concurrencyCap: number;
 		isCloudDeployment?: boolean;
 	}>(),
 	{
 		selected: false,
 		workflowName: '',
+		executionPermissions: () => ({}),
 	},
 );
 
@@ -62,7 +65,7 @@ const isWaitTillIndefinite = computed(() => {
 		return false;
 	}
 
-	return new Date(props.execution.waitTill).getTime() === WAIT_INDEFINITELY.getTime();
+	return isIndefiniteWait(new Date(props.execution.waitTill));
 });
 
 const isRetriable = computed(() => executionHelpers.isExecutionRetriable(props.execution));
@@ -274,13 +277,18 @@ async function handleActionItemClick(commandData: Command) {
 				</small>
 			</span>
 		</td>
-		<td>
+		<td :class="$style.modeCell">
 			<N8nTooltip v-if="execution.mode === 'manual'" content="Manual Execution" placement="top">
 				<N8nIcon icon="flask-conical" />
 			</N8nTooltip>
 			<N8nTooltip v-else-if="execution.mode === 'chat'" content="Chat Execution" placement="top">
 				<N8nIcon icon="messages-square" />
 			</N8nTooltip>
+			<PrivateCredentialIcon
+				v-if="execution.usedPrivateCredentials"
+				data-test-id="global-execution-private-credential"
+				:tooltip-text="locale.baseText('executions.privateCredential.tooltip')"
+			/>
 		</td>
 		<td>
 			<N8nButton
@@ -326,7 +334,7 @@ async function handleActionItemClick(commandData: Command) {
 							data-test-id="execution-delete-dropdown-item"
 							:class="$style.deleteAction"
 							command="delete"
-							:disabled="!workflowPermissions.update"
+							:disabled="!executionPermissions.delete"
 						>
 							{{ locale.baseText('generic.delete') }}
 						</ElDropdownItem>
@@ -338,6 +346,19 @@ async function handleActionItemClick(commandData: Command) {
 </template>
 
 <style lang="scss" module>
+.modeCell {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+
+	/* Normalize icon wrappers so SVG baseline doesn't shift relative to tooltip spans */
+	:deep(svg),
+	:deep(span) {
+		display: inline-flex;
+		align-items: center;
+	}
+}
+
 tr.dangerBg {
 	background-color: rgba(215, 56, 58, 0.1);
 }

@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "execution_entity" ("id" integer PRIMARY KEY AUTOINCREMENT NOT NULL, "workflowId" varchar(36) NOT NULL, "finished" boolean NOT NULL, "mode" varchar NOT NULL, "retryOf" varchar, "retrySuccessId" varchar, "startedAt" datetime, "stoppedAt" datetime, "waitTill" datetime, "status" varchar NOT NULL, "deletedAt" datetime(3), "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "storedAt" varchar(2) NOT NULL DEFAULT ('db'), "tracingContext" text, "deduplicationKey" varchar(255), "jsonSizeBytes" bigint NOT NULL DEFAULT (0), "workflowVersionId" varchar(36) DEFAULT (NULL), "binaryDataSizeBytes" bigint NOT NULL DEFAULT (0), CONSTRAINT "CHK_execution_entity_storedAt" CHECK ("storedAt" IN ('db', 'fs', 's3', 'az')), CONSTRAINT "FK_c4d999a5e90784e8caccf5589de" FOREIGN KEY ("workflowId") REFERENCES "workflow_entity" ("id") ON DELETE CASCADE ON UPDATE NO ACTION)
+CREATE TABLE "execution_entity" ("id" integer PRIMARY KEY AUTOINCREMENT NOT NULL, "workflowId" varchar(36) NOT NULL, "finished" boolean NOT NULL, "mode" varchar NOT NULL, "retryOf" varchar, "retrySuccessId" varchar, "startedAt" datetime, "stoppedAt" datetime, "waitTill" datetime, "status" varchar NOT NULL, "deletedAt" datetime(3), "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "storedAt" varchar(2) NOT NULL DEFAULT ('db'), "tracingContext" text, "deduplicationKey" varchar(255), "jsonSizeBytes" bigint NOT NULL DEFAULT (0), "workflowVersionId" varchar(36) DEFAULT (NULL), "binaryDataSizeBytes" bigint NOT NULL DEFAULT (0), "usedPrivateCredentials" BOOLEAN NOT NULL DEFAULT FALSE, CONSTRAINT "CHK_execution_entity_storedAt" CHECK ("storedAt" IN ('db', 'fs', 's3', 'az')), CONSTRAINT "FK_c4d999a5e90784e8caccf5589de" FOREIGN KEY ("workflowId") REFERENCES "workflow_entity" ("id") ON DELETE CASCADE ON UPDATE NO ACTION)
 ```
 
 </details>
@@ -30,6 +30,7 @@ CREATE TABLE "execution_entity" ("id" integer PRIMARY KEY AUTOINCREMENT NOT NULL
 | stoppedAt | datetime |  | true |  |  |  |
 | storedAt | varchar(2) | 'db' | false |  |  |  |
 | tracingContext | TEXT |  | true |  |  |  |
+| usedPrivateCredentials | BOOLEAN | FALSE | false |  |  |  |
 | waitTill | datetime |  | true |  |  |  |
 | workflowId | varchar(36) |  | false |  | [workflow_entity](workflow_entity.md) |  |
 | workflowVersionId | varchar(36) | NULL | true |  |  |  |
@@ -80,6 +81,7 @@ erDiagram
   datetime stoppedAt
   varchar_2_ storedAt
   TEXT tracingContext
+  BOOLEAN usedPrivateCredentials
   datetime waitTill
   varchar_36_ workflowId FK
   varchar_36_ workflowVersionId

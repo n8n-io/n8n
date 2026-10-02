@@ -12,8 +12,10 @@ import type {
 	IRequestOptions,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError, sleep } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 import { RRule } from 'rrule';
+
+import { sleep } from '@n8n/utils/sleep';
 
 import type { RecurringEventInstance } from './EventInterface';
 

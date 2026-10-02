@@ -53,6 +53,7 @@ const visible = computed(() =>
 		</template>
 		<N8nIconButton
 			variant="subtle"
+			size="small"
 			:class="$style.pinDataButton"
 			:active="props.pinnedData.hasData.value"
 			icon="pin"

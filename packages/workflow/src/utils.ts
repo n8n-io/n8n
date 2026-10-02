@@ -6,8 +6,7 @@ import merge from 'lodash/merge';
 import path from 'path';
 
 import { ALPHABET } from './constants';
-import { UserError } from './errors/base/user.error';
-import { ManualExecutionCancelledError } from './errors/execution-cancelled.error';
+import { UserError } from '@n8n/errors';
 import type { BinaryFileType, IDisplayOptions, INodeProperties, JsonObject } from './interfaces';
 import * as LoggerProxy from './logger-proxy';
 
@@ -242,27 +241,10 @@ export const jsonStringify = (obj: unknown, options: JSONStringifyOptions = {}):
 	return JSON.stringify(options?.replaceCircularRefs ? replaceCircularReferences(obj) : obj);
 };
 
-export const sleep = async (ms: number): Promise<void> =>
-	await new Promise((resolve) => {
-		setTimeout(resolve, ms);
-	});
-
-export const sleepWithAbort = async (ms: number, abortSignal?: AbortSignal): Promise<void> =>
-	await new Promise((resolve, reject) => {
-		if (abortSignal?.aborted) {
-			reject(new ManualExecutionCancelledError(''));
-			return;
-		}
-
-		const timeout = setTimeout(resolve, ms);
-
-		const abortHandler = () => {
-			clearTimeout(timeout);
-			reject(new ManualExecutionCancelledError(''));
-		};
-
-		abortSignal?.addEventListener('abort', abortHandler, { once: true });
-	});
+// Kept only as a backwards-compat layer for community nodes — internal code
+// must import `sleep` from `@n8n/utils/sleep` (enforced by eslint rule
+// no-restricted-sleep-import).
+export { sleep } from '@n8n/utils/sleep';
 
 export function fileTypeFromMimeType(mimeType: string): BinaryFileType | undefined {
 	if (mimeType.startsWith('application/json')) return 'json';
@@ -391,6 +373,7 @@ const unsafeObjectProperties = new Set([
 	'__defineGetter__',
 	'__defineSetter__',
 	'caller',
+	'callee',
 	'arguments',
 	'getBuiltinModule',
 	'dlopen',
@@ -408,6 +391,25 @@ export function isSafeObjectProperty(property: string) {
 	return !unsafeObjectProperties.has(property);
 }
 
+/**
+ * Checks if a value can be used as an own key of a plain object: it has to be a string,
+ * and not a name that resolves to an inherited member.
+ *
+ * Use this where the key comes from data rather than from code — a node name, or a
+ * connection field in a stored workflow. `isSafeObjectProperty` is declared
+ * `(property: string)` but only tests the name, so a value that is not a string at
+ * runtime passes it and is then coerced by the bracket access that follows:
+ * `obj[['__proto__']]` writes to `obj['__proto__']`.
+ *
+ * It is a separate function on purpose. `isSafeObjectProperty` is also called with keys
+ * that are legitimately not strings, such as the numeric literal in `items[0]` while an
+ * expression is sanitised, so it cannot require a string itself.
+ */
+export function isUsableObjectKey(value: unknown): value is string {
+	return typeof value === 'string' && isSafeObjectProperty(value);
+}
+
+// eslint-disable-next-line n8n-local-rules/no-dynamic-regexp -- static pattern
 const unsafeObjectPropertyTokenPattern = new RegExp(
 	`\\b(?:${[...unsafeObjectProperties]
 		.map((p) => p.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))

@@ -31,7 +31,8 @@ const handleMouseLeave = () => {
 	<div
 		:key="item.id"
 		:data-item-id="item.id"
-		:class="[$style.item, { [$style.selected]: isSelected }]"
+		:class="[$style.item, { [$style.selected]: isSelected, [$style.disabled]: item.disabled }]"
+		:aria-disabled="item.disabled || undefined"
 		@click.stop="handleSelect"
 		@mouseenter="handleMouseEnter"
 		@mouseleave="handleMouseLeave"
@@ -78,6 +79,15 @@ const handleMouseLeave = () => {
 
 	&.selected {
 		background-color: var(--command-bar-item--color--background--hover);
+	}
+
+	&.disabled {
+		cursor: not-allowed;
+
+		.icon,
+		.content {
+			opacity: 0.45;
+		}
 	}
 }
 

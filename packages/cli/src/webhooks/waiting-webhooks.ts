@@ -1,14 +1,19 @@
 import { Logger } from '@n8n/backend-common';
+import { EventService } from '@n8n/backend-services';
+import { EndpointsConfig } from '@n8n/config';
 import type { IExecutionResponse } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { timingSafeEqual } from 'crypto';
 import type express from 'express';
 import { InstanceSettings, WAITING_TOKEN_QUERY_PARAM, validateUrlSignature } from 'n8n-core';
 import {
+	FORM_NODE_TYPE,
+	type INode,
 	type INodes,
 	type IWorkflowBase,
 	NodeConnectionTypes,
 	SEND_AND_WAIT_OPERATION,
+	WAIT_NODE_TYPE,
 	Workflow,
 } from 'n8n-workflow';
 
@@ -20,15 +25,13 @@ import type {
 	WaitingWebhookRequest,
 } from './webhook.types';
 
-import { EventService } from '@/events/event.service';
-
-import { ConflictError } from '@/errors/response-errors/conflict.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { ConflictError, NotFoundError } from '@n8n/errors';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { getWorkflowActiveStatusFromWorkflowData } from '@/executions/execution.utils';
 import { NodeTypes } from '@/node-types';
 import { applyCors } from '@/utils/cors.util';
 import * as WebhookHelpers from '@/webhooks/webhook-helpers';
+import { applyFormSandboxCSP } from '@/webhooks/webhook-response-headers';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import { preserveInputOverride } from '@/workflow-helpers';
 
@@ -48,6 +51,7 @@ export class WaitingWebhooks implements IWebhookManager {
 		private readonly webhookService: WebhookService,
 		protected readonly instanceSettings: InstanceSettings,
 		private readonly eventService: EventService,
+		private readonly endpointsConfig: EndpointsConfig,
 	) {}
 
 	// TODO: implement `getWebhookMethods` for CORS support
@@ -76,6 +80,60 @@ export class WaitingWebhooks implements IWebhookManager {
 					nodes[node].id === suffix && nodes[node].parameters.operation === SEND_AND_WAIT_OPERATION,
 			)
 		);
+	}
+
+	/**
+	 * Whether a node continues execution on form submission, and is therefore
+	 * served by the `form-waiting` endpoint rather than `webhook-waiting`.
+	 */
+	protected isFormResumeNode(node: Pick<INode, 'type' | 'parameters'>): boolean {
+		return (
+			node.type === FORM_NODE_TYPE ||
+			(node.type === WAIT_NODE_TYPE && node.parameters.resume === 'form')
+		);
+	}
+
+	/**
+	 * A resume node that continues on form submission is served by the
+	 * `form-waiting` endpoint, not `webhook-waiting`. Users frequently reach for
+	 * `$execution.resumeUrl` (webhook-waiting) instead of `$execution.resumeFormUrl`,
+	 * which resolves to the wrong endpoint for these nodes.
+	 */
+	private isFormResumeExecution(execution: IExecutionResponse): boolean {
+		const lastNodeExecuted = execution.data.resultData?.lastNodeExecuted;
+		if (!lastNodeExecuted) {
+			return false;
+		}
+
+		const node = execution.workflowData?.nodes?.find((n) => n.name === lastNodeExecuted);
+		if (!node) {
+			return false;
+		}
+
+		return this.isFormResumeNode(node);
+	}
+
+	/**
+	 * Redirects a form-resume request that landed on `webhook-waiting` to the
+	 * equivalent `form-waiting` URL (preserving suffix and query params), so the
+	 * form renders and submits against the endpoint that actually serves it.
+	 * Uses 307 to preserve the request method for direct submissions.
+	 *
+	 * Returns `false` without redirecting when the rewritten URL is unchanged,
+	 * which happens if the two endpoints are configured identically (e.g. a
+	 * custom `N8N_ENDPOINT_WEBHOOK_WAIT` equal to the form-waiting endpoint).
+	 * Redirecting in that case would loop back to this same handler forever.
+	 */
+	private redirectToFormWaiting(req: WaitingWebhookRequest, res: express.Response): boolean {
+		const location = req.originalUrl.replace(
+			`/${this.endpointsConfig.webhookWaiting}/`,
+			`/${this.endpointsConfig.formWaiting}/`,
+		);
+		if (location === req.originalUrl) {
+			return false;
+		}
+		res.redirect(307, location);
+		return true;
 	}
 
 	// TODO: fix the type here - it should be execution workflowData
@@ -171,6 +229,18 @@ export class WaitingWebhooks implements IWebhookManager {
 		return { valid, webhookPath };
 	}
 
+	/**
+	 * Removes the waiting token from the request's query so it never reaches
+	 * the resumed node's own output data.
+	 */
+	private stripTokenFromRequest(req: express.Request) {
+		delete req.query[WAITING_TOKEN_QUERY_PARAM];
+
+		const url = new URL(req.url, `http://${req.headers.host ?? 'localhost'}`);
+		url.searchParams.delete(WAITING_TOKEN_QUERY_PARAM);
+		req.url = `${url.pathname}${url.search}`;
+	}
+
 	async executeWebhook(
 		req: WaitingWebhookRequest,
 		res: express.Response,
@@ -192,7 +262,9 @@ export class WaitingWebhooks implements IWebhookManager {
 		if (execution?.data.resumeToken) {
 			const { workflowData } = execution;
 			const { nodes } = this.createWorkflow(workflowData);
-			const isSendAndWait = this.isSendAndWaitRequest(nodes, suffix);
+			// Send-and-wait node ids carried in the signature query value require HMAC validation too.
+			const effectiveSuffix = suffix ?? this.parseSignatureParam(req).webhookPath;
+			const isSendAndWait = this.isSendAndWaitRequest(nodes, effectiveSuffix);
 
 			// Send-and-wait uses HMAC to protect tamper-sensitive query params (e.g. approved=true).
 			// All other waiting URLs use a simple random token comparison.
@@ -202,12 +274,14 @@ export class WaitingWebhooks implements IWebhookManager {
 
 			if (!valid) {
 				if (isSendAndWait) {
+					applyFormSandboxCSP(res);
 					res.status(401).render('form-invalid-token');
 				} else {
 					res.status(401).json({ error: 'Invalid token' });
 				}
 				return { noWebhookResponse: true };
 			}
+			this.stripTokenFromRequest(req);
 			// Use webhook path parsed from token if not in route (backwards compat for old URL format)
 			if (!suffix && webhookPath) {
 				suffix = webhookPath;
@@ -216,6 +290,14 @@ export class WaitingWebhooks implements IWebhookManager {
 
 		if (!execution) {
 			throw new NotFoundError(`The execution "${executionId}" does not exist.`);
+		}
+
+		if (
+			!this.includeForms &&
+			this.isFormResumeExecution(execution) &&
+			this.redirectToFormWaiting(req, res)
+		) {
+			return { noWebhookResponse: true };
 		}
 
 		if (execution.status === 'running') {
@@ -232,6 +314,7 @@ export class WaitingWebhooks implements IWebhookManager {
 			const { workflowData } = execution;
 			const { nodes } = this.createWorkflow(workflowData);
 			if (this.isSendAndWaitRequest(nodes, suffix)) {
+				applyFormSandboxCSP(res);
 				res.render('send-and-wait-no-action-required', { isTestWebhook: false });
 				return { noWebhookResponse: true };
 			} else {
@@ -326,6 +409,7 @@ export class WaitingWebhooks implements IWebhookManager {
 				const errorMessage = `The workflow for execution "${executionId}" does not contain a waiting webhook with a matching path/method.`;
 
 				if (this.isSendAndWaitRequest(workflow.nodes, suffix)) {
+					applyFormSandboxCSP(res);
 					res.render('send-and-wait-no-action-required', { isTestWebhook: false });
 					return { noWebhookResponse: true };
 				}
@@ -342,7 +426,7 @@ export class WaitingWebhooks implements IWebhookManager {
 			}
 
 			return await new Promise((resolve, reject) => {
-				void WebhookHelpers.executeWebhook(
+				WebhookHelpers.executeWebhook(
 					workflow,
 					webhookData,
 					workflowData,
@@ -360,7 +444,7 @@ export class WaitingWebhooks implements IWebhookManager {
 						}
 						resolve(data);
 					},
-				);
+				).catch(reject); // ensure the Promise settles even if executeWebhook throws
 			});
 		} finally {
 			await workflow.expression.releaseIsolate();

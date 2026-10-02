@@ -1,3 +1,4 @@
+import { DateTime } from 'luxon';
 import get from 'lodash/get';
 import { constructExecutionMetaData } from 'n8n-core';
 import type { IDataObject, IExecuteFunctions, IGetNodeParameterOptions, INode } from 'n8n-workflow';
@@ -344,6 +345,29 @@ describe('test Set2, validateEntry', () => {
 		expect(result).toEqual({
 			name: 'foo',
 			value: 'undefined',
+		});
+	});
+
+	describe('date & object serialization on version 3.5', () => {
+		it('should return a dateTime field as an ISO string', () => {
+			const result = validateEntry('foo', 'dateTime', '2020-01-01T12:00:00Z', node, 0, false, 3.5);
+
+			expect(typeof result.value).toBe('string');
+			expect(result.value).toBe(new Date('2020-01-01T12:00:00Z').toISOString());
+		});
+
+		it('should deep-serialize dates nested inside object fields', () => {
+			const value = JSON.stringify({ nested: { when: '2020-01-01T12:00:00.000Z' } });
+			const result = validateEntry('foo', 'object', value, node, 0, false, 3.5);
+
+			expect(result.value).toEqual({ nested: { when: '2020-01-01T12:00:00.000Z' } });
+		});
+
+		it('should keep a dateTime field as a DateTime object before version 3.5', () => {
+			const result = validateEntry('foo', 'dateTime', '2020-01-01T12:00:00Z', node, 0, false, 3.4);
+
+			expect(typeof result.value).not.toBe('string');
+			expect(DateTime.isDateTime(result.value)).toBe(true);
 		});
 	});
 });

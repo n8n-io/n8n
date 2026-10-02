@@ -7,6 +7,7 @@ import type {
 
 import { updateDisplayOptions } from '@utils/utilities';
 
+import { stampItemIndexOnError } from '../../../../GenericFunctions';
 import { microsoftApiRequest } from '../../transport';
 import { workbookRLC } from '../common.descriptions';
 
@@ -63,6 +64,10 @@ export async function execute(
 				'POST',
 				`/drive/items/${workbookId}/workbook/createSession`,
 				{ persistChanges: true },
+				undefined,
+				undefined,
+				undefined,
+				i,
 			);
 			const responseData = await microsoftApiRequest.call(
 				this,
@@ -72,6 +77,7 @@ export async function execute(
 				{},
 				'',
 				{ 'workbook-session-id': id },
+				i,
 			);
 			await microsoftApiRequest.call(
 				this,
@@ -81,6 +87,7 @@ export async function execute(
 				{},
 				'',
 				{ 'workbook-session-id': id },
+				i,
 			);
 
 			if (Array.isArray(responseData)) {
@@ -107,7 +114,8 @@ export async function execute(
 				returnData.push(...executionErrorData);
 				continue;
 			}
-			throw error;
+			// A NodeError from the transport may be missing the itemIndex, add it
+			throw stampItemIndexOnError(error, i);
 		}
 	}
 

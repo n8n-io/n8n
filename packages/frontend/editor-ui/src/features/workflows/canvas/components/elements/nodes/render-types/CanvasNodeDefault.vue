@@ -8,6 +8,7 @@ import { injectCanvasRenderData } from '@/features/workflows/canvas/canvas.utils
 import { useCanvas } from '../../../../composables/useCanvas';
 import { useZoomAdjustedValues } from '../../../../composables/useZoomAdjustedValues';
 import CanvasNodeSettingsIcons from './parts/CanvasNodeSettingsIcons.vue';
+import { useNodePrivateCredential } from '@/features/resolvers/composables/useNodePrivateCredential';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { calculateNodeSize } from '@/app/utils/nodeViewUtils';
 import ExperimentalInPlaceNodeSettings from '../../../../experimental/components/ExperimentalEmbeddedNodeDetails.vue';
@@ -47,18 +48,27 @@ const {
 	hasRunData,
 	render,
 	isNotInstalledCommunityNode,
+	isRestricted,
 } = useCanvasNode();
+const { hasPrivateCredential, tooltipText: privateCredentialTooltip } =
+	useNodePrivateCredential(name);
 const renderData = injectCanvasRenderData();
 const inputs = computed(() => renderData.value.nodeInputsByNodeId.get(id.value)?.value ?? []);
 const outputs = computed(() => renderData.value.nodeOutputsByNodeId.get(id.value)?.value ?? []);
 const hasExecutionErrors = computed(
-	() => (renderData.value.executionIssuesByNodeName.get(name.value)?.value?.length ?? 0) > 0,
+	() => (renderData.value.executionIssuesByNodeId.get(id.value)?.value?.length ?? 0) > 0,
 );
-const hasPinnedData = computed(() => !!renderData.value.pinnedDataByNodeName[name.value]);
-const hasSimulatedOutput = computed(
-	() => !!renderData.value.executionSimulationByNodeName[name.value],
+const hasPinnedData = computed(
+	() =>
+		!renderData.value.isExecutionDataDisplayed &&
+		!!renderData.value.pinnedDataByNodeName[name.value],
 );
-const hasSubstitutedOutput = computed(() => hasPinnedData.value || hasSimulatedOutput.value);
+const hasExecutionPinData = computed(
+	() =>
+		renderData.value.isExecutionDataDisplayed &&
+		!!renderData.value.executionPinDataByNodeId.get(id.value)?.value,
+);
+const hasSubstitutedOutput = computed(() => hasPinnedData.value || hasExecutionPinData.value);
 const { mainOutputs, mainOutputConnections, mainInputs, mainInputConnections, nonMainInputs } =
 	useNodeConnections({
 		inputs,
@@ -77,9 +87,11 @@ const classes = computed(() => {
 		[$style.node]: true,
 		[$style.selected]: isSelected.value,
 		[$style.disabled]:
-			isDisabled.value || (isNotInstalledCommunityNode.value && !isDemoRoute.value),
+			isDisabled.value ||
+			isRestricted.value ||
+			(isNotInstalledCommunityNode.value && !isDemoRoute.value),
 		[$style.success]: Boolean(
-			hasRunData.value && executionStatus.value === 'success' && !hasSimulatedOutput.value,
+			hasRunData.value && executionStatus.value === 'success' && !hasExecutionPinData.value,
 		),
 		[$style.error]: hasExecutionErrors.value,
 		[$style.running]: running,
@@ -150,7 +162,20 @@ const iconSource = computed(() => {
 			name: 'plus',
 		} as NodeIconSource;
 	}
-	return renderOptions.value.icon;
+
+	const source = renderOptions.value.icon;
+	// When the node uses a private credential, that icon takes over the node badge
+	// slot, replacing any node-specific badge (e.g. the HTTP Request globe).
+	if (hasPrivateCredential.value && source) {
+		const badge: NodeIconSource['badge'] = {
+			type: 'icon',
+			name: 'user-round-key',
+			tooltip: privateCredentialTooltip.value,
+		};
+		return { ...source, badge };
+	}
+
+	return source;
 });
 
 const showTooltip = ref(false);
@@ -204,13 +229,14 @@ function onActivate(event: MouseEvent) {
 			:icon-source="iconSource"
 			:size="iconSize"
 			:shrink="false"
-			:disabled="isDisabled"
+			:disabled="isDisabled || isRestricted"
 			:class="$style.icon"
 		/>
 		<CanvasNodeSettingsIcons
 			v-if="
 				!renderOptions.configuration &&
 				!isDisabled &&
+				!isRestricted &&
 				!(hasSubstitutedOutput && !nodeHelpers.isProductionExecutionPreview.value)
 			"
 		/>
@@ -222,11 +248,14 @@ function onActivate(event: MouseEvent) {
 			<div v-if="isDisabled" :class="$style.disabledLabel">
 				({{ i18n.baseText('node.disabled') }})
 			</div>
-			<div v-if="subtitle && !isNotInstalledCommunityNode" :class="$style.subtitle">
+			<div v-if="isRestricted" :class="$style.subtitle" data-test-id="canvas-node-restricted">
+				{{ i18n.baseText('node.restricted') }}
+			</div>
+			<div v-else-if="subtitle && !isNotInstalledCommunityNode" :class="$style.subtitle">
 				{{ subtitle }}
 			</div>
 		</div>
-		<CanvasNodeStatusIcons v-if="!isDisabled" :class="$style.statusIcons" />
+		<CanvasNodeStatusIcons v-if="!isDisabled || isRestricted" :class="$style.statusIcons" />
 	</div>
 </template>
 

@@ -335,7 +335,7 @@ Use conditional branches (IF nodes) for post-analysis actions:
 - Use "Continue on Fail" setting appropriately
 - Add IF nodes to check for empty datasets
 - Implement error logging
-- Use Error Trigger workflows for global handling
+- Use published Error Trigger workflows assigned per workflow for failure alerts
 - Validate data quality before analysis
 
 ### Hardcoded Values

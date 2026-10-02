@@ -57,20 +57,33 @@ const selectedAuthType = computed(() => {
 	return getAuthTypeForNodeCredential(activeNodeType.value, selectedCredentialDescription);
 });
 
+// The auth-type value that managed pair options carry when the node has no auth options;
+// isSelected must compare against the same fallback. Assumes an unlinked managed-OAuth
+// credential has no real node shape (accepted trade-off).
+const managedFallbackType = computed(() => selectedAuthType.value?.value ?? 'oAuth2');
+
 const isOAuthCredential = computed(() => isOAuthCredentialType(props.credentialType.name));
 const hasManagedOAuth = computed(() => isOAuthCredential.value && props.showManagedOauthOptions);
 const hasManualCredentialFields = computed(() =>
 	hasManualCredentialInputFields(props.credentialType),
 );
 
-function getManagedOAuthOptions(authType: string): Option[] {
+function getManagedOAuthOptions(authType: string, authTypeLabel?: string): Option[] {
 	return [
 		{
-			name: i18n.baseText('credentialEdit.credentialConfig.oauthModeManaged'),
+			name: authTypeLabel
+				? i18n.baseText('credentialEdit.credentialConfig.oauthModeManagedWithAuthType', {
+						interpolate: { authType: authTypeLabel },
+					})
+				: i18n.baseText('credentialEdit.credentialConfig.oauthModeManaged'),
 			value: { type: authType, customOauth: false },
 		},
 		{
-			name: i18n.baseText('credentialEdit.credentialConfig.oauthModeCustom'),
+			name: authTypeLabel
+				? i18n.baseText('credentialEdit.credentialConfig.oauthModeCustomWithAuthType', {
+						interpolate: { authType: authTypeLabel },
+					})
+				: i18n.baseText('credentialEdit.credentialConfig.oauthModeCustom'),
 			value: { type: authType, customOauth: true },
 		},
 	];
@@ -96,28 +109,36 @@ const manualOptions = computed<Option[]>(() => {
 	const authOptions = getNodeAuthOptions(activeNodeType.value, activeNode.value?.typeVersion);
 
 	if (authOptions.length === 0 && hasManagedOAuth.value) {
-		return getManagedOAuthOptions(selectedAuthType.value?.value ?? 'oAuth2');
+		return getManagedOAuthOptions(managedFallbackType.value);
 	}
 
-	return authOptions.flatMap<Option>((option) => {
-		const authType = option.value;
+	const withExpansion = authOptions.map((option) => {
 		const credential = activeNodeType.value
-			? getNodeCredentialForSelectedAuthType(activeNodeType.value, authType)
+			? getNodeCredentialForSelectedAuthType(activeNodeType.value, option.value)
 			: null;
-
-		if (
+		const splitsIntoManagedPair = !!(
 			credential &&
 			props.showManagedOauthOptions &&
 			isOAuthCredentialType(credential.name) &&
 			canOAuthCredentialQuickConnect(credential.name)
-		) {
-			return getManagedOAuthOptions(authType);
-		}
+		);
+		return { option, splitsIntoManagedPair };
+	});
+	// Disambiguate managed labels only when several auth options expand into managed pairs
+	const managedPairCount = withExpansion.filter((o) => o.splitsIntoManagedPair).length;
+	const recommendedSuffix = i18n.baseText(
+		'credentialEdit.credentialConfig.recommendedAuthTypeSuffix',
+	);
 
-		return {
-			name: option.name,
-			value: { type: authType },
-		};
+	return withExpansion.flatMap<Option>(({ option, splitsIntoManagedPair }) => {
+		if (splitsIntoManagedPair) {
+			// strip the "(recommended)" suffix getNodeAuthOptions appends via the same i18n key
+			const label = option.name.endsWith(recommendedSuffix)
+				? option.name.slice(0, -recommendedSuffix.length).trimEnd()
+				: option.name;
+			return getManagedOAuthOptions(option.value, managedPairCount > 1 ? label : undefined);
+		}
+		return { name: option.name, value: { type: option.value } };
 	});
 });
 
@@ -159,7 +180,12 @@ function isSelected(option: CredentialModeOption): boolean {
 	}
 
 	if (option.customOauth !== undefined) {
-		return isOAuthCredential.value && !!props.useCustomOauth === option.customOauth;
+		// Match the auth type too (a node can expose several managed pairs).
+		return (
+			isOAuthCredential.value &&
+			option.type === managedFallbackType.value &&
+			!!props.useCustomOauth === option.customOauth
+		);
 	}
 
 	return option.type === selectedAuthType.value?.value;

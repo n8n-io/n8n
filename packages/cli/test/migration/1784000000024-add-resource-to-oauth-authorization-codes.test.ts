@@ -26,7 +26,7 @@ interface PgColumnInfo {
 
 describe('AddResourceToOAuthAuthorizationCodes Migration', () => {
 	let dataSource: DataSource;
-	jest.setTimeout(20_000);
+	vi.setConfig({ testTimeout: 20_000 });
 
 	async function withContext<T>(fn: (context: TestMigrationContext) => Promise<T>): Promise<T> {
 		const context = createTestMigrationContext(dataSource);

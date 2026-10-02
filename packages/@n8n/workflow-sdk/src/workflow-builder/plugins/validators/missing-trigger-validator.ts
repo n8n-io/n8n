@@ -40,7 +40,7 @@ export const missingTriggerValidator: ValidatorPlugin = {
 				{
 					code: 'MISSING_TRIGGER',
 					message: 'Workflow has no trigger node. It will need to be started manually.',
-					severity: 'warning',
+					severity: 'informational',
 				},
 			];
 		}

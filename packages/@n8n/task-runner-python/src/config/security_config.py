@@ -7,3 +7,4 @@ class SecurityConfig:
     external_allow: set[str]
     builtins_deny: set[str]
     runner_env_deny: bool
+    allow_transitive_imports: bool = False

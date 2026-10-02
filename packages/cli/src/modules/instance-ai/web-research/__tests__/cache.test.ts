@@ -53,18 +53,18 @@ describe('LRUCache', () => {
 	});
 
 	it('expires entries after TTL', () => {
-		jest.useFakeTimers();
+		vi.useFakeTimers();
 
 		const cache = new LRUCache<string>({ ttlMs: 1000 });
 		cache.set('key', 'value');
 
 		expect(cache.get('key')).toBe('value');
 
-		jest.advanceTimersByTime(1001);
+		vi.advanceTimersByTime(1001);
 
 		expect(cache.get('key')).toBeUndefined();
 
-		jest.useRealTimers();
+		vi.useRealTimers();
 	});
 
 	it('clears all entries', () => {

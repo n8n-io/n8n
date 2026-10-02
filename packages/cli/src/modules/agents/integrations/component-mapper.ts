@@ -61,6 +61,7 @@ type ChatSdk = Awaited<ReturnType<typeof loadChatSdk>>;
 export type ShortenCallback = (
 	actionId: string,
 	value: string,
+	label?: string,
 ) => Promise<{ id: string; value: string }>;
 
 /** Shared state threaded through per-component render helpers. */
@@ -72,6 +73,24 @@ interface ComponentRenderContext {
 	children: unknown[];
 	buttons: unknown[];
 	makeButton: (label: string, rawValue: string, style?: string) => Promise<unknown>;
+}
+
+/**
+ * Shared by the platforms whose rich cards have no select control. Telegram
+ * keeps its own override because it also rewrites images.
+ */
+export function expandSelectsToButtons(components: SuspendComponent[]): SuspendComponent[] {
+	const normalized: SuspendComponent[] = [];
+	for (const c of components) {
+		if (c.type === 'select' || c.type === 'radio_select') {
+			for (const opt of c.options ?? []) {
+				normalized.push({ type: 'button', label: opt.label, value: opt.value });
+			}
+			continue;
+		}
+		normalized.push(c);
+	}
+	return normalized;
 }
 
 /**
@@ -117,7 +136,7 @@ export class ComponentMapper {
 			// For platforms with short callback limits (e.g. Telegram 64 bytes),
 			// replace the full id/value with a short lookup key.
 			if (shortenCallback) {
-				const shortened = await shortenCallback(id, value);
+				const shortened = await shortenCallback(id, value, label);
 				id = shortened.id;
 				value = shortened.value;
 			}
@@ -224,7 +243,7 @@ export class ComponentMapper {
 		children.push(
 			sdk.Image({
 				url: component.url as string,
-				alt: (component.altText as string) ?? 'image',
+				alt: component.altText ?? 'image',
 			}),
 		);
 	}
@@ -308,7 +327,7 @@ export class ComponentMapper {
 	 * tool's resume schema.
 	 *
 	 * Inspects the JSON Schema top-level properties to determine the shape:
-	 * - Schema has `approved` (boolean) → `{ approved: value === 'true' }`
+	 * - Schema has `approved` → an approval decision, including an optional session scope
 	 * - Schema has `values` (object) → `{ values: { action: value } }`
 	 * - No schema / unknown → try JSON.parse, fall back to `{ value }`
 	 */
@@ -330,6 +349,7 @@ export class ComponentMapper {
 		const props = schema.properties ?? {};
 
 		if ('approved' in props) {
+			if (rawValue === 'session') return { approved: true, scope: 'session' };
 			return { approved: rawValue === 'true' };
 		}
 

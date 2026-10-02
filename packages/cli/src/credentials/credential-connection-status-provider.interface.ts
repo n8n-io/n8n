@@ -1,5 +1,14 @@
-// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import type { EntityManager } from '@n8n/typeorm';
+
+/** One user's connection to one credential. */
+export type UserConnection = {
+	/**
+	 * The provider account the connection authenticates as (e.g. the connected
+	 * Gmail address). Undefined whenever the provider returns no identity claim,
+	 * which is common — callers must be able to render a connection without it.
+	 */
+	accountIdentifier?: string;
+};
 
 /**
  * Interface for per-user credential connection state providers.
@@ -11,17 +20,17 @@ import type { EntityManager } from '@n8n/typeorm';
  *
  * Modules register a concrete provider at init time; if no provider is
  * registered, the {@link CredentialConnectionStatusProxy} degrades to a no-op
- * (empty set), so read endpoints stay functional even when the
+ * (empty map), so read endpoints stay functional even when the
  * dynamic-credentials feature is disabled.
  */
 export interface ICredentialConnectionStatusProvider {
 	/**
-	 * Returns the subset of `credentialIds` for which the user has at least
-	 * one per-user storage entry.
+	 * Returns the subset of `credentialIds` the user has a per-user storage entry
+	 * for, keyed by credential id.
 	 *
 	 * Implementations must execute a single bulk query (no N+1).
 	 */
-	findConnectedCredentialIds(userId: string, credentialIds: string[]): Promise<Set<string>>;
+	findMyConnections(userId: string, credentialIds: string[]): Promise<Map<string, UserConnection>>;
 
 	/**
 	 * Returns the number of distinct users who have a per-user entry for this
@@ -37,7 +46,21 @@ export interface ICredentialConnectionStatusProvider {
 	/**
 	 * Re-evaluates access for the given users and deletes all their per-user
 	 * entries (across all resolvers) for any credential where they no longer
-	 * hold `credential:update`.
+	 * hold `credential:connect`. Pass `credentialId` to scope to one credential.
 	 */
-	cleanupOrphanedEntriesForUsers(userIds: string[], em?: EntityManager): Promise<void>;
+	cleanupOrphanedEntriesForUsers(
+		userIds: string[],
+		em?: EntityManager,
+		credentialId?: string,
+	): Promise<void>;
+
+	/**
+	 * Re-evaluates one credential's connections for members of the given
+	 * projects, deleting those who no longer hold `credential:connect`.
+	 */
+	cleanupOrphanedEntriesForProjects(
+		credentialId: string,
+		projectIds: string[],
+		em?: EntityManager,
+	): Promise<void>;
 }

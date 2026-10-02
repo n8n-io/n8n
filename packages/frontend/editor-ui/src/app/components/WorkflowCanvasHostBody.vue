@@ -66,7 +66,8 @@ function showInitialExecution() {
 // were ever omitted from this body (e.g. a slimmer artifact header), execution
 // events would silently stop landing on the canvas. Calling initialize() here
 // would double-register the listener and double-process every event.
-// Decoupling push init from MainHeader is a follow-up.
+// Decoupling built-in push init from MainHeader is a follow-up. Module
+// `pushHandlers` do not depend on it — App.vue dispatches those.
 
 async function loadWorkflow(force: boolean) {
 	// One-shot: open the editor hand-off snapshot on the initial mount instead

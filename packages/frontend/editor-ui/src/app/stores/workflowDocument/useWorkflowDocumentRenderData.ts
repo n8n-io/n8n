@@ -2,7 +2,11 @@ import { computed, effectScope, onScopeDispose, shallowReactive, type ComputedRe
 import isEqual from 'lodash/isEqual';
 import { structuralComputed } from '@n8n/composables/structuralComputed';
 import { useI18n } from '@n8n/i18n';
-import type { INodeTypeDescription } from 'n8n-workflow';
+import {
+	isEmptyGroupAnchor,
+	type INodeParameterResourceLocator,
+	type INodeTypeDescription,
+} from 'n8n-workflow';
 import {
 	useWorkflowDocumentStore,
 	type WorkflowDocumentId,
@@ -19,11 +23,17 @@ import {
 	STICKY_NODE_TYPE,
 } from '@/app/constants';
 import type { INodeUi } from '@/Interface';
+import {
+	inlineAgentToCapabilitySummary,
+	readAgentSource,
+	readInlineAgentParameter,
+} from '@/features/agents/utils/inlineAgent';
 import { checkOverlap } from '@/features/workflows/canvas/canvas.utils';
 import type {
 	BoundingBox,
 	CanvasNode,
 	CanvasNodeAddNodesRender,
+	CanvasNodeAgentRender,
 	CanvasNodeChoicePromptRender,
 	CanvasNodeData,
 	CanvasNodeDefaultRender,
@@ -31,6 +41,7 @@ import type {
 	CanvasNodeStickyNoteRender,
 } from '@/features/workflows/canvas/canvas.types';
 import { CanvasNodeRenderType } from '@/features/workflows/canvas/canvas.types';
+import { isAgentNodeV2 } from '@/features/agents/utils/agentNode';
 import { CHANGE_ACTION } from './types';
 import type {
 	NodeAddedPayload,
@@ -189,7 +200,7 @@ export function useWorkflowDocumentRenderData(workflowDocumentId: WorkflowDocume
 		if (node.disabled) return undefined;
 		const status = executionStateStore.activeExecutionStatusByNodeId.get(nodeId)?.value ?? 'new';
 		if (!['new', 'unknown', 'waiting'].includes(status)) return undefined;
-		const pinned = workflowDocumentStore.pinnedDataByNodeId.get(nodeId)?.value;
+		const pinned = getVisiblePinData(nodeId);
 		if (pinned) return undefined;
 
 		if (typeof nodeTypeDescription.eventTriggerDescription === 'string') {
@@ -218,7 +229,7 @@ export function useWorkflowDocumentRenderData(workflowDocumentId: WorkflowDocume
 		const status = executionStateStore.activeExecutionStatusByNodeId.get(nodeId)?.value ?? 'new';
 		if (status === 'crashed' || status === 'error') return true;
 
-		const pinned = workflowDocumentStore.pinnedDataByNodeId.get(nodeId)?.value;
+		const pinned = getVisiblePinData(nodeId);
 		if (pinned) return false;
 
 		const validationErrors =
@@ -226,11 +237,24 @@ export function useWorkflowDocumentRenderData(workflowDocumentId: WorkflowDocume
 		if (validationErrors.length > 0) return true;
 
 		const executionIssues =
-			executionStateStore.activeExecutionIssuesByNodeName.get(node.name)?.value ?? [];
+			executionStateStore.activeExecutionIssuesByNodeId.get(nodeId)?.value ?? [];
 		if (executionIssues.length > 0) return true;
 
 		const tasks = executionStateStore.activeExecutionRunDataByNodeId.get(nodeId)?.value ?? null;
 		return Boolean(tasks?.at(-1)?.error);
+	}
+
+	function getVisiblePinData(nodeId: string) {
+		const node = getNode(nodeId);
+		if (!node) {
+			return undefined;
+		}
+
+		if (executionStateStore.isExecutionDataDisplayed) {
+			return executionStateStore.activeExecutionPinDataByNodeId.get(nodeId)?.value;
+		}
+
+		return workflowDocumentStore.pinnedDataByNodeId.get(nodeId)?.value;
 	}
 
 	// --- renderTypeByNodeId --------------------------------------------------
@@ -248,6 +272,22 @@ export function useWorkflowDocumentRenderData(workflowDocumentId: WorkflowDocume
 		};
 	}
 
+	function createAgentRenderType(node: INodeUi): CanvasNodeAgentRender {
+		const agentSource = readAgentSource(node);
+		const inlineAgent = agentSource === 'inline' ? readInlineAgentParameter(node) : null;
+
+		return {
+			type: CanvasNodeRenderType.Agent,
+			options: {
+				agentSource,
+				agentId: node.parameters.agentId as INodeParameterResourceLocator | undefined,
+				inlineSummary: inlineAgent
+					? inlineAgentToCapabilitySummary(node.id, inlineAgent)
+					: undefined,
+			},
+		};
+	}
+
 	function createAddNodesRenderType(): CanvasNodeAddNodesRender {
 		return { type: CanvasNodeRenderType.AddNodes, options: {} };
 	}
@@ -257,6 +297,7 @@ export function useWorkflowDocumentRenderData(workflowDocumentId: WorkflowDocume
 	}
 
 	function createDefaultNodeRenderType(node: INodeUi): CanvasNodeDefaultRender {
+		const isEmptyGroupAnchorNode = isEmptyGroupAnchor(node);
 		const nodeType = nodeTypeDescriptionByNodeId.get(node.id)?.value ?? null;
 		const simulated = simulatedNodeTypeDescriptionByNodeId.get(node.id)?.value ?? null;
 		const iconSource = simulated ?? nodeType ?? node.type;
@@ -285,7 +326,7 @@ export function useWorkflowDocumentRenderData(workflowDocumentId: WorkflowDocume
 				tooltip,
 				dirtiness: dirtinessByNodeId.get(node.id)?.value,
 				icon,
-				placeholder: node.placeholder,
+				placeholder: node.placeholder === true || isEmptyGroupAnchorNode,
 			},
 		};
 	}
@@ -300,6 +341,12 @@ export function useWorkflowDocumentRenderData(workflowDocumentId: WorkflowDocume
 				return createAddNodesRenderType();
 			case `${CanvasNodeRenderType.ChoicePrompt}`:
 				return createChoicePromptRenderType();
+			case `${CanvasNodeRenderType.Agent}`:
+				// The rich agent card targets the v2 node (same gate as the NDV
+				// agent controls); v1 keeps its legacy default node rendering.
+				return isAgentNodeV2(node)
+					? createAgentRenderType(node)
+					: createDefaultNodeRenderType(node);
 			default:
 				return createDefaultNodeRenderType(node);
 		}
@@ -513,8 +560,17 @@ export function useWorkflowDocumentRenderData(workflowDocumentId: WorkflowDocume
 		get executionIssuesByNodeName() {
 			return executionStateStore.activeExecutionIssuesByNodeName;
 		},
-		get executionSimulationByNodeName() {
-			return executionStateStore.activeExecutionSimulationByNodeName;
+		get executionPinDataByNodeName() {
+			return executionStateStore.activeExecutionPinDataByNodeName;
+		},
+		get executionIssuesByNodeId() {
+			return executionStateStore.activeExecutionIssuesByNodeId;
+		},
+		get executionPinDataByNodeId() {
+			return executionStateStore.activeExecutionPinDataByNodeId;
+		},
+		get isExecutionDataDisplayed() {
+			return executionStateStore.isExecutionDataDisplayed;
 		},
 		get executionStatusByNodeId() {
 			return executionStateStore.activeExecutionStatusByNodeId;

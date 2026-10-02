@@ -12,7 +12,7 @@ function isTextBlock(
 		typeof block === 'object' &&
 		block !== null &&
 		'text' in block &&
-		typeof (block as { text: unknown }).text === 'string' &&
+		typeof block.text === 'string' &&
 		(block as { text: string }).text.length > 0
 	);
 }

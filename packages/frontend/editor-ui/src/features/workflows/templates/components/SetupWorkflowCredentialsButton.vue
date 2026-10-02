@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, nextTick, onBeforeUnmount, onMounted, watch } from 'vue';
+import { computed, onBeforeUnmount, watch } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { SETUP_CREDENTIALS_MODAL_KEY, TEMPLATE_SETUP_EXPERIENCE } from '@/app/constants';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -7,13 +7,17 @@ import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useFocusPanelStore } from '@/app/stores/focusPanel.store';
 import { doesNodeHaveAllCredentialsFilled } from '@/app/utils/nodes/nodeTransforms';
 
-import { N8nButton } from '@n8n/design-system';
+import { N8nButton, N8nTooltip } from '@n8n/design-system';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { useReadyToRunStore } from '@/features/workflows/readyToRun/stores/readyToRun.store';
 
 import { useRoute } from 'vue-router';
 import { useSetupPanelStore } from '@/features/setupPanel/setupPanel.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+
+const { collapsible = false } = defineProps<{
+	collapsible?: boolean;
+}>();
 
 const readyToRunStore = useReadyToRunStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
@@ -24,6 +28,8 @@ const focusPanelStore = useFocusPanelStore();
 const setupPanelStore = useSetupPanelStore();
 const i18n = useI18n();
 const route = useRoute();
+
+const label = computed(() => i18n.baseText('nodeView.setupTemplate'));
 
 const isTemplateImportRoute = computed(() => {
 	return route.query.templateId !== undefined;
@@ -114,34 +120,76 @@ onBeforeUnmount(() => {
 	uiStore.closeModal(SETUP_CREDENTIALS_MODAL_KEY);
 });
 
-onMounted(async () => {
-	// Wait for all reactive updates to settle before checking conditions
-	// This ensures meta.templateId is available after initialization
-	await nextTick();
-
+const shouldAutoOpenSetup = computed(() => {
 	const templateId = workflowDocumentStore?.value?.meta?.templateId;
-	const isReadyToRunWorkflow = readyToRunStore.isReadyToRunTemplateId(templateId);
-
-	if (
+	return (
 		isNewTemplatesSetupEnabled.value &&
+		!readyToRunStore.isReadyToRunTemplateId(templateId) &&
 		showButton.value &&
-		!isReadyToRunWorkflow &&
 		isTemplateImportRoute.value
-	) {
-		handleTemplateSetup();
-	}
+	);
 });
+
+// Auto-open the setup the first time all conditions hold. They may only become
+// true after nodes and node types finish loading (an unloaded node type reports
+// its credentials as filled), so react to the change rather than sampling once
+// on mount. The guard ensures we never re-open once the user closes it.
+let hasAutoOpened = false;
+watch(
+	shouldAutoOpenSetup,
+	(shouldOpen) => {
+		if (hasAutoOpened || !shouldOpen) return;
+		hasAutoOpened = true;
+		handleTemplateSetup();
+	},
+	{ immediate: true },
+);
 </script>
 
 <template>
-	<N8nButton
-		variant="subtle"
-		v-if="showButton"
-		:label="i18n.baseText('nodeView.setupTemplate')"
-		:disabled="isButtonDisabled"
-		data-test-id="setup-credentials-button"
-		size="large"
-		icon="package-open"
-		@click="handleTemplateSetup()"
-	/>
+	<div v-if="showButton" :class="$style.container">
+		<N8nButton
+			variant="subtle"
+			:label="label"
+			:disabled="isButtonDisabled"
+			:class="{ [$style.full]: collapsible }"
+			data-test-id="setup-credentials-button"
+			size="large"
+			icon="package-open"
+			@click="handleTemplateSetup()"
+		/>
+		<N8nTooltip v-if="collapsible" :content="label" placement="bottom">
+			<N8nButton
+				variant="subtle"
+				icon-only
+				:aria-label="label"
+				:disabled="isButtonDisabled"
+				:class="$style.compact"
+				data-test-id="setup-credentials-button-compact"
+				size="large"
+				icon="package-open"
+				@click="handleTemplateSetup()"
+			/>
+		</N8nTooltip>
+	</div>
 </template>
+
+<style lang="scss" module>
+.container {
+	display: flex;
+}
+
+.compact {
+	display: none;
+}
+
+@container canvas (max-width: 800px) {
+	.full {
+		display: none;
+	}
+
+	.compact {
+		display: inline-flex;
+	}
+}
+</style>

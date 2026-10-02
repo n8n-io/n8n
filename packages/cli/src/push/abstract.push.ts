@@ -112,13 +112,24 @@ export abstract class AbstractPush<Connection> extends TypedEmitter<AbstractPush
 		this.sendTo(pushMsg, [pushRef], asBinary);
 	}
 
-	sendToUsers(pushMsg: PushMessage, userIds: Array<User['id']>) {
+	sendToUsers(
+		pushMsg: PushMessage,
+		userIds: Array<User['id']>,
+		options?: { excludePushRef?: string },
+	) {
 		const { connections } = this;
-		const userPushRefs = Object.keys(connections).filter((pushRef) =>
-			userIds.includes(this.userIdByPushRef[pushRef]),
+		const userIdSet = new Set(userIds);
+		const userPushRefs = Object.keys(connections).filter(
+			(pushRef) =>
+				pushRef !== options?.excludePushRef && userIdSet.has(this.userIdByPushRef[pushRef]),
 		);
 
 		this.sendTo(pushMsg, userPushRefs);
+	}
+
+	/** Sizes of the in-memory collections, for diagnostics and tests. */
+	getDiagnosticCounts() {
+		return { connections: Object.keys(this.connections).length };
 	}
 
 	closeAllConnections() {

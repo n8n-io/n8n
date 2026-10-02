@@ -19,7 +19,6 @@ import { WorkflowRunner } from '@/workflow-runner';
 import { BaseCommand } from './base-command';
 import type {
 	IExecutionResult,
-	INodeSpecialCase,
 	INodeSpecialCases,
 	IResult,
 	IWorkflowExecutionProgress,
@@ -133,6 +132,8 @@ export class ExecuteBatch extends BaseCommand<z.infer<typeof flagsSchema>> {
 
 	override needsCommunityPackages = true;
 
+	override needsExpressionEngine = true;
+
 	override needsTaskRunner = true;
 
 	/**
@@ -190,6 +191,7 @@ export class ExecuteBatch extends BaseCommand<z.infer<typeof flagsSchema>> {
 	async init() {
 		await super.init();
 		await this.initLicense();
+		await this.initPolicyEnforcement();
 		await this.initCommunityPackages();
 		await this.initBinaryDataService();
 		await this.initDataDeduplicationService();
@@ -619,7 +621,7 @@ export class ExecuteBatch extends BaseCommand<z.infer<typeof flagsSchema>> {
 					const parts = note.split('=');
 					if (parts.length === 2) {
 						if (nodeEdgeCases[node.name] === undefined) {
-							nodeEdgeCases[node.name] = {} as INodeSpecialCase;
+							nodeEdgeCases[node.name] = {};
 						}
 						if (parts[0] === 'CAP_RESULTS_LENGTH') {
 							nodeEdgeCases[node.name].capResults = parseInt(parts[1], 10);

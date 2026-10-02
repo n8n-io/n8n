@@ -1,5 +1,5 @@
 import type { AgentAction, AgentFinish } from '@langchain/classic/agents';
-import type { ToolsAgentAction } from '@langchain/classic/dist/agents/tool_calling/output_parser';
+import type { ToolsAgentAction } from '@langchain/classic/agents/openai/output_parser';
 import type { Tool } from '@langchain/classic/tools';
 import type { BaseChatMemory } from '@langchain/community/memory/chat_memory';
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
@@ -1050,6 +1050,49 @@ describe('getAgentStepsParser', () => {
 				returnValues: { city: 'Berlin', temperature: 15 },
 				log: 'Final response formatted',
 			});
+		});
+
+		it('should hand the parser the text block when the model returns content blocks', async () => {
+			// Anthropic with thinking on: a (display-omitted) thinking block precedes the answer
+			const steps: AgentFinish = {
+				returnValues: {
+					output: [
+						{ type: 'thinking', thinking: '', signature: 'sig', index: 0 },
+						{ type: 'text', text: '{"city":"Berlin","temperature":15}', index: 1 },
+					],
+				},
+				log: '',
+			};
+
+			const mockOutputParser = createMockOutputParser({ city: 'Berlin', temperature: 15 });
+
+			const parser = getAgentStepsParser(mockOutputParser, undefined);
+			const result = await parser(steps);
+
+			expect(mockOutputParser.parse).toHaveBeenCalledWith(
+				'{"output":{"city":"Berlin","temperature":15}}',
+			);
+			expect(result).toEqual({
+				returnValues: { city: 'Berlin', temperature: 15 },
+				log: 'Final response formatted',
+			});
+		});
+
+		it('should hand the parser an empty string when the model returns only thinking blocks', async () => {
+			// Token budget spent on thinking: no text block exists, so there is no answer to parse
+			const steps: AgentFinish = {
+				returnValues: {
+					output: [{ type: 'thinking', thinking: 'Let me work out the temperature…', index: 0 }],
+				},
+				log: '',
+			};
+
+			const mockOutputParser = createMockOutputParser({});
+
+			const parser = getAgentStepsParser(mockOutputParser, undefined);
+			await parser(steps);
+
+			expect(mockOutputParser.parse).toHaveBeenCalledWith('');
 		});
 	});
 

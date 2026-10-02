@@ -116,6 +116,20 @@ export class EvaluationCollectionRepository extends Repository<EvaluationCollect
 	}
 
 	/**
+	 * Unlink several runs in one statement so a multi-run membership change
+	 * (e.g. replacing a collection's runs on re-run) applies atomically rather
+	 * than leaving a partial mix if it fails midway.
+	 */
+	async removeRunsFromCollection(collectionId: string, testRunIds: string[]): Promise<void> {
+		if (testRunIds.length === 0) return;
+		await this.manager.update(
+			TestRun,
+			{ id: In(testRunIds), collectionId },
+			{ collectionId: null },
+		);
+	}
+
+	/**
 	 * Returns how many runs were unlinked (set to `collectionId = null`) by
 	 * the delete. Callers feed this into the `runs_unlinked` telemetry field.
 	 *

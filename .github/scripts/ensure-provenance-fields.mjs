@@ -1,21 +1,12 @@
 import { writeFile, readFile, copyFile } from 'fs/promises';
 import { resolve, dirname } from 'path';
-import child_process from 'child_process';
 import { fileURLToPath } from 'url';
-import { promisify } from 'util';
-
-const exec = promisify(child_process.exec);
+import { getMonorepoProjects } from './pnpm-utils.mjs';
 
 const commonFiles = ['LICENSE.md', 'LICENSE_EE.md'];
 
 const baseDir = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
-const packages = JSON.parse(
-	(
-		await exec(
-			`pnpm ls -r --only-projects --json | jq -r '[.[] | { name: .name, version: .version, path: .path,  private: .private}]'`,
-		)
-	).stdout,
-);
+const packages = await getMonorepoProjects();
 
 for (let { name, path, version, private: isPrivate } of packages) {
 	if (isPrivate) continue;

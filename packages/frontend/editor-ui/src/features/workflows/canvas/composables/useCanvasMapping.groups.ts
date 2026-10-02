@@ -1,4 +1,4 @@
-import type { ExecutionStatus, IWorkflowGroup } from 'n8n-workflow';
+import { getEmptyGroupAnchor, type ExecutionStatus, type IWorkflowGroup } from 'n8n-workflow';
 import type { INodeUi } from '@/Interface';
 import type {
 	BoundingBox,
@@ -9,14 +9,17 @@ import type {
 	NodeExecutionSnapshot,
 } from '../canvas.types';
 import {
-	CANVAS_NODE_GROUP_HANDLE_LEFT,
-	CANVAS_NODE_GROUP_HANDLE_RIGHT,
+	CANVAS_NODE_GROUP_INPUT_HANDLE,
+	CANVAS_NODE_GROUP_OUTPUT_HANDLE,
 	CANVAS_NODE_GROUP_TYPE,
 	createCanvasGroupNodeId,
 } from '../canvas.types';
 import {
 	GROUP_HEADER_HEIGHT,
 	GROUP_HEADER_WIDTH_COLLAPSED,
+	GROUP_NODE_Z_INDEX_COLLAPSED,
+	GROUP_NODE_Z_INDEX_EMPTY_COLLAPSED,
+	GROUP_NODE_Z_INDEX_EXPANDED,
 	GROUP_PADDING_X,
 	GROUP_PADDING_Y_BOTTOM,
 	GROUP_PADDING_Y_TOP,
@@ -229,11 +232,23 @@ export function mapGroupsToVueFlowNodes({
 
 		const nodesRect = computeNodesRectFromStore(group.nodeIds, getNodeById, getNodeDisplaySize);
 		const collapsed = isGroupCollapsed(group.id);
+		const memberNodes = group.nodeIds
+			.map(getNodeById)
+			.filter((node): node is INodeUi => node !== undefined);
+		const isEmptyGroup = getEmptyGroupAnchor(group, memberNodes) !== undefined;
+		// Stickies can't be disabled, so the deactivated state is driven by
+		// connectable members only — the length guard keeps a sticky-only group
+		// (possible after its last connectable node is deleted) from reading as
+		// deactivated vacuously.
+		const connectableMembers = memberNodes.filter((node) => node.type !== STICKY_NODE_TYPE);
 		const data: CanvasGroupNodeData = {
 			group,
 			nodesRect,
 			isCollapsed: collapsed,
+			isEmptyGroup,
 			executionStatus: aggregateGroupExecution(group.nodeIds, getNodeExecutionSnapshot),
+			allNodesDisabled:
+				connectableMembers.length > 0 && connectableMembers.every((node) => node.disabled === true),
 		};
 
 		const id = createCanvasGroupNodeId(group.id);
@@ -246,12 +261,17 @@ export function mapGroupsToVueFlowNodes({
 			width: titleBar.width,
 			height: GROUP_HEADER_HEIGHT,
 			draggable: !readOnly,
-			// Selectable only when the title bar represents
-			// the whole group as a single visual surface
-			selectable: collapsed,
-			connectable: false,
-			// Behind the group's nodes so the expanded frame doesn't overlap them.
-			zIndex: -1,
+			// The title bar stands in for the whole group: selecting it selects
+			// every member node (see useCanvasNodeGroupSelection).
+			selectable: true,
+			connectable: isEmptyGroup && collapsed && !readOnly,
+			// Below member nodes and (when expanded) below stickies — see the
+			// stacking contract in canvasNodeGroups.constants.ts.
+			zIndex: collapsed
+				? isEmptyGroup
+					? GROUP_NODE_Z_INDEX_EMPTY_COLLAPSED
+					: GROUP_NODE_Z_INDEX_COLLAPSED
+				: GROUP_NODE_Z_INDEX_EXPANDED,
 			data,
 		});
 	}
@@ -276,8 +296,8 @@ export function buildCollapsedGroupByNodeId(
 }
 
 /**
- * Visually remap collapsed-group connections to the group header handles
- * (left / right) so VueFlow can draw them while the member nodes are hidden.
+ * Visually remap collapsed-group connections to the group header input/output
+ * handles so VueFlow can draw them while the member nodes are hidden.
  * Connections fully inside a collapsed group are dropped.
  * External-only connections pass through unchanged.
  *
@@ -313,9 +333,9 @@ export function remapCollapsedGroupConnections(
 
 		const remapped = {
 			source: sourceGroup ? createCanvasGroupNodeId(sourceGroup.id) : conn.source,
-			sourceHandle: sourceGroup ? CANVAS_NODE_GROUP_HANDLE_RIGHT : conn.sourceHandle,
+			sourceHandle: sourceGroup ? CANVAS_NODE_GROUP_OUTPUT_HANDLE : conn.sourceHandle,
 			target: targetGroup ? createCanvasGroupNodeId(targetGroup.id) : conn.target,
-			targetHandle: targetGroup ? CANVAS_NODE_GROUP_HANDLE_LEFT : conn.targetHandle,
+			targetHandle: targetGroup ? CANVAS_NODE_GROUP_INPUT_HANDLE : conn.targetHandle,
 		};
 
 		const id = createCanvasConnectionId(remapped);

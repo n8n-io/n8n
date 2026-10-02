@@ -8,11 +8,10 @@ import type {
 import { LIST_API_KEYS_SORT_OPTIONS } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
-import { ApiKey, ApiKeyRepository, withTransaction } from '@n8n/db';
+import { ApiKey, ApiKeyRepository, escapeLike, LIKE_ESCAPE_CLAUSE, withTransaction } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { ApiKeyScope, AuthPrincipal } from '@n8n/permissions';
 import { getApiKeyScopesForRole, getOwnerOnlyApiKeyScopes, hasGlobalScope } from '@n8n/permissions';
-// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import {
 	In,
 	Raw,
@@ -22,8 +21,7 @@ import {
 } from '@n8n/typeorm';
 import { randomUUID } from 'crypto';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { BadRequestError, NotFoundError } from '@n8n/errors';
 import { UserManagementMailer } from '@/user-management/email';
 
 import { JwtService } from './jwt.service';
@@ -33,9 +31,6 @@ export const API_KEY_ISSUER = 'n8n';
 const REDACT_API_KEY_REVEAL_COUNT = 4;
 const REDACT_API_KEY_MAX_LENGTH = 10;
 export const PREFIX_LEGACY_API_KEY = 'n8n_api_';
-
-// Pair with `ESCAPE '\\'` on the SQL side to keep `%`/`_`/`\` literal in user input.
-const escapeLikePattern = (value: string): string => value.replace(/[\\%_]/g, '\\$&');
 
 @Service()
 export class PublicApiKeyService {
@@ -80,8 +75,8 @@ export class PublicApiKeyService {
 		const ownFilter = { userId: caller.id };
 		const labelFilter = options.label
 			? {
-					label: Raw((alias) => `LOWER(${alias}) LIKE LOWER(:label) ESCAPE '\\'`, {
-						label: `%${escapeLikePattern(options.label)}%`,
+					label: Raw((alias) => `LOWER(${alias}) LIKE LOWER(:label) ${LIKE_ESCAPE_CLAUSE}`, {
+						label: `%${escapeLike(options.label)}%`,
 					}),
 				}
 			: {};
@@ -343,13 +338,14 @@ export class PublicApiKeyService {
 		const nowInSeconds = Math.floor(Date.now() / 1000);
 
 		return this.jwtService.sign(
-			{ sub: user.id, iss: API_KEY_ISSUER, aud: API_KEY_AUDIENCE, jti: randomUUID() },
+			'publicApiKey',
+			{ sub: user.id, iss: API_KEY_ISSUER, jti: randomUUID() },
 			{ ...(expiresAt && { expiresIn: expiresAt - nowInSeconds }) },
 		);
 	}
 
 	getApiKeyExpiration = (apiKey: string) => {
-		const decoded = this.jwtService.decode(apiKey);
+		const decoded = this.jwtService.decodeUnverified(apiKey);
 		return decoded?.exp ?? null;
 	};
 

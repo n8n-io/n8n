@@ -11,15 +11,23 @@ import type {
 	IWaitingForExecution,
 	IWaitingForExecutionSource,
 	IWorkflowExecutionDataProcess,
+	RelatedAgentRun,
 	RelatedExecution,
 	StartNodeData,
 } from '..';
 import type { IRunExecutionDataV0 } from './run-execution-data.v0';
+import type { SubWorkflowOutputPolicy } from '../sub-workflow-output';
 
 export interface RedactionInfo {
 	isRedacted: boolean;
 	reason: string;
 	canReveal: boolean;
+	/**
+	 * True when the info is synthesized from live push markers before the
+	 * authoritative executionFinished metadata arrives. `canReveal` is a
+	 * pessimistic guess while this is set.
+	 */
+	provisional?: boolean;
 }
 
 // DIFF: switches startData.destinationNode to a structured object, rather than just the name of the string.
@@ -42,12 +50,6 @@ export interface IRunExecutionDataV1 {
 		pinData?: IPinData;
 		lastNodeExecuted?: string;
 		metadata?: Record<string, string>;
-		/**
-		 * Nodes whose output was simulated (mocked via per-execution pin data)
-		 * instead of executed, keyed by node name. Set for AI-driven workflow
-		 * verification runs so the editor can label simulated outputs.
-		 */
-		simulation?: Record<string, { reason: string }>;
 	};
 	executionData?: {
 		contextData: IExecuteContextData;
@@ -61,6 +63,10 @@ export interface IRunExecutionDataV1 {
 		waitingExecutionSource: IWaitingForExecutionSource | null;
 	};
 	parentExecution?: RelatedExecution;
+	/** Keep the caller's output policy when a child execution resumes. */
+	subWorkflowOutput?: SubWorkflowOutputPolicy;
+	/** Suspended agent tool call to resume once this execution finishes. */
+	parentAgentRun?: RelatedAgentRun;
 	/**
 	 * Random token used to validate waiting webhook/form requests.
 	 * Generated when execution starts. Presence signals validation is required.
@@ -72,7 +78,15 @@ export interface IRunExecutionDataV1 {
 	/** Data needed for a worker to run a manual execution. */
 	manualData?: Pick<
 		IWorkflowExecutionDataProcess,
-		'dirtyNodeNames' | 'triggerToStartFrom' | 'userId' | 'evaluationRunId'
+		| 'dirtyNodeNames'
+		| 'triggerToStartFrom'
+		| 'userId'
+		| 'evaluationRunId'
+		| 'source'
+		| 'suppressErrorWorkflow'
+		// A run of a single tool node carries the agent request that supplies the
+		// tool's arguments. Without it a worker runs the tool on empty arguments.
+		| 'agentRequest'
 	>;
 
 	/** Metadata about whether and how this execution's data was redacted. */

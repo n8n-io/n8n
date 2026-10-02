@@ -24,15 +24,15 @@ Based on the affected area, pick the test layer and pattern:
 
 | Area | Test Layer | Pattern | Key Location |
 |------|-----------|---------|--------------|
-| Node operation | Jest unit | NodeTestHarness + nock | `packages/nodes-base/nodes/*/test/` |
-| Node credential | Jest unit | jest-mock-extended | `packages/nodes-base/nodes/*/test/` |
-| Trigger webhook | Jest unit | mock IHookFunctions + jest.mock GenericFunctions | `packages/nodes-base/nodes/*/test/` |
-| Binary data | Jest unit | NodeTestHarness assertBinaryData | `packages/core/nodes-testing/` |
-| Execution engine | Jest integration | WorkflowRunner + DI container | `packages/cli/src/__tests__/` |
-| CLI / API | Jest integration | setupTestServer + supertest | `packages/cli/test/integration/` |
-| Config | Jest unit | GlobalConfig + Container | `packages/@n8n/config/src/__tests__/` |
+| Node operation | Vitest unit | NodeTestHarness + nock | `packages/nodes-base/nodes/*/test/` |
+| Node credential | Vitest unit | vitest-mock-extended | `packages/nodes-base/nodes/*/test/` |
+| Trigger webhook | Vitest unit | mock IHookFunctions + vi.mock GenericFunctions | `packages/nodes-base/nodes/*/test/` |
+| Binary data | Vitest unit | NodeTestHarness assertBinaryData | `packages/core/nodes-testing/` |
+| Execution engine | Vitest integration | WorkflowRunner + DI container | `packages/cli/src/__tests__/` |
+| CLI / API | Vitest integration | setupTestServer + supertest | `packages/cli/test/integration/` |
+| Config | Vitest unit | GlobalConfig + Container | `packages/@n8n/config/src/configs/__tests__/` |
 | Editor UI | Vitest | Vue Test Utils + Pinia | `packages/frontend/editor-ui/src/**/__tests__/` |
-| E2E / Canvas | Playwright | Test containers + composables | `packages/testing/playwright/` |
+| E2E / Canvas | Playwright | Test containers + composables | `packages/quality/testing/playwright/` |
 
 ## Step 3: Locate Source Files
 
@@ -72,6 +72,12 @@ Write a regression test that:
 - Includes a comment referencing the ticket ID
 - Asserts the CORRECT behavior (test will fail on current code)
 - Also includes a "happy path" test to prove the setup works
+
+Complete the test safety gate in `/AGENTS.md` before you run the test:
+- Trace side effects from imports, constructors, hooks, and mocked branches
+- Keep filesystem access in a test-owned temporary directory
+- Set `N8N_USER_FOLDER` before importing modules that resolve it
+- When a mock changes a state check, inspect and isolate the branch that it activates
 
 ## Step 8: Run and Score
 

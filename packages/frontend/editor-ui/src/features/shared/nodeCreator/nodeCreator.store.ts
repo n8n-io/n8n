@@ -19,8 +19,10 @@ import { STORES } from '@n8n/stores';
 import { defineStore } from 'pinia';
 
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
+import { useAiGatewayStore } from '@/app/stores/aiGateway.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useRouteWorkflowId } from '@/app/composables/useWorkflowId';
 import type { TelemetryNdvType } from '@/app/types/telemetry';
@@ -245,6 +247,9 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 		if (!nodeType) {
 			return;
 		}
+		// This entry point is not associated with a node-creator action. Clear a
+		// previous source so consumers do not attribute this open to stale context.
+		setOpenSource('');
 		setNodeCreatorState({
 			workflowId,
 			createNodeActive: true,
@@ -355,6 +360,14 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 		workflow_id?: string;
 	}) {
 		resetNodesPanelSession();
+
+		// Config for Connect search boost; wallet for the credits pill.
+		if (useSettingsStore().isAiGatewayEnabled) {
+			const aiGatewayStore = useAiGatewayStore();
+			void aiGatewayStore.fetchConfig();
+			void aiGatewayStore.fetchWallet();
+		}
+
 		trackNodeCreatorEvent('User opened nodes panel', {
 			source,
 			mode,
@@ -381,7 +394,7 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 		}
 		const { results_count, trigger_count, regular_count, community_count } = filteredNodes.reduce(
 			(accu, node) => {
-				if (!('properties' in node)) {
+				if (!('properties' in node) || node.type === 'command') {
 					return accu;
 				}
 				const isCustomAction =
@@ -443,6 +456,10 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 		});
 	}
 
+	function onAgentPanelOptionSelected(properties: { choice: 'create_new' | 'existing_agent' }) {
+		trackNodeCreatorEvent('User selected agent in node creator panel', properties);
+	}
+
 	function onNodeAddedToCanvas(properties: {
 		node_id: string;
 		node_type: string;
@@ -497,6 +514,7 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 		onActionsCustomAPIClicked,
 		onViewActions,
 		onSubcategorySelected,
+		onAgentPanelOptionSelected,
 		onNodeAddedToCanvas,
 		openNodeCreatorWithNode,
 	};

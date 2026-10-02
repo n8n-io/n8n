@@ -8,6 +8,7 @@ import {
 	type INodeParameters,
 } from 'n8n-workflow';
 import * as oracleDBTypes from 'oracledb';
+import type { Mock } from 'vitest';
 
 import * as deleteTable from '../actions/database/deleteTable.operation';
 import * as executeSQL from '../actions/database/executeQuery.operation';
@@ -18,7 +19,6 @@ import * as upsert from '../actions/database/upsert.operation';
 import type { OracleDBNodeCredentials, QueryWithValues } from '../helpers/interfaces';
 import { configureQueryRunner } from '../helpers/utils';
 import { configureOracleDB } from '../transport';
-import type { Mock } from 'vitest';
 
 const mockConnection = {
 	execute: vi.fn((_query = '') => {
@@ -238,7 +238,7 @@ export function getRunQueriesFn(mockThis: any, pool: oracleDBTypes.Pool): Mock<R
 
 		// Wrap the real one with a spy to track calls
 		return vi.fn(async (...args: Parameters<RunQueriesFn>) => {
-			return await realRunQueries(...args);
+			return await realRunQueries.apply(undefined, args);
 		});
 	}
 
@@ -678,11 +678,208 @@ VALUES (
 				expect(runQueries).toHaveBeenCalledWith(queries, emptyInputItems, nodeOptions);
 			},
 		);
+
+		it('should neutralise an injected Drop table name by escaping the string literal', async () => {
+			const nodeParameters: IDataObject = {
+				operation: 'deleteTable',
+				schema: { __rl: true, mode: 'list', value: CONFIG.user },
+				table: {
+					__rl: true,
+					mode: 'list',
+					value: "X') PURGE; EXECUTE IMMEDIATE 'DROP TABLE SENSITIVE_DATA",
+				},
+				deleteCommand: 'drop',
+				options: {},
+			};
+			const mockThis = createMockExecuteFunction(nodeParameters);
+			const items = [{ json: {}, pairedItem: { item: 0, input: undefined } }];
+			const runQueries = getRunQueriesFn(mockThis, pool);
+
+			await deleteTable.execute.call(mockThis, runQueries, items, {}, pool);
+
+			expect(runQueries).toHaveBeenCalledTimes(1);
+			const { query } = runQueries.mock.calls[0][0][0];
+			// The injected quotes are doubled, so they stay inside the identifier and
+			// cannot terminate the EXECUTE IMMEDIATE literal.
+			expect(query).toContain(
+				".\"X'') PURGE; EXECUTE IMMEDIATE ''DROP TABLE SENSITIVE_DATA\" PURGE')",
+			);
+			expect(query).not.toContain("X') PURGE");
+		});
 	});
 
 	describe('Test execute operation', () => {
 		afterEach(() => {
 			vi.clearAllMocks();
+			continueOnFail = true;
+		});
+
+		it('should throw Oracle driver timeout errors when continueOnFail is false', async () => {
+			continueOnFail = false;
+
+			const timeoutError = Object.assign(
+				new Error('NJS-510: connection timed out during connect() call'),
+				{ errorNum: 510 },
+			);
+
+			const timeoutPool = {
+				getConnection: vi.fn(async () => {
+					throw timeoutError;
+				}),
+			} as unknown as oracleDBTypes.Pool;
+
+			const nodeParameters: IDataObject = {
+				operation: 'execute',
+				query: 'SELECT 1 FROM dual',
+				resource: 'database',
+				options: {},
+			};
+
+			const mockThis = createMockExecuteFunction(nodeParameters);
+			const runQueries = configureQueryRunner.call(
+				mockThis,
+				mockThis.getNode(),
+				mockThis.continueOnFail(),
+				timeoutPool,
+			);
+
+			const items: INodeExecutionData[] = [{ json: {}, pairedItem: { item: 0, input: undefined } }];
+			const nodeOptions = nodeParameters.options as IDataObject;
+
+			await expect(
+				executeSQL.execute.call(mockThis, runQueries, items, nodeOptions, timeoutPool),
+			).rejects.toThrow(/NJS-510/i);
+
+			expect(timeoutPool.getConnection).toHaveBeenCalledTimes(1);
+		});
+
+		it('should propogate when Oracle timeout is returned as a success item and continueOnFail is true', async () => {
+			continueOnFail = true;
+
+			const nodeParameters: IDataObject = {
+				operation: 'execute',
+				query: 'SELECT 1 FROM dual',
+				resource: 'database',
+				options: {},
+			};
+
+			const mockThis = createMockExecuteFunction(nodeParameters);
+			const timeoutError = Object.assign(
+				new Error('NJS-510: connection timed out during connect() call'),
+				{ errorNum: 510 },
+			);
+			const timeoutPool = {
+				getConnection: vi.fn(async () => {
+					throw timeoutError;
+				}),
+			} as unknown as oracleDBTypes.Pool;
+
+			const runQueries = configureQueryRunner.call(
+				mockThis,
+				mockThis.getNode(),
+				mockThis.continueOnFail(),
+				timeoutPool,
+			);
+			const items: INodeExecutionData[] = [{ json: {}, pairedItem: { item: 0, input: undefined } }];
+			const nodeOptions = nodeParameters.options as IDataObject;
+
+			const result = await executeSQL.execute.call(mockThis, runQueries, items, nodeOptions, pool);
+
+			expect(timeoutPool.getConnection).toHaveBeenCalledTimes(1);
+			expect(result[0].json.error).toBeDefined();
+			expect(result[0].json.message).toEqual('NJS-510: connection timed out during connect() call');
+		});
+
+		it("should route Oracle timeout to error output when node's onError is continueErrorOutput", async () => {
+			continueOnFail = true;
+
+			const nodeParameters: IDataObject = {
+				operation: 'execute',
+				query: 'SELECT 1 FROM dual',
+				resource: 'database',
+				options: {},
+			};
+
+			const mockThis = createMockExecuteFunction(nodeParameters) as unknown as IExecuteFunctions & {
+				getNode: () => INode;
+			};
+
+			// Force node onError behaviour used in the workflow
+			const node = mockThis.getNode();
+			node.onError = 'continueErrorOutput';
+
+			const bugResult = [
+				{
+					json: {
+						message: 'NJS-510: connection timed out during connect() call',
+						error: { name: 'NJS-510', errorNum: 510 },
+					},
+					pairedItem: { item: 0 },
+				},
+			];
+			const runQueries = vi.fn().mockResolvedValue(bugResult);
+			const items: INodeExecutionData[] = [{ json: {}, pairedItem: { item: 0, input: undefined } }];
+			const nodeOptions = nodeParameters.options as IDataObject;
+
+			const result = await executeSQL.execute.call(mockThis, runQueries, items, nodeOptions, pool);
+
+			expect(runQueries).toHaveBeenCalledTimes(1);
+			expect(result).toEqual([
+				{
+					json: {
+						error: { name: 'NJS-510', errorNum: 510 },
+						message: 'NJS-510: connection timed out during connect() call',
+					},
+					pairedItem: { item: 0 },
+				},
+			]);
+
+			delete node.onError;
+		});
+
+		it("should throw when continueOnFail is false and node's onError is continueRegularOutput", async () => {
+			continueOnFail = false;
+
+			const nodeParameters: IDataObject = {
+				operation: 'execute',
+				query: 'SELECT 1 FROM dual',
+				resource: 'database',
+				options: {},
+			};
+
+			const mockThis = createMockExecuteFunction(nodeParameters) as unknown as IExecuteFunctions & {
+				getNode: () => INode;
+			};
+
+			const node = mockThis.getNode();
+			node.onError = 'continueRegularOutput';
+
+			const timeoutError = Object.assign(
+				new Error('NJS-510: connection timed out during connect() call'),
+				{ errorNum: 510 },
+			);
+			const timeoutPool = {
+				getConnection: vi.fn(async () => {
+					throw timeoutError;
+				}),
+			} as unknown as oracleDBTypes.Pool;
+
+			const runQueries = configureQueryRunner.call(
+				mockThis,
+				mockThis.getNode(),
+				mockThis.continueOnFail(),
+				timeoutPool,
+			);
+			const items: INodeExecutionData[] = [{ json: {}, pairedItem: { item: 0, input: undefined } }];
+			const nodeOptions = nodeParameters.options as IDataObject;
+
+			await expect(
+				executeSQL.execute.call(mockThis, runQueries, items, nodeOptions, timeoutPool),
+			).rejects.toThrow(/NJS-510/i);
+
+			expect(timeoutPool.getConnection).toHaveBeenCalledTimes(1);
+
+			delete node.onError;
 		});
 
 		it('should call runQueries with binds passed using bindInfo and single item', async () => {

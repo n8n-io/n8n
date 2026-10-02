@@ -13,7 +13,7 @@ import { getMappedExpression } from '@/app/utils/mappingUtils';
 import { nonExistingJsonPath } from '@/app/constants';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import TextWithHighlights from './TextWithHighlights.vue';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useElementSize } from '@vueuse/core';
 import { useTelemetryContext } from '@/app/composables/useTelemetryContext';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';

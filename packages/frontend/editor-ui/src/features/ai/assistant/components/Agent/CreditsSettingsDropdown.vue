@@ -1,9 +1,11 @@
 <script lang="ts" setup>
 import { ref, computed } from 'vue';
 import { onClickOutside } from '@vueuse/core';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useI18n } from '@n8n/i18n';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { N8nButton, N8nIcon, N8nTooltip } from '@n8n/design-system';
-import type { ButtonSize } from '@n8n/design-system/types';
+import type { ButtonSize } from '@n8n/design-system';
 import { round2 } from './creditFormatting';
 
 const props = withDefaults(
@@ -25,6 +27,7 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
+const telemetry = useTelemetry();
 const isOpen = ref(false);
 const dropdownRef = ref<HTMLElement>();
 
@@ -90,6 +93,7 @@ const tooltipContent = computed(() => {
 });
 
 function toggleDropdown() {
+	telemetry.track(TELEMETRY_EVENT.INSTANCE_AI.USER_CLICKED_AI_CREDIT_BALANCE, {});
 	isOpen.value = !isOpen.value;
 }
 

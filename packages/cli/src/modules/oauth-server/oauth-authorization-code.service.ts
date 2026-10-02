@@ -27,6 +27,7 @@ export class OAuthAuthorizationCodeService {
 		codeChallenge: string,
 		state: string | null,
 		resource?: string,
+		scopes: string[] = [],
 	): Promise<string> {
 		const code = randomBytes(32).toString('hex');
 
@@ -39,6 +40,7 @@ export class OAuthAuthorizationCodeService {
 			codeChallengeMethod: 'S256',
 			state,
 			resource: resource ?? null,
+			scope: scopes,
 			expiresAt: Date.now() + this.AUTHORIZATION_CODE_EXPIRY_MS,
 			used: false,
 		});
@@ -143,6 +145,11 @@ export class OAuthAuthorizationCodeService {
 		if (numAffected < 1) {
 			throw new InvalidGrantError('Authorization code already used');
 		}
+	}
+
+	/** Deletes every authorization code a user holds for a client. */
+	async deleteForGrant(clientId: string, userId: string): Promise<void> {
+		await this.authorizationCodeRepository.delete({ clientId, userId });
 	}
 
 	// Routed through findAuthorizationCode (filters `used: false`) so a consumed code's PKCE

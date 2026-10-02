@@ -1,20 +1,48 @@
+import { ModuleRegistry } from '@n8n/backend-common';
 import type { User, EntityManager } from '@n8n/db';
 import {
+	CredentialsEntity,
+	CredentialsRepository,
 	Project,
 	ProjectRepository,
+	RoleRepository,
 	SharedCredentials,
 	SharedCredentialsRepository,
 	SharedWorkflow,
 	SharedWorkflowRepository,
 } from '@n8n/db';
-import { ModuleRegistry } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
 import { hasGlobalScope, type Scope } from '@n8n/permissions';
 import { UnexpectedError } from 'n8n-workflow';
 
-import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { RoleService } from '@/services/role.service';
+import { CredentialsFinderService, RoleService } from '@n8n/backend-services';
+import { NotFoundError } from '@n8n/errors';
+
+const INSTANCE_CREDENTIAL_MANAGEMENT_SCOPES = new Set<Scope>([
+	'credential:read',
+	'credential:update',
+	'credential:delete',
+]);
+
+/**
+ * Global credentials bypass per-recipient sharing rows, so they are checked
+ * separately: read-only access for any global credential, plus connect
+ * access when the credential is an end-user (resolvable) credential.
+ */
+async function hasGlobalCredentialAccess(
+	credentialsFinderService: CredentialsFinderService,
+	credentialId: string,
+	scopes: Scope[],
+): Promise<boolean> {
+	const isReadOnlyRequest = credentialsFinderService.hasGlobalReadOnlyAccess(scopes);
+	const isConnectRequest = credentialsFinderService.hasGlobalConnectAccess(scopes);
+	if (!isReadOnlyRequest && !isConnectRequest) return false;
+
+	const globalCredential = await credentialsFinderService.findGlobalCredentialById(credentialId);
+	if (!globalCredential) return false;
+
+	return isReadOnlyRequest || globalCredential.isResolvable;
+}
 
 /**
  * Check if a user has the required scopes. The check can be:
@@ -43,6 +71,24 @@ export async function userHasScopes(
 ): Promise<boolean> {
 	if (hasGlobalScope(user, scopes, { mode: 'allOf' })) return true;
 
+	if (
+		credentialId &&
+		hasGlobalScope(user, 'credential:manageInstance') &&
+		scopes.every((scope) => INSTANCE_CREDENTIAL_MANAGEMENT_SCOPES.has(scope))
+	) {
+		const credentialsRepository = entityManager
+			? entityManager.getRepository(CredentialsEntity)
+			: Container.get(CredentialsRepository);
+		if (
+			await credentialsRepository.existsBy({
+				id: credentialId,
+				usageScope: 'instance',
+			})
+		) {
+			return true;
+		}
+	}
+
 	if (globalOnly) return false;
 
 	// Find which projects the user has access to with the required scopes.
@@ -68,6 +114,13 @@ export async function userHasScopes(
 	// Then find at least one of the above qualifying projects having one of
 	// those resource roles over the resource being checked.
 	const roleService = Container.get(RoleService);
+	const loadRoles = entityManager
+		? async () => await Container.get(RoleRepository).findAll(entityManager)
+		: undefined;
+	const rolesWithScope = async (namespace: 'credential' | 'workflow') =>
+		loadRoles
+			? await roleService.rolesWithScope(namespace, scopes, loadRoles)
+			: await roleService.rolesWithScope(namespace, scopes);
 
 	if (credentialId) {
 		const credentialRepo = entityManager
@@ -79,7 +132,7 @@ export async function userHasScopes(
 			throw new NotFoundError(`Credential with ID "${credentialId}" not found.`);
 		}
 
-		const validRoles = await roleService.rolesWithScope('credential', scopes, entityManager);
+		const validRoles = await rolesWithScope('credential');
 
 		const hasValidRoles = credentials.some(
 			(c) => userProjectIds.includes(c.projectId) && validRoles.includes(c.role),
@@ -89,18 +142,8 @@ export async function userHasScopes(
 			return true;
 		}
 
-		// Check for global credentials with read-only access
 		const credentialsFinderService = Container.get(CredentialsFinderService);
-		if (credentialsFinderService.hasGlobalReadOnlyAccess(scopes)) {
-			const globalCredential =
-				await credentialsFinderService.findGlobalCredentialById(credentialId);
-
-			if (globalCredential) {
-				return true;
-			}
-		}
-
-		return false;
+		return await hasGlobalCredentialAccess(credentialsFinderService, credentialId, scopes);
 	}
 
 	if (workflowId) {
@@ -114,7 +157,7 @@ export async function userHasScopes(
 			throw new NotFoundError(`Workflow with ID "${workflowId}" not found.`);
 		}
 
-		const validRoles = await roleService.rolesWithScope('workflow', scopes, entityManager);
+		const validRoles = await rolesWithScope('workflow');
 
 		return workflows.some(
 			(w) => userProjectIds.includes(w.projectId) && validRoles.includes(w.role),
@@ -127,7 +170,7 @@ export async function userHasScopes(
 			throw new NotFoundError(`Data table with ID "${dataTableId}" not found.`);
 		}
 
-		const { DataTableRepository } = await import('@/modules/data-table/data-table.repository');
+		const { DataTableRepository } = await import('@/modules/data-table/data-table.repository.js');
 		const dataTable = await Container.get(DataTableRepository).findOne({
 			where: { id: dataTableId },
 			relations: ['project'],

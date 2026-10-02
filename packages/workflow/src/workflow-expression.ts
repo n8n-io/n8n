@@ -113,7 +113,7 @@ export class WorkflowExpression {
 			}
 
 			return this.resolveSimpleParameterValue(
-				value as NodeParameterValue,
+				value,
 				siblingParameters,
 				runExecutionData,
 				runIndex,
@@ -132,7 +132,7 @@ export class WorkflowExpression {
 		// Early return for simple non-expression values (performance optimization + timezone correctness)
 		if (!isComplexParameter(parameterValue)) {
 			return this.resolveSimpleParameterValue(
-				parameterValue as NodeParameterValue,
+				parameterValue,
 				{},
 				runExecutionData,
 				runIndex,
@@ -270,11 +270,16 @@ export class WorkflowExpression {
 		return this.expression.convertObjectValueToString(value);
 	}
 
-	async acquireIsolate(): Promise<void> {
-		await this.expression.acquireIsolate();
+	/** Returns whether an isolate was newly acquired; `false` means this caller already held one and must not release it. */
+	async acquireIsolate(): Promise<boolean> {
+		return await this.expression.acquireIsolate();
 	}
 
 	async releaseIsolate(): Promise<void> {
 		await this.expression.releaseIsolate();
+	}
+
+	async withIsolate<T>(fn: () => Promise<T>): Promise<T> {
+		return await this.expression.withIsolate(fn);
 	}
 }

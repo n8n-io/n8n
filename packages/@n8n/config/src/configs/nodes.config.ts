@@ -1,3 +1,5 @@
+import { z } from 'zod';
+
 import { Config, Env } from '../decorators';
 
 function isStringArray(input: unknown): input is string[] {
@@ -29,8 +31,9 @@ export class NodesConfig {
 	/**
 	 * Node types to exclude from loading. Default excludes `ExecuteCommand` and `LocalFileTrigger` for security.
 	 * Set to an empty array to allow all node types.
+	 * Generated tool variants are accepted too. The base node stays available.
 	 *
-	 * @example '["n8n-nodes-base.hackerNews"]'
+	 * @example '["n8n-nodes-base.hackerNews", "n8n-nodes-base.dateTimeTool"]'
 	 */
 	@Env('NODES_EXCLUDE')
 	exclude: JsonStringArray = ['n8n-nodes-base.executeCommand', 'n8n-nodes-base.localFileTrigger'];
@@ -42,4 +45,8 @@ export class NodesConfig {
 	/** Whether to enable Python execution on the Code node. */
 	@Env('N8N_PYTHON_ENABLED')
 	pythonEnabled: boolean = true;
+
+	/** Memory limit in MB for the Merge node's SQL sandbox. */
+	@Env('NODES_MERGE_SQL_SANDBOX_MEMORY_LIMIT_MB', z.coerce.number().int().positive())
+	mergeSqlSandboxMemoryLimitMb: number = 64;
 }

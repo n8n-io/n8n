@@ -1,5 +1,5 @@
 import type { ProjectRole } from '@n8n/permissions';
-import { generateNanoId } from '@n8n/utils';
+import { generateNanoId } from '@n8n/utils/generate-nano-id';
 import { UserError } from 'n8n-workflow';
 
 import type { User } from '../../entities';

@@ -48,6 +48,9 @@ describe('Microsoft Excel V2 - loadOptions', () => {
 				`/drive/items/${workbookId}/workbook/worksheets/${worksheetId}/usedRange`,
 				undefined,
 				{ select: 'values' },
+				undefined,
+				undefined,
+				0,
 			);
 
 			expect(result).toEqual([
@@ -79,6 +82,10 @@ describe('Microsoft Excel V2 - loadOptions', () => {
 				'PATCH',
 				`/drive/items/${workbookId}/workbook/worksheets/${worksheetId}/range(address='${range}')`,
 				{ select: 'values' },
+				undefined,
+				undefined,
+				undefined,
+				0,
 			);
 
 			expect(result).toEqual([

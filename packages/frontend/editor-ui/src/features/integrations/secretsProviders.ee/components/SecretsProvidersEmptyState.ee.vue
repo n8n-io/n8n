@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import { useI18n } from '@n8n/i18n';
 import { computed, onMounted, onUnmounted, ref, toRef } from 'vue';
-import { N8nActionBox, N8nButton, N8nHeading, N8nIcon } from '@n8n/design-system';
+import { N8nEmptyState, N8nButton, N8nHeading, N8nIcon } from '@n8n/design-system';
 import type { SecretProviderTypeResponse } from '@n8n/api-types';
 import SecretsProviderImage from './SecretsProviderImage.ee.vue';
 
@@ -65,7 +65,7 @@ function onAddSecretsStore() {
 </script>
 
 <template>
-	<N8nActionBox
+	<N8nEmptyState
 		class="mt-2xl mb-l"
 		description="yes"
 		data-test-id="secrets-provider-connections-empty-state"
@@ -112,7 +112,7 @@ function onAddSecretsStore() {
 				{{ i18n.baseText('settings.secretsProviderConnections.buttons.addSecretsStore') }}
 			</N8nButton>
 		</template>
-	</N8nActionBox>
+	</N8nEmptyState>
 </template>
 
 <style lang="css" module>

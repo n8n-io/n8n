@@ -4,8 +4,8 @@ import type { IWorkflowDb } from '@/Interface';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 import { MAX_PREVIEW_EXECUTIONS_IN_MEMORY } from '@/app/constants';
 import { useI18n } from '@n8n/i18n';
-import { useToast } from '@/app/composables/useToast';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useToast } from '@n8n/composables/useToast';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { useWorkflowNormalization } from '@/app/composables/useWorkflowNormalization';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
@@ -30,6 +30,14 @@ import {
 } from '@/app/stores/executionData.store';
 import { disposeNDVStore, useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { getExecutionErrorToastConfiguration } from '@/features/execution/executions/executions.utils';
+// Experiment cleanup (119_surface_assistant_on_workflow_error)
+import {
+	WORKFLOW_ERROR_NUDGE_TOAST_CUSTOM_CLASS,
+	dismissWorkflowErrorNudge,
+	releaseWorkflowErrorNudge,
+	useSurfaceAssistantOnWorkflowError,
+} from '@/experiments/surfaceAssistantOnWorkflowError/composables/useSurfaceAssistantOnWorkflowError';
+// EOF Experiment cleanup
 import { useLogsStore } from '@/app/stores/logs.store';
 
 export interface UseExecutionPreviewDocumentOptions {
@@ -51,6 +59,9 @@ export interface UseExecutionPreviewDocumentOptions {
 export function useExecutionPreviewDocument(options: UseExecutionPreviewDocumentOptions) {
 	const i18n = useI18n();
 	const toast = useToast();
+	// Experiment cleanup (119_surface_assistant_on_workflow_error)
+	const { triggerOnWorkflowError } = useSurfaceAssistantOnWorkflowError();
+	// EOF Experiment cleanup
 	const telemetry = useTelemetry();
 	const externalHooks = useExternalHooks();
 	const workflowsStore = useWorkflowsStore();
@@ -160,12 +171,34 @@ export function useExecutionPreviewDocument(options: UseExecutionPreviewDocument
 		return snapshot && isTerminalExecutionStatus(snapshot.status) ? snapshot : null;
 	}
 
+	// Experiment cleanup (119_surface_assistant_on_workflow_error)
+	function showExecutionErrorToast(
+		executionId: string,
+		workflowId: string,
+		title: string,
+		message: Parameters<typeof toast.showMessage>[0]['message'],
+	) {
+		toast.showMessage({
+			title,
+			message,
+			type: 'error',
+			duration: 0,
+			customClass: WORKFLOW_ERROR_NUDGE_TOAST_CUSTOM_CLASS,
+			onClose: () => releaseWorkflowErrorNudge(executionId),
+		});
+		triggerOnWorkflowError(executionId, workflowId, { reopen: true });
+	}
+	// EOF Experiment cleanup
+
 	async function load(): Promise<void> {
 		const executionId = toValue(options.executionId);
 		const requestId = ++latestLoadRequestId;
 
 		isLoading.value = true;
 		loadError.value = null;
+		// Experiment cleanup (119_surface_assistant_on_workflow_error)
+		dismissWorkflowErrorNudge();
+		// EOF Experiment cleanup
 
 		try {
 			const data =
@@ -191,19 +224,23 @@ export function useExecutionPreviewDocument(options: UseExecutionPreviewDocument
 					error: resultData.error,
 					lastNodeExecuted: resultData.lastNodeExecuted,
 				});
-				toast.showMessage({ title, message, type: 'error', duration: 0 });
+				// Experiment cleanup (119_surface_assistant_on_workflow_error)
+				showExecutionErrorToast(executionId, data.workflowData.id, title, message);
+				// EOF Experiment cleanup
 			} else if (!data.finished && resultData?.error) {
 				// Skip when a node already captured the error — it shows on the node.
 				const nodeErrorFound = Object.values(resultData.runData ?? {}).some((tasks) =>
 					tasks.some((task) => task.error),
 				);
 				if (!nodeErrorFound) {
-					toast.showMessage({
-						title: i18n.baseText('nodeView.showError.workflowError'),
-						message: resultData.error.message,
-						type: 'error',
-						duration: 0,
-					});
+					// Experiment cleanup (119_surface_assistant_on_workflow_error)
+					showExecutionErrorToast(
+						executionId,
+						data.workflowData.id,
+						i18n.baseText('nodeView.showError.workflowError'),
+						resultData.error.message,
+					);
+					// EOF Experiment cleanup
 				}
 			}
 
@@ -265,10 +302,11 @@ export function useExecutionPreviewDocument(options: UseExecutionPreviewDocument
 			});
 		} catch (error) {
 			if (requestId === latestLoadRequestId) {
+				// No toast: the host renders the load error state, and WorkflowExecutionsView
+				// already toasts its own failed fetch of the same execution.
 				loadError.value = error instanceof Error ? error : new Error(String(error));
 				documentStore.value = null;
 				execution.value = null;
-				toast.showError(error, i18n.baseText('nodeView.showError.openExecution.title'));
 			}
 		} finally {
 			if (requestId === latestLoadRequestId) {

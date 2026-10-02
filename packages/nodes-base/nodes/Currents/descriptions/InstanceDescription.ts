@@ -19,7 +19,7 @@ export const instanceOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'GET',
-						url: '=/instances/{{$parameter["instanceId"]}}',
+						url: '=/instances/{{toPathSegment($parameter["instanceId"])}}',
 					},
 					output: {
 						postReceive: [

@@ -7,7 +7,7 @@ import {
 } from '@/experiments/utils';
 import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
 import { useChatPanelStore } from '@/features/ai/assistant/chatPanel.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
 import { useI18n } from '@n8n/i18n';
 import { computed } from 'vue';
@@ -131,7 +131,7 @@ async function onClickTemplatesLink() {
 						data-test-id="canvas-instance-ai-build-with-ai-button"
 						@mousedown.stop.prevent="onInstanceAiBuildWithAIClick"
 					>
-						<N8nIcon icon="wand-sparkles" color="foreground-xdark" :size="40" />
+						<N8nIcon icon="sparkles" color="foreground-xdark" :size="40" />
 					</button>
 					<!-- Legacy builder — only while Instance AI is off -->
 					<button
@@ -140,7 +140,7 @@ async function onClickTemplatesLink() {
 						data-test-id="canvas-build-with-ai-button"
 						@mousedown.stop.prevent="onBuildWithAIClick"
 					>
-						<N8nIcon icon="wand-sparkles" color="foreground-xdark" :size="40" />
+						<N8nIcon icon="sparkles" color="foreground-xdark" :size="40" />
 					</button>
 				</div>
 				<p :class="$style.label">

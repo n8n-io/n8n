@@ -1,10 +1,9 @@
 <script setup lang="ts">
 import { ref, computed, useCssModule, watch, nextTick, onMounted, useAttrs } from 'vue';
 
-import Icon from '@n8n/design-system/components/N8nIcon/Icon.vue';
-
 import type { InputProps, InputEmits, InputSlots, InputSize } from './Input.types';
 import { useAutosizeTextarea } from '../../composables/useAutosizeTextarea';
+import Icon from '../N8nIcon/Icon.vue';
 
 defineOptions({ name: 'N8nInput', inheritAttrs: false });
 
@@ -18,8 +17,10 @@ const props = withDefaults(defineProps<InputProps>(), {
 	placeholder: '',
 	disabled: false,
 	readonly: false,
+	required: false,
 	clearable: false,
 	rows: 2,
+	masked: false,
 	maxlength: undefined,
 	autosize: false,
 	autofocus: false,
@@ -90,7 +91,7 @@ const containerClasses = computed(() => [
 		[$style.hasPrepend]: !!slots.prepend,
 		[$style.hasAppend]: !!slots.append,
 		[$style.isTextarea]: isTextarea.value,
-		'ph-no-capture': props.type === 'password',
+		'ph-no-capture': props.type === 'password' || props.masked,
 	},
 ]);
 
@@ -210,6 +211,7 @@ defineExpose({ focus, blur, select });
 				:placeholder="placeholder"
 				:disabled="disabled"
 				:readonly="readonly"
+				:required="required"
 				:maxlength="maxlength"
 				:autocomplete="autocomplete"
 				:name="name"
@@ -226,10 +228,11 @@ defineExpose({ focus, blur, select });
 				v-else
 				ref="inputRef"
 				:value="modelValue ?? ''"
-				:class="[$style.input, $style.textarea]"
+				:class="[$style.input, $style.textarea, { [$style.masked]: masked }]"
 				:placeholder="placeholder"
 				:disabled="disabled"
 				:readonly="readonly"
+				:required="required"
 				:rows="autosize ? undefined : rows"
 				:maxlength="maxlength"
 				:autocomplete="autocomplete"
@@ -269,6 +272,7 @@ defineExpose({ focus, blur, select });
 
 <style module lang="scss">
 @use '../../css/mixins/focus';
+@use '../../css/mixins/input' as input-mixin;
 
 .inputContainer {
 	display: inline-flex;
@@ -276,52 +280,28 @@ defineExpose({ focus, blur, select });
 	width: 100%;
 	gap: var(--spacing--3xs);
 
-	--input--height: var(--height--lg);
-	--input--radius: var(--radius--2xs);
-	--input--font-size: var(--font-size--sm);
-	--input--padding: var(--spacing--xs);
+	@include input-mixin.size-variables;
 
-	--input--color--background: light-dark(var(--color--neutral-white), var(--color--neutral-950));
-	--input--shadow: 0 0 0 0 transparent;
-	--input--shadow--hover: 0 0 0 0 transparent;
-	--input--shadow--focus: 0 0 0 0 transparent;
-	--input--border-color: var(--border-color);
-	--input--border-color--hover: var(--border-color--strong);
-	--input--border-color--focus: var(--focus--border-color);
-	--input--border--shadow: 0 0 0 1px var(--input--border-color);
-	--input--border--shadow--hover: 0 0 0 1px var(--input--border-color--hover);
-	--input--border--shadow--focus: 0 0 0 1px var(--input--border-color--focus);
+	@include input-mixin.theme-variables;
 
 	&.xlarge {
-		--input--height: var(--height--xl);
-		--input--radius: var(--radius--2xs);
-		--input--font-size: var(--font-size--md);
+		@include input-mixin.size-variables('xlarge');
 	}
 
 	&.large {
-		--input--height: var(--height--lg);
-		--input--radius: var(--radius--2xs);
-		--input--font-size: var(--font-size--sm);
+		@include input-mixin.size-variables('large');
 	}
 
 	&.medium {
-		--input--height: var(--height--md);
-		--input--radius: var(--radius--3xs);
-		--input--font-size: var(--font-size--sm);
+		@include input-mixin.size-variables('medium');
 	}
 
 	&.small {
-		--input--height: var(--height--sm);
-		--input--radius: var(--radius--3xs);
-		--input--font-size: var(--font-size--xs);
-		--input--padding: var(--spacing--2xs);
+		@include input-mixin.size-variables('small');
 	}
 
 	&.mini {
-		--input--height: var(--height--xs);
-		--input--radius: var(--radius--3xs);
-		--input--font-size: var(--font-size--2xs);
-		--input--padding: var(--spacing--2xs);
+		@include input-mixin.size-variables('mini');
 	}
 }
 
@@ -402,11 +382,11 @@ defineExpose({ focus, blur, select });
 	outline: none;
 	font-family: inherit;
 	font-size: var(--input--font-size, var(--font-size--md));
-	color: var(--color--text--shade-1);
+	color: var(--input--color--text);
 }
 
 .input::placeholder {
-	color: var(--color--text--tint-1);
+	color: var(--input--placeholder--color);
 }
 
 .input:read-only {
@@ -415,7 +395,11 @@ defineExpose({ focus, blur, select });
 
 .input:disabled {
 	cursor: not-allowed;
-	color: var(--color--text--tint-1);
+	color: var(--input--color--disabled);
+
+	&::placeholder {
+		color: var(--input--placeholder--color--disabled);
+	}
 }
 
 .textarea {
@@ -432,7 +416,7 @@ defineExpose({ focus, blur, select });
 }
 
 .textarea::placeholder {
-	color: var(--color--text--tint-1);
+	color: var(--input--placeholder--color);
 }
 
 .textarea:read-only {
@@ -441,7 +425,19 @@ defineExpose({ focus, blur, select });
 
 .textarea:disabled {
 	cursor: not-allowed;
-	color: var(--color--text--tint-1);
+	color: var(--input--color--disabled);
+
+	&::placeholder {
+		color: var(--input--placeholder--color--disabled);
+	}
+}
+
+/* Masks a multiline secret (e.g. a PEM private key) as dots via
+   -webkit-text-security (supported in Chromium, Safari, and Firefox 114+).
+   Display-only: the real value is never re-sent to the client (backend
+   redaction), and this masks rendering, not copy/paste. */
+.masked {
+	-webkit-text-security: disc;
 }
 
 .prefix,

@@ -9,12 +9,33 @@ export class BreakingChangesModule implements ModuleInterface {
 		if (!MIGRATION_REPORT_TARGET_VERSION) return;
 
 		// Import rules so that they are added to the BreakingChangeRuleMetadata registry
-		await import('./rules');
+		await import('./rules/index.js');
 
 		// Register rules in the service
-		const { BreakingChangeService } = await import('./breaking-changes.service');
+		const { BreakingChangeService } = await import('./breaking-changes.service.js');
 		Container.get(BreakingChangeService).registerRules();
 
-		await import('./breaking-changes.controller');
+		// Register the node migrations keyed by rule id
+		const { MigrationRegistry } = await import('./breaking-changes.migration-registry.service.js');
+		Container.get(MigrationRegistry).registerAll();
+
+		await import('./breaking-changes.controller.js');
+
+		// Keep the finding table current between full scans.
+		const { MigrationFindingSyncListener } = await import(
+			'./sync/migration-finding-sync.listener.js'
+		);
+		Container.get(MigrationFindingSyncListener).init();
+	}
+
+	// Registered even when `init()` skips: the tables exist regardless of the
+	// target version, and TypeORM needs the entities to map them.
+	async entities() {
+		const { MigrationFinding } = await import('./database/entities/migration-finding.entity.js');
+		const { MigrationFindingSync } = await import(
+			'./database/entities/migration-finding-sync.entity.js'
+		);
+
+		return [MigrationFinding, MigrationFindingSync];
 	}
 }

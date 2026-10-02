@@ -1,4 +1,7 @@
-import type { InstanceAiMcpConnectionResponse } from '@n8n/api-types';
+import type {
+	InstanceAiMcpConnectionResponse,
+	InstanceAiMcpConnectionToolsResponse,
+} from '@n8n/api-types';
 import {
 	InstanceAiMcpCreateConnectionRequestDto,
 	InstanceAiMcpUpdateConnectionRequestDto,
@@ -16,13 +19,13 @@ import {
 } from '@n8n/decorators';
 import type { Response } from 'express';
 
-import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { CredentialsFinderService } from '@n8n/backend-services';
+import { NotFoundError } from '@n8n/errors';
 import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
 import type { McpRegistryServer } from '@/modules/mcp-registry/registry/mcp-registry.types';
 
-import type { InstanceAiMcpRegistryConnection } from '../entities/instance-ai-mcp-registry-connection.entity';
 import { InstanceAiMcpRegistryService } from './instance-ai-mcp-registry.service';
+import type { InstanceAiMcpRegistryConnection } from '../entities/instance-ai-mcp-registry-connection.entity';
 
 interface ServerMetadata {
 	title: string;
@@ -93,6 +96,22 @@ export class InstanceAiMcpConnectionController {
 		);
 	}
 
+	@Get('/tools')
+	@GlobalScope('instanceAi:message')
+	async listAllTools(req: AuthenticatedRequest): Promise<InstanceAiMcpConnectionToolsResponse[]> {
+		return await this.service.listAllConnectionTools(req.user);
+	}
+
+	@Get('/:id/tools')
+	@GlobalScope('instanceAi:message')
+	async listTools(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('id') id: string,
+	): Promise<InstanceAiMcpConnectionToolsResponse> {
+		return await this.service.listConnectionTools(req.user, id);
+	}
+
 	@Patch('/:id')
 	@GlobalScope('instanceAi:message')
 	async update(
@@ -140,6 +159,7 @@ function toResponse(
 		credentialId: connection.credentialId,
 		credentialName,
 		credentialType,
+		toolPermissions: connection.toolPermissions,
 		createdAt: connection.createdAt.toISOString(),
 		updatedAt: connection.updatedAt.toISOString(),
 	};

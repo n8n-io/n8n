@@ -11,21 +11,15 @@ import type {
 } from 'n8n-workflow';
 import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
-import { hubspotApiRequest, propertyEvents } from './V1/GenericFunctions';
+import type { HubspotObjectType } from './V1/GenericFunctions';
+import { getAllProperties, hubspotApiRequest, propertyEvents } from './V1/GenericFunctions';
 
 export async function getEntityProperties(
 	this: ILoadOptionsFunctions,
-	endpoint: string,
+	objectType: HubspotObjectType,
 ): Promise<INodePropertyOptions[]> {
 	const returnData: INodePropertyOptions[] = [];
-	const properties = await hubspotApiRequest.call(this, 'GET', endpoint, {});
-
-	if (!Array.isArray(properties)) {
-		throw new NodeOperationError(
-			this.getNode(),
-			`HubSpot returned an unexpected response while loading properties from "${endpoint}". Expected an array of properties.`,
-		);
-	}
+	const properties = await getAllProperties.call(this, objectType);
 
 	for (const property of properties) {
 		if (typeof property?.label === 'string' && typeof property?.name === 'string') {
@@ -324,16 +318,16 @@ export class HubspotTrigger implements INodeType {
 	methods = {
 		loadOptions: {
 			async getContactProperties(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				return await getEntityProperties.call(this, '/properties/v2/contacts/properties');
+				return await getEntityProperties.call(this, 'contacts');
 			},
 			async getCompanyProperties(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				return await getEntityProperties.call(this, '/properties/v2/companies/properties');
+				return await getEntityProperties.call(this, 'companies');
 			},
 			async getDealProperties(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				return await getEntityProperties.call(this, '/properties/v2/deals/properties');
+				return await getEntityProperties.call(this, 'deals');
 			},
 			async getTicketProperties(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				return await getEntityProperties.call(this, '/properties/v2/tickets/properties');
+				return await getEntityProperties.call(this, 'tickets');
 			},
 		},
 	};

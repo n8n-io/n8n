@@ -1,7 +1,7 @@
 import type { ToolMessage } from '@langchain/core/messages';
 import type { RunnableConfig } from '@langchain/core/runnables';
 import type { Command } from '@langchain/langgraph';
-import { createResultError, createResultOk } from 'n8n-workflow';
+import { createResultError, createResultOk } from '@n8n/utils/result';
 import type { MockedFunction } from 'vitest';
 
 import type { SsrfGuard } from '@/tools/utils/ssrf-guard';

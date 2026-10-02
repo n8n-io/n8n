@@ -1,13 +1,13 @@
 import type { LicenseState } from '@n8n/backend-common';
 import { markHttpRequestError } from '@n8n/backend-network';
 import type { HttpRequestClient, OutboundHttp } from '@n8n/backend-network';
+import type { EventService } from '@n8n/backend-services';
 import type { WorkflowRepository } from '@n8n/db';
 import type { TEntitlement } from '@n8n_io/license-sdk';
 import { AxiosError } from 'axios';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import type { EventService } from '@/events/event.service';
+import { BadRequestError } from '@n8n/errors';
 import type { License } from '@/license';
 import { LicenseErrors, LicenseService } from '@/license/license.service';
 
@@ -17,8 +17,8 @@ describe('LicenseService', () => {
 	const workflowRepository = mock<WorkflowRepository>();
 	const entitlement = mock<TEntitlement>({ productId: '123' });
 	const eventService = mock<EventService>();
-	const request = jest.fn();
-	const requests = jest.fn().mockReturnValue(mock<HttpRequestClient>({ request }));
+	const request = vi.fn();
+	const requests = vi.fn().mockReturnValue(mock<HttpRequestClient>({ request }));
 	const outboundHttp = mock<OutboundHttp>({ requests });
 	const licenseService = new LicenseService(
 		mock(),
@@ -37,7 +37,7 @@ describe('LicenseService', () => {
 	workflowRepository.getActiveTriggerCount.mockResolvedValue(7);
 	workflowRepository.getWorkflowsWithEvaluationCount.mockResolvedValue(1);
 
-	beforeEach(() => jest.clearAllMocks());
+	beforeEach(() => vi.clearAllMocks());
 
 	class LicenseError extends Error {
 		constructor(readonly errorId: string) {

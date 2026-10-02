@@ -3,8 +3,10 @@ import { i18n } from '@n8n/i18n';
 
 import { N8nIcon, N8nText } from '@n8n/design-system';
 import AiStarsIcon from '@/app/components/AiStarsIcon.vue';
+import ParameterIssues from '../ParameterIssues.vue';
 defineProps<{
 	isReadOnly?: boolean;
+	issues?: string[];
 }>();
 
 const emit = defineEmits<{
@@ -24,8 +26,11 @@ const emit = defineEmits<{
 				size="small"
 			/>
 		</div>
-		<div v-if="!isReadOnly" :class="[$style.overrideCloseButton]" @click="emit('close')">
-			<N8nIcon v-if="!isReadOnly" icon="x" size="small" />
+		<div v-if="issues?.length || !isReadOnly" :class="$style.actions">
+			<ParameterIssues v-if="issues?.length" :issues="issues" />
+			<div v-if="!isReadOnly" :class="$style.overrideCloseButton" @click="emit('close')">
+				<N8nIcon icon="x" size="small" />
+			</div>
 		</div>
 	</div>
 </template>
@@ -56,7 +61,6 @@ const emit = defineEmits<{
 .overrideCloseButton {
 	border: 0;
 	color: var(--color--text--tint-1);
-	margin-left: auto;
 	padding: 0 var(--spacing--2xs);
 	align-self: stretch;
 	display: flex;
@@ -66,6 +70,13 @@ const emit = defineEmits<{
 	&:hover {
 		color: var(--color--text);
 	}
+}
+
+.actions {
+	align-self: stretch;
+	display: flex;
+	align-items: center;
+	margin-left: auto;
 }
 
 .contentOverrideContainer {

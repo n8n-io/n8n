@@ -5,6 +5,8 @@
  * Supports both inline generation and variable reference modes.
  */
 
+import { isRecord } from '@n8n/utils/is-record';
+
 import {
 	AI_CONNECTION_TO_CONFIG_KEY,
 	AI_CONNECTION_TO_BUILDER,
@@ -14,6 +16,9 @@ import {
 import { generateDefaultNodeName } from './node-type-utils';
 import {
 	escapeString,
+	formatStringLiteral,
+	indentContinuationLines,
+	isMultilineStringValue,
 	formatKey,
 	isPlaceholderValue,
 	extractPlaceholderHint,
@@ -25,29 +30,41 @@ import type { SemanticGraph, SemanticNode, AiConnectionType } from './types';
  * Emits `newCredential('name', 'id')` for credentials with an id,
  * or `newCredential('name')` for placeholder credentials.
  */
-export function formatCredentials(
-	credentials: Record<string, { id?: string; name?: string }>,
-): string {
+export function formatCredentials(credentials: unknown): string {
 	// Guard: some workflows have credentials as a string (e.g. "[REDACTED]")
 	// instead of the expected Record<string, {id?, name?}>.
 	if (typeof credentials === 'string') {
 		return `'${escapeString(credentials)}'`;
 	}
+	if (!isRecord(credentials)) {
+		return formatValue(credentials);
+	}
 	const entries = Object.entries(credentials).map(([key, value]) => {
-		// If credential has a name, use newCredential() call
-		if (value.name !== undefined || value.id !== undefined) {
-			if (value.name !== undefined) {
-				if (value.id !== undefined) {
-					return `${formatKey(key)}: newCredential('${escapeString(value.name)}', '${escapeString(value.id)}')`;
-				}
-				return `${formatKey(key)}: newCredential('${escapeString(value.name)}')`;
+		if (!isRecord(value)) {
+			return `${formatKey(key)}: ${formatValue(value)}`;
+		}
+
+		const name = value.name;
+		const id = value.id;
+
+		if (typeof name === 'string') {
+			// Managed credentials have no persisted ID, so emit the placeholder form.
+			if (id === null && value.__aiGatewayManaged === true) {
+				return `${formatKey(key)}: newCredential('${escapeString(name)}')`;
 			}
-			// id-only credential (no name property) — emit raw object to preserve shape
-			if (value.id !== undefined) {
-				return `${formatKey(key)}: { id: '${escapeString(value.id)}' }`;
+			if (id === undefined) {
+				return `${formatKey(key)}: newCredential('${escapeString(name)}')`;
+			}
+			if (typeof id === 'string') {
+				return `${formatKey(key)}: newCredential('${escapeString(name)}', '${escapeString(id)}')`;
 			}
 		}
-		// Empty credential object — preserve as-is
+
+		// id-only credential (no name property) — emit raw object to preserve shape
+		if (name === undefined && typeof id === 'string') {
+			return `${formatKey(key)}: { id: '${escapeString(id)}' }`;
+		}
+		// Empty or malformed credential object — preserve as-is
 		return `${formatKey(key)}: ${formatValue(value)}`;
 	});
 	return `{ ${entries.join(', ')} }`;
@@ -68,6 +85,8 @@ interface SubnodeGenerationContext {
 	graph: SemanticGraph;
 	nodeNameToVarName: Map<string, string>;
 	expressionAnnotations?: Map<string, string>;
+	/** Leave `position` out of subnode configs; set by the code generator. */
+	omitPositions?: boolean;
 }
 
 /**
@@ -107,6 +126,32 @@ function containsExpressionAnnotation(value: unknown, ctx?: FormatValueContext):
 }
 
 /**
+ * Check if a value or any nested value is a string that formats as a multi-line
+ * template literal. Such objects use multi-line formatting so the template
+ * literal starts on its own property line.
+ */
+function containsMultilineString(value: unknown): boolean {
+	if (typeof value === 'string') {
+		return !isPlaceholderValue(value) && isMultilineStringValue(value);
+	}
+	if (Array.isArray(value)) {
+		return value.some((v) => containsMultilineString(v));
+	}
+	if (typeof value === 'object' && value !== null) {
+		return Object.values(value).some((v) => containsMultilineString(v));
+	}
+	return false;
+}
+
+/**
+ * True when a formatted value should be laid out across lines: it carries an
+ * expression annotation or a multi-line template literal.
+ */
+function needsMultilineLayout(value: unknown, ctx?: FormatValueContext): boolean {
+	return containsExpressionAnnotation(value, ctx) || containsMultilineString(value);
+}
+
+/**
  * Format a value for code output.
  * When expression annotations are present in an object, uses multi-line formatting.
  * Expression annotations use block comments on the line before the value.
@@ -122,14 +167,14 @@ export function formatValue(value: unknown, ctx?: FormatValueContext): string {
 		}
 		if (value.startsWith('=')) {
 			const inner = value.slice(1);
-			const formatted = `expr('${escapeString(inner)}')`;
+			const formatted = `expr(${formatStringLiteral(inner)})`;
 			if (ctx?.expressionAnnotations?.has(value)) {
 				const annotation = ctx.expressionAnnotations.get(value)!;
 				return `/** @example ${annotation} */\n${formatted}`;
 			}
 			return formatted;
 		}
-		const formatted = `'${escapeString(value)}'`;
+		const formatted = formatStringLiteral(value);
 		if (ctx?.expressionAnnotations?.has(value)) {
 			const annotation = ctx.expressionAnnotations.get(value)!;
 			return `/** @example ${annotation} */\n${formatted}`;
@@ -141,10 +186,10 @@ export function formatValue(value: unknown, ctx?: FormatValueContext): string {
 		const innerCtx = ctx ? { ...ctx, indent: (ctx.indent ?? 0) + 1 } : ctx;
 		const formattedElements = value.map((v) => formatValue(v, innerCtx));
 		// Check if any element contains annotation - if so, use multi-line
-		if (containsExpressionAnnotation(value, ctx)) {
+		if (needsMultilineLayout(value, ctx)) {
 			const baseIndent = '  '.repeat(ctx?.indent ?? 0);
 			const elementIndent = '  '.repeat((ctx?.indent ?? 0) + 1);
-			return `[\n${formattedElements.map((e) => `${elementIndent}${e}`).join(',\n')}\n${baseIndent}]`;
+			return `[\n${formattedElements.map((e) => `${elementIndent}${indentContinuationLines(e, elementIndent)}`).join(',\n')}\n${baseIndent}]`;
 		}
 		return `[${formattedElements.join(', ')}]`;
 	}
@@ -159,33 +204,35 @@ export function formatValue(value: unknown, ctx?: FormatValueContext): string {
 		}));
 
 		// Check if object contains any expression annotations - if so, use multi-line format
-		if (containsExpressionAnnotation(value, ctx)) {
+		if (needsMultilineLayout(value, ctx)) {
 			const baseIndent = '  '.repeat(ctx?.indent ?? 0);
 			const propIndent = '  '.repeat((ctx?.indent ?? 0) + 1);
 			const lines = formattedEntries.map((e, i) => {
 				const isLast = i === formattedEntries.length - 1;
 				const valueLines = e.value.split('\n');
 
-				// Check if this is a block comment before a value (not a nested object/array)
-				// Block comments start with /** and the last line is the actual value
+				// A block comment before a value (an @example annotation): the comment lines
+				// get property indent, then `key: value` follows — the value itself may span
+				// lines when it is a template literal.
+				const commentEnd = valueLines[0].trim().startsWith('/**')
+					? valueLines.findIndex((l) => l.trim().endsWith('*/'))
+					: -1;
 				const isBlockCommentPrefixed =
-					valueLines.length > 1 &&
-					valueLines[0].trim().startsWith('/**') &&
+					commentEnd >= 0 &&
+					commentEnd < valueLines.length - 1 &&
 					!valueLines[valueLines.length - 1].trim().match(/^[}\]]$/);
 
 				if (isBlockCommentPrefixed) {
-					// Comment lines get property indent, last line is key: value
-					const commentLines = valueLines.slice(0, -1).map((l) => `${propIndent}${l}`);
-					const valueLine = `${propIndent}${e.key}: ${valueLines[valueLines.length - 1]}`;
+					const commentLines = valueLines.slice(0, commentEnd + 1).map((l) => `${propIndent}${l}`);
+					const rawValue = valueLines.slice(commentEnd + 1).join('\n');
+					const valueLine = `${propIndent}${e.key}: ${indentContinuationLines(rawValue, propIndent)}`;
 					return [...commentLines, isLast ? valueLine : `${valueLine},`].join('\n');
 				}
 
 				// For nested objects/arrays or single-line values, add proper indentation
 				if (valueLines.length > 1) {
 					// Multi-line nested object/array - indent each line properly
-					const indentedValue = valueLines
-						.map((line, lineIdx) => (lineIdx === 0 ? line : `${propIndent}${line}`))
-						.join('\n');
+					const indentedValue = indentContinuationLines(e.value, propIndent);
 					const propLine = `${propIndent}${e.key}: ${indentedValue}`;
 					return isLast ? propLine : `${propLine},`;
 				}
@@ -226,7 +273,7 @@ function generateSubnodeConfigParts(
 	}
 
 	const pos = node.json.position;
-	if (pos && (pos[0] !== 0 || pos[1] !== 0)) {
+	if (!ctx.omitPositions && pos && (pos[0] !== 0 || pos[1] !== 0)) {
 		configParts.push(`position: [${pos[0]}, ${pos[1]}]`);
 	}
 

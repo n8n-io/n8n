@@ -11,6 +11,7 @@ import {
 	type ChatHubSessionDto,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { parseMessage } from '@n8n/chat-hub';
 import { GlobalConfig } from '@n8n/config';
 import { User } from '@n8n/db';
 import type { EntityManager } from '@n8n/db';
@@ -25,8 +26,8 @@ import {
 	UnexpectedError,
 } from 'n8n-workflow';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { ChatExecutionManager } from '@/chat/chat-execution-manager';
+import { BadRequestError, NotFoundError } from '@n8n/errors';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
@@ -49,7 +50,6 @@ import {
 import { ChatHubMessageRepository } from './chat-message.repository';
 import { ChatHubSessionRepository } from './chat-session.repository';
 import { ChatStreamService } from './chat-stream.service';
-import { parseMessage } from '@n8n/chat-hub';
 
 @Service()
 export class ChatHubService {
@@ -69,6 +69,7 @@ export class ChatHubService {
 		private readonly chatHubToolService: ChatHubToolService,
 		private readonly chatHubWorkflowService: ChatHubWorkflowService,
 		private readonly globalConfig: GlobalConfig,
+		private readonly executionManager: ChatExecutionManager,
 	) {
 		this.logger = this.logger.scoped('chat-hub');
 	}
@@ -140,6 +141,21 @@ export class ChatHubService {
 		if (!execution) {
 			throw new OperationalError('Chat session has expired.');
 		}
+
+		// Only resume nodes a chat message is meant to drive (see
+		// ChatExecutionManager.canResumeOverChat) — the same allowlist the chat
+		// websocket uses. A workflow parked on, e.g., a Send-and-Wait approval gate
+		// must not be advanced by the next chat message; refuse before any state
+		// changes so the gate stays waiting for its real responder.
+		if (!this.executionManager.canResumeOverChat(execution)) {
+			this.logger.warn(
+				`Refused chat-hub resume for execution ${execution.id}: suspended node is not resumable over chat`,
+			);
+			throw new BadRequestError(
+				'This conversation is waiting for a response that cannot be provided from chat.',
+			);
+		}
+
 		this.logger.debug(
 			`Resuming execution ${execution.id} from waiting state for session ${sessionId}`,
 		);
@@ -457,7 +473,7 @@ export class ChatHubService {
 		let previousMessage: ChatHubMessage | undefined;
 
 		try {
-			const result = await this.messageRepository.manager.transaction(async (trx) => {
+			const result = await this.messageRepository.runInTransaction({}, async (trx, ctx) => {
 				let session = await this.getChatSession(user, sessionId, trx);
 				const isNewSession = !session;
 				session ??= await this.createChatSession(
@@ -516,7 +532,7 @@ export class ChatHubService {
 					tools,
 					processedAttachments,
 					tz,
-					trx,
+					ctx,
 					executionMetadata,
 				);
 
@@ -612,7 +628,7 @@ export class ChatHubService {
 		let workflow: PreparedChatWorkflow;
 		let previousMessage: ChatHubMessage | undefined;
 		try {
-			const result = await this.messageRepository.manager.transaction(async (trx) => {
+			const result = await this.messageRepository.runInTransaction({}, async (trx, ctx) => {
 				let session = await this.getChatSession(user, sessionId, trx);
 				session ??= await this.createChatSession(
 					user,
@@ -672,7 +688,7 @@ export class ChatHubService {
 					tools,
 					processedAttachments,
 					tz,
-					trx,
+					ctx,
 					executionMetadata,
 					true, // manual
 				);
@@ -757,7 +773,7 @@ export class ChatHubService {
 		let newStoredAttachments: IBinaryData[] = [];
 
 		try {
-			result = await this.messageRepository.manager.transaction(async (trx) => {
+			result = await this.messageRepository.runInTransaction({}, async (trx, ctx) => {
 				const session = await this.getChatSession(user, sessionId, trx);
 				if (!session) {
 					throw new NotFoundError('Chat session not found');
@@ -814,7 +830,7 @@ export class ChatHubService {
 						tools,
 						attachments,
 						tz,
-						trx,
+						ctx,
 						executionMetadata,
 					);
 
@@ -895,7 +911,7 @@ export class ChatHubService {
 		let newStoredAttachments: IBinaryData[] = [];
 
 		try {
-			result = await this.messageRepository.manager.transaction(async (trx) => {
+			result = await this.messageRepository.runInTransaction({}, async (trx, ctx) => {
 				const session = await this.getChatSession(user, sessionId, trx);
 				if (!session) {
 					throw new NotFoundError('Chat session not found');
@@ -968,7 +984,7 @@ export class ChatHubService {
 						tools,
 						attachments,
 						tz,
-						trx,
+						ctx,
 						executionMetadata,
 						true, // manual
 					);
@@ -1039,7 +1055,7 @@ export class ChatHubService {
 		const tz = timeZone ?? this.globalConfig.generic.timezone;
 
 		const { retryOfMessageId, previousMessageId, workflow } =
-			await this.messageRepository.manager.transaction(async (trx) => {
+			await this.messageRepository.runInTransaction({}, async (trx, ctx) => {
 				const session = await this.getChatSession(user, sessionId, trx);
 				if (!session) {
 					throw new NotFoundError('Chat session not found');
@@ -1080,7 +1096,7 @@ export class ChatHubService {
 					tools,
 					attachments,
 					tz,
-					trx,
+					ctx,
 					executionMetadata,
 				);
 
@@ -1124,7 +1140,7 @@ export class ChatHubService {
 		}
 
 		const { retryOfMessageId, previousMessageId, workflow } =
-			await this.messageRepository.manager.transaction(async (trx) => {
+			await this.messageRepository.runInTransaction({}, async (trx, ctx) => {
 				const session = await this.getChatSession(user, sessionId, trx);
 				if (!session) {
 					throw new NotFoundError('Chat session not found');
@@ -1166,7 +1182,7 @@ export class ChatHubService {
 					tools,
 					attachments,
 					tz,
-					trx,
+					ctx,
 					executionMetadata,
 					true, // manual
 				);

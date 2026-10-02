@@ -1,5 +1,10 @@
 import { OpenAI, type ClientOptions } from '@langchain/openai';
-import { getProxyAgent, makeN8nLlmFailedAttemptHandler, N8nLlmTracing } from '@n8n/ai-utilities';
+import {
+	getProxyAgent,
+	aiClientFetch,
+	makeN8nLlmFailedAttemptHandler,
+	N8nLlmTracing,
+} from '@n8n/ai-utilities';
 import { NodeConnectionTypes } from 'n8n-workflow';
 import type {
 	INodeType,
@@ -11,7 +16,9 @@ import type {
 
 import { Container } from '@n8n/di';
 import { AiConfig } from '@n8n/config';
-import { mergeCustomHeaders } from '@utils/helpers';
+import { getCustomCredentialHeader, mergeCustomHeaders } from '@utils/helpers';
+
+import { assertOpenAiCredentialAllowsUrl } from '../../vendors/OpenAi/helpers/credentials';
 
 type LmOpenAiOptions = {
 	baseURL?: string;
@@ -82,7 +89,7 @@ export class LmOpenAi implements INodeType {
 				default: { mode: 'list', value: 'gpt-3.5-turbo-instruct' },
 				required: true,
 				description:
-					'The model which will generate the completion. <a href="https://beta.openai.com/docs/models/overview">Learn more</a>.',
+					'The model which will generate the completion. <a href="https://developers.openai.com/api/docs/models">Learn more</a>.',
 				modes: [
 					{
 						displayName: 'From List',
@@ -207,8 +214,15 @@ export class LmOpenAi implements INodeType {
 				const options = this.getNodeParameter('options', {}) as LmOpenAiOptions;
 
 				let uri = 'https://api.openai.com/v1/models';
+				let allowedDomains: string | undefined;
 
 				if (options.baseURL) {
+					const credentials = await this.getCredentials('openAiApi');
+					allowedDomains = assertOpenAiCredentialAllowsUrl(
+						this.getNode(),
+						credentials,
+						options.baseURL,
+					);
 					uri = `${options.baseURL}/models`;
 				}
 
@@ -216,6 +230,7 @@ export class LmOpenAi implements INodeType {
 					method: 'GET',
 					uri,
 					json: true,
+					allowedDomains,
 				})) as { data: Array<{ owned_by: string; id: string }> };
 
 				for (const model of data) {
@@ -250,19 +265,26 @@ export class LmOpenAi implements INodeType {
 		};
 
 		const { openAiDefaultHeaders } = Container.get(AiConfig);
+		const customHeader = getCustomCredentialHeader(credentials);
 		const defaultHeaders = mergeCustomHeaders(credentials, openAiDefaultHeaders ?? {});
 		const timeout = options.timeout;
 		const configuration: ClientOptions = {
+			fetch: aiClientFetch,
 			fetchOptions: {
-				dispatcher: getProxyAgent(options.baseURL ?? 'https://api.openai.com/v1', {
-					headersTimeout: timeout,
-					bodyTimeout: timeout,
-				}),
+				dispatcher: getProxyAgent(
+					options.baseURL ?? 'https://api.openai.com/v1',
+					{
+						headersTimeout: timeout,
+						bodyTimeout: timeout,
+					},
+					this.helpers.getSecureEgressFilter(),
+				),
 			},
 			defaultHeaders,
 		};
 
 		if (options.baseURL) {
+			assertOpenAiCredentialAllowsUrl(this.getNode(), credentials, options.baseURL);
 			configuration.baseURL = options.baseURL;
 		}
 
@@ -273,7 +295,9 @@ export class LmOpenAi implements INodeType {
 			configuration,
 			timeout,
 			maxRetries: options.maxRetries ?? 2,
-			callbacks: [new N8nLlmTracing(this)],
+			callbacks: [
+				new N8nLlmTracing(this, { redactedHeaders: customHeader ? [customHeader.name] : [] }),
+			],
 			onFailedAttempt: makeN8nLlmFailedAttemptHandler(this),
 		});
 

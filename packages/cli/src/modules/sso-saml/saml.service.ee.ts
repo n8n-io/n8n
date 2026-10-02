@@ -3,7 +3,7 @@ import { Logger } from '@n8n/backend-common';
 import { OutboundHttp } from '@n8n/backend-network';
 import { GlobalConfig } from '@n8n/config';
 import type { Settings, User } from '@n8n/db';
-import { isValidEmail, SettingsRepository, UserRepository } from '@n8n/db';
+import { AuthIdentityRepository, isValidEmail, SettingsRepository, UserRepository } from '@n8n/db';
 import { OnPubSubEvent } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import { createPublicKey, randomBytes, X509Certificate } from 'crypto';
@@ -17,12 +17,10 @@ import type {
 	PostBindingContext,
 } from 'samlify/types/src/entity';
 
-import { AuthError } from '@/errors/response-errors/auth.error';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { AuthError, BadRequestError } from '@n8n/errors';
 import { buildSamlClaimsContext } from '@/modules/provisioning.ee/claims-context.builder';
 import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
-import { CacheService } from '@/services/cache/cache.service';
-import { UrlService } from '@/services/url.service';
+import { CacheService, UrlService } from '@n8n/backend-services';
 import {
 	getSamlLoginLabel,
 	isSamlLicensedAndEnabled,
@@ -34,6 +32,7 @@ import {
 import { SAML_PREFERENCES_DB_KEY } from './constants';
 import { InvalidSamlMetadataUrlError } from './errors/invalid-saml-metadata-url.error';
 import { InvalidSamlMetadataError } from './errors/invalid-saml-metadata.error';
+import { SamlEmailNotVerifiedError } from './errors/saml-email-not-verified.error';
 import {
 	createUserFromSamlAttributes,
 	getMappedSamlAttributesFromFlowResult,
@@ -103,6 +102,7 @@ export class SamlService {
 		private readonly cipher: Cipher,
 		private readonly cacheService: CacheService,
 		private readonly outboundHttp: OutboundHttp,
+		private readonly authIdentityRepository: AuthIdentityRepository,
 	) {}
 
 	/**
@@ -312,7 +312,7 @@ export class SamlService {
 		const loginRequest = sp.createLoginRequest(idp, binding);
 		return {
 			binding,
-			context: binding === 'post' ? (loginRequest as PostBindingContext) : loginRequest,
+			context: binding === 'post' ? loginRequest : loginRequest,
 		};
 	}
 
@@ -376,6 +376,12 @@ export class SamlService {
 			metadataOverride,
 		);
 
+		// Deny a blocked login before any account is created or session issued
+		await this.provisioningService.assertSsoLoginAllowed(
+			buildSamlClaimsContext(rawAttributes),
+			attributes.n8nInstanceRole,
+		);
+
 		if (attributes.email) {
 			const lowerCasedEmail = attributes.email.toLowerCase();
 
@@ -383,48 +389,57 @@ export class SamlService {
 				throw new BadRequestError('Invalid email format');
 			}
 
+			// The SAML identity is the key of an account, so resolve it before the email
+			const identity = await this.authIdentityRepository.findByProviderIdWithUser(
+				attributes.userPrincipalName,
+				'saml',
+			);
+			if (identity?.user) {
+				await this.applySsoProvisioning(identity.user, attributes, rawAttributes);
+				return {
+					authenticatedUser: identity.user,
+					attributes,
+					rawAttributes,
+					onboardingRequired: false,
+				};
+			}
+
 			const user = await this.userRepository.findOne({
 				where: { email: lowerCasedEmail },
 				relations: ['authIdentities', 'role'],
 			});
 			if (user) {
-				// Login path for existing users that are fully set up and that have a SAML authIdentity set up
-				if (
-					user.authIdentities.find(
-						(e) => e.providerType === 'saml' && e.providerId === attributes.userPrincipalName,
-					)
-				) {
-					await this.applySsoProvisioning(user, attributes, rawAttributes);
-					return {
-						authenticatedUser: user,
-						attributes,
-						rawAttributes,
-						onboardingRequired: false,
-					};
-				} else {
-					// Login path for existing users that are NOT fully set up for SAML
-					const updatedUser = await updateUserFromSamlAttributes(user, attributes);
-					const onboardingRequired = !updatedUser.firstName || !updatedUser.lastName;
-					await this.applySsoProvisioning(updatedUser, attributes, rawAttributes);
-					return {
-						authenticatedUser: updatedUser,
-						attributes,
-						rawAttributes,
-						onboardingRequired,
-					};
-				}
-			} else {
-				// New users to be created JIT based on SAML attributes
-				if (isSsoJustInTimeProvisioningEnabled()) {
-					const newUser = await createUserFromSamlAttributes(attributes);
-					await this.applySsoProvisioning(newUser, attributes, rawAttributes);
-					return {
-						authenticatedUser: newUser,
-						attributes,
-						rawAttributes,
-						onboardingRequired: !newUser.firstName || !newUser.lastName,
-					};
-				}
+				// No identity matches this principal, so the link to the existing user
+				// rests on the email alone. The identity provider must vouch for it.
+				this.assertEmailVerified(attributes.emailVerified, lowerCasedEmail);
+				this.logger.info(
+					'SAML login: linking the asserted principal to an existing user by email',
+					{
+						userId: user.id,
+						providerId: attributes.userPrincipalName,
+					},
+				);
+				const updatedUser = await updateUserFromSamlAttributes(user, attributes);
+				const onboardingRequired = !updatedUser.firstName || !updatedUser.lastName;
+				await this.applySsoProvisioning(updatedUser, attributes, rawAttributes);
+				return {
+					authenticatedUser: updatedUser,
+					attributes,
+					rawAttributes,
+					onboardingRequired,
+				};
+			}
+
+			// New users to be created JIT based on SAML attributes
+			if (isSsoJustInTimeProvisioningEnabled()) {
+				const newUser = await createUserFromSamlAttributes(attributes);
+				await this.applySsoProvisioning(newUser, attributes, rawAttributes);
+				return {
+					authenticatedUser: newUser,
+					attributes,
+					rawAttributes,
+					onboardingRequired: !newUser.firstName || !newUser.lastName,
+				};
 			}
 		}
 
@@ -434,6 +449,22 @@ export class SamlService {
 			rawAttributes,
 			onboardingRequired: false,
 		};
+	}
+
+	/**
+	 * Throws when the identity provider did not verify the email that links this login
+	 * to an existing user. By default only an explicit `false` is rejected;
+	 * `emailVerifiedRequired` also rejects an absent or unknown value.
+	 */
+	private assertEmailVerified(emailVerified: string | undefined, email: string): void {
+		const value =
+			typeof emailVerified === 'string' ? emailVerified.trim().toLowerCase() : undefined;
+		const isVerified = value === 'true';
+		const isExplicitlyUnverified = value === 'false';
+
+		if (isExplicitlyUnverified || (this._samlPreferences.emailVerifiedRequired && !isVerified)) {
+			throw new SamlEmailNotVerifiedError(email);
+		}
 	}
 
 	private async applySsoProvisioning(
@@ -446,9 +477,8 @@ export class SamlService {
 			await this.provisioningService.provisionExpressionMappedRolesForUser(user, context);
 			return;
 		}
-		if (attributes?.n8nInstanceRole) {
-			await this.provisioningService.provisionInstanceRoleForUser(user, attributes.n8nInstanceRole);
-		}
+		// Called even when the attribute is missing so the configured default condition applies
+		await this.provisioningService.provisionInstanceRoleForUser(user, attributes?.n8nInstanceRole);
 		if (attributes?.n8nProjectRoles) {
 			await this.provisioningService.provisionProjectRolesForUser(
 				user.id,
@@ -459,7 +489,7 @@ export class SamlService {
 
 	private async broadcastReloadSAMLConfigurationCommand(): Promise<void> {
 		if (this.instanceSettings.isMultiMain) {
-			const { Publisher } = await import('@/scaling/pubsub/publisher.service');
+			const { Publisher } = await import('@/scaling/pubsub/publisher.service.js');
 			await Container.get(Publisher).publishCommand({ command: 'reload-saml-config' });
 		}
 	}
@@ -564,13 +594,31 @@ export class SamlService {
 				throw new InvalidSamlMetadataError();
 			}
 		}
-		this.getIdentityProviderInstance(true);
+		if (this._samlPreferences.metadata) {
+			this.getIdentityProviderInstance(true);
+		} else {
+			// Metadata was cleared — drop the cached IdP so a later configure can recreate it.
+			this.identityProviderInstance = undefined;
+		}
 	}
 
 	async loadPreferencesWithoutValidation(prefs: Partial<SamlPreferences>) {
+		await this.applySamlPreferenceFields(prefs);
+		this.applyIdpMetadataPreferences(prefs);
+		await setSamlLoginEnabled(prefs.loginEnabled ?? isSamlLoginEnabled());
+		setSamlLoginLabel(prefs.loginLabel ?? getSamlLoginLabel());
+	}
+
+	private async applySamlPreferenceFields(prefs: Partial<SamlPreferences>) {
 		this._samlPreferences.loginBinding = prefs.loginBinding ?? this._samlPreferences.loginBinding;
-		this._samlPreferences.metadata = prefs.metadata ?? this._samlPreferences.metadata;
-		this._samlPreferences.mapping = prefs.mapping ?? this._samlPreferences.mapping;
+		if (prefs.mapping) {
+			// The settings form does not know `emailVerified` yet, so keep the stored
+			// value when the mapping arrives without it. An empty string clears it.
+			this._samlPreferences.mapping = {
+				...prefs.mapping,
+				emailVerified: prefs.mapping.emailVerified ?? this._samlPreferences.mapping?.emailVerified,
+			};
+		}
 		this._samlPreferences.ignoreSSL = prefs.ignoreSSL ?? this._samlPreferences.ignoreSSL;
 		this._samlPreferences.acsBinding = prefs.acsBinding ?? this._samlPreferences.acsBinding;
 		this._samlPreferences.signatureConfig =
@@ -581,12 +629,16 @@ export class SamlService {
 			prefs.wantAssertionsSigned ?? this._samlPreferences.wantAssertionsSigned;
 		this._samlPreferences.wantMessageSigned =
 			prefs.wantMessageSigned ?? this._samlPreferences.wantMessageSigned;
+		this._samlPreferences.emailVerifiedRequired =
+			prefs.emailVerifiedRequired ?? this._samlPreferences.emailVerifiedRequired;
+
 		if (prefs.signingCertificate === '') {
 			this._samlPreferences.signingCertificate = undefined;
 		} else {
 			this._samlPreferences.signingCertificate =
 				prefs.signingCertificate ?? this._samlPreferences.signingCertificate;
 		}
+
 		if (
 			prefs.signingPrivateKey !== undefined &&
 			prefs.signingPrivateKey !== CREDENTIAL_BLANKING_VALUE
@@ -604,15 +656,22 @@ export class SamlService {
 				this._samlPreferences.signingPrivateKey = prefs.signingPrivateKey;
 			}
 		}
-		if (prefs.metadataUrl) {
-			this._samlPreferences.metadataUrl = prefs.metadataUrl;
-		} else if (prefs.metadata) {
-			// remove metadataUrl if metadata is set directly
-			this._samlPreferences.metadataUrl = undefined;
+	}
+
+	/**
+	 * Apply IdP metadata sources. `undefined` leaves the field unchanged; `''` clears it
+	 * (PUT replacement). Providing XML without a URL also clears the URL alternate.
+	 */
+	private applyIdpMetadataPreferences(prefs: Partial<SamlPreferences>) {
+		if (prefs.metadata !== undefined) {
 			this._samlPreferences.metadata = prefs.metadata;
 		}
-		await setSamlLoginEnabled(prefs.loginEnabled ?? isSamlLoginEnabled());
-		setSamlLoginLabel(prefs.loginLabel ?? getSamlLoginLabel());
+		if (prefs.metadataUrl !== undefined) {
+			this._samlPreferences.metadataUrl = prefs.metadataUrl || undefined;
+		}
+		if (prefs.metadata && !prefs.metadataUrl) {
+			this._samlPreferences.metadataUrl = undefined;
+		}
 	}
 
 	async loadFromDbAndApplySamlPreferences(
@@ -684,7 +743,7 @@ export class SamlService {
 		try {
 			const response = await this.outboundHttp
 				.requests({
-					ssrf: 'disabled', // The metadata URL is admin-configured and may point at an internal IdP, so SSRF protection is disabled.
+					useDefaultSsrfPolicy: 'unsafe', // The metadata URL is admin-configured and may point at an internal IdP, so SSRF protection is disabled.
 				})
 				.request({
 					url,

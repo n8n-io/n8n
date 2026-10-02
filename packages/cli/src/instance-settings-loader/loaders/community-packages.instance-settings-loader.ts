@@ -2,9 +2,10 @@ import { Logger } from '@n8n/backend-common';
 import { InstanceSettingsLoaderConfig } from '@n8n/config';
 import { WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { ensureError } from 'n8n-workflow';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { z } from 'zod';
 
+import { selectVettedVersion } from '@/modules/community-packages/community-node-types-utils';
 import { CommunityNodeTypesService } from '@/modules/community-packages/community-node-types.service';
 import { CommunityPackagesConfig } from '@/modules/community-packages/community-packages.config';
 import {
@@ -200,19 +201,9 @@ export class CommunityPackagesInstanceSettingsLoader {
 			);
 		}
 
-		let resolvedVersion = item.version;
-		let checksum: string | undefined;
-
-		if (vetted) {
-			if (item.version === undefined) {
-				resolvedVersion = vetted.npmVersion;
-				checksum = vetted.checksum;
-			} else if (vetted.npmVersion === item.version) {
-				checksum = vetted.checksum;
-			} else {
-				checksum = vetted.nodeVersions?.find((v) => v.npmVersion === item.version)?.checksum;
-			}
-		}
+		const { version: resolvedVersion, checksum } = vetted
+			? selectVettedVersion(vetted, item.version)
+			: { version: item.version, checksum: undefined };
 
 		if (!checksum && !this.communityPackagesConfig.unverifiedEnabled) {
 			const ref = resolvedVersion ? `'${item.name}@${resolvedVersion}'` : `'${item.name}'`;

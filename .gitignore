@@ -1,4 +1,5 @@
 node_modules
+.pnpm-store
 .DS_Store
 .tmp
 .tmp-schema-docs
@@ -13,6 +14,7 @@ google-generated-credentials.json
 _START_PACKAGE
 .env
 .env.local
+.env.eval
 .vscode/*
 !.claude
 !.vscode/extensions.json
@@ -23,6 +25,7 @@ nodelinter.config.json
 !.github/scripts/package-lock.json
 packages/**/.turbo
 .turbo
+.build/
 .stryker-tmp/
 **/reports/mutation/
 *.tsbuildinfo
@@ -33,22 +36,27 @@ CHANGELOG-*.md
 !packages/frontend/@n8n/design-system/**/*.mdx
 build-storybook.log
 build.log
+tcr-dry.log
 .agent-setup/
+.agent-recordings/
+.vitest-profile/
+.pi-subagents/
 sbom-source.cdx.json
 *.junit.xml
 junit.xml
 test-results.json
 *.0x
-packages/testing/playwright/playwright-report
-packages/testing/playwright/eval-report
-packages/testing/playwright/test-results
-packages/testing/playwright/results.xml
-packages/testing/playwright/eval-results.json
+packages/quality/testing/playwright/playwright-report
+packages/quality/testing/playwright/eval-report
+packages/quality/testing/playwright/a11y-report
+packages/quality/testing/playwright/test-results
+packages/quality/testing/playwright/results.xml
+packages/quality/testing/playwright/eval-results.json
 packages/@n8n/instance-ai/eval-results.json
 packages/@n8n/instance-ai/.eval-output/
 packages/@n8n/instance-ai/eval-pr-comment.md
-packages/testing/playwright/.playwright-browsers
-packages/testing/playwright/.playwright-cli
+packages/quality/testing/playwright/.playwright-browsers
+packages/quality/testing/playwright/.playwright-cli
 test-results/
 compiled_app_output
 trivy_report*
@@ -57,7 +65,7 @@ docker-build-manifest.json
 packages/cli/src/modules/my-feature
 .secrets
 act-event.json
-packages/testing/**/.cursor/rules/
+packages/quality/**/.cursor/rules/
 .venv
 .ruff_cache
 __pycache__
@@ -77,7 +85,7 @@ packages/cli/src/commands/export/outputs
 .claude/plans/
 .claude/worktrees/
 .claude/specs/
-.cursor/plans/
+.cursor/
 .superset
 .conductor
 .n8n
@@ -85,3 +93,7 @@ lefthook-local.yml
 IMPROVEMENTS.md
 .playwright-mcp
 stryker.log
+
+# Generated migration indexes (scripts/generate-migration-index.mjs)
+packages/@n8n/db/src/migrations/sqlite/index.ts
+packages/@n8n/db/src/migrations/postgresdb/index.ts

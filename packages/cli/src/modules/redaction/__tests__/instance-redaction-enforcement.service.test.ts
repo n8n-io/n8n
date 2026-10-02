@@ -1,13 +1,14 @@
+import type { Mock } from 'vitest';
 import { REDACTION_FLOOR_DEFAULT, type RedactionFloor } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
 import type { GlobalConfig } from '@n8n/config';
 import type { Settings, SettingsRepository } from '@n8n/db';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import { UserError } from 'n8n-workflow';
 
 import { SELF_SEND_COMMANDS } from '@/scaling/constants';
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
-import type { CacheService } from '@/services/cache/cache.service';
+import type { CacheService } from '@n8n/backend-services';
 
 import { InstanceRedactionEnforcementService } from '../instance-redaction-enforcement.service';
 
@@ -15,8 +16,8 @@ const KEY = 'redaction.enforcement';
 
 describe('InstanceRedactionEnforcementService', () => {
 	let service: InstanceRedactionEnforcementService;
-	let findByKey: jest.Mock<Promise<Settings | null>, [string]>;
-	let upsert: jest.Mock;
+	let findByKey: Mock<(...args: [string]) => Promise<Settings | null>>;
+	let upsert: Mock;
 	let settingsRepository: SettingsRepository;
 	const cacheService = mock<CacheService>();
 	const logger = mock<Logger>();
@@ -52,9 +53,9 @@ describe('InstanceRedactionEnforcementService', () => {
 	};
 
 	beforeEach(() => {
-		jest.clearAllMocks();
-		findByKey = jest.fn<Promise<Settings | null>, [string]>();
-		upsert = jest.fn();
+		vi.clearAllMocks();
+		findByKey = vi.fn<(...args: [string]) => Promise<Settings | null>>();
+		upsert = vi.fn();
 		settingsRepository = { findByKey, upsert } as unknown as SettingsRepository;
 
 		disableMultiMain();

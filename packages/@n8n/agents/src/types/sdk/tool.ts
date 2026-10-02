@@ -2,12 +2,32 @@ import type { JSONSchema7 } from 'json-schema';
 import type { ZodType } from 'zod';
 
 import type { AgentExecutionCounter } from './agent';
+import type { McpToolAnnotations } from './mcp';
 import type { AgentMessage } from './message';
+import type { ApprovalResumePayload } from '../../sdk/tool';
+import type { RuntimeSkillLoader } from '../../skills/types';
 import type { AgentEventData } from '../runtime/event';
 import type { BuiltTelemetry } from '../telemetry';
-import type { JSONObject } from '../utils/json';
+import type { JSONObject, JSONValue } from '../utils/json';
+
+export interface ToolApprovalContext {
+	readonly approvedKeys: ReadonlySet<string>;
+	/** Prepare display arguments before checkpointing. Keep execution arguments unchanged. */
+	getDisplayArgs?(toolName: string, input: unknown): unknown;
+	/** Record a human decision. Persist a session grant before this resolves. */
+	onDecision(grantKey: string, decision: ApprovalResumePayload): Promise<void>;
+}
+
+export interface ToolSuspendOptions {
+	/** Schema for data accepted when resuming this specific suspension. */
+	resumeSchema?: ZodType | JSONSchema7;
+	/** Private serializable state restored only to the tool on resume or cancellation. */
+	continuation?: JSONValue;
+}
 
 export interface ToolExecutionContext {
+	/** Load and retain instructions from this run's selected skill catalog. */
+	loadSkill?: RuntimeSkillLoader;
 	/** Agent run ID for the current execution. */
 	runId?: string;
 	/**
@@ -19,6 +39,7 @@ export interface ToolExecutionContext {
 	persistence?: {
 		threadId: string;
 		resourceId: string;
+		hostMetadata?: JSONObject;
 	};
 	/** Internal runtime event bridge for platform-managed tools. */
 	emitEvent?: (event: AgentEventData) => void;
@@ -30,11 +51,27 @@ export interface ToolExecutionContext {
 	abortSignal?: AbortSignal;
 	/** Aggregate execution counter for usage telemetry inherited from the current agent run. */
 	executionCounter?: AgentExecutionCounter;
+	/** Allowances loaded by the host for this thread and run. */
+	approvalContext?: ToolApprovalContext;
+	/** Internal runtime hook used to retain cleanup ownership if abort wins the suspend race. */
+	onSuspend?: (payload: unknown, options?: ToolSuspendOptions) => void | Promise<void>;
+	/**
+	 * Checkpointed suspend payload for a resumed interruptible tool call,
+	 * restored from persistence. Only set when the tool is being resumed.
+	 */
+	suspendPayload?: unknown;
+	/** Private continuation restored from persistence for a resumed tool call. */
+	continuation?: JSONValue;
+	/** Resume schema restored from persistence for a resumed tool call. */
+	resumeSchema?: ToolSuspendOptions['resumeSchema'];
 }
 
 export interface ToolContext {
+	loadSkill?: ToolExecutionContext['loadSkill'];
 	/** AI SDK tool call ID for the current local tool execution. */
 	toolCallId?: string;
+	/** Exact model-facing name of the tool being executed. */
+	toolName?: string;
 	/** Agent run ID and persistence scope for the current execution. */
 	runId?: string;
 	/** Current persisted thread scope when the run is backed by memory. */
@@ -47,21 +84,25 @@ export interface ToolContext {
 	abortSignal?: ToolExecutionContext['abortSignal'];
 	/** Aggregate execution counter for usage telemetry inherited from the current agent run. */
 	executionCounter?: ToolExecutionContext['executionCounter'];
+	approvalContext?: ToolExecutionContext['approvalContext'];
 }
 
 export interface InterruptibleToolContext<S = unknown, R = unknown> {
+	loadSkill?: ToolExecutionContext['loadSkill'];
 	/**
 	 * Suspend execution and send a payload to the consumer.
 	 * Must be used with `return await` — the branded return type signals
 	 * the execution engine to halt. Code after `return await ctx.suspend()` is unreachable.
 	 */
-	suspend: (payload: S) => Promise<never>;
+	suspend: (payload: S, options?: ToolSuspendOptions) => Promise<never>;
 	/** Data from the consumer after resume. Undefined on first invocation or when cancelled. */
 	resumeData: R | undefined;
 	/** Set when the resume was a cancellation and the tool opted in via `.handleCancellation()`. */
 	cancellation?: { message: string };
 	/** AI SDK tool call ID for the current local tool execution. */
 	toolCallId?: string;
+	/** Exact model-facing name of the tool being executed. */
+	toolName?: string;
 	/** Agent run ID for the current execution. */
 	runId?: string;
 	/** Current persisted thread scope when the run is backed by memory. */
@@ -74,6 +115,24 @@ export interface InterruptibleToolContext<S = unknown, R = unknown> {
 	abortSignal?: ToolExecutionContext['abortSignal'];
 	/** Aggregate execution counter for usage telemetry inherited from the current agent run. */
 	executionCounter?: ToolExecutionContext['executionCounter'];
+	approvalContext?: ToolExecutionContext['approvalContext'];
+	/** The payload this tool passed to `suspend()` when it suspended, restored from the checkpoint. Only set when the tool is being resumed. */
+	suspendPayload?: S;
+	/** Private continuation this tool passed to `suspend()`, restored from the checkpoint. */
+	continuation?: JSONValue;
+	/** Resume schema persisted for this suspension. */
+	resumeSchema?: ToolSuspendOptions['resumeSchema'];
+}
+
+export interface ToolCancellationContext extends ToolContext {
+	/** User steering message that cancelled the suspended tool call. */
+	cancellation: { message: string };
+	/** Payload originally persisted when the tool suspended. */
+	suspendPayload?: unknown;
+	/** Private continuation originally persisted when the tool suspended. */
+	continuation?: JSONValue;
+	/** Resume schema persisted for the suspension being cancelled. */
+	resumeSchema?: ToolSuspendOptions['resumeSchema'];
 }
 
 export interface BuiltTool {
@@ -95,12 +154,18 @@ export interface BuiltTool {
 	};
 	/** When `true`, the handler is called on cancellation with `ctx.cancellation` set instead of being bypassed. */
 	readonly handleCancellation?: boolean;
-	readonly toMessage?: (output: unknown) => AgentMessage | undefined;
+	/** Run cleanup before the runtime auto-cancels a suspended tool call. */
+	readonly onCancellation?: (input: unknown, ctx: ToolCancellationContext) => Promise<void>;
+	readonly toMessage?: (
+		output: unknown,
+	) => AgentMessage | undefined | Promise<AgentMessage | undefined>;
 	/**
 	 * Transform the handler output before sending it to the LLM as a tool result.
 	 * The raw output is stored in history; only the transformed version goes to the model.
 	 */
 	readonly toModelOutput?: (output: unknown) => unknown;
+	/** Treat every model-facing result and error from this tool as external reference data. */
+	readonly outputTrust?: 'untrusted';
 	readonly handler?: (
 		input: unknown,
 		ctx: ToolContext | InterruptibleToolContext,
@@ -115,6 +180,10 @@ export interface BuiltTool {
 	readonly mcpTool?: boolean;
 	/** Name of the MCP server this tool belongs to. Set when mcpTool is true. */
 	readonly mcpServerName?: string;
+	/** Original, unprefixed tool name reported by the MCP server. */
+	readonly mcpToolName?: string;
+	/** Behavior hints reported by the MCP server for this tool. */
+	readonly mcpAnnotations?: McpToolAnnotations;
 	/**
 	 * Provider-specific options forwarded to the AI SDK's `tool()` call.
 	 * Keyed by provider name (e.g. `anthropic`, `openai`).

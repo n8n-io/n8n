@@ -11,8 +11,8 @@ import { setupTestServer } from '@test-integration/utils';
 
 import { MCP_TRIGGER_NODE_TYPE } from '@/constants';
 import { OAuthTokenService } from '@/modules/oauth-server/oauth-token.service';
-import { CacheService } from '@/services/cache/cache.service';
-import { UrlService } from '@/services/url.service';
+import { CacheService } from '@n8n/backend-services';
+import { UrlService } from '@n8n/backend-services';
 import { TestWebhookRegistrationsService } from '@/webhooks/test-webhook-registrations.service';
 
 const testServer = setupTestServer({ modules: ['oauth-server', 'mcp'], endpointGroups: ['mcp'] });
@@ -23,9 +23,11 @@ let mcpTestEndpoint: string;
 let registrations: TestWebhookRegistrationsService;
 
 const webhookBaseUrl = () => Container.get(UrlService).getWebhookBaseUrl().replace(/\/$/, '');
+const testWebhookBaseUrl = () =>
+	Container.get(UrlService).getTestWebhookBaseUrl().replace(/\/$/, '');
 
 const testResourceUrlFor = (webhookPath: string) =>
-	`${webhookBaseUrl()}/${mcpTestEndpoint}/${webhookPath}`;
+	`${testWebhookBaseUrl()}/${mcpTestEndpoint}/${webhookPath}`;
 
 const prmPathFor = (webhookPath: string) =>
 	`/.well-known/oauth-protected-resource/${mcpTestEndpoint}/${webhookPath}`;
@@ -244,23 +246,28 @@ describe('test vs production resources', () => {
 		const productionResourceUrl = `${webhookBaseUrl()}/${mcpEndpoint}/${webhookPath}`;
 		const testResourceUrl = testResourceUrlFor(webhookPath);
 
-		const testToken = tokenService.generateTokenPair(owner.id, clientId, testResourceUrl);
+		const testToken = tokenService.generateTokenPair(owner.id, clientId, testResourceUrl, []);
 		await tokenService.saveTokenPair(
 			testToken.accessToken,
 			testToken.refreshToken,
 			clientId,
 			owner.id,
+			[],
+			testToken.audience,
 		);
 		const productionToken = tokenService.generateTokenPair(
 			owner.id,
 			clientId,
 			productionResourceUrl,
+			[],
 		);
 		await tokenService.saveTokenPair(
 			productionToken.accessToken,
 			productionToken.refreshToken,
 			clientId,
 			owner.id,
+			[],
+			productionToken.audience,
 		);
 
 		await expect(

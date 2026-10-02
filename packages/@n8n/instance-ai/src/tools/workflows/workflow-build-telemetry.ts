@@ -9,8 +9,11 @@ export type BuildTelemetryStage =
 	| 'hitl'
 	| 'parse'
 	| 'validation'
+	| 'grouping'
 	| 'name'
-	| 'save';
+	| 'save'
+	| 'conflict'
+	| 'folder';
 
 export function trackWorkflowSourceBuild(
 	context: InstanceAiContext,
@@ -26,6 +29,11 @@ export function trackWorkflowSourceBuild(
 		remediation?: RemediationMetadata;
 		errorCount?: number;
 		warningCount?: number;
+		droppedGroupCount?: number;
+		topLevelItemCount?: number;
+		groupCount?: number;
+		groupingDecision?: 'grouped' | 'not_warranted' | 'under_ceiling' | 'missing';
+		groupingReasonProvided?: boolean;
 	},
 ): void {
 	const buildContext = context.workflowBuildContext;
@@ -43,6 +51,15 @@ export function trackWorkflowSourceBuild(
 		is_auxiliary_supporting_workflow: input.isAuxiliarySupportingWorkflow === true,
 		error_count: input.errorCount ?? 0,
 		warning_count: input.warningCount ?? 0,
+		dropped_group_count: input.droppedGroupCount ?? 0,
+		...(input.topLevelItemCount !== undefined
+			? {
+					top_level_item_count: input.topLevelItemCount,
+					group_count: input.groupCount ?? 0,
+					grouping_decision: input.groupingDecision ?? 'under_ceiling',
+					grouping_reason_provided: input.groupingReasonProvided === true,
+				}
+			: {}),
 		...(input.targetWorkflowId ? { target_workflow_id: input.targetWorkflowId } : {}),
 		...(input.savedWorkflowId ? { workflow_id: input.savedWorkflowId } : {}),
 		...(input.binding.sourceHash ? { source_hash: input.binding.sourceHash } : {}),
@@ -54,5 +71,31 @@ export function trackWorkflowSourceBuild(
 					...(input.remediation.reason ? { remediation_reason: input.remediation.reason } : {}),
 				}
 			: {}),
+	});
+}
+
+/**
+ * Emitted once per successful build whose plan halts wait gates, so we learn
+ * how often scripted verification applies and whether multi-gate loop shapes
+ * (currently always halt-fallback) occur in the wild.
+ */
+export function trackWaitGateVerificationPlan(
+	context: InstanceAiContext,
+	input: {
+		haltedGateCount: number;
+		scriptedGateCount: number;
+		savedWorkflowId: string;
+	},
+): void {
+	if (input.haltedGateCount === 0) return;
+	const buildContext = context.workflowBuildContext;
+	context.trackTelemetry?.('instance_ai_wait_gate_verification_plan', {
+		halted_gate_count: input.haltedGateCount,
+		scripted_gate_count: input.scriptedGateCount,
+		multi_gate: input.haltedGateCount >= 2,
+		scripted: input.scriptedGateCount > 0,
+		workflow_id: input.savedWorkflowId,
+		thread_id: context.threadId ?? buildContext?.threadId ?? 'unknown',
+		run_id: buildContext?.runId ?? context.runId ?? 'unknown',
 	});
 }

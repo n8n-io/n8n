@@ -629,4 +629,161 @@ describe('replyToEmail', () => {
 			}),
 		);
 	});
+
+	const buildHeaders = ({
+		from = 'John Doe <john@example.com>',
+		to = 'recipient@example.com',
+		replyTo,
+	}: {
+		from?: string;
+		to?: string;
+		replyTo?: string;
+	}) => {
+		const headers = [
+			{ name: 'Subject', value: 'Original Subject' },
+			{ name: 'Message-ID', value: '<original@example.com>' },
+			{ name: 'From', value: from },
+			{ name: 'To', value: to },
+		];
+		if (replyTo !== undefined) headers.push({ name: 'Reply-To', value: replyTo });
+		return headers;
+	};
+
+	const runReply = async (
+		headers: Array<{ name: string; value: string }>,
+		options: IDataObject,
+	) => {
+		mockedGoogleApiRequest
+			.mockResolvedValueOnce({
+				...mockMessageMetadata,
+				payload: { ...mockMessageMetadata.payload, headers },
+			})
+			.mockResolvedValueOnce(mockUserProfile)
+			.mockResolvedValueOnce(mockSentMessage);
+		await replyToEmail.call(mockExecuteFunctions, 'message123', options, 0, 2.2);
+	};
+
+	// Address-list parsing for the derived recipient (`to`) string. The reply-to
+	// header is parsed per-address, so no case produces a malformed `<a, b>`
+	// recipient. `replyToSenderOnly` off appends the original To recipient, which
+	// is processed before Reply-To.
+	test.each([
+		{
+			name: 'single Reply-To, sender-only on',
+			headers: buildHeaders({ replyTo: 'jacob@example.com' }),
+			options: { replyToSenderOnly: true },
+			expectedTo: '<jacob@example.com>',
+		},
+		{
+			name: 'single Reply-To, sender-only off',
+			headers: buildHeaders({ replyTo: 'jacob@example.com' }),
+			options: {},
+			expectedTo: '<recipient@example.com>, <jacob@example.com>',
+		},
+		{
+			name: 'two Reply-To addresses, sender-only on',
+			headers: buildHeaders({ replyTo: 'jacob@example.com, charles@example.com' }),
+			options: { replyToSenderOnly: true },
+			expectedTo: '<jacob@example.com>, <charles@example.com>',
+		},
+		{
+			name: 'two Reply-To addresses, sender-only off',
+			headers: buildHeaders({ replyTo: 'jacob@example.com, charles@example.com' }),
+			options: {},
+			expectedTo: '<recipient@example.com>, <jacob@example.com>, <charles@example.com>',
+		},
+		{
+			name: 'comma-separated multi-address From (no Reply-To)',
+			headers: buildHeaders({ from: 'jacob@example.com, charles@example.com' }),
+			options: { replyToSenderOnly: true },
+			expectedTo: '<jacob@example.com>, <charles@example.com>',
+		},
+		{
+			name: 'display name containing a comma',
+			headers: buildHeaders({ replyTo: '"Doe, Jacob" <jacob@example.com>, charles@example.com' }),
+			options: { replyToSenderOnly: true },
+			expectedTo: '"Doe, Jacob" <jacob@example.com>, <charles@example.com>',
+		},
+		{
+			name: 'trailing comma',
+			headers: buildHeaders({ replyTo: 'jacob@example.com,' }),
+			options: { replyToSenderOnly: true },
+			expectedTo: '<jacob@example.com>',
+		},
+		{
+			name: 'mixed bracketed and plain addresses',
+			headers: buildHeaders({ replyTo: 'Jacob <jacob@example.com>, plain@example.com' }),
+			options: { replyToSenderOnly: true },
+			expectedTo: 'Jacob <jacob@example.com>, <plain@example.com>',
+		},
+		{
+			name: 'empty Reply-To',
+			headers: buildHeaders({ replyTo: '' }),
+			options: {},
+			expectedTo: '<recipient@example.com>',
+		},
+		{
+			name: 'whitespace-only Reply-To',
+			headers: buildHeaders({ replyTo: '   ' }),
+			options: {},
+			expectedTo: '<recipient@example.com>',
+		},
+		{
+			name: 'name-only Reply-To (no address)',
+			headers: buildHeaders({ replyTo: '"No Address Here"' }),
+			options: {},
+			expectedTo: '<recipient@example.com>',
+		},
+		{
+			// Thread replies share this util and expose `replyToRecipientsOnly`.
+			name: 'replyToRecipientsOnly splits the To header (thread path)',
+			headers: buildHeaders({
+				to: '"Doe, Jane" <jane@example.com>, bob@example.com',
+				replyTo: undefined,
+			}),
+			options: { replyToRecipientsOnly: true },
+			expectedTo: '"Doe, Jane" <jane@example.com>, <bob@example.com>',
+		},
+		{
+			name: 'group-syntax address header',
+			headers: buildHeaders({ replyTo: 'Team:a@example.com,b@example.com;' }),
+			options: { replyToSenderOnly: true },
+			expectedTo: '<a@example.com>, <b@example.com>',
+		},
+		{
+			// mockUserProfile.emailAddress is user@gmail.com. Self-reply keeps the
+			// sender rather than filtering it out (no empty recipient).
+			name: 'own address in Reply-To is kept on self-reply',
+			headers: buildHeaders({ replyTo: 'user@gmail.com' }),
+			options: { replyToSenderOnly: true },
+			expectedTo: '<user@gmail.com>',
+		},
+		{
+			name: 'own address in To is filtered case-insensitively',
+			headers: buildHeaders({
+				from: 'sender@example.com',
+				to: 'User@Gmail.com, other@example.com',
+			}),
+			options: { replyToRecipientsOnly: true },
+			expectedTo: '<other@example.com>',
+		},
+		{
+			name: 'display name with embedded quotes is escaped',
+			headers: buildHeaders({ replyTo: '"Jacob \\"J\\" Doe" <jacob@example.com>' }),
+			options: { replyToSenderOnly: true },
+			expectedTo: '"Jacob \\"J\\" Doe" <jacob@example.com>',
+		},
+		{
+			// Degenerate: sender-only skips the To header, so a Reply-To that parses
+			// to no address leaves an empty recipient list.
+			name: 'empty Reply-To with sender-only yields no recipient',
+			headers: buildHeaders({ replyTo: '' }),
+			options: { replyToSenderOnly: true },
+			expectedTo: '',
+		},
+	])('should build a clean recipient list: $name', async ({ headers, options, expectedTo }) => {
+		await runReply(headers, options);
+
+		expect(mockedEncodeEmail).toHaveBeenCalledWith(expect.objectContaining({ to: expectedTo }));
+	});
 });

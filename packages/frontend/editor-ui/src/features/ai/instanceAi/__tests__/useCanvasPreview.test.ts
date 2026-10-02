@@ -1,5 +1,7 @@
 import { describe, test, expect, vi, beforeEach } from 'vitest';
 import { ref, reactive, nextTick, type Ref } from 'vue';
+import { flushPromises } from '@vue/test-utils';
+import { DEBOUNCE_TIME } from '@/app/constants';
 import type {
 	InstanceAiMessage,
 	InstanceAiAgentNode,
@@ -7,6 +9,7 @@ import type {
 } from '@n8n/api-types';
 import { useCanvasPreview } from '../useCanvasPreview';
 import type { ResourceEntry } from '../useResourceRegistry';
+import type { ThreadTabsStorage } from '../composables/useOpenArtifactTabs';
 
 // ---------------------------------------------------------------------------
 // Factories
@@ -56,6 +59,9 @@ function createMockThread() {
 	const isHydratingThread = ref(false);
 	const producedArtifacts = ref(new Map<string, ResourceEntry>());
 	const resourceNameIndex = ref(new Map<string, ResourceEntry>());
+	const pendingWorkflowAttachment = ref<{ type: 'workflow'; id: string; name?: string } | null>(
+		null,
+	);
 
 	return reactive({
 		id: 'thread-1',
@@ -64,6 +70,7 @@ function createMockThread() {
 		isHydratingThread,
 		producedArtifacts,
 		resourceNameIndex,
+		pendingWorkflowAttachment,
 	});
 }
 
@@ -99,6 +106,16 @@ function registerDataTable(
 	thread.resourceNameIndex = nextByName;
 }
 
+function registerAgent(thread: MockThread, id: string, name = `Agent ${id}`, projectId?: string) {
+	const entry: ResourceEntry = { type: 'agent', id, name, projectId };
+	const nextProduced = new Map(thread.producedArtifacts);
+	nextProduced.set(id, entry);
+	thread.producedArtifacts = nextProduced;
+	const nextByName = new Map(thread.resourceNameIndex);
+	nextByName.set(name.toLowerCase(), entry);
+	thread.resourceNameIndex = nextByName;
+}
+
 // ---------------------------------------------------------------------------
 // Route mock
 // ---------------------------------------------------------------------------
@@ -121,7 +138,11 @@ function createMockRoute(threadId = 'thread-1') {
 // Test helper — create composable + flush
 // ---------------------------------------------------------------------------
 
-function setup(options?: { threadOverrides?: Partial<MockThread> }) {
+function setup(options?: {
+	threadOverrides?: Partial<MockThread>;
+	initialAgentId?: () => string | undefined;
+	tabsStorage?: ThreadTabsStorage;
+}) {
 	const thread = createMockThread();
 	if (options?.threadOverrides) Object.assign(thread, options.threadOverrides);
 	const route = createMockRoute();
@@ -130,6 +151,8 @@ function setup(options?: { threadOverrides?: Partial<MockThread> }) {
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		thread: thread as any,
 		threadId: () => route.params.threadId,
+		initialAgentId: options?.initialAgentId,
+		tabsStorage: options?.tabsStorage,
 	});
 
 	return { ...result, thread, route };
@@ -144,22 +167,95 @@ describe('useCanvasPreview', () => {
 		vi.restoreAllMocks();
 	});
 
-	describe('allArtifactTabs', () => {
+	describe('openTabs', () => {
 		test('derives tabs from resource registry', () => {
 			const ctx = setup();
 			registerWorkflow(ctx.thread, 'wf-1', 'My Workflow');
 			registerDataTable(ctx.thread, 'dt-1', 'My Table', 'proj-1');
+			registerAgent(ctx.thread, 'agent-1', 'SEO Auditor', 'project-1');
 
-			expect(ctx.allArtifactTabs.value).toEqual([
+			expect(ctx.openTabs.value).toEqual([
 				{
 					id: 'wf-1',
 					type: 'workflow',
 					name: 'My Workflow',
 					icon: 'workflow',
 					projectId: undefined,
+					building: false,
 				},
-				{ id: 'dt-1', type: 'data-table', name: 'My Table', icon: 'table', projectId: 'proj-1' },
+				{
+					id: 'dt-1',
+					type: 'data-table',
+					name: 'My Table',
+					icon: 'table',
+					projectId: 'proj-1',
+					building: false,
+				},
+				{
+					id: 'agent-1',
+					type: 'agent',
+					name: 'SEO Auditor',
+					icon: 'robot',
+					projectId: 'project-1',
+					building: false,
+				},
 			]);
+		});
+
+		test('marks tabs as building while an active builder sub-agent targets them', () => {
+			const ctx = setup();
+			registerWorkflow(ctx.thread, 'wf-1');
+			registerAgent(ctx.thread, 'agent-1', 'SEO Auditor', 'project-1');
+
+			ctx.thread.messages = [
+				makeMessage({
+					agentTree: makeAgentNode({
+						status: 'active',
+						children: [
+							makeAgentNode({
+								agentId: 'builder-1',
+								kind: 'agent-builder',
+								role: 'agent-builder',
+								status: 'active',
+								targetResource: { type: 'agent', id: 'agent-1' },
+							}),
+						],
+					}),
+				}),
+			];
+
+			const byId = new Map(ctx.openTabs.value.map((t) => [t.id, t]));
+			expect(byId.get('agent-1')?.building).toBe(true);
+			expect(byId.get('wf-1')?.building).toBe(false);
+		});
+
+		test('marks a workflow tab as building while a workflow-builder targets it, and clears when it completes', () => {
+			const ctx = setup();
+			registerWorkflow(ctx.thread, 'wf-1');
+
+			const builder = makeAgentNode({
+				agentId: 'builder-1',
+				kind: 'builder',
+				role: 'workflow-builder',
+				status: 'active',
+				targetResource: { type: 'workflow', id: 'wf-1' },
+			});
+			ctx.thread.messages = [
+				makeMessage({ agentTree: makeAgentNode({ status: 'active', children: [builder] }) }),
+			];
+
+			expect(ctx.openTabs.value[0].building).toBe(true);
+
+			ctx.thread.messages = [
+				makeMessage({
+					agentTree: makeAgentNode({
+						status: 'completed',
+						children: [{ ...builder, status: 'completed' }],
+					}),
+				}),
+			];
+
+			expect(ctx.openTabs.value[0].building).toBe(false);
 		});
 
 		test('excludes credential entries', () => {
@@ -169,8 +265,8 @@ describe('useCanvasPreview', () => {
 			registry.set('cred-1', { type: 'credential', id: 'cred-1', name: 'Cred' });
 			ctx.thread.producedArtifacts = registry;
 
-			expect(ctx.allArtifactTabs.value).toHaveLength(1);
-			expect(ctx.allArtifactTabs.value[0].type).toBe('workflow');
+			expect(ctx.openTabs.value).toHaveLength(1);
+			expect(ctx.openTabs.value[0].type).toBe('workflow');
 		});
 	});
 
@@ -186,14 +282,14 @@ describe('useCanvasPreview', () => {
 			expect(ctx.isPreviewVisible.value).toBe(true);
 		});
 
-		test('closePreview clears activeTabId', () => {
+		test('closePreview hides the preview without clearing the selected tab', () => {
 			const ctx = setup();
 			registerWorkflow(ctx.thread, 'wf-1');
 			ctx.selectTab('wf-1');
 
 			ctx.closePreview();
 
-			expect(ctx.activeTabId.value).toBeUndefined();
+			expect(ctx.activeTabId.value).toBe('wf-1');
 			expect(ctx.isPreviewVisible.value).toBe(false);
 		});
 	});
@@ -298,53 +394,84 @@ describe('useCanvasPreview', () => {
 		});
 	});
 
-	describe('thread switch (route.params.threadId change)', () => {
-		test('resets all preview state on thread switch', async () => {
+	describe('openAgentPreview', () => {
+		test('sets agent state and clears workflow/data table state', () => {
 			const ctx = setup();
 			registerWorkflow(ctx.thread, 'wf-1');
+			registerDataTable(ctx.thread, 'dt-1', 'Table', 'proj-1');
+			registerAgent(ctx.thread, 'agent-1', 'SEO Auditor', 'project-1');
 			ctx.openWorkflowPreview('wf-1');
 
-			ctx.route.params.threadId = 'thread-2';
-			await nextTick();
+			ctx.openAgentPreview('agent-1', 'project-1');
 
-			expect(ctx.activeTabId.value).toBeUndefined();
+			expect(ctx.activeAgentId.value).toBe('agent-1');
+			expect(ctx.activeAgentProjectId.value).toBe('project-1');
 			expect(ctx.activeWorkflowId.value).toBeNull();
 			expect(ctx.activeDataTableId.value).toBeNull();
 			expect(ctx.activeDataTableProjectId.value).toBeNull();
+			expect(ctx.isPreviewVisible.value).toBe(true);
 		});
 
-		test('clears the preview on thread switch, then stays closed while the new thread hydrates', async () => {
+		test('opens an agent that is not a produced artifact', () => {
+			const ctx = setup();
+			registerWorkflow(ctx.thread, 'wf-1');
+			ctx.thread.resourceNameIndex = new Map([
+				[
+					'support agent',
+					{
+						type: 'agent',
+						id: 'agent-linked',
+						name: 'Support Agent',
+						projectId: 'project-linked',
+					},
+				],
+			]);
+
+			ctx.openAgentPreview('agent-linked', 'project-linked');
+
+			expect(ctx.activeAgentId.value).toBe('agent-linked');
+			expect(ctx.activeAgentProjectId.value).toBe('project-linked');
+			expect(ctx.openTabs.value).toContainEqual(
+				expect.objectContaining({
+					id: 'agent-linked',
+					name: 'Support Agent',
+					projectId: 'project-linked',
+				}),
+			);
+			expect(ctx.isPreviewVisible.value).toBe(true);
+		});
+
+		test('uses produced artifact data when a linked agent enters the registry', () => {
+			const ctx = setup();
+			ctx.openAgentPreview('agent-linked', 'project-linked');
+
+			registerAgent(ctx.thread, 'agent-linked', 'Registered Agent', 'project-registered');
+
+			expect(ctx.activeAgentId.value).toBe('agent-linked');
+			expect(ctx.activeAgentProjectId.value).toBe('project-registered');
+			expect(ctx.openTabs.value).toEqual([
+				expect.objectContaining({
+					id: 'agent-linked',
+					name: 'Registered Agent',
+					projectId: 'project-registered',
+				}),
+			]);
+		});
+	});
+
+	describe('thread switch (route.params.threadId change)', () => {
+		test('keeps the active preview on thread switch', async () => {
 			const ctx = setup();
 			registerWorkflow(ctx.thread, 'wf-1');
 			ctx.openWorkflowPreview('wf-1');
-			expect(ctx.isPreviewVisible.value).toBe(true);
 
 			ctx.route.params.threadId = 'thread-2';
 			await nextTick();
 
-			// Preview was cleared by thread switch.
-			expect(ctx.isPreviewVisible.value).toBe(false);
-
-			// Past artifacts surfacing during the new thread's hydration shouldn't
-			// pop the panel — historical data, not a live build.
-			ctx.thread.isHydratingThread = true;
-			registerWorkflow(ctx.thread, 'wf-historical');
-			ctx.thread.messages = [
-				makeMessage({
-					agentTree: makeAgentNode({
-						toolCalls: [
-							makeToolCall({
-								toolCallId: 'tc-build',
-								toolName: 'build-workflow',
-								result: { success: true, workflowId: 'wf-historical' },
-							}),
-						],
-					}),
-				}),
-			];
-			await nextTick();
-
-			expect(ctx.isPreviewVisible.value).toBe(false);
+			expect(ctx.activeTabId.value).toBe('wf-1');
+			expect(ctx.activeWorkflowId.value).toBe('wf-1');
+			expect(ctx.activeDataTableId.value).toBeNull();
+			expect(ctx.activeDataTableProjectId.value).toBeNull();
 		});
 	});
 
@@ -451,7 +578,7 @@ describe('useCanvasPreview', () => {
 	});
 
 	describe('auto-refresh on workflow update (workflows action=update / restore-version)', () => {
-		test('does not refresh when the updated workflow is not the active tab', async () => {
+		test('opens and refreshes the updated workflow when another tab is active', async () => {
 			const ctx = setup();
 			registerWorkflow(ctx.thread, 'wf-1');
 			registerWorkflow(ctx.thread, 'wf-2');
@@ -474,6 +601,62 @@ describe('useCanvasPreview', () => {
 			];
 			await nextTick();
 
+			expect(ctx.activeTabId.value).toBe('wf-1');
+			expect(ctx.activeWorkflowId.value).toBe('wf-1');
+			expect(ctx.workflowRefreshKey.value).toBe(initialKey + 1);
+		});
+
+		test('opens and refreshes after a successful update when no preview is active', async () => {
+			const ctx = setup();
+			registerWorkflow(ctx.thread, 'wf-1');
+			const initialKey = ctx.workflowRefreshKey.value;
+
+			ctx.thread.messages = [
+				makeMessage({
+					agentTree: makeAgentNode({
+						toolCalls: [
+							makeToolCall({
+								toolCallId: 'tc-update',
+								toolName: 'workflows',
+								args: { action: 'update', workflowId: 'wf-1' },
+								result: { success: true },
+							}),
+						],
+					}),
+				}),
+			];
+			await nextTick();
+
+			expect(ctx.activeTabId.value).toBe('wf-1');
+			expect(ctx.activeWorkflowId.value).toBe('wf-1');
+			expect(ctx.isPreviewVisible.value).toBe(true);
+			expect(ctx.workflowRefreshKey.value).toBe(initialKey + 1);
+		});
+
+		test('does not open or refresh updates while hydrating historical messages', async () => {
+			const ctx = setup();
+			ctx.thread.isHydratingThread = true;
+			registerWorkflow(ctx.thread, 'wf-1');
+			const initialKey = ctx.workflowRefreshKey.value;
+
+			ctx.thread.messages = [
+				makeMessage({
+					agentTree: makeAgentNode({
+						toolCalls: [
+							makeToolCall({
+								toolCallId: 'tc-update',
+								toolName: 'workflows',
+								args: { action: 'update', workflowId: 'wf-1' },
+								result: { success: true },
+							}),
+						],
+					}),
+				}),
+			];
+			await nextTick();
+
+			expect(ctx.activeTabId.value).toBeUndefined();
+			expect(ctx.isPreviewVisible.value).toBe(false);
 			expect(ctx.workflowRefreshKey.value).toBe(initialKey);
 		});
 
@@ -646,6 +829,86 @@ describe('useCanvasPreview', () => {
 			await nextTick();
 
 			expect(ctx.activeTabId.value).toBe('wf-b');
+		});
+	});
+
+	describe('auto-open agent preview', () => {
+		test('auto-opens preview when an agent-builder sub-agent spawns, before any build-agent result', async () => {
+			const ctx = setup();
+			registerAgent(ctx.thread, 'agent-7', 'Support Agent', 'p1');
+
+			ctx.thread.messages = [
+				makeMessage({
+					agentTree: makeAgentNode({
+						children: [
+							makeAgentNode({
+								agentId: 'agent-builder-child',
+								kind: 'agent-builder',
+								status: 'active',
+								targetResource: { type: 'agent', id: 'agent-7', projectId: 'p1' },
+							}),
+						],
+					}),
+				}),
+			];
+			await nextTick();
+
+			expect(ctx.activeTabId.value).toBe('agent-7');
+			expect(ctx.isPreviewVisible.value).toBe(true);
+		});
+
+		test('does not auto-open on agent-builder spawn while hydrating historical messages', async () => {
+			const ctx = setup();
+			ctx.thread.isHydratingThread = true;
+			registerAgent(ctx.thread, 'agent-7', 'Support Agent', 'p1');
+
+			ctx.thread.messages = [
+				makeMessage({
+					agentTree: makeAgentNode({
+						children: [
+							makeAgentNode({
+								agentId: 'agent-builder-child',
+								kind: 'agent-builder',
+								status: 'completed',
+								targetResource: { type: 'agent', id: 'agent-7', projectId: 'p1' },
+							}),
+						],
+					}),
+				}),
+			];
+			await nextTick();
+
+			expect(ctx.activeTabId.value).toBeUndefined();
+			expect(ctx.isPreviewVisible.value).toBe(false);
+		});
+
+		test('auto-opens when a reused builder changes from exploring to editing', async () => {
+			const ctx = setup();
+			registerAgent(ctx.thread, 'agent-7', 'Support Agent', 'p1');
+			const makeBuilderMessage = (activity: 'exploring' | 'editing') =>
+				makeMessage({
+					agentTree: makeAgentNode({
+						children: [
+							makeAgentNode({
+								agentId: 'agent-builder-child',
+								kind: 'agent-builder',
+								status: 'active',
+								activity,
+								targetResource: { type: 'agent', id: 'agent-7', projectId: 'p1' },
+							}),
+						],
+					}),
+				});
+
+			ctx.thread.messages = [makeBuilderMessage('exploring')];
+			await nextTick();
+			expect(ctx.activeTabId.value).toBeUndefined();
+
+			ctx.thread.messages = [makeBuilderMessage('editing')];
+			await nextTick();
+
+			expect(ctx.activeTabId.value).toBe('agent-7');
+			expect(ctx.isPreviewVisible.value).toBe(true);
 		});
 	});
 
@@ -856,6 +1119,113 @@ describe('useCanvasPreview', () => {
 		});
 	});
 
+	describe('resource attachment auto-open', () => {
+		test('ignores an attached parent workflow that has no artifact tab', async () => {
+			const ctx = setup();
+			ctx.thread.messages = [
+				makeMessage({
+					role: 'user',
+					attachments: [
+						{
+							type: 'nodes',
+							workflowId: 'missing-workflow',
+							workflowName: 'Missing workflow',
+							sets: [{ nodes: [{ id: 'n1' }] }],
+						},
+					],
+				}),
+			];
+			await nextTick();
+
+			expect(ctx.activeTabId.value).toBeUndefined();
+			expect(ctx.isPreviewVisible.value).toBe(false);
+		});
+
+		test('opens the parent workflow from an attached node mention', async () => {
+			const ctx = setup();
+			registerWorkflow(ctx.thread, 'wf-1', 'Orders');
+			ctx.thread.messages = [
+				makeMessage({
+					role: 'user',
+					attachments: [
+						{
+							type: 'nodes',
+							workflowId: 'wf-1',
+							workflowName: 'Orders',
+							sets: [{ nodes: [{ id: 'n1', name: 'Validate' }] }],
+						},
+					],
+				}),
+			];
+			await nextTick();
+
+			expect(ctx.activeTabId.value).toBe('wf-1');
+			expect(ctx.isPreviewVisible.value).toBe(true);
+		});
+
+		test('opens attached agent when no active tab is set', async () => {
+			const ctx = setup();
+			registerAgent(ctx.thread, 'agent-1', 'Support Agent', 'proj-1');
+
+			ctx.thread.messages = [
+				makeMessage({
+					role: 'user',
+					attachments: [
+						{
+							type: 'agent',
+							id: 'agent-1',
+							name: 'Support Agent',
+							projectId: 'proj-1',
+						},
+					],
+				}),
+			];
+			await nextTick();
+
+			expect(ctx.activeTabId.value).toBe('agent-1');
+			expect(ctx.isPreviewVisible.value).toBe(true);
+		});
+
+		test('opens a pending workflow attachment on arrival', async () => {
+			const ctx = setup();
+			registerWorkflow(ctx.thread, 'wf-1', 'FAQ Responder');
+			ctx.thread.pendingWorkflowAttachment = {
+				type: 'workflow',
+				id: 'wf-1',
+				name: 'FAQ Responder',
+			};
+			await nextTick();
+
+			expect(ctx.activeTabId.value).toBe('wf-1');
+			expect(ctx.isPreviewVisible.value).toBe(true);
+		});
+
+		test('restores the attached agent instead of an earlier helper workflow', async () => {
+			const ctx = setup();
+			ctx.thread.isHydratingThread = true;
+			registerWorkflow(ctx.thread, 'workflow-1', 'Helper workflow');
+			registerAgent(ctx.thread, 'agent-1', 'Support Agent', 'proj-1');
+			ctx.thread.messages = [
+				makeMessage({
+					role: 'user',
+					attachments: [
+						{
+							type: 'agent',
+							id: 'agent-1',
+							name: 'Support Agent',
+							projectId: 'proj-1',
+						},
+					],
+				}),
+			];
+			ctx.thread.isHydratingThread = false;
+			await nextTick();
+
+			expect(ctx.activeTabId.value).toBe('agent-1');
+			expect(ctx.activeAgentId.value).toBe('agent-1');
+		});
+	});
+
 	describe('isPreviewVisible', () => {
 		test('is true when workflow is active', () => {
 			const ctx = setup();
@@ -896,6 +1266,24 @@ describe('useCanvasPreview', () => {
 			expect(ctx.activeTabId.value).toBe('wf-1');
 		});
 
+		test('opens an unsaved new-agent artifact on arrival', async () => {
+			const ctx = setup();
+			const next = new Map<string, ResourceEntry>();
+			next.set('aBcDeFgHiJkLmNoP', {
+				type: 'agent',
+				id: 'aBcDeFgHiJkLmNoP',
+				name: 'New agent',
+				projectId: 'project-1',
+				pending: true,
+			});
+			ctx.thread.producedArtifacts = next;
+			await nextTick();
+
+			expect(ctx.activeTabId.value).toBe('aBcDeFgHiJkLmNoP');
+			expect(ctx.isPreviewVisible.value).toBe(true);
+			expect(ctx.activeAgentPending.value).toBe(true);
+		});
+
 		test('does not clear activeTabId when registry is empty (race condition)', async () => {
 			const ctx = setup();
 			registerWorkflow(ctx.thread, 'wf-1');
@@ -908,6 +1296,500 @@ describe('useCanvasPreview', () => {
 
 			// Tab should remain set — guard skips when tabs are empty
 			expect(ctx.activeTabId.value).toBe('wf-1');
+			expect(ctx.isPreviewVisible.value).toBe(false);
+		});
+	});
+	describe('closing and restoring tabs', () => {
+		const buildMessage = (workflowId: string, toolCallId: string) =>
+			makeMessage({
+				agentTree: makeAgentNode({
+					toolCalls: [
+						makeToolCall({
+							toolCallId,
+							toolName: 'build-workflow',
+							result: { success: true, workflowId },
+						}),
+					],
+				}),
+			});
+
+		test('selects the next tab when the active tab closes', () => {
+			const ctx = setup();
+			registerWorkflow(ctx.thread, 'wf-1');
+			registerWorkflow(ctx.thread, 'wf-2');
+			registerWorkflow(ctx.thread, 'wf-3');
+			ctx.selectTab('wf-2');
+
+			ctx.closeTab('wf-2');
+
+			expect(ctx.openTabs.value.map((tab) => tab.id)).toEqual(['wf-1', 'wf-3']);
+			expect(ctx.activeTabId.value).toBe('wf-3');
+			expect(ctx.isPreviewVisible.value).toBe(true);
+		});
+
+		test('keeps the active tab when another tab closes', () => {
+			const ctx = setup();
+			registerWorkflow(ctx.thread, 'wf-1');
+			registerWorkflow(ctx.thread, 'wf-2');
+			ctx.selectTab('wf-2');
+
+			ctx.closeTab('wf-1');
+
+			expect(ctx.activeTabId.value).toBe('wf-2');
+		});
+
+		test('closes the preview when the last tab closes', () => {
+			const ctx = setup();
+			registerWorkflow(ctx.thread, 'wf-1');
+			ctx.selectTab('wf-1');
+
+			ctx.closeTab('wf-1');
+
+			expect(ctx.openTabs.value).toEqual([]);
+			expect(ctx.activeTabId.value).toBeUndefined();
+			expect(ctx.isPreviewVisible.value).toBe(false);
+		});
+
+		test('opens a closed workflow again when the agent builds it', async () => {
+			const ctx = setup();
+			registerWorkflow(ctx.thread, 'wf-1');
+			registerWorkflow(ctx.thread, 'wf-2');
+			ctx.selectTab('wf-2');
+			ctx.closeTab('wf-1');
+
+			ctx.thread.isStreaming = true;
+			ctx.thread.messages = [buildMessage('wf-1', 'tc-rebuild')];
+			await nextTick();
+
+			expect(ctx.openTabs.value.map((tab) => tab.id)).toEqual(['wf-2', 'wf-1']);
+			expect(ctx.activeTabId.value).toBe('wf-1');
+		});
+
+		test('opens a closed workflow again when the user opens it from the chat', () => {
+			const ctx = setup();
+			registerWorkflow(ctx.thread, 'wf-1');
+			registerWorkflow(ctx.thread, 'wf-2');
+			ctx.selectTab('wf-2');
+			ctx.closeTab('wf-1');
+
+			expect(ctx.openWorkflowPreview('wf-1')).toBe(true);
+
+			expect(ctx.openTabs.value.map((tab) => tab.id)).toContain('wf-1');
+			expect(ctx.activeTabId.value).toBe('wf-1');
+		});
+
+		test('reorders the tabs and keeps the active tab', () => {
+			const ctx = setup();
+			registerWorkflow(ctx.thread, 'wf-1');
+			registerWorkflow(ctx.thread, 'wf-2');
+			registerWorkflow(ctx.thread, 'wf-3');
+			ctx.selectTab('wf-2');
+
+			ctx.reorderTab('wf-3', 0);
+
+			expect(ctx.openTabs.value.map((tab) => tab.id)).toEqual(['wf-3', 'wf-1', 'wf-2']);
+			expect(ctx.activeTabId.value).toBe('wf-2');
+		});
+
+		test('saves the new order and the active tab after a reorder', async () => {
+			vi.useFakeTimers();
+			try {
+				const save = vi.fn().mockResolvedValue(undefined);
+				const ctx = setup({
+					tabsStorage: { load: vi.fn().mockResolvedValue(null), save },
+				});
+				await flushPromises();
+				registerWorkflow(ctx.thread, 'wf-1');
+				registerWorkflow(ctx.thread, 'wf-2');
+				registerWorkflow(ctx.thread, 'wf-3');
+				ctx.selectTab('wf-2');
+				// Let the save from the selection finish, so only the reorder can save below.
+				await vi.advanceTimersByTimeAsync(DEBOUNCE_TIME.API.AUTOSAVE);
+				save.mockClear();
+
+				ctx.reorderTab('wf-3', 0);
+				await vi.advanceTimersByTimeAsync(DEBOUNCE_TIME.API.AUTOSAVE);
+
+				expect(save).toHaveBeenCalledTimes(1);
+				expect(save).toHaveBeenCalledWith({
+					tabs: [
+						{ type: 'workflow', id: 'wf-3', name: 'Workflow wf-3' },
+						{ type: 'workflow', id: 'wf-1', name: 'Workflow wf-1' },
+						{ type: 'workflow', id: 'wf-2', name: 'Workflow wf-2' },
+					],
+					closedTabs: [],
+					activeTab: { type: 'workflow', id: 'wf-2' },
+					previewOpen: true,
+				});
+			} finally {
+				vi.useRealTimers();
+			}
+		});
+
+		test('shows a resource picked from the project in a new tab', () => {
+			const ctx = setup();
+			registerWorkflow(ctx.thread, 'wf-1');
+			ctx.selectTab('wf-1');
+
+			ctx.openTab({
+				type: 'agent',
+				id: 'agent-9',
+				name: 'Picked Agent',
+				icon: 'robot',
+				projectId: 'project-1',
+			});
+
+			expect(ctx.openTabs.value.map((tab) => tab.id)).toEqual(['wf-1', 'agent-9']);
+			expect(ctx.activeAgentId.value).toBe('agent-9');
+			expect(ctx.activeAgentProjectId.value).toBe('project-1');
+			expect(ctx.isPreviewVisible.value).toBe(true);
+		});
+
+		test('waits for the stored tabs before it picks a tab, then shows the stored active tab', async () => {
+			let resolveLoad: (state: Awaited<ReturnType<ThreadTabsStorage['load']>>) => void = () => {};
+			const tabsStorage: ThreadTabsStorage = {
+				load: async () =>
+					await new Promise((resolve) => {
+						resolveLoad = resolve;
+					}),
+				save: vi.fn().mockResolvedValue(undefined),
+			};
+			const ctx = setup({ tabsStorage });
+			registerWorkflow(ctx.thread, 'wf-1');
+			registerWorkflow(ctx.thread, 'wf-2');
+			registerWorkflow(ctx.thread, 'wf-3');
+			await nextTick();
+
+			expect(ctx.activeTabId.value).toBeUndefined();
+
+			resolveLoad({
+				tabs: [
+					{ type: 'workflow', id: 'wf-1', name: 'Workflow wf-1' },
+					{ type: 'workflow', id: 'wf-2', name: 'Workflow wf-2' },
+				],
+				closedTabs: [{ type: 'workflow', id: 'wf-3' }],
+				activeTab: { type: 'workflow', id: 'wf-2' },
+			});
+			await flushPromises();
+
+			expect(ctx.openTabs.value.map((tab) => tab.id)).toEqual(['wf-1', 'wf-2']);
+			expect(ctx.activeTabId.value).toBe('wf-2');
+		});
+
+		describe('stored preview state', () => {
+			function storageWith(state: Awaited<ReturnType<ThreadTabsStorage['load']>>) {
+				return {
+					load: vi.fn().mockResolvedValue(state),
+					save: vi.fn().mockResolvedValue(undefined),
+				} satisfies ThreadTabsStorage;
+			}
+
+			const storedTabs = [
+				{ type: 'workflow' as const, id: 'wf-1', name: 'Workflow wf-1' },
+				{ type: 'workflow' as const, id: 'wf-2', name: 'Workflow wf-2' },
+			];
+
+			test('restores the active tab with the preview closed when it was stored as closed', async () => {
+				const ctx = setup({
+					tabsStorage: storageWith({
+						tabs: storedTabs,
+						closedTabs: [],
+						activeTab: { type: 'workflow', id: 'wf-2' },
+						previewOpen: false,
+					}),
+				});
+				registerWorkflow(ctx.thread, 'wf-1');
+				registerWorkflow(ctx.thread, 'wf-2');
+				await flushPromises();
+
+				expect(ctx.activeTabId.value).toBe('wf-2');
+				expect(ctx.isPreviewVisible.value).toBe(false);
+			});
+
+			test('opens the preview on the stored tab when it was stored as open', async () => {
+				const ctx = setup({
+					tabsStorage: storageWith({
+						tabs: storedTabs,
+						closedTabs: [],
+						activeTab: { type: 'workflow', id: 'wf-2' },
+						previewOpen: true,
+					}),
+				});
+				registerWorkflow(ctx.thread, 'wf-1');
+				registerWorkflow(ctx.thread, 'wf-2');
+				await flushPromises();
+
+				expect(ctx.isPreviewVisible.value).toBe(true);
+				expect(ctx.activeTabId.value).toBe('wf-2');
+			});
+
+			test('does not open the preview for an attached artifact when it was stored as closed', async () => {
+				let resolveLoad: (state: Awaited<ReturnType<ThreadTabsStorage['load']>>) => void = () => {};
+				const tabsStorage: ThreadTabsStorage = {
+					load: async () =>
+						await new Promise((resolve) => {
+							resolveLoad = resolve;
+						}),
+					save: vi.fn().mockResolvedValue(undefined),
+				};
+				const ctx = setup({ tabsStorage });
+				registerWorkflow(ctx.thread, 'wf-1');
+				ctx.thread.messages = [
+					makeMessage({
+						role: 'user',
+						attachments: [{ type: 'workflow', id: 'wf-1', name: 'Workflow wf-1' }],
+					}),
+				];
+				await nextTick();
+				expect(ctx.isPreviewVisible.value).toBe(false);
+
+				resolveLoad({ tabs: storedTabs, closedTabs: [], activeTab: null, previewOpen: false });
+				await flushPromises();
+
+				expect(ctx.activeTabId.value).toBe('wf-1');
+				expect(ctx.isPreviewVisible.value).toBe(false);
+			});
+
+			test('keeps the preview closed when no preview state was stored', async () => {
+				const ctx = setup({
+					tabsStorage: storageWith({ tabs: storedTabs, closedTabs: [], activeTab: null }),
+				});
+				registerWorkflow(ctx.thread, 'wf-1');
+				registerWorkflow(ctx.thread, 'wf-2');
+				await flushPromises();
+
+				expect(ctx.isPreviewVisible.value).toBe(false);
+			});
+
+			test('saves the preview as open when the agent opens it over a stored closed preview', async () => {
+				vi.useFakeTimers();
+				try {
+					const tabsStorage = storageWith({
+						tabs: storedTabs,
+						closedTabs: [],
+						activeTab: { type: 'workflow', id: 'wf-1' },
+						previewOpen: false,
+					});
+					const ctx = setup({ tabsStorage });
+					registerWorkflow(ctx.thread, 'wf-1');
+					registerWorkflow(ctx.thread, 'wf-2');
+					await flushPromises();
+					expect(ctx.isPreviewVisible.value).toBe(false);
+
+					// The agent changes a workflow whose tab is open, so no tab reopens.
+					ctx.thread.isStreaming = true;
+					ctx.thread.messages = [buildMessage('wf-2', 'tc-update')];
+					await nextTick();
+					await vi.advanceTimersByTimeAsync(DEBOUNCE_TIME.API.AUTOSAVE);
+
+					expect(ctx.isPreviewVisible.value).toBe(true);
+					expect(tabsStorage.save).toHaveBeenCalledWith(
+						expect.objectContaining({ previewOpen: true }),
+					);
+				} finally {
+					vi.useRealTimers();
+				}
+			});
+
+			test('saves the open preview when the agent opens it in an untouched thread', async () => {
+				vi.useFakeTimers();
+				try {
+					const tabsStorage = storageWith(null);
+					const ctx = setup({ tabsStorage });
+					registerWorkflow(ctx.thread, 'wf-1');
+					await flushPromises();
+
+					ctx.thread.isStreaming = true;
+					ctx.thread.messages = [buildMessage('wf-1', 'tc-build')];
+					await nextTick();
+					await vi.advanceTimersByTimeAsync(DEBOUNCE_TIME.API.AUTOSAVE);
+
+					expect(ctx.isPreviewVisible.value).toBe(true);
+					expect(tabsStorage.save).toHaveBeenCalledWith(
+						expect.objectContaining({ previewOpen: true }),
+					);
+				} finally {
+					vi.useRealTimers();
+				}
+			});
+
+			test('saves the closed preview when the user closes it', async () => {
+				vi.useFakeTimers();
+				try {
+					const tabsStorage = storageWith(null);
+					const ctx = setup({ tabsStorage });
+					await flushPromises();
+					registerWorkflow(ctx.thread, 'wf-1');
+					ctx.selectTab('wf-1');
+					await vi.advanceTimersByTimeAsync(DEBOUNCE_TIME.API.AUTOSAVE);
+					tabsStorage.save.mockClear();
+
+					ctx.closePreview();
+					await vi.advanceTimersByTimeAsync(DEBOUNCE_TIME.API.AUTOSAVE);
+
+					expect(tabsStorage.save).toHaveBeenCalledWith(
+						expect.objectContaining({ previewOpen: false }),
+					);
+				} finally {
+					vi.useRealTimers();
+				}
+			});
+		});
+
+		test('keeps the tab the user picked while the stored tabs loaded', async () => {
+			let resolveLoad: (state: Awaited<ReturnType<ThreadTabsStorage['load']>>) => void = () => {};
+			const tabsStorage: ThreadTabsStorage = {
+				load: async () =>
+					await new Promise((resolve) => {
+						resolveLoad = resolve;
+					}),
+				save: vi.fn().mockResolvedValue(undefined),
+			};
+			const ctx = setup({ tabsStorage });
+			registerWorkflow(ctx.thread, 'wf-1');
+			registerWorkflow(ctx.thread, 'wf-2');
+			ctx.selectTab('wf-1');
+
+			resolveLoad({
+				tabs: [
+					{ type: 'workflow', id: 'wf-1', name: 'Workflow wf-1' },
+					{ type: 'workflow', id: 'wf-2', name: 'Workflow wf-2' },
+				],
+				closedTabs: [],
+				activeTab: { type: 'workflow', id: 'wf-2' },
+			});
+			await flushPromises();
+
+			expect(ctx.activeTabId.value).toBe('wf-1');
+		});
+	});
+
+	describe('tab picked by the user during a run', () => {
+		function buildMessage(toolCallId: string, workflowId: string) {
+			return makeMessage({
+				agentTree: makeAgentNode({
+					toolCalls: [
+						makeToolCall({
+							toolCallId,
+							toolName: 'build-workflow',
+							result: { success: true, workflowId },
+						}),
+					],
+				}),
+			});
+		}
+
+		async function startRunOnWf1() {
+			const ctx = setup();
+			registerWorkflow(ctx.thread, 'wf-1');
+			registerWorkflow(ctx.thread, 'wf-2');
+			ctx.thread.isStreaming = true;
+			ctx.thread.messages = [buildMessage('tc-1', 'wf-1')];
+			await nextTick();
+			expect(ctx.activeTabId.value).toBe('wf-1');
+			return ctx;
+		}
+
+		test('stays on the picked tab when the agent builds another workflow', async () => {
+			const ctx = await startRunOnWf1();
+			ctx.selectTab('wf-2');
+			const refreshKey = ctx.workflowRefreshKey.value;
+
+			ctx.thread.messages = [buildMessage('tc-2', 'wf-1')];
+			await nextTick();
+
+			expect(ctx.activeTabId.value).toBe('wf-2');
+			expect(ctx.isPreviewVisible.value).toBe(true);
+			// wf-1 is off screen; it mounts fresh when opened later.
+			expect(ctx.workflowRefreshKey.value).toBe(refreshKey);
+		});
+
+		test('still refreshes the picked tab when the agent builds that one', async () => {
+			const ctx = await startRunOnWf1();
+			ctx.selectTab('wf-2');
+			const refreshKey = ctx.workflowRefreshKey.value;
+
+			ctx.thread.messages = [buildMessage('tc-2', 'wf-2')];
+			await nextTick();
+
+			expect(ctx.activeTabId.value).toBe('wf-2');
+			expect(ctx.workflowRefreshKey.value).toBe(refreshKey + 1);
+		});
+
+		test('stays on the picked tab when a builder starts editing another workflow', async () => {
+			const ctx = await startRunOnWf1();
+			ctx.selectTab('wf-2');
+
+			ctx.thread.messages = [
+				makeMessage({
+					agentTree: makeAgentNode({
+						children: [
+							makeAgentNode({
+								agentId: 'agent-builder-1',
+								role: 'workflow-builder',
+								kind: 'builder',
+								status: 'active',
+								targetResource: { type: 'workflow', id: 'wf-1' },
+							}),
+						],
+					}),
+				}),
+			];
+			await nextTick();
+
+			expect(ctx.activeTabId.value).toBe('wf-2');
+		});
+
+		test('drops the pick when the picked data table is deleted', async () => {
+			const ctx = await startRunOnWf1();
+			registerDataTable(ctx.thread, 'dt-1', 'Table', 'proj-1');
+			ctx.selectTab('dt-1');
+
+			const deleteMessage = makeMessage({
+				agentTree: makeAgentNode({
+					toolCalls: [
+						makeToolCall({
+							toolCallId: 'tc-delete',
+							toolName: 'data-tables',
+							args: { action: 'delete', dataTableId: 'dt-1' },
+							result: { success: true },
+						}),
+					],
+				}),
+			});
+			ctx.thread.messages = [deleteMessage];
+			await nextTick();
+			expect(ctx.activeTabId.value).toBe('wf-1');
+
+			ctx.thread.messages = [deleteMessage, buildMessage('tc-2', 'wf-2')];
+			await nextTick();
+
+			expect(ctx.activeTabId.value).toBe('wf-2');
+		});
+
+		test('follows the agent again once the run ends', async () => {
+			const ctx = await startRunOnWf1();
+			ctx.selectTab('wf-2');
+
+			ctx.thread.isStreaming = false;
+			await nextTick();
+			ctx.thread.isStreaming = true;
+			ctx.thread.messages = [buildMessage('tc-2', 'wf-1')];
+			await nextTick();
+
+			expect(ctx.activeTabId.value).toBe('wf-1');
+		});
+
+		test('closing the preview drops the pick', async () => {
+			const ctx = await startRunOnWf1();
+			ctx.selectTab('wf-2');
+			ctx.closePreview();
+
+			ctx.thread.messages = [buildMessage('tc-2', 'wf-1')];
+			await nextTick();
+
+			expect(ctx.activeTabId.value).toBe('wf-1');
+			expect(ctx.isPreviewVisible.value).toBe(true);
 		});
 	});
 });

@@ -1,12 +1,21 @@
 import type { AgentPersistedMessageContentPart, AgentPersistedMessageDto } from '@n8n/api-types';
-import { isRecord } from '@n8n/utils';
+import { isRecord } from '@n8n/utils/is-record';
 
 import type { AgentExecution } from '../entities/agent-execution.entity';
-import type { RecordedToolCall, TimelineEvent } from '../execution-recorder';
+import type { TimelineEvent } from '../execution-recorder';
+import { isFatalSessionOutcomeError } from './fatal-session-outcome';
 
 type ExecutionTranscript = Pick<
 	AgentExecution,
-	'id' | 'userMessage' | 'assistantResponse' | 'toolCalls' | 'timeline' | 'error'
+	| 'id'
+	| 'userMessage'
+	| 'author'
+	| 'timeline'
+	| 'attachments'
+	| 'status'
+	| 'error'
+	| 'createdAt'
+	| 'inputMessages'
 >;
 
 type ToolCallTimelineEvent = Extract<TimelineEvent, { type: 'tool-call' }>;
@@ -18,21 +27,6 @@ type ToolCallContentPart = AgentPersistedMessageContentPart & {
 function textPart(text: string): AgentPersistedMessageContentPart | null {
 	if (!text.trim()) return null;
 	return { type: 'text', text };
-}
-
-function textMessageDto(
-	id: string,
-	role: AgentPersistedMessageDto['role'],
-	text: string,
-): AgentPersistedMessageDto | null {
-	const contentPart = textPart(text);
-	if (!contentPart) return null;
-
-	return {
-		id,
-		role,
-		content: [contentPart],
-	};
 }
 
 function toolCallState(event: ToolCallTimelineEvent): 'resolved' | 'rejected' | undefined {
@@ -62,6 +56,7 @@ function mergeTerminalToolCallPart(
 		...previous,
 		...terminal,
 		input: previous.input ?? terminal.input,
+		suspendPayload: previous.suspendPayload ?? terminal.suspendPayload,
 		startTime: previous.startTime ?? terminal.startTime,
 		endTime: terminal.endTime ?? previous.endTime,
 		canceled: terminal.canceled ?? previous.canceled,
@@ -97,6 +92,7 @@ function timelineToolCallToPart(event: ToolCallTimelineEvent): AgentPersistedMes
 		input: event.input,
 		...(event.startTime > 0 ? { startTime: event.startTime } : {}),
 		...(event.endTime > 0 ? { endTime: event.endTime } : {}),
+		...(event.childTrace ? { childTrace: event.childTrace } : {}),
 	};
 
 	if (state === undefined) return base;
@@ -115,74 +111,144 @@ function timelineToolCallToPart(event: ToolCallTimelineEvent): AgentPersistedMes
 	};
 }
 
-function recordedToolCallToPart(
-	executionId: string,
-	index: number,
-	toolCall: RecordedToolCall,
-): AgentPersistedMessageContentPart {
-	const base: AgentPersistedMessageContentPart = {
-		type: 'tool-call',
-		toolName: toolCall.name,
-		toolCallId: `${executionId}:tool:${index}`,
-		input: toolCall.input,
-	};
-
-	if (toolCall.output === undefined) return base;
-
-	return {
-		...base,
-		output: toolCall.output,
-	};
-}
-
 function assistantContentFromExecution(
 	execution: ExecutionTranscript,
 ): AgentPersistedMessageContentPart[] {
 	const content: AgentPersistedMessageContentPart[] = [];
-	let hasTimelineText = false;
-	let hasTimelineToolCalls = false;
 
 	for (const event of execution.timeline ?? []) {
 		if (event.type === 'text') {
 			const part = textPart(event.content);
 			if (!part) continue;
 
-			hasTimelineText = true;
 			content.push(part);
+		} else if (event.type === 'reasoning') {
+			if (!event.content.trim()) continue;
+			content.push({
+				type: 'reasoning',
+				text: event.content,
+				startTime: event.timestamp,
+				...(event.endTime !== undefined && { endTime: event.endTime }),
+			});
 		} else if (event.type === 'tool-call') {
-			hasTimelineToolCalls = true;
 			content.push(timelineToolCallToPart(event));
+		} else if (event.type === 'suspension') {
+			const suspendedToolCall = [...content]
+				.reverse()
+				.find(
+					(part): part is ToolCallContentPart =>
+						isToolCallWithId(part) && part.toolCallId === event.toolCallId,
+				);
+			if (suspendedToolCall) {
+				suspendedToolCall.suspendPayload = event.suspendPayload ?? event.input;
+			}
 		}
-	}
-
-	if (!hasTimelineToolCalls) {
-		for (const [index, toolCall] of (execution.toolCalls ?? []).entries()) {
-			content.push(recordedToolCallToPart(execution.id, index, toolCall));
-		}
-	}
-
-	if (!hasTimelineText) {
-		const fallbackText =
-			execution.assistantResponse || (execution.error ? `Error: ${execution.error}` : '');
-		const part = textPart(fallbackText);
-		if (part) content.push(part);
 	}
 
 	return content;
 }
 
 export function executionToMessagesDto(execution: ExecutionTranscript): AgentPersistedMessageDto[] {
+	if (!execution.timeline?.some((event) => event.type === 'input')) {
+		return executionSegmentToMessagesDto(execution);
+	}
+	const messages: AgentPersistedMessageDto[] = [];
+	const steeredIds = new Set(
+		execution.timeline.filter((event) => event.type === 'input').map((event) => event.messageId),
+	);
+	let segment: ExecutionTranscript = {
+		...execution,
+		inputMessages: execution.inputMessages?.filter(({ id }) => !steeredIds.has(id)),
+		timeline: [],
+	};
+	let suffix = '';
+	const appendSegment = (value: ExecutionTranscript) => {
+		for (const message of executionSegmentToMessagesDto(value)) {
+			if (message.role === 'assistant') message.id += suffix;
+			messages.push(message);
+		}
+	};
+	for (const event of execution.timeline) {
+		if (event.type !== 'input') {
+			segment.timeline?.push(event);
+			continue;
+		}
+		appendSegment({ ...segment, status: 'success', error: null });
+		const input = execution.inputMessages?.find(({ id }) => id === event.messageId);
+		if (input) messages.push({ ...input, executionId: execution.id });
+		suffix = `:${event.messageId}`;
+		segment = {
+			...execution,
+			userMessage: null,
+			attachments: null,
+			author: null,
+			inputMessages: [],
+			timeline: [],
+			createdAt: new Date(event.timestamp),
+		};
+	}
+	appendSegment(segment);
+	return messages;
+}
+
+function executionSegmentToMessagesDto(execution: ExecutionTranscript): AgentPersistedMessageDto[] {
 	const messages: AgentPersistedMessageDto[] = [];
 
-	const userMessage = textMessageDto(`${execution.id}:user`, 'user', execution.userMessage);
-	if (userMessage) messages.push(userMessage);
+	// Canonical inputs keep their message IDs. Trace messages and legacy inputs
+	// keep execution-based IDs. Use executionId to identify the turn.
+	const userContent: AgentPersistedMessageContentPart[] = [];
+	const userText = execution.userMessage === null ? null : textPart(execution.userMessage);
+	// Trace messages and legacy inputs use the execution timestamp.
+	const createdAt = execution.createdAt.toISOString();
 
+	if (userText) userContent.push(userText);
+	for (const attachment of execution.attachments ?? []) {
+		userContent.push({
+			type: 'file',
+			fileId: attachment.id,
+			fileName: attachment.fileName,
+			mimeType: attachment.mimeType,
+			sizeBytes: attachment.sizeBytes,
+		});
+	}
+	if (execution.inputMessages !== undefined) {
+		messages.push(...execution.inputMessages);
+	} else if (userContent.length > 0) {
+		messages.push({
+			id: `${execution.id}:user`,
+			role: 'user',
+			content: userContent,
+			...(execution.author ? { author: execution.author } : {}),
+			executionId: execution.id,
+			createdAt,
+		});
+	}
+
+	const backgroundJobSignal = execution.timeline?.find(
+		(event) => event.type === 'background-task-signal',
+	)?.signal;
 	const assistantContent = assistantContentFromExecution(execution);
-	if (assistantContent.length > 0) {
+	// The recorded run error travels with the transcript so history renders the
+	// same error bubble the live stream showed — also when the turn failed
+	// before producing any output at all (otherwise the run fails invisibly).
+	// It stays a separate field, not a text part, so the client does not show it
+	// as model output.
+	const executionError =
+		(execution.status === 'error' || execution.status === 'interrupted') &&
+		execution.error &&
+		!isFatalSessionOutcomeError(execution.error, execution.timeline)
+			? execution.error
+			: undefined;
+	if (backgroundJobSignal || assistantContent.length > 0 || executionError !== undefined) {
 		messages.push({
 			id: `${execution.id}:assistant`,
 			role: 'assistant',
 			content: assistantContent,
+			...(backgroundJobSignal ? { backgroundTaskSignal: backgroundJobSignal } : {}),
+			executionId: execution.id,
+			...(execution.status ? { executionStatus: execution.status } : {}),
+			...(executionError !== undefined ? { executionError } : {}),
+			createdAt,
 		});
 	}
 
@@ -228,5 +294,10 @@ export function executionsToMessagesDto(
 		message.content = message.content.filter((_, index) => !duplicateIndexes.has(index));
 	}
 
-	return messages.filter((message) => message.content.length > 0);
+	return messages.filter(
+		(message) =>
+			message.backgroundTaskSignal ||
+			message.content.length > 0 ||
+			message.executionError !== undefined,
+	);
 }

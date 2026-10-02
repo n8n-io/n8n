@@ -1,6 +1,11 @@
 import { makeRestApiRequest } from '@n8n/rest-api-client';
 import type { IRestApiContext } from '@n8n/rest-api-client';
-import type { InstanceAiMcpConnectionResponse, McpRegistryServerResponse } from '@n8n/api-types';
+import type {
+	InstanceAiMcpConnectionResponse,
+	InstanceAiMcpConnectionToolsResponse,
+	McpRegistryServerResponse,
+	McpToolPermissions,
+} from '@n8n/api-types';
 
 export interface CreateMcpConnectionBody {
 	serverSlug: string;
@@ -9,9 +14,7 @@ export interface CreateMcpConnectionBody {
 
 export interface UpdateMcpConnectionBody {
 	credentialId?: string;
-	inclusionMode?: 'all' | 'selected' | 'except';
-	selectedTools?: string[];
-	excludedTools?: string[];
+	toolPermissions?: McpToolPermissions;
 }
 
 export async function fetchMcpRegistryServers(
@@ -24,6 +27,23 @@ export async function fetchMcpConnections(
 	context: IRestApiContext,
 ): Promise<InstanceAiMcpConnectionResponse[]> {
 	return await makeRestApiRequest(context, 'GET', '/instance-ai/mcp/connections');
+}
+
+export async function fetchMcpConnectionTools(
+	context: IRestApiContext,
+	id: string,
+): Promise<InstanceAiMcpConnectionToolsResponse> {
+	return await makeRestApiRequest(
+		context,
+		'GET',
+		`/instance-ai/mcp/connections/${encodeURIComponent(id)}/tools`,
+	);
+}
+
+export async function fetchAllMcpConnectionTools(
+	context: IRestApiContext,
+): Promise<InstanceAiMcpConnectionToolsResponse[]> {
+	return await makeRestApiRequest(context, 'GET', '/instance-ai/mcp/connections/tools');
 }
 
 export async function createMcpConnection(

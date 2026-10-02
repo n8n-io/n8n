@@ -1,5 +1,5 @@
 import type { AuthenticatedRequest, TokenGrant, User } from '@n8n/db';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import { AuthStrategyRegistry } from '../auth-strategy.registry';
 import type { AuthStrategy } from '../auth-strategy.types';
@@ -47,18 +47,18 @@ describe('AuthStrategyRegistry', () => {
 		it('evaluates strategies in registration order', async () => {
 			const order: number[] = [];
 			const strategy1: AuthStrategy = {
-				authenticate: jest.fn().mockImplementation(async () => {
+				authenticate: vi.fn().mockImplementation(async () => {
 					order.push(1);
 					return null;
 				}),
-				buildTokenGrant: jest.fn().mockResolvedValue(null),
+				buildTokenGrant: vi.fn().mockResolvedValue(null),
 			};
 			const strategy2: AuthStrategy = {
-				authenticate: jest.fn().mockImplementation(async () => {
+				authenticate: vi.fn().mockImplementation(async () => {
 					order.push(2);
 					return null;
 				}),
-				buildTokenGrant: jest.fn().mockResolvedValue(null),
+				buildTokenGrant: vi.fn().mockResolvedValue(null),
 			};
 
 			registry.register(strategy1);

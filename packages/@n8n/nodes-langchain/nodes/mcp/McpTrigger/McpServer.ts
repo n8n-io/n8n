@@ -7,20 +7,25 @@ import type {
 	JSONRPCMessage,
 } from '@modelcontextprotocol/sdk/types.js';
 import { ListToolsRequestSchema, CallToolRequestSchema } from '@modelcontextprotocol/sdk/types.js';
+import { zodToDraft202012 } from '@n8n/ai-utilities/json-schema';
+import { McpServerConfig } from '@n8n/config';
+import { Container } from '@n8n/di';
 import { randomUUID } from 'crypto';
 import type * as express from 'express';
 import type { IncomingMessage } from 'http';
 import type { CredentialCheckResult, Logger } from 'n8n-workflow';
 import { jsonParse, OperationalError } from 'n8n-workflow';
-import { zodToJsonSchema } from 'zod-to-json-schema';
 
 import { ExecutionCoordinator } from './execution/ExecutionCoordinator';
 import type { ExecutionStrategy } from './execution/ExecutionStrategy';
 import { PendingCallsManager } from './execution/PendingCallsManager';
 import { QueuedExecutionStrategy } from './execution/QueuedExecutionStrategy';
-import { MessageFormatter } from './protocol/MessageFormatter';
+import {
+	MessageFormatter,
+	type CredentialGateElicitationOutcome,
+} from './protocol/MessageFormatter';
 import { MessageParser } from './protocol/MessageParser';
-import type { McpToolCallInfo } from './protocol/types';
+import type { McpToolCallInfo, McpToolResult } from './protocol/types';
 import { MCP_LIST_TOOLS_REQUEST_MARKER } from './protocol/types';
 import { InMemorySessionStore } from './session/InMemorySessionStore';
 import { SessionManager } from './session/SessionManager';
@@ -29,6 +34,22 @@ import type { SSETransport } from './transport/SSETransport';
 import { StreamableHttpTransport } from './transport/StreamableHttpTransport';
 import type { CompressionResponse, McpTransport } from './transport/Transport';
 import { TransportFactory } from './transport/TransportFactory';
+
+/**
+ * How long to wait for the client to complete a URL-mode elicitation (open the
+ * connection page and act on it) before giving up and falling back to the
+ * plain-text response. Connecting a credential involves an out-of-band OAuth
+ * flow, so this is generous relative to the SDK's default request timeout.
+ */
+const ELICITATION_TIMEOUT_MS = 300_000;
+
+function toolDescriptors(tools: Tool[]) {
+	return tools.map((tool) => ({
+		name: tool.name,
+		description: tool.description,
+		inputSchema: zodToDraft202012(tool.schema, { removeAdditionalStrategy: 'strict' }),
+	}));
+}
 
 export interface HandlePostResult {
 	wasToolCall: boolean;
@@ -63,18 +84,26 @@ export class McpServer {
 	private pendingGateResults: Record<string, CredentialCheckResult> = {};
 	private logger: Logger;
 
+	private idleTtlMs: number;
+	private sweepIntervalMs: number;
+	private sweepTimer?: ReturnType<typeof setInterval>;
+
 	private constructor(logger: Logger) {
 		this.logger = logger;
 		this.sessionManager = new SessionManager(new InMemorySessionStore());
 		this.transportFactory = new TransportFactory();
 		this.pendingCallsManager = new PendingCallsManager();
 		this.executionCoordinator = new ExecutionCoordinator();
+		const config = Container.get(McpServerConfig);
+		this.idleTtlMs = config.sessionIdleTtl;
+		this.sweepIntervalMs = config.sessionSweepInterval;
 		this.logger.debug('McpServer created');
 	}
 
 	static instance(logger: Logger): McpServer {
 		if (!McpServer.instance_) {
 			McpServer.instance_ = new McpServer(logger);
+			McpServer.instance_.startSweep();
 			logger.debug('Created singleton McpServer');
 		}
 		return McpServer.instance_;
@@ -86,8 +115,9 @@ export class McpServer {
 		serverName: string,
 		postUrl: string,
 		tools: Tool[],
+		instructions?: string,
 	): Promise<void> {
-		const server = this.createServer(serverName);
+		const server = this.createServer(serverName, instructions);
 		const transport = this.transportFactory.createSSE(postUrl, resp);
 
 		await this.setupSession(server, transport, tools, resp);
@@ -98,8 +128,9 @@ export class McpServer {
 		resp: CompressionResponse,
 		serverName: string,
 		tools: Tool[],
+		instructions?: string,
 	): Promise<void> {
-		const server = this.createServer(serverName);
+		const server = this.createServer(serverName, instructions);
 		const transport = this.transportFactory.createStreamableHttp(
 			{
 				sessionIdGenerator: () => randomUUID(),
@@ -127,8 +158,11 @@ export class McpServer {
 		tools: Tool[],
 		serverName?: string,
 		gateResult?: CredentialCheckResult,
+		instructions?: string,
 	): Promise<HandlePostResult> {
 		const sessionId = this.getSessionId(req);
+		// A request on a known session counts as activity (no-op for unknown ids).
+		if (sessionId) this.sessionManager.touch(sessionId);
 		let transport = sessionId ? this.sessionManager.getTransport(sessionId) : undefined;
 		const rawBody = req.rawBody.toString();
 		let toolCallInfo = MessageParser.extractToolCallInfo(rawBody);
@@ -150,6 +184,7 @@ export class McpServer {
 				serverName,
 				tools,
 				resp,
+				instructions,
 			);
 			if (!recreated) {
 				resp.status(404).send('Session not found');
@@ -197,7 +232,15 @@ export class McpServer {
 			try {
 				await new Promise<void>((resolve) => {
 					this.resolveFunctions[callId] = resolve;
-					void transport.handleRequest(req, resp, message as IncomingMessage);
+					const requestHandled = transport.handleRequest(req, resp, message as IncomingMessage);
+					if (isToolCall && transport.transportType === 'sse') {
+						// SSE answers the POST with 202 before the tool has run, so completing the
+						// request must not resolve here — the CallTool handler does that once the
+						// tool finished. A transport failure still resolves so we never hang.
+						void requestHandled.catch(() => resolve());
+					} else {
+						void requestHandled.finally(resolve);
+					}
 				});
 			} finally {
 				delete this.resolveFunctions[callId];
@@ -276,6 +319,10 @@ export class McpServer {
 		};
 	}
 
+	hasSession(sessionId: string): boolean {
+		return this.getTransport(sessionId) !== undefined;
+	}
+
 	handleWorkerResponse(sessionId: string, messageId: string, result: unknown): void {
 		const callId = messageId ? `${sessionId}_${messageId}` : sessionId;
 		const pending = this.pendingResponses[callId];
@@ -293,18 +340,10 @@ export class McpServer {
 					`SSE queue mode: handling relayed list tools request for session ${sessionId}`,
 				);
 
-				const tools = this.sessionManager.getTools(sessionId) ?? [];
-				const toolsList = tools.map((tool) => ({
-					name: tool.name,
-					description: tool.description,
-					// eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument
-					inputSchema: zodToJsonSchema(tool.schema as any, { removeAdditionalStrategy: 'strict' }),
-				}));
-
 				const response: JSONRPCMessage = {
 					jsonrpc: '2.0',
 					id: messageId,
-					result: { tools: toolsList },
+					result: { tools: toolDescriptors(this.sessionManager.getTools(sessionId) ?? []) },
 				};
 				void transport.send(response);
 			}
@@ -322,7 +361,10 @@ export class McpServer {
 						`SSE queue mode: sending response directly via transport for session ${sessionId}`,
 					);
 
-					const formattedResult = MessageFormatter.formatToolResult(result);
+					const formattedResult = MessageFormatter.formatToolResult(
+						result,
+						MessageFormatter.isErrorResult(result),
+					);
 					const response: JSONRPCMessage = {
 						jsonrpc: '2.0',
 						id: messageId,
@@ -365,6 +407,49 @@ export class McpServer {
 		this.executionCoordinator.setStrategy(strategy);
 	}
 
+	private startSweep(): void {
+		if (this.sweepTimer) return;
+		this.sweepTimer = setInterval(() => {
+			void this.runSweep();
+		}, this.sweepIntervalMs);
+		this.sweepTimer.unref?.();
+	}
+
+	stopSweep(): void {
+		if (this.sweepTimer) {
+			clearInterval(this.sweepTimer);
+			this.sweepTimer = undefined;
+		}
+	}
+
+	private async runSweep(): Promise<void> {
+		for (const sessionId of this.sessionManager.getIdleSessions(this.idleTtlMs)) {
+			// SSE sessions are released reliably via the connection's close handler.
+			// Only Streamable HTTP sessions (stateless clients that never DELETE) leak.
+			if (this.sessionManager.getTransport(sessionId)?.transportType !== 'streamableHttp') continue;
+			// Don't evict a session whose tool call is still awaiting a result.
+			if (this.hasInFlightWork(sessionId)) continue;
+			try {
+				this.logger.debug(`Evicting idle MCP session ${sessionId}`);
+				await this.cleanupSession(sessionId);
+			} catch (error) {
+				this.logger.error(
+					`Failed to evict idle MCP session ${sessionId}: ${error instanceof Error ? error.message : String(error)}`,
+				);
+			}
+		}
+	}
+
+	private hasInFlightWork(sessionId: string): boolean {
+		if (this.pendingCallsManager.hasForSession(sessionId)) return true;
+		// Direct-mode tool calls are tracked only by resolveFunctions for their whole
+		// duration; queue-mode also uses pendingResponses below.
+		const ownsSession = (callId: string) =>
+			callId === sessionId || callId.startsWith(`${sessionId}_`);
+		if (Object.keys(this.resolveFunctions).some(ownsSession)) return true;
+		return Object.values(this.pendingResponses).some((pending) => pending.sessionId === sessionId);
+	}
+
 	isQueueMode(): boolean {
 		return this.executionCoordinator.isQueueMode();
 	}
@@ -381,8 +466,11 @@ export class McpServer {
 		return this.pendingCallsManager;
 	}
 
-	private createServer(serverName: string): Server {
-		return new Server({ name: serverName, version: '0.1.0' }, { capabilities: { tools: {} } });
+	private createServer(serverName: string, instructions?: string): Server {
+		return new Server(
+			{ name: serverName, version: '0.1.0' },
+			{ capabilities: { tools: {} }, instructions },
+		);
 	}
 
 	private async setupSession(
@@ -426,6 +514,7 @@ export class McpServer {
 		serverName: string,
 		tools: Tool[],
 		resp: CompressionResponse,
+		instructions?: string,
 	): Promise<boolean> {
 		const isValid = await this.sessionManager.isSessionValid(sessionId);
 		if (!isValid) {
@@ -433,7 +522,7 @@ export class McpServer {
 			return false;
 		}
 
-		const server = this.createServer(serverName);
+		const server = this.createServer(serverName, instructions);
 		const transport = this.transportFactory.recreateStreamableHttp(sessionId, resp);
 
 		await this.sessionManager.registerSession(sessionId, server, transport, tools);
@@ -448,6 +537,69 @@ export class McpServer {
 		return true;
 	}
 
+	/**
+	 * Whether the connected client advertised URL-mode elicitation support during
+	 * initialization (`clientCapabilities.elicitation.url`).
+	 */
+	private clientSupportsUrlElicitation(server: Server): boolean {
+		const elicitation = server.getClientCapabilities()?.elicitation;
+		return Boolean(elicitation && typeof elicitation === 'object' && 'url' in elicitation);
+	}
+
+	/**
+	 * Handles a not-ready credential gate. When the client supports URL-mode
+	 * elicitation and every missing credential has a connection URL, the
+	 * connection page is driven through the client's native elicitation UI so the
+	 * link is surfaced by the client rather than relayed as tool text (which chat
+	 * clients tend to withhold). Otherwise — and on any elicitation failure — it
+	 * falls back to the plain-text response carrying the raw URLs.
+	 */
+	private async handleCredentialGate(
+		server: Server,
+		gateResult: CredentialCheckResult,
+		callId: string,
+	): Promise<McpToolResult> {
+		const missing = gateResult.credentials.filter((c) => c.status !== 'configured');
+		const connectable = missing.filter((c) => !!c.authorizationUrl);
+		const canElicit =
+			connectable.length > 0 &&
+			connectable.length === missing.length &&
+			this.clientSupportsUrlElicitation(server);
+
+		if (canElicit) {
+			try {
+				const outcomes: CredentialGateElicitationOutcome[] = [];
+				for (const cred of connectable) {
+					const { action } = await server.elicitInput(
+						{
+							mode: 'url',
+							elicitationId: randomUUID(),
+							url: cred.authorizationUrl!,
+							message: `Connect ${cred.credentialName} (${cred.credentialType}) to run this tool.`,
+						},
+						{ timeout: ELICITATION_TIMEOUT_MS },
+					);
+					outcomes.push({
+						credentialName: cred.credentialName,
+						credentialType: cred.credentialType,
+						action,
+					});
+				}
+				if (this.resolveFunctions[callId]) this.resolveFunctions[callId]();
+				return MessageFormatter.formatCredentialGateElicited(outcomes);
+			} catch (error) {
+				this.logger.warn(
+					`Credential gate elicitation failed, falling back to text response: ${
+						error instanceof Error ? error.message : String(error)
+					}`,
+				);
+			}
+		}
+
+		if (this.resolveFunctions[callId]) this.resolveFunctions[callId]();
+		return MessageFormatter.formatCredentialGate(gateResult);
+	}
+
 	private setupHandlers(server: Server): void {
 		server.setRequestHandler(
 			ListToolsRequestSchema,
@@ -456,90 +608,82 @@ export class McpServer {
 					throw new OperationalError('Require a sessionId for the listing of tools');
 				}
 
-				const tools = this.sessionManager.getTools(extra.sessionId) ?? [];
-				return {
-					tools: tools.map((tool) => ({
-						name: tool.name,
-						description: tool.description,
-						// eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument
-						inputSchema: zodToJsonSchema(tool.schema as any, {
-							removeAdditionalStrategy: 'strict',
-						}),
-					})),
-				};
+				return { tools: toolDescriptors(this.sessionManager.getTools(extra.sessionId) ?? []) };
 			},
 		);
 
 		server.setRequestHandler(CallToolRequestSchema, async (request, extra) => {
-			if (!request.params?.name || !request.params?.arguments) {
-				throw new OperationalError('Require a name and arguments for the tool call');
-			}
 			if (!extra.sessionId) {
 				throw new OperationalError('Require a sessionId for the tool call');
 			}
 
 			const callId = extra.requestId ? `${extra.sessionId}_${extra.requestId}` : extra.sessionId;
-			const toolName = request.params.name;
-			const toolArguments =
-				typeof request.params.arguments === 'object' && request.params.arguments !== null
-					? request.params.arguments
-					: {};
-
-			const tools = this.sessionManager.getTools(extra.sessionId) ?? [];
-			const requestedTool = tools.find((tool) => tool.name === toolName);
-			if (!requestedTool) {
-				throw new OperationalError('Tool not found');
-			}
-
-			// Eager pre-execution credential gate: if the caller has not connected a
-			// required private credential, return the actionable connection URLs
-			// instead of executing (or enqueuing) the workflow.
-			const gateResult = this.pendingGateResults[callId];
-			if (gateResult && !gateResult.readyToExecute) {
-				if (this.resolveFunctions[callId]) {
-					this.resolveFunctions[callId]();
-				}
-				return MessageFormatter.formatCredentialGate(gateResult);
-			}
 
 			try {
-				if (this.executionCoordinator.isQueueMode()) {
-					const requestId = extra.requestId?.toString() ?? '';
-					this.storePendingResponse(extra.sessionId, requestId);
+				if (!request.params?.name || !request.params?.arguments) {
+					throw new OperationalError('Require a name and arguments for the tool call');
+				}
 
-					// Resolve handlePostMessage so webhook can return and enqueue execution.
-					// The handler continues running asynchronously, waiting for worker response.
-					if (this.resolveFunctions[callId]) {
-						this.resolveFunctions[callId]();
+				const toolName = request.params.name;
+				const toolArguments =
+					typeof request.params.arguments === 'object' && request.params.arguments !== null
+						? request.params.arguments
+						: {};
+
+				const tools = this.sessionManager.getTools(extra.sessionId) ?? [];
+				const requestedTool = tools.find((tool) => tool.name === toolName);
+				if (!requestedTool) {
+					throw new OperationalError('Tool not found');
+				}
+
+				// Eager pre-execution credential gate: if the caller has not connected a
+				// required private credential, surface the actionable connection URLs
+				// (via elicitation when supported, otherwise as text) instead of
+				// executing (or enqueuing) the workflow.
+				const gateResult = this.pendingGateResults[callId];
+				if (gateResult && !gateResult.readyToExecute) {
+					return await this.handleCredentialGate(server, gateResult, callId);
+				}
+
+				try {
+					if (this.executionCoordinator.isQueueMode()) {
+						const requestId = extra.requestId?.toString() ?? '';
+						this.storePendingResponse(extra.sessionId, requestId);
+
+						// Resolve handlePostMessage so webhook can return and enqueue execution.
+						// The handler continues running asynchronously, waiting for worker response.
+						if (this.resolveFunctions[callId]) {
+							this.resolveFunctions[callId]();
+						}
+
+						const strategy = this.executionCoordinator.getStrategy() as QueuedExecutionStrategy;
+						const result = await strategy.executeTool(requestedTool, toolArguments, {
+							sessionId: extra.sessionId,
+							messageId: requestId,
+						});
+
+						return MessageFormatter.formatToolResult(
+							result,
+							MessageFormatter.isErrorResult(result),
+						);
 					}
 
-					const strategy = this.executionCoordinator.getStrategy() as QueuedExecutionStrategy;
-					const result = await strategy.executeTool(requestedTool, toolArguments, {
+					const result = await this.executionCoordinator.executeTool(requestedTool, toolArguments, {
 						sessionId: extra.sessionId,
-						messageId: requestId,
+						messageId: extra.requestId?.toString(),
 					});
 
-					return MessageFormatter.formatToolResult(result);
+					return MessageFormatter.formatToolResult(result, MessageFormatter.isErrorResult(result));
+				} catch (error) {
+					const errorObject = error instanceof Error ? error : new Error(String(error));
+					this.logger.error(`Error while executing Tool ${toolName}: ${errorObject.message}`, {
+						error: errorObject,
+					});
+					return MessageFormatter.formatError(errorObject);
 				}
-
-				const result = await this.executionCoordinator.executeTool(requestedTool, toolArguments, {
-					sessionId: extra.sessionId,
-					messageId: extra.requestId?.toString(),
-				});
-
-				if (this.resolveFunctions[callId]) {
-					this.resolveFunctions[callId]();
-				} else {
-					this.logger.warn(`No resolve function found for ${callId}`);
-				}
-
-				return MessageFormatter.formatToolResult(result);
-			} catch (error) {
-				const errorObject = error instanceof Error ? error : new Error(String(error));
-				this.logger.error(`Error while executing Tool ${toolName}: ${errorObject.message}`, {
-					error: errorObject,
-				});
-				return MessageFormatter.formatError(errorObject);
+			} finally {
+				// No-op when already resolved (queue mode, credential gate, non-SSE).
+				this.resolveFunctions[callId]?.();
 			}
 		});
 

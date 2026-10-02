@@ -9,24 +9,25 @@ import { InstanceSettings } from 'n8n-core';
 })
 export class OtelModule implements ModuleInterface {
 	async init() {
-		await import('./otel-lifecycle-handler');
+		const { OtelLifecycleHandler } = await import('./otel-lifecycle-handler.js');
+		Container.get(OtelLifecycleHandler).init();
 
-		const { OtelService } = await import('./otel.service');
+		const { OtelService } = await import('./otel.service.js');
 		await Container.get(OtelService).init();
 
 		if (Container.get(InstanceSettings).instanceType === 'main') {
-			await import('./otel-settings.controller');
+			await import('./otel-settings.controller.js');
 		}
 	}
 
 	async settings() {
-		const { OtelSettingsService } = await import('./otel-settings.service');
+		const { OtelSettingsService } = await import('./otel-settings.service.js');
 		const { enabled } = Container.get(OtelSettingsService).getSettings();
 		return { enabled };
 	}
 
 	async context(): Promise<ModuleContext> {
-		const { ExecutionLevelTracer } = await import('./execution-level-tracer');
+		const { ExecutionLevelTracer } = await import('./execution-level-tracer.js');
 		const tracer = Container.get(ExecutionLevelTracer);
 
 		return {
@@ -36,7 +37,7 @@ export class OtelModule implements ModuleInterface {
 
 	@OnShutdown()
 	async shutdown() {
-		const { OtelService } = await import('./otel.service');
+		const { OtelService } = await import('./otel.service.js');
 		await Container.get(OtelService).shutdown();
 	}
 }

@@ -213,10 +213,13 @@ function parseArguments(argsString: string): FromAIArgument {
 		return trimmed;
 	});
 
-	const type = cleanArgs?.[2] ?? 'string';
+	const rawType = cleanArgs?.[2] ?? 'string';
+	// `isFromAIArgumentType` accepts any casing, so normalize before narrowing:
+	// consumers of `FromAIArgument.type` compare against the lowercase literals.
+	const type = rawType.toLowerCase();
 
 	if (!isFromAIArgumentType(type)) {
-		throw new ParseError(`Invalid type: ${type}`);
+		throw new ParseError(`Invalid type: ${rawType}`);
 	}
 
 	return {
@@ -476,7 +479,7 @@ function collectDefaults(props: INodeProperties[], defaults: Set<string>) {
 						defaults.add(nested.default);
 					}
 					if (nested.options) {
-						collectDefaults([nested] as unknown as INodeProperties[], defaults);
+						collectDefaults([nested], defaults);
 					}
 				}
 			}

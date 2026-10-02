@@ -6,9 +6,10 @@ import {
 	DRAG_EVENT_DATA_KEY,
 	HITL_SUBCATEGORY,
 	HUMAN_IN_THE_LOOP_CATEGORY,
+	MESSAGE_AN_AGENT_NODE_TYPE,
 } from '@/app/constants';
 import { COMMUNITY_NODES_INSTALLATION_DOCS_URL } from '@/features/settings/communityNodes/communityNodes.constants';
-import { computed, ref } from 'vue';
+import { computed, ref, type ComponentPublicInstance } from 'vue';
 
 import NodeIcon from '@/app/components/NodeIcon.vue';
 import { getNodeIconSize } from '@/app/utils/nodeIcon';
@@ -17,18 +18,20 @@ import { isCommunityPackageName } from 'n8n-workflow';
 import OfficialIcon from 'virtual:icons/mdi/verified';
 
 import { useNodeType } from '@/app/composables/useNodeType';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useI18n } from '@n8n/i18n';
 import { useActions } from '../../composables/useActions';
 import { useViewStacks } from '../../composables/useViewStacks';
 import {
+	getNodeItemRestriction,
 	isNodePreviewKey,
 	removePreviewToken,
 	shouldShowCommunityNodeDetails,
 } from '../../nodeCreator.utils';
 
 import { N8nIcon, N8nNodeCreatorNode, N8nTooltip } from '@n8n/design-system';
+import { RestrictedNodePopover } from '@n8n/frontend-module-type-availability-policies';
 export interface Props {
 	nodeType: SimplifiedNodeType;
 	subcategory?: string;
@@ -50,13 +53,15 @@ const { isSubNodeType } = useNodeType({
 	nodeType: props.nodeType,
 });
 const nodeTypesStore = useNodeTypesStore();
+const restriction = computed(() => getNodeItemRestriction(props.nodeType.name));
+const rowRef = ref<ComponentPublicInstance | null>(null);
 
 const dragging = ref(false);
 const draggablePosition = ref({ x: -100, y: -100 });
 const draggableDataTransfer = ref(null as Element | null);
 
 const description = computed<string>(() => {
-	if (isCommunityNodePreview.value) {
+	if (isCommunityNodePreview.value || isCommunityNode.value) {
 		return props.nodeType.description;
 	}
 	if (isSendAndWaitCategory.value) {
@@ -64,7 +69,8 @@ const description = computed<string>(() => {
 	}
 	if (
 		props.subcategory === DEFAULT_SUBCATEGORY &&
-		!props.nodeType.name.startsWith(CREDENTIAL_ONLY_NODE_PREFIX)
+		!props.nodeType.name.startsWith(CREDENTIAL_ONLY_NODE_PREFIX) &&
+		!activeViewStack.search
 	) {
 		return '';
 	}
@@ -76,20 +82,31 @@ const description = computed<string>(() => {
 });
 
 const showActionArrow = computed(() => {
+	if (restriction.value) return false;
+
 	if (shouldShowCommunityNodeDetails(isCommunityNode.value, activeViewStack)) {
+		return true;
+	}
+
+	// Clicking opens the agent picker sub-panel; the arrow signals that and
+	// `!showActionArrow` disables dragging, so the picker can't be bypassed.
+	if (opensAgentSubPanel.value) {
 		return true;
 	}
 
 	return hasActions.value && !isSendAndWaitCategory.value;
 });
+
+const opensAgentSubPanel = computed(() => props.nodeType.name === MESSAGE_AN_AGENT_NODE_TYPE);
 const isSendAndWaitCategory = computed(
 	() =>
 		activeViewStack.subcategory === HITL_SUBCATEGORY ||
 		activeViewStack.rootView === HUMAN_IN_THE_LOOP_CATEGORY,
 );
-const dataTestId = computed(() =>
-	hasActions.value ? 'node-creator-action-item' : 'node-creator-node-item',
-);
+const dataTestId = computed(() => {
+	if (restriction.value) return 'node-creator-restricted-item';
+	return hasActions.value ? 'node-creator-action-item' : 'node-creator-node-item';
+});
 
 const hasActions = computed(() => {
 	return nodeActions.value.length > 1 && !activeViewStack.hideActions;
@@ -185,7 +202,9 @@ function onCommunityNodeTooltipClick(event: MouseEvent) {
 <template>
 	<!-- Node Item is draggable only if it doesn't contain actions -->
 	<N8nNodeCreatorNode
-		:draggable="!showActionArrow"
+		ref="rowRef"
+		:draggable="!restriction && !showActionArrow"
+		:disabled="!!restriction"
 		:class="$style.nodeItem"
 		:description="description"
 		:title="displayName"
@@ -243,6 +262,14 @@ function onCommunityNodeTooltipClick(event: MouseEvent) {
 				<N8nIcon size="small" :class="$style.icon" icon="box" />
 			</N8nTooltip>
 		</template>
+		<template v-if="restriction" #trailing>
+			<RestrictedNodePopover
+				:node-type-name="displayName"
+				:scope="restriction.scope"
+				:anchor="rowRef"
+				:active="active"
+			/>
+		</template>
 		<template #dragContent>
 			<div
 				v-show="dragging"
@@ -263,6 +290,8 @@ function onCommunityNodeTooltipClick(event: MouseEvent) {
 </template>
 
 <style lang="scss" module>
+@use '@/app/css/variables' as *;
+
 .nodeItem {
 	--trigger-icon--color--background: #{$trigger-icon-background-color};
 	--trigger-icon--border-color: #{$trigger-icon-border-color};

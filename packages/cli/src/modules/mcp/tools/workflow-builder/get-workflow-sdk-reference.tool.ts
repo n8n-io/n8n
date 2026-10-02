@@ -1,13 +1,12 @@
 import type { User } from '@n8n/db';
 import z from 'zod';
 
-import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
-import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.types';
-
 import type { Telemetry } from '@/telemetry';
 
 import { MCP_GET_SDK_REFERENCE_TOOL } from './constants';
 import { getSdkReferenceContent, type SdkReferenceSection } from './sdk-reference-content';
+import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
+import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.types';
 
 const VALID_SECTIONS: SdkReferenceSection[] = [
 	'patterns',
@@ -18,6 +17,7 @@ const VALID_SECTIONS: SdkReferenceSection[] = [
 	'import',
 	'guidelines',
 	'design',
+	'groups',
 	'all',
 ];
 
@@ -45,7 +45,7 @@ export const createGetWorkflowSdkReferenceTool = (
 	name: MCP_GET_SDK_REFERENCE_TOOL.toolName,
 	config: {
 		description:
-			'Required reference for building n8n Workflow SDK code. Call this BEFORE writing workflow code to learn workflow(), trigger()/node(), .add()/.to(), expr(), and credential patterns.',
+			'Required reference when building a workflow, and only then. Call this BEFORE writing workflow code to learn workflow(), trigger()/node(), .add()/.to(), expr(), and credential patterns.',
 		inputSchema,
 		outputSchema,
 		annotations: {
@@ -56,7 +56,7 @@ export const createGetWorkflowSdkReferenceTool = (
 			openWorldHint: false,
 		},
 	},
-	handler: async ({ section }: { section?: string }) => {
+	handler: ({ section }: { section?: string }) => {
 		const telemetryPayload: UserCalledMCPToolEventPayload = {
 			user_id: user.id,
 			tool_name: MCP_GET_SDK_REFERENCE_TOOL.toolName,

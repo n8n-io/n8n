@@ -1,15 +1,14 @@
+import { EventService } from '@n8n/backend-services';
 import { PrometheusMetricsConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { StorageConfig } from 'n8n-core';
 import promClient from 'prom-client';
 
-import { EventService } from '@/events/event.service';
-
 import type { PrometheusMetricsCollector } from './base';
 import { DURATION_BUCKETS_SECONDS, SIZE_BUCKETS_BYTES } from './constant';
 
 /**
- * Tracks execution data read/write counts, durations, and unreadable bundle counts.
+ * Tracks execution data read/write counts, durations, written bytes, and unreadable bundle counts.
  * Also exposes the active storage mode (db or fs) as a static gauge.
  */
 @Service()
@@ -72,6 +71,17 @@ export class PrometheusExecutionDataMetricsService implements PrometheusMetricsC
 			buckets: SIZE_BUCKETS_BYTES,
 		});
 
+		const writeBytesLabelNames = ['mode'];
+		if (this.config.includeWorkflowIdLabel) {
+			writeBytesLabelNames.push('workflow_id');
+		}
+
+		const writeBytesTotal = new promClient.Counter({
+			name: `${this.config.prefix}execution_data_write_bytes_total`,
+			help: 'Total execution data bytes written, by storage mode.',
+			labelNames: writeBytesLabelNames,
+		});
+
 		const storageModeGauge = new promClient.Gauge({
 			name: `${this.config.prefix}execution_data_storage_mode`,
 			help: 'Configured execution data storage mode (1 for the active mode, 0 otherwise).',
@@ -96,12 +106,21 @@ export class PrometheusExecutionDataMetricsService implements PrometheusMetricsC
 			},
 		);
 
-		this.eventService.on('execution-data-write', ({ mode, durationMs, success, jsonSizeBytes }) => {
-			writesTotal.inc({ mode, result: success ? 'success' : 'failure' }, 1);
-			if (success) {
-				writeDurationHistogram.observe({ mode }, durationMs / 1000);
-				writeSizeHistogram.observe({ mode }, jsonSizeBytes);
-			}
-		});
+		this.eventService.on(
+			'execution-data-write',
+			({ mode, workflowId, durationMs, success, jsonSizeBytes }) => {
+				writesTotal.inc({ mode, result: success ? 'success' : 'failure' }, 1);
+				if (success) {
+					writeDurationHistogram.observe({ mode }, durationMs / 1000);
+					writeSizeHistogram.observe({ mode }, jsonSizeBytes);
+
+					const labels: Record<string, string> = { mode };
+					if (this.config.includeWorkflowIdLabel) {
+						labels.workflow_id = workflowId;
+					}
+					writeBytesTotal.inc(labels, jsonSizeBytes);
+				}
+			},
+		);
 	}
 }

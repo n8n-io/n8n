@@ -1,5 +1,6 @@
 import { testDb } from '@n8n/backend-test-utils';
-import { CredentialsRepository, SharedCredentialsRepository } from '@n8n/db';
+import type { CredentialSharingRelation, ListQuery } from '@n8n/db';
+import { CredentialsRepository, SharedCredentials, SharedCredentialsRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
 
@@ -27,7 +28,6 @@ function expectCredentialsMatch(
 	const oldSorted = [...oldCredentials].sort((a, b) => a.id.localeCompare(b.id));
 	const newSorted = [...newCredentials].sort((a, b) => a.id.localeCompare(b.id));
 
-	// Jest's toEqual does deep recursive comparison of all fields
 	expect(newSorted).toEqual(oldSorted);
 }
 
@@ -60,9 +60,9 @@ describe('CredentialsRepository', () => {
 
 		it('should fetch credentials using subquery for standard user with roles', async () => {
 			// ARRANGE
-			const { createMember } = await import('../../shared/db/users');
+			const { createMember } = await import('../../shared/db/users.js');
 			const { createTeamProject, linkUserToProject } = await import('@n8n/backend-test-utils');
-			const { createCredentials } = await import('../../shared/db/credentials');
+			const { createCredentials } = await import('../../shared/db/credentials.js');
 
 			const member = await createMember();
 			const teamProject = await createTeamProject('test-project');
@@ -96,11 +96,54 @@ describe('CredentialsRepository', () => {
 			);
 		});
 
+		it('should load the requested sharing relations and no more', async () => {
+			// ARRANGE
+			const { createMember } = await import('../../shared/db/users.js');
+			const { createTeamProject, linkUserToProject } = await import('@n8n/backend-test-utils');
+			const { createCredentials } = await import('../../shared/db/credentials.js');
+
+			const member = await createMember();
+			const teamProject = await createTeamProject('relations-project');
+			await linkUserToProject(member, teamProject, 'project:editor');
+			const credential = await createCredentials({ name: 'Cred', type: 'googleApi', data: '' });
+			await shareCredentialsToProject([credential], teamProject.id, 'credential:user');
+
+			const sharingOptions = {
+				scopes: ['credential:read'] as Scope[],
+				projectRoles: ['project:editor'],
+				credentialRoles: ['credential:user'],
+			};
+			const list = async (relations?: CredentialSharingRelation[]) =>
+				(
+					await credentialsRepository.getManyAndCountWithSharingSubquery(member, sharingOptions, {
+						relations,
+					})
+				).credentials[0];
+
+			// ACT / ASSERT
+			const byDefault = await list();
+			expect(byDefault.shared[0].project.id).toBe(teamProject.id);
+			expect(byDefault.shared[0].project.projectRelations).toBeUndefined();
+
+			const withMembers = await list([
+				'shared',
+				'shared.project',
+				'shared.project.projectRelations',
+			]);
+			expect(withMembers.shared[0].project.projectRelations.map((r) => r.userId)).toEqual([
+				member.id,
+			]);
+
+			const sharingsOnly = await list(['shared']);
+			expect(sharingsOnly.shared[0].projectId).toBe(teamProject.id);
+			expect(sharingsOnly.shared[0].project).toBeUndefined();
+		});
+
 		it('should handle personal project filtering correctly', async () => {
 			// ARRANGE
-			const { createOwner } = await import('../../shared/db/users');
+			const { createOwner } = await import('../../shared/db/users.js');
 			const { getPersonalProject } = await import('@n8n/backend-test-utils');
-			const { createCredentials } = await import('../../shared/db/credentials');
+			const { createCredentials } = await import('../../shared/db/credentials.js');
 
 			const owner = await createOwner();
 			const personalProject = await getPersonalProject(owner);
@@ -126,9 +169,9 @@ describe('CredentialsRepository', () => {
 
 		it('should handle onlySharedWithMe filter correctly', async () => {
 			// ARRANGE
-			const { createMember } = await import('../../shared/db/users');
+			const { createMember } = await import('../../shared/db/users.js');
 			const { getPersonalProject } = await import('@n8n/backend-test-utils');
-			const { createCredentials } = await import('../../shared/db/credentials');
+			const { createCredentials } = await import('../../shared/db/credentials.js');
 
 			const member = await createMember();
 			const memberPersonalProject = await getPersonalProject(member);
@@ -159,9 +202,9 @@ describe('CredentialsRepository', () => {
 
 		it('should apply name filter correctly with subquery approach', async () => {
 			// ARRANGE
-			const { createOwner } = await import('../../shared/db/users');
+			const { createOwner } = await import('../../shared/db/users.js');
 			const { getPersonalProject } = await import('@n8n/backend-test-utils');
-			const { createCredentials } = await import('../../shared/db/credentials');
+			const { createCredentials } = await import('../../shared/db/credentials.js');
 
 			const owner = await createOwner();
 			const personalProject = await getPersonalProject(owner);
@@ -191,9 +234,9 @@ describe('CredentialsRepository', () => {
 
 		it('should apply type filter correctly with subquery approach', async () => {
 			// ARRANGE
-			const { createOwner } = await import('../../shared/db/users');
+			const { createOwner } = await import('../../shared/db/users.js');
 			const { getPersonalProject } = await import('@n8n/backend-test-utils');
-			const { createCredentials } = await import('../../shared/db/credentials');
+			const { createCredentials } = await import('../../shared/db/credentials.js');
 
 			const owner = await createOwner();
 			const personalProject = await getPersonalProject(owner);
@@ -223,9 +266,9 @@ describe('CredentialsRepository', () => {
 
 		it('should handle pagination correctly with subquery approach', async () => {
 			// ARRANGE
-			const { createOwner } = await import('../../shared/db/users');
+			const { createOwner } = await import('../../shared/db/users.js');
 			const { getPersonalProject } = await import('@n8n/backend-test-utils');
-			const { createCredentials } = await import('../../shared/db/credentials');
+			const { createCredentials } = await import('../../shared/db/credentials.js');
 
 			const owner = await createOwner();
 			const personalProject = await getPersonalProject(owner);
@@ -277,9 +320,9 @@ describe('CredentialsRepository', () => {
 
 		it('should correctly filter credentials by project when credentials belong to multiple projects', async () => {
 			// ARRANGE
-			const { createMember } = await import('../../shared/db/users');
+			const { createMember } = await import('../../shared/db/users.js');
 			const { createTeamProject, linkUserToProject } = await import('@n8n/backend-test-utils');
-			const { createCredentials } = await import('../../shared/db/credentials');
+			const { createCredentials } = await import('../../shared/db/credentials.js');
 
 			const member = await createMember();
 			const projectA = await createTeamProject('Project A');
@@ -347,9 +390,9 @@ describe('CredentialsRepository', () => {
 
 		it('should correctly isolate credentials by user - each user sees only their credentials', async () => {
 			// ARRANGE
-			const { createMember } = await import('../../shared/db/users');
+			const { createMember } = await import('../../shared/db/users.js');
 			const { createTeamProject, linkUserToProject } = await import('@n8n/backend-test-utils');
-			const { createCredentials } = await import('../../shared/db/credentials');
+			const { createCredentials } = await import('../../shared/db/credentials.js');
 
 			const userA = await createMember();
 			const userB = await createMember();
@@ -423,11 +466,11 @@ describe('CredentialsRepository', () => {
 
 		it('should return identical results for standard user with both approaches', async () => {
 			// ARRANGE
-			const { createMember } = await import('../../shared/db/users');
+			const { createMember } = await import('../../shared/db/users.js');
 			const { createTeamProject, linkUserToProject } = await import('@n8n/backend-test-utils');
-			const { createCredentials } = await import('../../shared/db/credentials');
-			const { CredentialsFinderService } = await import('@/credentials/credentials-finder.service');
-			const { RoleService } = await import('@/services/role.service');
+			const { createCredentials } = await import('../../shared/db/credentials.js');
+			const { CredentialsFinderService } = await import('@n8n/backend-services');
+			const { RoleService } = await import('@n8n/backend-services');
 
 			const member = await createMember();
 			const teamProject = await createTeamProject('test-project');
@@ -470,10 +513,10 @@ describe('CredentialsRepository', () => {
 
 		it('should return identical results for personal project with both approaches', async () => {
 			// ARRANGE
-			const { createOwner } = await import('../../shared/db/users');
+			const { createOwner } = await import('../../shared/db/users.js');
 			const { getPersonalProject } = await import('@n8n/backend-test-utils');
-			const { createCredentials } = await import('../../shared/db/credentials');
-			const { CredentialsFinderService } = await import('@/credentials/credentials-finder.service');
+			const { createCredentials } = await import('../../shared/db/credentials.js');
+			const { CredentialsFinderService } = await import('@n8n/backend-services');
 
 			const owner = await createOwner();
 			const personalProject = await getPersonalProject(owner);
@@ -513,11 +556,11 @@ describe('CredentialsRepository', () => {
 
 		it('should return identical results with filters and pagination', async () => {
 			// ARRANGE
-			const { createMember } = await import('../../shared/db/users');
+			const { createMember } = await import('../../shared/db/users.js');
 			const { createTeamProject, linkUserToProject } = await import('@n8n/backend-test-utils');
-			const { createCredentials } = await import('../../shared/db/credentials');
-			const { CredentialsFinderService } = await import('@/credentials/credentials-finder.service');
-			const { RoleService } = await import('@/services/role.service');
+			const { createCredentials } = await import('../../shared/db/credentials.js');
+			const { CredentialsFinderService } = await import('@n8n/backend-services');
+			const { RoleService } = await import('@n8n/backend-services');
 
 			const member = await createMember();
 			const teamProject = await createTeamProject('test-project');
@@ -539,16 +582,20 @@ describe('CredentialsRepository', () => {
 			const projectRoles = await roleService.rolesWithScope('project', scopes);
 			const credentialRoles = await roleService.rolesWithScope('credential', scopes);
 
-			const oldOptions = {
+			// Both approaches need an explicit order: without one, Postgres is free to
+			// return the rows in any order, and the two queries use different plans.
+			const oldOptions: ListQuery.Options = {
 				filter: { projectId: teamProject.id, name: 'Test' },
 				take: 2,
 				skip: 0,
+				sortBy: 'id:asc',
 			};
 
-			const newOptions = {
+			const newOptions: ListQuery.Options = {
 				filter: { name: 'Test' },
 				take: 2,
 				skip: 0,
+				sortBy: 'id:asc',
 			};
 
 			// ACT - Old Approach
@@ -569,7 +616,7 @@ describe('CredentialsRepository', () => {
 			expect(newResult.count).toBe(oldResult[1]);
 			expect(newResult.credentials).toHaveLength(oldResult[0].length);
 
-			// Check same credentials in same order (sorting should be consistent)
+			// Check same credentials in same order
 			const oldIds = oldResult[0].map((c) => c.id);
 			const newIds = newResult.credentials.map((c) => c.id);
 			expect(newIds).toEqual(oldIds);
@@ -577,11 +624,11 @@ describe('CredentialsRepository', () => {
 
 		it('should correctly filter credentials by project - old vs new comparison', async () => {
 			// ARRANGE
-			const { createMember } = await import('../../shared/db/users');
+			const { createMember } = await import('../../shared/db/users.js');
 			const { createTeamProject, linkUserToProject } = await import('@n8n/backend-test-utils');
-			const { createCredentials } = await import('../../shared/db/credentials');
-			const { CredentialsFinderService } = await import('@/credentials/credentials-finder.service');
-			const { RoleService } = await import('@/services/role.service');
+			const { createCredentials } = await import('../../shared/db/credentials.js');
+			const { CredentialsFinderService } = await import('@n8n/backend-services');
+			const { RoleService } = await import('@n8n/backend-services');
 
 			const member = await createMember();
 
@@ -662,11 +709,11 @@ describe('CredentialsRepository', () => {
 
 		it('should correctly isolate credentials by user - old vs new comparison', async () => {
 			// ARRANGE
-			const { createMember } = await import('../../shared/db/users');
+			const { createMember } = await import('../../shared/db/users.js');
 			const { createTeamProject, linkUserToProject } = await import('@n8n/backend-test-utils');
-			const { createCredentials } = await import('../../shared/db/credentials');
-			const { CredentialsFinderService } = await import('@/credentials/credentials-finder.service');
-			const { RoleService } = await import('@/services/role.service');
+			const { createCredentials } = await import('../../shared/db/credentials.js');
+			const { CredentialsFinderService } = await import('@n8n/backend-services');
+			const { RoleService } = await import('@n8n/backend-services');
 
 			// Create two separate users
 			const userA = await createMember();
@@ -753,6 +800,76 @@ describe('CredentialsRepository', () => {
 				userAResultIds.includes(id),
 			);
 			expect(reverseContamination).toHaveLength(0);
+		});
+	});
+
+	describe('transaction context', () => {
+		it('uses the active transaction for credential access reads', async () => {
+			const { createMember } = await import('../../shared/db/users.js');
+			const { createTeamProject, linkUserToProject } = await import('@n8n/backend-test-utils');
+			const { createCredentials } = await import('../../shared/db/credentials.js');
+			const { CredentialsFinderService } = await import('@n8n/backend-services');
+			const { RoleCacheService } = await import('@n8n/backend-services');
+
+			const member = await createMember();
+			const project = await createTeamProject('transaction-project');
+			await linkUserToProject(member, project, 'project:editor');
+			const credential = await createCredentials({
+				name: 'Credential',
+				type: 'httpBasicAuth',
+				data: '',
+			});
+			await shareCredentialsToProject([credential], project.id, 'credential:user');
+
+			const credentialsRepository = Container.get(CredentialsRepository);
+			const finder = Container.get(CredentialsFinderService);
+			await Container.get(RoleCacheService).invalidateCache();
+			await credentialsRepository.runInTransaction({}, async (manager, ctx) => {
+				await manager.delete(SharedCredentials, {
+					credentialsId: credential.id,
+					projectId: project.id,
+				});
+
+				await expect(
+					finder.getCredentialIdsByUserAndRole([member.id], { scopes: ['credential:read'] }, ctx),
+				).resolves.toEqual([]);
+			});
+		});
+	});
+
+	describe('hasResolvableCredential', () => {
+		let credentialsRepository: CredentialsRepository;
+
+		beforeEach(() => {
+			credentialsRepository = Container.get(CredentialsRepository);
+		});
+
+		it('returns true when any given credential is resolvable', async () => {
+			const { createCredentials } = await import('../../shared/db/credentials.js');
+			const staticCred = await createCredentials({ name: 'Static', type: 'googleApi', data: '' });
+			const privateCred = await createCredentials({
+				name: 'Private',
+				type: 'googleApi',
+				data: '',
+				isResolvable: true,
+			});
+
+			await expect(
+				credentialsRepository.hasResolvableCredential([staticCred.id, privateCred.id]),
+			).resolves.toBe(true);
+		});
+
+		it('returns false when no given credential is resolvable', async () => {
+			const { createCredentials } = await import('../../shared/db/credentials.js');
+			const staticCred = await createCredentials({ name: 'Static', type: 'googleApi', data: '' });
+
+			await expect(credentialsRepository.hasResolvableCredential([staticCred.id])).resolves.toBe(
+				false,
+			);
+		});
+
+		it('returns false for an empty id list without querying', async () => {
+			await expect(credentialsRepository.hasResolvableCredential([])).resolves.toBe(false);
 		});
 	});
 });

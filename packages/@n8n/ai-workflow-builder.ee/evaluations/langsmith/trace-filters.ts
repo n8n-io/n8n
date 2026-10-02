@@ -1,4 +1,4 @@
-import { isRecord } from '@n8n/utils';
+import { isRecord } from '@n8n/utils/is-record';
 import type { KVMap } from 'langsmith/schemas';
 
 import { isSimpleWorkflow } from './types';

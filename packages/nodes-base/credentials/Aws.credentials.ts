@@ -96,7 +96,7 @@ export class Aws implements ICredentialType {
 				: undefined,
 		};
 
-		return signOptions(requestOptions, signOpts, securityHeaders, url, method);
+		return await signOptions(requestOptions, signOpts, securityHeaders, url, method);
 	}
 
 	test = awsCredentialsTest;

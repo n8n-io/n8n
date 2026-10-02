@@ -39,7 +39,7 @@ const emit = defineEmits<{
 </script>
 
 <template>
-	<N8nTooltip :disabled="!tooltip" :show-after="TOOLTIP_DELAY_MS">
+	<N8nTooltip as-child :disabled="!tooltip" :show-after="TOOLTIP_DELAY_MS">
 		<template #content>{{ tooltip || label }}</template>
 		<N8nIconButton
 			variant="ghost"
@@ -50,7 +50,7 @@ const emit = defineEmits<{
 			:data-test-id="testId"
 			:class="danger ? $style.dangerAction : undefined"
 			v-bind="$attrs"
-			@click.stop="emit('click', $event)"
+			@click="emit('click', $event)"
 		/>
 	</N8nTooltip>
 </template>

@@ -1,5 +1,6 @@
-import { scrubSecretsInText } from '@n8n/utils';
-import type { OnStepFinishEvent, OnStepStartEvent } from 'ai';
+import { isRecord } from '@n8n/utils/is-record';
+import { scrubSecretsInText } from '@n8n/utils/scrub-secrets';
+import type { GenerateTextStepEndEvent, GenerateTextStepStartEvent } from 'ai';
 
 import type { Logger } from '../logger';
 import { sanitizeDebugSnapshotRecord, sanitizeDebugSnapshotValue } from './sanitize-debug-snapshot';
@@ -53,16 +54,65 @@ export interface RunDebugStepHookOptions {
 	threadId: string;
 }
 
-function captureStepStartPayload(event: OnStepStartEvent): Record<string, unknown> {
-	const { abortSignal: _abortSignal, ...capturable } = event;
-	return sanitizeDebugSnapshotRecord(capturable);
+/**
+ * Step-start keys that repeat data captured elsewhere:
+ * - `tools` holds live Zod schemas; `stepTools` has the JSON Schema the model received.
+ * - `promptMessages` repeats `instructions` and `messages`.
+ * - `steps` repeats earlier steps, which the buffer records on their own.
+ */
+const DUPLICATE_STEP_START_KEYS = new Set(['tools', 'promptMessages', 'steps']);
+
+function isEmptyContainer(value: unknown): boolean {
+	if (Array.isArray(value)) return value.length === 0;
+	return isRecord(value) && Object.keys(value).length === 0;
 }
 
-function captureStepFinishPayload(event: OnStepFinishEvent): Record<string, unknown> {
+function captureStepStartPayload(event: GenerateTextStepStartEvent): Record<string, unknown> {
+	const hasStepTools = 'stepTools' in event && Array.isArray(event.stepTools);
+	const payload: Record<string, unknown> = {};
+	for (const [key, value] of Object.entries(event)) {
+		if (key === 'tools' && !hasStepTools) {
+			payload.tools = summarizeToolSet(value);
+			continue;
+		}
+		if (DUPLICATE_STEP_START_KEYS.has(key) || isEmptyContainer(value)) continue;
+		payload[key] = value;
+	}
+	return sanitizeDebugSnapshotRecord(payload);
+}
+
+/**
+ * Keeps tool descriptions and plain JSON schemas when the SDK does not report
+ * `stepTools`. Zod schemas are dropped: serialized, they are only method stubs.
+ */
+function summarizeToolSet(tools: unknown): unknown {
+	if (!isRecord(tools)) return undefined;
+	const summary: Record<string, { description?: string; inputSchema?: unknown }> = {};
+	for (const [name, tool] of Object.entries(tools)) {
+		if (!isRecord(tool)) continue;
+		summary[name] = {
+			...(typeof tool.description === 'string' ? { description: tool.description } : {}),
+			...(tool.inputSchema !== undefined && !isZodSchema(tool.inputSchema)
+				? { inputSchema: tool.inputSchema }
+				: {}),
+		};
+	}
+	return summary;
+}
+
+/** Matches Zod 3 (`_def`) and Zod 4 (`_zod`) schemas without depending on one Zod copy. */
+function isZodSchema(value: unknown): boolean {
+	return isRecord(value) && ('_def' in value || '_zod' in value);
+}
+
+function captureStepFinishPayload(event: GenerateTextStepEndEvent): Record<string, unknown> {
 	return sanitizeDebugSnapshotRecord(event);
 }
 
-export function sanitizeStepStart(event: OnStepStartEvent, stepNumber: number): SanitizedStepStart {
+export function sanitizeStepStart(
+	event: GenerateTextStepStartEvent,
+	stepNumber: number,
+): SanitizedStepStart {
 	return {
 		...captureStepStartPayload(event),
 		stepNumber,
@@ -71,7 +121,7 @@ export function sanitizeStepStart(event: OnStepStartEvent, stepNumber: number): 
 }
 
 export function sanitizeStepFinish(
-	event: OnStepFinishEvent,
+	event: GenerateTextStepEndEvent,
 	stepNumber: number,
 ): SanitizedStepFinish {
 	return {
@@ -85,21 +135,26 @@ export function createRunDebugStepHooks(
 	buffer: RunDebugBuffer,
 	options: RunDebugStepHookOptions,
 ): {
-	onStepStart: (event: OnStepStartEvent) => void;
-	onStepFinish: (event: OnStepFinishEvent) => void;
+	onStepStart: (event: GenerateTextStepStartEvent) => void;
+	onStepEnd: (event: GenerateTextStepEndEvent) => void;
+	/** @deprecated Use `onStepEnd` instead. */
+	onStepFinish: (event: GenerateTextStepEndEvent) => void;
 } {
 	// The agent runtime calls streamText/generateText once per loop iteration. The AI SDK
 	// resets stepNumber to 0 on each call, so we allocate a run-scoped sequence instead.
 	let stepIndex = buffer.getNextStepIndex(options.runId);
 
+	const onStepEnd = (event: GenerateTextStepEndEvent) => {
+		buffer.recordStepFinish(options.runId, stepIndex, event);
+		stepIndex++;
+	};
+
 	return {
 		onStepStart: (event) => {
 			buffer.recordStepStart(options.runId, stepIndex, event);
 		},
-		onStepFinish: (event) => {
-			buffer.recordStepFinish(options.runId, stepIndex, event);
-			stepIndex++;
-		},
+		onStepEnd,
+		onStepFinish: onStepEnd,
 	};
 }
 
@@ -153,7 +208,7 @@ export class RunDebugBuffer {
 		return this.records.get(runId)?.nextStepIndex ?? 0;
 	}
 
-	recordStepStart(runId: string, stepIndex: number, event: OnStepStartEvent): void {
+	recordStepStart(runId: string, stepIndex: number, event: GenerateTextStepStartEvent): void {
 		const record = this.records.get(runId);
 		if (!record) return;
 
@@ -171,7 +226,7 @@ export class RunDebugBuffer {
 		record.steps.sort((a, b) => a.stepNumber - b.stepNumber);
 	}
 
-	recordStepFinish(runId: string, stepIndex: number, event: OnStepFinishEvent): void {
+	recordStepFinish(runId: string, stepIndex: number, event: GenerateTextStepEndEvent): void {
 		const record = this.records.get(runId);
 		if (!record) return;
 

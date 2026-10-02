@@ -1,7 +1,13 @@
-import { AzureOpenAIEmbeddings } from '@langchain/openai';
-import { getProxyAgent, logWrapper, getConnectionHintNoticeField } from '@n8n/ai-utilities';
+import { AzureOpenAIEmbeddings, OpenAIEmbeddings } from '@langchain/openai';
+import {
+	getProxyAgent,
+	aiClientFetch,
+	logWrapper,
+	getConnectionHintNoticeField,
+} from '@n8n/ai-utilities';
 import {
 	NodeConnectionTypes,
+	NodeOperationError,
 	type INodeType,
 	type INodeTypeDescription,
 	type ISupplyDataFunctions,
@@ -123,9 +129,11 @@ export class EmbeddingsAzureOpenAi implements INodeType {
 		this.logger.debug('Supply data for embeddings');
 		const credentials = await this.getCredentials<{
 			apiKey: string;
-			resourceName: string;
-			apiVersion: string;
+			resourceName?: string;
+			apiVersion?: string;
 			endpoint?: string;
+			endpointType?: 'classic' | 'foundry';
+			foundryEndpoint?: string;
 		}>('azureOpenAiApi');
 		const modelName = this.getNodeParameter('model', itemIndex) as string;
 
@@ -140,6 +148,32 @@ export class EmbeddingsAzureOpenAi implements INodeType {
 			options.timeout = undefined;
 		}
 
+		if (credentials.endpointType === 'foundry') {
+			const foundryURL = credentials.foundryEndpoint?.trim();
+			if (!foundryURL) {
+				throw new NodeOperationError(
+					this.getNode(),
+					'Foundry endpoint is missing in the selected Azure OpenAI API credential.',
+				);
+			}
+			const embeddings = new OpenAIEmbeddings({
+				apiKey: credentials.apiKey,
+				model: modelName,
+				configuration: {
+					baseURL: foundryURL,
+					fetch: aiClientFetch,
+					fetchOptions: {
+						dispatcher: getProxyAgent(foundryURL, {}, this.helpers.getSecureEgressFilter()),
+					},
+				},
+				...options,
+			});
+
+			return {
+				response: logWrapper(embeddings, this),
+			};
+		}
+
 		const embeddings = new AzureOpenAIEmbeddings({
 			azureOpenAIApiDeploymentName: modelName,
 			// instance name only needed to set base url
@@ -152,10 +186,12 @@ export class EmbeddingsAzureOpenAi implements INodeType {
 				? `${credentials.endpoint}/openai/deployments`
 				: undefined,
 			configuration: {
+				fetch: aiClientFetch,
 				fetchOptions: {
 					dispatcher: getProxyAgent(
 						credentials.endpoint ?? `https://${credentials.resourceName}.openai.azure.com`,
 						{},
+						this.helpers.getSecureEgressFilter(),
 					),
 				},
 			},

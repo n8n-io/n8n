@@ -11,7 +11,7 @@ import ConsumedTokensDetails from '@/app/components/ConsumedTokensDetails.vue';
 import ViewSubExecution from '@/features/execution/executions/components/ViewSubExecution.vue';
 import { formatTokenUsageCount } from '@/app/utils/aiUtils';
 import { getReferencedData } from '@/features/ndv/runData/components/ai/utils';
-import { type LogEntry } from '@/features/execution/logs/logs.types';
+import { type NodeLogEntry } from '@/features/execution/logs/logs.types';
 
 import { N8nInfoTip, N8nTooltip } from '@n8n/design-system';
 interface RunMeta {
@@ -26,7 +26,7 @@ interface RunMeta {
 	};
 }
 const props = defineProps<{
-	inputData: LogEntry;
+	inputData: NodeLogEntry;
 }>();
 
 const data = computed(() =>

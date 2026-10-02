@@ -1,8 +1,19 @@
 import type { AuthenticatedRequest } from '@n8n/db';
 import type { Request } from 'express';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
-import { getClientInfo, getToolName, getToolArguments } from '../mcp.utils';
+import { MANUAL_TRIGGER_NODE_TYPE, WEBHOOK_NODE_TYPE, type INode } from 'n8n-workflow';
+
+import { MCP_CLIENT_INFO_META_KEY, MCP_PROTOCOL_VERSION_META_KEY } from '../mcp.constants';
+import {
+	findEnabledEligibleTrigger,
+	findEnabledEligibleTriggers,
+	getClientInfo,
+	getProtocolVersion,
+	getToolName,
+	getToolArguments,
+	isMcpSupportedTriggerType,
+} from '../mcp.utils';
 
 describe('mcp.utils', () => {
 	describe('getClientInfo', () => {
@@ -121,6 +132,103 @@ describe('mcp.utils', () => {
 				name: 'authenticated-client',
 				version: '2.0.0',
 			});
+		});
+
+		it('should read clientInfo from the 2026-07-28 _meta envelope', () => {
+			const req = {
+				body: {
+					jsonrpc: '2.0',
+					method: 'server/discover',
+					params: {
+						_meta: {
+							[MCP_CLIENT_INFO_META_KEY]: { name: 'Claude', version: '3.0.0' },
+						},
+					},
+					id: 1,
+				},
+			} as Request;
+
+			expect(getClientInfo(req)).toEqual({ name: 'Claude', version: '3.0.0' });
+		});
+
+		it('should prefer the _meta envelope over the legacy params.clientInfo', () => {
+			const req = {
+				body: {
+					jsonrpc: '2.0',
+					method: 'tools/call',
+					params: {
+						clientInfo: { name: 'legacy', version: '1.0.0' },
+						_meta: {
+							[MCP_CLIENT_INFO_META_KEY]: { name: 'modern', version: '2.0.0' },
+						},
+					},
+					id: 1,
+				},
+			} as Request;
+
+			expect(getClientInfo(req)).toEqual({ name: 'modern', version: '2.0.0' });
+		});
+
+		it('should handle a partial _meta clientInfo (name only)', () => {
+			const req = {
+				body: {
+					jsonrpc: '2.0',
+					method: 'server/discover',
+					params: {
+						_meta: { [MCP_CLIENT_INFO_META_KEY]: { name: 'Claude' } },
+					},
+					id: 1,
+				},
+			} as Request;
+
+			expect(getClientInfo(req)).toEqual({ name: 'Claude', version: undefined });
+		});
+	});
+
+	describe('getProtocolVersion', () => {
+		it('should read the protocol version from the _meta envelope', () => {
+			const req = {
+				body: {
+					jsonrpc: '2.0',
+					method: 'server/discover',
+					params: {
+						_meta: { [MCP_PROTOCOL_VERSION_META_KEY]: '2026-07-28' },
+					},
+					id: 1,
+				},
+			} as Request;
+
+			expect(getProtocolVersion(req)).toBe('2026-07-28');
+		});
+
+		it('should return undefined when the _meta envelope is absent (legacy client)', () => {
+			const req = {
+				body: {
+					jsonrpc: '2.0',
+					method: 'initialize',
+					params: { clientInfo: { name: 'legacy', version: '1.0.0' } },
+					id: 1,
+				},
+			} as Request;
+
+			expect(getProtocolVersion(req)).toBeUndefined();
+		});
+
+		it('should return undefined when the version is not a string', () => {
+			const req = {
+				body: {
+					jsonrpc: '2.0',
+					method: 'server/discover',
+					params: { _meta: { [MCP_PROTOCOL_VERSION_META_KEY]: 20260728 } },
+					id: 1,
+				},
+			} as Request;
+
+			expect(getProtocolVersion(req)).toBeUndefined();
+		});
+
+		it('should return undefined when body is not a valid JSON-RPC request', () => {
+			expect(getProtocolVersion({ body: 'invalid' } as Request)).toBeUndefined();
 		});
 	});
 
@@ -349,6 +457,72 @@ describe('mcp.utils', () => {
 				array: [1, 2, 3],
 				boolean: false,
 			});
+		});
+	});
+
+	describe('findEnabledEligibleTriggers', () => {
+		const webhook = {
+			id: '1',
+			name: 'Webhook',
+			type: WEBHOOK_NODE_TYPE,
+			typeVersion: 1,
+			position: [0, 0],
+			parameters: {},
+		} as INode;
+		const disabledWebhook = { ...webhook, id: '2', name: 'Disabled', disabled: true };
+		const manual = {
+			id: '3',
+			name: 'Manual',
+			type: MANUAL_TRIGGER_NODE_TYPE,
+			typeVersion: 1,
+			position: [100, 0],
+			parameters: {},
+		} as INode;
+
+		it('returns enabled nodes that pass the eligibility check', () => {
+			const result = findEnabledEligibleTriggers(
+				[webhook, disabledWebhook, manual],
+				(node) => node.type === WEBHOOK_NODE_TYPE,
+			);
+			expect(result.map((node) => node.name)).toEqual(['Webhook']);
+		});
+
+		it('resolves a named eligible trigger', () => {
+			const result = findEnabledEligibleTrigger(
+				[webhook, manual],
+				(node) => node.type === WEBHOOK_NODE_TYPE || node.type === MANUAL_TRIGGER_NODE_TYPE,
+				'Manual',
+			);
+			expect(result?.name).toBe('Manual');
+		});
+
+		it('falls back to the first eligible trigger when no name is given', () => {
+			const result = findEnabledEligibleTrigger(
+				[webhook, manual],
+				(node) => node.type === WEBHOOK_NODE_TYPE || node.type === MANUAL_TRIGGER_NODE_TYPE,
+			);
+			expect(result?.name).toBe('Webhook');
+		});
+
+		it('returns undefined when the named node is not eligible', () => {
+			const result = findEnabledEligibleTrigger(
+				[webhook, manual],
+				(node) => node.type === WEBHOOK_NODE_TYPE,
+				'Manual',
+			);
+			expect(result).toBeUndefined();
+		});
+	});
+
+	describe('isMcpSupportedTriggerType', () => {
+		it('includes manual triggers only in manual mode', () => {
+			expect(isMcpSupportedTriggerType(MANUAL_TRIGGER_NODE_TYPE, 'manual')).toBe(true);
+			expect(isMcpSupportedTriggerType(MANUAL_TRIGGER_NODE_TYPE, 'production')).toBe(false);
+		});
+
+		it('includes webhook triggers in both modes', () => {
+			expect(isMcpSupportedTriggerType(WEBHOOK_NODE_TYPE, 'manual')).toBe(true);
+			expect(isMcpSupportedTriggerType(WEBHOOK_NODE_TYPE, 'production')).toBe(true);
 		});
 	});
 });

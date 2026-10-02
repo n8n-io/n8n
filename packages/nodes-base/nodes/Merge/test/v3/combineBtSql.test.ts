@@ -58,6 +58,21 @@ describe('combineBySql sandbox (isolated-vm)', () => {
 			resetSandboxCache();
 		});
 
+		it('should bind values passed separately', async () => {
+			const result = await runAlaSqlInSandbox(
+				[
+					[
+						{ id: 1, name: 'Sam' },
+						{ id: 2, name: 'Dan' },
+					],
+				],
+				'SELECT name FROM input1 WHERE name = ?',
+				["Sam' OR name = 'Dan"],
+			);
+
+			expect(result).toEqual([]);
+		});
+
 		// ── Host API access ────────────────────────────────────────────────────
 
 		it('should not expose require inside the sandbox', async () => {

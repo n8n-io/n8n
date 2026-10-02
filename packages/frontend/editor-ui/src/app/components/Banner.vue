@@ -7,7 +7,7 @@ import { computed, ref, useCssModule } from 'vue';
 import { ElTag } from 'element-plus';
 import { N8nButton, N8nIcon, N8nLink } from '@n8n/design-system';
 
-type Theme = 'success' | 'danger' | 'warning';
+type Theme = 'success' | 'danger' | 'warning' | 'info';
 
 interface Props {
 	theme: Theme;
@@ -44,39 +44,61 @@ const onClick = () => {
 
 const $style = useCssModule();
 
+// A theme's leading icon, or `undefined` when it renders without one (info).
+const icon = computed(() => {
+	const icons: Record<Theme, 'circle-check' | 'triangle-alert' | undefined> = {
+		success: 'circle-check',
+		warning: 'triangle-alert',
+		danger: 'triangle-alert',
+		info: undefined,
+	};
+	return icons[props.theme];
+});
+
 const iconClass = computed<Record<Theme, string>>(() => ({
 	success: $style.icon,
 	warning: $style.warningIcon,
 	danger: $style.dangerIcon,
+	info: $style.icon, // unused (info has no icon), satisfies the type
 }));
 
 const messageClass = computed<Record<Theme, string>>(() => ({
 	success: $style.message,
 	warning: $style.warningMessage,
 	danger: $style.dangerMessage,
+	info: $style.infoMessage,
 }));
 </script>
 
 <template>
-	<ElTag :type="theme" :disable-transitions="true" :class="$style.container">
-		<N8nIcon
-			:icon="theme === 'success' ? 'circle-check' : 'triangle-alert'"
-			:class="iconClass[props.theme]"
-		/>
+	<ElTag
+		:type="theme"
+		:disable-transitions="true"
+		:class="[$style.container, theme === 'info' && $style.containerInfo]"
+	>
 		<div :class="$style.banner">
 			<div :class="$style.content">
 				<div>
-					<span :class="messageClass[props.theme]"> {{ message }}&nbsp; </span>
-					<N8nLink v-if="details && !expanded" :bold="true" size="small" @click="expand">
-						<span :class="$style.moreDetails">More details</span>
-					</N8nLink>
+					<div :class="$style.messageRow">
+						<N8nIcon v-if="icon" :icon="icon" :class="iconClass[props.theme]" />
+						<span :class="messageClass[props.theme]"> {{ message }}&nbsp; </span>
+						<N8nLink v-if="details && !expanded" :bold="true" size="small" @click="expand">
+							<span :class="$style.moreDetails">More details</span>
+						</N8nLink>
+					</div>
+					<div v-if="$slots.subtitle" :class="[$style.subtitle, icon && $style.subtitleWithIcon]">
+						<slot name="subtitle" />
+					</div>
 				</div>
 			</div>
 
-			<slot v-if="$slots.button" name="button" />
+			<div v-if="$slots.button" :class="$style.actions">
+				<slot name="button" />
+			</div>
 			<N8nButton
-				variant="outline"
 				v-else-if="buttonLabel"
+				variant="outline"
+				:class="$style.actions"
 				:label="buttonLoading && buttonLoadingLabel ? buttonLoadingLabel : buttonLabel"
 				:title="buttonTitle"
 				:loading="buttonLoading"
@@ -93,11 +115,7 @@ const messageClass = computed<Record<Theme, string>>(() => ({
 
 <style module lang="scss">
 .icon {
-	position: absolute;
-	left: 14px;
-	top: 0;
-	bottom: 0;
-	margin: auto 0;
+	flex-shrink: 0;
 }
 
 .dangerIcon {
@@ -113,8 +131,19 @@ const messageClass = computed<Record<Theme, string>>(() => ({
 .container {
 	width: 100%;
 	position: relative;
-	padding-left: 40px;
 	border: none;
+}
+
+// `info` gets a neutral fill instead of the themed one.
+.containerInfo {
+	// Match Element Plus's specificity to override the tag's fill + border.
+	// Alpha overlays read against the modal in both themes; the border steps one
+	// notch past the fill (darker in light mode, lighter in dark).
+	&:global(.el-tag--info.el-tag--light) {
+		background-color: light-dark(var(--color--black-alpha-50), var(--color--white-alpha-100));
+		border: var(--border-width) solid
+			light-dark(var(--color--black-alpha-100), var(--color--white-alpha-300));
+	}
 }
 
 .message {
@@ -134,16 +163,35 @@ const messageClass = computed<Record<Theme, string>>(() => ({
 	color: var(--callout--color--text--warning);
 }
 
+.infoMessage {
+	composes: message;
+	color: var(--color--text);
+}
+
 .banner {
 	display: flex;
 	align-items: center;
+	gap: var(--spacing--xs);
+	// ElTag is inline-flex; claim full width so the text shrinks, not the button.
+	width: 100%;
 }
 
 .content {
 	flex-grow: 1;
+	// Let the text side shrink/wrap instead of clipping the fixed-width button.
+	min-width: 0;
 	min-height: 26px;
 	display: flex;
 	align-items: center;
+
+	// Inner text wrapper is a flex item too; let it shrink so text wraps.
+	> div {
+		min-width: 0;
+	}
+}
+
+.actions {
+	flex-shrink: 0;
 }
 
 .details {
@@ -155,5 +203,24 @@ const messageClass = computed<Record<Theme, string>>(() => ({
 
 .moreDetails {
 	font-size: var(--font-size--xs);
+}
+
+.messageRow {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--xs);
+}
+
+.subtitle {
+	margin-top: var(--spacing--4xs);
+	line-height: var(--line-height--md);
+	// ElTag defaults to nowrap; let the subtitle wrap instead of overflowing.
+	white-space: normal;
+}
+
+// Align with the message text rather than the icon above it.
+// `1em` mirrors the icon's default size, `--spacing--xs` mirrors .messageRow's gap.
+.subtitleWithIcon {
+	margin-left: calc(1em + var(--spacing--xs));
 }
 </style>

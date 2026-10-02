@@ -78,6 +78,7 @@ const classes = computed(() => ({
 	display: flex;
 	flex-direction: column;
 	justify-content: space-between;
+	gap: var(--n8n--card-body--gap, 0);
 }
 
 .icon {

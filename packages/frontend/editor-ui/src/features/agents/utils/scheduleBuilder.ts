@@ -1,4 +1,5 @@
 import { CronTime } from 'cron';
+import cronstrue from 'cronstrue';
 
 /**
  * Structured task schedule <-> cron conversion. Lets the Tasks UI offer a
@@ -108,6 +109,18 @@ export function getNextScheduleOccurrence(cronExpression: string, timezone: stri
 	}
 }
 
+/** Human-readable description of a cron expression, or null when it cannot be described. */
+export function describeSchedule(cronExpression: string): string | null {
+	try {
+		return cronstrue.toString(cronExpression, {
+			throwExceptionOnParseError: true,
+			use24HourTimeFormat: true,
+		});
+	} catch {
+		return null;
+	}
+}
+
 // ── Display formatting ──────────────────────────────────────────────────────
 // Pure, locale-aware helpers (locale `undefined`, timezone passed in) for the
 // task schedule controls.
@@ -129,7 +142,11 @@ export function formatTimeOfDay(hour: number, minute: number): string {
 	);
 }
 
-/** Localized run timestamp (weekday + date + time) in the given timezone. */
+/**
+ * Localized run timestamp (weekday + date + time) in the given timezone. Names
+ * the zone so the preview stays unambiguous when the schedule's timezone isn't
+ * the one the reader's own clock is in.
+ */
 export function formatScheduleDateTime(date: Date, timezone: string): string {
 	return new Intl.DateTimeFormat(undefined, {
 		timeZone: timezone,
@@ -138,5 +155,6 @@ export function formatScheduleDateTime(date: Date, timezone: string): string {
 		month: 'short',
 		hour: 'numeric',
 		minute: '2-digit',
+		timeZoneName: 'short',
 	}).format(date);
 }

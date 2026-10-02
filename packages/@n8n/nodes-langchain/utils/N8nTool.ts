@@ -105,10 +105,12 @@ export class N8nTool extends DynamicStructuredTool<ZodObjectAny> {
 			}
 		};
 
-		return new DynamicTool({
+		const dynamicTool = new DynamicTool({
 			name,
 			description: prepareFallbackToolDescription(description, schema),
 			func: wrappedFunc,
 		});
+		dynamicTool.metadata = this.metadata;
+		return dynamicTool;
 	}
 }

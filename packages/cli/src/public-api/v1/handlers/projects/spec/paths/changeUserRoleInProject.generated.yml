@@ -1,0 +1,49 @@
+operationId: changeUserRoleInProject
+tags:
+  - Projects
+summary: Change a user's role in a project
+description: Change a user's role in a project.
+x-required-scope: project:manageMembers
+x-eov-operation-id: unreachable
+x-eov-operation-handler: v1/handlers/decorator-routed.handler
+x-decorator-routed: true
+parameters:
+  - schema:
+      type: string
+    required: true
+    description: The ID of the project.
+    name: projectId
+    in: path
+  - schema:
+      type: string
+    required: true
+    description: The ID of the user.
+    name: userId
+    in: path
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        properties:
+          role:
+            type: string
+            minLength: 1
+            description: The role assigned to the user in the project.
+            example: project:viewer
+        required:
+          - role
+responses:
+  '204':
+    description: Operation successful.
+  '400':
+    $ref: ../../../../shared/spec/responses/badRequest.yml
+  '401':
+    $ref: ../../../../shared/spec/responses/unauthorized.yml
+  '403':
+    $ref: ../../../../shared/spec/responses/forbidden.yml
+  '404':
+    $ref: ../../../../shared/spec/responses/notFound.yml
+  '415':
+    $ref: ../../../../shared/spec/responses/unsupportedMediaType.yml

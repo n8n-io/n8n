@@ -56,6 +56,7 @@ describe('ExecutionPersistence', () => {
 				nodes: workflow.nodes,
 				name: workflow.name,
 				settings: workflow.settings,
+				nodeGroups: workflow.nodeGroups,
 			});
 			expect(executionData?.data).toEqual('[{"resultData":"1"},{}]');
 		});
@@ -140,6 +141,76 @@ describe('ExecutionPersistence', () => {
 			const executionEntity = await executionRepo.findOneBy({ id: executionId });
 			expect(executionEntity?.status).toEqual('new');
 		});
+
+		// CAT-3862: `ActiveExecutions.add` claims an existing execution through this
+		// path. It used to require `waiting` unconditionally, so an execution enqueued
+		// before a restart (status `new`) could never be claimed and stayed `new` forever.
+		describe.each([
+			{ requireStatus: 'new' as const, expected: true },
+			{ requireStatus: 'waiting' as const, expected: false },
+		])(
+			'claiming a `new` execution with requireStatus: $requireStatus',
+			({ requireStatus, expected }) => {
+				it(`returns ${expected}`, async () => {
+					const executionPersistence = Container.get(ExecutionPersistence);
+					const executionRepo = Container.get(ExecutionRepository);
+					const workflow = await createWorkflow({ settings: { executionOrder: 'v1' } });
+
+					const executionId = await executionPersistence.create({
+						workflowId: workflow.id,
+						data: createEmptyRunExecutionData(),
+						workflowData: workflow,
+						mode: 'webhook',
+						status: 'new',
+						finished: false,
+					});
+
+					const claimed = await executionPersistence.updateExistingExecution(
+						executionId,
+						{ data: createEmptyRunExecutionData(), waitTill: null, status: 'running' },
+						{ requireStatus },
+					);
+
+					expect(claimed).toBe(expected);
+					const row = await executionRepo.findOneBy({ id: executionId });
+					expect(row?.status).toEqual(expected ? 'running' : 'new');
+				});
+			},
+		);
+	});
+
+	// CAT-3909: an enqueued execution whose data row is gone used to be dropped silently, so
+	// startup recovery never learned about it and the row stayed `new` forever.
+	describe('findMultipleExecutionsWithUnreadable', () => {
+		it('returns the ids of enqueued executions whose data row is gone', async () => {
+			const executionPersistence = Container.get(ExecutionPersistence);
+			const executionDataRepository = Container.get(ExecutionDataRepository);
+			const workflow = await createWorkflow({ settings: { executionOrder: 'v1' } });
+
+			const create = async () =>
+				await executionPersistence.create({
+					workflowId: workflow.id,
+					data: createEmptyRunExecutionData(),
+					workflowData: workflow,
+					mode: 'webhook',
+					status: 'new',
+					finished: false,
+				});
+
+			const healthyId = await create();
+			const orphanedId = await create();
+			await executionDataRepository.delete({ executionId: orphanedId });
+
+			const { executions, unreadableIds } =
+				await executionPersistence.findMultipleExecutionsWithUnreadable({
+					select: ['id', 'mode'],
+					where: { status: 'new' },
+					order: { id: 'ASC' },
+				});
+
+			expect(executions.map((e) => e.id)).toEqual([healthyId]);
+			expect(unreadableIds).toEqual([orphanedId]);
+		});
 	});
 
 	describe('findSingleExecution', () => {
@@ -168,8 +239,8 @@ describe('ExecutionPersistence', () => {
 				includeData: true,
 			});
 
-			// 51 (run data) + 67 (workflow snapshot) + 15 ("v-roundtrip-456") = 133 bytes
-			expect(execution?.jsonSizeBytes).toBe(133);
+			// 51 (run data) + 83 (workflow snapshot incl. empty nodeGroups) + 15 ("v-roundtrip-456") = 149 bytes
+			expect(execution?.jsonSizeBytes).toBe(149);
 			expect(execution?.workflowVersionId).toBe('v-roundtrip-456');
 		});
 
@@ -333,7 +404,7 @@ describe('ExecutionPersistence', () => {
 			// Simulate a row written before jsonSizeBytes existed: 0 means unknown.
 			await executionRepository.update({ id: executionId }, { jsonSizeBytes: 0 });
 
-			const readSpy = jest.spyOn(dbStore, 'read');
+			const readSpy = vi.spyOn(dbStore, 'read');
 
 			const execution = await executionPersistence.findSingleExecution(executionId, {
 				includeData: true,
@@ -354,8 +425,8 @@ describe('ExecutionPersistence', () => {
 			const dbStore = Container.get(DbStore);
 			const { executionId } = await createSizedExecution(2 * ONE_MB);
 
-			const readSpy = jest.spyOn(dbStore, 'read');
-			const readWorkflowDataSpy = jest.spyOn(dbStore, 'readWorkflowData');
+			const readSpy = vi.spyOn(dbStore, 'read');
+			const readWorkflowDataSpy = vi.spyOn(dbStore, 'readWorkflowData');
 
 			await executionPersistence.findSingleExecution(executionId, {
 				includeData: true,
@@ -383,12 +454,13 @@ describe('ExecutionPersistence', () => {
 			expect(execution?.data?.resultData?.runData).toHaveProperty('bigNode');
 		});
 
-		it('getExecutionsForPublicApi omits oversized data and flags it', async () => {
+		it('findManyInWorkflows omits oversized data and flags it', async () => {
 			const executionPersistence = Container.get(ExecutionPersistence);
 			const { workflow } = await createSizedExecution(2 * ONE_MB);
 
-			const executions = (await executionPersistence.getExecutionsForPublicApi(
-				{ limit: 10, includeData: true, workflowIds: [workflow.id] },
+			const executions = (await executionPersistence.findManyInWorkflows(
+				[workflow.id],
+				{ limit: 10, includeData: true },
 				ONE_MB,
 			)) as IExecutionResponse[];
 

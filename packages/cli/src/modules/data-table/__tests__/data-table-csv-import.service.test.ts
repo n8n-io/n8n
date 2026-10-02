@@ -1,18 +1,19 @@
-import { mockInstance, testModules } from '@n8n/backend-test-utils';
 import { Logger } from '@n8n/backend-common';
+import { mockInstance, testModules } from '@n8n/backend-test-utils';
+import type { Mocked } from 'vitest';
 
+import { CsvParserService } from '../csv-parser.service';
 import type { DataTableColumn } from '../data-table-column.entity';
 import { DataTableCsvImportService } from '../data-table-csv-import.service';
-import { CsvParserService } from '../csv-parser.service';
 import { DataTableFileCleanupService } from '../data-table-file-cleanup.service';
-import { DataTableValidationError } from '../errors/data-table-validation.error';
 import { FileUploadError } from '../errors/data-table-file-upload.error';
+import { DataTableValidationError } from '../errors/data-table-validation.error';
 
 describe('DataTableCsvImportService', () => {
 	let service: DataTableCsvImportService;
-	let mockCsvParserService: jest.Mocked<CsvParserService>;
-	let mockFileCleanupService: jest.Mocked<DataTableFileCleanupService>;
-	let mockLogger: jest.Mocked<Logger>;
+	let mockCsvParserService: Mocked<CsvParserService>;
+	let mockFileCleanupService: Mocked<DataTableFileCleanupService>;
+	let mockLogger: Mocked<Logger>;
 
 	beforeAll(async () => {
 		await testModules.loadModules(['data-table']);
@@ -22,7 +23,7 @@ describe('DataTableCsvImportService', () => {
 		mockCsvParserService = mockInstance(CsvParserService);
 		mockFileCleanupService = mockInstance(DataTableFileCleanupService);
 		mockLogger = mockInstance(Logger);
-		mockLogger.scoped = jest.fn().mockReturnValue(mockLogger);
+		mockLogger.scoped = vi.fn().mockReturnValue(mockLogger);
 
 		service = new DataTableCsvImportService(
 			mockCsvParserService,
@@ -30,7 +31,7 @@ describe('DataTableCsvImportService', () => {
 			mockLogger,
 		);
 
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('validateAndBuildRowsForExistingTable', () => {

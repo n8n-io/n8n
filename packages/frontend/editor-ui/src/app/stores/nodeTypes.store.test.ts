@@ -5,6 +5,8 @@ import type { INodeTypeDescription } from 'n8n-workflow';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import * as nodeTypesApi from '@n8n/rest-api-client/api/nodeTypes';
 import { LOCAL_STORAGE_DATA_WORKER } from '@/app/constants/localStorage';
+import { useSettingsStore } from '@n8n/stores/settings.store';
+import type { CommunityNodeType } from '@n8n/api-types';
 
 const mocks = vi.hoisted(() => ({
 	rootStore: {
@@ -50,6 +52,42 @@ describe('useNodeTypesStore', () => {
 	beforeEach(() => {
 		setActivePinia(createTestingPinia({ stubActions: true }));
 		store = useNodeTypesStore();
+	});
+
+	describe('isNodeTypeUnavailable', () => {
+		beforeEach(() => {
+			setActivePinia(createTestingPinia({ stubActions: false }));
+			store = useNodeTypesStore();
+			store.setNodeTypes([makeNodeType({ name: 'n8n-nodes-test.loaded', outputs: ['main'] })]);
+		});
+
+		it('should return false for a loaded node type', () => {
+			expect(store.isNodeTypeUnavailable('n8n-nodes-test.loaded')).toBe(false);
+		});
+
+		it('should return false for a loaded node type named with the preview token', () => {
+			expect(store.isNodeTypeUnavailable('n8n-nodes-preview-test.loaded')).toBe(false);
+		});
+
+		it('should return true for a node type that is not loaded', () => {
+			expect(store.isNodeTypeUnavailable('n8n-nodes-test.missing')).toBe(true);
+		});
+
+		it('should return false before any node types are loaded', () => {
+			store.nodeTypes = {};
+
+			expect(store.isNodeTypeUnavailable('n8n-nodes-test.missing')).toBe(false);
+		});
+
+		it('should return false for a vetted community node type that is not installed', async () => {
+			vi.spyOn(useSettingsStore(), 'isCommunityNodesFeatureEnabled', 'get').mockReturnValue(true);
+			vi.mocked(nodeTypesApi.fetchCommunityNodeTypes).mockResolvedValueOnce([
+				{ name: 'n8n-nodes-vetted.node', nodeDescription: { name: 'n8n-nodes-vetted.node' } },
+			] as CommunityNodeType[]);
+			await store.fetchCommunityNodePreviews();
+
+			expect(store.isNodeTypeUnavailable('n8n-nodes-vetted.node')).toBe(false);
+		});
 	});
 
 	describe('isModelNode', () => {
@@ -152,6 +190,35 @@ describe('useNodeTypesStore', () => {
 
 		it('should return false for an unknown node type', () => {
 			expect(store.isToolNode('nonexistent.node')).toBe(false);
+		});
+	});
+
+	describe('setNodeTypes / removeNodeTypes', () => {
+		const nodeType = makeNodeType({
+			name: 'n8n-nodes-base.testNode',
+			outputs: [NodeConnectionTypes.Main],
+		});
+
+		beforeEach(() => {
+			setActivePinia(createTestingPinia({ stubActions: false }));
+		});
+
+		it('should update computed dependents when the catalog is replaced', () => {
+			const store = useNodeTypesStore();
+
+			// Read before writing so the computeds cache and track the catalog ref
+			expect(store.allNodeTypes).toEqual([]);
+			expect(store.getNodeType(nodeType.name)).toBeNull();
+
+			store.setNodeTypes([nodeType]);
+
+			expect(store.allNodeTypes).toEqual([nodeType]);
+			expect(store.getNodeType(nodeType.name)).toEqual(nodeType);
+
+			store.removeNodeTypes([nodeType]);
+
+			expect(store.allNodeTypes).toEqual([]);
+			expect(store.getNodeType(nodeType.name)).toBeNull();
 		});
 	});
 
