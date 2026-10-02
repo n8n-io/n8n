@@ -1,4 +1,5 @@
 import { LicenseState } from '@n8n/backend-common';
+import { RoleService } from '@n8n/backend-services';
 import { mockInstance, testDb } from '@n8n/backend-test-utils';
 import type { AuthenticatedRequest } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -6,7 +7,6 @@ import { DateTime } from 'luxon';
 import { mock } from 'vitest-mock-extended';
 
 import { BadRequestError, ForbiddenError } from '@n8n/errors';
-import { WorkflowSharingService } from '@n8n/backend-services';
 
 import { TypeToNumber, type TypeUnitNumber } from '../database/entities/insights-shared';
 import { InsightsByPeriodRepository } from '../database/repositories/insights-by-period.repository';
@@ -34,7 +34,7 @@ afterAll(async () => {
 
 describe('InsightsController', () => {
 	const insightsByPeriodRepository = mockInstance(InsightsByPeriodRepository);
-	mockInstance(WorkflowSharingService);
+	mockInstance(RoleService);
 	let controller: InsightsController;
 	const sevenDaysAgo = DateTime.now().minus({ days: 7 }).toJSDate();
 	const today = DateTime.now().toJSDate();
@@ -216,7 +216,7 @@ describe('InsightsController', () => {
 					mockRepositoryResponse,
 				);
 
-				await controller.getInsightsSummary(mock<AuthenticatedRequest>(), mock<Response>(), {
+				await controller.getInsightsSummary(authReq(), mock<Response>(), {
 					startDate,
 					endDate,
 					timeZone: 'Europe/Berlin',

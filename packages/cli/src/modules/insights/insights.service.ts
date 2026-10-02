@@ -4,9 +4,10 @@ import {
 	type RestrictedInsightsByTime,
 } from '@n8n/api-types';
 import { LicenseState, Logger } from '@n8n/backend-common';
-import { WorkflowSharingService } from '@n8n/backend-services';
+import { RoleService } from '@n8n/backend-services';
 import type { User } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
+import { hasGlobalScope } from '@n8n/permissions';
 import { DateTime } from 'luxon';
 import { InstanceSettings } from 'n8n-core';
 import { UserError } from 'n8n-workflow';
@@ -41,7 +42,7 @@ export class InsightsService {
 		private readonly licenseState: LicenseState,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly logger: Logger,
-		private readonly workflowSharingService: WorkflowSharingService,
+		private readonly roleService: RoleService,
 	) {
 		this.logger = this.logger.scoped('insights');
 	}
@@ -93,12 +94,16 @@ export class InsightsService {
 			}
 		}
 
-		const workflowReadRoles = await this.workflowSharingService.rolesGrantingScope(
-			user,
-			'workflow:read',
-		);
+		if (hasGlobalScope(user, 'workflow:read')) {
+			return undefined;
+		}
 
-		return workflowReadRoles && { user, ...workflowReadRoles };
+		const [projectRoles, workflowRoles] = await Promise.all([
+			this.roleService.rolesWithScope('project', ['workflow:read']),
+			this.roleService.rolesWithScope('workflow', ['workflow:read']),
+		]);
+
+		return { user, projectRoles, workflowRoles };
 	}
 
 	async getInsightsSummary({

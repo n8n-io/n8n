@@ -1,4 +1,5 @@
 import type { LicenseState } from '@n8n/backend-common';
+import type { RoleService } from '@n8n/backend-services';
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
 import type { InstanceSettings } from 'n8n-core';
@@ -6,7 +7,6 @@ import type { MockProxy } from 'vitest-mock-extended';
 import { mock } from 'vitest-mock-extended';
 
 import { userHasScopes } from '@/permissions.ee/check-access';
-import type { WorkflowSharingService } from '@n8n/backend-services';
 
 import { TypeToNumber, type TypeUnitNumber } from '../database/entities/insights-shared';
 import type { InsightsByPeriodRepository } from '../database/repositories/insights-by-period.repository';
@@ -16,7 +16,11 @@ vi.mock('@/permissions.ee/check-access', () => ({
 	userHasScopes: vi.fn(),
 }));
 
-const user = mock<User>({ id: 'user-1' });
+const user: User = mock<User>({ id: 'user-1', role: { scopes: [] } });
+const globalUser: User = mock<User>({
+	id: 'global-user',
+	role: { scopes: [{ slug: 'workflow:read' }] },
+});
 
 describe('InsightsService', () => {
 	let insightsService: InsightsService;
@@ -24,7 +28,7 @@ describe('InsightsService', () => {
 	let mockInsightsByPeriodRepository: MockProxy<InsightsByPeriodRepository>;
 	let mockLicenseState: MockProxy<LicenseState>;
 	let mockInstanceSettings: MockProxy<InstanceSettings>;
-	let mockWorkflowSharingService: MockProxy<WorkflowSharingService>;
+	let mockRoleService: MockProxy<RoleService>;
 
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -32,7 +36,10 @@ describe('InsightsService', () => {
 		mockInsightsByPeriodRepository = mock<InsightsByPeriodRepository>();
 		mockLicenseState = mock<LicenseState>();
 		mockInstanceSettings = mock<InstanceSettings>();
-		mockWorkflowSharingService = mock<WorkflowSharingService>();
+		mockRoleService = mock<RoleService>();
+		mockRoleService.rolesWithScope.mockImplementation(async (roleType) =>
+			roleType === 'project' ? ['project:viewer'] : ['workflow:owner'],
+		);
 		vi.mocked(userHasScopes).mockResolvedValue(true);
 
 		insightsService = new InsightsService(
@@ -40,7 +47,7 @@ describe('InsightsService', () => {
 			mockLicenseState,
 			mockInstanceSettings,
 			mockLogger(),
-			mockWorkflowSharingService,
+			mockRoleService,
 		);
 	});
 
@@ -901,9 +908,7 @@ describe('InsightsService', () => {
 			});
 
 			it('should query without an access filter for users with the global workflow read scope', async () => {
-				mockWorkflowSharingService.rolesGrantingScope.mockResolvedValue(undefined);
-
-				await insightsService.getInsightsSummary({ user, startDate, endDate });
+				await insightsService.getInsightsSummary({ user: globalUser, startDate, endDate });
 
 				expect(
 					mockInsightsByPeriodRepository.getPreviousAndCurrentPeriodTypeAggregates,
@@ -911,11 +916,6 @@ describe('InsightsService', () => {
 			});
 
 			it('should query with an access filter for users without the global workflow read scope', async () => {
-				mockWorkflowSharingService.rolesGrantingScope.mockResolvedValue({
-					projectRoles: ['project:viewer'],
-					workflowRoles: ['workflow:owner'],
-				});
-
 				await insightsService.getInsightsSummary({ user, startDate, endDate });
 
 				expect(
@@ -959,10 +959,8 @@ describe('InsightsService', () => {
 				count: 0,
 				rows: [],
 			});
-			mockWorkflowSharingService.getSharedWorkflowIds.mockResolvedValue([]);
-
 			await insightsService.getInsightsByWorkflow({
-				user: mock<User>(),
+				user,
 				startDate,
 				endDate,
 				timeZone: 'Europe/Berlin',
@@ -1064,9 +1062,7 @@ describe('InsightsService', () => {
 			});
 
 			it('should query without an access filter for users with the global workflow read scope', async () => {
-				mockWorkflowSharingService.rolesGrantingScope.mockResolvedValue(undefined);
-
-				await insightsService.getInsightsByWorkflow({ user, startDate, endDate });
+				await insightsService.getInsightsByWorkflow({ user: globalUser, startDate, endDate });
 
 				expect(mockInsightsByPeriodRepository.getInsightsByWorkflow).toHaveBeenCalledWith(
 					expect.objectContaining({ accessFilter: undefined }),
@@ -1074,11 +1070,6 @@ describe('InsightsService', () => {
 			});
 
 			it('should query with an access filter for users without the global workflow read scope', async () => {
-				mockWorkflowSharingService.rolesGrantingScope.mockResolvedValue({
-					projectRoles: ['project:viewer'],
-					workflowRoles: ['workflow:owner'],
-				});
-
 				await insightsService.getInsightsByWorkflow({ user, startDate, endDate });
 
 				expect(mockInsightsByPeriodRepository.getInsightsByWorkflow).toHaveBeenCalledWith(
@@ -1125,9 +1116,7 @@ describe('InsightsService', () => {
 			});
 
 			it('should query without an access filter for users with the global workflow read scope', async () => {
-				mockWorkflowSharingService.rolesGrantingScope.mockResolvedValue(undefined);
-
-				await insightsService.getInsightsByTime({ user, startDate, endDate });
+				await insightsService.getInsightsByTime({ user: globalUser, startDate, endDate });
 
 				expect(mockInsightsByPeriodRepository.getInsightsByTime).toHaveBeenCalledWith(
 					expect.objectContaining({ accessFilter: undefined }),
@@ -1135,11 +1124,6 @@ describe('InsightsService', () => {
 			});
 
 			it('should query with an access filter for users without the global workflow read scope', async () => {
-				mockWorkflowSharingService.rolesGrantingScope.mockResolvedValue({
-					projectRoles: ['project:viewer'],
-					workflowRoles: ['workflow:owner'],
-				});
-
 				await insightsService.getInsightsByTime({ user, startDate, endDate });
 
 				expect(mockInsightsByPeriodRepository.getInsightsByTime).toHaveBeenCalledWith(
