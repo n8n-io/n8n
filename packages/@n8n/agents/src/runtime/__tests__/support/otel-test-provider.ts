@@ -1,5 +1,5 @@
 import { context, trace } from '@opentelemetry/api';
-import { AsyncHooksContextManager } from '@opentelemetry/context-async-hooks';
+import { AsyncLocalStorageContextManager } from '@opentelemetry/context-async-hooks';
 import {
 	BasicTracerProvider,
 	InMemorySpanExporter,
@@ -24,8 +24,7 @@ export class OtelTestProvider {
 	private constructor(
 		private readonly provider: BasicTracerProvider,
 		private readonly exporter: InMemorySpanExporter,
-		// oxlint-disable-next-line typescript/no-deprecated
-		private readonly contextManager: AsyncHooksContextManager,
+		private readonly contextManager: AsyncLocalStorageContextManager,
 	) {}
 
 	static create(): OtelTestProvider {
@@ -34,8 +33,7 @@ export class OtelTestProvider {
 			spanProcessors: [new SimpleSpanProcessor(exporter)],
 		});
 		trace.setGlobalTracerProvider(provider);
-		// oxlint-disable-next-line typescript/no-deprecated
-		const contextManager = new AsyncHooksContextManager().enable();
+		const contextManager = new AsyncLocalStorageContextManager().enable();
 		context.setGlobalContextManager(contextManager);
 		return new OtelTestProvider(provider, exporter, contextManager);
 	}

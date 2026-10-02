@@ -40,6 +40,7 @@ type JoinByDotting<T extends string[]> = T extends [infer F]
 
 type ToDottedPath<T> = JoinByDotting<RemoveExcess<T>>;
 
+// The convict path types still need the legacy schema until its callers move to @n8n/config.
 // oxlint-disable-next-line typescript/no-deprecated
 type CollectPathsByType<T> = ToDottedPath<GetPathSegments<typeof schema, T>>;
 
@@ -102,6 +103,7 @@ type ToStringLiteralMap<T extends { path: string; union: string }> = {
 };
 
 type StringLiteralMap = ToStringLiteralMap<
+	// The convict path types still need the legacy schema until its callers move to @n8n/config.
 	// oxlint-disable-next-line typescript/no-deprecated
 	ToPathUnionPair<GetPathSegmentsWithUnions<typeof schema>>
 >;
