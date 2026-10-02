@@ -1,0 +1,21 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/useOpenArtifactTabs.test.ts
+  s_5264afa1ac40a3::t_27773db048aba1 401-412
+packages/frontend/editor-ui/src/features/ai/instanceAi/composables/useOpenArtifactTabs.ts
+  s_5264afa1ac40a3::t_27773db048aba1 94-96,261,272
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "2825012a22bdbb8fe97cd3f5cfe22c258c899606",
+  "prompts": {},
+  "sessions": {
+    "s_5264afa1ac40a3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a963c577-93b7-467e-af84-07eed76a4ef2",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

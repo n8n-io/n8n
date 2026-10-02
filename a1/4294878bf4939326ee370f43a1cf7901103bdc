@@ -1,0 +1,16 @@
+packages/cli/src/__tests__/workflow-runner.test.ts
+  h_b49cecddc99496 533-560
+packages/cli/src/workflow-runner.ts
+  h_b49cecddc99496 311-315,316-332
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "a14294878bf4939326ee370f43a1cf7901103bdc",
+  "prompts": {},
+  "humans": {
+    "h_b49cecddc99496": {
+      "author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}
