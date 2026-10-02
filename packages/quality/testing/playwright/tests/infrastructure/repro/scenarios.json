@@ -10,5 +10,47 @@
 		"spec": "worker-drain-detached-subworkflow.spec.ts",
 		"before": "n8nio/n8n:2.38.7",
 		"after": "n8nio/n8n:2.39.0"
+	},
+	"worker-drain-long-task": {
+		"issue": "CAT-4338",
+		"spec": "worker-drain-long-task.spec.ts",
+		"before": "n8nio/n8n:2.38.3",
+		"after": "n8nio/n8n:2.38.4"
+	},
+	"worker-drain-pending-task-request": {
+		"issue": "CAT-4749",
+		"spec": "worker-drain-pending-task-request.spec.ts",
+		"before": "n8nio/n8n:2.42.2",
+		"after": "n8nio/n8n:repro-master-51c47706431"
+	},
+	"worker-drain-own-error-workflow": {
+		"issue": "CAT-4802",
+		"spec": "worker-drain-own-error-workflow.spec.ts",
+		"before": "n8nio/n8n:2.38.7",
+		"after": "n8nio/n8n:repro-master-51c47706431"
+	},
+	"worker-drain-enqueued-error-workflow": {
+		"issue": "CAT-4731",
+		"spec": "worker-drain-enqueued-error-workflow.spec.ts",
+		"before": "n8nio/n8n:2.42.2",
+		"after": "n8nio/n8n:repro-master-51c47706431"
+	},
+	"stalled-success-leak": {
+		"issue": "CAT-4491",
+		"spec": "stalled-success-leak.spec.ts",
+		"before": "n8nio/n8n:2.40.7",
+		"after": "n8nio/n8n:2.41.0"
+	},
+	"worker-drain-rejected-run": {
+		"issue": "CAT-4336",
+		"spec": "worker-drain-rejected-run.spec.ts",
+		"before": "n8nio/n8n:2.38.2",
+		"after": "n8nio/n8n:2.38.3"
+	},
+	"fetched-before-lock": {
+		"issue": "CAT-4776",
+		"spec": "fetched-before-lock.spec.ts",
+		"before": "n8nio/n8n:2.42.2",
+		"after": null
 	}
 }

@@ -371,6 +371,21 @@ export class ReproStack {
 	}
 }
 
+/** Polls `check` until it returns true; resolves with the time it held, or rejects at the timeout. */
+export async function until(
+	label: string,
+	check: () => Promise<boolean>,
+	timeoutMs: number,
+	intervalMs = 200,
+): Promise<number> {
+	const deadline = Date.now() + timeoutMs;
+	for (;;) {
+		if (await check()) return Date.now();
+		if (Date.now() > deadline) throw new Error(`${label} not reached in ${timeoutMs}ms`);
+		await new Promise((r) => setTimeout(r, intervalMs));
+	}
+}
+
 /** Sends a signal to the container's PID 1 and returns the host time it was sent. */
 export async function signal(container: Container, sig: Signal): Promise<number> {
 	const sentAt = Date.now();
