@@ -47,6 +47,11 @@ export class SystemTaskHandler implements TaskHandler {
 			throw outcome.error;
 		}
 
+		if (outcome.result === 'aborted') {
+			// A task can stop without throwing. Keep lease loss retryable and allow shutdown.
+			leaseSignal.throwIfAborted();
+		}
+
 		this.logger.debug('Ran a system task occurrence', {
 			name: this.systemTask.name,
 			taskId: task.id,
