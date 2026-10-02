@@ -398,6 +398,18 @@ describe('useOpenArtifactTabs', () => {
 			expect(stored.save).not.toHaveBeenCalled();
 		});
 
+		it('does not store tabs when the stored tabs cannot load', async () => {
+			const load = vi.fn().mockRejectedValue(new Error('Network error'));
+			const save = vi.fn().mockResolvedValue(undefined);
+			const { tabs } = setup([workflowTab('wf-1')], { load, save });
+			await flushPromises();
+
+			tabs.storeDefaultTabs();
+
+			expect(tabs.isLoaded.value).toBe(true);
+			expect(save).not.toHaveBeenCalled();
+		});
+
 		it('does not store tabs for a thread without artifacts', async () => {
 			const { storage, save, finishLoad } = createStorage();
 			const { tabs } = setup([], storage);

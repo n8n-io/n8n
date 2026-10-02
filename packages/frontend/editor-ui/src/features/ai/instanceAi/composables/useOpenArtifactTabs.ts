@@ -91,6 +91,9 @@ export function useOpenArtifactTabs({
 	// `undefined` when the stored state has no preview preference.
 	const storedPreviewOpen = ref<boolean>();
 	const isLoaded = ref(!storage);
+	// True only when the load succeeded and found no stored tabs. A failed load
+	// must not count, or storing the default tabs would overwrite the stored ones.
+	let hasNoStoredTabs = false;
 
 	const openTabs = computed((): ArtifactTab[] => {
 		const artifacts = artifactTabs();
@@ -255,7 +258,7 @@ export function useOpenArtifactTabs({
 	 * pick them.
 	 */
 	function storeDefaultTabs() {
-		if (!storage || !isLoaded.value || layout.value || openTabs.value.length === 0) return;
+		if (!storage || !hasNoStoredTabs || layout.value || openTabs.value.length === 0) return;
 		const fitted = fitWithinTabLimit(currentLayout(), new Set());
 		layout.value = fitted;
 		// A failed save keeps the default tabs; the server or the next change stores them.
@@ -266,6 +269,7 @@ export function useOpenArtifactTabs({
 		if (!storage) return;
 		try {
 			const state = await storage.load();
+			hasNoStoredTabs = state === null;
 			// A change the user made while the request ran wins over the stored layout.
 			if (state && !layout.value) {
 				layout.value = { tabs: state.tabs, closedTabs: state.closedTabs };
