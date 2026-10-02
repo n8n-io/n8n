@@ -1,13 +1,14 @@
 <script lang="ts" setup>
 import { computed } from 'vue';
 import { useRoute } from 'vue-router';
-import { N8nButton, N8nCallout, N8nTooltip, TOOLTIP_DELAY_MS } from '@n8n/design-system';
+import { N8nCallout } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { InstanceAiThreadSummary } from '@n8n/api-types';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { useInstanceAiStore } from '../instanceAi.store';
 import CreditsSettingsDropdown from '@/features/ai/assistant/components/Agent/CreditsSettingsDropdown.vue';
+import ChatHistoryDropdownTrigger from '@/features/ai/shared/components/ChatHistoryDropdownTrigger.vue';
 import InstanceAiThreadList from './InstanceAiThreadList.vue';
 
 const props = withDefaults(
@@ -74,28 +75,10 @@ function handleThreadSelect(threadId: string) {
 				@deleted="emit('deleted', $event)"
 			>
 				<template #trigger>
-					<N8nTooltip
-						as-child
-						:content="i18n.baseText('instanceAi.sidebar.chatHistory')"
-						:disabled="props.showThreadHistoryLabel"
-						placement="bottom"
-						:show-after="TOOLTIP_DELAY_MS"
-					>
-						<N8nButton
-							variant="ghost"
-							size="small"
-							icon="history"
-							icon-size="large"
-							:icon-only="!props.showThreadHistoryLabel"
-							:class="$style.threadHistoryButton"
-							data-test-id="instance-ai-sidebar-toggle"
-							:aria-label="i18n.baseText('instanceAi.sidebar.chatHistory')"
-						>
-							<span v-if="props.showThreadHistoryLabel" :class="$style.threadHistoryLabel">
-								{{ i18n.baseText('instanceAi.sidebar.chatHistory') }}
-							</span>
-						</N8nButton>
-					</N8nTooltip>
+					<ChatHistoryDropdownTrigger
+						:show-label="props.showThreadHistoryLabel"
+						data-test-id="instance-ai-sidebar-toggle"
+					/>
 				</template>
 			</InstanceAiThreadList>
 		</div>
@@ -147,19 +130,6 @@ function handleThreadSelect(threadId: string) {
 	// shrink it and the button would paint over the heading. Keep the button
 	// at its content width; the title is the part that truncates.
 	flex-shrink: 0;
-}
-
-.threadHistoryButton {
-	--thread-history-button-inline-padding: calc((var(--height--sm) - var(--font-size--md)) / 2);
-
-	padding-inline: var(--thread-history-button-inline-padding);
-}
-
-.threadHistoryLabel {
-	// Bound the label so a long translation does not crowd out the title.
-	max-width: var(--spacing--4xl);
-	overflow: hidden;
-	text-overflow: ellipsis;
 }
 
 .readOnlyBanner {

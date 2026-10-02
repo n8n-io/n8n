@@ -56,6 +56,11 @@ vi.mock('@n8n/design-system', async (importOriginal) => ({
 		template: '<i :data-icon="icon" />',
 		props: ['icon'],
 	},
+	N8nHeading: {
+		name: 'N8nHeading',
+		template: '<h2 v-bind="$attrs"><slot /></h2>',
+		props: ['tag', 'size'],
+	},
 	N8nIconButton: {
 		name: 'N8nIconButton',
 		template:
@@ -161,14 +166,15 @@ describe('AgentPreviewDock', () => {
 		localStorage.removeItem('N8N_AGENT_PREVIEW_LAYOUT');
 	});
 
-	it('renders the session switcher before the compact actions', () => {
+	it('renders chat history and the session title before the compact actions', () => {
 		const wrapper = mountDock();
 		const title = wrapper.get('[data-testid="agent-preview-session-title"]');
+		const history = wrapper.get('[data-testid="agent-preview-history-trigger"]');
 
 		expect(title.text()).toBe('Order help');
-		expect(title.element.tagName).toBe('BUTTON');
-		expect(title.attributes()).toMatchObject({
-			'aria-label': 'agentSessions.sessionName',
+		expect(title.element.tagName).toBe('H2');
+		expect(history.attributes()).toMatchObject({
+			'aria-label': 'instanceAi.sidebar.chatHistory',
 			'data-size': 'small',
 		});
 		expect(
@@ -177,6 +183,7 @@ describe('AgentPreviewDock', () => {
 				.findAll('[data-testid="agent-preview-session-title"], button')
 				.map((element) => element.attributes('data-testid')),
 		).toEqual([
+			'agent-preview-history-trigger',
 			'agent-preview-session-title',
 			'agent-preview-view-session-btn',
 			'agent-preview-new-chat-btn',

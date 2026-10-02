@@ -1,17 +1,12 @@
 <script setup lang="ts">
-import {
-	N8nButton,
-	N8nIcon,
-	N8nIconButton,
-	N8nTooltip,
-	TOOLTIP_DELAY_MS,
-} from '@n8n/design-system';
+import { N8nHeading, N8nIconButton, N8nTooltip, TOOLTIP_DELAY_MS } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { computed, nextTick, useTemplateRef, watch } from 'vue';
 import { useStorage } from '@vueuse/core';
 
 import KeyboardShortcutTooltip from '@/app/components/KeyboardShortcutTooltip.vue';
 import { useKeybindings } from '@/app/composables/useKeybindings';
+import ChatHistoryDropdownTrigger from '@/features/ai/shared/components/ChatHistoryDropdownTrigger.vue';
 
 import { useAgentSessionLangSmithExport } from '../composables/useAgentSessionLangSmithExport';
 
@@ -22,7 +17,6 @@ import type {
 	AgentResource,
 } from '../types';
 import type { BudgetAmountField } from '../utils/budget-config';
-import AgentPersonalisationIcon from './AgentPersonalisationIcon.vue';
 import AgentPreviewChatPage from './AgentPreviewChatPage.vue';
 import AgentPreviewMoreMenu from './AgentPreviewMoreMenu.vue';
 import AgentSessionHistoryDropdown from './AgentSessionHistoryDropdown.vue';
@@ -204,32 +198,29 @@ defineExpose({ clearBudgetStops });
 	>
 		<div :class="[$style.dockInner, { [$style.fullpage]: layout === PreviewLayout.Fullpage }]">
 			<header :class="$style.header" data-testid="agent-preview-dock-header">
-				<AgentSessionHistoryDropdown
-					:session-options="props.sessionOptions"
-					:can-delete-session="props.canDeleteSession"
-					:is-deleting-session="props.isDeletingSession"
-					@select="emit('session-select', $event)"
-					@delete="emit('delete-session', $event)"
+				<div :class="$style.sessionHistory">
+					<AgentSessionHistoryDropdown
+						:session-options="props.sessionOptions"
+						:can-delete-session="props.canDeleteSession"
+						:is-deleting-session="props.isDeletingSession"
+						@select="emit('session-select', $event)"
+						@delete="emit('delete-session', $event)"
+					>
+						<template #trigger>
+							<ChatHistoryDropdownTrigger data-testid="agent-preview-history-trigger" />
+						</template>
+					</AgentSessionHistoryDropdown>
+				</div>
+				<N8nHeading
+					v-if="props.sessionTitle"
+					tag="h2"
+					size="small"
+					:class="$style.sessionTitle"
+					:title="props.sessionTitle"
+					data-testid="agent-preview-session-title"
 				>
-					<template #trigger>
-						<N8nButton
-							variant="ghost"
-							size="small"
-							:class="$style.sessionTitle"
-							:aria-label="i18n.baseText('agentSessions.sessionName')"
-							data-testid="agent-preview-session-title"
-						>
-							<AgentPersonalisationIcon
-								:personalisation="
-									props.localConfig?.personalisation ?? props.agent?.schema?.personalisation
-								"
-								:size="20"
-							/>
-							<span :class="$style.sessionTitleLabel">{{ props.sessionTitle }}</span>
-							<N8nIcon icon="chevron-down" color="text-light" :size="12" />
-						</N8nButton>
-					</template>
-				</AgentSessionHistoryDropdown>
+					{{ props.sessionTitle }}
+				</N8nHeading>
 
 				<div :class="$style.actions">
 					<N8nTooltip
@@ -380,28 +371,16 @@ defineExpose({ clearBudgetStops });
 	gap: var(--spacing--2xs);
 }
 
-.sessionTitle {
-	width: 100%;
-	min-width: 0;
-	max-width: 100%;
-	flex: 1 1 auto;
-	margin-left: calc(var(--spacing--3xs) * -1);
-	padding-inline: var(--spacing--2xs);
+.sessionHistory {
+	flex-shrink: 0;
 }
 
-.sessionTitleLabel {
-	display: block;
+.sessionTitle {
 	min-width: 0;
-	flex: 1 1 auto;
+	flex: 1;
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
-	font-size: var(--font-size--xs);
-}
-
-/** Let the button's inner container shrink so the session title can truncate. */
-.sessionTitle > div {
-	min-width: 0;
 }
 
 .actions {

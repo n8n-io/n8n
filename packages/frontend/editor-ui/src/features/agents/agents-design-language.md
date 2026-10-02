@@ -25,6 +25,13 @@ the chip text before the action moves outside the panel.
 Show session details on separate lines when the session list is narrow. Keep the
 title, origin, date, token count, and actions visible without overlap.
 
+## Preview history
+
+Use the shared `ChatHistoryDropdownTrigger` in the Preview dock, as the Assistant
+does. Show the session title beside it as a small heading. Keep the history
+button and actions at their content width. Truncate the title in the remaining
+space.
+
 ## Item context menus
 
 Use `AgentItemContextMenu` for removable configuration chips. It wraps the
