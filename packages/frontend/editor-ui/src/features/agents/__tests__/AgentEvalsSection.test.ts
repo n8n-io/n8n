@@ -44,9 +44,9 @@ vi.mock('../components/AgentEvalResultsPanel.vue', () => ({
 vi.mock('../components/AgentEvalsEmptyStatePreview.vue', () => ({
 	default: {
 		name: 'AgentEvalsEmptyStatePreview',
-		props: ['examples', 'addingChecks'],
+		props: ['examples', 'loading', 'addingChecks'],
 		emits: ['add-example', 'add-checks'],
-		template: `<div data-testid="agent-evals-empty-state-preview">{{ examples.length }}
+		template: `<div data-testid="agent-evals-empty-state-preview" :data-loading="loading">{{ examples.length }}
 			<button data-testid="stub-add-example" @click="$emit('add-example', 'own example')" />
 			<button data-testid="stub-add-checks" @click="$emit('add-checks', 2)" /></div>`,
 	},
@@ -310,6 +310,42 @@ describe('AgentEvalsSection', () => {
 			});
 			expect(getByTestId('agent-evals-empty-state-preview')).toBeInTheDocument();
 			expect(queryByTestId('agent-evals-empty-state')).not.toBeInTheDocument();
+		});
+
+		it('shows the empty-state preview with its slider loading right away, instead of blocking the whole section behind a skeleton', async () => {
+			const pinia = createTestingPinia({ stubActions: true });
+			const store = useAgentEvalsStore();
+			vi.mocked(store.isLoaded).mockReturnValue(true);
+			vi.mocked(store.getDatasets).mockReturnValue([]);
+			vi.mocked(store.getLatestRunId).mockReturnValue(null);
+			vi.mocked(store.isStartingRun).mockReturnValue(false);
+			vi.mocked(store.fetchDatasets).mockResolvedValue([]);
+			let resolveGenerate!: (value: { cases: AgentEvalDraftCase[] }) => void;
+			vi.mocked(store.generateDraftCases).mockImplementation(
+				async () =>
+					await new Promise((resolve) => {
+						resolveGenerate = resolve;
+					}),
+			);
+
+			const { getByTestId, queryByTestId } = renderComponent({ pinia });
+			// `fetchDatasets` settles (all `load()` needs to flip `hasSettled`) —
+			// the preview generation itself is deliberately left pending.
+			await flushPromises();
+
+			expect(queryByTestId('agent-evals-loading')).not.toBeInTheDocument();
+			expect(getByTestId('agent-evals-empty-state-preview')).toHaveAttribute(
+				'data-loading',
+				'true',
+			);
+
+			resolveGenerate({ cases: [{ input: 'case 1', whatToCheck: 'check 1', scenario: 'A' }] });
+			await flushPromises();
+
+			expect(getByTestId('agent-evals-empty-state-preview')).toHaveAttribute(
+				'data-loading',
+				'false',
+			);
 		});
 
 		it('falls back to the plain CTA when the preview generation fails', async () => {

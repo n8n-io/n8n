@@ -12,6 +12,9 @@ import AgentEvalExamplesSlider from '@/features/agents/components/AgentEvalExamp
 
 defineProps<{
 	examples: AgentEvalDraftCase[];
+	/** True while the examples are still being generated — shows a loader in
+	 *  the slider's place instead of an empty, interactive one. */
+	loading?: boolean;
 	/** True from "Add checks" click until the trim-and-run has actually started. */
 	addingChecks?: boolean;
 }>();
@@ -53,10 +56,11 @@ function onAddYourOwn() {
 		<AgentEvalExamplesSlider
 			ref="examplesSlider"
 			:examples="examples"
+			:loading="loading"
 			@add-example="emit('add-example', $event)"
 		/>
 
-		<div :class="$style.actions">
+		<div v-if="!loading" :class="$style.actions">
 			<N8nButton
 				variant="solid"
 				size="small"

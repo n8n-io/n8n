@@ -7,13 +7,16 @@
 import { computed, ref } from 'vue';
 import type { AgentEvalDraftCase } from '@n8n/api-types';
 import { ElSlider } from 'element-plus';
-import { N8nIcon, N8nInput } from '@n8n/design-system';
+import { N8nIcon, N8nInput, N8nLoading } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import AgentEvalTryRow from '@/features/agents/components/AgentEvalTryRow.vue';
 
 const props = defineProps<{
 	/** Already fetched in full (up to 10) — the slider only trims the display. */
 	examples: AgentEvalDraftCase[];
+	/** True while the examples are still being generated — shows a skeleton in
+	 *  place of the slider/list/input instead of an empty, interactive one. */
+	loading?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -69,7 +72,10 @@ defineExpose({ sliderValue, focusOwnInput });
 </script>
 
 <template>
-	<div :class="$style.root">
+	<div v-if="loading" :class="$style.root" data-test-id="agent-eval-examples-slider-loading">
+		<N8nLoading :rows="4" />
+	</div>
+	<div v-else :class="$style.root">
 		<div :class="$style.sliderRow" data-test-id="instance-ai-test-agent-examples-slider">
 			<ElSlider
 				v-model="sliderValue"

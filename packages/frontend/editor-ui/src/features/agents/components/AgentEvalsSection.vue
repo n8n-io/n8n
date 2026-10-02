@@ -69,9 +69,14 @@ const previewCases = ref<AgentEvalDraftCase[]>([]);
 const previewOwnExamples = ref<string[]>([]);
 const hasPreview = computed(() => previewCases.value.length > 0);
 const addingChecks = ref(false);
+// True while the preview's LLM call is in flight — kept separate from
+// `hasSettled` so this surface doesn't have to blank the whole section behind
+// a skeleton for it; only the examples slider shows a loader meanwhile.
+const generatingPreview = ref(false);
 
 const loadPreview = async () => {
-	if (hasPreview.value) return;
+	if (hasPreview.value || generatingPreview.value) return;
+	generatingPreview.value = true;
 	try {
 		const result = await store.generateDraftCases(props.projectId, props.agentId, {
 			count: 10,
@@ -82,6 +87,8 @@ const loadPreview = async () => {
 		// Degrades to the plain "Generate test cases" card — a failed preview
 		// generation shouldn't block the regular path forward.
 		toast.showError(error, i18n.baseText('agents.builder.agentEvals.generateError'));
+	} finally {
+		generatingPreview.value = false;
 	}
 };
 
@@ -96,7 +103,11 @@ const load = async () => {
 		const fetched = await store.fetchDatasets(props.projectId, props.agentId);
 		const newest = fetched[0];
 		if (!newest) {
-			if (showEmptyStatePreview.value) await loadPreview();
+			// Not awaited: the preview's own generation can take a few seconds, and
+			// nothing else in `load()` depends on it — settling here lets the
+			// section render immediately instead of sitting behind a blank skeleton
+			// for the whole generation.
+			if (showEmptyStatePreview.value) void loadPreview();
 			return;
 		}
 		await store.resolveLatestRunId(props.projectId, props.agentId, newest.id);
@@ -196,8 +207,9 @@ watch(() => props.agentId, load);
 		</N8nCallout>
 
 		<AgentEvalsEmptyStatePreview
-			v-else-if="showEmptyStatePreview && hasPreview"
+			v-else-if="showEmptyStatePreview && (generatingPreview || hasPreview)"
 			:examples="previewCases"
+			:loading="generatingPreview"
 			:adding-checks="addingChecks"
 			@add-example="onAddPreviewExample"
 			@add-checks="onAddChecks"
