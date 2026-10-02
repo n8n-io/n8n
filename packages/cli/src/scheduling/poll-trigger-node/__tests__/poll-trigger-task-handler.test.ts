@@ -528,6 +528,25 @@ describe('PollTriggerTaskHandler', () => {
 			},
 		);
 
+		test('abandons a hanging poll as soon as the lease is lost', async () => {
+			const lease = new AbortController();
+			const reason = new Error('lease expired');
+			triggersAndPollers.runPollFunction.mockReturnValue(new Promise(() => {}));
+
+			const rejected = expect(handler.execute(buildTask(), report, lease.signal)).rejects.toBe(
+				reason,
+			);
+			await vi.advanceTimersByTimeAsync(1);
+			lease.abort(reason);
+			await rejected;
+
+			expect(eventService.emit).not.toHaveBeenCalledWith('poll-tick-timed-out', expect.anything());
+			expect(pollBackoffService.recordFailure).not.toHaveBeenCalled();
+			expect(pollFunctions.__emitError).not.toHaveBeenCalled();
+			expect(onDispatch).not.toHaveBeenCalled();
+			expect(releaseIsolate).toHaveBeenCalledTimes(1);
+		});
+
 		test('abandons a poll that outlives the timeout and reports no dispatch', async () => {
 			triggersAndPollers.runPollFunction.mockReturnValue(new Promise(() => {}));
 
