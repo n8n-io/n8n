@@ -319,6 +319,7 @@ describe('EngineLifecycleEventPushRelay', () => {
 		it.each([
 			['execution:completed', 'success'],
 			['execution:failed', 'error'],
+			['execution:cancelled', 'canceled'],
 		] as const)('maps %s to executionFinished %s', (type, status) => {
 			register();
 
