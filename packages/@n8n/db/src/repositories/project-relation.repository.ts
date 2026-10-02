@@ -1,5 +1,9 @@
 import { Service } from '@n8n/di';
-import { PROJECT_OWNER_ROLE_SLUG, type ProjectRole } from '@n8n/permissions';
+import {
+	PROJECT_ADMIN_ROLE_SLUG,
+	PROJECT_OWNER_ROLE_SLUG,
+	type ProjectRole,
+} from '@n8n/permissions';
 import { DataSource, In, Repository } from '@n8n/typeorm';
 
 import { ProjectRelation, Role } from '../entities';
@@ -38,6 +42,26 @@ export class ProjectRelationRepository extends Repository<ProjectRelation> {
 				},
 			},
 		});
+	}
+
+	/** Admin user ids per project, sorted, keyed by project id. Projects without an admin are absent. */
+	async findAdminUserIdsByProjectIds(projectIds: string[]): Promise<Map<string, string[]>> {
+		const admins = new Map<string, string[]>();
+		if (projectIds.length === 0) return admins;
+
+		for (const chunk of chunkIds([...new Set(projectIds)])) {
+			const rows = await this.find({
+				select: ['projectId', 'userId'],
+				where: { projectId: In(chunk), role: { slug: PROJECT_ADMIN_ROLE_SLUG } },
+				order: { projectId: 'ASC', userId: 'ASC' },
+			});
+			for (const row of rows) {
+				const ids = admins.get(row.projectId) ?? [];
+				ids.push(row.userId);
+				admins.set(row.projectId, ids);
+			}
+		}
+		return admins;
 	}
 
 	async getPersonalProjectsForUsers(userIds: string[]) {

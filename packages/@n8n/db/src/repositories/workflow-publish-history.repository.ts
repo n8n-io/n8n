@@ -1,7 +1,8 @@
 import { Service } from '@n8n/di';
-import { DataSource, Repository } from '@n8n/typeorm';
+import { DataSource, In, IsNull, Not, Repository } from '@n8n/typeorm';
 import type { EntityManager } from '@n8n/typeorm';
 
+import { chunkIds } from '../utils/chunk-ids';
 import { WorkflowPublishHistory } from '../entities';
 
 @Service()
@@ -37,6 +38,35 @@ export class WorkflowPublishHistoryRepository extends Repository<WorkflowPublish
 			.distinct(true)
 			.where('wph.workflowId = :workflowId', { workflowId })
 			.getMany();
+	}
+
+	/**
+	 * The newest publish and unpublish events per workflow that still name their user,
+	 * newest first and at most `perWorkflow` each, keyed by workflow id. Workflows
+	 * without one are absent from the result.
+	 */
+	async findRecentAttributedByWorkflowIds(
+		workflowIds: string[],
+		perWorkflow: number,
+	): Promise<Map<string, Array<{ userId: string; at: Date }>>> {
+		const recent = new Map<string, Array<{ userId: string; at: Date }>>();
+		if (workflowIds.length === 0 || perWorkflow <= 0) return recent;
+
+		for (const chunk of chunkIds([...new Set(workflowIds)])) {
+			const rows = await this.find({
+				select: ['id', 'workflowId', 'userId', 'createdAt'],
+				where: { workflowId: In(chunk), userId: Not(IsNull()) },
+				order: { createdAt: 'DESC', id: 'DESC' },
+			});
+			for (const row of rows) {
+				if (row.userId === null) continue;
+				const entries = recent.get(row.workflowId) ?? [];
+				if (entries.length >= perWorkflow) continue;
+				entries.push({ userId: row.userId, at: row.createdAt });
+				recent.set(row.workflowId, entries);
+			}
+		}
+		return recent;
 	}
 
 	async findActivatedByUserId(workflowId: string): Promise<string | undefined> {

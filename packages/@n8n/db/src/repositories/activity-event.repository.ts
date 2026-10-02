@@ -1,10 +1,21 @@
 import { Service } from '@n8n/di';
-import { And, DataSource, In, LessThan, LessThanOrEqual, MoreThan, Repository } from '@n8n/typeorm';
+import {
+	And,
+	DataSource,
+	In,
+	IsNull,
+	LessThan,
+	LessThanOrEqual,
+	MoreThan,
+	Not,
+	Repository,
+} from '@n8n/typeorm';
 import type { FindOperator, FindOptionsWhere } from '@n8n/typeorm';
 import type { IDataObject } from 'n8n-workflow';
 
 import { ActivityEvent } from '../entities';
 import type { ActivityResourceType } from '../entities';
+import { chunkIds } from '../utils/chunk-ids';
 
 /** Long enough for any name a list needs to show, short enough that a row stays a pointer. */
 export const activityResourceNameMaxLength = 128;
@@ -76,6 +87,15 @@ function isEmptyScope(scope: ActivityProjectScope): boolean {
 /** No project predicate at all for a whole-instance reader, so the scope costs no bind parameters. */
 function projectScopeWhere(scope: ActivityProjectScope): FindOptionsWhere<ActivityEvent> {
 	return scope === 'all-projects' ? {} : { projectId: In(scope) };
+}
+
+/** How many rows one page of the attributed-activity scan reads. */
+const ATTRIBUTED_PAGE_SIZE = 500;
+
+/** A user and when they acted on a resource. */
+export interface AttributedActivity {
+	userId: string;
+	at: Date;
 }
 
 @Service()
@@ -198,6 +218,51 @@ export class ActivityEventRepository extends Repository<ActivityEvent> {
 			order: { id: 'DESC' },
 			take: query.limit,
 		});
+	}
+
+	/**
+	 * The newest entries per resource that name a user, newest first and at most
+	 * `perResource` each, keyed by resource id. Reduced here, not in SQL: `DISTINCT ON`
+	 * is Postgres-only. Pages by id so an uncapped table is never loaded whole; the
+	 * page stops as soon as every resource of the chunk has its share. Resources
+	 * without such an entry are absent from the result.
+	 */
+	async findRecentAttributedByResource(
+		resourceType: ActivityResourceType,
+		resourceIds: string[],
+		perResource: number,
+	): Promise<Map<string, AttributedActivity[]>> {
+		const recent = new Map<string, AttributedActivity[]>();
+		if (resourceIds.length === 0 || perResource <= 0) return recent;
+
+		for (const chunk of chunkIds([...new Set(resourceIds)])) {
+			const pending = new Set(chunk);
+			let beforeId: number | undefined;
+			while (pending.size > 0) {
+				const rows = await this.find({
+					select: ['id', 'resourceId', 'userId', 'createdAt'],
+					where: {
+						resourceType,
+						resourceId: In([...pending]),
+						userId: Not(IsNull()),
+						...(beforeId !== undefined ? { id: LessThan(beforeId) } : {}),
+					},
+					order: { id: 'DESC' },
+					take: ATTRIBUTED_PAGE_SIZE,
+				});
+				for (const row of rows) {
+					if (row.resourceId === null || row.userId === null) continue;
+					const entries = recent.get(row.resourceId) ?? [];
+					if (entries.length >= perResource) continue;
+					entries.push({ userId: row.userId, at: row.createdAt });
+					recent.set(row.resourceId, entries);
+					if (entries.length >= perResource) pending.delete(row.resourceId);
+				}
+				if (rows.length < ATTRIBUTED_PAGE_SIZE) break;
+				beforeId = rows[rows.length - 1].id;
+			}
+		}
+		return recent;
 	}
 
 	/** Retention by age. Returns how many entries went, so a caller can log a sweep worth noticing. */

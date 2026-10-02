@@ -3,6 +3,8 @@ import type { Project } from '@n8n/db';
 import { ActivityEventRepository, activityDataMaxLength } from '@n8n/db';
 import { Container } from '@n8n/di';
 
+import { createMember } from './shared/db/users';
+
 describe('ActivityEventRepository', () => {
 	let repository: ActivityEventRepository;
 	let project: Project;
@@ -303,6 +305,66 @@ describe('ActivityEventRepository', () => {
 				limit: 10,
 			});
 			expect(remaining.map((entry) => entry.action)).toEqual(['third', 'second']);
+		});
+	});
+
+	describe('findRecentAttributedByResource', () => {
+		// Real users: the column is a foreign key to the user table.
+		let alice: string;
+		let bob: string;
+		let carol: string;
+		beforeAll(async () => {
+			[alice, bob, carol] = (
+				await Promise.all([createMember(), createMember(), createMember()])
+			).map((user) => user.id);
+		});
+		const entry = (resourceId: string, userId: string | null) =>
+			repository.record({
+				category: 'workflow',
+				action: 'saved',
+				projectId: project.id,
+				resourceType: 'workflow',
+				resourceId,
+				userId,
+			});
+
+		it('returns the newest attributed entries per resource first, newest entry first', async () => {
+			await entry('wf-1', alice);
+			await entry('wf-1', bob);
+			await entry('wf-1', null);
+			await entry('wf-2', carol);
+			await entry('wf-3', alice);
+
+			const recent = await repository.findRecentAttributedByResource(
+				'workflow',
+				['wf-1', 'wf-2'],
+				10,
+			);
+
+			expect([...recent.keys()].sort()).toEqual(['wf-1', 'wf-2']);
+			expect(recent.get('wf-1')?.map((e) => e.userId)).toEqual([bob, alice]);
+			expect(recent.get('wf-2')?.map((e) => e.userId)).toEqual([carol]);
+		});
+
+		it('keeps at most the requested number of entries per resource', async () => {
+			await entry('wf-1', alice);
+			await entry('wf-1', bob);
+			await entry('wf-1', carol);
+
+			const recent = await repository.findRecentAttributedByResource('workflow', ['wf-1'], 2);
+
+			expect(recent.get('wf-1')?.map((e) => e.userId)).toEqual([carol, bob]);
+		});
+
+		it('omits a resource with no attributed entry and returns nothing for no ids', async () => {
+			await entry('wf-1', null);
+
+			expect(await repository.findRecentAttributedByResource('workflow', ['wf-1'], 10)).toEqual(
+				new Map(),
+			);
+			expect(await repository.findRecentAttributedByResource('workflow', [], 10)).toEqual(
+				new Map(),
+			);
 		});
 	});
 });
