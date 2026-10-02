@@ -1,6 +1,6 @@
 import type { MigrationContext, ReversibleMigration } from '../migration-types';
 
-export class CreateAgentPlanTables1790243938988 implements ReversibleMigration {
+export class CreateAgentPlanTables1790936063338 implements ReversibleMigration {
 	async up({
 		schemaBuilder: { createTable, createIndex, column },
 		escape,
