@@ -312,6 +312,20 @@ describe('PollTriggerTaskHandler', () => {
 			expect(releaseIsolate).toHaveBeenCalledTimes(1);
 		});
 
+		test('does not route a poll() error to the error workflow when the claim was lost during poll()', async () => {
+			const lease = new AbortController();
+			triggersAndPollers.runPollFunction.mockImplementation(async () => {
+				lease.abort();
+				throw new Error('poll source unreachable');
+			});
+
+			await handler.execute(buildTask(), report, lease.signal);
+
+			expect(pollFunctions.__emitError).not.toHaveBeenCalled();
+			expect(onDispatch).not.toHaveBeenCalled();
+			expect(releaseIsolate).toHaveBeenCalledTimes(1);
+		});
+
 		test('logs a failing cursor commit instead of routing it to the error workflow', async () => {
 			triggersAndPollers.runPollFunction.mockResolvedValue(null);
 			const commitError = new Error('poller state write failed');
