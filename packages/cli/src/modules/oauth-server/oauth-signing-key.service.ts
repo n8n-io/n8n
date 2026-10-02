@@ -1,4 +1,5 @@
 import { Logger } from '@n8n/backend-common';
+import { CacheService } from '@n8n/backend-services';
 import { DeploymentKeyRepository, isUniqueConstraintError } from '@n8n/db';
 import type { DeploymentKey } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -10,8 +11,6 @@ import { jsonParse, UnexpectedError } from 'n8n-workflow';
 import type { JsonWebKey, KeyObject } from 'node:crypto';
 import { createPrivateKey, generateKeyPair } from 'node:crypto';
 import { promisify } from 'node:util';
-
-import { CacheService } from '@/services/cache/cache.service';
 
 import {
 	OAUTH_SIGNING_ALGORITHM,
