@@ -15,9 +15,9 @@ import { selfOwned } from './shared/job-factory';
  */
 describe('scheduler lease renewal over the storage bindings', () => {
 	const TASK_TYPE = 'integration-lease-renewal-test';
-	// The shortest lease that renews before it expires: renewals are at least 5s apart.
-	const LEASE_SECONDS = 6;
-	const RUN_MS = 8_000;
+	// Allow three seconds for the first renewal, which starts after five seconds.
+	const LEASE_SECONDS = 8;
+	const RUN_MS = 10_000;
 
 	let jobRepo: ScheduledJobRepository;
 	let taskRepo: ScheduledTaskRepository;
