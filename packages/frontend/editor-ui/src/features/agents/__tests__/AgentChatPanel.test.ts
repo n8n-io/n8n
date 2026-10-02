@@ -229,7 +229,7 @@ vi.mock('../components/AgentChatMessageList.vue', () => ({
 	default: {
 		name: 'AgentChatMessageList',
 		template: '<div data-testid="message-list-stub" />',
-		props: ['messages', 'canIncreaseBudget', 'budgetIncreasePending'],
+		props: ['messages', 'messagingState', 'canIncreaseBudget', 'budgetIncreasePending'],
 		emits: ['send-to-assistant', 'increase-budget'],
 	},
 }));
@@ -387,6 +387,127 @@ describe('AgentChatPanel', () => {
 		it('stops centering once the chat has messages', () => {
 			messagesMock.value = [{ id: 'm1', role: 'user', content: 'hi' } as ChatMessage];
 			expect(isCentered(mountPanel({ centerEmptyState: true, newSession: true }))).toBe(false);
+		});
+
+		describe('first message preview', () => {
+			type PanelVm = { sendMessageFromOutside: (message: string, files?: File[]) => void };
+			const messageList = (wrapper: ReturnType<typeof mountPanel>) =>
+				wrapper.findComponent({ name: 'AgentChatMessageList' });
+
+			it('shows the first message right away, with the waiting indicator, until the run starts', async () => {
+				sendMessageMock.mockReturnValue(new Promise(() => {}));
+				const wrapper = mountPanel({ centerEmptyState: true, newSession: true });
+
+				(wrapper.vm as unknown as PanelVm).sendMessageFromOutside('hello agent');
+				await flushPromises();
+
+				expect(isCentered(wrapper)).toBe(false);
+				expect(wrapper.find('[data-testid="empty-state-stub"]').exists()).toBe(false);
+				expect(messageList(wrapper).props('messages')).toEqual([
+					expect.objectContaining({ role: 'user', content: 'hello agent' }),
+				]);
+				expect(messageList(wrapper).props('messagingState')).toBe('waitingFirstChunk');
+				wrapper.unmount();
+			});
+
+			it('shows it already while history loads, for a handed-off message', async () => {
+				isLoadingHistoryMock.value = true;
+				const wrapper = mountPanel({ centerEmptyState: true, newSession: true });
+
+				(wrapper.vm as unknown as PanelVm).sendMessageFromOutside('hello agent');
+				await flushPromises();
+
+				expect(sendMessageMock).not.toHaveBeenCalled();
+				expect(messageList(wrapper).props('messages')).toEqual([
+					expect.objectContaining({ content: 'hello agent' }),
+				]);
+				wrapper.unmount();
+			});
+
+			it('does not repeat the previewed message as a pending composer row', async () => {
+				sendMessageMock.mockReturnValue(new Promise(() => {}));
+				const wrapper = mountPanel({ centerEmptyState: true, newSession: true });
+				(wrapper.vm as unknown as PanelVm).sendMessageFromOutside('hello agent');
+				queuedMessagesMock.value = [
+					{
+						id: '1',
+						steeringExecutionId: null,
+						message: 'hello agent',
+						createdAt: new Date().toISOString(),
+					},
+				];
+				await flushPromises();
+
+				expect(wrapper.text()).not.toContain('hello agent');
+				wrapper.unmount();
+			});
+
+			it('gives way to the real messages once they arrive', async () => {
+				sendMessageMock.mockReturnValue(new Promise(() => {}));
+				const wrapper = mountPanel({ centerEmptyState: true, newSession: true });
+				(wrapper.vm as unknown as PanelVm).sendMessageFromOutside('hello agent');
+				await flushPromises();
+
+				const real = [{ id: 'm1', role: 'user', content: 'hello agent' } as ChatMessage];
+				messagesMock.value = real;
+				await flushPromises();
+				messagesMock.value = [];
+				await flushPromises();
+
+				expect(messageList(wrapper).exists()).toBe(false);
+				wrapper.unmount();
+			});
+
+			it('drops the preview when the send comes back busy', async () => {
+				sendMessageMock.mockResolvedValue('busy');
+				const wrapper = mountPanel({ centerEmptyState: true, newSession: true });
+
+				(wrapper.vm as unknown as PanelVm).sendMessageFromOutside('hello agent');
+				await flushPromises();
+
+				expect(messageList(wrapper).exists()).toBe(false);
+				wrapper.unmount();
+			});
+
+			it('drops the preview when the send ends without being accepted', async () => {
+				sendMessageMock.mockResolvedValue('sent');
+				const wrapper = mountPanel({ centerEmptyState: true, newSession: true });
+
+				(wrapper.vm as unknown as PanelVm).sendMessageFromOutside('hello agent');
+				await flushPromises();
+
+				expect(messageList(wrapper).exists()).toBe(false);
+				wrapper.unmount();
+			});
+
+			it('keeps the preview once the send is accepted, until the run adds the messages', async () => {
+				sendMessageMock.mockImplementation(
+					async (_text: string, _files: File[] | undefined, onAccepted: () => void) => {
+						onAccepted();
+						return 'sent';
+					},
+				);
+				const wrapper = mountPanel({ centerEmptyState: true, newSession: true });
+
+				(wrapper.vm as unknown as PanelVm).sendMessageFromOutside('hello agent');
+				await flushPromises();
+
+				expect(messageList(wrapper).props('messages')).toEqual([
+					expect.objectContaining({ content: 'hello agent' }),
+				]);
+				wrapper.unmount();
+			});
+
+			it('does not preview outside the n8n Chat entry page', async () => {
+				sendMessageMock.mockReturnValue(new Promise(() => {}));
+				const wrapper = mountPanel();
+
+				(wrapper.vm as unknown as PanelVm).sendMessageFromOutside('hello agent');
+				await flushPromises();
+
+				expect(messageList(wrapper).exists()).toBe(false);
+				wrapper.unmount();
+			});
 		});
 
 		it('does not center a continued thread or without the prop', () => {
