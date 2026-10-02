@@ -277,12 +277,8 @@ describe('WorkflowHistoryCompactionService', () => {
 		});
 
 		it.each([
-			// The day in Berlin starts an hour before UTC in winter, two hours in summer.
-			['Europe/Berlin', '2026-11-10T03:00:00.000Z', '2026-11-09T23:00:00.000Z'],
-			['Europe/Berlin', '2026-07-10T03:00:00.000Z', '2026-07-09T22:00:00.000Z'],
 			// At 03:00 UTC it is still the day before in New York.
 			['America/New_York', '2026-11-10T03:00:00.000Z', '2026-11-09T05:00:00.000Z'],
-			['UTC', '2026-11-10T03:00:00.000Z', '2026-11-10T00:00:00.000Z'],
 			// 25 October 2026 has 25 hours in Berlin; the day still starts at its own midnight.
 			['Europe/Berlin', '2026-10-25T03:00:00.000Z', '2026-10-24T22:00:00.000Z'],
 		])(

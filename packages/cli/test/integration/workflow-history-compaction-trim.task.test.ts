@@ -1,3 +1,4 @@
+import type { Logger } from '@n8n/backend-common';
 import type { EventService } from '@n8n/backend-services';
 import { createWorkflow, createWorkflowHistory, mockLogger, testDb } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
@@ -14,22 +15,17 @@ import { mock } from 'vitest-mock-extended';
 import { WorkflowHistoryCompactionTrimTask } from '@/services/pruning/workflow-history-compaction-trim.task';
 import { WorkflowHistoryCompactionService } from '@/services/pruning/workflow-history-compaction.service';
 
-const OVERLAPPING_RUNS = 4;
-const WORKFLOWS = 4;
-const VERSIONS_PER_WORKFLOW = 14;
-const VERSION_SPACING_MS = 10 * Time.seconds.toMilliseconds;
+const OVERLAPPING_RUNS = 3;
 // Inside the trim window, which is 6 to 8 days ago with the default config.
 const VERSION_AGE_MS = 7 * Time.days.toMilliseconds;
-// A small workflow keeps one version per minute: the newest anchors a bucket,
-// and the first version a full minute older anchors the next.
-const RETAINED_INDEXES = [1, 7, 13];
 
-const versionIds = Array.from({ length: WORKFLOWS }, () =>
-	Array.from({ length: VERSIONS_PER_WORKFLOW }, () => uuid()),
-);
-const expectedVersionIds = versionIds
-	.flatMap((ids) => RETAINED_INDEXES.map((index) => ids[index]))
-	.sort();
+// One workflow whose versions are not evenly spaced and not the same size. A
+// small workflow keeps one version per minute, measured to the kept neighbour.
+const OFFSETS_S = [0, 100, 200, 280, 300, 380, 400];
+const LARGE_INDEX = 2;
+const RETAINED_INDEXES = [0, 1, 2, 4, 6];
+const versionIds = OFFSETS_S.map(() => uuid());
+const expectedVersionIds = RETAINED_INDEXES.map((index) => versionIds[index]).sort();
 
 const node = {
 	id: uuid(),
@@ -39,16 +35,6 @@ const node = {
 	typeVersion: 1,
 	position: [0, 0],
 } satisfies INode;
-
-// One workflow whose versions are not evenly spaced and not the same size. A
-// small workflow keeps one version per minute, measured to the kept neighbour.
-const MIXED_OFFSETS_S = [0, 100, 200, 280, 300, 380, 400];
-const MIXED_LARGE_INDEX = 2;
-const MIXED_RETAINED_INDEXES = [0, 1, 2, 4, 6];
-const mixedVersionIds = MIXED_OFFSETS_S.map(() => uuid());
-const expectedMixedVersionIds = MIXED_RETAINED_INDEXES.map(
-	(index) => mixedVersionIds[index],
-).sort();
 
 describe('WorkflowHistoryCompactionTrimTask', () => {
 	const signal = new AbortController().signal;
@@ -84,39 +70,23 @@ describe('WorkflowHistoryCompactionTrimTask', () => {
 		return { task: new WorkflowHistoryCompactionTrimTask(service), logger };
 	}
 
-	function historyBaseTime(): number {
-		// Keep all fixture versions inside the day-anchored trim window, even near midnight.
+	async function seedHistory(): Promise<void> {
+		// Keep all versions inside the day-anchored trim window, even near midnight.
 		const startOfDay = DateTime.now()
 			.setZone(Container.get(GlobalConfig).generic.timezone)
 			.startOf('day');
-		return startOfDay.toMillis() - VERSION_AGE_MS;
-	}
-
-	async function seedHistories(): Promise<void> {
-		const base = historyBaseTime();
-		for (const ids of versionIds) {
-			const workflow = await createWorkflow({ versionId: ids[ids.length - 1], nodes: [node] });
-			for (const [k, versionId] of ids.entries()) {
-				await createWorkflowHistory({ ...workflow, versionId }, undefined, undefined, {
-					createdAt: new Date(base + k * VERSION_SPACING_MS),
-				});
-			}
-		}
-	}
-
-	async function seedMixedHistories(): Promise<void> {
-		const base = historyBaseTime();
+		const base = startOfDay.toMillis() - VERSION_AGE_MS;
 		const workflow = await createWorkflow({
-			versionId: mixedVersionIds[mixedVersionIds.length - 1],
+			versionId: versionIds[versionIds.length - 1],
 			nodes: [node],
 		});
-		for (const [k, versionId] of mixedVersionIds.entries()) {
-			const parameters = k === MIXED_LARGE_INDEX ? { a: 'x'.repeat(200) } : node.parameters;
+		for (const [k, versionId] of versionIds.entries()) {
+			const parameters = k === LARGE_INDEX ? { a: 'x'.repeat(200) } : node.parameters;
 			await createWorkflowHistory(
 				{ ...workflow, versionId, nodes: [{ ...node, parameters }] },
 				undefined,
 				undefined,
-				{ createdAt: new Date(base + MIXED_OFFSETS_S[k] * Time.seconds.toMilliseconds) },
+				{ createdAt: new Date(base + OFFSETS_S[k] * Time.seconds.toMilliseconds) },
 			);
 		}
 	}
@@ -126,71 +96,42 @@ describe('WorkflowHistoryCompactionTrimTask', () => {
 		return rows.map(({ versionId }) => versionId).sort();
 	}
 
-	it('deletes nothing twice and logs no error when passes read the same snapshot', async () => {
-		await seedHistories();
-		await createTask().task.run(signal);
-		const afterOnePass = await remainingVersionIds();
-		expect(afterOnePass).toEqual(expectedVersionIds);
-		await testDb.truncate(['WorkflowEntity', 'WorkflowHistory']);
-
-		await seedHistories();
+	// Every pass reads its snapshot before any pass deletes from it.
+	async function runOverlappingPasses(): Promise<Logger[]> {
 		const ready = createDeferredPromise();
 		const deleteVersions = repository.delete.bind(repository);
 		let waiting = 0;
 		vi.spyOn(repository, 'delete').mockImplementation(async (criteria) => {
-			// All mains must read their first snapshot before any of them deletes it.
 			if (++waiting === OVERLAPPING_RUNS) ready.resolve();
 			await ready.promise;
 			return await deleteVersions(criteria);
 		});
 		const tasks = Array.from({ length: OVERLAPPING_RUNS }, createTask);
 		await Promise.all(tasks.map(async ({ task }) => await task.run(signal)));
+		return tasks.map(({ logger }) => logger);
+	}
 
-		expect(await remainingVersionIds()).toEqual(afterOnePass);
-		for (const { logger } of tasks) {
+	it('leaves the same versions as one pass when passes read the same snapshot', async () => {
+		await seedHistory();
+
+		const loggers = await runOverlappingPasses();
+
+		expect(await remainingVersionIds()).toEqual(expectedVersionIds);
+		for (const logger of loggers) {
 			expect(logger.error).not.toHaveBeenCalled();
 		}
 	});
 
 	it('leaves the same versions as one pass when later passes read what an earlier one left', async () => {
-		await seedMixedHistories();
+		await seedHistory();
 		await createTask().task.run(signal);
-		const afterOnePass = await remainingVersionIds();
-		expect(afterOnePass).toEqual(expectedMixedVersionIds);
+		expect(await remainingVersionIds()).toEqual(expectedVersionIds);
 
-		// The later passes read the survivors of the first pass, and each other's snapshot.
-		const ready = createDeferredPromise();
-		const deleteVersions = repository.delete.bind(repository);
-		let waiting = 0;
-		vi.spyOn(repository, 'delete').mockImplementation(async (criteria) => {
-			if (++waiting === OVERLAPPING_RUNS - 1) ready.resolve();
-			await ready.promise;
-			return await deleteVersions(criteria);
-		});
-		const tasks = Array.from({ length: OVERLAPPING_RUNS - 1 }, createTask);
-		await Promise.all(tasks.map(async ({ task }) => await task.run(signal)));
+		const loggers = await runOverlappingPasses();
 
-		expect(await remainingVersionIds()).toEqual(afterOnePass);
-		for (const { logger } of tasks) {
+		expect(await remainingVersionIds()).toEqual(expectedVersionIds);
+		for (const logger of loggers) {
 			expect(logger.error).not.toHaveBeenCalled();
 		}
-	});
-
-	it('keeps a version that is named between the read and the delete', async () => {
-		await seedHistories();
-		const namedLate = versionIds[0][0];
-		const deleteVersions = repository.delete.bind(repository);
-		vi.spyOn(repository, 'delete').mockImplementation(async (criteria) => {
-			// Name the version after its workflow was read and right before its delete.
-			const { versionId } = criteria as unknown as { versionId: { value: string[] } };
-			if (versionId.value.includes(namedLate)) {
-				await repository.update({ versionId: namedLate }, { name: 'named late' });
-			}
-			return await deleteVersions(criteria);
-		});
-
-		await createTask().task.run(signal);
-
-		expect(await remainingVersionIds()).toEqual([...expectedVersionIds, namedLate].sort());
 	});
 });

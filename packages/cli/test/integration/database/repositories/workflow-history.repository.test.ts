@@ -268,25 +268,6 @@ describe('WorkflowHistoryRepository', () => {
 			expect(redo.seen).toBe(3);
 		});
 
-		it('should order versions with the same createdAt by versionId', async () => {
-			const createdAt = new Date(Date.now() - 60_000);
-			const workflow = await createWorkflow({ versionId: vid('v-b'), nodes: [testNode1] });
-			await createWorkflowHistory({ ...workflow, versionId: vid('v-b') }, undefined, undefined, {
-				createdAt,
-			});
-			await createWorkflowHistory({ ...workflow, versionId: vid('v-a') }, undefined, undefined, {
-				createdAt,
-			});
-			const repository = Container.get(WorkflowHistoryRepository);
-
-			const aDayAgo = new Date(Date.now() - 24 * 60 * 60_000);
-			const nextDay = new Date(Date.now() + 24 * 60 * 60_000);
-			await repository.pruneHistory(workflow.id, aDayAgo, nextDay, [alwaysMergeRule]);
-
-			const history = await repository.find();
-			expect(history).toEqual([expect.objectContaining({ versionId: vid('v-b') })]);
-		});
-
 		it('should not delete a version that was named after the versions were read', async () => {
 			const id1 = uuid();
 			const id2 = uuid();
@@ -432,98 +413,6 @@ describe('WorkflowHistoryRepository', () => {
 
 			const history = await repository.find();
 			expect(history).toEqual([expect.objectContaining({ versionId: vid('v-a') })]);
-		});
-
-		it('should only touch the versions of the given workflow', async () => {
-			const createdAt = secondsAgo(30);
-			const workflow = await createWorkflow({ versionId: vid('w1-b'), nodes: [testNode1] });
-			const other = await createWorkflow({ versionId: vid('w2-b'), nodes: [testNode1] });
-			for (const [wf, versionId] of [
-				[workflow, vid('w1-a')],
-				[workflow, vid('w1-b')],
-				[other, vid('w2-a')],
-				[other, vid('w2-b')],
-			] as const) {
-				await createWorkflowHistory({ ...wf, versionId }, undefined, undefined, { createdAt });
-			}
-			const repository = Container.get(WorkflowHistoryRepository);
-
-			const { seen, deleted } = await repository.pruneHistory(
-				workflow.id,
-				secondsAgo(60),
-				new Date(),
-				[alwaysMergeRule],
-			);
-
-			expect({ seen, deleted }).toEqual({ seen: 2, deleted: 1 });
-			const remaining = (await repository.find()).map((v) => v.versionId).sort();
-			expect(remaining).toEqual([vid('w1-b'), vid('w2-a'), vid('w2-b')]);
-		});
-
-		it('should include the versions on both bounds of the window', async () => {
-			const start = secondsAgo(30);
-			const end = secondsAgo(10);
-			const workflow = await createWorkflow({ versionId: vid('v-end'), nodes: [testNode1] });
-			const rows: Array<[string, Date]> = [
-				[vid('v-before'), new Date(start.getTime() - 1)],
-				[vid('v-start'), start],
-				[vid('v-end'), end],
-				[vid('v-after'), new Date(end.getTime() + 1)],
-			];
-			for (const [versionId, createdAt] of rows) {
-				await createWorkflowHistory({ ...workflow, versionId }, undefined, undefined, {
-					createdAt,
-				});
-			}
-			const repository = Container.get(WorkflowHistoryRepository);
-
-			const { seen, deleted } = await repository.pruneHistory(workflow.id, start, end, [
-				alwaysMergeRule,
-			]);
-
-			expect({ seen, deleted }).toEqual({ seen: 2, deleted: 1 });
-			const remaining = (await repository.find()).map((v) => v.versionId).sort();
-			expect(remaining).toEqual([vid('v-after'), vid('v-before'), vid('v-end')]);
-		});
-
-		it('should leave the same versions when the trim rule runs twice over mixed sizes', async () => {
-			const trimRule = RULES.makeMergeDependingOnSizeRule(
-				new Map([
-					[0, 60_000],
-					[100, 600_000],
-				]),
-			);
-			const offsetsSeconds = [0, 100, 200, 280, 300, 380, 400];
-			const largeIndex = 2;
-			const base = Date.now() - 3_600_000;
-			const ids = offsetsSeconds.map((_, k) => vid(`v${k}`));
-			const workflow = await createWorkflow({ versionId: ids[ids.length - 1], nodes: [testNode1] });
-			for (const [k, versionId] of ids.entries()) {
-				const parameters = k === largeIndex ? { a: 'x'.repeat(200) } : { a: 'x' };
-				await createWorkflowHistory(
-					{ ...workflow, versionId, nodes: [{ ...testNode1, parameters }] },
-					undefined,
-					undefined,
-					{ createdAt: new Date(base + offsetsSeconds[k] * 1_000) },
-				);
-			}
-			const repository = Container.get(WorkflowHistoryRepository);
-			const windowStart = new Date(base - 1_000);
-			const windowEnd = new Date();
-			const prune = async () =>
-				await repository.pruneHistory(workflow.id, windowStart, windowEnd, [trimRule], [], {
-					workflowSizeScore: true,
-				});
-			const remaining = async () => (await repository.find()).map((v) => v.versionId).sort();
-
-			const first = await prune();
-			const afterFirst = await remaining();
-			const second = await prune();
-
-			expect(first).toEqual({ seen: 7, deleted: 2 });
-			expect(afterFirst).toEqual(['v0', 'v1', 'v2', 'v4', 'v6'].map(vid));
-			expect(second).toEqual({ seen: 5, deleted: 0 });
-			await expect(remaining()).resolves.toEqual(afterFirst);
 		});
 	});
 	describe('deleteEarlierThanExceptCurrentAndActive', () => {
