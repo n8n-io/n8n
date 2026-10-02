@@ -248,8 +248,10 @@ export const useAgentEvalsStore = defineStore(STORES.AGENT_EVALS, () => {
 
 	// An empty dataset — no LLM call, no rows — for committing a `save: false`
 	// preview: once the user picks which cases to keep, they're inserted into
-	// this via `createCase`. Refreshed the same way `generateDraftCases` is, so
-	// the caller can resolve it through `getDatasets` right after.
+	// this via `createCase`. The result carries its own `columnMapping`, so a
+	// caller can resolve a writable `CaseSource` straight from it rather than
+	// depending on this refresh (best-effort: a transient failure here must not
+	// look like the create itself failed — the dataset already exists either way).
 	const createDraftDataset = async (
 		projectId: string,
 		agentId: string,
@@ -263,6 +265,19 @@ export const useAgentEvalsStore = defineStore(STORES.AGENT_EVALS, () => {
 		);
 		await fetchDatasets(projectId, agentId).catch(() => null);
 		return result;
+	};
+
+	// Rolls back a draft dataset that was just created but whose commit failed
+	// partway through (e.g. a row insert) — without this, a retry off that
+	// failure would create another empty dataset rather than reusing or
+	// cleaning up the first one. Evicts it from the cache directly: the
+	// dataset is already gone server-side, so a refetch isn't needed to notice.
+	const deleteDataset = async (projectId: string, agentId: string, datasetId: string) => {
+		await agentEvalsApi.deleteDataset(rootStore.restApiContext, projectId, agentId, datasetId);
+		setDatasets(
+			agentId,
+			(datasetsByAgentId.value[agentId] ?? []).filter((d) => d.id !== datasetId),
+		);
 	};
 
 	// Drafts one case and runs it against the agent directly — no Data Table, no
@@ -988,6 +1003,7 @@ export const useAgentEvalsStore = defineStore(STORES.AGENT_EVALS, () => {
 		fetchDatasets,
 		generateDraftCases,
 		createDraftDataset,
+		deleteDataset,
 		previewRun,
 		getReview,
 		getLatestRunId,

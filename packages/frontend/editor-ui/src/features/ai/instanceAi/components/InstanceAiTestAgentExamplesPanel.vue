@@ -307,7 +307,9 @@ function onCheckYourAgent() {
 
 .exampleList > * {
 	border: var(--border);
-	padding: 6px 10px 6px 8px;
+	// 10px (right) has no matching token between 8px and 12px — kept as a
+	// literal for the extra breathing room next to the row's chevron/icon.
+	padding: var(--spacing--3xs) 10px var(--spacing--3xs) var(--spacing--2xs);
 	border-radius: var(--radius--lg);
 }
 </style>

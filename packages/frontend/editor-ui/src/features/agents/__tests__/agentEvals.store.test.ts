@@ -13,6 +13,7 @@ const {
 	getDatasets,
 	generateDraftCases,
 	createDraftDataset,
+	previewRun,
 	listRuns,
 	getRunDetail,
 	getRunSummary,
@@ -23,6 +24,7 @@ const {
 	getDatasets: vi.fn(),
 	generateDraftCases: vi.fn(),
 	createDraftDataset: vi.fn(),
+	previewRun: vi.fn(),
 	listRuns: vi.fn(),
 	getRunDetail: vi.fn(),
 	getRunSummary: vi.fn(),
@@ -35,6 +37,7 @@ vi.mock('../agentEvals.api', () => ({
 	getDatasets,
 	generateDraftCases,
 	createDraftDataset,
+	previewRun,
 	listRuns,
 	getRunDetail,
 	getRunSummary,
@@ -244,6 +247,25 @@ describe('useAgentEvalsStore', () => {
 			);
 			expect(result).toEqual({ datasetId: 'd1', dataTableId: 'dt-1' });
 			expect(store.getDatasets(AGENT_ID).map((d) => d.id)).toEqual(['d1']);
+		});
+	});
+
+	// The preview-panel tests mock this store action directly, so they can't
+	// catch a broken proxy to the API layer — this is the one place that does.
+	describe('previewRun', () => {
+		it('forwards the REST context, project id, agent id and options to the API', async () => {
+			previewRun.mockResolvedValue({ status: 'failed' });
+			const store = useAgentEvalsStore();
+
+			const result = await store.previewRun(PROJECT_ID, AGENT_ID, { suggestion: 'be nicer' });
+
+			expect(previewRun).toHaveBeenCalledWith(
+				{ instanceId: 'test-instance-id' },
+				PROJECT_ID,
+				AGENT_ID,
+				{ suggestion: 'be nicer' },
+			);
+			expect(result).toEqual({ status: 'failed' });
 		});
 	});
 

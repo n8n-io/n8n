@@ -17,7 +17,11 @@ import { useToast } from '@n8n/composables/useToast';
 import { useAgentEvalsStore } from '@/features/agents/agentEvals.store';
 import type { AgentEvalCase } from '@/features/agents/agentEvals.types';
 import { readAgentAnswer } from '@/features/agents/utils/agent-eval-review';
-import { isDataTableDataset, toCaseSource } from '@/features/agents/utils/agentEvalCases.utils';
+import {
+	isDataTableDataset,
+	resolveCaseColumns,
+	toCaseSource,
+} from '@/features/agents/utils/agentEvalCases.utils';
 import type { AgentAvatarKind } from '@/features/agents/components/AgentAvatar.vue';
 import EvalInitialSample from '@/features/agents/components/EvalInitialSample.vue';
 import InstanceAiTestAgentExamplesPanel, {
@@ -238,10 +242,13 @@ async function onCheckAgent(count: number) {
 	startingSuiteRun.value = true;
 	try {
 		const created = await store.createDraftDataset(projectId, agentId);
-		const newDataset = store.getDatasets(agentId).find((d) => d.id === created.datasetId);
-		const source = newDataset && isDataTableDataset(newDataset) ? toCaseSource(newDataset) : null;
-		if (!source) throw new Error('The draft dataset has no writable case columns');
 		suiteDatasetId.value = created.datasetId;
+		// Resolved straight from the create response — not a `getDatasets` refetch,
+		// which could itself fail transiently after the dataset already exists and
+		// send a retry into creating a second, duplicate empty dataset.
+		const columns = resolveCaseColumns(created.columnMapping);
+		if (!columns) throw new Error('The draft dataset has no writable case columns');
+		const source = { datasetId: created.datasetId, dataTableId: created.dataTableId, columns };
 
 		const selectedCases = suiteCases.value.slice(0, count);
 		const toCreate = [
@@ -273,6 +280,14 @@ async function onCheckAgent(count: number) {
 			store.startPollingRun(projectId, agentId, run.id);
 		}
 	} catch (error) {
+		if (suiteDatasetId.value) {
+			// A partial insert (or a run that never started) would otherwise leave a
+			// persisted-but-incomplete dataset behind — delete it rather than let a
+			// retry pile up another one alongside it. Runs regardless of `isMounted`:
+			// the dataset already exists server-side either way.
+			await store.deleteDataset(projectId, agentId, suiteDatasetId.value).catch(() => null);
+			suiteDatasetId.value = null;
+		}
 		if (!isMounted) return;
 		toast.showError(error, i18n.baseText('agents.builder.agentEvals.run.startError'));
 	} finally {

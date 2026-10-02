@@ -69,6 +69,23 @@ export const createDraftDataset = async (
 	);
 };
 
+// Deletes a dataset and its backing Data Table. Used to roll back a draft
+// dataset when committing a preview partially fails after it was created —
+// a `createDraftDataset` POST that already succeeded must not be left behind
+// as an orphaned, empty dataset.
+export const deleteDataset = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	datasetId: string,
+) => {
+	return await makeRestApiRequest<{ success: true }>(
+		context,
+		'DELETE',
+		`${evalsPath(projectId, agentId)}/datasets/${datasetId}`,
+	);
+};
+
 // Drafts one case and runs it against the agent directly — no Data Table, no
 // dataset, no eval-run row. Backs "try it once" and its "needs work" retries.
 export const previewRun = async (

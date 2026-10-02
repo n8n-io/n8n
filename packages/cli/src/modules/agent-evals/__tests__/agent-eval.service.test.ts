@@ -482,6 +482,7 @@ describe('AgentEvalService', () => {
 			caseGenerationService.createEmptyDataset.mockResolvedValue({
 				datasetId: 'ds-1',
 				dataTableId: 'dt-1',
+				columnMapping: { input: 'input', criteria: 'criteria' },
 			});
 
 			await service.createDraftDataset(user, AGENT_ID, PROJECT_ID, 'My checks');

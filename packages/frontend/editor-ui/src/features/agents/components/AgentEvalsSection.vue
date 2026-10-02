@@ -14,8 +14,9 @@ import { useI18n } from '@n8n/i18n';
 
 import { useTestAgentPreviewExperiment } from '@/experiments/testAgentPreview/useTestAgentPreviewExperiment';
 import { useAgentEvalsStore } from '../agentEvals.store';
-import { isDataTableDataset, toCaseSource } from '../utils/agentEvalCases.utils';
+import { isDataTableDataset, resolveCaseColumns } from '../utils/agentEvalCases.utils';
 import AgentEvalCasesCard from './AgentEvalCasesCard.vue';
+import AgentEvalChecksPanel from './AgentEvalChecksPanel.vue';
 import AgentEvalResultsPanel from './AgentEvalResultsPanel.vue';
 import AgentEvalsEmptyStatePreview from './AgentEvalsEmptyStatePreview.vue';
 
@@ -74,25 +75,42 @@ const addingChecks = ref(false);
 // a skeleton for it; only the examples slider shows a loader meanwhile.
 const generatingPreview = ref(false);
 
+// Bumped by `load()` on every call, including agent switches: `loadPreview`
+// captures the current value and checks it again after its `await`, so a
+// generation started for the previous agent can't write its result (or error
+// toast) into the new agent's preview once it finally resolves.
+let previewRequestId = 0;
+
 const loadPreview = async () => {
 	if (hasPreview.value || generatingPreview.value) return;
+	const requestId = previewRequestId;
 	generatingPreview.value = true;
 	try {
 		const result = await store.generateDraftCases(props.projectId, props.agentId, {
 			count: 10,
 			save: false,
 		});
+		if (requestId !== previewRequestId) return;
 		previewCases.value = result.cases;
 	} catch (error) {
+		if (requestId !== previewRequestId) return;
 		// Degrades to the plain "Generate test cases" card — a failed preview
 		// generation shouldn't block the regular path forward.
 		toast.showError(error, i18n.baseText('agents.builder.agentEvals.generateError'));
 	} finally {
-		generatingPreview.value = false;
+		if (requestId === previewRequestId) generatingPreview.value = false;
 	}
 };
 
 const load = async () => {
+	// Invalidates any preview generation still in flight for whichever agent
+	// was showing before, and clears its result — switching agents must not
+	// display (or let "Add checks" commit) the previous agent's preview.
+	previewRequestId += 1;
+	previewCases.value = [];
+	previewOwnExamples.value = [];
+	generatingPreview.value = false;
+
 	if (!props.agentId || props.agentUnsaved) {
 		hasSettled.value = true;
 		return;
@@ -144,11 +162,19 @@ const onAddPreviewExample = (input: string) => {
  */
 const onAddChecks = async (count: number) => {
 	addingChecks.value = true;
+	// Tracked outside the try so the catch block can tell "nothing was created
+	// yet" apart from "created, but the commit failed partway through" — only
+	// the latter has anything to roll back.
+	let createdDatasetId: string | undefined;
 	try {
 		const created = await store.createDraftDataset(props.projectId, props.agentId);
-		const newDataset = store.getDatasets(props.agentId).find((d) => d.id === created.datasetId);
-		const source = newDataset && isDataTableDataset(newDataset) ? toCaseSource(newDataset) : null;
-		if (!source) throw new Error('The draft dataset has no writable case columns');
+		createdDatasetId = created.datasetId;
+		// Resolved straight from the create response — not a `getDatasets` refetch,
+		// which could itself fail transiently after the dataset already exists and
+		// send a retry into creating a second, duplicate empty dataset.
+		const columns = resolveCaseColumns(created.columnMapping);
+		if (!columns) throw new Error('The draft dataset has no writable case columns');
+		const source = { datasetId: created.datasetId, dataTableId: created.dataTableId, columns };
 
 		const toCreate = [
 			...previewCases.value
@@ -161,6 +187,12 @@ const onAddChecks = async (count: number) => {
 		await store.startRun(props.projectId, props.agentId, created.datasetId);
 		await load();
 	} catch (error) {
+		if (createdDatasetId) {
+			// A partial insert (or a run that never started) would otherwise leave a
+			// persisted-but-incomplete dataset behind — delete it rather than let a
+			// retry pile up another one alongside it.
+			await store.deleteDataset(props.projectId, props.agentId, createdDatasetId).catch(() => null);
+		}
 		toast.showError(error, i18n.baseText('agents.builder.agentEvals.run.startError'));
 	} finally {
 		addingChecks.value = false;
@@ -174,6 +206,16 @@ watch(() => props.agentId, load);
 <template>
 	<div :class="$style.section" data-testid="agent-evals-section">
 		<N8nLoading v-if="awaitingDatasets" :rows="4" data-testid="agent-evals-loading" />
+
+		<AgentEvalChecksPanel
+			v-else-if="dataset && runId && showEmptyStatePreview"
+			:project-id="projectId"
+			:agent-id="agentId"
+			:run-id="runId"
+			:disabled="disabled"
+			:rerunning="store.isStartingRun(dataset.id)"
+			@rerun="onRerun"
+		/>
 
 		<AgentEvalResultsPanel
 			v-else-if="dataset && runId"
@@ -211,6 +253,7 @@ watch(() => props.agentId, load);
 			:examples="previewCases"
 			:loading="generatingPreview"
 			:adding-checks="addingChecks"
+			:disabled="disabled"
 			@add-example="onAddPreviewExample"
 			@add-checks="onAddChecks"
 		/>

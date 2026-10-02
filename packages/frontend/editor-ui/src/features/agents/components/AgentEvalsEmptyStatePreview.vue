@@ -17,6 +17,8 @@ defineProps<{
 	loading?: boolean;
 	/** True from "Add checks" click until the trim-and-run has actually started. */
 	addingChecks?: boolean;
+	/** No `agent:update` — a viewer can look at the preview but not commit it. */
+	disabled?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -57,6 +59,7 @@ function onAddYourOwn() {
 			ref="examplesSlider"
 			:examples="examples"
 			:loading="loading"
+			:disabled="disabled || addingChecks"
 			@add-example="emit('add-example', $event)"
 		/>
 
@@ -64,6 +67,7 @@ function onAddYourOwn() {
 			<N8nButton
 				variant="solid"
 				size="small"
+				:disabled="disabled"
 				:loading="addingChecks"
 				data-testid="agent-evals-empty-preview-add-checks"
 				@click="onAddChecks"
@@ -78,6 +82,7 @@ function onAddYourOwn() {
 			<N8nButton
 				variant="outline"
 				size="small"
+				:disabled="disabled || addingChecks"
 				data-testid="agent-evals-empty-preview-add-own"
 				@click="onAddYourOwn"
 			>

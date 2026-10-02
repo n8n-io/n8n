@@ -3,6 +3,7 @@ import { configure } from '@testing-library/vue';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
 import { flushPromises } from '@vue/test-utils';
+import { ref } from 'vue';
 
 import { createComponentRenderer } from '@/__tests__/render';
 import { useAgentEvalsStore } from '../agentEvals.store';
@@ -41,6 +42,16 @@ vi.mock('../components/AgentEvalResultsPanel.vue', () => ({
 	},
 }));
 
+vi.mock('../components/AgentEvalChecksPanel.vue', () => ({
+	default: {
+		name: 'AgentEvalChecksPanel',
+		props: ['runId'],
+		emits: ['rerun'],
+		template: `<div data-testid="agent-eval-checks-panel">{{ runId }}
+			<button data-testid="stub-checks-rerun" @click="$emit('rerun')" /></div>`,
+	},
+}));
+
 vi.mock('../components/AgentEvalsEmptyStatePreview.vue', () => ({
 	default: {
 		name: 'AgentEvalsEmptyStatePreview',
@@ -52,7 +63,10 @@ vi.mock('../components/AgentEvalsEmptyStatePreview.vue', () => ({
 	},
 }));
 
-const { isFeatureEnabled } = vi.hoisted(() => ({ isFeatureEnabled: { value: false } }));
+// A real `ref`, not a plain `{ value }` object — the template reads it as a
+// bare identifier, which only auto-unwraps for genuine refs. A plain object
+// would read as itself (always truthy) instead of its `.value`.
+const isFeatureEnabled = ref(false);
 vi.mock('@/experiments/testAgentPreview/useTestAgentPreviewExperiment', () => ({
 	useTestAgentPreviewExperiment: () => ({ isFeatureEnabled }),
 }));
@@ -376,12 +390,14 @@ describe('AgentEvalsSection', () => {
 					vi.mocked(store.createDraftDataset).mockResolvedValue({
 						datasetId: 'committed-1',
 						dataTableId: 'dt-committed',
+						columnMapping: { input: 'input', criteria: 'criteria' },
 					});
 					vi.mocked(store.createCase).mockResolvedValue(null);
 				},
 			);
-			// The commit reloads via `getDatasets`, which now has to carry the
-			// just-created dataset (with real columns) for `toCaseSource` to resolve.
+			// Not read for the commit itself (the create response now carries its own
+			// columns), but `load()` re-renders off `getDatasets` afterward, so the
+			// just-created dataset has to be there for the post-commit view.
 			vi.mocked(store.getDatasets).mockReturnValue([
 				dataTableDataset('committed-1', 'dt-committed', { input: 'input', criteria: 'criteria' }),
 			]);

@@ -18,6 +18,8 @@ const props = defineProps<{
 	/** True while the examples are still being generated — shows a skeleton in
 	 *  place of the slider/list/input instead of an empty, interactive one. */
 	loading?: boolean;
+	/** No `agent:update` — the add-your-own input is read-only. */
+	disabled?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -50,7 +52,13 @@ watch(
 
 const visibleExamples = computed(() => props.examples.slice(0, sliderValue.value));
 
-const ownExamples = ref<string[]>([]);
+type OwnExample = { id: number; input: string };
+const ownExamples = ref<OwnExample[]>([]);
+// An incrementing counter, not the input text — two own examples with the same
+// wording would otherwise collide on the same key, and Vue would reuse the
+// wrong row's local state (`AgentEvalTryRow`'s own expanded/suggestion refs)
+// between them during a keyed list update.
+let nextOwnExampleId = 0;
 const ownInput = ref('');
 
 const customLabel = computed(() => i18n.baseText('instanceAi.testAgentPreview.customExampleLabel'));
@@ -59,13 +67,13 @@ type DisplayExample = { id: string; input: string; label: string };
 
 // Newest first: the slider reveals examples in increasing index order, so
 // reversing puts whichever one just became visible at the top instead of
-// tacked onto the bottom. Keyed by input text (stable through reordering) so
-// `AgentEvalTryRow`'s own expanded/suggestion state stays with its row
-// rather than snapping to a position.
+// tacked onto the bottom. Keyed by its original index in `props.examples`
+// (stable — that array is never reordered after it's first populated), not by
+// input text, since two generated cases can share the same wording.
 const generatedDisplay = computed<DisplayExample[]>(() =>
 	visibleExamples.value
-		.map((example) => ({
-			id: `gen:${example.input}`,
+		.map((example, index) => ({
+			id: `gen:${index}`,
 			input: example.input,
 			label: example.scenario,
 		}))
@@ -76,7 +84,7 @@ const generatedDisplay = computed<DisplayExample[]>(() =>
 // first — and sits above the generated block, since typing one is a more
 // deliberate "just happened" action than the slider's own reveal order.
 const ownDisplay = computed<DisplayExample[]>(() =>
-	ownExamples.value.map((input) => ({ id: `own:${input}`, input, label: customLabel.value })),
+	ownExamples.value.map(({ id, input }) => ({ id: `own:${id}`, input, label: customLabel.value })),
 );
 
 const allDisplayExamples = computed<DisplayExample[]>(() => [
@@ -106,7 +114,7 @@ function submitOwnExample() {
 	const value = ownInput.value.trim();
 	if (!value) return;
 	// Prepended, not appended — see `ownDisplay` above.
-	ownExamples.value = [value, ...ownExamples.value];
+	ownExamples.value = [{ id: nextOwnExampleId++, input: value }, ...ownExamples.value];
 	emit('add-example', value);
 	ownInput.value = '';
 }
@@ -200,6 +208,7 @@ defineExpose({ sliderValue, focusOwnInput });
 				v-model="ownInput"
 				:class="$style.addOwnInput"
 				:placeholder="i18n.baseText('instanceAi.testAgentPreview.addYourOwnExample')"
+				:disabled="disabled"
 				data-test-id="instance-ai-test-agent-examples-add-own-input"
 				@keydown.meta.enter="submitOwnExample"
 				@keydown.enter.exact="submitOwnExample"
@@ -295,7 +304,9 @@ defineExpose({ sliderValue, focusOwnInput });
 
 .exampleList > * {
 	border-bottom: var(--border);
-	padding: 6px 10px 6px 8px;
+	// 10px (right) has no matching token between 8px and 12px — kept as a
+	// literal for the extra breathing room next to the row's chevron/icon.
+	padding: var(--spacing--3xs) 10px var(--spacing--3xs) var(--spacing--2xs);
 	animation: exr-in 220ms var(--easing--ease-out) both;
 }
 
@@ -321,7 +332,9 @@ defineExpose({ sliderValue, focusOwnInput });
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--2xs);
-	padding: 6px 10px 6px 8px;
+	// 10px (right) has no matching token between 8px and 12px — kept as a
+	// literal for the extra breathing room next to the row's chevron/icon.
+	padding: var(--spacing--3xs) 10px var(--spacing--3xs) var(--spacing--2xs);
 	border: var(--border);
 	border-radius: var(--radius--lg);
 }

@@ -229,7 +229,10 @@ export class AgentEvalCaseGenerationService {
 			source: 'agent-eval-preview',
 		});
 
-		if (result.status !== 'completed') return { status: 'failed' };
+		// `maxIterations` means the agent was cut off before finishing, not that it
+		// produced a real answer — treat it the same as a non-completed run rather
+		// than showing an incomplete response as an approved example.
+		if (result.status !== 'completed' || result.maxIterations) return { status: 'failed' };
 
 		return {
 			status: 'completed',
@@ -350,7 +353,7 @@ export class AgentEvalCaseGenerationService {
 		createdById: string,
 		baseName: string,
 		cases: AgentEvalDraftCase[],
-	): Promise<{ datasetId: string; dataTableId: string }> {
+	): Promise<CreateDraftDatasetResult> {
 		const columns = [
 			{ name: INPUT_COLUMN, type: 'string' as const },
 			{ name: CRITERIA_COLUMN, type: 'string' as const },
@@ -380,15 +383,20 @@ export class AgentEvalCaseGenerationService {
 				await this.dataTableService.insertRows(table.id, projectId, rows);
 			}
 
+			const columnMapping = { input: INPUT_COLUMN, criteria: CRITERIA_COLUMN };
 			const dataset = await this.datasetRepository.createDataset({
 				name,
 				agentId,
 				datasetSource: 'data_table',
 				datasetRef: { dataTableId: table.id },
-				columnMapping: { input: INPUT_COLUMN, criteria: CRITERIA_COLUMN },
+				columnMapping,
 				createdById,
 			});
-			return { datasetId: dataset.id, dataTableId: table.id };
+			// Returned alongside the ids so a caller can resolve a writable
+			// `CaseSource` straight from this result — a refetch-based lookup can
+			// fail transiently after the dataset is already persisted, and a retry
+			// off that failure would create another empty dataset.
+			return { datasetId: dataset.id, dataTableId: table.id, columnMapping };
 		} catch (error) {
 			await this.rollBackDataTable(table.id, projectId);
 			throw error;

@@ -297,6 +297,9 @@ export class CreateDraftDatasetOptionsDto extends Z.class(createDraftDatasetOpti
 export type CreateDraftDatasetResult = {
 	datasetId: string;
 	dataTableId: string;
+	/** Lets the caller resolve a writable `CaseSource` straight from this result,
+	 *  instead of re-reading the dataset list to find the row it just created. */
+	columnMapping: AgentEvalColumnMapping;
 };
 
 // Request body for the preview-run endpoint: drafts exactly one case (the

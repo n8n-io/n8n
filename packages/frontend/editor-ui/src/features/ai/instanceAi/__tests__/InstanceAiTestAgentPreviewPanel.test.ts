@@ -116,7 +116,11 @@ function mockCommit(
 ) {
 	const datasetId = options.datasetId ?? 'dataset-2';
 	const dataTableId = options.dataTableId ?? 'table-2';
-	vi.spyOn(store, 'createDraftDataset').mockResolvedValue({ datasetId, dataTableId });
+	vi.spyOn(store, 'createDraftDataset').mockResolvedValue({
+		datasetId,
+		dataTableId,
+		columnMapping: { input: 'input', criteria: 'criteria' },
+	});
 	vi.spyOn(store, 'getDatasets').mockReturnValue([committedDataset(datasetId, dataTableId)]);
 	vi.spyOn(store, 'createCase').mockResolvedValue(null);
 	vi.spyOn(store, 'fetchCases').mockResolvedValue(options.rows);
@@ -657,6 +661,7 @@ describe('InstanceAiTestAgentPreviewPanel', () => {
 		vi.spyOn(store, 'createDraftDataset').mockResolvedValue({
 			datasetId: 'dataset-2',
 			dataTableId: 'table-2',
+			columnMapping: { input: 'input', criteria: 'criteria' },
 		});
 		vi.spyOn(store, 'getDatasets').mockReturnValue([committedDataset('dataset-2', 'table-2')]);
 		vi.spyOn(store, 'createCase').mockResolvedValue(null);
@@ -777,6 +782,7 @@ describe('InstanceAiTestAgentPreviewPanel', () => {
 			const createDraftDataset = vi.spyOn(store, 'createDraftDataset').mockResolvedValue({
 				datasetId: 'dataset-2',
 				dataTableId: 'table-2',
+				columnMapping: { input: 'input', criteria: 'criteria' },
 			});
 			vi.spyOn(store, 'getDatasets').mockReturnValue([committedDataset('dataset-2', 'table-2')]);
 			vi.spyOn(store, 'createCase').mockResolvedValue(null);
@@ -821,6 +827,7 @@ describe('InstanceAiTestAgentPreviewPanel', () => {
 			vi.spyOn(store, 'createDraftDataset').mockResolvedValue({
 				datasetId: 'dataset-2',
 				dataTableId: 'table-2',
+				columnMapping: { input: 'input', criteria: 'criteria' },
 			});
 			vi.spyOn(store, 'getDatasets').mockReturnValue([committedDataset('dataset-2', 'table-2')]);
 			vi.spyOn(store, 'createCase').mockResolvedValue(null);

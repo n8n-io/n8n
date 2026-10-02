@@ -501,7 +501,11 @@ describe('AgentEvalCaseGenerationService', () => {
 				columnMapping: { input: 'input', criteria: 'criteria' },
 				createdById: 'user-1',
 			});
-			expect(result).toEqual({ datasetId: 'ds-1', dataTableId: 'dt-1' });
+			expect(result).toEqual({
+				datasetId: 'ds-1',
+				dataTableId: 'dt-1',
+				columnMapping: { input: 'input', criteria: 'criteria' },
+			});
 		});
 
 		it('honors a custom dataset name', async () => {
@@ -613,6 +617,24 @@ describe('AgentEvalCaseGenerationService', () => {
 			agentTestRunService.executeDraftRun.mockResolvedValue({
 				status: 'agent_misconfigured',
 				missing: ['model'],
+			});
+
+			const result = await service.previewRun(user, 'project-1', 'agent-1');
+
+			expect(result).toEqual({ status: 'failed' });
+		});
+
+		// A `'completed'` run that hit `maxIterations` was cut off, not finished —
+		// treating it as success would present an incomplete response as an
+		// approved example.
+		it('reports failure when the run completes but hit max iterations', async () => {
+			generateMock.mockResolvedValue({ structuredOutput: { cases: makeCases(1) } });
+			agentTestRunService.executeDraftRun.mockResolvedValue({
+				status: 'completed',
+				maxIterations: true,
+				response: 'partial answer',
+				executionId: 'exec-1',
+				sessionId: 'session-1',
 			});
 
 			const result = await service.previewRun(user, 'project-1', 'agent-1');

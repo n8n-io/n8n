@@ -9,6 +9,10 @@ export type AgentAvatarSize = 'xs' | 'row' | 'sm' | 'md' | 'lg';
 const props = defineProps<{
 	kind: AgentAvatarKind;
 	size: AgentAvatarSize;
+	/** The case's scenario tag, e.g. "Vague" or "Custom" — folded into the
+	 *  accessible label so a collapsed summary pill's avatars don't reduce to
+	 *  status alone. */
+	label?: string;
 }>();
 
 const i18n = useI18n();
@@ -35,7 +39,7 @@ const iconByKind: Record<AgentAvatarKind, IconName> = {
 
 const icon = computed(() => iconByKind[props.kind]);
 
-const label = computed(() => {
+const statusLabel = computed(() => {
 	const labelByKind: Record<AgentAvatarKind, string> = {
 		pass: i18n.baseText('instanceAi.testAgentPreview.avatar.passed'),
 		strong: i18n.baseText('instanceAi.testAgentPreview.avatar.passed'),
@@ -46,6 +50,10 @@ const label = computed(() => {
 	};
 	return labelByKind[props.kind];
 });
+
+const label = computed(() =>
+	props.label ? `${props.label} — ${statusLabel.value}` : statusLabel.value,
+);
 </script>
 
 <template>
