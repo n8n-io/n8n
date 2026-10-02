@@ -59,7 +59,7 @@ describe('useExposeAllWorkflowsToMcpOffer', () => {
 		expect(uiStore.openModalWithData).not.toHaveBeenCalled();
 	});
 
-	it('opens the modal when only eligible agents exist and the agents module is active', async () => {
+	it('opens the modal when only eligible agents exist and agents are enabled', async () => {
 		experimentStore.isEnabled = true;
 		settingsStore.isAgentsEnabled = true;
 		mcpStore.getMcpEligibleWorkflows.mockResolvedValue({ count: 0, data: [] });
@@ -72,7 +72,7 @@ describe('useExposeAllWorkflowsToMcpOffer', () => {
 		expect(uiStore.openModalWithData).toHaveBeenCalled();
 	});
 
-	it('does not check agents when the agents module is inactive', async () => {
+	it('does not check agents when agents are disabled', async () => {
 		experimentStore.isEnabled = true;
 		mcpStore.getMcpEligibleWorkflows.mockResolvedValue({ count: 0, data: [] });
 

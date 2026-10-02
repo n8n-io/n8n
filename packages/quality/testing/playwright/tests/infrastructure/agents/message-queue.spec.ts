@@ -134,6 +134,7 @@ test.describe(
 			assert(n8nContainer, 'This test needs a container stack');
 			const ingress = await createApiForMain(0);
 			const consumer = await createApiForMain(1);
+			await ingress.agents.setEnabled(true);
 			const clients = [ingress, consumer];
 			const project = await ingress.projects.getMyPersonalProject();
 			const credential = await ingress.credentials.createCredential({

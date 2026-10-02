@@ -116,6 +116,7 @@ test.describe(
 			assert(n8nContainer, 'This test needs a container stack');
 			const clients = [await createApiForMain(0), await createApiForMain(1)];
 			const ingress = clients[0];
+			await ingress.agents.setEnabled(true);
 			const project = await ingress.projects.getMyPersonalProject();
 			const streams: Array<Awaited<ReturnType<typeof ingress.agents.openChat>>> = [];
 			const credential = await ingress.credentials.createCredential({

@@ -1,4 +1,4 @@
-import { LicenseState, ModuleRegistry } from '@n8n/backend-common';
+import { LicenseState, Logger, ModuleRegistry } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { SettingsRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -29,6 +29,7 @@ describe('Agents instance settings', () => {
 
 	beforeEach(async () => {
 		await Container.get(SettingsRepository).delete({ key: 'agents.enabled' });
+		publisher.publishCommand.mockClear();
 		vi.spyOn(registry, 'refreshModuleSettings').mockResolvedValue(null);
 		vi.spyOn(Container.get(LicenseState), 'getValue').mockReturnValue('Enterprise');
 	});
@@ -47,23 +48,39 @@ describe('Agents instance settings', () => {
 		expect(response.body.data).toEqual({ enabled });
 	});
 
-	it('lets an admin save a choice and shares it with other service instances', async () => {
-		const repository = Container.get(SettingsRepository);
-		await repository.upsertByKey('instanceAi.settings', '{"enabled":false}', true, {});
-		const peer = new AgentsSettingsService(repository, Container.get(LicenseState));
-		await expect(peer.getEnabled()).resolves.toBe(false);
+	it.each([false, true])(
+		'lets an admin save and share a choice (local refresh fails: %s)',
+		async (refreshFails) => {
+			const refreshError = new Error('Settings refresh failed');
+			const logger = Container.get(Logger);
+			if (refreshFails) {
+				vi.mocked(registry.refreshModuleSettings).mockRejectedValueOnce(refreshError);
+			}
+			const repository = Container.get(SettingsRepository);
+			await repository.upsertByKey('instanceAi.settings', '{"enabled":false}', true, {});
+			const peer = new AgentsSettingsService(repository, Container.get(LicenseState));
+			await expect(peer.getEnabled()).resolves.toBe(false);
 
-		await admin.put('/agents/settings').send({ enabled: true }).expect(200);
-		await expect(peer.getEnabled()).resolves.toBe(true);
-		expect(registry.refreshModuleSettings).toHaveBeenCalledWith('agents');
-		expect(publisher.publishCommand).toHaveBeenCalledWith({ command: 'reload-agents-settings' });
+			const response = await admin.put('/agents/settings').send({ enabled: true }).expect(200);
+			expect(response.body.data).toEqual({ enabled: true });
+			await expect(peer.getEnabled()).resolves.toBe(true);
+			expect(registry.refreshModuleSettings).toHaveBeenCalledWith('agents');
+			expect(publisher.publishCommand).toHaveBeenCalledWith({ command: 'reload-agents-settings' });
+			if (refreshFails) {
+				expect(logger.error).toHaveBeenCalledWith('Failed to refresh the local Agents setting', {
+					error: refreshError,
+				});
+			}
 
-		await owner.put('/agents/settings').send({ enabled: false }).expect(200);
-		vi.mocked(Container.get(LicenseState).getValue).mockReturnValue('Community');
-		await expect(peer.assertEnabled()).rejects.toThrow('Agents are disabled');
-		expect((await owner.get('/agents/settings').expect(200)).body.data).toEqual({ enabled: false });
-		expect((await repository.findByKey('instanceAi.settings'))?.value).toBe('{"enabled":false}');
-	});
+			await owner.put('/agents/settings').send({ enabled: false }).expect(200);
+			vi.mocked(Container.get(LicenseState).getValue).mockReturnValue('Community');
+			await expect(peer.assertEnabled()).rejects.toThrow('Agents are disabled');
+			expect((await owner.get('/agents/settings').expect(200)).body.data).toEqual({
+				enabled: false,
+			});
+			expect((await repository.findByKey('instanceAi.settings'))?.value).toBe('{"enabled":false}');
+		},
+	);
 
 	it('requires an authenticated instance admin and a boolean setting', async () => {
 		await server.authlessAgent.get('/agents/settings').expect(401);

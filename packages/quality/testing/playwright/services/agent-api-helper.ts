@@ -14,6 +14,12 @@ import { TestError } from '../Types';
 export class AgentApiHelper {
 	constructor(private readonly api: ApiHelpers) {}
 
+	async setEnabled(enabled: boolean): Promise<void> {
+		const response = await this.api.request.put('/rest/agents/settings', { data: { enabled } });
+		if (!response.ok())
+			throw new TestError(`Failed to save Agents settings: ${await response.text()}`);
+	}
+
 	/**
 	 * Create an agent. Pass a full schema for a runnable agent, or only a
 	 * name for an empty agent that has no config yet.

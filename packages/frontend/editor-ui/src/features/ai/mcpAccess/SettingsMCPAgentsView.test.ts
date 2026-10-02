@@ -111,7 +111,7 @@ describe('SettingsMCPAgentsView', () => {
 		expect(mcpStore.fetchAgentsAvailableForMCPPage).not.toHaveBeenCalled();
 	});
 
-	it('should redirect to the MCP settings view when the agents module is inactive', async () => {
+	it('should redirect to the MCP settings view when agents are disabled', async () => {
 		settingsStore.isAgentsEnabled = false;
 
 		createComponent({ pinia });

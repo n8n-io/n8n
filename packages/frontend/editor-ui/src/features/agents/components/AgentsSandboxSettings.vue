@@ -40,8 +40,11 @@ async function loadSettings() {
 	isLoading.value = true;
 	try {
 		if (hasSettingsModule.value && !isCloudManaged.value) {
-			await Promise.all([sandboxStore.fetch(), credentialsStore.fetchCredentialTypes(false)]);
-			hasLoaded.value = sandboxStore.settings !== null;
+			const [settingsLoaded] = await Promise.all([
+				sandboxStore.fetch(),
+				credentialsStore.fetchCredentialTypes(false),
+			]);
+			hasLoaded.value = settingsLoaded && sandboxStore.settings !== null;
 		}
 	} catch (error) {
 		toast.showError(error, i18n.baseText('settings.agents.sandbox.loadError'));

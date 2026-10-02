@@ -12,6 +12,7 @@ import {
 	updateSettings,
 	verifySandbox,
 } from '@/features/ai/instanceAi/instanceAi.settings.api';
+import { useInstanceAiSettingsStore } from '@/features/ai/instanceAi/instanceAiSettings.store';
 import { getAgentsSettings, updateAgentsSettings } from '../composables/useAgentApi';
 import SettingsAgentsView from '../views/SettingsAgentsView.vue';
 
@@ -161,6 +162,24 @@ it('configures the shared sandbox while Assistant and Agents are off', async () 
 	});
 	expect(useSettingsStore().moduleSettings['instance-ai']?.enabled).toBe(false);
 	expect(updateAgentsSettings).not.toHaveBeenCalled();
+});
+
+it('shows Retry after a failed sandbox reload with cached settings', async () => {
+	useInstanceAiSettingsStore().settings = sharedSettings({
+		sandboxEnabled: true,
+		n8nSandboxCredentialId: 'cached-sandbox',
+		n8nSandboxServiceUrl: 'http://sandbox:3200',
+	});
+	vi.mocked(fetchSettings).mockRejectedValueOnce(new Error('Load failed'));
+	const { findByRole, findByTestId, queryByTestId, queryByRole } = render();
+	const retry = await findByRole('button', { name: 'Retry' });
+	expect(queryByTestId('n8n-agent-sandbox-row')).not.toBeInTheDocument();
+
+	vi.mocked(fetchSettings).mockResolvedValue(sharedSettings());
+	await fireEvent.click(retry);
+	expect(await findByTestId('n8n-agent-sandbox-row')).toBeInTheDocument();
+	expect(await findByRole('button', { name: 'Add sandbox' })).toBeInTheDocument();
+	expect(queryByRole('button', { name: 'Retry' })).not.toBeInTheDocument();
 });
 
 it.each(['cloud', 'environment'] as const)(

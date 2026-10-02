@@ -8,6 +8,7 @@ import { useSettingsStore } from './settings.store';
 
 it.each([
 	{ active: true, enabled: true, expected: true },
+	{ active: true, enabled: undefined, expected: true },
 	{ active: true, enabled: false, expected: false },
 	{ active: false, enabled: true, expected: false },
 ])(

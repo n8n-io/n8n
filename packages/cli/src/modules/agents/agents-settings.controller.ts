@@ -31,7 +31,11 @@ export class AgentsSettingsController {
 		@Body settings: AgentsSettingsDto,
 	): Promise<AgentsSettingsDto> {
 		await this.settingsService.setEnabled(settings.enabled);
-		await this.reloadSettings();
+		try {
+			await this.reloadSettings();
+		} catch (error) {
+			this.logger.error('Failed to refresh the local Agents setting', { error });
+		}
 		try {
 			await this.publisher.publishCommand({ command: 'reload-agents-settings' });
 		} catch (error) {
