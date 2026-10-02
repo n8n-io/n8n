@@ -1000,6 +1000,26 @@ describe('v2/components/Combobox', () => {
 	});
 
 	describe('events', () => {
+		it.each([
+			['single', false],
+			['multiple', true],
+		])('should focus the input when focusOnInput is called in %s mode', async (_mode, multiple) => {
+			const comboboxRef = ref<{ focusOnInput: () => void } | null>(null);
+			const items = options('Option 1', 'Option 2');
+			const wrapper = render({
+				components: { Combobox },
+				setup() {
+					return { items, comboboxRef, multiple };
+				},
+				template: '<Combobox ref="comboboxRef" :items="items" :multiple="multiple" />',
+			});
+
+			await nextTick();
+			comboboxRef.value?.focusOnInput();
+
+			expect(getComboboxInput(wrapper)).toHaveFocus();
+		});
+
 		it('should open on focus, close after selection, and emit update:open', async () => {
 			const wrapper = render(Combobox, {
 				props: {
