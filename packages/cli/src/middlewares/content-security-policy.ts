@@ -16,9 +16,28 @@ declare global {
 const ENFORCED_HEADER = 'Content-Security-Policy';
 const REPORT_ONLY_HEADER = 'Content-Security-Policy-Report-Only';
 
-const isHtmlResponse = (res: Response) => {
+/**
+ * A browser never renders a script as a page, and a policy on a worker script would
+ * constrain the worker, which otherwise runs with no policy.
+ */
+const JAVASCRIPT_TYPES = new Set(['text/javascript', 'application/javascript']);
+
+/** The type without its parameters, e.g. `text/javascript` for `text/javascript; charset=utf-8`. */
+const essenceOf = (contentType: string) => contentType.split(';')[0].trim().toLowerCase();
+
+/**
+ * Whether the response is a script, the one type that gets no policy. Any other response
+ * gets it, one without a type included, because a browser can render it as a page. A
+ * header with several values counts as a script only when every value is one.
+ */
+const isJavaScriptResponse = (res: Response) => {
 	const contentType = res.getHeader('content-type');
-	return typeof contentType === 'string' && contentType.toLowerCase().includes('text/html');
+	if (contentType === undefined) return false;
+
+	return [contentType]
+		.flat()
+		.flatMap((value) => String(value).split(','))
+		.every((value) => JAVASCRIPT_TYPES.has(essenceOf(value)));
 };
 
 const hasOwnPolicy = (res: Response) =>
@@ -48,10 +67,10 @@ const copyWriteHeadHeaders = (res: Response, args: unknown[]) => {
 };
 
 /**
- * Serves the instance's Content-Security-Policy on HTML responses that do not already
- * set one, e.g. the `sandbox` policy on webhook, form and binary-data pages. The
- * middleware checks both conditions at header-flush time, because neither is known
- * when it runs.
+ * Serves the instance's Content-Security-Policy on every response that does not already
+ * set one, e.g. the `sandbox` policy on binary-data pages, except on scripts and on
+ * `304 Not Modified`. The middleware checks these conditions at header-flush time,
+ * because none of them is known when it runs.
  */
 export const createContentSecurityPolicyMiddleware = ({
 	enforced,
@@ -63,7 +82,7 @@ export const createContentSecurityPolicyMiddleware = ({
 		// `=` padding that a handlebars template would escape into `&#x3D;`.
 		const getNonce = () => (nonce ??= randomBytes(16).toString('base64url'));
 
-		// Lazy, so requests that render no HTML generate no nonce. Enumerable, so
+		// Lazy, so requests that send no policy generate no nonce. Enumerable, so
 		// `res.render` passes it to templates as `{{cspNonce}}`.
 		Object.defineProperty(res.locals, 'cspNonce', {
 			get: getNonce,
@@ -82,7 +101,13 @@ export const createContentSecurityPolicyMiddleware = ({
 
 			copyWriteHeadHeaders(res, args);
 
-			if (isHtmlResponse(res) && !hasOwnPolicy(res)) {
+			// A 304 updates the headers of the response in the browser cache, so a policy on
+			// it would replace the one that response came with, nonce included, and would
+			// reach a cached worker script. Read from `args`: `res.statusCode` changes only
+			// inside `writeHead`, so a direct `res.writeHead(304)` call still shows 200 here.
+			const isNotModified = args[0] === 304;
+
+			if (!isNotModified && !isJavaScriptResponse(res) && !hasOwnPolicy(res)) {
 				if (enforced) {
 					res.setHeader(ENFORCED_HEADER, renderContentSecurityPolicy(enforced, getNonce()));
 				}

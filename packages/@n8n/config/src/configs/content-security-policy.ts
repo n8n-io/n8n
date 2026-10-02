@@ -77,7 +77,7 @@ const invalid = (message: string): ParseResult => ({ ok: false, message });
 /**
  * Characters `res.setHeader` refuses with `ERR_INVALID_CHAR` - anything outside tab,
  * printable ASCII and the latin1 high range. A policy carrying one would throw while
- * serving every HTML response, so it is rejected here instead: exactly the values Node
+ * serving every response, so it is rejected here instead: exactly the values Node
  * refuses, so a policy that works today keeps working.
  */
 const HEADER_UNSAFE_CHARACTER = /[^\t\x20-\x7e\x80-\xff]/;

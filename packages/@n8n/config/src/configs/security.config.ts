@@ -71,7 +71,8 @@ export class SecurityConfig {
 
 	/**
 	 * The [Content-Security-Policy](https://developer.mozilla.org/en-US/docs/Web/HTTP/CSP) n8n serves
-	 * on its HTML pages, replacing the nonce-based default policy. Two formats are accepted:
+	 * on its responses, except on scripts and on `304 Not Modified`, replacing the nonce-based
+	 * default policy. Webhook and form responses do not get it. Two formats are accepted:
 	 *
 	 * - a [helmet.js](https://helmetjs.github.io/#content-security-policy) nested directives object,
 	 *   e.g. `{ "frame-ancestors": ["http://localhost:3000"] }`

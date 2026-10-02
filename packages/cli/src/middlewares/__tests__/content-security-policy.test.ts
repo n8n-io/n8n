@@ -50,6 +50,47 @@ const setupApp = (policies: ContentSecurityPolicies) => {
 		res.end('{"ok":true}');
 	});
 
+	app.get('/raw-script', (_req, res) => {
+		res.writeHead(200, { 'Content-Type': 'application/javascript' });
+		res.end('export {};');
+	});
+
+	app.get('/typed', (req, res) => {
+		res.setHeader('Content-Type', String(req.query.type));
+		res.end('<p>typed</p>');
+	});
+
+	app.get('/untyped', (_req, res) => {
+		res.end('<p>untyped</p>');
+	});
+
+	app.get('/script', (_req, res) => {
+		res.type('js').send('export {};');
+	});
+
+	app.get('/script-and-page', (_req, res) => {
+		res.setHeader('Content-Type', ['text/javascript', 'text/html']);
+		res.end('<p>page</p>');
+	});
+
+	app.get('/scripts', (_req, res) => {
+		res.setHeader('Content-Type', ['text/javascript', 'application/javascript']);
+		res.end('export {};');
+	});
+
+	app.get('/error', (_req, res) => {
+		res.status(500).json({ message: 'error' });
+	});
+
+	app.get('/not-modified', (_req, res) => {
+		res.status(304).end();
+	});
+
+	app.get('/raw-not-modified', (_req, res) => {
+		res.writeHead(304);
+		res.end();
+	});
+
 	return app;
 };
 
@@ -81,10 +122,10 @@ describe('createContentSecurityPolicyMiddleware', () => {
 			expect(nonceOf(first.headers[ENFORCED])).not.toBe(nonceOf(second.headers[ENFORCED]));
 		});
 
-		it('should not serve a policy on a non-HTML response', async () => {
+		it('should serve the policy on a non-HTML response', async () => {
 			const response = await request(app).get('/api');
 
-			expect(response.headers[ENFORCED]).toBeUndefined();
+			expect(response.headers[ENFORCED]).toMatch(/^script-src 'nonce-[\w-]+' 'strict-dynamic'$/);
 			expect(response.headers[REPORT_ONLY]).toBeUndefined();
 		});
 
@@ -118,11 +159,123 @@ describe('createContentSecurityPolicyMiddleware', () => {
 			expect(response.headers[ENFORCED]).toBe('sandbox allow-scripts');
 		});
 
-		it('should not serve a policy when writeHead carries a non-html content type', async () => {
+		it('should serve the policy when writeHead carries a non-html content type', async () => {
 			const response = await request(app).get('/raw-stream');
+
+			expect(response.headers[ENFORCED]).toMatch(/^script-src 'nonce-[\w-]+' 'strict-dynamic'$/);
+		});
+
+		it('should not serve a policy when writeHead carries a JavaScript content type', async () => {
+			const response = await request(app).get('/raw-script');
+
+			expect(response.headers[ENFORCED]).toBeUndefined();
+		});
+
+		it('should not serve a policy when writeHead carries a 304 status', async () => {
+			const response = await request(app).get('/raw-not-modified');
+
+			expect(response.status).toBe(304);
+			expect(response.headers[ENFORCED]).toBeUndefined();
+		});
+	});
+
+	describe('content types', () => {
+		const app = setupApp({
+			enforced: "script-src <nonce> 'strict-dynamic'",
+			reportOnly: "script-src <nonce>; object-src 'none'",
+		});
+
+		it.each(['text/xml', 'application/xml', 'image/svg+xml', 'application/xhtml+xml'])(
+			'should serve both headers on %s',
+			async (type) => {
+				const response = await request(app).get('/typed').query({ type });
+
+				expect(response.headers[ENFORCED]).toContain("'strict-dynamic'");
+				expect(response.headers[REPORT_ONLY]).toContain("object-src 'none'");
+			},
+		);
+
+		it('should serve both headers on a response without a content type', async () => {
+			const response = await request(app).get('/untyped');
+
+			expect(response.headers['content-type']).toBeUndefined();
+			expect(response.headers[ENFORCED]).toContain("'strict-dynamic'");
+			expect(response.headers[REPORT_ONLY]).toContain("object-src 'none'");
+		});
+
+		it('should serve both headers on an error response', async () => {
+			const response = await request(app).get('/error');
+
+			expect(response.status).toBe(500);
+			expect(response.headers[ENFORCED]).toContain("'strict-dynamic'");
+			expect(response.headers[REPORT_ONLY]).toContain("object-src 'none'");
+		});
+
+		it.each([
+			'text/javascript',
+			'application/javascript',
+			'text/javascript; charset=utf-8',
+			'Application/JavaScript',
+		])('should serve neither header on %s', async (type) => {
+			const response = await request(app).get('/typed').query({ type });
 
 			expect(response.headers[ENFORCED]).toBeUndefined();
 			expect(response.headers[REPORT_ONLY]).toBeUndefined();
+		});
+
+		it('should serve neither header on a script sent with res.type', async () => {
+			const response = await request(app).get('/script');
+
+			expect(response.headers['content-type']).toBe('text/javascript; charset=utf-8');
+			expect(response.headers[ENFORCED]).toBeUndefined();
+			expect(response.headers[REPORT_ONLY]).toBeUndefined();
+		});
+
+		it('should serve neither header when every content type value is JavaScript', async () => {
+			const response = await request(app).get('/scripts');
+
+			expect(response.headers[ENFORCED]).toBeUndefined();
+			expect(response.headers[REPORT_ONLY]).toBeUndefined();
+		});
+
+		it.each([
+			['several headers', '/script-and-page', {}],
+			['a comma-separated header', '/typed', { type: 'text/javascript, text/html' }],
+		])(
+			'should serve both headers when %s mix JavaScript with another type',
+			async (_label, path, query) => {
+				const response = await request(app).get(path).query(query);
+
+				expect(response.headers[ENFORCED]).toContain("'strict-dynamic'");
+				expect(response.headers[REPORT_ONLY]).toContain("object-src 'none'");
+			},
+		);
+	});
+
+	describe('304 Not Modified', () => {
+		const app = setupApp({
+			enforced: "script-src <nonce> 'strict-dynamic'",
+			reportOnly: "script-src <nonce>; object-src 'none'",
+		});
+
+		it('should serve neither header on a 304 response', async () => {
+			const response = await request(app).get('/not-modified');
+
+			expect(response.status).toBe(304);
+			expect(response.headers[ENFORCED]).toBeUndefined();
+			expect(response.headers[REPORT_ONLY]).toBeUndefined();
+		});
+
+		it('should serve neither header when a conditional request revalidates a response', async () => {
+			const original = await request(app).get('/api');
+			const revalidated = await request(app)
+				.get('/api')
+				.set('If-None-Match', original.headers.etag);
+
+			expect(original.headers[ENFORCED]).toContain("'strict-dynamic'");
+			expect(revalidated.status).toBe(304);
+			expect(revalidated.headers[ENFORCED]).toBeUndefined();
+			expect(revalidated.headers[REPORT_ONLY]).toBeUndefined();
 		});
 	});
 
