@@ -24,6 +24,8 @@ breaking-changes/
    database/
       entities/               # migration_finding, migration_finding_sync, migration_workflow_owner tables
       repositories/           # Use-case-named DB access (BaseRepository + OperationContext)
+   owners/
+      migration-owner-suggestion.service.ts # Proposes who should fix a workflow's findings
    sync/
       migration-finding-diff.ts  # Pure diff of scan hits against stored findings
       migration-finding-sync.service.ts  # Runs a scan and writes the diff, one transaction per batch
