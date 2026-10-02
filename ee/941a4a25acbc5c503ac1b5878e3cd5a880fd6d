@@ -1,0 +1,25 @@
+packages/@n8n/scheduler/src/core/errors.ts
+  s_cc52d4d80ec002::t_dd94d1b3d8dc4c 62-69
+packages/@n8n/scheduler/src/core/executor/__tests__/lease-heartbeat.test.ts
+  s_cc52d4d80ec002::t_dd94d1b3d8dc4c 1-240
+packages/@n8n/scheduler/src/core/executor/lease-heartbeat.ts
+  s_cc52d4d80ec002::t_dd94d1b3d8dc4c 1-121
+packages/@n8n/scheduler/src/core/executor/lease-constants.ts
+  s_cc52d4d80ec002::t_dd94d1b3d8dc4c 1-15
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "ee941a4a25acbc5c503ac1b5878e3cd5a880fd6d",
+  "prompts": {},
+  "sessions": {
+    "s_cc52d4d80ec002": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "14df1071-d247-4331-af4e-4ce488ddaae0",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}
