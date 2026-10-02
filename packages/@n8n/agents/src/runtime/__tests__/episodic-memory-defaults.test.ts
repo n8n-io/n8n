@@ -81,7 +81,11 @@ describe('episodic memory defaults', () => {
 
 		mockGenerateText.mockImplementationOnce(async ({ output }) => {
 			const parsedOutput = output.schema.parse({ drop: [], merge: [] });
-			return await Promise.resolve({ output: parsedOutput, usage: { totalTokens: 13 }, finalStep: {} });
+			return await Promise.resolve({
+				output: parsedOutput,
+				usage: { totalTokens: 13 },
+				finalStep: {},
+			});
 		});
 
 		await createEpisodicMemoryReflectFn(fakeModel)({
