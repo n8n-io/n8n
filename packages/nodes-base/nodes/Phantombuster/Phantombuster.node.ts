@@ -119,7 +119,7 @@ export class Phantombuster implements INodeType {
 		for (let i = 0; i < length; i++) {
 			try {
 				if (resource === 'agent') {
-					//https://hub.phantombuster.com/reference#post_agents-delete-1
+					// https://hub.phantombuster.com/reference/post_agents-delete
 					if (operation === 'delete') {
 						const agentId = this.getNodeParameter('agentId', i) as string;
 
@@ -129,7 +129,7 @@ export class Phantombuster implements INodeType {
 
 						responseData = { success: true };
 					}
-					//https://hub.phantombuster.com/reference#get_agents-fetch-1
+					// https://hub.phantombuster.com/reference/get_agents-fetch
 					if (operation === 'get') {
 						const agentId = this.getNodeParameter('agentId', i) as string;
 
@@ -141,7 +141,7 @@ export class Phantombuster implements INodeType {
 							{ id: agentId },
 						);
 					}
-					//https://hub.phantombuster.com/reference#get_agents-fetch-output-1
+					// https://hub.phantombuster.com/reference/get_agents-fetch-output
 					if (operation === 'getOutput') {
 						const agentId = this.getNodeParameter('agentId', i) as string;
 
@@ -188,7 +188,7 @@ export class Phantombuster implements INodeType {
 							responseData = responseData.splice(0, limit);
 						}
 					}
-					//https://hub.phantombuster.com/reference#post_agents-launch-1
+					// https://hub.phantombuster.com/reference/post_agents-launch
 					// https://hub.phantombuster.com/reference/post_agents-launch-sync
 					if (operation === 'launch' || operation === 'launchSync') {
 						const agentId = this.getNodeParameter('agentId', i) as string;
