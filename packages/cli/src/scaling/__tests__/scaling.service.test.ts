@@ -908,29 +908,45 @@ describe('ScalingService', () => {
 					await scalingService.stop();
 
 					expect(unstarted.moveToFailed).toHaveBeenCalledTimes(1);
-					expect(
-						scopedLogger.info.mock.calls.some(([message]) => String(message).includes('7')),
-					).toBe(true);
+					expect(scopedLogger.info).toHaveBeenCalledWith(expect.any(String), {
+						jobIds: ['7'],
+					});
 				});
 
 				it('should skip jobs locked under another token, jobs with no lock, and jobs that reached the handler', async () => {
 					const processFn = await startWorker();
-					const otherWorkers = activeJob('7');
+					const otherWorker = activeJob('7');
 					const unlocked = activeJob('8');
 					const started = activeJob('9');
 					const unstarted = activeJob('10');
-					lockWith(otherWorkers, 'other-token');
+					lockWith(otherWorker, 'other-token');
 					lockWith(started, LOCK_TOKEN);
 					lockWith(unstarted, LOCK_TOKEN);
-					queue.getActive.mockResolvedValue([otherWorkers, unlocked, started, unstarted]);
+					queue.getActive.mockResolvedValue([otherWorker, unlocked, started, unstarted]);
 					await processFn(started);
 
 					await scalingService.stop();
 
-					expect(otherWorkers.moveToFailed).not.toHaveBeenCalled();
+					expect(otherWorker.moveToFailed).not.toHaveBeenCalled();
 					expect(unlocked.moveToFailed).not.toHaveBeenCalled();
 					expect(started.moveToFailed).not.toHaveBeenCalled();
 					expect(unstarted.moveToFailed).toHaveBeenCalledTimes(1);
+				});
+
+				it('should ignore a null entry from Redis and still hand back the owned job', async () => {
+					await startWorker();
+					const ownedJob = activeJob('7');
+					lockWith(ownedJob, LOCK_TOKEN);
+					// @ts-expect-error - Untyped but possible Redis response
+					queue.getActive.mockResolvedValue([null, ownedJob]);
+
+					await scalingService.stop();
+
+					expect(ownedJob.moveToFailed).toHaveBeenCalledWith(expect.any(JobHandedBackError));
+					expect(scopedLogger.warn).not.toHaveBeenCalledWith(
+						'Failed to hand back jobs fetched before the pause',
+						expect.anything(),
+					);
 				});
 
 				it('should raise the attempts limit before failing the job with a hand-back error', async () => {
@@ -1007,9 +1023,9 @@ describe('ScalingService', () => {
 							);
 						} else {
 							expect(unstarted.moveToFailed).toHaveBeenCalled();
-							expect(
-								scopedLogger.info.mock.calls.some(([message]) => String(message).includes('7')),
-							).toBe(false);
+							expect(scopedLogger.info).not.toHaveBeenCalledWith(expect.any(String), {
+								jobIds: ['7'],
+							});
 						}
 					},
 				);
@@ -1069,6 +1085,17 @@ describe('ScalingService', () => {
 						expect(stillRunning.moveToFailed).not.toHaveBeenCalled();
 					},
 				);
+
+				it('should not throw when the worker failed listener receives a null job', async () => {
+					await startWorker();
+					const [, handler] = queue.on.mock.calls.find(([event]) => event === 'failed') as [
+						string,
+						(job: Job | null, error: Error) => void,
+					];
+
+					expect(() => handler(null, new Error('boom'))).not.toThrow();
+					expect(scopedLogger.error).not.toHaveBeenCalled();
+				});
 			});
 		});
 	});
