@@ -157,20 +157,22 @@ describe('GET /executions/:id', () => {
 		expect(tracingContext).toEqual({ traceparent });
 	});
 
-	test.each(['success', 'error', 'crashed', 'canceled'] as const)(
-		'projects the public finished field from %s status',
-		async (status) => {
-			const workflow = await createWorkflow({}, owner);
-			const execution = await createExecution({ status, finished: status !== 'success' }, workflow);
+	test.each([
+		['success', true],
+		['error', true],
+		['crashed', true],
+		['canceled', true],
+		['running', false],
+		['waiting', false],
+	] as const)('projects the public finished field from %s status', async (status, finished) => {
+		const workflow = await createWorkflow({}, owner);
+		const execution = await createExecution({ status, finished: !finished }, workflow);
 
-			const response = await authOwnerAgent.get(`/executions/${execution.id}`);
+		const response = await authOwnerAgent.get(`/executions/${execution.id}`);
 
-			expect(response.statusCode).toBe(200);
-			expect(response.body).toEqual(
-				expect.objectContaining({ status, finished: status === 'success' }),
-			);
-		},
-	);
+		expect(response.statusCode).toBe(200);
+		expect(response.body).toEqual(expect.objectContaining({ status, finished }));
+	});
 
 	test('should return a webhook execution when the stored tracestate is null', async () => {
 		const traceparent = createTraceparent();
@@ -646,6 +648,18 @@ describe('GET /executions', () => {
 	test('should fail due to missing API Key', testWithAPIKey('get', '/executions', null));
 
 	test('should fail due to invalid API Key', testWithAPIKey('get', '/executions', 'abcXYZ'));
+
+	test('reports terminal executions as finished in the list', async () => {
+		const workflow = await createWorkflow({}, owner);
+		const execution = await createExecution({ status: 'error', finished: false }, workflow);
+
+		const response = await authOwnerAgent.get('/executions');
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data).toEqual([
+			expect.objectContaining({ id: execution.id, status: 'error', finished: true }),
+		]);
+	});
 
 	test('should paginate two executions', async () => {
 		const workflow = await createWorkflow({}, owner);

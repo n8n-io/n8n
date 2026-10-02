@@ -36,7 +36,11 @@ import {
 } from '@n8n/decorators';
 import { isRecord } from '@n8n/utils/is-record';
 import type { Response } from 'express';
-import { replaceCircularReferences, WorkflowOperationError } from 'n8n-workflow';
+import {
+	isTerminalExecutionStatus,
+	replaceCircularReferences,
+	WorkflowOperationError,
+} from 'n8n-workflow';
 
 import { AbortedExecutionRetryError } from '@/errors/aborted-execution-retry.error';
 import { MissingExecutionStopError } from '@/errors/missing-execution-stop.error';
@@ -445,7 +449,7 @@ function toPublicTracingContext(tracingContext: unknown): TracingContext | null 
 function toBaseFields(execution: PublicExecution) {
 	return {
 		// Keep the public compatibility field based on the canonical status.
-		finished: execution.status === 'success',
+		finished: isTerminalExecutionStatus(execution.status),
 		mode: execution.mode,
 		retryOf: execution.retryOf ?? null,
 		retrySuccessId: execution.retrySuccessId ?? null,
@@ -469,7 +473,7 @@ function toBaseFields(execution: PublicExecution) {
 function toExecutionListItem(execution: PublicExecution) {
 	return {
 		id: execution.id,
-		finished: execution.status === 'success',
+		finished: isTerminalExecutionStatus(execution.status),
 		mode: execution.mode,
 		retryOf: execution.retryOf ?? null,
 		retrySuccessId: execution.retrySuccessId ?? null,
@@ -554,7 +558,7 @@ function toRetriedExecutionPublicDto(
 		mode: retried.mode,
 		startedAt: retried.startedAt.toISOString(),
 		workflowId: retried.workflowId,
-		finished: retried.status === 'success',
+		finished: isTerminalExecutionStatus(retried.status),
 		retryOf: retried.retryOf ?? null,
 		status: retried.status,
 		waitTill: retried.waitTill instanceof Date ? retried.waitTill.toISOString() : retried.waitTill,

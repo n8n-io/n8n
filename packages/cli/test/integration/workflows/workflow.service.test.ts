@@ -1247,11 +1247,11 @@ describe('publishAsSystem()', () => {
 		// a wrong-field bug would be invisible.
 		const draftVersionId = uuid();
 		await workflowRepository.update({ id: workflow.id }, { versionId: draftVersionId });
+		// The active-version relation is the publication source of truth.
+		await workflowRepository.update({ id: workflow.id }, { active: false });
 		// Compare against the stored row: the helper's in-memory updatedAt carries
 		// sub-second precision that the insert already dropped.
 		const storedBefore = await workflowRepository.findOneOrFail({ where: { id: workflow.id } });
-		// The active-version relation is the publication source of truth.
-		await workflowRepository.update({ id: workflow.id }, { active: false });
 		const nodes = systemNodes();
 		const nodeGroups = [
 			{ id: uuid(), name: 'Group', nodeIds: [nodes[0].id], description: undefined },
