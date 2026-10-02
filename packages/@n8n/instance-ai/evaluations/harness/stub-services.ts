@@ -308,7 +308,7 @@ export async function createStubServices(
 		async resolveTestListener(workflowId, { cancel }) {
 			if (cancel) return { state: 'cancelled' as const };
 			const result = await executionService.run(workflowId);
-			return { state: 'received' as const, executionId: result.executionId, result };
+			return { state: 'received' as const, result };
 		},
 		// Same synthetic answer as `run`: the eval has no execution backend, and a
 		// hard "not available" here would derail a thread that reasonably reaches

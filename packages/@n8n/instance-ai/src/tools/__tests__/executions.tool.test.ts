@@ -302,6 +302,26 @@ describe('executions tool', () => {
 			expect(context.executionService.run).not.toHaveBeenCalled();
 		});
 
+		it('does not look the workflow up when the run is already allowed', async () => {
+			const context = createMockContext({
+				permissions: { runWorkflow: 'always_allow' },
+				allowedRunWorkflowIds: new Set(['wf-1']),
+			});
+			(context.executionService.run as Mock).mockResolvedValue({
+				executionId: 'exec-1',
+				status: 'success',
+			});
+
+			await executeTool(
+				createExecutionsTool(context),
+				{ action: 'run' as const, workflowId: 'wf-1' },
+				createAgentCtx() as never,
+			);
+
+			expect(context.executionService.run).toHaveBeenCalled();
+			expect(context.workflowService.get).not.toHaveBeenCalled();
+		});
+
 		it('should suspend for confirmation using the looked-up workflow name', async () => {
 			const suspendFn = vi.fn();
 			const context = createMockContext({
@@ -974,14 +994,15 @@ describe('executions tool', () => {
 
 			await executeTool(
 				createExecutionsTool(context),
-				input,
+				{ ...input, triggerNodeName: 'Webhook' },
 				createAgentCtx({ suspend: suspendFn }) as never,
 			);
 
 			expect(armTestListener).not.toHaveBeenCalled();
 			expect(suspendFn).toHaveBeenCalledWith({
 				requestId: expect.any(String),
-				message: 'Listen for a test request to Fetched Name (ID: wf-1)',
+				message: 'Listen for a test request to this workflow on "Webhook"',
+				resourceName: 'Fetched Name',
 				severity: 'warning',
 			});
 		});
@@ -1049,7 +1070,6 @@ describe('executions tool', () => {
 			);
 			resolveTestListener.mockResolvedValue({
 				state: 'received',
-				executionId: 'exec-9',
 				result: { executionId: 'exec-9', status: 'success' },
 			});
 
@@ -1075,11 +1095,7 @@ describe('executions tool', () => {
 			const listenInput = { ...input, triggerNodeName: 'Webhook' };
 			await executeTool(tool, listenInput, createAgentCtx({ suspend: suspendFn }) as never);
 			const runResult = { executionId: 'exec-9', status: 'success' as const };
-			resolveTestListener.mockResolvedValue({
-				state: 'received',
-				executionId: 'exec-9',
-				result: runResult,
-			});
+			resolveTestListener.mockResolvedValue({ state: 'received', result: runResult });
 			const claim: VerificationClaim = {
 				level: 'verified',
 				plannedNodeCount: 1,
