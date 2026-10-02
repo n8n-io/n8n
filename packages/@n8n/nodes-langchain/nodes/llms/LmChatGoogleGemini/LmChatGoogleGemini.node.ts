@@ -101,7 +101,7 @@ const modelRLC: INodeProperties = {
 	builderHint: {
 		// The dropdown loads through declarative routing, which explore-resources cannot call.
 		propertyHint:
-			'This node has no model lookup method for nodes(action="explore-resources"). For a new choice, call searchModels with provider "google" and use a Gemini 3.x or newer model ID with the "models/" prefix. Do not choose Gemini 2.x or older. ' +
+			'This node declares no model-list lookup, so nodes(action="explore-resources") cannot list its models, even with a connected credential. For a new choice, call searchModels with provider "google" and use a Gemini 3.x or newer model ID with the "models/" prefix. Do not choose Gemini 2.x or older. ' +
 			MODEL_SELECTION_HINT,
 	},
 };

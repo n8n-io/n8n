@@ -8,6 +8,7 @@ describe('LmChatGoogleGemini', () => {
 
 		expect(hints).toHaveLength(3);
 		for (const hint of hints) {
+			expect(hint).toContain('even with a connected credential');
 			expect(hint).toContain('call searchModels with provider "google"');
 			expect(hint).toContain('Do not choose Gemini 2.x or older');
 		}
