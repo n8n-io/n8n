@@ -231,12 +231,12 @@ describe('MicrosoftOutlookTrigger poll - large backlog', () => {
 		mockPollFunctions.helpers.requestWithAuthentication = mockRequestWithAuthentication;
 	});
 
-	it('stops paging after a bounded number of pages and holds the cursor at the first message it did not emit', async () => {
+	it('stops paging after 10 pages and holds the cursor at the first message it did not emit', async () => {
 		const result = await new MicrosoftOutlookTrigger().poll.call(mockPollFunctions);
 
-		expect(mockRequestWithAuthentication.mock.calls.length).toBeLessThan(safetyPageLimit);
+		expect(mockRequestWithAuthentication).toHaveBeenCalledTimes(10);
 		const emitted = result?.[0] ?? [];
-		expect(emitted.length).toBeGreaterThan(0);
+		expect(emitted).toHaveLength(10 * pageSize - 1);
 		expect(emitted.map((item) => item.json.id)).toEqual(
 			Array.from({ length: emitted.length }, (_, i) => `msg${i}`),
 		);

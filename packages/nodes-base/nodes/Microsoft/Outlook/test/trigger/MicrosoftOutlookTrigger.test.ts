@@ -51,20 +51,22 @@ describe('MicrosoftOutlookTrigger', () => {
 			await expect(trigger.poll.call(mockPollFunctions)).rejects.toThrow('API request failed');
 		});
 
-		it('should advance lastTimeChecked when poll returns results', async () => {
+		it('should store the cursor returned by the poll response when poll returns results', async () => {
 			const previousTimestamp = '2023-01-01T00:00:00.000Z';
 			staticData.lastTimeChecked = previousTimestamp;
 
 			const fakeNow = DateTime.fromISO('2023-01-02T00:00:00.000Z');
 			vi.spyOn(DateTime, 'now').mockReturnValue(fakeNow);
 
+			// A capped poll returns a cursor before now; poll must store that cursor, not now.
+			const cursor = '2023-01-01T12:00:00.000Z';
 			const mockResults: INodeExecutionData[] = [{ json: { id: 'msg1', subject: 'Test' } }];
-			(getPollResponse as Mock).mockResolvedValue({ items: mockResults, cursor: fakeNow.toISO() });
+			(getPollResponse as Mock).mockResolvedValue({ items: mockResults, cursor });
 
 			const result = await trigger.poll.call(mockPollFunctions);
 
 			expect(result).toEqual([mockResults]);
-			expect(staticData.lastTimeChecked).toBe(fakeNow.toISO());
+			expect(staticData.lastTimeChecked).toBe(cursor);
 		});
 
 		it('should advance lastTimeChecked when poll returns empty results', async () => {

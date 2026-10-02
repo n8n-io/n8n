@@ -622,8 +622,13 @@ describe('Microsoft Outlook Trigger GenericFunctions', () => {
 				});
 
 				it('should not move the cursor past the poll end date', async () => {
-					(microsoftApiRequest as Mock).mockImplementation(async (_method, endpoint: string) =>
-						endpoint.includes('/A/') ? pageOf('A', [7, 7], true) : pageOf('B', [], false),
+					(microsoftApiRequest as Mock).mockImplementation(
+						async (_method, endpoint: string, _index, _body, qs?: IDataObject) => {
+							if (!endpoint.includes('/A/')) return pageOf('B', [], false);
+							// The re-read of second 7 fits in one page.
+							const reread = String(qs?.$filter).startsWith(`receivedDateTime ge ${at(7)}`);
+							return pageOf('A', [7, 7], !reread);
+						},
 					);
 					const pollEnd = new Date(Date.parse(at(7)) + 500).toISOString();
 
@@ -676,9 +681,23 @@ describe('Microsoft Outlook Trigger GenericFunctions', () => {
 					expect(items.map((item) => item.json)).toEqual([{ id: 'msg1', subject: 'Hi' }]);
 				});
 
-				it('should step past the boundary second when every fetched message shares it', async () => {
-					(microsoftApiRequest as Mock).mockImplementation(async (_method, endpoint: string) =>
-						endpoint.includes('/A/') ? pageOf('A', [7, 7], true) : pageOf('B', [7, 9], false),
+				it('should read the whole boundary second when every fetched message shares it', async () => {
+					// 1,500 messages in folder A arrived at second 7: more than one capped read holds.
+					const atSeven = (from: number, count: number) =>
+						Array.from({ length: count }, (_, i) => ({
+							id: `A-7-${from + i}`,
+							receivedDateTime: at(7),
+						}));
+					let cappedPage = 0;
+					(microsoftApiRequest as Mock).mockImplementation(
+						async (_method, endpoint: string, _index, _body, qs?: IDataObject, uri?: string) => {
+							if (endpoint.includes('/B/')) return pageOf('B', [7, 9], false);
+							if (uri === 'second-page-2') return { value: atSeven(750, 750) };
+							if (String(qs?.$filter).startsWith(`receivedDateTime ge ${at(7)}`)) {
+								return { value: atSeven(0, 750), '@odata.nextLink': 'second-page-2' };
+							}
+							return { value: atSeven(cappedPage++ * 2, 2), '@odata.nextLink': 'next' };
+						},
 					);
 
 					const { items, cursor } = await getPollResponse.call(
@@ -687,8 +706,11 @@ describe('Microsoft Outlook Trigger GenericFunctions', () => {
 						pollEndDate,
 					);
 
-					expect(items.map((item) => item.json.id)).not.toContain('B-9');
-					expect(items).toHaveLength(21);
+					const ids = items.map((item) => item.json.id);
+					expect(new Set(ids).size).toBe(ids.length);
+					expect(ids.filter((id) => String(id).startsWith('A-7-'))).toHaveLength(1500);
+					expect(ids).toContain('B-7');
+					expect(ids).not.toContain('B-9');
 					expect(cursor).toBe(at(8));
 				});
 			});

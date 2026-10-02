@@ -12,10 +12,11 @@ async function getMessagesOldestFirst(
 	this: IPollFunctions,
 	endpoint: string,
 	qs: IDataObject,
+	maxPages = MAX_PAGES_PER_FOLDER,
 ): Promise<{ messages: IDataObject[]; capped: boolean }> {
 	const messages: IDataObject[] = [];
 	let nextLink: string | undefined;
-	for (let page = 0; page < MAX_PAGES_PER_FOLDER; page++) {
+	for (let page = 0; page < maxPages; page++) {
 		// Poll context: 0 is the transport's fallback read, not an item index.
 		const response = await microsoftApiRequest.call(
 			this,
@@ -90,8 +91,11 @@ export async function getPollResponse(
 		if (this.getMode() !== 'manual') {
 			// Oldest first, so a capped poll can resume where it stopped. Graph needs the
 			// ordered property first in $filter when both are set.
-			const dateFilter = `receivedDateTime ge ${pollStartDate} and receivedDateTime lt ${pollEndDate}`;
-			qs.$filter = qs.$filter ? `${dateFilter} and (${qs.$filter})` : dateFilter;
+			const inWindow = (from: string, to: string) => {
+				const dateFilter = `receivedDateTime ge ${from} and receivedDateTime lt ${to}`;
+				return filterString ? `${dateFilter} and (${filterString})` : dateFilter;
+			};
+			qs.$filter = inWindow(pollStartDate, pollEndDate);
 			qs.$orderby = 'receivedDateTime asc';
 
 			const endpoints =
@@ -101,32 +105,46 @@ export async function getPollResponse(
 				endpoints.map(async (endpoint) => await getMessagesOldestFirst.call(this, endpoint, qs)),
 			);
 			const receivedAt = (message: IDataObject) => Date.parse(message.receivedDateTime as string);
-			responseData = results
-				.flatMap((result) => result.messages)
-				.sort((a, b) => receivedAt(a) - receivedAt(b));
+			const lastAt = (result: { messages: IDataObject[] }) =>
+				result.messages.length > 0 ? receivedAt(result.messages[result.messages.length - 1]) : NaN;
+			responseData = results.flatMap((result) => result.messages);
 
 			// Each capped folder stopped at its last fetched message. Emit only what is older
 			// than the earliest of those, so no folder skips messages it did not read yet.
 			const cappedAt = results
-				.filter((result) => result.capped && result.messages.length > 0)
-				.map((result) => receivedAt(result.messages[result.messages.length - 1]))
+				.filter((result) => result.capped)
+				.map(lastAt)
 				.filter(Number.isFinite);
 			if (cappedAt.length > 0) {
 				const boundary = Math.min(...cappedAt);
 				let limit = boundary;
 				if (!responseData.some((message) => receivedAt(message) < boundary)) {
-					// A whole capped read shares one second. Step past it so the trigger keeps
-					// moving, at the cost of the unread messages in that second.
-					limit = boundary + 1000;
-					this.logger.warn(
-						`Microsoft Outlook Trigger skipped unread messages received at ${new Date(boundary).toISOString()}: more than one poll can read arrived in that second`,
+					// A whole capped read shares one second, and Graph has no order inside a
+					// second to resume from. Read that second in full instead of skipping it.
+					// The query never reaches past pollEndDate, so neither may the cursor.
+					limit = Math.min(boundary + 1000, Date.parse(pollEndDate));
+					const second = {
+						...qs,
+						$filter: inWindow(new Date(boundary).toISOString(), new Date(limit).toISOString()),
+					};
+					const rereads = await Promise.all(
+						endpoints
+							.filter((_, i) => results[i].capped && lastAt(results[i]) === boundary)
+							.map(
+								async (endpoint) =>
+									await getMessagesOldestFirst.call(this, endpoint, second, Infinity),
+							),
 					);
+					const seen = new Set(responseData.map((message) => message.id));
+					for (const message of rereads.flatMap((result) => result.messages)) {
+						if (!seen.has(message.id)) responseData.push(message);
+						seen.add(message.id);
+					}
 				}
-				// The query never reaches past pollEndDate, so neither may the cursor.
-				limit = Math.min(limit, Date.parse(pollEndDate));
 				responseData = responseData.filter((message) => receivedAt(message) < limit);
 				cursor = new Date(limit).toISOString();
 			}
+			responseData.sort((a, b) => receivedAt(a) - receivedAt(b));
 
 			if (addReceivedDateTime && output === 'fields') {
 				responseData = responseData.map(({ receivedDateTime, ...message }) => message);
