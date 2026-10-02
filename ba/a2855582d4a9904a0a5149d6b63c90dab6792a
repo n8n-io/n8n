@@ -1,0 +1,27 @@
+packages/cli/src/modules/agents/__tests__/agent-chat.controller.test.ts
+  s_9a6001e67297f0::t_119843fbbb0ce9 2
+  s_9a6001e67297f0::t_08b35d9c07190c 41-42
+  s_9a6001e67297f0::t_25158c96f80364 170-175
+  s_9a6001e67297f0::t_02398467f3357b 1215-1332,1334-1349,1351-1354
+  s_9a6001e67297f0::t_f6bb6fc1a6eb7f 1333,1350
+packages/cli/src/modules/agents/agent-chat.controller.ts
+  s_9a6001e67297f0::t_68869ec9c2df5f 547-552,554
+  s_9a6001e67297f0::t_bafeba1550b82b 584-586,588
+  s_9a6001e67297f0::t_4f608c914e2eae 611-613,615
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "baa2855582d4a9904a0a5149d6b63c90dab6792a",
+  "prompts": {},
+  "sessions": {
+    "s_9a6001e67297f0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f72ae404-381c-4905-9080-63d9e62dffe6",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": null
+    }
+  }
+}
