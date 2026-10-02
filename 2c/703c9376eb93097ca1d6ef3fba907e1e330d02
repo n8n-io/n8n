@@ -1,0 +1,37 @@
+packages/cli/src/scheduling/system-tasks/__tests__/main-system-tasks.test.ts
+  s_be34f2a9936255::t_6db40539b6f4ad 19,25-26,37,57-63
+packages/cli/src/scheduling/system-tasks/__tests__/system-task-runner.test.ts
+  s_be34f2a9936255::t_89e6de8f739a8a 37,58,861-876
+packages/cli/src/scheduling/system-tasks/main-system-tasks.ts
+  s_be34f2a9936255::t_0cc680acf4f0bb 5,27-33
+packages/cli/src/services/pruning/__tests__/workflow-history-compaction-trim.task.test.ts
+  s_be34f2a9936255::t_2d758b4ad056a6 1,8-9,11,13,15-19,22
+packages/cli/src/services/pruning/__tests__/workflow-history-compaction.service.test.ts
+  s_be34f2a9936255::t_536b26fd9f0637 9,32-33,78
+packages/cli/src/services/pruning/__tests__/workflow-history-compaction.utils.test.ts
+  s_be34f2a9936255::t_f353487c772e22 1-19
+packages/cli/src/services/pruning/workflow-history-compaction-trim.task.ts
+  s_be34f2a9936255::t_62c6470a5aeb47 2,15-20,24-28
+packages/cli/src/services/pruning/workflow-history-compaction.service.ts
+  s_be34f2a9936255::t_0b560178058fd7 16,93-96
+packages/cli/src/services/pruning/workflow-history-compaction.utils.ts
+  s_be34f2a9936255::t_e623fdd5c7d6d9 1-18
+packages/cli/test/integration/workflow-history-compaction-trim.task.test.ts
+  s_be34f2a9936255::t_cf232c2a9b275e 1-118
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2c703c9376eb93097ca1d6ef3fba907e1e330d02",
+  "prompts": {},
+  "sessions": {
+    "s_be34f2a9936255": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9a0f2c47-6407-4069-a583-c102c8290868",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Veljko Terzic <veljko.terzic@n8n.io>"
+    }
+  }
+}
