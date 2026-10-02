@@ -1,0 +1,22 @@
+packages/@n8n/api-types/src/dto/ldap/ldap-configuration-public.dto.ts
+  s_5faaac1057ba03::t_c2b5cb463de396 22
+packages/@n8n/api-types/src/dto/ldap/__tests__/ldap-configuration.dto.test.ts
+  s_5faaac1057ba03::t_5dff73583d7748 57-65,70-71
+  s_5faaac1057ba03::t_fa0059d54852f2 56,66-69
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "f65c0c57022d7154bdfa9972328795a279da8c32",
+  "prompts": {},
+  "sessions": {
+    "s_5faaac1057ba03": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "74c7eb69-dea4-4acf-a985-01e950ced5f9",
+        "model": "grok-4.7"
+      },
+      "human_author": "Ali Elkhateeb <ali.elkhateeb@n8n.io>"
+    }
+  }
+}
