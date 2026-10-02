@@ -1,7 +1,12 @@
 packages/workflow/src/workflow-diff.ts
   s_be34f2a9936255::t_a37c5db4e3e318 289-291
+  s_be34f2a9936255::t_1d1b3ca002c9bc 290
+  s_be34f2a9936255::t_f07c06a0b8de8f 289,291
 packages/workflow/test/workflow-diff.test.ts
   s_be34f2a9936255::t_14170621ad6174 915-927,1529-1535
+  s_be34f2a9936255::t_dd4b5eba58373c 1529-1533
+  s_be34f2a9936255::t_88c86c3015d0c4 915-927
+  s_be34f2a9936255::t_d5d1e8f10689c6 1534-1535
 ---
 {
   "schema_version": "authorship/3.0.0",
