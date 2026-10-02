@@ -14,7 +14,6 @@ import {
 	InstanceSettings,
 } from 'n8n-core';
 import type {
-	ExecutionStatus,
 	IRun,
 	IRunData,
 	IRunExecutionData,
@@ -23,7 +22,11 @@ import type {
 	RelatedExecution,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
-import { runDataAttemptedDynamicCredentials, runDataUsedDynamicCredentials } from 'n8n-workflow';
+import {
+	isTerminalExecutionStatus,
+	runDataAttemptedDynamicCredentials,
+	runDataUsedDynamicCredentials,
+} from 'n8n-workflow';
 
 import { executeErrorWorkflow } from './execute-error-workflow';
 import { restoreBinaryDataId } from './restore-binary-data-id';
@@ -932,8 +935,7 @@ export function getLifecycleHooksForScalingMain(
 		// Only process executions that have reached a terminal status.
 		// We check `status` (not the deprecated `finished` field) because
 		// errored executions have `finished = false` but a terminal `status`.
-		const terminalStatuses: ExecutionStatus[] = ['success', 'error', 'crashed', 'canceled'];
-		if (!terminalStatuses.includes(fullRunData.status) && !fullRunData.waitTill) return;
+		if (!isTerminalExecutionStatus(fullRunData.status) && !fullRunData.waitTill) return;
 
 		const isManualMode = this.mode === 'manual';
 
