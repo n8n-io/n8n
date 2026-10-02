@@ -13,7 +13,10 @@ const engineV2Webhooks = new EngineV2Webhooks(
 );
 
 describe('EngineV2Webhooks.assertSupported', () => {
-	const assertSupported = (responseMode: WebhookResponseMode) => {
+	const assertSupported = (
+		responseMode: WebhookResponseMode,
+		parameters: INode['parameters'] = {},
+	) => {
 		const proxy = mock<EngineDataPlaneProxyService>();
 		proxy.isAvailable.mockReturnValue(true);
 		const webhooks = new EngineV2Webhooks(mock<EngineV2Dispatcher>(), proxy);
@@ -22,7 +25,7 @@ describe('EngineV2Webhooks.assertSupported', () => {
 			workflowStartNode: mock<INode>({
 				name: 'Webhook',
 				type: 'n8n-nodes-base.webhook',
-				parameters: {},
+				parameters,
 			}),
 			responseMode,
 			executionId: undefined,
@@ -31,12 +34,28 @@ describe('EngineV2Webhooks.assertSupported', () => {
 
 	// The engine mode no longer reaches this check, so these modes pass with a
 	// remote data plane and in-process alike.
-	it.each(['onReceived', 'lastNode', 'responseNode'] as const)(
+	it.each(['onReceived', 'lastNode', 'responseNode', 'streaming'] as const)(
 		'allows %s responses in every engine mode',
 		(responseMode) => {
 			expect(() => assertSupported(responseMode)).not.toThrow();
 		},
 	);
+
+	// The streaming node sends its headers before it outputs the raw body, so a
+	// later refusal could not answer with a 400.
+	it.each([true, '={{ true }}'])('refuses a streaming response with rawBody %s', (rawBody) => {
+		expect(() => assertSupported('streaming', { options: { rawBody } })).toThrow(
+			'Engine v2 cannot stream a response for the "Webhook" trigger with the Raw Body option yet.',
+		);
+	});
+
+	it('allows a streaming response with rawBody turned off', () => {
+		expect(() => assertSupported('streaming', { options: { rawBody: false } })).not.toThrow();
+	});
+
+	it('allows the raw body when the response does not stream', () => {
+		expect(() => assertSupported('lastNode', { options: { rawBody: true } })).not.toThrow();
+	});
 });
 
 describe('EngineV2Webhooks.toRun', () => {
@@ -77,6 +96,7 @@ describe('EngineV2Webhooks.toRun', () => {
 		const run = await engineV2Webhooks.toRun(
 			{
 				status: 'failed',
+				nodeId: 'broken-node',
 				nodeName: 'Broken node',
 				error: { name: 'Error', message: 'The node failed' },
 			},

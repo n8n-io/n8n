@@ -724,11 +724,13 @@ export class AgentExecutionOrchestratorService {
 						access: { accessScope: 'user', ownerId: user.id },
 						sessionMode,
 						abortSignal,
+						admittedExecution: config.admittedExecution,
 					},
 				),
 			async (runtime) => {
 				const messageContext = this.createN8nChatMessageContext(memory, user.id);
 				return this.streamChatResponse({
+					admittedExecution: config.admittedExecution,
 					access: { accessScope: 'user', ownerId: user.id },
 					messageContext,
 					onAdmitted: async () =>
@@ -1076,7 +1078,6 @@ export class AgentExecutionOrchestratorService {
 		try {
 			return await this.runtimeCacheService.getRuntime(params);
 		} catch (error) {
-			if (admittedExecution) throw error;
 			abortSignal?.throwIfAborted();
 			const { agentId, projectId } = params;
 			let agent;
@@ -1091,22 +1092,25 @@ export class AgentExecutionOrchestratorService {
 					params.usePublishedVersion && agent.activeVersion?.schema
 						? getPublishedAgentSnapshot(agent)
 						: agent;
-				await this.turnExecutionService.recordFailedStart(
-					{
-						...recording,
-						agentId,
-						agentName: selected.schema?.name ?? agent.name,
-						projectId,
-						telemetry: {
-							userId: params.attributionUserId ?? params.user?.id,
-							runType: params.usePublishedVersion ? 'production' : 'test',
-							configuration: buildAgentConfigurationTelemetry(selected),
-						},
+				const failed = {
+					...recording,
+					agentId,
+					agentName: selected.schema?.name ?? agent.name,
+					projectId,
+					telemetry: {
+						userId: params.attributionUserId ?? params.user?.id,
+						runType: params.usePublishedVersion ? ('production' as const) : ('test' as const),
+						configuration: buildAgentConfigurationTelemetry(selected),
 					},
-					error,
-					onExecutionRecorded,
-					{ previewChat: params.previewChat, automaticContinuationRunId },
-				);
+				};
+				if (admittedExecution) {
+					await this.turnExecutionService.recordFailedAdmission(admittedExecution, failed, error);
+				} else {
+					await this.turnExecutionService.recordFailedStart(failed, error, onExecutionRecorded, {
+						previewChat: params.previewChat,
+						automaticContinuationRunId,
+					});
+				}
 			}
 			throw error;
 		}

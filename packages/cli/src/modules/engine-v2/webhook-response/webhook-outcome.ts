@@ -9,7 +9,12 @@ export type LastNode = { nodeName: string; outputs: StepSlots };
 export type WebhookRunOutcome =
 	| { status: 'response'; response: unknown }
 	| { status: 'completed'; lastNode?: LastNode }
-	| { status: 'failed'; nodeName: string; error?: { name: string; message: string } }
+	| {
+			status: 'failed';
+			nodeId: string;
+			nodeName: string;
+			error?: { name: string; message: string };
+	  }
 	/** The execution response could not be produced or delivered. */
 	| { status: 'undeliverable'; error: { name: string; message: string } }
 	| { status: 'timeout' };
@@ -43,13 +48,13 @@ export function toWebhookOutcome(
 			return undefined;
 
 		case 'ended': {
-			const { nodeName, outputs, error } = received.lastStep;
+			const { nodeId, nodeName, outputs, error } = received.lastStep;
 
 			switch (received.status) {
 				case 'failed':
 					// The step that ended a failed run is the one that failed, so its name
 					// and error are what the caller reports.
-					return { status: 'failed', nodeName, error };
+					return { status: 'failed', nodeId, nodeName, error };
 
 				case 'completed':
 					return {

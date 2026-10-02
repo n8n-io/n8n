@@ -36,7 +36,7 @@ import { nanoid } from 'nanoid';
 
 import { ActiveExecutions } from '@/active-executions';
 import { N8N_VERSION } from '@/constants';
-import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
+import { CredentialsFinderService } from '@n8n/backend-services';
 import { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks';
 import type { AgentRunTelemetryType } from '@/interfaces';
 import { EphemeralNodeExecutor } from '@/node-execution';
@@ -394,6 +394,7 @@ export class AgentRuntimeReconstructionService {
 		let keptGatedTool = false;
 
 		for (const ref of tools) {
+			if (ref.enabled === false) continue;
 			if (ref.type === 'custom') {
 				filtered.push(ref);
 				continue;
@@ -709,7 +710,9 @@ export class AgentRuntimeReconstructionService {
 		config: AgentJsonConfig,
 		projectId: string,
 	): Promise<SubAgentDelegationConfig> {
-		const configuredAgents = config.subAgents?.agents ?? [];
+		const configuredAgents = (config.subAgents?.agents ?? []).filter(
+			(ref) => ref.enabled !== false,
+		);
 		const sourcesById: Record<string, SubAgentSource> = {};
 		const availableSubAgents: SubAgentDelegationConfig['availableSubAgents'] = [];
 

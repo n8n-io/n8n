@@ -68,6 +68,11 @@ export class WaitTracker {
 		return this.waitingExecutions[executionId] !== undefined;
 	}
 
+	/** Sizes of the in-memory collections, for diagnostics and tests. */
+	getDiagnosticCounts() {
+		return { waitingExecutions: Object.keys(this.waitingExecutions).length };
+	}
+
 	init() {
 		if (this.instanceSettings.isLeader) this.startTracking();
 	}

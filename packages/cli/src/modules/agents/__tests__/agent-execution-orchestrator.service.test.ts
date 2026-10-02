@@ -2054,6 +2054,46 @@ describe('AgentExecutionOrchestratorService', () => {
 		},
 	);
 
+	it('finalizes an admitted execution with its telemetry when the runtime build fails', async () => {
+		const { service, runtimeCacheService, executionService, agentRepository } = makeService();
+		const buildError = new UserError('Credential "OpenAI" not found');
+		runtimeCacheService.getRuntime.mockRejectedValue(buildError);
+		agentRepository.findByIdAndProjectId.mockResolvedValue({
+			id: agentId,
+			name: 'Support Agent',
+			schema,
+			activeVersion: { schema },
+			integrations: [],
+		} as unknown as Agent);
+
+		await expect(
+			collect(
+				service.executeForChatPublished({
+					agentId,
+					projectId,
+					message: 'from slack',
+					memory: { threadId: 'thread-1', resourceId: 'platform-user-1' },
+					integrationType: 'slack',
+					sandboxPrincipalHash: integrationPrincipalHash,
+					admittedExecution: {
+						executionId: 'admitted-1',
+						startedAt: new Date(),
+						inputMessageIds: ['message-1'],
+					},
+				}),
+			),
+		).rejects.toBe(buildError);
+
+		expect(executionService.startExecutionRecording).not.toHaveBeenCalled();
+		expect(executionService.finalizeExecution).toHaveBeenCalledWith(
+			'admitted-1',
+			expect.objectContaining({
+				telemetry: expect.objectContaining({ runType: 'production' }),
+				record: expect.objectContaining({ finishReason: 'error' }),
+			}),
+		);
+	});
+
 	it('rethrows the build error without recording when the agent no longer exists', async () => {
 		const { service, runtimeCacheService, executionService, agentRepository } = makeService();
 		const buildError = new Error('boom');

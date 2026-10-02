@@ -764,6 +764,7 @@ export const updatedIconSet = {
 	terminal: IconLucideTerminal,
 	'thumbs-down': IconLucideThumbsDown,
 	'thumbs-up': IconLucideThumbsUp,
+	timer: IconLucideTimer,
 	'trash-2': IconLucideTrash2,
 	'tree-pine': IconLucideTreePine,
 	'trending-down': IconLucideTrendingDown,

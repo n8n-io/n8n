@@ -426,6 +426,7 @@ export { TestOidcConfigResponseDto } from './oidc/test-oidc-config-response.dto'
 export { CreateDataTableDto } from './data-table/create-data-table.dto';
 export { UpdateDataTableDto } from './data-table/update-data-table.dto';
 export {
+	ClearDataTableRowsResponsePublicDto,
 	CreateDataTableColumnPublicDto,
 	CreateDataTablePublicDto,
 	CreateDataTableRowsPublicDto,
@@ -434,9 +435,13 @@ export {
 	DataTableListPublicDto,
 	DataTablePublicDto,
 	DataTableRowListPublicDto,
+	DeleteDataTableRowsPublicQueryDto,
+	DeleteDataTableRowsResponsePublicDto,
 	InsertDataTableRowsResponsePublicDto,
 	UpdateDataTableColumnPublicDto,
 	UpdateDataTablePublicDto,
+	UpdateDataTableRowPublicDto,
+	UpdateDataTableRowResponsePublicDto,
 	UpsertDataTableRowPublicDto,
 	UpsertDataTableRowResponsePublicDto,
 	dataTablePublicSchema,

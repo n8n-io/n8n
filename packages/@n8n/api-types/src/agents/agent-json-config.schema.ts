@@ -133,6 +133,7 @@ const SubAgentConfigSchema = z
 	.object({
 		agentId: z.string().trim().min(1),
 		useWhen: z.string().trim().max(SUB_AGENT_USE_WHEN_MAX_LENGTH).optional(),
+		enabled: z.boolean().optional(),
 	})
 	.strict();
 
@@ -188,6 +189,7 @@ export const NodeConfigSchema = z.object({
 
 const AgentJsonSkillConfigSchema = z.object({
 	type: z.literal('skill'),
+	enabled: z.boolean().optional(),
 	id: z
 		.string()
 		.min(1)
@@ -363,6 +365,7 @@ export const AgentVectorStoreConfigSchema = z.discriminatedUnion('provider', [
 
 const CustomToolJsonConfigSchema = z.object({
 	type: z.literal('custom'),
+	enabled: z.boolean().optional(),
 	id: z
 		.string()
 		.min(1)
@@ -392,6 +395,7 @@ export const WorkflowToolInputFieldSchema = z.discriminatedUnion('mode', [
 export const WorkflowToolJsonConfigSchema = z
 	.object({
 		type: z.literal('workflow'),
+		enabled: z.boolean().optional(),
 		workflowId: z.string().min(1).optional().describe("The workflow's stable ID."),
 		workflow: z.string().min(1).describe("The workflow's display name and legacy lookup key."),
 		name: z.string().optional(),
@@ -413,6 +417,7 @@ export const WorkflowToolJsonConfigSchema = z
 export const NodeToolJsonConfigSchema = z
 	.object({
 		type: z.literal('node'),
+		enabled: z.boolean().optional(),
 		name: z.string().min(1),
 		description: z.string().optional(),
 		inputSchema: z.never().optional(),
@@ -627,16 +632,18 @@ export function findVectorStoreToolNameCollisions(
 	if (!config.vectorStores?.length) return [];
 
 	const toolNames = new Set(
-		(config.tools ?? []).map((tool) => {
-			switch (tool.type) {
-				case 'custom':
-					return tool.id;
-				case 'workflow':
-					return tool.name ?? tool.workflow;
-				case 'node':
-					return tool.name;
-			}
-		}),
+		(config.tools ?? [])
+			.filter((tool) => tool.enabled !== false)
+			.map((tool) => {
+				switch (tool.type) {
+					case 'custom':
+						return tool.id;
+					case 'workflow':
+						return tool.name ?? tool.workflow;
+					case 'node':
+						return tool.name;
+				}
+			}),
 	);
 
 	return config.vectorStores

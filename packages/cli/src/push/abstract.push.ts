@@ -127,6 +127,11 @@ export abstract class AbstractPush<Connection> extends TypedEmitter<AbstractPush
 		this.sendTo(pushMsg, userPushRefs);
 	}
 
+	/** Sizes of the in-memory collections, for diagnostics and tests. */
+	getDiagnosticCounts() {
+		return { connections: Object.keys(this.connections).length };
+	}
+
 	closeAllConnections() {
 		for (const pushRef in this.connections) {
 			// Signal the connection that we want to close it.
