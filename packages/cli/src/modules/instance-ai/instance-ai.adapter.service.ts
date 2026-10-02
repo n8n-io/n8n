@@ -2614,10 +2614,15 @@ export class InstanceAiAdapterService {
 			},
 
 			async getStatus(executionId: string) {
-				await assertExecutionAccess(executionId);
+				const execution = await assertExecutionAccess(executionId);
 				const isRunning = activeExecutions.has(executionId);
 				if (isRunning) {
-					return { executionId, status: 'running' } satisfies ExecutionResult;
+					return {
+						executionId,
+						workflowId: execution.workflowId,
+						workflowVersionId: execution.workflowVersionId ?? null,
+						status: 'running',
+					} satisfies ExecutionResult;
 				}
 				return await extractExecutionResult(executionId, allowSendingParameterValues, nodeTypes);
 			},
