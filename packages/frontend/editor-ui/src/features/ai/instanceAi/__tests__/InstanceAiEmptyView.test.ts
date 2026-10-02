@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { computed, defineComponent, h, nextTick, reactive, ref } from 'vue';
+import type { InstanceAiAttachment } from '@n8n/api-types';
 import { USER_TYPED_MESSAGE, type InstanceAiPrefillType } from '../prefills';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { createTestingPinia } from '@pinia/testing';
@@ -14,6 +15,7 @@ import { useSettingsStore } from '@n8n/stores/settings.store';
 import { INSTANCE_AI_THREAD_VIEW } from '../constants';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import type { Project, ProjectListItem } from '@/features/collaboration/projects/projects.types';
+import { consumePendingN8nChatMessage } from '@/features/agents/n8nChatPage/pendingN8nChatMessage';
 import { defaultModuleSettings } from './createThreadComponentRenderer';
 
 const PERSONAL_PROJECT_ID = 'personal-project-id';
@@ -325,6 +327,11 @@ vi.mock('vue-router', async (importOriginal) => ({
 	useRouter: () => ({ push: pushMock, replace: replaceMock }),
 }));
 
+// Shared across all stub submits (not just the agent hand-off tests below) so
+// the n8n Chat variant B test can assert it without widening the stub's emit
+// contract for every other caller.
+const acceptDraftMock = vi.fn();
+
 const InstanceAiInputStub = defineComponent({
 	name: 'InstanceAiInputStub',
 	props: {
@@ -352,6 +359,9 @@ const InstanceAiInputStub = defineComponent({
 			prefillType: InstanceAiPrefillType;
 			prefillId?: string;
 		} | null>(null);
+		// Staged by the "attach" test button below; mirrors the real composer's
+		// encoded file attachments.
+		const stagedFileAttachments = ref<InstanceAiAttachment[]>([]);
 		const submit = (message: string) => {
 			const prefill = activePrefill.value;
 			// Mirrors the real composer: the restore callback is always provided, and
@@ -365,7 +375,7 @@ const InstanceAiInputStub = defineComponent({
 			emit(
 				'submit',
 				message,
-				undefined,
+				stagedFileAttachments.value.length ? [...stagedFileAttachments.value] : undefined,
 				restoreDraft,
 				prefill
 					? {
@@ -375,9 +385,12 @@ const InstanceAiInputStub = defineComponent({
 							promptModified: message !== prefill.text.trim(),
 						}
 					: USER_TYPED_MESSAGE,
+				undefined,
+				acceptDraftMock,
 			);
 			currentText.value = '';
 			activePrefill.value = null;
+			stagedFileAttachments.value = [];
 		};
 		expose({
 			focus: vi.fn(),
@@ -471,6 +484,20 @@ const InstanceAiInputStub = defineComponent({
 						onClick: () => submit(currentText.value || 'hello'),
 					},
 					'submit',
+				),
+				h(
+					'button',
+					{
+						'data-test-id': 'instance-ai-input-stub-attach-file',
+						onClick: () =>
+							stagedFileAttachments.value.push({
+								type: 'file',
+								data: btoa('file content'),
+								mimeType: 'text/plain',
+								fileName: 'context.txt',
+							}),
+					},
+					'attach',
 				),
 				...(slots.footer?.() ?? []),
 			]);
@@ -1515,6 +1542,43 @@ describe('InstanceAiEmptyView', () => {
 			});
 			expect(store.syncThread).not.toHaveBeenCalled();
 			expect(thread.sendMessage).not.toHaveBeenCalled();
+		});
+
+		it('stores the hand-off with the typed text and converted file attachments, calls acceptDraft, and does not start an Assistant thread', async () => {
+			const { getByTestId } = renderView();
+
+			await fireEvent.click(getByTestId('n8n-chat-agent-picker-stub-select-agent'));
+			await nextTick();
+			await fireEvent.click(getByTestId('instance-ai-input-stub-attach-file'));
+			await fireEvent.click(getByTestId('instance-ai-input-stub-submit'));
+			await flushPromises();
+
+			expect(pushMock).toHaveBeenCalledWith({
+				name: 'AgentN8nChatView',
+				params: { agentId: 'agent-1' },
+			});
+			expect(store.syncThread).not.toHaveBeenCalled();
+			expect(thread.sendMessage).not.toHaveBeenCalled();
+			expect(acceptDraftMock).toHaveBeenCalledOnce();
+
+			const pendingMessage = consumePendingN8nChatMessage('agent-1');
+			expect(pendingMessage?.text).toBe('hello');
+			expect(pendingMessage?.files).toHaveLength(1);
+			expect(pendingMessage?.files[0].name).toBe('context.txt');
+			expect(pendingMessage?.files[0].type).toBe('text/plain');
+			expect(pendingMessage?.files[0].size).toBe('file content'.length);
+		});
+
+		it('drops the hand-off when the navigation to the agent fails', async () => {
+			pushMock.mockResolvedValueOnce(new Error('navigation aborted'));
+			const { getByTestId } = renderView();
+
+			await fireEvent.click(getByTestId('n8n-chat-agent-picker-stub-select-agent'));
+			await nextTick();
+			await fireEvent.click(getByTestId('instance-ai-input-stub-submit'));
+			await flushPromises();
+
+			expect(consumePendingN8nChatMessage('agent-1')).toBeUndefined();
 		});
 	});
 });

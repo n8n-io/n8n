@@ -1516,6 +1516,44 @@ describe('AgentChatPanel', () => {
 		wrapper.unmount();
 	});
 
+	it('sends files queued with an outside message, surviving the blocked-on-history-load retry', async () => {
+		isLoadingHistoryMock.value = true;
+		const file = new File(['content'], 'notes.txt', { type: 'text/plain' });
+		const wrapper = mountPanel();
+
+		(
+			wrapper.vm as unknown as {
+				sendMessageFromOutside: (message: string, files?: File[]) => void;
+			}
+		).sendMessageFromOutside('Test this task', [file]);
+		await flushPromises();
+		expect(sendMessageMock).not.toHaveBeenCalled();
+
+		isLoadingHistoryMock.value = false;
+		await flushPromises();
+		expect(sendMessageMock).toHaveBeenCalledExactlyOnceWith(
+			'Test this task',
+			[file],
+			expect.any(Function),
+		);
+		wrapper.unmount();
+	});
+
+	it('sends an outside message that carries only files', async () => {
+		const file = new File(['content'], 'notes.txt', { type: 'text/plain' });
+		const wrapper = mountPanel();
+
+		(
+			wrapper.vm as unknown as {
+				sendMessageFromOutside: (message: string, files?: File[]) => void;
+			}
+		).sendMessageFromOutside('', [file]);
+		await flushPromises();
+
+		expect(sendMessageMock).toHaveBeenCalledExactlyOnceWith('', [file], expect.any(Function));
+		wrapper.unmount();
+	});
+
 	it('submits an outside message while the current stream runs', async () => {
 		const response = Promise.withResolvers<'sent'>();
 		sendMessageMock.mockReturnValueOnce(response.promise);

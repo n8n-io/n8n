@@ -934,15 +934,20 @@ async function onIncreaseBudget(payload: { field: BudgetAmountField; amount: num
 	}
 }
 
-function sendMessageFromOutside(message: string) {
+function sendMessageFromOutside(message: string, files?: File[]) {
 	queuedExternalMessage = message;
 	inputText.value = message;
+	// Staged as the composer's own attachments, with the same count and size checks
+	// as a picked file: `onSubmit` reads `attachedFiles`, so they ride along with
+	// every retry `submitQueuedExternalMessage` makes while blocked.
+	if (files?.length) handleFilesSelected(files);
 	void submitQueuedExternalMessage();
 }
 
 async function submitQueuedExternalMessage() {
 	const message = queuedExternalMessage;
-	if (!message || submittingQueuedExternalMessage || isSubmissionBlocked.value) return;
+	// An empty text is still a send when files are staged with it.
+	if (message === undefined || submittingQueuedExternalMessage || isSubmissionBlocked.value) return;
 
 	submittingQueuedExternalMessage = true;
 	let result: SubmitResult = 'rejected';
@@ -956,7 +961,11 @@ async function submitQueuedExternalMessage() {
 	if (result === 'rejected' && queuedExternalMessage === message) {
 		queuedExternalMessage = undefined;
 	}
-	if (queuedExternalMessage && queuedExternalMessage !== message && !isSubmissionBlocked.value) {
+	if (
+		queuedExternalMessage !== undefined &&
+		queuedExternalMessage !== message &&
+		!isSubmissionBlocked.value
+	) {
 		await nextTick();
 		void submitQueuedExternalMessage();
 	}
