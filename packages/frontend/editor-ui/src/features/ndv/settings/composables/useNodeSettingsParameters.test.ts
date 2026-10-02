@@ -264,6 +264,7 @@ describe('useNodeSettingsParameters', () => {
 						{ name: 'Archive', value: 'archive' },
 						{ name: 'Create', value: 'create' },
 						{ name: 'Get', value: 'get' },
+						{ name: 'List', value: 'list' },
 					],
 					default: 'create',
 				},
@@ -300,6 +301,29 @@ describe('useNodeSettingsParameters', () => {
 					displayOptions: show('get'),
 				},
 				{ ...channelLocator('create'), displayName: 'Team', name: 'teamId' },
+				{ displayName: 'Many', name: 'many', type: 'boolean', default: false },
+				{
+					displayName: 'Method',
+					name: 'method',
+					type: 'options',
+					options: [
+						{ name: 'GET', value: 'GET' },
+						{ name: 'PUT', value: 'PUT' },
+					],
+					default: 'GET',
+					displayOptions: { show: { many: [false] } },
+				},
+				{
+					displayName: 'Methods',
+					name: 'method',
+					type: 'multiOptions',
+					options: [
+						{ name: 'GET', value: 'GET' },
+						{ name: 'PUT', value: 'PUT' },
+					],
+					default: ['GET'],
+					displayOptions: { show: { many: [true] } },
+				},
 				{
 					displayName: 'Team',
 					name: 'teamId',
@@ -385,6 +409,31 @@ describe('useNodeSettingsParameters', () => {
 			expect(node.parameters.channelId).toBe('general');
 		});
 
+		it('restores the value of each shape after the parameter was hidden in between', () => {
+			change('channelId', picked);
+			change('operation', 'list');
+			change('operation', 'create');
+			change('channelId', 'general');
+			change('operation', 'list');
+
+			change('operation', 'get');
+			expect(node.parameters.channelId).toEqual(picked);
+
+			change('operation', 'list');
+			change('operation', 'create');
+			expect(node.parameters.channelId).toBe('general');
+		});
+
+		it('keeps a late write that lands while the parameter is hidden', () => {
+			const latePick = { __rl: true, mode: 'list', value: 'C0999' };
+			change('operation', 'list');
+
+			change('channelId', latePick, { valueShape: 'resourceLocator' });
+			change('operation', 'get');
+
+			expect(node.parameters.channelId).toEqual(latePick);
+		});
+
 		it('resolves defaults of the previous parameters before comparing shapes', () => {
 			node = { ...node, parameters: { channelId: 'general' } };
 
@@ -422,6 +471,18 @@ describe('useNodeSettingsParameters', () => {
 			change('operation', 'archive');
 
 			expect(node.parameters.teamId).toBe('');
+		});
+
+		it('restores a list of options', () => {
+			change('method', 'PUT');
+			change('many', true);
+			change('method', ['GET', 'PUT']);
+
+			change('many', false);
+			expect(node.parameters.method).toBe('PUT');
+
+			change('many', true);
+			expect(node.parameters.method).toEqual(['GET', 'PUT']);
 		});
 
 		it('keeps a late write of another shape out of the visible parameter', () => {

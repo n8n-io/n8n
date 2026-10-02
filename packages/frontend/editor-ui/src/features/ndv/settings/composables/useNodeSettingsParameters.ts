@@ -11,6 +11,8 @@ import {
 	type DeploymentCondition,
 	NodeHelpers,
 	deepCopy,
+	isExpression,
+	isINodePropertyOptionsList,
 } from 'n8n-workflow';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
@@ -20,7 +22,6 @@ import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import type { INodeUi, IUpdateInformation } from '@/Interface';
 import {
 	mustHideDuringCustomApiCall,
-	removeMismatchedOptionValues,
 	setValue,
 	updateDynamicConnections,
 	updateParameterByPath,
@@ -122,17 +123,20 @@ function getDisplayValues(nodeType: INodeTypeDescription, values: INodeParameter
 	);
 }
 
+type Visibility = { declaration: INodeProperties; shape: string } | 'hidden' | 'ambiguous';
+
 function getVisibleDeclaration(
 	declarations: INodeProperties[],
 	displayValues: INodeParameters,
 	node: INode,
 	nodeType: INodeTypeDescription,
-): { declaration: INodeProperties; shape: string } | undefined {
+): Visibility {
 	const visible = declarations.filter((declaration) =>
 		NodeHelpers.displayParameter(displayValues, declaration, node, nodeType),
 	);
+	if (visible.length === 0) return 'hidden';
 	const shapes = new Set(visible.map(getParameterValueShape));
-	return shapes.size === 1 ? { declaration: visible[0], shape: [...shapes][0] } : undefined;
+	return shapes.size === 1 ? { declaration: visible[0], shape: [...shapes][0] } : 'ambiguous';
 }
 
 // Editor session memory only, never saved with the workflow
@@ -160,10 +164,22 @@ function getStashedValue(nodeId: string, name: string, shape: string) {
 	return value === undefined ? undefined : deepCopy(value);
 }
 
+// A restored value can come from a declaration with other options. Loaded option lists
+// are not known here, so only fixed ones are checked.
+function isOffered(declaration: INodeProperties, value: NodeParameterValueType): boolean {
+	if (!['options', 'multiOptions'].includes(declaration.type) || isExpression(value)) return true;
+	if (!declaration.options || !isINodePropertyOptionsList(declaration.options)) return true;
+
+	const offered = declaration.options.map((option) => option.value);
+	return (Array.isArray(value) ? value : [value]).every((item) =>
+		offered.some((option) => option === item),
+	);
+}
+
 /**
- * When a change makes a declaration of another shape visible under the same name, the
- * old value is stashed under its shape, and the new declaration gets back the value it
- * held before or its default.
+ * When a change hides a name or shows a declaration of another shape under it, the old
+ * value is stashed under its shape. A declaration that shows up gets back the value it
+ * held before, or its default.
  */
 function swapValuesByShape(
 	nodeType: INodeTypeDescription,
@@ -181,26 +197,34 @@ function swapValuesByShape(
 		if (name === changedName) return [];
 		const from = getVisibleDeclaration(candidates, before, node, nodeType);
 		const to = getVisibleDeclaration(candidates, after, node, nodeType);
-		return from && to && from.shape !== to.shape ? [{ name, from, to }] : [];
+		if (from === 'ambiguous' || to === 'ambiguous' || from === to) return [];
+		if (from !== 'hidden' && to !== 'hidden' && from.shape === to.shape) return [];
+		return [{ name, from, to }];
 	});
 	if (swaps.length === 0) return undefined;
 
 	return swaps.reduce<INodeParameters>((patched, { name, from, to }) => {
-		const previous = node.parameters[name];
-		// A value that already does not fit its declaration is not worth restoring
-		const fits = !isObjectInPlainParameter(from.declaration, previous);
-		stashValue(node.id, name, from.shape, fits ? previous : undefined);
+		if (from !== 'hidden') {
+			const previous = node.parameters[name];
+			// A value that already does not fit its declaration is not worth restoring
+			const fits = !isObjectInPlainParameter(from.declaration, previous);
+			stashValue(node.id, name, from.shape, fits ? previous : undefined);
+		}
+		// getNodeParameters drops the value of a hidden name
+		if (to === 'hidden') return patched;
 
 		const { [name]: _replaced, ...rest } = patched;
 		const restored = getStashedValue(node.id, name, to.shape);
-		return restored === undefined ? rest : { ...rest, [name]: restored };
+		return restored !== undefined && isOffered(to.declaration, restored)
+			? { ...rest, [name]: restored }
+			: rest;
 	}, parameters);
 }
 
 /**
- * A debounced write can land after the change that made a declaration of another shape
- * visible. Such a value belongs to the declaration that emitted it, so it is stashed
- * instead of written.
+ * A debounced write can land after the change that hid the name or showed a declaration
+ * of another shape. Such a value belongs to the declaration that emitted it, so it is
+ * stashed instead of written.
  */
 function stashLateWriteOfOtherShape(
 	nodeType: INodeTypeDescription,
@@ -217,7 +241,8 @@ function stashLateWriteOfOtherShape(
 
 	const displayValues = getDisplayValues(nodeType, node.parameters, node);
 	const visible = getVisibleDeclaration(candidates, displayValues, node, nodeType);
-	if (!visible || visible.shape === valueShape) return false;
+	if (visible === 'ambiguous') return false;
+	if (visible !== 'hidden' && visible.shape === valueShape) return false;
 
 	stashValue(node.id, name, valueShape, value);
 	return true;
@@ -279,13 +304,6 @@ export function useNodeSettingsParameters() {
 			nodeParameters && swapValuesByShape(nodeTypeDescription, node, nodeParameters, parameterPath);
 		if (swapped) {
 			nodeParameters = swapped;
-			// A restored option can be missing from the options of the now visible declaration
-			if (newValue !== undefined) {
-				removeMismatchedOptionValues(nodeTypeDescription, node.typeVersion, nodeParameters, {
-					name: parameterPath,
-					value: newValue,
-				});
-			}
 		}
 
 		// Get the parameters with the now new defaults according to the
