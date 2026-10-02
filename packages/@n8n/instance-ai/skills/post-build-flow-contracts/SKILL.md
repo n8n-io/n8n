@@ -61,8 +61,9 @@ when its condition applies. Load it in the same step as your next tool call:
   - `already_verified`: read the saved claim before you call it verified.
 
 Always verify with `verify-built-workflow`. Do not verify with
-`executions(action="run")` or `executions(action="run-step")`. Never disable,
-delete, reorder, or copy nodes or workflows to reach a branch.
+`executions(action="run")` or `executions(action="run-step")`. Never edit,
+disable, delete, reorder, or copy nodes or workflows to reach a branch or to
+make a run pass.
 
 ## Claim coverage honestly
 

@@ -8,8 +8,9 @@
 - If `credentialResolutionNote` says Gateway credits are depleted, do not offer
   a live test. Tell the user to top up Gateway credits or add their own key.
 - Use `executions(action="run")` only when the user asks for a run. With more
-  than one trigger, run once for each trigger with `triggerNodeName`. Report
-  each result separately from the verification.
+  than one trigger, run once for each trigger with `triggerNodeName`, also
+  when an earlier run failed: each result is its own answer. Report each result
+  separately from the verification.
 - A live run can write real data. For each record from any turn, name it, offer
   to remove it (a one-off cleanup workflow is fine), and ask before you delete.
   Do not offer another live run on a target that still holds test data. Clear
