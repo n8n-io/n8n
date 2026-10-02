@@ -3,12 +3,27 @@ import {
 	IMPORT_PACKAGE_REQUEST_FORM_FIELDS,
 } from '../import-package-request.dto';
 
+/** Matches `publicApiUploadedFileSchema`, the shape multer hands the registry for a parsed file part. */
+function packageFile() {
+	return {
+		fieldname: 'package',
+		originalname: 'export.n8np',
+		mimetype: 'application/gzip',
+		size: 5,
+		buffer: new Uint8Array([1, 2, 3, 4, 5]),
+	};
+}
+
 describe('ImportPackageRequestDto', () => {
 	it('accepts omitted routing fields and defaults credential modes', () => {
-		const result = ImportPackageRequestDto.safeParse({ workflowConflictPolicy: 'fail' });
+		const result = ImportPackageRequestDto.safeParse({
+			package: packageFile(),
+			workflowConflictPolicy: 'fail',
+		});
 		expect(result.success).toBe(true);
 		if (result.success) {
 			expect(result.data).toEqual({
+				package: packageFile(),
 				credentialMatchingMode: 'id-only',
 				credentialMissingMode: 'create-stub',
 				bindings: {},
@@ -31,6 +46,7 @@ describe('ImportPackageRequestDto', () => {
 
 	it('treats empty projectId and folderId as omitted', () => {
 		const result = ImportPackageRequestDto.safeParse({
+			package: packageFile(),
 			projectId: '',
 			folderId: '   ',
 			workflowConflictPolicy: 'fail',
@@ -38,6 +54,7 @@ describe('ImportPackageRequestDto', () => {
 		expect(result.success).toBe(true);
 		if (result.success) {
 			expect(result.data).toEqual({
+				package: packageFile(),
 				credentialMatchingMode: 'id-only',
 				credentialMissingMode: 'create-stub',
 				bindings: {},
@@ -60,6 +77,7 @@ describe('ImportPackageRequestDto', () => {
 
 	it('trims non-empty ids', () => {
 		const result = ImportPackageRequestDto.safeParse({
+			package: packageFile(),
 			projectId: '  proj-1  ',
 			folderId: 'fld-1',
 			workflowConflictPolicy: 'new-version',
@@ -67,6 +85,7 @@ describe('ImportPackageRequestDto', () => {
 		expect(result.success).toBe(true);
 		if (result.success) {
 			expect(result.data).toEqual({
+				package: packageFile(),
 				projectId: 'proj-1',
 				folderId: 'fld-1',
 				credentialMatchingMode: 'id-only',
@@ -89,40 +108,35 @@ describe('ImportPackageRequestDto', () => {
 		}
 	});
 
-	it('strips unknown keys such as the package placeholder', () => {
-		const result = ImportPackageRequestDto.safeParse({
-			projectId: 'proj-1',
-			workflowConflictPolicy: 'skip',
-			package: '',
-		});
-		expect(result.success).toBe(true);
-		if (result.success) {
-			expect(result.data).toEqual({
+	it('rejects a request missing the package file', () => {
+		expect(
+			ImportPackageRequestDto.safeParse({
 				projectId: 'proj-1',
-				credentialMatchingMode: 'id-only',
-				credentialMissingMode: 'create-stub',
-				bindings: {},
 				workflowConflictPolicy: 'skip',
-				workflowPublishingPolicy: 'preserve-published-state',
-				workflowIdPolicy: 'source',
-				missingNodeTypeMode: 'fail',
-				projectConflictPolicy: 'merge',
-				overwriteDeletionPolicy: 'archive',
-				dataTableMatchingMode: 'by-id',
-				dataTableMissingMode: 'create',
-				dataTableSchemaConflictPolicy: 'keep-existing',
-				variableMissingMode: 'create-with-value',
-				variableConflictPolicy: 'keep-existing',
-				tagMissingMode: 'create',
-				tagConflictPolicy: 'skip',
-			});
-		}
+			}).success,
+		).toBe(false);
+	});
+
+	it('rejects an unknown field (strict schema)', () => {
+		expect(
+			ImportPackageRequestDto.safeParse({
+				package: packageFile(),
+				projectId: 'proj-1',
+				workflowConflictPolicy: 'skip',
+				evil: 'x',
+			}).success,
+		).toBe(false);
+	});
+
+	it('requires workflowConflictPolicy (no default)', () => {
+		expect(ImportPackageRequestDto.safeParse({ package: packageFile() }).success).toBe(false);
 	});
 
 	it.each(['id-only', 'name-and-type', 'type-only'] as const)(
 		'accepts %s as a credentialMatchingMode value',
 		(credentialMatchingMode) => {
 			const result = ImportPackageRequestDto.safeParse({
+				package: packageFile(),
 				credentialMatchingMode,
 				workflowConflictPolicy: 'fail',
 			});
@@ -136,6 +150,7 @@ describe('ImportPackageRequestDto', () => {
 	it('rejects unsupported credentialMatchingMode values', () => {
 		expect(
 			ImportPackageRequestDto.safeParse({
+				package: packageFile(),
 				credentialMatchingMode: 'fuzzy-match',
 				workflowConflictPolicy: 'fail',
 			}).success,
@@ -145,6 +160,7 @@ describe('ImportPackageRequestDto', () => {
 	it('rejects unsupported credentialMissingMode values', () => {
 		expect(
 			ImportPackageRequestDto.safeParse({
+				package: packageFile(),
 				credentialMissingMode: 'auto-create',
 				workflowConflictPolicy: 'fail',
 			}).success,
@@ -155,6 +171,7 @@ describe('ImportPackageRequestDto', () => {
 		'accepts %s as a dataTableMissingMode value',
 		(dataTableMissingMode) => {
 			const result = ImportPackageRequestDto.safeParse({
+				package: packageFile(),
 				dataTableMissingMode,
 				workflowConflictPolicy: 'fail',
 			});
@@ -168,6 +185,7 @@ describe('ImportPackageRequestDto', () => {
 	it('rejects unsupported dataTableMissingMode values', () => {
 		expect(
 			ImportPackageRequestDto.safeParse({
+				package: packageFile(),
 				dataTableMissingMode: 'recreate',
 				workflowConflictPolicy: 'fail',
 			}).success,
@@ -177,6 +195,7 @@ describe('ImportPackageRequestDto', () => {
 	it('rejects unsupported dataTableMatchingMode values', () => {
 		expect(
 			ImportPackageRequestDto.safeParse({
+				package: packageFile(),
 				dataTableMatchingMode: 'by-name',
 				workflowConflictPolicy: 'fail',
 			}).success,
@@ -187,6 +206,7 @@ describe('ImportPackageRequestDto', () => {
 		'accepts %s as a dataTableSchemaConflictPolicy value',
 		(dataTableSchemaConflictPolicy) => {
 			const result = ImportPackageRequestDto.safeParse({
+				package: packageFile(),
 				dataTableSchemaConflictPolicy,
 				workflowConflictPolicy: 'fail',
 			});
@@ -200,6 +220,7 @@ describe('ImportPackageRequestDto', () => {
 	it('rejects unsupported dataTableSchemaConflictPolicy values', () => {
 		expect(
 			ImportPackageRequestDto.safeParse({
+				package: packageFile(),
 				dataTableSchemaConflictPolicy: 'merge',
 				workflowConflictPolicy: 'fail',
 			}).success,
@@ -208,6 +229,7 @@ describe('ImportPackageRequestDto', () => {
 
 	it('accepts create-stub credentialMissingMode', () => {
 		const result = ImportPackageRequestDto.safeParse({
+			package: packageFile(),
 			credentialMissingMode: 'create-stub',
 			workflowConflictPolicy: 'fail',
 		});
@@ -219,6 +241,7 @@ describe('ImportPackageRequestDto', () => {
 
 	it('parses bindings from a JSON object string keyed by entity type', () => {
 		const result = ImportPackageRequestDto.safeParse({
+			package: packageFile(),
 			bindings: '{"credentials":{"source-cred":"target-cred"}}',
 			workflowConflictPolicy: 'fail',
 		});
@@ -245,6 +268,7 @@ describe('ImportPackageRequestDto', () => {
 	])('rejects bindings with $name', ({ bindings }) => {
 		expect(
 			ImportPackageRequestDto.safeParse({
+				package: packageFile(),
 				bindings,
 				workflowConflictPolicy: 'fail',
 			}).success,
@@ -253,6 +277,7 @@ describe('ImportPackageRequestDto', () => {
 
 	it('names the offending key when bindings use an unknown entity type', () => {
 		const result = ImportPackageRequestDto.safeParse({
+			package: packageFile(),
 			bindings: '{"credential":{"source":"target"}}',
 			workflowConflictPolicy: 'fail',
 		});
@@ -265,17 +290,12 @@ describe('ImportPackageRequestDto', () => {
 		}
 	});
 
-	it('defaults workflowConflictPolicy to "new-version" when omitted', () => {
-		const result = ImportPackageRequestDto.safeParse({});
-		expect(result.success).toBe(true);
-		if (result.success) {
-			expect(result.data.workflowConflictPolicy).toBe('new-version');
-		}
-	});
-
 	describe('workflowIdPolicy', () => {
 		it('defaults to "source" when omitted', () => {
-			const result = ImportPackageRequestDto.safeParse({ workflowConflictPolicy: 'fail' });
+			const result = ImportPackageRequestDto.safeParse({
+				package: packageFile(),
+				workflowConflictPolicy: 'fail',
+			});
 			expect(result.success).toBe(true);
 			if (result.success) {
 				expect(result.data.workflowIdPolicy).toBe('source');
@@ -284,6 +304,7 @@ describe('ImportPackageRequestDto', () => {
 
 		it('accepts "source"', () => {
 			const result = ImportPackageRequestDto.safeParse({
+				package: packageFile(),
 				workflowConflictPolicy: 'fail',
 				workflowIdPolicy: 'source',
 			});
@@ -296,6 +317,7 @@ describe('ImportPackageRequestDto', () => {
 		it('rejects unsupported workflowIdPolicy values', () => {
 			expect(
 				ImportPackageRequestDto.safeParse({
+					package: packageFile(),
 					workflowConflictPolicy: 'fail',
 					workflowIdPolicy: 'reuse',
 				}).success,
@@ -311,7 +333,10 @@ describe('ImportPackageRequestDto', () => {
 		{ field: 'overwriteDeletionPolicy', values: ['archive', 'hard-delete'], expected: 'archive' },
 	] as const)('$field', ({ field, values, expected }) => {
 		it(`defaults to ${expected ?? 'undefined'} when omitted`, () => {
-			const result = ImportPackageRequestDto.safeParse({ workflowConflictPolicy: 'fail' });
+			const result = ImportPackageRequestDto.safeParse({
+				package: packageFile(),
+				workflowConflictPolicy: 'fail',
+			});
 			expect(result.success).toBe(true);
 			if (result.success) expect(result.data[field]).toBe(expected);
 		});
@@ -319,6 +344,7 @@ describe('ImportPackageRequestDto', () => {
 		it('accepts every supported value', () => {
 			for (const value of values) {
 				const result = ImportPackageRequestDto.safeParse({
+					package: packageFile(),
 					workflowConflictPolicy: 'fail',
 					[field]: value,
 				});
@@ -330,6 +356,7 @@ describe('ImportPackageRequestDto', () => {
 		it('rejects an unsupported value', () => {
 			expect(
 				ImportPackageRequestDto.safeParse({
+					package: packageFile(),
 					workflowConflictPolicy: 'fail',
 					[field]: 'not-a-policy',
 				}).success,
@@ -343,7 +370,10 @@ describe('ImportPackageRequestDto', () => {
 
 	describe('missingNodeTypeMode', () => {
 		it('defaults to "fail" when omitted', () => {
-			const result = ImportPackageRequestDto.safeParse({ workflowConflictPolicy: 'fail' });
+			const result = ImportPackageRequestDto.safeParse({
+				package: packageFile(),
+				workflowConflictPolicy: 'fail',
+			});
 			expect(result.success).toBe(true);
 			if (result.success) {
 				expect(result.data.missingNodeTypeMode).toBe('fail');
@@ -352,6 +382,7 @@ describe('ImportPackageRequestDto', () => {
 
 		it('accepts "import-anyway"', () => {
 			const result = ImportPackageRequestDto.safeParse({
+				package: packageFile(),
 				workflowConflictPolicy: 'fail',
 				missingNodeTypeMode: 'import-anyway',
 			});
@@ -364,6 +395,7 @@ describe('ImportPackageRequestDto', () => {
 		it('rejects unsupported missingNodeTypeMode values', () => {
 			expect(
 				ImportPackageRequestDto.safeParse({
+					package: packageFile(),
 					workflowConflictPolicy: 'fail',
 					missingNodeTypeMode: 'skip',
 				}).success,
@@ -376,9 +408,18 @@ describe('ImportPackageRequestDto', () => {
 	});
 
 	it.each([
-		{ name: 'non-string projectId', request: { projectId: 1, workflowConflictPolicy: 'fail' } },
-		{ name: 'non-string folderId', request: { folderId: false, workflowConflictPolicy: 'fail' } },
-		{ name: 'unknown workflowConflictPolicy', request: { workflowConflictPolicy: 'overwrite' } },
+		{
+			name: 'non-string projectId',
+			request: { package: packageFile(), projectId: 1, workflowConflictPolicy: 'fail' },
+		},
+		{
+			name: 'non-string folderId',
+			request: { package: packageFile(), folderId: false, workflowConflictPolicy: 'fail' },
+		},
+		{
+			name: 'unknown workflowConflictPolicy',
+			request: { package: packageFile(), workflowConflictPolicy: 'overwrite' },
+		},
 	])('rejects $name', ({ request }) => {
 		expect(ImportPackageRequestDto.safeParse(request).success).toBe(false);
 	});
@@ -386,6 +427,7 @@ describe('ImportPackageRequestDto', () => {
 	describe('blank enum fields fall back to their defaults', () => {
 		it('treats an empty-string credentialMatchingMode as unset and defaults it', () => {
 			const result = ImportPackageRequestDto.safeParse({
+				package: packageFile(),
 				credentialMatchingMode: '',
 				workflowConflictPolicy: 'fail',
 			});
@@ -397,6 +439,7 @@ describe('ImportPackageRequestDto', () => {
 
 		it('treats a whitespace-only credentialMatchingMode as unset and defaults it', () => {
 			const result = ImportPackageRequestDto.safeParse({
+				package: packageFile(),
 				credentialMatchingMode: '   ',
 				workflowConflictPolicy: 'fail',
 			});
@@ -407,7 +450,10 @@ describe('ImportPackageRequestDto', () => {
 		});
 
 		it('defaults credentialMatchingMode when omitted', () => {
-			const result = ImportPackageRequestDto.safeParse({ workflowConflictPolicy: 'fail' });
+			const result = ImportPackageRequestDto.safeParse({
+				package: packageFile(),
+				workflowConflictPolicy: 'fail',
+			});
 			expect(result.success).toBe(true);
 			if (result.success) {
 				expect(result.data.credentialMatchingMode).toBe('id-only');
@@ -416,6 +462,7 @@ describe('ImportPackageRequestDto', () => {
 
 		it('preserves an explicit credentialMatchingMode value', () => {
 			const result = ImportPackageRequestDto.safeParse({
+				package: packageFile(),
 				credentialMatchingMode: 'type-only',
 				workflowConflictPolicy: 'fail',
 			});
@@ -428,6 +475,7 @@ describe('ImportPackageRequestDto', () => {
 		it('still rejects a non-empty invalid credentialMatchingMode value', () => {
 			expect(
 				ImportPackageRequestDto.safeParse({
+					package: packageFile(),
 					credentialMatchingMode: 'fuzzy-match',
 					workflowConflictPolicy: 'fail',
 				}).success,
@@ -435,10 +483,10 @@ describe('ImportPackageRequestDto', () => {
 		});
 
 		// Every optional enum field must treat a blank value as unset and fall back to its default.
+		// workflowConflictPolicy is excluded: it has no default, so a blank value is rejected instead.
 		it.each([
 			{ field: 'credentialMatchingMode', expected: 'id-only' },
 			{ field: 'credentialMissingMode', expected: 'create-stub' },
-			{ field: 'workflowConflictPolicy', expected: 'new-version' },
 			{ field: 'workflowPublishingPolicy', expected: 'preserve-published-state' },
 			{ field: 'workflowIdPolicy', expected: 'source' },
 			{ field: 'missingNodeTypeMode', expected: 'fail' },
@@ -452,7 +500,11 @@ describe('ImportPackageRequestDto', () => {
 			{ field: 'tagMissingMode', expected: 'create' },
 			{ field: 'tagConflictPolicy', expected: 'skip' },
 		] as const)('defaults $field when the value is an empty string', ({ field, expected }) => {
-			const result = ImportPackageRequestDto.safeParse({ [field]: '' });
+			const result = ImportPackageRequestDto.safeParse({
+				package: packageFile(),
+				workflowConflictPolicy: 'fail',
+				[field]: '',
+			});
 			expect(result.success).toBe(true);
 			if (result.success) {
 				expect(result.data[field]).toBe(expected);
@@ -461,14 +513,30 @@ describe('ImportPackageRequestDto', () => {
 
 		it('still rejects a non-empty invalid value for a blank-coercing enum field', () => {
 			expect(
-				ImportPackageRequestDto.safeParse({ workflowPublishingPolicy: 'not-a-policy' }).success,
+				ImportPackageRequestDto.safeParse({
+					package: packageFile(),
+					workflowConflictPolicy: 'fail',
+					workflowPublishingPolicy: 'not-a-policy',
+				}).success,
+			).toBe(false);
+		});
+
+		it('rejects a blank workflowConflictPolicy (no default)', () => {
+			expect(
+				ImportPackageRequestDto.safeParse({
+					package: packageFile(),
+					workflowConflictPolicy: '',
+				}).success,
 			).toBe(false);
 		});
 	});
 
 	describe('variableMissingMode', () => {
 		it('defaults variableMissingMode to create-with-value when omitted', () => {
-			const result = ImportPackageRequestDto.safeParse({ workflowConflictPolicy: 'fail' });
+			const result = ImportPackageRequestDto.safeParse({
+				package: packageFile(),
+				workflowConflictPolicy: 'fail',
+			});
 			expect(result.success).toBe(true);
 			if (result.success) {
 				expect(result.data.variableMissingMode).toBe('create-with-value');
@@ -479,6 +547,7 @@ describe('ImportPackageRequestDto', () => {
 			'accepts %s as a variableMissingMode value',
 			(variableMissingMode) => {
 				const result = ImportPackageRequestDto.safeParse({
+					package: packageFile(),
 					variableMissingMode,
 					workflowConflictPolicy: 'fail',
 				});
@@ -492,6 +561,7 @@ describe('ImportPackageRequestDto', () => {
 		it('rejects unsupported variableMissingMode values', () => {
 			expect(
 				ImportPackageRequestDto.safeParse({
+					package: packageFile(),
 					variableMissingMode: 'invent-variables',
 					workflowConflictPolicy: 'fail',
 				}).success,
@@ -501,7 +571,10 @@ describe('ImportPackageRequestDto', () => {
 
 	describe('variableConflictPolicy', () => {
 		it('defaults variableConflictPolicy to keep-existing when omitted', () => {
-			const result = ImportPackageRequestDto.safeParse({ workflowConflictPolicy: 'fail' });
+			const result = ImportPackageRequestDto.safeParse({
+				package: packageFile(),
+				workflowConflictPolicy: 'fail',
+			});
 			expect(result.success).toBe(true);
 			if (result.success) {
 				expect(result.data.variableConflictPolicy).toBe('keep-existing');
@@ -512,6 +585,7 @@ describe('ImportPackageRequestDto', () => {
 			'accepts %s as a variableConflictPolicy value',
 			(variableConflictPolicy) => {
 				const result = ImportPackageRequestDto.safeParse({
+					package: packageFile(),
 					variableConflictPolicy,
 					workflowConflictPolicy: 'fail',
 				});
@@ -525,6 +599,7 @@ describe('ImportPackageRequestDto', () => {
 		it('rejects unsupported variableConflictPolicy values', () => {
 			expect(
 				ImportPackageRequestDto.safeParse({
+					package: packageFile(),
 					variableConflictPolicy: 'merge-values',
 					workflowConflictPolicy: 'fail',
 				}).success,
@@ -534,7 +609,10 @@ describe('ImportPackageRequestDto', () => {
 
 	describe('tagMissingMode', () => {
 		it('defaults tagMissingMode to create when omitted', () => {
-			const result = ImportPackageRequestDto.safeParse({ workflowConflictPolicy: 'fail' });
+			const result = ImportPackageRequestDto.safeParse({
+				package: packageFile(),
+				workflowConflictPolicy: 'fail',
+			});
 			expect(result.success).toBe(true);
 			if (result.success) {
 				expect(result.data.tagMissingMode).toBe('create');
@@ -545,6 +623,7 @@ describe('ImportPackageRequestDto', () => {
 			'accepts %s as a tagMissingMode value',
 			(tagMissingMode) => {
 				const result = ImportPackageRequestDto.safeParse({
+					package: packageFile(),
 					tagMissingMode,
 					workflowConflictPolicy: 'fail',
 				});
@@ -558,6 +637,7 @@ describe('ImportPackageRequestDto', () => {
 		it('rejects unsupported tagMissingMode values', () => {
 			expect(
 				ImportPackageRequestDto.safeParse({
+					package: packageFile(),
 					tagMissingMode: 'must-preexist',
 					workflowConflictPolicy: 'fail',
 				}).success,
@@ -567,7 +647,10 @@ describe('ImportPackageRequestDto', () => {
 
 	describe('tagConflictPolicy', () => {
 		it('defaults tagConflictPolicy to skip when omitted', () => {
-			const result = ImportPackageRequestDto.safeParse({ workflowConflictPolicy: 'fail' });
+			const result = ImportPackageRequestDto.safeParse({
+				package: packageFile(),
+				workflowConflictPolicy: 'fail',
+			});
 			expect(result.success).toBe(true);
 			if (result.success) {
 				expect(result.data.tagConflictPolicy).toBe('skip');
@@ -578,6 +661,7 @@ describe('ImportPackageRequestDto', () => {
 			'accepts %s as a tagConflictPolicy value',
 			(tagConflictPolicy) => {
 				const result = ImportPackageRequestDto.safeParse({
+					package: packageFile(),
 					tagConflictPolicy,
 					workflowConflictPolicy: 'fail',
 				});
@@ -591,6 +675,7 @@ describe('ImportPackageRequestDto', () => {
 		it('rejects unsupported tagConflictPolicy values', () => {
 			expect(
 				ImportPackageRequestDto.safeParse({
+					package: packageFile(),
 					tagConflictPolicy: 'overwrite',
 					workflowConflictPolicy: 'fail',
 				}).success,
@@ -600,8 +685,8 @@ describe('ImportPackageRequestDto', () => {
 
 	describe('variableParentPolicy', () => {
 		it.each([
-			{ workflowConflictPolicy: 'fail' },
-			{ workflowConflictPolicy: 'fail', variableParentPolicy: '  ' },
+			{ package: packageFile(), workflowConflictPolicy: 'fail' },
+			{ package: packageFile(), workflowConflictPolicy: 'fail', variableParentPolicy: '  ' },
 		])('leaves variableParentPolicy undefined rather than defaulting it: %o', (input) => {
 			const result = ImportPackageRequestDto.safeParse(input);
 			expect(result.success).toBe(true);
@@ -614,6 +699,7 @@ describe('ImportPackageRequestDto', () => {
 			'accepts %s as a variableParentPolicy value',
 			(variableParentPolicy) => {
 				const result = ImportPackageRequestDto.safeParse({
+					package: packageFile(),
 					variableParentPolicy,
 					workflowConflictPolicy: 'fail',
 				});
@@ -627,6 +713,7 @@ describe('ImportPackageRequestDto', () => {
 		it('rejects unsupported variableParentPolicy values', () => {
 			expect(
 				ImportPackageRequestDto.safeParse({
+					package: packageFile(),
 					variableParentPolicy: 'owner-project',
 					workflowConflictPolicy: 'fail',
 				}).success,
