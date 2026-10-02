@@ -16,6 +16,7 @@ export default [
 			'coverage/**/*',
 			'scripts/**/*',
 			'janitor.config.mjs',
+			'fixtures/community-packages/packages/**/*.js',
 		],
 	},
 	{
