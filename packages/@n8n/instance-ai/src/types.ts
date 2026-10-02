@@ -170,6 +170,8 @@ export interface ExecutionResult {
 	 * so the run is not a live test of it.
 	 */
 	workflowPinnedNodeNames?: string[];
+	/** Nodes whose output items carry file data, which `data` omits. */
+	binaryOutputNodeNames?: string[];
 	/** Node-level errors from run data, including continue-on-fail errors. */
 	nodeErrors?: ExecutionNodeError[];
 	/** Name of the last node the execution processed, when available. */

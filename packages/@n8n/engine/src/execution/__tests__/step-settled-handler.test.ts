@@ -59,6 +59,7 @@ function makeExecutionStore(
 		triggerOutputs: null,
 		callerContext: { hostMode: 'trigger' },
 		responseExpectation: { kind: 'none' },
+		finishedAt: null,
 		...overrides,
 	};
 	return {
@@ -105,6 +106,7 @@ function makeStepStore(
 		resumeDueSteps: vi.fn().mockResolvedValue([]),
 		nextWaitDeadline: vi.fn().mockResolvedValue(null),
 		failStep: vi.fn(),
+		cancelStep: vi.fn(),
 		cancelPendingSteps: vi.fn(),
 		// like the store: only requested keys that have rows appear
 		loadStepSummariesByKeys: vi.fn().mockImplementation(async (_: string, keys: StepKey[]) => {
@@ -666,12 +668,14 @@ describe('StepSettledHandler lifecycle events', () => {
 		expect(lifecycleEventPublisher.publish).not.toHaveBeenCalled();
 	});
 
-	it('announces nothing for the steps it cancels or skips', async () => {
-		// TODO(CAT-3990): cancelled and skipped steps announce nothing.
-		const { handler, lifecycleEventPublisher } = makeHandler(makeStepStore({ status: 'skipped' }));
+	it.each<StepStatus>(['skipped', 'cancelled'])(
+		'announces nothing for a %s step',
+		async (status) => {
+			const { handler, lifecycleEventPublisher } = makeHandler(makeStepStore({ status }));
 
-		await handler.handle(event);
+			await handler.handle(event);
 
-		expect(lifecycleEventPublisher.publish).not.toHaveBeenCalled();
-	});
+			expect(lifecycleEventPublisher.publish).not.toHaveBeenCalled();
+		},
+	);
 });

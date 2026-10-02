@@ -322,9 +322,13 @@ describe('ComponentMapper', () => {
 			expect(mockCard).toHaveBeenCalledWith(expect.objectContaining({ title: 'Schedule session' }));
 		});
 
-		it('should wrap button values using resume schema with approved property', async () => {
+		it.each([
+			['true', { approved: true }],
+			['false', { approved: false }],
+			['session', { approved: true, scope: 'session' }],
+		])('wraps approval button value %s', async (value, decision) => {
 			const payload = {
-				components: [{ type: 'button', label: 'Approve', value: 'true', style: 'primary' }],
+				components: [{ type: 'button', label: 'Approve', value, style: 'primary' }],
 			};
 			const resumeSchema = {
 				type: 'object',
@@ -334,7 +338,7 @@ describe('ComponentMapper', () => {
 			await mapper.toCard(payload, runId, toolCallId, resumeSchema);
 
 			expect(mockButton).toHaveBeenCalledWith(
-				expect.objectContaining({ value: JSON.stringify({ approved: true }) }),
+				expect.objectContaining({ value: JSON.stringify(decision) }),
 			);
 		});
 

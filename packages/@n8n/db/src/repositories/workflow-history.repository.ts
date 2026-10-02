@@ -178,7 +178,9 @@ export class WorkflowHistoryRepository extends BaseRepository<WorkflowHistory> {
 			metaData,
 		);
 
-		await this.delete({ versionId: In(grouped.removed.map((x) => x.versionId)) });
-		return { seen: workflows.length, deleted: grouped.removed.length };
+		const { affected } = await this.delete({
+			versionId: In(grouped.removed.map((x) => x.versionId)),
+		});
+		return { seen: workflows.length, deleted: affected ?? grouped.removed.length };
 	}
 }

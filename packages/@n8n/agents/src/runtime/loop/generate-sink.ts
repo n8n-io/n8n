@@ -49,11 +49,13 @@ export class GenerateSink implements RunOutputSink<GenerateResult> {
 		});
 
 		const aiFinishReason = result.finishReason;
+		// oxlint-disable-next-line typescript/no-deprecated
 		const newMessages = fromAiMessages(result.response.messages);
 		const errorReason = classifyModelTurnError({ aiFinishReason, newMessages });
 		return {
 			aiFinishReason,
 			finishReason: fromAiFinishReason(aiFinishReason),
+			// oxlint-disable-next-line typescript/no-deprecated
 			usage: toTokenUsage(result.usage, result.providerMetadata),
 			newMessages,
 			toolCalls: result.toolCalls,
@@ -76,7 +78,7 @@ export class GenerateSink implements RunOutputSink<GenerateResult> {
 		return {
 			runId: suspendRunId,
 			messages: list.responseDelta(),
-			finishReason: 'tool-calls',
+			finishReason: emission.finishReason ?? 'tool-calls',
 			usage,
 			pendingSuspend: suspensions.map((s) => ({
 				runId: suspendRunId,
@@ -102,6 +104,7 @@ export class GenerateSink implements RunOutputSink<GenerateResult> {
 			...(structuredOutput !== undefined && { structuredOutput }),
 			...(this.toolCallSummary.length > 0 && { toolCalls: this.toolCallSummary }),
 			getState: () => this.services.getState(),
+			...(emission.guardrail && { guardrail: emission.guardrail }),
 		};
 	}
 }

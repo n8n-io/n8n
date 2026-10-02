@@ -387,6 +387,7 @@ describe('AgentPublishService', () => {
 		const configuredTools = { tool: { descriptor: { name: 'tool' } } };
 		const configuredSkills = {
 			skill: { name: 'Skill', description: 'desc', instructions: 'Use it' },
+			disabled_skill: { name: 'Disabled skill', description: 'desc', instructions: 'Keep it' },
 		};
 		const integrations = [
 			{ type: 'slack', credentialId: 'slack-1' },
@@ -400,7 +401,11 @@ describe('AgentPublishService', () => {
 			schema: {
 				...schema,
 				tools: [{ type: 'custom', id: 'tool' }],
-				skills: [{ type: 'skill', id: 'skill' }],
+				skills: [
+					{ type: 'skill', id: 'skill' },
+					{ type: 'skill', id: 'disabled_skill', enabled: false },
+					{ type: 'skill', id: 'missing_skill', enabled: false },
+				],
 				tasks: [{ type: 'task', id: 'task-1', enabled: true }],
 			},
 			skills: configuredSkills,
@@ -673,7 +678,13 @@ describe('AgentPublishService', () => {
 		const { service, agentRepository, taskSnapshotRepository, taskRepo } = makeService();
 		const activeVersion = makeHistory({
 			versionId: 'published-v1',
-			schema,
+			schema: {
+				...schema,
+				tools: [{ type: 'custom', id: 'tool', enabled: false, requireApproval: true }],
+				skills: [{ type: 'skill', id: 'skill', enabled: false }],
+				subAgents: { agents: [{ agentId: 'agent-2', enabled: false, useWhen: 'Review notes' }] },
+				tasks: [{ type: 'task', id: 'task-1', enabled: false }],
+			},
 			tools: { tool: { descriptor: { name: 'published' } } } as unknown as AgentHistory['tools'],
 			skills: { skill: { name: 'Skill', description: 'desc', instructions: 'Use it' } },
 		});
@@ -695,7 +706,7 @@ describe('AgentPublishService', () => {
 			agent,
 		);
 
-		expect(agent.schema).toEqual(schema);
+		expect(agent.schema).toEqual(activeVersion.schema);
 		expect(agent.name).toBe(schema.name);
 		expect(agent.versionId).toBe('published-v1');
 		expect(agent.tools).toEqual(activeVersion.tools);

@@ -167,6 +167,7 @@ import {
 	buildAppliedPreferencesPayload,
 	renderAiPreferencesBlock,
 } from '@/services/ai-preference.service';
+import { AiUsageService } from '@/services/ai-usage.service';
 import { AiService } from '@/services/ai.service';
 import { InstanceWriteAccessService } from '@/services/instance-write-access.service';
 import { ProxyTokenManager } from '@/services/proxy-token-manager';
@@ -836,6 +837,7 @@ export class InstanceAiService {
 		private readonly conversationHistoryService: InstanceAiConversationHistoryService,
 		private readonly instanceContext: InstanceContextService,
 		private readonly aiPreferenceService: AiPreferenceService,
+		private readonly aiUsageService: AiUsageService,
 		private readonly threadTabsService: InstanceAiThreadTabsService,
 	) {
 		this.logger = logger.scoped('instance-ai');
@@ -2493,6 +2495,7 @@ export class InstanceAiService {
 		proxyRunConfig?: Awaited<ReturnType<InstanceAiService['createProxyRunConfig']>>,
 		instanceContextGates?: InstanceContextGates,
 		experimentGates?: Awaited<ReturnType<InstanceAiAdapterService['resolveExperimentGates']>>,
+		resumeAgentBuild = false,
 	) {
 		const memory = this.agentMemory;
 		const boundProjectId = await memory.getThreadProjectId(threadId);
@@ -2559,6 +2562,8 @@ export class InstanceAiService {
 		});
 		const buildMode = selectedPrompt.profile.mode;
 		this.runState.setBuildMode(threadId, buildMode);
+		// Read per run so a settings change applies to the next message.
+		const allowSendingParameterValues = await this.aiUsageService.isParameterValueSharingAllowed();
 		// The frontend writes the exit to thread metadata when the agent calls `leave-onboarding` or
 		// starts a build, so a thread that left gets the tool no more.
 		const thread = await memory.getThread(threadId);
@@ -2583,6 +2588,8 @@ export class InstanceAiService {
 			credentialDescriptionsEnabled,
 			aiPreferencesEnabled,
 			modelId,
+			allowSendingParameterValues,
+			resumeAgentBuild,
 		});
 
 		// Merge both local gateway and direct browser-use into a single
@@ -4433,6 +4440,7 @@ export class InstanceAiService {
 			// a follow-up segment that skips the preferences path.
 			if (aiPreferencesTurn) {
 				this.telemetry.track(TELEMETRY_EVENT.CONTEXT.PREFERENCES_APPLIED_TO_TURN, {
+					user_id: user.id,
 					count: aiPreferencesTurn.payload.preferences.length,
 					scope_types: [...new Set(aiPreferencesTurn.payload.preferences.map((p) => p.scope))],
 					rendered_length: aiPreferencesTurn.payload.renderedLength,
@@ -5206,6 +5214,7 @@ export class InstanceAiService {
 		messageGroupId?: string,
 		pushRef?: string,
 		instanceContextGates?: InstanceContextGates,
+		resumeAgentBuild = false,
 	): Promise<{
 		agent: InstanceAgent;
 		modelId: ModelConfig;
@@ -5220,6 +5229,8 @@ export class InstanceAiService {
 			pushRef,
 			undefined,
 			instanceContextGates,
+			undefined,
+			resumeAgentBuild,
 		);
 		const agent = await this.createAgentFromEnvironment(
 			environment,
@@ -5233,6 +5244,19 @@ export class InstanceAiService {
 			modelId: environment.modelId,
 			orchestrationContext: environment.orchestrationContext,
 		};
+	}
+
+	private isAgentBuilderSuspension(
+		toolName: string | undefined,
+		suspendPayload: Record<string, unknown> | undefined,
+	): boolean {
+		if (toolName !== 'build-agent') return false;
+		const builderCheckpoint = suspendPayload?.builderCheckpoint;
+		return (
+			isRecord(builderCheckpoint) &&
+			typeof builderCheckpoint.runId === 'string' &&
+			typeof builderCheckpoint.toolCallId === 'string'
+		);
 	}
 
 	/**
@@ -5253,6 +5277,8 @@ export class InstanceAiService {
 		const user = await this.revalidateActiveUser(orphan.userId);
 		if (!user) return { kind: 'no-user' };
 		let instanceContext: SuspendedRunState<User>['instanceContext'];
+		let toolName: string | undefined;
+		let suspendPayload: Record<string, unknown> | undefined;
 
 		// Bail early if the checkpoint store doesn't have a usable snapshot —
 		// `load()` throws UserError for expired tombstones and returns
@@ -5261,6 +5287,13 @@ export class InstanceAiService {
 		try {
 			const state = await this.checkpointStore.load(orphan.checkpointKey);
 			if (!state) return { kind: 'no-checkpoint' };
+			const pendingToolCall = state.pendingToolCalls?.[orphan.toolCallId];
+			if (pendingToolCall?.suspended) {
+				toolName = pendingToolCall.toolName;
+				suspendPayload = isRecord(pendingToolCall.suspendPayload)
+					? pendingToolCall.suspendPayload
+					: undefined;
+			}
 			const storedContext = suspendedInstanceContextSchema.safeParse(
 				state.persistence?.hostMetadata?.instanceContext,
 			);
@@ -5289,6 +5322,8 @@ export class InstanceAiService {
 				this.threadPushRef.get(orphan.threadId),
 				undefined,
 				instanceContext,
+				undefined,
+				this.isAgentBuilderSuspension(toolName, suspendPayload),
 			);
 		} catch (error: unknown) {
 			return { kind: 'env-failure', error };
@@ -5319,6 +5354,8 @@ export class InstanceAiService {
 				threadId: orphan.threadId,
 				user,
 				toolCallId: orphan.toolCallId,
+				toolName,
+				suspendPayload,
 				requestId: orphan.requestId,
 				abortController,
 				messageGroupId: orphan.messageGroupId ?? undefined,
@@ -5607,6 +5644,7 @@ export class InstanceAiService {
 		runHandoff: OrchestratorRunHandoffState | undefined,
 		messageGroupId?: string,
 		instanceContextGates?: InstanceContextGates,
+		resumeAgentBuild = false,
 	): Promise<
 		| {
 				agent: InstanceAgent;
@@ -5625,6 +5663,7 @@ export class InstanceAiService {
 				messageGroupId,
 				this.threadPushRef.get(threadId),
 				instanceContextGates,
+				resumeAgentBuild,
 			);
 			createOrchestratorRunControl(rebuilt.orchestrationContext, runHandoff ?? {});
 			return {
@@ -5764,6 +5803,7 @@ export class InstanceAiService {
 				runHandoff,
 				messageGroupId,
 				instanceContext,
+				this.isAgentBuilderSuspension(toolName, suspendPayload),
 			);
 			if (!rebuilt) {
 				const rebuildFailure = 'Agent rebuild failed';

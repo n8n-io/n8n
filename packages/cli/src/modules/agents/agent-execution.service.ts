@@ -44,11 +44,14 @@ import {
 } from './execution-log/agent-execution-log-store';
 import { N8nMemory } from './integrations/n8n-memory';
 import { N8NCheckpointStorage } from './integrations/n8n-checkpoint-storage';
-import { draftChatMemoryResourceId } from './utils/agent-memory-scope';
 import {
+	draftChatMemoryResourceId,
+	productionChatMemoryResourceId,
+} from './utils/agent-memory-scope';
+import {
+	canContinueThreadInN8nChat,
 	canContinueThreadInPreview,
 	canUseTopLevelDraftThread,
-	N8N_CHAT_PRODUCTION_SOURCE,
 	threadBelongsTo,
 	type AgentSessionMode,
 } from './utils/agent-thread-access';
@@ -901,7 +904,7 @@ export class AgentExecutionService {
 			return canContinueThreadInPreview(thread, userId, sources.get(threadId));
 		}
 		if (options.sessionMode === 'existing') return false;
-		return await this.canUseUnrecordedDraftThread(threadId, agentId, userId);
+		return await this.canUseUnrecordedThread(threadId, agentId, draftChatMemoryResourceId(userId));
 	}
 
 	async canUseProductionChatThread(
@@ -912,24 +915,31 @@ export class AgentExecutionService {
 		sessionMode: AgentSessionMode,
 	): Promise<boolean> {
 		const thread = await this.findThreadById(threadId);
-		if (!thread) return sessionMode === 'new';
+		if (!thread)
+			return (
+				sessionMode === 'new' &&
+				(await this.canUseUnrecordedThread(
+					threadId,
+					agentId,
+					productionChatMemoryResourceId(userId),
+				))
+			);
 		if (
 			thread.projectId !== projectId ||
 			thread.agentId !== agentId ||
-			!canUseTopLevelDraftThread(thread, userId) ||
-			thread.taskId !== null
+			!canUseTopLevelDraftThread(thread, userId)
 		)
 			return false;
 		const sources = await this.agentExecutionRepository.findFirstSourceByThreadIds([threadId]);
-		return sources.get(threadId) === N8N_CHAT_PRODUCTION_SOURCE;
+		return canContinueThreadInN8nChat(thread, userId, sources.get(threadId));
 	}
 
-	private async canUseUnrecordedDraftThread(
+	/** A session ID without a thread is free only when no other memory scope uses it. */
+	private async canUseUnrecordedThread(
 		threadId: string,
 		agentId: string,
-		userId: string,
+		resourceId: string,
 	): Promise<boolean> {
-		const resourceId = draftChatMemoryResourceId(userId);
 		const memory = await this.n8nMemory.getImplementation(agentId).getThread(threadId);
 		if (memory && memory.resourceId !== resourceId) return false;
 		return await this.checkpointStorage.hasNoConflictingThreadResource(

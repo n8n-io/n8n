@@ -11,7 +11,7 @@ import type {
 	UpdateDataTableRowDto,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { EventService } from '@n8n/backend-services';
+import { EventService, RoleService } from '@n8n/backend-services';
 import { ProjectRelationRepository, ProjectRepository, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { hasGlobalScope, type Scope } from '@n8n/permissions';
@@ -48,7 +48,6 @@ import { DataTableValidationError } from './errors/data-table-validation.error';
 import { normalizeRows } from './utils/sql-utils';
 
 import { ProjectNotFoundError, ProjectService } from '@/services/project.service.ee';
-import { RoleService } from '@/services/role.service';
 
 @Service()
 export class DataTableService {
