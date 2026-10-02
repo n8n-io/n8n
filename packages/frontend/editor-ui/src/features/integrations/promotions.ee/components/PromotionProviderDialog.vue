@@ -11,8 +11,7 @@ import {
 	N8nInput,
 	N8nInputLabel,
 	N8nNotice,
-	N8nOption,
-	N8nSelect,
+	N8nSelect2,
 	N8nText,
 	useMessage,
 } from '@n8n/design-system';
@@ -55,6 +54,33 @@ const message = useMessage();
 const rootStore = useRootStore();
 
 const form = reactive<ProviderFormState>(emptyProviderForm());
+
+const authTypeItems = computed(() => [
+	{
+		value: 'ssh-key',
+		label: i18n.baseText('settings.promotions.providers.authType.sshKey'),
+	},
+	{
+		value: 'token',
+		label: i18n.baseText('settings.promotions.providers.authType.token'),
+	},
+]);
+
+const keyTypeItems = [
+	{ value: 'ed25519', label: 'ED25519' },
+	{ value: 'rsa', label: 'RSA' },
+];
+
+type AuthType = (typeof authTypeItems.value)[number]['value'];
+type KeyType = (typeof keyTypeItems)[number]['value'];
+
+function onAuthType(value: AuthType) {
+	form.authType = value;
+}
+
+function onKeyType(value: KeyType) {
+	form.keyType = value;
+}
 
 const step = ref<'form' | 'key'>('form');
 const current = ref<PromotionProvider | null>(null);
@@ -334,22 +360,15 @@ async function onDelete() {
 					isEdit ? i18n.baseText('settings.promotions.provider.form.authType.locked') : undefined
 				"
 			>
-				<N8nSelect
+				<N8nSelect2
 					id="promotion-provider-auth-type"
-					v-model="form.authType"
-					:teleported="false"
+					:model-value="form.authType"
+					:items="authTypeItems"
 					:disabled="isLoading || isEdit"
+					size="medium"
 					data-test-id="promotion-provider-auth-type-select"
-				>
-					<N8nOption
-						value="ssh-key"
-						:label="i18n.baseText('settings.promotions.providers.authType.sshKey')"
-					/>
-					<N8nOption
-						value="token"
-						:label="i18n.baseText('settings.promotions.providers.authType.token')"
-					/>
-				</N8nSelect>
+					@update:model-value="onAuthType"
+				/>
 			</N8nInputLabel>
 
 			<template v-if="form.authType === 'ssh-key'">
@@ -358,16 +377,15 @@ async function onDelete() {
 					input-name="promotion-provider-key-type"
 					:label="i18n.baseText('settings.promotions.provider.form.keyType')"
 				>
-					<N8nSelect
+					<N8nSelect2
 						id="promotion-provider-key-type"
-						v-model="form.keyType"
-						:teleported="false"
+						:model-value="form.keyType"
+						:items="keyTypeItems"
 						:disabled="isLoading"
+						size="medium"
 						data-test-id="promotion-provider-key-type-select"
-					>
-						<N8nOption value="ed25519" label="ED25519" />
-						<N8nOption value="rsa" label="RSA" />
-					</N8nSelect>
+						@update:model-value="onKeyType"
+					/>
 				</N8nInputLabel>
 
 				<N8nInputLabel
