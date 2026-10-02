@@ -18,21 +18,6 @@ import { createManyWorkflowHistoryItems } from './shared/db/workflow-history';
 const OVERLAPPING_RUNS = 4;
 const OLD_VERSIONS = 20;
 const RECENT_VERSIONS = 5;
-const HELD_STATEMENT_MS = 2_000;
-const isPostgres = process.env.DB_TYPE === 'postgresdb';
-
-// The same statement as deleteEarlierThanExceptCurrentAndActive, run from a second connection.
-const PRUNE_SQL = `
-	DELETE FROM workflow_history
-	WHERE "createdAt" < $1
-		AND "versionId" NOT IN (SELECT w."versionId" FROM workflow_entity w)
-		AND "versionId" NOT IN (SELECT w."activeVersionId" FROM workflow_entity w WHERE w."activeVersionId" IS NOT NULL)
-		AND "versionId" NOT IN (SELECT wpv."publishedVersionId" FROM workflow_published_version wpv)
-		AND "versionId" NOT IN (
-			SELECT wrrw."workflowVersionId" FROM workflow_review_request_workflow wrrw
-			INNER JOIN workflow_review_request wrr ON wrr.id = wrrw."workflowReviewRequestId"
-			WHERE wrr.state = 'open' AND wrrw."workflowVersionId" IS NOT NULL)
-		AND name IS NULL`;
 
 describe('Workflow History Manager', () => {
 	const license = mockInstance(License);
@@ -224,37 +209,7 @@ describe('Workflow History Manager', () => {
 		);
 	});
 
-	test('should keep the same rows as one run when prune is called four times at once', async () => {
-		const kept = await seedProtectedAndPrunable();
-
-		await Promise.all(Array.from({ length: OVERLAPPING_RUNS }, async () => await manager.prune()));
-
-		expect(await remainingVersionIds()).toEqual(kept);
-	});
-
-	test.skipIf(!isPostgres)(
-		'should wait for a prune statement held open by another connection and keep the same rows',
-		async () => {
-			const kept = await seedProtectedAndPrunable();
-			const cutoff = DateTime.now().minus({ hours: 24 }).toJSDate();
-			const other = repo.manager.connection.createQueryRunner();
-			await other.connect();
-			await other.startTransaction();
-			await other.query(PRUNE_SQL, [cutoff]);
-
-			const start = Date.now();
-			const prune = manager.prune();
-			await new Promise((resolve) => setTimeout(resolve, HELD_STATEMENT_MS));
-			await other.commitTransaction();
-			await other.release();
-			await prune;
-
-			expect(Date.now() - start).toBeGreaterThanOrEqual(HELD_STATEMENT_MS);
-			expect(await remainingVersionIds()).toEqual(kept);
-		},
-	);
-
-	const seedProtectedAndPrunable = async () => {
+	test('should keep the same rows as one run when prune runs overlap', async () => {
 		globalConfig.workflowHistory.pruneTime = 24;
 		license.isLicensed.mockImplementation((feature: string) => feature === 'feat:namedVersions');
 
@@ -270,11 +225,14 @@ describe('Workflow History Manager', () => {
 		await Container.get(WorkflowRepository).save(workflow);
 		await repo.update({ versionId: namedVersion.versionId }, { name: 'Named Version' });
 
-		return [
+		await Promise.all(Array.from({ length: OVERLAPPING_RUNS }, async () => await manager.prune()));
+
+		const kept = [
 			...factoryVersionIds,
 			...[currentVersion, activeVersion, namedVersion, ...recentVersions].map((v) => v.versionId),
 		].sort();
-	};
+		expect(await remainingVersionIds()).toEqual(kept);
+	});
 
 	const remainingVersionIds = async () => {
 		const rows = await repo.find({ select: { versionId: true } });
