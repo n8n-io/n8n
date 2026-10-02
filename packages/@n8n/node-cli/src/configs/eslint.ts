@@ -1,18 +1,19 @@
 import eslint from '@eslint/js';
 import { n8nCommunityNodesPlugin } from '@n8n/eslint-plugin-community-nodes';
-import { globalIgnores } from 'eslint/config';
+import { defineConfig, globalIgnores } from 'eslint/config';
 import { createTypeScriptImportResolver } from 'eslint-import-resolver-typescript';
 import importPlugin from 'eslint-plugin-import-x';
 import n8nNodesPlugin from 'eslint-plugin-n8n-nodes-base';
-import tseslint, { type ConfigArray } from 'typescript-eslint';
+import tseslint from 'typescript-eslint';
+
+type ConfigArray = ReturnType<typeof defineConfig>;
 
 function createConfig(supportCloud = true): ConfigArray {
 	const communityNodesRecommended = supportCloud
 		? n8nCommunityNodesPlugin.configs.recommended
 		: n8nCommunityNodesPlugin.configs.recommendedWithoutN8nCloudSupport;
 
-	// oxlint-disable-next-line typescript/no-deprecated - We're moving away from eslint
-	return tseslint.config(
+	const configs = [
 		globalIgnores(['dist']),
 		{
 			files: ['**/*.ts'],
@@ -71,7 +72,9 @@ function createConfig(supportCloud = true): ConfigArray {
 				'n8n-nodes-base/node-param-type-options-max-value-present': 'off',
 			},
 		},
-	);
+	];
+	// typescript-eslint bundles a parser type that differs from ESLint's parser type.
+	return defineConfig(...(configs as unknown as Parameters<typeof defineConfig>));
 }
 export const config: ConfigArray = createConfig();
 export const configWithoutCloudSupport: ConfigArray = createConfig(false);

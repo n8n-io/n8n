@@ -4758,6 +4758,9 @@ importers:
       '@opentelemetry/api':
         specifier: 1.9.1
         version: 1.9.1
+      '@opentelemetry/context-async-hooks':
+        specifier: ^2.7.1
+        version: 2.10.0(@opentelemetry/api@1.9.1)
       '@opentelemetry/core':
         specifier: 2.10.0
         version: 2.10.0(@opentelemetry/api@1.9.1)
