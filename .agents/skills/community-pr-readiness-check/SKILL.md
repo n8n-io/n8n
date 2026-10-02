@@ -113,7 +113,7 @@ Run when `AutoReject` is `null`. Full rules for each in `reference/checks.md`:
 
 ## Step 4 — Identify the responsible team
 
-Run `node .github/scripts/owners.mjs` against the changed file list and map the winning GitHub team to a Linear team. Full mapping table, sub-agent fallback procedure, and label rules: see `reference/teams.md`.
+Run `node .github/scripts/owners/owners.mjs` against the changed file list and map the winning GitHub team to a Linear team. Full mapping table, sub-agent fallback procedure, and label rules: see `reference/teams.md`.
 
 ## Step 5 — Extract the Linear ticket
 
