@@ -31,11 +31,17 @@ Creates GitHub PRs with titles that pass n8n's `check-pr-title` CI validation.
 ### Scopes (optional but recommended)
 
 - `API` - Public API changes
+- `ai-builder` - AI Workflow Builder and Instance AI
 - `benchmark` - Benchmark CLI changes
 - `core` - Core/backend/private API
 - `editor` - Editor UI changes
 - `engine` - New workflow execution engine v2 (@n8n/engine package & engine-v2 module in cli)
 - `* Node` - Specific node (e.g., `Slack Node`, `GitHub Node`)
+
+`check-pr-title` accepts only these scopes. Do not use a package or folder
+name as the scope (for example `instance-ai`, `cli`, `evals` or `docker`).
+If no scope fits, omit the scope. To give two scopes, separate them with a
+comma and a space: `fix(core, editor): ...`.
 
 ### Summary Rules
 
@@ -66,8 +72,8 @@ Creates GitHub PRs with titles that pass n8n's `check-pr-title` CI validation.
 
 4. **Analyze changes** to determine:
    - Type: What kind of change is this?
-   - Scope: Which package/area is affected?
-   - Summary: What does the change do?
+   - Scope: Which scope from the Scopes list fits? Omit the scope if none fits.
+   - Summary: What does the change do? Start it with a capital letter.
 
 5. **Push branch if needed**:
    ```bash
@@ -159,15 +165,22 @@ chore: Update dependencies to latest versions
 
 The PR title must match this pattern:
 ```
-^(feat|fix|perf|test|docs|refactor|build|ci|chore|revert)(\([a-zA-Z0-9 ]+( Node)?\))?!?: [A-Z].+[^.]$
+^(feat|fix|perf|test|docs|refactor|build|ci|chore)(\((API|core|editor|benchmark|ai-builder|engine|[A-Za-z0-9 .]+ Node)(, (API|core|editor|benchmark|ai-builder|engine|[A-Za-z0-9 .]+ Node))*\))?!?: [A-Z].+[^.]$
 ```
 
 Key validation rules:
 - Type must be one of the allowed types
-- Scope is optional but must be in parentheses if present
+- Scope is optional, but if present it must be in parentheses and in the Scopes list (or `<display name> Node`)
 - Exclamation mark for breaking changes goes before the colon
 - Summary must start with capital letter
+- Summary must not start with a past-tense verb (`Added`)
 - Summary must not end with a period
+- No ticket number (`N8N-1234`) and no PR number (`#12345`)
+- `(no-changelog)`, if used, must be the last part of the summary
+
+Check the title against these rules before you run `gh pr create`. The two
+most frequent failures are a package name as the scope and a lowercase first
+letter in the summary.
 
 ## Plan Section
 
