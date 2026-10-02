@@ -163,16 +163,22 @@ export class WorkflowHistoryRepository extends BaseRepository<WorkflowHistory> {
 			.addOrderBy('wh.versionId', 'ASC')
 			.getMany();
 
-		// Group by workflowId
 		const publishedVersions =
 			await this.workflowPublishHistoryRepository.getPublishedVersions(workflowId);
+		const current = await this.manager
+			.createQueryBuilder(WorkflowEntity, 'w')
+			.select('w.versionId', 'versionId')
+			.where('w.id = :workflowId', { workflowId })
+			.getRawOne<{ versionId: string }>();
+		const protectedVersions = new Set(
+			publishedVersions.map((v) => v.versionId).filter((v) => v !== null),
+		);
+		if (current) protectedVersions.add(current.versionId);
 		const grouped = groupWorkflows<WorkflowHistory>(
 			workflows,
 			rules,
 			[
-				this.makeSkipActiveAndNamedVersionsRule(
-					new Set(publishedVersions.map((v) => v.versionId).filter((v) => v !== null)),
-				),
+				this.makeSkipActiveAndNamedVersionsRule(protectedVersions),
 				SKIP_RULES.skipDifferentUsers,
 				...skipRules,
 			],
