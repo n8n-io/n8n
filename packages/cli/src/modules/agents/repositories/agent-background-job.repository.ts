@@ -1,6 +1,7 @@
+import { BaseRepository, TransactionRunner, type OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { DataSource, In, IsNull, LessThan, Not, Repository } from '@n8n/typeorm';
-import { OperationalError } from 'n8n-workflow';
+import { DataSource, In, IsNull, LessThan, Not } from '@n8n/typeorm';
+import { OperationalError, UserError } from 'n8n-workflow';
 
 import {
 	AgentBackgroundJob,
@@ -9,6 +10,7 @@ import {
 } from '../entities/agent-background-job.entity';
 import { AgentCheckpoint } from '../entities/agent-checkpoint.entity';
 import { AgentExecution } from '../entities/agent-execution.entity';
+import { AgentExecutionThreadRepository } from './agent-execution-thread.repository';
 
 type NewAgentBackgroundJobBase = {
 	id: string;
@@ -32,8 +34,6 @@ export type NewWorkflowJob = NewAgentBackgroundJobBase & {
 	childExecutionId: string;
 };
 
-export type NewAgentBackgroundJob = NewSubAgentJob | NewWorkflowJob;
-
 export type AgentBackgroundJobSettlement = {
 	status: Exclude<AgentBackgroundJobStatus, 'running' | 'suspended' | 'paused'>;
 	result?: string | null;
@@ -41,8 +41,9 @@ export type AgentBackgroundJobSettlement = {
 };
 
 export type ExpectedBackgroundJobState = {
-	status: 'running' | 'suspended';
+	status: 'running' | 'suspended' | 'paused';
 	timeoutAt?: Date | null;
+	pauseRequestId?: string | null;
 };
 
 export type BackgroundJobGroupItem = Pick<
@@ -51,13 +52,25 @@ export type BackgroundJobGroupItem = Pick<
 >;
 
 @Service()
-export class AgentBackgroundJobRepository extends Repository<AgentBackgroundJob> {
-	constructor(dataSource: DataSource) {
-		super(AgentBackgroundJob, dataSource.manager);
+export class AgentBackgroundJobRepository extends BaseRepository<AgentBackgroundJob> {
+	constructor(
+		dataSource: DataSource,
+		transactionRunner: TransactionRunner,
+		private readonly threadRepository: AgentExecutionThreadRepository,
+	) {
+		super(AgentBackgroundJob, dataSource.manager, transactionRunner);
 	}
 
-	async insertJob(job: NewAgentBackgroundJob): Promise<void> {
-		await this.insert({ ...job, status: 'running' });
+	async insertSubAgentJobIfCapacity(job: NewSubAgentJob, limit: number): Promise<boolean> {
+		return await this.runInTransaction({}, async (manager, ctx) => {
+			if (!(await this.threadRepository.lockById(job.parentThreadId, ctx))) {
+				throw new UserError('Session not found');
+			}
+			if ((await this.countActiveSubAgentsByParentThread(job.parentThreadId, ctx)) >= limit)
+				return false;
+			await manager.insert(AgentBackgroundJob, { ...job, status: 'running' });
+			return true;
+		});
 	}
 
 	/**
@@ -84,9 +97,12 @@ export class AgentBackgroundJobRepository extends Repository<AgentBackgroundJob>
 	}
 
 	/** Suspended children still occupy a job slot. */
-	async countActiveSubAgentsByParentThread(parentThreadId: string): Promise<number> {
-		return await this.count({
-			where: { parentThreadId, kind: 'subagent', status: In(['running', 'suspended', 'paused']) },
+	async countActiveSubAgentsByParentThread(
+		parentThreadId: string,
+		ctx: OperationContext = {},
+	): Promise<number> {
+		return await this.managerFor(ctx).count(AgentBackgroundJob, {
+			where: { parentThreadId, kind: 'subagent', status: In(['running', 'suspended']) },
 		});
 	}
 
@@ -224,6 +240,27 @@ export class AgentBackgroundJobRepository extends Repository<AgentBackgroundJob>
 			.getMany();
 	}
 
+	async findPausedWithoutCheckpoint(
+		updatedAfter: Date,
+		parentThreadId?: string,
+	): Promise<AgentBackgroundJob[]> {
+		const checkpoint = this.createQueryBuilder()
+			.subQuery()
+			.select('1')
+			.from(AgentCheckpoint, 'checkpoint')
+			.where('checkpoint.agentId = job.subAgentId')
+			.andWhere('checkpoint.threadId = job.childThreadId')
+			.andWhere('checkpoint.expired = :expired')
+			.andWhere('checkpoint.state IS NOT NULL')
+			.andWhere('checkpoint.updatedAt > :updatedAfter')
+			.getQuery();
+		const query = this.createQueryBuilder('job')
+			.where({ kind: 'subagent', status: 'paused' })
+			.andWhere(`NOT EXISTS ${checkpoint}`, { expired: false, updatedAfter });
+		if (parentThreadId) query.andWhere('job.parentThreadId = :parentThreadId', { parentThreadId });
+		return await query.getMany();
+	}
+
 	/** Active jobs whose execution or approval deadline has passed. */
 	async findActivePastTimeout(now: Date): Promise<AgentBackgroundJob[]> {
 		return await this.find({
@@ -330,6 +367,9 @@ export class AgentBackgroundJobRepository extends Repository<AgentBackgroundJob>
 				id,
 				status: expected?.status ?? In(['running', 'suspended', 'paused']),
 				...(expected?.timeoutAt !== undefined ? { timeoutAt: expected.timeoutAt ?? IsNull() } : {}),
+				...(expected?.pauseRequestId !== undefined
+					? { pauseRequestId: expected.pauseRequestId ?? IsNull() }
+					: {}),
 			},
 			{
 				status: settlement.status,
@@ -337,7 +377,7 @@ export class AgentBackgroundJobRepository extends Repository<AgentBackgroundJob>
 				error: settlement.error ?? null,
 				settledAt: new Date(),
 				notifiedAt:
-					settlement.status === 'cancelled'
+					settlement.status === 'cancelled' || expected?.status === 'paused'
 						? () => 'CASE WHEN "status" = \'paused\' THEN "notifiedAt" ELSE NULL END'
 						: null,
 			},

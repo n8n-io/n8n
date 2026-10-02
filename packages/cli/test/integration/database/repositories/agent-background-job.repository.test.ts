@@ -80,6 +80,94 @@ describe('AgentBackgroundJobRepository', () => {
 		});
 	}
 
+	it('admits five active tasks beside a paused group and fences concurrent spawns', async () => {
+		const parentThreadId = uuid();
+		const agent = await agentRepository.findOneByOrFail({ id: agentId });
+		await Container.get(AgentExecutionThreadRepository).insert({
+			id: parentThreadId,
+			projectId: agent.projectId,
+			agentId,
+			agentName: agent.name,
+		});
+		for (let index = 0; index < 5; index++) {
+			await insertJob({ id: uuid(), parentThreadId, status: 'paused', pauseRequestId: agentId });
+		}
+		await insertJob({ id: uuid(), parentThreadId, kind: 'workflow', status: 'running' });
+		const jobs = Array.from({ length: 6 }, () => ({
+			id: uuid(),
+			kind: 'subagent' as const,
+			parentAgentId: agentId,
+			parentThreadId,
+			parentResourceId: 'draft-chat:user-1',
+			parentPrincipalHash: 'principal-hash',
+			title: 'New task',
+			subAgentId: agentId,
+			childThreadId: uuid(),
+			timeoutAt: new Date(Date.now() + 60_000),
+		}));
+		const admitted = await Promise.all(
+			jobs.map(async (job) => await repository.insertSubAgentJobIfCapacity(job, 5)),
+		);
+		expect(admitted.filter(Boolean)).toHaveLength(5);
+		const active = (await repository.findByParentThread(parentThreadId)).filter(
+			(job) => job.kind === 'subagent' && job.status === 'running',
+		);
+		await repository.update(active[0].id, { status: 'suspended' });
+		expect(await repository.countActiveSubAgentsByParentThread(parentThreadId)).toBe(5);
+		expect(await repository.insertSubAgentJobIfCapacity({ ...jobs[0], id: uuid() }, 5)).toBe(false);
+	});
+
+	it('finds expired paused tasks and preserves their report state during guarded cleanup', async () => {
+		const checkpoints = Container.get(AgentCheckpointRepository);
+		const pauseRequestId = uuid();
+		const notifiedAt = new Date('2026-10-01T10:00:00Z');
+		const cutoff = new Date('2026-10-01T00:00:00Z');
+		const ids: string[] = [];
+		for (const checkpoint of [
+			undefined,
+			{ expired: true, state: 'saved', updatedAt: new Date('2026-10-02T00:00:00Z') },
+			{ expired: false, state: null, updatedAt: new Date('2026-10-02T00:00:00Z') },
+			{ expired: false, state: 'saved', updatedAt: new Date('2026-09-30T00:00:00Z') },
+			{ expired: false, state: 'saved', updatedAt: new Date('2026-10-02T00:00:00Z') },
+		]) {
+			const id = uuid();
+			const childThreadId = uuid();
+			ids.push(id);
+			await insertJob({
+				id,
+				parentThreadId: 'parent',
+				subAgentId: agentId,
+				childThreadId,
+				status: 'paused',
+				pauseRequestId,
+				notifiedAt,
+			});
+			if (checkpoint)
+				await checkpoints.insert({
+					runId: uuid(),
+					agentId,
+					threadId: childThreadId,
+					...checkpoint,
+				});
+		}
+		await insertJob({ id: uuid(), parentThreadId: 'other', status: 'paused' });
+		expect(
+			(await repository.findPausedWithoutCheckpoint(cutoff, 'parent')).map((job) => job.id).sort(),
+		).toEqual(ids.slice(0, 4).sort());
+		await repository.update(ids[0], { status: 'running' });
+		await repository.update(ids[1], { pauseRequestId: uuid() });
+		for (let index = 0; index < 3; index++) {
+			expect(
+				await repository.settleIfActive(
+					ids[index],
+					{ status: 'failed', error: 'Checkpoint expired' },
+					{ status: 'paused', pauseRequestId },
+				),
+			).toBe(index === 2);
+		}
+		expect(await repository.findById(ids[2])).toMatchObject({ status: 'failed', notifiedAt });
+	});
+
 	it('returns only group fields for the selected agent and thread', async () => {
 		const id = uuid();
 		const createdAt = new Date('2026-09-01T10:00:00Z');
@@ -201,7 +289,7 @@ describe('AgentBackgroundJobRepository', () => {
 		expect(await repository.markMailConsumed('parent', [first, second], true)).toBe(2);
 		expect(await repository.markMailConsumed('parent', [first, second], true)).toBe(0);
 		expect(await repository.findWakeableUnconsumed('parent')).toEqual([]);
-		expect(await repository.countActiveSubAgentsByParentThread('parent')).toBe(2);
+		expect(await repository.countActiveSubAgentsByParentThread('parent')).toBe(1);
 		await repository.deleteSettledBefore(new Date(Date.now() + 60_000));
 		expect((await repository.findById(first))?.status).toBe('paused');
 		const deadline = new Date(Date.now() + 30 * 60_000);
