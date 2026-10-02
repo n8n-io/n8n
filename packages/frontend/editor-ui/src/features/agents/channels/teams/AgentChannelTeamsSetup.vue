@@ -417,7 +417,9 @@ async function beforeSave() {
 async function afterSave() {
 	const pending = pendingPackage;
 	pendingPackage = null;
-	if (!pending || !canDownloadPackage.value) return;
+	// Attempted even without a bot ID here: the server builds the package from
+	// the credential itself, and its failure is reported below.
+	if (!pending) return;
 	if (await downloadPackage(pending.settings, pending.credentialId)) {
 		showDownloaded();
 		return;

@@ -824,15 +824,8 @@ describe('AgentChannelTeamsSetup', () => {
 				expect(getByTestId('saved-settings')).not.toBeEmptyDOMElement();
 			});
 
-			it('saves without a download when the credential has no bot yet', async () => {
-				vi.mocked(getTeamsSetupState).mockResolvedValue({
-					messagingEndpointUrl: ENDPOINT,
-					botId: null,
-					deployToAzureUrl: null,
-					credentialClaimedBy: null,
-					defaultDisplayName: DEFAULT_NAME,
-					defaultDescription: DEFAULT_DESCRIPTION,
-				});
+			it('still downloads after the save when the setup state did not load', async () => {
+				vi.mocked(getTeamsSetupState).mockRejectedValue(new Error('unreachable'));
 				const { getByTestId } = renderHost({ props: { viewProps: settingsProps() } });
 
 				await waitFor(() => expect(getTeamsSetupState).toHaveBeenCalled());
@@ -840,8 +833,35 @@ describe('AgentChannelTeamsSetup', () => {
 				await fireEvent.click(getByTestId('teams-scope-groups'));
 				await fireEvent.click(getByTestId('save'));
 
-				await waitFor(() => expect(getByTestId('saved-settings')).not.toBeEmptyDOMElement());
-				expect(fetchTeamsAppPackage).not.toHaveBeenCalled();
+				await waitFor(() => expect(saveAs).toHaveBeenCalled());
+				expect(fetchTeamsAppPackage).toHaveBeenCalledWith(
+					expect.anything(),
+					'p',
+					'a',
+					'cred-1',
+					expect.objectContaining({ groupChats: true }),
+				);
+			});
+
+			it('reports a failed download when the setup state did not load either', async () => {
+				vi.mocked(getTeamsSetupState).mockRejectedValue(new Error('unreachable'));
+				vi.mocked(fetchTeamsAppPackage).mockRejectedValue(new Error('no bot'));
+				const { getByTestId } = renderHost({ props: { viewProps: settingsProps() } });
+
+				await waitFor(() => expect(getTeamsSetupState).toHaveBeenCalled());
+				await openAvailability(getByTestId);
+				await fireEvent.click(getByTestId('teams-scope-groups'));
+				await fireEvent.click(getByTestId('save'));
+
+				await waitFor(() =>
+					expect(showMessage).toHaveBeenCalledWith(
+						expect.objectContaining({
+							type: 'error',
+							title: 'agents.channels.teams.setup.install.downloadFailed',
+						}),
+					),
+				);
+				expect(getByTestId('saved-settings')).not.toBeEmptyDOMElement();
 			});
 
 			it('changes nothing about saving in the setup stepper', async () => {
