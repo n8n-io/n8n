@@ -1088,7 +1088,7 @@ describe('ScalingService', () => {
 
 				it('should not throw when the worker failed listener receives a null job', async () => {
 					await startWorker();
-					const [, handler] = queue.on.mock.calls.find(([event]) => event === 'failed') as [
+					const [, handler] = queue.on.mock.calls.find(([event]) => String(event) === 'failed') as [
 						string,
 						(job: Job | null, error: Error) => void,
 					];
