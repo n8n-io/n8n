@@ -435,6 +435,11 @@ export class ActiveExecutions {
 			}
 
 			await sleep(500);
+			if (isWorker) {
+				for (const [executionId, { isQueueJob }] of Object.entries(this.activeExecutions)) {
+					if (isQueueJob) delete this.activeExecutions[executionId];
+				}
+			}
 			executionIds = Object.keys(this.activeExecutions);
 		}
 	}
