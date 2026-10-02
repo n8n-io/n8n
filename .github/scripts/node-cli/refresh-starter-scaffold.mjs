@@ -30,7 +30,7 @@ if (!starterRootArg) {
 	process.exit(1);
 }
 
-const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
+const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
 const nodeCliBin = path.join(repoRoot, 'packages/@n8n/node-cli/bin/n8n-node.mjs');
 const starterRoot = path.resolve(starterRootArg);
 
