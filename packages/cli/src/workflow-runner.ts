@@ -315,7 +315,6 @@ export class WorkflowRunner {
 					stoppedAt: fullRunData.stoppedAt,
 					status: fullRunData.status,
 					data: fullRunData.data,
-					storedAt: fullRunData.storedAt,
 				},
 				{ requireStatuses: CRASHABLE_EXECUTION_STATUSES },
 			);
