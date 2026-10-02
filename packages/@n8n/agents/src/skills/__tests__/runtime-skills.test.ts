@@ -868,6 +868,12 @@ describe('reference skills', () => {
 			'builder',
 		]);
 
+		const withoutOwner = filterRuntimeSkillSource(source, ['builder']);
+		expect(withoutOwner.registry.skills.find((skill) => skill.id === 'models')?.parents).toEqual([
+			'agents',
+		]);
+		await expect(withoutOwner.loadSkill('models')).resolves.toMatchObject({ id: 'models' });
+
 		const withoutBoth = filterRuntimeSkillSource(source, ['agents', 'builder']);
 		expect(withoutBoth.registry.skills).toEqual([]);
 		await expect(withoutBoth.loadSkill('models')).resolves.toBeNull();
@@ -954,7 +960,7 @@ describe('reference skills', () => {
 			).toThrow('Reference "models" must set both parents and reference');
 		});
 
-		it('keeps a reference whose owner is filtered out but a sharer remains', () => {
+		it('keeps a reference whose owner is not in the skill set while another parent is', () => {
 			const source = createRuntimeSkillSource([
 				{ id: 'agents', name: 'agents', description: 'Agents.', instructions: 'Agents.' },
 				{
