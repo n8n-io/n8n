@@ -403,7 +403,7 @@ The design leans on a few ideas working together.
   pass can safely take the run back. Without leases a crashed server would strand
   its runs forever. While a handler runs, a heartbeat renews its lease every third
   of the lease, but never more often than every five seconds, so a long run keeps
-  its claim for as long as its server is alive. A lease of five seconds or less
+  its claim while its renewals succeed. A lease of five seconds or less
   expires before its first renewal, and n8n warns about it at startup.
   If a renewal finds the claim gone, or no renewal succeeds for a whole lease, the
   handler's signal aborts, unless the run is already recorded as dispatched.
