@@ -209,10 +209,10 @@ const onSave = async () => {
 			title: i18n.baseText('workflows.shareModal.onSave.success.title'),
 		});
 		isDirty.value = false;
+		modalBus.emit('close');
 	} catch (error) {
 		toast.showError(error, i18n.baseText('workflows.shareModal.onSave.error.title'));
 	} finally {
-		modalBus.emit('close');
 		loading.value = false;
 	}
 };
@@ -230,7 +230,8 @@ const onCloseModal = async () => {
 		);
 
 		if (shouldSave === MODAL_CONFIRM) {
-			return await onSave();
+			await onSave();
+			return false;
 		}
 	}
 
