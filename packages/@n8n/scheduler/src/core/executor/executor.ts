@@ -1,8 +1,9 @@
-import { Time } from '@n8n/constants';
+import { MAX_INTEGER_32BITS_SIGNED, Time } from '@n8n/constants';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 
 import { backoff } from './backoff';
 import { LeaseLostError } from '../errors';
+import { LONG_RUN_THRESHOLD_IN_LEASES } from './lease-constants';
 import { LeaseHeartbeat } from './lease-heartbeat';
 import type { LeaseRenewalResult } from './lease-heartbeat';
 import { DEFAULT_EXECUTOR_OPTIONS, type ExecutorOptions } from './options';
@@ -53,6 +54,9 @@ export interface ExecutorHooks {
 
 	/** A lease renewal write failed; the next renewal tries again. */
 	onLeaseRenewalError?: (task: ClaimedTask, error: unknown) => void;
+
+	/** A handler is still running after many leases, so it may be stuck. Fires once a run. */
+	onLongRunningTask?: (task: ClaimedTask, runningSeconds: number) => void;
 
 	// Fire-path metrics hooks (the normal path), distinct from the incident hooks above.
 
@@ -388,9 +392,19 @@ export class Executor {
 				onRenewalError: (error) => this.hooks.onLeaseRenewalError?.(task, error),
 			},
 		);
+		// `setTimeout` fires a longer delay at once.
+		const longRunMs = Math.min(
+			LONG_RUN_THRESHOLD_IN_LEASES * this.leaseMs,
+			MAX_INTEGER_32BITS_SIGNED,
+		);
+		const longRunTimer = setTimeout(
+			() => this.hooks.onLongRunningTask?.(task, longRunMs / Time.seconds.toMilliseconds),
+			longRunMs,
+		);
 		try {
 			await handler.execute(task, report, lease.signal);
 		} finally {
+			clearTimeout(longRunTimer);
 			heartbeat.stop();
 		}
 	}
