@@ -213,11 +213,11 @@ describe.skipIf(!REDIS_HOST || !REDIS_PORT)('handBackJob (real Redis)', () => {
 	});
 
 	describe('handBackUnstartedJobs', () => {
-		const addJob = async (queue: JobQueue, executionId: string) =>
+		const addJob = async (queue: JobQueue, executionId: string, priority = 50) =>
 			await queue.add(
 				JOB_TYPE_NAME,
 				{ executionId, workflowId: 'wf-sweep', loadStaticData: false } as JobData,
-				{ priority: 50 },
+				{ priority },
 			);
 
 		const lockTokenOf = (queue: JobQueue) => {
@@ -295,6 +295,30 @@ describe.skipIf(!REDIS_HOST || !REDIS_PORT)('handBackJob (real Redis)', () => {
 
 			await expect(job2Completed).resolves.toBe(job2.id);
 			expect(globallyFailed).not.toContain(job2.id);
+		});
+
+		it('returns several jobs fetched by completions to the front of their priority band in fetch order', async () => {
+			const producer = createQueue();
+			const completed1 = await addJob(producer, 'exec-done-1', 100);
+			const held1 = await addJob(producer, 'exec-held-1', 100);
+			const completed2 = await addJob(producer, 'exec-done-2', 100);
+			const held2 = await addJob(producer, 'exec-held-2', 100);
+
+			const worker = createQueue();
+			await fetchNextJobOnCompletion(worker, completed1.id);
+			await fetchNextJobOnCompletion(worker, completed2.id);
+
+			expect(await stateOf(producer, held1.id)).toBe('active');
+			expect(await stateOf(producer, held2.id)).toBe('active');
+
+			const behind = await addJob(producer, 'exec-behind', 100);
+
+			await handBackUnstartedJobs(worker, lockTokenOf(worker), () => false);
+
+			const nextWorker = createQueue();
+			const ran = await runOrder(nextWorker, 3);
+
+			expect(ran).toEqual([held1.id, held2.id, behind.id]);
 		});
 
 		it('leaves a job locked by another queue instance untouched', async () => {
