@@ -331,7 +331,7 @@ export class ScalingService {
 		}
 	}
 
-	// Waits for jobs Bull fetched before the pause, so their hand-back reaches Redis before exit.
+	// Waits for fetches in flight at the pause, so a job that reaches the handler is handed back before exit.
 	private async waitForCurrentQueueJobs(remainingWindowMs: number) {
 		let timeout: NodeJS.Timeout | undefined;
 
