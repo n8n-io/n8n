@@ -293,6 +293,21 @@ describe('UserRepository', () => {
 			).rejects.toThrow(UnexpectedError);
 		});
 
+		test('ignores requireNotCanceled: false when counting status constraints', async () => {
+			const workflow = await createWorkflow({}, owner);
+			const execution = await createExecution({ status: 'error' }, workflow);
+
+			const result = await executionRepository.updateExistingExecution(
+				execution.id,
+				{ status: 'crashed' },
+				{ requireStatus: 'error', requireNotCanceled: false },
+			);
+
+			expect(result).toBe(true);
+			const row = await executionRepository.findOneBy({ id: execution.id });
+			expect(row?.status).toBe('crashed');
+		});
+
 		test('requireNotFinished: should update when finished is false', async () => {
 			const workflow = await createWorkflow({}, owner);
 			const executionData = createEmptyRunExecutionData();

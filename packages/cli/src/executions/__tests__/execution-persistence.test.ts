@@ -568,6 +568,24 @@ describe('ExecutionPersistence', () => {
 
 				expect(executionRepository.update).not.toHaveBeenCalled();
 			});
+
+			it('ignores requireNotCanceled: false when counting status constraints', async () => {
+				const executionPersistence = createPersistenceService('db');
+				executionRepository.update.mockResolvedValue({ affected: 0, generatedMaps: [], raw: {} });
+
+				await expect(
+					executionPersistence.updateExistingExecution(
+						executionId,
+						{ status: 'running' },
+						{ requireStatus: 'waiting', requireNotCanceled: false },
+					),
+				).resolves.toBe(false);
+
+				expect(executionRepository.update).toHaveBeenCalledWith(
+					{ id: executionId, status: 'waiting' },
+					expect.anything(),
+				);
+			});
 		});
 
 		describe('metadata-only updates', () => {
