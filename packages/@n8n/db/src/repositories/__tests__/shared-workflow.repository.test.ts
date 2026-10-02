@@ -70,7 +70,7 @@ describe('SharedWorkflowRepository', () => {
 					project: {
 						projectRelations: {
 							userId: 'user-1',
-							role: In(['project:viewer']),
+							role: { slug: In(['project:viewer']) },
 						},
 					},
 				},

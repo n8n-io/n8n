@@ -44,7 +44,7 @@ export class SharedWorkflowRepository extends BaseRepository<SharedWorkflow> {
 				project: {
 					projectRelations: {
 						userId,
-						role: In(projectRoleSlugs),
+						role: { slug: In(projectRoleSlugs) },
 					},
 				},
 			},
