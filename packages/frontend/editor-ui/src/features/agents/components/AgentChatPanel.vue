@@ -1092,6 +1092,26 @@ onBeforeUnmount(() => {
 	gap: var(--spacing--2xs);
 }
 
+.backgroundJobList {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+	width: 100%;
+	max-height: 20vh;
+	overflow-y: auto;
+
+	li {
+		display: flex;
+		align-items: flex-start;
+		gap: var(--spacing--2xs);
+		padding-block: var(--spacing--3xs);
+		font-size: var(--font-size--sm);
+		color: var(--text-color--subtle);
+		overflow-wrap: anywhere;
+		line-height: var(--line-height--lg);
+	}
+}
+
 .jobStatus {
 	display: inline-flex;
 	flex-shrink: 0;

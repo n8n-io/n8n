@@ -75,7 +75,7 @@ describe('ChatMessageQueue', () => {
 
 		expect(wrapper.findAll('[data-testid="agent-queued-message"]')).toHaveLength(2);
 		expect(wrapper.get('[data-queue-id="1"] [title]').text()).toBe('First message');
-		expect(wrapper.get('[aria-label="notes.txt"]').exists()).toBe(true);
+		expect(wrapper.find('[aria-label="notes.txt"]').exists()).toBe(true);
 	});
 
 	it('emits an expansion update from the queue toggle', async () => {
