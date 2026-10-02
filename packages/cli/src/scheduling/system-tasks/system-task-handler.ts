@@ -7,8 +7,8 @@ import type { Tracing } from 'n8n-core';
 import { observeSystemTaskRun } from './system-task-run-observer';
 
 /**
- * Runs one durable occurrence of a system task. The run's signal aborts when
- * the instance shuts down or when the scheduler loses the occurrence's claim.
+ * Runs one durable occurrence of a system task. The signal aborts on shutdown.
+ * Lease loss or expiry also aborts it unless the dispatch marker is stored.
  *
  * Errors propagate: the executor is what retries the occurrence or gives up on
  * it, following the attempt limit carried by the occurrence's job row.
@@ -48,7 +48,8 @@ export class SystemTaskHandler implements TaskHandler {
 		}
 
 		if (outcome.result === 'aborted') {
-			// A task can stop without throwing. Keep lease loss retryable and allow shutdown.
+			// A clean stop after lease loss must reject so the executor counts the failed attempt.
+			// A clean stop on shutdown still completes.
 			leaseSignal.throwIfAborted();
 		}
 

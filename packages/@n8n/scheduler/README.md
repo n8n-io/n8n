@@ -407,8 +407,10 @@ The design leans on a few ideas working together.
   expires before its first renewal, and n8n warns about it at startup.
   If a renewal finds the claim gone, or no renewal succeeds for a whole lease, the
   handler's signal aborts, unless the run is already recorded as dispatched.
-  A handler that stops on this abort uses up an attempt, as when the reaper takes
-  back an expired lease, even if a later renewal kept the claim.
+  A handler that abandons work on this abort must reject. If its claim still
+  matches, the executor counts the failed attempt. It retries only while
+  attempts remain. If the claim no longer matches, the write changes nothing.
+  A clean return completes an occurrence that the executor still owns.
   A run still running after sixty leases, or after about 24 days if that comes
   first, logs a warning, since it may be stuck.
 - **Fencing.** Each claim carries a version number (an *epoch*) that increases every
