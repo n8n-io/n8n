@@ -8,8 +8,13 @@
  *   - nodes/Example/                          <- programmatic/example
  *   - nodes/GithubIssues/, credentials/, icons/ <- declarative/github-issues
  *
- * Anything outside those paths (README, LICENSE, CI/publish workflows,
- * package.json identity fields, etc.) is left untouched.
+ * Everything else at the project root (tsconfig.json, eslint/prettier config,
+ * .vscode/, .gitignore, .github/workflows/{ci,publish}.yml, .agents/,
+ * AGENTS.md, CLAUDE.md, ...) is synced wholesale from the first template's
+ * generated output, since none of it carries repo-specific customization.
+ * `DENYLIST` below is the explicit exception list: files that must diverge
+ * per-repo (README, CHANGELOG) or that get narrower, field-level handling
+ * (package.json) instead of a blind overwrite.
  *
  * Usage: node refresh-starter-scaffold.mjs --starter-root <path>
  */
@@ -51,10 +56,22 @@ const TEMPLATES = [
 	},
 ];
 
-// Identical across every template as of this writing; synced from the first
-// template's output. Safe to sync wholesale since these files aren't meant
-// to carry repo-specific customization.
-const SHARED_FILES = ['tsconfig.json', 'eslint.config.mjs', '.prettierrc.js', '.vscode/launch.json'];
+// Top-level entries in the first template's generated output that are NOT
+// synced wholesale:
+//   - nodes/, credentials/, icons/ — handled per-entry above via `syncDirs`
+//   - README.md                   — repo-specific, hand-maintained
+//   - CHANGELOG.md                — accumulates real release history per-repo
+//   - package.json                — only its `scripts` block is synced, below
+//   - .git                        — `n8n-node new` inits its own repo per run
+const DENYLIST = new Set([
+	'nodes',
+	'credentials',
+	'icons',
+	'README.md',
+	'CHANGELOG.md',
+	'package.json',
+	'.git',
+]);
 
 const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'n8n-node-scaffold-'));
 
@@ -82,6 +99,39 @@ function syncFile(src, dest) {
 	console.log(`Synced ${path.relative(starterRoot, dest)}`);
 }
 
+// Unlike `syncDir` (used for nodes/Example, nodes/GithubIssues, credentials,
+// icons — directories the template owns entirely), these top-level
+// directories can carry starter-specific extras the template doesn't know
+// about (e.g. .github/dependabot.yml, .github/workflows/ci-cla-check.yml,
+// .vscode/extensions.json). A destructive replace would delete those, so
+// this only adds/overwrites the files the template actually contributes.
+function mergeDir(src, dest) {
+	for (const entry of fs.readdirSync(src, { withFileTypes: true })) {
+		const s = path.join(src, entry.name);
+		const d = path.join(dest, entry.name);
+		if (entry.isDirectory()) {
+			fs.mkdirSync(d, { recursive: true });
+			mergeDir(s, d);
+		} else {
+			syncFile(s, d);
+		}
+	}
+}
+
+function syncEverythingElse(generatedRoot) {
+	for (const entry of fs.readdirSync(generatedRoot, { withFileTypes: true })) {
+		if (DENYLIST.has(entry.name)) continue;
+
+		const src = path.join(generatedRoot, entry.name);
+		const dest = path.join(starterRoot, entry.name);
+		if (entry.isDirectory()) {
+			mergeDir(src, dest);
+		} else {
+			syncFile(src, dest);
+		}
+	}
+}
+
 let firstGeneratedRoot;
 
 for (const entry of TEMPLATES) {
@@ -93,12 +143,7 @@ for (const entry of TEMPLATES) {
 	}
 }
 
-for (const relFile of SHARED_FILES) {
-	const src = path.join(firstGeneratedRoot, relFile);
-	if (fs.existsSync(src)) {
-		syncFile(src, path.join(starterRoot, relFile));
-	}
-}
+syncEverythingElse(firstGeneratedRoot);
 
 // Only the `scripts` block is refreshed — every other field (name, version,
 // author, repository, the n8n nodes/credentials manifest, devDependency
