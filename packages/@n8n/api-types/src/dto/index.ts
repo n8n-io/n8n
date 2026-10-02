@@ -123,8 +123,10 @@ export {
 	UpdateSamlConfigurationPublicDto,
 } from './saml/saml-configuration-public.dto';
 
-export { UpdateLdapConfigurationDto } from './ldap/ldap-configuration.dto';
-export { type LdapConfigurationResponse } from './ldap/ldap-configuration-response.dto';
+export {
+	LdapConfigurationPublicDto,
+	UpdateLdapConfigurationPublicDto,
+} from './ldap/ldap-configuration-public.dto';
 export { LdapSyncDto } from './ldap/ldap-sync.dto';
 
 export { PasswordUpdateRequestDto } from './user/password-update-request.dto';

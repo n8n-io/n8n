@@ -79,8 +79,6 @@ tags:
     description: Operations about workflows
 
 paths:
-  /settings/ldap:
-    $ref: './handlers/ldap/spec/paths/settings.ldap.yml'
   /settings/ldap/sync:
     $ref: './handlers/ldap/spec/paths/settings.ldap.sync.yml'
   /workflows/{id}/{versionId}:
