@@ -308,6 +308,50 @@ describe('JobProcessor', () => {
 			expect(jobProcessor.getJobsInPreflight()).toEqual([]);
 		});
 
+		it('should list a job as running but no longer in preflight once its execution has loaded and its run has started', async () => {
+			const executionRepository = mock<ExecutionRepository>();
+			const executionPersistence = mock<ExecutionPersistence>();
+			executionPersistence.findSingleExecution.mockResolvedValueOnce(
+				mock<IExecutionResponse>({
+					mode: 'manual',
+					workflowData: { id: 'workflow-id', nodes: [], staticData: {} },
+					data: mock<IRunExecutionData>({ executionData: undefined }),
+				}),
+			);
+
+			const cancel = vi.fn();
+			const runPromise = new Promise<IRun>(() => {});
+			const workflowRun = Object.assign(runPromise, { cancel }) as unknown as PCancelable<IRun>;
+
+			const manualExecutionService = mock<ManualExecutionService>();
+			manualExecutionService.runManually.mockReturnValue(workflowRun);
+
+			const jobProcessor = new JobProcessor(
+				logger,
+				executionRepository,
+				executionPersistence,
+				mock(),
+				mock(),
+				mock(),
+				manualExecutionService,
+				executionsConfig,
+				mock(),
+				mock(),
+			);
+
+			const job = mock<Job>({
+				id: 'job-1',
+				data: { executionId: 'exec-1', loadStaticData: false },
+			});
+
+			void jobProcessor.processJob(job);
+
+			await vi.waitFor(() => expect(jobProcessor.getRunningJobsSummary()).not.toEqual([]));
+
+			expect(jobProcessor.getJobsInPreflight()).toEqual([]);
+			expect(jobProcessor.getRunningJobIds()).toContain('job-1');
+		});
+
 		it('should stop tracking a job when loading its execution fails', async () => {
 			const executionPersistence = mock<ExecutionPersistence>();
 			executionPersistence.findSingleExecution.mockRejectedValue(new Error('database unavailable'));
