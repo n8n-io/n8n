@@ -13,6 +13,7 @@ Displays loading placeholders (skeleton screens) while content is being fetched 
 
 **Props**
 
+- `delay?: number` - Wait before showing the skeleton, in milliseconds. Default: `300`. Use `0` for immediate feedback. The hidden skeleton reserves its space during the delay. Content can replace it immediately when loading ends.
 - `animated?: boolean` - Controls whether the skeleton shows pulsing animation. Default: `true`
 - `rows?: number` - Number of skeleton rows to display. Default: `1`
 - `cols?: number` - Number of skeleton columns to display. When set (non-zero), overrides row-based layout. Default: `0`

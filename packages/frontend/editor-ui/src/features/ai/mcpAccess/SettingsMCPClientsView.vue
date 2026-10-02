@@ -10,11 +10,7 @@ import { useToast } from '@n8n/composables/useToast';
 import type { OAuthClientFilters } from '@/features/ai/mcpAccess/clients.utils';
 import OAuthClientsTable from '@/features/ai/mcpAccess/components/tabs/OAuthClientsTable.vue';
 import RevokeOAuthClientConfirmModal from '@/features/ai/mcpAccess/components/RevokeOAuthClientConfirmModal.vue';
-import {
-	LOADING_INDICATOR_TIMEOUT,
-	MCP_DOCS_PAGE_URL,
-	MCP_SETTINGS_VIEW,
-} from '@/features/ai/mcpAccess/mcp.constants';
+import { MCP_DOCS_PAGE_URL, MCP_SETTINGS_VIEW } from '@/features/ai/mcpAccess/mcp.constants';
 import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
 import { useMcp } from '@/features/ai/mcpAccess/composables/useMcp';
 import { useOAuthClientRevoke } from '@/features/ai/mcpAccess/composables/useOAuthClientRevoke';
@@ -42,9 +38,7 @@ const fetchoAuthCLients = async () => {
 	} catch (error) {
 		toast.showError(error, i18n.baseText('settings.mcp.error.fetching.oAuthClients'));
 	} finally {
-		setTimeout(() => {
-			oAuthClientsLoading.value = false;
-		}, LOADING_INDICATOR_TIMEOUT);
+		oAuthClientsLoading.value = false;
 	}
 };
 
@@ -64,9 +58,7 @@ const onOwnershipChange = async (ownership: 'mine' | 'all') => {
 	} catch (error) {
 		toast.showError(error, i18n.baseText('settings.mcp.error.fetching.oAuthClients'));
 	} finally {
-		setTimeout(() => {
-			oAuthClientsLoading.value = false;
-		}, LOADING_INDICATOR_TIMEOUT);
+		oAuthClientsLoading.value = false;
 	}
 };
 

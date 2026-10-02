@@ -5,6 +5,7 @@ import type {
 } from '@n8n/api-types';
 import { createTestingPinia } from '@pinia/testing';
 import { within } from '@testing-library/vue';
+import { nextTick } from 'vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore, waitAllPromises } from '@/__tests__/utils';
 import { useToast } from '@n8n/composables/useToast';
@@ -153,6 +154,25 @@ describe('WorkflowReviewRequestsView', () => {
 
 		expect(container.querySelector('.n8n-loading')).toBeInTheDocument();
 		expect(queryByTestId('workflow-reviews-empty-state')).not.toBeInTheDocument();
+	});
+
+	it('shows a fast empty result without revealing a skeleton', async () => {
+		vi.useFakeTimers();
+		try {
+			store.isLoadingActiveTab = true;
+			const { container, getByTestId, queryByTestId } = renderComponent();
+			expect(container.querySelector('.n8n-loading')).not.toBeVisible();
+			expect(queryByTestId('workflow-reviews-empty-state')).not.toBeInTheDocument();
+			await vi.advanceTimersByTimeAsync(100);
+			store.isLoadingActiveTab = false;
+			store.isEmpty = true;
+			await nextTick();
+			expect(getByTestId('workflow-reviews-empty-state')).toBeVisible();
+			await vi.advanceTimersByTimeAsync(300);
+			expect(container.querySelector('.n8n-loading')).not.toBeInTheDocument();
+		} finally {
+			vi.useRealTimers();
+		}
 	});
 
 	it('does not fetch or select a review on the bare inbox path', async () => {
@@ -353,12 +373,21 @@ describe('WorkflowReviewRequestsView', () => {
 		await router.replace('/reviews/req-1');
 		store.detailLoading = true;
 		store.detail = null;
-
-		const { container, queryByTestId } = renderComponent();
-		await waitAllPromises();
-
-		expect(container.querySelector('.n8n-loading')).toBeInTheDocument();
-		expect(queryByTestId('workflow-reviews-no-selection')).not.toBeInTheDocument();
+		vi.useFakeTimers();
+		try {
+			const { container, queryByTestId, getByTestId } = renderComponent();
+			expect(container.querySelector('.n8n-loading')).not.toBeVisible();
+			expect(queryByTestId('workflow-reviews-no-selection')).not.toBeInTheDocument();
+			await vi.advanceTimersByTimeAsync(300);
+			expect(container.querySelector('.n8n-loading')).toBeVisible();
+			store.detailLoading = false;
+			store.detailNotFound = true;
+			await nextTick();
+			expect(getByTestId('workflow-review-detail-not-found')).toBeVisible();
+			expect(container.querySelector('.n8n-loading')).not.toBeInTheDocument();
+		} finally {
+			vi.useRealTimers();
+		}
 	});
 
 	it('renders an inline not-found state without redirecting', async () => {

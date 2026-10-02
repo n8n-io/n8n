@@ -34,7 +34,6 @@ export const MCP_AGENTS_VIEW = 'McpSettingsAgents';
 export const MCP_CLIENTS_VIEW = 'McpSettingsClients';
 export const MCP_STORE = 'mcp';
 
-export const LOADING_INDICATOR_TIMEOUT = 200;
 export const MCP_TOOLTIP_DELAY = 100;
 
 /** How many of the user's own connected clients the settings overview previews inline. */

@@ -57,6 +57,7 @@ const $style = useCssModule();
 		<template v-if="loading">
 			<slot name="loading">
 				<N8nLoading
+					:delay="0"
 					v-for="i in loadingItemCount"
 					:key="i"
 					:rows="1"

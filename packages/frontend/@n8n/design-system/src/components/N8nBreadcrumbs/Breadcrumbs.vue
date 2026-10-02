@@ -234,6 +234,7 @@ const handleTooltipClose = () => {
 					<template #content>
 						<div v-if="isLoadingHiddenItems" :class="$style['tooltip-loading']">
 							<N8nLoading
+								:delay="0"
 								:rows="1"
 								:loading="isLoadingHiddenItems"
 								animated

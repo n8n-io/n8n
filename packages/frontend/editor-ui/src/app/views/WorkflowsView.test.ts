@@ -1,3 +1,7 @@
+import { useReadyToRunWorkflowsStore } from '@/experiments/readyToRunWorkflows/stores/readyToRunWorkflows.store';
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
+import { flushPromises } from '@vue/test-utils';
+import { fireEvent } from '@testing-library/vue';
 import { nextTick } from 'vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore, waitAllPromises } from '@/__tests__/utils';
@@ -110,6 +114,10 @@ const initialState = {
 
 describe('WorkflowsView', () => {
 	beforeEach(async () => {
+		vi.mocked(useProjectPages).mockReturnValue({
+			isOverviewSubPage: false,
+			isSharedSubPage: false,
+		} as ReturnType<typeof useProjectPages>);
 		await router.push('/');
 		await router.isReady();
 		pinia = createTestingPinia({ initialState });
@@ -128,6 +136,90 @@ describe('WorkflowsView', () => {
 		vi.spyOn(readyToRunStore, 'getSimplifiedLayoutVisibility').mockReturnValue(false);
 
 		projectPages = useProjectPages();
+	});
+
+	it('keeps the callout mounted during a refresh', async () => {
+		vi.mocked(useProjectPages).mockReturnValue({
+			isOverviewSubPage: true,
+			isSharedSubPage: false,
+		} as ReturnType<typeof useProjectPages>);
+		foldersStore.totalWorkflowCount = 1;
+		const calloutStore = mockedStore(useReadyToRunWorkflowsStore);
+		calloutStore.isFeatureEnabled = true;
+		calloutStore.isCalloutDismissed = false;
+		calloutStore.getCalloutText.mockReturnValue('Ready to run');
+		const pending = createDeferredPromise<WorkflowListResource[]>();
+		const { getByText, getByTestId } = renderComponent({
+			pinia,
+			global: {
+				stubs: {
+					ResourcesListLayout: {
+						props: ['initialize'],
+						async mounted() {
+							await this.initialize();
+						},
+						template: `<div><slot name="callout" /><button data-test-id="refresh" @click="$emit('update:search', '')">Refresh</button></div>`,
+					},
+				},
+			},
+		});
+		await flushPromises();
+		const callout = getByText('Ready to run');
+		workflowsListStore.fetchWorkflowsPage.mockReturnValueOnce(pending.promise);
+		await fireEvent.click(getByTestId('refresh'));
+		expect(getByText('Ready to run')).toBe(callout);
+		pending.resolve([]);
+		await flushPromises();
+		expect(getByText('Ready to run')).toBe(callout);
+	});
+
+	it('fetches a new page while a refresh is pending', async () => {
+		const pending = createDeferredPromise<WorkflowListResource[]>();
+		const { getByTestId } = renderComponent({
+			pinia,
+			global: {
+				stubs: {
+					ResourcesListLayout: {
+						props: ['initialize', 'resourcesRefreshing'],
+						async mounted() {
+							await this.initialize();
+						},
+						template: `<div>
+					<button data-test-id="page-2" @click="$emit('update:pagination-and-sort', { page: 2 })">2</button>
+					<button data-test-id="page-3" @click="$emit('update:pagination-and-sort', { page: 3 })">3</button>
+				</div>`,
+					},
+				},
+			},
+		});
+		await flushPromises();
+		workflowsListStore.fetchWorkflowsPage.mockReturnValueOnce(pending.promise);
+		await fireEvent.click(getByTestId('page-2'));
+		await waitFor(() =>
+			expect(workflowsListStore.fetchWorkflowsPage).toHaveBeenLastCalledWith(
+				expect.anything(),
+				2,
+				expect.any(Number),
+				expect.any(String),
+				expect.any(Object),
+				expect.any(Boolean),
+				expect.any(Boolean),
+			),
+		);
+		await fireEvent.click(getByTestId('page-3'));
+		await waitFor(() =>
+			expect(workflowsListStore.fetchWorkflowsPage).toHaveBeenLastCalledWith(
+				expect.anything(),
+				3,
+				expect.any(Number),
+				expect.any(String),
+				expect.any(Object),
+				expect.any(Boolean),
+				expect.any(Boolean),
+			),
+		);
+		pending.resolve([]);
+		await flushPromises();
 	});
 
 	describe('should show empty state', () => {

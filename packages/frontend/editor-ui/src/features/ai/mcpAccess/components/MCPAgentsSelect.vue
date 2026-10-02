@@ -1,12 +1,10 @@
 <script setup lang="ts">
 import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
-import { LOADING_INDICATOR_TIMEOUT } from '@/features/ai/mcpAccess/mcp.constants';
 import { N8nSelect, N8nOption, N8nText } from '@n8n/design-system';
 import { computed, onMounted, ref, useCssModule } from 'vue';
 import type { McpAgent } from '@/features/ai/mcpAccess/mcp.types';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@n8n/composables/useToast';
-import { sleep } from '@n8n/utils/sleep';
 
 defineProps<{
 	placeholder?: string;
@@ -30,7 +28,6 @@ const hasFetched = ref(false);
 const isDropdownVisible = ref(false);
 const selectRef = ref<InstanceType<typeof N8nSelect>>();
 const agentOptions = ref<McpAgent[]>([]);
-let loadingTimeoutId: ReturnType<typeof setTimeout> | null = null;
 
 const showEmptyState = computed(() => {
 	return !isLoading.value && hasFetched.value && agentOptions.value.length === 0;
@@ -55,10 +52,6 @@ const projectName = (agent: McpAgent) =>
 		: (agent.project?.name ?? '');
 
 async function searchAgents(query?: string) {
-	if (loadingTimeoutId) {
-		clearTimeout(loadingTimeoutId);
-		loadingTimeoutId = null;
-	}
 	isLoading.value = true;
 	hasFetched.value = false;
 	try {
@@ -70,7 +63,6 @@ async function searchAgents(query?: string) {
 	} catch (e) {
 		toast.showError(e, i18n.baseText('settings.mcp.connectAgents.error'));
 	} finally {
-		await sleep(LOADING_INDICATOR_TIMEOUT);
 		isLoading.value = false;
 		hasFetched.value = true;
 	}

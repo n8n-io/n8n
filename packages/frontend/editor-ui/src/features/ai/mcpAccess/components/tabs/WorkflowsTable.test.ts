@@ -51,6 +51,26 @@ describe('WorkflowsTable', () => {
 	});
 
 	describe('Loading state', () => {
+		it('keeps existing rows until the refresh skeleton is revealed', async () => {
+			vi.useFakeTimers();
+			try {
+				const { getByTestId, queryByTestId, container, rerender } = createComponent({
+					props: { workflows: [createWorkflow()], loading: false },
+				});
+				await rerender({ loading: true });
+				await vi.advanceTimersByTimeAsync(299);
+				expect(getByTestId('mcp-workflow-table')).toBeVisible();
+				expect(container.querySelector('.n8n-loading')).not.toBeInTheDocument();
+				await vi.advanceTimersByTimeAsync(1);
+				expect(queryByTestId('mcp-workflow-table')).not.toBeInTheDocument();
+				expect(container.querySelector('.n8n-loading')).toBeVisible();
+				await rerender({ loading: false });
+				expect(getByTestId('mcp-workflow-table')).toBeVisible();
+			} finally {
+				vi.useRealTimers();
+			}
+		});
+
 		it('should render loading skeleton when loading is true', () => {
 			const { container, queryByTestId } = createComponent({
 				props: {

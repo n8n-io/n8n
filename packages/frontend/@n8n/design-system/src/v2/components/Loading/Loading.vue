@@ -1,17 +1,24 @@
 <script lang="ts" setup>
 import { Primitive } from 'reka-ui';
 import { computed } from 'vue';
+import { SKELETON_DELAY, useDelayedLoading } from '@n8n/composables/useDelayedLoading';
 
 import type { LoadingProps } from './Loading.types';
 
 const props = withDefaults(defineProps<LoadingProps>(), {
 	animated: true,
 	loading: true,
+	delay: SKELETON_DELAY,
 	rows: 1,
 	cols: 0,
 	shrinkLast: true,
 	variant: 'p',
 });
+
+const revealed = useDelayedLoading(
+	() => props.loading,
+	() => props.delay,
+);
 
 const isLastRowShrunk = computed(() => props.shrinkLast && props.rows > 1);
 
@@ -34,6 +41,7 @@ function isLastRow(index: number, total: number): boolean {
 		v-if="loading"
 		as="div"
 		:class="['n8n-loading', `n8n-loading-${variant}`, 'el-skeleton', $style.loading]"
+		:style="{ visibility: revealed ? undefined : 'hidden' }"
 		aria-hidden="true"
 	>
 		<!-- Column-based layout -->

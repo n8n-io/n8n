@@ -3,10 +3,7 @@ import { computed, onMounted, ref } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@n8n/composables/useToast';
 import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
-import {
-	LOADING_INDICATOR_TIMEOUT,
-	MCP_TOOLTIP_DELAY,
-} from '@/features/ai/mcpAccess/mcp.constants';
+import { MCP_TOOLTIP_DELAY } from '@/features/ai/mcpAccess/mcp.constants';
 import { N8nLoading, N8nTooltip, N8nButton, N8nNotice } from '@n8n/design-system';
 import ConnectionParameter from '@/features/ai/mcpAccess/components/ConnectionParameter.vue';
 import McpConfigSnippet from '@/features/ai/mcpAccess/components/McpConfigSnippet.vue';
@@ -62,9 +59,7 @@ const fetchApiKey = async () => {
 	} catch (error) {
 		toast.showError(error, i18n.baseText('settings.mcp.error.fetching.apiKey'));
 	} finally {
-		setTimeout(() => {
-			loadingApiKey.value = false;
-		}, LOADING_INDICATOR_TIMEOUT);
+		loadingApiKey.value = false;
 	}
 };
 
@@ -75,9 +70,7 @@ const rotateKey = async () => {
 	} catch (error) {
 		toast.showError(error, i18n.baseText('settings.mcp.error.rotating.apiKey'));
 	} finally {
-		setTimeout(() => {
-			keyRotating.value = false;
-		}, LOADING_INDICATOR_TIMEOUT);
+		keyRotating.value = false;
 	}
 };
 

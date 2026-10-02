@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useDelayedLoading } from '@n8n/composables/useDelayedLoading';
 import { computed, ref, watch } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import type { McpWorkflow } from '@/features/ai/mcpAccess/mcp.types';
@@ -27,6 +28,7 @@ type Props = {
 };
 
 const props = defineProps<Props>();
+const loadingRevealed = useDelayedLoading(() => props.loading);
 
 const tableOptions = defineModel<TableOptions>('tableOptions', {
 	default: () => ({
@@ -168,9 +170,12 @@ const onConnectClick = () => {
 
 <template>
 	<div>
-		<div v-if="props.loading">
-			<N8nLoading :loading="props.loading" variant="h1" class="mb-l" />
-			<N8nLoading :loading="props.loading" variant="p" :rows="5" :shrink-last="false" />
+		<div
+			v-if="props.loading && (props.workflows.length === 0 || loadingRevealed)"
+			:style="{ visibility: loadingRevealed ? undefined : 'hidden' }"
+		>
+			<N8nLoading :delay="0" :loading="props.loading" variant="h1" class="mb-l" />
+			<N8nLoading :delay="0" :loading="props.loading" variant="p" :rows="5" :shrink-last="false" />
 		</div>
 		<div v-else class="mt-s mb-xl" :class="$style['table-container']">
 			<N8nDataTableServer

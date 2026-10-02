@@ -1,3 +1,4 @@
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 /* eslint-disable import-x/no-extraneous-dependencies -- test-only pattern */
 import { flushPromises, mount } from '@vue/test-utils';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -335,7 +336,34 @@ describe('AgentsListView — project page', () => {
 		);
 	});
 
-	it('keeps the rendered list visible for fast search refreshes', async () => {
+	it('uses the latest page selection during a pending refresh', async () => {
+		vi.useFakeTimers();
+		mocks.listAgentsPage.mockResolvedValueOnce({ count: 30, data: [agent('1', 'Initial')] });
+		const wrapper = await mountView();
+		const layout = wrapper.findComponent({ name: 'ResourcesListLayout' });
+		const older = createDeferredPromise<{ count: number; data: AgentResource[] }>();
+		const latest = createDeferredPromise<{ count: number; data: AgentResource[] }>();
+		mocks.listAgentsPage.mockReturnValueOnce(older.promise).mockReturnValueOnce(latest.promise);
+
+		layout.vm.$emit('update:pagination-and-sort', { page: 2, pageSize: 10 });
+		await vi.advanceTimersByTimeAsync(600);
+		layout.vm.$emit('update:pagination-and-sort', { page: 3, sort: 'nameAsc' });
+		await vi.advanceTimersByTimeAsync(600);
+		expect(mocks.listAgentsPage).toHaveBeenLastCalledWith(
+			expect.any(Object),
+			'project-1',
+			expect.objectContaining({ skip: 20, sortBy: 'name:asc' }),
+		);
+		older.resolve({ count: 30, data: [agent('2', 'Older')] });
+		await flushPromises();
+		expect(layout.props('resourcesRefreshing')).toBe(true);
+		latest.resolve({ count: 30, data: [agent('3', 'Latest')] });
+		await flushPromises();
+		expect(wrapper.find('[data-test-id="agent-card"]').text()).toBe('Latest');
+		expect(layout.props('resourcesRefreshing')).toBe(false);
+	});
+
+	it('passes pending request state and existing rows to the layout during search', async () => {
 		vi.useFakeTimers();
 		let resolveSearch!: (value: { count: number; data: AgentResource[] }) => void;
 		const searchPromise = new Promise<{ count: number; data: AgentResource[] }>((resolve) => {
@@ -354,11 +382,8 @@ describe('AgentsListView — project page', () => {
 		await flushPromises();
 
 		expect(mocks.listAgentsPage).toHaveBeenCalledTimes(2);
-		expect(layout.props('resourcesRefreshing')).toBe(false);
-
-		vi.advanceTimersByTime(299);
-		await flushPromises();
-		expect(layout.props('resourcesRefreshing')).toBe(false);
+		expect(layout.props('resourcesRefreshing')).toBe(true);
+		expect(layout.props('resources')).toEqual([agent('agent-1', 'Support Agent')]);
 
 		resolveSearch({ count: 1, data: [agent('agent-2', 'Support Bot')] });
 		await flushPromises();

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useLatestFetch } from '@/app/composables/useLatestFetch';
 import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
@@ -18,11 +19,7 @@ import { WORKFLOW_DESCRIPTION_MODAL_KEY } from '@n8n/frontend-constants/workflow
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import type { McpWorkflow } from '@/features/ai/mcpAccess/mcp.types';
 import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
-import {
-	LOADING_INDICATOR_TIMEOUT,
-	MCP_DOCS_PAGE_URL,
-	MCP_SETTINGS_VIEW,
-} from '@/features/ai/mcpAccess/mcp.constants';
+import { MCP_DOCS_PAGE_URL, MCP_SETTINGS_VIEW } from '@/features/ai/mcpAccess/mcp.constants';
 import WorkflowsTable from '@/features/ai/mcpAccess/components/tabs/WorkflowsTable.vue';
 import MCPConnectWorkflowsModal from '@/features/ai/mcpAccess/modals/MCPConnectWorkflowsModal.vue';
 
@@ -63,24 +60,27 @@ const showMcpAccessUpdatedToast = (count: number, enabled: boolean) => {
 	});
 };
 
+const { next: nextFetch } = useLatestFetch();
+
 const fetchAvailableWorkflows = async () => {
+	const isCurrent = nextFetch();
 	workflowsLoading.value = true;
 	try {
 		const response = await mcpStore.fetchWorkflowsAvailableForMCPPage(
 			workflowsTableState.value.page + 1,
 			workflowsTableState.value.itemsPerPage,
 		);
+		if (!isCurrent()) return;
 		if (response.page !== workflowsTableState.value.page + 1) {
 			workflowsTableState.value = { ...workflowsTableState.value, page: response.page - 1 };
 		}
 		availableWorkflows.value = response.data;
 		availableWorkflowsTotal.value = response.count;
 	} catch (error) {
+		if (!isCurrent()) return;
 		toast.showError(error, i18n.baseText('workflows.list.error.fetching'));
 	} finally {
-		setTimeout(() => {
-			workflowsLoading.value = false;
-		}, LOADING_INDICATOR_TIMEOUT);
+		if (isCurrent()) workflowsLoading.value = false;
 	}
 };
 

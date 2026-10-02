@@ -1,3 +1,4 @@
+import { flushPromises } from '@vue/test-utils';
 import { nextTick } from 'vue';
 import { createTestingPinia } from '@pinia/testing';
 import { waitFor } from '@testing-library/vue';
@@ -40,6 +41,17 @@ describe('MCPWorkflowsSelect', () => {
 
 	afterEach(() => {
 		vi.clearAllMocks();
+	});
+
+	it('signals ready as soon as the initial fetch completes', async () => {
+		vi.useFakeTimers();
+		try {
+			const { emitted } = createComponent({ pinia });
+			await flushPromises();
+			expect(emitted().ready).toHaveLength(1);
+		} finally {
+			vi.useRealTimers();
+		}
 	});
 
 	describe('Initial rendering', () => {
@@ -167,8 +179,8 @@ describe('MCPWorkflowsSelect', () => {
 			await userEvent.click(select);
 
 			await waitFor(() => {
-				const emptyText = document.querySelector('.el-select-dropdown__empty');
-				expect(emptyText).toBeInTheDocument();
+				const emptyOption = document.querySelector('.el-select-dropdown__item.is-disabled');
+				expect(emptyOption).toHaveTextContent('No available workflows');
 			});
 		});
 	});
