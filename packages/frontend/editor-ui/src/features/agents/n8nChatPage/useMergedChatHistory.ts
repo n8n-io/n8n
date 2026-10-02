@@ -1,75 +1,42 @@
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
-import { useRootStore } from '@n8n/stores/useRootStore';
+import { computed, onMounted, ref, watch } from 'vue';
 
 import { useAgentsN8nChatFlag } from '@/features/agents/composables/useAgentsN8nChatFlag';
 import { useInstanceAiThreadHistory } from '@/features/ai/instanceAi/composables/useInstanceAiThreadHistory';
-import { listN8nChatThreads } from '../composables/useAgentApi';
 import { AGENT_N8N_CHAT_HISTORY_PAGE_SIZE } from '../constants';
 import { mergeChatHistoryPages, type RecentChatItem } from './mergeRecentChats';
+import { usePagedN8nChatThreads } from './usePagedN8nChatThreads';
 
 /**
  * Loads both chat history sources for the "All chats" view and merges them into one
  * recency-ordered, infinite-scrolled list. Assistant paging stays in
- * {@link useInstanceAiThreadHistory}; agent paging lives entirely here, since only this
- * view ever pages through agent threads (AGENT-957).
+ * {@link useInstanceAiThreadHistory}; agent paging is the shared
+ * {@link usePagedN8nChatThreads}, since only this view ever pages through every agent's
+ * threads at once.
  */
 export function useMergedChatHistory() {
 	const isAgentsN8nChatFlag = useAgentsN8nChatFlag();
-	const rootStore = useRootStore();
-
-	const agentItems = ref<RecentChatItem[]>([]);
-	const agentHasMore = ref(true);
-	const agentLoaded = ref(false);
-	const agentError = ref(false);
-	let agentCursor: string | undefined;
-	let requestVersion = 0;
-	const agentInFlight = ref(false);
+	const agent = usePagedN8nChatThreads({ pageSize: AGENT_N8N_CHAT_HISTORY_PAGE_SIZE });
 
 	const assistant = useInstanceAiThreadHistory({
 		onSentinelLoadMore: () => loadMore(),
-		isExtraSourceLoading: () => agentInFlight.value,
+		isExtraSourceLoading: () => agent.isLoading.value,
 	});
 
 	const agentThreadsActive = computed(
 		() => isAgentsN8nChatFlag.value && !assistant.history.value.search,
 	);
 
-	function resetAgentPaging(): void {
-		requestVersion += 1; // Drops any response still in flight.
-		agentItems.value = [];
-		agentHasMore.value = true;
-		agentLoaded.value = false;
-		agentError.value = false;
-		agentCursor = undefined;
-		agentInFlight.value = false;
-	}
+	// Flips once the agent source's first fetch attempt (success or failure) has
+	// completed, so the merge cutoff below doesn't treat it as still paging before
+	// it's even started — which would hide the assistant list behind an infinite
+	// cutoff (see `mergeChatHistoryPages`).
+	const agentLoaded = ref(false);
+	watch(agent.isLoading, (loading) => {
+		if (!loading) agentLoaded.value = true;
+	});
 
-	async function fetchNextAgentPage(): Promise<void> {
-		if (!agentThreadsActive.value || !agentHasMore.value || agentInFlight.value) return;
-		agentInFlight.value = true;
-		const version = requestVersion;
-		try {
-			const result = await listN8nChatThreads(rootStore.restApiContext, {
-				limit: AGENT_N8N_CHAT_HISTORY_PAGE_SIZE,
-				cursor: agentCursor,
-			});
-			if (version !== requestVersion) return;
-			const seenIds = new Set(agentItems.value.map((item) => item.thread.id));
-			const freshItems = result.data
-				.filter((thread) => !seenIds.has(thread.id))
-				.map((thread): RecentChatItem => ({ kind: 'agent', thread }));
-			agentItems.value = [...agentItems.value, ...freshItems];
-			agentCursor = result.nextCursor ?? undefined;
-			agentHasMore.value = result.nextCursor !== null;
-			agentLoaded.value = true;
-		} catch {
-			if (version !== requestVersion) return;
-			agentHasMore.value = false;
-			agentError.value = true;
-			agentLoaded.value = true;
-		} finally {
-			if (version === requestVersion) agentInFlight.value = false;
-		}
+	function fetchNextAgentPage(): void {
+		if (agentThreadsActive.value) agent.loadNext();
 	}
 
 	const items = computed<RecentChatItem[]>(() => {
@@ -79,6 +46,10 @@ export function useMergedChatHistory() {
 		}));
 		if (!agentThreadsActive.value) return assistantItems;
 
+		const agentItems: RecentChatItem[] = agent.items.value.map((thread) => ({
+			kind: 'agent',
+			thread,
+		}));
 		return mergeChatHistoryPages([
 			// An unloaded or failed assistant list must not hide the agent threads.
 			{
@@ -89,33 +60,30 @@ export function useMergedChatHistory() {
 					assistantItems.length > 0,
 			},
 			// Only contributes to the cutoff once its own first page has landed.
-			{ items: agentItems.value, hasMore: agentLoaded.value && agentHasMore.value },
+			{ items: agentItems, hasMore: agentLoaded.value && agent.hasMore.value },
 		]);
 	});
 
 	const hasMore = computed(
-		() => assistant.history.value.hasMore || (agentThreadsActive.value && agentHasMore.value),
+		() => assistant.history.value.hasMore || (agentThreadsActive.value && agent.hasMore.value),
 	);
 	const isLoading = computed(() => assistant.history.value.loading);
 	const error = computed(
-		() => assistant.history.value.error || (agentThreadsActive.value && agentError.value),
+		() => assistant.history.value.error || (agentThreadsActive.value && agent.error.value),
 	);
 
 	function loadMore(): void {
 		assistant.loadMore();
-		void fetchNextAgentPage();
+		fetchNextAgentPage();
 	}
 
 	// The flag can turn on after mount (a client-evaluated PostHog flag) — start paging
 	// agent threads the moment it does, rather than only on the initial mount.
 	watch(agentThreadsActive, (active) => {
-		if (active && !agentLoaded.value) void fetchNextAgentPage();
+		if (active && !agentLoaded.value) fetchNextAgentPage();
 	});
 
-	onMounted(() => {
-		if (agentThreadsActive.value) void fetchNextAgentPage();
-	});
-	onBeforeUnmount(resetAgentPaging);
+	onMounted(fetchNextAgentPage);
 
 	return {
 		items,

@@ -18,10 +18,13 @@ const goBack = useBackOrFallback({ name: INSTANCE_AI_VIEW });
 
 <template>
 	<div :class="[$style.page, { [$style.fill]: fill }]">
-		<button type="button" :class="$style.backLink" data-testid="n8n-chat-back" @click="goBack">
-			<N8nIcon icon="arrow-left" size="small" />
-			{{ i18n.baseText('generic.back') }}
-		</button>
+		<div :class="$style.topRow">
+			<slot name="leading" />
+			<button type="button" :class="$style.backLink" data-testid="n8n-chat-back" @click="goBack">
+				<N8nIcon icon="arrow-left" size="small" />
+				{{ i18n.baseText('generic.back') }}
+			</button>
+		</div>
 
 		<div :class="[$style.content, { [$style.fill]: fill }]">
 			<slot />
@@ -45,12 +48,17 @@ const goBack = useBackOrFallback({ name: INSTANCE_AI_VIEW });
 	}
 }
 
+.topRow {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--xs);
+	margin-bottom: var(--spacing--sm);
+}
+
 .backLink {
 	display: inline-flex;
 	align-items: center;
 	gap: var(--spacing--4xs);
-	align-self: flex-start;
-	margin-bottom: var(--spacing--sm);
 	padding: 0;
 	border: 0;
 	background: none;

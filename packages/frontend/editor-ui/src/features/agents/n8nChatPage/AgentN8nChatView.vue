@@ -20,6 +20,7 @@ import { isNotFoundError } from '../utils/errors';
 import AgentChatPanel from '../components/AgentChatPanel.vue';
 import AgentPersonalisationIcon from '../components/AgentPersonalisationIcon.vue';
 import N8nChatPageLayout from './components/N8nChatPageLayout.vue';
+import N8nChatThreadHistory from './components/N8nChatThreadHistory.vue';
 import { useAgentN8nChatThreadsStore } from './n8nChatThreads.store';
 import ProjectIcon from '@/features/collaboration/projects/components/ProjectIcon.vue';
 
@@ -156,6 +157,10 @@ const agentPageRoute = computed(() => {
 
 <template>
 	<N8nChatPageLayout fill>
+		<template v-if="agent" #leading>
+			<N8nChatThreadHistory :agent-id="agentId" />
+		</template>
+
 		<div v-if="isLoading" :class="$style.centered" data-testid="agent-n8n-chat-loading">
 			<N8nSpinner size="xlarge" />
 		</div>

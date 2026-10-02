@@ -127,6 +127,24 @@ describe('AgentN8nChatView', () => {
 		getN8nChatAgentMock.mockResolvedValue(agentItem);
 	});
 
+	it('shows the chat history button only once the agent has loaded', async () => {
+		let resolveAgent: (value: AgentChatListItem) => void = () => {};
+		getN8nChatAgentMock.mockReturnValueOnce(
+			new Promise((resolve) => {
+				resolveAgent = resolve;
+			}),
+		);
+		const wrapper = renderView();
+		await flushPromises();
+
+		expect(wrapper.find('[data-test-id="agent-n8n-chat-history-toggle"]').exists()).toBe(false);
+
+		resolveAgent(agentItem);
+		await flushPromises();
+
+		expect(wrapper.find('[data-test-id="agent-n8n-chat-history-toggle"]').exists()).toBe(true);
+	});
+
 	it('renders the agent avatar, name, description, and the placeholder-driving name', async () => {
 		const wrapper = renderView();
 		await flushPromises();

@@ -30,6 +30,8 @@ const props = withDefaults(
 		editingItemId?: string;
 		actionsDisabled?: boolean;
 		itemDoubleClickEnabled?: boolean;
+		/** Pinned above every date group, e.g. a "New chat" entry — never grouped, filtered, or hidden by the empty/loading state. */
+		leadingItem?: ChatHistoryItem;
 	}>(),
 	{
 		modelValue: undefined,
@@ -41,6 +43,7 @@ const props = withDefaults(
 		editingItemId: undefined,
 		actionsDisabled: false,
 		itemDoubleClickEnabled: false,
+		leadingItem: undefined,
 	},
 );
 
@@ -96,7 +99,7 @@ const groupedItems = computed<ChatHistoryItem[]>(() => {
 		groups.set(group, items);
 	}
 
-	return [
+	const dated = [
 		...groupOrder.flatMap((group) => {
 			const items = (groups.get(group) ?? []).sort(
 				(a, b) => Date.parse(b.data?.updatedAt ?? '') - Date.parse(a.data?.updatedAt ?? ''),
@@ -107,6 +110,18 @@ const groupedItems = computed<ChatHistoryItem[]>(() => {
 		}),
 		...undated,
 	];
+
+	if (!props.leadingItem) return dated;
+	// With a leading item, the list is never truly empty, so `N8nDropdownMenu`'s own
+	// `items.length === 0` → `emptyText` fallback never fires. Reproduce it here as a
+	// non-interactive row, so "no items" still reads as empty instead of just missing.
+	// A blank `emptyText` (e.g. the caller's own message lives elsewhere, such as a
+	// footer error) skips the row rather than rendering an empty line.
+	const body =
+		dated.length === 0 && props.emptyText
+			? [{ id: '__chat-history-empty__', label: props.emptyText, header: true }]
+			: dated;
+	return [props.leadingItem, ...body];
 });
 
 const cancelPendingItemClick = () => {
