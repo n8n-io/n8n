@@ -2,8 +2,7 @@ import type { Logger, LicenseState } from '@n8n/backend-common';
 import type { ProjectRelationRepository, SharedWorkflowRepository, UserRepository } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
-import type { RoleService } from '@n8n/backend-services';
-
+import type { RoleService } from '../role.service';
 import { WorkflowSharingService } from '../workflow-sharing.service';
 
 describe('WorkflowSharingService', () => {
