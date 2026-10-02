@@ -83,7 +83,7 @@ describe('native trigger modules', { timeout: 30_000 }, () => {
 			'contractStep("n8n-nodes-base.respondToWebhook", config, 1.5,',
 		);
 		expect(nodeModuleText('schedule')).toContain(
-			'contractTrigger("n8n-nodes-base.scheduleTrigger", config, 1.4)',
+			'contractTrigger("n8n-nodes-base.scheduleTrigger", config, 1.4, undefined, {"example":',
 		);
 	});
 
@@ -115,6 +115,26 @@ export default workflow(
 );
 `;
 		expect(typeErrors(source)).toEqual([]);
+	});
+
+	it('take a partial trigger sample, and reject a sample key the output does not have', () => {
+		const sampled = (schema: string, sample: string) =>
+			`webhook.trigger({ name: 'Webhook', httpMethod: 'POST', path: 'p',${schema} sample: [${sample}] });`;
+		const declared =
+			" schema: { body: { type: 'object', properties: { service: { type: 'string' }, count: { type: 'integer' } }, required: ['service'] } },";
+		const source = `${header}
+${sampled('', "{ body: { service: 'db' } }")}
+${sampled(declared, "{ body: { service: 'db' } }")}
+`;
+		expect(typeErrors(source)).toEqual([]);
+		const wrong = `${header}
+${sampled(declared, "{ body: { servce: 'db' } }")}
+${sampled(declared, "{ body: { count: 'two' } }")}
+${sampled('', '{ bdy: {} }')}
+`;
+		expect(typeErrors(wrong).map((error) => error.split(' ')[0])).toEqual(
+			[6, 7, 8].map((line) => `workflow.ts:${line}`),
+		);
 	});
 
 	it('read an undeclared webhook body as open JSON, as a decompiled flow has it', () => {

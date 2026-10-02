@@ -366,14 +366,34 @@ export function generatedTriggersOf(trigger: Trigger, nodeType: string): Generat
 	];
 }
 
-/** An example of the JSON of an output item: binary fields go to `binary`, not the JSON. */
+/** The schema without its optional fields, at any depth. */
+const requiredOf = (schema: JsonSchema): JsonSchema => ({
+	...schema,
+	...(schema.properties
+		? {
+				properties: Object.fromEntries(
+					Object.entries(schema.properties).flatMap(([key, field]) =>
+						schema.required?.includes(key) ? [[key, requiredOf(field)]] : [],
+					),
+				),
+			}
+		: {}),
+	...(schema.items ? { items: requiredOf(schema.items) } : {}),
+});
+
+/**
+ * An example of the JSON of an output item with only its required fields, so a filled sample
+ * gets no field that the sample leaves out on purpose. Binary fields go to `binary`, not the JSON.
+ */
 const jsonExampleOf = (output: JsonSchema) =>
-	exampleOf({
-		...output,
-		properties: Object.fromEntries(
-			Object.entries(output.properties ?? {}).filter(([, field]) => !field['x-n8n-binary']),
-		),
-	});
+	exampleOf(
+		requiredOf({
+			...output,
+			properties: Object.fromEntries(
+				Object.entries(output.properties ?? {}).filter(([, field]) => !field['x-n8n-binary']),
+			),
+		}),
+	);
 
 /** The `EntryFields` type of a trigger output, over the config `C`. */
 function entryFieldsTs(entries: EntryFieldsSpec): string {
@@ -685,19 +705,13 @@ export function generateNodeModule(nodeId: string, contracts: readonly Generated
 			const out = `OutputOf<N, ${item}>`;
 			const requires = requiresOf(contract);
 			const nodeVersion = typeVersion ?? contract.version;
-			// The example fills the fields that a declared schema does not, for the trigger sample.
-			const options =
-				pairing || declared.length
-					? JSON.stringify({
-							...(pairing ? { pairing } : {}),
-							...(declared.length ? { example: jsonExampleOf(contract.output) } : {}),
-						})
-					: undefined;
-			const args = [
-				...(nodeVersion !== 1 || requires || options ? [String(nodeVersion)] : []),
-				...(requires || options ? [requires ?? 'undefined'] : []),
-				...(options ? [options] : []),
-			];
+			// The example fills the fields that a sample item or a declared schema leaves out.
+			const options = JSON.stringify({
+				...(pairing ? { pairing } : {}),
+				example: jsonExampleOf(contract.output),
+				...(declared.length ? { takesSchema: true } : {}),
+			});
+			const args = [String(nodeVersion), requires ?? 'undefined', options];
 			const schemas = declared.map((field) => `${key(field)}?: ValueSchema`).join('; ');
 			// The entries type the output, so the config is generic and checked key by key.
 			const generics = [
@@ -705,7 +719,7 @@ export function generateNodeModule(nodeId: string, contracts: readonly Generated
 				...(declared.length ? [`const S extends { ${schemas} } = {}`] : []),
 				...(entries ? [`const C extends ${name}Input`] : []),
 			];
-			const samples = entries ? `Array<${item}>` : `${item}[]`;
+			const samples = `Array<DeepPartial<${item}>>`;
 			const head = `{ name: N;${declared.length ? ' schema?: S;' : ''} sample?: ${samples} }`;
 			const flowKeys = `{ name: string;${declared.length ? ' schema?: unknown;' : ''} sample?: unknown }`;
 			const input = entries ? `C & Exact<C, ${name}Input & ${flowKeys}>` : `${name}Input`;
@@ -736,6 +750,7 @@ export function generateNodeModule(nodeId: string, contracts: readonly Generated
 			? ['type Binary']
 			: []),
 		...(declares ? ['type Declared'] : []),
+		...(triggers.length > 0 ? ['type DeepPartial'] : []),
 		...(named.some(({ contract }) => hasBinary(contract.input)) ? ['type Dollar'] : []),
 		...(hasEntries ? ['type EntryFields', 'type Exact'] : []),
 		...(triggers.length > 0 ? ['type Flow'] : []),

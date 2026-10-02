@@ -357,7 +357,11 @@ export async function contractEgressWarnings(
 	return checks.flat();
 }
 
-const CODE_NODE_TYPE = 'n8n-nodes-base.code';
+/** The JavaScript field of each node type that runs JavaScript in the Code runner. */
+const JAVASCRIPT_CODE_FIELDS: ReadonlyMap<string, string> = new Map([
+	['n8n-nodes-base.code', 'jsCode'],
+	['@n8n/nodes-base-next.codeJavaScript', 'code'],
+]);
 
 const expressionStrings = (value: unknown): string[] => {
 	if (typeof value === 'string') return value.startsWith('=') ? [value] : [];
@@ -377,12 +381,11 @@ export function workflowExpressions(workflow: WorkflowJSON): string {
 	const code = [
 		...new Set(
 			workflow.nodes.flatMap(({ type, parameters = {} }) => {
-				const { jsCode, language = 'javaScript' } = parameters;
-				return type === CODE_NODE_TYPE &&
-					language === 'javaScript' &&
-					typeof jsCode === 'string' &&
-					!jsCode.startsWith('=')
-					? [jsCode]
+				const field = JAVASCRIPT_CODE_FIELDS.get(type);
+				const text = field === undefined ? undefined : parameters[field];
+				const { language = 'javaScript' } = parameters;
+				return language === 'javaScript' && typeof text === 'string' && !text.startsWith('=')
+					? [text]
 					: [];
 			}),
 		),
@@ -474,18 +477,38 @@ export async function legacyNodeIssues(
 
 const TYPECHECK_TIMEOUT_MS = 60_000;
 
+/** The errors of the type check, and why it did not complete, if it did not. */
+export interface WorkflowTypecheck {
+	readonly errors: string[];
+	readonly incomplete?: string;
+}
+
+const typecheckErrors = z.array(z.string());
+
+const parseTypecheckErrors = (stdout: string): string[] | undefined => {
+	try {
+		const parsed = typecheckErrors.safeParse(JSON.parse(stdout));
+		return parsed.success ? parsed.data : undefined;
+	} catch {
+		return undefined;
+	}
+};
+
+const STDERR_TAIL = 1_000;
+
 /**
  * Type-check a workflow source with the node contracts tsconfig in the sandbox, with the n8n
- * expressions of {@link EXPRESSIONS_PATH}. Returns the errors, or `undefined` when the check
- * could not run.
+ * expressions of {@link EXPRESSIONS_PATH}. A check that does not complete (no worker, out of
+ * memory, the deadline, an expression check that cannot start) is `incomplete`, so the build
+ * fails instead of saving a workflow without the check.
  */
 export async function typecheckWorkflowSource(
 	context: InstanceAiContext,
 	filePath: string,
 	abortSignal?: AbortSignal,
-): Promise<string[] | undefined> {
+): Promise<WorkflowTypecheck> {
 	const workspace = context.workspace;
-	if (!workspace) return undefined;
+	if (!workspace) return { errors: [], incomplete: 'The type check needs the sandbox workspace.' };
 	const root = await getWorkspaceRoot(workspace);
 	const sourcePath = joinWorkspacePath(root, filePath);
 	const result = await runInSandbox(
@@ -493,16 +516,20 @@ export async function typecheckWorkflowSource(
 		`WORKFLOW_DIAGNOSTICS_DEADLINE_MS=${TYPECHECK_TIMEOUT_MS - 1_000} exec node --max-old-space-size=512 --import tsx ${WORKFLOW_DIAGNOSTICS_FILENAME} '${escapeSingleQuotes(sourcePath)}' ${NEXT_TSCONFIG_FILENAME} ${EXPRESSIONS_PATH}`,
 		{ cwd: root, abortSignal, timeout: TYPECHECK_TIMEOUT_MS },
 	);
-	if (result.exitCode !== 0) {
-		context.logger.debug('Workflow type check unavailable', { stderr: result.stderr });
-		return undefined;
-	}
-	// The worker writes to stderr when the expression check could not run.
-	if (result.stderr.trim() !== '') {
-		context.logger.warn('Workflow expression check unavailable', { stderr: result.stderr });
-	}
-	const parsed: unknown = JSON.parse(result.stdout);
-	return z.array(z.string()).parse(parsed);
+	const errors = parseTypecheckErrors(result.stdout);
+	if (result.exitCode === 0 && errors) return { errors };
+	context.logger.warn('Workflow type check did not complete', {
+		exitCode: result.exitCode,
+		stderr: result.stderr,
+	});
+	const detail = result.stderr.trim().slice(-STDERR_TAIL);
+	return {
+		errors: errors ?? [],
+		incomplete: [
+			`The type check did not complete (exit code ${result.exitCode}). Call build-workflow again with the same filePath.`,
+			...(detail ? [detail] : []),
+		].join('\n'),
+	};
 }
 
 /**

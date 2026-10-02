@@ -182,6 +182,67 @@ describe('compileWorkflowSource', () => {
 		);
 	});
 
+	describe('WorkflowJSON with node contracts', () => {
+		const contractJson = (getParameters: object) =>
+			JSON.stringify({
+				name: 'Contract JSON',
+				nodes: [
+					{
+						id: 'start',
+						name: 'Start',
+						type: 'n8n-nodes-base.manualTrigger',
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {},
+					},
+					{
+						id: 'get',
+						name: 'Get',
+						type: '@n8n/nodes-base-next.gmailMessageGet',
+						typeVersion: 1,
+						position: [200, 0],
+						parameters: getParameters,
+					},
+				],
+				connections: { Start: { main: [[{ node: 'Get', type: 'main', index: 0 }]] } },
+			});
+
+		it('fails on a fixed value that the contract rejects', async () => {
+			const result = await compileWorkflowSource(
+				makeContext({ nodeContractsEnabled: true }),
+				'src/workflows/contract.workflow.json',
+				contractJson({ messageId: 42 }),
+			);
+			expect(result).toMatchObject({
+				success: false,
+				reason: 'workflow_json_invalid',
+				editable: true,
+				errors: ['Node "Get": input.messageId: must be string, got 42'],
+			});
+		});
+
+		it('locks each contract node to its bundled version', async () => {
+			const result = await compileWorkflowSource(
+				makeContext({ nodeContractsEnabled: true }),
+				'src/workflows/contract.workflow.json',
+				contractJson({ messageId: 'abc' }),
+			);
+			expect(result).toMatchObject({
+				success: true,
+				workflow: { meta: { nodeContracts: { Get: { action: 'gmail.message.get' } } } },
+			});
+		});
+
+		it('keeps the JSON as written without the flag', async () => {
+			const result = await compileWorkflowSource(
+				makeContext(),
+				'src/workflows/contract.workflow.json',
+				contractJson({ messageId: 42 }),
+			);
+			expect(result.success && result.workflow.meta).toBeUndefined();
+		});
+	});
+
 	it('strips null top-level node keys and coerces parameters to an object', async () => {
 		const workflow = {
 			name: 'JSON workflow',

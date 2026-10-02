@@ -54,7 +54,7 @@ describe('next-modules', () => {
 
 	it('adds the triggers of a node, so a workflow can start at one', () => {
 		expect(nodeModuleText('notion')).toContain(
-			'contractTrigger("@n8n/nodes-base-next.notionDataSourcePageAdded", config, 1, {"credential":"notion","scopes":["content:read"]})',
+			'contractTrigger("@n8n/nodes-base-next.notionDataSourcePageAdded", config, 1, {"credential":"notion","scopes":["content:read"]}, {"example":{"id":"example"}})',
 		);
 		expect(nextNodeModule('github.repository.event')?.module).toContain(
 			'): Flow<OutputOf<N, GithubRepositoryEventOutput>, Record<N, OutputOf<N, GithubRepositoryEventOutput>>> =>',

@@ -54,6 +54,7 @@ export type {
 	CaseItem,
 	DateTime,
 	Declared,
+	DeepPartial,
 	Dollar,
 	EntryFields,
 	ErrorItem,

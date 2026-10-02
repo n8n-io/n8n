@@ -1,5 +1,14 @@
 import { execFile } from 'node:child_process';
-import { mkdir, mkdtemp, readFile, realpath, rm, symlink, writeFile } from 'node:fs/promises';
+import {
+	mkdir,
+	mkdtemp,
+	readFile,
+	realpath,
+	rename,
+	rm,
+	symlink,
+	writeFile,
+} from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, isAbsolute, join } from 'node:path';
 import { promisify } from 'node:util';
@@ -164,6 +173,81 @@ export default workflow(
 			`${at(source, 'subjcet')}: error TS2551: Property 'subjcet' does not exist on type '{ id: string; subject: string; count: number; }'. Did you mean 'subject'?`,
 			'Node "Too many": input.paging.max: must be at most 500',
 		]);
+	}, 120_000);
+
+	it('fails the build at each typo in a code.javaScript step', async () => {
+		const source = `import { workflow, manual } from '@n8n/workflow-sdk/next';
+import { code } from '@n8n/nodes/code';
+
+export default workflow(
+	'Code step typo',
+	manual({ sample: [{ subject: 'Hi' }] }).andThen(
+		code.javaScript({
+			name: 'Code',
+			code: 'return $input.all().map((i) => ({ s: i.json.subjcet, t: undefinedName }));',
+		}),
+	),
+);
+`;
+		const result = await build(source);
+		expect(result.success ? [] : result.errors).toEqual([
+			`${at(source, 'subjcet')}: error TS2551: Property 'subjcet' does not exist on type '{ subject: string; }'. Did you mean 'subject'?`,
+			`${at(source, 'undefinedName')}: error TS2552: Cannot find name 'undefinedName'. Did you mean 'undefined'?`,
+		]);
+	}, 120_000);
+
+	async function buildWithout(path: string, source: string) {
+		await rename(join(root, path), join(root, `${path}.off`));
+		try {
+			return await build(source);
+		} finally {
+			await rename(join(root, `${path}.off`), join(root, path));
+		}
+	}
+
+	it('fails the build when the type check cannot run', async () => {
+		const result = await buildWithout(
+			WORKFLOW_DIAGNOSTICS_FILENAME,
+			`import { workflow, manual } from '@n8n/workflow-sdk/next';
+import { gmail } from '@n8n/nodes/gmail';
+
+export default workflow(
+	'No type check',
+	manual({ sample: [{ id: 'x', count: 3 }] }).andThen(
+		gmail.message.get({ name: 'Get', messageId: (item) => item.count }),
+	),
+);
+`,
+		);
+		expect(result.success).toBe(false);
+		if (result.success) return;
+		expect(result.reason).toBe('workflow_source_sandbox_failed');
+		expect(result.editable).toBe(true);
+		expect(result.errors.at(-1)).toMatch(
+			/^The type check did not complete \(exit code 1\)\. Call build-workflow again with the same filePath\.\n/,
+		);
+	}, 120_000);
+
+	it('fails the build when the expression check cannot run', async () => {
+		const result = await buildWithout(
+			'node_modules/@n8n/expression-types',
+			`import { workflow, manual } from '@n8n/workflow-sdk/next';
+import { gmail } from '@n8n/nodes/gmail';
+
+export default workflow(
+	'No expression check',
+	manual({ sample: [{ id: 'x', count: 3 }] }).andThen(
+		gmail.message.getAll({ name: 'List', paging: { mode: 'limit', max: '={{ $json.id }}' } }),
+	),
+);
+`,
+		);
+		expect(result.success).toBe(false);
+		if (result.success) return;
+		expect(result.reason).toBe('workflow_source_sandbox_failed');
+		expect(result.errors.at(-1)).toMatch(
+			/^The type check did not complete \(exit code 3\)\. Call build-workflow again with the same filePath\.\nExpression check failed: /,
+		);
 	}, 120_000);
 
 	it('builds when every expression and the Code node fit', async () => {

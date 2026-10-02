@@ -122,13 +122,13 @@ describe('native triggers', () => {
 			`contractStep("n8n-nodes-base.reply", config, 1.5, undefined, undefined, ${JSON.stringify(pairing)})`,
 		);
 		expect(text).toContain(
-			`contractTrigger("n8n-nodes-base.hook", config, 2.1, undefined, ${JSON.stringify({ pairing, example: { query: {}, body: {} } })})`,
+			`contractTrigger("n8n-nodes-base.hook", config, 2.1, undefined, ${JSON.stringify({ pairing, example: { query: {}, body: {} }, takesSchema: true })})`,
 		);
 		expect(text).toContain(
 			'trigger: <const N extends string, const S extends { body?: ValueSchema } = {}, const C extends HooksTriggerInput>(',
 		);
 		expect(text).toContain(
-			' config: { name: N; schema?: S; sample?: Array<Declared<HooksTriggerOutput & HooksTriggerFields<C>, S>> } & C & Exact<C, HooksTriggerInput & { name: string; schema?: unknown; sample?: unknown }>,',
+			' config: { name: N; schema?: S; sample?: Array<DeepPartial<Declared<HooksTriggerOutput & HooksTriggerFields<C>, S>>> } & C & Exact<C, HooksTriggerInput & { name: string; schema?: unknown; sample?: unknown }>,',
 		);
 		expect(text).toMatch(
 			/export type HooksTriggerOutput = \{[^]*body: \{ \[key: string\]: any \};/,
@@ -140,7 +140,7 @@ describe('native triggers', () => {
 			'(trigger, webhook; schema types body; reply when responseMode is responseNode)',
 		);
 		expect(text).toContain(
-			"import { contractStep, contractTrigger, type Declared, type EntryFields, type Exact, type Flow, type OutputOf, type Step, type Value, type ValueSchema } from '@n8n/workflow-sdk/next';",
+			"import { contractStep, contractTrigger, type Declared, type DeepPartial, type EntryFields, type Exact, type Flow, type OutputOf, type Step, type Value, type ValueSchema } from '@n8n/workflow-sdk/next';",
 		);
 	});
 

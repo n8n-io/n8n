@@ -39,6 +39,15 @@ describe('contract-mode skill', () => {
 		expect(skill).toContain("placeholder('Database')");
 		expect(skill).not.toContain("'<Notion tasks database ID>'");
 		expect(skill).toContain('do not read SDK files');
+		expect(skill).toContain(
+			'Only `build-workflow` has\n`@n8n/nodes/*` and runs `tsc`: do not run it.',
+		);
+	});
+
+	it('builds routes, joins and loops with the flow API, not WorkflowJSON', () => {
+		expect(skill).toContain('`.switch({ name, on, cases })`');
+		expect(skill).toContain('`.merge({ name, join, branches })`');
+		expect(skill).not.toContain('WorkflowJSON');
 	});
 
 	it('stays small', () => {

@@ -571,6 +571,7 @@ describe('native triggers', () => {
 		contractTrigger('n8n-nodes-base.webhook', config, 2.2, undefined, {
 			pairing,
 			example: { headers: {}, body: {} },
+			takesSchema: true,
 		});
 	const respond = <In, Ctx, const N extends string>(config: {
 		name: N;
@@ -604,6 +605,37 @@ describe('native triggers', () => {
 			// @ts-expect-error the declared body has no such field
 			set({ name: 'Typo', fields: { x: (item) => item.body.severty } }),
 		);
+	});
+
+	it('fills the fields that a trigger sample leaves out from the example', () => {
+		const sampled = contractTrigger(
+			'n8n-nodes-base.webhook',
+			{ name: 'Hook', sample: [{ body: { severity: 'info' } }, { headers: { a: 'b' } }] },
+			2.2,
+			undefined,
+			{ example: { headers: {}, query: { page: '1' }, body: {}, webhookUrl: 'example' } },
+		);
+		expect(workflow('Sampled', sampled).generatePinData().toJSON().pinData).toEqual({
+			Hook: [
+				{ headers: {}, query: { page: '1' }, body: { severity: 'info' }, webhookUrl: 'example' },
+				{ headers: { a: 'b' }, query: { page: '1' }, body: {}, webhookUrl: 'example' },
+			],
+		});
+		const json = workflow(
+			'Declared',
+			contractTrigger(
+				'n8n-nodes-base.webhook',
+				{ name: 'Hook', schema: { body: incident }, sample: [{ body: { count: 5 } }] },
+				2.2,
+				undefined,
+				{ example: { headers: {}, body: {} }, takesSchema: true },
+			),
+		)
+			.generatePinData()
+			.toJSON();
+		expect(json.pinData).toEqual({
+			Hook: [{ headers: {}, body: { severity: 'critical', count: 5 } }],
+		});
 	});
 
 	it('checks that a webhook that waits for a reply has one, and that it waits for its replies', () => {

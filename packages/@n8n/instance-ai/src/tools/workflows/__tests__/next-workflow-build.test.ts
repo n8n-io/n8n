@@ -13,6 +13,7 @@ import {
 	nodeOutputsDeclaration,
 	staticInputIssues,
 	synthesizedFixtures,
+	typecheckWorkflowSource,
 	usedNodeIds,
 	workflowExpressions,
 } from '../next-workflow-build';
@@ -119,13 +120,48 @@ import { googleGemini } from '@n8n/nodes/googleGemini';`;
 				}),
 				node('Code', 'n8n-nodes-base.code', { jsCode: 'return $input.all();' }),
 				node('Python', 'n8n-nodes-base.code', { language: 'python', pythonCode: 'return []' }),
+				node('Step', '@n8n/nodes-base-next.codeJavaScript', { code: 'return [{ n: 1 }];' }),
+				node('Python step', '@n8n/nodes-base-next.codePython', { code: 'return []' }),
 			],
 		};
 		expect(JSON.parse(workflowExpressions(workflow))).toEqual({
 			expressions: ['={{ $json.id }}', '={{ "={{ $json.id }}" }}'],
-			code: ['return $input.all();'],
+			code: ['return $input.all();', 'return [{ n: 1 }];'],
 		});
 		expect(workflowExpressions({ ...workflow, nodes: [] })).toBe('{"expressions":[],"code":[]}\n');
+	});
+
+	it('reports a type check that does not complete', async () => {
+		const run = async (result: { exitCode: number; stdout: string; stderr: string }) =>
+			await typecheckWorkflowSource(
+				{
+					workspace: {
+						filesystem: { provider: 'local', basePath: '/workspace' },
+						sandbox: { executeCommand: vi.fn(async () => result) },
+					},
+					logger: { warn: vi.fn() },
+				} as unknown as InstanceAiContext,
+				'src/workflow.ts',
+			);
+		expect(
+			await run({ exitCode: 0, stdout: '["src/workflow.ts(1,1): error"]\n', stderr: '' }),
+		).toEqual({ errors: ['src/workflow.ts(1,1): error'] });
+		expect(
+			await run({
+				exitCode: 124,
+				stdout: '',
+				stderr: 'Workflow diagnostics passed the 59000 ms deadline\n',
+			}),
+		).toEqual({
+			errors: [],
+			incomplete:
+				'The type check did not complete (exit code 124). Call build-workflow again with the same filePath.\nWorkflow diagnostics passed the 59000 ms deadline',
+		});
+		expect(await run({ exitCode: 0, stdout: 'not json', stderr: '' })).toEqual({
+			errors: [],
+			incomplete:
+				'The type check did not complete (exit code 0). Call build-workflow again with the same filePath.',
+		});
 	});
 
 	it('notes a node() that a typed step replaces, and names the step or the module', async () => {

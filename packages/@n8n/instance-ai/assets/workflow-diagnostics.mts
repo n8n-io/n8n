@@ -121,6 +121,9 @@ const CODE_ERRORS = new Set([2304, 2339, 2349, 2448, 2551, 2552, 2588]);
 
 const SANDBOX_RULE = 'n8n';
 
+/** The exit code when the type check ran but the expression check did not. */
+const EXPRESSION_CHECK_FAILED = 3;
+
 function listOf(value: unknown, key: string): Set<string> {
 	const field: unknown = typeof value === 'object' && value !== null ? Reflect.get(value, key) : [];
 	return new Set(
@@ -404,7 +407,7 @@ async function expressionErrors(
 	const parsed: unknown = JSON.parse(await readFile(listPath, 'utf8'));
 	const lists = { expressions: listOf(parsed, 'expressions'), code: listOf(parsed, 'code') };
 	if (lists.expressions.size === 0 && lists.code.size === 0) return [];
-	// Loaded here: a sandbox without the package still gets the type check.
+	// Loaded here: the type check without an expression list does not need the package.
 	const { codeScopeGlobals, itemScopeGlobals } = await import('@n8n/expression-types/globals');
 	const globals = { item: itemScopeGlobals, code: codeScopeGlobals };
 	const ast = await import('typescript/unstable/ast');
@@ -433,20 +436,17 @@ async function expressionErrors(
 		fileChanges: { changed: shadows.map(({ fileName }) => fileName) },
 	});
 	const shadowProgram = snapshot.getProject(configPath)?.program;
-	if (!shadowProgram) return [];
+	if (!shadowProgram) throw new Error('Cannot open the shadow project');
 
 	const perFile = await Promise.all(
 		shadows.map(async (shadow) => {
 			const diagnostics = await diagnosticsOf(shadowProgram, shadow.fileName);
 			const setup = diagnostics.filter((diagnostic) => diagnostic.pos >= shadow.trailerStart);
 			if (setup.length > 0) {
-				process.stderr.write(
-					`Expression check unavailable: ${setup.map((diagnostic) => diagnostic.text).join('; ')}\n`,
-				);
-				return [];
+				throw new Error(setup.map((diagnostic) => diagnostic.text).join('; '));
 			}
 			const shadowSource = await shadowProgram.getSourceFile(shadow.fileName);
-			if (!shadowSource) return [];
+			if (!shadowSource) throw new Error(`Cannot read the shadow of ${shadow.fileName}`);
 			const addedReads = addedFieldReads(ast, shadowSource);
 			const file = path.relative(cwd, shadow.fileName);
 			const typeErrors = diagnostics.flatMap((diagnostic) => {
@@ -556,7 +556,8 @@ async function main(): Promise<void> {
 			);
 		}
 		if (expressionList) {
-			// The expression check adds findings; it never hides the type check.
+			// The expression check adds findings; it never hides the type check. When it cannot run,
+			// the exit code tells the host that the check is not complete.
 			const found = await expressionErrors(
 				api,
 				program,
@@ -567,6 +568,7 @@ async function main(): Promise<void> {
 				cwd,
 			).catch((error: unknown) => {
 				process.stderr.write(`Expression check failed: ${String(error)}\n`);
+				process.exitCode = EXPRESSION_CHECK_FAILED;
 				return [];
 			});
 			errors.push(...found);

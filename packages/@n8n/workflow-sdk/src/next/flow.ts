@@ -188,6 +188,13 @@ export type Declared<O, S> = Simplify<
 	Omit<O, keyof S> & { -readonly [K in keyof S]-?: FromSchema<NonNullable<S[K]>> }
 >;
 
+/** `T` with every field optional at any depth. A trigger sample gives only the fields it needs. */
+export type DeepPartial<T> = T extends ReadonlyArray<infer E>
+	? Array<DeepPartial<E>>
+	: T extends object
+		? { [K in keyof T]?: DeepPartial<T[K]> }
+		: T;
+
 type AllKeys<T> = T extends unknown ? keyof T : never;
 
 type ValueAt<T, K> = T extends unknown ? (K extends keyof T ? T[K] : never) : never;
@@ -1135,9 +1142,25 @@ export type ModelOf<P extends string> = P extends keyof ModelCatalog ? ModelCata
 /** What a generated module adds for a native trigger. */
 export interface TriggerOptions {
 	readonly pairing?: Pairing;
-	/** An output item; a declared schema replaces its fields to make the trigger sample. */
+	/**
+	 * An output item. It fills the fields that a sample item leaves out, and a declared schema
+	 * replaces its fields to make a sample.
+	 */
 	readonly example?: Readonly<Record<string, unknown>>;
+	/** The trigger declares output fields with `schema`, so `schema` is not a node parameter. */
+	readonly takesSchema?: true;
 }
+
+/** `sample` with the fields it leaves out taken from `example`, at any depth. */
+const filledSample = (example: unknown, sample: unknown): unknown =>
+	isDataObject(example) && isDataObject(sample)
+		? {
+				...example,
+				...Object.fromEntries(
+					Object.entries(sample).map(([key, value]) => [key, filledSample(example[key], value)]),
+				),
+			}
+		: sample;
 
 /**
  * Start a flow at a contract trigger. Generated node modules call this. `schema` holds the JSON
@@ -1156,15 +1179,19 @@ export function contractTrigger<Out, const N extends string>(
 	options: TriggerOptions = {},
 ): Flow<Out, Record<N, Out>> {
 	const { name, sample: given, ...input } = config;
-	const { pairing, example } = options;
+	const { pairing, example, takesSchema } = options;
 	// Only a trigger with declared output fields takes `schema`; for another it is a parameter.
 	const { schema, ...withoutSchema } = input;
-	const parameters = example ? withoutSchema : input;
-	const declared = Object.entries((example && schema) || {}).flatMap(([field, fieldSchema]) =>
+	const parameters = takesSchema ? withoutSchema : input;
+	const declared = Object.entries((takesSchema && schema) || {}).flatMap(([field, fieldSchema]) =>
 		fieldSchema ? [[field, exampleOfSchema(fieldSchema)] as const] : [],
 	);
-	const sample =
-		given ?? (declared.length ? [{ ...example, ...Object.fromEntries(declared) }] : undefined);
+	const full = example && { ...example, ...Object.fromEntries(declared) };
+	const sample = given
+		? given.map((item) => filledSample(full, item))
+		: full && declared.length
+			? [full]
+			: undefined;
 	return startFlow({
 		name,
 		type: id,

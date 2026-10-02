@@ -492,10 +492,10 @@ describe('generateNodeModule', () => {
 		expect(module).toContain('(read, per-item; scopes: tasks:read)');
 		expect(module).toContain('export type TasksTaskCreatedInput = { project: string };');
 		expect(module).toContain(
-			'contractTrigger("n8n-nodes-tasks.tasks.task.created", config, 1, {"credential":"tasks","scopes":["tasks:read"]})',
+			'contractTrigger("n8n-nodes-tasks.tasks.task.created", config, 1, {"credential":"tasks","scopes":["tasks:read"]}, {"example":',
 		);
 		expect(module).toContain(
-			"import { contractStep, contractTrigger, type Flow, type OutputOf, type Step, type Value } from '@n8n/workflow-sdk/next';",
+			"import { contractStep, contractTrigger, type DeepPartial, type Flow, type OutputOf, type Step, type Value } from '@n8n/workflow-sdk/next';",
 		);
 	});
 });

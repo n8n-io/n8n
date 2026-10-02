@@ -18,9 +18,10 @@ recommended_tools:
 
 # Workflow Builder
 
-You write one typed TypeScript file. `tsc --strict` checks it. Do not produce
-visible output until the final step, unless blocked. This skill and
-`nodes(action="type-definition")` are the full API: do not read SDK files.
+You write one typed TypeScript file. Do not produce visible output until the
+final step, unless blocked. This skill and `nodes(action="type-definition")`
+are the full API: do not read SDK files. Only `build-workflow` has
+`@n8n/nodes/*` and runs `tsc`: do not run it.
 
 ## Process
 
@@ -79,6 +80,8 @@ export default workflow(
 - `.orElse` goes after the `.andThen` of the node that can fail.
 - `.branch({ name, if: (item) => …, then: (f) => f.andThen(…), else: (f) => … })`
   adds an IF node. Without `else`, false items stop.
+- `.switch({ name, on, cases })`, `.merge({ name, join, branches })`, `.loop`,
+  `.forEach`: Switch, Merge, loops.
 - `set({ name, fields: { total: (item) => item.a + item.b }, keep: 'all' })`
   makes fields. `keep: 'all'` keeps input fields.
 - `node({ name, type, version, parameters, sample })` adds any other node;
@@ -98,8 +101,6 @@ node({ name: 'Agent', type: '@n8n/n8n-nodes-langchain.agent', version: 2.2,
 
 Slots: `model`, `memory`, `tools` (a list), `outputParser`, `embedding`,
 `vectorStore`, `retriever`, `documentLoader`, `textSplitter`, `reranker`.
-For a Switch, Text Classifier, Merge, or loop, build WorkflowJSON
-(`src/workflows/<name>.workflow.json`).
 
 ## Lambdas
 

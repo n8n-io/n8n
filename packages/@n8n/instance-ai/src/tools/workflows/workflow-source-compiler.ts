@@ -481,9 +481,19 @@ async function compileNextWorkflowSource(
 		[...revealed].filter(([, text]) => text !== EMPTY_OUTPUTS && text !== EMPTY_EXPRESSIONS),
 	);
 	if (changed.size > 0) await writeWorkspaceFileMap(workspace, changed, fileOptions);
-	const typeErrors = await typecheckWorkflowSource(context, filePath, abortSignal);
+	const typecheck = await typecheckWorkflowSource(context, filePath, abortSignal);
 	const inputIssues = built.success ? staticInputIssues(built.workflow) : [];
-	const errors = [...(typeErrors ?? []), ...inputIssues];
+	const errors = [...typecheck.errors, ...inputIssues];
+	if (typecheck.incomplete !== undefined) {
+		const found = built.success ? errors : [...new Set([...built.errors, ...errors])];
+		return {
+			success: false,
+			reason: 'workflow_source_sandbox_failed',
+			editable: true,
+			errors: [...found, typecheck.incomplete],
+			summary: 'Workflow source type check did not complete.',
+		};
+	}
 	if (errors.length > 0) {
 		return {
 			success: false,
@@ -504,6 +514,26 @@ async function compileNextWorkflowSource(
 				),
 			}
 		: built;
+}
+
+/**
+ * Node contracts: a WorkflowJSON source has no type check, so its contract nodes get the
+ * input check and the version lock of a typed source.
+ */
+function checkContractWorkflowJson(
+	parsed: WorkflowSourceCompileResult,
+): WorkflowSourceCompileResult {
+	if (!parsed.success) return parsed;
+	const errors = staticInputIssues(parsed.workflow);
+	return errors.length > 0
+		? {
+				success: false,
+				reason: 'workflow_json_invalid',
+				editable: true,
+				errors,
+				summary: 'Workflow JSON source has values that its node contracts reject.',
+			}
+		: { ...parsed, workflow: lockNodeContracts(parsed.workflow) };
 }
 
 export async function compileWorkflowSource(
@@ -533,7 +563,8 @@ export async function compileWorkflowSource(
 		async () => {
 			let result: WorkflowSourceCompileResult;
 			if (isWorkflowJsonSourceFile(filePath)) {
-				result = parseWorkflowJsonSource(source);
+				const parsed = parseWorkflowJsonSource(source);
+				result = context.nodeContractsEnabled ? checkContractWorkflowJson(parsed) : parsed;
 			} else if (isTypeScriptWorkflowSource(filePath)) {
 				result = context.nodeContractsEnabled
 					? await compileNextWorkflowSource(context, filePath, source, abortSignal)
