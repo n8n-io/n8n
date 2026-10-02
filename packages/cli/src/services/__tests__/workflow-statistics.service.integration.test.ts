@@ -17,6 +17,7 @@ import {
 	type EntityManager,
 	type EntityMetadata,
 } from '@n8n/typeorm';
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 
 import { mock } from 'vitest-mock-extended';
 import {
@@ -746,6 +747,23 @@ describe('WorkflowStatisticsService', () => {
 				const service = makeService();
 				const otherWorkflow = await createWorkflow({}, user);
 				const emitSpy = vi.spyOn(Container.get(EventService), 'emit');
+				const settingsRepository = Container.get(SettingsRepository);
+				const findByKey = settingsRepository.findByKey.bind(settingsRepository);
+				const bothReadsCompleted = createDeferredPromise();
+				let completedReads = 0;
+
+				// Both calls must read the missing setting before either call can write it.
+				const readBeforeWrite: SettingsRepository['findByKey'] = async (...args) => {
+					const setting = await findByKey(...args);
+					if (++completedReads === 2) {
+						bothReadsCompleted.resolve();
+					}
+					await bothReadsCompleted.promise;
+					return setting;
+				};
+				vi.spyOn(settingsRepository, 'findByKey')
+					.mockImplementationOnce(readBeforeWrite)
+					.mockImplementationOnce(readBeforeWrite);
 
 				await Promise.all(
 					[workflow, otherWorkflow].map(
