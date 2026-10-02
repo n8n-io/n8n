@@ -585,7 +585,8 @@ describe('ExecutionService', () => {
 
 			it('cancels a running execution through the engine', async () => {
 				engineV2ExecutionReader.findOne.mockResolvedValue(running);
-				engineDataPlane.cancelExecution.mockResolvedValue({ cancelled: true });
+				const finishedAt = new Date('2026-09-28T10:00:05.000Z');
+				engineDataPlane.cancelExecution.mockResolvedValue({ cancelled: true, finishedAt });
 
 				const result = await executionService.stop(executionId, ['wf-1']);
 
@@ -594,7 +595,7 @@ describe('ExecutionService', () => {
 				expect(result).toEqual({
 					mode: 'manual',
 					startedAt,
-					stoppedAt: expect.any(Date),
+					stoppedAt: finishedAt,
 					finished: false,
 					status: 'canceled',
 				});

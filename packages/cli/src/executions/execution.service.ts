@@ -608,7 +608,7 @@ export class ExecutionService {
 		return {
 			mode: execution.mode,
 			startedAt: execution.startedAt,
-			stoppedAt: new Date(),
+			stoppedAt: outcome.finishedAt,
 			finished: false,
 			status: 'canceled',
 		};

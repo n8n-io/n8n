@@ -264,9 +264,16 @@ describe('EngineDataPlaneClient', () => {
 
 	describe('cancelExecution', () => {
 		it('reports a cancelled execution', async () => {
-			respondWith(200, { executionId: EXECUTION_ID, status: 'cancelled' });
+			respondWith(200, {
+				executionId: EXECUTION_ID,
+				status: 'cancelled',
+				finishedAt: '2026-10-02T09:00:00.000Z',
+			});
 
-			await expect(client.cancelExecution(EXECUTION_ID)).resolves.toEqual({ cancelled: true });
+			await expect(client.cancelExecution(EXECUTION_ID)).resolves.toEqual({
+				cancelled: true,
+				finishedAt: new Date('2026-10-02T09:00:00.000Z'),
+			});
 
 			expect(http.request).toHaveBeenCalledWith(
 				expect.objectContaining({

@@ -1,4 +1,4 @@
-import type { ExecutionResponse, ResponseExpectation, StepSlots } from '@n8n/engine';
+import type { EndedMessage, ExecutionResponse, ResponseExpectation, StepSlots } from '@n8n/engine';
 import { decodeBufferBody } from 'n8n-core';
 import { UnexpectedError } from 'n8n-workflow';
 
@@ -49,39 +49,50 @@ export function toWebhookOutcome(
 			// A chunk is a part of a stream. It never answers the request alone.
 			return undefined;
 
-		case 'ended': {
-			// Only a cancelled run ends without a settled step, so there is no answer to relay.
-			if (received.lastStep === null) return { status: 'cancelled' };
-
-			const { nodeId, nodeName, outputs, error } = received.lastStep;
-
+		case 'ended':
 			switch (received.status) {
 				case 'cancelled':
-					// The wire schema pairs a cancelled run with a null last step.
-					throw new UnexpectedError('A cancelled run named a last step');
+					// The run was stopped on request, so no node answers.
+					return { status: 'cancelled' };
 
-				case 'failed':
+				case 'failed': {
 					// The step that ended a failed run is the one that failed, so its name
 					// and error are what the caller reports.
+					const { nodeId, nodeName, error } = settledLastStep(received);
 					return { status: 'failed', nodeId, nodeName, error };
+				}
 
-				case 'completed':
+				case 'completed': {
+					const { nodeName, outputs } = settledLastStep(received);
 					return {
 						status: 'completed',
 						// A skipped or failed step carries nothing to answer with.
 						lastNode: outputs ? { nodeName, outputs } : undefined,
 					};
+				}
 
 				default: {
 					const exhaustive: never = received.status;
 					throw new UnexpectedError(`Unexpected run status: ${JSON.stringify(exhaustive)}`);
 				}
 			}
-		}
 
 		default: {
 			const exhaustive: never = received;
 			throw new UnexpectedError(`Unexpected response type: ${JSON.stringify(exhaustive)}`);
 		}
 	}
+}
+
+/**
+ * The step that ended a settled run. Only a cancelled run ends without one,
+ * and the wire schema holds the two together.
+ */
+function settledLastStep(received: EndedMessage): NonNullable<EndedMessage['lastStep']> {
+	if (received.lastStep === null) {
+		throw new UnexpectedError(
+			`Run ${received.executionId} ended ${received.status} with no last step`,
+		);
+	}
+	return received.lastStep;
 }

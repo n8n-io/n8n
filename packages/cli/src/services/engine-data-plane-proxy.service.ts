@@ -30,7 +30,7 @@ export const isStartRefusedBeforeSave = (error: unknown): boolean =>
  * the execution had already ended with.
  */
 export type CancelExecutionOutcome =
-	| { cancelled: true }
+	| { cancelled: true; finishedAt: Date }
 	| { cancelled: false; status: ExecutionStatus };
 
 /**

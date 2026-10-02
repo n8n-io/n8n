@@ -154,7 +154,8 @@ export class EngineDataPlaneClient implements EngineDataPlaneProvider {
 
 		if (response.statusCode >= 300) throw this.toError(response.statusCode, response.body);
 
-		return { cancelled: true };
+		const { finishedAt } = response.body as CancelExecutionResponse;
+		return { cancelled: true, finishedAt: new Date(finishedAt) };
 	}
 
 	/** The status a `not_cancellable` response names. */

@@ -12,6 +12,7 @@ import {
 } from '../../execution';
 import type { CancelExecutionResponse, ExecutionSnapshot, StepDetail } from '../api.types';
 import { fail } from '../error-response';
+import { UnexpectedError } from '../../common';
 
 const ExecutionIdParams = z.object({ id: z.string().uuid() });
 
@@ -147,6 +148,7 @@ export function createGetExecutionHandler(executionQuery: ExecutionQueryService)
 
 export function createCancelExecutionHandler(
 	cancelExecution: CancelExecutionService,
+	executionQuery: ExecutionQueryService,
 ): RequestHandler {
 	return async (req, res) => {
 		const id = parseExecutionId(req, res);
@@ -173,7 +175,17 @@ export function createCancelExecutionHandler(
 			return;
 		}
 
-		const body: CancelExecutionResponse = { executionId: id, status };
+		// Timing lives on the read path, and it answers the same for a repeated cancel.
+		const { finishedAt } = await executionQuery.getExecution(id);
+		if (finishedAt === null) {
+			throw new UnexpectedError(`Cancelled execution ${id} records no finish time`);
+		}
+
+		const body: CancelExecutionResponse = {
+			executionId: id,
+			status,
+			finishedAt: finishedAt.toISOString(),
+		};
 		res.status(200).json(body);
 	};
 }

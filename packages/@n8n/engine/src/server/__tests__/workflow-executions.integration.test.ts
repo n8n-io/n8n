@@ -729,12 +729,17 @@ describe('POST /api/workflow-executions/:id/cancel (integration)', () => {
 
 		const response = await cancel(executionId).expect(200);
 
-		expect(response.body).toEqual({ executionId, status: 'cancelled' });
 		const row = await dataSource
 			.getRepository(WorkflowExecution)
 			.findOneOrFail({ where: { id: executionId } });
 		expect(row.status).toBe('cancelled');
 		expect(row.finishedAt).toBeInstanceOf(Date);
+		// the time the row records, so a caller can show when the run stopped
+		expect(response.body).toEqual({
+			executionId,
+			status: 'cancelled',
+			finishedAt: row.finishedAt?.toISOString(),
+		});
 		for (const step of [queued, waiting]) {
 			expect((await stepRepo.findOneOrFail({ where: { id: step.id } })).status).toBe('cancelled');
 		}
@@ -759,7 +764,8 @@ describe('POST /api/workflow-executions/:id/cancel (integration)', () => {
 
 		const response = await cancel(executionId).expect(200);
 
-		expect(response.body).toEqual({ executionId, status: 'cancelled' });
+		expect(response.body).toMatchObject({ executionId, status: 'cancelled' });
+		expect(response.body).toHaveProperty('finishedAt');
 		expect(lifecycleEventPublisher.publish).toHaveBeenCalledTimes(1);
 	});
 

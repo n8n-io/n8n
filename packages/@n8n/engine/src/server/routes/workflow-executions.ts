@@ -99,7 +99,10 @@ export function createWorkflowExecutionsRouter(deps: EngineServerDeps): RouterTy
 	});
 
 	router.get('/:id', createGetExecutionHandler(deps.executionQuery));
-	router.post('/:id/cancel', createCancelExecutionHandler(deps.cancelExecution));
+	router.post(
+		'/:id/cancel',
+		createCancelExecutionHandler(deps.cancelExecution, deps.executionQuery),
+	);
 
 	return router;
 }
