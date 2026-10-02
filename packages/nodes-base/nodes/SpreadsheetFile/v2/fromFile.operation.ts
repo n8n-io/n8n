@@ -208,7 +208,7 @@ export async function execute(
 				}
 
 				// Convert it to json
-				const sheetToJsonOptions: Sheet2JSONOpts = {};
+				const sheetToJsonOptions: Sheet2JSONOpts = { raw: options.rawData ?? false };
 				if (options.range) {
 					if (isNaN(options.range as number)) {
 						sheetToJsonOptions.range = options.range;

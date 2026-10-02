@@ -103,7 +103,9 @@ describe('fromFile.operation - xlsx parsing logic', () => {
 				Buffer.from(mockBinaryDataInMemory.data, BINARY_ENCODING),
 				{ raw: undefined },
 			);
-			expect(xlsxUtils.sheet_to_json).toHaveBeenCalledWith(mockWorkbook.Sheets.Sheet1, {});
+			expect(xlsxUtils.sheet_to_json).toHaveBeenCalledWith(mockWorkbook.Sheets.Sheet1, {
+				raw: false,
+			});
 		});
 
 		it('should parse xlsx file from filesystem binary data', async () => {
@@ -145,6 +147,9 @@ describe('fromFile.operation - xlsx parsing logic', () => {
 			await execute.call(mockExecuteFunctions, items);
 
 			expect(xlsxRead).toHaveBeenCalledWith(expect.any(Buffer), { raw: true });
+			expect(xlsxUtils.sheet_to_json).toHaveBeenCalledWith(mockWorkbook.Sheets.Sheet1, {
+				raw: true,
+			});
 		});
 
 		it('should respect readAsString option', async () => {
@@ -174,7 +179,9 @@ describe('fromFile.operation - xlsx parsing logic', () => {
 
 			await execute.call(mockExecuteFunctions, items);
 
-			expect(xlsxUtils.sheet_to_json).toHaveBeenCalledWith(mockWorkbook.Sheets.Sheet2, {});
+			expect(xlsxUtils.sheet_to_json).toHaveBeenCalledWith(mockWorkbook.Sheets.Sheet2, {
+				raw: false,
+			});
 		});
 
 		it('should handle range option as string', async () => {
@@ -190,6 +197,7 @@ describe('fromFile.operation - xlsx parsing logic', () => {
 			await execute.call(mockExecuteFunctions, items);
 
 			expect(xlsxUtils.sheet_to_json).toHaveBeenCalledWith(mockWorkbook.Sheets.Sheet1, {
+				raw: false,
 				range: 'A1:B2',
 			});
 		});
@@ -207,6 +215,7 @@ describe('fromFile.operation - xlsx parsing logic', () => {
 			await execute.call(mockExecuteFunctions, items);
 
 			expect(xlsxUtils.sheet_to_json).toHaveBeenCalledWith(mockWorkbook.Sheets.Sheet1, {
+				raw: false,
 				range: 2,
 			});
 		});
@@ -224,6 +233,7 @@ describe('fromFile.operation - xlsx parsing logic', () => {
 			await execute.call(mockExecuteFunctions, items);
 
 			expect(xlsxUtils.sheet_to_json).toHaveBeenCalledWith(mockWorkbook.Sheets.Sheet1, {
+				raw: false,
 				defval: '',
 			});
 		});
@@ -248,6 +258,7 @@ describe('fromFile.operation - xlsx parsing logic', () => {
 			const result = await execute.call(mockExecuteFunctions, items);
 
 			expect(xlsxUtils.sheet_to_json).toHaveBeenCalledWith(mockWorkbook.Sheets.Sheet1, {
+				raw: false,
 				header: 1,
 			});
 
@@ -504,7 +515,9 @@ describe('fromFile.operation - xlsx parsing logic', () => {
 			expect(xlsxRead).toHaveBeenCalledWith(expect.any(String), { raw: true, type: 'binary' });
 
 			// Verify that the correct sheet was used
-			expect(xlsxUtils.sheet_to_json).toHaveBeenCalledWith(mockWorkbook.Sheets.Sheet2, {});
+			expect(xlsxUtils.sheet_to_json).toHaveBeenCalledWith(mockWorkbook.Sheets.Sheet2, {
+				raw: true,
+			});
 		});
 	});
 
