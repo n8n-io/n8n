@@ -39,7 +39,6 @@ import type {
 	INodeCredentialDescription,
 	IExecutePaginationFunctions,
 } from 'n8n-workflow';
-import url from 'node:url';
 
 import { type ExecuteContext, ExecuteSingleContext } from './node-execution-context';
 import { getAdditionalKeys } from './node-execution-context/utils/get-additional-keys';
@@ -186,7 +185,7 @@ export class RoutingNode {
 				}
 
 				if (proxy) {
-					const proxyParsed = url.parse(proxy);
+					const proxyParsed = URL.parse(proxy)!;
 					const proxyProperties = ['host', 'port'];
 
 					for (const property of proxyProperties) {
@@ -203,13 +202,14 @@ export class RoutingNode {
 					}
 
 					itemContext[itemIndex].requestData.options.proxy = {
-						host: proxyParsed.hostname as string,
-						port: parseInt(proxyParsed.port!),
+						host: proxyParsed.hostname,
+						port: parseInt(proxyParsed.port),
 						protocol: proxyParsed.protocol?.replace(/:$/, '') || undefined,
 					};
 
-					if (proxyParsed.auth) {
-						const [username, password] = proxyParsed.auth.split(':');
+					const auth = getAuth(proxyParsed);
+					if (auth) {
+						const [username, password] = auth.split(':');
 						itemContext[itemIndex].requestData.options.proxy!.auth = {
 							username,
 							password,
@@ -1254,4 +1254,13 @@ export class RoutingNode {
 
 		return { credentials, credentialDescription };
 	}
+}
+
+function getAuth(url: URL) {
+	if (!url.username && !url.password) {
+		return null;
+	}
+
+	const user = decodeURIComponent(url.username);
+	return url.password ? `${user}:${decodeURIComponent(url.password)}` : user;
 }

@@ -21,6 +21,7 @@ export type ScheduledTaskContext = {
 	targetId: string;
 	timezone: string;
 	expression: string;
+	// oxlint-disable-next-line typescript/no-deprecated
 	recurrence?: CronContext['recurrence'];
 };
 
