@@ -14,10 +14,6 @@ import { SharedWorkflowRepository } from './shared-workflow.repository';
 import type { User } from '../entities';
 import { WorkflowDependency, WorkflowEntity, WORKFLOW_DEPENDENCY_INDEX_VERSION } from '../entities';
 
-export function runningVersionRowsCondition(dependencyAlias: string, workflowAlias: string) {
-	return `((${workflowAlias}.activeVersionId IS NULL AND ${dependencyAlias}.publishedVersionId IS NULL) OR ${dependencyAlias}.publishedVersionId = ${workflowAlias}.activeVersionId)`;
-}
-
 /**
  * Which workflows an aggregate over the index may span. The roles come from the caller
  * because they are derived from scopes, which live above this layer; everything else about
@@ -163,18 +159,6 @@ export class WorkflowDependencyRepository extends Repository<WorkflowDependency>
 			// SQLite hands back the stored string; Postgres hands back a Date.
 			updatedAt: row.updatedAt instanceof Date ? row.updatedAt : new Date(row.updatedAt),
 		}));
-	}
-
-	async findRunningNodeTypes(): Promise<string[]> {
-		const rows = await this.createQueryBuilder('dependency')
-			.innerJoin(WorkflowEntity, 'workflow', 'workflow.id = dependency.workflowId')
-			.select('dependency.dependencyKey', 'nodeType')
-			.distinct(true)
-			.where('dependency.dependencyType = :dependencyType', { dependencyType: 'nodeType' })
-			.andWhere(runningVersionRowsCondition('dependency', 'workflow'))
-			.getRawMany<{ nodeType: string }>();
-
-		return rows.map(({ nodeType }) => nodeType);
 	}
 
 	/**

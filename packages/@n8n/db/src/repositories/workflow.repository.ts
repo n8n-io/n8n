@@ -20,8 +20,6 @@ import { BaseRepository } from './base-repository';
 import { FolderRepository } from './folder.repository';
 import { SharedWorkflowRepository } from './shared-workflow.repository';
 import { runWorkflowContentWrite } from './workflow-content-write-context';
-import { restrictedNodeTypeMatch, type RestrictedNodeTypes } from './restricted-node-type-match';
-import { runningVersionRowsCondition } from './workflow-dependency.repository';
 import { WorkflowHistoryRepository } from './workflow-history.repository';
 import {
 	WebhookEntity,
@@ -46,9 +44,11 @@ import { isStringArray } from '../utils/is-string-array';
 import { parseListQuerySortBy } from '../utils/list-query-sort';
 import { TimedQuery } from '../utils/timed-query';
 
+export type WorkflowIdsQuery = { query: string; parameters: Record<string, unknown> };
+
 // oxlint-disable-next-line typescript/no-deprecated - Waiting for debt to be payed
 type WorkflowListQueryOptions = ListQuery.Options & {
-	restrictedNodeTypes?: RestrictedNodeTypes;
+	workflowIdsIn?: WorkflowIdsQuery | null;
 };
 
 type ResourceType = 'folder' | 'workflow';
@@ -1017,7 +1017,7 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 				name: true,
 			},
 			filter: options.filter,
-			restrictedNodeTypes: options.restrictedNodeTypes,
+			workflowIdsIn: options.workflowIdsIn,
 		};
 
 		// For union, we need to have the same columns, so add NULL as description for folders
@@ -1228,7 +1228,7 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 
 		this.applyFilters(qb, filtersToApply);
 		this.applyTriggerNodeTypesFilter(qb, options.filter?.triggerNodeTypes as string[] | undefined);
-		this.applyRestrictedNodeTypesFilter(qb, options.restrictedNodeTypes);
+		this.applyWorkflowIdsInFilter(qb, options.workflowIdsIn);
 		this.applySelect(qb, options.select);
 		this.applyRelations(qb, options.select);
 		this.applySorting(qb, options.sortBy);
@@ -1335,7 +1335,7 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 
 		this.applyFilters(qb, options.filter);
 		this.applyTriggerNodeTypesFilter(qb, options.filter?.triggerNodeTypes as string[] | undefined);
-		this.applyRestrictedNodeTypesFilter(qb, options.restrictedNodeTypes);
+		this.applyWorkflowIdsInFilter(qb, options.workflowIdsIn);
 		this.applySelect(qb, options.select);
 		this.applyRelations(qb, options.select);
 		this.applySorting(qb, options.sortBy);
@@ -1603,39 +1603,17 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 			.andWhere('dep.publishedVersionId IS NULL');
 	}
 
-	private applyRestrictedNodeTypesFilter(
+	private applyWorkflowIdsInFilter(
 		qb: SelectQueryBuilder<WorkflowEntity>,
-		restricted: RestrictedNodeTypes | undefined,
+		workflowIdsIn: WorkflowIdsQuery | null | undefined,
 	): void {
-		if (restricted === undefined) return;
+		if (workflowIdsIn === undefined) return;
+		if (workflowIdsIn === null) {
+			qb.andWhere('1 = 0');
+			return;
+		}
 
-		const { condition, parameters } = restrictedNodeTypeMatch(
-			restricted,
-			this.globalConfig.database.type === 'postgresdb',
-		);
-		const subQuery = this.buildRunningNodeTypesByOwnerSubQuery().andWhere(condition, parameters);
-
-		qb.andWhere(`workflow.id IN (${subQuery.getQuery()})`);
-		qb.setParameters(subQuery.getParameters());
-	}
-
-	private buildRunningNodeTypesByOwnerSubQuery() {
-		return this.manager
-			.createQueryBuilder(WorkflowDependency, 'restrictedDep')
-			.select('restrictedDep.workflowId')
-			.distinct(true)
-			.innerJoin(
-				WorkflowEntity,
-				'restrictedWorkflow',
-				'restrictedWorkflow.id = restrictedDep.workflowId',
-			)
-			.innerJoin(
-				SharedWorkflow,
-				'restrictedOwner',
-				"restrictedOwner.workflowId = restrictedDep.workflowId AND restrictedOwner.role = 'workflow:owner'",
-			)
-			.where('restrictedDep.dependencyType = :restrictedDepType', { restrictedDepType: 'nodeType' })
-			.andWhere(runningVersionRowsCondition('restrictedDep', 'restrictedWorkflow'));
+		qb.andWhere(`workflow.id IN (${workflowIdsIn.query})`, workflowIdsIn.parameters);
 	}
 
 	private applyOwnedByRelation(

@@ -1,10 +1,9 @@
 import type { LicenseState } from '@n8n/backend-common';
-import type { WorkflowDependencyRepository } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
 import type { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
-import { NO_RESTRICTED_NODE_TYPES } from '@/workflows/restricted-node-types-provider-proxy.service';
 
+import type { RestrictedWorkflowRepository } from '../database/repositories/restricted-workflow.repository';
 import { NodeTypePolicyRestrictedTypesProvider } from '../restricted-node-types.provider';
 import type {
 	ComposedTypeVerdict,
@@ -15,6 +14,8 @@ const SLACK = 'n8n-nodes-base.slack';
 const SET = 'n8n-nodes-base.set';
 const CODE = 'n8n-nodes-base.code';
 const IN_USE = [SLACK, SET, CODE];
+
+const QUERY = { query: 'SELECT 1', parameters: {} };
 
 const verdicts = (denied: string[]): ComposedTypeVerdict[] =>
 	IN_USE.map((name) => ({
@@ -28,12 +29,12 @@ const verdicts = (denied: string[]): ComposedTypeVerdict[] =>
 describe('NodeTypePolicyRestrictedTypesProvider', () => {
 	const service = mock<TypeAvailabilityPolicyService>();
 	const licenseState = mock<LicenseState>();
-	const workflowDependencyRepository = mock<WorkflowDependencyRepository>();
+	const restrictedWorkflowRepository = mock<RestrictedWorkflowRepository>();
 	const policyEnforcementService = mock<PolicyEnforcementService>();
 	const provider = new NodeTypePolicyRestrictedTypesProvider(
 		service,
 		licenseState,
-		workflowDependencyRepository,
+		restrictedWorkflowRepository,
 		policyEnforcementService,
 	);
 
@@ -41,9 +42,10 @@ describe('NodeTypePolicyRestrictedTypesProvider', () => {
 		vi.resetAllMocks();
 		licenseState.isLicensed.mockReturnValue(true);
 		policyEnforcementService.hasChecksFor.mockReturnValue(true);
-		workflowDependencyRepository.findRunningNodeTypes.mockResolvedValue(IN_USE);
+		restrictedWorkflowRepository.findRunningNodeTypes.mockResolvedValue(IN_USE);
+		restrictedWorkflowRepository.restrictedWorkflowIdsQuery.mockReturnValue(QUERY);
 		service.evaluateComposedTypesForAllProjects.mockResolvedValue({
-			withoutProjectPolicy: verdicts([]),
+			withoutProjectPolicy: verdicts([CODE]),
 			byProject: [],
 		});
 	});
@@ -59,10 +61,10 @@ describe('NodeTypePolicyRestrictedTypesProvider', () => {
 			],
 		});
 
-		const restricted = await provider.findRestrictedNodeTypesInUse();
+		await expect(provider.findRestrictedWorkflowIds()).resolves.toBe(QUERY);
 
 		expect(service.evaluateComposedTypesForAllProjects).toHaveBeenCalledWith('node-types', IN_USE);
-		expect(restricted).toEqual({
+		expect(restrictedWorkflowRepository.restrictedWorkflowIdsQuery).toHaveBeenCalledWith({
 			shared: [CODE],
 			byProjects: [
 				{ projectIds: ['denies-set-1', 'denies-set-2'], nodeTypes: [SET, CODE] },
@@ -75,28 +77,31 @@ describe('NodeTypePolicyRestrictedTypesProvider', () => {
 	it('reports nothing when the license has lapsed, as enforcement stops too', async () => {
 		licenseState.isLicensed.mockReturnValue(false);
 
-		await expect(provider.findRestrictedNodeTypesInUse()).resolves.toEqual(
-			NO_RESTRICTED_NODE_TYPES,
-		);
-		expect(workflowDependencyRepository.findRunningNodeTypes).not.toHaveBeenCalled();
+		await expect(provider.findRestrictedWorkflowIds()).resolves.toBeNull();
+		expect(restrictedWorkflowRepository.findRunningNodeTypes).not.toHaveBeenCalled();
 	});
 
 	it('reports nothing when no policy check runs at workflow start', async () => {
 		policyEnforcementService.hasChecksFor.mockReturnValue(false);
 
-		await expect(provider.findRestrictedNodeTypesInUse()).resolves.toEqual(
-			NO_RESTRICTED_NODE_TYPES,
-		);
+		await expect(provider.findRestrictedWorkflowIds()).resolves.toBeNull();
 		expect(policyEnforcementService.hasChecksFor).toHaveBeenCalledWith('workflowStart');
-		expect(workflowDependencyRepository.findRunningNodeTypes).not.toHaveBeenCalled();
+		expect(restrictedWorkflowRepository.findRunningNodeTypes).not.toHaveBeenCalled();
+	});
+
+	it('reports nothing when no policy denies a node type in use', async () => {
+		service.evaluateComposedTypesForAllProjects.mockResolvedValue({
+			withoutProjectPolicy: verdicts([]),
+			byProject: [{ projectId: 'denies-nothing', verdicts: verdicts([]) }],
+		});
+
+		await expect(provider.findRestrictedWorkflowIds()).resolves.toBeNull();
+		expect(restrictedWorkflowRepository.restrictedWorkflowIdsQuery).not.toHaveBeenCalled();
 	});
 
 	it('shares one evaluation between concurrent requests', async () => {
-		await Promise.all([
-			provider.findRestrictedNodeTypesInUse(),
-			provider.findRestrictedNodeTypesInUse(),
-		]);
-		await provider.findRestrictedNodeTypesInUse();
+		await Promise.all([provider.findRestrictedWorkflowIds(), provider.findRestrictedWorkflowIds()]);
+		await provider.findRestrictedWorkflowIds();
 
 		expect(service.evaluateComposedTypesForAllProjects).toHaveBeenCalledTimes(2);
 	});

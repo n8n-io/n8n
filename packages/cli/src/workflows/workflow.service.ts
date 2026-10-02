@@ -1,16 +1,16 @@
 import { UpdateWorkflowHistoryVersionDto } from '@n8n/api-types';
-import type { WorkflowListPublicationStatus } from '@n8n/api-types';
+import type { WorkflowListPublicationStatus, WorkflowExecutionBlockCause } from '@n8n/api-types';
 import { LicenseState, Logger } from '@n8n/backend-common';
 import { EventService, RoleService } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import type {
 	User,
 	ListQueryDb,
-	RestrictedNodeTypes,
 	Project,
 	WorkflowFolderUnionFull,
 	WorkflowHistory,
 	OperationContext,
+	WorkflowIdsQuery,
 } from '@n8n/db';
 import {
 	isStringArray,
@@ -303,8 +303,8 @@ export class WorkflowService {
 			options,
 		);
 
-		const restrictedNodeTypes = await this.resolveRestrictedNodeTypes(options);
-		const listOptions = restrictedNodeTypes ? { ...options, restrictedNodeTypes } : options;
+		const workflowIdsIn = await this.resolveRestrictedWorkflowIds(options);
+		const listOptions = workflowIdsIn === undefined ? options : { ...options, workflowIdsIn };
 
 		// Use the new subquery-based repository methods
 		if (includeFolders) {
@@ -396,13 +396,17 @@ export class WorkflowService {
 		return parentWorkflow ? parentWorkflowId : undefined;
 	}
 
-	private async resolveRestrictedNodeTypes(
+	private async resolveRestrictedWorkflowIds(
 		options?: ListQuery.Options,
-	): Promise<RestrictedNodeTypes | undefined> {
+	): Promise<WorkflowIdsQuery | null | undefined> {
 		const executionBlockedBy = options?.filter?.executionBlockedBy;
-		if (!isStringArray(executionBlockedBy) || !executionBlockedBy.includes('restrictedNode')) return undefined;
+		if (
+			!isStringArray(executionBlockedBy) ||
+			!executionBlockedBy.includes('restrictedNode' satisfies WorkflowExecutionBlockCause)
+		)
+			return undefined;
 
-		return await this.restrictedNodeTypesProvider.findRestrictedNodeTypesInUse();
+		return await this.restrictedNodeTypesProvider.findRestrictedWorkflowIds();
 	}
 
 	/**

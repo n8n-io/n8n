@@ -100,7 +100,11 @@ export { WorkflowStatisticsRepository } from './workflow-statistics.repository';
 export { WorkflowTagMappingRepository } from './workflow-tag-mapping.repository';
 export { SharedWorkflowRepository } from './shared-workflow.repository';
 export { SharedCredentialsRepository } from './shared-credentials.repository';
-export { WorkflowRepository, agentToolReferenceWhere } from './workflow.repository';
+export {
+	WorkflowRepository,
+	agentToolReferenceWhere,
+	type WorkflowIdsQuery,
+} from './workflow.repository';
 export { WorkflowPublicationOutboxRepository } from './workflow-publication-outbox.repository';
 export { WorkflowPublicationRetryStateRepository } from './workflow-publication-retry-state.repository';
 export {
@@ -139,7 +143,6 @@ export {
 	WorkflowDependencies,
 	type NodeUsageScope,
 } from './workflow-dependency.repository';
-export type { NodeTypesInProjects, RestrictedNodeTypes } from './restricted-node-type-match';
 export { WebhookRepository } from './webhook.repository';
 export { UserRepository } from './user.repository';
 export { SecretsProviderConnectionRepository } from './secrets-provider-connection.repository.ee';

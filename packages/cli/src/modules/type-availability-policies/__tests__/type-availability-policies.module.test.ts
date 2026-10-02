@@ -81,18 +81,14 @@ describe('TypeAvailabilityPoliciesModule', () => {
 	}, 30_000);
 
 	it('answers the workflow list proxy from its restricted node types provider on init', async () => {
-		const restricted = {
-			shared: ['n8n-nodes-base.slack'],
-			byProjects: [],
-			nodeTypesInUse: ['n8n-nodes-base.slack'],
-		};
-		provider.findRestrictedNodeTypesInUse.mockResolvedValue(restricted);
+		const restricted = { query: 'SELECT 1', parameters: {} };
+		provider.findRestrictedWorkflowIds.mockResolvedValue(restricted);
 		const module = new TypeAvailabilityPoliciesModule();
 
 		await module.init();
 
 		await expect(
-			Container.get(RestrictedNodeTypesProviderProxy).findRestrictedNodeTypesInUse(),
+			Container.get(RestrictedNodeTypesProviderProxy).findRestrictedWorkflowIds(),
 		).resolves.toEqual(restricted);
 	}, 30_000);
 
