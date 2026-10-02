@@ -21,10 +21,6 @@ import { BadRequestError, UnsupportedMediaTypeError } from '@n8n/errors';
 import { License } from '@/license';
 import { assertContentType } from '@/public-api/media-types/content-type';
 import type { RequestBodyHandler } from '@/public-api/media-types/request-body';
-import {
-	JSON_REQUEST_BODY_MEDIA,
-	requestBodyHandlerFor,
-} from '@/public-api/media-types/request-body';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import { USER_QUOTA_FORBIDDEN_MESSAGE } from '@/public-api/constants';
 import type { ValidatedParamArg } from '@/public-api/public-api-route-resolver';
@@ -96,10 +92,9 @@ export class PublicApiControllerRegistry {
 			);
 
 			const bodyArg = findBodyArg(resolvedArgs);
-			const bodyDto = bodyArg?.dto;
-			const bodyRequired = bodyDto ? (bodyArg?.required ?? isRequestBodyRequired(bodyDto)) : false;
-			const bodyMedia = bodyArg?.media ?? JSON_REQUEST_BODY_MEDIA;
-			const bodyHandler = bodyDto ? requestBodyHandlerFor(bodyMedia) : undefined;
+			const bodyRequired = bodyArg
+				? (bodyArg.required ?? isRequestBodyRequired(bodyArg.dto))
+				: false;
 
 			const handler = async (req: Request, res: Response) => {
 				const args: unknown[] = [req, res];
@@ -111,15 +106,15 @@ export class PublicApiControllerRegistry {
 						continue;
 					}
 
-					const isBodyArgWithHandler = arg.type === 'body' && bodyHandler;
-					const input = isBodyArgWithHandler ? bodyHandler.readInput(req) : req[arg.type];
+					const isBodyArg = arg.type === 'body' && bodyArg;
+					const input = isBodyArg ? bodyArg.handler.readInput(req) : req[arg.type];
 
 					const output = arg.dto.safeParse(input);
 					if (output.success) {
 						args.push(output.data);
 					} else {
-						const message = isBodyArgWithHandler
-							? bodyHandler.formatValidationError(output.error)
+						const message = isBodyArg
+							? bodyArg.handler.formatValidationError(output.error)
 							: formatValidationError(arg.type, output.error);
 						throw new BadRequestError(message);
 					}
@@ -172,8 +167,8 @@ export class PublicApiControllerRegistry {
 			}
 
 			// After every access gate, the body's Content-Type is checked and then parsed.
-			if (bodyHandler) {
-				middlewares.push(this.createBodyMiddleware(bodyMedia, bodyRequired, bodyHandler));
+			if (bodyArg) {
+				middlewares.push(this.createBodyMiddleware(bodyArg.media, bodyRequired, bodyArg.handler));
 			}
 
 			middlewares.push(...controllerMiddlewares, ...(route.middlewares ?? []));

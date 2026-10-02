@@ -2,10 +2,6 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { parse } from 'yaml';
 
-import {
-	JSON_REQUEST_BODY_MEDIA,
-	requestBodyHandlerFor,
-} from '@/public-api/media-types/request-body';
 import { resolvePublicApiRoutes } from '@/public-api/public-api-route-resolver';
 
 import { buildRequestBodyJsonSchema, getDecoratorGeneratedOperations } from '../decorator-routes';
@@ -39,15 +35,14 @@ function schemaInSpecFile(handlerName: string, mediaType: string): unknown {
 
 describe('buildRequestBodyJsonSchema', () => {
 	const discoverableRoutesWithBody = resolvePublicApiRoutes().filter(
-		(route) =>
-			route.requestBodyDto &&
-			requestBodyHandlerFor(route.requestBodyMedia ?? JSON_REQUEST_BODY_MEDIA).discoverable,
+		(route) => route.requestBodyDto && route.requestBodyHandler?.discoverable,
 	);
 
 	it.each(discoverableRoutesWithBody)('$handlerName matches its committed spec file', (route) => {
-		const mediaType = (route.requestBodyMedia ?? JSON_REQUEST_BODY_MEDIA).mediaType;
+		assert(route.requestBodyMedia, 'expected a route with a body to have a resolved media type');
+
 		expect(buildRequestBodyJsonSchema(route)).toEqual(
-			schemaInSpecFile(route.handlerName, mediaType),
+			schemaInSpecFile(route.handlerName, route.requestBodyMedia.mediaType),
 		);
 	});
 });

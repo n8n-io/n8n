@@ -12,10 +12,6 @@ import { isRecord } from '@n8n/utils/is-record';
 import { UnexpectedError } from 'n8n-workflow';
 import { z } from 'zod';
 
-import {
-	JSON_REQUEST_BODY_MEDIA,
-	requestBodyHandlerFor,
-} from '@/public-api/media-types/request-body';
 import type { ResolvedPublicApiRoute } from '@/public-api/public-api-route-resolver';
 import {
 	isRequestBodyRequired,
@@ -170,10 +166,10 @@ function buildPathParams(route: ResolvedPublicApiRoute): z.AnyZodObject | undefi
 function buildRequestBody(
 	route: ResolvedPublicApiRoute,
 ): NonNullable<RouteConfig['request']>['body'] {
-	if (!route.requestBodyDto) return undefined;
+	if (!route.requestBodyDto || !route.requestBodyHandler) return undefined;
 
 	const required = route.requestBodyRequired ?? isRequestBodyRequired(route.requestBodyDto);
-	const handler = requestBodyHandlerFor(route.requestBodyMedia ?? JSON_REQUEST_BODY_MEDIA);
+	const handler = route.requestBodyHandler;
 
 	return {
 		...(required ? { required: true } : {}),
@@ -240,8 +236,8 @@ function buildResponses(
 	if (route.requestBodyDto ?? route.requestQueryDto) {
 		responses[400] = ERROR_RESPONSE_REFS[400];
 	}
-	if (route.requestBodyDto) {
-		const handler = requestBodyHandlerFor(route.requestBodyMedia ?? JSON_REQUEST_BODY_MEDIA);
+	if (route.requestBodyDto && route.requestBodyHandler) {
+		const handler = route.requestBodyHandler;
 		for (const status of handler.errorStatuses) {
 			if (!isDocumentedErrorStatus(status)) {
 				throw new UnexpectedError(
