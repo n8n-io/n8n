@@ -409,7 +409,7 @@ The design leans on a few ideas working together.
   handler's signal aborts, unless the run is already recorded as dispatched.
   A handler that stops on this abort uses up an attempt, as when the reaper takes
   back an expired lease, even if a later renewal kept the claim.
-  A run still pending after sixty leases logs a warning, since it may be stuck.
+  A run still running after sixty leases logs a warning, since it may be stuck.
 - **Fencing.** Each claim carries a version number (an *epoch*) that increases every
   time a run is claimed. Every final write ("mark succeeded", "mark failed") is
   guarded by that number. So if a slow server comes back from the dead after its
