@@ -55,6 +55,7 @@ export async function handBackUnstartedJobs(
 	for (const job of unstartedJobs) {
 		const jobId = String(job.id);
 		raiseAttemptsForHandBack(job);
+		await placeAtFrontOfBand(job);
 		try {
 			await job.moveToFailed(new JobHandedBackError(jobId));
 			handedBack.push(jobId);
