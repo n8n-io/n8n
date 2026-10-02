@@ -97,7 +97,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.invalid_auth_token](public.invalid_auth_token.md) | 2 |  | BASE TABLE |
 | [public.mcp_registry_server](public.mcp_registry_server.md) | 7 |  | BASE TABLE |
 | [public.migration_finding](public.migration_finding.md) | 10 |  | BASE TABLE |
-| [public.migration_finding_sync](public.migration_finding_sync.md) | 3 |  | BASE TABLE |
+| [public.migration_finding_sync](public.migration_finding_sync.md) | 5 |  | BASE TABLE |
 | [public.oauth_access_tokens](public.oauth_access_tokens.md) | 3 |  | BASE TABLE |
 | [public.oauth_authorization_codes](public.oauth_authorization_codes.md) | 13 |  | BASE TABLE |
 | [public.oauth_clients](public.oauth_clients.md) | 10 |  | BASE TABLE |
@@ -1325,6 +1325,8 @@ erDiagram
 }
 "public.migration_finding_sync" {
   varchar_128_ ruleSetFingerprint
+  timestamp_3__with_time_zone startedAt
+  varchar_16_ status
   timestamp_3__with_time_zone syncedAt
   varchar_16_ targetVersion
 }

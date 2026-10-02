@@ -5,17 +5,20 @@
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
 | ruleSetFingerprint | varchar(128) |  | false |  |  | Hash of the rule ids active during the last scan. A change triggers a full re-scan. |
-| syncedAt | timestamp(3) with time zone |  | false |  |  | When the last scan for this target version wrote to migration_finding. |
+| startedAt | timestamp(3) with time zone |  | true |  |  | When the current or last run claimed the record. NULL for rows older than claims. |
+| status | varchar(16) | 'complete'::character varying | false |  |  | MigrationFindingSyncStatus enum: "running", "complete", "failed". |
+| syncedAt | timestamp(3) with time zone |  | true |  |  | When the last scan for this target version wrote to migration_finding. |
 | targetVersion | varchar(16) |  | false |  |  | BreakingChangeVersion enum: one sync record per target version. |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
+| CHK_migration_finding_sync_status | CHECK | CHECK (((status)::text = ANY ((ARRAY['running'::character varying, 'complete'::character varying, 'failed'::character varying])::text[]))) |
 | CHK_migration_finding_sync_targetVersion | CHECK | CHECK ((("targetVersion")::text = ANY ((ARRAY['v2'::character varying, 'v3'::character varying])::text[]))) |
 | PK_2c7b962263dcafdf86a0ba7086d | PRIMARY KEY | PRIMARY KEY ("targetVersion") |
 | migration_finding_sync_ruleSetFingerprint_not_null | n | NOT NULL "ruleSetFingerprint" |
-| migration_finding_sync_syncedAt_not_null | n | NOT NULL "syncedAt" |
+| migration_finding_sync_status_not_null | n | NOT NULL status |
 | migration_finding_sync_targetVersion_not_null | n | NOT NULL "targetVersion" |
 
 ## Indexes
@@ -32,6 +35,8 @@ erDiagram
 
 "public.migration_finding_sync" {
   varchar_128_ ruleSetFingerprint
+  timestamp_3__with_time_zone startedAt
+  varchar_16_ status
   timestamp_3__with_time_zone syncedAt
   varchar_16_ targetVersion
 }
