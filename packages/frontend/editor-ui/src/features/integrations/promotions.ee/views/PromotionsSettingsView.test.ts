@@ -3,7 +3,6 @@ import { screen, waitFor, within } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 
 import { createComponentRenderer } from '@/__tests__/render';
-import { getDropdownItems } from '@/__tests__/utils';
 import { MODAL_CANCEL, MODAL_CONFIRM } from '@/app/constants';
 import type * as PromotionsApi from '../promotionsSettings.api';
 import type { PromotionConnection, PromotionProvider } from '../promotionsSettings.api';
@@ -102,14 +101,13 @@ const openProviderDialog = async (row?: HTMLElement) => {
 
 // Select options stay inside the dialog.
 const selectInDialog = async (select: HTMLElement, label: string) => {
-	await userEvent.click(within(select).getByRole('combobox'));
-	await userEvent.click(await within(select).findByText(label));
+	await userEvent.click(select);
+	await userEvent.click(await screen.findByRole('option', { name: label }));
 };
 
 const selectProvider = async (name: string) => {
-	const items = await getDropdownItems(screen.getByTestId('promotion-connection-provider-select'));
-	const option = Array.from(items).find((item) => item.textContent?.includes(name));
-	await userEvent.click(option as Element);
+	await userEvent.click(screen.getByTestId('promotion-connection-provider-select'));
+	await userEvent.click(await screen.findByRole('option', { name }));
 };
 
 const fillConnectionBasics = async (name: string, remoteUrl: string) => {
