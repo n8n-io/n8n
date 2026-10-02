@@ -1,0 +1,101 @@
+operationId: importPackageSelection
+tags:
+  - N8nPackage
+summary: 'Beta: Import a selected subset of workflows from an n8n package'
+description: '**Beta** — breaking changes may still occur without major version bump. Imports a chosen subset of workflows from one source project of a gzip-compressed tar package (`.n8np`), instead of the whole package. Send the archive as the multipart field `package`. The import is **additive** (cherry-pick): it never removes a workflow the selection omits. It creates or updates only the workflows named in `selectedWorkflowIds`, and deletes only the destination workflows named in `deletedWorkflowIds`. `selectedProjectId` names the single source project the selection is scoped to; the selected workflows land in the instance project with that same id, created if it does not yet exist. The package must be a project package (a workflow package is rejected with a 400). The cherry-pick conflict policies (folder, tag, project, and deletion mode) are fixed; only `workflowConflictPolicy` and `workflowIdPolicy` are configurable here.'
+x-required-scope: workflow:import
+x-eov-operation-id: unreachable
+x-eov-operation-handler: v1/handlers/decorator-routed.handler
+x-decorator-routed: true
+requestBody:
+  required: true
+  content:
+    multipart/form-data:
+      schema:
+        type: object
+        properties:
+          package:
+            type: string
+            description: Gzip-compressed tar package (`.n8np`).
+            format: binary
+          selectedProjectId:
+            type: string
+            minLength: 1
+            description: Id of the single source project the selection is scoped to, as it appears in the package.
+          selectedWorkflowIds:
+            type: string
+            description: JSON-encoded array of source workflow ids to import from `selectedProjectId`, e.g. `["wf-1","wf-2"]`. An empty array (`[]`) is allowed — useful for a delete-only request. Ids outside the scoped project are dropped.
+          deletedWorkflowIds:
+            type: string
+            description: Optional JSON-encoded array of destination workflow ids to remove from the scoped project, e.g. `["wf-3"]`. Removal happens even under the additive profile. An already-archived or absent id is a no-op unless it is also a selected destination. Must not contain a selected workflow's destination id. Needs the `workflow:delete` scope.
+          workflowConflictPolicy:
+            type: string
+            enum:
+              - new-version
+              - fail
+              - skip
+            default: new-version
+            description: What happens when a selected workflow matches an existing workflow by source id in the target project. `new-version` (default) updates it and creates a new version; `fail` rejects the import when any matching workflow exists; `skip` leaves matching workflows unchanged. An archive state change also needs the `workflow:delete` scope.
+          workflowIdPolicy:
+            type: string
+            enum:
+              - new
+              - source
+            default: source
+            description: Controls the id each newly created workflow receives. `source` (default) reuses the package's own workflow id on the target instance; `new` mints a fresh id and records the package id as `sourceWorkflowId`. Workflows matched to an existing workflow keep that workflow's current id, regardless of policy.
+        required:
+          - package
+          - selectedProjectId
+          - selectedWorkflowIds
+        additionalProperties: false
+responses:
+  '200':
+    description: Operation successful.
+    content:
+      application/json:
+        schema:
+          $ref: ../../../../shared/spec/schemas/importResultDto.generated.yml
+  '400':
+    $ref: ../../../../shared/spec/responses/badRequest.yml
+  '401':
+    $ref: ../../../../shared/spec/responses/unauthorized.yml
+  '403':
+    $ref: ../../../../shared/spec/responses/forbidden.yml
+  '409':
+    description: Import blocked by at least one conflict among the issues — a workflow source-id conflict, a folder conflict, a tag conflict (rename drift or name collision), a variable whose bundled value differs from the resolved target, or a selected destination also named for deletion.
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            message:
+              type: string
+            issues:
+              type: array
+              items:
+                $ref: ../../../../shared/spec/schemas/importBlockingIssue.generated.yml
+          required:
+            - message
+            - issues
+  '413':
+    $ref: ../../../../shared/spec/responses/contentTooLarge.yml
+  '415':
+    $ref: ../../../../shared/spec/responses/unsupportedMediaType.yml
+  '422':
+    description: Import blocked by non-conflict issues only — for example unresolved credentials or variables, node types this instance does not have, a delete the caller may not perform, or variable stubs whose creation would exceed the instance variable quota.
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            message:
+              type: string
+            issues:
+              type: array
+              items:
+                $ref: ../../../../shared/spec/schemas/importBlockingIssue.generated.yml
+          required:
+            - message
+            - issues
+  '500':
+    $ref: ../../../../shared/spec/responses/internalServerError.yml

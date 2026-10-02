@@ -30,29 +30,6 @@ export declare namespace WorkflowRequest {
 	type GetVersion = AuthenticatedRequest<{ id: string; versionId: string }, {}, {}, {}>;
 }
 
-export declare namespace PackageRequest {
-	type Import = AuthenticatedRequest<
-		{},
-		{},
-		{ projectId?: string; folderId?: string },
-		Record<string, never>
-	>;
-
-	type ImportSelection = AuthenticatedRequest<
-		{},
-		{},
-		{
-			selectedProjectId?: string;
-			// Multipart text fields carrying JSON-string arrays; parsed by the DTO.
-			selectedWorkflowIds?: string;
-			deletedWorkflowIds?: string;
-			workflowConflictPolicy?: string;
-			workflowIdPolicy?: string;
-		},
-		Record<string, never>
-	>;
-}
-
 export declare namespace UserRequest {
 	export type Invite = AuthenticatedRequest<{}, {}, Array<{ email: string }>>;
 

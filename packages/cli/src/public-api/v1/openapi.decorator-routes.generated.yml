@@ -160,6 +160,12 @@ paths:
       $ref: ./handlers/settings/spec/paths/getLdapConfiguration.generated.yml
     put:
       $ref: ./handlers/settings/spec/paths/updateLdapConfiguration.generated.yml
+  /n8n-packages/import:
+    post:
+      $ref: ./handlers/n8n-packages/spec/paths/importPackage.generated.yml
+  /n8n-packages/import-selection:
+    post:
+      $ref: ./handlers/n8n-packages/spec/paths/importPackageSelection.generated.yml
   /node-type-policies/instance:
     get:
       $ref: ./handlers/node-type-policies/spec/paths/getNodeTypeInstancePolicy.generated.yml

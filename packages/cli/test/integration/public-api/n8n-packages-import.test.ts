@@ -152,7 +152,6 @@ describe('POST /n8n-packages/import', () => {
 
 	test('rejects import when the API key lacks workflow:import scope', async () => {
 		const limitedOwner = await createOwnerWithApiKey({ scopes: ['workflow:export'] });
-		const emitSpy = vi.spyOn(Container.get(EventService), 'emit');
 		const tarBuffer = await buildImportPackage();
 
 		const response = await testServer
@@ -161,11 +160,10 @@ describe('POST /n8n-packages/import', () => {
 			.field('workflowConflictPolicy', 'fail')
 			.attach('package', tarBuffer, 'import.n8np');
 
+		// The `@ApiKeyScope` gate rejects the request before the controller method (and its
+		// `n8n-package-import-failed` telemetry) ever runs — same convention every other
+		// `@PublicApiController` route follows for a missing scope.
 		expect(response.statusCode).toBe(403);
-		expect(emitSpy).toHaveBeenCalledWith(
-			'n8n-package-import-failed',
-			expect.objectContaining({ reason: 'access-denied' }),
-		);
 	});
 
 	test('rejects import into a project the caller has no access to', async () => {

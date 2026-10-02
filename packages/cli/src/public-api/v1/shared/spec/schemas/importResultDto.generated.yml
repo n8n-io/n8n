@@ -1,0 +1,276 @@
+type: object
+properties:
+  package:
+    type: object
+    properties:
+      sourceN8nVersion:
+        type: string
+      sourceId:
+        type: string
+      exportedAt:
+        type: string
+    required:
+      - sourceN8nVersion
+      - sourceId
+      - exportedAt
+  workflows:
+    type: array
+    items:
+      type: object
+      properties:
+        sourceWorkflowId:
+          type: string
+        localId:
+          type: string
+        name:
+          type: string
+        projectId:
+          type: string
+        parentFolderId:
+          type: string
+          nullable: true
+        activeVersionId:
+          type: string
+          nullable: true
+        isArchived:
+          type: boolean
+        publishing:
+          type: object
+          properties:
+            state:
+              type: string
+              enum:
+                - published
+                - unpublished
+                - unchanged
+                - blocked
+                - failed
+            error:
+              type: string
+            blockedReason:
+              type: string
+              enum:
+                - stub-credential
+                - missing-node-type
+            skippedPublishReason:
+              type: string
+              enum:
+                - stub-credential
+                - missing-node-type
+          required:
+            - state
+        status:
+          type: string
+          enum:
+            - created
+            - updated
+            - skipped
+      required:
+        - sourceWorkflowId
+        - localId
+        - name
+        - projectId
+        - parentFolderId
+        - activeVersionId
+        - isArchived
+        - publishing
+        - status
+  removedWorkflows:
+    type: array
+    items:
+      type: object
+      properties:
+        workflowId:
+          type: string
+        name:
+          type: string
+        projectId:
+          type: string
+        parentFolderId:
+          type: string
+          nullable: true
+        deletion:
+          type: string
+          enum:
+            - archived
+            - deleted
+      required:
+        - workflowId
+        - name
+        - projectId
+        - parentFolderId
+        - deletion
+  removedFolders:
+    type: array
+    items:
+      type: object
+      properties:
+        folderId:
+          type: string
+        name:
+          type: string
+        projectId:
+          type: string
+        parentFolderId:
+          type: string
+          nullable: true
+      required:
+        - folderId
+        - name
+        - projectId
+        - parentFolderId
+  folders:
+    type: array
+    items:
+      type: object
+      properties:
+        sourceFolderId:
+          type: string
+        localId:
+          type: string
+        name:
+          type: string
+        parentFolderId:
+          type: string
+          nullable: true
+        status:
+          type: string
+          enum:
+            - created
+            - skipped
+      required:
+        - sourceFolderId
+        - localId
+        - name
+        - parentFolderId
+        - status
+  projects:
+    type: array
+    items:
+      type: object
+      properties:
+        sourceProjectId:
+          type: string
+        localId:
+          type: string
+        name:
+          type: string
+        status:
+          type: string
+          enum:
+            - created
+            - updated
+            - skipped
+      required:
+        - sourceProjectId
+        - localId
+        - name
+        - status
+  bindings:
+    type: object
+    properties:
+      workflows:
+        type: object
+        additionalProperties:
+          type: string
+      credentials:
+        type: object
+        additionalProperties:
+          type: string
+    required:
+      - workflows
+      - credentials
+  credentials:
+    type: object
+    properties:
+      matched:
+        type: array
+        items:
+          type: string
+      stubbed:
+        type: array
+        items:
+          type: string
+    required:
+      - matched
+      - stubbed
+  dataTables:
+    type: object
+    properties:
+      matched:
+        type: number
+      created:
+        type: number
+    required:
+      - matched
+      - created
+  variables:
+    type: object
+    properties:
+      matched:
+        type: array
+        items:
+          type: string
+      missing:
+        type: array
+        items:
+          type: string
+      created:
+        type: array
+        items:
+          type: string
+      stubbed:
+        type: array
+        items:
+          type: string
+      updated:
+        type: array
+        items:
+          type: string
+    required:
+      - matched
+      - missing
+      - created
+      - stubbed
+      - updated
+  tags:
+    type: object
+    properties:
+      matched:
+        type: array
+        items:
+          type: string
+      created:
+        type: array
+        items:
+          type: string
+      renamed:
+        type: array
+        items:
+          type: string
+      reconciled:
+        type: array
+        items:
+          type: string
+      skipped:
+        type: array
+        items:
+          type: string
+    required:
+      - matched
+      - created
+      - renamed
+      - reconciled
+      - skipped
+required:
+  - package
+  - workflows
+  - removedWorkflows
+  - removedFolders
+  - folders
+  - projects
+  - bindings
+  - credentials
+  - dataTables
+  - variables
+  - tags

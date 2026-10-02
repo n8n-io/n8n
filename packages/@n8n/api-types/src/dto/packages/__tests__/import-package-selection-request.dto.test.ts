@@ -3,8 +3,20 @@ import {
 	IMPORT_PACKAGE_SELECTION_REQUEST_FORM_FIELDS,
 } from '../import-package-request.dto';
 
+/** Matches `publicApiUploadedFileSchema`, the shape multer hands the registry for a parsed file part. */
+function packageFile() {
+	return {
+		fieldname: 'package',
+		originalname: 'export.n8np',
+		mimetype: 'application/gzip',
+		size: 5,
+		buffer: new Uint8Array([1, 2, 3, 4, 5]),
+	};
+}
+
 describe('ImportPackageSelectionRequestDto', () => {
 	const base = {
+		package: packageFile(),
 		selectedProjectId: 'P1',
 		selectedWorkflowIds: '["WFA","WFB"]',
 	};
@@ -14,6 +26,7 @@ describe('ImportPackageSelectionRequestDto', () => {
 		expect(result.success).toBe(true);
 		if (result.success) {
 			expect(result.data).toEqual({
+				package: packageFile(),
 				selectedProjectId: 'P1',
 				selectedWorkflowIds: ['WFA', 'WFB'],
 				deletedWorkflowIds: undefined,
@@ -31,6 +44,7 @@ describe('ImportPackageSelectionRequestDto', () => {
 		expect(result.success).toBe(true);
 		if (result.success) {
 			expect(result.data).toEqual({
+				package: packageFile(),
 				selectedProjectId: 'P1',
 				selectedWorkflowIds: ['WFA', 'WFB'],
 				deletedWorkflowIds: ['WFC'],
@@ -42,6 +56,7 @@ describe('ImportPackageSelectionRequestDto', () => {
 
 	it('accepts an empty selectedWorkflowIds array', () => {
 		const result = ImportPackageSelectionRequestDto.safeParse({
+			package: packageFile(),
 			selectedProjectId: 'P1',
 			selectedWorkflowIds: '[]',
 		});
@@ -62,6 +77,15 @@ describe('ImportPackageSelectionRequestDto', () => {
 		}
 	});
 
+	it('rejects a request missing the package file', () => {
+		expect(
+			ImportPackageSelectionRequestDto.safeParse({
+				selectedProjectId: 'P1',
+				selectedWorkflowIds: '["WFA"]',
+			}).success,
+		).toBe(false);
+	});
+
 	it.each([
 		{ name: 'missing (blank)', selectedWorkflowIds: '' },
 		{ name: 'invalid JSON', selectedWorkflowIds: 'not json' },
@@ -72,8 +96,11 @@ describe('ImportPackageSelectionRequestDto', () => {
 		{ name: 'a whitespace-only element', selectedWorkflowIds: '["WFA","   "]' },
 	])('rejects selectedWorkflowIds that is $name', ({ selectedWorkflowIds }) => {
 		expect(
-			ImportPackageSelectionRequestDto.safeParse({ selectedProjectId: 'P1', selectedWorkflowIds })
-				.success,
+			ImportPackageSelectionRequestDto.safeParse({
+				package: packageFile(),
+				selectedProjectId: 'P1',
+				selectedWorkflowIds,
+			}).success,
 		).toBe(false);
 	});
 
@@ -88,11 +115,18 @@ describe('ImportPackageSelectionRequestDto', () => {
 	});
 
 	it.each([
-		{ name: 'absent', request: { selectedWorkflowIds: '["WFA"]' } },
-		{ name: 'empty', request: { selectedProjectId: '', selectedWorkflowIds: '["WFA"]' } },
+		{ name: 'absent', request: { package: packageFile(), selectedWorkflowIds: '["WFA"]' } },
+		{
+			name: 'empty',
+			request: { package: packageFile(), selectedProjectId: '', selectedWorkflowIds: '["WFA"]' },
+		},
 		{
 			name: 'whitespace-only',
-			request: { selectedProjectId: '   ', selectedWorkflowIds: '["WFA"]' },
+			request: {
+				package: packageFile(),
+				selectedProjectId: '   ',
+				selectedWorkflowIds: '["WFA"]',
+			},
 		},
 	])('rejects a $name selectedProjectId', ({ request }) => {
 		expect(ImportPackageSelectionRequestDto.safeParse(request).success).toBe(false);
@@ -135,27 +169,19 @@ describe('ImportPackageSelectionRequestDto', () => {
 		});
 	});
 
-	it('does not accept a target projectId/folderId, the locked cherry-pick policies, nor bindings', () => {
-		const result = ImportPackageSelectionRequestDto.safeParse({
-			...base,
-			projectId: 'proj-1',
-			folderId: 'fld-1',
-			folderConflictPolicy: 'overwrite',
-			tagConflictPolicy: 'fail',
-			projectConflictPolicy: 'overwrite',
-			overwriteDeletionPolicy: 'hard-delete',
-			bindings: '{"credentials":{"a":"b"}}',
-		});
-		expect(result.success).toBe(true);
-		if (result.success) {
-			// The DTO strips unknown fields instead of rejecting the request.
-			expect(result.data).not.toHaveProperty('projectId');
-			expect(result.data).not.toHaveProperty('folderId');
-			expect(result.data).not.toHaveProperty('folderConflictPolicy');
-			expect(result.data).not.toHaveProperty('tagConflictPolicy');
-			expect(result.data).not.toHaveProperty('projectConflictPolicy');
-			expect(result.data).not.toHaveProperty('overwriteDeletionPolicy');
-			expect(result.data).not.toHaveProperty('bindings');
+	it('rejects a target projectId/folderId, the locked cherry-pick policies, and bindings (strict schema)', () => {
+		const rejectedExtras = [
+			{ projectId: 'proj-1' },
+			{ folderId: 'fld-1' },
+			{ folderConflictPolicy: 'overwrite' },
+			{ tagConflictPolicy: 'fail' },
+			{ projectConflictPolicy: 'overwrite' },
+			{ overwriteDeletionPolicy: 'hard-delete' },
+			{ bindings: '{"credentials":{"a":"b"}}' },
+		];
+
+		for (const extra of rejectedExtras) {
+			expect(ImportPackageSelectionRequestDto.safeParse({ ...base, ...extra }).success).toBe(false);
 		}
 	});
 
