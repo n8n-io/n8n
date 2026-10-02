@@ -441,7 +441,7 @@ async function compileNextWorkflowSource(
 ): Promise<WorkflowSourceCompileResult> {
 	const workspace = context.workspace;
 	if (!workspace) return await compileTypeScriptWorkflowSource(context, filePath, abortSignal);
-	const prepared = nextWorkspaceFiles(source);
+	const prepared = nextWorkspaceFiles(source, context);
 	if (!prepared.ok) {
 		return {
 			success: false,

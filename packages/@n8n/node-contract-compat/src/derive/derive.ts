@@ -284,20 +284,22 @@ function locatorLift(property: INodeProperties, path: string, nested: boolean): 
 }
 
 function optionsLift(property: INodeProperties, path: string, base: JsonSchema): FieldLift {
-	if (isDynamic(property)) {
-		// Dynamic lists return strings or numbers.
+	const values: readonly NodeParameterValue[] = isINodePropertyOptionsList(property.options)
+		? property.options.map((option) => option.value)
+		: [];
+	// Dynamic lists return strings or numbers. A list without options takes an ID by expression.
+	if (isDynamic(property) || values.length === 0) {
 		const value: JsonSchema = { anyOf: [{ type: 'string' }, { type: 'number' }] };
 		return leaf({ ...base, ...value, 'x-n8n-hint': 'Dynamic list value' }, 'loose', [
 			{
 				kind: 'loadOptions',
 				field: path,
-				detail: property.typeOptions?.loadOptionsMethod ?? 'routing loadOptions',
+				detail:
+					property.typeOptions?.loadOptionsMethod ??
+					(isDynamic(property) ? 'routing loadOptions' : 'no options'),
 			},
 		]);
 	}
-	const values: readonly NodeParameterValue[] = isINodePropertyOptionsList(property.options)
-		? property.options.map((option) => option.value)
-		: [];
 	return leaf({ ...base, enum: values }, 'typed');
 }
 

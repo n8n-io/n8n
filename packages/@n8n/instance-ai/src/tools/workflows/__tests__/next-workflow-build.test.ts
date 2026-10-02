@@ -2,6 +2,7 @@ import { versionsOf } from '@n8n/nodes-base-next';
 import type { IDataObject, WorkflowJSON } from '@n8n/workflow-sdk';
 
 import type { InstanceAiContext } from '../../../types';
+import { derivedNodeTypes } from '../../__tests__/derived-node-types';
 import {
 	contractEgressWarnings,
 	fetchResourceFields,
@@ -60,7 +61,21 @@ import { googleGemini } from '@n8n/nodes/googleGemini';`;
 	it('names the typed modules when a source imports an unknown one', () => {
 		expect(nextWorkspaceFiles("import { mattermost } from '@n8n/nodes/mattermost';")).toEqual({
 			ok: false,
-			errors: [expect.stringContaining('No typed node module "@n8n/nodes/mattermost"')],
+			errors: [expect.stringContaining('No node module "@n8n/nodes/mattermost"')],
+		});
+	});
+
+	it('generates the derived module of an imported legacy node type at its path', () => {
+		const derived = "import { mattermost } from '@n8n/nodes/n8n-nodes-base/mattermost';";
+		const result = nextWorkspaceFiles(derived, { nodeTypesProvider: derivedNodeTypes() });
+		const file = result.ok ? result.files.get('.n8n/nodes/n8n-nodes-base/mattermost.ts') : '';
+
+		expect(usedNodeIds(derived)).toEqual(['n8n-nodes-base/mattermost']);
+		expect(file).toMatch(/^\/\/\/ <reference path="\.\.\/\.\.\/node-outputs\.d\.ts" \/>\n/);
+		expect(file).toContain('export const mattermost = {');
+		expect(nextWorkspaceFiles(derived)).toEqual({
+			ok: false,
+			errors: [expect.stringContaining('No node module "@n8n/nodes/n8n-nodes-base/mattermost"')],
 		});
 	});
 

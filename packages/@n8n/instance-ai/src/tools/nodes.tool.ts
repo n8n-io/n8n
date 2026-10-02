@@ -28,6 +28,10 @@ import {
 	builtInRowOf,
 	catalogRowsBesideModules,
 	contractReplacementOf,
+	derivedActionIds,
+	derivedActionsNamedBy,
+	derivedNodeView,
+	hasDerivedModule,
 	namesDisplayName,
 	nearestNextActions,
 	nextNodeIdOfNodeType,
@@ -35,6 +39,7 @@ import {
 	nextNodeModule,
 	nextNodeView,
 	searchNextActions,
+	type DeriveSource,
 	type NextNodeModule,
 } from './next-modules';
 import type { InstanceAiContext, NodeDescription } from '../types';
@@ -109,7 +114,7 @@ const moduleSearchAction = searchAction.extend({
 		.literal('search')
 		.describe(
 			'Search nodes by service and operation, e.g. "notion get many pages", or by AI connection type. ' +
-				'`nodeModules` holds the typed module of each service: import it and call its actions. ' +
+				'`nodeModules` holds the typed or derived module of each service: import it and call its actions. ' +
 				'`builtIns` are flow steps of `@n8n/workflow-sdk/next` that replace catalog nodes. ' +
 				'Pass `queries` with every service of the workflow in one call, also HTTP. ' +
 				'Call it in the same step as `load_skill`, not after it.',
@@ -409,9 +414,9 @@ const MAX_SEARCH_LIMIT = 20;
 const MAX_SEARCH_BYTES = 32_000;
 
 /**
- * A module node or an SDK step replaces its catalog hits. When a module covers the query, or
- * the query names an SDK step, the other hits are one-line rows. Otherwise they keep their
- * catalog rows for `node()`.
+ * A module node or an SDK step replaces its catalog hits, and a derived module replaces a hit
+ * that the query names. When a module covers the query, or the query names an SDK step, the
+ * other hits are one-line rows. Otherwise they keep their catalog rows.
  */
 async function searchOneWithModules(
 	context: InstanceAiContext,
@@ -425,12 +430,19 @@ async function searchOneWithModules(
 	const builtIns = [...new Set(builtInHits.flatMap((hit) => builtInRowOf(hit.name) ?? []))];
 	const moduleHits = catalog.results.filter((hit) => builtInRowOf(hit.name) === undefined);
 	const coveredNodes = moduleHits.flatMap((hit) => nextNodeIdOfNodeType(hit.name) ?? []);
-	const results = moduleHits.filter((hit) => nextNodeIdOfNodeType(hit.name) === undefined);
+	const unmoduled = moduleHits.filter((hit) => nextNodeIdOfNodeType(hit.name) === undefined);
+	// A catalog node that the query names gets its derived module, when it has one.
+	const derived = input.connectionType
+		? []
+		: unmoduled
+				.filter((hit) => namesHit(hit) && hasDerivedModule(hit.name, context))
+				.map((hit) => hit.name);
+	const results = unmoduled.filter((hit) => !derived.includes(hit.name));
 	// A sub-node search gets the sub-node actions of the module nodes that replace its hits.
 	const suppliers = input.connectionType
 		? supplierActionsOf(coveredNodes, input.connectionType)
 		: [];
-	const { nodes, actions, otherActions, coversQuery } = input.connectionType
+	const typed = input.connectionType
 		? {
 				nodes: [...new Set(suppliers.map(({ node }) => node.id))],
 				actions: suppliers.map(({ id }) => id),
@@ -442,6 +454,12 @@ async function searchOneWithModules(
 				coveredNodes,
 				moduleHits.filter(namesHit).flatMap((hit) => nextNodeIdOfNodeType(hit.name) ?? []),
 			);
+	const { otherActions, coversQuery } = typed;
+	const nodes = [...typed.nodes, ...derived];
+	const actions = [
+		...typed.actions,
+		...derived.flatMap((nodeType) => derivedActionsNamedBy(nodeType, context, query)),
+	];
 	const namesBuiltIn = builtInHits.some(namesHit);
 	// A named SDK step does the job, so the actions behind it (core.if for .branch) are noise.
 	const otherActionsPart = otherActions.length && !namesBuiltIn ? { otherActions } : {};
@@ -554,7 +572,8 @@ async function handleModuleSearch(
 	);
 	const shownActions = new Set(searches.flatMap(({ actions }) => actions));
 	const nodeModules = [...new Set(searches.flatMap(({ nodes }) => nodes))].flatMap(
-		(nodeId) => nextNodeView(nodeId, shownActions) ?? [],
+		(nodeId) =>
+			nextNodeView(nodeId, shownActions) ?? derivedNodeView(nodeId, context, shownActions) ?? [],
 	);
 	if (nodeModules.length) warmWorkspace(context);
 	return withinSearchBudget(searches, nodeModules, (kept, modules) =>
@@ -564,17 +583,27 @@ async function handleModuleSearch(
 
 /**
  * The module of a module id, an action id, or a catalog node type that a module replaces. An
- * SDK step replaces its node type before a module does. A request with a resource and an
- * operation gets the view that types their actions, or the catalog definition when no action
- * runs them.
+ * SDK step replaces its node type before a module does, and a typed module before a derived
+ * one. A request with a resource and an operation gets the view that types their actions, or
+ * the catalog definition when no action runs them.
  */
-function moduleOfRequest(request: NodeTypeRequest): NextNodeModule | undefined {
+function moduleOfRequest(
+	request: NodeTypeRequest,
+	source: DeriveSource,
+): NextNodeModule | undefined {
 	const nodeType = typeof request === 'string' ? request : request.nodeType;
 	const direct = nextNodeModule(nodeType);
 	if (direct) return direct;
-	const nodeId = builtInRowOf(nodeType) ? undefined : nextNodeIdOfNodeType(nodeType);
-	if (nodeId === undefined) return undefined;
+	if (builtInRowOf(nodeType)) return undefined;
+	const nodeId = nextNodeIdOfNodeType(nodeType);
 	const { resource, operation } = typeof request === 'string' ? {} : request;
+	if (nodeId === undefined) {
+		if (resource === undefined && operation === undefined) {
+			return derivedNodeView(nodeType, source);
+		}
+		const shown = derivedActionIds(nodeType, source, { resource, operation });
+		return shown.length ? derivedNodeView(nodeType, source, new Set(shown)) : undefined;
+	}
 	if (resource === undefined || operation === undefined) {
 		const nodeModule = nextNodeModule(nodeId);
 		const hint = `// The typed module for ${nodeType}. For an operation without an action, request ${nodeType} with resource and operation.\n`;
@@ -592,7 +621,9 @@ async function handleDescribe(
 	context: InstanceAiContext,
 	input: Extract<FullInput, { action: 'describe' }>,
 ) {
-	const nodeModule = context.nodeContractsEnabled ? moduleOfRequest(input.nodeType) : undefined;
+	const nodeModule = context.nodeContractsEnabled
+		? moduleOfRequest(input.nodeType, context)
+		: undefined;
 	if (nodeModule) return { found: true, name: input.nodeType, ...nodeModule };
 
 	try {
@@ -613,9 +644,9 @@ async function handleDescribe(
 }
 
 /** The module text goes in `content`, the field that carries TypeScript definitions. */
-function resolveModuleDefinition(request: NodeTypeRequest) {
+function resolveModuleDefinition(request: NodeTypeRequest, source: DeriveSource) {
 	const nodeType = typeof request === 'string' ? request : request.nodeType;
-	const nodeModule = moduleOfRequest(request);
+	const nodeModule = moduleOfRequest(request, source);
 	if (!nodeModule) return undefined;
 	return { nodeType, node: nodeModule.node, import: nodeModule.import, content: nodeModule.module };
 }
@@ -642,7 +673,7 @@ async function resolveNodeTypeDefinitions(
 		nodeTypes.map(async (req) => {
 			const nodeType = typeof req === 'string' ? req : req.nodeType;
 			const moduleDefinition = context.nodeContractsEnabled
-				? resolveModuleDefinition(req)
+				? resolveModuleDefinition(req, context)
 				: undefined;
 			if (moduleDefinition) {
 				warmWorkspace(context);

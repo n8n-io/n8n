@@ -84,6 +84,17 @@ export interface ContractFactory {
 }
 
 /**
+ * A saved legacy node read as a typed factory call, e.g. a node of a derived module: the
+ * factory and the parameters it takes. The reader returns nothing when the read is not lossless.
+ */
+export interface ContractRead {
+	readonly factory: ContractFactory;
+	readonly parameters: NonNullable<NodeJSON['parameters']>;
+}
+
+export type LegacyReader = (node: NodeJSON) => ContractRead | undefined;
+
+/**
  * The `factories` key of an action that runs one resource and operation of a composed node
  * version. A contract node type is its own key.
  */
@@ -674,6 +685,7 @@ function shapeOf(
 	factories: ReadonlyMap<string, ContractFactory>,
 	regions: ReadonlyMap<string, Shape>,
 	edges: readonly Edge[],
+	readLegacy: LegacyReader,
 ): Shape {
 	const region = regions.get(node.name);
 	if (region) return region;
@@ -693,11 +705,18 @@ function shapeOf(
 		setShape(node, names) ??
 		// A node() item is Loose, so a lambda over it can fail tsc (an implicit any) where the
 		// saved expression is correct. The expression check reads a string in place.
-		contractShape(node, names, factoryOf(node, factories)) ?? {
+		contractShape(node, names, factoryOf(node, factories)) ??
+		legacyShape(node, names, readLegacy) ?? {
 			kind: 'node',
 			parameters: plainTree(node.parameters ?? {}),
 		}
 	);
+}
+
+/** A legacy node that the reader maps to a factory. It keeps its JSON when tsc would reject the read. */
+function legacyShape(node: NamedNode, names: ReadonlySet<string>, readLegacy: LegacyReader) {
+	const read = readLegacy(node);
+	return read && contractShape({ ...node, parameters: read.parameters }, names, read.factory);
 }
 
 // ── Graph to flows ──────────────────────────────────────────────────────────
@@ -1409,10 +1428,12 @@ function render(name: string, graph: Graph, flows: readonly FlowPlan[]): string 
  * read back as regions when their wiring and parameters are what the region builds.
  * `node()` and `subnode()` parameters keep their expressions as strings. `factories` maps
  * each contract node type, and each `composedFactoryKey`, to its typed module factory.
+ * `readLegacy` reads other legacy nodes as factory calls, e.g. the nodes of derived modules.
  */
 export function decompileWorkflow(
 	json: WorkflowJSON,
 	factories: ReadonlyMap<string, ContractFactory>,
+	readLegacy: LegacyReader = () => undefined,
 ): string | undefined {
 	const edges = edgesOf(json.connections ?? {});
 	const plain = json.nodes.filter(isPlainNode);
@@ -1443,7 +1464,7 @@ export function decompileWorkflow(
 	const shapes = new Map(
 		mainNodes.map((node) => [
 			node.name,
-			shapeOf(node, !targets.has(node.name), names, factories, regions, edges.main),
+			shapeOf(node, !targets.has(node.name), names, factories, regions, edges.main, readLegacy),
 		]),
 	);
 	// A sub-node of a contract node is a contract sub-node, and node() takes legacy sub-nodes only.

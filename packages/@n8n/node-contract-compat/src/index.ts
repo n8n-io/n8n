@@ -11,6 +11,14 @@ export {
 	type FieldCounts,
 	type LegacyTarget,
 	type OutputSchemaLookup,
+	outputSchemaFrom,
 } from './derive/derive';
+export {
+	deriveModuleVersion,
+	readLegacyParameters,
+	toGeneratedAction,
+	type DeriveModuleOptions,
+	type LegacyRead,
+} from './derive/module';
 export { fromLegacyParameters, toLegacyParameters } from './derive/round-trip';
 export { migrateVersion, type MigratedSlot, type MigrateVersionOptions } from './migrate/migrate';

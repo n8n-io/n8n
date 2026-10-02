@@ -3,6 +3,7 @@ import { mock } from 'vitest-mock-extended';
 
 import { executeTool } from '../../__tests__/tool-test-utils';
 import type { InstanceAiContext } from '../../types';
+import { derivedNodeTypes } from './derived-node-types';
 import {
 	getWorkflowSourceFileBinding,
 	saveWorkflowSourceFileBinding,
@@ -15,7 +16,7 @@ interface GetAsCodeResult {
 	code: string;
 	error?: string;
 	filePath?: string;
-	nodes?: Array<{ name: string; type: string; line: number }>;
+	nodes?: Array<{ name: string; type: string; line: number; untyped?: string }>;
 }
 
 /** A workflow as the node contracts build saves it. */
@@ -216,6 +217,50 @@ describe('workflows get-as-code integration', () => {
 			expect(result.code).toContain('notion.databasePage.getAll({');
 			expect(result.code).not.toContain('n8n-nodes-base.notion');
 			expect(result.code).not.toContain('resource');
+		});
+
+		it('reads a node of a derived module back as its factory, else keeps node() with a reason', async () => {
+			const files = new Map<string, string>();
+			const workflow = makeContractWorkflow();
+			const mattermost = (name: string, typeVersion: number, id: string) => ({
+				id,
+				name,
+				type: 'n8n-nodes-base.mattermost',
+				typeVersion,
+				position: [672, 0] as [number, number],
+				parameters: {
+					resource: 'message',
+					operation: 'post',
+					channelId: { __rl: true, mode: 'id', value: 'c1' },
+					message: '={{ $json.name }}',
+				},
+			});
+			const nodes = [...workflow.nodes, mattermost('Post', 2.3, 'n4'), mattermost('Old', 2, 'n5')];
+			const connections = {
+				...workflow.connections,
+				'Post Done Page': { main: [[{ node: 'Post', type: 'main', index: 0 }]] },
+				Post: { main: [[{ node: 'Old', type: 'main', index: 0 }]] },
+			};
+			const context = makeContext({ ...workflow, nodes, connections }, files);
+			context.nodeContractsEnabled = true;
+			context.nodeTypesProvider = derivedNodeTypes();
+			const tool = createWorkflowsTool(context);
+
+			const result = await executeTool<GetAsCodeResult>(tool, {
+				action: 'get-as-code',
+				workflowId: 'wf-managed',
+			});
+
+			expect(result.code).toContain(
+				"import { mattermost } from '@n8n/nodes/n8n-nodes-base/mattermost';",
+			);
+			expect(result.code).toContain('mattermost.message.post({');
+			expect(result.code.match(/__rl/g)).toHaveLength(1);
+			expect(result.code).toContain('type: "n8n-nodes-base.mattermost"');
+			expect(result.nodes?.find(({ name }) => name === 'Post')).not.toHaveProperty('untyped');
+			expect(result.nodes?.find(({ name }) => name === 'Old')?.untyped).toBe(
+				'version 2; the derived module types version 2.3',
+			);
 		});
 
 		it('keeps node settings in the typed source', async () => {

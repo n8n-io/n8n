@@ -48,6 +48,8 @@ export {
 	decompileWorkflow,
 	locateNextNodes,
 	type ContractFactory,
+	type ContractRead,
+	type LegacyReader,
 } from './decompile';
 export { validateLoopWiring } from '../workflow-builder/plugins/validators/loop-wiring-validator';
 export type { Interval, WaitUnit } from './regions';

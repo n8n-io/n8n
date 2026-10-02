@@ -8,6 +8,7 @@ import type { Mock } from 'vitest';
 
 import { executeTool } from '../../__tests__/tool-test-utils';
 import type { InstanceAiContext, SearchableNodeDescription } from '../../types';
+import { derivedNodeTypes } from './derived-node-types';
 import { nextNodeModule } from '../next-modules';
 import { addSetupPreference } from '../nodes/setup-preference';
 import { createNodesTool } from '../nodes.tool';
@@ -1703,6 +1704,60 @@ describe('nodes tool', () => {
 				name: 'httpRequest',
 				module: expect.stringContaining('export const httpRequest = {'),
 			});
+			expect(context.nodeService.getDescription).not.toHaveBeenCalled();
+		});
+
+		it('inlines the derived module of a catalog node without a typed module that the query names', async () => {
+			const context = createContractContext();
+			context.nodeTypesProvider = derivedNodeTypes();
+			const result = await executeTool<ModuleSearch>(createNodesTool(context, 'full'), {
+				action: 'search',
+				query: 'mattermost delete a message',
+				limit: 5,
+			});
+
+			expect(result.nodeModules).toEqual([
+				{
+					node: 'n8n-nodes-base.mattermost',
+					import: "import { mattermost } from '@n8n/nodes/n8n-nodes-base/mattermost';",
+					module: expect.stringContaining('export const mattermost = {'),
+				},
+			]);
+			expect(result.nodeModules?.[0].module).toContain('export type MattermostMessageDeleteInput');
+			expect(result.nodeModules?.[0].module).not.toContain(
+				'export type MattermostMessagePostInput',
+			);
+			expect(result).not.toHaveProperty('results');
+		});
+
+		it('returns the derived module for type-definition and describe of a node without a typed module', async () => {
+			const context = createContractContext();
+			context.nodeTypesProvider = derivedNodeTypes();
+			const tool = createNodesTool(context, 'full');
+			const result = await executeTool<{ definitions: Array<Record<string, string>> }>(tool, {
+				action: 'type-definition',
+				nodeTypes: [
+					'n8n-nodes-base.mattermost',
+					{ nodeType: 'n8n-nodes-base.mattermost', resource: 'channel', operation: 'archive' },
+					{ nodeType: 'n8n-nodes-base.mattermost', resource: 'message', operation: 'update' },
+				],
+			});
+			const described = await executeTool<Record<string, unknown>>(tool, {
+				action: 'describe',
+				nodeType: 'n8n-nodes-base.mattermost',
+			});
+
+			expect(result.definitions[0]).toMatchObject({
+				node: 'n8n-nodes-base.mattermost',
+				import: "import { mattermost } from '@n8n/nodes/n8n-nodes-base/mattermost';",
+				content: expect.stringContaining('// Derived from n8n-nodes-base.mattermost version 2.3.'),
+			});
+			expect(result.definitions[0].content).not.toContain('No typed module');
+			expect(result.definitions[1].content.match(/contractStep\(/g)).toHaveLength(1);
+			expect(result.definitions[1].content).toContain('export type MattermostChannelArchiveInput');
+			expect(result.definitions[2].content).toContain('export type MattermostV23Params');
+			expect(context.nodeService.getNodeTypeDefinition).toHaveBeenCalledTimes(1);
+			expect(described).toMatchObject({ found: true, node: 'n8n-nodes-base.mattermost' });
 			expect(context.nodeService.getDescription).not.toHaveBeenCalled();
 		});
 

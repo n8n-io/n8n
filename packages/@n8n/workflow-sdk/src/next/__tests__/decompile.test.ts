@@ -229,8 +229,41 @@ const factories = new Map<string, ContractFactory>([
 	],
 ]);
 
+const MATTERMOST_TYPE = 'n8n-nodes-base.mattermost';
+const POST_SLOT = { resource: 'message', operation: 'post' };
+
+// Stand-in for a derived module, `@n8n/nodes/n8n-nodes-base/mattermost`.
+const mattermost = {
+	message: {
+		post: <In, Ctx, const N extends string>(config: {
+			name: N;
+			channelId: { mode: 'id'; value: string };
+			message: string | ((item: In) => string);
+		}): Step<In, Ctx, In, N> => contractStep(MATTERMOST_TYPE, config, 2.3, POST_SLOT),
+	},
+};
+
+const mattermostPost: ContractFactory = {
+	module: 'mattermost',
+	from: '@n8n/nodes/n8n-nodes-base/mattermost',
+	path: 'message.post',
+	version: 2.3,
+	inputKeys: ['channelId', 'message'],
+	expressionKeys: ['message'],
+};
+
+/** Reads a saved Mattermost post node as its derived factory, as the compat layer does. */
+const readMattermost: next.LegacyReader = (saved) => {
+	if (saved.type !== MATTERMOST_TYPE) return undefined;
+	const { resource: _resource, operation: _operation, channelId, ...rest } = saved.parameters ?? {};
+	const locator = typeof channelId === 'object' && channelId !== null ? channelId : {};
+	const { __rl: _flag, ...value } = locator as Record<string, unknown>;
+	return { factory: mattermostPost, parameters: { ...rest, channelId: value } };
+};
+
 const modules: Record<string, unknown> = {
 	'@n8n/workflow-sdk/next': next,
+	'@n8n/nodes/n8n-nodes-base/mattermost': { mattermost },
 	'@n8n/nodes/notion': { notion },
 	'@n8n/nodes/httpRequest': { httpRequest },
 	'@n8n/nodes/composedNotion': { composedNotion },
@@ -257,11 +290,11 @@ const withoutIds = (json: WorkflowJSON) => ({
 	nodes: json.nodes.map(({ id: _id, ...rest }) => rest),
 });
 
-function roundTrip(json: WorkflowJSON) {
-	const source = decompileWorkflow(json, factories);
+function roundTrip(json: WorkflowJSON, readLegacy?: next.LegacyReader) {
+	const source = decompileWorkflow(json, factories, readLegacy);
 	if (source === undefined) throw new Error('workflow did not decompile');
 	const rebuilt = build(source);
-	return { source, rebuilt, again: decompileWorkflow(rebuilt, factories) };
+	return { source, rebuilt, again: decompileWorkflow(rebuilt, factories, readLegacy) };
 }
 
 const DATABASE = '5b9e2c1d-0a7f-4c3e-9d21-7f6a8b9c0d1e';
@@ -350,6 +383,39 @@ const branchWorkflow = () =>
 	);
 
 describe('decompileWorkflow', () => {
+	it('reads a legacy node back as the factory call of its reader, else keeps node()', () => {
+		const posted = (channel: string) =>
+			workflow(
+				'Post',
+				manual().andThen(
+					node({
+						name: 'Post',
+						type: MATTERMOST_TYPE,
+						version: 2.3,
+						parameters: {
+							...POST_SLOT,
+							channelId: { __rl: true, mode: 'id', value: channel },
+							message: '={{ $json.text }}',
+						},
+					}),
+				),
+			).toJSON();
+		const json = posted('c1');
+		const { source, rebuilt, again } = roundTrip(json, readMattermost);
+
+		expect(withoutIds(rebuilt)).toEqual(withoutIds(json));
+		expect(again).toBe(source);
+		expect(source).toContain("import { mattermost } from '@n8n/nodes/n8n-nodes-base/mattermost';");
+		expect(source).toContain('mattermost.message.post({');
+		expect(source).not.toContain('__rl');
+		expect(roundTrip(json).source).toContain('node({');
+		// An expression without a lambda form fails tsc in a nested field: the node keeps node().
+		const raw = posted("={{ $('Hook').first().json.channel.toUpperCase() + $now }}");
+		const kept = roundTrip(raw, readMattermost);
+		expect(kept.source).toContain('node({');
+		expect(withoutIds(kept.rebuilt)).toEqual(withoutIds(raw));
+	});
+
 	it('round-trips the Notion report to the same workflow JSON', () => {
 		const json = notionWorkflow().toJSON();
 		const { source, rebuilt, again } = roundTrip(json);
