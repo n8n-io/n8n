@@ -3,7 +3,7 @@ import { mockLogger } from '@n8n/backend-test-utils';
 import { mock } from 'vitest-mock-extended';
 import { UserError } from 'n8n-workflow';
 
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { NotFoundError } from '@n8n/errors';
 
 import type { AgentModificationTelemetryService } from '../agent-modification-telemetry.service';
 import type { AgentRuntimeCacheService } from '../agent-runtime-cache.service';
@@ -87,6 +87,7 @@ describe('AgentCustomToolsService', () => {
 			ok: true,
 			id: 'lookup_customer',
 			descriptor,
+			changed: true,
 		});
 		expect(agent.tools[result.id]).toEqual({ code: 'return 1;', descriptor });
 		expect(agent.versionId).not.toBe(agent.activeVersionId);
@@ -101,6 +102,24 @@ describe('AgentCustomToolsService', () => {
 		await expect(
 			service.buildCustomTool(agentId, projectId, 'return 1;', descriptor, telemetryContext),
 		).rejects.toThrow(NotFoundError);
+		expect(runtimeCacheService.clearRuntimes).not.toHaveBeenCalled();
+	});
+
+	it('reports an unchanged custom tool without writing the draft', async () => {
+		const { service, agentRepository, runtimeCacheService } = makeService();
+		const agent = makeAgent({ tools: { lookup_customer: { code: 'return 1;', descriptor } } });
+		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+
+		const result = await service.buildCustomTool(
+			agentId,
+			projectId,
+			'return 1;',
+			descriptor,
+			telemetryContext,
+		);
+
+		expect(result.changed).toBe(false);
+		expect(agentRepository.saveDraftFenced).not.toHaveBeenCalled();
 		expect(runtimeCacheService.clearRuntimes).not.toHaveBeenCalled();
 	});
 
@@ -157,6 +176,7 @@ describe('AgentCustomToolsService', () => {
 		const { service } = makeService();
 		const tools = {
 			tool_keep: { code: 'return 1;', descriptor },
+			tool_disabled: { code: 'return 3;', descriptor },
 			tool_orphan: { code: 'return 2;', descriptor },
 		};
 
@@ -168,6 +188,8 @@ describe('AgentCustomToolsService', () => {
 					instructions: 'Help users',
 					tools: [
 						{ type: 'custom', id: 'tool_keep' },
+						{ type: 'custom', id: 'tool_disabled', enabled: false },
+						{ type: 'custom', id: 'tool_missing', enabled: false },
 						{
 							type: 'node',
 							name: 'HTTP',
@@ -181,7 +203,7 @@ describe('AgentCustomToolsService', () => {
 				},
 				tools,
 			),
-		).toEqual({ tool_keep: tools.tool_keep });
+		).toEqual({ tool_keep: tools.tool_keep, tool_disabled: tools.tool_disabled });
 	});
 
 	it('throws when publishing a config that references a missing custom tool body', () => {

@@ -2,9 +2,10 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import userEvent from '@testing-library/user-event';
-import { computed, defineComponent, h, nextTick } from 'vue';
+import { defineComponent, h, nextTick, ref } from 'vue';
 import { createThreadComponentRenderer } from './createThreadComponentRenderer';
 import type { InstanceAiCredentialRequest } from '@n8n/api-types';
+import type { ICredentialType } from 'n8n-workflow';
 import InstanceAiCredentialSetup from '../components/InstanceAiCredentialSetup.vue';
 import { useInstanceAiStore, type ThreadRuntime } from '../instanceAi.store';
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
@@ -14,16 +15,17 @@ import * as credentialsApi from '@/features/credentials/credentials.api';
 import { useUIStore } from '@/app/stores/ui.store';
 import { INSTANCE_AI_BROWSER_USE_SETUP_MODAL_KEY } from '../constants';
 
-// Toggleable state for the 094 experiment and easy-setup detection.
+// Toggleable state for the "Set up automatically" switch and easy-setup detection.
 const experiment = vi.hoisted(() => ({ enabled: false }));
 const easySetup = vi.hoisted(() => ({ available: false }));
 const mockTelemetryTrack = vi.hoisted(() => vi.fn());
 const mockBrowserModalOpened = vi.hoisted(() => vi.fn());
 
-vi.mock('@/experiments/instanceAiBrowserCredentialSetup', () => ({
-	useInstanceAiBrowserCredentialSetupExperiment: () => ({
-		isFeatureEnabled: computed(() => experiment.enabled),
-	}),
+vi.mock('../constants', async (importOriginal) => ({
+	...(await importOriginal<typeof import('../constants')>()),
+	get INSTANCE_AI_BROWSER_CREDENTIAL_SETUP_ENABLED() {
+		return experiment.enabled;
+	},
 }));
 
 vi.mock('@/features/credentials/quickConnect/composables/useQuickConnect', () => ({
@@ -36,6 +38,7 @@ vi.mock('@/features/credentials/quickConnect/composables/useQuickConnect', () =>
 vi.mock('@/features/credentials/composables/useCredentialOAuth', () => ({
 	useCredentialOAuth: () => ({
 		canOAuthCredentialQuickConnect: () => false,
+		isOAuthCredentialType: (type: string) => type.endsWith('OAuth2Api'),
 	}),
 }));
 
@@ -149,6 +152,16 @@ function stubUsableCredentials(
 	});
 }
 
+function stubCredentialTypes(
+	store: ReturnType<typeof useCredentialsStore>,
+	getType: (name: string) => ICredentialType | undefined,
+) {
+	Object.defineProperty(store, 'getCredentialTypeByName', {
+		configurable: true,
+		get: () => getType,
+	});
+}
+
 /** Creates requests with no existing credentials (shows setup button) */
 function makeCredentialRequests(count: number): InstanceAiCredentialRequest[] {
 	return Array.from({ length: count }, (_, i) => ({
@@ -193,6 +206,7 @@ describe('InstanceAiCredentialSetup', () => {
 		vi.spyOn(credentialsStore, 'fetchAllCredentials').mockResolvedValue([]);
 		vi.spyOn(credentialsStore, 'fetchUsableCredentials').mockResolvedValue([]);
 		vi.spyOn(credentialsStore, 'fetchCredentialTypes').mockResolvedValue(undefined);
+		stubCredentialTypes(credentialsStore, (name) => ({ name, displayName: name, properties: [] }));
 		// The card renders the NodeCredentials picker when the store has a usable
 		// credential of the type; default to one so the picker-based tests render it.
 		stubUsableCredentials(credentialsStore, () => [
@@ -659,6 +673,180 @@ describe('InstanceAiCredentialSetup', () => {
 			});
 		});
 
+		describe('OAuth credential', () => {
+			const oauthRequests: InstanceAiCredentialRequest[] = [
+				{ credentialType: 'linearMcpOAuth2Api', reason: 'Linear MCP', existingCredentials: [] },
+			];
+			const created = {
+				id: 'oauth-1',
+				name: 'Linear MCP account',
+				type: 'linearMcpOAuth2Api',
+				updatedAt: '2026-09-30T10:00:00.000Z',
+			} as ICredentialsResponse;
+			const payload = { id: '', name: created.name, type: created.type };
+			const signedIn = { ...created, data: { oauthTokenData: { access_token: 'token' } } };
+
+			beforeEach(() => {
+				vi.spyOn(credentialsApi, 'createNewCredential').mockResolvedValue(created);
+			});
+
+			function renderOAuthCard(credentialRequests = oauthRequests) {
+				return renderComponent({
+					props: { requestId: 'req-1', credentialRequests, message: 'Set up credentials' },
+				});
+			}
+
+			function expectSubmitted(confirmSpy: ReturnType<typeof vi.spyOn>) {
+				return vi.waitFor(() =>
+					expect(confirmSpy).toHaveBeenCalledWith('req-1', {
+						kind: 'credentialSelection',
+						credentials: { linearMcpOAuth2Api: 'oauth-1' },
+					}),
+				);
+			}
+
+			it('submits a new credential only after the sign-in completes', async () => {
+				const credentialsStore = useCredentialsStore();
+				const getDataSpy = vi
+					.spyOn(credentialsStore, 'getCredentialData')
+					.mockResolvedValue({ ...created, data: {} } as never);
+				const confirmSpy = vi.spyOn(thread, 'confirmAction').mockResolvedValue(true);
+				const { getByTestId } = renderOAuthCard();
+
+				// The credential modal saves the credential before the sign-in popup completes.
+				await credentialsStore.createNewCredential({ ...payload, data: {} });
+				await vi.waitFor(() => expect(getDataSpy).toHaveBeenCalled());
+				await nextTick();
+				expect(confirmSpy).not.toHaveBeenCalled();
+				expect(getByTestId('instance-ai-credential-continue-button')).toBeDisabled();
+
+				// The popup saves the token. Then the modal refreshes the store.
+				getDataSpy.mockResolvedValue(signedIn as never);
+				credentialsStore.upsertCredential({ ...created, updatedAt: '2026-09-30T10:01:00.000Z' });
+
+				await expectSubmitted(confirmSpy);
+			});
+
+			it('does not submit an existing credential that is not connected', async () => {
+				const credentialsStore = useCredentialsStore();
+				credentialsStore.upsertCredential(created);
+				const getDataSpy = vi
+					.spyOn(credentialsStore, 'getCredentialData')
+					.mockResolvedValue({ ...created, data: {} } as never);
+				const confirmSpy = vi.spyOn(thread, 'confirmAction').mockResolvedValue(true);
+				const { getByTestId } = renderOAuthCard([
+					{ ...oauthRequests[0], existingCredentials: [{ id: created.id, name: created.name }] },
+				]);
+
+				await vi.waitFor(() => expect(getDataSpy).toHaveBeenCalledWith({ id: 'oauth-1' }));
+				await nextTick();
+				expect(confirmSpy).not.toHaveBeenCalled();
+				expect(getByTestId('instance-ai-credential-continue-button')).toBeDisabled();
+			});
+
+			it('submits an existing credential that is connected', async () => {
+				const credentialsStore = useCredentialsStore();
+				credentialsStore.upsertCredential(created);
+				vi.spyOn(credentialsStore, 'getCredentialData').mockResolvedValue(signedIn as never);
+				const confirmSpy = vi.spyOn(thread, 'confirmAction').mockResolvedValue(true);
+				renderOAuthCard([
+					{ ...oauthRequests[0], existingCredentials: [{ id: created.id, name: created.name }] },
+				]);
+
+				await expectSubmitted(confirmSpy);
+			});
+
+			it('keeps Continue disabled while a selected credential waits for its sign-in', async () => {
+				const credentialsStore = useCredentialsStore();
+				credentialsStore.upsertCredential(created);
+				const getDataSpy = vi
+					.spyOn(credentialsStore, 'getCredentialData')
+					.mockResolvedValue({ ...created, data: {} } as never);
+				const confirmSpy = vi.spyOn(thread, 'confirmAction').mockResolvedValue(true);
+				const { getByTestId } = renderOAuthCard([
+					{
+						credentialType: 'slackApi',
+						reason: 'Slack',
+						existingCredentials: [{ id: 'api-1', name: 'Slack' }],
+					},
+					{ ...oauthRequests[0], existingCredentials: [{ id: created.id, name: created.name }] },
+				]);
+
+				await vi.waitFor(() => expect(getDataSpy).toHaveBeenCalledWith({ id: 'oauth-1' }));
+				await nextTick();
+				expect(confirmSpy).not.toHaveBeenCalled();
+				expect(getByTestId('instance-ai-credential-continue-button')).toBeDisabled();
+
+				getDataSpy.mockResolvedValue(signedIn as never);
+				credentialsStore.upsertCredential({ ...created, updatedAt: '2026-09-30T10:01:00.000Z' });
+
+				await vi.waitFor(() =>
+					expect(confirmSpy).toHaveBeenCalledWith('req-1', {
+						kind: 'credentialSelection',
+						credentials: { slackApi: 'api-1', linearMcpOAuth2Api: 'oauth-1' },
+					}),
+				);
+			});
+
+			it('submits a credential right away when its grant type needs no sign-in', async () => {
+				const credentialsStore = useCredentialsStore();
+				vi.spyOn(credentialsStore, 'getCredentialData').mockResolvedValue({
+					...created,
+					data: { grantType: 'clientCredentials' },
+				} as never);
+				const confirmSpy = vi.spyOn(thread, 'confirmAction').mockResolvedValue(true);
+				renderOAuthCard();
+
+				await credentialsStore.createNewCredential({ ...payload, data: {} });
+
+				await expectSubmitted(confirmSpy);
+			});
+
+			it('ignores a credential that a connection flow creates before authorization', async () => {
+				const credentialsStore = useCredentialsStore();
+				const confirmSpy = vi.spyOn(thread, 'confirmAction').mockResolvedValue(true);
+				const { queryByTestId } = renderOAuthCard();
+
+				await credentialsStore.createNewCredential({ ...payload, data: {} }, undefined, undefined, {
+					skipStoreUpdate: true,
+					pendingAuthorization: true,
+				});
+				await nextTick();
+				await nextTick();
+
+				expect(confirmSpy).not.toHaveBeenCalled();
+				expect(queryByTestId('instance-ai-credential-step-check')).not.toBeInTheDocument();
+			});
+		});
+
+		it('auto-continues only after credential types load', async () => {
+			const typesLoaded = ref(false);
+			stubCredentialTypes(useCredentialsStore(), (name) =>
+				typesLoaded.value ? { name, displayName: name, properties: [] } : undefined,
+			);
+			const confirmSpy = vi.spyOn(thread, 'confirmAction').mockResolvedValue(true);
+
+			renderComponent({
+				props: {
+					requestId: 'req-1',
+					credentialRequests: makeCredentialRequestsWithSingleExisting(1),
+					message: 'Set up credentials',
+				},
+			});
+			await nextTick();
+			await nextTick();
+			expect(confirmSpy).not.toHaveBeenCalled();
+
+			typesLoaded.value = true;
+
+			await vi.waitFor(() =>
+				expect(confirmSpy).toHaveBeenCalledWith('req-1', {
+					kind: 'credentialSelection',
+					credentials: { type1: 'existing-1' },
+				}),
+			);
+		});
+
 		it('keeps a sole generic auth credential preselected but does not auto-submit', async () => {
 			const requests: InstanceAiCredentialRequest[] = [
 				{
@@ -895,7 +1083,7 @@ describe('InstanceAiCredentialSetup', () => {
 		});
 	});
 
-	describe('browser-use setup choice (094 experiment)', () => {
+	describe('browser-use setup choice', () => {
 		let settingsStore: ReturnType<typeof useInstanceAiSettingsStore>;
 
 		beforeEach(() => {
@@ -905,6 +1093,8 @@ describe('InstanceAiCredentialSetup', () => {
 			mockBrowserModalOpened.mockClear();
 
 			settingsStore = useInstanceAiSettingsStore();
+			// @ts-expect-error Getters are writable in testing pinia
+			settingsStore.isBrowserUseAvailable = true;
 			vi.spyOn(settingsStore, 'fetchBrowserStatus').mockResolvedValue(undefined);
 			settingsStore.browserConnected = false;
 			settingsStore.browserStatusLoaded = true;
@@ -933,6 +1123,17 @@ describe('InstanceAiCredentialSetup', () => {
 					browser_connection_state: 'disconnected',
 				}),
 			);
+		});
+
+		it('hides the choice when Browser Use is unavailable', () => {
+			experiment.enabled = true;
+			// @ts-expect-error Getters are writable in testing pinia
+			settingsStore.isBrowserUseAvailable = false;
+
+			const { queryByTestId, getByTestId } = renderCard(makeCredentialRequests(1));
+
+			expect(queryByTestId('setup-choice-ai')).toBeNull();
+			expect(getByTestId('instance-ai-credential-setup-button')).toBeTruthy();
 		});
 
 		it('reports the connected state on the shown event', () => {

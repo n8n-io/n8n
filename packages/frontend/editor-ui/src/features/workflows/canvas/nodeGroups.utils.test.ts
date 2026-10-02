@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import type { IWorkflowGroup } from 'n8n-workflow';
 
-import { snapshotGroup, deleteGroupWithHistory } from './nodeGroups.utils';
+import { snapshotGroup, deleteGroupWithHistory, findGroupIdsWithTrigger } from './nodeGroups.utils';
 import { RemoveNodeGroupCommand } from '@/app/models/history';
 import type { useHistoryStore } from '@/app/stores/history.store';
 import type { WorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
@@ -73,5 +73,40 @@ describe('deleteGroupWithHistory', () => {
 		const command = vi.mocked(historyStore.pushCommandToUndo).mock
 			.calls[0][0] as RemoveNodeGroupCommand;
 		expect(command.group.nodeIds).toEqual(['a', 'b']);
+	});
+});
+
+describe('findGroupIdsWithTrigger', () => {
+	const nodes: Record<string, { type: string }> = {
+		trigger: { type: 'n8n-nodes-base.manualTrigger' },
+		step: { type: 'n8n-nodes-base.noOp' },
+		gone: undefined as unknown as { type: string },
+	};
+	const getNodeById = (nodeId: string) => nodes[nodeId];
+	const isTriggerNode = (nodeType: string) => nodeType === 'n8n-nodes-base.manualTrigger';
+
+	it('returns the groups that hold a trigger', () => {
+		const withTrigger = createGroup({ id: 'g1', nodeIds: ['trigger', 'step'] });
+		const withoutTrigger = createGroup({ id: 'g2', nodeIds: ['step'] });
+
+		const result = findGroupIdsWithTrigger(
+			[withTrigger, withoutTrigger],
+			getNodeById,
+			isTriggerNode,
+		);
+
+		expect(result).toEqual(new Set(['g1']));
+	});
+
+	it('returns an empty set when no group holds a trigger', () => {
+		const group = createGroup({ id: 'g1', nodeIds: ['step'] });
+
+		expect(findGroupIdsWithTrigger([group], getNodeById, isTriggerNode)).toEqual(new Set());
+	});
+
+	it('ignores a member id that resolves to no node', () => {
+		const group = createGroup({ id: 'g1', nodeIds: ['gone'] });
+
+		expect(findGroupIdsWithTrigger([group], getNodeById, isTriggerNode)).toEqual(new Set());
 	});
 });

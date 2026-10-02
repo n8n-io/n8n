@@ -1,12 +1,14 @@
 <script setup lang="ts">
 import { N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
 import type { IconName } from '@n8n/design-system';
+import { useI18n } from '@n8n/i18n';
 import { computed } from 'vue';
 
 const props = withDefaults(
 	defineProps<{
 		icon?: IconName;
 		disabled?: boolean;
+		deactivated?: boolean;
 		variant?: 'default' | 'suggestion';
 		active?: boolean;
 		/** Marks the chip as having an unresolved configuration error (e.g. a missing credential). */
@@ -21,6 +23,7 @@ const props = withDefaults(
 	}>(),
 	{
 		disabled: false,
+		deactivated: false,
 		variant: 'default',
 		active: false,
 		invalid: false,
@@ -31,6 +34,7 @@ const props = withDefaults(
 	},
 );
 
+const i18n = useI18n();
 const reasons = computed(() => (props.invalid ? props.invalidReasons : props.warningReasons));
 
 defineSlots<{
@@ -51,12 +55,16 @@ const emit = defineEmits<{
 			props.variant === 'suggestion' ? $style.suggestion : $style.default,
 			{
 				[$style.active]: props.active,
-				[$style.invalid]: props.invalid,
-				[$style.warning]: props.warning && !props.invalid,
+				[$style.deactivated]: props.deactivated,
+				[$style.invalid]: props.invalid && !props.deactivated,
+				[$style.warning]: props.warning && !props.invalid && !props.deactivated,
 				[$style.nonClickable]: !props.clickable,
 			},
 		]"
 		:disabled="props.disabled"
+		:aria-description="
+			props.deactivated ? i18n.baseText('agents.builder.capabilities.deactivated') : undefined
+		"
 		@click="emit('click', $event)"
 	>
 		<span v-if="props.icon || $slots.icon" :class="$style.iconWrapper">
@@ -73,7 +81,7 @@ const emit = defineEmits<{
 			<slot />
 		</N8nText>
 		<N8nTooltip
-			v-if="props.invalid || props.warning"
+			v-if="!props.deactivated && (props.invalid || props.warning)"
 			:disabled="reasons.length === 0"
 			placement="top"
 		>
@@ -110,7 +118,7 @@ const emit = defineEmits<{
 	}
 }
 
-.default:not(:disabled):hover {
+.default:not(:disabled):not(.deactivated):hover {
 	background-color: var(--background--hover);
 }
 
@@ -121,6 +129,10 @@ const emit = defineEmits<{
 
 .invalid {
 	border-color: var(--canvas-node--border-color--error, var(--color--danger));
+}
+
+.deactivated {
+	opacity: 0.5;
 }
 
 .warning {

@@ -45,6 +45,7 @@ describe('TypeAvailabilityPoliciesModule', () => {
 			'CredentialTypePolicyInstanceController',
 			'CredentialTypePolicyProjectController',
 			'AvailableTypesController',
+			'AvailableCredentialTypesController',
 		]) {
 			expect(routeCountByName.get(name)).toBeGreaterThan(0);
 		}

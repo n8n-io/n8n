@@ -14,6 +14,7 @@ import { createComponentRenderer } from '@/__tests__/render';
 import WorkflowShareModal from './WorkflowShareModal.ee.vue';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useWorkflowsEEStore } from '@/app/stores/workflows.ee.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useRolesStore } from '@n8n/stores/roles.store';
@@ -22,6 +23,8 @@ import type {
 	ProjectSharingData,
 } from '@/features/collaboration/projects/projects.types';
 import { DEFAULT_PROJECT_SEARCH_PAGE_SIZE } from '@/features/collaboration/projects/projects.utils';
+import { createTestWorkflow } from '@/__tests__/mocks';
+import { MODAL_CONFIRM } from '@/app/constants';
 
 const mockWorkflowDocumentState = reactive({
 	homeProject: null as ProjectSharingData | null,
@@ -39,6 +42,11 @@ vi.mock('@/app/stores/workflowDocument.store', () => ({
 }));
 
 const mockRouteQuery = reactive<Record<string, string>>({});
+const { modalBusEmitMock, showErrorMock, confirmMock } = vi.hoisted(() => ({
+	modalBusEmitMock: vi.fn(),
+	showErrorMock: vi.fn(),
+	confirmMock: vi.fn().mockResolvedValue(true),
+}));
 vi.mock('vue-router', async (importOriginal) => {
 	return {
 		...(await importOriginal()),
@@ -50,12 +58,12 @@ vi.mock('vue-router', async (importOriginal) => {
 vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({
 		showMessage: vi.fn(),
-		showError: vi.fn(),
+		showError: showErrorMock,
 	}),
 }));
 vi.mock('@/app/composables/useMessage', () => ({
 	useMessage: () => ({
-		confirm: vi.fn().mockResolvedValue(true),
+		confirm: confirmMock,
 	}),
 }));
 const saveAsNewWorkflowMock = vi.fn().mockResolvedValue('abc123');
@@ -67,12 +75,13 @@ vi.mock('@/app/composables/useWorkflowSaving', () => ({
 const mockGetResourcePermissions = vi.fn(() => ({
 	workflow: { share: true },
 }));
-vi.mock('@n8n/permissions', () => ({
+vi.mock('@n8n/permissions', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@n8n/permissions')>()),
 	getResourcePermissions: () => mockGetResourcePermissions(),
 }));
 vi.mock('@n8n/utils/event-bus', () => ({
 	createEventBus: () => ({
-		emit: vi.fn(),
+		emit: modalBusEmitMock,
 	}),
 }));
 
@@ -81,8 +90,9 @@ const renderComponent = createComponentRenderer(WorkflowShareModal, {
 	global: {
 		stubs: {
 			Modal: {
+				props: ['beforeClose'],
 				template:
-					'<div role="dialog"><slot name="header" /><slot name="content" /><slot name="footer" /></div>',
+					'<div role="dialog"><slot name="header" /><slot name="content" /><slot name="footer" /><button data-test-id="attempt-close" @click="beforeClose()">Close modal</button></div>',
 			},
 		},
 	},
@@ -90,6 +100,7 @@ const renderComponent = createComponentRenderer(WorkflowShareModal, {
 
 let settingsStore: MockedStore<typeof useSettingsStore>;
 let workflowsStore: MockedStore<typeof useWorkflowsStore>;
+let workflowsListStore: MockedStore<typeof useWorkflowsListStore>;
 let workflowsEEStore: MockedStore<typeof useWorkflowsEEStore>;
 let projectsStore: MockedStore<typeof useProjectsStore>;
 let rolesStore: MockedStore<typeof useRolesStore>;
@@ -97,6 +108,7 @@ describe('WorkflowShareModal.ee.vue', () => {
 	beforeEach(() => {
 		settingsStore = mockedStore(useSettingsStore);
 		workflowsStore = mockedStore(useWorkflowsStore);
+		workflowsListStore = mockedStore(useWorkflowsListStore);
 		workflowsEEStore = mockedStore(useWorkflowsEEStore);
 		projectsStore = mockedStore(useProjectsStore);
 		rolesStore = mockedStore(useRolesStore);
@@ -109,6 +121,8 @@ describe('WorkflowShareModal.ee.vue', () => {
 		mockWorkflowDocumentState.name = '';
 
 		// Set up default store state
+		workflowsStore.isWorkflowSaved = {};
+		workflowsListStore.fetchWorkflow.mockReset();
 		settingsStore.settings.enterprise = { sharing: true } as FrontendSettings['enterprise'];
 		workflowsEEStore.getWorkflowOwnerName = vi.fn(() => 'Owner Name');
 		projectsStore.personalProjects = [createProjectListItem()];
@@ -138,6 +152,9 @@ describe('WorkflowShareModal.ee.vue', () => {
 		];
 
 		saveAsNewWorkflowMock.mockClear();
+		modalBusEmitMock.mockClear();
+		showErrorMock.mockClear();
+		confirmMock.mockReset().mockResolvedValue(true);
 	});
 
 	it('should share new, unsaved workflow after saving it first', async () => {
@@ -179,6 +196,70 @@ describe('WorkflowShareModal.ee.vue', () => {
 				workflowId: 'abc123',
 				sharedWithProjects: [projectsStore.personalProjects[0]],
 			});
+		});
+	});
+
+	it('does not close the sharing modal when saving a new workflow fails', async () => {
+		// IAM-1480: A competing canvas save can make the first workflow create fail.
+		mockRouteQuery.new = 'true';
+		workflowsStore.workflowId = '';
+		mockWorkflowDocumentState.homeProject = {
+			id: 'personal-project-id',
+			name: 'Personal Project',
+			type: ProjectTypes.Personal,
+			icon: null,
+			createdAt: new Date().toISOString(),
+			updatedAt: new Date().toISOString(),
+		};
+		saveAsNewWorkflowMock.mockRejectedValueOnce(new Error('Workflow create failed (400)'));
+
+		const saveWorkflowSharedWithSpy = vi.spyOn(workflowsEEStore, 'saveWorkflowSharedWith');
+		const { getByTestId, getByRole } = renderComponent({ props: { data: { id: '' } } });
+		const projectSelectDropdownItems = await getDropdownItems(
+			getByTestId('project-sharing-select'),
+		);
+		await userEvent.click(projectSelectDropdownItems[0]);
+		await userEvent.click(getByRole('button', { name: 'Save' }));
+
+		await waitFor(() => expect(showErrorMock).toHaveBeenCalledOnce());
+		expect(saveAsNewWorkflowMock).toHaveBeenCalledOnce();
+		expect(saveWorkflowSharedWithSpy).not.toHaveBeenCalled();
+		expect(modalBusEmitMock).not.toHaveBeenCalledWith('close');
+	});
+
+	it('saves sharing changes after initial loading when closing the modal', async () => {
+		const workflowId = 'workflow-1';
+		const fetch = Promise.withResolvers<ReturnType<typeof createTestWorkflow>>();
+		confirmMock.mockResolvedValueOnce(MODAL_CONFIRM);
+		workflowsStore.isWorkflowSaved = { [workflowId]: true };
+		workflowsListStore.fetchWorkflow.mockReturnValue(fetch.promise);
+		mockWorkflowDocumentState.homeProject = {
+			id: 'personal-project-id',
+			name: 'Personal Project',
+			type: ProjectTypes.Personal,
+			icon: null,
+			createdAt: new Date().toISOString(),
+			updatedAt: new Date().toISOString(),
+		};
+
+		const { getByTestId, getByText } = renderComponent({ props: { data: { id: workflowId } } });
+		const projectSelectDropdownItems = await getDropdownItems(
+			getByTestId('project-sharing-select'),
+		);
+		await userEvent.click(projectSelectDropdownItems[0]);
+		expect(getByText('You made changes')).toBeVisible();
+		await userEvent.click(getByTestId('attempt-close'));
+
+		await waitFor(() => expect(confirmMock).toHaveBeenCalledOnce());
+		expect(workflowsEEStore.saveWorkflowSharedWith).not.toHaveBeenCalled();
+		fetch.resolve(createTestWorkflow({ id: workflowId }));
+
+		await waitFor(() => {
+			expect(workflowsEEStore.saveWorkflowSharedWith).toHaveBeenCalledWith({
+				workflowId,
+				sharedWithProjects: [projectsStore.personalProjects[0]],
+			});
+			expect(modalBusEmitMock).toHaveBeenCalledWith('close');
 		});
 	});
 

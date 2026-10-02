@@ -202,7 +202,7 @@ export class TokenExchangeService {
 			jti: randomUUID(),
 		};
 
-		const accessToken = this.jwtService.sign(payload);
+		const accessToken = this.jwtService.sign('tokenExchange', payload);
 
 		return {
 			accessToken,

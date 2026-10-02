@@ -1,13 +1,13 @@
+import type { EventService } from '@n8n/backend-services';
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { OperationContext, TransactionRunner } from '@n8n/db';
 import type { NodeLoader } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
-import { ConflictError } from '@/errors/response-errors/conflict.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import type { EventService } from '@/events/event.service';
+import { ConflictError, NotFoundError } from '@n8n/errors';
 import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
-import type { CacheService } from '@/services/cache/cache.service';
+import type { NodeTypes } from '@/node-types';
+import type { CacheService } from '@n8n/backend-services';
 
 import { CREDENTIAL_TYPES_KIND } from '../constants';
 import type { TypeAvailabilityPolicyAttachmentRepository } from '../database/repositories/type-availability-policy-attachment.repository';
@@ -85,6 +85,7 @@ describe('TypeAvailabilityPolicyService', () => {
 	const eventService = mock<EventService>();
 	const cacheService = mock<CacheService>();
 	const loadNodesAndCredentials = mock<LoadNodesAndCredentials>();
+	const nodeTypes = mock<NodeTypes>();
 
 	const service = new TypeAvailabilityPolicyService(
 		policyRepository,
@@ -94,6 +95,7 @@ describe('TypeAvailabilityPolicyService', () => {
 		eventService,
 		cacheService,
 		loadNodesAndCredentials,
+		nodeTypes,
 		mockLogger(),
 	);
 
@@ -111,6 +113,10 @@ describe('TypeAvailabilityPolicyService', () => {
 		scopeRepository.findScopeKeysByIds.mockResolvedValue([]);
 		// Every fixture rule names `n8n-nodes-base`, so it must resolve as an installed package.
 		loadNodesAndCredentials.loaders = { 'n8n-nodes-base': makeLoader('n8n-nodes-base') };
+		nodeTypes.resolveBaseName.mockImplementation((name) => ({
+			baseName: name,
+			isSyntheticTool: false,
+		}));
 	});
 
 	describe('getEffectivePolicy', () => {
@@ -1412,6 +1418,48 @@ describe('TypeAvailabilityPolicyService', () => {
 					matchedRuleId: null,
 					optInAvailable: true,
 				});
+			});
+		});
+
+		describe('tool variants', () => {
+			const GMAIL = 'n8n-nodes-base.gmail';
+			const GMAIL_TOOL = 'n8n-nodes-base.gmailTool';
+
+			beforeEach(() => {
+				scopeRepository.findScopeByKindAndProject.mockResolvedValue(makeScope({ projectId: null }));
+				attachmentRepository.listAttachmentsForScope.mockResolvedValue([
+					{
+						policyId: 'p1',
+						rules: [{ id: 'deny-gmail', action: 'deny', selector: { kind: 'name', value: GMAIL } }],
+						priority: 0,
+						isFloor: false,
+					},
+				]);
+			});
+
+			it('judges a node type by the base name the registry resolves it to', async () => {
+				nodeTypes.resolveBaseName.mockImplementation((name) => ({
+					baseName: name === GMAIL_TOOL ? GMAIL : name,
+					isSyntheticTool: name === GMAIL_TOOL,
+				}));
+
+				const result = await service.evaluateComposedTypesFor(KIND, null, [GMAIL_TOOL]);
+
+				expect(result.verdicts).toEqual([
+					{
+						name: GMAIL_TOOL,
+						action: 'deny',
+						scope: 'instance',
+						matchedRuleId: 'deny-gmail',
+						optInAvailable: false,
+					},
+				]);
+			});
+
+			it('does not resolve a base name for a credential type', async () => {
+				await service.evaluateComposedTypesFor(CREDENTIAL_TYPES_KIND, null, ['gmailApi']);
+
+				expect(nodeTypes.resolveBaseName).not.toHaveBeenCalled();
 			});
 		});
 	});

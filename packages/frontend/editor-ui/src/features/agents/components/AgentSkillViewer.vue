@@ -20,7 +20,6 @@ import type { IValidator, Validatable } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 
 import type { Rule, RuleGroup } from '@/Interface';
-import { AgentSkillImportError, useAgentSkillImport } from '../composables/useAgentSkillImport';
 import type { AgentSkill, AgentSkillReference } from '../types';
 import { formatToolNameForDisplay } from '../utils/toolDisplayName';
 import AgentChipButton from './AgentChipButton.vue';
@@ -40,25 +39,14 @@ const props = withDefaults(
 		availableTools?: AgentSkillAllowedToolOption[];
 		disabled?: boolean;
 		errors?: Partial<Record<keyof AgentSkill, string>>;
-		/**
-		 * Names of the agent's other skills — a name colliding with one of them
-		 * (case-insensitively, trimmed) fails the name field's validation, since
-		 * skill names must be unique per agent.
-		 */
-		existingSkillNames?: string[];
 		selectedPath?: string;
-		scrollable?: boolean;
 		showValidationWarnings?: boolean;
-		showNameField?: boolean;
 	}>(),
 	{
 		availableTools: () => [],
 		disabled: false,
-		existingSkillNames: () => [],
 		selectedPath: SKILL_FILE,
-		scrollable: true,
 		showValidationWarnings: false,
-		showNameField: true,
 	},
 );
 
@@ -66,57 +54,17 @@ const emit = defineEmits<{
 	'update:skill': [updates: Partial<AgentSkill>];
 	'update:valid': [valid: boolean];
 	'select:path': [path: string];
-	'import:skill': [
-		payload: {
-			source: 'skill_file' | 'folder';
-			status: 'success' | 'error';
-			referenceCount?: number;
-			error?: string;
-		},
-	];
 }>();
 
 const i18n = useI18n();
-const { importSkillFiles } = useAgentSkillImport();
-const skillFileInput = ref<HTMLInputElement>();
-const skillFolderInput = ref<HTMLInputElement>();
-const name = ref(props.skill.name);
 const description = ref(props.skill.description);
 const referenceFileName = ref('');
-const fileError = ref('');
 const addToolDialogOpen = ref(false);
 const formValidation = reactive({
 	description: false,
 	referenceName: true,
 });
 
-const nameValidationRules: Array<Rule | RuleGroup> = [
-	{ name: 'MAX_LENGTH', config: { maximum: 128 } },
-	{ name: 'uniqueSkillName' },
-];
-const normalizedExistingSkillNames = computed(
-	() => new Set(props.existingSkillNames.map((name) => name.trim().toLowerCase())),
-);
-const nameIsValid = computed(() => {
-	const value = name.value.trim();
-	return (
-		value.length > 0 &&
-		value.length <= 128 &&
-		!normalizedExistingSkillNames.value.has(value.toLowerCase())
-	);
-});
-const nameValidators: Record<string, IValidator> = {
-	uniqueSkillName: {
-		validate: (value: Validatable) =>
-			normalizedExistingSkillNames.value.has(
-				String(value ?? '')
-					.trim()
-					.toLowerCase(),
-			)
-				? { messageKey: 'agents.builder.skills.validation.nameDuplicate' }
-				: false,
-	},
-};
 const descriptionValidationRules: Array<Rule | RuleGroup> = [
 	{ name: 'MAX_LENGTH', config: { maximum: 512 } },
 ];
@@ -174,7 +122,6 @@ const referencesValid = computed(
 );
 const formIsValid = computed(
 	() =>
-		nameIsValid.value &&
 		formValidation.description &&
 		(!selectedReference.value || formValidation.referenceName) &&
 		instructionsValid.value &&
@@ -240,12 +187,6 @@ const referencesError = computed(() => {
 	return i18n.baseText('agents.builder.skills.references.invalidSummary');
 });
 
-function onNameInput(value: string | number | boolean | null | undefined) {
-	const next = typeof value === 'string' ? value : String(value ?? '');
-	name.value = next;
-	emit('update:skill', { name: next });
-}
-
 function onDescriptionInput(value: string | number | boolean | null | undefined) {
 	const next = typeof value === 'string' ? value : String(value ?? '');
 	description.value = next;
@@ -278,54 +219,6 @@ function onAddAllowedTool(toolName: string) {
 
 function onRemoveAllowedTool(toolName: string) {
 	updateAllowedTools((props.skill.allowedTools ?? []).filter((name) => name !== toolName));
-}
-
-function openSkillFilePicker() {
-	skillFileInput.value?.click();
-}
-
-function openSkillFolderPicker() {
-	skillFolderInput.value?.click();
-}
-
-async function importFiles(files: File[], source: 'skill_file' | 'folder') {
-	let importedSkill: AgentSkill;
-	try {
-		fileError.value = '';
-		importedSkill = await importSkillFiles(files);
-	} catch (error) {
-		fileError.value =
-			error instanceof AgentSkillImportError
-				? i18n.baseText(error.i18nKey)
-				: i18n.baseText('agents.builder.skills.import.invalidFolder');
-		emit('import:skill', {
-			source,
-			status: 'error',
-			error: error instanceof AgentSkillImportError ? error.i18nKey : 'unknown',
-		});
-		return;
-	}
-
-	emit('update:skill', importedSkill);
-	emit('import:skill', {
-		source,
-		status: 'success',
-		referenceCount: importedSkill.references?.length ?? 0,
-	});
-}
-
-function onSkillFileChange(event: Event) {
-	const input = event.target instanceof HTMLInputElement ? event.target : null;
-	const files = input?.files ? Array.from(input.files) : [];
-	if (files.length > 0) void importFiles(files, 'skill_file');
-	if (input) input.value = '';
-}
-
-function onSkillFolderChange(event: Event) {
-	const input = event.target instanceof HTMLInputElement ? event.target : null;
-	const files = input?.files ? Array.from(input.files) : [];
-	if (files.length > 0) void importFiles(files, 'folder');
-	if (input) input.value = '';
 }
 
 function replaceReference(updated: AgentSkillReference, currentPath = updated.path) {
@@ -399,13 +292,6 @@ function normalizeReferenceFileName(value: string): string {
 }
 
 watch(
-	() => props.skill.name,
-	(value) => {
-		if (value !== name.value) name.value = value;
-	},
-);
-
-watch(
 	() => props.skill.description,
 	(value) => {
 		if (value !== description.value) description.value = value;
@@ -425,76 +311,12 @@ watch(formIsValid, (valid) => emit('update:valid', valid), { immediate: true });
 </script>
 
 <template>
-	<div
-		:class="[$style.panel, props.scrollable && $style.scrollable]"
-		data-testid="agent-skill-viewer"
-	>
+	<div :class="$style.panel" data-testid="agent-skill-viewer">
 		<template v-if="isSkillFileSelected">
-			<div :class="$style.importActions">
-				<N8nButton
-					variant="subtle"
-					size="mini"
-					:disabled="props.disabled"
-					data-testid="agent-skill-upload-skill-md"
-					@click="openSkillFilePicker"
-				>
-					<template #prefix><N8nIcon icon="upload" :size="12" /></template>
-					{{ i18n.baseText('agents.builder.skills.import.skillFile') }}
-				</N8nButton>
-				<N8nButton
-					variant="subtle"
-					size="mini"
-					:disabled="props.disabled"
-					data-testid="agent-skill-upload-folder"
-					@click="openSkillFolderPicker"
-				>
-					<template #prefix><N8nIcon icon="folder-up" :size="12" /></template>
-					{{ i18n.baseText('agents.builder.skills.import.folder') }}
-				</N8nButton>
-				<input
-					ref="skillFileInput"
-					type="file"
-					accept=".md,text/markdown"
-					tabindex="-1"
-					:disabled="props.disabled"
-					:class="$style.fileInput"
-					data-testid="agent-skill-skill-md-file-input"
-					@change="onSkillFileChange"
-				/>
-				<input
-					ref="skillFolderInput"
-					type="file"
-					webkitdirectory
-					multiple
-					tabindex="-1"
-					:disabled="props.disabled"
-					:class="$style.fileInput"
-					data-testid="agent-skill-folder-file-input"
-					@change="onSkillFolderChange"
-				/>
-			</div>
-			<N8nText v-if="fileError" size="small" color="danger">{{ fileError }}</N8nText>
 			<N8nText v-if="referencesError" size="small" color="danger">{{ referencesError }}</N8nText>
 			<N8nText v-if="props.errors?.references && !referencesError" size="small" color="danger">{{
 				props.errors.references
 			}}</N8nText>
-
-			<div v-if="props.showNameField" :class="$style.field">
-				<N8nFormInput
-					:model-value="name"
-					:label="i18n.baseText('agents.builder.skills.name.label')"
-					name="skill-name"
-					required
-					label-size="small"
-					:placeholder="i18n.baseText('agents.builder.skills.name.placeholder')"
-					:disabled="props.disabled"
-					:show-validation-warnings="props.showValidationWarnings"
-					:validation-rules="nameValidationRules"
-					:validators="nameValidators"
-					data-testid="agent-skill-name-input"
-					@update:model-value="onNameInput"
-				/>
-			</div>
 
 			<div :class="$style.field">
 				<N8nFormInput
@@ -502,7 +324,6 @@ watch(formIsValid, (valid) => emit('update:valid', valid), { immediate: true });
 					:label="i18n.baseText('agents.builder.skills.description.label')"
 					name="skill-description"
 					required
-					:focus-initially="!props.showNameField"
 					label-size="small"
 					:placeholder="i18n.baseText('agents.builder.skills.description.placeholder')"
 					:disabled="props.disabled"
@@ -512,6 +333,37 @@ watch(formIsValid, (valid) => emit('update:valid', valid), { immediate: true });
 					@update:model-value="onDescriptionInput"
 					@validate="onDescriptionValidate"
 				/>
+			</div>
+
+			<div :class="$style.field">
+				<N8nInputLabel
+					:class="$style.editorLabel"
+					:label="i18n.baseText('agents.builder.skills.instructions.label')"
+					:required="true"
+					size="small"
+				>
+					<N8nMarkdownEditor
+						:class="$style.editor"
+						:model-value="props.skill.instructions ?? ''"
+						:placeholder="i18n.baseText('agents.builder.skills.instructions.placeholder')"
+						show-toolbar="floating"
+						:readonly="props.disabled"
+						max-height="none"
+						data-testid="agent-skill-instructions-editor"
+						@update:model-value="onInstructionsInput"
+					/>
+					<div :class="$style.editorMeta">
+						<N8nText v-if="instructionsError" size="small" color="danger">{{
+							instructionsError
+						}}</N8nText>
+						<N8nText v-if="props.errors?.instructions" size="small" color="danger">{{
+							props.errors.instructions
+						}}</N8nText>
+						<N8nText size="xsmall" color="text-light" :class="$style.characterCount">
+							{{ instructionsCharacterCount }}
+						</N8nText>
+					</div>
+				</N8nInputLabel>
 			</div>
 
 			<div :class="$style.field">
@@ -570,44 +422,16 @@ watch(formIsValid, (valid) => emit('update:valid', valid), { immediate: true });
 					</div>
 				</N8nInputLabel>
 			</div>
-
-			<div :class="[$style.field, $style.instructionsField]">
-				<N8nInputLabel
-					:class="$style.editorLabel"
-					:label="i18n.baseText('agents.builder.skills.instructions.label')"
-					:required="true"
-					size="small"
-				>
-					<N8nMarkdownEditor
-						:class="$style.editor"
-						:container-class="$style.fullHeightEditor"
-						:model-value="props.skill.instructions ?? ''"
-						show-toolbar="floating"
-						:readonly="props.disabled"
-						max-height="100%"
-						data-testid="agent-skill-instructions-editor"
-						@update:model-value="onInstructionsInput"
-					/>
-					<div :class="$style.editorMeta">
-						<N8nText v-if="instructionsError" size="small" color="danger">{{
-							instructionsError
-						}}</N8nText>
-						<N8nText v-if="props.errors?.instructions" size="small" color="danger">{{
-							props.errors.instructions
-						}}</N8nText>
-						<N8nText size="xsmall" color="text-light">{{ instructionsCharacterCount }}</N8nText>
-					</div>
-				</N8nInputLabel>
-			</div>
 		</template>
 
-		<div v-else-if="selectedReference" :class="[$style.field, $style.instructionsField]">
+		<template v-else-if="selectedReference">
 			<div :class="$style.field">
 				<N8nFormInput
 					:model-value="referenceFileName"
 					:label="i18n.baseText('agents.builder.skills.references.name.label')"
 					name="skill-reference-name"
 					required
+					focus-initially
 					label-size="small"
 					:placeholder="i18n.baseText('agents.builder.skills.references.name.placeholder')"
 					:disabled="props.disabled"
@@ -626,12 +450,12 @@ watch(formIsValid, (valid) => emit('update:valid', valid), { immediate: true });
 				size="small"
 			>
 				<N8nMarkdownEditor
-					:class="$style.editor"
-					:container-class="$style.fullHeightEditor"
+					:class="[$style.editor, $style.referenceEditor]"
 					:model-value="selectedReference.content"
+					:placeholder="i18n.baseText('agents.builder.skills.references.content.placeholder')"
 					show-toolbar="floating"
 					:readonly="props.disabled"
-					max-height="100%"
+					max-height="none"
 					data-testid="agent-skill-reference-editor"
 					@update:model-value="onReferenceInput"
 				/>
@@ -642,10 +466,12 @@ watch(formIsValid, (valid) => emit('update:valid', valid), { immediate: true });
 					<N8nText v-if="referencesError && !selectedReferenceError" size="small" color="danger">{{
 						referencesError
 					}}</N8nText>
-					<N8nText size="xsmall" color="text-light">{{ selectedReferenceCharacterCount }}</N8nText>
+					<N8nText size="xsmall" color="text-light" :class="$style.characterCount">
+						{{ selectedReferenceCharacterCount }}
+					</N8nText>
 				</div>
 			</N8nInputLabel>
-		</div>
+		</template>
 
 		<AgentModal
 			:open="addToolDialogOpen"
@@ -681,20 +507,13 @@ watch(formIsValid, (valid) => emit('update:valid', valid), { immediate: true });
 
 <style lang="scss" module>
 .panel {
-	padding: var(--spacing--lg);
-	overflow: hidden;
+	padding: var(--spacing--xl);
 	display: flex;
 	flex-direction: column;
-	height: 100%;
-	min-height: 0;
-	gap: var(--spacing--sm);
+	gap: var(--spacing--md);
+	min-width: 0;
 	width: 100%;
-}
-
-.scrollable {
-	overflow-y: auto;
-	scrollbar-width: thin;
-	scrollbar-color: var(--border-color) transparent;
+	box-sizing: border-box;
 }
 
 .field {
@@ -703,23 +522,16 @@ watch(formIsValid, (valid) => emit('update:valid', valid), { immediate: true });
 	gap: var(--spacing--3xs);
 }
 
-.importActions {
-	display: flex;
-	gap: var(--spacing--2xs);
-}
-
-.instructionsField {
-	flex: 1;
-	min-height: 0;
-}
-
-.fileInput {
-	display: none;
-}
-
 .editor {
-	flex: 1;
-	min-height: 0;
+	:global(.n8n-markdown) {
+		min-height: calc(var(--height--5xl) + var(--spacing--sm));
+	}
+}
+
+.referenceEditor {
+	:global(.n8n-markdown) {
+		min-height: calc(var(--height--5xl) + var(--height--4xl));
+	}
 }
 
 .allowedTools {
@@ -766,19 +578,9 @@ watch(formIsValid, (valid) => emit('update:valid', valid), { immediate: true });
 	max-width: min(12rem, 100%);
 }
 
-.fullHeightEditor {
-	height: 100%;
-
-	:global(.n8n-markdown) {
-		min-height: 100%;
-	}
-}
-
 .editorLabel {
 	display: flex;
 	flex-direction: column;
-	flex: 1;
-	min-height: 0;
 	gap: var(--spacing--2xs);
 }
 
@@ -786,5 +588,15 @@ watch(formIsValid, (valid) => emit('update:valid', valid), { immediate: true });
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--4xs);
+}
+
+.characterCount {
+	text-align: right;
+}
+
+@media (max-width: 480px) {
+	.panel {
+		padding: var(--spacing--md);
+	}
 }
 </style>

@@ -27,7 +27,7 @@ import {
 	type ReportRequiredArtifactInput,
 } from '@n8n/instance-ai';
 
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { NotFoundError } from '@n8n/errors';
 import { NodeCatalogService } from '@/node-catalog';
 
 import { InstanceAiCreditService } from '../../instance-ai/instance-ai-credit.service';
