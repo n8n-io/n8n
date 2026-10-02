@@ -147,6 +147,7 @@ vi.mock('@n8n/design-system', async (importOriginal) => ({
 	N8nCallout: { template: '<div><slot /><slot name="trailingContent" /></div>' },
 	N8nCard: { template: '<div><slot /></div>' },
 	N8nDropdownMenu: { template: '<div><slot name="trigger" /></div>' },
+	N8nHoverCard: { template: '<div><slot name="trigger" /></div>' },
 	N8nHeading: { template: '<div><slot /></div>' },
 	N8nIcon: { name: 'N8nIcon', props: ['icon', 'spin'], template: '<i />' },
 	N8nIconButton: {
@@ -205,7 +206,7 @@ vi.mock('@/features/ai/shared/components/ChatInputBase.vue', async () => {
 		default: defineComponent({
 			name: 'ChatInputBase',
 			template:
-				'<form data-testid="chat-input-stub" @submit.prevent="$emit(\'submit\')"><slot name="header" /><textarea ref="input" /><slot name="footer-start" /></form>',
+				'<form data-testid="chat-input-stub" @submit.prevent="$emit(\'submit\')"><slot name="above" /><textarea ref="input" /><slot name="footer-start" /></form>',
 			props: [
 				'modelValue',
 				'placeholder',
@@ -338,7 +339,6 @@ describe('AgentChatPanel', () => {
 			channel: 'chat' | 'n8n-chat';
 			centerEmptyState: boolean;
 			newSession: boolean;
-			stubQueue: boolean;
 		}> = {},
 		attachTo?: HTMLElement,
 	) {
@@ -697,14 +697,13 @@ describe('AgentChatPanel', () => {
 		const composer = wrapper.findComponent({ name: 'ChatInputBase' });
 		expect(composer.find('[data-testid="agent-message-queue"]').exists()).toBe(true);
 		expect(composer.find('[data-testid="agent-background-jobs"]').exists()).toBe(false);
-		expect(wrapper.find('[data-testid="agent-message-queue"] [aria-expanded]').exists()).toBe(
-			false,
-		);
+		expect(wrapper.find('[data-testid="agent-message-queue"] [aria-expanded]').exists()).toBe(true);
 		expect(
 			wrapper
 				.findAll('[data-testid="agent-queued-message"]')
 				.map((row) => row.get('[title]').text()),
-		).toEqual(['Next message', 'notes.txt']);
+		).toEqual(['Next message', '']);
+		expect(wrapper.find('[aria-label="notes.txt"]').exists()).toBe(true);
 		expect(wrapper.html().indexOf('agent-background-jobs')).toBeLessThan(
 			wrapper.html().indexOf('agent-message-queue'),
 		);
@@ -775,6 +774,36 @@ describe('AgentChatPanel', () => {
 		container.remove();
 	});
 
+	it('reorders with the keyboard and restores focus on the moved message', async () => {
+		const items = [1, 2, 3].map((id) => ({
+			id: String(id),
+			message: `Message ${id}`,
+			createdAt: '2026-09-24T12:00:00.000Z',
+			steeringExecutionId: null,
+		}));
+		queuedMessagesMock.value = items;
+		reorderQueuedMessageMock.mockImplementationOnce(async () => {
+			queuedMessagesMock.value = [items[1], items[0], items[2]];
+		});
+		const container = document.createElement('div');
+		document.body.append(container);
+		const wrapper = mountPanel({}, container);
+		try {
+			await wrapper.get('button[aria-expanded]').trigger('click');
+			await wrapper
+				.get('[data-queue-id="1"] [data-testid="agent-queue-drag-handle"]')
+				.trigger('keydown', { key: 'ArrowDown' });
+			await flushPromises();
+			expect(reorderQueuedMessageMock).toHaveBeenCalledWith('1', '2', ['1', '2', '3']);
+			expect(document.activeElement).toBe(
+				wrapper.get('[data-queue-id="1"] [data-testid="agent-queue-drag-handle"]').element,
+			);
+		} finally {
+			wrapper.unmount();
+			container.remove();
+		}
+	});
+
 	it('uses the order at drag start and restores the refreshed queue after the reorder settles', async () => {
 		const items = [1, 2, 3].map((id) => ({
 			id: String(id),
@@ -822,46 +851,6 @@ describe('AgentChatPanel', () => {
 		composer.vm.$emit('submit');
 		await flushPromises();
 		expect(sendMessageMock).toHaveBeenCalledWith('updated', undefined, expect.any(Function));
-		wrapper.unmount();
-	});
-
-	it('removes a sample queue message locally when editing with the shortcut', async () => {
-		const wrapper = mountPanel({ stubQueue: true });
-		await wrapper.get('textarea').trigger('keydown', { key: 'ArrowUp', altKey: true });
-		await flushPromises();
-		expect(removeQueuedMessageMock).not.toHaveBeenCalled();
-		expect(wrapper.find('[data-queue-id="preview-stub-5"]').exists()).toBe(false);
-		expect(wrapper.findComponent({ name: 'ChatInputBase' }).props('modelValue')).toContain(
-			'Sample queued message',
-		);
-		wrapper.unmount();
-	});
-
-	it('sends an edited sample message back to the local queue without calling the API', async () => {
-		const wrapper = mountPanel({ stubQueue: true });
-		await wrapper.get('textarea').trigger('keydown', { key: 'ArrowUp', altKey: true });
-		await flushPromises();
-		const composer = wrapper.findComponent({ name: 'ChatInputBase' });
-		composer.vm.$emit('update:modelValue', 'edited sample');
-		composer.vm.$emit('submit');
-		await flushPromises();
-		expect(sendMessageMock).not.toHaveBeenCalled();
-		expect(removeQueuedMessageMock).not.toHaveBeenCalled();
-		expect(composer.props('modelValue')).toBe('');
-		const rows = wrapper.findAll('[data-testid="agent-queued-message"]');
-		expect(rows).toHaveLength(5);
-		expect(rows.at(-1)?.text()).toContain('edited sample');
-		wrapper.unmount();
-	});
-
-	it('deletes a sample queue message without calling the removal API', async () => {
-		const wrapper = mountPanel({ stubQueue: true });
-		await wrapper
-			.get('[data-queue-id="preview-stub-1"] [aria-label="generic.delete"]')
-			.trigger('click');
-		await flushPromises();
-		expect(removeQueuedMessageMock).not.toHaveBeenCalled();
-		expect(wrapper.find('[data-queue-id="preview-stub-1"]').exists()).toBe(false);
 		wrapper.unmount();
 	});
 
@@ -2871,6 +2860,27 @@ describe('AgentPreviewDock stream lifecycle', () => {
 			}),
 		);
 	}
+
+	it('sends dock messages through the real chat path', async () => {
+		queuedMessagesMock.value = [];
+		sendMessageMock.mockResolvedValue('sent');
+		const wrapper = mountPreviewDock();
+		try {
+			const composer = wrapper.findComponent({ name: 'ChatInputBase' });
+			expect(wrapper.find('[data-testid="agent-message-queue"]').exists()).toBe(false);
+			composer.vm.$emit('update:modelValue', 'Message from the dock');
+			await nextTick();
+			composer.vm.$emit('submit');
+			await flushPromises();
+			expect(sendMessageMock).toHaveBeenCalledWith(
+				'Message from the dock',
+				undefined,
+				expect.any(Function),
+			);
+		} finally {
+			wrapper.unmount();
+		}
+	});
 
 	it('detaches an in-flight stream when the preview starts a new session', async () => {
 		const wrapper = mountPreviewDock();
