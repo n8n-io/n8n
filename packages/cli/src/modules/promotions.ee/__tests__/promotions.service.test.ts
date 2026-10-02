@@ -8,6 +8,7 @@ import path from 'node:path';
 import { mock } from 'vitest-mock-extended';
 
 import { BadRequestError, NotFoundError, ServiceUnavailableError } from '@n8n/errors';
+
 import { DirectoryPackageReader } from '@/modules/n8n-packages/io/directory/directory-package-reader';
 import type {
 	InventoryWorkflow,
