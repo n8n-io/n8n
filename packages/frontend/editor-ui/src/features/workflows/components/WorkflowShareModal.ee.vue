@@ -76,6 +76,7 @@ const workflowSharedWithProjects = computed(
 		workflowDocumentStore.value?.sharedWithProjects ?? workflowListEntry.value?.sharedWithProjects,
 );
 const loading = ref(true);
+let initializationPromise: Promise<void> | undefined;
 const isDirty = ref(false);
 const modalBus = createEventBus();
 const sharedWithProjects = ref([
@@ -230,6 +231,7 @@ const onCloseModal = async () => {
 		);
 
 		if (shouldSave === MODAL_CONFIRM) {
+			await initializationPromise;
 			await onSave();
 			return false;
 		}
@@ -258,7 +260,8 @@ const initialize = async () => {
 };
 
 onMounted(async () => {
-	await initialize();
+	initializationPromise = initialize();
+	await initializationPromise;
 });
 
 watch(
