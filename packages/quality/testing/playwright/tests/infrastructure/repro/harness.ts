@@ -7,6 +7,7 @@ import type { N8NStack } from 'n8n-containers/stack';
 import { createN8NStack } from 'n8n-containers/stack';
 
 type StartedTestContainer = N8NStack['containers'][number];
+export type Container = StartedTestContainer;
 
 const run = promisify(execFile);
 
@@ -15,6 +16,45 @@ const HOOK_DIR = '/tmp/repro-hooks';
 const OWNER = { email: 'owner@example.com', password: 'SuperSecret123' };
 
 export type Signal = 'SIGTERM' | 'SIGKILL';
+export type Role = 'main' | 'worker';
+export type Variant = 'before' | 'after';
+
+/** Compiled files the hooks patch, as path suffixes inside the image. */
+export const FILES = {
+	jobProcessor: 'n8n/dist/scaling/job-processor.js',
+	scalingService: 'n8n/dist/scaling/scaling.service.js',
+	executionPersistence: 'n8n/dist/executions/execution-persistence.js',
+	taskRequester: 'n8n/dist/task-runners/task-managers/task-requester.js',
+	taskBroker: 'n8n/dist/task-runners/task-broker/task-broker.service.js',
+	workflowExecute: 'n8n-core/dist/execution-engine/workflow-execute.js',
+	bullQueue: 'bull/lib/queue.js',
+	bullJob: 'bull/lib/job.js',
+	bullScripts: 'bull/lib/scripts.js',
+} as const;
+
+/** One hook point for the preload. Paths in `detail` and `where` start at `args`, `this`, `scope` or `result`. */
+export interface HookSpec {
+	point: string;
+	file: string;
+	/** Dotted path inside `module.exports`, e.g. `JobProcessor.prototype`; empty for the exports object. */
+	target: string;
+	method: string;
+	kind?: 'pause' | 'observe' | 'fault' | 'drop';
+	arm?: 'file' | 'always';
+	once?: boolean;
+	scope?: { file: string; target: string; method: string };
+	where?: Array<{ path: string; equals?: unknown; truthy?: boolean }>;
+	detail?: Record<string, string>;
+	phase?: 'before' | 'after';
+	returns?: unknown;
+	async?: boolean;
+	preserve?: string[];
+	message?: string;
+	/** Containers whose log must show the hook installed before the scenario starts. Default: worker. */
+	roles?: Role[];
+	/** Set when the patched file loads only on first use, so the install check skips it. */
+	lazy?: boolean;
+}
 
 export interface StackOptions {
 	name: string;
@@ -22,21 +62,22 @@ export interface StackOptions {
 	runners: 'internal' | 'external';
 	/** Divides lock, renew, stall and grace timeouts. */
 	scale: number;
+	hooks?: HookSpec[];
 	env?: Record<string, string>;
 }
 
-export interface Timings {
-	stackStartMs: number;
-}
-
-/** Bull and shutdown timeouts at n8n defaults, divided by `scale`. */
-export function scaledTimeouts(scale: number): Record<string, string> {
+/** Bull and shutdown timeouts at n8n defaults, divided by `scale`; `overrides` win. */
+export function scaledTimeouts(
+	scale: number,
+	overrides: Record<string, string> = {},
+): Record<string, string> {
 	const ms = (value: number) => String(Math.round(value / scale));
 	return {
 		QUEUE_WORKER_LOCK_DURATION: ms(60_000),
 		QUEUE_WORKER_LOCK_RENEW_TIME: ms(10_000),
 		QUEUE_WORKER_STALLED_INTERVAL: ms(30_000),
 		N8N_GRACEFUL_SHUTDOWN_TIMEOUT: String(Math.max(1, Math.round(30 / scale))),
+		...overrides,
 	};
 }
 
@@ -46,16 +87,29 @@ export function preloadNodeOptions(): string {
 	return `--expose-gc --import=data:text/javascript;base64,${source}`;
 }
 
+export const variant = (): Variant => (process.env.REPRO_VARIANT === 'before' ? 'before' : 'after');
+
+async function docker(...args: string[]): Promise<string> {
+	const { stdout } = await run('docker', args, { maxBuffer: 64 * 1024 * 1024 });
+	return stdout.trim();
+}
+
 export class ReproStack {
 	private cookie = '';
 
+	readonly hooks: HookSpec[];
+
 	private constructor(
 		readonly stack: N8NStack,
-		readonly timings: Timings,
-	) {}
+		readonly stackStartMs: number,
+		hooks: HookSpec[],
+	) {
+		this.hooks = hooks;
+	}
 
 	static async start(options: StackOptions): Promise<ReproStack> {
 		const started = Date.now();
+		const hooks = options.hooks ?? [];
 		const stack = await createN8NStack({
 			projectName: `repro-${options.name}-${process.pid}-${Date.now().toString(36)}`,
 			postgres: true,
@@ -65,37 +119,79 @@ export class ReproStack {
 				N8N_RUNNERS_ENABLED: 'true',
 				NODE_OPTIONS: preloadNodeOptions(),
 				REPRO_HOOK_DIR: HOOK_DIR,
+				REPRO_HOOKS: JSON.stringify(hooks),
 				...scaledTimeouts(options.scale),
 				...options.env,
 			},
 		});
-		return new ReproStack(stack, { stackStartMs: Date.now() - started });
+		const repro = new ReproStack(stack, Date.now() - started, hooks);
+		try {
+			await repro.assertHooksInstalled();
+		} catch (error) {
+			await repro.stop();
+			throw error;
+		}
+		return repro;
 	}
 
 	get baseUrl() {
 		return this.stack.baseUrl;
 	}
 
-	worker(index: number): StartedTestContainer {
-		const [container] = this.stack.findContainers(new RegExp(`-n8n-worker-${index}$`));
-		if (!container) throw new Error(`worker ${index} not found`);
-		return container;
+	worker(index: number): Container {
+		return this.container(new RegExp(`-n8n-worker-${index}$`));
 	}
 
-	workers(): StartedTestContainer[] {
+	workers(): Container[] {
 		return this.stack.findContainers(/-n8n-worker-\d+$/);
 	}
 
-	main(): StartedTestContainer {
-		const [container] = this.stack.findContainers(/-n8n(-main-1)?$/);
-		if (!container) throw new Error('main not found');
-		return container;
+	main(): Container {
+		return this.container(/-n8n(-main-1)?$/);
 	}
 
-	private service(name: string): StartedTestContainer {
-		const [container] = this.stack.findContainers(new RegExp(`-${name}$`));
-		if (!container) throw new Error(`${name} not found`);
-		return container;
+	runner(): Container {
+		return this.container(/-task-runner$/);
+	}
+
+	container(pattern: RegExp): Container {
+		const [found] = this.stack.findContainers(pattern);
+		if (!found) throw new Error(`container ${String(pattern)} not found`);
+		return found;
+	}
+
+	n8nContainers(): Array<{ name: string; container: Container }> {
+		return [
+			{ name: 'main', container: this.main() },
+			...this.workers().map((container, index) => ({ name: `worker-${index + 1}`, container })),
+		];
+	}
+
+	/** Fails when a declared hook did not install in the containers of its roles. */
+	async assertHooksInstalled(timeoutMs = 20_000) {
+		const expected = this.hooks.filter((hook) => !hook.lazy);
+		if (expected.length === 0) return;
+		const deadline = Date.now() + timeoutMs;
+		for (;;) {
+			const missing: string[] = [];
+			for (const hook of expected) {
+				const containers = (hook.roles ?? ['worker']).flatMap((role) =>
+					role === 'main' ? [this.main()] : this.workers(),
+				);
+				for (const container of containers) {
+					const text = await logs(container);
+					if (text.includes(`missing ${hook.point} `)) {
+						throw new Error(`hook ${hook.point} could not install in ${container.getName()}`);
+					}
+					if (!text.includes(`installed ${hook.point} `)) {
+						missing.push(`${hook.point}@${container.getName()}`);
+					}
+				}
+			}
+			if (missing.length === 0) return;
+			if (Date.now() > deadline) throw new Error(`hooks not installed: ${missing.join(', ')}`);
+			await new Promise((r) => setTimeout(r, 500));
+		}
 	}
 
 	async request(method: string, path: string, payload?: unknown) {
@@ -132,11 +228,12 @@ export class ReproStack {
 		if (res.status !== 200) throw new Error(`login failed: ${res.status}`);
 	}
 
-	/** Creates and activates a workflow; returns its id. */
-	async activeWorkflow(workflow: Record<string, unknown>): Promise<string> {
+	/** Creates a workflow, activates it unless told not to, and returns its id. */
+	async createWorkflow(workflow: Record<string, unknown>, options: { activate?: boolean } = {}) {
 		const created = await this.request('POST', '/rest/workflows', workflow);
 		if (created.status !== 200) throw new Error(`create workflow: ${JSON.stringify(created.body)}`);
 		const { id, versionId } = (created.body as { data: { id: string; versionId: string } }).data;
+		if (options.activate === false) return id;
 		let res = await this.request('POST', `/rest/workflows/${id}/activate`, { versionId });
 		if (res.status === 404 || res.status === 405) {
 			res = await this.request('PATCH', `/rest/workflows/${id}`, { active: true, versionId });
@@ -154,8 +251,24 @@ export class ReproStack {
 		return { status: res.status, body: await res.text() };
 	}
 
+	/** Fires a webhook without waiting; `result` settles with the response or the abort. */
+	webhookInBackground(path: string, payload: unknown = {}) {
+		const controller = new AbortController();
+		const startedAt = Date.now();
+		const result = fetch(`${this.baseUrl}/webhook/${path}`, {
+			method: 'POST',
+			headers: { 'content-type': 'application/json' },
+			body: JSON.stringify(payload),
+			signal: controller.signal,
+		}).then(
+			async (res) => ({ status: res.status, body: await res.text(), ms: Date.now() - startedAt }),
+			(error: Error) => ({ status: 0, body: error.message, ms: Date.now() - startedAt }),
+		);
+		return { result, abort: () => controller.abort() };
+	}
+
 	async sql(query: string): Promise<string> {
-		const { output } = await this.service('postgres').exec([
+		const { output } = await this.container(/-postgres$/).exec([
 			'psql',
 			'-U',
 			'n8n_user',
@@ -171,47 +284,78 @@ export class ReproStack {
 		const [status = '', finished = ''] = (
 			await this.sql(`select status, finished from execution_entity where id = ${Number(id)}`)
 		).split('|');
-		const stalled =
-			(await this.sql(
-				`select count(*) from execution_data where "executionId" = ${Number(id)} and data like '%failed to be processed too many times%'`,
-			)) !== '0';
-		return { status, finished: finished === 't', stalledError: stalled };
+		const stalledError = await this.executionDataContains(
+			id,
+			'failed to be processed too many times',
+		);
+		return { status, finished: finished === 't', stalledError };
 	}
 
+	async executionDataContains(id: string, text: string): Promise<boolean> {
+		const escaped = text.replace(/'/g, "''");
+		return (
+			(await this.sql(
+				`select count(*) from execution_data where "executionId" = ${Number(id)} and data like '%${escaped}%'`,
+			)) !== '0'
+		);
+	}
+
+	/** Execution ids of a workflow, oldest first. */
+	async executionsOf(workflowId: string): Promise<string[]> {
+		const rows = await this.sql(
+			`select id from execution_entity where "workflowId" = '${workflowId.replace(/'/g, "''")}' order by id`,
+		);
+		return rows.split('\n').filter(Boolean);
+	}
+
+	/** Waits until the execution leaves new, running and waiting, or the timeout passes. */
 	async waitForExecution(id: string, timeoutMs: number) {
+		return await this.waitForStatus(
+			id,
+			(s) => !['', 'new', 'running', 'waiting'].includes(s),
+			timeoutMs,
+		);
+	}
+
+	async waitForStatus(id: string, done: (status: string) => boolean, timeoutMs: number) {
 		const deadline = Date.now() + timeoutMs;
 		for (;;) {
 			const execution = await this.execution(id);
-			if (!['', 'new', 'running', 'waiting'].includes(execution.status)) return execution;
-			if (Date.now() > deadline) return execution;
+			if (done(execution.status) || Date.now() > deadline) return execution;
 			await new Promise((r) => setTimeout(r, 250));
 		}
 	}
 
 	async redis(...args: string[]): Promise<string> {
-		const { output } = await this.service('redis').exec(['redis-cli', '--no-raw', ...args]);
+		const { output } = await this.container(/-redis$/).exec(['redis-cli', '--raw', ...args]);
 		return output.trim();
 	}
 
 	/** Bull state of the default queue, and of one job when given. */
 	async bull(jobId?: string) {
 		const list = async (...args: string[]) =>
-			(await this.redis('--raw', ...args)).split('\n').filter(Boolean);
+			(await this.redis(...args)).split('\n').filter(Boolean);
 		const state = {
 			wait: await list('LRANGE', 'bull:jobs:wait', '0', '-1'),
 			active: await list('LRANGE', 'bull:jobs:active', '0', '-1'),
 			failed: await list('ZRANGE', 'bull:jobs:failed', '0', '-1'),
-			job: undefined as undefined | { exists: boolean; failedReason: string; lock: boolean },
+			job: undefined as undefined | Record<string, string | boolean>,
 		};
-		if (jobId) {
-			const key = `bull:jobs:${jobId}`;
-			state.job = {
-				exists: (await this.redis('--raw', 'EXISTS', key)) === '1',
-				failedReason: await this.redis('--raw', 'HGET', key, 'failedReason'),
-				lock: (await this.redis('--raw', 'EXISTS', `${key}:lock`)) === '1',
-			};
-		}
+		if (jobId) state.job = await this.bullJob(jobId);
 		return state;
+	}
+
+	/** Full Bull job hash plus whether the job key and its lock exist. */
+	async bullJob(jobId: string) {
+		const key = `bull:jobs:${jobId}`;
+		const flat = (await this.redis('HGETALL', key)).split('\n');
+		const hash: Record<string, string | boolean> = {};
+		for (let i = 0; i + 1 < flat.length; i += 2) {
+			if (flat[i] !== 'data' && flat[i] !== 'opts') hash[flat[i]] = flat[i + 1];
+		}
+		hash.exists = (await this.redis('EXISTS', key)) === '1';
+		hash.lock = (await this.redis('EXISTS', `${key}:lock`)) === '1';
+		return hash;
 	}
 
 	async stop() {
@@ -219,16 +363,21 @@ export class ReproStack {
 	}
 }
 
-async function docker(...args: string[]): Promise<string> {
-	const { stdout } = await run('docker', args, { maxBuffer: 64 * 1024 * 1024 });
-	return stdout.trim();
-}
-
 /** Sends a signal to the container's PID 1 and returns the host time it was sent. */
-export async function signal(container: StartedTestContainer, sig: Signal): Promise<number> {
+export async function signal(container: Container, sig: Signal): Promise<number> {
 	const sentAt = Date.now();
 	await docker('kill', '--signal', sig, container.getId());
 	return sentAt;
+}
+
+/** Freezes or thaws every process in the container. */
+export async function freeze(container: Container, frozen: boolean) {
+	await docker(frozen ? 'pause' : 'unpause', container.getId());
+}
+
+/** Starts an exited container again, with its original command and env. */
+export async function startAgain(container: Container) {
+	await docker('start', container.getId());
 }
 
 export interface ExitResult {
@@ -239,7 +388,7 @@ export interface ExitResult {
 
 /** Waits for the container process to exit; `exitedAt` is host time, accurate to the poll interval. */
 export async function waitForExit(
-	container: StartedTestContainer,
+	container: Container,
 	timeoutMs: number,
 ): Promise<ExitResult | undefined> {
 	const deadline = Date.now() + timeoutMs;
@@ -259,30 +408,37 @@ export async function waitForExit(
 	return undefined;
 }
 
-export async function logs(container: StartedTestContainer): Promise<string> {
+export async function logs(container: Container): Promise<string> {
 	const { stdout, stderr } = await run('docker', ['logs', container.getId()], {
 		maxBuffer: 256 * 1024 * 1024,
 	});
 	return stdout + stderr;
 }
 
-/** Resolves on the first new line containing `snippet` in any of the containers' logs. */
+export interface LogMatch {
+	container: Container;
+	line: string;
+	at: number;
+}
+
+/** Resolves on the first new line containing one of the snippets in any of the containers' logs. */
 export async function waitForLog(
-	containers: StartedTestContainer[],
+	containers: Container[],
 	snippet: string | string[],
 	timeoutMs: number,
 	abort?: AbortSignal,
-): Promise<{ container: StartedTestContainer; line: string; at: number }> {
+): Promise<LogMatch> {
+	const wanted = Array.isArray(snippet) ? snippet : [snippet];
 	const streams: NodeJS.ReadableStream[] = [];
 	try {
 		return await new Promise((resolve, reject) => {
 			const timer = setTimeout(
-				() => reject(new Error(`log "${String(snippet)}" not seen in ${timeoutMs}ms`)),
+				() => reject(new Error(`log "${wanted.join('" | "')}" not seen in ${timeoutMs}ms`)),
 				timeoutMs,
 			);
 			abort?.addEventListener('abort', () => {
 				clearTimeout(timer);
-				reject(new Error(`log "${String(snippet)}" wait aborted`));
+				reject(new Error(`log "${wanted.join('" | "')}" wait aborted`));
 			});
 			for (const container of containers) {
 				void container.logs({ since: Math.floor(Date.now() / 1000) - 1 }).then((stream) => {
@@ -292,7 +448,6 @@ export async function waitForLog(
 						buffer += chunk.toString();
 						const lines = buffer.split('\n');
 						buffer = lines.pop() ?? '';
-						const wanted = Array.isArray(snippet) ? snippet : [snippet];
 						const line = lines.find((l) => wanted.some((s) => l.includes(s)));
 						if (line) {
 							clearTimeout(timer);
@@ -307,13 +462,13 @@ export async function waitForLog(
 	}
 }
 
-async function writeInContainer(container: StartedTestContainer, file: string, content: string) {
+async function writeInContainer(container: Container, file: string, content: string) {
 	const script = `require('fs').mkdirSync(${JSON.stringify(HOOK_DIR)},{recursive:true});require('fs').writeFileSync(${JSON.stringify(file)},${JSON.stringify(content)})`;
 	const result = await container.exec(['node', '-e', script]);
 	return result.exitCode === 0;
 }
 
-async function removeInContainer(container: StartedTestContainer, file: string) {
+async function removeInContainer(container: Container, file: string) {
 	await container.exec([
 		'node',
 		'-e',
@@ -322,36 +477,51 @@ async function removeInContainer(container: StartedTestContainer, file: string) 
 }
 
 export interface HookHit {
-	container: StartedTestContainer;
-	detail: Record<string, string>;
+	container: Container;
+	detail: Record<string, unknown>;
 	hitAt: number;
 }
 
+const parseDetail = (line: string): Record<string, unknown> => {
+	const start = line.indexOf('{');
+	if (start === -1) return {};
+	try {
+		return JSON.parse(line.slice(start)) as Record<string, unknown>;
+	} catch {
+		return {};
+	}
+};
+
 /**
- * A named pause point in the preload. The control channel is a file per point
- * inside the container: `.arm` enables one pause, the preload logs the hit and
- * polls for `.release`.
+ * Control for one declared hook point. The channel is a file per point inside
+ * the container: `.arm` enables it, the preload logs each hit and polls for `.release`.
  */
-export function hook(containers: StartedTestContainer[], point: string) {
+export function hook(containers: Container[], point: string) {
 	const path = (kind: string) => `${HOOK_DIR}/${point}.${kind}`;
 	return {
-		async arm() {
-			await Promise.all(containers.map(async (c) => await writeInContainer(c, path('arm'), '1')));
+		async arm(only?: Container[]) {
+			await Promise.all(
+				(only ?? containers).map(async (c) => await writeInContainer(c, path('arm'), '1')),
+			);
 		},
-		async disarm(except?: StartedTestContainer) {
+		async disarm(except?: Container) {
 			await Promise.all(
 				containers
 					.filter((c) => c !== except)
 					.map(async (c) => await removeInContainer(c, path('arm'))),
 			);
 		},
-		async waitHit(timeoutMs: number): Promise<HookHit> {
-			const { container, line, at } = await waitForLog(containers, `hit ${point}`, timeoutMs);
-			const detail = JSON.parse(line.slice(line.indexOf('{'))) as Record<string, string>;
-			return { container, detail, hitAt: at };
+		async waitHit(timeoutMs: number, abort?: AbortSignal): Promise<HookHit> {
+			const { container, line, at } = await waitForLog(
+				containers,
+				` hit ${point} `,
+				timeoutMs,
+				abort,
+			);
+			return { container, detail: parseDetail(line), hitAt: at };
 		},
 		/** Returns the exec round trip, or undefined when the container is gone. */
-		async release(container: StartedTestContainer): Promise<number | undefined> {
+		async release(container: Container): Promise<number | undefined> {
 			const started = Date.now();
 			try {
 				const ok = await writeInContainer(container, path('release'), String(started));
@@ -363,14 +533,78 @@ export function hook(containers: StartedTestContainer[], point: string) {
 	};
 }
 
-export function recordResult(result: Record<string, unknown>) {
-	const file = process.env.REPRO_RESULTS_FILE;
-	if (!file) return;
-	mkdirSync(join(file, '..'), { recursive: true });
-	appendFileSync(file, `${JSON.stringify({ at: new Date().toISOString(), ...result })}\n`);
-}
+/** Ordered steps of one scenario run, with a timeline, collected logs and one JSONL result line. */
+export class Scenario {
+	readonly variant = variant();
 
-export function writeLogs(dir: string, name: string, content: string) {
-	mkdirSync(dir, { recursive: true });
-	writeFileSync(join(dir, `${name}.log`), content);
+	readonly result: Record<string, unknown>;
+
+	private readonly started = Date.now();
+
+	private readonly timeline: Array<{ step: string; ms: number; note?: unknown }> = [];
+
+	constructor(
+		readonly name: string,
+		readonly repro: ReproStack,
+		private readonly outputDir: string,
+	) {
+		this.result = {
+			scenario: name,
+			variant: this.variant,
+			image: process.env.TEST_IMAGE_N8N ?? 'n8nio/n8n:local',
+			stackStartMs: repro.stackStartMs,
+		};
+	}
+
+	mark(step: string, note?: unknown) {
+		this.timeline.push({ step, ms: Date.now() - this.started, note });
+	}
+
+	async step<T>(label: string, action: () => Promise<T>): Promise<T> {
+		const value = await action();
+		this.mark(label);
+		return value;
+	}
+
+	/** Resolves with the key of the first promise that settles successfully. */
+	async race<K extends string>(label: string, entries: Record<K, Promise<unknown>>): Promise<K> {
+		const winner = await Promise.any(
+			Object.entries(entries).map(async ([key, promise]) => {
+				await (promise as Promise<unknown>);
+				return key as K;
+			}),
+		);
+		this.mark(label, winner);
+		return winner;
+	}
+
+	set(values: Record<string, unknown>) {
+		Object.assign(this.result, values);
+	}
+
+	/** Writes every n8n container log to the output dir and returns them by name. */
+	async collectLogs(): Promise<Record<string, string>> {
+		const out: Record<string, string> = {};
+		const dir = join(this.outputDir, 'logs');
+		mkdirSync(dir, { recursive: true });
+		for (const { name, container } of this.repro.n8nContainers()) {
+			try {
+				out[name] = await logs(container);
+				writeFileSync(join(dir, `${name}.log`), out[name]);
+			} catch {
+				out[name] = '';
+			}
+		}
+		return out;
+	}
+
+	finish(passed: boolean) {
+		this.result.passed = passed;
+		this.result.scenarioMs = Date.now() - this.started;
+		this.result.timeline = this.timeline;
+		const file = process.env.REPRO_RESULTS_FILE;
+		if (!file) return;
+		mkdirSync(join(file, '..'), { recursive: true });
+		appendFileSync(file, `${JSON.stringify({ at: new Date().toISOString(), ...this.result })}\n`);
+	}
 }

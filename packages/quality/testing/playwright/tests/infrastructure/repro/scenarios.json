@@ -1,0 +1,8 @@
+{
+	"worker-drain-fetched-job": {
+		"issue": "CAT-4728",
+		"spec": "worker-drain-fetched-job.spec.ts",
+		"before": "n8nio/n8n:2.42.2",
+		"after": "n8nio/n8n:repro-cat4728-fix"
+	}
+}

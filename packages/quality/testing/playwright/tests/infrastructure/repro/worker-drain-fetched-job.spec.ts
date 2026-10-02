@@ -1,143 +1,96 @@
 import { expect, test } from '@playwright/test';
-import { nanoid } from 'nanoid';
 
-import {
-	hook,
-	logs,
-	recordResult,
-	ReproStack,
-	signal,
-	waitForExit,
-	waitForLog,
-	writeLogs,
-} from './harness';
+import { FILES, hook, ReproStack, Scenario, signal, waitForExit, waitForLog } from './harness';
+import { chain, nodes, webhookPath } from './workflows';
 
-const SCALE = 6;
-
-const webhookWorkflow = (path: string) => ({
-	name: `drain ${path}`,
-	nodes: [
-		{
-			id: 'wh',
-			name: 'Webhook',
-			type: 'n8n-nodes-base.webhook',
-			typeVersion: 2,
-			position: [0, 0],
-			webhookId: path,
-			parameters: { httpMethod: 'POST', path, responseMode: 'onReceived' },
-		},
-		{
-			id: 'code',
-			name: 'Code',
-			type: 'n8n-nodes-base.code',
-			typeVersion: 2,
-			position: [200, 0],
-			parameters: { jsCode: 'return [{ json: { ok: true } }];' },
-		},
-	],
-	connections: { Webhook: { main: [[{ node: 'Code', type: 'main', index: 0 }]] } },
-	settings: { executionOrder: 'v1' },
-});
-
-test('worker finishes or hands back a job fetched before SIGTERM', async ({}, testInfo) => {
+test('worker drain: job fetched before SIGTERM finishes or goes back to the queue', async ({}, testInfo) => {
 	test.setTimeout(300_000);
-	const image = process.env.TEST_IMAGE_N8N ?? 'n8nio/n8n:local';
 
 	const repro = await ReproStack.start({
-		name: 'drain',
+		name: 'fetched-job',
 		workers: 2,
 		runners: 'internal',
-		scale: SCALE,
+		scale: 6,
+		hooks: [
+			{
+				point: 'job-before-track',
+				file: FILES.executionPersistence,
+				target: 'ExecutionPersistence.prototype',
+				method: 'findSingleExecution',
+				scope: { file: FILES.jobProcessor, target: 'JobProcessor.prototype', method: 'processJob' },
+				detail: { jobId: 'scope.args.0.id', executionId: 'scope.args.0.data.executionId' },
+			},
+		],
 	});
-
-	const result: Record<string, unknown> = {
-		scenario: 'worker-drain-fetched-job',
-		image,
-		scale: SCALE,
-		stackStartMs: repro.timings.stackStartMs,
-	};
-	const scenarioStart = Date.now();
+	const s = new Scenario('worker-drain-fetched-job', repro, testInfo.outputPath());
 
 	try {
 		await repro.signIn();
-		const path = `drain-${nanoid(8)}`;
-		await repro.activeWorkflow(webhookWorkflow(path));
+		const path = webhookPath('fetched');
+		await repro.createWorkflow(
+			chain('fetched job', [
+				nodes.webhook(path),
+				nodes.code('Code', 'return [{ json: { ok: true } }];'),
+			]),
+		);
 
 		const workers = repro.workers();
 		const point = hook(workers, 'job-before-track');
-		await point.arm();
+		await s.step('armed', async () => await point.arm());
 
 		const hit = point.waitHit(30_000);
-		const webhook = await repro.webhook(path);
-		expect(webhook.status).toBe(200);
-
-		const { container: draining, detail, hitAt } = await hit;
+		await s.step('webhook', async () => await repro.webhook(path));
+		const { container: draining, detail } = await hit;
+		s.mark('hit', detail);
 		await point.disarm(draining);
-		const other = workers.find((w) => w !== draining);
-		const { executionId, jobId } = detail;
+		const executionId = String(detail.executionId);
+		const jobId = String(detail.jobId);
 
-		const paused = waitForLog([draining], ['Paused all queues', 'Paused queue'], 15_000).catch(
-			() => undefined,
-		);
 		const stopWatching = new AbortController();
 		const drainWaits = waitForLog(
 			[draining],
 			`(execution IDs: ${executionId})`,
 			90_000,
 			stopWatching.signal,
-		).then(
-			() => 'drain-waits' as const,
-			() => 'exited' as const,
 		);
 		const sigtermAt = await signal(draining, 'SIGTERM');
+		s.mark('sigterm');
 		const exited = waitForExit(draining, 90_000);
-		const pausedLog = await paused;
-		const anchor = await Promise.race([drainWaits, exited.then(() => 'exited' as const)]);
+		const anchor = await s.race('anchor', { 'drain-waits': drainWaits, exited });
 		stopWatching.abort();
-		const releaseRttMs = anchor === 'drain-waits' ? await point.release(draining) : undefined;
+		if (anchor === 'drain-waits')
+			await s.step('released', async () => await point.release(draining));
 
 		const exit = await exited;
-		result.releaseAnchor = anchor;
-		const execution = await repro.waitForExecution(executionId, 60_000);
+		s.mark('exited', exit);
+		const execution = await repro.waitForExecution(executionId, 90_000);
 		const bull = await repro.bull(jobId);
+		const logs = await s.collectLogs();
 
-		const mainLog = await logs(repro.main());
-		const drainingLog = await logs(draining);
-		const otherLog = other ? await logs(other) : '';
-		const started = `started execution ${executionId} `;
-
-		Object.assign(result, {
+		s.set({
 			executionId,
 			jobId,
-			drainingWorker: draining.getName(),
-			hitAfterWebhookMs: hitAt - scenarioStart,
-			queuesPausedAfterSigtermMs: pausedLog ? pausedLog.at - sigtermAt : null,
-			releaseRttMs: releaseRttMs ?? null,
-			releaseDelivered: releaseRttMs !== undefined,
+			anchor,
 			exitCode: exit?.exitCode ?? null,
 			exitAfterSigtermMs: exit ? exit.exitedAt - sigtermAt : null,
 			execution,
 			bull,
-			stallLogged: mainLog.includes('stalled more than maxStalledCount'),
-			startedOnDraining: drainingLog.includes(started),
-			startedOnOther: otherLog.includes(started),
-			scenarioMs: Date.now() - scenarioStart,
+			stallLogged: logs.main.includes('stalled more than maxStalledCount'),
 		});
 
-		const dir = testInfo.outputPath('logs');
-		writeLogs(dir, 'main', mainLog);
-		writeLogs(dir, 'worker-draining', drainingLog);
-		writeLogs(dir, 'worker-other', otherLog);
-
-		expect.soft(result.stallLogged, 'main logs a stalled job').toBe(false);
-		expect.soft(execution.stalledError, 'execution failed as stalled').toBe(false);
-		expect.soft(execution.status, 'execution status').toBe('success');
-		expect.soft(bull.active, 'job left active').not.toContain(jobId);
-		expect.soft(bull.job?.lock, 'job lock left behind').not.toBe(true);
-		expect.soft(exit?.exitCode, 'draining worker exit code').toBe(0);
+		if (s.variant === 'after') {
+			expect.soft(s.result.stallLogged, 'main logs a stalled job').toBe(false);
+			expect.soft(execution.status, 'execution status').toBe('success');
+			expect.soft(bull.active, 'job left active').not.toContain(jobId);
+			expect.soft(bull.job?.lock, 'job lock left behind').toBe(false);
+			expect.soft(exit?.exitCode, 'draining worker exit code').toBe(0);
+		} else {
+			expect.soft(anchor, 'worker exits without waiting for the job').toBe('exited');
+			expect.soft(s.result.stallLogged, 'main logs a stalled job').toBe(true);
+			expect.soft(execution.stalledError, 'execution fails as stalled').toBe(true);
+		}
 	} finally {
-		result.passed = testInfo.errors.length === 0;
-		recordResult(result);
+		s.finish(testInfo.errors.length === 0);
 		await repro.stop();
 	}
 });
