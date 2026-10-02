@@ -2,6 +2,7 @@ import { Logger } from '@n8n/backend-common';
 import { EventService } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
+import type { PollerFailureState } from '@n8n/db';
 import { WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { ClaimedTask, DispatchDecision, DispatchReporter, TaskHandler } from '@n8n/scheduler';
@@ -164,16 +165,7 @@ export class PollTriggerTaskHandler implements TaskHandler {
 						// Not routed to the error workflow: an abandoned poll produces no run, and
 						// an error run is one. It does count as a poll failure, so a source that
 						// keeps hanging is re-polled at a widening interval like any failing source.
-						const isActive = await this.workflowRepository.isActive(workflowId).catch(() => true);
-						if (isActive) {
-							await this.pollBackoffService.recordFailure({
-								workflowId,
-								nodeId,
-								error: new PollTimeoutError(),
-								state,
-								now: new Date(), // Fresh clock, not the tick's
-							});
-						}
+						await this.recordFailureIfActive(workflowId, nodeId, new PollTimeoutError(), state);
 						return report.notDispatched();
 					}
 					pollResponse = outcome;
@@ -227,16 +219,7 @@ export class PollTriggerTaskHandler implements TaskHandler {
 				// dead-letter without ever running it. __emitError commits no cursor, so
 				// the cursor holds and the next tick retries the same window.
 				if (!polled) {
-					const isActive = await this.workflowRepository.isActive(workflowId).catch(() => true);
-					if (isActive) {
-						await this.pollBackoffService.recordFailure({
-							workflowId,
-							nodeId,
-							error,
-							state,
-							now: new Date(), // Fresh clock, not the tick's
-						});
-					}
+					await this.recordFailureIfActive(workflowId, nodeId, error, state);
 				}
 				pollFunctions.__emitError(ensureError(error));
 				this.logger.debug('Poll failed at runtime; routed to the error workflow', logContext);
@@ -246,6 +229,24 @@ export class PollTriggerTaskHandler implements TaskHandler {
 				await workflow.expression.releaseIsolate();
 			}
 		});
+	}
+
+	private async recordFailureIfActive(
+		workflowId: string,
+		nodeId: string,
+		error: unknown,
+		state: PollerFailureState | null,
+	): Promise<void> {
+		const isActive = await this.workflowRepository.isActive(workflowId).catch(() => true);
+		if (isActive) {
+			await this.pollBackoffService.recordFailure({
+				workflowId,
+				nodeId,
+				error,
+				state,
+				now: new Date(), // Use the failure time, not the tick start.
+			});
+		}
 	}
 
 	/** The invariant the activation-time healer guarantees: every node id unique and non-empty. */
