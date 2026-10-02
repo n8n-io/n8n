@@ -8,8 +8,9 @@ each contract runs. It is the design of the NODE-6071 spike, lane C2.
 | Topic | Decision | Why |
 |---|---|---|
 | Credential | A node has one `credential`: the credential types a user may pick, and a scope vocabulary. | One place to read for the AI builder and for setup. An action cannot list other credentials. |
-| Credential types | Values: `apiKey`, `bearer`, `oauth2`, `custom`, `compat`. | `tsc` rejects a typo or a missing import. `toCredentialType` projects a value to an n8n `ICredentialType`. |
-| Compat | `compat('notionApi')` reuses a legacy class by name. | Saved credentials keep working. The typed value is the primary form. |
+| Credential types | `credentialType({ id, legacyName, fields, baseUrl, auth, test })`. `auth` is data first: `a.bearer`, `a.header`, `a.query`, `a.basic`, `a.apply`, `a.when`, `a.oauth2.*`. `a.custom` is the last resort. | n8n owns the secrets and the mechanics. `tsc` rejects a typo in a field, a template or an id. |
+| Ids | `service.scheme`, e.g. `notion.token`, `notion.oauth2`. `legacyName` is the n8n type name. | One spelling per concept. Stored credentials and workflows refer to `legacyName`, so they resolve unchanged. |
+| Compat | `compat('githubApi', { id, fields, baseUrl })` reuses a legacy class by name. | Saved credentials keep working. `credentialType` is the primary form. |
 | Scopes | Each action and trigger lists `scopes`. `tsc` rejects a scope that the node's credential does not declare. | The scope need is per contract, so a workflow can compute its union. |
 | Scope check | The flow build unions the scopes of all nodes. With `grants`, a missing scope fails the build and names the scope and the nodes. | A missing scope is found before the workflow runs. |
 | Triggers | `resource.trigger(event, spec)` next to `resource.action(...)`. Kinds: `poll`, `webhook`. | Same id, version, freeze, and contract hash path as an action. |
@@ -19,28 +20,59 @@ each contract runs. It is the design of the NODE-6071 spike, lane C2.
 ## Credential
 
 ```ts
+export const notionToken = credentialType({
+	id: 'notion.token',
+	legacyName: 'notionApi',
+	displayName: 'Notion API',
+	docs: 'notion',
+	fields: { apiKey: t.secret('Internal Integration Secret') },
+	baseUrl: 'https://api.notion.com/v1',
+	auth: (a) => a.bearer('apiKey', { defaults: { 'Notion-Version': '2022-02-22' } }),
+	test: { get: '/users/me' },
+});
+
 export const notion = defineNode({
 	id: 'notion',
 	displayName: 'Notion',
 	credential: credential({
-		types: [notionApi, notionOAuth2Api],
+		types: [notionToken, notionOAuth2],
 		scopes: { 'content:read': 'Read pages, databases and data sources', 'users:read': 'Read users' },
 	}),
 	baseUrl: 'https://api.notion.com/v1',
 });
 ```
 
-- `custom` signs a request in code. Notion needs it: its legacy type sets `Notion-Version` only
-  when the request has none.
-- `oauth2` is configuration only. The projection extends `oAuth2Api`, so n8n core runs the flow.
-- A type may have `fields` (settings code may read) and `secrets` (only n8n reads them). A type
-  with `baseUrl(fields)` replaces the node's base URL, e.g. a GitHub Enterprise server.
-- A type declares `hosts`, the hosts n8n may send it to. The host of `baseUrl(fields)` is
-  added. See "Egress and credential hosts" in `sandboxed-execution.md`.
-- `credential({ ..., optional: true })` lets the node run without a credential (HTTP Request).
+Use the first `auth` that fits:
 
-The parity suite proves that `toCredentialType(notionApi)` and `toCredentialType(notionOAuth2Api)`
-equal the legacy classes and sign requests byte for byte.
+| Builder | Puts the credential | Example |
+|---|---|---|
+| `a.bearer(field, { defaults })` | `Authorization: Bearer <field>` | Notion |
+| `a.header(name, template)` | one header | `a.header('Authorization', 'token {accessToken}')` |
+| `a.query(name, template)` | one query parameter | `a.query('key', '{apiKey}')` |
+| `a.basic(username, password)` | HTTP basic | `a.basic('{email}/token', '{apiToken}')` (Zendesk) |
+| `a.apply({ headers, query, defaults })` | several places | Datadog, Trello |
+| `a.when(field, cases)` | one placement per value of an options field | an auth-type switch |
+| `a.oauth2.authorizationCode(...)` | RFC 6749 §4.1. PKCE S256 is on; a port of a legacy type without PKCE sets `pkce: false` | Notion OAuth2 |
+| `a.oauth2.clientCredentials(...)` | RFC 6749 §4.4 | |
+| `a.custom({ reason, sign })` | code signs each request and sees every secret. `reason` is required | the last resort |
+
+- Fields: `t.secret(title)` (masked, only n8n and `custom` read it), `t.text(title)`, `t.url(title)`,
+  or any schema, e.g. `oneOf('eu', 'us')` for `a.when` or a base URL map.
+- A template `{field}` must name a field. A secret never goes into `baseUrl` or `test`.
+- An empty optional field drops its header or query parameter. `defaults` are set only when the
+  request has no header of that name. A placement merges into a new request; it never replaces
+  the node's other headers.
+- `baseUrl` is a template (`https://{subdomain}.zendesk.com/api/v2`, `{server}`) or a map
+  (`{ on: 'region', values: { eu: 'https://…', us: 'https://…' } }`). A value at the start is a
+  URL, a value in the host must be one host label, a value in the path is URL-encoded. The base
+  URL replaces the node's, and its host is a credential host. `hosts` adds more hosts.
+- `test: { get: '/users/me' }` is a GET after `baseUrl` with the credential applied.
+
+`toCredentialType` projects a type to the legacy `ICredentialType` that n8n core runs. A placement
+becomes a generic `authenticate` block. What that block cannot express (`defaults`, optional
+fields, `when`) becomes a function that the SDK generates, never author code. OAuth2 becomes an
+`oAuth2Api` child. The parity suite (`nodes-base-next/src/__tests__/parity/credentials.parity.ts`)
+compares Notion, Zendesk, Datadog and Trello with the legacy classes and lists each difference.
 
 ## Scope check
 
@@ -178,6 +210,8 @@ The port does not have these legacy behaviours (`GithubTrigger.node.ts`):
   re-consent UI.
 - Typed credential fields in `run()`: actions do not read credential fields. Only `baseUrl`
   reads them. A `credential` in `RunContext` needs an ABI bump.
+- OAuth2 endpoints are fixed https URLs. URL templates over fields, scope lists the user edits,
+  token placement and the other grants (device code, JWT bearer, token exchange, OIDC) come next.
 - Trigger execution fixtures do not replay at publish. A poll fixture could replay pages and
   states.
 - A declarative request runs from the bundle today. The manifest could carry the request, so a

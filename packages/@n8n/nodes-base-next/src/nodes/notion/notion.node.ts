@@ -1,13 +1,13 @@
 import { credential, defineNode, defineResource, ref } from '@n8n/node-sdk';
 
-import { notionApi, notionOAuth2Api } from './credentials';
+import { notionOAuth2, notionToken } from './credentials';
 
 export const notion = defineNode({
 	id: 'notion',
 	displayName: 'Notion',
 	// The scopes are the capabilities of a Notion integration. The user sets them in Notion.
 	credential: credential({
-		types: [notionApi, notionOAuth2Api],
+		types: [notionToken, notionOAuth2],
 		scopes: {
 			'content:read': 'Read pages, databases and data sources',
 			'content:update': 'Update pages and databases',

@@ -40,7 +40,13 @@ credential types come from `node.credential`. `new` writes an `AGENTS.md` that e
 ## Credentials
 
 ```ts
-export const todoApi = apiKey({ name: 'todoApi', displayName: 'Todo API', key: 'Authorization', prefix: 'Bearer ' });
+export const todoApi = credentialType({
+	id: 'todo.token',
+	legacyName: 'todoApi',
+	displayName: 'Todo API',
+	fields: { apiKey: t.secret('API Key') },
+	auth: (a) => a.bearer('apiKey'),
+});
 export const todo = defineNode({
 	id: 'todo',
 	displayName: 'Todo',
@@ -49,7 +55,7 @@ export const todo = defineNode({
 ```
 
 A node has one credential: the credential types a user may pick, and the scopes its actions
-may list. Credential types are values (`apiKey`, `bearer`, `oauth2`, `custom`, `compat`), so
+may list. Credential types are values (`credentialType`, `compat`) with a declarative `auth`, so
 `tsc` rejects a typo, and `toCredentialType` projects one to an n8n `ICredentialType`. In n8n,
 `httpRequestWithAuthentication` applies it. `runAction` applies it the same way. See
 [docs/credentials-triggers.md](docs/credentials-triggers.md) for scopes, triggers and bindings.

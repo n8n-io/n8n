@@ -11,7 +11,7 @@ export const openAi = defineNode({
 			compat('openAiApi', {
 				fields: { url: str().default(DEFAULT_URL) },
 				hosts: ['api.openai.com'],
-				baseUrl: ({ url }) => url || DEFAULT_URL,
+				baseUrl: '{url}',
 			}),
 		],
 	}),

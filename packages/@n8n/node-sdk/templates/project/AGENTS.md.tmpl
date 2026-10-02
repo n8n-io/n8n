@@ -36,10 +36,10 @@ export const node = defineNode({ id: '__service__', displayName: '__Service__', 
 	credential: credential({ types: [__service__Api], scopes: { 'items:write': 'Create items' } }) }); // add `optional: true` if the API also works without a key
 // A resource groups actions. Its `input` (optional) goes into the input of each of its actions.
 export const item = node.resource('item', { input: { workspace: str() } });
-// src/credentials.ts. Also bearer, oauth2({ authorizationUrl, tokenUrl, scopes }), custom({ authenticate }), compat('n8nType').
-export const __service__Api = apiKey({ name: '__service__Api', displayName: '__Service__ API',
-	key: 'X-Api-Key', // `in: 'query'` sends a query parameter; `prefix: 'Bearer '` goes before the key
-	test: { request: { baseURL: 'https://api.example.com/v1', url: '/me' } } });
+// src/credentials.ts. Id `service.scheme`. auth is data: a.bearer/header/query/basic/apply/when/oauth2.*; a.custom({ reason, sign }) last.
+export const __service__Api = credentialType({ id: '__service__.apiKey', legacyName: '__service__Api',
+	displayName: '__Service__ API', fields: { apiKey: t.secret('API Key') }, baseUrl: 'https://api.example.com/v1',
+	auth: (a) => a.header('X-Api-Key', '{apiKey}'), test: { get: '/me' } }); // a typo in {apiKey} fails tsc
 ```
 
 ## Action

@@ -8,6 +8,7 @@ import { promisify } from 'node:util';
 import { gzipSync } from 'node:zlib';
 import { UnexpectedError, UserError, type INode, type INodeExecutionData } from 'n8n-workflow';
 
+import { isSecretField } from './credentials';
 import type { Action, DataTable, DataTables } from './define';
 import { freezeAction, type FrozenAction } from './freeze';
 import {
@@ -113,15 +114,17 @@ const fixtureBinaryStore = ({ binary }: ExecutionFixture): BinaryStore => ({
  * The replay signs no request, so each declared secret gets a stand-in value.
  */
 function fixtureCredential(action: Action, type: string, data: ExecutionFixture['credential']) {
-	const declared = action.node.credential?.types.find(({ name }) => name === type);
-	const refused = Object.keys(data ?? {}).filter((key) => !(key in (declared?.fields ?? {})));
+	const fields = action.node.credential?.types.find(({ name }) => name === type)?.fields ?? {};
+	const secrets = Object.keys(fields).filter((key) => isSecretField(fields[key]));
+	const refused = Object.keys(data ?? {}).filter(
+		(key) => !(key in fields) || secrets.includes(key),
+	);
 	if (refused.length > 0) {
 		throw new UserError(
 			`A fixture credential holds only fields of ${type}, not ${refused.join(', ')}`,
 		);
 	}
-	const secrets = Object.keys(declared?.secrets ?? {}).map((key) => [key, 'fixture'] as const);
-	return { ...Object.fromEntries(secrets), ...data };
+	return { ...Object.fromEntries(secrets.map((key) => [key, 'fixture'])), ...data };
 }
 
 /** The recorded binary as the HTTP client gives a streamed response. */

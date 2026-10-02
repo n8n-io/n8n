@@ -419,12 +419,12 @@ export const ping = demo.trigger('ping', {
 		const entry = path.join(dirs.root, 'server.ts');
 		await writeFile(
 			entry,
-			`import { bearer, credential, defineNode, obj, str } from '@n8n/node-sdk';
+			`import { credential, credentialType, defineNode, obj, str, t } from '@n8n/node-sdk';
 const demo = defineNode({
 	id: 'demo',
 	displayName: 'Demo',
 	credential: credential({
-		types: [bearer({ name: 'demoApi', displayName: 'Demo', fields: { server: str() }, baseUrl: ({ server }) => server })],
+		types: [credentialType({ id: 'demo.token', legacyName: 'demoApi', displayName: 'Demo', fields: { server: str(), token: t.secret('Token') }, baseUrl: '{server}', auth: (a) => a.bearer('token') })],
 	}),
 });
 export const read = demo.action('read', {

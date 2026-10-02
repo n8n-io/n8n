@@ -1,31 +1,36 @@
 import {
-	apiKey,
 	arr,
 	compat,
 	credential,
-	custom,
+	credentialType,
 	defineNode,
 	int,
 	isHttpError,
 	obj,
 	str,
+	t,
 	toCredentialType,
 } from '../index';
 import { mockHttp, runAction } from '../testing';
 
-const todoApi = custom({
-	name: 'todoApi',
+const todoApi = credentialType({
+	id: 'todo.token',
+	legacyName: 'todoApi',
 	displayName: 'Todo API',
-	fields: { workspace: str().with({ title: 'Workspace' }) },
-	secrets: { apiKey: str().with({ title: 'API Key' }) },
-	async authenticate({ apiKey: key, workspace }, request) {
-		return await Promise.resolve({
-			...request,
-			headers: { ...request.headers, Authorization: `Bearer ${key}` },
-			qs: { ...request.qs, workspace },
-		});
-	},
-	test: { request: { baseURL: 'https://todo.test/v1', url: '/me' } },
+	fields: { workspace: t.text('Workspace'), apiKey: t.secret('API Key') },
+	baseUrl: 'https://todo.test/v1',
+	auth: (a) =>
+		a.custom({
+			reason: 'Test of the escape hatch',
+			async sign({ apiKey: key, workspace }, request) {
+				return await Promise.resolve({
+					...request,
+					headers: { ...request.headers, Authorization: `Bearer ${key}` },
+					qs: { ...request.qs, workspace },
+				});
+			},
+		}),
+	test: { get: '/me' },
 });
 
 const todo = defineNode({
@@ -57,11 +62,14 @@ const todoCredential = { type: 'todoApi', data: { apiKey: 'k-1', workspace: 'w-1
 
 describe('credential types', () => {
 	it('project an API key to an n8n type with generic authentication', () => {
-		const keyed = apiKey({
-			name: 'keyApi',
+		const keyed = credentialType({
+			id: 'key.apiKey',
+			legacyName: 'keyApi',
 			displayName: 'Key API',
-			key: 'X-Api-Key',
-			test: { request: { baseURL: 'https://todo.test/v1', url: '/me' } },
+			fields: { apiKey: t.secret('API Key') },
+			baseUrl: 'https://todo.test/v1',
+			auth: (a) => a.header('X-Api-Key', '{apiKey}'),
+			test: { get: '/me' },
 		});
 		expect(toCredentialType(keyed)).toEqual({
 			name: 'keyApi',

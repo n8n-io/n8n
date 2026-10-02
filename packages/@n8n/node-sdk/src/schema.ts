@@ -18,6 +18,8 @@ export interface JsonSchema {
 	maximum?: number;
 	pattern?: string;
 	minItems?: number;
+	/** A secret: n8n stores and sends it, and never shows or returns it. */
+	writeOnly?: boolean;
 	properties?: Record<string, JsonSchema>;
 	required?: readonly string[];
 	additionalProperties?: boolean | JsonSchema;

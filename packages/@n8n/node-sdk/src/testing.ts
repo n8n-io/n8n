@@ -113,10 +113,21 @@ async function authenticate(
 				resolveTemplate(value, credential, data),
 			]),
 		);
+	const text = (value: string) => String(resolveTemplate(value, credential, data));
+	const { headers, qs, auth: basic, body } = auth.properties;
+	// As n8n core: each value goes into the request part of the same name.
 	return {
 		...options,
-		headers: { ...options.headers, ...resolve(auth.properties.headers) },
-		qs: { ...options.qs, ...resolve(auth.properties.qs) },
+		headers: { ...options.headers, ...resolve(headers) },
+		qs: { ...options.qs, ...resolve(qs) },
+		...(basic
+			? {
+					auth: { ...options.auth, username: text(basic.username), password: text(basic.password) },
+				}
+			: {}),
+		...(body
+			? { body: { ...(isRecord(options.body) ? options.body : {}), ...resolve(body) } }
+			: {}),
 	};
 }
 

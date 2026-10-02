@@ -10,7 +10,7 @@ import {
 	compat,
 	contractHash,
 	credential,
-	custom,
+	credentialType,
 	defineNode,
 	diffContracts,
 	generateNodeModule,
@@ -41,7 +41,7 @@ const echoApi = compat('echoApi', { hosts: ['api.echo.test'] });
 const headerAuth = compat('httpHeaderAuth');
 const serverApi = compat('serverApi', {
 	fields: { server: str().default('https://api.server.test') },
-	baseUrl: ({ server }) => server,
+	baseUrl: '{server}',
 });
 
 const echo = defineNode({
@@ -384,13 +384,18 @@ describe('credentialHostsOf', () => {
 	});
 
 	it('keeps allowedDomains when a custom signer builds new options', async () => {
-		const signed = custom({
-			name: 'signedApi',
+		const signed = credentialType({
+			id: 'signed.custom',
+			legacyName: 'signedApi',
 			displayName: 'Signed API',
 			hosts: ['api.signed.test'],
-			async authenticate(_data, request) {
-				return await Promise.resolve({ method: request.method, url: request.url });
-			},
+			auth: (a) =>
+				a.custom({
+					reason: 'The signer builds new options',
+					async sign(_data, request) {
+						return await Promise.resolve({ method: request.method, url: request.url });
+					},
+				}),
 		});
 		const authenticate = toCredentialType(signed)?.authenticate;
 		if (typeof authenticate !== 'function') throw new Error('no custom authenticate');

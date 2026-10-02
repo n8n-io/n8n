@@ -2,10 +2,10 @@ import { createHmac } from 'node:crypto';
 import type { IDataObject, IHttpRequestOptions, INodeType } from 'n8n-workflow';
 
 import {
-	bearer,
 	compat,
 	contractHash,
 	credential,
+	credentialType,
 	defineNode,
 	diffContracts,
 	generateNodeModule,
@@ -13,16 +13,19 @@ import {
 	obj,
 	parse,
 	str,
+	t,
 	toContract,
 	toTriggerNodeType,
 } from '../index';
 import { requestOf } from '../runtime';
 import { mockHttp, runAction } from '../testing';
 
-const tasksApi = bearer({
-	name: 'tasksApi',
+const tasksApi = credentialType({
+	id: 'tasks.token',
+	legacyName: 'tasksApi',
 	displayName: 'Tasks API',
-	fields: { signingSecret: str().optional() },
+	fields: { token: t.secret('Access Token'), signingSecret: str().optional() },
+	auth: (a) => a.bearer('token'),
 });
 
 const tasks = defineNode({
@@ -448,7 +451,7 @@ describe('node credential', () => {
 				types: [
 					compat('ghApi', {
 						fields: { server: str().default('https://api.gh.test') },
-						baseUrl: ({ server }) => server,
+						baseUrl: '{server}',
 					}),
 				],
 			}),
