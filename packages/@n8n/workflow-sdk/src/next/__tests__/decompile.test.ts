@@ -497,6 +497,27 @@ describe('decompileWorkflow', () => {
 		expect(source).toContain('field: "={{ $json.binary }}",');
 	});
 
+	it('round-trips mixed expression text with characters that a template literal escapes', () => {
+		const sent = workflow(
+			'Escapes',
+			manual().andThen(
+				httpRequest.send({ name: 'Send', method: 'POST', url: 'https://x.example.com' }),
+			),
+		).toJSON();
+		const url = '=https://x.example.com/a`b`d\\e\r\n/{{ $json.id }}';
+		const json = {
+			...sent,
+			nodes: sent.nodes.map((n) =>
+				n.type === SEND_TYPE ? { ...n, parameters: { ...n.parameters, url } } : n,
+			),
+		};
+		const { source, rebuilt, again } = roundTrip(json);
+
+		expect(withoutIds(rebuilt)).toEqual(withoutIds(json));
+		expect(again).toBe(source);
+		expect(source).toContain('url: (item) => `https://x.example.com/');
+	});
+
 	it('drops host-set parameters of a contract node', () => {
 		const json = notionWorkflow().toJSON();
 		const withAuth = {

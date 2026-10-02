@@ -55,7 +55,7 @@ describe('compileLambda', () => {
 	it('compiles a template literal to mixed text', () => {
 		expect(compileLambda((page: Page) => `Hi ${page.name}`, names)).toEqual({
 			ok: true,
-			js: '`Hi ${$json.name}`',
+			js: expect.stringMatching(/^`Hi \$\{\$json\.name\}`$/),
 			expression: '=Hi {{ $json.name }}',
 		});
 	});

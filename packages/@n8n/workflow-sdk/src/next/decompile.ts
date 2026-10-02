@@ -60,6 +60,7 @@ import {
 	type MergeJoin,
 	type WaitUnit,
 } from './regions';
+import { escapeTemplateLiteral } from '../codegen/string-utils';
 import { prepareSourceForLint } from '../lint/sdk/workflow-sdk-lint';
 import type { IConnections, NodeJSON, WorkflowJSON } from '../types/base';
 
@@ -334,9 +335,6 @@ function lambdaForJs(js: string, names: ReadonlySet<string>): string | undefined
 	return compiled?.ok && compiled.js === js ? lambda : undefined;
 }
 
-const escapeTemplate = (text: string) =>
-	text.replace(/\\/g, '\\\\').replace(/`/g, '\\`').replace(/\$\{/g, '\\${');
-
 /** `=Hi {{ $json.name }}` → `` (item) => `Hi ${item.name}` ``. */
 function templateLambda(expression: string): string | undefined {
 	const parts = expression.slice(1).split(/\{\{ ([\s\S]*?) \}\}/);
@@ -347,7 +345,7 @@ function templateLambda(expression: string): string | undefined {
 	const text = parts
 		.map((part, index) => {
 			const body = bodies[index];
-			return body ? `\${${body.text}}` : escapeTemplate(part);
+			return body ? `\${${body.text}}` : escapeTemplateLiteral(part);
 		})
 		.join('');
 	const reads = new Set(bodies.flatMap((body) => [...(body?.reads ?? [])]));
