@@ -778,13 +778,19 @@ describe('Executor.fire lease renewal', () => {
 		vi.useRealTimers();
 	});
 
-	/** A handler that stays pending until `finish` is called, and exposes the signal it got. */
-	const longRunning = () => {
+	/**
+	 * A handler that stays pending until `finish` is called, and exposes the signal it got.
+	 * With `dispatchFirst` it reports its effect handed off before it waits.
+	 */
+	const longRunning = ({ dispatchFirst = false } = {}) => {
 		let finish!: () => void;
 		let signal!: AbortSignal;
 		const handler: TaskHandler = {
 			execute: vi.fn(async (_task: ClaimedTask, report: DispatchReporter, s: AbortSignal) => {
 				signal = s;
+				if (dispatchFirst) {
+					report.dispatched();
+				}
 				await new Promise<void>((resolve) => {
 					finish = resolve;
 					s.addEventListener('abort', () => resolve());
@@ -840,6 +846,65 @@ describe('Executor.fire lease renewal', () => {
 		// The reclaimed row rejects the handler's late outcome.
 		await expect(firing).resolves.toMatchObject({ outcome: 'skipped-not-owned' });
 		expect(hooks.onLeaseLost).toHaveBeenCalledWith(task.taskType);
+	});
+
+	it('keeps a dispatched handler running when a renewal finds the claim gone', async () => {
+		const { store, registry, hooks, executor } = setup({ leaseSeconds: LEASE_SECONDS });
+		const { handler, finish, signal } = longRunning({ dispatchFirst: true });
+		registry.resolve.mockReturnValue(handler);
+		store.beginDispatch.mockResolvedValue(1);
+		store.renewLease.mockResolvedValue(false);
+		store.completeTask.mockResolvedValue(0);
+		const task = claimedTask();
+
+		const firing = executor.fire(HOST, task);
+		await vi.advanceTimersByTimeAsync(RENEWAL_INTERVAL_MS);
+
+		// The reaper completes a dispatched occurrence, so no other run takes over.
+		expect(hooks.onLeaseRenewal).toHaveBeenCalledWith(task, 'lost');
+		expect(signal().aborted).toBe(false);
+
+		finish();
+		await expect(firing).resolves.toEqual({ outcome: 'skipped-not-owned' });
+	});
+
+	it.each([
+		['was rejected by the fence', async () => 0],
+		['failed', async () => await Promise.reject(new Error('db down'))],
+	])(
+		'aborts a dispatched handler when the claim is gone and the marker write %s',
+		async (_case, markDispatched) => {
+			const { store, registry, executor } = setup({ leaseSeconds: LEASE_SECONDS });
+			const { handler, signal } = longRunning({ dispatchFirst: true });
+			registry.resolve.mockReturnValue(handler);
+			store.beginDispatch.mockResolvedValue(1);
+			store.markDispatched.mockImplementation(markDispatched);
+			store.renewLease.mockResolvedValue(false);
+			store.rescheduleTask.mockResolvedValue(0);
+			const task = claimedTask({ maxAttempts: 3 });
+
+			const firing = executor.fire(HOST, task);
+			await vi.advanceTimersByTimeAsync(RENEWAL_INTERVAL_MS);
+
+			// Without a stored marker the reaper redelivers the occurrence to another run.
+			expect(signal().reason).toBeInstanceOf(LeaseLostError);
+			await expect(firing).resolves.toMatchObject({ outcome: 'skipped-not-owned' });
+		},
+	);
+
+	it('aborts at lease expiry while the marker write is still in flight', async () => {
+		const { store, registry, executor } = setup({ leaseSeconds: LEASE_SECONDS });
+		const { handler, signal } = longRunning({ dispatchFirst: true });
+		registry.resolve.mockReturnValue(handler);
+		store.beginDispatch.mockResolvedValue(1);
+		store.markDispatched.mockReturnValue(new Promise<number>(() => {}));
+		store.renewLease.mockRejectedValue(new Error('db down'));
+		const task = claimedTask({ maxAttempts: 3 });
+
+		void executor.fire(HOST, task);
+		await vi.advanceTimersByTimeAsync(LEASE_SECONDS * 1_000);
+
+		expect(signal().reason).toBeInstanceOf(LeaseLostError);
 	});
 
 	it('aborts the handler signal once renewals fail for a whole lease', async () => {

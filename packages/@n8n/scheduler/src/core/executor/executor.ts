@@ -20,6 +20,7 @@ type HeartbeatRun = {
 	claim: ClaimedTaskRef;
 	/** `performance.now()` just before the write that last set the lease. */
 	leaseSetAt: number;
+	isDispatchStored: () => boolean;
 };
 
 /**
@@ -71,7 +72,7 @@ export interface ExecutorHooks {
 	/**
 	 * A running handler's lease was renewed, a renewal found its claim gone
 	 * ('lost'), or no renewal succeeded for a whole lease ('expired').
-	 * Both of the latter abort the handler's signal.
+	 * Both of the latter abort the handler's signal before dispatch.
 	 */
 	onLeaseRenewal?: (task: ClaimedTask, result: LeaseRenewalResult) => void;
 }
@@ -279,9 +280,12 @@ export class Executor {
 		// no-op, so an explicit `dispatched()` and the post-return fallback below collapse to
 		// one write.
 		let dispatchMark: Promise<void> | undefined;
+		let isDispatchStored = false;
 		const markDispatched = (): void => {
 			dispatchMark ??= this.store.markDispatched(claim).then(
-				() => undefined,
+				(rowsAffected) => {
+					isDispatchStored = rowsAffected > 0;
+				},
 				(error: unknown) => this.hooks.onFireError?.(task, error),
 			);
 		};
@@ -294,6 +298,7 @@ export class Executor {
 			await this.executeWithHeartbeat(handler, task, report, {
 				claim,
 				leaseSetAt,
+				isDispatchStored: () => isDispatchStored,
 			});
 		} catch (error) {
 			await dispatchMark;
@@ -357,13 +362,13 @@ export class Executor {
 
 	/**
 	 * Run the handler while a heartbeat renews the claim's lease, until it settles.
-	 * A lost claim aborts the handler's signal.
+	 * A lost claim aborts the handler's signal unless the dispatch marker is stored.
 	 */
 	private async executeWithHeartbeat(
 		handler: TaskHandler,
 		task: ClaimedTask,
 		report: DispatchReporter,
-		{ claim, leaseSetAt }: HeartbeatRun,
+		{ claim, leaseSetAt, isDispatchStored }: HeartbeatRun,
 	): Promise<void> {
 		const lease = new AbortController();
 		const heartbeat = new LeaseHeartbeat(
@@ -372,7 +377,11 @@ export class Executor {
 			{
 				onRenewal: (result) => {
 					this.hooks.onLeaseRenewal?.(task, result);
-					if (result !== 'renewed') {
+					// The reaper completes an occurrence whose marker is stored and never runs
+					// it again, so stopping its run would only leave the work half done. A
+					// marker write still in flight counts as not stored: the reaper may
+					// already redeliver the row, and that write may never finish.
+					if (result !== 'renewed' && !isDispatchStored()) {
 						lease.abort(new LeaseLostError());
 					}
 				},

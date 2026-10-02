@@ -78,9 +78,11 @@ export function createDispatchReporter(onDispatch: () => void): DispatchReporter
  *
  * A handler may run as long as it needs: the executor renews the claim's lease
  * while `execute` is pending. `signal` aborts with a `LeaseLostError` when the
- * claim is gone, or no renewal succeeded for a whole lease, so another
- * instance may run the same occurrence. Honoring it is optional, but a handler
- * that ignores it may overlap that run.
+ * claim is gone, or no renewal succeeded for a whole lease, and no dispatch
+ * marker is stored, so another instance may run the same occurrence. Honoring
+ * it is optional, but a handler that ignores it may overlap that run. Once
+ * `report.dispatched()` has stored the marker, the signal never aborts for a
+ * lost claim: no instance runs that occurrence again.
  */
 export interface TaskHandler {
 	execute(
