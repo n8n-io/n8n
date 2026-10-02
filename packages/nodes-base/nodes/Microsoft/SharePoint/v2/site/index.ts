@@ -1,5 +1,4 @@
 import type {
-	IExecuteFunctions,
 	ILoadOptionsFunctions,
 	INodeListSearchResult,
 	INodeParameterResourceLocator,
@@ -13,7 +12,8 @@ import {
 	getSharePointCredentialType,
 	microsoftApiRequest,
 	SERVICE_PRINCIPAL_AUTH,
-} from '../transport';
+	type SharePointContext,
+} from '../../transport';
 
 // The whole site-selection piece lives here — the field, the search behind
 // it, and the URL resolution — so later actions and the future trigger plug
@@ -155,7 +155,7 @@ export async function getSites(
  * hoist and pass none — each dropdown open is its own one-off lookup.
  */
 export async function resolveSiteId(
-	this: IExecuteFunctions | ILoadOptionsFunctions,
+	this: SharePointContext,
 	itemIndex: number,
 	siteIdCache?: Map<string, string>,
 ): Promise<string> {

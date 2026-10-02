@@ -7,6 +7,7 @@ import { ExecutionRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { createDeferredPromise, type IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
+import { InstanceSettings } from 'n8n-core';
 import type {
 	IExecuteResponsePromiseData,
 	IRun,
@@ -59,6 +60,7 @@ export class ActiveExecutions {
 		private readonly concurrencyControl: ConcurrencyControlService,
 		private readonly eventService: EventService,
 		private readonly executionsConfig: ExecutionsConfig,
+		private readonly instanceSettings: InstanceSettings,
 	) {}
 
 	has(executionId: string) {
@@ -334,6 +336,14 @@ export class ActiveExecutions {
 		);
 	}
 
+	/** Sizes of the in-memory collections, for diagnostics and tests. */
+	getDiagnosticCounts() {
+		return {
+			executions: Object.keys(this.activeExecutions).length,
+			responseModes: this.responseModes.size,
+		};
+	}
+
 	/**
 	 * @param writeDeadlineMs - How long to wait for the cancelled status to be recorded.
 	 *   Pass what the caller's own shutdown window can still afford.
@@ -409,15 +419,16 @@ export class ActiveExecutions {
 			this.concurrencyControl.disable();
 		}
 
+		const isWorker = this.instanceSettings.instanceType === 'worker';
 		let executionIds = Object.keys(this.activeExecutions);
 		const toCancel: string[] = [];
 		for (const executionId of executionIds) {
-			const { status } = this.activeExecutions[executionId];
+			const { status, isQueueJob } = this.activeExecutions[executionId];
 			if (isRegularMode && cancelAll) {
 				this.stopExecution(executionId, new SystemShutdownExecutionCancelledError(executionId));
 				toCancel.push(executionId);
-			} else if (status === 'waiting' || status === 'new') {
-				// Remove waiting and new executions to not block shutdown
+			} else if (status === 'waiting' || status === 'new' || (isWorker && isQueueJob)) {
+				// Remove waiting, new and, on a worker, enqueued executions: these run as Bull jobs that this draining worker never picks up
 				delete this.activeExecutions[executionId];
 			}
 		}
@@ -432,6 +443,11 @@ export class ActiveExecutions {
 			}
 
 			await sleep(500);
+			if (isWorker) {
+				for (const [executionId, { isQueueJob }] of Object.entries(this.activeExecutions)) {
+					if (isQueueJob) delete this.activeExecutions[executionId];
+				}
+			}
 			executionIds = Object.keys(this.activeExecutions);
 		}
 	}

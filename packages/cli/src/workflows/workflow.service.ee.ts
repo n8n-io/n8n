@@ -32,7 +32,7 @@ import {
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { isCredSharingEnabled } from '@/constants/credential-sharing';
-import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
+import { CredentialsFinderService } from '@n8n/backend-services';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { EnterpriseCredentialsService } from '@/credentials/credentials.service.ee';
 import { FolderNotFoundError } from '@/errors/folder-not-found.error';

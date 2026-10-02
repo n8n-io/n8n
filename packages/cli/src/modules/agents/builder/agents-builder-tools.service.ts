@@ -1243,10 +1243,12 @@ export class AgentsBuilderToolsService {
 		user: User,
 		config: AgentJsonConfig,
 		baseConfigHash: string | null,
+		clearOmittedOptionalFields = false,
 	): Promise<{ ok: true } | BuilderConfigFailure> {
 		try {
 			await this.agentConfigService.updateConfig(agentId, projectId, config, user, {
 				baseConfigHash,
+				clearOmittedOptionalFields,
 				modifiedBy: 'builder',
 			});
 			return { ok: true };
@@ -1307,12 +1309,14 @@ export class AgentsBuilderToolsService {
 		if (!patched.ok) return patched;
 		const validated = this.validateBuilderConfig(patched.config, fresh.snapshot.config);
 		if (!validated.ok) return { ...validated, stage: 'schema' };
+		// The patch starts from the full stored config, so a missing field was removed by an op.
 		return await this.saveBuilderConfig(
 			agentId,
 			projectId,
 			user,
 			validated.config,
 			fresh.snapshot.configHash,
+			true,
 		);
 	}
 

@@ -13,6 +13,7 @@ export const MIN_GROUPED_TOOLS_PER_TYPE = 2;
 
 type BaseToolRow = {
 	index: number;
+	enabled: boolean;
 	label: string;
 	typeLabel: string;
 	nodeType: ToolRowNodeType;
@@ -28,6 +29,7 @@ type BaseToolRow = {
 function toUngroupedToolRow(row: BaseToolRow): ToolRow {
 	const item: ToolRowItem = {
 		index: row.index,
+		enabled: row.enabled,
 		label: row.label,
 		nodeType: row.nodeType,
 		openTarget: row.openTarget,
@@ -37,6 +39,7 @@ function toUngroupedToolRow(row: BaseToolRow): ToolRow {
 
 	return {
 		index: row.index,
+		enabled: row.enabled,
 		label: row.label,
 		typeLabel: row.typeLabel,
 		nodeType: row.nodeType,
@@ -55,6 +58,7 @@ function toGroupedToolRow(group: BaseToolRow[]): GroupedToolRow {
 
 	return {
 		index: first.index,
+		enabled: group.some((row) => row.enabled),
 		label: `${group.length} ${first.typeLabel}`,
 		typeLabel: first.typeLabel,
 		nodeType: first.nodeType,
@@ -66,6 +70,7 @@ function toGroupedToolRow(group: BaseToolRow[]): GroupedToolRow {
 		isGrouped: true,
 		tools: group.map((row) => ({
 			index: row.index,
+			enabled: row.enabled,
 			label: row.label,
 			nodeType: row.nodeType,
 			openTarget: row.openTarget,
