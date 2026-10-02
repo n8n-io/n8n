@@ -78,7 +78,8 @@ export function createEpisodicMemoryReflectFn(
 		incrementTokenCountFromUsage(input.executionCounter, response.usage);
 		return {
 			reflection: response.output,
-			usage: toTokenUsage(response.usage, response.finalStep.providerMetadata),
+			// oxlint-disable-next-line typescript/no-deprecated - Tech debt. Changing to response.finalStep.providerMetadata breaks tests
+			usage: toTokenUsage(response.usage, response.providerMetadata),
 			model: getModelIdString(model),
 		};
 	};
