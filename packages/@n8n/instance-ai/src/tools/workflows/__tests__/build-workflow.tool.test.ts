@@ -683,6 +683,80 @@ describe('createBuildWorkflowTool', () => {
 		);
 	});
 
+	it('places added nodes without the invalid node groups it drops', async () => {
+		const start = {
+			id: 'start',
+			name: 'Start',
+			type: 'n8n-nodes-base.manualTrigger',
+			typeVersion: 1,
+			position: [0, 0] as [number, number],
+			parameters: {},
+		};
+		const notify = {
+			id: 'notify',
+			name: 'Notify',
+			type: 'n8n-nodes-base.noOp',
+			typeVersion: 1,
+			position: [400, -160] as [number, number],
+			parameters: {},
+		};
+		const existingWorkflow = { name: 'Grouped workflow', nodes: [start, notify], connections: {} };
+		vi.mocked(compileWorkflowSource).mockResolvedValueOnce({
+			success: true,
+			workflow: {
+				name: 'Grouped workflow',
+				nodes: [
+					start,
+					notify,
+					{
+						id: 'set',
+						name: 'Set',
+						type: 'n8n-nodes-base.set',
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {},
+					},
+				],
+				connections: { Start: { main: [[{ node: 'Set', type: 'main', index: 0 }]] } },
+				// The chip of this group would land on Notify and push Set down.
+				nodeGroups: [{ id: 'group-1', name: 'Broken group', nodeIds: ['set', 'missing-node'] }],
+			},
+			warnings: [],
+			compiler: 'sandbox-tsx',
+		});
+		const { context, filePath } = makeContext({
+			source: 'workflow source',
+			overrides: {
+				workflowService: {
+					updateFromWorkflowJSON: vi.fn(
+						async (workflowId: string) =>
+							await Promise.resolve({ id: workflowId, versionId: 'v-next' }),
+					),
+					get: vi.fn(
+						async (workflowId: string) =>
+							await Promise.resolve({
+								id: workflowId,
+								versionId: 'v-current',
+								checksum: 'checksum-current',
+							}),
+					),
+					getAsWorkflowJSON: vi.fn(async () => await Promise.resolve(existingWorkflow)),
+					clearAiTemporary: vi.fn(async () => await Promise.resolve()),
+				} as unknown as InstanceAiContext['workflowService'],
+			},
+		});
+
+		await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
+			filePath,
+			workflowId: 'wf-existing',
+		});
+
+		const savedWorkflow = vi.mocked(context.workflowService.updateFromWorkflowJSON).mock
+			.calls[0]?.[1];
+		expect(savedWorkflow?.nodeGroups).toEqual([]);
+		expect(savedWorkflow?.nodes.find((node) => node.name === 'Set')?.position).toEqual([224, 0]);
+	});
+
 	describe('grouping decision check', () => {
 		const wideWorkflow = (nodeGroups?: Array<{ id: string; name: string; nodeIds: string[] }>) => ({
 			name: 'Wide workflow',
