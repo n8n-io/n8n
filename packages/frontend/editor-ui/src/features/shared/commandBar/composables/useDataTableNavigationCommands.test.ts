@@ -1,3 +1,5 @@
+import { flushPromises } from '@vue/test-utils';
+import * as dataTableApi from '@/features/core/dataTable/dataTable.api';
 import { ref } from 'vue';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import * as permissionsModule from '@n8n/permissions';
@@ -49,6 +51,7 @@ vi.mock('@n8n/permissions', async (importOriginal) => ({
 }));
 
 describe('useDataTableNavigationCommands', () => {
+	let availableDataTables: DataTable[];
 	let mockDataTableStore: ReturnType<typeof useDataTableStore>;
 	let mockProjectsStore: ReturnType<typeof useProjectsStore>;
 	let mockSourceControlStore: ReturnType<typeof useSourceControlStore>;
@@ -112,14 +115,43 @@ describe('useDataTableNavigationCommands', () => {
 			writable: true,
 		});
 
-		Object.defineProperty(mockDataTableStore, 'fetchDataTables', {
-			value: vi.fn().mockResolvedValue(undefined),
-		});
+		availableDataTables = [];
+		vi.spyOn(dataTableApi, 'fetchDataTablesApi')
+			.mockReset()
+			.mockImplementation(async () => ({
+				count: availableDataTables.length,
+				data: availableDataTables,
+			}));
 
 		mockSourceControlStore.preferences.branchReadOnly = false;
 
 		vi.clearAllMocks();
 		vi.mocked(permissionsModule).getResourcePermissions.mockRestore();
+	});
+
+	it('keeps command results separate from the current data table page', async () => {
+		Object.defineProperty(mockDataTableStore, 'canViewDataTables', { value: true });
+		const currentPage = [createMockDataTable('page-row', 'Current page')];
+		mockDataTableStore.dataTables = currentPage;
+		availableDataTables = [createMockDataTable('command-row', 'Command result')];
+		const { commands, handlers } = useDataTableNavigationCommands({
+			lastQuery: ref(''),
+			activeNodeId: ref(null),
+			currentProjectName: ref('Project'),
+		});
+		handlers.onCommandBarNavigateTo('open-data-table');
+		await flushPromises();
+		expect(mockDataTableStore.fetchDataTables).not.toHaveBeenCalled();
+		expect(mockDataTableStore.dataTables).toEqual(currentPage);
+		expect(commands.value.find((command) => command.id === 'open-data-table')?.children).toEqual([
+			expect.objectContaining({ id: 'command-row' }),
+		]);
+		mockDataTableStore.dataTables = [];
+		handlers.onCommandBarNavigateTo('open-data-table');
+		await flushPromises();
+		expect(
+			commands.value.find((command) => command.id === 'open-data-table')?.children,
+		).toHaveLength(1);
 	});
 
 	describe('create data table command', () => {
@@ -218,7 +250,7 @@ describe('useDataTableNavigationCommands', () => {
 		});
 
 		it('should populate children after navigating to open-data-table', async () => {
-			mockDataTableStore.dataTables = [
+			availableDataTables = [
 				createMockDataTable('dt-1', 'My Data Table', 'project-1', 'Team Project'),
 			];
 
@@ -243,7 +275,7 @@ describe('useDataTableNavigationCommands', () => {
 			Object.defineProperty(mockDataTableStore, 'canViewDataTables', {
 				value: true,
 			});
-			mockDataTableStore.dataTables = [
+			availableDataTables = [
 				createMockDataTable('dt-1', 'Customer Data', 'project-1', 'Team Project'),
 				createMockDataTable('dt-2', 'Product Catalog', 'personal-1', 'Personal', 'personal'),
 				createMockDataTable('dt-3', 'Order History', 'project-1', 'Team Project'),
@@ -310,7 +342,7 @@ describe('useDataTableNavigationCommands', () => {
 			Object.defineProperty(mockDataTableStore, 'canViewDataTables', {
 				value: true,
 			});
-			mockDataTableStore.dataTables = [
+			availableDataTables = [
 				createMockDataTable('dt-1', 'Customer Data', 'project-1', 'Team Project'),
 			];
 		});
@@ -356,7 +388,7 @@ describe('useDataTableNavigationCommands', () => {
 			Object.defineProperty(mockDataTableStore, 'canViewDataTables', {
 				value: true,
 			});
-			mockDataTableStore.dataTables = [
+			availableDataTables = [
 				createMockDataTable('dt-1', 'Customer Data', 'project-1', 'Team Project'),
 			];
 
@@ -388,7 +420,7 @@ describe('useDataTableNavigationCommands', () => {
 			Object.defineProperty(mockDataTableStore, 'canViewDataTables', {
 				value: true,
 			});
-			mockDataTableStore.dataTables = [
+			availableDataTables = [
 				createMockDataTable('dt-1', 'Personal DataTbl', 'personal-1', 'Personal', 'personal'),
 			];
 
@@ -418,7 +450,7 @@ describe('useDataTableNavigationCommands', () => {
 			Object.defineProperty(mockDataTableStore, 'canViewDataTables', {
 				value: true,
 			});
-			mockDataTableStore.dataTables = [
+			availableDataTables = [
 				createMockDataTable('dt-1', 'Team DataTbl', 'project-1', 'Team Project', 'team'),
 			];
 
@@ -448,7 +480,7 @@ describe('useDataTableNavigationCommands', () => {
 			Object.defineProperty(mockDataTableStore, 'canViewDataTables', {
 				value: true,
 			});
-			mockDataTableStore.dataTables = [createMockDataTable('dt-1', 'Orphan DataTbl')];
+			availableDataTables = [createMockDataTable('dt-1', 'Orphan DataTbl')];
 
 			const activeNodeId = ref<string | null>('open-data-table');
 			const { commands, handlers } = useDataTableNavigationCommands({
@@ -495,7 +527,7 @@ describe('useDataTableNavigationCommands', () => {
 		});
 
 		it('should clear data table results when navigating back to root', async () => {
-			mockDataTableStore.dataTables = [
+			availableDataTables = [
 				createMockDataTable('dt-1', 'Customer Data', 'project-1', 'Team Project'),
 			];
 
@@ -525,7 +557,7 @@ describe('useDataTableNavigationCommands', () => {
 			Object.defineProperty(mockDataTableStore, 'canViewDataTables', {
 				value: true,
 			});
-			mockDataTableStore.dataTables = [
+			availableDataTables = [
 				createMockDataTable('dt-1', 'Customer Data', 'project-1', 'Team Project'),
 			];
 		});
@@ -577,9 +609,7 @@ describe('useDataTableNavigationCommands', () => {
 			Object.defineProperty(mockDataTableStore, 'canViewDataTables', {
 				value: true,
 			});
-			Object.defineProperty(mockDataTableStore, 'fetchDataTables', {
-				value: vi.fn().mockRejectedValue(new Error('Network error')),
-			});
+			vi.mocked(dataTableApi.fetchDataTablesApi).mockRejectedValueOnce(new Error('Network error'));
 
 			const activeNodeId = ref<string | null>('open-data-table');
 			const { commands, handlers, isLoading } = useDataTableNavigationCommands({

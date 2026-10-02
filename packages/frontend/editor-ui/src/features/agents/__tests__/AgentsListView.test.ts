@@ -363,6 +363,32 @@ describe('AgentsListView — project page', () => {
 		expect(layout.props('resourcesRefreshing')).toBe(false);
 	});
 
+	it.each(['search', 'pagination-and-sort'])(
+		'ignores the previous response during the %s debounce',
+		async (event) => {
+			vi.useFakeTimers();
+			mocks.listAgentsPage.mockResolvedValueOnce({ count: 30, data: [agent('1', 'Initial')] });
+			const wrapper = await mountView();
+			const layout = wrapper.findComponent({ name: 'ResourcesListLayout' });
+			const older = createDeferredPromise<{ count: number; data: AgentResource[] }>();
+			mocks.listAgentsPage
+				.mockReturnValueOnce(older.promise)
+				.mockResolvedValueOnce({ count: 1, data: [agent('3', 'Latest')] });
+			layout.vm.$emit('update:search', 'first');
+			await vi.advanceTimersByTimeAsync(300);
+			layout.vm.$emit(
+				`update:${event}`,
+				event === 'search' ? 'second' : { page: 2, sort: 'nameAsc' },
+			);
+			older.resolve({ count: 30, data: [agent('2', 'Older')] });
+			await flushPromises();
+			expect(wrapper.find('[data-test-id="agent-card"]').text()).toBe('Initial');
+			expect(layout.props('resourcesRefreshing')).toBe(true);
+			await vi.advanceTimersByTimeAsync(600);
+			expect(wrapper.find('[data-test-id="agent-card"]').text()).toBe('Latest');
+		},
+	);
+
 	it('passes pending request state and existing rows to the layout during search', async () => {
 		vi.useFakeTimers();
 		let resolveSearch!: (value: { count: number; data: AgentResource[] }) => void;

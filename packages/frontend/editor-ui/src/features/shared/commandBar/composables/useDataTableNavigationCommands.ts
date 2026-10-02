@@ -1,3 +1,5 @@
+import { fetchDataTablesApi } from '@/features/core/dataTable/dataTable.api';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import { computed, ref, type Ref } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
@@ -25,6 +27,7 @@ export function useDataTableNavigationCommands(options: {
 	const i18n = useI18n();
 	const { lastQuery, activeNodeId, currentProjectName } = options;
 	const dataTableStore = useDataTableStore();
+	const rootStore = useRootStore();
 	const projectsStore = useProjectsStore();
 	const sourceControlStore = useSourceControlStore();
 
@@ -32,6 +35,8 @@ export function useDataTableNavigationCommands(options: {
 	const route = useRoute();
 
 	const dataTableResults = ref<DataTable[]>([]);
+	// Command search must not replace the page shown in the data table list.
+	const availableDataTables = ref<DataTable[]>([]);
 	const isLoading = ref(false);
 	const hasDataFetched = ref(false);
 
@@ -61,12 +66,16 @@ export function useDataTableNavigationCommands(options: {
 
 			// Only fetch data from API on the first call
 			if (!hasDataFetched.value) {
-				await dataTableStore.fetchDataTables('', 1, 1000);
+				const { data } = await fetchDataTablesApi(rootStore.restApiContext, '', {
+					skip: 0,
+					take: 1000,
+				});
+				availableDataTables.value = data;
 				hasDataFetched.value = true;
 			}
 
 			const trimmedLower = trimmed.toLowerCase();
-			const filtered = dataTableStore.dataTables.filter((dataTable) =>
+			const filtered = availableDataTables.value.filter((dataTable) =>
 				dataTable.name.toLowerCase().includes(trimmedLower),
 			);
 

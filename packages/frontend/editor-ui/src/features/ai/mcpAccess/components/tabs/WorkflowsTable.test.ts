@@ -35,6 +35,28 @@ describe('WorkflowsTable', () => {
 			expect(getByTestId('mcp-workflow-table-empty-state')).toBeVisible();
 		});
 
+		it('keeps a completed empty result during a short refresh', async () => {
+			vi.useFakeTimers();
+			try {
+				const { getByTestId, rerender, container } = createComponent({
+					props: { workflows: [], loading: true },
+				});
+				expect(container.querySelector('.n8n-loading')).not.toBeVisible();
+				await rerender({ loading: false });
+				const button = getByTestId('mcp-workflow-table-empty-state-button');
+				await rerender({ loading: true });
+				await vi.advanceTimersByTimeAsync(100);
+				expect(button).toBeVisible();
+				await rerender({ loading: false });
+				expect(getByTestId('mcp-workflow-table-empty-state-button')).toBe(button);
+				await rerender({ loading: true });
+				await vi.advanceTimersByTimeAsync(300);
+				expect(container.querySelector('.n8n-loading')).toBeVisible();
+			} finally {
+				vi.useRealTimers();
+			}
+		});
+
 		it('should emit connectWorkflows event when button is clicked', async () => {
 			const { getByTestId, emitted } = createComponent({
 				props: {

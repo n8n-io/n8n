@@ -36,16 +36,22 @@ describe('useWorkflowsListStore', () => {
 		vi.clearAllMocks();
 	});
 
-	it('keeps the latest list count when requests finish out of order', async () => {
+	it('keeps the latest list count and cached rows when requests finish out of order', async () => {
 		const older = createDeferredPromise<{ count: number; data: WorkflowListResource[] }>();
+		const latest = {
+			...createTestWorkflow({ id: 'workflow-1', name: 'Latest' }),
+			resource: 'workflow' as const,
+			description: undefined,
+		};
 		vi.mocked(workflowsApi.getWorkflowsAndFolders)
 			.mockReturnValueOnce(older.promise)
-			.mockResolvedValueOnce({ count: 1, data: [] });
+			.mockResolvedValueOnce({ count: 1, data: [latest] });
 		const pending = workflowsListStore.fetchWorkflowsPage('project-1', 2, 10);
 		await workflowsListStore.fetchWorkflowsPage('project-1', 3, 10);
-		older.resolve({ count: 30, data: [] });
+		older.resolve({ count: 30, data: [{ ...latest, name: 'Older' }] });
 		await pending;
 		expect(workflowsListStore.totalWorkflowCount).toBe(1);
+		expect(workflowsListStore.getWorkflowById('workflow-1')?.name).toBe('Latest');
 	});
 
 	describe('initial state', () => {

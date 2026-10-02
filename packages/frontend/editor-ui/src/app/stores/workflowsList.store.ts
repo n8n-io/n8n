@@ -149,7 +149,8 @@ export const useWorkflowsListStore = defineStore(STORES.WORKFLOWS_LIST, () => {
 			includeFolders ? includeFolders : undefined,
 			onlySharedWithMe ? onlySharedWithMe : undefined,
 		);
-		if (isCurrent()) totalWorkflowCount.value = count;
+		if (!isCurrent()) return { data, count };
+		totalWorkflowCount.value = count;
 		// Also set fetched workflows to store
 		// When fetching workflows from overview page, they don't have resource property
 		// so in order to filter out folders, we need to check if resource is not folder

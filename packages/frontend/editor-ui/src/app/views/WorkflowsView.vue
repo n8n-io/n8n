@@ -836,7 +836,7 @@ const initialize = async () => {
 	} finally {
 		loading.value = false;
 		isInitializing.value = false;
-		emptinessResolved.value = true;
+		emptinessResolved.value = !initializeQueued;
 		if (initializeQueued) {
 			initializeQueued = false;
 			void initialize();

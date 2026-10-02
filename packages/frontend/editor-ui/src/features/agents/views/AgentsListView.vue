@@ -197,6 +197,8 @@ function onAgentDeleted(agentId: string) {
 }
 
 async function onSearchUpdated(search: string) {
+	// Ignore the current response while the next request waits for the debounce.
+	nextFetch();
 	filters.value = { ...filters.value, search };
 	currentPage.value = 1;
 	if (search) {
@@ -221,6 +223,7 @@ async function setPaginationAndSort(payload: SortingAndPaginationUpdates) {
 			AGENTS_SORT_MAP[payload.sort as keyof typeof AGENTS_SORT_MAP] ?? 'updatedAt:desc';
 	}
 	if (hasLoaded.value) {
+		nextFetch();
 		await callDebounced(fetchAgents, {
 			debounceTime: DEBOUNCE_TIME.API.RESOURCE_SEARCH,
 			trailing: true,

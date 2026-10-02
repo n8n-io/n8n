@@ -32,7 +32,7 @@ const documentTitle = useDocumentTitle({
 const mcpStore = useMCPStore();
 const settingsStore = useSettingsStore();
 
-const agentsLoading = ref(false);
+const agentsLoading = ref(true);
 const showConnectAgentsDialog = ref(false);
 const availableAgents = ref<McpAgent[]>([]);
 const availableAgentsTotal = ref(0);

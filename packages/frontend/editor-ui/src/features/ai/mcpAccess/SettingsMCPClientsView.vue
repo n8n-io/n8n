@@ -27,7 +27,7 @@ const documentTitle = useDocumentTitle({
 const mcpStore = useMCPStore();
 const rbacStore = useRBACStore();
 
-const oAuthClientsLoading = ref(false);
+const oAuthClientsLoading = ref(true);
 const { revokeClient, revoking, isRevokingForOther, requestRevoke, cancelRevoke, confirmRevoke } =
 	useOAuthClientRevoke();
 

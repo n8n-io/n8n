@@ -14,7 +14,7 @@ import {
 	N8nTimeAgo,
 } from '@n8n/design-system';
 import type { IUser, TabOptions } from '@n8n/design-system';
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import debounce from 'lodash/debounce';
 import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
 import { useRBACStore } from '@n8n/stores/rbac.store';
@@ -44,6 +44,15 @@ type Props = {
 
 const props = defineProps<Props>();
 const loadingRevealed = useDelayedLoading(() => props.loading);
+const hasLoaded = ref(false);
+
+watch(
+	() => props.loading,
+	(loading) => {
+		if (!loading) hasLoaded.value = true;
+	},
+	{ immediate: true },
+);
 
 const emit = defineEmits<{
 	revokeClient: [client: OAuthClientResponseDto];
@@ -233,7 +242,7 @@ function onRevoke(item: OAuthClientResponseDto) {
 <template>
 	<div data-test-id="oauth-clients-table">
 		<div
-			v-if="props.loading && (props.clients.length === 0 || loadingRevealed)"
+			v-if="props.loading && ((!hasLoaded && props.clients.length === 0) || loadingRevealed)"
 			:style="{ visibility: loadingRevealed ? undefined : 'hidden' }"
 		>
 			<N8nLoading :delay="0" :loading="props.loading" variant="h1" class="mb-l" />

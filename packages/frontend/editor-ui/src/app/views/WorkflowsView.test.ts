@@ -1,3 +1,4 @@
+import { createTestWorkflow } from '@/__tests__/mocks';
 import { useReadyToRunWorkflowsStore } from '@/experiments/readyToRunWorkflows/stores/readyToRunWorkflows.store';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { flushPromises } from '@vue/test-utils';
@@ -175,16 +176,17 @@ describe('WorkflowsView', () => {
 
 	it('fetches a new page while a refresh is pending', async () => {
 		const pending = createDeferredPromise<WorkflowListResource[]>();
-		const { getByTestId } = renderComponent({
+		const { getByTestId, getByText, queryByText } = renderComponent({
 			pinia,
 			global: {
 				stubs: {
 					ResourcesListLayout: {
-						props: ['initialize', 'resourcesRefreshing'],
+						props: ['initialize', 'resourcesRefreshing', 'resources'],
 						async mounted() {
 							await this.initialize();
 						},
 						template: `<div>
+					<span v-for="resource in resources" :key="resource.id">{{ resource.name }}</span>
 					<button data-test-id="page-2" @click="$emit('update:pagination-and-sort', { page: 2 })">2</button>
 					<button data-test-id="page-3" @click="$emit('update:pagination-and-sort', { page: 3 })">3</button>
 				</div>`,
@@ -193,11 +195,18 @@ describe('WorkflowsView', () => {
 			},
 		});
 		await flushPromises();
-		workflowsListStore.fetchWorkflowsPage.mockReturnValueOnce(pending.promise);
+		const latest = {
+			...createTestWorkflow({ id: 'latest', name: 'Page 3' }),
+			resource: 'workflow' as const,
+			description: undefined,
+		};
+		workflowsListStore.fetchWorkflowsPage
+			.mockReturnValueOnce(pending.promise)
+			.mockResolvedValueOnce([latest]);
 		await fireEvent.click(getByTestId('page-2'));
 		await waitFor(() =>
 			expect(workflowsListStore.fetchWorkflowsPage).toHaveBeenLastCalledWith(
-				expect.anything(),
+				'',
 				2,
 				expect.any(Number),
 				expect.any(String),
@@ -209,7 +218,7 @@ describe('WorkflowsView', () => {
 		await fireEvent.click(getByTestId('page-3'));
 		await waitFor(() =>
 			expect(workflowsListStore.fetchWorkflowsPage).toHaveBeenLastCalledWith(
-				expect.anything(),
+				'',
 				3,
 				expect.any(Number),
 				expect.any(String),
@@ -218,8 +227,12 @@ describe('WorkflowsView', () => {
 				expect.any(Boolean),
 			),
 		);
-		pending.resolve([]);
 		await flushPromises();
+		expect(getByText('Page 3')).toBeVisible();
+		pending.resolve([{ ...latest, id: 'older', name: 'Page 2' }]);
+		await flushPromises();
+		expect(getByText('Page 3')).toBeVisible();
+		expect(queryByText('Page 2')).not.toBeInTheDocument();
 	});
 
 	describe('should show empty state', () => {
@@ -860,6 +873,31 @@ describe('onboarding loading state', () => {
 		expect(getByTestId('add-resource-buttons')).toBeInTheDocument();
 
 		await waitAllPromises();
+	});
+
+	it('keeps readiness false while a queued route initialization is pending', async () => {
+		const first = createDeferredPromise<WorkflowListResource[]>();
+		const second = createDeferredPromise<WorkflowListResource[]>();
+		workflowsListStore.fetchWorkflowsPage
+			.mockReturnValueOnce(first.promise)
+			.mockReturnValueOnce(second.promise);
+		const readyToRunStore = mockedStore(useReadyToRunStore);
+		vi.mocked(readyToRunStore.getSimplifiedLayoutVisibility).mockReturnValue(true);
+		const { getByTestId, queryByTestId } = renderComponent({
+			pinia,
+			global: { stubs: { EmptyStateLayout: { template: '<div data-test-id="empty-layout" />' } } },
+		});
+		await flushPromises();
+		await router.push('/new-project');
+		await flushPromises();
+		first.resolve([]);
+		await flushPromises();
+		expect(workflowsListStore.fetchWorkflowsPage).toHaveBeenCalledTimes(2);
+		expect(getByTestId('workflows-onboarding-loading')).toBeInTheDocument();
+		expect(queryByTestId('empty-layout')).not.toBeInTheDocument();
+		second.resolve([]);
+		await flushPromises();
+		expect(getByTestId('empty-layout')).toBeInTheDocument();
 	});
 
 	it('re-arms the deferred loading state when navigating between surfaces', async () => {

@@ -32,7 +32,7 @@ const documentTitle = useDocumentTitle({
 });
 const mcpStore = useMCPStore();
 
-const workflowsLoading = ref(false);
+const workflowsLoading = ref(true);
 const showConnectWorkflowsDialog = ref(false);
 const availableWorkflows = ref<McpWorkflow[]>([]);
 const availableWorkflowsTotal = ref(0);

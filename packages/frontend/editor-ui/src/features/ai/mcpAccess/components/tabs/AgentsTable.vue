@@ -24,6 +24,15 @@ type Props = {
 
 const props = defineProps<Props>();
 const loadingRevealed = useDelayedLoading(() => props.loading);
+const hasLoaded = ref(false);
+
+watch(
+	() => props.loading,
+	(loading) => {
+		if (!loading) hasLoaded.value = true;
+	},
+	{ immediate: true },
+);
 
 const tableOptions = defineModel<TableOptions>('tableOptions', {
 	default: () => ({
@@ -153,7 +162,7 @@ const projectLink = (agent: McpAgent) =>
 <template>
 	<div>
 		<div
-			v-if="props.loading && (props.agents.length === 0 || loadingRevealed)"
+			v-if="props.loading && ((!hasLoaded && props.agents.length === 0) || loadingRevealed)"
 			:style="{ visibility: loadingRevealed ? undefined : 'hidden' }"
 		>
 			<N8nLoading :delay="0" :loading="props.loading" variant="h1" class="mb-l" />
