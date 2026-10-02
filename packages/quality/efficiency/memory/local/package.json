@@ -1,0 +1,32 @@
+{
+  "name": "@n8n/memory",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "tsx src/cli.ts",
+    "build": "tsc -p tsconfig.build.json",
+    "test": "vitest run",
+    "test:unit": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "lint": "oxlint --type-aware . --quiet",
+    "format": "biome format --write .",
+    "format:check": "biome ci ."
+  },
+  "dependencies": {
+    "@n8n/api-types": "workspace:*",
+    "@n8n/utils": "workspace:*",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@n8n/oxlint-config": "workspace:*",
+    "@n8n/typescript-config": "workspace:*",
+    "@types/node": "*",
+    "oxlint": "catalog:",
+    "oxlint-tsgolint": "catalog:",
+    "tsx": "catalog:",
+    "typescript": "catalog:typescript",
+    "vitest": "catalog:"
+  },
+  "license": "LicenseRef-n8n-sustainable-use"
+}
