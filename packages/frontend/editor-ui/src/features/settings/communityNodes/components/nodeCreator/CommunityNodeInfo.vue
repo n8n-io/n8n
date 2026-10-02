@@ -28,6 +28,7 @@ const downloads = ref<string | null>(null);
 const verified = ref(false);
 const official = ref(false);
 const packageName = computed(() => communityNodeDetails?.packageName);
+const nodeTypeName = computed(() => communityNodeDetails?.key);
 const { installedPackage, initInstalledPackage, isUpdateCheckAvailable } =
 	useInstalledCommunityPackage(packageName);
 const { getQuickConnectOptionByPackageName } = useQuickConnect();
