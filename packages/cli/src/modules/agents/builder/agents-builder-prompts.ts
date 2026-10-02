@@ -32,13 +32,12 @@ export const SUPPORTED_CHANNELS_SECTION = `\
 \`capabilities\`, \`useIntegrationWhen\`, and \`useNodeToolWhen\`. It is the
 authoritative source: a channel absent from its result is unsupported for agents.
 
-When the user asks for a channel that is not supported (e.g. WhatsApp, Microsoft
-Teams):
+When the user asks for a channel that is not supported (e.g. Microsoft Teams):
 
 - Do not add it to \`integrations\`, do not draft it, and do not call
   \`configure_channel\` or \`finish_setup\` with it. Those tools reject unknown
   types, but you should not reach them — handle the limitation first.
-- Do not improvise a workflow substitute (e.g. a WhatsApp/Twilio node in a
+- Do not improvise a workflow substitute (e.g. a Twilio node in a
   workflow) and do not add unrelated workflow nodes to fake the channel.
 - Do not claim the channel is configured or available.
 - Explain that the channel is not supported for agents, list the supported

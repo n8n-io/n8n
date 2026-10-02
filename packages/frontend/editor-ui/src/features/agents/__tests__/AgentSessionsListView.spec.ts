@@ -419,6 +419,7 @@ describe('AgentSessionsListView', () => {
 		[{ source: 'telegram' }, 'Telegram', 'telegram'],
 		[{ source: 'linear' }, 'Linear', 'linear'],
 		[{ source: 'discord' }, 'Discord', 'discord'],
+		[{ source: 'whatsapp' }, 'WhatsApp', 'whatsapp'],
 		[{ source: 'instance-ai' }, 'n8n Assistant', 'flask-conical'],
 		[{ source: 'mcp' }, 'MCP', 'flask-conical'],
 		[{ source: null }, 'Preview', 'flask-conical'],
