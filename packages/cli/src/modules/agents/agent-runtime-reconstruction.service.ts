@@ -1050,7 +1050,13 @@ export class AgentRuntimeReconstructionService {
 			rootSessionCapUsd: params.rootSessionCapUsd,
 			budgetForwarded: params.budgetForwarded,
 		});
-		this.attachWriteTodosTool(agent, agentId);
+		if (Container.get(AgentsConfig).planToolsEnabled) {
+			const { AgentPlanService } = await import('./agent-plan.service.js');
+			const { createAgentPlanTools } = await import('./plans/agent-plan-tools.js');
+			agent.tool(createAgentPlanTools(Container.get(AgentPlanService)));
+		} else {
+			this.attachWriteTodosTool(agent, agentId);
+		}
 		agent.tool(createMarkSessionFailedTool());
 		if (!backgroundTasksEnabled) return;
 		// Background tools attach only to the root agent, so its cap is the root cap.
