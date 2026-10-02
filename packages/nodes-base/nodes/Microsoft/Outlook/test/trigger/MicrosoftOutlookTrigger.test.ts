@@ -25,25 +25,14 @@ describe('MicrosoftOutlookTrigger', () => {
 	});
 
 	describe('poll', () => {
-		it('should not advance lastTimeChecked when API call fails and lastTimeChecked exists', async () => {
+		it('should rethrow and keep lastTimeChecked when a scheduled poll fails after a previous run', async () => {
 			const previousTimestamp = '2023-01-01T00:00:00.000Z';
 			staticData.lastTimeChecked = previousTimestamp;
 
 			mockPollFunctions.getMode.mockReturnValue('trigger');
 			(getPollResponse as Mock).mockRejectedValue(new Error('API request failed'));
-			mockPollFunctions.getWorkflow.mockReturnValue({ id: 'test-workflow' } as never);
-			mockPollFunctions.getNode.mockReturnValue({
-				id: 'test-node',
-				name: 'Test Node',
-				type: 'n8n-nodes-base.microsoftOutlookTrigger',
-				typeVersion: 1,
-				position: [0, 0],
-				parameters: {},
-			});
 
-			const result = await trigger.poll.call(mockPollFunctions);
-
-			expect(result).toBeNull();
+			await expect(trigger.poll.call(mockPollFunctions)).rejects.toThrow('API request failed');
 			expect(staticData.lastTimeChecked).toBe(previousTimestamp);
 		});
 
@@ -70,7 +59,7 @@ describe('MicrosoftOutlookTrigger', () => {
 			vi.spyOn(DateTime, 'now').mockReturnValue(fakeNow);
 
 			const mockResults: INodeExecutionData[] = [{ json: { id: 'msg1', subject: 'Test' } }];
-			(getPollResponse as Mock).mockResolvedValue(mockResults);
+			(getPollResponse as Mock).mockResolvedValue({ items: mockResults, cursor: fakeNow.toISO() });
 
 			const result = await trigger.poll.call(mockPollFunctions);
 
@@ -85,7 +74,7 @@ describe('MicrosoftOutlookTrigger', () => {
 			const fakeNow = DateTime.fromISO('2023-01-02T00:00:00.000Z');
 			vi.spyOn(DateTime, 'now').mockReturnValue(fakeNow);
 
-			(getPollResponse as Mock).mockResolvedValue([]);
+			(getPollResponse as Mock).mockResolvedValue({ items: [], cursor: fakeNow.toISO() });
 
 			const result = await trigger.poll.call(mockPollFunctions);
 

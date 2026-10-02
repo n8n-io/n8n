@@ -2,18 +2,49 @@ import { NodeApiError } from 'n8n-workflow';
 import type { JsonObject, IDataObject, INodeExecutionData, IPollFunctions } from 'n8n-workflow';
 
 import { prepareFilterString, simplifyOutputMessages } from '../v2/helpers/utils';
-import {
-	downloadAttachments,
-	microsoftApiRequest,
-	microsoftApiRequestAllItems,
-} from '../v2/transport';
+import { downloadAttachments, microsoftApiRequest } from '../v2/transport';
 
+// Bounds how far one poll reads into a backlog, e.g. after a restart rewinds the
+// cursor. The rest is picked up by the next polls.
+const MAX_PAGES_PER_FOLDER = 10;
+
+async function getMessagesOldestFirst(
+	this: IPollFunctions,
+	endpoint: string,
+	qs: IDataObject,
+): Promise<{ messages: IDataObject[]; capped: boolean }> {
+	const messages: IDataObject[] = [];
+	let nextLink: string | undefined;
+	for (let page = 0; page < MAX_PAGES_PER_FOLDER; page++) {
+		// Poll context: 0 is the transport's fallback read, not an item index.
+		const response = await microsoftApiRequest.call(
+			this,
+			'GET',
+			endpoint,
+			0,
+			undefined,
+			nextLink ? undefined : { ...qs, $top: 100 }, // nextLink already carries the query
+			nextLink,
+		);
+		messages.push(...((response.value as IDataObject[] | undefined) ?? []));
+		nextLink = response['@odata.nextLink'] as string | undefined;
+		if (!nextLink) return { messages, capped: false };
+	}
+	return { messages, capped: true };
+}
+
+/**
+ * Returns the messages received in the poll window, and the cursor the next poll
+ * starts from. The cursor is `pollEndDate` unless a folder had more messages than
+ * one poll reads.
+ */
 export async function getPollResponse(
 	this: IPollFunctions,
 	pollStartDate: string,
 	pollEndDate: string,
-) {
+): Promise<{ items: INodeExecutionData[]; cursor: string }> {
 	let responseData;
+	let cursor = pollEndDate;
 	const qs = {} as IDataObject;
 	try {
 		const filters: IDataObject =
@@ -35,6 +66,15 @@ export async function getPollResponse(
 				'id,conversationId,subject,bodyPreview,from,toRecipients,categories,hasAttachments';
 		}
 
+		// A scheduled poll reads receivedDateTime to place its cursor.
+		const addReceivedDateTime =
+			!!qs.$select &&
+			this.getMode() !== 'manual' &&
+			!String(qs.$select).split(',').includes('receivedDateTime');
+		if (addReceivedDateTime) {
+			qs.$select = `${qs.$select},receivedDateTime`;
+		}
+
 		// parentFolderId is not a filterable property on GET /me/messages (see message
 		// resource: https://learn.microsoft.com/en-us/graph/api/resources/message), so
 		// folder scoping must use GET /me/mailFolders/{id}/messages per folder instead:
@@ -48,22 +88,49 @@ export async function getPollResponse(
 		}
 
 		if (this.getMode() !== 'manual') {
+			// Oldest first, so a capped poll can resume where it stopped. Graph needs the
+			// ordered property first in $filter when both are set.
 			const dateFilter = `receivedDateTime ge ${pollStartDate} and receivedDateTime lt ${pollEndDate}`;
-			qs.$filter = qs.$filter ? `${qs.$filter} and ${dateFilter}` : dateFilter;
+			qs.$filter = qs.$filter ? `${dateFilter} and (${qs.$filter})` : dateFilter;
+			qs.$orderby = 'receivedDateTime asc';
 
 			const endpoints =
 				folderIds.length > 0 ? folderIds.map((id) => `/mailFolders/${id}/messages`) : ['/messages'];
 
 			const results = await Promise.all(
-				endpoints.map(
-					async (endpoint) =>
-						// Poll context: 0 is the transport's fallback read, not an item index.
-						await microsoftApiRequestAllItems.call(this, 'value', 'GET', endpoint, 0, undefined, {
-							...qs,
-						}),
-				),
+				endpoints.map(async (endpoint) => await getMessagesOldestFirst.call(this, endpoint, qs)),
 			);
-			responseData = results.flat();
+			const receivedAt = (message: IDataObject) => Date.parse(message.receivedDateTime as string);
+			responseData = results
+				.flatMap((result) => result.messages)
+				.sort((a, b) => receivedAt(a) - receivedAt(b));
+
+			// Each capped folder stopped at its last fetched message. Emit only what is older
+			// than the earliest of those, so no folder skips messages it did not read yet.
+			const cappedAt = results
+				.filter((result) => result.capped && result.messages.length > 0)
+				.map((result) => receivedAt(result.messages[result.messages.length - 1]))
+				.filter(Number.isFinite);
+			if (cappedAt.length > 0) {
+				const boundary = Math.min(...cappedAt);
+				let limit = boundary;
+				if (!responseData.some((message) => receivedAt(message) < boundary)) {
+					// A whole capped read shares one second. Step past it so the trigger keeps
+					// moving, at the cost of the unread messages in that second.
+					limit = boundary + 1000;
+					this.logger.warn(
+						`Microsoft Outlook Trigger skipped unread messages received at ${new Date(boundary).toISOString()}: more than one poll can read arrived in that second`,
+					);
+				}
+				// The query never reaches past pollEndDate, so neither may the cursor.
+				limit = Math.min(limit, Date.parse(pollEndDate));
+				responseData = responseData.filter((message) => receivedAt(message) < limit);
+				cursor = new Date(limit).toISOString();
+			}
+
+			if (addReceivedDateTime && output === 'fields') {
+				responseData = responseData.map(({ receivedDateTime, ...message }) => message);
+			}
 		} else {
 			qs.$top = 1;
 			// Graph does not guarantee any ordering without $orderby, so request the
@@ -107,7 +174,7 @@ export async function getPollResponse(
 			executionData = this.helpers.returnJsonArray(responseData as IDataObject[]);
 		}
 
-		return executionData;
+		return { items: executionData, cursor };
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error as JsonObject, {
 			message: error.message,
