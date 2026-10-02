@@ -431,6 +431,10 @@ describe('AgentExecutionRepository', () => {
 				},
 			);
 			const wake = mock<AgentWakeService>();
+			const initialSuspensionPersisted = createDeferredPromise();
+			wake.requestWake.mockImplementation(async () => {
+				initialSuspensionPersisted.resolve();
+			});
 			const getService = Container.get.bind(Container);
 			vi.spyOn(Container, 'get').mockImplementation((service) => {
 				if (service === AgentRuntimeReconstructionService) return reconstruction;
@@ -507,13 +511,12 @@ describe('AgentExecutionRepository', () => {
 				if (!approval) throw new Error('Expected a pending approval');
 				return { job, approval };
 			};
-			await vi.waitFor(async () =>
-				expect(await jobs.findById(receipt.jobId)).toMatchObject({
-					status: 'suspended',
-					error: null,
-				}),
-			);
-			await vi.waitFor(() => expect(wake.requestWake).toHaveBeenCalledWith(parent.id));
+			await initialSuspensionPersisted.promise;
+			expect(await jobs.findById(receipt.jobId)).toMatchObject({
+				status: 'suspended',
+				error: null,
+			});
+			expect(wake.requestWake).toHaveBeenCalledWith(parent.id);
 			return {
 				...main,
 				...(await readApproval()),
