@@ -84,6 +84,10 @@ export default defineConfig(
 							message: 'Call a service instead of reaching the repository.',
 						},
 						{
+							rule: 'no-unsafe-metrics-imports',
+							message: 'Use DatabaseMetricQueryService for metrics database reads.',
+						},
+						{
 							rule: 'require-public-api-controller',
 							message: 'Migrate to `@PublicApiController`.',
 						},
@@ -137,6 +141,15 @@ export default defineConfig(
 			'@typescript-eslint/prefer-optional-chain': 'warn',
 			'@typescript-eslint/no-duplicate-type-constituents': 'warn',
 		},
+	},
+	{
+		files: ['src/metrics/prometheus/**/*.ts'],
+		ignores: [
+			'src/metrics/prometheus/**/__tests__/**/*.ts',
+			'src/metrics/prometheus/**/*.test.ts',
+			'src/metrics/prometheus/**/*.spec.ts',
+		],
+		rules: { 'n8n-local-rules/no-unsafe-metrics-imports': 'error' },
 	},
 	{
 		// Public API guardrail: handlers/controllers must go through a service, never a repository.

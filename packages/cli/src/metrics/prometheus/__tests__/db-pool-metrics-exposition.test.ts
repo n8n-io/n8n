@@ -110,6 +110,7 @@ describe('database pool metrics exposition', () => {
 				mock(),
 				mock(),
 				mock(),
+				mock(),
 			),
 		);
 		const poolMetrics = new PrometheusDbPoolMetricsService(

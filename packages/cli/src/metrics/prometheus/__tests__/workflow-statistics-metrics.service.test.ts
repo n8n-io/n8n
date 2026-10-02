@@ -62,6 +62,7 @@ describe('PrometheusWorkflowStatisticsMetricsService', () => {
 				licenseMetricsRepository,
 				mock(),
 				mock(),
+				mock(),
 			),
 		);
 	});

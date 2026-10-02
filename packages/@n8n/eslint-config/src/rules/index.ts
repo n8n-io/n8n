@@ -34,6 +34,7 @@ import { NoOnLeaderTakeoverRule } from './no-on-leader-takeover.js';
 import { NoEncryptionGuardrailDisableRule } from './no-encryption-guardrail-disable.js';
 import { NoRawEnumRule } from './no-raw-enum.js';
 import { NoStaticRuntimeImportRule } from './no-static-runtime-import.js';
+import { NoUnsafeMetricsImportsRule } from './no-unsafe-metrics-imports.js';
 
 export const rules = {
 	'no-uncaught-json-parse': NoUncaughtJsonParseRule,
@@ -71,4 +72,5 @@ export const rules = {
 	'no-encryption-guardrail-disable': NoEncryptionGuardrailDisableRule,
 	'no-raw-enum': NoRawEnumRule,
 	'no-static-runtime-import': NoStaticRuntimeImportRule,
+	'no-unsafe-metrics-imports': NoUnsafeMetricsImportsRule,
 } satisfies Record<string, AnyRuleModule>;

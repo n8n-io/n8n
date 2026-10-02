@@ -55,6 +55,7 @@ describe('PrometheusWorkflowPublicationMetricsService', () => {
 				mock(),
 				outboxRepository,
 				mock(),
+				mock(),
 			),
 		);
 

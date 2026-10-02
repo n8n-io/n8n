@@ -1,5 +1,7 @@
+import { ScheduledJobOwnerType, Time } from '@n8n/constants';
 import {
 	LicenseMetricsRepository,
+	ScheduledJobRepository,
 	ScheduledTaskRepository,
 	WorkflowPublicationOutboxRepository,
 	type WorkflowPublicationOutboxStatus,
@@ -17,6 +19,14 @@ type PublicationStats = Partial<
 	Record<WorkflowPublicationOutboxStatus, { count: number; oldestMs: number }>
 >;
 
+/** The stored schedule of one durable system task, as JSON so the cache can hold it. */
+export type DurableJobState = {
+	task: string;
+	/** Enabled and not quarantined, so the scheduler will claim it. */
+	runnable: boolean;
+	nextRunAtSeconds: number | null;
+};
+
 /** Owns database reads for metrics. Each method returns a query with outage handling. */
 @Service()
 export class DatabaseMetricQueryService {
@@ -26,6 +36,7 @@ export class DatabaseMetricQueryService {
 		private readonly licenseMetricsRepository: LicenseMetricsRepository,
 		private readonly outboxRepository: WorkflowPublicationOutboxRepository,
 		private readonly taskRepository: ScheduledTaskRepository,
+		private readonly jobRepository: ScheduledJobRepository,
 	) {}
 
 	activeWorkflowCount(ttlMs: number) {
@@ -72,6 +83,24 @@ export class DatabaseMetricQueryService {
 			cacheKey: 'metrics:scheduler:snapshot:v1',
 			ttlMs,
 			query: async () => await this.taskRepository.getMetricSnapshot(),
+		});
+	}
+
+	durableSystemTaskJobs(ttlMs: number) {
+		return this.cachedQueries.create<DurableJobState[]>({
+			cacheKey: 'metrics:system-tasks:durable-jobs:v1',
+			ttlMs,
+			query: async () => {
+				const jobs = await this.jobRepository.findScheduleStatesByOwnerType(
+					ScheduledJobOwnerType.SystemTask,
+				);
+				return jobs.map(({ ownerId, runnable, nextRunAt }) => ({
+					task: ownerId,
+					runnable,
+					nextRunAtSeconds:
+						nextRunAt === null ? null : nextRunAt.getTime() / Time.seconds.toMilliseconds,
+				}));
+			},
 		});
 	}
 }

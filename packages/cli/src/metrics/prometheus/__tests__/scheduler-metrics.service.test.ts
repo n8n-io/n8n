@@ -62,6 +62,7 @@ describe('PrometheusSchedulerMetricsService', () => {
 				mock(),
 				mock(),
 				taskRepository,
+				mock(),
 			),
 		);
 

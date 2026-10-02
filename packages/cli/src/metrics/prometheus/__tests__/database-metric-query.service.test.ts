@@ -2,6 +2,7 @@ import type { CacheService } from '@n8n/backend-services';
 import type {
 	DbConnection,
 	LicenseMetricsRepository,
+	ScheduledJobRepository,
 	ScheduledTaskRepository,
 	WorkflowPublicationOutboxRepository,
 	WorkflowRepository,
@@ -20,12 +21,14 @@ describe('DatabaseMetricQueryService', () => {
 	const licenseMetricsRepository = mock<LicenseMetricsRepository>();
 	const outboxRepository = mock<WorkflowPublicationOutboxRepository>();
 	const taskRepository = mock<ScheduledTaskRepository>();
+	const jobRepository = mock<ScheduledJobRepository>();
 	const service = new DatabaseMetricQueryService(
 		new CachedMetricQueryFactory(cacheService, dbConnection),
 		workflowRepository,
 		licenseMetricsRepository,
 		outboxRepository,
 		taskRepository,
+		jobRepository,
 	);
 
 	beforeEach(() => {
@@ -52,6 +55,7 @@ describe('DatabaseMetricQueryService', () => {
 			running: 0,
 			oldestPendingAgeMs: 0,
 		});
+		jobRepository.findScheduleStatesByOwnerType.mockResolvedValue([]);
 	});
 
 	const queries = [
@@ -84,6 +88,11 @@ describe('DatabaseMetricQueryService', () => {
 			name: 'scheduler snapshot',
 			create: () => service.schedulerSnapshot(1000),
 			read: taskRepository.getMetricSnapshot,
+		},
+		{
+			name: 'durable system task jobs',
+			create: () => service.durableSystemTaskJobs(1000),
+			read: jobRepository.findScheduleStatesByOwnerType,
 		},
 	];
 
