@@ -2351,11 +2351,16 @@ describe('WorkflowService', () => {
 		});
 
 		test('deletes an unpublished workflow when publication service is on', async () => {
-			const workflow = makeWorkflowEntity({ isArchived: true, activeVersionId: null });
+			const workflow = makeWorkflowEntity({
+				isArchived: true,
+				active: true,
+				activeVersionId: null,
+			});
 			workflowFinderServiceMock.findWorkflowForUser.mockResolvedValue(workflow);
 
 			await workflowService.delete(mock<User>(), WORKFLOW_ID, true);
 
+			expect(activeWorkflowManagerMock.remove).not.toHaveBeenCalled();
 			expect(trxMock.delete).toHaveBeenCalledWith(WorkflowEntity, { id: WORKFLOW_ID });
 		});
 

@@ -157,6 +157,21 @@ describe('GET /executions/:id', () => {
 		expect(tracingContext).toEqual({ traceparent });
 	});
 
+	test.each(['success', 'error', 'crashed', 'canceled'] as const)(
+		'projects the public finished field from %s status',
+		async (status) => {
+			const workflow = await createWorkflow({}, owner);
+			const execution = await createExecution({ status, finished: status !== 'success' }, workflow);
+
+			const response = await authOwnerAgent.get(`/executions/${execution.id}`);
+
+			expect(response.statusCode).toBe(200);
+			expect(response.body).toEqual(
+				expect.objectContaining({ status, finished: status === 'success' }),
+			);
+		},
+	);
+
 	test('should return a webhook execution when the stored tracestate is null', async () => {
 		const traceparent = createTraceparent();
 		const workflow = await createWorkflow({}, owner);

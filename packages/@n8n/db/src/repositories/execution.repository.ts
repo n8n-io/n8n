@@ -39,6 +39,7 @@ import type {
 } from 'n8n-workflow';
 import {
 	CRASHABLE_EXECUTION_STATUSES,
+	TERMINAL_EXECUTION_STATUSES,
 	migrateRunExecutionData,
 	UnexpectedError,
 	WAIT_FOR_SUB_EXECUTION,
@@ -129,8 +130,9 @@ function parseFiltersToQueryBuilder(
 			workflowStatus: filters.status,
 		});
 	}
-	if (filters?.finished) {
-		qb.andWhere({ finished: filters.finished });
+	if (filters?.finished !== undefined) {
+		// The legacy filter treats only successful executions as finished.
+		qb.andWhere({ status: filters.finished ? 'success' : Not('success') });
 	}
 	if (filters?.metadata) {
 		qb.leftJoin(ExecutionMetadata, 'md', 'md.executionId = execution.id');
@@ -560,10 +562,9 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 	 * @param execution - Partial execution data to update
 	 * @param conditions - Optional conditions that must be met for the update to proceed.
 	 *   `requireStatus`: only update if execution has this exact status.
-	 *   `requireNotFinished`: only update if `finished = false`.
+	 *   `requireNotFinished`: only update if the execution is not terminal.
 	 *   `requireNotCanceled`: only update if `status != 'canceled'`.
-	 *   Note: `requireStatus` and `requireNotCanceled` both constrain the `status` column,
-	 *   so combining them is not supported.
+	 *   Do not combine `requireStatus` with another status condition.
 	 * @returns true if update succeeded, false if no rows matched (execution not found or conditions not met)
 	 */
 	async updateExistingExecution(
@@ -593,10 +594,19 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 		return await this.manager.transaction(async (tx) => {
 			if (Object.keys(executionInformation).length > 0) {
 				const whereCondition: FindOptionsWhere<ExecutionEntity> = { id: executionId };
+				if (
+					conditions?.requireStatus &&
+					(conditions.requireNotFinished || conditions.requireNotCanceled)
+				) {
+					throw new UnexpectedError(
+						'`requireStatus` cannot be combined with another status condition',
+					);
+				}
 				if (conditions?.requireStatus) whereCondition.status = conditions.requireStatus;
-				// oxlint-disable-next-line typescript/no-deprecated
-				if (conditions?.requireNotFinished) whereCondition.finished = false;
-				if (conditions?.requireNotCanceled) whereCondition.status = Not('canceled');
+				if (conditions?.requireNotFinished)
+					whereCondition.status = Not(In(TERMINAL_EXECUTION_STATUSES));
+				if (conditions?.requireNotCanceled && !conditions.requireNotFinished)
+					whereCondition.status = Not('canceled');
 
 				const result = await tx.update(ExecutionEntity, whereCondition, executionInformation);
 				const executionTableAffectedRows = result.affected ?? 0;

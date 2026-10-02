@@ -2949,8 +2949,9 @@ export class WorkflowExecute {
 		} else if (this.runExecutionData.waitTill) {
 			fullRunData.waitTill = this.runExecutionData.waitTill;
 		} else {
+			// Keep the legacy hook payload for older lifecycle consumers.
 			// oxlint-disable-next-line typescript/no-deprecated
-			fullRunData.finished = true;
+			fullRunData.finished = fullRunData.status === 'success';
 		}
 
 		// Prevent from running the hook if the error is an abort error as it was already handled

@@ -86,7 +86,7 @@ const getMockRun = ({ lastNodeOutput }: { lastNodeOutput: Array<INodeExecutionDa
 		finished: true,
 		mode: 'manual',
 		startedAt: new Date(),
-		status: 'new',
+		status: 'success',
 		waitTill: undefined,
 	});
 
@@ -301,6 +301,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 		it('should return waitTill property when workflow execution is waiting', async () => {
 			const waitTill = new Date();
 			runWithData.waitTill = waitTill;
+			runWithData.status = 'waiting';
 
 			const response = await executeWorkflow(
 				mock<IExecuteWorkflowInfo>(),
@@ -616,7 +617,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 					finished: true,
 					mode: 'manual',
 					startedAt: new Date(),
-					status: 'new',
+					status: 'success',
 					waitTill: undefined,
 				});
 

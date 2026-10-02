@@ -589,7 +589,7 @@ describe('WaitTracker', () => {
 
 				// ACT & ASSERT
 				await expect(waitTracker.startExecution(parentExecution.id)).rejects.toThrow(
-					'The execution did succeed and can so not be started again',
+					'A completed execution cannot be started again',
 				);
 
 				// Verify execution was NOT started

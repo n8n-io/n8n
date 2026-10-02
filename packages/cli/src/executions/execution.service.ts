@@ -260,8 +260,7 @@ export class ExecutionService {
 
 		if (!execution.data.executionData) throw new AbortedExecutionRetryError();
 
-		// oxlint-disable-next-line typescript/no-deprecated
-		if (execution.finished) {
+		if (execution.status === 'success') {
 			throw new ConflictError('The execution succeeded, so it cannot be retried.');
 		}
 
@@ -380,8 +379,7 @@ export class ExecutionService {
 			mode: executionData.mode,
 			startedAt: executionData.startedAt,
 			workflowId: execution.workflowId,
-			// oxlint-disable-next-line typescript/no-deprecated
-			finished: executionData.finished ?? false,
+			finished: executionData.status === 'success',
 			retryOf: executionId,
 			status: executionData.status,
 			waitTill: executionData.waitTill,

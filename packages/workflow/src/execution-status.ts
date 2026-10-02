@@ -13,6 +13,13 @@ export type ExecutionStatus = (typeof ExecutionStatusList)[number];
 export type CompletedExecutionStatus = 'crashed' | 'error' | 'success';
 export type TerminalExecutionStatus = CompletedExecutionStatus | 'canceled';
 
+export const TERMINAL_EXECUTION_STATUSES: TerminalExecutionStatus[] = [
+	'canceled',
+	'crashed',
+	'error',
+	'success',
+];
+
 export function isCompletedExecutionStatus(
 	status: ExecutionStatus,
 ): status is CompletedExecutionStatus {

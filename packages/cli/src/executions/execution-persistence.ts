@@ -23,6 +23,7 @@ import type { ExecutionStatus, IRunExecutionData, IRunExecutionDataAll } from 'n
 import {
 	createEmptyRunExecutionData,
 	migrateRunExecutionData,
+	TERMINAL_EXECUTION_STATUSES,
 	UnexpectedError,
 } from 'n8n-workflow';
 
@@ -906,18 +907,18 @@ export class ExecutionPersistence {
 		executionId: string,
 		conditions?: UpdateExecutionConditions,
 	): FindOptionsWhere<ExecutionEntity> {
-		if (conditions?.requireStatus && conditions?.requireNotCanceled) {
-			throw new UnexpectedError('`requireStatus` and `requireNotCanceled` cannot be combined');
+		if (
+			conditions?.requireStatus &&
+			(conditions.requireNotCanceled || conditions.requireNotFinished)
+		) {
+			throw new UnexpectedError('`requireStatus` cannot be combined with another status condition');
 		}
 
 		const where: FindOptionsWhere<ExecutionEntity> = { id: executionId };
 		if (conditions?.requireStatus) where.status = conditions.requireStatus;
-		// TODO(CAT-3214): `ExecutionEntity.finished` is deprecated and we should rely on statuses
-		// only, but for now we still use it to filter out finished executions for parity with
-		// ExecutionRepository.
-		// oxlint-disable-next-line typescript/no-deprecated
-		if (conditions?.requireNotFinished) where.finished = false;
-		if (conditions?.requireNotCanceled) where.status = Not('canceled');
+		if (conditions?.requireNotFinished) where.status = Not(In(TERMINAL_EXECUTION_STATUSES));
+		if (conditions?.requireNotCanceled && !conditions.requireNotFinished)
+			where.status = Not('canceled');
 		return where;
 	}
 
