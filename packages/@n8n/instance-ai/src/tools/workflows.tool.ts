@@ -20,7 +20,7 @@ import { migratedTargetOf, nodeTypeOf } from '@n8n/nodes-base-next';
 import type { composedFactoryKey, ContractFactory } from '@n8n/workflow-sdk/next';
 
 import { approvalSummarySchema, formatApprovalMessage } from './approval-copy';
-import { factoryPathOf, nextActions, nextTriggerFactories } from './next-modules';
+import { derivedReadOf, factoryPathOf, nextActions, nextTriggerFactories } from './next-modules';
 import { sanitizeInputSchema } from '../agent/sanitize-mcp-schemas';
 import { WorkflowSnapshotChangedError } from '../errors/workflow-snapshot-changed.error';
 import type { FolderResolutionFailure, InstanceAiContext, SetupItemsEmitter } from '../types';
@@ -871,19 +871,29 @@ const contractFactories = (composedKey: typeof composedFactoryKey) =>
 
 const NEXT_SDK_IMPORT = "from '@n8n/workflow-sdk/next'";
 
-/** Node lines of typed source. The legacy index looks for `config: { name }` and finds none. */
+/**
+ * Node lines of typed source. The legacy index looks for `config: { name }` and finds none. A
+ * node that the source still writes as `node()` gets its `untyped` reason, when it has one.
+ */
 async function indexNextSourceNodes(
 	json: WorkflowJSON,
 	source: string,
+	untyped: ReadonlyMap<string, string> = new Map(),
 ): Promise<SourceNodeIndexEntry[]> {
 	const { locateNextNodes } = await import('@n8n/workflow-sdk/next');
 	const located = locateNextNodes(source);
-	const lineOf = (name: string) => located.find((entry) => entry.name === name)?.line ?? 0;
-	return (json.nodes ?? []).map((node) => ({
-		name: node.name ?? '',
-		type: node.type,
-		line: lineOf(node.name ?? ''),
-	}));
+	const entryOf = (name: string) => located.find((entry) => entry.name === name);
+	return (json.nodes ?? []).map((node) => {
+		const name = node.name ?? '';
+		const entry = entryOf(name);
+		const reason = entry?.type === undefined ? undefined : untyped.get(name);
+		return {
+			name,
+			type: node.type,
+			line: entry?.line ?? 0,
+			...(reason ? { untyped: reason } : {}),
+		};
+	});
 }
 
 async function handleGetAsCode(
@@ -891,15 +901,26 @@ async function handleGetAsCode(
 	input: Extract<Input, { action: 'get-as-code' }>,
 ) {
 	const { generateWorkflowCode, buildImports } = await import('@n8n/workflow-sdk');
+	// Why each node of a derived module type stays node(), by node name.
+	const untyped = new Map<string, string>();
 	// Node contracts: edit in the typed format when it can express the saved workflow.
 	const toNextCode = async (json: WorkflowJSON): Promise<string | undefined> => {
 		if (context.nodeContractsEnabled !== true) return undefined;
 		const { composedFactoryKey, decompileWorkflow } = await import('@n8n/workflow-sdk/next');
-		return decompileWorkflow(json, contractFactories(composedFactoryKey));
+		// A node of a derived module reads back as its factory call when the read is lossless.
+		return decompileWorkflow(json, contractFactories(composedFactoryKey), (node) => {
+			const read = derivedReadOf(node, context);
+			if (!read || !node.name) return undefined;
+			untyped.set(
+				node.name,
+				'reason' in read ? read.reason : 'a saved value does not fit the type of its field',
+			);
+			return 'reason' in read ? undefined : read;
+		});
 	};
 	const indexNodes = async (json: WorkflowJSON, source: string) =>
 		context.nodeContractsEnabled === true && source.includes(NEXT_SDK_IMPORT)
-			? await indexNextSourceNodes(json, source)
+			? await indexNextSourceNodes(json, source, untyped)
 			: await indexSourceNodes(json, source);
 	const toLegacyCode = (json: WorkflowJSON): string => {
 		// Emit node ids: this code is edited and built back into the same saved workflow,

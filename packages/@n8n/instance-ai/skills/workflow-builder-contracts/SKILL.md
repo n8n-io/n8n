@@ -27,25 +27,25 @@ are the full API: do not read SDK files. Only `build-workflow` has
 
 1. Call `nodes(action="search")` ONCE with `queries`: one short query per
    service, e.g. `["notion get many pages", "http request", "slack"]`. Use the
-   returned `nodeModules` and `builtIns`. Use nodes from `results` with
-   `node()`.
+   returned `nodeModules` and `builtIns`. Get `results` nodes in step 2.
 2. Get other definitions in ONE `nodes(action="type-definition")` call.
 3. Call `build-workflow` with a stable `filePath` and the complete source
    as `sourceCode`.
-4. Fix every `file:line` error. Pass the full source again, or edit the file
-   with `workspace_str_replace_file` and build with `filePath` only.
+4. Fix every `file:line` error: pass the full source, or edit the file with
+   `workspace_str_replace_file` and build with `filePath` only.
 5. If the result has `postBuildFlow.required: true`, follow
    `postBuildFlow.instructions`.
 
 For an existing workflow, call `workflows(action="get-as-code", workflowId)`,
-make the smallest change, and build with the returned `filePath`. Keep its
+make the smallest change, and build with its `filePath`. Keep its
 `node()` calls and `'={{ … }}'` strings.
 
 ## Imports
 
-Import the flow API from `@n8n/workflow-sdk/next`. The only typed modules are
+Import the flow API from `@n8n/workflow-sdk/next`. The typed modules are
 {{NODE_CONTRACT_MODULES_PLACEHOLDER}}: import them from `@n8n/nodes/<id>`.
-Use a typed step for every node that has one. Every other node uses `node()`.
+Other nodes may have a derived module at `@n8n/nodes/<package>/<name>`.
+Use a module when one exists. Every other node uses `node()`.
 
 ```ts
 import { workflow, manual, set } from '@n8n/workflow-sdk/next';
@@ -87,8 +87,8 @@ export default workflow(
 - `set({ name, fields: { total: (item) => item.a + item.b }, keep: 'all' })`
   makes fields. `keep: 'all'` keeps input fields.
 - `node({ name, type, version, parameters, sample })` adds any other node;
-  `trigger({ … })` any other trigger. `sample` items type the output, e.g.
-  `manual({ sample: [{ id: 1 }] })`. Verification uses them.
+  `trigger({ … })` any other trigger. `sample` items type the output and feed
+  verification, e.g. `manual({ sample: [{ id: 1 }] })`.
 - Typed steps and `node()` take `settings: { retryOnFail: true, notes: '…' }`.
 
 ## AI nodes
@@ -115,10 +115,9 @@ Slots: `model`, `memory`, `tools`, `outputParser`, `embedding`,
 
 ## Values and credentials
 
-- Keep real values you got or found. Never invent IDs,
-  emails, or URLs: write `placeholder('Database')` and tell the user.
-- Do not write credentials: the build binds stored ones, setup asks for
-  others. Never ask for secrets.
+- Keep real values you got. Never invent IDs, emails, or URLs:
+  write `placeholder('Database')` and tell the user.
+- Do not write credentials: the build binds or asks for them. Never ask for secrets.
 
 ## Workflow rules
 

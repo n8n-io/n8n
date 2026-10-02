@@ -428,6 +428,20 @@ describe('generateNodeModule', () => {
 		expect(text.replace(call, '')).toBe(moduleOf(listTasks).replace(call, ''));
 	});
 
+	it('emits the operation-only slot of a derived action', () => {
+		const text = generateNodeModule('todo', [
+			{
+				contract: toContract(listTasks),
+				nodeType: 'n8n-nodes-base.todo',
+				operation: 'getAll',
+				slot: { typeVersion: 2.1, operation: 'getAll' },
+			},
+		]);
+		expect(text).toContain(
+			'contractStep("n8n-nodes-base.todo", config, 2.1, {"operation":"getAll"})',
+		);
+	});
+
 	it('types the outputs of a routed action, also outputs named by input entries', () => {
 		const route = todo.resource('task').action('route', {
 			action: 'Route tasks',

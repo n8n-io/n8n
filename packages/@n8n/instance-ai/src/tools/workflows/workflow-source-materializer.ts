@@ -35,6 +35,8 @@ export interface SourceNodeIndexEntry {
 	type: string;
 	/** 1-based line of the node's declaration in the source file. */
 	line: number;
+	/** Why a node of a derived module type stays `node()` in typed source. */
+	untyped?: string;
 }
 
 export interface MaterializedWorkflowSource {

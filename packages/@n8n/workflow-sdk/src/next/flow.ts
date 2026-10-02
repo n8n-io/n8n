@@ -1194,10 +1194,10 @@ export function contractStep<In, Ctx, Out, N extends string>(
 		readonly sample?: readonly unknown[];
 		readonly settings?: NodeSettings;
 	},
-	/** The node version: the action major, or the version of a composed node. */
+	/** The node version: the action major, or the version of a composed or derived node. */
 	version = 1,
-	/** The resource and operation that select the action in a composed node version. */
-	slot?: { readonly resource: string; readonly operation: string },
+	/** The resource and operation that select the action in a composed or derived node version. */
+	slot?: { readonly resource?: string; readonly operation?: string },
 	requires?: Requires,
 	/** Set on the reply step of a native trigger. */
 	pairing?: Pairing,
@@ -1362,7 +1362,7 @@ export function routedStep<In, Ctx, Out, N extends string, Names extends string>
 	},
 	outputs: OutputList,
 	version = 1,
-	slot?: { readonly resource: string; readonly operation: string },
+	slot?: { readonly resource?: string; readonly operation?: string },
 	requires?: Requires,
 ): RoutedStep<In, Ctx, Out, N, Names> {
 	const step = contractStep<In, Ctx, Out, N>(id, config, version, slot, requires);

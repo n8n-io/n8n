@@ -3113,6 +3113,9 @@ importers:
       '@n8n/mcp-browser':
         specifier: workspace:*
         version: link:../mcp-browser
+      '@n8n/node-contract-compat':
+        specifier: workspace:*
+        version: link:../node-contract-compat
       '@n8n/node-sdk':
         specifier: workspace:*
         version: link:../node-sdk

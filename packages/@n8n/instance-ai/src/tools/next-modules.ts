@@ -2,9 +2,20 @@
  * Discovery over the typed node modules of `@n8n/nodes-base-next`. The agent imports a
  * module as `@n8n/nodes/<nodeId>`, and `tsc` checks the workflow against the same text.
  */
+import {
+	deriveModuleVersion,
+	outputSchemaFrom,
+	readLegacyParameters,
+	toGeneratedAction,
+	type DerivedAction,
+} from '@n8n/node-contract-compat';
 import { isRecord } from '@n8n/utils/is-record';
+import type { OutputSchemaLookup } from '@n8n/workflow-sdk';
+import type { ContractRead } from '@n8n/workflow-sdk/next';
+import { isNodeParameters, type INodeTypeDescription, type INodeTypes } from 'n8n-workflow';
 import {
 	generateNodeModule,
+	toTs,
 	SUPPLY_CONNECTIONS,
 	suppliedKindOf,
 	generatedTriggersOf,
@@ -100,9 +111,15 @@ export function nextNodeModule(ref: string): NextNodeModule | undefined {
 	return { node: nodeId, import: `import { ${nodeId} } from '@n8n/nodes/${nodeId}';`, module };
 }
 
-const inputTypeOf = (action: Action) => `${action.id.split('.').map(capitalize).join('')}Input`;
+interface ActionLine {
+	readonly id: string;
+	readonly action: string;
+	readonly flow: { readonly effect: string; readonly cardinality: string };
+}
 
-const otherActionLine = (action: Action) =>
+const inputTypeOf = (action: ActionLine) => `${action.id.split('.').map(capitalize).join('')}Input`;
+
+const otherActionLine = (action: ActionLine) =>
 	`// ${action.id}(config: ${inputTypeOf(action)}) — ${action.action} (${action.flow.effect}, ${action.flow.cardinality})`;
 
 /** A search view types at most this many actions of a module; the rest are one line each. */
@@ -399,12 +416,17 @@ const localNameOf = (nodeType: string) => nodeType.slice(nodeType.lastIndexOf('.
 
 const capitalize = (text: string) => `${text.charAt(0).toUpperCase()}${text.slice(1)}`;
 
-/** The AI-tool variants of a module node, e.g. `notionTool`, `toolHttpRequest` or an MCP `notion`. */
-const isToolVariantOf = (nodeType: string, nodeId: string) =>
-	[nodeId, `${nodeId}Tool`, `tool${capitalize(nodeId)}`].includes(localNameOf(nodeType));
+/**
+ * The AI-tool variants of a module node, e.g. `notionTool`, `toolHttpRequest` or an MCP `notion`.
+ * A derived module node is its node type, e.g. `n8n-nodes-base.airtable` for `airtableTool`.
+ */
+const isToolVariantOf = (nodeType: string, nodeId: string) => {
+	const name = localNameOf(nodeId);
+	return [name, `${name}Tool`, `tool${capitalize(name)}`].includes(localNameOf(nodeType));
+};
 
 const isTriggerOf = (nodeType: string, nodeId: string) =>
-	localNameOf(nodeType) === `${nodeId}Trigger`;
+	localNameOf(nodeType) === `${localNameOf(nodeId)}Trigger`;
 
 /**
  * One-line catalog rows for a query that module `nodes` cover. The tool variants of these
@@ -436,4 +458,201 @@ export function nearestNextActions(id: string, limit = 3): Action[] {
 		.filter((action) => score(action) > 0)
 		.sort((a, b) => score(b) - score(a))
 		.slice(0, limit);
+}
+
+/** What derives a module from the instance: its node types and their `__schema__` outputs. */
+export interface DeriveSource {
+	readonly nodeTypesProvider?: INodeTypes;
+	readonly outputSchemaLookup?: OutputSchemaLookup;
+}
+
+/**
+ * The import path of a derived module: the legacy node type with `/` before the name, e.g.
+ * `n8n-nodes-base/airtable` or `@n8n/n8n-nodes-langchain/openAi`. A package name is unique and a
+ * typed module id has no `/`, so no two modules share a path.
+ */
+export const derivedModulePath = (nodeType: string) => nodeType.replace(/\.(?=[^.]*$)/, '/');
+
+/** The legacy node type of a derived module path, or undefined for a typed module id. */
+export const nodeTypeOfModulePath = (path: string) =>
+	path.includes('/') ? path.replace(/\/(?=[^/]*$)/, '.') : undefined;
+
+interface DerivedNode {
+	readonly nodeType: string;
+	readonly name: string;
+	readonly typeVersion: number;
+	readonly actions: readonly DerivedAction[];
+	readonly description: INodeTypeDescription;
+}
+
+const derivedNodes = new WeakMap<INodeTypes, Map<string, DerivedNode | undefined>>();
+
+function outputSchemaOf(lookup: OutputSchemaLookup | undefined) {
+	return (target: Parameters<OutputSchemaLookup>[0]) => {
+		try {
+			const raw = lookup?.(target);
+			return raw ? outputSchemaFrom(raw) : undefined;
+		} catch {
+			return undefined;
+		}
+	};
+}
+
+/**
+ * The derived actions of a catalog node type that has no typed module and no SDK step. Each
+ * node type and version is derived once for each instance.
+ */
+function derivedNodeOf(
+	nodeType: string,
+	source: DeriveSource,
+	version?: number,
+): DerivedNode | undefined {
+	const nodeTypes = source.nodeTypesProvider;
+	if (!nodeTypes || nextNodeIdOfNodeType(nodeType) || builtInRowOf(nodeType)) return undefined;
+	const cache = derivedNodes.get(nodeTypes) ?? new Map<string, DerivedNode | undefined>();
+	derivedNodes.set(nodeTypes, cache);
+	const key = `${nodeType}@${version ?? 'latest'}`;
+	if (cache.has(key)) return cache.get(key);
+	const derived = (() => {
+		try {
+			const { description } = nodeTypes.getByNameAndVersion(nodeType, version);
+			const packageName = nodeType.slice(0, nodeType.lastIndexOf('.'));
+			const derivedVersion = deriveModuleVersion(description, {
+				packageName,
+				typeVersion: version,
+				outputSchema: outputSchemaOf(source.outputSchemaLookup),
+			});
+			return derivedVersion && { nodeType, name: description.name, description, ...derivedVersion };
+		} catch {
+			return undefined;
+		}
+	})();
+	cache.set(key, derived);
+	return derived;
+}
+
+/** The node type has a derived module: no typed module or SDK step replaces it, and it derives. */
+export const hasDerivedModule = (nodeType: string, source: DeriveSource) =>
+	derivedNodeOf(nodeType, source) !== undefined;
+
+const derivedHeader = ({ nodeType, typeVersion }: DerivedNode) =>
+	`// Derived from ${nodeType} version ${typeVersion}. The input is typed; the output only when n8n has its schema.\n`;
+
+const derivedImport = ({ nodeType, name }: DerivedNode) =>
+	`import { ${name} } from '@n8n/nodes/${derivedModulePath(nodeType)}';`;
+
+/** The full derived module of a catalog node type, as the sandbox imports it. */
+export function derivedNodeModuleText(nodeType: string, source: DeriveSource): string | undefined {
+	const node = derivedNodeOf(nodeType, source);
+	return (
+		node &&
+		`${derivedHeader(node)}${generateNodeModule(node.name, node.actions.map(toGeneratedAction))}`
+	);
+}
+
+const actionLineOf = ({ contract }: DerivedAction): ActionLine => contract;
+
+/**
+ * The view of a derived module: the shown actions (or the first ones) with their types, at most
+ * `MAX_TYPED_ACTIONS`, and one line for each other action. The sandbox module has all actions.
+ */
+export function derivedNodeView(
+	nodeType: string,
+	source: DeriveSource,
+	shown: ReadonlySet<string> = new Set(),
+): NextNodeModule | undefined {
+	const node = derivedNodeOf(nodeType, source);
+	if (!node) return undefined;
+	const named = node.actions.filter(({ contract }) => shown.has(contract.id));
+	const typed = (named.length ? named : node.actions).slice(0, MAX_TYPED_ACTIONS);
+	const others = node.actions.filter((action) => !typed.includes(action));
+	const module = [
+		`${derivedHeader(node)}${generateNodeModule(node.name, typed.map(toGeneratedAction))}`,
+		...(others.length
+			? [
+					`// Other actions. Get their types with type-definition { nodeType: "${nodeType}", resource, operation }.`,
+					...others.map((action) => otherActionLine(actionLineOf(action))),
+					'',
+				]
+			: []),
+	].join('\n');
+	return { node: nodeType, import: derivedImport(node), module };
+}
+
+/** The derived actions of a node type that run this resource and operation. */
+export function derivedActionIds(
+	nodeType: string,
+	source: DeriveSource,
+	slot: { readonly resource?: string; readonly operation?: string },
+): string[] {
+	return (derivedNodeOf(nodeType, source)?.actions ?? [])
+		.filter(
+			({ compile: { target } }) =>
+				target.resource === slot.resource && target.operation === slot.operation,
+		)
+		.map(({ contract }) => contract.id);
+}
+
+/** The derived actions that the query names beyond the node name, e.g. `create` in "airtable create record". */
+export function derivedActionsNamedBy(
+	nodeType: string,
+	source: DeriveSource,
+	query: string,
+): string[] {
+	const node = derivedNodeOf(nodeType, source);
+	if (!node) return [];
+	const terms = termsOf(query).filter((term) => !hits(term, words(node.name)));
+	const scored = node.actions.map(({ contract }) => ({
+		id: contract.id,
+		score: terms.filter((term) => hits(term, words(`${contract.id} ${contract.summary}`))).length,
+	}));
+	const best = Math.max(0, ...scored.map(({ score }) => score));
+	return best ? scored.filter(({ score }) => score === best).map(({ id }) => id) : [];
+}
+
+/** The fields of every branch of an input, e.g. of a variant whose selector picks the branch. */
+const inputFieldsOf = (input: DerivedAction['contract']['input']) =>
+	[input, ...(input.oneOf ?? [])].flatMap((schema) => Object.entries(schema.properties ?? {}));
+
+/**
+ * A saved node of a derived module type as its factory call, for decompile, or why it stays
+ * `node()`. A node without a derived module gives `undefined`.
+ */
+export function derivedReadOf(
+	node: { readonly type: string; readonly typeVersion: number; readonly parameters?: unknown },
+	source: DeriveSource,
+): ContractRead | { readonly reason: string } | undefined {
+	const derived = derivedNodeOf(node.type, source);
+	if (!derived) return undefined;
+	if (node.typeVersion !== derived.typeVersion) {
+		return {
+			reason: `version ${node.typeVersion}; the derived module types version ${derived.typeVersion}`,
+		};
+	}
+	const parameters = node.parameters ?? {};
+	if (!isNodeParameters(parameters))
+		return { reason: 'a saved parameter is not a node parameter value' };
+	const read = readLegacyParameters(derived, derived.description, parameters);
+	if ('reason' in read) return read;
+	const { contract } = read.action;
+	const generated = toGeneratedAction(read.action);
+	const fields = inputFieldsOf(contract.input);
+	return {
+		factory: {
+			module: derived.name,
+			from: `@n8n/nodes/${derivedModulePath(derived.nodeType)}`,
+			path: [generated.resource, generated.operation].filter(Boolean).join('.'),
+			version: derived.typeVersion,
+			inputKeys: [...new Set(fields.map(([key]) => key))],
+			// The generated field type decides: a `Value<…>` field takes an expression string.
+			expressionKeys: [
+				...new Set(
+					fields.flatMap(([key, schema]) =>
+						toTs(schema, { input: true, indent: '' }).startsWith('Value<') ? [key] : [],
+					),
+				),
+			],
+		},
+		parameters: read.input,
+	};
 }

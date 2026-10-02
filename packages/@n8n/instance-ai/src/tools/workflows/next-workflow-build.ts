@@ -18,7 +18,15 @@ import { z } from 'zod';
 
 import type { ValidationWarning } from './workflow-validation-warnings';
 import type { ExploreResourcesParams, InstanceAiContext } from '../../types';
-import { contractReplacementOf, factoryPathOf, nextNodeIds, nodeModuleText } from '../next-modules';
+import {
+	contractReplacementOf,
+	derivedNodeModuleText,
+	factoryPathOf,
+	nextNodeIds,
+	nodeModuleText,
+	nodeTypeOfModulePath,
+	type DeriveSource,
+} from '../next-modules';
 import { escapeSingleQuotes, runInSandbox } from '../../workspace/sandbox-fs';
 import { WORKFLOW_DIAGNOSTICS_FILENAME } from '../../workspace/sandbox-typescript';
 import { joinWorkspacePath } from '../../workspace/workspace-paths';
@@ -48,16 +56,22 @@ const NEXT_TSCONFIG = JSON.stringify(
 	2,
 );
 
-const NODE_IMPORT = /from\s+['"]@n8n\/nodes\/([\w-]+)['"]/g;
+// A typed module id (`notion`) or a derived module path (`n8n-nodes-base/airtable`).
+const NODE_IMPORT = /from\s+['"]@n8n\/nodes\/([\w@./-]+)['"]/g;
 
 export const usedNodeIds = (source: string) => [
 	...new Set([...source.matchAll(NODE_IMPORT)].flatMap(([, id]) => (id ? [id] : []))),
 ];
 
-function nodeModule(nodeId: string): string | undefined {
-	const text = nodeModuleText(nodeId);
+function nodeModule(nodeId: string, source: DeriveSource): string | undefined {
+	const nodeType = nodeTypeOfModulePath(nodeId);
+	const text =
+		nodeType === undefined ? nodeModuleText(nodeId) : derivedNodeModuleText(nodeType, source);
 	// tsc reads the per-node output types through this reference; tsx ignores it.
-	return text === undefined ? undefined : `/// <reference path="../node-outputs.d.ts" />\n${text}`;
+	const up = '../'.repeat(nodeId.split('/').length);
+	return text === undefined
+		? undefined
+		: `/// <reference path="${up}node-outputs.d.ts" />\n${text}`;
 }
 
 export const EMPTY_OUTPUTS = 'export {};\n';
@@ -67,15 +81,16 @@ export const EMPTY_EXPRESSIONS = `${JSON.stringify({ expressions: [], code: [] }
 /** Files to write before the build: the tsconfig, the imported node modules, empty outputs. */
 export function nextWorkspaceFiles(
 	source: string,
+	deriveSource: DeriveSource = {},
 ): { ok: true; files: Map<string, string> } | { ok: false; errors: string[] } {
-	const modules = usedNodeIds(source).map((id) => [id, nodeModule(id)] as const);
+	const modules = usedNodeIds(source).map((id) => [id, nodeModule(id, deriveSource)] as const);
 	const unknown = modules.filter(([, text]) => text === undefined).map(([id]) => id);
 	if (unknown.length > 0) {
 		return {
 			ok: false,
 			errors: unknown.map(
 				(id) =>
-					`No typed node module "@n8n/nodes/${id}". Typed modules: ${nextNodeIds.join(', ')}. Use node({ type, version, parameters }) from '@n8n/workflow-sdk/next' for other nodes.`,
+					`No node module "@n8n/nodes/${id}". Typed modules: ${nextNodeIds.join(', ')}. Another node <package>.<name> has a derived module "@n8n/nodes/<package>/<name>" when type-definition returns one. Use node({ type, version, parameters }) from '@n8n/workflow-sdk/next' for other nodes.`,
 			),
 		};
 	}

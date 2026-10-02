@@ -315,11 +315,14 @@ export interface GeneratedAction {
 	readonly operation: string;
 	/** The n8n node type, e.g. `@n8n/nodes-base-next.notionDatabasePageGetAll` or `n8n-nodes-base.notion`. */
 	readonly nodeType: string;
-	/** The slot of a composed node version that runs the action, e.g. Notion v4 `databasePage.getAll`. */
+	/**
+	 * The slot of a composed or derived node version that runs the action, e.g. Notion v4
+	 * `databasePage.getAll`. A derived node can select its action by an operation alone.
+	 */
 	readonly slot?: {
 		readonly typeVersion: number;
-		readonly resource: string;
-		readonly operation: string;
+		readonly resource?: string;
+		readonly operation?: string;
 	};
 	/** The node version the factory emits when it is not the contract major: a native node. */
 	readonly typeVersion?: number;

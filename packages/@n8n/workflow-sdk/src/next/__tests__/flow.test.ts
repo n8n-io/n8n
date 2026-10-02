@@ -426,6 +426,28 @@ describe('workflow', () => {
 		});
 	});
 
+	it('emits a derived node with an operation-only slot and __rl on its locator values', () => {
+		const config = {
+			name: 'Row',
+			base: { mode: 'id', value: 'app1' },
+			table: (item: { table: string }) => item.table,
+			fields: { mode: 'not a locator' },
+		};
+		const step = contractStep('n8n-nodes-base.airtable', config, 2.1, { operation: 'create' });
+		const json = workflow('Derived', manual().andThen(step)).toJSON();
+		expect(json.nodes.find((n) => n.name === 'Row')).toMatchObject({
+			type: 'n8n-nodes-base.airtable',
+			typeVersion: 2.1,
+			parameters: {
+				base: { __rl: true, mode: 'id', value: 'app1' },
+				table: '={{ $json.table }}',
+				fields: { mode: 'not a locator' },
+				operation: 'create',
+			},
+		});
+		expect(json.nodes.find((n) => n.name === 'Row')?.parameters).not.toHaveProperty('resource');
+	});
+
 	it('starts a flow at a contract trigger and unions the scopes of the workflow', () => {
 		const read = { credential: 'notion', scopes: ['content:read'] };
 		const config = { name: 'Added' as const, dataSource: 'ds' };

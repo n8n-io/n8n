@@ -23,11 +23,12 @@ describe('contract-mode skill', () => {
 		expect(skill).toContain('`workspace_str_replace_file`');
 	});
 
-	it('lists the typed modules and sends every other node to node()', () => {
+	it('lists the typed modules, names the derived module path, and sends every other node to node()', () => {
 		const text = substituteSkillPlaceholders(skill);
 		expect(text).toContain(
-			`The only typed modules are\n${nextNodeIds.map((id) => `\`${id}\``).join(', ')}:`,
+			`The typed modules are\n${nextNodeIds.map((id) => `\`${id}\``).join(', ')}:`,
 		);
+		expect(text).toContain('derived module at `@n8n/nodes/<package>/<name>`');
 		expect(text).toContain('Every other node uses `node()`.');
 		expect(text).not.toContain('{{NODE_CONTRACT_MODULES_PLACEHOLDER}}');
 	});
