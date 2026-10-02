@@ -10,7 +10,7 @@ import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 import { randomUUID } from 'node:crypto';
 
-const migrationName = 'CreateAgentPlanTables1790243938988';
+const migrationName = 'CreateAgentPlanTables1791187410548';
 
 describe('CreateAgentPlanTables migration', () => {
 	let context: TestMigrationContext;
