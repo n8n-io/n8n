@@ -121,6 +121,8 @@ describe('WorkflowShareModal.ee.vue', () => {
 		mockWorkflowDocumentState.name = '';
 
 		// Set up default store state
+		workflowsStore.isWorkflowSaved = {};
+		workflowsListStore.fetchWorkflow.mockReset();
 		settingsStore.settings.enterprise = { sharing: true } as FrontendSettings['enterprise'];
 		workflowsEEStore.getWorkflowOwnerName = vi.fn(() => 'Owner Name');
 		projectsStore.personalProjects = [createProjectListItem()];
