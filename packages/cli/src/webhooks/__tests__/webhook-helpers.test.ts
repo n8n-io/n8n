@@ -1,4 +1,5 @@
 import { Logger } from '@n8n/backend-common';
+import { EventService } from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { Project, User } from '@n8n/db';
 import { UserRepository } from '@n8n/db';
@@ -50,6 +51,7 @@ import {
 	MICROSOFT_AGENT365_TRIGGER_NODE_TYPE,
 	SEND_AND_WAIT_OPERATION,
 	createRunExecutionData,
+	ExpressionError,
 	UserError,
 } from 'n8n-workflow';
 import type { Readable } from 'stream';
@@ -58,12 +60,11 @@ import { mock, type MockProxy } from 'vitest-mock-extended';
 
 import { ActiveExecutions } from '@/active-executions';
 import { AuthService } from '@/auth/auth.service';
-import type { ResponseError } from '@/errors/response-errors/abstract/response.error';
-import { EventService } from '@/events/event.service';
+import { type ResponseError } from '@n8n/errors';
 import { WebhookResponseRelay } from '@/scaling/webhook-response-relay';
 import { EngineDataPlaneProxyService } from '@/services/engine-data-plane-proxy.service';
 import { EngineV2Dispatcher } from '@/services/engine-v2-dispatcher.service';
-import { EngineV2WebhookResponder } from '@/services/engine-v2-webhook-responder.service';
+import { EngineV2WebhookResponseRegistry } from '@/modules/engine-v2/webhook-response/webhook-response-registry.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { OAuth2FlowProxy } from '@/services/oauth2-flow-proxy.service';
 import type { ProtectedResource } from '@/services/protected-resource.registry';
@@ -83,7 +84,9 @@ import {
 	_privateGetWebhookErrorMessage,
 	invokeWebhook,
 	handleImmediateWebhookResponse,
+	checkTriggerCredentialGate,
 } from '../webhook-helpers';
+import { WebhookResponder } from '../webhook-responder';
 import { WebhookService } from '../webhook.service';
 import type { IWebhookResponseCallbackData, WebhookRequest } from '../webhook.types';
 
@@ -137,6 +140,23 @@ describe('autoDetectResponseMode', () => {
 		});
 		workflow.getChildNodes.mockReturnValue(['childNode']);
 		workflow.nodes.childNode = mock<INode>({
+			type: WAIT_NODE_TYPE,
+			parameters: { resume: 'form' },
+			disabled: false,
+		});
+		const result = autoDetectResponseMode(workflowStartNode, workflow, 'POST');
+		expect(result).toBe('responseNode');
+	});
+
+	test('should return responseNode when a matching child follows a non-matching child', () => {
+		const workflowStartNode = mock<INode>({
+			type: FORM_NODE_TYPE,
+			name: 'startNode',
+			parameters: {},
+		});
+		workflow.getChildNodes.mockReturnValue(['disabledChild', 'enabledChild']);
+		workflow.nodes.disabledChild = mock<INode>({ type: WAIT_NODE_TYPE, disabled: true });
+		workflow.nodes.enabledChild = mock<INode>({
 			type: WAIT_NODE_TYPE,
 			parameters: { resume: 'form' },
 			disabled: false,
@@ -295,7 +315,7 @@ describe('setupResponseNodePromise', () => {
 		setupResponseNodePromise(
 			responsePromise,
 			res,
-			responseCallback,
+			new WebhookResponder(responseCallback),
 			workflowStartNode,
 			executionId,
 			workflow,
@@ -323,7 +343,7 @@ describe('setupResponseNodePromise', () => {
 		setupResponseNodePromise(
 			responsePromise,
 			res,
-			responseCallback,
+			new WebhookResponder(responseCallback),
 			workflowStartNode,
 			executionId,
 			workflow,
@@ -355,7 +375,7 @@ describe('setupResponseNodePromise', () => {
 		setupResponseNodePromise(
 			responsePromise,
 			res,
-			responseCallback,
+			new WebhookResponder(responseCallback),
 			workflowStartNode,
 			executionId,
 			workflow,
@@ -377,7 +397,7 @@ describe('setupResponseNodePromise', () => {
 		setupResponseNodePromise(
 			responsePromise,
 			res,
-			responseCallback,
+			new WebhookResponder(responseCallback),
 			workflowStartNode,
 			executionId,
 			workflow,
@@ -407,7 +427,7 @@ describe('setupResponseNodePromise', () => {
 		setupResponseNodePromise(
 			responsePromise,
 			res,
-			responseCallback,
+			new WebhookResponder(responseCallback),
 			workflowStartNode,
 			executionId,
 			workflow,
@@ -430,7 +450,7 @@ describe('setupResponseNodePromise', () => {
 		setupResponseNodePromise(
 			responsePromise,
 			res,
-			responseCallback,
+			new WebhookResponder(responseCallback),
 			workflowStartNode,
 			executionId,
 			workflow,
@@ -454,7 +474,7 @@ describe('setupResponseNodePromise', () => {
 		setupResponseNodePromise(
 			responsePromise,
 			res,
-			responseCallback,
+			new WebhookResponder(responseCallback),
 			workflowStartNode,
 			executionId,
 			workflow,
@@ -474,7 +494,7 @@ describe('setupResponseNodePromise', () => {
 		setupResponseNodePromise(
 			responsePromise,
 			res,
-			responseCallback,
+			new WebhookResponder(responseCallback),
 			workflowStartNode,
 			executionId,
 			workflow,
@@ -498,7 +518,7 @@ describe('setupResponseNodePromise', () => {
 		setupResponseNodePromise(
 			responsePromise,
 			res,
-			responseCallback,
+			new WebhookResponder(responseCallback),
 			workflowStartNode,
 			executionId,
 			workflow,
@@ -520,7 +540,7 @@ describe('setupResponseNodePromise', () => {
 		setupResponseNodePromise(
 			responsePromise,
 			res,
-			responseCallback,
+			new WebhookResponder(responseCallback),
 			workflowStartNode,
 			executionId,
 			workflow,
@@ -540,7 +560,7 @@ describe('setupResponseNodePromise', () => {
 		setupResponseNodePromise(
 			responsePromise,
 			res,
-			responseCallback,
+			new WebhookResponder(responseCallback),
 			workflowStartNode,
 			executionId,
 			workflow,
@@ -562,7 +582,7 @@ describe('setupResponseNodePromise', () => {
 		setupResponseNodePromise(
 			responsePromise,
 			res,
-			responseCallback,
+			new WebhookResponder(responseCallback),
 			workflowStartNode,
 			executionId,
 			workflow,
@@ -592,7 +612,7 @@ describe('setupResponseNodePromise', () => {
 		setupResponseNodePromise(
 			responsePromise,
 			res,
-			responseCallback,
+			new WebhookResponder(responseCallback),
 			workflowStartNode,
 			executionId,
 			workflow,
@@ -613,25 +633,18 @@ describe('handleHostedChatResponse', () => {
 			end: vi.fn(),
 		} as unknown as express.Response;
 		const responseMode = 'hostedChat';
-		const didSendResponse = false;
 		const executionId = '123';
 		const resumeToken = 'a'.repeat(64);
 
 		const responseCallback = vi.fn();
+		const responder = new WebhookResponder(responseCallback);
 
-		const result = handleHostedChatResponse(
-			res,
-			responseMode,
-			didSendResponse,
-			executionId,
-			responseCallback,
-			resumeToken,
-		);
+		handleHostedChatResponse(res, responseMode, executionId, responder, resumeToken);
 
 		expect(res.send).toHaveBeenCalledWith({ executionStarted: true, executionId, resumeToken });
 		await new Promise((resolve) => setTimeout(resolve, 0));
 		expect(res.end).toHaveBeenCalled();
-		expect(result).toBe(true);
+		expect(responder.hasResponded).toBe(true);
 		// The contract callers depend on: writing the response is not enough,
 		// the callback is what settles their promise and frees the isolate.
 		expect(responseCallback).toHaveBeenCalledTimes(1);
@@ -644,45 +657,34 @@ describe('handleHostedChatResponse', () => {
 			end: vi.fn(),
 		} as unknown as express.Response;
 		const executionId = 'testExecutionId';
-		const didSendResponse = false;
 		const responseMode = 'responseNode';
 		const responseCallback = vi.fn();
+		const responder = new WebhookResponder(responseCallback);
 
-		const result = handleHostedChatResponse(
-			res,
-			responseMode,
-			didSendResponse,
-			executionId,
-			responseCallback,
-		);
+		handleHostedChatResponse(res, responseMode, executionId, responder);
 
 		expect(res.send).not.toHaveBeenCalled();
 		expect(res.end).not.toHaveBeenCalled();
-		expect(result).toBe(false);
+		expect(responder.hasResponded).toBe(false);
 		expect(responseCallback).not.toHaveBeenCalled();
 	});
 
-	it('should not send response when didSendResponse is true', () => {
+	it('should not send response when a response was already sent', () => {
 		const res = {
 			send: vi.fn(),
 			end: vi.fn(),
 		} as unknown as express.Response;
 		const executionId = 'testExecutionId';
-		const didSendResponse = true;
 		const responseMode = 'hostedChat';
 		const responseCallback = vi.fn();
+		const responder = new WebhookResponder(responseCallback);
+		responder.markResponded();
 
-		const result = handleHostedChatResponse(
-			res,
-			responseMode,
-			didSendResponse,
-			executionId,
-			responseCallback,
-		);
+		handleHostedChatResponse(res, responseMode, executionId, responder);
 
 		expect(res.send).not.toHaveBeenCalled();
 		expect(res.end).not.toHaveBeenCalled();
-		expect(result).toBe(true);
+		expect(responder.hasResponded).toBe(true);
 		// Someone else already responded and already called back.
 		expect(responseCallback).not.toHaveBeenCalled();
 	});
@@ -1228,6 +1230,7 @@ describe('invokeWebhook', () => {
 		const webhookResultData = { workflowData: [[{ json: { ok: true } }]] };
 		webhookService.runWebhook.mockResolvedValue(webhookResultData);
 		const responseCallback = vi.fn();
+		const responder = new WebhookResponder(responseCallback);
 
 		const result = await invokeWebhook({
 			workflow,
@@ -1237,7 +1240,7 @@ describe('invokeWebhook', () => {
 			executionMode: 'webhook',
 			runExecutionData: undefined,
 			webhookType: 'Webhook',
-			responseCallback,
+			responder,
 		});
 
 		expect(webhookService.runWebhook).toHaveBeenCalledWith(
@@ -1250,10 +1253,10 @@ describe('invokeWebhook', () => {
 		);
 		expect(result).toEqual({
 			webhookResultData,
-			didSendResponse: false,
 			runExecutionDataChanges: {},
 		});
 		expect(responseCallback).not.toHaveBeenCalled();
+		expect(responder.hasResponded).toBe(false);
 		expect(workflowStatisticsService.emit).toHaveBeenCalledWith('nodeFetchedData', {
 			workflowId: WORKFLOW_ID,
 			node: workflowStartNode,
@@ -1274,6 +1277,7 @@ describe('invokeWebhook', () => {
 	])('$name', async ({ error, expectedMessage }) => {
 		webhookService.runWebhook.mockRejectedValue(error);
 		const responseCallback = vi.fn();
+		const responder = new WebhookResponder(responseCallback);
 
 		const result = await invokeWebhook({
 			workflow,
@@ -1283,14 +1287,14 @@ describe('invokeWebhook', () => {
 			executionMode: 'webhook',
 			runExecutionData: undefined,
 			webhookType: 'Webhook',
-			responseCallback,
+			responder,
 		});
 
 		expect(responseCallback).toHaveBeenCalledWith(
 			expect.objectContaining({ message: expect.stringContaining(expectedMessage) }),
 			{},
 		);
-		expect(result.didSendResponse).toBe(true);
+		expect(responder.hasResponded).toBe(true);
 		expect(result.webhookResultData).toEqual({
 			noWebhookResponse: true,
 			workflowData: [[{ json: {} }]],
@@ -1315,7 +1319,7 @@ describe('invokeWebhook', () => {
 			executionMode: 'webhook',
 			runExecutionData: undefined,
 			webhookType: 'Webhook',
-			responseCallback: vi.fn(),
+			responder: new WebhookResponder(vi.fn()),
 		});
 
 		expect(Container.get(ErrorReporter).error).toHaveBeenCalledWith(
@@ -1335,20 +1339,18 @@ describe('handleImmediateWebhookResponse', () => {
 		{ name: 'stops without workflow data', workflowData: undefined, shouldContinue: false },
 	])('reports a no-response result once and $name', ({ workflowData, shouldContinue }) => {
 		const responseCallback = vi.fn();
+		const responder = new WebhookResponder(responseCallback);
 
-		const result = handleImmediateWebhookResponse({
+		const shouldContinueWorkflowExecution = handleImmediateWebhookResponse({
 			webhookResultData: { noWebhookResponse: true, workflowData },
-			didSendResponse: false,
 			responseCode: 200,
-			responseCallback,
+			responder,
 		});
 
 		expect(responseCallback).toHaveBeenCalledOnce();
 		expect(responseCallback).toHaveBeenCalledWith(null, { noWebhookResponse: true });
-		expect(result).toEqual({
-			didSendResponse: true,
-			shouldContinueWorkflowExecution: shouldContinue,
-		});
+		expect(responder.hasResponded).toBe(true);
+		expect(shouldContinueWorkflowExecution).toBe(shouldContinue);
 	});
 
 	it.each([
@@ -1362,19 +1364,17 @@ describe('handleImmediateWebhookResponse', () => {
 		'does not call back for $name when a response was already sent',
 		({ webhookResultData, shouldContinue }) => {
 			const responseCallback = vi.fn();
+			const responder = new WebhookResponder(responseCallback);
+			responder.markResponded();
 
-			const result = handleImmediateWebhookResponse({
+			const shouldContinueWorkflowExecution = handleImmediateWebhookResponse({
 				webhookResultData,
-				didSendResponse: true,
 				responseCode: 200,
-				responseCallback,
+				responder,
 			});
 
 			expect(responseCallback).not.toHaveBeenCalled();
-			expect(result).toEqual({
-				didSendResponse: true,
-				shouldContinueWorkflowExecution: shouldContinue,
-			});
+			expect(shouldContinueWorkflowExecution).toBe(shouldContinue);
 		},
 	);
 
@@ -1396,22 +1396,71 @@ describe('handleImmediateWebhookResponse', () => {
 		},
 	])('sends $name and stops execution', ({ webhookResultData, expectedData }) => {
 		const responseCallback = vi.fn();
+		const responder = new WebhookResponder(responseCallback);
 
-		const result = handleImmediateWebhookResponse({
+		const shouldContinueWorkflowExecution = handleImmediateWebhookResponse({
 			webhookResultData,
-			didSendResponse: false,
 			responseCode: 201,
-			responseCallback,
+			responder,
 		});
 
 		expect(responseCallback).toHaveBeenCalledWith(null, {
 			data: expectedData,
 			responseCode: 201,
 		});
-		expect(result).toEqual({
-			didSendResponse: true,
-			shouldContinueWorkflowExecution: false,
+		expect(responder.hasResponded).toBe(true);
+		expect(shouldContinueWorkflowExecution).toBe(false);
+	});
+});
+
+describe('checkTriggerCredentialGate', () => {
+	const oauthWebhook = mock<INode>({
+		name: 'Webhook',
+		type: WEBHOOK_NODE_TYPE,
+		parameters: { authentication: 'n8nOAuth2' },
+	});
+
+	it.each([
+		{ name: 'a response was sent', didSendResponse: true, headersSent: false },
+		{ name: 'headers were sent', didSendResponse: false, headersSent: true },
+	])('skips the gate when $name', async ({ didSendResponse, headersSent }) => {
+		const checkTriggerCredentialStatus = vi.fn();
+		const responseCallback = vi.fn();
+		const responder = new WebhookResponder(responseCallback);
+		if (didSendResponse) responder.markResponded();
+
+		const result = await checkTriggerCredentialGate({
+			workflowStartNode: oauthWebhook,
+			additionalData: mock<IWorkflowExecuteAdditionalData>({ checkTriggerCredentialStatus }),
+			res: mock<express.Response>({ headersSent }),
+			responder,
 		});
+
+		expect(checkTriggerCredentialStatus).not.toHaveBeenCalled();
+		expect(responseCallback).not.toHaveBeenCalled();
+		expect(result).toBe(true);
+	});
+
+	it('sends 428 when trigger credentials are not ready', async () => {
+		const credentialGate = { readyToExecute: false };
+		const responseCallback = vi.fn();
+		const responder = new WebhookResponder(responseCallback);
+
+		const result = await checkTriggerCredentialGate({
+			workflowStartNode: oauthWebhook,
+			additionalData: mock<IWorkflowExecuteAdditionalData>({
+				checkTriggerCredentialStatus: vi.fn().mockResolvedValue(credentialGate),
+			}),
+			res: mock<express.Response>({ headersSent: false }),
+			responder,
+		});
+
+		expect(responseCallback).toHaveBeenCalledWith(null, {
+			data: credentialGate,
+			responseCode: 428,
+		});
+		expect(responder.hasResponded).toBe(true);
+		expect(result).toBe(false);
 	});
 });
 
@@ -2341,6 +2390,14 @@ describe('executeWebhook on engine v2', () => {
 	let dataPlane: Map<string, (response: ExecutionResponse) => void>;
 	/** The data plane mints uuidv7 ids, not the numeric ids v1 uses. */
 	const ENGINE_EXECUTION_ID = '019606a1-0000-7000-8000-000000000001';
+	/** What the webhook node produces for a request that uploaded a file. */
+	const filePayload = {
+		workflowData: [
+			[{ json: {}, binary: { data: { id: 'filesystem:abc', data: '', mimeType: 'image/png' } } }],
+		],
+	} as IWebhookResponseData;
+	/** A header expression that reads a property of a missing value, so it throws. */
+	const BROKEN_HEADER_EXPRESSION = '={{ $json.missing.name }}';
 
 	const webhookNode = (type = WEBHOOK_NODE_TYPE, parameters: INode['parameters'] = {}): INode => ({
 		id: 'webhook-node-id',
@@ -2357,12 +2414,15 @@ describe('executeWebhook on engine v2', () => {
 		webhookResult = { workflowData: [[{ json: { body: 'hi' } }]] } as IWebhookResponseData,
 		executionId,
 		destinationNode,
+		responseHeaders,
 	}: {
 		responseMode?: string;
 		startNode?: INode;
 		webhookResult?: IWebhookResponseData;
 		executionId?: string;
 		destinationNode?: IDestinationNode;
+		/** The response headers configured on the webhook node, as an expression. */
+		responseHeaders?: string;
 	} = {}) => {
 		webhookService.runWebhook.mockResolvedValue(webhookResult);
 
@@ -2380,7 +2440,12 @@ describe('executeWebhook on engine v2', () => {
 						args[1] ?? args[5],
 				),
 				getComplexParameterValue: vi.fn(
-					(...args: Parameters<Workflow['expression']['getComplexParameterValue']>) => args[1],
+					(...args: Parameters<Workflow['expression']['getComplexParameterValue']>) => {
+						if (args[1] === BROKEN_HEADER_EXPRESSION) {
+							throw new ExpressionError("Cannot read properties of undefined (reading 'name')");
+						}
+						return args[1];
+					},
 				),
 			},
 		});
@@ -2390,7 +2455,7 @@ describe('executeWebhook on engine v2', () => {
 		const returned = await executeWebhook(
 			workflow,
 			{
-				webhookDescription: { name: 'default', responseMode },
+				webhookDescription: { name: 'default', responseMode, responseHeaders },
 				workflowId: WORKFLOW_ID,
 			} as unknown as IWebhookData,
 			mock<IWorkflowBase>({ id: WORKFLOW_ID, name: 'Test Workflow' }),
@@ -2434,9 +2499,22 @@ describe('executeWebhook on engine v2', () => {
 		dataPlane = new Map();
 	});
 
+	/**
+	 * Makes the next wait time out, as the registry does when no answer arrives
+	 * within the response timeout.
+	 */
+	const timeOutNextWait = () =>
+		vi
+			.spyOn(Container.get(EngineV2WebhookResponseRegistry), 'waitForResponse')
+			.mockImplementationOnce(async (executionId) => ({
+				executionId,
+				outcome: Promise.resolve({ status: 'timeout' as const }),
+				release: vi.fn(),
+			}));
+
 	/** Ends the run the request is waiting on, as the data plane would. */
 	const answerRun = (status: EndedMessage['status'], lastStep: EndedMessage['lastStep']): void => {
-		const executionId = workflowRunner.run.mock.calls[0][0].engineExecutionId as string;
+		const executionId = workflowRunner.run.mock.calls[0][0].engineV2ExecutionId as string;
 		dataPlane.get(executionId)?.({
 			type: 'ended',
 			executionId,
@@ -2447,9 +2525,9 @@ describe('executeWebhook on engine v2', () => {
 	};
 
 	beforeAll(() => {
-		// The host hands the responder its receiver at boot. Keeping each run's
+		// The host hands the response registry its receiver at boot. Keeping each run's
 		// handler is how a test plays the data plane answering.
-		Container.get(EngineV2WebhookResponder).useReceiver(
+		Container.get(EngineV2WebhookResponseRegistry).useReceiver(
 			mock<ExecutionResponseReceiver>({
 				receive: vi.fn(async (executionId: string, handler: (r: ExecutionResponse) => void) => {
 					dataPlane.set(executionId, handler);
@@ -2479,11 +2557,46 @@ describe('executeWebhook on engine v2', () => {
 			expect(workflowRunner.run.mock.calls[0][0].destinationNode).toEqual(destinationNode);
 		});
 
+		it('dispatches the run without a response expectation, because nobody listens', async () => {
+			await startWebhook();
+
+			expect(workflowRunner.run.mock.calls[0][0].engineV2Response).toBeUndefined();
+			expect(dataPlane.size).toBe(0);
+		});
+
 		it('does not touch the control-plane execution registry', async () => {
 			await startWebhook();
 
 			expect(activeExecutions.setResponseMode).not.toHaveBeenCalled();
 			expect(activeExecutions.getPostExecutePromise).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('the execution id', () => {
+		it.each(['onReceived', 'lastNode'])(
+			'exists before the webhook node runs, and the run is dispatched under it, in %s mode',
+			async (responseMode) => {
+				await startWebhook({ responseMode });
+
+				// The node writes its files under this id, so the run must use the same one.
+				const additionalData = webhookService.runWebhook.mock.calls[0][3];
+				expect(additionalData.executionId).toBeDefined();
+				expect(workflowRunner.run.mock.calls[0][0].engineV2ExecutionId).toBe(
+					additionalData.executionId,
+				);
+			},
+		);
+	});
+
+	describe('a payload with a file', () => {
+		it('starts the run and keeps the file', async () => {
+			const binaryDataService = Container.get(BinaryDataService);
+
+			const { responseCallback } = await startWebhook({ webhookResult: filePayload });
+
+			expect(workflowRunner.run).toHaveBeenCalledTimes(1);
+			expect(responseCallback.mock.calls[0][0]).toBeNull();
+			expect(binaryDataService.deleteManyByBinaryDataId).not.toHaveBeenCalled();
 		});
 	});
 
@@ -2494,8 +2607,43 @@ describe('executeWebhook on engine v2', () => {
 			// The listener is created before the run starts, and the run has to use
 			// the id it listens under, so a fast answer is not lost.
 			expect(workflowRunner.run).toHaveBeenCalledTimes(1);
-			const dispatchedId = workflowRunner.run.mock.calls[0][0].engineExecutionId as string;
+			const dispatchedId = workflowRunner.run.mock.calls[0][0].engineV2ExecutionId as string;
 			expect(dataPlane.has(dispatchedId)).toBe(true);
+		});
+
+		it('tells the dispatcher that the caller waits for the run end', async () => {
+			const waitForResponse = vi.spyOn(
+				Container.get(EngineV2WebhookResponseRegistry),
+				'waitForResponse',
+			);
+
+			await startWebhook({ responseMode: 'lastNode' });
+
+			const { engineV2Response, engineV2ExecutionId } = workflowRunner.run.mock.calls[0][0];
+			expect(engineV2Response).toEqual({ responseMode: 'lastNode' });
+			expect(waitForResponse).toHaveBeenCalledWith(engineV2ExecutionId, { kind: 'runEnd' });
+		});
+
+		it('answers with a 500 when a Respond node fails because the caller waits for the run end', async () => {
+			const { responseCallback } = await startWebhook({ responseMode: 'lastNode' });
+
+			// The engine refuses the Respond node's response, so the node fails the run.
+			answerRun('failed', {
+				nodeId: 'respond',
+				nodeName: 'Respond to Webhook',
+				status: 'failed',
+				outputs: null,
+				error: {
+					name: 'UserError',
+					message: 'The Webhook node answers when the last node finishes, not with this node.',
+				},
+			});
+
+			await vi.waitFor(() => expect(responseCallback).toHaveBeenCalledTimes(1));
+			expect(responseCallback.mock.calls[0]).toEqual([
+				null,
+				{ data: { message: 'Error in workflow' }, responseCode: 500 },
+			]);
 		});
 
 		it('answers with the data of the step the run ended on', async () => {
@@ -2556,12 +2704,8 @@ describe('executeWebhook on engine v2', () => {
 		});
 
 		it('answers with a timeout when the run does not send an ended message', async () => {
-			const waitForResponse = vi.spyOn(Container.get(EngineV2WebhookResponder), 'waitForResponse');
+			timeOutNextWait();
 			const { responseCallback } = await startWebhook({ responseMode: 'lastNode' });
-			const pending = await waitForResponse.mock.results[0]?.value;
-
-			expect(pending).toBeDefined();
-			pending?.resolve({ status: 'timeout' });
 
 			await vi.waitFor(() => expect(responseCallback).toHaveBeenCalledTimes(1));
 			expect(responseCallback.mock.calls[0]).toEqual([
@@ -2574,14 +2718,13 @@ describe('executeWebhook on engine v2', () => {
 		});
 
 		it('answers with the channel error when the response is undeliverable', async () => {
-			const waitForResponse = vi.spyOn(Container.get(EngineV2WebhookResponder), 'waitForResponse');
 			const { responseCallback } = await startWebhook({ responseMode: 'lastNode' });
-			const pending = await waitForResponse.mock.results[0]?.value;
+			const executionId = workflowRunner.run.mock.calls[0][0].engineV2ExecutionId as string;
 
-			expect(pending).toBeDefined();
-			pending?.resolve({
-				status: 'undeliverable',
-				error: { name: 'RESPONSE_TOO_LARGE', message: 'The response is too large.' },
+			dataPlane.get(executionId)?.({
+				type: 'undeliverable',
+				executionId,
+				error: { code: 'RESPONSE_TOO_LARGE', message: 'The response is too large.' },
 			});
 
 			await vi.waitFor(() => expect(responseCallback).toHaveBeenCalledTimes(1));
@@ -2596,9 +2739,22 @@ describe('executeWebhook on engine v2', () => {
 	});
 
 	describe('responseNode', () => {
+		it('tells the dispatcher that the caller waits for a step response', async () => {
+			const waitForResponse = vi.spyOn(
+				Container.get(EngineV2WebhookResponseRegistry),
+				'waitForResponse',
+			);
+
+			await startWebhook({ responseMode: 'responseNode' });
+
+			const { engineV2Response, engineV2ExecutionId } = workflowRunner.run.mock.calls[0][0];
+			expect(engineV2Response).toEqual({ responseMode: 'responseNode' });
+			expect(waitForResponse).toHaveBeenCalledWith(engineV2ExecutionId, { kind: 'stepResponse' });
+		});
+
 		it('answers with the response published by the data plane', async () => {
 			const { responseCallback } = await startWebhook({ responseMode: 'responseNode' });
-			const executionId = workflowRunner.run.mock.calls[0][0].engineExecutionId as string;
+			const executionId = workflowRunner.run.mock.calls[0][0].engineV2ExecutionId as string;
 
 			dataPlane.get(executionId)?.({
 				type: 'response',
@@ -2617,7 +2773,7 @@ describe('executeWebhook on engine v2', () => {
 
 		it('answers with an empty body when the response has no body key', async () => {
 			const { responseCallback } = await startWebhook({ responseMode: 'responseNode' });
-			const executionId = workflowRunner.run.mock.calls[0][0].engineExecutionId as string;
+			const executionId = workflowRunner.run.mock.calls[0][0].engineV2ExecutionId as string;
 
 			dataPlane.get(executionId)?.({
 				type: 'response',
@@ -2636,11 +2792,12 @@ describe('executeWebhook on engine v2', () => {
 		it('answers with an empty body when the Respond node never runs', async () => {
 			const { responseCallback } = await startWebhook({ responseMode: 'responseNode' });
 
+			// The engine leaves the outputs out, because this caller waits for a step response.
 			answerRun('completed', {
 				nodeId: 'edit-fields',
 				nodeName: 'Edit Fields',
 				status: 'completed',
-				outputs: [[{ json: { ignored: true } }]],
+				outputs: null,
 			});
 
 			await vi.waitFor(() => expect(responseCallback).toHaveBeenCalledTimes(1));
@@ -2652,7 +2809,7 @@ describe('executeWebhook on engine v2', () => {
 
 		it('answers with the channel error when the response is undeliverable', async () => {
 			const { responseCallback } = await startWebhook({ responseMode: 'responseNode' });
-			const executionId = workflowRunner.run.mock.calls[0][0].engineExecutionId as string;
+			const executionId = workflowRunner.run.mock.calls[0][0].engineV2ExecutionId as string;
 
 			dataPlane.get(executionId)?.({
 				type: 'undeliverable',
@@ -2668,12 +2825,8 @@ describe('executeWebhook on engine v2', () => {
 		});
 
 		it('answers with a timeout when no terminal outcome arrives', async () => {
-			const waitForResponse = vi.spyOn(Container.get(EngineV2WebhookResponder), 'waitForResponse');
+			timeOutNextWait();
 			const { responseCallback } = await startWebhook({ responseMode: 'responseNode' });
-			const pending = await waitForResponse.mock.results[0]?.value;
-
-			expect(pending).toBeDefined();
-			pending?.resolve({ status: 'timeout' });
 
 			await vi.waitFor(() => expect(responseCallback).toHaveBeenCalledTimes(1));
 			expect(responseCallback).toHaveBeenCalledWith(null, {
@@ -2761,24 +2914,20 @@ describe('executeWebhook on engine v2', () => {
 			expect(workflowRunner.run).not.toHaveBeenCalled();
 		});
 
-		it('answers 400 for a file upload, and deletes what the node already stored', async () => {
+		it('deletes the stored file when the run fails after the node stored it', async () => {
 			const binaryDataService = Container.get(BinaryDataService);
+
+			// The headers are evaluated after the node ran and before the run is
+			// dispatched, so the control plane still owns the file.
 			const { responseCallback } = await startWebhook({
-				webhookResult: {
-					workflowData: [
-						[
-							{
-								json: {},
-								binary: { data: { id: 'filesystem:abc', data: '', mimeType: 'image/png' } },
-							},
-						],
-					],
-				} as IWebhookResponseData,
+				webhookResult: filePayload,
+				responseHeaders: BROKEN_HEADER_EXPRESSION,
 			});
 
+			// Not a refusal with a status: the generic failure the catch block sends.
 			expect(reasonFrom(responseCallback)).toEqual({
-				status: 400,
-				message: 'Engine v2 cannot receive files from a webhook yet.',
+				status: undefined,
+				message: 'There was a problem executing the workflow',
 			});
 			// No execution will ever own the file, so nothing else would prune it.
 			expect(binaryDataService.deleteManyByBinaryDataId).toHaveBeenCalledExactlyOnceWith([
@@ -2793,16 +2942,13 @@ describe('executeWebhook on engine v2', () => {
 			);
 
 			const { responseCallback } = await startWebhook({
-				webhookResult: {
-					workflowData: [
-						[{ json: {}, binary: { data: { id: 'filesystem:abc', data: '', mimeType: '' } } }],
-					],
-				} as IWebhookResponseData,
+				webhookResult: filePayload,
+				responseHeaders: BROKEN_HEADER_EXPRESSION,
 			});
 
 			expect(reasonFrom(responseCallback)).toEqual({
-				status: 400,
-				message: 'Engine v2 cannot receive files from a webhook yet.',
+				status: undefined,
+				message: 'There was a problem executing the workflow',
 			});
 		});
 

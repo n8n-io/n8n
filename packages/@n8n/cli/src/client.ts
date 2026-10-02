@@ -32,6 +32,17 @@ export interface ImportPackageFields {
 	tagConflictPolicy?: string;
 }
 
+export interface ImportPackageSelectionFields {
+	/** Source project ID from the package. */
+	selectedProjectId: string;
+	/** Source workflow IDs from the selected project. */
+	selectedWorkflowIds: string[];
+	/** Destination workflow IDs to remove. */
+	deletedWorkflowIds?: string[];
+	workflowConflictPolicy?: string;
+	workflowIdPolicy?: string;
+}
+
 export interface ExportPackageFields {
 	workflowIds?: string[];
 	folderIds?: string[];
@@ -761,6 +772,30 @@ export class N8nClient {
 			if (typeof value === 'string' && value !== '') form.append(key, value);
 		}
 		return await this.request<Record<string, unknown>>('POST', '/n8n-packages/import', {
+			formData: form,
+		});
+	}
+
+	async importPackageSelection(
+		file: { buffer: Buffer; filename: string },
+		fields: ImportPackageSelectionFields,
+	): Promise<Record<string, unknown>> {
+		const form = new FormData();
+		form.append('package', new Blob([new Uint8Array(file.buffer)]), file.filename);
+		const stringFields: Record<string, string | undefined> = {
+			selectedProjectId: fields.selectedProjectId,
+			workflowConflictPolicy: fields.workflowConflictPolicy,
+			workflowIdPolicy: fields.workflowIdPolicy,
+		};
+		for (const [key, value] of Object.entries(stringFields)) {
+			if (typeof value === 'string' && value !== '') form.append(key, value);
+		}
+		// The endpoint expects ID arrays encoded as JSON in multipart text fields.
+		form.append('selectedWorkflowIds', JSON.stringify(fields.selectedWorkflowIds));
+		if (fields.deletedWorkflowIds !== undefined) {
+			form.append('deletedWorkflowIds', JSON.stringify(fields.deletedWorkflowIds));
+		}
+		return await this.request<Record<string, unknown>>('POST', '/n8n-packages/import-selection', {
 			formData: form,
 		});
 	}

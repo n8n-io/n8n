@@ -50,6 +50,7 @@ describe('InstanceAiPreferenceCardService', () => {
 		await service.undo(user, 'thread-1', 'pref-1', { runId: 'run-1', toolCallId: 'tc-1' });
 
 		expect(telemetry.track).toHaveBeenCalledWith(TELEMETRY_EVENT.CONTEXT.USER_DELETED_PREFERENCES, {
+			user_id: 'user-1',
 			count: 1,
 			source: 'rejected',
 			scope_types: ['user'],
@@ -59,6 +60,7 @@ describe('InstanceAiPreferenceCardService', () => {
 		expect(telemetry.track).toHaveBeenCalledWith(
 			TELEMETRY_EVENT.CONTEXT.PREFERENCE_CONFIRMATION_RESOLVED,
 			{
+				user_id: 'user-1',
 				surface: 'aia',
 				outcome: 'rejected',
 				scope_type: 'user',
@@ -162,6 +164,7 @@ describe('InstanceAiPreferenceCardService', () => {
 			expect.anything(),
 		);
 		expect(telemetry.track).toHaveBeenCalledWith(TELEMETRY_EVENT.CONTEXT.USER_UPDATED_PREFERENCE, {
+			user_id: 'user-1',
 			scope_type: 'project',
 			text_length: 19,
 			scope_changed: false,
@@ -212,6 +215,7 @@ describe('InstanceAiPreferenceCardService', () => {
 		await service.edit(user, 'thread-1', 'pref-1', { ...editBody, scope: 'project' });
 
 		expect(telemetry.track).toHaveBeenCalledWith(TELEMETRY_EVENT.CONTEXT.USER_UPDATED_PREFERENCE, {
+			user_id: 'user-1',
 			scope_type: 'project',
 			text_length: 19,
 			scope_changed: true,
@@ -228,7 +232,13 @@ describe('InstanceAiPreferenceCardService', () => {
 
 		expect(telemetry.track).toHaveBeenCalledWith(
 			TELEMETRY_EVENT.CONTEXT.PREFERENCE_CONFIRMATION_RESOLVED,
-			{ surface: 'aia', outcome: 'accepted_after_edit', scope_type: 'user', text_length: 19 },
+			{
+				user_id: 'user-1',
+				surface: 'aia',
+				outcome: 'accepted_after_edit',
+				scope_type: 'user',
+				text_length: 19,
+			},
 		);
 		expect(telemetry.track).not.toHaveBeenCalledWith(
 			TELEMETRY_EVENT.CONTEXT.PREFERENCE_SCOPE_ACCEPTED,
@@ -249,6 +259,7 @@ describe('InstanceAiPreferenceCardService', () => {
 		expect(telemetry.track).toHaveBeenCalledWith(
 			TELEMETRY_EVENT.CONTEXT.PREFERENCE_SCOPE_ACCEPTED,
 			{
+				user_id: 'user-1',
 				surface: 'aia',
 				offered_scope: 'user',
 				accepted_scope: 'instance',
@@ -271,6 +282,7 @@ describe('InstanceAiPreferenceCardService', () => {
 		expect(telemetry.track).toHaveBeenCalledWith(
 			TELEMETRY_EVENT.CONTEXT.PREFERENCE_SCOPE_ACCEPTED,
 			{
+				user_id: 'user-1',
 				surface: 'aia',
 				offered_scope: 'project',
 				accepted_scope: 'project',

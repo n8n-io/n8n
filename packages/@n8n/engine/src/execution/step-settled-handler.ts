@@ -11,7 +11,13 @@ import type { ExecutionResponseSender } from '../response-channel';
 import type { OrchestrationMessage, StepMessage, StepSettledEvent, WorkQueue } from '../queue';
 import { countExpectedSettledSteps } from './completion';
 import type { ExecutionRecord, ExecutionStore } from './execution-store';
-import { isSettledStatus, stepKeyId, type StepKey, type StepKeyId } from './execution.types';
+import {
+	isLiveExecutionStatus,
+	isSettledStatus,
+	stepKeyId,
+	type StepKey,
+	type StepKeyId,
+} from './execution.types';
 import { exitSourcesInto, loadTerminalIterations } from './loop-ledger';
 import { decideSuccessors, decisionKeys } from './settlement';
 import type { StepRecord, StepStore } from './step-store';
@@ -53,7 +59,9 @@ export class StepSettledHandler {
 			return;
 		}
 
-		if (execution.status !== 'running') return;
+		// A `waiting` execution is live, and this settlement may be what lets it
+		// move on, so only an ended one stops here.
+		if (!isLiveExecutionStatus(execution.status)) return;
 
 		let queued = 0;
 		if (step.status === 'completed' || step.status === 'skipped') {
@@ -69,9 +77,11 @@ export class StepSettledHandler {
 
 		// If we've queued steps, we know the execution isn't done yet, so we
 		// definitely don't need to mark it finished.
-		if (queued > 0) return;
+		if (queued === 0) await this.finishExecutionIfDone(execution, step, node);
 
-		await this.finishExecutionIfDone(execution, step, node);
+		// If this call just finished the execution, it is no longer live, and the
+		// refresh leaves it alone.
+		await this.executionStore.refreshLiveStatus(execution.id);
 	}
 
 	private async failExecution(
@@ -86,12 +96,11 @@ export class StepSettledHandler {
 				type: 'execution:failed',
 				executionId: execution.id,
 				workflowId: execution.workflowId,
-				at: new Date().toISOString(),
+				at: finished.finishedAt.toISOString(),
 			});
 			this.announceEnd(execution, step, node, 'failed');
 		}
 
-		// TODO(CAT-3990): this sweep names no rows, so it announces nothing.
 		await this.stepStore.cancelPendingSteps(execution.id);
 	}
 
@@ -196,7 +205,7 @@ export class StepSettledHandler {
 				type: failed ? 'execution:failed' : 'execution:completed',
 				executionId: execution.id,
 				workflowId: execution.workflowId,
-				at: new Date().toISOString(),
+				at: finished.finishedAt.toISOString(),
 			});
 			this.announceEnd(execution, step, node, failed ? 'failed' : 'completed');
 		}
@@ -227,6 +236,9 @@ export class StepSettledHandler {
 			);
 		}
 
+		const { kind } = execution.responseExpectation;
+		if (kind === 'none') return;
+
 		this.responseSender.send({
 			type: 'ended',
 			executionId: execution.id,
@@ -236,7 +248,7 @@ export class StepSettledHandler {
 				nodeId: step.nodeId,
 				nodeName: node.name,
 				status: step.status,
-				outputs: step.outputs,
+				outputs: kind === 'runEnd' ? step.outputs : null,
 				// Name and message only: the caller reports them, and the rest of the
 				// error stays on the step row.
 				error: step.error ? { name: step.error.name, message: step.error.message } : undefined,

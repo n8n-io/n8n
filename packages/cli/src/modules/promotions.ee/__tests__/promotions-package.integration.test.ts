@@ -37,7 +37,7 @@ import { mock } from 'vitest-mock-extended';
 
 import { CredentialTypes } from '@/credential-types';
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { BadRequestError } from '@n8n/errors';
 import { mockDataTableSizeValidator } from '@/modules/data-table/__tests__/test-helpers';
 import { DataTableRepository } from '@/modules/data-table/data-table.repository';
 import { DataTableColumnRepository } from '@/modules/data-table/data-table-column.repository';
@@ -716,6 +716,60 @@ describe('Promote and Apply', () => {
 		expect(result.counts.workflows.deleted).toBe(1);
 		expect(result.counts.folders.removed).toBe(1);
 		expect(result.git).toEqual({ commitSha: remoteHead, branchName: 'main' });
+	});
+
+	it('applies a package whose workflow sits two folders deep', async () => {
+		const remote = await createRemote();
+		const connection = await createInstanceConnection(remote.bareDir);
+		await service.clone(connection.id, 'apply');
+
+		const sourceProject = await createTeamProject('Orders', owner);
+		const parentFolder = await createFolder(sourceProject, { name: 'Operations' });
+		const childFolder = await createFolder(sourceProject, {
+			name: 'Orders',
+			parentFolder,
+		});
+		const sourceWorkflow = await createWorkflow(
+			{ name: 'Process order', nodes: [], connections: {}, parentFolder: childFolder },
+			sourceProject,
+		);
+		await packagesService.exportPackageToDirectory(
+			{
+				user: owner,
+				projectIds: [sourceProject.id],
+				includeVariableValues: true,
+				includeTags: true,
+				missingWorkflowDependencyPolicy: MissingWorkflowDependencyPolicy.Fail,
+				workflowVersionPolicy: WorkflowVersionPolicy.Latest,
+			},
+			{ targetDir: path.join(remote.workingDir, 'n8n-export') },
+		);
+		await remote.git.add(['--all']);
+		await remote.git.commit('Export nested orders');
+		await remote.git.push('origin', 'main');
+
+		// Apply into a fresh target: the project and its folders do not exist yet.
+		await projectService.deleteProject(owner, sourceProject.id);
+		await projectService.createTeamProject(
+			owner,
+			{ name: 'Orders (outdated)' },
+			{ id: sourceProject.id },
+		);
+
+		const result = await service.apply(connection.id, owner);
+		assert(result.status === 'applied');
+
+		const importedParent = await Container.get(FolderRepository).findOneBy({ id: parentFolder.id });
+		const importedChild = await Container.get(FolderRepository).findOneBy({ id: childFolder.id });
+		expect(importedParent?.parentFolderId).toBeNull();
+		expect(importedChild?.parentFolderId).toBe(parentFolder.id);
+
+		const importedWorkflow = await Container.get(WorkflowRepository).findOne({
+			where: { id: sourceWorkflow.id },
+			relations: { parentFolder: true },
+		});
+		expect(importedWorkflow?.name).toBe('Process order');
+		expect(importedWorkflow?.parentFolder?.id).toBe(childFolder.id);
 	});
 
 	it.each([

@@ -32,7 +32,7 @@ import { NodeTypes } from '@/node-types';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { ProjectService } from '@/services/project.service.ee';
-import { RoleService } from '@/services/role.service';
+import { RoleService } from '@n8n/backend-services';
 import { Telemetry } from '@/telemetry';
 import { WebhookService } from '@/webhooks/webhook.service';
 import { WorkflowHookContextService } from '@/workflow-hook-context.service';
@@ -44,6 +44,7 @@ import { WorkflowPublicationStatusService } from '@/workflows/publication/workfl
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import type { WorkflowPublishGuardProxy } from '@/workflows/workflow-publish-guard-proxy.service';
 import { WorkflowValidationService } from '@/workflows/workflow-validation.service';
+import { ErrorWorkflowValidationService } from '@/workflows/error-workflow-validation.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 
 import { createCustomRoleWithScopeSlugs, cleanupRolesAndScopes } from '../shared/db/roles';
@@ -129,6 +130,7 @@ beforeAll(async () => {
 		Container.get(PolicyEnforcementService), // policyEnforcementService
 		Container.get(WorkflowPublicationStatusService), // workflowPublicationStatusService
 		Container.get(NodeGroupRulesFlagGate), // nodeGroupRulesFlagGate
+		Container.get(ErrorWorkflowValidationService), // errorWorkflowValidationService
 	);
 });
 
@@ -156,6 +158,7 @@ afterEach(async () => {
 		'SharedWorkflow',
 		'ProjectRelation',
 		'WorkflowPublishedVersion',
+		'WorkflowPublicationRetryState',
 		'WorkflowPublicationOutbox',
 		'WorkflowEntity',
 		'WorkflowHistory',
@@ -371,14 +374,17 @@ describe('activateWorkflow()', () => {
 
 		const updatedWorkflow = await workflowService.activateWorkflow(owner, workflow.id);
 
-		expect(enforceSpy).toHaveBeenCalledExactlyOnceWith({
-			workflow: {
-				id: workflow.id,
-				name: workflow.name,
-				nodes: expect.any(Array),
+		expect(enforceSpy).toHaveBeenCalledExactlyOnceWith(
+			{
+				workflow: {
+					id: workflow.id,
+					name: workflow.name,
+					nodes: expect.any(Array),
+				},
+				projectId: expect.any(String),
 			},
-			projectId: expect.any(String),
-		});
+			{ kind: 'user', user: expect.objectContaining({ id: owner.id }) },
+		);
 		expect(updatedWorkflow.activeVersionId).toBe(workflow.versionId);
 	});
 

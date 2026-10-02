@@ -1,7 +1,7 @@
 import { Container } from '@n8n/di';
 
 import { TypeAvailabilityPolicyService } from '@/modules/type-availability-policies/type-availability-policy.service';
-import { CacheService } from '@/services/cache/cache.service';
+import { CacheService } from '@n8n/backend-services';
 
 /**
  * Drops the policy read-through cache, both layers: the shared `CacheService` entries and the

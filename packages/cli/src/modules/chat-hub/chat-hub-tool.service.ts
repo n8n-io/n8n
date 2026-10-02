@@ -9,8 +9,7 @@ import { Service } from '@n8n/di';
 import type { INode } from 'n8n-workflow';
 import { collectExpressionDefaults, findDisallowedChatToolExpressions } from 'n8n-workflow';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { BadRequestError, NotFoundError } from '@n8n/errors';
 import { NodeTypes } from '@/node-types';
 
 import type { ChatHubTool } from './chat-hub-tool.entity';

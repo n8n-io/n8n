@@ -223,7 +223,7 @@ export abstract class AgentChatIntegration {
 	abstract readonly displayIcon: string;
 
 	/**
-	 * Builder-facing guidance returned by `list_integration_types`.
+	 * Builder-facing guidance returned by `agent-context` integrations.
 	 * This helps the builder choose between connecting the agent to a chat
 	 * integration and adding a regular node/workflow tool for the same product.
 	 */
@@ -288,6 +288,13 @@ export abstract class AgentChatIntegration {
 	 * message instead of streaming text deltas via post-and-edit.
 	 */
 	readonly disableStreaming: boolean = false;
+
+	/**
+	 * True when the platform renders only one streamed run per inbound turn, so
+	 * text following a card is posted buffered rather than streamed into the
+	 * message that preceded the card.
+	 */
+	readonly singleStreamedRunPerTurn: boolean = false;
 
 	/**
 	 * True when this integration is an internal channel (e.g. the in-app n8n

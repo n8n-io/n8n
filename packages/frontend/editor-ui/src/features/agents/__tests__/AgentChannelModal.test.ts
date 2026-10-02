@@ -1,6 +1,6 @@
-import { flushPromises, mount } from '@vue/test-utils';
+import { enableAutoUnmount, flushPromises, mount } from '@vue/test-utils';
 import { ref } from 'vue';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { AgentApproval, ChatIntegrationDescriptor } from '@n8n/api-types';
 
 import AgentChannelModal, { type ChannelView } from '../components/AgentChannelModal.vue';
@@ -14,6 +14,9 @@ const mocks = vi.hoisted(() => ({
 	clearError: vi.fn(),
 	showMessage: vi.fn(),
 	showError: vi.fn(),
+	trackStartedChannelSetup: vi.fn(),
+	trackClosedChannelSetup: vi.fn(),
+	trackFailedToConnectChannel: vi.fn(),
 }));
 
 const exampleIntegration = {
@@ -41,6 +44,7 @@ const integrationApproval = ref<Record<string, AgentApproval | undefined>>({});
 const selectedCredentials = ref<Record<string, string>>({});
 const loadingMap = ref<Record<string, boolean>>({});
 const runtimeErrors = ref<Record<string, string>>({});
+const errorIsConflict = ref<Record<string, boolean>>({});
 const credentialModalOpen = ref(false);
 
 vi.mock('@n8n/i18n', () => ({
@@ -51,10 +55,18 @@ vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({ showMessage: mocks.showMessage, showError: mocks.showError }),
 }));
 
+vi.mock('../composables/useAgentTelemetry', () => ({
+	useAgentTelemetry: () => ({
+		trackStartedChannelSetup: mocks.trackStartedChannelSetup,
+		trackClosedChannelSetup: mocks.trackClosedChannelSetup,
+		trackFailedToConnectChannel: mocks.trackFailedToConnectChannel,
+	}),
+}));
+
 vi.mock('../channels/registry', async () => {
 	const { ref, defineComponent } = await import('vue');
 	const platformView = {
-		props: ['modelValue', 'mode', 'isPublished', 'runtime'],
+		props: ['modelValue', 'mode', 'isPublished', 'runtime', 'ensureAgentPersisted'],
 		emits: ['update:modelValue', 'connect', 'connected'],
 		setup: () => {
 			// Platforms that drive their own flow (Slack) report `connected` while
@@ -79,6 +91,7 @@ vi.mock('../channels/registry', async () => {
 			>
 				<button data-testid="select-credential" @click="$emit('update:modelValue', 'credential-new')" />
 				<button data-testid="connect-channel" @click="$emit('connect')" />
+				<button data-testid="persist-agent" @click="ensureAgentPersisted?.()" />
 				<button data-testid="platform-own-flow" @click="startOwnFlow(); $emit('connected')" />
 			</div>
 		`,
@@ -156,7 +169,7 @@ vi.mock('../composables/useAgentIntegrationStatus', () => ({
 		integrationApproval,
 		loadingMap,
 		errorMessages: ref({}),
-		errorIsConflict: ref({}),
+		errorIsConflict,
 		runtimeErrors,
 		isConnected: (type: string) => statuses.value[type] === 'connected',
 		isConfigured: (type: string) =>
@@ -273,6 +286,10 @@ function mountModal(view: ChannelView = 'example_setup', isPublished = false) {
 	});
 }
 
+// Every mount shares the module-level refs above, so a modal left mounted
+// would react to the next test's state changes.
+enableAutoUnmount(afterEach);
+
 describe('AgentChannelModal', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -283,6 +300,7 @@ describe('AgentChannelModal', () => {
 		selectedCredentials.value = {};
 		loadingMap.value = {};
 		runtimeErrors.value = {};
+		errorIsConflict.value = {};
 		credentialModalOpen.value = false;
 		mocks.connect.mockImplementation(async (type: string, credentialId: string) => {
 			statuses.value[type] = 'connected';
@@ -378,6 +396,14 @@ describe('AgentChannelModal', () => {
 			mocks.connect.mock.invocationCallOrder[0],
 		);
 		expect(wrapper.emitted('agent-changed')).toHaveLength(1);
+	});
+
+	it('lets the platform view save the agent before it needs agent-scoped data', async () => {
+		const wrapper = mountModal('example_setup');
+
+		await wrapper.get('[data-testid="persist-agent"]').trigger('click');
+
+		expect(mocks.ensureAgentPersisted).toHaveBeenCalledOnce();
 	});
 
 	describe('while agent persistence is pending', () => {
@@ -712,6 +738,20 @@ describe('AgentChannelModal', () => {
 		expect(wrapper.find('[data-testid="disconnect-confirmation"]').exists()).toBe(false);
 	});
 
+	it('dismisses a pending removal confirmation when editing becomes locked', async () => {
+		statuses.value.example = 'configured';
+		connectedCredentials.value.example = 'credential-managed';
+		const wrapper = mountModal('example_edit', true);
+		await flushPromises();
+		await wrapper.get('[data-testid="agent-channel-remove-channel"]').trigger('click');
+		expect(wrapper.find('[data-testid="disconnect-confirmation"]').exists()).toBe(true);
+
+		await wrapper.setProps({ disabled: true });
+		expect(wrapper.find('[data-testid="disconnect-confirmation"]').exists()).toBe(false);
+		expect(mocks.disconnect).not.toHaveBeenCalled();
+		expect(wrapper.emitted('channel-disconnected')).toBeUndefined();
+	});
+
 	it('shows no Back action when editing a channel directly', async () => {
 		connectedCredentials.value.example = 'credential-old';
 		const wrapper = mountModal('example_edit');
@@ -744,6 +784,180 @@ describe('AgentChannelModal', () => {
 		expect(wrapper.find('[data-testid="disconnect-confirmation"]').exists()).toBe(false);
 		expect(mocks.disconnect).toHaveBeenCalledWith('example', 'credential-managed', {
 			deleteExternalResource: undefined,
+		});
+	});
+
+	describe('setup telemetry', () => {
+		const setupEvent = { agentId: 'agent-1', channelType: 'example' };
+
+		it('tracks the start when a setup view opens from the list', async () => {
+			const wrapper = mountModal('list');
+			await flushPromises();
+			expect(mocks.trackStartedChannelSetup).not.toHaveBeenCalled();
+
+			await wrapper.get('[data-testid="setup-channel"]').trigger('click');
+
+			expect(mocks.trackStartedChannelSetup).toHaveBeenCalledWith(setupEvent);
+		});
+
+		it('waits for the catalog before tracking the start, since the view renders only then', async () => {
+			catalog.value = [];
+			mountModal();
+			await flushPromises();
+			expect(mocks.trackStartedChannelSetup).not.toHaveBeenCalled();
+
+			catalog.value = [exampleIntegration];
+			await flushPromises();
+
+			expect(mocks.trackStartedChannelSetup).toHaveBeenCalledOnce();
+			expect(mocks.trackStartedChannelSetup).toHaveBeenCalledWith(setupEvent);
+		});
+
+		it('tracks an incomplete close when the modal unmounts mid-setup', async () => {
+			const wrapper = mountModal();
+
+			wrapper.unmount();
+
+			expect(mocks.trackClosedChannelSetup).toHaveBeenCalledWith({
+				...setupEvent,
+				completed: false,
+			});
+		});
+
+		it('closes one setup and starts the next when the view switches channels', async () => {
+			catalog.value = [exampleIntegration, slackIntegration];
+			const wrapper = mountModal();
+
+			await wrapper.setProps({ view: 'slack_setup' });
+
+			expect(mocks.trackClosedChannelSetup).toHaveBeenCalledWith({
+				...setupEvent,
+				completed: false,
+			});
+			expect(mocks.trackStartedChannelSetup).toHaveBeenLastCalledWith({
+				agentId: 'agent-1',
+				channelType: 'slack',
+			});
+			expect(mocks.trackStartedChannelSetup).toHaveBeenCalledTimes(2);
+		});
+
+		it('tracks an incomplete close when the user goes back to the list', async () => {
+			const wrapper = mountModal('list');
+			await flushPromises();
+			await wrapper.get('[data-testid="setup-channel"]').trigger('click');
+
+			await wrapper.get('[data-testid="agent-modal-back"]').trigger('click');
+
+			expect(mocks.trackClosedChannelSetup).toHaveBeenCalledWith({
+				...setupEvent,
+				completed: false,
+			});
+		});
+
+		it('tracks an incomplete close when the modal closes', async () => {
+			const wrapper = mountModal();
+			expect(mocks.trackStartedChannelSetup).toHaveBeenCalledWith(setupEvent);
+
+			await wrapper.setProps({ open: false });
+
+			expect(mocks.trackClosedChannelSetup).toHaveBeenCalledWith({
+				...setupEvent,
+				completed: false,
+			});
+		});
+
+		it('tracks a completed close once when the channel connects', async () => {
+			selectedCredentials.value.example = 'credential-new';
+			const wrapper = mountModal();
+
+			await wrapper.get('[data-testid="connect-channel"]').trigger('click');
+			await flushPromises();
+			await wrapper.setProps({ open: false });
+
+			expect(mocks.trackStartedChannelSetup).toHaveBeenCalledOnce();
+			expect(mocks.trackClosedChannelSetup).toHaveBeenCalledOnce();
+			expect(mocks.trackClosedChannelSetup).toHaveBeenCalledWith({
+				...setupEvent,
+				completed: true,
+			});
+		});
+
+		it('tracks a completed close when a platform connects from inside its own flow', async () => {
+			const wrapper = mountModal();
+			await flushPromises();
+
+			await wrapper.get('[data-testid="platform-own-flow"]').trigger('click');
+			await flushPromises();
+
+			expect(mocks.trackClosedChannelSetup).toHaveBeenCalledWith({
+				...setupEvent,
+				completed: true,
+			});
+		});
+
+		it('tracks a failed connect, with the conflict flag', async () => {
+			selectedCredentials.value.example = 'credential-new';
+			mocks.connect.mockImplementation(async (type: string) => {
+				errorIsConflict.value[type] = true;
+				throw new Error('conflict');
+			});
+			const wrapper = mountModal();
+
+			await wrapper.get('[data-testid="connect-channel"]').trigger('click');
+			await flushPromises();
+
+			expect(mocks.trackFailedToConnectChannel).toHaveBeenCalledWith({
+				...setupEvent,
+				stage: 'connect',
+				conflict: true,
+			});
+			expect(mocks.trackClosedChannelSetup).not.toHaveBeenCalled();
+		});
+
+		it('tracks a failed agent save as a setup failure', async () => {
+			mocks.ensureAgentPersisted.mockRejectedValue(new Error('agent could not be saved'));
+			selectedCredentials.value.example = 'credential-new';
+			const wrapper = mountModal();
+
+			await wrapper.get('[data-testid="connect-channel"]').trigger('click');
+			await flushPromises();
+
+			expect(mocks.trackFailedToConnectChannel).toHaveBeenCalledWith({
+				...setupEvent,
+				stage: 'persist',
+				conflict: false,
+			});
+		});
+
+		it('tracks a failed pre-save step as a setup failure', async () => {
+			mocks.beforeSave.mockRejectedValue(new Error('settings could not be saved'));
+			selectedCredentials.value.example = 'credential-new';
+			const wrapper = mountModal();
+
+			await wrapper.get('[data-testid="connect-channel"]').trigger('click');
+			await flushPromises();
+
+			expect(mocks.trackFailedToConnectChannel).toHaveBeenCalledWith({
+				...setupEvent,
+				stage: 'before_save',
+				conflict: false,
+			});
+		});
+
+		it('tracks nothing for the edit view', async () => {
+			connectedCredentials.value.example = 'credential-old';
+			statuses.value.example = 'connected';
+			mocks.connect.mockRejectedValue(new Error('boom'));
+			const wrapper = mountModal('example_edit');
+			await flushPromises();
+
+			await wrapper.get('[data-testid="agent-channel-save-channel-config"]').trigger('click');
+			await flushPromises();
+			await wrapper.setProps({ open: false });
+
+			expect(mocks.trackStartedChannelSetup).not.toHaveBeenCalled();
+			expect(mocks.trackClosedChannelSetup).not.toHaveBeenCalled();
+			expect(mocks.trackFailedToConnectChannel).not.toHaveBeenCalled();
 		});
 	});
 });

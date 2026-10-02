@@ -26,6 +26,7 @@ import Login from './commands/login';
 import Logout from './commands/logout';
 import PackageExport from './commands/package/export';
 import PackageImport from './commands/package/import';
+import PackageImportSelection from './commands/package/import-selection';
 import ProjectAddMember from './commands/project/add-member';
 import ProjectCreate from './commands/project/create';
 import ProjectDelete from './commands/project/delete';
@@ -171,6 +172,7 @@ export const commands = {
 
 	'package:export': PackageExport,
 	'package:import': PackageImport,
+	'package:import-selection': PackageImportSelection,
 
 	audit: Audit,
 };

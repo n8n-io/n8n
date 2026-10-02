@@ -31,16 +31,26 @@ function groupByValue(connections: IConnection[]) {
 	return byValue;
 }
 
+// Reads a value only when it is an own property
+function ownValue<T>(map: Record<string, T>, key: string): T | undefined {
+	return Object.prototype.hasOwnProperty.call(map, key) ? map[key] : undefined;
+}
+
+// Creates a record that supports arbitrary connection keys
+function nullProtoRecord<T>(): Record<string, T> {
+	return Object.create(null) as Record<string, T>;
+}
+
 export function compareConnections(prev: IConnections, next: IConnections): ConnectionsDiff {
-	const added: Record<string, INodeConnectionsDiff> = {};
-	const removed: Record<string, INodeConnectionsDiff> = {};
+	const added: Record<string, INodeConnectionsDiff> = nullProtoRecord<INodeConnectionsDiff>();
+	const removed: Record<string, INodeConnectionsDiff> = nullProtoRecord<INodeConnectionsDiff>();
 
 	// Get all unique node names from both connection objects
 	const allNodeNames = new Set([...Object.keys(prev), ...Object.keys(next)]);
 
 	for (const nodeName of allNodeNames) {
-		const prevNodeConnections = prev[nodeName] ?? {};
-		const nextNodeConnections = next[nodeName] ?? {};
+		const prevNodeConnections = ownValue(prev, nodeName) ?? {};
+		const nextNodeConnections = ownValue(next, nodeName) ?? {};
 
 		// Get all unique input names for this node
 		const allInputNames = new Set([
@@ -49,8 +59,8 @@ export function compareConnections(prev: IConnections, next: IConnections): Conn
 		]);
 
 		for (const inputName of allInputNames) {
-			const prevInputConnections = prevNodeConnections[inputName] ?? [];
-			const nextInputConnections = nextNodeConnections[inputName] ?? [];
+			const prevInputConnections = ownValue(prevNodeConnections, inputName) ?? [];
+			const nextInputConnections = ownValue(nextNodeConnections, inputName) ?? [];
 
 			// Compare each source index
 			const maxLength = Math.max(prevInputConnections.length, nextInputConnections.length);
@@ -67,7 +77,7 @@ export function compareConnections(prev: IConnections, next: IConnections): Conn
 				for (const [key, entries] of nextMap) {
 					const kept = prevMap.get(key)?.length ?? 0;
 					for (const value of entries.slice(kept)) {
-						if (!added[nodeName]) added[nodeName] = {};
+						if (!added[nodeName]) added[nodeName] = nullProtoRecord<ConnectionEntry[]>();
 						if (!added[nodeName][inputName]) added[nodeName][inputName] = [];
 
 						added[nodeName][inputName].push({
@@ -81,7 +91,7 @@ export function compareConnections(prev: IConnections, next: IConnections): Conn
 				for (const [key, entries] of prevMap) {
 					const kept = nextMap.get(key)?.length ?? 0;
 					for (const value of entries.slice(kept)) {
-						if (!removed[nodeName]) removed[nodeName] = {};
+						if (!removed[nodeName]) removed[nodeName] = nullProtoRecord<ConnectionEntry[]>();
 						if (!removed[nodeName][inputName]) removed[nodeName][inputName] = [];
 
 						removed[nodeName][inputName].push({

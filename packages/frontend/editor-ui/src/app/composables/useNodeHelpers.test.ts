@@ -247,7 +247,7 @@ describe('useNodeHelpers()', () => {
 				id: faker.string.alphanumeric(10),
 				credentialType: 'generic',
 				name: faker.lorem.words(2),
-				currentUserHasAccess: false,
+				currentUserCanUse: false,
 			};
 
 			mockedStore(useSettingsStore).isEnterpriseFeatureEnabled = createMockEnterpriseSettings({
@@ -277,21 +277,21 @@ describe('useNodeHelpers()', () => {
 			expect(result).toEqual([]);
 		});
 
-		it('should return an empty array when user has access to all credentials', () => {
+		it('should return an empty array when user can use all credentials', () => {
 			const { getForeignCredentialsIfSharingEnabled } = useNodeHelpers();
 
 			const credentialWithAccess1: IUsedCredential = {
 				id: faker.string.alphanumeric(10),
 				credentialType: 'generic',
 				name: faker.lorem.words(2),
-				currentUserHasAccess: true,
+				currentUserCanUse: true,
 			};
 
 			const credentialWithAccess2: IUsedCredential = {
 				id: faker.string.alphanumeric(10),
 				credentialType: 'generic',
 				name: faker.lorem.words(2),
-				currentUserHasAccess: true,
+				currentUserCanUse: true,
 			};
 
 			mockedStore(useSettingsStore).isEnterpriseFeatureEnabled = createMockEnterpriseSettings({
@@ -322,14 +322,14 @@ describe('useNodeHelpers()', () => {
 				id: faker.string.alphanumeric(10),
 				credentialType: 'generic',
 				name: faker.lorem.words(2),
-				currentUserHasAccess: true,
+				currentUserCanUse: true,
 			};
 
 			const credentialWithoutAccess: IUsedCredential = {
 				id: faker.string.alphanumeric(10),
 				credentialType: 'generic',
 				name: faker.lorem.words(2),
-				currentUserHasAccess: false,
+				currentUserCanUse: false,
 			};
 
 			mockedStore(useSettingsStore).isEnterpriseFeatureEnabled = createMockEnterpriseSettings({
