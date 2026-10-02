@@ -86,7 +86,7 @@ describe('SettingsMCPAgentsView', () => {
 				autoExposeNewWorkflows: false,
 			},
 		};
-		settingsStore.isModuleActive.mockReturnValue(true);
+		settingsStore.isAgentsEnabled = true;
 
 		mockAgentPages();
 	});
@@ -112,7 +112,7 @@ describe('SettingsMCPAgentsView', () => {
 	});
 
 	it('should redirect to the MCP settings view when the agents module is inactive', async () => {
-		settingsStore.isModuleActive.mockReturnValue(false);
+		settingsStore.isAgentsEnabled = false;
 
 		createComponent({ pinia });
 		await nextTick();

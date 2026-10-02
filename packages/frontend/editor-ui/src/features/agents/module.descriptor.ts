@@ -1,7 +1,10 @@
 import { VIEWS } from '@/app/constants';
 import { defineFrontendModule } from '@n8n/frontend-module-sdk';
+import { i18n } from '@n8n/i18n';
+import { hasPermission } from '@/app/utils/rbac/permissions';
 import {
 	AGENTS_LIST_VIEW,
+	AGENTS_SETTINGS_VIEW,
 	AGENT_BUILDER_VIEW,
 	AGENT_PREVIEW_VIEW,
 	AGENT_VIEW,
@@ -29,6 +32,17 @@ export const AgentsModule = defineFrontendModule({
 	icon: 'robot',
 	modals: AGENTS_MODALS,
 	routes: [
+		{
+			name: AGENTS_SETTINGS_VIEW,
+			path: 'agents',
+			component: async () => await import('./views/SettingsAgentsView.vue'),
+			meta: {
+				layout: 'settings',
+				middleware: ['authenticated', 'rbac', 'custom'],
+				middlewareOptions: { rbac: { scope: 'agent:manage' } },
+				telemetry: { pageCategory: 'settings' },
+			},
+		},
 		{
 			name: AGENTS_LIST_VIEW,
 			path: '/home/agents',
@@ -105,6 +119,19 @@ export const AgentsModule = defineFrontendModule({
 			},
 		],
 	},
+	settingsPages: [
+		{
+			id: 'settings-agents',
+			icon: 'robot',
+			label: i18n.baseText('settings.agents'),
+			position: 'top',
+			route: { to: { name: AGENTS_SETTINGS_VIEW } },
+			preview: true,
+			get available() {
+				return hasPermission(['rbac'], { rbac: { scope: 'agent:manage' } });
+			},
+		},
+	],
 	resources: [
 		{
 			key: 'agent',

@@ -143,7 +143,7 @@ const onBack = () => {
 
 onMounted(async () => {
 	documentTitle.set(i18n.baseText('settings.mcp.agentsExposed.page.title'));
-	if (!mcpStore.mcpAccessEnabled || !settingsStore.isModuleActive('agents')) {
+	if (!mcpStore.mcpAccessEnabled || !settingsStore.isAgentsEnabled) {
 		await router.replace({ name: MCP_SETTINGS_VIEW });
 		return;
 	}

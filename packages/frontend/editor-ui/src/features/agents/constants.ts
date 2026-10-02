@@ -9,6 +9,7 @@ export {
 } from '@n8n/frontend-constants/agents';
 
 export const AGENTS_MODULE_NAME = 'agents';
+export const AGENTS_SETTINGS_VIEW = 'AgentsSettings';
 
 export const AGENT_TOOLS_MODAL_KEY = 'agentToolsModal';
 export const AGENT_TOOL_CONFIG_MODAL_KEY = 'agentToolConfigModal';

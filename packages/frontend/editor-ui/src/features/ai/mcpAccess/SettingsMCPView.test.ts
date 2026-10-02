@@ -440,6 +440,7 @@ describe('SettingsMCPView', () => {
 		beforeEach(() => {
 			enableMcpSettings();
 			settingsStore.isModuleActive = vi.fn().mockReturnValue(true);
+			settingsStore.isAgentsEnabled = true;
 			mcpStore.fetchAgentsAvailableForMCP.mockResolvedValue({ data: [], count: 0 });
 		});
 

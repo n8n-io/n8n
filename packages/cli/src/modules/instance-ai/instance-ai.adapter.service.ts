@@ -659,7 +659,12 @@ export class InstanceAiAdapterService {
 	 * context.
 	 */
 	private getBuilderDelegateAdapter(): InstanceAiBuilderDelegateAdapterService | null {
-		if (!Container.get(ModuleRegistry).isActive('agents')) return null;
+		const moduleRegistry = Container.get(ModuleRegistry);
+		if (
+			!moduleRegistry.isActive('agents') ||
+			moduleRegistry.settings.get('agents')?.enabled === false
+		)
+			return null;
 		try {
 			return Container.get(InstanceAiBuilderDelegateAdapterService);
 		} catch (error) {

@@ -30,7 +30,7 @@ const closedByAction = ref(false);
 
 // With the agents module active, "expose all" covers agents too, and the
 // copy must say so (the ADO-5615 requirement).
-const includesAgents = computed(() => settingsStore.isModuleActive('agents'));
+const includesAgents = computed(() => settingsStore.isAgentsEnabled);
 
 const modalCopy = computed(() =>
 	includesAgents.value

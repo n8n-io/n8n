@@ -321,6 +321,7 @@ describe('ProjectHeader', () => {
 	describe('new agent telemetry', () => {
 		beforeEach(() => {
 			settingsStore.isModuleActive = vi.fn().mockImplementation((mod) => mod === 'agents');
+			settingsStore.isAgentsEnabled = true;
 			const project = createTestProject({
 				scopes: ['workflow:create', 'agent:create'],
 			});
@@ -668,6 +669,7 @@ describe('ProjectHeader', () => {
 
 		it('should enable agent create button when project scope allows it', () => {
 			settingsStore.isModuleActive = vi.fn().mockImplementation((mod) => mod === 'agents');
+			settingsStore.isAgentsEnabled = true;
 			const project = createTestProject({ scopes: ['agent:create'] });
 			projectsStore.currentProject = project;
 			projectsStore.myProjects = [project] as unknown as ProjectListItem[];
@@ -680,6 +682,7 @@ describe('ProjectHeader', () => {
 
 		it('should disable agent create button when no scope allows it', () => {
 			settingsStore.isModuleActive = vi.fn().mockImplementation((mod) => mod === 'agents');
+			settingsStore.isAgentsEnabled = true;
 			const project = createTestProject({ scopes: [] });
 			projectsStore.currentProject = project;
 			projectsStore.myProjects = [project] as unknown as ProjectListItem[];

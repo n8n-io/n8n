@@ -21,7 +21,7 @@ describe('useExposeAllWorkflowsToMcpOffer', () => {
 		uiStore = mockedStore(useUIStore);
 		experimentStore = mockedStore(useExposeAllWorkflowsToMcpStore);
 		settingsStore = mockedStore(useSettingsStore);
-		settingsStore.isModuleActive = vi.fn().mockReturnValue(false);
+		settingsStore.isAgentsEnabled = false;
 	});
 
 	it('opens the expose-all modal when enrolled and eligible workflows exist', async () => {
@@ -61,14 +61,13 @@ describe('useExposeAllWorkflowsToMcpOffer', () => {
 
 	it('opens the modal when only eligible agents exist and the agents module is active', async () => {
 		experimentStore.isEnabled = true;
-		settingsStore.isModuleActive = vi.fn().mockReturnValue(true);
+		settingsStore.isAgentsEnabled = true;
 		mcpStore.getMcpEligibleWorkflows.mockResolvedValue({ count: 0, data: [] });
 		mcpStore.getMcpEligibleAgents.mockResolvedValue({ count: 2, data: [] });
 
 		const opened = await useExposeAllWorkflowsToMcpOffer().offerToExposeAllWorkflows(vi.fn());
 
 		expect(opened).toBe(true);
-		expect(settingsStore.isModuleActive).toHaveBeenCalledWith('agents');
 		expect(mcpStore.getMcpEligibleAgents).toHaveBeenCalledWith({ take: 1 });
 		expect(uiStore.openModalWithData).toHaveBeenCalled();
 	});

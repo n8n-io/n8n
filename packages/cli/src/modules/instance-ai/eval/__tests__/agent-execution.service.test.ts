@@ -11,6 +11,7 @@ import { mock } from 'vitest-mock-extended';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
 import { AgentRuntimeReconstructionService } from '@/modules/agents/agent-runtime-reconstruction.service';
+import { AgentsSettingsService } from '@/modules/agents/agents-settings.service';
 import type { Agent as AgentEntity } from '@/modules/agents/entities/agent.entity';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 import { createAgentCredentialProvider } from '@/modules/agents/utils/agent-credential-provider';
@@ -36,6 +37,9 @@ vi.mock('@/modules/agents/repositories/agent.repository', () => ({
 vi.mock('@/modules/agents/agent-runtime-reconstruction.service', () => ({
 	AgentRuntimeReconstructionService: class AgentRuntimeReconstructionService {},
 }));
+vi.mock('@/modules/agents/agents-settings.service', () => ({
+	AgentsSettingsService: class AgentsSettingsService {},
+}));
 vi.mock('@/modules/agents/utils/agent-credential-provider', () => ({
 	createAgentCredentialProvider: vi.fn(() => ({ resolve: vi.fn() })),
 }));
@@ -49,6 +53,7 @@ vi.mock('../mcp-mock-fetch', () => ({ createMcpMockFetch: vi.fn(() => vi.fn()) }
 vi.mock('../mock-handler', () => ({ createLlmMockHandler: vi.fn() }));
 
 const logger = mock<Logger>();
+const settingsService = mock<AgentsSettingsService>();
 const user = mock<User>({ id: 'user/123:raw' });
 
 const findByIdAndProjectId = vi.fn();
@@ -121,6 +126,8 @@ function buildService(overrides: { queueMode?: boolean; agentsActive?: boolean }
 describe('EvalAgentExecutionService.executeWithLlmMock', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		settingsService.getEnabled.mockResolvedValue(true);
+		Container.set(AgentsSettingsService, settingsService);
 		Container.set(AgentRepository, { findByIdAndProjectId } as unknown as AgentRepository);
 		Container.set(AgentRuntimeReconstructionService, {
 			reconstructFromAgentEntity,
@@ -165,6 +172,23 @@ describe('EvalAgentExecutionService.executeWithLlmMock', () => {
 		const result = await buildService().executeWithLlmMock('agent-1', user, request);
 		expect(result.success).toBe(false);
 		expect(result.errors[0]).toMatch(/not found or not accessible/);
+	});
+
+	it('refuses when Agents is disabled before making model calls', async () => {
+		settingsService.getEnabled.mockResolvedValue(false);
+		const generate = vi.fn().mockResolvedValue(makeGenerateResult());
+		reconstructFromAgentEntity.mockResolvedValue({
+			agent: { generate, close: vi.fn() },
+			toolRegistry: {},
+		});
+
+		const result = await buildService().executeWithLlmMock('agent-1', user, request);
+
+		expect(result.success).toBe(false);
+		expect(result.errors[0]).toContain('Agents are disabled');
+		expect(generateAgentScenarioSeed).not.toHaveBeenCalled();
+		expect(reconstructFromAgentEntity).not.toHaveBeenCalled();
+		expect(generate).not.toHaveBeenCalled();
 	});
 
 	it('reports not-found when the agent does not exist in the project', async () => {

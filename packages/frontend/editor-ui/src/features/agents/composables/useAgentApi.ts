@@ -17,6 +17,7 @@ import type {
 	AgentIntegrationStatusResponse,
 	AgentJsonVectorStoreConfig,
 	AgentSkill,
+	AgentsSettingsDto,
 	AgentSkillMutationResponse,
 	AgentTaskConfig,
 	AgentTaskDto,
@@ -30,6 +31,17 @@ import type {
 import { getFullApiResponse, makeRestApiRequest } from '@n8n/rest-api-client';
 import type { IRestApiContext } from '@n8n/rest-api-client';
 import type { AgentResource, AgentJsonConfig, CustomToolEntry } from '../types';
+
+export async function getAgentsSettings(context: IRestApiContext): Promise<AgentsSettingsDto> {
+	return await makeRestApiRequest(context, 'GET', '/agents/settings');
+}
+
+export async function updateAgentsSettings(
+	context: IRestApiContext,
+	settings: AgentsSettingsDto,
+): Promise<AgentsSettingsDto> {
+	return await makeRestApiRequest(context, 'PUT', '/agents/settings', settings);
+}
 
 export type ListAgentsSortBy =
 	| 'name:asc'

@@ -7,6 +7,7 @@ import type { ProjectRelationRepository, User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { QueryFailedError } from '@n8n/typeorm';
 import { mock } from 'vitest-mock-extended';
+import type { AgentsSettingsService } from '../agents-settings.service';
 
 import { ConflictError, NotFoundError } from '@n8n/errors';
 
@@ -86,6 +87,7 @@ function makeService() {
 		agentExecutionService,
 		credentialsService,
 		projectScopeService,
+		mock<AgentsSettingsService>({ getEnabled: vi.fn().mockResolvedValue(true) }),
 	);
 
 	return {

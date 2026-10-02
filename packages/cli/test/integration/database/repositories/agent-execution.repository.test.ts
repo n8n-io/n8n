@@ -11,8 +11,9 @@ import {
 	type CredentialProvider,
 } from '@n8n/agents';
 import { createTeamProject, mockLogger, testDb, testModules } from '@n8n/backend-test-utils';
+import type { LicenseState } from '@n8n/backend-common';
 import { AgentsConfig, AiConfig } from '@n8n/config';
-import { UserRepository, type OperationContext, type User } from '@n8n/db';
+import { SettingsRepository, UserRepository, type OperationContext, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { DataSource, EntityManager } from '@n8n/typeorm';
 import { generateNanoId } from '@n8n/utils/generate-nano-id';
@@ -56,6 +57,7 @@ import { buildInboundUserMessage } from '@/modules/agents/utils/inbound-attachme
 import { executionsToMessagesDto } from '@/modules/agents/utils/execution-to-message-mapper';
 import { formatPreviewSessionContext } from '@/modules/agents/builder/format-preview-context';
 import { AgentExecutionService } from '@/modules/agents/agent-execution.service';
+import { AgentsSettingsService } from '@/modules/agents/agents-settings.service';
 import type { AgentExecutionUpdateBroadcaster } from '@/modules/agents/agent-execution-update-broadcaster';
 import { AgentInterruptedExecutionSweeper } from '@/modules/agents/agent-interrupted-execution-sweeper';
 import { AgentTurnExecutionService } from '@/modules/agents/agent-turn-execution.service';
@@ -146,6 +148,7 @@ describe('AgentExecutionRepository', () => {
 	});
 
 	afterEach(async () => {
+		await Container.get(SettingsRepository).delete({ key: 'agents.enabled' });
 		await Container.get(AgentMessageQueueRepository).delete({});
 		await repository.delete({});
 		await threadRepo.delete({});
@@ -165,6 +168,10 @@ describe('AgentExecutionRepository', () => {
 		const txRunner = new TypeOrmTransactionRunner(
 			connection ?? repository.manager.connection,
 			mockLogger(),
+		);
+		const settingsService = new AgentsSettingsService(
+			new SettingsRepository(connection ?? repository.manager.connection, txRunner),
+			mock<LicenseState>(),
 		);
 		const executions = connection ? new AgentExecutionRepository(connection, txRunner) : repository;
 		const threads = connection
@@ -230,6 +237,7 @@ describe('AgentExecutionRepository', () => {
 			queueUpdates,
 			messageRepository,
 			steering,
+			settingsService,
 		);
 		const chatExecutionService = mock<AgentChatExecutionService>();
 		chatExecutionService.settle.mockImplementation(async (_executionId, finalize) => {
@@ -237,6 +245,7 @@ describe('AgentExecutionRepository', () => {
 		});
 		return {
 			steering,
+			settingsService,
 			txRunner,
 			threads,
 			queue,
@@ -1438,6 +1447,7 @@ describe('AgentExecutionRepository', () => {
 				mock<AgentChatExecutionService>(),
 				mock<AgentBackgroundJobRepository>(),
 				mock<AgentBackgroundJobService>(),
+				mock<AgentsSettingsService>(),
 			);
 			const resume = async (
 				user: User,
@@ -1600,6 +1610,29 @@ describe('AgentExecutionRepository', () => {
 			});
 			await services.queue.settle(item.thread.id, item.admission.executionId);
 		}
+
+		it('finishes active work and pauses pending messages across processes while Agents is off', async () => {
+			const local = recordingServices();
+			const remote = recordingServices(undefined, peer);
+			const threadId = uuid();
+			await enqueue(local, input(threadId, 'Active', 'new'));
+			const active = await claim(local, threadId);
+			const pending = await enqueue(remote, input(threadId, 'Pending'));
+
+			await local.settingsService.setEnabled(false);
+			await finish(local, active);
+
+			expect(await remote.queue.claimNext(threadId, async () => true)).toBeNull();
+			expect(await remote.queueRepository.findHead(threadId, {})).toMatchObject({ id: pending.id });
+			await expect(remote.queue.enqueue(input(threadId, 'New'))).rejects.toThrow(
+				'Agents are disabled',
+			);
+
+			await local.settingsService.setEnabled(true);
+			const resumed = await claim(remote, threadId);
+			expect(resumed.item.id).toBe(pending.id);
+			await finish(remote, resumed);
+		});
 
 		it.each([
 			{ automaticPreviewContinuation: false, legacy: false },

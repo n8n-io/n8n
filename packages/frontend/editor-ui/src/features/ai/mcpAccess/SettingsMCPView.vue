@@ -56,7 +56,7 @@ const rbacStore = useRBACStore();
 const exposeAllOffer = capabilityRegistry.tryUse(capabilities.mcpExposeAllOffer);
 const isExposeAllOfferEnabled = computed(() => exposeAllOffer?.isEnabled() ?? false);
 
-const agentsModuleActive = computed(() => settingsStore.isModuleActive('agents'));
+const agentsModuleActive = computed(() => settingsStore.isAgentsEnabled);
 
 const mcpStatusLoading = ref(false);
 const showDisableDialog = ref(false);
