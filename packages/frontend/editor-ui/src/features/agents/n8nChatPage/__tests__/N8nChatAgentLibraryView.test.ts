@@ -13,6 +13,17 @@ type Options = { query: Ref<string>; page: Ref<number>; pageSize: Ref<number> };
 
 const useN8nChatAgentsMock = vi.fn();
 const retryMock = vi.fn();
+const isVariantB = { value: false };
+vi.mock('../../composables/useAgentsN8nChatFlag', async () => {
+	const { computed } = await import('vue');
+	return {
+		useAgentsN8nChatVariant: () => ({
+			isVariantA: computed(() => false),
+			isVariantB: computed(() => isVariantB.value),
+		}),
+	};
+});
+
 vi.mock('../composables/useN8nChatAgents', () => ({
 	useN8nChatAgents: (options: Options) => useN8nChatAgentsMock(options),
 }));
@@ -24,7 +35,7 @@ vi.mock('../components/N8nChatAgentCard.vue', () => ({
 	default: {
 		name: 'N8nChatAgentCard',
 		props: ['agent', 'source'],
-		template: '<div data-testid="stub-agent-card">{{ agent.name }}</div>',
+		template: '<div data-testid="stub-agent-card">{{ agent?.name ?? \'n8n Assistant\' }}</div>',
 	},
 }));
 
@@ -82,6 +93,38 @@ describe('N8nChatAgentLibraryView', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		historyBack.value = undefined;
+		isVariantB.value = false;
+	});
+
+	it('shows the n8n Assistant card instead of the empty state for variant B with no agents', () => {
+		isVariantB.value = true;
+		const wrapper = setup({ agents: [], count: 0, isLoading: false });
+
+		expect(wrapper.find('[data-testid="n8n-chat-library-empty"]').exists()).toBe(false);
+		expect(wrapper.findComponent(N8nChatAgentGrid).props('includeAssistant')).toBe(true);
+	});
+
+	it('includes the n8n Assistant card only for variant B, on the first page without a search', async () => {
+		expect(
+			setup({ agents: [agentA], count: 1, isLoading: false })
+				.findComponent(N8nChatAgentGrid)
+				.props('includeAssistant'),
+		).toBe(false);
+
+		isVariantB.value = true;
+		const wrapper = setup({ agents: [agentA], count: 1, isLoading: false });
+		const grid = () => wrapper.findComponent(N8nChatAgentGrid);
+		expect(grid().props('includeAssistant')).toBe(true);
+
+		const options = useN8nChatAgentsMock.mock.lastCall?.[0] as Options;
+		options.page.value = 2;
+		await wrapper.vm.$nextTick();
+		expect(grid().props('includeAssistant')).toBe(false);
+
+		options.page.value = 1;
+		options.query.value = 'support';
+		await wrapper.vm.$nextTick();
+		expect(grid().props('includeAssistant')).toBe(false);
 	});
 
 	it('renders the title and the agent grid', () => {

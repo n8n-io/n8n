@@ -6,6 +6,7 @@ import { useI18n } from '@n8n/i18n';
 import { getDebounceTime } from '@n8n/composables/useDebounce';
 
 import { DEBOUNCE_TIME, DEFAULT_WORKFLOW_PAGE_SIZE } from '@/app/constants';
+import { useAgentsN8nChatVariant } from '../composables/useAgentsN8nChatFlag';
 import { useN8nChatAgents } from './composables/useN8nChatAgents';
 import N8nChatAgentGrid from './components/N8nChatAgentGrid.vue';
 import N8nChatPageLayout from './components/N8nChatPageLayout.vue';
@@ -37,8 +38,15 @@ function onSearchInput(value: string): void {
 }
 
 const hasSearch = computed(() => query.value.length > 0);
-const showEmptyState = computed(() => !isLoading.value && !loadFailed.value && count.value === 0);
 const showPagination = computed(() => count.value > 0);
+
+// Variant B lists the n8n Assistant as a chat option too, at the top of the unfiltered list.
+const { isVariantB } = useAgentsN8nChatVariant();
+const includeAssistant = computed(() => isVariantB.value && !hasSearch.value && page.value === 1);
+// With the Assistant card there is always something to pick, so no empty state.
+const showEmptyState = computed(
+	() => !includeAssistant.value && !isLoading.value && !loadFailed.value && count.value === 0,
+);
 
 function onPageSizeChange(size: number): void {
 	pageSize.value = size;
@@ -84,7 +92,13 @@ function onPageSizeChange(size: number): void {
 					: i18n.baseText('agents.n8nChatPage.library.empty.noAgents.title')
 			"
 		/>
-		<N8nChatAgentGrid v-else :agents="agents" :loading="isLoading" source="library" />
+		<N8nChatAgentGrid
+			v-else
+			:agents="agents"
+			:loading="isLoading"
+			:include-assistant="includeAssistant"
+			source="library"
+		/>
 
 		<N8nPagination
 			v-if="showPagination"
