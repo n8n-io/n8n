@@ -132,8 +132,9 @@ A trap stops the component: every later call of the execution gets the same erro
 | Bundle tries | Result |
 |---|---|
 | global `fetch` to a local server | `fetch is not available in the sandbox. Use http.request.`; the server gets nothing |
-| `process.env` | `globalThis.process is undefined` |
-| `import('node:fs')` | the JS engine stops (trap) |
+| `process.env`, with the name built at run time | `… is undefined` |
+| `import()` of `node:fs`, with the name built at run time | the JS engine stops (trap) |
+| a global of `GUEST_LACKS` (`src/freeze.ts`) | absent in the guest |
 | `setTimeout` with a late request | `setTimeout is not available in the sandbox`; the host gets no request |
 | endless loop | stopped at the CPU limit |
 | memory blow-up | stopped at the memory limit |
@@ -152,11 +153,21 @@ A trap stops the component: every later call of the execution gets the same erro
 ## Coverage and cost
 
 `versions.test.ts` of nodes-base-next replays the fixtures of every frozen action in the sandbox.
-83 of 84 pass, the 6 binary-data actions, the 3 AI roots and the 5 providers included. The
-sandbox refuses `notion.databasePage.getAll`: its `\p{…}` regex stops the JS engine
-(StarlingMonkey has no Unicode data). The 2 triggers have no sandbox world yet. A bundle must use
-web APIs only: Node globals such as `Buffer` do not exist in the guest (gmail.message.send uses
-`TextEncoder` and `btoa`).
+84 of 84 pass, the 6 binary-data actions, the 3 AI roots and the 5 providers included. The 2
+triggers have no sandbox world yet. The CI job `ci-node-contract-sandbox.yml` builds the sandbox
+and runs these tests, so they do not skip there.
+
+A bundle must use web APIs only. `freezeAction` refuses a bundle that uses what the guest does not
+have:
+
+- a module other than `n8n-workflow` (from the esbuild metafile);
+- a global of `GUEST_LACKS` (`Buffer`, `process`, `setImmediate`, `Intl`, `__dirname`, …) that
+  no scope binds and that the bundle does not test with `typeof`;
+- a Unicode property escape (`\p{…}`) in a regex or a string.
+
+The check is static. A name built at run time passes it, and the sandbox then stops the bundle.
+`notion.databasePage.getAll` keeps the change-case v5 keys with a Unicode 17.0 table of code point
+ranges in place of `\p{…}`.
 
 Measured on macOS arm64 (load 9 to 12), medians, for `slack.message.send`,
 `gmail.message.getAll`, `notion.user.get` and `core.set`:
@@ -191,8 +202,10 @@ runs any component of the world. The same fixtures prove parity across languages
 
 ## Risks
 
-- StarlingMonkey has no `Intl` and no `\p{…}`. A locale call can give another result than in
-  Node. The fixture replay in the sandbox at publish finds such a bundle.
+- StarlingMonkey has no `Intl`, no `\p{…}` and no `String.prototype.normalize`, and its
+  `toLowerCase` has no final sigma rule (`ΟΝΟΜΑΣ` gives `ονομασ`, Node gives `ονομας`). The freeze
+  check finds `Intl` and `\p{…}`, but not a missing method or another result. The fixture replay
+  in the sandbox at publish finds such a bundle when a fixture covers the case.
 - The interpreter is 20 to 45 times slower than V8 JIT for CPU-heavy code (S14).
 - ComponentizeJS builds are not reproducible. Trust rests on the signed digest of each guest component.
 - An allowed API can still reflect a secret back. The credential hosts limit this to the hosts

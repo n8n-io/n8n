@@ -1,0 +1,99 @@
+name: 'CI: Node Contract sandbox'
+
+on:
+  pull_request:
+    paths:
+      - packages/@n8n/node-sdk/package.json
+      - packages/@n8n/node-sdk/sandbox/**
+      - packages/@n8n/node-sdk/scripts/sandbox.ts
+      - packages/@n8n/node-sdk/spec/wit/**
+      - packages/@n8n/node-sdk/src/**
+      - packages/@n8n/nodes-base-next/package.json
+      - packages/@n8n/nodes-base-next/scripts/**
+      - packages/@n8n/nodes-base-next/src/**
+      - packages/@n8n/nodes-base-next/fixtures/**
+      - pnpm-lock.yaml
+      - .github/workflows/ci-node-contract-sandbox.yml
+
+permissions:
+  contents: read
+
+jobs:
+  sandbox:
+    name: Sidecar, guests and sandbox tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      RUST_TOOLCHAIN: 1.94.0
+    steps:
+      - name: Check out project
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # The sandbox tests need only the production dependencies of nodes-base-next, not n8n-nodes-base.
+      # The root supplies @types/node for the shared tsconfig.
+      - name: Setup Node.js
+        uses: ./.github/actions/setup-nodejs
+        with:
+          node-version: 24.18.1
+          build-command: ''
+          install-command: pnpm install --frozen-lockfile --filter n8n-monorepo --filter-prod @n8n/nodes-base-next... --filter @n8n/vitest-config
+          # Keep the partial pnpm store separate from the full install cache.
+          cache-dependency-path: |
+            pnpm-lock.yaml
+            .github/workflows/ci-node-contract-sandbox.yml
+
+      - name: Build nodes-base-next and its dependencies
+        run: pnpm --filter-prod "@n8n/nodes-base-next..." --filter @n8n/vitest-config run build
+
+      - name: Install Rust
+        run: |
+          rustup toolchain install "$RUST_TOOLCHAIN" --profile minimal --no-self-update
+          rustup default "$RUST_TOOLCHAIN"
+
+      # A cold sidecar build compiles wasmtime. The restore key keeps the dependencies when only the sidecar source changes.
+      - name: Restore the cargo cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+            packages/@n8n/node-sdk/sandbox/sidecar/target
+          key: sandbox-cargo-v1-${{ runner.os }}-${{ runner.arch }}-${{ env.RUST_TOOLCHAIN }}-${{ hashFiles('packages/@n8n/node-sdk/sandbox/sidecar/Cargo.lock', 'packages/@n8n/node-sdk/sandbox/sidecar/src/**') }}
+          restore-keys: |
+            sandbox-cargo-v1-${{ runner.os }}-${{ runner.arch }}-${{ env.RUST_TOOLCHAIN }}-
+
+      # The version is the one in packages/@n8n/node-sdk/scripts/sandbox.ts.
+      - name: Restore the ComponentizeJS cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.npm/_npx
+          key: sandbox-componentize-js-0.23.0-${{ runner.os }}-${{ runner.arch }}
+
+      # pnpm sandbox:build runs cargo build without --locked, so check the lockfile first.
+      - name: Fetch the sidecar crates
+        working-directory: packages/@n8n/node-sdk/sandbox/sidecar
+        run: cargo fetch --locked
+
+      - name: Build the guest components and the sidecar
+        working-directory: packages/@n8n/node-sdk
+        run: pnpm sandbox:build
+
+      - name: Test the sidecar
+        working-directory: packages/@n8n/node-sdk/sandbox/sidecar
+        run: cargo test --release --locked
+
+      # The sandbox tests skip when a file is missing, so a missing file must fail here.
+      - name: Check the sandbox files
+        working-directory: packages/@n8n/node-sdk/sandbox
+        run: test -x sidecar/target/release/n8n-sandbox && test -f dist/action.wasm && test -f dist/provider.wasm
+
+      - name: Test the sandbox and the freeze check
+        working-directory: packages/@n8n/node-sdk
+        run: pnpm exec vitest run src/__tests__/sandbox.test.ts src/__tests__/freeze.test.ts
+
+      - name: Replay the bundled versions in the sandbox
+        working-directory: packages/@n8n/nodes-base-next
+        run: pnpm exec vitest run src/__tests__/versions.test.ts

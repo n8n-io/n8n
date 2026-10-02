@@ -307,10 +307,7 @@ describe.skipIf(!sandboxBuilt)('bundled versions in the sandbox', () => {
 			issues.push(...replayed);
 		}
 		expect(issues).toEqual([]);
-		expect(refused).toEqual({
-			// `\p{…}` in a regex: the JS engine of the guest has no Unicode data.
-			'notion.databasePage.getAll': expect.stringContaining('Unicode property escape'),
-		});
+		expect(refused).toEqual({});
 	}, 120_000);
 });
 

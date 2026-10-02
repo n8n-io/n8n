@@ -8,7 +8,7 @@ import { Readable } from 'node:stream';
 import type { IHttpRequestOptions, INode } from 'n8n-workflow';
 
 import { compat, credentialType, t } from '../credentials';
-import { freezeAction } from '../freeze';
+import { freezeAction, GUEST_LACKS } from '../freeze';
 import { sandboxedVersionOf, type SandboxOptions } from '../sandbox';
 import type { BinaryStore, ExecutorHost } from '../runtime';
 
@@ -71,8 +71,12 @@ const spec = (run: (context: any) => Promise<unknown>, extra: Record<string, unk
 	} as any);
 const canary = 'http://127.0.0.1:${port}/';
 export const fetchProbe = spec(async () => ({ value: String(await fetch(canary)) }));
-export const processProbe = spec(async () => ({ value: String((globalThis as any).process.env.SANDBOX_CANARY) }));
-export const importProbe = spec(async () => ({ value: String(await import('node:fs')) }));
+// Names built at run time pass the freeze check, so the sandbox must stop them.
+export const processProbe = spec(async () => ({ value: String((globalThis as any)[['pro', 'cess'].join('')].env.SANDBOX_CANARY) }));
+export const importProbe = spec(async () => ({ value: String(await import(['node', 'fs'].join(':'))) }));
+export const globalsProbe = spec(async () => ({
+	value: JSON.stringify(${JSON.stringify(GUEST_LACKS)}.filter((name) => name in globalThis)),
+}));
 export const timerProbe = spec(async ({ http }) => {
 	setTimeout(() => void http.request({ url: canary }), 0);
 	return { value: 'scheduled' };
@@ -168,6 +172,7 @@ const PROBE_NAMES = [
 	'credentialErrorProbe',
 	'binaryProbe',
 	'openStreamsProbe',
+	'globalsProbe',
 ] as const;
 
 type ProbeName = (typeof PROBE_NAMES)[number];
@@ -240,7 +245,13 @@ describe.skipIf(!existsSync(SIDECAR) || !existsSync(GUEST))('the sandbox', () =>
 	});
 
 	it('gives the bundle no process and no environment', async () => {
-		await expect(run('processProbe')).rejects.toThrow('globalThis.process is undefined');
+		await expect(run('processProbe')).rejects.toThrow(
+			/can't access property "env", .* is undefined/,
+		);
+	});
+
+	it('has none of the globals that the freeze check refuses', async () => {
+		await expect(run('globalsProbe')).resolves.toBe('[]');
 	});
 
 	it('stops a bundle that imports a module', async () => {

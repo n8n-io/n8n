@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import { UnexpectedError } from 'n8n-workflow';
+import { UnexpectedError, UserError } from 'n8n-workflow';
 
 import type { AnyCredentialType } from './credentials';
 import { toContract, type Action, type Trigger } from './define';
@@ -40,6 +40,81 @@ const credentialPinsOf = (action: Action | Trigger) =>
 		semver === undefined ? [] : [`${name}@${parseSemver(semver).major}`],
 	);
 
+/**
+ * The globals of Node, and the CommonJS names `__dirname` and `__filename`, that the sandbox guest
+ * (StarlingMonkey) does not have. `sandbox.test.ts` checks that the guest has none of them.
+ */
+export const GUEST_LACKS = [
+	'Atomics',
+	'BroadcastChannel',
+	'Buffer',
+	'CloseEvent',
+	'Intl',
+	'MessageChannel',
+	'MessageEvent',
+	'MessagePort',
+	'Navigator',
+	'PerformanceEntry',
+	'PerformanceMark',
+	'PerformanceMeasure',
+	'PerformanceObserver',
+	'PerformanceObserverEntryList',
+	'PerformanceResourceTiming',
+	'SharedArrayBuffer',
+	'TextDecoderStream',
+	'TextEncoderStream',
+	'TransformStreamDefaultController',
+	'URLPattern',
+	'WebAssembly',
+	'WebSocket',
+	'WritableStreamDefaultController',
+	'WritableStreamDefaultWriter',
+	'__dirname',
+	'__filename',
+	'clearImmediate',
+	'global',
+	'navigator',
+	'process',
+	'setImmediate',
+] as const;
+
+const LACKS_MARKER = '__n8n_guest_lacks_';
+
+/**
+ * What a bundle uses that the sandbox does not have: a module other than `n8n-workflow`, a global
+ * of `GUEST_LACKS`, or a Unicode property escape (`\p{…}`). esbuild replaces only a global that
+ * no scope binds. A global that the bundle also tests with `typeof` counts as guarded. A name
+ * built at run time is not found: the sandbox still stops it.
+ */
+async function sandboxGapsOf(bundle: string, modules: readonly string[]): Promise<string[]> {
+	const { transform } = await import('esbuild');
+	const { code } = await transform(bundle, {
+		loader: 'js',
+		legalComments: 'none',
+		define: Object.fromEntries(
+			GUEST_LACKS.flatMap((name) => [
+				[name, `${LACKS_MARKER}${name}`],
+				[`globalThis.${name}`, `${LACKS_MARKER}${name}`],
+			]),
+		),
+	});
+	const namesAfter = (prefix: string) =>
+		new Set(
+			[...code.matchAll(new RegExp(`${prefix}${LACKS_MARKER}(\\w+)`, 'g'))].map(([, name]) => name),
+		);
+	const guarded = namesAfter('typeof ');
+	const globals = [...namesAfter('')].filter((name) => !guarded.has(name));
+	return [
+		...modules
+			.filter((module) => module !== 'n8n-workflow')
+			.map((module) => `the module ${module}`),
+		...globals.map((name) => `the global ${name}`),
+		...(/\\[pP]\{/.test(code)
+			? ['a Unicode property escape (\\p{…}) in a regular expression']
+			: []),
+	];
+}
+
 /** A frozen action or trigger in memory: its manifest, its bundle, and what the bundle exports. */
 export interface FrozenAction {
 	readonly manifest: VersionManifest;
@@ -61,6 +136,7 @@ export async function freezeAction(entryFile: string, exportName: string): Promi
 		},
 		bundle: true,
 		write: false,
+		metafile: true,
 		format: 'cjs',
 		platform: 'neutral',
 		target: 'es2022',
@@ -87,6 +163,15 @@ export async function freezeAction(entryFile: string, exportName: string): Promi
 		],
 	});
 	const bundle = result.outputFiles[0]?.text ?? '';
+	const modules = Object.values(result.metafile.outputs).flatMap(({ imports }) =>
+		imports.filter(({ external }) => external).map(({ path: module }) => module),
+	);
+	const gaps = await sandboxGapsOf(bundle, [...new Set(modules)]);
+	if (gaps.length > 0) {
+		throw new UserError(
+			`${exportName} in ${entryFile} uses what the sandbox does not have: ${gaps.join(', ')}. Use web APIs and no Unicode property escapes.`,
+		);
+	}
 	const action = evaluateBundle(bundle, NODE_CONTRACT_VERSION);
 	const contract = toContract(action);
 	const credentials = credentialPinsOf(action);
