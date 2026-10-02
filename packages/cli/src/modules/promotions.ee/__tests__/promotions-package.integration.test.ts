@@ -1189,6 +1189,34 @@ describe('Apply a project selection', () => {
 		expect(await projectRepository.findOneBy({ id: project.id })).not.toBeNull();
 	});
 
+	it('deletes a selected workflow that is already archived on the target', async () => {
+		const remote = await createRemote();
+		const connection = await createInstanceConnection(remote.bareDir);
+		await service.clone(connection.id, 'promote');
+		await service.clone(connection.id, 'apply');
+		const { project } = await setupProjectWithWorkflows('Orders', ['Sibling']);
+		await service.promote(connection.id, owner, {
+			canExportVariableValues: true,
+			commitMessage: 'Export sibling',
+		});
+		const archived = await createWorkflow(
+			{ name: 'Archived target', nodes: [], connections: {}, isArchived: true },
+			project,
+		);
+		const repository = Container.get(WorkflowRepository);
+
+		const result = await service.applyProjectSelection(project.id, owner, {
+			workflowIds: [archived.id],
+		});
+
+		expect(result).toMatchObject({
+			status: 'applied',
+			counts: { workflows: { archived: 0, deleted: 1 } },
+		});
+		expect(await repository.findOneBy({ id: archived.id })).toBeNull();
+		expect(await repository.count()).toBe(1);
+	});
+
 	it('applies a name change to the same workflow in the same folder', async () => {
 		const remote = await createRemote();
 		const connection = await createInstanceConnection(remote.bareDir);

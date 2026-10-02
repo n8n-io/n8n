@@ -154,7 +154,7 @@ With the default `--overwrite-deletion-policy=archive` the command archives each
 workflow, so it and its execution history stay recoverable. `hard-delete` also
 removes the workflow permanently. A workflow can stay `archived` under
 `hard-delete` when deferred trigger teardown blocks the delete. The command skips
-absent or already archived workflows and omits them from this list.
+absent workflows and omits them from this list.
 
 ```bash
 n8n-cli package export --project-id=<id> --output=project.n8np
@@ -167,7 +167,7 @@ n8n-cli package import-selection --file=project.n8np --selected-project-id=<id> 
 | `--file` | Path to the `.n8np` project package file. (required) |
 | `--selected-project-id` | Source project ID for the selection. The target project uses the same ID. (required) |
 | `--selected-workflow-ids` | Source workflow IDs to import. Comma-separate them, or repeat the flag. Only these workflows are imported. |
-| `--deleted-workflow-ids` | Target workflow IDs to remove. Separate IDs with commas, or repeat the flag. The removal manner follows `--overwrite-deletion-policy`. Absent or already archived workflows are ignored. |
+| `--deleted-workflow-ids` | Target workflow IDs to remove. Separate IDs with commas, or repeat the flag. The removal manner follows `--overwrite-deletion-policy`. Absent workflows are ignored. |
 | `--workflow-conflict-policy` | What to do when a workflow already exists by source ID: `new-version` (default), `fail`, or `skip`. |
 | `--workflow-id-policy` | Whether imported workflows keep their source ID (`source`) or receive a new one (`new`). |
 | `--overwrite-deletion-policy` | How `--deleted-workflow-ids` removes each target workflow: `archive` (default) archives it, keeping it and its execution history recoverable; `hard-delete` archives it — the step that unpublishes it — then deletes the workflow and its executions permanently. A workflow can stay `archived` under `hard-delete` when deferred trigger teardown blocks the delete. Each `removedWorkflows` entry reports the actual result in its `deletion` field. |

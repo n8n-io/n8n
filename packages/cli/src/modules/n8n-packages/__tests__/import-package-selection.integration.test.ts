@@ -588,6 +588,32 @@ describe('importPackageSelectionFromDirectory', () => {
 			expect((await findWorkflow('WFA'))?.isArchived).toBe(false);
 		});
 
+		it('hard-deletes an already-archived workflow when overwriteDeletionPolicy is hard-delete', async () => {
+			await seedBothWorkflows();
+			await Container.get(WorkflowRepository).update('WFB', { isArchived: true });
+
+			const result = await importSelection(
+				await packageDir(twoWorkflowPackage),
+				{
+					selectedProjectId: 'P1',
+					selectedWorkflowIds: ['WFA'],
+					deletedWorkflowIds: ['WFB'],
+				},
+				{ overwriteDeletionPolicy: OverwriteDeletionPolicy.HardDelete },
+			);
+
+			expect(result.removedWorkflows).toEqual([
+				{
+					workflowId: 'WFB',
+					name: 'wfb',
+					projectId: 'P1',
+					parentFolderId: null,
+					deletion: 'deleted',
+				},
+			]);
+			expect(await findWorkflow('WFB')).toBeNull();
+		});
+
 		it('tolerates deleting an already-archived or absent workflow as a no-op', async () => {
 			await seedBothWorkflows();
 

@@ -19,7 +19,7 @@ post:
     matches that source project, which is created if it does not yet exist; there is no separate
     target-project field. `selectedWorkflowIds` are source ids within that project; ids that belong
     to another project are dropped. `deletedWorkflowIds` are destination ids in the same project; an
-    already-archived or absent id is a tolerated no-op, and a delete needs the `workflow:delete`
+    absent id is a tolerated no-op, and a delete needs the `workflow:delete`
     scope. A delete id must not match the destination id of a selected workflow, including
     when `workflowConflictPolicy=skip`. This overlap returns a 409 before any writes.
 
@@ -60,7 +60,7 @@ post:
                 Optional JSON-encoded array of destination workflow ids to remove from the scoped
                 project, e.g. `["wf-3"]`. Removal happens even under the additive profile, and the
                 manner of removal follows `overwriteDeletionPolicy` (archive by default). An
-                already-archived or absent id is a no-op unless it is also a selected destination.
+                absent id is a no-op unless it is also a selected destination.
                 Must not contain a selected workflow's destination id. Needs the `workflow:delete` scope.
             workflowConflictPolicy:
               type: string
