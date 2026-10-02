@@ -65,7 +65,8 @@ describe('McpConnection — custom fetch forwarding', () => {
 		sseCtor.mockClear();
 		streamableHttpCtor.mockClear();
 		stdioCtor.mockClear();
-		clientConnect.mockClear();
+		clientConnect.mockReset().mockResolvedValue(undefined);
+		clientClose.mockReset().mockResolvedValue(undefined);
 		clientListTools.mockClear();
 	});
 
@@ -102,6 +103,36 @@ describe('McpConnection — custom fetch forwarding', () => {
 		expect(streamableHttpCtor).toHaveBeenCalledTimes(1);
 		expect(sseCtor).toHaveBeenCalledTimes(1);
 		expect(clientClose).toHaveBeenCalled();
+	});
+
+	it('shares the connection timeout with the SSE retry', async () => {
+		const { StreamableHTTPError } = await import(
+			'@modelcontextprotocol/sdk/client/streamableHttp.js'
+		);
+		vi.useFakeTimers();
+		try {
+			clientConnect
+				.mockImplementationOnce(async () => {
+					await new Promise((resolve) => setTimeout(resolve, 90));
+					throw new StreamableHTTPError(404, 'Not found');
+				})
+				.mockImplementationOnce(async () => await new Promise<void>(() => {}));
+			const conn = new McpConnection({
+				name: 'legacy',
+				url: 'https://example.test/sse',
+				connectionTimeoutMs: 100,
+			});
+
+			const connecting = conn.connect();
+			await vi.advanceTimersByTimeAsync(90);
+			expect(sseCtor).toHaveBeenCalledTimes(1);
+			const timedOut = expect(connecting).rejects.toThrow('connection timed out after 100ms');
+			await vi.advanceTimersByTimeAsync(10);
+			await timedOut;
+			expect(clientConnect).toHaveBeenCalledTimes(2);
+		} finally {
+			vi.useRealTimers();
+		}
 	});
 
 	it('forwards `fetch` to SSEClientTransport and to its eventSourceInit when provided', async () => {

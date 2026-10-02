@@ -38,7 +38,7 @@ describe('execution options integration', () => {
 			onStepStart: generateStepStart,
 			onStepEnd: generateStepFinish,
 		});
-		expect(generateResult.finishReason).toBe('stop');
+		expect(generateResult.finishReason, String(generateResult.error)).toBe('stop');
 
 		const { stream } = await agent.stream('Say stream.', {
 			onStepStart: streamStepStart,

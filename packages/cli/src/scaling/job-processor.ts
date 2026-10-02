@@ -699,13 +699,27 @@ export class JobProcessor {
 
 			if (nodeType.execute && nodeType.description.outputs.includes(NodeConnectionTypes.AiTool)) {
 				const toolRunIndex = context.getNextRunIndex();
-				await context.addExecutionDataFunctions(
-					'input',
-					[[{ json: validatedToolArgs as INodeExecutionData['json'] }]],
-					NodeConnectionTypes.AiTool,
-					toolNode.name,
-					toolRunIndex,
-				);
+				const recordToolData = async (
+					type: 'input' | 'output',
+					data: INodeExecutionData[][] | NodeOperationError,
+				) => {
+					try {
+						await context.addExecutionDataFunctions(
+							type,
+							data,
+							NodeConnectionTypes.AiTool,
+							toolNode.name,
+							toolRunIndex,
+						);
+					} catch (error) {
+						this.logger.warn(
+							`There was a problem logging ${type} data of node "${toolNode.name}": ${error instanceof Error ? error.message : String(error)}`,
+						);
+					}
+				};
+				await recordToolData('input', [
+					[{ json: validatedToolArgs as INodeExecutionData['json'] }],
+				]);
 
 				let result: Awaited<ReturnType<NonNullable<typeof nodeType.execute>>>;
 				try {
@@ -713,14 +727,11 @@ export class JobProcessor {
 				} catch (error) {
 					// Record the failure so the tool node shows as errored, not stuck
 					// "running"; rethrow so the caller returns an error to the client.
-					await context.addExecutionDataFunctions(
+					await recordToolData(
 						'output',
 						error instanceof NodeOperationError
 							? error
 							: new NodeOperationError(toolNode, error as Error),
-						NodeConnectionTypes.AiTool,
-						toolNode.name,
-						toolRunIndex,
 					);
 					throw error;
 				}
@@ -730,13 +741,7 @@ export class JobProcessor {
 					response = result?.[0]?.flatMap((item: INodeExecutionData) => item.json);
 				}
 
-				await context.addExecutionDataFunctions(
-					'output',
-					[[{ json: { response } }]],
-					NodeConnectionTypes.AiTool,
-					toolNode.name,
-					toolRunIndex,
-				);
+				await recordToolData('output', [[{ json: { response } }]]);
 
 				return response;
 			}

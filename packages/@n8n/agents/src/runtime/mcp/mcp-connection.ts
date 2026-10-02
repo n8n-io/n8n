@@ -129,8 +129,12 @@ export class McpConnection {
 	}
 
 	private async connectPreferredTransport(sdk: McpSdkModule): Promise<void> {
+		const deadline =
+			this.config.connectionTimeoutMs === undefined
+				? undefined
+				: Date.now() + this.config.connectionTimeoutMs;
 		try {
-			await this.connectWithTransport(this.createTransport(this.config, sdk));
+			await this.connectWithTransport(this.createTransport(this.config, sdk), deadline);
 		} catch (error) {
 			// An unconfigured HTTP endpoint may still serve legacy SSE. Retry only when
 			// it rejects Streamable HTTP; explicit transport choices never fall back.
@@ -146,11 +150,12 @@ export class McpConnection {
 			this.client = new sdk.Client({ name: '@n8n/agents', version: '0.1.0' }, { capabilities: {} });
 			await this.connectWithTransport(
 				this.createSseTransport(new URL(this.config.url), this.config, sdk),
+				deadline,
 			);
 		}
 	}
 
-	private async connectWithTransport(transport: McpTransport): Promise<void> {
+	private async connectWithTransport(transport: McpTransport, deadline?: number): Promise<void> {
 		if (!this.client) throw new Error('MCP client not initialized; connect() must be called first');
 		const client = this.client;
 		const timeoutMs = this.config.connectionTimeoutMs;
@@ -163,8 +168,14 @@ export class McpConnection {
 				`MCP server "${this.config.name}": connectionTimeoutMs must be a positive finite number`,
 			);
 		}
+		const remainingMs = deadline === undefined ? timeoutMs : Math.max(0, deadline - Date.now());
 		let timeoutId: ReturnType<typeof setTimeout> | undefined;
 		try {
+			if (remainingMs === 0) {
+				throw new Error(
+					`MCP server "${this.config.name}": connection timed out after ${timeoutMs}ms`,
+				);
+			}
 			await Promise.race([
 				client.connect(transport),
 				new Promise<never>((_, reject) => {
@@ -174,7 +185,7 @@ export class McpConnection {
 								`MCP server "${this.config.name}": connection timed out after ${timeoutMs}ms`,
 							),
 						);
-					}, timeoutMs);
+					}, remainingMs);
 				}),
 			]);
 		} catch (error) {

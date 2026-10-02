@@ -84,7 +84,7 @@ function makeStreamWithToolCall(toolCallId: string, args: Record<string, unknown
 		responseMessages: Promise.resolve([
 			{
 				role: 'assistant',
-				content: [{ type: 'tool-call', toolCallId, toolName: 'lookup', args }],
+				content: [{ type: 'tool-call', toolCallId, toolName: 'lookup', input: args }],
 			},
 		]),
 		finalStep: Promise.resolve({ providerMetadata: undefined }),
@@ -199,6 +199,20 @@ describe('step checkpoints + crash resume (durable-log RFC)', () => {
 		const secondJson = JSON.stringify(stepSaves[1].state.messageList);
 		expect(secondJson).toContain('tc-1');
 		expect(secondJson).toContain('tc-2');
+		for (const [toolCallId, value] of [
+			['tc-1', 'first'],
+			['tc-2', 'second'],
+		]) {
+			expect(stepSaves[1].state.messageList.messages).toEqual(
+				expect.arrayContaining([
+					expect.objectContaining({
+						content: expect.arrayContaining([
+							expect.objectContaining({ toolCallId, input: { value } }),
+						]),
+					}),
+				]),
+			);
+		}
 		// The completed run deleted its checkpoint (no leak).
 		expect(store.deletes).toContain(result.runId);
 
@@ -262,7 +276,7 @@ describe('step checkpoints + crash resume (durable-log RFC)', () => {
 							type: 'tool-call',
 							toolCallId: 'tc-hitl',
 							toolName: 'approve',
-							args: { question: 'ok?' },
+							input: { question: 'ok?' },
 						},
 					],
 				},
