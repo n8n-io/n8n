@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { AgentApproval } from '@n8n/api-types';
+import type { AgentApproval, AgentJsonConfig } from '@n8n/api-types';
 import { useToast } from '@n8n/composables/useToast';
 import { N8nButton, N8nIcon, N8nText } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
@@ -35,6 +35,7 @@ interface Props {
 	isPublished?: boolean;
 	simpleSetup?: boolean;
 	ensureAgentPersisted?: () => Promise<void>;
+	personalisation?: AgentJsonConfig['personalisation'] | null;
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -42,6 +43,7 @@ const props = withDefaults(defineProps<Props>(), {
 	isPublished: false,
 	simpleSetup: false,
 	ensureAgentPersisted: undefined,
+	personalisation: null,
 });
 
 const emit = defineEmits<{
@@ -431,6 +433,7 @@ async function saveChannelConfig() {
 			// Only the edit view shows the approval control, so only it may carry one.
 			...(isEditMode.value && channelApproval.value ? { approval: channelApproval.value } : {}),
 		});
+		await channelViewRef.value?.afterSave?.();
 	} catch {
 		// Only `connect` is left to throw here, and `useAgentIntegrationStatus`
 		// exposes that failure to the setup view.
@@ -561,6 +564,8 @@ watch(
 					:agent-name="agentId"
 					:project-id="projectId"
 					:agent-id="agentId"
+					:personalisation="personalisation"
+					:ensure-agent-persisted="ensureAgentPersisted"
 					:force-new-credential="false"
 					:simple-setup="simpleSetup"
 					:runtime="currentRuntime"
@@ -609,7 +614,7 @@ watch(
 				data-testid="agent-channel-save-channel-config"
 				@click="saveChannelConfig"
 			>
-				{{ i18n.baseText('generic.save') }}
+				{{ channelViewRef?.saveLabel || i18n.baseText('generic.save') }}
 			</N8nButton>
 		</template>
 		<component

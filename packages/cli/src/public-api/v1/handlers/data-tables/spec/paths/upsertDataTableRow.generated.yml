@@ -71,12 +71,6 @@ requestBody:
                         - type: string
                           enum:
                             - lte
-                        - type: string
-                          enum:
-                            - isEmpty
-                        - type: string
-                          enum:
-                            - isNotEmpty
                     value:
                       anyOf:
                         - type: string
@@ -89,6 +83,7 @@ requestBody:
                     - columnName
                     - condition
                     - value
+                minItems: 1
             required:
               - filters
             description: Filter conditions to match an existing row. If no row matches, n8n inserts a new row.
@@ -106,7 +101,7 @@ requestBody:
           returnData:
             type: boolean
             default: false
-            description: Set to true to return the upserted row(s) matched by the filter. Set to false to return true on success.
+            description: 'Set to true to return the upserted row(s): the matching rows if updated, or the new row if one was inserted. Set to false to return true on success.'
           dryRun:
             type: boolean
             default: false

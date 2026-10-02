@@ -1,5 +1,5 @@
 import type { GuardrailModelCallContext, TokenUsage } from '../../../types';
-import { createBudgetGuardrail, InMemorySpendLedger } from '../budget-guardrail';
+import { budgetMonthKey, createBudgetGuardrail, InMemorySpendLedger } from '../budget-guardrail';
 
 const usage = (cost?: number): TokenUsage => ({
 	promptTokens: 1,
@@ -13,7 +13,7 @@ function ctx(callId: string): GuardrailModelCallContext {
 }
 
 function monthKey(agentId: string): string {
-	return `${agentId}:${new Date().toISOString().slice(0, 7)}`;
+	return budgetMonthKey(agentId);
 }
 
 describe('InMemorySpendLedger', () => {
@@ -129,6 +129,22 @@ describe('createBudgetGuardrail', () => {
 
 		expect(onNotice).toHaveBeenCalledTimes(1);
 		expect(onNotice).toHaveBeenCalledWith({ code: 'budget.alert' });
+	});
+
+	it('does not stop or record when a budget is 0', async () => {
+		const ledger = new InMemorySpendLedger();
+		const guardrail = createBudgetGuardrail({
+			ledger,
+			sessionId: 'session-1',
+			agentId: 'agent-1',
+			sessionCostCapUsd: 0,
+			monthlyBudgetUsd: 0,
+		});
+
+		await expect(guardrail.before?.(ctx('call-1'))).resolves.toEqual({ action: 'allow' });
+		await guardrail.after?.(ctx('call-1'), usage(5));
+		expect(await ledger.read('session-1')).toBe(0);
+		expect(await ledger.read(monthKey('agent-1'))).toBe(0);
 	});
 
 	it('stops with budget.misconfigured when a limit has no id', async () => {

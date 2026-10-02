@@ -5,6 +5,7 @@ import type {
 	ExecutionOptions,
 	JSONValue,
 	ResumeOptions,
+	RunOptions,
 	SerializableAgentState,
 	StreamChunk,
 	ToolApprovalContext,
@@ -13,6 +14,7 @@ import {
 	N8N_CHAT_INTEGRATION_TYPE,
 	type AgentBackgroundJobSignal,
 	type AgentJsonConfig,
+	type BudgetGuardrailConfig,
 } from '@n8n/api-types';
 import { mockLogger } from '@n8n/backend-test-utils';
 import { LockService } from '@n8n/backend-common';
@@ -154,10 +156,12 @@ function makeFailingStream(error: Error): ReadableStream<StreamChunk> {
 function makeRuntime(
 	chunks: StreamChunk[] = [{ type: 'finish', finishReason: 'stop' }],
 	mcpServerAttributions = new Map<string, string>(),
+	budget?: BudgetGuardrailConfig,
 ) {
 	const toolRegistry: ToolRegistry = new Map();
 	return {
 		mcpServerAttributions,
+		budget,
 		agent: {
 			name: 'Runtime Agent',
 			snapshot: { model: { provider: 'anthropic', name: 'claude-sonnet-4-5' } },
@@ -573,14 +577,18 @@ describe('AgentExecutionOrchestratorService', () => {
 			previewChat = false,
 			automaticPreviewContinuation = false,
 			announceExecution = true,
+			onBudgetNotice,
+			budget,
 		}: {
 			abortSignal?: AbortSignal;
 			previewChat?: boolean;
 			automaticPreviewContinuation?: boolean;
 			announceExecution?: boolean;
+			onBudgetNotice?: () => void;
+			budget?: BudgetGuardrailConfig;
 		} = {}) {
 			const fixtures = makeService();
-			const runtime = makeRuntime();
+			const runtime = makeRuntime(undefined, undefined, budget);
 			fixtures.runtimeCacheService.getRuntime.mockResolvedValue(runtime);
 			fixtures.checkpointStorage.getStatus.mockResolvedValue({
 				status: 'active',
@@ -600,6 +608,7 @@ describe('AgentExecutionOrchestratorService', () => {
 							onExecutionRecorded,
 							...(announceExecution ? { onExecutionStarted } : {}),
 							previewChat,
+							...(onBudgetNotice ? { onBudgetNotice } : {}),
 							abortSignal,
 						})
 					: fixtures.service.resumeForChat({
@@ -613,6 +622,7 @@ describe('AgentExecutionOrchestratorService', () => {
 							onExecutionRecorded,
 							...(announceExecution ? { onExecutionStarted } : {}),
 							previewChat,
+							...(onBudgetNotice ? { onBudgetNotice } : {}),
 							automaticPreviewContinuation,
 							abortSignal,
 						});
@@ -656,6 +666,37 @@ describe('AgentExecutionOrchestratorService', () => {
 			);
 			expect(sdkStart.mock.calls[0].at(-1)).toMatchObject({ approvalContext });
 		});
+
+		it.each([true, false])(
+			'wires onBudgetNotice into the budget guardrail only when previewChat is %s',
+			async (previewChat) => {
+				const onBudgetNotice = vi.fn();
+				const { stream, sdkStart } = makeTurn({
+					previewChat,
+					onBudgetNotice,
+					budget: { enabled: true, monthlyBudgetUsd: 20, alertThresholdPercent: 80 },
+				});
+				await collect(stream);
+
+				const options = sdkStart.mock.calls[0]?.[operation === 'start' ? 1 : 2] as
+					| (RunOptions & ExecutionOptions)
+					| undefined;
+				const hook = options?.guardrails?.hooks[0];
+				if (!hook?.before || !hook.after) throw new Error('Expected a budget guardrail hook');
+
+				const ctx = {
+					callId: 'call-1',
+					model: 'anthropic/claude-sonnet-4-5',
+					source: 'turn' as const,
+				};
+				await hook.before(ctx);
+				// 17 crosses the alert line of 16 (80% of 20).
+				await hook.after(ctx, { promptTokens: 1, completionTokens: 1, totalTokens: 2, cost: 17 });
+
+				if (previewChat) expect(onBudgetNotice).toHaveBeenCalledOnce();
+				else expect(onBudgetNotice).not.toHaveBeenCalled();
+			},
+		);
 
 		it('rejects a competing preview without creating an execution or claiming a resume', async () => {
 			const { stream, onExecutionStarted, sdkStart, executionService, runtimeCacheService } =
@@ -2053,6 +2094,46 @@ describe('AgentExecutionOrchestratorService', () => {
 			);
 		},
 	);
+
+	it('finalizes an admitted execution with its telemetry when the runtime build fails', async () => {
+		const { service, runtimeCacheService, executionService, agentRepository } = makeService();
+		const buildError = new UserError('Credential "OpenAI" not found');
+		runtimeCacheService.getRuntime.mockRejectedValue(buildError);
+		agentRepository.findByIdAndProjectId.mockResolvedValue({
+			id: agentId,
+			name: 'Support Agent',
+			schema,
+			activeVersion: { schema },
+			integrations: [],
+		} as unknown as Agent);
+
+		await expect(
+			collect(
+				service.executeForChatPublished({
+					agentId,
+					projectId,
+					message: 'from slack',
+					memory: { threadId: 'thread-1', resourceId: 'platform-user-1' },
+					integrationType: 'slack',
+					sandboxPrincipalHash: integrationPrincipalHash,
+					admittedExecution: {
+						executionId: 'admitted-1',
+						startedAt: new Date(),
+						inputMessageIds: ['message-1'],
+					},
+				}),
+			),
+		).rejects.toBe(buildError);
+
+		expect(executionService.startExecutionRecording).not.toHaveBeenCalled();
+		expect(executionService.finalizeExecution).toHaveBeenCalledWith(
+			'admitted-1',
+			expect.objectContaining({
+				telemetry: expect.objectContaining({ runType: 'production' }),
+				record: expect.objectContaining({ finishReason: 'error' }),
+			}),
+		);
+	});
 
 	it('rethrows the build error without recording when the agent no longer exists', async () => {
 		const { service, runtimeCacheService, executionService, agentRepository } = makeService();

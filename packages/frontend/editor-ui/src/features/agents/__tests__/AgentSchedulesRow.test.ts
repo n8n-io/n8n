@@ -88,7 +88,27 @@ describe('AgentSchedulesRow', () => {
 		await flushPromises();
 
 		expect(wrapper.text()).toContain('Daily summary');
+		expect(wrapper.text()).not.toContain('agents.builder.capabilities.deactivated');
+		expect(
+			wrapper.get('[data-testid="agent-capabilities-task-row"]').attributes('aria-description'),
+		).toBe('agents.builder.capabilities.deactivated');
 		expect(wrapper.findAll('[data-testid="agent-capabilities-task-row"]')).toHaveLength(1);
+	});
+
+	it.each([true, false])('toggles a schedule with enabled=%s from its menu', async (enabled) => {
+		getAgentTasksSpy.mockResolvedValue([makeTask()]);
+		const wrapper = mountRow([taskRef('task-1', enabled)]);
+		await flushPromises();
+
+		await wrapper.get('[data-testid="agent-capabilities-task-row"]').trigger('contextmenu');
+		await userEvent.click(
+			await screen.findByRole('menuitem', {
+				name: `agents.builder.contextMenu.${enabled ? 'deactivate' : 'activate'}`,
+			}),
+		);
+
+		expect(wrapper.emitted('toggle-task')).toEqual([[{ id: 'task-1', enabled: !enabled }]]);
+		expect(openModalWithDataSpy).not.toHaveBeenCalled();
 	});
 
 	it('removes a schedule after the request succeeds and blocks another request while pending', async () => {
@@ -265,9 +285,7 @@ describe('AgentSchedulesRow', () => {
 		);
 
 		const modalData = openModalWithDataSpy.mock.calls[0][0].data;
-		modalData.onToggle({ id: 'task-1', enabled: false });
 		modalData.onPreview('Test these instructions');
-		expect(wrapper.emitted('toggle-task')).toEqual([[{ id: 'task-1', enabled: false }]]);
 		expect(wrapper.emitted('preview-task')).toEqual([['Test these instructions']]);
 	});
 });

@@ -9,7 +9,12 @@ export type LastNode = { nodeName: string; outputs: StepSlots };
 export type WebhookRunOutcome =
 	| { status: 'response'; response: unknown }
 	| { status: 'completed'; lastNode?: LastNode }
-	| { status: 'failed'; nodeName: string; error?: { name: string; message: string } }
+	| {
+			status: 'failed';
+			nodeId: string;
+			nodeName: string;
+			error?: { name: string; message: string };
+	  }
 	/** The execution response could not be produced or delivered. */
 	| { status: 'undeliverable'; error: { name: string; message: string } }
 	/** The run was stopped on request, so no node answers. */
@@ -48,7 +53,7 @@ export function toWebhookOutcome(
 			// Only a cancelled run ends without a settled step, so there is no answer to relay.
 			if (received.lastStep === null) return { status: 'cancelled' };
 
-			const { nodeName, outputs, error } = received.lastStep;
+			const { nodeId, nodeName, outputs, error } = received.lastStep;
 
 			switch (received.status) {
 				case 'cancelled':
@@ -58,7 +63,7 @@ export function toWebhookOutcome(
 				case 'failed':
 					// The step that ended a failed run is the one that failed, so its name
 					// and error are what the caller reports.
-					return { status: 'failed', nodeName, error };
+					return { status: 'failed', nodeId, nodeName, error };
 
 				case 'completed':
 					return {

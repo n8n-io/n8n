@@ -220,7 +220,7 @@ describe('SettingsMCPAgentsView', () => {
 			);
 		});
 
-		it('should remove MCP access for bulk-selected agents and refresh the table', async () => {
+		it('should disable MCP access for bulk-selected agents and refresh the table', async () => {
 			const { getByTestId } = createComponent({ pinia });
 			await nextTick();
 			mcpStore.fetchAgentsAvailableForMCPPage.mockClear();

@@ -5,6 +5,7 @@ import { getFullApiResponse, makeRestApiRequest } from '@n8n/rest-api-client';
 import {
 	cancelAgentChatExecution,
 	getAgentBackgroundJobs,
+	getAgentBudgetSpend,
 	getAgentChatQueue,
 	removeAgentQueuedMessage,
 	steerAgentQueuedMessage,
@@ -94,6 +95,20 @@ describe('useAgentApi', () => {
 			'GET',
 			'/projects/project%2F1/agents/v2/agent%2F1/chat/agent%3Achat%231/background-tasks',
 		);
+	});
+
+	it('requests the monthly budget spend for the agent', async () => {
+		const spend = { spentUsd: 42.5 };
+		vi.mocked(makeRestApiRequest).mockResolvedValueOnce(spend);
+
+		const result = await getAgentBudgetSpend(restApiContext, 'project-1', 'agent-1');
+
+		expect(makeRestApiRequest).toHaveBeenCalledWith(
+			restApiContext,
+			'GET',
+			'/projects/project-1/agents/v2/agent-1/budget',
+		);
+		expect(result).toBe(spend);
 	});
 
 	it('encodes the queue route identifiers for listing, editing, removal, and steering', async () => {

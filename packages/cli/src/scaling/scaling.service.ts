@@ -448,6 +448,25 @@ export class ScalingService {
 		return this.jobProcessor.getRunningJobIds().length;
 	}
 
+	/**
+	 * Sizes of the in-memory collections, for diagnostics and tests.
+	 * `queueListeners` counts Bull event listeners across this process's queues.
+	 */
+	getDiagnosticCounts() {
+		let queueListeners = 0;
+		for (const queue of this.queueByName.values()) {
+			for (const eventName of queue.eventNames()) {
+				queueListeners += queue.listenerCount(eventName);
+			}
+		}
+
+		return {
+			...this.jobOutcomeTracker.getDiagnosticCounts(),
+			queueListeners,
+			runningJobs: this.getRunningJobsCount(),
+		};
+	}
+
 	// #endregion
 
 	// #region Listeners

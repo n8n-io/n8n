@@ -21,6 +21,7 @@ import type {
 	AgentJsonConfig,
 	AgentResource,
 } from '../types';
+import type { BudgetAmountField } from '../utils/budget-config';
 import AgentPersonalisationIcon from './AgentPersonalisationIcon.vue';
 import AgentPreviewChatPage from './AgentPreviewChatPage.vue';
 import AgentPreviewMoreMenu from './AgentPreviewMoreMenu.vue';
@@ -59,12 +60,17 @@ const props = withDefaults(
 		canDeleteSession?: boolean;
 		beforeSend?: () => Promise<void> | void;
 		isDeletingSession?: boolean;
+		budgetCards?: boolean;
+		/** Persists a raised budget cap. Omitted when the agent is read-only. */
+		increaseBudget?: (payload: { field: BudgetAmountField; amount: number }) => Promise<boolean>;
 	}>(),
 	{
 		newSession: false,
 		canDeleteSession: false,
 		isDeletingSession: false,
 		dismissedFixToolCallIds: () => [],
+		budgetCards: false,
+		increaseBudget: undefined,
 	},
 );
 
@@ -134,6 +140,10 @@ function getConversationMarkdown() {
 	return previewChatPage.value?.getConversationMarkdown() ?? '';
 }
 
+function clearBudgetStops(fields: BudgetAmountField[]) {
+	previewChatPage.value?.clearBudgetStops(fields);
+}
+
 function toggleFullWidth() {
 	storedLayout.value =
 		layout.value === PreviewLayout.Fullpage ? PreviewLayout.Docked : PreviewLayout.Fullpage;
@@ -177,6 +187,8 @@ function handleEscapeKey(event: KeyboardEvent) {
 useKeybindings({
 	'ctrl+shift+;': createNewSession,
 });
+
+defineExpose({ clearBudgetStops });
 </script>
 
 <template>
@@ -302,6 +314,8 @@ useKeybindings({
 				:can-send-to-assistant="props.canSendToAssistant"
 				:dismissed-fix-tool-call-ids="props.dismissedFixToolCallIds"
 				:before-send="props.beforeSend"
+				:budget-cards="props.budgetCards"
+				:increase-budget="props.increaseBudget"
 				@continue-loaded="emit('continue-loaded', $event)"
 				@session-created="emit('session-created', $event)"
 				@open-build="emit('open-build')"

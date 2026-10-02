@@ -47,6 +47,7 @@ const pushListeners = new Set<(event: PushMessage) => void>();
 const handoffMock = vi.fn();
 const setPrefillMock = vi.fn();
 const submitSuggestionMock = vi.fn();
+const clearBudgetStopsMock = vi.fn();
 const trackMock = vi.fn();
 let createObjectURLSpy: ReturnType<typeof vi.spyOn> | undefined;
 let revokeObjectURLSpy: ReturnType<typeof vi.spyOn> | undefined;
@@ -296,6 +297,7 @@ interface TestAgentConfig {
 	tools?: AgentJsonToolRef[];
 	skills?: AgentJsonSkillRef[];
 	personalisation?: AgentJsonConfig['personalisation'];
+	config?: AgentJsonConfig['config'];
 }
 
 const defaultLlmConfig = {
@@ -630,6 +632,7 @@ const commonStubs = {
 			'beforeSend',
 			'canDeleteSession',
 			'isDeletingSession',
+			'increaseBudget',
 		],
 		emits: [
 			'view-trace',
@@ -640,6 +643,11 @@ const commonStubs = {
 			'send-to-assistant',
 			'initial-consumed',
 		],
+		// Stands in for the real `defineExpose`d `clearBudgetStops` — the view
+		// calls it through a template ref, not a prop or emit.
+		methods: {
+			clearBudgetStops: clearBudgetStopsMock,
+		},
 	},
 	AgentVersionHistoryPanel: {
 		name: 'AgentVersionHistoryPanel',
@@ -3714,13 +3722,14 @@ describe('AgentBuilderView — three-column shell', () => {
 		);
 	});
 
-	it('passes flushAutosave as before-send to the embedded AI panel', async () => {
+	it('passes a flushAutosave guard as before-send to the embedded AI panel', async () => {
 		history.replaceState({ instanceAiPendingAgentId: 'a1' }, '');
 		const wrapper = await renderView();
 		const panel = wrapper.findComponent({ name: 'InstanceAiChatPanel' });
 
 		expect(panel.props('beforeSend')).toBe(
-			(wrapper.vm as unknown as { flushAutosave: () => Promise<void> }).flushAutosave,
+			(wrapper.vm as unknown as { flushAutosaveIgnoringResult: () => Promise<void> })
+				.flushAutosaveIgnoringResult,
 		);
 	});
 
@@ -5460,3 +5469,293 @@ describe('AgentBuilderView — collaboration write lock', { timeout: 60_000 }, (
 		wrapper.unmount();
 	});
 });
+
+describe(
+	'AgentBuilderView — budget cap increase from the preview dock',
+	{ timeout: 60_000 },
+	() => {
+		beforeEach(() => {
+			resetViewMocks();
+			vi.restoreAllMocks();
+			agentPermissionsMock.canCreate.value = true;
+			agentPermissionsMock.canUpdate.value = true;
+			agentPermissionsMock.canPublish.value = true;
+			agentPermissionsMock.canUnpublish.value = true;
+		});
+
+		type IncreaseBudget = (payload: {
+			field: 'monthlyBudgetUsd' | 'sessionCostCapUsd';
+			amount: number;
+		}) => Promise<boolean>;
+
+		function dockIncreaseBudget(
+			wrapper: Awaited<ReturnType<typeof renderView>>,
+		): IncreaseBudget | undefined {
+			return wrapper.findComponent({ name: 'AgentPreviewDock' }).props('increaseBudget') as
+				| IncreaseBudget
+				| undefined;
+		}
+
+		it('passes an increaseBudget handler to the preview dock while editing is allowed', async () => {
+			const wrapper = await renderView();
+			await flushPromises();
+
+			expect(dockIncreaseBudget(wrapper)).toBeTypeOf('function');
+
+			wrapper.unmount();
+		});
+
+		it('omits the increaseBudget handler when another user holds the lock', async () => {
+			getAgentWriteLockMock.mockResolvedValue({
+				userId: 'user-2',
+				clientId: 'tab-2',
+			});
+			rootStoreMock.pushRef = 'tab-1';
+			usersStoreMock.currentUserId = 'user-1';
+
+			const wrapper = await renderView();
+			await flushPromises();
+
+			expect(dockIncreaseBudget(wrapper)).toBeUndefined();
+
+			wrapper.unmount();
+		});
+
+		it('persists the raised cap before resolving true', async () => {
+			const wrapper = await renderView();
+			await flushPromises();
+			updateConfigMock.mockClear();
+
+			const saved = await dockIncreaseBudget(wrapper)?.({
+				field: 'sessionCostCapUsd',
+				amount: 5,
+			});
+
+			expect(saved).toBe(true);
+			expect(updateConfigMock).toHaveBeenCalledWith(
+				'p1',
+				'a1',
+				expect.objectContaining({
+					config: expect.objectContaining({
+						guardrails: expect.objectContaining({
+							budget: expect.objectContaining({ enabled: true, sessionCostCapUsd: 5 }),
+						}),
+					}),
+				}),
+				'hash-1',
+			);
+
+			wrapper.unmount();
+		});
+
+		it('resolves false when the save fails', async () => {
+			const wrapper = await renderView();
+			await flushPromises();
+			updateConfigMock.mockRejectedValueOnce(new Error('save failed'));
+
+			const saved = await dockIncreaseBudget(wrapper)?.({
+				field: 'sessionCostCapUsd',
+				amount: 5,
+			});
+
+			expect(saved).toBe(false);
+
+			wrapper.unmount();
+		});
+
+		it('resolves false when the save conflicts and the server config is reloaded', async () => {
+			const wrapper = await renderView();
+			await flushPromises();
+			updateConfigMock.mockRejectedValueOnce(
+				new ResponseError('Agent config was changed elsewhere', { httpStatusCode: 409 }),
+			);
+
+			const saved = await dockIncreaseBudget(wrapper)?.({
+				field: 'sessionCostCapUsd',
+				amount: 5,
+			});
+
+			expect(saved).toBe(false);
+
+			wrapper.unmount();
+		});
+
+		it('rejects an increase that is not above the current cap', async () => {
+			intendedConfig = {
+				name: 'Agent One',
+				instructions: 'You are a helpful assistant.',
+				config: { guardrails: { budget: { enabled: true, sessionCostCapUsd: 5 } } },
+			};
+			const wrapper = await renderView();
+			await flushPromises();
+			updateConfigMock.mockClear();
+
+			const saved = await dockIncreaseBudget(wrapper)?.({
+				field: 'sessionCostCapUsd',
+				amount: 5,
+			});
+
+			expect(saved).toBe(false);
+			expect(updateConfigMock).not.toHaveBeenCalled();
+
+			wrapper.unmount();
+		});
+
+		it('clears the matching budget stop after a settings save persists a raised cap', async () => {
+			intendedConfig = {
+				name: 'Agent One',
+				instructions: 'You are a helpful assistant.',
+				config: { guardrails: { budget: { enabled: true, sessionCostCapUsd: 5 } } },
+			};
+			const wrapper = await renderView();
+			await flushPromises();
+
+			wrapper.findComponent({ name: 'AgentBuilderEditorColumn' }).vm.$emit('update:budget-config', {
+				config: { guardrails: { budget: { enabled: true, sessionCostCapUsd: 10 } } },
+			});
+			await flushPromises();
+
+			expect(updateConfigMock).toHaveBeenCalledWith(
+				'p1',
+				'a1',
+				expect.objectContaining({
+					config: expect.objectContaining({
+						guardrails: expect.objectContaining({
+							budget: expect.objectContaining({ sessionCostCapUsd: 10 }),
+						}),
+					}),
+				}),
+				'hash-1',
+			);
+			expect(clearBudgetStopsMock).toHaveBeenCalledExactlyOnceWith(['sessionCostCapUsd']);
+
+			wrapper.unmount();
+		});
+
+		it('keeps the budget stop when a settings save lowers the cap', async () => {
+			intendedConfig = {
+				name: 'Agent One',
+				instructions: 'You are a helpful assistant.',
+				config: { guardrails: { budget: { enabled: true, sessionCostCapUsd: 5 } } },
+			};
+			const wrapper = await renderView();
+			await flushPromises();
+			updateConfigMock.mockClear();
+
+			wrapper.findComponent({ name: 'AgentBuilderEditorColumn' }).vm.$emit('update:budget-config', {
+				config: { guardrails: { budget: { enabled: true, sessionCostCapUsd: 2 } } },
+			});
+			await flushPromises();
+
+			expect(clearBudgetStopsMock).not.toHaveBeenCalled();
+			// The lowered cap still persists through the regular debounced autosave.
+			expect(updateConfigMock).not.toHaveBeenCalled();
+
+			wrapper.unmount();
+		});
+
+		it('lifts the budget stop when the cap persists after an MCP save failed', async () => {
+			intendedConfig = {
+				name: 'Agent One',
+				instructions: 'You are a helpful assistant.',
+				config: { guardrails: { budget: { enabled: true, sessionCostCapUsd: 5 } } },
+			};
+			const wrapper = await renderView();
+			await flushPromises();
+			const { useMCPStore } = await import('@/features/ai/mcpAccess/mcp.store');
+			vi.spyOn(useMCPStore(), 'toggleAgentMcpAccess').mockRejectedValue(
+				new Error('mcp save failed'),
+			);
+
+			// The failed MCP save leaves its loop rejecting later flushes.
+			vi.useFakeTimers();
+			try {
+				wrapper
+					.findComponent({ name: 'AgentBuilderEditorColumn' })
+					.vm.$emit('toggle-mcp-access', true);
+				await vi.advanceTimersByTimeAsync(500);
+				await flushPromises();
+			} finally {
+				vi.useRealTimers();
+			}
+			expect(showErrorMock).toHaveBeenCalled();
+			updateConfigMock.mockClear();
+			clearBudgetStopsMock.mockClear();
+
+			const saved = await dockIncreaseBudget(wrapper)?.({
+				field: 'sessionCostCapUsd',
+				amount: 10,
+			});
+
+			expect(saved).toBe(true);
+			expect(updateConfigMock).toHaveBeenCalled();
+
+			wrapper.findComponent({ name: 'AgentBuilderEditorColumn' }).vm.$emit('update:budget-config', {
+				config: { guardrails: { budget: { enabled: true, sessionCostCapUsd: 20 } } },
+			});
+			await flushPromises();
+
+			expect(clearBudgetStopsMock).toHaveBeenCalledExactlyOnceWith(['sessionCostCapUsd']);
+
+			wrapper.unmount();
+		});
+
+		it('keeps the budget stop when the preview session changes during the settings save', async () => {
+			intendedConfig = {
+				name: 'Agent One',
+				instructions: 'You are a helpful assistant.',
+				config: { guardrails: { budget: { enabled: true, sessionCostCapUsd: 5 } } },
+			};
+			routeQuery.continueSessionId = 'thread-1';
+			const wrapper = await renderView();
+			await flushPromises();
+			const save = Promise.withResolvers<{
+				config: TestAgentConfig;
+				versionId: string;
+				stale: boolean;
+			}>();
+			updateConfigMock.mockImplementationOnce(() => save.promise);
+
+			wrapper.findComponent({ name: 'AgentBuilderEditorColumn' }).vm.$emit('update:budget-config', {
+				config: { guardrails: { budget: { enabled: true, sessionCostCapUsd: 10 } } },
+			});
+			routeQuery.continueSessionId = 'thread-2';
+			save.resolve({
+				config: {
+					name: 'Agent One',
+					instructions: 'You are a helpful assistant.',
+					config: { guardrails: { budget: { enabled: true, sessionCostCapUsd: 10 } } },
+				},
+				versionId: 'v1',
+				stale: false,
+			});
+			await flushPromises();
+
+			expect(clearBudgetStopsMock).not.toHaveBeenCalled();
+
+			wrapper.unmount();
+		});
+
+		it('keeps the budget stop when the settings save conflicts', async () => {
+			intendedConfig = {
+				name: 'Agent One',
+				instructions: 'You are a helpful assistant.',
+				config: { guardrails: { budget: { enabled: true, sessionCostCapUsd: 5 } } },
+			};
+			const wrapper = await renderView();
+			await flushPromises();
+			updateConfigMock.mockRejectedValueOnce(
+				new ResponseError('Agent config was changed elsewhere', { httpStatusCode: 409 }),
+			);
+
+			wrapper.findComponent({ name: 'AgentBuilderEditorColumn' }).vm.$emit('update:budget-config', {
+				config: { guardrails: { budget: { enabled: true, sessionCostCapUsd: 10 } } },
+			});
+			await flushPromises();
+
+			expect(clearBudgetStopsMock).not.toHaveBeenCalled();
+
+			wrapper.unmount();
+		});
+	},
+);

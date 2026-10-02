@@ -274,25 +274,199 @@ describe('AgentCapabilitiesSection', () => {
 		expect(openModalWithDataSpy).not.toHaveBeenCalled();
 	});
 
-	it('blocks removal when an open menu becomes read-only', async () => {
+	it.each([
+		['node', 'agent-capabilities-tool-row', 0, 1],
+		['custom', 'agent-capabilities-tool-row', 1, 2],
+		['workflow', 'agent-capabilities-workflow-row', 0, 0],
+	])(
+		'toggles only the selected %s and keeps its settings',
+		async (_type, testId, chipIndex, configIndex) => {
+			getNodeType.mockReturnValue(null);
+			const tools: AgentJsonToolRef[] = [
+				{ type: 'workflow', workflow: 'Shared workflow', workflowId: 'wf-1', enabled: false },
+				{
+					type: 'node',
+					name: 'fetch',
+					requireApproval: true,
+					enabled: false,
+					node: {
+						nodeType: 'n8n-nodes-base.httpRequestTool',
+						nodeTypeVersion: 4,
+						nodeParameters: { url: 'https://example.com' },
+						credentials: { httpBasicAuth: { id: 'credential-1', name: 'Account' } },
+					},
+				},
+				{ type: 'custom', id: 'helper', enabled: false, requireApproval: true },
+			];
+			const wrapper = mountSection(
+				tools,
+				{},
+				null,
+				[],
+				[],
+				{ supportsActivation: true },
+				document.body,
+			);
+			const chip = wrapper.findAll(`[data-testid="${testId}"]`)[chipIndex];
+			expect(chip.attributes('aria-description')).toBe('agents.builder.capabilities.deactivated');
+			expect(chip.text()).not.toContain('agents.builder.capabilities.deactivated');
+			await chip.trigger('click');
+			expect(wrapper.emitted('open-tool')).toHaveLength(1);
+			await chip.trigger('contextmenu');
+			expect(
+				(await screen.findAllByRole('menuitem')).map((item) => item.textContent?.trim()),
+			).toEqual(['agents.builder.contextMenu.activate', 'agents.builder.contextMenu.remove']);
+			await userEvent.click(
+				screen.getByRole('menuitem', { name: 'agents.builder.contextMenu.activate' }),
+			);
+			const activatedTools = tools.map((tool, index) =>
+				index === configIndex ? { ...tool, enabled: true } : tool,
+			);
+			expect(wrapper.emitted('update:config')).toEqual([[{ tools: activatedTools }]]);
+			await wrapper.setProps({ tools: activatedTools });
+			expect(chip.attributes('aria-description')).toBeUndefined();
+			await chip.trigger('contextmenu');
+			await userEvent.click(
+				await screen.findByRole('menuitem', { name: 'agents.builder.contextMenu.deactivate' }),
+			);
+			expect(wrapper.emitted('update:config')?.[1]).toEqual([{ tools }]);
+			expect(wrapper.emitted('open-tool')).toHaveLength(1);
+		},
+	);
+
+	it('toggles skills and sub-agents without removing their configuration', async () => {
+		const config: AgentJsonConfig = {
+			...configWithMcpServers([]),
+			subAgents: {
+				maxChildren: 7,
+				agents: [
+					{ agentId: 'agent-2', useWhen: 'Review notes', enabled: false },
+					{ agentId: 'agent-3' },
+				],
+			},
+		};
 		const wrapper = mountSection(
-			[{ type: 'custom', id: 'helper' }],
+			[],
+			{},
+			config,
+			[],
+			[makeAgent()],
+			{
+				supportsActivation: true,
+				skills: [
+					{
+						id: 'skill-1',
+						enabled: false,
+						skill: { name: 'Triage', description: '', instructions: '' },
+					},
+				],
+			},
+			document.body,
+		);
+		await flushPromises();
+		const skill = wrapper.get('[data-testid="agent-capabilities-skill-row"]');
+		expect(skill.attributes('aria-description')).toBe('agents.builder.capabilities.deactivated');
+		await skill.trigger('click');
+		expect(wrapper.emitted('open-skill')).toEqual([['skill-1']]);
+		await skill.trigger('contextmenu');
+		await userEvent.click(
+			await screen.findByRole('menuitem', { name: 'agents.builder.contextMenu.activate' }),
+		);
+		expect(wrapper.emitted('toggle-skill')).toEqual([[{ id: 'skill-1', enabled: true }]]);
+
+		const subAgent = wrapper.findAll('[data-testid="agent-capabilities-sub-agent-row"]')[0];
+		expect(subAgent.attributes('aria-description')).toBe('agents.builder.capabilities.deactivated');
+		await subAgent.trigger('contextmenu');
+		await userEvent.click(
+			await screen.findByRole('menuitem', { name: 'agents.builder.contextMenu.activate' }),
+		);
+		const activatedSubAgents = {
+			maxChildren: 7,
+			agents: [
+				{ agentId: 'agent-2', useWhen: 'Review notes', enabled: true },
+				{ agentId: 'agent-3' },
+			],
+		};
+		expect(wrapper.emitted('update:config')).toEqual([[{ subAgents: activatedSubAgents }]]);
+		await wrapper.setProps({ config: { ...config, subAgents: activatedSubAgents } });
+		await subAgent.trigger('click');
+		const modalData = openModalWithDataSpy.mock.calls.at(-1)![0].data;
+		modalData.onConfirm({ agentId: 'agent-2', useWhen: 'Review updated notes' });
+		expect(wrapper.emitted('update:config')?.[1]).toEqual([
+			{
+				subAgents: {
+					maxChildren: 7,
+					agents: [
+						{ agentId: 'agent-2', useWhen: 'Review updated notes', enabled: true },
+						{ agentId: 'agent-3' },
+					],
+				},
+			},
+		]);
+	});
+
+	it.each(['remove', 'deactivate'])(
+		'blocks %s when an open menu becomes read-only',
+		async (action) => {
+			const wrapper = mountSection(
+				[{ type: 'custom', id: 'helper' }],
+				{},
+				null,
+				[],
+				[],
+				{ supportsActivation: true },
+				document.body,
+			);
+			await wrapper.get('[data-testid="agent-capabilities-tool-row"]').trigger('contextmenu');
+			const remove = await screen.findByRole('menuitem', {
+				name: `agents.builder.contextMenu.${action}`,
+			});
+
+			await wrapper.setProps({ disabled: true });
+			expect(remove).toHaveAttribute('aria-disabled', 'true');
+			await fireEvent.click(remove);
+			expect(wrapper.emitted('remove-tool')).toBeUndefined();
+			expect(wrapper.emitted('update:config')).toBeUndefined();
+		},
+	);
+
+	it('toggles individual grouped tools and marks the group only when all are deactivated', async () => {
+		getNodeType.mockReturnValue(createNodeType('n8n-nodes-base.slackTool', 'Slack Tool'));
+		const tools: AgentJsonToolRef[] = ['send_message', 'read_messages'].map((name, index) => ({
+			type: 'node',
+			name,
+			enabled: index === 0,
+			node: { nodeType: 'n8n-nodes-base.slackTool', nodeTypeVersion: 1, nodeParameters: {} },
+		}));
+		const wrapper = mountSection(
+			tools,
 			{},
 			null,
 			[],
 			[],
-			{},
+			{ supportsActivation: true },
 			document.body,
 		);
-		await wrapper.get('[data-testid="agent-capabilities-tool-row"]').trigger('contextmenu');
-		const remove = await screen.findByRole('menuitem', {
-			name: 'agents.builder.contextMenu.remove',
-		});
-
-		await wrapper.setProps({ disabled: true });
-		expect(remove).toHaveAttribute('aria-disabled', 'true');
-		await fireEvent.click(remove);
-		expect(wrapper.emitted('remove-tool')).toBeUndefined();
+		const group = wrapper.get('[data-testid="agent-capabilities-tool-row"]');
+		expect(group.attributes('aria-description')).toBeUndefined();
+		await group.trigger('contextmenu');
+		expect(
+			(await screen.findAllByRole('menuitem')).map((item) => item.textContent?.trim()),
+		).toEqual(['agents.builder.contextMenu.remove']);
+		await userEvent.keyboard('{Escape}');
+		await userEvent.click(group.element);
+		expect(await screen.findByRole('menuitem', { name: /Read messages/ })).toHaveTextContent(
+			'agents.builder.capabilities.deactivated',
+		);
+		await fireEvent.contextMenu(screen.getByRole('menuitem', { name: 'Send message' }));
+		await userEvent.click(
+			await screen.findByRole('menuitem', { name: 'agents.builder.contextMenu.deactivate' }),
+		);
+		const deactivatedTools = [{ ...tools[0], enabled: false }, tools[1]];
+		expect(wrapper.emitted('update:config')).toEqual([[{ tools: deactivatedTools }]]);
+		await wrapper.setProps({ tools: deactivatedTools });
+		expect(group.attributes('aria-description')).toBe('agents.builder.capabilities.deactivated');
+		expect(wrapper.emitted('open-tool')).toBeUndefined();
 	});
 
 	it('removes a group in one update and preserves tools outside the group', async () => {

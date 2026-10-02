@@ -30,6 +30,18 @@ describe('withBudgetGuardrail', () => {
 		expect(off).toBe(base);
 	});
 
+	it('attaches nothing when every amount is 0', () => {
+		const attached = withBudgetGuardrail(base, {
+			ledger,
+			budget: { enabled: true, monthlyBudgetUsd: 0, sessionCostCapUsd: 0 },
+			sessionId: 'thread-1',
+			agentId: 'agent-1',
+		});
+
+		expect(attached.guardrails).toBeUndefined();
+		expect(attached).toBe(base);
+	});
+
 	it('attaches one hook when the guardrail is on', () => {
 		const attached = withBudgetGuardrail(base, {
 			ledger,
@@ -39,5 +51,44 @@ describe('withBudgetGuardrail', () => {
 		});
 
 		expect(attached.guardrails?.hooks).toHaveLength(1);
+	});
+
+	it('fires the attached onNotice once when the month total crosses the alert line', async () => {
+		const freshLedger = new InMemorySpendLedger();
+		const onNotice = vi.fn();
+		const attached = withBudgetGuardrail(base, {
+			ledger: freshLedger,
+			budget: { enabled: true, monthlyBudgetUsd: 20, alertThresholdPercent: 80 },
+			sessionId: 'thread-1',
+			agentId: 'agent-1',
+			onNotice,
+		});
+		const hook = attached.guardrails?.hooks[0];
+		if (!hook?.after) throw new Error('Expected a budget guardrail hook');
+
+		const ctx = (callId: string) => ({
+			callId,
+			model: 'openai/gpt-4o-mini',
+			source: 'turn' as const,
+		});
+		const usage = (cost: number) => ({
+			promptTokens: 1,
+			completionTokens: 1,
+			totalTokens: 2,
+			cost,
+		});
+
+		// 10 stays below the alert line of 16 (80% of 20).
+		await hook.after(ctx('call-1'), usage(10));
+		expect(onNotice).not.toHaveBeenCalled();
+
+		// 10 + 8 = 18 crosses the line.
+		await hook.after(ctx('call-2'), usage(8));
+		expect(onNotice).toHaveBeenCalledOnce();
+		expect(onNotice).toHaveBeenCalledWith({ code: 'budget.alert' });
+
+		// Already past the line — no second notice.
+		await hook.after(ctx('call-3'), usage(1));
+		expect(onNotice).toHaveBeenCalledOnce();
 	});
 });

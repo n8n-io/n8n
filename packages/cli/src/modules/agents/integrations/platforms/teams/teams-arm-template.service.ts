@@ -13,9 +13,6 @@ import { sanitiseAppName } from '../../integration-helpers';
  */
 const TOKEN_TTL = '15m';
 
-/** Scopes the token to this route, so no other n8n-signed token is accepted. */
-const TOKEN_SUBJECT = 'teams-arm-template';
-
 interface TeamsArmTokenClaims {
 	projectId: string;
 	agentId: string;
@@ -168,7 +165,7 @@ export class TeamsArmTemplateService {
 	 */
 	verifyToken(projectId: string, agentId: string, credentialId: string, token: string): boolean {
 		try {
-			const claims = this.jwtService.verify<TeamsArmTokenClaims>(token, { subject: TOKEN_SUBJECT });
+			const claims = this.jwtService.verify<TeamsArmTokenClaims>('teamsArmTemplate', token);
 			return (
 				claims.projectId === projectId &&
 				claims.agentId === agentId &&
@@ -181,8 +178,9 @@ export class TeamsArmTemplateService {
 
 	private signToken(projectId: string, agentId: string, credentialId: string): string {
 		return this.jwtService.sign(
+			'teamsArmTemplate',
 			{ projectId, agentId, credentialId },
-			{ subject: TOKEN_SUBJECT, expiresIn: TOKEN_TTL },
+			{ expiresIn: TOKEN_TTL },
 		);
 	}
 

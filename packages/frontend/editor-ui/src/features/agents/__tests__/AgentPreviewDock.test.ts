@@ -77,12 +77,18 @@ vi.mock('@n8n/design-system', async (importOriginal) => ({
 	TOOLTIP_DELAY_MS: 500,
 }));
 
+const chatPageClearBudgetStopsMock = vi.fn();
+
 const AgentPreviewChatPageStub = {
 	name: 'AgentPreviewChatPage',
 	props: ['beforeSend', 'initialPrompt', 'visible'],
 	emits: ['continue-loaded', 'open-build', 'send-to-assistant', 'initial-consumed'],
 	setup(_props: unknown, { expose }: { expose: (exposed: Record<string, unknown>) => void }) {
-		expose({ focusInput: vi.fn(), getConversationMarkdown: () => '**User:**\n\nHello' });
+		expose({
+			focusInput: vi.fn(),
+			getConversationMarkdown: () => '**User:**\n\nHello',
+			clearBudgetStops: chatPageClearBudgetStopsMock,
+		});
 	},
 	template:
 		'<div data-testid="agent-preview-chat-page-stub"><textarea class="ignore-key-press-canvas" /></div>',
@@ -477,10 +483,28 @@ describe('AgentPreviewDock', () => {
 		expect(localStorage.getItem('N8N_AGENT_PREVIEW_LAYOUT')).toBe('docked');
 		expect(wrapper.emitted('view-trace')).toEqual([[]]);
 	});
+
+	it('exposes clearBudgetStops through to the chat page', () => {
+		const wrapper = mountDock();
+
+		(
+			wrapper.vm as unknown as {
+				clearBudgetStops: (fields: Array<'monthlyBudgetUsd' | 'sessionCostCapUsd'>) => void;
+			}
+		).clearBudgetStops(['sessionCostCapUsd']);
+
+		expect(chatPageClearBudgetStopsMock).toHaveBeenCalledExactlyOnceWith(['sessionCostCapUsd']);
+	});
 });
 
 describe('AgentPreviewChatPage', () => {
-	function mountChatPage(beforeSend?: () => Promise<void> | void) {
+	function mountChatPage(
+		beforeSend?: () => Promise<void> | void,
+		increaseBudget?: (payload: {
+			field: 'monthlyBudgetUsd' | 'sessionCostCapUsd';
+			amount: number;
+		}) => Promise<boolean>,
+	) {
 		return shallowMount(AgentPreviewChatPage, {
 			props: {
 				initialized: true,
@@ -491,6 +515,7 @@ describe('AgentPreviewChatPage', () => {
 				connectedTriggers: [],
 				effectiveSessionId: 'thread-1',
 				beforeSend,
+				increaseBudget,
 			},
 		});
 	}
@@ -520,6 +545,47 @@ describe('AgentPreviewChatPage', () => {
 		const wrapper = mountChatPage(beforeSend);
 
 		expect(wrapper.findComponent({ name: 'AgentChatPanel' }).props('beforeSend')).toBe(beforeSend);
+	});
+
+	it('forwards the budget increase handler to the chat panel', () => {
+		const increaseBudget = vi.fn().mockResolvedValue(true);
+		const wrapper = mountChatPage(undefined, increaseBudget);
+
+		expect(wrapper.findComponent({ name: 'AgentChatPanel' }).props('increaseBudget')).toBe(
+			increaseBudget,
+		);
+	});
+
+	it('exposes clearBudgetStops through to the chat panel', () => {
+		const clearBudgetStops = vi.fn();
+		const wrapper = shallowMount(AgentPreviewChatPage, {
+			props: {
+				initialized: true,
+				projectId: 'project-1',
+				agentId: 'agent-1',
+				agent: null,
+				localConfig: null,
+				connectedTriggers: [],
+				effectiveSessionId: 'thread-1',
+			},
+			global: {
+				stubs: {
+					AgentChatPanel: {
+						name: 'AgentChatPanel',
+						template: '<div />',
+						methods: { clearBudgetStops },
+					},
+				},
+			},
+		});
+
+		(
+			wrapper.vm as unknown as {
+				clearBudgetStops: (fields: Array<'monthlyBudgetUsd' | 'sessionCostCapUsd'>) => void;
+			}
+		).clearBudgetStops(['monthlyBudgetUsd']);
+
+		expect(clearBudgetStops).toHaveBeenCalledExactlyOnceWith(['monthlyBudgetUsd']);
 	});
 
 	it('sends the initial prompt once when the chat panel is ready', async () => {
