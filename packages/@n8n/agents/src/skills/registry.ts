@@ -272,6 +272,12 @@ function resolveReferenceParents(skills: RuntimeSkill[]): RuntimeSkill[] {
 	const ids = new Set(skills.map((skill) => skill.id));
 	const sharers = new Map<string, string[]>();
 	for (const skill of skills) {
+		// The catalog hides a skill by `parents`; materialization and file lookups key on `reference`.
+		if (!skill.parents !== !skill.reference) {
+			throw new InvalidRuntimeSkillError(
+				`Reference "${skill.id}" must set both parents and reference`,
+			);
+		}
 		if (skill.parents && skill.sharedReferences?.length) {
 			throw new InvalidRuntimeSkillError(`Reference "${skill.id}" cannot share other references`);
 		}
