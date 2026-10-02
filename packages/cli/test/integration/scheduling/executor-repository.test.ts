@@ -677,6 +677,29 @@ describe('ScheduledTaskRepository executor methods', () => {
 			expect((await reload(id)).startedAt).not.toBeNull();
 		});
 
+		it('renewLease pushes the lease out for the claiming host, and refuses a non-claiming host, a stale epoch and a finished row', async () => {
+			const { id, epoch } = await claimOne();
+			const leaseBefore = (await reload(id)).leaseExpiresAt!.getTime();
+
+			expect(
+				await taskRepository.renewLease({ host: HOST_B, id, claimedEpoch: epoch }, 120_000),
+			).toBe(false);
+			expect(
+				await taskRepository.renewLease({ host: HOST_A, id, claimedEpoch: epoch - 1 }, 120_000),
+			).toBe(false);
+			expect((await reload(id)).leaseExpiresAt!.getTime()).toBe(leaseBefore);
+
+			expect(
+				await taskRepository.renewLease({ host: HOST_A, id, claimedEpoch: epoch }, 120_000),
+			).toBe(true);
+			expect((await reload(id)).leaseExpiresAt!.getTime()).toBeGreaterThan(leaseBefore);
+
+			await taskRepository.completeTask({ host: HOST_A, id, claimedEpoch: epoch });
+			expect(
+				await taskRepository.renewLease({ host: HOST_A, id, claimedEpoch: epoch }, 120_000),
+			).toBe(false);
+		});
+
 		it('markDispatched stamps dispatchedAt for the owner, and is a no-op for a non-owner host', async () => {
 			const { id, epoch } = await claimOne();
 
@@ -1142,6 +1165,31 @@ describe('ScheduledTaskRepository executor methods', () => {
 				expect(row.status).toBe('pending');
 				expect(row.attempts).toBe(1); // counted once, not twice
 				expect(row.leaseEpoch).toBe(2); // bumped once, not twice
+			});
+
+			it('lets exactly one of a concurrent renewal and reclaim win, and leaves the row as the winner wrote it', async () => {
+				// Repeated so both orders get a chance to land first.
+				for (let i = 0; i < 20; i++) {
+					const task = await createExpiredRunning({ leaseEpoch: 1, attempts: 0 });
+
+					const [renewed, reclaimed] = await Promise.all([
+						taskRepository.renewLease({ host: HOST_A, id: task.id, claimedEpoch: 1 }, 60_000),
+						taskRepository.reclaimExpired({ id: task.id, claimedEpoch: 1 }, 30_000, 'x'),
+					]);
+
+					const row = await reload(task.id);
+					if (renewed) {
+						expect(reclaimed).toBe(0);
+						expect(row.status).toBe('running');
+						expect(row.leaseEpoch).toBe(1);
+						expect(row.leaseExpiresAt!.getTime()).toBeGreaterThan(Date.now());
+					} else {
+						expect(reclaimed).toBe(1);
+						expect(row.status).toBe('pending');
+						expect(row.leaseEpoch).toBe(2);
+						expect(row.attempts).toBe(1);
+					}
+				}
 			});
 
 			it('is a no-op on a dispatched row: a dispatched occurrence is completed, not reclaimed', async () => {
