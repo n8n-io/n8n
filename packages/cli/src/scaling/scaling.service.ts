@@ -187,7 +187,7 @@ export class ScalingService {
 					{ executionId, jobId },
 				);
 				// A job started this late may not finish before the force exit, so another worker runs it.
-				handBackJob(job);
+				await handBackJob(job);
 			}
 
 			try {

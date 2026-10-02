@@ -7,9 +7,18 @@ function raiseAttemptsForHandBack(job: Job) {
 	job.opts.attempts = job.attemptsMade + 2;
 }
 
+async function placeAtFrontOfBand(job: Job) {
+	try {
+		const { priority } = job.opts;
+		if (typeof priority !== 'number' || !(priority > 0)) return;
+		await job.queue.client.hset(job.queue.toKey(String(job.id)), 'priority', priority - 0.5);
+	} catch {}
+}
+
 /** Fails the job so that Bull retries it under the same id, without publishing a failure. */
-export function handBackJob(job: Job): never {
+export async function handBackJob(job: Job): Promise<never> {
 	raiseAttemptsForHandBack(job);
+	await placeAtFrontOfBand(job);
 	throw new JobHandedBackError(job.id.toString());
 }
 

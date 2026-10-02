@@ -29,6 +29,47 @@ describe.skipIf(!REDIS_HOST || !REDIS_PORT)('handBackJob (real Redis)', () => {
 	const subscribe = async (queue: JobQueue, event: 'global:failed' | 'global:completed') =>
 		await once(queue, `registered:${event}`);
 
+	const addJob = async (queue: JobQueue, name: string, priority: number) =>
+		await queue.add(
+			JOB_TYPE_NAME,
+			{ executionId: `exec-${name}`, workflowId: `wf-${name}`, loadStaticData: false } as JobData,
+			{ priority },
+		);
+
+	const holdNextJob = async (queue: JobQueue) => {
+		let release: () => void = () => {};
+		const released = new Promise<void>((resolve) => (release = resolve));
+		let markStarted: (activeJob: Job) => void = () => {};
+		const started = new Promise<Job>((resolve) => (markStarted = resolve));
+		const failed = once(queue, 'failed') as Promise<[Job, Error]>;
+
+		void queue.process(JOB_TYPE_NAME, 1, async (activeJob: Job) => {
+			await queue.pause(true, true);
+			markStarted(activeJob);
+			await released;
+			await handBackJob(activeJob);
+		});
+
+		const heldJob = await started;
+		const handBack = async () => {
+			release();
+			const [handedBackJob] = await failed;
+			return handedBackJob;
+		};
+		return { heldJob, handBack };
+	};
+
+	const runOrder = async (queue: JobQueue, count: number) => {
+		const ran: JobId[] = [];
+		await new Promise<void>((resolve) => {
+			void queue.process(JOB_TYPE_NAME, 1, async (activeJob: Job) => {
+				ran.push(activeJob.id);
+				if (ran.length === count) resolve();
+			});
+		});
+		return ran;
+	};
+
 	beforeAll(() => {
 		control = new Redis({ host: REDIS_HOST, port: REDIS_PORT });
 	});
@@ -69,7 +110,7 @@ describe.skipIf(!REDIS_HOST || !REDIS_PORT)('handBackJob (real Redis)', () => {
 		const failedOnWorkerA = once(workerA, 'failed') as Promise<[Job, Error]>;
 		void workerA.process(JOB_TYPE_NAME, 1, async (activeJob: Job) => {
 			await workerA.pause(true, true);
-			handBackJob(activeJob);
+			await handBackJob(activeJob);
 		});
 
 		const [handedBackJob] = await failedOnWorkerA;
@@ -107,7 +148,7 @@ describe.skipIf(!REDIS_HOST || !REDIS_PORT)('handBackJob (real Redis)', () => {
 		void workerA.process(JOB_TYPE_NAME, 1, async (activeJob: Job) => {
 			markStarted(activeJob);
 			await released;
-			handBackJob(activeJob);
+			await handBackJob(activeJob);
 		});
 
 		const activeJob = await started;
@@ -150,7 +191,7 @@ describe.skipIf(!REDIS_HOST || !REDIS_PORT)('handBackJob (real Redis)', () => {
 		const failedOnWorkerA = once(workerA, 'failed') as Promise<[Job, Error]>;
 		void workerA.process(JOB_TYPE_NAME, 1, async (activeJob: Job) => {
 			await workerA.pause(true, true);
-			handBackJob(activeJob);
+			await handBackJob(activeJob);
 		});
 
 		const [handedBackJob] = await failedOnWorkerA;
@@ -356,5 +397,79 @@ describe.skipIf(!REDIS_HOST || !REDIS_PORT)('handBackJob (real Redis)', () => {
 				expect(handled).toEqual([job1.id]);
 			});
 		});
+	});
+
+	it('runs a handed-back job before jobs of its priority that arrived while it was active', async () => {
+		const producer = createQueue();
+
+		const globallyFailed: JobId[] = [];
+		const failedRegistered = subscribe(producer, 'global:failed');
+		producer.on('global:failed', (jobId: JobId) => globallyFailed.push(jobId));
+		await failedRegistered;
+
+		const held = await addJob(producer, 'held', 100);
+
+		const workerA = createQueue();
+		const { heldJob, handBack } = await holdNextJob(workerA);
+		expect(heldJob.id).toBe(held.id);
+
+		const behind1 = await addJob(producer, 'behind-1', 100);
+		const behind2 = await addJob(producer, 'behind-2', 100);
+		const urgent = await addJob(producer, 'urgent', 50);
+
+		await handBack();
+
+		const workerB = createQueue();
+		const ran = await runOrder(workerB, 4);
+
+		expect(ran).toEqual([urgent.id, held.id, behind1.id, behind2.id]);
+		expect(globallyFailed).not.toContain(held.id);
+	});
+
+	it('runs a later job of a higher priority before a handed-back job', async () => {
+		const producer = createQueue();
+
+		const held = await addJob(producer, 'held', 100);
+
+		const workerA = createQueue();
+		const { heldJob, handBack } = await holdNextJob(workerA);
+		expect(heldJob.id).toBe(held.id);
+
+		const behind = await addJob(producer, 'behind', 100);
+
+		await handBack();
+
+		const later = await addJob(producer, 'later', 50);
+
+		const workerB = createQueue();
+		const ran = await runOrder(workerB, 3);
+
+		expect(ran).toEqual([later.id, held.id, behind.id]);
+	});
+
+	it('keeps the priority of a job handed back twice from drifting past the next band', async () => {
+		const producer = createQueue();
+
+		const held = await addJob(producer, 'held', 100);
+
+		const workerA1 = createQueue();
+		const first = await holdNextJob(workerA1);
+		expect(first.heldJob.id).toBe(held.id);
+		await first.handBack();
+
+		const workerA2 = createQueue();
+		const second = await holdNextJob(workerA2);
+		expect(second.heldJob.id).toBe(held.id);
+
+		const behind = await addJob(producer, 'behind', 100);
+
+		await second.handBack();
+
+		const next = await addJob(producer, 'next', 99);
+
+		const workerB = createQueue();
+		const ran = await runOrder(workerB, 3);
+
+		expect(ran).toEqual([next.id, held.id, behind.id]);
 	});
 });
