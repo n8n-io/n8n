@@ -2,6 +2,7 @@ import type { ProcessInternals } from '@n8n/api-types';
 import { GlobalConfig } from '@n8n/config';
 import { Container, Service } from '@n8n/di';
 import { ActiveWorkflowTriggers, InstanceSettings, ScheduledTaskManager } from 'n8n-core';
+import { randomUUID } from 'node:crypto';
 
 import { ActiveExecutions } from '@/active-executions';
 import { Push } from '@/push';
@@ -16,6 +17,8 @@ type Counts = Record<string, number>;
  */
 @Service()
 export class ProcessInternalsService {
+	private readonly processStartId = randomUUID();
+
 	constructor(
 		private readonly instanceSettings: InstanceSettings,
 		private readonly globalConfig: GlobalConfig,
@@ -54,6 +57,7 @@ export class ProcessInternalsService {
 			version: 1,
 			instanceType,
 			hostId,
+			processStartId: this.processStartId,
 			isLeader,
 			memory: { rss, heapTotal, heapUsed, external, arrayBuffers },
 			resources,
