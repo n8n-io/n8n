@@ -18,6 +18,6 @@ export const createSlackChannel = channel.action('create', {
 	output: slackChannel,
 	async run({ input, http }) {
 		const body = { name: input.name.replace(/^#/, ''), is_private: input.isPrivate };
-		return (await slackPost(http, '/conversations.create', body, created)).channel;
+		return (await slackPost(http, '/conversations.create', body, created)).channel ?? {};
 	},
 });

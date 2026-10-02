@@ -10,6 +10,7 @@ import {
 	int,
 	isRecord,
 	json,
+	loose,
 	obj,
 	oneOf,
 	pages,
@@ -24,6 +25,7 @@ import {
 	type Action,
 	type ActionFlow,
 	type HttpRequest,
+	type Infer,
 } from '../index';
 import { executorOf, outputsPerEntryOf, toNodeType, type ExecutorHost } from '../runtime';
 import { mockHttp, runAction } from '../testing';
@@ -138,7 +140,7 @@ describe('executorOf', () => {
 				summary: 'Get an item.',
 				flow: { effect: 'read', cardinality: 'per-item' },
 				input: { target: pattern },
-				output: item,
+				output: loose(item),
 				async run({ http }) {
 					return parse(item, await http.request({ url: '/item' }));
 				},
@@ -335,11 +337,71 @@ describe('types', () => {
 });
 
 describe('parse', () => {
-	it('returns the typed value or throws with each failing path', () => {
+	it('passes the value through as a loose type and never throws', () => {
 		const page = obj({ items: arr(item) });
-		expect(parse(page, { items: [{ id: 'a' }] }).items[0]?.id).toBe('a');
-		expect(() => parse(page, { items: [{ id: 1 }] })).toThrow(
-			'response.items[0].id: must be string, got 1',
+		expect(parse(page, { items: [{ id: 'a' }] }).items?.[0]?.id).toBe('a');
+		expect(parse(page, { items: [{ id: 1 }] })).toEqual({ items: [{ id: 1 }] });
+		// @ts-expect-error a decoded field may be absent
+		expect(() => parse(page, {}).items.length).toThrow(TypeError);
+	});
+
+	it('gives an empty value when the value is not of the schema kind', () => {
+		expect(parse(obj({ id: str() }), null)).toEqual({});
+		expect(parse(arr(item), { id: 'a' })).toEqual([]);
+		expect(parse(str(), 1)).toBe(1);
+	});
+});
+
+describe('loose', () => {
+	const issue = loose(obj({ id: int(), locked: bool(), pull_request: obj({ url: str() }) }));
+
+	it('makes each field optional and nullable, at any depth', () => {
+		expect(validate({ id: 1, pull_request: null }, issue.json)).toEqual([]);
+		expect(validate({ pull_request: { url: null } }, issue.json)).toEqual([]);
+		expect(validate({ id: 'x' }, issue.json)).toEqual([
+			'input.id: does not match any allowed shape',
+		]);
+		const value: Infer<typeof issue> = { id: null, pull_request: {} };
+		// @ts-expect-error a loose field is still typed
+		const wrong: Infer<typeof issue> = { id: 'x' };
+		expect([value, wrong]).toHaveLength(2);
+	});
+});
+
+describe('output drift', () => {
+	const strictIssue = obj({
+		id: int(),
+		locked: bool(),
+		pull_request: obj({ html_url: str() }).optional(),
+	});
+	// The sweep-409 body: an issue without `locked`, and `pull_request: null`.
+	const body = [
+		{ id: 1, pull_request: null },
+		{ id: 2, locked: false },
+	];
+	const passing = echoItem.action('list', {
+		...fetchSpec,
+		flow: read,
+		output: strictIssue,
+		// @ts-expect-error the body passes on without a check, as in a bundle without types
+		async *run({ http }) {
+			yield* parse(arr(strictIssue), await http.request({ path: '/issues' }));
+		},
+	});
+
+	it('emits every item and gives one warning with the paths on an n8n host', async () => {
+		const warnings: string[] = [];
+		const { host } = hostOf([body], { warn: (message) => warnings.push(message) });
+		const items = (await executorOf(passing)(host))[0] ?? [];
+		expect(items.map(({ json }) => json)).toEqual(body);
+		expect(warnings).toEqual([
+			'The response of echo.item.list does not match its contract, so check the fields: output[0].locked: is required; output[0].pull_request: must be object, got null',
+		]);
+	});
+
+	it('fails on a strict host, so tests and fixtures show the drift', async () => {
+		await expect(executorOf(passing)(hostOf([body]).host)).rejects.toThrow(
+			'Output does not match the contract: output[0].locked: is required',
 		);
 	});
 });
@@ -393,7 +455,7 @@ describe('pages', () => {
 			summary: 'List items.',
 			flow: read,
 			input: {},
-			output: item,
+			output: loose(item),
 			async *run({ http }) {
 				yield* pages(http, {
 					page: itemPage,

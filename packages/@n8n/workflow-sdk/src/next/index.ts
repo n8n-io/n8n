@@ -1,9 +1,12 @@
 /**
- * Typed workflow SDK. A workflow is a chain of immutable `Flow` values: start at a trigger,
- * then `andThen`, `branch`, `route`, and `orElse`, and the regions `forEach`, `loop`, `paginate`,
- * `pollUntil`, `switch`, `filter`, and `merge`. Lambdas compile to n8n expressions, and `tsc`
- * checks every read against the item type of the node before it. AI nodes take their chat
- * model, memory, tools, and output parser as `providers`.
+ * Typed workflow SDK. A workflow is a flat list: a trigger, then the parts that run in order.
+ * A part is a step (one node) or a macro: `route` (each named output of a step), `when`,
+ * `switchOn`, `forEach`, `loop`, `paginate`, `pollUntil`, `merge`, `onError` (the error branch
+ * ends) and `recover` (it joins again). A macro takes one part per branch or body; `steps(…)`
+ * puts several parts in one. Lambdas compile to n8n expressions, and `tsc` checks every read
+ * against the item type of the part before it. `expr('{{ … }}')` writes an n8n expression where
+ * a lambda has no form; the build checks it too. AI nodes take their chat model, memory, tools,
+ * and output parser as `providers`.
  *
  * @example
  * ```typescript
@@ -11,7 +14,8 @@
  *
  * export default workflow(
  *   'Greet',
- *   manual().andThen(set({ name: 'Greeting', fields: { text: 'Hello' } })),
+ *   manual(),
+ *   set({ name: 'Greeting', fields: { text: 'Hello' } }),
  * );
  * ```
  */
@@ -20,23 +24,37 @@ import {
 	MANUAL_NODE,
 	SET_NODE,
 	setParameters,
-	startFlow,
 	providerSpecs,
+	triggerStep,
 	type Compiler,
 	type Dollar,
-	type Flow,
+	type Expr,
 	type Loose,
 	type NodeSettings,
 	type NodeSpec,
 	type RoutedStep,
+	type Simplify,
 	type Step,
 	type Provider,
 	type Providers,
+	type Trigger,
 } from './flow';
 
 export {
 	workflow,
-	Flow,
+	steps,
+	route,
+	when,
+	switchOn,
+	forEach,
+	loop,
+	paginate,
+	pollUntil,
+	filter,
+	merge,
+	onError,
+	recover,
+	binaryKeys,
 	contractStep,
 	contractProvider,
 	contractTool,
@@ -66,6 +84,7 @@ export type {
 	EntryFields,
 	ErrorItem,
 	Exact,
+	Expr,
 	Expression,
 	FromModel,
 	FromSchema,
@@ -79,18 +98,20 @@ export type {
 	OutputOf,
 	PageValue,
 	Pairing,
+	Part,
 	ProviderConnection,
+	Region,
 	Requires,
 	ResponsePage,
-	RouteFlows,
-	RoutedCtx,
-	RoutedItem,
+	RouteParts,
 	RoutedStep,
 	Step,
 	Provider,
 	Providers,
 	SupplyKind,
+	SwitchParts,
 	ToolConfig,
+	Trigger,
 	TriggerOptions,
 	Value,
 	ValueSchema,
@@ -112,14 +133,27 @@ export type Params<Item, Ctx> = {
 
 type Lambda<Item, Ctx> = (item: Item, $: Dollar<Ctx>) => unknown;
 
-/** n8n reads text that starts with "=" as an expression, so such a constant is quoted. */
-const startsExpression = (value: unknown): boolean =>
-	typeof value === 'string'
-		? value.startsWith('=')
-		: typeof value === 'object' && value !== null && Object.values(value).some(startsExpression);
+/**
+ * An n8n expression, for a value that a lambda cannot write, e.g. `expr('{{ $input.first().json.id }}')`
+ * or `expr('Hi {{ $json.name }}')`. It fits any field that takes a lambda. The SDK adds the `=`
+ * that n8n reads as the expression mark; text that has it already stays as it is.
+ */
+export function expr<const E extends string>(text: E): Expr<E>;
+export function expr(text: string): string {
+	return text.startsWith('=') ? text : `=${text}`;
+}
+
+/**
+ * The type of an expression result is known only when n8n evaluates it. `& {}` makes tsc show
+ * the fields, not the lambdas they come from.
+ */
 type Fields<F> = {
-	-readonly [K in keyof F]: F[K] extends Lambda<never, never> ? ReturnType<F[K]> : F[K];
-};
+	-readonly [K in keyof F]: F[K] extends Lambda<never, never>
+		? ReturnType<F[K]>
+		: F[K] extends Expr<string>
+			? unknown
+			: F[K];
+} & {};
 
 /**
  * Start a workflow when the user clicks Execute. It emits one empty item. Pass `sample` items
@@ -128,8 +162,12 @@ type Fields<F> = {
 export function manual<const N extends string = 'Start', Out = Record<string, never>>(config?: {
 	name?: N;
 	sample?: readonly Out[];
-}): Flow<Out, Record<N, Out>> {
-	return startFlow({
+}): Trigger<Out, N>;
+export function manual(config?: {
+	name?: string;
+	sample?: readonly unknown[];
+}): Trigger<unknown, string> {
+	return triggerStep({
 		name: config?.name ?? 'Start',
 		...MANUAL_NODE,
 		...(config?.sample ? { sample: config.sample } : {}),
@@ -151,7 +189,7 @@ export function set<
 	name: N;
 	fields: F;
 	keep?: K;
-}): Step<In, Ctx, K extends 'all' ? Omit<In, keyof F> & Fields<F> : Fields<F>, N> {
+}): Step<In, Ctx, K extends 'all' ? Simplify<Omit<In, keyof F> & Fields<F>> : Fields<F>, N> {
 	const { name, fields, keep } = config;
 	return {
 		name,
@@ -163,13 +201,12 @@ export function set<
 				Object.keys(fields)
 					.filter((key) => /[.[\]]/.test(key))
 					.forEach((key) => compiler.issue(`set field "${key}" cannot hold "." or "["`));
+				// A string that starts with "=" is an n8n expression here too, e.g. from expr().
 				return setParameters(
 					Object.fromEntries(
 						Object.entries(fields).map(([key, value]) => [
 							key,
-							typeof value === 'function' || startsExpression(value)
-								? `={{ ${compiler.js(value)} }}`
-								: value,
+							typeof value === 'function' ? `={{ ${compiler.js(value)} }}` : value,
 						]),
 					),
 					keep === 'all',
@@ -200,7 +237,7 @@ interface NodeConfig<In, Ctx, N extends string, Out> {
  * Any n8n node by type and version, for nodes without a typed module. Its output is `Loose`
  * unless you pass `sample` items. An AI node takes its providers in `providers`. Name the main
  * outputs in n8n order in `outputs`, e.g. `['true', 'false']` for IF, to wire each with
- * `Flow.route`. Node settings go in `settings`, e.g. `{ retryOnFail: true }`, as on a typed step.
+ * `route`. Node settings go in `settings`, e.g. `{ retryOnFail: true }`, as on a typed step.
  */
 export function node<In, Ctx, const N extends string, Out = Loose>(
 	config: NodeConfig<In, Ctx, N, Out>,
@@ -259,9 +296,9 @@ export function trigger<const N extends string, Out = Loose>(config: {
 	parameters?: Record<string, Json>;
 	settings?: NodeSettings;
 	sample?: readonly Out[];
-}): Flow<Out, Record<N, Out>> {
+}): Trigger<Out, N> {
 	const { name, type, version, parameters, settings, sample } = config;
-	return startFlow({
+	return triggerStep({
 		name,
 		type,
 		version,

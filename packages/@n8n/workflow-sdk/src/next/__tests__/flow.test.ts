@@ -1,19 +1,25 @@
 import {
+	binaryKeys,
 	contractStep,
 	contractProvider,
 	contractTrigger,
+	expr,
 	manual,
 	node,
+	onError,
+	recover,
+	route,
 	routedStep,
 	set,
 	provider,
+	steps,
 	trigger,
+	when,
 	workflow,
 	type Binary,
 	type Declared,
 	type Dollar,
 	type EntryFields,
-	type Flow,
 	type FromSchema,
 	type OutputNames,
 	type PageValue,
@@ -22,10 +28,12 @@ import {
 	type RoutedStep,
 	type Step,
 	type Provider,
+	type Trigger,
 	type Value,
 	type ValueSchema,
+	type Workflow,
 } from '../index';
-import { compileLambda } from '../lambda';
+import { compileBinaryKey, compileLambda } from '../lambda';
 
 interface Page {
 	id: string;
@@ -123,6 +131,16 @@ describe('compileLambda', () => {
 			const result = compileLambda(fn, names);
 			return result.ok ? result.expression : result.error;
 		};
+		const keyOf = (fn: (...args: never[]) => unknown) => {
+			const result = compileBinaryKey(fn);
+			return result.ok ? result.key : result.error;
+		};
+		expect(keyOf((item: File) => item.binary.data)).toBe('data');
+		expect(keyOf(({ binary }: File) => binary['data'])).toBe('data');
+		const hint = 'A binary field takes a binary of the input item, e.g. (item) => item.binary.data';
+		expect(keyOf(({ binary }: File) => binary.data.fileName)).toBe(hint);
+		expect(keyOf((_: File, $: (name: 'Tasks') => File) => $('Tasks').binary.data)).toBe(hint);
+		expect(keyOf((item: File) => item.name)).toBe(hint);
 		expect(expressionOf((item: File) => item.binary.data)).toBe('={{ $binary.data }}');
 		expect(expressionOf(({ binary }: File) => binary.data.fileName)).toBe(
 			'={{ $binary.data.fileName }}',
@@ -149,23 +167,19 @@ describe('compileLambda', () => {
 });
 
 describe('workflow', () => {
-	it('wires a chain with a branch and an error output', () => {
+	it('wires a flat list with a when branch and an error output', () => {
 		const wf = workflow(
 			'Report',
-			manual()
-				.andThen(getPages({ name: 'Tasks', database: 'abc' }))
-				.branch({
-					name: 'Has owner?',
-					if: (page) => page.property_owners.length > 0,
-					then: (flow) =>
-						flow.andThen(
-							post({ name: 'Report', url: 'https://x', json: (page) => ({ id: page.id }) }),
-						),
-					else: (flow) => flow.andThen(set({ name: 'Unowned', fields: { id: (page) => page.id } })),
-				})
-				.orElse((failed) =>
-					failed.andThen(set({ name: 'Log', fields: { reason: (e) => e.error.message } })),
-				),
+			manual(),
+			getPages({ name: 'Tasks', database: 'abc' }),
+			when(
+				{ name: 'Has owner?', if: (page) => page.property_owners.length > 0 },
+				{
+					then: post({ name: 'Report', url: 'https://x', json: (page) => ({ id: page.id }) }),
+					else: set({ name: 'Unowned', fields: { id: (page) => page.id } }),
+				},
+			),
+			onError(set({ name: 'Log', fields: { reason: (e) => e.error.message } })),
 		);
 		const json = wf.toJSON();
 
@@ -206,23 +220,120 @@ describe('workflow', () => {
 		});
 	});
 
-	it('quotes constant set fields that n8n would read as expressions, and refuses path keys', () => {
+	it('ends the error branch at onError, and rejoins it with recover (sweep 409 shape)', () => {
+		const fetch = <In, Ctx, const N extends string>(config: {
+			name: N;
+		}): Step<In, Ctx, { total: number }, N> => contractStep('httpRequest.get', config);
+		const targets = (json: ReturnType<Workflow['toJSON']>, name: string) =>
+			json.connections[name]?.main.map((out) => out?.map((c) => c.node));
+
+		const ended = workflow(
+			'Sweep',
+			manual(),
+			fetch({ name: 'Fetch' }),
+			onError(set({ name: 'Slack', fields: { text: (e) => e.error.message } })),
+			set({ name: 'Summarize', fields: { total: (item) => item.total } }),
+		).toJSON();
+		expect(targets(ended, 'Fetch')).toEqual([['Summarize'], ['Slack']]);
+		expect(targets(ended, 'Slack')).toBeUndefined();
+
+		const rejoined = workflow(
+			'Sweep',
+			manual(),
+			fetch({ name: 'Fetch' }),
+			recover(set({ name: 'Slack', fields: { text: (e) => e.error.message } })),
+			// @ts-expect-error after recover, an item can be the handler's item, which has no total
+			set({ name: 'Summarize', fields: { total: (item) => item.total } }),
+		).toJSON();
+		expect(targets(rejoined, 'Fetch')).toEqual([['Summarize'], ['Slack']]);
+		expect(targets(rejoined, 'Slack')).toEqual([['Summarize']]);
+		expect(rejoined.nodes.find((n) => n.name === 'Fetch')?.onError).toBe('continueErrorOutput');
+	});
+
+	it('types a 12-step list with when, route, and onError without annotations', () => {
+		const exists = <In, Ctx, const N extends string>(config: {
+			name: N;
+		}): RoutedStep<In, Ctx, { email: string }, N, 'exists' | 'missing'> =>
+			routedStep('@n8n/nodes-base-next.dataTableRowExists', config, ['exists', 'missing']);
+		const json = workflow(
+			'Twelve',
+			manual(),
+			getPages({ name: 'Tasks', database: 'abc' }),
+			onError(set({ name: 'Log', fields: { reason: (e) => e.error.message } })),
+			set({ name: 'Owner', fields: { owner: (page) => page.property_owners[0] ?? '' } }),
+			when(
+				{ name: 'Owned?', if: (item) => item.owner !== '' },
+				{
+					then: steps(
+						set({ name: 'Mail', fields: { email: (item, $) => `${item.owner}@${$('Tasks').id}` } }),
+						set({ name: 'Mail lower', fields: { email: (item) => item.email.toLowerCase() } }),
+					),
+					else: set({ name: 'Nobody', fields: { email: 'nobody@example.com' } }),
+				},
+			),
+			route(exists({ name: 'Known' }), {
+				exists: set({ name: 'Old', fields: { email: (row) => row.email } }),
+				missing: set({
+					name: 'New',
+					fields: { email: (row, $) => `${row.email} ${$('Tasks').name}` },
+				}),
+			}),
+			set({ name: 'Step 7', fields: { email: (item) => item.email } }),
+			// @ts-expect-error a typo at step 8 names the field
+			set({ name: 'Typo', fields: { email: (item) => item.emial } }),
+			set({ name: 'Step 9', fields: { n: (_item, $) => $('Step 7').email.length } }),
+			set({ name: 'Step 10', fields: { twice: (item) => item.n * 2 } }),
+			set({ name: 'Step 11', fields: { back: (item, $) => item.twice + $('Owner').owner.length } }),
+			set({ name: 'Step 12', fields: { done: (item) => item.back > 0 } }),
+		).toJSON();
+		expect(json.nodes).toHaveLength(17);
+		expect(json.connections['Step 12']).toBeUndefined();
+		expect(json.connections.Old?.main.map((out) => out?.map((c) => c.node))).toEqual([['Step 7']]);
+	});
+
+	it('starts another flow at a trigger later in the list', () => {
+		const json = workflow(
+			'Two triggers',
+			manual(),
+			set({ name: 'A', fields: { a: 1 } }),
+			manual({ name: 'Again', sample: [{ b: 'x' }] }),
+			set({ name: 'B', fields: { b: (item) => item.b } }),
+		).toJSON();
+		expect(json.connections.Start?.main.map((out) => out?.map((c) => c.node))).toEqual([['A']]);
+		expect(json.connections.A).toBeUndefined();
+		expect(json.connections.Again?.main.map((out) => out?.map((c) => c.node))).toEqual([['B']]);
+		workflow(
+			'Typed',
+			manual(),
+			set({ name: 'A', fields: { a: 1 } }),
+			manual({ name: 'Again', sample: [{ b: 'x' }] }),
+			// @ts-expect-error the second trigger has no field a
+			set({ name: 'B', fields: { a: (item) => item.a } }),
+		);
+		const noTrigger = workflow('No trigger', set({ name: 'A', fields: { a: 1 } }) as never);
+		expect(() => noTrigger.toJSON()).toThrow('A workflow starts with a trigger, e.g. manual()');
+	});
+
+	it('passes set fields that start with "=" on as expressions, and refuses path keys', () => {
 		const json = workflow(
 			'Fields',
-			manual().andThen(
-				set({ name: 'Constants', fields: { text: '=not an expression', count: 2 }, keep: 'all' }),
-			),
+			manual(),
+			set({
+				name: 'Fields',
+				fields: { text: expr('Hi {{ $json.name }}'), raw: '={{ $json.id }}', count: 2 },
+				keep: 'all',
+			}),
 		).toJSON();
-		expect(json.nodes.find((n) => n.name === 'Constants')?.parameters).toEqual({
-			fields: { text: '={{ "=not an expression" }}', count: 2 },
+		expect(json.nodes.find((n) => n.name === 'Fields')?.parameters).toEqual({
+			fields: { text: '=Hi {{ $json.name }}', raw: '={{ $json.id }}', count: 2 },
 			include: { mode: 'all' },
 		});
-		const nested = workflow('Path', manual().andThen(set({ name: 'Path', fields: { 'a.b': 1 } })));
+		const nested = workflow('Path', manual(), set({ name: 'Path', fields: { 'a.b': 1 } }));
 		expect(() => nested.toJSON()).toThrow('Path: set field "a.b" cannot hold "." or "["');
 	});
 
 	it('routes a contract step with named outputs, and continues from the first output', () => {
-		const filter = routedStep<Page, unknown, Page, 'Owned', 'kept' | 'discarded'>(
+		const owned = routedStep<Page, unknown, Page, 'Owned', 'kept' | 'discarded'>(
 			'@n8n/nodes-base-next.coreFilter',
 			{ name: 'Owned' },
 			['kept', 'discarded'],
@@ -232,19 +343,17 @@ describe('workflow', () => {
 			each: 'cases',
 			then: ['fallback'],
 		});
-		expect([filter.outputs, filter.spec.outputs, cases.outputs]).toEqual([
+		expect([owned.outputs, owned.spec.outputs, cases.outputs]).toEqual([
 			['kept', 'discarded'],
 			2,
 			['a', 'b', 'fallback'],
 		]);
 		const json = workflow(
 			'Routed',
-			manual()
-				.andThen(getPages({ name: 'Tasks', database: 'abc' }))
-				.andThen(filter)
-				.orElse((failed) =>
-					failed.andThen(set({ name: 'Log', fields: { reason: (e) => e.error.message } })),
-				),
+			manual(),
+			getPages({ name: 'Tasks', database: 'abc' }),
+			owned,
+			onError(set({ name: 'Log', fields: { reason: (e) => e.error.message } })),
 		).toJSON();
 		expect(json.connections.Owned?.main.map((out) => out?.map((c) => c.node))).toEqual([
 			[],
@@ -258,7 +367,7 @@ describe('workflow', () => {
 			resource: 'row',
 			operation: 'check',
 		});
-		const json = workflow('Slot', manual().andThen(step)).toJSON();
+		const json = workflow('Slot', manual(), step).toJSON();
 		const node = json.nodes.find(({ name }) => name === 'Pick');
 		expect([node?.typeVersion, node?.parameters]).toEqual([
 			2,
@@ -268,12 +377,12 @@ describe('workflow', () => {
 
 	it('types the output names of a routed step', () => {
 		// The shape a generated factory has for outputs named by input entries.
-		const route = <In, Ctx, const N extends string, const E extends string>(config: {
+		const byCase = <In, Ctx, const N extends string, const E extends string>(config: {
 			name: N;
 			cases: ReadonlyArray<{ output: E }>;
 		}): RoutedStep<In, Ctx, In, N, E | 'fallback'> =>
 			routedStep('@n8n/nodes-base-next.coreSwitch', config, { each: 'cases', then: ['fallback'] });
-		const step = route({ name: 'Route', cases: [{ output: 'young' }, { output: 'old' }] });
+		const step = byCase({ name: 'Route', cases: [{ output: 'young' }, { output: 'old' }] });
 		const names: Array<OutputNames<typeof step>> = ['young', 'old', 'fallback'];
 		// @ts-expect-error -- "middle" is not an output of this step
 		const wrong: OutputNames<typeof step> = 'middle';
@@ -300,64 +409,83 @@ describe('workflow', () => {
 				each: 'categories',
 				then: ['other'],
 			});
-		const routed = manual()
-			.andThen(getPages({ name: 'Tasks', database: 'abc' }))
-			.route(exists({ name: 'Known' }), {
-				exists: (flow) => flow.andThen(set({ name: 'Old', fields: { email: (row) => row.email } })),
-				missing: (flow) =>
-					flow.andThen(
-						set({ name: 'New', fields: { email: (row, $) => `${row.email} ${$('Tasks').name}` } }),
-					),
-			});
-		const json = workflow('Route', routed).toJSON();
+		const json = workflow(
+			'Route',
+			manual(),
+			getPages({ name: 'Tasks', database: 'abc' }),
+			route(exists({ name: 'Known' }), {
+				exists: set({ name: 'Old', fields: { email: (row) => row.email } }),
+				missing: set({
+					name: 'New',
+					fields: { email: (row, $) => `${row.email} ${$('Tasks').name}` },
+				}),
+			}),
+			set({ name: 'After', fields: { email: (item) => item.email } }),
+		).toJSON();
 		expect(json.connections.Known?.main.map((out) => out?.map((c) => c.node))).toEqual([
 			['Old'],
 			['New'],
 		]);
-		routed.andThen(set({ name: 'After', fields: { email: (item) => item.email } }));
-		manual().route(exists({ name: 'Known' }), {
-			exists: (flow) => flow,
-			// @ts-expect-error -- "absent" is not an output of this step
-			absent: (flow) => flow,
-		});
-		const twoOutputs = classify({
-			name: 'Kind',
-			categories: [{ output: 'bug' }, { output: 'idea' }],
-		});
-		expect(() =>
-			workflow('Drops', manual().route(twoOutputs, { bug: (flow) => flow })).toJSON(),
-		).toThrow('Kind: items on "idea" stop. Give each output but the last a flow in route');
-		expect(() => workflow('Then', manual().andThen(twoOutputs)).toJSON()).toThrow(
-			'Kind: andThen continues only from output "bug", so items on "idea" stop. Use .route(step, { … }) to give each output a flow',
+		expect(json.connections.New?.main.map((out) => out?.map((c) => c.node))).toEqual([['After']]);
+		workflow(
+			'Absent',
+			manual(),
+			route(exists({ name: 'Known' }), {
+				exists: steps(),
+				// @ts-expect-error -- "absent" is not an output of this step
+				absent: steps(),
+			}),
 		);
-		expect(
-			workflow('Two', manual().andThen(exists({ name: 'Known' }))).toJSON().nodes,
-		).toHaveLength(2);
+		expect(() =>
+			workflow(
+				'Drops',
+				manual(),
+				route(classify({ name: 'Kind', categories: [{ output: 'bug' }, { output: 'idea' }] }), {
+					bug: steps(),
+				}),
+			).toJSON(),
+		).toThrow('Kind: items on "idea" stop. Give each output but the last a part in route');
+		expect(() =>
+			workflow(
+				'Then',
+				manual(),
+				classify({ name: 'Kind', categories: [{ output: 'bug' }, { output: 'idea' }] }),
+			).toJSON(),
+		).toThrow(
+			'Kind: only output "bug" continues, so items on "idea" stop. Use route(step, { … }) to give each output a part',
+		);
+		expect(workflow('Two', manual(), exists({ name: 'Known' })).toJSON().nodes).toHaveLength(2);
 	});
 
 	it('routes the named outputs of a node() step, e.g. a legacy IF', () => {
-		const ifNode = node({
-			name: 'If',
-			type: 'n8n-nodes-base.if',
-			version: 2.2,
-			parameters: { conditions: {} },
-			outputs: ['true', 'false'],
-		});
+		const ifNode = () =>
+			node({
+				name: 'If',
+				type: 'n8n-nodes-base.if',
+				version: 2.2,
+				parameters: { conditions: {} },
+				outputs: ['true', 'false'],
+			});
 		const json = workflow(
 			'If',
-			manual().route(ifNode, {
-				true: (flow) => flow.andThen(set({ name: 'Yes', fields: { ok: true } })),
-				false: (flow) => flow.andThen(set({ name: 'No', fields: { ok: false } })),
+			manual(),
+			route(ifNode(), {
+				true: set({ name: 'Yes', fields: { ok: true } }),
+				false: set({ name: 'No', fields: { ok: false } }),
 			}),
 		).toJSON();
 		expect(json.connections.If?.main.map((out) => out?.map((c) => c.node))).toEqual([
 			['Yes'],
 			['No'],
 		]);
-		manual().route(ifNode, {
-			// @ts-expect-error -- "maybe" is not an output of this node
-			maybe: (flow) => flow,
-		});
+		workflow(
+			'Maybe',
+			manual(),
+			route(ifNode(), {
+				// @ts-expect-error -- "maybe" is not an output of this node
+				maybe: steps(),
+			}),
+		);
 		const plain = node({ name: 'Plain', type: 'n8n-nodes-base.noOp', version: 1 });
 		expect('outputs' in plain).toBe(false);
 	});
@@ -371,24 +499,37 @@ describe('workflow', () => {
 		const upload = <In, Ctx, const N extends string>(config: {
 			name: N;
 			file: (item: In, $: Dollar<Ctx>) => Binary;
-		}): Step<In, Ctx, { id: string }, N> => contractStep('drive.upload', config);
+		}): Step<In, Ctx, { id: string }, N> =>
+			contractStep('drive.upload', binaryKeys(config, [['file']]));
 
 		const json = workflow(
 			'Copy',
-			manual()
-				.andThen(download({ name: 'Download', url: 'https://x/a.pdf' }))
-				.andThen(upload({ name: 'Upload', file: (item) => item.binary.data })),
+			manual(),
+			download({ name: 'Download', url: 'https://x/a.pdf' }),
+			upload({ name: 'Upload', file: (item) => item.binary.data }),
 		).toJSON();
-		expect(json.nodes.find((n) => n.name === 'Upload')?.parameters).toEqual({
-			file: '={{ $binary.data }}',
-		});
+		expect(json.nodes.find((n) => n.name === 'Upload')?.parameters).toEqual({ file: 'data' });
 
-		manual()
-			.andThen(download({ name: 'Download', url: 'https://x/a.pdf' }))
+		expect(() =>
+			workflow(
+				'Copy',
+				manual(),
+				download({ name: 'Download', url: 'https://x/a.pdf' }),
+				upload({ name: 'Upload', file: (_item, $) => $('Download').binary.data }),
+			).toJSON(),
+		).toThrow(
+			'Upload: A binary field takes a binary of the input item, e.g. (item) => item.binary.data',
+		);
+
+		workflow(
+			'Other',
+			manual(),
+			download({ name: 'Download', url: 'https://x/a.pdf' }),
 			// @ts-expect-error the item has no binary named other
-			.andThen(upload({ name: 'Upload', file: (item) => item.binary.other }));
+			upload({ name: 'Upload', file: (item) => item.binary.other }),
+		);
 		// @ts-expect-error a binary field takes a binary of the item, not a literal
-		manual().andThen(upload({ name: 'Upload', file: { mimeType: 'text/csv' } }));
+		workflow('Literal', manual(), upload({ name: 'Upload', file: { mimeType: 'text/csv' } }));
 	});
 
 	it('takes an expression string in a typed field and passes it on unchanged', () => {
@@ -399,13 +540,43 @@ describe('workflow', () => {
 
 		const json = workflow(
 			'Limit',
-			manual().andThen(limit({ name: 'Limit', max: '={{ $json.count }}' })),
+			manual(),
+			limit({ name: 'Limit', max: '={{ $json.count }}' }),
 		).toJSON();
 		expect(json.nodes.find((n) => n.name === 'Limit')?.parameters).toEqual({
 			max: '={{ $json.count }}',
 		});
 		// @ts-expect-error a plain string is not a number
-		manual().andThen(limit({ name: 'Limit', max: 'ten' }));
+		workflow('Ten', manual(), limit({ name: 'Limit', max: 'ten' }));
+	});
+
+	it('writes an n8n expression with expr() in a typed field and in node()', () => {
+		const limit = <In, Ctx, const N extends string>(config: {
+			name: N;
+			max: Value<In, Ctx, number>;
+		}): Step<In, Ctx, unknown, N> => contractStep('core.limit', config);
+
+		const json = workflow(
+			'Expr',
+			manual(),
+			limit({ name: 'Limit', max: expr('{{ $json.count }}') }),
+			node({
+				name: 'Raw',
+				type: 'n8n-nodes-base.noOp',
+				version: 1,
+				parameters: { id: expr('{{ $input.first().json.id }}') },
+			}),
+		).toJSON();
+		expect(json.nodes.find((n) => n.name === 'Limit')?.parameters).toEqual({
+			max: '={{ $json.count }}',
+		});
+		expect(json.nodes.find((n) => n.name === 'Raw')?.parameters).toEqual({
+			id: '={{ $input.first().json.id }}',
+		});
+		expect([expr('{{ $json.id }}'), expr('={{ $json.id }}')]).toEqual([
+			'={{ $json.id }}',
+			'={{ $json.id }}',
+		]);
 	});
 
 	it('compiles a lambda in a page field over the response page, and others over the item', () => {
@@ -420,17 +591,16 @@ describe('workflow', () => {
 
 		const json = workflow(
 			'Customers',
-			manual({ sample: [{ base: 'https://x.test' }] }).andThen(
-				get({
-					name: 'Customers',
-					url: (item) => `${item.base}/customers`,
-					pages: {
-						style: 'cursor',
-						next: (page) => page.body.data.at(-1)?.id,
-						send: { query: 'starting_after' },
-					},
-				}),
-			),
+			manual({ sample: [{ base: 'https://x.test' }] }),
+			get({
+				name: 'Customers',
+				url: (item) => `${item.base}/customers`,
+				pages: {
+					style: 'cursor',
+					next: (page) => page.body.data.at(-1)?.id,
+					send: { query: 'starting_after' },
+				},
+			}),
 		).toJSON();
 		expect(json.nodes.find((n) => n.name === 'Customers')?.parameters).toEqual({
 			url: '={{ $json.base }}/customers',
@@ -444,7 +614,7 @@ describe('workflow', () => {
 
 	it('pins the action version of a contract step', () => {
 		const pinned = contractStep('notion.databasePage.getAll', { name: 'Tasks' }, 2);
-		const json = workflow('Pinned', manual().andThen(pinned)).toJSON();
+		const json = workflow('Pinned', manual(), pinned).toJSON();
 		expect(json.nodes.find((n) => n.name === 'Tasks')?.typeVersion).toBe(2);
 		expect(contractStep('x.y.z', { name: 'Default' }).spec.version).toBe(1);
 	});
@@ -453,7 +623,7 @@ describe('workflow', () => {
 		const slot = { resource: 'databasePage', operation: 'getAll' };
 		const config = { name: 'Tasks', database: 'db', operation: 'create' };
 		const step = contractStep('n8n-nodes-base.notion', config, 4, slot);
-		const json = workflow('Composed', manual().andThen(step)).toJSON();
+		const json = workflow('Composed', manual(), step).toJSON();
 		expect(json.nodes.find((n) => n.name === 'Tasks')).toMatchObject({
 			type: 'n8n-nodes-base.notion',
 			typeVersion: 4,
@@ -469,7 +639,7 @@ describe('workflow', () => {
 			fields: { mode: 'not a locator' },
 		};
 		const step = contractStep('n8n-nodes-base.airtable', config, 2.1, { operation: 'create' });
-		const json = workflow('Derived', manual().andThen(step)).toJSON();
+		const json = workflow('Derived', manual(), step).toJSON();
 		expect(json.nodes.find((n) => n.name === 'Row')).toMatchObject({
 			type: 'n8n-nodes-base.airtable',
 			typeVersion: 2.1,
@@ -496,57 +666,57 @@ describe('workflow', () => {
 			credential: 'notion',
 			scopes: ['content:insert', 'content:read'],
 		});
-		const flow = added.andThen(create).andThen(post({ name: 'Post', url: 'u', json: () => ({}) }));
-		const json = workflow('Scoped', flow).toJSON();
+		const scoped = (options: Parameters<typeof workflow>[0]) =>
+			workflow(options, added, create, post({ name: 'Post', url: 'u', json: () => ({}) }));
+		const json = scoped('Scoped').toJSON();
 		expect(json.nodes.find((n) => n.name === 'Added')).toMatchObject({
 			type: '@n8n/nodes-base-next.notionDataSourcePageAdded',
 			parameters: { dataSource: 'ds' },
 		});
-		expect(workflow('Scoped', flow).scopes()).toEqual({
+		expect(scoped('Scoped').scopes()).toEqual({
 			notion: { 'content:insert': ['Create'], 'content:read': ['Added', 'Create'] },
 		});
-		const granted = workflow({ name: 'Scoped', grants: { notion: ['content:read'] } }, flow);
+		const granted = scoped({ name: 'Scoped', grants: { notion: ['content:read'] } });
 		expect(() => granted.toJSON()).toThrow(
 			'Credential "notion" does not grant scope "content:insert", which "Create" needs',
 		);
 		const all = { notion: ['content:read', 'content:insert'] };
-		expect(workflow({ name: 'Scoped', grants: all }, flow).toJSON().nodes).toHaveLength(3);
+		expect(scoped({ name: 'Scoped', grants: all }).toJSON().nodes).toHaveLength(3);
 	});
 
 	it('wires AI providers to the ai_* inputs of their node', () => {
 		const wf = workflow(
 			'Answer',
-			manual({ sample: [{ question: 'What is n8n?' }] }).andThen(
-				node({
-					name: 'Agent',
-					type: '@n8n/n8n-nodes-langchain.agent',
-					version: 2.2,
-					parameters: { promptType: 'define', text: (item) => item.question },
-					providers: {
-						model: provider({
-							name: 'Model',
-							type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-							version: 1.2,
-							parameters: { model: 'gpt-4o-mini' },
+			manual({ sample: [{ question: 'What is n8n?' }] }),
+			node({
+				name: 'Agent',
+				type: '@n8n/n8n-nodes-langchain.agent',
+				version: 2.2,
+				parameters: { promptType: 'define', text: (item) => item.question },
+				providers: {
+					model: provider({
+						name: 'Model',
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						version: 1.2,
+						parameters: { model: 'gpt-4o-mini' },
+					}),
+					memory: provider({
+						name: 'Memory',
+						type: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
+						version: 1.3,
+						parameters: { sessionKey: (item) => item.question },
+					}),
+					tools: [
+						provider({
+							name: 'Calculator',
+							type: '@n8n/n8n-nodes-langchain.toolCalculator',
+							version: 1,
+							// @ts-expect-error the agent input has no such field
+							parameters: { x: (item) => item.nope },
 						}),
-						memory: provider({
-							name: 'Memory',
-							type: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
-							version: 1.3,
-							parameters: { sessionKey: (item) => item.question },
-						}),
-						tools: [
-							provider({
-								name: 'Calculator',
-								type: '@n8n/n8n-nodes-langchain.toolCalculator',
-								version: 1,
-								// @ts-expect-error the agent input has no such field
-								parameters: { x: (item) => item.nope },
-							}),
-						],
-					},
-				}),
-			),
+					],
+				},
+			}),
 		);
 		const json = wf.toJSON();
 		expect(json.nodes.map((n) => n.name)).toEqual([
@@ -581,14 +751,13 @@ describe('workflow', () => {
 		): Step<In, Ctx, { text: string }, N> => contractStep('pkg.aiAgent', config);
 		const wf = workflow(
 			'Answer',
-			manual({ sample: [{ question: 'What is n8n?', model: 'gpt-5-mini' }] }).andThen(
-				agent({
-					name: 'Agent',
-					model: chatModel({ name: 'Model', model: (item) => item.model }),
-					tools: [tool({ name: 'Fetch', url: 'https://example.com' })],
-					prompt: (item) => item.question,
-				}),
-			),
+			manual({ sample: [{ question: 'What is n8n?', model: 'gpt-5-mini' }] }),
+			agent({
+				name: 'Agent',
+				model: chatModel({ name: 'Model', model: (item) => item.model }),
+				tools: [tool({ name: 'Fetch', url: 'https://example.com' })],
+				prompt: (item) => item.question,
+			}),
 		);
 		const json = wf.toJSON();
 		expect(json.nodes.map((n) => [n.name, n.parameters])).toEqual([
@@ -625,14 +794,13 @@ describe('workflow', () => {
 	it('reports a provider that reuses a node name', () => {
 		const wf = workflow(
 			'Clash',
-			manual().andThen(
-				node({
-					name: 'Agent',
-					type: '@n8n/n8n-nodes-langchain.agent',
-					version: 2.2,
-					providers: { model: provider({ name: 'Start', type: 'x.lm', version: 1 }) },
-				}),
-			),
+			manual(),
+			node({
+				name: 'Agent',
+				type: '@n8n/n8n-nodes-langchain.agent',
+				version: 2.2,
+				providers: { model: provider({ name: 'Start', type: 'x.lm', version: 1 }) },
+			}),
 		);
 		expect(() => wf.toJSON()).toThrow('Two different nodes are named "Start"');
 	});
@@ -640,13 +808,14 @@ describe('workflow', () => {
 	it('types the manual trigger by its sample and declares it as pin data', () => {
 		const wf = workflow(
 			'Count rows',
-			manual({ sample: [{ tableName: 'orders' }] }).andThen(
-				set({ name: 'Table', fields: { table: (item) => item.tableName } }),
-			),
+			manual({ sample: [{ tableName: 'orders' }] }),
+			set({ name: 'Table', fields: { table: (item) => item.tableName } }),
 		);
 		expect(wf.generatePinData().toJSON().pinData).toEqual({ Start: [{ tableName: 'orders' }] });
 		expect(workflow('No sample', manual()).generatePinData().toJSON().pinData).toBeUndefined();
-		manual({ sample: [{ tableName: 'orders' }] }).andThen(
+		workflow(
+			'Typo',
+			manual({ sample: [{ tableName: 'orders' }] }),
 			// @ts-expect-error the sample has no such field
 			set({ name: 'Typo', fields: { table: (item) => item.table } }),
 		);
@@ -654,35 +823,36 @@ describe('workflow', () => {
 
 	it('returns build problems instead of throwing while composing', () => {
 		const secret = 'x';
-		const wf = workflow(
-			'Broken',
-			manual().andThen(set({ name: 'Leak', fields: { value: () => secret } })),
-		);
+		const wf = workflow('Broken', manual(), set({ name: 'Leak', fields: { value: () => secret } }));
 		expect(() => wf.toJSON()).toThrow('Leak: The lambda reads "secret"');
 	});
 
 	it('types reads against the node before', () => {
-		manual()
-			.andThen(getPages({ name: 'Tasks', database: 'abc' }))
-			.andThen(
-				post({
-					name: 'Post',
-					url: 'https://x',
-					json: (page, $) => ({
-						due: page.property_due?.start,
-						// @ts-expect-error property_due may be null
-						unsafe: page.property_due.start,
-						// @ts-expect-error misspelled field
-						typo: page.property_owner,
-						first: $('Tasks').name,
-						// @ts-expect-error unknown node
-						nope: $('Nope'),
-					}),
+		workflow(
+			'Reads',
+			manual(),
+			getPages({ name: 'Tasks', database: 'abc' }),
+			post({
+				name: 'Post',
+				url: 'https://x',
+				json: (page, $) => ({
+					due: page.property_due?.start,
+					// @ts-expect-error property_due may be null
+					unsafe: page.property_due.start,
+					// @ts-expect-error misspelled field
+					typo: page.property_owner,
+					first: $('Tasks').name,
+					// @ts-expect-error unknown node
+					nope: $('Nope'),
 				}),
-			);
-		manual()
-			.andThen(node({ name: 'Anything', type: 'n8n-nodes-base.noOp', version: 1 }))
-			.andThen(set({ name: 'Loose', fields: { read: (item) => item.whatever } }));
+			}),
+		);
+		workflow(
+			'Loose',
+			manual(),
+			node({ name: 'Anything', type: 'n8n-nodes-base.noOp', version: 1 }),
+			set({ name: 'Loose', fields: { read: (item) => item.whatever } }),
+		);
 	});
 });
 
@@ -703,7 +873,7 @@ describe('native triggers', () => {
 		path: string;
 		responseMode?: string;
 		schema?: S;
-	}): Flow<Declared<Request, S>, Record<N, Declared<Request, S>>> =>
+	}): Trigger<Declared<Request, S>, N> =>
 		contractTrigger('n8n-nodes-base.webhook', config, 2.2, undefined, {
 			pairing,
 			example: { headers: {}, body: {} },
@@ -723,9 +893,8 @@ describe('native triggers', () => {
 	it('makes the trigger sample from a declared schema, and keeps the schema out of the node', () => {
 		const wf = workflow(
 			'Incidents',
-			hook({ name: 'Hook', path: 'incidents', schema: { body: incident } }).andThen(
-				set({ name: 'Severity', fields: { severity: (item) => item.body.severity } }),
-			),
+			hook({ name: 'Hook', path: 'incidents', schema: { body: incident } }),
+			set({ name: 'Severity', fields: { severity: (item) => item.body.severity } }),
 		);
 		const json = wf.generatePinData().toJSON();
 		expect(json.nodes.find((n) => n.name === 'Hook')?.parameters).toEqual({ path: 'incidents' });
@@ -737,7 +906,9 @@ describe('native triggers', () => {
 			schema: 'public',
 		} as never);
 		expect(workflow('Table', table).toJSON().nodes[0]?.parameters).toEqual({ schema: 'public' });
-		hook({ name: 'Hook', path: 'p', schema: { body: incident } }).andThen(
+		workflow(
+			'Typo',
+			hook({ name: 'Hook', path: 'p', schema: { body: incident } }),
 			// @ts-expect-error the declared body has no such field
 			set({ name: 'Typo', fields: { x: (item) => item.body.severty } }),
 		);
@@ -775,46 +946,59 @@ describe('native triggers', () => {
 	});
 
 	it('checks that a webhook that waits for a reply has one, and that it waits for its replies', () => {
-		const waiting = hook({ name: 'Hook', path: 'p', responseMode: 'responseNode' });
-		expect(() => workflow('No reply', waiting).toJSON()).toThrow(
+		const waiting = () => hook({ name: 'Hook', path: 'p', responseMode: 'responseNode' });
+		expect(() => workflow('No reply', waiting()).toJSON()).toThrow(
 			'Hook: responseMode is "responseNode", so the flow needs its reply step after it',
 		);
 		const json = workflow(
 			'Reply',
-			waiting.andThen(respond({ name: 'Reply', respondWith: 'json' })),
+			waiting(),
+			respond({ name: 'Reply', respondWith: 'json' }),
 		).toJSON();
 		expect(json.nodes.map((n) => n.type)).toEqual([
 			'n8n-nodes-base.webhook',
 			'n8n-nodes-base.respondToWebhook',
 		]);
-		const immediate = hook({ name: 'Hook', path: 'p' }).andThen(
+		const immediate = workflow(
+			'Immediate',
+			hook({ name: 'Hook', path: 'p' }),
 			respond({ name: 'Reply', respondWith: 'json' }),
 		);
-		expect(() => workflow('Immediate', immediate).toJSON()).toThrow(
+		expect(() => immediate.toJSON()).toThrow(
 			'Reply: replies to "Hook", which does not wait for it. Set responseMode: "responseNode" on "Hook"',
 		);
 	});
 
 	it('accepts a reply that another node waits for, as n8n does', () => {
-		const wait = node({
-			name: 'Wait',
-			type: 'n8n-nodes-base.wait',
-			version: 1.1,
-			parameters: { resume: 'webhook', responseMode: 'responseNode' },
-		});
-		const underWait = hook({ name: 'Hook', path: 'p' })
-			.andThen(wait)
-			.andThen(respond({ name: 'Reply', respondWith: 'json' }));
-		expect(workflow('Wait', underWait).toJSON().nodes).toHaveLength(3);
-		const chat = trigger({
-			name: 'Chat',
-			type: '@n8n/n8n-nodes-langchain.chatTrigger',
-			version: 1.3,
-			parameters: { public: true, mode: 'webhook', options: { responseMode: 'responseNode' } },
-		}).andThen(respond({ name: 'Reply', respondWith: 'json' }));
-		expect(workflow('Chat', chat).toJSON().nodes).toHaveLength(2);
-		const manualReply = manual().andThen(respond({ name: 'Reply', respondWith: 'json' }));
-		expect(workflow('Manual', manualReply).toJSON().nodes).toHaveLength(2);
+		const underWait = workflow(
+			'Wait',
+			hook({ name: 'Hook', path: 'p' }),
+			node({
+				name: 'Wait',
+				type: 'n8n-nodes-base.wait',
+				version: 1.1,
+				parameters: { resume: 'webhook', responseMode: 'responseNode' },
+			}),
+			respond({ name: 'Reply', respondWith: 'json' }),
+		);
+		expect(underWait.toJSON().nodes).toHaveLength(3);
+		const chat = workflow(
+			'Chat',
+			trigger({
+				name: 'Chat',
+				type: '@n8n/n8n-nodes-langchain.chatTrigger',
+				version: 1.3,
+				parameters: { public: true, mode: 'webhook', options: { responseMode: 'responseNode' } },
+			}),
+			respond({ name: 'Reply', respondWith: 'json' }),
+		);
+		expect(chat.toJSON().nodes).toHaveLength(2);
+		const manualReply = workflow(
+			'Manual',
+			manual(),
+			respond({ name: 'Reply', respondWith: 'json' }),
+		);
+		expect(manualReply.toJSON().nodes).toHaveLength(2);
 	});
 
 	it('checks that a form page has its form trigger before it', () => {
@@ -834,9 +1018,9 @@ describe('native triggers', () => {
 				undefined,
 				formPairing,
 			);
-		expect(workflow('Pages', form.andThen(page())).toJSON().nodes).toHaveLength(2);
+		expect(workflow('Pages', form, page()).toJSON().nodes).toHaveLength(2);
 		expect(workflow('Form only', form).toJSON().nodes).toHaveLength(1);
-		expect(() => workflow('No form', manual().andThen(page())).toJSON()).toThrow(
+		expect(() => workflow('No form', manual(), page()).toJSON()).toThrow(
 			'Page: needs a n8n-nodes-base.formTrigger trigger before it',
 		);
 	});

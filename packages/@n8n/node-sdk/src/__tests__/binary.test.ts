@@ -13,6 +13,7 @@ import {
 	record,
 	str,
 	toContract,
+	validate,
 	variant,
 	type Binary,
 } from '../index';
@@ -252,6 +253,25 @@ describe('binary data', () => {
 		);
 	});
 
+	it('takes the key of a binary of the input item, not the binary that an expression gives', async () => {
+		const { store } = memoryStore({ data: csv });
+		const run = async (parameters: Record<string, unknown>) =>
+			await executorOf(convert)(hostOf(parameters, [], { binary: store }).host);
+		const hint =
+			'must be the key of a binary of the input item, e.g. "data". Write (item) => item.binary.data';
+
+		await expect(run({ file: csv })).rejects.toThrow(`input.file: ${hint}`);
+		await expect(run({ file: '={{ $binary.data }}' })).rejects.toThrow(`input.file: ${hint}`);
+		expect(
+			validate({ file: '={{ $binary.data }}' }, toContract(convert).input, {
+				allowExpressions: true,
+			}),
+		).toEqual([`input.file: ${hint}`]);
+		expect(
+			validate({ file: 'data' }, toContract(convert).input, { allowExpressions: true }),
+		).toEqual([]);
+	});
+
 	it('gives no binary data to an action without a binary field', async () => {
 		const sneaky = files.action('sneaky', {
 			action: 'Sneaky',
@@ -317,8 +337,9 @@ describe('binary contracts', () => {
 			{ contract: toContract(download), operation: 'download', nodeType: 'files.download' },
 		]);
 		expect(text).toContain(
-			"import { contractStep, type Binary, type Dollar, type NodeSettings, type OutputOf, type Step, type Value } from '@n8n/workflow-sdk/next';",
+			"import { binaryKeys, contractStep, type Binary, type Dollar, type NodeSettings, type OutputOf, type Step, type Value } from '@n8n/workflow-sdk/next';",
 		);
+		expect(text).toContain('contractStep("files.download", binaryKeys(config, [["file"]]))');
 		expect(text).toContain(
 			'export type FilesDownloadInput<I, C> = { url: Value<I, C, string>; file?: ((item: I, $: Dollar<C>) => Binary) };',
 		);

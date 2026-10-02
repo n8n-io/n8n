@@ -86,7 +86,7 @@ import {
 	type SupplyKind,
 	type Tool,
 } from './subnodes';
-import { applyDefaults, list, matches, parse, validate } from './validate';
+import { applyDefaults, binaryKeyIssue, list, matches, parsePage, validate } from './validate';
 import {
 	assertNodeContract,
 	implementsNodeContract,
@@ -357,6 +357,8 @@ const DEFAULT_LIMITS: RunLimits = { maxRequests: 10_000, maxItems: 1_000_000 };
 // An action that logs in a loop must not fill the n8n log.
 const MAX_LOG_LENGTH = 2_000;
 const MAX_LOG_LINES = 100;
+// One warning names this many output issues, so a large drifted list stays readable.
+const MAX_DRIFT_ISSUES = 10;
 
 /** File details for the store, from the action or from the response headers. */
 export interface BinaryWriteMeta {
@@ -394,6 +396,11 @@ export interface ExecutorHost {
 	/** Waits before a retry. */
 	wait?(ms: number): Promise<void>;
 	log?(level: LogLevel, message: string): void;
+	/**
+	 * Shows a warning on the node run. With it, an output that does not match the contract
+	 * passes on and the run warns once. Without it, the output fails the item, as in tests.
+	 */
+	warn?(message: string): void;
 	readonly limits?: Partial<RunLimits>;
 	/** Needed by an action with a `binary()` field only. */
 	readonly binary?: BinaryStore;
@@ -453,6 +460,7 @@ const hostBaseOf = (context: NodeContext) => ({
 	wait: async (ms: number) => await sleep(ms, context.getExecutionCancelSignal()),
 	log: (level: LogLevel, message: string) =>
 		context.logger[level](message, { node: context.getNode().name }),
+	warn: (message: string) => context.addExecutionHints({ message, type: 'warning' }),
 	binary: binaryStoreOf(context),
 });
 
@@ -570,7 +578,7 @@ export function listItems<I>(
 	const pageOf = (response: unknown) => {
 		const full = linked && isRecord(response) ? response : {};
 		return {
-			body: parse(binding.response, linked ? full.body : response, 'page'),
+			body: parsePage(binding.response, linked ? full.body : response),
 			link: isRecord(full.headers) ? headerText(full.headers.link) : undefined,
 		};
 	};
@@ -654,17 +662,22 @@ interface Routed {
 	readonly data: INodeExecutionData;
 }
 
-/** `value` with each binary in it replaced by `resolve(binary)`, along `schema`. */
+/** `value` with each binary key in it replaced by `resolve(key, path)`, along `schema`. */
 export async function withBinaries(
 	value: unknown,
 	schema: JsonSchema,
-	resolve: (binary: unknown) => Promise<unknown>,
+	resolve: (key: unknown, at: string) => Promise<unknown>,
+	at = 'input',
 ): Promise<unknown> {
 	if (value === undefined || !hasBinary(schema)) return value;
-	if (schema['x-n8n-binary']) return await resolve(value);
+	if (schema['x-n8n-binary']) return await resolve(value, at);
 	const { items } = schema;
 	if (Array.isArray(value) && items) {
-		return await Promise.all(value.map(async (entry) => await withBinaries(entry, items, resolve)));
+		return await Promise.all(
+			value.map(
+				async (entry, index) => await withBinaries(entry, items, resolve, `${at}[${index}]`),
+			),
+		);
 	}
 	if (!isRecord(value)) return value;
 	const tag = schema.discriminator?.propertyName;
@@ -675,7 +688,10 @@ export async function withBinaries(
 	const fields = await Promise.all(
 		Object.entries(value).map(async ([key, entry]) => {
 			const field = branch?.properties?.[key];
-			return [key, field ? await withBinaries(entry, field, resolve) : entry] as const;
+			return [
+				key,
+				field ? await withBinaries(entry, field, resolve, `${at}.${key}`) : entry,
+			] as const;
 		}),
 	);
 	return Object.fromEntries(fields);
@@ -713,8 +729,9 @@ function fileNameOf(headers: Readonly<Record<string, string>>, url: string): str
  * The executor of the action interface. Per-item and 1:N actions run once per input item with the
  * parameters of that item; a batch action runs once with all items and the parameters of the
  * first item. Each parameter set is filled with defaults and validated against `input`.
- * Transient failures of idempotent requests retry. Each output item is validated against
- * `output`, routed to its named output, and paired with the input items it comes from.
+ * Transient failures of idempotent requests retry. Each output item is checked against
+ * `output`, routed to its named output, and paired with the input items it comes from. A
+ * mismatch passes on with one warning per run when the host has `warn`, and fails otherwise.
  * Continue-on-fail gives an error item on the last output, which n8n routes to the error
  * output when the node has one.
  */
@@ -1011,9 +1028,12 @@ export function executorOf<S extends Shape, O extends AnySchema>(
 			}
 			const defaulted = applyDefaults(parameters, action.inputSchema);
 			const withFiles = binaryApi
-				? await withBinaries(defaulted, action.inputSchema, async (value) =>
-						handleOf(await binaryStore().input(itemIndex, value)),
-					)
+				? await withBinaries(defaulted, action.inputSchema, async (key, at) => {
+						// n8n resolved an expression to the binary itself, which is not a key.
+						const issue = binaryKeyIssue(key, at);
+						if (issue) throw new NodeOperationError(host.node, issue, { itemIndex });
+						return handleOf(await binaryStore().input(itemIndex, key));
+					})
 				: defaulted;
 			// After the defaults: a capability is not data, so nothing may copy it.
 			const input =
@@ -1040,6 +1060,8 @@ export function executorOf<S extends Shape, O extends AnySchema>(
 		);
 		const fail = (message: string, itemIndex: number) =>
 			new NodeOperationError(host.node, message, { itemIndex });
+		// The run warns once. Each item of a per-item run starts at output[0], so issues repeat.
+		const drift = new Set<string>();
 
 		const openTables = new Map<string, Promise<DataTable>>();
 		const refuse = (name: HostImport) => {
@@ -1108,6 +1130,10 @@ export function executorOf<S extends Shape, O extends AnySchema>(
 			};
 			const checked = (json: unknown, at: number) => {
 				const issues = validate(json, outputSchema, { path: `output[${at}]` });
+				if (issues.length > 0 && host.warn && isRecord(json)) {
+					issues.forEach((issue) => drift.add(issue));
+					return json;
+				}
 				if (issues.length > 0 || !isRecord(json)) {
 					throw fail(
 						`Output does not match the contract: ${issues.join('; ') || 'not an object'}`,
@@ -1302,6 +1328,15 @@ export function executorOf<S extends Shape, O extends AnySchema>(
 		const { names, routed } = await run().catch(async (error: unknown) => {
 			throw redactedError(error, await redactNow());
 		});
+		if (drift.size > 0) {
+			const shown = [...drift].slice(0, MAX_DRIFT_ISSUES).join('; ');
+			const more = drift.size > MAX_DRIFT_ISSUES ? ` (${drift.size - MAX_DRIFT_ISSUES} more)` : '';
+			host.warn?.(
+				redact(
+					`The response of ${action.id} does not match its contract, so check the fields: ${shown}${more}`,
+				),
+			);
+		}
 		const duplicate = names?.find((name, index) => names.indexOf(name) !== index);
 		if (duplicate !== undefined) throw fail(`${action.id} has two outputs named "${duplicate}"`, 0);
 		const outputs: INodeExecutionData[][] = Array.from({ length: names?.length || 1 }, () => []);

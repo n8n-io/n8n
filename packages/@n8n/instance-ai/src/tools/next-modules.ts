@@ -220,10 +220,7 @@ export const actionRow = (action: Action) => `${action.id}: ${action.summary}`;
 
 export const actionRowsOfNode = (nodeId: string) => actionsOfNode(nodeId).map(actionRow);
 
-/**
- * Steps of `@n8n/workflow-sdk/next` that replace a catalog node. `steps` are the SDK names: a
- * function, or a method of the flow before the step.
- */
+/** Steps and macros of `@n8n/workflow-sdk/next` that replace a catalog node, by SDK name. */
 export const BUILT_IN_STEPS: ReadonlyArray<{
 	readonly nodeType: string;
 	readonly steps: readonly string[];
@@ -236,28 +233,28 @@ export const BUILT_IN_STEPS: ReadonlyArray<{
 	},
 	{
 		nodeType: 'n8n-nodes-base.if',
-		steps: ['branch'],
-		row: '.branch({ name, if: (item) => boolean, then: (f) => …, else: (f) => … }): Routes each item by a condition (an IF node).',
+		steps: ['when'],
+		row: 'when({ name, if: (item) => boolean }, { then: part, else: part }): Routes each item by a condition (an IF node).',
 	},
 	{
 		nodeType: 'n8n-nodes-base.filter',
 		steps: ['filter'],
-		row: '.filter({ name, if: (item) => boolean }): Keeps the items that the condition holds for.',
+		row: 'filter({ name, if: (item) => boolean }): Keeps the items that the condition holds for.',
 	},
 	{
 		nodeType: 'n8n-nodes-base.switch',
-		steps: ['switch'],
-		row: ".switch({ name, on: 'field', cases: { value: (f) => … }, default: (f) => … }): Routes each item by a string field.",
+		steps: ['switchOn'],
+		row: "switchOn({ name, on: 'field' }, { value: part, fallback: part }): Routes each item by a string field.",
 	},
 	{
 		nodeType: 'n8n-nodes-base.merge',
 		steps: ['merge'],
-		row: ".merge({ name, join: 'append' | 'position' | { left, right }, branches: [(f) => …, (f) => …] }): Runs two branches on the same items and joins them.",
+		row: "merge({ name, join: 'append' | 'position' | { left, right } }, [part, part]): Runs two branches on the same items and joins them.",
 	},
 	{
 		nodeType: 'n8n-nodes-base.splitInBatches',
 		steps: ['forEach', 'loop'],
-		row: '.forEach({ name, batchSize, body: (f) => … }) runs batches; .loop({ name, maxIterations, body, until, next }) repeats a body until a condition holds.',
+		row: 'forEach({ name, batchSize }, body) runs batches; loop({ name, maxIterations, until, next }, body) repeats a body until a condition holds.',
 	},
 	{
 		nodeType: 'n8n-nodes-base.splitOut',

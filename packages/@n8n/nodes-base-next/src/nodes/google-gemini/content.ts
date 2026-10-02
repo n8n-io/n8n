@@ -1,4 +1,14 @@
-import { arr, bool, int, json, obj, str, type Infer, type JsonSchema } from '@n8n/node-sdk';
+import {
+	arr,
+	bool,
+	int,
+	json,
+	obj,
+	str,
+	type Infer,
+	type JsonSchema,
+	type Loose,
+} from '@n8n/node-sdk';
 
 // Gemini adds fields over time, so the schemas check the fields the actions read only.
 const open: JsonSchema = { additionalProperties: true };
@@ -31,7 +41,7 @@ export const generateContentSchema = obj({
 }).with(open);
 
 /** The reply text of the parts. Thought summaries are not part of the reply. */
-export const replyTextOf = (parts: ReadonlyArray<Infer<typeof partSchema>>) =>
+export const replyTextOf = (parts: ReadonlyArray<Loose<Infer<typeof partSchema>>>) =>
 	parts
-		.flatMap((part) => (part.text !== undefined && part.thought !== true ? [part.text] : []))
+		.flatMap((part) => (typeof part.text === 'string' && part.thought !== true ? [part.text] : []))
 		.join('');

@@ -12,6 +12,8 @@ export const getSlackChannel = channel.action('get', {
 	input: { channel: ref(slackChannelId) },
 	output: slackChannel,
 	async run({ input, http }) {
-		return (await slackGet(http, '/conversations.info', { channel: input.channel }, info)).channel;
+		return (
+			(await slackGet(http, '/conversations.info', { channel: input.channel }, info)).channel ?? {}
+		);
 	},
 });

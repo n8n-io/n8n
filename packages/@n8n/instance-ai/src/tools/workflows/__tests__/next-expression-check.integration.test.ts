@@ -138,10 +138,9 @@ import { gmail } from '@n8n/nodes/gmail';
 
 export default workflow(
 	'Wrong expressions',
-	manual({ sample: ${SAMPLE} })
-		.andThen(gmail.message.get({ name: 'Get', messageId: '={{ $json.idd }}' }))
-		.andThen(
-			gmail.message.getAll({
+	manual({ sample: ${SAMPLE} }),
+	gmail.message.get({ name: 'Get', messageId: '={{ $json.idd }}' }),
+	gmail.message.getAll({
 				name: 'List',
 				filters: {
 					q: '=after:{{ $now.toISO() }} {{ $now.toISo() }}',
@@ -150,9 +149,7 @@ export default workflow(
 				},
 				paging: { mode: 'limit', max: '={{ $json.Subject }}' },
 			}),
-		)
-		.andThen(
-			node({
+	node({
 				name: 'Code',
 				type: 'n8n-nodes-base.code',
 				version: 2,
@@ -160,8 +157,7 @@ export default workflow(
 					jsCode: "const all = $('Start').all();\\nreturn all.map((i) => ({ json: { s: i.json.subjcet } }));",
 				},
 			}),
-		)
-		.andThen(gmail.message.getAll({ name: 'Too few', paging: { mode: 'limit', max: 0 } })),
+	gmail.message.getAll({ name: 'Too few', paging: { mode: 'limit', max: 0 } }),
 );
 `;
 		const result = await build(source);
@@ -173,9 +169,72 @@ export default workflow(
 			`${at(source, '$now.toISo', 5)}: error TS2551: Property 'toISo' does not exist on type 'DateTime'. Did you mean 'toISO'?`,
 			`${at(source, '$pageCount')}: error TS2304: Cannot find name '$pageCount'.`,
 			`${at(source, '"Strat"')}: error TS2345: Argument of type '"Strat"' is not assignable to parameter of type '"Get" | "Start"'.`,
-			`${at(source, "'={{ $json.Subject }}'")}: error TS2322: The expression result does not fit the field: Type 'string' is not assignable to type 'number'.`,
+			`${at(source, "'={{ $json.Subject }}'")}: error TS2322: The expression result does not fit the field: Type 'undefined' is not assignable to type 'number'.`,
 			`${at(source, 'subjcet')}: error TS2551: Property 'subjcet' does not exist on type '{ id: string; subject: string; count: number; }'. Did you mean 'subject'?`,
 			'Node "Too few": input.paging.max: must be at least 1',
+		]);
+	}, 120_000);
+
+	it('checks each expr() call in place, with or without its "="', async () => {
+		const source = `import { workflow, manual, set, expr } from '@n8n/workflow-sdk/next';
+import { gmail } from '@n8n/nodes/gmail';
+
+export default workflow(
+	'Expr calls',
+	manual({ sample: ${SAMPLE} }),
+	set({ name: 'Fields', fields: { text: expr('Hi {{ $json.subjet }}') }, keep: 'all' }),
+	gmail.message.get({ name: 'Get', messageId: expr('={{ $json.idd }}') }),
+	gmail.message.getAll({
+				name: 'List',
+				paging: { mode: 'limit', max: expr("{{ $('Start').item.json.subject }}") },
+			}),
+);
+`;
+		const result = await build(source);
+		expect(result.success ? [] : result.errors).toEqual([
+			`${at(source, 'subjet')}: error TS2551: Property 'subjet' does not exist on type '{ id: string; subject: string; count: number; }'. Did you mean 'subject'?`,
+			`${at(source, '$json.idd', 6)}: error TS2339: Property 'idd' does not exist on type '{ id: string; subject: string; count: number; text: string; }'.`,
+			`${at(source, "expr(\"{{ $('Start')")}: error TS2322: The expression result does not fit the field: Type 'string' is not assignable to type 'number'.`,
+		]);
+	}, 120_000);
+
+	it('types a flat list of 12 parts with when, route, and onError, and names a typo in one line', async () => {
+		const source = (seventh: string) => `import { workflow, manual, set, when, route, onError, steps } from '@n8n/workflow-sdk/next';
+import { dataTable } from '@n8n/nodes/dataTable';
+import { gmail } from '@n8n/nodes/gmail';
+
+export default workflow(
+	'Twelve parts',
+	manual({ sample: ${SAMPLE} }),
+	gmail.message.get({ name: 'Get', messageId: (item) => item.id }),
+	onError(set({ name: 'Log', fields: { reason: (e) => e.error.message } })),
+	set({ name: 'Subject', fields: { subject: (_item, $) => $('Start').subject } }),
+	when({ name: 'Has subject?', if: (item) => item.subject !== '' }, {
+		then: steps(
+			set({ name: 'Upper', fields: { subject: (item) => item.subject.toUpperCase() } }),
+			set({ name: 'Trim', fields: { subject: (item) => item.subject.trim() } }),
+		),
+		else: set({ name: 'Empty', fields: { subject: 'none' } }),
+	}),
+	route(dataTable.row.exists({ name: 'Known', table: { name: 'subjects' }, where: { match: 'all', conditions: [{ column: 'subject', op: 'eq', value: (item) => item.subject }] } }), {
+		exists: set({ name: 'Old', fields: { subject: (item) => item.subject } }),
+		missing: set({ name: 'New', fields: { subject: (item, $) => \`\${item.subject} \${$('Get').id}\` } }),
+	}),
+	set({ name: 'Count', fields: { length: (item) => item.subject.length } }),
+	set({ name: 'Twice', fields: { twice: (item) => ${seventh} * 2 } }),
+	set({ name: 'Back', fields: { back: (item, $) => item.twice + $('Count').length } }),
+	set({ name: 'Flag', fields: { long: (item) => item.back > 10 } }),
+	set({ name: 'Text', fields: { text: (item) => (item.long ? 'long' : 'short') } }),
+	set({ name: 'Done', fields: { done: (item, $) => \`\${item.text} \${$('Start').count}\` } }),
+	set({ name: 'Last', fields: { last: (item) => item.done.length } }),
+);
+`;
+		const right = await build(source('item.length'));
+		expect(right.success ? [] : right.errors).toEqual([]);
+		const typo = source('item.lenght');
+		const wrong = await build(typo);
+		expect(wrong.success ? [] : wrong.errors).toEqual([
+			`${at(typo, 'lenght')}: error TS2551: Property 'lenght' does not exist on type '{ length: number; }'. Did you mean 'length'?`,
 		]);
 	}, 120_000);
 
@@ -185,12 +244,11 @@ import { code } from '@n8n/nodes/code';
 
 export default workflow(
 	'Code step typo',
-	manual({ sample: [{ subject: 'Hi' }] }).andThen(
-		code.javaScript({
+	manual({ sample: [{ subject: 'Hi' }] }),
+	code.javaScript({
 			name: 'Code',
 			code: 'return $input.all().map((i) => ({ s: i.json.subjcet, t: undefinedName }));',
 		}),
-	),
 );
 `;
 		const result = await build(source);
@@ -217,9 +275,8 @@ import { gmail } from '@n8n/nodes/gmail';
 
 export default workflow(
 	'No type check',
-	manual({ sample: [{ id: 'x', count: 3 }] }).andThen(
-		gmail.message.get({ name: 'Get', messageId: (item) => item.count }),
-	),
+	manual({ sample: [{ id: 'x', count: 3 }] }),
+	gmail.message.get({ name: 'Get', messageId: (item) => item.count }),
 );
 `,
 		);
@@ -240,9 +297,8 @@ import { gmail } from '@n8n/nodes/gmail';
 
 export default workflow(
 	'No expression check',
-	manual({ sample: [{ id: 'x', count: 3 }] }).andThen(
-		gmail.message.getAll({ name: 'List', paging: { mode: 'limit', max: '={{ $json.id }}' } }),
-	),
+	manual({ sample: [{ id: 'x', count: 3 }] }),
+	gmail.message.getAll({ name: 'List', paging: { mode: 'limit', max: '={{ $json.id }}' } }),
 );
 `,
 		);
@@ -255,16 +311,15 @@ export default workflow(
 	}, 120_000);
 
 	it('builds when every expression and the Code node fit', async () => {
-		const source = `import { workflow, manual, node, set } from '@n8n/workflow-sdk/next';
+		const source = `import { workflow, manual, node, set, expr } from '@n8n/workflow-sdk/next';
 import { gmail } from '@n8n/nodes/gmail';
 
 export default workflow(
 	'Right expressions',
-	manual({ sample: ${SAMPLE} })
-		.andThen(set({ name: 'Quoted', fields: { text: '={{ $json.nope.deeper }}' }, keep: 'all' }))
-		.andThen(gmail.message.get({ name: 'Get', messageId: '={{ $json.id }}' }))
-		.andThen(
-			gmail.message.getAll({
+	manual({ sample: ${SAMPLE} }),
+	set({ name: 'Mixed', fields: { text: expr('Hi {{ $json.subject }}') }, keep: 'all' }),
+	gmail.message.get({ name: 'Get', messageId: '={{ $json.id }}' }),
+	gmail.message.getAll({
 				name: 'List',
 				filters: {
 					q: '=subject:{{ $("Start").item.json.subject.toLowerCase() }}',
@@ -272,9 +327,7 @@ export default workflow(
 				},
 				paging: { mode: 'limit', max: '={{ $("Start").item.json.count }}' },
 			}),
-		)
-		.andThen(
-			node({
+	node({
 				name: 'Code',
 				type: 'n8n-nodes-base.code',
 				version: 2,
@@ -282,7 +335,6 @@ export default workflow(
 					jsCode: "const out = {};\\nout.total = $input.all().length;\\nreturn $('Start').all().map((i) => ({ json: { s: i.json.subject, n: out.total } }));",
 				},
 			}),
-		),
 );
 `;
 		const result = await build(source);
@@ -307,23 +359,8 @@ export default workflow(
 					: node,
 			),
 		};
-		const getAsCode = async (json: WorkflowJSON) => {
-			const tool = createWorkflowsTool({
-				...context,
-				workspace: undefined,
-				workflowService: {
-					get: async () => await Promise.resolve({ versionId: 'v1', checksum: 'c1' }),
-					getAsWorkflowJSON: async () => await Promise.resolve(json),
-				},
-			} as unknown as InstanceAiContext);
-			return await executeTool<{ code: string }>(tool, {
-				action: 'get-as-code',
-				workflowId: json.id ?? '',
-			});
-		};
-
 		for (const json of [seed, withRetry]) {
-			const { code } = await getAsCode(json);
+			const { code } = await getAsCode(context, json);
 			expect(code).toContain("from '@n8n/workflow-sdk/next';");
 			// The Set node's expression has a callback over a Loose item: `.filter(o => …)`.
 			expect(code).toContain('.filter(o => ');
@@ -335,4 +372,73 @@ export default workflow(
 			expect(post?.onError).toBe(json === withRetry ? 'continueRegularOutput' : undefined);
 		}
 	}, 120_000);
+
+	it('builds the legacy SDK source of a saved loop workflow unchanged, with its node settings', async () => {
+		const seed: WorkflowJSON = JSON.parse(
+			await readFile(join(__dirname, 'order-sync-loop.workflow.json'), 'utf8'),
+		);
+		const legacy = await getAsCode({ ...context, nodeContractsEnabled: false }, seed);
+		const fallback = await getAsCode(context, seed);
+		expect(legacy.code).toContain("from '@n8n/workflow-sdk';");
+
+		for (const { code } of [legacy, fallback]) {
+			const result = await build(code);
+			expect(result.success ? [] : result.errors).toEqual([]);
+			if (!result.success) return;
+			const lookUp = result.workflow.nodes.find((node) => node.name === 'Look Up Order');
+			expect(lookUp?.alwaysOutputData).toBe(true);
+			expect(result.workflow.connections).toEqual(seed.connections);
+		}
+	}, 120_000);
+
+	it('builds the lambda of a binary field as the key of a binary of the input item', async () => {
+		const result = await build(`import { workflow, manual } from '@n8n/workflow-sdk/next';
+import { httpRequest } from '@n8n/nodes/httpRequest';
+
+export default workflow(
+	'Forward a file',
+	manual({ sample: [{ id: 'x' }] }),
+	httpRequest.download({ name: 'Download', url: 'https://files.example.com/a.pdf' }),
+	httpRequest.send({
+				name: 'Upload',
+				method: 'POST',
+				url: 'https://archive.example.com/api/upload',
+				body: { kind: 'binary', file: (item) => item.binary.data },
+			}),
+);
+`);
+		expect(result.success ? [] : result.errors).toEqual([]);
+		if (!result.success) return;
+		const upload = result.workflow.nodes.find((node) => node.name === 'Upload');
+		expect(upload?.parameters?.body).toEqual({ kind: 'binary', file: 'data' });
+	}, 120_000);
+
+	it('fails the build of a source that imports both SDKs', async () => {
+		const result = await build(`import { workflow, trigger } from '@n8n/workflow-sdk';
+import { manual } from '@n8n/workflow-sdk/next';
+
+export default workflow('Both', 'Both');
+`);
+		expect(result.success).toBe(false);
+		if (result.success) return;
+		expect(result.reason).toBe('workflow_source_build_failed');
+		expect(result.errors).toEqual([
+			"Import from '@n8n/workflow-sdk/next' or from '@n8n/workflow-sdk', not from both.",
+		]);
+	});
 });
+
+async function getAsCode(context: InstanceAiContext, json: WorkflowJSON) {
+	const tool = createWorkflowsTool({
+		...context,
+		workspace: undefined,
+		workflowService: {
+			get: async () => await Promise.resolve({ versionId: 'v1', checksum: 'c1' }),
+			getAsWorkflowJSON: async () => await Promise.resolve(json),
+		},
+	} as unknown as InstanceAiContext);
+	return await executeTool<{ code: string }>(tool, {
+		action: 'get-as-code',
+		workflowId: json.id ?? '',
+	});
+}

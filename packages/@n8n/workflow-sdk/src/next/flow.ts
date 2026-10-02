@@ -1,4 +1,4 @@
-import { compileLambda, type LambdaRoot } from './lambda';
+import { compileBinaryKey, compileLambda, type LambdaRoot } from './lambda';
 import {
 	CHECK_AGAIN,
 	CHECK_DONE,
@@ -106,16 +106,27 @@ export interface Binary {
 	readonly bytes?: number;
 }
 
-/**
- * An n8n expression, e.g. `={{ $json.id }}` or `=Hi {{ $json.name }}`. The build checks it as it
- * checks a lambda: against the item of the node before, earlier nodes, and the field type.
- */
-export type Expression = `=${string}`;
+/** The brand of an expression from `expr()`. It keeps the text, as `@n8n/expression-types` does. */
+interface ExpressionMark<E extends string> {
+	readonly text: E;
+}
 
 /**
- * A fixed value, a lambda that n8n evaluates for each item, or an expression string. A lambda
- * compiles to an n8n expression, so it may read only `item`, `$`, and JavaScript globals, never
- * local variables.
+ * A field slot for an n8n expression, e.g. `={{ $json.id }}` or `=Hi {{ $json.name }}`. The
+ * brand is optional, so a saved `'={{ … }}'` string still fits. The build checks the expression
+ * as it checks a lambda: against the item of the node before, earlier nodes, and the field type.
+ */
+export type Expression = `=${string}` & { readonly __n8n?: ExpressionMark<string> };
+
+/** What `expr(text)` returns: the expression text with its `=`. */
+export type Expr<E extends string> = (E extends `=${string}` ? E : `=${E}`) & {
+	readonly __n8n: ExpressionMark<E>;
+};
+
+/**
+ * A fixed value, a lambda that n8n evaluates for each item, or an expression from `expr()`. A
+ * lambda compiles to an n8n expression, so it may read only `item`, `$`, and JavaScript globals,
+ * never local variables.
  */
 export type Value<Item, Ctx, V> = V | ((item: Item, $: Dollar<Ctx>) => V) | Expression;
 
@@ -164,7 +175,8 @@ export interface ValueSchema {
 	readonly examples?: readonly unknown[];
 }
 
-type Simplify<T> = { [K in keyof T]: T[K] } & {};
+/** `T` as one object type, so tsc shows its fields. */
+export type Simplify<T> = { [K in keyof T]: T[K] } & {};
 
 type ObjectFromSchema<S extends ValueSchema> = S extends {
 	readonly properties: infer P extends { readonly [key: string]: ValueSchema };
@@ -334,8 +346,8 @@ export const SLOT_OF_CONNECTION: ReadonlyMap<string, ProviderSlot> = new Map(
 );
 
 /**
- * The settings of an n8n node, outside its parameters. `Flow.orElse` sets the error output
- * (`onError: 'continueErrorOutput'`).
+ * The settings of an n8n node, outside its parameters. The `onError` and `recover` macros set
+ * the error output (`onError: 'continueErrorOutput'`).
  */
 export interface NodeSettings {
 	/** Run the node again when it fails: `maxTries` runs, `waitBetweenTries` ms apart. */
@@ -431,16 +443,39 @@ export interface Fragment {
 declare const phantom: unique symbol;
 declare const routes: unique symbol;
 
-/** One node that reads `In` items and emits `Out` items. Pass it to `Flow.andThen`. */
-export interface Step<In, Ctx, Out, N extends string> {
+/**
+ * One position of a workflow: it reads `In` items, and `$()` reads the nodes `Ctx` before it.
+ * It emits `Out` items, and the position after it reads the nodes `Next`.
+ */
+export interface Part<In, Ctx, Out, Next> {
+	readonly [phantom]?: {
+		readonly read: (item: In, ctx: Ctx) => void;
+		readonly emit: Out;
+		readonly next: Next;
+	};
+}
+
+/** One node that reads `In` items and emits `Out` items. */
+export interface Step<In, Ctx, Out, N extends string>
+	extends Part<In, Ctx, Out, Ctx & Record<N, Out>> {
 	readonly name: N;
 	readonly spec: NodeSpec;
-	readonly [phantom]?: { readonly read: (item: In, ctx: Ctx) => void; readonly emit: Out };
+}
+
+/** A trigger node. It starts a flow: the positions after it read its items. */
+export interface Trigger<Out, N extends string> extends Step<unknown, unknown, Out, N> {
+	readonly spec: NodeSpec & { readonly trigger: true };
+}
+
+/** A macro, e.g. `when` or `steps(…)`: it builds its nodes from the open ends before it. */
+export interface Region<In, Ctx, Out, Next> extends Part<In, Ctx, Out, Next> {
+	/** @internal */
+	readonly region: (from: Fragment) => Fragment;
 }
 
 /**
- * A step with named outputs in n8n output order, from a contract with `outputs`.
- * `andThen` continues from the first output; `Flow.route` continues from each output.
+ * A step with named outputs in n8n output order, from a contract with `outputs`. The position
+ * after it continues from the first output; `route` continues from each output.
  */
 export interface RoutedStep<In, Ctx, Out, N extends string, Names extends string>
 	extends Step<In, Ctx, Out, N> {
@@ -578,17 +613,13 @@ interface Selector {
 }
 
 const isSupplyKind = (kind: string): kind is SupplyKind => Object.hasOwn(SUPPLY_SLOTS, kind);
-
-/** Keys both branches share, so `$("Node")` after a join names a node every path ran. */
-type Common<A, B> = Pick<A, keyof A & keyof B>;
-
 /** The built-in Manual Trigger, which the native contract `manual.trigger` types. */
 export const MANUAL_NODE = { type: 'n8n-nodes-base.manualTrigger', version: 1 };
 /** The IF and Edit Fields contracts of `@n8n/nodes-base-next` (`core.if`, `core.set`). */
 export const BRANCH_NODE = { type: '@n8n/nodes-base-next.coreIf', version: 1 };
 export const SET_NODE = { type: '@n8n/nodes-base-next.coreSet', version: 1 };
 
-/** The IF contract parameters of `Flow.branch` for the compiled JavaScript of its condition. */
+/** The IF contract parameters of `when` for the compiled JavaScript of its condition. */
 export const branchParameters = (condition: string) => ({
 	where: { conditions: [{ type: 'boolean', left: `={{ ${condition} }}`, test: { op: 'true' } }] },
 });
@@ -692,6 +723,7 @@ export function forEachFragment(
 	name: string,
 	batchSize: number,
 	body: (each: Fragment) => Fragment,
+	options?: unknown,
 ): Fragment {
 	const loop: NodeSpec = { name, ...LOOP_NODE, outputs: 2, parameters: () => ({}) };
 	const entered = attach(from.graph, from.tails, loop);
@@ -706,7 +738,9 @@ export function forEachFragment(
 			}
 			if (returns.includes(name)) compiler.issue('forEach needs a body that runs a node');
 			problems.forEach((problem) => compiler.issue(problem));
-			return forEachParameters(batchSize, returns);
+			return options === undefined
+				? forEachParameters(batchSize, returns)
+				: { batchSize, options: compiler.value(options) };
 		},
 	};
 	return {
@@ -809,12 +843,7 @@ export function switchFragment(
 		type: router.type,
 		version: router.version,
 		outputs: router.outputs,
-		parameters: (compiler) => {
-			if (cases.some(([key]) => key === FALLBACK_OUTPUT)) {
-				compiler.issue(`switch case "${FALLBACK_OUTPUT}" is the name of the output for no case`);
-			}
-			return router.parameters;
-		},
+		parameters: () => router.parameters,
 	};
 	const graph = attach(from.graph, from.tails, spec);
 	const { caseOutputs, defaultOutput } = router;
@@ -830,21 +859,14 @@ export function switchFragment(
 	};
 }
 
-/** @internal Keep the items a condition holds for (the Filter contract). */
-export function filterFragment(
-	from: Fragment,
-	name: string,
-	condition: (compiler: Compiler) => string,
-): Fragment {
+/** @internal The Filter contract node of `filter`: it keeps the items a condition holds for. */
+export const filterSpec = (name: string, condition: (compiler: Compiler) => string): NodeSpec => ({
+	name,
+	...FILTER_NODE,
 	// The Filter contract sends the other items to its second output, which stays open.
-	const spec: NodeSpec = {
-		name,
-		...FILTER_NODE,
-		outputs: 2,
-		parameters: (compiler) => filterParameters(condition(compiler)),
-	};
-	return { graph: attach(from.graph, from.tails, spec), tails: tail(name, 0) };
-}
+	outputs: 2,
+	parameters: (compiler) => filterParameters(condition(compiler)),
+});
 
 /** @internal Run every branch on the same items and join them in one Merge node, input by branch. */
 export function mergeFragment(
@@ -861,9 +883,6 @@ export function mergeFragment(
 		tails: tail(name, 0),
 	};
 }
-
-const asFlow = <Item, Ctx>(fragment: Fragment) =>
-	new Flow<Item, Ctx>(fragment.graph, fragment.tails);
 
 const isRouted = <S extends object>(step: S): step is S & { readonly outputs: readonly string[] } =>
 	'outputs' in step && Array.isArray(step.outputs);
@@ -890,7 +909,7 @@ export function routeFragment(
 			}
 			if (missing.length) {
 				compiler.issue(
-					`${name}: items on ${quoted(missing)} stop. Give each output but the last a flow in route`,
+					`${name}: items on ${quoted(missing)} stop. Give each output but the last a part in route`,
 				);
 			}
 			return step.spec.parameters(compiler);
@@ -907,24 +926,7 @@ export function routeFragment(
 	};
 }
 
-/**
- * One flow per output name of a routed step; each gets the step output. `R` maps each output
- * to the flow it builds, so a key that is no output name is `never`.
- */
-export type RouteFlows<R, Names extends string, Out, Ctx> = {
-	readonly [K in keyof R]: K extends Names ? (flow: Flow<Out, Ctx>) => R[K] : never;
-};
-
-type RouteEnds<R> = {
-	[K in keyof R]-?: R[K] extends Flow<infer A, infer C> ? [A, C] : never;
-}[keyof R];
-
-/** The item after `route`: the item of any output flow. */
-export type RoutedItem<R> = RouteEnds<R>[0];
-/** Node names that every output flow ran, as after `branch`. */
-export type RoutedCtx<R> = Pick<RouteEnds<R>[1], keyof RouteEnds<R>[1]>;
-
-/** Keys of `Item` whose value is a string, so `switch` can route on them. */
+/** Keys of `Item` whose value is a string, so `switchOn` can route on them. */
 export type CaseField<Item> = {
 	[K in keyof Item]-?: Item[K] extends string ? K : never;
 }[keyof Item] &
@@ -937,296 +939,538 @@ export type CaseItem<Item, F extends keyof Item, K> = Item extends unknown
 		: never
 	: never;
 
-type CaseFlow<Item, Ctx, N extends string, F extends keyof Item, K> = (
-	flow: Flow<CaseItem<Item, F, K>, Ctx & Record<N, CaseItem<Item, F, K>>>,
-) => Fragment;
+// ── Parts ───────────────────────────────────────────────────────────────────
 
-/** Every literal value of `Item[F]` needs a case. A plain `string` field needs `default`. */
-export type SwitchCases<Item, Ctx, N extends string, F extends keyof Item> = string extends Item[F]
-	? { readonly [key: string]: CaseFlow<Item, Ctx, N, F, string> }
-	: { readonly [K in Item[F] & string]: CaseFlow<Item, Ctx, N, F, K> };
+/** Any part, as the builders take it. A part keeps its item types for tsc only. */
+type AnyPart = Part<never, never, unknown, unknown>;
+type AnyRegion = Region<never, never, unknown, unknown>;
 
-type FlowItem<T> = T extends (flow: never) => Flow<infer A, infer _Ctx> ? A : never;
-type CasesItem<C> = { [K in keyof C]: FlowItem<C[K]> }[keyof C];
+const isStep = (part: AnyPart): part is Step<never, unknown, unknown, string> => 'spec' in part;
+const isRegion = (part: AnyPart): part is AnyRegion => 'region' in part;
+
+/** @internal Run `step` on every item at the open ends. A trigger starts a new flow. */
+export function stepFragment(
+	from: Fragment,
+	step: { readonly name: string; readonly spec: NodeSpec },
+): Fragment {
+	if (step.spec.trigger) {
+		return {
+			graph: unionGraphs([from.graph, { nodes: [step.spec], edges: [] }]),
+			tails: tail(step.name, 0),
+		};
+	}
+	const outputs = isRouted(step) ? step.outputs : [];
+	const dropped = outputs.slice(1, -1);
+	const spec: NodeSpec = dropped.length
+		? {
+				...step.spec,
+				parameters: (compiler) => {
+					compiler.issue(
+						`${step.name}: only output "${outputs[0] ?? ''}" continues, so items on ${quoted(dropped)} stop. Use route(step, { … }) to give each output a part`,
+					);
+					return step.spec.parameters(compiler);
+				},
+			}
+		: step.spec;
+	return { graph: attach(from.graph, from.tails, spec), tails: tail(step.name, 0) };
+}
+
+/** @internal The fragment of one position after `from`. */
+export const partFragment = (from: Fragment, part: AnyPart): Fragment =>
+	isStep(part) ? stepFragment(from, part) : isRegion(part) ? part.region(from) : from;
+
+/** @internal An empty graph: the build starts here. */
+export const EMPTY_FRAGMENT: Fragment = { graph: { nodes: [], edges: [] }, tails: [] };
+
+const region = (build: (from: Fragment) => Fragment): AnyRegion => ({ region: build });
+
+const given = (parts: ReadonlyArray<AnyPart | undefined>) =>
+	parts.filter((part): part is AnyPart => part !== undefined);
+
+/** The fragment of a part that takes the open ends of `from`. */
+const run = (part: AnyPart) => (from: Fragment) => partFragment(from, part);
 
 /**
- * An immutable graph fragment. `Item` is the item type at its open ends, and `Ctx` maps each
- * node name on every path to its item type, for `$("Node")` in lambdas.
+ * @internal Route each item by a condition (an IF node): output 0 is "true" and output 1 is
+ * "false", as the IF contract names them. Without `otherwise`, false items stop.
  */
-export class Flow<Item, Ctx> {
-	declare readonly [phantom]?: { readonly item: Item; readonly ctx: Ctx };
+export function branchFragment(
+	from: Fragment,
+	name: string,
+	condition: (compiler: Compiler) => string,
+	then: (flow: Fragment) => Fragment,
+	otherwise?: (flow: Fragment) => Fragment,
+): Fragment {
+	const spec: NodeSpec = {
+		name,
+		...BRANCH_NODE,
+		outputs: 2,
+		parameters: (compiler) => branchParameters(condition(compiler)),
+	};
+	const graph = attach(from.graph, from.tails, spec);
+	const onTrue = then({ graph, tails: tail(name, 0) });
+	const onFalse = otherwise?.({ graph, tails: tail(name, 1) });
+	return {
+		graph: unionGraphs([onTrue.graph, ...(onFalse ? [onFalse.graph] : [])]),
+		tails: [...onTrue.tails, ...(onFalse?.tails ?? [])],
+	};
+}
 
-	/** @internal Use a trigger such as `manual()` to start a flow. */
-	constructor(
-		readonly graph: Graph,
-		readonly tails: readonly Tail[],
-	) {}
+/**
+ * Route each item by a condition (an IF node). Items where `if` is true go to `then`, the rest
+ * to `else`. Without `else`, false items stop. The open ends of both branches continue.
+ */
+export function when<In, Ctx, const N extends string, A, B = never>(
+	config: { name: N; if: (item: In, $: Dollar<Ctx>) => boolean },
+	branches: {
+		then: Part<NoInfer<In>, NoInfer<Ctx & Record<N, In>>, A, unknown>;
+		else?: Part<NoInfer<In>, NoInfer<Ctx & Record<N, In>>, B, unknown>;
+	},
+): Region<In, Ctx, A | B, Ctx & Record<N, In>>;
+export function when(
+	config: { name: string; if: (...args: never[]) => boolean },
+	branches: { then: AnyPart; else?: AnyPart },
+): AnyRegion {
+	const condition = config.if;
+	const otherwise = branches.else;
+	return region((from) =>
+		branchFragment(
+			from,
+			config.name,
+			(compiler) => compiler.js(condition),
+			run(branches.then),
+			otherwise ? run(otherwise) : undefined,
+		),
+	);
+}
 
-	/** Run `step` on every item at the open ends. */
-	andThen<Out, N extends string>(step: Step<Item, Ctx, Out, N>): Flow<Out, Ctx & Record<N, Out>> {
-		const outputs = isRouted(step) ? step.outputs : [];
-		const dropped = outputs.slice(1, -1);
-		const spec: NodeSpec = dropped.length
-			? {
-					...step.spec,
-					parameters: (compiler) => {
-						compiler.issue(
-							`${step.name}: andThen continues only from output "${outputs[0] ?? ''}", so items on ${quoted(dropped)} stop. Use .route(step, { … }) to give each output a flow`,
-						);
-						return step.spec.parameters(compiler);
-					},
-				}
-			: step.spec;
-		return new Flow(attach(this.graph, this.tails, spec), [{ node: step.name, output: 0 }]);
-	}
+/**
+ * One part per output name of a routed step; each reads the step output. A key that is no
+ * output name is `never`.
+ */
+export type RouteParts<R, Names extends string, Out, Ctx> = {
+	readonly [K in keyof R]: K extends Names
+		? Part<NoInfer<Out>, NoInfer<Ctx>, R[K], unknown>
+		: never;
+};
 
-	/**
-	 * Run a step with named outputs, e.g. `dataTable.row.exists` or `ai.classify`, and continue
-	 * from each output with its own flow. Every output but the last needs a flow. The last output
-	 * is the "no" path (false, missing, other): without a flow its items stop.
-	 */
-	route<
-		Out,
-		const N extends string,
-		Names extends string,
-		R extends Readonly<Record<keyof R, Fragment>>,
-	>(
-		step: RoutedStep<Item, Ctx, Out, N, Names>,
-		routes: RouteFlows<R, Names, Out, Ctx & Record<N, Out>>,
-	): Flow<RoutedItem<R>, RoutedCtx<R>> {
-		const flows: Readonly<
-			Partial<Record<string, (flow: Flow<Out, Ctx & Record<N, Out>>) => Fragment>>
-		> = routes;
-		const fragment = routeFragment(
-			this,
+/**
+ * Run a step with named outputs, e.g. `dataTable.row.exists`, `ai.classify` or a Switch, and
+ * continue from each output with its own part. Every output but the last needs a part. The
+ * last output is the "no" path (false, missing, other): without a part its items stop.
+ */
+export function route<In, Ctx, Out, const N extends string, Names extends string, R>(
+	step: RoutedStep<In, Ctx, Out, N, Names>,
+	routes: RouteParts<R, Names, Out, Ctx & Record<N, Out>>,
+): Region<In, Ctx, R[keyof R], Ctx & Record<N, Out>>;
+export function route(
+	step: RoutedStep<never, unknown, unknown, string, string>,
+	routes: Readonly<Record<string, AnyPart | undefined>>,
+): AnyRegion {
+	const parts = new Map(
+		Object.entries(routes).flatMap(([key, part]) => (part ? [[key, part]] : [])),
+	);
+	return region((from) =>
+		routeFragment(
+			from,
 			step,
-			(output, flow) => flows[output]?.(asFlow(flow)),
-			Object.keys(routes),
-		);
-		return asFlow(fragment);
-	}
+			(output, flow) => {
+				const part = parts.get(output);
+				return part ? partFragment(flow, part) : undefined;
+			},
+			[...parts.keys()],
+		),
+	);
+}
 
-	/**
-	 * Route each item by a condition (an IF node). Items where `if` is true go to `then`, the
-	 * rest to `else`. Without `else`, false items stop. The open ends of both branches continue.
-	 */
-	branch<const N extends string, A, CA, B = never, CB = CA>(config: {
-		name: N;
-		if: (item: Item, $: Dollar<Ctx>) => boolean;
-		then: (flow: Flow<Item, Ctx & Record<N, Item>>) => Flow<A, CA>;
-		else?: (flow: Flow<Item, Ctx & Record<N, Item>>) => Flow<B, CB>;
-	}): Flow<A | B, Common<CA, CB>> {
-		const condition = config.if;
-		const spec: NodeSpec = {
-			name: config.name,
-			type: BRANCH_NODE.type,
-			version: BRANCH_NODE.version,
-			outputs: 2,
-			parameters: (compiler) => branchParameters(compiler.js(condition)),
-		};
-		// Output 0 is "true" and output 1 is "false", as the IF contract names them.
-		const graph = attach(this.graph, this.tails, spec);
-		const onTrue = config.then(new Flow(graph, [{ node: config.name, output: 0 }]));
-		const onFalse = config.else?.(new Flow(graph, [{ node: config.name, output: 1 }]));
-		return new Flow(unionGraphs([onTrue.graph, ...(onFalse ? [onFalse.graph] : [])]), [
-			...onTrue.tails,
-			...(onFalse?.tails ?? []),
-		]);
-	}
+/**
+ * One part per case of `switchOn`: each reads the items of its case, with `F` narrowed. The
+ * part `fallback` takes the items of no case. A literal union field needs a part for each
+ * value; a plain `string` field needs `fallback`.
+ */
+export type SwitchParts<In, Ctx, F extends keyof In, R> = {
+	readonly [K in keyof R]: K extends typeof FALLBACK_OUTPUT
+		? Part<NoInfer<In>, NoInfer<Ctx>, R[K], unknown>
+		: string extends In[F]
+			? Part<NoInfer<In>, NoInfer<Ctx>, R[K], unknown>
+			: K extends In[F]
+				? Part<NoInfer<CaseItem<In, F, K>>, NoInfer<Ctx>, R[K], unknown>
+				: never;
+	// A mapped type, not a conditional object: tsc then still types the parts in `cases`.
+} & { readonly [K in NeededCases<In, F>]: object };
 
-	/**
-	 * Run `body` on batches of `batchSize` items, one batch after the other (Loop Over Items).
-	 * Afterwards the flow continues once with all body output. Use it only to pace work, for
-	 * example for a rate limit: every node already runs once for each item. Each batch must
-	 * return once: a `loop` or `pollUntil` in the body must meet `until` for all items of a batch
-	 * on the same pass, and `paginate`, `filter`, and a `branch` without `else` are build errors.
-	 */
-	forEach<const N extends string, B, CB>(config: {
+/** The cases that `switchOn` needs: each value of a literal union, or `fallback` for a string. */
+type NeededCases<In, F extends keyof In> = string extends In[F]
+	? typeof FALLBACK_OUTPUT
+	: In[F] & string;
+
+/**
+ * Route each item by the string field `on` (a Switch node). Each case gets the items of its
+ * value, with the item type narrowed; `fallback` gets the items of no case. The open ends of
+ * all cases continue.
+ */
+export function switchOn<In, Ctx, const N extends string, const F extends CaseField<In>, R>(
+	config: { name: N; on: F },
+	cases: SwitchParts<In, Ctx & Record<N, In>, F, R>,
+): Region<In, Ctx, R[keyof R], Ctx & Record<N, In>>;
+export function switchOn(
+	config: { name: string; on: string },
+	cases: Readonly<Record<string, AnyPart | undefined>>,
+): AnyRegion {
+	const { name, on } = config;
+	const parts = Object.entries(cases).flatMap(([key, part]) =>
+		part ? [[key, part] as const] : [],
+	);
+	const fallback = parts.find(([key]) => key === FALLBACK_OUTPUT)?.[1];
+	const entries = parts
+		.filter(([key]) => key !== FALLBACK_OUTPUT)
+		.map(([key, part]) => [key, run(part)] as const);
+	return region((from) =>
+		switchFragment(from, name, on, entries, fallback ? run(fallback) : undefined),
+	);
+}
+
+/**
+ * Run `body` on batches of `batchSize` items, one batch after the other (Loop Over Items).
+ * Afterwards the flow continues once with all body output. Use it only to pace work, for
+ * example for a rate limit: every node already runs once for each item. Each batch must
+ * return once: a `loop` or `pollUntil` in the body must meet `until` for all items of a batch
+ * on the same pass, and `paginate`, `filter`, and a `when` without `else` are build errors.
+ * `options` are the node options of the `loop.batches` contract. Without them, the build sets
+ * `reset` so that a forEach in another loop starts again on each outer pass.
+ */
+export function forEach<In, Ctx, const N extends string, B>(
+	config: {
 		name: N;
 		batchSize: number;
-		body: (each: Flow<Item, Ctx & Record<N, Item>>) => Flow<B, CB>;
-	}): Flow<B, Ctx & Record<N, B>> {
-		return asFlow(
-			forEachFragment(this, config.name, config.batchSize, (each) => config.body(asFlow(each))),
-		);
-	}
+		options?: { readonly reset?: Value<In, Ctx, boolean> };
+	},
+	body: Part<NoInfer<In>, NoInfer<Ctx & Record<N, In>>, B, unknown>,
+): Region<In, Ctx, B, Ctx & Record<N, B>>;
+export function forEach(
+	config: { name: string; batchSize: number; options?: unknown },
+	body: AnyPart,
+): AnyRegion {
+	const { name, batchSize, options } = config;
+	return region((from) => forEachFragment(from, name, batchSize, run(body), options));
+}
 
-	/**
-	 * Run `body` again until `until` holds. Each item is the loop state: `next` makes the state
-	 * of the next pass from the body output. The run fails after `maxIterations` passes.
-	 * The flow continues with the output of the pass that met `until`.
-	 */
-	loop<const N extends string, B, CB, S extends Item>(config: {
+/**
+ * Run `body` again until `until` holds. Each item is the loop state: `next` makes the state
+ * of the next pass from the body output. The run fails after `maxIterations` passes.
+ * The flow continues with the output of the pass that met `until`.
+ */
+export function loop<In, Ctx, const N extends string, B, CB, S extends In>(
+	config: {
 		name: N;
 		maxIterations: number;
-		body: (pass: Flow<Item, Ctx & Record<N, Item>>) => Flow<B, CB>;
 		until: (out: B, $: Dollar<CB>) => boolean;
 		next: (out: B, $: Dollar<CB>) => S;
-	}): Flow<B, Ctx & Record<N, Item>> {
-		const { name, maxIterations, until, next } = config;
-		const options: LoopOptions = {
-			name,
-			maxIterations,
-			emit: 'last',
-			until: (compiler) => compiler.js(until),
-			next: (compiler) => compiler.js(next),
-		};
-		return asFlow(loopFragment(this, options, (pass) => config.body(asFlow(pass))));
-	}
+	},
+	body: Part<NoInfer<In>, NoInfer<Ctx & Record<N, In>>, B, CB>,
+): Region<In, Ctx, B, Ctx & Record<N, In>>;
+export function loop(
+	config: { name: string; maxIterations: number; until: unknown; next: unknown },
+	body: AnyPart,
+): AnyRegion {
+	const { name, maxIterations, until, next } = config;
+	const options: LoopOptions = {
+		name,
+		maxIterations,
+		emit: 'last',
+		until: (compiler) => compiler.js(until),
+		next: (compiler) => compiler.js(next),
+	};
+	return region((from) => loopFragment(from, options, run(body)));
+}
 
-	/**
-	 * Request pages until `next` gives `null`; each item is the cursor state of one page. Every
-	 * page continues as it arrives. Prefer the pagination of the node when it has one. In
-	 * execution order v1 the pages can continue last page first: v1 runs the node more to the
-	 * top left first.
-	 */
-	paginate<const N extends string, B, CB, S extends Item>(config: {
+/**
+ * Request pages until `next` gives `null`; each item is the cursor state of one page. Every
+ * page continues as it arrives. Prefer the pagination of the node when it has one. In
+ * execution order v1 the pages can continue last page first: v1 runs the node more to the
+ * top left first.
+ */
+export function paginate<In, Ctx, const N extends string, B, CB, S extends In>(
+	config: {
 		name: N;
 		maxPages: number;
-		request: (page: Flow<Item, Ctx & Record<N, Item>>) => Flow<B, CB>;
 		next: (response: B, $: Dollar<CB>) => S | null;
-	}): Flow<B, Ctx & Record<N, Item>> {
-		const { name, maxPages, next } = config;
-		const options: LoopOptions = {
-			name,
-			maxIterations: maxPages,
-			emit: 'each',
-			until: (compiler) => noNextPage(compiler.js(next)),
-			next: (compiler) => compiler.js(next),
-		};
-		return asFlow(loopFragment(this, options, (page) => config.request(asFlow(page))));
-	}
+	},
+	request: Part<NoInfer<In>, NoInfer<Ctx & Record<N, In>>, B, CB>,
+): Region<In, Ctx, B, Ctx & Record<N, In>>;
+export function paginate(
+	config: { name: string; maxPages: number; next: unknown },
+	request: AnyPart,
+): AnyRegion {
+	const { name, maxPages, next } = config;
+	const options: LoopOptions = {
+		name,
+		maxIterations: maxPages,
+		emit: 'each',
+		until: (compiler) => noNextPage(compiler.js(next)),
+		next: (compiler) => compiler.js(next),
+	};
+	return region((from) => loopFragment(from, options, run(request)));
+}
 
-	/**
-	 * Run `attempt` until `until` holds, with a wait of `every` between attempts. The run fails
-	 * after `maxAttempts`. The flow continues with the output of the attempt that met `until`.
-	 */
-	pollUntil<const N extends string, B, CB>(config: {
+/**
+ * Run `attempt` until `until` holds, with a wait of `every` between attempts. The run fails
+ * after `maxAttempts`. The flow continues with the output of the attempt that met `until`.
+ */
+export function pollUntil<In, Ctx, const N extends string, B, CB>(
+	config: {
 		name: N;
 		maxAttempts: number;
 		every: Interval;
-		attempt: (flow: Flow<Item, Ctx & Record<N, Item>>) => Flow<B, CB>;
 		until: (out: B, $: Dollar<CB>) => boolean;
-	}): Flow<B, Ctx & Record<N, Item>> {
-		const { name, maxAttempts, every, until } = config;
-		const options: LoopOptions = {
-			name,
-			maxIterations: maxAttempts,
-			emit: 'last',
-			wait: every,
-			until: (compiler) => compiler.js(until),
-			next: () => samePass(name),
-		};
-		return asFlow(loopFragment(this, options, (attempt) => config.attempt(asFlow(attempt))));
-	}
+	},
+	attempt: Part<NoInfer<In>, NoInfer<Ctx & Record<N, In>>, B, CB>,
+): Region<In, Ctx, B, Ctx & Record<N, In>>;
+export function pollUntil(
+	config: { name: string; maxAttempts: number; every: Interval; until: unknown },
+	attempt: AnyPart,
+): AnyRegion {
+	const { name, maxAttempts, every, until } = config;
+	const options: LoopOptions = {
+		name,
+		maxIterations: maxAttempts,
+		emit: 'last',
+		wait: every,
+		until: (compiler) => compiler.js(until),
+		next: () => samePass(name),
+	};
+	return region((from) => loopFragment(from, options, run(attempt)));
+}
 
-	/**
-	 * Route each item by the string field `on` (a Switch node). Each case flow gets the items of
-	 * its value, with the item type narrowed. A literal union field needs a case for each value;
-	 * a plain `string` field needs `default`. The open ends of all cases continue.
-	 */
-	switch<
-		const N extends string,
-		const F extends CaseField<Item>,
-		const C extends SwitchCases<Item, Ctx, N, F>,
-		D = never,
-		CD = unknown,
-	>(
-		config: {
-			name: N;
-			on: F;
-			cases: C;
-		} & (string extends Item[F]
-			? { default: (flow: Flow<Item, Ctx & Record<N, Item>>) => Flow<D, CD> }
-			: { default?: (flow: Flow<Item, Ctx & Record<N, Item>>) => Flow<D, CD> }),
-	): Flow<CasesItem<C> | D, Ctx & Record<N, Item>> {
-		const { name, on, cases } = config;
-		const fallback = config.default;
-		const entries = Object.entries(cases).map(
-			([key, build]) => [key, (flow: Fragment) => build(asFlow(flow))] as const,
-		);
-		return asFlow(
-			switchFragment(
-				this,
-				name,
-				on,
-				entries,
-				fallback ? (flow) => fallback(asFlow(flow)) : undefined,
-			),
-		);
-	}
+/** Keep the items `if` holds for (a Filter node). A type guard narrows the item type. */
+export function filter<In, Ctx, const N extends string, T extends In>(config: {
+	name: N;
+	if: (item: In, $: Dollar<Ctx>) => item is T;
+}): Step<In, Ctx, T, N>;
+export function filter<In, Ctx, const N extends string>(config: {
+	name: N;
+	if: (item: In, $: Dollar<Ctx>) => boolean;
+}): Step<In, Ctx, In, N>;
+export function filter(config: {
+	name: string;
+	if: (...args: never[]) => boolean;
+}): Step<never, unknown, unknown, string> {
+	const { name } = config;
+	const condition = config.if;
+	return { name, spec: filterSpec(name, (compiler) => compiler.js(condition)) };
+}
 
-	/** Keep the items `if` holds for (a Filter node). A type guard narrows the item type. */
-	filter<const N extends string, T extends Item>(config: {
-		name: N;
-		if: (item: Item, $: Dollar<Ctx>) => item is T;
-	}): Flow<T, Ctx & Record<N, T>>;
-	filter<const N extends string>(config: {
-		name: N;
-		if: (item: Item, $: Dollar<Ctx>) => boolean;
-	}): Flow<Item, Ctx & Record<N, Item>>;
-	filter(config: { name: string; if: (item: Item, $: Dollar<Ctx>) => boolean }): Fragment {
-		const condition = config.if;
-		return asFlow(filterFragment(this, config.name, (compiler) => compiler.js(condition)));
-	}
+/** The item after `merge`: both branch items for `append`, else the joined item. */
+type Joined<J, A, B> = J extends 'append' ? A | B : A & B;
 
-	/**
-	 * Run two branches on the same items and join them (a Merge node). `append` emits the items
-	 * of both; `position` joins item i of each; `{ left, right }` joins items whose fields match.
-	 */
-	merge<const N extends string, A, B, CA, CB>(config: {
-		name: N;
-		join: 'append';
-		branches: readonly [
-			(flow: Flow<Item, Ctx>) => Flow<A, CA>,
-			(flow: Flow<Item, Ctx>) => Flow<B, CB>,
-		];
-	}): Flow<A | B, Ctx & Record<N, A | B>>;
-	merge<const N extends string, A, B, CA, CB>(config: {
-		name: N;
-		join: 'position';
-		branches: readonly [
-			(flow: Flow<Item, Ctx>) => Flow<A, CA>,
-			(flow: Flow<Item, Ctx>) => Flow<B, CB>,
-		];
-	}): Flow<A & B, Ctx & Record<N, A & B>>;
-	merge<const N extends string, A, B, CA, CB>(config: {
-		name: N;
-		join: { left: keyof A & string; right: keyof B & string };
-		branches: readonly [
-			(flow: Flow<Item, Ctx>) => Flow<A, CA>,
-			(flow: Flow<Item, Ctx>) => Flow<B, CB>,
-		];
-	}): Flow<A & B, Ctx & Record<N, A & B>>;
-	merge(config: {
-		name: string;
-		join: MergeJoin;
-		branches: ReadonlyArray<(flow: Flow<Item, Ctx>) => Fragment>;
-	}): Fragment {
-		const branches = config.branches.map(
-			(branch) => (flow: Fragment) => branch(asFlow<Item, Ctx>(flow)),
-		);
-		return asFlow(mergeFragment(this, config.name, config.join, branches));
-	}
+/**
+ * Run two branches on the same items and join them (a Merge node). `append` emits the items
+ * of both; `position` joins item i of each; `{ left, right }` joins items whose fields match.
+ */
+export function merge<
+	In,
+	Ctx,
+	const N extends string,
+	A,
+	B,
+	const J extends 'append' | 'position' | { left: keyof A & string; right: keyof B & string },
+>(
+	config: { name: N; join: J },
+	branches: readonly [
+		Part<NoInfer<In>, NoInfer<Ctx>, A, unknown>,
+		Part<NoInfer<In>, NoInfer<Ctx>, B, unknown>,
+	],
+): Region<In, Ctx, Joined<J, A, B>, Ctx & Record<N, Joined<J, A, B>>>;
+export function merge(
+	config: { name: string; join: MergeJoin },
+	branches: readonly AnyPart[],
+): AnyRegion {
+	const { name, join } = config;
+	return region((from) => mergeFragment(from, name, join, branches.map(run)));
+}
 
-	/**
-	 * Handle items the last node fails on (its error output). The node continues with the
-	 * items it could process; the open ends of `handle` continue too.
-	 */
-	orElse<A, CA>(handle: (flow: Flow<ErrorItem, Ctx>) => Flow<A, CA>): Flow<Item | A, Ctx> {
-		const failing = new Set(this.tails.map((tail) => tail.node));
-		const nodes = this.graph.nodes.map((spec) =>
-			failing.has(spec.name) ? { ...spec, onError: 'continueErrorOutput' as const } : spec,
-		);
-		const errorTails = nodes
-			.filter((spec) => failing.has(spec.name))
-			.map((spec) => ({ node: spec.name, output: spec.outputs ?? 1 }));
-		const handled = handle(new Flow({ nodes, edges: this.graph.edges }, errorTails));
-		return new Flow(unionGraphs([{ nodes, edges: this.graph.edges }, handled.graph]), [
-			...this.tails,
-			...handled.tails,
-		]);
-	}
+/**
+ * Handle items the step before fails on (its error output). The error branch ends with
+ * `handle`: only the items the step could process continue. Use `recover` to continue with
+ * the items of `handle` too.
+ */
+export function onError<In, Ctx>(
+	handle: Part<ErrorItem, NoInfer<Ctx>, unknown, unknown>,
+): Region<In, Ctx, In, Ctx>;
+export function onError(handle: AnyPart): AnyRegion {
+	return region((from) => ({ graph: errorFragment(from, run(handle)).graph, tails: from.tails }));
+}
+
+/**
+ * Handle items the step before fails on (its error output), and continue with them: the open
+ * ends of `handle` join the items the step could process.
+ */
+export function recover<In, Ctx, A>(
+	handle: Part<ErrorItem, NoInfer<Ctx>, A, unknown>,
+): Region<In, Ctx, In | A, Ctx>;
+export function recover(handle: AnyPart): AnyRegion {
+	return region((from) => {
+		const handled = errorFragment(from, run(handle));
+		return { graph: handled.graph, tails: [...from.tails, ...handled.tails] };
+	});
+}
+
+declare const none: unique symbol;
+/** A position that `steps(…)` was not given. */
+type None = typeof none;
+
+/** The item and the node names after the last given position. */
+type LastOf<T extends ReadonlyArray<readonly [unknown, unknown]>> = T extends readonly [
+	...infer R extends ReadonlyArray<readonly [unknown, unknown]>,
+	infer L extends readonly [unknown, unknown],
+]
+	? [L[0]] extends [None]
+		? LastOf<R>
+		: L
+	: never;
+
+/**
+ * Several parts in a row, where a macro takes one part, e.g. a branch of `when`: each part
+ * reads the items of the part before. Without parts, the items pass on unchanged.
+ */
+// Each position is its own parameter: tsc infers the item of a position from the positions
+// before it only across parameters, not across the elements of one array.
+export function steps<
+	I0,
+	C0,
+	I1 = None,
+	C1 = None,
+	I2 = None,
+	C2 = None,
+	I3 = None,
+	C3 = None,
+	I4 = None,
+	C4 = None,
+	I5 = None,
+	C5 = None,
+	I6 = None,
+	C6 = None,
+	I7 = None,
+	C7 = None,
+	I8 = None,
+	C8 = None,
+	I9 = None,
+	C9 = None,
+	I10 = None,
+	C10 = None,
+	I11 = None,
+	C11 = None,
+	I12 = None,
+	C12 = None,
+	I13 = None,
+	C13 = None,
+	I14 = None,
+	C14 = None,
+	I15 = None,
+	C15 = None,
+	I16 = None,
+	C16 = None,
+	I17 = None,
+	C17 = None,
+	I18 = None,
+	C18 = None,
+	I19 = None,
+	C19 = None,
+	I20 = None,
+	C20 = None,
+>(
+	s1?: Part<NoInfer<I0>, NoInfer<C0>, I1, C1>,
+	s2?: Part<NoInfer<I1>, NoInfer<C1>, I2, C2>,
+	s3?: Part<NoInfer<I2>, NoInfer<C2>, I3, C3>,
+	s4?: Part<NoInfer<I3>, NoInfer<C3>, I4, C4>,
+	s5?: Part<NoInfer<I4>, NoInfer<C4>, I5, C5>,
+	s6?: Part<NoInfer<I5>, NoInfer<C5>, I6, C6>,
+	s7?: Part<NoInfer<I6>, NoInfer<C6>, I7, C7>,
+	s8?: Part<NoInfer<I7>, NoInfer<C7>, I8, C8>,
+	s9?: Part<NoInfer<I8>, NoInfer<C8>, I9, C9>,
+	s10?: Part<NoInfer<I9>, NoInfer<C9>, I10, C10>,
+	s11?: Part<NoInfer<I10>, NoInfer<C10>, I11, C11>,
+	s12?: Part<NoInfer<I11>, NoInfer<C11>, I12, C12>,
+	s13?: Part<NoInfer<I12>, NoInfer<C12>, I13, C13>,
+	s14?: Part<NoInfer<I13>, NoInfer<C13>, I14, C14>,
+	s15?: Part<NoInfer<I14>, NoInfer<C14>, I15, C15>,
+	s16?: Part<NoInfer<I15>, NoInfer<C15>, I16, C16>,
+	s17?: Part<NoInfer<I16>, NoInfer<C16>, I17, C17>,
+	s18?: Part<NoInfer<I17>, NoInfer<C17>, I18, C18>,
+	s19?: Part<NoInfer<I18>, NoInfer<C18>, I19, C19>,
+	s20?: Part<NoInfer<I19>, NoInfer<C19>, I20, C20>,
+): Region<
+	I0,
+	C0,
+	LastOf<
+		[
+			[I0, C0],
+			[I1, C1],
+			[I2, C2],
+			[I3, C3],
+			[I4, C4],
+			[I5, C5],
+			[I6, C6],
+			[I7, C7],
+			[I8, C8],
+			[I9, C9],
+			[I10, C10],
+			[I11, C11],
+			[I12, C12],
+			[I13, C13],
+			[I14, C14],
+			[I15, C15],
+			[I16, C16],
+			[I17, C17],
+			[I18, C18],
+			[I19, C19],
+			[I20, C20],
+		]
+	>[0],
+	LastOf<
+		[
+			[I0, C0],
+			[I1, C1],
+			[I2, C2],
+			[I3, C3],
+			[I4, C4],
+			[I5, C5],
+			[I6, C6],
+			[I7, C7],
+			[I8, C8],
+			[I9, C9],
+			[I10, C10],
+			[I11, C11],
+			[I12, C12],
+			[I13, C13],
+			[I14, C14],
+			[I15, C15],
+			[I16, C16],
+			[I17, C17],
+			[I18, C18],
+			[I19, C19],
+			[I20, C20],
+		]
+	>[1]
+>;
+export function steps(...parts: ReadonlyArray<AnyPart | undefined>): AnyRegion {
+	return region((from) => given(parts).reduce(partFragment, from));
+}
+
+/** @internal The last nodes of `from` emit failed items on their error output into `handle`. */
+export function errorFragment(from: Fragment, handle: (flow: Fragment) => Fragment): Fragment {
+	const failing = new Set(from.tails.map((each) => each.node));
+	const nodes = from.graph.nodes.map((spec) =>
+		failing.has(spec.name) ? { ...spec, onError: 'continueErrorOutput' as const } : spec,
+	);
+	const errorTails = nodes
+		.filter((spec) => failing.has(spec.name))
+		.map((spec) => ({ node: spec.name, output: spec.outputs ?? 1 }));
+	const handled = handle({ graph: { nodes, edges: from.graph.edges }, tails: errorTails });
+	return {
+		graph: unionGraphs([{ nodes, edges: from.graph.edges }, handled.graph]),
+		tails: handled.tails,
+	};
 }
 
 /**
@@ -1239,6 +1483,38 @@ export interface NodeOutputs {}
 export type OutputOf<N extends string, Default> = N extends keyof NodeOutputs
 	? NodeOutputs[N]
 	: Default;
+
+/** The lambda of a binary field. It compiles to the key of a binary of the input item. */
+class BinaryKey {
+	constructor(readonly fn: (...args: never[]) => unknown) {}
+}
+
+/** `value` with the lambda at `path` marked as a binary key. `*` is each entry of a list or a record. */
+function markBinaryKey(value: unknown, path: readonly string[]): unknown {
+	const [head, ...rest] = path;
+	if (head === undefined) return isLambda(value) ? new BinaryKey(value) : value;
+	if (head === '*' && Array.isArray(value)) return value.map((entry) => markBinaryKey(entry, rest));
+	if (!isDataObject(value)) return value;
+	if (head === '*') {
+		return Object.fromEntries(
+			Object.entries(value).map(([key, entry]) => [key, markBinaryKey(entry, rest)]),
+		);
+	}
+	return head in value ? { ...value, [head]: markBinaryKey(value[head], rest) } : value;
+}
+
+/**
+ * `config` with the lambda of each binary field marked, so the build compiles
+ * `(item) => item.binary.data` to `data`. Generated node modules call this with the paths of
+ * the binary fields of an action input.
+ */
+export function binaryKeys<C extends object>(
+	config: C,
+	paths: ReadonlyArray<readonly string[]>,
+): C & Record<string, unknown> {
+	const marked = paths.reduce<unknown>(markBinaryKey, { ...config });
+	return { ...config, ...(isDataObject(marked) ? marked : {}) };
+}
 
 /**
  * A node from an action contract. Generated node modules call this; the build compiles the
@@ -1480,7 +1756,7 @@ const filledSample = (example: unknown, sample: unknown): unknown =>
 		: sample;
 
 /**
- * Start a flow at a contract trigger. Generated node modules call this. `schema` holds the JSON
+ * A contract trigger. Generated node modules call this. `schema` holds the JSON
  * Schemas of declared output fields: it types the output, and without a `sample` it makes one.
  * It is not a node parameter.
  */
@@ -1496,7 +1772,7 @@ export function contractTrigger<Out, const N extends string>(
 	version = 1,
 	requires?: Requires,
 	options: TriggerOptions = {},
-): Flow<Out, Record<N, Out>> {
+): Trigger<Out, N> {
 	const { name, sample: given, settings, providers: grouped, ...input } = config;
 	const { pairing, example, takesSchema, slot } = options;
 	const providers = grouped && providerSpecs(grouped);
@@ -1512,7 +1788,7 @@ export function contractTrigger<Out, const N extends string>(
 		: full && declared.length
 			? [full]
 			: undefined;
-	return startFlow({
+	return triggerStep({
 		name,
 		type: id,
 		version,
@@ -1562,13 +1838,11 @@ export function routedStep<In, Ctx, Out, N extends string, Names extends string>
 	return { ...step, spec: { ...step.spec, outputs: names.length }, outputs: names };
 }
 
-/** Start a flow at a trigger node. */
-export function startFlow<Item, const N extends string>(
+/** A trigger node. It starts a flow. */
+export function triggerStep<Item, const N extends string>(
 	spec: NodeSpec & { name: N },
-): Flow<Item, Record<N, Item>> {
-	return new Flow({ nodes: [{ ...spec, trigger: true }], edges: [] }, [
-		{ node: spec.name, output: 0 },
-	]);
+): Trigger<Item, N> {
+	return { name: spec.name, spec: { ...spec, trigger: true } };
 }
 
 // ── Build ───────────────────────────────────────────────────────────────────
@@ -1581,6 +1855,11 @@ function createCompiler(nodeName: string, nodeNames: ReadonlySet<string>, issues
 	};
 	const compiler: Compiler = {
 		value: (value, root = '$json') => {
+			if (value instanceof BinaryKey) {
+				const result = compileBinaryKey(value.fn);
+				if (!result.ok) issues.push(`${nodeName}: ${result.error}`);
+				return result.ok ? result.key : '';
+			}
 			if (isLambda(value)) {
 				const result = lambda(value, root);
 				return result.ok ? result.expression : '';
@@ -1784,13 +2063,146 @@ function pairingIssues(
 	});
 }
 
-/** Combine flows (one per trigger) into the workflow to save. */
+/**
+ * The workflow to save: a trigger, then the parts that run in order. Each part reads the items
+ * of the part before. A trigger later in the list starts another flow.
+ */
+// Each position is its own parameter, as in `steps`.
+export function workflow<
+	I0,
+	const N0 extends string,
+	I1,
+	C1,
+	I2,
+	C2,
+	I3,
+	C3,
+	I4,
+	C4,
+	I5,
+	C5,
+	I6,
+	C6,
+	I7,
+	C7,
+	I8,
+	C8,
+	I9,
+	C9,
+	I10,
+	C10,
+	I11,
+	C11,
+	I12,
+	C12,
+	I13,
+	C13,
+	I14,
+	C14,
+	I15,
+	C15,
+	I16,
+	C16,
+	I17,
+	C17,
+	I18,
+	C18,
+	I19,
+	C19,
+	I20,
+	C20,
+	I21,
+	C21,
+	I22,
+	C22,
+	I23,
+	C23,
+	I24,
+	C24,
+	I25,
+	C25,
+	I26,
+	C26,
+	I27,
+	C27,
+	I28,
+	C28,
+	I29,
+	C29,
+	I30,
+	C30,
+	I31,
+	C31,
+	I32,
+	C32,
+	I33,
+	C33,
+	I34,
+	C34,
+	I35,
+	C35,
+	I36,
+	C36,
+	I37,
+	C37,
+	I38,
+	C38,
+	I39,
+	C39,
+	I40,
+	C40,
+>(
+	options: string | WorkflowOptions,
+	trigger: Trigger<I0, N0>,
+	s1?: Part<NoInfer<I0>, NoInfer<Record<N0, I0>>, I1, C1>,
+	s2?: Part<NoInfer<I1>, NoInfer<C1>, I2, C2>,
+	s3?: Part<NoInfer<I2>, NoInfer<C2>, I3, C3>,
+	s4?: Part<NoInfer<I3>, NoInfer<C3>, I4, C4>,
+	s5?: Part<NoInfer<I4>, NoInfer<C4>, I5, C5>,
+	s6?: Part<NoInfer<I5>, NoInfer<C5>, I6, C6>,
+	s7?: Part<NoInfer<I6>, NoInfer<C6>, I7, C7>,
+	s8?: Part<NoInfer<I7>, NoInfer<C7>, I8, C8>,
+	s9?: Part<NoInfer<I8>, NoInfer<C8>, I9, C9>,
+	s10?: Part<NoInfer<I9>, NoInfer<C9>, I10, C10>,
+	s11?: Part<NoInfer<I10>, NoInfer<C10>, I11, C11>,
+	s12?: Part<NoInfer<I11>, NoInfer<C11>, I12, C12>,
+	s13?: Part<NoInfer<I12>, NoInfer<C12>, I13, C13>,
+	s14?: Part<NoInfer<I13>, NoInfer<C13>, I14, C14>,
+	s15?: Part<NoInfer<I14>, NoInfer<C14>, I15, C15>,
+	s16?: Part<NoInfer<I15>, NoInfer<C15>, I16, C16>,
+	s17?: Part<NoInfer<I16>, NoInfer<C16>, I17, C17>,
+	s18?: Part<NoInfer<I17>, NoInfer<C17>, I18, C18>,
+	s19?: Part<NoInfer<I18>, NoInfer<C18>, I19, C19>,
+	s20?: Part<NoInfer<I19>, NoInfer<C19>, I20, C20>,
+	s21?: Part<NoInfer<I20>, NoInfer<C20>, I21, C21>,
+	s22?: Part<NoInfer<I21>, NoInfer<C21>, I22, C22>,
+	s23?: Part<NoInfer<I22>, NoInfer<C22>, I23, C23>,
+	s24?: Part<NoInfer<I23>, NoInfer<C23>, I24, C24>,
+	s25?: Part<NoInfer<I24>, NoInfer<C24>, I25, C25>,
+	s26?: Part<NoInfer<I25>, NoInfer<C25>, I26, C26>,
+	s27?: Part<NoInfer<I26>, NoInfer<C26>, I27, C27>,
+	s28?: Part<NoInfer<I27>, NoInfer<C27>, I28, C28>,
+	s29?: Part<NoInfer<I28>, NoInfer<C28>, I29, C29>,
+	s30?: Part<NoInfer<I29>, NoInfer<C29>, I30, C30>,
+	s31?: Part<NoInfer<I30>, NoInfer<C30>, I31, C31>,
+	s32?: Part<NoInfer<I31>, NoInfer<C31>, I32, C32>,
+	s33?: Part<NoInfer<I32>, NoInfer<C32>, I33, C33>,
+	s34?: Part<NoInfer<I33>, NoInfer<C33>, I34, C34>,
+	s35?: Part<NoInfer<I34>, NoInfer<C34>, I35, C35>,
+	s36?: Part<NoInfer<I35>, NoInfer<C35>, I36, C36>,
+	s37?: Part<NoInfer<I36>, NoInfer<C36>, I37, C37>,
+	s38?: Part<NoInfer<I37>, NoInfer<C37>, I38, C38>,
+	s39?: Part<NoInfer<I38>, NoInfer<C38>, I39, C39>,
+	s40?: Part<NoInfer<I39>, NoInfer<C39>, I40, C40>,
+): Workflow;
 export function workflow(
 	options: string | WorkflowOptions,
-	...flows: readonly Fragment[]
+	...positions: ReadonlyArray<AnyPart | undefined>
 ): Workflow {
 	const { name, grants = {} } = typeof options === 'string' ? { name: options } : options;
-	const graph = unionGraphs(flows.map((flow) => flow.graph));
+	const parts = given(positions);
+	const [first] = parts;
+	const { graph } = parts.reduce(partFragment, EMPTY_FRAGMENT);
 	const nodeNames = new Set(graph.nodes.map((spec) => spec.name));
 	const required = scopesOf(graph.nodes);
 	const scopes = () => required;
@@ -1815,6 +2227,9 @@ export function workflow(
 			),
 		].map((duplicate) => `Two different nodes are named "${duplicate}"`),
 		...missing,
+		...(first && isStep(first) && first.spec.trigger
+			? []
+			: ['A workflow starts with a trigger, e.g. manual()']),
 	];
 
 	const providerInput = (spec: ProviderSpec): NodeInput => ({

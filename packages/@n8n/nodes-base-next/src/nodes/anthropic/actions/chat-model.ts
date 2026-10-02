@@ -144,21 +144,19 @@ export const anthropicChatModel = anthropic.subnode('chatModel', {
 					},
 				});
 				const { content, stop_reason: stop, usage } = parse(messageSchema, body);
-				const calls = content.flatMap(({ type, id, name, input: args }) =>
-					type === 'tool_use' && id !== undefined && name !== undefined
-						? [{ id, name, args: args ?? {} }]
-						: [],
+				const calls = (content ?? []).flatMap(({ type, id, name, input: args }) =>
+					type === 'tool_use' && id && name ? [{ id, name, args: args ?? {} }] : [],
 				);
 				const answer = output ? calls.find((call) => call.name === OUTPUT_TOOL) : undefined;
-				const text = content.flatMap((block) =>
-					block.type === 'text' && block.text !== undefined ? [block.text] : [],
+				const text = (content ?? []).flatMap((block) =>
+					block.type === 'text' && block.text ? [block.text] : [],
 				);
 				// The answer ends the turn. Other calls in the same reply would need tool results first.
 				return {
 					text: answer ? JSON.stringify(answer.args) : text.join(''),
 					toolCalls: answer ? [] : calls,
 					finishReason: answer ? 'stop' : (REASONS[stop ?? 'end_turn'] ?? stop ?? 'stop'),
-					...(usage
+					...(typeof usage?.input_tokens === 'number' && typeof usage.output_tokens === 'number'
 						? { usage: { inputTokens: usage.input_tokens, outputTokens: usage.output_tokens } }
 						: {}),
 				};

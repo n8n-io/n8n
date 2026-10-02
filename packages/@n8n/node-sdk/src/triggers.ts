@@ -42,7 +42,7 @@ import {
 } from './runtime';
 import { parameterValue, toProperty } from './properties';
 import type { Binary, Schema, Shape } from './schema';
-import { applyDefaults, parse, validate } from './validate';
+import { applyDefaults, parsePage, validate } from './validate';
 
 /**
  * What starts a trigger: a service webhook, a poll, the event of a native trigger, or an `event`
@@ -431,7 +431,7 @@ async function runPoll(
 	context: IPollFunctions,
 ): Promise<INodeExecutionData[][] | null> {
 	const { response } = poll;
-	const pageOf = (body: unknown) => (response ? parse(response, body, 'page') : body);
+	const pageOf = (body: unknown) => (response ? parsePage(response, body) : body);
 	const input = inputOf(trigger, context);
 	const http = await httpOf(trigger, context);
 	const data = context.getWorkflowStaticData('node');

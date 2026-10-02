@@ -105,6 +105,7 @@ import {
 	orchestratorAgentId,
 	resolveAgentPreviewSession,
 	saveAgentBuilderTarget,
+	workflowSourceAfterWrite,
 	type ConfirmationData,
 	type DomainAccessTracker,
 	type InstanceAiContext,
@@ -2774,6 +2775,7 @@ export class InstanceAiService {
 					filesystemInstructions: '',
 					ensureWorkspace: async () =>
 						await scopeWorkspaceForAgent((await getSetupSandboxEntry())?.workspace),
+					afterWrite: workflowSourceAfterWrite(context),
 				});
 				const runtimeSkillWorkspace = createLazyRuntimeWorkspace({
 					id: 'instance-ai-runtime-skill-workspace',

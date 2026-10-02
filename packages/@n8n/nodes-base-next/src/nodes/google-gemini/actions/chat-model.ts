@@ -112,12 +112,8 @@ export const geminiChatModel = googleGemini.subnode('chatModel', {
 						},
 					},
 				});
-				const {
-					candidates = [],
-					promptFeedback,
-					usageMetadata,
-				} = parse(generateContentSchema, body);
-				const [candidate] = candidates;
+				const { candidates, promptFeedback, usageMetadata } = parse(generateContentSchema, body);
+				const [candidate] = candidates ?? [];
 				if (!candidate) {
 					const reason = promptFeedback?.blockReason;
 					throw new Error(`Gemini gave no reply${reason ? `: ${reason}` : ''}`);
@@ -125,18 +121,18 @@ export const geminiChatModel = googleGemini.subnode('chatModel', {
 				const parts = candidate.content?.parts ?? [];
 				// Gemini gives no call IDs before its newer models, so the position names a call.
 				const toolCalls = parts.flatMap(({ functionCall: call }, index) =>
-					call
+					call?.name
 						? [{ id: call.id ?? `${call.name}-${index}`, name: call.name, args: call.args ?? {} }]
 						: [],
 				);
 				const reason = candidate.finishReason ?? 'STOP';
-				const { promptTokenCount: inputTokens, candidatesTokenCount: outputTokens = 0 } =
-					usageMetadata ?? {};
+				const inputTokens = usageMetadata?.promptTokenCount;
+				const outputTokens = usageMetadata?.candidatesTokenCount ?? 0;
 				return {
 					text: replyTextOf(parts),
 					toolCalls,
 					finishReason: toolCalls.length ? 'tool_calls' : (REASONS[reason] ?? reason),
-					...(inputTokens === undefined ? {} : { usage: { inputTokens, outputTokens } }),
+					...(typeof inputTokens === 'number' ? { usage: { inputTokens, outputTokens } } : {}),
 				};
 			},
 		};

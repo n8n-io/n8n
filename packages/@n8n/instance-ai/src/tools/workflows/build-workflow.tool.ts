@@ -84,7 +84,11 @@ import {
 } from './workflow-json-utils';
 import { contractEgressWarnings, legacyNodeIssues } from './next-workflow-build';
 import { computeChangedNodeNames, downgradeUnchangedNodeBlockers } from './workflow-node-diff';
-import { compileWorkflowSource } from './workflow-source-compiler';
+import {
+	compileWorkflowSource,
+	workflowSourceSdk,
+	type WorkflowSourceSdk,
+} from './workflow-source-compiler';
 import { appendWorkflowSourceDiagnostics } from './workflow-source-diagnostics';
 import {
 	GROUP_DROPPED_OVER_CEILING_CODE,
@@ -510,6 +514,7 @@ interface ValidationFailureArgs {
 	isSupportingWorkflow?: boolean;
 	isAuxiliarySupportingWorkflow?: boolean;
 	withEscalation: (errors: string[], options?: { trackingErrors?: string[] }) => string[];
+	sourceSdk: WorkflowSourceSdk;
 	stage?: BuildTelemetryStage;
 	grouping?: GroupingOutcome;
 }
@@ -566,6 +571,7 @@ async function handleValidationFailure(args: ValidationFailureArgs) {
 		isSupportingWorkflow = false,
 		isAuxiliarySupportingWorkflow = false,
 		withEscalation,
+		sourceSdk,
 		stage = 'validation',
 		grouping,
 	} = args;
@@ -574,7 +580,7 @@ async function handleValidationFailure(args: ValidationFailureArgs) {
 		(e) => `[${e.code}]${e.nodeName ? ` (${e.nodeName})` : ''}: ${e.message}`,
 	);
 	const formattedErrors = withEscalation(
-		reason === 'workflow_source_validation_failed' && !context.nodeContractsEnabled
+		reason === 'workflow_source_validation_failed' && sourceSdk === 'legacy'
 			? await appendWorkflowSourceDiagnostics(context, filePath, validationErrors, args.abortSignal)
 			: validationErrors,
 		{ trackingErrors: validationErrors },
@@ -1052,11 +1058,12 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 
 			let informational: ValidationWarning[] = [];
 
+			const sourceSdk = workflowSourceSdk(context, sourceCode);
 			let compiled = await compileWorkflowSource(context, filePath, sourceCode, ctx.abortSignal);
 			if (
 				!compiled.success &&
 				compiled.reason === 'workflow_source_build_failed' &&
-				!context.nodeContractsEnabled &&
+				sourceSdk === 'legacy' &&
 				context.workspace
 			) {
 				// Recover missing-import errors server-side; persist so later edits see the fix.
@@ -1099,7 +1106,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 			}
 			if (!compiled.success) {
 				const buildErrors =
-					compiled.reason === 'workflow_source_build_failed' && !context.nodeContractsEnabled
+					compiled.reason === 'workflow_source_build_failed' && sourceSdk === 'legacy'
 						? await appendWorkflowSourceDiagnostics(
 								context,
 								filePath,
@@ -1184,6 +1191,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 					isSupportingWorkflow,
 					isAuxiliarySupportingWorkflow,
 					withEscalation,
+					sourceSdk,
 				});
 			}
 
@@ -1336,11 +1344,12 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 					isSupportingWorkflow,
 					isAuxiliarySupportingWorkflow,
 					withEscalation,
+					sourceSdk,
 				});
 			}
 
 			// Node contracts: name the typed step for each legacy node() that has one.
-			if (context.nodeContractsEnabled) {
+			if (sourceSdk === 'next') {
 				informational.push(...(await legacyNodeIssues(sourceCode, json)));
 			}
 
@@ -1376,6 +1385,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 					isSupportingWorkflow,
 					isAuxiliarySupportingWorkflow,
 					withEscalation,
+					sourceSdk,
 				});
 			}
 
@@ -1487,6 +1497,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 						isSupportingWorkflow,
 						isAuxiliarySupportingWorkflow,
 						withEscalation,
+						sourceSdk,
 						stage: 'grouping',
 						grouping,
 					});

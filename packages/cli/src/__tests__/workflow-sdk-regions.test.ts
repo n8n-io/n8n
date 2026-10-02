@@ -1,13 +1,21 @@
 // Runs the workflows that `@n8n/workflow-sdk/next` regions compile to on the legacy engine, with
-// the real nodes from n8n-nodes-base and the contract nodes that `set` and `branch` emit, in both
+// the real nodes from n8n-nodes-base and the contract nodes that `set` and `when` emit, in both
 // execution orders, and checks what comes out.
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import {
 	contractStep,
+	filter,
+	forEach,
+	loop,
 	manual,
+	merge,
 	node,
+	paginate,
+	pollUntil,
 	set,
 	splitOut,
+	steps,
+	switchOn,
 	validateLoopWiring,
 	workflow,
 	type Step,
@@ -152,28 +160,25 @@ describe.each<ExecutionOrder>(['v0', 'v1'])(
 		it('forEach nested in forEach processes every order once, per customer', async () => {
 			const json = workflow(
 				'Orders',
-				manual()
-					.andThen(source<Customer>()('Customers'))
-					.forEach({
-						name: 'Each customer',
-						batchSize: 1,
-						body: (customer) =>
-							customer.andThen(splitOut({ name: 'Orders', field: 'orders' })).forEach({
-								name: 'Each order',
-								batchSize: 2,
-								body: (order) =>
-									order.andThen(
-										set({
-											name: 'Line',
-											fields: {
-												order: (o) => o.id,
-												total: (o) => o.total * 2,
-												customer: (_o, $) => $('Each customer').name,
-											},
-										}),
-									),
+				manual(),
+				source<Customer>()('Customers'),
+				forEach(
+					{ name: 'Each customer', batchSize: 1 },
+					steps(
+						splitOut({ name: 'Orders', field: 'orders' }),
+						forEach(
+							{ name: 'Each order', batchSize: 2 },
+							set({
+								name: 'Line',
+								fields: {
+									order: (o) => o.id,
+									total: (o) => o.total * 2,
+									customer: (_o, $) => $('Each customer').name,
+								},
 							}),
-					}),
+						),
+					),
+				),
 			).toJSON();
 			expect(validateLoopWiring(json)).toEqual([]);
 
@@ -196,19 +201,18 @@ describe.each<ExecutionOrder>(['v0', 'v1'])(
 		it('nested Loop Over Items without the reset skips later customers (the legacy failure)', async () => {
 			const json = workflow(
 				'Orders',
-				manual()
-					.andThen(source<Customer>()('Customers'))
-					.forEach({
-						name: 'Each customer',
-						batchSize: 1,
-						body: (customer) =>
-							customer.andThen(splitOut({ name: 'Orders', field: 'orders' })).forEach({
-								name: 'Each order',
-								batchSize: 2,
-								body: (order) =>
-									order.andThen(set({ name: 'Line', fields: { order: (o) => o.id } })),
-							}),
-					}),
+				manual(),
+				source<Customer>()('Customers'),
+				forEach(
+					{ name: 'Each customer', batchSize: 1 },
+					steps(
+						splitOut({ name: 'Orders', field: 'orders' }),
+						forEach(
+							{ name: 'Each order', batchSize: 2 },
+							set({ name: 'Line', fields: { order: (o) => o.id } }),
+						),
+					),
+				),
 			).toJSON();
 			const handWired = {
 				...json,
@@ -243,19 +247,18 @@ describe.each<ExecutionOrder>(['v0', 'v1'])(
 		const loopWorkflow = (maxIterations: number) =>
 			workflow(
 				'Count',
-				manual()
-					.andThen(set({ name: 'Init', fields: { n: 0, sum: 0 } }))
-					.loop({
+				manual(),
+				set({ name: 'Init', fields: { n: 0, sum: 0 } }),
+				loop(
+					{
 						name: 'Count',
 						maxIterations,
-						body: (pass) =>
-							pass.andThen(
-								set({ name: 'Add', fields: { n: (s) => s.n + 1, sum: (s) => s.sum + s.n + 1 } }),
-							),
 						until: (out) => out.n >= 3,
 						next: (out) => ({ n: out.n, sum: out.sum }),
-					})
-					.andThen(set({ name: 'Result', fields: { sum: (out) => out.sum } })),
+					},
+					set({ name: 'Add', fields: { n: (s) => s.n + 1, sum: (s) => s.sum + s.n + 1 } }),
+				),
+				set({ name: 'Result', fields: { sum: (out) => out.sum } }),
 			).toJSON();
 
 		it('loop runs until its exit condition and carries typed state', async () => {
@@ -285,24 +288,23 @@ describe.each<ExecutionOrder>(['v0', 'v1'])(
 		it('paginate emits each page and stops when next is null', async () => {
 			const json = workflow(
 				'Pages',
-				manual()
-					.andThen(set({ name: 'Start page', fields: { cursor: 0 } }))
-					.paginate({
+				manual(),
+				set({ name: 'Start page', fields: { cursor: 0 } }),
+				paginate(
+					{
 						name: 'Pages',
 						maxPages: 10,
-						request: (page) =>
-							page.andThen(
-								set({
-									name: 'Fetch',
-									fields: {
-										rows: (p) => [p.cursor * 10, p.cursor * 10 + 1],
-										next: (p) => (p.cursor < 2 ? p.cursor + 1 : null),
-									},
-								}),
-							),
 						next: (response) => (response.next === null ? null : { cursor: response.next }),
-					})
-					.andThen(splitOut({ name: 'Rows', field: 'rows' })),
+					},
+					set({
+						name: 'Fetch',
+						fields: {
+							rows: (p) => [p.cursor * 10, p.cursor * 10 + 1],
+							next: (p) => (p.cursor < 2 ? p.cursor + 1 : null),
+						},
+					}),
+				),
+				splitOut({ name: 'Rows', field: 'rows' }),
 			).toJSON();
 
 			const result = await run(json, [{}]);
@@ -320,26 +322,25 @@ describe.each<ExecutionOrder>(['v0', 'v1'])(
 		it('pollUntil waits between attempts and emits the attempt that met the condition', async () => {
 			const json = workflow(
 				'Poll',
-				manual()
-					.andThen(set({ name: 'Job', fields: { job: 'j1' } }))
-					.pollUntil({
+				manual(),
+				set({ name: 'Job', fields: { job: 'j1' } }),
+				pollUntil(
+					{
 						name: 'Poll',
 						maxAttempts: 5,
 						every: { amount: 0, unit: 'seconds' },
-						attempt: (attempt) =>
-							attempt.andThen(
-								node({
-									name: 'Status',
-									type: 'n8n-nodes-base.set',
-									version: 3.4,
-									parameters: {
-										mode: 'raw',
-										jsonOutput: '={{ ({ job: $json.job, done: $json["Poll pass"] >= 2 }) }}',
-									},
-								}),
-							),
 						until: (status) => status.done === true,
+					},
+					node({
+						name: 'Status',
+						type: 'n8n-nodes-base.set',
+						version: 3.4,
+						parameters: {
+							mode: 'raw',
+							jsonOutput: '={{ ({ job: $json.job, done: $json["Poll pass"] >= 2 }) }}',
+						},
 					}),
+				),
 			).toJSON();
 
 			const result = await run(json, [{}]);
@@ -354,25 +355,17 @@ describe.each<ExecutionOrder>(['v0', 'v1'])(
 			const tickets = source<Ticket>();
 			const routed = workflow(
 				'Triage',
-				manual()
-					.andThen(tickets('Tickets'))
-					.switch({
-						name: 'By kind',
-						on: 'kind',
-						cases: {
-							bug: (bug) =>
-								bug.andThen(
-									set({ name: 'Bug', fields: { id: (t) => t.id, score: (t) => t.severity * 10 } }),
-								),
-							feature: (feature) =>
-								feature.andThen(
-									set({ name: 'Feature', fields: { id: (t) => t.id, score: (t) => t.votes } }),
-								),
-							chore: (chore) =>
-								chore.andThen(set({ name: 'Chore', fields: { id: (t) => t.id, score: 0 } })),
-						},
-					})
-					.andThen(set({ name: 'Scored', fields: { id: (s) => s.id, score: (s) => s.score } })),
+				manual(),
+				tickets('Tickets'),
+				switchOn(
+					{ name: 'By kind', on: 'kind' },
+					{
+						bug: set({ name: 'Bug', fields: { id: (t) => t.id, score: (t) => t.severity * 10 } }),
+						feature: set({ name: 'Feature', fields: { id: (t) => t.id, score: (t) => t.votes } }),
+						chore: set({ name: 'Chore', fields: { id: (t) => t.id, score: 0 } }),
+					},
+				),
+				set({ name: 'Scored', fields: { id: (s) => s.id, score: (s) => s.score } }),
 			).toJSON();
 			const input: Ticket[] = [
 				{ kind: 'bug', id: 't1', severity: 3 },
@@ -401,13 +394,13 @@ describe.each<ExecutionOrder>(['v0', 'v1'])(
 
 			const filtered = workflow(
 				'Bugs',
-				manual()
-					.andThen(tickets('Tickets'))
-					.filter({
-						name: 'Bugs only',
-						if: (t): t is Extract<Ticket, { kind: 'bug' }> => t.kind === 'bug',
-					})
-					.andThen(set({ name: 'Severity', fields: { severity: (bug) => bug.severity } })),
+				manual(),
+				tickets('Tickets'),
+				filter({
+					name: 'Bugs only',
+					if: (t): t is Extract<Ticket, { kind: 'bug' }> => t.kind === 'bug',
+				}),
+				set({ name: 'Severity', fields: { severity: (bug) => bug.severity } }),
 			).toJSON();
 			expect(runs(await run(filtered, input), 'Severity')).toEqual([
 				[{ severity: 3 }, { severity: 1 }],
@@ -417,25 +410,12 @@ describe.each<ExecutionOrder>(['v0', 'v1'])(
 		it('merge joins two branches of the same items by a matching field', async () => {
 			const json = workflow(
 				'Join',
-				manual()
-					.andThen(source<Customer>()('Customers'))
-					.merge({
-						name: 'Join',
-						join: { left: 'id', right: 'id' },
-						branches: [
-							(flow) =>
-								flow.andThen(
-									set({ name: 'Names', fields: { id: (c) => c.id, name: (c) => c.name } }),
-								),
-							(flow) =>
-								flow.andThen(
-									set({
-										name: 'Counts',
-										fields: { id: (c) => c.id, count: (c) => c.orders.length },
-									}),
-								),
-						],
-					}),
+				manual(),
+				source<Customer>()('Customers'),
+				merge({ name: 'Join', join: { left: 'id', right: 'id' } }, [
+					set({ name: 'Names', fields: { id: (c) => c.id, name: (c) => c.name } }),
+					set({ name: 'Counts', fields: { id: (c) => c.id, count: (c) => c.orders.length } }),
+				]),
 			).toJSON();
 
 			const result = await run(json, CUSTOMERS);
@@ -449,17 +429,18 @@ describe.each<ExecutionOrder>(['v0', 'v1'])(
 				],
 			]);
 		});
-		it('switch sends unmatched items to its default', async () => {
+		it('switch sends unmatched items to its fallback', async () => {
 			const json = workflow(
 				'By name',
-				manual()
-					.andThen(source<Customer>()('Customers'))
-					.switch({
-						name: 'By name',
-						on: 'name',
-						cases: { Ada: (ada) => ada.andThen(set({ name: 'Ada', fields: { id: (c) => c.id } })) },
-						default: (rest) => rest.andThen(set({ name: 'Rest', fields: { id: (c) => c.id } })),
-					}),
+				manual(),
+				source<Customer>()('Customers'),
+				switchOn(
+					{ name: 'By name', on: 'name' },
+					{
+						Ada: set({ name: 'Ada', fields: { id: (c) => c.id } }),
+						fallback: set({ name: 'Rest', fields: { id: (c) => c.id } }),
+					},
+				),
 			).toJSON();
 
 			const result = await run(json, CUSTOMERS);
@@ -483,17 +464,14 @@ describe.each<ExecutionOrder>(['v0', 'v1'])(
 				],
 			],
 		])('merge %s joins two branches of the same items', async (join, expected) => {
-			const start = manual().andThen(source<Customer>()('Customers'));
-			const names = (flow: typeof start) =>
-				flow.andThen(set({ name: 'Names', fields: { name: (c) => c.name } }));
-			const counts = (flow: typeof start) =>
-				flow.andThen(set({ name: 'Counts', fields: { count: (c) => c.orders.length } }));
-			const branches = [names, counts] as const;
 			const json = workflow(
 				'Both',
-				join === 'append'
-					? start.merge({ name: 'Both', join, branches })
-					: start.merge({ name: 'Both', join, branches }),
+				manual(),
+				source<Customer>()('Customers'),
+				merge({ name: 'Both', join }, [
+					set({ name: 'Names', fields: { name: (c) => c.name } }),
+					set({ name: 'Counts', fields: { count: (c) => c.orders.length } }),
+				]),
 			).toJSON();
 
 			const result = await run(json, CUSTOMERS);

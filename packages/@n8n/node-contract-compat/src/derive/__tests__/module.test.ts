@@ -205,7 +205,7 @@ describe('derived modules by node kind', () => {
 			flat({ name: 'baseTrigger', inputs: [], group: ['trigger'], webhooks: [], polling: true }),
 		);
 		expect(module).toContain('export type BaseTriggerTriggerInput = { text?: string };');
-		expect(module).toContain('): Flow<OutputOf<N, BaseTriggerTriggerOutput>');
+		expect(module).toContain('): Trigger<OutputOf<N, BaseTriggerTriggerOutput>, N>');
 		expect(module).toContain(
 			'contractTrigger("n8n-nodes-base.baseTrigger", config, 1, undefined, {',
 		);

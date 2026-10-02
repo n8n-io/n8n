@@ -67,7 +67,7 @@ export const classifyText = ai.action('classify', {
 		});
 		assertFinished(reply, input.model.model);
 		// `parseReply` checked each name against the categories.
-		const { categories } = parse(picked, parseReply(reply, schema), 'output');
+		const { categories } = parse(picked, parseReply(reply, schema));
 		const chosen = [...new Set(categories)];
 		const routes = input.multiple ? chosen : chosen.slice(0, 1);
 		if (routes.length === 0) {

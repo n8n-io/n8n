@@ -1471,8 +1471,8 @@ describe('nodes tool', () => {
 
 		it.each([
 			['manual trigger', 'n8n-nodes-base.manualTrigger', 'Manual Trigger', 'manual({'],
-			['if condition', 'n8n-nodes-base.if', 'If', '.branch({'],
-			['filter rows', 'n8n-nodes-base.filter', 'Filter', '.filter({'],
+			['if condition', 'n8n-nodes-base.if', 'If', 'when({'],
+			['filter rows', 'n8n-nodes-base.filter', 'Filter', 'filter({'],
 			['split out items', 'n8n-nodes-base.splitOut', 'Split Out', 'splitOut({'],
 		])(
 			'answers "%s" with the SDK step instead of catalog rows',
@@ -1588,7 +1588,7 @@ describe('nodes tool', () => {
 			);
 
 			expect(result.definitions[0].content).toMatch(
-				/^\/\/ Use the flow step instead of node\(\): \.branch\(\{/,
+				/^\/\/ Use the flow step instead of node\(\): when\(\{/,
 			);
 		});
 

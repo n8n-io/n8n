@@ -14,6 +14,7 @@ import {
 	nodeOutputsDeclaration,
 	staticInputIssues,
 	synthesizedFixtures,
+	FLOW_MACROS,
 	tscHintOf,
 	typecheckWorkflowSource,
 	usedNodeIds,
@@ -182,13 +183,13 @@ import { googleGemini } from '@n8n/nodes/googleGemini';`;
 	});
 
 	it('notes a node() that a typed step replaces, and names the step or the module', async () => {
-		const source = `export default workflow('Legacy', manual()
-	.andThen(node({ name: 'Mail', type: 'n8n-nodes-base.gmail', version: 2.1, parameters: {} }))
-	.andThen(node({ name: 'Labels', type: 'n8n-nodes-base.gmail', version: 2.1 }))
-	.andThen(node({ name: 'Keep', type: 'n8n-nodes-base.filter', version: 2.2 }))
-	.andThen(node({ name: 'Fetch', type: 'n8n-nodes-base.httpRequest', version: 4.2 }))
-	.andThen(node({ name: 'Ping', type: 'n8n-nodes-base.mattermost', version: 2.3 }))
-	.filter({ name: 'Region filter', if: (item) => item.ok }));`;
+		const source = `export default workflow('Legacy', manual(),
+	node({ name: 'Mail', type: 'n8n-nodes-base.gmail', version: 2.1, parameters: {} }),
+	node({ name: 'Labels', type: 'n8n-nodes-base.gmail', version: 2.1 }),
+	node({ name: 'Keep', type: 'n8n-nodes-base.filter', version: 2.2 }),
+	node({ name: 'Fetch', type: 'n8n-nodes-base.httpRequest', version: 4.2 }),
+	node({ name: 'Ping', type: 'n8n-nodes-base.mattermost', version: 2.3 }),
+	filter({ name: 'Region filter', if: (item) => item.ok }));`;
 		const workflow: WorkflowJSON = {
 			name: 'Legacy',
 			connections: {},
@@ -311,6 +312,23 @@ import { googleGemini } from '@n8n/nodes/googleGemini';`;
 				expect.stringMatching(
 					/^Node "Pages": input\.database: "not-an-id" is not Notion database ID/,
 				),
+			]);
+		});
+
+		it('fails an expression in a binary field and takes the key of a binary of the item', () => {
+			const send = (name: string, file: unknown) =>
+				node(name, '@n8n/nodes-base-next.httpRequestSend', {
+					method: 'POST',
+					url: 'https://archive.example.com/api/upload',
+					body: { kind: 'binary', file },
+				});
+			const workflow: WorkflowJSON = {
+				name: 'Upload',
+				connections: {},
+				nodes: [send('Expression', '={{ $binary.data }}'), send('Key', 'data')],
+			};
+			expect(staticInputIssues(workflow)).toEqual([
+				'Node "Expression": input.body.file: must be the key of a binary of the input item, e.g. "data". Write (item) => item.binary.data',
 			]);
 		});
 
@@ -586,20 +604,34 @@ import { googleGemini } from '@n8n/nodes/googleGemini';`;
 
 describe('tsc hints', () => {
 	const at = 'src/workflows/main.workflow.ts(12,5): error ';
-	const methods = ['andThen', 'branch', 'orElse'];
+	const macros = ['steps', 'when', 'onError'];
+	const methodHint =
+		'A step has no methods. A workflow is a flat list: `workflow(name, trigger, stepA, stepB)`. Macros: steps, when, onError.';
 
 	it.each([
 		[
 			"TS2339: Property 'andThen' does not exist on type 'Step<unknown, unknown, HttpRequestGetOutput, \"Fetch\">'.",
-			'A step has no methods: pass it to a flow method, e.g. `flow.andThen(step)`. Flow methods: andThen, branch, orElse.',
+			methodHint,
 		],
 		[
 			'TS2339: Property \'onKept\' does not exist on type \'RoutedStep<unknown, unknown, unknown, "Only Text", "discarded" | "kept">\'.',
-			'A step has no methods: pass it to a flow method, e.g. `flow.andThen(step)`. Flow methods: andThen, branch, orElse.',
+			methodHint,
 		],
 		[
-			"TS2551: Property 'andthen' does not exist on type 'Flow<Loose, Record<\"Start\", Loose>>'. Did you mean 'andThen'?",
-			'Flow methods: andThen, branch, orElse.',
+			"TS2339: Property 'andThen' does not exist on type 'Trigger<Record<string, never>, \"Start\">'.",
+			methodHint,
+		],
+		[
+			"TS2559: Type '(flow: any) => any' has no properties in common with type 'Part<{ id: string; }, Record<\"Start\", {}>, unknown, unknown>'.",
+			'A branch or a body takes one part: a step, a macro, or `steps(a, b)` for several. It is not a function.',
+		],
+		[
+			"TS2322: Type 'Step<unknown, unknown, { email: any; }, \"New\">' is not assignable to type 'never'.",
+			'This key is no output name of the step in `route`, or no value of the `switchOn` field. Use a name that the type lists.',
+		],
+		[
+			'TS2554: Expected 2-42 arguments, but got 43.',
+			'`workflow()` takes 40 parts after the trigger, and `steps()` takes 20. Put the rest in a last `steps(…)`.',
 		],
 		[
 			"TS2339: Property 'tableName' does not exist on type 'never'.",
@@ -607,15 +639,15 @@ describe('tsc hints', () => {
 		],
 		[
 			"TS18046: 'item' is of type 'unknown'.",
-			'This value has no type. Fix the first error of the same chain first. Else type the node before it: `sample` items, a webhook `schema`, or `returns` on a code step.',
+			'This value has no type. Fix the first error before it first. Else type the node before it: `sample` items, a webhook `schema`, or `returns` on a code step.',
 		],
 		[
 			"TS2571: Object is of type 'unknown'.",
-			'This value has no type. Fix the first error of the same chain first. Else type the node before it: `sample` items, a webhook `schema`, or `returns` on a code step.',
+			'This value has no type. Fix the first error before it first. Else type the node before it: `sample` items, a webhook `schema`, or `returns` on a code step.',
 		],
 		[
 			"TS2322: The expression result does not fit the field: Type 'unknown' is not assignable to type 'string'.",
-			'This value has no type. Fix the first error of the same chain first. Else type the node before it: `sample` items, a webhook `schema`, or `returns` on a code step.',
+			'This value has no type. Fix the first error before it first. Else type the node before it: `sample` items, a webhook `schema`, or `returns` on a code step.',
 		],
 		[
 			"TS18046: 'item.client_numbers' is of type 'unknown'.",
@@ -623,7 +655,7 @@ describe('tsc hints', () => {
 		],
 		[
 			"TS7006: Parameter 'failed' implicitly has an 'any' type.",
-			"This lambda gets no parameter types. Fix the first error of the same call or chain first (a method or field that does not exist). Do not annotate the parameters. If no error comes before it, write the value as a `'={{ … }}'` string.",
+			"This lambda gets no parameter types. Fix the first error before it first (a method or field that does not exist). Do not annotate the parameters. If no error comes before it, write the value as `expr('{{ … }}')`.",
 		],
 		[
 			"TS2322: Type '(item: { body: { severity?: string; }; }) => string | undefined' is not assignable to type 'string | ((item: { body: { severity?: string; }; }) => string)'.",
@@ -631,7 +663,7 @@ describe('tsc hints', () => {
 		],
 		[
 			"TS2345: Argument of type '\"Incident Webhook\"' is not assignable to parameter of type 'never'.",
-			"`$('Node')` reads only a node that runs before this one on the same path, by its exact `name`. If an earlier error breaks the chain, fix it first.",
+			"`$('Node')` reads only a node that runs before this one on the same path, by its exact `name`. If an earlier error breaks the list, fix it first.",
 		],
 		[
 			"TS2740: Type '{ body: { id: string; }; }' is missing the following properties from type '{ headers: { [key: string]: string; }; body: Loose; }': headers, params, query, webhookUrl, and 2 more.",
@@ -651,14 +683,14 @@ describe('tsc hints', () => {
 		],
 		[
 			"TS2305: Module '\"@n8n/workflow-sdk/next\"' has no exported member 'expr'.",
-			"Import only the flow API that the skill names. Write an n8n expression as a `'={{ … }}'` string.",
+			"Import only the flow API that the skill names. Write an n8n expression as `expr('{{ … }}')`.",
 		],
 		[
 			"TS2592: Cannot find name '$'. Do you need to install type definitions for jQuery?",
 			"In a lambda, `$` is the second parameter: `(item, $) => $('Node').field`.",
 		],
 	])('hints %s', (message, hint) => {
-		expect(tscHintOf(`${at}${message}`, methods)).toBe(hint);
+		expect(tscHintOf(`${at}${message}`, macros)).toBe(hint);
 	});
 
 	it.each([
@@ -668,18 +700,23 @@ describe('tsc hints', () => {
 		"TS2304: Cannot find name '$pageCount'.",
 		'n8n: Code cannot read process.',
 	])('gives no hint for %s', (message) => {
-		expect(tscHintOf(`${at}${message}`, methods)).toBeUndefined();
+		expect(tscHintOf(`${at}${message}`, macros)).toBeUndefined();
 	});
 
-	it('adds each hint once, after the first error it fits, with the real flow methods', async () => {
+	it('adds each hint once, after the first error it fits, with the real macros', async () => {
 		const unknownItem = `${at}TS18046: 'item' is of type 'unknown'.`;
 		const onStep = `${at}TS2339: Property 'orElse' does not exist on type 'Step<unknown, unknown, Loose, "Post">'.`;
-		const [step, first, second] = await withTscHints([onStep, unknownItem, unknownItem]);
+		const [step, first, second] = withTscHints([onStep, unknownItem, unknownItem]);
 		expect(step).toMatch(
-			/^.+\nHint: A step has no methods: .+ Flow methods: andThen, route, branch, .*orElse/,
+			/^.+\nHint: A step has no methods\. .+ Macros: steps, route, when, .*onError, recover\.$/,
 		);
 		expect(first).toBe(`${unknownItem}\nHint: ${tscHintOf(unknownItem, [])}`);
 		expect(second).toBe(unknownItem);
+		const flowSdk = await import('@n8n/workflow-sdk/next');
+		const exported = Object.entries(flowSdk).flatMap(([name, value]) =>
+			typeof value === 'function' ? [name] : [],
+		);
+		expect(exported).toEqual(expect.arrayContaining([...FLOW_MACROS]));
 	});
 
 	it('adds the hints to the type check errors', async () => {

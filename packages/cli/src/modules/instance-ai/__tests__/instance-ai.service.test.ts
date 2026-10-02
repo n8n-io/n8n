@@ -64,6 +64,7 @@ vi.mock('@n8n/instance-ai', async () => {
 				ensureWorkspace: args.ensureWorkspace,
 			}),
 		),
+		workflowSourceAfterWrite: vi.fn(),
 		createLazyWorkspaceRuntimeSkillSource: vi.fn(({ source }) => source),
 		setupSandboxWorkspace: vi.fn(),
 		traceSandboxOperation: vi.fn(

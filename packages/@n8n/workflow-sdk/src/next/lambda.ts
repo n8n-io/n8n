@@ -394,3 +394,51 @@ export function compileLambdaSource(
 	}
 	return { ok: true, js, expression: `={{ ${js} }}` };
 }
+
+const BINARY_KEY_ERROR =
+	'A binary field takes a binary of the input item, e.g. (item) => item.binary.data';
+
+/** The key of `item.binary.<key>` or `item.binary["<key>"]`, or `undefined` for another read. */
+function binaryKeyOf(node: acorn.Expression, params: Params): string | undefined {
+	if (node.type !== 'MemberExpression') return undefined;
+	const { object, property } = node;
+	const key = node.computed
+		? property.type === 'Literal' && typeof property.value === 'string'
+			? property.value
+			: undefined
+		: property.type === 'Identifier'
+			? property.name
+			: undefined;
+	const readsBinary =
+		object.type === 'MemberExpression'
+			? !object.computed &&
+				object.object.type === 'Identifier' &&
+				object.object.name === params.item &&
+				object.property.type === 'Identifier' &&
+				object.property.name === 'binary'
+			: object.type === 'Identifier' && params.fields.get(object.name) === 'binary';
+	return readsBinary ? key : undefined;
+}
+
+/**
+ * Compile the lambda of a binary field to the key of a binary of the input item:
+ * `(item) => item.binary.data` becomes `data`, the value that n8n stores for a binary field.
+ */
+export function compileBinaryKey(
+	fn: (...args: never[]) => unknown,
+): { ok: true; key: string } | { ok: false; error: string } {
+	const parsed = (() => {
+		try {
+			return parseFunction(fn.toString());
+		} catch {
+			return undefined;
+		}
+	})();
+	const params = parsed && readParams(parsed.params);
+	const body = parsed && bodyExpression(parsed);
+	const key =
+		body && params && typeof params !== 'string' && !parsed.async && !parsed.generator
+			? binaryKeyOf(body, params)
+			: undefined;
+	return key ? { ok: true, key } : { ok: false, error: BINARY_KEY_ERROR };
+}

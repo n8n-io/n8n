@@ -1,26 +1,18 @@
-import { int, nullable, obj, parse, str } from '@n8n/node-sdk';
+import { int, loose, obj, parse, str } from '@n8n/node-sdk';
 
 import { issueResource } from '../github.node';
 import { issuesPath } from '../issue';
 
-const comment = obj({
-	id: int(),
-	html_url: str(),
-	body: str(),
-	user: nullable(obj({ login: str(), id: int() })),
-	created_at: str(),
-	updated_at: str(),
-});
-
-const open = { additionalProperties: true } as const;
-const commentResponse = obj({
-	id: int(),
-	html_url: str(),
-	body: str(),
-	user: nullable(obj({ login: str(), id: int() }).with(open)),
-	created_at: str(),
-	updated_at: str(),
-}).with(open);
+const comment = loose(
+	obj({
+		id: int(),
+		html_url: str(),
+		body: str(),
+		user: obj({ login: str(), id: int() }),
+		created_at: str(),
+		updated_at: str(),
+	}),
+);
 
 export const commentOnIssue = issueResource.action('createComment', {
 	action: 'Comment on an issue',
@@ -38,7 +30,7 @@ export const commentOnIssue = issueResource.action('createComment', {
 			path: `${issuesPath(input)}/${encodeURIComponent(input.issueNumber)}/comments`,
 			body: { body: input.body },
 		});
-		const { id, html_url, body, user, created_at, updated_at } = parse(commentResponse, response);
+		const { id, html_url, body, user, created_at, updated_at } = parse(comment, response);
 		return {
 			id,
 			html_url,

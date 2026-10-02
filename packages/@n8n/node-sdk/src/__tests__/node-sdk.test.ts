@@ -3,6 +3,7 @@ import { NodeApiError, type IExecuteFunctions, type INode, type JsonObject } fro
 import {
 	actionFileOf,
 	arr,
+	bool,
 	compat,
 	credential,
 	defineNode,
@@ -11,6 +12,7 @@ import {
 	isHttpError,
 	json,
 	lintContract,
+	loose,
 	nullable,
 	num,
 	obj,
@@ -23,6 +25,7 @@ import {
 	validate,
 	variant,
 	type Action,
+	type AnySchema,
 	type Infer,
 	type JsonSchema,
 	type RunInput,
@@ -284,7 +287,9 @@ function fakeContext(
 	continueOnFail = false,
 ) {
 	const requests: unknown[] = [];
+	const hints: unknown[] = [];
 	const context = {
+		addExecutionHints: (...added: unknown[]) => hints.push(...added),
 		getInputData: () => [{ json: {} }, { json: {} }],
 		getNode: () => ({ name: 'Tasks', credentials: { todoApi: { id: '1', name: 'Todo' } } }),
 		getNodeParameter: (name: string) => parameters[name],
@@ -298,7 +303,7 @@ function fakeContext(
 		},
 	};
 	// The runtime reads only these members.
-	return { context: context as unknown as IExecuteFunctions, requests };
+	return { context: context as unknown as IExecuteFunctions, requests, hints };
 }
 
 describe('toNodeType', () => {
@@ -408,15 +413,23 @@ describe('toNodeType', () => {
 		expect(requests).toHaveLength(2);
 	});
 
-	it('fails an item whose output breaks the contract, or continues with an error item', async () => {
-		const bad = [{ id: 1 }];
-		const { context } = fakeContext({ project: 'p1', paging: { mode: 'all' } }, bad);
-		await expect(new NodeType().execute?.call(context)).rejects.toThrow(
-			'Output does not match the contract',
-		);
-		const lenient = fakeContext({ project: 'p1', paging: { mode: 'all' } }, bad, true);
-		const result = await new NodeType().execute?.call(lenient.context);
-		expect(JSON.stringify(result)).toContain('output[0].id: must be string');
+	it('passes on an item whose output breaks the contract, with one warning per run', async () => {
+		const bad = [{ id: 1, title: 'Write', tags: [] }];
+		const { context, hints } = fakeContext({ project: 'p1', paging: { mode: 'all' } }, bad);
+		const result = await new NodeType().execute?.call(context);
+		expect(result).toEqual([
+			[
+				{ json: bad[0], pairedItem: { item: 0 } },
+				{ json: bad[0], pairedItem: { item: 1 } },
+			],
+		]);
+		expect(hints).toEqual([
+			{
+				type: 'warning',
+				message:
+					'The response of todo.task.getAll does not match its contract, so check the fields: output[0].id: must be string, got 1',
+			},
+		]);
 	});
 
 	it('adds status, headers and body to a failed request error, keeps the NodeApiError', async () => {
@@ -667,5 +680,32 @@ describe('generateNodeModule', () => {
 		expect(text.match(/list: TodoTaskSearchList<I, C>;/g)).toHaveLength(2);
 		expect(text.match(/Exact list name/g)).toHaveLength(1);
 		expect(text).toContain('export type TodoTaskFindOutput = TodoTaskSearchOutput;');
+	});
+
+	it('prints an optional output field as optional and nullable, a loose object all fields', () => {
+		const outputAction = (operation: string, output: AnySchema) =>
+			todo.resource('task').action(operation, {
+				action: 'Get a task',
+				summary: 'Get a task.',
+				flow: { effect: 'read', cardinality: 'per-item' },
+				input: {},
+				output,
+				async run() {
+					return await Promise.resolve({});
+				},
+			});
+		const text = moduleOf(
+			outputAction(
+				'get',
+				obj({ id: str(), note: str().optional(), due: nullable(str()).optional() }),
+			),
+			outputAction('peek', loose(obj({ id: str(), done: bool() }))),
+		);
+		expect(text).toContain(
+			'export type TodoTaskGetOutput = { id: string; note?: string | null; due?: string | null };',
+		);
+		expect(text).toContain(
+			'export type TodoTaskPeekOutput = { id?: string | null; done?: boolean | null };',
+		);
 	});
 });

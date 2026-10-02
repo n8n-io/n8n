@@ -169,6 +169,71 @@ export const arr = <S extends AnySchema>(items: S) =>
 		false,
 	);
 
+/**
+ * A value as an API may send it: each object field, at any depth, may be absent or `null`.
+ * `parse` gives this type, so a read of a missing field fails `tsc`, not the run.
+ */
+export type Loose<T> = T extends ReadonlyArray<infer E>
+	? ReadonlyArray<Loose<E>>
+	: T extends Binary
+		? T
+		: T extends Record<string, unknown>
+			? { readonly [K in keyof T]?: Loose<T[K]> | null }
+			: T;
+
+const acceptsNull = (schema: JsonSchema): boolean =>
+	schema.type === 'null' || (schema.anyOf ?? schema.oneOf ?? []).some(acceptsNull);
+
+/** `tag` is the discriminator of the union that `schema` is a branch of. */
+function looseJson(schema: JsonSchema, tag?: string): JsonSchema {
+	const field = (child: JsonSchema): JsonSchema => {
+		const inner = looseJson(child);
+		if (acceptsNull(inner)) return inner;
+		// The docs stay on the field, where the generated types read them.
+		const { description, 'x-n8n-hint': hint } = inner;
+		return {
+			anyOf: [inner, { type: 'null' }],
+			...(description === undefined ? {} : { description }),
+			...(hint === undefined ? {} : { 'x-n8n-hint': hint }),
+		};
+	};
+	const { required: _required, ...rest } = schema;
+	return {
+		...rest,
+		...(schema.properties
+			? {
+					properties: Object.fromEntries(
+						Object.entries(schema.properties).map(([key, child]) => [
+							key,
+							key === tag ? child : field(child),
+						]),
+					),
+				}
+			: {}),
+		// A union branch keeps its tag, so the value still picks its branch.
+		...(tag && schema.required?.includes(tag) ? { required: [tag] } : {}),
+		...(schema.items ? { items: looseJson(schema.items) } : {}),
+		...(schema.anyOf ? { anyOf: schema.anyOf.map((option) => looseJson(option)) } : {}),
+		...(schema.oneOf
+			? {
+					oneOf: schema.oneOf.map((branch) =>
+						looseJson(branch, schema.discriminator?.propertyName),
+					),
+				}
+			: {}),
+		...(typeof schema.additionalProperties === 'object'
+			? { additionalProperties: looseJson(schema.additionalProperties) }
+			: {}),
+	};
+}
+
+/**
+ * The schema with each object field optional and nullable, at any depth. Use it for the output
+ * of an API object: the host passes drift on, so a field the API leaves out is no error.
+ */
+export const loose = <T, Opt extends boolean>(schema: Schema<T, Opt, boolean, unknown>) =>
+	new Schema<Loose<T>, Opt>(looseJson(schema.json), schema.isOptional);
+
 /** The value or `null`. Use it in output schemas, e.g. `assignee: nullable(str())`. */
 export const nullable = <T, Opt extends boolean>(schema: Schema<T, Opt, boolean, unknown>) =>
 	new Schema<T | null, Opt>({ anyOf: [schema.json, { type: 'null' }] }, schema.isOptional);

@@ -1,4 +1,4 @@
-import { obj, parse, ref, str, type Infer } from '@n8n/node-sdk';
+import { obj, parse, ref, str, type Infer, type Loose } from '@n8n/node-sdk';
 
 import {
 	document,
@@ -9,7 +9,7 @@ import {
 } from '../google-docs.node';
 
 /** Mirrors the `simple` output of the legacy node: the text runs of the body paragraphs. */
-const textOf = ({ body }: Infer<typeof documentResponse>) =>
+const textOf = ({ body }: Loose<Infer<typeof documentResponse>>) =>
 	(body?.content ?? [])
 		.flatMap(({ paragraph }) => paragraph?.elements ?? [])
 		.map(({ textRun }) => textRun?.content ?? '')

@@ -7,6 +7,7 @@ import {
 	defineResource,
 	int,
 	limitOf,
+	loose,
 	obj,
 	pages,
 	type paging,
@@ -14,6 +15,7 @@ import {
 	str,
 	t,
 	type AnySchema,
+	type Loose,
 	type Http,
 	type HttpRequest,
 	type Infer,
@@ -147,51 +149,59 @@ export function contentOf(input: {
 	return { text, blocks: appendAttribution ? [...blocks, line] : blocks };
 }
 
+// Slack may leave out any field, so the API objects are loose: each field optional and nullable.
+
 /** A message as Slack returns it. Bots, files and threads add fields. */
-export const slackMessage = obj({
-	type: str(),
-	ts: str().hint('Message ID within its channel, e.g. 1700000000.000100'),
-	text: str().optional(),
-	user: str().hint('User ID of the author; absent for bot messages').optional(),
-	bot_id: str().optional(),
-	subtype: str().optional(),
-	thread_ts: str().hint('ts of the thread parent; equals ts on the parent').optional(),
-	reply_count: int().optional(),
-}).with({ additionalProperties: true });
+export const slackMessage = loose(
+	obj({
+		type: str(),
+		ts: str().hint('Message ID within its channel, e.g. 1700000000.000100'),
+		text: str().optional(),
+		user: str().hint('User ID of the author; absent for bot messages').optional(),
+		bot_id: str().optional(),
+		subtype: str().optional(),
+		thread_ts: str().hint('ts of the thread parent; equals ts on the parent').optional(),
+		reply_count: int().optional(),
+	}).with({ additionalProperties: true }),
+);
 
 const topic = obj({ value: str() }).with({ additionalProperties: true });
 
 /** A conversation as Slack returns it. A DM has `user` instead of `name`. */
-export const slackChannel = obj({
-	id: str(),
-	name: str().hint('Without the #; absent for a DM').optional(),
-	is_channel: bool().optional(),
-	is_private: bool().optional(),
-	is_archived: bool().optional(),
-	is_member: bool().hint('The app is in the channel, so it can post and read').optional(),
-	created: int().hint('Epoch seconds').optional(),
-	creator: str().optional(),
-	topic: topic.optional(),
-	purpose: topic.optional(),
-	num_members: int().optional(),
-}).with({ additionalProperties: true });
+export const slackChannel = loose(
+	obj({
+		id: str(),
+		name: str().hint('Without the #; absent for a DM').optional(),
+		is_channel: bool().optional(),
+		is_private: bool().optional(),
+		is_archived: bool().optional(),
+		is_member: bool().hint('The app is in the channel, so it can post and read').optional(),
+		created: int().hint('Epoch seconds').optional(),
+		creator: str().optional(),
+		topic: topic.optional(),
+		purpose: topic.optional(),
+		num_members: int().optional(),
+	}).with({ additionalProperties: true }),
+);
 
 /** A user as users.info returns it. */
-export const slackUser = obj({
-	id: str(),
-	name: str().hint('The handle, without the @'),
-	real_name: str().optional(),
-	deleted: bool().optional(),
-	is_bot: bool().optional(),
-	tz: str().optional(),
-	profile: obj({
-		email: str().hint('Needs the users:read.email scope').optional(),
-		display_name: str().optional(),
+export const slackUser = loose(
+	obj({
+		id: str(),
+		name: str().hint('The handle, without the @'),
 		real_name: str().optional(),
-	})
-		.with({ additionalProperties: true })
-		.optional(),
-}).with({ additionalProperties: true });
+		deleted: bool().optional(),
+		is_bot: bool().optional(),
+		tz: str().optional(),
+		profile: obj({
+			email: str().hint('Needs the users:read.email scope').optional(),
+			display_name: str().optional(),
+			real_name: str().optional(),
+		})
+			.with({ additionalProperties: true })
+			.optional(),
+	}).with({ additionalProperties: true }),
+);
 
 /** The status fields of every Slack Web API body. */
 const slackStatus = obj({
@@ -201,7 +211,7 @@ const slackStatus = obj({
 }).with({ additionalProperties: true });
 
 /** Mirrors `throwOnSlackApiError` in nodes-base Slack/V2/GenericFunctions.ts. */
-function slackErrorOf({ error, needed }: Infer<typeof slackStatus>) {
+function slackErrorOf({ error, needed }: Loose<Infer<typeof slackStatus>>) {
 	switch (error) {
 		case 'missing_scope':
 			return `Your Slack credential is missing required OAuth scopes: ${String(needed)}`;
@@ -221,10 +231,10 @@ function slackErrorOf({ error, needed }: Infer<typeof slackStatus>) {
 
 /** A Slack body with these fields next to `ok`; Slack adds fields such as `warning`. */
 export const slackResponse = <S extends Shape>(shape: S) =>
-	obj(shape).with({ additionalProperties: true });
+	loose(obj(shape).with({ additionalProperties: true }));
 
 /** Slack answers 200 with `ok: false` for most errors, so each body needs this check first. */
-export function okBody<S extends AnySchema>(body: unknown, response: S): Infer<S> {
+export function okBody<S extends AnySchema>(body: unknown, response: S): Loose<Infer<S>> {
 	const status = parse(slackStatus, body);
 	if (!status.ok) throw new Error(slackErrorOf(status));
 	return parse(response, body);
@@ -272,7 +282,7 @@ export function slackList<S extends AnySchema, T>(
 		readonly path: `/${string}`;
 		readonly query: HttpRequest['query'];
 		readonly page: S;
-		readonly items: (page: Infer<S>) => readonly T[];
+		readonly items: (page: Loose<Infer<S>>) => readonly T[];
 		readonly paging: Infer<typeof paging>;
 	},
 ) {

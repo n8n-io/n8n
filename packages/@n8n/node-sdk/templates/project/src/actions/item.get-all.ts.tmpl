@@ -1,13 +1,16 @@
-import { arr, nullable, obj, str } from '@n8n/node-sdk';
+import { arr, loose, nullable, obj, str } from '@n8n/node-sdk';
 
 import { item } from '../__slug__.node';
 
-// `obj` rejects fields it does not list, so list every field the API returns.
-export const itemOutput = obj({
-	id: str().with({ examples: ['itm_1'] }),
-	name: str(),
-	ownerId: nullable(str()).hint('null when nobody owns the item'),
-});
+// `obj` rejects fields it does not list, so list every field the API returns. An API may leave
+// out a field, so `loose` makes each field optional and nullable.
+export const itemOutput = loose(
+	obj({
+		id: str().with({ examples: ['itm_1'] }),
+		name: str(),
+		ownerId: nullable(str()).hint('null when nobody owns the item'),
+	}),
+);
 
 // The id is `__service__.item.getAll`, so this file is `actions/item.get-all.ts`.
 export const getManyItems = item.action('getAll', {

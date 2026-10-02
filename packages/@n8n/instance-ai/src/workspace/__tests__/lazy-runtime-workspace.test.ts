@@ -99,6 +99,25 @@ describe('createLazyRuntimeWorkspace', () => {
 		expect(ensureWorkspace).toHaveBeenCalledTimes(1);
 	});
 
+	it('returns the diagnostics of afterWrite from the write tool', async () => {
+		const { workspace, filesystem } = createMockWorkspace();
+		const afterWrite = vi.fn(async () => await Promise.resolve(['a.ts(1,1): error']));
+		const lazyWorkspace = createLazyRuntimeWorkspace({
+			ensureWorkspace: async () => await Promise.resolve(workspace),
+			afterWrite,
+		});
+		const write = lazyWorkspace.getTools().find((tool) => tool.name === 'workspace_write_file');
+
+		const result = await write?.handler?.({ path: 'a.ts', content: 'x' }, {});
+
+		expect(filesystem.writeFile).toHaveBeenCalled();
+		expect(result).toEqual({ success: true, diagnostics: ['a.ts(1,1): error'] });
+		expect(afterWrite).toHaveBeenCalledWith(
+			{ path: 'a.ts', content: 'x' },
+			{ abortSignal: undefined },
+		);
+	});
+
 	it('reports cancellation when an active command returns a transport cancellation', async () => {
 		const { workspace, executeCommand } = createMockWorkspace();
 		const started = createDeferredPromise();

@@ -30,6 +30,7 @@ import type * as WorkSummaryAccumulatorMod from './stream/work-summary-accumulat
 import type * as AgentPersistenceMod from './tools/orchestration/agent-persistence';
 import type * as AgentContextToolMod from './tools/agent-context.tool';
 import type * as SanitizeWebContentMod from './tools/web-research/sanitize-web-content';
+import type * as WorkflowSourceAfterWriteMod from './tools/workflows/workflow-source-after-write';
 import type * as AgentSnapshotEventMod from './tracing/agent-snapshot-event';
 import type * as LangsmithTracingMod from './tracing/langsmith-tracing';
 import type * as TraceReplayMod from './tracing/trace-replay';
@@ -156,6 +157,10 @@ const loadCreateWorkspace = lazyModule(
 );
 const loadLazyRuntimeWorkspace = lazyModule(
 	() => require('./workspace/lazy-runtime-workspace') as typeof LazyRuntimeWorkspaceMod,
+);
+const loadWorkflowSourceAfterWrite = lazyModule(
+	() =>
+		require('./tools/workflows/workflow-source-after-write') as typeof WorkflowSourceAfterWriteMod,
 );
 const loadSandboxSetup = lazyModule(
 	() => require('./workspace/sandbox-setup') as typeof SandboxSetupMod,
@@ -511,6 +516,8 @@ export type { SandboxConfig } from './workspace/create-workspace';
 export const createLazyRuntimeWorkspace: typeof LazyRuntimeWorkspaceMod.createLazyRuntimeWorkspace =
 	lazyFunction(() => loadLazyRuntimeWorkspace().createLazyRuntimeWorkspace);
 export type { RuntimeWorkspaceResolver } from './workspace/lazy-runtime-workspace';
+export const workflowSourceAfterWrite: typeof WorkflowSourceAfterWriteMod.workflowSourceAfterWrite =
+	lazyFunction(() => loadWorkflowSourceAfterWrite().workflowSourceAfterWrite);
 export const setupSandboxWorkspace: typeof SandboxSetupMod.setupSandboxWorkspace = lazyFunction(
 	() => loadSandboxSetup().setupSandboxWorkspace,
 );

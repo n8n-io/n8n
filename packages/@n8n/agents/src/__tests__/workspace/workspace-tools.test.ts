@@ -358,6 +358,55 @@ describe('createWorkspaceTools', () => {
 			expect(result).toEqual({ success: true });
 		});
 
+		it('write_file and str_replace_file return the diagnostics of afterWrite', async () => {
+			const fs = makeFakeFilesystem({ readFile: vi.fn().mockResolvedValue('const a = 1;') });
+			const afterWrite = vi
+				.fn()
+				.mockImplementation(
+					async ({ content }: { content: string }) =>
+						await Promise.resolve(content.includes('2') ? [] : ['a.ts(1,7): error']),
+				);
+			const tools = createWorkspaceTools({ filesystem: fs, afterWrite });
+			const writeTool = tools.find((t) => t.name === 'workspace_write_file')!;
+			const strReplaceTool = tools.find((t) => t.name === 'workspace_str_replace_file')!;
+			const abortController = new AbortController();
+			const ctx = { abortSignal: abortController.signal, toolCallId: 'call-1' } as never;
+
+			const written = await writeTool.handler!({ path: 'a.ts', content: 'const a = 1;' }, ctx);
+			const edited = await strReplaceTool.handler!(
+				{ path: 'a.ts', replacements: [{ old_str: '1', new_str: '2' }] },
+				ctx,
+			);
+
+			expect(written).toEqual({ success: true, diagnostics: ['a.ts(1,7): error'] });
+			expect(edited).toMatchObject({ success: true, diagnostics: [] });
+			expect(afterWrite).toHaveBeenNthCalledWith(
+				1,
+				{ path: 'a.ts', content: 'const a = 1;' },
+				{ abortSignal: abortController.signal, toolCallId: 'call-1' },
+			);
+			expect(afterWrite).toHaveBeenNthCalledWith(
+				2,
+				{ path: 'a.ts', content: 'const a = 2;' },
+				{ abortSignal: abortController.signal, toolCallId: 'call-1' },
+			);
+		});
+
+		it('str_replace_file does not call afterWrite when it writes nothing', async () => {
+			const fs = makeFakeFilesystem({ readFile: vi.fn().mockResolvedValue('const a = 1;') });
+			const afterWrite = vi.fn();
+			const tools = createWorkspaceTools({ filesystem: fs, afterWrite });
+			const strReplaceTool = tools.find((t) => t.name === 'workspace_str_replace_file')!;
+
+			const result = await strReplaceTool.handler!(
+				{ path: 'a.ts', replacements: [{ old_str: 'missing', new_str: 'x' }] },
+				{} as never,
+			);
+
+			expect(result).toMatchObject({ success: false });
+			expect(afterWrite).not.toHaveBeenCalled();
+		});
+
 		it('list_files handler calls filesystem.readdir', async () => {
 			const fs = makeFakeFilesystem();
 			const tools = createWorkspaceTools({ filesystem: fs });

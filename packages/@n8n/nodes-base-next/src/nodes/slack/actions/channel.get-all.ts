@@ -26,7 +26,7 @@ export const getManySlackChannels = channel.action('getAll', {
 				exclude_archived: input.excludeArchived ? true : undefined,
 			},
 			page,
-			items: ({ channels }) => channels,
+			items: ({ channels }) => channels ?? [],
 			paging: input.paging,
 		});
 	},

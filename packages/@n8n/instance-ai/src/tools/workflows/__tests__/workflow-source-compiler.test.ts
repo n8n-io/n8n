@@ -8,7 +8,7 @@ import {
 import type { InstanceAiContext } from '../../../types';
 import { runInSandbox } from '../../../workspace/sandbox-fs';
 import { downgradeUnchangedNodeBlockers } from '../workflow-node-diff';
-import { compileWorkflowSource } from '../workflow-source-compiler';
+import { compileWorkflowSource, workflowSourceSdk } from '../workflow-source-compiler';
 import { partitionWarnings } from '../workflow-validation-warnings';
 
 vi.mock('@n8n/agents/sandbox', () => ({
@@ -240,6 +240,69 @@ describe('compileWorkflowSource', () => {
 				contractJson({ messageId: 42 }),
 			);
 			expect(result.success && result.workflow.meta).toBeUndefined();
+		});
+
+		it('builds a legacy SDK source without the typed build, then checks and locks its contract nodes', async () => {
+			const built = (messageId: unknown) =>
+				({
+					exitCode: 0,
+					stdout: JSON.stringify({
+						success: true,
+						workflow: JSON.parse(contractJson({ messageId })),
+					}),
+					stderr: '',
+				}) as Awaited<ReturnType<typeof runInSandbox>>;
+			const source = "import { workflow, node } from '@n8n/workflow-sdk';\n";
+			vi.mocked(runInSandbox).mockResolvedValueOnce(built('abc')).mockResolvedValueOnce(built(42));
+
+			const locked = await compileWorkflowSource(
+				makeContext({ nodeContractsEnabled: true }),
+				'src/workflows/main.workflow.ts',
+				source,
+			);
+			const rejected = await compileWorkflowSource(
+				makeContext({ nodeContractsEnabled: true }),
+				'src/workflows/main.workflow.ts',
+				source,
+			);
+
+			expect(vi.mocked(runInSandbox).mock.calls.map(([, command]) => command)).toEqual([
+				"node --import tsx build.mjs '/home/daytona/workspace/src/workflows/main.workflow.ts'",
+				"node --import tsx build.mjs '/home/daytona/workspace/src/workflows/main.workflow.ts'",
+			]);
+			expect(locked).toMatchObject({
+				success: true,
+				compiler: 'sandbox-tsx',
+				workflow: { meta: { nodeContracts: { Get: { action: 'gmail.message.get' } } } },
+			});
+			expect(rejected).toMatchObject({
+				success: false,
+				reason: 'workflow_source_type_errors',
+				errors: ['Node "Get": input.messageId: must be string, got 42'],
+			});
+		});
+	});
+
+	describe('workflowSourceSdk', () => {
+		const on = { nodeContractsEnabled: true };
+
+		it.each([
+			["import { workflow } from '@n8n/workflow-sdk/next';", 'next'],
+			['import { notion } from "@n8n/nodes/notion";', 'next'],
+			["import { workflow, node } from '@n8n/workflow-sdk';", 'legacy'],
+			["import type { WorkflowJSON } from '@n8n/workflow-sdk';", 'legacy'],
+			[
+				"import { workflow } from '@n8n/workflow-sdk';\nimport { manual } from '@n8n/workflow-sdk/next';",
+				'both',
+			],
+		])('reads %j as %s', (source, sdk) => {
+			expect(workflowSourceSdk(on, source)).toBe(sdk);
+		});
+
+		it('reads every source as legacy without the flag', () => {
+			expect(workflowSourceSdk({}, "import { workflow } from '@n8n/workflow-sdk/next';")).toBe(
+				'legacy',
+			);
 		});
 	});
 

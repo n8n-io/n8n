@@ -242,7 +242,7 @@ describe('workflows tool', () => {
 			});
 		});
 
-		it('decompiles a raw expression into a typed step only where the field takes a string', async () => {
+		it('decompiles an expression into expr() in a typed step only where the field takes one', async () => {
 			const contract = (name: string, type: string, parameters: IDataObject) => ({
 				id: name,
 				name,
@@ -281,8 +281,43 @@ describe('workflows tool', () => {
 			);
 
 			expect(result.code).toContain('gmail.message.get(');
-			expect(result.code).toContain('messageId: "={{ $input.first().json.id }}"');
+			expect(result.code).toContain('messageId: expr("{{ $input.first().json.id }}")');
 			expect(result.code).toContain('type: "@n8n/nodes-base-next.gmailMessageGetAll"');
+		});
+
+		it('decompiles the binary key of a binary field as the lambda that reads it', async () => {
+			const context = createMockContext({ nodeContractsEnabled: true });
+			vi.mocked(context.workflowService.getAsWorkflowJSON).mockResolvedValue({
+				name: 'Upload',
+				nodes: [
+					{
+						id: 'Start',
+						name: 'Start',
+						type: 'n8n-nodes-base.manualTrigger',
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {},
+					},
+					{
+						id: 'Upload',
+						name: 'Upload',
+						type: '@n8n/nodes-base-next.googleDriveFileUpload',
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: { file: 'data', folderId: 'root' },
+					},
+				],
+				connections: { Start: { main: [[{ node: 'Upload', type: 'main', index: 0 }]] } },
+			});
+
+			const result = await executeTool<{ code: string }>(
+				createWorkflowsTool(context),
+				{ action: 'get-as-code', workflowId: 'w1' } as never,
+				{} as never,
+			);
+
+			expect(result.code).toContain('googleDrive.file.upload(');
+			expect(result.code).toContain('file: (item) => item.binary.data,');
 		});
 
 		it('should support a filtered safe action surface', () => {

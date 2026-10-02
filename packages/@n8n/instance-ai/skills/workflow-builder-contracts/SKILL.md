@@ -38,7 +38,7 @@ are the full API: do not read SDK files. Only `build-workflow` has
 
 For an existing workflow, call `workflows(action="get-as-code", workflowId)`,
 make the smallest change, and build with its `filePath`. Keep its
-`node()` calls and `'={{ … }}'` strings.
+`node()` and `expr()` calls.
 
 ## Imports
 
@@ -48,44 +48,40 @@ Every other node, also a trigger or an AI node, has a derived module at
 `@n8n/nodes/<package>/<name>`. Use `node()` only for a type without one.
 
 ```ts
-import { workflow, manual, set } from '@n8n/workflow-sdk/next';
-import { httpRequest } from '@n8n/nodes/httpRequest';
+import { workflow, manual, set, onError } from '@n8n/workflow-sdk/next';
 import { notion } from '@n8n/nodes/notion';
 
 export default workflow(
   'Overdue report',
-  manual()
-    .andThen(
-      notion.databasePage.getAll({
-        name: 'Overdue',
-        database: '5b9e2c1d0a7f4c3e9d217f6a8b9c0d1e',
-        where: {
-          match: 'all',
-          conditions: [{ property: 'Due', type: 'date', condition: { op: 'before', value: (_item, $) => $.today.toISODate() } }],
-        },
-      }),
-    )
-    .andThen(
-      httpRequest.send({
-        name: 'Post',
-        method: 'POST',
-        url: 'https://acme.dev/report',
-        body: { kind: 'json', json: (page) => ({ name: page.name }) },
-      }),
-    )
-    .orElse((failed) => failed.andThen(set({ name: 'Log', fields: { reason: (e) => e.error.message } }))),
+  manual(),
+  notion.databasePage.getAll({
+    name: 'Overdue',
+    database: '5b9e2c1d0a7f4c3e9d217f6a8b9c0d1e',
+    where: {
+      match: 'all',
+      conditions: [{ property: 'Due', type: 'date', condition: { op: 'before', value: (_item, $) => $.today.toISODate() } }],
+    },
+  }),
+  onError(set({ name: 'Log', fields: { reason: (e) => e.error.message } })),
+  set({ name: 'Row', fields: { name: (page) => page.name } }),
 );
 ```
 
-- `.orElse` goes after the `.andThen` of the node that can fail.
-- `.branch({ name, if: (item) => …, then: (f) => f.andThen(…), else: (f) => … })`
-  adds an IF node. Without `else`, false items stop.
-- `.switch({ name, on, cases })`, `.merge({ name, join, branches })`, `.loop`,
-  `.forEach`: Switch, Merge, loops.
-- `.route(step, { a: (f) => …, b: (f) => … })` follows each named output;
-  `.andThen` only the first.
-- `set({ name, fields: { total: (item) => item.a + item.b }, keep: 'all' })`
-  makes fields. `keep: 'all'` keeps input fields.
+- A workflow is a flat list: a trigger, then parts. Each part reads the
+  items of the part before. A later trigger starts another flow.
+- `onError(part)` takes the errors of the part before; its branch ends.
+  `recover(part)` joins it back.
+- A macro takes one part per branch or body: a step, a macro, or
+  `steps(a, b, …)` for several.
+- `when({ name, if: (item) => … }, { then: part, else: part })` adds an IF
+  node. Without `else`, false items stop.
+- `route(step, { a: part, b: part })` follows each named output; the next
+  part only the first.
+- `switchOn({ name, on }, { value: part, fallback: part })`,
+  `merge({ name, join }, [part, part])`, `forEach({ name, batchSize }, body)`,
+  `loop({ name, maxIterations, until, next }, body)`: Switch, Merge, loops.
+- `set({ name, fields, keep: 'all' })` makes fields; `keep: 'all'` keeps
+  input fields.
 - `sample` items type the output and feed verification, e.g.
   `manual({ sample: [{ id: 1 }] })`.
 - Typed steps and `node()` take `settings: { retryOnFail: true, notes: '…' }`.
@@ -109,9 +105,8 @@ fills each `fromModel()` field, and the workflow fixes the others, e.g.
 - Write `(item, $) => <one expression>`. A template literal becomes text.
 - Read only `item`, `$`, and JavaScript globals, never file constants.
 - `item` and `$('Node')` are JSON: `$('Hook').body`, not `.json` or `.item`.
-- `$.now` and `$.today` are Luxon dates. Use `$.date(iso)` to parse a string.
-- A `'={{ … }}'` string fits any lambda field. The build checks it.
-- In the editor, Expression mode adds the `=`: tell the user to type from `{{`.
+- `$.now` and `$.today` are Luxon dates. `$.date(iso)` parses a string.
+- `expr('{{ … }}')` fits any lambda field. The build checks it.
 - Fix a type error at its cause. Do not add casts, `any`, or fallbacks.
 
 ## Values and credentials

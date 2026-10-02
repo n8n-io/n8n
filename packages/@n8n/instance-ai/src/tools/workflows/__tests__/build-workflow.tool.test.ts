@@ -77,7 +77,8 @@ vi.mock('../workflow-source-diagnostics', () => ({
 	),
 }));
 
-vi.mock('../workflow-source-compiler', () => ({
+vi.mock('../workflow-source-compiler', async (importOriginal) => ({
+	...(await importOriginal<typeof import('../workflow-source-compiler')>()),
 	compileWorkflowSource: vi.fn(),
 }));
 
@@ -603,22 +604,21 @@ describe('createBuildWorkflowTool', () => {
 	it('builds an Agent with its chat model from a typed source with node contracts on', async () => {
 		const built = workflow(
 			'Answer questions',
-			manual({ sample: [{ question: 'What is n8n?' }] }).andThen(
-				node({
-					name: 'Agent',
-					type: '@n8n/n8n-nodes-langchain.agent',
-					version: 2.2,
-					parameters: { promptType: 'define', text: (item) => item.question },
-					providers: {
-						model: provider({
-							name: 'Chat Model',
-							type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-							version: 1.2,
-							parameters: { model: { __rl: true, mode: 'list', value: 'gpt-4o-mini' } },
-						}),
-					},
-				}),
-			),
+			manual({ sample: [{ question: 'What is n8n?' }] }),
+			node({
+				name: 'Agent',
+				type: '@n8n/n8n-nodes-langchain.agent',
+				version: 2.2,
+				parameters: { promptType: 'define', text: (item) => item.question },
+				providers: {
+					model: provider({
+						name: 'Chat Model',
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						version: 1.2,
+						parameters: { model: { __rl: true, mode: 'list', value: 'gpt-4o-mini' } },
+					}),
+				},
+			}),
 		);
 		vi.mocked(compileWorkflowSource).mockResolvedValue({
 			success: true,
@@ -3151,7 +3151,7 @@ describe('createBuildWorkflowTool', () => {
 		});
 		const { context, filePath } = makeContext({
 			source:
-				"export default workflow('Mail', manual().andThen(node({ name: 'Mail', type: 'n8n-nodes-base.gmail', version: 2.1 })));",
+				"export default workflow('Mail', manual(), node({ name: 'Mail', type: 'n8n-nodes-base.gmail', version: 2.1 }));",
 			overrides: { nodeContractsEnabled: true },
 		});
 
@@ -3417,6 +3417,31 @@ describe('auto-import recovery on compile failure', () => {
 		expect(appendWorkflowSourceDiagnostics).toHaveBeenCalledTimes(1);
 		expect(files.get(filePath)).toContain("import { expr } from '@n8n/workflow-sdk';");
 		expect(compileWorkflowSource).toHaveBeenCalledTimes(2);
+	});
+
+	it('recovers and diagnoses a legacy SDK source with node contracts as without them', async () => {
+		const source =
+			"import { workflow } from '@n8n/workflow-sdk';\nexport default workflow('id', 'n');";
+		const { context, files, filePath } = makeContext({
+			source,
+			overrides: { nodeContractsEnabled: true },
+		});
+
+		vi.mocked(compileWorkflowSource)
+			.mockResolvedValueOnce(workflowSourceBuildFailure('ReferenceError: expr is not defined'))
+			.mockResolvedValueOnce(workflowSourceBuildFailure("Cannot find name 'unrelated'"));
+
+		const result = await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
+			filePath,
+			name: 'Legacy Workflow',
+		});
+
+		expect(result.success).toBe(false);
+		expect(files.get(filePath)).toMatch(
+			/import \{\s+workflow,\s+expr,\s+\} from '@n8n\/workflow-sdk';/,
+		);
+		expect(compileWorkflowSource).toHaveBeenCalledTimes(2);
+		expect(appendWorkflowSourceDiagnostics).toHaveBeenCalledTimes(1);
 	});
 
 	it('falls through to the original error when recovery does not apply', async () => {

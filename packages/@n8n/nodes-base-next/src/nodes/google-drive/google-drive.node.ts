@@ -1,4 +1,4 @@
-import { credential, defineNode, obj, str } from '@n8n/node-sdk';
+import { credential, defineNode, loose, obj, str } from '@n8n/node-sdk';
 
 import { googleOAuth2 } from '../google-oauth2';
 
@@ -35,13 +35,16 @@ export const FOLDER_TYPE = 'application/vnd.google-apps.folder';
 /** The fields each action asks for, so each output has the link to the file. */
 export const FILE_FIELDS = 'kind,id,name,mimeType,webViewLink';
 
-export const driveFile = obj({
-	kind: str().optional(),
-	id: str(),
-	name: str(),
-	mimeType: str(),
-	webViewLink: str().hint('The link that opens the file in Drive').optional(),
-});
+/** Drive may leave out a field, so each field is optional and nullable. */
+export const driveFile = loose(
+	obj({
+		kind: str().optional(),
+		id: str(),
+		name: str(),
+		mimeType: str(),
+		webViewLink: str().hint('The link that opens the file in Drive').optional(),
+	}),
+);
 
 export const file = googleDrive.resource('file');
 

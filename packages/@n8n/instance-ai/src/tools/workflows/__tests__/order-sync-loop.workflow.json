@@ -1,0 +1,300 @@
+{
+	"id": "wfOrderSyncLog001",
+	"name": "Order Sync Log Updater",
+	"nodes": [
+		{
+			"id": "11111111-1111-4111-8111-111111111111",
+			"name": "Every Morning At 8am",
+			"type": "n8n-nodes-base.scheduleTrigger",
+			"position": [-220, 0],
+			"parameters": {
+				"rule": {
+					"interval": [
+						{
+							"field": "days",
+							"triggerAtHour": 8
+						}
+					]
+				}
+			},
+			"typeVersion": 1.2
+		},
+		{
+			"id": "22222222-2222-4222-8222-222222222222",
+			"name": "Fetch Orders",
+			"type": "n8n-nodes-base.httpRequest",
+			"position": [0, 0],
+			"parameters": {
+				"url": "https://shop.acme-demo.test/api/orders",
+				"options": {}
+			},
+			"typeVersion": 4.2
+		},
+		{
+			"id": "33333333-3333-4333-8333-333333333333",
+			"name": "Split Out Orders",
+			"type": "n8n-nodes-base.splitOut",
+			"position": [220, 0],
+			"parameters": {
+				"options": {},
+				"fieldToSplitOut": "orders"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "44444444-4444-4444-8444-444444444444",
+			"name": "Loop Over Orders",
+			"type": "n8n-nodes-base.splitInBatches",
+			"position": [440, 0],
+			"parameters": {
+				"options": {},
+				"batchSize": 1
+			},
+			"typeVersion": 3
+		},
+		{
+			"id": "55555555-5555-4555-8555-555555555555",
+			"name": "Look Up Order",
+			"type": "n8n-nodes-base.dataTable",
+			"position": [680, 120],
+			"parameters": {
+				"limit": 1,
+				"filters": {
+					"conditions": [
+						{
+							"keyName": "order_id",
+							"keyValue": "={{ $json.id }}",
+							"condition": "eq"
+						}
+					]
+				},
+				"resource": "row",
+				"matchType": "allConditions",
+				"operation": "get",
+				"returnAll": false,
+				"dataTableId": {
+					"__rl": true,
+					"mode": "id",
+					"value": "orderSyncLogSeedTbl",
+					"cachedResultName": "Order Sync Log"
+				}
+			},
+			"typeVersion": 1.1,
+			"alwaysOutputData": true
+		},
+		{
+			"id": "66666666-6666-4666-8666-666666666666",
+			"name": "Order Already Known?",
+			"type": "n8n-nodes-base.if",
+			"position": [900, 120],
+			"parameters": {
+				"options": {},
+				"conditions": {
+					"options": {
+						"version": 2,
+						"caseSensitive": true,
+						"typeValidation": "loose"
+					},
+					"combinator": "and",
+					"conditions": [
+						{
+							"id": "cond-known",
+							"operator": {
+								"type": "string",
+								"operation": "notEmpty",
+								"singleValue": true
+							},
+							"leftValue": "={{ $json.order_id }}",
+							"rightValue": ""
+						}
+					]
+				},
+				"looseTypeValidation": true
+			},
+			"typeVersion": 2.2
+		},
+		{
+			"id": "77777777-7777-4777-8777-777777777777",
+			"name": "Refresh Last Seen",
+			"type": "n8n-nodes-base.dataTable",
+			"position": [1140, 20],
+			"parameters": {
+				"columns": {
+					"value": {
+						"last_seen": "={{ $now.toFormat('yyyy-MM-dd') }}"
+					},
+					"mappingMode": "defineBelow"
+				},
+				"filters": {
+					"conditions": [
+						{
+							"keyName": "order_id",
+							"keyValue": "={{ $json.order_id }}",
+							"condition": "eq"
+						}
+					]
+				},
+				"options": {},
+				"resource": "row",
+				"matchType": "allConditions",
+				"operation": "update",
+				"dataTableId": {
+					"__rl": true,
+					"mode": "id",
+					"value": "orderSyncLogSeedTbl",
+					"cachedResultName": "Order Sync Log"
+				}
+			},
+			"typeVersion": 1.1
+		},
+		{
+			"id": "88888888-8888-4888-8888-888888888888",
+			"name": "Add New Order",
+			"type": "n8n-nodes-base.dataTable",
+			"position": [1140, 240],
+			"parameters": {
+				"columns": {
+					"value": {
+						"order_id": "={{ $('Loop Over Orders').item.json.id }}",
+						"last_seen": "={{ $now.toFormat('yyyy-MM-dd') }}"
+					},
+					"mappingMode": "defineBelow"
+				},
+				"options": {},
+				"resource": "row",
+				"operation": "insert",
+				"dataTableId": {
+					"__rl": true,
+					"mode": "id",
+					"value": "orderSyncLogSeedTbl",
+					"cachedResultName": "Order Sync Log"
+				}
+			},
+			"typeVersion": 1.1
+		},
+		{
+			"id": "99999999-9999-4999-8999-999999999999",
+			"name": "Email Ops About New Order",
+			"type": "n8n-nodes-base.gmail",
+			"position": [1380, 240],
+			"parameters": {
+				"sendTo": "ops@acme-demo.test",
+				"message": "=Order {{ $('Loop Over Orders').item.json.id }} was not in the sync log and has been added.",
+				"options": {},
+				"subject": "=New order seen: {{ $('Loop Over Orders').item.json.id }}",
+				"resource": "message",
+				"operation": "send"
+			},
+			"typeVersion": 2.1
+		}
+	],
+	"connections": {
+		"Fetch Orders": {
+			"main": [
+				[
+					{
+						"node": "Split Out Orders",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Add New Order": {
+			"main": [
+				[
+					{
+						"node": "Email Ops About New Order",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Look Up Order": {
+			"main": [
+				[
+					{
+						"node": "Order Already Known?",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Loop Over Orders": {
+			"main": [
+				[],
+				[
+					{
+						"node": "Look Up Order",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Split Out Orders": {
+			"main": [
+				[
+					{
+						"node": "Loop Over Orders",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Refresh Last Seen": {
+			"main": [
+				[
+					{
+						"node": "Loop Over Orders",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Every Morning At 8am": {
+			"main": [
+				[
+					{
+						"node": "Fetch Orders",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Order Already Known?": {
+			"main": [
+				[
+					{
+						"node": "Refresh Last Seen",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Add New Order",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Email Ops About New Order": {
+			"main": [
+				[
+					{
+						"node": "Loop Over Orders",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}

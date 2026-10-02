@@ -59,11 +59,13 @@ export const generateImage = image.action('generate', {
 				response_format: isGptImage ? undefined : 'b64_json',
 			},
 		});
-		for (const { b64_json: base64, revised_prompt: revised } of parse(imagesSchema, body).data) {
+		for (const { b64_json: base64, revised_prompt: revised } of parse(imagesSchema, body).data ??
+			[]) {
+			if (!base64) throw new Error('OpenAI gave an image without data');
 			const data = await files.create({ mimeType: 'image/png', fileName: 'data' }, [
 				bytesOf(base64),
 			]);
-			yield { data, ...(revised === undefined ? {} : { revisedPrompt: revised }) };
+			yield { data, ...(typeof revised === 'string' ? { revisedPrompt: revised } : {}) };
 		}
 	},
 });

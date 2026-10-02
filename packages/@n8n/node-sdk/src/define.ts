@@ -24,7 +24,7 @@ import {
 	type SupplyKind,
 } from './subnodes';
 import type { PollConfig, TriggerKind, WebhookConfig, WebhookRequest } from './triggers';
-import { parse } from './validate';
+import { parsePage } from './validate';
 
 /** The integration identity: name, credential, and base URL shared by its actions. */
 export interface NodeDefinition {
@@ -245,7 +245,7 @@ export async function* pages<P, T>(
 ): AsyncGenerator<T, void, undefined> {
 	// Not `instanceof Schema`: a frozen bundle has its own copy of the SDK.
 	const read = (response: unknown): P =>
-		typeof reader === 'function' ? reader(response) : parse(reader, response, 'page');
+		typeof reader === 'function' ? reader(response) : parsePage(reader, response);
 	// `for...of` also visits the pages the loop appends: one request per page.
 	const queue: Array<{ readonly cursor?: string; readonly emitted: number }> = [{ emitted: 0 }];
 	for (const { cursor, emitted } of queue) {

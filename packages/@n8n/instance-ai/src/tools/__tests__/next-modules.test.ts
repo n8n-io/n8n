@@ -1,7 +1,7 @@
 import { validate } from '@n8n/node-sdk';
 import { flowNatives, migratedTargetOf, nodeTypeOf } from '@n8n/nodes-base-next';
 import * as flowSdk from '@n8n/workflow-sdk/next';
-import { manual, set, workflow } from '@n8n/workflow-sdk/next';
+import { forEach, manual, set, workflow } from '@n8n/workflow-sdk/next';
 
 import {
 	BUILT_IN_STEPS,
@@ -62,7 +62,7 @@ describe('next-modules', () => {
 			'contractTrigger("@n8n/nodes-base-next.notionDataSourcePageAdded", config, 1, {"credential":"notion","scopes":["content:read"]}, {"example":{"id":"example"}})',
 		);
 		expect(nextNodeModule('github.repository.event')?.module).toContain(
-			'): Flow<OutputOf<N, GithubRepositoryEventOutput>, Record<N, OutputOf<N, GithubRepositoryEventOutput>>> =>',
+			'): Trigger<OutputOf<N, GithubRepositoryEventOutput>, N> =>',
 		);
 	});
 
@@ -136,10 +136,8 @@ describe('next-modules', () => {
 	it.each(BUILT_IN_STEPS.flatMap(({ nodeType, steps }) => steps.map((step) => [step, nodeType])))(
 		'names the SDK step %s for %s, which the flow SDK has',
 		(step, nodeType) => {
-			const isFunction = step in flowSdk;
-			const isFlowMethod = step in flowSdk.Flow.prototype;
-			expect(isFunction || isFlowMethod).toBe(true);
-			expect(builtInRowOf(nodeType)).toContain(isFunction ? `${step}({` : `.${step}({`);
+			expect(step in flowSdk).toBe(true);
+			expect(builtInRowOf(nodeType)).toContain(`${step}({`);
 		},
 	);
 
@@ -305,11 +303,11 @@ describe('next-modules', () => {
 	it('emits the flow native contracts from manual() and forEach', () => {
 		const json = workflow(
 			'Each',
-			manual({ sample: [{ n: 1 }, { n: 2 }] }).forEach({
-				name: 'Each',
-				batchSize: 1,
-				body: (each) => each.andThen(set({ name: 'Mark', fields: { n: (item) => item.n } })),
-			}),
+			manual({ sample: [{ n: 1 }, { n: 2 }] }),
+			forEach(
+				{ name: 'Each', batchSize: 1 },
+				set({ name: 'Mark', fields: { n: (item) => item.n } }),
+			),
 		).toJSON();
 		const issues = flowNatives.map((contract) => {
 			const emitted = json.nodes.find(({ type }) => type === contract.native?.type);

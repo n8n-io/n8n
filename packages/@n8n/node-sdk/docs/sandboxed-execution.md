@@ -237,7 +237,8 @@ a `binary()` field targets 2.2.0. Every other bundle targets 2.1.0.
 
 - Contract: `binary()` in `input` names a binary of the input item. In `output`, a top-level
   `binary()` field becomes `item.binary.<field>`. The flow SDK types it as `Binary`, and a
-  lambda `(item) => item.binary.data` compiles to `{{ $binary.data }}`.
+  lambda `(item) => item.binary.data` compiles to the key `data`, as n8n stores it. The input
+  check rejects an expression in a binary field, at build and at run time.
 - Inline JS (now): the executor keeps a handle table for each execution. `run()` gets frozen
   `{ meta, read() }` objects, never the n8n entry. A handle as `http.request` body streams from
   the store. `response: 'binary'` streams the response into the store. `binary.create` stores

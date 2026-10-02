@@ -18,6 +18,8 @@ export interface WorkflowCodeSnapshotInput {
 	success: boolean;
 	errors?: string[];
 	capturedAt: number;
+	/** How long the check of the snapshot took, e.g. the check after a workspace write. */
+	durationMs?: number;
 }
 
 export type SanitizedStepStart = {

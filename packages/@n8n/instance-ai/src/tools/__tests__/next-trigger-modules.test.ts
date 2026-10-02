@@ -55,7 +55,7 @@ function typeErrors(source: string): string[] {
 }
 
 const header = [
-	"import { set, workflow } from '@n8n/workflow-sdk/next';",
+	"import { route, set, steps, when, workflow } from '@n8n/workflow-sdk/next';",
 	"import { form } from '@n8n/nodes/form';",
 	"import { schedule } from '@n8n/nodes/schedule';",
 	"import { webhook } from '@n8n/nodes/webhook';",
@@ -106,20 +106,16 @@ describe('native trigger modules', { timeout: 30_000 }, () => {
 		const source = `${header}
 export default workflow(
 	'Incidents',
-	${incident}
-		.branch({
-			name: 'Critical?',
-			if: (item) => item.body.severity === 'critical',
-			then: (flow) =>
-				flow.andThen(
-					set({ name: 'Alert', fields: { text: (_item, $) => \`CRITICAL \${$('Webhook').body.service}: \${$('Webhook').body.message.toUpperCase()}\` } }),
-				),
-		})
-		.andThen(webhook.respond({ name: 'Reply', respondWith: 'json', responseBody: (_item, $) => ({ saved: $('Webhook').body.service }) })),
+	${incident},
+	when({ name: 'Critical?', if: (item) => item.body.severity === 'critical' }, {
+		then: set({ name: 'Alert', fields: { text: (_item, $) => \`CRITICAL \${$('Webhook').body.service}: \${$('Webhook').body.message.toUpperCase()}\` } }),
+	}),
+	webhook.respond({ name: 'Reply', respondWith: 'json', responseBody: (_item, $) => ({ saved: $('Webhook').body.service }) }),
 	schedule.trigger({
 		name: 'Weekly',
 		rule: { interval: [{ field: 'weeks', triggerAtDay: [5], triggerAtHour: 17, triggerAtMinute: 0 }, { field: 'cronExpression', expression: '0 9 * * 1-5' }] },
-	}).andThen(set({ name: 'When', fields: { day: (item) => item['Day of week'] } })),
+	}),
+	set({ name: 'When', fields: { day: (item) => item['Day of week'] } }),
 );
 `;
 		expect(typeErrors(source)).toEqual([]);
@@ -149,9 +145,8 @@ ${sampled('', '{ bdy: {} }')}
 		const source = `${header}
 export default workflow(
 	'Echo',
-	webhook.trigger({ name: 'Webhook', httpMethod: 'POST', path: 'echo' }).andThen(
-		set({ name: 'Upper', fields: { text: (item) => item.body.message.toUpperCase(), page: (item) => item.query.page } }),
-	),
+	webhook.trigger({ name: 'Webhook', httpMethod: 'POST', path: 'echo' }),
+	set({ name: 'Upper', fields: { text: (item) => item.body.message.toUpperCase(), page: (item) => item.query.page } }),
 );
 `;
 		expect(typeErrors(source)).toEqual([]);
@@ -173,29 +168,28 @@ export default workflow(
 				{ fieldType: 'file', fieldLabel: 'Resume' },
 			],
 		},
-	}).andThen(
-		set({
-			name: 'Lead',
-			fields: {
-				email: (item) => item.Email.toLowerCase(),
-				company: (item) => item.company ?? '',
-				seats: (item) => (item.Seats ?? 0) + 1,
-				topics: (item) => (item.Topics ?? []).join(', '),
-				at: (item) => item.submittedAt,
-				files: (item) => [item.Resume ?? []].flat().map((file) => file.filename).join(', '),
-			},
-		}),
-	),
+	}),
+	set({
+		name: 'Lead',
+		fields: {
+			email: (item) => item.Email.toLowerCase(),
+			company: (item) => item.company ?? '',
+			seats: (item) => (item.Seats ?? 0) + 1,
+			topics: (item) => (item.Topics ?? []).join(', '),
+			at: (item) => item.submittedAt,
+			files: (item) => [item.Resume ?? []].flat().map((file) => file.filename).join(', '),
+		},
+	}),
 );
 `;
 		expect(typeErrors(source)).toEqual([]);
 		const wrong = `${header}
-const flow = form.trigger({ name: 'Signup', formTitle: 'Sign up', formFields: { values: [{ fieldType: 'email', fieldLabel: 'Email' }] } });
-flow.andThen(set({ name: 'A', fields: { x: (item) => item.Emial } }));
-flow.andThen(set({ name: 'B', fields: { x: (item) => item.Email.toLowerCase() } }));
+const signup = () => form.trigger({ name: 'Signup', formTitle: 'Sign up', formFields: { values: [{ fieldType: 'email', fieldLabel: 'Email' }] } });
+workflow('A', signup(), set({ name: 'A', fields: { x: (item) => item.Emial } }));
+workflow('B', signup(), set({ name: 'B', fields: { x: (item) => item.Email.toLowerCase() } }));
 form.trigger({ name: 'C', formTitle: 'T', formFields: { values: [{ fieldType: 'email', fieldLabel: 'E', requird: true }] } });
 form.trigger({ name: 'D', formTitle: 'T', formFields: { values: [{ fieldType: 'emial', fieldLabel: 'E' }] } });
-form.trigger({ name: 'F', formTitle: 'T', formFields: { values: [{ fieldType: 'file', fieldLabel: 'CV', requiredField: true }] } }).andThen(set({ name: 'G', fields: { x: (item) => item.CV.filename } }));
+workflow('F', form.trigger({ name: 'F', formTitle: 'T', formFields: { values: [{ fieldType: 'file', fieldLabel: 'CV', requiredField: true }] } }), set({ name: 'G', fields: { x: (item) => item.CV.filename } }));
 `;
 		const errors = typeErrors(wrong);
 		expect(errors.map((error) => error.split(' ')[0])).toEqual(
@@ -214,40 +208,36 @@ export default workflow(
 		name: 'Signup',
 		formTitle: 'Sign up',
 		formFields: { values: [{ fieldType: 'email', fieldLabel: 'Email', requiredField: true }] },
-	})
-		.andThen(
-			form.page({
-				name: 'Plan',
-				formFields: {
-					values: [
-						{ fieldType: 'number', fieldLabel: 'Seats', requiredField: true },
-						{ fieldType: 'text', fieldLabel: 'Notes' },
-					],
-				},
-				options: { formTitle: 'Your plan' },
-			}),
-		)
-		.andThen(
-			set({
-				name: 'Lead',
-				fields: {
-					email: (_item, $) => $('Signup').Email,
-					seats: (item) => item.Seats + 1,
-					notes: (item) => item.Notes ?? '',
-					at: (item) => item.submittedAt,
-				},
-			}),
-		),
+	}),
+	form.page({
+		name: 'Plan',
+		formFields: {
+			values: [
+				{ fieldType: 'number', fieldLabel: 'Seats', requiredField: true },
+				{ fieldType: 'text', fieldLabel: 'Notes' },
+			],
+		},
+		options: { formTitle: 'Your plan' },
+	}),
+	set({
+		name: 'Lead',
+		fields: {
+			email: (_item, $) => $('Signup').Email,
+			seats: (item) => item.Seats + 1,
+			notes: (item) => item.Notes ?? '',
+			at: (item) => item.submittedAt,
+		},
+	}),
 );
 `;
 		expect(typeErrors(source)).toEqual([]);
 		expect(nodeModuleText('form')).toContain('contractStep("n8n-nodes-base.form", config, 2.5,');
 		const wrong = `${header}
-const plan = form.trigger({ name: 'S', formTitle: 'T', formFields: { values: [{ fieldType: 'email', fieldLabel: 'Email' }] } })
-	.andThen(form.page({ name: 'P', formFields: { values: [{ fieldType: 'number', fieldLabel: 'Seats' }] } }));
-plan.andThen(set({ name: 'A', fields: { x: (item) => item.Seat } }));
-plan.andThen(set({ name: 'B', fields: { x: (item) => item.Seats + 1 } }));
-form.trigger({ name: 'S', formTitle: 'T', formFields: { values: [{ fieldType: 'email', fieldLabel: 'E' }] } }).andThen(form.page({ name: 'P', formFields: { values: [{ fieldType: 'text', fieldLabl: 'X' }] } }));
+const start = () => form.trigger({ name: 'S', formTitle: 'T', formFields: { values: [{ fieldType: 'email', fieldLabel: 'Email' }] } });
+const page = () => form.page({ name: 'P', formFields: { values: [{ fieldType: 'number', fieldLabel: 'Seats' }] } });
+workflow('A', start(), page(), set({ name: 'A', fields: { x: (item) => item.Seat } }));
+workflow('B', start(), page(), set({ name: 'B', fields: { x: (item) => item.Seats + 1 } }));
+workflow('C', form.trigger({ name: 'S', formTitle: 'T', formFields: { values: [{ fieldType: 'email', fieldLabel: 'E' }] } }), form.page({ name: 'P', formFields: { values: [{ fieldType: 'text', fieldLabl: 'X' }] } }));
 `;
 		const errors = typeErrors(wrong);
 		expect(errors.map((error) => error.split(' ')[0])).toEqual(
@@ -269,8 +259,8 @@ export default workflow(
 			sheetName: { __rl: true, mode: 'id', value: '0' },
 			event: 'rowAdded',
 			pollTimes: { item: [{ mode: 'everyX', value: 5, unit: 'minutes' }] },
-		})
-		.andThen(set({ name: 'Job', fields: { title: (row) => String(row.Title), row: (row) => row.row_number ?? 0 } })),
+		}),
+	set({ name: 'Job', fields: { title: (row) => String(row.Title), row: (row) => row.row_number ?? 0 } }),
 );
 `;
 		expect(typeErrors(source)).toEqual([]);
@@ -278,7 +268,7 @@ export default workflow(
 const doc = { __rl: true, mode: 'url', value: 'https://docs.google.com/spreadsheets/d/abc/edit' } as const;
 googleSheetsTrigger.trigger({ name: 'A', documentId: doc, sheetName: { __rl: true, mode: 'name', value: 'Jobs' } });
 googleSheetsTrigger.trigger({ name: 'B', documentId: doc, sheetName: { __rl: true, mode: 'id', value: '0' }, event: 'rowAddded' });
-googleSheetsTrigger.trigger({ name: 'C', documentId: doc, sheetName: { __rl: true, mode: 'id', value: '0' } }).andThen(set({ name: 'D', fields: { n: (row) => row.Title.toUpperCase() } }));
+workflow('C', googleSheetsTrigger.trigger({ name: 'C', documentId: doc, sheetName: { __rl: true, mode: 'id', value: '0' } }), set({ name: 'D', fields: { n: (row) => row.Title.toUpperCase() } }));
 `;
 		const errors = typeErrors(wrong);
 		expect([...new Set(errors.map((error) => error.split(' ')[0]))]).toEqual(
@@ -295,25 +285,22 @@ googleSheetsTrigger.trigger({ name: 'C', documentId: doc, sheetName: { __rl: tru
 		const source = `${header}import { dataTable } from '@n8n/nodes/dataTable';
 export default workflow(
 	'Leads',
-	form.trigger({ name: 'Signup', formTitle: 'Sign up', formFields: { values: [{ fieldType: 'email', fieldLabel: 'Email', requiredField: true }] } })
-		.route(${exists}, {
-			exists: (flow) => flow.andThen(set({ name: 'Seen', fields: { email: (item) => item.Email } })),
-			missing: (flow) => flow.andThen(set({ name: 'Fresh', fields: { email: (item, $) => $('Signup').Email } })),
-		})
-		.andThen(set({ name: 'Done', fields: { email: (item) => item.email } })),
+	form.trigger({ name: 'Signup', formTitle: 'Sign up', formFields: { values: [{ fieldType: 'email', fieldLabel: 'Email', requiredField: true }] } }),
+	route(${exists}, {
+		exists: set({ name: 'Seen', fields: { email: (item) => item.Email } }),
+		missing: set({ name: 'Fresh', fields: { email: (item, $) => $('Signup').Email } }),
+	}),
+	set({ name: 'Done', fields: { email: (item) => item.email } }),
 );
 `;
 		expect(typeErrors(source)).toEqual([]);
-		expect(nodeModuleText('dataTable')).toContain('flow.route(step, {');
+		expect(nodeModuleText('dataTable')).toContain('route(step, { <output>: part })');
 		const wrong = `${header}import { dataTable } from '@n8n/nodes/dataTable';
-const start = form.trigger({ name: 'S', formTitle: 'T', formFields: { values: [{ fieldType: 'email', fieldLabel: 'Email', requiredField: true }] } });
-start.route(${exists}, { absent: (flow) => flow });
+const start = () => form.trigger({ name: 'S', formTitle: 'T', formFields: { values: [{ fieldType: 'email', fieldLabel: 'Email', requiredField: true }] } });
+workflow('S', start(), route(${exists}, { absent: steps() }));
 `;
 		const errors = typeErrors(wrong);
-		expect(errors.map((error) => error.split(' ')[0])).toEqual([
-			'workflow.ts:11',
-			'workflow.ts:11',
-		]);
+		expect(errors.map((error) => error.split(' ')[0])).toEqual(['workflow.ts:11']);
 		expect(errors[0]).toContain("is not assignable to type 'never'");
 	});
 
@@ -323,12 +310,12 @@ start.route(${exists}, { absent: (flow) => flow });
 		const source = `${header}import { dataTable } from '@n8n/nodes/dataTable';
 export default workflow(
 	'Settings',
-	${signup("{ notes: 'Public form' }")}
-		.andThen(dataTable.row.insert({ name: 'Save', table: { name: 'leads' }, values: { email: (item) => item.Email }, settings: { retryOnFail: true, maxTries: 3, waitBetweenTries: 1000 } }))
-		.route(dataTable.row.exists({ name: 'Known', table: { name: 'leads' }, where: { match: 'all', conditions: [{ column: 'email', op: 'eq', value: (_item, $) => $('Signup').Email }] }, settings: { onError: 'continueRegularOutput' } }), {
-			exists: (flow) => flow,
-			missing: (flow) => flow,
-		}),
+	${signup("{ notes: 'Public form' }")},
+	dataTable.row.insert({ name: 'Save', table: { name: 'leads' }, values: { email: (item) => item.Email }, settings: { retryOnFail: true, maxTries: 3, waitBetweenTries: 1000 } }),
+	route(dataTable.row.exists({ name: 'Known', table: { name: 'leads' }, where: { match: 'all', conditions: [{ column: 'email', op: 'eq', value: (_item, $) => $('Signup').Email }] }, settings: { onError: 'continueRegularOutput' } }), {
+		exists: steps(),
+		missing: steps(),
+	}),
 	${incident.replace('})', "\tsettings: { notesInFlow: true, notes: 'Alerts' },\n})")},
 );
 `;
@@ -351,20 +338,18 @@ import { facebookTrigger } from '@n8n/nodes/facebookTrigger';
 import { whatsAppTrigger } from '@n8n/nodes/whatsAppTrigger';
 export default workflow(
 	'Meta',
-	whatsAppTrigger.trigger({ name: 'WhatsApp', updates: ['messages'] }).andThen(
-		set({ name: 'Ask', fields: { from: (item) => item.messages?.[0]?.from ?? '', text: (item) => item.messages?.[0]?.text?.body ?? '' } }),
-	),
-	facebookTrigger.trigger({ name: 'Page', appId: '1', object: 'page', fields: ['feed'] }).andThen(
-		set({ name: 'Comment', fields: { by: (item) => item.changes?.[0]?.value.from?.name ?? '', text: (item) => item.changes?.[0]?.value.message ?? '' } }),
-	),
+	whatsAppTrigger.trigger({ name: 'WhatsApp', updates: ['messages'] }),
+	set({ name: 'Ask', fields: { from: (item) => item.messages?.[0]?.from ?? '', text: (item) => item.messages?.[0]?.text?.body ?? '' } }),
+	facebookTrigger.trigger({ name: 'Page', appId: '1', object: 'page', fields: ['feed'] }),
+	set({ name: 'Comment', fields: { by: (item) => item.changes?.[0]?.value.from?.name ?? '', text: (item) => item.changes?.[0]?.value.message ?? '' } }),
 );
 `;
 		expect(typeErrors(source)).toEqual([]);
 		const wrong = `${header}
 import { whatsAppTrigger } from '@n8n/nodes/whatsAppTrigger';
 whatsAppTrigger.trigger({ name: 'A', updates: ['message'] });
-whatsAppTrigger.trigger({ name: 'B', updates: ['messages'] }).andThen(set({ name: 'C', fields: { x: (item) => item.messages?.[0]?.body } }));
-whatsAppTrigger.trigger({ name: 'D', updates: ['messages'] }).andThen(set({ name: 'E', fields: { x: (item) => item.messages[0].from } }));
+workflow('B', whatsAppTrigger.trigger({ name: 'B', updates: ['messages'] }), set({ name: 'C', fields: { x: (item) => item.messages?.[0]?.body } }));
+workflow('D', whatsAppTrigger.trigger({ name: 'D', updates: ['messages'] }), set({ name: 'E', fields: { x: (item) => item.messages[0].from } }));
 `;
 		const errors = typeErrors(wrong);
 		expect(errors.map((error) => error.split(' ')[0])).toEqual([
@@ -377,13 +362,13 @@ whatsAppTrigger.trigger({ name: 'D', updates: ['messages'] }).andThen(set({ name
 
 	it('fail tsc on a wrong path, a wrong value, and a wrong rule', () => {
 		const source = `${header}
-const flow = ${incident};
-flow.andThen(set({ name: 'A', fields: { x: (_item, $) => $('Webhook').body.severty } }));
-flow.andThen(set({ name: 'B', fields: { x: (item) => item.body.severity === 'critcal' } }));
-flow.andThen(set({ name: 'C', fields: { x: (item) => item.body.count.toFixed() } }));
+const hook = () => ${incident};
+workflow('A', hook(), set({ name: 'A', fields: { x: (_item, $) => $('Webhook').body.severty } }));
+workflow('B', hook(), set({ name: 'B', fields: { x: (item) => item.body.severity === 'critcal' } }));
+workflow('C', hook(), set({ name: 'C', fields: { x: (item) => item.body.count.toFixed() } }));
 webhook.trigger({ name: 'D', path: 'x', httpMethod: 'POSTT' });
-flow.andThen(webhook.respond({ name: 'G', respondWith: 'redirect' }));
-flow.andThen(webhook.respond({ name: 'H', respondWith: 'text', responseBody: { ok: true } }));
+workflow('G', hook(), webhook.respond({ name: 'G', respondWith: 'redirect' }));
+workflow('H', hook(), webhook.respond({ name: 'H', respondWith: 'text', responseBody: { ok: true } }));
 schedule.trigger({ name: 'E', rule: { interval: [{ field: 'weeks', triggerAtDay: [7] }] } });
 schedule.trigger({ name: 'F', rule: { interval: [{ field: 'days', triggerAtHourr: 8 }] } });
 `;

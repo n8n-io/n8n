@@ -56,7 +56,7 @@ export const createItem = item.action('create', {
 	async run({ input, http }) {
 		const body = { name: input.name, ...(input.ownerId ? { ownerId: input.ownerId } : {}) };
 		const response = await http.request({ method: 'POST', path: `/${input.workspace}/items`, body });
-		return parse(itemOutput, response); // throws e.g. "response.id: must be string"
+		return parse(itemOutput, response); // passes the body on; n8n checks it against `output`
 	},
 });
 ```
@@ -66,7 +66,7 @@ export const createItem = item.action('create', {
   input item) or `1:N` (a list). `idempotent?: boolean`.
 - `run()` runs once per input item. A `per-item` action returns its output item. A `1:N` action is an
   `async *run()` generator: `yield` each output item, or `yield* pages(...)`. The types reject a
-  `per-item` generator and a `1:N` action that returns. n8n validates each item against `output` when it
+  `per-item` generator and a `1:N` action that returns. n8n checks each item against `output` when it
   is returned or yielded, and pairs it with its input item.
 - In `run()`, a field with `.default(v)` is always set, also inside objects. Do not add `??` fallbacks.
   An `.optional()` field can be `undefined`.
@@ -101,8 +101,9 @@ export const createItem = item.action('create', {
 - `variant('kind', { text: { text: str() }, json: { data: json() } })` is
   `{ kind: 'text'; text: string } | { kind: 'json'; data: Record<string, unknown> }`. A branch `{}` has only the tag.
   Narrow it in `run()` with `if (input.body.kind === 'text') input.body.text`, or a `switch` on the tag.
-- `parse(schema, value)` returns the typed value or throws with each failing path. `matches(schema, value)`
-  is a type guard. `Infer<typeof schema>` is the TypeScript type. `isRecord(v)` and `list(v)` narrow `unknown`.
+- `parse(schema, value)` never throws: it passes the value on, typed with each object field optional and
+  nullable, so `tsc` makes a read check for a missing field. n8n checks each output item against `output`:
+  a mismatch passes on with one warning per run, and fails in `runAction` and fixture tests. `loose(obj(...))` makes the fields of an API object optional and nullable. `matches(schema, value)` is a type guard. `Infer<typeof schema>` is the TypeScript type. `isRecord(v)` and `list(v)` narrow `unknown`.
 
 ## HTTP
 
@@ -119,9 +120,8 @@ export const createItem = item.action('create', {
   backoff and `Retry-After`, for GET, HEAD, PUT, and every request of an action with `flow.idempotent: true`.
   `retry: true` also retries another method; `retry: false` never retries.
 - Lists: `list: { path, query?, response, items(page, input), pages? }` replaces `run()` (see
-  `src/actions/item.get-all.ts`); `pages.style` is `cursor`, `link` or `offset`, and `pages` adds `paging`.
-  In `run()`: `pages(http, { page: schema, request(cursor, room), items, next, limit: limitOf(input.paging) })`.
-  Do not write a page loop. One run may send 10000 requests.
+  `src/actions/item.get-all.ts`); `pages.style` is `cursor`, `link` or `offset`, and `pages` adds `paging`. n8n checks each page against `response`.
+  In `run()`: `pages(http, { page: schema, request(cursor, room), items, next, limit: limitOf(input.paging) })`. Do not write a page loop. One run may send 10000 requests.
 
 ## Tests
 

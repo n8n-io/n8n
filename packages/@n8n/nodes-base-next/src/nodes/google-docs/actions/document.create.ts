@@ -42,9 +42,9 @@ export const createDocument = document.action('create', {
 				...(input.folderId ? { parents: [input.folderId] } : {}),
 			},
 		});
-		const id = documentIdOf(
-			parse(obj({ id: str() }).with({ additionalProperties: true }), file).id,
-		);
+		const created = parse(obj({ id: str() }), file).id;
+		if (!created) throw new Error('Google Drive gave no ID for the new document');
+		const id = documentIdOf(created);
 		const { content } = input;
 		const requests = !content
 			? []

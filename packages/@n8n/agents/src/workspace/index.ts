@@ -19,6 +19,7 @@ export type {
 	WorkspaceFilesystem,
 	WorkspaceSandbox,
 	WorkspaceConfig,
+	WorkspaceAfterWrite,
 	CommandResult,
 	CommandOptions,
 	ExecuteCommandOptions,

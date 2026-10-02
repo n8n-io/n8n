@@ -1,17 +1,19 @@
-import { arr, bool, int, json, num, obj, oneOf, parse, str } from '@n8n/node-sdk';
+import { arr, bool, int, json, loose, num, obj, oneOf, parse, str } from '@n8n/node-sdk';
 
 import { generateContentSchema, replyTextOf } from '../content';
 import { text } from '../google-gemini.node';
 
 /** A candidate as the node emits it with `simplify` and `includeMergedResponse`. */
-const candidate = obj({
-	mergedResponse: str().hint('The full reply text'),
-	content: obj({ parts: arr(json()).optional(), role: str().optional() })
-		.with({ additionalProperties: true })
-		.optional(),
-	finishReason: str().optional(),
-	index: int().optional(),
-}).with({ additionalProperties: true, 'x-n8n-hint': 'One item per candidate' });
+const candidate = loose(
+	obj({
+		mergedResponse: str().hint('The full reply text'),
+		content: obj({ parts: arr(json()).optional(), role: str().optional() })
+			.with({ additionalProperties: true })
+			.optional(),
+		finishReason: str().optional(),
+		index: int().optional(),
+	}).with({ additionalProperties: true, 'x-n8n-hint': 'One item per candidate' }),
+);
 
 export const messageGemini = text.action('message', {
 	patch: 6,
@@ -51,7 +53,8 @@ export const messageGemini = text.action('message', {
 					: {}),
 			},
 		});
-		const { candidates = [], promptFeedback } = parse(generateContentSchema, response);
+		const { candidates: found, promptFeedback } = parse(generateContentSchema, response);
+		const candidates = found ?? [];
 		if (candidates.length === 0) {
 			const reason = promptFeedback?.blockReason;
 			throw new Error(`Gemini returned no reply${reason ? `: ${reason}` : ''}`);
@@ -67,6 +70,6 @@ export const messageGemini = text.action('message', {
 		}
 		// The input cannot ask for more than one candidate, so the first one is the reply.
 		const [first] = candidates;
-		return parse(candidate, { ...first, mergedResponse: merged[0] ?? '' }, 'reply');
+		return { ...first, mergedResponse: merged[0] ?? '' };
 	},
 });

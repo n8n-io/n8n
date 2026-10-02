@@ -93,6 +93,25 @@ export function isWorkflowJsonSourceFile(filePath: string): boolean {
 	return filePath.toLowerCase().endsWith('.json');
 }
 
+export type WorkflowSourceSdk = 'next' | 'legacy' | 'both';
+
+const SDK_IMPORT = /from\s+['"](@n8n\/workflow-sdk(?:\/next)?)['"]/g;
+
+/**
+ * The SDK that builds a workflow source. With node contracts, a source that imports
+ * `@n8n/workflow-sdk` and not `@n8n/workflow-sdk/next` (the get-as-code fallback, or a file
+ * from before node contracts) builds as without node contracts. Its code has no strict types.
+ */
+export function workflowSourceSdk(
+	context: Pick<InstanceAiContext, 'nodeContractsEnabled'>,
+	source: string,
+): WorkflowSourceSdk {
+	if (!context.nodeContractsEnabled) return 'legacy';
+	const imported = new Set([...source.matchAll(SDK_IMPORT)].map(([, specifier]) => specifier));
+	if (!imported.has('@n8n/workflow-sdk')) return 'next';
+	return imported.has('@n8n/workflow-sdk/next') ? 'both' : 'legacy';
+}
+
 /**
  * Normalizes compiled workflow nodes for INode persistence via
  * {@link normalizeNodeShape}. Nested nulls (e.g. credential id) are preserved.
@@ -528,23 +547,51 @@ async function compileNextWorkflowSource(
 }
 
 /**
- * Node contracts: a WorkflowJSON source has no type check, so its contract nodes get the
- * input check and the version lock of a typed source.
+ * Node contracts: a WorkflowJSON or legacy SDK source has no strict type check, so its
+ * contract nodes get the input check and the version lock of a typed source.
  */
-function checkContractWorkflowJson(
-	parsed: WorkflowSourceCompileResult,
+function checkContractWorkflow(
+	built: WorkflowSourceCompileResult,
+	reason: 'workflow_json_invalid' | 'workflow_source_type_errors',
 ): WorkflowSourceCompileResult {
-	if (!parsed.success) return parsed;
-	const errors = staticInputIssues(parsed.workflow);
+	if (!built.success) return built;
+	const errors = staticInputIssues(built.workflow);
 	return errors.length > 0
 		? {
 				success: false,
-				reason: 'workflow_json_invalid',
+				reason,
 				editable: true,
 				errors,
-				summary: 'Workflow JSON source has values that its node contracts reject.',
+				summary: 'Workflow source has values that its node contracts reject.',
 			}
-		: { ...parsed, workflow: lockNodeContracts(parsed.workflow) };
+		: { ...built, workflow: lockNodeContracts(built.workflow) };
+}
+
+async function compileContractTypeScriptSource(
+	context: InstanceAiContext,
+	filePath: string,
+	source: string,
+	abortSignal?: AbortSignal,
+): Promise<WorkflowSourceCompileResult> {
+	switch (workflowSourceSdk(context, source)) {
+		case 'next':
+			return await compileNextWorkflowSource(context, filePath, source, abortSignal);
+		case 'legacy':
+			return checkContractWorkflow(
+				await compileTypeScriptWorkflowSource(context, filePath, abortSignal),
+				'workflow_source_type_errors',
+			);
+		case 'both':
+			return {
+				success: false,
+				reason: 'workflow_source_build_failed',
+				editable: true,
+				errors: [
+					"Import from '@n8n/workflow-sdk/next' or from '@n8n/workflow-sdk', not from both.",
+				],
+				summary: 'Workflow source imports two workflow SDKs.',
+			};
+	}
 }
 
 export async function compileWorkflowSource(
@@ -575,10 +622,12 @@ export async function compileWorkflowSource(
 			let result: WorkflowSourceCompileResult;
 			if (isWorkflowJsonSourceFile(filePath)) {
 				const parsed = parseWorkflowJsonSource(source);
-				result = context.nodeContractsEnabled ? checkContractWorkflowJson(parsed) : parsed;
+				result = context.nodeContractsEnabled
+					? checkContractWorkflow(parsed, 'workflow_json_invalid')
+					: parsed;
 			} else if (isTypeScriptWorkflowSource(filePath)) {
 				result = context.nodeContractsEnabled
-					? await compileNextWorkflowSource(context, filePath, source, abortSignal)
+					? await compileContractTypeScriptSource(context, filePath, source, abortSignal)
 					: await compileTypeScriptWorkflowSource(context, filePath, abortSignal);
 			} else {
 				result = {

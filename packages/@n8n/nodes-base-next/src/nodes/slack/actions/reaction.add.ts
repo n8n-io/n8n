@@ -1,8 +1,8 @@
-import { bool, obj, ref, str } from '@n8n/node-sdk';
+import { bool, loose, obj, ref, str } from '@n8n/node-sdk';
 
 import { reaction, slackChannelId, slackPost, slackResponse, slackTs } from '../slack.node';
 
-const added = obj({ ok: bool() });
+const added = loose(obj({ ok: bool() }));
 
 export const addSlackReaction = reaction.action('add', {
 	action: 'Add a reaction',

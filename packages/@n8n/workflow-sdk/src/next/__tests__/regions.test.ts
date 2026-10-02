@@ -7,11 +7,20 @@ import { decompileWorkflow } from '../decompile';
 import * as next from '../index';
 import {
 	contractStep,
+	filter,
+	forEach,
+	loop,
 	manual,
+	merge,
 	node,
+	paginate,
+	pollUntil,
 	set,
 	splitOut,
+	steps,
+	switchOn,
 	validateLoopWiring,
+	when,
 	workflow,
 	type Step,
 } from '../index';
@@ -45,172 +54,149 @@ const tickets = source<Ticket>();
 const forEachWorkflow = () =>
 	workflow(
 		'Orders per customer',
-		manual()
-			.andThen(customers('Customers'))
-			.forEach({
-				name: 'Each customer',
-				batchSize: 1,
-				body: (customer) =>
-					customer.andThen(splitOut({ name: 'Orders', field: 'orders' })).forEach({
-						name: 'Each order',
-						batchSize: 2,
-						body: (order) =>
-							order.andThen(
-								set({
-									name: 'Line',
-									fields: { order: (o) => o.id, total: (o) => o.total * 2 },
-								}),
-							),
-					}),
-			})
-			.andThen(set({ name: 'Report', fields: { order: (line) => line.order } })),
+		manual(),
+		customers('Customers'),
+		forEach(
+			{ name: 'Each customer', batchSize: 1 },
+			steps(
+				splitOut({ name: 'Orders', field: 'orders' }),
+				forEach(
+					{ name: 'Each order', batchSize: 2 },
+					set({ name: 'Line', fields: { order: (o) => o.id, total: (o) => o.total * 2 } }),
+				),
+			),
+		),
+		set({ name: 'Report', fields: { order: (line) => line.order } }),
 	);
 
 const loopWorkflow = (maxIterations: number) =>
 	workflow(
 		'Count',
-		manual()
-			.andThen(set({ name: 'Init', fields: { n: 0, sum: 0 } }))
-			.loop({
+		manual(),
+		set({ name: 'Init', fields: { n: 0, sum: 0 } }),
+		loop(
+			{
 				name: 'Count',
 				maxIterations,
-				body: (pass) =>
-					pass.andThen(
-						set({ name: 'Add', fields: { n: (s) => s.n + 1, sum: (s) => s.sum + s.n + 1 } }),
-					),
 				until: (out) => out.n >= 3,
 				next: (out) => ({ n: out.n, sum: out.sum }),
-			})
-			.andThen(set({ name: 'Result', fields: { sum: (out) => out.sum } })),
+			},
+			set({ name: 'Add', fields: { n: (s) => s.n + 1, sum: (s) => s.sum + s.n + 1 } }),
+		),
+		set({ name: 'Result', fields: { sum: (out) => out.sum } }),
 	);
 
 const paginateWorkflow = () =>
 	workflow(
 		'Pages',
-		manual()
-			.andThen(set({ name: 'Start page', fields: { cursor: 0 } }))
-			.paginate({
+		manual(),
+		set({ name: 'Start page', fields: { cursor: 0 } }),
+		paginate(
+			{
 				name: 'Pages',
 				maxPages: 10,
-				request: (page) =>
-					page.andThen(
-						set({
-							name: 'Fetch',
-							fields: {
-								rows: (p) => [p.cursor * 10, p.cursor * 10 + 1],
-								next: (p) => (p.cursor < 2 ? p.cursor + 1 : null),
-							},
-						}),
-					),
 				next: (response) => (response.next === null ? null : { cursor: response.next }),
-			})
-			.andThen(splitOut({ name: 'Rows', field: 'rows' })),
+			},
+			set({
+				name: 'Fetch',
+				fields: {
+					rows: (p) => [p.cursor * 10, p.cursor * 10 + 1],
+					next: (p) => (p.cursor < 2 ? p.cursor + 1 : null),
+				},
+			}),
+		),
+		splitOut({ name: 'Rows', field: 'rows' }),
 	);
 
 const pollWorkflow = () =>
 	workflow(
 		'Poll',
-		manual()
-			.andThen(set({ name: 'Job', fields: { job: 'j1' } }))
-			.pollUntil({
+		manual(),
+		set({ name: 'Job', fields: { job: 'j1' } }),
+		pollUntil(
+			{
 				name: 'Poll',
 				maxAttempts: 5,
 				every: { amount: 0, unit: 'seconds' },
-				attempt: (attempt) =>
-					attempt.andThen(
-						// Stands in for a status request: the job is done on the third attempt.
-						node({
-							name: 'Status',
-							type: 'n8n-nodes-base.set',
-							version: 3.4,
-							parameters: {
-								mode: 'raw',
-								jsonOutput: '={{ ({ job: $json.job, done: $json["Poll pass"] >= 2 }) }}',
-							},
-						}),
-					),
 				until: (status) => status.done === true,
+			},
+			// Stands in for a status request: the job is done on the third attempt.
+			node({
+				name: 'Status',
+				type: 'n8n-nodes-base.set',
+				version: 3.4,
+				parameters: {
+					mode: 'raw',
+					jsonOutput: '={{ ({ job: $json.job, done: $json["Poll pass"] >= 2 }) }}',
+				},
 			}),
+		),
 	);
 
 const switchWorkflow = () =>
 	workflow(
 		'Triage',
-		manual()
-			.andThen(tickets('Tickets'))
-			.switch({
-				name: 'By kind',
-				on: 'kind',
-				cases: {
-					bug: (bug) =>
-						bug.andThen(set({ name: 'Bug', fields: { score: (t) => t.severity * 10 } })),
-					feature: (feature) =>
-						feature.andThen(set({ name: 'Feature', fields: { score: (t) => t.votes } })),
-					chore: (chore) => chore.andThen(set({ name: 'Chore', fields: { score: 0 } })),
-				},
-			})
-			.andThen(set({ name: 'Scored', fields: { score: (s) => s.score } })),
+		manual(),
+		tickets('Tickets'),
+		switchOn(
+			{ name: 'By kind', on: 'kind' },
+			{
+				bug: set({ name: 'Bug', fields: { score: (t) => t.severity * 10 } }),
+				feature: set({ name: 'Feature', fields: { score: (t) => t.votes } }),
+				chore: set({ name: 'Chore', fields: { score: 0 } }),
+			},
+		),
+		set({ name: 'Scored', fields: { score: (s) => s.score } }),
 	);
 
 const filterWorkflow = () =>
 	workflow(
 		'Bugs',
-		manual()
-			.andThen(tickets('Tickets'))
-			.filter({
-				name: 'Bugs only',
-				if: (t): t is Extract<Ticket, { kind: 'bug' }> => t.kind === 'bug',
-			})
-			.andThen(set({ name: 'Severity', fields: { severity: (bug) => bug.severity } })),
+		manual(),
+		tickets('Tickets'),
+		filter({
+			name: 'Bugs only',
+			if: (t): t is Extract<Ticket, { kind: 'bug' }> => t.kind === 'bug',
+		}),
+		set({ name: 'Severity', fields: { severity: (bug) => bug.severity } }),
 	);
 
 const mergeWorkflow = () =>
 	workflow(
 		'Join',
-		manual()
-			.andThen(customers('Customers'))
-			.merge({
-				name: 'Join',
-				join: { left: 'id', right: 'id' },
-				branches: [
-					(flow) =>
-						flow.andThen(set({ name: 'Names', fields: { id: (c) => c.id, name: (c) => c.name } })),
-					(flow) =>
-						flow.andThen(
-							set({ name: 'Counts', fields: { id: (c) => c.id, count: (c) => c.orders.length } }),
-						),
-				],
-			})
-			.andThen(set({ name: 'Summary', fields: { text: (row) => `${row.name}: ${row.count}` } })),
+		manual(),
+		customers('Customers'),
+		merge({ name: 'Join', join: { left: 'id', right: 'id' } }, [
+			set({ name: 'Names', fields: { id: (c) => c.id, name: (c) => c.name } }),
+			set({ name: 'Counts', fields: { id: (c) => c.id, count: (c) => c.orders.length } }),
+		]),
+		set({ name: 'Summary', fields: { text: (row) => `${row.name}: ${row.count}` } }),
 	);
 
 const switchDefaultWorkflow = () =>
 	workflow(
 		'By name',
-		manual()
-			.andThen(customers('Customers'))
-			.switch({
-				name: 'By name',
-				on: 'name',
-				cases: { Ada: (ada) => ada.andThen(set({ name: 'Ada', fields: { vip: true } })) },
-				default: (rest) => rest.andThen(set({ name: 'Rest', fields: { vip: false } })),
-			}),
+		manual(),
+		customers('Customers'),
+		switchOn(
+			{ name: 'By name', on: 'name' },
+			{
+				Ada: set({ name: 'Ada', fields: { vip: true } }),
+				fallback: set({ name: 'Rest', fields: { vip: false } }),
+			},
+		),
 	);
 
-const mergeJoinWorkflow = (join: 'append' | 'position') => {
-	const start = manual().andThen(customers('Customers'));
-	const names = (flow: typeof start) =>
-		flow.andThen(set({ name: 'Names', fields: { name: (c) => c.name } }));
-	const counts = (flow: typeof start) =>
-		flow.andThen(set({ name: 'Counts', fields: { count: (c) => c.orders.length } }));
-	const branches = [names, counts] as const;
-	return workflow(
+const mergeJoinWorkflow = (join: 'append' | 'position') =>
+	workflow(
 		'Both',
-		join === 'append'
-			? start.merge({ name: 'Both', join, branches })
-			: start.merge({ name: 'Both', join, branches }),
+		manual(),
+		customers('Customers'),
+		merge({ name: 'Both', join }, [
+			set({ name: 'Names', fields: { name: (c) => c.name } }),
+			set({ name: 'Counts', fields: { count: (c) => c.orders.length } }),
+		]),
 	);
-};
 
 const connections = (json: WorkflowJSON, name: string) =>
 	json.connections[name]?.main.map((targets) =>
@@ -299,20 +285,20 @@ describe('regions compile to node contracts', () => {
 	it('accepts a loop region inside forEach', () => {
 		const json = workflow(
 			'Retry each',
-			manual()
-				.andThen(customers('Customers'))
-				.forEach({
-					name: 'Each',
-					batchSize: 1,
-					body: (each) =>
-						each.loop({
-							name: 'Count',
-							maxIterations: 3,
-							body: (pass) => pass.andThen(set({ name: 'Add', fields: { id: (c) => c.id } })),
-							until: () => true,
-							next: (out, $) => ({ ...$('Count'), id: out.id }),
-						}),
-				}),
+			manual(),
+			customers('Customers'),
+			forEach(
+				{ name: 'Each', batchSize: 1 },
+				loop(
+					{
+						name: 'Count',
+						maxIterations: 3,
+						until: () => true,
+						next: (out, $) => ({ ...$('Count'), id: out.id, each: $('Each').name }),
+					},
+					set({ name: 'Add', fields: { id: (c) => c.id } }),
+				),
+			),
 		).toJSON();
 		expect(connections(json, 'Count until')).toEqual([
 			['Each#0'],
@@ -325,76 +311,69 @@ describe('regions compile to node contracts', () => {
 	it('reports forEach bodies that do not return each batch once as build problems', () => {
 		const paged = workflow(
 			'Pages per customer',
-			manual()
-				.andThen(set({ name: 'Start', fields: { cursor: 0 } }))
-				.forEach({
-					name: 'Each',
-					batchSize: 1,
-					body: (each) =>
-						each.paginate({
-							name: 'Pages',
-							maxPages: 3,
-							request: (page) => page.andThen(set({ name: 'Fetch', fields: { next: null } })),
-							next: () => null,
-						}),
-				}),
+			manual(),
+			set({ name: 'Start', fields: { cursor: 0 } }),
+			forEach(
+				{ name: 'Each', batchSize: 1 },
+				paginate(
+					{ name: 'Pages', maxPages: 3, next: () => null },
+					set({ name: 'Fetch', fields: { next: null } }),
+				),
+			),
 		);
 		expect(() => paged.toJSON()).toThrow(/Fetch returns to Each on every pass of an inner loop/);
 		const filtered = workflow(
 			'Filtered',
-			manual()
-				.andThen(customers('Customers'))
-				.forEach({
-					name: 'Each',
-					batchSize: 1,
-					body: (each) => each.filter({ name: 'Has orders', if: (c) => c.orders.length > 0 }),
-				}),
+			manual(),
+			customers('Customers'),
+			forEach(
+				{ name: 'Each', batchSize: 1 },
+				filter({ name: 'Has orders', if: (c) => c.orders.length > 0 }),
+			),
 		);
 		expect(() => filtered.toJSON()).toThrow(/Has orders can drop a whole batch/);
 		const branched = workflow(
 			'Branched',
-			manual()
-				.andThen(customers('Customers'))
-				.forEach({
-					name: 'Each',
-					batchSize: 1,
-					body: (each) =>
-						each.branch({
-							name: 'Has orders?',
-							if: (c) => c.orders.length > 0,
-							then: (flow) => flow.andThen(set({ name: 'Keep', fields: { id: (c) => c.id } })),
-						}),
-				}),
+			manual(),
+			customers('Customers'),
+			forEach(
+				{ name: 'Each', batchSize: 1 },
+				when(
+					{ name: 'Has orders?', if: (c) => c.orders.length > 0 },
+					{ then: set({ name: 'Keep', fields: { id: (c) => c.id } }) },
+				),
+			),
 		);
 		expect(() => branched.toJSON()).toThrow(/output 1 of Has orders\? never return to Each/);
 	});
 
 	it('reports a bad batch size and an empty body as build problems', () => {
-		const empty = workflow(
-			'Empty',
-			manual().forEach({ name: 'Loop', batchSize: 0, body: (each) => each }),
-		);
+		const empty = workflow('Empty', manual(), forEach({ name: 'Loop', batchSize: 0 }, steps()));
 		expect(() => empty.toJSON()).toThrow(/batchSize must be a whole number[\s\S]*needs a body/);
 	});
 
 	it('types items through regions', () => {
-		const start = manual().andThen(customers('Customers'));
-		start.forEach({
-			name: 'Each',
-			batchSize: 1,
-			body: (each) =>
-				each.andThen(
-					set({
-						name: 'Read',
-						fields: {
-							name: (c) => c.name,
-							// @ts-expect-error unknown field
-							typo: (c) => c.nme,
-						},
-					}),
-				),
-		});
-		start.andThen(splitOut({ name: 'Orders', field: 'orders' })).andThen(
+		workflow(
+			'Each',
+			manual(),
+			customers('Customers'),
+			forEach(
+				{ name: 'Each', batchSize: 1 },
+				set({
+					name: 'Read',
+					fields: {
+						name: (c, $) => `${c.name} ${$('Each').id}`,
+						// @ts-expect-error unknown field
+						typo: (c) => c.nme,
+					},
+				}),
+			),
+		);
+		workflow(
+			'Orders',
+			manual(),
+			customers('Customers'),
+			splitOut({ name: 'Orders', field: 'orders' }),
 			set({
 				name: 'Order',
 				fields: {
@@ -404,74 +383,119 @@ describe('regions compile to node contracts', () => {
 				},
 			}),
 		);
-		start
-			.andThen(splitOut({ name: 'Tags', field: 'tags' }))
-			.andThen(set({ name: 'Tag', fields: { tag: (t) => t.tags.toUpperCase() } }));
-		// @ts-expect-error name is not a list
-		start.andThen(splitOut({ name: 'Bad', field: 'name' }));
+		workflow(
+			'Tags',
+			manual(),
+			customers('Customers'),
+			splitOut({ name: 'Tags', field: 'tags' }),
+			set({ name: 'Tag', fields: { tag: (t) => t.tags.toUpperCase() } }),
+		);
+		workflow(
+			'Bad',
+			manual(),
+			customers('Customers'),
+			// @ts-expect-error name is not a list
+			splitOut({ name: 'Bad', field: 'name' }),
+		);
 
-		const triage = manual().andThen(tickets('Tickets'));
-		triage.switch({
-			name: 'Kind',
-			on: 'kind',
-			cases: {
-				bug: (bug) => bug.andThen(set({ name: 'B', fields: { s: (t) => t.severity } })),
-				// @ts-expect-error a feature has no severity
-				feature: (f) => f.andThen(set({ name: 'F', fields: { s: (t) => t.severity } })),
-				chore: (c) => c,
-			},
-		});
-		triage.switch({
-			name: 'Kind',
-			on: 'kind',
-			// @ts-expect-error the chore case is missing
-			cases: {
-				bug: (bug) => bug,
-				feature: (f) => f,
-			},
-		});
-		manual()
-			.andThen(customers('Customers'))
-			// @ts-expect-error a plain string field needs a default
-			.switch({ name: 'By name', on: 'name', cases: { a: (f) => f } });
-		manual()
-			.andThen(customers('Customers'))
-			.switch({ name: 'By name', on: 'name', cases: { a: (f) => f }, default: (f) => f });
+		workflow(
+			'Kinds',
+			manual(),
+			tickets('Tickets'),
+			switchOn(
+				{ name: 'Kind', on: 'kind' },
+				{
+					bug: set({ name: 'B', fields: { s: (t) => t.severity } }),
+					// @ts-expect-error a feature has no severity
+					feature: set({ name: 'F', fields: { s: (t) => t.severity } }),
+					chore: steps(),
+				},
+			),
+		);
+		workflow(
+			'Missing',
+			manual(),
+			tickets('Tickets'),
+			switchOn(
+				{ name: 'Kind', on: 'kind' },
+				// @ts-expect-error the chore case is missing
+				{ bug: steps(), feature: steps() },
+			),
+		);
+		workflow(
+			'Unknown case',
+			manual(),
+			tickets('Tickets'),
+			switchOn(
+				{ name: 'Kind', on: 'kind' },
+				// @ts-expect-error task is no kind
+				{ bug: steps(), feature: steps(), chore: steps(), task: steps() },
+			),
+		);
+		workflow(
+			'No fallback',
+			manual(),
+			customers('Customers'),
+			// @ts-expect-error a plain string field needs a fallback
+			switchOn({ name: 'By name', on: 'name' }, { a: steps() }),
+		);
+		workflow(
+			'Fallback',
+			manual(),
+			customers('Customers'),
+			switchOn(
+				{ name: 'By name', on: 'name' },
+				{
+					a: set({ name: 'A', fields: { id: (c) => c.id } }),
+					fallback: set({ name: 'Rest', fields: { id: (c, $) => `${c.id} ${$('By name').name}` } }),
+				},
+			),
+		);
 
-		triage
-			.filter({ name: 'Bugs', if: (t): t is Extract<Ticket, { kind: 'bug' }> => t.kind === 'bug' })
-			.andThen(set({ name: 'Sev', fields: { s: (t) => t.severity } }));
+		workflow(
+			'Bugs',
+			manual(),
+			tickets('Tickets'),
+			filter({ name: 'Bugs', if: (t): t is Extract<Ticket, { kind: 'bug' }> => t.kind === 'bug' }),
+			set({ name: 'Sev', fields: { s: (t) => t.severity } }),
+		);
 
-		manual()
-			.andThen(set({ name: 'Init', fields: { n: 0 } }))
-			.loop({
-				name: 'L',
-				maxIterations: 3,
-				body: (pass) => pass.andThen(set({ name: 'Inc', fields: { m: (s) => s.n + 1 } })),
-				until: (out) => out.m > 2,
-				// @ts-expect-error the next state needs n
-				next: (out) => ({ m: out.m }),
-			});
+		workflow(
+			'Loop',
+			manual(),
+			set({ name: 'Init', fields: { n: 0 } }),
+			loop(
+				{
+					name: 'L',
+					maxIterations: 3,
+					until: (out) => out.m > 2,
+					// @ts-expect-error the next state needs n
+					next: (out) => ({ m: out.m }),
+				},
+				set({ name: 'Inc', fields: { m: (s) => s.n + 1 } }),
+			),
+		);
 
-		const joined = manual()
-			.andThen(customers('Customers'))
-			.merge({
-				name: 'J',
-				join: 'position',
-				branches: [
-					(f) => f.andThen(set({ name: 'A', fields: { a: 1 } })),
-					(f) => f.andThen(set({ name: 'B', fields: { b: 'x' } })),
-				],
-			});
-		joined.andThen(set({ name: 'AB', fields: { ab: (row) => `${row.a}${row.b}` } }));
-		manual()
-			.andThen(customers('Customers'))
-			.merge({
-				name: 'J',
+		workflow(
+			'Joined',
+			manual(),
+			customers('Customers'),
+			merge({ name: 'J', join: 'position' }, [
+				set({ name: 'A', fields: { a: 1 } }),
+				set({ name: 'B', fields: { b: 'x' } }),
+			]),
+			set({ name: 'AB', fields: { ab: (row) => `${row.a}${row.b}` } }),
+		);
+		workflow(
+			'Fields',
+			manual(),
+			customers('Customers'),
+			merge(
 				// @ts-expect-error B has no field id
-				join: { left: 'id', right: 'id' },
-				branches: [(f) => f, (f) => f.andThen(set({ name: 'B', fields: { b: 1 } }))],
-			});
+				{ name: 'J', join: { left: 'id', right: 'id' } },
+				[steps(), set({ name: 'B', fields: { b: 1 } })],
+			),
+		);
 	});
 });
 
@@ -493,14 +517,14 @@ const withoutIds = (json: WorkflowJSON) => ({
 
 describe('regions round-trip through decompile', () => {
 	it.each([
-		['forEach', forEachWorkflow, '.forEach({'],
-		['loop', () => loopWorkflow(10), '.loop({'],
-		['paginate', paginateWorkflow, '.paginate({'],
-		['pollUntil', pollWorkflow, '.pollUntil({'],
-		['switch', switchWorkflow, '.switch({'],
-		['switch with default', switchDefaultWorkflow, 'default: (flow) =>'],
-		['filter', filterWorkflow, '.filter({'],
-		['merge', mergeWorkflow, '.merge({'],
+		['forEach', forEachWorkflow, '  forEach({'],
+		['loop', () => loopWorkflow(10), '  loop({'],
+		['paginate', paginateWorkflow, '  paginate({'],
+		['pollUntil', pollWorkflow, '  pollUntil({'],
+		['switch', switchWorkflow, '  switchOn({'],
+		['switch with default', switchDefaultWorkflow, 'fallback: set({'],
+		['filter', filterWorkflow, '  filter({'],
+		['merge', mergeWorkflow, '  merge({'],
 		['merge append', () => mergeJoinWorkflow('append'), 'join: "append"'],
 		['merge position', () => mergeJoinWorkflow('position'), 'join: "position"'],
 	])('%s: compile, decompile, compile is stable', (_kind, make, call) => {
@@ -515,12 +539,12 @@ describe('regions round-trip through decompile', () => {
 
 	it('reads a nested forEach back as nested regions', () => {
 		const source = decompileWorkflow(forEachWorkflow().toJSON(), new Map()) ?? '';
-		expect(source).toMatch(/\.forEach\(\{\s+name: "Each customer",\s+batchSize: 1,/);
-		expect(source).toContain('body: (each) => each');
-		expect(source.match(/\.forEach\(/g)).toHaveLength(2);
+		expect(source).toMatch(/ forEach\(\{\s+name: "Each customer",\s+batchSize: 1,/);
+		expect(source).toContain('}, steps(');
+		expect(source.match(/ forEach\(/g)).toHaveLength(2);
 	});
 
-	it('keeps a hand-wired loop that is not a region out of the typed format', () => {
+	it('reads a hand-wired loop as forEach with the loop.batches options it has', () => {
 		const json = forEachWorkflow().toJSON();
 		const unwired = {
 			...json,
@@ -528,7 +552,23 @@ describe('regions round-trip through decompile', () => {
 				n.name === 'Each order' ? { ...n, parameters: { batchSize: 2, options: {} } } : n,
 			),
 		};
-		expect(decompileWorkflow(unwired, new Map())).toBeUndefined();
+		const source = decompileWorkflow(unwired, new Map());
+		expect(source).toMatch(/name: "Each order",\s+batchSize: 2,\s+options: \{\},/);
+		expect(withoutIds(build(source ?? ''))).toEqual(withoutIds(unwired));
+		const noOptions = {
+			...unwired,
+			nodes: unwired.nodes.map((n) =>
+				n.name === 'Each order' ? { ...n, parameters: { batchSize: 2 } } : n,
+			),
+		};
+		expect(decompileWorkflow(noOptions, new Map())).toBe(source);
+		const unknown = {
+			...unwired,
+			nodes: unwired.nodes.map((n) =>
+				n.name === 'Each order' ? { ...n, parameters: { batchSize: 2, other: 1 } } : n,
+			),
+		};
+		expect(decompileWorkflow(unknown, new Map())).toBeUndefined();
 	});
 });
 
@@ -721,16 +761,14 @@ describe('loopWiringIssues', () => {
 	it('reports loop wiring in next workflow validation only', () => {
 		const handWired = workflow(
 			'Hand-wired',
-			manual()
-				.andThen(
-					node({
-						name: 'Loop',
-						type: 'n8n-nodes-base.splitInBatches',
-						version: 3,
-						parameters: { batchSize: 1 },
-					}),
-				)
-				.andThen(set({ name: 'Work', fields: { done: true } })),
+			manual(),
+			node({
+				name: 'Loop',
+				type: 'n8n-nodes-base.splitInBatches',
+				version: 3,
+				parameters: { batchSize: 1 },
+			}),
+			set({ name: 'Work', fields: { done: true } }),
 		);
 		const codesOf = (issues: ReadonlyArray<{ code: string }>) => issues.map(({ code }) => code);
 		expect(codesOf(handWired.validate().errors)).toEqual(['LOOP_BODY_MISSING']);

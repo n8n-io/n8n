@@ -127,7 +127,7 @@ describe('derived node modules', () => {
 			operation: 'post',
 		});
 		expect(text).toContain(
-			'export type MattermostMessagePostOutput = { id: string; message: string; [key: string]: any };',
+			'export type MattermostMessagePostOutput = { id?: string | null; message?: string | null; [key: string]: any };',
 		);
 	});
 
@@ -178,7 +178,7 @@ describe('derived node modules', () => {
 			Number(version),
 			JSON.parse(slot) as { resource: string; operation: string },
 		);
-		const json = flowSdk.workflow('Post', flowSdk.manual().andThen(step)).toJSON();
+		const json = flowSdk.workflow('Post', flowSdk.manual(), step).toJSON();
 
 		expect(json.nodes.find((node) => node.name === 'Post')).toMatchObject({
 			type: MATTERMOST,
@@ -234,7 +234,7 @@ describe('derived node modules', () => {
 			'',
 		].join('\n');
 		const post = (fields: string) =>
-			`${header}export default workflow('Post', manual().andThen(mattermost.message.post({ name: 'Post', ${fields} })));\n`;
+			`${header}export default workflow('Post', manual(), mattermost.message.post({ name: 'Post', ${fields} }));\n`;
 
 		expect(
 			typeErrors(post("channelId: { mode: 'id', value: 'c1' }, message: 'Hi'"), module),
@@ -290,7 +290,7 @@ describe('derived node modules', () => {
 				"import { manual, node, workflow } from '@n8n/workflow-sdk/next';",
 				"import { widget } from '@n8n/nodes/n8n-nodes-other/widget';",
 				"import { acmeTrigger } from '@n8n/nodes/n8n-nodes-acme/acmeTrigger';",
-				"export default workflow('W', manual().andThen(node({ name: 'Scan', type: '@scope/n8n-nodes-scan.scan', version: 1 })));",
+				"export default workflow('W', manual(), node({ name: 'Scan', type: '@scope/n8n-nodes-scan.scan', version: 1 }));",
 			].join('\n');
 			expect(await missingNodeTypeErrors(code, source)).toEqual([
 				'"@n8n/nodes/n8n-nodes-other/widget": Node type n8n-nodes-other.widget is not installed. Install package n8n-nodes-other first.',
@@ -298,7 +298,7 @@ describe('derived node modules', () => {
 			]);
 			expect(
 				await missingNodeTypeErrors(
-					"manual().andThen(crypto.execute({ name: 'Hash', action: 'hash', type: 'SHA256' }));",
+					"workflow('W', manual(), crypto.execute({ name: 'Hash', action: 'hash', type: 'SHA256' }));",
 					source,
 				),
 			).toEqual([]);
@@ -326,7 +326,7 @@ describe('derived node modules', () => {
 			const triggerConfig = { name: 'Event' as const, text: 'a' };
 			const step = flowSdk.contractStep(AGENT, agentConfig);
 			const trigger = flowSdk.contractTrigger(ACME, triggerConfig, 2);
-			const json = flowSdk.workflow('Ask', trigger.andThen(step)).toJSON();
+			const json = flowSdk.workflow('Ask', trigger, step).toJSON();
 
 			expect(json.nodes.find((node) => node.name === 'Model')).toMatchObject({
 				type: CHAT,
@@ -348,7 +348,7 @@ describe('derived node modules', () => {
 					name: 'Root',
 					providers: { [field]: supplied },
 				});
-				const json = flowSdk.workflow('W', flowSdk.manual().andThen(step)).toJSON();
+				const json = flowSdk.workflow('W', flowSdk.manual(), step).toJSON();
 				expect(Object.keys(json.connections.P ?? {})).toEqual([connection]);
 			}
 		});
@@ -365,7 +365,7 @@ describe('derived node modules', () => {
 					"import { memoryAcme } from '@n8n/nodes/@n8n/n8n-nodes-langchain/memoryAcme';",
 					'const model = lmChatAcme.execute({ name: "Model" });',
 					'const memory = memoryAcme.execute({ name: "Memory" });',
-					`export default workflow('Ask', acmeTrigger.trigger({ name: 'Event', text: 'a' }).andThen(agentRoot.execute({ name: 'Agent', text: (item) => String(item.q), providers: ${providers} })));`,
+					`export default workflow('Ask', acmeTrigger.trigger({ name: 'Event', text: 'a' }), agentRoot.execute({ name: 'Agent', text: (item) => String(item.q), providers: ${providers} }));`,
 					'',
 				].join('\n');
 
@@ -400,7 +400,7 @@ describe('derived node modules', () => {
 					"import { openAi } from '@n8n/nodes/openAi';",
 					'const model = lmChatAcme.execute({ name: "Model" });',
 					`const fetch = ${tool};`,
-					`export default workflow('Ask', acmeTrigger.trigger({ name: 'Event', text: 'a' }).andThen(agentRoot.execute({ name: 'Agent', text: 'Hi', providers: { model, tools: [fetch] } })).andThen(ai.agent({ name: 'Contract Agent', prompt: 'Hi', model: openAi.chatModel({ name: 'GPT', model: 'gpt-5-mini' }), tools: ${contractTools} })));`,
+					`export default workflow('Ask', acmeTrigger.trigger({ name: 'Event', text: 'a' }), agentRoot.execute({ name: 'Agent', text: 'Hi', providers: { model, tools: [fetch] } }), ai.agent({ name: 'Contract Agent', prompt: 'Hi', model: openAi.chatModel({ name: 'GPT', model: 'gpt-5-mini' }), tools: ${contractTools} }));`,
 					'',
 				].join('\n');
 			const getTool = (fields: string) => `httpRequest.getTool({ name: 'Fetch', ${fields} })`;

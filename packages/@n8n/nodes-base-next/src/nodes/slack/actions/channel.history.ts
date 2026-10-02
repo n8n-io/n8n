@@ -39,7 +39,7 @@ export const getSlackChannelHistory = channel.action('history', {
 				inclusive: filters?.inclusive ? true : undefined,
 			},
 			page,
-			items: ({ messages }) => messages,
+			items: ({ messages }) => messages ?? [],
 			paging: input.paging,
 		});
 		const messages = [];

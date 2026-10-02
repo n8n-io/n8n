@@ -22,6 +22,6 @@ export const getSlackUser = user.action('get', {
 			target.by === 'id'
 				? await slackGet(http, '/users.info', { user: target.id }, found)
 				: await slackGet(http, '/users.lookupByEmail', { email: target.email }, found);
-		return body.user;
+		return body.user ?? {};
 	},
 });

@@ -9,26 +9,33 @@ import isEqual from 'lodash/isEqual';
 
 import {
 	BRANCH_NODE,
+	branchFragment,
 	branchParameters,
+	EMPTY_FRAGMENT,
 	edgeKey,
-	filterFragment,
-	Flow,
+	filter,
 	fromAiDescriptionOf,
 	forEachFragment,
 	loopFragment,
 	MANUAL_NODE,
 	mergeFragment,
+	onError,
 	outputNamesOf,
+	partFragment,
+	recover,
 	routeFragment,
 	SET_NODE,
 	setParameters,
-	startFlow,
 	PROVIDER_SLOTS,
 	SLOT_OF_CONNECTION,
+	stepFragment,
 	switchFragment,
+	triggerStep,
+	type ErrorItem,
 	type Fragment,
 	type NodeSettings,
 	type OutputList,
+	type Region,
 	type Step,
 	type ProviderSlot,
 } from './flow';
@@ -36,6 +43,7 @@ import { BUILTINS, childNodes, compileLambdaSource } from './lambda';
 import {
 	caseRouter,
 	CHECK_DONE,
+	FALLBACK_OUTPUT,
 	FILTER_NODE,
 	filterParameters,
 	forEachParameters,
@@ -81,6 +89,8 @@ export interface ContractFactory {
 	readonly closed?: boolean;
 	/** The inputs whose typed field takes an `=` expression string as its whole value. */
 	readonly expressionKeys: readonly string[];
+	/** The inputs that take a binary of the item: n8n keeps the binary key as plain text. */
+	readonly binaryKeys?: readonly string[];
 	/** The named outputs of a routed step; a node with a wired later output reads back as `route`. */
 	readonly outputs?: OutputList;
 	/**
@@ -164,7 +174,13 @@ type Shape =
 	| { readonly kind: 'set'; readonly fields: Tree; readonly keepAll: boolean }
 	| { readonly kind: 'contract'; readonly factory: ContractFactory; readonly parameters: Tree }
 	| { readonly kind: 'node'; readonly parameters: Tree }
-	| { readonly kind: 'forEach'; readonly batchSize: number; readonly returns: readonly string[] }
+	| {
+			readonly kind: 'forEach';
+			readonly batchSize: number;
+			readonly returns: readonly string[];
+			/** The saved node options, when the build would not make the same `reset`. */
+			readonly options?: Tree;
+	  }
 	| LoopShape
 	/** A node that a loop region owns: its check, next, wait, or limit node. */
 	| { readonly kind: 'loopPart' }
@@ -184,7 +200,8 @@ type Segment =
 			readonly then: readonly Segment[];
 			readonly else?: readonly Segment[];
 	  }
-	| { readonly kind: 'orElse'; readonly handler: readonly Segment[] }
+	/** `rejoins`: the open ends of the handler continue (`recover`), else the branch ends. */
+	| { readonly kind: 'onError'; readonly handler: readonly Segment[]; readonly rejoins: boolean }
 	| {
 			readonly kind: 'forEach' | 'loop';
 			readonly node: NamedNode;
@@ -386,14 +403,22 @@ function lambdaForExpression(expression: string, names: ReadonlySet<string>): st
 	});
 }
 
+/** `expr("{{ … }}")` for a saved expression. `expr()` adds the `=`, unless the text has one. */
+const exprCall = (expression: string) =>
+	new Call('expr', expression.startsWith('==') ? expression : expression.slice(1));
+
+const isExprCall = (tree: Tree) => tree instanceof Call && tree.callee === 'expr';
+
 /**
- * Parameters as a tree: each expression that a lambda compiles to becomes that lambda.
- * `names` are the nodes that `$("Node")` may read. Without them, expressions stay strings.
+ * Parameters as a tree: each expression that a lambda compiles to becomes that lambda, and
+ * each other expression an `expr()` call. `names` are the nodes that `$("Node")` may read.
+ * Without them, no expression becomes a lambda.
  */
 function convert(value: unknown, names?: ReadonlySet<string>): Tree {
 	if (typeof value === 'string') {
-		const lambda = names && value.startsWith('=') ? lambdaForExpression(value, names) : undefined;
-		return lambda ? new Code(lambda) : value;
+		if (!value.startsWith('=')) return value;
+		const lambda = names ? lambdaForExpression(value, names) : undefined;
+		return lambda ? new Code(lambda) : exprCall(value);
 	}
 	if (Array.isArray(value)) return value.map((item) => convert(item, names));
 	if (isRecord(value)) {
@@ -406,17 +431,23 @@ function convert(value: unknown, names?: ReadonlySet<string>): Tree {
 	return typeof value === 'number' || typeof value === 'boolean' ? value : null;
 }
 
-function hasRawExpression(tree: Tree): boolean {
-	if (typeof tree === 'string') return tree.startsWith('=');
-	if (Array.isArray(tree)) return tree.some(hasRawExpression);
+function hasExprCall(tree: Tree): boolean {
+	if (isExprCall(tree)) return true;
+	if (Array.isArray(tree)) return tree.some(hasExprCall);
 	if (tree === null || typeof tree !== 'object' || tree instanceof Code || tree instanceof Call) {
 		return false;
 	}
-	return Object.values(tree).some(hasRawExpression);
+	return Object.values(tree).some(hasExprCall);
 }
 
-/** A JSON value as a tree, with every string kept as it is. */
+/** A JSON value as a tree, with every expression as an `expr()` call. */
 const plainTree = (value: unknown) => convert(value);
+
+/** The lambda that reads the binary `key` of the item, as a binary field takes it. */
+const binaryLambda = (key: string) =>
+	new Code(
+		`(item) => item.binary${/^[A-Za-z_$][\w$]*$/.test(key) ? `.${key}` : `[${JSON.stringify(key)}]`}`,
+	);
 
 // ── Node shapes ─────────────────────────────────────────────────────────────
 
@@ -485,20 +516,50 @@ function filterShape(node: NamedNode, names: ReadonlySet<string>): Shape | undef
 	return condition ? { kind: 'filter', condition } : undefined;
 }
 
-function forEachShape(node: NamedNode): Shape | undefined {
+/**
+ * Loop Over Items as `forEach`. A node that `forEach` did not build, e.g. one from the editor,
+ * reads back through the parameters of the `loop.batches` contract and keeps its options. Its
+ * returns are the nodes after its loop output that lead back into it.
+ */
+function forEachShape(node: NamedNode, edges: readonly Edge[]): Shape | undefined {
 	if (!isNodeType(node, LOOP_NODE)) return undefined;
-	const { batchSize, options } = node.parameters ?? {};
+	const { batchSize, options = {}, ...rest } = node.parameters ?? {};
 	const reset = isRecord(options) ? options.reset : undefined;
 	const list =
 		typeof reset === 'string'
 			? /^=\{\{ !(\[.*\])\.includes\(\$prevNode\.name\) \}\}$/.exec(reset)?.[1]
 			: undefined;
-	const returns = parseJson(list);
-	if (typeof batchSize !== 'number' || !Array.isArray(returns)) return undefined;
-	const names = returns.filter((name): name is string => typeof name === 'string');
-	return isEqual(forEachParameters(batchSize, names), node.parameters)
-		? { kind: 'forEach', batchSize, returns: names }
+	const saved = parseJson(list);
+	if (typeof batchSize !== 'number') return undefined;
+	const built = Array.isArray(saved)
+		? saved.filter((name): name is string => typeof name === 'string')
 		: undefined;
+	if (built && isEqual(forEachParameters(batchSize, built), node.parameters)) {
+		return { kind: 'forEach', batchSize, returns: built };
+	}
+	const fits =
+		Number.isInteger(batchSize) &&
+		batchSize >= 1 &&
+		Object.keys(rest).length === 0 &&
+		isRecord(options) &&
+		Object.keys(options).every((key) => key === 'reset') &&
+		(reset === undefined || typeof reset === 'boolean' || typeof reset === 'string');
+	if (!fits) return undefined;
+	const body = new Set<string>();
+	const queue = edges
+		.filter((edge) => edge.from === node.name && edge.output === LOOP_EACH)
+		.map((edge) => edge.to);
+	for (const name of queue) {
+		if (name === node.name || body.has(name)) continue;
+		body.add(name);
+		queue.push(...edges.filter((edge) => edge.from === name).map((edge) => edge.to));
+	}
+	const returns = [
+		...new Set(
+			edges.filter((edge) => edge.to === node.name && body.has(edge.from)).map((edge) => edge.from),
+		),
+	];
+	return { kind: 'forEach', batchSize, returns, options: plainTree(options) };
 }
 
 /** The text between `prefix` and `suffix`, or `undefined` if `text` does not fit them. */
@@ -599,7 +660,14 @@ function switchShape(node: NamedNode, edges: readonly Edge[]): Shape | undefined
 	const quoted = between(left, '={{ $json[', '] }}');
 	const field = parseJson(quoted);
 	const caseKeys = keys.filter((key): key is string => typeof key === 'string');
-	if (typeof field !== 'string' || caseKeys.length !== keys.length) return undefined;
+	// switchOn takes the part for no case under the output name of the fallback.
+	if (
+		typeof field !== 'string' ||
+		caseKeys.length !== keys.length ||
+		caseKeys.includes(FALLBACK_OUTPUT)
+	) {
+		return undefined;
+	}
 	const hasDefault = edges.some(
 		(edge) => edge.from === node.name && edge.output === caseKeys.length,
 	);
@@ -625,13 +693,14 @@ function mergeShape(node: NamedNode): Shape | undefined {
 		: undefined;
 }
 
-/** A Set field: its JSON value, or the lambda that compiles to its `={{ js }}` text. */
-function fieldOf(value: unknown, names: ReadonlySet<string>): Tree | undefined {
+/**
+ * A Set field: its JSON value, the lambda that compiles to its `={{ js }}` text, or `expr()`
+ * for another expression.
+ */
+function fieldOf(value: unknown, names: ReadonlySet<string>): Tree {
 	const js = typeof value === 'string' ? /^=\{\{ ([\s\S]*) \}\}$/.exec(value)?.[1] : undefined;
-	if (js === undefined)
-		return typeof value === 'string' && value.startsWith('=') ? undefined : plainTree(value);
-	const lambda = lambdaForJs(js, names);
-	return lambda ? new Code(lambda) : undefined;
+	const lambda = js === undefined ? undefined : lambdaForJs(js, names);
+	return lambda ? new Code(lambda) : plainTree(value);
 }
 
 function setShape(node: NamedNode, names: ReadonlySet<string>): Shape | undefined {
@@ -642,10 +711,9 @@ function setShape(node: NamedNode, names: ReadonlySet<string>): Shape | undefine
 	const { fields, include } = parameters;
 	if (!isRecord(fields) || !isRecord(include)) return undefined;
 	const keepAll = include.mode === 'all';
-	const converted = Object.entries(fields).flatMap(([key, value]) => {
-		const tree = /[.[\]]/.test(key) ? undefined : fieldOf(value, names);
-		return tree === undefined ? [] : [[key, tree] as const];
-	});
+	const converted = Object.entries(fields).flatMap(([key, value]) =>
+		/[.[\]]/.test(key) ? [] : [[key, fieldOf(value, names)] as const],
+	);
 	if (converted.length !== Object.keys(fields).length) return undefined;
 	if (!isEqual(setParameters(fields, keepAll), parameters)) return undefined;
 	return { kind: 'set', fields: Object.fromEntries(converted), keepAll };
@@ -672,18 +740,20 @@ function contractShape(
 	const unknownKey = Object.keys(node.parameters ?? {}).some((key) => !inputs.has(key));
 	if (factory.closed && unknownKey) return undefined;
 	const takesExpression = new Set(factory.expressionKeys);
+	const takesBinary = new Set(factory.binaryKeys ?? []);
 	const parameters = Object.entries(node.parameters ?? {}).flatMap(([key, value]) => {
 		if (!inputs.has(key) || value === undefined) return [];
 		const description = factory.tool ? fromAiDescriptionOf(value) : undefined;
-		const tree: Tree =
-			description === undefined ? convert(value, names) : fromModelCode(description);
+		if (description !== undefined) return [[key, fromModelCode(description)] as const];
+		// n8n keeps the binary key of a binary field as plain text.
+		const binary = takesBinary.has(key) && typeof value === 'string' && value !== '';
+		const tree = binary && !value.startsWith('=') ? binaryLambda(value) : convert(value, names);
 		return [[key, tree] as const];
 	});
-	// An expression without a lambda form stays a string where the typed field takes one, and the
+	// An expression without a lambda form stays `expr()` where the typed field takes one, and the
 	// build checks it there. Elsewhere (an enum, a nested field) tsc rejects it, so keep node().
 	const typed = parameters.every(
-		([key, tree]) =>
-			(typeof tree === 'string' && takesExpression.has(key)) || !hasRawExpression(tree),
+		([key, tree]) => (isExprCall(tree) && takesExpression.has(key)) || !hasExprCall(tree),
 	);
 	return typed
 		? { kind: 'contract', factory, parameters: Object.fromEntries(parameters) }
@@ -724,7 +794,7 @@ function shapeOf(
 	return (
 		branchShape(node, names) ??
 		filterShape(node, names) ??
-		forEachShape(node) ??
+		forEachShape(node, edges) ??
 		switchShape(node, edges) ??
 		mergeShape(node) ??
 		setShape(node, names) ??
@@ -931,18 +1001,20 @@ function stepChain(graph: Graph, node: NamedNode, seen: ReadonlySet<string>): Ch
 				shape.variant === 'paginate' ? body.tails : [{ node: shape.check, output: CHECK_DONE }],
 		};
 	}
+	const wired = (output: number) =>
+		graph.edges.some((edge) => edge.from === node.name && edge.output === output);
 	const outputs =
 		shape?.kind === 'contract' && shape.factory.outputs
 			? outputNamesOf(shape.factory.outputs, node.parameters ?? {})
-			: [];
-	const wired = (output: number) =>
-		graph.edges.some((edge) => edge.from === node.name && edge.output === output);
+			: shape?.kind === 'node'
+				? genericOutputs(graph, node.name)
+				: [];
 	if (
 		outputs.length > 1 &&
 		outputs.some((_name, output) => output > 0 && wired(output)) &&
 		node.onError !== 'continueErrorOutput'
 	) {
-		// Every output but the last needs a flow in route; an unwired one continues as it is.
+		// Every output but the last needs a part in route; an unwired one continues as it is.
 		const routed = outputs.flatMap((name, output) =>
 			wired(output) || output < outputs.length - 1 ? [{ name, chain: from(output) }] : [],
 		);
@@ -963,13 +1035,26 @@ function stepChain(graph: Graph, node: NamedNode, seen: ReadonlySet<string>): Ch
 		return { segments: [{ kind: 'step', node }], tails: [main] };
 	}
 	const handler = from(1);
+	const rejoins = handler.tails.some((tail) => edgesFrom(graph, [tail], seen).length > 0);
 	return {
 		segments: [
 			{ kind: 'step', node },
-			{ kind: 'orElse', handler: handler.segments },
+			{ kind: 'onError', handler: handler.segments, rejoins },
 		],
-		tails: [main, ...handler.tails],
+		tails: rejoins ? [main, ...handler.tails] : [main],
 	};
+}
+
+/**
+ * Output names for a `node()` with wired outputs after its first, e.g. a legacy IF: a saved
+ * node has no output names, and route needs one for each output up to the last wired one.
+ */
+function genericOutputs(graph: Graph, name: string): string[] {
+	const last = Math.max(
+		0,
+		...graph.edges.filter((edge) => edge.from === name).map((edge) => edge.output),
+	);
+	return Array.from({ length: last + 1 }, (_, output) => `output${output}`);
 }
 
 /**
@@ -1066,26 +1151,35 @@ const placeholderStep = (node: NamedNode): Step<unknown, unknown, unknown, strin
 });
 
 /** Rebuild the graph of `segments` with the flow builders, without parameters. */
-function replay(
-	graph: Graph,
-	from: Fragment,
-	segments: readonly Segment[],
-): Flow<unknown, unknown> {
+function replay(graph: Graph, from: Fragment, segments: readonly Segment[]): Fragment {
 	const again = (body: readonly Segment[]) => (flow: Fragment) => replay(graph, flow, body);
-	const end = segments.reduce<Fragment>((current, segment) => {
-		const flow = new Flow<unknown, unknown>(current.graph, current.tails);
-		const shape = graph.shapes.get(segment.kind === 'orElse' ? '' : segment.node.name);
+	const part = (body: readonly Segment[]): Region<ErrorItem, unknown, unknown, unknown> => ({
+		region: again(body),
+	});
+	return segments.reduce<Fragment>((current, segment) => {
+		const shape = graph.shapes.get(segment.kind === 'onError' ? '' : segment.node.name);
 		switch (segment.kind) {
 			case 'step':
-				return shape?.kind === 'filter'
-					? filterFragment(current, segment.node.name, () => '')
-					: flow.andThen(placeholderStep(segment.node));
-			case 'orElse':
-				return flow.orElse(again(segment.handler));
+				return stepFragment(
+					current,
+					shape?.kind === 'filter'
+						? filter({ name: segment.node.name, if: () => true })
+						: placeholderStep(segment.node),
+				);
+			case 'onError':
+				return partFragment(
+					current,
+					segment.rejoins ? recover(part(segment.handler)) : onError(part(segment.handler)),
+				);
 			case 'branch': {
 				const { node, then, else: otherwise } = segment;
-				const config = { name: node.name, if: () => true, then: again(then) };
-				return otherwise ? flow.branch({ ...config, else: again(otherwise) }) : flow.branch(config);
+				return branchFragment(
+					current,
+					node.name,
+					() => '',
+					again(then),
+					otherwise ? again(otherwise) : undefined,
+				);
 			}
 			case 'forEach':
 				return shape?.kind === 'forEach'
@@ -1134,25 +1228,27 @@ function replay(
 			}
 		}
 	}, from);
-	return new Flow(end.graph, end.tails);
 }
 
 /** The flows build the saved graph: the same nodes, edges, and error outputs. */
 function replaysGraph(graph: Graph, flows: readonly FlowPlan[]): boolean {
-	const built = flows.map(
-		({ root, segments }) =>
+	const { nodes: specs, edges } = flows.reduce<Fragment>(
+		(built, { root, segments }) =>
 			replay(
 				graph,
-				startFlow({
-					name: root.name,
-					type: root.type,
-					version: root.typeVersion,
-					parameters: () => ({}),
-				}),
+				stepFragment(
+					built,
+					triggerStep({
+						name: root.name,
+						type: root.type,
+						version: root.typeVersion,
+						parameters: () => ({}),
+					}),
+				),
 				segments,
-			).graph,
-	);
-	const specs = built.flatMap(({ nodes }) => nodes);
+			),
+		EMPTY_FRAGMENT,
+	).graph;
 	const saved = [...graph.nodes.values()];
 	return (
 		isEqual(new Set(specs.map(({ name }) => name)), new Set(graph.nodes.keys())) &&
@@ -1162,10 +1258,7 @@ function replaysGraph(graph: Graph, flows: readonly FlowPlan[]): boolean {
 				saved.filter(({ onError }) => onError === 'continueErrorOutput').map(({ name }) => name),
 			),
 		) &&
-		isEqual(
-			new Set(built.flatMap(({ edges }) => edges.map(edgeKey))),
-			new Set(graph.edges.map(edgeKey)),
-		)
+		isEqual(new Set(edges.map(edgeKey)), new Set(graph.edges.map(edgeKey)))
 	);
 }
 
@@ -1208,11 +1301,25 @@ function providersTree(graph: Graph, name: string): Tree | undefined {
 	);
 }
 
-/** The `settings` field of a node call, when the node has settings. */
+/** The `settings` field of a node call, when the node has settings. n8n reads no expression there. */
 const settingsField = (node: NodeJSON): { settings?: Tree } =>
-	hasSettings(node) ? { settings: plainTree(settingsOf(node)) } : {};
+	hasSettings(node)
+		? {
+				settings: Object.fromEntries(
+					Object.entries(settingsOf(node)).filter(
+						(entry): entry is [string, string | number | boolean] => entry[1] !== undefined,
+					),
+				),
+			}
+		: {};
 
-function typedNode(graph: Graph, node: NamedNode, parameters: Tree): Tree {
+/** A `node()` config; `outputs` names the main outputs that `route` follows. */
+function typedNode(
+	graph: Graph,
+	node: NamedNode,
+	parameters: Tree,
+	outputs?: readonly string[],
+): Tree {
 	const providers = providersTree(graph, node.name);
 	return {
 		name: node.name,
@@ -1221,6 +1328,7 @@ function typedNode(graph: Graph, node: NamedNode, parameters: Tree): Tree {
 		...(isRecord(parameters) && Object.keys(parameters).length === 0 ? {} : { parameters }),
 		...settingsField(node),
 		...(providers ? { providers } : {}),
+		...(outputs ? { outputs: [...outputs] } : {}),
 	};
 }
 
@@ -1252,134 +1360,241 @@ function contractCall(graph: Graph, node: NamedNode, shape: ContractShape): Call
 	});
 }
 
-function renderCall(graph: Graph, node: NamedNode, shape: Shape, indent: string): string {
+/** The step call of a node, or `undefined` for a region, which renders as a macro. */
+function callTree(
+	graph: Graph,
+	node: NamedNode,
+	shape: Shape,
+	outputs?: readonly string[],
+): Tree | undefined {
 	switch (shape.kind) {
 		case 'manual':
-			return `manual({ name: ${JSON.stringify(node.name)} })`;
+			return new Code(`manual({ name: ${JSON.stringify(node.name)} })`);
 		case 'trigger':
-			return `trigger(${renderTree(typedNode(graph, node, plainTree(node.parameters ?? {})), indent)})`;
-		case 'set': {
-			const config = {
+			return new Call('trigger', typedNode(graph, node, plainTree(node.parameters ?? {})));
+		case 'set':
+			return new Call('set', {
 				name: node.name,
 				fields: shape.fields,
 				...(shape.keepAll ? { keep: 'all' } : {}),
-			};
-			return `set(${renderTree(config, indent)})`;
-		}
+			});
 		case 'contract':
-			return renderTree(contractCall(graph, node, shape), indent);
+			return contractCall(graph, node, shape);
 		case 'node':
-			return `node(${renderTree(typedNode(graph, node, shape.parameters), indent)})`;
+			return new Call('node', typedNode(graph, node, shape.parameters, outputs));
 		default:
-			// A region renders as a flow method, not as a step.
-			return '';
+			return undefined;
 	}
 }
 
-/** The method call of a region segment, such as `.forEach({ … })`. */
+function renderCall(
+	graph: Graph,
+	node: NamedNode,
+	shape: Shape,
+	indent: string,
+	outputs?: readonly string[],
+): string {
+	const tree = callTree(graph, node, shape, outputs);
+	return tree === undefined ? '' : renderTree(tree, indent);
+}
+
+/** The callees of the calls in `tree`, e.g. `expr`. */
+const calleesOf = (tree: Tree): string[] => {
+	if (tree instanceof Call) return [tree.callee, ...calleesOf(tree.argument)];
+	if (Array.isArray(tree)) return tree.flatMap(calleesOf);
+	if (tree === null || typeof tree !== 'object' || tree instanceof Code) return [];
+	return Object.values(tree).flatMap(calleesOf);
+};
+
+/** One position of the source, rendered at the indent of its first line. */
+type Position = (indent: string) => string;
+
+/** `workflow()` and `steps()` take this many typed positions after the first. */
+const WORKFLOW_POSITIONS = 40;
+const STEPS_POSITIONS = 20;
+
+/** The lines of `positions`; past `max`, the rest go into one `steps(…)`. */
+function positionLines(positions: readonly Position[], indent: string, max: number): string[] {
+	const fits = positions.length <= max;
+	const own = fits ? positions : positions.slice(0, max - 1);
+	const rest = fits ? [] : [(at: string) => stepsCall(positions.slice(max - 1), at)];
+	return [...own, ...rest].map((position) => `${indent}${position(indent)},`);
+}
+
+/** `steps(…)` with one position per line. */
+function stepsCall(positions: readonly Position[], indent: string): string {
+	if (positions.length === 0) return 'steps()';
+	const lines = positionLines(positions, indent + INDENT, STEPS_POSITIONS);
+	return `steps(\n${lines.join('\n')}\n${indent})`;
+}
+
+/** The one part that a branch or body takes: a single part, or `steps(…)`. */
+function onePart(graph: Graph, segments: readonly Segment[], indent: string): string {
+	const positions = segments.map((segment) => partPosition(graph, segment));
+	const [only] = positions;
+	return positions.length === 1 && only ? only(indent) : stepsCall(positions, indent);
+}
+
+/** A branch or body in a config tree, where a value starts at `indent`. */
+const partCode = (graph: Graph, segments: readonly Segment[], indent: string) =>
+	new Code(onePart(graph, segments, indent));
+
+/** The macro call of a region segment, such as `forEach({ … }, body)`. */
 function renderRegion(
 	graph: Graph,
-	segment: Exclude<Segment, { kind: 'step' | 'orElse' }>,
+	segment: Exclude<Segment, { kind: 'step' | 'onError' }>,
 	indent: string,
 ): string {
 	const shape = graph.shapes.get(segment.node.name);
-	const inner = indent + INDENT + INDENT;
-	const flowOf = (param: string, body: readonly Segment[], at = inner) =>
-		new Code(`(${param}) => ${param}${renderSegments(graph, body, at)}`);
-	const call = (method: string, config: Tree) =>
-		`\n${indent}.${method}(${renderTree(config, indent)})`;
+	const value = indent + INDENT;
+	const call = (macro: string, config: Tree, parts: Tree) =>
+		`${macro}(${renderTree(config, indent)}, ${renderTree(parts, indent)})`;
 	const name = segment.node.name;
 	if (segment.kind === 'branch' && shape?.kind === 'branch') {
-		return call('branch', {
-			name,
-			if: new Code(shape.condition),
-			then: flowOf('flow', segment.then),
-			...(segment.else ? { else: flowOf('flow', segment.else) } : {}),
-		});
+		return call(
+			'when',
+			{ name, if: new Code(shape.condition) },
+			{
+				then: partCode(graph, segment.then, value),
+				...(segment.else ? { else: partCode(graph, segment.else, value) } : {}),
+			},
+		);
 	}
 	if (segment.kind === 'forEach' && shape?.kind === 'forEach') {
-		return call('forEach', {
+		const config = {
 			name,
 			batchSize: shape.batchSize,
-			body: flowOf('each', segment.body),
-		});
+			...(shape.options === undefined ? {} : { options: shape.options }),
+		};
+		return call('forEach', config, partCode(graph, segment.body, indent));
 	}
 	if (segment.kind === 'loop' && shape?.kind === 'loop') {
 		const max = shape.maxIterations;
+		const body = partCode(graph, segment.body, indent);
 		switch (shape.variant) {
 			case 'loop':
-				return call('loop', {
-					name,
-					maxIterations: max,
-					body: flowOf('pass', segment.body),
-					until: new Code(shape.until),
-					next: new Code(shape.next),
-				});
+				return call(
+					'loop',
+					{ name, maxIterations: max, until: new Code(shape.until), next: new Code(shape.next) },
+					body,
+				);
 			case 'paginate':
-				return call('paginate', {
-					name,
-					maxPages: max,
-					request: flowOf('page', segment.body),
-					next: new Code(shape.next),
-				});
+				return call('paginate', { name, maxPages: max, next: new Code(shape.next) }, body);
 			case 'pollUntil':
-				return call('pollUntil', {
-					name,
-					maxAttempts: max,
-					every: { ...shape.every },
-					attempt: flowOf('attempt', segment.body),
-					until: new Code(shape.until),
-				});
+				return call(
+					'pollUntil',
+					{ name, maxAttempts: max, every: { ...shape.every }, until: new Code(shape.until) },
+					body,
+				);
 		}
 	}
 	if (segment.kind === 'switch' && shape?.kind === 'switch') {
-		const cases = shape.keys.map((key, index) => [key, flowOf('flow', segment.cases[index] ?? [])]);
-		return call('switch', {
-			name,
-			on: shape.field,
-			cases: Object.fromEntries(cases),
-			...(segment.fallback ? { default: flowOf('flow', segment.fallback) } : {}),
-		});
+		const cases = Object.fromEntries([
+			...shape.keys.map((key, index) => [key, partCode(graph, segment.cases[index] ?? [], value)]),
+			...(segment.fallback
+				? [[FALLBACK_OUTPUT, partCode(graph, segment.fallback, value)] as const]
+				: []),
+		]);
+		return call('switchOn', { name, on: shape.field }, cases);
 	}
 	if (segment.kind === 'route' && shape) {
 		const routes = Object.fromEntries(
-			segment.routes.map(({ name: output, segments }) => [output, flowOf('flow', segments)]),
+			segment.routes.map(({ name: output, segments }) => [
+				output,
+				partCode(graph, segments, value),
+			]),
 		);
-		return `\n${indent}.route(${renderCall(graph, segment.node, shape, indent)}, ${renderTree(routes, indent)})`;
+		const outputs = shape.kind === 'node' ? segment.outputs : undefined;
+		return `route(${renderCall(graph, segment.node, shape, indent, outputs)}, ${renderTree(routes, indent)})`;
 	}
 	if (segment.kind === 'merge' && shape?.kind === 'merge') {
-		return call('merge', {
-			name,
-			join: typeof shape.join === 'string' ? shape.join : { ...shape.join },
-			branches: segment.branches.map((branch) => flowOf('flow', branch, inner + INDENT)),
-		});
+		const join = typeof shape.join === 'string' ? shape.join : { ...shape.join };
+		const branches = segment.branches.map((branch) => partCode(graph, branch, value));
+		return call('merge', { name, join }, branches);
 	}
 	return '';
 }
 
-function renderSegments(graph: Graph, segments: readonly Segment[], indent: string): string {
-	return segments
-		.map((segment) => {
-			if (segment.kind === 'orElse') {
-				return `\n${indent}.orElse((failed) => failed${renderSegments(graph, segment.handler, indent + INDENT)})`;
-			}
-			if (segment.kind !== 'step') return renderRegion(graph, segment, indent);
-			const shape = graph.shapes.get(segment.node.name);
-			if (shape?.kind === 'filter') {
-				const config = { name: segment.node.name, if: new Code(shape.condition) };
-				return `\n${indent}.filter(${renderTree(config, indent)})`;
-			}
-			return shape ? `\n${indent}.andThen(${renderCall(graph, segment.node, shape, indent)})` : '';
-		})
-		.join('');
-}
+/** The source of one segment: a step call or a macro call. */
+const partPosition =
+	(graph: Graph, segment: Segment): Position =>
+	(indent) => {
+		if (segment.kind === 'onError') {
+			const macro = segment.rejoins ? 'recover' : 'onError';
+			return `${macro}(${onePart(graph, segment.handler, indent)})`;
+		}
+		if (segment.kind !== 'step') return renderRegion(graph, segment, indent);
+		const shape = graph.shapes.get(segment.node.name);
+		if (shape?.kind === 'filter') {
+			return `filter(${renderTree({ name: segment.node.name, if: new Code(shape.condition) }, indent)})`;
+		}
+		return shape ? renderCall(graph, segment.node, shape, indent) : '';
+	};
 
-const HELPERS = ['workflow', 'manual', 'trigger', 'set', 'node', 'provider', 'fromModel'];
+/** The shapes whose call names a helper, e.g. `set`. */
+const STEP_HELPERS: ReadonlySet<string> = new Set(['manual', 'trigger', 'set', 'node']);
+
+const HELPERS = [
+	'workflow',
+	'steps',
+	'manual',
+	'trigger',
+	'set',
+	'filter',
+	'node',
+	'provider',
+	'route',
+	'when',
+	'switchOn',
+	'forEach',
+	'loop',
+	'paginate',
+	'pollUntil',
+	'merge',
+	'onError',
+	'recover',
+	'expr',
+	'fromModel',
+];
+
+/** The macros that `segments` render with, e.g. `when` for a branch. */
+function macrosOf(graph: Graph, segments: readonly Segment[]): string[] {
+	const one = (body: readonly Segment[]) => [
+		...(body.length === 1 ? [] : ['steps']),
+		...macrosOf(graph, body),
+	];
+	return segments.flatMap((segment): string[] => {
+		switch (segment.kind) {
+			case 'onError':
+				return [segment.rejoins ? 'recover' : 'onError', ...one(segment.handler)];
+			case 'step':
+				return graph.shapes.get(segment.node.name)?.kind === 'filter' ? ['filter'] : [];
+			case 'branch':
+				return ['when', ...one(segment.then), ...(segment.else ? one(segment.else) : [])];
+			case 'forEach':
+				return ['forEach', ...one(segment.body)];
+			case 'loop': {
+				const shape = graph.shapes.get(segment.node.name);
+				return [shape?.kind === 'loop' ? shape.variant : 'loop', ...one(segment.body)];
+			}
+			case 'switch':
+				return [
+					'switchOn',
+					...segment.cases.flatMap(one),
+					...(segment.fallback ? one(segment.fallback) : []),
+				];
+			case 'merge':
+				return ['merge', ...segment.branches.flatMap(one)];
+			case 'route':
+				return ['route', ...segment.routes.flatMap(({ segments: inner }) => one(inner))];
+		}
+	});
+}
 
 function segmentNodes(segments: readonly Segment[]): NamedNode[] {
 	return segments.flatMap((segment) => {
 		switch (segment.kind) {
-			case 'orElse':
+			case 'onError':
 				return segmentNodes(segment.handler);
 			case 'step':
 				return [segment.node];
@@ -1406,19 +1621,28 @@ function segmentNodes(segments: readonly Segment[]): NamedNode[] {
 }
 
 function render(name: string, graph: Graph, flows: readonly FlowPlan[]): string {
-	const shapes = flows
+	const placed = flows
 		.flatMap(({ root, segments }) => [root, ...segmentNodes(segments)])
 		.flatMap((node) => {
 			const shape = graph.shapes.get(node.name);
-			return shape ? [shape] : [];
+			return shape ? [{ node, shape }] : [];
 		});
-	const legacyChildren = [...graph.children.values()]
-		.flat()
-		.some(({ node }) => !graph.providerShapes.has(node.name));
+	const shapes = placed.map(({ shape }) => shape);
+	const trees = placed.flatMap(({ node, shape }) => [
+		callTree(graph, node, shape) ?? null,
+		shape.kind === 'forEach' ? (shape.options ?? null) : null,
+	]);
+	const [first, ...rest] = flows.flatMap(({ root, segments }) => [
+		(indent: string) =>
+			renderCall(graph, root, graph.shapes.get(root.name) ?? { kind: 'trigger' }, indent),
+		...segments.map((segment) => partPosition(graph, segment)),
+	]);
 	const kinds = new Set<string>([
 		'workflow',
-		...shapes.map(({ kind }) => kind),
-		...(legacyChildren ? ['provider'] : []),
+		...shapes.map(({ kind }) => kind).filter((kind) => STEP_HELPERS.has(kind)),
+		...trees.flatMap(calleesOf),
+		...flows.flatMap(({ segments }) => macrosOf(graph, segments)),
+		...(rest.length > WORKFLOW_POSITIONS ? ['steps'] : []),
 		...([...graph.providerShapes.values()].some(fillsFromModel) ? ['fromModel'] : []),
 	]);
 	const factories = [
@@ -1434,17 +1658,13 @@ function render(name: string, graph: Graph, flows: readonly FlowPlan[]): string 
 		`import { ${HELPERS.filter((helper) => kinds.has(helper)).join(', ')} } from '@n8n/workflow-sdk/next';`,
 		...factories.map(({ module, from }) => `import { ${module} } from '${from}';`),
 	];
-	const body = flows.map(({ root, segments }) => {
-		const shape = graph.shapes.get(root.name) ?? { kind: 'trigger' };
-		const indent = INDENT + INDENT;
-		return `${INDENT}${renderCall(graph, root, shape, INDENT)}${renderSegments(graph, segments, indent)},`;
-	});
 	return [
 		...imports,
 		'',
 		'export default workflow(',
 		`${INDENT}${JSON.stringify(name)},`,
-		...body,
+		...(first ? [`${INDENT}${first(INDENT)},`] : []),
+		...positionLines(rest, INDENT, WORKFLOW_POSITIONS),
 		');',
 		'',
 	].join('\n');
@@ -1453,9 +1673,11 @@ function render(name: string, graph: Graph, flows: readonly FlowPlan[]): string 
 /**
  * `@n8n/workflow-sdk/next` source for a saved workflow, or `undefined` when the typed format
  * cannot express it (for example a sticky note, or a disabled node). Node settings such as
- * `retryOnFail` read back as `settings`. Loop Over Items, Switch, Filter, and Merge nodes
- * read back as regions when their wiring and parameters are what the region builds.
- * `node()` and `provider()` parameters keep their expressions as strings. `factories` maps
+ * `retryOnFail` read back as `settings`. IF, Loop Over Items, Switch, Filter, and Merge nodes
+ * read back as macros when their wiring and parameters are what the macro builds.
+ * An expression without a lambda form reads back as `expr()`; in `node()` and `provider()` every
+ * expression does, as their items are untyped. An error output reads back as `onError`, or as
+ * `recover` when the handler continues. `factories` maps
  * each contract node type, and each `composedFactoryKey`, to its typed module factory.
  * `readLegacy` reads other legacy nodes as factory calls, e.g. the nodes of derived modules.
  */
@@ -1583,7 +1805,7 @@ export function locateNextNodes(
 			call.callee.type === 'Identifier' && NODE_TYPE_CALLS.has(call.callee.name)
 				? literal('type')
 				: undefined;
-		// A chained call such as `.branch({…})` starts where the flow before it starts.
+		// A module call such as `notion.databasePage.getAll({…})` starts at its factory name.
 		const at = call.callee.type === 'MemberExpression' ? call.callee.property : call;
 		return name !== undefined && at.loc
 			? [{ name, line: at.loc.start.line, ...(type === undefined ? {} : { type }) }]

@@ -31,6 +31,8 @@ interface Mode {
 	plain?: boolean;
 	/** An optional output field prints as optional, so a read of it needs a check. */
 	optionalOutputs?: boolean;
+	/** An optional output field also takes `null`: the host passes response drift on. */
+	nullableOutputs?: boolean;
 	indent: string;
 	/** Print short objects without docs on one line. The agent reads every byte of a module. */
 	compact?: boolean;
@@ -98,13 +100,21 @@ function objectTs(
 		const docKey = `${name}: ${text}`;
 		return text && !hiddenDocs.has(docKey) && !mode.hiddenDocs?.has(docKey) ? text : undefined;
 	};
+	const fieldTs = (name: string, child: JsonSchema) => {
+		const text = toTs(child, childMode);
+		if (required.has(name) || mode.input)
+			return `${key(name)}${required.has(name) ? '' : '?'}: ${text}`;
+		if (!mode.optionalOutputs) return `${key(name)}: ${text}`;
+		const takesNull = mode.nullableOutputs && !child['x-n8n-binary'] && !/\| null$/.test(text);
+		return `${key(name)}?: ${text}${takesNull ? ' | null' : ''}`;
+	};
 	const members = [
 		...(tag
 			? [{ doc: '', body: `${key(tag.name)}${tag.optional ? '?' : ''}: ${tag.values}` }]
 			: []),
 		...properties.map(([name, child]) => ({
 			doc: doc(shownDoc(name, child), inner),
-			body: `${key(name)}${required.has(name) || (!mode.input && !mode.optionalOutputs) ? '' : '?'}: ${toTs(child, childMode)}`,
+			body: fieldTs(name, child),
 		})),
 		...Object.entries(schema.patternProperties ?? {}).map(([pattern, child]) => ({
 			doc: patternDoc(schema, child, mode, inner),
@@ -303,6 +313,27 @@ const outputsText = (outputs: ActionOutputs) =>
 	'each' in outputs
 		? `one per ${outputs.each} entry, named by its output${outputs.then?.length ? `, then ${outputs.then.join(' | ')}` : ''}`
 		: outputs.join(' | ');
+
+/** The paths of the binary fields of an input. `*` is each entry of a list or a record. */
+function binaryPathsOf(schema: JsonSchema): string[][] {
+	if (schema['x-n8n-binary']) return [[]];
+	const children: Array<[string, JsonSchema]> = [
+		...Object.entries(schema.properties ?? {}),
+		...Object.values(schema.patternProperties ?? {}).map((child): [string, JsonSchema] => [
+			'*',
+			child,
+		]),
+		...(schema.items ? [['*', schema.items] satisfies [string, JsonSchema]] : []),
+		...(typeof schema.additionalProperties === 'object'
+			? [['*', schema.additionalProperties] satisfies [string, JsonSchema]]
+			: []),
+	];
+	const paths = [
+		...children.flatMap(([key, child]) => binaryPathsOf(child).map((path) => [key, ...path])),
+		...[...(schema.oneOf ?? []), ...(schema.anyOf ?? [])].flatMap(binaryPathsOf),
+	];
+	return [...new Map(paths.map((path) => [JSON.stringify(path), path])).values()];
+}
 
 /** The output as a workflow item: a binary field moves from the JSON to `binary.<field>`. */
 function itemSchema(output: JsonSchema): JsonSchema {
@@ -598,7 +629,14 @@ function trailingArgs(args: readonly string[]): string {
  */
 export function generateNodeModule(nodeId: string, contracts: readonly GeneratedAction[]): string {
 	const input: Mode = { input: true, indent: '', compact: true };
-	const output: Mode = { input: false, indent: '', compact: true };
+	// An action output marks its optional fields, and they take null: the host passes drift on.
+	const output: Mode = {
+		input: false,
+		indent: '',
+		compact: true,
+		optionalOutputs: true,
+		nullableOutputs: true,
+	};
 	// An action with named inputs joins branches, so a flow region builds it, not a step.
 	const actions = contracts.filter(({ contract }) => !contract.trigger && !contract.inputs);
 	const joins = contracts
@@ -717,6 +755,11 @@ export function generateNodeModule(nodeId: string, contracts: readonly Generated
 					pageFields.length && !routed ? JSON.stringify(pageFields) : 'undefined',
 				]);
 			const input = `${name}Input<In, Ctx>`;
+			const binaryPaths = binaryPathsOf(contract.input);
+			// The build compiles the lambda of a binary field to the key of a binary of the item.
+			const configArg = binaryPaths.length
+				? `binaryKeys(config, ${JSON.stringify(binaryPaths)})`
+				: 'config';
 			// A passed item keeps the type of the item before.
 			const item = contract.output['x-n8n-passed'] ? 'In' : `OutputOf<N, ${name}Output>`;
 			const config = `{ name: N; sample?: ${contract.output['x-n8n-passed'] ? 'In' : `${name}Output`}[]; settings?: NodeSettings }`;
@@ -728,14 +771,14 @@ export function generateNodeModule(nodeId: string, contracts: readonly Generated
 							`<In, Ctx, const N extends string, const C extends ${input}>(`,
 							`\tconfig: { name: N; sample?: Array<${entryItem}>; settings?: NodeSettings } & C & Exact<C, ${input} & { name: string; sample?: unknown; settings?: NodeSettings }>,`,
 							`): Step<In, Ctx, ${entryItem}, N> =>`,
-							`\tcontractStep(${JSON.stringify(nodeType)}, config${args(false)})`,
+							`\tcontractStep(${JSON.stringify(nodeType)}, ${configArg}${args(false)})`,
 						]
 					: !outputs
 						? [
 								'<In, Ctx, const N extends string>(',
 								`\tconfig: ${config} & ${input},`,
 								`): Step<In, Ctx, ${item}, N> =>`,
-								`\tcontractStep(${JSON.stringify(nodeType)}, config${args(false)})`,
+								`\tcontractStep(${JSON.stringify(nodeType)}, ${configArg}${args(false)})`,
 							]
 						: 'each' in outputs
 							? [
@@ -744,13 +787,13 @@ export function generateNodeModule(nodeId: string, contracts: readonly Generated
 									`\t\t${key(outputs.each)}: ReadonlyArray<${input}[${JSON.stringify(outputs.each)}][number] & { output: E }>;`,
 									'\t},',
 									`): RoutedStep<In, Ctx, ${item}, N, ${['E', ...(outputs.then ?? []).map((then) => JSON.stringify(then))].join(' | ')}> =>`,
-									`\troutedStep(${JSON.stringify(nodeType)}, config, ${JSON.stringify(outputs)}${args(true)})`,
+									`\troutedStep(${JSON.stringify(nodeType)}, ${configArg}, ${JSON.stringify(outputs)}${args(true)})`,
 								]
 							: [
 									'<In, Ctx, const N extends string>(',
 									`\tconfig: ${config} & ${input},`,
 									`): RoutedStep<In, Ctx, ${item}, N, ${outputs.map((output) => JSON.stringify(output)).join(' | ')}> =>`,
-									`\troutedStep(${JSON.stringify(nodeType)}, config, ${JSON.stringify(outputs)}${args(true)})`,
+									`\troutedStep(${JSON.stringify(nodeType)}, ${configArg}, ${JSON.stringify(outputs)}${args(true)})`,
 								];
 			return {
 				path,
@@ -784,7 +827,7 @@ export function generateNodeModule(nodeId: string, contracts: readonly Generated
 	// A trigger starts a flow. Its input takes plain values: there is no item to read yet.
 	const plain: Mode = { ...input, plain: true };
 	// A trigger output marks its optional fields, e.g. a WhatsApp event has messages or statuses.
-	const triggerOutput: Mode = { ...output, optionalOutputs: true };
+	const triggerOutput: Mode = { ...output, nullableOutputs: false };
 	const triggerTypes = triggers.map(({ contract }) => {
 		const name = typeName(contract.id);
 		const entries = contract.output['x-n8n-entry-fields'];
@@ -827,7 +870,7 @@ export function generateNodeModule(nodeId: string, contracts: readonly Generated
 			const text = [
 				`<${generics.join(', ')}>(`,
 				`\tconfig: ${head} & ${input},`,
-				`): Flow<${out}, Record<N, ${out}>> =>`,
+				`): Trigger<${out}, N> =>`,
 				`\tcontractTrigger(${JSON.stringify(nodeType)}, config${args.map((arg) => `, ${arg}`).join('')})`,
 			].join('\n');
 			const schemaNote = declared.length ? `; schema types ${declared.join(', ')}` : '';
@@ -845,6 +888,7 @@ export function generateNodeModule(nodeId: string, contracts: readonly Generated
 		({ contract }) => contract.output['x-n8n-entry-fields'],
 	);
 	const imports = [
+		...(steps.some(({ contract }) => hasBinary(contract.input)) ? ['binaryKeys'] : []),
 		...(suppliers.length > 0 ? ['contractProvider'] : []),
 		...(steps.length > 0 ? ['contractStep'] : []),
 		...(tools.length > 0 ? ['contractTool'] : []),
@@ -857,7 +901,6 @@ export function generateNodeModule(nodeId: string, contracts: readonly Generated
 		...(triggers.length > 0 ? ['type DeepPartial'] : []),
 		...(named.some(({ contract }) => hasBinary(contract.input)) ? ['type Dollar'] : []),
 		...(hasEntries ? ['type EntryFields', 'type Exact'] : []),
-		...(triggers.length > 0 ? ['type Flow'] : []),
 		...(body.includes(`Value<I, C, ${OPEN_VALUE}>`) ? [`type ${OPEN_VALUE}`] : []),
 		...(body.includes('ModelOf<') ? ['type ModelOf'] : []),
 		'type NodeSettings',
@@ -869,6 +912,7 @@ export function generateNodeModule(nodeId: string, contracts: readonly Generated
 		...(routed ? ['type RoutedStep'] : []),
 		...(steps.length > 0 ? ['type Step'] : []),
 		...(tools.length > 0 ? ['type ToolConfig'] : []),
+		...(triggers.length > 0 ? ['type Trigger'] : []),
 		...(body.includes('Value<') ? ['type Value'] : []),
 		...(declares ? ['type ValueSchema'] : []),
 	];
@@ -880,7 +924,7 @@ export function generateNodeModule(nodeId: string, contracts: readonly Generated
 			...joins,
 			...(routed
 				? [
-						'// A step with outputs: flow.route(step, { <output>: (flow) => … }) continues from each output; andThen only from the first.',
+						'// A step with outputs: route(step, { <output>: part }) continues from each output; the next position only from the first.',
 					]
 				: []),
 			...(tools.length > 0

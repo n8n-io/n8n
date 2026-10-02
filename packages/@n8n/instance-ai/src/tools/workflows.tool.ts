@@ -76,6 +76,7 @@ import {
 	refreshWorkflowSourceFileBindingFromWorkflow,
 } from './workflows/workflow-file-bindings';
 import { getReferencedWorkflowIds } from './workflows/workflow-json-utils';
+import { workflowSourceSdk } from './workflows/workflow-source-compiler';
 import {
 	INLINE_SOURCE_LIMIT_CHARS,
 	indexSourceNodes,
@@ -840,6 +841,7 @@ const contractFactories = (composedKey: typeof composedFactoryKey) =>
 								),
 							),
 						],
+				binaryKeys: fields.flatMap(([key, schema]) => (schema['x-n8n-binary'] ? [key] : [])),
 			};
 			return [nodeType, factory] as const;
 		}),
@@ -853,6 +855,9 @@ const contractFactories = (composedKey: typeof composedFactoryKey) =>
 				// The generated field type decides: a `Value<…>` field takes an expression string.
 				expressionKeys: Object.entries(action.input).flatMap(([key, schema]) =>
 					toTs(schema.json, { input: true, indent: '' }).startsWith('Value<') ? [key] : [],
+				),
+				binaryKeys: Object.entries(action.input).flatMap(([key, schema]) =>
+					schema.json['x-n8n-binary'] ? [key] : [],
 				),
 				...(action.outputs ? { outputs: action.outputs } : {}),
 			};
@@ -882,8 +887,6 @@ const contractFactories = (composedKey: typeof composedFactoryKey) =>
 			return [[nodeTypeOf(action), factory] as const, ...composed, ...tool];
 		}),
 	]);
-
-const NEXT_SDK_IMPORT = "from '@n8n/workflow-sdk/next'";
 
 /**
  * Node lines of typed source. The legacy index looks for `config: { name }` and finds none. A
@@ -933,7 +936,7 @@ async function handleGetAsCode(
 		});
 	};
 	const indexNodes = async (json: WorkflowJSON, source: string) =>
-		context.nodeContractsEnabled === true && source.includes(NEXT_SDK_IMPORT)
+		workflowSourceSdk(context, source) === 'next'
 			? await indexNextSourceNodes(json, source, untyped)
 			: await indexSourceNodes(json, source);
 	const toLegacyCode = (json: WorkflowJSON): string => {

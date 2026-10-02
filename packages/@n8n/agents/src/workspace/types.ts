@@ -207,11 +207,22 @@ export interface DaytonaSandboxOptions {
 	networkAllowList?: string;
 }
 
+/**
+ * Runs after a workspace tool writes a file. The messages it returns join the tool result as
+ * `diagnostics`, so the agent sees problems in the file before it uses the file.
+ * `undefined` means the file was not checked.
+ */
+export type WorkspaceAfterWrite = (
+	file: { path: string; content: string },
+	options: AbortableOptions & { toolCallId?: string },
+) => Promise<string[] | undefined>;
+
 export interface WorkspaceConfig {
 	id?: string;
 	name?: string;
 	filesystem?: WorkspaceFilesystem;
 	sandbox?: WorkspaceSandbox;
+	afterWrite?: WorkspaceAfterWrite;
 }
 
 export interface MountResult {

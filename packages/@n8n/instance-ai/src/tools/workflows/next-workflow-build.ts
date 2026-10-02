@@ -417,8 +417,9 @@ const expressionStrings = (value: unknown): string[] => {
 
 /**
  * The strings the built workflow keeps as n8n expressions, and the JavaScript of its Code nodes,
- * for {@link EXPRESSIONS_PATH}. The type check finds the literal of each in the source and checks
- * it in place. A string that a node quotes as a constant, e.g. in `set()`, is not in the list.
+ * for {@link EXPRESSIONS_PATH}. The type check finds the `expr()` call or literal of each in the
+ * source and checks it in place. A constant that a lambda compiles to is quoted, so it is not in
+ * the list.
  */
 export function workflowExpressions(workflow: WorkflowJSON): string {
 	const expressions = [
@@ -547,27 +548,56 @@ const parseTypecheckErrors = (stdout: string): string[] | undefined => {
 const STDERR_TAIL = 1_000;
 
 const UNTYPED_HINT =
-	'This value has no type. Fix the first error of the same chain first. Else type the node before it: `sample` items, a webhook `schema`, or `returns` on a code step.';
+	'This value has no type. Fix the first error before it first. Else type the node before it: `sample` items, a webhook `schema`, or `returns` on a code step.';
+
+/** The macros of `@n8n/workflow-sdk/next`, for the hint on a step method. */
+export const FLOW_MACROS = [
+	'steps',
+	'route',
+	'when',
+	'switchOn',
+	'forEach',
+	'loop',
+	'paginate',
+	'pollUntil',
+	'filter',
+	'merge',
+	'onError',
+	'recover',
+] as const;
 
 /**
  * A fix in the flow SDK for a frequent `tsc` error of a workflow source, by code and by the first
- * line of the message. `flowMethods` are the methods of `Flow`. The first rule that matches wins.
+ * line of the message. `macros` are the macros of the flow SDK. The first rule that matches wins.
  */
 const TSC_HINTS: ReadonlyArray<{
 	readonly codes: readonly number[];
 	readonly message: RegExp;
-	readonly hint: (flowMethods: string) => string;
+	readonly hint: (macros: string) => string;
 }> = [
 	{
 		codes: [2339, 2551],
-		message: /on type '(?:Routed)?Step</,
-		hint: (methods) =>
-			`A step has no methods: pass it to a flow method, e.g. \`flow.andThen(step)\`. Flow methods: ${methods}.`,
+		message: /on type '(?:Routed)?Step<|on type 'Trigger<|on type 'Region</,
+		hint: (macros) =>
+			`A step has no methods. A workflow is a flat list: \`workflow(name, trigger, stepA, stepB)\`. Macros: ${macros}.`,
 	},
 	{
-		codes: [2339, 2551],
-		message: /on type 'Flow</,
-		hint: (methods) => `Flow methods: ${methods}.`,
+		codes: [2322, 2559],
+		message: /has no properties in common with type 'Part</,
+		hint: () =>
+			'A branch or a body takes one part: a step, a macro, or `steps(a, b)` for several. It is not a function.',
+	},
+	{
+		codes: [2322],
+		message: /^Type '(?:Routed)?(?:Step|Region)<.*' is not assignable to type 'never'/,
+		hint: () =>
+			'This key is no output name of the step in `route`, or no value of the `switchOn` field. Use a name that the type lists.',
+	},
+	{
+		codes: [2554],
+		message: /^Expected \d+-\d+ arguments/,
+		hint: () =>
+			'`workflow()` takes 40 parts after the trigger, and `steps()` takes 20. Put the rest in a last `steps(…)`.',
 	},
 	{
 		codes: [2339],
@@ -587,7 +617,7 @@ const TSC_HINTS: ReadonlyArray<{
 		codes: [7006],
 		message: /implicitly has an 'any' type/,
 		hint: () =>
-			"This lambda gets no parameter types. Fix the first error of the same call or chain first (a method or field that does not exist). Do not annotate the parameters. If no error comes before it, write the value as a `'={{ … }}'` string.",
+			"This lambda gets no parameter types. Fix the first error before it first (a method or field that does not exist). Do not annotate the parameters. If no error comes before it, write the value as `expr('{{ … }}')`.",
 	},
 	{
 		codes: [2322, 2345],
@@ -604,7 +634,7 @@ const TSC_HINTS: ReadonlyArray<{
 		codes: [2345],
 		message: /^Argument of type '"[^"]*"' is not assignable to parameter of type 'never'/,
 		hint: () =>
-			"`$('Node')` reads only a node that runs before this one on the same path, by its exact `name`. If an earlier error breaks the chain, fix it first.",
+			"`$('Node')` reads only a node that runs before this one on the same path, by its exact `name`. If an earlier error breaks the list, fix it first.",
 	},
 	{
 		codes: [2739, 2740, 2741],
@@ -634,7 +664,7 @@ const TSC_HINTS: ReadonlyArray<{
 		codes: [2305],
 		message: /^Module '"@n8n\/workflow-sdk\/next"'/,
 		hint: () =>
-			"Import only the flow API that the skill names. Write an n8n expression as a `'={{ … }}'` string.",
+			"Import only the flow API that the skill names. Write an n8n expression as `expr('{{ … }}')`.",
 	},
 	{
 		codes: [2304, 2552, 2581, 2592],
@@ -647,25 +677,24 @@ const TSC_HINTS: ReadonlyArray<{
 const TSC_ERROR = /error TS(\d+): ([^\n]*)/;
 
 /** The hint for one `tsc` error line of a workflow source, if a rule matches. */
-export function tscHintOf(error: string, flowMethods: readonly string[]): string | undefined {
+export function tscHintOf(
+	error: string,
+	macros: readonly string[] = FLOW_MACROS,
+): string | undefined {
 	const [, code, message] = TSC_ERROR.exec(error) ?? [];
 	if (code === undefined || message === undefined) return undefined;
 	const rule = TSC_HINTS.find(
 		(each) => each.codes.includes(Number(code)) && each.message.test(message),
 	);
-	return rule?.hint(flowMethods.join(', '));
+	return rule?.hint(macros.join(', '));
 }
 
 /**
  * Each `tsc` error with a hint line after it. A hint comes once, after the first error it fits:
  * the later errors with the same cause need no copy.
  */
-export async function withTscHints(errors: readonly string[]): Promise<string[]> {
-	const { Flow } = await import('@n8n/workflow-sdk/next');
-	const flowMethods = Object.getOwnPropertyNames(Flow.prototype).filter(
-		(name) => name !== 'constructor',
-	);
-	const hints = errors.map((error) => tscHintOf(error, flowMethods));
+export function withTscHints(errors: readonly string[]): string[] {
+	const hints = errors.map((error) => tscHintOf(error));
 	return errors.map((error, index) => {
 		const hint = hints[index];
 		return hint === undefined || hints.indexOf(hint) < index ? error : `${error}\nHint: ${hint}`;
@@ -693,7 +722,7 @@ export async function typecheckWorkflowSource(
 		{ cwd: root, abortSignal, timeout: TYPECHECK_TIMEOUT_MS },
 	);
 	const parsed = parseTypecheckErrors(result.stdout);
-	const errors = parsed && (await withTscHints(parsed));
+	const errors = parsed && withTscHints(parsed);
 	if (result.exitCode === 0 && errors) return { errors };
 	context.logger.warn('Workflow type check did not complete', {
 		exitCode: result.exitCode,

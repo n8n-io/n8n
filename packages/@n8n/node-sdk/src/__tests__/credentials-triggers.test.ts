@@ -11,6 +11,7 @@ import {
 	diffContracts,
 	generateNodeModule,
 	int,
+	loose,
 	nullable,
 	obj,
 	pageValue,
@@ -236,7 +237,7 @@ const hooked = task.trigger('commented', {
 	trigger: 'On task comment',
 	summary: 'Starts when the service posts a task comment.',
 	input: {},
-	output: taskEvent,
+	output: loose(taskEvent),
 	webhook: {
 		verify: { algorithm: 'sha256', header: 'x-signature', secret: 'generated' },
 		register: {
@@ -255,7 +256,7 @@ const hooked = task.trigger('commented', {
 				path: `/projects/${input.project}/hooks/${id}`,
 			}),
 		},
-		emit: ({ body }) => [parse(taskEvent, body, 'body')],
+		emit: ({ body }) => [parse(taskEvent, body)],
 	},
 });
 
@@ -511,7 +512,7 @@ describe('generateNodeModule', () => {
 			'contractTrigger("n8n-nodes-tasks.tasks.task.created", config, 1, {"credential":"tasks","scopes":["tasks:read"]}, {"example":',
 		);
 		expect(module).toContain(
-			"import { contractStep, contractTool, contractTrigger, type DeepPartial, type Flow, type NodeSettings, type OutputOf, type Provider, type Step, type ToolConfig, type Value } from '@n8n/workflow-sdk/next';",
+			"import { contractStep, contractTool, contractTrigger, type DeepPartial, type NodeSettings, type OutputOf, type Provider, type Step, type ToolConfig, type Trigger, type Value } from '@n8n/workflow-sdk/next';",
 		);
 	});
 

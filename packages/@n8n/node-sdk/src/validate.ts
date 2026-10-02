@@ -3,7 +3,13 @@ import { isSensitiveKey } from '@n8n/utils/redaction/sensitive-key';
 import { scrubSecretsInText } from '@n8n/utils/scrub-secrets';
 import { safeRegex } from 'n8n-workflow';
 
-import { isPageExpression, type AnySchema, type Infer, type JsonSchema } from './schema';
+import {
+	isPageExpression,
+	type AnySchema,
+	type Infer,
+	type JsonSchema,
+	type Loose,
+} from './schema';
 
 /** The value, or no value. Narrows an API field that must be a list. */
 export const list = (value: unknown): readonly unknown[] => (Array.isArray(value) ? value : []);
@@ -18,6 +24,15 @@ function shown(value: unknown, at: string): string {
 }
 
 const isExpression = (value: unknown) => typeof value === 'string' && value.startsWith('=');
+
+/**
+ * A binary field holds the key of a binary of the input item, e.g. `data`, as n8n stores it.
+ * An expression gives the binary itself, not its key.
+ */
+export const binaryKeyIssue = (value: unknown, at: string): string | undefined =>
+	typeof value === 'string' && value !== '' && !isExpression(value)
+		? undefined
+		: `${at}: must be the key of a binary of the input item, e.g. "data". Write (item) => item.binary.data`;
 
 function typeMatches(value: unknown, type: JsonSchema['type']): boolean {
 	switch (type) {
@@ -60,8 +75,8 @@ const branchFor = (branches: readonly JsonSchema[], name: string, value: unknown
 
 /**
  * Validate a value against the JSON Schema subset contracts use. With `allowExpressions`,
- * any field except a discriminator or an `x-n8n-literal` field may hold a `={{ }}` string
- * (build time); at run time n8n has already resolved them.
+ * any field except a discriminator, an `x-n8n-literal` field, or a binary field may hold a
+ * `={{ }}` string (build time); at run time n8n has already resolved them.
  */
 export function validate(
 	value: unknown,
@@ -71,6 +86,11 @@ export function validate(
 	const issues: string[] = [];
 	const visit = (current: unknown, node: JsonSchema, at: string): void => {
 		if (current === undefined) return;
+		if (options.allowExpressions && node['x-n8n-binary']) {
+			const issue = binaryKeyIssue(current, at);
+			if (issue) issues.push(issue);
+			return;
+		}
 		if (options.allowExpressions && isExpression(current)) {
 			if (node['x-n8n-literal']) issues.push(`${at}: must be a plain value, not an expression`);
 			if (node['x-n8n-page'] && typeof current === 'string' && !isPageExpression(current)) {
@@ -159,10 +179,28 @@ export function validate(
 export const matches = <S extends AnySchema>(schema: S, value: unknown): value is Infer<S> =>
 	validate(value, schema.json).length === 0;
 
-/** `value` typed by `schema`. Throws with each failing path, e.g. `response.id: must be string`. */
-export function parse<S extends AnySchema>(schema: S, value: unknown, path = 'response'): Infer<S> {
+/**
+ * `value` as `schema` types it. An API may change its responses, so `parse` never throws: the
+ * value passes through, and its type marks each field as possibly absent or `null`. The host
+ * checks the output of the action and reports the drift. A value of another kind than an
+ * object or array schema gives an empty one, so a field read never throws.
+ */
+export function parse<S extends AnySchema>(schema: S, value: unknown): Loose<Infer<S>>;
+export function parse(schema: AnySchema, value: unknown): unknown {
+	const { type } = schema.json;
+	if (type === 'object' && !isRecord(value)) return {};
+	if (type === 'array' && !Array.isArray(value)) return [];
+	return value;
+}
+
+/**
+ * A page of a list, typed by `schema`. Throws with each failing path, e.g. `page.results: must
+ * be array`. The list engine reads its items and cursor from the page, so a page in another shape
+ * stops the list.
+ */
+export function parsePage<S extends AnySchema>(schema: S, value: unknown): Infer<S> {
 	if (matches(schema, value)) return value;
-	throw new Error(validate(value, schema.json, { path }).join('; '));
+	throw new Error(validate(value, schema.json, { path: 'page' }).join('; '));
 }
 
 const branchOf = (value: Record<string, unknown>, schema: JsonSchema) => {

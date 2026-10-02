@@ -17,6 +17,7 @@ import {
 	type ProviderStatus,
 	type ReadOptions,
 	type RemoveOptions,
+	type WorkspaceAfterWrite,
 	type WorkspaceFilesystem,
 	type WorkspaceSandbox,
 	type WriteOptions,
@@ -45,6 +46,7 @@ export interface LazyRuntimeWorkspaceOptions {
 	 */
 	sandboxInstructions?: string;
 	filesystemInstructions?: string;
+	afterWrite?: WorkspaceAfterWrite;
 }
 
 type WorkspaceResolvedListener = (workspace: Workspace) => void;
@@ -56,6 +58,7 @@ export function createLazyRuntimeWorkspace({
 	name = 'Instance AI runtime workspace',
 	sandboxInstructions,
 	filesystemInstructions,
+	afterWrite,
 }: LazyRuntimeWorkspaceOptions): Workspace {
 	const resolver = new LazyRuntimeWorkspaceResolver(ensureWorkspace);
 
@@ -64,6 +67,7 @@ export function createLazyRuntimeWorkspace({
 		name,
 		filesystem: new LazyRuntimeFilesystem(resolver, filesystemInstructions),
 		sandbox: new LazyRuntimeSandbox(resolver, sandboxInstructions),
+		afterWrite,
 	});
 
 	const baseGetTools = workspace.getTools.bind(workspace);

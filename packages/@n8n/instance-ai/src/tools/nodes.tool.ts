@@ -462,7 +462,7 @@ async function searchOneWithModules(
 		...derived.flatMap((nodeType) => derivedActionsNamedBy(nodeType, context, query)),
 	];
 	const namesBuiltIn = builtInHits.some(namesHit);
-	// A named SDK step does the job, so the actions behind it (core.if for .branch) are noise.
+	// A named SDK step does the job, so the actions behind it (core.if for when) are noise.
 	const otherActionsPart = otherActions.length && !namesBuiltIn ? { otherActions } : {};
 	const builtInsPart = builtIns.length ? { builtIns } : {};
 	if (nodes.length || namesBuiltIn) {

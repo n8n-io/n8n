@@ -33,7 +33,7 @@ describe('contract-mode skill', () => {
 		expect(text).not.toContain('{{NODE_CONTRACT_MODULES_PLACEHOLDER}}');
 	});
 
-	it('teaches AI providers, trigger samples, orElse on the flow, and setup placeholders', () => {
+	it('teaches AI providers, trigger samples, onError in the list, and setup placeholders', () => {
 		expect(skill).toContain('providers: { model: lmChatOpenAi.execute({');
 		expect(skill).toContain(
 			"httpRequest.getTool({ name: 'Fetch', url: fromModel('The page URL') })",
@@ -42,7 +42,7 @@ describe('contract-mode skill', () => {
 		expect(skill).toContain('manual({ sample:');
 		expect(skill).toContain('`settings: { retryOnFail: true');
 		expect(skill).toContain('`nodeModules` and `builtIns`');
-		expect(skill).toMatch(/\)\n {4}\.orElse\(\(failed\) => failed\.andThen\(/);
+		expect(skill).toMatch(/\}\),\n {2}onError\(set\(\{ name: 'Log'/);
 		expect(skill).toContain("placeholder('Database')");
 		expect(skill).not.toContain("'<Notion tasks database ID>'");
 		expect(skill).toContain('do not read SDK files');
@@ -51,24 +51,23 @@ describe('contract-mode skill', () => {
 		);
 	});
 
-	it('builds routes, joins and loops with the flow API, not WorkflowJSON', () => {
-		expect(skill).toContain('`.switch({ name, on, cases })`');
-		expect(skill).toContain('`.merge({ name, join, branches })`');
-		expect(skill).toContain('`.route(step, { a: (f) => …, b: (f) => … })`');
+	it('ends an error branch with onError, joins it with recover, and writes expressions with expr()', () => {
+		expect(skill).toContain('its branch ends.\n  `recover(part)` joins it back.');
+		expect(skill).toContain("`expr('{{ … }}')` fits any lambda field.");
+		expect(skill).not.toContain("'={{");
+	});
+
+	it('builds a flat list, and routes, joins and loops with macros, not WorkflowJSON', () => {
+		expect(skill).toContain('A workflow is a flat list: a trigger, then parts.');
+		expect(skill).toContain('`steps(a, b, …)` for several');
+		expect(skill).toContain('`switchOn({ name, on }, { value: part, fallback: part })`');
+		expect(skill).toContain('`merge({ name, join }, [part, part])`');
+		expect(skill).toContain('`route(step, { a: part, b: part })`');
+		expect(skill).not.toMatch(/\.andThen|\.orElse|\.branch\(/);
 		expect(skill).not.toContain('WorkflowJSON');
 	});
 
-	it('tells the user to type an editor expression from {{, not ={{', () => {
-		const editorLines = skill
-			.split('\n')
-			.filter((line) => /editor|expression mode|paste/i.test(line));
-		expect(editorLines).toContain(
-			'- In the editor, Expression mode adds the `=`: tell the user to type from `{{`.',
-		);
-		expect(editorLines.filter((line) => line.includes('={{'))).toEqual([]);
-	});
-
 	it('stays small', () => {
-		expect(Buffer.byteLength(skill)).toBeLessThan(5_300);
+		expect(Buffer.byteLength(skill)).toBeLessThan(5_200);
 	});
 });

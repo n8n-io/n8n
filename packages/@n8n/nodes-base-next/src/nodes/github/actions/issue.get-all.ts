@@ -43,9 +43,7 @@ export const getManyIssues = issueResource.action('getAll', {
 		}),
 		response: arr(issueResponse),
 		items: (page, input) =>
-			page
-				.map(issueFrom)
-				.filter((entry) => input.includePullRequests || entry.pull_request === undefined),
+			page.map(issueFrom).filter((entry) => input.includePullRequests || !entry.pull_request),
 		pages: { style: 'link', size: { query: 'per_page', max: 100 } },
 	},
 });

@@ -2,9 +2,13 @@ import { z } from 'zod';
 
 import { Tool } from '../../sdk/tool';
 import type { BuiltTool } from '../../types/sdk/tool';
-import type { WorkspaceFilesystem } from '../types';
+import type { WorkspaceAfterWrite, WorkspaceFilesystem } from '../types';
+import { afterWriteDiagnostics, diagnosticsOutputSchema } from './after-write';
 
-export function createWriteFileTool(filesystem: WorkspaceFilesystem): BuiltTool {
+export function createWriteFileTool(
+	filesystem: WorkspaceFilesystem,
+	afterWrite?: WorkspaceAfterWrite,
+): BuiltTool {
 	return new Tool('workspace_write_file')
 		.description('Write content to a file in the workspace')
 		.input(
@@ -24,6 +28,7 @@ export function createWriteFileTool(filesystem: WorkspaceFilesystem): BuiltTool 
 		.output(
 			z.object({
 				success: z.boolean().describe('Whether the write was successful'),
+				diagnostics: diagnosticsOutputSchema,
 			}),
 		)
 		.handler(async (input, ctx) => {
@@ -31,7 +36,14 @@ export function createWriteFileTool(filesystem: WorkspaceFilesystem): BuiltTool 
 				recursive: input.recursive,
 				abortSignal: ctx.abortSignal,
 			});
-			return { success: true };
+			const file = { path: input.path, content: input.content };
+			return {
+				success: true,
+				...(await afterWriteDiagnostics(afterWrite, file, {
+					abortSignal: ctx.abortSignal,
+					toolCallId: ctx.toolCallId,
+				})),
+			};
 		})
 		.build();
 }

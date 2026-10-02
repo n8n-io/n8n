@@ -14,10 +14,16 @@
       "types": "./dist/globals.d.ts",
       "default": "./dist/globals.js"
     },
+    "./check": {
+      "types": "./dist/check/index.d.ts",
+      "default": "./dist/check/index.js"
+    },
+    "./plugin": "./dist/plugin/index.js",
     "./package.json": "./package.json"
   },
   "files": [
-    "dist/**/*"
+    "dist/**/*",
+    "plugin/package.json"
   ],
   "scripts": {
     "clean": "rimraf dist .turbo",
@@ -41,9 +47,10 @@
     "@n8n/eslint-config": "workspace:*",
     "@n8n/typescript-config": "workspace:*",
     "@n8n/vitest-config": "workspace:*",
+    "@typescript/native": "catalog:typescript-tooling",
     "n8n-workflow": "workspace:*",
     "tsx": "catalog:",
-    "typescript": "catalog:typescript",
+    "typescript": "catalog:typescript-tooling",
     "vitest": "catalog:"
   },
   "license": "LicenseRef-n8n-sustainable-use"

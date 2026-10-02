@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { callLifecycle } from './lifecycle';
 import { createWorkspaceTools } from './tools/workspace-tools';
 import type {
+	WorkspaceAfterWrite,
 	WorkspaceConfig,
 	WorkspaceFilesystem,
 	WorkspaceSandbox,
@@ -13,6 +14,7 @@ import type { BuiltTool } from '../types/sdk/tool';
 export class Workspace {
 	readonly id: string;
 	readonly name: string;
+	readonly afterWrite?: WorkspaceAfterWrite;
 
 	private _status: ProviderStatus = 'pending';
 	private filesystemInstance?: WorkspaceFilesystem;
@@ -26,6 +28,7 @@ export class Workspace {
 		this.name = config.name ?? `workspace-${this.id}`;
 		this.filesystemInstance = config.filesystem;
 		this.sandboxInstance = config.sandbox;
+		this.afterWrite = config.afterWrite;
 	}
 
 	get status(): ProviderStatus {

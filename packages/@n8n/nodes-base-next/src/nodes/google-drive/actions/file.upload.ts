@@ -44,15 +44,16 @@ export const uploadFile = file.action('upload', {
 			},
 			fullResponse: true,
 		});
-		const { location } = parse(uploadSession, session).headers;
+		const location = parse(uploadSession, session).headers?.location;
+		if (!location) throw new Error('Google Drive gave no upload URL for the file');
 		const uploaded = await http.request({ method: 'PUT', url: location, body: input.file });
 		const { kind, id, name, mimeType, webViewLink } = parse(uploadedFile, uploaded);
 		return {
-			...(kind === undefined ? {} : { kind }),
+			...(kind === undefined || kind === null ? {} : { kind }),
 			id,
 			name,
 			mimeType,
-			...(webViewLink === undefined ? {} : { webViewLink }),
+			...(webViewLink === undefined || webViewLink === null ? {} : { webViewLink }),
 		};
 	},
 });

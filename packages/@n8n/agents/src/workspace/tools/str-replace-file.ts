@@ -4,7 +4,8 @@ import { z } from 'zod';
 import { isAbortError } from '../../sdk/abort';
 import { Tool } from '../../sdk/tool';
 import type { BuiltTool } from '../../types/sdk/tool';
-import type { WorkspaceFilesystem } from '../types';
+import type { WorkspaceAfterWrite, WorkspaceFilesystem } from '../types';
+import { afterWriteDiagnostics, diagnosticsOutputSchema } from './after-write';
 
 const strReplacementSchema = z.object({
 	old_str: z.string().describe('Exact text to replace. Must match exactly and be unique.'),
@@ -38,6 +39,7 @@ const outputSchema = z.object({
 		.array(replaceResultSchema)
 		.optional()
 		.describe('Per-replacement statuses for a failed edit'),
+	diagnostics: diagnosticsOutputSchema,
 });
 
 type StrReplaceFileOutput = z.infer<typeof outputSchema>;
@@ -55,7 +57,38 @@ function isBatchReplaceResult(
 	return Array.isArray(result);
 }
 
-export function createStrReplaceFileTool(filesystem: WorkspaceFilesystem): BuiltTool {
+/** Applies the replacements and writes the file. `written` is the new content, if it was written. */
+async function replaceInFile(
+	filesystem: WorkspaceFilesystem,
+	input: z.infer<typeof inputSchema>,
+	abortSignal?: AbortSignal,
+): Promise<{ output: StrReplaceFileOutput; written?: string }> {
+	try {
+		const content = await filesystem.readFile(input.path, { encoding: 'utf-8', abortSignal });
+		const editor = new TextEditorDocument({ initialText: content.toString() });
+		const result = editor.executeBatch(input.replacements);
+
+		if (isBatchReplaceResult(result)) {
+			return { output: { success: false, error: 'String replacement failed.', results: result } };
+		}
+
+		const editedContent = editor.getText();
+		if (editedContent === null) {
+			throw new Error(`File "${input.path}" is not loaded.`);
+		}
+
+		await filesystem.writeFile(input.path, editedContent, { overwrite: true, abortSignal });
+		return { output: { success: true, result }, written: editedContent };
+	} catch (error) {
+		if (isAbortError(error)) throw error;
+		return { output: createErrorOutput(error) };
+	}
+}
+
+export function createStrReplaceFileTool(
+	filesystem: WorkspaceFilesystem,
+	afterWrite?: WorkspaceAfterWrite,
+): BuiltTool {
 	return new Tool('workspace_str_replace_file')
 		.description(
 			'Apply one or more exact text replacements to a workspace file atomically. If any replacement fails, no changes are written.',
@@ -63,32 +96,16 @@ export function createStrReplaceFileTool(filesystem: WorkspaceFilesystem): Built
 		.input(inputSchema)
 		.output(outputSchema)
 		.handler(async (input, ctx) => {
-			try {
-				const content = await filesystem.readFile(input.path, {
-					encoding: 'utf-8',
+			const { output, written } = await replaceInFile(filesystem, input, ctx.abortSignal);
+			if (written === undefined) return output;
+			const file = { path: input.path, content: written };
+			return {
+				...output,
+				...(await afterWriteDiagnostics(afterWrite, file, {
 					abortSignal: ctx.abortSignal,
-				});
-				const editor = new TextEditorDocument({ initialText: content.toString() });
-				const result = editor.executeBatch(input.replacements);
-
-				if (isBatchReplaceResult(result)) {
-					return { success: false, error: 'String replacement failed.', results: result };
-				}
-
-				const editedContent = editor.getText();
-				if (editedContent === null) {
-					throw new Error(`File "${input.path}" is not loaded.`);
-				}
-
-				await filesystem.writeFile(input.path, editedContent, {
-					overwrite: true,
-					abortSignal: ctx.abortSignal,
-				});
-				return { success: true, result };
-			} catch (error) {
-				if (isAbortError(error)) throw error;
-				return createErrorOutput(error);
-			}
+					toolCallId: ctx.toolCallId,
+				})),
+			};
 		})
 		.build();
 }

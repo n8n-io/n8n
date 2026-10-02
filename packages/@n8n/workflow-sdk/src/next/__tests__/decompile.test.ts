@@ -12,10 +12,16 @@ import {
 	contractStep,
 	contractProvider,
 	contractTrigger,
+	expr,
 	manual,
 	node,
+	onError,
+	recover,
+	route,
 	set,
 	provider,
+	steps,
+	when,
 	workflow,
 	type Dollar,
 	type NodeSettings,
@@ -120,7 +126,7 @@ const webhook = {
 		path: string;
 		responseMode?: 'onReceived' | 'responseNode';
 		settings?: NodeSettings;
-	}): next.Flow<{ body: { id: string } }, Record<N, { body: { id: string } }>> =>
+	}): next.Trigger<{ body: { id: string } }, N> =>
 		next.contractTrigger(WEBHOOK_TYPE, config, 2.2, undefined, { pairing }),
 	respond: <In, Ctx, const N extends string>(config: {
 		name: N;
@@ -142,6 +148,17 @@ const dataTable = {
 	},
 };
 
+const UPLOAD_TYPE = '@n8n/nodes-base-next.driveFileUpload';
+
+const drive = {
+	file: {
+		upload: <In, Ctx, const N extends string>(config: {
+			name: N;
+			file: (item: In, $: Dollar<Ctx>) => next.Binary;
+		}): Step<In, Ctx, { id: string }, N> => contractStep(UPLOAD_TYPE, config),
+	},
+};
+
 const factories = new Map<string, ContractFactory>([
 	[
 		GET_TOOL_TYPE,
@@ -153,6 +170,18 @@ const factories = new Map<string, ContractFactory>([
 			inputKeys: ['toolDescription', 'url', 'query'],
 			expressionKeys: ['url'],
 			tool: true,
+		},
+	],
+	[
+		UPLOAD_TYPE,
+		{
+			module: 'drive',
+			from: '@n8n/nodes/drive',
+			path: 'file.upload',
+			version: 1,
+			inputKeys: ['file'],
+			expressionKeys: [],
+			binaryKeys: ['file'],
 		},
 	],
 	[
@@ -343,6 +372,7 @@ const modules: Record<string, unknown> = {
 	'@n8n/nodes/openAi': { openAi },
 	'@n8n/nodes/webhook': { webhook },
 	'@n8n/nodes/dataTable': { dataTable },
+	'@n8n/nodes/drive': { drive },
 };
 
 /** Run decompiled source as the sandbox does, with its imports bound to the modules above. */
@@ -374,84 +404,72 @@ const DATABASE = '5b9e2c1d-0a7f-4c3e-9d21-7f6a8b9c0d1e';
 const notionWorkflow = () =>
 	workflow(
 		'Notion done pages report',
-		manual()
-			.andThen(
-				notion.databasePage.getAll({
-					name: 'Get Done Pages',
-					database: DATABASE,
-					where: {
-						match: 'all',
-						conditions: [
-							{ property: 'Status', type: 'status', condition: { op: 'equals', value: 'Done' } },
-							{
-								property: 'Completed',
-								type: 'date',
-								condition: { op: 'on_or_after', value: (_item, $) => $.today.toISODate() },
-							},
-						],
+		manual(),
+		notion.databasePage.getAll({
+			name: 'Get Done Pages',
+			database: DATABASE,
+			where: {
+				match: 'all',
+				conditions: [
+					{ property: 'Status', type: 'status', condition: { op: 'equals', value: 'Done' } },
+					{
+						property: 'Completed',
+						type: 'date',
+						condition: { op: 'on_or_after', value: (_item, $) => $.today.toISODate() },
 					},
+				],
+			},
+		}),
+		httpRequest.send({
+			name: 'Post Done Page',
+			method: 'POST',
+			url: 'https://reports.example.com/api/done',
+			body: {
+				kind: 'json',
+				json: (page) => ({
+					name: page.name,
+					owners: page.property_owners.join(', '),
+					completed: String(page.property_completed?.start).slice(0, 10),
 				}),
-			)
-			.andThen(
-				httpRequest.send({
-					name: 'Post Done Page',
-					method: 'POST',
-					url: 'https://reports.example.com/api/done',
-					body: {
-						kind: 'json',
-						json: (page) => ({
-							name: page.name,
-							owners: page.property_owners.join(', '),
-							completed: String(page.property_completed?.start).slice(0, 10),
-						}),
-					},
-				}),
-			),
+			},
+		}),
 	);
 
 const branchWorkflow = () =>
 	workflow(
 		'Report owners',
-		manual({ name: 'Run' })
-			.andThen(notion.databasePage.getAll({ name: 'Tasks', database: DATABASE }))
-			.branch({
-				name: 'Has owner?',
-				if: (page) => page.property_owners.length > 0,
-				then: (flow) =>
-					flow
-						.andThen(
-							httpRequest.send({
-								name: 'Report',
-								method: 'POST',
-								url: 'https://x.example.com',
-								body: { kind: 'json', json: (page, $) => ({ id: page.id, first: $('Tasks').id }) },
-							}),
-						)
-						.orElse((failed) =>
-							failed.andThen(set({ name: 'Log', fields: { reason: (e) => e.error.message } })),
-						),
-				else: (flow) =>
-					flow.andThen(
-						set({
-							name: 'Unowned',
-							fields: { id: (page) => page.id, source: 'notion' },
-							keep: 'all',
-						}),
-					),
-			})
-			.andThen(
-				node({
-					name: 'Notify',
-					type: 'n8n-nodes-base.slack',
-					version: 2.3,
-					parameters: {
-						text: (_item, $) => `Done: ${$('Tasks').id}`,
-						raw: '={{ $input.first().json.id }}',
-						object: '={{ { "id": $json.id } }}',
-						list: ['a', '={{ $json.id }}'],
-					},
+		manual({ name: 'Run' }),
+		notion.databasePage.getAll({ name: 'Tasks', database: DATABASE }),
+		when(
+			{ name: 'Has owner?', if: (page) => page.property_owners.length > 0 },
+			{
+				then: steps(
+					httpRequest.send({
+						name: 'Report',
+						method: 'POST',
+						url: 'https://x.example.com',
+						body: { kind: 'json', json: (page, $) => ({ id: page.id, first: $('Tasks').id }) },
+					}),
+					onError(set({ name: 'Log', fields: { reason: (e) => e.error.message } })),
+				),
+				else: set({
+					name: 'Unowned',
+					fields: { id: (page) => page.id, source: 'notion' },
+					keep: 'all',
 				}),
-			),
+			},
+		),
+		node({
+			name: 'Notify',
+			type: 'n8n-nodes-base.slack',
+			version: 2.3,
+			parameters: {
+				text: (_item, $) => `Done: ${$('Tasks').id}`,
+				raw: '={{ $input.first().json.id }}',
+				object: '={{ { "id": $json.id } }}',
+				list: ['a', '={{ $json.id }}'],
+			},
+		}),
 	);
 
 describe('decompileWorkflow', () => {
@@ -459,18 +477,17 @@ describe('decompileWorkflow', () => {
 		const posted = (channel: string) =>
 			workflow(
 				'Post',
-				manual().andThen(
-					node({
-						name: 'Post',
-						type: MATTERMOST_TYPE,
-						version: 2.3,
-						parameters: {
-							...POST_SLOT,
-							channelId: { __rl: true, mode: 'id', value: channel },
-							message: '={{ $json.text }}',
-						},
-					}),
-				),
+				manual(),
+				node({
+					name: 'Post',
+					type: MATTERMOST_TYPE,
+					version: 2.3,
+					parameters: {
+						...POST_SLOT,
+						channelId: { __rl: true, mode: 'id', value: channel },
+						message: '={{ $json.text }}',
+					},
+				}),
 			).toJSON();
 		const json = posted('c1');
 		const { source, rebuilt, again } = roundTrip(json, readMattermost);
@@ -491,13 +508,12 @@ describe('decompileWorkflow', () => {
 	it('reads a derived trigger, root node and provider back as their factories', () => {
 		const json = workflow(
 			'Ask',
-			acmeTrigger.trigger({ name: 'Event', topic: 'questions' }).andThen(
-				agent.execute({
-					name: 'Agent',
-					text: '={{ $json.q }}',
-					providers: { model: lmChatAcme.execute({ name: 'Model', model: 'acme-1' }) },
-				}),
-			),
+			acmeTrigger.trigger({ name: 'Event', topic: 'questions' }),
+			agent.execute({
+				name: 'Agent',
+				text: '={{ $json.q }}',
+				providers: { model: lmChatAcme.execute({ name: 'Model', model: 'acme-1' }) },
+			}),
 		).toJSON();
 		const { source, rebuilt, again } = roundTrip(json, readDerived);
 
@@ -528,17 +544,19 @@ describe('decompileWorkflow', () => {
 	it('round-trips a contract trigger and its reply step', () => {
 		const json = workflow(
 			'Echo',
-			webhook
-				.trigger({ name: 'Hook', httpMethod: 'POST', path: 'echo', responseMode: 'responseNode' })
-				.andThen(
-					webhook.respond({
-						name: 'Reply',
-						respondWith: 'json',
-						responseBody: (_item: unknown, $: Dollar<{ Hook: { body: { id: string } } }>) => ({
-							id: $('Hook').body.id,
-						}),
-					}),
-				),
+			webhook.trigger({
+				name: 'Hook',
+				httpMethod: 'POST',
+				path: 'echo',
+				responseMode: 'responseNode',
+			}),
+			webhook.respond({
+				name: 'Reply',
+				respondWith: 'json',
+				responseBody: (_item: unknown, $: Dollar<{ Hook: { body: { id: string } } }>) => ({
+					id: $('Hook').body.id,
+				}),
+			}),
 		).toJSON();
 		const { source, rebuilt, again } = roundTrip(json);
 		const withoutWebhookIds = (saved: WorkflowJSON) =>
@@ -566,30 +584,31 @@ describe('decompileWorkflow', () => {
 	it('round-trips a routed step whose later outputs have flows', () => {
 		const json = workflow(
 			'Known',
-			manual()
-				.route(dataTable.row.exists({ name: 'Known', table: 'leads' }), {
-					exists: (flow) => flow.andThen(set({ name: 'Old', fields: { seen: true } })),
-					missing: (flow) => flow.andThen(set({ name: 'New', fields: { seen: false } })),
-				})
-				.andThen(set({ name: 'After', fields: { done: true } })),
+			manual(),
+			route(dataTable.row.exists({ name: 'Known', table: 'leads' }), {
+				exists: set({ name: 'Old', fields: { seen: true } }),
+				missing: set({ name: 'New', fields: { seen: false } }),
+			}),
+			set({ name: 'After', fields: { done: true } }),
 		).toJSON();
 		const { source, rebuilt, again } = roundTrip(json);
 
 		expect(withoutIds(rebuilt)).toEqual(withoutIds(json));
 		expect(again).toBe(source);
-		expect(source).toContain('.route(dataTable.row.exists({');
-		expect(source).toContain('missing: (flow) => flow');
+		expect(source).toContain('  route(dataTable.row.exists({');
+		expect(source).toContain('missing: set({');
 
 		const onlyMissing = workflow(
 			'Missing',
-			manual().route(dataTable.row.exists({ name: 'Known', table: 'leads' }), {
-				exists: (flow) => flow,
-				missing: (flow) => flow.andThen(set({ name: 'New', fields: { seen: false } })),
+			manual(),
+			route(dataTable.row.exists({ name: 'Known', table: 'leads' }), {
+				exists: steps(),
+				missing: set({ name: 'New', fields: { seen: false } }),
 			}),
 		).toJSON();
 		const missing = roundTrip(onlyMissing);
 		expect(withoutIds(missing.rebuilt)).toEqual(withoutIds(onlyMissing));
-		expect(missing.source).toContain('exists: (flow) => flow,');
+		expect(missing.source).toContain('exists: steps(),');
 	});
 
 	it('round-trips a branch, an error output, a join, and the node() escape hatch', () => {
@@ -598,17 +617,19 @@ describe('decompileWorkflow', () => {
 
 		expect(withoutIds(rebuilt)).toEqual(withoutIds(json));
 		expect(again).toBe(source);
-		expect(source).toContain('.branch({');
+		expect(source).toContain('  when({');
 		expect(source).toContain('if: (item) => item.property_owners.length > 0,');
-		expect(source).toContain('.orElse((failed) => failed');
+		expect(source).toContain('then: steps(');
+		expect(source).toContain('onError(set({');
 		expect(source).toContain('keep: "all"');
 		expect(source).toContain('source: "notion"');
 		expect(source).toContain('first: $("Tasks").id');
-		// A node() item is Loose, so its expressions stay strings for the expression check.
-		expect(source).toContain('text: "=Done: {{ $(\\"Tasks\\").item.json.id }}",');
-		expect(source).toContain('raw: "={{ $input.first().json.id }}",');
-		expect(source).toContain('object: "={{ { \\"id\\": $json.id } }}",');
-		expect(source).toContain('"={{ $json.id }}",');
+		// A node() item is Loose, so its expressions stay expr() calls for the expression check.
+		expect(source).toContain('text: expr("Done: {{ $(\\"Tasks\\").item.json.id }}"),');
+		expect(source).toContain('raw: expr("{{ $input.first().json.id }}"),');
+		expect(source).toContain('object: expr("{{ { \\"id\\": $json.id } }}"),');
+		expect(source).toContain('expr("{{ $json.id }}"),');
+		expect(source).not.toContain('"={{');
 	});
 
 	it('round-trips a binary of the item and of an earlier node', () => {
@@ -637,34 +658,32 @@ describe('decompileWorkflow', () => {
 
 		const json = workflow(
 			'Files',
-			manual().andThen(
-				node({
-					name: 'Upload',
-					type: 'n8n-nodes-base.noOp',
-					version: 1,
-					parameters: {
-						file: '={{ $binary.data }}',
-						first: '={{ $("Start").item.binary.data.fileName }}',
-						field: '={{ $json.binary }}',
-					},
-				}),
-			),
+			manual(),
+			node({
+				name: 'Upload',
+				type: 'n8n-nodes-base.noOp',
+				version: 1,
+				parameters: {
+					file: '={{ $binary.data }}',
+					first: '={{ $("Start").item.binary.data.fileName }}',
+					field: '={{ $json.binary }}',
+				},
+			}),
 		).toJSON();
 		const { source, rebuilt, again } = roundTrip(json);
 
 		expect(withoutIds(rebuilt)).toEqual(withoutIds(json));
 		expect(again).toBe(source);
-		expect(source).toContain('file: "={{ $binary.data }}",');
-		expect(source).toContain('first: "={{ $(\\"Start\\").item.binary.data.fileName }}",');
-		expect(source).toContain('field: "={{ $json.binary }}",');
+		expect(source).toContain('file: expr("{{ $binary.data }}"),');
+		expect(source).toContain('first: expr("{{ $(\\"Start\\").item.binary.data.fileName }}"),');
+		expect(source).toContain('field: expr("{{ $json.binary }}"),');
 	});
 
 	it('round-trips mixed expression text with characters that a template literal escapes', () => {
 		const sent = workflow(
 			'Escapes',
-			manual().andThen(
-				httpRequest.send({ name: 'Send', method: 'POST', url: 'https://x.example.com' }),
-			),
+			manual(),
+			httpRequest.send({ name: 'Send', method: 'POST', url: 'https://x.example.com' }),
 		).toJSON();
 		const url = '=https://x.example.com/a`b`d\\e\r\n/{{ $json.id }}';
 		const json = {
@@ -699,7 +718,7 @@ describe('decompileWorkflow', () => {
 		expect(source).not.toContain('authentication');
 	});
 
-	it('keeps an expression without a lambda form as a string in the typed contract step', () => {
+	it('keeps an expression without a lambda form as expr() in the typed contract step', () => {
 		const json = notionWorkflow().toJSON();
 		const changed = {
 			...json,
@@ -711,7 +730,7 @@ describe('decompileWorkflow', () => {
 		};
 		const { source, rebuilt } = roundTrip(changed);
 		expect(source).toContain('notion.databasePage.getAll({');
-		expect(source).toContain('database: "={{ $input.first().json.db }}"');
+		expect(source).toContain('database: expr("{{ $input.first().json.db }}")');
 		expect(withoutIds(rebuilt)).toEqual(withoutIds(changed));
 	});
 
@@ -745,9 +764,8 @@ describe('decompileWorkflow', () => {
 		const composedWorkflow = () =>
 			workflow(
 				'Composed Notion',
-				manual().andThen(
-					composedNotion.databasePage.getAll({ name: 'Get Pages', database: DATABASE, limit: 5 }),
-				),
+				manual(),
+				composedNotion.databasePage.getAll({ name: 'Get Pages', database: DATABASE, limit: 5 }),
 			).toJSON();
 
 		it('reads the owned slot back as the typed step', () => {
@@ -779,65 +797,63 @@ describe('decompileWorkflow', () => {
 	it('round-trips an AI agent with its providers', () => {
 		const json = workflow(
 			'Answer',
-			manual().andThen(
-				node({
-					name: 'Agent',
-					type: '@n8n/n8n-nodes-langchain.agent',
-					version: 2.2,
-					parameters: { promptType: 'define', text: (item) => item.question },
-					providers: {
-						model: provider({
-							name: 'Model',
-							type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-							version: 1.2,
-							parameters: { model: 'gpt-4o-mini' },
+			manual(),
+			node({
+				name: 'Agent',
+				type: '@n8n/n8n-nodes-langchain.agent',
+				version: 2.2,
+				parameters: { promptType: 'define', text: (item) => item.question },
+				providers: {
+					model: provider({
+						name: 'Model',
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						version: 1.2,
+						parameters: { model: 'gpt-4o-mini' },
+					}),
+					tools: [
+						provider({
+							name: 'Calculator',
+							type: '@n8n/n8n-nodes-langchain.toolCalculator',
+							version: 1,
 						}),
-						tools: [
-							provider({
-								name: 'Calculator',
-								type: '@n8n/n8n-nodes-langchain.toolCalculator',
-								version: 1,
-							}),
-							provider({
-								name: 'Store',
-								type: '@n8n/n8n-nodes-langchain.toolVectorStore',
-								version: 1,
-								providers: {
-									vectorStore: provider({
-										name: 'Vectors',
-										type: '@n8n/n8n-nodes-langchain.vectorStoreInMemory',
-										version: 1,
-									}),
-								},
-							}),
-						],
-					},
-				}),
-			),
+						provider({
+							name: 'Store',
+							type: '@n8n/n8n-nodes-langchain.toolVectorStore',
+							version: 1,
+							providers: {
+								vectorStore: provider({
+									name: 'Vectors',
+									type: '@n8n/n8n-nodes-langchain.vectorStoreInMemory',
+									version: 1,
+								}),
+							},
+						}),
+					],
+				},
+			}),
 		).toJSON();
 		const { source, rebuilt, again } = roundTrip(json);
 
 		expect(withoutIds(rebuilt)).toEqual(withoutIds(json));
 		expect(again).toBe(source);
 		expect(source).toContain(
-			"import { workflow, manual, node, provider } from '@n8n/workflow-sdk/next';",
+			"import { workflow, manual, node, provider, expr } from '@n8n/workflow-sdk/next';",
 		);
 		expect(source).toContain('model: provider({');
 		expect(source).toContain('tools: [');
 		expect(source).toContain('vectorStore: provider({');
-		expect(source).toContain('text: "={{ $json.question }}",');
+		expect(source).toContain('text: expr("{{ $json.question }}"),');
 	});
 
 	it('round-trips a contract AI node with its contract provider in the slot field', () => {
 		const json = workflow(
 			'Answer',
-			manual().andThen(
-				ai.agent({
-					name: 'Agent',
-					model: openAi.chatModel({ name: 'Model', model: 'gpt-5-mini' }),
-					prompt: 'Hi',
-				}),
-			),
+			manual(),
+			ai.agent({
+				name: 'Agent',
+				model: openAi.chatModel({ name: 'Model', model: 'gpt-5-mini' }),
+				prompt: 'Hi',
+			}),
 		).toJSON();
 		const { source, rebuilt, again } = roundTrip(json);
 
@@ -865,25 +881,21 @@ describe('decompileWorkflow', () => {
 			});
 		const json = workflow(
 			'Research',
-			manual()
-				.andThen(
-					ai.agent({
-						name: 'Agent',
-						model: openAi.chatModel({ name: 'Model', model: 'gpt-5-mini' }),
-						tools: [fetchPage()],
-						prompt: 'Hi',
-					}),
-				)
-				.andThen(
-					agent.execute({
-						name: 'Legacy Agent',
-						text: 'Hi',
-						providers: {
-							model: lmChatAcme.execute({ name: 'Legacy Model', model: 'acme-1' }),
-							tools: [{ ...fetchPage(), spec: { ...fetchPage().spec, name: 'Fetch again' } }],
-						},
-					}),
-				),
+			manual(),
+			ai.agent({
+				name: 'Agent',
+				model: openAi.chatModel({ name: 'Model', model: 'gpt-5-mini' }),
+				tools: [fetchPage()],
+				prompt: 'Hi',
+			}),
+			agent.execute({
+				name: 'Legacy Agent',
+				text: 'Hi',
+				providers: {
+					model: lmChatAcme.execute({ name: 'Legacy Model', model: 'acme-1' }),
+					tools: [{ ...fetchPage(), spec: { ...fetchPage().spec, name: 'Fetch again' } }],
+				},
+			}),
 		).toJSON();
 		const tool = json.nodes.find(({ name }) => name === 'Fetch page');
 		expect(tool?.parameters).toEqual({
@@ -914,19 +926,18 @@ describe('decompileWorkflow', () => {
 	it('round-trips escapes in a fromModel() description', () => {
 		const json = workflow(
 			'Escapes',
-			manual().andThen(
-				ai.agent({
-					name: 'Agent',
-					model: openAi.chatModel({ name: 'Model', model: 'gpt-5-mini' }),
-					tools: [
-						httpRequest.getTool({
-							name: 'Fetch page',
-							url: next.fromModel('The "page" URL\nwith \\ and é'),
-						}),
-					],
-					prompt: 'Hi',
-				}),
-			),
+			manual(),
+			ai.agent({
+				name: 'Agent',
+				model: openAi.chatModel({ name: 'Model', model: 'gpt-5-mini' }),
+				tools: [
+					httpRequest.getTool({
+						name: 'Fetch page',
+						url: next.fromModel('The "page" URL\nwith \\ and é'),
+					}),
+				],
+				prompt: 'Hi',
+			}),
 		).toJSON();
 		const { source, rebuilt } = roundTrip(json);
 
@@ -940,54 +951,269 @@ describe('decompileWorkflow', () => {
 			method: 'POST',
 			url: next.fromModel() as unknown as string,
 		});
-		expect(() => workflow('Wrong', manual().andThen(step)).toJSON()).toThrow(
+		expect(() => workflow('Wrong', manual(), step).toJSON()).toThrow(
 			'url: fromModel() fills a field of a tool only',
 		);
+	});
+
+	it('reads an error branch that ends as onError, and one that continues as recover', () => {
+		const fetch = () => node({ name: 'Fetch', type: 'n8n-nodes-base.httpRequest', version: 4.2 });
+		const alert = () => set({ name: 'Slack', fields: { alerted: true } });
+		const summarize = () => set({ name: 'Summarize', fields: { done: true } });
+		const ended = workflow('Sweep', manual(), fetch(), onError(alert()), summarize()).toJSON();
+		const rejoined = workflow('Sweep', manual(), fetch(), recover(alert()), summarize()).toJSON();
+
+		for (const [json, macro] of [
+			[ended, '  onError(set({'],
+			[rejoined, '  recover(set({'],
+		] as const) {
+			const { source, rebuilt, again } = roundTrip(json);
+			expect(withoutIds(rebuilt)).toEqual(withoutIds(json));
+			expect(again).toBe(source);
+			expect(source).toContain(macro);
+		}
+		expect(ended.connections.Slack).toBeUndefined();
+	});
+
+	it('reads an editor-built loop with IF branches that return to it, per node', () => {
+		const at = (name: string, output = 0) => ({ [name]: output });
+		const nodes: WorkflowJSON['nodes'] = [
+			{
+				id: '1',
+				name: 'Every Morning',
+				type: 'n8n-nodes-base.scheduleTrigger',
+				typeVersion: 1.2,
+				position: [0, 0],
+				parameters: { rule: { interval: [{ field: 'days', triggerAtHour: 8 }] } },
+			},
+			{
+				id: '2',
+				name: 'Split Out Orders',
+				type: 'n8n-nodes-base.splitOut',
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: { options: {}, fieldToSplitOut: 'orders' },
+			},
+			{
+				id: '3',
+				name: 'Loop Over Orders',
+				type: 'n8n-nodes-base.splitInBatches',
+				typeVersion: 3,
+				position: [0, 0],
+				parameters: { options: {}, batchSize: 1 },
+			},
+			{
+				id: '4',
+				name: 'Look Up Order',
+				type: 'n8n-nodes-base.dataTable',
+				typeVersion: 1.1,
+				position: [0, 0],
+				parameters: { resource: 'row', operation: 'get', limit: 1 },
+				alwaysOutputData: true,
+			},
+			{
+				id: '5',
+				name: 'Order Already Known?',
+				type: 'n8n-nodes-base.if',
+				typeVersion: 2.2,
+				position: [0, 0],
+				parameters: { conditions: { conditions: [{ leftValue: '={{ $json.order_id }}' }] } },
+			},
+			{
+				id: '6',
+				name: 'Refresh Last Seen',
+				type: 'n8n-nodes-base.dataTable',
+				typeVersion: 1.1,
+				position: [0, 0],
+				parameters: { resource: 'row', operation: 'update' },
+			},
+			{
+				id: '7',
+				name: 'Add New Order',
+				type: 'n8n-nodes-base.dataTable',
+				typeVersion: 1.1,
+				position: [0, 0],
+				parameters: {
+					resource: 'row',
+					operation: 'insert',
+					columns: { value: { order_id: "={{ $('Loop Over Orders').item.json.id }}" } },
+				},
+			},
+			{
+				id: '8',
+				name: 'Email Ops',
+				type: 'n8n-nodes-base.gmail',
+				typeVersion: 2.1,
+				position: [0, 0],
+				parameters: { sendTo: 'ops@acme-demo.test', subject: '=New order {{ $json.id }}' },
+			},
+		];
+		const main = (...targets: Array<Array<Record<string, number>>>) => ({
+			main: targets.map((list) =>
+				list.flatMap((entry) =>
+					Object.entries(entry).map(([node, index]) => ({ node, type: 'main' as const, index })),
+				),
+			),
+		});
+		const json: WorkflowJSON = {
+			name: 'Order Sync Log Updater',
+			nodes,
+			connections: {
+				'Every Morning': main([at('Split Out Orders')]),
+				'Split Out Orders': main([at('Loop Over Orders')]),
+				'Loop Over Orders': main([], [at('Look Up Order')]),
+				'Look Up Order': main([at('Order Already Known?')]),
+				'Order Already Known?': main([at('Refresh Last Seen')], [at('Add New Order')]),
+				'Refresh Last Seen': main([at('Loop Over Orders')]),
+				'Add New Order': main([at('Email Ops')]),
+				'Email Ops': main([at('Loop Over Orders')]),
+			},
+		};
+		const { source, rebuilt, again } = roundTrip(json);
+		const placed = (saved: WorkflowJSON) => ({
+			connections: saved.connections,
+			nodes: saved.nodes.map(({ id: _id, position: _position, ...rest }) => rest),
+		});
+
+		expect(placed(rebuilt)).toEqual(placed(json));
+		expect(again).toBe(source);
+		expect(source).toMatch(
+			/ forEach\(\{\s+name: "Loop Over Orders",\s+batchSize: 1,\s+options: \{\},/,
+		);
+		expect(source).toContain('    route(node({');
+		expect(source).toContain('outputs: [\n');
+		expect(source).toContain('output1: steps(');
+		expect(source).toContain('alwaysOutputData: true,');
+		expect(source).toContain('subject: expr("New order {{ $json.id }}"),');
+	});
+
+	it('reads the binary key of a binary field as the lambda that reads it', () => {
+		const saved = (file: string): WorkflowJSON => ({
+			name: 'Upload',
+			nodes: [
+				{
+					id: '1',
+					name: 'Start',
+					type: 'n8n-nodes-base.manualTrigger',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+				},
+				{
+					id: '2',
+					name: 'Upload',
+					type: UPLOAD_TYPE,
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: { file },
+				},
+			],
+			connections: { Start: { main: [[{ node: 'Upload', type: 'main', index: 0 }]] } },
+		});
+		const plain = decompileWorkflow(saved('data'), factories);
+		expect(plain).toContain('drive.file.upload({');
+		expect(plain).toContain('file: (item) => item.binary.data,');
+		expect(decompileWorkflow(saved('={{ $binary.data }}'), factories)).toBe(plain);
+		expect(decompileWorkflow(saved('my file'), factories)).toContain(
+			'file: (item) => item.binary["my file"],',
+		);
+	});
+
+	it('puts positions past the workflow() limit into steps(), and lists each trigger', () => {
+		const names = Array.from({ length: 62 }, (_, index) => `Step ${index}`);
+		const setNode = (name: string, index: number) => ({
+			id: name,
+			name,
+			type: '@n8n/nodes-base-next.coreSet',
+			typeVersion: 1,
+			position: [index * 100, 0] as [number, number],
+			parameters: { fields: { n: index }, include: { mode: 'none' } },
+		});
+		const trigger = (name: string) => ({
+			id: name,
+			name,
+			type: 'n8n-nodes-base.manualTrigger',
+			typeVersion: 1,
+			position: [0, 0] as [number, number],
+			parameters: {},
+		});
+		const to = (node: string) => ({ main: [[{ node, type: 'main' as const, index: 0 }]] });
+		const chain = ['Start', ...names];
+		const saved = workflow(
+			'Long',
+			manual(),
+			set({ name: 'Other', fields: { n: 0 } }),
+			manual({ name: 'Again' }),
+		).toJSON();
+		const json: WorkflowJSON = {
+			...saved,
+			nodes: [trigger('Start'), ...names.map(setNode), trigger('Again'), setNode('Other', 0)],
+			connections: {
+				...Object.fromEntries(
+					chain.slice(0, -1).map((name, index) => [name, to(chain[index + 1])]),
+				),
+				Again: to('Other'),
+			},
+		};
+		const { source, rebuilt, again } = roundTrip(json);
+
+		const sorted = (saved: WorkflowJSON) => saved.nodes.map(({ name }) => name).sort();
+		expect(sorted(rebuilt)).toEqual(sorted(json));
+		expect(rebuilt.connections).toEqual(json.connections);
+		expect(again).toBe(source);
+		expect(source.match(/steps\(/g)).toHaveLength(2);
+		expect(source).toContain('  manual({ name: "Again" }),\n');
+	});
+
+	it('reads a set field with an expression that has no lambda form as expr()', () => {
+		const json = workflow(
+			'Fields',
+			manual(),
+			set({ name: 'Fields', fields: { first: expr('{{ $input.first().json.id }}'), n: 1 } }),
+		).toJSON();
+		const { source, rebuilt, again } = roundTrip(json);
+		expect(withoutIds(rebuilt)).toEqual(withoutIds(json));
+		expect(again).toBe(source);
+		expect(source).toContain('set({');
+		expect(source).toContain('first: expr("{{ $input.first().json.id }}"),');
 	});
 
 	it('round-trips node settings on a trigger, a typed step, node(), and a provider', () => {
 		const json = workflow(
 			'Settings',
-			webhook
-				.trigger({ name: 'Hook', path: 'in', settings: { notes: 'From the CRM' } })
-				.andThen(
-					notion.databasePage.getAll({
-						name: 'Pages',
-						database: DATABASE,
-						settings: { retryOnFail: true, maxTries: 3, waitBetweenTries: 2000 },
+			webhook.trigger({ name: 'Hook', path: 'in', settings: { notes: 'From the CRM' } }),
+			notion.databasePage.getAll({
+				name: 'Pages',
+				database: DATABASE,
+				settings: { retryOnFail: true, maxTries: 3, waitBetweenTries: 2000 },
+			}),
+			node({
+				name: 'Agent',
+				type: '@n8n/n8n-nodes-langchain.agent',
+				version: 2.2,
+				settings: {
+					alwaysOutputData: true,
+					executeOnce: true,
+					onError: 'continueRegularOutput',
+					notes: 'Answers once',
+					notesInFlow: true,
+				},
+				providers: {
+					model: provider({
+						name: 'Model',
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						version: 1.2,
+						settings: { notes: 'Cheap model' },
 					}),
-				)
-				.andThen(
-					node({
-						name: 'Agent',
-						type: '@n8n/n8n-nodes-langchain.agent',
-						version: 2.2,
-						settings: {
-							alwaysOutputData: true,
-							executeOnce: true,
-							onError: 'continueRegularOutput',
-							notes: 'Answers once',
-							notesInFlow: true,
-						},
-						providers: {
-							model: provider({
-								name: 'Model',
-								type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-								version: 1.2,
-								settings: { notes: 'Cheap model' },
-							}),
-						},
-					}),
-				)
-				.andThen(
-					node({
-						name: 'Send',
-						type: 'n8n-nodes-base.noOp',
-						version: 1,
-						settings: { onError: 'stopWorkflow', retryOnFail: true },
-					}),
-				)
-				.orElse((failed) => failed.andThen(set({ name: 'Log', fields: { failed: true } }))),
+				},
+			}),
+			node({
+				name: 'Send',
+				type: 'n8n-nodes-base.noOp',
+				version: 1,
+				settings: { onError: 'stopWorkflow', retryOnFail: true },
+			}),
+			onError(set({ name: 'Log', fields: { failed: true } })),
 		).toJSON();
 		const byName = new Map(json.nodes.map((n) => [n.name, n]));
 		expect(byName.get('Hook')).toMatchObject({ notes: 'From the CRM' });
@@ -997,7 +1223,7 @@ describe('decompileWorkflow', () => {
 			notesInFlow: true,
 		});
 		expect(byName.get('Model')).toMatchObject({ notes: 'Cheap model' });
-		// The error output of orElse wins over the setting.
+		// The error output of onError wins over the setting.
 		expect(byName.get('Send')).toMatchObject({ onError: 'continueErrorOutput', retryOnFail: true });
 
 		const { source, rebuilt, again } = roundTrip(json);
@@ -1009,14 +1235,11 @@ describe('decompileWorkflow', () => {
 		expect(source).toContain('notion.databasePage.getAll({');
 		expect(source).toContain('retryOnFail: true,');
 		expect(source).toContain('onError: "continueRegularOutput",');
-		expect(source).toContain('.orElse((failed) => failed');
+		expect(source).toContain('  onError(set({');
 	});
 
 	it('keeps a built-in step with node settings out of its region form', () => {
-		const json = workflow(
-			'Fields',
-			manual().andThen(set({ name: 'Fields', fields: { a: 1 } })),
-		).toJSON();
+		const json = workflow('Fields', manual(), set({ name: 'Fields', fields: { a: 1 } })).toJSON();
 		const withNotes = {
 			...json,
 			nodes: json.nodes.map((n) => ({ ...n, notes: `About ${n.name}` })),
@@ -1033,14 +1256,13 @@ describe('decompileWorkflow', () => {
 			provider({ name, type: '@n8n/n8n-nodes-langchain.lmChatOpenAi', version: 1.2 });
 		const json = workflow(
 			'Answer',
-			manual().andThen(
-				node({
-					name: 'Agent',
-					type: '@n8n/n8n-nodes-langchain.agent',
-					version: 2.2,
-					providers: { model: model('Model') },
-				}),
-			),
+			manual(),
+			node({
+				name: 'Agent',
+				type: '@n8n/n8n-nodes-langchain.agent',
+				version: 2.2,
+				providers: { model: model('Model') },
+			}),
 		).toJSON();
 		const fallback = {
 			...json,
@@ -1109,14 +1331,14 @@ describe('locateNextNodes', () => {
 			expect(text.includes(`name: ${JSON.stringify(name)}`) || text.includes('({')).toBe(true);
 		}
 		expect(lines[(located.find(({ name }) => name === 'Has owner?')?.line ?? 0) - 1]).toContain(
-			'.branch({',
+			'when({',
 		);
 	});
 
 	it('names the type of a node() call only', () => {
-		const located = locateNextNodes(`manual()
-	.andThen(node({ name: 'Mail', type: 'n8n-nodes-base.gmail', version: 2.1 }))
-	.andThen(set({ name: 'Fields', fields: {} }));`);
+		const located = locateNextNodes(`workflow('Mail', manual(),
+	node({ name: 'Mail', type: 'n8n-nodes-base.gmail', version: 2.1 }),
+	set({ name: 'Fields', fields: {} }));`);
 		expect(located).toEqual([
 			{ name: 'Mail', line: 2, type: 'n8n-nodes-base.gmail' },
 			{ name: 'Fields', line: 3 },
@@ -1125,7 +1347,7 @@ describe('locateNextNodes', () => {
 
 	it('does not name the type of a typed step with a type field', () => {
 		expect(
-			locateNextNodes("manual().andThen(crypto.execute({ name: 'Hash', type: 'SHA256' }));"),
+			locateNextNodes("workflow('W', manual(), crypto.execute({ name: 'Hash', type: 'SHA256' }));"),
 		).toEqual([{ name: 'Hash', line: 1 }]);
 	});
 });

@@ -15,7 +15,7 @@ import { markdownRequests } from '../markdown';
 const lastNewline = (response: unknown) =>
 	Math.max(
 		1,
-		...(parse(documentResponse, response).body?.content ?? []).map(({ endIndex = 1 }) => endIndex),
+		...(parse(documentResponse, response).body?.content ?? []).map(({ endIndex }) => endIndex ?? 1),
 	) - 1;
 
 export const updateDocument = document.action('update', {

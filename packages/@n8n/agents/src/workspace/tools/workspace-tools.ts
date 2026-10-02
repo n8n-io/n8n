@@ -1,5 +1,5 @@
 import type { BuiltTool } from '../../types/sdk/tool';
-import type { WorkspaceFilesystem, WorkspaceSandbox } from '../types';
+import type { WorkspaceAfterWrite, WorkspaceFilesystem, WorkspaceSandbox } from '../types';
 import { createAppendFileTool } from './append-file';
 import { createCopyFileTool } from './copy-file';
 import { createDeleteFileTool } from './delete-file';
@@ -18,6 +18,7 @@ import { createWriteFileTool } from './write-file';
 interface WorkspaceLike {
 	filesystem?: WorkspaceFilesystem;
 	sandbox?: WorkspaceSandbox;
+	afterWrite?: WorkspaceAfterWrite;
 }
 
 export const CORE_WORKSPACE_TOOL_NAMES: ReadonlySet<string> = new Set([
@@ -34,8 +35,8 @@ export function createWorkspaceTools(workspace: WorkspaceLike): BuiltTool[] {
 	if (workspace.filesystem) {
 		tools.push(createReadFileTool(workspace.filesystem));
 		tools.push(createReadToolResultTool(workspace.filesystem));
-		tools.push(createStrReplaceFileTool(workspace.filesystem));
-		tools.push(createWriteFileTool(workspace.filesystem));
+		tools.push(createStrReplaceFileTool(workspace.filesystem, workspace.afterWrite));
+		tools.push(createWriteFileTool(workspace.filesystem, workspace.afterWrite));
 		tools.push(createListFilesTool(workspace.filesystem));
 		tools.push(createFileStatTool(workspace.filesystem));
 		tools.push(createMkdirTool(workspace.filesystem));

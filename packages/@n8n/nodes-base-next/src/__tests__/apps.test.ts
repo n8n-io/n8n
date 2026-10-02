@@ -1,4 +1,7 @@
-import { validate } from '@n8n/node-sdk';
+import { toNodeType, validate } from '@n8n/node-sdk';
+import type { IExecuteFunctions } from 'n8n-workflow';
+
+import { getIssue } from '../nodes/github/actions/issue.get';
 
 import { issueOf, issuesPath } from '../nodes/github/issue';
 import { documentIdOf, documentPath } from '../nodes/google-docs/google-docs.node';
@@ -105,7 +108,68 @@ describe('path segments and responses', () => {
 		expect(() => driveIdOf('a/b')).toThrow('Not a Google Drive ID or URL');
 	});
 
-	it('types an issue response and names the field that fails', () => {
-		expect(() => issueOf({ id: 1, title: 'x' })).toThrow(/response\.number/);
+	it('keeps the output fields of an issue and drops the others', () => {
+		expect(issueOf({ id: 1, title: 'x', node_id: 'I_1' })).toEqual({ id: 1, title: 'x' });
+	});
+});
+
+describe('github.issue.get response drift', () => {
+	// The sweep-409 mock body: no `locked`, and `pull_request: null`.
+	const sweepIssue = {
+		id: 1101,
+		['number']: 101,
+		title: 'Login returns 500',
+		state: 'open',
+		html_url: 'https://github.com/acme/widgets/issues/101',
+		body: null,
+		user: { login: 'ada', id: 7 },
+		labels: [{ id: 10, name: 'bug', color: 'd73a4a' }],
+		assignees: [],
+		comments: 0,
+		created_at: '2026-09-01T09:00:00Z',
+		updated_at: '2026-09-02T09:00:00Z',
+		closed_at: null,
+		milestone: null,
+		pull_request: null,
+	};
+	const execute = async (response: unknown) => {
+		const hints: unknown[] = [];
+		const parameters: Record<string, unknown> = {
+			authentication: 'githubApi',
+			owner: 'acme',
+			repository: 'widgets',
+			issueNumber: 101,
+		};
+		const context = {
+			getInputData: () => [{ json: {} }],
+			getNode: () => ({ name: 'GitHub', credentials: { githubApi: { id: '1', name: 'GitHub' } } }),
+			getNodeParameter: (name: string) => parameters[name],
+			getCredentials: async () => ({ server: 'https://api.github.com', accessToken: 'test' }),
+			continueOnFail: () => false,
+			addExecutionHints: (...added: unknown[]) => hints.push(...added),
+			helpers: { httpRequestWithAuthentication: async () => response },
+		};
+		const NodeType = toNodeType(getIssue);
+		// The runtime reads only these members.
+		const outputs = await new NodeType().execute?.call(context as unknown as IExecuteFunctions);
+		const items = Array.isArray(outputs) ? (outputs[0] ?? []) : [];
+		return { items: items.map((item: { json: unknown }) => item.json), hints };
+	};
+
+	it('emits the issue without a warning: the schema allows both fields', async () => {
+		const { items, hints } = await execute(sweepIssue);
+		expect(items).toEqual([sweepIssue]);
+		expect(hints).toEqual([]);
+	});
+
+	it('emits an issue with a wrong field type and warns once with its path', async () => {
+		const { items, hints } = await execute({ ...sweepIssue, comments: 'three' });
+		expect(items).toEqual([{ ...sweepIssue, comments: 'three' }]);
+		expect(hints).toEqual([
+			{
+				type: 'warning',
+				message: expect.stringContaining('output[0].comments: does not match any allowed shape'),
+			},
+		]);
 	});
 });

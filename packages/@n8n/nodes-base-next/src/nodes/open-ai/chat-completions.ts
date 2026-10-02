@@ -79,7 +79,7 @@ const messageOf = (message: ChatMessage) => {
 
 /** The arguments of a tool call: a JSON object, or none. */
 const argsOf = (text: string): Record<string, unknown> =>
-	text.trim() === '' ? {} : parse(json(), JSON.parse(text), 'tool arguments');
+	text.trim() === '' ? {} : parse(json(), JSON.parse(text));
 
 /**
  * A chat model on the Chat Completions API (`POST {base}/chat/completions`), which OpenAI and
@@ -128,21 +128,21 @@ export function chatCompletionsModel(
 				},
 			});
 			const { choices, usage } = parse(completionSchema, body);
-			const [choice] = choices;
+			const [choice] = choices ?? [];
 			if (!choice) throw new Error(`${model} gave no reply`);
-			const { content, tool_calls: calls } = choice.message;
+			const { content, tool_calls: calls } = choice.message ?? {};
 			return {
 				text:
 					typeof content === 'string'
 						? content
 						: (content ?? []).map((part) => part.text ?? '').join(''),
-				toolCalls: (calls ?? []).map((call) => ({
-					id: call.id ?? call.function.name,
-					name: call.function.name,
-					args: argsOf(call.function.arguments),
-				})),
+				toolCalls: (calls ?? []).flatMap(({ id, function: call }) =>
+					call?.name
+						? [{ id: id ?? call.name, name: call.name, args: argsOf(call.arguments ?? '') }]
+						: [],
+				),
 				finishReason: choice.finish_reason ?? 'stop',
-				...(usage
+				...(typeof usage?.prompt_tokens === 'number' && typeof usage.completion_tokens === 'number'
 					? { usage: { inputTokens: usage.prompt_tokens, outputTokens: usage.completion_tokens } }
 					: {}),
 			};

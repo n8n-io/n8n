@@ -1,13 +1,15 @@
-import { arr, binary, obj, parse, ref, str } from '@n8n/node-sdk';
+import { arr, binary, loose, obj, ref, str } from '@n8n/node-sdk';
 
 import { file, slackChannelId, slackGet, slackPost, slackResponse, slackTs } from '../slack.node';
 
-const slackFile = obj({
-	id: str(),
-	title: str().optional(),
-	name: str().optional(),
-	permalink: str().optional(),
-}).with({ additionalProperties: true });
+const slackFile = loose(
+	obj({
+		id: str(),
+		title: str().optional(),
+		name: str().optional(),
+		permalink: str().optional(),
+	}).with({ additionalProperties: true }),
+);
 
 const uploadTarget = slackResponse({ upload_url: str(), file_id: str() });
 
@@ -36,6 +38,7 @@ export const uploadSlackFile = file.action('upload', {
 		if (meta.bytes === undefined) throw new Error('The size of the file is not known');
 		const query = { filename: fileName, length: meta.bytes };
 		const target = await slackGet(http, '/files.getUploadURLExternal', query, uploadTarget);
+		if (!target.upload_url) throw new Error('Slack gave no upload URL for the file');
 		await http.request({ method: 'POST', url: target.upload_url, body: input.file });
 		const body = {
 			files: [{ id: target.file_id, title: input.title ?? fileName }],
@@ -44,7 +47,6 @@ export const uploadSlackFile = file.action('upload', {
 			...(input.threadTs ? { thread_ts: input.threadTs } : {}),
 		};
 		const { files } = await slackPost(http, '/files.completeUploadExternal', body, completed);
-		// minItems: 1 holds at run time; the array type does not carry it.
-		return parse(slackFile, files[0], 'files[0]');
+		return files?.[0] ?? {};
 	},
 });

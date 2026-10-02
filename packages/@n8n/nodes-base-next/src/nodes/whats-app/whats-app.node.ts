@@ -6,6 +6,7 @@ import {
 	defineResource,
 	int,
 	isHttpError,
+	loose,
 	matches,
 	obj,
 	parse,
@@ -68,17 +69,20 @@ export const message = whatsApp.resource('message', {
 	},
 });
 
-export const sent = obj({
-	messaging_product: str(),
-	contacts: arr(
-		obj({ input: str(), wa_id: str().hint('WhatsApp ID of the recipient') }).with({
-			additionalProperties: true,
-		}),
-	),
-	messages: arr(
-		obj({ id: str().hint('Message ID, e.g. wamid.HBgM…') }).with({ additionalProperties: true }),
-	),
-}).with({ additionalProperties: true });
+/** The send response. The Graph API may leave out a field, so each one is optional and nullable. */
+export const sent = loose(
+	obj({
+		messaging_product: str(),
+		contacts: arr(
+			obj({ input: str(), wa_id: str().hint('WhatsApp ID of the recipient') }).with({
+				additionalProperties: true,
+			}),
+		),
+		messages: arr(
+			obj({ id: str().hint('Message ID, e.g. wamid.HBgM…') }).with({ additionalProperties: true }),
+		),
+	}).with({ additionalProperties: true }),
+);
 
 /** A Graph API error body. */
 const graphError = obj({
