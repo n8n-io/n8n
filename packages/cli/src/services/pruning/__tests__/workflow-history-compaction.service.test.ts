@@ -6,10 +6,7 @@ import type { DbConnection, WorkflowHistoryRepository } from '@n8n/db';
 import type { InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
-import {
-	getCompactionWindowDeltas,
-	WorkflowHistoryCompactionService,
-} from '../workflow-history-compaction.service';
+import { WorkflowHistoryCompactionService } from '../workflow-history-compaction.service';
 
 describe('WorkflowHistoryCompactionService', () => {
 	const dbConnection = mock<DbConnection>({
@@ -32,29 +29,12 @@ describe('WorkflowHistoryCompactionService', () => {
 	});
 
 	beforeEach(() => {
-		// Set the system to a time that isn't 3 AM to avoid hitting the "trim once a day" window
-		const mockDate = new Date(2026, 10, 10, 1, 0, 0);
-		vi.setSystemTime(mockDate);
+		// The window tests compare exact dates derived from `Date.now()`.
+		vi.setSystemTime(new Date(2026, 10, 10, 1, 0, 0));
 	});
 
 	afterEach(() => {
 		vi.useRealTimers();
-	});
-
-	describe('getCompactionWindowDeltas', () => {
-		it('should offset the start delta by the time window and leave the end delta at the minimum age', () => {
-			expect(getCompactionWindowDeltas(24, 2, Time.hours.toMilliseconds)).toEqual({
-				startDelta: 26 * Time.hours.toMilliseconds,
-				endDelta: 24 * Time.hours.toMilliseconds,
-			});
-		});
-
-		it('should return equal deltas for an empty time window', () => {
-			expect(getCompactionWindowDeltas(7, 0, Time.days.toMilliseconds)).toEqual({
-				startDelta: 7 * Time.days.toMilliseconds,
-				endDelta: 7 * Time.days.toMilliseconds,
-			});
-		});
 	});
 
 	describe('init', () => {
@@ -95,7 +75,7 @@ describe('WorkflowHistoryCompactionService', () => {
 
 	it('should skip trimming if pruneTime < trimAge', () => {
 		const compactingService = new WorkflowHistoryCompactionService(
-			config,
+			{ ...config, trimOnStartUp: true },
 			{ ...globalConfig, workflowHistory: { pruneTime: 24 } },
 			mockLogger(),
 			mock<InstanceSettings>({ isLeader: true, instanceType: 'main', isMultiMain: true }),
@@ -110,7 +90,6 @@ describe('WorkflowHistoryCompactionService', () => {
 
 		compactingService.runStartupCompaction();
 
-		expect(compactingService.isTrimmingEnabled).toBe(false);
 		expect(trimLongRunningHistoriesSpy).not.toBeCalled();
 	});
 	it('should not skip trimming if pruneTime > trimAge', () => {
@@ -205,32 +184,6 @@ describe('WorkflowHistoryCompactionService', () => {
 		expect(trimLongRunningHistoriesSpy).toHaveBeenCalled();
 		// should still call recent history compaction
 		expect(optimizeHistoriesSpy).toHaveBeenCalled();
-	});
-
-	it('should trim if triggered at 3 AM with trimOnStartUp as false', () => {
-		const mockDate = new Date(2026, 10, 10, 3, 0, 0);
-		vi.setSystemTime(mockDate);
-
-		const compactingService = new WorkflowHistoryCompactionService(
-			{ ...config, trimOnStartUp: false },
-			globalConfig,
-			mockLogger(),
-			mock<InstanceSettings>({ isLeader: true, instanceType: 'main', isMultiMain: true }),
-			dbConnection,
-			mock(),
-			mock<EventService>(),
-		);
-
-		vi.spyOn(compactingService, 'optimizeHistories').mockImplementation((() => {}) as never);
-		const trimLongRunningHistoriesSpy = vi
-			.spyOn(compactingService, 'trimLongRunningHistories')
-			.mockImplementation((() => {}) as never);
-
-		compactingService.runStartupCompaction();
-
-		expect(trimLongRunningHistoriesSpy).toHaveBeenCalled();
-
-		vi.useRealTimers();
 	});
 
 	describe('compactHistories', () => {
@@ -409,31 +362,5 @@ describe('WorkflowHistoryCompactionService', () => {
 
 			expect(signal.aborted).toBe(true);
 		});
-	});
-
-	it('should not trim if triggered outside of 3 AM with trimOnStartUp as false', () => {
-		const mockDate = new Date(2026, 10, 10, 5, 0, 0);
-		vi.setSystemTime(mockDate);
-
-		const compactingService = new WorkflowHistoryCompactionService(
-			{ ...config, trimOnStartUp: false },
-			globalConfig,
-			mockLogger(),
-			mock<InstanceSettings>({ isLeader: true, instanceType: 'main', isMultiMain: true }),
-			dbConnection,
-			mock(),
-			mock<EventService>(),
-		);
-
-		vi.spyOn(compactingService, 'optimizeHistories').mockImplementation((() => {}) as never);
-		const trimLongRunningHistoriesSpy = vi
-			.spyOn(compactingService, 'trimLongRunningHistories')
-			.mockImplementation((() => {}) as never);
-
-		compactingService.runStartupCompaction();
-
-		expect(trimLongRunningHistoriesSpy).not.toHaveBeenCalled();
-
-		vi.useRealTimers();
 	});
 });

@@ -16,11 +16,14 @@ const configWith = ({
 	pruneData = true,
 	useWorkflowPublicationService = true,
 	diagnosticsEnabled = true,
+	historyPruneTimeHours = -1,
 } = {}) =>
 	mock<GlobalConfig>({
 		executions: { pruneData },
 		workflows: { useWorkflowPublicationService },
 		diagnostics: { enabled: diagnosticsEnabled },
+		workflowHistory: { pruneTime: historyPruneTimeHours },
+		workflowHistoryCompaction: { trimmingMinimumAgeDays: 6 },
 	});
 
 it('should return every main task when all features are on', async () => {
@@ -30,8 +33,8 @@ it('should return every main task when all features are on', async () => {
 		ActivityPruningTask,
 		LicenseRenewalTask,
 		WorkflowHistoryCompactionOptimizeTask,
-		WorkflowHistoryCompactionTrimTask,
 		PendingAuthorizationCleanupTask,
+		WorkflowHistoryCompactionTrimTask,
 		ExecutionPruningSoftDeleteTask,
 		TelemetryPulseTask,
 		WorkflowPublicationOutboxCleanupTask,
@@ -49,6 +52,13 @@ it('should leave out execution pruning soft delete when pruning is off', async (
 
 	expect(tasks).not.toContain(ExecutionPruningSoftDeleteTask);
 	expect(tasks).toContain(WorkflowPublicationOutboxCleanupTask);
+});
+
+it('should leave out the history trim when the prune horizon is shorter than the trim window', async () => {
+	const tasks = await mainSystemTasks(configWith({ historyPruneTimeHours: 24 }));
+
+	expect(tasks).not.toContain(WorkflowHistoryCompactionTrimTask);
+	expect(tasks).toContain(WorkflowHistoryCompactionOptimizeTask);
 });
 
 it('should leave out outbox cleanup when the publication service is off', async () => {

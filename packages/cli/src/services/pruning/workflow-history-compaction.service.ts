@@ -13,9 +13,7 @@ import { strict } from 'node:assert';
 
 import { RelayEventMap } from '@/events/maps/relay.event-map';
 
-export function getCompactionWindowDeltas(minimumAge: number, timeWindow: number, unitMs: number) {
-	return { startDelta: (minimumAge + timeWindow) * unitMs, endDelta: minimumAge * unitMs };
-}
+import { getCompactionWindowDeltas, isTrimmingEnabled } from './workflow-history-compaction.utils';
 
 /**
  * Responsible for compacting auto saved workflow history entries in the database.
@@ -77,15 +75,6 @@ export class WorkflowHistoryCompactionService {
 		return this.instanceSettings.instanceType === 'main' && this.instanceSettings.isLeader;
 	}
 
-	/** Whether trimming may run at all: a prune horizon shorter than the trim window makes trimming pointless. */
-	get isTrimmingEnabled() {
-		return (
-			this.globalConfig.workflowHistory.pruneTime === -1 ||
-			this.globalConfig.workflowHistory.pruneTime * Time.hours.toMilliseconds >=
-				this.config.trimmingMinimumAgeDays * Time.days.toMilliseconds
-		);
-	}
-
 	// One-shot catch-up pass on startup and on leader change, so a gap between
 	// leaders is compacted without waiting a full task interval. Not `runOnTakeover`
 	// on the tasks: `trimOnStartUp` forces a trim only here, and a task run cannot
@@ -101,8 +90,10 @@ export class WorkflowHistoryCompactionService {
 
 		void this.optimizeHistories(signal);
 
-		if (!this.isTrimmingEnabled) return;
-		if (this.config.trimOnStartUp || new Date().getHours() === 3) {
+		if (
+			this.config.trimOnStartUp &&
+			isTrimmingEnabled(this.globalConfig.workflowHistory, this.config)
+		) {
 			void this.trimLongRunningHistories(signal);
 		}
 	}
