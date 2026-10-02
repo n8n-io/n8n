@@ -42,6 +42,7 @@ import type {
 	INodeTypes,
 	IRunExecutionData,
 	IWorkflowDataProxyAdditionalKeys,
+	IWorkflowDataProxyData,
 	NodeParameterValueType,
 } from 'n8n-workflow';
 import {
@@ -50,12 +51,15 @@ import {
 	isFilterValue,
 	NodeHelpers,
 	Workflow,
+	WorkflowDataProxy,
 } from 'n8n-workflow';
 import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import path from 'node:path';
 import pLimit from 'p-limit';
+
+import { actionOfNode, migratedSlotOf, nodeTypeOf } from '@n8n/nodes-base-next';
 
 import type { InstanceAiRunDebugResponse } from '@n8n/api-types';
 
@@ -101,6 +105,9 @@ const NEXT_SHEETS_UPSERT = `${NEXT_PREFIX}googleSheetsSheetAppendOrUpdate`;
 const NEXT_GMAIL_SEND = `${NEXT_PREFIX}gmailMessageSend`;
 const NEXT_GMAIL_GET_ALL = `${NEXT_PREFIX}gmailMessageGetAll`;
 const NEXT_GEMINI_MESSAGE = `${NEXT_PREFIX}googleGeminiTextMessage`;
+const NEXT_SET = `${NEXT_PREFIX}coreSet`;
+const NEXT_IF = `${NEXT_PREFIX}coreIf`;
+const NEXT_FILTER = `${NEXT_PREFIX}coreFilter`;
 
 const isHttpRequest = (node: WorkflowNodeResponse) =>
 	['n8n-nodes-base.httpRequest', NEXT_HTTP_GET, NEXT_HTTP_SEND].includes(node.type);
@@ -238,6 +245,9 @@ interface PathStep extends Emitted {
 
 const sourceStep = (name: string, items: IDataObject[]): PathStep[] => [{ name, items }];
 
+/** The `$`-variables of n8n code for one item, e.g. `$json` and `$input`. */
+type DataProxy = (itemIndex: number) => IWorkflowDataProxyData;
+
 /**
  * Runs `run` with an evaluator that resolves values as n8n would on `targetName`, the child of the
  * last node of `walked`. Every node of `walked` is in the run data and the chain of connections,
@@ -246,7 +256,7 @@ const sourceStep = (name: string, items: IDataObject[]): PathStep[] => [{ name, 
 async function withChildContext<T>(
 	walked: PathStep[],
 	targetName: string,
-	run: (evaluate: Evaluate) => Promise<T> | T,
+	run: (evaluate: Evaluate, proxy: DataProxy) => Promise<T> | T,
 	executeOnce = false,
 ): Promise<T> {
 	const chain = [...walked.map((step) => step.name), targetName];
@@ -307,20 +317,35 @@ async function withChildContext<T>(
 		data: { main: [input] },
 		source: { main: [{ previousNode: sourceName, previousNodeOutput: 0, previousNodeRun: 0 }] },
 	};
+	const proxy: DataProxy = (itemIndex) =>
+		new WorkflowDataProxy(
+			workflow,
+			runExecutionData,
+			0,
+			itemIndex,
+			targetName,
+			input,
+			{},
+			'manual',
+			{},
+			executeData,
+		).getDataProxy();
 	return await workflow.expression.withIsolate(
 		async () =>
-			await run((value, itemIndex, additionalKeys = {}) =>
-				workflow.expression.getParameterValue(
-					value,
-					runExecutionData,
-					0,
-					itemIndex,
-					targetName,
-					input,
-					'manual',
-					additionalKeys,
-					executeData,
-				),
+			await run(
+				(value, itemIndex, additionalKeys = {}) =>
+					workflow.expression.getParameterValue(
+						value,
+						runExecutionData,
+						0,
+						itemIndex,
+						targetName,
+						input,
+						'manual',
+						additionalKeys,
+						executeData,
+					),
+				proxy,
 			),
 	);
 }
@@ -466,10 +491,10 @@ function pairedIndex(pairedItem: unknown): number | undefined {
 
 /**
  * Nodes the grader runs on the path to the POST with their own execute code. They need no
- * credentials and have no side effects. Code is not here: its sandbox is not available.
+ * credentials and have no side effects. The contract Code node runs its code in runJavaScriptJob.
  */
-const RUNNABLE_NODE_TYPES = new Set(
-	[
+const RUNNABLE_NODE_TYPES = new Set([
+	...[
 		'set',
 		'if',
 		'filter',
@@ -481,7 +506,75 @@ const RUNNABLE_NODE_TYPES = new Set(
 		'removeDuplicates',
 		'itemLists',
 	].map((name) => `n8n-nodes-base.${name}`),
-);
+	...[
+		'coreSet',
+		'coreIf',
+		'coreFilter',
+		'coreLimit',
+		'coreSplitOut',
+		'coreAggregate',
+		'coreSummarize',
+		'coreSort',
+		'coreRemoveDuplicates',
+		'codeJavaScript',
+	].map((name) => `${NEXT_PREFIX}${name}`),
+]);
+
+/** Nodes whose output 0 holds the items that match: the true branch or the kept items. */
+const FILTER_NODE_TYPES = new Set([
+	'n8n-nodes-base.if',
+	'n8n-nodes-base.filter',
+	NEXT_IF,
+	NEXT_FILTER,
+]);
+
+/**
+ * What the JavaScript task runner returns for the Code `settings` that the contract Code node
+ * sends. The code runs in the in-process sandbox of the legacy Code node, with the data proxy of
+ * each item, as the runner runs it.
+ */
+async function runJavaScriptJob(
+	settings: unknown,
+	items: INodeExecutionData[],
+	proxy: DataProxy,
+): Promise<unknown> {
+	const { JavaScriptSandbox } = loadDist(
+		nodesBaseRequire,
+		'./dist/nodes/Code/JavaScriptSandbox.js',
+		['JavaScriptSandbox'],
+	);
+	const code = asText(valueAt(settings, 'code'));
+	const run = async (itemIndex: number, extra: Record<string, unknown>): Promise<unknown> => {
+		const sandbox: unknown =
+			typeof JavaScriptSandbox === 'function'
+				? Reflect.construct(JavaScriptSandbox, [{ ...proxy(itemIndex), ...extra }, code, {}])
+				: undefined;
+		if (!isRecord(sandbox)) throw new Error('JavaScriptSandbox did not construct');
+		const result: unknown = await invoke(sandbox.runCode, sandbox);
+		return result;
+	};
+	if (valueAt(settings, 'nodeMode') === 'runOnceForAllItems') {
+		const result = await run(0, { items });
+		return result === null ? [] : result;
+	}
+	const start = Number(valueAt(settings, 'chunk.startIndex') ?? 0);
+	const count = Number(valueAt(settings, 'chunk.count') ?? items.length);
+	const indexes = Array.from({ length: count }, (_, at) => start + at);
+	const results = await Promise.all(
+		indexes.map(async (index) => await run(index, { item: items[index] })),
+	);
+	// The runner drops empty results and keeps the `json` of a wrapped item.
+	return results.flatMap((result, at) =>
+		result === null || result === undefined
+			? []
+			: [
+					{
+						json: isRecord(result) && 'json' in result ? result.json : result,
+						pairedItem: { item: indexes[at] },
+					},
+				],
+	);
+}
 
 /** The dist class of a nodes-base-next node: `dist/nodes/<Pascal>.node.js` exports `<Pascal>`. */
 function nextNodeClass(type: string) {
@@ -516,24 +609,27 @@ function loadNodeType(node: WorkflowNodeResponse): Record<string, unknown> {
 
 /**
  * Outputs of `node` after `walked`, run by the node's own execute code at the saved typeVersion.
- * `helpers` replaces `this.helpers` for nodes that send requests.
+ * `extra` adds context members, e.g. `helpers` for nodes that send requests.
  */
 async function executeOutputs(
 	node: WorkflowNodeResponse,
 	walked: PathStep[],
-	helpers?: Record<string, unknown>,
+	extra?: Record<string, unknown>,
 ): Promise<Emitted[]> {
 	const { items } = walked[walked.length - 1];
 	const instance = loadNodeType(node);
 	const parameters = withDefaults(node);
 	const once = node.executeOnce === true;
+	const inputData = (once ? items.slice(0, 1) : items).map((json, item) => ({
+		json,
+		pairedItem: { item },
+	}));
 	const output = await withChildContext(
 		walked,
 		node.name,
-		async (evaluate) => {
+		async (evaluate, proxy) => {
 			const context = {
-				getInputData: () =>
-					(once ? items.slice(0, 1) : items).map((json, item) => ({ json, pairedItem: { item } })),
+				getInputData: () => inputData,
 				getNodeParameter: (
 					name: string,
 					itemIndex: number,
@@ -557,7 +653,12 @@ async function executeOutputs(
 				addExecutionHints: () => undefined,
 				// The node-sdk runtime records the contract version after each run.
 				setMetadata: () => undefined,
-				...(helpers ? { helpers } : {}),
+				// The contract Code node sends its code to the task runner.
+				startJob: async (language: string, settings: unknown) =>
+					language === 'javascript'
+						? { ok: true, result: await runJavaScriptJob(settings, inputData, proxy) }
+						: { ok: false, error: { message: `The grader runs no ${language} code` } },
+				...extra,
 			};
 			return await invoke(instance.execute, context);
 		},
@@ -650,7 +751,7 @@ async function followTo(workflow: WorkflowResponse, startWalked: PathStep[], tar
 			};
 		}
 		const emitted = await firstOutput(child, walked);
-		const isFilter = child.type === 'n8n-nodes-base.if' || child.type === 'n8n-nodes-base.filter';
+		const isFilter = FILTER_NODE_TYPES.has(child.type);
 		if (isFilter) filtered = emitted.items;
 		outputIndex = isFilter ? 0 : undefined;
 		path.push(child.name);
@@ -725,6 +826,71 @@ function requestUrl(request: unknown): string {
 	return `${url.origin}${url.pathname}${params.size ? `?${params.toString()}` : ''}`;
 }
 
+/** `this.helpers` request functions answered by `respond`; each request is added to `requests`. */
+function fakeApiHelpers(respond: (request: unknown) => unknown, requests: unknown[] = []) {
+	const answer = async (options: unknown) => {
+		requests.push(options);
+		const body: unknown = await Promise.resolve(respond(options));
+		// n8n answers a full-response request with the body, headers and status code.
+		return valueAt(options, 'returnFullResponse') === true
+			? { body, headers: {}, statusCode: 200 }
+			: body;
+	};
+	return {
+		httpRequest: answer,
+		httpRequestWithAuthentication: async (_credentialType: string, options: unknown) =>
+			await answer(options),
+	};
+}
+
+/**
+ * What a nodes-base-next sub-node supplies to its root node after `walked`, run by its own supply
+ * code against a fake API that `respond` answers. Its parameters resolve against root item 0.
+ */
+async function nextSupply(
+	node: WorkflowNodeResponse,
+	walked: PathStep[],
+	respond: (request: unknown) => unknown,
+): Promise<unknown> {
+	const instance = loadNodeType(node);
+	const parameters = withDefaults(node);
+	const supplied = await withChildContext(
+		walked,
+		node.name,
+		async (evaluate) =>
+			await invoke(
+				instance.supplyData,
+				{
+					getNode: () => ({
+						...stubNode(node.name),
+						typeVersion: node.typeVersion ?? 1,
+						parameters,
+					}),
+					getNodeParameter: (name: string, itemIndex: number, fallback?: unknown) => {
+						const raw = valueAt(parameters, name) ?? fallback;
+						return isParameterValue(raw) ? evaluate(raw, itemIndex) : raw;
+					},
+					continueOnFail: () => false,
+					helpers: fakeApiHelpers(respond),
+					// The node-sdk runtime records each call of the capability as a run of the sub-node.
+					addInputData: () => ({ index: 0 }),
+					addOutputData: () => undefined,
+				},
+				0,
+			),
+	);
+	return valueAt(supplied, 'response');
+}
+
+/** The sub-node that supplies `connectionType` (e.g. `ai_languageModel`) to `nodeName`. */
+const subNodeOf = (workflow: WorkflowResponse, nodeName: string, connectionType: string) =>
+	workflow.nodes.find((candidate) => {
+		const branches = valueAt(workflow.connections[candidate.name], connectionType);
+		return (Array.isArray(branches) ? branches : [])
+			.flatMap((branch: unknown) => (Array.isArray(branch) ? branch : []))
+			.some((connection) => isRecord(connection) && connection.node === nodeName);
+	});
+
 /**
  * Runs a nodes-base-next node after `walked` with its own action code against a fake API.
  * `respond` answers each request (it may throw); `requests` holds every request sent.
@@ -735,17 +901,10 @@ async function runNext(
 	respond: (request: unknown) => unknown,
 ) {
 	const requests: unknown[] = [];
-	const answer = async (options: unknown) => {
-		requests.push(options);
-		return await Promise.resolve(respond(options));
-	};
-	const helpers = {
-		httpRequest: answer,
-		httpRequestWithAuthentication: async (_credentialType: string, options: unknown) =>
-			await answer(options),
-	};
 	try {
-		const [output] = await executeOutputs(node, walked, helpers);
+		const [output] = await executeOutputs(node, walked, {
+			helpers: fakeApiHelpers(respond, requests),
+		});
 		return { output: output ?? { items: [] }, requests, error: undefined };
 	} catch (error) {
 		return { output: { items: [] }, requests, error: errorText(error) };
@@ -758,17 +917,10 @@ async function nextNotionFilter(
 	notion: WorkflowNodeResponse,
 ): Promise<unknown> {
 	const requests: unknown[] = [];
-	const respond = async (options: unknown) => {
-		requests.push(options);
-		return await Promise.resolve({ results: [] });
-	};
-	const helpers = {
-		httpRequest: respond,
-		httpRequestWithAuthentication: async (_credentialType: string, options: unknown) =>
-			await respond(options),
-	};
 	try {
-		await executeOutputs(notion, sourceStep(parentName(workflow, notion.name), [{}]), helpers);
+		await executeOutputs(notion, sourceStep(parentName(workflow, notion.name), [{}]), {
+			helpers: fakeApiHelpers(() => ({ results: [] }), requests),
+		});
 	} catch (error) {
 		return `<node throws: ${errorText(error)}>`;
 	}
@@ -1125,7 +1277,9 @@ const gradeSetKeepAllPassthrough: Grader = async (workflow) => {
 		(node) => isHttpRequest(node) && asText(node.parameters?.url).includes(ORDER_URL),
 	);
 	if (!get) return [{ name: 'get-node', pass: false, detail: 'no HTTP Request to the order URL' }];
-	const set = childrenOf(workflow, get.name).find((node) => node.type === 'n8n-nodes-base.set');
+	const set = childrenOf(workflow, get.name).find((node) =>
+		['n8n-nodes-base.set', NEXT_SET].includes(node.type),
+	);
 	if (!set) return [{ name: 'set-node', pass: false, detail: 'no Set node after the GET' }];
 	const {
 		items: [output],
@@ -1906,11 +2060,16 @@ async function triageGmailOutput(workflow: WorkflowResponse, gmail: WorkflowNode
 
 const LEGACY_GEMINI = '@n8n/n8n-nodes-langchain.googleGemini';
 
+const NEXT_AI_PROMPT = `${NEXT_PREFIX}aiPrompt`;
+const NEXT_GEMINI_CHAT_MODEL = `${NEXT_PREFIX}googleGeminiChatModel`;
+
+/** A node that sends a Gemini message. geminiOutput checks the chat model of an AI prompt. */
 const isGeminiMessage = (node: WorkflowNodeResponse) =>
 	(node.type === LEGACY_GEMINI &&
 		['', 'text'].includes(asText(node.parameters?.resource)) &&
 		['', 'message'].includes(asText(node.parameters?.operation))) ||
-	node.type === NEXT_GEMINI_MESSAGE;
+	node.type === NEXT_GEMINI_MESSAGE ||
+	node.type === NEXT_AI_PROMPT;
 
 const geminiAnswer = (prompt: string) =>
 	TRIAGE_EMAILS.find((email) => prompt.includes(email.key))?.summary ??
@@ -1923,17 +2082,33 @@ const geminiCandidate = (answer: string) => ({
 });
 
 /**
- * The items a Gemini message node of either family emits after `walked`, with a fake model that
- * answers from the prompt. The legacy node is not in nodes-base, so its output is built from its
- * parameters as its message operation does.
+ * The items a Gemini message node of either family, or an AI prompt with a Gemini chat model,
+ * emits after `walked`, with a fake model that answers from the prompt. The legacy node is not in
+ * nodes-base, so its output is built from its parameters as its message operation does.
  */
-async function geminiOutput(gemini: WorkflowNodeResponse, walked: PathStep[]): Promise<Emitted> {
+async function geminiOutput(
+	workflow: WorkflowResponse,
+	gemini: WorkflowNodeResponse,
+	walked: PathStep[],
+): Promise<Emitted> {
+	const geminiApi = (request: unknown) => ({
+		candidates: [geminiCandidate(geminiAnswer(JSON.stringify(valueAt(request, 'body'))))],
+	});
 	if (gemini.type === NEXT_GEMINI_MESSAGE) {
-		const { output, error } = await runNext(gemini, walked, (request) => ({
-			candidates: [geminiCandidate(geminiAnswer(JSON.stringify(valueAt(request, 'body'))))],
-		}));
+		const { output, error } = await runNext(gemini, walked, geminiApi);
 		if (error) throw new Error(error);
 		return output;
+	}
+	if (gemini.type === NEXT_AI_PROMPT) {
+		const model = subNodeOf(workflow, gemini.name, 'ai_languageModel');
+		if (model?.type !== NEXT_GEMINI_CHAT_MODEL) {
+			throw new Error(`the AI prompt has no Gemini chat model: ${model?.type ?? 'none'}`);
+		}
+		const chatModel = await nextSupply(model, walked, geminiApi);
+		const [output] = await executeOutputs(gemini, walked, {
+			getInputConnectionData: async () => await Promise.resolve(chatModel),
+		});
+		return output ?? { items: [] };
 	}
 	const { items } = walked[walked.length - 1];
 	const outputs = await withChildContext(walked, gemini.name, (evaluate) =>
@@ -1982,7 +2157,7 @@ const gradeHoldoutGmailGeminiTriage: Grader = async (workflow) => {
 	);
 	if (!toGemini.node) return [queryCheck, walkCheck('reads', toGemini.path)];
 	try {
-		const answers = await geminiOutput(toGemini.node, toGemini.walked);
+		const answers = await geminiOutput(workflow, toGemini.node, toGemini.walked);
 		const posted = await postedAfter(workflow, [
 			...toGemini.walked,
 			{ name: toGemini.node.name, ...answers },
@@ -2137,11 +2312,20 @@ const GRADERS: Record<string, Grader> = {
 	'nc-holdout-http-subscriptions-upsert': gradeHoldoutHttpSubscriptionsUpsert,
 };
 
+/** A migrated legacy node (e.g. Notion v4) runs a contract action, so grade it as that action's node type. */
+const withContractTypes = (workflow: WorkflowResponse): WorkflowResponse => ({
+	...workflow,
+	nodes: workflow.nodes.map((node) => {
+		const action = migratedSlotOf(node) ? actionOfNode(node) : undefined;
+		return action ? { ...node, type: nodeTypeOf(action), typeVersion: action.version } : node;
+	}),
+});
+
 async function gradeSafely(caseSlug: string, workflow: WorkflowResponse): Promise<Check[]> {
 	const grade = GRADERS[caseSlug];
 	if (!grade) return [{ name: 'grader', pass: false, detail: `no grader for ${caseSlug}` }];
 	try {
-		return await grade(workflow);
+		return await grade(withContractTypes(workflow));
 	} catch (error) {
 		return [{ name: 'grader', pass: false, detail: `grader threw: ${errorText(error)}` }];
 	}
@@ -2848,7 +3032,12 @@ async function gradeFile(
 		Promise<Array<DiagnosticsRow & { composition?: TokenComposition; threadId?: string }>>
 	>(async (previous, target) => {
 		const done = await previous;
-		const checks = await gradeSafely(target.caseSlug, target.workflow);
+		const graded = await gradeSafely(target.caseSlug, target.workflow);
+		// Same rule as the live run: an arm with its own seed workflow is not graded on `typed`.
+		const checks =
+			target.build && armSeedWorkflows(target.caseSlug, String(target.build.arm))
+				? graded.filter(({ name }) => name !== 'typed')
+				: graded;
 		console.log(`[${target.label}] ${buildPasses(checks) ? 'PASS' : 'FAIL'}`);
 		for (const check of checks) {
 			console.log(
