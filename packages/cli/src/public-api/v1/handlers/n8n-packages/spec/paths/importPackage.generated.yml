@@ -58,7 +58,7 @@ requestBody:
               - publish-all
               - unpublish-all
             default: preserve-published-state
-            description: Controls whether imported workflows are published after content is written. `preserve-published-state` (default) follows the existing target workflow when matched, or the package state for a new workflow.
+            description: Controls whether imported workflows are published after content is written. `preserve-published-state` (default) keeps new workflows inactive, and republishes an updated workflow only when it was already published and the package carries the version the source publishes.
           workflowIdPolicy:
             type: string
             enum:
@@ -177,6 +177,7 @@ responses:
                   type: string
                 exportedAt:
                   type: string
+                  format: date-time
               required:
                 - sourceN8nVersion
                 - sourceId
@@ -366,9 +367,11 @@ responses:
               type: object
               properties:
                 matched:
-                  type: number
+                  type: integer
+                  minimum: 0
                 created:
-                  type: number
+                  type: integer
+                  minimum: 0
               required:
                 - matched
                 - created
