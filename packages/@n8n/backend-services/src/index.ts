@@ -15,6 +15,7 @@ export {
 	type RoleDeletionChecker,
 } from './services/role-deletion-check-proxy.service';
 export { RoleService } from './services/role.service';
+export { ProjectScopeService } from './services/project-scope.service';
 export {
 	WorkflowSharingService,
 	type ShareWorkflowOptions,

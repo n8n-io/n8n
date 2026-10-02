@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/require-await, @typescript-eslint/unbound-method -- async mock stubs, unbound-method references and short `cb` names are acceptable test idioms */
 
 import { DEFAULT_AGENT_PERSONALISATION } from '@n8n/api-types';
-import type { EventService } from '@n8n/backend-services';
+import type { EventService, ProjectScopeService } from '@n8n/backend-services';
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { ProjectRelationRepository, User } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -25,7 +25,6 @@ import type { AgentTaskRepository } from '../repositories/agent-task.repository'
 import type { AgentRepository } from '../repositories/agent.repository';
 import type { SubAgentCleanupService } from '../sub-agents/sub-agent-cleanup.service';
 import type { CredentialsService } from '@/credentials/credentials.service';
-import type { ProjectScopeService } from '@/permissions.ee/project-scope.service';
 
 const agentId = 'agent-1';
 const projectId = 'project-1';
