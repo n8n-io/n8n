@@ -4580,4 +4580,4 @@ export interface StructuredChunk {
 	};
 }
 
-export type ApiKeyAudience = 'public-api' | 'mcp-server-api';
+export type ApiKeyAudience = 'public-api' | 'mcp-server-api' | 'scim-api';

@@ -80,6 +80,7 @@ export class ModuleRegistry {
 		'instance-ai',
 		'agents',
 		'inbound-auth-core',
+		'scim',
 	];
 
 	private readonly activeModules: string[] = [];

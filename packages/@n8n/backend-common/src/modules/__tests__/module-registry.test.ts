@@ -93,6 +93,7 @@ describe('eligibleModules', () => {
 			'instance-ai',
 			'agents',
 			'inbound-auth-core',
+			'scim',
 		]);
 	});
 
@@ -132,6 +133,7 @@ describe('eligibleModules', () => {
 			'instance-ai',
 			'agents',
 			'inbound-auth-core',
+			'scim',
 			'type-availability-policies',
 		]);
 	});
