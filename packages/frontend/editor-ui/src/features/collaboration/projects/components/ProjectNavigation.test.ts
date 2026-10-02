@@ -225,7 +225,13 @@ describe('ProjectsNavigation', () => {
 		renderComponent({ props: { collapsed: false } });
 		expect(instanceAiStore.loadThreads).toHaveBeenCalledTimes(1);
 
+		const hidden = vi.spyOn(document, 'hidden', 'get').mockReturnValue(true);
 		document.dispatchEvent(new Event('visibilitychange'));
+		expect(instanceAiStore.loadThreads).toHaveBeenCalledTimes(1);
+
+		hidden.mockReturnValue(false);
+		document.dispatchEvent(new Event('visibilitychange'));
+		hidden.mockRestore();
 
 		expect(instanceAiStore.loadThreads).toHaveBeenCalledTimes(2);
 	});
