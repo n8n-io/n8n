@@ -76,8 +76,8 @@ flowchart LR
 2. Until these changes are merged, a DP that runs nodes which use files must run in the CP process.
 3. An operator who runs `filesystem` mode on more than one host must provide a shared mount. v1
    queue mode has the same requirement.
-4. A DP host configured with the wrong mode fails at start. A DP host in its own process has no
-   CP database connection, so every file read and write fails in `database` mode. Without the
+4. A DP host in its own process that is configured for `database` mode fails at start. Such a host
+   has no CP database connection, so every file read and write fails in that mode. Without the
    check, the error shows only when a run handles its first file. That run fails in the middle,
    after earlier nodes have already called external services. A workflow that uses no files never
    shows the error, so the wrong configuration can stay unnoticed for a long time.
