@@ -1,4 +1,20 @@
 import { test, expect } from '../../../fixtures/base';
+import type { Locator } from '@playwright/test';
+
+async function expectButtonAligned(inputBorder: Locator, fromAiButton: Locator) {
+	await expect(inputBorder).toBeVisible();
+	await expect(fromAiButton).toBeVisible();
+
+	const inputBounds = await inputBorder.boundingBox();
+	const buttonBounds = await fromAiButton.boundingBox();
+	expect(inputBounds).not.toBeNull();
+	expect(buttonBounds).not.toBeNull();
+
+	expect(buttonBounds).toMatchObject({
+		y: inputBounds!.y,
+		height: inputBounds!.height,
+	});
+}
 
 test.describe(
 	'ADO-5599: From AI button alignment',
@@ -14,20 +30,22 @@ test.describe(
 			await n8n.canvas.nodeCreator.selectItem('SearXNG');
 			await n8n.ndv.addParameterOptionByName('Language');
 
-			const inputBorder = n8n.ndv.getParameterInputBorder('language');
-			const fromAiButton = n8n.ndv.getFromAiOverrideButton('language');
-			await expect(inputBorder).toBeVisible();
-			await expect(fromAiButton).toBeVisible();
+			await expectButtonAligned(
+				n8n.ndv.getParameterInputBorder('language'),
+				n8n.ndv.getFromAiOverrideButton('language'),
+			);
 
-			const inputBounds = await inputBorder.boundingBox();
-			const buttonBounds = await fromAiButton.boundingBox();
-			expect(inputBounds).not.toBeNull();
-			expect(buttonBounds).not.toBeNull();
+			await n8n.ndv.addParameterOptionByName('Number of Results');
+			await expectButtonAligned(
+				n8n.ndv.getParameterNumberBorder('numResults'),
+				n8n.ndv.getFromAiOverrideButton('numResults'),
+			);
 
-			expect(buttonBounds).toMatchObject({
-				y: inputBounds!.y,
-				height: inputBounds!.height,
-			});
+			await n8n.ndv.setParameterInput('language', '={{ $json.language }}');
+			await expectButtonAligned(
+				n8n.ndv.getParameterExpressionBorder('language'),
+				n8n.ndv.getFromAiOverrideButton('language'),
+			);
 		});
 	},
 );

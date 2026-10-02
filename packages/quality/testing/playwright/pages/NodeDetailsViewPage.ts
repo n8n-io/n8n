@@ -248,6 +248,14 @@ export class NodeDetailsViewPage extends BasePage {
 		return this.getParameterInput(parameterName).locator('.n8n-input__wrapper');
 	}
 
+	getParameterNumberBorder(parameterName: string) {
+		return this.getParameterInput(parameterName).getByTestId('input-number');
+	}
+
+	getParameterExpressionBorder(parameterName: string) {
+		return this.getParameterInput(parameterName).locator('.el-input-group__prepend').locator('..');
+	}
+
 	getFromAiOverrideButton(parameterName: string) {
 		return this.getParameterInput(parameterName).getByTestId('from-ai-override-button');
 	}
