@@ -1,4 +1,5 @@
 import { UserUpdateRequestDto } from '@n8n/api-types';
+import { LicenseState } from '@n8n/backend-common';
 import { EventService } from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
@@ -15,7 +16,6 @@ import { MeController } from '@/controllers/me.controller';
 import { BadRequestError, ForbiddenError } from '@n8n/errors';
 import { InvalidMfaCodeError } from '@/errors/response-errors/invalid-mfa-code.error';
 import { ExternalHooks } from '@/external-hooks';
-import { License } from '@/license';
 import { MfaService } from '@/mfa/mfa.service';
 import type { MeRequest } from '@/requests';
 import { UserService } from '@/services/user.service';
@@ -38,7 +38,7 @@ describe('MeController', () => {
 	const userRepository = mockInstance(UserRepository);
 	const mockMfaService = mockInstance(MfaService);
 	mockInstance(InvalidAuthTokenRepository);
-	mockInstance(License).isWithinUsersLimit.mockReturnValue(true);
+	mockInstance(LicenseState).getMaxUsers.mockReturnValue(-1);
 	const controller = Container.get(MeController);
 
 	beforeEach(() => {

@@ -1,4 +1,4 @@
-import type { Logger } from '@n8n/backend-common';
+import type { LicenseState, Logger } from '@n8n/backend-common';
 import type { HttpRequestClient, OutboundHttp } from '@n8n/backend-network';
 import { mockInstance, randomName } from '@n8n/backend-test-utils';
 import { LICENSE_FEATURES } from '@n8n/constants';
@@ -11,7 +11,6 @@ import { mock } from 'vitest-mock-extended';
 
 import { NPM_PACKAGE_STATUS_GOOD } from '@/constants';
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
-import type { License } from '@/license';
 import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
 import { COMMUNITY_NODE_VERSION, COMMUNITY_PACKAGE_VERSION } from '@test-integration/constants';
@@ -53,7 +52,7 @@ const execMock: typeof execFile = ((...args) => {
 vi.mocked(execFile).mockImplementation(execMock);
 
 describe('CommunityPackagesService', () => {
-	const license = mock<License>();
+	const license = mock<LicenseState>();
 	const configDefaults = {
 		enabled: true,
 		preventLoading: false,
@@ -507,7 +506,7 @@ describe('CommunityPackagesService', () => {
 		});
 
 		test('should restore the previous package directory when loading the updated package fails', async () => {
-			license.isCustomNpmRegistryEnabled.mockReturnValue(true);
+			license.isCustomNpmRegistryLicensed.mockReturnValue(true);
 			vi.spyOn(Date, 'now').mockReturnValue(1_717_171_717_171);
 			const backupDirectory = `${testBlockPackageDir}.backup-1717171717171`;
 
@@ -525,7 +524,7 @@ describe('CommunityPackagesService', () => {
 		});
 
 		test('should restore the previous package.json dependency version when an update fails', async () => {
-			license.isCustomNpmRegistryEnabled.mockReturnValue(true);
+			license.isCustomNpmRegistryLicensed.mockReturnValue(true);
 
 			loadNodesAndCredentials.loadPackage.mockRejectedValueOnce(new Error('broken package'));
 			vi.mocked(readFile)
@@ -597,7 +596,7 @@ describe('CommunityPackagesService', () => {
 		});
 
 		test('should reload the restored package when an update fails', async () => {
-			license.isCustomNpmRegistryEnabled.mockReturnValue(true);
+			license.isCustomNpmRegistryLicensed.mockReturnValue(true);
 
 			loadNodesAndCredentials.loadPackage.mockRejectedValueOnce(new Error('broken package'));
 
@@ -617,7 +616,7 @@ describe('CommunityPackagesService', () => {
 		});
 
 		test('should restore the previous package without reloading when the download fails during an update', async () => {
-			license.isCustomNpmRegistryEnabled.mockReturnValue(true);
+			license.isCustomNpmRegistryLicensed.mockReturnValue(true);
 			vi.spyOn(Date, 'now').mockReturnValue(1_717_171_717_171);
 			const backupDirectory = `${testBlockPackageDir}.backup-1717171717171`;
 
@@ -637,7 +636,7 @@ describe('CommunityPackagesService', () => {
 		});
 
 		test('should restore the previous package when the updated package contains no loadable nodes', async () => {
-			license.isCustomNpmRegistryEnabled.mockReturnValue(true);
+			license.isCustomNpmRegistryLicensed.mockReturnValue(true);
 			vi.spyOn(Date, 'now').mockReturnValue(1_717_171_717_171);
 			const backupDirectory = `${testBlockPackageDir}.backup-1717171717171`;
 
@@ -673,7 +672,7 @@ describe('CommunityPackagesService', () => {
 			};
 
 			test('should reject the update when the package requires a newer node API version', async () => {
-				license.isCustomNpmRegistryEnabled.mockReturnValue(true);
+				license.isCustomNpmRegistryLicensed.mockReturnValue(true);
 
 				await expect(updateToIncompatible(N8N_NODES_API_VERSION + 1)).rejects.toThrow(
 					"This community node isn't compatible with your version of n8n. Update n8n to use it.",
@@ -685,7 +684,7 @@ describe('CommunityPackagesService', () => {
 			});
 
 			test('should reject the update when the declared node API version is malformed', async () => {
-				license.isCustomNpmRegistryEnabled.mockReturnValue(true);
+				license.isCustomNpmRegistryLicensed.mockReturnValue(true);
 
 				await expect(updateToIncompatible('3')).rejects.toThrow('invalid n8n node API version');
 
@@ -694,7 +693,7 @@ describe('CommunityPackagesService', () => {
 			});
 
 			test('should update to a package that declares the supported node API version', async () => {
-				license.isCustomNpmRegistryEnabled.mockReturnValue(true);
+				license.isCustomNpmRegistryLicensed.mockReturnValue(true);
 
 				await expect(updateToIncompatible(N8N_NODES_API_VERSION)).resolves.toBe(packageAfterUpdate);
 
@@ -704,7 +703,7 @@ describe('CommunityPackagesService', () => {
 		});
 
 		test('should remove the package.json dependency when a fresh install fails', async () => {
-			license.isCustomNpmRegistryEnabled.mockReturnValue(true);
+			license.isCustomNpmRegistryLicensed.mockReturnValue(true);
 			// No pre-existing directory here, unlike the shared beforeEach's update scenario.
 			vi.mocked(access).mockReset().mockRejectedValue(new Error('ENOENT'));
 
@@ -765,7 +764,7 @@ describe('CommunityPackagesService', () => {
 		});
 
 		test('should not attempt a reload when the directory restore left nothing behind', async () => {
-			license.isCustomNpmRegistryEnabled.mockReturnValue(true);
+			license.isCustomNpmRegistryLicensed.mockReturnValue(true);
 			vi.spyOn(Date, 'now').mockReturnValue(1_717_171_717_171);
 			const backupDirectory = `${testBlockPackageDir}.backup-1717171717171`;
 
@@ -800,7 +799,7 @@ describe('CommunityPackagesService', () => {
 		});
 
 		test('should unload the package when a fresh install fails to save to the database', async () => {
-			license.isCustomNpmRegistryEnabled.mockReturnValue(true);
+			license.isCustomNpmRegistryLicensed.mockReturnValue(true);
 			// No pre-existing directory here, unlike the shared beforeEach's update scenario.
 			vi.mocked(access).mockReset().mockRejectedValue(new Error('ENOENT'));
 
@@ -822,7 +821,7 @@ describe('CommunityPackagesService', () => {
 		});
 
 		test('should unload the package when a fresh install contains no loadable nodes', async () => {
-			license.isCustomNpmRegistryEnabled.mockReturnValue(true);
+			license.isCustomNpmRegistryLicensed.mockReturnValue(true);
 			vi.mocked(access).mockReset().mockRejectedValue(new Error('ENOENT'));
 
 			loadNodesAndCredentials.loadPackage.mockResolvedValueOnce(
@@ -836,7 +835,7 @@ describe('CommunityPackagesService', () => {
 		});
 
 		test('should still succeed when removing the backup directory fails after the update', async () => {
-			license.isCustomNpmRegistryEnabled.mockReturnValue(true);
+			license.isCustomNpmRegistryLicensed.mockReturnValue(true);
 			vi.spyOn(Date, 'now').mockReturnValue(1_717_171_717_171);
 			const backupDirectory = `${testBlockPackageDir}.backup-1717171717171`;
 
@@ -860,7 +859,7 @@ describe('CommunityPackagesService', () => {
 		});
 
 		test('should not roll back when a post-save step fails after the database is updated', async () => {
-			license.isCustomNpmRegistryEnabled.mockReturnValue(true);
+			license.isCustomNpmRegistryLicensed.mockReturnValue(true);
 
 			// Fails only after the DB swap has already committed the new version
 			loadNodesAndCredentials.postProcessLoaders.mockRejectedValueOnce(
@@ -881,7 +880,7 @@ describe('CommunityPackagesService', () => {
 
 		test('should call `exec` with the correct sequence of commands, handle file ops, and interact with services', async () => {
 			// ARRANGE
-			license.isCustomNpmRegistryEnabled.mockReturnValue(true);
+			license.isCustomNpmRegistryLicensed.mockReturnValue(true);
 			vi.spyOn(Date, 'now').mockReturnValue(1_717_171_717_171);
 			const backupDirectory = `${testBlockPackageDir}.backup-1717171717171`;
 
@@ -972,7 +971,7 @@ describe('CommunityPackagesService', () => {
 		});
 
 		test('should still succeed when publishing the update event fails', async () => {
-			license.isCustomNpmRegistryEnabled.mockReturnValue(true);
+			license.isCustomNpmRegistryLicensed.mockReturnValue(true);
 			publisher.publishCommand.mockRejectedValue(new Error('Redis unreachable'));
 
 			await expect(
@@ -991,7 +990,7 @@ describe('CommunityPackagesService', () => {
 		});
 
 		test('should publish the resolved version and the checksum when one is provided', async () => {
-			license.isCustomNpmRegistryEnabled.mockReturnValue(true);
+			license.isCustomNpmRegistryLicensed.mockReturnValue(true);
 
 			await communityPackagesService.updatePackage(
 				installedPackageForUpdateTest.packageName,
@@ -1011,7 +1010,7 @@ describe('CommunityPackagesService', () => {
 		});
 
 		test('should not attempt to delete the tarball when npm pack prints no filename', async () => {
-			license.isCustomNpmRegistryEnabled.mockReturnValue(true);
+			license.isCustomNpmRegistryLicensed.mockReturnValue(true);
 			vi.spyOn(Date, 'now').mockReturnValue(1_717_171_717_171);
 			const backupDirectory = `${testBlockPackageDir}.backup-1717171717171`;
 
@@ -1036,7 +1035,7 @@ describe('CommunityPackagesService', () => {
 
 		test('should throw when not licensed for custom registry if custom registry is different from default', async () => {
 			// ARRANGE
-			license.isCustomNpmRegistryEnabled.mockReturnValue(false);
+			license.isCustomNpmRegistryLicensed.mockReturnValue(false);
 
 			// ACT & ASSERT
 			const promise = communityPackagesService.updatePackage(

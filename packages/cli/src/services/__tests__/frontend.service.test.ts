@@ -1,6 +1,7 @@
 import type { Mock } from 'vitest';
-import type { LicenseState, Logger, ModuleRegistry } from '@n8n/backend-common';
+import { LicenseState, type Logger, type ModuleRegistry } from '@n8n/backend-common';
 import type { GlobalConfig, SecurityConfig } from '@n8n/config';
+import { UNLIMITED_LICENSE_QUOTA } from '@n8n/constants';
 import type { WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
@@ -122,30 +123,9 @@ describe('FrontendService', () => {
 	});
 
 	const license = mock<License>({
-		getUsersLimit: vi.fn().mockReturnValue(100),
 		getPlanName: vi.fn().mockReturnValue('Community'),
 		getConsumerId: vi.fn().mockReturnValue('test-consumer'),
-		isSharingEnabled: vi.fn().mockReturnValue(false),
-		isLogStreamingEnabled: vi.fn().mockReturnValue(false),
-		isLdapEnabled: vi.fn().mockReturnValue(false),
-		isSamlEnabled: vi.fn().mockReturnValue(false),
-		isAdvancedExecutionFiltersEnabled: vi.fn().mockReturnValue(false),
-		isVariablesEnabled: vi.fn().mockReturnValue(false),
-		isSourceControlLicensed: vi.fn().mockReturnValue(false),
-		isExternalSecretsEnabled: vi.fn().mockReturnValue(false),
 		isLicensed: vi.fn().mockReturnValue(false),
-		isDebugInEditorLicensed: vi.fn().mockReturnValue(false),
-		isWorkerViewLicensed: vi.fn().mockReturnValue(false),
-		isAdvancedPermissionsLicensed: vi.fn().mockReturnValue(false),
-
-		getVariablesLimit: vi.fn().mockReturnValue(0),
-		getTeamProjectLimit: vi.fn().mockReturnValue(0),
-		isBinaryDataS3Licensed: vi.fn().mockReturnValue(false),
-		isAiAssistantEnabled: vi.fn().mockReturnValue(false),
-		isAskAiEnabled: vi.fn().mockReturnValue(false),
-		isAiCreditsEnabled: vi.fn().mockReturnValue(false),
-		getAiCredits: vi.fn().mockReturnValue(0),
-		isFoldersEnabled: vi.fn().mockReturnValue(false),
 	});
 
 	const mailer = mock<UserManagementMailer>({
@@ -168,6 +148,12 @@ describe('FrontendService', () => {
 	});
 
 	const licenseState = mock<LicenseState>({
+		isLdapLicensed: vi.fn().mockReturnValue(false),
+		isSamlLicensed: vi.fn().mockReturnValue(false),
+		getMaxUsers: vi.fn().mockReturnValue(100),
+		getMaxVariables: vi.fn().mockReturnValue(0),
+		getMaxTeamProjects: vi.fn().mockReturnValue(0),
+		getMaxAiCredits: vi.fn().mockReturnValue(0),
 		isOidcLicensed: vi.fn().mockReturnValue(false),
 		isMFAEnforcementLicensed: vi.fn().mockReturnValue(false),
 		isOtelCustomSpanAttributesLicensed: vi.fn().mockReturnValue(false),
@@ -204,9 +190,9 @@ describe('FrontendService', () => {
 				enabled: false,
 			}),
 		);
-		// isApiKeyAuthEnabled() reads License via the container directly, so the
-		// constructor-injected mock above must also be registered here.
+		// isApiKeyAuthEnabled() reads LicenseState from the container.
 		Container.set(License, license);
+		Container.get(LicenseState).setLicenseProvider(license);
 
 		return {
 			service: new FrontendService(
@@ -280,6 +266,25 @@ describe('FrontendService', () => {
 			);
 		});
 
+		it('should refresh licensed features and quotas from LicenseState', async () => {
+			const { service } = createMockService();
+			licenseState.getMaxUsers.mockReturnValue(5);
+			licenseState.isSharingLicensed.mockReturnValueOnce(true);
+			licenseState.isVariablesLicensed.mockReturnValue(true);
+			licenseState.getMaxVariables.mockReturnValueOnce(10);
+
+			const licensed = await service.getSettings();
+			expect(licensed.userManagement.quota).toBe(5);
+			expect(licensed.enterprise.sharing).toBe(true);
+			expect(licensed.variables.limit).toBe(10);
+
+			licenseState.getMaxUsers.mockReturnValueOnce(UNLIMITED_LICENSE_QUOTA);
+			licenseState.isSharingLicensed.mockReturnValueOnce(false);
+			const unlicensed = await service.getSettings();
+			expect(unlicensed.userManagement.quota).toBe(UNLIMITED_LICENSE_QUOTA);
+			expect(unlicensed.enterprise.sharing).toBe(false);
+		});
+
 		it('should expose excluded node types from NODES_EXCLUDE', async () => {
 			globalConfig.nodes.exclude = ['n8n-nodes-base.executeWorkflow'];
 			const { service } = createMockService();
@@ -325,8 +330,8 @@ describe('FrontendService', () => {
 		it('should surface the assistant Cloud UBB entitlement when the AI Assistant is enabled and entitled', async () => {
 			globalConfig.aiAssistant.baseUrl = 'https://ai-assistant.n8n.io';
 			licenseState.isAiAssistantCloudUbbEntitlementLicensed.mockReturnValue(true);
-			const { service, license } = createMockService();
-			license.isAiAssistantEnabled.mockReturnValue(true);
+			const { service } = createMockService();
+			licenseState.isAiAssistantLicensed.mockReturnValue(true);
 
 			const settings = await service.getSettings();
 
@@ -336,8 +341,8 @@ describe('FrontendService', () => {
 		it('should keep the assistant Cloud UBB entitlement off when the AI Assistant is disabled', async () => {
 			globalConfig.aiAssistant.baseUrl = '';
 			licenseState.isAiAssistantCloudUbbEntitlementLicensed.mockReturnValue(true);
-			const { service, license } = createMockService();
-			license.isAiAssistantEnabled.mockReturnValue(false);
+			const { service } = createMockService();
+			licenseState.isAiAssistantLicensed.mockReturnValue(false);
 
 			const settings = await service.getSettings();
 

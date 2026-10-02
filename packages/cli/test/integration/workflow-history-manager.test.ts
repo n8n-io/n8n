@@ -4,6 +4,7 @@ import {
 	mockInstance,
 	createActiveWorkflow,
 } from '@n8n/backend-test-utils';
+import { LicenseState } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { WorkflowHistoryRepository, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -17,6 +18,7 @@ import { createManyWorkflowHistoryItems } from './shared/db/workflow-history';
 
 describe('Workflow History Manager', () => {
 	const license = mockInstance(License);
+	const licenseState = mockInstance(LicenseState);
 	let repo: WorkflowHistoryRepository;
 	let manager: WorkflowHistoryManager;
 	let globalConfig: GlobalConfig;
@@ -34,7 +36,7 @@ describe('Workflow History Manager', () => {
 
 		globalConfig.workflowHistory.pruneTime = -1;
 
-		license.getWorkflowHistoryPruneLimit.mockReturnValue(-1);
+		licenseState.getValue.mockReturnValue(-1);
 	});
 
 	afterAll(async () => {
@@ -72,7 +74,7 @@ describe('Workflow History Manager', () => {
 	});
 
 	test('should prune when license prune time is not -1 (infinite)', async () => {
-		license.getWorkflowHistoryPruneLimit.mockReturnValue(24);
+		licenseState.getValue.mockReturnValue(24);
 
 		await createWorkflowHistory();
 		await pruneAndAssertCount(0);

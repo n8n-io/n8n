@@ -1,6 +1,6 @@
-import type { Logger } from '@n8n/backend-common';
+import type { LicenseState, Logger } from '@n8n/backend-common';
 import type { GlobalConfig } from '@n8n/config';
-import { Time } from '@n8n/constants';
+import { Time, UNLIMITED_LICENSE_QUOTA } from '@n8n/constants';
 import type {
 	AuthenticatedRequest,
 	User,
@@ -14,7 +14,6 @@ import { mock } from 'vitest-mock-extended';
 
 import { AuthService } from '@/auth/auth.service';
 import { AUTH_COOKIE_NAME } from '@/constants';
-import type { License } from '@/license';
 import type { MfaService } from '@/mfa/mfa.service';
 import { JwtService } from '@/services/jwt.service';
 import type { UrlService } from '@n8n/backend-services';
@@ -46,7 +45,7 @@ describe('AuthService', () => {
 	const userRepository = mock<UserRepository>();
 	const invalidAuthTokenRepository = mock<InvalidAuthTokenRepository>();
 	const mfaService = mock<MfaService>();
-	const license = mock<License>();
+	const license = mock<LicenseState>();
 	const logger = mock<Logger>();
 	const authService = new AuthService(
 		globalConfig,
@@ -74,7 +73,7 @@ describe('AuthService', () => {
 		globalConfig.userManagement.jwtSessionDurationHours = 168;
 		globalConfig.userManagement.jwtRefreshTimeoutHours = 0;
 		globalConfig.auth.cookie = { secure: true, samesite: 'lax' };
-		license.isWithinUsersLimit.mockReturnValue(true);
+		license.getMaxUsers.mockReturnValue(UNLIMITED_LICENSE_QUOTA);
 	});
 
 	describe('createJWTHash', () => {
@@ -739,14 +738,14 @@ describe('AuthService', () => {
 		describe('when user limit is reached', () => {
 			it('should block issuance if the user is not the global owner', async () => {
 				user.role = GLOBAL_MEMBER_ROLE;
-				license.isWithinUsersLimit.mockReturnValue(false);
+				license.getMaxUsers.mockReturnValue(5);
 				expect(() => {
 					authService.issueCookie(res, user, false, browserId);
 				}).toThrowError('Maximum number of users reached');
 			});
 
 			it('should allow issuance if the user is the global owner', async () => {
-				license.isWithinUsersLimit.mockReturnValue(false);
+				license.getMaxUsers.mockReturnValue(5);
 				user.role = GLOBAL_OWNER_ROLE;
 				expect(() => {
 					authService.issueCookie(res, user, false, browserId);

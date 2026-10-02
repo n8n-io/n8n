@@ -1,4 +1,4 @@
-import { Logger } from '@n8n/backend-common';
+import { LicenseState, Logger } from '@n8n/backend-common';
 import { OutboundHttp, type HttpRequestClient } from '@n8n/backend-network';
 import { BUILTIN_NODES_PACKAGES, LICENSE_FEATURES, Time } from '@n8n/constants';
 import { OnPubSubEvent } from '@n8n/decorators';
@@ -25,7 +25,6 @@ import { valid } from 'semver';
 import { NODE_PACKAGE_PREFIX, NPM_PACKAGE_STATUS_GOOD, RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
 import { IncompatibleNodesApiVersionError } from '@/errors/response-errors/incompatible-nodes-api-version.error';
-import { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { toError } from '@/utils';
@@ -85,7 +84,7 @@ export class CommunityPackagesService {
 		private readonly installedPackageRepository: InstalledPackagesRepository,
 		private readonly loadNodesAndCredentials: LoadNodesAndCredentials,
 		private readonly publisher: Publisher,
-		private readonly license: License,
+		private readonly license: LicenseState,
 		private readonly config: CommunityPackagesConfig,
 		outboundHttp: OutboundHttp,
 	) {
@@ -492,8 +491,7 @@ export class CommunityPackagesService {
 
 	private getNpmRegistry() {
 		const { registry } = this.config;
-		// oxlint-disable-next-line typescript/no-deprecated
-		if (registry !== DEFAULT_REGISTRY && !this.license.isCustomNpmRegistryEnabled()) {
+		if (registry !== DEFAULT_REGISTRY && !this.license.isCustomNpmRegistryLicensed()) {
 			throw new FeatureNotLicensedError(LICENSE_FEATURES.COMMUNITY_NODES_CUSTOM_REGISTRY);
 		}
 		return registry;
