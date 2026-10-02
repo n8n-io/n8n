@@ -1,0 +1,434 @@
+{
+	"openrpc": "1.3.2",
+	"info": {
+		"title": "n8n Node Contract: the lookup interface",
+		"version": "2.5.0",
+		"description": "Generated from spec/wit (world lookup-bundle) by scripts/spec.ts. Do not edit.\n\nA `run` lookup.\n\nBoth sides send requests on one connection. `x-direction` tells which side answers a method. A method without `result` is a notification. Names in brackets are not WIT functions: the JSON-RPC mapping adds them."
+	},
+	"x-world": "n8n:node-contract/lookup-bundle@2.5.0",
+	"x-unstable": "lookup",
+	"methods": [
+		{
+			"name": "[initialize]",
+			"description": "The first message. The host sends the Node Contract version that it implements. The guest answers with the version and the kind of its bundle. The host closes the connection when the bundle version is outside its range or needs a newer minor.",
+			"paramStructure": "by-name",
+			"params": [
+				{
+					"name": "nodeContract",
+					"required": true,
+					"schema": {
+						"type": "string"
+					}
+				}
+			],
+			"result": {
+				"name": "result",
+				"schema": {
+					"type": "object",
+					"properties": {
+						"nodeContract": {
+							"type": "string"
+						},
+						"kind": {
+							"const": "lookup"
+						}
+					},
+					"required": ["nodeContract", "kind"],
+					"additionalProperties": false
+				}
+			},
+			"x-direction": "host-to-guest",
+			"x-unstable": "lookup"
+		},
+		{
+			"name": "lookup.list",
+			"description": "One page of resources. `query` is the search text of the user. `input` holds the\nfields that a dependent lookup reads, for example the spreadsheet of a sheet.",
+			"paramStructure": "by-name",
+			"params": [
+				{
+					"name": "input",
+					"required": true,
+					"schema": {
+						"$ref": "#/components/schemas/types.json"
+					}
+				},
+				{
+					"name": "query",
+					"required": false,
+					"schema": {
+						"type": "string"
+					}
+				},
+				{
+					"name": "cursor",
+					"required": false,
+					"schema": {
+						"type": "string"
+					}
+				}
+			],
+			"result": {
+				"name": "result",
+				"schema": {
+					"$ref": "#/components/schemas/lookup.lookup-page"
+				}
+			},
+			"errors": [
+				{
+					"code": -32000,
+					"message": "The error of the WIT result."
+				}
+			],
+			"x-error": {
+				"$ref": "#/components/schemas/errors.run-error"
+			},
+			"x-direction": "host-to-guest",
+			"x-unstable": "lookup"
+		},
+		{
+			"name": "http.request",
+			"paramStructure": "by-name",
+			"params": [
+				{
+					"name": "request",
+					"required": true,
+					"schema": {
+						"$ref": "#/components/schemas/http.http-request"
+					}
+				}
+			],
+			"result": {
+				"name": "result",
+				"schema": {
+					"$ref": "#/components/schemas/http.http-response"
+				}
+			},
+			"errors": [
+				{
+					"code": -32000,
+					"message": "The error of the WIT result."
+				}
+			],
+			"x-error": {
+				"$ref": "#/components/schemas/http.http-failure"
+			},
+			"x-direction": "guest-to-host",
+			"x-unstable": "lookup"
+		},
+		{
+			"name": "log.log",
+			"description": "Writes to the n8n log with the node name. Do not log credentials or personal data.\nThe host keeps the first 100 lines of a node execution, each cut to 2000 characters.",
+			"paramStructure": "by-name",
+			"params": [
+				{
+					"name": "level",
+					"required": true,
+					"schema": {
+						"$ref": "#/components/schemas/log.level"
+					}
+				},
+				{
+					"name": "message",
+					"required": true,
+					"schema": {
+						"type": "string"
+					}
+				}
+			],
+			"x-direction": "guest-to-host",
+			"x-unstable": "lookup"
+		},
+		{
+			"name": "limits.get",
+			"paramStructure": "by-name",
+			"params": [],
+			"result": {
+				"name": "result",
+				"schema": {
+					"$ref": "#/components/schemas/limits.run-limits"
+				}
+			},
+			"x-direction": "guest-to-host",
+			"x-unstable": "lookup"
+		}
+	],
+	"components": {
+		"schemas": {
+			"types.json": {
+				"description": "A JSON value, inline."
+			},
+			"errors.run-error": {
+				"type": "object",
+				"properties": {
+					"message": {
+						"type": "string"
+					},
+					"response": {
+						"description": "The failed response, when a request caused the error.",
+						"$ref": "#/components/schemas/http.http-error"
+					}
+				},
+				"required": ["message"],
+				"additionalProperties": false
+			},
+			"http.http-error": {
+				"description": "A non-2xx response.",
+				"type": "object",
+				"properties": {
+					"message": {
+						"type": "string"
+					},
+					"status": {
+						"type": "integer",
+						"minimum": 0,
+						"maximum": 65535
+					},
+					"headers": {
+						"description": "Lower-case names.",
+						"type": "array",
+						"items": {
+							"type": "array",
+							"items": [
+								{
+									"type": "string"
+								},
+								{
+									"type": "string"
+								}
+							],
+							"minItems": 2,
+							"maxItems": 2,
+							"additionalItems": false
+						}
+					},
+					"body": {
+						"$ref": "#/components/schemas/types.json"
+					}
+				},
+				"required": ["message", "status", "headers", "body"],
+				"additionalProperties": false
+			},
+			"http.http-failure": {
+				"oneOf": [
+					{
+						"type": "object",
+						"properties": {
+							"tag": {
+								"const": "response"
+							},
+							"val": {
+								"$ref": "#/components/schemas/http.http-error"
+							}
+						},
+						"required": ["tag", "val"],
+						"additionalProperties": false
+					},
+					{
+						"description": "No response: DNS, connection, TLS, time-out, a host limit, or a refused host.",
+						"type": "object",
+						"properties": {
+							"tag": {
+								"const": "transport"
+							},
+							"val": {
+								"type": "string"
+							}
+						},
+						"required": ["tag", "val"],
+						"additionalProperties": false
+					}
+				]
+			},
+			"http.http-method": {
+				"enum": ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD"]
+			},
+			"http.http-request": {
+				"type": "object",
+				"properties": {
+					"method": {
+						"$ref": "#/components/schemas/http.http-method"
+					},
+					"target": {
+						"$ref": "#/components/schemas/http.http-target"
+					},
+					"query": {
+						"description": "A repeated name sends each value: `id=a&id=b`.",
+						"type": "array",
+						"items": {
+							"type": "array",
+							"items": [
+								{
+									"type": "string"
+								},
+								{
+									"type": "string"
+								}
+							],
+							"minItems": 2,
+							"maxItems": 2,
+							"additionalItems": false
+						}
+					},
+					"headers": {
+						"type": "array",
+						"items": {
+							"type": "array",
+							"items": [
+								{
+									"type": "string"
+								},
+								{
+									"type": "string"
+								}
+							],
+							"minItems": 2,
+							"maxItems": 2,
+							"additionalItems": false
+						}
+					},
+					"body": {
+						"description": "Sent as JSON.",
+						"$ref": "#/components/schemas/types.json"
+					},
+					"timeoutMs": {
+						"description": "300000 (5 minutes) when none.",
+						"type": "integer",
+						"minimum": 0,
+						"maximum": 4294967295
+					},
+					"retry": {
+						"description": "None: the host retries a 429, 502, 503, 504 or a dropped connection for GET,\nHEAD, PUT, or an action with `flow.idempotent`. True or false overrides this.",
+						"type": "boolean"
+					}
+				},
+				"required": ["method", "target", "query", "headers"],
+				"additionalProperties": false
+			},
+			"http.http-response": {
+				"type": "object",
+				"properties": {
+					"status": {
+						"type": "integer",
+						"minimum": 0,
+						"maximum": 65535
+					},
+					"headers": {
+						"description": "Lower-case names.",
+						"type": "array",
+						"items": {
+							"type": "array",
+							"items": [
+								{
+									"type": "string"
+								},
+								{
+									"type": "string"
+								}
+							],
+							"minItems": 2,
+							"maxItems": 2,
+							"additionalItems": false
+						}
+					},
+					"body": {
+						"description": "The JSON body, or the body text as a JSON string.",
+						"$ref": "#/components/schemas/types.json"
+					}
+				},
+				"required": ["status", "headers", "body"],
+				"additionalProperties": false
+			},
+			"http.http-target": {
+				"oneOf": [
+					{
+						"description": "An absolute http or https URL, for example a `next` link.",
+						"type": "object",
+						"properties": {
+							"tag": {
+								"const": "url"
+							},
+							"val": {
+								"type": "string"
+							}
+						},
+						"required": ["tag", "val"],
+						"additionalProperties": false
+					},
+					{
+						"description": "Starts with one `/` and goes after the base URL path. It cannot change the origin.",
+						"type": "object",
+						"properties": {
+							"tag": {
+								"const": "path"
+							},
+							"val": {
+								"type": "string"
+							}
+						},
+						"required": ["tag", "val"],
+						"additionalProperties": false
+					}
+				]
+			},
+			"limits.run-limits": {
+				"description": "The limits for one run: one input item, or all input items of a `batch` run. The host\nenforces them.",
+				"type": "object",
+				"properties": {
+					"maxRequests": {
+						"description": "A page is one request.",
+						"type": "integer",
+						"minimum": 0,
+						"maximum": 4294967295
+					},
+					"maxItems": {
+						"type": "integer",
+						"minimum": 0,
+						"maximum": 4294967295
+					}
+				},
+				"required": ["maxRequests", "maxItems"],
+				"additionalProperties": false
+			},
+			"log.level": {
+				"enum": ["debug", "info", "warn", "error"]
+			},
+			"lookup.lookup-item": {
+				"x-unstable": "lookup",
+				"type": "object",
+				"properties": {
+					"id": {
+						"description": "The resource ID that the input field gets.",
+						"type": "string"
+					},
+					"label": {
+						"type": "string"
+					},
+					"url": {
+						"description": "A link to the resource in the service.",
+						"type": "string"
+					}
+				},
+				"required": ["id", "label"],
+				"additionalProperties": false
+			},
+			"lookup.lookup-page": {
+				"x-unstable": "lookup",
+				"type": "object",
+				"properties": {
+					"items": {
+						"type": "array",
+						"items": {
+							"$ref": "#/components/schemas/lookup.lookup-item"
+						}
+					},
+					"cursor": {
+						"description": "The cursor of the next page. None on the last page.",
+						"type": "string"
+					}
+				},
+				"required": ["items"],
+				"additionalProperties": false
+			}
+		}
+	}
+}

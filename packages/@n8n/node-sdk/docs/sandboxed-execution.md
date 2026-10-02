@@ -15,10 +15,11 @@ bundles run in-process. Community and AI-generated bundles run in a sandbox.
 - Secrets never enter `run()`. The guest sees credential settings only.
 - The executor owns parameters, defaults, validation, retries, limits, pairing and continue on fail.
 - Bundles are self-contained (esbuild inlines dependencies), hashed, signed (ed25519 manifest) and
-  declare the interface version they need (`apiVersion`, for example `n8n:action@2.1.0`). The
-  interface is defined in WIT (`spec/n8n-action@2.wit`). `spec/json-rpc.md` gives its JSON-RPC
-  form for process and container runtimes. The host runs the versions in
-  `N8N_NODE_CONTRACTS_API_RANGE` and runs @1 bundles through an adapter (`src/action-api-v1.ts`).
+  declare the Node Contract version they need (`nodeContract`, for example `2.1.0`, see
+  [node-contract.md](node-contract.md)). The interface of each kind is defined in WIT
+  (`spec/wit/`). `spec/json-rpc.md` gives its JSON-RPC form for process and container
+  runtimes. The host runs the versions in `N8N_NODE_CONTRACT_RANGE` and runs @1 bundles through
+  an adapter (`src/action-api-v1.ts`).
 - `replayFixtures` replays fixtures through any `ExecutorHost`.
 
 ## What blocks it
@@ -71,7 +72,7 @@ for the AI builder does not change. The same fixtures prove parity across langua
 | Phase | Work | Effort |
 |---|---|---|
 | 0 | Publish-gate lint: no `node:*`, no free `fetch`, `process` or `globalThis`. Wall-clock cap. Redact auth headers in `fullResponse`. Host-enforced egress hosts are built (see below). | ~1 week |
-| 1 | A JS shim for the WIT interface (`n8n:action@2`, `spec/`), so current bundles run unchanged. A `SandboxRuntime` seam next to the bundle loader. `replayFixtures` runs through the seam. | 2 to 3 weeks |
+| 1 | A JS shim for the WIT interfaces (`spec/wit/`), so current bundles run unchanged. A `SandboxRuntime` seam next to the bundle loader. `replayFixtures` runs through the seam. | 2 to 3 weeks |
 | 2 | A wasmtime sidecar for untrusted bundles, in the task-runner process family. Build: frozen bundle, then ComponentizeJS (or QuickJS), then sign the component digest. | 3 to 4 weeks |
 | 3 | Python and Rust actions. A gVisor or microVM tier for native dependencies, as an admin opt-in. | later |
 
@@ -125,7 +126,7 @@ logic is in `src/egress.ts`.
 
 ## Binary data
 
-A file is an opaque host handle (`binary` in `spec/n8n-action@2.wit`, `n8n:action@2.2.0`). The
+A file is an opaque host handle (`binary` in `spec/wit/host.wit`, Node Contract 2.2.0). The
 bytes stay in the n8n binary data store (filesystem, S3, or database mode). Only an action with
 a `binary()` field targets 2.2.0. Every other bundle targets 2.1.0.
 

@@ -80,13 +80,11 @@ import {
 } from './subnodes';
 import { applyDefaults, list, matches, parse, validate } from './validate';
 import {
-	ACTION_API_VERSION,
-	apiSemverOf,
-	DEFAULT_ACTION_API_RANGE,
-	parseSemver,
-	semverRange,
+	assertNodeContract,
+	implementsNodeContract,
+	IMPLEMENTED_NODE_CONTRACTS,
 	sha256,
-	type ActionApiVersion,
+	type NodeContractVersion,
 	type VersionManifest,
 } from './version';
 
@@ -654,7 +652,7 @@ function fileNameOf(headers: Readonly<Record<string, string>>, url: string): str
 }
 
 /**
- * The `n8n:action@2` executor. Per-item and 1:N actions run once per input item with the
+ * The executor of the action interface. Per-item and 1:N actions run once per input item with the
  * parameters of that item; a batch action runs once with all items and the parameters of the
  * first item. Each parameter set is filled with defaults and validated against `input`.
  * Transient failures of idempotent requests retry. Each output item is validated against
@@ -706,7 +704,7 @@ export function executorOf<S extends Shape, O extends AnySchema>(
 		const binaryStore = (): BinaryStore => {
 			if (!binaryApi) {
 				throw new UnexpectedError(
-					`${action.id} has no binary() field, so it targets n8n:action@2.1.0, which has no binary data`,
+					`${action.id} has no binary() field, so it targets Node Contract 2.1.0, which has no binary data`,
 				);
 			}
 			if (!host.binary) {
@@ -1392,7 +1390,7 @@ export interface FrozenVersion {
 	readBundle(): Promise<string>;
 }
 
-/** Host modules a frozen bundle may import. They are part of every `n8n:action` version. */
+/** Host modules a frozen bundle may import. They are part of every Node Contract version. */
 const HOST_MODULES: Readonly<Record<string, unknown>> = { 'n8n-workflow': { safeRegex } };
 
 const isContract = (value: unknown): value is Action | Trigger =>
@@ -1406,29 +1404,14 @@ const isContract = (value: unknown): value is Action | Trigger =>
 		isRecord(value.poll) ||
 		isRecord(value.webhook));
 
-/** The newest version of each `n8n:action` major that this host runs. */
-const IMPLEMENTED_ACTION_APIS: readonly ActionApiVersion[] = [
-	'n8n:action@1.0.0',
-	ACTION_API_VERSION,
-];
-
-/** A newer minor than the host has uses imports that the host lacks. */
-const implementsActionApi = (apiVersion: ActionApiVersion) => {
-	const { major, minor } = parseSemver(apiSemverOf(apiVersion));
-	return IMPLEMENTED_ACTION_APIS.some((implemented) => {
-		const known = parseSemver(apiSemverOf(implemented));
-		return known.major === major && known.minor >= minor;
-	});
-};
-
 /**
  * Runs a CommonJS bundle from `freezeAction` and returns the action or trigger it exports.
  * An @1 bundle runs through its adapter, so the executor sees @2 only.
  */
-export function evaluateBundle(code: string, apiVersion: ActionApiVersion): Action | Trigger {
-	if (!implementsActionApi(apiVersion)) {
+export function evaluateBundle(code: string, nodeContract: NodeContractVersion): Action | Trigger {
+	if (!implementsNodeContract(nodeContract)) {
 		throw new UserError(
-			`This host cannot run ${apiVersion}. It implements ${IMPLEMENTED_ACTION_APIS.join(', ')}.`,
+			`This host cannot run Node Contract ${nodeContract}. It implements ${IMPLEMENTED_NODE_CONTRACTS.join(', ')}.`,
 		);
 	}
 	const module: { exports: unknown } = { exports: {} };
@@ -1438,46 +1421,20 @@ export function evaluateBundle(code: string, apiVersion: ActionApiVersion): Acti
 	};
 	Reflect.apply(compileFunction(code, ['module', 'require']), undefined, [module, hostRequire]);
 	const exported = isRecord(module.exports) ? module.exports.default : undefined;
-	const contract = apiVersion.startsWith('n8n:action@1.') ? fromActionApiV1(exported) : exported;
+	const contract = nodeContract.startsWith('1.') ? fromActionApiV1(exported) : exported;
 	if (!isContract(contract)) throw new UnexpectedError('The bundle does not export a contract');
 	return contract;
 }
 
-// One slot: the host sets its configured range once at start.
-const actionApiRange = new Map<'range', { text: string; includes: (version: string) => boolean }>();
-
-/** Sets the `n8n:action` versions this host runs, e.g. `>=2.0.0 <3.0.0`. Throws for a bad range. */
-export const setActionApiRange = (range: string) => {
-	actionApiRange.set('range', { text: range, includes: semverRange(range) });
-};
-
-const DEFAULT_RANGE = {
-	text: DEFAULT_ACTION_API_RANGE,
-	includes: semverRange(DEFAULT_ACTION_API_RANGE),
-};
-
-const rangeOf = () => actionApiRange.get('range') ?? DEFAULT_RANGE;
-
-/** In the configured range, and implemented by this host. */
-export const runsActionApi = (apiVersion: ActionApiVersion) =>
-	rangeOf().includes(apiSemverOf(apiVersion)) && implementsActionApi(apiVersion);
-
-function assertActionApi({ id, semver, apiVersion }: VersionManifest) {
-	if (runsActionApi(apiVersion)) return;
-	throw new UserError(
-		`${id}@${semver} needs ${apiVersion}. This host runs n8n:action ${rangeOf().text} and implements ${IMPLEMENTED_ACTION_APIS.join(', ')}.`,
-	);
-}
-
-/** The bundle of a frozen version, after its API version and its hash are checked. */
+/** The bundle of a frozen version, after its Node Contract version and its hash are checked. */
 export async function verifiedBundleOf({ manifest, readBundle }: FrozenVersion) {
-	assertActionApi(manifest);
-	const { id, semver, apiVersion, bundleHash } = manifest;
+	assertNodeContract(manifest);
+	const { id, semver, nodeContract, bundleHash } = manifest;
 	const code = await readBundle();
 	if (sha256(code) !== bundleHash) {
 		throw new UnexpectedError(`The bundle of ${id}@${semver} does not match ${bundleHash}`);
 	}
-	return evaluateBundle(code, apiVersion);
+	return evaluateBundle(code, nodeContract);
 }
 
 /** Executors by bundle hash and HEAD bundle hash. A bundle loads on its first execution only. */
@@ -1534,7 +1491,7 @@ async function versionExecutorOf(context: NodeContext, head: FrozenVersion) {
 			`${id}@${semver} cannot run as ${head.manifest.id}@${head.manifest.semver}`,
 		);
 	}
-	assertActionApi(frozen.manifest);
+	assertNodeContract(frozen.manifest);
 	// A failed read, for example a registry outage, must not stay in the cache.
 	// The credential hosts come from `head`, so the executor depends on both bundles.
 	const key = `${bundleHash}:${head.manifest.bundleHash}`;
@@ -1551,8 +1508,8 @@ async function versionExecutorOf(context: NodeContext, head: FrozenVersion) {
 async function executeVersion(context: IExecuteFunctions, head: FrozenVersion) {
 	const { executor, manifest } = await versionExecutorOf(context, head);
 	const outputs = await executor(hostOf(context));
-	const { id, semver, bundleHash, apiVersion } = manifest;
-	context.setMetadata({ nodeContract: { action: id, version: semver, bundleHash, apiVersion } });
+	const { id, semver, bundleHash, nodeContract } = manifest;
+	context.setMetadata({ nodeContract: { action: id, version: semver, bundleHash, nodeContract } });
 	return outputs;
 }
 
@@ -1575,7 +1532,7 @@ export function versionedTypeOf(
 	versions: readonly FrozenVersion[],
 	typeOf: (frozen: FrozenVersion) => INodeType,
 ): new () => VersionedNodeType {
-	versions.forEach(({ manifest }) => assertActionApi(manifest));
+	versions.forEach(({ manifest }) => assertNodeContract(manifest));
 	const majorOf = ({ manifest }: FrozenVersion) => manifest.contract.version;
 	const latest = versions.reduce<FrozenVersion | undefined>(
 		(best, frozen) => (best && majorOf(best) > majorOf(frozen) ? best : frozen),

@@ -263,11 +263,11 @@ export class InstanceAiConfig {
 	nodeContractsPublicKeyFile: string = '';
 
 	/**
-	 * The `n8n:action` versions a contract bundle may declare, as a semver range. Raise the
+	 * The Node Contract versions a manifest or bundle may declare, as a semver range. Raise the
 	 * lowest major only in an n8n major release.
 	 */
-	@Env('N8N_NODE_CONTRACTS_API_RANGE')
-	nodeContractsApiRange: string = '>=1.0.0 <3.0.0';
+	@Env('N8N_NODE_CONTRACT_RANGE')
+	nodeContractRange: string = '>=1.0.0 <3.0.0';
 
 	/**
 	 * Force-enable folder exploration in Instance AI: folder attribution and

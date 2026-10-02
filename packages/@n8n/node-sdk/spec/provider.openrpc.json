@@ -1,0 +1,1011 @@
+{
+	"openrpc": "1.3.2",
+	"info": {
+		"title": "n8n Node Contract: the provider interface",
+		"version": "2.5.0",
+		"description": "Generated from spec/wit (world provider-bundle) by scripts/spec.ts. Do not edit.\n\nA provider: it supplies one capability (a chat model, a memory, a tool or embeddings) to a\nroot node.\n\nBoth sides send requests on one connection. `x-direction` tells which side answers a method. A method without `result` is a notification. Names in brackets are not WIT functions: the JSON-RPC mapping adds them."
+	},
+	"x-world": "n8n:node-contract/provider-bundle@2.5.0",
+	"x-since": "2.3.0",
+	"methods": [
+		{
+			"name": "[initialize]",
+			"description": "The first message. The host sends the Node Contract version that it implements. The guest answers with the version and the kind of its bundle. The host closes the connection when the bundle version is outside its range or needs a newer minor.",
+			"paramStructure": "by-name",
+			"params": [
+				{
+					"name": "nodeContract",
+					"required": true,
+					"schema": {
+						"type": "string"
+					}
+				}
+			],
+			"result": {
+				"name": "result",
+				"schema": {
+					"type": "object",
+					"properties": {
+						"nodeContract": {
+							"type": "string"
+						},
+						"kind": {
+							"const": "provider"
+						}
+					},
+					"required": ["nodeContract", "kind"],
+					"additionalProperties": false
+				}
+			},
+			"x-direction": "host-to-guest",
+			"x-since": "2.3.0"
+		},
+		{
+			"name": "capabilities.chat-model.model",
+			"description": "The provider model ID, for example `gpt-5-mini`.",
+			"paramStructure": "by-name",
+			"params": [
+				{
+					"name": "self",
+					"required": true,
+					"schema": {
+						"type": "integer",
+						"minimum": 0,
+						"description": "A handle of capabilities.chat-model. The side that creates the resource numbers it."
+					}
+				}
+			],
+			"result": {
+				"name": "result",
+				"schema": {
+					"type": "string"
+				}
+			},
+			"x-direction": "host-to-guest",
+			"x-since": "2.3.0"
+		},
+		{
+			"name": "capabilities.chat-model.chat",
+			"paramStructure": "by-name",
+			"params": [
+				{
+					"name": "self",
+					"required": true,
+					"schema": {
+						"type": "integer",
+						"minimum": 0,
+						"description": "A handle of capabilities.chat-model. The side that creates the resource numbers it."
+					}
+				},
+				{
+					"name": "request",
+					"required": true,
+					"schema": {
+						"$ref": "#/components/schemas/capabilities.chat-request"
+					}
+				}
+			],
+			"result": {
+				"name": "result",
+				"schema": {
+					"$ref": "#/components/schemas/capabilities.chat-reply"
+				}
+			},
+			"errors": [
+				{
+					"code": -32000,
+					"message": "The error of the WIT result."
+				}
+			],
+			"x-error": {
+				"$ref": "#/components/schemas/errors.run-error"
+			},
+			"x-direction": "host-to-guest",
+			"x-since": "2.3.0"
+		},
+		{
+			"name": "capabilities.chat-model.[drop]",
+			"description": "Frees an owned handle. A notification: it has no answer.",
+			"paramStructure": "by-name",
+			"params": [
+				{
+					"name": "self",
+					"required": true,
+					"schema": {
+						"type": "integer",
+						"minimum": 0,
+						"description": "A handle of capabilities.chat-model. The side that creates the resource numbers it."
+					}
+				}
+			],
+			"x-direction": "host-to-guest",
+			"x-since": "2.3.0"
+		},
+		{
+			"name": "capabilities.memory.load",
+			"description": "The messages so far, oldest first.",
+			"paramStructure": "by-name",
+			"params": [
+				{
+					"name": "self",
+					"required": true,
+					"schema": {
+						"type": "integer",
+						"minimum": 0,
+						"description": "A handle of capabilities.memory. The side that creates the resource numbers it."
+					}
+				}
+			],
+			"result": {
+				"name": "result",
+				"schema": {
+					"type": "array",
+					"items": {
+						"$ref": "#/components/schemas/capabilities.chat-message"
+					}
+				}
+			},
+			"errors": [
+				{
+					"code": -32000,
+					"message": "The error of the WIT result."
+				}
+			],
+			"x-error": {
+				"$ref": "#/components/schemas/errors.run-error"
+			},
+			"x-direction": "host-to-guest",
+			"x-since": "2.3.0"
+		},
+		{
+			"name": "capabilities.memory.save",
+			"description": "Adds the messages of one turn.",
+			"paramStructure": "by-name",
+			"params": [
+				{
+					"name": "self",
+					"required": true,
+					"schema": {
+						"type": "integer",
+						"minimum": 0,
+						"description": "A handle of capabilities.memory. The side that creates the resource numbers it."
+					}
+				},
+				{
+					"name": "messages",
+					"required": true,
+					"schema": {
+						"type": "array",
+						"items": {
+							"$ref": "#/components/schemas/capabilities.chat-message"
+						}
+					}
+				}
+			],
+			"result": {
+				"name": "result",
+				"schema": {
+					"type": "null"
+				}
+			},
+			"errors": [
+				{
+					"code": -32000,
+					"message": "The error of the WIT result."
+				}
+			],
+			"x-error": {
+				"$ref": "#/components/schemas/errors.run-error"
+			},
+			"x-direction": "host-to-guest",
+			"x-since": "2.3.0"
+		},
+		{
+			"name": "capabilities.memory.[drop]",
+			"description": "Frees an owned handle. A notification: it has no answer.",
+			"paramStructure": "by-name",
+			"params": [
+				{
+					"name": "self",
+					"required": true,
+					"schema": {
+						"type": "integer",
+						"minimum": 0,
+						"description": "A handle of capabilities.memory. The side that creates the resource numbers it."
+					}
+				}
+			],
+			"x-direction": "host-to-guest",
+			"x-since": "2.3.0"
+		},
+		{
+			"name": "capabilities.tool.name",
+			"paramStructure": "by-name",
+			"params": [
+				{
+					"name": "self",
+					"required": true,
+					"schema": {
+						"type": "integer",
+						"minimum": 0,
+						"description": "A handle of capabilities.tool. The side that creates the resource numbers it."
+					}
+				}
+			],
+			"result": {
+				"name": "result",
+				"schema": {
+					"type": "string"
+				}
+			},
+			"x-direction": "host-to-guest",
+			"x-since": "2.3.0"
+		},
+		{
+			"name": "capabilities.tool.description",
+			"paramStructure": "by-name",
+			"params": [
+				{
+					"name": "self",
+					"required": true,
+					"schema": {
+						"type": "integer",
+						"minimum": 0,
+						"description": "A handle of capabilities.tool. The side that creates the resource numbers it."
+					}
+				}
+			],
+			"result": {
+				"name": "result",
+				"schema": {
+					"type": "string"
+				}
+			},
+			"x-direction": "host-to-guest",
+			"x-since": "2.3.0"
+		},
+		{
+			"name": "capabilities.tool.input",
+			"description": "A JSON Schema object for `args`.",
+			"paramStructure": "by-name",
+			"params": [
+				{
+					"name": "self",
+					"required": true,
+					"schema": {
+						"type": "integer",
+						"minimum": 0,
+						"description": "A handle of capabilities.tool. The side that creates the resource numbers it."
+					}
+				}
+			],
+			"result": {
+				"name": "result",
+				"schema": {
+					"$ref": "#/components/schemas/types.json"
+				}
+			},
+			"x-direction": "host-to-guest",
+			"x-since": "2.3.0"
+		},
+		{
+			"name": "capabilities.tool.call",
+			"description": "Runs the tool. The result goes back to the model as JSON.",
+			"paramStructure": "by-name",
+			"params": [
+				{
+					"name": "self",
+					"required": true,
+					"schema": {
+						"type": "integer",
+						"minimum": 0,
+						"description": "A handle of capabilities.tool. The side that creates the resource numbers it."
+					}
+				},
+				{
+					"name": "args",
+					"required": true,
+					"schema": {
+						"$ref": "#/components/schemas/types.json"
+					}
+				}
+			],
+			"result": {
+				"name": "result",
+				"schema": {
+					"$ref": "#/components/schemas/types.json"
+				}
+			},
+			"errors": [
+				{
+					"code": -32000,
+					"message": "The error of the WIT result."
+				}
+			],
+			"x-error": {
+				"$ref": "#/components/schemas/errors.run-error"
+			},
+			"x-direction": "host-to-guest",
+			"x-since": "2.3.0"
+		},
+		{
+			"name": "capabilities.tool.[drop]",
+			"description": "Frees an owned handle. A notification: it has no answer.",
+			"paramStructure": "by-name",
+			"params": [
+				{
+					"name": "self",
+					"required": true,
+					"schema": {
+						"type": "integer",
+						"minimum": 0,
+						"description": "A handle of capabilities.tool. The side that creates the resource numbers it."
+					}
+				}
+			],
+			"x-direction": "host-to-guest",
+			"x-since": "2.3.0"
+		},
+		{
+			"name": "capabilities.embeddings.embed",
+			"description": "One vector per text, in order.",
+			"paramStructure": "by-name",
+			"params": [
+				{
+					"name": "self",
+					"required": true,
+					"schema": {
+						"type": "integer",
+						"minimum": 0,
+						"description": "A handle of capabilities.embeddings. The side that creates the resource numbers it."
+					}
+				},
+				{
+					"name": "texts",
+					"required": true,
+					"schema": {
+						"type": "array",
+						"items": {
+							"type": "string"
+						}
+					}
+				}
+			],
+			"result": {
+				"name": "result",
+				"schema": {
+					"type": "array",
+					"items": {
+						"type": "array",
+						"items": {
+							"type": "number"
+						}
+					}
+				}
+			},
+			"errors": [
+				{
+					"code": -32000,
+					"message": "The error of the WIT result."
+				}
+			],
+			"x-error": {
+				"$ref": "#/components/schemas/errors.run-error"
+			},
+			"x-direction": "host-to-guest",
+			"x-since": "2.3.0"
+		},
+		{
+			"name": "capabilities.embeddings.[drop]",
+			"description": "Frees an owned handle. A notification: it has no answer.",
+			"paramStructure": "by-name",
+			"params": [
+				{
+					"name": "self",
+					"required": true,
+					"schema": {
+						"type": "integer",
+						"minimum": 0,
+						"description": "A handle of capabilities.embeddings. The side that creates the resource numbers it."
+					}
+				}
+			],
+			"x-direction": "host-to-guest",
+			"x-since": "2.3.0"
+		},
+		{
+			"name": "provider.supply",
+			"description": "Makes the capability of the manifest kind for one run of the root node. The host\nresolved, defaulted and validated `input` against the manifest input. Requests of the\ncapability use the credential and the egress of the provider.",
+			"paramStructure": "by-name",
+			"params": [
+				{
+					"name": "input",
+					"required": true,
+					"schema": {
+						"$ref": "#/components/schemas/types.json"
+					}
+				}
+			],
+			"result": {
+				"name": "result",
+				"schema": {
+					"$ref": "#/components/schemas/capabilities.capability"
+				}
+			},
+			"errors": [
+				{
+					"code": -32000,
+					"message": "The error of the WIT result."
+				}
+			],
+			"x-error": {
+				"$ref": "#/components/schemas/errors.run-error"
+			},
+			"x-direction": "host-to-guest",
+			"x-since": "2.3.0"
+		},
+		{
+			"name": "http.request",
+			"paramStructure": "by-name",
+			"params": [
+				{
+					"name": "request",
+					"required": true,
+					"schema": {
+						"$ref": "#/components/schemas/http.http-request"
+					}
+				}
+			],
+			"result": {
+				"name": "result",
+				"schema": {
+					"$ref": "#/components/schemas/http.http-response"
+				}
+			},
+			"errors": [
+				{
+					"code": -32000,
+					"message": "The error of the WIT result."
+				}
+			],
+			"x-error": {
+				"$ref": "#/components/schemas/http.http-failure"
+			},
+			"x-direction": "guest-to-host",
+			"x-since": "2.3.0"
+		},
+		{
+			"name": "log.log",
+			"description": "Writes to the n8n log with the node name. Do not log credentials or personal data.\nThe host keeps the first 100 lines of a node execution, each cut to 2000 characters.",
+			"paramStructure": "by-name",
+			"params": [
+				{
+					"name": "level",
+					"required": true,
+					"schema": {
+						"$ref": "#/components/schemas/log.level"
+					}
+				},
+				{
+					"name": "message",
+					"required": true,
+					"schema": {
+						"type": "string"
+					}
+				}
+			],
+			"x-direction": "guest-to-host",
+			"x-since": "2.3.0"
+		},
+		{
+			"name": "limits.get",
+			"paramStructure": "by-name",
+			"params": [],
+			"result": {
+				"name": "result",
+				"schema": {
+					"$ref": "#/components/schemas/limits.run-limits"
+				}
+			},
+			"x-direction": "guest-to-host",
+			"x-since": "2.3.0"
+		}
+	],
+	"components": {
+		"schemas": {
+			"types.json": {
+				"description": "A JSON value, inline."
+			},
+			"capabilities.assistant-message": {
+				"type": "object",
+				"properties": {
+					"content": {
+						"type": "string"
+					},
+					"toolCalls": {
+						"type": "array",
+						"items": {
+							"$ref": "#/components/schemas/capabilities.tool-call"
+						}
+					}
+				},
+				"required": ["content"],
+				"additionalProperties": false
+			},
+			"capabilities.capability": {
+				"oneOf": [
+					{
+						"type": "object",
+						"properties": {
+							"tag": {
+								"const": "chatModel"
+							},
+							"val": {
+								"type": "integer",
+								"minimum": 0,
+								"description": "A handle of capabilities.chat-model. The side that creates the resource numbers it."
+							}
+						},
+						"required": ["tag", "val"],
+						"additionalProperties": false
+					},
+					{
+						"type": "object",
+						"properties": {
+							"tag": {
+								"const": "memory"
+							},
+							"val": {
+								"type": "integer",
+								"minimum": 0,
+								"description": "A handle of capabilities.memory. The side that creates the resource numbers it."
+							}
+						},
+						"required": ["tag", "val"],
+						"additionalProperties": false
+					},
+					{
+						"type": "object",
+						"properties": {
+							"tag": {
+								"const": "tool"
+							},
+							"val": {
+								"type": "integer",
+								"minimum": 0,
+								"description": "A handle of capabilities.tool. The side that creates the resource numbers it."
+							}
+						},
+						"required": ["tag", "val"],
+						"additionalProperties": false
+					},
+					{
+						"type": "object",
+						"properties": {
+							"tag": {
+								"const": "embeddings"
+							},
+							"val": {
+								"type": "integer",
+								"minimum": 0,
+								"description": "A handle of capabilities.embeddings. The side that creates the resource numbers it."
+							}
+						},
+						"required": ["tag", "val"],
+						"additionalProperties": false
+					}
+				]
+			},
+			"capabilities.chat-message": {
+				"description": "One message of a chat, oldest first.",
+				"oneOf": [
+					{
+						"type": "object",
+						"properties": {
+							"tag": {
+								"const": "system"
+							},
+							"val": {
+								"type": "string"
+							}
+						},
+						"required": ["tag", "val"],
+						"additionalProperties": false
+					},
+					{
+						"type": "object",
+						"properties": {
+							"tag": {
+								"const": "user"
+							},
+							"val": {
+								"type": "string"
+							}
+						},
+						"required": ["tag", "val"],
+						"additionalProperties": false
+					},
+					{
+						"type": "object",
+						"properties": {
+							"tag": {
+								"const": "assistant"
+							},
+							"val": {
+								"$ref": "#/components/schemas/capabilities.assistant-message"
+							}
+						},
+						"required": ["tag", "val"],
+						"additionalProperties": false
+					},
+					{
+						"type": "object",
+						"properties": {
+							"tag": {
+								"const": "tool"
+							},
+							"val": {
+								"$ref": "#/components/schemas/capabilities.tool-message"
+							}
+						},
+						"required": ["tag", "val"],
+						"additionalProperties": false
+					}
+				]
+			},
+			"capabilities.chat-reply": {
+				"type": "object",
+				"properties": {
+					"text": {
+						"type": "string"
+					},
+					"toolCalls": {
+						"type": "array",
+						"items": {
+							"$ref": "#/components/schemas/capabilities.tool-call"
+						}
+					},
+					"finishReason": {
+						"description": "`stop`, `length`, `tool_calls`, `content_filter`, or a reason of the provider.",
+						"type": "string"
+					},
+					"usage": {
+						"$ref": "#/components/schemas/capabilities.chat-usage"
+					}
+				},
+				"required": ["text", "toolCalls", "finishReason"],
+				"additionalProperties": false
+			},
+			"capabilities.chat-request": {
+				"type": "object",
+				"properties": {
+					"messages": {
+						"type": "array",
+						"items": {
+							"$ref": "#/components/schemas/capabilities.chat-message"
+						}
+					},
+					"tools": {
+						"description": "Tools the model may call. A reply with tool calls has no final text.",
+						"type": "array",
+						"items": {
+							"$ref": "#/components/schemas/capabilities.tool-definition"
+						}
+					},
+					"output": {
+						"description": "The reply text is JSON that matches this JSON Schema. The provider enforces it when\nit can.",
+						"$ref": "#/components/schemas/types.json"
+					}
+				},
+				"required": ["messages"],
+				"additionalProperties": false
+			},
+			"capabilities.chat-usage": {
+				"type": "object",
+				"properties": {
+					"inputTokens": {
+						"type": "integer",
+						"minimum": 0,
+						"maximum": 4294967295
+					},
+					"outputTokens": {
+						"type": "integer",
+						"minimum": 0,
+						"maximum": 4294967295
+					}
+				},
+				"required": ["inputTokens", "outputTokens"],
+				"additionalProperties": false
+			},
+			"capabilities.tool-call": {
+				"description": "A tool call that a model asks for. `args` match the input schema of the tool.",
+				"type": "object",
+				"properties": {
+					"id": {
+						"description": "The provider's call ID. A tool result names it.",
+						"type": "string"
+					},
+					"name": {
+						"type": "string"
+					},
+					"args": {
+						"$ref": "#/components/schemas/types.json"
+					}
+				},
+				"required": ["id", "name", "args"],
+				"additionalProperties": false
+			},
+			"capabilities.tool-definition": {
+				"description": "What a model reads about a tool.",
+				"type": "object",
+				"properties": {
+					"name": {
+						"description": "Letters, digits, `_` and `-` only: providers refuse other names.",
+						"type": "string"
+					},
+					"description": {
+						"type": "string"
+					},
+					"input": {
+						"description": "A JSON Schema object for `args`.",
+						"$ref": "#/components/schemas/types.json"
+					}
+				},
+				"required": ["name", "description", "input"],
+				"additionalProperties": false
+			},
+			"capabilities.tool-message": {
+				"type": "object",
+				"properties": {
+					"toolCallId": {
+						"type": "string"
+					},
+					"name": {
+						"type": "string"
+					},
+					"content": {
+						"description": "The tool result as text, usually JSON.",
+						"type": "string"
+					}
+				},
+				"required": ["toolCallId", "name", "content"],
+				"additionalProperties": false
+			},
+			"errors.run-error": {
+				"type": "object",
+				"properties": {
+					"message": {
+						"type": "string"
+					},
+					"response": {
+						"description": "The failed response, when a request caused the error.",
+						"$ref": "#/components/schemas/http.http-error"
+					}
+				},
+				"required": ["message"],
+				"additionalProperties": false
+			},
+			"http.http-error": {
+				"description": "A non-2xx response.",
+				"type": "object",
+				"properties": {
+					"message": {
+						"type": "string"
+					},
+					"status": {
+						"type": "integer",
+						"minimum": 0,
+						"maximum": 65535
+					},
+					"headers": {
+						"description": "Lower-case names.",
+						"type": "array",
+						"items": {
+							"type": "array",
+							"items": [
+								{
+									"type": "string"
+								},
+								{
+									"type": "string"
+								}
+							],
+							"minItems": 2,
+							"maxItems": 2,
+							"additionalItems": false
+						}
+					},
+					"body": {
+						"$ref": "#/components/schemas/types.json"
+					}
+				},
+				"required": ["message", "status", "headers", "body"],
+				"additionalProperties": false
+			},
+			"http.http-failure": {
+				"oneOf": [
+					{
+						"type": "object",
+						"properties": {
+							"tag": {
+								"const": "response"
+							},
+							"val": {
+								"$ref": "#/components/schemas/http.http-error"
+							}
+						},
+						"required": ["tag", "val"],
+						"additionalProperties": false
+					},
+					{
+						"description": "No response: DNS, connection, TLS, time-out, a host limit, or a refused host.",
+						"type": "object",
+						"properties": {
+							"tag": {
+								"const": "transport"
+							},
+							"val": {
+								"type": "string"
+							}
+						},
+						"required": ["tag", "val"],
+						"additionalProperties": false
+					}
+				]
+			},
+			"http.http-method": {
+				"enum": ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD"]
+			},
+			"http.http-request": {
+				"type": "object",
+				"properties": {
+					"method": {
+						"$ref": "#/components/schemas/http.http-method"
+					},
+					"target": {
+						"$ref": "#/components/schemas/http.http-target"
+					},
+					"query": {
+						"description": "A repeated name sends each value: `id=a&id=b`.",
+						"type": "array",
+						"items": {
+							"type": "array",
+							"items": [
+								{
+									"type": "string"
+								},
+								{
+									"type": "string"
+								}
+							],
+							"minItems": 2,
+							"maxItems": 2,
+							"additionalItems": false
+						}
+					},
+					"headers": {
+						"type": "array",
+						"items": {
+							"type": "array",
+							"items": [
+								{
+									"type": "string"
+								},
+								{
+									"type": "string"
+								}
+							],
+							"minItems": 2,
+							"maxItems": 2,
+							"additionalItems": false
+						}
+					},
+					"body": {
+						"description": "Sent as JSON.",
+						"$ref": "#/components/schemas/types.json"
+					},
+					"timeoutMs": {
+						"description": "300000 (5 minutes) when none.",
+						"type": "integer",
+						"minimum": 0,
+						"maximum": 4294967295
+					},
+					"retry": {
+						"description": "None: the host retries a 429, 502, 503, 504 or a dropped connection for GET,\nHEAD, PUT, or an action with `flow.idempotent`. True or false overrides this.",
+						"type": "boolean"
+					}
+				},
+				"required": ["method", "target", "query", "headers"],
+				"additionalProperties": false
+			},
+			"http.http-response": {
+				"type": "object",
+				"properties": {
+					"status": {
+						"type": "integer",
+						"minimum": 0,
+						"maximum": 65535
+					},
+					"headers": {
+						"description": "Lower-case names.",
+						"type": "array",
+						"items": {
+							"type": "array",
+							"items": [
+								{
+									"type": "string"
+								},
+								{
+									"type": "string"
+								}
+							],
+							"minItems": 2,
+							"maxItems": 2,
+							"additionalItems": false
+						}
+					},
+					"body": {
+						"description": "The JSON body, or the body text as a JSON string.",
+						"$ref": "#/components/schemas/types.json"
+					}
+				},
+				"required": ["status", "headers", "body"],
+				"additionalProperties": false
+			},
+			"http.http-target": {
+				"oneOf": [
+					{
+						"description": "An absolute http or https URL, for example a `next` link.",
+						"type": "object",
+						"properties": {
+							"tag": {
+								"const": "url"
+							},
+							"val": {
+								"type": "string"
+							}
+						},
+						"required": ["tag", "val"],
+						"additionalProperties": false
+					},
+					{
+						"description": "Starts with one `/` and goes after the base URL path. It cannot change the origin.",
+						"type": "object",
+						"properties": {
+							"tag": {
+								"const": "path"
+							},
+							"val": {
+								"type": "string"
+							}
+						},
+						"required": ["tag", "val"],
+						"additionalProperties": false
+					}
+				]
+			},
+			"limits.run-limits": {
+				"description": "The limits for one run: one input item, or all input items of a `batch` run. The host\nenforces them.",
+				"type": "object",
+				"properties": {
+					"maxRequests": {
+						"description": "A page is one request.",
+						"type": "integer",
+						"minimum": 0,
+						"maximum": 4294967295
+					},
+					"maxItems": {
+						"type": "integer",
+						"minimum": 0,
+						"maximum": 4294967295
+					}
+				},
+				"required": ["maxRequests", "maxItems"],
+				"additionalProperties": false
+			},
+			"log.level": {
+				"enum": ["debug", "info", "warn", "error"]
+			}
+		}
+	}
+}

@@ -265,7 +265,7 @@ describe('binary data', () => {
 		});
 		const { store } = memoryStore();
 		await expect(executorOf(sneaky)(hostOf({}, [], { binary: store }).host)).rejects.toThrow(
-			'files.sneaky has no binary() field, so it targets n8n:action@2.1.0',
+			'files.sneaky has no binary() field, so it targets Node Contract 2.1.0',
 		);
 	});
 });

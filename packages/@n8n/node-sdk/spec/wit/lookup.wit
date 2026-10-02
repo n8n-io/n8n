@@ -1,0 +1,42 @@
+package n8n:node-contract@2.5.0;
+
+/// What the bundle of a `run` lookup exports. A lookup lists the resources that a user can
+/// pick, for example the channels of a workspace. A declarative lookup (a request and an item
+/// mapping) is manifest data, and the host runs it.
+@unstable(feature = lookup)
+interface lookup {
+    @unstable(feature = lookup)
+    use types.{json};
+    @unstable(feature = lookup)
+    use errors.{run-error};
+
+    @unstable(feature = lookup)
+    record lookup-item {
+        /// The resource ID that the input field gets.
+        id: string,
+        label: string,
+        /// A link to the resource in the service.
+        url: option<string>,
+    }
+
+    @unstable(feature = lookup)
+    record lookup-page {
+        items: list<lookup-item>,
+        /// The cursor of the next page. None on the last page.
+        cursor: option<string>,
+    }
+
+    /// One page of resources. `query` is the search text of the user. `input` holds the
+    /// fields that a dependent lookup reads, for example the spreadsheet of a sheet.
+    @unstable(feature = lookup)
+    %list: func(input: json, query: option<string>, cursor: option<string>) -> result<lookup-page, run-error>;
+}
+
+/// A `run` lookup.
+@unstable(feature = lookup)
+world lookup-bundle {
+    import http;
+    import log;
+    import limits;
+    export lookup;
+}

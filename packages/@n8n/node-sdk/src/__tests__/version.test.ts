@@ -20,18 +20,18 @@ import {
 	parseFixtures,
 	parseManifest,
 	resolveContractVersion,
-	setActionApiRange,
 	setContractVersionLoader,
+	setNodeContractRange,
 	str,
 	toContract,
 	toVersionedNodeType,
 	verifyManifestSignature,
-	ACTION_API_VERSION,
-	type ActionApiVersion,
+	NODE_CONTRACT_VERSION,
 	type ActionFlow,
 	type ContractDocument,
 	type ContractFixtures,
 	type FrozenVersion,
+	type NodeContractVersion,
 	type Shape,
 	type VersionManifest,
 } from '../index';
@@ -44,7 +44,12 @@ import {
 } from '../publish';
 import { evaluateBundle } from '../runtime';
 import type { AnySchema } from '../schema';
-import { actionApiVersionOf, DEFAULT_ACTION_API_RANGE, semverRange, sha256 } from '../version';
+import {
+	DEFAULT_NODE_CONTRACT_RANGE,
+	requiredNodeContractOf,
+	semverRange,
+	sha256,
+} from '../version';
 
 const demo = defineNode({ id: 'demo', displayName: 'Demo' });
 const FLOW: ActionFlow = { effect: 'transform', cardinality: 'per-item' };
@@ -595,7 +600,7 @@ describe('published versions', () => {
 					action: 'demo.echo',
 					version: '1.0.0',
 					bundleHash: v100.bundleHash,
-					apiVersion: v100.apiVersion,
+					nodeContract: v100.nodeContract,
 				},
 			},
 		]);
@@ -629,75 +634,90 @@ describe('published versions', () => {
 		expect(reads.count).toBe(2);
 	});
 
-	describe('apiVersion', () => {
-		afterEach(() => setActionApiRange(DEFAULT_ACTION_API_RANGE));
+	describe('nodeContract', () => {
+		afterEach(() => setNodeContractRange(DEFAULT_NODE_CONTRACT_RANGE));
 
 		it('is the version freezeAction writes: 2.1.0 without binary data', async () => {
 			await writeShout('text');
 			const { manifest } = await freeze({ patch: 8 });
-			expect(manifest.apiVersion).toBe('n8n:action@2.1.0');
+			expect(manifest).toMatchObject({ kind: 'action', nodeContract: '2.1.0' });
+			expect(manifest.sdk).toMatch(/^\d+\.\d+\.\d+$/);
+			expect(manifest).not.toHaveProperty('apiVersion');
 			expect(manifest).not.toHaveProperty('abi');
 		});
 
 		it('is 2.4.0 for a list binding or a page value input', () => {
 			const contract = { input: obj({ url: str() }).json, output: obj({}).json };
 			const paged = { ...contract, input: obj({ next: pageValue(str()) }).json };
-			expect(actionApiVersionOf(contract)).toBe('n8n:action@2.1.0');
-			expect(actionApiVersionOf(contract, true)).toBe('n8n:action@2.4.0');
-			expect(actionApiVersionOf(paged)).toBe('n8n:action@2.4.0');
+			expect(requiredNodeContractOf(contract)).toBe('2.1.0');
+			expect(requiredNodeContractOf(contract, true)).toBe('2.4.0');
+			expect(requiredNodeContractOf(paged)).toBe('2.4.0');
 		});
 
 		it('refuse a bundle outside the range, or of a minor this host lacks', async () => {
 			await writeShout('text');
 			const { manifest, bundle } = await freeze({ patch: 9 });
-			const typeOf = (apiVersion: ActionApiVersion) =>
-				toVersionedNodeType([frozenOf({ ...manifest, apiVersion }, bundle)]);
+			const typeOf = (nodeContract: NodeContractVersion) =>
+				toVersionedNodeType([frozenOf({ ...manifest, nodeContract }, bundle)]);
 
-			expect(() => typeOf('n8n:action@3.0.0')).toThrow(
-				'demo.echo@1.0.9 needs n8n:action@3.0.0. This host runs n8n:action >=1.0.0 <3.0.0 and implements n8n:action@1.0.0, n8n:action@2.4.0.',
+			expect(() => typeOf('3.0.0')).toThrow(
+				'demo.echo@1.0.9 needs Node Contract 3.0.0. This host runs >=1.0.0 <3.0.0 and implements 1.0.0, 2.5.0.',
 			);
-			expect(() => typeOf('n8n:action@2.5.0')).toThrow('needs n8n:action@2.5.0');
-			expect(() => typeOf('n8n:action@2.4.0')).not.toThrow();
-			expect(() => typeOf('n8n:action@2.3.0')).not.toThrow();
-			expect(() => typeOf('n8n:action@2.2.0')).not.toThrow();
-			expect(() => typeOf('n8n:action@2.1.0')).not.toThrow();
-			expect(() => typeOf('n8n:action@2.0.3')).not.toThrow();
+			expect(() => typeOf('2.6.0')).toThrow('needs Node Contract 2.6.0');
+			expect(() => typeOf('2.5.0')).not.toThrow();
+			expect(() => typeOf('2.4.0')).not.toThrow();
+			expect(() => typeOf('2.3.0')).not.toThrow();
+			expect(() => typeOf('2.2.0')).not.toThrow();
+			expect(() => typeOf('2.1.0')).not.toThrow();
+			expect(() => typeOf('2.0.3')).not.toThrow();
 
-			setActionApiRange('>=2.0.0 <3.0.0');
-			expect(() => typeOf('n8n:action@1.0.0')).toThrow(
-				'needs n8n:action@1.0.0. This host runs n8n:action >=2.0.0 <3.0.0',
+			setNodeContractRange('>=2.0.0 <3.0.0');
+			expect(() => typeOf('1.0.0')).toThrow(
+				'needs Node Contract 1.0.0. This host runs >=2.0.0 <3.0.0',
 			);
 			// The range also applies at run time, to a version the registry loader picks.
-			setActionApiRange(DEFAULT_ACTION_API_RANGE);
-			const NodeType = typeOf('n8n:action@2.0.0');
-			setActionApiRange('>=1.0.0 <2.0.0');
+			setNodeContractRange(DEFAULT_NODE_CONTRACT_RANGE);
+			const NodeType = typeOf('2.0.0');
+			setNodeContractRange('>=1.0.0 <2.0.0');
 			await expect(new NodeType().getNodeType(1).execute?.call(contextOf([]))).rejects.toThrow(
-				'needs n8n:action@2.0.0',
+				'needs Node Contract 2.0.0',
 			);
 		});
 
-		it('reads the abi field of a manifest frozen before apiVersion', async () => {
+		it('reads the apiVersion or abi field of a manifest frozen before nodeContract', async () => {
 			await writeShout('text');
 			const { manifest } = await freeze({ patch: 10 });
-			const { apiVersion: _apiVersion, ...fields } = manifest;
-			const legacy = (abi: number) => JSON.stringify({ ...fields, abi });
+			const { kind: _kind, nodeContract: _nodeContract, sdk: _sdk, ...fields } = manifest;
+			const legacy = (extra: Record<string, unknown>) => JSON.stringify({ ...fields, ...extra });
+			const read = { ...fields, kind: 'action' };
 
-			expect(parseManifest(legacy(1))).toEqual({ ...fields, apiVersion: 'n8n:action@1.0.0' });
-			expect(parseManifest(legacy(2))).toEqual({ ...fields, apiVersion: 'n8n:action@2.0.0' });
-			expect(() => parseManifest(legacy(3))).toThrow('not valid');
+			expect(parseManifest(legacy({ abi: 1 }))).toEqual({ ...read, nodeContract: '1.0.0' });
+			expect(parseManifest(legacy({ abi: 2 }))).toEqual({ ...read, nodeContract: '2.0.0' });
+			expect(parseManifest(legacy({ apiVersion: 'n8n:action@2.4.0' }))).toEqual({
+				...read,
+				nodeContract: '2.4.0',
+			});
+			expect(() => parseManifest(legacy({ abi: 3 }))).toThrow('not valid');
+			expect(() => parseManifest(legacy({ apiVersion: 'n8n:trigger@1.0.0' }))).toThrow('not valid');
 			expect(() => parseManifest(JSON.stringify(fields))).toThrow('not valid');
+		});
+
+		it('ignores a manifest field that this host does not know', async () => {
+			await writeShout('text');
+			const { manifest } = await freeze({ patch: 10 });
+			expect(parseManifest(JSON.stringify({ ...manifest, later: { x: 1 } }))).toEqual(manifest);
 		});
 
 		it('is refused by evaluateBundle for a major or minor this host lacks', async () => {
 			await writeShout('text');
 			const { bundle } = await freeze({ patch: 11 });
-			expect(() => evaluateBundle(bundle, 'n8n:action@3.0.0')).toThrow(
-				'This host cannot run n8n:action@3.0.0',
+			expect(() => evaluateBundle(bundle, '3.0.0')).toThrow(
+				'This host cannot run Node Contract 3.0.0',
 			);
-			expect(() => evaluateBundle(bundle, 'n8n:action@2.5.0')).toThrow('cannot run');
-			expect(evaluateBundle(bundle, 'n8n:action@2.0.0').id).toBe('demo.echo');
-			expect(evaluateBundle(bundle, 'n8n:action@2.1.0').id).toBe('demo.echo');
-			expect(evaluateBundle(bundle, ACTION_API_VERSION).id).toBe('demo.echo');
+			expect(() => evaluateBundle(bundle, '2.6.0')).toThrow('cannot run');
+			expect(evaluateBundle(bundle, '2.0.0').id).toBe('demo.echo');
+			expect(evaluateBundle(bundle, '2.1.0').id).toBe('demo.echo');
+			expect(evaluateBundle(bundle, NODE_CONTRACT_VERSION).id).toBe('demo.echo');
 		});
 	});
 });
@@ -712,6 +732,6 @@ describe('semverRange', () => {
 	it('refuses a range it cannot read', () => {
 		expect(() => semverRange('^2.0.0')).toThrow('is not a semver range');
 		expect(() => semverRange('')).toThrow('is not a semver range');
-		expect(() => setActionApiRange('>=2')).toThrow('is not a semver range');
+		expect(() => setNodeContractRange('>=2')).toThrow('is not a semver range');
 	});
 });

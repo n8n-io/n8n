@@ -23,7 +23,7 @@ describe('useNodeContractsRegistry', () => {
 			nodeContractsUpdatePolicy: 'strict',
 			nodeContractsRegistryUrl: 'http://registry.test',
 			nodeContractsPublicKeyFile: '',
-			nodeContractsApiRange: '>=2.0.0 <3.0.0',
+			nodeContractRange: '>=2.0.0 <3.0.0',
 		},
 	} as unknown as GlobalConfig);
 	mockInstance(InstanceSettings, { n8nFolder: '/n8n' });
@@ -47,7 +47,7 @@ describe('useNodeContractsRegistry', () => {
 
 		expect(options).toMatchObject({
 			policy: 'strict',
-			apiRange: '>=2.0.0 <3.0.0',
+			nodeContractRange: '>=2.0.0 <3.0.0',
 			store: {
 				registryUrl: 'http://registry.test',
 				publicKey: undefined,

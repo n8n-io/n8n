@@ -59,6 +59,8 @@ may list. Credential types are values (`credentialType`, `compat`) with a declar
 `tsc` rejects a typo, and `toCredentialType` projects one to an n8n `ICredentialType`. In n8n,
 `httpRequestWithAuthentication` applies it. `runAction` applies it the same way. See
 [docs/credentials-triggers.md](docs/credentials-triggers.md) for scopes, triggers and bindings.
+See [docs/node-contract.md](docs/node-contract.md) for the manifest format, the runtime interface
+of each kind, and their one version.
 
 ## Testing: `@n8n/node-sdk/testing`
 

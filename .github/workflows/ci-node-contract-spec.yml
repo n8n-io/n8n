@@ -1,0 +1,44 @@
+name: 'CI: Node Contract spec'
+
+on:
+  pull_request:
+    paths:
+      - packages/@n8n/node-sdk/spec/**
+      - packages/@n8n/node-sdk/scripts/spec.ts
+      - packages/@n8n/node-sdk/src/manifest.ts
+      - .github/workflows/ci-node-contract-spec.yml
+
+permissions:
+  contents: read
+
+jobs:
+  spec:
+    name: WIT and generated files
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out project
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: ./.github/actions/setup-nodejs
+        with:
+          build-command: ''
+          install-command: pnpm install --frozen-lockfile --filter @n8n/node-sdk
+
+      # The same version as in node-sdk/docs/node-contract.md. The release binary saves a
+      # 2-3 minute cargo build. The checksum pins the archive.
+      - name: Install wasm-tools
+        env:
+          WASM_TOOLS: wasm-tools-1.261.0-x86_64-linux
+          WASM_TOOLS_SHA256: ad62b2176037e93e1348cb65d6212d128ca9f097b63d155569f25215818ff7b1
+        run: |
+          curl -fsSL -o "$RUNNER_TEMP/wasm-tools.tar.gz" "https://github.com/bytecodealliance/wasm-tools/releases/download/v1.261.0/$WASM_TOOLS.tar.gz"
+          echo "$WASM_TOOLS_SHA256  $RUNNER_TEMP/wasm-tools.tar.gz" | sha256sum -c -
+          tar -xzf "$RUNNER_TEMP/wasm-tools.tar.gz" -C "$RUNNER_TEMP"
+          echo "$RUNNER_TEMP/$WASM_TOOLS" >> "$GITHUB_PATH"
+
+      - name: Check the WIT files and the generated files
+        working-directory: packages/@n8n/node-sdk
+        run: pnpm spec:check

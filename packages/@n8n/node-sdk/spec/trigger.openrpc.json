@@ -1,0 +1,594 @@
+{
+	"openrpc": "1.3.2",
+	"info": {
+		"title": "n8n Node Contract: the trigger interface",
+		"version": "2.5.0",
+		"description": "Generated from spec/wit (world trigger-bundle) by scripts/spec.ts. Do not edit.\n\nA trigger: it starts executions. The host calls `poll` for a `poll` trigger, and `activate`,\n`webhook` and `deactivate` for a `webhook` trigger.\n\nBoth sides send requests on one connection. `x-direction` tells which side answers a method. A method without `result` is a notification. Names in brackets are not WIT functions: the JSON-RPC mapping adds them."
+	},
+	"x-world": "n8n:node-contract/trigger-bundle@2.5.0",
+	"x-since": "2.5.0",
+	"methods": [
+		{
+			"name": "[initialize]",
+			"description": "The first message. The host sends the Node Contract version that it implements. The guest answers with the version and the kind of its bundle. The host closes the connection when the bundle version is outside its range or needs a newer minor.",
+			"paramStructure": "by-name",
+			"params": [
+				{
+					"name": "nodeContract",
+					"required": true,
+					"schema": {
+						"type": "string"
+					}
+				}
+			],
+			"result": {
+				"name": "result",
+				"schema": {
+					"type": "object",
+					"properties": {
+						"nodeContract": {
+							"type": "string"
+						},
+						"kind": {
+							"const": "trigger"
+						}
+					},
+					"required": ["nodeContract", "kind"],
+					"additionalProperties": false
+				}
+			},
+			"x-direction": "host-to-guest",
+			"x-since": "2.5.0"
+		},
+		{
+			"name": "trigger.poll",
+			"description": "One poll. `state` is none at the first poll. `limit` is the most items the host uses,\nfor example 1 in a manual run. The host does not store the state of a manual run.",
+			"paramStructure": "by-name",
+			"params": [
+				{
+					"name": "input",
+					"required": true,
+					"schema": {
+						"$ref": "#/components/schemas/types.json"
+					}
+				},
+				{
+					"name": "state",
+					"required": false,
+					"schema": {
+						"$ref": "#/components/schemas/types.json"
+					}
+				},
+				{
+					"name": "limit",
+					"required": false,
+					"schema": {
+						"type": "integer",
+						"minimum": 0,
+						"maximum": 4294967295
+					}
+				}
+			],
+			"result": {
+				"name": "result",
+				"schema": {
+					"$ref": "#/components/schemas/trigger.poll-result"
+				}
+			},
+			"errors": [
+				{
+					"code": -32000,
+					"message": "The error of the WIT result."
+				}
+			],
+			"x-error": {
+				"$ref": "#/components/schemas/errors.run-error"
+			},
+			"x-direction": "host-to-guest",
+			"x-since": "2.5.0"
+		},
+		{
+			"name": "trigger.webhook",
+			"description": "The items of one request. An empty list answers 200 and starts no execution, for\nexample for a ping. `state` is what `activate` gave.",
+			"paramStructure": "by-name",
+			"params": [
+				{
+					"name": "input",
+					"required": true,
+					"schema": {
+						"$ref": "#/components/schemas/types.json"
+					}
+				},
+				{
+					"name": "state",
+					"required": false,
+					"schema": {
+						"$ref": "#/components/schemas/types.json"
+					}
+				},
+				{
+					"name": "request",
+					"required": true,
+					"schema": {
+						"$ref": "#/components/schemas/trigger.webhook-request"
+					}
+				}
+			],
+			"result": {
+				"name": "result",
+				"schema": {
+					"type": "array",
+					"items": {
+						"$ref": "#/components/schemas/types.json"
+					}
+				}
+			},
+			"errors": [
+				{
+					"code": -32000,
+					"message": "The error of the WIT result."
+				}
+			],
+			"x-error": {
+				"$ref": "#/components/schemas/errors.run-error"
+			},
+			"x-direction": "host-to-guest",
+			"x-since": "2.5.0"
+		},
+		{
+			"name": "trigger.activate",
+			"description": "Registers the remote webhook at `url` when the workflow is activated. `secret` is set\nwhen the manifest signature secret is `generated`. Gives the state that `webhook` and\n`deactivate` get, for example the remote webhook ID.",
+			"paramStructure": "by-name",
+			"params": [
+				{
+					"name": "input",
+					"required": true,
+					"schema": {
+						"$ref": "#/components/schemas/types.json"
+					}
+				},
+				{
+					"name": "url",
+					"required": true,
+					"schema": {
+						"type": "string"
+					}
+				},
+				{
+					"name": "secret",
+					"required": false,
+					"schema": {
+						"type": "string"
+					}
+				}
+			],
+			"result": {
+				"name": "result",
+				"schema": {
+					"$ref": "#/components/schemas/types.json"
+				}
+			},
+			"errors": [
+				{
+					"code": -32000,
+					"message": "The error of the WIT result."
+				}
+			],
+			"x-error": {
+				"$ref": "#/components/schemas/errors.run-error"
+			},
+			"x-direction": "host-to-guest",
+			"x-since": "2.5.0"
+		},
+		{
+			"name": "trigger.deactivate",
+			"description": "Deletes the remote webhook when the workflow is deactivated.",
+			"paramStructure": "by-name",
+			"params": [
+				{
+					"name": "input",
+					"required": true,
+					"schema": {
+						"$ref": "#/components/schemas/types.json"
+					}
+				},
+				{
+					"name": "state",
+					"required": true,
+					"schema": {
+						"$ref": "#/components/schemas/types.json"
+					}
+				}
+			],
+			"result": {
+				"name": "result",
+				"schema": {
+					"type": "null"
+				}
+			},
+			"errors": [
+				{
+					"code": -32000,
+					"message": "The error of the WIT result."
+				}
+			],
+			"x-error": {
+				"$ref": "#/components/schemas/errors.run-error"
+			},
+			"x-direction": "host-to-guest",
+			"x-since": "2.5.0"
+		},
+		{
+			"name": "http.request",
+			"paramStructure": "by-name",
+			"params": [
+				{
+					"name": "request",
+					"required": true,
+					"schema": {
+						"$ref": "#/components/schemas/http.http-request"
+					}
+				}
+			],
+			"result": {
+				"name": "result",
+				"schema": {
+					"$ref": "#/components/schemas/http.http-response"
+				}
+			},
+			"errors": [
+				{
+					"code": -32000,
+					"message": "The error of the WIT result."
+				}
+			],
+			"x-error": {
+				"$ref": "#/components/schemas/http.http-failure"
+			},
+			"x-direction": "guest-to-host",
+			"x-since": "2.5.0"
+		},
+		{
+			"name": "log.log",
+			"description": "Writes to the n8n log with the node name. Do not log credentials or personal data.\nThe host keeps the first 100 lines of a node execution, each cut to 2000 characters.",
+			"paramStructure": "by-name",
+			"params": [
+				{
+					"name": "level",
+					"required": true,
+					"schema": {
+						"$ref": "#/components/schemas/log.level"
+					}
+				},
+				{
+					"name": "message",
+					"required": true,
+					"schema": {
+						"type": "string"
+					}
+				}
+			],
+			"x-direction": "guest-to-host",
+			"x-since": "2.5.0"
+		},
+		{
+			"name": "limits.get",
+			"paramStructure": "by-name",
+			"params": [],
+			"result": {
+				"name": "result",
+				"schema": {
+					"$ref": "#/components/schemas/limits.run-limits"
+				}
+			},
+			"x-direction": "guest-to-host",
+			"x-since": "2.5.0"
+		}
+	],
+	"components": {
+		"schemas": {
+			"types.json": {
+				"description": "A JSON value, inline."
+			},
+			"errors.run-error": {
+				"type": "object",
+				"properties": {
+					"message": {
+						"type": "string"
+					},
+					"response": {
+						"description": "The failed response, when a request caused the error.",
+						"$ref": "#/components/schemas/http.http-error"
+					}
+				},
+				"required": ["message"],
+				"additionalProperties": false
+			},
+			"http.http-error": {
+				"description": "A non-2xx response.",
+				"type": "object",
+				"properties": {
+					"message": {
+						"type": "string"
+					},
+					"status": {
+						"type": "integer",
+						"minimum": 0,
+						"maximum": 65535
+					},
+					"headers": {
+						"description": "Lower-case names.",
+						"type": "array",
+						"items": {
+							"type": "array",
+							"items": [
+								{
+									"type": "string"
+								},
+								{
+									"type": "string"
+								}
+							],
+							"minItems": 2,
+							"maxItems": 2,
+							"additionalItems": false
+						}
+					},
+					"body": {
+						"$ref": "#/components/schemas/types.json"
+					}
+				},
+				"required": ["message", "status", "headers", "body"],
+				"additionalProperties": false
+			},
+			"http.http-failure": {
+				"oneOf": [
+					{
+						"type": "object",
+						"properties": {
+							"tag": {
+								"const": "response"
+							},
+							"val": {
+								"$ref": "#/components/schemas/http.http-error"
+							}
+						},
+						"required": ["tag", "val"],
+						"additionalProperties": false
+					},
+					{
+						"description": "No response: DNS, connection, TLS, time-out, a host limit, or a refused host.",
+						"type": "object",
+						"properties": {
+							"tag": {
+								"const": "transport"
+							},
+							"val": {
+								"type": "string"
+							}
+						},
+						"required": ["tag", "val"],
+						"additionalProperties": false
+					}
+				]
+			},
+			"http.http-method": {
+				"enum": ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD"]
+			},
+			"http.http-request": {
+				"type": "object",
+				"properties": {
+					"method": {
+						"$ref": "#/components/schemas/http.http-method"
+					},
+					"target": {
+						"$ref": "#/components/schemas/http.http-target"
+					},
+					"query": {
+						"description": "A repeated name sends each value: `id=a&id=b`.",
+						"type": "array",
+						"items": {
+							"type": "array",
+							"items": [
+								{
+									"type": "string"
+								},
+								{
+									"type": "string"
+								}
+							],
+							"minItems": 2,
+							"maxItems": 2,
+							"additionalItems": false
+						}
+					},
+					"headers": {
+						"type": "array",
+						"items": {
+							"type": "array",
+							"items": [
+								{
+									"type": "string"
+								},
+								{
+									"type": "string"
+								}
+							],
+							"minItems": 2,
+							"maxItems": 2,
+							"additionalItems": false
+						}
+					},
+					"body": {
+						"description": "Sent as JSON.",
+						"$ref": "#/components/schemas/types.json"
+					},
+					"timeoutMs": {
+						"description": "300000 (5 minutes) when none.",
+						"type": "integer",
+						"minimum": 0,
+						"maximum": 4294967295
+					},
+					"retry": {
+						"description": "None: the host retries a 429, 502, 503, 504 or a dropped connection for GET,\nHEAD, PUT, or an action with `flow.idempotent`. True or false overrides this.",
+						"type": "boolean"
+					}
+				},
+				"required": ["method", "target", "query", "headers"],
+				"additionalProperties": false
+			},
+			"http.http-response": {
+				"type": "object",
+				"properties": {
+					"status": {
+						"type": "integer",
+						"minimum": 0,
+						"maximum": 65535
+					},
+					"headers": {
+						"description": "Lower-case names.",
+						"type": "array",
+						"items": {
+							"type": "array",
+							"items": [
+								{
+									"type": "string"
+								},
+								{
+									"type": "string"
+								}
+							],
+							"minItems": 2,
+							"maxItems": 2,
+							"additionalItems": false
+						}
+					},
+					"body": {
+						"description": "The JSON body, or the body text as a JSON string.",
+						"$ref": "#/components/schemas/types.json"
+					}
+				},
+				"required": ["status", "headers", "body"],
+				"additionalProperties": false
+			},
+			"http.http-target": {
+				"oneOf": [
+					{
+						"description": "An absolute http or https URL, for example a `next` link.",
+						"type": "object",
+						"properties": {
+							"tag": {
+								"const": "url"
+							},
+							"val": {
+								"type": "string"
+							}
+						},
+						"required": ["tag", "val"],
+						"additionalProperties": false
+					},
+					{
+						"description": "Starts with one `/` and goes after the base URL path. It cannot change the origin.",
+						"type": "object",
+						"properties": {
+							"tag": {
+								"const": "path"
+							},
+							"val": {
+								"type": "string"
+							}
+						},
+						"required": ["tag", "val"],
+						"additionalProperties": false
+					}
+				]
+			},
+			"limits.run-limits": {
+				"description": "The limits for one run: one input item, or all input items of a `batch` run. The host\nenforces them.",
+				"type": "object",
+				"properties": {
+					"maxRequests": {
+						"description": "A page is one request.",
+						"type": "integer",
+						"minimum": 0,
+						"maximum": 4294967295
+					},
+					"maxItems": {
+						"type": "integer",
+						"minimum": 0,
+						"maximum": 4294967295
+					}
+				},
+				"required": ["maxRequests", "maxItems"],
+				"additionalProperties": false
+			},
+			"log.level": {
+				"enum": ["debug", "info", "warn", "error"]
+			},
+			"trigger.poll-result": {
+				"type": "object",
+				"properties": {
+					"items": {
+						"description": "The new items, oldest first. An empty list starts no execution.",
+						"type": "array",
+						"items": {
+							"$ref": "#/components/schemas/types.json"
+						}
+					},
+					"state": {
+						"description": "The state for the next poll, for example a cursor. The host stores it.",
+						"$ref": "#/components/schemas/types.json"
+					}
+				},
+				"required": ["items", "state"],
+				"additionalProperties": false
+			},
+			"trigger.webhook-request": {
+				"description": "The HTTP request that a webhook trigger gets.",
+				"type": "object",
+				"properties": {
+					"headers": {
+						"description": "Lower-case names. A repeated header gives one entry per value.",
+						"type": "array",
+						"items": {
+							"type": "array",
+							"items": [
+								{
+									"type": "string"
+								},
+								{
+									"type": "string"
+								}
+							],
+							"minItems": 2,
+							"maxItems": 2,
+							"additionalItems": false
+						}
+					},
+					"query": {
+						"type": "array",
+						"items": {
+							"type": "array",
+							"items": [
+								{
+									"type": "string"
+								},
+								{
+									"type": "string"
+								}
+							],
+							"minItems": 2,
+							"maxItems": 2,
+							"additionalItems": false
+						}
+					},
+					"body": {
+						"$ref": "#/components/schemas/types.json"
+					}
+				},
+				"required": ["headers", "query", "body"],
+				"additionalProperties": false
+			}
+		}
+	}
+}

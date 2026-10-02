@@ -1,0 +1,8 @@
+{
+	"$schema": "../../../node_modules/@biomejs/biome/configuration_schema.json",
+	"extends": ["../../../biome.jsonc"],
+	"files": {
+		// `scripts/spec.ts` writes them, and `spec.test.ts` checks their bytes.
+		"ignore": ["spec/*.json"]
+	}
+}

@@ -1,0 +1,26 @@
+package n8n:node-contract@2.5.0;
+
+/// What a provider bundle exports besides its capabilities. The UI calls a provider a
+/// sub-node.
+@since(version = 2.3.0)
+interface provider {
+    use types.{json};
+    use errors.{run-error};
+    use capabilities.{capability};
+
+    /// Makes the capability of the manifest kind for one run of the root node. The host
+    /// resolved, defaulted and validated `input` against the manifest input. Requests of the
+    /// capability use the credential and the egress of the provider.
+    supply: func(input: json) -> result<capability, run-error>;
+}
+
+/// A provider: it supplies one capability (a chat model, a memory, a tool or embeddings) to a
+/// root node.
+@since(version = 2.3.0)
+world provider-bundle {
+    import http;
+    import log;
+    import limits;
+    export capabilities;
+    export provider;
+}

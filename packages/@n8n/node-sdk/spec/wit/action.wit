@@ -1,0 +1,109 @@
+package n8n:node-contract@2.5.0;
+
+/// What an action bundle exports.
+///
+/// Guest rule: a run starts its work at the first `next`, not in the constructor. A
+/// constructor has no error result, so an error in it stops the component (a trap).
+///
+/// The declarative bindings `request` and `list` (since 2.4.0), and the `pageValue()` inputs
+/// (since 2.4.0), run only in the JS runtime. This interface has no form of them.
+@since(version = 2.0.0)
+interface action {
+    use types.{json};
+    use errors.{run-error};
+
+    /// The manifest contract: id, version, flow, credentials, input and output schema.
+    describe: func() -> json;
+
+    /// The run for one input item.
+    resource run {
+        /// The host resolved, defaulted and validated `input` against the manifest input.
+        constructor(input: json);
+        /// The next output item, or none at the end. A `per-item` action gives one item.
+        /// The host validates each item against the manifest output.
+        next: func() -> result<option<json>, run-error>;
+    }
+
+    /// One output of an `item-run`.
+    @since(version = 2.1.0)
+    variant output {
+        /// A new item from the current input item of a `per-item` or `1:N` run.
+        item(json),
+        /// The input item at this index, passed on unchanged with its binary data.
+        passed(u32),
+        /// A new item of a `batch` run, made from the input items at these indexes.
+        made(tuple<json, list<u32>>),
+    }
+
+    @since(version = 2.1.0)
+    record routed-output {
+        /// One of the named outputs of the manifest. None when the manifest has none.
+        to: option<string>,
+        output: output,
+    }
+
+    /// The run that reads input items. A `per-item` or `1:N` action runs once per input item,
+    /// with that item as the only entry of `items`. A `batch` action runs once with all items
+    /// and the input of the first item. The host runs `item-run` for a bundle of 2.1.0 or newer.
+    @since(version = 2.1.0)
+    resource item-run {
+        constructor(input: json, items: list<json>);
+        /// The next output, or none at the end. The host validates each item against the
+        /// manifest output, and checks each index and output name.
+        next: func() -> result<option<routed-output>, run-error>;
+    }
+
+    /// An item of one of the named inputs.
+    @since(version = 2.3.0)
+    record item-ref {
+        /// The index of the input in the manifest `inputs`.
+        input: u32,
+        item: u32,
+    }
+
+    /// One output of a `join-run`.
+    @since(version = 2.3.0)
+    variant join-output {
+        /// The input item, passed on unchanged with its binary data.
+        passed(item-ref),
+        /// A new item, made from these input items.
+        made(tuple<json, list<item-ref>>),
+    }
+
+    @since(version = 2.3.0)
+    record routed-join-output {
+        to: option<string>,
+        output: join-output,
+    }
+
+    /// The run of an action with named inputs: one run with the items of each input, in the
+    /// order of the manifest `inputs`, and the input of the first item of the first input.
+    @since(version = 2.3.0)
+    resource join-run {
+        constructor(input: json, inputs: list<list<json>>);
+        next: func() -> result<option<routed-join-output>, run-error>;
+    }
+}
+
+/// An action: it reads items and gives items. The host gives an optional import only to an
+/// action whose manifest needs it: `binary` for a `binary()` field, `supplied` for a
+/// `supplied()` input field, the others when the manifest `imports` lists them.
+@since(version = 2.0.0)
+world action-bundle {
+    import http;
+    import log;
+    import limits;
+    @since(version = 2.2.0)
+    import binary;
+    @since(version = 2.3.0)
+    import data-tables;
+    @since(version = 2.3.0)
+    import code;
+    @since(version = 2.3.0)
+    import wait;
+    @since(version = 2.3.0)
+    import input-of;
+    @since(version = 2.3.0)
+    import supplied;
+    export action;
+}

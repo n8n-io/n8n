@@ -247,6 +247,11 @@ export interface CredentialType<Name extends string = string, F extends Shape = 
 	readonly id: string;
 	/** The n8n type name. Saved credentials and workflows refer to it, so it never changes. */
 	readonly name: Name;
+	/**
+	 * `major.minor.patch` of the credential manifest. Actions pin the major. A compat type has
+	 * none: its legacy class defines it.
+	 */
+	readonly semver?: string;
 	readonly displayName: string;
 	readonly documentationUrl?: string;
 	/** The stored fields. `t.secret` fields go only to n8n and to `custom` code. */
@@ -529,6 +534,15 @@ export function credentialType<
 	readonly id: Id;
 	/** The name of the legacy n8n type this replaces, e.g. `notionApi`, so stored data resolves. */
 	readonly legacyName?: Name;
+	/**
+	 * The major, 1 when omitted. Bump it when stored data or a saved workflow can break: a new
+	 * required field, a new host, a new scheme.
+	 */
+	readonly version?: number;
+	/** Bump for an additive change, e.g. a new optional field. 0 when omitted. */
+	readonly minor?: number;
+	/** Bump for a change of text only. 0 when omitted. */
+	readonly patch?: number;
 	readonly displayName: string;
 	/** The n8n docs page, e.g. `notion`. */
 	readonly docs?: string;
@@ -558,6 +572,7 @@ export function credentialType<
 	return checked({
 		id: spec.id,
 		name,
+		semver: `${spec.version ?? 1}.${spec.minor ?? 0}.${spec.patch ?? 0}`,
 		displayName: spec.displayName,
 		...(spec.docs ? { documentationUrl: spec.docs } : {}),
 		...(spec.fields ? { fields: spec.fields } : {}),

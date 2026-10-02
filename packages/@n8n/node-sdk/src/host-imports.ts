@@ -1,5 +1,5 @@
 /**
- * The n8n side of the optional host imports of `n8n:action@2.3.0`: data tables, code in the
+ * The n8n side of the optional host imports of Node Contract 2.3.0: data tables, code in the
  * task runner, and wait. Each one maps the typed import of `define.ts` to an n8n service and
  * knows nothing about the node that uses it.
  */

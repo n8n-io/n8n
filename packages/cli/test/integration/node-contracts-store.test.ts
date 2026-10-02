@@ -29,7 +29,7 @@ import * as utils from './shared/utils';
 interface Manifest {
 	readonly id: string;
 	readonly semver: string;
-	readonly apiVersion: string;
+	readonly nodeContract: string;
 	readonly bundleHash: string;
 	readonly contractHash: string;
 }
@@ -104,7 +104,7 @@ beforeAll(async () => {
 				{
 					n8nContract: {
 						id: manifest.id,
-						apiVersion: manifest.apiVersion,
+						nodeContract: manifest.nodeContract,
 						contractHash: manifest.contractHash,
 						bundleHash: manifest.bundleHash,
 					},
@@ -140,7 +140,7 @@ beforeAll(async () => {
 		nodeContractsRegistryUrl: registry.url,
 		nodeContractsPublicKeyFile: publicKeyFile,
 		nodeContractsUpdatePolicy: 'strict',
-		nodeContractsApiRange: '>=1.0.0 <3.0.0',
+		nodeContractRange: '>=1.0.0 <3.0.0',
 	});
 
 	// The store holds only the HEAD.
@@ -242,7 +242,7 @@ describe('node contracts store', () => {
 		expect(await runToEnd(workflow)).toEqual({
 			status: 'success',
 			items: [{ received: { name: 'Ada' } }],
-			ran: expect.objectContaining({ version: '1.0.2', apiVersion: 'n8n:action@1.0.0' }),
+			ran: expect.objectContaining({ version: '1.0.2', nodeContract: '1.0.0' }),
 		});
 	});
 
@@ -297,11 +297,11 @@ describe('node contracts store', () => {
 		}
 	});
 
-	it('refuses a run without a rebuild when the host does not run the n8n:action version of its lock', async () => {
+	it('refuses a run without a rebuild when the host does not run the Node Contract version of its lock', async () => {
 		const workflow = await createV1Workflow();
 		const { instanceAi } = Container.get(GlobalConfig);
 		const loadNodesAndCredentials = Container.get(LoadNodesAndCredentials);
-		instanceAi.nodeContractsApiRange = '>=2.0.0 <3.0.0';
+		instanceAi.nodeContractRange = '>=2.0.0 <3.0.0';
 		await useNodeContractsRegistry();
 		await loadNodesAndCredentials.postProcessLoaders();
 		const refresh = vi.spyOn(loadNodesAndCredentials, 'refreshNodeTypes');
@@ -311,21 +311,21 @@ describe('node contracts store', () => {
 				'its lock httpRequest.send@1.0.2 (bundle 4571314301c3',
 			);
 			await expect(runToEnd(workflow)).rejects.toThrow(
-				'needs n8n:action@1.0.0, which this host does not run',
+				'needs Node Contract 1.0.0, which this host does not run',
 			);
 			expect(refresh).not.toHaveBeenCalled();
 		} finally {
 			refresh.mockRestore();
-			instanceAi.nodeContractsApiRange = '>=1.0.0 <3.0.0';
+			instanceAi.nodeContractRange = '>=1.0.0 <3.0.0';
 			await useNodeContractsRegistry();
 			await loadNodesAndCredentials.postProcessLoaders();
 		}
 	});
 
-	it('reports the workflow when the host no longer runs the n8n:action version of its lock', async () => {
+	it('reports the workflow when the host no longer runs the Node Contract version of its lock', async () => {
 		const workflow = await createV1Workflow();
 		const { instanceAi } = Container.get(GlobalConfig);
-		instanceAi.nodeContractsApiRange = '>=2.0.0 <3.0.0';
+		instanceAi.nodeContractRange = '>=2.0.0 <3.0.0';
 		await useNodeContractsRegistry();
 		try {
 			const { unsupported } = await Container.get(NodeContractsSync).run({
@@ -335,11 +335,11 @@ describe('node contracts store', () => {
 				expect.objectContaining({
 					workflowId: workflow.id,
 					node: 'Send',
-					apiVersion: 'n8n:action@1.0.0',
+					nodeContract: '1.0.0',
 				}),
 			);
 		} finally {
-			instanceAi.nodeContractsApiRange = '>=1.0.0 <3.0.0';
+			instanceAi.nodeContractRange = '>=1.0.0 <3.0.0';
 			await useNodeContractsRegistry();
 		}
 	});

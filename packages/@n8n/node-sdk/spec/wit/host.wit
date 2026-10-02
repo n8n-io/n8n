@@ -1,14 +1,15 @@
-/// The interface between the n8n host and one frozen action. It is the source of truth for
-/// every runtime: inline JS, a WASM component, a process, and a container. `json-rpc.md`
-/// gives the JSON form of each type for the process and container runtimes.
+/// The Node Contract: the interface between the n8n host and the code of one bundle. Each
+/// kind that runs code has a world in this package: `action`, `trigger`, `credential`,
+/// `provider` and `lookup`. This file has the interfaces that the host gives (the
+/// capabilities) and the types that more than one world uses.
 ///
-/// The package version is the `apiVersion` of a bundle, independent of the n8n version. A
-/// minor adds an optional import or field. A major breaks. The host implements 2.4.0. A
-/// bundle targets the lowest minor that has what its contract declares: 2.4.0 for a `list`
-/// binding or a `pageValue()` input, 2.3.0 for host imports, named inputs or sub-node
-/// capabilities, 2.2.0 for binary data, else 2.1.0, so an older host still runs it. The sub-node
-/// capability exports and the declarative bindings (`request`, `list`) are not in this file yet.
-package n8n:action@2.4.0;
+/// The package version is the Node Contract version, the one version of the whole spec. The
+/// manifest format (`../manifest.schema.json`) has the same version. A minor adds an optional
+/// import, export or field. A major breaks. `@since` tells which minor added an item. A
+/// bundle states the lowest version that has all it uses (`nodeContract` in its manifest), so
+/// an older host still runs it. Bundles that state `apiVersion: "n8n:action@x.y.z"` target
+/// the Node Contract version `x.y.z`.
+package n8n:node-contract@2.5.0;
 
 @since(version = 2.0.0)
 interface types {
@@ -16,12 +17,12 @@ interface types {
     type json = string;
 }
 
-/// The only network access of an action. The host applies the node credential, the SSRF
-/// policy, the retries and the request limit. The host refuses a request to a host outside
-/// the contract egress or outside the hosts of the credential, with
-/// `http-failure.transport`. It checks each page the same way. It checks each redirect hop
-/// against the credential hosts and the action hosts. A host from `fromInput` does not limit
-/// redirect hops; the credential hosts do.
+/// The only network access of a bundle. The host applies the credential, the SSRF policy,
+/// the retries and the request limit. The host refuses a request to a host outside the
+/// manifest egress or outside the hosts of the credential, with `http-failure.transport`. It
+/// checks each page the same way. It checks each redirect hop against the credential hosts and
+/// the action hosts. A host from `fromInput` does not limit redirect hops; the credential
+/// hosts do.
 @since(version = 2.0.0)
 interface http {
     use types.{json};
@@ -76,6 +77,18 @@ interface http {
     request: func(request: http-request) -> result<http-response, http-failure>;
 }
 
+/// The error that ends a run of guest code.
+@since(version = 2.0.0)
+interface errors {
+    use http.{http-error};
+
+    record run-error {
+        message: string,
+        /// The failed response, when a request caused the error.
+        response: option<http-error>,
+    }
+}
+
 @since(version = 2.0.0)
 interface log {
     enum level { debug, info, warn, error }
@@ -98,96 +111,11 @@ interface limits {
     get: func() -> run-limits;
 }
 
-/// What the action exports.
-@since(version = 2.0.0)
-interface action {
-    use types.{json};
-    use http.{http-error};
-
-    record run-error {
-        message: string,
-        /// The failed response, when a request caused the error.
-        response: option<http-error>,
-    }
-
-    /// The contract document: id, version, flow, credentials, input and output schema.
-    describe: func() -> json;
-
-    /// The run for one input item.
-    resource run {
-        /// The host resolved, defaulted and validated `input` against the contract input.
-        constructor(input: json);
-        /// The next output item, or none at the end. A `per-item` action gives one item.
-        /// The host validates each item against the contract output.
-        next: func() -> result<option<json>, run-error>;
-    }
-
-    /// One output of an `item-run`.
-    @since(version = 2.1.0)
-    variant output {
-        /// A new item from the current input item of a `per-item` or `1:N` run.
-        item(json),
-        /// The input item at this index, passed on unchanged with its binary data.
-        passed(u32),
-        /// A new item of a `batch` run, made from the input items at these indexes.
-        made(tuple<json, list<u32>>),
-    }
-
-    @since(version = 2.1.0)
-    record routed-output {
-        /// One of the named outputs of the contract. None when the contract has none.
-        to: option<string>,
-        output: output,
-    }
-
-    /// The run that reads input items. A `per-item` or `1:N` action runs once per input item,
-    /// with that item as the only entry of `items`. A `batch` action runs once with all items
-    /// and the input of the first item. The host runs `item-run` for a bundle of 2.1.0 or newer.
-    @since(version = 2.1.0)
-    resource item-run {
-        constructor(input: json, items: list<json>);
-        /// The next output, or none at the end. The host validates each item against the
-        /// contract output, and checks each index and output name.
-        next: func() -> result<option<routed-output>, run-error>;
-    }
-
-    /// An item of one of the named inputs.
-    @since(version = 2.3.0)
-    record item-ref {
-        /// The index of the input in the contract `inputs`.
-        input: u32,
-        item: u32,
-    }
-
-    /// One output of a `join-run`.
-    @since(version = 2.3.0)
-    variant join-output {
-        /// The input item, passed on unchanged with its binary data.
-        passed(item-ref),
-        /// A new item, made from these input items.
-        made(tuple<json, list<item-ref>>),
-    }
-
-    @since(version = 2.3.0)
-    record routed-join-output {
-        to: option<string>,
-        output: join-output,
-    }
-
-    /// The run of an action with named inputs: one run with the items of each input, in the
-    /// order of the contract `inputs`, and the input of the first item of the first input.
-    @since(version = 2.3.0)
-    resource join-run {
-        constructor(input: json, inputs: list<list<json>>);
-        next: func() -> result<option<routed-join-output>, run-error>;
-    }
-}
-
-/// Binary data stays in the host. An action holds a handle and never gets all the bytes at
-/// once. Only an action with a `binary()` field in its contract targets 2.2.0 and gets it.
+/// Binary data stays in the host. A bundle holds a handle and never gets all the bytes at
+/// once. Only an action with a `binary()` field in its manifest gets it.
 ///
-/// At a `binary()` position of the contract schema, the JSON of the `run` or `item-run` input
-/// and of each output item holds `{ "$binary": <id> }`. `open` gives the handle of an input id, and
+/// At a `binary()` position of the manifest schema, the JSON of the run input and of each
+/// output item holds `{ "$binary": <id> }`. `open` gives the handle of an input id, and
 /// `binary.id` gives the id to put into an output item. A binary output field must be a
 /// top-level field: the host moves it to the `binary` part of the n8n item.
 @since(version = 2.2.0)
@@ -253,7 +181,7 @@ interface binary {
 
 /// The n8n data tables of the project that owns the workflow. A date cell crosses as ISO 8601
 /// text; the host converts it for a date column. Only an action that lists `dataTables` in
-/// its contract `imports` gets it.
+/// its manifest `imports` gets it.
 @since(version = 2.3.0)
 interface data-tables {
     use types.{json};
@@ -363,12 +291,13 @@ interface data-tables {
     }
 
     open: func(table: table-ref) -> result<table, string>;
-    list: func(query: list-query) -> result<table-page, string>;
+    /// `list` is a WIT keyword. The JSON-RPC method is `data-tables.list`.
+    %list: func(query: list-query) -> result<table-page, string>;
     create: func(table: new-table) -> result<table-info, string>;
 }
 
 /// User code in the n8n task runner, as the Code node runs it. The code reads the input items
-/// of the node. Only an action that lists `code` in its contract `imports` gets it.
+/// of the node. Only an action that lists `code` in its manifest `imports` gets it.
 @since(version = 2.3.0)
 interface code {
     use types.{json};
@@ -388,7 +317,7 @@ interface code {
     run: func(request: code-request) -> result<json, string>;
 }
 
-/// Only an action that lists `wait` in its contract `imports` gets it.
+/// Only an action that lists `wait` in its manifest `imports` gets it.
 @since(version = 2.3.0)
 interface wait {
     /// The outputs of this run continue at `at` (milliseconds since the epoch), not before.
@@ -397,7 +326,7 @@ interface wait {
 }
 
 /// The input of one item of a `batch` run. Only an action that lists `inputOf` in its
-/// contract `imports` gets it.
+/// manifest `imports` gets it.
 @since(version = 2.3.0)
 interface input-of {
     use types.{json};
@@ -406,19 +335,120 @@ interface input-of {
     get: func(item: u32) -> result<json, string>;
 }
 
-world bundle {
-    import http;
-    import log;
-    import limits;
-    @since(version = 2.2.0)
-    import binary;
-    @since(version = 2.3.0)
-    import data-tables;
-    @since(version = 2.3.0)
-    import code;
-    @since(version = 2.3.0)
-    import wait;
-    @since(version = 2.3.0)
-    import input-of;
-    export action;
+/// The capabilities that a provider supplies to a root node, one resource per kind. The
+/// `provider` world exports this interface. The `action` world imports it, so a root action
+/// calls a capability through the host. The types do not depend on the provider: each
+/// provider adapts its own API, and every root node works with every provider.
+@since(version = 2.3.0)
+interface capabilities {
+    use types.{json};
+    use errors.{run-error};
+
+    /// A tool call that a model asks for. `args` match the input schema of the tool.
+    record tool-call {
+        /// The provider's call ID. A tool result names it.
+        id: string,
+        name: string,
+        args: json,
+    }
+
+    record assistant-message {
+        content: string,
+        tool-calls: option<list<tool-call>>,
+    }
+
+    record tool-message {
+        tool-call-id: string,
+        name: string,
+        /// The tool result as text, usually JSON.
+        content: string,
+    }
+
+    /// One message of a chat, oldest first.
+    variant chat-message {
+        system(string),
+        user(string),
+        assistant(assistant-message),
+        tool(tool-message),
+    }
+
+    /// What a model reads about a tool.
+    record tool-definition {
+        /// Letters, digits, `_` and `-` only: providers refuse other names.
+        name: string,
+        description: string,
+        /// A JSON Schema object for `args`.
+        input: json,
+    }
+
+    record chat-request {
+        messages: list<chat-message>,
+        /// Tools the model may call. A reply with tool calls has no final text.
+        tools: option<list<tool-definition>>,
+        /// The reply text is JSON that matches this JSON Schema. The provider enforces it when
+        /// it can.
+        output: option<json>,
+    }
+
+    record chat-usage {
+        input-tokens: u32,
+        output-tokens: u32,
+    }
+
+    record chat-reply {
+        text: string,
+        tool-calls: list<tool-call>,
+        /// `stop`, `length`, `tool_calls`, `content_filter`, or a reason of the provider.
+        finish-reason: string,
+        usage: option<chat-usage>,
+    }
+
+    /// A chat model with its settings applied.
+    resource chat-model {
+        /// The provider model ID, for example `gpt-5-mini`.
+        model: func() -> string;
+        chat: func(request: chat-request) -> result<chat-reply, run-error>;
+    }
+
+    /// The chat history of one session.
+    resource memory {
+        /// The messages so far, oldest first.
+        load: func() -> result<list<chat-message>, run-error>;
+        /// Adds the messages of one turn.
+        save: func(messages: list<chat-message>) -> result<_, run-error>;
+    }
+
+    /// A tool that a model can call.
+    resource tool {
+        name: func() -> string;
+        description: func() -> string;
+        /// A JSON Schema object for `args`.
+        input: func() -> json;
+        /// Runs the tool. The result goes back to the model as JSON.
+        call: func(args: json) -> result<json, run-error>;
+    }
+
+    resource embeddings {
+        /// One vector per text, in order.
+        embed: func(texts: list<string>) -> result<list<list<f64>>, run-error>;
+    }
+
+    variant capability {
+        chat-model(chat-model),
+        memory(memory),
+        tool(tool),
+        embeddings(embeddings),
+    }
+}
+
+/// The capabilities of the providers that are connected to a root action. Only an action with a
+/// `supplied()` input field gets it.
+///
+/// At a `supplied()` position of the manifest schema, the JSON of the run input holds
+/// `{ "$capability": <id> }`. `open` gives the capability of an id.
+@since(version = 2.3.0)
+interface supplied {
+    use capabilities.{capability};
+
+    open: func(id: u64) -> result<capability, string>;
 }

@@ -28,7 +28,8 @@
     "./package.json": "./package.json"
   },
   "files": [
-    "dist/**/*"
+    "dist/**/*",
+    "spec/**/*"
   ],
   "scripts": {
     "clean": "rimraf dist .turbo",
@@ -40,6 +41,8 @@
     "format:check": "biome ci .",
     "lint": "eslint . --quiet",
     "lint:fix": "eslint . --fix",
+    "spec:generate": "tsx scripts/spec.ts",
+    "spec:check": "tsx scripts/spec.ts --check",
     "watch": "tsc -p tsconfig.build.json --watch",
     "test": "vitest run",
     "test:unit": "vitest run"

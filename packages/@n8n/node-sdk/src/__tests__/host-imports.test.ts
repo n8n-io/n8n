@@ -25,7 +25,7 @@ import {
 	type DataTableHost,
 } from '../host-imports';
 import { executorOf, toNodeType, type ExecutorHost } from '../runtime';
-import { actionApiVersionOf, contractHash, diffContracts } from '../version';
+import { contractHash, diffContracts, requiredNodeContractOf } from '../version';
 
 const demo = defineNode({ id: 'demo', displayName: 'Demo' });
 
@@ -364,13 +364,13 @@ describe('imports', () => {
 		).rejects.toThrow('The wait time is not a date');
 	});
 
-	it('puts the imports into the contract, its hash, its diff and its API version', () => {
+	it('puts the imports into the contract, its hash, its diff and its Node Contract version', () => {
 		const contract = toContract(insert);
 		expect(contract.imports).toEqual(['dataTables', 'inputOf']);
-		expect(actionApiVersionOf(contract)).toBe('n8n:action@2.3.0');
+		expect(requiredNodeContractOf(contract)).toBe('2.3.0');
 		const { imports: _imports, ...without } = contract;
 		expect(contractHash(without)).not.toBe(contractHash(contract));
-		expect(actionApiVersionOf(without)).toBe('n8n:action@2.1.0');
+		expect(requiredNodeContractOf(without)).toBe('2.1.0');
 		expect(diffContracts(without, contract).changes).toEqual([
 			{ kind: 'major', text: 'import dataTables added' },
 			{ kind: 'major', text: 'import inputOf added' },
@@ -443,7 +443,7 @@ describe('named inputs', () => {
 		expect(description.requiredInputs).toBe(1);
 		const contract = toContract(join);
 		expect(contract.inputs).toEqual(['left', 'right']);
-		expect(actionApiVersionOf(contract)).toBe('n8n:action@2.3.0');
+		expect(requiredNodeContractOf(contract)).toBe('2.3.0');
 		const { inputs: _inputs, ...single } = contract;
 		expect(diffContracts(single, contract).changes).toEqual([
 			{ kind: 'major', text: 'inputs one input → left, right' },

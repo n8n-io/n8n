@@ -124,7 +124,7 @@ export {
 export {
 	exampleOf,
 	matches,
-	runsActionApi,
+	runsNodeContract,
 	setCodeLanguages,
 	toVersionedNodeType,
 	toVersionedTriggerType,

@@ -5,7 +5,7 @@ import {
 	locksOf,
 	NODE_PACKAGE,
 	nodeTypeOf,
-	runsActionApi,
+	runsNodeContract,
 	syncContractStore,
 	type ContractStore,
 	type ContractSyncResult,
@@ -101,9 +101,9 @@ export class NodeContractsSync {
 				},
 			),
 		);
-		unsupported.forEach(({ workflowId, workflowName, node, lock, apiVersion }) =>
+		unsupported.forEach(({ workflowId, workflowName, node, lock, nodeContract }) =>
 			this.logger.warn(
-				`Workflow "${workflowName}" (${workflowId}) locks node "${node}" to ${lock.action}@${lock.version}, which needs ${apiVersion}. This host does not run it.`,
+				`Workflow "${workflowName}" (${workflowId}) locks node "${node}" to ${lock.action}@${lock.version}, which needs Node Contract ${nodeContract}. This host does not run it.`,
 				{ workflowId, action: lock.action, version: lock.version, bundleHash: lock.bundleHash },
 			),
 		);
@@ -122,8 +122,8 @@ export class NodeContractsSync {
 	/** True when each node type lists the major of each version that this host runs. */
 	private listsAll(manifests: readonly VersionManifest[]) {
 		return manifests.every(
-			({ id, contract, apiVersion }) =>
-				!runsActionApi(apiVersion) || this.listsVersion(nodeTypeOf({ id }), contract.version),
+			({ id, contract, nodeContract }) =>
+				!runsNodeContract(nodeContract) || this.listsVersion(nodeTypeOf({ id }), contract.version),
 		);
 	}
 
@@ -163,8 +163,8 @@ function assertRunsAs(node: INode, lock: NodeContractLock, manifest: VersionMani
 		[nodeTypeOf(manifest) === node.type, `is a version of ${nodeTypeOf(manifest)}`],
 		[manifest.contract.version === node.typeVersion, `is major ${manifest.contract.version}`],
 		[
-			runsActionApi(manifest.apiVersion),
-			`needs ${manifest.apiVersion}, which this host does not run`,
+			runsNodeContract(manifest.nodeContract),
+			`needs Node Contract ${manifest.nodeContract}, which this host does not run`,
 		],
 	];
 	const reason = checks.find(([passes]) => !passes)?.[1];

@@ -1,5 +1,10 @@
 import { nodeNameOf, type Action, type AnyCredentialType, type Trigger } from '@n8n/node-sdk';
-import { freezeAction, writeFrozenAction } from '@n8n/node-sdk/freeze';
+import {
+	freezeAction,
+	freezeCredential,
+	writeCredentialManifest,
+	writeFrozenAction,
+} from '@n8n/node-sdk/freeze';
 import { mkdirSync, readdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 
@@ -41,6 +46,15 @@ export async function freezeAll(outDir: string) {
 			return frozen.manifest;
 		}),
 	);
+}
+
+/** Writes the manifest of each credential type that is not a compat type into `outDir`. */
+export async function freezeCredentials(outDir: string) {
+	const manifests = credentialTypes.flatMap((type) => freezeCredential(type) ?? []);
+	await Promise.all(
+		manifests.map(async (manifest) => await writeCredentialManifest(outDir, manifest)),
+	);
+	return manifests;
 }
 
 /**
@@ -104,7 +118,7 @@ export function writeCredentialClasses(distDir: string) {
 }
 
 if (require.main === module) {
-	void freezeAll(VERSIONS_DIR).then(() => {
+	void Promise.all([freezeAll(VERSIONS_DIR), freezeCredentials(VERSIONS_DIR)]).then(() => {
 		writeNodeClasses(DIST_DIR);
 		writeCredentialClasses(DIST_DIR);
 	});

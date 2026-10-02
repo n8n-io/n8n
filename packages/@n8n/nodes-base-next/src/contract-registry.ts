@@ -1,21 +1,21 @@
 import {
-	apiVersionOf,
 	compareSemver,
+	declaredNodeContractOf,
 	integrityOf,
 	openContractPackage,
 	packageNameOf,
 	parseSemver,
 	resolveContractVersion,
-	runsActionApi,
-	setActionApiRange,
+	runsNodeContract,
 	setContractVersionLoader,
+	setNodeContractRange,
 	verifyManifestSignature,
-	type ActionApiVersion,
 	type ContractPackage,
 	type ContractVersionLoader,
 	type FrozenVersion,
 	type NodeContractLock,
 	type NodeContractsPolicy,
+	type NodeContractVersion,
 	type VersionManifest,
 } from '@n8n/node-sdk';
 import { access, link, mkdir, readdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
@@ -45,8 +45,8 @@ export interface ContractRegistryOptions {
 	readonly store: ContractStore;
 	/** The `meta` of the running workflow, from a root node or a sub-node. */
 	readonly metaOf: (context: IExecuteFunctions | ISupplyDataFunctions) => Promise<unknown>;
-	/** The `n8n:action` versions a bundle may declare, e.g. `>=1.0.0 <3.0.0`. */
-	readonly apiRange: string;
+	/** The Node Contract versions a bundle may declare, e.g. `>=1.0.0 <3.0.0`. */
+	readonly nodeContractRange: string;
 }
 
 /**
@@ -70,7 +70,7 @@ export interface ContractStore {
 
 interface PublishedVersion {
 	readonly version: string;
-	readonly apiVersion: ActionApiVersion | undefined;
+	readonly nodeContract: NodeContractVersion | undefined;
 	readonly contractHash: unknown;
 	readonly bundleHash: unknown;
 	readonly tarball: string;
@@ -143,8 +143,8 @@ const publishedVersions = (packument: unknown): PublishedVersion[] =>
 		const { tarball, integrity } = dist;
 		if (typeof tarball !== 'string' || typeof integrity !== 'string') return [];
 		const { contractHash, bundleHash } = contract;
-		const apiVersion = apiVersionOf(contract);
-		return [{ version, apiVersion, contractHash, bundleHash, tarball, integrity }];
+		const nodeContract = declaredNodeContractOf(contract);
+		return [{ version, nodeContract, contractHash, bundleHash, tarball, integrity }];
 	});
 
 // A registry lookup for each run is too slow, and a new patch may wait this long.
@@ -352,14 +352,14 @@ export function contractStore(options: ContractStoreOptions): ContractStore {
 			if (!registryUrl || !publicKey) return [];
 			const locked = parseSemver(lock.version);
 			const versions = await packumentOf(packageNameOf(lock.action)).catch(() => []);
-			const candidates = versions.filter(({ version, apiVersion, contractHash }) => {
+			const candidates = versions.filter(({ version, nodeContract, contractHash }) => {
 				const { major, minor, patch } = parseSemver(version);
 				return (
 					major === locked.major &&
 					minor === locked.minor &&
 					patch > locked.patch &&
-					apiVersion !== undefined &&
-					runsActionApi(apiVersion) &&
+					nodeContract !== undefined &&
+					runsNodeContract(nodeContract) &&
 					contractHash === lock.contractHash
 				);
 			});
@@ -435,9 +435,9 @@ export function contractVersionLoader(options: ContractRegistryOptions): Contrac
 	};
 }
 
-/** Sets the API range and the version loader of this package's node-sdk, which its nodes run with. */
+/** Sets the Node Contract range and the version loader of this package's node-sdk, which its nodes run with. */
 export const useContractRegistry = (options: ContractRegistryOptions) => {
-	setActionApiRange(options.apiRange);
+	setNodeContractRange(options.nodeContractRange);
 	setContractVersionLoader(contractVersionLoader(options));
 };
 
@@ -453,8 +453,8 @@ export interface ContractSyncResult {
 	/** Versions the store did not have before. */
 	readonly added: readonly VersionManifest[];
 	readonly failed: ReadonlyArray<LockedNode & { readonly error: string }>;
-	/** Nodes whose locked bundle declares an `n8n:action` version that this host does not run. */
-	readonly unsupported: ReadonlyArray<LockedNode & { readonly apiVersion: ActionApiVersion }>;
+	/** Nodes whose locked bundle declares a Node Contract version that this host does not run. */
+	readonly unsupported: ReadonlyArray<LockedNode & { readonly nodeContract: NodeContractVersion }>;
 }
 
 const bundledHead = (actionId: string) => {
@@ -468,7 +468,7 @@ const bundledHead = (actionId: string) => {
 
 /**
  * Puts the locked bundle of each node into the store, one bundle at a time, and checks its
- * `n8n:action` version. It never throws for one bundle: it reports the failure.
+ * Node Contract version. It never throws for one bundle: it reports the failure.
  */
 export async function syncContractStore(
 	store: ContractStore,
@@ -511,9 +511,9 @@ export async function syncContractStore(
 			typeof manifest === 'string' ? group.map((node) => ({ ...node, error: manifest })) : [],
 		),
 		unsupported: results.flatMap(({ manifest, group }) =>
-			typeof manifest === 'string' || runsActionApi(manifest.apiVersion)
+			typeof manifest === 'string' || runsNodeContract(manifest.nodeContract)
 				? []
-				: group.map((node) => ({ ...node, apiVersion: manifest.apiVersion })),
+				: group.map((node) => ({ ...node, nodeContract: manifest.nodeContract })),
 		),
 	};
 }

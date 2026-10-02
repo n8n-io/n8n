@@ -322,7 +322,7 @@ export interface Binaries {
 	): Promise<Binary>;
 }
 
-/** One field per host import of `spec/n8n-action@2.wit`. */
+/** One field per host import of the action interface in `spec/wit/action.wit`. */
 export interface RunHost {
 	readonly http: Http;
 	/** Writes to the n8n log with the node name. Do not log credentials or personal data. */
@@ -330,7 +330,7 @@ export interface RunHost {
 	/** The limits the host enforces for this run. */
 	readonly limits: RunLimits;
 	/**
-	 * Binary data (`n8n:action@2.2.0`). Only an action with a `binary()` field gets it: the
+	 * Binary data (Node Contract 2.2.0). Only an action with a `binary()` field gets it: the
 	 * field makes its bundle target 2.2.0, so an older host refuses the bundle.
 	 */
 	readonly binary: Binaries;
@@ -377,7 +377,7 @@ export type RunContextOf<
 	Ins extends ActionInputs | undefined,
 > = Ins extends ActionInputs ? InputsContext<Input, Ins[number]> : ContextOf<C, Input>;
 
-// ── Host imports of n8n:action@2.3.0 ──────────────────────────────────────────
+// ── Host imports of Node Contract 2.3.0 ──────────────────────────────────────────
 
 export type DataTableColumnType = 'string' | 'number' | 'boolean' | 'date';
 
@@ -526,7 +526,7 @@ export interface Wait {
 }
 
 /**
- * The optional host imports of `n8n:action@2.3.0`. An action lists the ones it uses in
+ * The optional host imports of Node Contract 2.3.0. An action lists the ones it uses in
  * `imports`, its run context gets only those, and its bundle targets 2.3.0.
  */
 export interface HostImports<Input> {
@@ -1298,15 +1298,15 @@ function hints(schema: JsonSchema): string[] {
 	return [...(schema['x-n8n-hint'] ? [schema['x-n8n-hint']] : []), ...children.flatMap(hints)];
 }
 
-/** The action has a `binary()` field, so its bundle targets `n8n:action@2.2.0`. */
+/** The action has a `binary()` field, so its bundle targets Node Contract 2.2.0. */
 export const usesBinary = (contract: Pick<ContractDocument, 'input' | 'output'>) =>
 	hasBinary(contract.input) || hasBinary(contract.output);
 
-/** The action declares host imports or named inputs, so its bundle targets `n8n:action@2.3.0`. */
+/** The action declares host imports or named inputs, so its bundle targets Node Contract 2.3.0. */
 export const usesHostImports = (contract: Pick<ContractDocument, 'imports' | 'inputs'>) =>
 	Boolean(contract.imports?.length) || contract.inputs !== undefined;
 
-/** The action supplies a sub-node capability or reads one, so its bundle targets `n8n:action@2.3.0`. */
+/** The action supplies a provider capability or reads one, so its bundle targets Node Contract 2.3.0. */
 export const usesSupplies = (contract: Pick<ContractDocument, 'input' | 'output'>) =>
 	suppliedKindOf(contract.output) !== undefined ||
 	Object.values(contract.input.properties ?? {}).some((field) => supplyOf(field) !== undefined);

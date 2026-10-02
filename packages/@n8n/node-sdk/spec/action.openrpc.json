@@ -1,0 +1,2981 @@
+{
+	"openrpc": "1.3.2",
+	"info": {
+		"title": "n8n Node Contract: the action interface",
+		"version": "2.5.0",
+		"description": "Generated from spec/wit (world action-bundle) by scripts/spec.ts. Do not edit.\n\nAn action: it reads items and gives items. The host gives an optional import only to an\naction whose manifest needs it: `binary` for a `binary()` field, `supplied` for a\n`supplied()` input field, the others when the manifest `imports` lists them.\n\nBoth sides send requests on one connection. `x-direction` tells which side answers a method. A method without `result` is a notification. Names in brackets are not WIT functions: the JSON-RPC mapping adds them."
+	},
+	"x-world": "n8n:node-contract/action-bundle@2.5.0",
+	"x-since": "2.0.0",
+	"methods": [
+		{
+			"name": "[initialize]",
+			"description": "The first message. The host sends the Node Contract version that it implements. The guest answers with the version and the kind of its bundle. The host closes the connection when the bundle version is outside its range or needs a newer minor.",
+			"paramStructure": "by-name",
+			"params": [
+				{
+					"name": "nodeContract",
+					"required": true,
+					"schema": {
+						"type": "string"
+					}
+				}
+			],
+			"result": {
+				"name": "result",
+				"schema": {
+					"type": "object",
+					"properties": {
+						"nodeContract": {
+							"type": "string"
+						},
+						"kind": {
+							"const": "action"
+						}
+					},
+					"required": ["nodeContract", "kind"],
+					"additionalProperties": false
+				}
+			},
+			"x-direction": "host-to-guest",
+			"x-since": "2.0.0"
+		},
+		{
+			"name": "action.describe",
+			"description": "The manifest contract: id, version, flow, credentials, input and output schema.",
+			"paramStructure": "by-name",
+			"params": [],
+			"result": {
+				"name": "result",
+				"schema": {
+					"$ref": "#/components/schemas/types.json"
+				}
+			},
+			"x-direction": "host-to-guest",
+			"x-since": "2.0.0"
+		},
+		{
+			"name": "action.run.[new]",
+			"description": "The host resolved, defaulted and validated `input` against the manifest input.",
+			"paramStructure": "by-name",
+			"params": [
+				{
+					"name": "input",
+					"required": true,
+					"schema": {
+						"$ref": "#/components/schemas/types.json"
+					}
+				}
+			],
+			"result": {
+				"name": "result",
+				"schema": {
+					"type": "integer",
+					"minimum": 0,
+					"description": "A handle of action.run. The side that creates the resource numbers it."
+				}
+			},
+			"x-direction": "host-to-guest",
+			"x-since": "2.0.0"
+		},
+		{
+			"name": "action.run.next",
+			"description": "The next output item, or none at the end. A `per-item` action gives one item.\nThe host validates each item against the manifest output.",
+			"paramStructure": "by-name",
+			"params": [
+				{
+					"name": "self",
+					"required": true,
+					"schema": {
+						"type": "integer",
+						"minimum": 0,
+						"description": "A handle of action.run. The side that creates the resource numbers it."
+					}
+				}
+			],
+			"result": {
+				"name": "result",
+				"schema": {
+					"oneOf": [
+						{
+							"type": "object",
+							"properties": {
+								"some": {
+									"$ref": "#/components/schemas/types.json"
+								}
+							},
+							"required": ["some"],
+							"additionalProperties": false
+						},
+						{
+							"type": "null"
+						}
+					]
+				}
+			},
+			"errors": [
+				{
+					"code": -32000,
+					"message": "The error of the WIT result."
+				}
+			],
+			"x-error": {
+				"$ref": "#/components/schemas/errors.run-error"
+			},
+			"x-direction": "host-to-guest",
+			"x-since": "2.0.0"
+		},
+		{
+			"name": "action.run.[drop]",
+			"description": "Frees an owned handle. A notification: it has no answer.",
+			"paramStructure": "by-name",
+			"params": [
+				{
+					"name": "self",
+					"required": true,
+					"schema": {
+						"type": "integer",
+						"minimum": 0,
+						"description": "A handle of action.run. The side that creates the resource numbers it."
+					}
+				}
+			],
+			"x-direction": "host-to-guest",
+			"x-since": "2.0.0"
+		},
+		{
+			"name": "action.run.[take]",
+			"description": "Calls `next` until the end, an error, or `max` outputs, in one round trip. The guest can call the host in between. The outputs before an error stay in `outputs`.",
+			"paramStructure": "by-name",
+			"params": [
+				{
+					"name": "self",
+					"required": true,
+					"schema": {
+						"type": "integer",
+						"minimum": 0,
+						"description": "A handle of action.run. The side that creates the resource numbers it."
+					}
+				},
+				{
+					"name": "max",
+					"required": true,
+					"schema": {
+						"type": "integer",
+						"minimum": 0,
+						"maximum": 4294967295
+					}
+				}
+			],
+			"result": {
+				"name": "result",
+				"schema": {
+					"type": "object",
+					"properties": {
+						"outputs": {
+							"type": "array",
+							"items": {
+								"$ref": "#/components/schemas/types.json"
+							}
+						},
+						"done": {
+							"type": "boolean"
+						},
+						"error": {
+							"$ref": "#/components/schemas/errors.run-error"
+						}
+					},
+					"required": ["outputs", "done"],
+					"additionalProperties": false
+				}
+			},
+			"x-direction": "host-to-guest",
+			"x-since": "2.0.0"
+		},
+		{
+			"name": "action.item-run.[new]",
+			"paramStructure": "by-name",
+			"params": [
+				{
+					"name": "input",
+					"required": true,
+					"schema": {
+						"$ref": "#/components/schemas/types.json"
+					}
+				},
+				{
+					"name": "items",
+					"required": true,
+					"schema": {
+						"type": "array",
+						"items": {
+							"$ref": "#/components/schemas/types.json"
+						}
+					}
+				}
+			],
+			"result": {
+				"name": "result",
+				"schema": {
+					"type": "integer",
+					"minimum": 0,
+					"description": "A handle of action.item-run. The side that creates the resource numbers it."
+				}
+			},
+			"x-direction": "host-to-guest",
+			"x-since": "2.1.0"
+		},
+		{
+			"name": "action.item-run.next",
+			"description": "The next output, or none at the end. The host validates each item against the\nmanifest output, and checks each index and output name.",
+			"paramStructure": "by-name",
+			"params": [
+				{
+					"name": "self",
+					"required": true,
+					"schema": {
+						"type": "integer",
+						"minimum": 0,
+						"description": "A handle of action.item-run. The side that creates the resource numbers it."
+					}
+				}
+			],
+			"result": {
+				"name": "result",
+				"schema": {
+					"oneOf": [
+						{
+							"$ref": "#/components/schemas/action.routed-output"
+						},
+						{
+							"type": "null"
+						}
+					]
+				}
+			},
+			"errors": [
+				{
+					"code": -32000,
+					"message": "The error of the WIT result."
+				}
+			],
+			"x-error": {
+				"$ref": "#/components/schemas/errors.run-error"
+			},
+			"x-direction": "host-to-guest",
+			"x-since": "2.1.0"
+		},
+		{
+			"name": "action.item-run.[drop]",
+			"description": "Frees an owned handle. A notification: it has no answer.",
+			"paramStructure": "by-name",
+			"params": [
+				{
+					"name": "self",
+					"required": true,
+					"schema": {
+						"type": "integer",
+						"minimum": 0,
+						"description": "A handle of action.item-run. The side that creates the resource numbers it."
+					}
+				}
+			],
+			"x-direction": "host-to-guest",
+			"x-since": "2.1.0"
+		},
+		{
+			"name": "action.item-run.[take]",
+			"description": "Calls `next` until the end, an error, or `max` outputs, in one round trip. The guest can call the host in between. The outputs before an error stay in `outputs`.",
+			"paramStructure": "by-name",
+			"params": [
+				{
+					"name": "self",
+					"required": true,
+					"schema": {
+						"type": "integer",
+						"minimum": 0,
+						"description": "A handle of action.item-run. The side that creates the resource numbers it."
+					}
+				},
+				{
+					"name": "max",
+					"required": true,
+					"schema": {
+						"type": "integer",
+						"minimum": 0,
+						"maximum": 4294967295
+					}
+				}
+			],
+			"result": {
+				"name": "result",
+				"schema": {
+					"type": "object",
+					"properties": {
+						"outputs": {
+							"type": "array",
+							"items": {
+								"$ref": "#/components/schemas/action.routed-output"
+							}
+						},
+						"done": {
+							"type": "boolean"
+						},
+						"error": {
+							"$ref": "#/components/schemas/errors.run-error"
+						}
+					},
+					"required": ["outputs", "done"],
+					"additionalProperties": false
+				}
+			},
+			"x-direction": "host-to-guest",
+			"x-since": "2.1.0"
+		},
+		{
+			"name": "action.join-run.[new]",
+			"paramStructure": "by-name",
+			"params": [
+				{
+					"name": "input",
+					"required": true,
+					"schema": {
+						"$ref": "#/components/schemas/types.json"
+					}
+				},
+				{
+					"name": "inputs",
+					"required": true,
+					"schema": {
+						"type": "array",
+						"items": {
+							"type": "array",
+							"items": {
+								"$ref": "#/components/schemas/types.json"
+							}
+						}
+					}
+				}
+			],
+			"result": {
+				"name": "result",
+				"schema": {
+					"type": "integer",
+					"minimum": 0,
+					"description": "A handle of action.join-run. The side that creates the resource numbers it."
+				}
+			},
+			"x-direction": "host-to-guest",
+			"x-since": "2.3.0"
+		},
+		{
+			"name": "action.join-run.next",
+			"paramStructure": "by-name",
+			"params": [
+				{
+					"name": "self",
+					"required": true,
+					"schema": {
+						"type": "integer",
+						"minimum": 0,
+						"description": "A handle of action.join-run. The side that creates the resource numbers it."
+					}
+				}
+			],
+			"result": {
+				"name": "result",
+				"schema": {
+					"oneOf": [
+						{
+							"$ref": "#/components/schemas/action.routed-join-output"
+						},
+						{
+							"type": "null"
+						}
+					]
+				}
+			},
+			"errors": [
+				{
+					"code": -32000,
+					"message": "The error of the WIT result."
+				}
+			],
+			"x-error": {
+				"$ref": "#/components/schemas/errors.run-error"
+			},
+			"x-direction": "host-to-guest",
+			"x-since": "2.3.0"
+		},
+		{
+			"name": "action.join-run.[drop]",
+			"description": "Frees an owned handle. A notification: it has no answer.",
+			"paramStructure": "by-name",
+			"params": [
+				{
+					"name": "self",
+					"required": true,
+					"schema": {
+						"type": "integer",
+						"minimum": 0,
+						"description": "A handle of action.join-run. The side that creates the resource numbers it."
+					}
+				}
+			],
+			"x-direction": "host-to-guest",
+			"x-since": "2.3.0"
+		},
+		{
+			"name": "action.join-run.[take]",
+			"description": "Calls `next` until the end, an error, or `max` outputs, in one round trip. The guest can call the host in between. The outputs before an error stay in `outputs`.",
+			"paramStructure": "by-name",
+			"params": [
+				{
+					"name": "self",
+					"required": true,
+					"schema": {
+						"type": "integer",
+						"minimum": 0,
+						"description": "A handle of action.join-run. The side that creates the resource numbers it."
+					}
+				},
+				{
+					"name": "max",
+					"required": true,
+					"schema": {
+						"type": "integer",
+						"minimum": 0,
+						"maximum": 4294967295
+					}
+				}
+			],
+			"result": {
+				"name": "result",
+				"schema": {
+					"type": "object",
+					"properties": {
+						"outputs": {
+							"type": "array",
+							"items": {
+								"$ref": "#/components/schemas/action.routed-join-output"
+							}
+						},
+						"done": {
+							"type": "boolean"
+						},
+						"error": {
+							"$ref": "#/components/schemas/errors.run-error"
+						}
+					},
+					"required": ["outputs", "done"],
+					"additionalProperties": false
+				}
+			},
+			"x-direction": "host-to-guest",
+			"x-since": "2.3.0"
+		},
+		{
+			"name": "http.request",
+			"paramStructure": "by-name",
+			"params": [
+				{
+					"name": "request",
+					"required": true,
+					"schema": {
+						"$ref": "#/components/schemas/http.http-request"
+					}
+				}
+			],
+			"result": {
+				"name": "result",
+				"schema": {
+					"$ref": "#/components/schemas/http.http-response"
+				}
+			},
+			"errors": [
+				{
+					"code": -32000,
+					"message": "The error of the WIT result."
+				}
+			],
+			"x-error": {
+				"$ref": "#/components/schemas/http.http-failure"
+			},
+			"x-direction": "guest-to-host",
+			"x-since": "2.0.0"
+		},
+		{
+			"name": "log.log",
+			"description": "Writes to the n8n log with the node name. Do not log credentials or personal data.\nThe host keeps the first 100 lines of a node execution, each cut to 2000 characters.",
+			"paramStructure": "by-name",
+			"params": [
+				{
+					"name": "level",
+					"required": true,
+					"schema": {
+						"$ref": "#/components/schemas/log.level"
+					}
+				},
+				{
+					"name": "message",
+					"required": true,
+					"schema": {
+						"type": "string"
+					}
+				}
+			],
+			"x-direction": "guest-to-host",
+			"x-since": "2.0.0"
+		},
+		{
+			"name": "limits.get",
+			"paramStructure": "by-name",
+			"params": [],
+			"result": {
+				"name": "result",
+				"schema": {
+					"$ref": "#/components/schemas/limits.run-limits"
+				}
+			},
+			"x-direction": "guest-to-host",
+			"x-since": "2.0.0"
+		},
+		{
+			"name": "binary.open",
+			"description": "The binary that the run input names with `{ \"$binary\": id }`.",
+			"paramStructure": "by-name",
+			"params": [
+				{
+					"name": "id",
+					"required": true,
+					"schema": {
+						"type": "integer",
+						"minimum": 0,
+						"maximum": 9007199254740991
+					}
+				}
+			],
+			"result": {
+				"name": "result",
+				"schema": {
+					"type": "integer",
+					"minimum": 0,
+					"description": "A handle of binary.binary. The side that creates the resource numbers it."
+				}
+			},
+			"errors": [
+				{
+					"code": -32000,
+					"message": "The error of the WIT result."
+				}
+			],
+			"x-error": {
+				"type": "string"
+			},
+			"x-direction": "guest-to-host",
+			"x-since": "2.2.0"
+		},
+		{
+			"name": "binary.send",
+			"description": "Sends `body` as the request body, with its MIME type as `content-type` unless\n`headers` set one. The host opens the binary again for a retry.",
+			"paramStructure": "by-name",
+			"params": [
+				{
+					"name": "request",
+					"required": true,
+					"schema": {
+						"$ref": "#/components/schemas/binary.binary-request"
+					}
+				},
+				{
+					"name": "body",
+					"required": true,
+					"schema": {
+						"type": "integer",
+						"minimum": 0,
+						"description": "A handle of binary.binary. The side that creates the resource numbers it."
+					}
+				}
+			],
+			"result": {
+				"name": "result",
+				"schema": {
+					"$ref": "#/components/schemas/http.http-response"
+				}
+			},
+			"errors": [
+				{
+					"code": -32000,
+					"message": "The error of the WIT result."
+				}
+			],
+			"x-error": {
+				"$ref": "#/components/schemas/http.http-failure"
+			},
+			"x-direction": "guest-to-host",
+			"x-since": "2.2.0"
+		},
+		{
+			"name": "binary.fetch",
+			"description": "Keeps the response body in the host as a binary. With `body`, the binary is the\nrequest body and `request.body` must be none.",
+			"paramStructure": "by-name",
+			"params": [
+				{
+					"name": "request",
+					"required": true,
+					"schema": {
+						"$ref": "#/components/schemas/http.http-request"
+					}
+				},
+				{
+					"name": "body",
+					"required": false,
+					"schema": {
+						"type": "integer",
+						"minimum": 0,
+						"description": "A handle of binary.binary. The side that creates the resource numbers it."
+					}
+				}
+			],
+			"result": {
+				"name": "result",
+				"schema": {
+					"$ref": "#/components/schemas/binary.binary-response"
+				}
+			},
+			"errors": [
+				{
+					"code": -32000,
+					"message": "The error of the WIT result."
+				}
+			],
+			"x-error": {
+				"$ref": "#/components/schemas/http.http-failure"
+			},
+			"x-direction": "guest-to-host",
+			"x-since": "2.2.0"
+		},
+		{
+			"name": "binary.binary.meta",
+			"paramStructure": "by-name",
+			"params": [
+				{
+					"name": "self",
+					"required": true,
+					"schema": {
+						"type": "integer",
+						"minimum": 0,
+						"description": "A handle of binary.binary. The side that creates the resource numbers it."
+					}
+				}
+			],
+			"result": {
+				"name": "result",
+				"schema": {
+					"$ref": "#/components/schemas/binary.binary-meta"
+				}
+			},
+			"x-direction": "guest-to-host",
+			"x-since": "2.2.0"
+		},
+		{
+			"name": "binary.binary.reader",
+			"description": "Opens a new reader at the first byte.",
+			"paramStructure": "by-name",
+			"params": [
+				{
+					"name": "self",
+					"required": true,
+					"schema": {
+						"type": "integer",
+						"minimum": 0,
+						"description": "A handle of binary.binary. The side that creates the resource numbers it."
+					}
+				}
+			],
+			"result": {
+				"name": "result",
+				"schema": {
+					"type": "integer",
+					"minimum": 0,
+					"description": "A handle of binary.binary-reader. The side that creates the resource numbers it."
+				}
+			},
+			"x-direction": "guest-to-host",
+			"x-since": "2.2.0"
+		},
+		{
+			"name": "binary.binary.id",
+			"description": "The id of this binary in the JSON of an output item.",
+			"paramStructure": "by-name",
+			"params": [
+				{
+					"name": "self",
+					"required": true,
+					"schema": {
+						"type": "integer",
+						"minimum": 0,
+						"description": "A handle of binary.binary. The side that creates the resource numbers it."
+					}
+				}
+			],
+			"result": {
+				"name": "result",
+				"schema": {
+					"type": "integer",
+					"minimum": 0,
+					"maximum": 9007199254740991
+				}
+			},
+			"x-direction": "guest-to-host",
+			"x-since": "2.2.0"
+		},
+		{
+			"name": "binary.binary.[drop]",
+			"description": "Frees an owned handle. A notification: it has no answer.",
+			"paramStructure": "by-name",
+			"params": [
+				{
+					"name": "self",
+					"required": true,
+					"schema": {
+						"type": "integer",
+						"minimum": 0,
+						"description": "A handle of binary.binary. The side that creates the resource numbers it."
+					}
+				}
+			],
+			"x-direction": "guest-to-host",
+			"x-since": "2.2.0"
+		},
+		{
+			"name": "binary.binary-reader.read",
+			"description": "At most `max-bytes`. An empty list is the end.",
+			"paramStructure": "by-name",
+			"params": [
+				{
+					"name": "self",
+					"required": true,
+					"schema": {
+						"type": "integer",
+						"minimum": 0,
+						"description": "A handle of binary.binary-reader. The side that creates the resource numbers it."
+					}
+				},
+				{
+					"name": "maxBytes",
+					"required": true,
+					"schema": {
+						"type": "integer",
+						"minimum": 0,
+						"maximum": 4294967295
+					}
+				}
+			],
+			"result": {
+				"name": "result",
+				"schema": {
+					"type": "string",
+					"contentEncoding": "base64"
+				}
+			},
+			"errors": [
+				{
+					"code": -32000,
+					"message": "The error of the WIT result."
+				}
+			],
+			"x-error": {
+				"type": "string"
+			},
+			"x-direction": "guest-to-host",
+			"x-since": "2.2.0"
+		},
+		{
+			"name": "binary.binary-reader.[drop]",
+			"description": "Frees an owned handle. A notification: it has no answer.",
+			"paramStructure": "by-name",
+			"params": [
+				{
+					"name": "self",
+					"required": true,
+					"schema": {
+						"type": "integer",
+						"minimum": 0,
+						"description": "A handle of binary.binary-reader. The side that creates the resource numbers it."
+					}
+				}
+			],
+			"x-direction": "guest-to-host",
+			"x-since": "2.2.0"
+		},
+		{
+			"name": "binary.binary-writer.[new]",
+			"paramStructure": "by-name",
+			"params": [
+				{
+					"name": "mimeType",
+					"required": true,
+					"schema": {
+						"type": "string"
+					}
+				},
+				{
+					"name": "fileName",
+					"required": false,
+					"schema": {
+						"type": "string"
+					}
+				}
+			],
+			"result": {
+				"name": "result",
+				"schema": {
+					"type": "integer",
+					"minimum": 0,
+					"description": "A handle of binary.binary-writer. The side that creates the resource numbers it."
+				}
+			},
+			"x-direction": "guest-to-host",
+			"x-since": "2.2.0"
+		},
+		{
+			"name": "binary.binary-writer.write",
+			"paramStructure": "by-name",
+			"params": [
+				{
+					"name": "self",
+					"required": true,
+					"schema": {
+						"type": "integer",
+						"minimum": 0,
+						"description": "A handle of binary.binary-writer. The side that creates the resource numbers it."
+					}
+				},
+				{
+					"name": "chunk",
+					"required": true,
+					"schema": {
+						"type": "string",
+						"contentEncoding": "base64"
+					}
+				}
+			],
+			"result": {
+				"name": "result",
+				"schema": {
+					"type": "null"
+				}
+			},
+			"errors": [
+				{
+					"code": -32000,
+					"message": "The error of the WIT result."
+				}
+			],
+			"x-error": {
+				"type": "string"
+			},
+			"x-direction": "guest-to-host",
+			"x-since": "2.2.0"
+		},
+		{
+			"name": "binary.binary-writer.finish",
+			"description": "The writer closes. The host keeps the binary for the execution.",
+			"paramStructure": "by-name",
+			"params": [
+				{
+					"name": "writer",
+					"required": true,
+					"schema": {
+						"type": "integer",
+						"minimum": 0,
+						"description": "A handle of binary.binary-writer. The side that creates the resource numbers it."
+					}
+				}
+			],
+			"result": {
+				"name": "result",
+				"schema": {
+					"type": "integer",
+					"minimum": 0,
+					"description": "A handle of binary.binary. The side that creates the resource numbers it."
+				}
+			},
+			"errors": [
+				{
+					"code": -32000,
+					"message": "The error of the WIT result."
+				}
+			],
+			"x-error": {
+				"type": "string"
+			},
+			"x-direction": "guest-to-host",
+			"x-since": "2.2.0"
+		},
+		{
+			"name": "binary.binary-writer.[drop]",
+			"description": "Frees an owned handle. A notification: it has no answer.",
+			"paramStructure": "by-name",
+			"params": [
+				{
+					"name": "self",
+					"required": true,
+					"schema": {
+						"type": "integer",
+						"minimum": 0,
+						"description": "A handle of binary.binary-writer. The side that creates the resource numbers it."
+					}
+				}
+			],
+			"x-direction": "guest-to-host",
+			"x-since": "2.2.0"
+		},
+		{
+			"name": "data-tables.open",
+			"paramStructure": "by-name",
+			"params": [
+				{
+					"name": "table",
+					"required": true,
+					"schema": {
+						"$ref": "#/components/schemas/data-tables.table-ref"
+					}
+				}
+			],
+			"result": {
+				"name": "result",
+				"schema": {
+					"type": "integer",
+					"minimum": 0,
+					"description": "A handle of data-tables.table. The side that creates the resource numbers it."
+				}
+			},
+			"errors": [
+				{
+					"code": -32000,
+					"message": "The error of the WIT result."
+				}
+			],
+			"x-error": {
+				"type": "string"
+			},
+			"x-direction": "guest-to-host",
+			"x-since": "2.3.0"
+		},
+		{
+			"name": "data-tables.list",
+			"description": "`list` is a WIT keyword. The JSON-RPC method is `data-tables.list`.",
+			"paramStructure": "by-name",
+			"params": [
+				{
+					"name": "query",
+					"required": true,
+					"schema": {
+						"$ref": "#/components/schemas/data-tables.list-query"
+					}
+				}
+			],
+			"result": {
+				"name": "result",
+				"schema": {
+					"$ref": "#/components/schemas/data-tables.table-page"
+				}
+			},
+			"errors": [
+				{
+					"code": -32000,
+					"message": "The error of the WIT result."
+				}
+			],
+			"x-error": {
+				"type": "string"
+			},
+			"x-direction": "guest-to-host",
+			"x-since": "2.3.0"
+		},
+		{
+			"name": "data-tables.create",
+			"paramStructure": "by-name",
+			"params": [
+				{
+					"name": "table",
+					"required": true,
+					"schema": {
+						"$ref": "#/components/schemas/data-tables.new-table"
+					}
+				}
+			],
+			"result": {
+				"name": "result",
+				"schema": {
+					"$ref": "#/components/schemas/data-tables.table-info"
+				}
+			},
+			"errors": [
+				{
+					"code": -32000,
+					"message": "The error of the WIT result."
+				}
+			],
+			"x-error": {
+				"type": "string"
+			},
+			"x-direction": "guest-to-host",
+			"x-since": "2.3.0"
+		},
+		{
+			"name": "data-tables.table.id",
+			"paramStructure": "by-name",
+			"params": [
+				{
+					"name": "self",
+					"required": true,
+					"schema": {
+						"type": "integer",
+						"minimum": 0,
+						"description": "A handle of data-tables.table. The side that creates the resource numbers it."
+					}
+				}
+			],
+			"result": {
+				"name": "result",
+				"schema": {
+					"type": "string"
+				}
+			},
+			"x-direction": "guest-to-host",
+			"x-since": "2.3.0"
+		},
+		{
+			"name": "data-tables.table.columns",
+			"paramStructure": "by-name",
+			"params": [
+				{
+					"name": "self",
+					"required": true,
+					"schema": {
+						"type": "integer",
+						"minimum": 0,
+						"description": "A handle of data-tables.table. The side that creates the resource numbers it."
+					}
+				}
+			],
+			"result": {
+				"name": "result",
+				"schema": {
+					"type": "array",
+					"items": {
+						"$ref": "#/components/schemas/data-tables.column"
+					}
+				}
+			},
+			"errors": [
+				{
+					"code": -32000,
+					"message": "The error of the WIT result."
+				}
+			],
+			"x-error": {
+				"type": "string"
+			},
+			"x-direction": "guest-to-host",
+			"x-since": "2.3.0"
+		},
+		{
+			"name": "data-tables.table.rows",
+			"paramStructure": "by-name",
+			"params": [
+				{
+					"name": "self",
+					"required": true,
+					"schema": {
+						"type": "integer",
+						"minimum": 0,
+						"description": "A handle of data-tables.table. The side that creates the resource numbers it."
+					}
+				},
+				{
+					"name": "query",
+					"required": true,
+					"schema": {
+						"$ref": "#/components/schemas/data-tables.row-query"
+					}
+				}
+			],
+			"result": {
+				"name": "result",
+				"schema": {
+					"$ref": "#/components/schemas/data-tables.row-page"
+				}
+			},
+			"errors": [
+				{
+					"code": -32000,
+					"message": "The error of the WIT result."
+				}
+			],
+			"x-error": {
+				"type": "string"
+			},
+			"x-direction": "guest-to-host",
+			"x-since": "2.3.0"
+		},
+		{
+			"name": "data-tables.table.insert",
+			"description": "One write for all rows. Gives the rows with their system columns.",
+			"paramStructure": "by-name",
+			"params": [
+				{
+					"name": "self",
+					"required": true,
+					"schema": {
+						"type": "integer",
+						"minimum": 0,
+						"description": "A handle of data-tables.table. The side that creates the resource numbers it."
+					}
+				},
+				{
+					"name": "rows",
+					"required": true,
+					"schema": {
+						"type": "array",
+						"items": {
+							"$ref": "#/components/schemas/types.json"
+						}
+					}
+				}
+			],
+			"result": {
+				"name": "result",
+				"schema": {
+					"type": "array",
+					"items": {
+						"$ref": "#/components/schemas/types.json"
+					}
+				}
+			},
+			"errors": [
+				{
+					"code": -32000,
+					"message": "The error of the WIT result."
+				}
+			],
+			"x-error": {
+				"type": "string"
+			},
+			"x-direction": "guest-to-host",
+			"x-since": "2.3.0"
+		},
+		{
+			"name": "data-tables.table.update",
+			"description": "Sets `values` on each row that the filter matches. Gives the changed rows.",
+			"paramStructure": "by-name",
+			"params": [
+				{
+					"name": "self",
+					"required": true,
+					"schema": {
+						"type": "integer",
+						"minimum": 0,
+						"description": "A handle of data-tables.table. The side that creates the resource numbers it."
+					}
+				},
+				{
+					"name": "filter",
+					"required": true,
+					"schema": {
+						"$ref": "#/components/schemas/data-tables.filter"
+					}
+				},
+				{
+					"name": "values",
+					"required": true,
+					"schema": {
+						"$ref": "#/components/schemas/types.json"
+					}
+				}
+			],
+			"result": {
+				"name": "result",
+				"schema": {
+					"type": "array",
+					"items": {
+						"$ref": "#/components/schemas/types.json"
+					}
+				}
+			},
+			"errors": [
+				{
+					"code": -32000,
+					"message": "The error of the WIT result."
+				}
+			],
+			"x-error": {
+				"type": "string"
+			},
+			"x-direction": "guest-to-host",
+			"x-since": "2.3.0"
+		},
+		{
+			"name": "data-tables.table.upsert",
+			"description": "`update`, or one new row when the filter matches no row.",
+			"paramStructure": "by-name",
+			"params": [
+				{
+					"name": "self",
+					"required": true,
+					"schema": {
+						"type": "integer",
+						"minimum": 0,
+						"description": "A handle of data-tables.table. The side that creates the resource numbers it."
+					}
+				},
+				{
+					"name": "filter",
+					"required": true,
+					"schema": {
+						"$ref": "#/components/schemas/data-tables.filter"
+					}
+				},
+				{
+					"name": "values",
+					"required": true,
+					"schema": {
+						"$ref": "#/components/schemas/types.json"
+					}
+				}
+			],
+			"result": {
+				"name": "result",
+				"schema": {
+					"type": "array",
+					"items": {
+						"$ref": "#/components/schemas/types.json"
+					}
+				}
+			},
+			"errors": [
+				{
+					"code": -32000,
+					"message": "The error of the WIT result."
+				}
+			],
+			"x-error": {
+				"type": "string"
+			},
+			"x-direction": "guest-to-host",
+			"x-since": "2.3.0"
+		},
+		{
+			"name": "data-tables.table.delete",
+			"description": "Gives the deleted rows.",
+			"paramStructure": "by-name",
+			"params": [
+				{
+					"name": "self",
+					"required": true,
+					"schema": {
+						"type": "integer",
+						"minimum": 0,
+						"description": "A handle of data-tables.table. The side that creates the resource numbers it."
+					}
+				},
+				{
+					"name": "filter",
+					"required": true,
+					"schema": {
+						"$ref": "#/components/schemas/data-tables.filter"
+					}
+				}
+			],
+			"result": {
+				"name": "result",
+				"schema": {
+					"type": "array",
+					"items": {
+						"$ref": "#/components/schemas/types.json"
+					}
+				}
+			},
+			"errors": [
+				{
+					"code": -32000,
+					"message": "The error of the WIT result."
+				}
+			],
+			"x-error": {
+				"type": "string"
+			},
+			"x-direction": "guest-to-host",
+			"x-since": "2.3.0"
+		},
+		{
+			"name": "data-tables.table.clear",
+			"description": "Deletes every row. Gives how many it deleted.",
+			"paramStructure": "by-name",
+			"params": [
+				{
+					"name": "self",
+					"required": true,
+					"schema": {
+						"type": "integer",
+						"minimum": 0,
+						"description": "A handle of data-tables.table. The side that creates the resource numbers it."
+					}
+				}
+			],
+			"result": {
+				"name": "result",
+				"schema": {
+					"type": "integer",
+					"minimum": 0,
+					"maximum": 9007199254740991
+				}
+			},
+			"errors": [
+				{
+					"code": -32000,
+					"message": "The error of the WIT result."
+				}
+			],
+			"x-error": {
+				"type": "string"
+			},
+			"x-direction": "guest-to-host",
+			"x-since": "2.3.0"
+		},
+		{
+			"name": "data-tables.table.rename",
+			"paramStructure": "by-name",
+			"params": [
+				{
+					"name": "self",
+					"required": true,
+					"schema": {
+						"type": "integer",
+						"minimum": 0,
+						"description": "A handle of data-tables.table. The side that creates the resource numbers it."
+					}
+				},
+				{
+					"name": "name",
+					"required": true,
+					"schema": {
+						"type": "string"
+					}
+				}
+			],
+			"result": {
+				"name": "result",
+				"schema": {
+					"type": "boolean"
+				}
+			},
+			"errors": [
+				{
+					"code": -32000,
+					"message": "The error of the WIT result."
+				}
+			],
+			"x-error": {
+				"type": "string"
+			},
+			"x-direction": "guest-to-host",
+			"x-since": "2.3.0"
+		},
+		{
+			"name": "data-tables.table.drop",
+			"description": "Deletes the table and its rows.",
+			"paramStructure": "by-name",
+			"params": [
+				{
+					"name": "self",
+					"required": true,
+					"schema": {
+						"type": "integer",
+						"minimum": 0,
+						"description": "A handle of data-tables.table. The side that creates the resource numbers it."
+					}
+				}
+			],
+			"result": {
+				"name": "result",
+				"schema": {
+					"type": "boolean"
+				}
+			},
+			"errors": [
+				{
+					"code": -32000,
+					"message": "The error of the WIT result."
+				}
+			],
+			"x-error": {
+				"type": "string"
+			},
+			"x-direction": "guest-to-host",
+			"x-since": "2.3.0"
+		},
+		{
+			"name": "data-tables.table.[drop]",
+			"description": "Frees an owned handle. A notification: it has no answer.",
+			"paramStructure": "by-name",
+			"params": [
+				{
+					"name": "self",
+					"required": true,
+					"schema": {
+						"type": "integer",
+						"minimum": 0,
+						"description": "A handle of data-tables.table. The side that creates the resource numbers it."
+					}
+				}
+			],
+			"x-direction": "guest-to-host",
+			"x-since": "2.3.0"
+		},
+		{
+			"name": "code.run",
+			"description": "What the code returns, not checked. For `each`, a list with one value for each item.",
+			"paramStructure": "by-name",
+			"params": [
+				{
+					"name": "request",
+					"required": true,
+					"schema": {
+						"$ref": "#/components/schemas/code.code-request"
+					}
+				}
+			],
+			"result": {
+				"name": "result",
+				"schema": {
+					"$ref": "#/components/schemas/types.json"
+				}
+			},
+			"errors": [
+				{
+					"code": -32000,
+					"message": "The error of the WIT result."
+				}
+			],
+			"x-error": {
+				"type": "string"
+			},
+			"x-direction": "guest-to-host",
+			"x-since": "2.3.0"
+		},
+		{
+			"name": "wait.until",
+			"description": "The outputs of this run continue at `at` (milliseconds since the epoch), not before.\nThe host can suspend the execution after the run.",
+			"paramStructure": "by-name",
+			"params": [
+				{
+					"name": "at",
+					"required": true,
+					"schema": {
+						"type": "integer",
+						"minimum": 0,
+						"maximum": 9007199254740991
+					}
+				}
+			],
+			"result": {
+				"name": "result",
+				"schema": {
+					"type": "null"
+				}
+			},
+			"errors": [
+				{
+					"code": -32000,
+					"message": "The error of the WIT result."
+				}
+			],
+			"x-error": {
+				"type": "string"
+			},
+			"x-direction": "guest-to-host",
+			"x-since": "2.3.0"
+		},
+		{
+			"name": "input-of.get",
+			"description": "The host resolved, defaulted and validated the input for the item at this index.",
+			"paramStructure": "by-name",
+			"params": [
+				{
+					"name": "item",
+					"required": true,
+					"schema": {
+						"type": "integer",
+						"minimum": 0,
+						"maximum": 4294967295
+					}
+				}
+			],
+			"result": {
+				"name": "result",
+				"schema": {
+					"$ref": "#/components/schemas/types.json"
+				}
+			},
+			"errors": [
+				{
+					"code": -32000,
+					"message": "The error of the WIT result."
+				}
+			],
+			"x-error": {
+				"type": "string"
+			},
+			"x-direction": "guest-to-host",
+			"x-since": "2.3.0"
+		},
+		{
+			"name": "supplied.open",
+			"paramStructure": "by-name",
+			"params": [
+				{
+					"name": "id",
+					"required": true,
+					"schema": {
+						"type": "integer",
+						"minimum": 0,
+						"maximum": 9007199254740991
+					}
+				}
+			],
+			"result": {
+				"name": "result",
+				"schema": {
+					"$ref": "#/components/schemas/capabilities.capability"
+				}
+			},
+			"errors": [
+				{
+					"code": -32000,
+					"message": "The error of the WIT result."
+				}
+			],
+			"x-error": {
+				"type": "string"
+			},
+			"x-direction": "guest-to-host",
+			"x-since": "2.3.0"
+		},
+		{
+			"name": "capabilities.chat-model.model",
+			"description": "The provider model ID, for example `gpt-5-mini`.",
+			"paramStructure": "by-name",
+			"params": [
+				{
+					"name": "self",
+					"required": true,
+					"schema": {
+						"type": "integer",
+						"minimum": 0,
+						"description": "A handle of capabilities.chat-model. The side that creates the resource numbers it."
+					}
+				}
+			],
+			"result": {
+				"name": "result",
+				"schema": {
+					"type": "string"
+				}
+			},
+			"x-direction": "guest-to-host",
+			"x-since": "2.3.0"
+		},
+		{
+			"name": "capabilities.chat-model.chat",
+			"paramStructure": "by-name",
+			"params": [
+				{
+					"name": "self",
+					"required": true,
+					"schema": {
+						"type": "integer",
+						"minimum": 0,
+						"description": "A handle of capabilities.chat-model. The side that creates the resource numbers it."
+					}
+				},
+				{
+					"name": "request",
+					"required": true,
+					"schema": {
+						"$ref": "#/components/schemas/capabilities.chat-request"
+					}
+				}
+			],
+			"result": {
+				"name": "result",
+				"schema": {
+					"$ref": "#/components/schemas/capabilities.chat-reply"
+				}
+			},
+			"errors": [
+				{
+					"code": -32000,
+					"message": "The error of the WIT result."
+				}
+			],
+			"x-error": {
+				"$ref": "#/components/schemas/errors.run-error"
+			},
+			"x-direction": "guest-to-host",
+			"x-since": "2.3.0"
+		},
+		{
+			"name": "capabilities.chat-model.[drop]",
+			"description": "Frees an owned handle. A notification: it has no answer.",
+			"paramStructure": "by-name",
+			"params": [
+				{
+					"name": "self",
+					"required": true,
+					"schema": {
+						"type": "integer",
+						"minimum": 0,
+						"description": "A handle of capabilities.chat-model. The side that creates the resource numbers it."
+					}
+				}
+			],
+			"x-direction": "guest-to-host",
+			"x-since": "2.3.0"
+		},
+		{
+			"name": "capabilities.memory.load",
+			"description": "The messages so far, oldest first.",
+			"paramStructure": "by-name",
+			"params": [
+				{
+					"name": "self",
+					"required": true,
+					"schema": {
+						"type": "integer",
+						"minimum": 0,
+						"description": "A handle of capabilities.memory. The side that creates the resource numbers it."
+					}
+				}
+			],
+			"result": {
+				"name": "result",
+				"schema": {
+					"type": "array",
+					"items": {
+						"$ref": "#/components/schemas/capabilities.chat-message"
+					}
+				}
+			},
+			"errors": [
+				{
+					"code": -32000,
+					"message": "The error of the WIT result."
+				}
+			],
+			"x-error": {
+				"$ref": "#/components/schemas/errors.run-error"
+			},
+			"x-direction": "guest-to-host",
+			"x-since": "2.3.0"
+		},
+		{
+			"name": "capabilities.memory.save",
+			"description": "Adds the messages of one turn.",
+			"paramStructure": "by-name",
+			"params": [
+				{
+					"name": "self",
+					"required": true,
+					"schema": {
+						"type": "integer",
+						"minimum": 0,
+						"description": "A handle of capabilities.memory. The side that creates the resource numbers it."
+					}
+				},
+				{
+					"name": "messages",
+					"required": true,
+					"schema": {
+						"type": "array",
+						"items": {
+							"$ref": "#/components/schemas/capabilities.chat-message"
+						}
+					}
+				}
+			],
+			"result": {
+				"name": "result",
+				"schema": {
+					"type": "null"
+				}
+			},
+			"errors": [
+				{
+					"code": -32000,
+					"message": "The error of the WIT result."
+				}
+			],
+			"x-error": {
+				"$ref": "#/components/schemas/errors.run-error"
+			},
+			"x-direction": "guest-to-host",
+			"x-since": "2.3.0"
+		},
+		{
+			"name": "capabilities.memory.[drop]",
+			"description": "Frees an owned handle. A notification: it has no answer.",
+			"paramStructure": "by-name",
+			"params": [
+				{
+					"name": "self",
+					"required": true,
+					"schema": {
+						"type": "integer",
+						"minimum": 0,
+						"description": "A handle of capabilities.memory. The side that creates the resource numbers it."
+					}
+				}
+			],
+			"x-direction": "guest-to-host",
+			"x-since": "2.3.0"
+		},
+		{
+			"name": "capabilities.tool.name",
+			"paramStructure": "by-name",
+			"params": [
+				{
+					"name": "self",
+					"required": true,
+					"schema": {
+						"type": "integer",
+						"minimum": 0,
+						"description": "A handle of capabilities.tool. The side that creates the resource numbers it."
+					}
+				}
+			],
+			"result": {
+				"name": "result",
+				"schema": {
+					"type": "string"
+				}
+			},
+			"x-direction": "guest-to-host",
+			"x-since": "2.3.0"
+		},
+		{
+			"name": "capabilities.tool.description",
+			"paramStructure": "by-name",
+			"params": [
+				{
+					"name": "self",
+					"required": true,
+					"schema": {
+						"type": "integer",
+						"minimum": 0,
+						"description": "A handle of capabilities.tool. The side that creates the resource numbers it."
+					}
+				}
+			],
+			"result": {
+				"name": "result",
+				"schema": {
+					"type": "string"
+				}
+			},
+			"x-direction": "guest-to-host",
+			"x-since": "2.3.0"
+		},
+		{
+			"name": "capabilities.tool.input",
+			"description": "A JSON Schema object for `args`.",
+			"paramStructure": "by-name",
+			"params": [
+				{
+					"name": "self",
+					"required": true,
+					"schema": {
+						"type": "integer",
+						"minimum": 0,
+						"description": "A handle of capabilities.tool. The side that creates the resource numbers it."
+					}
+				}
+			],
+			"result": {
+				"name": "result",
+				"schema": {
+					"$ref": "#/components/schemas/types.json"
+				}
+			},
+			"x-direction": "guest-to-host",
+			"x-since": "2.3.0"
+		},
+		{
+			"name": "capabilities.tool.call",
+			"description": "Runs the tool. The result goes back to the model as JSON.",
+			"paramStructure": "by-name",
+			"params": [
+				{
+					"name": "self",
+					"required": true,
+					"schema": {
+						"type": "integer",
+						"minimum": 0,
+						"description": "A handle of capabilities.tool. The side that creates the resource numbers it."
+					}
+				},
+				{
+					"name": "args",
+					"required": true,
+					"schema": {
+						"$ref": "#/components/schemas/types.json"
+					}
+				}
+			],
+			"result": {
+				"name": "result",
+				"schema": {
+					"$ref": "#/components/schemas/types.json"
+				}
+			},
+			"errors": [
+				{
+					"code": -32000,
+					"message": "The error of the WIT result."
+				}
+			],
+			"x-error": {
+				"$ref": "#/components/schemas/errors.run-error"
+			},
+			"x-direction": "guest-to-host",
+			"x-since": "2.3.0"
+		},
+		{
+			"name": "capabilities.tool.[drop]",
+			"description": "Frees an owned handle. A notification: it has no answer.",
+			"paramStructure": "by-name",
+			"params": [
+				{
+					"name": "self",
+					"required": true,
+					"schema": {
+						"type": "integer",
+						"minimum": 0,
+						"description": "A handle of capabilities.tool. The side that creates the resource numbers it."
+					}
+				}
+			],
+			"x-direction": "guest-to-host",
+			"x-since": "2.3.0"
+		},
+		{
+			"name": "capabilities.embeddings.embed",
+			"description": "One vector per text, in order.",
+			"paramStructure": "by-name",
+			"params": [
+				{
+					"name": "self",
+					"required": true,
+					"schema": {
+						"type": "integer",
+						"minimum": 0,
+						"description": "A handle of capabilities.embeddings. The side that creates the resource numbers it."
+					}
+				},
+				{
+					"name": "texts",
+					"required": true,
+					"schema": {
+						"type": "array",
+						"items": {
+							"type": "string"
+						}
+					}
+				}
+			],
+			"result": {
+				"name": "result",
+				"schema": {
+					"type": "array",
+					"items": {
+						"type": "array",
+						"items": {
+							"type": "number"
+						}
+					}
+				}
+			},
+			"errors": [
+				{
+					"code": -32000,
+					"message": "The error of the WIT result."
+				}
+			],
+			"x-error": {
+				"$ref": "#/components/schemas/errors.run-error"
+			},
+			"x-direction": "guest-to-host",
+			"x-since": "2.3.0"
+		},
+		{
+			"name": "capabilities.embeddings.[drop]",
+			"description": "Frees an owned handle. A notification: it has no answer.",
+			"paramStructure": "by-name",
+			"params": [
+				{
+					"name": "self",
+					"required": true,
+					"schema": {
+						"type": "integer",
+						"minimum": 0,
+						"description": "A handle of capabilities.embeddings. The side that creates the resource numbers it."
+					}
+				}
+			],
+			"x-direction": "guest-to-host",
+			"x-since": "2.3.0"
+		}
+	],
+	"components": {
+		"schemas": {
+			"types.json": {
+				"description": "A JSON value, inline."
+			},
+			"action.item-ref": {
+				"description": "An item of one of the named inputs.",
+				"x-since": "2.3.0",
+				"type": "object",
+				"properties": {
+					"input": {
+						"description": "The index of the input in the manifest `inputs`.",
+						"type": "integer",
+						"minimum": 0,
+						"maximum": 4294967295
+					},
+					"item": {
+						"type": "integer",
+						"minimum": 0,
+						"maximum": 4294967295
+					}
+				},
+				"required": ["input", "item"],
+				"additionalProperties": false
+			},
+			"action.join-output": {
+				"description": "One output of a `join-run`.",
+				"x-since": "2.3.0",
+				"oneOf": [
+					{
+						"description": "The input item, passed on unchanged with its binary data.",
+						"type": "object",
+						"properties": {
+							"tag": {
+								"const": "passed"
+							},
+							"val": {
+								"$ref": "#/components/schemas/action.item-ref"
+							}
+						},
+						"required": ["tag", "val"],
+						"additionalProperties": false
+					},
+					{
+						"description": "A new item, made from these input items.",
+						"type": "object",
+						"properties": {
+							"tag": {
+								"const": "made"
+							},
+							"val": {
+								"type": "array",
+								"items": [
+									{
+										"$ref": "#/components/schemas/types.json"
+									},
+									{
+										"type": "array",
+										"items": {
+											"$ref": "#/components/schemas/action.item-ref"
+										}
+									}
+								],
+								"minItems": 2,
+								"maxItems": 2,
+								"additionalItems": false
+							}
+						},
+						"required": ["tag", "val"],
+						"additionalProperties": false
+					}
+				]
+			},
+			"action.output": {
+				"description": "One output of an `item-run`.",
+				"x-since": "2.1.0",
+				"oneOf": [
+					{
+						"description": "A new item from the current input item of a `per-item` or `1:N` run.",
+						"type": "object",
+						"properties": {
+							"tag": {
+								"const": "item"
+							},
+							"val": {
+								"$ref": "#/components/schemas/types.json"
+							}
+						},
+						"required": ["tag", "val"],
+						"additionalProperties": false
+					},
+					{
+						"description": "The input item at this index, passed on unchanged with its binary data.",
+						"type": "object",
+						"properties": {
+							"tag": {
+								"const": "passed"
+							},
+							"val": {
+								"type": "integer",
+								"minimum": 0,
+								"maximum": 4294967295
+							}
+						},
+						"required": ["tag", "val"],
+						"additionalProperties": false
+					},
+					{
+						"description": "A new item of a `batch` run, made from the input items at these indexes.",
+						"type": "object",
+						"properties": {
+							"tag": {
+								"const": "made"
+							},
+							"val": {
+								"type": "array",
+								"items": [
+									{
+										"$ref": "#/components/schemas/types.json"
+									},
+									{
+										"type": "array",
+										"items": {
+											"type": "integer",
+											"minimum": 0,
+											"maximum": 4294967295
+										}
+									}
+								],
+								"minItems": 2,
+								"maxItems": 2,
+								"additionalItems": false
+							}
+						},
+						"required": ["tag", "val"],
+						"additionalProperties": false
+					}
+				]
+			},
+			"action.routed-join-output": {
+				"x-since": "2.3.0",
+				"type": "object",
+				"properties": {
+					"to": {
+						"type": "string"
+					},
+					"output": {
+						"$ref": "#/components/schemas/action.join-output"
+					}
+				},
+				"required": ["output"],
+				"additionalProperties": false
+			},
+			"action.routed-output": {
+				"x-since": "2.1.0",
+				"type": "object",
+				"properties": {
+					"to": {
+						"description": "One of the named outputs of the manifest. None when the manifest has none.",
+						"type": "string"
+					},
+					"output": {
+						"$ref": "#/components/schemas/action.output"
+					}
+				},
+				"required": ["output"],
+				"additionalProperties": false
+			},
+			"binary.binary-meta": {
+				"type": "object",
+				"properties": {
+					"mimeType": {
+						"type": "string"
+					},
+					"fileName": {
+						"type": "string"
+					},
+					"bytes": {
+						"description": "The size in bytes. None when the host does not know it.",
+						"type": "integer",
+						"minimum": 0,
+						"maximum": 9007199254740991
+					}
+				},
+				"required": ["mimeType"],
+				"additionalProperties": false
+			},
+			"binary.binary-request": {
+				"description": "An `http-request` without `body`: the binary is the body.",
+				"type": "object",
+				"properties": {
+					"method": {
+						"$ref": "#/components/schemas/http.http-method"
+					},
+					"target": {
+						"$ref": "#/components/schemas/http.http-target"
+					},
+					"query": {
+						"type": "array",
+						"items": {
+							"type": "array",
+							"items": [
+								{
+									"type": "string"
+								},
+								{
+									"type": "string"
+								}
+							],
+							"minItems": 2,
+							"maxItems": 2,
+							"additionalItems": false
+						}
+					},
+					"headers": {
+						"type": "array",
+						"items": {
+							"type": "array",
+							"items": [
+								{
+									"type": "string"
+								},
+								{
+									"type": "string"
+								}
+							],
+							"minItems": 2,
+							"maxItems": 2,
+							"additionalItems": false
+						}
+					},
+					"timeoutMs": {
+						"type": "integer",
+						"minimum": 0,
+						"maximum": 4294967295
+					},
+					"retry": {
+						"type": "boolean"
+					}
+				},
+				"required": ["method", "target", "query", "headers"],
+				"additionalProperties": false
+			},
+			"binary.binary-response": {
+				"type": "object",
+				"properties": {
+					"status": {
+						"type": "integer",
+						"minimum": 0,
+						"maximum": 65535
+					},
+					"headers": {
+						"description": "Lower-case names.",
+						"type": "array",
+						"items": {
+							"type": "array",
+							"items": [
+								{
+									"type": "string"
+								},
+								{
+									"type": "string"
+								}
+							],
+							"minItems": 2,
+							"maxItems": 2,
+							"additionalItems": false
+						}
+					},
+					"body": {
+						"type": "integer",
+						"minimum": 0,
+						"description": "A handle of binary.binary. The side that creates the resource numbers it."
+					}
+				},
+				"required": ["status", "headers", "body"],
+				"additionalProperties": false
+			},
+			"capabilities.assistant-message": {
+				"type": "object",
+				"properties": {
+					"content": {
+						"type": "string"
+					},
+					"toolCalls": {
+						"type": "array",
+						"items": {
+							"$ref": "#/components/schemas/capabilities.tool-call"
+						}
+					}
+				},
+				"required": ["content"],
+				"additionalProperties": false
+			},
+			"capabilities.capability": {
+				"oneOf": [
+					{
+						"type": "object",
+						"properties": {
+							"tag": {
+								"const": "chatModel"
+							},
+							"val": {
+								"type": "integer",
+								"minimum": 0,
+								"description": "A handle of capabilities.chat-model. The side that creates the resource numbers it."
+							}
+						},
+						"required": ["tag", "val"],
+						"additionalProperties": false
+					},
+					{
+						"type": "object",
+						"properties": {
+							"tag": {
+								"const": "memory"
+							},
+							"val": {
+								"type": "integer",
+								"minimum": 0,
+								"description": "A handle of capabilities.memory. The side that creates the resource numbers it."
+							}
+						},
+						"required": ["tag", "val"],
+						"additionalProperties": false
+					},
+					{
+						"type": "object",
+						"properties": {
+							"tag": {
+								"const": "tool"
+							},
+							"val": {
+								"type": "integer",
+								"minimum": 0,
+								"description": "A handle of capabilities.tool. The side that creates the resource numbers it."
+							}
+						},
+						"required": ["tag", "val"],
+						"additionalProperties": false
+					},
+					{
+						"type": "object",
+						"properties": {
+							"tag": {
+								"const": "embeddings"
+							},
+							"val": {
+								"type": "integer",
+								"minimum": 0,
+								"description": "A handle of capabilities.embeddings. The side that creates the resource numbers it."
+							}
+						},
+						"required": ["tag", "val"],
+						"additionalProperties": false
+					}
+				]
+			},
+			"capabilities.chat-message": {
+				"description": "One message of a chat, oldest first.",
+				"oneOf": [
+					{
+						"type": "object",
+						"properties": {
+							"tag": {
+								"const": "system"
+							},
+							"val": {
+								"type": "string"
+							}
+						},
+						"required": ["tag", "val"],
+						"additionalProperties": false
+					},
+					{
+						"type": "object",
+						"properties": {
+							"tag": {
+								"const": "user"
+							},
+							"val": {
+								"type": "string"
+							}
+						},
+						"required": ["tag", "val"],
+						"additionalProperties": false
+					},
+					{
+						"type": "object",
+						"properties": {
+							"tag": {
+								"const": "assistant"
+							},
+							"val": {
+								"$ref": "#/components/schemas/capabilities.assistant-message"
+							}
+						},
+						"required": ["tag", "val"],
+						"additionalProperties": false
+					},
+					{
+						"type": "object",
+						"properties": {
+							"tag": {
+								"const": "tool"
+							},
+							"val": {
+								"$ref": "#/components/schemas/capabilities.tool-message"
+							}
+						},
+						"required": ["tag", "val"],
+						"additionalProperties": false
+					}
+				]
+			},
+			"capabilities.chat-reply": {
+				"type": "object",
+				"properties": {
+					"text": {
+						"type": "string"
+					},
+					"toolCalls": {
+						"type": "array",
+						"items": {
+							"$ref": "#/components/schemas/capabilities.tool-call"
+						}
+					},
+					"finishReason": {
+						"description": "`stop`, `length`, `tool_calls`, `content_filter`, or a reason of the provider.",
+						"type": "string"
+					},
+					"usage": {
+						"$ref": "#/components/schemas/capabilities.chat-usage"
+					}
+				},
+				"required": ["text", "toolCalls", "finishReason"],
+				"additionalProperties": false
+			},
+			"capabilities.chat-request": {
+				"type": "object",
+				"properties": {
+					"messages": {
+						"type": "array",
+						"items": {
+							"$ref": "#/components/schemas/capabilities.chat-message"
+						}
+					},
+					"tools": {
+						"description": "Tools the model may call. A reply with tool calls has no final text.",
+						"type": "array",
+						"items": {
+							"$ref": "#/components/schemas/capabilities.tool-definition"
+						}
+					},
+					"output": {
+						"description": "The reply text is JSON that matches this JSON Schema. The provider enforces it when\nit can.",
+						"$ref": "#/components/schemas/types.json"
+					}
+				},
+				"required": ["messages"],
+				"additionalProperties": false
+			},
+			"capabilities.chat-usage": {
+				"type": "object",
+				"properties": {
+					"inputTokens": {
+						"type": "integer",
+						"minimum": 0,
+						"maximum": 4294967295
+					},
+					"outputTokens": {
+						"type": "integer",
+						"minimum": 0,
+						"maximum": 4294967295
+					}
+				},
+				"required": ["inputTokens", "outputTokens"],
+				"additionalProperties": false
+			},
+			"capabilities.tool-call": {
+				"description": "A tool call that a model asks for. `args` match the input schema of the tool.",
+				"type": "object",
+				"properties": {
+					"id": {
+						"description": "The provider's call ID. A tool result names it.",
+						"type": "string"
+					},
+					"name": {
+						"type": "string"
+					},
+					"args": {
+						"$ref": "#/components/schemas/types.json"
+					}
+				},
+				"required": ["id", "name", "args"],
+				"additionalProperties": false
+			},
+			"capabilities.tool-definition": {
+				"description": "What a model reads about a tool.",
+				"type": "object",
+				"properties": {
+					"name": {
+						"description": "Letters, digits, `_` and `-` only: providers refuse other names.",
+						"type": "string"
+					},
+					"description": {
+						"type": "string"
+					},
+					"input": {
+						"description": "A JSON Schema object for `args`.",
+						"$ref": "#/components/schemas/types.json"
+					}
+				},
+				"required": ["name", "description", "input"],
+				"additionalProperties": false
+			},
+			"capabilities.tool-message": {
+				"type": "object",
+				"properties": {
+					"toolCallId": {
+						"type": "string"
+					},
+					"name": {
+						"type": "string"
+					},
+					"content": {
+						"description": "The tool result as text, usually JSON.",
+						"type": "string"
+					}
+				},
+				"required": ["toolCallId", "name", "content"],
+				"additionalProperties": false
+			},
+			"code.code-request": {
+				"type": "object",
+				"properties": {
+					"language": {
+						"$ref": "#/components/schemas/code.language"
+					},
+					"code": {
+						"type": "string"
+					},
+					"mode": {
+						"$ref": "#/components/schemas/code.mode"
+					}
+				},
+				"required": ["language", "code", "mode"],
+				"additionalProperties": false
+			},
+			"code.language": {
+				"enum": ["javascript", "python"]
+			},
+			"code.mode": {
+				"description": "`all`: one run that reads every input item. `each`: one run for each input item.",
+				"enum": ["all", "each"]
+			},
+			"data-tables.column": {
+				"type": "object",
+				"properties": {
+					"name": {
+						"type": "string"
+					},
+					"type": {
+						"$ref": "#/components/schemas/data-tables.column-type"
+					}
+				},
+				"required": ["name", "type"],
+				"additionalProperties": false
+			},
+			"data-tables.column-type": {
+				"enum": ["string", "number", "boolean", "date"]
+			},
+			"data-tables.condition": {
+				"type": "object",
+				"properties": {
+					"column": {
+						"type": "string"
+					},
+					"op": {
+						"$ref": "#/components/schemas/data-tables.operator"
+					},
+					"value": {
+						"description": "A cell value. None for `is-empty` and `is-not-empty`.",
+						"$ref": "#/components/schemas/types.json"
+					}
+				},
+				"required": ["column", "op"],
+				"additionalProperties": false
+			},
+			"data-tables.direction": {
+				"enum": ["asc", "desc"]
+			},
+			"data-tables.filter": {
+				"type": "object",
+				"properties": {
+					"match": {
+						"$ref": "#/components/schemas/data-tables.match"
+					},
+					"conditions": {
+						"type": "array",
+						"items": {
+							"$ref": "#/components/schemas/data-tables.condition"
+						}
+					}
+				},
+				"required": ["match", "conditions"],
+				"additionalProperties": false
+			},
+			"data-tables.list-query": {
+				"type": "object",
+				"properties": {
+					"name": {
+						"description": "Tables whose name matches, without case.",
+						"type": "string"
+					},
+					"sort": {
+						"$ref": "#/components/schemas/data-tables.table-sort"
+					},
+					"offset": {
+						"type": "integer",
+						"minimum": 0,
+						"maximum": 4294967295
+					},
+					"limit": {
+						"type": "integer",
+						"minimum": 0,
+						"maximum": 4294967295
+					}
+				},
+				"required": ["limit"],
+				"additionalProperties": false
+			},
+			"data-tables.match": {
+				"enum": ["all", "any"]
+			},
+			"data-tables.new-table": {
+				"type": "object",
+				"properties": {
+					"name": {
+						"type": "string"
+					},
+					"columns": {
+						"type": "array",
+						"items": {
+							"$ref": "#/components/schemas/data-tables.column"
+						}
+					}
+				},
+				"required": ["name", "columns"],
+				"additionalProperties": false
+			},
+			"data-tables.operator": {
+				"enum": ["eq", "neq", "like", "ilike", "gt", "gte", "lt", "lte", "isEmpty", "isNotEmpty"]
+			},
+			"data-tables.row-page": {
+				"type": "object",
+				"properties": {
+					"count": {
+						"description": "All rows that the filter matches.",
+						"type": "integer",
+						"minimum": 0,
+						"maximum": 9007199254740991
+					},
+					"rows": {
+						"description": "Each row is an object: `id`, `createdAt`, `updatedAt`, and one field per column.",
+						"type": "array",
+						"items": {
+							"$ref": "#/components/schemas/types.json"
+						}
+					}
+				},
+				"required": ["count", "rows"],
+				"additionalProperties": false
+			},
+			"data-tables.row-query": {
+				"type": "object",
+				"properties": {
+					"filter": {
+						"$ref": "#/components/schemas/data-tables.filter"
+					},
+					"sort": {
+						"$ref": "#/components/schemas/data-tables.sort"
+					},
+					"offset": {
+						"type": "integer",
+						"minimum": 0,
+						"maximum": 4294967295
+					},
+					"limit": {
+						"description": "The most rows of one page.",
+						"type": "integer",
+						"minimum": 0,
+						"maximum": 4294967295
+					}
+				},
+				"required": ["limit"],
+				"additionalProperties": false
+			},
+			"data-tables.sort": {
+				"type": "object",
+				"properties": {
+					"column": {
+						"type": "string"
+					},
+					"direction": {
+						"$ref": "#/components/schemas/data-tables.direction"
+					}
+				},
+				"required": ["column", "direction"],
+				"additionalProperties": false
+			},
+			"data-tables.table-field": {
+				"enum": ["name", "createdAt", "updatedAt"]
+			},
+			"data-tables.table-info": {
+				"description": "A table without its rows. Dates are ISO 8601 text.",
+				"type": "object",
+				"properties": {
+					"id": {
+						"type": "string"
+					},
+					"name": {
+						"type": "string"
+					},
+					"columns": {
+						"type": "array",
+						"items": {
+							"$ref": "#/components/schemas/data-tables.column"
+						}
+					},
+					"createdAt": {
+						"type": "string"
+					},
+					"updatedAt": {
+						"type": "string"
+					}
+				},
+				"required": ["id", "name", "columns", "createdAt", "updatedAt"],
+				"additionalProperties": false
+			},
+			"data-tables.table-page": {
+				"type": "object",
+				"properties": {
+					"count": {
+						"type": "integer",
+						"minimum": 0,
+						"maximum": 9007199254740991
+					},
+					"tables": {
+						"type": "array",
+						"items": {
+							"$ref": "#/components/schemas/data-tables.table-info"
+						}
+					}
+				},
+				"required": ["count", "tables"],
+				"additionalProperties": false
+			},
+			"data-tables.table-ref": {
+				"description": "A table by its ID, or by its name in the project of the workflow.",
+				"oneOf": [
+					{
+						"type": "object",
+						"properties": {
+							"tag": {
+								"const": "id"
+							},
+							"val": {
+								"type": "string"
+							}
+						},
+						"required": ["tag", "val"],
+						"additionalProperties": false
+					},
+					{
+						"type": "object",
+						"properties": {
+							"tag": {
+								"const": "name"
+							},
+							"val": {
+								"type": "string"
+							}
+						},
+						"required": ["tag", "val"],
+						"additionalProperties": false
+					}
+				]
+			},
+			"data-tables.table-sort": {
+				"type": "object",
+				"properties": {
+					"by": {
+						"$ref": "#/components/schemas/data-tables.table-field"
+					},
+					"direction": {
+						"$ref": "#/components/schemas/data-tables.direction"
+					}
+				},
+				"required": ["by", "direction"],
+				"additionalProperties": false
+			},
+			"errors.run-error": {
+				"type": "object",
+				"properties": {
+					"message": {
+						"type": "string"
+					},
+					"response": {
+						"description": "The failed response, when a request caused the error.",
+						"$ref": "#/components/schemas/http.http-error"
+					}
+				},
+				"required": ["message"],
+				"additionalProperties": false
+			},
+			"http.http-error": {
+				"description": "A non-2xx response.",
+				"type": "object",
+				"properties": {
+					"message": {
+						"type": "string"
+					},
+					"status": {
+						"type": "integer",
+						"minimum": 0,
+						"maximum": 65535
+					},
+					"headers": {
+						"description": "Lower-case names.",
+						"type": "array",
+						"items": {
+							"type": "array",
+							"items": [
+								{
+									"type": "string"
+								},
+								{
+									"type": "string"
+								}
+							],
+							"minItems": 2,
+							"maxItems": 2,
+							"additionalItems": false
+						}
+					},
+					"body": {
+						"$ref": "#/components/schemas/types.json"
+					}
+				},
+				"required": ["message", "status", "headers", "body"],
+				"additionalProperties": false
+			},
+			"http.http-failure": {
+				"oneOf": [
+					{
+						"type": "object",
+						"properties": {
+							"tag": {
+								"const": "response"
+							},
+							"val": {
+								"$ref": "#/components/schemas/http.http-error"
+							}
+						},
+						"required": ["tag", "val"],
+						"additionalProperties": false
+					},
+					{
+						"description": "No response: DNS, connection, TLS, time-out, a host limit, or a refused host.",
+						"type": "object",
+						"properties": {
+							"tag": {
+								"const": "transport"
+							},
+							"val": {
+								"type": "string"
+							}
+						},
+						"required": ["tag", "val"],
+						"additionalProperties": false
+					}
+				]
+			},
+			"http.http-method": {
+				"enum": ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD"]
+			},
+			"http.http-request": {
+				"type": "object",
+				"properties": {
+					"method": {
+						"$ref": "#/components/schemas/http.http-method"
+					},
+					"target": {
+						"$ref": "#/components/schemas/http.http-target"
+					},
+					"query": {
+						"description": "A repeated name sends each value: `id=a&id=b`.",
+						"type": "array",
+						"items": {
+							"type": "array",
+							"items": [
+								{
+									"type": "string"
+								},
+								{
+									"type": "string"
+								}
+							],
+							"minItems": 2,
+							"maxItems": 2,
+							"additionalItems": false
+						}
+					},
+					"headers": {
+						"type": "array",
+						"items": {
+							"type": "array",
+							"items": [
+								{
+									"type": "string"
+								},
+								{
+									"type": "string"
+								}
+							],
+							"minItems": 2,
+							"maxItems": 2,
+							"additionalItems": false
+						}
+					},
+					"body": {
+						"description": "Sent as JSON.",
+						"$ref": "#/components/schemas/types.json"
+					},
+					"timeoutMs": {
+						"description": "300000 (5 minutes) when none.",
+						"type": "integer",
+						"minimum": 0,
+						"maximum": 4294967295
+					},
+					"retry": {
+						"description": "None: the host retries a 429, 502, 503, 504 or a dropped connection for GET,\nHEAD, PUT, or an action with `flow.idempotent`. True or false overrides this.",
+						"type": "boolean"
+					}
+				},
+				"required": ["method", "target", "query", "headers"],
+				"additionalProperties": false
+			},
+			"http.http-response": {
+				"type": "object",
+				"properties": {
+					"status": {
+						"type": "integer",
+						"minimum": 0,
+						"maximum": 65535
+					},
+					"headers": {
+						"description": "Lower-case names.",
+						"type": "array",
+						"items": {
+							"type": "array",
+							"items": [
+								{
+									"type": "string"
+								},
+								{
+									"type": "string"
+								}
+							],
+							"minItems": 2,
+							"maxItems": 2,
+							"additionalItems": false
+						}
+					},
+					"body": {
+						"description": "The JSON body, or the body text as a JSON string.",
+						"$ref": "#/components/schemas/types.json"
+					}
+				},
+				"required": ["status", "headers", "body"],
+				"additionalProperties": false
+			},
+			"http.http-target": {
+				"oneOf": [
+					{
+						"description": "An absolute http or https URL, for example a `next` link.",
+						"type": "object",
+						"properties": {
+							"tag": {
+								"const": "url"
+							},
+							"val": {
+								"type": "string"
+							}
+						},
+						"required": ["tag", "val"],
+						"additionalProperties": false
+					},
+					{
+						"description": "Starts with one `/` and goes after the base URL path. It cannot change the origin.",
+						"type": "object",
+						"properties": {
+							"tag": {
+								"const": "path"
+							},
+							"val": {
+								"type": "string"
+							}
+						},
+						"required": ["tag", "val"],
+						"additionalProperties": false
+					}
+				]
+			},
+			"limits.run-limits": {
+				"description": "The limits for one run: one input item, or all input items of a `batch` run. The host\nenforces them.",
+				"type": "object",
+				"properties": {
+					"maxRequests": {
+						"description": "A page is one request.",
+						"type": "integer",
+						"minimum": 0,
+						"maximum": 4294967295
+					},
+					"maxItems": {
+						"type": "integer",
+						"minimum": 0,
+						"maximum": 4294967295
+					}
+				},
+				"required": ["maxRequests", "maxItems"],
+				"additionalProperties": false
+			},
+			"log.level": {
+				"enum": ["debug", "info", "warn", "error"]
+			}
+		}
+	}
+}

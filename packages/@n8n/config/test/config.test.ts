@@ -387,7 +387,7 @@ describe('GlobalConfig', () => {
 			nodeContractsUpdatePolicy: 'tolerant',
 			nodeContractsRegistryUrl: '',
 			nodeContractsPublicKeyFile: '',
-			nodeContractsApiRange: '>=1.0.0 <3.0.0',
+			nodeContractRange: '>=1.0.0 <3.0.0',
 			folderExplorationEnabled: false,
 			activationCapped: false,
 			activationLockMessageThreshold: 1,

@@ -1,0 +1,52 @@
+package n8n:node-contract@2.5.0;
+
+/// What a trigger bundle exports. The host keeps the state of each trigger node, runs the
+/// polls on the Poll Times of the node, and checks the webhook signature that the manifest
+/// declares before it calls `webhook`. A native trigger (a built-in n8n node) has no bundle:
+/// its manifest is data only.
+@since(version = 2.5.0)
+interface trigger {
+    use types.{json};
+    use errors.{run-error};
+
+    record poll-result {
+        /// The new items, oldest first. An empty list starts no execution.
+        items: list<json>,
+        /// The state for the next poll, for example a cursor. The host stores it.
+        state: json,
+    }
+
+    /// One poll. `state` is none at the first poll. `limit` is the most items the host uses,
+    /// for example 1 in a manual run. The host does not store the state of a manual run.
+    poll: func(input: json, state: option<json>, limit: option<u32>) -> result<poll-result, run-error>;
+
+    /// The HTTP request that a webhook trigger gets.
+    record webhook-request {
+        /// Lower-case names. A repeated header gives one entry per value.
+        headers: list<tuple<string, string>>,
+        query: list<tuple<string, string>>,
+        body: json,
+    }
+
+    /// The items of one request. An empty list answers 200 and starts no execution, for
+    /// example for a ping. `state` is what `activate` gave.
+    webhook: func(input: json, state: option<json>, request: webhook-request) -> result<list<json>, run-error>;
+
+    /// Registers the remote webhook at `url` when the workflow is activated. `secret` is set
+    /// when the manifest signature secret is `generated`. Gives the state that `webhook` and
+    /// `deactivate` get, for example the remote webhook ID.
+    activate: func(input: json, url: string, secret: option<string>) -> result<json, run-error>;
+
+    /// Deletes the remote webhook when the workflow is deactivated.
+    deactivate: func(input: json, state: json) -> result<_, run-error>;
+}
+
+/// A trigger: it starts executions. The host calls `poll` for a `poll` trigger, and `activate`,
+/// `webhook` and `deactivate` for a `webhook` trigger.
+@since(version = 2.5.0)
+world trigger-bundle {
+    import http;
+    import log;
+    import limits;
+    export trigger;
+}

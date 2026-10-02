@@ -3,7 +3,7 @@ import {
 	diffContracts,
 	parseFixtures,
 	parseManifest,
-	setActionApiRange,
+	setNodeContractRange,
 	setContractVersionLoader,
 	toVersionedNodeType,
 	type ContractFixtures,
@@ -78,15 +78,15 @@ async function runInNode(frozen: FrozenVersion, fixture: ExecutionFixture) {
 
 describe('n8n:action@1 next to @2', () => {
 	afterEach(() => {
-		setActionApiRange('>=1.0.0 <3.0.0');
+		setNodeContractRange('>=1.0.0 <3.0.0');
 		setContractVersionLoader(async (_context, bundled) => bundled);
 	});
 
-	it('read the abi field of the @1 manifest as its apiVersion', () => {
+	it('read the abi field of the @1 manifest as its Node Contract version', () => {
 		expect(JSON.parse(v1Text)).toMatchObject({ abi: 1, semver: '1.1.0' });
 		expect(JSON.parse(v1Text)).not.toHaveProperty('apiVersion');
-		expect(v1.manifest.apiVersion).toBe('n8n:action@1.0.0');
-		expect(head?.manifest.apiVersion).toBe('n8n:action@2.1.0');
+		expect(v1.manifest.nodeContract).toBe('1.0.0');
+		expect(head?.manifest.nodeContract).toBe('2.1.0');
 		if (!head) throw new Error(`${ID} has no bundled HEAD`);
 		// HEAD declares the scopes the @1 version did not have; the rest of the contract is equal.
 		expect(diffContracts(v1.manifest.contract, head.manifest.contract).kind).toBe('minor');
@@ -105,7 +105,7 @@ describe('n8n:action@1 next to @2', () => {
 		).toEqual([]);
 	});
 
-	it('give the same items in the n8n node, and record the apiVersion that ran', async () => {
+	it('give the same items in the n8n node, and record the Node Contract version that ran', async () => {
 		if (!head) throw new Error(`${ID} has no bundled HEAD`);
 		// One run at a time: the version loader is one global slot.
 		const runAll = async (frozen: FrozenVersion) =>
@@ -125,7 +125,7 @@ describe('n8n:action@1 next to @2', () => {
 					action: ID,
 					version: '1.1.0',
 					bundleHash: v1.manifest.bundleHash,
-					apiVersion: 'n8n:action@1.0.0',
+					nodeContract: '1.0.0',
 				},
 			},
 		]);
@@ -134,9 +134,9 @@ describe('n8n:action@1 next to @2', () => {
 	it('refuse the @1 bundle when the host range starts at @2', async () => {
 		const [fixture] = fixtures.executions;
 		if (!fixture) throw new Error(`${ID} has no fixture`);
-		setActionApiRange('>=2.0.0 <3.0.0');
+		setNodeContractRange('>=2.0.0 <3.0.0');
 		await expect(runInNode(v1, fixture)).rejects.toThrow(
-			`${ID}@1.1.0 needs n8n:action@1.0.0. This host runs n8n:action >=2.0.0 <3.0.0`,
+			`${ID}@1.1.0 needs Node Contract 1.0.0. This host runs >=2.0.0 <3.0.0`,
 		);
 	});
 });

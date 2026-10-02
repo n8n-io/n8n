@@ -1,7 +1,7 @@
 import {
 	integrityOf,
 	packageNameOf,
-	setActionApiRange,
+	setNodeContractRange,
 	setContractVersionLoader,
 	toVersionedNodeType,
 	type FrozenVersion,
@@ -82,9 +82,9 @@ const packument = () => ({
 	name: NAME,
 	versions: Object.fromEntries(
 		[...tarballs].map(([version, { integrity, frozen, contract }]) => {
-			const { id, apiVersion, contractHash, bundleHash } = frozen.manifest;
+			const { id, nodeContract, contractHash, bundleHash } = frozen.manifest;
 			const tarball = `${registry.url}/tarballs/${version}.tgz`;
-			const n8nContract = { id, apiVersion, contractHash, bundleHash, ...contract };
+			const n8nContract = { id, nodeContract, contractHash, bundleHash, ...contract };
 			return [version, { n8nContract, dist: { tarball, integrity } }];
 		}),
 	),
@@ -182,7 +182,7 @@ const run = async (
 			policy: 'tolerant',
 			store: storeOf(options),
 			metaOf: async () => meta,
-			apiRange: '>=1.0.0 <3.0.0',
+			nodeContractRange: '>=1.0.0 <3.0.0',
 			...options,
 		}),
 	);
@@ -222,12 +222,18 @@ describe('contractVersionLoader', () => {
 	});
 
 	it('reads the abi field of a packument entry published before apiVersion', async () => {
-		publish(frozenOf('1.0.1'), privateKey, { apiVersion: undefined, abi: 2 });
+		publish(frozenOf('1.0.1'), privateKey, { nodeContract: undefined, abi: 2 });
 		expect(await run(locked('1.0.0'))).toEqual(['hello?']);
 	});
 
-	it('applies no newer patch outside the API range of the host', async () => {
-		publish(frozenOf('1.0.1'), privateKey, { apiVersion: 'n8n:action@3.0.0' });
+	it('reads the apiVersion field of a packument entry published before nodeContract', async () => {
+		const legacy = { nodeContract: undefined, apiVersion: 'n8n:action@2.1.0' };
+		publish(frozenOf('1.0.1'), privateKey, legacy);
+		expect(await run(locked('1.0.0'))).toEqual(['hello?']);
+	});
+
+	it('applies no newer patch outside the Node Contract range of the host', async () => {
+		publish(frozenOf('1.0.1'), privateKey, { nodeContract: '3.0.0' });
 		expect(await run(locked('1.0.0'))).toEqual(['HELLO']);
 	});
 
@@ -273,7 +279,7 @@ describe('contractVersionLoader', () => {
 					action: 'demo.echo',
 					version: '1.0.1',
 					bundleHash,
-					apiVersion: 'n8n:action@2.1.0',
+					nodeContract: '2.1.0',
 				},
 			},
 		]);
@@ -392,13 +398,13 @@ describe('syncContractStore', () => {
 		expect(result.unsupported).toEqual([]);
 	});
 
-	it('reports nodes whose locked bundle needs an n8n:action version the host does not run', async () => {
-		setActionApiRange('>=3.0.0 <4.0.0');
+	it('reports nodes whose locked bundle needs a Node Contract version the host does not run', async () => {
+		setNodeContractRange('>=3.0.0 <4.0.0');
 		try {
 			const result = await syncContractStore(storeOf(), [nodeOf('1.0.0')]);
-			expect(result.unsupported).toEqual([{ ...nodeOf('1.0.0'), apiVersion: 'n8n:action@2.1.0' }]);
+			expect(result.unsupported).toEqual([{ ...nodeOf('1.0.0'), nodeContract: '2.1.0' }]);
 		} finally {
-			setActionApiRange('>=1.0.0 <3.0.0');
+			setNodeContractRange('>=1.0.0 <3.0.0');
 		}
 	});
 });

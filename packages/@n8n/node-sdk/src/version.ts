@@ -8,64 +8,145 @@ import {
 } from 'n8n-workflow';
 
 import { usesBinary, usesHostImports, usesSupplies, type ContractDocument } from './define';
+import { legacyManifestSchema, versionManifestSchema } from './manifest';
 import { hasPageValue, type JsonSchema } from './schema';
+import { providedOf } from './subnodes';
+import { matches } from './validate';
 
 /**
- * The `n8n:action` interface a bundle targets: `RunContext` and `Http` semantics, what `run()`
- * returns or yields for each cardinality, parameter reading and validation, output pairing,
- * and the host modules a bundle may import. `spec/n8n-action@<major>.wit` defines it. Its
- * semver does not follow the n8n version: a minor adds an optional host import or field, a
- * major breaks.
+ * A Node Contract version, `major.minor.patch`: the one version of the spec (`spec/wit` and
+ * `spec/manifest.schema.json`). Its semver does not follow the n8n version: a minor adds an
+ * optional import, export or field, a major breaks. `@since` in the spec tells what each minor
+ * adds.
  * 2.1.0 adds the current input item, the batch cardinality, and named outputs.
  * 2.2.0 adds binary data.
  * 2.3.0 adds the optional host imports (data tables, code, wait, the input of an item), named
- * inputs, and sub-node capabilities (`supplied()`).
+ * inputs, and providers (`supplied()`).
  * 2.4.0 adds the `list` binding, which the host pages through, and `pageValue()` inputs, which the
  * host reads unresolved.
+ * 2.5.0 adds the manifest format with `kind`, `sdk` and credential majors, credential
+ * manifests, and the trigger, credential and provider interfaces.
+ * A bundle of the 1.x major runs through the adapter `action-api-v1.ts`.
  */
-export type ActionApiVersion = `n8n:action@${number}.${number}.${number}`;
+export type NodeContractVersion = `${number}.${number}.${number}`;
 
-/** The newest version this host runs. */
-export const ACTION_API_VERSION: ActionApiVersion = 'n8n:action@2.4.0';
+/** The newest version this host implements. */
+export const NODE_CONTRACT_VERSION: NodeContractVersion = '2.5.0';
 
-/**
- * The version `freezeAction` writes: the lowest minor that has what the action declares.
- * 2.4.0 for a `list` binding or a `pageValue()` input, 2.3.0 for host imports, named inputs or
- * sub-node capabilities, 2.2.0 for a binary field, else 2.1.0, so an older host still runs every
- * bundle that does not need the newer features. The 2.1.0 features (the current item) are used
- * in code, so the contract cannot show a lower minimum. The contract does not record the binding,
- * so `list` tells it.
- */
-export const actionApiVersionOf = (
-	contract: Pick<ContractDocument, 'input' | 'output' | 'imports' | 'inputs'>,
-	list = false,
-): ActionApiVersion =>
-	list || hasPageValue(contract.input)
-		? 'n8n:action@2.4.0'
-		: usesHostImports(contract) || usesSupplies(contract)
-			? 'n8n:action@2.3.0'
-			: usesBinary(contract)
-				? 'n8n:action@2.2.0'
-				: 'n8n:action@2.1.0';
+/** The newest version of each major that this host runs. */
+export const IMPLEMENTED_NODE_CONTRACTS: readonly NodeContractVersion[] = [
+	'1.0.0',
+	NODE_CONTRACT_VERSION,
+];
 
 /** The versions a host accepts when its config sets no range. */
-export const DEFAULT_ACTION_API_RANGE = '>=1.0.0 <3.0.0';
+export const DEFAULT_NODE_CONTRACT_RANGE = '>=1.0.0 <3.0.0';
 
-const ACTION_API_PREFIX = 'n8n:action@';
+export const isNodeContractVersion = (value: unknown): value is NodeContractVersion =>
+	typeof value === 'string' && /^\d+\.\d+\.\d+$/.test(value);
 
-export const isActionApiVersion = (value: unknown): value is ActionApiVersion =>
-	typeof value === 'string' && /^n8n:action@\d+\.\d+\.\d+$/.test(value);
+/** The kind of a contract: a trigger starts executions, a provider supplies a capability. */
+export const manifestKindOf = (
+	contract: Pick<ContractDocument, 'trigger' | 'output'>,
+): VersionManifest['kind'] =>
+	contract.trigger !== undefined
+		? 'trigger'
+		: providedOf(contract.output) !== undefined
+			? 'provider'
+			: 'action';
 
-/** `n8n:action@2.0.0` → `2.0.0`. */
-export const apiSemverOf = (apiVersion: ActionApiVersion) =>
-	apiVersion.slice(ACTION_API_PREFIX.length);
+/**
+ * The version `freezeAction` writes: the lowest minor that has what the action declares, so an
+ * older host still runs every bundle that does not need the newer features. The 2.1.0 features
+ * (the current item) are used in code, so the contract cannot show a lower minimum. The contract
+ * does not record the binding, so `list` tells it. A trigger runs in JS as an action does, so it
+ * needs no newer minor.
+ */
+export const requiredNodeContractOf = (
+	contract: Pick<ContractDocument, 'input' | 'output' | 'imports' | 'inputs'>,
+	list = false,
+): NodeContractVersion =>
+	list || hasPageValue(contract.input)
+		? '2.4.0'
+		: usesHostImports(contract) || usesSupplies(contract)
+			? '2.3.0'
+			: usesBinary(contract)
+				? '2.2.0'
+				: '2.1.0';
 
-/** One frozen action version. A published `id` and `semver` never change their bytes. */
+/**
+ * The version a manifest states: `nodeContract`, or for a manifest frozen before it the
+ * `apiVersion: "n8n:action@x.y.z"` or `abi: 1 | 2`. The action API versions are the Node
+ * Contract versions of the same number.
+ */
+export function declaredNodeContractOf(
+	value: Record<string, unknown>,
+): NodeContractVersion | undefined {
+	if (isNodeContractVersion(value.nodeContract)) return value.nodeContract;
+	const legacy =
+		typeof value.apiVersion === 'string'
+			? /^n8n:action@(.*)$/.exec(value.apiVersion)?.[1]
+			: undefined;
+	if (isNodeContractVersion(legacy)) return legacy;
+	return value.abi === 1 || value.abi === 2 ? `${value.abi}.0.0` : undefined;
+}
+
+/** A newer minor than the host has uses imports or fields that the host lacks. */
+export const implementsNodeContract = (version: NodeContractVersion) => {
+	const { major, minor } = parseSemver(version);
+	return IMPLEMENTED_NODE_CONTRACTS.some((implemented) => {
+		const known = parseSemver(implemented);
+		return known.major === major && known.minor >= minor;
+	});
+};
+
+// One slot: the host sets its configured range once at start.
+const nodeContractRange = new Map<
+	'range',
+	{ text: string; includes: (version: string) => boolean }
+>();
+
+/** Sets the Node Contract versions this host runs, e.g. `>=2.0.0 <3.0.0`. Throws for a bad range. */
+export const setNodeContractRange = (range: string) => {
+	nodeContractRange.set('range', { text: range, includes: semverRange(range) });
+};
+
+const rangeOf = () =>
+	nodeContractRange.get('range') ?? {
+		text: DEFAULT_NODE_CONTRACT_RANGE,
+		includes: semverRange(DEFAULT_NODE_CONTRACT_RANGE),
+	};
+
+/** In the configured range, and implemented by this host. */
+export const runsNodeContract = (version: NodeContractVersion) =>
+	rangeOf().includes(version) && implementsNodeContract(version);
+
+export function assertNodeContract({
+	id,
+	semver,
+	nodeContract,
+}: Pick<VersionManifest, 'id' | 'semver' | 'nodeContract'>) {
+	if (runsNodeContract(nodeContract)) return;
+	throw new UserError(
+		`${id}@${semver} needs Node Contract ${nodeContract}. This host runs ${rangeOf().text} and implements ${IMPLEMENTED_NODE_CONTRACTS.join(', ')}.`,
+	);
+}
+
+/** One frozen version of an action, trigger or provider. A published `id` and `semver` never change their bytes. */
 export interface VersionManifest {
+	readonly kind: 'action' | 'trigger' | 'provider';
 	readonly id: string;
 	/** `major.minor.patch`; the major is `contract.version` and the n8n `typeVersion`. */
 	readonly semver: string;
-	readonly apiVersion: ActionApiVersion;
+	/** The lowest Node Contract version that has what the bundle uses. */
+	readonly nodeContract: NodeContractVersion;
+	/** The `@n8n/node-sdk` version that froze it, for traceability only. An older SDK did not write it. */
+	readonly sdk?: string;
+	/**
+	 * `<name>@<major>` of each credential type of `contract.credentials` that has a credential
+	 * manifest. A compat type has none: its legacy class defines it. Absent when none has one.
+	 */
+	readonly credentials?: readonly string[];
 	/** The normative hash, see `contractHash`. */
 	readonly contractHash: string;
 	readonly bundleHash: string;
@@ -76,12 +157,6 @@ export interface VersionManifest {
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
 	typeof value === 'object' && value !== null && !Array.isArray(value);
-
-/** `apiVersion`, or the `abi: 1 | 2` that bundles frozen before `apiVersion` declare. */
-export function apiVersionOf(value: Record<string, unknown>): ActionApiVersion | undefined {
-	if (isActionApiVersion(value.apiVersion)) return value.apiVersion;
-	return value.abi === 1 || value.abi === 2 ? `n8n:action@${value.abi}.0.0` : undefined;
-}
 
 const sortKeys = (value: unknown): unknown =>
 	Array.isArray(value)
@@ -199,32 +274,38 @@ export function semverRange(range: string): (version: string) => boolean {
 	return (version) => sets.some((set) => set.every((test) => test(version)));
 }
 
-type ManifestFields = Omit<VersionManifest, 'apiVersion'> & Record<string, unknown>;
-
-const isManifestFields = (value: unknown): value is ManifestFields =>
-	isRecord(value) &&
-	typeof value.id === 'string' &&
-	typeof value.semver === 'string' &&
-	/^\d+\.\d+\.\d+$/.test(value.semver) &&
-	typeof value.contractHash === 'string' &&
-	typeof value.bundleHash === 'string' &&
-	isRecord(value.contract) &&
-	isRecord(value.description);
-
-/** Reads a manifest. A manifest with the old `abi` field gets its `apiVersion`. */
+/**
+ * Reads a manifest of an action, trigger or provider. A manifest frozen by an older SDK gets its
+ * `kind` from its contract and its `nodeContract` from `apiVersion` or `abi`.
+ */
 export function parseManifest(text: string): VersionManifest {
 	const value: unknown = JSON.parse(text);
-	const apiVersion = isRecord(value) ? apiVersionOf(value) : undefined;
+	const current = matches(versionManifestSchema, value) ? value : undefined;
+	const legacy = !current && matches(legacyManifestSchema, value) ? value : undefined;
+	const fields = current ?? legacy;
+	const nodeContract = current?.nodeContract ?? (legacy && declaredNodeContractOf(legacy));
 	if (
-		!isManifestFields(value) ||
-		!apiVersion ||
-		contractHash(value.contract) !== value.contractHash ||
-		parseSemver(value.semver).major !== value.contract.version
+		!fields ||
+		!nodeContract ||
+		contractHash(fields.contract) !== fields.contractHash ||
+		parseSemver(fields.semver).major !== fields.contract.version
 	) {
 		throw new UnexpectedError('The version manifest is not valid or its contract changed');
 	}
-	const { id, semver, contractHash: hash, bundleHash, contract, description } = value;
-	return { id, semver, apiVersion, contractHash: hash, bundleHash, contract, description };
+	const { id, semver, contractHash: hash, bundleHash, contract, description } = fields;
+	// Fields that this host does not know stay out.
+	return {
+		kind: current?.kind ?? manifestKindOf(contract),
+		id,
+		semver,
+		nodeContract,
+		...(current?.sdk === undefined ? {} : { sdk: current.sdk }),
+		...(current?.credentials ? { credentials: current.credentials } : {}),
+		contractHash: hash,
+		bundleHash,
+		contract,
+		description,
+	};
 }
 
 export type ChangeKind = 'patch' | 'minor' | 'major';

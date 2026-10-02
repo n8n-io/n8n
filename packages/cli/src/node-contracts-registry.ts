@@ -8,7 +8,7 @@ import {
 	MIGRATED_NODES,
 	NODE_PACKAGE,
 	nodeTypeOf,
-	runsActionApi,
+	runsNodeContract,
 	toVersionedNodeType,
 	toVersionedTriggerType,
 	triggers,
@@ -103,7 +103,7 @@ export async function useNodeContractsRegistry() {
 
 	useContractRegistry({
 		policy: instanceAi.nodeContractsUpdatePolicy,
-		apiRange: instanceAi.nodeContractsApiRange,
+		nodeContractRange: instanceAi.nodeContractRange,
 		store: await Container.get(NodeContractsStore).open(),
 		metaOf: async (context) => {
 			const { id } = context.getWorkflow();
@@ -149,7 +149,7 @@ function withStoredMajors(
 	return contracts.flatMap(({ contract, typeOf }) => {
 		const others = (stored.get(contract.id) ?? []).filter(
 			({ manifest }) =>
-				manifest.contract.version !== contract.version && runsActionApi(manifest.apiVersion),
+				manifest.contract.version !== contract.version && runsNodeContract(manifest.nodeContract),
 		);
 		const nodeType = nodeTypeOf(contract);
 		const head = others.length > 0 ? versionedNodeOf(loaders, nodeType) : undefined;

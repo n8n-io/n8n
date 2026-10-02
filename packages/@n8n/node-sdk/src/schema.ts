@@ -58,6 +58,8 @@ export interface JsonSchema {
 	'x-n8n-page'?: JsonSchema;
 	/** Sample values; the first one seeds verification fixtures. */
 	examples?: readonly unknown[];
+	/** In `spec/manifest.schema.json`: the Node Contract version that added the field. */
+	'x-n8n-since'?: string;
 }
 
 export interface OptionLabel {

@@ -1,18 +1,19 @@
 import * as sdk from '@n8n/node-sdk';
 import {
-	ACTION_API_VERSION,
-	actionApiVersionOf,
 	actionFileOf,
 	nodeNameOf,
 	openContractPackage,
 	packageNameOf,
 	parseFixtures,
+	requiredNodeContractOf,
 	toContract,
+	validate,
 	verifyManifestSignature,
+	type JsonSchema,
 	type VersionManifest,
 } from '@n8n/node-sdk';
 import { npmRegistry, replayFixtures } from '@n8n/node-sdk/publish';
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { compileFunction } from 'node:vm';
@@ -22,6 +23,7 @@ import {
 	actionEntries,
 	credentialClassFile,
 	freezeAll,
+	freezeCredentials,
 	NODES_DIR,
 	nodeClassFile,
 } from '../../scripts/freeze';
@@ -80,7 +82,7 @@ describe('bundled versions', () => {
 	const frozen = { manifests: Array.of<VersionManifest>() };
 
 	beforeAll(async () => {
-		frozen.manifests = await freezeAll(copy);
+		[frozen.manifests] = await Promise.all([freezeAll(copy), freezeCredentials(copy)]);
 	});
 
 	afterAll(() => rmSync(copy, { recursive: true, force: true }));
@@ -103,33 +105,34 @@ describe('bundled versions', () => {
 			return [description.name, description.defaultVersion];
 		});
 		expect(loaded).toEqual(contracts.map(({ id, version }) => [nodeNameOf(id), version]));
-		const apiVersions = Object.fromEntries(
-			frozen.manifests.map(({ id, apiVersion }) => [id, apiVersion]),
+		const versions = Object.fromEntries(
+			frozen.manifests.map(({ id, nodeContract }) => [id, nodeContract]),
 		);
-		expect(apiVersions).toEqual(
+		expect(versions).toEqual(
 			Object.fromEntries(
 				contracts.map((contract) => [
 					contract.id,
-					actionApiVersionOf(
+					requiredNodeContractOf(
 						toContract(contract),
 						'list' in contract && contract.list !== undefined,
 					),
 				]),
 			),
 		);
-		// Only the paged lists need the newest minor, only the actions with host imports, named
-		// inputs or sub-node capabilities need 2.3.0, and only the actions with binary data need 2.2.0.
-		const withVersion = (apiVersion: string) =>
-			Object.keys(apiVersions)
-				.filter((id) => apiVersions[id] === apiVersion)
+		// Only the paged lists need 2.4.0, only the actions with host imports, named inputs or
+		// providers need 2.3.0, and only the actions with binary data need 2.2.0.
+		const withVersion = (version: string) =>
+			Object.keys(versions)
+				.filter((id) => versions[id] === version)
 				.sort();
-		expect(withVersion(ACTION_API_VERSION)).toEqual([
+		expect(withVersion('2.5.0')).toEqual([]);
+		expect(withVersion('2.4.0')).toEqual([
 			'github.issue.getAll',
 			'googleDrive.file.search',
 			'httpRequest.get',
 			'supabase.row.getAll',
 		]);
-		expect(withVersion('n8n:action@2.3.0')).toEqual([
+		expect(withVersion('2.3.0')).toEqual([
 			'ai.agent',
 			'ai.classify',
 			'ai.prompt',
@@ -156,7 +159,7 @@ describe('bundled versions', () => {
 			'wait.until',
 			'xAi.chatModel',
 		]);
-		expect(withVersion('n8n:action@2.2.0')).toEqual([
+		expect(withVersion('2.2.0')).toEqual([
 			'gmail.message.send',
 			'googleDrive.file.upload',
 			'httpRequest.download',
@@ -164,6 +167,48 @@ describe('bundled versions', () => {
 			'openAi.image.generate',
 			'slack.file.upload',
 		]);
+	});
+
+	describe('match spec/manifest.schema.json of node-sdk', () => {
+		const schema = JSON.parse(
+			readFileSync(
+				path.resolve(__dirname, '../../node_modules/@n8n/node-sdk/spec/manifest.schema.json'),
+				'utf8',
+			),
+		) as JsonSchema;
+		const readJson = (file: string): unknown => JSON.parse(readFileSync(file, 'utf8'));
+		const issuesOf = (dir: string, ids: readonly string[]) =>
+			ids.flatMap((id) =>
+				validate(readJson(path.join(dir, id, 'manifest.json')), schema, { path: id }),
+			);
+
+		it('with every frozen action, trigger and credential manifest', () => {
+			const actionDirs = readdirSync(copy).filter((name) => name !== 'credentials');
+			const credentialDirs = readdirSync(path.join(copy, 'credentials'));
+			expect(actionDirs.sort()).toEqual(contracts.map(({ id }) => id).sort());
+			expect(credentialDirs.sort()).toEqual(credentialTypes.map(({ id }) => id).sort());
+			expect(issuesOf(copy, actionDirs)).toEqual([]);
+			expect(issuesOf(path.join(copy, 'credentials'), credentialDirs)).toEqual([]);
+		});
+
+		it('with the manifests frozen before nodeContract', () => {
+			const legacyDir = path.resolve(__dirname, '../../fixtures/versions');
+			const legacy = readdirSync(legacyDir);
+			expect(legacy.length).toBeGreaterThan(0);
+			expect(issuesOf(legacyDir, legacy)).toEqual([]);
+		});
+	});
+
+	it('record the kind and the credential major of each version', () => {
+		const byId = new Map(frozen.manifests.map((manifest) => [manifest.id, manifest]));
+		expect(byId.get('slack.message.send')).toMatchObject({
+			kind: 'action',
+			credentials: ['slackApi@1'],
+		});
+		expect(byId.get('openAi.chatModel')).toMatchObject({ kind: 'provider' });
+		expect(triggers.map(({ id }) => byId.get(id)?.kind)).toEqual(triggers.map(() => 'trigger'));
+		// A compat credential type has no credential manifest, so no pin.
+		expect(byId.get('gmail.message.send')).not.toHaveProperty('credentials');
 	});
 
 	it('replay the fixtures of the HEAD through the current executor', async () => {
@@ -209,7 +254,7 @@ describe('bundled versions', () => {
 					action: 'httpRequest.get',
 					version: head?.manifest.semver,
 					bundleHash: head?.manifest.bundleHash,
-					apiVersion: 'n8n:action@2.4.0',
+					nodeContract: '2.4.0',
 				},
 			},
 		]);
