@@ -65,6 +65,7 @@ describe('memoryManagement', () => {
 				tool_calls: [{ id: 'call-1', name: 'tool', args: {}, type: 'tool_call' as const }],
 			});
 			const validToolMessage = new ToolMessage({ content: 'Result', tool_call_id: 'call-1', name: 'tool' });
+			const validArrayContentMessage = new AIMessage({ content: [{ type: 'text', text: 'result' }] });
 			const chatHistory = [
 				new HumanMessage('Hello'),
 				new AIMessage('Hi there!'),
@@ -72,6 +73,8 @@ describe('memoryManagement', () => {
 				new HumanMessage('   '), // Blank string after trimming
 				new AIMessage({ content: [] }), // Empty array
 				new AIMessage({ content: null as any }), // Null content
+				validArrayContentMessage, // Should be kept because it has non-empty array content
+				new HumanMessage('Trigger'), // Add a valid human message before tool_calls to prevent cleanup
 				validToolCallAIMessage, // Should be kept because it has tool_calls
 				validToolMessage, // Prevent the AIMessage from being cleaned up as an orphan
 			];
@@ -79,14 +82,17 @@ describe('memoryManagement', () => {
 
 			const result = await loadMemory(mockMemory);
 
-			// Should only keep the first two valid messages, the tool call message, and the tool result
-			expect(result).toHaveLength(4);
+			// Should only keep the first two valid messages, the array content message, the human trigger, the tool call message, and the tool result
+			expect(result).toHaveLength(6);
 			expect(result?.[0]).toBeInstanceOf(HumanMessage);
 			expect(result?.[0].content).toBe('Hello');
 			expect(result?.[1]).toBeInstanceOf(AIMessage);
 			expect(result?.[1].content).toBe('Hi there!');
-			expect(result?.[2]).toBe(validToolCallAIMessage);
-			expect(result?.[3]).toBe(validToolMessage);
+			expect(result?.[2]).toBe(validArrayContentMessage);
+			expect(result?.[3]).toBeInstanceOf(HumanMessage);
+			expect(result?.[3].content).toBe('Trigger');
+			expect(result?.[4]).toBe(validToolCallAIMessage);
+			expect(result?.[5]).toBe(validToolMessage);
 		});
 
 		it('should remove orphaned ToolMessage at start of chat history', async () => {

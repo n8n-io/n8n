@@ -175,15 +175,14 @@ export function cleanupOrphanedMessages(chatHistory: BaseMessage[]): BaseMessage
 			changed = true;
 		}
 
-		// Remove AIMessages with tool_calls if they don't have following ToolMessages
+		// Remove leading AIMessages with tool_calls (they lack a preceding human message)
 		if (result.length > 0) {
 			const firstMessage = result[0];
-			const hasOrphanedAIMessage =
+			const isLeadingAIMessageWithToolCalls =
 				firstMessage instanceof AIMessage &&
-				(firstMessage.tool_calls?.length ?? 0) > 0 &&
-				!(result[1] instanceof ToolMessage);
+				(firstMessage.tool_calls?.length ?? 0) > 0;
 
-			if (hasOrphanedAIMessage) {
+			if (isLeadingAIMessageWithToolCalls) {
 				result.shift();
 				changed = true;
 			}
