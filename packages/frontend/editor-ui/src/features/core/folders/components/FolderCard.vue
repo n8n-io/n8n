@@ -217,7 +217,7 @@ const onBreadcrumbItemClick = async (item: PathItem) => {
 <template>
 	<div data-test-id="folder-card">
 		<RouterLink :to="cardUrl" @click="() => emit('folderOpened', { folder: props.data })">
-			<N8nCard :class="$style.card">
+			<N8nCard hoverable>
 				<template #prepend>
 					<N8nIcon
 						data-test-id="folder-card-icon"
@@ -371,15 +371,6 @@ const onBreadcrumbItemClick = async (item: PathItem) => {
 
 <style lang="scss" module>
 @use '@n8n/design-system/css/mixins/breakpoints';
-
-.card {
-	transition: box-shadow 0.3s ease;
-	cursor: pointer;
-
-	&:hover {
-		box-shadow: var(--shadow--card-hover);
-	}
-}
 
 .folder-icon {
 	flex-shrink: 0;
