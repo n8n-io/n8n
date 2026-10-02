@@ -7,9 +7,10 @@
  *
  * - Missing anchors count only on docs.n8n.io. Many other sites add their
  *   anchors with JavaScript, which lychee does not run.
- * - Redirects that lychee rejects, 403, 429, 999, timeouts, and network errors
- *   are opened again in headless Chrome. Many sites block HTTP clients but serve
- *   browsers, and a second request confirms that a connection failure persists.
+ * - Redirects that lychee rejects, 403, 429, 999, server errors, timeouts, and
+ *   network errors are opened again in headless Chrome. Many sites block HTTP
+ *   clients but serve browsers, and a second request confirms that a server or
+ *   connection failure persists.
  *   Chrome stops after 8 minutes, so that the job ends with a report. Links that
  *   Chrome did not open count as broken.
  *
@@ -64,7 +65,8 @@ export function classify({ url, code, text }) {
 	if (
 		/^timeout$|^network error/i.test(text) ||
 		BROWSER_STATUSES.has(code) ||
-		(code >= 300 && code < 400)
+		(code >= 300 && code < 400) ||
+		code >= 500
 	) {
 		return 'browser';
 	}

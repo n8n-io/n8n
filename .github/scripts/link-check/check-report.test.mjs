@@ -47,8 +47,8 @@ test('classify counts missing anchors only on docs.n8n.io', () => {
 	assert.equal(classify({ url: 'https://github.com/x#a', code: null, text }), 'ignore');
 });
 
-test('classify sends blocked, redirected, timed-out, and unreachable links to the browser', () => {
-	for (const code of [302, 403, 429, 999]) {
+test('classify sends blocked, redirected, failing, timed-out, and unreachable links to the browser', () => {
+	for (const code of [302, 403, 429, 500, 503, 999]) {
 		assert.equal(classify({ url: 'https://x.com/', code, text: '' }), 'browser');
 	}
 	assert.equal(classify({ url: 'https://x.com/', code: null, text: 'Timeout' }), 'browser');
