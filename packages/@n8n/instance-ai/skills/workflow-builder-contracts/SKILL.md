@@ -111,6 +111,7 @@ Slots: `model`, `memory`, `tools`, `outputParser`, `embedding`,
 - `item` and `$('Node')` are JSON: `$('Hook').body`, not `.json` or `.item`.
 - `$.now` and `$.today` are Luxon dates. Use `$.date(iso)` to parse a string.
 - A `'={{ … }}'` string fits any lambda field. The build checks it.
+- In the editor, Expression mode adds the `=`: tell the user to type from `{{`.
 - Fix a type error at its cause. Do not add casts, `any`, or fallbacks.
 
 ## Values and credentials

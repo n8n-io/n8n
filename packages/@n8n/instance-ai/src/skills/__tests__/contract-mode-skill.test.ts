@@ -54,7 +54,17 @@ describe('contract-mode skill', () => {
 		expect(skill).not.toContain('WorkflowJSON');
 	});
 
+	it('tells the user to type an editor expression from {{, not ={{', () => {
+		const editorLines = skill
+			.split('\n')
+			.filter((line) => /editor|expression mode|paste/i.test(line));
+		expect(editorLines).toContain(
+			'- In the editor, Expression mode adds the `=`: tell the user to type from `{{`.',
+		);
+		expect(editorLines.filter((line) => line.includes('={{'))).toEqual([]);
+	});
+
 	it('stays small', () => {
-		expect(Buffer.byteLength(skill)).toBeLessThan(5_200);
+		expect(Buffer.byteLength(skill)).toBeLessThan(5_300);
 	});
 });

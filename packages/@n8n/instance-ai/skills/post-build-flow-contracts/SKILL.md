@@ -36,7 +36,8 @@ when its condition applies. Load it in the same step as your next tool call:
   setup result or `<workflow-setup-state>` comes back, or on
   `<workflow-test-request>`.
 - `references/live-test-and-publishing.md`: before you offer or start a live
-  test, and when the user asks to publish.
+  test (with more than one trigger, run each with `triggerNodeName`), and when
+  the user asks to publish.
 
 ## Read the build result
 
@@ -76,6 +77,9 @@ delete, reorder, or copy nodes or workflows to reach a branch.
 - `skippedParameterChecks`: say that these dynamic fields are not checked.
 - Simulated or pinned output is fixture data. Never quote it as real output.
   Do not state counts or written values that you did not read back.
+- A node that ran is not proof. Read the output of the node that the fix
+  changes. If that output does not show the fix, say plainly that the fix is
+  not confirmed.
 - `claim.liveState`: `live-stale` means the fix is only in the draft. Do not
   call the workflow live. `unpublished` means it does not run in production.
 

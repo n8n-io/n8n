@@ -70,8 +70,10 @@ describe('post-build-flow-contracts skill', () => {
 			'references/verify-again.md',
 			'references/setup.md',
 			'references/live-test-and-publishing.md',
+			'run each with `triggerNodeName`',
 			'Do not list the nodes',
 			'without a `verified` claim',
+			'A node that ran is not proof.',
 		]) {
 			expect(text).toContain(phrase);
 		}
@@ -89,6 +91,12 @@ describe('post-build-flow-contracts skill', () => {
 		expect(await read('references/setup.md')).toContain('`reopenSkipped`');
 		expect(await read('references/live-test-and-publishing.md')).toContain(
 			'`acknowledgeUnverified: true`',
+		);
+		expect(await read('references/live-test-and-publishing.md')).toContain(
+			'run once for each trigger with `triggerNodeName`',
+		);
+		expect(await read('references/live-test-and-publishing.md')).not.toContain(
+			'Do not start another live run',
 		);
 		expect(await read('references/trigger-input-data-shapes.md')).toContain('inputData');
 		expect(await on.loadFile?.('post-build-flow', 'references/setup.md')).toMatchObject({
