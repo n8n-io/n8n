@@ -76,8 +76,7 @@ function setup(options: { backgroundTasksEnabled?: boolean } = {}) {
 	});
 	(logger.scoped as Mock).mockReturnValue(logger);
 
-	jobRepository.countActiveSubAgentsByParentThread.mockResolvedValue(0);
-	jobRepository.insertJob.mockResolvedValue(undefined);
+	jobRepository.insertSubAgentJobIfCapacity.mockResolvedValue(true);
 	jobRepository.insertWorkflowJobOrGetExisting.mockResolvedValue({ inserted: true });
 	jobRepository.settleIfActive.mockResolvedValue(true);
 	jobRepository.findByParentThread.mockResolvedValue([]);
@@ -150,14 +149,12 @@ describe('background task notifications', () => {
 			'agent-1',
 			'thread-1',
 		);
-		expect(jobRepository.insertJob.mock.invocationCallOrder[0]).toBeLessThan(
+		expect(jobRepository.insertSubAgentJobIfCapacity.mock.invocationCallOrder[0]).toBeLessThan(
 			updateBroadcaster.notifyBackgroundJobsUpdated.mock.invocationCallOrder[0],
 		);
-		jobRepository.countActiveSubAgentsByParentThread.mockResolvedValueOnce(
-			MAX_RUNNING_JOBS_PER_THREAD,
-		);
+		jobRepository.insertSubAgentJobIfCapacity.mockResolvedValueOnce(false);
 		await service.registerSubAgentJob(registerParams);
-		jobRepository.insertJob.mockRejectedValueOnce(new Error('insert failed'));
+		jobRepository.insertSubAgentJobIfCapacity.mockRejectedValueOnce(new Error('insert failed'));
 		await expect(service.registerSubAgentJob(registerParams)).rejects.toThrow('insert failed');
 		expect(updateBroadcaster.notifyBackgroundJobsUpdated).toHaveBeenCalledOnce();
 	});
@@ -226,30 +223,23 @@ describe('registerSubAgentJob', () => {
 		const receipt = await service.registerSubAgentJob(registerParams);
 
 		expect(receipt).toEqual({ status: 'started', jobId: 'job-1' });
-		const inserted = jobRepository.insertJob.mock.calls[0][0];
+		const inserted = jobRepository.insertSubAgentJobIfCapacity.mock.calls[0][0];
 		if (inserted.kind !== 'subagent') throw new Error('expected a subagent job insert');
 		const expectedTimeout = Date.now() + SUB_AGENT_BACKGROUND_TIMEOUT_MS;
 		expect(inserted.timeoutAt.getTime()).toBeGreaterThan(expectedTimeout - 5000);
 		expect(inserted.timeoutAt.getTime()).toBeLessThanOrEqual(expectedTimeout);
+		expect(jobRepository.insertSubAgentJobIfCapacity.mock.calls[0][1]).toBe(
+			MAX_RUNNING_JOBS_PER_THREAD,
+		);
 	});
 
 	it('returns limit-reached when the thread is at the running-job cap', async () => {
 		const { service, jobRepository } = setup();
-		jobRepository.countActiveSubAgentsByParentThread.mockResolvedValue(MAX_RUNNING_JOBS_PER_THREAD);
+		jobRepository.insertSubAgentJobIfCapacity.mockResolvedValue(false);
 
 		const receipt = await service.registerSubAgentJob(registerParams);
 
 		expect(receipt).toEqual({ status: 'limit-reached' });
-		expect(jobRepository.insertJob).not.toHaveBeenCalled();
-	});
-
-	it('counts only running sub-agent jobs toward the cap', async () => {
-		const { service, jobRepository } = setup();
-
-		const receipt = await service.registerSubAgentJob(registerParams);
-
-		expect(receipt).toEqual({ status: 'started', jobId: 'job-1' });
-		expect(jobRepository.countActiveSubAgentsByParentThread).toHaveBeenCalledWith('thread-1');
 	});
 });
 

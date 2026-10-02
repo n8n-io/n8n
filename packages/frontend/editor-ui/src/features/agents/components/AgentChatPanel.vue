@@ -397,19 +397,24 @@ async function respondToBackgroundApproval(
 	}
 }
 const backgroundJobRows = computed(() =>
-	backgroundJobs.value.map((job) => ({
-		...job,
-		label: locale.baseText(
-			job.kind === 'workflow'
-				? 'agents.chat.backgroundTasks.workflow'
-				: 'agents.chat.backgroundTasks.subagent',
-			{ interpolate: { title: job.title } },
-		),
-		indicator:
-			backgroundJobStatuses.value[
-				job.kind === 'workflow' && job.status === 'running' ? 'waiting' : job.status
-			],
-	})),
+	backgroundJobs.value.flatMap((job) => {
+		if (job.status === 'paused') return [];
+		return [
+			{
+				...job,
+				label: locale.baseText(
+					job.kind === 'workflow'
+						? 'agents.chat.backgroundTasks.workflow'
+						: 'agents.chat.backgroundTasks.subagent',
+					{ interpolate: { title: job.title } },
+				),
+				indicator:
+					backgroundJobStatuses.value[
+						job.kind === 'workflow' && job.status === 'running' ? 'waiting' : job.status
+					],
+			},
+		];
+	}),
 );
 const now = ref(Date.now());
 const documentVisibility = useDocumentVisibility();

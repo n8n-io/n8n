@@ -153,16 +153,15 @@ export class AgentBackgroundJobService {
 	async registerSubAgentJob(
 		params: Omit<NewSubAgentJob, 'kind' | 'timeoutAt'>,
 	): Promise<BackgroundJobReceipt> {
-		const running = await this.jobRepository.countActiveSubAgentsByParentThread(
-			params.parentThreadId,
+		const inserted = await this.jobRepository.insertSubAgentJobIfCapacity(
+			{
+				...params,
+				kind: 'subagent',
+				timeoutAt: new Date(Date.now() + SUB_AGENT_BACKGROUND_TIMEOUT_MS),
+			},
+			MAX_RUNNING_JOBS_PER_THREAD,
 		);
-		if (running >= MAX_RUNNING_JOBS_PER_THREAD) return { status: 'limit-reached' };
-
-		await this.jobRepository.insertJob({
-			...params,
-			kind: 'subagent',
-			timeoutAt: new Date(Date.now() + SUB_AGENT_BACKGROUND_TIMEOUT_MS),
-		});
+		if (!inserted) return { status: 'limit-reached' };
 		this.updateBroadcaster.notifyBackgroundJobsUpdated(params.parentAgentId, params.parentThreadId);
 
 		return { status: 'started', jobId: params.id };

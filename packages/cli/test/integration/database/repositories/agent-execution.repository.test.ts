@@ -2768,6 +2768,70 @@ describe('AgentExecutionRepository', () => {
 			},
 		);
 
+		it('restores a paused checkpoint for the current execution when resume admission fails', async () => {
+			const services = recordingServices();
+			const threadId = uuid();
+			await enqueue(services, input(threadId, 'Start', 'new'));
+			const active = await claim(services, threadId);
+			const { makeAgent } = createApprovalAgentFactory(threadId, owner.id, 0);
+			const store = services.checkpointStorage.getStorage(agentId);
+			const agent = makeAgent(store);
+			try {
+				const paused = await agent.stream('Start', {
+					shouldPause: async () => true,
+					persistence: {
+						threadId,
+						resourceId: `draft-chat:${owner.id}`,
+						hostMetadata: { [EXECUTION_METADATA_KEY]: active.admission.executionId },
+					},
+				});
+				expect((await collect(paused.stream)).at(-1)).toMatchObject({ finishReason: 'paused' });
+				await finish(services, active);
+
+				const recording = { ...active.recording, userMessage: null, resumeRunId: paused.runId };
+				const failed = await services.executionService.startExecutionRecording(
+					recording,
+					new Date(),
+				);
+				await expect(
+					agent.resumePaused({
+						runId: paused.runId,
+						hostMetadata: { [EXECUTION_METADATA_KEY]: failed.executionId },
+						onResumeClaimed: async () => {
+							throw new Error('Resume admission failed');
+						},
+					}),
+				).rejects.toThrow('Resume admission failed');
+				expect(await store.load(paused.runId)).toMatchObject({
+					status: 'suspended',
+					finishReason: 'paused',
+					persistence: {
+						hostMetadata: { [EXECUTION_METADATA_KEY]: failed.executionId },
+					},
+				});
+				await finish(services, { ...active, admission: failed }, 'error');
+
+				const retry = await services.executionService.startExecutionRecording(
+					recording,
+					new Date(),
+				);
+				const resumed = await agent.resumePaused({
+					runId: paused.runId,
+					hostMetadata: { [EXECUTION_METADATA_KEY]: retry.executionId },
+				});
+				expect((await collect(resumed.stream)).at(-1)).toMatchObject({ finishReason: 'stop' });
+				expect(
+					await Container.get(AgentCheckpointRepository).findByRunId(paused.runId),
+				).toMatchObject({
+					expired: true,
+					state: null,
+				});
+				await finish(services, { ...active, admission: retry });
+			} finally {
+				await agent.close();
+			}
+		});
+
 		it('advances after approval expiry without waiting for pruning', async () => {
 			const services = recordingServices();
 			const threadId = uuid();
