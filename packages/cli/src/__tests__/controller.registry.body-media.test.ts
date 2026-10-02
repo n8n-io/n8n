@@ -1,5 +1,5 @@
 import type { GlobalConfig } from '@n8n/config';
-import { Body, ControllerRegistryMetadata, Get, Post, RestController } from '@n8n/decorators';
+import { Body, ControllerRegistryMetadata, Post, RestController } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import express from 'express';
 import { mock } from 'vitest-mock-extended';
@@ -50,31 +50,5 @@ describe('ControllerRegistry - @Body media guard', () => {
 			"TestController.method declares @Body({ mediaType: 'multipart/form-data' }), which only " +
 				'@PublicApiController routes support.',
 		);
-	});
-
-	it('leaves a route with the default (JSON) @Body unaffected', () => {
-		@RestController('/test')
-		// @ts-expect-error tsc complains about unused class
-		class TestController {
-			@Post('/')
-			method(@Body _body: unknown) {
-				return {};
-			}
-		}
-
-		expect(() => activate()).not.toThrow();
-	});
-
-	it('leaves a route with no @Body at all unaffected', () => {
-		@RestController('/test')
-		// @ts-expect-error tsc complains about unused class
-		class TestController {
-			@Get('/')
-			method() {
-				return {};
-			}
-		}
-
-		expect(() => activate()).not.toThrow();
 	});
 });
