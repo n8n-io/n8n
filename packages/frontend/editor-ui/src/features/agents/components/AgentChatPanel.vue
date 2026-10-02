@@ -31,7 +31,9 @@ import {
 	MAX_AGENT_CHAT_ATTACHMENTS_PER_MESSAGE,
 	PROVIDER_CAPABILITIES,
 } from '@n8n/api-types';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import { useToast } from '@n8n/composables/useToast';
+import { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
 import ChatInputBase from '@/features/ai/shared/components/ChatInputBase.vue';
 import ChatMessageQueue from '@/features/ai/shared/components/ChatMessageQueue.vue';
 import AttachmentPreview from '@/features/ai/instanceAi/components/AttachmentPreview.vue';
@@ -101,6 +103,8 @@ const emit = defineEmits<{
 }>();
 
 const locale = useI18n();
+const { isMacOs } = useDeviceSupport();
+const rootStore = useRootStore();
 const agentTelemetry = useAgentTelemetry();
 const toast = useToast();
 
@@ -111,8 +115,7 @@ const {
 	steeringQueueIds,
 	canSteer,
 	steerQueuedMessage,
-	removeQueuedMessage,
-	updateQueuedMessage,
+	removeQueuedMessage: removeLiveQueuedMessage,
 	reorderQueuedMessage,
 	isReorderingQueue,
 	isSubmitting,
@@ -144,29 +147,44 @@ const {
 	onSessionCreated: (sessionId) => emit('session-created', sessionId),
 });
 
-const stubQueuedMessages = Array.from({ length: 5 }, (_, index) => ({
-	id: `preview-stub-${index + 1}`,
-	message: `Sample queued message jkasdjkasdjkasdjkasdjkkjasdjkasdjkasdjkasdjkasdjkasdjkasdjkasdjkasdjk ${index + 1}`,
-	createdAt: new Date().toISOString(),
-	steeringExecutionId: index === 2 ? 'preview-stub-running' : null,
-}));
+const stubAttachmentFiles = [
+	new File(['Sample attachment'], 'project-brief.txt', { type: 'text/plain' }),
+	new File(['Sample attachment'], 'requirements.md', { type: 'text/markdown' }),
+];
+const stubQueueFiles = new Map<string, File[]>([['preview-stub-1', stubAttachmentFiles]]);
+const stubQueuedMessages = ref<AgentChatQueueItem[]>(
+	Array.from({ length: 5 }, (_, index) => ({
+		id: `preview-stub-${index + 1}`,
+		message: `Sample queued message ${index + 1}`,
+		attachments:
+			index === 0
+				? stubAttachmentFiles.map((file, fileIndex) => ({
+						id: `preview-stub-attachment-${fileIndex + 1}`,
+						fileName: file.name,
+						mimeType: file.type,
+						sizeBytes: file.size,
+					}))
+				: undefined,
+		createdAt: new Date().toISOString(),
+		steeringExecutionId: index === 2 ? 'preview-stub-running' : null,
+	})),
+);
 const queuedMessages = computed(() =>
-	props.stubQueue ? stubQueuedMessages : liveQueuedMessages.value,
+	props.stubQueue ? stubQueuedMessages.value : liveQueuedMessages.value,
 );
 
-const queueEdit = ref<{
-	item: AgentChatQueueItem;
-	text: string;
-	unavailable: boolean;
-	saving: boolean;
-}>();
-const queueRows = computed(() => {
-	const edit = queueEdit.value;
-	if (edit && !queuedMessages.value.some((item) => item.id === edit.item.id)) {
-		return [...queuedMessages.value, edit.item];
-	}
-	return queuedMessages.value;
-});
+/** Remove this stub wrapper when the sample queue is no longer needed. */
+async function removeQueuedMessageWithStub(id: string): Promise<'removed' | 'failed'> {
+	if (!props.stubQueue) return await removeLiveQueuedMessage(id);
+	const item = stubQueuedMessages.value.find((entry) => entry.id === id);
+	if (!item || item.steeringExecutionId) return 'failed';
+	stubQueuedMessages.value = stubQueuedMessages.value.filter((entry) => entry.id !== id);
+	stubQueueFiles.delete(id);
+	return 'removed';
+}
+
+const editingQueueId = ref<string>();
+const queueRows = queuedMessages;
 const messageQueue = useTemplateRef<InstanceType<typeof ChatMessageQueue>>('messageQueue');
 const queueExpanded = ref(false);
 const queueOrder = shallowRef<AgentChatQueueItem[]>();
@@ -174,27 +192,75 @@ const displayedQueueRows = computed(() => queueOrder.value ?? queueRows.value);
 const visibleQueueRows = computed(() =>
 	queueExpanded.value ? displayedQueueRows.value : displayedQueueRows.value.slice(0, 2),
 );
-const canSaveQueueEdit = computed(() => {
-	const edit = queueEdit.value;
-	return (
-		edit &&
-		!edit.saving &&
-		!edit.unavailable &&
-		(edit.text.trim().length > 0 || !!edit.item.attachments?.length)
-	);
-});
-watch(queuedMessages, (items) => {
-	const edit = queueEdit.value;
-	if (!edit) return;
-	const current = items.find((item) => item.id === edit.item.id);
-	edit.unavailable = !current || !!current.steeringExecutionId;
-});
-function startQueueEdit(item: AgentChatQueueItem) {
-	if (item.steeringExecutionId) return;
-	queueEdit.value = { item, text: item.message, unavailable: false, saving: false };
+async function startQueueEdit(item: AgentChatQueueItem) {
+	if (hasDraft.value || isQueueItemBusy(item) || isSubmissionBlocked.value) return;
+	const target = {
+		projectId: props.projectId,
+		agentId: props.agentId,
+		continueSessionId: props.continueSessionId,
+	};
+	function isCurrentTarget() {
+		return (
+			!disposed &&
+			props.projectId === target.projectId &&
+			props.agentId === target.agentId &&
+			props.continueSessionId === target.continueSessionId
+		);
+	}
+	editingQueueId.value = item.id;
+	try {
+		/** Load attachments before removal so a failed download leaves the message queued. */
+		const files = props.stubQueue
+			? [...(stubQueueFiles.get(item.id) ?? [])]
+			: await Promise.all(
+					(item.attachments ?? []).map(async (attachment) => {
+						const url = `${rootStore.restApiContext.baseUrl}/projects/${encodeURIComponent(target.projectId)}/agents/v2/${encodeURIComponent(target.agentId)}/chat/attachments/${encodeURIComponent(attachment.id)}`;
+						const response = await fetch(url, { credentials: 'include' });
+						if (!response.ok) throw new Error(`Attachment download failed: ${response.status}`);
+						return new File([await response.blob()], attachment.fileName, {
+							type: attachment.mimeType,
+						});
+					}),
+				);
+		if (!isCurrentTarget() || hasDraft.value) return;
+		const result = await removeQueuedMessageWithStub(item.id);
+		if (result !== 'removed' || !isCurrentTarget()) return;
+		inputText.value = item.message;
+		attachedFiles.value = files;
+		editingQueueId.value = undefined;
+		await nextTick();
+		if (isCurrentTarget()) focusInput();
+	} catch (error) {
+		if (isCurrentTarget()) toast.showError(error, locale.baseText('agents.chat.queue.removeError'));
+	} finally {
+		if (isCurrentTarget()) editingQueueId.value = undefined;
+	}
 }
+function onChatInputKeydown(event: KeyboardEvent) {
+	if (
+		!(event.target instanceof HTMLTextAreaElement) ||
+		event.key !== 'ArrowUp' ||
+		!event.altKey ||
+		event.ctrlKey ||
+		event.metaKey ||
+		event.shiftKey ||
+		event.isComposing ||
+		event.repeat ||
+		hasDraft.value ||
+		isSubmissionBlocked.value
+	) {
+		return;
+	}
+	const item = queuedMessages.value.at(-1);
+	if (!item || isQueueItemBusy(item)) return;
+	event.preventDefault();
+	event.stopPropagation();
+	void startQueueEdit(item);
+}
+
 function isQueueItemBusy(item: AgentChatQueueItem) {
 	return (
+		!!editingQueueId.value ||
 		isReorderingQueue.value ||
 		!!item.steeringExecutionId ||
 		steeringQueueIds.value.has(item.id) ||
@@ -202,7 +268,7 @@ function isQueueItemBusy(item: AgentChatQueueItem) {
 	);
 }
 function canMoveQueueItem(items: AgentChatQueueItem[], from: number, to: number) {
-	if (queueEdit.value || from === to || !items[from] || !items[to]) return false;
+	if (editingQueueId.value || from === to || !items[from] || !items[to]) return false;
 	return !items.slice(Math.min(from, to), Math.max(from, to) + 1).some(isQueueItemBusy);
 }
 function canDragQueueItem(index: number) {
@@ -242,36 +308,6 @@ async function moveQueueItem(items: AgentChatQueueItem[], from: number, to: numb
 	await nextTick();
 	messageQueue.value?.focusItem(item.id);
 }
-function onQueueHandleKeydown(event: KeyboardEvent, index: number) {
-	if (queueOrder.value || !['ArrowUp', 'ArrowDown'].includes(event.key)) return;
-	event.preventDefault();
-	event.stopPropagation();
-	const delta = event.key === 'ArrowUp' ? -1 : 1;
-	void moveQueueItem(queueRows.value, index, index + delta);
-}
-async function saveQueueEdit() {
-	const edit = queueEdit.value;
-	if (!edit || !canSaveQueueEdit.value) return;
-	edit.saving = true;
-	const result = await updateQueuedMessage(edit.item.id, edit.text);
-	if (queueEdit.value !== edit) return;
-	edit.saving = false;
-	if (result === 'updated') queueEdit.value = undefined;
-	else if (result === 'unavailable') edit.unavailable = true;
-}
-function onQueueEditKeydown(event: KeyboardEvent) {
-	if (event.isComposing) return;
-	if (event.key === 'Escape') {
-		event.preventDefault();
-		event.stopPropagation();
-		if (!queueEdit.value?.saving) queueEdit.value = undefined;
-	} else if (event.key === 'Enter' && !event.shiftKey) {
-		event.preventDefault();
-		event.stopPropagation();
-		void saveQueueEdit();
-	}
-}
-
 const { jobs: backgroundJobs, respondToApproval } = useAgentBackgroundJobs({
 	projectId: () => props.projectId,
 	agentId: () => props.agentId,
@@ -619,7 +655,11 @@ const hasOpenSuspension = computed(
 		) ?? false,
 );
 const isSubmissionBlocked = computed(
-	() => isPreparingToSend.value || isSubmitting.value || isLoadingHistory.value,
+	() =>
+		!!editingQueueId.value ||
+		isPreparingToSend.value ||
+		isSubmitting.value ||
+		isLoadingHistory.value,
 );
 // Tools still pending/running after the stream ended (desync): the backend
 // finished but their terminal events never arrived. Surfacing Stop here lets
@@ -648,6 +688,14 @@ const chatPlaceholder = computed(() => {
 		return locale.baseText('agents.chat.answerQuestionPlaceholder');
 	}
 
+	if (queuedMessages.value.length > 0) {
+		return locale.baseText(
+			isMacOs
+				? 'agents.chat.input.placeholder.withQueue.mac'
+				: 'agents.chat.input.placeholder.withQueue.other',
+		);
+	}
+
 	const agentName = props.agentConfig?.name?.trim();
 	return agentName
 		? locale.baseText('agents.chat.input.placeholder.withAgent', {
@@ -671,7 +719,7 @@ watch(
 	() => [props.projectId, props.agentId, props.continueSessionId],
 	() => {
 		queuedExternalMessage = undefined;
-		queueEdit.value = undefined;
+		editingQueueId.value = undefined;
 		queueExpanded.value = false;
 		queueOrder.value = undefined;
 	},
@@ -683,11 +731,34 @@ function consumeQueuedExternalMessage(message: string) {
 	emit('initial-consumed');
 }
 
+/** Remove this stub when the sample queue is no longer needed. */
+function sendQueuedMessageStub(text: string, files: File[]): SubmitResult {
+	const id = `preview-stub-${crypto.randomUUID()}`;
+	stubQueueFiles.set(id, files);
+	stubQueuedMessages.value.push({
+		id,
+		message: text,
+		attachments: files.map((file) => ({
+			id: crypto.randomUUID(),
+			fileName: file.name,
+			mimeType: file.type,
+			sizeBytes: file.size,
+		})),
+		createdAt: new Date().toISOString(),
+		steeringExecutionId: null,
+	});
+	inputText.value = '';
+	attachedFiles.value = [];
+	consumeQueuedExternalMessage(text);
+	return 'sent';
+}
+
 async function onSubmit(): Promise<SubmitResult> {
 	const text = inputText.value.trim();
 	const files = [...attachedFiles.value];
 	if (!text && files.length === 0) return 'rejected';
 	if (isSubmissionBlocked.value) return 'busy';
+	if (props.stubQueue) return sendQueuedMessageStub(text, files);
 	const target = {
 		projectId: props.projectId,
 		agentId: props.agentId,
@@ -978,11 +1049,12 @@ onBeforeUnmount(() => {
 				:show-attach="showAttach"
 				:accepted-mime-types="acceptedMimeTypes"
 				:can-submit="!isSubmissionBlocked && hasDraft"
-				:disabled="isPreparingToSend"
+				:disabled="isPreparingToSend || !!editingQueueId"
 				data-testid="chat-input"
 				@submit="onSubmit"
 				@stop="stopGenerating"
 				@files-selected="handleFilesSelected"
+				@keydown="onChatInputKeydown"
 			>
 				<template #above>
 					<ChatMessageQueue
@@ -993,8 +1065,7 @@ onBeforeUnmount(() => {
 						:visible-items="visibleQueueRows"
 						:expanded="queueExpanded"
 						:is-reordering="isReorderingQueue"
-						:queue-edit="queueEdit"
-						:can-save-queue-edit="!!canSaveQueueEdit"
+						:can-edit="!hasDraft && !isSubmissionBlocked"
 						:can-steer="canSteer"
 						:can-drag-queue-item="canDragQueueItem"
 						:is-queue-item-busy="isQueueItemBusy"
@@ -1002,13 +1073,9 @@ onBeforeUnmount(() => {
 						@update:expanded="queueExpanded = $event"
 						@drag-start="startQueueDrag"
 						@drag-end="endQueueDrag"
-						@handle-keydown="onQueueHandleKeydown"
-						@edit-keydown="onQueueEditKeydown"
-						@save="saveQueueEdit"
-						@cancel-edit="queueEdit = undefined"
 						@steer="steerQueuedMessage"
 						@edit="startQueueEdit"
-						@remove="removeQueuedMessage"
+						@remove="removeQueuedMessageWithStub"
 					/>
 				</template>
 				<template v-if="attachedFiles.length > 0" #attachments>
