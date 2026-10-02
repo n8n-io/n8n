@@ -56,6 +56,24 @@ describe('ScheduledTaskRepository executor methods', () => {
 		);
 	}
 
+	async function createLimitedJob(concurrencyLimit: number | null) {
+		const jobName = `limited-${Math.random().toString(36).slice(2)}`;
+		return await jobRepository.save(
+			jobRepository.create({
+				name: jobName,
+				...selfOwned(jobName),
+				taskType: TASK_TYPE,
+				payload: {},
+				kind: 'interval',
+				intervalSeconds: 60,
+				enabled: true,
+				nextRunAt: new Date('2026-01-01T00:00:00.000Z'),
+				maxAttempts: 1,
+				concurrencyLimit,
+			}),
+		);
+	}
+
 	const reload = async (id: string) => await taskRepository.findOneByOrFail({ id });
 
 	beforeAll(async () => {
@@ -246,24 +264,6 @@ describe('ScheduledTaskRepository executor methods', () => {
 	});
 
 	describe('claimDueTasks under a concurrencyLimit', () => {
-		const createLimitedJob = async (concurrencyLimit: number | null) => {
-			const jobName = `limited-${Math.random().toString(36).slice(2)}`;
-			return await jobRepository.save(
-				jobRepository.create({
-					name: jobName,
-					...selfOwned(jobName),
-					taskType: TASK_TYPE,
-					payload: {},
-					kind: 'interval',
-					intervalSeconds: 60,
-					enabled: true,
-					nextRunAt: new Date('2026-01-01T00:00:00.000Z'),
-					maxAttempts: 1,
-					concurrencyLimit,
-				}),
-			);
-		};
-
 		const statusOf = async (id: string) => (await reload(id)).status;
 
 		const runningCountOf = async (jobId: number) =>
@@ -366,7 +366,7 @@ describe('ScheduledTaskRepository executor methods', () => {
 			await taskRepository.update(held.id, { missedAfter: new Date(Date.now() - 1_000) });
 
 			expect(await taskRepository.claimDueTasks(claimOpts())).toHaveLength(0);
-			expect(await taskRepository.retireMissedPending(10)).toBe(1);
+			expect((await taskRepository.retireMissedPending(10)).retired).toBe(1);
 
 			const retired = await reload(held.id);
 			expect(retired.status).toBe('missed');
@@ -390,7 +390,7 @@ describe('ScheduledTaskRepository executor methods', () => {
 
 			expect(claimed.map((task) => task.id)).toEqual([ready.id]);
 			expect(await statusOf(expired.id)).toBe('pending');
-			expect(await taskRepository.retireMissedPending(10)).toBe(1);
+			expect((await taskRepository.retireMissedPending(10)).retired).toBe(1);
 			expect(await statusOf(expired.id)).toBe('missed');
 		});
 
@@ -815,7 +815,7 @@ describe('ScheduledTaskRepository executor methods', () => {
 			expect(await taskRepository.releaseClaim({ host: HOST_A, id, claimedEpoch: epoch })).toBe(1);
 
 			expect(await taskRepository.claimDueTasks(claimOpts({ host: HOST_A }))).toHaveLength(0);
-			expect(await taskRepository.retireMissedPending(10)).toBe(1);
+			expect((await taskRepository.retireMissedPending(10)).retired).toBe(1);
 			expect((await reload(id)).status).toBe('missed');
 		});
 
@@ -1316,7 +1316,7 @@ describe('ScheduledTaskRepository executor methods', () => {
 					missedAfter: new Date(Date.now() - 30_000),
 				});
 
-				expect(await taskRepository.retireMissedPending(10)).toBe(1);
+				expect((await taskRepository.retireMissedPending(10)).retired).toBe(1);
 
 				const row = await reload(stale.id);
 				expect(row.status).toBe('missed');
@@ -1333,7 +1333,7 @@ describe('ScheduledTaskRepository executor methods', () => {
 					maxAttempts: 3,
 				});
 
-				expect(await taskRepository.retireMissedPending(10)).toBe(0);
+				expect((await taskRepository.retireMissedPending(10)).retired).toBe(0);
 
 				for (const task of [live, noDeadline, retry]) {
 					expect((await reload(task.id)).status).toBe('pending');
@@ -1348,7 +1348,7 @@ describe('ScheduledTaskRepository executor methods', () => {
 					missedAfter: new Date(Date.now() - 30_000),
 				});
 
-				expect(await taskRepository.retireMissedPending(10)).toBe(0);
+				expect((await taskRepository.retireMissedPending(10)).retired).toBe(0);
 				expect((await reload(running.id)).status).toBe('running');
 			});
 
@@ -1356,7 +1356,146 @@ describe('ScheduledTaskRepository executor methods', () => {
 				await createTask({ missedAfter: new Date(Date.now() - 30_000) });
 				await createTask({ missedAfter: new Date(Date.now() - 60_000) });
 
-				expect(await taskRepository.retireMissedPending(1)).toBe(1);
+				expect((await taskRepository.retireMissedPending(1)).retired).toBe(1);
+			});
+
+			it('reports a retired occurrence its job had no free slot for', async () => {
+				const limited = await createLimitedJob(1);
+				await createTask({
+					jobId: limited.id,
+					status: 'running',
+					claimedBy: HOST_A,
+					leaseExpiresAt: new Date(Date.now() + 60_000),
+					leaseEpoch: 1,
+					startedAt: past(),
+				});
+				const held = await createTask({
+					jobId: limited.id,
+					missedAfter: new Date(Date.now() - 30_000),
+				});
+
+				const result = await taskRepository.retireMissedPending(10);
+
+				expect(result.retired).toBe(1);
+				expect(result.heldByConcurrencyLimit).toEqual([
+					{ id: held.id, jobId: limited.id, taskType: TASK_TYPE },
+				]);
+				expect((await reload(held.id)).status).toBe('missed');
+			});
+
+			it('reports a retired occurrence whose blocking run ended before the sweep', async () => {
+				const limited = await createLimitedJob(1);
+				const deadline = new Date(Date.now() - 30_000);
+				// Ran across the deadline, then finished before the reaper runs.
+				await createTask({
+					jobId: limited.id,
+					status: 'succeeded',
+					startedAt: past(),
+					finishedAt: new Date(deadline.getTime() + 1_000),
+				});
+				const held = await createTask({ jobId: limited.id, missedAfter: deadline });
+
+				const result = await taskRepository.retireMissedPending(10);
+
+				expect(result.heldByConcurrencyLimit).toEqual([
+					{ id: held.id, jobId: limited.id, taskType: TASK_TYPE },
+				]);
+			});
+
+			it('reports nothing when the job only filled its slot after the deadline', async () => {
+				const limited = await createLimitedJob(1);
+				const deadline = new Date(Date.now() - 30_000);
+				// Started after the deadline, so it did not block the task.
+				await createTask({
+					jobId: limited.id,
+					status: 'running',
+					claimedBy: HOST_A,
+					leaseExpiresAt: new Date(Date.now() + 60_000),
+					leaseEpoch: 1,
+					startedAt: new Date(deadline.getTime() + 1_000),
+				});
+				await createTask({ jobId: limited.id, missedAfter: deadline });
+
+				const result = await taskRepository.retireMissedPending(10);
+
+				expect(result.retired).toBe(1);
+				expect(result.heldByConcurrencyLimit).toEqual([]);
+			});
+
+			it('reports nothing when the next occurrence was claimed and started after the deadline', async () => {
+				const limited = await createLimitedJob(1);
+				const expired = await createTask({
+					jobId: limited.id,
+					runAt: new Date(Date.now() - 30_000),
+					missedAfter: new Date(Date.now() - 20_000),
+				});
+				await createTask({ jobId: limited.id, runAt: new Date(Date.now() - 10_000) });
+
+				const [ready] = await taskRepository.claimDueTasks(claimOpts());
+				expect(
+					await taskRepository.beginDispatch(
+						{ id: ready.id, host: HOST_A, claimedEpoch: ready.leaseEpoch },
+						60_000,
+					),
+				).toBe(1);
+
+				const result = await taskRepository.retireMissedPending(10);
+
+				expect(result.retired).toBe(1);
+				expect(result.heldByConcurrencyLimit).toEqual([]);
+				expect((await reload(expired.id)).status).toBe('missed');
+			});
+
+			it('never lets two concurrent sweeps report the same retired occurrence', async () => {
+				const limited = await createLimitedJob(1);
+				await createTask({
+					jobId: limited.id,
+					status: 'running',
+					claimedBy: HOST_A,
+					leaseExpiresAt: new Date(Date.now() + 60_000),
+					leaseEpoch: 1,
+					startedAt: past(),
+				});
+				const held = await Promise.all([
+					createTask({ jobId: limited.id, missedAfter: new Date(Date.now() - 30_000) }),
+					createTask({ jobId: limited.id, missedAfter: new Date(Date.now() - 20_000) }),
+				]);
+
+				const [a, b] = await Promise.all([
+					taskRepository.retireMissedPending(10),
+					taskRepository.retireMissedPending(10),
+				]);
+
+				expect(a.retired + b.retired).toBe(held.length);
+				const reported = [...a.heldByConcurrencyLimit, ...b.heldByConcurrencyLimit].map(
+					(row) => row.id,
+				);
+				// Only the call that retired a task reports it.
+				expect(reported).toHaveLength(held.length);
+				expect(new Set(reported)).toEqual(new Set(held.map((task) => task.id)));
+			});
+
+			it('reports nothing for a job that still had a free slot', async () => {
+				const limited = await createLimitedJob(1);
+				const stale = await createTask({
+					jobId: limited.id,
+					missedAfter: new Date(Date.now() - 30_000),
+				});
+
+				const result = await taskRepository.retireMissedPending(10);
+
+				expect(result.retired).toBe(1);
+				expect(result.heldByConcurrencyLimit).toEqual([]);
+				expect((await reload(stale.id)).status).toBe('missed');
+			});
+
+			it('reports nothing for a job that has no limit at all', async () => {
+				await createTask({ missedAfter: new Date(Date.now() - 30_000) });
+
+				const result = await taskRepository.retireMissedPending(10);
+
+				expect(result.retired).toBe(1);
+				expect(result.heldByConcurrencyLimit).toEqual([]);
 			});
 		});
 	});
