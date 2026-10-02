@@ -447,5 +447,49 @@ describe('AgentEvalsSection', () => {
 			);
 			expect(store.startRun).toHaveBeenCalledWith(PROJECT_ID, AGENT_ID, 'committed-1');
 		});
+
+		it('rolls back the draft dataset when a case fails to save, before the run is ever started', async () => {
+			const { getByTestId, store } = await renderPreview(
+				[{ input: 'case 1', whatToCheck: 'check 1', scenario: 'A' }],
+				(store) => {
+					vi.mocked(store.createDraftDataset).mockResolvedValue({
+						datasetId: 'committed-1',
+						dataTableId: 'dt-committed',
+						columnMapping: { input: 'input', criteria: 'criteria' },
+					});
+					vi.mocked(store.createCase).mockRejectedValue(new Error('row insert failed'));
+					vi.mocked(store.deleteDataset).mockResolvedValue(undefined as never);
+				},
+			);
+
+			await userEvent.click(getByTestId('stub-add-checks'));
+			await flushPromises();
+
+			expect(store.deleteDataset).toHaveBeenCalledWith(PROJECT_ID, AGENT_ID, 'committed-1');
+			expect(store.startRun).not.toHaveBeenCalled();
+		});
+
+		// Once `startRun` has been sent, a failure is ambiguous — the request may
+		// have reached the server and seeded a real run before the response itself
+		// failed. Rolling back here would delete that run along with the dataset.
+		it('does not roll back the dataset when only starting the run fails', async () => {
+			const { getByTestId, store } = await renderPreview(
+				[{ input: 'case 1', whatToCheck: 'check 1', scenario: 'A' }],
+				(store) => {
+					vi.mocked(store.createDraftDataset).mockResolvedValue({
+						datasetId: 'committed-1',
+						dataTableId: 'dt-committed',
+						columnMapping: { input: 'input', criteria: 'criteria' },
+					});
+					vi.mocked(store.createCase).mockResolvedValue(null);
+					vi.mocked(store.startRun).mockRejectedValue(new Error('timeout'));
+				},
+			);
+
+			await userEvent.click(getByTestId('stub-add-checks'));
+			await flushPromises();
+
+			expect(store.deleteDataset).not.toHaveBeenCalled();
+		});
 	});
 });

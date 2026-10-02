@@ -317,6 +317,134 @@ describe('AgentEvalChecksPanel', () => {
 		expect(store.loadMoreResults).toHaveBeenCalledTimes(1);
 	});
 
+	// `openRun` replaces `results`/`run` wholesale once it resolves — pagination
+	// starting before that lands (or continuing for a run the view has since
+	// moved off of) would race that replace and corrupt the page.
+	it('does not start pagination before openRun resolves', async () => {
+		const pinia = createTestingPinia({ stubActions: true });
+		const store = useAgentEvalsStore();
+		vi.mocked(store.getReview).mockReturnValue({
+			run: null,
+			results: [result('c1', 'success')],
+			resultsCount: 3,
+			ratingsByResultId: {},
+			pendingByResultId: {},
+			draftsByResultId: {},
+			counts: null,
+			loading: false,
+			loadingMore: false,
+		});
+		vi.mocked(store.isRunInFlight).mockReturnValue(false);
+		vi.mocked(store.isStartingRun).mockReturnValue(false);
+		let resolveOpenRun!: () => void;
+		vi.mocked(store.openRun).mockImplementation(
+			async () =>
+				await new Promise<void>((resolve) => {
+					resolveOpenRun = resolve;
+				}),
+		);
+		vi.mocked(store.loadMoreResults).mockResolvedValue(undefined);
+
+		renderComponent({ pinia });
+		await new Promise((resolve) => setTimeout(resolve, 10));
+		expect(store.loadMoreResults).not.toHaveBeenCalled();
+
+		resolveOpenRun();
+		await vi.waitFor(() => expect(store.loadMoreResults).toHaveBeenCalled());
+	});
+
+	it('stops paginating the old run once the run switches, instead of racing the new run', async () => {
+		const pinia = createTestingPinia({ stubActions: true });
+		const store = useAgentEvalsStore();
+
+		const run1All = [result('a1', 'success'), result('a2', 'success'), result('a3', 'success')];
+		// Also has an unloaded page, so a generation-unaware stale loop has
+		// somewhere to (wrongly) go once `props.runId` flips underneath it.
+		const run2All = [result('b1', 'success'), result('b2', 'success')];
+		const run1Loaded = ref(1);
+		const run2Loaded = ref(1);
+		const baseReview = {
+			run: null,
+			ratingsByResultId: {},
+			pendingByResultId: {},
+			draftsByResultId: {},
+			counts: null,
+			loading: false,
+			loadingMore: false,
+		};
+		vi.mocked(store.getReview).mockImplementation((runId: string) =>
+			runId === 'run-1'
+				? {
+						...baseReview,
+						results: run1All.slice(0, run1Loaded.value),
+						resultsCount: run1All.length,
+					}
+				: {
+						...baseReview,
+						results: run2All.slice(0, run2Loaded.value),
+						resultsCount: run2All.length,
+					},
+		);
+		vi.mocked(store.isRunInFlight).mockReturnValue(false);
+		vi.mocked(store.isStartingRun).mockReturnValue(false);
+
+		// run-2's openRun is held pending, so pagination racing ahead of it is
+		// directly observable: anything touching run-2 before this resolves is
+		// the bug cubic flagged.
+		let resolveRun2Open!: () => void;
+		vi.mocked(store.openRun).mockImplementation(async (_projectId, _agentId, runId) => {
+			if (runId === 'run-1') return;
+			await new Promise<void>((resolve) => {
+				resolveRun2Open = resolve;
+			});
+		});
+
+		let releaseSecondCall!: () => void;
+		const secondCallGate = new Promise<void>((resolve) => {
+			releaseSecondCall = resolve;
+		});
+		let run1Calls = 0;
+		const run2CallsBeforeOpen: number[] = [];
+		let run2Open = false;
+		vi.mocked(store.loadMoreResults).mockImplementation(async (_projectId, _agentId, runId) => {
+			if (runId === 'run-2') {
+				if (!run2Open) run2CallsBeforeOpen.push(run2Loaded.value);
+				run2Loaded.value = Math.min(run2Loaded.value + 1, run2All.length);
+				return;
+			}
+			run1Calls++;
+			if (run1Calls === 1) {
+				run1Loaded.value = 2; // Makes progress, so the loop wants a 2nd page.
+				return;
+			}
+			// The 2nd call for run-1 is held pending — the run switch below happens
+			// while it's still in flight.
+			await secondCallGate;
+			run1Loaded.value = 3;
+		});
+
+		const { rerender } = renderComponent({ pinia });
+		await vi.waitFor(() => expect(run1Calls).toBe(2));
+
+		await rerender({ runId: 'run-2' });
+		await vi.waitFor(() =>
+			expect(store.openRun).toHaveBeenCalledWith('project-1', 'agent-1', 'run-2'),
+		);
+
+		// Let the stale run-1 call resolve while run-2's openRun is still pending.
+		releaseSecondCall();
+		await new Promise((resolve) => setTimeout(resolve, 10));
+
+		// The stale run-1 loop neither asked run-1 for a 3rd page nor jumped to
+		// paginating run-2 ahead of its openRun.
+		expect(run1Calls).toBe(2);
+		expect(run2CallsBeforeOpen).toEqual([]);
+
+		run2Open = true;
+		resolveRun2Open();
+		await vi.waitFor(() => expect(run2Loaded.value).toBe(run2All.length));
+	});
+
 	// Marking the last needs-work row "actually fine" makes `filteredRows` fall
 	// back to unfiltered already (guarded by the live count), but without also
 	// resetting `statusFilter` itself, no pill would read as selected even

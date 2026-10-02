@@ -171,14 +171,27 @@ function onActuallyFine(resultId: string) {
 	manualStatusOverrides.value = { ...manualStatusOverrides.value, [resultId]: 'pass' };
 }
 
+// Bumped by every `load()` call (including a run switch), and checked after
+// every await in both `load` and `loadRemainingResults` — a response that
+// lands after the run has moved on is discarded rather than patched into (or
+// read back from) a review nobody is looking at anymore, and a background
+// pagination loop for the old run stops instead of racing `openRun`'s own
+// wholesale replace of `results` for the new one.
+let loadGeneration = 0;
+
 const load = async () => {
+	const generation = ++loadGeneration;
 	store.stopPollingRun();
 	try {
 		await store.openRun(props.projectId, props.agentId, props.runId);
+		if (generation !== loadGeneration) return;
 		if (store.isRunInFlight(props.runId)) {
 			store.startPollingRun(props.projectId, props.agentId, props.runId);
+		} else {
+			await loadRemainingResults(generation);
 		}
 	} catch (error) {
+		if (generation !== loadGeneration) return;
 		toast.showError(error, i18n.baseText('agents.builder.agentEvals.review.loadError'));
 	}
 };
@@ -195,17 +208,21 @@ const onLoadMore = async () => {
 // from the loaded page — left to manual "Show more cases" clicks, a run
 // bigger than one page would under-count every pill and hide matching rows
 // until the reviewer paged them all in by hand. Pulls in the rest on its own
-// once the run has settled (a run still in flight gets this for free the
-// moment polling's own re-reads catch it up), so counts and filtering always
-// reflect the whole run.
+// once the run has settled, so counts and filtering always reflect the whole
+// run. Only ever called with the `load()` call that opened the run it's
+// paging — never reactively — so it can't start before that `openRun` has
+// resolved, or page a run that isn't the one on screen anymore.
 let loadingRemaining = false;
-const loadRemainingResults = async () => {
+const loadRemainingResults = async (generation: number) => {
+	// A flaky in-flight read flipping twice in quick succession could otherwise
+	// invoke this a second time before the first loop notices anything.
 	if (loadingRemaining) return;
 	loadingRemaining = true;
 	try {
 		let loadedCount = results.value.length;
-		while (!inFlight.value && hasMore.value) {
+		while (generation === loadGeneration && !inFlight.value && hasMore.value) {
 			await store.loadMoreResults(props.projectId, props.agentId, props.runId);
+			if (generation !== loadGeneration) return;
 			// A call that doesn't grow the page can't ever satisfy `hasMore` —
 			// stop rather than spin forever against a backend (or test double)
 			// that keeps reporting more without actually returning any.
@@ -213,6 +230,7 @@ const loadRemainingResults = async () => {
 			loadedCount = results.value.length;
 		}
 	} catch (error) {
+		if (generation !== loadGeneration) return;
 		toast.showError(error, i18n.baseText('agents.builder.agentEvals.review.loadError'));
 	} finally {
 		loadingRemaining = false;
@@ -221,7 +239,12 @@ const loadRemainingResults = async () => {
 
 onMounted(load);
 watch(() => props.runId, load);
-watch([inFlight, hasMore], () => void loadRemainingResults(), { immediate: true });
+// Only the in-flight → settled transition — a run that was already settled
+// when `load()` opened it is paginated there directly; this covers the other
+// case, where polling is what first learns the run has finished.
+watch(inFlight, (isInFlight, wasInFlight) => {
+	if (wasInFlight && !isInFlight) void loadRemainingResults(loadGeneration);
+});
 onBeforeUnmount(store.stopPollingRun);
 </script>
 
