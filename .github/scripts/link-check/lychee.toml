@@ -29,8 +29,7 @@ exclude_path = [
 	'/__tests?__/',
 	'/(test|tests|fixtures|e2e)/',
 	'test-helpers\.ts$',
-	'^packages/testing/',
-	'^packages/@n8n/benchmark/',
+	'^packages/quality/',
 	# These comments contain URLs that lychee cannot parse, which fails the run.
 	'^packages/@n8n/engine/src/database/data-source\.ts$',
 	'^packages/@n8n/utils/src/scrub-secrets\.ts$',
