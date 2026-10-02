@@ -916,6 +916,7 @@ describe('ActiveExecutions', () => {
 			workerActiveExecutions.attachWorkflowExecution(enqueuedExecutionId, workflowExecution, {
 				isQueueJob: true,
 			});
+			const cancel = vi.spyOn(workflowExecution, 'cancel');
 			workerActiveExecutions.finalizeExecution(inProcessExecutionId, fullRunData);
 
 			const outcome = await Promise.race([
@@ -925,6 +926,7 @@ describe('ActiveExecutions', () => {
 
 			expect(outcome).toBe('shutdown');
 			expect(workerActiveExecutions.getActiveExecutions()).toHaveLength(0);
+			expect(cancel).not.toHaveBeenCalled();
 		});
 	});
 });
