@@ -570,7 +570,10 @@ export class ScalingService {
 	 */
 	private registerWorkerListeners(queue: JobQueue) {
 		queue.on('completed', (job: Job) => this.handlerSeen.delete(String(job.id)));
-		queue.on('failed', (job: Job) => this.handlerSeen.delete(String(job.id)));
+		queue.on('failed', (job: Job | null) => {
+			if (job === null) return;
+			this.handlerSeen.delete(String(job.id));
+		});
 
 		queue.on('global:progress', (jobId: JobId, msg: unknown) => {
 			if (!this.isJobMessage(msg)) return;

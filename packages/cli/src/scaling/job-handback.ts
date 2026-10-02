@@ -23,7 +23,9 @@ export async function returnUnstartedJobsToQueue(
 	isStarted: (jobId: string) => boolean,
 	onError?: (jobId: string, error: unknown) => void,
 ): Promise<string[]> {
-	const activeJobs = await queue.getActive();
+	const activeJobs = (await queue.getActive()).filter(
+		(job): job is Job => job !== null && job !== undefined,
+	);
 
 	const pipeline = queue.client.pipeline();
 	for (const job of activeJobs) pipeline.get(job.lockKey());
