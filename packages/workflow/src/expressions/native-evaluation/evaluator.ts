@@ -175,15 +175,21 @@ function assertPreflightSize(receiver: unknown, method: string, args: unknown[])
 	} else if (method === 'flat' && isArray(receiver)) {
 		const depth = args.length === 0 ? 1 : toNum(args[0]);
 		upperBound = flatSize(receiver, depth);
-	} else if (method === 'replaceAll' && typeof receiver === 'string') {
+	} else if ((method === 'replace' || method === 'replaceAll') && typeof receiver === 'string') {
 		// A missing replacement inserts the string "undefined".
 		const replacement = args.length < 2 ? 'undefined' : toStr(args[1]);
 
-		// `$&`, `$\``, `$'` splice match context into every replacement, so
-		// the result is not bounded by the replacement's length.
-		if (replacement.includes('$')) throw new EngineFallbackError();
+		// Three replacement tokens expand: `$&`, `$\`` and `$'` insert match
+		// context, so the output is not bounded by the replacement's length.
+		// `$$` is an escaped literal `$`; strip those pairs first so that `$$&`
+		// (a literal "$&") stays native while `$$$&` (a literal "$" then `$&`)
+		// bails. With a string pattern every other `$` is literal.
+		if (/\$[&`']/.test(replacement.replaceAll('$$', ''))) throw new EngineFallbackError();
 
-		upperBound = (receiver.length + 1) * (replacement.length + 1);
+		upperBound =
+			method === 'replace'
+				? receiver.length + replacement.length
+				: (receiver.length + 1) * (replacement.length + 1);
 	} else if (method === 'join' && isArray(receiver)) {
 		// Only an undefined separator means ","; null joins with "null".
 		const separator = args[0] === undefined ? ',' : toStr(args[0]);

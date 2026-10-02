@@ -312,6 +312,24 @@ describe('Expression - fast native evaluation parity', () => {
 			);
 		});
 
+		// A single replacement with context tokens can expand to many times the
+		// receiver, so replace bails like replaceAll before anything is built.
+		// Receiver and expansion both stay under the size cap here, so only the
+		// token check can decline; a token-free twin of the same size is handled.
+		test('replace bails on context tokens before allocating', () => {
+			const text = 'a'.repeat(1_000) + 'b';
+			const context = '$`'.repeat(400);
+			const plain = 'x'.repeat(800);
+			expect(
+				nativeOn('{{ $json.text.replace("b", $json.to) }}', { $json: { text, to: context } }),
+			).toEqual({
+				handled: false,
+			});
+			expect(
+				nativeOn('{{ $json.text.replace("b", $json.to).length }}', { $json: { text, to: plain } }),
+			).toEqual({ handled: true, value: 1_800 });
+		});
+
 		test('an inherited member below the root hands off to the engine', () => {
 			const $json = { item: Object.create({ inherited: 1 }) as object };
 			expect(nativeOn('{{ $json.item.inherited }}', { $json })).toEqual({ handled: false });
