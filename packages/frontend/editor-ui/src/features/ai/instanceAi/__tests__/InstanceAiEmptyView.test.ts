@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { defineComponent, h, nextTick, reactive, ref } from 'vue';
+import { computed, defineComponent, h, nextTick, reactive, ref } from 'vue';
 import { USER_TYPED_MESSAGE, type InstanceAiPrefillType } from '../prefills';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { createTestingPinia } from '@pinia/testing';
@@ -31,6 +31,7 @@ const {
 	workflowPreviewSuggestionsComponent,
 	cloudPlanStoreMock,
 	appSettingsStoreMock,
+	agentsN8nChatVariant,
 	replaceMock,
 	showErrorMock,
 	telemetryTrack,
@@ -81,6 +82,7 @@ const {
 		isCloudDeployment: false,
 		settings: { releaseChannel: 'stable' },
 	},
+	agentsN8nChatVariant: { value: undefined as string | undefined },
 	promptSuggestionsV2: Array.from({ length: 12 }, (_, index) => ({
 		type: 'prompt',
 		id: `v2-suggestion-${index + 1}`,
@@ -256,6 +258,23 @@ vi.mock('@n8n/stores/settings.store', () => ({
 
 vi.mock('@n8n/stores/useRootStore', () => ({
 	useRootStore: () => ({ pushRef: 'test-push-ref' }),
+}));
+
+vi.mock('@/features/agents/composables/useAgentsN8nChatFlag', () => ({
+	// Wrapped in `computed`: the component's template reads this composable's return
+	// value directly, relying on Vue's template ref auto-unwrap — a plain `{ value }`
+	// object would always be truthy there.
+	useAgentsN8nChatVariant: () => ({
+		isVariantA: computed(() => agentsN8nChatVariant.value === 'variant-a'),
+		isVariantB: computed(() => agentsN8nChatVariant.value === 'variant-b'),
+	}),
+}));
+
+vi.mock('@/features/agents/n8nChatPage/components/N8nChatAgentSection.vue', () => ({
+	default: {
+		name: 'N8nChatAgentSectionStub',
+		template: '<div data-test-id="n8n-chat-agent-section-stub" />',
+	},
 }));
 
 vi.mock('uuid', () => ({
@@ -1310,5 +1329,49 @@ describe('InstanceAiEmptyView', () => {
 		expect(store.getOrCreateRuntime).not.toHaveBeenCalled();
 		expect(thread.sendMessage).not.toHaveBeenCalled();
 		expect(replaceMock).not.toHaveBeenCalled();
+	});
+
+	describe('n8n Chat variant A', () => {
+		beforeEach(() => {
+			agentsN8nChatVariant.value = undefined;
+		});
+
+		it('renders the agent section with no suggestion chips and the default placeholder', () => {
+			agentsN8nChatVariant.value = 'variant-a';
+
+			const { getByTestId } = renderView();
+
+			expect(getByTestId('n8n-chat-agent-section-stub')).toBeInTheDocument();
+			expect(getByTestId('instance-ai-input-suggestions')).toHaveTextContent('unset');
+			expect(getByTestId('instance-ai-input-suggestions-component')).toHaveTextContent('unset');
+			expect(getByTestId('instance-ai-input-placeholder-key')).toHaveTextContent(
+				'experiments.instanceAiWorkflowPreviewSuggestions.input.placeholder',
+			);
+		});
+
+		it('forces the default layout, even with the proactive starter and split-layout experiments on', () => {
+			agentsN8nChatVariant.value = 'variant-a';
+			experimentMocks.proactiveAgentEnabled.value = true;
+			experimentMocks.splitBelowInputVariant.value = true;
+
+			const { getByTestId, queryByTestId } = renderView();
+
+			expect(queryByTestId('instance-ai-proactive-starter')).not.toBeInTheDocument();
+			expect(queryByTestId('instance-ai-split-empty-state')).not.toBeInTheDocument();
+			expect(getByTestId('n8n-chat-agent-section-stub')).toBeInTheDocument();
+			expect(getByTestId('instance-ai-empty-state')).toBeInTheDocument();
+		});
+
+		it.each([undefined, 'variant-b'])(
+			'does not render the agent section for variant %s, leaving the default suggestions in place',
+			(variant) => {
+				agentsN8nChatVariant.value = variant;
+				const { queryByTestId, getByTestId } = renderView();
+
+				expect(queryByTestId('n8n-chat-agent-section-stub')).not.toBeInTheDocument();
+				expect(getByTestId('instance-ai-input-suggestions')).toHaveTextContent('4');
+				expect(getByTestId('instance-ai-input-suggestions-component')).toHaveTextContent('set');
+			},
+		);
 	});
 });
