@@ -1,0 +1,13 @@
+package n8n:js-guest@1.0.0;
+
+/// The code of the bundle that the generic JS guest runs. The sidecar reads it from the file
+/// that the host verified, so the host never answers this call. It is not a capability.
+interface bundle {
+    source: func() -> string;
+}
+
+/// The action world of the Node Contract, for a JS bundle.
+world action-js {
+    include n8n:node-contract/action-bundle@2.5.0;
+    import bundle;
+}

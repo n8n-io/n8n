@@ -558,7 +558,11 @@ const withParam = (request: HttpRequest, param: PageParam, value: string | numbe
  * The outputs of a `list` binding, page by page. The host checks each page against `response`,
  * applies the `paging` input, and stops at the end of the list or at a repeated cursor.
  */
-function listItems<I>(http: Http, binding: ListBinding<I, string, AnySchema, unknown>, input: I) {
+export function listItems<I>(
+	http: Http,
+	binding: ListBinding<I, string, AnySchema, unknown>,
+	input: I,
+) {
 	const style = binding.pages;
 	const first = requestOf(binding, input);
 	const linked = style?.style === 'link';
@@ -1533,22 +1537,27 @@ export function evaluateBundle(code: string, nodeContract: NodeContractVersion):
 	return contract;
 }
 
-/** The bundle of a frozen version, after its Node Contract version and its hash are checked. */
-export async function verifiedBundleOf({ manifest, readBundle }: FrozenVersion) {
+/** The code of a frozen version, after its Node Contract version and its hash are checked. */
+export async function verifiedCodeOf({ manifest, readBundle }: FrozenVersion) {
 	assertNodeContract(manifest);
-	const { id, semver, nodeContract, bundleHash } = manifest;
+	const { id, semver, bundleHash } = manifest;
 	const code = await readBundle();
 	if (sha256(code) !== bundleHash) {
 		throw new UnexpectedError(`The bundle of ${id}@${semver} does not match ${bundleHash}`);
 	}
-	return evaluateBundle(code, nodeContract);
+	return code;
 }
 
+/** The bundle of a frozen version, after its Node Contract version and its hash are checked. */
+export async function verifiedBundleOf(frozen: FrozenVersion) {
+	return evaluateBundle(await verifiedCodeOf(frozen), frozen.manifest.nodeContract);
+}
+
+/** The executor of the action interface for one node execution. */
+export type Executor = (host: ExecutorHost) => Promise<INodeExecutionData[][]>;
+
 /** Executors by bundle hash and HEAD bundle hash. A bundle loads on its first execution only. */
-const executors = new Map<
-	string,
-	Promise<(host: ExecutorHost) => Promise<INodeExecutionData[][]>>
->();
+const executors = new Map<string, Promise<Executor>>();
 
 /**
  * n8n has one credential type for each name and signs with it, so the hosts of a credential
@@ -1565,12 +1574,23 @@ export function withCredentialHostsOf(head: Action | Trigger, action: Action): A
 	return { ...action, node: { ...action.node, credential: { ...credential, types } } };
 }
 
-async function loadExecutor(frozen: FrozenVersion, head: FrozenVersion) {
+/** The executor of a frozen version with its bundle in this process. `head` gives the credential hosts. */
+export async function loadExecutor(frozen: FrozenVersion, head: FrozenVersion): Promise<Executor> {
 	const action = await verifiedBundleOf(frozen);
 	if ('kind' in action) throw new UnexpectedError(`${action.id} is a trigger, not an action`);
 	if (frozen.manifest.bundleHash === head.manifest.bundleHash) return executorOf(action);
 	return executorOf(withCredentialHostsOf(await verifiedBundleOf(head), action));
 }
+
+/** Makes the executor of a frozen version, e.g. in a sandbox. The default is `loadExecutor`. */
+export type ExecutorLoader = (frozen: FrozenVersion, head: FrozenVersion) => Promise<Executor>;
+
+// One slot: the host sets it once at start, as the version loader.
+const executorLoader = new Map<'loader', ExecutorLoader>();
+
+export const setExecutorLoader = (loader: ExecutorLoader) => {
+	executorLoader.set('loader', loader);
+};
 
 /**
  * Picks the version a node runs. `head` is the bundled version of the node's major. The
@@ -1604,7 +1624,7 @@ async function versionExecutorOf(context: NodeContext, head: FrozenVersion) {
 	const key = `${bundleHash}:${head.manifest.bundleHash}`;
 	const executor =
 		executors.get(key) ??
-		loadExecutor(frozen, head).catch((error: unknown) => {
+		(executorLoader.get('loader') ?? loadExecutor)(frozen, head).catch((error: unknown) => {
 			executors.delete(key);
 			throw error;
 		});

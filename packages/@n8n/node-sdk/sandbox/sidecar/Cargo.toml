@@ -1,0 +1,17 @@
+[package]
+name = "n8n-sandbox"
+version = "0.1.0"
+edition = "2021"
+publish = false
+description = "Runs one Node Contract WASM component in wasmtime and speaks spec/json-rpc.md on stdio"
+
+[dependencies]
+base64 = "0.22"
+getrandom = "0.2"
+serde_json = { version = "1", features = ["preserve_order"] }
+sha2 = "0.10"
+wasmtime = { version = "47", default-features = false, features = ["cranelift", "component-model", "runtime", "std", "parallel-compilation"] }
+wit-parser = { version = "0.252", default-features = false, features = ["std"] }
+
+[profile.release]
+debug = false

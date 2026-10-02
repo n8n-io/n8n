@@ -1,100 +1,149 @@
-# Sandboxed execution of contract actions (plan)
+# Sandboxed execution of contract actions
 
-Status: plan. Only the egress and credential hosts check is built. Research: lane S1, with the
-investigation `n8n-investigations/sandboxed-step-runtime` (SSR).
+Status: built for action bundles. The runtime choice comes from a benchmark of node:vm,
+isolated-vm, WASM components and a task-runner process on real bundles, with the escape tests
+below. Only the WASM component in a wasmtime sidecar stopped every escape with a clear error and
+enforced CPU, memory and wall-clock limits itself.
 
 ## Goal
 
-A node can bring any dependency, and later another language, and still run safely. First-party
-bundles run in-process. Community and AI-generated bundles run in a sandbox.
+A node can bring any dependency, and later another language, and still run safely. It is bound
+only by its permissions: the imports of its world and its manifest. First-party bundles can run
+in-process. Community and AI-generated bundles run in the sandbox.
 
-## What the contract already gives
+## Model: the world is the permission set
 
-- `run()` gets only `input`, `http`, `log` and `limits` (`src/define.ts`, `RunContext`).
-- All network I/O goes through `http.request`. The host applies the credential.
-- Secrets never enter `run()`. The guest sees credential settings only.
-- The executor owns parameters, defaults, validation, retries, limits, pairing and continue on fail.
-- Bundles are self-contained (esbuild inlines dependencies), hashed, signed (ed25519 manifest) and
-  declare the Node Contract version they need (`nodeContract`, for example `2.1.0`, see
-  [node-contract.md](node-contract.md)). The interface of each kind is defined in WIT
-  (`spec/wit/`). `spec/json-rpc.md` gives its JSON-RPC form for process and container
-  runtimes. The host runs the versions in `N8N_NODE_CONTRACT_RANGE` and runs @1 bundles through
-  an adapter (`src/action-api-v1.ts`).
-- `replayFixtures` replays fixtures through any `ExecutorHost`.
+- The bundle has no ambient authority. It reaches only the imports of its world
+  (`spec/wit/action.wit`, `world action-bundle`). There is no network, file system, clock,
+  process or environment, except through an import.
+- The manifest grants the optional imports: `imports` (data tables, code, wait, the input of an
+  item), `binary()` fields, `supplied()` fields. A call to an import that is not granted stops
+  the run with `The bundle called <method>, which its manifest does not grant`. The host never
+  sees the call.
+- All network I/O goes through the host `http` import: egress hosts, credential hosts, SSRF
+  policy, redirects, retries and `maxRequests` (see "Egress and credential hosts").
+- The host checks every output item against the manifest output, and every index and route.
+- The runtime enforces CPU time, memory, wall clock and message size. The executor enforces
+  requests and items.
+- The same contract and the same host checks apply to first-party and community bundles. An
+  in-process bundle gets the same `RunContext`, so its host checks are the same; only the
+  isolation is weaker.
 
-## What blocks it
+## Runtime
 
-1. No isolation. The frozen loader uses `vm.compileFunction` in the n8n process. A bundle can reach
-   `globalThis`, `process` and global `fetch`. Global `fetch` skips the SSRF policy and the request cap.
-2. `node:*` imports fail only at load time. The publish gate does not lint them.
-3. `fullResponse` returns all response headers.
-4. There is no CPU or memory limit.
+```mermaid
+flowchart LR
+  E[executorOf: validation, egress, credentials, limits, pairing] -- run ctx --> S[src/sandbox.ts]
+  S -- JSON-RPC on stdio --> W[n8n-sandbox: wasmtime]
+  W -- WIT calls --> G[guest.wasm: StarlingMonkey + bundle JS]
+  G -- imports --> W -- granted imports --> S -- ctx.http, ctx.dataTables, ... --> E
+```
 
-## Options
+- `sandbox/sidecar` (Rust, wasmtime 47): one process for each node execution, so two executions
+  share no state. It speaks `spec/json-rpc.md`. It reads `spec/wit` with wit-parser and links
+  each import of the world with a dynamic host function, so one sidecar serves every world and
+  version. The command line holds the component, the world, the grants and the limits; the
+  JSON-RPC stream holds only the protocol. `wasi:random` is linked to the OS random source.
+- `sandbox/guest.ts`: one generic guest component, `guest.wasm`, for every JS bundle. n8n builds
+  and signs it. It evaluates the bundle, maps `RunContext` to the imports, and runs the `request`
+  and `list` bindings with the SDK code. The guest gets its bundle code from the sidecar through
+  `n8n:js-guest/bundle` (`sandbox/wit/guest.wit`). That interface is not a capability and the host
+  never answers it. The bundle runs in the same JS realm as the guest, so the guest is not a trust
+  boundary: the sidecar and the host are.
+- `src/sandbox.ts`: `sandboxExecutorLoader(options, inProcess)` gives the `ExecutorLoader` of
+  `setExecutorLoader` (`src/runtime.ts`). A bundle that `inProcess` accepts (for example one
+  signed with the first-party key) runs through `loadExecutor` in this process. Every other bundle
+  runs in the sandbox. The sandboxed action takes its contract from the signed manifest; the
+  host runs no bundle code. `replayFixtures` takes the same action and executor, so publish can
+  replay the fixtures in the sandbox.
+- The credential types of a sandboxed action come from the host (`options.credentialType`) by
+  the names in the manifest. Their hosts and base URLs never come from the bundle. The bundle
+  gives only the node name, the scopes text and the node `baseUrl`. The host refuses a bundle
+  whose `baseUrl` host is not an `egress` host or a credential host. An action without `egress`
+  reaches only the hosts of its base URLs; with no base URL, it reaches no host.
+- The host verifies the bundle hash and writes the bundle to the cache, named by its hash. The
+  sidecar checks the hash again when it reads it. The compiled guest (`.cwasm`) is cached by the
+  guest digest and the engine config.
 
-| Option | Isolation | Warm cost per item | Dependencies and languages |
+## Limits
+
+| Limit | Default | Enforced by | Error |
 |---|---|---|---|
-| `node:vm` | weak | ~0.2 µs | JS |
-| isolated-vm in the task runner | medium to strong | tens of µs (unverified) | JS, pure npm |
-| WASM component in a wasmtime sidecar | strong: no ambient authority, imports are the only permissions, CPU and memory limits | ~20 µs in batches of 100 | JS (89 of the top 100 npm packages), Python, Rust |
-| Task-runner process | OS process | IPC per batch | JS, Python, native addons |
-| gVisor or microVM | strongest | milliseconds | any, including native |
+| CPU time of the guest per node execution, host calls not counted | 30 s | sidecar (epoch) | `The bundle used its CPU time of … ms and was stopped` |
+| Memory | 256 MB | sidecar (`ResourceLimiter`) | `The bundle reached its memory limit of … MB and was stopped` |
+| Wall clock per node execution | 10 min | host (kills the sidecar) | `… ran longer than … ms and was stopped` |
+| One message from the sidecar | 64 MB | host | `… gave a message larger than … bytes` |
+| Requests, items | `maxRequests`, `maxItems` | executor | as in-process |
 
-S1 probe (SSR sidecar, `http-enrich` step, noisy macOS host):
+A trap stops the component: every later call of the execution gets the same error.
 
-- Load: 3.7 s cold, 107 ms cached.
-- One host HTTP call per item: 88 to 149 µs per item in batches of 100. A real API call takes 50 to
-  500 ms, so the sandbox adds less than 1 % to an HTTP-bound action.
-- The first call on a fresh instance costs 0.4 to 0.9 ms. The executor must send batches of items,
-  not one call per item.
-- All 4,402 host calls carried only the secret name. The guest saw no token.
+## Escape tests (`src/__tests__/sandbox.test.ts`)
 
-## Safe model: capabilities
+| Bundle tries | Result |
+|---|---|
+| global `fetch` to a local server | `fetch is not available in the sandbox. Use http.request.`; the server gets nothing |
+| `process.env` | `globalThis.process is undefined` |
+| `import('node:fs')` | the JS engine stops (trap) |
+| `setTimeout` with a late request | `setTimeout is not available in the sandbox`; the host gets no request |
+| endless loop | stopped at the CPU limit |
+| memory blow-up | stopped at the memory limit |
+| a data table without `imports: ['dataTables']` | `The bundle called data-tables.open, which its manifest does not grant` |
+| a request outside `egress` | the host refuses it (`Host not allowed: …`); no request is sent |
+| a request with no `egress` and no base URL | the host refuses it (`… may send requests to no host …`); no request is sent |
+| a credential type that claims other hosts | the host uses its own credential type and refuses the request; no request is sent |
+| a node `baseUrl` outside `egress` and the credential hosts | the host refuses the bundle at load |
+| `Object.prototype` pollution | stays in the guest realm |
+| `Math.random`, `crypto` | different values in each run |
 
-- The host interface is the only capability. The guest gets no ambient network, filesystem or clock.
-- Network goes only through host `http`, with the SSRF policy and credential injection on the host.
-- The contract declares egress hosts (`egress`, see "Egress and credential hosts"). The host
-  enforces them.
-- Binary data passes as handles, not as files.
-- The host sets CPU time, memory, wall clock and output size limits.
-- The instance policy decides where a bundle runs. A bundle signed with a first-party key runs
-  in-process. Every other bundle runs in the sandbox.
-- A custom credential `authenticate` sees raw secrets. It cannot be community code without its own
-  sandbox.
+## Coverage and cost
+
+`versions.test.ts` of nodes-base-next replays the fixtures of every frozen action in the sandbox.
+69 of 86 bundles pass. The sandbox refuses the others with a clear error: 6 binary-data actions,
+3 AI roots with providers, 5 providers, and `notion.databasePage.getAll`, whose `\p{…}` regex
+stops the JS engine (StarlingMonkey has no Unicode data). The 2 triggers have no sandbox world yet.
+
+Measured on macOS arm64 (load 9 to 12), medians, for `slack.message.send`,
+`gmail.message.getAll`, `notion.user.get` and `core.set`:
+
+| | in-process | sandbox |
+|---|---|---|
+| first load ever (compile the guest) | — | 2.0 to 2.2 s once per guest and machine |
+| load of a bundle (`describe`) | 1 to 4 ms | 13 to 17 ms once per bundle |
+| node execution with 1 item | 0.1 to 0.2 ms | 12 to 15 ms (a new sidecar and instance) |
+| each more item | 10 to 100 µs | 0.2 ms (no request) to 1.1 ms (4 requests) |
+
+A real API call takes 50 to 500 ms, so the sandbox adds little to an HTTP-bound action.
+
+## Not built yet
+
+- Binary data (`binary`), providers (`supplied`, the provider world), triggers (the trigger
+  world), credentials (the credential world) and lookups in the sandbox. The sidecar is generic:
+  each needs host answers in `src/sandbox.ts` and guest code in `sandbox/guest.ts`.
+- Node Contract 1.x bundles do not run in the sandbox.
+- `migrate` has no export in the action world, so a sandboxed replay replays executions only.
+- The node `baseUrl` of a sandboxed bundle comes from its `describe()`. Its host must be an
+  `egress` host or a credential host (backlog E7).
+- `effect: read` does not limit the HTTP methods (E4): some reads send `POST`, for example a
+  Notion query. All response headers reach the bundle (E5).
+- Release: build `n8n-sandbox` per platform in CI and sign it with `guest.wasm`. Precompile the
+  guest at install. `pnpm sandbox:build` is the dev step; nothing downloads at run time.
+- A pool of started sidecars would remove most of the 12 to 15 ms per node execution.
 
 ## Languages
 
-A Python or Rust action implements the same WIT interface against the same JSON Schemas. The codegen
-for the AI builder does not change. The same fixtures prove parity across languages.
-
-## Phases
-
-| Phase | Work | Effort |
-|---|---|---|
-| 0 | Publish-gate lint: no `node:*`, no free `fetch`, `process` or `globalThis`. Wall-clock cap. Redact auth headers in `fullResponse`. Host-enforced egress hosts are built (see below). | ~1 week |
-| 1 | A JS shim for the WIT interfaces (`spec/wit/`), so current bundles run unchanged. A `SandboxRuntime` seam next to the bundle loader. `replayFixtures` runs through the seam. | 2 to 3 weeks |
-| 2 | A wasmtime sidecar for untrusted bundles, in the task-runner process family. Build: frozen bundle, then ComponentizeJS (or QuickJS), then sign the component digest. | 3 to 4 weeks |
-| 3 | Python and Rust actions. A gVisor or microVM tier for native dependencies, as an admin opt-in. | later |
-
-## Decisive experiments
-
-1. Run one real frozen action (a paginated read) through the sidecar with its fixtures. Pass: less
-   than 1 ms per item including one HTTP call, and the same output as in-process.
-2. An escape suite: global `fetch`, an echo of the auth header, `timeoutMs: 1e9`, a 100 MB output item, and
-   the SSR malicious steps.
-3. Linux amd64 numbers in queue mode. SSR measured macOS arm64 only.
-4. A Python port of the same action that passes the same fixtures.
-5. isolated-vm in the JS task runner. If it is within 2x of WASM, it is the faster JS-only path.
+A Python or Rust action implements the same WIT world against the same JSON Schemas. The sidecar
+runs any component of the world. The same fixtures prove parity across languages.
 
 ## Risks
 
-- A JS component is about 12 MB and takes 1.4 to 3.7 s to compile. Compile ahead of time at install.
-- ComponentizeJS builds are not reproducible. Trust rests on the signed component digest.
+- StarlingMonkey has no `Intl` and no `\p{…}`. A locale call can give another result than in
+  Node. The fixture replay in the sandbox at publish finds such a bundle.
+- The interpreter is 20 to 45 times slower than V8 JIT for CPU-heavy code (S14).
+- ComponentizeJS builds are not reproducible. Trust rests on the signed digest of `guest.wasm`.
 - An allowed API can still reflect a secret back. The credential hosts limit this to the hosts
-  of the credential.
-- In-process bundles still reach global `fetch`. The egress check protects the secret, because
-  only host `http` applies it. Other data needs isolation.
-- Native npm addons never run as WASM. They need the heavy tier.
+  of the credential. In the sandbox, these hosts come from the credential type of the host, not
+  from the bundle.
+- The sidecar is Rust code in the trust path. A wasmtime CVE needs an n8n release.
 
 ## Egress and credential hosts
 
@@ -109,8 +158,9 @@ logic is in `src/egress.ts`.
   as the legacy HTTP Request node does: `all` is no limit, `domains` is the list, `none` refuses.
 - An action declares `egress`: static hosts, host templates over enum input fields
   (`{region}.api.example.com`), or `fromInput` for a URL field. Without it, the action reaches
-  the hosts of the node and credential base URLs. An action with no base URL and no `egress` has
-  no action limit, so a version frozen before `egress` still runs. The credential hosts apply.
+  the hosts of the node and credential base URLs. In-process, an action with no base URL and no
+  `egress` has no action limit, so a version frozen before `egress` still runs. The credential
+  hosts apply. In the sandbox, such an action reaches no host.
 - The host refuses a request outside the action hosts or the credential hosts before it sends it.
   A refused request is not retried. Every page is a new request, so every page is checked.
 - The host sets `allowedDomains` on the request options, so the request layer checks every

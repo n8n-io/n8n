@@ -18,7 +18,13 @@ import {
 	isDataTablePage,
 	isDataTableRows,
 } from './host-imports';
-import { evaluateBundle, executorOf, type BinaryStore, type ExecutorHost } from './runtime';
+import {
+	evaluateBundle,
+	executorOf,
+	type BinaryStore,
+	type Executor,
+	type ExecutorHost,
+} from './runtime';
 import { replaySupply, suppliedKindOf, supplyFieldsOf, type SupplyKind } from './subnodes';
 import { validate } from './validate';
 import {
@@ -43,6 +49,9 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
 const errorMessage = (error: unknown) => (error instanceof Error ? error.message : String(error));
 
 const bytesOf = ({ data }: FixtureBinary) => Buffer.from(data, 'base64');
+
+const isFullResponse = (value: unknown) =>
+	isRecord(value) && typeof value.statusCode === 'number' && 'body' in value;
 
 async function bufferOf(stream: AsyncIterable<unknown>): Promise<Buffer> {
 	const chunks: Uint8Array[] = [];
@@ -189,8 +198,10 @@ async function callResults(supply: unknown, calls: ExecutionFixture['calls']) {
 export async function replayFixtures(
 	{ manifest, bundle }: Pick<FrozenAction, 'manifest' | 'bundle'>,
 	fixtures: ContractFixtures,
+	/** The action and its executor, e.g. in the sandbox. The default runs the bundle here. */
+	loaded?: { readonly contract: Action; readonly executor: Executor },
 ): Promise<string[]> {
-	const contract = evaluateBundle(bundle, manifest.nodeContract);
+	const contract = loaded?.contract ?? evaluateBundle(bundle, manifest.nodeContract);
 	const migrations = (fixtures.migrations ?? []).flatMap(({ fromMajor, params, expected }) => {
 		const at = `${manifest.id}@${manifest.semver} migration from ${fromMajor}`;
 		if (!contract.migrate) return [`${at}: the contract has no migrate`];
@@ -208,7 +219,7 @@ export async function replayFixtures(
 			: [];
 		return [...executions, ...migrations];
 	}
-	const run = executorOf(contract);
+	const run = loaded?.executor ?? executorOf(contract);
 	const supplyFields = supplyFieldsOf(contract.input);
 	const supplier = suppliedKindOf(contract.output.json) !== undefined;
 	// n8n fills each property default into the parameters it runs with.
@@ -238,7 +249,11 @@ export async function replayFixtures(
 				request: async (options) => {
 					if (responses.length === 0) throw new UserError('No recorded response is left');
 					const recorded = responses.shift();
-					return options.encoding === 'stream' ? streamedResponse(recorded) : recorded;
+					if (options.encoding === 'stream') return streamedResponse(recorded);
+					// A fixture records the body only, unless the action reads the full response.
+					return options.returnFullResponse && !isFullResponse(recorded)
+						? { body: recorded, headers: {}, statusCode: 200 }
+						: recorded;
 				},
 				continueOnFail: () => false,
 				binary: fixtureBinaryStore(fixture),

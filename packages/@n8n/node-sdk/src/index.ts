@@ -180,10 +180,13 @@ export {
 	AUTHENTICATION,
 	nodeNameOf,
 	setContractVersionLoader,
+	setExecutorLoader,
 	toNodeType,
 	toVersionedNodeType,
 	toVersionedToolType,
 	type ContractVersionLoader,
+	type Executor,
+	type ExecutorLoader,
 	type FrozenVersion,
 } from './runtime';
 export {

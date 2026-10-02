@@ -53,7 +53,8 @@ function (`data-tables.table.drop` deletes a table; `data-tables.table.[drop]` f
 The host calls the exports of the guest. The guest calls the imports of the host. Both sides
 send requests on the same connection, so the guest can call `http.request` while the host
 waits for `action.item-run.next`. The host sends number ids and the guest sends string ids,
-so the ids of the two sides never collide.
+so the ids of the two sides never collide. While the guest waits for the answer to its call,
+the host sends only that answer. A runner may stop the connection when another message comes.
 
 A WIT function without a result is a notification: the caller sends no `id` and gets no
 answer. `log.log` and each `[drop]` are notifications, so a log line or a freed handle costs
@@ -65,8 +66,10 @@ end of the run. `error` is the error that ended the run; the outputs before it s
 `outputs`. With `[take]`, a run of one item costs 2 round trips plus one per host call:
 `[new]` and `[take]`, with `[drop]` as a notification.
 
-A host gives an optional import only to a bundle whose manifest needs it. A call to another
-import fails with `code` −32601 (method not found).
+A host gives an optional import only to a bundle whose manifest needs it. The host answers a
+call to another import with `code` −32601 (method not found). A WASM runner stops the
+component (a trap) before such a call gets to the host, because a WIT function without a
+`result` cannot give an error. The component then answers each later call with that error.
 
 ## Guest rules
 

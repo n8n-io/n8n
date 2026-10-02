@@ -25,6 +25,10 @@
       "types": "./dist/publish.d.ts",
       "default": "./dist/publish.js"
     },
+    "./sandbox": {
+      "types": "./dist/sandbox.d.ts",
+      "default": "./dist/sandbox.js"
+    },
     "./package.json": "./package.json"
   },
   "files": [
@@ -43,6 +47,7 @@
     "lint:fix": "eslint . --fix",
     "spec:generate": "tsx scripts/spec.ts",
     "spec:check": "tsx scripts/spec.ts --check",
+    "sandbox:build": "tsx scripts/sandbox.ts",
     "watch": "tsc -p tsconfig.build.json --watch",
     "test": "vitest run",
     "test:unit": "vitest run"
