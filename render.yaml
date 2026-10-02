@@ -1,0 +1,71 @@
+# Render Blueprint: n8n + Supabase Postgres
+# Deploy: push this repo to GitHub -> Render Dashboard -> New -> Blueprint -> pick the repo.
+
+services:
+  - type: web
+    name: n8n
+    runtime: image
+    image:
+      # Pin a version (e.g. docker.n8n.io/n8nio/n8n:1.x.y) if you want controlled upgrades
+      url: docker.n8n.io/n8nio/n8n:latest
+    # "free" works but sleeps after 15 min idle -> schedule triggers won't fire.
+    plan: starter
+    region: singapore
+    healthCheckPath: /healthz
+    envVars:
+      # --- Server ---
+      - key: PORT
+        value: "5678"
+      - key: N8N_PORT
+        value: "5678"
+      - key: N8N_PROTOCOL
+        value: https
+      - key: GENERIC_TIMEZONE
+        value: Asia/Kolkata
+      - key: TZ
+        value: Asia/Kolkata
+
+      # Set these after the first deploy to your Render URL,
+      # e.g. https://n8n-xxxx.onrender.com/  (and N8N_HOST without https://)
+      - key: WEBHOOK_URL
+        sync: false
+      - key: N8N_HOST
+        sync: false
+
+      # --- Security ---
+      # Generated once by Render. Never change it, or saved credentials become unreadable.
+      - key: N8N_ENCRYPTION_KEY
+        generateValue: true
+      - key: N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS
+        value: "true"
+
+      # --- Database (Supabase Postgres, direct connection) ---
+      # If the deploy fails with ENETUNREACH / connection timeout, the direct host is
+      # IPv6-only: switch HOST to the Session pooler host (Supabase -> Connect -> Session pooler)
+      # and USER to postgres.lcyxcpgpxjipsvcvgjet
+      - key: DB_TYPE
+        value: postgresdb
+      - key: DB_POSTGRESDB_HOST
+        value: db.lcyxcpgpxjipsvcvgjet.supabase.co
+      - key: DB_POSTGRESDB_PORT
+        value: "5432"
+      - key: DB_POSTGRESDB_DATABASE
+        value: postgres
+      - key: DB_POSTGRESDB_USER
+        value: postgres
+      - key: DB_POSTGRESDB_PASSWORD
+        sync: false # entered in the Render dashboard, never committed
+      - key: DB_POSTGRESDB_SCHEMA
+        value: public
+      - key: DB_POSTGRESDB_SSL_ENABLED
+        value: "true"
+      - key: DB_POSTGRESDB_SSL_REJECT_UNAUTHORIZED
+        value: "false"
+
+      # --- Housekeeping ---
+      - key: EXECUTIONS_DATA_PRUNE
+        value: "true"
+      - key: EXECUTIONS_DATA_MAX_AGE
+        value: "168" # hours (7 days)
+      - key: N8N_DIAGNOSTICS_ENABLED
+        value: "false"
