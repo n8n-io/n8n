@@ -38,8 +38,8 @@ const emit = defineEmits<{
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	height: 30px;
-	width: 30px;
+	height: var(--height--md);
+	width: var(--height--md);
 	background-color: var(--color--foreground);
 	color: var(--color--foreground--shade-2);
 	cursor: pointer;
