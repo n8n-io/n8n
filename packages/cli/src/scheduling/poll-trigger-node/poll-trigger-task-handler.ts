@@ -73,7 +73,11 @@ export class PollTriggerTaskHandler implements TaskHandler {
 		this.pollTimeoutMs = globalConfig.scheduler.pollTimeoutSeconds * Time.seconds.toMilliseconds;
 	}
 
-	async execute(task: ClaimedTask, report: DispatchReporter): Promise<DispatchDecision> {
+	async execute(
+		task: ClaimedTask,
+		report: DispatchReporter,
+		leaseSignal: AbortSignal,
+	): Promise<DispatchDecision> {
 		// A setup failure here retries to N8N_SCHEDULER_MAX_ATTEMPTS then dead-letters,
 		// unlike a `poll()` runtime failure below, which routes to the error workflow instead.
 		const { workflowId, nodeId } = this.parsePayload(task);
@@ -182,6 +186,12 @@ export class PollTriggerTaskHandler implements TaskHandler {
 							'Workflow deactivated during poll; discarding the result',
 							logContext,
 						);
+						return report.notDispatched();
+					}
+
+					// Another instance may already own this occurrence and poll the same window.
+					if (leaseSignal.aborted) {
+						this.logger.debug('Claim lost during poll; discarding the result', logContext);
 						return report.notDispatched();
 					}
 
