@@ -1,0 +1,43 @@
+packages/frontend/editor-ui/src/features/execution/executions/components/workflow/WorkflowExecutionAnnotationTags.ee.vue
+  s_c7728f0e8b74d2::t_1fe0b928f0edb4 102,128,131-132
+packages/frontend/@n8n/design-system/src/css/common/var.scss
+  s_c7728f0e8b74d2::t_b25e0a82c6173f 257
+packages/frontend/editor-ui/src/features/shared/nodeCreator/components/Panel/NodesListPanel.vue
+  s_c7728f0e8b74d2::t_aa43cdb655deab 271,374-376
+packages/frontend/@n8n/design-system/src/v2/components/Checkbox/Checkbox.vue
+  s_c7728f0e8b74d2::t_395e65514f4082 70,86,98,103-104
+packages/frontend/@n8n/design-system/src/css/tag.scss
+  s_c7728f0e8b74d2::t_907a4e1d0143e6 121-122
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiQuestions.vue
+  s_c7728f0e8b74d2::t_ddc64a6fb82257 636
+packages/frontend/editor-ui/src/features/roles/RolesView.vue
+  s_c7728f0e8b74d2::t_dbe9a5a1971ac3 96
+packages/frontend/editor-ui/src/app/components/MainHeader/ActionsDropdownMenu.vue
+  s_c7728f0e8b74d2::t_91fb07a7b165e0 347,355
+packages/frontend/editor-ui/src/features/execution/executions/components/workflow/WorkflowExecutionAnnotationPanel.ee.vue
+  s_c7728f0e8b74d2::t_f74790c97dc6fb 57
+packages/frontend/editor-ui/src/features/ai/assistant/components/Agent/CreditsSettingsDropdown.vue
+  s_c7728f0e8b74d2::t_83fdc87b2e3fde 110
+packages/frontend/@n8n/design-system/src/css/_tokens.scss
+  s_c7728f0e8b74d2::t_435b4ce6171e97 1016
+packages/frontend/editor-ui/src/features/ai/shared/styles/_question-option-rows.scss
+  s_c7728f0e8b74d2::t_be29f25155e234 71,76
+packages/frontend/@n8n/design-system/src/css/select.scss
+  s_c7728f0e8b74d2::t_fe0566bd387b8c 3,43,82
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "03f83b9c447b5b40165743c0c54bc885e07416df",
+  "prompts": {},
+  "sessions": {
+    "s_c7728f0e8b74d2": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0f6ee-5e73-7006-83cc-f7a952587501",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

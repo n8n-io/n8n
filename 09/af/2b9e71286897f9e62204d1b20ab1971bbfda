@@ -1,0 +1,23 @@
+packages/cli/src/workflows/__tests__/workflow.service.test.ts
+  s_96a34872dbe881::t_620a24ec2ffa63 3135
+packages/cli/src/modules/mcp/tools/workflow-builder/update-workflow.tool.ts
+  s_96a34872dbe881::t_48050fff00d97d 402-405,407-410,413-416,418-430,491,518,1082
+packages/cli/src/modules/mcp/__tests__/install-community-node.registration.test.ts
+  s_96a34872dbe881::t_7f8e8910e367d0 13,29,139,151
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "09af2b9e71286897f9e62204d1b20ab1971bbfda",
+  "prompts": {},
+  "sessions": {
+    "s_96a34872dbe881": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f0a0ae870ffelL9WC91kyWJvEI",
+        "model": "openai/gpt-5.6-sol"
+      },
+      "human_author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}
