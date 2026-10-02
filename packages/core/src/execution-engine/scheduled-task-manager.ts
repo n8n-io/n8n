@@ -176,6 +176,15 @@ export class ScheduledTaskManager {
 		return Array.from(this.cronsByGroupType.get(groupType)?.keys() ?? []);
 	}
 
+	/** Sizes of the in-memory collections, for diagnostics and tests. */
+	getDiagnosticCounts() {
+		let crons = 0;
+		for (const cronsByGroup of this.cronsByGroupType.values()) {
+			for (const groupCrons of cronsByGroup.values()) crons += groupCrons.size;
+		}
+		return { crons };
+	}
+
 	getTargetIds(group: ScheduledTaskGroup): string[] {
 		const groupCrons = this.getGroupCrons(group);
 		if (!groupCrons) return [];
