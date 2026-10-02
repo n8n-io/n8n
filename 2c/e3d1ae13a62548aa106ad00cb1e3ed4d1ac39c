@@ -1,0 +1,23 @@
+packages/cli/src/services/pruning/workflow-history-compaction-trim.task.ts
+  s_be34f2a9936255::t_94e65be08d75f1 24-27
+  s_be34f2a9936255::t_bccd53b0c104a1 1
+packages/cli/src/services/pruning/__tests__/workflow-history-compaction-trim.task.test.ts
+  s_be34f2a9936255::t_40dd8c3677c25f 1
+  s_be34f2a9936255::t_60030d3052ca00 18-21
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2ce3d1ae13a62548aa106ad00cb1e3ed4d1ac39c",
+  "prompts": {},
+  "sessions": {
+    "s_be34f2a9936255": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9a0f2c47-6407-4069-a583-c102c8290868",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Veljko Terzic <veljko.terzic@n8n.io>"
+    }
+  }
+}
