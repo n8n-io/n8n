@@ -1853,6 +1853,9 @@ importers:
         specifier: workspace:*
         version: link:../../workflow
     devDependencies:
+      '@n8n/backend-test-utils':
+        specifier: workspace:*
+        version: link:../backend-test-utils
       '@n8n/eslint-config':
         specifier: workspace:*
         version: link:../eslint-config
