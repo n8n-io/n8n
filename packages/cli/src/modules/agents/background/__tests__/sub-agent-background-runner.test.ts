@@ -437,21 +437,28 @@ describe('spawn', () => {
 		);
 	});
 
-	it('stops the execution timer while the child waits for approval', async () => {
-		vi.useFakeTimers();
-		try {
-			const { backgroundRunner, runner, jobService, context } = setup();
-			runner.run.mockResolvedValue(completedRunResult({ status: 'suspended' }));
-			jobService.suspend.mockResolvedValue(true);
-			await backgroundRunner.spawn(request, context);
-			await vi.advanceTimersByTimeAsync(SUB_AGENT_BACKGROUND_TIMEOUT_MS * 2);
-			expect(jobService.suspend).toHaveBeenCalledOnce();
-			expect(jobService.settle).not.toHaveBeenCalled();
-			expect(runner.run.mock.calls[0][1].abortSignal?.aborted).toBe(false);
-		} finally {
-			vi.useRealTimers();
-		}
-	});
+	it.each(['suspended', 'paused'] as const)(
+		'stops the execution timer without completing a %s child',
+		async (status) => {
+			vi.useFakeTimers();
+			try {
+				const { backgroundRunner, runner, jobService, context } = setup();
+				const result = completedRunResult({ status });
+				if (status === 'paused') {
+					result.result.finishReason = 'paused';
+					result.result.pendingSuspend = [];
+				}
+				runner.run.mockResolvedValue(result);
+				jobService.suspend.mockResolvedValue(status === 'suspended');
+				await backgroundRunner.spawn(request, context);
+				await vi.advanceTimersByTimeAsync(SUB_AGENT_BACKGROUND_TIMEOUT_MS * 2);
+				expect(jobService.settle.mock.calls.length).toBe(0);
+				expect(runner.run.mock.calls[0][1].abortSignal?.aborted).toBe(false);
+			} finally {
+				vi.useRealTimers();
+			}
+		},
+	);
 
 	it('settles as timed out and aborts the run when the timeout fires', async () => {
 		vi.useFakeTimers();

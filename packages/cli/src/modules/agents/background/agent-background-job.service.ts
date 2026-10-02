@@ -497,6 +497,19 @@ export class AgentBackgroundJobService {
 		return true;
 	}
 
+	async settlePausedSubAgent(jobId: string, expected: ExpectedBackgroundJobState): Promise<void> {
+		if (await this.suspend(jobId)) return;
+		const job = await this.jobRepository.findById(jobId);
+		if (job?.kind !== 'subagent' || job.status !== expected.status || !job.childThreadId) return;
+		if (await this.executionRepository.existsRunningByThread(job.childThreadId)) return;
+		if (await this.getCheckpoint(job)) return;
+		await this.settle(
+			jobId,
+			{ status: 'failed', error: EXPIRED_BACKGROUND_CHECKPOINT_ERROR },
+			expected,
+		);
+	}
+
 	async resume(jobId: string, timeoutAt: Date): Promise<boolean> {
 		const resumed = await this.jobRepository.resumeIfSuspended(jobId, timeoutAt);
 		if (resumed) await this.notifyJobUpdateById(jobId);
@@ -658,6 +671,7 @@ export class AgentBackgroundJobService {
 	async cancel(
 		parentThreadId: string,
 		jobId: string,
+		expected?: ExpectedBackgroundJobState,
 	): Promise<'cancelled' | 'not-found' | 'already-settled'> {
 		const [job] = await this.jobRepository.findByParentThread(parentThreadId, [jobId]);
 		if (!job) return 'not-found';
@@ -666,7 +680,11 @@ export class AgentBackgroundJobService {
 
 		if (job.kind === 'workflow') return await this.cancelWorkflowJob(job);
 
-		const claimed = await this.jobRepository.settleIfActive(jobId, { status: 'cancelled' });
+		const claimed = await this.jobRepository.settleIfActive(
+			jobId,
+			{ status: 'cancelled' },
+			expected,
+		);
 		if (!claimed) return 'already-settled';
 		this.updateBroadcaster.notifyBackgroundJobsUpdated(job.parentAgentId, job.parentThreadId);
 
@@ -702,9 +720,9 @@ export class AgentBackgroundJobService {
 				job.kind === 'subagent' &&
 				job.parentAgentId === parentAgentId &&
 				job.parentResourceId === parentResourceId &&
-				(job.status === 'running' || job.status === 'suspended' || job.status === 'paused')
+				(job.status === 'running' || job.status === 'suspended')
 			) {
-				await this.cancel(parentThreadId, job.id);
+				await this.cancel(parentThreadId, job.id, { status: job.status });
 			}
 		}
 	}

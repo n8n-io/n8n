@@ -19,6 +19,7 @@ import type { AgentMessageEntity } from '../../entities/agent-message.entity';
 import type { AgentExecution } from '../../entities/agent-execution.entity';
 import {
 	AgentBackgroundJobService,
+	EXPIRED_BACKGROUND_CHECKPOINT_ERROR,
 	MAX_RUNNING_JOBS_PER_THREAD,
 	SETTLED_JOB_RETENTION_MS,
 	SUB_AGENT_BACKGROUND_TIMEOUT_MS,
@@ -155,6 +156,60 @@ describe('markMailConsumed', () => {
 });
 
 describe('user pause', () => {
+	it.each([
+		{
+			name: 'a retained checkpoint',
+			checkpoint: true,
+			active: false,
+			status: 'running',
+			expected: 'running',
+		},
+		{
+			name: 'an active child',
+			checkpoint: false,
+			active: true,
+			status: 'running',
+			expected: 'running',
+		},
+		{
+			name: 'an already paused job',
+			checkpoint: false,
+			active: false,
+			status: 'paused',
+			expected: 'paused',
+		},
+		{
+			name: 'a lost checkpoint',
+			checkpoint: false,
+			active: false,
+			status: 'running',
+			expected: 'failed',
+		},
+	] as const)(
+		'handles $name when a paused result cannot be recorded',
+		async ({ checkpoint, active, status, expected }) => {
+			const { service, jobRepository, executionRepository, checkpointStorage } = setup();
+			const job = makeJob({ status, pauseRequestId: 'stop-1' });
+			vi.spyOn(service, 'suspend').mockResolvedValue(false);
+			vi.spyOn(service, 'getCheckpoint').mockResolvedValue(checkpoint ? mock() : undefined);
+			executionRepository.existsRunningByThread.mockResolvedValue(active);
+			jobRepository.findById.mockResolvedValue(job);
+			jobRepository.settleIfActive.mockImplementation(async (_id, settlement) => {
+				job.status = settlement.status;
+				job.error = settlement.error ?? null;
+				return true;
+			});
+
+			await service.settlePausedSubAgent(job.id, { status: 'running' });
+
+			expect(job.status).toBe(expected);
+			expect(job.error).toBe(expected === 'failed' ? EXPIRED_BACKGROUND_CHECKPOINT_ERROR : null);
+			expect(checkpointStorage.deleteDelegatedForThread.mock.calls.length).toBe(
+				expected === 'failed' ? 1 : 0,
+			);
+		},
+	);
+
 	it.each<{
 		name: string;
 		job?: Partial<AgentBackgroundJob>;
@@ -630,6 +685,51 @@ describe('result consumption updates', () => {
 });
 
 describe('cancel', () => {
+	it.each([false, true])(
+		'retains paused tasks when the parent reply is cancelled (stale snapshot: %s)',
+		async (staleSnapshot) => {
+			const { service, jobRepository, checkpointStorage } = setup();
+			const paused = makeJob({
+				id: 'paused',
+				status: 'paused',
+				pauseRequestId: 'stop-1',
+				childThreadId: 'paused-thread',
+			});
+			const jobs = [
+				paused,
+				...(['running', 'suspended'] as const).map((status) =>
+					makeJob({ id: status, status, childThreadId: status }),
+				),
+			];
+			jobRepository.findByParentThread.mockImplementation(async (_threadId, ids) => {
+				if (ids) return jobs.filter((job) => ids.includes(job.id));
+				return jobs.map((job) => ({
+					...job,
+					status: staleSnapshot && job.id === paused.id ? 'running' : job.status,
+				}));
+			});
+			jobRepository.settleIfActive.mockImplementation(async (id, settlement, expected) => {
+				const job = jobs.find((candidate) => candidate.id === id);
+				if (!job || (expected && job.status !== expected.status)) return false;
+				job.status = settlement.status;
+				return true;
+			});
+
+			await service.cancelForParent('agent-1', 'thread-1', 'draft-chat:user-1');
+
+			expect(jobs.map((job) => job.status)).toEqual(['paused', 'cancelled', 'cancelled']);
+			expect(
+				checkpointStorage.deleteDelegatedForThread.mock.calls.map(([, threadId]) => threadId),
+			).toEqual(['running', 'suspended']);
+			expect(await service.cancel('thread-1', paused.id)).toBe('cancelled');
+			expect(paused.status).toBe('cancelled');
+			expect(checkpointStorage.deleteDelegatedForThread).toHaveBeenLastCalledWith(
+				'sub-1',
+				'paused-thread',
+			);
+		},
+	);
+
 	it('aborts a resumed run on another main when a local handle still exists', async () => {
 		const { service, jobRepository, publisher } = setup();
 		const { service: resumedService } = setup();
@@ -647,7 +747,11 @@ describe('cancel', () => {
 		const outcome = await service.cancel('thread-1', 'job-1');
 
 		expect(outcome).toBe('cancelled');
-		expect(jobRepository.settleIfActive).toHaveBeenCalledWith('job-1', { status: 'cancelled' });
+		expect(jobRepository.settleIfActive).toHaveBeenCalledWith(
+			'job-1',
+			{ status: 'cancelled' },
+			undefined,
+		);
 		expect(jobRepository.markMailConsumed).toHaveBeenCalledWith('thread-1', ['job-1'], false);
 		expect(controller.signal.aborted).toBe(true);
 		expect(resumedController.signal.aborted).toBe(true);
@@ -705,7 +809,11 @@ describe('cancel', () => {
 		service.registerAbortController('job-1', controller);
 
 		expect(await service.cancel('thread-1', 'job-1')).toBe('already-settled');
-		expect(jobRepository.settleIfActive).toHaveBeenCalledWith('job-1', { status: 'cancelled' });
+		expect(jobRepository.settleIfActive).toHaveBeenCalledWith(
+			'job-1',
+			{ status: 'cancelled' },
+			undefined,
+		);
 		expect(controller.signal.aborted).toBe(false);
 		expect(publisher.publishCommand).not.toHaveBeenCalled();
 	});

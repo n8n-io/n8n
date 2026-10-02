@@ -406,11 +406,11 @@ export class SubAgentBackgroundRunner {
 				return;
 			}
 			clearTimeout(timeout);
-			if (
-				(result.status === 'suspended' || result.status === 'paused') &&
-				(await this.jobService.suspend(jobId))
-			)
+			if (result.status === 'paused') {
+				await this.jobService.settlePausedSubAgent(jobId, expected);
 				return;
+			}
+			if (result.status === 'suspended' && (await this.jobService.suspend(jobId))) return;
 			await this.jobService.settle(jobId, settlementFor(result), expected);
 		} finally {
 			clearTimeout(timeout);
