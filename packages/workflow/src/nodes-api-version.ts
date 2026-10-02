@@ -21,9 +21,17 @@ export type NodesApiVersionCheck =
 	| { compatible: true }
 	| {
 			compatible: false;
-			reason: 'malformed' | 'unsupported';
+			reason: 'malformed';
 			/** The declared value, as read from package.json. */
 			declared: unknown;
+	  }
+	| {
+			compatible: false;
+			reason: 'unsupported';
+			/** The declared value, as read from package.json. */
+			declared: unknown;
+			/** The declared level, normalized to `<major>.<minor>` for messages and metadata. */
+			required: string;
 	  };
 
 const LEVEL_PATTERN = /^(\d+)(?:\.(\d+))?$/;
@@ -51,6 +59,11 @@ export function parseNodesApiLevel(value: unknown): NodesApiLevel | null {
 	if (major < 1) return null;
 
 	return [major, match[2] === undefined ? 0 : Number(match[2])];
+}
+
+/** Renders a level as `<major>.<minor>`, so `3`, `" 3.0 "` and `"03.0"` all read as `3.0`. */
+function formatLevel([major, minor]: NodesApiLevel): string {
+	return `${major}.${minor}`;
 }
 
 /** Whether `[major, minor]` is at most `[maxMajor, maxMinor]`. */
@@ -82,5 +95,5 @@ export function checkNodesApiVersion(pkgJson: NodesApiVersionPackageJson): Nodes
 
 	if (isAtMost(required, SUPPORTED_LEVEL)) return { compatible: true };
 
-	return { compatible: false, reason: 'unsupported', declared };
+	return { compatible: false, reason: 'unsupported', declared, required: formatLevel(required) };
 }

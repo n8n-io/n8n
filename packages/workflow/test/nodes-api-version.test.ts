@@ -70,6 +70,7 @@ describe('checkNodesApiVersion', () => {
 			compatible: false,
 			reason: 'unsupported',
 			declared: above,
+			required: above,
 		});
 	});
 
@@ -79,6 +80,29 @@ describe('checkNodesApiVersion', () => {
 			compatible: false,
 			reason: 'unsupported',
 			declared: above,
+			required: above,
+		});
+	});
+
+	// Messages and error metadata read `required`, never the raw declared value,
+	// so padding and whitespace an author wrote never reach the user.
+	it('normalizes the required level it reports', () => {
+		const above = ` 0${supported![0] + 1}.0 `;
+		expect(checkNodesApiVersion(pkg(above))).toEqual({
+			compatible: false,
+			reason: 'unsupported',
+			declared: above,
+			required: `${supported![0] + 1}.0`,
+		});
+	});
+
+	it('reports the legacy integer form as an explicit minor 0', () => {
+		const above = supported![0] + 1;
+		expect(checkNodesApiVersion(pkg(above))).toEqual({
+			compatible: false,
+			reason: 'unsupported',
+			declared: above,
+			required: `${above}.0`,
 		});
 	});
 
