@@ -7,7 +7,7 @@ import { useCredentialsStore } from '../credentials.store';
 import type { INodeUi, INodeUpdatePropertiesInformation } from '@/Interface';
 import { useI18n } from '@n8n/i18n';
 
-import { N8nOption, N8nSelect } from '@n8n/design-system';
+import { N8nSelect2, type SelectValue } from '@n8n/design-system';
 type Props = {
 	activeCredentialType: string;
 	parameter: INodeProperties;
@@ -31,7 +31,9 @@ const credentialsStore = useCredentialsStore();
 
 const i18n = useI18n();
 
-const innerSelectRef = ref<HTMLSelectElement>();
+const selectRef = ref<{
+	triggerRef?: HTMLElement | { $el?: unknown } | null;
+} | null>(null);
 
 const allCredentialTypes = computed(() => credentialsStore.allCredentialTypes);
 const scopes = computed(() => {
@@ -44,9 +46,31 @@ const supportedCredentialTypes = computed(() => {
 	return allCredentialTypes.value.filter((c: ICredentialType) => isSupported(c.name));
 });
 
+const credentialSelectItems = computed(() =>
+	supportedCredentialTypes.value.flatMap((credType) => {
+		if (!credType.name || !credType.displayName) return [];
+		return [{ value: credType.name, label: credType.displayName }];
+	}),
+);
+
+const credentialSelectValue = computed(() => {
+	const match = supportedCredentialTypes.value.find(
+		(credType) =>
+			credType.name === props.displayValue || credType.displayName === props.displayValue,
+	);
+	return match?.name;
+});
+
+function onCredentialTypeSelect(value: SelectValue | undefined) {
+	if (typeof value !== 'string') return;
+	emit('update:modelValue', value);
+}
+
 function focus() {
-	if (innerSelectRef.value) {
-		innerSelectRef.value.focus();
+	const trigger = selectRef.value?.triggerRef;
+	const element = trigger instanceof HTMLElement ? trigger : trigger?.$el;
+	if (element instanceof HTMLElement) {
+		element.focus();
 	}
 }
 
@@ -130,35 +154,20 @@ defineExpose({ focus });
 <template>
 	<div>
 		<div :class="$style['parameter-value-container']">
-			<N8nSelect
-				ref="innerSelectRef"
+			<N8nSelect2
+				ref="selectRef"
 				:size="inputSize"
-				filterable
-				:model-value="displayValue"
+				:model-value="credentialSelectValue"
+				:items="credentialSelectItems"
 				:placeholder="i18n.baseText('parameterInput.select')"
 				:title="displayTitle"
 				:disabled="isReadOnly"
 				data-test-id="credential-select"
-				@update:model-value="(value: string) => emit('update:modelValue', value)"
-				@keydown.stop
+				@update:model-value="onCredentialTypeSelect"
 				@focus="emit('setFocus')"
 				@blur="emit('onBlur')"
-			>
-				<N8nOption
-					v-for="credType in supportedCredentialTypes"
-					:key="credType.name"
-					:value="credType.name"
-					:label="credType.displayName"
-					data-test-id="credential-select-option"
-					:data-credential-name="credType.name"
-				>
-					<div class="list-option">
-						<div class="option-headline">
-							{{ credType.displayName }}
-						</div>
-					</div>
-				</N8nOption>
-			</N8nSelect>
+				@keydown.stop
+			/>
 			<slot name="issues-and-options" />
 		</div>
 
