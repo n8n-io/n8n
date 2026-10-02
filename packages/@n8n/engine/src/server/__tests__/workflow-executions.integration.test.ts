@@ -760,12 +760,13 @@ describe('POST /api/workflow-executions/:id/cancel (integration)', () => {
 
 	it('answers a repeated cancel the same way, announcing nothing more', async () => {
 		const executionId = await start();
-		await cancel(executionId).expect(200);
+		const first = await cancel(executionId).expect(200);
 
-		const response = await cancel(executionId).expect(200);
+		const repeat = await cancel(executionId).expect(200);
 
-		expect(response.body).toMatchObject({ executionId, status: 'cancelled' });
-		expect(response.body).toHaveProperty('finishedAt');
+		// the same time as well: the row's, not a reading taken on the repeat
+		expect(repeat.body).toEqual(first.body);
+		expect(first.body).toMatchObject({ executionId, status: 'cancelled' });
 		expect(lifecycleEventPublisher.publish).toHaveBeenCalledTimes(1);
 	});
 
