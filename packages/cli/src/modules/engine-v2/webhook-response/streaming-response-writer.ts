@@ -44,6 +44,11 @@ export class StreamingResponseWriter {
 			this.write(this.errorChunk(outcome.error.message));
 		}
 
+		if (outcome.status === 'timeout') {
+			// Timeout chunk to tell a cut-off stream apart from a complete one.
+			this.write(this.errorChunk('Workflow execution timed out'));
+		}
+
 		if (outcome.status === 'failed' && !this.deliveredError) {
 			// The error message can hold request details, so the caller gets a
 			// generic text. The non-streaming modes do the same.

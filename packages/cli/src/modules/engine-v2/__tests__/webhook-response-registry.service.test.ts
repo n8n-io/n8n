@@ -65,6 +65,10 @@ const newRegistry = (timeoutMs = TIMEOUT_MS) =>
 		mock<Logger>({ scoped: () => mock<Logger>() }),
 	);
 
+const stillPending = Symbol('still pending');
+const raceWithPending = async (outcome: Promise<unknown>) =>
+	await Promise.race([outcome, Promise.resolve(stillPending)]);
+
 describe('EngineV2WebhookResponseRegistry', () => {
 	let deliver: (response: ExecutionResponse) => void;
 	let registry: EngineV2WebhookResponseRegistry;
@@ -80,10 +84,6 @@ describe('EngineV2WebhookResponseRegistry', () => {
 	afterEach(() => {
 		vi.useRealTimers();
 	});
-
-	const stillPending = Symbol('still pending');
-	const raceWithPending = async (outcome: Promise<unknown>) =>
-		await Promise.race([outcome, Promise.resolve(stillPending)]);
 
 	it('listens under the id the run is started with', async () => {
 		const executionId = createExecutionIdV2();
@@ -396,7 +396,7 @@ describe('EngineV2WebhookResponseRegistry with a streaming request', () => {
 		);
 	});
 
-	it('ends the stream when the wait times out', async () => {
+	it('writes an error chunk and ends the stream when the wait times out', async () => {
 		const impatient = newRegistry(1);
 		impatient.useReceiver(fakeReceiver().receiver);
 		const responseStream = openStream();
@@ -405,8 +405,56 @@ describe('EngineV2WebhookResponseRegistry with a streaming request', () => {
 		await vi.advanceTimersByTimeAsync(1);
 
 		await expect(pending.outcome).resolves.toEqual({ status: 'timeout' });
-		expect(responseStream.write).not.toHaveBeenCalled();
+		expect(responseStream.write).toHaveBeenCalledTimes(1);
+		expect(responseStream.write).toHaveBeenCalledWith(
+			expect.stringContaining('"type":"error","content":"Workflow execution timed out"'),
+		);
 		expect(responseStream.end).toHaveBeenCalledTimes(1);
+		expect(responseStream.write.mock.invocationCallOrder[0]).toBeLessThan(
+			responseStream.end.mock.invocationCallOrder[0],
+		);
+	});
+
+	it('measures the timeout from the last chunk', async () => {
+		const fake = fakeReceiver();
+		const impatient = newRegistry(1_000);
+		impatient.useReceiver(fake.receiver);
+		const responseStream = openStream();
+		const pending = await impatient.waitForResponse(createExecutionIdV2(), stream, responseStream);
+		const chunk = {
+			type: 'chunk' as const,
+			executionId: pending.executionId,
+			payload: { type: 'item', content: 'hi' },
+		};
+
+		await vi.advanceTimersByTimeAsync(900);
+		fake.deliver(chunk);
+		await vi.advanceTimersByTimeAsync(900);
+		fake.deliver(chunk);
+		await vi.advanceTimersByTimeAsync(900);
+
+		// 2.7 seconds in total, but never 1 second of silence.
+		await expect(raceWithPending(pending.outcome)).resolves.toBe(stillPending);
+
+		await vi.advanceTimersByTimeAsync(100);
+		await expect(pending.outcome).resolves.toEqual({ status: 'timeout' });
+	});
+
+	it('does not measure the timeout from chunks when the request does not wait for a stream', async () => {
+		const fake = fakeReceiver();
+		const impatient = newRegistry(1_000);
+		impatient.useReceiver(fake.receiver);
+		const pending = await impatient.waitForResponse(createExecutionIdV2(), runEnd);
+
+		await vi.advanceTimersByTimeAsync(900);
+		fake.deliver({
+			type: 'chunk',
+			executionId: pending.executionId,
+			payload: { type: 'item', content: 'ignored' },
+		});
+		await vi.advanceTimersByTimeAsync(100);
+
+		await expect(pending.outcome).resolves.toEqual({ status: 'timeout' });
 	});
 
 	it('drops chunks after the run settles', async () => {

@@ -32,7 +32,10 @@ type PendingWebhook = {
 	executionId: ExecutionIdV2;
 	expectation: ResponseExpectation;
 	answer: IDeferredPromise<WebhookRunOutcome>;
-	/** Held so an answered run does not leave a timer behind for the whole hold. */
+	/**
+	 * Held so an answered run does not leave a timer behind for the whole hold.
+	 * A streaming request refreshes it on each chunk.
+	 */
 	timeoutTimer: NodeJS.Timeout;
 	/** Set when the subscription is ready. */
 	unsubscribe?: UnsubscribeExecutionResponse;
@@ -211,7 +214,11 @@ export class EngineV2WebhookResponseRegistry {
 		if (pending.released) return;
 
 		try {
-			if (received.type === 'chunk') pending.writer?.writeChunk(received.payload);
+			if (received.type === 'chunk' && pending.writer) {
+				pending.writer.writeChunk(received.payload);
+				// A chunk shows that the run is alive
+				pending.timeoutTimer.refresh();
+			}
 
 			const outcome = toWebhookOutcome(received, pending.expectation);
 			if (outcome) this.settle(pending, outcome);
