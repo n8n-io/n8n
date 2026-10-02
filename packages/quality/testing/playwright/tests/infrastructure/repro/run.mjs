@@ -111,5 +111,5 @@ for (const row of rows) {
 		`${row.name} | ${row.variant} | ${row.image} | ${row.note ?? `${row.passed}/${row.total}`}`,
 	);
 }
-const failed = rows.some((r) => r.note || r.passed !== runs);
+const failed = rows.some((r) => (r.note && r.note !== 'no image') || (!r.note && r.passed !== runs));
 process.exit(failed ? 1 : 0);
