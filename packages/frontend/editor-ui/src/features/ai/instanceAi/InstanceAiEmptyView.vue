@@ -86,6 +86,8 @@ import {
 } from '@/features/ai/assistant-at-mentions/assistantAtMentions.types';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { InstanceAiFreeNudge } from '@/experiments/instanceAiFreeNudge';
+import { useAgentsN8nChatVariant } from '@/features/agents/composables/useAgentsN8nChatFlag';
+import N8nChatAgentSection from '@/features/agents/n8nChatPage/components/N8nChatAgentSection.vue';
 
 // Experiment cleanup: remove with instanceAiPromptSuggestionsV2.
 const INSTANCE_AI_PROMPT_SUGGESTIONS_V2_TITLE_KEY: BaseTextKey =
@@ -154,6 +156,9 @@ const { isFeatureEnabled: isProactiveAgentExperimentEnabled } =
 const { isFeatureEnabled: isPromptSuggestionsV2ExperimentEnabled } =
 	useInstanceAiPromptSuggestionsV2Experiment();
 const { isVariantEnabled: isSplitVariantEnabled } = useInstanceAiSplitEmptyStateExperiment();
+// AGENT-957: variant A replaces the empty state with an agent picker, so it must
+// force the default layout and win over every other empty-state experiment.
+const { isVariantA: isAgentsN8nChatVariantA } = useAgentsN8nChatVariant();
 // Experiment cleanup: remove with instanceAiSplitEmptyState.
 const splitPreviewPromptKey = ref<BaseTextKey | null>(null);
 const composerHasContent = ref(false);
@@ -166,18 +171,22 @@ const {
 	currentVariant: inspirationFromTaxonomyVariant,
 	isTreatmentVariant: isInspirationFromTaxonomyTreatmentVariant,
 } = useInstanceAiInspirationFromTaxonomyExperiment();
-const showProactiveStarter = computed(() => isProactiveAgentExperimentEnabled.value);
+const showProactiveStarter = computed(
+	() => isProactiveAgentExperimentEnabled.value && !isAgentsN8nChatVariantA.value,
+);
 // Experiment cleanup: remove with instanceAiSplitEmptyState. The split layout
 // hosts the view header inside its chat column; the proactive starter (082)
 // keeps precedence.
 const isSplitLayoutActive = computed(
-	() => isSplitVariantEnabled.value && !showProactiveStarter.value,
+	() =>
+		isSplitVariantEnabled.value && !showProactiveStarter.value && !isAgentsN8nChatVariantA.value,
 );
 const shouldTrackPersonalizedPromptSuggestionsExposure = computed(
 	() =>
 		typeof personalizedPromptSuggestionsVariant.value === 'string' &&
 		!showProactiveStarter.value &&
 		!isSplitLayoutActive.value &&
+		!isAgentsN8nChatVariantA.value &&
 		settingsStore.isWorkflowBuilderAvailable,
 );
 const personalizedPromptSuggestionResolution = ref<
@@ -194,7 +203,7 @@ const isTaxonomySegmentResolved = computed(
 			'taxonomy',
 );
 const shouldTrackInspirationFromTaxonomyExposure = computed(() => {
-	if (showProactiveStarter.value || isSplitLayoutActive.value) {
+	if (showProactiveStarter.value || isSplitLayoutActive.value || isAgentsN8nChatVariantA.value) {
 		return false;
 	}
 
@@ -387,6 +396,11 @@ const shouldShowPersonalizedPromptSuggestions = computed(() =>
 
 // Experiment cleanup: remove with instanceAiPromptSuggestionsV2.
 const emptyStatePromptSuggestionProps = computed(() => {
+	// AGENT-957: variant A shows the agent picker, not suggestion chips.
+	if (isAgentsN8nChatVariantA.value) {
+		return { placeholderKey: INSTANCE_AI_WORKFLOW_PREVIEW_SUGGESTIONS_PLACEHOLDER_KEY };
+	}
+
 	if (showProactiveStarter.value) {
 		return {};
 	}
@@ -463,6 +477,10 @@ const emptyStatePromptSuggestionProps = computed(() => {
 	};
 });
 const emptyStateTitleKey = computed<BaseTextKey>(() => {
+	// Variant A keeps the default empty-state title.
+	if (isAgentsN8nChatVariantA.value) {
+		return INSTANCE_AI_WORKFLOW_PREVIEW_SUGGESTIONS_TITLE_KEY;
+	}
 	if (
 		shouldShowTaxonomySuggestions.value ||
 		isTaxonomySuggestionsPending.value ||
@@ -698,7 +716,7 @@ function handleShelfSuggestionInsert(payload: ShelfSuggestionPayload) {
 				</div>
 			</div>
 			<InstanceAiSplitEmptyState
-				v-else-if="isSplitVariantEnabled"
+				v-else-if="isSplitLayoutActive"
 				:project-id="selectedProject"
 				:disabled="isStartingThread || !settingsStore.isWorkflowBuilderAvailable"
 				:writing="composerHasContent"
@@ -783,7 +801,9 @@ function handleShelfSuggestionInsert(payload: ShelfSuggestionPayload) {
 						</template>
 					</InstanceAiInput>
 				</div>
-				<Transition name="workflow-preview-fade">
+				<!-- AGENT-957: variant A shows the agent picker here instead of the workflow preview. -->
+				<N8nChatAgentSection v-if="isAgentsN8nChatVariantA" />
+				<Transition v-else name="workflow-preview-fade">
 					<div
 						v-if="activeWorkflowPreview && hasSpaceForPreview"
 						:class="$style.workflowPreviewWrapper"
