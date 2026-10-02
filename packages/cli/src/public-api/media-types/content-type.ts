@@ -35,13 +35,7 @@ function readMediaType(header: string): { mediaType: string; reported: string } 
 }
 
 /**
- * Checks a request's `Content-Type` against the media type a route's `@Body` declares. Returns
- * whether the header matched — telling the caller whether there's a body of that type to parse —
- * otherwise throws an error.
- *
- * The legacy validator accepted only JSON. It reported a header that names no media type — absent,
- * empty, or whitespace — as the literal `undefined`, and rejected it only when the body was
- * required. Every media type keeps both behaviors and the messages that came with them.
+ * Check a request's `Content-Type` against the media type `@Body` declares.
  */
 export function assertContentType({
 	header,

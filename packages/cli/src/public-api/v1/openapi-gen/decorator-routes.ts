@@ -158,15 +158,12 @@ function buildPathParams(route: ResolvedPublicApiRoute): z.AnyZodObject | undefi
 	return Object.keys(shape).length ? z.object(shape) : undefined;
 }
 
-/**
- * A route's request body, straight from its `@Body` DTO - no field-splitting needed like query has.
- * The content key comes from the route's request-body media type (JSON unless `@Body` declares
- * another one), so a new media type documents itself here without this function knowing about it.
- */
 function buildRequestBody(
 	route: ResolvedPublicApiRoute,
 ): NonNullable<RouteConfig['request']>['body'] {
-	if (!route.requestBodyDto || !route.requestBodyHandler) return undefined;
+	if (!route.requestBodyDto || !route.requestBodyHandler) {
+		return undefined;
+	}
 
 	const required = route.requestBodyRequired ?? isRequestBodyRequired(route.requestBodyDto);
 	const handler = route.requestBodyHandler;

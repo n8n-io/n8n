@@ -254,12 +254,6 @@ export class PublicApiControllerRegistry {
 		};
 	}
 
-	/**
-	 * Checks the request's `Content-Type` against the route's `@Body` media type, shared by every
-	 * handler so none of them has to check it themselves. Skips `handler.parseBody` (and calls
-	 * `next()` right away) when the body is optional and absent, or when the handler has nothing
-	 * left to parse (e.g. JSON, whose body the app-wide `bodyParser` already parsed upstream).
-	 */
 	private createBodyMiddleware(
 		media: RequestBodyMedia,
 		bodyRequired: boolean,

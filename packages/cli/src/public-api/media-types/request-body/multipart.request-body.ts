@@ -13,16 +13,11 @@ import { formatValidationError } from '@/public-api/public-api-validation-error'
 import { loadMultipartParser } from './multipart-parser';
 import type { RequestBodyHandler } from './types';
 
-// Same regexes express-openapi-validator 5.5.3 used in its multipart middleware `error()` function
-// (`openapi.multipart.js`), so we keep the same error mapping behavior as the legacy EOV handlers.
+// Same regexes express-openapi-validator 5.5.3 used in legacy EOV handlers.
 const PAYLOAD_TOO_BIG_CODE = /LIMIT_(FILE|PART)_(SIZE|COUNT)/;
 const UNEXPECTED_FILE_CODE = /LIMIT_UNEXPECTED_FILE/;
 const MISSING_BOUNDARY = /Multipart: Boundary not found/i;
 
-/**
- * `multer`'s own `MulterError` class isn't loaded yet when this runs (see `./multipart-parser.ts`),
- * so this checks the shape multer gives every error it throws itself, rather than `instanceof`.
- */
 function isMulterError(error: unknown): error is MulterError {
 	return error instanceof Error && error.name === 'MulterError';
 }
@@ -59,9 +54,8 @@ function listFiles(files: Request['files']): Express.Multer.File[] {
  * DTO to validate. A field with several files under the same name becomes an array; a file wins over
  * a text field sent under the same name.
  *
- * Built with `Object.create(null)` rather than `{}`, so a part literally named `__proto__` becomes an
- * own, enumerable key instead of reassigning the object's prototype - the strict DTO then rejects it
- * like any other unknown field, instead of it silently vanishing.
+ * Built with `Object.create(null)` so a field named `__proto__` becomes an enumerable key instead of
+ * reassigning the object's prototype - the strict DTO then rejects it, instead of it silently vanishing.
  */
 function mergeMultipartInput(req: Request): Record<string, unknown> {
 	const input: Record<string, unknown> = Object.create(null);
@@ -90,8 +84,7 @@ function mergeMultipartInput(req: Request): Record<string, unknown> {
 
 export const multipartRequestBody: RequestBodyHandler = {
 	mediaType: 'multipart/form-data',
-	// 500 is reachable: `toPublicApiError` below returns an InternalServerError for an unmasked
-	// parse failure (a malformed/truncated body) and for `LIMIT_UNEXPECTED_FILE`.
+	// 500 is reachable via `toPublicApiError`
 	errorStatuses: [413, 415, 500],
 	discoverable: false,
 

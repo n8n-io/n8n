@@ -9,13 +9,7 @@ export interface RequestBodyHandler {
 	readonly errorStatuses: readonly number[];
 	/** Whether `/discover` shows a request schema for a route declaring this media type. */
 	readonly discoverable: boolean;
-	/**
-	 * Parses the body into whatever shape `readInput` later reads back. The registry calls this
-	 * only after it has already confirmed the request's `Content-Type` matches `mediaType` - and
-	 * skips it entirely when the body is optional and absent - so this never needs to check
-	 * `Content-Type` itself. Omit it when matching `Content-Type` is the only work needed, e.g.
-	 * JSON, whose body the app-wide `bodyParser` already parsed upstream of the registry.
-	 */
+	/** Parses the body into whatever shape `readInput` later reads back. **/
 	parseBody?(media: RequestBodyMedia, req: Request, res: Response): Promise<void>;
 	/** The value the route's `@Body` DTO validates. */
 	readInput(req: Request): unknown;
