@@ -104,15 +104,17 @@ describe('WorkflowPublishedDataService', () => {
 		expect(result!.nodeGroups).toEqual(nodeGroups);
 	});
 
-	test('uses the active version for the execution projection state', async () => {
+	test('uses the active version for the execution projection despite the legacy flag', async () => {
 		const owner = await createOwner();
 		const workflow = await createWorkflowWithHistory({}, owner);
 		await setActiveVersion(workflow.id, workflow.versionId);
 		await workflowPublishedVersionRepository.setPublishedVersion(workflow.id, workflow.versionId);
+		await Container.get(WorkflowRepository).update(workflow.id, { active: false });
 
 		const result = await workflowPublishedDataService.getPublishedWorkflowDataForExecution(
 			workflow.id,
 		);
+		expect(result?.activeVersionId).toBe(workflow.versionId);
 		expect(result?.active).toBe(true);
 
 		await Container.get(WorkflowRepository).update(workflow.id, {
@@ -122,6 +124,7 @@ describe('WorkflowPublishedDataService', () => {
 		const unpublished = await workflowPublishedDataService.getPublishedWorkflowDataForExecution(
 			workflow.id,
 		);
+		expect(unpublished?.activeVersionId).toBeNull();
 		expect(unpublished?.active).toBe(false);
 	});
 
