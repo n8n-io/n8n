@@ -31,7 +31,7 @@ describe('AgentEvalExamplesSlider', () => {
 		});
 
 		expect(getByTestId('agent-eval-examples-slider-loading')).toBeInTheDocument();
-		expect(getByText('Adding more cases to your eval suite…')).toBeInTheDocument();
+		expect(getByText('Generating cases to your eval suite…')).toBeInTheDocument();
 		expect(queryByTestId('instance-ai-test-agent-examples-slider')).not.toBeInTheDocument();
 		expect(queryByTestId('instance-ai-test-agent-examples-add-own-input')).not.toBeInTheDocument();
 	});

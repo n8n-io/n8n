@@ -137,12 +137,6 @@ watch(
 </template>
 
 <style module lang="scss">
-.root {
-	border: var(--border);
-	padding: var(--spacing--3xs);
-	border-radius: var(--radius--lg);
-}
-
 .header {
 	display: flex;
 	align-items: center;

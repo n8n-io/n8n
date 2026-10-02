@@ -84,6 +84,14 @@ defineExpose({ sliderValue, focusOwnInput });
 	</div>
 	<div v-else :class="$style.root">
 		<div :class="$style.sliderRow" data-test-id="instance-ai-test-agent-examples-slider">
+			<N8nText :class="$style.sliderCount" bold size="small">
+				{{
+					i18n.baseText('instanceAi.testAgentPreview.examplesCount', {
+						adjustToNumber: sliderValue,
+						interpolate: { count: String(sliderValue) },
+					})
+				}}
+			</N8nText>
 			<ElSlider
 				v-model="sliderValue"
 				:min="1"
@@ -91,17 +99,8 @@ defineExpose({ sliderValue, focusOwnInput });
 				:step="1"
 				:show-tooltip="false"
 				:class="$style.slider"
+				size="small"
 			/>
-			<div :class="$style.sliderLabels">
-				<span :class="$style.sliderCount">
-					{{
-						i18n.baseText('instanceAi.testAgentPreview.examplesCount', {
-							adjustToNumber: sliderValue,
-							interpolate: { count: String(sliderValue) },
-						})
-					}}
-				</span>
-			</div>
 		</div>
 
 		<div :class="$style.exampleList">
@@ -161,77 +160,61 @@ defineExpose({ sliderValue, focusOwnInput });
 }
 
 .sliderRow {
-	position: relative;
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--sm);
 	width: 100%;
 }
 
 .slider {
-	width: 100%;
+	flex: 1;
 	cursor: ew-resize;
 
 	:global(.el-slider__runway) {
-		height: 44px;
 		background-color: var(--run-data--color--background);
-		border-radius: var(--radius--xl);
-		border: var(--border);
+		border: none;
 		cursor: ew-resize;
 	}
 
 	:global(.el-slider__bar) {
-		height: 44px;
-		background-color: oklch(from var(--color--primary) l c h/.2);
-		border-right: 1px solid var(--color--orange-500);
-		border-radius: var(--radius--xl) 0 0 var(--radius--xl);
+		background-color: var(--color--orange-500);
+		border-radius: var(--radius--full);
 	}
 
 	:global(.el-slider__button-wrapper) {
-		top: 2px;
 		cursor: ew-resize;
 	}
 
-	// The default round thumb reads as barely-there against the bar's own
-	// 1px edge above. Flattened into a second, thicker bar — shifted left by
-	// `margin-left` (the wrapper itself is centered exactly on the bar's edge
-	// via `translateX(-50%)`, so without this the two bars sit flush on top
-	// of each other instead of side by side) — so the pair reads as one
-	// clearly visible handle.
 	:global(.el-slider__button) {
-		width: 3px;
-		height: 15px;
-		margin-left: -15px;
-		border: none;
-		border-radius: var(--radius--sm);
-		background-color: var(--color--orange-500);
+		width: 18px;
+		height: 18px;
+		border: 1px solid var(--color--orange-500);
+		background-color: var(--background--surface);
 		box-shadow: none;
 		cursor: ew-resize;
 	}
 }
 
-.sliderLabels {
-	position: absolute;
-	top: 0;
-	left: 0;
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	font-size: var(--font-size--xs);
-
-	width: 100%;
-	height: 100%;
-	padding: 0 var(--spacing--sm);
-	pointer-events: none;
-}
-
 .sliderCount {
-	font-weight: var(--font-weight--bold);
+	flex-shrink: 0;
 	color: var(--text-color--dark);
 }
 
 .exampleList {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--2xs);
 	width: 100%;
+	border: var(--border);
+	border-radius: var(--radius--lg);
+}
+
+.exampleList > * {
+	border-bottom: var(--border);
+	padding: 6px 10px 6px 8px;
+}
+
+.exampleList > *:last-of-type {
+	border-bottom: none;
 }
 
 .addOwnInput {
