@@ -442,4 +442,26 @@ describe('MigrationFindingSyncRepository', () => {
 		expect((await syncRepository.getForVersion('v2', ctx))?.ruleSetFingerprint).toBe('fp-v2');
 		expect((await syncRepository.getForVersion('v3', ctx))?.ruleSetFingerprint).toBe('fp-v3');
 	});
+
+	test('deleteForVersion removes the record of that version only', async () => {
+		const syncedAt = new Date('2026-01-01T00:00:00.000Z');
+		await syncRepository.upsertForVersion(
+			{ targetVersion: 'v2', syncedAt, ruleSetFingerprint: 'fp-v2' },
+			ctx,
+		);
+		await syncRepository.upsertForVersion(
+			{ targetVersion: 'v3', syncedAt, ruleSetFingerprint: 'fp-v3' },
+			ctx,
+		);
+
+		await syncRepository.deleteForVersion('v3', ctx);
+
+		expect(await syncRepository.getForVersion('v3', ctx)).toBeNull();
+		expect((await syncRepository.getForVersion('v2', ctx))?.ruleSetFingerprint).toBe('fp-v2');
+	});
+
+	test('deleteForVersion is a no-op when the version has no record', async () => {
+		await expect(syncRepository.deleteForVersion('v3', ctx)).resolves.toBeUndefined();
+		expect(await syncRepository.count()).toBe(0);
+	});
 });

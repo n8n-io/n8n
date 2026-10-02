@@ -59,7 +59,11 @@ export const HANDLED_CORPUS: string[] = [
 	'=plain text',
 	'=',
 	// Allowlisted String.prototype methods on a runtime-verified string
-	// receiver.
+	// receiver. A literal `$` in a replacement is not a context token.
+	"={{ $json.item.name.replace('o', '$') }}",
+	"={{ $json.item.name.replaceAll('o', '$$') }}",
+	"={{ $json.item.name.replace('o', '$1') }}",
+	"={{ $json.item.name.replace('o', '$$&') }}",
 	"={{ $json.item.name.toUpperCase() === 'FOO' }}",
 	'={{ $json.item.name.toLowerCase() }}',
 	"={{ $json.item.name.includes('oo') }}",
@@ -171,8 +175,11 @@ export const RUNTIME_BAILOUT_CORPUS: string[] = [
 	// it shows in the result or in the pre-flight bound.
 	"={{ $json.item.name.replaceAll('', $json.item.filler).replaceAll('', $json.item.filler).replaceAll('', $json.item.filler) }}",
 	"={{ $json.item.big.replaceAll('', $json.item.filler) }}",
-	// `$\`` splices the text before each match into the result.
+	// `$\`` splices the text before each match into the result, for a single
+	// replacement as much as for every one.
 	"={{ $json.item.name.replaceAll('o', '$`') }}",
+	"={{ $json.item.name.replace('o', '$`') }}",
+	"={{ $json.item.name.replace('o', '$$$&') }}",
 	// A receiver above MAX_RESULT_LENGTH is the engine's work, whatever the
 	// method. (concat is bounded the same way, by receiver plus arguments; a
 	// corpus entry would make quickjs marshal a million-element result.)

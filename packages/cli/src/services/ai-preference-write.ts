@@ -94,6 +94,7 @@ export async function writeAssistantPreference({
 			logger.error('Saving an AI preference from the assistant failed', { error });
 		}
 		telemetry.track(TELEMETRY_EVENT.CONTEXT.PREFERENCE_WRITE_REJECTED, {
+			user_id: user.id,
 			surface,
 			reason: rejection.reason,
 			scope_type: scope,
@@ -104,23 +105,27 @@ export async function writeAssistantPreference({
 
 	try {
 		telemetry.track(TELEMETRY_EVENT.CONTEXT.PREFERENCE_CONFIRMATION_SHOWN, {
+			user_id: user.id,
 			surface,
 			scope_type: scope,
 			text_length: textLength,
 		});
 		telemetry.track(TELEMETRY_EVENT.CONTEXT.PREFERENCE_CONFIRMATION_RESOLVED, {
+			user_id: user.id,
 			surface,
 			outcome: 'accepted',
 			scope_type: scope,
 			text_length: textLength,
 		});
 		telemetry.track(TELEMETRY_EVENT.CONTEXT.PREFERENCE_SCOPE_ACCEPTED, {
+			user_id: user.id,
 			surface,
 			offered_scope: scope,
 			accepted_scope: scope,
 			scope_changed: false,
 		});
 		telemetry.track(TELEMETRY_EVENT.CONTEXT.ASSISTANT_SAVED_PREFERENCE, {
+			user_id: user.id,
 			surface,
 			scope_type: scope,
 			text_length: textLength,

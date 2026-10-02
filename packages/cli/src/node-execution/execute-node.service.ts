@@ -17,7 +17,7 @@ import type {
 import { v4 as uuid } from 'uuid';
 
 import { ActiveExecutions } from '@/active-executions';
-import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
+import { CredentialsFinderService } from '@n8n/backend-services';
 import { BadRequestError, ForbiddenError } from '@n8n/errors';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { NodeTypes } from '@/node-types';

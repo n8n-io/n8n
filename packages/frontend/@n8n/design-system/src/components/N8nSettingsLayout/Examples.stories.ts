@@ -1600,13 +1600,13 @@ export const ModelContextProtocol: Story = {
 				confirmSaved('MCP access enabled');
 				showExposeAllDialog.value = true;
 			};
-			// "Expose all workflows" from the follow-up dialog. In the app/prototype this flips every
+			// "Enable MCP access" from the follow-up dialog. In the app/prototype this flips every
 			// workflow's exposure (and the auto-expose-new flag) in the shared store so the Workflows
 			// available page reflects it; here the main page and that page are separate story instances,
 			// so this just closes + confirms to keep the UX demonstrable.
 			const onExposeAll = () => {
 				showExposeAllDialog.value = false;
-				confirmSaved('All workflows exposed to MCP');
+				confirmSaved('MCP access enabled for workflows');
 			};
 			const onConfirmDisable = () => {
 				enabled.value = false;
@@ -1978,14 +1978,14 @@ export const ModelContextProtocol: Story = {
 				<N8nDialog
 					v-model:open="showExposeAllDialog"
 					size="small"
-					header="Expose all workflows to MCP?"
-					description="This lets connected clients reach every workflow on this instance right away. You can hide any workflow or revoke access at any time."
+					header="Enable MCP access for all workflows?"
+					description="This lets connected clients reach every workflow on this instance right away. You can disable MCP access for individual workflows at any time."
 				>
 					<N8nDialogFooter>
 						<N8nDialogClose as-child>
 							<N8nButton variant="outline" label="Not now" />
 						</N8nDialogClose>
-						<N8nButton variant="solid" label="Expose all workflows" @click="onExposeAll" />
+						<N8nButton variant="solid" label="Enable MCP access" @click="onExposeAll" />
 					</N8nDialogFooter>
 				</N8nDialog>
 

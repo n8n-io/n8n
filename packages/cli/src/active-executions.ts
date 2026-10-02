@@ -334,6 +334,14 @@ export class ActiveExecutions {
 		);
 	}
 
+	/** Sizes of the in-memory collections, for diagnostics and tests. */
+	getDiagnosticCounts() {
+		return {
+			executions: Object.keys(this.activeExecutions).length,
+			responseModes: this.responseModes.size,
+		};
+	}
+
 	/**
 	 * @param writeDeadlineMs - How long to wait for the cancelled status to be recorded.
 	 *   Pass what the caller's own shutdown window can still afford.

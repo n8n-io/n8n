@@ -988,6 +988,56 @@ describe('ScalingService', () => {
 		});
 	});
 
+	describe('getDiagnosticCounts', () => {
+		it('should report stored job results, queue listeners, and running jobs', async () => {
+			const activeExecutions = mock<ActiveExecutions>();
+			activeExecutions.has.mockReturnValue(true);
+			const outcomeTracker = new JobOutcomeTracker(mockLogger(), activeExecutions, mock(), mock());
+			scalingService = new ScalingService(
+				mockLogger(),
+				mock(),
+				activeExecutions,
+				jobProcessor,
+				globalConfig,
+				mock(),
+				mock(),
+				instanceSettings,
+				mock(),
+				webhookResponseRelay,
+				executionCrashService,
+				outcomeTracker,
+			);
+			await scalingService.setupQueue();
+			queue.eventNames.mockReturnValue(['global:progress', 'global:completed']);
+			queue.listenerCount.mockImplementation((event) => (event === 'global:completed' ? 2 : 1));
+			jobProcessor.getRunningJobIds.mockReturnValue(['job-1']);
+
+			const messageHandler = queue.on.mock.calls.find(
+				([event]) => (event as string) === 'global:progress',
+			)?.[1] as (jobId: JobId, msg: unknown) => void;
+			messageHandler('job-789', {
+				kind: 'job-finished',
+				version: 2,
+				executionId: 'exec-123',
+				workerId: 'worker-456',
+				success: true,
+				status: 'success',
+				startedAt: '2026-07-25T11:59:00.000Z',
+				stoppedAt: '2026-07-25T11:59:30.000Z',
+			});
+
+			expect(scalingService.getDiagnosticCounts()).toEqual({
+				jobResults: 1,
+				queueListeners: 3,
+				runningJobs: 1,
+			});
+
+			scalingService.popJobResult('exec-123');
+
+			expect(scalingService.getDiagnosticCounts().jobResults).toBe(0);
+		});
+	});
+
 	describe('recoverFromQueue', () => {
 		it('should mark running executions as crashed if they are missing from the queue and queue is empty', async () => {
 			await scalingService.setupQueue();
