@@ -103,7 +103,7 @@ defineExpose({ focusItem });
 			:disabled="isReordering"
 			@click="expanded = !expanded"
 		>
-			<N8nIcon icon="list-end" size="medium" aria-hidden="true" />
+			<N8nIcon icon="list-end" size="medium" color="text-light" aria-hidden="true" />
 			<N8nText bold step="xs" color="text-light">
 				{{
 					locale.baseText('agents.chat.queue.title', {
@@ -332,22 +332,29 @@ defineExpose({ focusItem });
 
 .messageQueue {
 	--n8n--message-queue--radius: var(--radius--xl) var(--radius--xl) 0 0;
+	--n8n--message--queue--y-offset: var(--spacing--sm);
 
 	display: flex;
 	flex-direction: column;
 	min-width: 0;
 	margin-inline: var(--spacing--xs);
-	transform: translateY(var(--spacing--sm));
+	transform: translateY(var(--n8n--message--queue--y-offset));
 	padding-bottom: var(--spacing--sm);
 	background: var(--background--subtle);
 	border-radius: var(--n8n--message-queue--radius);
 	border: var(--border);
 	border-bottom: 0;
 	background-clip: padding-box;
-}
+	transition: transform var(--duration--snappy) var(--easing--ease-out);
 
-.messageQueue :global(.n8n-icon) {
-	color: var(--icon-color);
+	&:hover:not(:has(.queueContentOpen)) {
+		transform: translateY(calc(var(--n8n--message--queue--y-offset) - var(--spacing--3xs)));
+		background-color: color-mix(
+			in srgb,
+			var(--background--subtle),
+			light-dark(var(--color--neutral-black), var(--color--neutral-white)) 2%
+		);
+	}
 }
 
 .backgroundJobList {
@@ -402,8 +409,12 @@ defineExpose({ focusItem });
 	font: inherit;
 	cursor: pointer;
 
-	&:hover {
-		background-color: var(--background--hover);
+	&:not(.queueToggleExpanded) > :global(.n8n-text) {
+		--animation--shimmer--duration: var(--duration--slowest);
+		--animation--shimmer--foreground: var(--text-color--subtle);
+		--animation--shimmer--background: var(--text-color--subtler);
+
+		@include motion.shimmer;
 	}
 
 	> :last-child {
@@ -434,6 +445,10 @@ defineExpose({ focusItem });
 	align-self: center;
 	flex-shrink: 0;
 	margin-inline-end: calc(var(--spacing--xs) * -1);
+
+	:global(.n8n-icon) {
+		color: var(--icon-color);
+	}
 }
 
 .queueDragHandle {
@@ -441,6 +456,7 @@ defineExpose({ focusItem });
 	cursor: grab;
 	touch-action: none;
 	margin-inline-start: calc(var(--spacing--3xs) * -1);
+	color: var(--icon-color);
 
 	&:active {
 		cursor: grabbing;
