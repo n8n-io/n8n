@@ -1,5 +1,10 @@
 import type { Logger, LicenseState } from '@n8n/backend-common';
-import type { ProjectRelationRepository, SharedWorkflowRepository, UserRepository } from '@n8n/db';
+import type {
+	ProjectRelationRepository,
+	SharedWorkflowRepository,
+	User,
+	UserRepository,
+} from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
 import type { RoleService } from '../role.service';
@@ -21,10 +26,73 @@ describe('WorkflowSharingService', () => {
 		userRepository,
 		logger,
 	);
+	const globalUser: User = mock<User>({
+		id: 'global-user',
+		role: { scopes: [{ slug: 'workflow:read' }] },
+	});
+	const member: User = mock<User>({ id: 'member', role: { scopes: [] } });
+
+	beforeEach(() => {
+		vi.clearAllMocks();
+	});
+
+	describe('getSharedWorkflowIds', () => {
+		it('returns project workflows directly for users with global access', async () => {
+			sharedWorkflowRepository.findWorkflowIdsForGlobalAccess.mockResolvedValue(['workflow-1']);
+
+			const result = await service.getSharedWorkflowIds(globalUser, {
+				scopes: ['workflow:read'],
+				projectId: 'project-1',
+			});
+
+			expect(sharedWorkflowRepository.findWorkflowIdsForGlobalAccess).toHaveBeenCalledWith(
+				'project-1',
+			);
+			expect(roleService.rolesWithScope).not.toHaveBeenCalled();
+			expect(result).toEqual(['workflow-1']);
+		});
+
+		it('resolves roles before querying workflows for other users', async () => {
+			roleService.rolesWithScope.mockImplementation(async (namespace) =>
+				namespace === 'project' ? ['project:viewer'] : ['workflow:owner'],
+			);
+			sharedWorkflowRepository.findWorkflowIdsAccessibleToUser.mockResolvedValue(['workflow-1']);
+
+			const result = await service.getSharedWorkflowIds(member, {
+				scopes: ['workflow:read'],
+			});
+
+			expect(sharedWorkflowRepository.findWorkflowIdsAccessibleToUser).toHaveBeenCalledWith(
+				member.id,
+				['workflow:owner'],
+				['project:viewer'],
+			);
+			expect(result).toEqual(['workflow-1']);
+		});
+	});
+
+	it('gets workflow IDs shared with the user from the repository', async () => {
+		sharedWorkflowRepository.findWorkflowIdsSharedWithUser.mockResolvedValue(['workflow-1']);
+
+		await expect(service.getSharedWithMeIds(member)).resolves.toEqual(['workflow-1']);
+		expect(sharedWorkflowRepository.findWorkflowIdsSharedWithUser).toHaveBeenCalledWith(member.id);
+	});
+
+	it('gets workflow IDs owned in the personal project from the repository', async () => {
+		sharedWorkflowRepository.findOwnedWorkflowIdsInPersonalProject.mockResolvedValue([
+			'workflow-1',
+		]);
+
+		await expect(service.getOwnedWorkflowsInPersonalProject(member.id)).resolves.toEqual([
+			'workflow-1',
+		]);
+		expect(sharedWorkflowRepository.findOwnedWorkflowIdsInPersonalProject).toHaveBeenCalledWith(
+			member.id,
+		);
+	});
 
 	describe('getUserIdsWithAccessToWorkflow', () => {
 		beforeEach(() => {
-			vi.clearAllMocks();
 			roleService.rolesWithScope.mockImplementation(async (namespace) => {
 				if (namespace === 'global') return ['global:owner', 'global:admin'];
 				if (namespace === 'project') return ['project:editor'];
