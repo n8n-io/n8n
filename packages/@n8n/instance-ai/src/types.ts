@@ -631,7 +631,7 @@ export interface TestListenerArmed {
 
 export type TestListenerOutcome =
 	| { state: 'armed' }
-	| { state: 'received'; executionId: string; result: ExecutionResult }
+	| { state: 'received'; result: ExecutionResult }
 	| { state: 'timed_out' }
 	| { state: 'cancelled' };
 

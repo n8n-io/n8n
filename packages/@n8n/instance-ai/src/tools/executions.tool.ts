@@ -369,7 +369,7 @@ type RunGate =
 	| { kind: 'blocked' }
 	| { kind: 'denied' }
 	| { kind: 'needs-approval'; workflowName: string }
-	| { kind: 'allowed'; workflowId: string; workflowName: string | undefined };
+	| { kind: 'allowed'; workflowId: string; getWorkflowName: () => Promise<string | undefined> };
 
 /**
  * Permission gate shared by `run` and `listen`. Both start an execution of the
@@ -455,7 +455,8 @@ async function resolveRunGate(
 		await context.grantSessionToolApproval?.(grantKey);
 	}
 
-	return { kind: 'allowed', workflowId, workflowName: await getWorkflowName() };
+	// Lazy: only `listen` shows the name on its card, so `run` skips the lookup.
+	return { kind: 'allowed', workflowId, getWorkflowName };
 }
 
 async function handleRun(
@@ -681,19 +682,22 @@ async function handleListen(
 		};
 	}
 	if (gate.kind === 'needs-approval') {
+		const trigger = input.triggerNodeName ? ` on "${input.triggerNodeName}"` : '';
 		return await suspend({
 			requestId: nanoid(),
-			message: `Listen for a test request to ${gate.workflowName} (ID: ${input.workflowId})`,
+			message: `Listen for a test request to this workflow${trigger}`,
+			resourceName: gate.workflowName,
 			severity: 'warning' as const,
 		});
 	}
 
+	const workflowName = await gate.getWorkflowName();
 	const listener = await executionService.armTestListener(gate.workflowId, {
 		triggerNodeName: input.triggerNodeName,
 	});
 	const card: SuspendPayload = {
 		requestId: nanoid(),
-		message: `Waiting for a test request to ${gate.workflowName ?? gate.workflowId}`,
+		message: `Waiting for a test request to ${workflowName ?? gate.workflowId}`,
 		severity: 'info' as const,
 		testListener: {
 			workflowId: gate.workflowId,
