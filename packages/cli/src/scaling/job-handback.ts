@@ -2,18 +2,23 @@ import { JobReturnedToQueueError } from '@/errors/job-returned-to-queue.error';
 
 import type { Job, JobQueue } from './scaling.types';
 
-<<<<<<< HEAD
-function grantRetryAttempt(job: Job) {
-=======
 function grantRetryAttempt(job: Job) {
 	// Bull counts this attempt before the check, and does not store the new limit for the next worker.
->>>>>>> bf1e6e9ffeb (chore(core): Explain the shutdown sweep of jobs fetched before the pause)
 	job.opts.attempts = job.attemptsMade + 2;
 }
 
+async function moveToFrontOfPriority(job: Job) {
+	try {
+		const { priority } = job.opts;
+		if (typeof priority !== 'number' || !(priority > 0)) return;
+		await job.queue.client.hset(job.queue.toKey(String(job.id)), 'priority', priority - 0.5);
+	} catch {}
+}
+
 /** Fails the job so that Bull retries it under the same id, without publishing a failure. */
-export function returnJobToQueue(job: Job): never {
+export async function returnJobToQueue(job: Job): Promise<never> {
 	grantRetryAttempt(job);
+	await moveToFrontOfPriority(job);
 	throw new JobReturnedToQueueError(job.id.toString());
 }
 
@@ -23,12 +28,8 @@ export function getLockToken(queue: JobQueue): string | undefined {
 	return typeof token === 'string' ? token : undefined;
 }
 
-<<<<<<< HEAD
-export async function returnUnstartedJobsToQueue(
-=======
 /** Hands back the active jobs that this token locked but whose handler never ran. */
 export async function returnUnstartedJobsToQueue(
->>>>>>> bf1e6e9ffeb (chore(core): Explain the shutdown sweep of jobs fetched before the pause)
 	queue: JobQueue,
 	token: string,
 	isStarted: (jobId: string) => boolean,
@@ -54,6 +55,7 @@ export async function returnUnstartedJobsToQueue(
 	for (const job of unstartedJobs) {
 		const jobId = String(job.id);
 		grantRetryAttempt(job);
+		await moveToFrontOfPriority(job);
 		try {
 			await job.moveToFailed(new JobReturnedToQueueError(jobId));
 			handedBack.push(jobId);
