@@ -10,12 +10,15 @@ import type {
 import { Brackets, DataSource, In, IsNull, Not, Repository } from '@n8n/typeorm';
 
 import { ApiKey, Project, ProjectRelation, User } from '../entities';
+import { type OperationContext, TransactionRunner } from '../services/transaction';
 import { isUniqueConstraintError } from '../utils/is-unique-constraint-error';
 
+import { BaseRepository } from './base-repository';
+
 @Service()
-export class UserRepository extends Repository<User> {
-	constructor(dataSource: DataSource) {
-		super(User, dataSource.manager);
+export class UserRepository extends BaseRepository<User> {
+	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
+		super(User, dataSource.manager, transactionRunner);
 	}
 
 	async findManyByIds(
@@ -104,8 +107,9 @@ export class UserRepository extends Repository<User> {
 	async updateProfileNames(
 		userId: string,
 		names: { firstName?: string; lastName?: string },
+		ctx: OperationContext = {},
 	): Promise<void> {
-		await this.manager.transaction(async (trx) => {
+		await this.runInTransaction(ctx, async (trx) => {
 			const user = await trx.findOneOrFail(User, {
 				where: { id: userId },
 				...(trx.connection.options.type === 'postgres'

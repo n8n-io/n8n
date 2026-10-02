@@ -1,12 +1,15 @@
-import type { EntityManager } from '@n8n/typeorm';
+import { mock } from 'vitest-mock-extended';
 
 import { User } from '../../entities';
+import type { TransactionRunner } from '../../services/transaction';
+import { TypeOrmTransaction } from '../../services/typeorm-transaction';
 import { mockEntityManager } from '../../utils/test-utils/mock-entity-manager';
 import { UserRepository } from '../user.repository';
 
 describe('UserRepository updates', () => {
 	const manager = mockEntityManager(User);
-	const repository = new UserRepository(manager.connection);
+	const runner = mock<TransactionRunner>();
+	const repository = new UserRepository(manager.connection, runner);
 
 	beforeEach(() => {
 		vi.resetAllMocks();
@@ -40,14 +43,15 @@ describe('UserRepository updates', () => {
 
 	it('locks and reloads the user before saving profile names', async () => {
 		Object.assign(manager.connection, { options: { type: 'postgres' } });
-		manager.transaction.mockImplementation(
-			async (work) => await (work as unknown as (trx: EntityManager) => Promise<void>)(manager),
-		);
+		const ctx = { trx: new TypeOrmTransaction(manager) };
+		runner.run.mockImplementation(async (context, work) => await work(context));
 		const user = Object.assign(new User(), { id: 'user', email: 'current@example.com' });
 		manager.findOneOrFail.mockResolvedValue(user);
 
-		await repository.updateProfileNames('user', { firstName: 'New' });
+		await repository.updateProfileNames('user', { firstName: 'New' }, ctx);
 
+		expect(runner.run).toHaveBeenCalledWith(ctx, expect.any(Function));
+		expect(manager.transaction).not.toHaveBeenCalled();
 		expect(manager.findOneOrFail).toHaveBeenCalledWith(User, {
 			where: { id: 'user' },
 			lock: { mode: 'pessimistic_write' },
