@@ -120,6 +120,28 @@ export const SUPPLY_FIELDS = {
 	embeddings: 'embedding',
 } as const satisfies Record<SupplyKind, string>;
 
+/**
+ * The field of each `ai_*` connection type in the `providers` of a derived root node, the slot
+ * name of the typed flow SDK. The four supplied kinds use the same names.
+ */
+export const PROVIDER_FIELDS = {
+	ai_languageModel: 'model',
+	ai_memory: 'memory',
+	ai_tool: 'tools',
+	ai_outputParser: 'outputParser',
+	ai_embedding: 'embedding',
+	ai_vectorStore: 'vectorStore',
+	ai_retriever: 'retriever',
+	ai_document: 'documentLoader',
+	ai_textSplitter: 'textSplitter',
+	ai_reranker: 'reranker',
+} as const satisfies Partial<Record<AINodeConnectionType, string>>;
+
+export type ProviderConnection = keyof typeof PROVIDER_FIELDS;
+
+export const isProviderConnection = (value: unknown): value is ProviderConnection =>
+	typeof value === 'string' && Object.hasOwn(PROVIDER_FIELDS, value);
+
 const SUPPLY_METHODS: Record<SupplyKind, readonly string[]> = {
 	chatModel: ['chat'],
 	memory: ['load', 'save'],
@@ -169,6 +191,15 @@ export const supplyFieldsOf = (input: Shape): SupplyField[] =>
 export const suppliedKindOf = (output: JsonSchema): SupplyKind | undefined => {
 	const kind = output['x-n8n-supply'];
 	return isSupplyKind(kind) ? kind : undefined;
+};
+
+/**
+ * What an action provides when it is a provider: a supplied kind, or the `ai_*` connection type
+ * of a derived provider, which runs as its legacy node.
+ */
+export const providedOf = (output: JsonSchema): SupplyKind | ProviderConnection | undefined => {
+	const kind = output['x-n8n-supply'];
+	return isSupplyKind(kind) || isProviderConnection(kind) ? kind : undefined;
 };
 
 const TOOL_NAME = /^[A-Za-z0-9_-]{1,64}$/;

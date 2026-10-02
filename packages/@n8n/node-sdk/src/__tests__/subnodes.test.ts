@@ -247,23 +247,23 @@ describe('sub-node contracts', () => {
 		expect(lintContract(toContract(chatModel))).toEqual([]);
 	});
 
-	it('generate a sub-node factory, typed sub-node fields, and catalog model IDs', () => {
+	it('generate a provider factory, typed provider fields, and catalog model IDs', () => {
 		const module = generateNodeModule('llm', [
 			{ contract: toContract(chatModel), nodeType: 'pkg.llmChatModel', operation: 'chatModel' },
 		]);
 		expect(module).toContain(
-			"import { contractSubnode, type ModelOf, type NodeSettings, type Subnode, type Value } from '@n8n/workflow-sdk/next';",
+			"import { contractProvider, type ModelOf, type NodeSettings, type Provider, type Value } from '@n8n/workflow-sdk/next';",
 		);
 		expect(module).toContain('model: Value<I, C, ModelOf<"llm">>;');
-		expect(module).toContain('): Subnode<In, Ctx, "chatModel"> =>');
-		expect(module).toContain('contractSubnode("pkg.llmChatModel", "chatModel", config)');
+		expect(module).toContain('): Provider<In, Ctx, "chatModel"> =>');
+		expect(module).toContain('contractProvider("pkg.llmChatModel", "chatModel", config)');
 		expect(module).not.toContain('LlmChatModelOutput');
 
 		const root = generateNodeModule('ai', [
 			{ contract: toContract(ask), nodeType: 'pkg.aiAsk', operation: 'ask' },
 		]);
-		expect(root).toContain('model: Subnode<NoInfer<I>, NoInfer<C>, "chatModel">;');
-		expect(root).toContain('tools?: Array<Subnode<NoInfer<I>, NoInfer<C>, "tool">>;');
+		expect(root).toContain('model: Provider<NoInfer<I>, NoInfer<C>, "chatModel">;');
+		expect(root).toContain('tools?: Array<Provider<NoInfer<I>, NoInfer<C>, "tool">>;');
 	});
 
 	it('declare a model catalog for ModelOf', () => {

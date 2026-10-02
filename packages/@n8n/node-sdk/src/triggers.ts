@@ -44,8 +44,11 @@ import { parameterValue, toProperty } from './properties';
 import type { Binary, Schema, Shape } from './schema';
 import { applyDefaults, parse, validate } from './validate';
 
-/** What starts a trigger: a service webhook, a poll, or the event of a native trigger. */
-export type TriggerKind = 'webhook' | 'poll' | NativeEvent;
+/**
+ * What starts a trigger: a service webhook, a poll, the event of a native trigger, or an `event`
+ * that a derived legacy trigger gets itself, e.g. from a message queue.
+ */
+export type TriggerKind = 'webhook' | 'poll' | 'event' | NativeEvent;
 
 /** The HTTP request a webhook trigger gets. Header names are lower case. */
 export interface WebhookRequest {

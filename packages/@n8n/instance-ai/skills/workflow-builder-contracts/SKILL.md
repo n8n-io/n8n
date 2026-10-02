@@ -44,8 +44,8 @@ make the smallest change, and build with its `filePath`. Keep its
 
 Import the flow API from `@n8n/workflow-sdk/next`. The typed modules are
 {{NODE_CONTRACT_MODULES_PLACEHOLDER}}: import them from `@n8n/nodes/<id>`.
-Other nodes may have a derived module at `@n8n/nodes/<package>/<name>`.
-Use a module when one exists. Every other node uses `node()`.
+Every other node, also a trigger or an AI node, has a derived module at
+`@n8n/nodes/<package>/<name>`. Use `node()` only for a type without one.
 
 ```ts
 import { workflow, manual, set } from '@n8n/workflow-sdk/next';
@@ -86,23 +86,19 @@ export default workflow(
   `.andThen` only the first.
 - `set({ name, fields: { total: (item) => item.a + item.b }, keep: 'all' })`
   makes fields. `keep: 'all'` keeps input fields.
-- `node({ name, type, version, parameters, sample })` adds any other node;
-  `trigger({ … })` any other trigger. `sample` items type the output and feed
-  verification, e.g. `manual({ sample: [{ id: 1 }] })`.
+- `sample` items type the output and feed verification, e.g.
+  `manual({ sample: [{ id: 1 }] })`.
 - Typed steps and `node()` take `settings: { retryOnFail: true, notes: '…' }`.
 
 ## AI nodes
 
-An AI node is a `node()` with `subnodes` made with `subnode()`:
+A derived AI node takes its providers in `providers`. A provider module
+gives one, and `tsc` checks its slot:
 
 ```ts
-node({ name: 'Agent', type: '@n8n/n8n-nodes-langchain.agent', version: 2.2,
-  parameters: { promptType: 'define', text: (item) => item.question },
-  subnodes: { model: subnode({ name: 'Model', type: '@n8n/n8n-nodes-langchain.lmChatOpenAi', version: 1.2 }) } })
+agent.execute({ name: 'Agent', promptType: 'define', text: (item) => item.question,
+  providers: { model: lmChatOpenAi.execute({ name: 'Model', model: { mode: 'id', value: 'gpt-5-mini' } }) } })
 ```
-
-Slots: `model`, `memory`, `tools`, `outputParser`, `embedding`,
-`vectorStore`, `retriever`, `documentLoader`, `textSplitter`, `reranker`.
 
 ## Lambdas
 

@@ -30,6 +30,7 @@ import {
 	contractReplacementOf,
 	derivedActionIds,
 	derivedActionsNamedBy,
+	derivedModulePath,
 	derivedNodeView,
 	hasDerivedModule,
 	namesDisplayName,
@@ -607,7 +608,11 @@ function moduleOfRequest(
 	if (resource === undefined || operation === undefined) {
 		const nodeModule = nextNodeModule(nodeId);
 		const hint = `// The typed module for ${nodeType}. For an operation without an action, request ${nodeType} with resource and operation.\n`;
-		return nodeModule && { ...nodeModule, module: `${hint}${nodeModule.module}` };
+		// A derived AI node takes only derived providers, never a provider of a typed module.
+		const derived = hasDerivedModule(nodeType, source)
+			? `// A derived AI node takes the derived provider: import { ${nodeType.slice(nodeType.lastIndexOf('.') + 1)} } from '@n8n/nodes/${derivedModulePath(nodeType)}'.\n`
+			: '';
+		return nodeModule && { ...nodeModule, module: `${hint}${derived}${nodeModule.module}` };
 	}
 	const replacement = contractReplacementOf({
 		type: nodeType,
@@ -727,7 +732,7 @@ async function resolveNodeTypeDefinitions(
 					? ''
 					: isTriggerNodeType(nodeType)
 						? `// No typed module. Start the flow with trigger({ name, type: '${nodeType}', version: ${version}, parameters, sample }) from '@n8n/workflow-sdk/next'.\n`
-						: `// No typed module. Use node({ name, type: '${nodeType}', version: ${version}, parameters }) from '@n8n/workflow-sdk/next', or subnode({ … }) for an AI sub-node.\n`;
+						: `// No typed module. Use node({ name, type: '${nodeType}', version: ${version}, parameters }) from '@n8n/workflow-sdk/next', or provider({ … }) for an AI provider.\n`;
 			return {
 				nodeType,
 				version: result.version,

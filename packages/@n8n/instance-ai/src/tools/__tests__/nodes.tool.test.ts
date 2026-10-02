@@ -1645,7 +1645,7 @@ describe('nodes tool', () => {
 			);
 
 			expect(result.definitions[0].content).toBe(
-				"// No typed module. Use node({ name, type: 'n8n-nodes-base.mattermost', version: 2.3, parameters }) from '@n8n/workflow-sdk/next', or subnode({ … }) for an AI sub-node.\nexport type MattermostV23Params = {}",
+				"// No typed module. Use node({ name, type: 'n8n-nodes-base.mattermost', version: 2.3, parameters }) from '@n8n/workflow-sdk/next', or provider({ … }) for an AI provider.\nexport type MattermostV23Params = {}",
 			);
 			expect(result.definitions[1].content).toContain('export const notion = {');
 			expect(result.definitions[2].content).toBe(

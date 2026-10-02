@@ -309,8 +309,8 @@ export interface Compiler {
 	issue(message: string): void;
 }
 
-/** Each sub-node slot of an AI node and the connection type it maps to, in input order. */
-export const SUBNODE_SLOTS = [
+/** Each provider slot of an AI node and the connection type it maps to, in input order. */
+export const PROVIDER_SLOTS = [
 	['model', 'ai_languageModel'],
 	['memory', 'ai_memory'],
 	['tools', 'ai_tool'],
@@ -323,7 +323,15 @@ export const SUBNODE_SLOTS = [
 	['reranker', 'ai_reranker'],
 ] as const;
 
-export type SubnodeSlot = (typeof SUBNODE_SLOTS)[number][0];
+export type ProviderSlot = (typeof PROVIDER_SLOTS)[number][0];
+
+/** The n8n connection type of a provider slot, e.g. `ai_languageModel`: what a derived provider gives. */
+export type ProviderConnection = (typeof PROVIDER_SLOTS)[number][1];
+
+/** The slot that takes each connection type. */
+export const SLOT_OF_CONNECTION: ReadonlyMap<string, ProviderSlot> = new Map(
+	PROVIDER_SLOTS.map(([slot, connection]) => [connection, slot]),
+);
 
 /**
  * The settings of an n8n node, outside its parameters. `Flow.orElse` sets the error output
@@ -346,17 +354,17 @@ export interface NodeSettings {
 }
 
 /** A node that an AI node uses through an `ai_*` input. It never receives items. */
-export interface SubnodeSpec {
+export interface ProviderSpec {
 	readonly name: string;
 	readonly type: string;
 	readonly version: number;
 	readonly parameters: (compiler: Compiler) => Record<string, unknown>;
 	readonly settings?: NodeSettings;
-	readonly subnodes?: SubnodeSpecs;
+	readonly providers?: ProviderSpecs;
 }
 
-/** Sub-nodes by slot, in input order. */
-export type SubnodeSpecs = Partial<Record<SubnodeSlot, readonly SubnodeSpec[]>>;
+/** Providers by slot, in input order. */
+export type ProviderSpecs = Partial<Record<ProviderSlot, readonly ProviderSpec[]>>;
 
 export interface NodeSpec {
 	readonly name: string;
@@ -373,7 +381,7 @@ export interface NodeSpec {
 	readonly requires?: Requires;
 	/** A native trigger or its reply step. The build checks that the two go together. */
 	readonly pairing?: Pairing;
-	readonly subnodes?: SubnodeSpecs;
+	readonly providers?: ProviderSpecs;
 }
 
 /**
@@ -452,49 +460,63 @@ export type OutputNames<S> = S extends RoutedStep<
 	? Names
 	: never;
 
-/** What a contract sub-node supplies, e.g. `chatModel`. `node` is a sub-node from `subnode()`. */
+/** What a contract provider supplies, e.g. `chatModel`. `node` is a provider from `provider()`. */
 export type SupplyKind = 'chatModel' | 'memory' | 'tool' | 'embeddings';
 
-/** The slot of each kind that a contract sub-node supplies. */
+/** The slot of each kind that a contract provider supplies. */
 export const SUPPLY_SLOTS = {
 	chatModel: 'model',
 	memory: 'memory',
 	tool: 'tools',
 	embeddings: 'embedding',
-} as const satisfies Record<SupplyKind, SubnodeSlot>;
+} as const satisfies Record<SupplyKind, ProviderSlot>;
 
 /**
- * A sub-node, e.g. a chat model or a tool. n8n evaluates its lambdas with the item of the AI
- * node that uses it, so they read that node's input `In`. `K` is what it supplies: a contract
- * root node takes only contract sub-nodes of its kind, and `node()` takes only `subnode()`.
+ * A provider, e.g. a chat model or a tool. n8n evaluates its lambdas with the item of the AI
+ * node that uses it, so they read that node's input `In`. `K` is what it gives: a contract root
+ * node takes only contract providers of its kind, a derived root node only derived providers of
+ * the connection type of the slot, and `node()` takes `provider()` or a derived provider.
  */
-export interface Subnode<In, Ctx, K extends SupplyKind | 'node' = 'node'> {
-	readonly spec: SubnodeSpec;
-	/** The slot of a contract sub-node in its root node. */
-	readonly slot?: SubnodeSlot;
+export interface Provider<In, Ctx, K extends SupplyKind | ProviderConnection | 'node' = 'node'> {
+	readonly spec: ProviderSpec;
+	/** The slot of a contract provider in its root node. */
+	readonly slot?: ProviderSlot;
 	readonly [phantom]?: { readonly read: (item: In, ctx: Ctx) => void; readonly supplies: K };
 }
 
-/** The sub-nodes of an AI node (Agent, Basic LLM Chain, Vector Store, …) by slot. */
-export interface Subnodes<In, Ctx> {
+/** A `provider()`, or a derived provider of connection type `C`. */
+type SlotProvider<In, Ctx, C extends ProviderConnection> = Provider<In, Ctx, 'node' | C>;
+
+/** The providers of an AI node (Agent, Basic LLM Chain, Vector Store, …) by slot. */
+export interface Providers<In, Ctx> {
 	/** A chat model. */
-	model?: Subnode<In, Ctx>;
-	memory?: Subnode<In, Ctx>;
-	tools?: ReadonlyArray<Subnode<In, Ctx>>;
-	outputParser?: Subnode<In, Ctx>;
-	embedding?: Subnode<In, Ctx>;
-	vectorStore?: Subnode<In, Ctx>;
-	retriever?: Subnode<In, Ctx>;
-	documentLoader?: Subnode<In, Ctx>;
-	textSplitter?: Subnode<In, Ctx>;
-	reranker?: Subnode<In, Ctx>;
+	model?: SlotProvider<In, Ctx, 'ai_languageModel'>;
+	memory?: SlotProvider<In, Ctx, 'ai_memory'>;
+	tools?: ReadonlyArray<SlotProvider<In, Ctx, 'ai_tool'>>;
+	outputParser?: SlotProvider<In, Ctx, 'ai_outputParser'>;
+	embedding?: SlotProvider<In, Ctx, 'ai_embedding'>;
+	vectorStore?: SlotProvider<In, Ctx, 'ai_vectorStore'>;
+	retriever?: SlotProvider<In, Ctx, 'ai_retriever'>;
+	documentLoader?: SlotProvider<In, Ctx, 'ai_document'>;
+	textSplitter?: SlotProvider<In, Ctx, 'ai_textSplitter'>;
+	reranker?: SlotProvider<In, Ctx, 'ai_reranker'>;
 }
 
-/** The specs of `subnodes`, each slot as a list. */
-export function subnodeSpecs<In, Ctx>(subnodes: Subnodes<In, Ctx>): SubnodeSpecs {
+/** Providers by slot, as `node()` and a derived root node take them. Only the specs are read. */
+type ProvidersBySlot = Readonly<
+	Partial<
+		Record<
+			ProviderSlot,
+			{ readonly spec: ProviderSpec } | ReadonlyArray<{ readonly spec: ProviderSpec }>
+		>
+	>
+>;
+
+/** The specs of `providers`, each slot as a list. */
+export function providerSpecs(providers: ProvidersBySlot): ProviderSpecs {
 	return Object.fromEntries(
-		SUBNODE_SLOTS.flatMap(([slot]) => {
-			const value = subnodes[slot];
+		PROVIDER_SLOTS.flatMap(([slot]) => {
+			const value = providers[slot];
 			if (value === undefined) return [];
 			const list = 'spec' in value ? [value] : value;
 			return list.length > 0 ? [[slot, list.map((entry) => entry.spec)]] : [];
@@ -502,40 +524,59 @@ export function subnodeSpecs<In, Ctx>(subnodes: Subnodes<In, Ctx>): SubnodeSpecs
 	);
 }
 
-const isSubnodeValue = (value: unknown): value is Subnode<unknown, unknown, SupplyKind> =>
+const isProviderValue = (value: unknown): value is Provider<unknown, unknown, SupplyKind> =>
 	isDataObject(value) && isDataObject(value.spec) && typeof value.spec.parameters === 'function';
 
 /**
- * The fields of a contract config that hold contract sub-nodes, as sub-node specs by slot,
- * and the other fields as parameters. n8n connects a sub-node; it is no parameter.
+ * The fields of a contract config that hold contract providers, as provider specs by slot,
+ * and the other fields as parameters. n8n connects a provider; it is no parameter.
  */
-function splitSubnodes(fields: Readonly<Record<string, unknown>>): {
+function splitProviders(fields: Readonly<Record<string, unknown>>): {
 	parameters: Record<string, unknown>;
-	subnodes: SubnodeSpecs;
+	providers: ProviderSpecs;
 	unslotted: string[];
 } {
 	const entries = Object.entries(fields);
-	const subnodesOf = (value: unknown) =>
-		Array.isArray(value) && value.length > 0 && value.every(isSubnodeValue)
+	const providersOf = (value: unknown) =>
+		Array.isArray(value) && value.length > 0 && value.every(isProviderValue)
 			? value
-			: isSubnodeValue(value)
+			: isProviderValue(value)
 				? [value]
 				: undefined;
 	const held = entries.flatMap(([key, value]) => {
-		const list = subnodesOf(value);
-		return list ? list.map((subnode) => ({ key, subnode })) : [];
+		const list = providersOf(value);
+		return list ? list.map((provider) => ({ key, provider })) : [];
 	});
 	const heldKeys = new Set(held.map(({ key }) => key));
-	const subnodes = held.reduce<SubnodeSpecs>((specs, { subnode }) => {
-		if (subnode.slot === undefined) return specs;
-		return { ...specs, [subnode.slot]: [...(specs[subnode.slot] ?? []), subnode.spec] };
+	const providers = held.reduce<ProviderSpecs>((specs, { provider }) => {
+		if (provider.slot === undefined) return specs;
+		return { ...specs, [provider.slot]: [...(specs[provider.slot] ?? []), provider.spec] };
 	}, {});
 	return {
 		parameters: Object.fromEntries(entries.filter(([key]) => !heldKeys.has(key))),
-		subnodes,
-		unslotted: held.filter(({ subnode }) => subnode.slot === undefined).map(({ key }) => key),
+		providers,
+		unslotted: held.filter(({ provider }) => provider.slot === undefined).map(({ key }) => key),
 	};
 }
+
+/**
+ * The parameters and providers of a contract config. A derived root node takes its providers in
+ * `providers`; a contract root node takes each in the input field of its slot.
+ */
+function splitConfig(fields: Readonly<Record<string, unknown>>, grouped?: ProvidersBySlot) {
+	const split = splitProviders(fields);
+	return grouped
+		? { ...split, providers: { ...split.providers, ...providerSpecs(grouped) } }
+		: split;
+}
+
+/** The resource and operation that select the action of a composed or derived node version. */
+interface Selector {
+	readonly resource?: string;
+	readonly operation?: string;
+}
+
+const isSupplyKind = (kind: string): kind is SupplyKind => Object.hasOwn(SUPPLY_SLOTS, kind);
 
 /** Keys both branches share, so `$("Node")` after a join names a node every path ran. */
 type Common<A, B> = Pick<A, keyof A & keyof B>;
@@ -1209,19 +1250,19 @@ export function contractStep<In, Ctx, Out, N extends string>(
 		readonly name: N;
 		readonly sample?: readonly unknown[];
 		readonly settings?: NodeSettings;
+		readonly providers?: ProvidersBySlot;
 	},
 	/** The node version: the action major, or the version of a composed or derived node. */
 	version = 1,
-	/** The resource and operation that select the action in a composed or derived node version. */
-	slot?: { readonly resource?: string; readonly operation?: string },
+	slot?: Selector,
 	requires?: Requires,
 	/** Set on the reply step of a native trigger. */
 	pairing?: Pairing,
 	/** The paths of the fields whose lambdas read each response page, e.g. `[['pages', 'next']]`. */
 	pageFields: ReadonlyArray<readonly string[]> = [],
 ): Step<In, Ctx, Out, N> {
-	const { name, sample, settings, ...fields } = config;
-	const { parameters, subnodes, unslotted } = splitSubnodes(fields);
+	const { name, sample, settings, providers: grouped, ...fields } = config;
+	const { parameters, providers, unslotted } = splitConfig(fields, grouped);
 	return {
 		name,
 		spec: {
@@ -1231,11 +1272,11 @@ export function contractStep<In, Ctx, Out, N extends string>(
 			sample,
 			...(settings ? { settings } : {}),
 			...(requires ? { requires } : {}),
-			...(Object.keys(subnodes).length > 0 ? { subnodes } : {}),
+			...(Object.keys(providers).length > 0 ? { providers } : {}),
 			...(pairing ? { pairing } : {}),
 			parameters: (compiler) => {
 				unslotted.forEach((key) =>
-					compiler.issue(`${key} takes a contract sub-node of its module, not subnode()`),
+					compiler.issue(`${key} takes a contract provider of its module, not provider()`),
 				);
 				const compiled = compileWithPages(compiler, parameters, pageFields);
 				// The slot goes last: no contract field may change the action that runs.
@@ -1265,31 +1306,37 @@ function compileWithPages(
 }
 
 /**
- * A contract sub-node, e.g. a chat model. Generated node modules call this. A root node
- * takes it in the input field of its kind.
+ * A provider, e.g. a chat model. Generated node modules call this. A contract root node takes a
+ * contract provider in the input field of its kind; a derived root node takes a derived provider
+ * in the `providers` slot of its connection type.
  */
-export function contractSubnode<In, Ctx, const K extends SupplyKind>(
+export function contractProvider<In, Ctx, const K extends SupplyKind | ProviderConnection>(
 	id: string,
 	kind: K,
-	config: { readonly name: string; readonly settings?: NodeSettings },
+	config: {
+		readonly name: string;
+		readonly settings?: NodeSettings;
+		readonly providers?: ProvidersBySlot;
+	},
 	version = 1,
-): Subnode<In, Ctx, K> {
-	const { name, settings, ...fields } = config;
-	const { parameters, subnodes, unslotted } = splitSubnodes(fields);
+	selector?: Selector,
+): Provider<In, Ctx, K> {
+	const { name, settings, providers: grouped, ...fields } = config;
+	const { parameters, providers, unslotted } = splitConfig(fields, grouped);
 	return {
-		slot: SUPPLY_SLOTS[kind],
+		slot: isSupplyKind(kind) ? SUPPLY_SLOTS[kind] : SLOT_OF_CONNECTION.get(kind),
 		spec: {
 			name,
 			type: id,
 			version,
 			...(settings ? { settings } : {}),
-			...(Object.keys(subnodes).length > 0 ? { subnodes } : {}),
+			...(Object.keys(providers).length > 0 ? { providers } : {}),
 			parameters: (compiler) => {
 				unslotted.forEach((key) =>
-					compiler.issue(`${key} takes a contract sub-node of its module, not subnode()`),
+					compiler.issue(`${key} takes a contract provider of its module, not provider()`),
 				);
 				const compiled = compiler.value(parameters);
-				return isDataObject(compiled) ? compiled : {};
+				return { ...(isDataObject(compiled) ? compiled : {}), ...selector };
 			},
 		},
 	};
@@ -1314,6 +1361,8 @@ export interface TriggerOptions {
 	readonly example?: Readonly<Record<string, unknown>>;
 	/** The trigger declares output fields with `schema`, so `schema` is not a node parameter. */
 	readonly takesSchema?: true;
+	/** The resource and operation of a derived trigger. */
+	readonly slot?: Selector;
 }
 
 /** `sample` with the fields it leaves out taken from `example`, at any depth. */
@@ -1339,13 +1388,15 @@ export function contractTrigger<Out, const N extends string>(
 		readonly sample?: readonly unknown[];
 		readonly schema?: Readonly<Record<string, ValueSchema | undefined>>;
 		readonly settings?: NodeSettings;
+		readonly providers?: ProvidersBySlot;
 	},
 	version = 1,
 	requires?: Requires,
 	options: TriggerOptions = {},
 ): Flow<Out, Record<N, Out>> {
-	const { name, sample: given, settings, ...input } = config;
-	const { pairing, example, takesSchema } = options;
+	const { name, sample: given, settings, providers: grouped, ...input } = config;
+	const { pairing, example, takesSchema, slot } = options;
+	const providers = grouped && providerSpecs(grouped);
 	// Only a trigger with declared output fields takes `schema`; for another it is a parameter.
 	const { schema, ...withoutSchema } = input;
 	const parameters = takesSchema ? withoutSchema : input;
@@ -1366,9 +1417,10 @@ export function contractTrigger<Out, const N extends string>(
 		...(settings ? { settings } : {}),
 		...(requires ? { requires } : {}),
 		...(pairing ? { pairing } : {}),
+		...(providers && Object.keys(providers).length > 0 ? { providers } : {}),
 		parameters: (compiler) => {
 			const compiled = compiler.value(parameters);
-			return isDataObject(compiled) ? compiled : {};
+			return { ...(isDataObject(compiled) ? compiled : {}), ...slot };
 		},
 	});
 }
@@ -1535,20 +1587,20 @@ function withTriggerSamples(
 	};
 }
 
-/** Every sub-node under `specs`, at any depth. */
-const allSubnodes = (specs: SubnodeSpecs | undefined): SubnodeSpec[] =>
+/** Every provider under `specs`, at any depth. */
+const allProviders = (specs: ProviderSpecs | undefined): ProviderSpec[] =>
 	Object.values(specs ?? {}).flatMap((list) =>
-		list.flatMap((spec) => [spec, ...allSubnodes(spec.subnodes)]),
+		list.flatMap((spec) => [spec, ...allProviders(spec.providers)]),
 	);
 
-/** The root builder config for `specs`; `input` gives each sub-node's node input. */
-function subnodeConfig(
-	specs: SubnodeSpecs,
-	input: (spec: SubnodeSpec) => NodeInput,
+/** The root builder config for `specs`; `input` gives each provider's node input. */
+function providerConfig(
+	specs: ProviderSpecs,
+	input: (spec: ProviderSpec) => NodeInput,
 ): SubnodeConfig {
-	const one = <T>(factory: (node: NodeInput) => T, list?: readonly SubnodeSpec[]) =>
+	const one = <T>(factory: (node: NodeInput) => T, list?: readonly ProviderSpec[]) =>
 		list?.[0] ? factory(input(list[0])) : undefined;
-	const all = <T>(factory: (node: NodeInput) => T, list?: readonly SubnodeSpec[]) =>
+	const all = <T>(factory: (node: NodeInput) => T, list?: readonly ProviderSpec[]) =>
 		list?.map((spec) => factory(input(spec)));
 	return {
 		model: one(languageModel, specs.model),
@@ -1647,29 +1699,29 @@ export function workflow(
 					`Credential "${credential}" does not grant scope "${scope}", which ${nodes.map((node) => `"${node}"`).join(', ')} needs`,
 			),
 	);
-	const subnodes = [...new Set(graph.nodes.flatMap((spec) => allSubnodes(spec.subnodes)))];
-	const subnodeNames = subnodes.map((spec) => spec.name);
+	const providers = [...new Set(graph.nodes.flatMap((spec) => allProviders(spec.providers)))];
+	const providerNames = providers.map((spec) => spec.name);
 	const issues: string[] = [
 		...[
 			...graph.nodes
 				.filter((spec) => spec.name.endsWith('\u0000duplicate'))
 				.map((spec) => spec.name.split('\u0000')[0]),
-			...subnodeNames.filter(
-				(subnodeName, index) =>
-					nodeNames.has(subnodeName) || subnodeNames.indexOf(subnodeName) !== index,
+			...providerNames.filter(
+				(providerName, index) =>
+					nodeNames.has(providerName) || providerNames.indexOf(providerName) !== index,
 			),
 		].map((duplicate) => `Two different nodes are named "${duplicate}"`),
 		...missing,
 	];
 
-	const subnodeInput = (spec: SubnodeSpec): NodeInput => ({
+	const providerInput = (spec: ProviderSpec): NodeInput => ({
 		type: spec.type,
 		version: spec.version,
 		config: {
 			name: spec.name,
 			parameters: spec.parameters(createCompiler(spec.name, nodeNames, issues)),
 			...spec.settings,
-			...(spec.subnodes ? { subnodes: subnodeConfig(spec.subnodes, subnodeInput) } : {}),
+			...(spec.providers ? { subnodes: providerConfig(spec.providers, providerInput) } : {}),
 		},
 	});
 	const parametersOf = new Map(
@@ -1686,7 +1738,7 @@ export function workflow(
 				parameters: parametersOf.get(spec.name) ?? {},
 				...spec.settings,
 				...(spec.onError ? { onError: spec.onError } : {}),
-				...(spec.subnodes ? { subnodes: subnodeConfig(spec.subnodes, subnodeInput) } : {}),
+				...(spec.providers ? { subnodes: providerConfig(spec.providers, providerInput) } : {}),
 			};
 			const input = {
 				type: spec.type,

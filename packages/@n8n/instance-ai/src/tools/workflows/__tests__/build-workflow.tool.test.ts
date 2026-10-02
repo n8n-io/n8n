@@ -5,7 +5,7 @@ import {
 	type InstanceAiSetupCredentialSelection,
 } from '@n8n/api-types';
 
-import { manual, node, subnode, workflow } from '@n8n/workflow-sdk/next';
+import { manual, node, provider, workflow } from '@n8n/workflow-sdk/next';
 
 import { executeTool } from '../../../__tests__/tool-test-utils';
 import { FolderResolutionError } from '../../../errors/folder-resolution.error';
@@ -609,8 +609,8 @@ describe('createBuildWorkflowTool', () => {
 					type: '@n8n/n8n-nodes-langchain.agent',
 					version: 2.2,
 					parameters: { promptType: 'define', text: (item) => item.question },
-					subnodes: {
-						model: subnode({
+					providers: {
+						model: provider({
 							name: 'Chat Model',
 							type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
 							version: 1.2,

@@ -24,6 +24,7 @@ import {
 	variant,
 	type Action,
 	type Infer,
+	type JsonSchema,
 	type RunInput,
 } from '../index';
 
@@ -253,6 +254,27 @@ describe('schema builders', () => {
 				allowExpressions: true,
 			}),
 		).toEqual([]);
+	});
+
+	it('validates a value without its tag against the variant whose tag is optional', () => {
+		const tagged = (value: string, optional: boolean): JsonSchema => ({
+			type: 'object',
+			properties: { mode: { const: value }, [value]: { type: 'string' } },
+			...(optional ? {} : { required: ['mode'] }),
+			additionalProperties: false,
+		});
+		const schema: JsonSchema = {
+			type: 'object',
+			discriminator: { propertyName: 'mode' },
+			oneOf: [tagged('all', true), tagged('limit', false)],
+		};
+		expect(validate({ all: 'x' }, schema)).toEqual([]);
+		expect(validate({ limit: 'x' }, schema)).toEqual([
+			'input: unknown field(s) limit. Allowed: mode, all',
+		]);
+		expect(validate({ limit: 'x' }, { ...schema, oneOf: [tagged('limit', false)] })).toEqual([
+			'input: needs "mode" set to one of "limit"',
+		]);
 	});
 });
 

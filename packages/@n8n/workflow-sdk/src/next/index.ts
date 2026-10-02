@@ -3,7 +3,7 @@
  * then `andThen`, `branch`, `route`, and `orElse`, and the regions `forEach`, `loop`, `paginate`,
  * `pollUntil`, `switch`, `filter`, and `merge`. Lambdas compile to n8n expressions, and `tsc`
  * checks every read against the item type of the node before it. AI nodes take their chat
- * model, memory, tools, and output parser as `subnodes`.
+ * model, memory, tools, and output parser as `providers`.
  *
  * @example
  * ```typescript
@@ -21,7 +21,7 @@ import {
 	SET_NODE,
 	setParameters,
 	startFlow,
-	subnodeSpecs,
+	providerSpecs,
 	type Compiler,
 	type Dollar,
 	type Flow,
@@ -30,15 +30,15 @@ import {
 	type NodeSpec,
 	type RoutedStep,
 	type Step,
-	type Subnode,
-	type Subnodes,
+	type Provider,
+	type Providers,
 } from './flow';
 
 export {
 	workflow,
 	Flow,
 	contractStep,
-	contractSubnode,
+	contractProvider,
 	contractTrigger,
 	routedStep,
 } from './flow';
@@ -76,6 +76,7 @@ export type {
 	OutputOf,
 	PageValue,
 	Pairing,
+	ProviderConnection,
 	Requires,
 	ResponsePage,
 	RouteFlows,
@@ -83,8 +84,8 @@ export type {
 	RoutedItem,
 	RoutedStep,
 	Step,
-	Subnode,
-	Subnodes,
+	Provider,
+	Providers,
 	SupplyKind,
 	TriggerOptions,
 	Value,
@@ -187,13 +188,13 @@ interface NodeConfig<In, Ctx, N extends string, Out> {
 	version: number;
 	parameters?: Params<In, Ctx>;
 	settings?: NodeSettings;
-	subnodes?: Subnodes<In, Ctx>;
+	providers?: Providers<In, Ctx>;
 	sample?: readonly Out[];
 }
 
 /**
  * Any n8n node by type and version, for nodes without a typed module. Its output is `Loose`
- * unless you pass `sample` items. An AI node takes its sub-nodes in `subnodes`. Name the main
+ * unless you pass `sample` items. An AI node takes its providers in `providers`. Name the main
  * outputs in n8n order in `outputs`, e.g. `['true', 'false']` for IF, to wire each with
  * `Flow.route`. Node settings go in `settings`, e.g. `{ retryOnFail: true }`, as on a typed step.
  */
@@ -206,7 +207,7 @@ export function node<In, Ctx, const N extends string, const O extends string, Ou
 export function node<In, Ctx, const N extends string, Out = Loose>(
 	config: NodeConfig<In, Ctx, N, Out> & { outputs?: readonly string[] },
 ): Step<In, Ctx, Out, N> | RoutedStep<In, Ctx, Out, N, string> {
-	const { name, type, version, parameters, settings, subnodes, sample, outputs } = config;
+	const { name, type, version, parameters, settings, providers, sample, outputs } = config;
 	const spec: NodeSpec = {
 		name,
 		type,
@@ -214,26 +215,26 @@ export function node<In, Ctx, const N extends string, Out = Loose>(
 		sample,
 		parameters: (compiler) => compiledParameters(compiler, parameters),
 		...(settings ? { settings } : {}),
-		...(subnodes ? { subnodes: subnodeSpecs(subnodes) } : {}),
+		...(providers ? { providers: providerSpecs(providers) } : {}),
 		...(outputs ? { outputs: outputs.length } : {}),
 	};
 	return outputs ? { name, spec, outputs } : { name, spec };
 }
 
 /**
- * A sub-node of an AI node: a chat model, memory, tool, output parser, embedding, vector
- * store, retriever, document loader, text splitter, or reranker. Pass it in `node({ subnodes })`.
+ * A provider of an AI node: a chat model, memory, tool, output parser, embedding, vector
+ * store, retriever, document loader, text splitter, or reranker. Pass it in `node({ providers })`.
  * Its lambdas read the item of the AI node that uses it.
  */
-export function subnode<In, Ctx>(config: {
+export function provider<In, Ctx>(config: {
 	name: string;
 	type: string;
 	version: number;
 	parameters?: Params<In, Ctx>;
 	settings?: NodeSettings;
-	subnodes?: Subnodes<In, Ctx>;
-}): Subnode<In, Ctx> {
-	const { name, type, version, parameters, settings, subnodes } = config;
+	providers?: Providers<In, Ctx>;
+}): Provider<In, Ctx> {
+	const { name, type, version, parameters, settings, providers } = config;
 	return {
 		spec: {
 			name,
@@ -241,7 +242,7 @@ export function subnode<In, Ctx>(config: {
 			version,
 			parameters: (compiler) => compiledParameters(compiler, parameters),
 			...(settings ? { settings } : {}),
-			...(subnodes ? { subnodes: subnodeSpecs(subnodes) } : {}),
+			...(providers ? { providers: providerSpecs(providers) } : {}),
 		},
 	};
 }

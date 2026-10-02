@@ -23,18 +23,19 @@ describe('contract-mode skill', () => {
 		expect(skill).toContain('`workspace_str_replace_file`');
 	});
 
-	it('lists the typed modules, names the derived module path, and sends every other node to node()', () => {
+	it('lists the typed modules, names the derived module path, and keeps node() for a type without one', () => {
 		const text = substituteSkillPlaceholders(skill);
 		expect(text).toContain(
 			`The typed modules are\n${nextNodeIds.map((id) => `\`${id}\``).join(', ')}:`,
 		);
-		expect(text).toContain('derived module at `@n8n/nodes/<package>/<name>`');
-		expect(text).toContain('Every other node uses `node()`.');
+		expect(text).toContain('derived module at\n`@n8n/nodes/<package>/<name>`');
+		expect(text).toContain('Use `node()` only for a type without one.');
 		expect(text).not.toContain('{{NODE_CONTRACT_MODULES_PLACEHOLDER}}');
 	});
 
-	it('teaches AI sub-nodes, trigger samples, orElse on the flow, and setup placeholders', () => {
-		expect(skill).toContain('subnodes: { model: subnode({');
+	it('teaches AI providers, trigger samples, orElse on the flow, and setup placeholders', () => {
+		expect(skill).toContain('providers: { model: lmChatOpenAi.execute({');
+		expect(skill).not.toContain('subnode');
 		expect(skill).toContain('manual({ sample:');
 		expect(skill).toContain('`settings: { retryOnFail: true');
 		expect(skill).toContain('`nodeModules` and `builtIns`');

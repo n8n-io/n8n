@@ -7,7 +7,7 @@ import {
 	type Trigger,
 } from './define';
 import { hasBinary, type EntryFields as EntryFieldsSpec, type JsonSchema } from './schema';
-import { suppliedKindOf } from './subnodes';
+import { providedOf } from './subnodes';
 import { exampleOf } from './validate';
 
 const pascal = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
@@ -77,6 +77,8 @@ function leaf(text: string, schema: JsonSchema, mode: Mode): string {
 interface Tag {
 	readonly name: string;
 	readonly values: string;
+	/** A variant whose tag holds the default can leave the tag out. */
+	readonly optional?: boolean;
 }
 
 /** `hiddenDocs` holds `name: doc` pairs that an earlier branch of the same union shows. */
@@ -96,7 +98,9 @@ function objectTs(
 		return text && !hiddenDocs.has(docKey) && !mode.hiddenDocs?.has(docKey) ? text : undefined;
 	};
 	const members = [
-		...(tag ? [{ doc: '', body: `${key(tag.name)}: ${tag.values}` }] : []),
+		...(tag
+			? [{ doc: '', body: `${key(tag.name)}${tag.optional ? '?' : ''}: ${tag.values}` }]
+			: []),
 		...properties.map(([name, child]) => ({
 			doc: doc(shownDoc(name, child), inner),
 			body: `${key(name)}${required.has(name) || (!mode.input && !mode.optionalOutputs) ? '' : '?'}: ${toTs(child, childMode)}`,
@@ -137,13 +141,16 @@ function objectTs(
  */
 function variantGroups(schema: JsonSchema, branches: readonly JsonSchema[], mode: Mode) {
 	const name = schema.discriminator?.propertyName ?? '';
-	const groups = new Map<string, { branch: JsonSchema; tags: unknown[] }>();
+	const groups = new Map<string, { branch: JsonSchema; tags: unknown[]; optional: boolean }>();
 	for (const branch of branches) {
 		const rest = objectTs(branch, mode, { name, values: '' });
 		const group = groups.get(rest);
 		const tagValue = branch.properties?.[name]?.const;
-		if (group) group.tags.push(tagValue);
-		else groups.set(rest, { branch, tags: [tagValue] });
+		const optional = !(branch.required ?? []).includes(name);
+		if (group) {
+			group.tags.push(tagValue);
+			group.optional ||= optional;
+		} else groups.set(rest, { branch, tags: [tagValue], optional });
 	}
 	return { name, groups: [...groups.values()] };
 }
@@ -191,11 +198,11 @@ function variantTs(schema: JsonSchema, branches: readonly JsonSchema[], mode: Mo
 		),
 	});
 	const union = groups
-		.map(({ branch, tags }, index) =>
+		.map(({ branch, tags, optional }, index) =>
 			objectTs(
 				pick(branch, false),
 				mode,
-				{ name, values: tags.map((t) => JSON.stringify(t)).join(' | ') },
+				{ name, values: tags.map((t) => JSON.stringify(t)).join(' | '), optional },
 				new Set(groups.slice(0, index).flatMap((group) => docKeys(group.branch))),
 			),
 		)
@@ -208,10 +215,14 @@ function variantTs(schema: JsonSchema, branches: readonly JsonSchema[], mode: Mo
 function renderTs(schema: JsonSchema, mode: Mode): string {
 	// The host takes a binary of the item, never a value that the workflow writes.
 	if (schema['x-n8n-binary']) return mode.input ? '((item: I, $: Dollar<C>) => Binary)' : 'Binary';
-	// A sub-node of the kind, never a value: n8n connects it to the root node.
+	// A provider of the kind, never a value: n8n connects it to the root node.
 	const supply = schema['x-n8n-supply'];
-	// A sub-node made before the call has unknown items, so it must not type the root's items.
-	if (supply !== undefined) return `Subnode<NoInfer<I>, NoInfer<C>, ${JSON.stringify(supply)}>`;
+	// A provider made before the call has unknown items, so it must not type the root's items.
+	// A trigger has no item, so it takes a provider of any item.
+	if (supply !== undefined) {
+		const items = mode.plain ? 'never, never' : 'NoInfer<I>, NoInfer<C>';
+		return `Provider<${items}, ${JSON.stringify(supply)}>`;
+	}
 	// A value of each response page: a lambda over the page, never over the item.
 	const page = schema['x-n8n-page'];
 	if (page !== undefined && mode.input) {
@@ -537,7 +548,9 @@ function countShapes(
 	}
 }
 
-const isGeneric = ({ input, root, text }: Shape) => input && (root || text.includes('Value<I, C,'));
+// A provider field reads the item types too: `Provider<NoInfer<I>, NoInfer<C>, …>`.
+const isGeneric = ({ input, root, text }: Shape) =>
+	input && (root || text.includes('Value<I, C,') || text.includes('NoInfer<I>'));
 
 /** A local type pays off when its references and definition are shorter than the copies. */
 function pays(shape: Shape) {
@@ -650,7 +663,7 @@ export function generateNodeModule(nodeId: string, contracts: readonly Generated
 			inputTs === 'Record<string, never>'
 				? `export type ${name}Input<_I, _C> = Record<never, never>;`
 				: `export type ${name}Input<I, C> = ${inputTs};`,
-			...(suppliedKindOf(contract.output)
+			...(providedOf(contract.output)
 				? []
 				: [
 						`export type ${name}Output = ${rootTs(contract.output, actionOutput, `${name}Output`)};`,
@@ -666,17 +679,20 @@ export function generateNodeModule(nodeId: string, contracts: readonly Generated
 	const factories = named.map(
 		({ contract, name, nodeType, slot, resource, operation, typeVersion, pairing }): Factory => {
 			const path = resource === undefined ? [operation] : [resource, operation];
-			const supplies = suppliedKindOf(contract.output);
+			const supplies = providedOf(contract.output);
 			if (supplies) {
-				const version = contract.version === 1 ? '' : `, ${contract.version}`;
+				const nodeVersion = slot?.typeVersion ?? typeVersion ?? contract.version;
+				const selected =
+					slot && `, ${JSON.stringify({ resource: slot.resource, operation: slot.operation })}`;
+				const version = nodeVersion === 1 && !selected ? '' : `, ${nodeVersion}${selected ?? ''}`;
 				return {
 					path,
-					summary: `${contract.action}. ${contract.summary} (sub-node: ${supplies})`,
+					summary: `${contract.action}. ${contract.summary} (provider: ${supplies})`,
 					text: [
 						'<In, Ctx>(',
 						`\tconfig: { name: string; settings?: NodeSettings } & ${name}Input<In, Ctx>,`,
-						`): Subnode<In, Ctx, ${JSON.stringify(supplies)}> =>`,
-						`\tcontractSubnode(${JSON.stringify(nodeType)}, ${JSON.stringify(supplies)}, config${version})`,
+						`): Provider<In, Ctx, ${JSON.stringify(supplies)}> =>`,
+						`\tcontractProvider(${JSON.stringify(nodeType)}, ${JSON.stringify(supplies)}, config${version})`,
 					].join('\n'),
 				};
 			}
@@ -754,7 +770,7 @@ export function generateNodeModule(nodeId: string, contracts: readonly Generated
 		].join('\n');
 	});
 	const triggerFactories = triggers.map(
-		({ contract, nodeType, resource, operation, typeVersion, pairing }): Factory => {
+		({ contract, nodeType, resource, operation, typeVersion, slot, pairing }): Factory => {
 			const path = resource === undefined ? [operation] : [resource, operation];
 			const name = typeName(contract.id);
 			const declared = declaredFieldsOf(contract.output);
@@ -763,12 +779,13 @@ export function generateNodeModule(nodeId: string, contracts: readonly Generated
 			const item = declared.length ? `Declared<${own}, S>` : own;
 			const out = `OutputOf<N, ${item}>`;
 			const requires = requiresOf(contract);
-			const nodeVersion = typeVersion ?? contract.version;
+			const nodeVersion = slot?.typeVersion ?? typeVersion ?? contract.version;
 			// The example fills the fields that a sample item or a declared schema leaves out.
 			const options = JSON.stringify({
 				...(pairing ? { pairing } : {}),
 				example: jsonExampleOf(contract.output),
 				...(declared.length ? { takesSchema: true } : {}),
+				...(slot ? { slot: { resource: slot.resource, operation: slot.operation } } : {}),
 			});
 			const args = [String(nodeVersion), requires ?? 'undefined', options];
 			const schemas = declared.map((field) => `${key(field)}?: ValueSchema`).join('; ');
@@ -795,16 +812,16 @@ export function generateNodeModule(nodeId: string, contracts: readonly Generated
 	);
 	const body = [...types, ...triggerTypes].join('\n\n');
 	const routed = named.some(({ contract }) => contract.outputs !== undefined);
-	const suppliers = named.filter(({ contract }) => suppliedKindOf(contract.output));
-	const steps = named.filter(({ contract }) => !suppliedKindOf(contract.output));
+	const suppliers = named.filter(({ contract }) => providedOf(contract.output));
+	const steps = named.filter(({ contract }) => !providedOf(contract.output));
 	const derived = steps.some(({ contract }) => !contract.output['x-n8n-passed']);
 	const declares = triggers.some(({ contract }) => declaredFieldsOf(contract.output).length > 0);
 	const hasEntries = [...named, ...triggers].some(
 		({ contract }) => contract.output['x-n8n-entry-fields'],
 	);
 	const imports = [
+		...(suppliers.length > 0 ? ['contractProvider'] : []),
 		...(steps.length > 0 ? ['contractStep'] : []),
-		...(suppliers.length > 0 ? ['contractSubnode'] : []),
 		...(triggers.length > 0 ? ['contractTrigger'] : []),
 		...(routed ? ['routedStep'] : []),
 		...([...named, ...triggers].some(({ contract }) => usesBinary(contract))
@@ -820,9 +837,9 @@ export function generateNodeModule(nodeId: string, contracts: readonly Generated
 		'type NodeSettings',
 		...(derived || triggers.length > 0 ? ['type OutputOf'] : []),
 		...(body.includes('PageValue<') ? ['type PageValue'] : []),
+		...(body.includes('Provider<') || suppliers.length > 0 ? ['type Provider'] : []),
 		...(routed ? ['type RoutedStep'] : []),
 		...(steps.length > 0 ? ['type Step'] : []),
-		...(body.includes('Subnode<') || suppliers.length > 0 ? ['type Subnode'] : []),
 		...(body.includes('Value<') ? ['type Value'] : []),
 		...(declares ? ['type ValueSchema'] : []),
 	];

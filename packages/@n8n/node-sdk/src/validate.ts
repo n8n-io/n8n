@@ -48,6 +48,16 @@ const describe = (schema: JsonSchema) =>
 const tagOf = (branch: JsonSchema, propertyName: string) =>
 	branch.properties?.[propertyName]?.const;
 
+/** The branch of the tag of `value`. Without a tag, the branch whose tag is optional: the default. */
+const branchFor = (branches: readonly JsonSchema[], name: string, value: unknown) => {
+	const tag = isRecord(value) ? value[name] : undefined;
+	return branches.find((candidate) =>
+		tag === undefined
+			? !(candidate.required ?? []).includes(name) && tagOf(candidate, name) !== undefined
+			: tagOf(candidate, name) === tag,
+	);
+};
+
 /**
  * Validate a value against the JSON Schema subset contracts use. With `allowExpressions`,
  * any field except a discriminator or an `x-n8n-literal` field may hold a `={{ }}` string
@@ -70,8 +80,7 @@ export function validate(
 		}
 		if (node.oneOf && node.discriminator) {
 			const name = node.discriminator.propertyName;
-			const tag = isRecord(current) ? current[name] : undefined;
-			const branch = node.oneOf.find((candidate) => tagOf(candidate, name) === tag);
+			const branch = branchFor(node.oneOf, name, current);
 			if (!branch) {
 				const tags = node.oneOf.map((candidate) => JSON.stringify(tagOf(candidate, name)));
 				issues.push(`${at}: needs "${name}" set to one of ${tags.join(', ')}`);
@@ -158,9 +167,7 @@ export function parse<S extends AnySchema>(schema: S, value: unknown, path = 're
 
 const branchOf = (value: Record<string, unknown>, schema: JsonSchema) => {
 	const name = schema.discriminator?.propertyName;
-	return name === undefined
-		? undefined
-		: schema.oneOf?.find((branch) => tagOf(branch, name) === value[name]);
+	return name === undefined ? undefined : branchFor(schema.oneOf ?? [], name, value);
 };
 
 /**

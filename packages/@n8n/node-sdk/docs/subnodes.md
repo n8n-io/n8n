@@ -60,10 +60,14 @@ input: {
 
 ## Typed flow SDK
 
-The generated module gives a sub-node factory that returns `Subnode<In, Ctx, kind>`, and the
-root field type `Subnode<NoInfer<In>, NoInfer<Ctx>, kind>`. A sub-node of another kind, and a
-legacy `subnode()`, fail `tsc`. A contract sub-node in `node({ subnodes })` fails too, because
+The generated module gives a provider factory that returns `Provider<In, Ctx, kind>`, and the
+root field type `Provider<NoInfer<In>, NoInfer<Ctx>, kind>`. A provider of another kind, and a
+legacy `provider()`, fail `tsc`. A contract provider in `node({ providers })` fails too, because
 a legacy root node cannot run it.
+
+A derived module types a legacy provider by its connection type, e.g.
+`Provider<In, Ctx, "ai_languageModel">`, and a legacy root node takes its providers in
+`providers`, one slot for each `ai_*` input. A derived root node takes only derived providers.
 
 ```typescript
 ai.prompt({

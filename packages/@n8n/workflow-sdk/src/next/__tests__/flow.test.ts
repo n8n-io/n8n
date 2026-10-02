@@ -1,12 +1,12 @@
 import {
 	contractStep,
-	contractSubnode,
+	contractProvider,
 	contractTrigger,
 	manual,
 	node,
 	routedStep,
 	set,
-	subnode,
+	provider,
 	trigger,
 	workflow,
 	type Binary,
@@ -21,7 +21,7 @@ import {
 	type Pairing,
 	type RoutedStep,
 	type Step,
-	type Subnode,
+	type Provider,
 	type Value,
 	type ValueSchema,
 } from '../index';
@@ -513,7 +513,7 @@ describe('workflow', () => {
 		expect(workflow({ name: 'Scoped', grants: all }, flow).toJSON().nodes).toHaveLength(3);
 	});
 
-	it('wires AI sub-nodes to the ai_* inputs of their node', () => {
+	it('wires AI providers to the ai_* inputs of their node', () => {
 		const wf = workflow(
 			'Answer',
 			manual({ sample: [{ question: 'What is n8n?' }] }).andThen(
@@ -522,21 +522,21 @@ describe('workflow', () => {
 					type: '@n8n/n8n-nodes-langchain.agent',
 					version: 2.2,
 					parameters: { promptType: 'define', text: (item) => item.question },
-					subnodes: {
-						model: subnode({
+					providers: {
+						model: provider({
 							name: 'Model',
 							type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
 							version: 1.2,
 							parameters: { model: 'gpt-4o-mini' },
 						}),
-						memory: subnode({
+						memory: provider({
 							name: 'Memory',
 							type: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
 							version: 1.3,
 							parameters: { sessionKey: (item) => item.question },
 						}),
 						tools: [
-							subnode({
+							provider({
 								name: 'Calculator',
 								type: '@n8n/n8n-nodes-langchain.toolCalculator',
 								version: 1,
@@ -565,16 +565,17 @@ describe('workflow', () => {
 		});
 	});
 
-	it('wires contract sub-nodes by the kind they supply', () => {
+	it('wires contract providers by the kind they supply', () => {
 		const chatModel = <In, Ctx>(
 			config: { name: string } & { model: Value<In, Ctx, ModelOf<'openai'>> },
-		): Subnode<In, Ctx, 'chatModel'> => contractSubnode('pkg.openAiChatModel', 'chatModel', config);
-		const tool = <In, Ctx>(config: { name: string } & { url: string }): Subnode<In, Ctx, 'tool'> =>
-			contractSubnode('pkg.httpTool', 'tool', config);
+		): Provider<In, Ctx, 'chatModel'> =>
+			contractProvider('pkg.openAiChatModel', 'chatModel', config);
+		const tool = <In, Ctx>(config: { name: string } & { url: string }): Provider<In, Ctx, 'tool'> =>
+			contractProvider('pkg.httpTool', 'tool', config);
 		const agent = <In, Ctx, const N extends string>(
 			config: { name: N } & {
-				model: Subnode<In, Ctx, 'chatModel'>;
-				tools?: Array<Subnode<In, Ctx, 'tool'>>;
+				model: Provider<In, Ctx, 'chatModel'>;
+				tools?: Array<Provider<In, Ctx, 'tool'>>;
 				prompt: Value<In, Ctx, string>;
 			},
 		): Step<In, Ctx, { text: string }, N> => contractStep('pkg.aiAgent', config);
@@ -608,20 +609,20 @@ describe('workflow', () => {
 		});
 		agent({
 			name: 'Legacy',
-			// @ts-expect-error a contract root takes contract sub-nodes only
-			model: subnode({ name: 'M', type: '@n8n/n8n-nodes-langchain.lmChatOpenAi', version: 1.2 }),
+			// @ts-expect-error a contract root takes contract providers only
+			model: provider({ name: 'M', type: '@n8n/n8n-nodes-langchain.lmChatOpenAi', version: 1.2 }),
 			prompt: 'Hi',
 		});
 		node({
 			name: 'Legacy agent',
 			type: '@n8n/n8n-nodes-langchain.agent',
 			version: 2.2,
-			// @ts-expect-error a legacy root node cannot run a contract sub-node
-			subnodes: { model: chatModel({ name: 'M2', model: 'gpt-5-mini' }) },
+			// @ts-expect-error a legacy root node cannot run a contract provider
+			providers: { model: chatModel({ name: 'M2', model: 'gpt-5-mini' }) },
 		});
 	});
 
-	it('reports a sub-node that reuses a node name', () => {
+	it('reports a provider that reuses a node name', () => {
 		const wf = workflow(
 			'Clash',
 			manual().andThen(
@@ -629,7 +630,7 @@ describe('workflow', () => {
 					name: 'Agent',
 					type: '@n8n/n8n-nodes-langchain.agent',
 					version: 2.2,
-					subnodes: { model: subnode({ name: 'Start', type: 'x.lm', version: 1 }) },
+					providers: { model: provider({ name: 'Start', type: 'x.lm', version: 1 }) },
 				}),
 			),
 		);

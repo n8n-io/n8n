@@ -22,6 +22,8 @@ import {
 	contractReplacementOf,
 	derivedNodeModuleText,
 	factoryPathOf,
+	isInstalledNodeType,
+	missingNodeTypeIssue,
 	nextNodeIds,
 	nodeModuleText,
 	nodeTypeOfModulePath,
@@ -77,6 +79,28 @@ function nodeModule(nodeId: string, source: DeriveSource): string | undefined {
 export const EMPTY_OUTPUTS = 'export {};\n';
 
 export const EMPTY_EXPRESSIONS = `${JSON.stringify({ expressions: [], code: [] })}\n`;
+
+/**
+ * A line for each node type that the source imports as a derived module, or names in
+ * `node()`, `provider()` or `trigger()`, and that the instance does not have, e.g. a community
+ * node that is not installed.
+ */
+export async function missingNodeTypeErrors(
+	source: string,
+	deriveSource: DeriveSource,
+): Promise<string[]> {
+	const { locateNextNodes } = await import('@n8n/workflow-sdk/next');
+	const imported = usedNodeIds(source).flatMap((id) => {
+		const nodeType = nodeTypeOfModulePath(id);
+		return nodeType === undefined ? [] : [{ at: `"@n8n/nodes/${id}"`, nodeType }];
+	});
+	const named = locateNextNodes(source).flatMap(({ name, type, line }) =>
+		type === undefined ? [] : [{ at: `"${name}" (line ${line})`, nodeType: type }],
+	);
+	return [...imported, ...named]
+		.filter(({ nodeType }) => !isInstalledNodeType(nodeType, deriveSource))
+		.map(({ at, nodeType }) => `${at}: ${missingNodeTypeIssue(nodeType)}`);
+}
 
 /** Files to write before the build: the tsconfig, the imported node modules, empty outputs. */
 export function nextWorkspaceFiles(

@@ -3,6 +3,7 @@
  * module as `@n8n/nodes/<nodeId>`, and `tsc` checks the workflow against the same text.
  */
 import {
+	connectionsOf,
 	deriveModuleVersion,
 	outputSchemaFrom,
 	readLegacyParameters,
@@ -499,8 +500,10 @@ function outputSchemaOf(lookup: OutputSchemaLookup | undefined) {
 }
 
 /**
- * The derived actions of a catalog node type that has no typed module and no SDK step. Each
- * node type and version is derived once for each instance.
+ * The derived actions of a catalog node type that has no typed module and no SDK step. A
+ * derived root node takes only derived providers, so a provider also derives when a typed
+ * module replaces its type; discovery shows the typed module first. Each node type and version
+ * is derived once for each instance.
  */
 function derivedNodeOf(
 	nodeType: string,
@@ -508,14 +511,26 @@ function derivedNodeOf(
 	version?: number,
 ): DerivedNode | undefined {
 	const nodeTypes = source.nodeTypesProvider;
-	if (!nodeTypes || nextNodeIdOfNodeType(nodeType) || builtInRowOf(nodeType)) return undefined;
+	if (!nodeTypes || builtInRowOf(nodeType)) return undefined;
+	const authored = nextNodeIdOfNodeType(nodeType) !== undefined;
 	const cache = derivedNodes.get(nodeTypes) ?? new Map<string, DerivedNode | undefined>();
 	derivedNodes.set(nodeTypes, cache);
 	const key = `${nodeType}@${version ?? 'latest'}`;
 	if (cache.has(key)) return cache.get(key);
+	const description = (() => {
+		try {
+			return nodeTypes.getByNameAndVersion(nodeType, version).description;
+		} catch {
+			return undefined;
+		}
+	})();
+	// Not cached: a community package can install the type later.
+	if (!description) return undefined;
 	const derived = (() => {
 		try {
-			const { description } = nodeTypes.getByNameAndVersion(nodeType, version);
+			const connections = connectionsOf(description);
+			if (authored && ('reason' in connections || connections.kind !== 'provider'))
+				return undefined;
 			const packageName = nodeType.slice(0, nodeType.lastIndexOf('.'));
 			const derivedVersion = deriveModuleVersion(description, {
 				packageName,
@@ -529,6 +544,31 @@ function derivedNodeOf(
 	})();
 	cache.set(key, derived);
 	return derived;
+}
+
+/** The node type is on the instance. Without the node types of the instance, every type is. */
+export function isInstalledNodeType(nodeType: string, source: DeriveSource): boolean {
+	const nodeTypes = source.nodeTypesProvider;
+	if (!nodeTypes || nodeType.startsWith(`${NODE_PACKAGE}.`)) return true;
+	try {
+		nodeTypes.getByNameAndVersion(nodeType);
+		return true;
+	} catch {
+		return false;
+	}
+}
+
+const BUILT_IN_PACKAGES: ReadonlySet<string> = new Set([
+	'n8n-nodes-base',
+	'@n8n/n8n-nodes-langchain',
+]);
+
+/** Why a node type that the instance does not have cannot build, in one line. */
+export function missingNodeTypeIssue(nodeType: string): string {
+	const packageName = nodeType.slice(0, nodeType.lastIndexOf('.'));
+	return BUILT_IN_PACKAGES.has(packageName) || !packageName
+		? `n8n has no node type ${nodeType}. Find the type with nodes(action="search").`
+		: `Node type ${nodeType} is not installed. Install package ${packageName} first.`;
 }
 
 /** The node type has a derived module: no typed module or SDK step replaces it, and it derives. */
@@ -610,9 +650,14 @@ export function derivedActionsNamedBy(
 	return best ? scored.filter(({ score }) => score === best).map(({ id }) => id) : [];
 }
 
-/** The fields of every branch of an input, e.g. of a variant whose selector picks the branch. */
+/**
+ * The fields of every branch of an input, e.g. of a variant whose selector picks the branch.
+ * n8n connects `providers`; no parameter holds them.
+ */
 const inputFieldsOf = (input: DerivedAction['contract']['input']) =>
-	[input, ...(input.oneOf ?? [])].flatMap((schema) => Object.entries(schema.properties ?? {}));
+	[input, ...(input.oneOf ?? [])].flatMap((schema) =>
+		Object.entries(schema.properties ?? {}).filter(([key]) => key !== 'providers'),
+	);
 
 /**
  * A saved node of a derived module type as its factory call, for decompile, or why it stays
@@ -643,6 +688,8 @@ export function derivedReadOf(
 			from: `@n8n/nodes/${derivedModulePath(derived.nodeType)}`,
 			path: [generated.resource, generated.operation].filter(Boolean).join('.'),
 			version: derived.typeVersion,
+			groupsProviders: true,
+			...(contract.outputs ? { outputs: contract.outputs } : {}),
 			inputKeys: [...new Set(fields.map(([key]) => key))],
 			// The generated field type decides: a `Value<…>` field takes an expression string.
 			expressionKeys: [

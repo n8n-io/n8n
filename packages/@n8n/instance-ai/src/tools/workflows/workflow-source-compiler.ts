@@ -27,6 +27,7 @@ import {
 	EXPRESSIONS_PATH,
 	fetchResourceFields,
 	lockNodeContracts,
+	missingNodeTypeErrors,
 	NEXT_TSCONFIG_FILENAME,
 	MODEL_CATALOG_PATH,
 	modelCatalogFile,
@@ -441,6 +442,16 @@ async function compileNextWorkflowSource(
 ): Promise<WorkflowSourceCompileResult> {
 	const workspace = context.workspace;
 	if (!workspace) return await compileTypeScriptWorkflowSource(context, filePath, abortSignal);
+	const missing = await missingNodeTypeErrors(source, context);
+	if (missing.length > 0) {
+		return {
+			success: false,
+			reason: 'workflow_source_build_failed',
+			editable: true,
+			errors: missing,
+			summary: 'Workflow source uses a node type that this instance does not have.',
+		};
+	}
 	const prepared = nextWorkspaceFiles(source, context);
 	if (!prepared.ok) {
 		return {

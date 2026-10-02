@@ -36,11 +36,14 @@ export interface CompileMap {
 	readonly target: LegacyTarget;
 	/** Manifest field to legacy parameter path. Derive keeps the legacy names. */
 	readonly fields: Readonly<Record<string, { readonly path: string; readonly kind: CompileKind }>>;
-	/** The variant tag. Decompile keeps it when it holds the default, because a tag is required. */
+	/** The variant tag. Decompile keeps it when it holds the default, so the variant stays explicit. */
 	readonly selector?: string;
 }
 
-/** `multiSelector`: more than one selector changes the shown fields, so the input stays flat. */
+/**
+ * `multiSelector`: more than one selector changes the shown fields. The first one picks the
+ * variant, and in each variant the fields of the others are optional.
+ */
 export type DeriveShape = 'flat' | 'variants' | 'multiSelector';
 
 export type DeriveIssueKind =
@@ -559,7 +562,9 @@ function fieldsOf(
 	};
 }
 
+/** n8n fills the default of the selector, so the variant of the default needs no tag. */
 function variantInput(context: Context, fixed: INodeParameters, selector: Selector): InputLift {
+	const selected = parametersFor(context, fixed)[selector.name];
 	const branches = selector.branches.map((branch) => {
 		const lifted = fieldsOf(
 			context,
@@ -567,7 +572,14 @@ function variantInput(context: Context, fixed: INodeParameters, selector: Select
 			new Set([selector.name]),
 		);
 		const tag: JsonSchema = { const: branch.value, 'x-n8n-literal': true };
-		return { lifted, schema: objectOf(lifted.fields, lifted.required, { [selector.name]: tag }) };
+		const schema = objectOf(lifted.fields, lifted.required, { [selector.name]: tag });
+		return {
+			lifted,
+			schema:
+				branch.value === selected
+					? { ...schema, required: schema.required?.filter((name) => name !== selector.name) }
+					: schema,
+		};
 	});
 	const all = branches.flatMap((branch) => branch.lifted.fields);
 	return {
@@ -586,28 +598,31 @@ function variantInput(context: Context, fixed: INodeParameters, selector: Select
 function inputOf(context: Context, discriminators: INodeParameters): InputLift {
 	const base = parametersFor(context, discriminators);
 	const selectors = selectorsOf(context, discriminators, base);
-	const [only] = selectors;
-	if (only && selectors.length === 1) return variantInput(context, discriminators, only);
-	const lifted = fieldsOf(
-		context,
-		valueSetsOf(context, discriminators, SELECTOR_DEPTH),
-		new Set<string>(),
-	);
-	const flat: InputLift = {
-		schema: objectOf(lifted.fields, lifted.required),
-		fields: lifted.fields,
-		issues: lifted.issues,
-		shape: selectors.length === 0 ? 'flat' : 'multiSelector',
-	};
-	if (selectors.length === 0) return flat;
+	const [first, ...others] = selectors;
+	if (first === undefined) {
+		const lifted = fieldsOf(
+			context,
+			valueSetsOf(context, discriminators, SELECTOR_DEPTH),
+			new Set<string>(),
+		);
+		return {
+			schema: objectOf(lifted.fields, lifted.required),
+			fields: lifted.fields,
+			issues: lifted.issues,
+			shape: 'flat',
+		};
+	}
+	const variants = variantInput(context, discriminators, first);
+	if (others.length === 0) return variants;
 	return {
-		...flat,
+		...variants,
+		shape: 'multiSelector',
 		issues: [
-			...flat.issues,
+			...variants.issues,
 			{
 				kind: 'multiSelector',
 				field: selectors.map((selector) => selector.name).join('+'),
-				detail: `${selectors.length} selectors change the shown fields`,
+				detail: `${selectors.length} selectors change the shown fields: ${first.name} picks the variant, and the fields of the others are optional`,
 			},
 		],
 	};

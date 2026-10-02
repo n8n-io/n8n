@@ -10,16 +10,17 @@ import {
 import * as next from '../index';
 import {
 	contractStep,
-	contractSubnode,
+	contractProvider,
+	contractTrigger,
 	manual,
 	node,
 	set,
-	subnode,
+	provider,
 	workflow,
 	type Dollar,
 	type NodeSettings,
 	type Step,
-	type Subnode,
+	type Provider,
 } from '../index';
 
 interface Page {
@@ -83,7 +84,7 @@ const MODEL_TYPE = '@n8n/nodes-base-next.openAiChatModel';
 const ai = {
 	agent: <In, Ctx, const N extends string>(config: {
 		name: N;
-		model: Subnode<NoInfer<In>, NoInfer<Ctx>, 'chatModel'>;
+		model: Provider<NoInfer<In>, NoInfer<Ctx>, 'chatModel'>;
 		prompt: string | ((item: In) => string);
 	}): Step<In, Ctx, { text: string }, N> => contractStep(AGENT_TYPE, config),
 };
@@ -93,7 +94,7 @@ const openAi = {
 		name: string;
 		model: string;
 		settings?: NodeSettings;
-	}): Subnode<In, Ctx, 'chatModel'> => contractSubnode(MODEL_TYPE, 'chatModel', config),
+	}): Provider<In, Ctx, 'chatModel'> => contractProvider(MODEL_TYPE, 'chatModel', config),
 };
 
 const WEBHOOK_TYPE = 'n8n-nodes-base.webhook';
@@ -261,8 +262,58 @@ const readMattermost: next.LegacyReader = (saved) => {
 	return { factory: mattermostPost, parameters: { ...rest, channelId: value } };
 };
 
+const LEGACY_AGENT_TYPE = '@n8n/n8n-nodes-langchain.agent';
+const CHAT_TYPE = '@n8n/n8n-nodes-langchain.lmChatAcme';
+const ACME_TRIGGER_TYPE = 'n8n-nodes-acme.acmeTrigger';
+
+// Stand-ins for derived modules of an AI root node, its provider, and a community trigger.
+const agent = {
+	execute: <In, Ctx, const N extends string>(config: {
+		name: N;
+		text: string;
+		providers: { model: Provider<NoInfer<In>, NoInfer<Ctx>, 'ai_languageModel'> };
+	}): Step<In, Ctx, In, N> => contractStep(LEGACY_AGENT_TYPE, config, 3.1),
+};
+const lmChatAcme = {
+	execute: <In, Ctx>(config: {
+		name: string;
+		model: string;
+	}): Provider<In, Ctx, 'ai_languageModel'> =>
+		contractProvider(CHAT_TYPE, 'ai_languageModel', config, 1.2),
+};
+const acmeTrigger = {
+	trigger: <const N extends string>(config: { name: N; topic: string }) =>
+		contractTrigger<{ q: string }, N>(ACME_TRIGGER_TYPE, config, 2),
+};
+
+const derivedFactory = (module: string, path: string, version: number, inputKeys: string[]) => ({
+	module,
+	from: `@n8n/nodes/${module === 'acmeTrigger' ? 'n8n-nodes-acme' : '@n8n/n8n-nodes-langchain'}/${module}`,
+	path,
+	version,
+	inputKeys,
+	expressionKeys: [],
+	groupsProviders: true as const,
+});
+
+/** Reads saved nodes of the stand-in derived modules, as the compat layer does. */
+const readDerived: next.LegacyReader = (saved) => {
+	const factory =
+		saved.type === LEGACY_AGENT_TYPE
+			? derivedFactory('agent', 'execute', 3.1, ['text'])
+			: saved.type === CHAT_TYPE
+				? derivedFactory('lmChatAcme', 'execute', 1.2, ['model'])
+				: saved.type === ACME_TRIGGER_TYPE
+					? derivedFactory('acmeTrigger', 'trigger', 2, ['topic'])
+					: undefined;
+	return factory && { factory, parameters: saved.parameters ?? {} };
+};
+
 const modules: Record<string, unknown> = {
 	'@n8n/workflow-sdk/next': next,
+	'@n8n/nodes/@n8n/n8n-nodes-langchain/agent': { agent },
+	'@n8n/nodes/@n8n/n8n-nodes-langchain/lmChatAcme': { lmChatAcme },
+	'@n8n/nodes/n8n-nodes-acme/acmeTrigger': { acmeTrigger },
 	'@n8n/nodes/n8n-nodes-base/mattermost': { mattermost },
 	'@n8n/nodes/notion': { notion },
 	'@n8n/nodes/httpRequest': { httpRequest },
@@ -414,6 +465,30 @@ describe('decompileWorkflow', () => {
 		const kept = roundTrip(raw, readMattermost);
 		expect(kept.source).toContain('node({');
 		expect(withoutIds(kept.rebuilt)).toEqual(withoutIds(raw));
+	});
+
+	it('reads a derived trigger, root node and provider back as their factories', () => {
+		const json = workflow(
+			'Ask',
+			acmeTrigger.trigger({ name: 'Event', topic: 'questions' }).andThen(
+				agent.execute({
+					name: 'Agent',
+					text: '={{ $json.q }}',
+					providers: { model: lmChatAcme.execute({ name: 'Model', model: 'acme-1' }) },
+				}),
+			),
+		).toJSON();
+		const { source, rebuilt, again } = roundTrip(json, readDerived);
+
+		expect(withoutIds(rebuilt)).toEqual(withoutIds(json));
+		expect(again).toBe(source);
+		expect(source).toContain('acmeTrigger.trigger({');
+		expect(source).toContain('agent.execute({');
+		expect(source).toMatch(/providers: \{\n\s+model: lmChatAcme\.execute\(\{/);
+		expect(source).not.toContain('provider(');
+		// Without the reader the nodes stay legacy calls.
+		expect(roundTrip(json).source).toContain('providers: {\n');
+		expect(roundTrip(json).source).toContain('model: provider({');
 	});
 
 	it('round-trips the Notion report to the same workflow JSON', () => {
@@ -680,7 +755,7 @@ describe('decompileWorkflow', () => {
 		});
 	});
 
-	it('round-trips an AI agent with its sub-nodes', () => {
+	it('round-trips an AI agent with its providers', () => {
 		const json = workflow(
 			'Answer',
 			manual().andThen(
@@ -689,25 +764,25 @@ describe('decompileWorkflow', () => {
 					type: '@n8n/n8n-nodes-langchain.agent',
 					version: 2.2,
 					parameters: { promptType: 'define', text: (item) => item.question },
-					subnodes: {
-						model: subnode({
+					providers: {
+						model: provider({
 							name: 'Model',
 							type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
 							version: 1.2,
 							parameters: { model: 'gpt-4o-mini' },
 						}),
 						tools: [
-							subnode({
+							provider({
 								name: 'Calculator',
 								type: '@n8n/n8n-nodes-langchain.toolCalculator',
 								version: 1,
 							}),
-							subnode({
+							provider({
 								name: 'Store',
 								type: '@n8n/n8n-nodes-langchain.toolVectorStore',
 								version: 1,
-								subnodes: {
-									vectorStore: subnode({
+								providers: {
+									vectorStore: provider({
 										name: 'Vectors',
 										type: '@n8n/n8n-nodes-langchain.vectorStoreInMemory',
 										version: 1,
@@ -724,15 +799,15 @@ describe('decompileWorkflow', () => {
 		expect(withoutIds(rebuilt)).toEqual(withoutIds(json));
 		expect(again).toBe(source);
 		expect(source).toContain(
-			"import { workflow, manual, node, subnode } from '@n8n/workflow-sdk/next';",
+			"import { workflow, manual, node, provider } from '@n8n/workflow-sdk/next';",
 		);
-		expect(source).toContain('model: subnode({');
+		expect(source).toContain('model: provider({');
 		expect(source).toContain('tools: [');
-		expect(source).toContain('vectorStore: subnode({');
+		expect(source).toContain('vectorStore: provider({');
 		expect(source).toContain('text: "={{ $json.question }}",');
 	});
 
-	it('round-trips a contract AI node with its contract sub-node in the slot field', () => {
+	it('round-trips a contract AI node with its contract provider in the slot field', () => {
 		const json = workflow(
 			'Answer',
 			manual().andThen(
@@ -760,7 +835,7 @@ describe('decompileWorkflow', () => {
 		expect(decompileWorkflow(legacyModel, factories)).toBeUndefined();
 	});
 
-	it('round-trips node settings on a trigger, a typed step, node(), and a sub-node', () => {
+	it('round-trips node settings on a trigger, a typed step, node(), and a provider', () => {
 		const json = workflow(
 			'Settings',
 			webhook
@@ -784,8 +859,8 @@ describe('decompileWorkflow', () => {
 							notes: 'Answers once',
 							notesInFlow: true,
 						},
-						subnodes: {
-							model: subnode({
+						providers: {
+							model: provider({
 								name: 'Model',
 								type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
 								version: 1.2,
@@ -843,9 +918,9 @@ describe('decompileWorkflow', () => {
 		expect(withoutIds(rebuilt)).toEqual(withoutIds(withNotes));
 	});
 
-	it('gives undefined for sub-node wiring the typed format cannot express', () => {
+	it('gives undefined for provider wiring the typed format cannot express', () => {
 		const model = (name: string) =>
-			subnode({ name, type: '@n8n/n8n-nodes-langchain.lmChatOpenAi', version: 1.2 });
+			provider({ name, type: '@n8n/n8n-nodes-langchain.lmChatOpenAi', version: 1.2 });
 		const json = workflow(
 			'Answer',
 			manual().andThen(
@@ -853,7 +928,7 @@ describe('decompileWorkflow', () => {
 					name: 'Agent',
 					type: '@n8n/n8n-nodes-langchain.agent',
 					version: 2.2,
-					subnodes: { model: model('Model') },
+					providers: { model: model('Model') },
 				}),
 			),
 		).toJSON();
@@ -872,7 +947,7 @@ describe('decompileWorkflow', () => {
 				Fallback: { ai_languageModel: [[{ node: 'Agent', type: 'ai_languageModel', index: 0 }]] },
 			},
 		};
-		expect(decompileWorkflow(json, factories)).toContain('model: subnode({');
+		expect(decompileWorkflow(json, factories)).toContain('model: provider({');
 		expect(decompileWorkflow(fallback, factories)).toBeUndefined();
 		expect(decompileWorkflow(twoModels, factories)).toBeUndefined();
 	});
@@ -936,5 +1011,11 @@ describe('locateNextNodes', () => {
 			{ name: 'Mail', line: 2, type: 'n8n-nodes-base.gmail' },
 			{ name: 'Fields', line: 3 },
 		]);
+	});
+
+	it('does not name the type of a typed step with a type field', () => {
+		expect(
+			locateNextNodes("manual().andThen(crypto.execute({ name: 'Hash', type: 'SHA256' }));"),
+		).toEqual([{ name: 'Hash', line: 1 }]);
 	});
 });

@@ -22,13 +22,14 @@ import {
 	SET_NODE,
 	setParameters,
 	startFlow,
-	SUBNODE_SLOTS,
+	PROVIDER_SLOTS,
+	SLOT_OF_CONNECTION,
 	switchFragment,
 	type Fragment,
 	type NodeSettings,
 	type OutputList,
 	type Step,
-	type SubnodeSlot,
+	type ProviderSlot,
 } from './flow';
 import { BUILTINS, childNodes, compileLambdaSource } from './lambda';
 import {
@@ -81,6 +82,11 @@ export interface ContractFactory {
 	readonly expressionKeys: readonly string[];
 	/** The named outputs of a routed step; a node with a wired later output reads back as `route`. */
 	readonly outputs?: OutputList;
+	/**
+	 * The factory takes its providers in one `providers` field, as a derived module does, not
+	 * each in the input field of its slot. Its providers read back through the legacy reader.
+	 */
+	readonly groupsProviders?: true;
 }
 
 /**
@@ -124,7 +130,7 @@ class Code {
 	constructor(readonly text: string) {}
 }
 
-/** A call such as `subnode({ … })` inside a parameter tree. */
+/** A call such as `provider({ … })` inside a parameter tree. */
 class Call {
 	constructor(
 		readonly callee: string,
@@ -208,21 +214,21 @@ interface Chain {
 	readonly tails: readonly Tail[];
 }
 
-/** A sub-node and the slot of its parent that it fills. */
+/** A provider and the slot of its parent that it fills. */
 interface Child {
-	readonly slot: SubnodeSlot;
+	readonly slot: ProviderSlot;
 	readonly node: NamedNode;
 }
 
 interface Graph {
-	/** The nodes on main connections. Sub-nodes are in `children`. */
+	/** The nodes on main connections. Providers are in `children`. */
 	readonly nodes: ReadonlyMap<string, NamedNode>;
 	readonly edges: readonly Edge[];
 	readonly shapes: ReadonlyMap<string, Shape>;
-	/** The sub-nodes of each AI node and sub-node, by parent name. */
+	/** The providers of each AI node and provider, by parent name. */
 	readonly children: ReadonlyMap<string, readonly Child[]>;
-	/** The contract shape of each sub-node that a contract node takes. */
-	readonly subnodeShapes: ReadonlyMap<string, ContractShape>;
+	/** The contract shape of each provider that a contract node takes. */
+	readonly providerShapes: ReadonlyMap<string, ContractShape>;
 	readonly names: ReadonlySet<string>;
 }
 
@@ -694,7 +700,10 @@ function shapeOf(
 			isNodeType(node, MANUAL_NODE) && Object.keys(node.parameters ?? {}).length === 0;
 		if (isManual) return { kind: 'manual' };
 		// A contract trigger, e.g. the typed Webhook node, reads back as its module factory.
-		return contractShape(node, names, factoryOf(node, factories)) ?? { kind: 'trigger' };
+		return (
+			contractShape(node, names, factoryOf(node, factories)) ??
+			legacyShape(node, names, readLegacy) ?? { kind: 'trigger' }
+		);
 	}
 	return (
 		branchShape(node, names) ??
@@ -721,22 +730,20 @@ function legacyShape(node: NamedNode, names: ReadonlySet<string>, readLegacy: Le
 
 // ── Graph to flows ──────────────────────────────────────────────────────────
 
-const SLOT_OF_CONNECTION = new Map<string, SubnodeSlot>(
-	SUBNODE_SLOTS.map(([slot, connectionType]) => [connectionType, slot]),
-);
-
-/** A sub-node connection: `from` fills `slot` of `to`. */
-interface SubnodeEdge {
+/** A provider connection: `from` fills `slot` of `to`. */
+interface ProviderEdge {
 	readonly from: string;
-	readonly slot: SubnodeSlot;
+	readonly slot: ProviderSlot;
 	readonly to: string;
 }
 
 /**
- * Main connections, and sub-node connections into the first input of their slot. Others have
+ * Main connections, and provider connections into the first input of their slot. Others have
  * no flow form.
  */
-function edgesOf(connections: IConnections): { main: Edge[]; subnodes: SubnodeEdge[] } | undefined {
+function edgesOf(
+	connections: IConnections,
+): { main: Edge[]; providers: ProviderEdge[] } | undefined {
 	const edges = Object.entries(connections).flatMap(([from, byType]) =>
 		Object.entries(byType).flatMap(([type, outputs]) =>
 			outputs.flatMap((targets, output) =>
@@ -759,37 +766,37 @@ function edgesOf(connections: IConnections): { main: Edge[]; subnodes: SubnodeEd
 		main: edges
 			.filter(({ main }) => main)
 			.map(({ from, output, to, input }) => ({ from, output, to, input })),
-		subnodes: edges.flatMap(({ from, to, slot }) => (slot ? [{ from, slot, to }] : [])),
+		providers: edges.flatMap(({ from, to, slot }) => (slot ? [{ from, slot, to }] : [])),
 	};
 }
 
-/** Slots that take more than one sub-node. */
-const LIST_SLOTS: ReadonlySet<SubnodeSlot> = new Set(['tools']);
+/** Slots that take more than one provider. */
+const LIST_SLOTS: ReadonlySet<ProviderSlot> = new Set(['tools']);
 
 /**
- * Sub-nodes by parent, when they form trees under main nodes: each sub-node fills one slot of
+ * Providers by parent, when they form trees under main nodes: each provider fills one slot of
  * one parent and has no main connection.
  */
 function childrenOf(
 	nodes: ReadonlyMap<string, NamedNode>,
 	main: readonly Edge[],
-	subnodeEdges: readonly SubnodeEdge[],
+	providerEdges: readonly ProviderEdge[],
 ): Map<string, Child[]> | undefined {
-	const subnodeNames = new Set(subnodeEdges.map(({ from }) => from));
+	const providerNames = new Set(providerEdges.map(({ from }) => from));
 	const onMain = new Set(main.flatMap(({ from, to }) => [from, to]));
-	const parentOf = new Map(subnodeEdges.map(({ from, to }) => [from, to]));
+	const parentOf = new Map(providerEdges.map(({ from, to }) => [from, to]));
 	const reachesMain = (name: string, depth: number): boolean => {
 		const parent = parentOf.get(name);
-		if (parent === undefined || depth > subnodeNames.size) return false;
-		return subnodeNames.has(parent) ? reachesMain(parent, depth + 1) : true;
+		if (parent === undefined || depth > providerNames.size) return false;
+		return providerNames.has(parent) ? reachesMain(parent, depth + 1) : true;
 	};
 	const fits =
-		parentOf.size === subnodeEdges.length &&
-		[...subnodeNames].every((name) => !onMain.has(name) && reachesMain(name, 0));
+		parentOf.size === providerEdges.length &&
+		[...providerNames].every((name) => !onMain.has(name) && reachesMain(name, 0));
 	if (!fits) return undefined;
 	const children = new Map<string, Child[]>();
 	for (const node of nodes.values()) {
-		const edge = subnodeEdges.find(({ from }) => from === node.name);
+		const edge = providerEdges.find(({ from }) => from === node.name);
 		if (edge) children.set(edge.to, [...(children.get(edge.to) ?? []), { slot: edge.slot, node }]);
 	}
 	const crowded = [...children.values()].some((list) =>
@@ -1170,14 +1177,14 @@ function renderTree(tree: Tree, indent: string): string {
 	return `{\n${lines.join('\n')}\n${indent}}`;
 }
 
-/** The `subnodes` of a node, in slot order, or `undefined` when it has none. */
-function subnodesTree(graph: Graph, name: string): Tree | undefined {
+/** The `providers` of a node, in slot order, or `undefined` when it has none. */
+function providersTree(graph: Graph, name: string): Tree | undefined {
 	const children = graph.children.get(name) ?? [];
 	if (children.length === 0) return undefined;
 	const call = (child: NamedNode): Tree =>
-		new Call('subnode', typedNode(graph, child, plainTree(child.parameters ?? {})));
+		new Call('provider', typedNode(graph, child, plainTree(child.parameters ?? {})));
 	return Object.fromEntries(
-		SUBNODE_SLOTS.flatMap(([slot]) => {
+		PROVIDER_SLOTS.flatMap(([slot]) => {
 			const filled = children.filter((child) => child.slot === slot).map(({ node }) => call(node));
 			if (filled.length === 0) return [];
 			return [[slot, LIST_SLOTS.has(slot) ? filled : filled[0]]];
@@ -1190,36 +1197,41 @@ const settingsField = (node: NodeJSON): { settings?: Tree } =>
 	hasSettings(node) ? { settings: plainTree(settingsOf(node)) } : {};
 
 function typedNode(graph: Graph, node: NamedNode, parameters: Tree): Tree {
-	const subnodes = subnodesTree(graph, node.name);
+	const providers = providersTree(graph, node.name);
 	return {
 		name: node.name,
 		type: node.type,
 		version: node.typeVersion,
 		...(isRecord(parameters) && Object.keys(parameters).length === 0 ? {} : { parameters }),
 		...settingsField(node),
-		...(subnodes ? { subnodes } : {}),
+		...(providers ? { providers } : {}),
 	};
 }
 
 /**
- * A contract node call. A contract root node takes each contract sub-node in the input field
+ * A contract node call. A contract root node takes each contract provider in the input field
  * named by its slot, e.g. `model: openAi.chatModel({ … })`.
  */
 function contractCall(graph: Graph, node: NamedNode, shape: ContractShape): Call {
 	const parameters = isRecord(shape.parameters) ? shape.parameters : {};
 	const children = graph.children.get(node.name) ?? [];
-	const fields = SUBNODE_SLOTS.flatMap(([slot]) => {
+	const fields = PROVIDER_SLOTS.flatMap(([slot]) => {
 		const calls = children.flatMap(({ slot: own, node: child }) => {
-			const childShape = own === slot ? graph.subnodeShapes.get(child.name) : undefined;
+			const childShape = own === slot ? graph.providerShapes.get(child.name) : undefined;
 			return childShape ? [contractCall(graph, child, childShape)] : [];
 		});
 		if (calls.length === 0) return [];
 		return [[slot, LIST_SLOTS.has(slot) ? calls : calls[0]] as const];
 	});
+	const providers = shape.factory.groupsProviders
+		? fields.length > 0
+			? { providers: Object.fromEntries(fields) }
+			: {}
+		: Object.fromEntries(fields);
 	return new Call(`${shape.factory.module}.${shape.factory.path}`, {
 		name: node.name,
 		...parameters,
-		...Object.fromEntries(fields),
+		...providers,
 		...settingsField(node),
 	});
 }
@@ -1346,7 +1358,7 @@ function renderSegments(graph: Graph, segments: readonly Segment[], indent: stri
 		.join('');
 }
 
-const HELPERS = ['workflow', 'manual', 'trigger', 'set', 'node', 'subnode'];
+const HELPERS = ['workflow', 'manual', 'trigger', 'set', 'node', 'provider'];
 
 function segmentNodes(segments: readonly Segment[]): NamedNode[] {
 	return segments.flatMap((segment) => {
@@ -1386,15 +1398,15 @@ function render(name: string, graph: Graph, flows: readonly FlowPlan[]): string 
 		});
 	const legacyChildren = [...graph.children.values()]
 		.flat()
-		.some(({ node }) => !graph.subnodeShapes.has(node.name));
+		.some(({ node }) => !graph.providerShapes.has(node.name));
 	const kinds = new Set<string>([
 		'workflow',
 		...shapes.map(({ kind }) => kind),
-		...(legacyChildren ? ['subnode'] : []),
+		...(legacyChildren ? ['provider'] : []),
 	]);
 	const factories = [
 		...new Map(
-			[...shapes, ...graph.subnodeShapes.values()]
+			[...shapes, ...graph.providerShapes.values()]
 				.flatMap((shape) =>
 					shape.kind === 'contract' ? [{ key: shape.factory.module, factory: shape.factory }] : [],
 				)
@@ -1426,7 +1438,7 @@ function render(name: string, graph: Graph, flows: readonly FlowPlan[]): string 
  * cannot express it (for example a sticky note, or a disabled node). Node settings such as
  * `retryOnFail` read back as `settings`. Loop Over Items, Switch, Filter, and Merge nodes
  * read back as regions when their wiring and parameters are what the region builds.
- * `node()` and `subnode()` parameters keep their expressions as strings. `factories` maps
+ * `node()` and `provider()` parameters keep their expressions as strings. `factories` maps
  * each contract node type, and each `composedFactoryKey`, to its typed module factory.
  * `readLegacy` reads other legacy nodes as factory calls, e.g. the nodes of derived modules.
  */
@@ -1443,11 +1455,11 @@ export function decompileWorkflow(
 		plain.length === json.nodes.length &&
 		all.size === plain.length &&
 		(json.nodeGroups?.length ?? 0) === 0 &&
-		[...edges.main, ...edges.subnodes].every((edge) => all.has(edge.from) && all.has(edge.to));
-	const children = fits ? childrenOf(all, edges.main, edges.subnodes) : undefined;
+		[...edges.main, ...edges.providers].every((edge) => all.has(edge.from) && all.has(edge.to));
+	const children = fits ? childrenOf(all, edges.main, edges.providers) : undefined;
 	if (!edges || !children) return undefined;
-	const subnodeNames = new Set(edges.subnodes.map(({ from }) => from));
-	const mainNodes = plain.filter((node) => !subnodeNames.has(node.name));
+	const providerNames = new Set(edges.providers.map(({ from }) => from));
+	const mainNodes = plain.filter((node) => !providerNames.has(node.name));
 	const nodes = new Map(mainNodes.map((node) => [node.name, node]));
 	const names = new Set(nodes.keys());
 	const targets = new Set(edges.main.map(({ to }) => to));
@@ -1467,24 +1479,39 @@ export function decompileWorkflow(
 			shapeOf(node, !targets.has(node.name), names, factories, regions, edges.main, readLegacy),
 		]),
 	);
-	// A sub-node of a contract node is a contract sub-node, and node() takes legacy sub-nodes only.
-	const subnodeShapes = new Map(
-		plain.flatMap((node) => {
-			if (!subnodeNames.has(node.name)) return [];
-			const shape = contractShape(node, names, factoryOf(node, factories));
-			return shape ? [[node.name, shape] as const] : [];
+	// A provider of a contract node is a contract provider, and node() takes legacy providers only.
+	// A derived node takes derived providers, so the legacy reader reads its providers.
+	const providerEntries = (parent: string, derived: boolean): Array<[string, ContractShape]> =>
+		(children.get(parent) ?? []).flatMap(({ node }) => {
+			const shape =
+				contractShape(node, names, factoryOf(node, factories)) ??
+				(derived ? legacyShape(node, names, readLegacy) : undefined);
+			return [
+				...(shape ? [[node.name, shape] satisfies [string, ContractShape]] : []),
+				...providerEntries(node.name, shape?.factory.groupsProviders === true),
+			];
+		});
+	const providerShapes = new Map(
+		mainNodes.flatMap((node) => {
+			const shape = shapes.get(node.name);
+			return providerEntries(
+				node.name,
+				shape?.kind === 'contract' && shape.factory.groupsProviders === true,
+			);
 		}),
 	);
 	const isContract = (parent: string) =>
-		subnodeNames.has(parent) ? subnodeShapes.has(parent) : shapes.get(parent)?.kind === 'contract';
+		providerNames.has(parent)
+			? providerShapes.has(parent)
+			: shapes.get(parent)?.kind === 'contract';
 	const hosted = [...children].every(([parent, list]) =>
 		isContract(parent)
-			? list.every(({ node }) => subnodeShapes.has(node.name))
-			: (subnodeNames.has(parent) || shapes.get(parent)?.kind === 'node') &&
-				list.every(({ node }) => !subnodeShapes.has(node.name)),
+			? list.every(({ node }) => providerShapes.has(node.name))
+			: (providerNames.has(parent) || shapes.get(parent)?.kind === 'node') &&
+				list.every(({ node }) => !providerShapes.has(node.name)),
 	);
 	if (!hosted) return undefined;
-	const graph: Graph = { nodes, edges: edges.main, shapes, children, subnodeShapes, names };
+	const graph: Graph = { nodes, edges: edges.main, shapes, children, providerShapes, names };
 	const flows = mainNodes
 		.filter((node) => !targets.has(node.name))
 		.map((root) => ({
@@ -1495,9 +1522,12 @@ export function decompileWorkflow(
 	return render(json.name, graph, flows);
 }
 
+const NODE_TYPE_CALLS = new Set(['node', 'provider', 'trigger']);
+
 /**
  * The node name and 1-based line of each `…({ name: '…' })` call, in source order, and the
- * `type` that a `node({ type: '…' })` call names.
+ * `type` that a `node()`, `provider()` or `trigger()` call names. A typed step can have an
+ * input field named `type`, which is not a node type.
  */
 export function locateNextNodes(
 	source: string,
@@ -1532,7 +1562,10 @@ export function locateNextNodes(
 			return value?.type === 'Literal' && typeof value.value === 'string' ? value.value : undefined;
 		};
 		const name = literal('name');
-		const type = literal('type');
+		const type =
+			call.callee.type === 'Identifier' && NODE_TYPE_CALLS.has(call.callee.name)
+				? literal('type')
+				: undefined;
 		// A chained call such as `.branch({…})` starts where the flow before it starts.
 		const at = call.callee.type === 'MemberExpression' ? call.callee.property : call;
 		return name !== undefined && at.loc

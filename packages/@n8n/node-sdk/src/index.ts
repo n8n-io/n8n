@@ -140,9 +140,12 @@ export {
 } from './triggers';
 export { exampleOf, list, matches, parse, validate } from './validate';
 export {
+	isProviderConnection,
 	isSupply,
 	isSupplyKind,
 	modelId,
+	providedOf,
+	PROVIDER_FIELDS,
 	supplied,
 	suppliedKindOf,
 	supplyFieldsOf,
@@ -156,6 +159,7 @@ export {
 	type ChatUsage,
 	type Embeddings,
 	type Memory,
+	type ProviderConnection,
 	type Supplies,
 	type SupplyField,
 	type SupplyKind,

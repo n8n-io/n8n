@@ -77,10 +77,68 @@ export const mattermostDescription: INodeTypeDescription = {
 	],
 };
 
-/** The node types of an instance with the given `n8n-nodes-base` descriptions. */
-export function derivedNodeTypes(descriptions: INodeTypeDescription[] = [mattermostDescription]) {
+const text = { displayName: 'Text', name: 'text', type: 'string' as const, default: '' };
+
+const node = (
+	name: string,
+	connections: Pick<INodeTypeDescription, 'inputs' | 'outputs'>,
+	change: Partial<INodeTypeDescription> = {},
+): INodeTypeDescription => ({
+	displayName: name,
+	name,
+	group: ['transform'],
+	version: 1,
+	description: `The ${name} node`,
+	defaults: { name },
+	properties: [text],
+	...connections,
+	...change,
+});
+
+/** An AI root node, a chat model, a memory, and a community trigger, by node type. */
+export const aiNodeTypes: ReadonlyArray<readonly [string, INodeTypeDescription]> = [
+	[
+		'@n8n/n8n-nodes-langchain.agentRoot',
+		node('agentRoot', {
+			inputs: [
+				'main',
+				{ type: 'ai_languageModel', required: true, maxConnections: 1 },
+				{ type: 'ai_memory', maxConnections: 1 },
+				'ai_tool',
+			],
+			outputs: ['main'],
+		}),
+	],
+	[
+		'@n8n/n8n-nodes-langchain.lmChatAcme',
+		node('lmChatAcme', { inputs: [], outputs: ['ai_languageModel'] }, { version: [1, 1.2] }),
+	],
+	[
+		'@n8n/n8n-nodes-langchain.memoryAcme',
+		node('memoryAcme', { inputs: [], outputs: ['ai_memory'] }),
+	],
+	[
+		'n8n-nodes-acme.acmeTrigger',
+		node(
+			'acmeTrigger',
+			{ inputs: [], outputs: ['main'] },
+			{ group: ['trigger'], version: 2, webhooks: [] },
+		),
+	],
+];
+
+/**
+ * The node types of an instance with the given `n8n-nodes-base` descriptions, and `others` by
+ * node type, e.g. of a community package.
+ */
+export function derivedNodeTypes(
+	descriptions: INodeTypeDescription[] = [mattermostDescription],
+	others: ReadonlyArray<readonly [string, INodeTypeDescription]> = [],
+) {
 	const getByNameAndVersion = vi.fn((nodeType: string) => {
-		const description = descriptions.find(({ name }) => `n8n-nodes-base.${name}` === nodeType);
+		const description =
+			descriptions.find(({ name }) => `n8n-nodes-base.${name}` === nodeType) ??
+			others.find(([type]) => type === nodeType)?.[1];
 		if (!description) throw new Error(`Unknown node type ${nodeType}`);
 		return { description };
 	});

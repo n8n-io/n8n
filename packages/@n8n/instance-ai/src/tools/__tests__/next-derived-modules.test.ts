@@ -1,10 +1,11 @@
+import { PROVIDER_FIELDS } from '@n8n/node-sdk';
 import * as flowSdk from '@n8n/workflow-sdk/next';
 import { execFileSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
-import { derivedNodeTypes, mattermostDescription } from './derived-node-types';
+import { aiNodeTypes, derivedNodeTypes, mattermostDescription } from './derived-node-types';
 import {
 	derivedActionIds,
 	derivedActionsNamedBy,
@@ -13,19 +14,29 @@ import {
 	derivedNodeView,
 	derivedReadOf,
 	hasDerivedModule,
+	isInstalledNodeType,
+	missingNodeTypeIssue,
 	nodeTypeOfModulePath,
 } from '../next-modules';
+import { missingNodeTypeErrors, nextWorkspaceFiles } from '../workflows/next-workflow-build';
 
 const MATTERMOST = 'n8n-nodes-base.mattermost';
 
 const TSC = path.join(path.dirname(require.resolve('typescript/package.json')), 'bin', 'tsc');
 
-/** Runs `tsc` on `source` with the derived Mattermost module at its import path. */
-function typeErrors(source: string, module: string): string[] {
+/**
+ * Runs `tsc` on `source` with derived modules at their import paths: the Mattermost module, or
+ * the module text of each node type in `modules`.
+ */
+function typeErrors(source: string, modules: string | Record<string, string>): string[] {
 	const root = mkdtempSync(path.join(tmpdir(), 'next-derived-modules-'));
 	try {
-		mkdirSync(path.join(root, 'nodes', 'n8n-nodes-base'), { recursive: true });
-		writeFileSync(path.join(root, 'nodes', 'n8n-nodes-base', 'mattermost.ts'), module);
+		const byType = typeof modules === 'string' ? { [MATTERMOST]: modules } : modules;
+		for (const [nodeType, text] of Object.entries(byType)) {
+			const file = path.join(root, 'nodes', `${derivedModulePath(nodeType)}.ts`);
+			mkdirSync(path.dirname(file), { recursive: true });
+			writeFileSync(file, text);
+		}
 		writeFileSync(path.join(root, 'workflow.ts'), source);
 		const sdk = require.resolve('@n8n/workflow-sdk/next').replace(/\.js$/, '.d.ts');
 		const compilerOptions = {
@@ -198,6 +209,7 @@ describe('derived node modules', () => {
 				from: '@n8n/nodes/n8n-nodes-base/mattermost',
 				path: 'message.post',
 				version: 2.3,
+				groupsProviders: true,
 				inputKeys: ['channelId', 'message'],
 				expressionKeys: ['message'],
 			},
@@ -234,5 +246,138 @@ describe('derived node modules', () => {
 		expect(typeErrors(post("channelId: { mode: 'id', value: 'c1' }"), module)).toEqual([
 			expect.stringContaining('workflow.ts:3 error TS2345'),
 		]);
+	});
+
+	describe('triggers, AI nodes, and community nodes', () => {
+		const AGENT = '@n8n/n8n-nodes-langchain.agentRoot';
+		const CHAT = '@n8n/n8n-nodes-langchain.lmChatAcme';
+		const MEMORY = '@n8n/n8n-nodes-langchain.memoryAcme';
+		const ACME = 'n8n-nodes-acme.acmeTrigger';
+		const source = { nodeTypesProvider: derivedNodeTypes([], aiNodeTypes) };
+		const moduleOf = (nodeType: string) => derivedNodeModuleText(nodeType, source) ?? '';
+
+		it('derives a community trigger at its package path, as the build writes it', () => {
+			expect(derivedModulePath(ACME)).toBe('n8n-nodes-acme/acmeTrigger');
+			expect(moduleOf(ACME)).toContain(
+				'contractTrigger("n8n-nodes-acme.acmeTrigger", config, 2, undefined, {',
+			);
+			const workspace = nextWorkspaceFiles(
+				"import { acmeTrigger } from '@n8n/nodes/n8n-nodes-acme/acmeTrigger';\n",
+				source,
+			);
+			expect(
+				workspace.ok && workspace.files.get('.n8n/nodes/n8n-nodes-acme/acmeTrigger.ts'),
+			).toContain('/// <reference path="../../node-outputs.d.ts" />');
+		});
+
+		it('derives a node type that the instance gets after a failed lookup', () => {
+			const nodeTypesProvider = derivedNodeTypes([], aiNodeTypes);
+			nodeTypesProvider.getByNameAndVersion.mockImplementationOnce(() => {
+				throw new Error(`Unknown node type ${ACME}`);
+			});
+			expect(derivedNodeModuleText(ACME, { nodeTypesProvider })).toBeUndefined();
+			expect(derivedNodeModuleText(ACME, { nodeTypesProvider })).toContain('contractTrigger(');
+		});
+
+		it('fails the build in one line for a node type the instance does not have', async () => {
+			expect(isInstalledNodeType(ACME, source)).toBe(true);
+			expect(isInstalledNodeType('n8n-nodes-other.widget', source)).toBe(false);
+			expect(missingNodeTypeIssue('n8n-nodes-base.nope')).toBe(
+				'n8n has no node type n8n-nodes-base.nope. Find the type with nodes(action="search").',
+			);
+			const code = [
+				"import { manual, node, workflow } from '@n8n/workflow-sdk/next';",
+				"import { widget } from '@n8n/nodes/n8n-nodes-other/widget';",
+				"import { acmeTrigger } from '@n8n/nodes/n8n-nodes-acme/acmeTrigger';",
+				"export default workflow('W', manual().andThen(node({ name: 'Scan', type: '@scope/n8n-nodes-scan.scan', version: 1 })));",
+			].join('\n');
+			expect(await missingNodeTypeErrors(code, source)).toEqual([
+				'"@n8n/nodes/n8n-nodes-other/widget": Node type n8n-nodes-other.widget is not installed. Install package n8n-nodes-other first.',
+				'"Scan" (line 4): Node type @scope/n8n-nodes-scan.scan is not installed. Install package @scope/n8n-nodes-scan first.',
+			]);
+			expect(
+				await missingNodeTypeErrors(
+					"manual().andThen(crypto.execute({ name: 'Hash', action: 'hash', type: 'SHA256' }));",
+					source,
+				),
+			).toEqual([]);
+		});
+
+		it('reads a saved trigger, root node and provider as derived factories', () => {
+			const read = (type: string, typeVersion: number, parameters: Record<string, unknown>) =>
+				derivedReadOf({ type, typeVersion, parameters }, source);
+			expect(read(ACME, 2, { text: 'a' })).toMatchObject({
+				factory: { module: 'acmeTrigger', path: 'trigger', groupsProviders: true },
+				parameters: { text: 'a' },
+			});
+			expect(read(AGENT, 1, { text: 'Hi' })).toMatchObject({
+				factory: { module: 'agentRoot', path: 'execute', inputKeys: ['text'] },
+			});
+			expect(read(CHAT, 1.2, {})).toMatchObject({
+				factory: { module: 'lmChatAcme', path: 'execute', version: 1.2 },
+			});
+		});
+
+		it('builds a derived root node with its provider on the connection of its slot', () => {
+			const model = flowSdk.contractProvider(CHAT, 'ai_languageModel', { name: 'Model' }, 1.2);
+			// The config of a generated factory, which types the input fields too.
+			const agentConfig = { name: 'Agent' as const, text: 'Hi', providers: { model } };
+			const triggerConfig = { name: 'Event' as const, text: 'a' };
+			const step = flowSdk.contractStep(AGENT, agentConfig);
+			const trigger = flowSdk.contractTrigger(ACME, triggerConfig, 2);
+			const json = flowSdk.workflow('Ask', trigger.andThen(step)).toJSON();
+
+			expect(json.nodes.find((node) => node.name === 'Model')).toMatchObject({
+				type: CHAT,
+				typeVersion: 1.2,
+			});
+			expect(json.nodes.find((node) => node.name === 'Agent')?.parameters).toEqual({ text: 'Hi' });
+			expect(json.connections.Model).toEqual({
+				ai_languageModel: [[{ node: 'Agent', type: 'ai_languageModel', index: 0 }]],
+			});
+			expect(json.connections.Event).toEqual({
+				main: [[{ node: 'Agent', type: 'main', index: 0 }]],
+			});
+		});
+
+		it('connects each provider field of node-sdk on its connection type in the flow SDK', () => {
+			for (const [connection, field] of Object.entries(PROVIDER_FIELDS)) {
+				const supplied = flowSdk.contractProvider(CHAT, connection as 'ai_tool', { name: 'P' });
+				const step = flowSdk.contractStep(AGENT, {
+					name: 'Root',
+					providers: { [field]: supplied },
+				});
+				const json = flowSdk.workflow('W', flowSdk.manual().andThen(step)).toJSON();
+				expect(Object.keys(json.connections.P ?? {})).toEqual([connection]);
+			}
+		});
+
+		// Each case runs a real tsc.
+		it('checks each provider slot of a derived root node by its connection type with tsc', () => {
+			const modules = Object.fromEntries([AGENT, CHAT, MEMORY, ACME].map((t) => [t, moduleOf(t)]));
+			const flow = (providers: string) =>
+				[
+					"import { workflow } from '@n8n/workflow-sdk/next';",
+					"import { acmeTrigger } from '@n8n/nodes/n8n-nodes-acme/acmeTrigger';",
+					"import { agentRoot } from '@n8n/nodes/@n8n/n8n-nodes-langchain/agentRoot';",
+					"import { lmChatAcme } from '@n8n/nodes/@n8n/n8n-nodes-langchain/lmChatAcme';",
+					"import { memoryAcme } from '@n8n/nodes/@n8n/n8n-nodes-langchain/memoryAcme';",
+					'const model = lmChatAcme.execute({ name: "Model" });',
+					'const memory = memoryAcme.execute({ name: "Memory" });',
+					`export default workflow('Ask', acmeTrigger.trigger({ name: 'Event', text: 'a' }).andThen(agentRoot.execute({ name: 'Agent', text: (item) => String(item.q), providers: ${providers} })));`,
+					'',
+				].join('\n');
+
+			expect(typeErrors(flow('{ model, memory }'), modules)).toEqual([]);
+			expect(typeErrors(flow('{ model: memory }'), modules)).toEqual([
+				expect.stringMatching(/workflow\.ts:8 error TS2322: .*"ai_memory".*"ai_languageModel"/),
+			]);
+			expect(typeErrors(flow('{ memory }'), modules)).toEqual([
+				expect.stringContaining("workflow.ts:8 error TS2741: Property 'model' is missing"),
+			]);
+			expect(typeErrors(flow('{ model, tools: [model] }'), modules)).toEqual([
+				expect.stringMatching(/workflow\.ts:8 error TS2322: .*"ai_languageModel".*"ai_tool"/),
+			]);
+		});
 	});
 });

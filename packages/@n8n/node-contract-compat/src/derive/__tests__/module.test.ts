@@ -1,8 +1,14 @@
 import type { INodeProperties, INodeTypeDescription } from 'n8n-workflow';
 
-import { generateNodeModule } from '@n8n/node-sdk';
+import { generateNodeModule, validate } from '@n8n/node-sdk';
 
-import { deriveModuleVersion, readLegacyParameters, toGeneratedAction } from '../../index';
+import {
+	connectionsOf,
+	deriveModuleVersion,
+	readLegacyParameters,
+	toGeneratedAction,
+	toLegacyParameters,
+} from '../../index';
 
 const show = (rules: Record<string, unknown[]>) =>
 	({ displayOptions: { show: rules } }) as Pick<INodeProperties, 'displayOptions'>;
@@ -80,18 +86,181 @@ describe('deriveModuleVersion', () => {
 		expect(derive(base, 7)?.typeVersion).toBe(2.1);
 	});
 
-	it('leaves out an action whose fields depend on more than one selector', () => {
-		expect(derive(base)?.actions.map((action) => action.contract.id)).toEqual(['base.create']);
+	it('types an action whose fields depend on more than one selector as variants of the first', () => {
+		const actions = derive(base)?.actions ?? [];
+		expect(actions.map((action) => [action.contract.id, action.shape])).toEqual([
+			['base.create', 'flat'],
+			['base.search', 'multiSelector'],
+		]);
+		const module = generateNodeModule('base', actions.map(toGeneratedAction));
+		// The variant of the default mode needs no tag, as n8n fills the default.
+		expect(module).toContain(
+			'{ mode?: "formula"; formula?: Value<I, C, string> } | { mode: "view" }',
+		);
+		expect(module).toContain('sortField?: Value<I, C, string>;');
+		const search = actions[1];
+		if (!search) throw new Error('no search action');
+		expect(validate({ formula: 'x' }, search.contract.input)).toEqual([]);
+		expect(validate({ mode: 'view', formula: 'x' }, search.contract.input)).toEqual([
+			'input: unknown field(s) formula. Allowed: mode, table, sort, sortField',
+		]);
 	});
 
 	it.each([
-		['a trigger', { inputs: [] }],
-		['a node with two outputs', { outputs: ['main', 'main'] }],
-		['an AI root node', { inputs: ['main', 'ai_languageModel'] }],
+		['outputs that its parameters decide', { outputs: '={{ $parameter.outputs }}' }],
+		['two main inputs', { inputs: ['main', 'main'] }],
+		['main and provider outputs', { outputs: ['main', 'ai_tool'] }],
+		['an input that no provider slot takes', { inputs: ['main', 'ai_chain'] }],
 		['a name that is no identifier', { name: 'base-node' }],
 		['a name that is a reserved word', { name: 'function' }],
 	] as const)('derives no module for %s', (_case, change) => {
 		expect(derive({ ...base, ...change } as INodeTypeDescription)).toBeUndefined();
+	});
+});
+
+const flat = (change: Partial<INodeTypeDescription>): INodeTypeDescription => ({
+	...base,
+	version: 1,
+	properties: [{ displayName: 'Text', name: 'text', type: 'string', default: '' }],
+	...change,
+});
+
+const moduleOf = (description: INodeTypeDescription) =>
+	generateNodeModule(description.name, (derive(description)?.actions ?? []).map(toGeneratedAction));
+
+describe('connectionsOf', () => {
+	it('reads triggers, providers, steps with named outputs, and provider inputs', () => {
+		expect(connectionsOf(flat({ inputs: [], group: ['trigger'], polling: true }))).toEqual({
+			kind: 'trigger',
+			trigger: 'poll',
+			providers: [],
+		});
+		expect(connectionsOf(flat({ inputs: [], outputs: ['ai_languageModel'] }))).toEqual({
+			kind: 'provider',
+			provides: 'ai_languageModel',
+			providers: [],
+		});
+		expect(
+			connectionsOf(flat({ outputs: ['main', 'main'], outputNames: ['true', 'false'] })),
+		).toEqual({ kind: 'step', outputs: ['true', 'false'], providers: [] });
+		expect(
+			connectionsOf(
+				flat({
+					inputs: [
+						'main',
+						{ type: 'ai_languageModel', required: true, maxConnections: 1 },
+						{ type: 'ai_memory', maxConnections: 1 },
+						'ai_tool',
+					],
+				}),
+			),
+		).toEqual({
+			kind: 'step',
+			providers: [
+				{ type: 'ai_languageModel', required: true, many: false },
+				{ type: 'ai_memory', required: false, many: false },
+				{ type: 'ai_tool', required: false, many: true },
+			],
+		});
+	});
+
+	it('reads the provider inputs of an inputs expression from builderHint, else from the expression', () => {
+		const hinted = flat({
+			inputs: '={{ ((p) => ["main", "ai_languageModel", "ai_outputParser"])($parameter) }}',
+			builderHint: {
+				inputs: {
+					ai_languageModel: { required: true },
+					ai_outputParser: { required: true, displayOptions: { show: { hasParser: [true] } } },
+				},
+			},
+		});
+		expect(connectionsOf(hinted)).toEqual({
+			kind: 'step',
+			providers: [
+				{ type: 'ai_languageModel', required: true, many: false },
+				{ type: 'ai_outputParser', required: false, many: false },
+			],
+		});
+		expect(
+			connectionsOf(flat({ inputs: "={{ ['main', { type: 'ai_tool' }] }}", group: ['trigger'] })),
+		).toEqual({
+			kind: 'trigger',
+			trigger: 'event',
+			providers: [{ type: 'ai_tool', required: false, many: true }],
+		});
+	});
+
+	it('does not type a provider whose inputs come from an expression without builderHint', () => {
+		const inputs =
+			"={{ ((p) => Array.from({ length: p.numberInputs }, () => ({ type: 'ai_languageModel' })))($parameter) }}";
+		expect(connectionsOf(flat({ inputs, outputs: ['ai_languageModel'] }))).toEqual({
+			reason: 'its parameters decide its provider inputs',
+		});
+	});
+});
+
+describe('derived modules by node kind', () => {
+	it('types a trigger with plain values that runs the legacy trigger', () => {
+		const module = moduleOf(
+			flat({ name: 'baseTrigger', inputs: [], group: ['trigger'], webhooks: [], polling: true }),
+		);
+		expect(module).toContain('export type BaseTriggerTriggerInput = { text?: string };');
+		expect(module).toContain('): Flow<OutputOf<N, BaseTriggerTriggerOutput>');
+		expect(module).toContain(
+			'contractTrigger("n8n-nodes-base.baseTrigger", config, 1, undefined, {',
+		);
+		expect(module).toContain('(trigger, poll)');
+	});
+
+	it('types a provider by its connection type', () => {
+		const module = moduleOf(flat({ name: 'chatModel', inputs: [], outputs: ['ai_languageModel'] }));
+		expect(module).toContain('): Provider<In, Ctx, "ai_languageModel"> =>');
+		expect(module).toContain(
+			'contractProvider("n8n-nodes-base.chatModel", "ai_languageModel", config)',
+		);
+	});
+
+	it('types the provider slots of a root node: required ones required, many as a list', () => {
+		const module = moduleOf(
+			flat({
+				name: 'agent',
+				inputs: [
+					'main',
+					{ type: 'ai_languageModel', required: true, maxConnections: 1 },
+					{ type: 'ai_memory', maxConnections: 1 },
+					'ai_tool',
+				],
+			}),
+		);
+		expect(module).toContain('providers: {');
+		expect(module).toContain('model: Provider<NoInfer<I>, NoInfer<C>, "ai_languageModel">;');
+		expect(module).toContain('memory?: Provider<NoInfer<I>, NoInfer<C>, "ai_memory">;');
+		expect(module).toContain('tools?: Array<Provider<NoInfer<I>, NoInfer<C>, "ai_tool">>;');
+	});
+
+	it('renames an input field that a config key holds, and reads it back', () => {
+		const named = flat({
+			properties: [{ displayName: 'Name', name: 'name', type: 'string', default: '' }],
+		});
+		expect(moduleOf(named)).toContain('{ nameField?: Value<I, C, string> }');
+		const version = derive(named);
+		if (!version) throw new Error('no version');
+		const [action] = version.actions;
+		if (!action) throw new Error('no action');
+		expect(toLegacyParameters(action.compile, { nameField: 'Acme' })).toEqual({ name: 'Acme' });
+		expect(readLegacyParameters(version, named, { name: 'Acme' })).toMatchObject({
+			input: { nameField: 'Acme' },
+		});
+	});
+
+	it('types the named outputs of a step as a routed step', () => {
+		const module = moduleOf(
+			flat({ name: 'check', outputs: ['main', 'main'], outputNames: ['valid', 'invalid'] }),
+		);
+		expect(module).toContain(
+			'): RoutedStep<In, Ctx, OutputOf<N, CheckExecuteOutput>, N, "valid" | "invalid"> =>',
+		);
+		expect(module).toContain('routedStep("n8n-nodes-base.check", config, ["valid","invalid"])');
 	});
 });
 
@@ -148,10 +317,14 @@ describe('readLegacyParameters', () => {
 			input: { table: { mode: 'id', value: 't1' } },
 		});
 		expect(read({})).toMatchObject({ action: { contract: { id: 'base.create' } }, input: {} });
+		expect(read({ operation: 'search', mode: 'view', sort: true, sortField: 'f' })).toMatchObject({
+			action: { contract: { id: 'base.search' } },
+			input: { mode: 'view', sort: true, sortField: 'f' },
+		});
 	});
 
 	it('gives the reason when no derived action or input fits', () => {
-		expect(read({ operation: 'search' })).toEqual({ reason: 'no derived action runs search' });
+		expect(read({ operation: 'update' })).toEqual({ reason: 'no derived action runs update' });
 		expect(read({ operation: 'create', table: 'plain' })).toEqual({
 			reason: expect.stringContaining('input.table'),
 		});
