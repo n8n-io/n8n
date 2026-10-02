@@ -1181,7 +1181,8 @@ describe('ScheduledTaskRepository executor methods', () => {
 						expect(reclaimed).toBe(0);
 						expect(row.status).toBe('running');
 						expect(row.leaseEpoch).toBe(1);
-						expect(row.leaseExpiresAt!.getTime()).toBeGreaterThan(Date.now());
+						const dbNow = await taskRepository.readDbTime();
+						expect(row.leaseExpiresAt!.getTime()).toBeGreaterThan(dbNow.getTime());
 					} else {
 						expect(reclaimed).toBe(1);
 						expect(row.status).toBe('pending');
