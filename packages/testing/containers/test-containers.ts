@@ -48,6 +48,7 @@ const DEFAULT_IMAGES = {
 	sandboxApi: 'n8nio/n8n-sandbox-service-api:1.3.0',
 	sandboxRunner: 'n8nio/n8n-sandbox-service-runner-dind:1.3.0',
 	sandboxSandbox: 'n8nio/n8n-sandbox-service-sandbox:1.3.0',
+	verdaccio: 'verdaccio/verdaccio:6.5.0',
 } as const;
 
 /** Convert camelCase to SCREAMING_SNAKE_CASE for env var names */
@@ -129,4 +130,5 @@ export const TEST_CONTAINER_IMAGES = {
 	sandboxApi: getImage('sandboxApi'),
 	sandboxRunner: getImage('sandboxRunner'),
 	sandboxSandbox: getImage('sandboxSandbox'),
+	verdaccio: getImage('verdaccio'),
 } as const;

@@ -22,6 +22,16 @@ export const CAPABILITIES = {
 		},
 	},
 	kent: { services: ['kent'] },
+	/**
+	 * Community packages installed from an offline Verdaccio the test seeds
+	 * (`n8nContainer.services.npmRegistry`). n8n only honours a non-default
+	 * registry under the `communityNodes:customRegistry` licence feature, so
+	 * specs enable it with `api.enableFeature('communityNodes:customRegistry')`.
+	 */
+	'community-packages': {
+		services: ['npmRegistry'],
+		env: { N8N_UNVERIFIED_PACKAGES_ENABLED: 'true' },
+	},
 	'dynamic-credentials': {
 		services: ['keycloak'],
 		env: {

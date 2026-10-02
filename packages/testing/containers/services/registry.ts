@@ -10,6 +10,7 @@ import { localstack, createLocalStackHelper } from './localstack';
 import { mailpit, createMailpitHelper } from './mailpit';
 import { mysqlService } from './mysql';
 import { ngrok } from './ngrok';
+import { createNpmRegistryHelper, npmRegistry } from './npm-registry';
 import { createObservabilityHelper } from './observability';
 import { postgres, createPostgresHelper } from './postgres';
 import { postgresExporter } from './postgres-exporter';
@@ -47,6 +48,7 @@ export const services: Record<ServiceName, Service<ServiceResult>> = {
 	postgresExporter,
 	cadvisor,
 	sandbox,
+	npmRegistry,
 };
 
 export const helperFactories: Partial<HelperFactories> = {
@@ -61,4 +63,5 @@ export const helperFactories: Partial<HelperFactories> = {
 	kafka: createKafkaHelper,
 	localstack: createLocalStackHelper,
 	kent: createKentHelper,
+	npmRegistry: createNpmRegistryHelper,
 };
