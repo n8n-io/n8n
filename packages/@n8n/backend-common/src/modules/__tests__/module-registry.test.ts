@@ -198,6 +198,19 @@ describe('loadModules', () => {
 			expect(importPackagedModule).toHaveBeenCalledTimes(1);
 		});
 
+		it('should wrap a packaged module import failure', async () => {
+			const importError = new Error('Package import failed');
+			const moduleRegistry = newRegistry();
+			moduleRegistry.registerPackagedModules({
+				insights: vi.fn().mockRejectedValue(importError),
+			});
+
+			const loading = moduleRegistry.loadModules(['insights']);
+
+			await expect(loading).rejects.toThrow(ModuleLoadError);
+			await expect(loading).rejects.toThrow(importError.message);
+		});
+
 		it('should use the filesystem route for a module that is not in the manifest', async () => {
 			const importPackagedModule = vi.fn().mockResolvedValue({});
 			const moduleRegistry = newRegistry();
