@@ -1,3 +1,4 @@
+import { GlobalConfig } from '@n8n/config';
 import { SettingsRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 
@@ -11,7 +12,17 @@ export class AiUsageService {
 	constructor(
 		private readonly settingsRepository: SettingsRepository,
 		private readonly cacheService: CacheService,
+		private readonly globalConfig: GlobalConfig,
 	) {}
+
+	/**
+	 * Whether AI features may send parameter values. Both the
+	 * `N8N_AI_ALLOW_SENDING_PARAMETER_VALUES` env var and the stored setting must allow it.
+	 */
+	async isParameterValueSharingAllowed(): Promise<boolean> {
+		if (!this.globalConfig.ai.allowSendingParameterValues) return false;
+		return await this.getAiUsageSettings();
+	}
 
 	/**
 	 * Get the current value of the AI usage (privacy) setting for sending parameter data.

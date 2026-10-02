@@ -1,4 +1,5 @@
 import type { LifecycleEventPublisher } from '../lifecycle-events';
+import type { ExecutionResponseSender } from '../response-channel';
 import type { ExecutionStore } from './execution-store';
 import type { ExecutionStatus } from './execution.types';
 import type { StepStore } from './step-store';
@@ -6,6 +7,8 @@ import type { StepStore } from './step-store';
 export interface CancelExecutionResult {
 	/** The execution's status after the request: `cancelled` unless it had already ended. */
 	status: ExecutionStatus;
+	/** When the execution ended. Set whenever `status` is not live. */
+	finishedAt: Date | null;
 }
 
 /**
@@ -17,6 +20,7 @@ export class CancelExecutionService {
 		private readonly executionStore: ExecutionStore,
 		private readonly stepStore: StepStore,
 		private readonly lifecycleEventPublisher: LifecycleEventPublisher,
+		private readonly responseSender: ExecutionResponseSender,
 	) {}
 
 	/** @throws {ExecutionNotFoundError} if absent. */
@@ -34,8 +38,18 @@ export class CancelExecutionService {
 				workflowId: execution.workflowId,
 				at: cancelled.finishedAt.toISOString(),
 			});
+			// Releases whoever waits on the run. No step settled, so there is no last step.
+			if (execution.responseExpectation.kind !== 'none') {
+				this.responseSender.send({
+					type: 'ended',
+					executionId,
+					workflowId: execution.workflowId,
+					status: 'cancelled',
+					lastStep: null,
+				});
+			}
 		}
 
-		return { status: execution.status };
+		return { status: execution.status, finishedAt: execution.finishedAt };
 	}
 }

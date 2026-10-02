@@ -150,6 +150,7 @@ export class UsersController {
 		}
 
 		const token = this.jwtService.sign(
+			'invite',
 			{
 				inviterId,
 				inviteeId,

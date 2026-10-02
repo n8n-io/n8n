@@ -1,5 +1,5 @@
 import {
-	AgentIntegrationSchema,
+	AgentIntegrationConfigSchema,
 	isDraftIntegration,
 	type AgentIntegrationConfig,
 	type ChatIntegrationDescriptor,
@@ -163,9 +163,12 @@ export class AgentIntegrationPersistenceService {
 		);
 	}
 
-	/** Reject anything that must never reach the `integrations` column. */
+	/**
+	 * Reject anything that must never reach the `integrations` column. The config
+	 * schema also covers n8n Chat; `isDraftIntegration` still rejects a blank credential.
+	 */
 	private validateAddition(integration: AgentIntegrationConfig): AgentIntegrationConfig {
-		const parseResult = AgentIntegrationSchema.safeParse(integration);
+		const parseResult = AgentIntegrationConfigSchema.safeParse(integration);
 		if (!parseResult.success) {
 			throw new UserError(`Invalid credential integration: ${parseResult.error.message}`);
 		}

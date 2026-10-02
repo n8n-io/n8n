@@ -20,7 +20,7 @@ export interface ProtectedResource {
 	/** Human readable name, for consent screen */
 	displayName?: string;
 
-	/** Presentational hints for the consent screen; omit for the default client-brand treatment. */
+	/** Presentational hints for the consent screen; omit for the default generic MCP icon. */
 	uiHints?: ConsentUiHints;
 
 	/**

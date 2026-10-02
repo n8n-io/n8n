@@ -21,7 +21,7 @@ let jwtService: JwtService;
 let supportedScopes: string[];
 
 const createSessionToken = (payload: OAuthSessionPayload): string => {
-	return jwtService.sign(payload, { expiresIn: '10m' });
+	return jwtService.sign('oauthSession', payload, { expiresIn: '10m' });
 };
 let oauthClientRepository: OAuthClientRepository;
 

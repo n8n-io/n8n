@@ -219,7 +219,7 @@ describe('SettingsMCPWorkflowsView', () => {
 			);
 		});
 
-		it('should remove MCP access for bulk-selected workflows and refresh the table', async () => {
+		it('should disable MCP access for bulk-selected workflows and refresh the table', async () => {
 			const { getByTestId } = createComponent({ pinia });
 			await nextTick();
 			mcpStore.fetchWorkflowsAvailableForMCPPage.mockClear();
