@@ -16,7 +16,7 @@ const ArgDecorator =
 
 export type BodyOptions = { required?: boolean } & (RequestBodyMedia | { mediaType?: undefined });
 
-function toRequestBodyMedia(options: RequestBodyMedia): RequestBodyMedia {
+function stripExtraPropertiesFromRequestBodyMedia(options: RequestBodyMedia): RequestBodyMedia {
 	switch (options.mediaType) {
 		case 'application/json':
 			return { mediaType: 'application/json' };
@@ -50,7 +50,7 @@ export function Body(
 		arg.required = options.required;
 	}
 	if (options?.mediaType !== undefined) {
-		arg.media = toRequestBodyMedia(options);
+		arg.media = stripExtraPropertiesFromRequestBodyMedia(options);
 	}
 
 	return ArgDecorator(arg);
