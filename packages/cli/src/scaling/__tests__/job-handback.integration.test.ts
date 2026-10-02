@@ -309,5 +309,52 @@ describe.skipIf(!REDIS_HOST || !REDIS_PORT)('handBackJob (real Redis)', () => {
 			expect(await attemptsMadeOf(job.id)).toBe(attemptsBefore);
 			expect(await control.exists(job.lockKey())).toBe(1);
 		});
+
+		describe('Bull worker behaviour', () => {
+			it('does not fetch the next waiting job when a job completes on a locally paused worker', async () => {
+				const producer = createQueue();
+				const job1 = await addJob(producer, 'exec-p1');
+				const job2 = await addJob(producer, 'exec-p2');
+
+				const worker = createQueue();
+				const handled: JobId[] = [];
+				const completed = once(worker, 'completed') as Promise<[Job]>;
+				void worker.process(JOB_TYPE_NAME, 1, async (activeJob: Job) => {
+					handled.push(activeJob.id);
+					await worker.pause(true, true);
+				});
+
+				const [completedJob] = await completed;
+
+				expect(completedJob.id).toBe(job1.id);
+				expect(await stateOf(producer, job1.id)).toBe('completed');
+				expect(await stateOf(producer, job2.id)).toBe('waiting');
+				expect(await control.exists(job2.lockKey())).toBe(0);
+				expect(handled).toEqual([job1.id]);
+			});
+
+			it('parks a job fetched by a completion when the worker pauses before processing it', async () => {
+				const producer = createQueue();
+				const job1 = await addJob(producer, 'exec-p1');
+				const job2 = await addJob(producer, 'exec-p2');
+
+				const worker = createQueue();
+				const handled: JobId[] = [];
+				const paused = once(worker, 'paused');
+				worker.on('completed', () => {
+					void worker.pause(true, true);
+				});
+				void worker.process(JOB_TYPE_NAME, 1, async (activeJob: Job) => {
+					handled.push(activeJob.id);
+				});
+
+				await paused;
+
+				expect(await stateOf(producer, job1.id)).toBe('completed');
+				expect(await stateOf(producer, job2.id)).toBe('active');
+				expect(await control.get(job2.lockKey())).toBe(lockTokenOf(worker));
+				expect(handled).toEqual([job1.id]);
+			});
+		});
 	});
 });
