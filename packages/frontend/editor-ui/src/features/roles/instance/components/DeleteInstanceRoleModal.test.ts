@@ -90,7 +90,7 @@ describe('DeleteInstanceRoleModal', () => {
 	it('should reflect the chosen role in the confirm label and emit on confirm', async () => {
 		const { getByTestId, getByText, emitted } = renderComponent();
 
-		// N8nSelect (ElSelect): open the dropdown, then pick the option.
+		// N8nSelect2: open the dropdown, then pick the option.
 		await userEvent.click(getByTestId('reassign-role-select'));
 		await waitFor(() => expect(getByText('Admin')).toBeInTheDocument());
 		await userEvent.click(getByText('Admin'));
