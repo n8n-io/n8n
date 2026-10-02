@@ -39,7 +39,7 @@ import {
 	chatItemTitle,
 	type RecentChatItem,
 } from '@/features/agents/n8nChatPage/mergeRecentChats';
-import AgentPersonalisationIcon from '@/features/agents/components/AgentPersonalisationIcon.vue';
+import RecentChatIcon from '@/features/agents/n8nChatPage/components/RecentChatIcon.vue';
 
 import { hasPermission } from '@/app/utils/rbac/permissions';
 
@@ -384,12 +384,7 @@ onBeforeUnmount(() => {
 						@click="onChatItemClick(item)"
 					>
 						<template v-if="isAgentsN8nChatFlag" #icon>
-							<N8nIcon v-if="item.kind === 'assistant'" icon="sparkles" size="small" />
-							<AgentPersonalisationIcon
-								v-else
-								:personalisation="item.thread.agent.personalisation"
-								:size="16"
-							/>
+							<RecentChatIcon :item="item" />
 						</template>
 					</N8nMenuItem>
 				</div>

@@ -3,7 +3,6 @@ import { nextTick, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import {
 	N8nActionDropdown,
-	N8nAssistantIcon,
 	N8nButton,
 	N8nHeading,
 	N8nIcon,
@@ -19,7 +18,7 @@ import PageViewLayout from '@/app/components/layouts/PageViewLayout.vue';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { formatTimeAgo } from '@/app/utils/formatters/dateFormatter';
 import { useAgentsN8nChatFlag } from '@/features/agents/composables/useAgentsN8nChatFlag';
-import AgentPersonalisationIcon from '@/features/agents/components/AgentPersonalisationIcon.vue';
+import RecentChatIcon from '@/features/agents/n8nChatPage/components/RecentChatIcon.vue';
 import { useMergedChatHistory } from '@/features/agents/n8nChatPage/useMergedChatHistory';
 import {
 	chatItemRoute,
@@ -158,17 +157,7 @@ async function handleThreadAction(action: string, thread: InstanceAiThreadSummar
 							@dblclick.prevent="item.kind === 'assistant' && startRename(item.thread)"
 						>
 							<template v-if="isAgentsN8nChatFlag">
-								<N8nAssistantIcon
-									v-if="item.kind === 'assistant'"
-									:class="$style.icon"
-									size="small"
-								/>
-								<AgentPersonalisationIcon
-									v-else
-									:class="$style.icon"
-									:personalisation="item.thread.agent.personalisation"
-									:size="20"
-								/>
+								<RecentChatIcon :class="$style.icon" :item="item" :size="20" />
 							</template>
 							<N8nIcon v-else :class="$style.icon" icon="message-circle" size="medium" />
 							<N8nText :class="$style.title" size="medium">{{ itemTitle(item) }}</N8nText>

@@ -69,12 +69,18 @@ vi.mock('vue-router', () => ({
 function renderView(
 	props: { agentId?: string; agentThreadId?: string } = {},
 	configureStore: (store: MockedStore<typeof useProjectsStore>) => void = () => {},
+	// Runs before mount, so a preset `recentThreads` is in place for the view's
+	// immediate watcher — setting it only after `renderView` returns is too late.
+	configureThreadsStore: (
+		store: MockedStore<typeof useAgentN8nChatThreadsStore>,
+	) => void = () => {},
 ) {
 	const pinia = createTestingPinia();
 	const projectsStore = mockedStore(useProjectsStore);
 	projectsStore.myProjects = [];
 	projectsStore.personalProject = null;
 	configureStore(projectsStore);
+	configureThreadsStore(mockedStore(useAgentN8nChatThreadsStore));
 
 	return mount(AgentN8nChatView, {
 		props: { agentId: 'agent-1', ...props },
@@ -101,7 +107,7 @@ function renderView(
 						'channel',
 						'centerEmptyState',
 					],
-					emits: ['session-created', 'update:streaming'],
+					emits: ['session-created', 'update:streaming', 'first-user-message'],
 					methods: { sendMessageFromOutside: sendMessageFromOutsideMock },
 				},
 			},
@@ -125,6 +131,101 @@ describe('AgentN8nChatView', () => {
 		vi.clearAllMocks();
 		historyBack.value = undefined;
 		getN8nChatAgentMock.mockResolvedValue(agentItem);
+	});
+
+	it('shows the chat history button only once the agent has loaded', async () => {
+		let resolveAgent: (value: AgentChatListItem) => void = () => {};
+		getN8nChatAgentMock.mockReturnValueOnce(
+			new Promise((resolve) => {
+				resolveAgent = resolve;
+			}),
+		);
+		const wrapper = renderView();
+		await flushPromises();
+
+		expect(wrapper.find('[data-test-id="agent-n8n-chat-history-toggle"]').exists()).toBe(false);
+
+		resolveAgent(agentItem);
+		await flushPromises();
+
+		expect(wrapper.find('[data-test-id="agent-n8n-chat-history-toggle"]').exists()).toBe(true);
+	});
+
+	describe('thread title on the history button', () => {
+		const toggleText = (wrapper: ReturnType<typeof renderView>) =>
+			wrapper.get('[data-test-id="agent-n8n-chat-history-toggle"]').text();
+		const recentThread = (title: string | null) => ({
+			id: 'thread-9',
+			title,
+			updatedAt: '2026-01-01T00:00:00.000Z',
+			agent: { id: 'agent-1', name: 'Support Agent', projectId: 'project-1' },
+		});
+
+		it('shows the open thread title instead of "Chat history"', async () => {
+			const wrapper = renderView({ agentThreadId: 'thread-9' });
+			mockedStore(useAgentN8nChatThreadsStore).recentThreads = [recentThread('Budget questions')];
+			await flushPromises();
+
+			expect(toggleText(wrapper)).toBe('Budget questions');
+		});
+
+		it('falls back to "New conversation" for an untitled thread', async () => {
+			const wrapper = renderView({ agentThreadId: 'thread-9' });
+			mockedStore(useAgentN8nChatThreadsStore).recentThreads = [recentThread(null)];
+			await flushPromises();
+
+			expect(toggleText(wrapper)).toBe('New conversation');
+		});
+
+		it('uses the first user message, cut to 60 characters, until the thread has a title', async () => {
+			const wrapper = renderView({ agentThreadId: 'thread-9' });
+			await flushPromises();
+			const message = 'Please review this offer letter for the senior engineer role in Berlin';
+			wrapper.findComponent({ name: 'AgentChatPanel' }).vm.$emit('first-user-message', message);
+			await flushPromises();
+
+			expect(toggleText(wrapper)).toBe(`${message.slice(0, 60)}…`);
+		});
+
+		it('keeps "Chat history" on a new chat', async () => {
+			const wrapper = renderView();
+			mockedStore(useAgentN8nChatThreadsStore).recentThreads = [recentThread('Budget questions')];
+			await flushPromises();
+
+			expect(toggleText(wrapper)).toBe('Chat history');
+		});
+	});
+
+	describe('loading a thread missing from recentThreads', () => {
+		it("fetches it when the open thread isn't in the list", async () => {
+			renderView({ agentThreadId: 'thread-9' });
+			await flushPromises();
+
+			expect(mockedStore(useAgentN8nChatThreadsStore).loadThread).toHaveBeenCalledWith('thread-9');
+		});
+
+		it('does not fetch it when the thread is already in the list', async () => {
+			renderView({ agentThreadId: 'thread-9' }, undefined, (store) => {
+				store.recentThreads = [
+					{
+						id: 'thread-9',
+						title: 'Budget questions',
+						updatedAt: '2026-01-01T00:00:00.000Z',
+						agent: { id: 'agent-1', name: 'Support Agent', projectId: 'project-1' },
+					},
+				];
+			});
+			await flushPromises();
+
+			expect(mockedStore(useAgentN8nChatThreadsStore).loadThread).not.toHaveBeenCalled();
+		});
+
+		it('does not fetch anything on a new chat', async () => {
+			renderView();
+			await flushPromises();
+
+			expect(mockedStore(useAgentN8nChatThreadsStore).loadThread).not.toHaveBeenCalled();
+		});
 	});
 
 	it('renders the agent avatar, name, description, and the placeholder-driving name', async () => {
@@ -271,18 +372,8 @@ describe('AgentN8nChatView', () => {
 		expect(panel.props('continueSessionId')).toEqual(expect.any(String));
 	});
 
-	it('goes back in-app when the previous route resolves', async () => {
+	it('goes to the n8n Assistant page, not back in history, even with in-app history', async () => {
 		historyBack.value = '/some/previous/route';
-		const wrapper = renderView();
-		await flushPromises();
-
-		await wrapper.get('[data-testid="n8n-chat-back"]').trigger('click');
-		expect(backMock).toHaveBeenCalled();
-		expect(pushMock).not.toHaveBeenCalled();
-	});
-
-	it('falls back to the n8n Assistant view when there is no in-app history', async () => {
-		historyBack.value = undefined;
 		const wrapper = renderView();
 		await flushPromises();
 

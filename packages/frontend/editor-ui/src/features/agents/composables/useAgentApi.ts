@@ -19,6 +19,7 @@ import type {
 	AgentIntegrationConnectResponse,
 	AgentIntegrationStatusResponse,
 	AgentJsonVectorStoreConfig,
+	AgentN8nChatThreadSummary,
 	AgentN8nChatThreadsResponse,
 	AgentSkill,
 	AgentsSettingsDto,
@@ -166,6 +167,8 @@ export const listN8nChatAgents = async (
 export type ListN8nChatThreadsOptions = {
 	limit: number;
 	cursor?: string;
+	/** Filters threads to one agent. */
+	agentId?: string;
 };
 
 /** Narrows the raw response body — `request` returns `unknown`, and this avoids an `as` cast. */
@@ -192,12 +195,24 @@ export const listN8nChatThreads = async (
 		baseURL: context.baseUrl,
 		endpoint: '/agents/v2/n8n-chat/threads',
 		headers: { 'push-ref': context.pushRef },
-		data: { limit: options.limit, cursor: options.cursor },
+		data: { limit: options.limit, cursor: options.cursor, agentId: options.agentId },
 	});
 	if (!isN8nChatThreadsResponse(response)) {
 		throw new UnexpectedError('Unexpected n8n Chat threads response shape');
 	}
 	return response;
+};
+
+/** One of the user's own n8n Chat threads, for the chat page to read a title outside the recent-threads page. */
+export const getN8nChatThread = async (
+	context: IRestApiContext,
+	threadId: string,
+): Promise<AgentN8nChatThreadSummary> => {
+	return await makeRestApiRequest<AgentN8nChatThreadSummary>(
+		context,
+		'GET',
+		`/agents/v2/n8n-chat/threads/${encodeURIComponent(threadId)}`,
+	);
 };
 
 export const listAgents = async (

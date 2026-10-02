@@ -51,6 +51,9 @@ export const AGENT_EVAL_CASES_PAGE_SIZE = 250;
 /** Agent n8n Chat threads fetched for the sidebar's "recent chats" list. */
 export const AGENT_N8N_CHAT_RECENT_THREADS_LIMIT = 10;
 
+/** Rows in the recent-chats lists: the sidebar and the "Chat history" dropdown. */
+export const RECENT_CHATS_LIMIT = 5;
+
 /** Page size for the agent side of the "All chats" view's infinite scroll. */
 export const AGENT_N8N_CHAT_HISTORY_PAGE_SIZE = 30;
 

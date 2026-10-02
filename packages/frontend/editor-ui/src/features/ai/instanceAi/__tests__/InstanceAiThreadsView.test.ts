@@ -1,6 +1,7 @@
 import { N8nInput } from '@n8n/design-system';
 import userEvent from '@testing-library/user-event';
 import { shallowMount } from '@vue/test-utils';
+import RecentChatIcon from '@/features/agents/n8nChatPage/components/RecentChatIcon.vue';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { nextTick, reactive } from 'vue';
 import InstanceAiThreadsView from '../InstanceAiThreadsView.vue';
@@ -225,7 +226,7 @@ describe('InstanceAiThreadsView', () => {
 			await vi.advanceTimersByTimeAsync(0);
 
 			expect(wrapper.text()).toContain('New conversation');
-			expect(wrapper.find('agent-personalisation-icon-stub').exists()).toBe(true);
+			expect(wrapper.findComponent(RecentChatIcon).props('item')).toMatchObject({ kind: 'agent' });
 		});
 	});
 });

@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { N8nIcon } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
+import { useRouter } from 'vue-router';
 
 import { INSTANCE_AI_VIEW } from '@/features/ai/instanceAi/constants';
-import { useBackOrFallback } from '../../composables/useBackOrFallback';
 
 /**
  * `fill`: the agent chat view's content (the chat panel) manages its own
@@ -13,15 +13,22 @@ import { useBackOrFallback } from '../../composables/useBackOrFallback';
 withDefaults(defineProps<{ fill?: boolean }>(), { fill: false });
 
 const i18n = useI18n();
-const goBack = useBackOrFallback({ name: INSTANCE_AI_VIEW });
+const router = useRouter();
+// Back always leads to the n8n Assistant home page, not to the previous history entry.
+function goBack(): void {
+	void router.push({ name: INSTANCE_AI_VIEW });
+}
 </script>
 
 <template>
 	<div :class="[$style.page, { [$style.fill]: fill }]">
-		<button type="button" :class="$style.backLink" data-testid="n8n-chat-back" @click="goBack">
-			<N8nIcon icon="arrow-left" size="small" />
-			{{ i18n.baseText('generic.back') }}
-		</button>
+		<div :class="$style.topRow">
+			<slot name="leading" />
+			<button type="button" :class="$style.backLink" data-testid="n8n-chat-back" @click="goBack">
+				<N8nIcon icon="arrow-left" size="small" />
+				{{ i18n.baseText('generic.back') }}
+			</button>
+		</div>
 
 		<div :class="[$style.content, { [$style.fill]: fill }]">
 			<slot />
@@ -45,12 +52,17 @@ const goBack = useBackOrFallback({ name: INSTANCE_AI_VIEW });
 	}
 }
 
+.topRow {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--xs);
+	margin-bottom: var(--spacing--sm);
+}
+
 .backLink {
 	display: inline-flex;
 	align-items: center;
 	gap: var(--spacing--4xs);
-	align-self: flex-start;
-	margin-bottom: var(--spacing--sm);
 	padding: 0;
 	border: 0;
 	background: none;

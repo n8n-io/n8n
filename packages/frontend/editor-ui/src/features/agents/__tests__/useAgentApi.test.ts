@@ -9,6 +9,7 @@ import {
 	getAgentBudgetSpend,
 	getAgentChatQueue,
 	getN8nChatAgent,
+	getN8nChatThread,
 	removeAgentQueuedMessage,
 	steerAgentQueuedMessage,
 	stopAgentBackgroundJobs,
@@ -206,6 +207,27 @@ describe('useAgentApi', () => {
 				'/agents/v2/n8n-chat/agents/agent%2F1',
 			);
 			expect(result).toBe(item);
+		});
+	});
+
+	describe('getN8nChatThread', () => {
+		it('fetches one thread from the cross-project n8n Chat route', async () => {
+			const summary = {
+				id: 'thread/1',
+				title: 'Refund status',
+				updatedAt: '2025-01-02T00:00:00.000Z',
+				agent: { id: 'agent-1', name: 'Support', projectId: 'project-1' },
+			};
+			vi.mocked(makeRestApiRequest).mockResolvedValueOnce(summary);
+
+			const result = await getN8nChatThread(restApiContext, 'thread/1');
+
+			expect(makeRestApiRequest).toHaveBeenCalledWith(
+				restApiContext,
+				'GET',
+				'/agents/v2/n8n-chat/threads/thread%2F1',
+			);
+			expect(result).toBe(summary);
 		});
 	});
 

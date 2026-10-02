@@ -125,6 +125,8 @@ const emit = defineEmits<{
 	back: [];
 	'open-build': [];
 	'send-to-assistant': [event?: AgentSendToAssistantEvent];
+	/** The chat's first user message, for a host to title a thread that has no title yet. */
+	'first-user-message': [text: string | undefined];
 }>();
 
 const locale = useI18n();
@@ -785,6 +787,11 @@ const isCenteredEmpty = computed(
 );
 
 watch(isStreaming, (v) => emit('update:streaming', v));
+watch(
+	() => messages.value.find((message) => message.role === 'user')?.content,
+	(text) => emit('first-user-message', text),
+	{ immediate: true },
+);
 watch(isSubmissionBlocked, (blocked) => {
 	if (!blocked) void submitQueuedExternalMessage();
 });

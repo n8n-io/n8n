@@ -199,10 +199,12 @@ describe('N8nChatAgentLibraryView', () => {
 		expect(options.page.value).toBe(1);
 	});
 
-	it('falls back to the Assistant view when there is no in-app history to go back to', async () => {
+	it('goes to the n8n Assistant page, not back in history, even with in-app history', async () => {
+		historyBack.value = '/some/previous/route';
 		const wrapper = setup({ agents: [], count: 0, isLoading: false });
 
 		await wrapper.get('[data-testid="n8n-chat-back"]').trigger('click');
 		expect(pushMock).toHaveBeenCalledWith({ name: INSTANCE_AI_VIEW });
+		expect(backMock).not.toHaveBeenCalled();
 	});
 });

@@ -4,12 +4,9 @@ import { useRoute } from 'vue-router';
 import { INSTANCE_AI_THREAD_VIEW } from '@/features/ai/instanceAi/constants';
 import { useInstanceAiStore } from '@/features/ai/instanceAi/instanceAi.store';
 import { useAgentsN8nChatFlag } from '../composables/useAgentsN8nChatFlag';
-import { AGENT_N8N_CHAT_VIEW } from '../constants';
+import { AGENT_N8N_CHAT_VIEW, RECENT_CHATS_LIMIT } from '../constants';
 import { useAgentN8nChatThreadsStore } from './n8nChatThreads.store';
 import { mergeRecentChats, type RecentChatItem } from './mergeRecentChats';
-
-/** Rows shown in the sidebar's "recent chats" list. */
-const SIDEBAR_RECENT_CHATS_LIMIT = 5;
 
 const asRouteParam = (value: unknown): string | undefined =>
 	typeof value === 'string' ? value : undefined;
@@ -35,7 +32,7 @@ export function useRecentChats() {
 		mergeRecentChats(
 			instanceAiStore.threads,
 			isAgentsN8nChatFlag.value ? agentThreadsStore.recentThreads : [],
-			{ limit: SIDEBAR_RECENT_CHATS_LIMIT, openThreadId: openThreadId.value },
+			{ limit: RECENT_CHATS_LIMIT, openThreadId: openThreadId.value },
 		),
 	);
 

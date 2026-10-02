@@ -352,6 +352,18 @@ describe('AgentChatPanel', () => {
 		});
 	}
 
+	it('reports the first user message, for a title before the thread has one', async () => {
+		messagesMock.value = [
+			{ id: 'm1', role: 'assistant', content: 'Hi' } as ChatMessage,
+			{ id: 'm2', role: 'user', content: 'Review my draft' } as ChatMessage,
+		];
+		const wrapper = mountPanel();
+		await flushPromises();
+
+		expect(wrapper.emitted('first-user-message')?.at(-1)).toEqual(['Review my draft']);
+		wrapper.unmount();
+	});
+
 	describe('centerEmptyState', () => {
 		const isCentered = (wrapper: ReturnType<typeof mountPanel>) =>
 			wrapper

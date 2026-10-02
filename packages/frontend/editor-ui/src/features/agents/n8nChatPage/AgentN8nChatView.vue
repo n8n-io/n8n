@@ -20,8 +20,10 @@ import { isNotFoundError } from '../utils/errors';
 import AgentChatPanel from '../components/AgentChatPanel.vue';
 import AgentPersonalisationIcon from '../components/AgentPersonalisationIcon.vue';
 import N8nChatPageLayout from './components/N8nChatPageLayout.vue';
+import N8nChatThreadHistory from './components/N8nChatThreadHistory.vue';
 import { useAgentN8nChatThreadsStore } from './n8nChatThreads.store';
 import ProjectIcon from '@/features/collaboration/projects/components/ProjectIcon.vue';
+import { firstMessageTitle } from '@/features/ai/instanceAi/instanceAi.threadRuntime';
 
 // `agentThreadId` (not `threadId`): this route's sibling `InstanceAiLayout` reads
 // `route.params.threadId` for an n8n Assistant thread id, and the two must not collide.
@@ -97,6 +99,32 @@ watch(
 	{ immediate: true },
 );
 
+// The same recent-threads list the sidebar shows, so both name the open chat the same way.
+// A thread outside the newest page (e.g. opened directly by URL) is missing here until
+// `loadThread` below adds it.
+const firstUserMessage = ref<string>();
+// Like the n8n Assistant: the generated title, else the first user message until the
+// title arrives, else a generic label for a known but untitled thread.
+const threadTitle = computed(() => {
+	if (!props.agentThreadId) return undefined;
+	const thread = threadsStore.threadsById.get(props.agentThreadId);
+	if (thread?.title) return thread.title;
+	if (firstUserMessage.value?.trim()) return firstMessageTitle(firstUserMessage.value);
+	return thread ? i18n.baseText('commandBar.instanceAi.newThread') : undefined;
+});
+
+// Fetches a thread the store doesn't know yet, once per (agent, thread) pair — not on
+// every store change, or a fetch that adds the thread would retrigger itself.
+watch(
+	() => [props.agentId, props.agentThreadId] as const,
+	([, threadId]) => {
+		if (!threadId) return;
+		if (threadsStore.threadsById.has(threadId)) return;
+		void threadsStore.loadThread(threadId);
+	},
+	{ immediate: true },
+);
+
 function onSessionCreated(sessionId: string): void {
 	void router.replace({
 		name: AGENT_N8N_CHAT_VIEW,
@@ -156,6 +184,10 @@ const agentPageRoute = computed(() => {
 
 <template>
 	<N8nChatPageLayout fill>
+		<template v-if="agent" #leading>
+			<N8nChatThreadHistory :agent-id="agentId" :title="threadTitle" />
+		</template>
+
 		<div v-if="isLoading" :class="$style.centered" data-testid="agent-n8n-chat-loading">
 			<N8nSpinner size="xlarge" />
 		</div>
@@ -190,6 +222,7 @@ const agentPageRoute = computed(() => {
 			center-empty-state
 			@session-created="onSessionCreated"
 			@update:streaming="onStreamingChange"
+			@first-user-message="firstUserMessage = $event"
 		>
 			<template #empty-state>
 				<div :class="$style.emptyState" data-testid="agent-n8n-chat-empty-state">
