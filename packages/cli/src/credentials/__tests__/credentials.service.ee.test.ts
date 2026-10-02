@@ -9,14 +9,13 @@ import type {
 import { mock } from 'vitest-mock-extended';
 
 import type { CredentialConnectionStatusProxy } from '@/credentials/credential-connection-status-proxy';
-import type { CredentialsFinderService } from '@/credentials/credentials-finder.service';
+import { type CredentialsFinderService, type RoleService } from '@n8n/backend-services';
 import type { CredentialsService } from '@/credentials/credentials.service';
 import { EnterpriseCredentialsService } from '@/credentials/credentials.service.ee';
 import type { ExternalSecretsConfig } from '@/modules/external-secrets.ee/external-secrets.config';
 import type { SecretsProviderAccessCheckService } from '@/modules/external-secrets.ee/secret-provider-access-check.service.ee';
 import type { OwnershipService } from '@/services/ownership.service';
 import type { ProjectService } from '@/services/project.service.ee';
-import type { RoleService } from '@/services/role.service';
 
 describe('EnterpriseCredentialsService', () => {
 	const sharedCredentialsRepository = mock<SharedCredentialsRepository>();

@@ -4,7 +4,7 @@ import '@/zod-alias-support';
 import { Logger } from '@n8n/backend-common';
 import { mockInstance, mockLogger } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
-import { DbConnection, SettingsRepository } from '@n8n/db';
+import { DbConnection, ScheduledJobRepository, SettingsRepository } from '@n8n/db';
 import { SystemTaskMetadata } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import type { NextFunction, Request, Response } from 'express';
@@ -91,6 +91,7 @@ describe('Start system task metrics', () => {
 		mockInstance(SystemTaskJobRegistrar);
 		mockInstance(SystemTaskScheduledJobOwner);
 		mockInstance(SettingsRepository, { findBy: async () => [] });
+		mockInstance(ScheduledJobRepository);
 		activeWorkflowManager = mockInstance(ActiveWorkflowManager);
 
 		// Keep the real system task collector. Other collectors are outside this test.

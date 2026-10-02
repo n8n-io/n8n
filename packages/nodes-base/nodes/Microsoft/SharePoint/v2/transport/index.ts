@@ -1,14 +1,22 @@
+import { retryabilityFromError } from '@n8n/backend-network';
 import type {
 	IDataObject,
 	IExecuteFunctions,
 	IHttpRequestMethods,
 	ILoadOptionsFunctions,
+	IPollFunctions,
 	IRequestOptions,
 	JsonObject,
 } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 import { capitalize } from '../../../../../utils/utilities';
+
+/**
+ * Every context these helpers run in. One alias, so a new context is admitted
+ * everywhere at once rather than drifting per export.
+ */
+export type SharePointContext = IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions;
 
 export const SERVICE_PRINCIPAL_AUTH = 'microsoftEntraServicePrincipalApi';
 
@@ -72,9 +80,7 @@ export const REQUIRED_PERMISSIONS: Readonly<
 	},
 });
 
-export function getSharePointCredentialType(
-	this: IExecuteFunctions | ILoadOptionsFunctions,
-): SharePointCredentialType {
+export function getSharePointCredentialType(this: SharePointContext): SharePointCredentialType {
 	// In load-options contexts the 2nd arg is the fallback, not an item index — keep the 2-arg form
 	const selected = this.getNodeParameter('authentication', 0);
 	return selected === SERVICE_PRINCIPAL_AUTH ? SERVICE_PRINCIPAL_AUTH : 'microsoftOAuth2Api';
@@ -82,7 +88,7 @@ export function getSharePointCredentialType(
 
 /** Best-effort lookup; load-options contexts may not expose resource/operation. */
 function lookupRequiredPermissions(
-	this: IExecuteFunctions | ILoadOptionsFunctions,
+	this: SharePointContext,
 ): { delegated: string; application: string } | undefined {
 	try {
 		const resource = this.getNodeParameter('resource', 0);
@@ -115,7 +121,7 @@ const NOT_FOUND_CODES = ['NotFound', 'ItemNotFound', 'itemNotFound'];
 const SAFE_GRAPH_MESSAGES = [/list view threshold/i, /unique constraints/i];
 
 /** Best-effort; load-options contexts may not expose the resource parameter. */
-function nodeResourceName(this: IExecuteFunctions | ILoadOptionsFunctions): string | undefined {
+function nodeResourceName(this: SharePointContext): string | undefined {
 	try {
 		const resource = this.getNodeParameter('resource', 0);
 		if (typeof resource === 'string' && resource !== '') {
@@ -129,10 +135,7 @@ function nodeResourceName(this: IExecuteFunctions | ILoadOptionsFunctions): stri
 
 // App-only error bodies can include internal identifiers — surface only a
 // fixed message + status (which lives on `httpCode` as a string when wrapped)
-function servicePrincipalApiError(
-	this: IExecuteFunctions | ILoadOptionsFunctions,
-	error: GraphRequestError,
-): NodeApiError {
+function servicePrincipalApiError(this: SharePointContext, error: GraphRequestError): NodeApiError {
 	const rawCode = error.httpCode ?? error.statusCode;
 	const httpCode: number | undefined =
 		rawCode === undefined || rawCode === null ? undefined : Number(rawCode);
@@ -164,13 +167,17 @@ function servicePrincipalApiError(
 		sanitizedError.httpStatusCode = httpCode;
 		errorOptions.httpCode = `${httpCode}`;
 	}
+	// The original error is dropped above because app-only bodies can carry
+	// internal identifiers. A retry delay is a number, so it is safe to keep,
+	// and without it a caller can detect a 429 but not honour the wait.
+	const { retryAfterMs } = retryabilityFromError(error);
+	if (retryAfterMs !== undefined) {
+		sanitizedError.headers = { 'retry-after': String(Math.ceil(retryAfterMs / 1000)) };
+	}
 	return new NodeApiError(this.getNode(), sanitizedError, errorOptions);
 }
 
-function delegatedApiError(
-	this: IExecuteFunctions | ILoadOptionsFunctions,
-	error: GraphRequestError,
-): NodeApiError {
+function delegatedApiError(this: SharePointContext, error: GraphRequestError): NodeApiError {
 	const errorOptions: IDataObject = {};
 	const statusCode = Number(error.statusCode ?? error.httpCode);
 	if (statusCode === 403) {
@@ -199,7 +206,7 @@ function delegatedApiError(
 }
 
 export async function microsoftApiRequest(
-	this: IExecuteFunctions | ILoadOptionsFunctions,
+	this: SharePointContext,
 	method: IHttpRequestMethods,
 	resource: string,
 	body: IDataObject | Buffer = {},
@@ -256,7 +263,7 @@ export async function microsoftApiRequest(
 }
 
 export async function microsoftApiRequestAllItems(
-	this: IExecuteFunctions | ILoadOptionsFunctions,
+	this: SharePointContext,
 	propertyName: string,
 	method: IHttpRequestMethods,
 	endpoint: string,

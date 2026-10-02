@@ -402,7 +402,9 @@ function createSubGraph(nodeIds: string[], parent: dagre.graphlib.Graph): dagre.
 	parent
 		.nodes()
 		.filter((id) => nodeIdSet.has(id))
-		.forEach((id) => subGraph.setNode(id, parent.node(id)));
+		// Dagre mutates node labels during layout. Copy them so a subgraph layout
+		// cannot change the graph that will be laid out later.
+		.forEach((id) => subGraph.setNode(id, { ...parent.node(id) }));
 
 	parent
 		.edges()
@@ -410,6 +412,88 @@ function createSubGraph(nodeIds: string[], parent: dagre.graphlib.Graph): dagre.
 		.forEach((edge) => subGraph.setEdge(edge.v, edge.w, parent.edge(edge)));
 
 	return subGraph;
+}
+
+/** Check that a group contains every node in each AI subtree it touches. */
+function hasCompleteAiSubtree(
+	nodeIds: readonly string[],
+	parentGraph: dagre.graphlib.Graph,
+	aiParentNames: ReadonlySet<string>,
+	aiConfigNames: ReadonlySet<string>,
+): boolean {
+	const memberIds = new Set(nodeIds);
+	const aiParents = [...aiParentNames].filter((parentId) => {
+		if (memberIds.has(parentId)) return true;
+
+		return getAllConnectedAiConfigNodes(parentGraph, parentId, aiConfigNames).some((id) =>
+			memberIds.has(id),
+		);
+	});
+
+	for (const aiParentId of aiParents) {
+		const aiSubtree = new Set([
+			aiParentId,
+			...getAllConnectedAiConfigNodes(parentGraph, aiParentId, aiConfigNames),
+		]);
+		if ([...aiSubtree].some((id) => !memberIds.has(id))) return false;
+	}
+
+	return nodeIds.every(
+		(id) =>
+			!aiConfigNames.has(id) ||
+			aiParents.some((parentId) => {
+				const aiSubtree = new Set([
+					parentId,
+					...getAllConnectedAiConfigNodes(parentGraph, parentId, aiConfigNames),
+				]);
+				return aiSubtree.has(id);
+			}),
+	);
+}
+
+/** Layout group members with the existing AI interior layout when needed. */
+function layoutGroupMembers(
+	nodeIds: string[],
+	parentGraph: dagre.graphlib.Graph,
+	aiParentNames: ReadonlySet<string>,
+	aiConfigNames: ReadonlySet<string>,
+	nodes: ReadonlyMap<string, GraphNode>,
+): dagre.graphlib.Graph {
+	const subgraph = createSubGraph(nodeIds, parentGraph);
+	const containsAiNode = nodeIds.some((id) => aiParentNames.has(id) || aiConfigNames.has(id));
+	if (!containsAiNode) {
+		dagre.layout(subgraph, { disableOptimalOrderHeuristic: true });
+		return subgraph;
+	}
+
+	const subgraphs = layoutSubgraphs(subgraph, aiParentNames, aiConfigNames);
+	const boxes = boxesFromSubgraphs(
+		subgraphs,
+		arrangeSubgraphs(subgraphs),
+		new Map<string, CollapsedGroup>(),
+		nodes,
+		new Map<string, string>(),
+	);
+	alignAiSubgraphs(subgraphs, boxes);
+
+	const laidOut = new dagre.graphlib.Graph();
+	laidOut.setGraph(subgraph.graph());
+	laidOut.setDefaultEdgeLabel(() => ({}));
+	for (const nodeId of nodeIds) {
+		const box = boxes[nodeId];
+		if (!box) continue;
+		laidOut.setNode(nodeId, {
+			x: box.x + box.width / 2,
+			y: box.y + box.height / 2,
+			width: box.width,
+			height: box.height,
+		});
+	}
+	for (const edge of subgraph.edges()) {
+		laidOut.setEdge(edge.v, edge.w, subgraph.edge(edge));
+	}
+
+	return laidOut;
 }
 
 function createVerticalGraph(items: Array<{ id: string; box: BoundingBox }>): dagre.graphlib.Graph {
@@ -540,6 +624,8 @@ function boxesFromSubgraphs(
 	subgraphs: readonly LayoutSubgraph[],
 	compositeGraph: dagre.graphlib.Graph | undefined,
 	groupByGraphId: ReadonlyMap<string, CollapsedGroup>,
+	nodes: ReadonlyMap<string, GraphNode>,
+	keyByNodeId: ReadonlyMap<string, string>,
 ): Record<string, BoundingBox> {
 	const boundingBoxByNodeId: Record<string, BoundingBox> = {};
 
@@ -567,7 +653,11 @@ function boxesFromSubgraphs(
 			if (group) {
 				placeGroupMembers(group, box, boundingBoxByNodeId, {
 					boundingBoxFromGraph,
+					compositeBoundingBox,
+					keyByNodeId,
+					nodes,
 					snapToGrid,
+					wrappingBoxFor,
 				});
 				continue;
 			}
@@ -880,16 +970,20 @@ export function calculateNodePositionsDagre(
 	}
 
 	// Members the layout is not free to move: stickies get placed relative to their
-	// anchors, AI clusters have their own sub-layout, and an explicit position is
-	// the author's to keep.
-	const ungroupableKeys = new Set([...stickyNames, ...aiParentNames, ...aiConfigNames]);
+	// anchors, and an explicit position is the author's to keep. Complete AI
+	// subtrees are handled as a group interior; partial subtrees are rejected below.
+	const ungroupableKeys = new Set(stickyNames);
 	for (const [key, graphNode] of nodes) {
 		if (graphNode.instance.config?.position) ungroupableKeys.add(key);
 	}
 
 	const collapsedGroups = nodeGroups?.length
-		? collapseNodeGroups(parentGraph, nodeGroups, keyByNodeId, ungroupableKeys, {
+		? collapseNodeGroups(parentGraph, nodeGroups, nodes, keyByNodeId, ungroupableKeys, {
 				createSubGraph,
+				canCollapseMembers: (memberKeys, graph) =>
+					hasCompleteAiSubtree(memberKeys, graph, aiParentNames, aiConfigNames),
+				layoutSubGraph: (memberKeys, graph) =>
+					layoutGroupMembers(memberKeys, graph, aiParentNames, aiConfigNames, nodes),
 			})
 		: [];
 	const groupByGraphId = new Map(collapsedGroups.map((group) => [group.graphId, group]));
@@ -898,7 +992,13 @@ export function calculateNodePositionsDagre(
 
 	const compositeGraph = arrangeSubgraphs(subgraphs);
 
-	const boundingBoxByNodeId = boxesFromSubgraphs(subgraphs, compositeGraph, groupByGraphId);
+	const boundingBoxByNodeId = boxesFromSubgraphs(
+		subgraphs,
+		compositeGraph,
+		groupByGraphId,
+		nodes,
+		keyByNodeId,
+	);
 
 	alignAiSubgraphs(subgraphs, boundingBoxByNodeId);
 
