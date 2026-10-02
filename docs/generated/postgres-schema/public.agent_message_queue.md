@@ -19,6 +19,7 @@
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
+| CHK_agent_message_queue_steering_pair | CHECK | CHECK ((("steeringExecutionId" IS NULL) = ("steeringOrder" IS NULL))) |
 | FK_2349d84b4f2a660fc264f38fef3 | FOREIGN KEY | FOREIGN KEY ("executionId") REFERENCES agent_execution(id) |
 | FK_a74f9154a59430986112d70cb16 | FOREIGN KEY | FOREIGN KEY ("threadId") REFERENCES agent_execution_threads(id) ON DELETE CASCADE |
 | FK_agent_message_queue_messageId | FOREIGN KEY | FOREIGN KEY ("messageId") REFERENCES agents_messages(id) ON DELETE CASCADE |
