@@ -12,7 +12,10 @@ import type {
 import type { MockProxy } from 'vitest-mock-extended';
 import { mock } from 'vitest-mock-extended';
 
-import { MigrationOwnerSuggestionService } from '../migration-owner-suggestion.service';
+import {
+	MigrationOwnerSuggestionService,
+	RECENT_ACTIONS_PER_WORKFLOW,
+} from '../migration-owner-suggestion.service';
 
 const at = (iso: string) => new Date(iso);
 
@@ -106,14 +109,23 @@ describe('MigrationOwnerSuggestionService', () => {
 		expect(userRepository.findAllWithRoleAndAuthIdentities).not.toHaveBeenCalled();
 	});
 
-	it('asks each source for a bounded number of recent actions per workflow', async () => {
+	it('asks each source for the same bounded number of recent actions per workflow', async () => {
 		await service.suggestOwners(['wf-1']);
 
 		expect(activityEventRepository.findRecentAttributedByResource).toHaveBeenCalledWith(
 			'workflow',
 			['wf-1'],
-			expect.any(Number),
+			RECENT_ACTIONS_PER_WORKFLOW,
 		);
+		expect(workflowPublishHistoryRepository.findRecentAttributedByWorkflowIds).toHaveBeenCalledWith(
+			['wf-1'],
+			RECENT_ACTIONS_PER_WORKFLOW,
+		);
+		expect(workflowHistoryRepository.findRecentAuthorsByWorkflowIds).toHaveBeenCalledWith(
+			['wf-1'],
+			RECENT_ACTIONS_PER_WORKFLOW,
+		);
+		expect(RECENT_ACTIONS_PER_WORKFLOW).toBe(10);
 	});
 
 	describe('most recent attributable activity', () => {
