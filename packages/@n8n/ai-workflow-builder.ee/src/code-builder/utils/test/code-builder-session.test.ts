@@ -119,6 +119,14 @@ describe('code-builder-session', () => {
 				{ type: 'build-request', message: 'old msg 2' },
 			]);
 			expect(session.previousSummary).toBe('Old summary');
+
+			await saveCodeBuilderSession(checkpointer, threadId, session);
+			const saved = await checkpointer.getTuple(config);
+			expect(saved?.checkpoint.channel_values.codeBuilderSession).toEqual({
+				conversationEntries: session.conversationEntries,
+				previousSummary: 'Old summary',
+				sdkSessionId: undefined,
+			});
 		});
 
 		it('should preserve sdkSessionId on load', async () => {
