@@ -1240,6 +1240,25 @@ describe('enqueueExecution', () => {
 
 		expect(addJob).toHaveBeenCalledWith(expect.objectContaining(processData), expect.any(Object));
 	});
+
+	it('excludes the execution from getRunningExecutionIds once enqueued', async () => {
+		const workflow = await createWorkflow({}, owner);
+		const activeExecutions = Container.get(ActiveExecutions);
+		const data: IWorkflowExecutionDataProcess = {
+			executionMode: 'trigger',
+			workflowData: workflow,
+		};
+		const executionId = await activeExecutions.add(data);
+
+		const job = mock<Job>({ id: '1', data: { executionId, workflowId: workflow.id } });
+		addJob.mockResolvedValueOnce(job);
+		waitForJob.mockReturnValueOnce(new Promise(() => {}));
+
+		// @ts-expect-error Private method
+		await runner.enqueueExecution(executionId, workflow.id, data);
+
+		expect(activeExecutions.getRunningExecutionIds()).not.toContain(executionId);
+	});
 });
 
 describe('workflow timeout with startedAt', () => {

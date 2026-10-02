@@ -65,8 +65,10 @@ function makeExecutionStore(
 		createExecution: vi.fn(),
 		loadExecution: vi.fn().mockResolvedValue(execution),
 		transitionStatus: vi.fn().mockResolvedValue(true),
-		finishExecution: vi.fn().mockResolvedValue(true),
-		cancelExecution: vi.fn().mockResolvedValue(true),
+		finishExecution: vi
+			.fn()
+			.mockResolvedValue({ finishedAt: new Date('2026-09-30T08:00:00.000Z') }),
+		cancelExecution: vi.fn().mockResolvedValue(null),
 		refreshLiveStatus: vi.fn(),
 		...storeOverrides,
 	};
@@ -103,6 +105,7 @@ function makeStepStore(
 		resumeDueSteps: vi.fn().mockResolvedValue([]),
 		nextWaitDeadline: vi.fn().mockResolvedValue(null),
 		failStep: vi.fn(),
+		cancelStep: vi.fn(),
 		cancelPendingSteps: vi.fn(),
 		// like the store: only requested keys that have rows appear
 		loadStepSummariesByKeys: vi.fn().mockImplementation(async (_: string, keys: StepKey[]) => {
@@ -456,7 +459,7 @@ describe('StepSettledHandler', () => {
 		const stepStore = makeStepStore({ status: 'failed' });
 		const executionStore = makeExecutionStore(
 			{},
-			{ finishExecution: vi.fn().mockResolvedValue(false) },
+			{ finishExecution: vi.fn().mockResolvedValue(null) },
 		);
 		const { handler } = makeHandler(stepStore, { executionStore });
 
@@ -514,7 +517,7 @@ describe('StepSettledHandler', () => {
 });
 
 describe('StepSettledHandler lifecycle events', () => {
-	const finished = { executionId: 'exec-1', workflowId: 'wf-1', at: expect.any(String) as string };
+	const finished = { executionId: 'exec-1', workflowId: 'wf-1', at: '2026-09-30T08:00:00.000Z' };
 
 	it('announces execution:completed when it records the completion', async () => {
 		const stepStore = makeStepStore(
@@ -639,7 +642,7 @@ describe('StepSettledHandler lifecycle events', () => {
 		// Another worker already wrote the outcome, so it announces it.
 		const executionStore = makeExecutionStore(
 			{},
-			{ finishExecution: vi.fn().mockResolvedValue(false) },
+			{ finishExecution: vi.fn().mockResolvedValue(null) },
 		);
 		const { handler, lifecycleEventPublisher, responseSender } = makeHandler(
 			makeStepStore({ status: 'failed' }),
@@ -664,12 +667,14 @@ describe('StepSettledHandler lifecycle events', () => {
 		expect(lifecycleEventPublisher.publish).not.toHaveBeenCalled();
 	});
 
-	it('announces nothing for the steps it cancels or skips', async () => {
-		// TODO(CAT-3990): cancelled and skipped steps announce nothing.
-		const { handler, lifecycleEventPublisher } = makeHandler(makeStepStore({ status: 'skipped' }));
+	it.each<StepStatus>(['skipped', 'cancelled'])(
+		'announces nothing for a %s step',
+		async (status) => {
+			const { handler, lifecycleEventPublisher } = makeHandler(makeStepStore({ status }));
 
-		await handler.handle(event);
+			await handler.handle(event);
 
-		expect(lifecycleEventPublisher.publish).not.toHaveBeenCalled();
-	});
+			expect(lifecycleEventPublisher.publish).not.toHaveBeenCalled();
+		},
+	);
 });

@@ -277,6 +277,11 @@ export class AgentChatQueueSteerDto extends Z.class({
 	executionId: z.string().min(1).max(36),
 }) {}
 
+export class AgentChatQueueReorderDto extends Z.class({
+	targetQueueId: z.string().regex(/^[1-9]\d*$/),
+	expectedQueueIds: z.array(z.string().regex(/^[1-9]\d*$/)).min(2),
+}) {}
+
 export class AgentChatResumeDto extends Z.class({
 	runId: z.string().min(1),
 	toolCallId: z.string().min(1),

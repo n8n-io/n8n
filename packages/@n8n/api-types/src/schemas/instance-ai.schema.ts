@@ -836,6 +836,22 @@ export const instanceAiTargetApprovalSchema = z.object({
 });
 export type InstanceAiTargetApproval = z.infer<typeof instanceAiTargetApprovalSchema>;
 
+/** Test URL card: the assistant armed a trigger's test URL and waits for one request. */
+export const testListenerCardSchema = z.object({
+	workflowId: z.string().min(1),
+	triggers: z
+		.array(
+			z.object({
+				nodeName: z.string().min(1),
+				url: z.string().url(),
+				method: z.string().min(1),
+			}),
+		)
+		.min(1),
+	/** ISO timestamp at which the listener deregisters itself. */
+	deadlineAt: z.string().datetime(),
+});
+
 /** One question of the ask-user card (`inputType=questions`). */
 export const instanceAiQuestionSchema = z.object({
 	id: z.string(),
@@ -947,6 +963,11 @@ export const confirmationRequestPayloadSchema = z.object({
 	mcpConnectRequest: mcpConnectRequestSchema
 		.optional()
 		.describe('When present, renders the inline "Available tools" MCP connect card'),
+	testListener: testListenerCardSchema
+		.optional()
+		.describe(
+			'When present, renders the "waiting for a test request" card with the armed test URLs',
+		),
 });
 export type InstanceAiConfirmationRequestPayload = z.infer<typeof confirmationRequestPayloadSchema>;
 
@@ -981,6 +1002,7 @@ export function isDisplayableConfirmationRequest(
 	if (payload.domainAccess) return true;
 	if (payload.channelConfig) return true;
 	if (payload.mcpConnectRequest) return true;
+	if (payload.testListener) return true;
 
 	const inputType = payload.inputType ?? 'approval';
 	switch (inputType) {
@@ -1649,9 +1671,12 @@ export const instanceAiThreadArtifactSchema = z.object({
 });
 export type InstanceAiThreadArtifact = z.infer<typeof instanceAiThreadArtifactSchema>;
 
-/** The thread view's artifact tabs, plus which tab is focused when the preview is open. */
+/**
+ * The tabs open in the thread view, plus which tab is focused when the preview is open.
+ * An empty list means no tabs are open.
+ */
 export const instanceAiThreadArtifactsContextSchema = z.object({
-	artifacts: z.array(instanceAiThreadArtifactSchema).min(1).max(20),
+	artifacts: z.array(instanceAiThreadArtifactSchema).max(20),
 	activeId: z.string().min(1).max(64).optional(),
 });
 export type InstanceAiThreadArtifactsContext = z.infer<

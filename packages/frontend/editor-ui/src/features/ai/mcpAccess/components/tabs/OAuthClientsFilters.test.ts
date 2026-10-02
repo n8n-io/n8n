@@ -1,6 +1,6 @@
 import userEvent from '@testing-library/user-event';
 import { createTestingPinia } from '@pinia/testing';
-import { createComponentRenderer } from '@/__tests__/render';
+import { createComponentRenderer } from '@n8n/frontend-test-utils';
 import OAuthClientsFilters from '@/features/ai/mcpAccess/components/tabs/OAuthClientsFilters.vue';
 import { EMPTY_OAUTH_CLIENT_FILTERS } from '@/features/ai/mcpAccess/clients.utils';
 

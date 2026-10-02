@@ -952,7 +952,9 @@ export class WorkflowRunner {
 			// So we're just preventing crashes here.
 		});
 
-		this.activeExecutions.attachWorkflowExecution(executionId, workflowExecution);
+		this.activeExecutions.attachWorkflowExecution(executionId, workflowExecution, {
+			isQueueJob: true,
+		});
 	}
 
 	/**

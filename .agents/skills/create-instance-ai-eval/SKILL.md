@@ -25,7 +25,9 @@ exhaustive field reference; this skill is the opinionated *how*.
 > approach.** Author the file locally (uncommitted), calibrate it against a real
 > build, then **push it to a lang-tracer suite** with `eval:langtracer-push`
 > (see [Push to a lang-tracer suite](#push-to-a-lang-tracer-suite)) —
-> `--suite baseline` for the consolidated corpus n8n CI runs, or a dedicated
+> the suite the driver chose (see
+> [Ask for the target suite first](#ask-for-the-target-suite-first)) —
+> `baseline` for the consolidated corpus n8n CI runs, or a dedicated
 > capability suite like `agents`.
 > The suite is the home for the case; the eval CLI reads it back via
 > `--source langtracer`. You still write the JSON file — it's just the input to
@@ -37,6 +39,34 @@ exhaustive field reference; this skill is the opinionated *how*.
 > reconstructed from a LangSmith trace at run time, so it dies when that trace is
 > pruned and has no durable home. Don't commit a replay case either — derive a
 > synthetic case from it. See [`case-shapes.md`](case-shapes.md).
+
+## Ask for the target suite first
+
+**Before you source, draft, or run anything, ask the driver which LangTracer
+suite receives every eval you create in this session.** Ask this in both
+autonomy levels, including autonomous mode. Never pick the suite yourself and
+never default silently. A case pushed to the wrong suite runs in the wrong CI
+lane and alerts the wrong team.
+
+Ask the suite question and the autonomy question together, in one message.
+Recommend `baseline`:
+
+- `baseline` (recommended): the general corpus. The Instance AI (INS) team
+  monitors it, and it runs nightly.
+- Any other suite, such as `agents` or `node-gauntlet`: call `list_suites` and
+  offer the live list. Do not use a hardcoded list, because suites are added
+  and retired.
+
+Rules:
+
+- The driver's answer applies to all cases in the session. Do not ask again per
+  case.
+- If the driver already named a suite in the request, state it back in one line
+  and continue. Do not ask again.
+- Check that the suite kind matches the case. Push a case with a wrong build
+  (`capability_gap`) only into a suite that allows that kind. If the suite does
+  not allow it, tell the driver and ask again.
+- Put the chosen suite slug in the final decision log, as a link.
 
 ## Set the autonomy level first
 
@@ -468,6 +498,16 @@ read the run assumes someone already owns it. So once a red is classified as a
 real gap (and the driver has confirmed it, per the autonomy level), **propose a
 Linear ticket for it.**
 
+**Reproduce first. This is a default, not a hard rule.** Propose a ticket only
+after a case has reproduced the gap. That means the case is red on a real build,
+the precondition was confirmed to fire, and you re-read the raw thread (see
+[First reproduce, then reclassify](#first-reproduce-then-reclassify)). A gap that
+comes from trace analysis alone is a hypothesis. A ticket for it costs the owning
+team time. The driver may approve an exception, for example when the harness
+cannot reach the mechanism after about three attempts. In that case the ticket
+must say that the eval did not reproduce the gap. Never file an unreproduced gap
+without the driver's approval.
+
 **Propose, don't create.** Per [AGENTS.md](../../../AGENTS.md), never open a
 Linear ticket unasked. Put the draft in front of the driver — interactively in
 checkpoint mode, in the decision log in autonomous mode — with a title, a team,
@@ -886,10 +926,11 @@ drifted, leaves the rest unchanged, and never prunes. It's the inverse of
 
 ```bash
 cd packages/@n8n/instance-ai
+# <suite> is the slug the driver chose (e.g. baseline)
 # preview first — no writes:
-pnpm exec dotenvx run -f .env.eval -- pnpm eval:langtracer-push --suite baseline --dry-run --changed
+pnpm exec dotenvx run -f .env.eval -- pnpm eval:langtracer-push --suite <suite> --dry-run --changed
 # then push (drop --dry-run):
-pnpm exec dotenvx run -f .env.eval -- pnpm eval:langtracer-push --suite baseline --changed
+pnpm exec dotenvx run -f .env.eval -- pnpm eval:langtracer-push --suite <suite> --changed
 ```
 
 - **Selectors** (at least one required — no accidental push-all): positional

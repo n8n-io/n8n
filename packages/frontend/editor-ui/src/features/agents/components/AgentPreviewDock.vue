@@ -55,11 +55,17 @@ const props = withDefaults(
 		newSession?: boolean;
 		initialPrompt?: string;
 		canSendToAssistant?: boolean;
+		dismissedFixToolCallIds?: string[];
 		canDeleteSession?: boolean;
 		beforeSend?: () => Promise<void> | void;
 		isDeletingSession?: boolean;
 	}>(),
-	{ newSession: false, canDeleteSession: false, isDeletingSession: false },
+	{
+		newSession: false,
+		canDeleteSession: false,
+		isDeletingSession: false,
+		dismissedFixToolCallIds: () => [],
+	},
 );
 
 const emit = defineEmits<{
@@ -294,6 +300,7 @@ useKeybindings({
 				:new-session="props.newSession"
 				:initial-prompt="props.initialPrompt"
 				:can-send-to-assistant="props.canSendToAssistant"
+				:dismissed-fix-tool-call-ids="props.dismissedFixToolCallIds"
 				:before-send="props.beforeSend"
 				@continue-loaded="emit('continue-loaded', $event)"
 				@session-created="emit('session-created', $event)"
