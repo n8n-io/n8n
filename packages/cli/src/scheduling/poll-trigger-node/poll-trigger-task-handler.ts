@@ -76,15 +76,13 @@ export class PollTriggerTaskHandler implements TaskHandler {
 		// A setup failure here retries to N8N_SCHEDULER_MAX_ATTEMPTS then dead-letters,
 		// unlike a `poll()` runtime failure below, which routes to the error workflow instead.
 		const { workflowId, nodeId } = this.parsePayload(task);
+		const logContext = { taskId: task.id, jobId: task.jobId, workflowId, nodeId };
 
 		const now = new Date();
 		const state = await this.pollBackoffService.getState(workflowId, nodeId).catch(() => null);
 		if (this.pollBackoffService.isBackingOff(state, now)) {
 			this.logger.debug('Poll is backing off; skipping this occurrence', {
-				taskId: task.id,
-				jobId: task.jobId,
-				workflowId,
-				nodeId,
+				...logContext,
 				backoffUntil: state?.backoffUntil,
 			});
 			return report.notDispatched();
@@ -96,12 +94,7 @@ export class PollTriggerTaskHandler implements TaskHandler {
 		);
 
 		if (workflowData === null) {
-			this.logger.debug('Workflow has no published version. Skipping the occurrence.', {
-				taskId: task.id,
-				jobId: task.jobId,
-				workflowId,
-				nodeId,
-			});
+			this.logger.debug('Workflow has no published version. Skipping the occurrence.', logContext);
 			return report.notDispatched();
 		}
 
@@ -113,7 +106,7 @@ export class PollTriggerTaskHandler implements TaskHandler {
 		if (!this.hasHealthyNodeIds(workflowData)) {
 			this.logger.debug(
 				'Published version has duplicate or missing node ids; skipping the occurrence until it is healed',
-				{ taskId: task.id, jobId: task.jobId, workflowId, nodeId },
+				logContext,
 			);
 			return report.notDispatched();
 		}
@@ -165,10 +158,7 @@ export class PollTriggerTaskHandler implements TaskHandler {
 					if (outcome === TIMED_OUT) {
 						this.eventService.emit('poll-tick-timed-out', { nodeType: node.type });
 						this.logger.warn('Poll exceeded its timeout and was abandoned', {
-							taskId: task.id,
-							jobId: task.jobId,
-							workflowId,
-							nodeId,
+							...logContext,
 							pollTimeoutMs: this.pollTimeoutMs,
 						});
 						// Not routed to the error workflow: an abandoned poll produces no run, and
@@ -199,23 +189,16 @@ export class PollTriggerTaskHandler implements TaskHandler {
 					// the workflow may have been deactivated while it was in flight. There is
 					// no in-memory registration to check here, so re-read the stored active state.
 					if (!(await this.workflowRepository.isActive(workflowId))) {
-						this.logger.debug('Workflow deactivated during poll; discarding the result', {
-							taskId: task.id,
-							jobId: task.jobId,
-							workflowId,
-							nodeId,
-						});
+						this.logger.debug(
+							'Workflow deactivated during poll; discarding the result',
+							logContext,
+						);
 						return report.notDispatched();
 					}
 
 					// __emit saves the cursor and starts the run without waiting on it.
 					pollFunctions.__emit(pollResponse);
-					this.logger.debug('Poll returned new data; handed off to a new execution', {
-						taskId: task.id,
-						jobId: task.jobId,
-						workflowId,
-						nodeId,
-					});
+					this.logger.debug('Poll returned new data; handed off to a new execution', logContext);
 					return report.dispatched();
 				}
 
@@ -229,20 +212,15 @@ export class PollTriggerTaskHandler implements TaskHandler {
 					// The poll itself succeeded, so a failed cursor write is logged rather
 					// than routed to the error workflow.
 					this.errorReporter.error(error, {
-						extra: { taskId: task.id, jobId: task.jobId, workflowId, nodeId },
+						extra: logContext,
 					});
 					this.logger.error(
 						'Failed to commit the poll cursor; the next poll repeats the same window',
-						{ taskId: task.id, jobId: task.jobId, workflowId, nodeId, error },
+						{ ...logContext, error },
 					);
 				}
 
-				this.logger.debug('Poll returned no new data; nothing to hand off', {
-					taskId: task.id,
-					jobId: task.jobId,
-					workflowId,
-					nodeId,
-				});
+				this.logger.debug('Poll returned no new data; nothing to hand off', logContext);
 				return report.notDispatched();
 			} catch (error) {
 				// Routed to the error workflow instead of rethrown, which would retry and
@@ -261,12 +239,7 @@ export class PollTriggerTaskHandler implements TaskHandler {
 					}
 				}
 				pollFunctions.__emitError(ensureError(error));
-				this.logger.debug('Poll failed at runtime; routed to the error workflow', {
-					taskId: task.id,
-					jobId: task.jobId,
-					workflowId,
-					nodeId,
-				});
+				this.logger.debug('Poll failed at runtime; routed to the error workflow', logContext);
 				// The error was handed off, so this occurrence is handled and must not retry.
 				return report.dispatched();
 			} finally {
