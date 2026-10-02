@@ -286,7 +286,9 @@ function makeMergeDependingOnSizeRule<W extends DiffableWorkflow>(mapping: Map<n
 		for (const [count, time] of pairs) {
 			if (metaData.workflowSizeScore > count) return time(prev, next);
 		}
-		return false;
+		// The smallest threshold is inclusive, so a version with no nodes scores zero and still merges.
+		const smallest = pairs.at(-1);
+		return smallest?.[0] === metaData.workflowSizeScore ? smallest[1](prev, next) : false;
 	};
 }
 

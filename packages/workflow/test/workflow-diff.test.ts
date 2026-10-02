@@ -912,6 +912,19 @@ describe('groupWorkflows', () => {
 					expect(rule(prev, next, wcs, metaData)).toBe(false);
 				});
 
+				it('should apply the smallest threshold to a workflow size of zero when that threshold is zero', () => {
+					const mapping = new Map([
+						[0, 60000],
+						[1000, 600000],
+					]);
+					const rule = RULES.makeMergeDependingOnSizeRule(mapping);
+
+					const prev = createWorkflow(new Date('2024-01-01T10:00:00Z'));
+					const next = createWorkflow(new Date('2024-01-01T10:00:30Z'));
+
+					expect(rule(prev, next, wcs, createMetaData(0))).toBe(true);
+				});
+
 				it('should apply the correct time threshold for workflow size', () => {
 					const mapping = new Map([
 						[1000, 60000], // 1000 chars -> 1 min
@@ -1511,6 +1524,13 @@ describe('groupWorkflows with the trim rule', () => {
 		];
 
 		expect(trim(versions)).toEqual(['v0', 'v1', 'v2', 'v3']);
+	});
+
+	it('trims a workflow whose newest version has no nodes', () => {
+		const versions = [version('v0', 0, { size: 'large' }), version('v1', 30), version('v2', 60)];
+		versions[2].nodes = [];
+
+		expect(trim(versions)).toEqual(['v0', 'v2']);
 	});
 
 	it('keeps a version whose gap spans a removed one', () => {
