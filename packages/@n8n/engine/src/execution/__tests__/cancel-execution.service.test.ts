@@ -21,12 +21,15 @@ const execution: ExecutionRecord = {
 	triggerOutputs: null,
 	callerContext: { hostMode: 'trigger' },
 	responseExpectation: { kind: 'none' },
+	finishedAt: null,
 };
 
 function makeExecutionStore(overrides: Partial<ExecutionStore> = {}): ExecutionStore {
 	return {
 		createExecution: vi.fn(),
-		loadExecution: vi.fn().mockResolvedValue({ ...execution, status: 'cancelled' }),
+		loadExecution: vi
+			.fn()
+			.mockResolvedValue({ ...execution, status: 'cancelled', finishedAt: new Date() }),
 		transitionStatus: vi.fn(),
 		finishExecution: vi.fn(),
 		cancelExecution: vi
@@ -59,6 +62,7 @@ describe('CancelExecutionService', () => {
 			loadExecution: vi.fn().mockResolvedValue({
 				...execution,
 				status: 'cancelled',
+				finishedAt: new Date('2026-09-30T08:00:00.000Z'),
 				responseExpectation: { kind: 'runEnd' },
 			}),
 		});
@@ -66,7 +70,10 @@ describe('CancelExecutionService', () => {
 
 		const result = await service.cancel('exec-1');
 
-		expect(result).toEqual({ status: 'cancelled' });
+		expect(result).toEqual({
+			status: 'cancelled',
+			finishedAt: new Date('2026-09-30T08:00:00.000Z'),
+		});
 		expect(executionStore.cancelExecution).toHaveBeenCalledExactlyOnceWith('exec-1');
 		expect(stepStore.cancelPendingSteps).toHaveBeenCalledExactlyOnceWith('exec-1');
 		expect(publisher.publish).toHaveBeenCalledExactlyOnceWith({
@@ -106,7 +113,7 @@ describe('CancelExecutionService', () => {
 
 			const result = await service.cancel('exec-1');
 
-			expect(result).toEqual({ status });
+			expect(result).toMatchObject({ status });
 			expect(stepStore.cancelPendingSteps).not.toHaveBeenCalled();
 			expect(publisher.publish).not.toHaveBeenCalled();
 			expect(responseSender.send).not.toHaveBeenCalled();

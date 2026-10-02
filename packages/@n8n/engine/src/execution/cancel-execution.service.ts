@@ -7,6 +7,8 @@ import type { StepStore } from './step-store';
 export interface CancelExecutionResult {
 	/** The execution's status after the request: `cancelled` unless it had already ended. */
 	status: ExecutionStatus;
+	/** When the execution ended. Set whenever `status` is not live. */
+	finishedAt: Date | null;
 }
 
 /**
@@ -48,6 +50,6 @@ export class CancelExecutionService {
 			}
 		}
 
-		return { status: execution.status };
+		return { status: execution.status, finishedAt: execution.finishedAt };
 	}
 }

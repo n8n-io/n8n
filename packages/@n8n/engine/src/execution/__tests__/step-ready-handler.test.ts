@@ -82,6 +82,7 @@ function makeExecutionStore(overrides: Partial<ExecutionRecord> = {}): Execution
 		triggerOutputs: null,
 		callerContext: { hostMode: 'trigger' },
 		responseExpectation: { kind: 'none' },
+		finishedAt: null,
 		...overrides,
 	};
 	return {
