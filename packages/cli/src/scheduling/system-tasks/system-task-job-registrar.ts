@@ -37,7 +37,8 @@ export function systemTaskProvisionRequest(
 			? now
 			: computeFirstRunAt(scheduleFromDefinition(schedule, defaultTimezone), now);
 	const name = systemTaskType(task.name);
-	const { misfirePolicy, misfireGraceSeconds, maxAttempts } = resolveSystemTaskRunOptions(task);
+	const { misfirePolicy, misfireGraceSeconds, maxAttempts, concurrencyLimit } =
+		resolveSystemTaskRunOptions(task);
 
 	return {
 		owner: systemTaskOwner.owner(task.name),
@@ -47,6 +48,7 @@ export function systemTaskProvisionRequest(
 		misfirePolicy,
 		misfireGraceSeconds,
 		maxAttempts,
+		concurrencyLimit,
 	};
 }
 
