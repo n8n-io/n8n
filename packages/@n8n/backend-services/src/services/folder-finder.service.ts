@@ -2,7 +2,7 @@ import type { Folder, OperationContext, User } from '@n8n/db';
 import { FolderAccessRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { hasGlobalScope, type Scope } from '@n8n/permissions';
-import { RoleService } from '@n8n/backend-services';
+import { RoleService } from './role.service';
 
 /**
  * Resolves folders by id for a user, enforcing access through the folder's home
