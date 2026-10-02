@@ -49,15 +49,17 @@ export class ProjectRelationRepository extends Repository<ProjectRelation> {
 		const admins = new Map<string, string[]>();
 		if (projectIds.length === 0) return admins;
 
-		const rows = await this.find({
-			select: ['projectId', 'userId'],
-			where: { projectId: In(projectIds), role: { slug: PROJECT_ADMIN_ROLE_SLUG } },
-			order: { projectId: 'ASC', userId: 'ASC' },
-		});
-		for (const row of rows) {
-			const ids = admins.get(row.projectId) ?? [];
-			ids.push(row.userId);
-			admins.set(row.projectId, ids);
+		for (const chunk of chunkIds([...new Set(projectIds)])) {
+			const rows = await this.find({
+				select: ['projectId', 'userId'],
+				where: { projectId: In(chunk), role: { slug: PROJECT_ADMIN_ROLE_SLUG } },
+				order: { projectId: 'ASC', userId: 'ASC' },
+			});
+			for (const row of rows) {
+				const ids = admins.get(row.projectId) ?? [];
+				ids.push(row.userId);
+				admins.set(row.projectId, ids);
+			}
 		}
 		return admins;
 	}

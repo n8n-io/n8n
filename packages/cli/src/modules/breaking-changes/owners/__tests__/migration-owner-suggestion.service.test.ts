@@ -34,25 +34,28 @@ describe('MigrationOwnerSuggestionService', () => {
 	const carol = user('carol', 'Carol', 'Clark');
 
 	function givenUsers(...users: User[]) {
-		userRepository.findMany.mockResolvedValue(users);
+		userRepository.findAllWithRoleAndAuthIdentities.mockResolvedValue(users);
 	}
 
-	function givenActivity(entries: Record<string, { userId: string; at: Date }>) {
-		activityEventRepository.findLatestAttributedByResource.mockResolvedValue(
-			new Map(Object.entries(entries)),
+	/** Each workflow's recent entries, newest first, as the repositories return them. */
+	type Recent<T> = Record<string, T | T[]>;
+	const asLists = <T>(entries: Recent<T>) =>
+		new Map(
+			Object.entries(entries).map(([id, value]) => [id, Array.isArray(value) ? value : [value]]),
+		);
+
+	function givenActivity(entries: Recent<{ userId: string; at: Date }>) {
+		activityEventRepository.findRecentAttributedByResource.mockResolvedValue(asLists(entries));
+	}
+
+	function givenPublishes(entries: Recent<{ userId: string; at: Date }>) {
+		workflowPublishHistoryRepository.findRecentAttributedByWorkflowIds.mockResolvedValue(
+			asLists(entries),
 		);
 	}
 
-	function givenPublishes(entries: Record<string, { userId: string; at: Date }>) {
-		workflowPublishHistoryRepository.findLatestAttributedByWorkflowIds.mockResolvedValue(
-			new Map(Object.entries(entries)),
-		);
-	}
-
-	function givenVersions(entries: Record<string, { authors: string; at: Date }>) {
-		workflowHistoryRepository.findLatestAuthorsByWorkflowIds.mockResolvedValue(
-			new Map(Object.entries(entries)),
-		);
+	function givenVersions(entries: Recent<{ authors: string; at: Date }>) {
+		workflowHistoryRepository.findRecentAuthorsByWorkflowIds.mockResolvedValue(asLists(entries));
 	}
 
 	function givenProjects(
@@ -100,7 +103,17 @@ describe('MigrationOwnerSuggestionService', () => {
 	it('returns nothing for no workflows without touching the database', async () => {
 		expect(await service.suggestOwners([])).toEqual([]);
 
-		expect(userRepository.findMany).not.toHaveBeenCalled();
+		expect(userRepository.findAllWithRoleAndAuthIdentities).not.toHaveBeenCalled();
+	});
+
+	it('asks each source for a bounded number of recent actions per workflow', async () => {
+		await service.suggestOwners(['wf-1']);
+
+		expect(activityEventRepository.findRecentAttributedByResource).toHaveBeenCalledWith(
+			'workflow',
+			['wf-1'],
+			expect.any(Number),
+		);
 	});
 
 	describe('most recent attributable activity', () => {
@@ -169,6 +182,31 @@ describe('MigrationOwnerSuggestionService', () => {
 
 			expect(await service.suggestOwners(['wf-1'])).toEqual([
 				{ workflowId: 'wf-1', userId: 'bob' },
+			]);
+		});
+
+		it('falls back to an older attributable action when the newest one is by a user who cannot own', async () => {
+			givenUsers(
+				user('dan', 'Dan', 'Dole', { disabled: true }),
+				alice,
+				bob,
+				user('bob-2', 'Bob', 'Brown'),
+			);
+			givenActivity({
+				'wf-1': [
+					{ userId: 'dan', at: at('2026-09-09T10:00:00Z') },
+					{ userId: 'alice', at: at('2026-09-07T10:00:00Z') },
+				],
+			});
+			givenVersions({
+				'wf-1': [
+					{ authors: 'Bob Brown', at: at('2026-09-08T10:00:00Z') },
+					{ authors: 'Bob Brown', at: at('2026-09-01T10:00:00Z') },
+				],
+			});
+
+			expect(await service.suggestOwners(['wf-1'])).toEqual([
+				{ workflowId: 'wf-1', userId: 'alice' },
 			]);
 		});
 
