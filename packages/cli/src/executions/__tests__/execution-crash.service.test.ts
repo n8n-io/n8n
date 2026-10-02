@@ -223,4 +223,36 @@ describe('ExecutionCrashService', () => {
 		expect(workflowStatisticsService.emit).not.toHaveBeenCalled();
 		expect(eventService.emit).not.toHaveBeenCalled();
 	});
+
+	describe('announceStalledExecution', () => {
+		test('announces an execution already transitioned to crashed', async () => {
+			executionRepository.findSingleExecution.mockResolvedValue({
+				id: '1',
+				workflowId: 'workflow-1',
+				mode: 'trigger',
+				status: 'crashed',
+				startedAt,
+				stoppedAt,
+			} as never);
+
+			await crashService.announceStalledExecution('1');
+
+			expect(announced()).toEqual([
+				announcementOf(crashedExecution('1', { workflowName: undefined }), 'stall'),
+			]);
+			expect(workflowStatisticsService.emit).not.toHaveBeenCalled();
+		});
+
+		test.each([
+			['is missing', undefined],
+			['is not crashed', { id: '1', status: 'error', stoppedAt }],
+			['has no stop time', { id: '1', status: 'crashed', stoppedAt: null }],
+		])('does not announce when the execution %s', async (_name, row) => {
+			executionRepository.findSingleExecution.mockResolvedValue(row as never);
+
+			await crashService.announceStalledExecution('1');
+
+			expect(announced()).toEqual([]);
+		});
+	});
 });
