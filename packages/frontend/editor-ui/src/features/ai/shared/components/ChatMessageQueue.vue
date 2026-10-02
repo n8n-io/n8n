@@ -111,7 +111,10 @@ defineExpose({ focusItem });
 			<div
 				:class="[
 					$style.queueContent,
-					{ [$style.queueContentOpen]: expanded || displayedItems.length === 1 },
+					{
+						[$style.queueContentOpen]: expanded && displayedItems.length > 1,
+						[$style.queueContentSingle]: displayedItems.length === 1,
+					},
 				]"
 				:inert="!expanded && displayedItems.length > 1"
 			>
@@ -205,7 +208,7 @@ defineExpose({ focusItem });
 										v-if="!getQueueNotice(item)"
 										:content="locale.baseText('agents.chat.queue.steerTooltip')"
 										:disabled="!canSteer || isQueueItemBusy(item)"
-										placement="top"
+										placement="left"
 									>
 										<N8nButton
 											variant="ghost"
@@ -222,7 +225,7 @@ defineExpose({ focusItem });
 									<N8nTooltip
 										:content="locale.baseText('generic.edit')"
 										:disabled="!canEdit || isQueueItemBusy(item)"
-										placement="top"
+										placement="left"
 									>
 										<N8nIconButton
 											icon="pencil"
@@ -237,7 +240,7 @@ defineExpose({ focusItem });
 									<N8nTooltip
 										:content="locale.baseText('generic.delete')"
 										:disabled="isQueueItemBusy(item)"
-										placement="top"
+										placement="left"
 									>
 										<N8nIconButton
 											icon="trash-2"
@@ -332,6 +335,11 @@ defineExpose({ focusItem });
 
 .queueIcon {
 	flex-shrink: 0;
+}
+
+.queueContentSingle {
+	display: block;
+	transition: none;
 }
 
 .queueContentOpen {
