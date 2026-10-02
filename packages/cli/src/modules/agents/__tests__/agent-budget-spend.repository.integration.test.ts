@@ -1,8 +1,8 @@
 import { randomUUID } from 'node:crypto';
 
 import { testDb, testModules } from '@n8n/backend-test-utils';
+import type { Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
-import { Logger } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
 import { AgentBudgetAppliedCall } from '../entities/agent-budget-applied-call.entity';
@@ -39,6 +39,23 @@ describe('AgentBudgetSpendRepository', () => {
 
 		expect(first).toEqual([{ key, totalUsd: 1.25, previousUsd: 0 }]);
 		expect(second).toEqual([{ key, totalUsd: 2, previousUsd: 1.25 }]);
+		await expect(repository.readTotal(key)).resolves.toBe(2);
+	});
+
+	it('counts both calls when two writers add to the same key at the same time', async () => {
+		const key = 'thread-1';
+
+		// Two mains can add spend for the same key at the same time. The atomic
+		// upsert must count both. SQLite serializes the two transactions through
+		// the write connection; on Postgres they run as real concurrent transactions.
+		const [first, second] = await Promise.all([
+			repository.applySpend(randomUUID(), [{ key, usd: 1.25 }]),
+			repository.applySpend(randomUUID(), [{ key, usd: 0.75 }]),
+		]);
+
+		const results = [...first, ...second];
+		expect(results.filter((r) => r.previousUsd === 0)).toHaveLength(1);
+		expect(results.filter((r) => r.totalUsd === 2)).toHaveLength(1);
 		await expect(repository.readTotal(key)).resolves.toBe(2);
 	});
 

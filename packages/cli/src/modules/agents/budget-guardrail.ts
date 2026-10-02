@@ -7,8 +7,8 @@ import {
 	type SpendTotal,
 } from '@n8n/agents';
 import type { BudgetGuardrailConfig } from '@n8n/api-types';
+import { Logger } from '@n8n/backend-common';
 import { Container, Service } from '@n8n/di';
-import { Logger } from 'n8n-core';
 
 import { AgentBudgetSpendRepository } from './repositories/agent-budget-spend.repository';
 

@@ -5,7 +5,7 @@ import type { MigrationContext, ReversibleMigration } from '../migration-types';
  * A restart and a second main read the same rows.
  */
 export class CreateAgentBudgetSpendTables1790854657240 implements ReversibleMigration {
-	async up({ schemaBuilder: { createTable, column }, tablePrefix }: MigrationContext) {
+	async up({ schemaBuilder: { createTable, column }, tablePrefix, escape }: MigrationContext) {
 		await createTable('agent_budget_spend')
 			.withColumns(
 				column('key')
@@ -17,7 +17,7 @@ export class CreateAgentBudgetSpendTables1790854657240 implements ReversibleMigr
 			)
 			.withTimestamps.withCheck(
 				`CHK_${tablePrefix}agent_budget_spend_total_usd_non_negative`,
-				'"totalUsd" >= 0',
+				`${escape.columnName('totalUsd')} >= 0`,
 			);
 
 		await createTable('agent_budget_applied_call').withColumns(

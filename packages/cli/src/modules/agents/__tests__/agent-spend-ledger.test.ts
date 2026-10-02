@@ -1,5 +1,5 @@
 import type { SpendEntry } from '@n8n/agents';
-import { Logger } from 'n8n-core';
+import type { Logger } from '@n8n/backend-common';
 import { mock } from 'vitest-mock-extended';
 
 import { AgentSpendLedger } from '../budget-guardrail';
@@ -11,7 +11,7 @@ const entry = (key: string, usd: number): SpendEntry => ({ key, usd });
 function flakyRepository() {
 	const repository = mock<AgentBudgetSpendRepository>();
 	const state = { down: true };
-	repository.applySpend.mockImplementation(async (callId: string, entries: SpendEntry[]) => {
+	repository.applySpend.mockImplementation(async (_callId: string, entries: SpendEntry[]) => {
 		if (state.down) throw new Error('database is down');
 		return entries.map((e) => ({ key: e.key, totalUsd: e.usd, previousUsd: 0 }));
 	});
