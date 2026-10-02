@@ -72,7 +72,10 @@ const durationSec = computed<number | undefined>(() => {
 		const toolCall = toolCallFor(entry);
 		if (!toolCall) continue;
 		const startedAt = toolCall.startedAt ? Date.parse(toolCall.startedAt) : NaN;
-		const completedAt = toolCall.completedAt ? Date.parse(toolCall.completedAt) : NaN;
+		// An interrupted call is stamped when the restarted process sweeps it, which can
+		// be hours after the work stopped, so its end time says nothing about the duration.
+		const completedAt =
+			toolCall.completedAt && !toolCall.interrupted ? Date.parse(toolCall.completedAt) : NaN;
 		if (!Number.isNaN(startedAt))
 			start = start === undefined ? startedAt : Math.min(start, startedAt);
 		if (!Number.isNaN(completedAt))
