@@ -21,6 +21,7 @@ export type ScheduledTaskContext = {
 	targetId: string;
 	timezone: string;
 	expression: string;
+	// oxlint-disable-next-line typescript/no-deprecated
 	recurrence?: CronContext['recurrence'];
 };
 
@@ -174,6 +175,15 @@ export class ScheduledTaskManager {
 
 	getGroupIds(groupType: string): string[] {
 		return Array.from(this.cronsByGroupType.get(groupType)?.keys() ?? []);
+	}
+
+	/** Sizes of the in-memory collections, for diagnostics and tests. */
+	getDiagnosticCounts() {
+		let crons = 0;
+		for (const cronsByGroup of this.cronsByGroupType.values()) {
+			for (const groupCrons of cronsByGroup.values()) crons += groupCrons.size;
+		}
+		return { crons };
 	}
 
 	getTargetIds(group: ScheduledTaskGroup): string[] {

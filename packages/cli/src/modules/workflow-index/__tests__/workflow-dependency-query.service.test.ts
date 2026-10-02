@@ -8,8 +8,7 @@ import type {
 } from '@n8n/db';
 import { chunkIds } from '@n8n/db';
 import type { DataTableRepository } from '@/modules/data-table/data-table.repository';
-import type { CredentialsFinderService } from '@/credentials/credentials-finder.service';
-import type { RoleService } from '@n8n/backend-services';
+import { type CredentialsFinderService, type RoleService } from '@n8n/backend-services';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { mock } from 'vitest-mock-extended';
 

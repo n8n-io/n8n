@@ -40,6 +40,7 @@ type JoinByDotting<T extends string[]> = T extends [infer F]
 
 type ToDottedPath<T> = JoinByDotting<RemoveExcess<T>>;
 
+// oxlint-disable-next-line typescript/no-deprecated
 type CollectPathsByType<T> = ToDottedPath<GetPathSegments<typeof schema, T>>;
 
 // -----------------------------------
@@ -101,6 +102,7 @@ type ToStringLiteralMap<T extends { path: string; union: string }> = {
 };
 
 type StringLiteralMap = ToStringLiteralMap<
+	// oxlint-disable-next-line typescript/no-deprecated
 	ToPathUnionPair<GetPathSegmentsWithUnions<typeof schema>>
 >;
 

@@ -147,6 +147,7 @@ export async function materializeWorkflowSource(
 	const { workflowId, name, code, saved } = options;
 	const { filePath, binding } = await resolveSourceFilePath(context, workflowId, name);
 	const sourceHash = hashWorkflowSource(code);
+	const parameterValuesIncluded = context.allowSendingParameterValues !== false;
 	const fileOptions = {
 		logger: context.logger,
 		resourceLabel: 'Workflow source file',
@@ -164,6 +165,9 @@ export async function materializeWorkflowSource(
 		// The file is exactly what this thread last wrote. It is current only if the
 		// regenerated source is byte-identical; a codegen change also warrants a rewrite.
 		if (existingHash === sourceHash) {
+			if (binding.parameterValuesIncluded !== parameterValuesIncluded) {
+				await saveWorkflowSourceFileBinding(context, { ...binding, parameterValuesIncluded });
+			}
 			return { filePath, status: 'current', sourceHash, content: existing };
 		}
 	}
@@ -175,6 +179,7 @@ export async function materializeWorkflowSource(
 		workflowVersionId: saved.versionId,
 		...(saved.checksum !== undefined ? { workflowChecksum: saved.checksum } : {}),
 		sourceHash,
+		parameterValuesIncluded,
 	});
 
 	return {

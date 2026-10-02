@@ -825,16 +825,18 @@ describe('InstanceAiService — runtime workspace setup', () => {
 				snapshotMode,
 				instanceContextEnabled,
 				boundGates: undefined as ContextGates | undefined,
+				resumeAgentBuild: false,
 			})),
 		),
 		...[true, false].map((enabled) => ({
 			snapshotMode: 'off',
 			instanceContextEnabled: !enabled,
 			boundGates: { instanceContextEnabled: enabled, nodeUsageEnabled: !enabled },
+			resumeAgentBuild: enabled,
 		})),
 	];
 	it.each(environmentGates)('starts with gates %j', async (gates) => {
-		const { snapshotMode, instanceContextEnabled, boundGates } = gates;
+		const { snapshotMode, instanceContextEnabled, boundGates, resumeAgentBuild } = gates;
 		const service = Object.create(InstanceAiService.prototype) as unknown as {
 			createExecutionEnvironment: (
 				user: User,
@@ -845,6 +847,8 @@ describe('InstanceAiService — runtime workspace setup', () => {
 				pushRef?: string,
 				proxyRunConfig?: undefined,
 				instanceContextGates?: ContextGates,
+				experimentGates?: undefined,
+				resumeAgentBuild?: boolean,
 			) => Promise<{
 				instanceContextEnabled: boolean;
 				nodeUsageEnabled: boolean;
@@ -915,6 +919,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			evalCredentialAllowlists: EvalThreadCredentialAllowlistService;
 			instanceAiErrorReporter: ReturnType<typeof createInstanceAiErrorReporterMock>;
 			creditService: { claimRunUsage: Mock; ensureQuotaLockApplied: Mock };
+			aiUsageService: { isParameterValueSharingAllowed: Mock };
 			areMcpConnectionsAvailable: Mock;
 		};
 		service.areMcpConnectionsAvailable = vi.fn(() => true);
@@ -1010,6 +1015,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		});
 		service.evalCredentialAllowlists = new EvalThreadCredentialAllowlistService();
 		service.instanceAiErrorReporter = createInstanceAiErrorReporterMock();
+		service.aiUsageService = { isParameterValueSharingAllowed: vi.fn(async () => true) };
 		service.creditService = {
 			claimRunUsage: vi.fn(),
 			ensureQuotaLockApplied: vi.fn(async () => {}),
@@ -1032,6 +1038,8 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			undefined,
 			undefined,
 			boundGates,
+			undefined,
+			resumeAgentBuild,
 		);
 		const expectedGates = boundGates ?? {
 			instanceContextEnabled,
@@ -1044,6 +1052,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 				...expectedGates,
 				configEvalsEnabled: true,
 				setupPanelVariant: snapshotMode === 'off' ? 'control' : 'variant',
+				resumeAgentBuild,
 			}),
 		);
 		expect(service.settingsService.getPermissions).toHaveBeenCalled();
@@ -1281,6 +1290,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			evalCredentialAllowlists: EvalThreadCredentialAllowlistService;
 			instanceAiErrorReporter: ReturnType<typeof createInstanceAiErrorReporterMock>;
 			creditService: { claimRunUsage: Mock; ensureQuotaLockApplied: Mock };
+			aiUsageService: { isParameterValueSharingAllowed: Mock };
 			areMcpConnectionsAvailable: Mock;
 		};
 		service.areMcpConnectionsAvailable = vi.fn(() => false);
@@ -1370,6 +1380,11 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		});
 		service.evalCredentialAllowlists = new EvalThreadCredentialAllowlistService();
 		service.instanceAiErrorReporter = createInstanceAiErrorReporterMock();
+		// Vary the sharing setting across rows. It does not depend on the build mode.
+		const allowSendingParameterValues = !enabled;
+		service.aiUsageService = {
+			isParameterValueSharingAllowed: vi.fn(async () => allowSendingParameterValues),
+		};
 		service.creditService = {
 			claimRunUsage: vi.fn(),
 			ensureQuotaLockApplied: vi.fn(async () => {}),
@@ -1399,6 +1414,10 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		expect(service.adapterService.createContext).toHaveBeenCalledWith(
 			expect.anything(),
 			expect.objectContaining({ folderExplorationEnabled: true }),
+		);
+		expect(service.adapterService.createContext).toHaveBeenCalledWith(
+			expect.anything(),
+			expect.objectContaining({ allowSendingParameterValues }),
 		);
 	});
 });
@@ -2887,40 +2906,57 @@ describe('InstanceAiService — suspended run user revalidation', () => {
 		);
 	});
 
-	it('rebuilds the agent when autoSetup is set, and resumes with the rebuilt one', async () => {
-		const service = createSuspendedRunResumeService();
-		const freshUser = { id: 'user-1', disabled: false } as User;
-		service.revalidateActiveUser.mockResolvedValue(freshUser);
-		const rebuiltAgent = { id: 'rebuilt-agent' };
-		service.rebuildAgentForResume.mockResolvedValue({
-			agent: rebuiltAgent,
-			modelId: { provider: 'anthropic', model: 'claude' },
-		});
+	it.each(['workflows', 'build-agent'])(
+		'rebuilds the suspended %s call when autoSetup is set',
+		async (toolName) => {
+			const service = createSuspendedRunResumeService();
+			const suspended = service.runState.findSuspendedByRequestId('req-1');
+			service.runState.findSuspendedByRequestId.mockReturnValue({
+				...suspended,
+				toolName,
+				suspendPayload: {
+					...suspended.suspendPayload,
+					builderCheckpoint: {
+						runId: 'builder-run-1',
+						toolCallId: 'builder-call-1',
+						configUpdated: false,
+					},
+				},
+			});
+			const freshUser = { id: 'user-1', disabled: false } as User;
+			service.revalidateActiveUser.mockResolvedValue(freshUser);
+			const rebuiltAgent = { id: 'rebuilt-agent' };
+			service.rebuildAgentForResume.mockResolvedValue({
+				agent: rebuiltAgent,
+				modelId: { provider: 'anthropic', model: 'claude' },
+			});
 
-		const result = await service.resumeSuspendedRun('user-1', 'req-1', {
-			approved: true,
-			autoSetup: { credentialType: 'datadogApi' },
-		});
+			const result = await service.resumeSuspendedRun('user-1', 'req-1', {
+				approved: true,
+				autoSetup: { credentialType: 'datadogApi' },
+			});
 
-		expect(result).toEqual({ ok: true, runId: 'run-1' });
-		expect(service.rebuildAgentForResume).toHaveBeenCalledWith(
-			freshUser,
-			'thread-a',
-			'run-1',
-			expect.any(AbortController),
-			undefined,
-			undefined,
-			'group-1',
-			expect.objectContaining({ instanceContextEnabled: false, nodeUsageEnabled: true }),
-		);
-		expect(service.processResumedStream).toHaveBeenCalledWith(
-			rebuiltAgent,
-			expect.objectContaining({ autoSetup: { credentialType: 'datadogApi' } }),
-			expect.objectContaining({ modelId: { provider: 'anthropic', model: 'claude' } }),
-		);
-		const [, resumeDataArg] = service.processResumedStream.mock.calls[0] as [unknown, object];
-		expect(resumeDataArg).not.toHaveProperty('requiresAgentRebuild');
-	});
+			expect(result).toEqual({ ok: true, runId: 'run-1' });
+			expect(service.rebuildAgentForResume).toHaveBeenCalledWith(
+				freshUser,
+				'thread-a',
+				'run-1',
+				expect.any(AbortController),
+				undefined,
+				undefined,
+				'group-1',
+				expect.objectContaining({ instanceContextEnabled: false, nodeUsageEnabled: true }),
+				toolName === 'build-agent',
+			);
+			expect(service.processResumedStream).toHaveBeenCalledWith(
+				rebuiltAgent,
+				expect.objectContaining({ autoSetup: { credentialType: 'datadogApi' } }),
+				expect.objectContaining({ modelId: { provider: 'anthropic', model: 'claude' } }),
+			);
+			const [, resumeDataArg] = service.processResumedStream.mock.calls[0] as [unknown, object];
+			expect(resumeDataArg).not.toHaveProperty('requiresAgentRebuild');
+		},
+	);
 
 	it('fails the resume and cancels the run when the rebuild fails', async () => {
 		const service = createSuspendedRunResumeService();
@@ -3015,6 +3051,7 @@ describe('InstanceAiService — suspended run user revalidation', () => {
 			undefined,
 			'group-1',
 			expect.objectContaining({ instanceContextEnabled: false, nodeUsageEnabled: true }),
+			false,
 		);
 		expect(service.processResumedStream).toHaveBeenCalledWith(
 			rebuiltAgent,
@@ -3148,6 +3185,7 @@ describe('InstanceAiService — rebuildAgentForResume', () => {
 			runHandoff: { handoffReason?: string } | undefined,
 			messageGroupId?: string,
 			instanceContextGates?: { instanceContextEnabled: boolean; nodeUsageEnabled: boolean },
+			resumeAgentBuild?: boolean,
 		) => Promise<{ agent: unknown; modelId?: unknown } | undefined>;
 		buildFreshInstanceAgent: Mock;
 		threadPushRef: { get: Mock };
@@ -3186,6 +3224,7 @@ describe('InstanceAiService — rebuildAgentForResume', () => {
 			undefined,
 			'group-1',
 			gates,
+			enabled,
 		);
 
 		expect(service.createExecutionEnvironment).toHaveBeenCalledWith(
@@ -3197,6 +3236,8 @@ describe('InstanceAiService — rebuildAgentForResume', () => {
 			undefined,
 			undefined,
 			gates,
+			undefined,
+			enabled,
 		);
 	});
 
@@ -7597,6 +7638,8 @@ describe('InstanceAiService — instance-context turn event', () => {
 					undefined,
 					undefined,
 					saved.instanceContext,
+					undefined,
+					false,
 				);
 				expect(checkpoint.persistence?.hostMetadata?.buildMode).toBe('default');
 				instanceContext = restored.state.instanceContext!;

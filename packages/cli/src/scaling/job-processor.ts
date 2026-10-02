@@ -701,6 +701,7 @@ export class JobProcessor {
 			}
 
 			if (nodeType.execute && nodeType.description.outputs.includes(NodeConnectionTypes.AiTool)) {
+				// oxlint-disable-next-line typescript/no-deprecated
 				context.addInputData(NodeConnectionTypes.AiTool, [
 					[{ json: validatedToolArgs as INodeExecutionData['json'] }],
 				]);
@@ -711,6 +712,7 @@ export class JobProcessor {
 				} catch (error) {
 					// Record the failure so the tool node shows as errored, not stuck
 					// "running"; rethrow so the caller returns an error to the client.
+					// oxlint-disable-next-line typescript/no-deprecated
 					context.addOutputData(
 						NodeConnectionTypes.AiTool,
 						0,
@@ -726,6 +728,7 @@ export class JobProcessor {
 					response = result?.[0]?.flatMap((item: INodeExecutionData) => item.json);
 				}
 
+				// oxlint-disable-next-line typescript/no-deprecated
 				context.addOutputData(NodeConnectionTypes.AiTool, 0, [[{ json: { response } }]]);
 
 				return response;

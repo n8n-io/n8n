@@ -1,3 +1,4 @@
+// oxlint-disable-next-line typescript/no-deprecated
 export { ApplicationError } from './application.error';
 export { BaseError, type BaseErrorOptions } from './base.error';
 export { IsolateError } from './isolate.error';

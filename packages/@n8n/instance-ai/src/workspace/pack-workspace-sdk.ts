@@ -12,10 +12,11 @@
  * packages into tarballs on the host so the sandbox can `npm install` them
  * post-creation and override the registry copies.
  *
- * `@n8n/workflow-sdk`, `n8n-workflow`, and `@n8n/utils` are linked together:
- * packing only the SDK still leaves npm's copies of those deps in place, which
- * breaks when master is ahead of the registry (e.g. unreleased exports like
- * `@n8n/utils/sleep`).
+ * `@n8n/workflow-sdk` is linked together with the workspace packages it needs
+ * from master: packing only the SDK leaves npm's copies of the others in
+ * place, which breaks when master is ahead of the registry under the same
+ * version (e.g. `UserError` moving from `n8n-workflow` to `@n8n/errors`).
+ * Other workspace dependencies keep their npm copies, to keep the link small.
  *
  * We use `pnpm pack` (not `npm pack`) because the workspace `package.json`
  * uses pnpm protocols (`workspace:*`, `catalog:`) that npm can't resolve;
@@ -42,19 +43,29 @@ const execFileAsync = promisify(execFile);
 
 const ENV_FLAG = 'N8N_INSTANCE_AI_SANDBOX_LINK_SDK';
 
+/** The package whose workspace dependencies are linked into the sandbox with it. */
+export const SANDBOX_LINK_ROOT_PACKAGE = '@n8n/workflow-sdk';
+
+/** Node contracts type-check n8n expressions in the sandbox against this package. */
+export const NODE_CONTRACTS_LINK_ROOT_PACKAGE = '@n8n/expression-types';
+
 /**
- * Packages installed into the sandbox when workspace linking is enabled. `@n8n/errors` is
- * linked because the workspace copy can gain exports before its version is bumped, and
- * `n8n-workflow` fails to load against the older published copy. Node contracts type-check
- * n8n expressions against `@n8n/expression-types`.
+ * Workspace packages installed into the sandbox when workspace linking is
+ * enabled. Add a package here when the SDK breaks against its npm copy.
  */
-export const SANDBOX_LINKED_WORKSPACE_PACKAGES = [
-	'@n8n/errors',
+export const SANDBOX_LINKED_WORKSPACE_PACKAGES: ReadonlySet<string> = new Set([
 	'@n8n/utils',
+	'@n8n/errors',
 	'n8n-workflow',
-	'@n8n/workflow-sdk',
-	'@n8n/expression-types',
-] as const;
+	SANDBOX_LINK_ROOT_PACKAGE,
+]);
+
+/** A workspace package found on the host. */
+export interface HostWorkspacePackage {
+	name: string;
+	/** Absolute path of the package directory. */
+	path: string;
+}
 
 export interface WorkspacePackageTarball {
 	/** Raw tarball bytes, ready to upload to the sandbox. */
@@ -84,8 +95,8 @@ export function isLinkWorkspaceSdkEnabled(): boolean {
 export async function packWorkspacePackage(
 	logger: Logger,
 	packageName: string,
+	packagePath: string | null = resolveInstalledPackageDir(hostRequire, packageName),
 ): Promise<WorkspacePackageTarball | null> {
-	const packagePath = resolvePackagePath(packageName);
 	if (!packagePath) {
 		logger.warn(`${packageName} could not be resolved on the host — skipping sandbox link`);
 		return null;
@@ -144,16 +155,42 @@ export async function packWorkspacePackage(
 }
 
 /**
+ * The host packages linked into the sandbox: the SDK with its linked workspace dependencies,
+ * and with node contracts also `@n8n/expression-types`. Dependencies come before dependents.
+ */
+export async function findHostSandboxPackages(
+	nodeContractsEnabled: boolean,
+): Promise<HostWorkspacePackage[]> {
+	const rootNames = nodeContractsEnabled
+		? [SANDBOX_LINK_ROOT_PACKAGE, NODE_CONTRACTS_LINK_ROOT_PACKAGE]
+		: [SANDBOX_LINK_ROOT_PACKAGE];
+	const found = new Map<string, HostWorkspacePackage>();
+	for (const rootName of rootNames) {
+		const rootPath = resolveInstalledPackageDir(hostRequire, rootName);
+		if (!rootPath) {
+			throw new Error(`${rootName} could not be resolved on the host for the sandbox.`);
+		}
+		for (const pkg of await findLinkedWorkspacePackages(rootName, rootPath)) {
+			if (!found.has(pkg.name)) found.set(pkg.name, pkg);
+		}
+	}
+	return [...found.values()];
+}
+
+/**
  * Pack the host's copies of the packages linked into the sandbox. Throws when any
  * package could not be packed.
  */
-export async function packHostSandboxPackages(logger: Logger): Promise<WorkspacePackageTarball[]> {
+export async function packHostSandboxPackages(
+	logger: Logger,
+	nodeContractsEnabled: boolean,
+): Promise<WorkspacePackageTarball[]> {
 	const packed: WorkspacePackageTarball[] = [];
-	for (const packageName of SANDBOX_LINKED_WORKSPACE_PACKAGES) {
-		const tarball = await packWorkspacePackage(logger, packageName);
+	for (const pkg of await findHostSandboxPackages(nodeContractsEnabled)) {
+		const tarball = await packWorkspacePackage(logger, pkg.name, pkg.path);
 		if (!tarball) {
 			throw new Error(
-				`${packageName} could not be packed for the sandbox. Run \`pnpm build\` for packages/@n8n/utils, packages/workflow, packages/@n8n/workflow-sdk, and packages/@n8n/expression-types.`,
+				`${pkg.name} could not be packed for the sandbox. Run \`pnpm build\` in ${pkg.path}.`,
 			);
 		}
 		packed.push(tarball);
@@ -171,6 +208,7 @@ export async function packHostSandboxPackages(logger: Logger): Promise<Workspace
 export async function packWorkspaceSdk(
 	logger: Logger,
 	packageName = '@n8n/workflow-sdk',
+	// oxlint-disable-next-line typescript/no-deprecated
 ): Promise<WorkspaceSdkTarball | null> {
 	if (!isLinkWorkspaceSdkEnabled()) return null;
 
@@ -180,19 +218,51 @@ export async function packWorkspaceSdk(
 	return { ...packed, sdkPath: packed.packagePath };
 }
 
-/** A transitive dependency (such as `@n8n/errors`) resolves from the linked package that uses it. */
-function resolvePackagePath(name: string): string | null {
-	const direct = resolveInstalledPackageDir(hostRequire, name);
-	if (direct) return direct;
-	for (const linked of SANDBOX_LINKED_WORKSPACE_PACKAGES) {
-		if (linked === name) continue;
-		const linkedPath = resolveInstalledPackageDir(hostRequire, linked);
-		const transitive =
-			linkedPath &&
-			resolveInstalledPackageDir(createRequire(path.join(linkedPath, 'package.json')), name);
-		if (transitive) return transitive;
+/**
+ * The root package and the packages in `linked` that it depends on at runtime,
+ * directly or through other linked packages. Each dependency resolves from the
+ * package that depends on it, because pnpm links only direct dependencies into
+ * a package's `node_modules`. Dependencies come before their dependents.
+ */
+export async function findLinkedWorkspacePackages(
+	rootName: string,
+	rootPath: string,
+	linked: ReadonlySet<string> = SANDBOX_LINKED_WORKSPACE_PACKAGES,
+): Promise<HostWorkspacePackage[]> {
+	const found: HostWorkspacePackage[] = [];
+	const visited = new Set<string>();
+
+	async function visit(name: string, packagePath: string): Promise<void> {
+		if (visited.has(name)) return;
+		visited.add(name);
+
+		const manifest: unknown = JSON.parse(
+			await readFile(path.join(packagePath, 'package.json'), 'utf8'),
+		);
+		const dependencies =
+			typeof manifest === 'object' && manifest !== null && 'dependencies' in manifest
+				? manifest.dependencies
+				: undefined;
+		if (typeof dependencies === 'object' && dependencies !== null) {
+			const packageRequire = createRequire(path.join(packagePath, 'package.json'));
+			for (const [dependency, range] of Object.entries(dependencies)) {
+				if (typeof range !== 'string' || !range.startsWith('workspace:')) continue;
+				if (!linked.has(dependency)) continue;
+				const dependencyPath = resolveInstalledPackageDir(packageRequire, dependency);
+				if (!dependencyPath) {
+					throw new Error(
+						`${dependency} (a dependency of ${name}) could not be resolved on the host for the sandbox. Run \`pnpm install\`.`,
+					);
+				}
+				await visit(dependency, dependencyPath);
+			}
+		}
+
+		found.push({ name, path: packagePath });
 	}
-	return null;
+
+	await visit(rootName, rootPath);
+	return found;
 }
 
 /**

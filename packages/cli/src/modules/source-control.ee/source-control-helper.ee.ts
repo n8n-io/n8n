@@ -280,6 +280,7 @@ export function sourceControlFoldersExistCheck(
 
 export function isSourceControlLicensed() {
 	const license = Container.get(License);
+	// oxlint-disable-next-line typescript/no-deprecated
 	return license.isSourceControlLicensed();
 }
 

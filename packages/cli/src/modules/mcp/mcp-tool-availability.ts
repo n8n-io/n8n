@@ -25,7 +25,11 @@ export function areAgentToolsAvailable(
 	globalConfig: GlobalConfig,
 	moduleRegistry: ModuleRegistry,
 ): boolean {
-	return globalConfig.endpoints.mcpBuilderEnabled && moduleRegistry.isActive('agents');
+	return (
+		globalConfig.endpoints.mcpBuilderEnabled &&
+		moduleRegistry.isActive('agents') &&
+		moduleRegistry.settings.get('agents')?.enabled !== false
+	);
 }
 
 /**

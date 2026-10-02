@@ -231,7 +231,8 @@ export const PACKAGE_JSON = buildPackageJson(
 	isLinkWorkspaceSdkEnabled() ? null : SANDBOX_SDK_VERSION,
 );
 
-let linkedPackagesPromise: Promise<WorkspacePackageTarball[] | null> | null = null;
+/** Packed host packages, by whether node contracts are enabled: the two link different packages. */
+const linkedPackagesPromises = new Map<boolean, Promise<WorkspacePackageTarball[] | null>>();
 
 interface UploadedWorkspacePackages {
 	packedPackages: WorkspacePackageTarball[];
@@ -243,16 +244,20 @@ async function uploadLinkedWorkspacePackages(
 	workspace: SandboxWorkspace,
 	root: string,
 	logger: Logger,
+	nodeContractsEnabled: boolean,
 ): Promise<UploadedWorkspacePackages> {
-	linkedPackagesPromise ??= packHostSandboxPackages(logger).catch((error: unknown) => {
-		linkedPackagesPromise = null;
-		throw error;
-	});
-	const packedPackages = await linkedPackagesPromise;
+	const packing =
+		linkedPackagesPromises.get(nodeContractsEnabled) ??
+		packHostSandboxPackages(logger, nodeContractsEnabled).catch((error: unknown) => {
+			linkedPackagesPromises.delete(nodeContractsEnabled);
+			throw error;
+		});
+	linkedPackagesPromises.set(nodeContractsEnabled, packing);
+	const packedPackages = await packing;
 	if (!packedPackages?.length) {
-		linkedPackagesPromise = null;
+		linkedPackagesPromises.delete(nodeContractsEnabled);
 		throw new Error(
-			'N8N_INSTANCE_AI_SANDBOX_LINK_SDK is enabled, but workspace packages could not be packed. Run `pnpm build` in packages/@n8n/utils, packages/workflow, packages/@n8n/workflow-sdk, and packages/@n8n/expression-types, or unset N8N_INSTANCE_AI_SANDBOX_LINK_SDK.',
+			'Sandbox workspace packages could not be packed. Run `pnpm build` in packages/@n8n/utils, packages/@n8n/errors, packages/workflow, packages/@n8n/workflow-sdk, and (with node contracts) packages/@n8n/expression-types, or unset N8N_INSTANCE_AI_SANDBOX_LINK_SDK.',
 		);
 	}
 
@@ -294,6 +299,7 @@ export async function linkWorkspaceSdkIfEnabled(
 		workspace,
 		root,
 		logger,
+		false,
 	);
 	const install = await runInSandbox(
 		workspace,
@@ -560,7 +566,7 @@ export async function setupSandboxWorkspace(
 			const linkedPackages = mergeLinkedInstall
 				? await setupStep(
 						'link-workspace-sdk',
-						async () => await uploadLinkedWorkspacePackages(workspace, root, context.logger),
+						async () => await uploadLinkedWorkspacePackages(workspace, root, context.logger, true),
 					)
 				: null;
 			const linkedInstallArgs = linkedPackages

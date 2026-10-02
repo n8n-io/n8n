@@ -996,6 +996,7 @@ describe('setupSandboxWorkspace', () => {
 		await linkWorkspaceSdkIfEnabled(workspace, '/workspace', logger);
 
 		expect(packHostSandboxPackages).toHaveBeenCalledTimes(2);
+		expect(packHostSandboxPackages).toHaveBeenCalledWith(logger, false);
 		expect(writeFile).toHaveBeenCalledWith('/workspace/n8n-utils.tgz', utilsTarball, {
 			recursive: true,
 		});

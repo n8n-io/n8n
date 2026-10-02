@@ -82,9 +82,11 @@ export async function httpRequestWithAuthentication(
 		const parentTypes = additionalData.credentialsHelper.getParentTypes(credentialsType);
 
 		if (parentTypes.includes('oAuth1Api')) {
+			// oxlint-disable-next-line typescript/no-deprecated
 			return await requestOAuth1.call(this, credentialsType, requestOptions, true);
 		}
 		if (parentTypes.includes('oAuth2Api')) {
+			// oxlint-disable-next-line typescript/no-deprecated
 			return await requestOAuth2.call(
 				this,
 				credentialsType,
@@ -193,6 +195,7 @@ export async function httpRequestWithAuthentication(
 export async function requestWithAuthentication(
 	this: IAllExecuteFunctions,
 	credentialsType: string,
+	// oxlint-disable-next-line typescript/no-deprecated
 	requestOptions: IRequestOptions,
 	workflow: Workflow,
 	node: INode,
@@ -221,9 +224,11 @@ export async function requestWithAuthentication(
 		const parentTypes = additionalData.credentialsHelper.getParentTypes(credentialsType);
 
 		if (credentialsType === 'oAuth1Api' || parentTypes.includes('oAuth1Api')) {
+			// oxlint-disable-next-line typescript/no-deprecated
 			return await requestOAuth1.call(this, credentialsType, requestOptions, false);
 		}
 		if (credentialsType === 'oAuth2Api' || parentTypes.includes('oAuth2Api')) {
+			// oxlint-disable-next-line typescript/no-deprecated
 			return await requestOAuth2.call(
 				this,
 				credentialsType,
@@ -274,6 +279,7 @@ export async function requestWithAuthentication(
 			node,
 		);
 		requestSent = true;
+		// oxlint-disable-next-line typescript/no-deprecated
 		return await proxyRequestToAxios(workflow, additionalData, node, requestOptions);
 	} catch (error) {
 		try {
@@ -304,6 +310,7 @@ export async function requestWithAuthentication(
 						workflow,
 						node,
 					);
+					// oxlint-disable-next-line typescript/no-deprecated
 					return await proxyRequestToAxios(workflow, additionalData, node, requestOptions);
 				}
 			}

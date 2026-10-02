@@ -30,4 +30,12 @@ export class MigrationFindingSyncRepository extends BaseRepository<MigrationFind
 	async upsertForVersion(record: MigrationFindingSyncRecord, ctx: OperationContext): Promise<void> {
 		await this.managerFor(ctx).upsert(MigrationFindingSync, record, ['targetVersion']);
 	}
+
+	/** Removes the record of the version, so the version reads as never synced. No-op without one. */
+	async deleteForVersion(
+		targetVersion: BreakingChangeVersion,
+		ctx: OperationContext,
+	): Promise<void> {
+		await this.managerFor(ctx).delete(MigrationFindingSync, { targetVersion });
+	}
 }

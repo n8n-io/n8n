@@ -188,13 +188,20 @@ export namespace BrevoNode {
 			return result as ValidatedEmail;
 		}
 
+		// v1 stored recipients under a misspelled key. v1.1 (NODE-5367) corrects
+		// the spelling; this picks which key each version actually reads.
+		function isLegacyVersion(this: IExecuteSingleFunctions): boolean {
+			return this.getNode().typeVersion < 1.1;
+		}
+
 		export async function validateAndCompileCCEmails(
 			this: IExecuteSingleFunctions,
 			requestOptions: IHttpRequestOptions,
 		): Promise<IHttpRequestOptions> {
-			const ccData = this.getNodeParameter(
-				'additionalFields.receipientsCC.receipientCc',
-			) as JsonObject;
+			const path = isLegacyVersion.call(this)
+				? 'additionalFields.receipientsCC.receipientCc'
+				: 'additionalFields.recipientsCC.recipientCc';
+			const ccData = this.getNodeParameter(path) as JsonObject;
 			const { cc } = ccData;
 			const { body } = requestOptions;
 			const data = validateEmailStrings({ cc: cc as string });
@@ -207,9 +214,10 @@ export namespace BrevoNode {
 			this: IExecuteSingleFunctions,
 			requestOptions: IHttpRequestOptions,
 		): Promise<IHttpRequestOptions> {
-			const bccData = this.getNodeParameter(
-				'additionalFields.receipientsBCC.receipientBcc',
-			) as JsonObject;
+			const path = isLegacyVersion.call(this)
+				? 'additionalFields.receipientsBCC.receipientBcc'
+				: 'additionalFields.recipientsBCC.recipientBcc';
+			const bccData = this.getNodeParameter(path) as JsonObject;
 			const { bcc } = bccData;
 			const { body } = requestOptions;
 			const data = validateEmailStrings({ bcc: bcc as string });
@@ -222,7 +230,9 @@ export namespace BrevoNode {
 			this: IExecuteSingleFunctions,
 			requestOptions: IHttpRequestOptions,
 		): Promise<IHttpRequestOptions> {
-			const to = this.getNodeParameter('receipients') as string;
+			const to = this.getNodeParameter(
+				isLegacyVersion.call(this) ? 'receipients' : 'recipients',
+			) as string;
 			const { body } = requestOptions;
 			const data = validateEmailStrings({ to });
 			Object.assign(body!, data);

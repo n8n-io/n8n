@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/unbound-method */
 import type { Logger } from '@n8n/backend-common';
-import type { EventService } from '@n8n/backend-services';
+import type { EventService, WorkflowSharingService } from '@n8n/backend-services';
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { GlobalConfig, WorkflowsConfig } from '@n8n/config';
 import type { Project, WorkflowEntity, WorkflowHistory, WorkflowRepository } from '@n8n/db';
@@ -51,7 +51,6 @@ import type { PollCursorService } from '@/workflows/triggers/poll-cursor.service
 import { TriggerExecutionContextFactory } from '@/workflows/triggers/trigger-execution-context.factory';
 import type { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
 import { WorkflowPushNotifier } from '@/workflows/workflow-push-notifier.service';
-import type { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
 import type { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 
 vi.mock('@/node-contracts-run', () => ({ prepareNodeContractsRun: vi.fn() }));
