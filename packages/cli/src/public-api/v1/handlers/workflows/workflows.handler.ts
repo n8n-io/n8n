@@ -31,7 +31,7 @@ const workflowHandlers: WorkflowHandlers = {
 					req.user,
 					workflowId,
 					versionId,
-					{ includePublishHistory: false },
+					{ publishHistory: 'none' },
 				);
 
 				Container.get(EventService).emit('user-retrieved-workflow-version', {

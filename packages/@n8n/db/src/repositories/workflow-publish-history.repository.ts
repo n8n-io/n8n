@@ -4,6 +4,8 @@ import type { EntityManager } from '@n8n/typeorm';
 
 import { WorkflowPublishHistory } from '../entities';
 
+export type PublishHistoryScope = 'all' | 'latestActivation' | 'none';
+
 @Service()
 export class WorkflowPublishHistoryRepository extends Repository<WorkflowPublishHistory> {
 	constructor(dataSource: DataSource) {
@@ -28,14 +30,52 @@ export class WorkflowPublishHistoryRepository extends Repository<WorkflowPublish
 		});
 	}
 
-	/**
-	 * Returns the events of one version, oldest first. Use this method, not a
-	 * join on the `workflowPublishHistory` relation. A join repeats the nodes
-	 * JSON of the version for each event, and a version can have many events.
-	 */
-	async findByVersion(workflowId: string, versionId: string, trx?: EntityManager) {
+	/** Do not join `workflowPublishHistory` instead: a join repeats the version's nodes JSON for each event. */
+	async findByVersion(
+		workflowId: string,
+		versionId: string,
+		scope: Exclude<PublishHistoryScope, 'none'> = 'all',
+		trx?: EntityManager,
+	) {
 		const repository = trx ? trx.getRepository(WorkflowPublishHistory) : this;
+		if (scope === 'latestActivation') {
+			return await repository.find({
+				where: { workflowId, versionId, event: 'activated' },
+				order: { id: 'DESC' },
+				take: 1,
+			});
+		}
 		return await repository.find({ where: { workflowId, versionId }, order: { id: 'ASC' } });
+	}
+
+	async findLatestActivations(workflowId: string, versionIds: string[]) {
+		if (versionIds.length === 0) return [];
+
+		const latestIds = this.createQueryBuilder('latest')
+			.select('MAX(latest.id)')
+			.where('latest.workflowId = :workflowId', { workflowId })
+			.andWhere('latest.versionId IN (:...versionIds)', { versionIds })
+			.andWhere('latest.event = :event', { event: 'activated' })
+			.groupBy('latest.versionId');
+
+		return await this.createQueryBuilder('wph')
+			.where(`wph.id IN (${latestIds.getQuery()})`)
+			.setParameters(latestIds.getParameters())
+			.getMany();
+	}
+
+	async findTimelinePage(workflowId: string, { offset, limit }: { offset: number; limit: number }) {
+		// The joins are many-to-one, so `offset` and `limit` page the events.
+		return await this.createQueryBuilder('wph')
+			.leftJoinAndSelect('wph.user', 'user')
+			.leftJoin('wph.workflowHistory', 'wh')
+			.addSelect('wh.name')
+			.where('wph.workflowId = :workflowId', { workflowId })
+			.orderBy('wph.createdAt', 'DESC')
+			.addOrderBy('wph.id', 'DESC')
+			.offset(offset)
+			.limit(limit)
+			.getMany();
 	}
 
 	async getPublishedVersions(

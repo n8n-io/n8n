@@ -109,7 +109,10 @@ export {
 	WorkflowPublishedVersionRepository,
 	type PublishedWorkflowDataForExecution,
 } from './workflow-published-version.repository';
-export { WorkflowPublishHistoryRepository } from './workflow-publish-history.repository';
+export {
+	WorkflowPublishHistoryRepository,
+	type PublishHistoryScope,
+} from './workflow-publish-history.repository';
 export {
 	WorkflowReviewRequestRepository,
 	type WorkflowReviewRequestForWorkflowRow,

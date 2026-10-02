@@ -1088,19 +1088,17 @@ describe('GET /workflows/:workflowId', () => {
 		});
 	});
 
-	test('should return every publish event of the active version in order', async () => {
+	test('should return only the latest activation of the active version', async () => {
 		const workflow = await createActiveWorkflow({}, owner);
 		const activeVersion = { workflowId: workflow.id, versionId: workflow.activeVersionId! };
 		await createWorkflowPublishHistoryItem(activeVersion, { event: 'deactivated' });
-		await createWorkflowPublishHistoryItem(activeVersion);
+		const latest = await createWorkflowPublishHistoryItem(activeVersion);
 
 		const response = await authOwnerAgent.get(`/workflows/${workflow.id}`).expect(200);
 
 		const { data } = response.body as { data: { activeVersion: WorkflowHistory } };
-		expect(data.activeVersion.workflowPublishHistory.map(({ event }) => event)).toEqual([
-			'activated',
-			'deactivated',
-			'activated',
+		expect(data.activeVersion.workflowPublishHistory).toEqual([
+			expect.objectContaining({ id: latest.id, event: 'activated' }),
 		]);
 	});
 

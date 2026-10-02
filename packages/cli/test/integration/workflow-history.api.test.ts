@@ -188,51 +188,29 @@ describe('GET /workflow-history/:workflowId', () => {
 		expect(resp.body.data[0]).toEqual(expected);
 	});
 
-	test('should include workflowPublishHistory records related to each history item', async () => {
+	test('should include only the latest activation of each history item', async () => {
 		const workflow = await createWorkflow(undefined, owner);
 		const v1 = await createWorkflowHistoryItem(workflow.id);
 		const v2 = await createWorkflowHistoryItem(workflow.id);
 
-		const wph1 = await createWorkflowPublishHistoryItem(v1);
-		const wph2 = await createWorkflowPublishHistoryItem(v1, { event: 'deactivated' });
-		const wph3 = await createWorkflowPublishHistoryItem(v2);
+		await createWorkflowPublishHistoryItem(v1);
+		const latestOfV1 = await createWorkflowPublishHistoryItem(v1);
+		await createWorkflowPublishHistoryItem(v1, { event: 'deactivated' });
+		const latestOfV2 = await createWorkflowPublishHistoryItem(v2);
 
 		const response = await authOwnerAgent.get(`/workflow-history/workflow/${workflow.id}`);
 		expect(response.status).toBe(200);
 
 		const body = response.body as { data: WorkflowHistory[] };
+		const publishHistoryOf = (versionId: string) =>
+			body.data.find((history) => history.versionId === versionId)?.workflowPublishHistory;
 
-		expect(body.data).toHaveLength(2);
-
-		const publishHistories = body.data.map((history) => history.workflowPublishHistory);
-		expect(publishHistories).toEqual(
-			expect.arrayContaining([expect.any(Array), expect.any(Array)]),
-		);
-
-		const publishHistory1 = publishHistories.find((ph) => ph.length === 1)!;
-		const publishHistory2 = publishHistories.find((ph) => ph.length === 2)!;
-
-		expect(publishHistory1).toEqual(
-			expect.arrayContaining([
-				expect.objectContaining({
-					...wph3,
-					createdAt: wph3.createdAt.toISOString(),
-				}),
-			]),
-		);
-
-		expect(publishHistory2).toEqual(
-			expect.arrayContaining([
-				expect.objectContaining({
-					...wph1,
-					createdAt: wph1.createdAt.toISOString(),
-				}),
-				expect.objectContaining({
-					...wph2,
-					createdAt: wph2.createdAt.toISOString(),
-				}),
-			]),
-		);
+		expect(publishHistoryOf(v1.versionId)).toEqual([
+			{ ...latestOfV1, createdAt: latestOfV1.createdAt.toISOString() },
+		]);
+		expect(publishHistoryOf(v2.versionId)).toEqual([
+			{ ...latestOfV2, createdAt: latestOfV2.createdAt.toISOString() },
+		]);
 	});
 });
 
@@ -287,12 +265,13 @@ describe('GET /workflow-history/workflow/:workflowId/version/:versionId', () => 
 		);
 		expect(resp.status).toBe(404);
 	});
-	test('should include workflowPublishHistory records related to history item', async () => {
+	test('should include only the latest activation of the history item', async () => {
 		const workflow = await createWorkflow(undefined, owner);
 		const v1 = await createWorkflowHistoryItem(workflow.id);
 		const v2 = await createWorkflowHistoryItem(workflow.id);
-		const wph1 = await createWorkflowPublishHistoryItem(v1);
-		const wph2 = await createWorkflowPublishHistoryItem(v1, { event: 'deactivated' });
+		await createWorkflowPublishHistoryItem(v1);
+		const latest = await createWorkflowPublishHistoryItem(v1);
+		await createWorkflowPublishHistoryItem(v1, { event: 'deactivated' });
 		await createWorkflowPublishHistoryItem(v2);
 
 		const resp = await authOwnerAgent.get(
@@ -303,10 +282,7 @@ describe('GET /workflow-history/workflow/:workflowId/version/:versionId', () => 
 			...v1,
 			createdAt: v1.createdAt.toISOString(),
 			updatedAt: v1.updatedAt.toISOString(),
-			workflowPublishHistory: [
-				{ ...wph1, createdAt: wph1.createdAt.toISOString() },
-				{ ...wph2, createdAt: wph2.createdAt.toISOString() },
-			],
+			workflowPublishHistory: [{ ...latest, createdAt: latest.createdAt.toISOString() }],
 		});
 	});
 });
@@ -500,5 +476,31 @@ describe('PATCH /workflow-history/workflow/:workflowId/versions/:versionId', () 
 		expect(getResponse.body.data.authors).toBe(originalAuthors);
 		expect(getResponse.body.data.nodes).toEqual(originalNodes);
 		expect(getResponse.body.data.connections).toEqual(originalConnections);
+	});
+});
+
+describe('GET /workflow-history/workflow/:workflowId/publish-timeline', () => {
+	test('should return one page of events, newest first, with the version name', async () => {
+		const workflow = await createWorkflow(undefined, owner);
+		const version = await createWorkflowHistoryItem(workflow.id, { name: 'Release 1' });
+		const start = new Date('2026-01-01T00:00:00Z').getTime();
+		const events = [];
+		for (let i = 0; i < 5; i++) {
+			events.push(
+				await createWorkflowPublishHistoryItem(version, {
+					event: i % 2 === 0 ? 'activated' : 'deactivated',
+					createdAt: new Date(start + i * 60_000),
+				}),
+			);
+		}
+
+		const response = await authOwnerAgent
+			.get(`/workflow-history/workflow/${workflow.id}/publish-timeline`)
+			.query({ skip: 1, take: 2 });
+
+		expect(response.status).toBe(200);
+		const page = response.body.data as Array<{ id: number; event: string; versionName: string }>;
+		expect(page.map(({ id }) => id)).toEqual([events[3].id, events[2].id]);
+		expect(page[0]).toMatchObject({ event: 'deactivated', versionName: 'Release 1' });
 	});
 });

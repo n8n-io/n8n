@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, watch } from 'vue';
 import dateformat from 'dateformat';
 import { useI18n } from '@n8n/i18n';
 import { N8nText, N8nLoading, N8nIcon, N8nTooltip } from '@n8n/design-system';
 import type { PublishTimelineEvent } from '@n8n/rest-api-client/api/workflowHistory';
+import { useIntersectionObserver } from '@/app/composables/useIntersectionObserver';
 import { useWorkflowHistoryStore } from '../workflowHistory.store';
 import { formatTimestamp, generateVersionLabelFromId } from '../utils';
 import WorkflowHistoryPublishedTooltip from './WorkflowHistoryPublishedTooltip.vue';
@@ -13,6 +14,7 @@ import type { WorkflowHistoryVersionStatus } from '../types';
 const TRANSIENT_DEACTIVATION_MS = 2000;
 /** Adoption point for publish-timeline tracking — older events may be incomplete */
 const ADOPTION_VERSION = { major: 2, minor: 17, patch: 0 } as const;
+const PAGE_SIZE = 100;
 
 const props = defineProps<{
 	workflowId: string;
@@ -27,8 +29,13 @@ const i18n = useI18n();
 const workflowHistoryStore = useWorkflowHistoryStore();
 
 const isLoading = ref(true);
+const isLoadingMore = ref(false);
+const hasMore = ref(false);
 const events = ref<PublishTimelineEvent[]>([]);
+const fetchedCount = ref(0);
 const adoptionDate = ref<Date | null>(null);
+const contentElement = ref<HTMLElement | null>(null);
+const loadMoreSentinel = ref<HTMLElement | null>(null);
 
 type EntryStatus = 'published' | 'unpublished';
 
@@ -181,7 +188,7 @@ const entries = computed<TimelineEntry[]>(() =>
 );
 
 const showDeletedVersionsDisclaimer = computed(() => {
-	if (adoptionDate.value === null) return false;
+	if (adoptionDate.value === null || hasMore.value) return false;
 	const adoptionTime = adoptionDate.value.getTime();
 	return events.value.some((e) => new Date(e.createdAt).getTime() < adoptionTime);
 });
@@ -196,27 +203,62 @@ const handleSelect = (entry: TimelineEntry) => {
 	if (entry.versionId) emit('selectVersion', entry.versionId);
 };
 
+const oldestFirst = (a: PublishTimelineEvent, b: PublishTimelineEvent) =>
+	new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime() || a.id - b.id;
+
+const fetchNextPage = async () => {
+	const page = await workflowHistoryStore.getPublishTimeline(props.workflowId, {
+		take: PAGE_SIZE,
+		skip: fetchedCount.value,
+	});
+	fetchedCount.value += page.length;
+	hasMore.value = page.length === PAGE_SIZE;
+	// A publish while scrolling shifts the pages, so they can overlap.
+	const loadedIds = new Set(events.value.map(({ id }) => id));
+	events.value = [...events.value, ...page.filter(({ id }) => !loadedIds.has(id))].sort(
+		oldestFirst,
+	);
+};
+
 const loadTimeline = async () => {
 	isLoading.value = true;
 	try {
-		const [timelineEvents, firstAdoptionDate] = await Promise.all([
-			workflowHistoryStore.getPublishTimeline(props.workflowId),
+		const [, firstAdoptionDate] = await Promise.all([
+			fetchNextPage(),
 			workflowHistoryStore.getVersionFirstAdoptionDate(ADOPTION_VERSION).catch(() => null),
 		]);
 		adoptionDate.value = firstAdoptionDate ? new Date(firstAdoptionDate) : null;
-		events.value = timelineEvents;
 	} finally {
 		isLoading.value = false;
 	}
 };
 
+const loadMore = async () => {
+	if (isLoadingMore.value || !hasMore.value) return;
+	isLoadingMore.value = true;
+	try {
+		await fetchNextPage();
+	} finally {
+		isLoadingMore.value = false;
+	}
+};
+
+const { observe: observeForLoadMore } = useIntersectionObserver({
+	root: contentElement,
+	onIntersect: async () => await loadMore(),
+});
+
+watch([loadMoreSentinel, hasMore, fetchedCount], ([sentinel, canLoadMore]) => {
+	if (sentinel && canLoadMore) observeForLoadMore(sentinel);
+});
+
 onMounted(loadTimeline);
 </script>
 
 <template>
-	<div :class="$style.content">
+	<div ref="contentElement" :class="$style.content">
 		<N8nLoading v-if="isLoading" :rows="4" />
-		<div v-else-if="entries.length === 0" :class="$style.empty">
+		<div v-else-if="entries.length === 0 && !hasMore" :class="$style.empty">
 			<N8nText size="small" color="text-light">
 				{{ i18n.baseText('workflowHistory.publishTimeline.empty') }}
 			</N8nText>
@@ -297,6 +339,8 @@ onMounted(loadTimeline);
 					</div>
 				</WorkflowHistoryPublishedTooltip>
 			</div>
+			<div v-if="hasMore" ref="loadMoreSentinel" :class="$style.sentinel" aria-hidden="true" />
+			<N8nLoading v-if="isLoadingMore" :rows="1" />
 			<N8nTooltip
 				v-if="showDeletedVersionsDisclaimer"
 				placement="top"
@@ -326,6 +370,10 @@ onMounted(loadTimeline);
 	height: 100%;
 	overflow-y: auto;
 	padding: var(--spacing--2xs);
+}
+
+.sentinel {
+	height: 1px;
 }
 
 .empty {

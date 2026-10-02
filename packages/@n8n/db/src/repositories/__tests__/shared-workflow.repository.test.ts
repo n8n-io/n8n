@@ -189,9 +189,42 @@ describe('SharedWorkflowRepository', () => {
 			expect(workflowPublishHistoryRepository.findByVersion).toHaveBeenCalledWith(
 				'workflow-1',
 				'version-1',
+				'all',
 				entityManager,
 			);
 			expect(result?.workflow.activeVersion?.workflowPublishHistory).toBe(events);
+		});
+
+		it('passes the requested publish history scope to the query', async () => {
+			entityManager.findOne.mockResolvedValueOnce(
+				sharedWorkflowWith(mock<WorkflowHistory>({ versionId: 'version-1' })),
+			);
+			workflowPublishHistoryRepository.findByVersion.mockResolvedValueOnce([]);
+
+			await sharedWorkflowRepository.findWorkflowWithOptions('workflow-1', {
+				includeActiveVersion: true,
+				publishHistory: 'latestActivation',
+			});
+
+			expect(workflowPublishHistoryRepository.findByVersion).toHaveBeenCalledWith(
+				'workflow-1',
+				'version-1',
+				'latestActivation',
+				entityManager,
+			);
+		});
+
+		it('does not load publish history when the scope is none', async () => {
+			entityManager.findOne.mockResolvedValueOnce(
+				sharedWorkflowWith(mock<WorkflowHistory>({ versionId: 'version-1' })),
+			);
+
+			await sharedWorkflowRepository.findWorkflowWithOptions('workflow-1', {
+				includeActiveVersion: true,
+				publishHistory: 'none',
+			});
+
+			expect(workflowPublishHistoryRepository.findByVersion).not.toHaveBeenCalled();
 		});
 
 		it('loads the publish history with the entity manager of the caller', async () => {
@@ -209,6 +242,7 @@ describe('SharedWorkflowRepository', () => {
 			expect(workflowPublishHistoryRepository.findByVersion).toHaveBeenCalledWith(
 				'workflow-1',
 				'version-1',
+				'all',
 				trx,
 			);
 		});

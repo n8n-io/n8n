@@ -43,6 +43,7 @@ export class WorkflowHistoryController {
 				req.user,
 				req.params.workflowId,
 				req.params.versionId,
+				{ publishHistory: 'latestActivation' },
 			);
 		} catch (e) {
 			if (e instanceof SharedWorkflowNotFoundError) {
@@ -76,9 +77,16 @@ export class WorkflowHistoryController {
 	}
 
 	@Get('/workflow/:workflowId/publish-timeline')
-	async getPublishTimeline(req: WorkflowHistoryRequest.GetList) {
+	async getPublishTimeline(
+		req: WorkflowHistoryRequest.GetList,
+		_res: Response,
+		@Query query: PaginationDto,
+	) {
 		try {
-			return await this.historyService.getPublishTimeline(req.user, req.params.workflowId);
+			return await this.historyService.getPublishTimeline(req.user, req.params.workflowId, {
+				offset: query.skip ?? 0,
+				limit: query.take ?? DEFAULT_TAKE,
+			});
 		} catch (e) {
 			if (e instanceof SharedWorkflowNotFoundError) {
 				throw new NotFoundError('Could not find workflow');

@@ -14,7 +14,10 @@ import type {
 } from '@n8n/typeorm';
 
 import { BaseRepository } from './base-repository';
-import { WorkflowPublishHistoryRepository } from './workflow-publish-history.repository';
+import {
+	type PublishHistoryScope,
+	WorkflowPublishHistoryRepository,
+} from './workflow-publish-history.repository';
 import type { User } from '../entities';
 import { Project, ProjectRelation, SharedWorkflow } from '../entities';
 import { type OperationContext, TransactionRunner } from '../services/transaction';
@@ -265,6 +268,7 @@ export class SharedWorkflowRepository extends BaseRepository<SharedWorkflow> {
 			includeTags?: boolean;
 			includeParentFolder?: boolean;
 			includeActiveVersion?: boolean;
+			publishHistory?: PublishHistoryScope;
 			em?: EntityManager;
 		} = {},
 	) {
@@ -273,6 +277,7 @@ export class SharedWorkflowRepository extends BaseRepository<SharedWorkflow> {
 			includeTags = false,
 			includeParentFolder = false,
 			includeActiveVersion = false,
+			publishHistory = 'all',
 			em = this.manager,
 		} = options;
 
@@ -292,11 +297,12 @@ export class SharedWorkflowRepository extends BaseRepository<SharedWorkflow> {
 		});
 
 		const activeVersion = sharedWorkflow?.workflow.activeVersion;
-		if (activeVersion) {
+		if (activeVersion && publishHistory !== 'none') {
 			activeVersion.workflowPublishHistory =
 				await this.workflowPublishHistoryRepository.findByVersion(
 					workflowId,
 					activeVersion.versionId,
+					publishHistory,
 					em,
 				);
 		}
