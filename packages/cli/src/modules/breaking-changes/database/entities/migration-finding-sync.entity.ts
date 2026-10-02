@@ -3,8 +3,15 @@ import { DateTimeColumn } from '@n8n/db';
 import { BaseEntity, Column, Entity, PrimaryColumn } from '@n8n/typeorm';
 
 /**
- * Metadata of the last scan that wrote to `migration_finding`, one row per
- * target version. A changed fingerprint tells the next scan to re-check every workflow.
+ * `running` while a main scans, `complete` after a full write, `failed` after
+ * a run that stopped early. Only a `complete` record makes a version fresh.
+ */
+export type MigrationFindingSyncStatus = 'running' | 'complete' | 'failed';
+
+/**
+ * State of the full sync per target version, one row each. The row is also the
+ * cross-main lock: a main claims it before it scans, so only one scan writes at a
+ * time. A changed fingerprint tells the next read to re-check every workflow.
  */
 // Extends `BaseEntity` so the module can register it without timestamp columns.
 @Entity({ name: 'migration_finding_sync' })
@@ -12,10 +19,18 @@ export class MigrationFindingSync extends BaseEntity {
 	@PrimaryColumn({ type: 'varchar', length: 16 })
 	targetVersion: BreakingChangeVersion;
 
-	@DateTimeColumn()
-	syncedAt: Date;
+	@Column({ type: 'varchar', length: 16, default: 'complete' })
+	status: MigrationFindingSyncStatus;
 
-	/** Hash of the rule ids active during the last scan. */
+	/** When the current or last run claimed the record. `null` for rows written before claims existed. */
+	@DateTimeColumn({ nullable: true })
+	startedAt: Date | null;
+
+	/** When the last complete run finished. `null` until a run completes. */
+	@DateTimeColumn({ nullable: true })
+	syncedAt: Date | null;
+
+	/** Hash of the rule ids the current or last run checked. */
 	@Column({ type: 'varchar', length: 128 })
 	ruleSetFingerprint: string;
 }
