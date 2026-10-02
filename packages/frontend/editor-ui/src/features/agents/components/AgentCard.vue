@@ -55,6 +55,11 @@ const { canCreate, canUpdate, canDelete, canPublish, canUnpublish } = useAgentPe
 
 const isPublished = computed(() => props.agent.activeVersionId !== null);
 
+// Saving a draft bumps `versionId`, so a mismatch means unpublished edits.
+const hasUnpublishedChanges = computed(
+	() => isPublished.value && props.agent.versionId !== props.agent.activeVersionId,
+);
+
 const isMcpEnabled = computed(
 	() => settingsStore.isModuleActive('mcp') && !!settingsStore.moduleSettings.mcp?.mcpAccessEnabled,
 );
@@ -216,7 +221,13 @@ async function toggleMCPAccess(enabled: boolean) {
 			<div :class="$style.cardActions" @click.stop>
 				<PublicationIndicator
 					v-if="isPublished"
-					:label="locale.baseText('agents.list.published')"
+					:label="
+						locale.baseText(
+							hasUnpublishedChanges ? 'agents.list.changesToPublish' : 'agents.list.published',
+						)
+					"
+					:variant="hasUnpublishedChanges ? 'warning' : 'success'"
+					:data-state="hasUnpublishedChanges ? 'changes-to-publish' : 'published'"
 					data-test-id="agent-card-publish-indicator"
 				/>
 				<N8nTooltip :content="locale.baseText('agents.list.actions.newChat')">
