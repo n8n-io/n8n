@@ -19,7 +19,10 @@ import { UnexpectedError } from 'n8n-workflow';
 
 import { BadRequestError, ConflictError, NotFoundError, UnprocessableRequestError } from '@n8n/errors';
 import { DirectoryPackageReader } from '@/modules/n8n-packages/io/directory/directory-package-reader';
-import { PackageDirectoryInventoryReader } from '@/modules/n8n-packages/io/directory/package-directory-inventory-reader';
+import {
+	PackageDirectoryInventoryReader,
+	type PackageDirectoryInventory,
+} from '@/modules/n8n-packages/io/directory/package-directory-inventory-reader';
 import { PackageImportConfig } from '@/modules/n8n-packages/n8n-packages.config';
 import { N8nPackagesService } from '@/modules/n8n-packages/n8n-packages.service';
 import { MANIFEST_FILE } from '@/modules/n8n-packages/spec/constants';
@@ -483,12 +486,10 @@ export class PromotionsService {
 	}
 
 	private async classifyApplySelection(
-		packageFolder: string,
+		inventory: PackageDirectoryInventory,
 		projectId: string,
 		workflowIds: string[],
 	): Promise<ImportSelection> {
-		const reader = new DirectoryPackageReader(packageFolder, this.packageImportConfig);
-		const inventory = await this.inventoryReader.read(reader);
 		const branchWorkflowIds = new Set(
 			inventory.workflows
 				.filter((workflow) => workflow.projectId === projectId)
@@ -579,9 +580,12 @@ export class PromotionsService {
 			);
 		}
 
-		const selection = await this.classifyApplySelection(packageFolder, projectId, workflowIds);
-		const preflight = await this.bindingPreflight.checkDirectory({
-			sourceDir: packageFolder,
+		// Read once: classification and preflight both need the full package inventory.
+		const reader = new DirectoryPackageReader(packageFolder, this.packageImportConfig);
+		const inventory = await this.inventoryReader.read(reader);
+		const selection = await this.classifyApplySelection(inventory, projectId, workflowIds);
+		const preflight = await this.bindingPreflight.checkInventory({
+			inventory,
 			selection: {
 				selectedProjectId: projectId,
 				selectedWorkflowIds: selection.selectedWorkflowIds,

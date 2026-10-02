@@ -60,7 +60,18 @@ export class PromotionBindingPreflightService {
 		selection?: { selectedProjectId: string; selectedWorkflowIds: string[] };
 	}): Promise<PromotionBindingPreflightResult> {
 		const reader = new DirectoryPackageReader(sourceDir, this.packageImportConfig);
-		const packageInventory = await this.inventoryReader.read(reader);
+		const inventory = await this.inventoryReader.read(reader);
+		return await this.checkInventory({ inventory, selection });
+	}
+
+	/** Same as `checkDirectory`, for a caller that already read the package inventory. */
+	async checkInventory({
+		inventory: packageInventory,
+		selection,
+	}: {
+		inventory: PackageDirectoryInventory;
+		selection?: { selectedProjectId: string; selectedWorkflowIds: string[] };
+	}): Promise<PromotionBindingPreflightResult> {
 		const inventory = selection
 			? {
 					...packageInventory,

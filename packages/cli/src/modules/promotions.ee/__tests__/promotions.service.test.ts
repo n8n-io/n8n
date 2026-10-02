@@ -1456,18 +1456,19 @@ describe('PromotionsService', () => {
 			const movedWorkflow = mock<InventoryWorkflow>({ id: 'moved', projectId: 'p2' });
 			const project = mock<Project>({ id: 'p1' });
 			const foreignProject = mock<Project>({ id: 'p2' });
+			const inventory = {
+				projects: [],
+				workflows: [branchWorkflow, foreignWorkflow, movedWorkflow],
+				credentials: [],
+				variables: [],
+			};
 
 			beforeEach(async () => {
 				const input = applyInput({ connectionScope: 'projects' });
 				resolver.resolveForProject.mockResolvedValue(input);
 				await markCloned(input, 'dev');
 				await mkdir(packageFolder, { recursive: true });
-				inventoryReader.read.mockResolvedValue({
-					projects: [],
-					workflows: [branchWorkflow, foreignWorkflow, movedWorkflow],
-					credentials: [],
-					variables: [],
-				});
+				inventoryReader.read.mockResolvedValue(inventory);
 				sharedWorkflowRepository.findOwnerProjectsByWorkflowIds.mockResolvedValue(
 					new Map([
 						['deleted', project],
@@ -1476,6 +1477,13 @@ describe('PromotionsService', () => {
 					]),
 				);
 				n8nPackagesService.importPackageSelectionFromDirectory.mockResolvedValue(importResult());
+				bindingPreflight.checkInventory.mockResolvedValue({
+					missingProjects: [],
+					missingBindings: [],
+					accessRequirements: [],
+					conflicts: [],
+					warnings: [],
+				});
 			});
 
 			it.each([
@@ -1484,14 +1492,14 @@ describe('PromotionsService', () => {
 			])('classifies $workflowIds for import or deletion', async (selection) => {
 				await service.applyProjectSelection('p1', actor, { workflowIds: selection.workflowIds });
 
-				expect(inventoryReader.read).toHaveBeenCalledWith(
+				expect(inventoryReader.read).toHaveBeenCalledExactlyOnceWith(
 					new DirectoryPackageReader(packageFolder, packageImportConfig),
 				);
 				expect(sharedWorkflowRepository.findOwnerProjectsByWorkflowIds).toHaveBeenCalledWith(
 					selection.workflowIds,
 				);
-				expect(bindingPreflight.checkDirectory).toHaveBeenCalledWith({
-					sourceDir: packageFolder,
+				expect(bindingPreflight.checkInventory).toHaveBeenCalledWith({
+					inventory,
 					selection: {
 						selectedProjectId: 'p1',
 						selectedWorkflowIds: selection.selectedWorkflowIds,
@@ -1521,7 +1529,7 @@ describe('PromotionsService', () => {
 					httpStatusCode: 400,
 					message: `The following workflows are not in this project's branch or instance: ${invalidIds.join(', ')}`,
 				});
-				expect(bindingPreflight.checkDirectory).not.toHaveBeenCalled();
+				expect(bindingPreflight.checkInventory).not.toHaveBeenCalled();
 				expect(n8nPackagesService.importPackageSelectionFromDirectory).not.toHaveBeenCalled();
 			});
 
@@ -1533,7 +1541,7 @@ describe('PromotionsService', () => {
 					message:
 						'These workflows moved to another project: moved. A selective apply cannot move them. Apply all projects instead.',
 				});
-				expect(bindingPreflight.checkDirectory).not.toHaveBeenCalled();
+				expect(bindingPreflight.checkInventory).not.toHaveBeenCalled();
 				expect(n8nPackagesService.importPackageSelectionFromDirectory).not.toHaveBeenCalled();
 			});
 
@@ -1559,7 +1567,7 @@ describe('PromotionsService', () => {
 							});
 							expect(gitService.refreshCheckout).toHaveBeenCalledOnce();
 							expect(inventoryReader.read).not.toHaveBeenCalled();
-							expect(bindingPreflight.checkDirectory).not.toHaveBeenCalled();
+							expect(bindingPreflight.checkInventory).not.toHaveBeenCalled();
 							expect(n8nPackagesService.importPackageSelectionFromDirectory).not.toHaveBeenCalled();
 						},
 					);
@@ -1575,7 +1583,7 @@ describe('PromotionsService', () => {
 								warnings: [],
 								[group]: unresolved[group],
 							};
-							bindingPreflight.checkDirectory.mockResolvedValueOnce(preflight);
+							bindingPreflight.checkInventory.mockResolvedValueOnce(preflight);
 							expect(
 								await service[method]('p1', actor, {
 									workflowIds: ['w1', 'deleted'],
@@ -1588,8 +1596,8 @@ describe('PromotionsService', () => {
 								git: { branchName: 'dev', commitSha: 'remotesha' },
 								preflight,
 							});
-							expect(bindingPreflight.checkDirectory).toHaveBeenCalledWith({
-								sourceDir: packageFolder,
+							expect(bindingPreflight.checkInventory).toHaveBeenCalledWith({
+								inventory,
 								selection: { selectedProjectId: 'p1', selectedWorkflowIds: ['w1'] },
 							});
 							expect(n8nPackagesService.importPackageSelectionFromDirectory).not.toHaveBeenCalled();
@@ -1599,7 +1607,7 @@ describe('PromotionsService', () => {
 					);
 
 					it('imports the selection and returns counts without project reconciliation', async () => {
-						bindingPreflight.checkDirectory.mockResolvedValueOnce({
+						bindingPreflight.checkInventory.mockResolvedValueOnce({
 							missingProjects: [],
 							missingBindings: [],
 							accessRequirements: [],
