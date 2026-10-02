@@ -47,7 +47,7 @@ packages:
   # glob or they are not workspace packages at all.
   - packages/modules/**
   - packages/extensions/**
-  - packages/testing/**
+  - packages/quality/**
 
 catalog:
   '@ai-sdk/alibaba': ^2.0.32

@@ -1,4 +1,4 @@
-import type { EventService } from '@n8n/backend-services';
+import { type EventService, type CredentialsFinderService } from '@n8n/backend-services';
 import type { AgentMessageSteeringService } from '../agent-message-steering.service';
 import type { Mocked } from 'vitest';
 import { type AgentJsonConfig } from '@n8n/api-types';
@@ -16,7 +16,6 @@ import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
 
 import type { ActiveExecutions } from '@/active-executions';
-import type { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import type { ExternalHooks } from '@/external-hooks';
 import { CredentialsService } from '@/credentials/credentials.service';
 import type { EphemeralNodeExecutor } from '@/node-execution';
@@ -49,6 +48,7 @@ import type { AgentSetupCompletionService } from '../agent-setup-completion.serv
 import type { AgentRunTracingService } from '../agent-run-tracing.service';
 import { AgentRuntimeCacheService } from '../agent-runtime-cache.service';
 import { AgentTurnExecutionService } from '../agent-turn-execution.service';
+import type { AgentToolApprovalService } from '../agent-tool-approval.service';
 import { AgentRuntimeReconstructionService } from '../agent-runtime-reconstruction.service';
 import type { AgentSandboxRuntimeService } from '../agent-sandbox-runtime.service';
 import { AgentSkillsService } from '../agent-skills.service';
@@ -289,6 +289,7 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 				mock<AgentChatExecutionService>(),
 				mock<AgentMessageQueueService>(),
 				mock<AgentMessageSteeringService>(),
+				mock<AgentToolApprovalService>(),
 			),
 			telemetry,
 			runtimeCacheService,

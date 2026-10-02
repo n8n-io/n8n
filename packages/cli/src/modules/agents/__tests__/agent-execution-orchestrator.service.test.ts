@@ -7,6 +7,7 @@ import type {
 	ResumeOptions,
 	SerializableAgentState,
 	StreamChunk,
+	ToolApprovalContext,
 } from '@n8n/agents';
 import {
 	N8N_CHAT_INTEGRATION_TYPE,
@@ -46,6 +47,7 @@ import { AgentExecutionRecordingError } from '../agent-execution-recording.error
 import { AgentTestRunService } from '../agent-test-run.service';
 import { AgentTurnExecutionService } from '../agent-turn-execution.service';
 import type { AgentExecutionStreamChunk } from '../types/agent-steering';
+import type { AgentToolApprovalService } from '../agent-tool-approval.service';
 import type { AgentValidationService } from '../agent-validation.service';
 import type { Agent } from '../entities/agent.entity';
 import type { AgentBackgroundJob } from '../entities/agent-background-job.entity';
@@ -183,6 +185,7 @@ function makeRuntime(
 
 function makeService(sandboxEnabled = false) {
 	const checkpointStorage = mock<N8NCheckpointStorage>();
+	const toolApprovalService = mock<AgentToolApprovalService>();
 	const executionService = mock<AgentExecutionService>();
 	executionService.getAbortSignal.mockReturnValue(new AbortController().signal);
 	const executionRepository = mock<AgentExecutionRepository>();
@@ -256,6 +259,7 @@ function makeService(sandboxEnabled = false) {
 			chatExecutionService,
 			mock<AgentMessageQueueService>(),
 			mock<AgentMessageSteeringService>(),
+			toolApprovalService,
 		),
 		telemetry,
 		runtimeCacheService,
@@ -278,6 +282,7 @@ function makeService(sandboxEnabled = false) {
 		executionRepository,
 		checkpointStorage,
 		executionService,
+		toolApprovalService,
 		telemetry,
 		runtimeCacheService,
 		integrationMessageContextService,
@@ -622,9 +627,18 @@ describe('AgentExecutionOrchestratorService', () => {
 		}
 
 		it('announces the recorded execution before the SDK starts', async () => {
-			const { stream, onExecutionStarted, sdkStart, executionService } = makeTurn({
+			const {
+				stream,
+				onExecutionStarted,
+				sdkStart,
+				executionService,
+				toolApprovalService,
+				runtime,
+			} = makeTurn({
 				previewChat: true,
 			});
+			const approvalContext = { approvedKeys: new Set<string>(), onDecision: vi.fn() };
+			toolApprovalService.createContext.mockResolvedValue(approvalContext);
 			onExecutionStarted.mockImplementation(() => {
 				expect(executionService.startExecutionRecording).toHaveBeenCalledOnce();
 				expect(sdkStart).not.toHaveBeenCalled();
@@ -633,6 +647,14 @@ describe('AgentExecutionOrchestratorService', () => {
 			expect(onExecutionStarted).toHaveBeenCalledExactlyOnceWith('execution-1', 'thread-1', [
 				'message-1',
 			]);
+			expect(toolApprovalService.createContext).toHaveBeenCalledWith(
+				expect.objectContaining({ threadId: 'thread-1', agentId }),
+				runtime.toolRegistry,
+			);
+			expect(toolApprovalService.createContext.mock.invocationCallOrder[0]).toBeGreaterThan(
+				executionService.startExecutionRecording.mock.invocationCallOrder[0],
+			);
+			expect(sdkStart.mock.calls[0].at(-1)).toMatchObject({ approvalContext });
 		});
 
 		it('rejects a competing preview without creating an execution or claiming a resume', async () => {
@@ -835,16 +857,16 @@ describe('AgentExecutionOrchestratorService', () => {
 			expect(runtimeCacheService.releaseRuntimeLease).toHaveBeenCalledOnce();
 		});
 
-		it.each(['before recording', 'after recording'] as const)(
+		it.each(['before recording', 'after recording', 'during grant lookup'] as const)(
 			'does not invoke the SDK when cancelled %s',
 			async (when) => {
 				const controller = new AbortController();
-				const { stream, sdkStart, executionService, runtimeCacheService } = makeTurn({
-					abortSignal: controller.signal,
-				});
+				const { stream, sdkStart, executionService, runtimeCacheService, toolApprovalService } =
+					makeTurn({ abortSignal: controller.signal });
+				const grantLookup = createDeferredPromise<ToolApprovalContext>();
 				if (when === 'before recording') {
 					controller.abort();
-				} else {
+				} else if (when === 'after recording') {
 					executionService.startExecutionRecording.mockImplementation(async () => {
 						controller.abort();
 						return {
@@ -853,9 +875,18 @@ describe('AgentExecutionOrchestratorService', () => {
 							inputMessageIds: ['message-1'],
 						};
 					});
+				} else {
+					toolApprovalService.createContext.mockReturnValueOnce(grantLookup.promise);
 				}
 
-				await expect(collect(stream)).rejects.toMatchObject({ name: 'AbortError' });
+				const execution = collect(stream);
+				if (when === 'during grant lookup') {
+					await vi.waitFor(() => expect(toolApprovalService.createContext).toHaveBeenCalled());
+					controller.abort();
+					grantLookup.resolve({ approvedKeys: new Set(), onDecision: vi.fn() });
+				}
+
+				await expect(execution).rejects.toMatchObject({ name: 'AbortError' });
 				expect(sdkStart).not.toHaveBeenCalled();
 				if (when === 'before recording') {
 					expect(executionService.startExecutionRecording).not.toHaveBeenCalled();
@@ -864,7 +895,13 @@ describe('AgentExecutionOrchestratorService', () => {
 						'execution-1',
 						expect.objectContaining({
 							hitlStatus: undefined,
-							record: expect.objectContaining({ finishReason: 'cancelled', error: null }),
+							record: expect.objectContaining({
+								finishReason: 'cancelled',
+								error: null,
+								timeline: expect.not.arrayContaining([
+									expect.objectContaining({ type: 'hitl-response' }),
+								]),
+							}),
 						}),
 					);
 				}
@@ -1598,73 +1635,6 @@ describe('AgentExecutionOrchestratorService', () => {
 		},
 	);
 
-	it('adds full tool configuration to preview approval payloads only', async () => {
-		const { service, runtimeCacheService } = makeService();
-		const approvalChunk: StreamChunk = {
-			type: 'tool-call-suspended',
-			toolCallId: 'tc-1',
-			toolName: 'check_ledger',
-			runId: 'run-1',
-			suspendPayload: {
-				type: 'approval',
-				toolName: 'check_ledger',
-				args: {},
-			},
-		};
-		const previewRuntime = makeRuntime([approvalChunk]);
-		previewRuntime.toolRegistry = new Map([
-			[
-				'check_ledger',
-				{
-					kind: 'node',
-					nodeType: 'n8n-nodes-base.dataTableTool',
-					nodeParameters: { resource: 'row', operation: 'get', returnAll: true },
-				},
-			],
-		]);
-		const publishedRuntime = makeRuntime([approvalChunk]);
-		publishedRuntime.toolRegistry = previewRuntime.toolRegistry;
-		runtimeCacheService.getRuntime
-			.mockResolvedValueOnce(previewRuntime)
-			.mockResolvedValueOnce(publishedRuntime);
-
-		const previewChunks = await collect(
-			service.executeForChat({
-				agentId,
-				projectId,
-				message: 'check the ledger',
-				user,
-				memory: { threadId: 'thread-1', resourceId: 'draft-chat:user-1' },
-			}),
-		);
-		const publishedChunks = await collect(
-			service.executeForChatPublished({
-				agentId,
-				projectId,
-				message: 'check the ledger',
-				memory: { threadId: 'thread-2', resourceId: 'platform-user-1' },
-				integrationType: 'slack',
-				sandboxPrincipalHash: integrationPrincipalHash,
-			}),
-		);
-
-		expect(previewChunks[0]).toMatchObject({
-			type: 'tool-call-suspended',
-			suspendPayload: {
-				type: 'approval',
-				details: {
-					toolName: 'check_ledger',
-					input: {},
-					node: {
-						type: 'n8n-nodes-base.dataTableTool',
-						parameters: { resource: 'row', operation: 'get', returnAll: true },
-					},
-				},
-			},
-		});
-		expect(publishedChunks[0]).toEqual(approvalChunk);
-	});
-
 	it('executes published integration chat with integration-scoped runtime', async () => {
 		const {
 			service,
@@ -1783,6 +1753,29 @@ describe('AgentExecutionOrchestratorService', () => {
 			}),
 			expect.any(Date),
 		);
+	});
+
+	it('attaches the budget guardrail saved on the published runtime', async () => {
+		const { service, agentRepository, runtimeCacheService, executionService } = makeService();
+		agentRepository.isN8nChatPublished.mockResolvedValue(true);
+		executionService.canUseProductionChatThread.mockResolvedValue(true);
+		const runtime = {
+			...makeRuntime(),
+			budget: { enabled: true, sessionCostCapUsd: 1 },
+		};
+		runtimeCacheService.getRuntime.mockResolvedValue(runtime);
+
+		await collect(
+			service.executeForN8nChatPublished({
+				agentId,
+				projectId,
+				user,
+				message: 'Hello',
+				memory: { threadId: 'thread-1', resourceId: 'n8n-chat-production:user-1' },
+			}),
+		);
+
+		expect(runtime.agent.stream.mock.calls[0][1]?.guardrails?.hooks).toHaveLength(1);
 	});
 
 	it('rejects a production turn with a foreign thread or memory scope', async () => {
@@ -2060,6 +2053,46 @@ describe('AgentExecutionOrchestratorService', () => {
 			);
 		},
 	);
+
+	it('finalizes an admitted execution with its telemetry when the runtime build fails', async () => {
+		const { service, runtimeCacheService, executionService, agentRepository } = makeService();
+		const buildError = new UserError('Credential "OpenAI" not found');
+		runtimeCacheService.getRuntime.mockRejectedValue(buildError);
+		agentRepository.findByIdAndProjectId.mockResolvedValue({
+			id: agentId,
+			name: 'Support Agent',
+			schema,
+			activeVersion: { schema },
+			integrations: [],
+		} as unknown as Agent);
+
+		await expect(
+			collect(
+				service.executeForChatPublished({
+					agentId,
+					projectId,
+					message: 'from slack',
+					memory: { threadId: 'thread-1', resourceId: 'platform-user-1' },
+					integrationType: 'slack',
+					sandboxPrincipalHash: integrationPrincipalHash,
+					admittedExecution: {
+						executionId: 'admitted-1',
+						startedAt: new Date(),
+						inputMessageIds: ['message-1'],
+					},
+				}),
+			),
+		).rejects.toBe(buildError);
+
+		expect(executionService.startExecutionRecording).not.toHaveBeenCalled();
+		expect(executionService.finalizeExecution).toHaveBeenCalledWith(
+			'admitted-1',
+			expect.objectContaining({
+				telemetry: expect.objectContaining({ runType: 'production' }),
+				record: expect.objectContaining({ finishReason: 'error' }),
+			}),
+		);
+	});
 
 	it('rethrows the build error without recording when the agent no longer exists', async () => {
 		const { service, runtimeCacheService, executionService, agentRepository } = makeService();

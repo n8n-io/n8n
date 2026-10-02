@@ -3,11 +3,13 @@ import { ExpressionError } from '../../errors/expression.error';
 import type { IWorkflowDataProxyData } from '../../interfaces';
 import {
 	ARRAY_METHODS,
+	MAX_DEPTH,
 	MAX_RESULT_LENGTH,
 	NUMBER_METHODS,
 	STRING_METHODS,
 	hasOwn,
 	isArray,
+	isObj,
 	toNum,
 	toStr,
 	type BinaryOp,
@@ -175,15 +177,21 @@ function assertPreflightSize(receiver: unknown, method: string, args: unknown[])
 	} else if (method === 'flat' && isArray(receiver)) {
 		const depth = args.length === 0 ? 1 : toNum(args[0]);
 		upperBound = flatSize(receiver, depth);
-	} else if (method === 'replaceAll' && typeof receiver === 'string') {
+	} else if ((method === 'replace' || method === 'replaceAll') && typeof receiver === 'string') {
 		// A missing replacement inserts the string "undefined".
 		const replacement = args.length < 2 ? 'undefined' : toStr(args[1]);
 
-		// `$&`, `$\``, `$'` splice match context into every replacement, so
-		// the result is not bounded by the replacement's length.
-		if (replacement.includes('$')) throw new EngineFallbackError();
+		// Three replacement tokens expand: `$&`, `$\`` and `$'` insert match
+		// context, so the output is not bounded by the replacement's length.
+		// `$$` is an escaped literal `$`; strip those pairs first so that `$$&`
+		// (a literal "$&") stays native while `$$$&` (a literal "$" then `$&`)
+		// bails. With a string pattern every other `$` is literal.
+		if (/\$[&`']/.test(replacement.replaceAll('$$', ''))) throw new EngineFallbackError();
 
-		upperBound = (receiver.length + 1) * (replacement.length + 1);
+		upperBound =
+			method === 'replace'
+				? receiver.length + replacement.length
+				: (receiver.length + 1) * (replacement.length + 1);
 	} else if (method === 'join' && isArray(receiver)) {
 		// Only an undefined separator means ","; null joins with "null".
 		const separator = args[0] === undefined ? ',' : toStr(args[0]);
@@ -211,6 +219,74 @@ function flatSize(array: unknown[], depth: number): number {
 		if (size > MAX_RESULT_LENGTH) break;
 	}
 	return size;
+}
+
+/**
+ * Array methods that call toString on their elements: join() on every
+ * element, toSorted()'s default comparator on both operands per comparison.
+ * On nested arrays that work is proportional to the nested size, which no
+ * element count bounds, so these run natively over primitive elements only.
+ */
+const STRINGIFIES_ELEMENTS = new Set(['join', 'toSorted']);
+
+/**
+ * Hands off to the engine unless every element is a primitive. O(n) over a
+ * receiver the size cap already limits, and runs before anything is
+ * stringified.
+ */
+function assertPrimitiveElements(receiver: unknown[]): void {
+	// The receiver cap applies before the scan, so the scan never walks more
+	// than the cap either.
+	if (receiver.length > MAX_RESULT_LENGTH) throw new EngineFallbackError();
+
+	for (const element of receiver) {
+		if (!isPrimitive(element)) throw new EngineFallbackError();
+	}
+}
+
+/**
+ * Content size of a JSON value: string lengths plus one per element and
+ * key, stopping early past the budget. Deeper than the grammar's own depth
+ * cap hands off: the engine owns data that deep.
+ */
+function contentWeight(value: unknown, budget: number, depth = 0): number {
+	if (depth > MAX_DEPTH) throw new EngineFallbackError();
+	if (typeof value === 'string') return value.length;
+	if (!isObj(value)) return 1;
+
+	let weight = 1;
+	if (isArray(value)) {
+		for (const element of value) {
+			weight += contentWeight(element, budget - weight, depth + 1);
+			if (weight > budget) break;
+		}
+		return weight;
+	}
+
+	// Walk keys without materialising an entries array: an object with many
+	// keys would otherwise be copied before the budget is checked.
+	for (const key in value) {
+		if (!hasOwn(value, key)) continue;
+		weight += key.length + contentWeight(value[key], budget - weight, depth + 1);
+		if (weight > budget) break;
+	}
+	return weight;
+}
+
+/**
+ * concat() is the one method that can hold more content than the payload
+ * delivered: N arguments that reference one large string become N copies
+ * when the result is cloned (copyResult) and N operands for every method
+ * downstream (join, toSorted, includes). Element count does not see that,
+ * so concat is bounded by the content size of receiver plus arguments.
+ */
+function assertConcatWeight(receiver: unknown[], args: unknown[]): void {
+	let weight = contentWeight(receiver, MAX_RESULT_LENGTH);
+	for (const arg of args) {
+		if (weight > MAX_RESULT_LENGTH) break;
+		weight += contentWeight(arg, MAX_RESULT_LENGTH - weight);
+	}
+	if (weight > MAX_RESULT_LENGTH) throw new EngineFallbackError();
 }
 
 function evalCall(
@@ -241,6 +317,10 @@ function evalCall(
 		throw new EngineFallbackError();
 	}
 
+	if (isArray(receiver)) {
+		if (STRINGIFIES_ELEMENTS.has(node.method)) assertPrimitiveElements(receiver);
+		if (node.method === 'concat') assertConcatWeight(receiver, args);
+	}
 	assertPreflightSize(receiver, node.method, args);
 
 	return bounded(method.apply(receiver, args));
