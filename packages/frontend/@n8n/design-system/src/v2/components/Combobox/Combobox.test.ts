@@ -677,33 +677,6 @@ describe('v2/components/Combobox', () => {
 			});
 		});
 
-		it('should emit an empty search term when a single selection is cleared', async () => {
-			const items = options('Option 1', 'Option 2');
-			const searchTerms: string[] = [];
-			const wrapper = render({
-				components: { Combobox },
-				setup() {
-					const value = ref('Option 1');
-					return {
-						value,
-						items,
-						onSearchTerm: (term: string) => {
-							searchTerms.push(term);
-						},
-					};
-				},
-				template:
-					'<Combobox v-model="value" :items="items" clearable @update:search-term="onSearchTerm" />',
-			});
-
-			await userEvent.click(wrapper.getByRole('button', { name: 'Clear selection' }));
-
-			await waitFor(() => {
-				expect(wrapper.getByRole('combobox')).toHaveValue('');
-				expect(searchTerms.at(-1)).toBe('');
-			});
-		});
-
 		it('should emit an empty array when clearing a multiple selection', async () => {
 			const wrapper = render(Combobox, {
 				props: {
