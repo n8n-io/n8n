@@ -308,15 +308,28 @@ export class WorkflowRunner {
 			// Save-as-claim: transition to `crashed` and persist the error payload in one
 			// guarded write. If crash recovery (or another writer) transitioned the
 			// execution first, keep its data and run no hooks.
-			const claimed = await this.executionPersistence.updateExistingExecution(
-				executionId,
-				{
-					stoppedAt: fullRunData.stoppedAt,
-					status: fullRunData.status,
-					data: fullRunData.data,
-				},
-				{ requireStatuses: CRASHABLE_EXECUTION_STATUSES },
-			);
+			let claimed: boolean;
+			try {
+				claimed = await this.executionPersistence.updateExistingExecution(
+					executionId,
+					{
+						stoppedAt: fullRunData.stoppedAt,
+						status: fullRunData.status,
+						data: fullRunData.data,
+					},
+					{ requireStatuses: CRASHABLE_EXECUTION_STATUSES },
+				);
+			} catch (claimError) {
+				// A failed claim rolls back, so the row stays claimable for crash
+				// recovery. It must not abort finalization.
+				this.logger.warn('Could not persist the stalled execution as crashed', {
+					executionId,
+					error: ensureError(claimError),
+				});
+				this.errorReporter.error(ensureError(claimError), { executionId });
+				this.activeExecutions.finalizeExecution(executionId);
+				return;
+			}
 
 			if (!claimed) {
 				this.activeExecutions.finalizeExecution(executionId);

@@ -530,6 +530,34 @@ describe('processError', () => {
 		expect(stored?.status).toBe('crashed');
 	});
 
+	test('processError finalizes without hooks when the stalled-count claim cannot persist', async () => {
+		const workflow = await createWorkflow({}, owner);
+		const execution = await createExecution({ status: 'running', finished: false }, workflow);
+		const executionRepository = Container.get(ExecutionRepository);
+		const finalizeExecution = vi.spyOn(Container.get(ActiveExecutions), 'finalizeExecution');
+		const announce = vi.spyOn(Container.get(ExecutionCrashService), 'announceStalledExecution');
+		vi.spyOn(Container.get(ExecutionPersistence), 'updateExistingExecution').mockRejectedValue(
+			new Error('stored data bundle is unreadable'),
+		);
+
+		globalConfig.executions.mode = 'regular';
+		await runner.processError(
+			new MaxStalledCountError(new Error('job stalled more than maxStalledCount')),
+			new Date(),
+			'webhook',
+			execution.id,
+			hooks,
+		);
+
+		expect(finalizeExecution).toHaveBeenCalledExactlyOnceWith(execution.id);
+		expect(watcher.workflowExecuteAfter).not.toHaveBeenCalled();
+		expect(announce).not.toHaveBeenCalled();
+
+		// the claim rolled back, so the row stays claimable for crash recovery
+		const stored = await executionRepository.findSingleExecution(execution.id, {});
+		expect(stored?.status).toBe('running');
+	});
+
 	test('processError finalizes without running the after hook when a stalled-count error claims nothing', async () => {
 		const workflow = await createWorkflow({}, owner);
 		const execution = await createExecution({ status: 'crashed', finished: false }, workflow);
