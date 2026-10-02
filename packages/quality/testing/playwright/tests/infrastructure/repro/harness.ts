@@ -271,6 +271,7 @@ export async function waitForLog(
 	containers: StartedTestContainer[],
 	snippet: string | string[],
 	timeoutMs: number,
+	abort?: AbortSignal,
 ): Promise<{ container: StartedTestContainer; line: string; at: number }> {
 	const streams: NodeJS.ReadableStream[] = [];
 	try {
@@ -279,6 +280,10 @@ export async function waitForLog(
 				() => reject(new Error(`log "${String(snippet)}" not seen in ${timeoutMs}ms`)),
 				timeoutMs,
 			);
+			abort?.addEventListener('abort', () => {
+				clearTimeout(timer);
+				reject(new Error(`log "${String(snippet)}" wait aborted`));
+			});
 			for (const container of containers) {
 				void container.logs({ since: Math.floor(Date.now() / 1000) - 1 }).then((stream) => {
 					streams.push(stream);

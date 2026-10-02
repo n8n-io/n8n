@@ -79,12 +79,25 @@ test('worker finishes or hands back a job fetched before SIGTERM', async ({}, te
 		const paused = waitForLog([draining], ['Paused all queues', 'Paused queue'], 15_000).catch(
 			() => undefined,
 		);
+		const stopWatching = new AbortController();
+		const drainWaits = waitForLog(
+			[draining],
+			`(execution IDs: ${executionId})`,
+			90_000,
+			stopWatching.signal,
+		).then(
+			() => 'drain-waits' as const,
+			() => 'exited' as const,
+		);
 		const sigtermAt = await signal(draining, 'SIGTERM');
 		const exited = waitForExit(draining, 90_000);
 		const pausedLog = await paused;
-		const releaseRttMs = await point.release(draining);
+		const anchor = await Promise.race([drainWaits, exited.then(() => 'exited' as const)]);
+		stopWatching.abort();
+		const releaseRttMs = anchor === 'drain-waits' ? await point.release(draining) : undefined;
 
 		const exit = await exited;
+		result.releaseAnchor = anchor;
 		const execution = await repro.waitForExecution(executionId, 60_000);
 		const bull = await repro.bull(jobId);
 
