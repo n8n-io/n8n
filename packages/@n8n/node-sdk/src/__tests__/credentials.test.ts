@@ -1,15 +1,17 @@
-import type { ICredentialType, IHttpRequestOptions } from 'n8n-workflow';
+import type { ICredentialType, IHttpRequestHelper, IHttpRequestOptions } from 'n8n-workflow';
 
 import {
 	compat,
+	credentialDataOf,
 	credentialType,
+	discoverOidc,
 	oneOf,
 	str,
 	t,
 	toCredentialType,
 	type AnyCredentialType,
 } from '../index';
-import { credentialBaseUrlOf } from '../credentials';
+import { credentialBaseUrlOf, secretRedactorOf } from '../credentials';
 
 const projected = (type: AnyCredentialType): ICredentialType => {
 	const result = toCredentialType(type);
@@ -561,9 +563,522 @@ describe('credential types in tsc', () => {
 		});
 		// @ts-expect-error the id is `service.scheme`
 		credentialType({ id: 'probe', displayName: 'Probe', auth: (a) => a.apply({}) });
+		credentialType({
+			id: 'probe.token',
+			displayName: 'Probe',
+			fields,
+			// @ts-expect-error `{$token}` exists only in `exchange`
+			auth: (a) => a.header('X-Session', '{$token}'),
+		});
+		credentialType({
+			id: 'probe.session',
+			displayName: 'Probe',
+			fields,
+			auth: (a) =>
+				a.exchange({
+					// @ts-expect-error a secret never goes into a URL
+					post: 'https://{apiKey}.probe.test/login',
+					token: { path: 'id' },
+					headers: { 'X-Session': '{$token}' },
+				}),
+		});
+		credentialType({
+			id: 'probe.session',
+			displayName: 'Probe',
+			fields,
+			auth: (a) =>
+				a.exchange({
+					post: 'https://probe.test/login',
+					token: { path: 'id' },
+					// @ts-expect-error `{$scopes}` exists only in `jwtBearer` claims
+					headers: { 'X-Session': '{$scopes}' },
+				}),
+		});
+		credentialType({
+			id: 'probe.serviceAccount',
+			displayName: 'Probe',
+			fields,
+			auth: (a) =>
+				a.oauth2.jwtBearer({
+					tokenEndpoint: 'https://probe.test/token',
+					// @ts-expect-error the key is a secret field
+					key: 'region',
+					// @ts-expect-error a claim never holds a secret
+					claims: { sub: '{apiKey}' },
+				}),
+		});
+		credentialType({
+			id: 'probe.oauth2',
+			displayName: 'Probe',
+			fields,
+			auth: (a) =>
+				a.oauth2.authorizationCode({
+					// @ts-expect-error an endpoint is https or starts with a field
+					authorizationEndpoint: 'http://probe.test/authorize',
+					tokenEndpoint: 'https://probe.test/token',
+				}),
+		});
 	};
 
 	it('rejects typos, a missing reason and a secret in the base URL', () => {
 		expect(probes).toBeTypeOf('function');
+	});
+});
+
+const metabase = credentialType({
+	id: 'metabase.session',
+	legacyName: 'metabaseApi',
+	displayName: 'Metabase API',
+	fields: { url: t.url('URL'), username: t.text('Username'), password: t.secret('Password') },
+	baseUrl: '{url}',
+	auth: (a) =>
+		a.exchange({
+			post: '{url}/api/session',
+			json: { username: '{username}', password: '{password}' },
+			token: { path: 'id', field: 'sessionToken' },
+			headers: { 'X-Metabase-Session': '{$token}' },
+		}),
+	test: { get: '/api/user/current' },
+});
+
+/** A request helper that answers each token request with `reply` and records it. */
+const tokenHelper = (reply: () => unknown) => {
+	const sent: IHttpRequestOptions[] = [];
+	const helper = {
+		helpers: {
+			httpRequest: async (options: IHttpRequestOptions) => {
+				sent.push(options);
+				return await Promise.resolve(reply());
+			},
+		},
+	} as IHttpRequestHelper;
+	return { helper, sent };
+};
+
+const preAuthenticate = async (type: ICredentialType, helper: IHttpRequestHelper, data: object) => {
+	if (!type.preAuthentication) throw new Error('no preAuthentication');
+	return await type.preAuthentication.call(helper, { ...data });
+};
+
+describe('exchange', () => {
+	const data = { url: 'https://metabase.acme.test/', username: 'ada', password: 'pw-1' };
+
+	it('projects a hidden token field, a token request, and a generic block for the token', () => {
+		const type = projected(metabase);
+		expect(type.properties[0]).toEqual({
+			displayName: 'Token',
+			name: 'sessionToken',
+			type: 'hidden',
+			default: '',
+			typeOptions: { expirable: true, password: true },
+		});
+		expect(type.authenticate).toEqual({
+			type: 'generic',
+			properties: { headers: { 'X-Metabase-Session': '={{$credentials.sessionToken}}' } },
+		});
+		expect(typeof type.preAuthentication).toBe('function');
+	});
+
+	it('sends the token request to the credential host and reads the token', async () => {
+		const { helper, sent } = tokenHelper(() => ({ id: 'session-1' }));
+		expect(await preAuthenticate(projected(metabase), helper, data)).toEqual({
+			sessionToken: 'session-1',
+		});
+		expect(sent).toEqual([
+			{
+				method: 'POST',
+				url: 'https://metabase.acme.test/api/session',
+				body: { username: 'ada', password: 'pw-1' },
+				json: true,
+				allowedDomains: 'metabase.acme.test',
+			},
+		]);
+	});
+
+	it('stores the expiry of the token when the response has one', async () => {
+		const expiring = credentialType({
+			id: 'acme.session',
+			displayName: 'Acme',
+			fields: { key: t.secret('Key') },
+			baseUrl: 'https://api.acme.test',
+			auth: (a) =>
+				a.exchange({
+					post: 'https://api.acme.test/login',
+					json: { key: '{key}' },
+					token: { path: 'data.token', expiresIn: 'data.expires_in' },
+					headers: { Authorization: 'Bearer {$token}' },
+				}),
+		});
+		const type = projected(expiring);
+		expect(type.properties.map(({ name }) => name)).toEqual(['token', 'n8n_expires_at', 'key']);
+		const { helper } = tokenHelper(() => ({ data: { token: 't-1', expires_in: 60 } }));
+		const before = Date.now();
+		const output = await preAuthenticate(type, helper, { key: 'k-1' });
+		expect(output.token).toBe('t-1');
+		expect(Number(output.n8n_expires_at)).toBeGreaterThanOrEqual(before + 60_000);
+		const unknown = tokenHelper(() => ({ data: { token: 't-2' } }));
+		expect(await preAuthenticate(type, unknown.helper, { key: 'k-1' })).toEqual({
+			token: 't-2',
+			n8n_expires_at: '',
+		});
+	});
+
+	it('refuses a token host that is not a credential host, and redacts a failed request', async () => {
+		const elsewhere = credentialType({
+			id: 'acme.session',
+			displayName: 'Acme',
+			fields: { key: t.secret('Key') },
+			baseUrl: 'https://api.acme.test',
+			auth: (a) =>
+				a.exchange({
+					post: 'https://login.other.test/session',
+					json: { key: '{key}' },
+					token: { path: 'token' },
+					headers: { 'X-Session': '{$token}' },
+				}),
+		});
+		const { helper, sent } = tokenHelper(() => ({ token: 't' }));
+		await expect(preAuthenticate(projected(elsewhere), helper, { key: 'k' })).rejects.toThrow(
+			'the token request goes to login.other.test',
+		);
+		expect(sent).toEqual([]);
+
+		const failing = {
+			helpers: {
+				httpRequest: async () => await Promise.reject(new Error('401: bad password pw-1')),
+			},
+		} as unknown as IHttpRequestHelper;
+		await expect(preAuthenticate(projected(metabase), failing, data)).rejects.toThrow(
+			'Credential metabaseApi: the token request failed: 401: bad password [REDACTED]',
+		);
+		const empty = tokenHelper(() => ({}));
+		await expect(preAuthenticate(projected(metabase), empty.helper, data)).rejects.toThrow(
+			'the token response has no id',
+		);
+	});
+
+	it('refuses an exchange without {$token}, with a field as the token field, or an unknown field', () => {
+		const exchange = (spec: object) => () =>
+			credentialType({
+				id: 'acme.session',
+				displayName: 'Acme',
+				fields: { key: t.secret('Key') },
+				hosts: ['api.acme.test'],
+				// Plain JavaScript: tsc does not check the spec.
+				auth: (a) =>
+					a.exchange({
+						post: 'https://api.acme.test/login',
+						token: { path: 'token' },
+						...spec,
+					} as never),
+			});
+		expect(exchange({ headers: { 'X-Session': 'none' } })).toThrow('exchange: no {$token}');
+		expect(
+			exchange({ token: { path: 'token', field: 'key' }, headers: { 'X-S': '{$token}' } }),
+		).toThrow('exchange: key must be a new field name');
+		expect(exchange({ json: { key: '{nope}' }, headers: { 'X-S': '{$token}' } })).toThrow(
+			'exchange.json: {nope} is not a field',
+		);
+		expect(exchange({ token: { path: 'a..b' }, headers: { 'X-S': '{$token}' } })).toThrow(
+			'exchange: a..b is not a dot path',
+		);
+		expect(() =>
+			credentialType({
+				id: 'acme.session',
+				displayName: 'Acme',
+				auth: (a) =>
+					a.exchange({
+						post: 'https://api.acme.test/login',
+						token: { path: 'token' },
+						headers: { 'X-Session': '{$token}' },
+					}),
+			}),
+		).toThrow('exchange needs a baseUrl or hosts');
+	});
+});
+
+describe('OAuth2 grants and OIDC', () => {
+	it('projects endpoint templates over fields, editable scopes and a legacy parent', () => {
+		const type = projected(
+			credentialType({
+				id: 'acme.oauth2',
+				legacyName: 'acmeOAuth2Api',
+				displayName: 'Acme OAuth2 API',
+				legacyParent: 'acmeBaseOAuth2Api',
+				fields: { server: t.url('Server').default('https://acme.test') },
+				auth: (a) =>
+					a.oauth2.authorizationCode({
+						authorizationEndpoint: '{server}/oauth/authorize',
+						tokenEndpoint: '{server}/oauth/token',
+						scope: ['read', 'write'],
+						pkce: false,
+						editableScopes: true,
+					}),
+			}),
+		);
+		expect(type.extends).toEqual(['acmeBaseOAuth2Api']);
+		const byName = Object.fromEntries(type.properties.map((property) => [property.name, property]));
+		expect(byName.authUrl?.default).toBe('={{$self.server}}/oauth/authorize');
+		expect(byName.accessTokenUrl?.default).toBe('={{$self.server}}/oauth/token');
+		expect(byName.enabledScopes).toMatchObject({ type: 'string', default: 'read write' });
+		expect(byName.scope?.default).toBe(
+			'={{$self["customScopes"] ? $self["enabledScopes"] : "read write"}}',
+		);
+		expect(type.properties.map(({ name }) => name)).toEqual([
+			'grantType',
+			'authUrl',
+			'accessTokenUrl',
+			'customScopes',
+			'customScopesNotice',
+			'enabledScopes',
+			'scope',
+			'authQueryParameters',
+			'authentication',
+			'server',
+		]);
+	});
+
+	it('keeps the grants n8n core does not run as data and refuses to project them', () => {
+		const fields = { privateKey: t.secret('Private Key'), email: t.text('Email') };
+		const jwt = credentialType({
+			id: 'acme.serviceAccount',
+			displayName: 'Acme',
+			fields,
+			auth: (a) =>
+				a.oauth2.jwtBearer({
+					tokenEndpoint: 'https://oauth2.acme.test/token',
+					key: 'privateKey',
+					claims: { iss: '{email}', scope: '{$scopes}' },
+				}),
+		});
+		expect(jwt.scheme).toEqual({
+			kind: 'oauth2',
+			grant: 'jwtBearer',
+			tokenEndpoint: 'https://oauth2.acme.test/token',
+			key: 'privateKey',
+			algorithm: 'RS256',
+			claims: { iss: '{email}', scope: '{$scopes}' },
+			scope: [],
+		});
+		expect(() => toCredentialType(jwt)).toThrow('n8n core does not run jwtBearer yet');
+		const device = credentialType({
+			id: 'acme.device',
+			displayName: 'Acme',
+			auth: (a) =>
+				a.oauth2.deviceCode({
+					deviceAuthorizationEndpoint: 'https://acme.test/device',
+					tokenEndpoint: 'https://acme.test/token',
+				}),
+		});
+		expect(() => toCredentialType(device)).toThrow('n8n core does not run deviceCode yet');
+		const exchange = credentialType({
+			id: 'acme.exchange',
+			displayName: 'Acme',
+			fields: { subject: t.secret('Subject Token') },
+			auth: (a) =>
+				a.oauth2.tokenExchange({
+					tokenEndpoint: 'https://acme.test/token',
+					subjectToken: 'subject',
+					subjectTokenType: 'urn:ietf:params:oauth:token-type:jwt',
+					resource: 'https://api.acme.test',
+				}),
+		});
+		expect(exchange.scheme).toMatchObject({
+			grant: 'tokenExchange',
+			clientAuth: 'client_secret_basic',
+		});
+		const oidc = credentialType({
+			id: 'acme.oidc',
+			displayName: 'Acme',
+			fields: { tenant: t.text('Tenant') },
+			auth: (a) => a.oidc({ issuer: 'https://{tenant}.acme.test', scope: ['email', 'openid'] }),
+		});
+		expect(oidc.scheme).toEqual({
+			kind: 'oidc',
+			issuer: 'https://{tenant}.acme.test',
+			scope: ['openid', 'email'],
+			clientAuth: 'client_secret_basic',
+			pkce: true,
+		});
+		expect(() => toCredentialType(oidc)).toThrow('n8n core does not run oidc yet');
+	});
+
+	it('refuses a scope with a space, a claim with a secret, and a subject token that is not a secret', () => {
+		const make = (auth: Parameters<typeof credentialType>[0]['auth']) => () =>
+			credentialType({
+				id: 'acme.oauth2',
+				displayName: 'Acme',
+				fields: { key: t.secret('Key'), email: t.text('Email') },
+				auth,
+			});
+		expect(
+			make((a) =>
+				a.oauth2.clientCredentials({ tokenEndpoint: 'https://acme.test/token', scope: ['a b'] }),
+			),
+		).toThrow('scope: "a b" is not one scope token');
+		for (const scope of ['a}}b', '=a', '{a']) {
+			expect(
+				make((a) =>
+					a.oauth2.clientCredentials({ tokenEndpoint: 'https://acme.test/token', scope: [scope] }),
+				),
+			).toThrow(`scope: "${scope}" is not one scope token`);
+		}
+		expect(
+			make((a) =>
+				a.oauth2.jwtBearer({
+					tokenEndpoint: 'https://acme.test/token',
+					key: 'key',
+					claims: { sub: '{key}' } as never,
+				}),
+			),
+		).toThrow('jwtBearer: {key} is not a field or $scopes, or a secret');
+		expect(
+			make((a) =>
+				a.oauth2.tokenExchange({
+					tokenEndpoint: 'https://acme.test/token',
+					subjectToken: 'email' as never,
+					subjectTokenType: 'urn:ietf:params:oauth:token-type:jwt',
+				}),
+			),
+		).toThrow('tokenExchange: email is not a secret field');
+		expect(
+			make((a) => a.oauth2.clientCredentials({ tokenEndpoint: 'http://acme.test/token' as never })),
+		).toThrow('tokenEndpoint must start with https:// or a {field}');
+	});
+
+	it('reads the endpoints from the discovery document of the issuer', async () => {
+		const issuer = 'https://id.acme.test';
+		const document = {
+			issuer,
+			authorization_endpoint: 'https://id.acme.test/authorize',
+			token_endpoint: 'https://id.acme.test/token',
+			jwks_uri: 'https://id.acme.test/jwks',
+			userinfo_endpoint: 'https://id.acme.test/userinfo',
+		};
+		const asked: string[] = [];
+		const get = async (url: string) => {
+			asked.push(url);
+			return await Promise.resolve(document);
+		};
+		expect(await discoverOidc(`${issuer}`, get)).toEqual({
+			authorizationEndpoint: 'https://id.acme.test/authorize',
+			tokenEndpoint: 'https://id.acme.test/token',
+			jwksUri: 'https://id.acme.test/jwks',
+			userinfoEndpoint: 'https://id.acme.test/userinfo',
+		});
+		expect(asked).toEqual(['https://id.acme.test/.well-known/openid-configuration']);
+		const other = async () => await Promise.resolve({ ...document, issuer: 'https://evil.test' });
+		await expect(discoverOidc(issuer, other)).rejects.toThrow('names another issuer');
+		const plain = async () =>
+			await Promise.resolve({ ...document, token_endpoint: 'http://id.acme.test/token' });
+		await expect(discoverOidc(issuer, plain)).rejects.toThrow('token_endpoint');
+	});
+});
+
+describe('renamed fields', () => {
+	const renamed = credentialType({
+		id: 'acme.token',
+		displayName: 'Acme',
+		fields: { accessToken: t.secret('Access Token') },
+		auth: (a) => a.bearer('accessToken'),
+		renamed: { token: 'accessToken' },
+	});
+
+	it('reads the value of an old field name, and n8n keeps the old field', async () => {
+		expect(credentialDataOf(renamed, { token: 'old-1', accessToken: '' })).toMatchObject({
+			accessToken: 'old-1',
+		});
+		expect(credentialDataOf(renamed, { token: 'old-1', accessToken: 'new-1' })).toMatchObject({
+			accessToken: 'new-1',
+		});
+		expect(projected(renamed).properties.map(({ name, type }) => [name, type])).toEqual([
+			['accessToken', 'string'],
+			['token', 'hidden'],
+		]);
+		expect(
+			await sign(renamed, { token: 'old-1', accessToken: '' }, { url: 'https://x.test' }),
+		).toEqual({
+			url: 'https://x.test',
+			headers: { Authorization: 'Bearer old-1' },
+		});
+	});
+
+	it('refuses an old name that is a field, or a new name that is not one', () => {
+		expect(() =>
+			credentialType({
+				id: 'acme.token',
+				displayName: 'Acme',
+				fields: { accessToken: t.secret('Access Token') },
+				auth: (a) => a.bearer('accessToken'),
+				renamed: { accessToken: 'accessToken' },
+			}),
+		).toThrow('renamed: accessToken must be an old name of the field accessToken');
+		expect(() =>
+			credentialType({
+				id: 'acme.token',
+				displayName: 'Acme',
+				fields: { subdomain: t.text('Subdomain'), accessToken: t.secret('Access Token') },
+				baseUrl: 'https://{subdomain}.acme.test',
+				auth: (a) => a.bearer('accessToken'),
+				renamed: { domain: 'subdomain' },
+			}),
+		).toThrow('renamed: subdomain is in baseUrl, test or a URL, which do not read an old name');
+	});
+});
+
+describe('secretRedactorOf', () => {
+	it('removes secrets, derived tokens, base64 and URL-encoded forms, and basic pairs', () => {
+		const zendesk = credentialType({
+			id: 'zendesk.token',
+			displayName: 'Zendesk',
+			fields: { email: t.text('Email'), apiToken: t.secret('API Token') },
+			auth: (a) => a.basic('{email}/token', '{apiToken}'),
+		});
+		const redact = secretRedactorOf(zendesk, {
+			email: 'ada@acme.test',
+			apiToken: 'tok/en+1',
+			oauthTokenData: { access_token: 'at-123' },
+		});
+		const basic = Buffer.from('ada@acme.test/token:tok/en+1').toString('base64');
+		expect(
+			redact(`raw tok/en+1, url tok%2Fen%2B1, basic ${basic}, oauth at-123, email ada@acme.test`),
+		).toBe(
+			'raw [REDACTED], url [REDACTED], basic [REDACTED], oauth [REDACTED], email ada@acme.test',
+		);
+		expect(redact('Authorization: Bearer a-refreshed-token-value')).toBe(
+			'Authorization: [REDACTED]',
+		);
+	});
+
+	it('removes the client secret and the user header value, but not the header name or a short value', () => {
+		const acme = credentialType({
+			id: 'acme.oauth2',
+			displayName: 'Acme',
+			fields: { pin: t.secret('PIN').optional() },
+			auth: (a) =>
+				a.oauth2.clientCredentials({ tokenEndpoint: 'https://acme.test/token', scope: ['read'] }),
+		});
+		const redact = secretRedactorOf(acme, {
+			pin: 'abc',
+			clientSecret: 'client-secret-1',
+			headerName: 'Authorization',
+			headerValue: 'header-value-1',
+		});
+		expect(redact('abc client-secret-1 Authorization header-value-1')).toBe(
+			'abc [REDACTED] Authorization [REDACTED]',
+		);
+	});
+
+	it('removes each long unmarked value of a compat type, but not its plain fields or settings', () => {
+		const github = compat('githubOAuth2Api', { fields: { server: t.url('Server') } });
+		const redact = secretRedactorOf(github, {
+			server: 'https://api.github.com',
+			clientSecret: 'client-secret-1',
+			authentication: 'header',
+			pin: '1234',
+		});
+		expect(redact('client-secret-1 at https://api.github.com with header 1234')).toBe(
+			'[REDACTED] at https://api.github.com with header 1234',
+		);
 	});
 });

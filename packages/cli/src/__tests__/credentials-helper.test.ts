@@ -2692,6 +2692,94 @@ describe('CredentialsHelper', () => {
 			expect(refreshed).toMatchObject({ accessToken: 'TOKEN_2' });
 		});
 	});
+	describe('preAuthentication token requests', () => {
+		const login = vi.fn();
+		const sessionApi: ICredentialType = {
+			name: 'sessionApi',
+			displayName: 'Session API',
+			properties: [
+				{
+					displayName: 'Token',
+					name: 'token',
+					type: 'hidden',
+					typeOptions: { expirable: true },
+					default: '',
+				},
+			],
+			preAuthentication: login,
+		};
+		const node = mock<INode>({
+			parameters: {},
+			credentials: { sessionApi: { id: 'session-1', name: 'Session' } },
+		});
+		const helpers = mock<IHttpRequestHelper>();
+
+		beforeEach(() => {
+			vi.clearAllMocks();
+			mockNodesAndCredentials.getCredential
+				.calledWith('sessionApi')
+				.mockReturnValue({ type: sessionApi, sourcePath: '' });
+			login.mockImplementation(
+				async () => await Promise.resolve({ token: `T${login.mock.calls.length}` }),
+			);
+			vi.spyOn(credentialsHelper, 'updateCredentials').mockResolvedValue();
+			vi.spyOn(credentialsHelper, 'getCredentials').mockResolvedValue(
+				mock<Credentials>({ getData: vi.fn().mockResolvedValue({}) }),
+			);
+		});
+
+		afterEach(() => {
+			vi.mocked(credentialsHelper.updateCredentials).mockRestore();
+			vi.mocked(credentialsHelper.getCredentials).mockRestore();
+		});
+
+		const preAuthenticate = async (credentials: ICredentialDataDecryptedObject, expired = false) =>
+			await credentialsHelper.preAuthentication(helpers, credentials, 'sessionApi', node, expired);
+
+		test('sends one token request for concurrent requests of one credential', async () => {
+			const results = await Promise.all([
+				preAuthenticate({ user: 'ada', token: '' }),
+				preAuthenticate({ user: 'ada', token: '' }),
+			]);
+
+			expect(login).toHaveBeenCalledTimes(1);
+			expect(credentialsHelper.updateCredentials).toHaveBeenCalledTimes(1);
+			expect(results).toEqual([
+				{ user: 'ada', token: 'T1' },
+				{ user: 'ada', token: 'T1' },
+			]);
+		});
+
+		test('sends a token request per stored data, and again once the first one ended', async () => {
+			await Promise.all([
+				preAuthenticate({ user: 'ada', token: '' }),
+				preAuthenticate({ user: 'bob', token: '' }),
+			]);
+			await preAuthenticate({ user: 'ada', token: 'T1' }, true);
+
+			expect(login).toHaveBeenCalledTimes(3);
+		});
+
+		test('requests a token when the stored expiry has passed', async () => {
+			const past = String(Date.now() - 1_000);
+			const future = String(Date.now() + 60_000);
+
+			expect(await preAuthenticate({ token: 'T0', n8n_expires_at: future })).toBeUndefined();
+			expect(await preAuthenticate({ token: 'T0', n8n_expires_at: '' })).toBeUndefined();
+			expect(await preAuthenticate({ token: 'T0', n8n_expires_at: past })).toMatchObject({
+				token: 'T1',
+			});
+			expect(login).toHaveBeenCalledTimes(1);
+		});
+
+		test('lets the next caller retry after a failed token request', async () => {
+			login.mockRejectedValueOnce(new Error('down'));
+
+			await expect(preAuthenticate({ token: '' })).rejects.toThrow('down');
+			expect(await preAuthenticate({ token: '' })).toMatchObject({ token: 'T2' });
+		});
+	});
+
 	describe('preAuthentication domain restrictions', () => {
 		// This layer attaches the policy; the outbound client enforces it.
 		const wekan = new WekanApi();

@@ -19,7 +19,9 @@
 			"**/o200k_base.json",
 			"**/*.generated.ts",
 			"**/benchmark/scripts/mock-api/**",
-			"**/expectations/**"
+			"**/expectations/**",
+			// `node-sdk/scripts/spec.ts` writes them, and `spec:check` compares their bytes.
+			"packages/@n8n/node-sdk/spec/*.json"
 		]
 	},
 	"formatter": {

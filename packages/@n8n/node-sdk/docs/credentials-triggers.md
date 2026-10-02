@@ -56,6 +56,8 @@ Use the first `auth` that fits:
 | `a.when(field, cases)` | one placement per value of an options field | an auth-type switch |
 | `a.oauth2.authorizationCode(...)` | RFC 6749 §4.1. PKCE S256 is on; a port of a legacy type without PKCE sets `pkce: false` | Notion OAuth2 |
 | `a.oauth2.clientCredentials(...)` | RFC 6749 §4.4 | |
+| `a.oauth2.deviceCode`, `jwtBearer`, `tokenExchange`, `a.oidc({ issuer })` | RFC 8628, RFC 7523, RFC 8693, OIDC. Data only: n8n core does not run them yet, so `toCredentialType` refuses them | |
+| `a.exchange({ post, json, token, headers })` | a token request first, e.g. a login for a session token. `{$token}` is the token | Metabase (parity file) |
 | `a.none()` | nothing. The built-in node that uses the type reads its fields | WhatsApp and Facebook trigger apps |
 | `a.custom({ reason, sign })` | code signs each request and sees every secret. `reason` is required | the last resort |
 
@@ -65,8 +67,22 @@ Use the first `auth` that fits:
 - Hidden fields: `t.hidden(title, value)` is a value that n8n sets, e.g. the ID of a managed Slack
   app. `t.baseUrl()` holds the `baseUrl` of the type, filled from the other fields, for legacy
   nodes that read the URL from the credential data (xAI, MiniMax). Both are JSON Schema `readOnly`.
-- `notice: { text, when: { signatureSecret: '' } }` shows a text after the fields, optionally only
-  while a field has a value.
+- `notice: { text, when: { signatureSecret: '' }, deployment: 'hosted' }` shows a text after the
+  fields, optionally only while a field has a value, or only on one kind of deployment.
+- OAuth2 endpoints are https URLs or templates over fields (`{server}/login/oauth/authorize`).
+  `editableScopes: true` adds the legacy custom-scopes fields. `legacyParent: 'googleOAuth2Api'`
+  projects `extends` to that type, so its sign-in button and instance overwrites apply.
+- `exchange`: n8n stores the token in a hidden field (`token.field`, a password field) and sends
+  the token request again when the field is empty, when `n8n_expires_at` (from
+  `token.expiresIn`) has passed, or after a 401. Concurrent requests of one credential share one
+  token request. The token request must go to a credential host.
+- `renamed: { old: 'new' }` reads a stored value under an old field name when the SDK signs a
+  request, runs the token request, or gives `run()` its fields. n8n core reads `baseUrl`, `test`
+  and the URL templates by the new name, so a field in them cannot be renamed.
+- `run()` gets `credential`: the type name and its fields without secrets, typed per credential
+  type. The runtime removes the secrets and derived tokens (raw, base64, URL-encoded, and the
+  secret patterns of `@n8n/utils`) from errors, error items and log lines. The OAuth2 client
+  secret is a secret. A secret shorter than 4 characters is not removed.
 - A template `{field}` must name a field. A secret never goes into `baseUrl` or `test`.
 - An empty optional field drops its header or query parameter. `defaults` are set only when the
   request has no header of that name. A placement merges into a new request; it never replaces
@@ -234,8 +250,8 @@ The port does not have these legacy behaviours (`GithubTrigger.node.ts`):
   re-consent UI.
 - Typed credential fields in `run()`: actions do not read credential fields. Only `baseUrl`
   reads them. A `credential` in `RunContext` needs an ABI bump.
-- OAuth2 endpoints are fixed https URLs. URL templates over fields, scope lists the user edits,
-  token placement and the other grants (device code, JWT bearer, token exchange, OIDC) come next.
+- n8n core does not run the device code, JWT bearer, token exchange and OIDC grants. They need a
+  host implementation before a type can use them. Token placement quirks come next.
 - Trigger execution fixtures do not replay at publish. A poll fixture could replay pages and
   states.
 - A declarative request runs from the bundle today. The manifest could carry the request, so a

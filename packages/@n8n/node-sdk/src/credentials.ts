@@ -1,16 +1,22 @@
 import { isRecord } from '@n8n/utils/is-record';
+import { DEFAULT_PLACEHOLDER } from '@n8n/utils/redaction/redact-text';
+import { scrubSecretsInText } from '@n8n/utils/scrub-secrets';
 import {
+	OperationalError,
 	UserError,
 	type IAuthenticateGeneric,
 	type IAuthenticateRuleResponseSuccessBody,
 	type ICredentialDataDecryptedObject,
 	type ICredentialTestRequest,
 	type ICredentialType,
+	type IDataObject,
+	type IHttpRequestHelper,
 	type IHttpRequestOptions,
 	type INodeProperties,
 } from 'n8n-workflow';
 
 import { isHostPattern, type RunInput } from './define';
+import { allowsHost, credentialHostsOf } from './egress';
 import {
 	obj,
 	Schema,
@@ -92,6 +98,20 @@ export type UrlTemplate<F extends Shape, T extends string> = T extends
 
 type Templates<F extends Shape, R extends Values> = { readonly [K in keyof R]: Template<F, R[K]> };
 
+/** A placement value of `exchange`: `{$token}` is the token, e.g. `Bearer {$token}`. */
+type TokenTemplates<F extends Shape, R extends Values> = {
+	readonly [K in keyof R]: Checked<R[K], FieldName<F> | '$token', 'not a field or $token'>;
+};
+
+/** A JWT claim: `{$scopes}` is the scopes the actions need. A claim never holds a secret. */
+type ClaimTemplates<F extends Shape, R extends Values> = {
+	readonly [K in keyof R]: Checked<
+		R[K],
+		Exclude<FieldName<F>, SecretName<F>> | '$scopes',
+		'not a field or $scopes, or a secret'
+	>;
+};
+
 /** One https base URL per value of an options field, e.g. a region. */
 export interface BaseUrlMap {
 	readonly on: string;
@@ -134,12 +154,95 @@ export type ClientAuth = 'client_secret_basic' | 'client_secret_post';
 export interface OAuth2Grant {
 	readonly kind: 'oauth2';
 	readonly grant: 'authorizationCode' | 'clientCredentials';
+	/** An https URL, or a template over fields, e.g. `{server}/login/oauth/authorize`. */
 	readonly authorizationEndpoint?: string;
 	readonly tokenEndpoint: string;
 	readonly scope: readonly string[];
 	readonly clientAuth: ClientAuth;
 	readonly pkce: boolean;
 	readonly authorizationQuery: Values;
+	/** The user may replace `scope` in the form. */
+	readonly editableScopes?: true;
+}
+
+/** RFC 8628: the user approves the app on a second device. n8n core does not run it yet. */
+export interface DeviceCodeGrant {
+	readonly kind: 'oauth2';
+	readonly grant: 'deviceCode';
+	readonly deviceAuthorizationEndpoint: string;
+	readonly tokenEndpoint: string;
+	readonly scope: readonly string[];
+}
+
+/**
+ * RFC 7523 §2.1: a JWT that n8n signs with the key of a field is the grant, e.g. a Google
+ * service account. n8n core does not run it yet.
+ */
+export interface JwtBearerGrant {
+	readonly kind: 'oauth2';
+	readonly grant: 'jwtBearer';
+	readonly tokenEndpoint: string;
+	/** The secret field with the PEM private key. */
+	readonly key: string;
+	readonly algorithm: 'RS256';
+	/** Claim templates, e.g. `{ iss: '{email}', scope: '{$scopes}' }`. */
+	readonly claims: Values;
+	readonly scope: readonly string[];
+}
+
+/** RFC 8693: n8n trades the token of a field for an access token. n8n core does not run it yet. */
+export interface TokenExchangeGrant {
+	readonly kind: 'oauth2';
+	readonly grant: 'tokenExchange';
+	readonly tokenEndpoint: string;
+	/** The secret field with the subject token. */
+	readonly subjectToken: string;
+	/** A token type URI of RFC 8693 §3, e.g. `urn:ietf:params:oauth:token-type:jwt`. */
+	readonly subjectTokenType: string;
+	readonly audience?: string;
+	/** RFC 8707: the API the token is for. */
+	readonly resource?: string;
+	readonly scope: readonly string[];
+	readonly clientAuth: ClientAuth;
+}
+
+/**
+ * OpenID Connect with the authorization code grant. The endpoints come from the discovery
+ * document of `issuer`, see `discoverOidc`. n8n core does not run it yet.
+ */
+export interface OidcGrant {
+	readonly kind: 'oidc';
+	readonly issuer: string;
+	/** Always holds `openid`. */
+	readonly scope: readonly string[];
+	readonly clientAuth: ClientAuth;
+	readonly pkce: boolean;
+}
+
+/**
+ * A token request that n8n sends before the requests of a credential, e.g. a login that gives a
+ * session token. n8n stores the token, sends it again until it expires or the API answers 401,
+ * and then sends the token request again.
+ */
+export interface Exchange {
+	readonly kind: 'exchange';
+	readonly request: {
+		readonly method: 'POST';
+		/** A URL template, as `baseUrl`. */
+		readonly url: string;
+		/** A JSON body. The values are templates and may hold secrets. */
+		readonly json: Values;
+	};
+	readonly token: {
+		/** The dot path of the token in the JSON response, e.g. `data.token`. */
+		readonly path: string;
+		/** The hidden field that stores the token. */
+		readonly field: string;
+		/** The dot path of the lifetime in seconds, e.g. `expires_in`. */
+		readonly expiresIn?: string;
+	};
+	/** Where the token goes. `{$token}` is the token. */
+	readonly apply: Placement;
 }
 
 /** n8n puts nothing into requests. The built-in node that uses the type reads its fields. */
@@ -160,14 +263,19 @@ export type CredentialScheme<F extends Shape = Shape> =
 	| Placement
 	| When
 	| OAuth2Grant
+	| DeviceCodeGrant
+	| JwtBearerGrant
+	| TokenExchangeGrant
+	| OidcGrant
+	| Exchange
 	| NoAuth
 	| CustomAuth<F>
 	/** The type stays a legacy class in nodes-base. Only its name is shared. */
 	| { readonly kind: 'compat' };
 
-interface AuthorizationCodeSpec {
-	readonly authorizationEndpoint: `https://${string}`;
-	readonly tokenEndpoint: `https://${string}`;
+interface AuthorizationCodeSpec<F extends Shape, A extends string, T extends string> {
+	readonly authorizationEndpoint: UrlTemplate<F, A>;
+	readonly tokenEndpoint: UrlTemplate<F, T>;
 	/** The provider scopes the app asks for at consent. */
 	readonly scope?: readonly string[];
 	/** Default `client_secret_basic`. */
@@ -176,13 +284,16 @@ interface AuthorizationCodeSpec {
 	readonly pkce?: boolean;
 	/** Extra query parameters of the authorization request, e.g. `{ access_type: 'offline' }`. */
 	readonly authorizationQuery?: Values;
+	/** The form lets the user replace `scope`, e.g. to ask for less. */
+	readonly editableScopes?: true;
 }
 
-interface ClientCredentialsSpec {
-	readonly tokenEndpoint: `https://${string}`;
+interface ClientCredentialsSpec<F extends Shape, T extends string> {
+	readonly tokenEndpoint: UrlTemplate<F, T>;
 	readonly scope?: readonly string[];
 	/** Default `client_secret_basic`. */
 	readonly clientAuth?: ClientAuth;
+	readonly editableScopes?: true;
 }
 
 /** The auth builders, typed by the fields of the credential type. A typo in a field fails `tsc`. */
@@ -222,13 +333,67 @@ export interface AuthBuilders<F extends Shape> {
 		field: K,
 		cases: { readonly [V in Infer<F[K]> & string]: Placement },
 	): When;
-	/** The OAuth2 grants that n8n core runs, named as in RFC 6749. */
+	/** The OAuth2 grants, named as in their RFCs. Endpoints are https URLs or templates. */
 	readonly oauth2: {
 		/** RFC 6749 §4.1, with PKCE (RFC 7636) unless `pkce: false`. */
-		authorizationCode(spec: AuthorizationCodeSpec): OAuth2Grant;
+		authorizationCode<const A extends string, const T extends string>(
+			spec: AuthorizationCodeSpec<F, A, T>,
+		): OAuth2Grant;
 		/** RFC 6749 §4.4. */
-		clientCredentials(spec: ClientCredentialsSpec): OAuth2Grant;
+		clientCredentials<const T extends string>(spec: ClientCredentialsSpec<F, T>): OAuth2Grant;
+		/** RFC 8628. */
+		deviceCode<const D extends string, const T extends string>(spec: {
+			readonly deviceAuthorizationEndpoint: UrlTemplate<F, D>;
+			readonly tokenEndpoint: UrlTemplate<F, T>;
+			readonly scope?: readonly string[];
+		}): DeviceCodeGrant;
+		/** RFC 7523 §2.1, signed with RS256. */
+		jwtBearer<const T extends string, const C extends Values>(spec: {
+			readonly tokenEndpoint: UrlTemplate<F, T>;
+			readonly key: SecretName<F>;
+			readonly claims: ClaimTemplates<F, C>;
+			readonly scope?: readonly string[];
+		}): JwtBearerGrant;
+		/** RFC 8693. */
+		tokenExchange<const T extends string>(spec: {
+			readonly tokenEndpoint: UrlTemplate<F, T>;
+			readonly subjectToken: SecretName<F>;
+			readonly subjectTokenType: `urn:${string}`;
+			readonly audience?: string;
+			readonly resource?: `https://${string}`;
+			readonly scope?: readonly string[];
+			readonly clientAuth?: ClientAuth;
+		}): TokenExchangeGrant;
 	};
+	/** OpenID Connect: the endpoints come from the discovery document of `issuer`. */
+	oidc<const I extends string>(spec: {
+		readonly issuer: UrlTemplate<F, I>;
+		/** `openid` is always added. */
+		readonly scope?: readonly string[];
+		readonly clientAuth?: ClientAuth;
+		readonly pkce?: boolean;
+	}): OidcGrant;
+	/**
+	 * A token request before the requests, e.g. a login for a session token. The token goes where
+	 * `headers` and `query` put `{$token}`.
+	 */
+	exchange<
+		const U extends string,
+		const J extends Values = NoFields,
+		const H extends Values = NoFields,
+		const Q extends Values = NoFields,
+	>(spec: {
+		readonly post: UrlTemplate<F, U>;
+		readonly json?: Templates<F, J>;
+		readonly token: {
+			readonly path: string;
+			/** Default `token`. Keep the legacy name, so a stored token stays valid. */
+			readonly field?: string;
+			readonly expiresIn?: string;
+		};
+		readonly headers?: TokenTemplates<F, H>;
+		readonly query?: TokenTemplates<F, Q>;
+	}): Exchange;
 	/** Fields only: n8n puts nothing into requests, e.g. an app secret that verifies webhooks. */
 	none(): NoAuth;
 	/** The last resort, when no placement fits. `reason` says why. */
@@ -272,6 +437,13 @@ export interface CredentialType<Name extends string = string, F extends Shape = 
 	readonly test?: CredentialTest;
 	/** A text the form shows after the fields. */
 	readonly notice?: Notice;
+	/**
+	 * The legacy n8n type this type extends, e.g. `googleOAuth2Api`. Instance credential
+	 * overwrites and the editor's sign-in button of that type then apply.
+	 */
+	readonly legacyParent?: string;
+	/** Stored fields with an old name, by old name, e.g. `{ token: 'accessToken' }`. */
+	readonly renamed?: Values;
 }
 
 /** A JSON body pattern with one value at its end, e.g. `{ error: { type: 'OAuthException' } }`. */
@@ -303,9 +475,20 @@ export interface Notice {
 	readonly text: string;
 	/** The form shows it only while each named field has this value. */
 	readonly when?: Readonly<Partial<Record<string, string | number | boolean>>>;
+	/** The form shows it only on this kind of n8n deployment. */
+	readonly deployment?: 'cloud' | 'hosted';
 }
 
 export type AnyCredentialType = CredentialType<string, Shape>;
+
+type PlainShape<F extends Shape> = {
+	[K in keyof F as F[K] extends Schema<Secret, boolean> ? never : K]: F[K];
+};
+
+/** The credential that `run()` reads: the type name, and its fields without the secrets. */
+export type RunCredential<T> = T extends CredentialType<infer Name, infer F>
+	? { readonly type: Name; readonly fields: CredentialData<PlainShape<F>> }
+	: never;
 
 /** The data keys every type in `T` has, e.g. for a webhook signing secret. */
 export type CredentialKey<T> = keyof (T extends CredentialType<string, infer F>
@@ -391,6 +574,7 @@ function authBuilders<F extends Shape>(): AuthBuilders<F> {
 				clientAuth: spec.clientAuth ?? 'client_secret_basic',
 				pkce: spec.pkce ?? true,
 				authorizationQuery: spec.authorizationQuery ?? {},
+				...(spec.editableScopes ? { editableScopes: true } : {}),
 			}),
 			clientCredentials: (spec) => ({
 				kind: 'oauth2',
@@ -400,8 +584,49 @@ function authBuilders<F extends Shape>(): AuthBuilders<F> {
 				clientAuth: spec.clientAuth ?? 'client_secret_basic',
 				pkce: false,
 				authorizationQuery: {},
+				...(spec.editableScopes ? { editableScopes: true } : {}),
+			}),
+			deviceCode: (spec) => ({
+				kind: 'oauth2',
+				grant: 'deviceCode',
+				deviceAuthorizationEndpoint: spec.deviceAuthorizationEndpoint,
+				tokenEndpoint: spec.tokenEndpoint,
+				scope: spec.scope ?? [],
+			}),
+			jwtBearer: (spec) => ({
+				kind: 'oauth2',
+				grant: 'jwtBearer',
+				tokenEndpoint: spec.tokenEndpoint,
+				key: spec.key,
+				algorithm: 'RS256',
+				claims: spec.claims,
+				scope: spec.scope ?? [],
+			}),
+			tokenExchange: (spec) => ({
+				kind: 'oauth2',
+				grant: 'tokenExchange',
+				tokenEndpoint: spec.tokenEndpoint,
+				subjectToken: spec.subjectToken,
+				subjectTokenType: spec.subjectTokenType,
+				...(spec.audience === undefined ? {} : { audience: spec.audience }),
+				...(spec.resource === undefined ? {} : { resource: spec.resource }),
+				scope: spec.scope ?? [],
+				clientAuth: spec.clientAuth ?? 'client_secret_basic',
 			}),
 		},
+		oidc: (spec) => ({
+			kind: 'oidc',
+			issuer: spec.issuer,
+			scope: ['openid', ...(spec.scope ?? []).filter((scope) => scope !== 'openid')],
+			clientAuth: spec.clientAuth ?? 'client_secret_basic',
+			pkce: spec.pkce ?? true,
+		}),
+		exchange: (spec) => ({
+			kind: 'exchange',
+			request: { method: 'POST', url: spec.post, json: spec.json ?? {} },
+			token: { ...spec.token, field: spec.token.field ?? 'token' },
+			apply: placement({ headers: spec.headers, query: spec.query }),
+		}),
 		none: () => ({ kind: 'none' }),
 		custom: (spec) => ({ kind: 'custom', reason: spec.reason, sign: spec.sign }),
 	};
@@ -454,6 +679,75 @@ function testIssues(type: AnyCredentialType): string[] {
 	];
 }
 
+/**
+ * RFC 6749 \u00a73.3: a scope token has no space, quote or backslash. The scope also goes into an n8n
+ * expression, so it has no brace and does not start with `=`.
+ */
+const SCOPE_TOKEN = /^(?!=)[\x21\x23-\x5B\x5D-\x7A\x7C\x7E]+$/;
+
+/** The URL templates of a scheme by name, e.g. `tokenEndpoint`. */
+const schemeUrlsOf = (scheme: CredentialScheme): Array<readonly [string, string]> => {
+	if (scheme.kind === 'exchange') return [['exchange', scheme.request.url]];
+	if (scheme.kind === 'oidc') return [['issuer', scheme.issuer]];
+	if (scheme.kind !== 'oauth2') return [];
+	const first =
+		scheme.grant === 'deviceCode'
+			? scheme.deviceAuthorizationEndpoint
+			: 'authorizationEndpoint' in scheme
+				? scheme.authorizationEndpoint
+				: undefined;
+	return [
+		...(first === undefined ? [] : [['authorization', first] as const]),
+		['tokenEndpoint', scheme.tokenEndpoint],
+	];
+};
+
+/** The problems of the token parts of `exchange`, `jwtBearer` and `tokenExchange`. */
+function tokenIssues(type: AnyCredentialType): string[] {
+	const fields = type.fields ?? {};
+	const { scheme } = type;
+	const secret = (name: string) => name in fields && isSecretField(fields[name]);
+	if (scheme.kind === 'exchange') {
+		const { apply, request, token } = scheme;
+		const placed = templatesOf(apply);
+		return [
+			// The token request goes only to a credential host, so the type must have one.
+			...(type.baseUrl === undefined && type.hosts === undefined
+				? ['exchange needs a baseUrl or hosts']
+				: []),
+			...Object.values(request.json)
+				.flatMap(varsOf)
+				.filter((name) => !(name in fields))
+				.map((name) => `exchange.json: {${name}} is not a field`),
+			...placed
+				.flatMap(varsOf)
+				.filter((name) => name !== '$token' && !(name in fields))
+				.map((name) => `exchange: {${name}} is not a field or $token`),
+			...(placed.some((value) => value.includes('{$token}')) ? [] : ['exchange: no {$token}']),
+			...(token.field in fields || !/^[A-Za-z_]\w*$/.test(token.field)
+				? [`exchange: ${token.field} must be a new field name`]
+				: []),
+			...[token.path, token.expiresIn ?? 'x']
+				.filter((path) => !/^[^.[\]]+(\.[^.[\]]+)*$/.test(path))
+				.map((path) => `exchange: ${path} is not a dot path`),
+		];
+	}
+	if (scheme.kind !== 'oauth2') return [];
+	if (scheme.grant === 'jwtBearer') {
+		return [
+			...(secret(scheme.key) ? [] : [`jwtBearer: ${scheme.key} is not a secret field`]),
+			...Object.values(scheme.claims)
+				.flatMap(varsOf)
+				.filter((name) => name !== '$scopes' && (!(name in fields) || secret(name)))
+				.map((name) => `jwtBearer: {${name}} is not a field or $scopes, or a secret`),
+		];
+	}
+	if (scheme.grant === 'tokenExchange' && !secret(scheme.subjectToken)) {
+		return [`tokenExchange: ${scheme.subjectToken} is not a secret field`];
+	}
+	return [];
+}
+
 /** The problems of a definition that `tsc` does not see in plain JavaScript. */
 function definitionIssues(type: AnyCredentialType): string[] {
 	const fields = type.fields ?? {};
@@ -464,6 +758,19 @@ function definitionIssues(type: AnyCredentialType): string[] {
 	const plainField = (name: string) =>
 		name in fields && !isSecretField(fields[name]) && !isBaseUrlField(fields[name]);
 	const hasBaseUrlField = Object.values(fields).some(isBaseUrlField);
+	const urls: Array<readonly [string, string]> = [
+		...(typeof baseUrl === 'string' ? [['baseUrl', baseUrl] as const] : []),
+		...schemeUrlsOf(scheme),
+	];
+	const scopes = 'scope' in scheme ? scheme.scope : [];
+	// n8n core and `credentialBaseUrlOf` read these fields from the stored data, without `renamed`.
+	const readByName = new Set([
+		...urls.flatMap(([, url]) => varsOf(url)),
+		...(typeof baseUrl === 'object' ? [baseUrl.on] : []),
+		...(type.test && 'post' in type.test ? Object.values(type.test.body ?? {}) : []).flatMap(
+			varsOf,
+		),
+	]);
 	return [
 		...(type.hosts ?? [])
 			.filter((host) => !isHostPattern(host))
@@ -471,12 +778,22 @@ function definitionIssues(type: AnyCredentialType): string[] {
 		...unknown(placements.flatMap(templatesOf), (name) => name in fields).map(
 			(name) => `{${name}} is not a field`,
 		),
-		...(typeof baseUrl === 'string' && !/^(https:\/\/|\{)/.test(baseUrl)
-			? ['baseUrl must start with https:// or a {field}']
-			: []),
-		...unknown(typeof baseUrl === 'string' ? [baseUrl] : [], plainField).map(
-			(name) => `baseUrl: {${name}} is not a field, or a secret`,
-		),
+		...urls.flatMap(([label, url]) => [
+			...(/^(https:\/\/|\{)/.test(url) ? [] : [`${label} must start with https:// or a {field}`]),
+			...unknown([url], plainField).map(
+				(name) => `${label}: {${name}} is not a field, or a secret`,
+			),
+		]),
+		...scopes
+			.filter((scope) => !SCOPE_TOKEN.test(scope))
+			.map((scope) => `scope: "${scope}" is not one scope token`),
+		...tokenIssues(type),
+		...Object.entries(type.renamed ?? {})
+			.filter(([from, to]) => from in fields || !(to in fields))
+			.map(([from, to]) => `renamed: ${from} must be an old name of the field ${to}`),
+		...Object.values(type.renamed ?? {})
+			.filter((to) => readByName.has(to))
+			.map((to) => `renamed: ${to} is in baseUrl, test or a URL, which do not read an old name`),
 		...(typeof baseUrl === 'object' && !plainField(baseUrl.on)
 			? [`baseUrl: ${baseUrl.on} is not a field`]
 			: []),
@@ -563,7 +880,15 @@ export function credentialType<
 	readonly notice?: {
 		readonly text: string;
 		readonly when?: { readonly [K in FieldName<F>]?: string | number | boolean };
+		readonly deployment?: 'cloud' | 'hosted';
 	};
+	/**
+	 * The legacy n8n type this type extends, e.g. `googleOAuth2Api`, so its instance overwrites
+	 * and its sign-in button apply.
+	 */
+	readonly legacyParent?: string;
+	/** Stored fields with an old name: n8n reads `{ old: 'new' }` as `new`. */
+	readonly renamed?: { readonly [old: string]: FieldName<F> };
 }): CredentialType<Name, F> {
 	// `Name` is `legacyName`, or `Id` without it. tsc cannot link the default, so a guard narrows.
 	const name: string = spec.legacyName ?? spec.id;
@@ -581,6 +906,8 @@ export function credentialType<
 		...(spec.hosts ? { hosts: spec.hosts } : {}),
 		...(spec.test ? { test: spec.test } : {}),
 		...(spec.notice ? { notice: spec.notice } : {}),
+		...(spec.legacyParent ? { legacyParent: spec.legacyParent } : {}),
+		...(spec.renamed ? { renamed: spec.renamed } : {}),
 	});
 }
 
@@ -620,10 +947,34 @@ const dataSchemaOf = (type: AnyCredentialType): JsonSchema => ({
 	additionalProperties: true,
 });
 
+/** The declared fields without the secrets, each default filled in, for `run()`. */
+export function plainFieldsOf(type: AnyCredentialType, raw: unknown): Record<string, unknown> {
+	const fields = type.fields ?? {};
+	const names = Object.keys(fields).filter((name) => !isSecretField(fields[name]));
+	if (names.length === 0) return {};
+	const data = credentialDataOf(type, raw);
+	return Object.freeze(
+		Object.fromEntries(
+			names.flatMap((name) => (data[name] === undefined ? [] : [[name, data[name]]])),
+		),
+	);
+}
+
+/** A value under an old name moves to the new name while the new one is empty or its default. */
+function migrated(type: AnyCredentialType, raw: unknown): unknown {
+	if (!isRecord(raw) || type.renamed === undefined) return raw;
+	const moved = Object.entries(type.renamed).flatMap(([from, to]) => {
+		const empty: unknown[] = [undefined, '', type.fields?.[to]?.json.default];
+		const unset = empty.includes(raw[to]);
+		return unset && raw[from] !== undefined && raw[from] !== '' ? [[to, raw[from]]] : [];
+	});
+	return moved.length > 0 ? { ...raw, ...Object.fromEntries(moved) } : raw;
+}
+
 /** The stored data, each default filled in and checked against the declared fields. */
 export function credentialDataOf(type: AnyCredentialType, raw: unknown): CredentialData<Shape> {
 	const schema = dataSchemaOf(type);
-	const data = applyDefaults(raw, schema);
+	const data = applyDefaults(migrated(type, raw), schema);
 	const issues = validate(data, schema, { path: type.name });
 	const isData = (value: unknown): value is CredentialData<Shape> =>
 		isRecord(value) && issues.length === 0;
@@ -860,9 +1211,43 @@ const hidden = (
 	...(required ? { required: true } : {}),
 });
 
+const shownWhenCustom = { displayOptions: { show: { customScopes: [true] } } };
+
+/** The scope fields of the legacy types with editable scopes, e.g. `gmailOAuth2`. */
+const editableScopeProperties = (scope: string): INodeProperties[] => [
+	{
+		displayName: 'Custom Scopes',
+		name: 'customScopes',
+		type: 'boolean',
+		default: false,
+		description: 'Define custom scopes',
+	},
+	{
+		displayName:
+			'The default scopes needed for the node to work are already set. If you change these the node may not function correctly.',
+		name: 'customScopesNotice',
+		type: 'notice',
+		default: '',
+		...shownWhenCustom,
+	},
+	{
+		displayName: 'Enabled Scopes',
+		name: 'enabledScopes',
+		type: 'string',
+		...shownWhenCustom,
+		default: scope,
+		description: 'Scopes that should be enabled',
+	},
+	// A scope token has no quote (`SCOPE_TOKEN`), so the text is a safe string literal.
+	hidden('Scope', 'scope', `={{$self["customScopes"] ? $self["enabledScopes"] : "${scope}"}}`),
+];
+
 /** The hidden fields of an `oAuth2Api` child. n8n core runs the flow from them. */
 const oauth2Properties = (grant: OAuth2Grant): INodeProperties[] => {
 	const isCode = grant.grant === 'authorizationCode';
+	const scope = grant.scope.join(' ');
+	// n8n core resolves `$self` in hidden defaults before it runs the flow.
+	const endpoint = (url: string) => toExpression(url, '$self');
 	return [
 		hidden(
 			'Grant Type',
@@ -871,9 +1256,9 @@ const oauth2Properties = (grant: OAuth2Grant): INodeProperties[] => {
 		),
 		...(grant.authorizationEndpoint === undefined
 			? []
-			: [hidden('Authorization URL', 'authUrl', grant.authorizationEndpoint, true)]),
-		hidden('Access Token URL', 'accessTokenUrl', grant.tokenEndpoint, true),
-		hidden('Scope', 'scope', grant.scope.join(' ')),
+			: [hidden('Authorization URL', 'authUrl', endpoint(grant.authorizationEndpoint), true)]),
+		hidden('Access Token URL', 'accessTokenUrl', endpoint(grant.tokenEndpoint), true),
+		...(grant.editableScopes ? editableScopeProperties(scope) : [hidden('Scope', 'scope', scope)]),
 		...(isCode
 			? [
 					hidden(
@@ -911,19 +1296,24 @@ const userHeaderProperties = (): INodeProperties[] => {
 	];
 };
 
-const noticeProperty = ({ text, when }: Notice): INodeProperties => ({
+const noticeProperty = ({ text, when, deployment }: Notice): INodeProperties => ({
 	displayName: text,
 	name: 'notice',
 	type: 'notice',
 	default: '',
-	...(when
+	...(when || deployment
 		? {
 				displayOptions: {
-					show: Object.fromEntries(
-						Object.entries(when).flatMap(([field, value]) =>
-							value === undefined ? [] : [[field, [value]]],
-						),
-					),
+					...(when
+						? {
+								show: Object.fromEntries(
+									Object.entries(when).flatMap(([field, value]) =>
+										value === undefined ? [] : [[field, [value]]],
+									),
+								),
+							}
+						: {}),
+					...(deployment ? { showOnDeployment: deployment } : {}),
 				},
 			}
 		: {}),
@@ -958,6 +1348,183 @@ type Authenticate = (
 	request: IHttpRequestOptions,
 ) => Promise<IHttpRequestOptions>;
 
+const TOKEN_KEYS = ['access_token', 'refresh_token', 'id_token'];
+
+/** Settings that n8n and legacy OAuth2 parents store. A compat type does not mark its secrets. */
+const SETTING_KEYS = new Set([
+	'grantType',
+	'authUrl',
+	'accessTokenUrl',
+	'scope',
+	'enabledScopes',
+	'authQueryParameters',
+	'authentication',
+	'allowedHttpRequestDomains',
+	'allowedDomains',
+	'n8n_expires_at',
+]);
+
+/** A compat type does not mark its secrets, so a short value is more likely a setting. */
+const MIN_UNMARKED_SECRET = 8;
+/** Removing a shorter value removes the same characters from every message. */
+const MIN_MARKED_SECRET = 4;
+
+/**
+ * The secret values of stored data: the secret fields and the tokens n8n derived from them. For a
+ * compat type, each string value that is not a declared plain field or a setting.
+ */
+function secretValuesOf(type: AnyCredentialType | undefined, raw: Record<string, unknown>) {
+	const fields = type?.fields ?? {};
+	const plain = (key: string) => key in fields && !isSecretField(fields[key]);
+	const scheme = type?.scheme;
+	const unmarked = scheme === undefined || scheme.kind === 'compat';
+	const named = unmarked
+		? Object.keys(raw).filter((key) => !plain(key) && !SETTING_KEYS.has(key))
+		: [
+				...Object.keys(fields).filter((key) => !plain(key)),
+				...(scheme.kind === 'exchange' ? [scheme.token.field] : []),
+				// The `oAuth2Api` parent declares the client secret.
+				...(scheme.kind === 'oauth2' || scheme.kind === 'oidc' ? ['clientSecret'] : []),
+				'headerValue',
+			];
+	const { oauthTokenData } = raw;
+	const tokens = isRecord(oauthTokenData) ? TOKEN_KEYS.map((key) => oauthTokenData[key]) : [];
+	const min = unmarked ? MIN_UNMARKED_SECRET : MIN_MARKED_SECRET;
+	return [...named.map((key) => raw[key]), ...tokens].filter(
+		(value): value is string => typeof value === 'string' && value.length >= min,
+	);
+}
+
+/** The `user:password` of each basic placement, which a request sends in base64. */
+function basicPairsOf(type: AnyCredentialType | undefined, raw: Record<string, unknown>) {
+	if (type === undefined) return [];
+	const fill = (template: string) =>
+		template.replace(PLACEHOLDER, (_, name: string) => storedValue(type, raw, name));
+	return placementsOf(type.scheme)
+		.flatMap(({ basic }) => (basic ? [`${fill(basic.username)}:${fill(basic.password)}`] : []))
+		.filter((pair) => pair.length >= MIN_MARKED_SECRET);
+}
+
+/**
+ * Removes the secrets of one credential from a text: each secret in raw, base64 and URL-encoded
+ * form, then the secret patterns of `@n8n/utils`, which also find tokens n8n refreshed during
+ * the run.
+ */
+export function secretRedactorOf(
+	type: AnyCredentialType | undefined,
+	raw: unknown,
+): (text: string) => string {
+	const data = isRecord(raw) ? raw : {};
+	const forms = [
+		...new Set(
+			[...secretValuesOf(type, data), ...basicPairsOf(type, data)].flatMap((value) => [
+				value,
+				Buffer.from(value).toString('base64'),
+				encodeURIComponent(value),
+			]),
+		),
+	].sort((a, b) => b.length - a.length);
+	return (text) =>
+		scrubSecretsInText(
+			forms.reduce((redacted, form) => redacted.split(form).join(DEFAULT_PLACEHOLDER), text),
+		);
+}
+
+const MAX_REDACTION_DEPTH = 8;
+
+/** A copy of a JSON value with each string redacted. A subtree too deep to walk is withheld. */
+export function redactedValue(
+	value: unknown,
+	redact: (text: string) => string,
+	depth = 0,
+): unknown {
+	if (typeof value === 'string') return redact(value);
+	if (value === null || typeof value !== 'object') return value;
+	if (depth >= MAX_REDACTION_DEPTH) return DEFAULT_PLACEHOLDER;
+	if (Array.isArray(value)) return value.map((entry) => redactedValue(entry, redact, depth + 1));
+	// A Buffer or a stream is not JSON, and its bytes are not text.
+	if (Object.getPrototypeOf(value) !== Object.prototype) return value;
+	return Object.fromEntries(
+		Object.entries(value).map(([key, entry]) => [key, redactedValue(entry, redact, depth + 1)]),
+	);
+}
+
+/** The value at a dot path of a JSON value, e.g. `data.token`. */
+const valueAt = (value: unknown, path: string): unknown =>
+	path.split('.').reduce<unknown>((at, key) => (isRecord(at) ? at[key] : undefined), value);
+
+/** The placement of `exchange` with `{$token}` as its stored field. */
+const withTokenField = ({ apply, token }: Exchange): Placement => {
+	const named = (values: Values) =>
+		mapValues(values, (value) => value.split('{$token}').join(`{${token.field}}`));
+	return { ...apply, headers: named(apply.headers), query: named(apply.query) };
+};
+
+/**
+ * The `preAuthentication` of `exchange`. n8n core calls it when the token field is empty, has
+ * expired, or the API answered 401, and stores the result in the credential.
+ */
+function tokenRequestOf(type: AnyCredentialType, scheme: Exchange) {
+	const { request, token } = scheme;
+	return async function preAuthentication(
+		this: IHttpRequestHelper,
+		raw: ICredentialDataDecryptedObject,
+	): Promise<IDataObject> {
+		const data = credentialDataOf(type, raw);
+		const url = credentialBaseUrlOf({ ...type, baseUrl: request.url }, raw) ?? request.url;
+		const hosts = credentialHostsOf(type, raw, {
+			surface: type.displayName,
+			baseUrl: credentialBaseUrlOf(type, raw),
+		});
+		const host = new URL(url).hostname.toLowerCase();
+		if (hosts !== undefined && !allowsHost(hosts, host)) {
+			throw new UserError(`Credential ${type.name}: the token request goes to ${host}`);
+		}
+		const json = mapValues(request.json, (template) =>
+			template.replace(PLACEHOLDER, (_, name: string) => storedValue(type, data, name)),
+		);
+		// With the user list, the n8n credential helper binds the request to it.
+		const bound =
+			hosts !== undefined && raw.allowedHttpRequestDomains !== 'domains'
+				? { allowedDomains: hosts.join(',') }
+				: {};
+		const response: unknown = await this.helpers
+			.httpRequest({ method: request.method, url, body: json, json: true, ...bound })
+			.catch((error: unknown) => {
+				const message = error instanceof Error ? error.message : String(error);
+				const redact = secretRedactorOf(type, raw);
+				throw new OperationalError(
+					`Credential ${type.name}: the token request failed: ${redact(message)}`,
+				);
+			});
+		const value = valueAt(response, token.path);
+		if (typeof value !== 'string' || value === '') {
+			throw new OperationalError(
+				`Credential ${type.name}: the token response has no ${token.path}`,
+			);
+		}
+		if (token.expiresIn === undefined) return { [token.field]: value };
+		const seconds = Number(valueAt(response, token.expiresIn));
+		// An unknown expiry is '': n8n then sends the token again until the API answers 401.
+		const expiresAt = seconds > 0 ? String(Date.now() + seconds * 1000) : '';
+		return { [token.field]: value, n8n_expires_at: expiresAt };
+	};
+}
+
+/** The hidden fields that keep a token and its expiry. The password flag marks them as secrets. */
+const tokenProperties = ({ token }: Exchange): INodeProperties[] => [
+	{
+		...hidden('Token', token.field, ''),
+		typeOptions: { expirable: true, password: true },
+	},
+	// Declared, so the defaults step of n8n keeps the value.
+	...(token.expiresIn === undefined ? [] : [hidden('Token Expires At', 'n8n_expires_at', '')]),
+];
+
+/** A grant that n8n core does not run yet has data, but no n8n credential type. */
+const notRunBy = (type: AnyCredentialType, what: string) =>
+	new UserError(`Credential ${type.id}: n8n core does not run ${what} yet`);
+
 /**
  * The n8n credential type of a value. A compat type has none: its legacy class stays the
  * definition. Placements become a generic block; what the block cannot express becomes a
@@ -966,8 +1533,12 @@ type Authenticate = (
 export function toCredentialType(type: AnyCredentialType): ICredentialType | undefined {
 	const { scheme } = type;
 	if (scheme.kind === 'compat') return undefined;
+	if (scheme.kind === 'oidc') throw notRunBy(type, 'oidc');
 	const properties = [
+		...(scheme.kind === 'exchange' ? tokenProperties(scheme) : []),
 		...Object.entries(type.fields ?? {}).map(([name, schema]) => fieldProperty(type, name, schema)),
+		// Declared, so the defaults step of n8n keeps the old value for `renamed`.
+		...Object.keys(type.renamed ?? {}).map((name) => hidden(name, name, '')),
 		...(placementsOf(scheme).some(({ userHeader }) => userHeader) ? userHeaderProperties() : []),
 		...(type.notice ? [noticeProperty(type.notice)] : []),
 	];
@@ -975,25 +1546,40 @@ export function toCredentialType(type: AnyCredentialType): ICredentialType | und
 		name: type.name,
 		displayName: type.displayName,
 		...(type.documentationUrl ? { documentationUrl: type.documentationUrl } : {}),
+		...(type.legacyParent ? { extends: [type.legacyParent] } : {}),
 	};
 	const test = testOf(type);
 	if (scheme.kind === 'none') return { ...base, properties, ...test };
 	if (scheme.kind === 'oauth2') {
+		if (scheme.grant !== 'authorizationCode' && scheme.grant !== 'clientCredentials') {
+			throw notRunBy(type, scheme.grant);
+		}
 		return {
 			...base,
-			extends: ['oAuth2Api'],
+			extends: [type.legacyParent ?? 'oAuth2Api'],
 			properties: [...oauth2Properties(scheme), ...properties],
 			...test,
 		};
 	}
-	if (scheme.kind === 'apply' && isGeneric(type, scheme)) {
-		return { ...base, properties, authenticate: genericOf(scheme), ...test };
+	const placed =
+		scheme.kind === 'exchange'
+			? withTokenField(scheme)
+			: scheme.kind === 'apply'
+				? scheme
+				: undefined;
+	const exchange =
+		scheme.kind === 'exchange' ? { preAuthentication: tokenRequestOf(type, scheme) } : {};
+	// Core reads a generic block directly, so an old field name of `renamed` needs the function.
+	if (placed && type.renamed === undefined && isGeneric(type, placed)) {
+		return { ...base, properties, ...exchange, authenticate: genericOf(placed), ...test };
 	}
 	const authenticate: Authenticate = async (data, request) => {
 		const stored = credentialDataOf(type, data);
-		if (scheme.kind !== 'custom') {
+		if (placed) return applyPlacement(type, placed, stored, request);
+		if (scheme.kind === 'when') {
 			return applyPlacement(type, placementOf(type, scheme, stored), stored, request);
 		}
+		if (scheme.kind !== 'custom') throw notRunBy(type, scheme.kind);
 		const signed = await scheme.sign(stored, request);
 		// The request layer checks each redirect hop against `allowedDomains`, so a signer that
 		// builds new options must not drop it.
@@ -1001,5 +1587,46 @@ export function toCredentialType(type: AnyCredentialType): ICredentialType | und
 			? signed
 			: { ...signed, allowedDomains: request.allowedDomains };
 	};
-	return { ...base, properties, authenticate, ...test };
+	return { ...base, properties, ...exchange, authenticate, ...test };
+}
+
+/** The endpoints of an OpenID provider, from its discovery document. */
+export interface OidcEndpoints {
+	readonly authorizationEndpoint: string;
+	readonly tokenEndpoint: string;
+	readonly jwksUri: string;
+	readonly userinfoEndpoint?: string;
+	readonly revocationEndpoint?: string;
+}
+
+/**
+ * OpenID Connect Discovery 1.0 §4: reads `/.well-known/openid-configuration` of `issuer` with
+ * `get`. The document must name the same issuer (§4.3), and each endpoint must be https.
+ */
+export async function discoverOidc(
+	issuer: string,
+	get: (url: string) => Promise<unknown>,
+): Promise<OidcEndpoints> {
+	if (!issuer.startsWith('https://')) throw new UserError(`OIDC: ${issuer} is not an https URL`);
+	const document = await get(`${issuer.replace(/\/+$/, '')}/.well-known/openid-configuration`);
+	const member = (name: string) => (isRecord(document) ? document[name] : undefined);
+	if (member('issuer') !== issuer) {
+		throw new UserError(`OIDC: the discovery document of ${issuer} names another issuer`);
+	}
+	const url = (name: string) => {
+		const value = member(name);
+		if (typeof value !== 'string' || !value.startsWith('https://')) {
+			throw new UserError(`OIDC: ${name} of ${issuer} is not an https URL`);
+		}
+		return value;
+	};
+	const optional = (name: string, key: keyof OidcEndpoints) =>
+		member(name) === undefined ? {} : { [key]: url(name) };
+	return {
+		authorizationEndpoint: url('authorization_endpoint'),
+		tokenEndpoint: url('token_endpoint'),
+		jwksUri: url('jwks_uri'),
+		...optional('userinfo_endpoint', 'userinfoEndpoint'),
+		...optional('revocation_endpoint', 'revocationEndpoint'),
+	};
 }

@@ -33,7 +33,10 @@
 							"const": "action"
 						}
 					},
-					"required": ["nodeContract", "kind"],
+					"required": [
+						"nodeContract",
+						"kind"
+					],
 					"additionalProperties": false
 				}
 			},
@@ -104,7 +107,9 @@
 									"$ref": "#/components/schemas/types.json"
 								}
 							},
-							"required": ["some"],
+							"required": [
+								"some"
+							],
 							"additionalProperties": false
 						},
 						{
@@ -185,7 +190,10 @@
 							"$ref": "#/components/schemas/errors.run-error"
 						}
 					},
-					"required": ["outputs", "done"],
+					"required": [
+						"outputs",
+						"done"
+					],
 					"additionalProperties": false
 				}
 			},
@@ -325,7 +333,10 @@
 							"$ref": "#/components/schemas/errors.run-error"
 						}
 					},
-					"required": ["outputs", "done"],
+					"required": [
+						"outputs",
+						"done"
+					],
 					"additionalProperties": false
 				}
 			},
@@ -467,7 +478,10 @@
 							"$ref": "#/components/schemas/errors.run-error"
 						}
 					},
-					"required": ["outputs", "done"],
+					"required": [
+						"outputs",
+						"done"
+					],
 					"additionalProperties": false
 				}
 			},
@@ -1961,7 +1975,10 @@
 						"maximum": 4294967295
 					}
 				},
-				"required": ["input", "item"],
+				"required": [
+					"input",
+					"item"
+				],
 				"additionalProperties": false
 			},
 			"action.join-output": {
@@ -1979,7 +1996,10 @@
 								"$ref": "#/components/schemas/action.item-ref"
 							}
 						},
-						"required": ["tag", "val"],
+						"required": [
+							"tag",
+							"val"
+						],
 						"additionalProperties": false
 					},
 					{
@@ -2007,7 +2027,10 @@
 								"additionalItems": false
 							}
 						},
-						"required": ["tag", "val"],
+						"required": [
+							"tag",
+							"val"
+						],
 						"additionalProperties": false
 					}
 				]
@@ -2027,7 +2050,10 @@
 								"$ref": "#/components/schemas/types.json"
 							}
 						},
-						"required": ["tag", "val"],
+						"required": [
+							"tag",
+							"val"
+						],
 						"additionalProperties": false
 					},
 					{
@@ -2043,7 +2069,10 @@
 								"maximum": 4294967295
 							}
 						},
-						"required": ["tag", "val"],
+						"required": [
+							"tag",
+							"val"
+						],
 						"additionalProperties": false
 					},
 					{
@@ -2073,7 +2102,10 @@
 								"additionalItems": false
 							}
 						},
-						"required": ["tag", "val"],
+						"required": [
+							"tag",
+							"val"
+						],
 						"additionalProperties": false
 					}
 				]
@@ -2089,7 +2121,9 @@
 						"$ref": "#/components/schemas/action.join-output"
 					}
 				},
-				"required": ["output"],
+				"required": [
+					"output"
+				],
 				"additionalProperties": false
 			},
 			"action.routed-output": {
@@ -2104,7 +2138,9 @@
 						"$ref": "#/components/schemas/action.output"
 					}
 				},
-				"required": ["output"],
+				"required": [
+					"output"
+				],
 				"additionalProperties": false
 			},
 			"binary.binary-meta": {
@@ -2123,7 +2159,9 @@
 						"maximum": 9007199254740991
 					}
 				},
-				"required": ["mimeType"],
+				"required": [
+					"mimeType"
+				],
 				"additionalProperties": false
 			},
 			"binary.binary-request": {
@@ -2179,7 +2217,12 @@
 						"type": "boolean"
 					}
 				},
-				"required": ["method", "target", "query", "headers"],
+				"required": [
+					"method",
+					"target",
+					"query",
+					"headers"
+				],
 				"additionalProperties": false
 			},
 			"binary.binary-response": {
@@ -2214,7 +2257,11 @@
 						"description": "A handle of binary.binary. The side that creates the resource numbers it."
 					}
 				},
-				"required": ["status", "headers", "body"],
+				"required": [
+					"status",
+					"headers",
+					"body"
+				],
 				"additionalProperties": false
 			},
 			"capabilities.assistant-message": {
@@ -2230,7 +2277,9 @@
 						}
 					}
 				},
-				"required": ["content"],
+				"required": [
+					"content"
+				],
 				"additionalProperties": false
 			},
 			"capabilities.capability": {
@@ -2247,7 +2296,10 @@
 								"description": "A handle of capabilities.chat-model. The side that creates the resource numbers it."
 							}
 						},
-						"required": ["tag", "val"],
+						"required": [
+							"tag",
+							"val"
+						],
 						"additionalProperties": false
 					},
 					{
@@ -2262,7 +2314,10 @@
 								"description": "A handle of capabilities.memory. The side that creates the resource numbers it."
 							}
 						},
-						"required": ["tag", "val"],
+						"required": [
+							"tag",
+							"val"
+						],
 						"additionalProperties": false
 					},
 					{
@@ -2277,7 +2332,10 @@
 								"description": "A handle of capabilities.tool. The side that creates the resource numbers it."
 							}
 						},
-						"required": ["tag", "val"],
+						"required": [
+							"tag",
+							"val"
+						],
 						"additionalProperties": false
 					},
 					{
@@ -2292,7 +2350,10 @@
 								"description": "A handle of capabilities.embeddings. The side that creates the resource numbers it."
 							}
 						},
-						"required": ["tag", "val"],
+						"required": [
+							"tag",
+							"val"
+						],
 						"additionalProperties": false
 					}
 				]
@@ -2310,7 +2371,10 @@
 								"type": "string"
 							}
 						},
-						"required": ["tag", "val"],
+						"required": [
+							"tag",
+							"val"
+						],
 						"additionalProperties": false
 					},
 					{
@@ -2323,7 +2387,10 @@
 								"type": "string"
 							}
 						},
-						"required": ["tag", "val"],
+						"required": [
+							"tag",
+							"val"
+						],
 						"additionalProperties": false
 					},
 					{
@@ -2336,7 +2403,10 @@
 								"$ref": "#/components/schemas/capabilities.assistant-message"
 							}
 						},
-						"required": ["tag", "val"],
+						"required": [
+							"tag",
+							"val"
+						],
 						"additionalProperties": false
 					},
 					{
@@ -2349,7 +2419,10 @@
 								"$ref": "#/components/schemas/capabilities.tool-message"
 							}
 						},
-						"required": ["tag", "val"],
+						"required": [
+							"tag",
+							"val"
+						],
 						"additionalProperties": false
 					}
 				]
@@ -2374,7 +2447,11 @@
 						"$ref": "#/components/schemas/capabilities.chat-usage"
 					}
 				},
-				"required": ["text", "toolCalls", "finishReason"],
+				"required": [
+					"text",
+					"toolCalls",
+					"finishReason"
+				],
 				"additionalProperties": false
 			},
 			"capabilities.chat-request": {
@@ -2398,7 +2475,9 @@
 						"$ref": "#/components/schemas/types.json"
 					}
 				},
-				"required": ["messages"],
+				"required": [
+					"messages"
+				],
 				"additionalProperties": false
 			},
 			"capabilities.chat-usage": {
@@ -2415,7 +2494,10 @@
 						"maximum": 4294967295
 					}
 				},
-				"required": ["inputTokens", "outputTokens"],
+				"required": [
+					"inputTokens",
+					"outputTokens"
+				],
 				"additionalProperties": false
 			},
 			"capabilities.tool-call": {
@@ -2433,7 +2515,11 @@
 						"$ref": "#/components/schemas/types.json"
 					}
 				},
-				"required": ["id", "name", "args"],
+				"required": [
+					"id",
+					"name",
+					"args"
+				],
 				"additionalProperties": false
 			},
 			"capabilities.tool-definition": {
@@ -2452,7 +2538,11 @@
 						"$ref": "#/components/schemas/types.json"
 					}
 				},
-				"required": ["name", "description", "input"],
+				"required": [
+					"name",
+					"description",
+					"input"
+				],
 				"additionalProperties": false
 			},
 			"capabilities.tool-message": {
@@ -2469,7 +2559,11 @@
 						"type": "string"
 					}
 				},
-				"required": ["toolCallId", "name", "content"],
+				"required": [
+					"toolCallId",
+					"name",
+					"content"
+				],
 				"additionalProperties": false
 			},
 			"code.code-request": {
@@ -2485,15 +2579,25 @@
 						"$ref": "#/components/schemas/code.mode"
 					}
 				},
-				"required": ["language", "code", "mode"],
+				"required": [
+					"language",
+					"code",
+					"mode"
+				],
 				"additionalProperties": false
 			},
 			"code.language": {
-				"enum": ["javascript", "python"]
+				"enum": [
+					"javascript",
+					"python"
+				]
 			},
 			"code.mode": {
 				"description": "`all`: one run that reads every input item. `each`: one run for each input item.",
-				"enum": ["all", "each"]
+				"enum": [
+					"all",
+					"each"
+				]
 			},
 			"data-tables.column": {
 				"type": "object",
@@ -2505,11 +2609,19 @@
 						"$ref": "#/components/schemas/data-tables.column-type"
 					}
 				},
-				"required": ["name", "type"],
+				"required": [
+					"name",
+					"type"
+				],
 				"additionalProperties": false
 			},
 			"data-tables.column-type": {
-				"enum": ["string", "number", "boolean", "date"]
+				"enum": [
+					"string",
+					"number",
+					"boolean",
+					"date"
+				]
 			},
 			"data-tables.condition": {
 				"type": "object",
@@ -2525,11 +2637,17 @@
 						"$ref": "#/components/schemas/types.json"
 					}
 				},
-				"required": ["column", "op"],
+				"required": [
+					"column",
+					"op"
+				],
 				"additionalProperties": false
 			},
 			"data-tables.direction": {
-				"enum": ["asc", "desc"]
+				"enum": [
+					"asc",
+					"desc"
+				]
 			},
 			"data-tables.filter": {
 				"type": "object",
@@ -2544,7 +2662,10 @@
 						}
 					}
 				},
-				"required": ["match", "conditions"],
+				"required": [
+					"match",
+					"conditions"
+				],
 				"additionalProperties": false
 			},
 			"data-tables.list-query": {
@@ -2568,11 +2689,16 @@
 						"maximum": 4294967295
 					}
 				},
-				"required": ["limit"],
+				"required": [
+					"limit"
+				],
 				"additionalProperties": false
 			},
 			"data-tables.match": {
-				"enum": ["all", "any"]
+				"enum": [
+					"all",
+					"any"
+				]
 			},
 			"data-tables.new-table": {
 				"type": "object",
@@ -2587,11 +2713,25 @@
 						}
 					}
 				},
-				"required": ["name", "columns"],
+				"required": [
+					"name",
+					"columns"
+				],
 				"additionalProperties": false
 			},
 			"data-tables.operator": {
-				"enum": ["eq", "neq", "like", "ilike", "gt", "gte", "lt", "lte", "isEmpty", "isNotEmpty"]
+				"enum": [
+					"eq",
+					"neq",
+					"like",
+					"ilike",
+					"gt",
+					"gte",
+					"lt",
+					"lte",
+					"isEmpty",
+					"isNotEmpty"
+				]
 			},
 			"data-tables.row-page": {
 				"type": "object",
@@ -2610,7 +2750,10 @@
 						}
 					}
 				},
-				"required": ["count", "rows"],
+				"required": [
+					"count",
+					"rows"
+				],
 				"additionalProperties": false
 			},
 			"data-tables.row-query": {
@@ -2634,7 +2777,9 @@
 						"maximum": 4294967295
 					}
 				},
-				"required": ["limit"],
+				"required": [
+					"limit"
+				],
 				"additionalProperties": false
 			},
 			"data-tables.sort": {
@@ -2647,11 +2792,18 @@
 						"$ref": "#/components/schemas/data-tables.direction"
 					}
 				},
-				"required": ["column", "direction"],
+				"required": [
+					"column",
+					"direction"
+				],
 				"additionalProperties": false
 			},
 			"data-tables.table-field": {
-				"enum": ["name", "createdAt", "updatedAt"]
+				"enum": [
+					"name",
+					"createdAt",
+					"updatedAt"
+				]
 			},
 			"data-tables.table-info": {
 				"description": "A table without its rows. Dates are ISO 8601 text.",
@@ -2676,7 +2828,13 @@
 						"type": "string"
 					}
 				},
-				"required": ["id", "name", "columns", "createdAt", "updatedAt"],
+				"required": [
+					"id",
+					"name",
+					"columns",
+					"createdAt",
+					"updatedAt"
+				],
 				"additionalProperties": false
 			},
 			"data-tables.table-page": {
@@ -2694,7 +2852,10 @@
 						}
 					}
 				},
-				"required": ["count", "tables"],
+				"required": [
+					"count",
+					"tables"
+				],
 				"additionalProperties": false
 			},
 			"data-tables.table-ref": {
@@ -2710,7 +2871,10 @@
 								"type": "string"
 							}
 						},
-						"required": ["tag", "val"],
+						"required": [
+							"tag",
+							"val"
+						],
 						"additionalProperties": false
 					},
 					{
@@ -2723,7 +2887,10 @@
 								"type": "string"
 							}
 						},
-						"required": ["tag", "val"],
+						"required": [
+							"tag",
+							"val"
+						],
 						"additionalProperties": false
 					}
 				]
@@ -2738,7 +2905,10 @@
 						"$ref": "#/components/schemas/data-tables.direction"
 					}
 				},
-				"required": ["by", "direction"],
+				"required": [
+					"by",
+					"direction"
+				],
 				"additionalProperties": false
 			},
 			"errors.run-error": {
@@ -2752,7 +2922,9 @@
 						"$ref": "#/components/schemas/http.http-error"
 					}
 				},
-				"required": ["message"],
+				"required": [
+					"message"
+				],
 				"additionalProperties": false
 			},
 			"http.http-error": {
@@ -2789,7 +2961,12 @@
 						"$ref": "#/components/schemas/types.json"
 					}
 				},
-				"required": ["message", "status", "headers", "body"],
+				"required": [
+					"message",
+					"status",
+					"headers",
+					"body"
+				],
 				"additionalProperties": false
 			},
 			"http.http-failure": {
@@ -2804,7 +2981,10 @@
 								"$ref": "#/components/schemas/http.http-error"
 							}
 						},
-						"required": ["tag", "val"],
+						"required": [
+							"tag",
+							"val"
+						],
 						"additionalProperties": false
 					},
 					{
@@ -2818,13 +2998,23 @@
 								"type": "string"
 							}
 						},
-						"required": ["tag", "val"],
+						"required": [
+							"tag",
+							"val"
+						],
 						"additionalProperties": false
 					}
 				]
 			},
 			"http.http-method": {
-				"enum": ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD"]
+				"enum": [
+					"GET",
+					"POST",
+					"PUT",
+					"PATCH",
+					"DELETE",
+					"HEAD"
+				]
 			},
 			"http.http-request": {
 				"type": "object",
@@ -2885,7 +3075,12 @@
 						"type": "boolean"
 					}
 				},
-				"required": ["method", "target", "query", "headers"],
+				"required": [
+					"method",
+					"target",
+					"query",
+					"headers"
+				],
 				"additionalProperties": false
 			},
 			"http.http-response": {
@@ -2919,7 +3114,11 @@
 						"$ref": "#/components/schemas/types.json"
 					}
 				},
-				"required": ["status", "headers", "body"],
+				"required": [
+					"status",
+					"headers",
+					"body"
+				],
 				"additionalProperties": false
 			},
 			"http.http-target": {
@@ -2935,7 +3134,10 @@
 								"type": "string"
 							}
 						},
-						"required": ["tag", "val"],
+						"required": [
+							"tag",
+							"val"
+						],
 						"additionalProperties": false
 					},
 					{
@@ -2949,7 +3151,10 @@
 								"type": "string"
 							}
 						},
-						"required": ["tag", "val"],
+						"required": [
+							"tag",
+							"val"
+						],
 						"additionalProperties": false
 					}
 				]
@@ -2970,11 +3175,19 @@
 						"maximum": 4294967295
 					}
 				},
-				"required": ["maxRequests", "maxItems"],
+				"required": [
+					"maxRequests",
+					"maxItems"
+				],
 				"additionalProperties": false
 			},
 			"log.level": {
-				"enum": ["debug", "info", "warn", "error"]
+				"enum": [
+					"debug",
+					"info",
+					"warn",
+					"error"
+				]
 			}
 		}
 	}

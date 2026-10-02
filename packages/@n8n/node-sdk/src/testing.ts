@@ -131,6 +131,12 @@ async function authenticate(
 	};
 }
 
+/** The hidden field where n8n core stores the token of `preAuthentication`. */
+const expirableFieldOf = (type: ICredentialType) =>
+	type.properties.find(
+		(property) => property.type === 'hidden' && property.typeOptions?.expirable === true,
+	)?.name;
+
 /** Sends what the executor would pass to n8n's `httpRequest`. */
 async function send(fetchFn: typeof fetch, options: IHttpRequestOptions) {
 	const url = new URL(options.url);
@@ -223,6 +229,28 @@ export async function runAction(
 				? { [credential.name]: { id: null, name: credential.name } }
 				: {},
 	};
+	// The token of an `exchange` type, as n8n core stores it: one token request per run.
+	const tokens = new Map<'data', Promise<ICredentialDataDecryptedObject>>();
+	const tokenData = async (refresh: boolean) => {
+		const preAuthentication =
+			typeof credential === 'object' ? credential.preAuthentication : undefined;
+		const field = typeof credential === 'object' ? expirableFieldOf(credential) : undefined;
+		if (!preAuthentication || field === undefined) return data;
+		const current = tokens.get('data');
+		if (current && !refresh) return await current;
+		if (!current && !refresh && data[field]) return data;
+		const helper = {
+			helpers: {
+				httpRequest: async (options: IHttpRequestOptions) => await send(fetchFn, options),
+			},
+		};
+		const next = preAuthentication.call(helper, { ...data }).then((output) => {
+			const merged = { ...data, ...output };
+			return isCredentialData(merged) ? merged : data;
+		});
+		tokens.set('data', next);
+		return await next;
+	};
 	const itemsOf = (list: readonly IDataObject[]) => list.map((json) => ({ json: { ...json } }));
 	const inputs = options.inputs?.map(itemsOf);
 	const items = inputs?.[0] ?? itemsOf(options.items ?? [{}]);
@@ -242,12 +270,19 @@ export async function runAction(
 		// A credential problem fails the first request, after the input check, as in n8n.
 		request: async (request) => {
 			if (typeof credential === 'string') throw new Error(credential);
-			return await send(
-				fetchFn,
-				credential ? await authenticate(credential, data, request) : request,
-			);
+			if (!credential) return await send(fetchFn, request);
+			const attempt = async (refresh: boolean) =>
+				await send(fetchFn, await authenticate(credential, await tokenData(refresh), request));
+			// As n8n core: after a 401, one new token request and one more attempt.
+			return await attempt(false).catch(async (error: unknown) => {
+				if (!credential.preAuthentication || !isHttpError(error) || error.status !== 401) {
+					throw error;
+				}
+				return await attempt(true);
+			});
 		},
-		credentialData: async () => await Promise.resolve(data),
+		// As n8n: the stored data holds the token once a token request stored it.
+		credentialData: async () => (await tokens.get('data')) ?? data,
 		continueOnFail: () => false,
 		supplied: async (kind) => await Promise.resolve(options.supplies?.[kind]),
 	};

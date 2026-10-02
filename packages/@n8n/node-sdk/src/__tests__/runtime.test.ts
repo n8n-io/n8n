@@ -5,6 +5,7 @@ import {
 	bool,
 	compat,
 	credential,
+	credentialType,
 	defineNode,
 	int,
 	isRecord,
@@ -18,6 +19,7 @@ import {
 	parse,
 	passedItem,
 	str,
+	t,
 	validate,
 	type Action,
 	type ActionFlow,
@@ -1005,6 +1007,116 @@ describe('batch and named outputs', () => {
 			{ type: 'main', displayName: 'high' },
 			{ type: 'main', displayName: '1' },
 			{ type: 'main', displayName: 'fallback' },
+		]);
+	});
+});
+
+describe('credentials in a run', () => {
+	const acmeToken = credentialType({
+		id: 'acme.token',
+		legacyName: 'acmeApi',
+		displayName: 'Acme API',
+		fields: {
+			region: oneOf('eu', 'us').default('eu'),
+			account: t.text('Account ID'),
+			apiKey: t.secret('API Key'),
+		},
+		baseUrl: 'https://api.acme.test',
+		auth: (a) => a.bearer('apiKey'),
+	});
+	const acme = defineNode({
+		id: 'acme',
+		displayName: 'Acme',
+		credential: credential({ types: [acmeToken] }),
+	});
+	const stored = { region: 'us', account: 'acc-1', apiKey: 'key-secret-1' };
+	const acmeNode: INode = { ...node, credentials: { acmeApi: { id: '1', name: 'Acme' } } };
+
+	it('gives run() the fields of the credential without the secrets', async () => {
+		const seen: unknown[] = [];
+		const whoami = acme.action('whoami', {
+			action: 'Who am I',
+			summary: 'Read the credential.',
+			flow: { effect: 'read', cardinality: 'per-item' },
+			input: {},
+			output: obj({ account: str() }),
+			async run({ credential: used }) {
+				seen.push(used);
+				// @ts-expect-error a secret is not a field of the run credential
+				seen.push(used?.fields.apiKey);
+				return await Promise.resolve({ account: used?.fields.account ?? '' });
+			},
+		});
+		const { host } = hostOf([], { node: acmeNode, credentialData: async () => stored });
+		const items = (await executorOf(whoami)(host))[0] ?? [];
+		expect(items.map(({ json: value }) => value)).toEqual([{ account: 'acc-1' }]);
+		expect(seen).toEqual([
+			{ type: 'acmeApi', fields: { region: 'us', account: 'acc-1' } },
+			undefined,
+		]);
+
+		const unreadable = hostOf([], {
+			node: acmeNode,
+			credentialData: async () => await Promise.reject(new Error('unreadable')),
+		});
+		await expect(executorOf(whoami)(unreadable.host)).rejects.toThrow('Credential acmeApi');
+	});
+
+	it('redacts the secrets from an error, its response body, an error item and the log', async () => {
+		const basic = Buffer.from('key-secret-1').toString('base64');
+		const echoed = Object.assign(new Error('Request failed: key-secret-1'), {
+			response: {
+				status: 401,
+				headers: { 'www-authenticate': `Bearer ${basic}` },
+				data: { echo: { authorization: 'Bearer key-secret-1' } },
+			},
+		});
+		const logged: string[] = [];
+		const caught: unknown[] = [];
+		const call = acme.action('call', {
+			action: 'Call',
+			summary: 'Call the API.',
+			flow: { effect: 'read', cardinality: 'per-item' },
+			input: {},
+			output: obj({}),
+			async run({ http, log }) {
+				log('info', 'using key-secret-1');
+				try {
+					await http.request({ path: '/me', retry: false });
+					return {};
+				} catch (error) {
+					caught.push(error);
+					throw error;
+				}
+			},
+		});
+		const reads: string[] = [];
+		const { host } = hostOf([echoed], {
+			node: acmeNode,
+			credentialData: async (type) => {
+				reads.push(type);
+				return await Promise.resolve(stored);
+			},
+			log: (_level, message) => logged.push(message),
+		});
+		await expect(executorOf(call)(host)).rejects.toThrow('Request failed: [REDACTED]');
+		expect(JSON.stringify(caught)).not.toContain('key-secret-1');
+		expect(JSON.stringify(caught)).not.toContain(basic);
+		expect(caught[0]).toMatchObject({
+			status: 401,
+			body: { echo: { authorization: 'Bearer [REDACTED]' } },
+		});
+		expect(logged).toEqual(['using [REDACTED]']);
+		expect(reads).toEqual(['acmeApi']);
+
+		const failing = hostOf([echoed], {
+			node: acmeNode,
+			credentialData: async () => stored,
+			continueOnFail: () => true,
+		});
+		const items = (await executorOf(call)(failing.host))[0] ?? [];
+		expect(items.map(({ json: value }) => value)).toEqual([
+			{ error: 'Request failed: [REDACTED]' },
 		]);
 	});
 });

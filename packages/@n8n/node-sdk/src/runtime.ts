@@ -32,7 +32,7 @@ import {
 } from 'n8n-workflow';
 
 import { fromActionApiV1 } from './action-api-v1';
-import { credentialBaseUrlOf } from './credentials';
+import { credentialBaseUrlOf, plainFieldsOf, redactedValue, secretRedactorOf } from './credentials';
 import { codeRunnerOf, dataTableHostOf, dataTablesOf } from './host-imports';
 import { actionHostsOf, credentialHostsOf, egressOf } from './egress';
 import { parameterValue, toProperty } from './properties';
@@ -236,6 +236,50 @@ export function withResponse(error: unknown): unknown {
 		headers: headersOf(response.headers),
 		body: response.data,
 	});
+}
+
+/** The credential `run()` gets: the type name and the fields without secrets. */
+type RunCredentialValue =
+	| { readonly type: string; readonly fields: Record<string, unknown> }
+	| undefined;
+
+/** Error members that n8n shows or stores, and the `HttpError` members that `run()` reads. */
+const REDACTED_MEMBERS = ['description', 'messages', 'body', 'headers', 'context', 'errorResponse'];
+
+/**
+ * Removes the secrets of the credential from an error. It changes the error in place, as
+ * `withResponse` does, so n8n keeps its class and message.
+ */
+function redactedError(error: unknown, redact: (text: string) => string): unknown {
+	if (typeof error === 'string') return redact(error);
+	if (!(error instanceof Error) || !isRecord(error)) return error;
+	// Defined, not assigned: a `DOMException` has its message as a getter only.
+	const set = (key: string, value: unknown) => {
+		const own = Object.getOwnPropertyDescriptor(error, key);
+		if (error[key] === value || own?.configurable === false) return;
+		const enumerable = own?.enumerable ?? false;
+		Object.defineProperty(error, key, { value, writable: true, configurable: true, enumerable });
+	};
+	const { cause } = error;
+	set('message', redact(error.message));
+	if (error.stack !== undefined) set('stack', redact(error.stack));
+	REDACTED_MEMBERS.filter((key) => key in error).forEach((key) =>
+		set(key, redactedValue(error[key], redact)),
+	);
+	const { response } = error;
+	if (isRecord(response)) {
+		// The client response also holds the signed request, so only its HTTP parts stay.
+		const { status, statusText, headers, data } = response;
+		set(
+			'response',
+			redactedValue({ status, statusText, headers: headersOf(headers), data }, redact),
+		);
+	}
+	if (cause instanceof Error) {
+		// The cause of a NodeApiError is the HTTP client error, which holds the signed request.
+		set('cause', Object.assign(new Error(redact(cause.message)), { name: cause.name }));
+	}
+	return error;
 }
 
 export const AUTHENTICATION = 'authentication';
@@ -757,15 +801,6 @@ export function executorOf<S extends Shape, O extends AnySchema>(
 		// Frozen: `run()` gets the object that the host enforces.
 		const limits: RunLimits = Object.freeze({ ...DEFAULT_LIMITS, ...host.limits });
 		const wait = host.wait ?? (async (ms: number) => await sleep(ms));
-		const logged = { lines: 0 };
-		const log = (level: LogLevel, message: string) => {
-			logged.lines += 1;
-			if (logged.lines <= MAX_LOG_LINES) {
-				host.log?.(level, String(message).slice(0, MAX_LOG_LENGTH));
-			} else if (logged.lines === MAX_LOG_LINES + 1) {
-				host.log?.('warn', `${action.id} logged ${MAX_LOG_LINES} lines. n8n drops the rest.`);
-			}
-		};
 		const selected = hasSelector(action) ? host.parameter(AUTHENTICATION, 0) : undefined;
 		const credentialType = credentialTypeOf(action, host.node, selected);
 		// One read per run: the base URL and the egress policy both need the stored data.
@@ -780,6 +815,45 @@ export function executorOf<S extends Shape, O extends AnySchema>(
 		const credentialValue = action.node.credential?.types.find(
 			({ name }) => name === credentialType,
 		);
+		// A failed read fails later, where the run needs the data; redaction then has the patterns.
+		const storedCredential =
+			credentialType && host.credentialData
+				? await credentialData(credentialType).catch(() => undefined)
+				: undefined;
+		const redact = secretRedactorOf(credentialValue, storedCredential);
+		// n8n stores a token it requested or refreshed during the run, so an error reads the data
+		// again. A static scheme stores no token, and each read is a database read.
+		const storesTokens = !['apply', 'when', 'none', 'custom'].includes(
+			credentialValue?.scheme.kind ?? 'compat',
+		);
+		const redactNow = async () => {
+			const now =
+				credentialType && storesTokens
+					? await host.credentialData?.(credentialType).catch(() => undefined)
+					: undefined;
+			if (now === undefined) return redact;
+			const fresh = secretRedactorOf(credentialValue, now);
+			return (text: string) => fresh(redact(text));
+		};
+		// Read when `run()` reads it: stored data that fails the declared fields fails only then.
+		const runCredentials = new Map<'credential', RunCredentialValue>();
+		const runCredential = (): RunCredentialValue => {
+			const known = runCredentials.get('credential');
+			if (known !== undefined || credentialType === undefined) return known;
+			const fields = credentialValue ? plainFieldsOf(credentialValue, storedCredential) : {};
+			const value = Object.freeze({ type: credentialType, fields });
+			runCredentials.set('credential', value);
+			return value;
+		};
+		const logged = { lines: 0 };
+		const log = (level: LogLevel, message: string) => {
+			logged.lines += 1;
+			if (logged.lines <= MAX_LOG_LINES) {
+				host.log?.(level, redact(String(message)).slice(0, MAX_LOG_LENGTH));
+			} else if (logged.lines === MAX_LOG_LINES + 1) {
+				host.log?.('warn', `${action.id} logged ${MAX_LOG_LINES} lines. n8n drops the rest.`);
+			}
+		};
 		/** The policy for the requests of one item. A credential that refuses every host fails the item. */
 		const egressPolicyOf = async (input: Readonly<Record<string, unknown>>, itemIndex: number) => {
 			const data =
@@ -810,7 +884,7 @@ export function executorOf<S extends Shape, O extends AnySchema>(
 			} catch (caught) {
 				const error = withResponse(caught);
 				const delay = retryable ? retryDelay(error, retry) : undefined;
-				if (delay === undefined) throw error;
+				if (delay === undefined) throw redactedError(error, await redactNow());
 				// The failed attempt is not read, so free its connection.
 				if (isHttpError(error) && error.body instanceof Readable) error.body.destroy();
 				await wait(delay);
@@ -1127,7 +1201,18 @@ export function executorOf<S extends Shape, O extends AnySchema>(
 					? http.request(requestOf(binding, input))
 					: listBinding
 						? listItems(http, listBinding, input)
-						: action.run?.({ input, http, log, limits, binary: binaries, item, ...imports });
+						: action.run?.({
+								input,
+								http,
+								log,
+								limits,
+								binary: binaries,
+								item,
+								get credential() {
+									return runCredential();
+								},
+								...imports,
+							});
 			if (!result) throw new UnexpectedError(`${action.id} has no run() and no request`);
 			if (action.flow.cardinality === 'per-item') return [route(await result, 0)];
 			return await collect(result, route);
@@ -1140,7 +1225,7 @@ export function executorOf<S extends Shape, O extends AnySchema>(
 			names: readonly string[] | undefined,
 		): Routed => ({
 			output: Math.max(0, (names?.length ?? 1) - 1),
-			data: { json: { error: errorMessage(error) }, pairedItem },
+			data: { json: { error: redact(errorMessage(error)) }, pairedItem },
 		});
 
 		// Outputs per entry take their names from the raw list of the first item, as the editor
@@ -1171,14 +1256,24 @@ export function executorOf<S extends Shape, O extends AnySchema>(
 						binary: binaries,
 						...imports,
 					};
+					// A getter, not a value: a spread would read the credential before `run()` does.
 					const result = inputNames
 						? action.run?.({
 								...context,
+								get credential() {
+									return runCredential();
+								},
 								inputs: Object.fromEntries(
 									inputNames.map((name, index) => [name, inputLists[index] ?? []]),
 								),
 							})
-						: action.run?.({ ...context, items });
+						: action.run?.({
+								...context,
+								get credential() {
+									return runCredential();
+								},
+								items,
+							});
 					return { names, routed: await collect(result, routeOf(names, undefined)) };
 				} catch (error) {
 					if (!host.continueOnFail()) throw error;
@@ -1200,7 +1295,9 @@ export function executorOf<S extends Shape, O extends AnySchema>(
 			return { names, routed };
 		};
 
-		const { names, routed } = await run();
+		const { names, routed } = await run().catch(async (error: unknown) => {
+			throw redactedError(error, await redactNow());
+		});
 		const duplicate = names?.find((name, index) => names.indexOf(name) !== index);
 		if (duplicate !== undefined) throw fail(`${action.id} has two outputs named "${duplicate}"`, 0);
 		const outputs: INodeExecutionData[][] = Array.from({ length: names?.length || 1 }, () => []);

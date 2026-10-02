@@ -1,8 +1,17 @@
 import { credentialType, t, toCredentialType, type AnyCredentialType } from '@n8n/node-sdk';
 import { DatadogApi } from 'n8n-nodes-base/dist/credentials/DatadogApi.credentials';
 import { FacebookGraphApi } from 'n8n-nodes-base/dist/credentials/FacebookGraphApi.credentials';
+import { FacebookGraphApiOAuth2Api } from 'n8n-nodes-base/dist/credentials/FacebookGraphApiOAuth2Api.credentials';
 import { FacebookGraphAppApi } from 'n8n-nodes-base/dist/credentials/FacebookGraphAppApi.credentials';
+import { FacebookGraphAppOAuth2Api } from 'n8n-nodes-base/dist/credentials/FacebookGraphAppOAuth2Api.credentials';
 import { GithubApi } from 'n8n-nodes-base/dist/credentials/GithubApi.credentials';
+import { GmailOAuth2Api } from 'n8n-nodes-base/dist/credentials/GmailOAuth2Api.credentials';
+import { GoogleDocsOAuth2Api } from 'n8n-nodes-base/dist/credentials/GoogleDocsOAuth2Api.credentials';
+import { GoogleDriveOAuth2Api } from 'n8n-nodes-base/dist/credentials/GoogleDriveOAuth2Api.credentials';
+import { GoogleOAuth2Api } from 'n8n-nodes-base/dist/credentials/GoogleOAuth2Api.credentials';
+import { GoogleSheetsOAuth2Api } from 'n8n-nodes-base/dist/credentials/GoogleSheetsOAuth2Api.credentials';
+import { GoogleSheetsTriggerOAuth2Api } from 'n8n-nodes-base/dist/credentials/GoogleSheetsTriggerOAuth2Api.credentials';
+import { MetabaseApi } from 'n8n-nodes-base/dist/credentials/MetabaseApi.credentials';
 import { NotionApi } from 'n8n-nodes-base/dist/credentials/NotionApi.credentials';
 import { NotionOAuth2Api } from 'n8n-nodes-base/dist/credentials/NotionOAuth2Api.credentials';
 import { OpenAiApi } from 'n8n-nodes-base/dist/credentials/OpenAiApi.credentials';
@@ -12,14 +21,22 @@ import { TrelloApi } from 'n8n-nodes-base/dist/credentials/TrelloApi.credentials
 import { WhatsAppApi } from 'n8n-nodes-base/dist/credentials/WhatsAppApi.credentials';
 import { WhatsAppTriggerApi } from 'n8n-nodes-base/dist/credentials/WhatsAppTriggerApi.credentials';
 import { ZendeskApi } from 'n8n-nodes-base/dist/credentials/ZendeskApi.credentials';
-import type {
-	ICredentialDataDecryptedObject,
-	ICredentialType,
-	IHttpRequestOptions,
+import {
+	NodeHelpers,
+	type ICredentialDataDecryptedObject,
+	type ICredentialType,
+	type IHttpRequestHelper,
+	type IHttpRequestOptions,
+	type INodeProperties,
 } from 'n8n-workflow';
 
 import { anthropicKey } from '../../nodes/anthropic/anthropic.node';
-import { facebookApp } from '../../nodes/facebook-trigger/facebook-trigger.node';
+import { facebookApp, facebookAppOAuth2 } from '../../nodes/facebook-trigger/facebook-trigger.node';
+import { gmailOAuth2 } from '../../nodes/gmail/gmail.node';
+import { googleDocsOAuth2 } from '../../nodes/google-docs/google-docs.node';
+import { googleDriveOAuth2 } from '../../nodes/google-drive/google-drive.node';
+import { googleSheetsOAuth2 } from '../../nodes/google-sheets/google-sheets.node';
+import { googleSheetsTriggerOAuth2 } from '../../nodes/google-sheets-trigger/google-sheets-trigger.node';
 import { githubToken } from '../../nodes/github/github.node';
 import { geminiKey } from '../../nodes/google-gemini/google-gemini.node';
 import { minimaxKey } from '../../nodes/minimax/minimax.node';
@@ -107,6 +124,24 @@ const trelloApiKey = credentialType({
 	baseUrl: 'https://api.trello.com/1',
 	auth: (a) => a.apply({ query: { key: '{apiKey}', token: '{apiToken}' } }),
 	test: { get: '/members/me' },
+});
+
+// The exchange port: no ported node uses an exchange type yet, so it lives here.
+const metabaseSession = credentialType({
+	id: 'metabase.session',
+	legacyName: 'metabaseApi',
+	displayName: 'Metabase API',
+	docs: 'metabase',
+	fields: { url: t.url('URL'), username: t.text('Username'), password: t.secret('Password') },
+	baseUrl: '{url}',
+	auth: (a) =>
+		a.exchange({
+			post: '{url}/api/session',
+			json: { username: '{username}', password: '{password}' },
+			token: { path: 'id', field: 'sessionToken' },
+			headers: { 'X-Metabase-Session': '{$token}' },
+		}),
+	test: { get: '/api/user/current' },
 });
 
 /** The members of a credential type that n8n reads, without class methods. */
@@ -504,6 +539,157 @@ describe('credential types against the legacy classes', () => {
 					intended('described.test.request.method', 'GET is the default'),
 				],
 			),
+		).toEqual(clean);
+	});
+});
+
+/** The form of a type that extends `parent`, as `CredentialsHelper.getCredentialsProperties` merges it. */
+const formOf = (parent: ICredentialType, type: ICredentialType): ICredentialType => {
+	const properties: INodeProperties[] = [];
+	NodeHelpers.mergeNodeProperties(properties, parent.properties);
+	NodeHelpers.mergeNodeProperties(properties, type.properties);
+	return { ...type, properties };
+};
+
+/** The merged forms, and the OAuth2 settings n8n reads with the default and with custom scopes. */
+function compareOAuth2(
+	legacy: ICredentialType,
+	parent: ICredentialType,
+	next: AnyCredentialType,
+	allowlist: readonly AllowedDifference[],
+) {
+	const read = (form: ICredentialType) =>
+		[false, true].map((customScopes) =>
+			readCredential(form.properties, {
+				customScopes,
+				enabledScopes: 'only.this',
+				clientId: 'c-1',
+			}),
+		);
+	const legacyForm = formOf(parent, legacy);
+	const nextForm = formOf(parent, projected(next));
+	return explained(
+		differences(
+			{ described: described(legacyForm), read: read(legacyForm) },
+			{ described: described(nextForm), read: read(nextForm) },
+		),
+		allowlist,
+	);
+}
+
+const REQUIRED_ENDPOINT = 'The flow needs the endpoint; the Google parent leaves it optional';
+const NOTICE_TEXT = 'Two sentences, not a comma splice';
+const googleCases = [
+	['gmailOAuth2', new GmailOAuth2Api(), gmailOAuth2],
+	['googleSheetsOAuth2Api', new GoogleSheetsOAuth2Api(), googleSheetsOAuth2],
+	['googleDriveOAuth2Api', new GoogleDriveOAuth2Api(), googleDriveOAuth2],
+	['googleDocsOAuth2Api', new GoogleDocsOAuth2Api(), googleDocsOAuth2],
+	['googleSheetsTriggerOAuth2Api', new GoogleSheetsTriggerOAuth2Api(), googleSheetsTriggerOAuth2],
+] as const;
+
+describe('OAuth2 types with editable scopes against the legacy classes', () => {
+	it.each(googleCases)(
+		'%s extends googleOAuth2Api with the same form and scopes',
+		(name, legacy, next) => {
+			expect(projected(next)).toMatchObject({ name, extends: ['googleOAuth2Api'] });
+			expect(
+				compareOAuth2(legacy, new GoogleOAuth2Api(), next, [
+					intended('described.properties[1].required', REQUIRED_ENDPOINT),
+					intended('described.properties[2].required', REQUIRED_ENDPOINT),
+					intended('described.properties[6].displayName', NOTICE_TEXT),
+					...('icon' in legacy ? [intended('described.icon', 'The node package owns icons')] : []),
+				]),
+			).toEqual(clean);
+		},
+	);
+
+	it('the Google types send the scopes of the legacy types, or the custom ones', () => {
+		const scope = (type: ICredentialType, customScopes: boolean) =>
+			(
+				readCredential(formOf(new GoogleOAuth2Api(), type).properties, {
+					customScopes,
+					enabledScopes: 'only.this',
+				}) as { scope: string }
+			).scope;
+		expect(scope(projected(gmailOAuth2), false)).toBe(scope(new GmailOAuth2Api(), false));
+		expect(scope(projected(gmailOAuth2), false)).toContain('https://mail.google.com/');
+		expect(scope(projected(gmailOAuth2), true)).toBe('only.this');
+	});
+
+	it('facebookApp.oauth2 extends facebookGraphApiOAuth2Api with the same form and scopes', () => {
+		expect(projected(facebookAppOAuth2)).toMatchObject({
+			name: 'facebookGraphAppOAuth2Api',
+			extends: ['facebookGraphApiOAuth2Api'],
+		});
+		expect(
+			compareOAuth2(
+				new FacebookGraphAppOAuth2Api(),
+				new FacebookGraphApiOAuth2Api(),
+				facebookAppOAuth2,
+				[
+					intended('described.properties[5].description', 'The SDK text of the editable scopes'),
+					intended('described.properties[7].description', 'The SDK text of the editable scopes'),
+				],
+			),
+		).toEqual(clean);
+	});
+});
+
+/** A request helper that answers each token request with a session and records it. */
+const sessionHelper = () => {
+	const sent: IHttpRequestOptions[] = [];
+	const helper: IHttpRequestHelper = {
+		helpers: {
+			httpRequest: async (options: IHttpRequestOptions) => {
+				sent.push(options);
+				return await Promise.resolve({ id: 'session-1' });
+			},
+		},
+	};
+	return { helper, sent };
+};
+
+describe('exchange types against the legacy classes', () => {
+	it('metabase.session: the same token request, token field and session header', async () => {
+		const data = {
+			url: 'https://bi.acme.test/',
+			username: 'ada',
+			password: 'pw-1',
+			sessionToken: '',
+		};
+		const login = async (type: ICredentialType) => {
+			const { helper, sent } = sessionHelper();
+			const output = await type.preAuthentication?.call(helper, { ...data });
+			return { output, sent };
+		};
+		const signedData = { ...data, sessionToken: 'session-1' };
+		const request = { url: 'https://bi.acme.test/api/card', headers: { Accept: '*/*' } };
+		const found = differences(
+			{
+				described: described(new MetabaseApi()),
+				login: await login(new MetabaseApi()),
+				signed: await signRequest(new MetabaseApi(), signedData, request),
+			},
+			{
+				described: described(projected(metabaseSession)),
+				login: await login(projected(metabaseSession)),
+				signed: await signRequest(projected(metabaseSession), signedData, request),
+			},
+		);
+		expect(
+			explained(found, [
+				intended(
+					'described.properties[0].typeOptions.password',
+					'The token is a secret for redaction',
+				),
+				intended('described.properties[0].displayName', 'One name for every token field'),
+				intended('described.properties[1].required', NEEDED),
+				intended('described.properties[2].required', NEEDED),
+				intended('described.properties[3].required', NEEDED),
+				intended('described.test.request.baseURL', OPTIONAL_URL),
+				intended('login.sent[0].json', 'The response is JSON'),
+				intended('login.sent[0].allowedDomains', 'Redirect hops stay on the credential host'),
+			]),
 		).toEqual(clean);
 	});
 });

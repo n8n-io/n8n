@@ -8,7 +8,11 @@
 			"type": "object",
 			"properties": {
 				"kind": {
-					"enum": ["action", "trigger", "provider"],
+					"enum": [
+						"action",
+						"trigger",
+						"provider"
+					],
 					"x-n8n-since": "2.5.0"
 				},
 				"nodeContract": {
@@ -67,10 +71,18 @@
 							"type": "object",
 							"properties": {
 								"effect": {
-									"enum": ["read", "write", "transform"]
+									"enum": [
+										"read",
+										"write",
+										"transform"
+									]
 								},
 								"cardinality": {
-									"enum": ["per-item", "1:N", "batch"]
+									"enum": [
+										"per-item",
+										"1:N",
+										"batch"
+									]
 								},
 								"idempotent": {
 									"type": "boolean"
@@ -79,7 +91,11 @@
 									"const": "replace"
 								}
 							},
-							"required": ["effect", "cardinality", "passthrough"],
+							"required": [
+								"effect",
+								"cardinality",
+								"passthrough"
+							],
 							"additionalProperties": false
 						},
 						"credentials": {
@@ -95,7 +111,14 @@
 							}
 						},
 						"trigger": {
-							"enum": ["webhook", "poll", "event", "manual", "schedule", "form"]
+							"enum": [
+								"webhook",
+								"poll",
+								"event",
+								"manual",
+								"schedule",
+								"form"
+							]
 						},
 						"input": {
 							"type": "object",
@@ -127,7 +150,9 @@
 											}
 										}
 									},
-									"required": ["each"],
+									"required": [
+										"each"
+									],
 									"additionalProperties": false
 								}
 							]
@@ -150,7 +175,12 @@
 						"imports": {
 							"type": "array",
 							"items": {
-								"enum": ["dataTables", "code", "wait", "inputOf"]
+								"enum": [
+									"dataTables",
+									"code",
+									"wait",
+									"inputOf"
+								]
 							}
 						},
 						"inputs": {
@@ -262,14 +292,22 @@
 											"type": "string"
 										}
 									},
-									"required": ["username", "password"],
+									"required": [
+										"username",
+										"password"
+									],
 									"additionalProperties": false
 								},
 								"userHeader": {
 									"const": true
 								}
 							},
-							"required": ["kind", "headers", "query", "defaults"],
+							"required": [
+								"kind",
+								"headers",
+								"query",
+								"defaults"
+							],
 							"additionalProperties": false
 						},
 						{
@@ -317,19 +355,31 @@
 														"type": "string"
 													}
 												},
-												"required": ["username", "password"],
+												"required": [
+													"username",
+													"password"
+												],
 												"additionalProperties": false
 											},
 											"userHeader": {
 												"const": true
 											}
 										},
-										"required": ["kind", "headers", "query", "defaults"],
+										"required": [
+											"kind",
+											"headers",
+											"query",
+											"defaults"
+										],
 										"additionalProperties": false
 									}
 								}
 							},
-							"required": ["kind", "field", "cases"],
+							"required": [
+								"kind",
+								"field",
+								"cases"
+							],
 							"additionalProperties": false
 						},
 						{
@@ -339,7 +389,10 @@
 									"const": "oauth2"
 								},
 								"grant": {
-									"enum": ["authorizationCode", "clientCredentials"]
+									"enum": [
+										"authorizationCode",
+										"clientCredentials"
+									]
 								},
 								"authorizationEndpoint": {
 									"type": "string"
@@ -354,7 +407,10 @@
 									}
 								},
 								"clientAuth": {
-									"enum": ["client_secret_basic", "client_secret_post"]
+									"enum": [
+										"client_secret_basic",
+										"client_secret_post"
+									]
 								},
 								"pkce": {
 									"type": "boolean"
@@ -364,6 +420,9 @@
 									"additionalProperties": {
 										"type": "string"
 									}
+								},
+								"editableScopes": {
+									"const": true
 								}
 							},
 							"required": [
@@ -381,10 +440,276 @@
 							"type": "object",
 							"properties": {
 								"kind": {
+									"const": "oauth2"
+								},
+								"grant": {
+									"const": "deviceCode"
+								},
+								"deviceAuthorizationEndpoint": {
+									"type": "string"
+								},
+								"tokenEndpoint": {
+									"type": "string"
+								},
+								"scope": {
+									"type": "array",
+									"items": {
+										"type": "string"
+									}
+								}
+							},
+							"required": [
+								"kind",
+								"grant",
+								"deviceAuthorizationEndpoint",
+								"tokenEndpoint",
+								"scope"
+							],
+							"additionalProperties": false
+						},
+						{
+							"type": "object",
+							"properties": {
+								"kind": {
+									"const": "oauth2"
+								},
+								"grant": {
+									"const": "jwtBearer"
+								},
+								"tokenEndpoint": {
+									"type": "string"
+								},
+								"key": {
+									"type": "string"
+								},
+								"algorithm": {
+									"const": "RS256"
+								},
+								"claims": {
+									"type": "object",
+									"additionalProperties": {
+										"type": "string"
+									}
+								},
+								"scope": {
+									"type": "array",
+									"items": {
+										"type": "string"
+									}
+								}
+							},
+							"required": [
+								"kind",
+								"grant",
+								"tokenEndpoint",
+								"key",
+								"algorithm",
+								"claims",
+								"scope"
+							],
+							"additionalProperties": false
+						},
+						{
+							"type": "object",
+							"properties": {
+								"kind": {
+									"const": "oauth2"
+								},
+								"grant": {
+									"const": "tokenExchange"
+								},
+								"tokenEndpoint": {
+									"type": "string"
+								},
+								"subjectToken": {
+									"type": "string"
+								},
+								"subjectTokenType": {
+									"type": "string"
+								},
+								"audience": {
+									"type": "string"
+								},
+								"resource": {
+									"type": "string"
+								},
+								"scope": {
+									"type": "array",
+									"items": {
+										"type": "string"
+									}
+								},
+								"clientAuth": {
+									"enum": [
+										"client_secret_basic",
+										"client_secret_post"
+									]
+								}
+							},
+							"required": [
+								"kind",
+								"grant",
+								"tokenEndpoint",
+								"subjectToken",
+								"subjectTokenType",
+								"scope",
+								"clientAuth"
+							],
+							"additionalProperties": false
+						},
+						{
+							"type": "object",
+							"properties": {
+								"kind": {
+									"const": "oidc"
+								},
+								"issuer": {
+									"type": "string"
+								},
+								"scope": {
+									"type": "array",
+									"items": {
+										"type": "string"
+									}
+								},
+								"clientAuth": {
+									"enum": [
+										"client_secret_basic",
+										"client_secret_post"
+									]
+								},
+								"pkce": {
+									"type": "boolean"
+								}
+							},
+							"required": [
+								"kind",
+								"issuer",
+								"scope",
+								"clientAuth",
+								"pkce"
+							],
+							"additionalProperties": false
+						},
+						{
+							"type": "object",
+							"properties": {
+								"kind": {
+									"const": "exchange"
+								},
+								"request": {
+									"type": "object",
+									"properties": {
+										"method": {
+											"const": "POST"
+										},
+										"url": {
+											"type": "string"
+										},
+										"json": {
+											"type": "object",
+											"additionalProperties": {
+												"type": "string"
+											}
+										}
+									},
+									"required": [
+										"method",
+										"url",
+										"json"
+									],
+									"additionalProperties": false
+								},
+								"token": {
+									"type": "object",
+									"properties": {
+										"path": {
+											"type": "string"
+										},
+										"field": {
+											"type": "string"
+										},
+										"expiresIn": {
+											"type": "string"
+										}
+									},
+									"required": [
+										"path",
+										"field"
+									],
+									"additionalProperties": false
+								},
+								"apply": {
+									"type": "object",
+									"properties": {
+										"kind": {
+											"const": "apply"
+										},
+										"headers": {
+											"type": "object",
+											"additionalProperties": {
+												"type": "string"
+											}
+										},
+										"query": {
+											"type": "object",
+											"additionalProperties": {
+												"type": "string"
+											}
+										},
+										"defaults": {
+											"type": "object",
+											"additionalProperties": {
+												"type": "string"
+											}
+										},
+										"basic": {
+											"type": "object",
+											"properties": {
+												"username": {
+													"type": "string"
+												},
+												"password": {
+													"type": "string"
+												}
+											},
+											"required": [
+												"username",
+												"password"
+											],
+											"additionalProperties": false
+										},
+										"userHeader": {
+											"const": true
+										}
+									},
+									"required": [
+										"kind",
+										"headers",
+										"query",
+										"defaults"
+									],
+									"additionalProperties": false
+								}
+							},
+							"required": [
+								"kind",
+								"request",
+								"token",
+								"apply"
+							],
+							"additionalProperties": false
+						},
+						{
+							"type": "object",
+							"properties": {
+								"kind": {
 									"const": "none"
 								}
 							},
-							"required": ["kind"],
+							"required": [
+								"kind"
+							],
 							"additionalProperties": false
 						},
 						{
@@ -397,7 +722,10 @@
 									"type": "string"
 								}
 							},
-							"required": ["kind", "reason"],
+							"required": [
+								"kind",
+								"reason"
+							],
 							"additionalProperties": false
 						}
 					]
@@ -420,7 +748,10 @@
 									}
 								}
 							},
-							"required": ["on", "values"],
+							"required": [
+								"on",
+								"values"
+							],
 							"additionalProperties": false
 						}
 					]
@@ -461,12 +792,17 @@
 												"type": "string"
 											}
 										},
-										"required": ["body", "message"],
+										"required": [
+											"body",
+											"message"
+										],
 										"additionalProperties": false
 									}
 								}
 							},
-							"required": ["get"],
+							"required": [
+								"get"
+							],
 							"additionalProperties": false
 						},
 						{
@@ -503,12 +839,17 @@
 												"type": "string"
 											}
 										},
-										"required": ["body", "message"],
+										"required": [
+											"body",
+											"message"
+										],
 										"additionalProperties": false
 									}
 								}
 							},
-							"required": ["post"],
+							"required": [
+								"post"
+							],
 							"additionalProperties": false
 						}
 					]
@@ -534,9 +875,17 @@
 									}
 								]
 							}
+						},
+						"deployment": {
+							"enum": [
+								"cloud",
+								"hosted"
+							]
 						}
 					},
-					"required": ["text"],
+					"required": [
+						"text"
+					],
 					"additionalProperties": false
 				}
 			},
@@ -602,10 +951,18 @@
 									"type": "object",
 									"properties": {
 										"effect": {
-											"enum": ["read", "write", "transform"]
+											"enum": [
+												"read",
+												"write",
+												"transform"
+											]
 										},
 										"cardinality": {
-											"enum": ["per-item", "1:N", "batch"]
+											"enum": [
+												"per-item",
+												"1:N",
+												"batch"
+											]
 										},
 										"idempotent": {
 											"type": "boolean"
@@ -614,7 +971,11 @@
 											"const": "replace"
 										}
 									},
-									"required": ["effect", "cardinality", "passthrough"],
+									"required": [
+										"effect",
+										"cardinality",
+										"passthrough"
+									],
 									"additionalProperties": false
 								},
 								"credentials": {
@@ -630,7 +991,14 @@
 									}
 								},
 								"trigger": {
-									"enum": ["webhook", "poll", "event", "manual", "schedule", "form"]
+									"enum": [
+										"webhook",
+										"poll",
+										"event",
+										"manual",
+										"schedule",
+										"form"
+									]
 								},
 								"input": {
 									"type": "object",
@@ -662,7 +1030,9 @@
 													}
 												}
 											},
-											"required": ["each"],
+											"required": [
+												"each"
+											],
 											"additionalProperties": false
 										}
 									]
@@ -685,7 +1055,12 @@
 								"imports": {
 									"type": "array",
 									"items": {
-										"enum": ["dataTables", "code", "wait", "inputOf"]
+										"enum": [
+											"dataTables",
+											"code",
+											"wait",
+											"inputOf"
+										]
 									}
 								},
 								"inputs": {
@@ -776,10 +1151,18 @@
 									"type": "object",
 									"properties": {
 										"effect": {
-											"enum": ["read", "write", "transform"]
+											"enum": [
+												"read",
+												"write",
+												"transform"
+											]
 										},
 										"cardinality": {
-											"enum": ["per-item", "1:N", "batch"]
+											"enum": [
+												"per-item",
+												"1:N",
+												"batch"
+											]
 										},
 										"idempotent": {
 											"type": "boolean"
@@ -788,7 +1171,11 @@
 											"const": "replace"
 										}
 									},
-									"required": ["effect", "cardinality", "passthrough"],
+									"required": [
+										"effect",
+										"cardinality",
+										"passthrough"
+									],
 									"additionalProperties": false
 								},
 								"credentials": {
@@ -804,7 +1191,14 @@
 									}
 								},
 								"trigger": {
-									"enum": ["webhook", "poll", "event", "manual", "schedule", "form"]
+									"enum": [
+										"webhook",
+										"poll",
+										"event",
+										"manual",
+										"schedule",
+										"form"
+									]
 								},
 								"input": {
 									"type": "object",
@@ -836,7 +1230,9 @@
 													}
 												}
 											},
-											"required": ["each"],
+											"required": [
+												"each"
+											],
 											"additionalProperties": false
 										}
 									]
@@ -859,7 +1255,12 @@
 								"imports": {
 									"type": "array",
 									"items": {
-										"enum": ["dataTables", "code", "wait", "inputOf"]
+										"enum": [
+											"dataTables",
+											"code",
+											"wait",
+											"inputOf"
+										]
 									}
 								},
 								"inputs": {

@@ -1,24 +1,24 @@
-import {
-	arr,
-	compat,
-	credential,
-	defineNode,
-	defineResource,
-	int,
-	obj,
-	str,
-	variant,
-} from '@n8n/node-sdk';
+import { arr, credential, defineNode, defineResource, int, obj, str, variant } from '@n8n/node-sdk';
+
+import { googleOAuth2 } from '../google-oauth2';
+
+// The legacy node creates a document through the Drive API, with the same credential.
+export const googleDocsOAuth2 = googleOAuth2({
+	id: 'googleDocs.oauth2',
+	legacyName: 'googleDocsOAuth2Api',
+	displayName: 'Google Docs OAuth2 API',
+	hosts: ['docs.googleapis.com', 'www.googleapis.com'],
+	scope: [
+		'https://www.googleapis.com/auth/documents',
+		'https://www.googleapis.com/auth/drive',
+		'https://www.googleapis.com/auth/drive.file',
+	],
+});
 
 export const googleDocs = defineNode({
 	id: 'googleDocs',
 	displayName: 'Google Docs',
-	// The legacy node creates a document through the Drive API, with the same credential.
-	credential: credential({
-		types: [
-			compat('googleDocsOAuth2Api', { hosts: ['docs.googleapis.com', 'www.googleapis.com'] }),
-		],
-	}),
+	credential: credential({ types: [googleDocsOAuth2] }),
 	baseUrl: 'https://docs.googleapis.com/v1',
 });
 

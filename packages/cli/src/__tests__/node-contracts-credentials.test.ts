@@ -149,11 +149,26 @@ describe('credential types of the node contracts package', () => {
 			['whatsAppApi', 'n8n-nodes-base.whatsApp'],
 			['whatsAppTriggerApi', 'n8n-nodes-base.whatsAppTrigger'],
 			['facebookGraphAppApi', 'n8n-nodes-base.facebookTrigger'],
+			['gmailOAuth2', 'n8n-nodes-base.gmail'],
+			['googleSheetsOAuth2Api', 'n8n-nodes-base.googleSheets'],
+			['googleDriveOAuth2Api', 'n8n-nodes-base.googleDrive'],
+			['googleDocsOAuth2Api', 'n8n-nodes-base.googleDocs'],
+			['googleSheetsTriggerOAuth2Api', 'n8n-nodes-base.googleSheetsTrigger'],
+			['facebookGraphAppOAuth2Api', 'n8n-nodes-base.facebookTrigger'],
 		]) {
 			expect(instance.knownCredentials[name].sourcePath).toContain(NEXT);
 			expect(credentialTypes.getSupportedNodes(name)).toContain(legacyNode);
 			expect(instance.types.credentials.filter((type) => type.name === name)).toHaveLength(1);
 		}
+		// The Google sign-in and the overwrites of the legacy parent still apply.
+		expect(credentialTypes.getParentTypes('gmailOAuth2')).toEqual(['googleOAuth2Api', 'oAuth2Api']);
+		expect(credentialTypes.getParentTypes('facebookGraphAppOAuth2Api')).toEqual([
+			'facebookGraphApiOAuth2Api',
+			'oAuth2Api',
+		]);
+		expect(credentialTypes.getByName('googleSheetsOAuth2Api').properties).toContainEqual(
+			expect.objectContaining({ name: 'enabledScopes', type: 'string' }),
+		);
 		expect(credentialTypes.getByName('slackApi').test).toEqual({
 			request: { baseURL: 'https://slack.com/api', url: '/users.profile.get' },
 			rules: [

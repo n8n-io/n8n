@@ -172,6 +172,47 @@ const scheme = fits<CredentialSchemeData>()(
 			clientAuth: oneOf('client_secret_basic', 'client_secret_post'),
 			pkce: bool(),
 			authorizationQuery: values(),
+			editableScopes: constant(true).optional(),
+		}),
+		obj({
+			kind: constant('oauth2'),
+			grant: constant('deviceCode'),
+			deviceAuthorizationEndpoint: str(),
+			tokenEndpoint: str(),
+			scope: names(),
+		}),
+		obj({
+			kind: constant('oauth2'),
+			grant: constant('jwtBearer'),
+			tokenEndpoint: str(),
+			key: str(),
+			algorithm: constant('RS256'),
+			claims: values(),
+			scope: names(),
+		}),
+		obj({
+			kind: constant('oauth2'),
+			grant: constant('tokenExchange'),
+			tokenEndpoint: str(),
+			subjectToken: str(),
+			subjectTokenType: str(),
+			audience: str().optional(),
+			resource: str().optional(),
+			scope: names(),
+			clientAuth: oneOf('client_secret_basic', 'client_secret_post'),
+		}),
+		obj({
+			kind: constant('oidc'),
+			issuer: str(),
+			scope: names(),
+			clientAuth: oneOf('client_secret_basic', 'client_secret_post'),
+			pkce: bool(),
+		}),
+		obj({
+			kind: constant('exchange'),
+			request: obj({ method: constant('POST'), url: str(), json: values() }),
+			token: obj({ path: str(), field: str(), expiresIn: str().optional() }),
+			apply: placement,
 		}),
 		obj({ kind: constant('none') }),
 		obj({ kind: constant('custom'), reason: str() }),
@@ -205,7 +246,13 @@ const whenValue = new Schema<string | number | boolean | undefined>(
 	false,
 );
 
-const notice = fits<Notice>()(obj({ text: str(), when: record(whenValue).optional() }));
+const notice = fits<Notice>()(
+	obj({
+		text: str(),
+		when: record(whenValue).optional(),
+		deployment: oneOf('cloud', 'hosted').optional(),
+	}),
+);
 
 /** The data of one version of a credential type. Only a `custom` scheme has code. */
 export interface CredentialManifest {

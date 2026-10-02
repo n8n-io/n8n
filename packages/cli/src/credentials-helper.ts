@@ -7,6 +7,7 @@ import {
 	SecretsProviderConnectionRepository,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { createHash } from 'node:crypto';
 import { Credentials, FULL_ACCESS_NODE_TYPES, getAdditionalKeys } from 'n8n-core';
 import type {
 	CredentialInformation,
@@ -191,6 +192,9 @@ export class CredentialsHelper extends ICredentialsHelper {
 		return requestOptions as IHttpRequestOptions;
 	}
 
+	/** The token requests in flight, by credential id and stored data. Later callers join one. */
+	private readonly tokenRequests = new Map<string, Promise<IDataObject | undefined>>();
+
 	async preAuthentication(
 		helpers: IHttpRequestHelper,
 		credentials: ICredentialDataDecryptedObject,
@@ -213,50 +217,78 @@ export class CredentialsHelper extends ICredentialsHelper {
 		const isTestingCredentials =
 			node?.parameters?.temp === '' && node?.type === 'n8n-nodes-base.noOp';
 
-		if (credentialType.preAuthentication) {
-			if (typeof credentialType.preAuthentication === 'function') {
-				// if the expirable property is empty in the credentials
-				// or are expired, call pre authentication method
-				// or the credentials are being tested
-				if (
-					credentials[expirableProperty?.name] === '' ||
-					credentialsExpired ||
-					isTestingCredentials
-				) {
-					const output = await credentialType.preAuthentication.call(
-						restrictToCredentialDomains(helpers, credentials),
-						credentials,
-					);
+		if (typeof credentialType.preAuthentication !== 'function') return undefined;
 
-					// if there is data in the output, make sure the returned
-					// property is the expirable property
-					// else the database will not get updated
-					if (output[expirableProperty.name] === undefined) {
-						return undefined;
-					}
+		// A token with a known expiry in the past needs no failed request to be refreshed.
+		const { n8n_expires_at: expiresAt } = credentials;
+		const hasExpired =
+			typeof expiresAt === 'string' && expiresAt !== '' && Number(expiresAt) <= Date.now();
 
-					if (node.credentials) {
-						const nodeCredentials = node.credentials[credentialType.name];
-						// Cache the freshly-fetched token onto the raw stored credentials, but
-						// never overwrite a field the user stored as an expression with the value
-						// it resolved to this run — otherwise later runs reuse a stale static value.
-						const storedData = await (
-							await this.getCredentials(nodeCredentials, credentialType.name)
-						).getData();
-						const dataToPersist: ICredentialDataDecryptedObject = { ...storedData };
-						for (const [key, value] of Object.entries(output as ICredentialDataDecryptedObject)) {
-							if (key === expirableProperty.name || !isExpression(storedData[key])) {
-								dataToPersist[key] = value;
-							}
-						}
+		// if the expirable property is empty in the credentials
+		// or are expired, call pre authentication method
+		// or the credentials are being tested
+		if (
+			credentials[expirableProperty.name] !== '' &&
+			!credentialsExpired &&
+			!isTestingCredentials &&
+			!hasExpired
+		) {
+			return undefined;
+		}
 
-						await this.updateCredentials(nodeCredentials, credentialType.name, dataToPersist);
-						return Object.assign(credentials, output);
-					}
-				}
+		const nodeCredentials = node.credentials?.[credentialType.name];
+		const { [expirableProperty.name]: _token, n8n_expires_at: _expiry, ...data } = credentials;
+		const key =
+			nodeCredentials?.id && !isTestingCredentials
+				? `${nodeCredentials.id}:${createHash('sha256').update(JSON.stringify(data)).digest('hex')}`
+				: undefined;
+		const running =
+			(key === undefined ? undefined : this.tokenRequests.get(key)) ??
+			this.requestToken(helpers, credentials, credentialType, expirableProperty.name, node);
+		if (key !== undefined && !this.tokenRequests.has(key)) {
+			this.tokenRequests.set(key, running);
+			void running.finally(() => this.tokenRequests.delete(key)).catch(() => {});
+		}
+		const output = await running;
+		return output === undefined ? undefined : Object.assign(credentials, output);
+	}
+
+	/** Runs `preAuthentication` and stores its token in the credential. */
+	private async requestToken(
+		helpers: IHttpRequestHelper,
+		credentials: ICredentialDataDecryptedObject,
+		credentialType: ICredentialType,
+		expirableName: string,
+		node: INode,
+	): Promise<IDataObject | undefined> {
+		const output = await credentialType.preAuthentication?.call(
+			restrictToCredentialDomains(helpers, credentials),
+			credentials,
+		);
+
+		// if there is data in the output, make sure the returned
+		// property is the expirable property
+		// else the database will not get updated
+		if (output?.[expirableName] === undefined || !node.credentials) {
+			return undefined;
+		}
+
+		const nodeCredentials = node.credentials[credentialType.name];
+		// Cache the freshly-fetched token onto the raw stored credentials, but
+		// never overwrite a field the user stored as an expression with the value
+		// it resolved to this run — otherwise later runs reuse a stale static value.
+		const storedData = await (
+			await this.getCredentials(nodeCredentials, credentialType.name)
+		).getData();
+		const dataToPersist: ICredentialDataDecryptedObject = { ...storedData };
+		for (const [key, value] of Object.entries(output as ICredentialDataDecryptedObject)) {
+			if (key === expirableName || !isExpression(storedData[key])) {
+				dataToPersist[key] = value;
 			}
 		}
-		return undefined;
+
+		await this.updateCredentials(nodeCredentials, credentialType.name, dataToPersist);
+		return output;
 	}
 
 	/**

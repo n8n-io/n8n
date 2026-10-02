@@ -33,7 +33,10 @@
 							"const": "provider"
 						}
 					},
-					"required": ["nodeContract", "kind"],
+					"required": [
+						"nodeContract",
+						"kind"
+					],
 					"additionalProperties": false
 				}
 			},
@@ -529,7 +532,9 @@
 						}
 					}
 				},
-				"required": ["content"],
+				"required": [
+					"content"
+				],
 				"additionalProperties": false
 			},
 			"capabilities.capability": {
@@ -546,7 +551,10 @@
 								"description": "A handle of capabilities.chat-model. The side that creates the resource numbers it."
 							}
 						},
-						"required": ["tag", "val"],
+						"required": [
+							"tag",
+							"val"
+						],
 						"additionalProperties": false
 					},
 					{
@@ -561,7 +569,10 @@
 								"description": "A handle of capabilities.memory. The side that creates the resource numbers it."
 							}
 						},
-						"required": ["tag", "val"],
+						"required": [
+							"tag",
+							"val"
+						],
 						"additionalProperties": false
 					},
 					{
@@ -576,7 +587,10 @@
 								"description": "A handle of capabilities.tool. The side that creates the resource numbers it."
 							}
 						},
-						"required": ["tag", "val"],
+						"required": [
+							"tag",
+							"val"
+						],
 						"additionalProperties": false
 					},
 					{
@@ -591,7 +605,10 @@
 								"description": "A handle of capabilities.embeddings. The side that creates the resource numbers it."
 							}
 						},
-						"required": ["tag", "val"],
+						"required": [
+							"tag",
+							"val"
+						],
 						"additionalProperties": false
 					}
 				]
@@ -609,7 +626,10 @@
 								"type": "string"
 							}
 						},
-						"required": ["tag", "val"],
+						"required": [
+							"tag",
+							"val"
+						],
 						"additionalProperties": false
 					},
 					{
@@ -622,7 +642,10 @@
 								"type": "string"
 							}
 						},
-						"required": ["tag", "val"],
+						"required": [
+							"tag",
+							"val"
+						],
 						"additionalProperties": false
 					},
 					{
@@ -635,7 +658,10 @@
 								"$ref": "#/components/schemas/capabilities.assistant-message"
 							}
 						},
-						"required": ["tag", "val"],
+						"required": [
+							"tag",
+							"val"
+						],
 						"additionalProperties": false
 					},
 					{
@@ -648,7 +674,10 @@
 								"$ref": "#/components/schemas/capabilities.tool-message"
 							}
 						},
-						"required": ["tag", "val"],
+						"required": [
+							"tag",
+							"val"
+						],
 						"additionalProperties": false
 					}
 				]
@@ -673,7 +702,11 @@
 						"$ref": "#/components/schemas/capabilities.chat-usage"
 					}
 				},
-				"required": ["text", "toolCalls", "finishReason"],
+				"required": [
+					"text",
+					"toolCalls",
+					"finishReason"
+				],
 				"additionalProperties": false
 			},
 			"capabilities.chat-request": {
@@ -697,7 +730,9 @@
 						"$ref": "#/components/schemas/types.json"
 					}
 				},
-				"required": ["messages"],
+				"required": [
+					"messages"
+				],
 				"additionalProperties": false
 			},
 			"capabilities.chat-usage": {
@@ -714,7 +749,10 @@
 						"maximum": 4294967295
 					}
 				},
-				"required": ["inputTokens", "outputTokens"],
+				"required": [
+					"inputTokens",
+					"outputTokens"
+				],
 				"additionalProperties": false
 			},
 			"capabilities.tool-call": {
@@ -732,7 +770,11 @@
 						"$ref": "#/components/schemas/types.json"
 					}
 				},
-				"required": ["id", "name", "args"],
+				"required": [
+					"id",
+					"name",
+					"args"
+				],
 				"additionalProperties": false
 			},
 			"capabilities.tool-definition": {
@@ -751,7 +793,11 @@
 						"$ref": "#/components/schemas/types.json"
 					}
 				},
-				"required": ["name", "description", "input"],
+				"required": [
+					"name",
+					"description",
+					"input"
+				],
 				"additionalProperties": false
 			},
 			"capabilities.tool-message": {
@@ -768,7 +814,11 @@
 						"type": "string"
 					}
 				},
-				"required": ["toolCallId", "name", "content"],
+				"required": [
+					"toolCallId",
+					"name",
+					"content"
+				],
 				"additionalProperties": false
 			},
 			"errors.run-error": {
@@ -782,7 +832,9 @@
 						"$ref": "#/components/schemas/http.http-error"
 					}
 				},
-				"required": ["message"],
+				"required": [
+					"message"
+				],
 				"additionalProperties": false
 			},
 			"http.http-error": {
@@ -819,7 +871,12 @@
 						"$ref": "#/components/schemas/types.json"
 					}
 				},
-				"required": ["message", "status", "headers", "body"],
+				"required": [
+					"message",
+					"status",
+					"headers",
+					"body"
+				],
 				"additionalProperties": false
 			},
 			"http.http-failure": {
@@ -834,7 +891,10 @@
 								"$ref": "#/components/schemas/http.http-error"
 							}
 						},
-						"required": ["tag", "val"],
+						"required": [
+							"tag",
+							"val"
+						],
 						"additionalProperties": false
 					},
 					{
@@ -848,13 +908,23 @@
 								"type": "string"
 							}
 						},
-						"required": ["tag", "val"],
+						"required": [
+							"tag",
+							"val"
+						],
 						"additionalProperties": false
 					}
 				]
 			},
 			"http.http-method": {
-				"enum": ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD"]
+				"enum": [
+					"GET",
+					"POST",
+					"PUT",
+					"PATCH",
+					"DELETE",
+					"HEAD"
+				]
 			},
 			"http.http-request": {
 				"type": "object",
@@ -915,7 +985,12 @@
 						"type": "boolean"
 					}
 				},
-				"required": ["method", "target", "query", "headers"],
+				"required": [
+					"method",
+					"target",
+					"query",
+					"headers"
+				],
 				"additionalProperties": false
 			},
 			"http.http-response": {
@@ -949,7 +1024,11 @@
 						"$ref": "#/components/schemas/types.json"
 					}
 				},
-				"required": ["status", "headers", "body"],
+				"required": [
+					"status",
+					"headers",
+					"body"
+				],
 				"additionalProperties": false
 			},
 			"http.http-target": {
@@ -965,7 +1044,10 @@
 								"type": "string"
 							}
 						},
-						"required": ["tag", "val"],
+						"required": [
+							"tag",
+							"val"
+						],
 						"additionalProperties": false
 					},
 					{
@@ -979,7 +1061,10 @@
 								"type": "string"
 							}
 						},
-						"required": ["tag", "val"],
+						"required": [
+							"tag",
+							"val"
+						],
 						"additionalProperties": false
 					}
 				]
@@ -1000,11 +1085,19 @@
 						"maximum": 4294967295
 					}
 				},
-				"required": ["maxRequests", "maxItems"],
+				"required": [
+					"maxRequests",
+					"maxItems"
+				],
 				"additionalProperties": false
 			},
 			"log.level": {
-				"enum": ["debug", "info", "warn", "error"]
+				"enum": [
+					"debug",
+					"info",
+					"warn",
+					"error"
+				]
 			}
 		}
 	}

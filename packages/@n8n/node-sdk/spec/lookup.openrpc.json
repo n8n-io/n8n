@@ -33,7 +33,10 @@
 							"const": "lookup"
 						}
 					},
-					"required": ["nodeContract", "kind"],
+					"required": [
+						"nodeContract",
+						"kind"
+					],
 					"additionalProperties": false
 				}
 			},
@@ -168,7 +171,9 @@
 						"$ref": "#/components/schemas/http.http-error"
 					}
 				},
-				"required": ["message"],
+				"required": [
+					"message"
+				],
 				"additionalProperties": false
 			},
 			"http.http-error": {
@@ -205,7 +210,12 @@
 						"$ref": "#/components/schemas/types.json"
 					}
 				},
-				"required": ["message", "status", "headers", "body"],
+				"required": [
+					"message",
+					"status",
+					"headers",
+					"body"
+				],
 				"additionalProperties": false
 			},
 			"http.http-failure": {
@@ -220,7 +230,10 @@
 								"$ref": "#/components/schemas/http.http-error"
 							}
 						},
-						"required": ["tag", "val"],
+						"required": [
+							"tag",
+							"val"
+						],
 						"additionalProperties": false
 					},
 					{
@@ -234,13 +247,23 @@
 								"type": "string"
 							}
 						},
-						"required": ["tag", "val"],
+						"required": [
+							"tag",
+							"val"
+						],
 						"additionalProperties": false
 					}
 				]
 			},
 			"http.http-method": {
-				"enum": ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD"]
+				"enum": [
+					"GET",
+					"POST",
+					"PUT",
+					"PATCH",
+					"DELETE",
+					"HEAD"
+				]
 			},
 			"http.http-request": {
 				"type": "object",
@@ -301,7 +324,12 @@
 						"type": "boolean"
 					}
 				},
-				"required": ["method", "target", "query", "headers"],
+				"required": [
+					"method",
+					"target",
+					"query",
+					"headers"
+				],
 				"additionalProperties": false
 			},
 			"http.http-response": {
@@ -335,7 +363,11 @@
 						"$ref": "#/components/schemas/types.json"
 					}
 				},
-				"required": ["status", "headers", "body"],
+				"required": [
+					"status",
+					"headers",
+					"body"
+				],
 				"additionalProperties": false
 			},
 			"http.http-target": {
@@ -351,7 +383,10 @@
 								"type": "string"
 							}
 						},
-						"required": ["tag", "val"],
+						"required": [
+							"tag",
+							"val"
+						],
 						"additionalProperties": false
 					},
 					{
@@ -365,7 +400,10 @@
 								"type": "string"
 							}
 						},
-						"required": ["tag", "val"],
+						"required": [
+							"tag",
+							"val"
+						],
 						"additionalProperties": false
 					}
 				]
@@ -386,11 +424,19 @@
 						"maximum": 4294967295
 					}
 				},
-				"required": ["maxRequests", "maxItems"],
+				"required": [
+					"maxRequests",
+					"maxItems"
+				],
 				"additionalProperties": false
 			},
 			"log.level": {
-				"enum": ["debug", "info", "warn", "error"]
+				"enum": [
+					"debug",
+					"info",
+					"warn",
+					"error"
+				]
 			},
 			"lookup.lookup-item": {
 				"x-unstable": "lookup",
@@ -408,7 +454,10 @@
 						"type": "string"
 					}
 				},
-				"required": ["id", "label"],
+				"required": [
+					"id",
+					"label"
+				],
 				"additionalProperties": false
 			},
 			"lookup.lookup-page": {
@@ -426,7 +475,9 @@
 						"type": "string"
 					}
 				},
-				"required": ["items"],
+				"required": [
+					"items"
+				],
 				"additionalProperties": false
 			}
 		}

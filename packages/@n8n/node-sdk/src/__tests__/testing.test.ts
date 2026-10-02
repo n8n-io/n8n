@@ -6,6 +6,7 @@ import {
 	defineNode,
 	int,
 	isHttpError,
+	isRecord,
 	obj,
 	str,
 	t,
@@ -240,5 +241,87 @@ describe('runAction', () => {
 			ok: false,
 			error: { message: 'No credential definition for legacyApi. Pass it in "credentials".' },
 		});
+	});
+});
+
+describe('runAction with an exchange credential', () => {
+	const sessionApi = credentialType({
+		id: 'session.login',
+		legacyName: 'sessionApi',
+		displayName: 'Session API',
+		fields: { url: t.url('URL'), username: t.text('Username'), password: t.secret('Password') },
+		baseUrl: '{url}',
+		auth: (a) =>
+			a.exchange({
+				post: '{url}/api/session',
+				json: { username: '{username}', password: '{password}' },
+				token: { path: 'id', field: 'sessionToken' },
+				headers: { 'X-Session': '{$token}' },
+			}),
+	});
+	const session = defineNode({
+		id: 'session',
+		displayName: 'Session',
+		credential: credential({ types: [sessionApi] }),
+	});
+	const seen: unknown[] = [];
+	const twice = session.action('twice', {
+		action: 'Read twice',
+		summary: 'Read the user twice.',
+		flow: { effect: 'read', cardinality: 'per-item' },
+		input: {},
+		output: obj({ id: str() }),
+		async run({ http, credential: used }) {
+			seen.push(used);
+			await http.request({ path: '/api/user' });
+			const user = await http.request({ path: '/api/user' });
+			return isRecord(user) && typeof user.id === 'string' ? { id: user.id } : { id: '' };
+		},
+	});
+	const data = { url: 'https://bi.acme.test', username: 'ada', password: 'pw-secret-1' };
+
+	it('logs in once for two requests, and once more after a 401', async () => {
+		const fetch = mockHttp([
+			{ method: 'POST', path: '/api/session', reply: { json: { id: 'session-secret-1' } } },
+			{ path: '/api/user', times: 1, reply: { json: { id: 'u-1' } } },
+			{ path: '/api/user', times: 1, reply: { status: 401, json: { message: 'expired' } } },
+			{ path: '/api/user', reply: { json: { id: 'u-1' } } },
+		]);
+		const result = await runAction(twice, {
+			input: {},
+			credential: { type: 'sessionApi', data },
+			fetch,
+		});
+		expect(result).toEqual({ ok: true, items: [{ id: 'u-1' }] });
+		expect(fetch.calls.map(({ method, path }) => `${method} ${path}`)).toEqual([
+			'POST /api/session',
+			'GET /api/user',
+			'GET /api/user',
+			'POST /api/session',
+			'GET /api/user',
+		]);
+		expect(fetch.calls[0]?.body).toEqual({ username: 'ada', password: 'pw-secret-1' });
+		expect(fetch.calls[4]?.headers['x-session']).toBe('session-secret-1');
+		expect(seen.at(-1)).toEqual({
+			type: 'sessionApi',
+			fields: { url: 'https://bi.acme.test', username: 'ada' },
+		});
+	});
+
+	it('keeps the token and the password out of the error text', async () => {
+		const fetch = mockHttp([
+			{ method: 'POST', path: '/api/session', reply: { json: { id: 'session-secret-1' } } },
+			{
+				path: '/api/user',
+				reply: { status: 500, json: { echo: 'session-secret-1 pw-secret-1' } },
+			},
+		]);
+		const result = await runAction(twice, {
+			input: {},
+			credential: { type: 'sessionApi', data },
+			fetch,
+		});
+		expect(result.ok).toBe(false);
+		expect(JSON.stringify(result)).not.toMatch(/session-secret-1|pw-secret-1/);
 	});
 });

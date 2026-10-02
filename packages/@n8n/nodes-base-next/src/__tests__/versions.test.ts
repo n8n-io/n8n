@@ -207,8 +207,9 @@ describe('bundled versions', () => {
 		});
 		expect(byId.get('openAi.chatModel')).toMatchObject({ kind: 'provider' });
 		expect(triggers.map(({ id }) => byId.get(id)?.kind)).toEqual(triggers.map(() => 'trigger'));
+		expect(byId.get('gmail.message.send')).toMatchObject({ credentials: ['gmailOAuth2@1'] });
 		// A compat credential type has no credential manifest, so no pin.
-		expect(byId.get('gmail.message.send')).not.toHaveProperty('credentials');
+		expect(byId.get('github.issue.getAll')?.credentials).not.toContain('githubOAuth2Api@1');
 	});
 
 	it('replay the fixtures of the HEAD through the current executor', async () => {

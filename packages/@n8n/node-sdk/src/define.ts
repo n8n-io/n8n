@@ -1,4 +1,4 @@
-import type { AnyCredentialType, Credential, CredentialKey } from './credentials';
+import type { AnyCredentialType, Credential, CredentialKey, RunCredential } from './credentials';
 import {
 	hasBinary,
 	int,
@@ -55,6 +55,11 @@ export type ScopeOf<N extends NodeDefinition> = NonNullable<N['credential']> ext
 export type CredentialTypeOf<N extends NodeDefinition> = NonNullable<
 	N['credential']
 >['types'][number];
+
+/** The credential of a run of node `N`, without secrets. `undefined` when the run has none. */
+export type RunCredentialOf<N extends NodeDefinition> =
+	| RunCredential<CredentialTypeOf<N>>
+	| undefined;
 
 /** What the action does to the item stream. */
 export interface ActionFlow {
@@ -711,12 +716,16 @@ export type ActionBinding<
 	Im extends readonly HostImport[] = readonly HostImport[],
 	Ins extends ActionInputs | undefined = ActionInputs | undefined,
 	R extends AnySchema = AnySchema,
+	Cr = unknown,
 > =
 	| {
 			/** `flow.cardinality` sets how often it runs and what it gives back, see `RunResult`. */
 			run(
 				context: RunContextOf<F['cardinality'], RunInput<Full>, Ins> &
-					ImportsOf<Im, RunInput<Full>>,
+					ImportsOf<Im, RunInput<Full>> & {
+						/** The credential type of the run and its fields. `run()` never gets a secret. */
+						readonly credential: Cr;
+					},
 			): RunResult<F['cardinality'], Emit<F['cardinality'], Infer<O>, Outs>>;
 			readonly request?: never;
 			readonly list?: never;
@@ -821,8 +830,9 @@ export type ActionSpec<
 	Im extends readonly HostImport[] = readonly HostImport[],
 	Ins extends ActionInputs | undefined = ActionInputs | undefined,
 	R extends AnySchema = AnySchema,
+	Cr = unknown,
 > = ActionSpecBase<Own, Full, O, F, Sc, Outs, H, Im, Ins> &
-	ActionBinding<Full, O, F, P, Outs, Im, Ins, R>;
+	ActionBinding<Full, O, F, P, Outs, Im, Ins, R, Cr>;
 
 /** What every contract has after its node built it. */
 interface Built {
@@ -1025,7 +1035,7 @@ type NodeAction<N extends NodeDefinition, RS extends Shape, Path extends ActionP
 	R extends AnySchema = AnySchema,
 >(
 	operation: string,
-	spec: ActionSpec<S, RS & S, O, F, ScopeOf<N>, P, Outs, H, Im, Ins, R> &
+	spec: ActionSpec<S, RS & S, O, F, ScopeOf<N>, P, Outs, H, Im, Ins, R, RunCredentialOf<N>> &
 		OutputsCheck<Outs, RS & S> &
 		InputsCheck<Ins, F>,
 ) => Action<RS & S, O, F, Outs, Im, Ins> & Path;

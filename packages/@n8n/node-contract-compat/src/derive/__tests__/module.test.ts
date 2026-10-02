@@ -235,7 +235,9 @@ describe('derived modules by node kind', () => {
 		expect(module).toContain('providers: {');
 		expect(module).toContain('model: Provider<NoInfer<I>, NoInfer<C>, "ai_languageModel">;');
 		expect(module).toContain('memory?: Provider<NoInfer<I>, NoInfer<C>, "ai_memory">;');
-		expect(module).toContain('tools?: Array<Provider<NoInfer<I>, NoInfer<C>, "ai_tool">>;');
+		expect(module).toContain(
+			'tools?: Array<Provider<NoInfer<I>, NoInfer<C>, "ai_tool" | "tool">>;',
+		);
 	});
 
 	it('renames an input field that a config key holds, and reads it back', () => {
