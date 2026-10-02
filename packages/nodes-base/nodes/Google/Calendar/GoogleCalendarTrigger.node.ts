@@ -172,6 +172,7 @@ export class GoogleCalendarTrigger implements INodeType {
 		}
 
 		let events;
+		let calendarTimeZone: string | undefined;
 
 		if (
 			triggerOn === 'eventCreated' ||
@@ -214,6 +215,9 @@ export class GoogleCalendarTrigger implements INodeType {
 				`/calendar/v3/calendars/${calendarId}/events`,
 				{},
 				qs,
+				(response) => {
+					if (typeof response.timeZone === 'string') calendarTimeZone = response.timeZone;
+				},
 			);
 			if (triggerOn === 'eventCreated') {
 				events = events.filter((event: { created: string }) =>
@@ -232,14 +236,6 @@ export class GoogleCalendarTrigger implements INodeType {
 			} else if (triggerOn === 'eventStarted' || triggerOn === 'eventEnded') {
 				const getBoundary = (event: CalendarEvent) =>
 					triggerOn === 'eventStarted' ? event.start : event.end;
-				const needsCalendarTimeZone = events.some((event: CalendarEvent) => {
-					const boundary = getBoundary(event);
-					return !!boundary?.date && !boundary.dateTime && !boundary.timeZone;
-				});
-				const calendarTimeZone = needsCalendarTimeZone
-					? (await googleApiRequest.call(this, 'GET', `/calendar/v3/calendars/${calendarId}`))
-							.timeZone
-					: undefined;
 
 				events = events.filter((event: CalendarEvent) => {
 					const boundary = getBoundary(event);

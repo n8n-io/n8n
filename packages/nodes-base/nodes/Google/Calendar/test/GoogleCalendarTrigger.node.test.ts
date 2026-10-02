@@ -198,6 +198,7 @@ describe('GoogleCalendarTrigger', () => {
 					showDeleted: false,
 					orderBy: 'updated',
 				}),
+				expect.any(Function),
 			);
 
 			expect(result).toBeDefined();
@@ -228,6 +229,7 @@ describe('GoogleCalendarTrigger', () => {
 				expect.objectContaining({
 					q: 'meeting',
 				}),
+				expect.any(Function),
 			);
 		});
 
@@ -325,6 +327,7 @@ describe('GoogleCalendarTrigger', () => {
 				expect.objectContaining({
 					showDeleted: true,
 				}),
+				expect.any(Function),
 			);
 
 			expect(result).toBeDefined();
@@ -382,6 +385,7 @@ describe('GoogleCalendarTrigger', () => {
 					singleEvents: true,
 					orderBy: 'startTime',
 				}),
+				expect.any(Function),
 			);
 
 			expect(result).toBeDefined();
@@ -440,20 +444,27 @@ describe('GoogleCalendarTrigger', () => {
 			beforeEach(() => {
 				vi.useFakeTimers();
 				mockPollFunctions.getTimezone.mockReturnValue('UTC');
-				googleApiRequestSpy.mockResolvedValue({ timeZone: 'America/New_York' });
 			});
 
 			afterEach(() => {
 				vi.useRealTimers();
 			});
 
-			async function pollAllDayEvent(triggerOn: string, lastTimeChecked: string, now: string) {
+			async function pollAllDayEvent(
+				triggerOn: string,
+				lastTimeChecked: string,
+				now: string,
+				responseTimeZone: string | null = 'America/New_York',
+			) {
 				vi.setSystemTime(new Date(now));
-				googleApiRequestAllItemsSpy.mockImplementation(async () => {
-					// The request completes after the poll window ends.
-					vi.setSystemTime(new Date(new Date(now).getTime() + 1000));
-					return [allDayEvent];
-				});
+				googleApiRequestAllItemsSpy.mockImplementation(
+					async (_, _method, _endpoint, _body, _qs, onResponse) => {
+						// The request completes after the poll window ends.
+						vi.setSystemTime(new Date(new Date(now).getTime() + 1000));
+						onResponse?.(responseTimeZone ? { timeZone: responseTimeZone } : {});
+						return [allDayEvent];
+					},
+				);
 				const webhookData = { lastTimeChecked };
 				mockPollFunctions.getWorkflowStaticData.mockReturnValue(webhookData);
 				mockPollFunctions.getNodeParameter.mockImplementation((paramName: string) => {
@@ -488,8 +499,21 @@ describe('GoogleCalendarTrigger', () => {
 
 					expect(webhookData.lastTimeChecked).toBe(now);
 					expect(result?.[0].map((item) => item.json.id)).toEqual(['all-day']);
+					expect(googleApiRequestSpy).not.toHaveBeenCalled();
 				},
 			);
+
+			it('uses the workflow timezone when the events response has no timezone', async () => {
+				const { result } = await pollAllDayEvent(
+					'eventStarted',
+					'2026-09-28T23:55:00Z',
+					'2026-09-29T00:05:00Z',
+					null,
+				);
+
+				expect(result?.[0].map((item) => item.json.id)).toEqual(['all-day']);
+				expect(googleApiRequestSpy).not.toHaveBeenCalled();
+			});
 
 			it.each([
 				{
@@ -657,6 +681,7 @@ describe('GoogleCalendarTrigger', () => {
 				expect.objectContaining({
 					updatedMin: expect.any(String),
 				}),
+				expect.any(Function),
 			);
 		});
 	});

@@ -304,12 +304,15 @@ describe('googleApiRequestAllItems', () => {
 				{ id: '1', summary: 'Calendar 1' },
 				{ id: '2', summary: 'Calendar 2' },
 			],
+			timeZone: 'America/New_York',
 			nextPageToken: 'token123',
 		};
 		const mockPage2 = {
 			items: [{ id: '3', summary: 'Calendar 3' }],
+			timeZone: 'America/New_York',
 			nextPageToken: '',
 		};
+		const onResponse = vi.fn();
 
 		requestOAuth2Spy.mockResolvedValueOnce(mockPage1).mockResolvedValueOnce(mockPage2);
 
@@ -318,6 +321,9 @@ describe('googleApiRequestAllItems', () => {
 			'items',
 			'GET',
 			'/calendar/v3/users/me/calendarList',
+			{},
+			{},
+			onResponse,
 		);
 
 		expect(result).toEqual([
@@ -327,6 +333,8 @@ describe('googleApiRequestAllItems', () => {
 		]);
 
 		expect(requestOAuth2Spy).toHaveBeenCalledTimes(2);
+		expect(onResponse).toHaveBeenNthCalledWith(1, mockPage1);
+		expect(onResponse).toHaveBeenNthCalledWith(2, mockPage2);
 		expect(requestOAuth2Spy).toHaveBeenNthCalledWith(
 			1,
 			'googleCalendarOAuth2Api',
