@@ -66,7 +66,7 @@ vi.mock('../composables/useAgentTelemetry', () => ({
 vi.mock('../channels/registry', async () => {
 	const { ref, defineComponent } = await import('vue');
 	const platformView = {
-		props: ['modelValue', 'mode', 'isPublished', 'runtime'],
+		props: ['modelValue', 'mode', 'isPublished', 'runtime', 'ensureAgentPersisted'],
 		emits: ['update:modelValue', 'connect', 'connected'],
 		setup: () => {
 			// Platforms that drive their own flow (Slack) report `connected` while
@@ -91,6 +91,7 @@ vi.mock('../channels/registry', async () => {
 			>
 				<button data-testid="select-credential" @click="$emit('update:modelValue', 'credential-new')" />
 				<button data-testid="connect-channel" @click="$emit('connect')" />
+				<button data-testid="persist-agent" @click="ensureAgentPersisted?.()" />
 				<button data-testid="platform-own-flow" @click="startOwnFlow(); $emit('connected')" />
 			</div>
 		`,
@@ -395,6 +396,14 @@ describe('AgentChannelModal', () => {
 			mocks.connect.mock.invocationCallOrder[0],
 		);
 		expect(wrapper.emitted('agent-changed')).toHaveLength(1);
+	});
+
+	it('lets the platform view save the agent before it needs agent-scoped data', async () => {
+		const wrapper = mountModal('example_setup');
+
+		await wrapper.get('[data-testid="persist-agent"]').trigger('click');
+
+		expect(mocks.ensureAgentPersisted).toHaveBeenCalledOnce();
 	});
 
 	describe('while agent persistence is pending', () => {
@@ -727,6 +736,20 @@ describe('AgentChannelModal', () => {
 		expect(wrapper.find('[data-testid="disconnect-channel"]').exists()).toBe(false);
 		expect(mocks.disconnect).not.toHaveBeenCalled();
 		expect(wrapper.find('[data-testid="disconnect-confirmation"]').exists()).toBe(false);
+	});
+
+	it('dismisses a pending removal confirmation when editing becomes locked', async () => {
+		statuses.value.example = 'configured';
+		connectedCredentials.value.example = 'credential-managed';
+		const wrapper = mountModal('example_edit', true);
+		await flushPromises();
+		await wrapper.get('[data-testid="agent-channel-remove-channel"]').trigger('click');
+		expect(wrapper.find('[data-testid="disconnect-confirmation"]').exists()).toBe(true);
+
+		await wrapper.setProps({ disabled: true });
+		expect(wrapper.find('[data-testid="disconnect-confirmation"]').exists()).toBe(false);
+		expect(mocks.disconnect).not.toHaveBeenCalled();
+		expect(wrapper.emitted('channel-disconnected')).toBeUndefined();
 	});
 
 	it('shows no Back action when editing a channel directly', async () => {

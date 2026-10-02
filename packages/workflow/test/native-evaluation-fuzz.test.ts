@@ -43,10 +43,18 @@ const primitive = fc.oneof(
 	fc.constant(null),
 );
 
+// Array elements include nested arrays and objects: the methods that
+// stringify elements (join, toSorted) must hand those to the engine.
+const element = fc.oneof(
+	{ weight: 4, arbitrary: primitive },
+	fc.array(primitive, { maxLength: 2 }),
+	fc.record({ x: primitive }),
+);
+
 const jsonValue = fc.oneof(
 	{ weight: 3, arbitrary: primitive },
-	fc.array(primitive, { maxLength: 4 }),
-	fc.record({ x: primitive, y: fc.array(primitive, { maxLength: 3 }) }),
+	fc.array(element, { maxLength: 4 }),
+	fc.record({ x: primitive, y: fc.array(element, { maxLength: 3 }) }),
 );
 
 const data = fc.record({ a: jsonValue, b: jsonValue, c: jsonValue, d: jsonValue });

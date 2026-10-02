@@ -303,7 +303,7 @@ describe('AgentCard', () => {
 		expect(action.text()).toBe('agents.list.actions.enableMCPAccess');
 	});
 
-	it('offers to remove MCP access on an exposed agent', async () => {
+	it('offers to disable MCP access on an available agent', async () => {
 		enableMcp();
 		const wrapper = await renderComponent(createAgent({ availableInMCP: true }));
 

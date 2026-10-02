@@ -7,6 +7,7 @@ import { z } from 'zod';
 
 import { InMemoryFilesystem } from '../../__tests__/workspace/test-utils';
 import { Agent } from '../../sdk/agent';
+import { getModelCost } from '../../sdk/catalog';
 import { createCancellation } from '../../sdk/cancellation';
 import { isLlmMessage } from '../../sdk/message';
 import { Tool, Tool as ToolBuilder, wrapToolForApproval } from '../../sdk/tool';
@@ -31,6 +32,7 @@ import type {
 } from '../../types/sdk/tool';
 import type { BuiltTelemetry } from '../../types/telemetry';
 import { Workspace, getToolResultRunDirectory } from '../../workspace';
+import { createBudgetGuardrail, InMemorySpendLedger } from '../guardrails/budget-guardrail';
 import { AgentRuntime } from '../loop/agent-runtime';
 import { InMemoryMemory } from '../memory/memory-store';
 import { OBSERVATION_CONTINUATION_REMINDER } from '../model/message-list';
@@ -1566,6 +1568,48 @@ describe('AgentRuntime — guardrails', () => {
 		expect(result.guardrail).toEqual({ code: 'test.stop' });
 		expect(generateText).not.toHaveBeenCalled();
 		expect(onInputBoundary).toHaveBeenCalledTimes(2);
+	});
+
+	it('does not start the next model call after a turn spends the session cap', async () => {
+		vi.mocked(getModelCost).mockResolvedValueOnce({ input: 1_000_000, output: 1_000_000 });
+		streamText.mockReturnValueOnce({
+			stream: makeChunkStream([{ type: 'text-delta', id: 'text-1', text: 'using tool' }]),
+			finishReason: Promise.resolve('tool-calls'),
+			usage: Promise.resolve({ inputTokens: 10, outputTokens: 5, totalTokens: 15 }),
+			response: Promise.resolve({
+				messages: [
+					{
+						role: 'assistant',
+						content: [
+							{
+								type: 'tool-call',
+								toolCallId: 'tc-1',
+								toolName: 'echo',
+								args: { v: 'x' },
+								input: { v: 'x' },
+							},
+						],
+					},
+				],
+			}),
+			toolCalls: Promise.resolve([{ toolCallId: 'tc-1', toolName: 'echo', input: { v: 'x' } }]),
+		});
+		const runtime = createRuntimeWithEchoTool(async () => ({ ok: true }));
+		const hook = createBudgetGuardrail({
+			ledger: new InMemorySpendLedger(),
+			sessionId: 'session-1',
+			sessionCostCapUsd: 1,
+		});
+
+		const { stream } = await runtime.stream('hi', { guardrails: { hooks: [hook] } });
+		const chunks = await collectChunks(stream);
+
+		expect(streamText).toHaveBeenCalledTimes(1);
+		expect(chunks[chunks.length - 1]).toMatchObject({
+			type: 'finish',
+			finishReason: 'guardrail',
+			guardrail: { code: 'budget.session' },
+		});
 	});
 
 	it('calls before() and after() once with the same context when the call is allowed', async () => {

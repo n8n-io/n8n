@@ -24,7 +24,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [agent_execution_threads](agent_execution_threads.md) | 19 |  | table |
 | [agent_files](agent_files.md) | 10 |  | table |
 | [agent_history](agent_history.md) | 9 |  | table |
-| [agent_message_queue](agent_message_queue.md) | 9 |  | table |
+| [agent_message_queue](agent_message_queue.md) | 10 |  | table |
 | [agent_task_definition](agent_task_definition.md) | 8 |  | table |
 | [agent_task_run_lock](agent_task_run_lock.md) | 6 |  | table |
 | [agent_task_snapshot](agent_task_snapshot.md) | 9 |  | table |
@@ -611,6 +611,7 @@ erDiagram
   INTEGER id
   varchar_36_ messageId FK
   TEXT payload
+  INTEGER position
   varchar_36_ steeringExecutionId FK
   INTEGER steeringOrder
   varchar_128_ threadId FK

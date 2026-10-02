@@ -376,30 +376,20 @@ describe('AgentTaskModal', () => {
 		);
 	});
 
-	it('pauses and unpauses an existing task with the inline toggle', async () => {
-		const onToggle = vi.fn();
-		const { getByTestId, getByText, queryByText } = renderModal({
+	it('allows manual Preview of a deactivated schedule without a modal toggle', async () => {
+		const onPreview = vi.fn();
+		const { getByTestId, queryByTestId, getByText } = renderModal({
 			task: makeTask(),
-			taskState: { enabled: true },
-			onToggle,
+			taskState: { enabled: false },
+			isRunnable: true,
+			onPreview,
 		});
 
-		expect(getByTestId('agent-task-pause-control')).toHaveTextContent('agents.builder.tasks.pause');
-		expect(getByTestId('agent-task-toggle')).toHaveAttribute('aria-checked', 'false');
-		expect(getByText(/agents\.builder\.tasks\.schedule\.nextOccurrence/)).toBeInTheDocument();
+		expect(queryByTestId('agent-task-toggle')).not.toBeInTheDocument();
+		expect(getByText(/agents\.builder\.capabilities\.deactivated/)).toBeInTheDocument();
+		await fireEvent.click(getByTestId('agent-task-preview'));
 
-		await fireEvent.click(getByTestId('agent-task-toggle'));
-
-		expect(onToggle).toHaveBeenCalledWith({ id: 'task-9', enabled: false });
-		expect(getByTestId('agent-task-toggle')).toHaveAttribute('aria-checked', 'true');
-		expect(queryByText(/agents\.builder\.tasks\.schedule\.nextOccurrence/)).not.toBeInTheDocument();
-		expect(getByText('agents.builder.tasks.schedule.executionPaused')).toBeInTheDocument();
-
-		await fireEvent.click(getByTestId('agent-task-toggle'));
-
-		expect(onToggle).toHaveBeenLastCalledWith({ id: 'task-9', enabled: true });
-		expect(getByTestId('agent-task-toggle')).toHaveAttribute('aria-checked', 'false');
-		expect(getByText(/agents\.builder\.tasks\.schedule\.nextOccurrence/)).toBeInTheDocument();
+		expect(onPreview).toHaveBeenCalledWith('Obj');
 	});
 
 	describe('schedule timezone', () => {
@@ -585,8 +575,7 @@ describe('AgentTaskModal', () => {
 		});
 
 		expect(getByTestId('agent-task-delete')).toHaveTextContent('agents.builder.tasks.delete');
-		expect(getByTestId('agent-task-pause-control')).toBeInTheDocument();
-		expect(getByTestId('agent-task-toggle')).toBeInTheDocument();
+		expect(queryByTestId('agent-task-toggle')).not.toBeInTheDocument();
 		expect(getByTestId('agent-task-preview')).toHaveTextContent('Preview');
 		expect(getByTestId('agent-task-preview')).toHaveAttribute('data-variant', 'ghost');
 		expect(getByTestId('agent-task-save')).toHaveTextContent('generic.save');

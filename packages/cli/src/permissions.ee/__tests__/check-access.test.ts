@@ -14,9 +14,8 @@ import type { EntityManager } from '@n8n/typeorm';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
+import { CredentialsFinderService, RoleService } from '@n8n/backend-services';
 import { NotFoundError } from '@n8n/errors';
-import { RoleService } from '@n8n/backend-services';
 
 import { userHasScopes } from '../check-access';
 
