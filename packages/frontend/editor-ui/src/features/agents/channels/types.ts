@@ -24,6 +24,7 @@ export interface AgentChannelViewExpose {
 	validationError?: string | null;
 	loading?: boolean;
 	beforeSave?: () => Promise<void>;
+	description?: string;
 	/** Replaces the modal's Save label when saving does more than save. */
 	saveLabel?: string;
 	/** Runs after a successful save, before the modal closes. Must not throw. */

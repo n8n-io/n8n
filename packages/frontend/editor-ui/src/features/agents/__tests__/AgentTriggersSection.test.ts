@@ -100,12 +100,17 @@ vi.mock('@n8n/i18n', () => ({
 	useI18n: () => ({ baseText: (key: string) => key }),
 }));
 
+const n8nChatFlag = vi.hoisted(() => ({ value: false }));
+vi.mock('../composables/useAgentsN8nChatFlag', () => ({
+	useAgentsN8nChatFlag: () => n8nChatFlag,
+}));
+
 vi.mock('../components/AgentChannelModal.vue', () => ({
 	default: {
 		name: 'AgentChannelModal',
-		props: ['simpleSetup', 'isPublished'],
+		props: ['simpleSetup', 'isPublished', 'view', 'savedDescription', 'saveDescription'],
 		template:
-			'<div data-testid="agent-channel-modal-stub" :data-simple-setup="simpleSetup" :data-is-published="isPublished" />',
+			'<div data-testid="agent-channel-modal-stub" :data-simple-setup="simpleSetup" :data-is-published="isPublished" :data-view="view" :data-saved-description="savedDescription" />',
 	},
 }));
 
@@ -152,6 +157,7 @@ describe('AgentTriggersSection', () => {
 			delete connectedCredentials.value[type];
 			return { status: 'disconnected' };
 		});
+		n8nChatFlag.value = false;
 	});
 
 	it.each(['credential-1', ''])(
@@ -399,5 +405,60 @@ describe('AgentTriggersSection', () => {
 		expect(
 			wrapper.find('[data-testid="agent-channel-modal-stub"]').attributes('data-is-published'),
 		).toBe('true');
+	});
+
+	describe('n8n Chat chip', () => {
+		function findChip(wrapper: ReturnType<typeof mountSection>, label: string) {
+			return wrapper.findAll('button').find((button) => button.text().includes(label));
+		}
+
+		it('renders a chip with the n8n Chat label and icon when the flag is on', async () => {
+			n8nChatFlag.value = true;
+			const wrapper = mountSection(undefined, false, { connectedTriggers: ['n8n_chat'] });
+			await flushPromises();
+
+			const chip = findChip(wrapper, 'agents.channels.n8nChat.label');
+			expect(chip).toBeTruthy();
+			expect(chip?.find('[icon="message-square"]').exists()).toBe(true);
+		});
+
+		it('hides the chip when the flag is off', async () => {
+			n8nChatFlag.value = false;
+			const wrapper = mountSection(undefined, false, { connectedTriggers: ['n8n_chat'] });
+			await flushPromises();
+
+			expect(findChip(wrapper, 'agents.channels.n8nChat.label')).toBeUndefined();
+		});
+
+		it('opens the modal on n8n_chat_edit when clicked', async () => {
+			n8nChatFlag.value = true;
+			const wrapper = mountSection(undefined, false, { connectedTriggers: ['n8n_chat'] });
+			await flushPromises();
+
+			await findChip(wrapper, 'agents.channels.n8nChat.label')?.trigger('click');
+			await flushPromises();
+
+			expect(wrapper.find('[data-testid="agent-channel-modal-stub"]').attributes('data-view')).toBe(
+				'n8n_chat_edit',
+			);
+		});
+
+		it('forwards savedDescription to the channel modal', async () => {
+			n8nChatFlag.value = true;
+			const wrapper = mountSection(undefined, false, {
+				connectedTriggers: ['n8n_chat'],
+				savedDescription: 'Handles support tickets',
+			});
+			await flushPromises();
+
+			await wrapper.find('[data-testid="agent-channels-add-channel"]').trigger('click');
+			await flushPromises();
+
+			expect(
+				wrapper
+					.find('[data-testid="agent-channel-modal-stub"]')
+					.attributes('data-saved-description'),
+			).toBe('Handles support tickets');
+		});
 	});
 });
