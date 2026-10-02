@@ -181,8 +181,8 @@ describe.skipIf(!REDIS_HOST || !REDIS_PORT)('returnJobToQueue (real Redis)', () 
 
 		const lockTokenOf = (queue: JobQueue) => {
 			const token = getLockToken(queue);
-			expect(token).toEqual(expect.any(String));
-			return token ?? '';
+			if (typeof token !== 'string') throw new Error('Queue has no lock token');
+			return token;
 		};
 
 		const stateOf = async (queue: JobQueue, jobId: JobId) =>
