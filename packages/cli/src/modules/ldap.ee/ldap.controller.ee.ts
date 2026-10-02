@@ -21,7 +21,8 @@ export class LdapController {
 	@Licensed('feat:ldap')
 	@GlobalScope('ldap:manage')
 	async getConfig() {
-		return redactLdapConfig(await this.ldapService.loadConfig());
+		const ldapConfig = await this.ldapService.loadConfig();
+		return redactLdapConfig(ldapConfig);
 	}
 
 	@Post('/test-connection')
