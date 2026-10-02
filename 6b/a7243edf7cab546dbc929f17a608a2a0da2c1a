@@ -1,0 +1,32 @@
+packages/@n8n/config/test/decorators.test.ts
+  h_52a137d26d774c 31
+packages/@n8n/decorators/src/multi-main/__tests__/multi-main-metadata.test.ts
+  h_52a137d26d774c 32
+packages/@n8n/decorators/src/multi-main/__tests__/on-multi-main-event.test.ts
+  h_52a137d26d774c 78
+packages/@n8n/decorators/src/pubsub/__tests__/on-pubsub-event.test.ts
+  h_52a137d26d774c 53
+packages/@n8n/decorators/src/system-task/__tests__/run-options.test.ts
+  h_52a137d26d774c 62,95,121
+packages/@n8n/decorators/src/system-task/__tests__/system-task-metadata.test.ts
+  h_52a137d26d774c 82,111
+packages/@n8n/errors/src/index.ts
+  h_52a137d26d774c 1
+packages/@n8n/mcp-browser/src/sensitivity/html-probe.test.ts
+  h_52a137d26d774c 20
+packages/@n8n/node-cli/src/configs/eslint.ts
+  h_52a137d26d774c 14
+packages/@n8n/workflow-sdk/src/workflow-builder/subnode-utils.ts
+  h_52a137d26d774c 160
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6ba7243edf7cab546dbc929f17a608a2a0da2c1a",
+  "prompts": {},
+  "humans": {
+    "h_52a137d26d774c": {
+      "author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}
