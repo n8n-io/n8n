@@ -21,6 +21,7 @@ import {
 	AGENT_BACKGROUND_UPDATES_OPEN_TAG,
 	formatWakeMessage,
 } from './background-job-messages';
+import type { Agent } from '../entities/agent.entity';
 import type { AgentBackgroundJob } from '../entities/agent-background-job.entity';
 import { ChatIntegrationRegistry } from '../integrations/agent-chat-integration';
 import { AgentBackgroundJobRepository } from '../repositories/agent-background-job.repository';
@@ -107,8 +108,8 @@ export class AgentWakeService {
 		if (!this.agentsConfig.backgroundTasksEnabled) return undefined;
 		if (this.activeWakes.has(threadId)) return undefined;
 
-		const jobs = (await this.jobRepository.findWakeableUnconsumedSettled(threadId)).filter(
-			(job) => job.parentResourceId === resourceId,
+		const jobs = (await this.jobRepository.findWakeableUnconsumed(threadId)).filter(
+			(job) => job.parentResourceId === resourceId && job.status !== 'suspended',
 		);
 		if (jobs.length === 0) return undefined;
 
@@ -149,15 +150,20 @@ export class AgentWakeService {
 	}
 
 	private async deliverInsideLease(threadId: string, signal: AbortSignal): Promise<void> {
-		const pending = await this.jobRepository.findWakeableUnconsumedSettled(threadId);
-		const first = pending[0];
+		const pending = await this.jobRepository.findWakeableUnconsumed(threadId);
+		for (const job of pending.filter((item) => item.status === 'suspended')) {
+			if (signal.aborted) return;
+			await this.deliverApproval(job, signal);
+		}
+		const settled = pending.filter((job) => job.status !== 'suspended');
+		const first = settled[0];
 		if (!first || signal.aborted) return;
 
 		// Each wake delivers results for one author. The oldest pending job determines
 		// the wake identity. Results for other authors stay pending for the next wake.
-		const jobs = pending.filter((job) => this.hasSameParentIdentity(job, first));
+		const jobs = settled.filter((job) => this.hasSameParentIdentity(job, first));
 		const generation = jobs
-			.map((job) => job.id)
+			.map((job) => `${job.id}:${job.status}:${job.updatedAt.toISOString()}`)
 			.sort()
 			.join(':');
 		const failure = this.failures.get(threadId);
@@ -165,55 +171,14 @@ export class AgentWakeService {
 			return;
 		}
 
-		const { running, suspendedCheckpoint } = await this.conversationState.inspect(
-			first.parentAgentId,
-			threadId,
-		);
-		if (running || suspendedCheckpoint !== null) {
-			return;
-		}
-
-		const agent = await this.agentRepository.findById(first.parentAgentId);
-		if (!agent) {
-			this.recordFailure(threadId, generation, 'Background job parent agent no longer exists');
-			return;
-		}
-
-		let identity: ExecuteForWakeConfig['identity'];
 		try {
-			identity = await this.resolveIdentity(
-				first.parentResourceId,
-				first.parentPrincipalHash,
-				agent.projectId,
-			);
-		} catch (error) {
-			this.recordFailure(
+			const { agent, identity } = await this.resolveWakeTarget(first);
+			const { running, suspendedCheckpoint } = await this.conversationState.inspect(
+				first.parentAgentId,
 				threadId,
-				generation,
-				error instanceof Error ? error.message : String(error),
 			);
-			return;
-		}
-
-		try {
-			this.activeWakes.add(threadId);
-			try {
-				await this.orchestrator.executeForWake({
-					agentId: agent.id,
-					projectId: agent.projectId,
-					message: formatWakeMessage(jobs),
-					backgroundJobSignal: {
-						tasks: jobs.flatMap(({ id, title, kind, status }) =>
-							status === 'running' ? [] : [{ id, title, kind, status }],
-						),
-					},
-					memory: { threadId, resourceId: first.parentResourceId },
-					identity,
-					abortSignal: signal,
-				});
-			} finally {
-				this.activeWakes.delete(threadId);
-			}
+			if (running || suspendedCheckpoint !== null) return;
+			await this.runWake(agent, identity, jobs, threadId, first.parentResourceId, signal);
 
 			if (signal.aborted) return;
 			await this.backgroundJobService.markMailConsumed(
@@ -228,7 +193,38 @@ export class AgentWakeService {
 			if (signal.aborted) return;
 			// Keep provider and tool error details in the execution record.
 			// Log only that the wake failed.
-			this.recordFailure(threadId, generation, 'Wake run failed');
+			this.recordFailure(threadId, generation);
+		}
+	}
+
+	private async deliverApproval(job: AgentBackgroundJob, signal: AbortSignal): Promise<void> {
+		try {
+			const approval = await this.backgroundJobService.getApproval(job);
+			if (!approval) return;
+			const { agent, identity } = await this.resolveWakeTarget(job);
+			if (signal.aborted) return;
+			await this.orchestrator.deliverBackgroundApproval(
+				{
+					agentId: agent.id,
+					projectId: agent.projectId,
+					memory: { threadId: job.parentThreadId, resourceId: job.parentResourceId },
+					identity,
+				},
+				job.title,
+				approval,
+			);
+			if (signal.aborted) return;
+			await this.jobRepository.markApprovalDelivered(
+				job.id,
+				approval.runId,
+				approval.serializedState,
+			);
+			this.failures.delete(job.parentThreadId);
+			this.scheduleLocal(job.parentThreadId);
+		} catch {
+			if (!signal.aborted) {
+				this.logger.warn('Failed to deliver a background approval', { jobId: job.id });
+			}
 		}
 	}
 
@@ -272,14 +268,53 @@ export class AgentWakeService {
 		);
 	}
 
-	private recordFailure(threadId: string, generation: string, reason: string): void {
+	private recordFailure(threadId: string, generation: string): void {
 		const previous = this.failures.get(threadId);
 		const count = previous?.generation === generation ? previous.count + 1 : 1;
 		this.failures.set(threadId, { generation, count });
 		this.logger.warn('Failed to deliver background job results to the parent agent', {
 			threadId,
 			attempt: count,
-			reason,
+			reason: 'Wake run failed',
 		});
+	}
+
+	private async resolveWakeTarget(first: AgentBackgroundJob) {
+		const agent = await this.agentRepository.findById(first.parentAgentId);
+		if (!agent) throw new OperationalError('Background job parent agent no longer exists');
+		const identity = await this.resolveIdentity(
+			first.parentResourceId,
+			first.parentPrincipalHash,
+			agent.projectId,
+		);
+		return { agent, identity };
+	}
+
+	private async runWake(
+		agent: Agent,
+		identity: ExecuteForWakeConfig['identity'],
+		jobs: AgentBackgroundJob[],
+		threadId: string,
+		resourceId: string,
+		signal: AbortSignal,
+	): Promise<void> {
+		this.activeWakes.add(threadId);
+		try {
+			await this.orchestrator.executeForWake({
+				agentId: agent.id,
+				projectId: agent.projectId,
+				message: formatWakeMessage(jobs),
+				backgroundJobSignal: {
+					tasks: jobs.flatMap(({ id, title, kind, status }) =>
+						status === 'running' || status === 'suspended' ? [] : [{ id, title, kind, status }],
+					),
+				},
+				memory: { threadId, resourceId },
+				identity,
+				abortSignal: signal,
+			});
+		} finally {
+			this.activeWakes.delete(threadId);
+		}
 	}
 }

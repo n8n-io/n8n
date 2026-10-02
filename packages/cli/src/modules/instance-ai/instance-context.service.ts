@@ -485,12 +485,6 @@ export class InstanceContextService {
 		if (!row) return null;
 
 		if (resolved.surface === 'mcp') {
-			// Both fields are checked, not just `category`. `ActivityEvent` documents that the two
-			// come apart as soon as an entry is about one kind of thing but points at another, and
-			// at that point a `category: 'workflow'` row could still name a credential.
-			const touchesCredential = row.category === 'credential' || row.resourceType === 'credential';
-			if (touchesCredential && !isCredentialVisible(row, resolved)) return null;
-
 			// The history below is about this same resource, so one check covers both.
 			const [visible] = await this.withoutWithheldWorkflows([row], resolved);
 			if (!visible) return null;
@@ -705,8 +699,9 @@ export class InstanceContextService {
 				surface: 'mcp',
 				projectIds: [projectId],
 				credentialProjectIds,
-				allowedCategories:
-					credentialProjectIds.length > 0 ? ['workflow', 'credential'] : ['workflow'],
+				allowedCategories: hasCredentialProjectScope(credentialProjectIds)
+					? ['workflow', 'credential']
+					: ['workflow'],
 				runsVisible: scope.executionGranted,
 			};
 		}
@@ -728,8 +723,9 @@ export class InstanceContextService {
 				surface: 'mcp',
 				projectIds: 'all-projects',
 				credentialProjectIds,
-				allowedCategories:
-					credentialProjectIds.length > 0 ? ['workflow', 'credential'] : ['workflow'],
+				allowedCategories: hasCredentialProjectScope(credentialProjectIds)
+					? ['workflow', 'credential']
+					: ['workflow'],
 				runsVisible: scope.executionGranted,
 			};
 		}
@@ -752,8 +748,9 @@ export class InstanceContextService {
 			surface: 'mcp',
 			projectIds,
 			credentialProjectIds,
-			allowedCategories:
-				credentialProjectIds.length > 0 ? ['workflow', 'credential'] : ['workflow'],
+			allowedCategories: hasCredentialProjectScope(credentialProjectIds)
+				? ['workflow', 'credential']
+				: ['workflow'],
 			runsVisible: scope.executionGranted,
 		};
 	}
@@ -855,6 +852,10 @@ export class InstanceContextService {
 	}
 }
 
+function hasCredentialProjectScope(projectIds: ActivityProjectScope): boolean {
+	return projectIds === 'all-projects' || projectIds.length > 0;
+}
+
 /**
  * The category a read should filter on. `undefined` means no filter; `null` means refuse the read
  * outright, because the caller asked for exactly the category they may not see.
@@ -870,9 +871,7 @@ function resolveCategory(
 	if (category !== undefined && !scope.allowedCategories.includes(category)) return null;
 	if (scope.surface !== 'mcp') return category;
 
-	const seesSomeCredentials =
-		scope.credentialProjectIds === 'all-projects' || scope.credentialProjectIds.length > 0;
-	if (seesSomeCredentials) return category;
+	if (hasCredentialProjectScope(scope.credentialProjectIds)) return category;
 
 	if (category === 'credential') return null;
 	// No category asked for, and only one of the two is visible anywhere — so name it rather than

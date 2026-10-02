@@ -249,6 +249,8 @@ describe('PATCH /community-packages', () => {
 	});
 
 	test('should reject if package is not installed', async () => {
+		communityPackagesService.parseNpmPackageName.mockReturnValue(parsedNpmPackageName);
+
 		const {
 			body: { message },
 		} = await authAgent.patch('/community-packages').send({ name: mockPackageName() }).expect(400);

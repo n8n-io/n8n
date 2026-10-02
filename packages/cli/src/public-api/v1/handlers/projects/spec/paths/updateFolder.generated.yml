@@ -30,6 +30,7 @@ requestBody:
           name:
             type: string
             example: Renamed Folder
+            maxLength: 128
           parentFolderId:
             type: string
             description: ID of the parent folder to move this folder into. Set to "0" to move the folder to the project root.

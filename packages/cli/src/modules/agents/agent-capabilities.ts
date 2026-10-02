@@ -2,8 +2,8 @@
  * Agent-level capabilities and limitations the Instance AI orchestrator surfaces
  * to plan agent builds. Lives in the agents module — the source of truth — so
  * it stays aligned with the agent config schema and business rules as they
- * evolve. The orchestrator reads these through the builder delegate
- * (`listAgentCapabilities`), never hardcoding them, so a capability added or
+ * evolve. The orchestrator reads these through the Agent context adapter,
+ * never hardcoding them, so a capability added or
  * removed here flows to the orchestrator without a cross-package change.
  */
 

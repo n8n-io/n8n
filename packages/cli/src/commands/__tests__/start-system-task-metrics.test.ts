@@ -1,9 +1,10 @@
+import { EventService } from '@n8n/backend-services';
 import '@/zod-alias-support';
 
 import { Logger } from '@n8n/backend-common';
 import { mockInstance, mockLogger } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
-import { DbConnection, SettingsRepository } from '@n8n/db';
+import { DbConnection, ScheduledJobRepository, SettingsRepository } from '@n8n/db';
 import { SystemTaskMetadata } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import type { NextFunction, Request, Response } from 'express';
@@ -14,7 +15,6 @@ import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { AuthService } from '@/auth/auth.service';
 import { ControllerRegistry } from '@/controller.registry';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
-import { EventService } from '@/events/event.service';
 import { LogStreamingEventRelay } from '@/events/relays/log-streaming.event-relay';
 import { EnqueuedExecutionRecoveryService } from '@/executions/enqueued-execution-recovery.service';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
@@ -26,6 +26,7 @@ import { Push } from '@/push';
 import { PubSubRegistry } from '@/scaling/pubsub/pubsub.registry';
 import { DurableScheduler } from '@/scheduling/durable-scheduler';
 import { DummySystemTask } from '@/scheduling/system-tasks/__tests__/dummy.task';
+import { instanceSystemTasks } from '@/scheduling/system-tasks/instance-system-tasks';
 import { mainSystemTasks } from '@/scheduling/system-tasks/main-system-tasks';
 import { SystemTaskJobRegistrar } from '@/scheduling/system-tasks/system-task-job-registrar';
 import { SystemTaskRunner } from '@/scheduling/system-tasks/system-task-runner';
@@ -40,6 +41,7 @@ import { TestWebhooks } from '@/webhooks/test-webhooks';
 import { Start } from '../start';
 
 vi.mock('@/scheduling/system-tasks/main-system-tasks');
+vi.mock('@/scheduling/system-tasks/instance-system-tasks');
 vi.mock('@/public-api', () => ({
 	loadPublicApiVersions: async () => ({
 		apiRouters: [(_req: Request, _res: Response, next: NextFunction) => next()],
@@ -89,6 +91,7 @@ describe('Start system task metrics', () => {
 		mockInstance(SystemTaskJobRegistrar);
 		mockInstance(SystemTaskScheduledJobOwner);
 		mockInstance(SettingsRepository, { findBy: async () => [] });
+		mockInstance(ScheduledJobRepository);
 		activeWorkflowManager = mockInstance(ActiveWorkflowManager);
 
 		// Keep the real system task collector. Other collectors are outside this test.
@@ -119,6 +122,7 @@ describe('Start system task metrics', () => {
 		dummy = new DummySystemTask();
 		Container.set(DummySystemTask, dummy);
 		vi.mocked(mainSystemTasks).mockResolvedValue([DummySystemTask]);
+		vi.mocked(instanceSystemTasks).mockResolvedValue([]);
 		runner = Container.get(SystemTaskRunner);
 	});
 
@@ -143,16 +147,16 @@ describe('Start system task metrics', () => {
 		return (await metric?.get())?.values ?? [];
 	}
 
-	const inMemoryDummy = { task: 'dummy', mode: 'in_memory' };
+	const leaderTimerDummy = { task: 'dummy', mode: 'leader_timer' };
 
-	it('seeds the in-memory series although a takeover preceded the collector', async () => {
+	it('seeds the leader-timer series although a takeover preceded the collector', async () => {
 		const events = Container.get(EventService);
 		expect(events.listenerCount('system-task-timers-started')).toBe(0);
 
 		// A multi-main leader check can win leadership at this point, before the
 		// boot reaches the collector. Regular mode never takes that path, so the
 		// takeover is applied directly.
-		runner.startTimers();
+		runner.startLeaderTimers();
 
 		await runStart();
 
@@ -161,19 +165,19 @@ describe('Start system task metrics', () => {
 			['scheduled', 1],
 			['runs_in_flight', 0],
 		] as const) {
-			expect(await seriesOf(name)).toContainEqual({ labels: inMemoryDummy, value });
+			expect(await seriesOf(name)).toContainEqual({ labels: leaderTimerDummy, value });
 		}
 
 		await vi.advanceTimersByTimeAsync(interval);
 
 		expect(dummy.runCount).toBe(1);
 		expect(await seriesOf('last_success_timestamp_seconds')).toContainEqual({
-			labels: inMemoryDummy,
+			labels: leaderTimerDummy,
 			value: now.getTime() / 1000 + 60,
 		});
 	});
 
-	it('exports no in-memory series on a follower', async () => {
+	it('exports no leader-timer series on a follower', async () => {
 		Container.get(InstanceSettings).markAsFollower();
 
 		await runStart();

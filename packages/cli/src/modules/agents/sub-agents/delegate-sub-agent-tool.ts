@@ -1,14 +1,15 @@
 import {
 	createDelegateSubAgentTool,
+	type CreateDelegateSubAgentToolOptions,
 	INLINE_SUB_AGENT_ID,
 	type InlineSubAgentProviderToolsResolver,
 	type ModelConfig,
 	type SubAgentTaskDifficulty,
 } from '@n8n/agents';
-import type { SubAgentRunPolicy, SubAgentSource } from '@n8n/api-types';
+import type { BudgetGuardrailConfig, SubAgentRunPolicy, SubAgentSource } from '@n8n/api-types';
 import { OperationalError, UserError } from 'n8n-workflow';
 
-import { ResponseError } from '@/errors/response-errors/abstract/response.error';
+import { ResponseError } from '@n8n/errors';
 
 import { AgentExecutionRecordingError } from '../agent-execution-recording.error';
 import { decodeAgentSandboxHostMetadata } from '../agent-sandbox-principal';
@@ -17,8 +18,10 @@ import type { SubAgentRunContext, SubAgentRunner } from './sub-agent-runner';
 
 export interface CreateN8nDelegateSubAgentToolOptions extends SubAgentRunContext {
 	runner: SubAgentRunner;
+	/** Budget on the agent that owns this delegate tool. Not the root cap once forwarded. */
+	parentBudget?: BudgetGuardrailConfig;
 	sourcesById: Record<string, SubAgentSource>;
-	availableSubAgents?: Array<{ id: string; name: string; useWhen?: string }>;
+	availableSubAgents?: NonNullable<CreateDelegateSubAgentToolOptions['availableSubAgents']>;
 	policy?: SubAgentRunPolicy;
 	inlineSubAgentModelsByDifficulty?: Partial<Record<SubAgentTaskDifficulty, ModelConfig>>;
 	resolveInlineSubAgentProviderTools?: InlineSubAgentProviderToolsResolver;
@@ -32,6 +35,7 @@ export function createN8nDelegateSubAgentTool(options: CreateN8nDelegateSubAgent
 		policy,
 		inlineSubAgentModelsByDifficulty,
 		resolveInlineSubAgentProviderTools,
+		parentBudget,
 		...runContext
 	} = options;
 
@@ -82,6 +86,7 @@ export function createN8nDelegateSubAgentTool(options: CreateN8nDelegateSubAgent
 				},
 				{
 					...runContext,
+					...rootBudgetSession(runContext, parentBudget, request.parentThreadId),
 					...(request.parentExecutionCounter !== undefined
 						? { executionCounter: request.parentExecutionCounter }
 						: {}),
@@ -110,6 +115,7 @@ export function createN8nDelegateSubAgentTool(options: CreateN8nDelegateSubAgent
 
 			const context = {
 				...runContext,
+				...rootBudgetSession(runContext, parentBudget, request.parentThreadId),
 				...(request.parentExecutionCounter !== undefined
 					? { executionCounter: request.parentExecutionCounter }
 					: {}),
@@ -154,6 +160,32 @@ function shouldRetrySubAgentResumeError(error: unknown): boolean {
 	if (error instanceof OperationalError) return true;
 	if (!(error instanceof ResponseError)) return false;
 	return [408, 425, 429, 502, 503, 504].includes(error.httpStatusCode);
+}
+
+function positiveSessionCap(budget: BudgetGuardrailConfig | undefined): number | undefined {
+	const cap = budget?.enabled ? budget.sessionCostCapUsd : undefined;
+	if (cap === undefined || !(cap > 0)) return undefined;
+	return cap;
+}
+
+function rootBudgetSession(
+	runContext: SubAgentRunContext,
+	parentBudget: BudgetGuardrailConfig | undefined,
+	parentThreadId: string | undefined,
+): Pick<SubAgentRunContext, 'rootSessionId' | 'rootSessionCapUsd' | 'budgetForwarded'> {
+	if (runContext.budgetForwarded) {
+		const cap = runContext.rootSessionCapUsd;
+		return {
+			rootSessionId: runContext.rootSessionId,
+			rootSessionCapUsd: cap !== undefined && cap > 0 ? cap : undefined,
+			budgetForwarded: true,
+		};
+	}
+	return {
+		rootSessionId: parentThreadId,
+		rootSessionCapUsd: positiveSessionCap(parentBudget),
+		budgetForwarded: true,
+	};
 }
 
 function selectSubAgentSource(options: {

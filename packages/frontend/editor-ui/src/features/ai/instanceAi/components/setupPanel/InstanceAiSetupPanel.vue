@@ -16,14 +16,18 @@ import {
 	N8nButton,
 	N8nIcon,
 	N8nText,
+	N8nPopover,
 	type SetupPanelItem,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
+import { shouldAutoResolveCredential } from '@n8n/api-types';
+import { NodeHelpers } from 'n8n-workflow';
 import { useToast } from '@n8n/composables/useToast';
 import type { INodeUi } from '@/Interface';
 import {
 	LOCAL_STORAGE_INSTANCE_AI_SETUP_ITEMS,
 	LOCAL_STORAGE_INSTANCE_AI_SETUP_DISMISSED,
+	LOCAL_STORAGE_INSTANCE_AI_SETUP_COACHMARK_SEEN,
 	ResourceLocatorDropdownTeleportedKey,
 } from '@/app/constants';
 import { getWorkflow } from '@/app/api/workflows';
@@ -40,7 +44,7 @@ import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useCredentialTestInBackground } from '@/features/credentials/composables/useCredentialTestInBackground';
 import { useThread } from '../../instanceAi.store';
-import { useSetupPanelState } from '../../composables/useSetupPanelState';
+import { useSetupPanelState, type SetupPanelRow } from '../../composables/useSetupPanelState';
 import { useSetupPanelExecution } from '../../composables/useSetupPanelExecution';
 import {
 	buildInstanceAiArtifactCredentialQuestion,
@@ -80,6 +84,7 @@ const usersStore = useUsersStore();
 const rootStore = useRootStore();
 const oauth = useCredentialOAuth();
 const connectingItemId = ref<string>();
+const reopenAuthorization = ref<() => void>();
 let active = true;
 onScopeDispose(() => {
 	active = false;
@@ -91,8 +96,12 @@ const {
 	rows,
 	rowSource,
 	credentialsAvailable,
+	workflowNodes,
+	savedWorkflowChecksum,
 	isRefreshingWorkflow,
+	isCheckingOAuthCredentials,
 	isAgentBuilding,
+	isAwaitingFirstBuild,
 	getNodeByName: getSavedNodeByName,
 	refreshWorkflow,
 	workflowProjectId,
@@ -141,9 +150,13 @@ watch(
 );
 
 const actions = useSetupPanelActions({
+	threadId: thread.id,
 	workflowId: () => props.workflowId,
+	workflowNodes,
 	isAgentBuilding,
+	savedWorkflowChecksum,
 	onFlushResult: notifyApplyResult,
+	onSaved: (workflow) => panelTelemetry.trackSaved(workflow),
 });
 
 function getNodeByName(name: string, includePendingParameters = true): INodeUi | undefined {
@@ -174,12 +187,15 @@ function getNodeByName(name: string, includePendingParameters = true): INodeUi |
 const displayedRows = computed(() =>
 	rows.value.map((row) => {
 		if (row.item.kind === 'credential') {
-			const pending =
-				actions.getPendingCredential(row.item.id) ||
+			const pending = actions.getPendingCredential(row.item.id);
+			if (pending && !row.item.nodeBindings?.length)
+				return { ...row, isDone: isCredentialConfigured(pending) };
+			const hasPending =
+				pending ||
 				row.item.nodeBindings?.some(({ nodeName }) =>
 					actions.getPendingCredential(row.item.id, nodeName),
 				);
-			return pending ? { ...row, isDone: isItemDone(row.item, getNodeByName) } : row;
+			return hasPending ? { ...row, isDone: isItemDone(row.item, getNodeByName) } : row;
 		}
 		return actions.getPendingParameterChanges(row.item.nodeName).length
 			? { ...row, isDone: isItemDone(row.item, getNodeByName) }
@@ -224,16 +240,60 @@ const shownItemIds = useLocalStorage<string[]>(
 	[],
 	{ writeDefaults: false, flush: 'sync' },
 );
-const credentialsReady = computed(() => credentialsAvailable.value && !isRefreshingWorkflow.value);
+const credentialsReady = computed(
+	() =>
+		credentialsAvailable.value && !isRefreshingWorkflow.value && !isCheckingOAuthCredentials.value,
+);
+const selectingExisting = ref(new Set<string>());
 watch(
-	[rows, credentialsReady],
-	([currentRows, ready]) => {
-		const added = currentRows.filter(
-			(row) =>
-				!row.isDone &&
-				(row.item.kind === 'parameters' || ready) &&
-				!shownItemIds.value.includes(row.item.id),
-		);
+	[rows, credentialsReady, () => credentialsStore.usableCredentials],
+	async ([currentRows, ready]) => {
+		if (!ready) return;
+		const workflowId = props.workflowId;
+		const selections = currentRows.flatMap(({ item }) => {
+			if (
+				item.kind !== 'credential' ||
+				item.nodeBindings?.length ||
+				item.preferNew ||
+				actions.getPendingCredential(item.id) ||
+				selectingExisting.value.has(item.id)
+			)
+				return [];
+			const credentials = credentialsStore.getUsableCredentialByType(item.credentialType);
+			return shouldAutoResolveCredential(item.credentialType, credentials.length)
+				? [{ item, credential: credentials[0] }]
+				: [];
+		});
+		if (!selections.length) return;
+		// Hide all automatic selections before any asynchronous save can expose a partial list.
+		selectingExisting.value = new Set([
+			...selectingExisting.value,
+			...selections.map(({ item }) => item.id),
+		]);
+		for (const { item, credential } of selections) {
+			try {
+				if (props.workflowId === workflowId)
+					await actions.bindCredential(item, { id: credential.id, name: credential.name });
+			} finally {
+				selectingExisting.value.delete(item.id);
+			}
+		}
+	},
+	{ immediate: true, flush: 'sync' },
+);
+
+function needsInitialAction(row: SetupPanelRow) {
+	return (
+		!row.isDone &&
+		(row.item.kind === 'parameters' ||
+			(credentialsReady.value && !selectingExisting.value.has(row.item.id)))
+	);
+}
+
+watch(
+	() => displayedRows.value.filter(needsInitialAction),
+	(currentRows) => {
+		const added = currentRows.filter((row) => !shownItemIds.value.includes(row.item.id));
 		if (added.length)
 			shownItemIds.value = [...shownItemIds.value, ...added.map((row) => row.item.id)];
 	},
@@ -247,8 +307,9 @@ const groups = computed(() =>
 	}).filter((group) => {
 		const items = [...(group.credential ? [group.credential] : []), ...group.parameters];
 		return (
+			group.id === selectedItemId.value ||
 			items.some((row) => shownItemIds.value.includes(row.item.id)) ||
-			items.some((row) => !row.isDone && (row.item.kind === 'parameters' || credentialsReady.value))
+			items.some(needsInitialAction)
 		);
 	}),
 );
@@ -258,11 +319,15 @@ const panelTelemetry = useSetupPanelTelemetry({
 	rows,
 	groups,
 	shownItemIds,
+	getNodeByName: getSavedNodeByName,
+	isItemDone,
+	isAgentBuilding,
 	ready: () =>
 		!setupDismissed.value &&
 		credentialsReady.value &&
 		(rowSource.value === 'derived' || rows.value.length > 0),
 });
+defineExpose({ getChatTelemetryContext: panelTelemetry.getChatTelemetryContext });
 const selectedGroup = computed(() =>
 	groups.value.find((group) => group.id === selectedItemId.value),
 );
@@ -323,8 +388,9 @@ const panelItems = computed<SetupPanelItem[]>(() =>
 					!group.credential.isDone &&
 					oauth.isOAuthCredentialType(group.credential.item.credentialType) &&
 					oauth.canOAuthCredentialQuickConnect(group.credential.item.credentialType) &&
-					credentialsStore.getUsableCredentialByType(group.credential.item.credentialType)
-						.length === 0,
+					(connectingItemId.value === group.id ||
+						credentialsStore.getUsableCredentialByType(group.credential.item.credentialType)
+							.length === 0),
 			),
 			completed:
 				(!group.credential || group.credential.isDone) &&
@@ -389,7 +455,19 @@ const detailSections = computed(() => {
 	const group = selectedGroup.value;
 	if (!group) return [];
 	const credential = group.credential?.item;
-	const editors = parameterEditors.value;
+	const editors = parameterEditors.value.filter(({ item, node }) => {
+		const type = nodeType(node);
+		if (!type) return false;
+		const values =
+			NodeHelpers.getNodeParameters(type.properties, node.parameters, true, true, node, type) ??
+			node.parameters;
+		return type.properties.some(
+			(property) =>
+				property.type !== 'hidden' &&
+				item.parameterNames.some((name) => name.split(/[.[\]]/)[0] === property.name) &&
+				NodeHelpers.displayParameter(values, property, node, type),
+		);
+	});
 	const nodes = credential ? selectedNodes.value : editors.map((editor) => editor.node);
 	return [
 		...(credential && !perNodeCredentials.value
@@ -427,7 +505,9 @@ const detailSections = computed(() => {
 						? isCredentialConfigured(node.credentials?.[credential.credentialType])
 						: !group.credential || group.credential.isDone,
 			})),
-	];
+	].filter(
+		(section) => section.credential || (section.showParameters && section.editors.length > 0),
+	);
 });
 const parameterEditorComponents = useTemplateRef<
 	Array<InstanceType<typeof InstanceAiSetupPanelDetail>>
@@ -447,6 +527,30 @@ const dirtyParameters = shallowReactive(new Set<string>());
 const requestingExecution = execution.isRunning;
 const isChatBusy = computed(
 	() => thread.isStreaming || thread.isSendingMessage || thread.isAwaitingConfirmation,
+);
+
+const setupPanel = useTemplateRef<HTMLElement>('setupPanel');
+const setupCoachmarkSeen = useLocalStorage(
+	() => LOCAL_STORAGE_INSTANCE_AI_SETUP_COACHMARK_SEEN(usersStore.currentUserId ?? ''),
+	false,
+	{ writeDefaults: false },
+);
+const showSetupCoachmark = ref(false);
+const canShowSetupCoachmark = computed(
+	() =>
+		Boolean(usersStore.currentUserId && setupPanel.value) &&
+		(isAgentBuilding.value || (isAwaitingFirstBuild.value && thread.isStreaming)) &&
+		!setupDismissed.value &&
+		!selectedItemId.value &&
+		panelItems.value.some((item) => !item.completed && !item.disabled),
+);
+watch(
+	[canShowSetupCoachmark, () => usersStore.currentUserId, () => props.workflowId],
+	([available]) => {
+		showSetupCoachmark.value = available && !setupCoachmarkSeen.value;
+		if (showSetupCoachmark.value) setupCoachmarkSeen.value = true;
+	},
+	{ immediate: true, flush: 'post' },
 );
 
 async function onAskForHelp(credential: InstanceAiCredentialContext) {
@@ -537,7 +641,7 @@ function finishSubmission(
 const terminalStatus = computed(() => {
 	if (!allRowsDone.value || hasChanges.value) return 'incomplete';
 	if (requestingExecution.value) return 'executing';
-	if (isAgentBuilding.value) return 'incomplete';
+	if (isAgentBuilding.value || isAwaitingFirstBuild.value) return 'incomplete';
 	if (
 		rowSource.value !== 'derived' ||
 		!credentialsReady.value ||
@@ -594,6 +698,10 @@ async function onExecute() {
 }
 
 async function connectFromRow(id: string) {
+	if (connectingItemId.value === id && reopenAuthorization.value) {
+		reopenAuthorization.value();
+		return;
+	}
 	const group = groupById(id);
 	const item = group?.credential?.item;
 	const projectId = credentialProjectId.value;
@@ -617,11 +725,15 @@ async function connectFromRow(id: string) {
 		const credential = await oauth.createAndAuthorize(item.credentialType, node?.type, {
 			projectId,
 			workflowId,
+			onAuthorizationStarted: (reopen) => {
+				reopenAuthorization.value = reopen;
+			},
 		});
 		if (credential) await bind(credential.id);
 	} catch (error) {
 		if (active) toast.showError(error, i18n.baseText('instanceAi.setupPanel.connectionError'));
 	} finally {
+		reopenAuthorization.value = undefined;
 		connectingItemId.value = undefined;
 	}
 }
@@ -687,114 +799,145 @@ async function onConfirmParameters() {
 </script>
 
 <template>
-	<N8nSetupPanel
-		v-if="!setupDismissed"
-		:key="workflowId"
-		v-model:active-item-id="selectedItemId"
-		:items="panelItems"
-		:status="terminalStatus"
-		:execute-disabled="isChatBusy || requestingExecution"
-		data-test-id="instance-ai-setup-panel"
-		@execute="onExecute"
-		@detail-closed="onDetailClosed"
-		@update:overlap-height="emit('update:overlapHeight', $event)"
-	>
-		<template #action="{ item }">
-			<N8nButton
-				size="small"
-				variant="subtle"
-				:disabled="item.disabled || Boolean(connectingItemId)"
-				:loading="connectingItemId === item.id"
-				@click="connectFromRow(item.id)"
-			>
-				{{ i18n.baseText('instanceAi.setupPanel.connect') }}
-			</N8nButton>
-		</template>
-		<template #icon="{ item }">
-			<CredentialIcon
-				v-if="groupById(item.id)?.credential"
-				:credential-type-name="groupById(item.id)?.credential?.item.credentialType ?? ''"
-				:size="16"
-			/>
-			<NodeIcon
-				v-else-if="groupById(item.id)?.node"
-				:node-type="groupNodeType(item.id)"
-				:size="16"
-			/>
-			<N8nIcon v-else icon="sliders-horizontal" size="small" />
-		</template>
-		<template #detail="{ item }">
-			<div v-if="selectedGroup" :class="$style.detail">
-				<section
-					v-for="section in detailSections"
-					:key="section.id"
-					:class="[$style.section, { [$style.divided]: section.title }]"
+	<div v-if="!setupDismissed && panelItems.length" ref="setupPanel">
+		<N8nSetupPanel
+			:key="workflowId"
+			v-model:active-item-id="selectedItemId"
+			:items="panelItems"
+			:status="terminalStatus"
+			:execute-disabled="isChatBusy || requestingExecution"
+			data-test-id="instance-ai-setup-panel"
+			@execute="onExecute"
+			@detail-closed="onDetailClosed"
+			@update:overlap-height="emit('update:overlapHeight', $event)"
+		>
+			<template #action="{ item }">
+				<N8nButton
+					size="small"
+					variant="subtle"
+					:disabled="
+						item.disabled ||
+						Boolean(connectingItemId && (connectingItemId !== item.id || !reopenAuthorization))
+					"
+					:loading="connectingItemId === item.id && !reopenAuthorization"
+					@click="connectFromRow(item.id)"
 				>
-					<N8nText v-if="section.title" tag="h3" size="medium" bold :class="$style.sectionTitle">{{
-						section.title
-					}}</N8nText>
-					<InstanceAiSetupCredential
-						v-if="section.credential && credentialProjectId"
-						:key="section.credential.id"
-						:item="section.credential"
-						:node="section.nodes[0]"
-						:pending-credential="actions.getPendingCredential(section.credential.id)"
-						:nodes="section.nodes"
-						:workflow-id="workflowId"
-						:project-id="credentialProjectId"
-						:help-disabled="isChatBusy"
-						:allow-per-node="!perNodeCredentials && selectedNodes.length > 1"
-						@set-credentials-per-node="perNodeGroups.add(item.id)"
-						@ask-for-help="onAskForHelp"
-						@bind-credential="
-							(credential, id) => selectedItemId === item.id && onBindCredential(credential, id)
-						"
-						@update:busy="
-							(selectedItemId === item.id || (!selectedItemId && !$event)) &&
-							($event ? busyCredentials.add(section.id) : busyCredentials.delete(section.id))
-						"
-						@update:has-changes="
-							(selectedItemId === item.id || (!selectedItemId && !$event)) &&
-							($event ? dirtyCredentials.add(section.id) : dirtyCredentials.delete(section.id))
-						"
-						@connect-started="
-							selectedItemId === item.id &&
-							panelTelemetry.trackConnectionStarted(section.credential, $event)
-						"
-					/>
-					<template v-if="section.showParameters">
-						<div v-for="editor in section.editors" :key="editor.item.id">
-							<InstanceAiSetupPanelDetail
-								ref="parameterEditorComponents"
-								:item="editor.item"
-								:node="editor.node"
-								:workflow-id="workflowId"
-								:project-id="credentialProjectId"
-								:pending-changes="editor.pendingChanges"
-								@update:has-changes="
-									(selectedItemId === item.id || (!selectedItemId && !$event)) &&
-									($event
-										? dirtyParameters.add(editor.item.id)
-										: dirtyParameters.delete(editor.item.id))
-								"
-							/>
-						</div>
-					</template>
-				</section>
-				<div v-if="showParameterConfirm" :class="$style.footer">
-					<N8nButton
-						size="small"
-						:disabled="dirtyParameters.size === 0 || isApplying || credentialBusy"
-						:loading="isApplying"
-						data-test-id="instance-ai-setup-panel-confirm"
-						@click="onConfirmParameters"
+					{{ i18n.baseText('instanceAi.setupPanel.connect') }}
+				</N8nButton>
+			</template>
+			<template #icon="{ item }">
+				<CredentialIcon
+					v-if="groupById(item.id)?.credential"
+					:credential-type-name="groupById(item.id)?.credential?.item.credentialType ?? ''"
+					:size="16"
+				/>
+				<NodeIcon
+					v-else-if="groupById(item.id)?.node"
+					:node-type="groupNodeType(item.id)"
+					:size="16"
+				/>
+				<N8nIcon v-else icon="sliders-horizontal" size="small" />
+			</template>
+			<template #detail="{ item }">
+				<div v-if="selectedGroup" :class="$style.detail">
+					<section
+						v-for="section in detailSections"
+						:key="section.id"
+						:class="[$style.section, { [$style.divided]: section.title }]"
 					>
-						{{ i18n.baseText(activeGroupComplete ? 'generic.update' : 'generic.confirm') }}
-					</N8nButton>
+						<N8nText
+							v-if="section.title"
+							tag="h3"
+							size="medium"
+							bold
+							:class="$style.sectionTitle"
+							>{{ section.title }}</N8nText
+						>
+						<InstanceAiSetupCredential
+							v-if="section.credential && credentialProjectId"
+							:key="section.credential.id"
+							:item="section.credential"
+							:node="section.nodes[0]"
+							:pending-credential="actions.getPendingCredential(section.credential.id)"
+							:nodes="section.nodes"
+							:workflow-id="workflowId"
+							:project-id="credentialProjectId"
+							:help-disabled="isChatBusy"
+							:allow-per-node="!perNodeCredentials && selectedNodes.length > 1"
+							@set-credentials-per-node="perNodeGroups.add(item.id)"
+							@ask-for-help="onAskForHelp"
+							@bind-credential="
+								(credential, id) => selectedItemId === item.id && onBindCredential(credential, id)
+							"
+							@update:busy="
+								(selectedItemId === item.id || (!selectedItemId && !$event)) &&
+								($event ? busyCredentials.add(section.id) : busyCredentials.delete(section.id))
+							"
+							@update:has-changes="
+								(selectedItemId === item.id || (!selectedItemId && !$event)) &&
+								($event ? dirtyCredentials.add(section.id) : dirtyCredentials.delete(section.id))
+							"
+							@connect-started="
+								selectedItemId === item.id &&
+								panelTelemetry.trackConnectionStarted(section.credential, $event)
+							"
+						/>
+						<template v-if="section.showParameters">
+							<div v-for="editor in section.editors" :key="editor.item.id">
+								<InstanceAiSetupPanelDetail
+									ref="parameterEditorComponents"
+									:item="editor.item"
+									:node="editor.node"
+									:workflow-id="workflowId"
+									:project-id="credentialProjectId"
+									:pending-changes="editor.pendingChanges"
+									@update:has-changes="
+										(selectedItemId === item.id || (!selectedItemId && !$event)) &&
+										($event
+											? dirtyParameters.add(editor.item.id)
+											: dirtyParameters.delete(editor.item.id))
+									"
+								/>
+							</div>
+						</template>
+					</section>
+					<div v-if="showParameterConfirm" :class="$style.footer">
+						<N8nButton
+							size="small"
+							:disabled="dirtyParameters.size === 0 || isApplying || credentialBusy"
+							:loading="isApplying"
+							data-test-id="instance-ai-setup-panel-confirm"
+							@click="onConfirmParameters"
+						>
+							{{ i18n.baseText(activeGroupComplete ? 'generic.update' : 'generic.confirm') }}
+						</N8nButton>
+					</div>
 				</div>
-			</div>
-		</template>
-	</N8nSetupPanel>
+			</template>
+		</N8nSetupPanel>
+		<N8nPopover
+			:open="showSetupCoachmark"
+			:reference="setupPanel ?? undefined"
+			side="top"
+			align="start"
+			show-arrow
+			:enable-scrolling="false"
+			suppress-auto-focus
+			width="calc(var(--spacing--5xl) + var(--spacing--3xl))"
+			@update:open="showSetupCoachmark = $event && showSetupCoachmark"
+		>
+			<template #content>
+				<div :class="$style.coachmark" data-test-id="instance-ai-setup-coachmark">
+					<N8nText tag="p" size="small" role="status">{{
+						i18n.baseText('instanceAi.setupPanel.earlySetupCoachmark')
+					}}</N8nText>
+					<N8nButton size="small" @click="showSetupCoachmark = false">{{
+						i18n.baseText('instanceAi.setupPanel.dismissCoachmark')
+					}}</N8nButton>
+				</div>
+			</template>
+		</N8nPopover>
+	</div>
 </template>
 
 <style lang="scss" module>
@@ -816,5 +959,17 @@ async function onConfirmParameters() {
 .footer {
 	display: flex;
 	justify-content: flex-end;
+}
+
+.coachmark {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	gap: var(--spacing--xs);
+	padding: var(--spacing--sm);
+
+	p {
+		margin: 0;
+	}
 }
 </style>

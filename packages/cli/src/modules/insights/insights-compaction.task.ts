@@ -1,6 +1,6 @@
 import { Time } from '@n8n/constants';
-import { SystemTask } from '@n8n/decorators';
-import type { SystemTaskEffects, SystemTaskSchedule } from '@n8n/decorators';
+import { intervalFromSeconds, SystemTask } from '@n8n/decorators';
+import type { SystemTaskEffects, SystemTaskPlacement, SystemTaskSchedule } from '@n8n/decorators';
 
 import { InsightsCompactionService } from './insights-compaction.service';
 import { InsightsConfig } from './insights.config';
@@ -13,14 +13,13 @@ import { InsightsConfig } from './insights.config';
 export class InsightsCompactionTask implements SystemTask {
 	readonly name = 'insights-compaction';
 
-	readonly schedule: SystemTaskSchedule = {
-		kind: 'interval',
-		intervalSeconds: this.insightsConfig.compactionIntervalMinutes * Time.minutes.toSeconds,
-	};
+	readonly schedule: SystemTaskSchedule = intervalFromSeconds(
+		this.insightsConfig.compactionIntervalMinutes * Time.minutes.toSeconds,
+	);
 
 	readonly effects: SystemTaskEffects = 'idempotent';
 
-	readonly durable = true;
+	readonly placement: SystemTaskPlacement = { scope: 'cluster', durable: true };
 
 	constructor(
 		private readonly insightsConfig: InsightsConfig,

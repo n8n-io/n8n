@@ -2,6 +2,8 @@ import { setActivePinia, createPinia } from 'pinia';
 import { computed } from 'vue';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { FrontendModuleSettings, InstanceAiUserPreferencesResponse } from '@n8n/api-types';
+import { usePostHog } from '@/app/stores/posthog.store';
+import { INSTANCE_AI_SETUP_PANEL_EXPERIMENT } from '@/app/constants/experiments';
 
 vi.mock('@n8n/stores/useRootStore', () => ({
 	useRootStore: vi.fn().mockReturnValue({
@@ -31,7 +33,8 @@ vi.mock('@n8n/i18n', () => ({
 	i18n: { baseText: (key: string) => key },
 }));
 
-const rollouts = { computerUse: true, browserUse: true };
+const rollouts = { computerUse: true };
+const device = { supportsBrowserUse: true };
 
 vi.mock('@/experiments/instanceAiComputerUse', () => ({
 	useInstanceAiComputerUseExperiment: () => ({
@@ -39,10 +42,8 @@ vi.mock('@/experiments/instanceAiComputerUse', () => ({
 	}),
 }));
 
-vi.mock('@/experiments/instanceAiBrowserUse', () => ({
-	useInstanceAiBrowserUseExperiment: () => ({
-		isFeatureEnabled: computed(() => rollouts.browserUse),
-	}),
+vi.mock('../utils/browserUseSupport', () => ({
+	isBrowserUseSupportedOnDevice: () => device.supportsBrowserUse,
 }));
 
 const mockFetchSettings = vi.fn();
@@ -129,7 +130,7 @@ describe('useInstanceAiSettingsStore', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		rollouts.computerUse = true;
-		rollouts.browserUse = true;
+		device.supportsBrowserUse = true;
 		vi.mocked(hasPermission).mockReturnValue(false);
 		setActivePinia(createPinia());
 		store = useInstanceAiSettingsStore();
@@ -156,6 +157,21 @@ describe('useInstanceAiSettingsStore', () => {
 				rbac: { scope: 'credential:manageInstance' },
 			});
 		});
+	});
+
+	it.each(['control', 'variant', false, undefined])('uses the setup panel flag %s', (variant) => {
+		if (variant !== undefined)
+			usePostHog().overrides[INSTANCE_AI_SETUP_PANEL_EXPERIMENT.name] = { value: variant };
+		expect(store.isInstanceAiSetupPanelEnabled).toBe(variant === 'variant');
+	});
+
+	it('updates the setup flow when the standard feature flag override changes', () => {
+		const posthog = usePostHog();
+		expect(store.isInstanceAiSetupPanelEnabled).toBe(false);
+		posthog.overrides[INSTANCE_AI_SETUP_PANEL_EXPERIMENT.name] = { value: 'variant' };
+		expect(store.isInstanceAiSetupPanelEnabled).toBe(true);
+		posthog.overrides[INSTANCE_AI_SETUP_PANEL_EXPERIMENT.name] = { value: 'control' };
+		expect(store.isInstanceAiSetupPanelEnabled).toBe(false);
 	});
 
 	describe('isInstanceAiDisabled', () => {
@@ -530,7 +546,6 @@ describe('useInstanceAiSettingsStore', () => {
 				localGatewayDisabled: false,
 				proxyEnabled: true,
 				cloudManaged: true,
-				instanceAiSetupPanelEnabled: true,
 			});
 
 			const adminResponse = {
@@ -560,7 +575,6 @@ describe('useInstanceAiSettingsStore', () => {
 			expect(ms?.sandboxEnabled).toBe(false);
 			expect(ms?.workflowBuilderAvailable).toBe(false);
 			expect(ms?.sandboxUnavailableReason).toBeNull();
-			expect(ms?.instanceAiSetupPanelEnabled).toBe(true);
 		});
 	});
 
@@ -692,16 +706,15 @@ describe('useInstanceAiSettingsStore', () => {
 	});
 
 	describe('computerUseChannels', () => {
-		it('reports both entries when each rollout and admin switch allows it', () => {
+		it('reports both entries when the rollout and admin switches allow them', () => {
 			setModuleSettings(settingsStore, { localGatewayDisabled: false, browserUseEnabled: true });
 
 			expect(store.computerUseChannels).toEqual(['localComputer', 'browser']);
 		});
 
-		it('reports nothing when neither rollout covers the user', () => {
+		it('reports nothing when neither the rollout nor the admin allows an entry', () => {
 			rollouts.computerUse = false;
-			rollouts.browserUse = false;
-			setModuleSettings(settingsStore, { localGatewayDisabled: false, browserUseEnabled: true });
+			setModuleSettings(settingsStore, { localGatewayDisabled: false, browserUseEnabled: false });
 
 			expect(store.computerUseChannels).toEqual([]);
 		});
@@ -718,8 +731,8 @@ describe('useInstanceAiSettingsStore', () => {
 			expect(store.computerUseChannels).toEqual(['localComputer']);
 		});
 
-		it('drops the browser when its rollout does not cover the user', () => {
-			rollouts.browserUse = false;
+		it('drops the browser on phones and tablets', () => {
+			device.supportsBrowserUse = false;
 			setModuleSettings(settingsStore, { localGatewayDisabled: false, browserUseEnabled: true });
 
 			expect(store.computerUseChannels).toEqual(['localComputer']);

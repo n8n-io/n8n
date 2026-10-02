@@ -109,6 +109,17 @@ describe('runScriptedGateVerification', () => {
 		expect(result.executedNodeNames).toEqual(expect.arrayContaining(['Publish', 'Revise']));
 	});
 
+	it('keeps the file-output nodes of every pass', async () => {
+		const run = vi
+			.fn()
+			.mockResolvedValueOnce({ ...approvePassResult, binaryOutputNodeNames: ['Publish'] })
+			.mockResolvedValueOnce(declinePassResult);
+
+		const { result } = await runScriptedGateVerification(makeArgs(run));
+
+		expect(result.binaryOutputNodeNames).toEqual(['Publish']);
+	});
+
 	it('starts every decision pass from the named trigger', async () => {
 		const run = vi
 			.fn()

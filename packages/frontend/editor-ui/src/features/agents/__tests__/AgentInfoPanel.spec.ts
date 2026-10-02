@@ -260,13 +260,13 @@ describe('AgentInfoPanel', () => {
 		},
 	);
 
-	it('renders instructions as a ghost markdown editor with a floating toolbar', function rendersInstructions() {
+	it('renders instructions as a contained markdown editor with a floating toolbar', function rendersInstructions() {
 		const wrapper = mountPanel();
 
 		const editor = wrapper.findComponent({ name: 'N8nMarkdownEditor' });
 		expect(editor.props()).toMatchObject({
 			modelValue: '# Role\nHelp users.',
-			variant: 'ghost',
+			variant: 'contained',
 			showToolbar: 'floating',
 			maxHeight: undefined,
 			placeholder: 'agents.builder.agent.instructions.placeholder',
@@ -281,6 +281,13 @@ describe('AgentInfoPanel', () => {
 		const editor = wrapper.findComponent({ name: 'N8nMarkdownEditor' });
 		expect(editor.props('modelValue')).toBe('');
 		expect(editor.props('placeholder')).toBe('agents.builder.agent.instructions.placeholder');
+	});
+
+	it('reports instructions input before its debounced config update', () => {
+		const wrapper = mountPanel('Cris');
+		wrapper.getComponent({ name: 'N8nMarkdownEditor' }).vm.$emit('update:modelValue', 'Crisp.');
+
+		expect(wrapper.emitted('draft:config')).toHaveLength(1);
 	});
 
 	it('removes reasoning immediately when selecting a model that does not support it', async () => {

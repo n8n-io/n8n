@@ -32,6 +32,7 @@ export const MCP_INSTANCE_SCOPES = [
 	'tag:read',
 	'communityPackage:install',
 	'aiPreference:read',
+	'aiPreference:write',
 ] as const;
 
 export type McpScope = (typeof MCP_INSTANCE_SCOPES)[number];
@@ -39,7 +40,7 @@ export type McpScope = (typeof MCP_INSTANCE_SCOPES)[number];
 export type McpClientType = 'cli' | 'ide' | 'editor' | 'assistant';
 
 /** Known client brands, used by the FE to pick the logo shown next to a client. */
-export type McpClientBrandName = 'claude' | 'cursor' | 'vscode' | 'openai';
+export type McpClientBrandName = 'claude' | 'cursor' | 'vscode' | 'openai' | 'mistral';
 
 /**
  * Client names are free-form (self-reported at OAuth registration), so known
@@ -59,6 +60,7 @@ export const MCP_CLIENT_BRAND_MATCHERS: ReadonlyArray<{
 	{ pattern: /(visual studio code|vs ?code)/i, brand: 'vscode', type: 'editor' },
 	{ pattern: /codex/i, brand: 'openai', type: 'cli' },
 	{ pattern: /chatgpt|openai/i, brand: 'openai', type: 'assistant' },
+	{ pattern: /mistral|\bvibe\b/i, brand: 'mistral', type: 'assistant' },
 ];
 
 export function getMcpClientType(clientName: string): McpClientType | null {

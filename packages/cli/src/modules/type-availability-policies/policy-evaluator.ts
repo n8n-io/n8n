@@ -50,16 +50,18 @@ export type PackageResolver = (typeName: string) => string | null;
  */
 export const nodeTypePackageResolver: PackageResolver = (typeName) => typeName.split('.')[0];
 
+export type PolicedType = { readonly name: string; readonly baseName: string };
+
 function selectorMatches(
 	selector: PolicySelector,
-	typeName: string,
+	type: PolicedType,
 	resolvePackage: PackageResolver,
 ): boolean {
 	switch (selector.kind) {
 		case 'name':
-			return selector.value === typeName;
+			return selector.value === type.name || selector.value === type.baseName;
 		case 'package':
-			return resolvePackage(typeName) === selector.value;
+			return resolvePackage(type.name) === selector.value;
 	}
 }
 
@@ -92,25 +94,25 @@ export function orderedAttachments(attachments: readonly PolicyAttachment[]): Po
 export function evaluateType(
 	attachments: readonly PolicyAttachment[],
 	defaultAction: PolicyAction,
-	typeName: string,
+	type: PolicedType,
 	resolvePackage: PackageResolver = nodeTypePackageResolver,
 ): PolicyVerdict {
 	for (const attachment of orderedAttachments(attachments)) {
-		const matched = firstMatch(attachment.rules, typeName, resolvePackage);
+		const matched = firstMatch(attachment.rules, type, resolvePackage);
 		if (matched) return matched;
 	}
 
 	return { action: defaultAction, matchedRuleId: null };
 }
 
-/** The first rule matching `typeName`, or `null` when none does. */
+/** The first rule matching `type`, or `null` when none does. */
 function firstMatch(
 	rules: readonly PolicyRule[],
-	typeName: string,
+	type: PolicedType,
 	resolvePackage: PackageResolver,
 ): PolicyVerdict | null {
 	for (const rule of rules) {
-		if (selectorMatches(rule.selector, typeName, resolvePackage)) {
+		if (selectorMatches(rule.selector, type, resolvePackage)) {
 			return { action: rule.action, matchedRuleId: rule.id };
 		}
 	}
@@ -125,12 +127,10 @@ function firstMatch(
 export function evaluateRules(
 	rules: readonly PolicyRule[],
 	defaultAction: PolicyAction,
-	typeName: string,
+	type: PolicedType,
 	resolvePackage: PackageResolver = nodeTypePackageResolver,
 ): PolicyVerdict {
-	return (
-		firstMatch(rules, typeName, resolvePackage) ?? { action: defaultAction, matchedRuleId: null }
-	);
+	return firstMatch(rules, type, resolvePackage) ?? { action: defaultAction, matchedRuleId: null };
 }
 
 /**
@@ -140,13 +140,13 @@ export function evaluateRules(
 export function partitionTypesByAction(
 	rules: readonly PolicyRule[],
 	defaultAction: PolicyAction,
-	typeNames: readonly string[],
+	types: readonly PolicedType[],
 	resolvePackage: PackageResolver = nodeTypePackageResolver,
 ): Record<PolicyAction, string[]> {
 	const partition: Record<PolicyAction, string[]> = { allow: [], deny: [], delegate: [] };
 
-	for (const typeName of typeNames) {
-		partition[evaluateRules(rules, defaultAction, typeName, resolvePackage).action].push(typeName);
+	for (const type of types) {
+		partition[evaluateRules(rules, defaultAction, type, resolvePackage).action].push(type.name);
 	}
 
 	return partition;
@@ -170,13 +170,13 @@ export function partitionTypesByAction(
 export function evaluateComposedType(
 	instance: ScopePolicy,
 	project: ScopePolicy,
-	typeName: string,
+	type: PolicedType,
 	resolvePackage: PackageResolver = nodeTypePackageResolver,
 ): ComposedVerdict {
 	const instanceVerdict = evaluateType(
 		instance.attachments,
 		instance.defaultAction,
-		typeName,
+		type,
 		resolvePackage,
 	);
 
@@ -192,7 +192,7 @@ export function evaluateComposedType(
 	const projectVerdict = evaluateType(
 		project.attachments,
 		project.defaultAction,
-		typeName,
+		type,
 		resolvePackage,
 	);
 

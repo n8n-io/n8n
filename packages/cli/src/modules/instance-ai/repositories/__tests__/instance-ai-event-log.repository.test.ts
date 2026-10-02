@@ -322,5 +322,26 @@ describe('InstanceAiEventLogRepository', () => {
 
 			await expect(repo.getLastPreferencesInjectionRunId('thread-1')).resolves.toBeUndefined();
 		});
+
+		it('returns the payload of the latest fact for a reader opening the thread', async () => {
+			const payload = {
+				preferences: [{ id: 'pref-1', scope: 'user' }],
+				renderedLength: 42,
+				injectedThisTurn: true,
+			};
+			const { repo, findOne } = createRepo(preferencesApplied('run-3', payload));
+
+			await expect(repo.getLastAppliedPreferences('thread-1')).resolves.toEqual(payload);
+			expect(findOne).toHaveBeenCalledWith({
+				where: { threadId: 'thread-1', type: 'preferences-applied' },
+				order: { seq: 'DESC' },
+			});
+		});
+
+		it('reports no payload when no turn has reported preferences', async () => {
+			const { repo } = createRepo(null);
+
+			await expect(repo.getLastAppliedPreferences('thread-1')).resolves.toBeUndefined();
+		});
 	});
 });

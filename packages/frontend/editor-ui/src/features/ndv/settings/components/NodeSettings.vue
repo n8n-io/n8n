@@ -65,6 +65,8 @@ import { useResizeObserver } from '@vueuse/core';
 import CommunityNodeFooter from '@/features/settings/communityNodes/components/nodeCreator/CommunityNodeFooter.vue';
 import CommunityNodeUpdateInfo from '@/features/settings/communityNodes/components/nodeCreator/CommunityNodeUpdateInfo.vue';
 import QuickConnectBanner from '@/features/credentials/quickConnect/components/QuickConnectBanner.vue';
+import { useGatewayCreditsPromotion } from '@/features/credentials/gatewayCreditsPromotion/useGatewayCreditsPromotion';
+import GatewayCreditsPromotion from '@/features/credentials/gatewayCreditsPromotion/GatewayCreditsPromotion.vue';
 import { useQuickConnect } from '@/features/credentials/quickConnect/composables/useQuickConnect';
 
 import { N8nBlockUi, N8nIcon, N8nNotice, N8nText } from '@n8n/design-system';
@@ -189,7 +191,7 @@ const nodeType = computed(() =>
 const { areAllCredentialsSet } = useNodeCredentialOptions(node, nodeType, '');
 
 const nodeTypeName = computed(() => node.value?.type);
-const { installedPackage, isUpdateCheckAvailable } = useInstalledCommunityPackage(nodeTypeName);
+const { canUpdatePackage, hasUpdateAvailable } = useInstalledCommunityPackage(nodeTypeName);
 
 const isTriggerNode = computed(() => !!node.value && nodeTypesStore.isTriggerNode(node.value.type));
 
@@ -279,6 +281,12 @@ const showQuickConnectBanner = computed(
 		!isReadOnly.value &&
 		!isDemoPreview.value &&
 		!props.isEmbeddedInCanvas,
+);
+
+const { promotionText } = useGatewayCreditsPromotion({ nodeType: () => node.value?.type });
+const showGatewayCreditsPromotion = computed(
+	() =>
+		!!promotionText.value && !isReadOnly.value && !isDemoPreview.value && !props.isEmbeddedInCanvas,
 );
 
 const showNoParametersNotice = computed(
@@ -460,7 +468,8 @@ const valueChanged = (parameterData: IUpdateInformation) => {
 		workflowDocumentStore?.value?.setNodeValue({
 			name: _node.name,
 			key: topLevelKey,
-			value: nodeValues.value[topLevelKey] as NodeParameterValue,
+			// Keep the node separate from values that inputs can mutate before emitting an edit.
+			value: deepCopy(nodeValues.value[topLevelKey]) as NodeParameterValue,
 		});
 	} else {
 		// A property on the node itself changed
@@ -785,6 +794,11 @@ function handleSelectAction(params: INodeParameters) {
 						:disclaimer="quickConnect?.disclaimer"
 						:class="$style.quickConnectBanner"
 					/>
+					<GatewayCreditsPromotion
+						v-if="showGatewayCreditsPromotion"
+						:text="promotionText ?? ''"
+						:class="$style.gatewayCreditsPromotion"
+					/>
 					<NodeCredentials
 						v-if="!isEmbeddedInCanvas && !isDemoPreview"
 						:node="node"
@@ -827,7 +841,7 @@ function handleSelectAction(params: INodeParameters) {
 			</div>
 			<div v-show="openPanel === 'settings'">
 				<CommunityNodeUpdateInfo
-					v-if="isUpdateCheckAvailable && installedPackage?.updateAvailable"
+					v-if="canUpdatePackage && hasUpdateAvailable"
 					data-test-id="update-available"
 					:package-name="packageName"
 					style="margin-top: var(--spacing--sm)"
@@ -887,6 +901,7 @@ function handleSelectAction(params: INodeParameters) {
 		<CommunityNodeFooter
 			v-if="openPanel === 'settings' && isCommunityNode"
 			:package-name="packageName"
+			:node-type-name="nodeTypeName"
 			:show-manage="useUsersStore().isAdminOrOwner"
 		/>
 	</div>
@@ -910,6 +925,10 @@ function handleSelectAction(params: INodeParameters) {
 }
 
 .quickConnectBanner {
+	margin-top: var(--spacing--sm);
+}
+
+.gatewayCreditsPromotion {
 	margin-top: var(--spacing--sm);
 }
 

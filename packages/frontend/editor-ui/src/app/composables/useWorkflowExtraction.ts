@@ -27,7 +27,6 @@ import { useSelectionValidation } from './useSelectionValidation';
 import type { AddedNode, INodeUi, IWorkflowDb } from '@/Interface';
 import type { WorkflowDataCreate } from '@n8n/rest-api-client/api/workflows';
 import { useI18n } from '@n8n/i18n';
-import { useSettingsStore } from '@n8n/stores/settings.store';
 import { PUSH_NODES_OFFSET } from '@/app/utils/nodeViewUtils';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
@@ -48,7 +47,6 @@ export function useWorkflowExtraction() {
 	const workflowsStore = useWorkflowsStore();
 	const workflowDocumentStore = injectWorkflowDocumentStore();
 	const nodeTypesStore = useNodeTypesStore();
-	const settingsStore = useSettingsStore();
 	const toast = useToast();
 	const router = useRouter();
 	const historyStore = useHistoryStore();
@@ -56,7 +54,8 @@ export function useWorkflowExtraction() {
 	const i18n = useI18n();
 	const telemetry = useTelemetry();
 	const groupTelemetry = useCanvasNodeGroupTelemetry();
-	const { expandSelectionWithSubNodes, isSelectionExtractable } = useSelectionValidation();
+	const { expandSelectionWithSubNodes, isSelectionExtractable, isSubworkflowConversionDisabled } =
+		useSelectionValidation();
 
 	function showError(message: string) {
 		toast.showMessage({
@@ -691,7 +690,7 @@ export function useWorkflowExtraction() {
 	 * @param nodeIds the ids to be extracted from the current workflow into a sub-workflow
 	 */
 	function extractWorkflow(nodeIds: string[]) {
-		if (nodeIds.length === 0 || settingsStore.isSubworkflowConversionDisabled) return;
+		if (nodeIds.length === 0 || isSubworkflowConversionDisabled()) return;
 
 		const success = tryExtractNodesIntoSubworkflow(nodeIds);
 		trackStartExtractWorkflow(nodeIds.length, success);

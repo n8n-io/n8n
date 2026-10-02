@@ -13,9 +13,7 @@ import { nanoid } from 'nanoid';
 import { v5 as uuidv5 } from 'uuid';
 
 import { N8N_VERSION } from '@/constants';
-import { ConflictError } from '@/errors/response-errors/conflict.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { ServiceUnavailableError } from '@/errors/response-errors/service-unavailable.error';
+import { ConflictError, NotFoundError, ServiceUnavailableError } from '@n8n/errors';
 import { AiService } from '@/services/ai.service';
 import { ProxyTokenManager } from '@/services/proxy-token-manager';
 import { createAiProxyFetch } from '@/utils/ai-proxy-fetch';
@@ -317,98 +315,155 @@ function buildExecutionRun(
 
 function buildEventRun(event: TimelineEvent, execution: AgentExecution, path: string): DraftRun {
 	switch (event.type) {
-		case 'background-task-signal':
+		case 'input':
 			return {
 				path,
-				name: 'Background task results received',
-				runType: 'chain',
-				startTime: event.timestamp,
-				endTime: event.timestamp,
-				inputs: { tasks: event.signal.tasks },
-				outputs: {},
-				metadata: {},
-				children: [],
-			};
-		case 'text':
-			return {
-				path,
-				name: 'Agent response',
-				runType: 'llm',
-				startTime: event.timestamp,
-				endTime: event.endTime ?? event.timestamp,
-				inputs: {},
-				outputs: { text: event.content },
-				metadata: executionUsageMetadata(execution),
-				children: [],
-			};
-		case 'reasoning':
-			return {
-				path,
-				name: 'Reasoning',
-				runType: 'chain',
-				startTime: event.timestamp,
-				endTime: event.endTime ?? event.timestamp,
-				inputs: {},
-				outputs: { content: event.content },
-				metadata: {},
-				children: [],
-			};
-		case 'suspension':
-			return {
-				path,
-				name: 'Suspension',
+				name: 'Additional user input',
 				runType: 'chain',
 				startTime: event.timestamp,
 				endTime: event.timestamp,
 				inputs: {
-					toolName: event.toolName,
-					toolCallId: event.toolCallId,
+					message: execution.inputMessages?.find(({ id }) => id === event.messageId),
 				},
-				outputs: { status: 'suspended' },
+				outputs: {},
 				metadata: {},
 				children: [],
 			};
+		case 'background-task-signal':
+			return buildBackgroundTaskSignalRun(event, path);
+		case 'text':
+			return buildTextRun(event, execution, path);
+		case 'reasoning':
+			return buildReasoningRun(event, path);
+		case 'suspension':
+			return buildSuspensionRun(event, path);
 		case 'hitl-response':
-			return {
-				path,
-				name: 'HITL response',
-				runType: 'chain',
-				startTime: event.timestamp,
-				endTime: event.timestamp,
-				inputs: { toolCallId: event.toolCallId },
-				outputs: toRecord(event.response),
-				metadata: {},
-				children: [],
-			};
+			return buildHitlResponseRun(event, path);
 		case 'tool-call':
-			return {
-				path,
-				name: event.name,
-				runType: 'tool',
-				startTime: event.startTime,
-				endTime: event.endTime,
-				inputs: toRecord(event.input),
-				outputs: {
-					...toRecord(event.output),
-					...(event.childTrace ? { childTrace: event.childTrace } : {}),
-				},
-				error: event.success ? undefined : toolError(event.output),
-				metadata: {
-					kind: event.kind,
-					toolCallId: event.toolCallId,
-					success: event.success,
-					workflowId: event.workflowId,
-					workflowName: event.workflowName,
-					workflowExecutionId: event.workflowExecutionId,
-					triggerType: event.triggerType,
-					nodeType: event.nodeType,
-					nodeTypeVersion: event.nodeTypeVersion,
-					nodeDisplayName: event.nodeDisplayName,
-					nodeParameters: event.nodeParameters,
-				},
-				children: [],
-			};
+			return buildToolCallRun(event, path);
 	}
+}
+
+function buildBackgroundTaskSignalRun(
+	event: Extract<TimelineEvent, { type: 'background-task-signal' }>,
+	path: string,
+): DraftRun {
+	return {
+		path,
+		name: 'Background task results received',
+		runType: 'chain',
+		startTime: event.timestamp,
+		endTime: event.timestamp,
+		inputs: { tasks: event.signal.tasks },
+		outputs: {},
+		metadata: {},
+		children: [],
+	};
+}
+
+function buildTextRun(
+	event: Extract<TimelineEvent, { type: 'text' }>,
+	execution: AgentExecution,
+	path: string,
+): DraftRun {
+	return {
+		path,
+		name: 'Agent response',
+		runType: 'llm',
+		startTime: event.timestamp,
+		endTime: event.endTime ?? event.timestamp,
+		inputs: {},
+		outputs: { text: event.content },
+		metadata: executionUsageMetadata(execution),
+		children: [],
+	};
+}
+
+function buildReasoningRun(
+	event: Extract<TimelineEvent, { type: 'reasoning' }>,
+	path: string,
+): DraftRun {
+	return {
+		path,
+		name: 'Reasoning',
+		runType: 'chain',
+		startTime: event.timestamp,
+		endTime: event.endTime ?? event.timestamp,
+		inputs: {},
+		outputs: { content: event.content },
+		metadata: {},
+		children: [],
+	};
+}
+
+function buildSuspensionRun(
+	event: Extract<TimelineEvent, { type: 'suspension' }>,
+	path: string,
+): DraftRun {
+	return {
+		path,
+		name: 'Suspension',
+		runType: 'chain',
+		startTime: event.timestamp,
+		endTime: event.timestamp,
+		inputs: {
+			toolName: event.toolName,
+			toolCallId: event.toolCallId,
+		},
+		outputs: { status: 'suspended' },
+		metadata: {},
+		children: [],
+	};
+}
+
+function buildHitlResponseRun(
+	event: Extract<TimelineEvent, { type: 'hitl-response' }>,
+	path: string,
+): DraftRun {
+	return {
+		path,
+		name: 'HITL response',
+		runType: 'chain',
+		startTime: event.timestamp,
+		endTime: event.timestamp,
+		inputs: { toolCallId: event.toolCallId },
+		outputs: toRecord(event.response),
+		metadata: {},
+		children: [],
+	};
+}
+
+function buildToolCallRun(
+	event: Extract<TimelineEvent, { type: 'tool-call' }>,
+	path: string,
+): DraftRun {
+	return {
+		path,
+		name: event.name,
+		runType: 'tool',
+		startTime: event.startTime,
+		endTime: event.endTime,
+		inputs: toRecord(event.input),
+		outputs: {
+			...toRecord(event.output),
+			...(event.childTrace ? { childTrace: event.childTrace } : {}),
+		},
+		error: event.success ? undefined : toolError(event.output),
+		metadata: {
+			kind: event.kind,
+			toolCallId: event.toolCallId,
+			success: event.success,
+			workflowId: event.workflowId,
+			workflowName: event.workflowName,
+			workflowExecutionId: event.workflowExecutionId,
+			triggerType: event.triggerType,
+			nodeType: event.nodeType,
+			nodeTypeVersion: event.nodeTypeVersion,
+			nodeDisplayName: event.nodeDisplayName,
+			nodeParameters: event.nodeParameters,
+		},
+		children: [],
+	};
 }
 
 function executionMetadata(execution: AgentExecution): Record<string, unknown> {

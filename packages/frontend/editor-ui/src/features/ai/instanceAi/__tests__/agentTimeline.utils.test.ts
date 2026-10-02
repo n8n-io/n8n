@@ -88,6 +88,15 @@ describe('extractArtifacts', () => {
 		]);
 	});
 
+	test('does not return an unchanged Agent target as an artifact', () => {
+		const node = makeAgentNode({
+			agentChange: 'none',
+			targetResource: { id: 'agent-1', type: 'agent', name: 'SEO Auditor' },
+		});
+
+		expect(extractArtifacts(node)).toEqual([]);
+	});
+
 	test('falls back to subtitle when targetResource has no name', () => {
 		const node = makeAgentNode({
 			subtitle: 'Sub Title',
@@ -414,6 +423,20 @@ describe('buildTimelineBlocks', () => {
 
 		expect(blocks).toHaveLength(1);
 		expect(blocks[0].type === 'thinking' && blocks[0].entries).toHaveLength(3);
+	});
+
+	test('the reply before a leave-onboarding call stays user-facing and the call is hidden', () => {
+		const blocks = blocksOf(
+			[
+				reasoning('r1'),
+				text('Explore the app and come back with a task.', 'r1'),
+				toolEntry('tc-leave', 'r1'),
+			],
+			[makeToolCall({ toolCallId: 'tc-leave', toolName: 'leave-onboarding' })],
+		);
+
+		expect(blocks.map((b) => b.type)).toEqual(['thinking', 'text']);
+		expect(blocks[0].type === 'thinking' && blocks[0].entries).toHaveLength(1);
 	});
 
 	test('text before a tool call that suspended on a setup card stays user-facing', () => {
@@ -816,6 +839,40 @@ describe('buildTimelineBlocks', () => {
 	test('no block is active once the agent has settled', () => {
 		const completed = blocksOf([reasoning('r1')], [], 'completed');
 		expect(completed[0].type === 'thinking' && completed[0].active).toBe(false);
+	});
+
+	describe('save_user_preference', () => {
+		const base: Partial<InstanceAiToolCallState> = {
+			toolCallId: 'tc-1',
+			toolName: 'save_user_preference',
+		};
+
+		test('renders a preference block once the result is a saved preference', () => {
+			const tc = makeToolCall({
+				...base,
+				result: { ok: true, preference: { id: 'p', content: 'x', scope: 'user' } },
+			});
+			const blocks = blocksOf([toolEntry('tc-1', 'r1')], [tc]);
+
+			expect(blocks).toEqual([{ type: 'preference', key: 'preference-0', toolCall: tc }]);
+		});
+
+		// A refusal the person cannot see is a silent failure, so it renders as a card too.
+		test('renders a preference block when the write was rejected or the tool threw', () => {
+			for (const tc of [
+				makeToolCall({ ...base, result: { ok: false, reason: 'duplicate', message: 'dup' } }),
+				makeToolCall({ ...base, error: 'boom' }),
+			]) {
+				expect(blocksOf([toolEntry('tc-1', 'r1')], [tc])).toEqual([
+					{ type: 'preference', key: 'preference-0', toolCall: tc },
+				]);
+			}
+		});
+
+		test('hides the call while it is still running', () => {
+			const tc = makeToolCall({ ...base, isLoading: true });
+			expect(blocksOf([toolEntry('tc-1', 'r1')], [tc])).toEqual([]);
+		});
 	});
 });
 

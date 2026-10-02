@@ -21,6 +21,8 @@ const ORGANIZER_HINT = "Check that the 'Organizer' parameter is a user in the te
 
 const GUID = /^[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}$/;
 
+export const isSet = (value: unknown) => value !== undefined && value !== null && value !== '';
+
 function isServicePrincipal(this: IExecuteFunctions): boolean {
 	return getTeamsCredentialType.call(this) === SERVICE_PRINCIPAL_AUTH;
 }

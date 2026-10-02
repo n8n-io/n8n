@@ -44,6 +44,18 @@ vi.mock('@n8n/i18n', () => ({
 	}),
 }));
 
+// The web-search section pulls in the gateway composable; keep it disabled here
+// so no managed option renders and the real gateway store stays out of the mount.
+vi.mock('@/app/composables/useAiGateway', () => ({
+	useAiGateway: () => ({
+		isEnabled: { value: false },
+		balance: { value: undefined },
+		fetchConfig: vi.fn().mockResolvedValue(undefined),
+		fetchWallet: vi.fn().mockResolvedValue(undefined),
+		canServeCredentialType: () => false,
+	}),
+}));
+
 vi.mock('@/features/credentials/credentials.store', () => ({
 	useCredentialsStore: () => ({
 		allCredentials: [

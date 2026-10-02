@@ -158,19 +158,18 @@ export function createObservationLogObserveFn(
 		});
 		incrementTokenCountFromUsage(input.executionCounter, usage);
 
-		if (options.onUsage) {
-			const tokenUsage = toTokenUsage(usage, providerMetadata);
-			if (tokenUsage) {
-				await options.onUsage({
-					task: 'observer',
-					model: getModelIdString(model),
-					usage: tokenUsage,
-					reportId: crypto.randomUUID(),
-				});
-			}
+		const tokenUsage = toTokenUsage(usage, providerMetadata);
+		const modelId = getModelIdString(model);
+		if (options.onUsage && tokenUsage) {
+			await options.onUsage({
+				task: 'observer',
+				model: modelId,
+				usage: tokenUsage,
+				reportId: crypto.randomUUID(),
+			});
 		}
 
-		return text.trim();
+		return { text: text.trim(), usage: tokenUsage, model: modelId };
 	};
 }
 
@@ -326,16 +325,15 @@ export function createObservationLogReflectFn(
 		});
 		incrementTokenCountFromUsage(input.executionCounter, usage);
 
-		if (options.onUsage) {
-			const tokenUsage = toTokenUsage(usage, providerMetadata);
-			if (tokenUsage) {
-				await options.onUsage({
-					task: 'reflector',
-					model: getModelIdString(model),
-					usage: tokenUsage,
-					reportId: crypto.randomUUID(),
-				});
-			}
+		const tokenUsage = toTokenUsage(usage, providerMetadata);
+		const modelId = getModelIdString(model);
+		if (options.onUsage && tokenUsage) {
+			await options.onUsage({
+				task: 'reflector',
+				model: modelId,
+				usage: tokenUsage,
+				reportId: crypto.randomUUID(),
+			});
 		}
 
 		const reflection = parseObservationLogReflectionJson(text);
@@ -344,15 +342,19 @@ export function createObservationLogReflectFn(
 			if (id === undefined) throw new Error(`Unknown observation reference: ${reference}`);
 			return id;
 		};
-		return JSON.stringify({
-			drop: reflection.drop.map(resolveId),
-			merge: reflection.merge.map((merge) => ({
-				...merge,
-				supersedes: merge.supersedes.map(resolveId),
-				...(merge.parentId !== undefined && {
-					parentId: merge.parentId === null ? null : resolveId(merge.parentId),
-				}),
-			})),
-		});
+		return {
+			text: JSON.stringify({
+				drop: reflection.drop.map(resolveId),
+				merge: reflection.merge.map((merge) => ({
+					...merge,
+					supersedes: merge.supersedes.map(resolveId),
+					...(merge.parentId !== undefined && {
+						parentId: merge.parentId === null ? null : resolveId(merge.parentId),
+					}),
+				})),
+			}),
+			usage: tokenUsage,
+			model: modelId,
+		};
 	};
 }

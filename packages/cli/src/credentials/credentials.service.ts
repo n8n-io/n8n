@@ -1,5 +1,7 @@
 import type { CreateCredentialDto, CredentialConnectionStatus } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { EventService, RoleService, CredentialsFinderService } from '@n8n/backend-services';
+import { Time } from '@n8n/constants';
 import {
 	Project,
 	TransactionRunner,
@@ -22,6 +24,7 @@ import type {
 	ScopesField,
 	OperationContext,
 	CredentialSharingRelation,
+	ProjectRelation,
 } from '@n8n/db';
 import type { PolicyCleared } from '@n8n/decorators';
 import { Service } from '@n8n/di';
@@ -54,14 +57,11 @@ import {
 	NodeHelpers,
 } from 'n8n-workflow';
 
+import { isCredSharingEnabled } from '@/constants/credential-sharing';
 import { CredentialTypes } from '@/credential-types';
 import { createCredentialsFromCredentialsEntity, CredentialsHelper } from '@/credentials-helper';
 import { CredentialNotFoundError } from '@/errors/credential-not-found.error';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ConflictError } from '@/errors/response-errors/conflict.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { EventService } from '@/events/event.service';
+import { BadRequestError, ConflictError, ForbiddenError, NotFoundError } from '@n8n/errors';
 import { ExternalHooks } from '@/external-hooks';
 import { validateEntity } from '@/generic-helpers';
 import { getChangedSharedFields } from '@/modules/dynamic-credentials.ee/services/shared-fields';
@@ -70,12 +70,12 @@ import { SecretsProviderAccessCheckService } from '@/modules/external-secrets.ee
 import { DCR_MANAGED_CREDENTIAL_FIELDS } from '@/oauth/dcr-managed-fields';
 import { validateOAuthUrl } from '@/oauth/validate-oauth-url';
 import { userHasScopes } from '@/permissions.ee/check-access';
+import type { PolicyActor } from '@/policy/policy-enforcement-backend';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import type { CredentialRequest, ListQuery } from '@/requests';
 import { CredentialsTester } from '@/services/credentials-tester.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { ProjectService } from '@/services/project.service.ee';
-import { RoleService } from '@/services/role.service';
 
 import { CredentialConnectionStatusProxy } from './credential-connection-status-proxy';
 import { CredentialDescriptionsService } from './credential-descriptions.service';
@@ -83,7 +83,6 @@ import {
 	CredentialDependencyService,
 	type CredentialDependencyFilter,
 } from './credential-dependency.service';
-import { CredentialsFinderService } from './credentials-finder.service';
 import { getExternalSecretExpressionPaths } from './external-secrets.utils';
 import { InstanceCredentialUseRegistry } from './instance-credential-use.registry';
 import {
@@ -151,6 +150,13 @@ type CreateCredentialOptions = CreateCredentialDto & {
 	isManaged: boolean;
 };
 
+/**
+ * How long a credential created for an OAuth popup may stay unauthorized before
+ * the cleanup task deletes it. Well above the editor's own flow timeout, so only
+ * flows the editor could not finish (reload, closed tab) reach the sweep.
+ */
+export const PENDING_AUTHORIZATION_GRACE_MS = 1 * Time.hours.toMilliseconds;
+
 type InstanceCredentialWriteOptions = {
 	/** Set when the caller already ran the external hooks before its transaction. */
 	skipExternalHooks?: boolean;
@@ -200,7 +206,12 @@ type WorkflowCredentialResult = {
 	homeProject: SlimProject | null;
 	sharedWithProjects: SlimProject[];
 	currentUserHasAccess: boolean;
+	sharedRoute: 'project' | 'personal';
 } & CredentialConnectionStatus;
+
+function resolveSharedRoute(isProjectRoute: boolean): 'project' | 'personal' {
+	return isProjectRoute ? 'project' : 'personal';
+}
 
 /** Codes an auth probe must not treat as rejection, stored as a JSON array in the credential. */
 function parseAcceptedStatusCodes(raw: unknown): number[] | undefined {
@@ -580,8 +591,11 @@ export class CredentialsService {
 	}
 
 	/**
-	 * Returns credentials that are both accessible to the user AND accessible to the project.
-	 * A credential shared with the project but not with the requesting user would be excluded.
+	 * Returns credentials the user can use in this workflow or project: shared
+	 * with it directly, global, or — behind {@link isCredSharingEnabled} — owned
+	 * by the user's own personal project while the user also belongs to it (the
+	 * personal route). A credential shared with the project but not with the
+	 * requesting user, and not reachable via either of those routes, is excluded.
 	 * @param user The user making the request
 	 * @param options.workflowId The workflow that is being edited
 	 * @param options.projectId The project owning the workflow This is useful
@@ -606,15 +620,20 @@ export class CredentialsService {
 				: (await this.findAllCredentialIdsForProject(options.projectId)).map((c) => c.id),
 		);
 
-		// the intersection of both is all credentials the user can use in this
+		const personalRouteCredentialIds = isCredSharingEnabled()
+			? await this.findPersonalRouteCredentialIds(user, allCredentials, projectRelations, options)
+			: new Set<string>();
+
+		// the union of all three is every credential the user can use in this
 		// workflow or project
-		const intersection = allCredentials.filter(
-			(c) => credentialIdsForWorkflow.has(c.id) || c.isGlobal,
+		const usableCredentials = allCredentials.filter(
+			(c) =>
+				credentialIdsForWorkflow.has(c.id) || personalRouteCredentialIds.has(c.id) || c.isGlobal,
 		);
 
-		if (intersection.length > 0) {
+		if (usableCredentials.length > 0) {
 			const relations = await this.sharedCredentialsRepository.getAllRelationsForCredentials(
-				intersection.map((c) => c.id),
+				usableCredentials.map((c) => c.id),
 			);
 			const relationsByCredentialId = new Map<string, SharedCredentials[]>();
 			for (const relation of relations) {
@@ -622,12 +641,12 @@ export class CredentialsService {
 				if (credentialRelations) credentialRelations.push(relation);
 				else relationsByCredentialId.set(relation.credentialsId, [relation]);
 			}
-			intersection.forEach((c) => {
+			usableCredentials.forEach((c) => {
 				c.shared = relationsByCredentialId.get(c.id) ?? [];
 			});
 		}
 
-		const enriched = intersection
+		const enriched = usableCredentials
 			.map((c) => this.ownershipService.addOwnedByAndSharedWith(c))
 			.map((c) => this.roleService.addScopes(c, user, projectRelations)) as Array<
 			ListQueryDb.Credentials.WithOwnedByAndSharedWith & ScopesField
@@ -648,10 +667,47 @@ export class CredentialsService {
 			homeProject: c.homeProject,
 			sharedWithProjects: c.sharedWithProjects,
 			currentUserHasAccess: true,
+			sharedRoute: resolveSharedRoute(credentialIdsForWorkflow.has(c.id) || c.isGlobal),
 		}));
 
 		await this.populateConnectedByMe(result, user);
 		return result;
+	}
+
+	/**
+	 * The ids, among `candidateCredentials`, that the user can use here only
+	 * via the personal route: owned by the user's own personal project, where
+	 * the user also belongs to the workflow's/project's project(s). See
+	 * {@link isCredSharingEnabled}.
+	 */
+	private async findPersonalRouteCredentialIds(
+		user: User,
+		candidateCredentials: CredentialsEntity[],
+		userProjectRelations: ProjectRelation[],
+		options: { workflowId: string } | { projectId: string },
+	): Promise<Set<string>> {
+		const personalProject = await this.projectService.getPersonalProject(user);
+		if (!personalProject) return new Set();
+
+		const ownedCredentialIds = new Set(
+			candidateCredentials
+				.filter((c) =>
+					c.shared.some((s) => s.role === 'credential:owner' && s.projectId === personalProject.id),
+				)
+				.map((c) => c.id),
+		);
+		if (ownedCredentialIds.size === 0) return ownedCredentialIds;
+
+		const targetProjectIds =
+			'workflowId' in options
+				? await this.projectService.findProjectsWorkflowIsIn(options.workflowId)
+				: [options.projectId];
+
+		const userIsMemberOfTargetProject = userProjectRelations.some((relation) =>
+			targetProjectIds.includes(relation.projectId),
+		);
+
+		return userIsMemberOfTargetProject ? ownedCredentialIds : new Set();
 	}
 
 	async findAllGlobalCredentialIds(includeData: boolean = false): Promise<CredentialsEntity[]> {
@@ -892,7 +948,7 @@ export class CredentialsService {
 	 * deliberately carries `oauthTokenData` forward, so a "Disconnect" action on a
 	 * fixed OAuth credential needs this dedicated path.
 	 */
-	async clearOauthTokenData(credential: CredentialsEntity): Promise<void> {
+	async clearOauthTokenData(credential: CredentialsEntity, actor: PolicyActor): Promise<void> {
 		// Decrypt via the core credential so a decryption failure aborts the
 		// disconnect. `this.decrypt` swallows CredentialDataError and returns `{}`,
 		// which would otherwise overwrite the whole credential with empty data.
@@ -907,7 +963,7 @@ export class CredentialsService {
 			data: decryptedData,
 		});
 
-		await this.update(credential.id, newCredentialData, decryptedData);
+		await this.update(credential.id, newCredentialData, actor, decryptedData);
 	}
 
 	/**
@@ -939,6 +995,7 @@ export class CredentialsService {
 	async update(
 		credentialId: string,
 		newCredentialData: ICredentialsDb,
+		actor: PolicyActor,
 		decryptedCredentialData?: ICredentialDataDecryptedObject,
 		options?: UpdateOptions,
 	) {
@@ -946,7 +1003,7 @@ export class CredentialsService {
 		await this.externalHooks.run('credentials.update', [newCredentialData]);
 		await this.credentialDescriptions.stripIfDisabled(newCredentialData);
 
-		const cleared = await this.enforceCredentialUpdate(credentialId, newCredentialData.type);
+		const cleared = await this.enforceCredentialUpdate(credentialId, newCredentialData.type, actor);
 		if (cleared === null) return null;
 
 		const persist = async (transactionManager: EntityManager, ctx: OperationContext) => {
@@ -1077,11 +1134,14 @@ export class CredentialsService {
 		);
 		await this.validateInstanceCredentialUpdate(credential, hookedData, undefined, ctx);
 		// The type cannot change here, so the check sees the same stored and new type.
-		const cleared = await this.policyEnforcementService.enforceCredentialSave({
-			credential: { id: credential.id, type: credential.type },
-			storedCredential: { id: credential.id, type: credential.type },
-			projectId: null,
-		});
+		const cleared = await this.policyEnforcementService.enforceCredentialSave(
+			{
+				credential: { id: credential.id, type: credential.type },
+				storedCredential: { id: credential.id, type: credential.type },
+				projectId: null,
+			},
+			{ kind: 'user', user },
+		);
 		const updated = await this.credentialsRepository.updateInstanceCredential(
 			credential.id,
 			encrypted,
@@ -1141,7 +1201,7 @@ export class CredentialsService {
 
 		// Gate the save on policy before persisting, so the author learns about a blocked type
 		// while setting the credential up rather than at run time. No stored credential: this one is new.
-		const cleared = await this.enforceCredentialCreate(newCredential.type, project.id);
+		const cleared = await this.enforceCredentialCreate(newCredential.type, project.id, user);
 
 		const result = await this.credentialsRepository.runInTransaction(
 			{ policyCleared: cleared },
@@ -1188,26 +1248,29 @@ export class CredentialsService {
 	private async enforceCredentialUpdate(
 		credentialId: string,
 		newType: string | undefined,
+		actor: PolicyActor,
 	): Promise<PolicyCleared<'credentialSave'> | null> {
 		const stored = await this.credentialsRepository.findOneBy({ id: credentialId });
 		if (!stored) return null;
 		const owningProject =
 			await this.sharedCredentialsRepository.findCredentialOwningProject(credentialId);
 
-		return await this.policyEnforcementService.enforceCredentialSave({
-			credential: { id: credentialId, type: newType ?? stored.type },
-			storedCredential: { id: credentialId, type: stored.type },
-			projectId: owningProject?.id ?? null,
-		});
+		return await this.policyEnforcementService.enforceCredentialSave(
+			{
+				credential: { id: credentialId, type: newType ?? stored.type },
+				storedCredential: { id: credentialId, type: stored.type },
+				projectId: owningProject?.id ?? null,
+			},
+			actor,
+		);
 	}
 
 	/** A create binds to its type: the row has no committed id yet, whatever the payload claims. */
-	private async enforceCredentialCreate(type: string, projectId: string | null) {
-		return await this.policyEnforcementService.enforceCredentialSave({
-			credential: { id: null, type },
-			storedCredential: null,
-			projectId,
-		});
+	private async enforceCredentialCreate(type: string, projectId: string | null, user: User) {
+		return await this.policyEnforcementService.enforceCredentialSave(
+			{ credential: { id: null, type }, storedCredential: null, projectId },
+			{ kind: 'user', user },
+		);
 	}
 
 	private async insertProjectCredential(
@@ -1236,7 +1299,7 @@ export class CredentialsService {
 				"You don't have the permissions to save the credential in this project.",
 			);
 		}
-		const cleared = await this.enforceCredentialCreate(newCredential.type, project.id);
+		const cleared = await this.enforceCredentialCreate(newCredential.type, project.id, user);
 		const saved = await this.transactionRunner.run({ policyCleared: cleared }, async (ctx) => {
 			return await this.credentialsRepository.insertProjectCredentialWithOwner(
 				newCredential,
@@ -1386,7 +1449,7 @@ export class CredentialsService {
 		const mergedCredentials = await this.prepareCredentialsForTest({
 			storedCredential,
 			user,
-			credentialsToTest: credentials,
+			credentialsToTest: storedCredential.isManaged ? undefined : credentials,
 		});
 
 		return await this.test(user.id, mergedCredentials);
@@ -2038,6 +2101,15 @@ export class CredentialsService {
 		user: User,
 		options: { id?: string } = {},
 	) {
+		// The pending state ends when a token lands on the credential row. End-user
+		// credentials store tokens per user and instance credentials take another
+		// write path, so neither would ever leave it.
+		if (opts.pendingAuthorization && (opts.isResolvable || opts.usageScope === 'instance')) {
+			throw new BadRequestError(
+				'Pending authorization is only supported for project-scoped, non-resolvable credentials',
+			);
+		}
+
 		if (opts.usageScope === 'instance') {
 			if (options.id !== undefined) {
 				throw new BadRequestError('A supplied ID requires project usage scope');
@@ -2097,6 +2169,9 @@ export class CredentialsService {
 			...encryptedCredential,
 			isManaged: opts.isManaged,
 			isResolvable: opts.isResolvable ?? false,
+			pendingAuthorizationExpiresAt: opts.pendingAuthorization
+				? new Date(Date.now() + PENDING_AUTHORIZATION_GRACE_MS)
+				: null,
 		});
 
 		const persist =
@@ -2170,7 +2245,7 @@ export class CredentialsService {
 		});
 
 		// After the hooks ran: the type checked has to be the type written.
-		const cleared = await this.enforceCredentialCreate(credentialEntity.type, null);
+		const cleared = await this.enforceCredentialCreate(credentialEntity.type, null, user);
 		const savedCredential = await this.credentialsRepository.saveInstanceCredential(
 			credentialEntity,
 			{ ...ctx, policyCleared: cleared },

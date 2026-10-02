@@ -1,8 +1,8 @@
+import type { EventService } from '@n8n/backend-services';
 import type { SystemTask } from '@n8n/decorators';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { SpanStatus, type Span, type Tracing } from 'n8n-core';
 
-import type { EventService } from '@/events/event.service';
 import type { SystemTaskMode } from '@/events/maps/system-task-metrics.event-map';
 
 import { emitSystemTaskMetric } from './emit-system-task-metric';
@@ -50,13 +50,11 @@ export async function observeSystemTaskRun(
 			[SYSTEM_TASK_ATTRIBUTES.mode]: mode,
 		},
 	};
-	// An in-memory run fires from a timer callback, whose async context still
-	// carries whatever span was active when the timer was armed, so it needs a
-	// fresh trace. A durable run parents under `scheduler.handoff`.
+	// A durable run parents under `scheduler.handoff`. Any other run fires from
+	// a timer callback, whose async context still carries whatever span was
+	// active when the timer was armed, so it needs a fresh trace.
 	const startSpan =
-		mode === 'in_memory'
-			? tracing.startNewTraceSpan.bind(tracing)
-			: tracing.startSpan.bind(tracing);
+		mode === 'durable' ? tracing.startSpan.bind(tracing) : tracing.startNewTraceSpan.bind(tracing);
 
 	return await startSpan(spanOptions, async (span: Span) => {
 		const startedAt = performance.now();

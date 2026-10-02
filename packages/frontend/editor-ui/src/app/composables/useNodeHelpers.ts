@@ -106,6 +106,10 @@ export function useNodeHelpers() {
 	 * - It is either explicitly marked as `executable`, OR uses foreign credentials
 	 *   (credentials the current user cannot access, allowed under Workflow Sharing).
 	 *
+	 * The foreign-credential arm decides whether the button is offered, not whether
+	 * the run is allowed. `useNodeExecution`'s `disabledReason` blocks the run and
+	 * shows why, so removing this arm would hide that reason.
+	 *
 	 * @param node The node to check
 	 * @param executable Whether the node is in a state that allows execution (e.g. not readonly)
 	 * @param foreignCredentials List of credential IDs that the current user cannot access
@@ -158,7 +162,7 @@ export function useNodeHelpers() {
 		return Object.values(credentials)
 			.map(({ id }) => id)
 			.filter((id) => id !== null)
-			.filter((id) => id in usedCredentials && !usedCredentials[id]?.currentUserHasAccess);
+			.filter((id) => id in usedCredentials && !usedCredentials[id]?.currentUserCanUse);
 	}
 
 	// Returns if the given parameter should be displayed or not

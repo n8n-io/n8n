@@ -1,5 +1,5 @@
 import type { ClientOptions } from '@langchain/openai';
-import { getProxyAgent } from '@n8n/ai-utilities';
+import { aiClientFetch, getProxyAgent } from '@n8n/ai-utilities';
 import type { ISupplyDataFunctions } from 'n8n-workflow';
 
 import type { RefreshingTokenSource } from '../oauth2-token-provider';
@@ -29,7 +29,7 @@ export function createDatabricksGatewayConfig(
 	const { fetch: authFetch, tokenSource } = createDatabricksAuthFetch(ctx, credential, {
 		endpointUrl: baseURL,
 		egressFilter,
-		baseFetch: fetch,
+		baseFetch: aiClientFetch,
 	});
 
 	const configuration: ClientOptions = {

@@ -920,7 +920,7 @@ describe('useCredentialOAuth', () => {
 				}),
 				undefined,
 				undefined,
-				{ skipStoreUpdate: true },
+				{ skipStoreUpdate: true, pendingAuthorization: true },
 			);
 		});
 
@@ -943,7 +943,7 @@ describe('useCredentialOAuth', () => {
 				},
 				'workflow-project',
 				undefined,
-				{ skipStoreUpdate: true },
+				{ skipStoreUpdate: true, pendingAuthorization: true },
 			);
 			expect(credentialsStore.fetchUsableCredentials).toHaveBeenCalledWith({
 				workflowId: 'setup-workflow',
@@ -966,7 +966,7 @@ describe('useCredentialOAuth', () => {
 				expect.objectContaining({ description: 'Use for production alerts' }),
 				undefined,
 				undefined,
-				{ skipStoreUpdate: true },
+				{ skipStoreUpdate: true, pendingAuthorization: true },
 			);
 		});
 
@@ -1014,7 +1014,7 @@ describe('useCredentialOAuth', () => {
 				}),
 				undefined,
 				undefined,
-				{ skipStoreUpdate: true },
+				{ skipStoreUpdate: true, pendingAuthorization: true },
 			);
 		});
 
@@ -1275,6 +1275,31 @@ describe('useCredentialOAuth', () => {
 				vi.useRealTimers();
 			}
 		});
+
+		it.each(['success', 'error', 'cancel'])(
+			'reuses an existing credential after %s without deleting it',
+			async (outcome) => {
+				const store = setupSuccessfulOAuthFlow();
+				store.fetchUsableCredentials.mockResolvedValue([]);
+				MockBroadcastChannel.failOauth = outcome === 'error';
+				MockBroadcastChannel.silent = outcome === 'cancel';
+				vi.useFakeTimers();
+				try {
+					const oauth = useCredentialOAuth();
+					const result = oauth.authorizeExistingCredential(createdCredential, { workflowId: 'wf' });
+					await vi.advanceTimersByTimeAsync(100);
+					if (outcome === 'cancel') oauth.cancelAuthorize();
+					await expect(result).resolves.toEqual(outcome === 'success' ? createdCredential : null);
+					expect(store.oAuth2Authorize).toHaveBeenCalledWith(createdCredential);
+					expect(store.createNewCredential).not.toHaveBeenCalled();
+					expect(store.deleteCredential).not.toHaveBeenCalled();
+					if (outcome === 'success')
+						expect(store.fetchUsableCredentials).toHaveBeenCalledWith({ workflowId: 'wf' });
+				} finally {
+					vi.useRealTimers();
+				}
+			},
+		);
 
 		it('should track "User saved credentials" after OAuth completes, not before', async () => {
 			setupSuccessfulOAuthFlow();

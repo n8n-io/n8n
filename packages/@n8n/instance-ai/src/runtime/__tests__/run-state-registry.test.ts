@@ -1046,7 +1046,11 @@ describe('RunStateRegistry', () => {
 				createdAt: Date.now(),
 			});
 
+			registry.setSetupPanelEnabled('thread-1', true);
+			expect(registry.isSetupPanelEnabled('thread-1')).toBe(true);
+			expect(registry.isSetupPanelEnabled('thread-2')).toBe(false);
 			const result = registry.clearThread('thread-1');
+			expect(registry.isSetupPanelEnabled('thread-1')).toBe(false);
 
 			// Confirmations resolved
 			expect(resolve).toHaveBeenCalledWith({ approved: false });
