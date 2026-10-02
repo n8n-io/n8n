@@ -1034,6 +1034,16 @@ export class TaskBroker {
 			cappedTaskIds.push(taskId);
 		}
 
+		this.capRequestTimeoutsForShutdown(deadline);
+
+		if (cappedTaskIds.length > 0) {
+			this.logger.info(
+				`Capped ${cappedTaskIds.length} in-flight task timeout(s) to fit the shutdown window (task IDs: ${cappedTaskIds.join(', ')})`,
+			);
+		}
+	}
+
+	private capRequestTimeoutsForShutdown(deadline: number) {
 		for (const request of this.pendingTaskRequests) {
 			if (!request.timeout) continue;
 			const timesOutAt = this.requestTimesOutAt.get(request.timeout);
@@ -1041,12 +1051,6 @@ export class TaskBroker {
 
 			clearTimeout(request.timeout);
 			request.timeout = this.createRequestTimeout(request.requestId);
-		}
-
-		if (cappedTaskIds.length > 0) {
-			this.logger.info(
-				`Capped ${cappedTaskIds.length} in-flight task timeout(s) to fit the shutdown window (task IDs: ${cappedTaskIds.join(', ')})`,
-			);
 		}
 	}
 
