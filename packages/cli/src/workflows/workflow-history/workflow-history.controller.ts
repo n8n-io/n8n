@@ -43,6 +43,7 @@ export class WorkflowHistoryController {
 				req.user,
 				req.params.workflowId,
 				req.params.versionId,
+				{ publishHistory: 'latestActivation' },
 			);
 		} catch (e) {
 			if (e instanceof SharedWorkflowNotFoundError) {

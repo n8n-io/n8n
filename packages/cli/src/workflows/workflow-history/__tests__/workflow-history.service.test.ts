@@ -271,7 +271,7 @@ describe('WorkflowHistoryService', () => {
 	});
 
 	describe('getVersion', () => {
-		it('should not load publish history when includePublishHistory is false', async () => {
+		it('should not load publish history when the scope is none', async () => {
 			// Arrange
 			const workflow = getWorkflow({ addNodeWithoutCreds: true });
 			workflow.id = '123';
@@ -281,7 +281,7 @@ describe('WorkflowHistoryService', () => {
 
 			// Act
 			const result = await workflowHistoryService.getVersion(testUser, workflow.id, 'version1', {
-				includePublishHistory: false,
+				publishHistory: 'none',
 			});
 
 			// Assert

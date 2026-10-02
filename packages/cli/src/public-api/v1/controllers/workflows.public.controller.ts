@@ -758,7 +758,7 @@ export class WorkflowsPublicController {
 				workflowId,
 				workflowVersionId,
 				{
-					includePublishHistory: false,
+					publishHistory: 'none',
 				},
 			);
 		} catch (error) {

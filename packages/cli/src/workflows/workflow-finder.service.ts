@@ -1,4 +1,4 @@
-import type { SharedWorkflow, User, WorkflowEntity, ListQuery } from '@n8n/db';
+import type { SharedWorkflow, User, WorkflowEntity, ListQuery, PublishHistoryScope } from '@n8n/db';
 import {
 	SharedWorkflowRepository,
 	FolderRepository,
@@ -48,6 +48,7 @@ export class WorkflowFinderService {
 			includeTags?: boolean;
 			includeParentFolder?: boolean;
 			includeActiveVersion?: boolean;
+			publishHistory?: PublishHistoryScope;
 			em?: EntityManager;
 		} = {},
 	) {
@@ -58,6 +59,7 @@ export class WorkflowFinderService {
 			includeTags: options.includeTags,
 			includeParentFolder: options.includeParentFolder,
 			includeActiveVersion: options.includeActiveVersion,
+			publishHistory: options.publishHistory,
 			em: options.em,
 		});
 
