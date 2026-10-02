@@ -149,9 +149,6 @@ export class PollTriggerTaskHandler implements TaskHandler {
 				// the poll window untouched for the next occurrence to cover.
 				const deadline = timeoutAfter(this.pollTimeoutMs);
 				const poll = this.triggersAndPollers.runPollFunction(workflow, node, pollFunctions);
-				// Deliberately not chained: keeps an abandoned poll's eventual rejection from
-				// surfacing as an unhandled rejection once the race has moved on.
-				poll.catch(() => {});
 
 				let pollResponse: Awaited<typeof poll>;
 				try {
