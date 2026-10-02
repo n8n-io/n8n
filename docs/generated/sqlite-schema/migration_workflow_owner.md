@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "migration_workflow_owner" ("workflowId" varchar(36) PRIMARY KEY NOT NULL, "userId" varchar, "source" varchar(16) NOT NULL, "assignedById" varchar, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "CHK_migration_workflow_owner_source" CHECK ("source" IN ('suggested', 'assigned')), CONSTRAINT "FK_59cde25bbb0edbb82286e4806d2" FOREIGN KEY ("workflowId") REFERENCES "workflow_entity" ("id") ON DELETE CASCADE, CONSTRAINT "FK_ca859918be95d42fa6f698791c3" FOREIGN KEY ("userId") REFERENCES "user" ("id") ON DELETE SET NULL, CONSTRAINT "FK_e6e5e4cab49ec23a544ffc9337a" FOREIGN KEY ("assignedById") REFERENCES "user" ("id") ON DELETE SET NULL)
+CREATE TABLE "migration_workflow_owner" ("workflowId" varchar(36) PRIMARY KEY NOT NULL, "userId" varchar, "source" varchar(16) NOT NULL, "assignedById" varchar, "assignedAt" datetime(3), "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "CHK_migration_workflow_owner_source" CHECK ("source" IN ('suggested', 'assigned')), CONSTRAINT "FK_59cde25bbb0edbb82286e4806d2" FOREIGN KEY ("workflowId") REFERENCES "workflow_entity" ("id") ON DELETE CASCADE, CONSTRAINT "FK_ca859918be95d42fa6f698791c3" FOREIGN KEY ("userId") REFERENCES "user" ("id") ON DELETE SET NULL, CONSTRAINT "FK_e6e5e4cab49ec23a544ffc9337a" FOREIGN KEY ("assignedById") REFERENCES "user" ("id") ON DELETE SET NULL)
 ```
 
 </details>
@@ -15,6 +15,7 @@ CREATE TABLE "migration_workflow_owner" ("workflowId" varchar(36) PRIMARY KEY NO
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
+| assignedAt | datetime(3) |  | true |  |  |  |
 | assignedById | varchar |  | true |  | [user](user.md) |  |
 | createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 | source | varchar(16) |  | false |  |  |  |
@@ -50,6 +51,7 @@ erDiagram
 "migration_workflow_owner" |o--|| "workflow_entity" : "FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 
 "migration_workflow_owner" {
+  datetime_3_ assignedAt
   varchar assignedById FK
   datetime_3_ createdAt
   varchar_16_ source

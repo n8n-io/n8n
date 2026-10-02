@@ -27,6 +27,9 @@ export class CreateMigrationWorkflowOwnerTable1790966672000 implements Reversibl
 				column('assignedById').uuid.comment(
 					'Who assigned the owner. NULL for a suggestion, or after that user was deleted.',
 				),
+				column('assignedAt')
+					.timestampTimezone()
+					.comment('When a person assigned the owner. NULL for a suggestion.'),
 			)
 			.withTimestamps.withIndexOn(['userId'])
 			.withForeignKey('workflowId', {

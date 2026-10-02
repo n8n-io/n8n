@@ -37,28 +37,36 @@ export class MigrationWorkflowOwnerRepository extends BaseRepository<MigrationWo
 		ctx: OperationContext,
 	): Promise<void> {
 		if (workflowIds.length === 0) return;
-		const manager = this.managerFor(ctx);
 
-		// Earlier suggestions for the batch go first, so each workflow ends with at most
-		// one row. The insert then ignores every workflow that still has a row, which is
-		// exactly the assigned ones.
-		await manager.delete(MigrationWorkflowOwner, {
-			workflowId: In(workflowIds),
-			source: 'suggested',
+		// Both writes succeed or fail together, so a failed insert cannot leave the
+		// batch without the suggestions it had before.
+		await this.runInTransaction(ctx, async (manager) => {
+			// Earlier suggestions for the batch go first, so each workflow ends with at most
+			// one row. The insert then ignores every workflow that still has a row, which is
+			// exactly the assigned ones.
+			await manager.delete(MigrationWorkflowOwner, {
+				workflowId: In(workflowIds),
+				source: 'suggested',
+			});
+
+			const batch = new Set(workflowIds);
+			const rows = suggestions
+				.filter((suggestion) => batch.has(suggestion.workflowId))
+				.map((suggestion) => ({
+					...suggestion,
+					source: 'suggested' as const,
+					assignedById: null,
+					assignedAt: null,
+				}));
+			if (rows.length === 0) return;
+
+			await manager
+				.createQueryBuilder()
+				.insert()
+				.into(MigrationWorkflowOwner)
+				.values(rows)
+				.orIgnore()
+				.execute();
 		});
-
-		const batch = new Set(workflowIds);
-		const rows = suggestions
-			.filter((suggestion) => batch.has(suggestion.workflowId))
-			.map((suggestion) => ({ ...suggestion, source: 'suggested' as const, assignedById: null }));
-		if (rows.length === 0) return;
-
-		await manager
-			.createQueryBuilder()
-			.insert()
-			.into(MigrationWorkflowOwner)
-			.values(rows)
-			.orIgnore()
-			.execute();
 	}
 }

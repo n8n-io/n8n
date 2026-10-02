@@ -102,7 +102,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [mcp_registry_server](mcp_registry_server.md) | 7 |  | table |
 | [migration_finding](migration_finding.md) | 10 |  | table |
 | [migration_finding_sync](migration_finding_sync.md) | 3 |  | table |
-| [migration_workflow_owner](migration_workflow_owner.md) | 6 |  | table |
+| [migration_workflow_owner](migration_workflow_owner.md) | 7 |  | table |
 | [oauth_access_tokens](oauth_access_tokens.md) | 3 |  | table |
 | [oauth_authorization_codes](oauth_authorization_codes.md) | 13 |  | table |
 | [oauth_clients](oauth_clients.md) | 10 |  | table |
@@ -1354,6 +1354,7 @@ erDiagram
   varchar_16_ targetVersion PK
 }
 "migration_workflow_owner" {
+  datetime_3_ assignedAt
   varchar assignedById FK
   datetime_3_ createdAt
   varchar_16_ source

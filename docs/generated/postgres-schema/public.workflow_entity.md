@@ -239,6 +239,7 @@ erDiagram
   varchar_36_ workflowId FK
 }
 "public.migration_workflow_owner" {
+  timestamp_3__with_time_zone assignedAt
   uuid assignedById FK
   timestamp_3__with_time_zone createdAt
   varchar_16_ source

@@ -102,7 +102,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.mcp_registry_server](public.mcp_registry_server.md) | 7 |  | BASE TABLE |
 | [public.migration_finding](public.migration_finding.md) | 10 |  | BASE TABLE |
 | [public.migration_finding_sync](public.migration_finding_sync.md) | 3 |  | BASE TABLE |
-| [public.migration_workflow_owner](public.migration_workflow_owner.md) | 6 |  | BASE TABLE |
+| [public.migration_workflow_owner](public.migration_workflow_owner.md) | 7 |  | BASE TABLE |
 | [public.oauth_access_tokens](public.oauth_access_tokens.md) | 3 |  | BASE TABLE |
 | [public.oauth_authorization_codes](public.oauth_authorization_codes.md) | 13 |  | BASE TABLE |
 | [public.oauth_clients](public.oauth_clients.md) | 10 |  | BASE TABLE |
@@ -1368,6 +1368,7 @@ erDiagram
   varchar_16_ targetVersion
 }
 "public.migration_workflow_owner" {
+  timestamp_3__with_time_zone assignedAt
   uuid assignedById FK
   timestamp_3__with_time_zone createdAt
   varchar_16_ source

@@ -56,6 +56,7 @@ describe('MigrationWorkflowOwnerRepository', () => {
 				userId: alice.id,
 				source: 'suggested',
 				assignedById: null,
+				assignedAt: null,
 			});
 		});
 
@@ -83,11 +84,13 @@ describe('MigrationWorkflowOwnerRepository', () => {
 
 		test('leaves an assigned owner as it is', async () => {
 			const workflow = await createWorkflow();
+			const assignedAt = new Date('2026-03-01T12:00:00.000Z');
 			await repository.insert({
 				workflowId: workflow.id,
 				userId: alice.id,
 				source: 'assigned',
 				assignedById: bob.id,
+				assignedAt,
 			});
 
 			await repository.replaceSuggestions(
@@ -98,6 +101,27 @@ describe('MigrationWorkflowOwnerRepository', () => {
 
 			const [row] = await repository.findByWorkflowIds([workflow.id], ctx);
 			expect(row).toMatchObject({ userId: alice.id, source: 'assigned', assignedById: bob.id });
+			expect(row.assignedAt?.getTime()).toBe(assignedAt.getTime());
+		});
+
+		test('rolls back the delete when the insert fails, so earlier suggestions survive', async () => {
+			const workflow = await createWorkflow();
+			await repository.replaceSuggestions(
+				[workflow.id],
+				[{ workflowId: workflow.id, userId: alice.id }],
+				ctx,
+			);
+
+			await expect(
+				repository.replaceSuggestions(
+					[workflow.id],
+					[{ workflowId: workflow.id, userId: 'not-a-user' }],
+					ctx,
+				),
+			).rejects.toThrow();
+
+			const [row] = await repository.findByWorkflowIds([workflow.id], ctx);
+			expect(row).toMatchObject({ userId: alice.id, source: 'suggested' });
 		});
 
 		test('does nothing for an empty batch', async () => {

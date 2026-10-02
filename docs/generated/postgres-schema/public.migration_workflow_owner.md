@@ -4,6 +4,7 @@
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
+| assignedAt | timestamp(3) with time zone |  | true |  |  | When a person assigned the owner. NULL for a suggestion. |
 | assignedById | uuid |  | true |  | [public.user](public.user.md) | Who assigned the owner. NULL for a suggestion, or after that user was deleted. |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | source | varchar(16) |  | false |  |  | MigrationOwnerSource enum: "suggested" by the heuristic, or "assigned" by a person. |
@@ -42,6 +43,7 @@ erDiagram
 "public.migration_workflow_owner" |o--|| "public.workflow_entity" : "FOREIGN KEY (#quot;workflowId#quot;) REFERENCES workflow_entity(id) ON DELETE CASCADE"
 
 "public.migration_workflow_owner" {
+  timestamp_3__with_time_zone assignedAt
   uuid assignedById FK
   timestamp_3__with_time_zone createdAt
   varchar_16_ source

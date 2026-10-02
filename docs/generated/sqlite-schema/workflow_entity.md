@@ -238,6 +238,7 @@ erDiagram
   varchar_36_ workflowId FK
 }
 "migration_workflow_owner" {
+  datetime_3_ assignedAt
   varchar assignedById FK
   datetime_3_ createdAt
   varchar_16_ source
