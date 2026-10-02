@@ -1,4 +1,5 @@
 import { Logger } from '@n8n/backend-common';
+import { CacheService } from '@n8n/backend-services';
 import { mockInstance, testDb } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import { DeploymentKey, DeploymentKeyRepository } from '@n8n/db';
@@ -7,8 +8,6 @@ import { DataSource, type Repository } from '@n8n/typeorm';
 import { createLocalJWKSet, jwtVerify } from 'jose';
 import { Cipher, InstanceSettings } from 'n8n-core';
 import { generateKeyPairSync } from 'node:crypto';
-
-import { CacheService } from '@/services/cache/cache.service';
 
 import {
 	OAUTH_SIGNING_ALGORITHM,

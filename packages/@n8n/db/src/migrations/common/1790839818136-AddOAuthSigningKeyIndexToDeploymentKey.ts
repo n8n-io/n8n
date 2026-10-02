@@ -3,7 +3,7 @@ import type { MigrationContext, ReversibleMigration } from '../migration-types';
 const indexName = (tablePrefix: string) =>
 	`IDX_${tablePrefix}deployment_key_oauth_signing_key_active`;
 
-export class AddOAuthSigningKeyIndexToDeploymentKey1790342461308 implements ReversibleMigration {
+export class AddOAuthSigningKeyIndexToDeploymentKey1790839818136 implements ReversibleMigration {
 	async up({ schemaBuilder: { createIndex }, escape, tablePrefix }: MigrationContext) {
 		// At most one active OAuth access-token signing key per algorithm, so
 		// mains and webhook processes that boot at the same time cannot both
