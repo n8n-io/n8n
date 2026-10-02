@@ -15,12 +15,8 @@ import {
 	type NodeParameterValueType,
 } from 'n8n-workflow';
 
-import {
-	canonicalJson,
-	type ContractDocument,
-	type DerivedManifest,
-	type JsonSchema,
-} from '@n8n/node-sdk';
+import type { JsonSchema } from '@n8n/node-sdk';
+import { canonicalJson, type ContractDocument, type DerivedManifest } from '@n8n/node-sdk/registry';
 
 export interface LegacyTarget {
 	readonly type: string;

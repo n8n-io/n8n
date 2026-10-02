@@ -1,4 +1,4 @@
-import { arr, str } from '@n8n/node-sdk';
+import { t } from '@n8n/node-sdk';
 
 import { issueResource } from '../github.node';
 import { issue, issueOf, issuesPath } from '../issue';
@@ -9,10 +9,10 @@ export const createIssue = issueResource.action('create', {
 	scopes: ['repo'],
 	flow: { effect: 'write', cardinality: 'per-item', idempotent: false },
 	input: {
-		title: str().with({ minLength: 1 }),
-		body: str().hint('Markdown').default(''),
-		labels: arr(str()).hint('Label names; GitHub drops them without push access').default([]),
-		assignees: arr(str()).hint('Logins of users with access to the repository').default([]),
+		title: t.str().with({ minLength: 1 }),
+		body: t.str().hint('Markdown').default(''),
+		labels: t.arr(t.str()).hint('Label names; GitHub drops them without push access').default([]),
+		assignees: t.arr(t.str()).hint('Logins of users with access to the repository').default([]),
 	},
 	output: issue,
 	async run({ input, http }) {

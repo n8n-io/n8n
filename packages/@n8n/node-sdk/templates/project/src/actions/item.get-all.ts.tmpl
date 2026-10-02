@@ -1,14 +1,14 @@
-import { arr, loose, nullable, obj, str } from '@n8n/node-sdk';
+import { t } from '@n8n/node-sdk';
 
 import { item } from '../__slug__.node';
 
-// `obj` rejects fields it does not list, so list every field the API returns. An API may leave
-// out a field, so `loose` makes each field optional and nullable.
-export const itemOutput = loose(
-	obj({
-		id: str().with({ examples: ['itm_1'] }),
-		name: str(),
-		ownerId: nullable(str()).hint('null when nobody owns the item'),
+// `t.obj` rejects fields it does not list, so list every field the API returns. An API may leave
+// out a field, so `t.loose` makes each field optional and nullable.
+export const itemOutput = t.loose(
+	t.obj({
+		id: t.str().with({ examples: ['itm_1'] }),
+		name: t.str(),
+		ownerId: t.nullable(t.str()).hint('null when nobody owns the item'),
 	}),
 );
 
@@ -23,7 +23,7 @@ export const getManyItems = item.action('getAll', {
 	// `paging` limit, on the last page, and on a repeated cursor. `pages` adds the `paging` input.
 	list: {
 		path: '/items',
-		response: obj({ items: arr(itemOutput), nextCursor: nullable(str()).optional() }),
+		response: t.obj({ items: t.arr(itemOutput), nextCursor: t.nullable(t.str()).optional() }),
 		items: (page) => page.items,
 		pages: {
 			style: 'cursor',

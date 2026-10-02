@@ -130,9 +130,9 @@ interface limits {
 }
 
 /// Binary data stays in the host. A bundle holds a handle and never gets all the bytes at
-/// once. Only an action with a `binary()` field in its manifest gets it.
+/// once. Only an action with a `t.binary()` field in its manifest gets it.
 ///
-/// At a `binary()` position of the manifest schema, the JSON of the run input and of each
+/// At a `t.binary()` position of the manifest schema, the JSON of the run input and of each
 /// output item holds `{ "$binary": <id> }`. `open` gives the handle of an input id, and
 /// `binary.id` gives the id to put into an output item. A binary output field must be a
 /// top-level field: the host moves it to the `binary` part of the n8n item.
@@ -460,9 +460,9 @@ interface capabilities {
 }
 
 /// The capabilities of the providers that are connected to a root action. Only an action with a
-/// `supplied()` input field gets it.
+/// `provider.input()` field gets it.
 ///
-/// At a `supplied()` position of the manifest schema, the JSON of the run input holds
+/// At a `provider.input()` position of the manifest schema, the JSON of the run input holds
 /// `{ "$capability": <id> }`. `open` gives the capability of an id.
 @since(version = 2.3.0)
 interface supplied {

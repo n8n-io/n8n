@@ -25,7 +25,8 @@ import { isDeepStrictEqual } from 'node:util';
 
 import type * as Core from '../../../../../core/dist/index.js';
 import type Nock from '../../../../../core/node_modules/nock';
-import { toNodeType, type Action } from '@n8n/node-sdk';
+import type { Action } from '@n8n/node-sdk';
+import { toNodeType } from '@n8n/node-sdk/host';
 import type * as N8nWorkflow from 'n8n-workflow';
 import type {
 	IBinaryData,

@@ -1,24 +1,12 @@
-import {
-	arr,
-	bool,
-	int,
-	jsonValue,
-	nullable,
-	num,
-	obj,
-	oneOf,
-	str,
-	variant,
-	type Infer,
-} from '@n8n/node-sdk';
+import { t, type Infer } from '@n8n/node-sdk';
 import { safeRegex } from 'n8n-workflow';
 
 /** Tests on a value that may be absent. `empty` also holds for an empty string or list. */
 const presence = { exists: {}, notExists: {}, empty: {}, notEmpty: {} };
 
-const text = { right: str() };
-const pattern = { right: str().hint('A pattern, or /pattern/flags') };
-const stringTest = variant('op', {
+const text = { right: t.str() };
+const pattern = { right: t.str().hint('A pattern, or /pattern/flags') };
+const stringTest = t.variant('op', {
 	equals: text,
 	notEquals: text,
 	contains: text,
@@ -32,8 +20,8 @@ const stringTest = variant('op', {
 	...presence,
 });
 
-const amount = { right: num() };
-const numberTest = variant('op', {
+const amount = { right: t.num() };
+const numberTest = t.variant('op', {
 	equals: amount,
 	notEquals: amount,
 	gt: amount,
@@ -43,8 +31,8 @@ const numberTest = variant('op', {
 	...presence,
 });
 
-const moment = { right: str().hint('ISO 8601, e.g. 2026-09-01T10:00:00Z') };
-const dateTimeTest = variant('op', {
+const moment = { right: t.str().hint('ISO 8601, e.g. 2026-09-01T10:00:00Z') };
+const dateTimeTest = t.variant('op', {
 	equals: moment,
 	notEquals: moment,
 	after: moment,
@@ -54,8 +42,8 @@ const dateTimeTest = variant('op', {
 	...presence,
 });
 
-const flag = { right: bool() };
-const booleanTest = variant('op', {
+const flag = { right: t.bool() };
+const booleanTest = t.variant('op', {
 	true: {},
 	false: {},
 	equals: flag,
@@ -63,9 +51,9 @@ const booleanTest = variant('op', {
 	...presence,
 });
 
-const member = { right: jsonValue() };
-const length = { right: int().with({ minimum: 0 }) };
-const arrayTest = variant('op', {
+const member = { right: t.jsonValue() };
+const length = { right: t.int().with({ minimum: 0 }) };
+const arrayTest = t.variant('op', {
 	contains: member,
 	notContains: member,
 	lengthEquals: length,
@@ -78,18 +66,18 @@ const arrayTest = variant('op', {
 });
 
 /** `left` is the tested value, usually an expression such as `={{ $json.age }}`. */
-export const condition = variant('type', {
-	['string']: { left: nullable(str()).optional(), test: stringTest },
-	['number']: { left: nullable(num()).optional(), test: numberTest },
-	dateTime: { left: nullable(str()).optional(), test: dateTimeTest },
-	['boolean']: { left: nullable(bool()).optional(), test: booleanTest },
-	array: { left: nullable(arr(jsonValue())).optional(), test: arrayTest },
+export const condition = t.variant('type', {
+	['string']: { left: t.nullable(t.str()).optional(), test: stringTest },
+	['number']: { left: t.nullable(t.num()).optional(), test: numberTest },
+	dateTime: { left: t.nullable(t.str()).optional(), test: dateTimeTest },
+	['boolean']: { left: t.nullable(t.bool()).optional(), test: booleanTest },
+	array: { left: t.nullable(t.arr(t.jsonValue())).optional(), test: arrayTest },
 });
 
-export const where = obj({
-	match: oneOf('all', 'any').default('all'),
-	conditions: arr(condition),
-	ignoreCase: bool().default(false),
+export const where = t.obj({
+	match: t.oneOf('all', 'any').default('all'),
+	conditions: t.arr(condition),
+	ignoreCase: t.bool().default(false),
 });
 
 export type Condition = Infer<typeof condition>;

@@ -1,4 +1,4 @@
-import { str, variant } from '@n8n/node-sdk';
+import { t } from '@n8n/node-sdk';
 
 import { slackGet, slackResponse, slackUser, user } from '../slack.node';
 
@@ -10,9 +10,9 @@ export const getSlackUser = user.action('get', {
 	flow: { effect: 'read', cardinality: 'per-item', idempotent: true },
 	scopes: ['users:read', 'users:read.email'],
 	input: {
-		user: variant('by', {
-			id: { id: str().with({ pattern: '^[UW][A-Z0-9]{2,}$' }).hint('User ID, e.g. U0123ABCDEF') },
-			email: { email: str().with({ pattern: '^[^@\\s]+@[^@\\s]+$' }) },
+		user: t.variant('by', {
+			id: { id: t.str().with({ pattern: '^[UW][A-Z0-9]{2,}$' }).hint('User ID, e.g. U0123ABCDEF') },
+			email: { email: t.str().with({ pattern: '^[^@\\s]+@[^@\\s]+$' }) },
 		}),
 	},
 	output: slackUser,

@@ -1,12 +1,7 @@
-import {
-	compat,
-	isToolContract,
-	nodeNameOf,
-	toContract,
-	type Action,
-	type AnyCredentialType,
-	type Trigger,
-} from '@n8n/node-sdk';
+import type { Action, Trigger } from '@n8n/node-sdk';
+import { compat, type AnyCredentialType } from '@n8n/node-sdk/credentials';
+import { isToolContract, nodeNameOf } from '@n8n/node-sdk/host';
+import { toContract } from '@n8n/node-sdk/registry';
 
 import { runAgent } from './nodes/ai/actions/agent';
 import { classifyText } from './nodes/ai/actions/classify';
@@ -129,18 +124,17 @@ export {
 } from './contract-registry';
 // The cli builds node types from stored versions and checks eval mock values with the
 // node-sdk instance of this package.
+export { matches } from '@n8n/node-sdk';
 export {
 	exampleOf,
-	matches,
 	runsNodeContract,
 	setCodeLanguages,
 	toVersionedNodeType,
 	toVersionedToolType,
 	toVersionedTriggerType,
 	type FrozenVersion,
-	type NodeContractLock,
-	type VersionManifest,
-} from '@n8n/node-sdk';
+} from '@n8n/node-sdk/host';
+export type { NodeContractLock, VersionManifest } from '@n8n/node-sdk/registry';
 
 export const NODE_PACKAGE = '@n8n/nodes-base-next';
 

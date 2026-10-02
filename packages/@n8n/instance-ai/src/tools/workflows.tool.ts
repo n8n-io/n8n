@@ -15,7 +15,7 @@ import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
-import { toTs } from '@n8n/node-sdk';
+import { toTs } from '@n8n/node-sdk/codegen';
 import { migratedTargetOf, nodeTypeOf, toolActions, toolTypeOf } from '@n8n/nodes-base-next';
 import type { composedFactoryKey, ContractFactory } from '@n8n/workflow-sdk/next';
 

@@ -5,36 +5,30 @@ import path from 'node:path';
 import type { IExecuteFunctions, INodeExecutionData, ITaskMetadata } from 'n8n-workflow';
 
 import { freezeAction, type FrozenAction } from '../freeze';
+import { generateNodeModule } from '../entry/codegen';
 import {
-	arr,
-	bool,
+	setContractVersionLoader,
+	setNodeContractRange,
+	toVersionedNodeType,
+	type FrozenVersion,
+} from '../entry/host';
+import {
 	contractHash,
-	defineNode,
 	diffContracts,
-	generateNodeModule,
 	integrityOf,
-	obj,
 	openContractPackage,
 	packageNameOf,
-	pageValue,
 	parseFixtures,
 	parseManifest,
 	resolveContractVersion,
-	setContractVersionLoader,
-	setNodeContractRange,
-	str,
 	toContract,
-	toVersionedNodeType,
 	verifyManifestSignature,
-	NODE_CONTRACT_VERSION,
-	type ActionFlow,
 	type ContractDocument,
 	type ContractFixtures,
-	type FrozenVersion,
 	type NodeContractVersion,
-	type Shape,
 	type VersionManifest,
-} from '../index';
+} from '../entry/registry';
+import { defineNode, t, type ActionFlow, type Shape } from '../index';
 import {
 	checkPublish,
 	packContractPackage,
@@ -46,6 +40,7 @@ import { evaluateBundle } from '../runtime';
 import type { AnySchema } from '../schema';
 import {
 	DEFAULT_NODE_CONTRACT_RANGE,
+	NODE_CONTRACT_VERSION,
 	requiredNodeContractOf,
 	semverRange,
 	sha256,
@@ -55,8 +50,8 @@ const demo = defineNode({ id: 'demo', displayName: 'Demo' });
 const FLOW: ActionFlow = { effect: 'transform', cardinality: 'per-item' };
 
 const contractOf = ({
-	input = { text: str() },
-	output = obj({ text: str() }),
+	input = { text: t.str() },
+	output = t.obj({ text: t.str() }),
 	flow = FLOW,
 	summary = 'Echo the text.',
 }: { input?: Shape; output?: AnySchema; flow?: ActionFlow; summary?: string } = {}) =>
@@ -79,8 +74,8 @@ describe('contractHash', () => {
 		expect(contractHash({ ...base, ...reordered })).toBe(contractHash(base));
 		expect(contractHash({ ...base, summary: 'Other.', action: 'Say' })).toBe(contractHash(base));
 		const hinted = contractOf({
-			input: { text: str().hint('The text').describe('Some prose') },
-			output: obj({ text: str().hint('Echoed') }),
+			input: { text: t.str().hint('The text').describe('Some prose') },
+			output: t.obj({ text: t.str().hint('Echoed') }),
 		});
 		expect(contractHash(hinted)).toBe(contractHash(base));
 	});
@@ -90,7 +85,7 @@ describe('contractHash', () => {
 			contractHash(base),
 		);
 		expect(contractHash({ ...base, version: 2 })).not.toBe(contractHash(base));
-		expect(contractHash(contractOf({ input: { text: str().optional() } }))).not.toBe(
+		expect(contractHash(contractOf({ input: { text: t.str().optional() } }))).not.toBe(
 			contractHash(base),
 		);
 	});
@@ -140,8 +135,8 @@ describe('parseFixtures', () => {
 });
 
 describe('diffContracts', () => {
-	const base = contractOf({ input: { text: str(), mode: str().with({ enum: ['a', 'b'] }) } });
-	const baseInput = { text: str(), mode: str().with({ enum: ['a', 'b'] }) };
+	const base = contractOf({ input: { text: t.str(), mode: t.str().with({ enum: ['a', 'b'] }) } });
+	const baseInput = { text: t.str(), mode: t.str().with({ enum: ['a', 'b'] }) };
 	const kindOf = (next: Parameters<typeof contractOf>[0]) =>
 		diffContracts(base, contractOf(next)).kind;
 	const withInput = (input: Shape) => kindOf({ input });
@@ -153,34 +148,36 @@ describe('diffContracts', () => {
 	});
 
 	it('classifies an additive optional input as a minor', () => {
-		expect(withInput({ ...baseInput, prefix: str().optional() })).toBe('minor');
-		expect(withInput({ ...baseInput, mode: str().with({ enum: ['a', 'b', 'c'] }) })).toBe('minor');
+		expect(withInput({ ...baseInput, prefix: t.str().optional() })).toBe('minor');
+		expect(withInput({ ...baseInput, mode: t.str().with({ enum: ['a', 'b', 'c'] }) })).toBe(
+			'minor',
+		);
 	});
 
 	it('classifies a new required input with a default as a minor', () => {
-		const next = contractOf({ input: { ...baseInput, prefix: str().default('>') } });
+		const next = contractOf({ input: { ...baseInput, prefix: t.str().default('>') } });
 		// `.default()` makes the field optional; a required field with a default is the same rule.
 		const required = { ...next, input: { ...next.input, required: ['text', 'mode', 'prefix'] } };
 		expect(diffContracts(base, required).kind).toBe('minor');
 	});
 
 	it('classifies a new required input as a major', () => {
-		const diff = diffContracts(base, contractOf({ input: { ...baseInput, prefix: str() } }));
+		const diff = diffContracts(base, contractOf({ input: { ...baseInput, prefix: t.str() } }));
 		expect(diff).toMatchObject({ kind: 'major', breaksInput: true });
-		expect(withInput({ text: str() })).toBe('major');
-		expect(withInput({ ...baseInput, mode: str().with({ enum: ['a'] }) })).toBe('major');
-		expect(withInput({ ...baseInput, text: str().with({ minLength: 2 }) })).toBe('major');
+		expect(withInput({ text: t.str() })).toBe('major');
+		expect(withInput({ ...baseInput, mode: t.str().with({ enum: ['a'] }) })).toBe('major');
+		expect(withInput({ ...baseInput, text: t.str().with({ minLength: 2 }) })).toBe('major');
 	});
 
 	it('classifies a removed or narrowed output as a major', () => {
-		const output = obj({ text: str(), tags: arr(str()) });
+		const output = t.obj({ text: t.str(), tags: t.arr(t.str()) });
 		const prev = contractOf({ input: baseInput, output });
 		const diff = (next: AnySchema) =>
 			diffContracts(prev, contractOf({ input: baseInput, output: next }));
-		expect(diff(obj({ text: str() }))).toMatchObject({ kind: 'major', breaksInput: false });
-		expect(diff(obj({ text: str().optional(), tags: arr(str()) })).kind).toBe('major');
-		expect(diff(obj({ text: bool(), tags: arr(str()) })).kind).toBe('major');
-		expect(diff(obj({ text: str(), tags: arr(str()), extra: str() })).kind).toBe('minor');
+		expect(diff(t.obj({ text: t.str() }))).toMatchObject({ kind: 'major', breaksInput: false });
+		expect(diff(t.obj({ text: t.str().optional(), tags: t.arr(t.str()) })).kind).toBe('major');
+		expect(diff(t.obj({ text: t.bool(), tags: t.arr(t.str()) })).kind).toBe('major');
+		expect(diff(t.obj({ text: t.str(), tags: t.arr(t.str()), extra: t.str() })).kind).toBe('minor');
 	});
 
 	it('classifies a changed flow as a major', () => {
@@ -188,8 +185,8 @@ describe('diffContracts', () => {
 	});
 
 	it('compares nested fields', () => {
-		const prev = contractOf({ input: { where: obj({ field: str(), op: str() }) } });
-		const next = contractOf({ input: { where: obj({ field: str() }) } });
+		const prev = contractOf({ input: { where: t.obj({ field: t.str(), op: t.str() }) } });
+		const next = contractOf({ input: { where: t.obj({ field: t.str() }) } });
 		expect(diffContracts(prev, next).changes).toEqual([
 			{ kind: 'major', text: 'input.where.op removed' },
 		]);
@@ -221,7 +218,8 @@ const echoSource = ({
 	text = 'input.text',
 	migrate = '',
 }: EchoOptions = {}) => `
-import { defineNode, obj, str } from '@n8n/node-sdk';
+import { defineNode, t } from '@n8n/node-sdk';
+const { obj, str } = t;
 import { shout } from './shout';
 
 const demo = defineNode({ id: 'demo', displayName: 'Demo', baseUrl: 'https://demo.test' });
@@ -386,7 +384,8 @@ describe('checkPublish', () => {
 		const freezePing = async (version: number, input: string, migrate = '') => {
 			await writeFile(
 				entry,
-				`import { defineNode, obj, str } from '@n8n/node-sdk';
+				`import { defineNode, t } from '@n8n/node-sdk';
+const { obj, str } = t;
 const demo = defineNode({ id: 'demo', displayName: 'Demo' });
 export const ping = demo.trigger('ping', {
 	version: ${version},
@@ -425,12 +424,14 @@ export const ping = demo.trigger('ping', {
 		const entry = path.join(dirs.root, 'server.ts');
 		await writeFile(
 			entry,
-			`import { credential, credentialType, defineNode, obj, str, t } from '@n8n/node-sdk';
+			`import { defineNode, t } from '@n8n/node-sdk';
+import { credential, defineCredential, field } from '@n8n/node-sdk/credentials';
+const { obj, str } = t;
 const demo = defineNode({
 	id: 'demo',
 	displayName: 'Demo',
 	credential: credential({
-		types: [credentialType({ id: 'demo.token', legacyName: 'demoApi', displayName: 'Demo', fields: { server: str(), token: t.secret('Token') }, baseUrl: '{server}', auth: (a) => a.bearer('token') })],
+		types: [defineCredential({ id: 'demo.token', legacyName: 'demoApi', displayName: 'Demo', fields: { server: str(), token: field.secret('Token') }, baseUrl: '{server}', auth: (a) => a.bearer('token') })],
 	}),
 });
 export const read = demo.action('read', {
@@ -647,8 +648,8 @@ describe('published versions', () => {
 		});
 
 		it('is 2.4.0 for a list binding or a page value input', () => {
-			const contract = { input: obj({ url: str() }).json, output: obj({}).json };
-			const paged = { ...contract, input: obj({ next: pageValue(str()) }).json };
+			const contract = { input: t.obj({ url: t.str() }).json, output: t.obj({}).json };
+			const paged = { ...contract, input: t.obj({ next: t.pageValue(t.str()) }).json };
 			expect(requiredNodeContractOf(contract)).toBe('2.1.0');
 			expect(requiredNodeContractOf(contract, true)).toBe('2.4.0');
 			expect(requiredNodeContractOf(paged)).toBe('2.4.0');

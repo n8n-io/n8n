@@ -1,6 +1,8 @@
 import type { INodeProperties, INodeTypeDescription } from 'n8n-workflow';
 
-import { canonicalJson, generateNodeModule, validate } from '@n8n/node-sdk';
+import { validate } from '@n8n/node-sdk';
+import { generateNodeModule } from '@n8n/node-sdk/codegen';
+import { canonicalJson } from '@n8n/node-sdk/registry';
 
 import {
 	deriveManifests,

@@ -1,4 +1,4 @@
-import { passedItem } from '@n8n/node-sdk';
+import { t } from '@n8n/node-sdk';
 
 import { row, toFilter, where } from '../data-table.node';
 
@@ -8,7 +8,7 @@ export const rowExists = row.action('exists', {
 	flow: { effect: 'read', cardinality: 'per-item' },
 	imports: ['dataTables'],
 	input: { where },
-	output: passedItem(),
+	output: t.passedItem(),
 	outputs: ['exists', 'missing'],
 	async run({ input, item, dataTables }) {
 		const table = await dataTables.open(input.table);

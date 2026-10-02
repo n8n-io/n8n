@@ -1,12 +1,10 @@
 import {
-	integrityOf,
-	packageNameOf,
-	setNodeContractRange,
 	setContractVersionLoader,
+	setNodeContractRange,
 	toVersionedNodeType,
 	type FrozenVersion,
-	type NodeContractLock,
-} from '@n8n/node-sdk';
+} from '@n8n/node-sdk/host';
+import { integrityOf, packageNameOf, type NodeContractLock } from '@n8n/node-sdk/registry';
 import { freezeAction, type FrozenAction } from '@n8n/node-sdk/freeze';
 import { packContractPackage } from '@n8n/node-sdk/publish';
 import { sandboxExecutorLoader } from '@n8n/node-sdk/sandbox';
@@ -33,8 +31,8 @@ vi.mock('node:fs/promises', async (importOriginal) => {
 	return { ...fs, link: vi.fn(fs.link) };
 });
 
-vi.mock('@n8n/node-sdk', async (importOriginal) => ({
-	...(await importOriginal<typeof import('@n8n/node-sdk')>()),
+vi.mock('@n8n/node-sdk/host', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@n8n/node-sdk/host')>()),
 	setExecutorLoader: vi.fn(),
 }));
 
@@ -44,7 +42,8 @@ vi.mock('@n8n/node-sdk/sandbox', async (importOriginal) => ({
 }));
 
 const echoSource = (minor: number, patch: number, text: string) => `
-import { defineNode, obj, str } from '@n8n/node-sdk';
+import { defineNode, t } from '@n8n/node-sdk';
+const { obj, str } = t;
 
 export const echo = defineNode({ id: 'demo', displayName: 'Demo', credentials: [] }).action('echo', {
 	version: 1,

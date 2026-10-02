@@ -1,4 +1,4 @@
-import { toCredentialType, toTriggerNodeType, toVersionedTriggerType } from '@n8n/node-sdk';
+import { toCredentialType, toTriggerNodeType, toVersionedTriggerType } from '@n8n/node-sdk/host';
 import { NotionApi } from 'n8n-nodes-base/dist/credentials/NotionApi.credentials';
 import { GithubTrigger } from 'n8n-nodes-base/dist/nodes/Github/GithubTrigger.node';
 import { Notion } from 'n8n-nodes-base/dist/nodes/Notion/Notion.node';

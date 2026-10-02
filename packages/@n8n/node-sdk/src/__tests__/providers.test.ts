@@ -1,23 +1,13 @@
 import type { INode, ISupplyDataFunctions } from 'n8n-workflow';
 
+import { generateNodeModule, modelCatalogDeclaration, toTs } from '../entry/codegen';
+import { compat, credential } from '../entry/credentials';
+import { isToolContract, toNodeType } from '../entry/host';
+import { lintContract, toContract } from '../entry/registry';
 import {
-	arr,
-	binary,
-	compat,
-	credential,
 	defineNode,
-	generateNodeModule,
-	isToolContract,
-	lintContract,
-	modelCatalogDeclaration,
-	modelId,
-	num,
-	obj,
-	str,
-	supplied,
-	toContract,
-	toNodeType,
-	toTs,
+	provider,
+	t,
 	type ActionFlow,
 	type AnySchema,
 	type ChatModel,
@@ -25,8 +15,8 @@ import {
 	type Shape,
 	type Tool,
 } from '../index';
+import { replayCapability } from '../providers';
 import { executorOf, type ExecutorHost } from '../runtime';
-import { isSupply, replaySupply } from '../subnodes';
 import { runAction } from '../testing';
 
 const llm = defineNode({
@@ -36,12 +26,12 @@ const llm = defineNode({
 	baseUrl: 'https://llm.test/v1',
 });
 
-const chatModel = llm.subnode('chatModel', {
+const chatModel = llm.provider('chatModel', {
 	action: 'LLM Chat Model',
 	summary: 'A chat model.',
-	supplies: 'chatModel',
-	input: { model: modelId('llm'), temperature: num().optional() },
-	async supply({ input, http }) {
+	provides: 'chatModel',
+	input: { model: t.modelId('llm'), temperature: t.num().optional() },
+	async provide({ input, http }) {
 		return {
 			model: input.model,
 			async chat(request: ChatRequest) {
@@ -60,11 +50,11 @@ const ask = ai.action('ask', {
 	summary: 'Ask a model.',
 	flow: { effect: 'transform', cardinality: 'per-item' },
 	input: {
-		model: supplied('chatModel'),
-		tools: arr(supplied('tool')).optional(),
-		prompt: str(),
+		model: provider.input('chatModel'),
+		tools: t.arr(provider.input('tool')).optional(),
+		prompt: t.str(),
 	},
-	output: obj({ text: str(), tools: arr(str()) }),
+	output: t.obj({ text: t.str(), tools: t.arr(t.str()) }),
 	async run({ input }) {
 		const reply = await input.model.chat({ messages: [{ role: 'user', content: input.prompt }] });
 		return { text: reply.text, tools: (input.tools ?? []).map(({ name }) => name) };
@@ -92,8 +82,8 @@ const fakeTool: Tool = {
 	call: async () => ({ ok: true }),
 };
 
-describe('sub-node contracts', () => {
-	it('map supplied() fields to ai inputs and a sub-node to an ai output', () => {
+describe('provider contracts', () => {
+	it('map provider.input() fields to ai inputs and a provider to an ai output', () => {
 		const root = new (toNodeType(ask))().description;
 		expect(root.inputs).toEqual([
 			'main',
@@ -131,21 +121,21 @@ describe('sub-node contracts', () => {
 		expect(reads.sort()).toEqual(['chatModel', 'tool']);
 	});
 
-	it('refuse a sub-node that supplies something else, e.g. a legacy LangChain model', async () => {
+	it('refuse a provider that gives something else, e.g. a legacy LangChain model', async () => {
 		const legacy = { invoke: async () => ({ content: 'hi' }), lc_namespace: ['langchain'] };
 		const result = await runAction(ask, {
 			input: { prompt: 'Hello' },
-			supplies: { chatModel: legacy as unknown as ChatModel },
+			providers: { chatModel: legacy as unknown as ChatModel },
 		});
 		expect(result).toMatchObject({
 			ok: false,
 			error: { message: 'The model input needs a chatModel from a node contract sub-node' },
 		});
-		expect(isSupply('chatModel', fakeModel('x'))).toBe(true);
-		expect(isSupply('tool', { ...fakeTool, name: 'has space' })).toBe(false);
+		expect(provider.is('chatModel', fakeModel('x'))).toBe(true);
+		expect(provider.is('tool', { ...fakeTool, name: 'has space' })).toBe(false);
 	});
 
-	it('supply a capability that sends requests with the sub-node credential and records each call', async () => {
+	it('supply a capability that sends requests with the provider credential and records each call', async () => {
 		const requests: Array<{ type: string; url: string; body: unknown }> = [];
 		const recorded: Array<[string, string, unknown]> = [];
 		const context = {
@@ -178,7 +168,7 @@ describe('sub-node contracts', () => {
 			0,
 		);
 		const model = supply?.response;
-		if (!isSupply('chatModel', model)) throw new Error('no chat model');
+		if (!provider.is('chatModel', model)) throw new Error('no chat model');
 		expect(model.model).toBe('llm-1');
 		const reply = await model.chat({ messages: [{ role: 'user', content: 'Hello' }] });
 		expect(reply.text).toBe('Hello back');
@@ -230,8 +220,8 @@ describe('sub-node contracts', () => {
 	it('make agent tools of the actions that read or write one call at a time', () => {
 		const tool = (
 			flow: ActionFlow,
-			input: Shape = { id: str() },
-			output: AnySchema = obj({ ok: str() }),
+			input: Shape = { id: t.str() },
+			output: AnySchema = t.obj({ ok: t.str() }),
 		) =>
 			isToolContract(
 				toContract(
@@ -252,22 +242,22 @@ describe('sub-node contracts', () => {
 		expect(tool({ effect: 'write', cardinality: '1:N' })).toBe(true);
 		expect(tool({ effect: 'transform', cardinality: 'per-item' })).toBe(false);
 		expect(tool({ effect: 'write', cardinality: 'batch' })).toBe(false);
-		expect(tool(read, { file: binary() })).toBe(false);
-		expect(tool(read, { file: binary().optional(), id: str() })).toBe(true);
-		expect(tool(read, { id: str() }, obj({ file: binary() }))).toBe(false);
+		expect(tool(read, { file: t.binary() })).toBe(false);
+		expect(tool(read, { file: t.binary().optional(), id: t.str() })).toBe(true);
+		expect(tool(read, { id: t.str() }, t.obj({ file: t.binary() }))).toBe(false);
 		expect(isToolContract(toContract(chatModel))).toBe(false);
 		expect(isToolContract(toContract(ask))).toBe(false);
 	});
 
 	it('replay recorded results in call order', async () => {
-		const model = replaySupply('chatModel', { model: 'fake' }, ['a', 'b']);
+		const model = replayCapability('chatModel', { model: 'fake' }, ['a', 'b']);
 		const chat = model.chat;
 		if (typeof chat !== 'function') throw new Error('no chat');
 		expect([await chat(), await chat()]).toEqual(['a', 'b']);
 		await expect(chat()).rejects.toThrow('The recorded chatModel has no result left');
 	});
 
-	it('define a sub-node as a per-item action that outputs supplied(kind)', () => {
+	it('define a provider as a per-item action that outputs its capability', () => {
 		const contract = toContract(chatModel);
 		expect(contract.flow).toEqual({
 			effect: 'read',
@@ -281,11 +271,11 @@ describe('sub-node contracts', () => {
 			summary: 'Many models.',
 			flow: { effect: 'read', cardinality: '1:N' },
 			input: {},
-			output: supplied('chatModel'),
+			output: provider.input('chatModel'),
 			async *run() {},
 		});
 		expect(lintContract(toContract(listed))).toEqual([
-			'llm.models: a sub-node is per-item; define it with subnode()',
+			'llm.models: a provider is per-item; define it with provider()',
 		]);
 	});
 
@@ -295,19 +285,19 @@ describe('sub-node contracts', () => {
 			summary: 'Two models.',
 			flow: { effect: 'transform', cardinality: 'per-item' },
 			input: {
-				model: supplied('chatModel'),
-				fallback: supplied('chatModel'),
-				nested: obj({ tool: supplied('tool') }),
+				model: provider.input('chatModel'),
+				fallback: provider.input('chatModel'),
+				nested: t.obj({ tool: provider.input('tool') }),
 			},
-			output: obj({ ok: str() }),
+			output: t.obj({ ok: t.str() }),
 			async run() {
 				return { ok: 'yes' };
 			},
 		});
 		expect(lintContract(toContract(twice))).toEqual([
-			'ai.twice: input fields model, fallback take the same sub-node kind chatModel',
+			'ai.twice: input fields model, fallback take the same provider kind chatModel',
 			'ai.twice: input field fallback takes chatModel, so its name is model',
-			'ai.twice: a supplied() input must be a top-level field',
+			'ai.twice: a provider.input() field must be a top-level field',
 		]);
 		expect(lintContract(toContract(ask))).toEqual([]);
 		expect(lintContract(toContract(chatModel))).toEqual([]);
@@ -337,8 +327,8 @@ describe('sub-node contracts', () => {
 			action: 'Look up',
 			summary: 'Look up a record.',
 			flow: { effect: 'read', cardinality: 'per-item', idempotent: true },
-			input: { id: str() },
-			output: obj({ ok: str() }),
+			input: { id: t.str() },
+			output: t.obj({ ok: t.str() }),
 			async run() {
 				return { ok: 'yes' };
 			},

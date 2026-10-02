@@ -1,4 +1,4 @@
-import { bool, int, obj, passedItem } from '@n8n/node-sdk';
+import { t } from '@n8n/node-sdk';
 
 import { loop } from '../loop.node';
 
@@ -10,13 +10,16 @@ export const loopBatches = loop.action('batches', {
 	flow: { effect: 'transform', cardinality: 'batch' },
 	outputs: ['done', 'loop'],
 	input: {
-		batchSize: int().with({ minimum: 1 }).hint('Items in each batch'),
-		options: obj({
-			reset: bool()
-				.optional()
-				.hint('true: take the input as a new list, e.g. for a loop nested in another loop'),
-		}).optional(),
+		batchSize: t.int().with({ minimum: 1 }).hint('Items in each batch'),
+		options: t
+			.obj({
+				reset: t
+					.bool()
+					.optional()
+					.hint('true: take the input as a new list, e.g. for a loop nested in another loop'),
+			})
+			.optional(),
 	},
-	output: passedItem(),
+	output: t.passedItem(),
 	native: { type: 'n8n-nodes-base.splitInBatches', version: 3 },
 });

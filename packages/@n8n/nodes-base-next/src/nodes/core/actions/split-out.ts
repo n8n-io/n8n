@@ -1,4 +1,4 @@
-import { arr, isRecord, json, str, variant } from '@n8n/node-sdk';
+import { isRecord, t } from '@n8n/node-sdk';
 
 import { core } from '../core.node';
 import { getPath, pathOf, setPath, unsetPath } from '../path';
@@ -18,16 +18,18 @@ export const splitOut = core.action('splitOut', {
 	summary: 'Emit one item for each entry of a list field of each item.',
 	flow: { effect: 'transform', cardinality: '1:N' },
 	input: {
-		field: str().with({ minLength: 1 }).hint('Dot path to the list, e.g. order.lines'),
-		into: str()
+		field: t.str().with({ minLength: 1 }).hint('Dot path to the list, e.g. order.lines'),
+		into: t
+			.str()
 			.with({ minLength: 1 })
 			.optional()
 			.hint('Output field of each entry; default: an object entry is the item'),
-		include: variant('mode', { none: {}, all: {}, selected: { fields: arr(str()) } })
+		include: t
+			.variant('mode', { none: {}, all: {}, selected: { fields: t.arr(t.str()) } })
 			.default({ mode: 'none' })
 			.hint('Other input fields to copy to each item'),
 	},
-	output: json(),
+	output: t.json(),
 	async *run({ input, item }) {
 		const { field, into, include } = input;
 		const path = pathOf(field);

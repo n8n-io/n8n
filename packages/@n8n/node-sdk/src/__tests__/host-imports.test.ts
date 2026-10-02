@@ -5,18 +5,9 @@ import type {
 	INodeExecutionData,
 } from 'n8n-workflow';
 
-import {
-	defineNode,
-	generateNodeModule,
-	json,
-	lintContract,
-	obj,
-	passedItem,
-	str,
-	toContract,
-	type DataTableFilter,
-	type DataTableRow,
-} from '../index';
+import { generateNodeModule } from '../entry/codegen';
+import { lintContract, toContract } from '../entry/registry';
+import { defineNode, t, type DataTableFilter, type DataTableRow } from '../index';
 import {
 	codeRunnerOf,
 	dataTablesOf,
@@ -261,8 +252,8 @@ describe('imports', () => {
 		summary: 'Insert one row per item in one write.',
 		flow: { effect: 'write', cardinality: 'batch' },
 		imports: ['dataTables', 'inputOf'],
-		input: { table: str(), email: str() },
-		output: obj({ email: str() }),
+		input: { table: t.str(), email: t.str() },
+		output: t.obj({ email: t.str() }),
 		async *run({ input, items, dataTables, inputOf }) {
 			const table = await dataTables.open({ name: input.table });
 			const inputs = await Promise.all(items.map(async (item) => await inputOf(item)));
@@ -299,8 +290,8 @@ describe('imports', () => {
 			summary: 'Count the rows of the table for each item.',
 			flow: { effect: 'read', cardinality: 'per-item' },
 			imports: ['dataTables'],
-			input: { table: str() },
-			output: obj({ table: str() }),
+			input: { table: t.str() },
+			output: t.obj({ table: t.str() }),
 			async run({ input, dataTables }) {
 				const table = await dataTables.open({ name: input.table });
 				return { table: table.id };
@@ -323,7 +314,7 @@ describe('imports', () => {
 			summary: 'Uses an import it does not declare.',
 			flow: { effect: 'read', cardinality: 'batch' },
 			input: {},
-			output: json(),
+			output: t.json(),
 			async *run(context) {
 				// A bundle can reach past its types; the host still refuses.
 				const wide = context as unknown as { wait?: { until(at: Date): Promise<void> } };
@@ -343,8 +334,8 @@ describe('imports', () => {
 			summary: 'Wait, then pass the items on.',
 			flow: { effect: 'transform', cardinality: 'batch' },
 			imports: ['wait'],
-			input: { at: str() },
-			output: passedItem(),
+			input: { at: t.str() },
+			output: t.passedItem(),
 			async *run({ input, items, wait }) {
 				await wait.until(new Date(input.at));
 				yield* items.map((item) => ({ item }));
@@ -388,7 +379,7 @@ describe('imports', () => {
 			flow: { effect: 'read', cardinality: 'batch' },
 			imports: ['code'],
 			input: {},
-			output: json(),
+			output: t.json(),
 			async *run(context) {
 				// @ts-expect-error -- dataTables is not in imports
 				await context.dataTables.open({ id: 'x' });
@@ -405,7 +396,7 @@ describe('named inputs', () => {
 		flow: { effect: 'transform', cardinality: 'batch' },
 		inputs: ['left', 'right'],
 		input: {},
-		output: json(),
+		output: t.json(),
 		*run({ inputs }) {
 			yield* inputs.left.map((item) => ({ item }));
 			yield* inputs.right.map((item) => ({
@@ -464,7 +455,7 @@ describe('named inputs', () => {
 			flow: { effect: 'transform', cardinality: 'per-item' },
 			inputs: ['left', 'right'],
 			input: {},
-			output: json(),
+			output: t.json(),
 			run: async () => await Promise.resolve({}),
 		});
 	});

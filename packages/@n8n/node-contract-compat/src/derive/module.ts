@@ -7,16 +7,14 @@ import type {
 	NodeConnectionType,
 } from 'n8n-workflow';
 
+import { validate, type JsonSchema, type TriggerKind } from '@n8n/node-sdk';
 import {
-	canonicalJson,
 	isProviderConnection,
 	PROVIDER_FIELDS,
-	validate,
 	type GeneratedAction,
-	type JsonSchema,
 	type ProviderConnection,
-	type TriggerKind,
-} from '@n8n/node-sdk';
+} from '@n8n/node-sdk/codegen';
+import { canonicalJson } from '@n8n/node-sdk/registry';
 
 import {
 	deriveManifests,

@@ -77,15 +77,15 @@ import {
 } from './schema';
 import {
 	fromLangChainTool,
-	isSupply,
-	SUPPLY_CONNECTIONS,
-	suppliedKindOf,
-	supplyFieldsOf,
-	supplyOf,
-	type SupplyField,
-	type SupplyKind,
+	provider,
+	PROVIDER_CONNECTIONS,
+	providedKindOf,
+	providerInputsOf,
+	providerInputOf,
+	type ProviderInputField,
+	type ProviderKind,
 	type Tool,
-} from './subnodes';
+} from './providers';
 import { applyDefaults, binaryKeyIssue, list, matches, parsePage, validate } from './validate';
 import {
 	assertNodeContract,
@@ -383,7 +383,7 @@ export interface ExecutorHost {
 	readonly node: INode;
 	/**
 	 * The parameter value, as `getNodeParameter` returns it. `raw` keeps its expressions
-	 * unresolved, for a field with a `pageValue()` that `run()` reads for each page.
+	 * unresolved, for a field with a `t.pageValue()` that `run()` reads for each page.
 	 */
 	parameter(name: string, itemIndex: number, raw?: boolean): unknown;
 	request(options: IHttpRequestOptions, credentialType: string | undefined): Promise<unknown>;
@@ -402,7 +402,7 @@ export interface ExecutorHost {
 	 */
 	warn?(message: string): void;
 	readonly limits?: Partial<RunLimits>;
-	/** Needed by an action with a `binary()` field only. */
+	/** Needed by an action with a `t.binary()` field only. */
 	readonly binary?: BinaryStore;
 	/** The items of input `index`, for an action with named inputs. Input 0 is `items`. */
 	inputItems?(index: number): readonly INodeExecutionData[];
@@ -414,9 +414,9 @@ export interface ExecutorHost {
 	waitUntil?(at: Date): Promise<void>;
 	/**
 	 * What the sub-nodes of a `kind` supply: one value, a list, or `undefined`. Needed by an
-	 * action with a `supplied()` input field only.
+	 * action with a `provider.input()` field only.
 	 */
-	supplied?(kind: SupplyKind): Promise<unknown>;
+	supplied?(kind: ProviderKind): Promise<unknown>;
 }
 
 /** The n8n context of a node run: `execute()` of a root node, `supplyData()` of a sub-node. */
@@ -486,7 +486,7 @@ const hostOf = (context: IExecuteFunctions): ExecutorHost => ({
 	// A time wait gives no resume URL, as the Wait node does for a time interval.
 	waitUntil: async (at) => await context.putExecutionToWait(at, { acceptsResumeRequest: false }),
 	supplied: async (kind) =>
-		await context.getInputConnectionData(SUPPLY_CONNECTIONS[kind], SUPPLY_ITEM),
+		await context.getInputConnectionData(PROVIDER_CONNECTIONS[kind], SUPPLY_ITEM),
 });
 
 /**
@@ -500,7 +500,7 @@ const supplyHostOf = (context: ISupplyDataFunctions, itemIndex: number): Executo
 		context.getNodeParameter(name, itemIndex, undefined, raw ? { rawExpressions: true } : {}),
 	continueOnFail: () => false,
 	supplied: async (kind) =>
-		await context.getInputConnectionData(SUPPLY_CONNECTIONS[kind], itemIndex),
+		await context.getInputConnectionData(PROVIDER_CONNECTIONS[kind], itemIndex),
 });
 
 const inputValue = <I>(value: RequestValue<I>, input: Readonly<Record<string, unknown>>) =>
@@ -629,10 +629,10 @@ function outputNamesOf(
 	];
 }
 
-/** The capabilities the sub-nodes supply, by field. A value of another kind fails the run. */
-async function readSupplies(
+/** The capabilities the providers give, by field. A value of another kind fails the run. */
+async function readCapabilities(
 	actionId: string,
-	fields: readonly SupplyField[],
+	fields: readonly ProviderInputField[],
 	host: ExecutorHost,
 ): Promise<Record<string, unknown>> {
 	const { supplied } = host;
@@ -643,7 +643,7 @@ async function readSupplies(
 			const values = (many ? list(value) : value === undefined ? [] : [value]).map((entry) =>
 				fromLangChainTool(kind, entry),
 			);
-			if (!values.every((entry) => isSupply(kind, entry))) {
+			if (!values.every((entry) => provider.is(kind, entry))) {
 				throw new NodeOperationError(
 					host.node,
 					`The ${name} input needs a ${kind} from a node contract sub-node`,
@@ -743,9 +743,9 @@ export function executorOf<S extends Shape, O extends AnySchema>(
 	action: Action<S, O>,
 ): (host: ExecutorHost) => Promise<INodeExecutionData[][]> {
 	if (action.native) throw nativeRunError(action);
-	const supplyFields = supplyFieldsOf(action.input);
-	const supplyNames = new Set(supplyFields.map(({ name }) => name));
-	const inputKeys = Object.keys(action.input).filter((key) => !supplyNames.has(key));
+	const providerFields = providerInputsOf(action.input);
+	const providerNames = new Set(providerFields.map(({ name }) => name));
+	const inputKeys = Object.keys(action.input).filter((key) => !providerNames.has(key));
 	const jsonKeys = new Set(
 		Object.entries(action.input)
 			.filter(([name, schema]) => toProperty(name, schema).type === 'json')
@@ -994,10 +994,11 @@ export function executorOf<S extends Shape, O extends AnySchema>(
 		};
 
 		// One read per run: each read runs the sub-nodes and adds a sub-node run in n8n.
-		const supplies = new Map<'supplies', Promise<Record<string, unknown>>>();
-		const suppliesOf = async () => {
-			const read = supplies.get('supplies') ?? readSupplies(action.id, supplyFields, host);
-			supplies.set('supplies', read);
+		const capabilities = new Map<'capabilities', Promise<Record<string, unknown>>>();
+		const capabilitiesOf = async () => {
+			const read =
+				capabilities.get('capabilities') ?? readCapabilities(action.id, providerFields, host);
+			capabilities.set('capabilities', read);
 			return await read;
 		};
 
@@ -1037,8 +1038,8 @@ export function executorOf<S extends Shape, O extends AnySchema>(
 				: defaulted;
 			// After the defaults: a capability is not data, so nothing may copy it.
 			const input =
-				supplyFields.length > 0 && isRecord(withFiles)
-					? { ...withFiles, ...(await suppliesOf()) }
+				providerFields.length > 0 && isRecord(withFiles)
+					? { ...withFiles, ...(await capabilitiesOf()) }
 					: withFiles;
 			if (!isInput(input)) {
 				const issues = validate(input, action.inputSchema);
@@ -1399,16 +1400,21 @@ const mainInputsOf = (
 			}
 		: { inputs: ['main'] };
 
-const SUPPLY_LABELS: Record<SupplyKind, string> = {
+const SUPPLY_LABELS: Record<ProviderKind, string> = {
 	chatModel: 'Chat Model',
 	memory: 'Memory',
 	tool: 'Tool',
 	embeddings: 'Embeddings',
 };
 
-/** The n8n input of a `supplied()` field. A list takes any number of sub-nodes. */
-const supplyInputOf = ({ kind, many, required, title }: SupplyField): INodeInputConfiguration => ({
-	type: SUPPLY_CONNECTIONS[kind],
+/** The n8n input of a `provider.input()` field. A list takes any number of sub-nodes. */
+const supplyInputOf = ({
+	kind,
+	many,
+	required,
+	title,
+}: ProviderInputField): INodeInputConfiguration => ({
+	type: PROVIDER_CONNECTIONS[kind],
 	displayName: title ?? SUPPLY_LABELS[kind],
 	required,
 	...(many ? {} : { maxConnections: 1 }),
@@ -1421,12 +1427,12 @@ const supplyInputOf = ({ kind, many, required, title }: SupplyField): INodeInput
 function connectionsOf(
 	action: Action,
 ): Pick<INodeTypeDescription, 'inputs' | 'requiredInputs' | 'outputs' | 'outputNames'> {
-	const supplyInputs = supplyFieldsOf(action.input).map(supplyInputOf);
-	const kind = suppliedKindOf(action.output.json);
+	const supplyInputs = providerInputsOf(action.input).map(supplyInputOf);
+	const kind = providedKindOf(action.output.json);
 	if (kind) {
 		return {
 			inputs: supplyInputs,
-			outputs: [SUPPLY_CONNECTIONS[kind]],
+			outputs: [PROVIDER_CONNECTIONS[kind]],
 			outputNames: [SUPPLY_LABELS[kind]],
 		};
 	}
@@ -1440,10 +1446,10 @@ function connectionsOf(
  */
 function recordedSupply(
 	value: Record<string, unknown>,
-	kind: SupplyKind,
+	kind: ProviderKind,
 	context: ISupplyDataFunctions,
 ): Record<string, unknown> {
-	const type = SUPPLY_CONNECTIONS[kind];
+	const type = PROVIDER_CONNECTIONS[kind];
 	// A JSON copy: the run data must not hold functions or change with the capability.
 	const dataOf = (entry: unknown): IDataObject => {
 		const text = JSON.stringify(entry ?? null);
@@ -1476,13 +1482,13 @@ function recordedSupply(
 /** The `supplyData()` result of a sub-node from the one output item its run gives. */
 function supplyDataOf(
 	actionId: string,
-	kind: SupplyKind,
+	kind: ProviderKind,
 	outputs: INodeExecutionData[][],
 	context: ISupplyDataFunctions,
 ): SupplyData {
 	const value = outputs[0]?.[0]?.json;
-	if (!isSupply(kind, value)) {
-		throw new UnexpectedError(`${actionId} supplies ${kind}, and its run() gave something else`);
+	if (!provider.is(kind, value)) {
+		throw new UnexpectedError(`${actionId} provides ${kind}, and its run() gave something else`);
 	}
 	return { response: recordedSupply(value, kind, context) };
 }
@@ -1505,13 +1511,13 @@ export function toNodeType<S extends Shape, O extends AnySchema>(
 		properties: [
 			...selector,
 			...Object.entries(action.input)
-				.filter(([, schema]) => supplyOf(schema.json) === undefined)
+				.filter(([, schema]) => providerInputOf(schema.json) === undefined)
 				.map(([name, schema]) => toProperty(name, schema)),
 		],
 	};
 
 	const run = executorOf(action);
-	const kind = suppliedKindOf(action.output.json);
+	const kind = providedKindOf(action.output.json);
 	if (kind) {
 		return class implements INodeType {
 			description = description;
@@ -1687,7 +1693,7 @@ function recordVersion(
 async function supplyVersion(
 	context: ISupplyDataFunctions,
 	head: FrozenVersion,
-	kind: SupplyKind,
+	kind: ProviderKind,
 	itemIndex: number,
 ) {
 	const { executor, manifest } = await versionExecutorOf(context, head);
@@ -1729,7 +1735,7 @@ export function versionedTypeOf(
 export const toVersionedNodeType = (versions: readonly FrozenVersion[]) =>
 	versionedTypeOf(versions, (frozen): INodeType => {
 		const { description, contract } = frozen.manifest;
-		const kind = suppliedKindOf(contract.output);
+		const kind = providedKindOf(contract.output);
 		if (kind) {
 			return {
 				description,

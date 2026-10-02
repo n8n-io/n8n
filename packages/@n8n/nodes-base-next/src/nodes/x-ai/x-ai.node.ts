@@ -1,14 +1,15 @@
-import { credential, credentialType, defineNode, t } from '@n8n/node-sdk';
+import { defineNode } from '@n8n/node-sdk';
+import { credential, defineCredential, field } from '@n8n/node-sdk/credentials';
 
 const BASE_URL = 'https://api.x.ai/v1';
 
-export const xAiKey = credentialType({
+export const xAiKey = defineCredential({
 	id: 'xAi.apiKey',
 	legacyName: 'xAiApi',
 	displayName: 'xAi',
 	docs: 'xai',
 	// The langchain xAI Grok node reads `url`.
-	fields: { apiKey: t.secret('API Key'), url: t.baseUrl() },
+	fields: { apiKey: field.secret('API Key'), url: field.baseUrl() },
 	baseUrl: BASE_URL,
 	hosts: ['api.x.ai'],
 	auth: (a) => a.bearer('apiKey'),

@@ -1,4 +1,4 @@
-import { arr, parse } from '@n8n/node-sdk';
+import { parse, t } from '@n8n/node-sdk';
 
 import { filterQuery, rowFilter } from '../filter';
 import { row as rowResource, schemaHeaders, tablePath } from '../supabase.node';
@@ -18,6 +18,6 @@ export const updateSupabaseRows = rowResource.action('update', {
 			body: input.columns,
 			headers: { Prefer: 'return=representation', ...schemaHeaders(input.schema, true) },
 		});
-		yield* parse(arr(tableRow), updated);
+		yield* parse(t.arr(tableRow), updated);
 	},
 });

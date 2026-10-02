@@ -1,4 +1,4 @@
-import { bool, ref, str } from '@n8n/node-sdk';
+import { ref, t } from '@n8n/node-sdk';
 
 import {
 	content,
@@ -12,10 +12,10 @@ import {
 } from '../slack.node';
 
 const updated = slackResponse({
-	ok: bool(),
-	channel: str(),
-	ts: str(),
-	text: str(),
+	ok: t.bool(),
+	channel: t.str(),
+	ts: t.str(),
+	text: t.str(),
 	message: slackMessage.optional(),
 });
 

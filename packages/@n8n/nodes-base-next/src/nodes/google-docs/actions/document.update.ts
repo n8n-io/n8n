@@ -1,4 +1,4 @@
-import { obj, parse, ref, str } from '@n8n/node-sdk';
+import { parse, ref, t } from '@n8n/node-sdk';
 
 import {
 	content,
@@ -23,7 +23,7 @@ export const updateDocument = document.action('update', {
 	summary: 'Add text or Markdown at the end of a Google Doc.',
 	flow: { effect: 'write', cardinality: 'per-item', idempotent: false },
 	input: { document: ref(googleDocument), content },
-	output: obj({ documentId: str(), url: str() }),
+	output: t.obj({ documentId: t.str(), url: t.str() }),
 	async run({ input, http }) {
 		const documentId = documentIdOf(input.document);
 		const path = documentPath(documentId, ':batchUpdate');

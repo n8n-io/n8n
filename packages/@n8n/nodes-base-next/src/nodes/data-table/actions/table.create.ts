@@ -1,4 +1,4 @@
-import { bool, str } from '@n8n/node-sdk';
+import { t } from '@n8n/node-sdk';
 
 import { columns, pagesOf, table, tableInfo } from '../data-table.node';
 
@@ -8,9 +8,9 @@ export const createTable = table.action('create', {
 	flow: { effect: 'write', cardinality: 'per-item' },
 	imports: ['dataTables'],
 	input: {
-		name: str().with({ minLength: 1 }),
+		name: t.str().with({ minLength: 1 }),
 		columns,
-		reuse: bool().default(true).hint('Give the table that has this name instead of failing'),
+		reuse: t.bool().default(true).hint('Give the table that has this name instead of failing'),
 	},
 	output: tableInfo,
 	async run({ input, dataTables }) {

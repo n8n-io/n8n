@@ -1,37 +1,39 @@
-import { arr, isHttpError, lit, matches, num, obj, oneOf, str, union } from '@n8n/node-sdk';
+import { isHttpError, matches, t } from '@n8n/node-sdk';
 
 import { items } from '../inventory.node';
 
-const common = { id: str(), sku: str(), name: str(), status: str(), createdAt: str() };
+const common = { id: t.str(), sku: t.str(), name: t.str(), status: t.str(), createdAt: t.str() };
 
-const physical = obj({
+const physical = t.obj({
 	...common,
-	kind: lit('physical'),
-	weight: obj({ value: num(), unit: lit('g') }),
-	dimensions: obj({ length: num(), width: num(), height: num(), unit: lit('cm') }),
+	kind: t.lit('physical'),
+	weight: t.obj({ value: t.num(), unit: t.lit('g') }),
+	dimensions: t.obj({ length: t.num(), width: t.num(), height: t.num(), unit: t.lit('cm') }),
 });
 
-const digital = obj({ ...common, kind: lit('digital'), downloadUrl: str() });
+const digital = t.obj({ ...common, kind: t.lit('digital'), downloadUrl: t.str() });
 
-const item = union(physical, digital);
+const item = t.union(physical, digital);
 
-const validationErrors = obj({
-	errors: arr(obj({ field: str(), message: str() })),
-}).with({ additionalProperties: true });
+const validationErrors = t
+	.obj({
+		errors: t.arr(t.obj({ field: t.str(), message: t.str() })),
+	})
+	.with({ additionalProperties: true });
 
 export const createItem = items.action('create', {
 	action: 'Create an item',
 	summary: 'Create a physical or a digital inventory item.',
 	flow: { effect: 'write', cardinality: 'per-item' },
 	input: {
-		kind: oneOf('physical', 'digital').default('physical'),
-		sku: str(),
-		name: str(),
-		weightGrams: num().optional(),
-		lengthCm: num().optional(),
-		widthCm: num().optional(),
-		heightCm: num().optional(),
-		downloadUrl: str().optional(),
+		kind: t.oneOf('physical', 'digital').default('physical'),
+		sku: t.str(),
+		name: t.str(),
+		weightGrams: t.num().optional(),
+		lengthCm: t.num().optional(),
+		widthCm: t.num().optional(),
+		heightCm: t.num().optional(),
+		downloadUrl: t.str().optional(),
 	},
 	output: item,
 	async run({ input, http }) {

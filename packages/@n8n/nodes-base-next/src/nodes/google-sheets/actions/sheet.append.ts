@@ -1,4 +1,4 @@
-import { int } from '@n8n/node-sdk';
+import { t } from '@n8n/node-sdk';
 
 import { sheet, spreadsheetIdOf } from '../google-sheets.node';
 import {
@@ -20,7 +20,7 @@ export const appendSheetRow = sheet.action('append', {
 	flow: { effect: 'write', cardinality: 'per-item', idempotent: false },
 	input: {
 		values: rowValues,
-		headerRow: int().with({ minimum: 1 }).default(1),
+		headerRow: t.int().with({ minimum: 1 }).default(1),
 		cellFormat,
 	},
 	output: writtenRow,

@@ -1,4 +1,4 @@
-import { bool, str } from '@n8n/node-sdk';
+import { t } from '@n8n/node-sdk';
 
 import { channel, slackChannel, slackPost, slackResponse } from '../slack.node';
 
@@ -10,10 +10,11 @@ export const createSlackChannel = channel.action('create', {
 	flow: { effect: 'write', cardinality: 'per-item', idempotent: false },
 	scopes: ['channels:manage', 'groups:write'],
 	input: {
-		name: str()
+		name: t
+			.str()
 			.with({ pattern: '^#?[a-z0-9_-]{1,80}$' })
 			.hint('Lower case letters, digits, - and _; at most 80 characters'),
-		isPrivate: bool().default(false),
+		isPrivate: t.bool().default(false),
 	},
 	output: slackChannel,
 	async run({ input, http }) {

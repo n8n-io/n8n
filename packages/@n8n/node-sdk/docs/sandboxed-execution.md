@@ -19,7 +19,7 @@ in-process. Community and AI-generated bundles run in the sandbox.
   through an import.
 - Every bundle gets `http`, `log`, `limits` and `run-credential`. The manifest of an action
   grants the optional imports: `imports` (data tables, code, wait, the input of an item),
-  `binary()` fields (`binary`), `supplied()` fields (`supplied` and `capabilities`). A provider
+  `t.binary()` fields (`binary`), `provider.input()` fields (`supplied` and `capabilities`). A provider
   gets no optional import. A call to an import that is not granted stops the run with `The
   bundle called <method>, which its manifest does not grant`. The host never sees the call.
 - `run-credential.get` gives the credential type and its declared fields that are not secret,
@@ -77,7 +77,7 @@ flowchart LR
 ### Binary data
 
 - The executor keeps the handle table of the node execution, as in this process. The host gives
-  the guest `{ "$binary": id }` at each `binary()` field of the run input, and puts the handle of
+  the guest `{ "$binary": id }` at each `t.binary()` field of the run input, and puts the handle of
   the id back at each binary output field.
 - `binary.binary-reader.read` gives at most 4 MiB and the guest asks for 1 MiB, so one chunk is a
   small JSON-RPC message. A writer streams each chunk to the store when it arrives, with back
@@ -90,7 +90,7 @@ flowchart LR
 
 ### Providers and AI roots
 
-- A root action gets `{ "$capability": id }` at each `supplied()` field. `supplied.open` gives a
+- A root action gets `{ "$capability": id }` at each `provider.input()` field. `supplied.open` gives a
   host resource, and each `capabilities` method goes to the capability that the executor read
   from the provider. The host checks the chat messages, requests and arguments of the guest.
 - A provider bundle runs in `provider.wasm`. `provider.supply` gives a guest resource. The root
@@ -246,10 +246,10 @@ logic is in `src/egress.ts`.
 
 A file is an opaque host handle (`binary` in `spec/wit/host.wit`, Node Contract 2.2.0). The
 bytes stay in the n8n binary data store (filesystem, S3, or database mode). Only an action with
-a `binary()` field targets 2.2.0. Every other bundle targets 2.1.0.
+a `t.binary()` field targets 2.2.0. Every other bundle targets 2.1.0.
 
-- Contract: `binary()` in `input` names a binary of the input item. In `output`, a top-level
-  `binary()` field becomes `item.binary.<field>`. The flow SDK types it as `Binary`, and a
+- Contract: `t.binary()` in `input` names a binary of the input item. In `output`, a top-level
+  `t.binary()` field becomes `item.binary.<field>`. The flow SDK types it as `Binary`, and a
   lambda `(item) => item.binary.data` compiles to the key `data`, as n8n stores it. The input
   check rejects an expression in a binary field, at build and at run time.
 - Inline JS (now): the executor keeps a handle table for each execution. `run()` gets frozen

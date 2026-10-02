@@ -1,4 +1,5 @@
-import { credential, defineNode, defineResource, ref, str, variant } from '@n8n/node-sdk';
+import { defineNode, defineResource, ref, t } from '@n8n/node-sdk';
+import { credential } from '@n8n/node-sdk/credentials';
 
 import { googleOAuth2 } from '../google-oauth2';
 
@@ -35,10 +36,12 @@ export const googleSpreadsheet = defineResource({
 export const spreadsheetIdOf = (value: string) =>
 	new RegExp(SPREADSHEET_ID).exec(value)?.[0] ?? value;
 
-export const sheetInput = variant('mode', {
-	name: { name: str().hint('Exact tab name the user gave') },
-	id: { id: str().with({ pattern: '^(gid=)?[0-9]+$' }).hint('A numeric sheet gid') },
-}).hint('Never assume "Sheet1"; ask when the tab name is unknown');
+export const sheetInput = t
+	.variant('mode', {
+		name: { name: t.str().hint('Exact tab name the user gave') },
+		id: { id: t.str().with({ pattern: '^(gid=)?[0-9]+$' }).hint('A numeric sheet gid') },
+	})
+	.hint('Never assume "Sheet1"; ask when the tab name is unknown');
 
 export const sheet = googleSheets.resource('sheet', {
 	input: { spreadsheet: ref(googleSpreadsheet), sheet: sheetInput },

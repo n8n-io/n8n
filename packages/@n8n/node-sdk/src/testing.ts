@@ -17,7 +17,7 @@ import {
 	type HttpError,
 } from './define';
 import { AUTHENTICATION, executorOf, nodeNameOf, type ExecutorHost } from './runtime';
-import type { Supplies, SupplyKind } from './subnodes';
+import type { ProviderCapabilities, ProviderKind } from './providers';
 
 export interface RunActionOptions {
 	readonly input: unknown;
@@ -36,8 +36,10 @@ export interface RunActionOptions {
 	readonly code?: CodeRunner;
 	/** The wait of an action that imports `wait`. */
 	readonly waitUntil?: (at: Date) => Promise<void>;
-	/** What the sub-nodes supply, by kind: a capability, or a list for a list field. */
-	readonly supplies?: { readonly [K in SupplyKind]?: Supplies[K] | ReadonlyArray<Supplies[K]> };
+	/** What the providers give, by kind: a capability, or a list for a list field. */
+	readonly providers?: {
+		readonly [K in ProviderKind]?: ProviderCapabilities[K] | ReadonlyArray<ProviderCapabilities[K]>;
+	};
 }
 
 export interface RunActionError {
@@ -284,7 +286,7 @@ export async function runAction(
 		// As n8n: the stored data holds the token once a token request stored it.
 		credentialData: async () => (await tokens.get('data')) ?? data,
 		continueOnFail: () => false,
-		supplied: async (kind) => await Promise.resolve(options.supplies?.[kind]),
+		supplied: async (kind) => await Promise.resolve(options.providers?.[kind]),
 	};
 	try {
 		const outputs = (await executorOf(action)(host)).map((output) =>

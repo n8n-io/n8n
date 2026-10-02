@@ -1,4 +1,4 @@
-import { isRecord, record, str } from '@n8n/node-sdk';
+import { isRecord, t } from '@n8n/node-sdk';
 
 /** An array body becomes one item per element; any other body becomes one item. */
 export function toItems(body: unknown): Array<Record<string, unknown>> {
@@ -7,7 +7,7 @@ export function toItems(body: unknown): Array<Record<string, unknown>> {
 }
 
 export const common = {
-	url: str().hint('Full URL; never URL-encode an expression'),
-	query: record(str()).hint('Never put secrets here; attach a credential').optional(),
-	headers: record(str()).hint('Never put secrets here; attach a credential').optional(),
+	url: t.str().hint('Full URL; never URL-encode an expression'),
+	query: t.record(t.str()).hint('Never put secrets here; attach a credential').optional(),
+	headers: t.record(t.str()).hint('Never put secrets here; attach a credential').optional(),
 };

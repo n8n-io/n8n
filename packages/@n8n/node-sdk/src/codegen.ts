@@ -8,7 +8,7 @@ import {
 	type Trigger,
 } from './define';
 import { hasBinary, type EntryFields as EntryFieldsSpec, type JsonSchema } from './schema';
-import { providedOf } from './subnodes';
+import { providedOf } from './providers';
 import { exampleOf } from './validate';
 
 const pascal = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
@@ -600,7 +600,7 @@ const freeName = (base: string, taken: ReadonlySet<string>) =>
 	) ?? base;
 
 /**
- * The paths of the `pageValue()` fields of an input, e.g. `[["pages", "next"]]`. The typed flow
+ * The paths of the `t.pageValue()` fields of an input, e.g. `[["pages", "next"]]`. The typed flow
  * compiles a lambda there over the page (`$response`), not over the item.
  */
 function pageFieldsOf(schema: JsonSchema, at: readonly string[] = []): string[][] {
@@ -720,20 +720,20 @@ export function generateNodeModule(nodeId: string, contracts: readonly Generated
 	const factories = named.map(
 		({ contract, name, nodeType, slot, resource, operation, typeVersion, pairing }): Factory => {
 			const path = resource === undefined ? [operation] : [resource, operation];
-			const supplies = providedOf(contract.output);
-			if (supplies) {
+			const provided = providedOf(contract.output);
+			if (provided) {
 				const nodeVersion = slot?.typeVersion ?? typeVersion ?? contract.version;
 				const selected =
 					slot && `, ${JSON.stringify({ resource: slot.resource, operation: slot.operation })}`;
 				const version = nodeVersion === 1 && !selected ? '' : `, ${nodeVersion}${selected ?? ''}`;
 				return {
 					path,
-					summary: `${contract.action}. ${contract.summary} (provider: ${supplies})`,
+					summary: `${contract.action}. ${contract.summary} (provider: ${provided})`,
 					text: [
 						'<In, Ctx>(',
 						`\tconfig: { name: string; settings?: NodeSettings } & ${name}Input<In, Ctx>,`,
-						`): Provider<In, Ctx, ${JSON.stringify(supplies)}> =>`,
-						`\tcontractProvider(${JSON.stringify(nodeType)}, ${JSON.stringify(supplies)}, config${version})`,
+						`): Provider<In, Ctx, ${JSON.stringify(provided)}> =>`,
+						`\tcontractProvider(${JSON.stringify(nodeType)}, ${JSON.stringify(provided)}, config${version})`,
 					].join('\n'),
 				};
 			}
@@ -880,7 +880,7 @@ export function generateNodeModule(nodeId: string, contracts: readonly Generated
 	);
 	const body = [...types, ...triggerTypes].join('\n\n');
 	const routed = named.some(({ contract }) => contract.outputs !== undefined);
-	const suppliers = named.filter(({ contract }) => providedOf(contract.output));
+	const providers = named.filter(({ contract }) => providedOf(contract.output));
 	const steps = named.filter(({ contract }) => !providedOf(contract.output));
 	const derived = steps.some(({ contract }) => !contract.output['x-n8n-passed']);
 	const declares = triggers.some(({ contract }) => declaredFieldsOf(contract.output).length > 0);
@@ -889,7 +889,7 @@ export function generateNodeModule(nodeId: string, contracts: readonly Generated
 	);
 	const imports = [
 		...(steps.some(({ contract }) => hasBinary(contract.input)) ? ['binaryKeys'] : []),
-		...(suppliers.length > 0 ? ['contractProvider'] : []),
+		...(providers.length > 0 ? ['contractProvider'] : []),
 		...(steps.length > 0 ? ['contractStep'] : []),
 		...(tools.length > 0 ? ['contractTool'] : []),
 		...(triggers.length > 0 ? ['contractTrigger'] : []),
@@ -906,7 +906,7 @@ export function generateNodeModule(nodeId: string, contracts: readonly Generated
 		'type NodeSettings',
 		...(derived || triggers.length > 0 ? ['type OutputOf'] : []),
 		...(body.includes('PageValue<') ? ['type PageValue'] : []),
-		...(body.includes('Provider<') || suppliers.length > 0 || tools.length > 0
+		...(body.includes('Provider<') || providers.length > 0 || tools.length > 0
 			? ['type Provider']
 			: []),
 		...(routed ? ['type RoutedStep'] : []),

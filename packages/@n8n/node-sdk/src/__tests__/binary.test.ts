@@ -1,22 +1,9 @@
 import { Readable } from 'node:stream';
 import type { IBinaryData, IHttpRequestOptions, INode } from 'n8n-workflow';
 
-import {
-	arr,
-	binary,
-	defineNode,
-	generateNodeModule,
-	json,
-	lintContract,
-	nullable,
-	obj,
-	record,
-	str,
-	toContract,
-	validate,
-	variant,
-	type Binary,
-} from '../index';
+import { generateNodeModule } from '../entry/codegen';
+import { lintContract, toContract } from '../entry/registry';
+import { defineNode, t, validate, type Binary } from '../index';
 import { executorOf, type BinaryStore, type ExecutorHost } from '../runtime';
 
 const files = defineNode({ id: 'files', displayName: 'Files' });
@@ -105,8 +92,8 @@ describe('binary data', () => {
 		action: 'Convert a file',
 		summary: 'Convert a file.',
 		flow: once,
-		input: { file: binary() },
-		output: obj({ converted: binary(), size: str() }),
+		input: { file: t.binary() },
+		output: t.obj({ converted: t.binary(), size: t.str() }),
 		async run({ input, http }) {
 			const converted = await http.request({
 				method: 'POST',
@@ -164,8 +151,8 @@ describe('binary data', () => {
 			action: 'Upload a file',
 			summary: 'Upload a file.',
 			flow: { ...once, idempotent: true },
-			input: { file: binary() },
-			output: json(),
+			input: { file: t.binary() },
+			output: t.json(),
 			async run({ input, http }) {
 				const body = await http.request({
 					method: 'PUT',
@@ -197,10 +184,10 @@ describe('binary data', () => {
 			summary: 'Bundle files.',
 			flow: once,
 			input: {
-				parts: arr(binary()),
-				cover: variant('kind', { file: { file: binary() }, none: {} }),
+				parts: t.arr(t.binary()),
+				cover: t.variant('kind', { file: { file: t.binary() }, none: {} }),
 			},
-			output: obj({ bundle: binary() }),
+			output: t.obj({ bundle: t.binary() }),
 			async run({ input, binary: binaries }) {
 				const cover = input.cover.kind === 'file' ? [input.cover.file] : [];
 				async function* chunks() {
@@ -235,7 +222,7 @@ describe('binary data', () => {
 			summary: 'Forge.',
 			flow: once,
 			input: {},
-			output: obj({ file: binary() }),
+			output: t.obj({ file: t.binary() }),
 			async run() {
 				const file: Binary = { meta: { mimeType: 'text/plain' }, async *read() {} };
 				return { file };
@@ -278,7 +265,7 @@ describe('binary data', () => {
 			summary: 'Sneaky.',
 			flow: once,
 			input: {},
-			output: json(),
+			output: t.json(),
 			async run({ http }) {
 				return { file: await http.request({ url: 'https://x.test', response: 'binary' }) };
 			},
@@ -296,8 +283,8 @@ describe('binary contracts', () => {
 			action: 'Nested',
 			summary: 'Nested.',
 			flow: once,
-			input: { file: nullable(binary()) },
-			output: obj({ result: obj({ file: binary() }), binary: str() }),
+			input: { file: t.nullable(t.binary()) },
+			output: t.obj({ result: t.obj({ file: t.binary() }), binary: t.str() }),
 			async run() {
 				throw new Error('not run');
 			},
@@ -312,7 +299,7 @@ describe('binary contracts', () => {
 			summary: 'Keyed.',
 			flow: once,
 			input: {},
-			output: record(binary()),
+			output: t.record(t.binary()),
 			async run() {
 				throw new Error('not run');
 			},
@@ -327,8 +314,8 @@ describe('binary contracts', () => {
 			action: 'Download',
 			summary: 'Download.',
 			flow: once,
-			input: { url: str(), file: binary().optional() },
-			output: obj({ data: binary(), status: str() }),
+			input: { url: t.str(), file: t.binary().optional() },
+			output: t.obj({ data: t.binary(), status: t.str() }),
 			async run() {
 				throw new Error('not run');
 			},
@@ -360,8 +347,8 @@ describe('binary egress', () => {
 		action: 'Upload a file',
 		summary: 'Upload a file.',
 		flow: once,
-		input: { file: binary(), url: str() },
-		output: obj({ ok: str() }),
+		input: { file: t.binary(), url: t.str() },
+		output: t.obj({ ok: t.str() }),
 		async run({ input, http }) {
 			await http.request({ method: 'POST', url: input.url, body: input.file });
 			return { ok: 'yes' };
@@ -372,8 +359,8 @@ describe('binary egress', () => {
 		action: 'Fetch a file',
 		summary: 'Fetch a file.',
 		flow: once,
-		input: { url: str() },
-		output: obj({ file: binary() }),
+		input: { url: t.str() },
+		output: t.obj({ file: t.binary() }),
 		async run({ input, http }) {
 			return { file: await http.request({ url: input.url, response: 'binary' }) };
 		},

@@ -1,8 +1,8 @@
-import { arr, bool, oneOf, paging } from '@n8n/node-sdk';
+import { paging, t } from '@n8n/node-sdk';
 
 import { channel, slackChannel, slackList, slackResponse } from '../slack.node';
 
-const page = slackResponse({ channels: arr(slackChannel) });
+const page = slackResponse({ channels: t.arr(slackChannel) });
 
 export const getManySlackChannels = channel.action('getAll', {
 	patch: 1,
@@ -11,10 +11,11 @@ export const getManySlackChannels = channel.action('getAll', {
 	flow: { effect: 'read', cardinality: '1:N', idempotent: true },
 	scopes: ['channels:read', 'groups:read', 'im:read', 'mpim:read'],
 	input: {
-		types: arr(oneOf('public_channel', 'private_channel', 'mpim', 'im'))
+		types: t
+			.arr(t.oneOf('public_channel', 'private_channel', 'mpim', 'im'))
 			.with({ minItems: 1 })
 			.default(['public_channel']),
-		excludeArchived: bool().default(false),
+		excludeArchived: t.bool().default(false),
 		paging,
 	},
 	output: slackChannel,

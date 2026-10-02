@@ -1,15 +1,16 @@
-import { credential, credentialType, defineNode, t } from '@n8n/node-sdk';
+import { defineNode } from '@n8n/node-sdk';
+import { credential, defineCredential, field } from '@n8n/node-sdk/credentials';
 
 export const node = defineNode({
 	id: 'acmeTasks',
 	displayName: 'Acme Tasks',
 	credential: credential({
 		types: [
-			credentialType({
+			defineCredential({
 				id: 'acmeTasks.apiKey',
 				legacyName: 'acmeTasksApi',
 				displayName: 'Acme Tasks API',
-				fields: { apiKey: t.secret('API Key') },
+				fields: { apiKey: field.secret('API Key') },
 				auth: (a) => a.header('X-Acme-Key', '{apiKey}'),
 			}),
 		],

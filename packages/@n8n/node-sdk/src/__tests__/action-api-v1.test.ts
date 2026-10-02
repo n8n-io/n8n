@@ -1,7 +1,7 @@
 import type { INode } from 'n8n-workflow';
 
 import { fromActionApiV1, type RunContextV1 } from '../action-api-v1';
-import { defineNode, obj, str } from '../index';
+import { defineNode, t } from '../index';
 import { executorOf, type ExecutorHost } from '../runtime';
 
 const node: INode = {
@@ -19,7 +19,7 @@ const head = pages.action('list', {
 	summary: 'List pages.',
 	flow: { effect: 'read', cardinality: 'per-item' },
 	input: {},
-	output: obj({ id: str() }),
+	output: t.obj({ id: t.str() }),
 	async run() {
 		return { id: 'unused' };
 	},

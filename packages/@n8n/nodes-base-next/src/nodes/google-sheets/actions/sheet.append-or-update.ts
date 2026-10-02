@@ -1,4 +1,4 @@
-import { int, obj, str } from '@n8n/node-sdk';
+import { t } from '@n8n/node-sdk';
 
 import { sheet, spreadsheetIdOf } from '../google-sheets.node';
 import {
@@ -24,11 +24,13 @@ export const appendOrUpdateSheetRow = sheet.action('appendOrUpdate', {
 	flow: { effect: 'write', cardinality: 'per-item', idempotent: true },
 	input: {
 		values: rowValues,
-		matchOn: str().hint('Header text of the key column; values must set it'),
-		header: obj({
-			headerRow: int().with({ minimum: 1 }).default(1),
-			firstDataRow: int().with({ minimum: 1 }).default(2),
-		}).optional(),
+		matchOn: t.str().hint('Header text of the key column; values must set it'),
+		header: t
+			.obj({
+				headerRow: t.int().with({ minimum: 1 }).default(1),
+				firstDataRow: t.int().with({ minimum: 1 }).default(2),
+			})
+			.optional(),
 		cellFormat,
 	},
 	output: writtenRow,

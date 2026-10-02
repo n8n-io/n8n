@@ -1,4 +1,4 @@
-import { parseFixtures } from '@n8n/node-sdk';
+import { parseFixtures } from '@n8n/node-sdk/registry';
 import { npmRegistry, publishAction } from '@n8n/node-sdk/publish';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';

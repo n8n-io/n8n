@@ -1,29 +1,19 @@
-import {
-	arr,
-	matches,
-	obj,
-	oneOf,
-	Schema,
-	str,
-	type Http,
-	type Infer,
-	type JsonSchema,
-} from '@n8n/node-sdk';
+import { matches, Schema, t, type Http, type Infer, type JsonSchema } from '@n8n/node-sdk';
 
 const NULLABLE_STRING: JsonSchema = { anyOf: [{ type: 'string' }, { type: 'null' }] };
 
-export const task = obj({
-	id: str(),
-	title: str(),
-	status: oneOf('open', 'done'),
+export const task = t.obj({
+	id: t.str(),
+	title: t.str(),
+	status: t.oneOf('open', 'done'),
 	assignee: new Schema<string | null>(NULLABLE_STRING, false),
-	createdAt: str().with({ format: 'date-time' }),
+	createdAt: t.str().with({ format: 'date-time' }),
 });
 
 type Task = Infer<typeof task>;
 
-const page = obj({
-	data: arr(task),
+const page = t.obj({
+	data: t.arr(task),
 	nextCursor: new Schema<string | null>(NULLABLE_STRING, false),
 });
 

@@ -1,4 +1,4 @@
-import { arr, binary, bool, isRecord, matches, obj, str, variant, type Http } from '@n8n/node-sdk';
+import { isRecord, matches, t, type Http } from '@n8n/node-sdk';
 
 import { message } from '../gmail.node';
 import {
@@ -18,9 +18,9 @@ const LINK =
 /** The media upload takes the MIME message as the body, so an attachment never goes into JSON. */
 const UPLOAD_URL = 'https://www.googleapis.com/upload/gmail/v1/users/me/messages/send';
 
-const addresses = str().hint('Comma-separated addresses');
+const addresses = t.str().hint('Comma-separated addresses');
 
-const sent = obj({ id: str(), threadId: str(), labelIds: arr(str()).optional() }).with({
+const sent = t.obj({ id: t.str(), threadId: t.str(), labelIds: t.arr(t.str()).optional() }).with({
 	additionalProperties: true,
 });
 
@@ -40,14 +40,15 @@ export const sendGmailMessage = message.action('send', {
 	flow: { effect: 'write', cardinality: 'per-item', idempotent: false },
 	input: {
 		to: addresses,
-		subject: str(),
-		body: variant('format', { text: { text: str() }, html: { html: str() } }),
+		subject: t.str(),
+		body: t.variant('format', { text: { text: t.str() }, html: { html: t.str() } }),
 		cc: addresses.optional(),
 		bcc: addresses.optional(),
-		senderName: str().hint('Display name; the address is the account address').optional(),
+		senderName: t.str().hint('Display name; the address is the account address').optional(),
 		replyTo: addresses.optional(),
-		appendAttribution: bool().default(true).hint('Adds a "sent with n8n" footer'),
-		attachments: arr(binary())
+		appendAttribution: t.bool().default(true).hint('Adds a "sent with n8n" footer'),
+		attachments: t
+			.arr(t.binary())
 			.hint('Files to attach, e.g. [(item) => item.binary.data]')
 			.optional(),
 	},

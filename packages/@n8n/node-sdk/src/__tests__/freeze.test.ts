@@ -8,7 +8,8 @@ it('GUEST_LACKS are globals of Node, besides the CommonJS names', () => {
 	expect(GUEST_LACKS.filter((name) => !(name in globalThis))).toEqual(['__dirname', '__filename']);
 });
 
-const probeSource = (value: string, header = '') => `import { defineNode, obj, str } from '@n8n/node-sdk';
+const probeSource = (value: string, header = '') => `import { defineNode, t } from '@n8n/node-sdk';
+const { obj, str } = t;
 ${header}
 const probe = defineNode({ id: 'probe', displayName: 'Probe' });
 export const probeAction = probe.action('probe', {

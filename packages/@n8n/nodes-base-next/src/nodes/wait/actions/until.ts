@@ -1,4 +1,4 @@
-import { str } from '@n8n/node-sdk';
+import { t } from '@n8n/node-sdk';
 
 import { heldItems, holdUntil, wait } from '../wait.node';
 
@@ -11,7 +11,8 @@ export const waitUntil = wait.action('until', {
 	flow: { effect: 'transform', cardinality: 'batch' },
 	imports: ['wait'],
 	input: {
-		time: str()
+		time: t
+			.str()
 			.with({ format: 'date-time', pattern: DATE_TIME })
 			.hint('ISO 8601 with an offset, e.g. 2026-09-01T09:00:00+02:00'),
 	},

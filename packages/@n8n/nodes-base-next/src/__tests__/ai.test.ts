@@ -1,5 +1,5 @@
 import {
-	isSupply,
+	provider,
 	type Action,
 	type ChatModel,
 	type ChatReply,
@@ -59,7 +59,7 @@ describe('ai.agent', () => {
 		const refund = tool('refund', async () => await Promise.reject(new Error('Not allowed')));
 		const result = await runAction(runAgent, {
 			input: { prompt: 'Order 7?', system: 'Be short' },
-			supplies: { chatModel: model, tool: [order, refund] },
+			providers: { chatModel: model, tool: [order, refund] },
 		});
 		expect(result).toEqual({ ok: true, items: [{ text: 'Order 7 shipped; the refund failed.' }] });
 		expect(requests[0]?.tools?.map(({ name }) => name)).toEqual(['order', 'refund']);
@@ -89,7 +89,7 @@ describe('ai.agent', () => {
 		const { model } = scripted([call, call, call]);
 		const result = await runAction(runAgent, {
 			input: { prompt: 'Loop', maxIterations: 2 },
-			supplies: { chatModel: model, tool: [tool('order', async () => 'ok')] },
+			providers: { chatModel: model, tool: [tool('order', async () => 'ok')] },
 		});
 		expect(result).toMatchObject({
 			ok: false,
@@ -111,7 +111,7 @@ describe('ai.agent', () => {
 		const { model, requests } = scripted([reply('Your name is Ada.')]);
 		await runAction(runAgent, {
 			input: { prompt: 'What is my name?', system: 'Be kind' },
-			supplies: { chatModel: model, memory },
+			providers: { chatModel: model, memory },
 		});
 		expect(requests[0]?.messages.map(({ role }) => role)).toEqual([
 			'system',
@@ -129,7 +129,7 @@ describe('ai.agent', () => {
 		const { model } = scripted([reply('x')]);
 		const result = await runAction(runAgent, {
 			input: { prompt: 'Hi' },
-			supplies: {
+			providers: {
 				chatModel: model,
 				tool: [tool('order', async () => 1), tool('order', async () => 2)],
 			},
@@ -152,7 +152,7 @@ describe('ai.prompt', () => {
 		const { model, requests } = scripted([reply('{"colour":"red"}')]);
 		const result = await runAction(promptModel, {
 			input: { prompt: 'A colour', schema },
-			supplies: { chatModel: model },
+			providers: { chatModel: model },
 		});
 		expect(result).toEqual({
 			ok: true,
@@ -165,7 +165,7 @@ describe('ai.prompt', () => {
 		const { model } = scripted([reply('{"color":"red"}')]);
 		const result = await runAction(promptModel, {
 			input: { prompt: 'A colour', schema },
-			supplies: { chatModel: model },
+			providers: { chatModel: model },
 		});
 		expect(result).toMatchObject({
 			ok: false,
@@ -181,7 +181,7 @@ describe('ai.prompt', () => {
 		const { model } = scripted([{ text: 'Half a sen', toolCalls: [], finishReason: 'length' }]);
 		const result = await runAction(promptModel, {
 			input: { prompt: 'Hi' },
-			supplies: { chatModel: model },
+			providers: { chatModel: model },
 		});
 		expect(result).toMatchObject({
 			ok: false,
@@ -213,7 +213,7 @@ describe('ai.classify', () => {
 				multiple: true,
 			},
 			items: [{ id: 1 }],
-			supplies: { chatModel: model },
+			providers: { chatModel: model },
 		});
 		expect(result).toMatchObject({ ok: true, outputs: [[], [{ id: 1 }], [{ id: 1 }], []] });
 		expect(requests[0]?.output).toEqual({
@@ -230,7 +230,7 @@ describe('ai.classify', () => {
 		const { model } = scripted([reply('{"categories":["spam"]}')]);
 		const result = await runAction(classifyText, {
 			input: { text: 'Buy now', categories: [{ output: 'complaint' }] },
-			supplies: { chatModel: model },
+			providers: { chatModel: model },
 		});
 		expect(result).toMatchObject({
 			ok: false,
@@ -242,7 +242,7 @@ describe('ai.classify', () => {
 		const { model, requests } = scripted([]);
 		const result = await runAction(classifyText, {
 			input: { text: 'Hi', categories: [{ output: 'other' }] },
-			supplies: { chatModel: model },
+			providers: { chatModel: model },
 		});
 		expect(result).toMatchObject({
 			ok: false,
@@ -265,7 +265,7 @@ async function chatThrough(
 	const credentials = [{ name: credential.type, displayName: credential.type, properties: [] }];
 	const result = await runAction(action, { input, credential, credentials, fetch: http });
 	const model = result.ok ? result.items[0] : undefined;
-	if (!isSupply('chatModel', model)) throw new Error(JSON.stringify(result));
+	if (!provider.is('chatModel', model)) throw new Error(JSON.stringify(result));
 	const answer = await model.chat(request);
 	return { answer, call: http.calls[0] };
 }

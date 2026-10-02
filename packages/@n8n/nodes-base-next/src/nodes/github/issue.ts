@@ -1,24 +1,12 @@
-import {
-	arr,
-	bool,
-	int,
-	loose,
-	nullable,
-	obj,
-	oneOf,
-	parse,
-	str,
-	type Infer,
-	type Loose,
-} from '@n8n/node-sdk';
+import { parse, t, type Infer, type Loose } from '@n8n/node-sdk';
 
-const user = obj({ login: str(), id: int(), html_url: str().optional() });
+const user = t.obj({ login: t.str(), id: t.int(), html_url: t.str().optional() });
 
-const label = obj({
-	id: int(),
-	name: str(),
-	color: str().optional(),
-	description: nullable(str()).optional(),
+const label = t.obj({
+	id: t.int(),
+	name: t.str(),
+	color: t.str().optional(),
+	description: t.nullable(t.str()).optional(),
 });
 
 /**
@@ -26,25 +14,25 @@ const label = obj({
  * `tsc`; the action drops the other fields of the API response. GitHub may leave out any field,
  * e.g. `locked`, or send `pull_request: null`, so each field is optional and nullable.
  */
-export const issue = loose(
-	obj({
-		id: int(),
-		['number']: int(),
-		title: str(),
-		state: oneOf('open', 'closed'),
-		state_reason: str(),
-		html_url: str(),
-		body: str(),
+export const issue = t.loose(
+	t.obj({
+		id: t.int(),
+		['number']: t.int(),
+		title: t.str(),
+		state: t.oneOf('open', 'closed'),
+		state_reason: t.str(),
+		html_url: t.str(),
+		body: t.str(),
 		user,
-		labels: arr(label),
-		assignees: arr(user),
-		milestone: obj({ ['number']: int(), title: str() }),
-		comments: int(),
-		locked: bool(),
-		created_at: str(),
-		updated_at: str(),
-		closed_at: str(),
-		pull_request: obj({ html_url: str() }),
+		labels: t.arr(label),
+		assignees: t.arr(user),
+		milestone: t.obj({ ['number']: t.int(), title: t.str() }),
+		comments: t.int(),
+		locked: t.bool(),
+		created_at: t.str(),
+		updated_at: t.str(),
+		closed_at: t.str(),
+		pull_request: t.obj({ html_url: t.str() }),
 	}),
 );
 
@@ -55,26 +43,28 @@ type User = Infer<typeof user>;
 // The API response has more fields than the output. A list page keeps them, and its check
 // still accepts an issue that leaves out a field or sends it as `null`.
 const open = { additionalProperties: true } as const;
-export const issueResponse = loose(
-	obj({
-		id: int(),
-		['number']: int(),
-		title: str(),
-		state: oneOf('open', 'closed'),
-		state_reason: str(),
-		html_url: str(),
-		body: str(),
-		user: user.with(open),
-		labels: arr(label.with(open)),
-		assignees: arr(user.with(open)),
-		milestone: obj({ ['number']: int(), title: str() }).with(open),
-		comments: int(),
-		locked: bool(),
-		created_at: str(),
-		updated_at: str(),
-		closed_at: str(),
-		pull_request: obj({ html_url: str() }).with(open),
-	}).with(open),
+export const issueResponse = t.loose(
+	t
+		.obj({
+			id: t.int(),
+			['number']: t.int(),
+			title: t.str(),
+			state: t.oneOf('open', 'closed'),
+			state_reason: t.str(),
+			html_url: t.str(),
+			body: t.str(),
+			user: user.with(open),
+			labels: t.arr(label.with(open)),
+			assignees: t.arr(user.with(open)),
+			milestone: t.obj({ ['number']: t.int(), title: t.str() }).with(open),
+			comments: t.int(),
+			locked: t.bool(),
+			created_at: t.str(),
+			updated_at: t.str(),
+			closed_at: t.str(),
+			pull_request: t.obj({ html_url: t.str() }).with(open),
+		})
+		.with(open),
 );
 
 const userOf = ({ login, id, html_url }: Loose<User>) => ({ login, id, html_url });

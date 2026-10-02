@@ -1,4 +1,5 @@
-import { obj, replyContractOf, validate, type JsonSchema, type Trigger } from '@n8n/node-sdk';
+import { t, validate, type JsonSchema, type Trigger } from '@n8n/node-sdk';
+import { replyContractOf } from '@n8n/node-sdk/registry';
 import { FacebookTrigger } from 'n8n-nodes-base/dist/nodes/Facebook/FacebookTrigger.node';
 import { Form } from 'n8n-nodes-base/dist/nodes/Form/Form.node';
 import { FormTrigger } from 'n8n-nodes-base/dist/nodes/Form/FormTrigger.node';
@@ -56,7 +57,7 @@ function legacyOptions(description: INodeTypeDescription, version: number, name:
 
 const enumOf = (schema: JsonSchema | undefined) => schema?.enum ?? [];
 
-const inputOf = (trigger: Trigger) => obj(trigger.input).json;
+const inputOf = (trigger: Trigger) => t.obj(trigger.input).json;
 const replyInput =
 	(webhookTrigger.kind === 'native' && replyContractOf(webhookTrigger)?.input) || {};
 const pageContract = formTrigger.kind === 'native' ? replyContractOf(formTrigger) : undefined;
@@ -219,7 +220,7 @@ describe('native trigger contracts against the built-in nodes', () => {
 		const reply = replyContractOf(
 			webhookTrigger.kind === 'native' ? webhookTrigger : (undefined as never),
 		);
-		const input = obj(webhookTrigger.input).json.properties ?? {};
+		const input = t.obj(webhookTrigger.input).json.properties ?? {};
 		const pairs: Array<[readonly unknown[], unknown[]]> = [
 			[enumOf(input.httpMethod), legacyOptions(webhook, 2.2, 'httpMethod')],
 			[enumOf(input.responseMode), legacyOptions(webhook, 2.2, 'responseMode')],
@@ -229,11 +230,11 @@ describe('native trigger contracts against the built-in nodes', () => {
 				legacyOptions(respond, 1.5, 'respondWith'),
 			],
 			[
-				enumOf(obj(formTrigger.input).json.properties?.responseMode),
+				enumOf(t.obj(formTrigger.input).json.properties?.responseMode),
 				legacyOptions(form, 2.6, 'responseMode'),
 			],
 			[
-				enumOf(obj(formTrigger.input).json.properties?.authentication),
+				enumOf(t.obj(formTrigger.input).json.properties?.authentication),
 				legacyOptions(form, 2.6, 'authentication'),
 			],
 		];

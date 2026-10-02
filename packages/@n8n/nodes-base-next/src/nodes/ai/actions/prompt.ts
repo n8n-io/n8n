@@ -1,4 +1,4 @@
-import { str, supplied } from '@n8n/node-sdk';
+import { provider, t } from '@n8n/node-sdk';
 
 import { ai } from '../ai.node';
 import { promptReply, replyOutput, replyOutputOf, replySchema } from '../reply';
@@ -9,9 +9,9 @@ export const promptModel = ai.action('prompt', {
 		'Prompt a chat model and get its reply as text, or as an object typed by schema, e.g. to extract fields.',
 	flow: { effect: 'transform', cardinality: 'per-item' },
 	input: {
-		model: supplied('chatModel'),
-		prompt: str().with({ minLength: 1 }),
-		system: str().optional().hint('Instructions for the model'),
+		model: provider.input('chatModel'),
+		prompt: t.str().with({ minLength: 1 }),
+		system: t.str().optional().hint('Instructions for the model'),
 		schema: replySchema,
 	},
 	output: replyOutput,

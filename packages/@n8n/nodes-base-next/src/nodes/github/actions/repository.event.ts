@@ -1,12 +1,12 @@
-import { arr, bool, int, json, obj, parse, str } from '@n8n/node-sdk';
+import { parse, t } from '@n8n/node-sdk';
 
 import { repository } from '../github.node';
 
 /** A delivery as the legacy trigger emits it. */
-const delivery = obj({
-	body: json().hint('The event payload; its shape depends on the event'),
-	headers: json().hint('Lower-case names, e.g. x-github-event'),
-	query: json(),
+const delivery = t.obj({
+	body: t.json().hint('The event payload; its shape depends on the event'),
+	headers: t.json().hint('Lower-case names, e.g. x-github-event'),
+	query: t.json(),
 });
 
 const hookPath = ({
@@ -16,7 +16,7 @@ const hookPath = ({
 	`/repos/${encodeURIComponent(owner)}/${encodeURIComponent(name)}/hooks`;
 
 /** The fields of a create response that registration reads. */
-const createdHook = obj({ id: int(), active: bool() }).with({ additionalProperties: true });
+const createdHook = t.obj({ id: t.int(), active: t.bool() }).with({ additionalProperties: true });
 
 export const repositoryEvent = repository.trigger('event', {
 	patch: 2,
@@ -24,8 +24,8 @@ export const repositoryEvent = repository.trigger('event', {
 	summary: 'Starts on each GitHub event of a repository, e.g. a push or an opened issue.',
 	scopes: ['admin:repo_hook'],
 	input: {
-		events: arr(str()).default(['*']).hint('GitHub event names, e.g. push; * is every event'),
-		insecureSSL: bool().default(false),
+		events: t.arr(t.str()).default(['*']).hint('GitHub event names, e.g. push; * is every event'),
+		insecureSSL: t.bool().default(false),
 	},
 	output: delivery,
 	webhook: {

@@ -1,4 +1,4 @@
-import { credentialType } from '@n8n/node-sdk';
+import { defineCredential } from '@n8n/node-sdk/credentials';
 
 /**
  * A Google OAuth2 credential type of one service, e.g. `gmailOAuth2`. Each one extends the legacy
@@ -17,7 +17,7 @@ export function googleOAuth2<
 	/** A text for hosted n8n, e.g. the APIs to turn on in the Google Cloud Console. */
 	readonly notice?: string;
 }) {
-	return credentialType({
+	return defineCredential({
 		id: spec.id,
 		legacyName: spec.legacyName,
 		displayName: spec.displayName,

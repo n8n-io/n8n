@@ -1,16 +1,16 @@
-import { arr, bool, limitOf, obj, oneOf, pages, paging, str, type Infer } from '@n8n/node-sdk';
+import { limitOf, pages, paging, t, type Infer } from '@n8n/node-sdk';
 
 import { message } from '../gmail.node';
 import { getMessage, labelsOf, simplifiedMessage } from '../message';
 
-const filters = obj({
-	q: str().hint('Gmail search syntax, e.g. "is:unread from:ada@example.com"').optional(),
-	readStatus: oneOf('both', 'unread', 'read').default('both'),
-	sender: str().optional(),
-	labelIds: arr(str()).hint('Label IDs, not names').optional(),
-	receivedAfter: str().hint('ISO 8601 date or date-time').optional(),
-	receivedBefore: str().hint('ISO 8601 date or date-time').optional(),
-	includeSpamTrash: bool().optional(),
+const filters = t.obj({
+	q: t.str().hint('Gmail search syntax, e.g. "is:unread from:ada@example.com"').optional(),
+	readStatus: t.oneOf('both', 'unread', 'read').default('both'),
+	sender: t.str().optional(),
+	labelIds: t.arr(t.str()).hint('Label IDs, not names').optional(),
+	receivedAfter: t.str().hint('ISO 8601 date or date-time').optional(),
+	receivedBefore: t.str().hint('ISO 8601 date or date-time').optional(),
+	includeSpamTrash: t.bool().optional(),
 });
 
 function seconds(value: string, label: 'After' | 'Before') {
@@ -38,10 +38,12 @@ function queryOf(filter: Infer<typeof filters> | undefined) {
 }
 
 /** The IDs of one page of `messages.list`. */
-const idPage = obj({
-	messages: arr(obj({ id: str() }).with({ additionalProperties: true })).optional(),
-	nextPageToken: str().optional(),
-}).with({ additionalProperties: true });
+const idPage = t
+	.obj({
+		messages: t.arr(t.obj({ id: t.str() }).with({ additionalProperties: true })).optional(),
+		nextPageToken: t.str().optional(),
+	})
+	.with({ additionalProperties: true });
 
 export const getManyGmailMessages = message.action('getAll', {
 	minor: 1,

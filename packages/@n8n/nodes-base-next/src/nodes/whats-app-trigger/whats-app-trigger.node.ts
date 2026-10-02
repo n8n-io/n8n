@@ -1,12 +1,13 @@
-import { credential, credentialType, defineNode, t } from '@n8n/node-sdk';
+import { defineNode } from '@n8n/node-sdk';
+import { credential, defineCredential, field } from '@n8n/node-sdk/credentials';
 
 /** The Meta app. The built-in trigger reads the secret to verify each delivery. */
-export const whatsAppApp = credentialType({
+export const whatsAppApp = defineCredential({
 	id: 'whatsApp.app',
 	legacyName: 'whatsAppTriggerApi',
 	displayName: 'WhatsApp OAuth API',
 	docs: 'whatsapp',
-	fields: { clientId: t.text('Client ID'), clientSecret: t.secret('Client Secret') },
+	fields: { clientId: field.text('Client ID'), clientSecret: field.secret('Client Secret') },
 	baseUrl: 'https://graph.facebook.com/v19.0',
 	auth: (a) => a.none(),
 	test: {

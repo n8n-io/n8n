@@ -1,15 +1,16 @@
-import { credential, credentialType, defineNode, t } from '@n8n/node-sdk';
+import { defineNode } from '@n8n/node-sdk';
+import { credential, defineCredential, field } from '@n8n/node-sdk/credentials';
 
 export const node = defineNode({
 	id: 'eventLog',
 	displayName: 'Event Log',
 	credential: credential({
 		types: [
-			credentialType({
+			defineCredential({
 				id: 'eventLog.apiKey',
 				legacyName: 'eventLogApi',
 				displayName: 'Event Log API',
-				fields: { apiKey: t.secret('API Key') },
+				fields: { apiKey: field.secret('API Key') },
 				auth: (a) => a.header('X-Events-Key', '{apiKey}'),
 			}),
 		],

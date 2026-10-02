@@ -1,25 +1,13 @@
 import type { IHttpRequestOptions, INode } from 'n8n-workflow';
 
+import { compat, credential, defineCredential, field } from '../entry/credentials';
 import {
-	arr,
-	bool,
-	compat,
-	credential,
-	credentialType,
 	defineNode,
-	int,
 	isRecord,
-	json,
-	loose,
-	obj,
-	oneOf,
 	pages,
-	pageValue,
 	pageValueOf,
 	paging,
 	parse,
-	passedItem,
-	str,
 	t,
 	validate,
 	type Action,
@@ -50,7 +38,7 @@ const node: INode = {
 	parameters: {},
 };
 
-const item = obj({ id: str() });
+const item = t.obj({ id: t.str() });
 const echoItem = echo.resource('item');
 type ListFlow = ActionFlow & { readonly cardinality: '1:N' };
 const read: ListFlow = { effect: 'read', cardinality: '1:N' };
@@ -102,8 +90,8 @@ describe('executorOf', () => {
 				action: 'Send text',
 				summary: 'Echo the text.',
 				flow: { effect: 'transform', cardinality: 'per-item' },
-				input: { text: str(), data: json().optional() },
-				output: obj({ text: str(), data: json().optional() }),
+				input: { text: t.str(), data: t.json().optional() },
+				output: t.obj({ text: t.str(), data: t.json().optional() }),
 				async run({ input }) {
 					return await Promise.resolve(input);
 				},
@@ -119,8 +107,8 @@ describe('executorOf', () => {
 				action: 'Read pages',
 				summary: 'Read pages.',
 				flow: { effect: 'read', cardinality: 'per-item' },
-				input: { paging: obj({ size: int().default(25) }).optional() },
-				output: obj({ size: int() }),
+				input: { paging: t.obj({ size: t.int().default(25) }).optional() },
+				output: t.obj({ size: t.int() }),
 				async run({ input }) {
 					return await Promise.resolve({ size: input.paging?.size ?? 0 });
 				},
@@ -134,13 +122,13 @@ describe('executorOf', () => {
 
 	describe('setup placeholders', () => {
 		it('asks for setup before the input check and before any request', async () => {
-			const pattern = obj({ id: str().with({ pattern: '^[0-9a-f]{32}$' }) });
+			const pattern = t.obj({ id: t.str().with({ pattern: '^[0-9a-f]{32}$' }) });
 			const fetch = echoItem.action('get', {
 				action: 'Get item',
 				summary: 'Get an item.',
 				flow: { effect: 'read', cardinality: 'per-item' },
 				input: { target: pattern },
-				output: loose(item),
+				output: t.loose(item),
 				async run({ http }) {
 					return parse(item, await http.request({ url: '/item' }));
 				},
@@ -338,7 +326,7 @@ describe('types', () => {
 
 describe('parse', () => {
 	it('passes the value through as a loose type and never throws', () => {
-		const page = obj({ items: arr(item) });
+		const page = t.obj({ items: t.arr(item) });
 		expect(parse(page, { items: [{ id: 'a' }] }).items?.[0]?.id).toBe('a');
 		expect(parse(page, { items: [{ id: 1 }] })).toEqual({ items: [{ id: 1 }] });
 		// @ts-expect-error a decoded field may be absent
@@ -346,14 +334,16 @@ describe('parse', () => {
 	});
 
 	it('gives an empty value when the value is not of the schema kind', () => {
-		expect(parse(obj({ id: str() }), null)).toEqual({});
-		expect(parse(arr(item), { id: 'a' })).toEqual([]);
-		expect(parse(str(), 1)).toBe(1);
+		expect(parse(t.obj({ id: t.str() }), null)).toEqual({});
+		expect(parse(t.arr(item), { id: 'a' })).toEqual([]);
+		expect(parse(t.str(), 1)).toBe(1);
 	});
 });
 
 describe('loose', () => {
-	const issue = loose(obj({ id: int(), locked: bool(), pull_request: obj({ url: str() }) }));
+	const issue = t.loose(
+		t.obj({ id: t.int(), locked: t.bool(), pull_request: t.obj({ url: t.str() }) }),
+	);
 
 	it('makes each field optional and nullable, at any depth', () => {
 		expect(validate({ id: 1, pull_request: null }, issue.json)).toEqual([]);
@@ -369,10 +359,10 @@ describe('loose', () => {
 });
 
 describe('output drift', () => {
-	const strictIssue = obj({
-		id: int(),
-		locked: bool(),
-		pull_request: obj({ html_url: str() }).optional(),
+	const strictIssue = t.obj({
+		id: t.int(),
+		locked: t.bool(),
+		pull_request: t.obj({ html_url: t.str() }).optional(),
 	});
 	// The sweep-409 body: an issue without `locked`, and `pull_request: null`.
 	const body = [
@@ -385,7 +375,7 @@ describe('output drift', () => {
 		output: strictIssue,
 		// @ts-expect-error the body passes on without a check, as in a bundle without types
 		async *run({ http }) {
-			yield* parse(arr(strictIssue), await http.request({ path: '/issues' }));
+			yield* parse(t.arr(strictIssue), await http.request({ path: '/issues' }));
 		},
 	});
 
@@ -408,7 +398,7 @@ describe('output drift', () => {
 
 describe('validate messages', () => {
 	it('truncate long values and redact secrets', () => {
-		const schema = obj({ body: int(), apiKey: int(), note: int() }).json;
+		const schema = t.obj({ body: t.int(), apiKey: t.int(), note: t.int() }).json;
 		const [body, apiKey, note] = validate(
 			{ body: 'x'.repeat(200), apiKey: 'k-123', note: 'Bearer abcdefghijklmnop' },
 			schema,
@@ -447,7 +437,7 @@ describe('runAction', () => {
 });
 
 describe('pages', () => {
-	const itemPage = obj({ items: arr(item), next: str().optional() });
+	const itemPage = t.obj({ items: t.arr(item), next: t.str().optional() });
 	/** An action that lists `/items` pages by cursor and yields each item. */
 	const pagedAction = (limit?: number, maxPages?: number) =>
 		echoItem.action('list', {
@@ -455,7 +445,7 @@ describe('pages', () => {
 			summary: 'List items.',
 			flow: read,
 			input: {},
-			output: loose(item),
+			output: t.loose(item),
 			async *run({ http }) {
 				yield* pages(http, {
 					page: itemPage,
@@ -534,7 +524,7 @@ describe('pageValueOf', () => {
 	});
 
 	it('is checked at build time against the expressions it reads', () => {
-		const schema = obj({ next: pageValue(str()) }).json;
+		const schema = t.obj({ next: t.pageValue(t.str()) }).json;
 		const check = (next: string) => validate({ next }, schema, { allowExpressions: true });
 		expect(check('={{ $response.body.data.at(-1)?.id }}')).toEqual([]);
 		expect(check('={{ !$response.body.done }}')).toEqual([
@@ -544,16 +534,16 @@ describe('pageValueOf', () => {
 });
 
 describe('list binding', () => {
-	const message = obj({ id: str() });
-	const historyPage = obj({
-		messages: arr(message),
-		response_metadata: obj({ next_cursor: str().optional() }).optional(),
+	const message = t.obj({ id: t.str() });
+	const historyPage = t.obj({
+		messages: t.arr(message),
+		response_metadata: t.obj({ next_cursor: t.str().optional() }).optional(),
 	});
 	const history = echoItem.action('history', {
 		action: 'Get history',
 		summary: 'List the messages of a channel.',
 		flow: read,
-		input: { channel: str() },
+		input: { channel: t.str() },
 		output: message,
 		list: {
 			path: '/history',
@@ -634,11 +624,11 @@ describe('list binding', () => {
 			action: 'Get issues',
 			summary: 'List the issues of a repository.',
 			flow: read,
-			input: { owner: str(), withDrafts: bool().default(false) },
-			output: obj({ id: str(), draft: bool() }),
+			input: { owner: t.str(), withDrafts: t.bool().default(false) },
+			output: t.obj({ id: t.str(), draft: t.bool() }),
 			list: {
 				path: '/repos/{owner}/issues',
-				response: arr(obj({ id: str(), draft: bool() })),
+				response: t.arr(t.obj({ id: t.str(), draft: t.bool() })),
 				items: (page, input) => page.filter((entry) => input.withDrafts || !entry.draft),
 				pages: { style: 'link', size: { query: 'per_page', max: 100 } },
 			},
@@ -677,7 +667,7 @@ describe('list binding', () => {
 			output: message,
 			list: {
 				path: '/rows',
-				response: arr(message),
+				response: t.arr(message),
 				items: (page) => page,
 				pages: {
 					style: 'offset',
@@ -708,7 +698,7 @@ describe('list binding', () => {
 			output: message,
 			list: {
 				path: '/items',
-				response: obj({ items: arr(message) }),
+				response: t.obj({ items: t.arr(message) }),
 				items: (page) => page.items,
 				pages: { style: 'offset', unit: 'page', send: { query: 'page' } },
 			},
@@ -729,7 +719,7 @@ describe('list binding', () => {
 			flow: read,
 			input: {},
 			output: message,
-			list: { path: '/items', response: arr(message), items: (page) => page },
+			list: { path: '/items', response: t.arr(message), items: (page) => page },
 		});
 		const fetch = mockHttp([{ path: '/items', reply: { json: messages(['a']) } }]);
 		expect(ids(await runAction(once, { input: {}, fetch }))).toEqual(['a']);
@@ -741,7 +731,7 @@ describe('list binding', () => {
 			action: 'Get history',
 			summary: 'List the messages of a channel.',
 			flow: read,
-			input: { channel: str() },
+			input: { channel: t.str() },
 			output: message,
 			list: {
 				path: '/history',
@@ -843,7 +833,7 @@ describe('batch and named outputs', () => {
 		summary: 'Reverse the items.',
 		flow: { effect: 'transform', cardinality: 'batch' },
 		input: {},
-		output: json(),
+		output: t.json(),
 		run: ({ items }) => [...items].reverse().map((item) => ({ item })),
 	});
 
@@ -852,7 +842,7 @@ describe('batch and named outputs', () => {
 		summary: 'Count the items.',
 		flow: { effect: 'transform', cardinality: 'batch' },
 		input: {},
-		output: obj({ count: int() }),
+		output: t.obj({ count: t.int() }),
 		run: ({ items }) => [{ json: { count: items.length }, from: items }],
 	});
 
@@ -860,8 +850,8 @@ describe('batch and named outputs', () => {
 		action: 'Check items',
 		summary: 'Route each item by a flag.',
 		flow: { effect: 'transform', cardinality: 'per-item' },
-		input: { pass: bool() },
-		output: json(),
+		input: { pass: t.bool() },
+		output: t.json(),
 		outputs: ['true', 'false'],
 		run: async ({ input, item }) =>
 			await Promise.resolve({ to: input.pass ? 'true' : 'false', item }),
@@ -871,8 +861,8 @@ describe('batch and named outputs', () => {
 		action: 'Route items',
 		summary: 'Route each item to the case it names.',
 		flow: { effect: 'transform', cardinality: '1:N' },
-		input: { cases: arr(obj({ output: str() })), pick: str() },
-		output: json(),
+		input: { cases: t.arr(t.obj({ output: t.str() })), pick: t.str() },
+		output: t.json(),
 		outputs: { each: 'cases', then: ['fallback'] },
 		async *run({ input, item }) {
 			yield {
@@ -904,8 +894,8 @@ describe('batch and named outputs', () => {
 			action: 'Forge',
 			summary: 'Forge lineage.',
 			flow: { effect: 'transform', cardinality: 'batch' },
-			input: { none: bool().default(false) },
-			output: json(),
+			input: { none: t.bool().default(false) },
+			output: t.json(),
 			run: ({ input, items }) => [
 				{ json: {}, from: input.none ? [] : { json: { ...items[0]?.json } } },
 			],
@@ -971,8 +961,8 @@ describe('batch and named outputs', () => {
 			action: 'Keep',
 			summary: 'Pass items on.',
 			flow: { effect: 'transform', cardinality: 'per-item' },
-			input: { mode: oneOf('same', 'other', 'made') },
-			output: passedItem(),
+			input: { mode: t.oneOf('same', 'other', 'made') },
+			output: t.passedItem(),
 			run: async ({ input, item }) =>
 				await Promise.resolve(
 					input.mode === 'same' ? { item } : input.mode === 'other' ? { item: { json: {} } } : {},
@@ -1011,7 +1001,7 @@ describe('batch and named outputs', () => {
 			summary: 'Route to a typo.',
 			flow: { effect: 'transform', cardinality: 'per-item' },
 			input: {},
-			output: json(),
+			output: t.json(),
 			outputs: ['kept', 'discarded'],
 			// @ts-expect-error -- "kep" is not an output name
 			run: async ({ item }) => await Promise.resolve({ to: 'kep', item }),
@@ -1020,8 +1010,8 @@ describe('batch and named outputs', () => {
 			action: 'Loose',
 			summary: 'Route to a name from the input.',
 			flow: { effect: 'transform', cardinality: '1:N' },
-			input: { cases: arr(obj({ output: str() })) },
-			output: json(),
+			input: { cases: t.arr(t.obj({ output: t.str() })) },
+			output: t.json(),
 			outputs: { each: 'cases' },
 			async *run({ item }) {
 				yield { to: 'missing', item };
@@ -1040,7 +1030,7 @@ describe('batch and named outputs', () => {
 			summary: 'Forget lineage.',
 			flow: { effect: 'transform', cardinality: 'batch' },
 			input: {},
-			output: obj({ count: int() }),
+			output: t.obj({ count: t.int() }),
 			// @ts-expect-error -- a new batch item must name its input items in `from`
 			run: ({ items }) => [{ json: { count: items.length } }],
 		});
@@ -1048,8 +1038,8 @@ describe('batch and named outputs', () => {
 			action: 'No list',
 			summary: 'Name outputs after a field that is not a list.',
 			flow: { effect: 'transform', cardinality: 'per-item' },
-			input: { pick: str() },
-			output: json(),
+			input: { pick: t.str() },
+			output: t.json(),
 			// @ts-expect-error -- `pick` is not a list of entries with an `output` name
 			outputs: { each: 'pick' },
 			run: async ({ item }) => await Promise.resolve({ to: 'x', item }),
@@ -1074,14 +1064,14 @@ describe('batch and named outputs', () => {
 });
 
 describe('credentials in a run', () => {
-	const acmeToken = credentialType({
+	const acmeToken = defineCredential({
 		id: 'acme.token',
 		legacyName: 'acmeApi',
 		displayName: 'Acme API',
 		fields: {
-			region: oneOf('eu', 'us').default('eu'),
-			account: t.text('Account ID'),
-			apiKey: t.secret('API Key'),
+			region: t.oneOf('eu', 'us').default('eu'),
+			account: field.text('Account ID'),
+			apiKey: field.secret('API Key'),
 		},
 		baseUrl: 'https://api.acme.test',
 		auth: (a) => a.bearer('apiKey'),
@@ -1101,7 +1091,7 @@ describe('credentials in a run', () => {
 			summary: 'Read the credential.',
 			flow: { effect: 'read', cardinality: 'per-item' },
 			input: {},
-			output: obj({ account: str() }),
+			output: t.obj({ account: t.str() }),
 			async run({ credential: used }) {
 				seen.push(used);
 				// @ts-expect-error a secret is not a field of the run credential
@@ -1140,7 +1130,7 @@ describe('credentials in a run', () => {
 			summary: 'Call the API.',
 			flow: { effect: 'read', cardinality: 'per-item' },
 			input: {},
-			output: obj({}),
+			output: t.obj({}),
 			async run({ http, log }) {
 				log('info', 'using key-secret-1');
 				try {

@@ -1,4 +1,5 @@
-import { toNodeType, validate } from '@n8n/node-sdk';
+import { validate } from '@n8n/node-sdk';
+import { toNodeType } from '@n8n/node-sdk/host';
 import type { IExecuteFunctions } from 'n8n-workflow';
 
 import { getIssue } from '../nodes/github/actions/issue.get';

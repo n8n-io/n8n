@@ -1,4 +1,4 @@
-import { isSupply } from '@n8n/node-sdk';
+import { provider } from '@n8n/node-sdk';
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -74,7 +74,7 @@ describe('contract actions as agent tools', () => {
 			url: "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('url', `The page URL`, 'string') }}",
 			query: { lang: 'en' },
 		});
-		if (!isSupply('tool', tool)) throw new Error('no tool');
+		if (!provider.is('tool', tool)) throw new Error('no tool');
 		expect(tool.name).toBe('Fetch_page');
 		expect(tool.description).toBe(
 			'Read from any HTTP API. Use a dedicated action when one exists for the service.',
@@ -120,7 +120,7 @@ describe('contract actions as agent tools', () => {
 			url: 'https://acme.dev',
 			toolDescription: 'Read the Acme home page.',
 		});
-		if (!isSupply('tool', tool)) throw new Error('no tool');
+		if (!provider.is('tool', tool)) throw new Error('no tool');
 		expect(tool.description).toBe('Read the Acme home page.');
 		expect(tool.input.properties).toEqual({});
 

@@ -1,22 +1,24 @@
-import { arr, bool, json, nullable, obj, str } from '@n8n/node-sdk';
+import { t } from '@n8n/node-sdk';
 
 import { NOTION_VERSION } from '../data-source';
 import { dataSource } from '../notion.node';
 import { SIMPLIFIED, simplifyProperty } from '../simplify';
 
 /** The fields of a data source query response that the poll reads. */
-const queryResponse = obj({
-	results: arr(
-		obj({ id: str(), created_time: str(), properties: json() }).with({
-			additionalProperties: true,
-		}),
-	),
-	has_more: bool().optional(),
-	next_cursor: nullable(str()).optional(),
-}).with({ additionalProperties: true });
+const queryResponse = t
+	.obj({
+		results: t.arr(
+			t.obj({ id: t.str(), created_time: t.str(), properties: t.json() }).with({
+				additionalProperties: true,
+			}),
+		),
+		has_more: t.bool().optional(),
+		next_cursor: t.nullable(t.str()).optional(),
+	})
+	.with({ additionalProperties: true });
 
 /** A page as the legacy trigger emits it with `simple: true`: the ID and each property by name. */
-const addedPage = obj({ id: str() }).with({
+const addedPage = t.obj({ id: t.str() }).with({
 	additionalProperties: true,
 	'x-n8n-hint': 'Keys are the Notion property names, with no property_ prefix',
 	'x-n8n-value-types': SIMPLIFIED,

@@ -25,7 +25,7 @@ import {
 	type Executor,
 	type ExecutorHost,
 } from './runtime';
-import { replaySupply, suppliedKindOf, supplyFieldsOf, type SupplyKind } from './subnodes';
+import { providedKindOf, providerInputsOf, replayCapability, type ProviderKind } from './providers';
 import { validate } from './validate';
 import {
 	canonicalJson,
@@ -167,25 +167,28 @@ function outputBinaryOf(items: readonly INodeExecutionData[]) {
 	return binaries.some((binary) => binary !== undefined) ? binaries : undefined;
 }
 
-/** The recorded capabilities of a fixture, for the sub-node fields of `input`. */
-function fixtureSupplies(fixture: ExecutionFixture, fields: ReturnType<typeof supplyFieldsOf>) {
-	return async (kind: SupplyKind) => {
+/** The recorded capabilities of a fixture, for the provider fields of `input`. */
+function fixtureCapabilities(
+	fixture: ExecutionFixture,
+	fields: ReturnType<typeof providerInputsOf>,
+) {
+	return async (kind: ProviderKind) => {
 		const field = fields.find((entry) => entry.kind === kind);
 		const recorded = field ? fixture.supplied?.[field.name] : undefined;
 		if (recorded === undefined) return field?.many ? [] : undefined;
 		const list = 'results' in recorded ? [recorded] : recorded;
-		const values = list.map(({ data, results }) => replaySupply(kind, data ?? {}, results));
+		const values = list.map(({ data, results }) => replayCapability(kind, data ?? {}, results));
 		return field?.many ? values : values[0];
 	};
 }
 
-/** The results of the calls a fixture makes on the capability that a sub-node gave. */
-async function callResults(supply: unknown, calls: ExecutionFixture['calls']) {
-	if (!isRecord(supply)) throw new UnexpectedError('The sub-node gave no capability');
+/** The results of the calls a fixture makes on the capability that a provider gave. */
+async function callResults(capability: unknown, calls: ExecutionFixture['calls']) {
+	if (!isRecord(capability)) throw new UnexpectedError('The provider gave no capability');
 	return await (calls ?? []).reduce<Promise<unknown[]>>(async (done, { method, args }) => {
-		const member = supply[method];
+		const member = capability[method];
 		if (typeof member !== 'function') throw new UserError(`The capability has no ${method}()`);
-		const result: unknown = await Reflect.apply(member, supply, args);
+		const result: unknown = await Reflect.apply(member, capability, args);
 		return [...(await done), result];
 	}, Promise.resolve([]));
 }
@@ -220,8 +223,8 @@ export async function replayFixtures(
 		return [...executions, ...migrations];
 	}
 	const run = loaded?.executor ?? executorOf(contract);
-	const supplyFields = supplyFieldsOf(contract.input);
-	const supplier = suppliedKindOf(contract.output.json) !== undefined;
+	const providerFields = providerInputsOf(contract.input);
+	const isProvider = providedKindOf(contract.output.json) !== undefined;
 	// n8n fills each property default into the parameters it runs with.
 	const defaults = new Map(manifest.description.properties.map((p) => [p.name, p.default]));
 	const node: INode = {
@@ -257,15 +260,15 @@ export async function replayFixtures(
 				},
 				continueOnFail: () => false,
 				binary: fixtureBinaryStore(fixture),
-				supplied: fixtureSupplies(fixture, supplyFields),
+				supplied: fixtureCapabilities(fixture, providerFields),
 				// A field the fixture does not record, e.g. a base URL, takes its default.
 				credentialData: async (type) => fixtureCredential(contract, type, fixture.credential),
 			};
 			const at = `${manifest.id}@${manifest.semver} fixture "${fixture.name}"`;
 			try {
 				const items = await run(host);
-				// A sub-node gives its capability; the fixture checks what its calls return.
-				const outputs = supplier
+				// A provider gives its capability; the fixture checks what its calls return.
+				const outputs = isProvider
 					? [await callResults(items[0]?.[0]?.json, fixture.calls)]
 					: items.map((output) => output.map((item) => item.json));
 				const output = fixture.outputs ? outputs : outputs[0];

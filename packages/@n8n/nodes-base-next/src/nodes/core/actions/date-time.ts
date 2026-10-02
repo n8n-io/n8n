@@ -1,4 +1,4 @@
-import { bool, json, num, oneOf, str, variant } from '@n8n/node-sdk';
+import { t } from '@n8n/node-sdk';
 
 import { core } from '../core.node';
 import { setPath, pathOf } from '../path';
@@ -16,10 +16,10 @@ const MS: Readonly<Record<(typeof FIXED)[number], number>> = {
 	milliseconds: 1,
 };
 
-const iso = () => str().hint('ISO 8601, e.g. 2026-09-01T10:00:00Z');
+const iso = () => t.str().hint('ISO 8601, e.g. 2026-09-01T10:00:00Z');
 const step = {
-	amount: num().hint('A whole number for years, quarters, and months'),
-	unit: oneOf(...CALENDAR, ...FIXED),
+	amount: t.num().hint('A whole number for years, quarters, and months'),
+	unit: t.oneOf(...CALENDAR, ...FIXED),
 };
 const ROUND_UNITS = [
 	'year',
@@ -113,17 +113,17 @@ export const dateTime = core.action('dateTime', {
 	flow: { effect: 'transform', cardinality: 'per-item' },
 	input: {
 		date: iso(),
-		operation: variant('op', {
+		operation: t.variant('op', {
 			add: step,
 			subtract: step,
-			round: { direction: oneOf('down', 'up'), unit: oneOf(...ROUND_UNITS) },
-			between: { until: iso(), unit: oneOf(...FIXED) },
-			extract: { part: oneOf(...PARTS) },
+			round: { direction: t.oneOf('down', 'up'), unit: t.oneOf(...ROUND_UNITS) },
+			between: { until: iso(), unit: t.oneOf(...FIXED) },
+			extract: { part: t.oneOf(...PARTS) },
 		}),
-		outputField: str().with({ minLength: 1 }).default('newDate'),
-		keepInput: bool().default(false).hint('Keep the input fields beside the output field'),
+		outputField: t.str().with({ minLength: 1 }).default('newDate'),
+		keepInput: t.bool().default(false).hint('Keep the input fields beside the output field'),
 	},
-	output: json(),
+	output: t.json(),
 	async run({ input, item }) {
 		const { operation } = input;
 		const millis = millisOf(input.date);

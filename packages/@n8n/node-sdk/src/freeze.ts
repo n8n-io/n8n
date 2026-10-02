@@ -149,15 +149,19 @@ export async function freezeAction(entryFile: string, exportName: string): Promi
 			{
 				name: 'node-sdk-source',
 				setup(bundler) {
-					bundler.onResolve({ filter: /^@n8n\/node-sdk$/ }, () => ({
-						path: path.join(SDK_SOURCE, 'index.ts'),
+					bundler.onResolve({ filter: /^@n8n\/node-sdk(\/credentials)?$/ }, ({ path: name }) => ({
+						path: path.join(
+							SDK_SOURCE,
+							name.endsWith('/credentials') ? 'entry/credentials.ts' : 'index.ts',
+						),
 						sideEffects: false,
 					}));
-					bundler.onResolve({ filter: /^\.\/[\w-]+$/ }, ({ importer, path: file }) =>
-						importer.startsWith(SDK_SOURCE)
-							? { path: path.join(SDK_SOURCE, `${file}.ts`), sideEffects: false }
-							: undefined,
-					);
+					bundler.onResolve({ filter: /^\.\.?\/[\w./-]+$/ }, ({ importer, path: file }) => {
+						const resolved = path.resolve(path.dirname(importer), `${file}.ts`);
+						return importer.startsWith(SDK_SOURCE) && resolved.startsWith(SDK_SOURCE)
+							? { path: resolved, sideEffects: false }
+							: undefined;
+					});
 				},
 			},
 		],

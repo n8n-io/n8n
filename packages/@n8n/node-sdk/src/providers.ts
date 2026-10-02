@@ -1,15 +1,16 @@
 /**
- * The sub-node contract. A sub-node action supplies one capability (a chat model, a tool) to a
- * root node through an n8n `ai_*` connection. Its `output` is `supplied(kind)`, and `run()`
- * returns the capability. A root action takes a capability as an input field `supplied(kind)`,
- * or a list of them as `arr(supplied(kind))`. The capabilities are provider-neutral, so each
- * provider adapts its own API in its node, and every root node works with every provider.
+ * The provider contract. A provider action gives one capability (a chat model, a tool) to a
+ * root node through an n8n `ai_*` connection. Its `output` is the capability schema, and
+ * `run()` returns the capability. A root action takes a capability as an input field
+ * `provider.input(kind)`, or a list of them as `t.arr(provider.input(kind))`. The capabilities
+ * are provider-neutral, so each service adapts its own API in its node, and every root node
+ * works with every provider.
  */
 import type { AINodeConnectionType } from 'n8n-workflow';
 
 import { isRecord } from '@n8n/utils/is-record';
 
-import { Schema, str, type AnySchema, type JsonSchema, type Shape } from './schema';
+import { Schema, type AnySchema, type JsonSchema, type Shape } from './schema';
 
 /** A tool call that a model asks for. `args` match the input schema of the tool. */
 export interface ToolCall {
@@ -91,38 +92,38 @@ export interface Embeddings {
 	embed(texts: readonly string[]): Promise<ReadonlyArray<readonly number[]>>;
 }
 
-/** The capabilities a sub-node can supply, by kind. */
-export interface Supplies {
+/** The capabilities a provider can give, by kind. */
+export interface ProviderCapabilities {
 	chatModel: ChatModel;
 	memory: Memory;
 	tool: Tool;
 	embeddings: Embeddings;
 }
 
-export type SupplyKind = keyof Supplies;
+export type ProviderKind = keyof ProviderCapabilities;
 
 /** The n8n connection type of each kind, so legacy root and sub-nodes keep their wiring rules. */
-export const SUPPLY_CONNECTIONS = {
+export const PROVIDER_CONNECTIONS = {
 	chatModel: 'ai_languageModel',
 	memory: 'ai_memory',
 	tool: 'ai_tool',
 	embeddings: 'ai_embedding',
-} as const satisfies Record<SupplyKind, AINodeConnectionType>;
+} as const satisfies Record<ProviderKind, AINodeConnectionType>;
 
 /**
  * The input field name of each kind, the slot name of the typed flow SDK. One spelling lets a
- * saved workflow read back as code: the field of a sub-node follows from its connection.
+ * saved workflow read back as code: the field of a provider follows from its connection.
  */
-export const SUPPLY_FIELDS = {
+export const PROVIDER_KIND_FIELDS = {
 	chatModel: 'model',
 	memory: 'memory',
 	tool: 'tools',
 	embeddings: 'embedding',
-} as const satisfies Record<SupplyKind, string>;
+} as const satisfies Record<ProviderKind, string>;
 
 /**
  * The field of each `ai_*` connection type in the `providers` of a derived root node, the slot
- * name of the typed flow SDK. The four supplied kinds use the same names.
+ * name of the typed flow SDK. The four provider kinds use the same names.
  */
 export const PROVIDER_FIELDS = {
 	ai_languageModel: 'model',
@@ -142,72 +143,77 @@ export type ProviderConnection = keyof typeof PROVIDER_FIELDS;
 export const isProviderConnection = (value: unknown): value is ProviderConnection =>
 	typeof value === 'string' && Object.hasOwn(PROVIDER_FIELDS, value);
 
-const SUPPLY_METHODS: Record<SupplyKind, readonly string[]> = {
+const CAPABILITY_METHODS: Record<ProviderKind, readonly string[]> = {
 	chatModel: ['chat'],
 	memory: ['load', 'save'],
 	tool: ['call'],
 	embeddings: ['embed'],
 };
 
-export const isSupplyKind = (value: unknown): value is SupplyKind =>
-	typeof value === 'string' && Object.hasOwn(SUPPLY_CONNECTIONS, value);
+export const isProviderKind = (value: unknown): value is ProviderKind =>
+	typeof value === 'string' && Object.hasOwn(PROVIDER_CONNECTIONS, value);
 
 /**
- * A capability from a sub-node. In `input`, the root node takes it from the sub-node on the
- * matching connection; `arr(supplied(kind))` takes all of them. As `output`, the action is a
- * sub-node, and `run()` returns the capability.
+ * A capability from a provider. In `input`, the root node takes it from the provider on the
+ * matching connection; `t.arr(input(kind))` takes all of them. As `output`, the action is a
+ * provider, and `run()` returns the capability.
  */
-export const supplied = <const K extends SupplyKind>(kind: K) =>
-	new Schema<Supplies[K]>({ 'x-n8n-supply': kind }, false);
+const input = <const K extends ProviderKind>(kind: K) =>
+	new Schema<ProviderCapabilities[K]>({ 'x-n8n-supply': kind }, false);
 
-/** The kind a field takes from sub-nodes, and if it takes a list. */
-export function supplyOf(schema: JsonSchema): { kind: SupplyKind; many: boolean } | undefined {
+/** The kind a field takes from providers, and if it takes a list. */
+export function providerInputOf(
+	schema: JsonSchema,
+): { kind: ProviderKind; many: boolean } | undefined {
 	const own = schema['x-n8n-supply'];
-	if (isSupplyKind(own)) return { kind: own, many: false };
+	if (isProviderKind(own)) return { kind: own, many: false };
 	const item = schema.type === 'array' ? schema.items?.['x-n8n-supply'] : undefined;
-	return isSupplyKind(item) ? { kind: item, many: true } : undefined;
+	return isProviderKind(item) ? { kind: item, many: true } : undefined;
 }
 
-/** A field of `input` that takes a capability from sub-nodes. */
-export interface SupplyField {
+/** A field of `input` that takes a capability from providers. */
+export interface ProviderInputField {
 	readonly name: string;
-	readonly kind: SupplyKind;
+	readonly kind: ProviderKind;
 	readonly many: boolean;
 	/** A list may be empty, and an optional field may be unset. */
 	readonly required: boolean;
 	readonly title?: string;
 }
 
-export const supplyFieldsOf = (input: Shape): SupplyField[] =>
+export const providerInputsOf = (input: Shape): ProviderInputField[] =>
 	Object.entries(input).flatMap(([name, schema]: [string, AnySchema]) => {
-		const supply = supplyOf(schema.json);
+		const supply = providerInputOf(schema.json);
 		if (!supply) return [];
 		const required = !schema.isOptional && (!supply.many || (schema.json.minItems ?? 0) > 0);
 		const { title } = schema.json;
 		return [{ name, ...supply, required, ...(title ? { title } : {}) }];
 	});
 
-/** The kind an action supplies when it is a sub-node. */
-export const suppliedKindOf = (output: JsonSchema): SupplyKind | undefined => {
+/** The kind an action gives when it is a provider. */
+export const providedKindOf = (output: JsonSchema): ProviderKind | undefined => {
 	const kind = output['x-n8n-supply'];
-	return isSupplyKind(kind) ? kind : undefined;
+	return isProviderKind(kind) ? kind : undefined;
 };
 
 /**
- * What an action provides when it is a provider: a supplied kind, or the `ai_*` connection type
+ * What an action provides when it is a provider: a provider kind, or the `ai_*` connection type
  * of a derived provider, which runs as its legacy node.
  */
-export const providedOf = (output: JsonSchema): SupplyKind | ProviderConnection | undefined => {
+export const providedOf = (output: JsonSchema): ProviderKind | ProviderConnection | undefined => {
 	const kind = output['x-n8n-supply'];
-	return isSupplyKind(kind) || isProviderConnection(kind) ? kind : undefined;
+	return isProviderKind(kind) || isProviderConnection(kind) ? kind : undefined;
 };
 
 const TOOL_NAME = /^[A-Za-z0-9_-]{1,64}$/;
 
 /** `value` has the members of a capability of `kind`. */
-export function isSupply<K extends SupplyKind>(kind: K, value: unknown): value is Supplies[K] {
+function isCapability<K extends ProviderKind>(
+	kind: K,
+	value: unknown,
+): value is ProviderCapabilities[K] {
 	if (!isRecord(value)) return false;
-	const methods = SUPPLY_METHODS[kind].every((method) => typeof value[method] === 'function');
+	const methods = CAPABILITY_METHODS[kind].every((method) => typeof value[method] === 'function');
 	if (kind === 'chatModel') return methods && typeof value.model === 'string';
 	if (kind === 'tool') {
 		return (
@@ -221,12 +227,15 @@ export function isSupply<K extends SupplyKind>(kind: K, value: unknown): value i
 	return methods;
 }
 
+/** The provider builders: `provider.input(kind)` for a root input, `provider.is` to check one. */
+export const provider = { input, is: isCapability };
+
 /**
  * The host gives each tool to a root node as a LangChain tool. A LangChain tool with a JSON
  * Schema, as the host makes of a node contract tool, is a `Tool` again. Others stay as they are.
  */
-export function fromLangChainTool(kind: SupplyKind, value: unknown): unknown {
-	if (kind !== 'tool' || isSupply(kind, value) || !isRecord(value)) return value;
+export function fromLangChainTool(kind: ProviderKind, value: unknown): unknown {
+	if (kind !== 'tool' || isCapability(kind, value) || !isRecord(value)) return value;
 	const { name, description, schema, invoke } = value;
 	const isJsonSchema =
 		isRecord(schema) && typeof schema.type === 'string' && typeof schema.safeParse !== 'function';
@@ -246,8 +255,8 @@ export function fromLangChainTool(kind: SupplyKind, value: unknown): unknown {
  * A capability of `kind` that answers each method call with the next of `results`, for
  * fixtures and tests. `data` sets its other members, e.g. the `model` or the `name` of a tool.
  */
-export function replaySupply(
-	kind: SupplyKind,
+export function replayCapability(
+	kind: ProviderKind,
 	data: Readonly<Record<string, unknown>>,
 	results: readonly unknown[],
 ): Record<string, unknown> {
@@ -258,18 +267,9 @@ export function replaySupply(
 	};
 	return {
 		...data,
-		...Object.fromEntries(SUPPLY_METHODS[kind].map((method) => [method, answer])),
+		...Object.fromEntries(CAPABILITY_METHODS[kind].map((method) => [method, answer])),
 	};
 }
-
-/**
- * A model ID of `provider` in the model catalog (models.dev). The typed flow SDK types it by
- * the catalog the build knows, so a workflow cannot name a model that the provider lacks.
- */
-export const modelId = (provider: string) =>
-	str()
-		.with({ 'x-n8n-model-catalog': provider, minLength: 1 })
-		.hint('A model ID from the catalog; never invent one');
 
 const childrenOf = (schema: JsonSchema): JsonSchema[] => [
 	...Object.values(schema.properties ?? {}),
@@ -278,45 +278,45 @@ const childrenOf = (schema: JsonSchema): JsonSchema[] => [
 	...(schema.anyOf ?? []),
 ];
 
-const hasSupply = (schema: JsonSchema): boolean =>
-	schema['x-n8n-supply'] !== undefined || childrenOf(schema).some(hasSupply);
+const takesProvider = (schema: JsonSchema): boolean =>
+	schema['x-n8n-supply'] !== undefined || childrenOf(schema).some(takesProvider);
 
 /**
- * Problems of the sub-node fields of a contract. n8n gives a root node all sub-nodes of one
+ * Problems of the provider fields of a contract. n8n gives a root node all providers of one
  * connection type together, so one field takes each kind.
  */
-export function supplyIssues(
+export function providerIssues(
 	id: string,
 	input: JsonSchema,
 	output: JsonSchema,
 	flow: { readonly cardinality: string },
 ): string[] {
 	const fields = Object.entries(input.properties ?? {}).flatMap(([name, field]) => {
-		const supply = supplyOf(field);
+		const supply = providerInputOf(field);
 		return supply ? [{ name, kind: supply.kind }] : [];
 	});
-	const misnamed = fields.filter(({ name, kind }) => name !== SUPPLY_FIELDS[kind]);
+	const misnamed = fields.filter(({ name, kind }) => name !== PROVIDER_KIND_FIELDS[kind]);
 	const kinds = fields.map(({ kind }) => kind);
 	const repeated = [...new Set(kinds.filter((kind, index) => kinds.indexOf(kind) !== index))];
 	const deep = Object.values(input.properties ?? {}).some(
-		(field) => supplyOf(field) === undefined && hasSupply(field),
+		(field) => providerInputOf(field) === undefined && takesProvider(field),
 	);
 	return [
 		...repeated.map((kind) => {
 			const names = fields.filter((field) => field.kind === kind).map((field) => field.name);
-			return `${id}: input fields ${names.join(', ')} take the same sub-node kind ${kind}`;
+			return `${id}: input fields ${names.join(', ')} take the same provider kind ${kind}`;
 		}),
 		...misnamed.map(
 			({ name, kind }) =>
-				`${id}: input field ${name} takes ${kind}, so its name is ${SUPPLY_FIELDS[kind]}`,
+				`${id}: input field ${name} takes ${kind}, so its name is ${PROVIDER_KIND_FIELDS[kind]}`,
 		),
-		...(deep ? [`${id}: a supplied() input must be a top-level field`] : []),
-		...(childrenOf(output).some(hasSupply) || (suppliedKindOf(output) && output.type)
-			? [`${id}: a sub-node output is supplied(kind) itself`]
+		...(deep ? [`${id}: a provider.input() field must be a top-level field`] : []),
+		...(childrenOf(output).some(takesProvider) || (providedKindOf(output) && output.type)
+			? [`${id}: a provider output is the capability itself`]
 			: []),
-		// n8n runs a sub-node once per call of its root node, so it gives one capability.
-		...(suppliedKindOf(output) && flow.cardinality !== 'per-item'
-			? [`${id}: a sub-node is per-item; define it with subnode()`]
+		// n8n runs a provider once per call of its root node, so it gives one capability.
+		...(providedKindOf(output) && flow.cardinality !== 'per-item'
+			? [`${id}: a provider is per-item; define it with provider()`]
 			: []),
 	];
 }

@@ -1,49 +1,42 @@
 import {
-	arr,
-	bool,
-	credential,
-	credentialType,
 	defineNode,
 	defineResource,
-	int,
 	limitOf,
-	loose,
-	obj,
 	pages,
-	type paging,
 	parse,
-	str,
 	t,
 	type AnySchema,
-	type Loose,
 	type Http,
 	type HttpRequest,
 	type Infer,
+	type Loose,
+	type paging,
 	type Shape,
 } from '@n8n/node-sdk';
+import { credential, defineCredential, field } from '@n8n/node-sdk/credentials';
 
-export const slackToken = credentialType({
+export const slackToken = defineCredential({
 	id: 'slack.token',
 	legacyName: 'slackApi',
 	displayName: 'Slack API',
 	docs: 'slack',
 	fields: {
-		accessToken: t
+		accessToken: field
 			.secret('Access Token')
 			.describe(
 				'In your Slack app, open OAuth & Permissions. Copy the Bot User OAuth Token (xoxb-) or User OAuth Token (xoxp-), depending on the operations you need.',
 			),
-		signatureSecret: t
+		signatureSecret: field
 			.secret('Signature Secret')
 			.optional()
 			.describe(
 				'The signature secret is used to verify the authenticity of requests sent by Slack.',
 			),
 		// n8n sets these when it builds a managed Slack app, e.g. for an Agent.
-		managedAppId: t.hidden('Managed App ID'),
-		teamId: t.hidden('Slack Team ID'),
-		managerCredentialId: t.hidden('Manager Credential ID'),
-		agentId: t.hidden('Agent ID'),
+		managedAppId: field.hidden('Managed App ID'),
+		teamId: field.hidden('Slack Team ID'),
+		managerCredentialId: field.hidden('Manager Credential ID'),
+		agentId: field.hidden('Agent ID'),
 	},
 	baseUrl: 'https://slack.com/api',
 	// `files.slack.com` takes the bytes of a file upload.
@@ -110,7 +103,8 @@ export const slackChannelId = defineResource({
 	},
 });
 
-export const slackTs = str()
+export const slackTs = t
+	.str()
 	.with({ pattern: '^[0-9]+\\.[0-9]+$' })
 	.hint('Message ts as a string, e.g. 1700000000.000100');
 
@@ -123,18 +117,19 @@ export const file = slack.resource('file');
 const ATTRIBUTION =
 	'_Automated with <https://n8n.io/?utm_source=n8n-internal&utm_medium=powered_by&utm_campaign=n8n-nodes-base.slack|n8n>_';
 
-const block = obj({ type: str() }).with({
+const block = t.obj({ type: t.str() }).with({
 	additionalProperties: true,
 	'x-n8n-hint': 'A Block Kit block, e.g. { type: "section", text: { type: "mrkdwn", text } }',
 });
 
 /** The content fields of chat.postMessage and chat.update. */
 export const content = {
-	text: str()
+	text: t
+		.str()
 		.with({ minLength: 1 })
 		.hint('Slack mrkdwn, e.g. *bold* and <https://x.io|link>; the fallback for blocks'),
-	blocks: arr(block).hint('Block Kit layout; text is then the notification text').optional(),
-	appendAttribution: bool().default(true).hint('Adds an "Automated with n8n" line'),
+	blocks: t.arr(block).hint('Block Kit layout; text is then the notification text').optional(),
+	appendAttribution: t.bool().default(true).hint('Adds an "Automated with n8n" line'),
 };
 
 /** Mirrors `getMessageContent`: the line goes into the blocks when there are blocks. */
@@ -152,63 +147,72 @@ export function contentOf(input: {
 // Slack may leave out any field, so the API objects are loose: each field optional and nullable.
 
 /** A message as Slack returns it. Bots, files and threads add fields. */
-export const slackMessage = loose(
-	obj({
-		type: str(),
-		ts: str().hint('Message ID within its channel, e.g. 1700000000.000100'),
-		text: str().optional(),
-		user: str().hint('User ID of the author; absent for bot messages').optional(),
-		bot_id: str().optional(),
-		subtype: str().optional(),
-		thread_ts: str().hint('ts of the thread parent; equals ts on the parent').optional(),
-		reply_count: int().optional(),
-	}).with({ additionalProperties: true }),
+export const slackMessage = t.loose(
+	t
+		.obj({
+			type: t.str(),
+			ts: t.str().hint('Message ID within its channel, e.g. 1700000000.000100'),
+			text: t.str().optional(),
+			user: t.str().hint('User ID of the author; absent for bot messages').optional(),
+			bot_id: t.str().optional(),
+			subtype: t.str().optional(),
+			thread_ts: t.str().hint('ts of the thread parent; equals ts on the parent').optional(),
+			reply_count: t.int().optional(),
+		})
+		.with({ additionalProperties: true }),
 );
 
-const topic = obj({ value: str() }).with({ additionalProperties: true });
+const topic = t.obj({ value: t.str() }).with({ additionalProperties: true });
 
 /** A conversation as Slack returns it. A DM has `user` instead of `name`. */
-export const slackChannel = loose(
-	obj({
-		id: str(),
-		name: str().hint('Without the #; absent for a DM').optional(),
-		is_channel: bool().optional(),
-		is_private: bool().optional(),
-		is_archived: bool().optional(),
-		is_member: bool().hint('The app is in the channel, so it can post and read').optional(),
-		created: int().hint('Epoch seconds').optional(),
-		creator: str().optional(),
-		topic: topic.optional(),
-		purpose: topic.optional(),
-		num_members: int().optional(),
-	}).with({ additionalProperties: true }),
+export const slackChannel = t.loose(
+	t
+		.obj({
+			id: t.str(),
+			name: t.str().hint('Without the #; absent for a DM').optional(),
+			is_channel: t.bool().optional(),
+			is_private: t.bool().optional(),
+			is_archived: t.bool().optional(),
+			is_member: t.bool().hint('The app is in the channel, so it can post and read').optional(),
+			created: t.int().hint('Epoch seconds').optional(),
+			creator: t.str().optional(),
+			topic: topic.optional(),
+			purpose: topic.optional(),
+			num_members: t.int().optional(),
+		})
+		.with({ additionalProperties: true }),
 );
 
 /** A user as users.info returns it. */
-export const slackUser = loose(
-	obj({
-		id: str(),
-		name: str().hint('The handle, without the @'),
-		real_name: str().optional(),
-		deleted: bool().optional(),
-		is_bot: bool().optional(),
-		tz: str().optional(),
-		profile: obj({
-			email: str().hint('Needs the users:read.email scope').optional(),
-			display_name: str().optional(),
-			real_name: str().optional(),
+export const slackUser = t.loose(
+	t
+		.obj({
+			id: t.str(),
+			name: t.str().hint('The handle, without the @'),
+			real_name: t.str().optional(),
+			deleted: t.bool().optional(),
+			is_bot: t.bool().optional(),
+			tz: t.str().optional(),
+			profile: t
+				.obj({
+					email: t.str().hint('Needs the users:read.email scope').optional(),
+					display_name: t.str().optional(),
+					real_name: t.str().optional(),
+				})
+				.with({ additionalProperties: true })
+				.optional(),
 		})
-			.with({ additionalProperties: true })
-			.optional(),
-	}).with({ additionalProperties: true }),
+		.with({ additionalProperties: true }),
 );
 
 /** The status fields of every Slack Web API body. */
-const slackStatus = obj({
-	ok: bool(),
-	error: str().optional(),
-	needed: str().hint('The missing scopes of a missing_scope error').optional(),
-}).with({ additionalProperties: true });
+const slackStatus = t
+	.obj({
+		ok: t.bool(),
+		error: t.str().optional(),
+		needed: t.str().hint('The missing scopes of a missing_scope error').optional(),
+	})
+	.with({ additionalProperties: true });
 
 /** Mirrors `throwOnSlackApiError` in nodes-base Slack/V2/GenericFunctions.ts. */
 function slackErrorOf({ error, needed }: Loose<Infer<typeof slackStatus>>) {
@@ -231,7 +235,7 @@ function slackErrorOf({ error, needed }: Loose<Infer<typeof slackStatus>>) {
 
 /** A Slack body with these fields next to `ok`; Slack adds fields such as `warning`. */
 export const slackResponse = <S extends Shape>(shape: S) =>
-	loose(obj(shape).with({ additionalProperties: true }));
+	t.loose(t.obj(shape).with({ additionalProperties: true }));
 
 /** Slack answers 200 with `ok: false` for most errors, so each body needs this check first. */
 export function okBody<S extends AnySchema>(body: unknown, response: S): Loose<Infer<S>> {
@@ -264,7 +268,8 @@ export async function slackGet<S extends AnySchema>(
 
 /** One page of a cursor list method; Slack sends an empty cursor on the last page. */
 const cursorPage = slackResponse({
-	response_metadata: obj({ next_cursor: str().optional() })
+	response_metadata: t
+		.obj({ next_cursor: t.str().optional() })
 		.with({ additionalProperties: true })
 		.optional(),
 });

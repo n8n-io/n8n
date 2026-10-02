@@ -1,14 +1,15 @@
-import { credential, credentialType, defineNode, t } from '@n8n/node-sdk';
+import { defineNode } from '@n8n/node-sdk';
+import { credential, defineCredential, field } from '@n8n/node-sdk/credentials';
 
 /** The Facebook app. The built-in trigger reads its fields and signs nothing through n8n. */
-export const facebookApp = credentialType({
+export const facebookApp = defineCredential({
 	id: 'facebook.app',
 	legacyName: 'facebookGraphAppApi',
 	displayName: 'Facebook Graph API (App)',
 	docs: 'facebookapp',
 	fields: {
-		accessToken: t.secret('Access Token').optional(),
-		appSecret: t
+		accessToken: field.secret('Access Token').optional(),
+		appSecret: field
 			.secret('App Secret')
 			.optional()
 			.describe(
@@ -19,14 +20,14 @@ export const facebookApp = credentialType({
 });
 
 /** The Facebook app with OAuth2. It extends the legacy type that holds the Graph API scopes. */
-export const facebookAppOAuth2 = credentialType({
+export const facebookAppOAuth2 = defineCredential({
 	id: 'facebookApp.oauth2',
 	legacyName: 'facebookGraphAppOAuth2Api',
 	displayName: 'Facebook Graph (App) OAuth2 API',
 	docs: 'facebookapp',
 	legacyParent: 'facebookGraphApiOAuth2Api',
 	fields: {
-		appSecret: t
+		appSecret: field
 			.secret('App Secret')
 			.optional()
 			.describe(

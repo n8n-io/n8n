@@ -1,4 +1,6 @@
-import { lintContract, toContract, toNodeType, validate, type Action } from '@n8n/node-sdk';
+import { validate, type Action } from '@n8n/node-sdk';
+import { toNodeType } from '@n8n/node-sdk/host';
+import { lintContract, toContract } from '@n8n/node-sdk/registry';
 import { mockHttp, runAction } from '@n8n/node-sdk/testing';
 import type { IExecuteFunctions } from 'n8n-workflow';
 

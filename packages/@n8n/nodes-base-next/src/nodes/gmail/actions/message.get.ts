@@ -1,4 +1,4 @@
-import { str } from '@n8n/node-sdk';
+import { t } from '@n8n/node-sdk';
 
 import { message } from '../gmail.node';
 import { getMessage, labelsOf, simplifiedMessage } from '../message';
@@ -8,7 +8,7 @@ export const getGmailMessage = message.action('get', {
 	action: 'Get a message',
 	summary: 'Get one message by ID.',
 	flow: { effect: 'read', cardinality: 'per-item', idempotent: true },
-	input: { messageId: str().hint('Gmail message ID, e.g. 182b676d244938bd') },
+	input: { messageId: t.str().hint('Gmail message ID, e.g. 182b676d244938bd') },
 	output: simplifiedMessage,
 	async run({ input, http }) {
 		const labels = await labelsOf(http);

@@ -1,32 +1,26 @@
 import {
-	arr,
-	credential,
-	credentialType,
 	defineNode,
 	defineResource,
-	int,
 	isHttpError,
-	loose,
 	matches,
-	obj,
 	parse,
 	ref,
-	str,
 	t,
 	type Http,
 } from '@n8n/node-sdk';
+import { credential, defineCredential, field } from '@n8n/node-sdk/credentials';
 
 // The legacy node pins this Graph API version; Meta serves an expired version as the oldest live one.
 const GRAPH_API = 'https://graph.facebook.com/v13.0';
 
-export const whatsAppToken = credentialType({
+export const whatsAppToken = defineCredential({
 	id: 'whatsApp.token',
 	legacyName: 'whatsAppApi',
 	displayName: 'WhatsApp API',
 	docs: 'whatsapp',
 	fields: {
-		accessToken: t.secret('Access Token'),
-		businessAccountId: t.text('Business Account ID'),
+		accessToken: field.secret('Access Token'),
+		businessAccountId: field.text('Business Account ID'),
 	},
 	baseUrl: GRAPH_API,
 	hosts: ['graph.facebook.com'],
@@ -63,31 +57,40 @@ export const whatsAppPhoneNumber = defineResource({
 export const message = whatsApp.resource('message', {
 	input: {
 		phoneNumberId: ref(whatsAppPhoneNumber),
-		to: str()
+		to: t
+			.str()
 			.with({ pattern: '^\\+?[0-9][0-9 ()-]{4,}$' })
 			.hint('Recipient number with country code, e.g. +4915112345678'),
 	},
 });
 
 /** The send response. The Graph API may leave out a field, so each one is optional and nullable. */
-export const sent = loose(
-	obj({
-		messaging_product: str(),
-		contacts: arr(
-			obj({ input: str(), wa_id: str().hint('WhatsApp ID of the recipient') }).with({
-				additionalProperties: true,
-			}),
-		),
-		messages: arr(
-			obj({ id: str().hint('Message ID, e.g. wamid.HBgM…') }).with({ additionalProperties: true }),
-		),
-	}).with({ additionalProperties: true }),
+export const sent = t.loose(
+	t
+		.obj({
+			messaging_product: t.str(),
+			contacts: t.arr(
+				t.obj({ input: t.str(), wa_id: t.str().hint('WhatsApp ID of the recipient') }).with({
+					additionalProperties: true,
+				}),
+			),
+			messages: t.arr(
+				t
+					.obj({ id: t.str().hint('Message ID, e.g. wamid.HBgM…') })
+					.with({ additionalProperties: true }),
+			),
+		})
+		.with({ additionalProperties: true }),
 );
 
 /** A Graph API error body. */
-const graphError = obj({
-	error: obj({ message: str(), code: int().optional() }).with({ additionalProperties: true }),
-}).with({ additionalProperties: true });
+const graphError = t
+	.obj({
+		error: t
+			.obj({ message: t.str(), code: t.int().optional() })
+			.with({ additionalProperties: true }),
+	})
+	.with({ additionalProperties: true });
 
 /** Meta puts the reason in `error.message`, with a `(#code)` prefix that the legacy node drops. */
 async function post(http: Http, path: `/${string}`, body: unknown) {

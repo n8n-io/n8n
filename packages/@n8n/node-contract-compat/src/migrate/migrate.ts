@@ -1,4 +1,4 @@
-import { AUTHENTICATION } from '@n8n/node-sdk';
+import { AUTHENTICATION } from '@n8n/node-sdk/host';
 import {
 	UnexpectedError,
 	type IExecuteFunctions,

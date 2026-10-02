@@ -1,13 +1,13 @@
-import { bool, str, variant } from '@n8n/node-sdk';
+import { t } from '@n8n/node-sdk';
 
 import { message, sendMessage, sent } from '../whats-app.node';
 
-const media = variant('source', {
-	link: { link: str().with({ format: 'uri' }).hint('Public HTTPS URL that WhatsApp downloads') },
-	id: { id: str().hint('Media ID from an earlier upload to WhatsApp') },
+const media = t.variant('source', {
+	link: { link: t.str().with({ format: 'uri' }).hint('Public HTTPS URL that WhatsApp downloads') },
+	id: { id: t.str().hint('Media ID from an earlier upload to WhatsApp') },
 });
 
-const caption = str().optional();
+const caption = t.str().optional();
 
 export const sendWhatsAppMessage = message.action('send', {
 	action: 'Send a message',
@@ -15,17 +15,19 @@ export const sendWhatsAppMessage = message.action('send', {
 	flow: { effect: 'write', cardinality: 'per-item', idempotent: false },
 	scopes: ['whatsapp_business_messaging'],
 	input: {
-		message: variant('type', {
-			text: {
-				body: str().with({ minLength: 1 }).hint('At most 4096 characters'),
-				previewUrl: bool().default(false).hint('Show a preview of the first URL'),
-			},
-			image: { media, caption },
-			video: { media, caption },
-			audio: { media },
-			document: { media, caption, filename: str().optional() },
-			sticker: { media },
-		}).hint('Outside the 24-hour reply window, use message.sendTemplate'),
+		message: t
+			.variant('type', {
+				text: {
+					body: t.str().with({ minLength: 1 }).hint('At most 4096 characters'),
+					previewUrl: t.bool().default(false).hint('Show a preview of the first URL'),
+				},
+				image: { media, caption },
+				video: { media, caption },
+				audio: { media },
+				document: { media, caption, filename: t.str().optional() },
+				sticker: { media },
+			})
+			.hint('Outside the 24-hour reply window, use message.sendTemplate'),
 	},
 	output: sent,
 	async run({ input, http }) {

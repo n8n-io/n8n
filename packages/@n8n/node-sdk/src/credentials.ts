@@ -18,9 +18,8 @@ import {
 import { isHostPattern, type RunInput } from './define';
 import { allowsHost, credentialHostsOf } from './egress';
 import {
-	obj,
 	Schema,
-	str,
+	t,
 	type AnySchema,
 	type Infer,
 	type JsonSchema,
@@ -37,13 +36,13 @@ declare const secretBrand: unique symbol;
 /** A secret value. Only n8n and `custom` code read it. */
 export type Secret = string & { readonly [secretBrand]: true };
 
-/** The fields of a credential type. Any schema builder also works, e.g. `oneOf(...)` for `when`. */
-export const t = {
+/** The fields of a credential type. Any `t` schema also works, e.g. `t.oneOf(...)` for `when`. */
+export const field = {
 	/** A value only n8n reads when it signs a request, e.g. an API key. The UI masks it. */
 	secret: (title: string) => new Schema<Secret>({ type: 'string', title, writeOnly: true }, false),
-	text: (title: string) => str().with({ title }),
+	text: (title: string) => t.str().with({ title }),
 	/** A server URL, e.g. of a self-hosted instance. */
-	url: (title: string) => str().with({ title, format: 'uri' }),
+	url: (title: string) => t.str().with({ title, format: 'uri' }),
 	/** An options field with a label for each value, e.g. `{ eu: { name: 'Europe' } }`. */
 	options: <const O extends Readonly<Record<string, OptionLabel>>>(title: string, options: O) =>
 		new Schema<keyof O & string>(
@@ -51,13 +50,13 @@ export const t = {
 			false,
 		),
 	/** A value that n8n sets, not the user, e.g. the ID of a managed app. The form hides it. */
-	hidden: (title: string, value = '') => str().default(value).with({ title, readOnly: true }),
+	hidden: (title: string, value = '') => t.str().default(value).with({ title, readOnly: true }),
 	/**
 	 * A hidden field that holds the `baseUrl` of the type, filled from the other fields. Legacy
 	 * nodes that read the URL from the credential data, e.g. `url`, get the same value.
 	 */
 	baseUrl: (title = 'Base URL') =>
-		str().optional().with({ title, readOnly: true, 'x-n8n-base-url': true }),
+		t.str().optional().with({ title, readOnly: true, 'x-n8n-base-url': true }),
 };
 
 /** The decrypted data of a credential type, each default filled in. */
@@ -419,7 +418,7 @@ export interface CredentialType<Name extends string = string, F extends Shape = 
 	readonly semver?: string;
 	readonly displayName: string;
 	readonly documentationUrl?: string;
-	/** The stored fields. `t.secret` fields go only to n8n and to `custom` code. */
+	/** The stored fields. `field.secret` fields go only to n8n and to `custom` code. */
 	readonly fields?: F;
 	readonly scheme: CredentialScheme<F>;
 	/**
@@ -830,17 +829,17 @@ const checked = <T extends AnyCredentialType>(type: T): T => {
  * last resort.
  *
  * @example
- * export const notionToken = credentialType({
+ * export const notionToken = defineCredential({
  *   id: 'notion.token',
  *   legacyName: 'notionApi',
  *   displayName: 'Notion API',
- *   fields: { apiKey: t.secret('Internal Integration Secret') },
+ *   fields: { apiKey: field.secret('Internal Integration Secret') },
  *   baseUrl: 'https://api.notion.com/v1',
  *   auth: (a) => a.bearer('apiKey'),
  *   test: { get: '/users/me' },
  * });
  */
-export function credentialType<
+export function defineCredential<
 	const Id extends `${string}.${string}`,
 	const F extends Shape = NoFields,
 	const Name extends string = Id,
@@ -942,7 +941,7 @@ export function compat<
 }
 
 const dataSchemaOf = (type: AnyCredentialType): JsonSchema => ({
-	...obj(type.fields ?? {}).json,
+	...t.obj(type.fields ?? {}).json,
 	// Stored data also holds hidden fields and OAuth tokens.
 	additionalProperties: true,
 });

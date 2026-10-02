@@ -1,25 +1,7 @@
-import {
-	arr,
-	declared,
-	defineNode,
-	generateNodeModule,
-	generatedTriggersOf,
-	json,
-	loose,
-	obj,
-	oneOf,
-	parse,
-	replyContractOf,
-	str,
-	int,
-	passedItem,
-	toContract,
-	toNodeType,
-	toTriggerNodeType,
-	variant,
-	type NativeTrigger,
-	type Trigger,
-} from '../index';
+import { generatedTriggersOf, generateNodeModule } from '../entry/codegen';
+import { toNodeType, toTriggerNodeType } from '../entry/host';
+import { replyContractOf, toContract } from '../entry/registry';
+import { defineNode, parse, t, type NativeTrigger, type Trigger } from '../index';
 
 const hooks = defineNode({ id: 'hooks', displayName: 'Hooks' });
 
@@ -27,11 +9,11 @@ const call = hooks.trigger('trigger', {
 	trigger: 'On call',
 	summary: 'Starts on a call.',
 	input: {
-		path: str(),
-		responseMode: oneOf('onReceived', 'responseNode').default('onReceived'),
-		fields: arr(variant('kind', { text: { label: str() }, ['number']: { label: str() } })),
+		path: t.str(),
+		responseMode: t.oneOf('onReceived', 'responseNode').default('onReceived'),
+		fields: t.arr(t.variant('kind', { text: { label: t.str() }, ['number']: { label: t.str() } })),
 	},
-	output: obj({ query: json(), body: declared().hint('Its JSON Schema types it') }).with({
+	output: t.obj({ query: t.json(), body: t.declared().hint('Its JSON Schema types it') }).with({
 		'x-n8n-entry-fields': {
 			list: ['fields'],
 			key: ['label'],
@@ -45,7 +27,7 @@ const call = hooks.trigger('trigger', {
 		operation: 'respond',
 		action: 'Respond',
 		summary: 'Sends the reply.',
-		input: { text: str() },
+		input: { text: t.str() },
 		native: { type: 'n8n-nodes-base.reply', version: 1.5 },
 		awaits: { field: 'responseMode', value: 'responseNode' },
 	},
@@ -75,14 +57,14 @@ describe('native triggers', () => {
 			summary: 'Emits batches.',
 			flow: { effect: 'transform', cardinality: 'batch' },
 			outputs: ['done', 'loop'],
-			input: { batchSize: int() },
-			output: passedItem(),
+			input: { batchSize: t.int() },
+			output: t.passedItem(),
 			native: { type: 'n8n-nodes-base.splitInBatches', version: 3 },
 		});
 		expect(toContract(batches)).toMatchObject({
 			id: 'hooks.batches',
 			outputs: ['done', 'loop'],
-			output: passedItem().json,
+			output: t.passedItem().json,
 		});
 		expect(() => toNodeType(batches)).toThrow(
 			'hooks.batches runs as the built-in node n8n-nodes-base.splitInBatches',
@@ -98,18 +80,18 @@ describe('native triggers', () => {
 			summary: 'Sends the reply.',
 			flow: { effect: 'write', cardinality: 'per-item', passthrough: 'replace' },
 			credentials: [],
-			input: obj({ text: str() }).json,
+			input: t.obj({ text: t.str() }).json,
 			output: { type: 'object', additionalProperties: true, 'x-n8n-passed': true },
 		});
 	});
 
 	it('take a variant as the reply input, flat as the reply node keeps it', () => {
-		const respondWith = variant('respondWith', { text: { body: str() }, noData: {} });
+		const respondWith = t.variant('respondWith', { text: { body: t.str() }, noData: {} });
 		const replied = hooks.trigger('replied', {
 			trigger: 'On call',
 			summary: 'Starts on a call.',
-			input: { responseMode: str() },
-			output: obj({}),
+			input: { responseMode: t.str() },
+			output: t.obj({}),
 			native: { type: 'n8n-nodes-base.hook', version: 1, on: 'webhook' },
 			reply: {
 				operation: 'answer',
@@ -173,10 +155,10 @@ describe('native triggers', () => {
 			trigger: 'On item',
 			summary: 'Starts on a new item.',
 			input: {},
-			output: obj({ id: str() }),
+			output: t.obj({ id: t.str() }),
 			poll: {
 				request: () => ({ path: '/items' }),
-				response: arr(obj({ id: int() })),
+				response: t.arr(t.obj({ id: t.int() })),
 				items: (page) => page,
 				cursor: { id: () => 1 },
 			},
@@ -192,7 +174,7 @@ describe('native triggers', () => {
 	});
 
 	it('require emit for a webhook whose output is not the request', () => {
-		const request = obj({ body: json(), headers: json(), query: json() });
+		const request = t.obj({ body: t.json(), headers: t.json(), query: t.json() });
 		hooks.trigger('raw', {
 			trigger: 'On call',
 			summary: 'Starts on a call.',
@@ -204,14 +186,14 @@ describe('native triggers', () => {
 			trigger: 'On call',
 			summary: 'Starts on a call.',
 			input: {},
-			output: loose(obj({ id: str() })),
-			webhook: { emit: ({ body }) => [parse(obj({ id: str() }), body)] },
+			output: t.loose(t.obj({ id: t.str() })),
+			webhook: { emit: ({ body }) => [parse(t.obj({ id: t.str() }), body)] },
 		});
 		hooks.trigger('unmapped', {
 			trigger: 'On call',
 			summary: 'Starts on a call.',
 			input: {},
-			output: obj({ id: str() }),
+			output: t.obj({ id: t.str() }),
 			// @ts-expect-error without emit the item is the request, which has no id
 			webhook: {},
 		});
@@ -221,8 +203,8 @@ describe('native triggers', () => {
 		hooks.trigger('typo', {
 			trigger: 'On call',
 			summary: 'Starts on a call.',
-			input: { responseMode: str() },
-			output: obj({}),
+			input: { responseMode: t.str() },
+			output: t.obj({}),
 			native: { type: 'n8n-nodes-base.hook', version: 1, on: 'webhook' },
 			reply: {
 				operation: 'respond',

@@ -108,7 +108,7 @@ export type {
 	Step,
 	Provider,
 	Providers,
-	SupplyKind,
+	ProviderKind,
 	SwitchParts,
 	ToolConfig,
 	Trigger,

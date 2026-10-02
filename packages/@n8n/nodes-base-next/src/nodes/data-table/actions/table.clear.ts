@@ -1,4 +1,4 @@
-import { int, obj, str } from '@n8n/node-sdk';
+import { t } from '@n8n/node-sdk';
 
 import { table, tableRef } from '../data-table.node';
 
@@ -8,7 +8,7 @@ export const clearTable = table.action('clear', {
 	flow: { effect: 'write', cardinality: 'per-item' },
 	imports: ['dataTables'],
 	input: { table: tableRef },
-	output: obj({ id: str(), deletedRows: int() }),
+	output: t.obj({ id: t.str(), deletedRows: t.int() }),
 	async run({ input, dataTables }) {
 		const opened = await dataTables.open(input.table);
 		return { id: opened.id, deletedRows: await opened.clear() };

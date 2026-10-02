@@ -55,7 +55,7 @@ export async function loadNewProject(dir: string): Promise<NewProject> {
 	const loaded: unknown = await import(pathToFileURL(path.join(dir, 'src/index.ts')).href);
 	const exports = isRecord(loaded) ? loaded : {};
 	const node = isRecord(exports.node) ? exports.node : {};
-	const resolved = createRequire(path.join(dir, 'package.json')).resolve('@n8n/node-sdk');
+	const resolved = createRequire(path.join(dir, 'package.json')).resolve('@n8n/node-sdk/host');
 	const sdk: unknown = await import(pathToFileURL(resolved).href);
 	const project = isRecord(sdk) ? sdk.toCredentialType : undefined;
 	const types = isRecord(node.credential) ? records(node.credential.types) : [];

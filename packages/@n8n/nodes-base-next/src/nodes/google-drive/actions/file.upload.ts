@@ -1,11 +1,13 @@
-import { binary, obj, parse, str } from '@n8n/node-sdk';
+import { parse, t } from '@n8n/node-sdk';
 
 import { driveFile, driveIdOf, file, FILE_FIELDS } from '../google-drive.node';
 
 /** The session response: its `location` header is the upload URL. */
-const uploadSession = obj({
-	headers: obj({ location: str() }).with({ additionalProperties: true }),
-}).with({ additionalProperties: true });
+const uploadSession = t
+	.obj({
+		headers: t.obj({ location: t.str() }).with({ additionalProperties: true }),
+	})
+	.with({ additionalProperties: true });
 
 /**
  * The upload response is open: the file exists when it arrives, so an extra field must not
@@ -18,9 +20,9 @@ export const uploadFile = file.action('upload', {
 	summary: 'Upload a file to Google Drive. The bytes stream from n8n binary storage.',
 	flow: { effect: 'write', cardinality: 'per-item', idempotent: false },
 	input: {
-		file: binary().hint('The file to upload, e.g. (item) => item.binary.data'),
-		name: str().hint('The name in Drive; the file name of the binary when not set').optional(),
-		folderId: str().default('root').hint('Folder or shared drive ID or URL; root is My Drive'),
+		file: t.binary().hint('The file to upload, e.g. (item) => item.binary.data'),
+		name: t.str().hint('The name in Drive; the file name of the binary when not set').optional(),
+		folderId: t.str().default('root').hint('Folder or shared drive ID or URL; root is My Drive'),
 	},
 	output: driveFile,
 	async run({ input, http }) {

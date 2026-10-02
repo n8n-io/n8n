@@ -1,20 +1,21 @@
-import { arr, passedItem, str, variant, type InputItem } from '@n8n/node-sdk';
+import { t, type InputItem } from '@n8n/node-sdk';
 
 import { core } from '../core.node';
 import { canonical, getPath, pathOf, unsetPath } from '../path';
 
-const fields = { fields: arr(str().with({ minLength: 1 })).with({ minItems: 1 }) };
+const fields = { fields: t.arr(t.str().with({ minLength: 1 })).with({ minItems: 1 }) };
 
 export const removeDuplicates = core.action('removeDuplicates', {
 	action: 'Remove duplicate items',
 	summary: 'Keep the first item of each set of equal items. Items pass on unchanged.',
 	flow: { effect: 'transform', cardinality: 'batch' },
 	input: {
-		compare: variant('mode', { all: {}, allExcept: fields, selected: fields })
+		compare: t
+			.variant('mode', { all: {}, allExcept: fields, selected: fields })
 			.default({ mode: 'all' })
 			.hint('The fields that make two items equal'),
 	},
-	output: passedItem(),
+	output: t.passedItem(),
 	run({ input, items }) {
 		const { compare } = input;
 		const paths = compare.mode === 'all' ? [] : compare.fields.map(pathOf);

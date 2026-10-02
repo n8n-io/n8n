@@ -1,17 +1,4 @@
-import {
-	arr,
-	int,
-	json,
-	modelId,
-	nullable,
-	num,
-	obj,
-	parse,
-	str,
-	type ChatMessage,
-	type ChatRequest,
-	type JsonSchema,
-} from '@n8n/node-sdk';
+import { parse, t, type ChatMessage, type ChatRequest, type JsonSchema } from '@n8n/node-sdk';
 
 import { anthropic } from '../anthropic.node';
 
@@ -71,19 +58,23 @@ const messagesOf = (messages: readonly ChatMessage[]) =>
 // Anthropic adds block types and fields over time, so the schema checks what `chat` reads.
 const open: JsonSchema = { additionalProperties: true };
 
-const messageSchema = obj({
-	content: arr(
-		obj({
-			type: str(),
-			text: str().optional(),
-			id: str().optional(),
-			name: str().optional(),
-			input: json().optional(),
-		}).with(open),
-	),
-	stop_reason: nullable(str()).optional(),
-	usage: obj({ input_tokens: int(), output_tokens: int() }).with(open).optional(),
-}).with(open);
+const messageSchema = t
+	.obj({
+		content: t.arr(
+			t
+				.obj({
+					type: t.str(),
+					text: t.str().optional(),
+					id: t.str().optional(),
+					name: t.str().optional(),
+					input: t.json().optional(),
+				})
+				.with(open),
+		),
+		stop_reason: t.nullable(t.str()).optional(),
+		usage: t.obj({ input_tokens: t.int(), output_tokens: t.int() }).with(open).optional(),
+	})
+	.with(open);
 
 const REASONS: Readonly<Record<string, string>> = {
 	end_turn: 'stop',
@@ -92,21 +83,22 @@ const REASONS: Readonly<Record<string, string>> = {
 	tool_use: 'tool_calls',
 };
 
-export const anthropicChatModel = anthropic.subnode('chatModel', {
+export const anthropicChatModel = anthropic.provider('chatModel', {
 	action: 'Anthropic Chat Model',
 	summary: 'An Anthropic Claude chat model for an AI node, e.g. ai.prompt or ai.agent.',
-	supplies: 'chatModel',
+	provides: 'chatModel',
 	input: {
-		model: modelId('anthropic'),
-		maxTokens: int()
+		model: t.modelId('anthropic'),
+		maxTokens: t
+			.int()
 			.with({ minimum: 1 })
 			.default(DEFAULT_MAX_TOKENS)
 			.hint('Most tokens in one reply'),
-		temperature: num().with({ minimum: 0, maximum: 1 }).optional(),
-		topP: num().with({ minimum: 0, maximum: 1 }).optional(),
-		topK: int().with({ minimum: 1 }).optional(),
+		temperature: t.num().with({ minimum: 0, maximum: 1 }).optional(),
+		topP: t.num().with({ minimum: 0, maximum: 1 }).optional(),
+		topK: t.int().with({ minimum: 1 }).optional(),
 	},
-	async supply({ input, http }) {
+	async provide({ input, http }) {
 		const { model } = input;
 		return {
 			model,

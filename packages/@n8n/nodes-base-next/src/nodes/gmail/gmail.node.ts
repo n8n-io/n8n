@@ -1,4 +1,5 @@
-import { credential, defineNode } from '@n8n/node-sdk';
+import { defineNode } from '@n8n/node-sdk';
+import { credential } from '@n8n/node-sdk/credentials';
 
 import { googleOAuth2 } from '../google-oauth2';
 

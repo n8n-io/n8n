@@ -1,4 +1,4 @@
-import { obj, validate, type JsonSchema } from '@n8n/node-sdk';
+import { t, validate, type JsonSchema } from '@n8n/node-sdk';
 import { GoogleSheetsTrigger } from 'n8n-nodes-base/dist/nodes/Google/Sheet/GoogleSheetsTrigger.node';
 import {
 	arrayOfArraysToJson,
@@ -58,7 +58,7 @@ function legacyOptions(name: string, properties = description.properties): unkno
 	);
 }
 
-const input = obj(sheetRowsChanged.input).json;
+const input = t.obj(sheetRowsChanged.input).json;
 const enumAt = (schema: JsonSchema | undefined) => schema?.enum ?? [];
 const document = {
 	__rl: true,

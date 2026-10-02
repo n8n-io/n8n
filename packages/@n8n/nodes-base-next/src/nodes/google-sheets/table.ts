@@ -1,13 +1,4 @@
-import {
-	int,
-	isRecord,
-	json,
-	obj,
-	oneOf,
-	type Http,
-	type Infer,
-	type JsonSchema,
-} from '@n8n/node-sdk';
+import { isRecord, t, type Http, type Infer, type JsonSchema } from '@n8n/node-sdk';
 
 import type { sheetInput } from './google-sheets.node';
 
@@ -22,18 +13,20 @@ export const columnKey = (cell: unknown) => {
 	return text === ROW_NUMBER ? USER_ROW_NUMBER : text;
 };
 
-export const cellFormat = oneOf('USER_ENTERED', 'RAW').default('USER_ENTERED');
+export const cellFormat = t.oneOf('USER_ENTERED', 'RAW').default('USER_ENTERED');
 
-export const rowValues = json().hint('Header text -> value; a key not in the header adds a column');
+export const rowValues = t
+	.json()
+	.hint('Header text -> value; a key not in the header adds a column');
 
 /** A row as the read operation emits it. */
-export const sheetRow = obj({ [ROW_NUMBER]: int().hint('Sheet row of this item') }).with({
+export const sheetRow = t.obj({ [ROW_NUMBER]: t.int().hint('Sheet row of this item') }).with({
 	additionalProperties: true,
 	'x-n8n-hint': 'Keys are the header cell texts, exactly as written',
 });
 
 /** The values a write operation sent, as the legacy node emits them in mapping mode. */
-export const writtenRow = json().hint('The values sent, keyed by header text');
+export const writtenRow = t.json().hint('The values sent, keyed by header text');
 
 /** Write operations emit the keys of `values`, so those keys are known at build time. */
 export function deriveWritten({ values }: { values: unknown }): JsonSchema {

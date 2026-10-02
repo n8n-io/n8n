@@ -1,4 +1,5 @@
-import { credentialType, t, toCredentialType, type AnyCredentialType } from '@n8n/node-sdk';
+import { defineCredential, field, type AnyCredentialType } from '@n8n/node-sdk/credentials';
+import { toCredentialType } from '@n8n/node-sdk/host';
 import { DatadogApi } from 'n8n-nodes-base/dist/credentials/DatadogApi.credentials';
 import { FacebookGraphApi } from 'n8n-nodes-base/dist/credentials/FacebookGraphApi.credentials';
 import { FacebookGraphApiOAuth2Api } from 'n8n-nodes-base/dist/credentials/FacebookGraphApiOAuth2Api.credentials';
@@ -70,33 +71,33 @@ const MinimaxApi = langchain('MinimaxApi');
 const AnthropicApi = langchain('AnthropicApi');
 
 // Shape proofs: these three types are not ported, so they live here and not in a node folder.
-const zendeskToken = credentialType({
+const zendeskToken = defineCredential({
 	id: 'zendesk.token',
 	legacyName: 'zendeskApi',
 	displayName: 'Zendesk API',
 	docs: 'zendesk',
 	fields: {
-		subdomain: t
+		subdomain: field
 			.text('Subdomain')
 			.describe('The subdomain of your Zendesk work environment')
 			.with({ examples: ['company'] }),
-		email: t.text('Email').with({ examples: ['name@email.com'] }),
-		apiToken: t.secret('API Token'),
+		email: field.text('Email').with({ examples: ['name@email.com'] }),
+		apiToken: field.secret('API Token'),
 	},
 	baseUrl: 'https://{subdomain}.zendesk.com/api/v2',
 	auth: (a) => a.basic('{email}/token', '{apiToken}'),
 	test: { get: '/ticket_fields.json' },
 });
 
-const datadogApiKey = credentialType({
+const datadogApiKey = defineCredential({
 	id: 'datadog.apiKey',
 	legacyName: 'datadogApi',
 	displayName: 'Datadog API',
 	docs: 'datadog',
 	fields: {
-		url: t.url('URL').default('https://api.datadoghq.com'),
-		apiKey: t.secret('API Key'),
-		appKey: t
+		url: field.url('URL').default('https://api.datadoghq.com'),
+		apiKey: field.secret('API Key'),
+		appKey: field
 			.secret('APP Key')
 			.optional()
 			.describe('For some endpoints, you also need an Application key.'),
@@ -106,15 +107,15 @@ const datadogApiKey = credentialType({
 	test: { get: '/api/v1/validate' },
 });
 
-const trelloApiKey = credentialType({
+const trelloApiKey = defineCredential({
 	id: 'trello.apiKey',
 	legacyName: 'trelloApi',
 	displayName: 'Trello API',
 	docs: 'trello',
 	fields: {
-		apiKey: t.secret('API Key'),
-		apiToken: t.secret('API Token'),
-		oauthSecret: t
+		apiKey: field.secret('API Key'),
+		apiToken: field.secret('API Token'),
+		oauthSecret: field
 			.secret('OAuth Secret')
 			.optional()
 			.describe(
@@ -127,12 +128,16 @@ const trelloApiKey = credentialType({
 });
 
 // The exchange port: no ported node uses an exchange type yet, so it lives here.
-const metabaseSession = credentialType({
+const metabaseSession = defineCredential({
 	id: 'metabase.session',
 	legacyName: 'metabaseApi',
 	displayName: 'Metabase API',
 	docs: 'metabase',
-	fields: { url: t.url('URL'), username: t.text('Username'), password: t.secret('Password') },
+	fields: {
+		url: field.url('URL'),
+		username: field.text('Username'),
+		password: field.secret('Password'),
+	},
 	baseUrl: '{url}',
 	auth: (a) =>
 		a.exchange({

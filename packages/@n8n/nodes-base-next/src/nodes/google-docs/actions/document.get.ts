@@ -1,4 +1,4 @@
-import { obj, parse, ref, str, type Infer, type Loose } from '@n8n/node-sdk';
+import { parse, ref, t, type Infer, type Loose } from '@n8n/node-sdk';
 
 import {
 	document,
@@ -20,10 +20,10 @@ export const getDocument = document.action('get', {
 	summary: 'Read the text of a Google Doc.',
 	flow: { effect: 'read', cardinality: 'per-item', idempotent: true },
 	input: { document: ref(googleDocument) },
-	output: obj({
-		documentId: str(),
-		title: str(),
-		content: str().hint('Plain text of the body paragraphs; tables are left out'),
+	output: t.obj({
+		documentId: t.str(),
+		title: t.str(),
+		content: t.str().hint('Plain text of the body paragraphs; tables are left out'),
 	}),
 	async run({ input, http }) {
 		const documentId = documentIdOf(input.document);

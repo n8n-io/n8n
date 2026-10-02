@@ -1,4 +1,4 @@
-import { arr, bool, json, obj, str, variant } from '@n8n/node-sdk';
+import { t } from '@n8n/node-sdk';
 
 import { core } from '../core.node';
 import { getPath, pathOf, setPath } from '../path';
@@ -9,24 +9,27 @@ export const aggregateItems = core.action('aggregate', {
 	summary: 'Combine all items into one item: lists of field values, or the list of all items.',
 	flow: { effect: 'transform', cardinality: 'batch' },
 	input: {
-		aggregate: variant('mode', {
+		aggregate: t.variant('mode', {
 			fields: {
-				fields: arr(
-					obj({
-						field: str().with({ minLength: 1 }),
-						as: str()
-							.with({ minLength: 1 })
-							.optional()
-							.hint('Output field; default: last path part'),
-					}),
-				).with({ minItems: 1 }),
-				keepMissing: bool().default(false).hint('Keep null and missing values'),
-				mergeLists: bool().default(false).hint('Put the entries of list values in one list'),
+				fields: t
+					.arr(
+						t.obj({
+							field: t.str().with({ minLength: 1 }),
+							as: t
+								.str()
+								.with({ minLength: 1 })
+								.optional()
+								.hint('Output field; default: last path part'),
+						}),
+					)
+					.with({ minItems: 1 }),
+				keepMissing: t.bool().default(false).hint('Keep null and missing values'),
+				mergeLists: t.bool().default(false).hint('Put the entries of list values in one list'),
 			},
-			items: { into: str().with({ minLength: 1 }).default('data') },
+			items: { into: t.str().with({ minLength: 1 }).default('data') },
 		}),
 	},
-	output: json(),
+	output: t.json(),
 	run({ input, items }) {
 		const { aggregate } = input;
 		if (aggregate.mode === 'items') {

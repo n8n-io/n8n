@@ -5,7 +5,11 @@ import { get as witLimits } from 'n8n:node-contract/limits@2.5.0';
 
 import type { Binaries, Http, HttpRequest } from '../src/define';
 import type { Binary } from '../src/schema';
-import { isSupply, suppliedKindOf, type Supplies } from '../src/subnodes';
+import {
+	providedKindOf,
+	provider as sdkProvider,
+	type ProviderCapabilities,
+} from '../src/providers';
 import {
 	actionOf,
 	chatRequestOf,
@@ -32,7 +36,7 @@ async function result<T>(run: () => Promise<T>): Promise<T> {
 }
 
 class ChatModel {
-	constructor(private readonly supplied: Supplies['chatModel']) {}
+	constructor(private readonly supplied: ProviderCapabilities['chatModel']) {}
 
 	model() {
 		return this.supplied.model;
@@ -44,7 +48,7 @@ class ChatModel {
 }
 
 class Memory {
-	constructor(private readonly supplied: Supplies['memory']) {}
+	constructor(private readonly supplied: ProviderCapabilities['memory']) {}
 
 	async load() {
 		return await result(async () => (await this.supplied.load()).map(witMessageOf));
@@ -56,7 +60,7 @@ class Memory {
 }
 
 class Tool {
-	constructor(private readonly supplied: Supplies['tool']) {}
+	constructor(private readonly supplied: ProviderCapabilities['tool']) {}
 
 	name() {
 		return this.supplied.name;
@@ -78,7 +82,7 @@ class Tool {
 }
 
 class Embeddings {
-	constructor(private readonly supplied: Supplies['embeddings']) {}
+	constructor(private readonly supplied: ProviderCapabilities['embeddings']) {}
 
 	async embed(texts: string[]) {
 		return await result(async () =>
@@ -108,16 +112,16 @@ const binary: Binaries = { create: async () => noBinary() };
 
 /** The capability of the manifest kind, as the WIT variant. */
 function capabilityOf(id: string, value: unknown) {
-	const kind = suppliedKindOf(actionOf().output.json);
-	if (kind === 'chatModel' && isSupply(kind, value)) {
+	const kind = providedKindOf(actionOf().output.json);
+	if (kind === 'chatModel' && sdkProvider.is(kind, value)) {
 		return { tag: 'chat-model', val: new ChatModel(value) } as const;
 	}
-	if (kind === 'memory' && isSupply(kind, value)) {
+	if (kind === 'memory' && sdkProvider.is(kind, value)) {
 		return { tag: 'memory', val: new Memory(value) } as const;
 	}
-	if (kind === 'tool' && isSupply(kind, value))
+	if (kind === 'tool' && sdkProvider.is(kind, value))
 		return { tag: 'tool', val: new Tool(value) } as const;
-	if (kind === 'embeddings' && isSupply(kind, value)) {
+	if (kind === 'embeddings' && sdkProvider.is(kind, value)) {
 		return { tag: 'embeddings', val: new Embeddings(value) } as const;
 	}
 	throw new Error(`${id} supplies ${kind ?? 'nothing'}, and its run() gave something else`);

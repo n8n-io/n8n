@@ -1,12 +1,6 @@
 import {
-	arr,
 	isRecord,
-	json,
-	jsonValue,
-	lit,
-	obj,
-	record,
-	str,
+	t,
 	validate,
 	type ChatMessage,
 	type ChatModel,
@@ -23,21 +17,22 @@ export const promptMessages = (system: string | undefined, prompt: string): Chat
 /** A JSON Schema object that types the reply. The build reads it, so it is a literal. */
 const literal: JsonSchema = { 'x-n8n-literal': true };
 
-export const replySchema = obj({
-	type: lit('object'),
-	properties: record(json().with(literal)),
-	required: arr(str().with(literal)).optional(),
-})
+export const replySchema = t
+	.obj({
+		type: t.lit('object'),
+		properties: t.record(t.json().with(literal)),
+		required: t.arr(t.str().with(literal)).optional(),
+	})
 	.with({ additionalProperties: true, 'x-n8n-literal': true })
 	.optional()
 	.hint('JSON Schema of the reply object; the output field gets its type');
 
-const text = str().hint('The reply text');
+const text = t.str().hint('The reply text');
 
 /** `{ text }`, and `output` when the input has a schema. `deriveOutput` types `output`. */
-export const replyOutput = obj({
+export const replyOutput = t.obj({
 	text,
-	output: jsonValue().optional().hint('The reply parsed by schema'),
+	output: t.jsonValue().optional().hint('The reply parsed by schema'),
 });
 
 /** A user schema: the contract checks its top-level shape, the reply check reads the rest. */
@@ -45,7 +40,7 @@ export const isJsonSchema = (value: unknown): value is JsonSchema =>
 	isRecord(value) && (value.type === undefined || typeof value.type === 'string');
 
 export function replyOutputOf(schema: unknown): JsonSchema {
-	const base = obj({ text }).json;
+	const base = t.obj({ text }).json;
 	if (!isJsonSchema(schema)) return base;
 	return {
 		...base,

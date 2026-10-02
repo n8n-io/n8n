@@ -1,4 +1,4 @@
-import { bool, obj, str } from '@n8n/node-sdk';
+import { t } from '@n8n/node-sdk';
 
 import { table, tableRef } from '../data-table.node';
 
@@ -8,7 +8,7 @@ export const deleteTable = table.action('delete', {
 	flow: { effect: 'write', cardinality: 'per-item' },
 	imports: ['dataTables'],
 	input: { table: tableRef },
-	output: obj({ id: str(), deleted: bool() }),
+	output: t.obj({ id: t.str(), deleted: t.bool() }),
 	async run({ input, dataTables }) {
 		const opened = await dataTables.open(input.table);
 		return { id: opened.id, deleted: await opened.drop() };

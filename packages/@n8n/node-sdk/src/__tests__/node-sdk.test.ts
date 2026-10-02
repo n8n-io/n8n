@@ -1,29 +1,14 @@
 import { NodeApiError, type IExecuteFunctions, type INode, type JsonObject } from 'n8n-workflow';
 
+import { generateNodeModule } from '../entry/codegen';
+import { compat, credential } from '../entry/credentials';
+import { exampleOf, toNodeType } from '../entry/host';
+import { actionFileOf, lintContract, toContract } from '../entry/registry';
 import {
-	actionFileOf,
-	arr,
-	bool,
-	compat,
-	credential,
 	defineNode,
-	exampleOf,
-	generateNodeModule,
 	isHttpError,
-	json,
-	lintContract,
-	loose,
-	nullable,
-	num,
-	obj,
-	oneOf,
-	pageValue,
-	str,
-	toContract,
-	toNodeType,
-	union,
+	t,
 	validate,
-	variant,
 	type Action,
 	type AnySchema,
 	type Infer,
@@ -38,17 +23,17 @@ const todo = defineNode({
 	baseUrl: 'https://todo.test',
 });
 
-const task = todo.resource('task', { input: { project: str().hint('Project ID') } });
+const task = todo.resource('task', { input: { project: t.str().hint('Project ID') } });
 
 const listTasks = task.action('getAll', {
 	action: 'Get many tasks',
 	summary: 'List tasks in a project.',
 	flow: { effect: 'read', cardinality: '1:N', idempotent: true },
 	input: {
-		paging: variant('mode', { all: {}, limit: { max: num().default(50) } }),
-		status: oneOf('open', 'done').optional(),
+		paging: t.variant('mode', { all: {}, limit: { max: t.num().default(50) } }),
+		status: t.oneOf('open', 'done').optional(),
 	},
-	output: obj({ id: str(), title: str(), tags: arr(str()) }),
+	output: t.obj({ id: t.str(), title: t.str(), tags: t.arr(t.str()) }),
 	async *run({ input, http }) {
 		const max = input.paging.mode === 'limit' ? input.paging.max : undefined;
 		const body = await http.request({ path: `/projects/${input.project}/tasks`, query: { max } });
@@ -63,7 +48,7 @@ describe('node builders', () => {
 			summary: 'Check the API.',
 			flow: { effect: 'read', cardinality: 'per-item' },
 			input: {},
-			output: obj({ ok: str() }),
+			output: t.obj({ ok: t.str() }),
 			async run() {
 				return { ok: 'yes' };
 			},
@@ -81,7 +66,7 @@ describe('node builders', () => {
 	});
 
 	it('types the run() result from flow.cardinality', () => {
-		const output = obj({ id: str() });
+		const output = t.obj({ id: t.str() });
 		const perItem = { action: 'A', summary: 'S.', input: {}, output } as const;
 		const probes = [
 			task.action('get', {
@@ -138,7 +123,7 @@ describe('node builders', () => {
 describe('schema builders', () => {
 	it('infer variant, optional, and default fields', () => {
 		type Paging = Infer<ReturnType<typeof pagingSchema>>;
-		const pagingSchema = () => variant('mode', { all: {}, limit: { max: num().default(50) } });
+		const pagingSchema = () => t.variant('mode', { all: {}, limit: { max: t.num().default(50) } });
 		const all: Paging = { mode: 'all' };
 		const limited: Paging = { mode: 'limit' };
 		// @ts-expect-error `max` belongs to the limit branch only
@@ -147,21 +132,21 @@ describe('schema builders', () => {
 	});
 
 	it('types a default field as set in run() and as optional for callers', () => {
-		const input = { limit: num().default(50).hint('At most 100'), query: str().optional() };
+		const input = { limit: t.num().default(50).hint('At most 100'), query: t.str().optional() };
 		const inRun: RunInput<typeof input> = { limit: 5 };
 		const limit: number = inRun.limit;
 		// @ts-expect-error run() gets every default field
 		const withoutDefault: RunInput<typeof input> = {};
-		const fromCaller: Infer<ReturnType<typeof obj<typeof input>>> = {};
+		const fromCaller: Infer<ReturnType<typeof t.obj<typeof input>>> = {};
 		expect([limit, withoutDefault, fromCaller]).toEqual([5, {}, {}]);
 	});
 
 	it('types a nested default as set in run() at any depth', () => {
 		const input = {
-			header: obj({ headerRow: num().default(1), sheet: str().optional() }).default({}),
-			rows: arr(obj({ format: oneOf('RAW', 'USER_ENTERED').default('RAW') })),
-			filter: obj({ max: num().default(10) }).optional(),
-			paging: variant('mode', { all: {}, limit: { max: num().default(50) } }).default({
+			header: t.obj({ headerRow: t.num().default(1), sheet: t.str().optional() }).default({}),
+			rows: t.arr(t.obj({ format: t.oneOf('RAW', 'USER_ENTERED').default('RAW') })),
+			filter: t.obj({ max: t.num().default(10) }).optional(),
+			paging: t.variant('mode', { all: {}, limit: { max: t.num().default(50) } }).default({
 				mode: 'all',
 			}),
 		};
@@ -180,7 +165,7 @@ describe('schema builders', () => {
 			summary: 'Read a task.',
 			flow: { effect: 'read', cardinality: 'per-item' },
 			input,
-			output: obj({ row: num() }),
+			output: t.obj({ row: t.num() }),
 			run: async ({ input: { header, project } }) =>
 				await Promise.resolve({ row: header.headerRow + project.length }),
 		});
@@ -188,7 +173,7 @@ describe('schema builders', () => {
 	});
 
 	it('builds a nullable schema', () => {
-		const assignee = nullable(str()).hint('null when unassigned');
+		const assignee = t.nullable(t.str()).hint('null when unassigned');
 		const value: Infer<typeof assignee> = null;
 		expect(assignee.json).toEqual({
 			anyOf: [{ type: 'string' }, { type: 'null' }],
@@ -196,13 +181,13 @@ describe('schema builders', () => {
 		});
 		expect(validate(value, assignee.json)).toEqual([]);
 		expect(validate(1, assignee.json)).toEqual(['input: does not match any allowed shape']);
-		expect(nullable(str().optional()).isOptional).toBe(true);
+		expect(t.nullable(t.str().optional()).isOptional).toBe(true);
 	});
 
 	it('builds a union of object schemas', () => {
-		const invoice = obj({ id: str() });
-		const line = obj({ sku: str(), invoiceId: str() });
-		const either = union(invoice, line);
+		const invoice = t.obj({ id: t.str() });
+		const line = t.obj({ sku: t.str(), invoiceId: t.str() });
+		const either = t.union(invoice, line);
 		const value: Infer<typeof either> = { sku: 's1', invoiceId: 'inv_1' };
 		expect(either.json).toEqual({ anyOf: [invoice.json, line.json] });
 		expect(validate(value, either.json)).toEqual([]);
@@ -366,8 +351,8 @@ describe('toNodeType', () => {
 			action: 'Read pages',
 			summary: 'Read the page values.',
 			flow: { effect: 'read', cardinality: 'per-item' },
-			input: { url: str(), pages: obj({ next: pageValue(str()) }) },
-			output: obj({ url: str(), next: str() }),
+			input: { url: t.str(), pages: t.obj({ next: t.pageValue(t.str()) }) },
+			output: t.obj({ url: t.str(), next: t.str() }),
 			async run({ input }) {
 				return { url: input.url, next: input.pages.next };
 			},
@@ -455,7 +440,11 @@ describe('toNodeType', () => {
 
 describe('exampleOf', () => {
 	it('builds a value that matches the output schema', () => {
-		const schema = obj({ id: str(), tags: arr(str()), paging: variant('mode', { all: {} }) });
+		const schema = t.obj({
+			id: t.str(),
+			tags: t.arr(t.str()),
+			paging: t.variant('mode', { all: {} }),
+		});
 		const example = exampleOf(schema.json);
 		expect(example).toEqual({ id: 'example', tags: ['example'], paging: { mode: 'all' } });
 		expect(validate(example, schema.json)).toEqual([]);
@@ -467,14 +456,14 @@ describe('exampleOf', () => {
 		['^(?:https?://)?\\w+\\.example\\.com/\\d+$', 'a.example.com/0'],
 		['^(draft|sent)_\\d{2}[.-]x*?$', 'draft_00.'],
 	])('builds a string that matches the pattern %s', (pattern, expected) => {
-		const schema = str().with({ pattern }).json;
+		const schema = t.str().with({ pattern }).json;
 		expect(exampleOf(schema)).toBe(expected);
 		expect(validate(expected, schema)).toEqual([]);
 	});
 
 	it('falls back for a pattern construct it does not know', () => {
-		expect(exampleOf(str().with({ pattern: '^[^x]+$' }).json)).toBe('example');
-		expect(exampleOf(str().with({ pattern: '^(?=a)a$' }).json)).toBe('example');
+		expect(exampleOf(t.str().with({ pattern: '^[^x]+$' }).json)).toBe('example');
+		expect(exampleOf(t.str().with({ pattern: '^(?=a)a$' }).json)).toBe('example');
 	});
 });
 
@@ -490,9 +479,9 @@ describe('generateNodeModule', () => {
 			})),
 		);
 
-	const list = variant('mode', {
-		name: { name: str().hint('Exact list name') },
-		id: { id: str().hint('Numeric list ID') },
+	const list = t.variant('mode', {
+		name: { name: t.str().hint('Exact list name') },
+		id: { id: t.str().hint('Numeric list ID') },
 	});
 	const listAction = (operation: string, extra = {}) =>
 		todo.resource('task').action(operation, {
@@ -504,9 +493,9 @@ describe('generateNodeModule', () => {
 			input: {
 				...extra,
 				list,
-				sort: variant('by', {
-					field: { field: str().hint('Exact field name'), direction: oneOf('asc', 'desc') },
-					rank: { field: str().hint('Exact field name'), weight: num() },
+				sort: t.variant('by', {
+					field: { field: t.str().hint('Exact field name'), direction: t.oneOf('asc', 'desc') },
+					rank: { field: t.str().hint('Exact field name'), weight: t.num() },
 				}),
 			},
 		});
@@ -560,7 +549,7 @@ describe('generateNodeModule', () => {
 			action: 'Route tasks',
 			summary: 'Route each task.',
 			flow: { effect: 'transform', cardinality: 'per-item' },
-			input: { cases: arr(obj({ output: str(), status: str() })) },
+			input: { cases: t.arr(t.obj({ output: t.str(), status: t.str() })) },
 			output: listTasks.output,
 			outputs: { each: 'cases', then: ['fallback'] },
 			run: async ({ item }) => await Promise.resolve({ to: 'fallback', item }),
@@ -602,7 +591,7 @@ describe('generateNodeModule', () => {
 			summary: 'List records.',
 			flow: { effect: 'read', cardinality: '1:N' },
 			input: {},
-			output: obj({ id: str().hint('Record ID, not a field') }).with({
+			output: t.obj({ id: t.str().hint('Record ID, not a field') }).with({
 				patternProperties: { '^field_[a-z0-9_]+$': { 'x-n8n-hint': 'field_ + snake_case name' } },
 				'x-n8n-value-types': { text: { type: 'string' } },
 			}),
@@ -627,8 +616,8 @@ describe('generateNodeModule', () => {
 			action: 'Append row',
 			summary: 'Append a row.',
 			flow: { effect: 'write', cardinality: 'per-item' },
-			input: { values: json() },
-			output: json(),
+			input: { values: t.json() },
+			output: t.json(),
 			run: async () => await Promise.resolve({}),
 		});
 		const text = moduleOf(append);
@@ -667,7 +656,7 @@ describe('generateNodeModule', () => {
 	});
 
 	it('shows a field doc that an earlier action shows on the first action only', () => {
-		const text = moduleOf(listTasks, listAction('search', { project: str().hint('Project ID') }));
+		const text = moduleOf(listTasks, listAction('search', { project: t.str().hint('Project ID') }));
 		expect(text.match(/Project ID/g)).toHaveLength(1);
 		expect(text).toContain(
 			'export type TodoTaskSearchInput<I, C> = {\n project: Value<I, C, string>;',
@@ -675,7 +664,7 @@ describe('generateNodeModule', () => {
 	});
 
 	it('names a repeated type once and references the name', () => {
-		const text = moduleOf(listAction('search'), listAction('find', { limit: num() }));
+		const text = moduleOf(listAction('search'), listAction('find', { limit: t.num() }));
 		expect(text).toContain('type TodoTaskSearchList<I, C> = {\n mode: "name";');
 		expect(text.match(/list: TodoTaskSearchList<I, C>;/g)).toHaveLength(2);
 		expect(text.match(/Exact list name/g)).toHaveLength(1);
@@ -697,9 +686,9 @@ describe('generateNodeModule', () => {
 		const text = moduleOf(
 			outputAction(
 				'get',
-				obj({ id: str(), note: str().optional(), due: nullable(str()).optional() }),
+				t.obj({ id: t.str(), note: t.str().optional(), due: t.nullable(t.str()).optional() }),
 			),
-			outputAction('peek', loose(obj({ id: str(), done: bool() }))),
+			outputAction('peek', t.loose(t.obj({ id: t.str(), done: t.bool() }))),
 		);
 		expect(text).toContain(
 			'export type TodoTaskGetOutput = { id: string; note?: string | null; due?: string | null };',

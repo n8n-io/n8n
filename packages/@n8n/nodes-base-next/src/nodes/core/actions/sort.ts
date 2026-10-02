@@ -1,4 +1,4 @@
-import { arr, passedItem, obj, oneOf, str, type InputItem } from '@n8n/node-sdk';
+import { t, type InputItem } from '@n8n/node-sdk';
 
 import { core } from '../core.node';
 import { canonical, getPath, pathOf } from '../path';
@@ -28,14 +28,16 @@ export const sortItems = core.action('sort', {
 	summary: 'Sort all items by fields, in order. Text sorts without case. Items pass on unchanged.',
 	flow: { effect: 'transform', cardinality: 'batch' },
 	input: {
-		by: arr(
-			obj({
-				field: str().with({ minLength: 1 }),
-				order: oneOf('ascending', 'descending').default('ascending'),
-			}),
-		).with({ minItems: 1 }),
+		by: t
+			.arr(
+				t.obj({
+					field: t.str().with({ minLength: 1 }),
+					order: t.oneOf('ascending', 'descending').default('ascending'),
+				}),
+			)
+			.with({ minItems: 1 }),
 	},
-	output: passedItem(),
+	output: t.passedItem(),
 	run({ input, items }) {
 		const keys = input.by.map(({ field, order }) => ({
 			field,

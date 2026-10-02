@@ -1,39 +1,42 @@
-import { arr, bool, num, oneOf, str, union, variant, type Infer } from '@n8n/node-sdk';
+import { t, type Infer } from '@n8n/node-sdk';
 
-const column = str().with({ minLength: 1 }).hint('Column name');
-export const scalar = union(str(), num(), bool());
+const column = t.str().with({ minLength: 1 }).hint('Column name');
+export const scalar = t.union(t.str(), t.num(), t.bool());
 
 /** One PostgREST condition. Each operator takes only the value it needs. */
-export const condition = variant('op', {
+export const condition = t.variant('op', {
 	eq: { column, value: scalar },
 	neq: { column, value: scalar },
 	gt: { column, value: scalar },
 	gte: { column, value: scalar },
 	lt: { column, value: scalar },
 	lte: { column, value: scalar },
-	like: { column, pattern: str().hint('* matches any text, e.g. *@example.com') },
-	ilike: { column, pattern: str().hint('Case-insensitive; * matches any text') },
-	is: { column, value: oneOf('null', 'true', 'false', 'unknown') },
-	in: { column, values: arr(scalar).with({ minItems: 1 }) },
+	like: { column, pattern: t.str().hint('* matches any text, e.g. *@example.com') },
+	ilike: { column, pattern: t.str().hint('Case-insensitive; * matches any text') },
+	is: { column, value: t.oneOf('null', 'true', 'false', 'unknown') },
+	in: { column, values: t.arr(scalar).with({ minItems: 1 }) },
 	fullText: {
 		column,
-		query: str(),
-		function: oneOf('fts', 'plfts', 'phfts', 'wfts')
+		query: t.str(),
+		function: t
+			.oneOf('fts', 'plfts', 'phfts', 'wfts')
 			.default('fts')
 			.hint('fts to_tsquery, plfts plain, phfts phrase, wfts websearch'),
 	},
 });
 
-const conditions = arr(condition).with({ minItems: 1 });
+const conditions = t.arr(condition).with({ minItems: 1 });
 
 /**
  * `all`: a row must match every condition. `any`: a row must match at least one. No default,
  * because the wrong one on a delete removes rows that it must keep.
  */
-export const rowFilter = variant('match', {
-	all: { conditions },
-	['any']: { conditions },
-}).hint('all = AND, any = OR; for "A and B" use all');
+export const rowFilter = t
+	.variant('match', {
+		all: { conditions },
+		['any']: { conditions },
+	})
+	.hint('all = AND, any = OR; for "A and B" use all');
 
 export type RowFilter = Infer<typeof rowFilter>;
 type Condition = Infer<typeof condition>;

@@ -1,4 +1,5 @@
-import { credential, defineNode, defineResource, ref } from '@n8n/node-sdk';
+import { defineNode, defineResource, ref } from '@n8n/node-sdk';
+import { credential } from '@n8n/node-sdk/credentials';
 
 import { notionOAuth2, notionToken } from './credentials';
 

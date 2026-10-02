@@ -1,37 +1,27 @@
-import {
-	arr,
-	bool,
-	int,
-	json,
-	lit,
-	matches,
-	obj,
-	str,
-	union,
-	type Http,
-	type Infer,
-} from '@n8n/node-sdk';
+import { matches, t, type Http, type Infer } from '@n8n/node-sdk';
 
 import { events } from '../event-log.node';
 
-const liveEvent = obj({
-	id: str(),
-	type: str(),
-	actor: str(),
-	occurredAt: str(),
-	deleted: lit(false),
+const liveEvent = t.obj({
+	id: t.str(),
+	type: t.str(),
+	actor: t.str(),
+	occurredAt: t.str(),
+	deleted: t.lit(false),
 });
 
-const tombstone = obj({ id: str(), occurredAt: str(), deleted: lit(true) });
+const tombstone = t.obj({ id: t.str(), occurredAt: t.str(), deleted: t.lit(true) });
 
-const event = union(liveEvent, tombstone);
+const event = t.union(liveEvent, tombstone);
 
 type Event = Infer<typeof event>;
 
-const page = obj({
-	body: obj({ data: arr(event) }),
-	headers: json(),
-}).with({ additionalProperties: true });
+const page = t
+	.obj({
+		body: t.obj({ data: t.arr(event) }),
+		headers: t.json(),
+	})
+	.with({ additionalProperties: true });
 
 /** The offset of the zone at this UTC time, in milliseconds. */
 function zoneOffset(utc: number, timeZone: string): number {
@@ -90,12 +80,12 @@ export const getManyEvents = events.action('getAll', {
 	summary: 'List events in a time range, without deleted events by default.',
 	flow: { effect: 'read', cardinality: '1:N', idempotent: true },
 	input: {
-		since: str(),
-		until: str().optional(),
-		timeZone: str().default('UTC'),
-		includeDeleted: bool().default(false),
-		returnAll: bool().default(false),
-		limit: int().with({ minimum: 1 }).default(50),
+		since: t.str(),
+		until: t.str().optional(),
+		timeZone: t.str().default('UTC'),
+		includeDeleted: t.bool().default(false),
+		returnAll: t.bool().default(false),
+		limit: t.int().with({ minimum: 1 }).default(50),
 	},
 	output: event,
 	async *run({ input, http }) {

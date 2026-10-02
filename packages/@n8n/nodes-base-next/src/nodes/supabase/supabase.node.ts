@@ -1,18 +1,19 @@
-import { credential, credentialType, defineNode, str, t } from '@n8n/node-sdk';
+import { defineNode, t } from '@n8n/node-sdk';
+import { credential, defineCredential, field } from '@n8n/node-sdk/credentials';
 
-export const supabaseKey = credentialType({
+export const supabaseKey = defineCredential({
 	id: 'supabase.secretKey',
 	legacyName: 'supabaseApi',
 	displayName: 'Supabase API',
 	docs: 'supabase',
 	fields: {
-		host: t
+		host: field
 			.url('Host')
 			.describe(
 				'Your Supabase project URL without the <code>/rest/v1</code> path. If you copied the full Data API URL, remove the <code>/rest/v1</code> suffix.',
 			)
 			.with({ examples: ['https://your_account.supabase.co'] }),
-		serviceRole: t
+		serviceRole: field
 			.secret('Secret Key')
 			.describe(
 				'Your Supabase project secret key. You can create one in the <a href="https://supabase.com/dashboard/project/_/settings/api-keys" target="_blank">API Keys settings</a> of your project. Legacy service_role secrets are also supported.',
@@ -33,8 +34,11 @@ export const supabase = defineNode({
 export const row = supabase.resource('row', {
 	input: {
 		// The name goes into the request path, so a name of only dots must not pass.
-		table: str().with({ pattern: '^(?!\\.{1,2}$).+$' }).hint('Table or view name, e.g. customers'),
-		schema: str().hint('Postgres schema; the API default (public) when not set').optional(),
+		table: t
+			.str()
+			.with({ pattern: '^(?!\\.{1,2}$).+$' })
+			.hint('Table or view name, e.g. customers'),
+		schema: t.str().hint('Postgres schema; the API default (public) when not set').optional(),
 	},
 });
 

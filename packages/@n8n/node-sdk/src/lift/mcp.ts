@@ -13,7 +13,7 @@ import {
 	type DerivedManifest,
 	type NodeDefinition,
 } from '../define';
-import { json, Schema, type JsonSchema, type Shape } from '../schema';
+import { Schema, t, type JsonSchema, type Shape } from '../schema';
 
 /** A tool as the MCP `tools/list` result lists it. */
 export interface McpTool {
@@ -114,7 +114,7 @@ export function liftMcpTool(
 	const target = options.resource === undefined ? builder : builder.resource(options.resource);
 	const output = tool.outputSchema
 		? new Schema<Record<string, unknown>>(tool.outputSchema, false)
-		: json();
+		: t.json();
 	const lifted = target.action(operationOf(tool.name), {
 		action: tool.title ?? tool.name,
 		summary: summaryOf(tool),

@@ -495,16 +495,16 @@ export type OutputNames<S> = S extends RoutedStep<
 	? Names
 	: never;
 
-/** What a contract provider supplies, e.g. `chatModel`. `node` is a provider from `provider()`. */
-export type SupplyKind = 'chatModel' | 'memory' | 'tool' | 'embeddings';
+/** What a contract provider gives, e.g. `chatModel`. `node` is a provider from `provider()`. */
+export type ProviderKind = 'chatModel' | 'memory' | 'tool' | 'embeddings';
 
-/** The slot of each kind that a contract provider supplies. */
-export const SUPPLY_SLOTS = {
+/** The slot of each kind that a contract provider gives. */
+export const PROVIDER_KIND_SLOTS = {
 	chatModel: 'model',
 	memory: 'memory',
 	tool: 'tools',
 	embeddings: 'embedding',
-} as const satisfies Record<SupplyKind, ProviderSlot>;
+} as const satisfies Record<ProviderKind, ProviderSlot>;
 
 /**
  * A provider, e.g. a chat model or a tool. n8n evaluates its lambdas with the item of the AI
@@ -512,11 +512,11 @@ export const SUPPLY_SLOTS = {
  * node takes only contract providers of its kind, a derived root node only derived providers of
  * the connection type of the slot, and `node()` takes `provider()` or a derived provider.
  */
-export interface Provider<In, Ctx, K extends SupplyKind | ProviderConnection | 'node' = 'node'> {
+export interface Provider<In, Ctx, K extends ProviderKind | ProviderConnection | 'node' = 'node'> {
 	readonly spec: ProviderSpec;
 	/** The slot of a contract provider in its root node. */
 	readonly slot?: ProviderSlot;
-	readonly [phantom]?: { readonly read: (item: In, ctx: Ctx) => void; readonly supplies: K };
+	readonly [phantom]?: { readonly read: (item: In, ctx: Ctx) => void; readonly provides: K };
 }
 
 /** A `provider()`, or a derived provider of connection type `C`. */
@@ -560,7 +560,7 @@ export function providerSpecs(providers: ProvidersBySlot): ProviderSpecs {
 	);
 }
 
-const isProviderValue = (value: unknown): value is Provider<unknown, unknown, SupplyKind> =>
+const isProviderValue = (value: unknown): value is Provider<unknown, unknown, ProviderKind> =>
 	isDataObject(value) && isDataObject(value.spec) && typeof value.spec.parameters === 'function';
 
 /**
@@ -612,7 +612,8 @@ interface Selector {
 	readonly operation?: string;
 }
 
-const isSupplyKind = (kind: string): kind is SupplyKind => Object.hasOwn(SUPPLY_SLOTS, kind);
+const isProviderKind = (kind: string): kind is ProviderKind =>
+	Object.hasOwn(PROVIDER_KIND_SLOTS, kind);
 /** The built-in Manual Trigger, which the native contract `manual.trigger` types. */
 export const MANUAL_NODE = { type: 'n8n-nodes-base.manualTrigger', version: 1 };
 /** The IF and Edit Fields contracts of `@n8n/nodes-base-next` (`core.if`, `core.set`). */
@@ -1588,7 +1589,7 @@ function compileWithPages(
  * contract provider in the input field of its kind; a derived root node takes a derived provider
  * in the `providers` slot of its connection type.
  */
-export function contractProvider<In, Ctx, const K extends SupplyKind | ProviderConnection>(
+export function contractProvider<In, Ctx, const K extends ProviderKind | ProviderConnection>(
 	id: string,
 	kind: K,
 	config: {
@@ -1602,7 +1603,7 @@ export function contractProvider<In, Ctx, const K extends SupplyKind | ProviderC
 	const { name, settings, providers: grouped, ...fields } = config;
 	const { parameters, providers, unslotted } = splitConfig(fields, grouped);
 	return {
-		slot: isSupplyKind(kind) ? SUPPLY_SLOTS[kind] : SLOT_OF_CONNECTION.get(kind),
+		slot: isProviderKind(kind) ? PROVIDER_KIND_SLOTS[kind] : SLOT_OF_CONNECTION.get(kind),
 		spec: {
 			name,
 			type: id,

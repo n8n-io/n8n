@@ -1,4 +1,4 @@
-import { arr, bool, obj, parse, passedItem, str, supplied, type JsonSchema } from '@n8n/node-sdk';
+import { parse, provider, t, type JsonSchema } from '@n8n/node-sdk';
 
 import { ai } from '../ai.node';
 import { assertFinished, parseReply, promptMessages } from '../reply';
@@ -6,7 +6,7 @@ import { assertFinished, parseReply, promptMessages } from '../reply';
 /** The output for an item that fits no category. Error items also go to the last output. */
 const OTHER = 'other';
 
-const picked = obj({ categories: arr(str()) });
+const picked = t.obj({ categories: t.arr(t.str()) });
 
 const categorySchema = (names: readonly string[]): JsonSchema => ({
 	type: 'object',
@@ -36,19 +36,24 @@ export const classifyText = ai.action('classify', {
 		'Route each item to the output of the category a chat model picks for its text, e.g. its sentiment.',
 	flow: { effect: 'transform', cardinality: '1:N' },
 	input: {
-		model: supplied('chatModel'),
-		text: str().with({ minLength: 1 }).hint('The text to classify'),
-		categories: arr(
-			obj({
-				output: str().with({ minLength: 1 }).hint('The category name; the output has this name'),
-				description: str().optional().hint('When the category applies'),
-			}),
-		).with({ minItems: 1 }),
-		multiple: bool().default(false).hint('An item may go to more than one category'),
-		system: str().optional().hint('More instructions for the model'),
+		model: provider.input('chatModel'),
+		text: t.str().with({ minLength: 1 }).hint('The text to classify'),
+		categories: t
+			.arr(
+				t.obj({
+					output: t
+						.str()
+						.with({ minLength: 1 })
+						.hint('The category name; the output has this name'),
+					description: t.str().optional().hint('When the category applies'),
+				}),
+			)
+			.with({ minItems: 1 }),
+		multiple: t.bool().default(false).hint('An item may go to more than one category'),
+		system: t.str().optional().hint('More instructions for the model'),
 	},
 	outputs: { each: 'categories', then: [OTHER] },
-	output: passedItem(),
+	output: t.passedItem(),
 	async *run({ input, item }) {
 		const names = input.categories.map(({ output }) => output);
 		// Before the model call: n8n checks output names only after the run.

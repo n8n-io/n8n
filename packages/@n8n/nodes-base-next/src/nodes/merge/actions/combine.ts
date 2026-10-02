@@ -1,10 +1,10 @@
-import { bool, json, oneOf, str, variant, type InputItem } from '@n8n/node-sdk';
+import { t, type InputItem } from '@n8n/node-sdk';
 
 // Field paths and value keys are the ones of the core actions. An SDK path helper would serve both.
 import { canonical, getPath, pathOf } from '../../core/path';
 import { INPUTS, merge, mergeJson } from '../merge.node';
 
-const field = str().with({ minLength: 1 }).hint('Field path, e.g. id or customer.id');
+const field = t.str().with({ minLength: 1 }).hint('Field path, e.g. id or customer.id');
 
 export const combineItems = merge.action('combine', {
 	action: 'Combine items',
@@ -13,24 +13,31 @@ export const combineItems = merge.action('combine', {
 	flow: { effect: 'transform', cardinality: 'batch' },
 	inputs: INPUTS,
 	input: {
-		by: variant('by', {
-			position: {
-				unpaired: bool().default(false).hint('Keep an item that has no partner at its position'),
-			},
-			fields: {
-				left: field,
-				right: field,
-				join: oneOf('inner', 'left', 'right', 'outer', 'leftOnly', 'rightOnly')
-					.default('inner')
-					.hint('left/right/outer keep unmatched items; leftOnly/rightOnly keep only those'),
-			},
-			all: {},
-		}).hint('position pairs item i; fields pairs equal values; all pairs every left and right'),
-		prefer: oneOf('left', 'right')
+		by: t
+			.variant('by', {
+				position: {
+					unpaired: t
+						.bool()
+						.default(false)
+						.hint('Keep an item that has no partner at its position'),
+				},
+				fields: {
+					left: field,
+					right: field,
+					join: t
+						.oneOf('inner', 'left', 'right', 'outer', 'leftOnly', 'rightOnly')
+						.default('inner')
+						.hint('left/right/outer keep unmatched items; leftOnly/rightOnly keep only those'),
+				},
+				all: {},
+			})
+			.hint('position pairs item i; fields pairs equal values; all pairs every left and right'),
+		prefer: t
+			.oneOf('left', 'right')
 			.optional()
 			.hint('Which value wins a field clash. Default: right; left in a right join'),
 	},
-	output: json().hint('The fields of both items'),
+	output: t.json().hint('The fields of both items'),
 	*run({ input, inputs }) {
 		const { left, right } = inputs;
 		const { by } = input;

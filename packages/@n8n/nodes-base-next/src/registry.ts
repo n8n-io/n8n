@@ -1,4 +1,5 @@
-import { parseManifest, type FrozenVersion } from '@n8n/node-sdk';
+import type { FrozenVersion } from '@n8n/node-sdk/host';
+import { parseManifest } from '@n8n/node-sdk/registry';
 import { readFileSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';

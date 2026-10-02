@@ -1,14 +1,17 @@
-import { arr, bool, json, oneOf, str, variant, type InputItem, type Infer } from '@n8n/node-sdk';
+import { t, type Infer, type InputItem } from '@n8n/node-sdk';
 
 import { core } from '../core.node';
 import { getPath, pathOf } from '../path';
 
-const field = str().with({ minLength: 1 });
-const counted = { field, includeEmpty: bool().default(false).hint('Count null and empty values') };
+const field = t.str().with({ minLength: 1 });
+const counted = {
+	field,
+	includeEmpty: t.bool().default(false).hint('Count null and empty values'),
+};
 
-const summary = variant('aggregation', {
+const summary = t.variant('aggregation', {
 	append: counted,
-	concatenate: { ...counted, separator: str().default(',') },
+	concatenate: { ...counted, separator: t.str().default(',') },
 	count: counted,
 	countUnique: counted,
 	sum: { field },
@@ -109,14 +112,15 @@ export const summarizeItems = core.action('summarize', {
 		'Count, sum, or list field values of all items, like a pivot table, optionally by group.',
 	flow: { effect: 'transform', cardinality: 'batch' },
 	input: {
-		fields: arr(summary).with({ minItems: 1 }),
-		groupBy: arr(field).default([]).hint('Fields whose values form the groups'),
-		output: oneOf('separateItems', 'singleItem')
+		fields: t.arr(summary).with({ minItems: 1 }),
+		groupBy: t.arr(field).default([]).hint('Fields whose values form the groups'),
+		output: t
+			.oneOf('separateItems', 'singleItem')
 			.default('separateItems')
 			.hint('singleItem nests groups by value in one item'),
-		skipEmptyGroups: bool().default(false),
+		skipEmptyGroups: t.bool().default(false),
 	},
-	output: json(),
+	output: t.json(),
 	run({ input, items }) {
 		const groups = groupsOf(items, input.groupBy, input.skipEmptyGroups);
 		const totals = (group: Group) =>

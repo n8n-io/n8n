@@ -6,26 +6,11 @@ import {
 	type INodeType,
 } from 'n8n-workflow';
 
-import {
-	arr,
-	compat,
-	contractHash,
-	credential,
-	credentialType,
-	defineNode,
-	diffContracts,
-	generateNodeModule,
-	int,
-	lintContract,
-	oneOf,
-	obj,
-	pages,
-	str,
-	toContract,
-	toCredentialType,
-	toTriggerNodeType,
-	type HttpRequest,
-} from '../index';
+import { generateNodeModule } from '../entry/codegen';
+import { compat, credential, defineCredential } from '../entry/credentials';
+import { toCredentialType, toTriggerNodeType } from '../entry/host';
+import { contractHash, diffContracts, lintContract, toContract } from '../entry/registry';
+import { defineNode, pages, t, type HttpRequest } from '../index';
 import { allowsHost, credentialHostsOf, egressIssuesOf, narrowHosts } from '../egress';
 import { executorOf, toRequestOptions, withCredentialHostsOf, type ExecutorHost } from '../runtime';
 
@@ -42,7 +27,7 @@ const node: INode = {
 const echoApi = compat('echoApi', { hosts: ['api.echo.test'] });
 const headerAuth = compat('httpHeaderAuth');
 const serverApi = compat('serverApi', {
-	fields: { server: str().default('https://api.server.test') },
+	fields: { server: t.str().default('https://api.server.test') },
 	baseUrl: '{server}',
 });
 
@@ -53,7 +38,7 @@ const echo = defineNode({
 	baseUrl: 'https://api.echo.test/v1',
 });
 
-const output = obj({ ok: str() });
+const output = t.obj({ ok: t.str() });
 
 /** An action whose `run()` sends each request of `requests` and returns the last body. */
 const sender = (requests: readonly HttpRequest[]) =>
@@ -61,7 +46,7 @@ const sender = (requests: readonly HttpRequest[]) =>
 		action: 'Send',
 		summary: 'Send requests.',
 		flow: { effect: 'read', cardinality: 'per-item' },
-		input: { url: str().optional() },
+		input: { url: t.str().optional() },
 		output,
 		async run({ http }) {
 			const bodies = await requests.reduce<Promise<unknown[]>>(
@@ -77,7 +62,7 @@ const fetchUrl = echo.action('fetch', {
 	summary: 'GET any URL.',
 	flow: { effect: 'read', cardinality: 'per-item', idempotent: true },
 	egress: { fromInput: 'url' },
-	input: { url: str() },
+	input: { url: t.str() },
 	output,
 	async run({ input, http }) {
 		await http.request({ url: input.url });
@@ -90,7 +75,7 @@ const regional = echo.action('regional', {
 	summary: 'Call a regional API.',
 	flow: { effect: 'read', cardinality: 'per-item' },
 	egress: { hosts: ['{region}.region.echo.test'] },
-	input: { region: oneOf('eu', 'us') },
+	input: { region: t.oneOf('eu', 'us') },
 	output,
 	async run({ input, http }) {
 		await http.request({ url: `https://${input.region}.region.echo.test/x` });
@@ -182,7 +167,7 @@ describe('host egress', () => {
 			output,
 			async *run({ http }) {
 				yield* pages(http, {
-					page: obj({ next: str() }),
+					page: t.obj({ next: t.str() }),
 					request: (cursor) => (cursor ? { url: cursor } : { path: '/items' }),
 					items: () => [{ ok: 'page' }],
 					next: (body) => body.next,
@@ -304,7 +289,7 @@ describe('host egress', () => {
 			flow: { effect: 'read', cardinality: 'per-item' },
 			// @ts-expect-error `name` is a free string, so the host set is not finite
 			egress: { hosts: ['{name}.echo.test'] },
-			input: { name: str() },
+			input: { name: t.str() },
 			output,
 			async run() {
 				return await Promise.resolve({ ok: 'no' });
@@ -320,7 +305,7 @@ describe('host egress', () => {
 			output,
 			poll: {
 				request: () => ({ url: 'https://other.test/changes' }),
-				response: arr(obj({ id: int() })),
+				response: t.arr(t.obj({ id: t.int() })),
 				items: (page) => page,
 				cursor: { id: () => 1 },
 			},
@@ -387,7 +372,7 @@ describe('credentialHostsOf', () => {
 	});
 
 	it('keeps allowedDomains when a custom signer builds new options', async () => {
-		const signed = credentialType({
+		const signed = defineCredential({
 			id: 'signed.custom',
 			legacyName: 'signedApi',
 			displayName: 'Signed API',

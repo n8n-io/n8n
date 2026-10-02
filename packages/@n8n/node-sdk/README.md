@@ -7,6 +7,26 @@ that the AI workflow builder reads (`generateNodeModule`).
 
 See `packages/@n8n/nodes-base-next/src/nodes/**` for real nodes.
 
+## Imports
+
+| Import | For | Contents |
+|---|---|---|
+| `@n8n/node-sdk` | node authors | `defineNode`, `t` (schema builders), `provider` (`input`, `is`), `defineResource`, `ref`, `parse`, `matches`, `validate`, `list`, `isRecord`, `isHttpError`, paging helpers, author types |
+| `@n8n/node-sdk/credentials` | node authors | `defineCredential`, `credential`, `compat`, `field` (credential fields). Auth schemes only in the `auth: (a) => …` callback |
+| `@n8n/node-sdk/testing` | node authors | `runAction`, `mockHttp` |
+| `@n8n/node-sdk/host` | n8n core and cli | node and credential types (`toNodeType`, `toVersionedNodeType`, `toCredentialType`, …), loaders, Node Contract range, egress checks, `exampleOf` |
+| `@n8n/node-sdk/registry` | registry, freeze, store | manifests (`toContract`, `lintContract`, `parseManifest`), hashes, semver, `diffContracts`, packages and integrity, fixtures |
+| `@n8n/node-sdk/codegen` | instance-ai, compat | `generateNodeModule`, `toTs`, model catalog, provider connections and fields |
+| `@n8n/node-sdk/mcp` | tooling | `liftMcpTool`: an MCP tool as a derived manifest |
+| `@n8n/node-sdk/freeze`, `/publish`, `/sandbox` | tooling | freeze, publish and sandboxed run of bundles |
+
+```ts
+import { defineNode, t } from '@n8n/node-sdk';
+import { credential, defineCredential, field } from '@n8n/node-sdk/credentials';
+```
+
+`src/__tests__/exports.test.ts` lists each name of the root, so a new root export is a decision.
+
 ## Developer CLI: `n8n-node-next`
 
 ```sh
@@ -40,11 +60,11 @@ credential types come from `node.credential`. `new` writes an `AGENTS.md` that e
 ## Credentials
 
 ```ts
-export const todoApi = credentialType({
+export const todoApi = defineCredential({
 	id: 'todo.token',
 	legacyName: 'todoApi',
 	displayName: 'Todo API',
-	fields: { apiKey: t.secret('API Key') },
+	fields: { apiKey: field.secret('API Key') },
 	auth: (a) => a.bearer('apiKey'),
 });
 export const todo = defineNode({
@@ -55,7 +75,7 @@ export const todo = defineNode({
 ```
 
 A node has one credential: the credential types a user may pick, and the scopes its actions
-may list. Credential types are values (`credentialType`, `compat`) with a declarative `auth`, so
+may list. Credential types are values (`defineCredential`, `compat`) with a declarative `auth`, so
 `tsc` rejects a typo, and `toCredentialType` projects one to an n8n `ICredentialType`. In n8n,
 `httpRequestWithAuthentication` applies it. `runAction` applies it the same way. See
 [docs/credentials-triggers.md](docs/credentials-triggers.md) for scopes, triggers and bindings.
@@ -78,5 +98,5 @@ answers at most n calls. More than 1000 calls fail the run, because the code und
 
 ## Types
 
-`nullable(schema)` accepts the value or `null`. In `run()`, a field with `.default(v)` is always
+`t.nullable(schema)` accepts the value or `null`. In `run()`, a field with `.default(v)` is always
 set (`RunInput`), because n8n and `runAction` fill in the default. Callers can still omit it.

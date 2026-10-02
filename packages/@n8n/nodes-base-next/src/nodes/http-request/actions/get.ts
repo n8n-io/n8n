@@ -1,22 +1,10 @@
 import {
-	arr,
-	bool,
-	int,
 	isRecord,
-	json,
-	jsonValue,
 	nextLinkOf,
 	nextOffsetOf,
-	nullable,
-	num,
-	obj,
-	oneOf,
 	pages,
-	pageValue,
 	pageValueOf,
-	str,
-	union,
-	variant,
+	t,
 	type HttpRequest,
 	type ResponsePage,
 } from '@n8n/node-sdk';
@@ -25,48 +13,58 @@ import { httpRequest } from '../http-request.node';
 import { common, toItems } from '../request';
 
 /** A parameter name: a fixed value, as the request needs it before any page. */
-const name = str().with({ minLength: 1, 'x-n8n-literal': true });
+const name = t.str().with({ minLength: 1, 'x-n8n-literal': true });
 
 /** Where the next request sends the cursor or the page number. */
-const send = union(obj({ query: name }), obj({ header: name })).hint(
-	'e.g. { query: "cursor" }; the first request sends none',
-);
+const send = t
+	.union(t.obj({ query: name }), t.obj({ header: name }))
+	.hint('e.g. { query: "cursor" }; the first request sends none');
 
 /** The fields of every page style. */
 const each = {
-	more: pageValue(bool()).hint('false ends the list, e.g. (page) => page.body.has_more').optional(),
+	more: t
+		.pageValue(t.bool())
+		.hint('false ends the list, e.g. (page) => page.body.has_more')
+		.optional(),
 	// Same page limit as the legacy HTTP Request node.
-	maxPages: int().with({ minimum: 1, 'x-n8n-literal': true }).default(100),
+	maxPages: t.int().with({ minimum: 1, 'x-n8n-literal': true }).default(100),
 };
 
-const pagesInput = variant('style', {
-	cursor: {
-		next: pageValue(nullable(union(str(), num()))).hint(
-			'The next cursor, e.g. (page) => page.body.next_cursor; empty ends the list',
-		),
-		send,
-		...each,
-	},
-	link: {
-		next: pageValue(nullable(str()))
-			.hint('The next URL, e.g. (page) => page.body.next; else the Link header')
-			.optional(),
-		...each,
-	},
-	offset: {
-		send,
-		unit: oneOf('item', 'page').hint('item: send the count of items so far; page: the page number'),
-		start: int()
-			.with({ 'x-n8n-literal': true })
-			.hint('The number of the first page; 1 when not set')
-			.optional(),
-		size: int()
-			.with({ minimum: 1, 'x-n8n-literal': true })
-			.hint('Items per page; a shorter page ends the list. Also set the page size in query')
-			.optional(),
-		...each,
-	},
-}).hint('Each page emits its items; an empty page ends an offset list');
+const pagesInput = t
+	.variant('style', {
+		cursor: {
+			next: t
+				.pageValue(t.nullable(t.union(t.str(), t.num())))
+				.hint('The next cursor, e.g. (page) => page.body.next_cursor; empty ends the list'),
+			send,
+			...each,
+		},
+		link: {
+			next: t
+				.pageValue(t.nullable(t.str()))
+				.hint('The next URL, e.g. (page) => page.body.next; else the Link header')
+				.optional(),
+			...each,
+		},
+		offset: {
+			send,
+			unit: t
+				.oneOf('item', 'page')
+				.hint('item: send the count of items so far; page: the page number'),
+			start: t
+				.int()
+				.with({ 'x-n8n-literal': true })
+				.hint('The number of the first page; 1 when not set')
+				.optional(),
+			size: t
+				.int()
+				.with({ minimum: 1, 'x-n8n-literal': true })
+				.hint('Items per page; a shorter page ends the list. Also set the page size in query')
+				.optional(),
+			...each,
+		},
+	})
+	.hint('Each page emits its items; an empty page ends an offset list');
 
 /** v2 read the cursor at a dot path of the body: `meta.next` is `$response.body.meta.next`. */
 const bodyPathOf = (path: string) =>
@@ -101,12 +99,13 @@ export const getRequest = httpRequest.action('get', {
 	egress: { fromInput: 'url' },
 	input: {
 		...common,
-		items: pageValue(arr(jsonValue()))
+		items: t
+			.pageValue(t.arr(t.jsonValue()))
 			.hint('The items of a page, e.g. (page) => page.body.data; else the body')
 			.optional(),
 		pages: pagesInput.optional(),
 	},
-	output: json().hint('One item per page item; an array body emits one item per element'),
+	output: t.json().hint('One item per page item; an array body emits one item per element'),
 	migrate: (fromMajor, params) => {
 		const { pagination, ...rest } = params;
 		if (fromMajor !== 2 || !isRecord(pagination)) return rest;

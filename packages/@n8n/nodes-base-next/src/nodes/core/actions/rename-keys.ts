@@ -1,9 +1,9 @@
-import { arr, json, obj, str } from '@n8n/node-sdk';
+import { t } from '@n8n/node-sdk';
 
 import { core } from '../core.node';
 import { getPath, pathOf, setPath, unsetPath } from '../path';
 
-const field = () => str().with({ minLength: 1 });
+const field = () => t.str().with({ minLength: 1 });
 
 export const renameKeys = core.action('renameKeys', {
 	action: 'Rename keys',
@@ -11,9 +11,9 @@ export const renameKeys = core.action('renameKeys', {
 		'Move fields of each item to new names. A name is a dot path; a missing field is skipped.',
 	flow: { effect: 'transform', cardinality: 'per-item' },
 	input: {
-		keys: arr(obj({ from: field(), to: field() })).with({ minItems: 1 }),
+		keys: t.arr(t.obj({ from: field(), to: field() })).with({ minItems: 1 }),
 	},
-	output: json(),
+	output: t.json(),
 	async run({ input, item }) {
 		const renamed = input.keys.reduce<Readonly<Record<string, unknown>>>((result, { from, to }) => {
 			const [source, target] = [pathOf(from), pathOf(to)];

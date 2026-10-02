@@ -1,18 +1,21 @@
-import { arr, bool, int, json, loose, num, obj, oneOf, parse, str } from '@n8n/node-sdk';
+import { parse, t } from '@n8n/node-sdk';
 
 import { generateContentSchema, replyTextOf } from '../content';
 import { text } from '../google-gemini.node';
 
 /** A candidate as the node emits it with `simplify` and `includeMergedResponse`. */
-const candidate = loose(
-	obj({
-		mergedResponse: str().hint('The full reply text'),
-		content: obj({ parts: arr(json()).optional(), role: str().optional() })
-			.with({ additionalProperties: true })
-			.optional(),
-		finishReason: str().optional(),
-		index: int().optional(),
-	}).with({ additionalProperties: true, 'x-n8n-hint': 'One item per candidate' }),
+const candidate = t.loose(
+	t
+		.obj({
+			mergedResponse: t.str().hint('The full reply text'),
+			content: t
+				.obj({ parts: t.arr(t.json()).optional(), role: t.str().optional() })
+				.with({ additionalProperties: true })
+				.optional(),
+			finishReason: t.str().optional(),
+			index: t.int().optional(),
+		})
+		.with({ additionalProperties: true, 'x-n8n-hint': 'One item per candidate' }),
 );
 
 export const messageGemini = text.action('message', {
@@ -21,14 +24,16 @@ export const messageGemini = text.action('message', {
 	summary: 'Send messages to a Gemini model and get its reply as text.',
 	flow: { effect: 'read', cardinality: 'per-item', idempotent: false },
 	input: {
-		model: str().hint('Model ID such as "models/gemini-2.5-flash"; never invent one'),
-		messages: arr(obj({ role: oneOf('user', 'model').default('user'), content: str() })).with({
-			minItems: 1,
-		}),
-		systemMessage: str().optional(),
-		jsonOutput: bool().default(false).hint('Reply text is JSON; still a string'),
-		temperature: num().optional(),
-		maxOutputTokens: int().with({ minimum: 1 }).optional(),
+		model: t.str().hint('Model ID such as "models/gemini-2.5-flash"; never invent one'),
+		messages: t
+			.arr(t.obj({ role: t.oneOf('user', 'model').default('user'), content: t.str() }))
+			.with({
+				minItems: 1,
+			}),
+		systemMessage: t.str().optional(),
+		jsonOutput: t.bool().default(false).hint('Reply text is JSON; still a string'),
+		temperature: t.num().optional(),
+		maxOutputTokens: t.int().with({ minimum: 1 }).optional(),
 	},
 	output: candidate,
 	async run({ input, http }) {

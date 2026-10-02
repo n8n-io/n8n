@@ -1,24 +1,24 @@
-import { arr, bool, int, num, obj, oneOf, record, str, union, variant } from '@n8n/node-sdk';
+import { t } from '@n8n/node-sdk';
 
 import { form } from '../form.node';
 
-const fieldLabel = str().hint('Shown to the user; the output field unless fieldName is set');
-const fieldName = str().optional().hint('The output field instead of the label');
-const requiredField = bool().optional().hint('A required field is never null in the output');
-const placeholder = str().optional();
-const defaultValue = str().optional();
+const fieldLabel = t.str().hint('Shown to the user; the output field unless fieldName is set');
+const fieldName = t.str().optional().hint('The output field instead of the label');
+const requiredField = t.bool().optional().hint('A required field is never null in the output');
+const placeholder = t.str().optional();
+const defaultValue = t.str().optional();
 const field = { fieldLabel, fieldName, requiredField };
 const choices = {
 	...field,
-	fieldOptions: obj({ values: arr(obj({ option: str() })) }),
+	fieldOptions: t.obj({ values: t.arr(t.obj({ option: t.str() })) }),
 	defaultValue,
 };
 const text = { ...field, placeholder, defaultValue };
-const file = obj({ filename: str(), mimetype: str(), size: int() });
+const file = t.obj({ filename: t.str(), mimetype: t.str(), size: t.int() });
 
-const formFields = obj({
-	values: arr(
-		variant('fieldType', {
+const formFields = t.obj({
+	values: t.arr(
+		t.variant('fieldType', {
 			text,
 			textarea: text,
 			email: text,
@@ -29,18 +29,18 @@ const formFields = obj({
 			radio: choices,
 			checkbox: {
 				...choices,
-				limitSelection: oneOf('exact', 'range', 'unlimited').optional(),
-				numberOfSelections: int().optional(),
-				minSelections: int().optional(),
-				maxSelections: int().optional(),
+				limitSelection: t.oneOf('exact', 'range', 'unlimited').optional(),
+				numberOfSelections: t.int().optional(),
+				minSelections: t.int().optional(),
+				maxSelections: t.int().optional(),
 			},
 			file: {
 				...field,
-				multipleFiles: bool().optional(),
-				acceptFileTypes: str().optional().hint('e.g. .pdf, .jpg'),
+				multipleFiles: t.bool().optional(),
+				acceptFileTypes: t.str().optional().hint('e.g. .pdf, .jpg'),
 			},
-			hiddenField: { fieldName: str(), fieldValue: str().optional() },
-			html: { elementName: str().optional().hint('The output field'), html: str() },
+			hiddenField: { fieldName: t.str(), fieldValue: t.str().optional() },
+			html: { elementName: t.str().optional().hint('The output field'), html: t.str() },
 		}),
 	),
 });
@@ -51,20 +51,21 @@ const entryFields = {
 	key: ['fieldName', 'fieldLabel', 'elementName'],
 	type: 'fieldType',
 	types: {
-		['number']: num().json,
-		checkbox: arr(str()).json,
-		file: union(arr(file), file).hint(
-			'A list unless multipleFiles is false; the files are binaries of the item',
-		).json,
+		['number']: t.num().json,
+		checkbox: t.arr(t.str()).json,
+		file: t
+			.union(t.arr(file), file)
+			.hint('A list unless multipleFiles is false; the files are binaries of the item').json,
 	},
-	fallback: str().json,
+	fallback: t.str().json,
 	required: 'requiredField',
 };
 
 const submitted = {
-	submittedAt: str().hint('ISO time, UTC unless options.useWorkflowTimezone'),
-	formMode: oneOf('test', 'production'),
-	user: obj({ id: str(), email: str(), firstName: str(), lastName: str() })
+	submittedAt: t.str().hint('ISO time, UTC unless options.useWorkflowTimezone'),
+	formMode: t.oneOf('test', 'production'),
+	user: t
+		.obj({ id: t.str(), email: t.str(), firstName: t.str(), lastName: t.str() })
 		.optional()
 		.hint('For authentication n8nUserAuth: who submitted the form'),
 };
@@ -74,37 +75,46 @@ export const formTrigger = form.trigger('trigger', {
 	trigger: 'On form submission',
 	summary: 'Serves a form page and starts the workflow when a user submits it.',
 	input: {
-		authentication: oneOf('none', 'basicAuth', 'n8nUserAuth')
+		authentication: t
+			.oneOf('none', 'basicAuth', 'n8nUserAuth')
 			.default('none')
 			.hint('Setup asks for the credential'),
-		formTitle: str().with({ minLength: 1 }),
-		formDescription: str().optional().hint('Shown under the title; HTML is allowed'),
+		formTitle: t.str().with({ minLength: 1 }),
+		formDescription: t.str().optional().hint('Shown under the title; HTML is allowed'),
 		formFields,
-		responseMode: oneOf('onReceived', 'lastNode')
+		responseMode: t
+			.oneOf('onReceived', 'lastNode')
 			.default('onReceived')
 			.hint('lastNode: the form waits for the workflow to finish'),
-		options: obj({
-			appendAttribution: bool().optional(),
-			buttonLabel: str().optional(),
-			path: str().optional().hint('The form URL path'),
-			respondWithOptions: obj({
-				values: variant('respondWith', {
-					text: { formSubmittedText: str().optional() },
-					redirect: { redirectUrl: str() },
-				}),
-			}).optional(),
-			ignoreBots: bool().optional(),
-			useWorkflowTimezone: bool().optional().hint('submittedAt in the workflow timezone'),
-			customCss: str().optional(),
-			ipWhitelist: str().optional().hint('Comma-separated IPs or CIDR ranges'),
-		}).optional(),
+		options: t
+			.obj({
+				appendAttribution: t.bool().optional(),
+				buttonLabel: t.str().optional(),
+				path: t.str().optional().hint('The form URL path'),
+				respondWithOptions: t
+					.obj({
+						values: t.variant('respondWith', {
+							text: { formSubmittedText: t.str().optional() },
+							redirect: { redirectUrl: t.str() },
+						}),
+					})
+					.optional(),
+				ignoreBots: t.bool().optional(),
+				useWorkflowTimezone: t.bool().optional().hint('submittedAt in the workflow timezone'),
+				customCss: t.str().optional(),
+				ipWhitelist: t.str().optional().hint('Comma-separated IPs or CIDR ranges'),
+			})
+			.optional(),
 	},
-	output: obj({
-		...submitted,
-		formQueryParameters: record(union(str(), arr(str())))
-			.optional()
-			.hint('The query of the form URL, when it has one'),
-	}).with({ 'x-n8n-entry-fields': entryFields }),
+	output: t
+		.obj({
+			...submitted,
+			formQueryParameters: t
+				.record(t.union(t.str(), t.arr(t.str())))
+				.optional()
+				.hint('The query of the form URL, when it has one'),
+		})
+		.with({ 'x-n8n-entry-fields': entryFields }),
 	native: { type: 'n8n-nodes-base.formTrigger', version: 2.6, on: 'form' },
 	reply: {
 		operation: 'page',
@@ -114,18 +124,20 @@ export const formTrigger = form.trigger('trigger', {
 		native: { type: 'n8n-nodes-base.form', version: 2.5 },
 		input: {
 			formFields,
-			limitWaitTime: bool().optional().hint('true: stop waiting after limitType'),
-			limitType: oneOf('afterTimeInterval', 'atSpecifiedTime').optional(),
-			resumeAmount: num().optional().hint('For limitType afterTimeInterval'),
-			resumeUnit: oneOf('minutes', 'hours', 'days').optional(),
-			maxDateAndTime: str().optional().hint('For limitType atSpecifiedTime: an ISO time'),
-			options: obj({
-				formTitle: str().optional(),
-				formDescription: str().optional().hint('HTML is allowed'),
-				buttonLabel: str().optional(),
-				customCss: str().optional(),
-			}).optional(),
+			limitWaitTime: t.bool().optional().hint('true: stop waiting after limitType'),
+			limitType: t.oneOf('afterTimeInterval', 'atSpecifiedTime').optional(),
+			resumeAmount: t.num().optional().hint('For limitType afterTimeInterval'),
+			resumeUnit: t.oneOf('minutes', 'hours', 'days').optional(),
+			maxDateAndTime: t.str().optional().hint('For limitType atSpecifiedTime: an ISO time'),
+			options: t
+				.obj({
+					formTitle: t.str().optional(),
+					formDescription: t.str().optional().hint('HTML is allowed'),
+					buttonLabel: t.str().optional(),
+					customCss: t.str().optional(),
+				})
+				.optional(),
 		},
-		output: obj(submitted).with({ 'x-n8n-entry-fields': entryFields }),
+		output: t.obj(submitted).with({ 'x-n8n-entry-fields': entryFields }),
 	},
 });

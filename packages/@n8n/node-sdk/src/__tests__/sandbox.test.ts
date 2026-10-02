@@ -7,7 +7,7 @@ import path from 'node:path';
 import { Readable } from 'node:stream';
 import type { IHttpRequestOptions, INode } from 'n8n-workflow';
 
-import { compat, credentialType, t } from '../credentials';
+import { compat, defineCredential, field } from '../credentials';
 import { freezeAction, GUEST_LACKS } from '../freeze';
 import { sandboxedVersionOf, type SandboxOptions } from '../sandbox';
 import type { BinaryStore, ExecutorHost } from '../runtime';
@@ -18,11 +18,11 @@ const GUESTS = path.join(SANDBOX, 'dist');
 const GUEST = path.join(GUESTS, 'action.wasm');
 
 const acmeToken = () =>
-	credentialType({
+	defineCredential({
 		id: 'acme.token',
 		legacyName: 'acmeApi',
 		displayName: 'Acme API',
-		fields: { account: t.text('Account ID'), apiKey: t.secret('API Key') },
+		fields: { account: field.text('Account ID'), apiKey: field.secret('API Key') },
 		baseUrl: 'https://api.acme.test',
 		auth: (a) => a.bearer('apiKey'),
 	});
@@ -36,13 +36,15 @@ const node: INode = {
 	parameters: {},
 };
 
-const PROBES = (port: number) => `import { binary, compat, credential, credentialType, defineNode, obj, str, t } from '@n8n/node-sdk';
+const PROBES = (port: number) => `import { defineNode, t } from '@n8n/node-sdk';
+import { compat, credential, defineCredential, field } from '@n8n/node-sdk/credentials';
+const { binary, obj, str } = t;
 const probe = defineNode({ id: 'probe', displayName: 'Probe' });
-const acmeToken = credentialType({
+const acmeToken = defineCredential({
 	id: 'acme.token',
 	legacyName: 'acmeApi',
 	displayName: 'Acme API',
-	fields: { account: t.text('Account ID'), apiKey: t.secret('API Key') },
+	fields: { account: field.text('Account ID'), apiKey: field.secret('API Key') },
 	baseUrl: 'https://api.acme.test',
 	auth: (a) => a.bearer('apiKey'),
 });

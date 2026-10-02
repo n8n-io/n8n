@@ -22,6 +22,10 @@ export default defineConfig({
 				find: /^@n8n\/node-sdk$/,
 				replacement: path.resolve(packageRoot, '../node-sdk/src/index.ts'),
 			},
+			{
+				find: /^@n8n\/node-sdk\/(credentials|host|registry|codegen)$/,
+				replacement: path.resolve(packageRoot, '../node-sdk/src/entry/$1.ts'),
+			},
 			// The engine and the nodes require the CommonJS n8n-workflow; the source must share it.
 			...cjsPinAliases(['n8n-workflow'], packageRoot),
 		],

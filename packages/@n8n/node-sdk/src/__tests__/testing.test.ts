@@ -1,24 +1,13 @@
-import {
-	arr,
-	compat,
-	credential,
-	credentialType,
-	defineNode,
-	int,
-	isHttpError,
-	isRecord,
-	obj,
-	str,
-	t,
-	toCredentialType,
-} from '../index';
+import { compat, credential, defineCredential, field } from '../entry/credentials';
+import { toCredentialType } from '../entry/host';
+import { defineNode, isHttpError, isRecord, t } from '../index';
 import { mockHttp, runAction } from '../testing';
 
-const todoApi = credentialType({
+const todoApi = defineCredential({
 	id: 'todo.token',
 	legacyName: 'todoApi',
 	displayName: 'Todo API',
-	fields: { workspace: t.text('Workspace'), apiKey: t.secret('API Key') },
+	fields: { workspace: field.text('Workspace'), apiKey: field.secret('API Key') },
 	baseUrl: 'https://todo.test/v1',
 	auth: (a) =>
 		a.custom({
@@ -46,8 +35,8 @@ const task = todo.resource('task');
 const listSpec = {
 	action: 'Get many tasks',
 	summary: 'List tasks.',
-	input: { limit: int().with({ minimum: 1 }).default(10), project: str().optional() },
-	output: obj({ id: str(), tags: arr(str()) }),
+	input: { limit: t.int().with({ minimum: 1 }).default(10), project: t.str().optional() },
+	output: t.obj({ id: t.str(), tags: t.arr(t.str()) }),
 };
 
 const listTasks = task.action('getAll', {
@@ -63,11 +52,11 @@ const todoCredential = { type: 'todoApi', data: { apiKey: 'k-1', workspace: 'w-1
 
 describe('credential types', () => {
 	it('project an API key to an n8n type with generic authentication', () => {
-		const keyed = credentialType({
+		const keyed = defineCredential({
 			id: 'key.apiKey',
 			legacyName: 'keyApi',
 			displayName: 'Key API',
-			fields: { apiKey: t.secret('API Key') },
+			fields: { apiKey: field.secret('API Key') },
 			baseUrl: 'https://todo.test/v1',
 			auth: (a) => a.header('X-Api-Key', '{apiKey}'),
 			test: { get: '/me' },
@@ -155,7 +144,7 @@ describe('runAction', () => {
 		const retryAfter = task.action('getAll', {
 			...listSpec,
 			flow: { effect: 'read', cardinality: 'per-item' },
-			output: obj({ status: int(), retryAfter: str(), body: str() }),
+			output: t.obj({ status: t.int(), retryAfter: t.str(), body: t.str() }),
 			async run({ http }) {
 				const error = await http.request({ path: '/tasks', retry: false }).then(
 					() => undefined,
@@ -245,11 +234,15 @@ describe('runAction', () => {
 });
 
 describe('runAction with an exchange credential', () => {
-	const sessionApi = credentialType({
+	const sessionApi = defineCredential({
 		id: 'session.login',
 		legacyName: 'sessionApi',
 		displayName: 'Session API',
-		fields: { url: t.url('URL'), username: t.text('Username'), password: t.secret('Password') },
+		fields: {
+			url: field.url('URL'),
+			username: field.text('Username'),
+			password: field.secret('Password'),
+		},
 		baseUrl: '{url}',
 		auth: (a) =>
 			a.exchange({
@@ -270,7 +263,7 @@ describe('runAction with an exchange credential', () => {
 		summary: 'Read the user twice.',
 		flow: { effect: 'read', cardinality: 'per-item' },
 		input: {},
-		output: obj({ id: str() }),
+		output: t.obj({ id: t.str() }),
 		async run({ http, credential: used }) {
 			seen.push(used);
 			await http.request({ path: '/api/user' });

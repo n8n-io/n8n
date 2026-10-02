@@ -1,4 +1,4 @@
-import { arr, parse, record } from '@n8n/node-sdk';
+import { parse, t } from '@n8n/node-sdk';
 
 import { quoted, scalar } from '../filter';
 import { row as rowResource, schemaHeaders, tablePath } from '../supabase.node';
@@ -9,7 +9,7 @@ export const getSupabaseRows = rowResource.action('get', {
 	summary: 'Get the rows whose columns equal the given values, e.g. { id: 3 }.',
 	flow: { effect: 'read', cardinality: '1:N', idempotent: true },
 	input: {
-		where: record(scalar).hint('Column = value pairs; a row must match every pair'),
+		where: t.record(scalar).hint('Column = value pairs; a row must match every pair'),
 	},
 	output: tableRow,
 	async *run({ input, http }) {
@@ -21,6 +21,6 @@ export const getSupabaseRows = rowResource.action('get', {
 			),
 			headers: { Prefer: 'return=representation', ...schemaHeaders(input.schema, false) },
 		});
-		yield* parse(arr(tableRow), rows);
+		yield* parse(t.arr(tableRow), rows);
 	},
 });

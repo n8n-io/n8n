@@ -3,7 +3,7 @@ import { resolve } from 'node:path';
 
 const root = resolve(__dirname, '../..');
 
-const source = `import { defineNode, int, obj, str } from '@n8n/node-sdk';
+const source = `import { defineNode, t } from '@n8n/node-sdk';
 
 const node = defineNode({ id: 'probe', displayName: 'Probe' });
 
@@ -12,11 +12,11 @@ export const probe = node.action('read', {
 	summary: 'Read.',
 	flow: { effect: 'read', cardinality: 'per-item' },
 	input: {
-		paging: obj({ size: int().default(50) }).default({}),
-		header: obj({ row: int().default(1) }).optional(),
-		name: str().optional(),
+		paging: t.obj({ size: t.int().default(50) }).default({}),
+		header: t.obj({ row: t.int().default(1) }).optional(),
+		name: t.str().optional(),
 	},
-	output: obj({ size: int(), row: int(), name: str() }),
+	output: t.obj({ size: t.int(), row: t.int(), name: t.str() }),
 	run: async ({ input }) => {
 		const paging = input.paging ?? { size: 50 };
 		const size = input.paging.size ?? 50;

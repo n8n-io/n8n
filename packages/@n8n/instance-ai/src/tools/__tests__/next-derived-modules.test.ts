@@ -1,4 +1,4 @@
-import { PROVIDER_FIELDS } from '@n8n/node-sdk';
+import { PROVIDER_FIELDS } from '@n8n/node-sdk/codegen';
 import * as flowSdk from '@n8n/workflow-sdk/next';
 import { execFileSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';

@@ -1,4 +1,6 @@
-import { nodeNameOf, type Action, type AnyCredentialType, type Trigger } from '@n8n/node-sdk';
+import type { Action, Trigger } from '@n8n/node-sdk';
+import type { AnyCredentialType } from '@n8n/node-sdk/credentials';
+import { nodeNameOf } from '@n8n/node-sdk/host';
 import {
 	freezeAction,
 	freezeCredential,
@@ -70,7 +72,7 @@ export function nodeClassFile(contract: Pick<Action, 'id'> | Pick<Trigger, 'id' 
 	const typeOf = 'kind' in contract ? 'toVersionedTriggerType' : 'toVersionedNodeType';
 	const source = [
 		'"use strict";',
-		`const { ${typeOf} } = require("@n8n/node-sdk");`,
+		`const { ${typeOf} } = require("@n8n/node-sdk/host");`,
 		'const { versionsOf } = require("../registry");',
 		`class ${className} extends ${typeOf}(versionsOf(${JSON.stringify(id)})) {}`,
 		`exports.${className} = ${className};`,
@@ -95,7 +97,7 @@ export function credentialClassFile(type: Pick<AnyCredentialType, 'id' | 'name'>
 	const className = `${type.name.charAt(0).toUpperCase()}${type.name.slice(1)}`;
 	const source = [
 		'"use strict";',
-		'const { toCredentialType } = require("@n8n/node-sdk");',
+		'const { toCredentialType } = require("@n8n/node-sdk/host");',
 		'const { credentialTypes } = require("../index");',
 		`const type = credentialTypes.find(({ id }) => id === ${JSON.stringify(type.id)});`,
 		`class ${className} {`,

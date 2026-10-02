@@ -1,17 +1,15 @@
-import * as sdk from '@n8n/node-sdk';
+import { isRecord, validate, type JsonSchema } from '@n8n/node-sdk';
+import * as host from '@n8n/node-sdk/host';
 import {
 	actionFileOf,
-	nodeNameOf,
 	openContractPackage,
 	packageNameOf,
 	parseFixtures,
 	requiredNodeContractOf,
 	toContract,
-	validate,
 	verifyManifestSignature,
-	type JsonSchema,
 	type VersionManifest,
-} from '@n8n/node-sdk';
+} from '@n8n/node-sdk/registry';
 import { npmRegistry, replayFixtures } from '@n8n/node-sdk/publish';
 import { sandboxedVersionOf } from '@n8n/node-sdk/sandbox';
 import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:fs';
@@ -40,7 +38,7 @@ function loadNodeClass(contract: Parameters<typeof nodeClassFile>[0], dir: strin
 	const { file, source } = nodeClassFile(contract);
 	const [className = ''] = path.parse(file).name.split('.');
 	const modules: Record<string, unknown> = {
-		'@n8n/node-sdk': sdk,
+		'@n8n/node-sdk/host': host,
 		'../registry': { versionsOf: (id: string) => versionsOf(id, dir) },
 	};
 	const module: { exports: Record<string, unknown> } = { exports: {} };
@@ -54,7 +52,7 @@ const n8nManifest = () => {
 	const manifest: unknown = JSON.parse(
 		readFileSync(path.resolve(__dirname, '../../package.json'), 'utf8'),
 	);
-	return sdk.isRecord(manifest) && sdk.isRecord(manifest.n8n) ? manifest.n8n : {};
+	return isRecord(manifest) && isRecord(manifest.n8n) ? manifest.n8n : {};
 };
 
 const fixturesOf = (actionId: string) =>
@@ -105,7 +103,7 @@ describe('bundled versions', () => {
 			const { description } = new (loadNodeClass(contract, copy))();
 			return [description.name, description.defaultVersion];
 		});
-		expect(loaded).toEqual(contracts.map(({ id, version }) => [nodeNameOf(id), version]));
+		expect(loaded).toEqual(contracts.map(({ id, version }) => [host.nodeNameOf(id), version]));
 		const versions = Object.fromEntries(
 			frozen.manifests.map(({ id, nodeContract }) => [id, nodeContract]),
 		);
@@ -336,7 +334,7 @@ describe('credential classes', () => {
 			const { file, source } = credentialClassFile(type);
 			const [className = ''] = path.parse(file).name.split('.');
 			const modules: Record<string, unknown> = {
-				'@n8n/node-sdk': sdk,
+				'@n8n/node-sdk/host': host,
 				'../index': { credentialTypes },
 			};
 			const module: { exports: Record<string, unknown> } = { exports: {} };
@@ -353,7 +351,7 @@ describe('credential classes', () => {
 		});
 		expect(loaded).toEqual(
 			credentialTypes.map((type) => {
-				const projected = sdk.toCredentialType(type);
+				const projected = host.toCredentialType(type);
 				return {
 					className: `${type.name.charAt(0).toUpperCase()}${type.name.slice(1)}`,
 					...projected,

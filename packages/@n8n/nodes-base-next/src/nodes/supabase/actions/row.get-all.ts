@@ -1,4 +1,4 @@
-import { arr, str } from '@n8n/node-sdk';
+import { t } from '@n8n/node-sdk';
 
 import { filterQuery, rowFilter } from '../filter';
 import { row as rowResource, schemaHeaders } from '../supabase.node';
@@ -11,7 +11,7 @@ export const getManySupabaseRows = rowResource.action('getAll', {
 	flow: { effect: 'read', cardinality: '1:N', idempotent: true },
 	input: {
 		filter: rowFilter.optional(),
-		order: str().hint('PostgREST order, e.g. created_at.desc').optional(),
+		order: t.str().hint('PostgREST order, e.g. created_at.desc').optional(),
 	},
 	output: tableRow,
 	list: {
@@ -21,7 +21,7 @@ export const getManySupabaseRows = rowResource.action('getAll', {
 			Prefer: 'return=representation',
 			...schemaHeaders(input.schema, false),
 		}),
-		response: arr(tableRow),
+		response: t.arr(tableRow),
 		items: (page) => page,
 		// 1000 is the most rows the legacy node asks for in one request.
 		pages: {

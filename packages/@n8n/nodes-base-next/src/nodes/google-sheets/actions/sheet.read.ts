@@ -1,4 +1,4 @@
-import { arr, bool, int, matches, obj, oneOf, str } from '@n8n/node-sdk';
+import { matches, t } from '@n8n/node-sdk';
 
 import { sheet, spreadsheetIdOf } from '../google-sheets.node';
 import { cellText, readValues, ROW_NUMBER, sheetOf, sheetRow, USER_ROW_NUMBER } from '../table';
@@ -92,15 +92,15 @@ function lookup(
 	return toObjects(data, keyCells, true);
 }
 
-const location = obj({
-	headerRow: int().with({ minimum: 1 }).default(1),
-	firstDataRow: int().with({ minimum: 1 }).default(2),
+const location = t.obj({
+	headerRow: t.int().with({ minimum: 1 }).default(1),
+	firstDataRow: t.int().with({ minimum: 1 }).default(2),
 });
 
 const input = {
-	filters: arr(obj({ column: str().hint('Exact header text'), value: str() })).optional(),
-	combine: oneOf('AND', 'OR').default('AND'),
-	allMatches: bool().default(true).hint('false returns only the first match'),
+	filters: t.arr(t.obj({ column: t.str().hint('Exact header text'), value: t.str() })).optional(),
+	combine: t.oneOf('AND', 'OR').default('AND'),
+	allMatches: t.bool().default(true).hint('false returns only the first match'),
 	header: location.hint('Omit to detect the table; set to read fixed rows').optional(),
 };
 

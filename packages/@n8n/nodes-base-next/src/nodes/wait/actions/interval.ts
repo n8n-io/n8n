@@ -1,4 +1,4 @@
-import { num, oneOf } from '@n8n/node-sdk';
+import { t } from '@n8n/node-sdk';
 
 import { heldItems, holdUntil, wait } from '../wait.node';
 
@@ -10,8 +10,8 @@ export const waitInterval = wait.action('interval', {
 	flow: { effect: 'transform', cardinality: 'batch' },
 	imports: ['wait'],
 	input: {
-		amount: num().with({ minimum: 0 }),
-		unit: oneOf('seconds', 'minutes', 'hours', 'days'),
+		amount: t.num().with({ minimum: 0 }),
+		unit: t.oneOf('seconds', 'minutes', 'hours', 'days'),
 	},
 	output: heldItems,
 	async *run({ input, items, wait: host }) {

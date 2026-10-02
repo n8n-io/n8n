@@ -65,7 +65,7 @@ What each minor added (`@since` in the WIT, `x-n8n-since` in the schema):
 | 2.1.0 | `item-run`: the current item, the `batch` cardinality, named outputs |
 | 2.2.0 | `binary` |
 | 2.3.0 | `data-tables`, `code`, `wait`, `input-of`; `join-run` (named inputs); `capabilities`, `supplied`, the provider interface |
-| 2.4.0 | the `list` binding and `pageValue()` inputs (JS runtime only, no WIT form) |
+| 2.4.0 | the `list` binding and `t.pageValue()` inputs (JS runtime only, no WIT form) |
 | 2.5.0 | the manifest fields `kind`, `nodeContract`, `sdk`, `credentials`; credential manifests; the trigger and credential interfaces; the `run-credential` import (the plain credential fields of `run()`); `provider.describe` |
 | unstable | `credential.exchange`, `credential.refresh` (`credential-exchange`); the lookup interface (`lookup`) |
 
@@ -77,7 +77,7 @@ version.
 ## Rules
 
 - Freeze writes the lowest version that has what a bundle uses
-  (`requiredNodeContractOf`): 2.4.0 for a `list` binding or a `pageValue()` input, 2.3.0 for
+  (`requiredNodeContractOf`): 2.4.0 for a `list` binding or a `t.pageValue()` input, 2.3.0 for
   host imports, named inputs or a provider capability, 2.2.0 for a binary field, else 2.1.0. So
   an older host still runs it. A JS trigger bundle follows the same rule: hosts before 2.5.0 run
   triggers in JS. The trigger interface of 2.5.0 is its WIT form, for a sandbox runner.

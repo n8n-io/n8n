@@ -1,15 +1,17 @@
 import {
+	setContractVersionLoader,
+	setNodeContractRange,
+	toVersionedNodeType,
+	type FrozenVersion,
+} from '@n8n/node-sdk/host';
+import {
 	contractHash,
 	diffContracts,
 	parseFixtures,
 	parseManifest,
-	setNodeContractRange,
-	setContractVersionLoader,
-	toVersionedNodeType,
 	type ContractFixtures,
 	type ExecutionFixture,
-	type FrozenVersion,
-} from '@n8n/node-sdk';
+} from '@n8n/node-sdk/registry';
 import { replayFixtures } from '@n8n/node-sdk/publish';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';

@@ -16,7 +16,7 @@ import { safeRegex } from 'n8n-workflow';
 
 import { isHttpError, type Action, type HttpRequest } from '../src/define';
 import type { JsonSchema } from '../src/schema';
-import type { ChatMessage, ChatReply, ChatRequest, ToolCall } from '../src/subnodes';
+import type { ChatMessage, ChatReply, ChatRequest, ToolCall } from '../src/providers';
 
 export const isRecord = (value: unknown): value is Record<string, unknown> =>
 	typeof value === 'object' && value !== null && !Array.isArray(value);

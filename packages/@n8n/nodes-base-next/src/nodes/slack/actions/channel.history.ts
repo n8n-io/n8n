@@ -1,8 +1,8 @@
-import { arr, bool, obj, paging, ref, str } from '@n8n/node-sdk';
+import { paging, ref, t } from '@n8n/node-sdk';
 
 import { channel, slackChannelId, slackMessage, slackList, slackResponse } from '../slack.node';
 
-const date = str().hint('ISO 8601 date or date-time');
+const date = t.str().hint('ISO 8601 date or date-time');
 
 function seconds(value: string, label: string) {
 	const time = Date.parse(value);
@@ -10,7 +10,7 @@ function seconds(value: string, label: string) {
 	return time / 1000;
 }
 
-const page = slackResponse({ messages: arr(slackMessage) });
+const page = slackResponse({ messages: t.arr(slackMessage) });
 
 export const getSlackChannelHistory = channel.action('history', {
 	patch: 1,
@@ -20,11 +20,13 @@ export const getSlackChannelHistory = channel.action('history', {
 	scopes: ['channels:history', 'groups:history', 'im:history', 'mpim:history'],
 	input: {
 		channel: ref(slackChannelId),
-		filters: obj({
-			oldest: date.optional(),
-			latest: date.optional(),
-			inclusive: bool().default(false).hint('Include messages exactly at oldest or latest'),
-		}).optional(),
+		filters: t
+			.obj({
+				oldest: date.optional(),
+				latest: date.optional(),
+				inclusive: t.bool().default(false).hint('Include messages exactly at oldest or latest'),
+			})
+			.optional(),
 		paging,
 	},
 	output: slackMessage,

@@ -5,7 +5,8 @@ import { Merge } from 'n8n-nodes-base/dist/nodes/Merge/Merge.node';
 import { NoOp } from 'n8n-nodes-base/dist/nodes/NoOp/NoOp.node';
 import { StopAndError } from 'n8n-nodes-base/dist/nodes/StopAndError/StopAndError.node';
 import { Wait } from 'n8n-nodes-base/dist/nodes/Wait/Wait.node';
-import { setCodeLanguages, type Action } from '@n8n/node-sdk';
+import type { Action } from '@n8n/node-sdk';
+import { setCodeLanguages } from '@n8n/node-sdk/host';
 import { compileFunction } from 'node:vm';
 import type {
 	DataTableColumn,

@@ -1,4 +1,5 @@
-import { arr, credential, defineNode, defineResource, int, obj, str, variant } from '@n8n/node-sdk';
+import { defineNode, defineResource, t } from '@n8n/node-sdk';
+import { credential } from '@n8n/node-sdk/credentials';
 
 import { googleOAuth2 } from '../google-oauth2';
 
@@ -42,32 +43,46 @@ export const documentPath = (id: string, method = ''): `/${string}` =>
 const open = { additionalProperties: true } as const;
 
 /** The parts of a Docs API document that the actions read. */
-export const documentResponse = obj({
-	title: str().optional(),
-	body: obj({
-		content: arr(
-			obj({
-				endIndex: int().optional(),
-				paragraph: obj({
-					elements: arr(obj({ textRun: obj({ content: str() }).with(open).optional() }).with(open)),
-				})
-					.with(open)
+export const documentResponse = t
+	.obj({
+		title: t.str().optional(),
+		body: t
+			.obj({
+				content: t
+					.arr(
+						t
+							.obj({
+								endIndex: t.int().optional(),
+								paragraph: t
+									.obj({
+										elements: t.arr(
+											t
+												.obj({ textRun: t.obj({ content: t.str() }).with(open).optional() })
+												.with(open),
+										),
+									})
+									.with(open)
+									.optional(),
+							})
+							.with(open),
+					)
 					.optional(),
-			}).with(open),
-		).optional(),
+			})
+			.with(open)
+			.optional(),
 	})
-		.with(open)
-		.optional(),
-}).with(open);
+	.with(open);
 
 export const documentUrlOf = (id: string) => `https://docs.google.com/document/d/${id}/edit`;
 
 export const document = googleDocs.resource('document');
 
 /** What a write adds to a document. Markdown keeps headings, lists, bold and links. */
-export const content = variant('format', {
-	text: { text: str().with({ minLength: 1 }) },
-	markdown: {
-		markdown: str().hint('Headings, - and 1. lists, **bold**, *italic*, [links](url)'),
-	},
-}).hint('Use markdown for headings and bullet points');
+export const content = t
+	.variant('format', {
+		text: { text: t.str().with({ minLength: 1 }) },
+		markdown: {
+			markdown: t.str().hint('Headings, - and 1. lists, **bold**, *italic*, [links](url)'),
+		},
+	})
+	.hint('Use markdown for headings and bullet points');

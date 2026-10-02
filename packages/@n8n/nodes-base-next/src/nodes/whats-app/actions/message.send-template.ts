@@ -1,29 +1,29 @@
-import { arr, int, num, oneOf, str, variant, type Infer } from '@n8n/node-sdk';
+import { t, type Infer } from '@n8n/node-sdk';
 
 import { message, sendMessage, sent } from '../whats-app.node';
 
-const bodyParameter = variant('type', {
-	text: { text: str() },
+const bodyParameter = t.variant('type', {
+	text: { text: t.str() },
 	currency: {
-		code: str().with({ pattern: '^[A-Z]{3}$' }).hint('ISO 4217 code, e.g. EUR'),
-		amount: num().hint('In the main unit, e.g. 12.5'),
-		fallback: str().hint('Text when the client cannot format it, e.g. €12.50'),
+		code: t.str().with({ pattern: '^[A-Z]{3}$' }).hint('ISO 4217 code, e.g. EUR'),
+		amount: t.num().hint('In the main unit, e.g. 12.5'),
+		fallback: t.str().hint('Text when the client cannot format it, e.g. €12.50'),
 	},
-	date_time: { fallback: str().hint('The date as text, e.g. March 3, 2026') },
+	date_time: { fallback: t.str().hint('The date as text, e.g. March 3, 2026') },
 });
 
-const component = variant('type', {
-	body: { parameters: arr(bodyParameter).hint('One per template placeholder, in order') },
+const component = t.variant('type', {
+	body: { parameters: t.arr(bodyParameter).hint('One per template placeholder, in order') },
 	header: {
-		parameter: variant('type', {
-			text: { text: str() },
-			image: { link: str().with({ format: 'uri' }) },
+		parameter: t.variant('type', {
+			text: { text: t.str() },
+			image: { link: t.str().with({ format: 'uri' }) },
 		}),
 	},
 	button: {
-		index: int().with({ minimum: 0, maximum: 9 }),
-		subType: oneOf('quick_reply', 'url'),
-		value: str().hint('The payload of a quick reply, or the URL suffix of a URL button'),
+		index: t.int().with({ minimum: 0, maximum: 9 }),
+		subType: t.oneOf('quick_reply', 'url'),
+		value: t.str().hint('The payload of a quick reply, or the URL suffix of a URL button'),
 	},
 });
 
@@ -82,13 +82,15 @@ export const sendWhatsAppTemplate = message.action('sendTemplate', {
 	flow: { effect: 'write', cardinality: 'per-item', idempotent: false },
 	scopes: ['whatsapp_business_messaging'],
 	input: {
-		template: str()
+		template: t
+			.str()
 			.with({ pattern: '^[a-z0-9_]+$' })
 			.hint('Approved template name, e.g. order_confirmation'),
-		language: str()
+		language: t
+			.str()
 			.with({ pattern: '^[a-z]{2,3}(_[A-Z]{2})?$' })
 			.hint('The language of the approved template, e.g. en_US'),
-		components: arr(component).hint('Values for the template placeholders').optional(),
+		components: t.arr(component).hint('Values for the template placeholders').optional(),
 	},
 	output: sent,
 	async run({ input, http }) {

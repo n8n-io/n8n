@@ -14,17 +14,16 @@ import { isRecord } from '@n8n/utils/is-record';
 import type { OutputSchemaLookup } from '@n8n/workflow-sdk';
 import type { ContractRead } from '@n8n/workflow-sdk/next';
 import { isNodeParameters, type INodeTypeDescription, type INodeTypes } from 'n8n-workflow';
+import type { Action, Trigger } from '@n8n/node-sdk';
 import {
-	generateNodeModule,
-	toTs,
-	SUPPLY_CONNECTIONS,
-	suppliedKindOf,
 	generatedTriggersOf,
-	toContract,
-	type Action,
+	generateNodeModule,
+	providedKindOf,
+	PROVIDER_CONNECTIONS,
+	toTs,
 	type GeneratedAction,
-	type Trigger,
-} from '@n8n/node-sdk';
+} from '@n8n/node-sdk/codegen';
+import { toContract } from '@n8n/node-sdk/registry';
 import {
 	actions,
 	migratedTargetOf,
@@ -406,9 +405,9 @@ export function searchNextActions(
 export function supplierActionsOf(nodeIds: readonly string[], connectionType: string): Action[] {
 	return [...new Set(nodeIds)].flatMap((nodeId) =>
 		actionsOfNode(nodeId).filter((action) => {
-			const kind = suppliedKindOf(action.output.json);
-			if (kind !== undefined) return SUPPLY_CONNECTIONS[kind] === connectionType;
-			return connectionType === SUPPLY_CONNECTIONS.tool && toolActions.includes(action);
+			const kind = providedKindOf(action.output.json);
+			if (kind !== undefined) return PROVIDER_CONNECTIONS[kind] === connectionType;
+			return connectionType === PROVIDER_CONNECTIONS.tool && toolActions.includes(action);
 		}),
 	);
 }

@@ -1,13 +1,15 @@
-import { arr, bool, obj, oneOf, str } from '@n8n/node-sdk';
+import { t } from '@n8n/node-sdk';
 
 import { driveFile, driveIdOf, file, FILE_FIELDS, FOLDER_TYPE } from '../google-drive.node';
 
 /** Mirrors `escapeBackslashQuotedValue` in nodes-base: a value in a Drive query string. */
 const quoted = (value: string) => `'${value.replaceAll('\\', '\\\\').replaceAll("'", "\\'")}'`;
 
-const filePage = obj({ files: arr(driveFile).optional(), nextPageToken: str().optional() }).with({
-	additionalProperties: true,
-});
+const filePage = t
+	.obj({ files: t.arr(driveFile).optional(), nextPageToken: t.str().optional() })
+	.with({
+		additionalProperties: true,
+	});
 
 export const searchFiles = file.action('search', {
 	patch: 1,
@@ -15,11 +17,11 @@ export const searchFiles = file.action('search', {
 	summary: 'Find files and folders by name, folder, and type.',
 	flow: { effect: 'read', cardinality: '1:N', idempotent: true },
 	input: {
-		nameContains: str().hint('Part of the name').optional(),
-		query: str().hint("Drive query syntax, e.g. modifiedTime > '2026-01-01'").optional(),
-		folderId: str().hint('Only items directly in this folder; ID or URL').optional(),
-		type: oneOf('all', 'files', 'folders').default('all'),
-		includeTrashed: bool().default(false),
+		nameContains: t.str().hint('Part of the name').optional(),
+		query: t.str().hint("Drive query syntax, e.g. modifiedTime > '2026-01-01'").optional(),
+		folderId: t.str().hint('Only items directly in this folder; ID or URL').optional(),
+		type: t.oneOf('all', 'files', 'folders').default('all'),
+		includeTrashed: t.bool().default(false),
 	},
 	output: driveFile,
 	list: {

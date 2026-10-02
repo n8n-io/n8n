@@ -1,4 +1,4 @@
-import { obj, parse, str } from '@n8n/node-sdk';
+import { parse, t } from '@n8n/node-sdk';
 
 import {
 	content as contentSchema,
@@ -14,10 +14,10 @@ const DRIVE_FILES = 'https://www.googleapis.com/drive/v3/files';
 /** The body of a new document starts at index 1. */
 const BODY_START = 1;
 
-const created = obj({
-	documentId: str(),
-	title: str(),
-	url: str().hint('The edit link, e.g. to send by email'),
+const created = t.obj({
+	documentId: t.str(),
+	title: t.str(),
+	url: t.str().hint('The edit link, e.g. to send by email'),
 });
 
 export const createDocument = document.action('create', {
@@ -27,8 +27,8 @@ export const createDocument = document.action('create', {
 	// The Docs API has no folder field, so the Drive API creates the file.
 	egress: { hosts: ['www.googleapis.com'] },
 	input: {
-		title: str().with({ minLength: 1 }),
-		folderId: str().hint('Drive folder ID; My Drive when not set').optional(),
+		title: t.str().with({ minLength: 1 }),
+		folderId: t.str().hint('Drive folder ID; My Drive when not set').optional(),
 		content: contentSchema.optional(),
 	},
 	output: created,
@@ -42,7 +42,7 @@ export const createDocument = document.action('create', {
 				...(input.folderId ? { parents: [input.folderId] } : {}),
 			},
 		});
-		const created = parse(obj({ id: str() }), file).id;
+		const created = parse(t.obj({ id: t.str() }), file).id;
 		if (!created) throw new Error('Google Drive gave no ID for the new document');
 		const id = documentIdOf(created);
 		const { content } = input;

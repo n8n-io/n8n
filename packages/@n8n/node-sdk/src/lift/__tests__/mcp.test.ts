@@ -1,4 +1,6 @@
-import { compat, credential, defineNode, toNodeType } from '../../index';
+import { compat, credential } from '../../entry/credentials';
+import { toNodeType } from '../../entry/host';
+import { defineNode } from '../../index';
 import { runAction } from '../../testing';
 import type { JsonSchema } from '../../schema';
 import { liftMcpTool, type McpClient, type McpTool } from '../mcp';

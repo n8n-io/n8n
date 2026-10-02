@@ -1,16 +1,6 @@
 import {
-	arr,
-	bool,
 	defineNode,
-	int,
-	nullable,
-	num,
-	obj,
-	oneOf,
-	record,
-	str,
-	union,
-	variant,
+	t,
 	type DataTableColumnType,
 	type DataTableFilter,
 	type DataTableValue,
@@ -24,29 +14,30 @@ import {
 /** Rows of the n8n data tables of the workflow's project. The host gives the tables; no credential. */
 export const dataTable = defineNode({ id: 'dataTable', displayName: 'Data table' });
 
-const tableId = obj({ id: str().with({ minLength: 1 }).hint('Data table ID') });
-const tableName = obj({ name: str().with({ minLength: 1 }).hint('Exact data table name') });
+const tableId = t.obj({ id: t.str().with({ minLength: 1 }).hint('Data table ID') });
+const tableName = t.obj({ name: t.str().with({ minLength: 1 }).hint('Exact data table name') });
 
-export const tableRef = union(tableId, tableName).hint('The table by ID or by name');
+export const tableRef = t.union(tableId, tableName).hint('The table by ID or by name');
 
 export const row = dataTable.resource('row', { input: { table: tableRef } });
 
 export const table = dataTable.resource('table');
 
 /** One cell value. A date is ISO 8601 text. */
-export const cell = nullable(union(str(), num(), bool())).hint('A date is ISO 8601 text');
+export const cell = t.nullable(t.union(t.str(), t.num(), t.bool())).hint('A date is ISO 8601 text');
 
-const column = str()
+const column = t
+	.str()
 	.with({ minLength: 1 })
 	.hint('Column name, or the system column id, createdAt or updatedAt');
 
-const ordered = union(num(), str());
+const ordered = t.union(t.num(), t.str());
 
-const condition = variant('op', {
+const condition = t.variant('op', {
 	eq: { column, value: cell },
 	neq: { column, value: cell },
-	like: { column, value: str().hint('% matches any text') },
-	ilike: { column, value: str().hint('% matches any text; case is ignored') },
+	like: { column, value: t.str().hint('% matches any text') },
+	ilike: { column, value: t.str().hint('% matches any text; case is ignored') },
 	gt: { column, value: ordered },
 	gte: { column, value: ordered },
 	lt: { column, value: ordered },
@@ -56,12 +47,12 @@ const condition = variant('op', {
 });
 
 /** Rows that match all or any of the conditions. */
-export const where = obj({
-	match: oneOf('all', 'any').hint('all = AND, any = OR'),
-	conditions: arr(condition).with({ minItems: 1 }),
+export const where = t.obj({
+	match: t.oneOf('all', 'any').hint('all = AND, any = OR'),
+	conditions: t.arr(condition).with({ minItems: 1 }),
 });
 
-export const values = record(cell).hint('Cell values by column name');
+export const values = t.record(cell).hint('Cell values by column name');
 
 export const toFilter = ({ match, conditions }: Infer<typeof where>): DataTableFilter => ({
 	match,
@@ -95,13 +86,15 @@ export function cellsOf(item: InputItem): DataTableValues {
 }
 
 /** A stored row. Without the table columns, each other field is a cell. */
-export const storedRow = obj({
-	id: int(),
-	createdAt: str().with({ format: 'date-time' }),
-	updatedAt: str().with({ format: 'date-time' }),
-}).with({
-	additionalProperties: { ...cell.json, 'x-n8n-hint': 'One field per column, by column name' },
-});
+export const storedRow = t
+	.obj({
+		id: t.int(),
+		createdAt: t.str().with({ format: 'date-time' }),
+		updatedAt: t.str().with({ format: 'date-time' }),
+	})
+	.with({
+		additionalProperties: { ...cell.json, 'x-n8n-hint': 'One field per column, by column name' },
+	});
 
 const CELL_TYPES: Record<DataTableColumnType, JsonSchema> = {
 	['string']: { type: 'string' },
@@ -133,11 +126,11 @@ export function rowFromColumns(fields: readonly ResourceField[]): JsonSchema {
 
 export const ROW_COLUMNS = 'dataTable.columns';
 
-export const direction = oneOf('asc', 'desc');
+export const direction = t.oneOf('asc', 'desc');
 
-export const sort = obj({ column, direction });
+export const sort = t.obj({ column, direction });
 
-export const limit = int().with({ minimum: 1 }).hint('Omit for every match');
+export const limit = t.int().with({ minimum: 1 }).hint('Omit for every match');
 
 /** The rows or tables of one read come in pages of this size. */
 const PAGE_SIZE = 1000;
@@ -162,15 +155,15 @@ export async function* pagesOf<T>(
 	}
 }
 
-const columnType = oneOf('string', 'number', 'boolean', 'date');
+const columnType = t.oneOf('string', 'number', 'boolean', 'date');
 
-export const columns = arr(obj({ name: str().with({ minLength: 1 }), type: columnType }));
+export const columns = t.arr(t.obj({ name: t.str().with({ minLength: 1 }), type: columnType }));
 
 /** A table without its rows. */
-export const tableInfo = obj({
-	id: str(),
-	name: str(),
+export const tableInfo = t.obj({
+	id: t.str(),
+	name: t.str(),
 	columns,
-	createdAt: str().with({ format: 'date-time' }),
-	updatedAt: str().with({ format: 'date-time' }),
+	createdAt: t.str().with({ format: 'date-time' }),
+	updatedAt: t.str().with({ format: 'date-time' }),
 });

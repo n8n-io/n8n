@@ -1,4 +1,5 @@
-import { toNodeType, validate, type Action } from '@n8n/node-sdk';
+import { validate, type Action } from '@n8n/node-sdk';
+import { toNodeType } from '@n8n/node-sdk/host';
 import type { IDataObject, IExecuteFunctions } from 'n8n-workflow';
 import { simplifyOutput } from 'n8n-nodes-base/dist/nodes/Google/Gmail/GenericFunctions';
 import { GoogleSheet } from 'n8n-nodes-base/dist/nodes/Google/Sheet/v2/helpers/GoogleSheet';

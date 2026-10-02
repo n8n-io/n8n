@@ -24,7 +24,7 @@ interface Manifest {
 
 // The cli does not depend on the node-sdk, so load it through the package that does.
 const sdkRequire = createRequire(createRequire(__filename).resolve('@n8n/nodes-base-next'));
-const { parseManifest } = sdkRequire('@n8n/node-sdk') as {
+const { parseManifest } = sdkRequire('@n8n/node-sdk/registry') as {
 	parseManifest(text: string): Manifest;
 };
 const { packContractPackage } = sdkRequire('@n8n/node-sdk/publish') as {

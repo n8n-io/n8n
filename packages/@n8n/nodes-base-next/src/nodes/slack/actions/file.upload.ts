@@ -1,19 +1,21 @@
-import { arr, binary, loose, obj, ref, str } from '@n8n/node-sdk';
+import { ref, t } from '@n8n/node-sdk';
 
 import { file, slackChannelId, slackGet, slackPost, slackResponse, slackTs } from '../slack.node';
 
-const slackFile = loose(
-	obj({
-		id: str(),
-		title: str().optional(),
-		name: str().optional(),
-		permalink: str().optional(),
-	}).with({ additionalProperties: true }),
+const slackFile = t.loose(
+	t
+		.obj({
+			id: t.str(),
+			title: t.str().optional(),
+			name: t.str().optional(),
+			permalink: t.str().optional(),
+		})
+		.with({ additionalProperties: true }),
 );
 
-const uploadTarget = slackResponse({ upload_url: str(), file_id: str() });
+const uploadTarget = slackResponse({ upload_url: t.str(), file_id: t.str() });
 
-const completed = slackResponse({ files: arr(slackFile).with({ minItems: 1 }) });
+const completed = slackResponse({ files: t.arr(slackFile).with({ minItems: 1 }) });
 
 export const uploadSlackFile = file.action('upload', {
 	action: 'Upload a file',
@@ -23,12 +25,12 @@ export const uploadSlackFile = file.action('upload', {
 	// files.getUploadURLExternal gives a URL on this host for the bytes.
 	egress: { hosts: ['files.slack.com'] },
 	input: {
-		file: binary().hint('A binary of the input item, e.g. (item) => item.binary.data'),
+		file: t.binary().hint('A binary of the input item, e.g. (item) => item.binary.data'),
 		channel: ref(slackChannelId).optional(),
-		initialComment: str().hint('Message text posted with the file').optional(),
+		initialComment: t.str().hint('Message text posted with the file').optional(),
 		threadTs: slackTs.hint('ts of the parent message, to share the file in its thread').optional(),
-		title: str().hint('The file name when empty').optional(),
-		fileName: str().hint('The binary file name when empty').optional(),
+		title: t.str().hint('The file name when empty').optional(),
+		fileName: t.str().hint('The binary file name when empty').optional(),
 	},
 	output: slackFile,
 	async run({ input, http }) {

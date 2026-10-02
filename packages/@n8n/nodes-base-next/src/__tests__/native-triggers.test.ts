@@ -1,4 +1,4 @@
-import { lintContract, replyContractOf, toContract } from '@n8n/node-sdk';
+import { lintContract, replyContractOf, toContract } from '@n8n/node-sdk/registry';
 
 import { actions, flowNatives, nativeTriggers, triggers } from '../index';
 

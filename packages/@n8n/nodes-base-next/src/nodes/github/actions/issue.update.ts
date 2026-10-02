@@ -1,4 +1,4 @@
-import { arr, int, oneOf, str } from '@n8n/node-sdk';
+import { t } from '@n8n/node-sdk';
 
 import { issueResource } from '../github.node';
 import { issue, issueOf, issuesPath } from '../issue';
@@ -9,13 +9,13 @@ export const updateIssue = issueResource.action('update', {
 	scopes: ['repo'],
 	flow: { effect: 'write', cardinality: 'per-item', idempotent: true },
 	input: {
-		issueNumber: int().with({ minimum: 1 }).hint('The number shown as #123, not the ID'),
-		title: str().with({ minLength: 1 }).optional(),
-		body: str().hint('Markdown').optional(),
-		state: oneOf('open', 'closed').optional(),
-		stateReason: oneOf('completed', 'not_planned', 'reopened').optional(),
-		labels: arr(str()).hint('Replaces every label of the issue').optional(),
-		assignees: arr(str()).hint('Replaces every assignee of the issue').optional(),
+		issueNumber: t.int().with({ minimum: 1 }).hint('The number shown as #123, not the ID'),
+		title: t.str().with({ minLength: 1 }).optional(),
+		body: t.str().hint('Markdown').optional(),
+		state: t.oneOf('open', 'closed').optional(),
+		stateReason: t.oneOf('completed', 'not_planned', 'reopened').optional(),
+		labels: t.arr(t.str()).hint('Replaces every label of the issue').optional(),
+		assignees: t.arr(t.str()).hint('Replaces every assignee of the issue').optional(),
 	},
 	output: issue,
 	async run({ input, http }) {

@@ -13,9 +13,29 @@
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
     },
+    "./credentials": {
+      "types": "./dist/entry/credentials.d.ts",
+      "default": "./dist/entry/credentials.js"
+    },
     "./testing": {
       "types": "./dist/testing.d.ts",
       "default": "./dist/testing.js"
+    },
+    "./host": {
+      "types": "./dist/entry/host.d.ts",
+      "default": "./dist/entry/host.js"
+    },
+    "./registry": {
+      "types": "./dist/entry/registry.d.ts",
+      "default": "./dist/entry/registry.js"
+    },
+    "./codegen": {
+      "types": "./dist/entry/codegen.d.ts",
+      "default": "./dist/entry/codegen.js"
+    },
+    "./mcp": {
+      "types": "./dist/lift/mcp.d.ts",
+      "default": "./dist/lift/mcp.js"
     },
     "./freeze": {
       "types": "./dist/freeze.d.ts",

@@ -1,8 +1,9 @@
-# Sub-node contracts
+# Provider contracts
 
-A sub-node supplies one capability to a root node through an n8n `ai_*` connection. The
-contract format has no separate sub-node kind: a sub-node is an action whose `output` is
-`supplied(kind)`, and a root node is an action with a `supplied(kind)` input field.
+A provider gives one capability to a root node through an n8n `ai_*` connection. The UI calls
+it a sub-node. The manifest format has no separate provider kind: a provider is an action whose
+`output` is the capability (`x-n8n-supply`), and a root node is an action with a
+`provider.input(kind)` input field.
 
 | Kind         | Capability                      | n8n connection     | Input field name |
 | ------------ | ------------------------------- | ------------------ | ---------------- |
@@ -14,29 +15,29 @@ contract format has no separate sub-node kind: a sub-node is an action whose `ou
 The capabilities are provider-neutral (`ChatRequest`, `ChatReply`, `ToolCall`). Each provider
 maps its own API in its node folder, so every root node runs with every provider.
 
-## A sub-node
+## A provider
 
 ```typescript
-export const openAiChatModel = openAi.subnode('chatModel', {
+export const openAiChatModel = openAi.provider('chatModel', {
 	action: 'OpenAI Chat Model',
 	summary: 'An OpenAI chat model for an AI node.',
-	supplies: 'chatModel',
-	input: { model: modelId('openai'), temperature: num().optional() },
-	async supply({ input, http }) {
+	provides: 'chatModel',
+	input: { model: t.modelId('openai'), temperature: t.num().optional() },
+	async provide({ input, http }) {
 		return { model: input.model, chat: async (request) => /* http.request(...) */ };
 	},
 });
 ```
 
-- `subnode()` makes a per-item action whose `output` is `supplied(kind)` and whose `run()` is
-  `supply()`. `lintContract` rejects a sub-node with another cardinality.
+- `provider()` makes a per-item action whose `output` is the capability and whose `run()` is
+  `provide()`. `lintContract` rejects a provider with another cardinality.
 - n8n calls `supplyData()`, not `execute()`. The host runs the action as one item: the
   parameters resolve against item 0 of the root node, and a failure always reaches the root.
-- The capability sends requests with the `http` of the sub-node, so the credential, the
-  egress check, and the retries of the sub-node apply.
-- The host records each capability call as a run of the sub-node (`addInputData` and
+- The capability sends requests with the `http` of the provider, so the credential, the
+  egress check, and the retries of the provider apply.
+- The host records each capability call as a run of the provider (`addInputData` and
   `addOutputData`), as the legacy sub-nodes do.
-- `modelId(provider)` marks a model ID of the model catalog (models.dev). The generated module
+- `t.modelId(provider)` marks a model ID of the model catalog (models.dev). The generated module
   types it as `ModelOf<provider>`. The build declares `ModelCatalog` from the catalog, so `tsc`
   rejects a model ID that the provider does not offer.
 
@@ -44,13 +45,13 @@ export const openAiChatModel = openAi.subnode('chatModel', {
 
 ```typescript
 input: {
-	model: supplied('chatModel'),
-	tools: arr(supplied('tool')).optional(),
-	prompt: str(),
+	model: provider.input('chatModel'),
+	tools: t.arr(provider.input('tool')).optional(),
+	prompt: t.str(),
 }
 ```
 
-- Each `supplied()` field becomes an n8n input of its connection type: a single field has
+- Each `provider.input()` field becomes an n8n input of its connection type: a single field has
   `maxConnections: 1`, a list takes any number. The field is not a parameter.
 - `run()` gets the capabilities in `input`. The host reads them once per run.
 - A value that is not a contract capability of the kind (for example a legacy LangChain model)
@@ -80,5 +81,5 @@ ai.prompt({
 ## Fixtures
 
 A root fixture records each capability in `supplied` (by input field): its data members and
-the results of its method calls, in order. A sub-node fixture lists `calls` of its
+the results of its method calls, in order. A provider fixture lists `calls` of its
 capability; `output` holds their results, and `responses` holds the HTTP responses of the calls.

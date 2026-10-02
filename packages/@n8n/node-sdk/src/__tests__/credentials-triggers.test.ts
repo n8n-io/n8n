@@ -1,35 +1,19 @@
 import { createHmac } from 'node:crypto';
 import type { IDataObject, IHttpRequestOptions, INodeType } from 'n8n-workflow';
 
-import {
-	arr,
-	compat,
-	contractHash,
-	credential,
-	credentialType,
-	defineNode,
-	diffContracts,
-	generateNodeModule,
-	int,
-	loose,
-	nullable,
-	obj,
-	pageValue,
-	parse,
-	str,
-	t,
-	toContract,
-	toTriggerNodeType,
-	variant,
-} from '../index';
+import { generateNodeModule } from '../entry/codegen';
+import { compat, credential, defineCredential, field } from '../entry/credentials';
+import { toTriggerNodeType } from '../entry/host';
+import { contractHash, diffContracts, toContract } from '../entry/registry';
+import { defineNode, parse, t } from '../index';
 import { requestOf } from '../runtime';
 import { mockHttp, runAction } from '../testing';
 
-const tasksApi = credentialType({
+const tasksApi = defineCredential({
 	id: 'tasks.token',
 	legacyName: 'tasksApi',
 	displayName: 'Tasks API',
-	fields: { token: t.secret('Access Token'), signingSecret: str().optional() },
+	fields: { token: field.secret('Access Token'), signingSecret: t.str().optional() },
 	auth: (a) => a.bearer('token'),
 });
 
@@ -43,16 +27,16 @@ const tasks = defineNode({
 	baseUrl: 'https://tasks.test/v1',
 });
 
-const task = tasks.resource('task', { input: { project: str() } });
+const task = tasks.resource('task', { input: { project: t.str() } });
 
-const taskOutput = obj({ id: str(), title: str() });
+const taskOutput = t.obj({ id: t.str(), title: t.str() });
 
 const getTask = task.action('get', {
 	action: 'Get a task',
 	summary: 'Get one task by ID.',
 	flow: { effect: 'read', cardinality: 'per-item', idempotent: true },
 	scopes: ['tasks:read'],
-	input: { id: str(), fields: str().optional() },
+	input: { id: t.str(), fields: t.str().optional() },
 	output: taskOutput,
 	request: {
 		path: '/projects/{project}/tasks/{id}',
@@ -65,12 +49,12 @@ const listTasks = task.action('getAll', {
 	summary: 'List the tasks of a project.',
 	flow: { effect: 'read', cardinality: '1:N', idempotent: true },
 	scopes: ['tasks:read'],
-	input: { limit: int().default(50) },
+	input: { limit: t.int().default(50) },
 	output: taskOutput,
 	list: {
 		path: '/projects/{project}/tasks',
 		query: { limit: { input: 'limit' } },
-		response: obj({ results: arr(taskOutput) }),
+		response: t.obj({ results: t.arr(taskOutput) }),
 		items: (page) => page.results,
 	},
 });
@@ -111,7 +95,7 @@ describe('declarative request binding', () => {
 			action: 'Get a task',
 			summary: 'Get one task by ID.',
 			flow: { effect: 'read', cardinality: 'per-item' },
-			input: { id: str() },
+			input: { id: t.str() },
 			output: taskOutput,
 			// @ts-expect-error `{task}` is not an input field
 			request: { path: '/tasks/{task}' },
@@ -120,7 +104,7 @@ describe('declarative request binding', () => {
 			action: 'Get a task',
 			summary: 'Get one task by ID.',
 			flow: { effect: 'read', cardinality: 'per-item' },
-			input: { id: str() },
+			input: { id: t.str() },
 			output: taskOutput,
 			// @ts-expect-error `query` reads an input field that does not exist
 			request: { path: '/tasks/{id}', query: { q: { input: 'search' } } },
@@ -129,7 +113,7 @@ describe('declarative request binding', () => {
 			action: 'Get a task',
 			summary: 'Get one task by ID.',
 			flow: { effect: 'read', cardinality: 'per-item' },
-			input: { id: str().optional() },
+			input: { id: t.str().optional() },
 			output: taskOutput,
 			// @ts-expect-error `{id}` is optional, so the segment could be empty
 			request: { path: '/tasks/{id}' },
@@ -180,7 +164,7 @@ describe('scopes', () => {
 	});
 });
 
-const taskEvent = obj({ id: str(), title: str() });
+const taskEvent = t.obj({ id: t.str(), title: t.str() });
 
 const created = task.trigger('created', {
 	trigger: 'On task created',
@@ -193,7 +177,7 @@ const created = task.trigger('created', {
 			path: `/projects/${input.project}/tasks`,
 			query: { after: since },
 		}),
-		response: arr(taskOutput),
+		response: t.arr(taskOutput),
 		items: (page) => page,
 		cursor: { id: (item) => Number(item.id) },
 	},
@@ -222,9 +206,9 @@ const edited = task.trigger('edited', {
 			path: `/projects/${input.project}/tasks`,
 			query: { after: since, page, size: limit },
 		}),
-		response: obj({
-			items: arr(obj({ id: str(), title: str(), at: str() })),
-			next: str().optional(),
+		response: t.obj({
+			items: t.arr(t.obj({ id: t.str(), title: t.str(), at: t.str() })),
+			next: t.str().optional(),
 		}),
 		items: (page) => page.items,
 		next: (page) => page.next,
@@ -237,7 +221,7 @@ const hooked = task.trigger('commented', {
 	trigger: 'On task comment',
 	summary: 'Starts when the service posts a task comment.',
 	input: {},
-	output: loose(taskEvent),
+	output: t.loose(taskEvent),
 	webhook: {
 		verify: { algorithm: 'sha256', header: 'x-signature', secret: 'generated' },
 		register: {
@@ -464,7 +448,7 @@ describe('node credential', () => {
 			credential: credential({
 				types: [
 					compat('ghApi', {
-						fields: { server: str().default('https://api.gh.test') },
+						fields: { server: t.str().default('https://api.gh.test') },
 						baseUrl: '{server}',
 					}),
 				],
@@ -475,7 +459,7 @@ describe('node credential', () => {
 			summary: 'Get the user of the credential.',
 			flow: { effect: 'read', cardinality: 'per-item' },
 			input: {},
-			output: obj({ login: str() }),
+			output: t.obj({ login: t.str() }),
 			request: { path: '/user' },
 		});
 		const fetch = mockHttp([{ path: '/user', reply: { json: { login: 'ada' } } }]);
@@ -522,7 +506,9 @@ describe('generateNodeModule', () => {
 			summary: 'Search tasks page by page.',
 			flow: { effect: 'read', cardinality: '1:N' },
 			input: {
-				pages: variant('style', { cursor: { next: pageValue(nullable(str())) } }).optional(),
+				pages: t
+					.variant('style', { cursor: { next: t.pageValue(t.nullable(t.str())) } })
+					.optional(),
 			},
 			output: taskOutput,
 			async *run() {

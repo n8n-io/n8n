@@ -1,6 +1,6 @@
 # __Service__ node for n8n
 
-This project defines an n8n node as typed action contracts with `@n8n/node-sdk`.
+This project defines an n8n node as typed action contracts with `@n8n/node-sdk` (`defineNode`, `t`).
 One action is one operation, e.g. `__service__.item.getAll`. n8n turns each action into a node type.
 This file is the complete API reference. You do not have to read the SDK source.
 
@@ -35,10 +35,10 @@ Run `check` and `test` after each change. Both must pass.
 export const node = defineNode({ id: '__service__', displayName: '__Service__', baseUrl: 'https://api.example.com/v1',
 	credential: credential({ types: [__service__Api], scopes: { 'items:write': 'Create items' } }) }); // add `optional: true` if the API also works without a key
 // A resource groups actions. Its `input` (optional) goes into the input of each of its actions.
-export const item = node.resource('item', { input: { workspace: str() } });
-// src/credentials.ts. Id `service.scheme`. auth is data: a.bearer/header/query/basic/apply/when/oauth2.*; a.custom({ reason, sign }) last.
-export const __service__Api = credentialType({ id: '__service__.apiKey', legacyName: '__service__Api',
-	displayName: '__Service__ API', fields: { apiKey: t.secret('API Key') }, baseUrl: 'https://api.example.com/v1',
+export const item = node.resource('item', { input: { workspace: t.str() } });
+// src/credentials.ts: `defineCredential`, `credential` and `field` come from '@n8n/node-sdk/credentials'. Id `service.scheme`. auth is data: a.bearer/header/query/basic/apply/when/oauth2.*; a.custom({ reason, sign }) last.
+export const __service__Api = defineCredential({ id: '__service__.apiKey', legacyName: '__service__Api',
+	displayName: '__Service__ API', fields: { apiKey: field.secret('API Key') }, baseUrl: 'https://api.example.com/v1',
 	auth: (a) => a.header('X-Api-Key', '{apiKey}'), test: { get: '/me' } }); // a typo in {apiKey} fails tsc
 ```
 
@@ -51,7 +51,7 @@ export const createItem = item.action('create', {
 	summary: 'Create one item.',            // at most 120 characters
 	flow: { effect: 'write', cardinality: 'per-item', idempotent: false },
 	scopes: ['items:write'],                // scopes of the node's credential; tsc rejects others
-	input: { name: str(), ownerId: str().optional() },  // run() also gets `workspace` from the resource
+	input: { name: t.str(), ownerId: t.str().optional() },  // run() also gets `workspace` from the resource
 	output: itemOutput,
 	async run({ input, http }) {
 		const body = { name: input.name, ...(input.ownerId ? { ownerId: input.ownerId } : {}) };
@@ -75,35 +75,35 @@ export const createItem = item.action('create', {
 - No code for a simple action: replace `run` with `request: { method: 'GET', path: '/items/{id}' }` (`{id}` is
   the input field; `query`/`body` values are literals or `{ input: 'field' }`; `items: 'results'` for `1:N`).
 - When the output shape depends on an input, declare all shapes and pick one in `deriveOutput`:
-  `output: union(invoice, line)`, `deriveOutput: (input) => (input.split ? line.json : invoice.json)`.
+  `output: t.union(invoice, line)`, `deriveOutput: (input) => (input.split ? line.json : invoice.json)`.
 - Never read credentials in `run()`. The credential applies to each request.
 
 ## Schemas
 
 | Builder | TypeScript type | Notes |
 |---|---|---|
-| `str()` `num()` `int()` `bool()` | `string` `number` `number` `boolean` | `int` allows integers only |
-| `oneOf('a', 'b')` | `'a' \| 'b'` | a fixed list of options |
-| `lit('a')` | `'a'` | one fixed value |
-| `nullable(s)` | `T \| null` | for output fields the API sets to `null` |
-| `arr(s)` | `readonly T[]` | |
-| `obj({ k: s })` | `{ k: T }` | rejects unlisted fields |
-| `record(s)` | `Record<string, T>` | any keys, checked values |
-| `json()` | `Record<string, unknown>` | any object, not checked |
-| `variant('mode', { a: {...}, b: {...} })` | tagged union | fields that depend on a choice |
-| `union(a, b)` | `A \| B` | a value that matches one of the schemas |
+| `t.str()` `t.num()` `t.int()` `t.bool()` | `string` `number` `number` `boolean` | `t.int` allows integers only |
+| `t.oneOf('a', 'b')` | `'a' \| 'b'` | a fixed list of options |
+| `t.lit('a')` | `'a'` | one fixed value |
+| `t.nullable(s)` | `T \| null` | for output fields the API sets to `null` |
+| `t.arr(s)` | `readonly T[]` | |
+| `t.obj({ k: s })` | `{ k: T }` | rejects unlisted fields |
+| `t.record(s)` | `Record<string, T>` | any keys, checked values |
+| `t.json()` | `Record<string, unknown>` | any object, not checked |
+| `t.variant('mode', { a: {...}, b: {...} })` | tagged union | fields that depend on a choice |
+| `t.union(a, b)` | `A \| B` | a value that matches one of the schemas |
 
 - Chain `.optional()`, `.default(v)` (also optional for callers), `.hint(text)` (at most 80 characters),
   `.describe(text)`, `.with({ pattern, minimum, maximum, minLength, format, examples })`.
-- `obj` rejects fields it does not list. To return an API object unchanged, list all of its fields,
-  or keep unlisted fields with `obj({ ... }).with({ additionalProperties: true })`.
-- Every `examples` value must match its schema. Do not make a field conditionally required: use `variant`.
-- `variant('kind', { text: { text: str() }, json: { data: json() } })` is
+- `t.obj` rejects fields it does not list. To return an API object unchanged, list all of its fields,
+  or keep unlisted fields with `t.obj({ ... }).with({ additionalProperties: true })`.
+- Every `examples` value must match its schema. Do not make a field conditionally required: use `t.variant`.
+- `t.variant('kind', { text: { text: t.str() }, json: { data: t.json() } })` is
   `{ kind: 'text'; text: string } | { kind: 'json'; data: Record<string, unknown> }`. A branch `{}` has only the tag.
   Narrow it in `run()` with `if (input.body.kind === 'text') input.body.text`, or a `switch` on the tag.
 - `parse(schema, value)` never throws: it passes the value on, typed with each object field optional and
   nullable, so `tsc` makes a read check for a missing field. n8n checks each output item against `output`:
-  a mismatch passes on with one warning per run, and fails in `runAction` and fixture tests. `loose(obj(...))` makes the fields of an API object optional and nullable. `matches(schema, value)` is a type guard. `Infer<typeof schema>` is the TypeScript type. `isRecord(v)` and `list(v)` narrow `unknown`.
+  a mismatch passes on with one warning per run, and fails in `runAction` and fixture tests. `t.loose(t.obj(...))` makes the fields of an API object optional and nullable. `matches(schema, value)` is a type guard. `Infer<typeof schema>` is the TypeScript type. `isRecord(v)` and `list(v)` narrow `unknown`.
 
 ## HTTP
 
@@ -112,7 +112,7 @@ export const createItem = item.action('create', {
   A `query` value that is `undefined` is not sent; an array repeats the key (`id=a&id=b`). `body` is sent as JSON. It returns the parsed JSON body
   as `unknown`: narrow it with `parse`. `timeoutMs` is 300000 when omitted.
 - `fullResponse: true` returns `{ body, headers, statusCode }` as `unknown`. Header names are lower case:
-  `const full = obj({ body: arr(item), headers: json() }).with({ additionalProperties: true });`
+  `const full = t.obj({ body: t.arr(item), headers: t.json() }).with({ additionalProperties: true });`
   `if (!matches(full, response)) throw ...;` then `response.body` is typed; check `typeof response.headers.link`.
 - A non-2xx response throws. After `isHttpError(error)`, read `error.status`, `error.body` and
   `error.headers` (lower case, e.g. `error.headers['retry-after']`).

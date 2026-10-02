@@ -1,16 +1,16 @@
-import { int, loose, obj, parse, str } from '@n8n/node-sdk';
+import { parse, t } from '@n8n/node-sdk';
 
 import { issueResource } from '../github.node';
 import { issuesPath } from '../issue';
 
-const comment = loose(
-	obj({
-		id: int(),
-		html_url: str(),
-		body: str(),
-		user: obj({ login: str(), id: int() }),
-		created_at: str(),
-		updated_at: str(),
+const comment = t.loose(
+	t.obj({
+		id: t.int(),
+		html_url: t.str(),
+		body: t.str(),
+		user: t.obj({ login: t.str(), id: t.int() }),
+		created_at: t.str(),
+		updated_at: t.str(),
 	}),
 );
 
@@ -20,8 +20,8 @@ export const commentOnIssue = issueResource.action('createComment', {
 	scopes: ['repo'],
 	flow: { effect: 'write', cardinality: 'per-item', idempotent: false },
 	input: {
-		issueNumber: int().with({ minimum: 1 }).hint('The number shown as #123, not the ID'),
-		body: str().with({ minLength: 1 }).hint('Markdown'),
+		issueNumber: t.int().with({ minimum: 1 }).hint('The number shown as #123, not the ID'),
+		body: t.str().with({ minLength: 1 }).hint('Markdown'),
 	},
 	output: comment,
 	async run({ input, http }) {

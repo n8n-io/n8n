@@ -37,7 +37,6 @@ import type {
 	RunContext,
 	RunHost,
 	RunLimits,
-	SubnodeSpec,
 	Wait,
 	CodeRunner,
 } from '../define';
@@ -49,19 +48,19 @@ import {
 } from '../manifest';
 import type { AnySchema, BinaryMeta, Shape } from '../schema';
 import {
-	SUPPLY_CONNECTIONS,
+	PROVIDER_CONNECTIONS,
 	type ChatModel,
 	type ChatReply,
 	type ChatRequest,
 	type ChatUsage,
 	type Embeddings,
 	type Memory,
-	type Supplies,
-	type SupplyKind,
+	type ProviderCapabilities,
+	type ProviderKind,
 	type Tool,
 	type ToolCall,
 	type ToolDefinition,
-} from '../subnodes';
+} from '../providers';
 import type { triggerMethodsOf } from '../triggers';
 import { validate } from '../validate';
 import { compareSemver, NODE_CONTRACT_VERSION, type VersionManifest } from '../version';
@@ -246,7 +245,7 @@ describe('the action interface', () => {
 			'binary',
 		]);
 		// An action gets an optional import only when its manifest lists it. A provider capability
-		// comes in the input, at a `supplied()` field.
+		// comes in the input, at a `provider.input()` field.
 		const optional = keysOf<HostImports<unknown>>()(['dataTables', 'code', 'wait', 'inputOf']);
 		type Bound = Extract<
 			ActionBinding<Shape, AnySchema, ActionFlow, string, undefined>,
@@ -400,19 +399,20 @@ describe('the provider interface', () => {
 			memory: keysOf<Memory>()(['load', 'save']),
 			tool: keysOf<Tool>()(['name', 'description', 'input', 'call']),
 			embeddings: keysOf<Embeddings>()(['embed']),
-		} satisfies Record<SupplyKind, ReadonlyArray<keyof Supplies[SupplyKind]> | readonly string[]>;
+		} satisfies Record<
+			ProviderKind,
+			ReadonlyArray<keyof ProviderCapabilities[ProviderKind]> | readonly string[]
+		>;
 		expect(sorted(wit.cases('capabilities', 'capability'))).toEqual(
-			sorted(Object.keys(SUPPLY_CONNECTIONS)),
+			sorted(Object.keys(PROVIDER_CONNECTIONS)),
 		);
 		Object.entries(members).forEach(([kind, keys]) => {
 			const resource = kind.replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`);
 			expect(sorted(wit.methods('capabilities', resource))).toEqual(sorted(keys));
 		});
 		expect(wit.world('provider-bundle').exports).toEqual(['capabilities', 'provider']);
-		expect(wit.funcs('provider')).toEqual([
-			'describe',
-			...keysOf<Pick<SubnodeSpec<Shape, Shape, 'chatModel'>, 'supply'>>()(['supply']),
-		]);
+		// The runtime interface keeps its wire names; `supply` runs `ProviderSpec.provide`.
+		expect(wit.funcs('provider')).toEqual(['describe', 'supply']);
 	});
 
 	it('has the chat types of the TS types', () => {

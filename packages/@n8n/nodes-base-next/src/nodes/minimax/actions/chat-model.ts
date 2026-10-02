@@ -1,21 +1,21 @@
-import { int, modelId, num } from '@n8n/node-sdk';
+import { t } from '@n8n/node-sdk';
 
 import { chatCompletionsModel } from '../../open-ai/chat-completions';
 import { minimax } from '../minimax.node';
 
-export const minimaxChatModel = minimax.subnode('chatModel', {
+export const minimaxChatModel = minimax.provider('chatModel', {
 	action: 'MiniMax Chat Model',
 	summary: 'A MiniMax chat model for an AI node, e.g. ai.prompt or ai.agent.',
-	supplies: 'chatModel',
+	provides: 'chatModel',
 	input: {
-		model: modelId('minimax').hint(
-			'A model ID from the catalog, e.g. MiniMax-M2; never invent one',
-		),
-		temperature: num().with({ minimum: 0, maximum: 2 }).optional(),
-		maxTokens: int().with({ minimum: 1 }).optional().hint('Most tokens in one reply'),
-		topP: num().with({ minimum: 0, maximum: 1 }).optional(),
+		model: t
+			.modelId('minimax')
+			.hint('A model ID from the catalog, e.g. MiniMax-M2; never invent one'),
+		temperature: t.num().with({ minimum: 0, maximum: 2 }).optional(),
+		maxTokens: t.int().with({ minimum: 1 }).optional().hint('Most tokens in one reply'),
+		topP: t.num().with({ minimum: 0, maximum: 1 }).optional(),
 	},
-	async supply({ input, http }) {
+	async provide({ input, http }) {
 		// MiniMax puts its reasoning in the reply text unless the request splits it out.
 		return chatCompletionsModel(http, input, {
 			maxTokensField: 'max_tokens',

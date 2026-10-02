@@ -1,4 +1,12 @@
 import {
+	runsNodeContract,
+	setContractVersionLoader,
+	setExecutorLoader,
+	setNodeContractRange,
+	type ContractVersionLoader,
+	type FrozenVersion,
+} from '@n8n/node-sdk/host';
+import {
 	compareSemver,
 	declaredNodeContractOf,
 	integrityOf,
@@ -6,19 +14,13 @@ import {
 	packageNameOf,
 	parseSemver,
 	resolveContractVersion,
-	runsNodeContract,
-	setContractVersionLoader,
-	setExecutorLoader,
-	setNodeContractRange,
 	verifyManifestSignature,
 	type ContractPackage,
-	type ContractVersionLoader,
-	type FrozenVersion,
 	type NodeContractLock,
 	type NodeContractsPolicy,
 	type NodeContractVersion,
 	type VersionManifest,
-} from '@n8n/node-sdk';
+} from '@n8n/node-sdk/registry';
 import { sandboxExecutorLoader, type SandboxOptions } from '@n8n/node-sdk/sandbox';
 import { access, link, mkdir, readdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';

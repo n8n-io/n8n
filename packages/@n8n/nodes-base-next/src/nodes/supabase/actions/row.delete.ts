@@ -1,4 +1,4 @@
-import { arr, parse } from '@n8n/node-sdk';
+import { parse, t } from '@n8n/node-sdk';
 
 import { filterQuery, rowFilter } from '../filter';
 import { row as rowResource, schemaHeaders, tablePath } from '../supabase.node';
@@ -17,6 +17,6 @@ export const deleteSupabaseRows = rowResource.action('delete', {
 			query: filterQuery(input.filter),
 			headers: { Prefer: 'return=representation', ...schemaHeaders(input.schema, true) },
 		});
-		yield* parse(arr(tableRow), deleted);
+		yield* parse(t.arr(tableRow), deleted);
 	},
 });

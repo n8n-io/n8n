@@ -1,21 +1,22 @@
-import { arr, json, jsonValue, record, str, variant } from '@n8n/node-sdk';
+import { t } from '@n8n/node-sdk';
 
 import { core } from '../core.node';
 import { getPath, pathOf, setPath, unsetPath } from '../path';
 
-const names = { fields: arr(str()) };
+const names = { fields: t.arr(t.str()) };
 
 export const editFields = core.action('set', {
 	action: 'Edit fields',
 	summary: 'Set fields on each item. A field name is a dot path; a value keeps its JSON type.',
 	flow: { effect: 'transform', cardinality: 'per-item' },
 	input: {
-		fields: record(jsonValue()).hint('Field path to value, e.g. { "user.name": "Ada" }'),
-		include: variant('mode', { none: {}, all: {}, selected: names, except: names })
+		fields: t.record(t.jsonValue()).hint('Field path to value, e.g. { "user.name": "Ada" }'),
+		include: t
+			.variant('mode', { none: {}, all: {}, selected: names, except: names })
 			.default({ mode: 'none' })
 			.hint('Input fields to keep beside the set fields'),
 	},
-	output: json(),
+	output: t.json(),
 	async run({ input, item }) {
 		const { include } = input;
 		const kept =

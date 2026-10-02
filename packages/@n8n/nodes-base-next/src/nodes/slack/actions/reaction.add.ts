@@ -1,8 +1,8 @@
-import { bool, loose, obj, ref, str } from '@n8n/node-sdk';
+import { ref, t } from '@n8n/node-sdk';
 
 import { reaction, slackChannelId, slackPost, slackResponse, slackTs } from '../slack.node';
 
-const added = loose(obj({ ok: bool() }));
+const added = t.loose(t.obj({ ok: t.bool() }));
 
 export const addSlackReaction = reaction.action('add', {
 	action: 'Add a reaction',
@@ -12,14 +12,15 @@ export const addSlackReaction = reaction.action('add', {
 	input: {
 		channel: ref(slackChannelId),
 		ts: slackTs,
-		name: str()
+		name: t
+			.str()
 			.with({ pattern: "^[a-z0-9_+'-]+$" })
 			.hint('Emoji name without colons, e.g. white_check_mark'),
 	},
 	output: added,
 	async run({ input, http }) {
 		const body = { channel: input.channel, name: input.name, timestamp: input.ts };
-		const { ok } = await slackPost(http, '/reactions.add', body, slackResponse({ ok: bool() }));
+		const { ok } = await slackPost(http, '/reactions.add', body, slackResponse({ ok: t.bool() }));
 		return { ok };
 	},
 });

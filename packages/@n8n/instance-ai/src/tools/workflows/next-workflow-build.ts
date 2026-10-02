@@ -1,15 +1,8 @@
 import { getWorkspaceRoot } from '@n8n/agents/sandbox';
-import {
-	credentialHostsOf,
-	egressIssuesOf,
-	exampleOf,
-	modelCatalogDeclaration,
-	toTs,
-	validate,
-	type JsonSchema,
-	type NodeContractLock,
-	type ResourceField,
-} from '@n8n/node-sdk';
+import { validate, type JsonSchema, type ResourceField } from '@n8n/node-sdk';
+import { modelCatalogDeclaration, toTs } from '@n8n/node-sdk/codegen';
+import { credentialHostsOf, egressIssuesOf, exampleOf } from '@n8n/node-sdk/host';
+import type { NodeContractLock } from '@n8n/node-sdk/registry';
 import {
 	actionOfNode,
 	actions,

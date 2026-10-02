@@ -152,18 +152,18 @@ export type RunFieldsOf<S extends Shape> = {
 } & { [K in UnsetKeys<S>]?: InferRun<S[K]> };
 type RunObjectOf<S extends Shape> = Simplify<RunFieldsOf<S>>;
 
-export const str = () => new Schema<string>({ type: 'string' }, false);
-export const num = () => new Schema<number>({ type: 'number' }, false);
-export const int = () => new Schema<number>({ type: 'integer' }, false);
-export const bool = () => new Schema<boolean>({ type: 'boolean' }, false);
+const str = () => new Schema<string>({ type: 'string' }, false);
+const num = () => new Schema<number>({ type: 'number' }, false);
+const int = () => new Schema<number>({ type: 'integer' }, false);
+const bool = () => new Schema<boolean>({ type: 'boolean' }, false);
 
-export const lit = <const V extends string | number | boolean>(value: V) =>
+const lit = <const V extends string | number | boolean>(value: V) =>
 	new Schema<V>({ const: value, 'x-n8n-literal': true }, false);
 
-export const oneOf = <const V extends readonly string[]>(...values: V) =>
+const oneOf = <const V extends readonly string[]>(...values: V) =>
 	new Schema<V[number]>({ enum: values }, false);
 
-export const arr = <S extends AnySchema>(items: S) =>
+const arr = <S extends AnySchema>(items: S) =>
 	new Schema<ReadonlyArray<Infer<S>>, false, boolean, ReadonlyArray<InferRun<S>>>(
 		{ type: 'array', items: items.json },
 		false,
@@ -231,11 +231,11 @@ function looseJson(schema: JsonSchema, tag?: string): JsonSchema {
  * The schema with each object field optional and nullable, at any depth. Use it for the output
  * of an API object: the host passes drift on, so a field the API leaves out is no error.
  */
-export const loose = <T, Opt extends boolean>(schema: Schema<T, Opt, boolean, unknown>) =>
+const loose = <T, Opt extends boolean>(schema: Schema<T, Opt, boolean, unknown>) =>
 	new Schema<Loose<T>, Opt>(looseJson(schema.json), schema.isOptional);
 
 /** The value or `null`. Use it in output schemas, e.g. `assignee: nullable(str())`. */
-export const nullable = <T, Opt extends boolean>(schema: Schema<T, Opt, boolean, unknown>) =>
+const nullable = <T, Opt extends boolean>(schema: Schema<T, Opt, boolean, unknown>) =>
 	new Schema<T | null, Opt>({ anyOf: [schema.json, { type: 'null' }] }, schema.isOptional);
 
 function objectJson(shape: Shape, extra: JsonSchema = {}): JsonSchema {
@@ -251,39 +251,39 @@ function objectJson(shape: Shape, extra: JsonSchema = {}): JsonSchema {
 	};
 }
 
-export const obj = <S extends Shape>(shape: S) =>
+const obj = <S extends Shape>(shape: S) =>
 	new Schema<ObjectOf<S>, false, boolean, RunObjectOf<S>>(objectJson(shape), false);
 
 /** A value that matches one of the schemas, e.g. output shapes that depend on an input. */
-export const union = <const S extends readonly AnySchema[]>(...schemas: S) =>
+const union = <const S extends readonly AnySchema[]>(...schemas: S) =>
 	new Schema<Infer<S[number]>>({ anyOf: schemas.map((schema) => schema.json) }, false);
 
 /** An object with arbitrary keys. */
-export const record = <S extends AnySchema>(values: S) =>
+const record = <S extends AnySchema>(values: S) =>
 	new Schema<Record<string, Infer<S>>>(
 		{ type: 'object', additionalProperties: values.json },
 		false,
 	);
 
 /** Any JSON value; it is not checked. */
-export const jsonValue = () => new Schema<unknown>({}, false);
+const jsonValue = () => new Schema<unknown>({}, false);
 
 /** The output of an action that passes input items on unchanged (filter, sort, route). */
-export const passedItem = () =>
+const passedItem = () =>
 	new Schema<Record<string, unknown>>(
 		{ type: 'object', additionalProperties: true, 'x-n8n-passed': true },
 		false,
 	);
 
 /** Any JSON object; its fields are not checked. */
-export const json = () =>
+const json = () =>
 	new Schema<Record<string, unknown>>({ type: 'object', additionalProperties: true }, false);
 
 /**
  * A trigger output field whose shape the workflow declares, e.g. the body a webhook receives.
  * The typed flow takes its JSON Schema in `schema`. Without one, it is any JSON object.
  */
-export const declared = () =>
+const declared = () =>
 	new Schema<Record<string, unknown>>(
 		{ type: 'object', additionalProperties: true, 'x-n8n-declared': true },
 		false,
@@ -300,7 +300,7 @@ type RunVariantOf<Tag extends string, B extends Record<string, Shape>> = {
  * A tagged union. The tag is a literal selector, so each branch lists only the fields it
  * needs, and a field is never conditionally required.
  */
-export function variant<const Tag extends string, B extends Record<string, Shape>>(
+function variant<const Tag extends string, B extends Record<string, Shape>>(
 	tag: Tag,
 	branches: B,
 ): Schema<VariantOf<Tag, B>, false, boolean, RunVariantOf<Tag, B>> {
@@ -338,9 +338,9 @@ export interface Binary {
  * A file. In `input`, the user names a binary of the input item; `run()` gets its handle. In
  * `output`, a top-level field becomes a binary of the output item under the same name.
  */
-export const binary = () => new Schema<Binary>({ 'x-n8n-binary': true }, false);
+const binary = () => new Schema<Binary>({ 'x-n8n-binary': true }, false);
 
-/** The schema or one of its sub-schemas is a `binary()`. */
+/** The schema or one of its sub-schemas is a `t.binary()`. */
 export const hasBinary = (schema: JsonSchema): boolean =>
 	schema['x-n8n-binary'] === true ||
 	[
@@ -358,7 +358,7 @@ export const hasBinary = (schema: JsonSchema): boolean =>
  * The host passes it on unresolved; `pageValueOf` reads it for each page. `gives` is the schema of
  * what it reads. A typed flow writes it as a lambda over the page.
  */
-export const pageValue = (gives: AnySchema) =>
+const pageValue = (gives: AnySchema) =>
 	new Schema<string>({ type: 'string', pattern: '^=', 'x-n8n-page': gives.json }, false);
 
 /** One read step: `.at(n)`, `.first()`, `.last()`, `.field`, or `[index]`, optionally chained. */
@@ -368,7 +368,7 @@ const PAGE_EXPRESSION = new RegExp(
 	String.raw`^=?\{\{\s*\$response((?:${PAGE_STEPS.source})*)\s*\}\}$`,
 );
 
-/** A response as a `pageValue()` reads it: `$response` of the legacy HTTP Request pagination. */
+/** A response as a `t.pageValue()` reads it: `$response` of the legacy HTTP Request pagination. */
 export interface ResponsePage {
 	readonly body: unknown;
 	/** Lower-case names, e.g. `link`. */
@@ -389,7 +389,7 @@ function stepInto(value: unknown, [, at, end, name, index]: RegExpMatchArray): u
 }
 
 /**
- * What a `pageValue()` expression reads from one page. It reads fields, list items, `.at(n)`,
+ * What a `t.pageValue()` expression reads from one page. It reads fields, list items, `.at(n)`,
  * `.first()` and `.last()` of `$response`, e.g. `={{ $response.body.data.at(-1)?.id }}`. A missing
  * step gives `undefined`, as optional chaining does. Any other expression throws.
  */
@@ -409,7 +409,7 @@ export function pageValueOf(expression: string, page: ResponsePage): unknown {
 /** The expression is one that `pageValueOf` reads. */
 export const isPageExpression = (expression: string) => PAGE_EXPRESSION.test(expression.trim());
 
-/** The schema or one of its sub-schemas is a `pageValue()`. */
+/** The schema or one of its sub-schemas is a `t.pageValue()`. */
 export const hasPageValue = (schema: JsonSchema): boolean =>
 	schema['x-n8n-page'] !== undefined ||
 	[
@@ -430,3 +430,36 @@ export const defineResource = (resource: Resource): Resource => resource;
 
 export const ref = (resource: Resource) =>
 	new Schema<string>({ type: 'string', ...resource.shape, 'x-n8n-ref': resource.id }, false);
+
+/**
+ * A model ID of `provider` in the model catalog (models.dev). The typed flow SDK types it by
+ * the catalog the build knows, so a workflow cannot name a model that the provider lacks.
+ */
+const modelId = (provider: string) =>
+	str()
+		.with({ 'x-n8n-model-catalog': provider, minLength: 1 })
+		.hint('A model ID from the catalog; never invent one');
+
+/** The schema builders, e.g. `t.obj({ id: t.str() })`. */
+export const t = {
+	str,
+	num,
+	int,
+	bool,
+	lit,
+	oneOf,
+	arr,
+	obj,
+	variant,
+	union,
+	record,
+	nullable,
+	loose,
+	json,
+	jsonValue,
+	passedItem,
+	declared,
+	binary,
+	pageValue,
+	modelId,
+};

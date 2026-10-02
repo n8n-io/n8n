@@ -1,4 +1,4 @@
-import { arr, bool, passedItem, obj, str } from '@n8n/node-sdk';
+import { t } from '@n8n/node-sdk';
 
 import { where, whereMatches } from '../condition';
 import { core } from '../core.node';
@@ -8,17 +8,19 @@ export const switchCases = core.action('switch', {
 	summary: 'Send each item to the output of the first case it matches, else to fallback.',
 	flow: { effect: 'transform', cardinality: '1:N' },
 	input: {
-		cases: arr(
-			obj({
-				output: str().with({ minLength: 1, 'x-n8n-literal': true }).hint('Output name'),
-				where,
+		cases: t
+			.arr(
+				t.obj({
+					output: t.str().with({ minLength: 1, 'x-n8n-literal': true }).hint('Output name'),
+					where,
+				}),
+			)
+			.with({
+				minItems: 1,
 			}),
-		).with({
-			minItems: 1,
-		}),
-		allMatches: bool().default(false).hint('Send an item to every case it matches'),
+		allMatches: t.bool().default(false).hint('Send an item to every case it matches'),
 	},
-	output: passedItem(),
+	output: t.passedItem(),
 	outputs: { each: 'cases', then: ['fallback'] },
 	async *run({ input, item }) {
 		const matched = input.cases.filter((entry) => whereMatches(entry.where));

@@ -1,22 +1,13 @@
 import {
-	arr,
-	bool,
-	int,
-	jsonValue,
 	matches,
-	nullable,
-	num,
-	obj,
-	oneOf,
 	pages,
-	str,
+	Schema,
+	t,
 	validate,
-	variant,
 	type Infer,
 	type JsonSchema,
 	type ObjectOf,
 	type ResourceField,
-	Schema,
 	type Shape,
 } from '@n8n/node-sdk';
 
@@ -42,7 +33,7 @@ function ops<V extends string, T, E extends string = (typeof VALUELESS)[number]>
 	value: Schema<T>,
 	valueless: readonly E[] = [],
 ): Schema<{ op: V; value: T } | { op: E }> {
-	const { json } = variant('op', {
+	const { json } = t.variant('op', {
 		...Object.fromEntries(valueOps.map((op): [string, Shape] => [op, { value }])),
 		...Object.fromEntries(valueless.map((op): [string, Shape] => [op, {}])),
 	});
@@ -51,7 +42,7 @@ function ops<V extends string, T, E extends string = (typeof VALUELESS)[number]>
 
 const text = ops(
 	['equals', 'does_not_equal', 'contains', 'does_not_contain', 'starts_with', 'ends_with'],
-	str(),
+	t.str(),
 	VALUELESS,
 );
 const numeric = ops(
@@ -63,73 +54,80 @@ const numeric = ops(
 		'greater_than_or_equal_to',
 		'less_than_or_equal_to',
 	],
-	num(),
+	t.num(),
 	VALUELESS,
 );
-const checkbox = ops(['equals', 'does_not_equal'], bool());
-const option = ops(['equals', 'does_not_equal'], str().hint('Option name'), VALUELESS);
+const checkbox = ops(['equals', 'does_not_equal'], t.bool());
+const option = ops(['equals', 'does_not_equal'], t.str().hint('Option name'), VALUELESS);
 const membership = (hint: string) =>
-	ops(['contains', 'does_not_contain'], str().hint(hint), VALUELESS);
+	ops(['contains', 'does_not_contain'], t.str().hint(hint), VALUELESS);
 const date = ops(
 	['equals', 'before', 'after', 'on_or_before', 'on_or_after'],
-	str().hint('ISO 8601 date, e.g. 2026-09-01'),
+	t.str().hint('ISO 8601 date, e.g. 2026-09-01'),
 	[...VALUELESS, ...RELATIVE],
 );
 
-const property = str().hint('Exact Notion property name');
+const property = t.str().hint('Exact Notion property name');
 
-const condition = variant('type', {
-	title: { property, condition: text },
-	rich_text: { property, condition: text },
-	email: { property, condition: text },
-	url: { property, condition: text },
-	phone_number: { property, condition: text },
-	['number']: { property, condition: numeric },
-	checkbox: { property, condition: checkbox },
-	select: { property, condition: option },
-	status: { property, condition: option },
-	multi_select: { property, condition: membership('Option name') },
-	people: { property, condition: membership('Notion user ID (UUID); never an email or a name') },
-	relation: { property, condition: membership('Related page ID') },
-	date: { property, condition: date },
-	created_time: { property, condition: date },
-	last_edited_time: { property, condition: date },
-}).hint('type is the Notion property type');
+const condition = t
+	.variant('type', {
+		title: { property, condition: text },
+		rich_text: { property, condition: text },
+		email: { property, condition: text },
+		url: { property, condition: text },
+		phone_number: { property, condition: text },
+		['number']: { property, condition: numeric },
+		checkbox: { property, condition: checkbox },
+		select: { property, condition: option },
+		status: { property, condition: option },
+		multi_select: { property, condition: membership('Option name') },
+		people: { property, condition: membership('Notion user ID (UUID); never an email or a name') },
+		relation: { property, condition: membership('Related page ID') },
+		date: { property, condition: date },
+		created_time: { property, condition: date },
+		last_edited_time: { property, condition: date },
+	})
+	.hint('type is the Notion property type');
 
 type Condition = Infer<typeof condition>;
 
-const direction = oneOf('ascending', 'descending');
+const direction = t.oneOf('ascending', 'descending');
 
 const input = {
-	where: variant('match', {
-		all: { conditions: arr(condition).with({ minItems: 1 }) },
-		['any']: { conditions: arr(condition).with({ minItems: 1 }) },
-	})
+	where: t
+		.variant('match', {
+			all: { conditions: t.arr(condition).with({ minItems: 1 }) },
+			['any']: { conditions: t.arr(condition).with({ minItems: 1 }) },
+		})
 		.hint('all = AND, any = OR')
 		.optional(),
-	limit: int().with({ minimum: 1 }).hint('Omit for every page').optional(),
-	sort: arr(
-		variant('by', {
-			property: { property, direction },
-			timestamp: { timestamp: oneOf('created_time', 'last_edited_time'), direction },
-		}),
-	).optional(),
+	limit: t.int().with({ minimum: 1 }).hint('Omit for every page').optional(),
+	sort: t
+		.arr(
+			t.variant('by', {
+				property: { property, direction },
+				timestamp: { timestamp: t.oneOf('created_time', 'last_edited_time'), direction },
+			}),
+		)
+		.optional(),
 };
 
 // A user names a database property, also one called "... ID", so `id` must not read as one.
-const page = obj({
-	id: str().with({ format: 'uuid' }).hint('Notion page UUID, not a database property'),
-	name: str().hint('The page title'),
-	url: str().with({ format: 'uri' }),
-}).with({
-	patternProperties: {
-		'^property_[a-z0-9_]+$': {
-			'x-n8n-hint':
-				'property_ + snake_case of the property name, e.g. "Order ID": property_order_id',
+const page = t
+	.obj({
+		id: t.str().with({ format: 'uuid' }).hint('Notion page UUID, not a database property'),
+		name: t.str().hint('The page title'),
+		url: t.str().with({ format: 'uri' }),
+	})
+	.with({
+		patternProperties: {
+			'^property_[a-z0-9_]+$': {
+				'x-n8n-hint':
+					'property_ + snake_case of the property name, e.g. "Order ID": property_order_id',
+			},
 		},
-	},
-	'x-n8n-value-types': SIMPLIFIED,
-});
+		'x-n8n-value-types': SIMPLIFIED,
+	});
 
 const TIMESTAMPS = new Set(['created_time', 'last_edited_time']);
 
@@ -204,11 +202,13 @@ function outputFromProperties(
 }
 
 /** One page of a data source query: each result is simplified before it is checked. */
-const queryPage = obj({
-	results: arr(jsonValue()),
-	has_more: bool().optional(),
-	next_cursor: nullable(str()).optional(),
-}).with({ additionalProperties: true });
+const queryPage = t
+	.obj({
+		results: t.arr(t.jsonValue()),
+		has_more: t.bool().optional(),
+		next_cursor: t.nullable(t.str()).optional(),
+	})
+	.with({ additionalProperties: true });
 
 export const getManyDatabasePages = databasePage.action('getAll', {
 	minor: 2,

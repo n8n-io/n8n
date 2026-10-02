@@ -1,13 +1,7 @@
 import {
-	arr,
 	defineNode,
 	isRecord,
-	json,
-	lit,
-	obj,
-	oneOf,
-	record,
-	str,
+	t,
 	validate,
 	type BatchContext,
 	type CodeRequest,
@@ -20,7 +14,8 @@ import {
 /** User code in the n8n task runner. The runner has no network access. */
 export const code = defineNode({ id: 'code', displayName: 'Code' });
 
-export const mode = oneOf('allItems', 'eachItem')
+export const mode = t
+	.oneOf('allItems', 'eachItem')
 	.default('allItems')
 	.hint('allItems: one run for all items. eachItem: one run per item');
 
@@ -28,17 +23,20 @@ export const mode = oneOf('allItems', 'eachItem')
  * The JSON Schema of each output item. Only an object schema types an item, so the shape is
  * fixed at the top and open below it.
  */
-export const returns = obj({
-	type: lit('object'),
-	properties: record(json()).hint('A JSON Schema per field, e.g. { "id": { "type": "number" } }'),
-	required: arr(str()).optional(),
-})
+export const returns = t
+	.obj({
+		type: t.lit('object'),
+		properties: t
+			.record(t.json())
+			.hint('A JSON Schema per field, e.g. { "id": { "type": "number" } }'),
+		required: t.arr(t.str()).optional(),
+	})
 	.with({ additionalProperties: true })
 	.optional()
 	.hint('Types the output items and checks each one');
 
 /** Without `returns`, the items are what the code returns. */
-export const codeOutput = json().hint('Set returns to type these items');
+export const codeOutput = t.json().hint('Set returns to type these items');
 
 const ITEM_KEYS = new Set(['json', 'binary', 'pairedItem', 'error', 'index']);
 
@@ -188,4 +186,4 @@ export async function* runCode(
 	}
 }
 
-export const codeText = str().with({ minLength: 1 });
+export const codeText = t.str().with({ minLength: 1 });

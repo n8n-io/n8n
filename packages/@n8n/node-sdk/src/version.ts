@@ -7,10 +7,10 @@ import {
 	type INodeTypeDescription,
 } from 'n8n-workflow';
 
-import { usesBinary, usesHostImports, usesSupplies, type ContractDocument } from './define';
+import { usesBinary, usesHostImports, usesProviders, type ContractDocument } from './define';
 import { legacyManifestSchema, versionManifestSchema } from './manifest';
 import { hasPageValue, type JsonSchema } from './schema';
-import { providedOf } from './subnodes';
+import { providedOf } from './providers';
 import { matches } from './validate';
 
 /**
@@ -21,8 +21,8 @@ import { matches } from './validate';
  * 2.1.0 adds the current input item, the batch cardinality, and named outputs.
  * 2.2.0 adds binary data.
  * 2.3.0 adds the optional host imports (data tables, code, wait, the input of an item), named
- * inputs, and providers (`supplied()`).
- * 2.4.0 adds the `list` binding, which the host pages through, and `pageValue()` inputs, which the
+ * inputs, and providers (`provider.input()`).
+ * 2.4.0 adds the `list` binding, which the host pages through, and `t.pageValue()` inputs, which the
  * host reads unresolved.
  * 2.5.0 adds the manifest format with `kind`, `sdk` and credential majors, credential
  * manifests, and the trigger, credential and provider interfaces.
@@ -68,7 +68,7 @@ export const requiredNodeContractOf = (
 ): NodeContractVersion =>
 	list || hasPageValue(contract.input)
 		? '2.4.0'
-		: usesHostImports(contract) || usesSupplies(contract)
+		: usesHostImports(contract) || usesProviders(contract)
 			? '2.3.0'
 			: usesBinary(contract)
 				? '2.2.0'

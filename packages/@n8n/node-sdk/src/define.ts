@@ -1,9 +1,8 @@
 import type { AnyCredentialType, Credential, CredentialKey, RunCredential } from './credentials';
 import {
 	hasBinary,
-	int,
-	obj,
-	passedItem,
+	Schema,
+	t,
 	type AnySchema,
 	type Binary,
 	type BinaryMeta,
@@ -11,18 +10,16 @@ import {
 	type JsonSchema,
 	type ObjectOf,
 	type RunFieldsOf,
-	Schema,
 	type Shape,
-	variant,
 } from './schema';
 import {
-	supplied,
-	suppliedKindOf,
-	supplyIssues,
-	supplyOf,
-	type Supplies,
-	type SupplyKind,
-} from './subnodes';
+	provider,
+	providedKindOf,
+	providerIssues,
+	providerInputOf,
+	type ProviderCapabilities,
+	type ProviderKind,
+} from './providers';
 import type { PollConfig, TriggerKind, WebhookConfig, WebhookRequest } from './triggers';
 import { parsePage } from './validate';
 
@@ -268,10 +265,12 @@ export async function* pages<P, T>(
  * The list input of every action that lists: all items, or at most `max`. A `list` binding with
  * `pages` gets it, and the host applies it. A `run()` action declares it and reads `limitOf`.
  */
-export const paging = variant('mode', {
-	all: {},
-	limit: { max: int().with({ minimum: 1 }) },
-}).default({ mode: 'limit', max: 50 });
+export const paging = t
+	.variant('mode', {
+		all: {},
+		limit: { max: t.int().with({ minimum: 1 }) },
+	})
+	.default({ mode: 'limit', max: 50 });
 
 /** The item limit of `paging` for `pages`: undefined for all items. */
 export const limitOf = (value: Infer<typeof paging>) =>
@@ -335,7 +334,7 @@ export interface RunHost {
 	/** The limits the host enforces for this run. */
 	readonly limits: RunLimits;
 	/**
-	 * Binary data (Node Contract 2.2.0). Only an action with a `binary()` field gets it: the
+	 * Binary data (Node Contract 2.2.0). Only an action with a `t.binary()` field gets it: the
 	 * field makes its bundle target 2.2.0, so an older host refuses the bundle.
 	 */
 	readonly binary: Binaries;
@@ -989,7 +988,7 @@ function built(
 		id: [node.id, path.resource, path.operation].filter((part) => part !== undefined).join('.'),
 		version,
 		semver: `${version}.${spec.minor ?? 0}.${spec.patch ?? 0}`,
-		inputSchema: obj(spec.input).json,
+		inputSchema: t.obj(spec.input).json,
 		credentialTypes: node.credential?.types.map(({ name }) => name) ?? [],
 		scopes: spec.scopes ?? [],
 	};
@@ -1050,43 +1049,43 @@ type NodeTrigger<N extends NodeDefinition, RS extends Shape, Path extends Action
 	spec: TriggerSpec<S, RS & S, O, ScopeOf<N>, CredentialKey<CredentialTypeOf<N>>, T, P>,
 ) => Trigger<RS & S, O> & Path;
 
-/** A sub-node runs once per root run and gives one capability. */
-const SUPPLY_FLOW = { effect: 'read', cardinality: 'per-item' } as const satisfies ActionFlow;
+/** A provider runs once per root run and gives one capability. */
+const PROVIDER_FLOW = { effect: 'read', cardinality: 'per-item' } as const satisfies ActionFlow;
 
 /**
- * What an author writes for a sub-node: the kind it supplies and `supply()`, which makes the
+ * What an author writes for a provider: the kind it provides and `provide()`, which makes the
  * capability. The SDK sets the flow and the output.
  */
-export type SubnodeSpec<
+export type ProviderSpec<
 	Own extends Shape,
 	Full extends Shape,
-	K extends SupplyKind,
+	K extends ProviderKind,
 	Sc extends string = string,
 	H extends string = string,
 > = Omit<ContractSpec<Own, AnySchema, Sc>, 'output'> & {
 	/** The label users pick, e.g. "OpenAI Chat Model". */
 	readonly action: string;
-	readonly supplies: K;
+	readonly provides: K;
 	readonly egress?: Egress<RunInput<Full>, H>;
-	/** Requests of the capability use the credential and the egress of the sub-node. */
-	supply(context: RunContext<RunInput<Full>>): Promise<Supplies[K]>;
+	/** Requests of the capability use the credential and the egress of the provider. */
+	provide(context: RunContext<RunInput<Full>>): Promise<ProviderCapabilities[K]>;
 };
 
-type NodeSubnode<N extends NodeDefinition, RS extends Shape, Path extends ActionPath> = <
+type NodeProvider<N extends NodeDefinition, RS extends Shape, Path extends ActionPath> = <
 	S extends Shape,
-	const K extends SupplyKind,
+	const K extends ProviderKind,
 	const H extends string = string,
 >(
 	operation: string,
-	spec: SubnodeSpec<S, RS & S, K, ScopeOf<N>, H>,
-) => Action<RS & S, Schema<Supplies[K], false>, typeof SUPPLY_FLOW> & Path;
+	spec: ProviderSpec<S, RS & S, K, ScopeOf<N>, H>,
+) => Action<RS & S, Schema<ProviderCapabilities[K], false>, typeof PROVIDER_FLOW> & Path;
 
 /** A resource of a node. Its `input` goes into the input of each of its actions and triggers. */
 export interface NodeResource<N extends NodeDefinition, RS extends Shape> {
 	readonly name: string;
 	readonly action: NodeAction<N, RS, ResourcePath>;
-	/** A sub-node on this resource, e.g. `chat.subnode('model', …)`. */
-	readonly subnode: NodeSubnode<N, RS, ResourcePath>;
+	/** A provider on this resource, e.g. `chat.provider('model', …)`. */
+	readonly provider: NodeProvider<N, RS, ResourcePath>;
 	/** A trigger on this resource, e.g. `databasePage.trigger('added', …)`. */
 	readonly trigger: NodeTrigger<N, RS, ResourcePath>;
 }
@@ -1098,8 +1097,8 @@ export type NodeBuilder<N extends NodeDefinition> = N & {
 		options?: { readonly input: RS },
 	): NodeResource<N, RS>;
 	readonly action: NodeAction<N, Record<never, never>, ActionPath>;
-	/** A sub-node that supplies a capability to root nodes, e.g. `openAi.subnode('chatModel', …)`. */
-	readonly subnode: NodeSubnode<N, Record<never, never>, ActionPath>;
+	/** A provider that gives a capability to root nodes, e.g. `openAi.provider('chatModel', …)`. */
+	readonly provider: NodeProvider<N, Record<never, never>, ActionPath>;
 	readonly trigger: NodeTrigger<N, Record<never, never>, ActionPath>;
 };
 
@@ -1119,7 +1118,7 @@ function buildersOf<N extends NodeDefinition, RS extends Shape, Path extends Act
 	pathOf: (operation: string) => Path,
 ): {
 	readonly action: NodeAction<N, RS, Path>;
-	readonly subnode: NodeSubnode<N, RS, Path>;
+	readonly provider: NodeProvider<N, RS, Path>;
 	readonly trigger: NodeTrigger<N, RS, Path>;
 } {
 	// Typed by `NodeAction`: a second generic signature would infer `P` again and not match.
@@ -1128,11 +1127,11 @@ function buildersOf<N extends NodeDefinition, RS extends Shape, Path extends Act
 			...spec,
 			input: { ...shared, ...spec.input, ...impliedInputOf(spec) },
 		});
-	const subnode: NodeSubnode<N, RS, Path> = (operation, { supplies, supply, ...spec }) =>
+	const providerAction: NodeProvider<N, RS, Path> = (operation, { provides, provide, ...spec }) =>
 		toAction<
 			RS & typeof spec.input,
-			Schema<Supplies[typeof supplies], false>,
-			typeof SUPPLY_FLOW,
+			Schema<ProviderCapabilities[typeof provides], false>,
+			typeof PROVIDER_FLOW,
 			undefined,
 			Path,
 			readonly [],
@@ -1140,13 +1139,13 @@ function buildersOf<N extends NodeDefinition, RS extends Shape, Path extends Act
 		>(node, pathOf(operation), {
 			...spec,
 			input: { ...shared, ...spec.input },
-			flow: SUPPLY_FLOW,
-			output: supplied(supplies),
-			run: supply,
+			flow: PROVIDER_FLOW,
+			output: provider.input(provides),
+			run: provide,
 		});
 	return {
 		action,
-		subnode,
+		provider: providerAction,
 		trigger: <S extends Shape, O extends AnySchema, T, P>(
 			event: string,
 			spec: TriggerSpec<S, RS & S, O, ScopeOf<N>, CredentialKey<CredentialTypeOf<N>>, T, P>,
@@ -1288,8 +1287,8 @@ export function replyContractOf(trigger: NativeTrigger): ContractDocument | unde
 		summary: reply.summary,
 		flow: { effect: 'write', cardinality: 'per-item', passthrough: 'replace' },
 		credentials: [],
-		input: reply.input instanceof Schema ? reply.input.json : obj(reply.input).json,
-		output: (reply.output ?? passedItem()).json,
+		input: reply.input instanceof Schema ? reply.input.json : t.obj(reply.input).json,
+		output: (reply.output ?? t.passedItem()).json,
 	};
 }
 
@@ -1308,7 +1307,7 @@ function hints(schema: JsonSchema): string[] {
 	return [...(schema['x-n8n-hint'] ? [schema['x-n8n-hint']] : []), ...children.flatMap(hints)];
 }
 
-/** The action has a `binary()` field, so its bundle targets Node Contract 2.2.0. */
+/** The action has a `t.binary()` field, so its bundle targets Node Contract 2.2.0. */
 export const usesBinary = (contract: Pick<ContractDocument, 'input' | 'output'>) =>
 	hasBinary(contract.input) || hasBinary(contract.output);
 
@@ -1317,9 +1316,11 @@ export const usesHostImports = (contract: Pick<ContractDocument, 'imports' | 'in
 	Boolean(contract.imports?.length) || contract.inputs !== undefined;
 
 /** The action supplies a provider capability or reads one, so its bundle targets Node Contract 2.3.0. */
-export const usesSupplies = (contract: Pick<ContractDocument, 'input' | 'output'>) =>
-	suppliedKindOf(contract.output) !== undefined ||
-	Object.values(contract.input.properties ?? {}).some((field) => supplyOf(field) !== undefined);
+export const usesProviders = (contract: Pick<ContractDocument, 'input' | 'output'>) =>
+	providedKindOf(contract.output) !== undefined ||
+	Object.values(contract.input.properties ?? {}).some(
+		(field) => providerInputOf(field) !== undefined,
+	);
 
 /**
  * The host makes an agent tool of the action: a model calls it with JSON and reads its JSON
@@ -1338,7 +1339,7 @@ export function isToolContract(contract: ContractDocument): boolean {
 		!usesHostImports(contract) &&
 		contract.outputs === undefined &&
 		contract.output['x-n8n-passed'] !== true &&
-		!usesSupplies(contract) &&
+		!usesProviders(contract) &&
 		// The result goes to the model as JSON, and a model cannot give a file.
 		!hasBinary(contract.output) &&
 		!Object.entries(contract.input.properties ?? {}).some(
@@ -1409,7 +1410,7 @@ export function lintContract(contract: ContractDocument): string[] {
 			: []),
 		...egressIssues(contract),
 		...inputIssues(contract),
-		...supplyIssues(contract.id, contract.input, contract.output, contract.flow),
+		...providerIssues(contract.id, contract.input, contract.output, contract.flow),
 	];
 }
 

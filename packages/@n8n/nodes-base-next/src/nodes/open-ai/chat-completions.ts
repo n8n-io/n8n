@@ -1,12 +1,6 @@
 import {
-	arr,
-	int,
-	json,
-	nullable,
-	obj,
 	parse,
-	str,
-	union,
+	t,
 	type ChatMessage,
 	type ChatModel,
 	type ChatRequest,
@@ -36,23 +30,37 @@ export interface ChatCompletionsDialect {
 // Providers add fields over time, so the response schemas check the fields read here only.
 const open: JsonSchema = { additionalProperties: true };
 
-const toolCallSchema = obj({
-	id: str().optional(),
-	function: obj({ name: str(), arguments: str() }).with(open),
-}).with(open);
+const toolCallSchema = t
+	.obj({
+		id: t.str().optional(),
+		function: t.obj({ name: t.str(), arguments: t.str() }).with(open),
+	})
+	.with(open);
 
-const completionSchema = obj({
-	choices: arr(
-		obj({
-			message: obj({
-				content: nullable(union(str(), arr(obj({ text: str().optional() }).with(open)))).optional(),
-				tool_calls: nullable(arr(toolCallSchema)).optional(),
-			}).with(open),
-			finish_reason: nullable(str()).optional(),
-		}).with(open),
-	).with({ minItems: 1 }),
-	usage: nullable(obj({ prompt_tokens: int(), completion_tokens: int() }).with(open)).optional(),
-}).with(open);
+const completionSchema = t
+	.obj({
+		choices: t
+			.arr(
+				t
+					.obj({
+						message: t
+							.obj({
+								content: t
+									.nullable(t.union(t.str(), t.arr(t.obj({ text: t.str().optional() }).with(open))))
+									.optional(),
+								tool_calls: t.nullable(t.arr(toolCallSchema)).optional(),
+							})
+							.with(open),
+						finish_reason: t.nullable(t.str()).optional(),
+					})
+					.with(open),
+			)
+			.with({ minItems: 1 }),
+		usage: t
+			.nullable(t.obj({ prompt_tokens: t.int(), completion_tokens: t.int() }).with(open))
+			.optional(),
+	})
+	.with(open);
 
 const messageOf = (message: ChatMessage) => {
 	switch (message.role) {
@@ -79,7 +87,7 @@ const messageOf = (message: ChatMessage) => {
 
 /** The arguments of a tool call: a JSON object, or none. */
 const argsOf = (text: string): Record<string, unknown> =>
-	text.trim() === '' ? {} : parse(json(), JSON.parse(text));
+	text.trim() === '' ? {} : parse(t.json(), JSON.parse(text));
 
 /**
  * A chat model on the Chat Completions API (`POST {base}/chat/completions`), which OpenAI and

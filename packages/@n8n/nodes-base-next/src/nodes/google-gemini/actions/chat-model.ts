@@ -1,12 +1,4 @@
-import {
-	int,
-	isRecord,
-	modelId,
-	num,
-	parse,
-	type ChatMessage,
-	type ChatRequest,
-} from '@n8n/node-sdk';
+import { isRecord, parse, t, type ChatMessage, type ChatRequest } from '@n8n/node-sdk';
 
 import { generateContentSchema, replyTextOf } from '../content';
 import { googleGemini } from '../google-gemini.node';
@@ -58,20 +50,20 @@ const REASONS: Readonly<Record<string, string>> = {
 	IMAGE_SAFETY: 'content_filter',
 };
 
-export const geminiChatModel = googleGemini.subnode('chatModel', {
+export const geminiChatModel = googleGemini.provider('chatModel', {
 	action: 'Google Gemini Chat Model',
 	summary: 'A Google Gemini chat model for an AI node, e.g. ai.prompt or ai.agent.',
-	supplies: 'chatModel',
+	provides: 'chatModel',
 	input: {
-		model: modelId('google').hint(
-			'A model ID from the catalog, e.g. gemini-2.5-flash; never invent one',
-		),
-		temperature: num().with({ minimum: 0, maximum: 2 }).optional(),
-		maxOutputTokens: int().with({ minimum: 1 }).optional(),
-		topP: num().with({ minimum: 0, maximum: 1 }).optional(),
-		topK: int().with({ minimum: 1 }).optional(),
+		model: t
+			.modelId('google')
+			.hint('A model ID from the catalog, e.g. gemini-2.5-flash; never invent one'),
+		temperature: t.num().with({ minimum: 0, maximum: 2 }).optional(),
+		maxOutputTokens: t.int().with({ minimum: 1 }).optional(),
+		topP: t.num().with({ minimum: 0, maximum: 1 }).optional(),
+		topK: t.int().with({ minimum: 1 }).optional(),
 	},
-	async supply({ input, http }) {
+	async provide({ input, http }) {
 		const model = input.model.replace(/^models\//, '');
 		return {
 			model,

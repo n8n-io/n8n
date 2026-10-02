@@ -1,34 +1,25 @@
-import {
-	arr,
-	int,
-	isRecord,
-	list,
-	matches,
-	obj,
-	str,
-	validate,
-	type Http,
-	type Infer,
-} from '@n8n/node-sdk';
+import { isRecord, list, matches, t, validate, type Http, type Infer } from '@n8n/node-sdk';
 
-const label = obj({ id: str(), name: str() });
+const label = t.obj({ id: t.str(), name: t.str() });
 
 /** A message as the v2 node emits it with `simple: true`. */
-export const simplifiedMessage = obj({
-	id: str(),
-	threadId: str(),
-	snippet: str(),
-	historyId: str(),
-	internalDate: str().hint('Epoch milliseconds as a string'),
-	sizeEstimate: int(),
-	labels: arr(label).optional(),
-	payload: obj({ mimeType: str() }).with({ additionalProperties: true }).optional(),
-	From: str().hint('A string such as "Ada <ada@example.com>"').optional(),
-	To: str().optional(),
-	Cc: str().optional(),
-	Bcc: str().optional(),
-	Subject: str().optional(),
-}).with({ additionalProperties: true, 'x-n8n-hint': 'Metadata and snippet only; no body' });
+export const simplifiedMessage = t
+	.obj({
+		id: t.str(),
+		threadId: t.str(),
+		snippet: t.str(),
+		historyId: t.str(),
+		internalDate: t.str().hint('Epoch milliseconds as a string'),
+		sizeEstimate: t.int(),
+		labels: t.arr(label).optional(),
+		payload: t.obj({ mimeType: t.str() }).with({ additionalProperties: true }).optional(),
+		From: t.str().hint('A string such as "Ada <ada@example.com>"').optional(),
+		To: t.str().optional(),
+		Cc: t.str().optional(),
+		Bcc: t.str().optional(),
+		Subject: t.str().optional(),
+	})
+	.with({ additionalProperties: true, 'x-n8n-hint': 'Metadata and snippet only; no body' });
 
 type Label = Infer<typeof label>;
 

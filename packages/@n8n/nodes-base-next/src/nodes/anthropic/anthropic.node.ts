@@ -1,15 +1,16 @@
-import { credential, credentialType, defineNode, t } from '@n8n/node-sdk';
+import { defineNode } from '@n8n/node-sdk';
+import { credential, defineCredential, field } from '@n8n/node-sdk/credentials';
 
 const DEFAULT_URL = 'https://api.anthropic.com';
 
-export const anthropicKey = credentialType({
+export const anthropicKey = defineCredential({
 	id: 'anthropic.apiKey',
 	legacyName: 'anthropicApi',
 	displayName: 'Anthropic',
 	docs: 'anthropic',
 	fields: {
-		apiKey: t.secret('API Key'),
-		url: t
+		apiKey: field.secret('API Key'),
+		url: field
 			.url('Base URL')
 			.default(DEFAULT_URL)
 			.describe('Override the default base URL for the API'),

@@ -22,7 +22,7 @@ import type {
 import { isDataTableRows } from '../src/host-imports';
 import { listItems, requestOf, withBinaries } from '../src/runtime';
 import type { Binary } from '../src/schema';
-import { supplyFieldsOf, type ChatRequest, type ChatMessage } from '../src/subnodes';
+import { providerInputsOf, type ChatMessage, type ChatRequest } from '../src/providers';
 import {
 	actionOf,
 	call,
@@ -255,7 +255,7 @@ async function runInputOf(action: Action, text: string): Promise<Record<string, 
 		return handleOf(call(() => witBinary.open(id)));
 	});
 	if (!isRecord(withFiles)) throw new Error('The run input is not an object');
-	const supplies = supplyFieldsOf(action.input).flatMap(({ name, many }) => {
+	const supplies = providerInputsOf(action.input).flatMap(({ name, many }) => {
 		const value = withFiles[name];
 		if (value === undefined) return [];
 		return [[name, many && Array.isArray(value) ? value.map(capabilityOf) : capabilityOf(value)]];

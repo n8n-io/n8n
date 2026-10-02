@@ -1,4 +1,4 @@
-import { bool, ref, str } from '@n8n/node-sdk';
+import { ref, t } from '@n8n/node-sdk';
 
 import {
 	content,
@@ -12,9 +12,9 @@ import {
 } from '../slack.node';
 
 const sent = slackResponse({
-	ok: bool(),
-	channel: str().hint('Channel ID, also when the input gave a #name'),
-	ts: str().hint('ID of the new message; use it as threadTs to reply in its thread'),
+	ok: t.bool(),
+	channel: t.str().hint('Channel ID, also when the input gave a #name'),
+	ts: t.str().hint('ID of the new message; use it as threadTs to reply in its thread'),
 	message: slackMessage,
 });
 
@@ -29,7 +29,7 @@ export const sendSlackMessage = message.action('send', {
 		threadTs: slackTs
 			.hint('ts of the parent message, as a string, to reply in its thread')
 			.optional(),
-		replyBroadcast: bool().default(false).hint('Also show the thread reply in the channel'),
+		replyBroadcast: t.bool().default(false).hint('Also show the thread reply in the channel'),
 	},
 	output: sent,
 	async run({ input, http }) {

@@ -1,8 +1,8 @@
-import { bool, ref, str } from '@n8n/node-sdk';
+import { ref, t } from '@n8n/node-sdk';
 
 import { message, slackChannelId, slackPost, slackResponse, slackTs } from '../slack.node';
 
-const deleted = slackResponse({ ok: bool(), channel: str(), ts: str() });
+const deleted = slackResponse({ ok: t.bool(), channel: t.str(), ts: t.str() });
 
 export const deleteSlackMessage = message.action('delete', {
 	action: 'Delete a message',

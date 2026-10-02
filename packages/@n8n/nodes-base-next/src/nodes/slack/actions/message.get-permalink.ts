@@ -1,8 +1,8 @@
-import { bool, ref, str } from '@n8n/node-sdk';
+import { ref, t } from '@n8n/node-sdk';
 
 import { message, slackChannelId, slackGet, slackResponse, slackTs } from '../slack.node';
 
-const link = slackResponse({ ok: bool(), channel: str(), permalink: str() });
+const link = slackResponse({ ok: t.bool(), channel: t.str(), permalink: t.str() });
 
 export const getSlackPermalink = message.action('getPermalink', {
 	action: 'Get a message permalink',

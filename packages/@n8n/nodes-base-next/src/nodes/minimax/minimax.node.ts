@@ -1,15 +1,16 @@
-import { credential, credentialType, defineNode, t } from '@n8n/node-sdk';
+import { defineNode } from '@n8n/node-sdk';
+import { credential, defineCredential, field } from '@n8n/node-sdk/credentials';
 
 const INTERNATIONAL = 'https://api.minimax.io/v1';
 
-export const minimaxKey = credentialType({
+export const minimaxKey = defineCredential({
 	id: 'minimax.apiKey',
 	legacyName: 'minimaxApi',
 	displayName: 'MiniMax',
 	docs: 'minimax',
 	fields: {
-		apiKey: t.secret('API Key'),
-		region: t
+		apiKey: field.secret('API Key'),
+		region: field
 			.options('Region', {
 				international: {
 					name: 'International',
@@ -19,7 +20,7 @@ export const minimaxKey = credentialType({
 			})
 			.default('international'),
 		// The langchain MiniMax node reads `url`.
-		url: t.baseUrl(),
+		url: field.baseUrl(),
 	},
 	baseUrl: {
 		on: 'region',

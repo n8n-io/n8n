@@ -1,5 +1,6 @@
 import { migrateVersion } from '@n8n/node-contract-compat';
-import { isRecord, toVersionedNodeType, type Action } from '@n8n/node-sdk';
+import { isRecord, type Action } from '@n8n/node-sdk';
+import { toVersionedNodeType } from '@n8n/node-sdk/host';
 import { VersionedNodeType, type IVersionedNodeType } from 'n8n-workflow';
 
 import { getManyDatabasePages } from './nodes/notion/actions/database-page.get-all';

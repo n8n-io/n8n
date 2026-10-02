@@ -1,17 +1,14 @@
 import type { ICredentialType, IHttpRequestHelper, IHttpRequestOptions } from 'n8n-workflow';
 
+import { compat, defineCredential, field, type AnyCredentialType } from '../entry/credentials';
+import { toCredentialType } from '../entry/host';
+import { t } from '../index';
 import {
-	compat,
+	credentialBaseUrlOf,
 	credentialDataOf,
-	credentialType,
 	discoverOidc,
-	oneOf,
-	str,
-	t,
-	toCredentialType,
-	type AnyCredentialType,
-} from '../index';
-import { credentialBaseUrlOf, secretRedactorOf } from '../credentials';
+	secretRedactorOf,
+} from '../credentials';
 
 const projected = (type: AnyCredentialType): ICredentialType => {
 	const result = toCredentialType(type);
@@ -27,18 +24,18 @@ const sign = async (type: AnyCredentialType, data: object, request: IHttpRequest
 
 describe('credentialType', () => {
 	it('projects placements to a generic block', () => {
-		const zendesk = credentialType({
+		const zendesk = defineCredential({
 			id: 'zendesk.token',
 			legacyName: 'zendeskApi',
 			displayName: 'Zendesk API',
 			docs: 'zendesk',
 			fields: {
-				subdomain: t
+				subdomain: field
 					.text('Subdomain')
 					.describe('Your subdomain')
 					.with({ examples: ['company'] }),
-				email: t.text('Email'),
-				apiToken: t.secret('API Token'),
+				email: field.text('Email'),
+				apiToken: field.secret('API Token'),
 			},
 			baseUrl: 'https://{subdomain}.zendesk.com/api/v2',
 			auth: (a) => a.basic('{email}/token', '{apiToken}'),
@@ -88,10 +85,10 @@ describe('credentialType', () => {
 	});
 
 	it('projects bearer, header and query to generic entries', () => {
-		const multi = credentialType({
+		const multi = defineCredential({
 			id: 'multi.token',
 			displayName: 'Multi',
-			fields: { token: t.secret('Token'), key: t.secret('Key') },
+			fields: { token: field.secret('Token'), key: field.secret('Key') },
 			auth: (a) =>
 				a.apply({ headers: { Authorization: 'Bearer {token}' }, query: { key: '{key}' } }),
 		});
@@ -106,10 +103,10 @@ describe('credentialType', () => {
 	});
 
 	it('generates a function for defaults that keeps request headers and the input', async () => {
-		const versioned = credentialType({
+		const versioned = defineCredential({
 			id: 'versioned.token',
 			displayName: 'Versioned',
-			fields: { apiKey: t.secret('API Key') },
+			fields: { apiKey: field.secret('API Key') },
 			auth: (a) => a.bearer('apiKey', { defaults: { 'Api-Version': '2022-02-22' } }),
 		});
 		const request = {
@@ -128,10 +125,10 @@ describe('credentialType', () => {
 	});
 
 	it('drops the entry of an empty optional field', async () => {
-		const keys = credentialType({
+		const keys = defineCredential({
 			id: 'keys.apiKey',
 			displayName: 'Keys',
-			fields: { apiKey: t.secret('API Key'), appKey: t.secret('APP Key').optional() },
+			fields: { apiKey: field.secret('API Key'), appKey: field.secret('APP Key').optional() },
 			auth: (a) => a.apply({ headers: { 'X-Api': '{apiKey}', 'X-App': '{appKey}' } }),
 		});
 		expect(await sign(keys, { apiKey: 'k', appKey: '' }, { url: 'https://x.test' })).toEqual({
@@ -145,10 +142,10 @@ describe('credentialType', () => {
 	});
 
 	it('picks the placement of an options field', async () => {
-		const switched = credentialType({
+		const switched = defineCredential({
 			id: 'switched.apiKey',
 			displayName: 'Switched',
-			fields: { mode: oneOf('header', 'query').default('header'), key: t.secret('Key') },
+			fields: { mode: t.oneOf('header', 'query').default('header'), key: field.secret('Key') },
 			auth: (a) =>
 				a.when('mode', { header: a.header('X-Key', '{key}'), query: a.query('key', '{key}') }),
 		});
@@ -163,7 +160,7 @@ describe('credentialType', () => {
 	});
 
 	it('projects the OAuth2 grants to oAuth2Api children with PKCE on by default', () => {
-		const code = credentialType({
+		const code = defineCredential({
 			id: 'acme.oauth2',
 			legacyName: 'acmeOAuth2Api',
 			displayName: 'Acme OAuth2 API',
@@ -206,7 +203,7 @@ describe('credentialType', () => {
 				{ displayName: 'Authentication', name: 'authentication', type: 'hidden', default: 'body' },
 			],
 		});
-		const machine = credentialType({
+		const machine = defineCredential({
 			id: 'acme.clientCredentials',
 			displayName: 'Acme machine',
 			auth: (a) => a.oauth2.clientCredentials({ tokenEndpoint: 'https://acme.test/token' }),
@@ -222,7 +219,7 @@ describe('credentialType', () => {
 	it('refuses what tsc cannot check in plain JavaScript', () => {
 		const loose: { reason: string } = { reason: ' ' };
 		expect(() =>
-			credentialType({
+			defineCredential({
 				id: 'loose.custom',
 				displayName: 'Loose',
 				auth: (a) =>
@@ -230,7 +227,7 @@ describe('credentialType', () => {
 			}),
 		).toThrow('custom needs a reason');
 		expect(() =>
-			credentialType({
+			defineCredential({
 				id: 'loose.token',
 				displayName: 'Loose',
 				hosts: ['https://x.test'],
@@ -245,10 +242,10 @@ describe('credentialType', () => {
 
 describe('credential tests, hidden fields, notices and user headers', () => {
 	it('projects failWhen to responseSuccessBody rules and keeps status errors when asked', () => {
-		const chat = credentialType({
+		const chat = defineCredential({
 			id: 'chat.token',
 			displayName: 'Chat',
-			fields: { token: t.secret('Token') },
+			fields: { token: field.secret('Token') },
 			baseUrl: 'https://chat.test/api',
 			auth: (a) => a.bearer('token'),
 			test: {
@@ -282,10 +279,10 @@ describe('credential tests, hidden fields, notices and user headers', () => {
 	});
 
 	it('projects a POST test with a body, and a fields-only type without authenticate', () => {
-		const app = credentialType({
+		const app = defineCredential({
 			id: 'meta.app',
 			displayName: 'App',
-			fields: { clientId: t.text('Client ID'), clientSecret: t.secret('Client Secret') },
+			fields: { clientId: field.text('Client ID'), clientSecret: field.secret('Client Secret') },
 			baseUrl: 'https://graph.test/v1',
 			auth: (a) => a.none(),
 			test: {
@@ -306,20 +303,20 @@ describe('credential tests, hidden fields, notices and user headers', () => {
 	});
 
 	it('projects hidden fields, a base URL field, option labels and a notice', () => {
-		const regional = credentialType({
+		const regional = defineCredential({
 			id: 'regional.apiKey',
 			displayName: 'Regional',
 			fields: {
-				apiKey: t.secret('API Key'),
-				region: t
+				apiKey: field.secret('API Key'),
+				region: field
 					.options('Region', {
 						eu: { name: 'Europe', description: 'eu.api.test' },
 						us: { name: 'United States' },
 					})
 					.default('eu'),
-				url: t.baseUrl(),
-				appId: t.hidden('App ID'),
-				secret: t.secret('Signing Secret').optional().hint('Only for webhooks'),
+				url: field.baseUrl(),
+				appId: field.hidden('App ID'),
+				secret: field.secret('Signing Secret').optional().hint('Only for webhooks'),
 			},
 			baseUrl: { on: 'region', values: { eu: 'https://eu.api.test', us: 'https://us.api.test' } },
 			auth: (a) => a.bearer('apiKey'),
@@ -360,10 +357,10 @@ describe('credential tests, hidden fields, notices and user headers', () => {
 				displayOptions: { show: { secret: [''] } },
 			},
 		]);
-		const constant = credentialType({
+		const constant = defineCredential({
 			id: 'constant.apiKey',
 			displayName: 'Constant',
-			fields: { apiKey: t.secret('API Key'), url: t.baseUrl() },
+			fields: { apiKey: field.secret('API Key'), url: field.baseUrl() },
 			baseUrl: 'https://api.constant.test/v1',
 			auth: (a) => a.bearer('apiKey'),
 		});
@@ -376,10 +373,10 @@ describe('credential tests, hidden fields, notices and user headers', () => {
 	});
 
 	it('adds the user header fields and sends the header only when it is on', async () => {
-		const proxied = credentialType({
+		const proxied = defineCredential({
 			id: 'proxied.apiKey',
 			displayName: 'Proxied',
-			fields: { apiKey: t.secret('API Key') },
+			fields: { apiKey: field.secret('API Key') },
 			auth: (a) => a.apply({ headers: { 'x-api-key': '{apiKey}' }, userHeader: true }),
 		});
 		expect(projected(proxied).properties.map(({ name }) => name)).toEqual([
@@ -413,18 +410,18 @@ describe('credential tests, hidden fields, notices and user headers', () => {
 	it('refuses test rules, base URL fields and user headers that cannot work', () => {
 		const rule = { body: { error: { type: 'x', code: 1 } }, message: 'm' };
 		expect(() =>
-			credentialType({
+			defineCredential({
 				id: 'loose.token',
 				displayName: 'Loose',
-				fields: { token: t.secret('Token'), url: t.baseUrl() },
+				fields: { token: field.secret('Token'), url: field.baseUrl() },
 				auth: (a) => a.bearer('token'),
 			}),
 		).toThrow('a base URL field needs a baseUrl');
 		expect(() =>
-			credentialType({
+			defineCredential({
 				id: 'loose.token',
 				displayName: 'Loose',
-				fields: { token: t.secret('Token'), url: t.baseUrl() },
+				fields: { token: field.secret('Token'), url: field.baseUrl() },
 				baseUrl: '{url}',
 				auth: (a) => a.apply({ headers: { 'X-Key': '{token}' }, userHeader: true }),
 				test: { get: '//other.test/me', failWhen: [rule, { body: { 'a.b': 1 }, message: 'm' }] },
@@ -435,10 +432,10 @@ describe('credential tests, hidden fields, notices and user headers', () => {
 				'failWhen: each body names one value; failWhen: the key a.b has a . or a bracket',
 		);
 		expect(() =>
-			credentialType({
+			defineCredential({
 				id: 'loose.token',
 				displayName: 'Loose',
-				fields: { token: t.secret('Token'), header: t.text('Header') },
+				fields: { token: field.secret('Token'), header: field.text('Header') },
 				auth: (a) => a.apply({ headers: { 'X-Key': '{token}' }, userHeader: true }),
 			}),
 		).toThrow('userHeader: header is a field of userHeader');
@@ -447,11 +444,14 @@ describe('credential tests, hidden fields, notices and user headers', () => {
 
 describe('credentialBaseUrlOf', () => {
 	const server = compat('serverApi', {
-		fields: { server: t.url('Server').default('https://api.server.test'), team: str().optional() },
+		fields: {
+			server: field.url('Server').default('https://api.server.test'),
+			team: t.str().optional(),
+		},
 		baseUrl: '{server}/teams/{team}',
 	});
 	const tenant = compat('tenantApi', {
-		fields: { tenant: t.text('Tenant') },
+		fields: { tenant: field.text('Tenant') },
 		baseUrl: 'https://{tenant}.example.test/v1',
 	});
 
@@ -467,7 +467,7 @@ describe('credentialBaseUrlOf', () => {
 
 	it('picks the base URL of an options value and trims a URL value', () => {
 		const regional = compat('regionalApi', {
-			fields: { region: oneOf('eu', 'us').default('eu') },
+			fields: { region: t.oneOf('eu', 'us').default('eu') },
 			baseUrl: { on: 'region', values: { eu: 'https://eu.api.test', us: 'https://us.api.test' } },
 		});
 		expect(credentialBaseUrlOf(regional, {})).toBe('https://eu.api.test');
@@ -487,29 +487,29 @@ describe('credentialBaseUrlOf', () => {
 describe('credential types in tsc', () => {
 	// The probes only need to compile; the definition checks would throw at run time.
 	const probes = () => {
-		const fields = { apiKey: t.secret('API Key'), region: oneOf('eu', 'us').default('eu') };
-		credentialType({
+		const fields = { apiKey: field.secret('API Key'), region: t.oneOf('eu', 'us').default('eu') };
+		defineCredential({
 			id: 'probe.token',
 			displayName: 'Probe',
 			fields,
 			// @ts-expect-error `apiKy` is not a field
 			auth: (a) => a.bearer('apiKy'),
 		});
-		credentialType({
+		defineCredential({
 			id: 'probe.token',
 			displayName: 'Probe',
 			fields,
 			// @ts-expect-error `{apiKy}` is not a field
 			auth: (a) => a.header('X-Key', '{apiKy}'),
 		});
-		credentialType({
+		defineCredential({
 			id: 'probe.custom',
 			displayName: 'Probe',
 			fields,
 			// @ts-expect-error `custom` needs a reason
 			auth: (a) => a.custom({ sign: async (_data, request) => await Promise.resolve(request) }),
 		});
-		credentialType({
+		defineCredential({
 			id: 'probe.token',
 			displayName: 'Probe',
 			fields,
@@ -517,14 +517,14 @@ describe('credential types in tsc', () => {
 			baseUrl: 'https://{apiKey}.example.test',
 			auth: (a) => a.bearer('apiKey'),
 		});
-		credentialType({
+		defineCredential({
 			id: 'probe.token',
 			displayName: 'Probe',
 			fields,
 			// @ts-expect-error each value of `region` needs a case
 			auth: (a) => a.when('region', { eu: a.bearer('apiKey') }),
 		});
-		credentialType({
+		defineCredential({
 			id: 'probe.token',
 			displayName: 'Probe',
 			fields,
@@ -532,14 +532,14 @@ describe('credential types in tsc', () => {
 			// @ts-expect-error the test path starts with "/"
 			test: { get: 'https://other.test/me' },
 		});
-		credentialType({
+		defineCredential({
 			id: 'probe.token',
 			displayName: 'Probe',
 			fields,
 			// @ts-expect-error `{nope}` is not a field
 			auth: (a) => a.apply({ headers: { 'X-Key': '{apiKey}' }, defaults: { 'X-Other': '{nope}' } }),
 		});
-		credentialType({
+		defineCredential({
 			id: 'probe.token',
 			displayName: 'Probe',
 			fields,
@@ -548,7 +548,7 @@ describe('credential types in tsc', () => {
 			// @ts-expect-error `{clientId}` is not a field
 			test: { post: '/token', body: { client_id: '{clientId}' } },
 		});
-		credentialType({
+		defineCredential({
 			id: 'probe.token',
 			displayName: 'Probe',
 			fields,
@@ -562,15 +562,15 @@ describe('credential types in tsc', () => {
 			baseUrl: { on: 'region', values: { eu: 'https://eu.api.test' } },
 		});
 		// @ts-expect-error the id is `service.scheme`
-		credentialType({ id: 'probe', displayName: 'Probe', auth: (a) => a.apply({}) });
-		credentialType({
+		defineCredential({ id: 'probe', displayName: 'Probe', auth: (a) => a.apply({}) });
+		defineCredential({
 			id: 'probe.token',
 			displayName: 'Probe',
 			fields,
 			// @ts-expect-error `{$token}` exists only in `exchange`
 			auth: (a) => a.header('X-Session', '{$token}'),
 		});
-		credentialType({
+		defineCredential({
 			id: 'probe.session',
 			displayName: 'Probe',
 			fields,
@@ -582,7 +582,7 @@ describe('credential types in tsc', () => {
 					headers: { 'X-Session': '{$token}' },
 				}),
 		});
-		credentialType({
+		defineCredential({
 			id: 'probe.session',
 			displayName: 'Probe',
 			fields,
@@ -594,7 +594,7 @@ describe('credential types in tsc', () => {
 					headers: { 'X-Session': '{$scopes}' },
 				}),
 		});
-		credentialType({
+		defineCredential({
 			id: 'probe.serviceAccount',
 			displayName: 'Probe',
 			fields,
@@ -607,7 +607,7 @@ describe('credential types in tsc', () => {
 					claims: { sub: '{apiKey}' },
 				}),
 		});
-		credentialType({
+		defineCredential({
 			id: 'probe.oauth2',
 			displayName: 'Probe',
 			fields,
@@ -625,11 +625,15 @@ describe('credential types in tsc', () => {
 	});
 });
 
-const metabase = credentialType({
+const metabase = defineCredential({
 	id: 'metabase.session',
 	legacyName: 'metabaseApi',
 	displayName: 'Metabase API',
-	fields: { url: t.url('URL'), username: t.text('Username'), password: t.secret('Password') },
+	fields: {
+		url: field.url('URL'),
+		username: field.text('Username'),
+		password: field.secret('Password'),
+	},
 	baseUrl: '{url}',
 	auth: (a) =>
 		a.exchange({
@@ -696,10 +700,10 @@ describe('exchange', () => {
 	});
 
 	it('stores the expiry of the token when the response has one', async () => {
-		const expiring = credentialType({
+		const expiring = defineCredential({
 			id: 'acme.session',
 			displayName: 'Acme',
-			fields: { key: t.secret('Key') },
+			fields: { key: field.secret('Key') },
 			baseUrl: 'https://api.acme.test',
 			auth: (a) =>
 				a.exchange({
@@ -724,10 +728,10 @@ describe('exchange', () => {
 	});
 
 	it('refuses a token host that is not a credential host, and redacts a failed request', async () => {
-		const elsewhere = credentialType({
+		const elsewhere = defineCredential({
 			id: 'acme.session',
 			displayName: 'Acme',
-			fields: { key: t.secret('Key') },
+			fields: { key: field.secret('Key') },
 			baseUrl: 'https://api.acme.test',
 			auth: (a) =>
 				a.exchange({
@@ -759,10 +763,10 @@ describe('exchange', () => {
 
 	it('refuses an exchange without {$token}, with a field as the token field, or an unknown field', () => {
 		const exchange = (spec: object) => () =>
-			credentialType({
+			defineCredential({
 				id: 'acme.session',
 				displayName: 'Acme',
-				fields: { key: t.secret('Key') },
+				fields: { key: field.secret('Key') },
 				hosts: ['api.acme.test'],
 				// Plain JavaScript: tsc does not check the spec.
 				auth: (a) =>
@@ -783,7 +787,7 @@ describe('exchange', () => {
 			'exchange: a..b is not a dot path',
 		);
 		expect(() =>
-			credentialType({
+			defineCredential({
 				id: 'acme.session',
 				displayName: 'Acme',
 				auth: (a) =>
@@ -800,12 +804,12 @@ describe('exchange', () => {
 describe('OAuth2 grants and OIDC', () => {
 	it('projects endpoint templates over fields, editable scopes and a legacy parent', () => {
 		const type = projected(
-			credentialType({
+			defineCredential({
 				id: 'acme.oauth2',
 				legacyName: 'acmeOAuth2Api',
 				displayName: 'Acme OAuth2 API',
 				legacyParent: 'acmeBaseOAuth2Api',
-				fields: { server: t.url('Server').default('https://acme.test') },
+				fields: { server: field.url('Server').default('https://acme.test') },
 				auth: (a) =>
 					a.oauth2.authorizationCode({
 						authorizationEndpoint: '{server}/oauth/authorize',
@@ -839,8 +843,8 @@ describe('OAuth2 grants and OIDC', () => {
 	});
 
 	it('keeps the grants n8n core does not run as data and refuses to project them', () => {
-		const fields = { privateKey: t.secret('Private Key'), email: t.text('Email') };
-		const jwt = credentialType({
+		const fields = { privateKey: field.secret('Private Key'), email: field.text('Email') };
+		const jwt = defineCredential({
 			id: 'acme.serviceAccount',
 			displayName: 'Acme',
 			fields,
@@ -861,7 +865,7 @@ describe('OAuth2 grants and OIDC', () => {
 			scope: [],
 		});
 		expect(() => toCredentialType(jwt)).toThrow('n8n core does not run jwtBearer yet');
-		const device = credentialType({
+		const device = defineCredential({
 			id: 'acme.device',
 			displayName: 'Acme',
 			auth: (a) =>
@@ -871,10 +875,10 @@ describe('OAuth2 grants and OIDC', () => {
 				}),
 		});
 		expect(() => toCredentialType(device)).toThrow('n8n core does not run deviceCode yet');
-		const exchange = credentialType({
+		const exchange = defineCredential({
 			id: 'acme.exchange',
 			displayName: 'Acme',
-			fields: { subject: t.secret('Subject Token') },
+			fields: { subject: field.secret('Subject Token') },
 			auth: (a) =>
 				a.oauth2.tokenExchange({
 					tokenEndpoint: 'https://acme.test/token',
@@ -887,10 +891,10 @@ describe('OAuth2 grants and OIDC', () => {
 			grant: 'tokenExchange',
 			clientAuth: 'client_secret_basic',
 		});
-		const oidc = credentialType({
+		const oidc = defineCredential({
 			id: 'acme.oidc',
 			displayName: 'Acme',
-			fields: { tenant: t.text('Tenant') },
+			fields: { tenant: field.text('Tenant') },
 			auth: (a) => a.oidc({ issuer: 'https://{tenant}.acme.test', scope: ['email', 'openid'] }),
 		});
 		expect(oidc.scheme).toEqual({
@@ -904,11 +908,11 @@ describe('OAuth2 grants and OIDC', () => {
 	});
 
 	it('refuses a scope with a space, a claim with a secret, and a subject token that is not a secret', () => {
-		const make = (auth: Parameters<typeof credentialType>[0]['auth']) => () =>
-			credentialType({
+		const make = (auth: Parameters<typeof defineCredential>[0]['auth']) => () =>
+			defineCredential({
 				id: 'acme.oauth2',
 				displayName: 'Acme',
-				fields: { key: t.secret('Key'), email: t.text('Email') },
+				fields: { key: field.secret('Key'), email: field.text('Email') },
 				auth,
 			});
 		expect(
@@ -976,10 +980,10 @@ describe('OAuth2 grants and OIDC', () => {
 });
 
 describe('renamed fields', () => {
-	const renamed = credentialType({
+	const renamed = defineCredential({
 		id: 'acme.token',
 		displayName: 'Acme',
-		fields: { accessToken: t.secret('Access Token') },
+		fields: { accessToken: field.secret('Access Token') },
 		auth: (a) => a.bearer('accessToken'),
 		renamed: { token: 'accessToken' },
 	});
@@ -1005,19 +1009,19 @@ describe('renamed fields', () => {
 
 	it('refuses an old name that is a field, or a new name that is not one', () => {
 		expect(() =>
-			credentialType({
+			defineCredential({
 				id: 'acme.token',
 				displayName: 'Acme',
-				fields: { accessToken: t.secret('Access Token') },
+				fields: { accessToken: field.secret('Access Token') },
 				auth: (a) => a.bearer('accessToken'),
 				renamed: { accessToken: 'accessToken' },
 			}),
 		).toThrow('renamed: accessToken must be an old name of the field accessToken');
 		expect(() =>
-			credentialType({
+			defineCredential({
 				id: 'acme.token',
 				displayName: 'Acme',
-				fields: { subdomain: t.text('Subdomain'), accessToken: t.secret('Access Token') },
+				fields: { subdomain: field.text('Subdomain'), accessToken: field.secret('Access Token') },
 				baseUrl: 'https://{subdomain}.acme.test',
 				auth: (a) => a.bearer('accessToken'),
 				renamed: { domain: 'subdomain' },
@@ -1028,10 +1032,10 @@ describe('renamed fields', () => {
 
 describe('secretRedactorOf', () => {
 	it('removes secrets, derived tokens, base64 and URL-encoded forms, and basic pairs', () => {
-		const zendesk = credentialType({
+		const zendesk = defineCredential({
 			id: 'zendesk.token',
 			displayName: 'Zendesk',
-			fields: { email: t.text('Email'), apiToken: t.secret('API Token') },
+			fields: { email: field.text('Email'), apiToken: field.secret('API Token') },
 			auth: (a) => a.basic('{email}/token', '{apiToken}'),
 		});
 		const redact = secretRedactorOf(zendesk, {
@@ -1051,10 +1055,10 @@ describe('secretRedactorOf', () => {
 	});
 
 	it('removes the client secret and the user header value, but not the header name or a short value', () => {
-		const acme = credentialType({
+		const acme = defineCredential({
 			id: 'acme.oauth2',
 			displayName: 'Acme',
-			fields: { pin: t.secret('PIN').optional() },
+			fields: { pin: field.secret('PIN').optional() },
 			auth: (a) =>
 				a.oauth2.clientCredentials({ tokenEndpoint: 'https://acme.test/token', scope: ['read'] }),
 		});
@@ -1070,7 +1074,7 @@ describe('secretRedactorOf', () => {
 	});
 
 	it('removes each long unmarked value of a compat type, but not its plain fields or settings', () => {
-		const github = compat('githubOAuth2Api', { fields: { server: t.url('Server') } });
+		const github = compat('githubOAuth2Api', { fields: { server: field.url('Server') } });
 		const redact = secretRedactorOf(github, {
 			server: 'https://api.github.com',
 			clientSecret: 'client-secret-1',

@@ -1,4 +1,4 @@
-import { binary, obj } from '@n8n/node-sdk';
+import { t } from '@n8n/node-sdk';
 
 import { httpRequest } from '../http-request.node';
 import { common } from '../request';
@@ -12,8 +12,8 @@ export const downloadFile = httpRequest.action('download', {
 	flow: { effect: 'read', cardinality: 'per-item', idempotent: true },
 	egress: { fromInput: 'url' },
 	input: common,
-	output: obj({
-		data: binary().hint('The response body; file name and MIME type come from the response'),
+	output: t.obj({
+		data: t.binary().hint('The response body; file name and MIME type come from the response'),
 	}),
 	async run({ input, http }) {
 		const data = await http.request({

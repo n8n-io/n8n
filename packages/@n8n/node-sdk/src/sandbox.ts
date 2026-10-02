@@ -11,7 +11,7 @@ import type { AnyCredentialType } from './credentials';
 import {
 	isHttpError,
 	usesBinary,
-	usesSupplies,
+	usesProviders,
 	type Action,
 	type Binaries,
 	type DataTable,
@@ -41,19 +41,19 @@ import {
 } from './runtime';
 import { Schema, type Binary, type JsonSchema, type Shape } from './schema';
 import {
-	isSupply,
-	suppliedKindOf,
-	supplyFieldsOf,
-	supplyOf,
+	provider,
+	providedKindOf,
+	providerInputsOf,
+	providerInputOf,
 	type ChatMessage,
 	type ChatReply,
 	type ChatRequest,
 	type ChatUsage,
-	type Supplies,
-	type SupplyKind,
+	type ProviderCapabilities,
+	type ProviderKind,
 	type ToolCall,
 	type ToolDefinition,
-} from './subnodes';
+} from './providers';
 import { NODE_CONTRACT_VERSION, type VersionManifest } from './version';
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -159,8 +159,8 @@ const grantsOf = ({ kind, contract }: VersionManifest) => [
 		: [
 				...(contract.imports ?? []).map((name) => IMPORT_INTERFACES[name]),
 				...(usesBinary(contract) ? ['binary'] : []),
-				// An action is no provider, so it uses supplies only through its input fields.
-				...(usesSupplies(contract) ? ['supplied', 'capabilities'] : []),
+				// An action is no provider, so it uses capabilities only through its input fields.
+				...(usesProviders(contract) ? ['supplied', 'capabilities'] : []),
 			]),
 ];
 
@@ -618,12 +618,12 @@ interface Writer {
 }
 
 interface Capability {
-	readonly kind: SupplyKind;
+	readonly kind: ProviderKind;
 	readonly value: unknown;
 }
 
 /** The JSON-RPC resource of a kind in `capabilities`. */
-const CAPABILITY_RESOURCES: Readonly<Record<SupplyKind, string>> = {
+const CAPABILITY_RESOURCES: Readonly<Record<ProviderKind, string>> = {
 	chatModel: 'chat-model',
 	memory: 'memory',
 	tool: 'tool',
@@ -683,10 +683,13 @@ function callsOf(
 		writers.get(handle)?.stream.destroy();
 		writers.delete(handle);
 	};
-	const capabilityOf = <K extends SupplyKind>(handle: unknown, kind: K): Supplies[K] => {
+	const capabilityOf = <K extends ProviderKind>(
+		handle: unknown,
+		kind: K,
+	): ProviderCapabilities[K] => {
 		const capability = typeof handle === 'number' ? capabilities.get(handle) : undefined;
 		const value = capability?.value;
-		if (capability?.kind !== kind || !isSupply(kind, value)) {
+		if (capability?.kind !== kind || !provider.is(kind, value)) {
 			throw new RpcError(-32602, `No ${kind} ${String(handle)}`);
 		}
 		return value;
@@ -772,7 +775,7 @@ function callsOf(
 		}
 	};
 	const shape = shapeOf(contract.input);
-	const supplyFields = supplyFieldsOf(shape);
+	const providerFields = providerInputsOf(shape);
 	const binaryKeys = Object.entries(contract.output.properties ?? {})
 		.filter(([, field]) => field['x-n8n-binary'] === true)
 		.map(([key]) => key);
@@ -781,13 +784,13 @@ function callsOf(
 			if (!isBinary(file)) throw new UnexpectedError(`${String(file)} is not a binary`);
 			return { $binary: fileIdOf(file) };
 		});
-		if (!isRecord(withFiles) || supplyFields.length === 0) return withFiles;
-		const refOf = (kind: SupplyKind) => (value: unknown) => {
+		if (!isRecord(withFiles) || providerFields.length === 0) return withFiles;
+		const refOf = (kind: ProviderKind) => (value: unknown) => {
 			const id = counter.next++;
 			supplied.set(id, { kind, value });
 			return { $capability: id };
 		};
-		const refs = supplyFields.flatMap(({ name, kind, many }) => {
+		const refs = providerFields.flatMap(({ name, kind, many }) => {
 			const value = withFiles[name];
 			if (value === undefined) return [];
 			return [[name, many && Array.isArray(value) ? value.map(refOf(kind)) : refOf(kind)(value)]];
@@ -1391,14 +1394,14 @@ function providerValue<T>(id: string, value: T | undefined, what: string): T {
  * provider ended, so the guest keeps no state between two calls. The requests use the context,
  * so the credential, the egress and the request limit of the provider apply.
  */
-async function suppliedOf(
+async function providerCapabilityOf(
 	manifest: VersionManifest,
 	context: SandboxContext,
 	start: () => Promise<Connection>,
 ): Promise<unknown> {
 	const { id, contract } = manifest;
-	const kind = suppliedKindOf(contract.output);
-	if (!kind) throw new UnexpectedError(`${id} supplies no capability`);
+	const kind = providedKindOf(contract.output);
+	if (!kind) throw new UnexpectedError(`${id} provides no capability`);
 	const resource = `capabilities.${CAPABILITY_RESOURCES[kind]}`;
 	const items = context.item ? [context.item] : [];
 	type Use<T> = (
@@ -1483,7 +1486,7 @@ async function suppliedOf(
 				};
 		}
 	})();
-	return providerValue(id, isSupply(kind, capability) ? capability : undefined, `a ${kind}`);
+	return providerValue(id, provider.is(kind, capability) ? capability : undefined, `a ${kind}`);
 }
 
 const shapeOf = (schema: JsonSchema): Shape => {
@@ -1529,7 +1532,7 @@ function sandboxedAction(
 		...(contract.imports ? { imports: contract.imports } : {}),
 	};
 	const run = (context: SandboxContext): AsyncGenerator<unknown> | Promise<unknown> => {
-		if (manifest.kind === 'provider') return suppliedOf(manifest, context, start);
+		if (manifest.kind === 'provider') return providerCapabilityOf(manifest, context, start);
 		if (contract.inputs) {
 			const inputs = contract.inputs.map((name) => context.inputs?.[name] ?? []);
 			return outputsOf(
@@ -1603,10 +1606,10 @@ function unsupported({ id, kind, nodeContract, contract }: VersionManifest): str
 	if (nodeContract.startsWith('1.'))
 		return `${id} targets Node Contract ${nodeContract}; the sandbox runs 2.1.0 or newer`;
 	if (kind === 'action') return undefined;
-	if (!suppliedKindOf(contract.output))
+	if (!providedKindOf(contract.output))
 		return `${id} is a derived provider; n8n runs its legacy node`;
 	const takesSupplies = Object.values(contract.input.properties ?? {}).some(
-		(field) => supplyOf(field) !== undefined,
+		(field) => providerInputOf(field) !== undefined,
 	);
 	if (usesBinary(contract) || contract.imports?.length || takesSupplies) {
 		return `${id} uses more than http, log and limits, which the provider interface does not give`;

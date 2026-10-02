@@ -8,10 +8,10 @@ each contract runs. It is the design of the NODE-6071 spike, lane C2.
 | Topic | Decision | Why |
 |---|---|---|
 | Credential | A node has one `credential`: the credential types a user may pick, and a scope vocabulary. | One place to read for the AI builder and for setup. An action cannot list other credentials. |
-| Credential types | `credentialType({ id, legacyName, fields, baseUrl, auth, test })`. `auth` is data first: `a.bearer`, `a.header`, `a.query`, `a.basic`, `a.apply`, `a.when`, `a.oauth2.*`. `a.custom` is the last resort. | n8n owns the secrets and the mechanics. `tsc` rejects a typo in a field, a template or an id. |
+| Credential types | `defineCredential({ id, legacyName, fields, baseUrl, auth, test })`. `auth` is data first: `a.bearer`, `a.header`, `a.query`, `a.basic`, `a.apply`, `a.when`, `a.oauth2.*`. `a.custom` is the last resort. | n8n owns the secrets and the mechanics. `tsc` rejects a typo in a field, a template or an id. |
 | Ids | `service.scheme`, e.g. `notion.token`, `notion.oauth2`. `legacyName` is the n8n type name. | One spelling per concept. Stored credentials and workflows refer to `legacyName`, so they resolve unchanged. |
-| Compat | `compat('githubApi', { id, fields, baseUrl })` reuses a legacy class by name. | Saved credentials keep working. `credentialType` is the primary form. |
-| Versions | `credentialType({ version, minor, patch })`, 1.0.0 when omitted. Freeze writes a credential manifest (`spec/manifest.schema.json`), and each action manifest pins `<name>@<major>`. | A new required field, a new host or a new scheme is a major. A compat type has no manifest and no pin. See [node-contract.md](node-contract.md). |
+| Compat | `compat('githubApi', { id, fields, baseUrl })` reuses a legacy class by name. | Saved credentials keep working. `defineCredential` is the primary form. |
+| Versions | `defineCredential({ version, minor, patch })`, 1.0.0 when omitted. Freeze writes a credential manifest (`spec/manifest.schema.json`), and each action manifest pins `<name>@<major>`. | A new required field, a new host or a new scheme is a major. A compat type has no manifest and no pin. See [node-contract.md](node-contract.md). |
 | Scopes | Each action and trigger lists `scopes`. `tsc` rejects a scope that the node's credential does not declare. | The scope need is per contract, so a workflow can compute its union. |
 | Scope check | The flow build unions the scopes of all nodes. With `grants`, a missing scope fails the build and names the scope and the nodes. | A missing scope is found before the workflow runs. |
 | Triggers | `resource.trigger(event, spec)` next to `resource.action(...)`. Kinds: `poll`, `webhook`. | Same id, version, freeze, and contract hash path as an action. |
@@ -21,12 +21,12 @@ each contract runs. It is the design of the NODE-6071 spike, lane C2.
 ## Credential
 
 ```ts
-export const notionToken = credentialType({
+export const notionToken = defineCredential({
 	id: 'notion.token',
 	legacyName: 'notionApi',
 	displayName: 'Notion API',
 	docs: 'notion',
-	fields: { apiKey: t.secret('Internal Integration Secret') },
+	fields: { apiKey: field.secret('Internal Integration Secret') },
 	baseUrl: 'https://api.notion.com/v1',
 	auth: (a) => a.bearer('apiKey', { defaults: { 'Notion-Version': '2022-02-22' } }),
 	test: { get: '/users/me' },
@@ -61,11 +61,11 @@ Use the first `auth` that fits:
 | `a.none()` | nothing. The built-in node that uses the type reads its fields | WhatsApp and Facebook trigger apps |
 | `a.custom({ reason, sign })` | code signs each request and sees every secret. `reason` is required | the last resort |
 
-- Fields: `t.secret(title)` (masked, only n8n and `custom` read it), `t.text(title)`, `t.url(title)`,
-  `t.options(title, { eu: { name: 'Europe' } })` (an options field with labels), or any schema,
-  e.g. `oneOf('eu', 'us')` for `a.when` or a base URL map.
-- Hidden fields: `t.hidden(title, value)` is a value that n8n sets, e.g. the ID of a managed Slack
-  app. `t.baseUrl()` holds the `baseUrl` of the type, filled from the other fields, for legacy
+- Fields: `field.secret(title)` (masked, only n8n and `custom` read it), `field.text(title)`, `field.url(title)`,
+  `field.options(title, { eu: { name: 'Europe' } })` (an options field with labels), or any schema,
+  e.g. `t.oneOf('eu', 'us')` for `a.when` or a base URL map.
+- Hidden fields: `field.hidden(title, value)` is a value that n8n sets, e.g. the ID of a managed Slack
+  app. `field.baseUrl()` holds the `baseUrl` of the type, filled from the other fields, for legacy
   nodes that read the URL from the credential data (xAI, MiniMax). Both are JSON Schema `readOnly`.
 - `notice: { text, when: { signatureSecret: '' }, deployment: 'hosted' }` shows a text after the
   fields, optionally only while a field has a value, or only on one kind of deployment.
@@ -181,8 +181,8 @@ built-in node. n8n runs the built-in node; the SDK runs nothing.
 export const webhookTrigger = webhook.trigger('trigger', {
 	trigger: 'On webhook call',
 	summary: 'Starts the workflow when an HTTP request reaches the webhook path.',
-	input: { httpMethod: oneOf('GET', 'POST'), path: str(), responseMode: oneOf('onReceived', 'responseNode') },
-	output: obj({ headers: record(str()), body: declared() }),
+	input: { httpMethod: t.oneOf('GET', 'POST'), path: t.str(), responseMode: t.oneOf('onReceived', 'responseNode') },
+	output: t.obj({ headers: t.record(t.str()), body: t.declared() }),
 	native: { type: 'n8n-nodes-base.webhook', version: 2.2, on: 'webhook' },
 	reply: {
 		operation: 'respond',
@@ -190,7 +190,7 @@ export const webhookTrigger = webhook.trigger('trigger', {
 		summary: 'Sends the HTTP reply to the webhook caller and passes the items on.',
 		native: { type: 'n8n-nodes-base.respondToWebhook', version: 1.5 },
 		awaits: { field: 'responseMode', value: 'responseNode' },
-		input: { respondWith: oneOf('json', 'text') },
+		input: { respondWith: t.oneOf('json', 'text') },
 	},
 });
 ```
@@ -199,7 +199,7 @@ export const webhookTrigger = webhook.trigger('trigger', {
 |---|---|
 | `input` | The parameters of the built-in node at `native.version`, as strict as the node allows. The flow emits them as they are. |
 | `native.on` | What starts it: `manual`, `schedule`, `webhook`, `form`, or `poll`. The contract document has it in `trigger`. |
-| `declared()` | An output field whose JSON Schema the workflow declares in `schema`, e.g. `schema: { body: { … } }`. It types the field, and without a `sample` it makes the trigger sample. It is not a node parameter, and n8n does not check the value at run time. Without a schema, the field is open JSON. |
+| `t.declared()` | An output field whose JSON Schema the workflow declares in `schema`, e.g. `schema: { body: { … } }`. It types the field, and without a `sample` it makes the trigger sample. It is not a node parameter, and n8n does not check the value at run time. Without a schema, the field is open JSON. |
 | `x-n8n-entry-fields` | One output field per entry of an input list, e.g. one per form field. The module types it from the config with `EntryFields`, and `Exact` names a misspelt key. |
 | `reply` | The step that answers the caller. The module has it beside the trigger (`webhook.respond`). The flow build fails when the trigger waits (`awaits`) and no reply follows, or when a reply follows a trigger that does not wait and no node between them waits (`awaits.field` is `awaits.value`, e.g. a Wait node). |
 

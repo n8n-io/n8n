@@ -5,8 +5,8 @@ package n8n:node-contract@2.5.0;
 /// Guest rule: a run starts its work at the first `next`, not in the constructor. A
 /// constructor has no error result, so an error in it stops the component (a trap).
 ///
-/// The declarative bindings `request` and `list` (since 2.4.0), and the `pageValue()` inputs
-/// (since 2.4.0), run only in the JS runtime. This interface has no form of them.
+/// The declarative bindings `request` and `list` (since 2.4.0), and the `t.pageValue()`
+/// inputs (since 2.4.0), run only in the JS runtime. This interface has no form of them.
 @since(version = 2.0.0)
 interface action {
     use types.{json};
@@ -86,8 +86,8 @@ interface action {
 }
 
 /// An action: it reads items and gives items. The host gives an optional import only to an
-/// action whose manifest needs it: `binary` for a `binary()` field, `supplied` for a
-/// `supplied()` input field, the others when the manifest `imports` lists them.
+/// action whose manifest needs it: `binary` for a `t.binary()` field, `supplied` for a
+/// `provider.input()` field, the others when the manifest `imports` lists them.
 @since(version = 2.0.0)
 world action-bundle {
     import http;

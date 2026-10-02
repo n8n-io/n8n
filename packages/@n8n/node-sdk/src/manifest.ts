@@ -15,21 +15,7 @@ import type {
 	Notice,
 } from './credentials';
 import type { ContractDocument } from './define';
-import {
-	arr,
-	bool,
-	int,
-	num,
-	obj,
-	oneOf,
-	record,
-	Schema,
-	str,
-	union,
-	type AnySchema,
-	type Infer,
-	type JsonSchema,
-} from './schema';
+import { Schema, t, type AnySchema, type Infer, type JsonSchema } from './schema';
 import type { NodeContractVersion, VersionManifest } from './version';
 
 const constant = <const V extends string | number | boolean>(value: V) =>
@@ -64,7 +50,7 @@ const typed =
 	) =>
 		new Schema<T>(schema.json, false);
 
-const semver = () => str().with({ pattern: '^\\d+\\.\\d+\\.\\d+$' });
+const semver = () => t.str().with({ pattern: '^\\d+\\.\\d+\\.\\d+$' });
 
 const nodeContractVersion = () =>
 	new Schema<NodeContractVersion>({ type: 'string', pattern: '^\\d+\\.\\d+\\.\\d+$' }, false);
@@ -73,44 +59,43 @@ const nodeContractVersion = () =>
 const jsonSchema = () =>
 	new Schema<JsonSchema>({ type: 'object', description: 'A JSON Schema.' }, false);
 
-const hex = () => str().with({ pattern: '^[0-9a-f]{64}$' });
+const hex = () => t.str().with({ pattern: '^[0-9a-f]{64}$' });
 
-const names = () => arr(str());
+const names = () => t.arr(t.str());
 
 const flow = typed<ContractDocument['flow']>()(
-	obj({
-		effect: oneOf('read', 'write', 'transform'),
-		cardinality: oneOf('per-item', '1:N', 'batch'),
-		idempotent: bool().optional(),
+	t.obj({
+		effect: t.oneOf('read', 'write', 'transform'),
+		cardinality: t.oneOf('per-item', '1:N', 'batch'),
+		idempotent: t.bool().optional(),
 		passthrough: constant('replace'),
 	}),
 );
 
 const contract = typed<ContractDocument>()(
-	obj({
-		id: str(),
-		version: int().with({ minimum: 1 }),
-		node: str(),
-		action: str(),
-		summary: str(),
+	t.obj({
+		id: t.str(),
+		version: t.int().with({ minimum: 1 }),
+		node: t.str(),
+		action: t.str(),
+		summary: t.str(),
 		flow,
 		credentials: names(),
 		scopes: names().optional(),
-		trigger: oneOf('webhook', 'poll', 'event', 'manual', 'schedule', 'form').optional(),
+		trigger: t.oneOf('webhook', 'poll', 'event', 'manual', 'schedule', 'form').optional(),
 		input: jsonSchema(),
 		output: jsonSchema(),
-		outputs: union(
-			names().with({ minItems: 1 }),
-			obj({ each: str(), then: names().optional() }),
-		).optional(),
-		egress: obj({ hosts: names().optional(), fromInput: str().optional() }).optional(),
-		imports: arr(oneOf('dataTables', 'code', 'wait', 'inputOf')).optional(),
+		outputs: t
+			.union(names().with({ minItems: 1 }), t.obj({ each: t.str(), then: names().optional() }))
+			.optional(),
+		egress: t.obj({ hosts: names().optional(), fromInput: t.str().optional() }).optional(),
+		imports: t.arr(t.oneOf('dataTables', 'code', 'wait', 'inputOf')).optional(),
 		inputs: names().with({ minItems: 2 }).optional(),
 	}),
 );
 
 const versionFields = {
-	id: str(),
+	id: t.str(),
 	semver: semver(),
 	contractHash: hex(),
 	bundleHash: hex(),
@@ -123,33 +108,41 @@ const versionFields = {
 
 /** The manifest of one version of an action, trigger or provider. */
 export const versionManifestSchema = typed<VersionManifest>()(
-	obj({
-		kind: oneOf('action', 'trigger', 'provider').with(SINCE_2_5),
-		nodeContract: nodeContractVersion().with(SINCE_2_5),
-		sdk: str().with(SINCE_2_5).optional(),
-		credentials: arr(str().with({ pattern: '^[^@]+@\\d+$' }))
-			.describe('`<name>@<major>` of each credential type with a credential manifest.')
-			.with(SINCE_2_5)
-			.optional(),
-		...versionFields,
-	}).with({ title: 'Action, trigger or provider manifest', ...OPEN }),
+	t
+		.obj({
+			kind: t.oneOf('action', 'trigger', 'provider').with(SINCE_2_5),
+			nodeContract: nodeContractVersion().with(SINCE_2_5),
+			sdk: t.str().with(SINCE_2_5).optional(),
+			credentials: t
+				.arr(t.str().with({ pattern: '^[^@]+@\\d+$' }))
+				.describe('`<name>@<major>` of each credential type with a credential manifest.')
+				.with(SINCE_2_5)
+				.optional(),
+			...versionFields,
+		})
+		.with({ title: 'Action, trigger or provider manifest', ...OPEN }),
 );
 
 /** A manifest that freeze wrote before 2.5.0: `apiVersion`, or `abi` before that. */
-export const legacyManifestSchema = union(
-	obj({ apiVersion: str().with({ pattern: '^n8n:action@\\d+\\.\\d+\\.\\d+$' }), ...versionFields }),
-	obj({ abi: union(constant(1), constant(2)), ...versionFields }),
-).with({ title: 'Action manifest before 2.5.0. A host still reads it.' });
+export const legacyManifestSchema = t
+	.union(
+		t.obj({
+			apiVersion: t.str().with({ pattern: '^n8n:action@\\d+\\.\\d+\\.\\d+$' }),
+			...versionFields,
+		}),
+		t.obj({ abi: t.union(constant(1), constant(2)), ...versionFields }),
+	)
+	.with({ title: 'Action manifest before 2.5.0. A host still reads it.' });
 
-const values = () => record(str());
+const values = () => t.record(t.str());
 
 const placement = typed<Extract<CredentialScheme, { kind: 'apply' }>>()(
-	obj({
+	t.obj({
 		kind: constant('apply'),
 		headers: values(),
 		query: values(),
 		defaults: values(),
-		basic: obj({ username: str(), password: str() }).optional(),
+		basic: t.obj({ username: t.str(), password: t.str() }).optional(),
 		userHeader: constant(true).optional(),
 	}),
 );
@@ -160,97 +153,99 @@ export type CredentialSchemeData =
 	| Pick<CustomAuth, 'kind' | 'reason'>;
 
 const scheme = fits<CredentialSchemeData>()(
-	union(
+	t.union(
 		placement,
-		obj({ kind: constant('when'), field: str(), cases: record(placement) }),
-		obj({
+		t.obj({ kind: constant('when'), field: t.str(), cases: t.record(placement) }),
+		t.obj({
 			kind: constant('oauth2'),
-			grant: oneOf('authorizationCode', 'clientCredentials'),
-			authorizationEndpoint: str().optional(),
-			tokenEndpoint: str(),
+			grant: t.oneOf('authorizationCode', 'clientCredentials'),
+			authorizationEndpoint: t.str().optional(),
+			tokenEndpoint: t.str(),
 			scope: names(),
-			clientAuth: oneOf('client_secret_basic', 'client_secret_post'),
-			pkce: bool(),
+			clientAuth: t.oneOf('client_secret_basic', 'client_secret_post'),
+			pkce: t.bool(),
 			authorizationQuery: values(),
 			editableScopes: constant(true).optional(),
 		}),
-		obj({
+		t.obj({
 			kind: constant('oauth2'),
 			grant: constant('deviceCode'),
-			deviceAuthorizationEndpoint: str(),
-			tokenEndpoint: str(),
+			deviceAuthorizationEndpoint: t.str(),
+			tokenEndpoint: t.str(),
 			scope: names(),
 		}),
-		obj({
+		t.obj({
 			kind: constant('oauth2'),
 			grant: constant('jwtBearer'),
-			tokenEndpoint: str(),
-			key: str(),
+			tokenEndpoint: t.str(),
+			key: t.str(),
 			algorithm: constant('RS256'),
 			claims: values(),
 			scope: names(),
 		}),
-		obj({
+		t.obj({
 			kind: constant('oauth2'),
 			grant: constant('tokenExchange'),
-			tokenEndpoint: str(),
-			subjectToken: str(),
-			subjectTokenType: str(),
-			audience: str().optional(),
-			resource: str().optional(),
+			tokenEndpoint: t.str(),
+			subjectToken: t.str(),
+			subjectTokenType: t.str(),
+			audience: t.str().optional(),
+			resource: t.str().optional(),
 			scope: names(),
-			clientAuth: oneOf('client_secret_basic', 'client_secret_post'),
+			clientAuth: t.oneOf('client_secret_basic', 'client_secret_post'),
 		}),
-		obj({
+		t.obj({
 			kind: constant('oidc'),
-			issuer: str(),
+			issuer: t.str(),
 			scope: names(),
-			clientAuth: oneOf('client_secret_basic', 'client_secret_post'),
-			pkce: bool(),
+			clientAuth: t.oneOf('client_secret_basic', 'client_secret_post'),
+			pkce: t.bool(),
 		}),
-		obj({
+		t.obj({
 			kind: constant('exchange'),
-			request: obj({ method: constant('POST'), url: str(), json: values() }),
-			token: obj({ path: str(), field: str(), expiresIn: str().optional() }),
+			request: t.obj({ method: constant('POST'), url: t.str(), json: values() }),
+			token: t.obj({ path: t.str(), field: t.str(), expiresIn: t.str().optional() }),
 			apply: placement,
 		}),
-		obj({ kind: constant('none') }),
-		obj({ kind: constant('custom'), reason: str() }),
+		t.obj({ kind: constant('none') }),
+		t.obj({ kind: constant('custom'), reason: t.str() }),
 	),
 );
 
 const testOptions = {
 	headers: values().optional(),
 	ignoreHttpStatusErrors: constant(true).optional(),
-	failWhen: arr(
-		obj({
-			body: new Schema<BodyMatch>(
-				{ type: 'object', description: 'A JSON body pattern with one value at its end.' },
-				false,
-			),
-			message: str(),
-		}),
-	).optional(),
+	failWhen: t
+		.arr(
+			t.obj({
+				body: new Schema<BodyMatch>(
+					{ type: 'object', description: 'A JSON body pattern with one value at its end.' },
+					false,
+				),
+				message: t.str(),
+			}),
+		)
+		.optional(),
 };
 
 const test = fits<CredentialTest>()(
-	union(
-		obj({ get: str(), ...testOptions }),
-		obj({ post: str(), body: values().optional(), ...testOptions }),
+	t.union(
+		t.obj({ get: t.str(), ...testOptions }),
+		t.obj({ post: t.str(), body: values().optional(), ...testOptions }),
 	),
 );
 
 // `when` is a partial record. JSON leaves out a value of `undefined`.
 const whenValue = new Schema<string | number | boolean | undefined>(
-	union(str(), num(), bool()).json,
+	t.union(t.str(), t.num(), t.bool()).json,
 	false,
 );
 
 const notice = fits<Notice>()(
-	obj({
-		text: str(),
-		when: record(whenValue).optional(),
-		deployment: oneOf('cloud', 'hosted').optional(),
+	t.obj({
+		text: t.str(),
+		when: t.record(whenValue).optional(),
+		deployment: t.oneOf('cloud', 'hosted').optional(),
 	}),
 );
 
@@ -276,22 +271,24 @@ export interface CredentialManifest {
 }
 
 export const credentialManifestSchema = typed<CredentialManifest>()(
-	obj({
-		kind: constant('credential'),
-		id: str().with({ pattern: '^[^.]+\\.[^.]+$' }),
-		name: str(),
-		semver: semver(),
-		nodeContract: nodeContractVersion(),
-		sdk: str(),
-		displayName: str(),
-		documentationUrl: str().optional(),
-		fields: jsonSchema(),
-		scheme,
-		baseUrl: union(str(), obj({ on: str(), values: values() })).optional(),
-		hosts: names().optional(),
-		test: test.optional(),
-		notice: notice.optional(),
-	}).with({ title: 'Credential manifest', ...SINCE_2_5, ...OPEN }),
+	t
+		.obj({
+			kind: constant('credential'),
+			id: t.str().with({ pattern: '^[^.]+\\.[^.]+$' }),
+			name: t.str(),
+			semver: semver(),
+			nodeContract: nodeContractVersion(),
+			sdk: t.str(),
+			displayName: t.str(),
+			documentationUrl: t.str().optional(),
+			fields: jsonSchema(),
+			scheme,
+			baseUrl: t.union(t.str(), t.obj({ on: t.str(), values: values() })).optional(),
+			hosts: names().optional(),
+			test: test.optional(),
+			notice: notice.optional(),
+		})
+		.with({ title: 'Credential manifest', ...SINCE_2_5, ...OPEN }),
 );
 
 /** `spec/manifest.schema.json`: every manifest that a host reads. */
@@ -320,7 +317,7 @@ export function credentialManifestOf(
 		sdk,
 		displayName: type.displayName,
 		...(type.documentationUrl ? { documentationUrl: type.documentationUrl } : {}),
-		fields: obj(type.fields ?? {}).json,
+		fields: t.obj(type.fields ?? {}).json,
 		scheme:
 			typeScheme.kind === 'custom' ? { kind: 'custom', reason: typeScheme.reason } : typeScheme,
 		...(type.baseUrl === undefined ? {} : { baseUrl: type.baseUrl }),

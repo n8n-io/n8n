@@ -1,19 +1,20 @@
-import { compat, credential, credentialType, defineNode, str, t } from '@n8n/node-sdk';
+import { defineNode, t } from '@n8n/node-sdk';
+import { compat, credential, defineCredential, field } from '@n8n/node-sdk/credentials';
 
 const DEFAULT_SERVER = 'https://api.github.com';
 
-export const githubToken = credentialType({
+export const githubToken = defineCredential({
 	id: 'github.token',
 	legacyName: 'githubApi',
 	displayName: 'GitHub API',
 	docs: 'github',
 	fields: {
-		server: t
+		server: field
 			.url('Github Server')
 			.default(DEFAULT_SERVER)
 			.describe('The server to connect to. Only has to be set if Github Enterprise is used.'),
-		user: t.text('User').optional(),
-		accessToken: t.secret('Access Token'),
+		user: field.text('User').optional(),
+		accessToken: field.secret('Access Token'),
 	},
 	baseUrl: '{server}',
 	auth: (a) => a.header('Authorization', 'token {accessToken}'),
@@ -30,7 +31,7 @@ export const github = defineNode({
 			// The legacy type stays the definition: its OAuth2 endpoints depend on the server.
 			compat('githubOAuth2Api', {
 				id: 'github.oauth2',
-				fields: { server: str().default(DEFAULT_SERVER) },
+				fields: { server: t.str().default(DEFAULT_SERVER) },
 				baseUrl: '{server}',
 			}),
 		],
@@ -43,18 +44,20 @@ export const github = defineNode({
 
 export const repository = github.resource('repository', {
 	input: {
-		owner: str().hint('User or organization name'),
-		repository: str().hint('Repository name, without the owner'),
+		owner: t.str().hint('User or organization name'),
+		repository: t.str().hint('Repository name, without the owner'),
 	},
 });
 
 // The names go into the request path, so a name of only dots must not pass.
 export const issueResource = github.resource('issue', {
 	input: {
-		owner: str()
+		owner: t
+			.str()
 			.with({ pattern: '^[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?$' })
 			.hint('User or organization name, e.g. acme'),
-		repository: str()
+		repository: t
+			.str()
 			.with({ pattern: '^(?!\\.{1,2}$)[A-Za-z0-9._-]+$' })
 			.hint('Repository name without the owner, e.g. widgets'),
 	},
