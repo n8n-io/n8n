@@ -2,7 +2,7 @@ import type { ILoadOptionsFunctions, INodeListSearchResult, INodeProperties } fr
 
 import { type GraphSearchReply } from '../helpers/utils';
 import { resolveSiteId } from '../site';
-import { microsoftApiRequest } from '../transport';
+import { microsoftApiRequest } from '../../transport';
 
 /** Hide gate copied from v1: the list field stays hidden until a site is chosen. */
 export const untilSiteSelected = { site: [''] };

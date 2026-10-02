@@ -10,7 +10,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
-import { capitalize } from '../../../../../utils/utilities';
+import { capitalize } from '@utils/utilities';
 
 /**
  * Every context these helpers run in. One alias, so a new context is admitted

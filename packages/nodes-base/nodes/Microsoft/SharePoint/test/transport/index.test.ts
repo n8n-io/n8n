@@ -8,7 +8,7 @@ import {
 	microsoftApiRequest,
 	microsoftApiRequestAllItems,
 	SERVICE_PRINCIPAL_AUTH,
-} from '../../../v2/transport';
+} from '../../transport';
 
 describe('Microsoft SharePoint v2 Transport', () => {
 	let ctx: Mocked<IExecuteFunctions>;

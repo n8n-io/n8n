@@ -3,9 +3,9 @@ import type { Mock, Mocked } from 'vitest';
 import { sleep } from '@n8n/utils/sleep';
 import { mockDeep } from 'vitest-mock-extended';
 
-import { SERVICE_PRINCIPAL_AUTH } from '../../../v2/transport';
-import type { DeltaPage, DeltaRequest } from '../../../v2/transport/delta';
-import { DEFAULT_DELTA_MAX_PAGES, microsoftApiRequestDelta } from '../../../v2/transport/delta';
+import { SERVICE_PRINCIPAL_AUTH } from '../../transport';
+import type { DeltaPage, DeltaRequest } from '../../transport/delta';
+import { DEFAULT_DELTA_MAX_PAGES, microsoftApiRequestDelta } from '../../transport/delta';
 
 vi.mock('@n8n/utils/sleep', () => ({ sleep: vi.fn().mockResolvedValue(undefined) }));
 
