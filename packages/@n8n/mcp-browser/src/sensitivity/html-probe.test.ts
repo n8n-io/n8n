@@ -16,10 +16,7 @@ function runProbeWithFrame(html: string, frameHtml: string) {
 		url: 'http://test.local/page',
 	});
 	const frame = dom.window.document.querySelector('iframe');
-	frame?.contentDocument?.open();
-	// oxlint-disable-next-line typescript/no-deprecated
-	frame?.contentDocument?.write(frameHtml);
-	frame?.contentDocument?.close();
+	frame?.contentDocument?.body?.insertAdjacentHTML('beforeend', frameHtml);
 	return dom.window.eval(HTML_PROBE_SCRIPT);
 }
 
