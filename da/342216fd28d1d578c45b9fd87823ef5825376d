@@ -1,0 +1,21 @@
+packages/cli/src/__tests__/credentials-helper.test.ts
+  s_96a34872dbe881::t_95105f210458c9 3060,3091,3095-3096,3099-3108,3111-3123,3125-3129,3131-3138,3140-3148,3151-3156,3158-3165,3167-3170,3173-3178,3180-3189,3191-3194,3197-3202,3204-3211,3213-3216,3224,3228,3230,3235-3237,3259-3260,3262-3264
+  s_96a34872dbe881::t_6eac5f7f3dff25 3059,3086-3090
+  s_96a34872dbe881::t_34874d09ae2d28 3098,3266
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "da342216fd28d1d578c45b9fd87823ef5825376d",
+  "prompts": {},
+  "sessions": {
+    "s_96a34872dbe881": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f0a0ae870ffelL9WC91kyWJvEI",
+        "model": "openai/gpt-5.6-sol"
+      },
+      "human_author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}
