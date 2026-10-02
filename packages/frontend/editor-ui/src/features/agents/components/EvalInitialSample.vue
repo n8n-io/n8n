@@ -67,5 +67,7 @@ const i18n = useI18n();
 .calloutPadding {
 	margin-left: 30px;
 	margin-top: -10px;
+	width: fit-content;
+	max-width: 100%;
 }
 </style>
