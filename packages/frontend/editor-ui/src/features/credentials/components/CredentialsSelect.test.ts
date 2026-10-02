@@ -31,6 +31,17 @@ vi.mock('@n8n/design-system', async () => {
 			emits: ['update:modelValue'],
 			template: `<div><slot /></div>`,
 		}),
+		N8nSelect2: defineComponent({
+			props: {
+				modelValue: { type: String, default: '' },
+				items: { type: Array, default: () => [] },
+				size: { type: String, default: '' },
+				placeholder: { type: String, default: '' },
+				disabled: { type: Boolean, default: false },
+				title: { type: String, default: '' },
+			},
+			template: `<div />`,
+		}),
 		N8nOption: defineComponent({
 			props: {
 				value: { type: String, required: true },
