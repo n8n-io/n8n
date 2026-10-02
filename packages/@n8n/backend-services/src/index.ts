@@ -14,6 +14,10 @@ export {
 	type RoleDeletionChecker,
 } from './services/role-deletion-check-proxy.service';
 export { RoleService } from './services/role.service';
+export {
+	WorkflowSharingService,
+	type ShareWorkflowOptions,
+} from './services/workflow-sharing.service';
 export { FolderFinderService } from './services/folder-finder.service';
 export { UrlService } from './services/url.service';
 export {

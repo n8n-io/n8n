@@ -31,6 +31,8 @@ const props = withDefaults(
 		 * primary CTA (e.g. in the Instance AI artifact or the demo view, where
 		 * the canvas isn't the primary surface). */
 		type?: 'primary' | 'secondary';
+		/** Why the button is disabled, shown in place of the shortcut tooltip. */
+		disabledReason?: string;
 		getNodeType: (type: string, typeVersion: number) => INodeTypeDescription | null;
 	}>(),
 	{ type: 'primary' },
@@ -116,9 +118,9 @@ function onSelectTriggerNode(name: string) {
 <template>
 	<div :class="[$style.component, isSplitButton ? $style.split : '']">
 		<KeyboardShortcutTooltip
-			:label="tooltipLabel"
-			:shortcut="{ metaKey: true, keys: ['↵'] }"
-			:disabled="executing || hideTooltip"
+			:label="disabledReason || tooltipLabel"
+			:shortcut="disabledReason ? undefined : { metaKey: true, keys: ['↵'] }"
+			:disabled="!disabledReason && (executing || hideTooltip)"
 		>
 			<N8nButton
 				:variant="buttonVariant"
