@@ -433,6 +433,7 @@ async function saveChannelConfig() {
 			// Only the edit view shows the approval control, so only it may carry one.
 			...(isEditMode.value && channelApproval.value ? { approval: channelApproval.value } : {}),
 		});
+		await channelViewRef.value?.afterSave?.();
 	} catch {
 		// Only `connect` is left to throw here, and `useAgentIntegrationStatus`
 		// exposes that failure to the setup view.
@@ -613,7 +614,7 @@ watch(
 				data-testid="agent-channel-save-channel-config"
 				@click="saveChannelConfig"
 			>
-				{{ i18n.baseText('generic.save') }}
+				{{ channelViewRef?.saveLabel || i18n.baseText('generic.save') }}
 			</N8nButton>
 		</template>
 		<component
