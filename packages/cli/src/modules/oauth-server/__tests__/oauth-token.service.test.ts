@@ -42,6 +42,7 @@ const OTHER_RESOURCE_URL = `${TEST_BASE_URL}/mcp/workflow-b`;
 
 const registry = new ProtectedResourceRegistry(mock<Logger>());
 registry.register({
+	surface: 'instance-mcp',
 	id: 'instance-mcp',
 	getResourceUrl: () => TEST_RESOURCE_URL,
 	getAudiences: () => [TEST_RESOURCE_URL, LEGACY_AUDIENCE],
@@ -332,6 +333,7 @@ describe('OAuthTokenService', () => {
 		beforeAll(() => {
 			const boundRegistry = new ProtectedResourceRegistry(mock<Logger>());
 			boundRegistry.register({
+				surface: 'instance-mcp',
 				id: 'instance-mcp',
 				getResourceUrl: () => TEST_RESOURCE_URL,
 				getAudiences: () => [TEST_RESOURCE_URL, LEGACY_AUDIENCE],
@@ -340,6 +342,7 @@ describe('OAuthTokenService', () => {
 				authorize: async () => true,
 			});
 			boundRegistry.register({
+				surface: 'instance-mcp',
 				id: 'granted-resource',
 				getResourceUrl: () => GRANTED_URL,
 				getResourceUrls: () => [GRANTED_URL, GRANTED_ALIAS_URL],
@@ -348,6 +351,7 @@ describe('OAuthTokenService', () => {
 				authorize: async () => true,
 			});
 			boundRegistry.register({
+				surface: 'instance-mcp',
 				id: 'another-resource',
 				getResourceUrl: () => ANOTHER_URL,
 				getAudiences: () => [ANOTHER_URL],
@@ -764,6 +768,7 @@ describe('OAuthTokenService', () => {
 		beforeAll(() => {
 			const multiResourceRegistry = new ProtectedResourceRegistry(mock<Logger>());
 			multiResourceRegistry.register({
+				surface: 'instance-mcp',
 				id: 'instance-mcp',
 				getResourceUrl: () => RESOURCE_A_URL,
 				getAudiences: () => [RESOURCE_A_URL, LEGACY_AUDIENCE],
@@ -772,6 +777,7 @@ describe('OAuthTokenService', () => {
 				isDefault: true,
 			});
 			multiResourceRegistry.register({
+				surface: 'trigger',
 				id: 'workflow-trigger',
 				getResourceUrl: () => RESOURCE_B_URL,
 				getAudiences: () => [RESOURCE_B_URL],
@@ -855,6 +861,7 @@ describe('OAuthTokenService', () => {
 		beforeAll(() => {
 			const scopedRegistry = new ProtectedResourceRegistry(mock<Logger>());
 			scopedRegistry.register({
+				surface: 'instance-mcp',
 				id: 'instance-mcp',
 				getResourceUrl: () => TEST_RESOURCE_URL,
 				getAudiences: () => [TEST_RESOURCE_URL, LEGACY_AUDIENCE],

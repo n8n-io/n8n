@@ -102,6 +102,7 @@ describe('GET /rest/consent/details', () => {
 
 		const resourceUrl = 'https://n8n.example.com/mcp/named-workflow';
 		Container.get(ProtectedResourceRegistry).register({
+			surface: 'instance-mcp',
 			id: 'test-named-resource',
 			displayName: 'My Named Workflow',
 			getResourceUrl: () => resourceUrl,

@@ -101,6 +101,7 @@ export abstract class ChatTriggerResourceResolverBase implements ProtectedResour
 			// triggers, each its own resource.
 			id: `workflow-chat:${workflowId}:${path}`,
 			isFirstParty: true,
+			surface: 'trigger' as const,
 			getResourceUrl: () => resourceUrl,
 			getAudiences: () => audiences,
 			getAllowedRedirectUris: async () => [resourceUrl],

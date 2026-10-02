@@ -42,6 +42,7 @@ const makeReq = (resourcePath: string | string[], originalUrl?: string): Request
 	({ params: { resourcePath }, originalUrl }) as unknown as Request;
 
 const resource = (scopes: string[], isAvailable?: () => Promise<boolean>): ProtectedResource => ({
+	surface: 'instance-mcp',
 	id: 'instance-mcp',
 	getResourceUrl: () => 'https://n8n.test/mcp-server/http',
 	getAudiences: () => ['https://n8n.test/mcp-server/http'],

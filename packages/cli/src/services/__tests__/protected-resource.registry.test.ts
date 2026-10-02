@@ -6,6 +6,7 @@ import { ProtectedResourceRegistry } from '../protected-resource.registry';
 
 const resourceA: ProtectedResource = {
 	id: 'instance-mcp',
+	surface: 'instance-mcp',
 	getResourceUrl: () => 'https://n8n.example.com/mcp-server/http',
 	getAudiences: () => ['https://n8n.example.com/mcp-server/http', 'mcp-server-api'],
 	scopes: ['tool:listWorkflows', 'tool:getWorkflowDetails'],
@@ -15,6 +16,7 @@ const resourceA: ProtectedResource = {
 
 const resourceB: ProtectedResource = {
 	id: 'workflow-trigger',
+	surface: 'trigger',
 	getResourceUrl: () => 'https://n8n.example.com/webhook/wf-1/mcp',
 	getAudiences: () => ['https://n8n.example.com/webhook/wf-1/mcp'],
 	authorize: async () => true,
@@ -40,6 +42,7 @@ describe('ProtectedResourceRegistry', () => {
 		it('should resolve a resource by any of its declared resource URLs', async () => {
 			const multiUrlResource: ProtectedResource = {
 				id: 'instance-mcp-multi',
+				surface: 'instance-mcp',
 				getResourceUrl: () => 'https://n8n-mcp.example.com/mcp-server/http',
 				getResourceUrls: () => [
 					'https://n8n-mcp.example.com/mcp-server/http',

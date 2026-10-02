@@ -1788,6 +1788,7 @@ describe('executeWebhook establishTriggerIdentity', () => {
 
 	const resourceWithoutGrant: ProtectedResource = {
 		id: `workflow-webhook-test:${WORKFLOW_ID}:abc`,
+		surface: 'trigger',
 		getResourceUrl: () => RESOURCE_URL,
 		getAudiences: () => [RESOURCE_URL],
 		scopes: [],
