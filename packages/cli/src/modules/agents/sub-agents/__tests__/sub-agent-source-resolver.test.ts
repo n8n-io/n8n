@@ -1,6 +1,6 @@
 import type { ToolDescriptor } from '@n8n/agents';
 import { type AgentJsonConfig } from '@n8n/api-types';
-import { UnexpectedError } from 'n8n-workflow';
+import { UnexpectedError, UserError } from 'n8n-workflow';
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
@@ -137,6 +137,20 @@ describe('SubAgentSourceResolver', () => {
 			{ projectId, runtimeSnapshot: JSON.stringify(original) },
 		);
 		expect(resumed).toEqual(original);
+		const mismatchedSnapshot = resolver.resolveForRuntime(
+			{ agentId },
+			{
+				projectId,
+				runtimeSnapshot: JSON.stringify({
+					...original,
+					source: { ...original.source, sourceId: 'agent-2' },
+				}),
+			},
+		);
+		await expect(mismatchedSnapshot).rejects.toThrow(UserError);
+		await expect(mismatchedSnapshot).rejects.toThrow(
+			'Saved background task configuration does not match this agent',
+		);
 		agentRepository.findByIdAndProjectId.mockResolvedValue(null);
 		await expect(
 			resolver.resolveForRuntime(
