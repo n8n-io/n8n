@@ -16,6 +16,7 @@ import AgentEvalTryRow from '@/features/agents/components/AgentEvalTryRow.vue';
 export type SuiteCaseRun = {
 	rowId: number;
 	input: string;
+	label: string;
 	status: AgentAvatarKind;
 	output: string | null;
 };
@@ -193,6 +194,7 @@ function onCheckYourAgent() {
 						v-for="run in effectiveCaseRuns"
 						:key="run.rowId"
 						:kind="run.status"
+						:label="run.label"
 						size="row"
 						:class="$style.summaryAvatar"
 					/>
@@ -219,6 +221,7 @@ function onCheckYourAgent() {
 					:status="run.status"
 					:input="run.input"
 					:output="run.output"
+					:label="run.label"
 					:test-id="`instance-ai-test-agent-examples-case-${run.rowId}`"
 					:saving-check="revisingRowId === run.rowId"
 					@save-check="onSaveCheck(run.rowId, $event)"
@@ -300,5 +303,11 @@ function onCheckYourAgent() {
 	flex-direction: column;
 	gap: var(--spacing--2xs);
 	width: 100%;
+}
+
+.exampleList > * {
+	border: var(--border);
+	padding: 6px 10px 6px 8px;
+	border-radius: var(--radius--lg);
 }
 </style>

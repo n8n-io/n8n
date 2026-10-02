@@ -4,11 +4,12 @@
  * form. Split out of `InstanceAiTestAgentExamplesPanel` so the same picker can
  * also drive the evals-tab empty-state preview.
  */
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import type { AgentEvalDraftCase } from '@n8n/api-types';
 import { ElSlider } from 'element-plus';
-import { N8nIcon, N8nInput, N8nSpinner, N8nText } from '@n8n/design-system';
+import { N8nIcon, N8nSpinner, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
+import AgentAvatar from '@/features/agents/components/AgentAvatar.vue';
 import AgentEvalTryRow from '@/features/agents/components/AgentEvalTryRow.vue';
 
 const props = defineProps<{
@@ -25,35 +26,87 @@ const emit = defineEmits<{
 
 const i18n = useI18n();
 
-// `examples` grows when the user adds their own (the parent appends the
-// created case) — freeze the generated batch size at mount so the slider and
-// the generated list never pick up those additions.
-const generatedCount = props.examples.length;
-
-const maxSliderValue = computed(() => Math.max(1, Math.min(10, generatedCount)));
+// Reactive, not a frozen snapshot: both callers mount this before generation
+// resolves (showing the `loading` state below with `examples` still `[]`),
+// then swap in the real batch once — so a value read once at setup would
+// permanently see `0`, pinning `maxSliderValue` at 1 and leaving the slider
+// stuck with no range to drag (and ElSlider computing a `0/0` position).
+// A user's own additions never land in `examples` (they're tracked in a
+// separate list by the caller), so nothing here needs to stay frozen against
+// that growth.
+const maxSliderValue = computed(() => Math.max(1, Math.min(10, props.examples.length)));
 const sliderValue = ref(Math.min(2, maxSliderValue.value));
+
+// Picks the slider's starting position the moment the real batch lands,
+// since the initial `ref()` above only ever sees the pre-generation `[]`.
+watch(
+	() => props.examples.length,
+	(length, previousLength) => {
+		if (previousLength === 0 && length > 0) {
+			sliderValue.value = Math.min(2, maxSliderValue.value);
+		}
+	},
+);
 
 const visibleExamples = computed(() => props.examples.slice(0, sliderValue.value));
 
 const ownExamples = ref<string[]>([]);
 const ownInput = ref('');
 
-// N8nInput draws its border as a box-shadow ring, which can't be dashed —
-// disable it here so the dashed `.addOwnInput` border underneath shows instead.
-const addOwnInputStyle = {
-	'--input--shadow': 'none',
-	'--input--shadow--hover': 'none',
-	'--input--shadow--focus': 'none',
-	'--input--border--shadow': 'none',
-	'--input--border--shadow--hover': 'none',
-	'--input--border--shadow--focus': 'none',
-	'--input--color--background': 'transparent',
-};
+const customLabel = computed(() => i18n.baseText('instanceAi.testAgentPreview.customExampleLabel'));
+
+type DisplayExample = { id: string; input: string; label: string };
+
+// Newest first: the slider reveals examples in increasing index order, so
+// reversing puts whichever one just became visible at the top instead of
+// tacked onto the bottom. Keyed by input text (stable through reordering) so
+// `AgentEvalTryRow`'s own expanded/suggestion state stays with its row
+// rather than snapping to a position.
+const generatedDisplay = computed<DisplayExample[]>(() =>
+	visibleExamples.value
+		.map((example) => ({
+			id: `gen:${example.input}`,
+			input: example.input,
+			label: example.scenario,
+		}))
+		.reverse(),
+);
+
+// Own additions prepend (see `submitOwnExample`), so this is already newest
+// first — and sits above the generated block, since typing one is a more
+// deliberate "just happened" action than the slider's own reveal order.
+const ownDisplay = computed<DisplayExample[]>(() =>
+	ownExamples.value.map((input) => ({ id: `own:${input}`, input, label: customLabel.value })),
+);
+
+const allDisplayExamples = computed<DisplayExample[]>(() => [
+	...ownDisplay.value,
+	...generatedDisplay.value,
+]);
+
+// Past a handful, the list collapses to a peek with a "+N more" toggle —
+// same pattern as the settled-run summary pill.
+const COLLAPSED_ROW_COUNT = 3;
+const expanded = ref(false);
+const hasOverflow = computed(() => allDisplayExamples.value.length > COLLAPSED_ROW_COUNT);
+const shownExamples = computed(() =>
+	expanded.value || !hasOverflow.value
+		? allDisplayExamples.value
+		: allDisplayExamples.value.slice(0, COLLAPSED_ROW_COUNT),
+);
+const hiddenExampleCount = computed(() =>
+	Math.max(0, allDisplayExamples.value.length - COLLAPSED_ROW_COUNT),
+);
+
+function toggleExpanded() {
+	expanded.value = !expanded.value;
+}
 
 function submitOwnExample() {
 	const value = ownInput.value.trim();
 	if (!value) return;
-	ownExamples.value = [...ownExamples.value, value];
+	// Prepended, not appended — see `ownDisplay` above.
+	ownExamples.value = [value, ...ownExamples.value];
 	emit('add-example', value);
 	ownInput.value = '';
 }
@@ -62,7 +115,7 @@ function cancelAddOwn() {
 	ownInput.value = '';
 }
 
-const ownInputRef = ref<InstanceType<typeof N8nInput> | null>(null);
+const ownInputRef = ref<HTMLInputElement | null>(null);
 
 function focusOwnInput() {
 	ownInputRef.value?.focus();
@@ -105,41 +158,53 @@ defineExpose({ sliderValue, focusOwnInput });
 
 		<div :class="$style.exampleList">
 			<AgentEvalTryRow
-				v-for="(example, index) in visibleExamples"
-				:key="index"
+				v-for="example in shownExamples"
+				:key="example.id"
 				status="idle"
 				:input="example.input"
 				:output="null"
-				:label="example.scenario"
-				test-id="instance-ai-test-agent-examples-example"
+				:label="example.label"
+				:test-id="
+					example.id.startsWith('own:')
+						? 'instance-ai-test-agent-examples-own-example'
+						: 'instance-ai-test-agent-examples-example'
+				"
 			/>
-			<AgentEvalTryRow
-				v-for="(example, index) in ownExamples"
-				:key="`own-${index}`"
-				status="idle"
-				:input="example"
-				:output="null"
-				test-id="instance-ai-test-agent-examples-own-example"
-			/>
+			<button
+				v-if="hasOverflow"
+				type="button"
+				:class="$style.toggleRow"
+				data-test-id="instance-ai-test-agent-examples-toggle-more"
+				@click="toggleExpanded"
+			>
+				<N8nText size="small" color="text-dark">
+					{{
+						expanded
+							? i18n.baseText('instanceAi.testAgentPreview.showFewerExamples')
+							: i18n.baseText('instanceAi.testAgentPreview.showMoreExamples', {
+									interpolate: { count: String(hiddenExampleCount) },
+								})
+					}}
+				</N8nText>
+				<N8nIcon :icon="expanded ? 'chevron-up' : 'chevron-down'" size="small" />
+			</button>
 		</div>
 
 		<div :class="$style.addOwnForm">
-			<N8nInput
+			<AgentAvatar kind="idle" size="sm" />
+			<N8nText color="text-light" size="small">
+				{{ i18n.baseText('instanceAi.testAgentPreview.customExampleLabel') }}
+			</N8nText>
+			<input
 				ref="ownInputRef"
 				v-model="ownInput"
 				:class="$style.addOwnInput"
-				:style="addOwnInputStyle"
-				:autosize="{ minRows: 1, maxRows: 4 }"
 				:placeholder="i18n.baseText('instanceAi.testAgentPreview.addYourOwnExample')"
 				data-test-id="instance-ai-test-agent-examples-add-own-input"
 				@keydown.meta.enter="submitOwnExample"
-				@keydown.enter="submitOwnExample"
+				@keydown.enter.exact="submitOwnExample"
 				@keydown.esc="cancelAddOwn"
-			>
-				<template #prefix>
-					<N8nIcon icon="plus" size="small" />
-				</template>
-			</N8nInput>
+			/>
 		</div>
 	</div>
 </template>
@@ -151,6 +216,23 @@ defineExpose({ sliderValue, focusOwnInput });
 	align-items: stretch;
 	gap: var(--spacing--sm);
 	width: 100%;
+}
+
+// `--out` and `--primary-100` aren't real tokens — an unresolvable `var()`
+// inside the `animation` shorthand makes the whole declaration invalid at
+// computed-value time, so this never played at all (not even on first
+// mount, let alone when a row was added).
+@keyframes exr-in {
+	0% {
+		opacity: 0;
+		translate: 0 -4px;
+		background: var(--color--orange-alpha-100);
+	}
+
+	100% {
+		opacity: 1;
+		translate: 0 0;
+	}
 }
 
 .loadingRow {
@@ -206,26 +288,61 @@ defineExpose({ sliderValue, focusOwnInput });
 	width: 100%;
 	border: var(--border);
 	border-radius: var(--radius--lg);
+	// Clips the toggle row's own background to the list's rounded corners when
+	// it lands last.
+	overflow: hidden;
 }
 
 .exampleList > * {
 	border-bottom: var(--border);
 	padding: 6px 10px 6px 8px;
+	animation: exr-in 220ms var(--easing--ease-out) both;
 }
 
 .exampleList > *:last-of-type {
 	border-bottom: none;
 }
 
-.addOwnInput {
-	border: 1px dashed oklch(88.53% 0 89.88);
+.toggleRow {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: var(--spacing--3xs);
+	width: 100%;
+	background-color: var(--run-data--color--background);
+	border: none;
+	cursor: pointer;
+	color: var(--text-color--dark);
+}
+
+// Matches the generated-examples rows: same border, radius and padding, so
+// the empty "add your own" row reads as one more row in that same list.
+.addOwnForm {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+	padding: 6px 10px 6px 8px;
+	border: var(--border);
 	border-radius: var(--radius--lg);
 }
 
-.addOwnForm {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--2xs);
-	width: 100%;
+.addOwnInput {
+	flex: 1;
+	min-width: 0;
+	padding: 0;
+	border: none;
+	outline: none;
+	background: transparent;
+	font-size: var(--font-size--2xs);
+	color: var(--text-color--dark);
+
+	// A native `<input>` draws the browser's own focus ring by default — reset
+	// it here rather than globally, so other inputs keep theirs.
+	&:focus,
+	&:focus-visible {
+		border: none;
+		outline: none;
+		box-shadow: none;
+	}
 }
 </style>

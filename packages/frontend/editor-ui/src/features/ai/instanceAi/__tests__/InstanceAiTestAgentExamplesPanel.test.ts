@@ -128,8 +128,8 @@ describe('InstanceAiTestAgentExamplesPanel', () => {
 
 	describe('while the suite is running', () => {
 		const caseRuns = [
-			{ rowId: 1, input: 'a', status: 'pass' as const, output: 'answer a' },
-			{ rowId: 2, input: 'b', status: 'waiting' as const, output: null },
+			{ rowId: 1, input: 'a', label: 'Vague', status: 'pass' as const, output: 'answer a' },
+			{ rowId: 2, input: 'b', label: 'Custom', status: 'waiting' as const, output: null },
 		];
 
 		it('hides the confirmed try and shows how many cases are left', () => {
@@ -163,9 +163,15 @@ describe('InstanceAiTestAgentExamplesPanel', () => {
 
 	describe('once the suite has settled', () => {
 		const caseRuns = [
-			{ rowId: 1, input: 'a', status: 'pass' as const, output: 'answer a' },
-			{ rowId: 2, input: 'b', status: 'work' as const, output: 'answer b' },
-			{ rowId: 3, input: 'c', status: 'fail' as const, output: null },
+			{ rowId: 1, input: 'a', label: 'Vague', status: 'pass' as const, output: 'answer a' },
+			{
+				rowId: 2,
+				input: 'b',
+				label: 'Sensitive data',
+				status: 'work' as const,
+				output: 'answer b',
+			},
+			{ rowId: 3, input: 'c', label: 'Custom', status: 'fail' as const, output: null },
 		];
 
 		it('shows the pass/needs-work tally and hides the stop button', () => {
@@ -173,6 +179,17 @@ describe('InstanceAiTestAgentExamplesPanel', () => {
 
 			expect(getByText('1 of 3 went well, 2 need work')).toBeInTheDocument();
 			expect(queryByTestId('instance-ai-test-agent-examples-stop')).not.toBeInTheDocument();
+		});
+
+		it('keeps each row labeled with its scenario tag once the suite has run', async () => {
+			const user = userEvent.setup();
+			const { getByTestId, findByText, getByText } = renderComponent({ props: { caseRuns } });
+
+			await user.click(getByTestId('instance-ai-test-agent-examples-summary-toggle'));
+
+			expect(await findByText('Vague')).toBeInTheDocument();
+			expect(getByText('Sensitive data')).toBeInTheDocument();
+			expect(getByText('Custom')).toBeInTheDocument();
 		});
 
 		it('collapses to the summary pill by default, expanding on click', async () => {
@@ -228,9 +245,15 @@ describe('InstanceAiTestAgentExamplesPanel', () => {
 			// keep it looking passed once its real status is live again.
 			await rerender({
 				caseRuns: [
-					{ rowId: 1, input: 'a', status: 'pass' as const, output: 'answer a' },
-					{ rowId: 2, input: 'b', status: 'waiting' as const, output: null },
-					{ rowId: 3, input: 'c', status: 'fail' as const, output: null },
+					{ rowId: 1, input: 'a', label: 'Vague', status: 'pass' as const, output: 'answer a' },
+					{
+						rowId: 2,
+						input: 'b',
+						label: 'Sensitive data',
+						status: 'waiting' as const,
+						output: null,
+					},
+					{ rowId: 3, input: 'c', label: 'Custom', status: 'fail' as const, output: null },
 				],
 			});
 

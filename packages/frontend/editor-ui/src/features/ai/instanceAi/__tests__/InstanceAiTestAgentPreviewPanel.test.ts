@@ -317,15 +317,16 @@ describe('InstanceAiTestAgentPreviewPanel', () => {
 			exampleOutput: 'Ticket #48219 is a P1 SSO outage.',
 		});
 
-		// Default slider value is 2, so only 2 of the generated examples show.
+		// Default slider value is 2, so only 2 of the generated examples show —
+		// newest-revealed on top, so "c" (the later one) comes before "a".
 		const examples = await findAllByTestId('instance-ai-test-agent-examples-example');
 		expect(examples).toHaveLength(2);
-		expect(within(examples[0]).getByText('a')).toBeInTheDocument();
-		expect(within(examples[1]).getByText('c')).toBeInTheDocument();
+		expect(within(examples[0]).getByText('c')).toBeInTheDocument();
+		expect(within(examples[1]).getByText('a')).toBeInTheDocument();
 		// Each row labels itself with its own generated scenario tag.
 		expect(getByText('Upset')).toBeInTheDocument();
-		expect(within(examples[0]).getByText('Vague')).toBeInTheDocument();
-		expect(within(examples[1]).getByText('Sensitive data')).toBeInTheDocument();
+		expect(within(examples[0]).getByText('Sensitive data')).toBeInTheDocument();
+		expect(within(examples[1]).getByText('Vague')).toBeInTheDocument();
 
 		await user.click(getByTestId('instance-ai-test-agent-examples-check-agent'));
 

@@ -86,6 +86,12 @@ const suiteDatasetId = ref<string | null>(null);
 // Null until "Check your agent" has trimmed the dataset to its cap — set, it
 // replaces the slider/editor view with each case's live run status.
 const suiteCaseRows = ref<AgentEvalCase[] | null>(null);
+// Each committed row's scenario tag ("Vague", "Custom", …) — the Data Table
+// only has `input`/`criteria` columns, so this is the only place that
+// information survives once a case is persisted. Keyed by row id rather than
+// input text so a "Save check" revision (which rewrites the row's input)
+// doesn't orphan its own label.
+const suiteCaseLabels = ref<Record<number, string>>({});
 const suiteRunId = ref<string | null>(null);
 const startingSuiteRun = ref(false);
 const stoppingSuiteRun = ref(false);
@@ -112,13 +118,15 @@ const suiteCaseRuns = computed<SuiteCaseRun[] | null>(() => {
 	if (!rows) return null;
 	const results = suiteRunId.value ? store.getReview(suiteRunId.value).results : [];
 	return rows.map((row) => {
+		const label = suiteCaseLabels.value[row.rowId] ?? '';
 		const result = results.find((r) => r.sourceRowId === String(row.rowId));
 		if (!result || result.status === 'new' || result.status === 'running') {
-			return { rowId: row.rowId, input: row.input, status: 'waiting', output: null };
+			return { rowId: row.rowId, input: row.input, label, status: 'waiting', output: null };
 		}
 		return {
 			rowId: row.rowId,
 			input: row.input,
+			label,
 			status: resultStatusToKind(result.status),
 			output: readAgentAnswer(result.output),
 		};
@@ -235,10 +243,9 @@ async function onCheckAgent(count: number) {
 		if (!source) throw new Error('The draft dataset has no writable case columns');
 		suiteDatasetId.value = created.datasetId;
 
+		const selectedCases = suiteCases.value.slice(0, count);
 		const toCreate = [
-			...suiteCases.value
-				.slice(0, count)
-				.map((c) => ({ input: c.input, whatToCheck: c.whatToCheck })),
+			...selectedCases.map((c) => ({ input: c.input, whatToCheck: c.whatToCheck })),
 			...suiteOwnExamples.value.map((input) => ({ input, whatToCheck: '' })),
 		];
 		await Promise.all(toCreate.map((value) => store.createCase(projectId, source, value)));
@@ -246,6 +253,15 @@ async function onCheckAgent(count: number) {
 
 		const cases = await store.fetchCases(projectId, source);
 		if (!isMounted) return;
+		// The Data Table has no column for the scenario tag — carry it over here,
+		// matched by the input text each row was created from, before `cases`
+		// (keyed by row id, stable across later revisions) replaces that lookup.
+		const customLabel = i18n.baseText('instanceAi.testAgentPreview.customExampleLabel');
+		const labelByInput = new Map<string, string>(selectedCases.map((c) => [c.input, c.scenario]));
+		for (const input of suiteOwnExamples.value) labelByInput.set(input, customLabel);
+		suiteCaseLabels.value = Object.fromEntries(
+			cases.map((c) => [c.rowId, labelByInput.get(c.input) ?? '']),
+		);
 		suiteCaseRows.value = cases;
 
 		const run = await store.startRun(projectId, agentId, created.datasetId);
