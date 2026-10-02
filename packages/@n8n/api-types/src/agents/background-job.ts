@@ -6,6 +6,8 @@ export interface AgentBackgroundJobDto {
 	/** Source of the background job. */
 	kind: 'subagent' | 'workflow';
 	status: 'running' | 'suspended' | 'paused' | 'completed' | 'failed' | 'cancelled';
+	/** The task belongs to a user stop request. */
+	pauseRequested?: boolean;
 	/** The next approval for this child. The parent conversation remains available. */
 	approval?: AgentBuilderOpenSuspension;
 	/** ISO timestamp when the background job started. */

@@ -485,9 +485,13 @@ describe('AgentExecutionRepository', () => {
 					mock<ExecutionPersistence>(),
 					mock<Publisher>(),
 					mockLogger(),
-					mock<AgentsConfig>({ backgroundTasksEnabled: true }),
+					mock<AgentsConfig>({
+						backgroundTasksEnabled: true,
+						checkpointTtlSeconds: Container.get(AgentsConfig).checkpointTtlSeconds,
+					}),
 					mock<AgentExecutionUpdateBroadcaster>(),
 					storage,
+					Container.get(AgentMessageRepository),
 				);
 				const runner = new SubAgentBackgroundRunner(
 					new SubAgentRunner(
@@ -589,7 +593,11 @@ describe('AgentExecutionRepository', () => {
 				);
 				expect(fixture.sourceResolver.resolveForRuntime).toHaveBeenLastCalledWith(
 					{ agentId, versionId: fixture.versionId },
-					{ projectId, usePublishedVersion: true },
+					{
+						projectId,
+						usePublishedVersion: true,
+						runtimeSnapshot: expect.stringContaining(fixture.versionId),
+					},
 				);
 				const runs = await repository.findByThreadIdOrdered(job.childThreadId!);
 				expect(runs).toHaveLength(2);
@@ -646,17 +654,37 @@ describe('AgentExecutionRepository', () => {
 			expect(fixture.action).toHaveBeenCalledTimes(2);
 		});
 
-		it('records the decision when background resume admission fails', async () => {
-			const { job, approval, runner, service, context, jobs } = await startBackgroundChild();
+		it('preserves the approval for retry when background resume admission fails', async () => {
+			const { job, approval, runner, service, context, jobs, action, readApproval } =
+				await startBackgroundChild();
 			vi.spyOn(service, 'resume').mockRejectedValueOnce(new Error('Database unavailable'));
 			await expect(
 				runner.resume(job, { token: approval.token, resumeData: { approved: true } }, context),
-			).rejects.toThrow('could not be resumed');
-			expect(await jobs.findById(job.id)).toMatchObject({ status: 'failed' });
+			).rejects.toThrow('Database unavailable');
+			expect(await jobs.findById(job.id)).toMatchObject({ status: 'suspended', error: null });
+			expect(action).not.toHaveBeenCalled();
 			const runs = await repository.findByThreadIdOrdered(job.childThreadId!);
-			expect(runs[1].timeline).toContainEqual(
-				expect.objectContaining({ type: 'hitl-response', response: { approved: true } }),
+			expect(runs).toHaveLength(2);
+			expect(runs[1].hitlStatus).toBeNull();
+			expect(runs[1].timeline).toBeNull();
+			const retry = await readApproval();
+			expect(retry.approval).toMatchObject({
+				runId: approval.runId,
+				checkpoint: {
+					status: 'suspended',
+					pendingToolCalls: approval.checkpoint.pendingToolCalls,
+					persistence: { hostMetadata: { n8nExecutionId: runs[1].id } },
+				},
+			});
+			await runner.resume(
+				retry.job,
+				{ token: retry.approval.token, resumeData: { approved: true } },
+				context,
 			);
+			await vi.waitFor(async () =>
+				expect(await jobs.findById(job.id)).toMatchObject({ status: 'completed' }),
+			);
+			expect(action).toHaveBeenCalledOnce();
 		});
 
 		it('retries terminal child and descendant cleanup after recovery', async () => {
