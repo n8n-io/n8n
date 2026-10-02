@@ -12,11 +12,11 @@ import { SLACK_HITL_WEBHOOK_SUFFIX, TELEGRAM_HITL_WEBHOOK_SUFFIX } from 'n8n-cor
 
 import config from '@/config';
 import { N8N_VERSION, TEMPLATES_DIR } from '@/constants';
-import { METRICS_PATH } from '@/metrics/prometheus/constant';
 import { ServiceUnavailableError } from '@n8n/errors';
 import { ExternalHooks } from '@/external-hooks';
 import { bodyParser, corsMiddleware, rawBodyReader } from '@/middlewares';
 import { sendErrorResponse } from '@/response-helper';
+import { DatabaseIndependentRoutes } from '@/services/database-independent-routes.service';
 import { createHandlebarsEngine } from '@/utils/handlebars.util';
 import { LiveWebhooks } from '@/webhooks/live-webhooks';
 import { SlackInteractionWebhooks } from '@/webhooks/slack-interaction-webhooks';
@@ -47,6 +47,8 @@ export abstract class AbstractServer {
 	protected globalConfig = Container.get(GlobalConfig);
 
 	protected dbConnection = Container.get(DbConnection);
+
+	private databaseIndependentRoutes = Container.get(DatabaseIndependentRoutes);
 
 	protected sslKey: string;
 
@@ -165,7 +167,7 @@ export abstract class AbstractServer {
 		});
 
 		this.app.use((req, res, next) => {
-			if (this.isMetricsScrapeAllowedWithoutDatabase(req)) {
+			if (this.isServedWithoutDatabase(req)) {
 				next();
 				return;
 			}
@@ -176,13 +178,11 @@ export abstract class AbstractServer {
 		});
 	}
 
-	/** Recovery metrics must remain accessible while the database is unavailable. */
-	private isMetricsScrapeAllowedWithoutDatabase(req: express.Request) {
+	private isServedWithoutDatabase(req: express.Request) {
 		return (
-			this.globalConfig.endpoints.metrics.enable &&
 			this.dbConnection.connectionState.migrated &&
 			(req.method === 'GET' || req.method === 'HEAD') &&
-			(req.path === METRICS_PATH || req.path === `${METRICS_PATH}/`)
+			this.databaseIndependentRoutes.has(req.path)
 		);
 	}
 

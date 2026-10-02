@@ -9,6 +9,7 @@ import request from 'supertest';
 import { mock } from 'vitest-mock-extended';
 
 import { AbstractServer } from '@/abstract-server';
+import { DatabaseIndependentRoutes } from '@/services/database-independent-routes.service';
 
 import { PrometheusActiveWorkflowMetricsService } from '../active-workflow-metrics.service';
 import type { PrometheusCacheMetricsService } from '../cache-metrics.service';
@@ -89,6 +90,7 @@ describe('database pool metrics exposition', () => {
 		config.endpoints.metrics.includeDbPoolMetrics = true;
 		config.endpoints.metrics.prefix = 'test_';
 		Container.set(GlobalConfig, config);
+		Container.set(DatabaseIndependentRoutes, new DatabaseIndependentRoutes());
 		metrics = new DbConnectionMetrics();
 		server = new TestServer();
 		server['setupHealthCheck']();
@@ -137,6 +139,7 @@ describe('database pool metrics exposition', () => {
 			disabledCollectors.pollTrigger,
 			disabledCollectors.encryption,
 			disabledCollectors.systemTask,
+			Container.get(DatabaseIndependentRoutes),
 		);
 		prometheusMetrics.init(server.app);
 	};
@@ -205,6 +208,12 @@ describe('database pool metrics exposition', () => {
 
 	it('does not bypass database readiness when metrics are disabled', async () => {
 		config.endpoints.metrics.enable = false;
+		dbConnection.connectionState.connected = false;
+
+		await request(server.app).get('/metrics').expect(503);
+	});
+
+	it('does not bypass database readiness when the metrics endpoint is not mounted', async () => {
 		dbConnection.connectionState.connected = false;
 
 		await request(server.app).get('/metrics').expect(503);

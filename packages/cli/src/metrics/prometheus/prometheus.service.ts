@@ -3,6 +3,8 @@ import { Service } from '@n8n/di';
 import type express from 'express';
 import promClient from 'prom-client';
 
+import { DatabaseIndependentRoutes } from '@/services/database-independent-routes.service';
+
 import { PrometheusActiveWorkflowMetricsService } from './active-workflow-metrics.service';
 import type { PrometheusMetricsCollector } from './base';
 import { PrometheusCacheMetricsService } from './cache-metrics.service';
@@ -64,6 +66,7 @@ export class PrometheusMetricsService {
 		pollTrigger: PrometheusPollTriggerMetricsService,
 		encryption: PrometheusEncryptionMetricsService,
 		systemTask: PrometheusSystemTaskMetricsService,
+		private readonly databaseIndependentRoutes: DatabaseIndependentRoutes,
 	) {
 		this.logger = logger.scoped('metrics');
 		this.collectors = [
@@ -125,5 +128,6 @@ export class PrometheusMetricsService {
 			res.setHeader('Content-Type', promClient.register.contentType);
 			res.send(metrics).end();
 		});
+		this.databaseIndependentRoutes.add(METRICS_PATH);
 	}
 }
