@@ -900,5 +900,31 @@ describe('ActiveExecutions', () => {
 
 			expect(outcome).toBe('timeout');
 		});
+
+		test('resolves on a worker instance when an execution is enqueued while shutdown waits', async () => {
+			(sleep as Mock).mockImplementation(
+				async () => await new Promise((resolve) => setTimeout(resolve, 0)),
+			);
+			const workerActiveExecutions = buildActiveExecutions('worker');
+			const inProcessExecutionId = await workerActiveExecutions.add(executionData);
+			workerActiveExecutions.attachWorkflowExecution(inProcessExecutionId, workflowExecution);
+
+			const shutdown = workerActiveExecutions.shutdown().then(() => 'shutdown');
+
+			executionPersistence.create.mockResolvedValueOnce(FAKE_SECOND_EXECUTION_ID);
+			const enqueuedExecutionId = await workerActiveExecutions.add(executionData);
+			workerActiveExecutions.attachWorkflowExecution(enqueuedExecutionId, workflowExecution, {
+				isQueueJob: true,
+			});
+			workerActiveExecutions.finalizeExecution(inProcessExecutionId, fullRunData);
+
+			const outcome = await Promise.race([
+				shutdown,
+				new Promise((resolve) => setTimeout(() => resolve('timeout'), 50)),
+			]);
+
+			expect(outcome).toBe('shutdown');
+			expect(workerActiveExecutions.getActiveExecutions()).toHaveLength(0);
+		});
 	});
 });
