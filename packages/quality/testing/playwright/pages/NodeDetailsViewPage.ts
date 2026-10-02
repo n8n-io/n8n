@@ -244,6 +244,14 @@ export class NodeDetailsViewPage extends BasePage {
 		return locatorByIndex(this.container.getByTestId(`parameter-input-${parameterName}`), index);
 	}
 
+	getParameterInputBorder(parameterName: string) {
+		return this.getParameterInput(parameterName).locator('.n8n-input__wrapper');
+	}
+
+	getFromAiOverrideButton(parameterName: string) {
+		return this.getParameterInput(parameterName).getByTestId('from-ai-override-button');
+	}
+
 	getParameterInputTextbox(parameterName: string, index?: number) {
 		return this.getParameterInput(parameterName, index).getByRole('textbox');
 	}
