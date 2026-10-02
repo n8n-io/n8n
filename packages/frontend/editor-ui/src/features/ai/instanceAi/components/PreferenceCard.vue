@@ -212,6 +212,7 @@ watch(
 						</button>
 						<RouterLink
 							:to="{ name: VIEWS.SETTINGS_CONTEXT_PREFERENCES }"
+							target="_blank"
 							:class="$style.link"
 							data-test-id="instance-ai-preference-card-manage"
 						>
