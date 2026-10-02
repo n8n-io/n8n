@@ -1,0 +1,30 @@
+packages/cli/src/modules/agents/__tests__/agent-execution-orchestrator.service.test.ts
+  s_3ea8dc5f5b0c85::t_46f71f7fd8427e 2057-2096
+packages/cli/src/modules/agents/agent-execution.service.ts
+  s_3ea8dc5f5b0c85::t_e9ce75c173805e 904,920-925,934,937
+packages/cli/src/modules/agents/repositories/agent-execution.repository.ts
+  s_3ea8dc5f5b0c85::t_e9ce75c173805e 246-251,253-255
+packages/cli/src/modules/agents/agent-message-queue.service.ts
+  s_3ea8dc5f5b0c85::t_e9ce75c173805e 291
+packages/cli/src/modules/agents/agent-execution-orchestrator.service.ts
+  s_3ea8dc5f5b0c85::t_77b2cd924ddb48 1095-1103,1105-1113
+packages/cli/src/modules/agents/agent-turn-execution.service.ts
+  s_3ea8dc5f5b0c85::t_77b2cd924ddb48 345-350,358-367
+  s_3ea8dc5f5b0c85::t_46f71f7fd8427e 351-357
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "6be7679f6fdc12666423f978c76019e0f46e293c",
+  "prompts": {},
+  "sessions": {
+    "s_3ea8dc5f5b0c85": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a9f52ac9-504a-4a4a-b221-e1ca1ab87e6b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}
