@@ -580,7 +580,6 @@ export class PromotionsService {
 			);
 		}
 
-		// Read once: classification and preflight both need the full package inventory.
 		const reader = new DirectoryPackageReader(packageFolder, this.packageImportConfig);
 		const inventory = await this.inventoryReader.read(reader);
 		const selection = await this.classifyApplySelection(inventory, projectId, workflowIds);

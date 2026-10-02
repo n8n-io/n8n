@@ -64,7 +64,6 @@ export class PromotionBindingPreflightService {
 		return await this.checkInventory({ inventory, selection });
 	}
 
-	/** Same as `checkDirectory`, for a caller that already read the package inventory. */
 	async checkInventory({
 		inventory: packageInventory,
 		selection,
