@@ -1048,10 +1048,9 @@ describe('ScheduledTaskRepository executor methods', () => {
 			});
 
 			it('reaps a lease that expired a moment ago (boundary)', async () => {
-				// The WHERE clause is strictly `leaseExpiresAt < now()`. Expiring 1ms in the
-				// past keeps the lease unambiguously below the DB clock, so this pins the
-				// comparison to `<` rather than an off-by-one variant that would exclude it.
-				const task = await createExpiredRunning({ leaseExpiresAt: new Date(Date.now() - 1) });
+				// Use the reaper's clock: the database and test host can differ by more than 1 ms.
+				const now = await taskRepository.readDbTime();
+				const task = await createExpiredRunning({ leaseExpiresAt: new Date(now.getTime() - 1) });
 
 				const found = await taskRepository.findExpiredLeases(10);
 
