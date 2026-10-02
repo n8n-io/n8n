@@ -11,7 +11,7 @@ import { Service } from '@n8n/di';
 
 import type { OwnerSuggestion } from '../database/repositories/migration-workflow-owner.repository';
 
-/** A user and when they last acted on the workflow. */
+/** A user and when they acted on the workflow. */
 interface Candidate {
 	userId: string;
 	at: Date;
@@ -19,6 +19,13 @@ interface Candidate {
 
 /** Workflow history stores the author's display name, with this suffix for saves through MCP. */
 const MCP_AUTHOR_SUFFIX = ' (via MCP)';
+
+/**
+ * How many recent actions per source and workflow are considered. The newest
+ * action may belong to a user who cannot own, so a few older ones are kept to
+ * fall back on before the project owner is used.
+ */
+const RECENT_ACTIONS_PER_WORKFLOW = 10;
 
 /**
  * Proposes who should fix a workflow's migration findings: the user behind the
@@ -54,7 +61,7 @@ export class MigrationOwnerSuggestionService {
 
 		const suggestions: OwnerSuggestion[] = [];
 		for (const workflowId of workflowIds) {
-			const userId = latestByWorkflow.get(workflowId)?.userId ?? fallbackByWorkflow.get(workflowId);
+			const userId = latestByWorkflow.get(workflowId) ?? fallbackByWorkflow.get(workflowId);
 			if (userId) suggestions.push({ workflowId, userId });
 		}
 		return suggestions;
@@ -62,7 +69,7 @@ export class MigrationOwnerSuggestionService {
 
 	/** Every user who can be an owner, by id and by the display name workflow history records. */
 	private async loadEligibleUsers(): Promise<EligibleUsers> {
-		const all = await this.userRepository.findMany({ includeRole: true });
+		const all = await this.userRepository.findAllWithRoleAndAuthIdentities();
 		const byId = new Map<string, User>();
 		const idsByName = new Map<string, string[]>();
 		for (const user of all) {
@@ -74,37 +81,36 @@ export class MigrationOwnerSuggestionService {
 		return { byId, idsByName };
 	}
 
-	/** The most recent action per workflow that one eligible user can be held to. */
+	/**
+	 * Per workflow, the user behind the most recent action that one eligible user
+	 * can be held to. An action by a user who cannot own, or a version whose author
+	 * name is ambiguous, is skipped in favour of the next older one.
+	 */
 	private async findLatestAttributedActivity(
 		workflowIds: string[],
 		users: EligibleUsers,
-	): Promise<Map<string, Candidate>> {
+	): Promise<Map<string, string>> {
+		const limit = RECENT_ACTIONS_PER_WORKFLOW;
 		const [activity, publishes, versions] = await Promise.all([
-			this.activityEventRepository.findLatestAttributedByResource('workflow', workflowIds),
-			this.workflowPublishHistoryRepository.findLatestAttributedByWorkflowIds(workflowIds),
-			this.workflowHistoryRepository.findLatestAuthorsByWorkflowIds(workflowIds),
+			this.activityEventRepository.findRecentAttributedByResource('workflow', workflowIds, limit),
+			this.workflowPublishHistoryRepository.findRecentAttributedByWorkflowIds(workflowIds, limit),
+			this.workflowHistoryRepository.findRecentAuthorsByWorkflowIds(workflowIds, limit),
 		]);
 
-		const latest = new Map<string, Candidate>();
-		const consider = (workflowId: string, candidate: Candidate | undefined) => {
-			if (!candidate || !users.byId.has(candidate.userId)) return;
-			const current = latest.get(workflowId);
-			if (!current || candidate.at > current.at) latest.set(workflowId, candidate);
-		};
-
+		const latest = new Map<string, string>();
 		for (const workflowId of workflowIds) {
-			consider(workflowId, activity.get(workflowId));
-			consider(workflowId, publishes.get(workflowId));
-
-			// A version names its author, not a user. The name must point at exactly one
-			// eligible user, else the version does not count as attributable.
-			const version = versions.get(workflowId);
-			if (!version) continue;
-			const name = version.authors.endsWith(MCP_AUTHOR_SUFFIX)
-				? version.authors.slice(0, -MCP_AUTHOR_SUFFIX.length)
-				: version.authors;
-			const ids = users.idsByName.get(name);
-			if (ids?.length === 1) consider(workflowId, { userId: ids[0], at: version.at });
+			const candidates: Candidate[] = [
+				...(activity.get(workflowId) ?? []),
+				...(publishes.get(workflowId) ?? []),
+				...(versions.get(workflowId) ?? []).flatMap((version) => {
+					const userId = resolveAuthor(version.authors, users);
+					return userId ? [{ userId, at: version.at }] : [];
+				}),
+			];
+			const newest = candidates
+				.filter((candidate) => users.byId.has(candidate.userId))
+				.sort((a, b) => b.at.getTime() - a.at.getTime())[0];
+			if (newest) latest.set(workflowId, newest.userId);
 		}
 		return latest;
 	}
@@ -146,4 +152,16 @@ export class MigrationOwnerSuggestionService {
 interface EligibleUsers {
 	byId: Map<string, User>;
 	idsByName: Map<string, string[]>;
+}
+
+/**
+ * A version names its author, not a user. The name counts only when exactly one
+ * eligible user carries it.
+ */
+function resolveAuthor(authors: string, users: EligibleUsers): string | undefined {
+	const name = authors.endsWith(MCP_AUTHOR_SUFFIX)
+		? authors.slice(0, -MCP_AUTHOR_SUFFIX.length)
+		: authors;
+	const ids = users.idsByName.get(name);
+	return ids?.length === 1 ? ids[0] : undefined;
 }
