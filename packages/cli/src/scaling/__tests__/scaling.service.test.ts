@@ -1069,7 +1069,7 @@ describe('ScalingService', () => {
 				});
 
 				it.each(['completed', 'failed'] as const)(
-					'should hand back a job whose handler run ended with a local %s event',
+					'should stop counting a job as started once Bull reports it %s',
 					async (event) => {
 						const processFn = await startWorker();
 						const ended = activeJob('7');
