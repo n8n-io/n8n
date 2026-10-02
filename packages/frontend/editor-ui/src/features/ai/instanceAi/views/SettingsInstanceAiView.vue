@@ -7,9 +7,8 @@ import {
 	N8nEmptyState,
 	N8nIcon,
 	N8nLoading,
-	N8nOption,
 	N8nPreviewBadge,
-	N8nSelect,
+	N8nSelect2,
 	N8nSettingsLayout,
 	N8nSettingsPageHeader,
 	N8nSettingsRow,
@@ -274,6 +273,13 @@ function permissionOptionsFor(key: keyof InstanceAiPermissions) {
 	if (key === 'executeMcpTool') return MCP_TOOL_PERMISSION_OPTIONS;
 	if (key === 'createPreference') return PREFERENCE_PERMISSION_OPTIONS;
 	return PERMISSION_OPTIONS;
+}
+
+function permissionItems(key: keyof InstanceAiPermissions) {
+	return permissionOptionsFor(key).map((option) => ({
+		value: option,
+		label: i18n.baseText(PERMISSION_OPTION_LABEL[option]),
+	}));
 }
 
 /** Exactly one dialog can be active; transitions between steps never observe an all-closed state. */
@@ -797,23 +803,15 @@ function openAiUsageSettings() {
 									<N8nText size="small" color="text-dark">
 										{{ i18n.baseText(`settings.n8nAgent.permissions.${key}` as BaseTextKey) }}
 									</N8nText>
-									<N8nSelect
+									<N8nSelect2
 										:class="$style.permissionSelect"
+										:items="permissionItems(key)"
 										:model-value="store.getPermission(key)"
 										size="small"
 										:disabled="store.isSaving || isGroupLocked(group)"
 										:data-test-id="`n8n-agent-permission-${key}`"
-										@update:model-value="
-											handlePermissionChange(key, $event as InstanceAiPermissionMode)
-										"
-									>
-										<N8nOption
-											v-for="option in permissionOptionsFor(key)"
-											:key="option"
-											:value="option"
-											:label="i18n.baseText(PERMISSION_OPTION_LABEL[option])"
-										/>
-									</N8nSelect>
+										@update:model-value="handlePermissionChange(key, $event)"
+									/>
 								</div>
 							</div>
 						</template>
