@@ -72,7 +72,7 @@ describe('AgentPlanRepository', () => {
 
 	it('stores an opaque document and reads it through a fresh repository', async () => {
 		const data = {
-			title: '研究 🔎',
+			title: 'Deep Research 🔎',
 			unknownField: { list: [null, true, 3, 'text', { nested: [] }] },
 		};
 		const plan = await createPlan(data);
@@ -134,6 +134,7 @@ describe('AgentPlanRepository', () => {
 			closedAt: closed.closedAt,
 			createdAt: closed.updatedAt,
 		});
+
 		const later = await createPlan({ content: 'new' });
 		expect(await repository.findActivePlan(threadId, {})).toEqual(later);
 		expect(await repository.findPlan(threadId, plan.id, {})).toEqual(closed);
@@ -166,11 +167,13 @@ describe('AgentPlanRepository', () => {
 			createPlan({ writer: 1 }),
 			createPlan({ writer: 2 }),
 		]);
+
 		expect(results.filter((result) => result.status === 'fulfilled')).toHaveLength(1);
 		for (const result of results) {
 			if (result.status === 'rejected')
 				expect(result.reason).toBeInstanceOf(AgentPlanWriteConflictError);
 		}
+
 		const plan = await repository.findActivePlan(threadId, {});
 		if (!plan) throw new Error('Expected an active plan');
 		expect(await dataSource.getRepository(AgentPlan).countBy({ threadId })).toBe(1);
@@ -184,11 +187,13 @@ describe('AgentPlanRepository', () => {
 			repository.replacePlan({ ...input, data: { writer: 1 } }, {}),
 			repository.replacePlan({ ...input, data: { writer: 2 } }, {}),
 		]);
+
 		expect(results.filter((result) => result.status === 'fulfilled')).toHaveLength(1);
 		for (const result of results) {
 			if (result.status === 'rejected')
 				expect(result.reason).toBeInstanceOf(AgentPlanWriteConflictError);
 		}
+
 		const current = await repository.findPlan(threadId, plan.id, {});
 		expect(current?.revision).toBe(2);
 		expect(await repository.findRevision(threadId, plan.id, 2, {})).toMatchObject({
@@ -257,6 +262,7 @@ describe('AgentPlanRepository', () => {
 				{},
 			);
 		}
+
 		const first = await repository.listHistory(threadId, plan.id, {}, {});
 		expect(first.items).toHaveLength(50);
 		expect(first.nextCursor).toBe(50);
@@ -265,10 +271,12 @@ describe('AgentPlanRepository', () => {
 		);
 		expect(first.items[0]).not.toHaveProperty('data');
 		expect(first.items[0].createdAt).toEqual(first.items[49].createdAt);
+
 		const second = await repository.listHistory(threadId, plan.id, { afterRevision: 50 }, {});
 		expect(second.items).toHaveLength(50);
 		expect(second.items[0].revision).toBe(51);
 		expect(second.nextCursor).toBe(100);
+
 		const last = await repository.listHistory(threadId, plan.id, { afterRevision: 100 }, {});
 		expect(last.items.map((item) => item.revision)).toEqual([101, 102, 103]);
 		expect(last.nextCursor).toBeNull();
@@ -296,6 +304,7 @@ describe('AgentPlanRepository', () => {
 				{},
 			),
 		).rejects.toThrow('positive 32-bit integers');
+
 		const plan = await createPlan();
 		await expect(
 			repository.replacePlan(

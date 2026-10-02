@@ -71,11 +71,13 @@ export class AgentPlanRepository extends BaseRepository<AgentPlan> {
 				if (isUniqueConstraintError(error)) throw new AgentPlanWriteConflictError();
 				throw error;
 			}
+
 			const plan = await manager.findOneByOrFail(AgentPlan, {
 				id: input.id,
 				threadId: input.threadId,
 			});
 			await this.insertSnapshot(manager, plan);
+
 			return plan;
 		});
 	}
@@ -111,12 +113,14 @@ export class AgentPlanRepository extends BaseRepository<AgentPlan> {
 	): Promise<{ items: AgentPlanRevisionMetadata[]; nextCursor: number | null }> {
 		const limit = options.limit ?? 50;
 		const afterRevision = options.afterRevision ?? 0;
+
 		if (!Number.isInteger(limit) || limit < 1 || limit > 100) {
 			throw new UserError('The history limit must be an integer between 1 and 100');
 		}
 		if (!Number.isSafeInteger(afterRevision) || afterRevision < 0) {
 			throw new UserError('The history cursor must be a non-negative integer');
 		}
+
 		const rows = await this.managerFor(ctx).find(AgentPlanHistory, {
 			where: { planId, plan: { threadId }, revision: MoreThan(afterRevision) },
 			select: {
@@ -129,12 +133,14 @@ export class AgentPlanRepository extends BaseRepository<AgentPlan> {
 			order: { revision: 'ASC' },
 			take: limit + 1,
 		});
+
 		const items = rows.slice(0, limit).map(({ revision, formatVersion, closedAt, createdAt }) => ({
 			revision,
 			formatVersion,
 			closedAt,
 			createdAt,
 		}));
+
 		return {
 			items,
 			nextCursor: rows.length > limit ? items[items.length - 1].revision : null,
@@ -159,6 +165,7 @@ export class AgentPlanRepository extends BaseRepository<AgentPlan> {
 		ctx: OperationContext,
 	): Promise<AgentPlanRecord> {
 		this.validateVersion(input.expectedRevision);
+
 		return await this.runInTransaction(ctx, async (manager) => {
 			const now = new Date();
 			const query = manager
@@ -177,7 +184,9 @@ export class AgentPlanRepository extends BaseRepository<AgentPlan> {
 					revision: input.expectedRevision,
 					closedAt: IsNull(),
 				});
+
 			if (document) query.setParameter('planData', document.data);
+
 			const result = await query.execute();
 			if (result.affected !== 1) throw new AgentPlanWriteConflictError();
 			const plan = await manager.findOneByOrFail(AgentPlan, {
