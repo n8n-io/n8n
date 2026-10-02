@@ -46,8 +46,7 @@ export class ExecutionCrashService {
 
 	/**
 	 * Announce an execution the caller already transitioned to `crashed` itself.
-	 * Unlike `markAsCrashed*`, this performs no status transition and no counting:
-	 * the caller's own save ran the lifecycle hooks that count it.
+	 * Performs no transition and no counting; the caller's lifecycle hooks count it.
 	 */
 	async announceStalledExecution(executionId: string): Promise<void> {
 		const execution = await this.executionRepository.findSingleExecution(executionId, {
