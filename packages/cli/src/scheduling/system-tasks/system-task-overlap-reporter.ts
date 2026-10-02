@@ -1,6 +1,5 @@
+import type { EventService } from '@n8n/backend-services';
 import type { RetiredTask } from '@n8n/scheduler';
-
-import type { EventService } from '@/events/event.service';
 
 import { emitSystemTaskMetric } from './emit-system-task-metric';
 import { systemTaskName } from './system-task-type';

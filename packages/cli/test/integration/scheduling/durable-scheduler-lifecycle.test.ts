@@ -1,4 +1,5 @@
 import { Logger } from '@n8n/backend-common';
+import { EventService } from '@n8n/backend-services';
 import { testDb } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import { DataSource, ScheduledJobRepository, ScheduledTaskRepository } from '@n8n/db';
@@ -7,7 +8,6 @@ import type { ClaimedTask } from '@n8n/scheduler';
 import type { InstanceSettings } from 'n8n-core';
 import { Tracing } from 'n8n-core';
 
-import { EventService } from '@/events/event.service';
 import { PrometheusSchedulerMetricsService } from '@/metrics/prometheus/scheduler-metrics.service';
 import { AgentScheduledJobOwner } from '@/scheduling/agent-scheduled-job-owner';
 import { DurableScheduler } from '@/scheduling/durable-scheduler';

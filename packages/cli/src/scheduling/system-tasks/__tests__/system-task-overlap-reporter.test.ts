@@ -1,7 +1,6 @@
+import type { EventService } from '@n8n/backend-services';
 import type { RetiredTask } from '@n8n/scheduler';
 import { mock } from 'vitest-mock-extended';
-
-import type { EventService } from '@/events/event.service';
 
 import { reportSystemTaskOverlaps } from '../system-task-overlap-reporter';
 
