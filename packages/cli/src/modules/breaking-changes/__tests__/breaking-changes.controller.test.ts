@@ -130,16 +130,20 @@ describe('BreakingChangesController', () => {
 	});
 
 	describe('GET /report/:ruleId', () => {
-		function registerRule(ruleId: string, version: 'v2' | 'v3') {
-			const rule = mock<IBreakingChangeRule>();
-			rule.getMetadata.mockReturnValue({ version } as ReturnType<
-				IBreakingChangeRule['getMetadata']
-			>);
-			ruleRegistry.getRule.calledWith(ruleId).mockReturnValue(rule);
+		// Plain objects, not proxies: the controller tells rule kinds apart by their methods.
+		function registerRule(ruleId: string, version: 'v2' | 'v3', kind: 'workflow' | 'instance') {
+			const getMetadata = () => ({ version }) as ReturnType<IBreakingChangeRule['getMetadata']>;
+			const rule =
+				kind === 'workflow'
+					? { id: ruleId, getMetadata, detectWorkflow: vi.fn() }
+					: { id: ruleId, getMetadata, detect: vi.fn() };
+			ruleRegistry.getRule
+				.calledWith(ruleId)
+				.mockReturnValue(rule as unknown as IBreakingChangeRule);
 		}
 
 		it("syncs the rule's version when stale, then returns the query service result unchanged", async () => {
-			registerRule('removed-nodes-v3', 'v3');
+			registerRule('removed-nodes-v3', 'v3', 'workflow');
 			const expected = ruleResult('removed-nodes-v3');
 			const callOrder: string[] = [];
 			syncService.syncIfStale.mockImplementation(async () => {
@@ -160,13 +164,23 @@ describe('BreakingChangesController', () => {
 		});
 
 		it('uses v2 for a v2 rule', async () => {
-			registerRule('removed-nodes-v2', 'v2');
+			registerRule('removed-nodes-v2', 'v2', 'workflow');
 			queryService.getRuleFindings.mockResolvedValue(ruleResult('removed-nodes-v2'));
 
 			await controller.getDetectionReportForRule(req, res, 'removed-nodes-v2');
 
 			expect(syncService.syncIfStale).toHaveBeenCalledWith('v2');
 			expect(queryService.getRuleFindings).toHaveBeenCalledWith('v2', 'removed-nodes-v2');
+		});
+
+		it('rejects an instance rule with not-found before syncing or reading', async () => {
+			registerRule('docker-only-deployment-v3', 'v3', 'instance');
+
+			await expect(
+				controller.getDetectionReportForRule(req, res, 'docker-only-deployment-v3'),
+			).rejects.toBeInstanceOf(NotFoundError);
+			expect(syncService.syncIfStale).not.toHaveBeenCalled();
+			expect(queryService.getRuleFindings).not.toHaveBeenCalled();
 		});
 
 		it('rejects an unknown rule with not-found before syncing or reading', async () => {
