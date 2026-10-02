@@ -8,6 +8,7 @@ import type { CacheService } from '@n8n/backend-services';
 
 import { PrometheusWorkflowStatisticsMetricsService } from '../workflow-statistics-metrics.service';
 import { CachedMetricQueryFactory } from '../cached-metric-query';
+import { DatabaseMetricQueryService } from '../database-metric-query.service';
 
 vi.mock('prom-client');
 
@@ -55,8 +56,13 @@ describe('PrometheusWorkflowStatisticsMetricsService', () => {
 		licenseMetricsRepository.getLicenseRenewalMetrics.mockResolvedValue(MOCK_METRICS);
 		service = new PrometheusWorkflowStatisticsMetricsService(
 			config,
-			new CachedMetricQueryFactory(cacheService, dbConnection),
-			licenseMetricsRepository,
+			new DatabaseMetricQueryService(
+				new CachedMetricQueryFactory(cacheService, dbConnection),
+				mock(),
+				licenseMetricsRepository,
+				mock(),
+				mock(),
+			),
 		);
 	});
 

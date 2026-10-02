@@ -9,6 +9,7 @@ import type { CacheService } from '@n8n/backend-services';
 
 import { PrometheusWorkflowInfoMetricsService } from '../workflow-info-metrics.service';
 import { CachedMetricQueryFactory } from '../cached-metric-query';
+import { DatabaseMetricQueryService } from '../database-metric-query.service';
 
 vi.mock('prom-client');
 
@@ -36,8 +37,13 @@ describe('PrometheusWorkflowInfoMetricsService', () => {
 		dbConnection.connectionState.connected = true;
 		service = new PrometheusWorkflowInfoMetricsService(
 			config,
-			workflowRepository,
-			new CachedMetricQueryFactory(cacheService, dbConnection),
+			new DatabaseMetricQueryService(
+				new CachedMetricQueryFactory(cacheService, dbConnection),
+				workflowRepository,
+				mock(),
+				mock(),
+				mock(),
+			),
 			instanceSettings,
 		);
 	});

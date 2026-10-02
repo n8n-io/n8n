@@ -1,16 +1,14 @@
 import { PrometheusMetricsConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
-import { ScheduledTaskRepository, type ScheduledTaskMetricSnapshot } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { MisfireCount, SchedulerMetrics } from '@n8n/scheduler';
 import { InstanceSettings } from 'n8n-core';
 import promClient from 'prom-client';
 
 import type { PrometheusMetricsCollector } from './base';
-import { CachedMetricQueryFactory, toGaugeValue } from './cached-metric-query';
+import { toGaugeValue } from './cached-metric-query';
 import { DURATION_BUCKETS_SECONDS } from './constant';
-
-const SNAPSHOT_CACHE_KEY = 'metrics:scheduler:snapshot:v1';
+import { DatabaseMetricQueryService } from './database-metric-query.service';
 
 /**
  * Collects Prometheus metrics for the Durable Scheduler. Opt-in via
@@ -46,8 +44,7 @@ export class PrometheusSchedulerMetricsService
 	constructor(
 		private readonly config: PrometheusMetricsConfig,
 		private readonly instanceSettings: InstanceSettings,
-		private readonly cachedMetricQueries: CachedMetricQueryFactory,
-		private readonly taskRepository: ScheduledTaskRepository,
+		private readonly databaseQueries: DatabaseMetricQueryService,
 	) {}
 
 	get enabled(): boolean {
@@ -165,18 +162,13 @@ export class PrometheusSchedulerMetricsService
 	}
 
 	private initSnapshotGauges() {
-		const repository = this.taskRepository;
 		const prefix = this.config.prefix;
 		// One snapshot query feeds all four gauges; cache it so a tight scrape
 		// interval doesn't hammer the tasks table. Within a scrape, coalescing
 		// collapses the gauges' collects to a single query.
 		const ttlMs = this.config.schedulerMetricsInterval * Time.seconds.toMilliseconds;
 
-		const query = this.cachedMetricQueries.create<ScheduledTaskMetricSnapshot>({
-			cacheKey: SNAPSHOT_CACHE_KEY,
-			ttlMs,
-			query: async () => await repository.getMetricSnapshot(),
-		});
+		const query = this.databaseQueries.schedulerSnapshot(ttlMs);
 
 		new promClient.Gauge({
 			name: `${prefix}scheduler_tasks_pending`,

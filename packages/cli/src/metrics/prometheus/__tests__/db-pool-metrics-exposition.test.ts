@@ -14,6 +14,7 @@ import { DatabaseIndependentRoutes } from '@/services/database-independent-route
 import { PrometheusActiveWorkflowMetricsService } from '../active-workflow-metrics.service';
 import type { PrometheusCacheMetricsService } from '../cache-metrics.service';
 import { CachedMetricQueryFactory } from '../cached-metric-query';
+import { DatabaseMetricQueryService } from '../database-metric-query.service';
 import { PrometheusDbPoolMetricsService } from '../db-pool-metrics.service';
 import type { PrometheusDefaultMetricsService } from '../default-metrics.service';
 import type { PrometheusDnsCacheMetricsService } from '../dns-cache-metrics.service';
@@ -103,8 +104,13 @@ describe('database pool metrics exposition', () => {
 	const mountMetrics = () => {
 		const activeWorkflowMetrics = new PrometheusActiveWorkflowMetricsService(
 			config.endpoints.metrics,
-			workflowRepository,
-			new CachedMetricQueryFactory(cacheService, dbConnection),
+			new DatabaseMetricQueryService(
+				new CachedMetricQueryFactory(cacheService, dbConnection),
+				workflowRepository,
+				mock(),
+				mock(),
+				mock(),
+			),
 		);
 		const poolMetrics = new PrometheusDbPoolMetricsService(
 			config.endpoints.metrics,
