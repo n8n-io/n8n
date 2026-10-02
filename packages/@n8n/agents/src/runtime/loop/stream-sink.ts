@@ -385,7 +385,9 @@ export class StreamSink implements RunOutputSink<void> {
 
 		const aiFinishReason = await settle(result.finishReason);
 		const usage = await settle(result.usage);
+		// oxlint-disable-next-line typescript/no-deprecated
 		const providerMetadata = await settle(result.providerMetadata);
+		// oxlint-disable-next-line typescript/no-deprecated
 		const response = await settle(result.response);
 		const newMessages = fromAiMessages(response.messages);
 		const errorReason = classifyModelTurnError({

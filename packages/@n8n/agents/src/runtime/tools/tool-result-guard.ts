@@ -103,6 +103,7 @@ async function guardContentToolResultForModel(
 	storage: ToolResultGuardStorage | undefined,
 	kind: ToolResultKind,
 ): Promise<GuardedToolResult> {
+	// oxlint-disable-next-line typescript/no-deprecated
 	const textParts = output.value.filter((part) => part.type === 'text');
 	const historyOutput = toJsonValue(output);
 	if (textParts.length === 0) {

@@ -24,6 +24,7 @@ export class OtelTestProvider {
 	private constructor(
 		private readonly provider: BasicTracerProvider,
 		private readonly exporter: InMemorySpanExporter,
+		// oxlint-disable-next-line typescript/no-deprecated
 		private readonly contextManager: AsyncHooksContextManager,
 	) {}
 
@@ -33,6 +34,7 @@ export class OtelTestProvider {
 			spanProcessors: [new SimpleSpanProcessor(exporter)],
 		});
 		trace.setGlobalTracerProvider(provider);
+		// oxlint-disable-next-line typescript/no-deprecated
 		const contextManager = new AsyncHooksContextManager().enable();
 		context.setGlobalContextManager(contextManager);
 		return new OtelTestProvider(provider, exporter, contextManager);

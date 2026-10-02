@@ -38,6 +38,7 @@ export function protectUntrustedToolResult(output: unknown, tool: ToolAttributio
 
 	let hasText = false;
 	const value = output.value.map((part): ContentToolResultOutput['value'][number] => {
+		// oxlint-disable-next-line typescript/no-deprecated
 		if (part.type !== 'text') return part;
 		hasText = true;
 		return { ...part, text: wrapToolText(part.text, tool) };

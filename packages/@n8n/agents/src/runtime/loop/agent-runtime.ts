@@ -638,8 +638,10 @@ export class AgentRuntime {
 		return {
 			...this.telemetry.buildTelemetryOptions(options),
 			...(options?.onStepStart ? { onStepStart: options.onStepStart } : {}),
+			// oxlint-disable-next-line typescript/no-deprecated
 			...(options?.onStepEnd || options?.onStepFinish
-				? { onStepEnd: options.onStepEnd ?? options.onStepFinish }
+				? // oxlint-disable-next-line typescript/no-deprecated
+					{ onStepEnd: options.onStepEnd ?? options.onStepFinish }
 				: {}),
 			repairToolCall: async (options) => {
 				return await fixToolCall(
