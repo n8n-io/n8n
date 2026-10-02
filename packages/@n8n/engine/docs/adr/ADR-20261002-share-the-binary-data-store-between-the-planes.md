@@ -33,7 +33,8 @@ There are four constraints:
    (`<mode>:<fileId>`), never file bytes. This is how v1 queue mode works between main and workers.
 2. **The supported modes follow from decision 1.** `s3` and `azure` work in every topology, because
    every process can reach the bucket. `filesystem` works when every host mounts the same volume at
-   the same path. `database` is supported only when the DP runs in the CP process.
+   the same path. `database` is supported only when the DP runs in the CP process. A DP host in
+   its own process refuses `database` mode at start.
 3. **Only the CP signs URLs.** A DP asks the CP for a signed URL over the action-scoped CP routes,
    with the file id and the execution id. The CP checks that the file belongs to that execution
    before it signs. The signing secret is not given to the DP.
@@ -75,11 +76,11 @@ flowchart LR
 2. Until these changes are merged, a DP that runs nodes which use files must run in the CP process.
 3. An operator who runs `filesystem` mode on more than one host must provide a shared mount. v1
    queue mode has the same requirement.
-4. A DP host in its own process must refuse `database` mode at start. Such a host has no CP
-   database connection, so every file read and write fails in that mode. Without the check, the
-   error shows only when a run handles its first file. That run fails in the middle, after earlier
-   nodes have already called external services. A workflow that uses no files never shows the
-   error, so the wrong configuration can stay unnoticed for a long time.
+4. A DP host configured with the wrong mode fails at start. A DP host in its own process has no
+   CP database connection, so every file read and write fails in `database` mode. Without the
+   check, the error shows only when a run handles its first file. That run fails in the middle,
+   after earlier nodes have already called external services. A workflow that uses no files never
+   shows the error, so the wrong configuration can stay unnoticed for a long time.
 5. A signed URL created on a DP costs one call to the CP.
 6. This decision answers the open question in decision 6 and consequence 3 of
    ADR-20260925-delete-binary-files-with-the-execution-that-wrote-them.
