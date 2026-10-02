@@ -1,0 +1,14 @@
+packages/@n8n/db/oxlint.config.mts
+  h_52a137d26d774c 27
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "edb0d2978edb67548f35a17ce62487c63b609e88",
+  "prompts": {},
+  "humans": {
+    "h_52a137d26d774c": {
+      "author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}
