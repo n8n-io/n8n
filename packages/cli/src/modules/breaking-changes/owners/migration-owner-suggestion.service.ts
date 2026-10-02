@@ -25,7 +25,7 @@ const MCP_AUTHOR_SUFFIX = ' (via MCP)';
  * action may belong to a user who cannot own, so a few older ones are kept to
  * fall back on before the project owner is used.
  */
-const RECENT_ACTIONS_PER_WORKFLOW = 10;
+export const RECENT_ACTIONS_PER_WORKFLOW = 10;
 
 /**
  * Proposes who should fix a workflow's migration findings: the user behind the
