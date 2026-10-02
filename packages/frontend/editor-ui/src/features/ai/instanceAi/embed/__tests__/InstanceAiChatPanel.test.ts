@@ -62,7 +62,6 @@ const InstanceAiViewHeaderStub = defineComponent({
 	},
 	template: `<div data-test-id="header-stub" :data-disabled="String(Boolean(threadList?.disabled))">
 		<span data-test-id="list-count">{{ count }}</span>
-		<slot name="title" />
 		<slot name="actions" />
 		<button data-test-id="list-select" type="button" @click="$emit('select', 't-other')" />
 	</div>`,

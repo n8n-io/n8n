@@ -113,6 +113,7 @@ const AgentPreviewMoreMenuStub = {
 function mountDock(
 	overrides: Partial<{
 		hasSession: boolean;
+		sessionTitle: string;
 		effectiveSessionId?: string;
 		beforeSend: () => Promise<void> | void;
 		isOpen: boolean;
@@ -161,28 +162,32 @@ describe('AgentPreviewDock', () => {
 		localStorage.removeItem('N8N_AGENT_PREVIEW_LAYOUT');
 	});
 
-	it('renders the session switcher before the compact actions', () => {
-		const wrapper = mountDock();
-		const title = wrapper.get('[data-testid="agent-preview-session-title"]');
+	it('shows the session title only after a session starts', async () => {
+		const wrapper = mountDock({ hasSession: false, sessionTitle: 'New session' });
+		const history = wrapper.get('[data-testid="agent-preview-history-trigger"]');
 
-		expect(title.text()).toBe('Order help');
-		expect(title.element.tagName).toBe('BUTTON');
-		expect(title.attributes()).toMatchObject({
-			'aria-label': 'agentSessions.sessionName',
+		expect(history.text()).toBe('instanceAi.sidebar.chatHistory');
+		await wrapper.setProps({ hasSession: true, sessionTitle: 'Order help' });
+		expect(history.text()).toBe('Order help');
+		expect(history.element.tagName).toBe('BUTTON');
+		expect(history.attributes()).toMatchObject({
+			'aria-label': 'Order help',
 			'data-size': 'small',
 		});
 		expect(
 			wrapper
 				.get('[data-testid="agent-preview-dock-header"]')
-				.findAll('[data-testid="agent-preview-session-title"], button')
+				.findAll('button')
 				.map((element) => element.attributes('data-testid')),
 		).toEqual([
-			'agent-preview-session-title',
+			'agent-preview-history-trigger',
 			'agent-preview-view-session-btn',
 			'agent-preview-new-chat-btn',
 			'agent-preview-more-btn',
 			'agent-preview-close-btn',
 		]);
+		await wrapper.setProps({ sessionTitle: '' });
+		expect(history.text()).toBe('instanceAi.sidebar.chatHistory');
 	});
 
 	it('filters session options and updates the empty message during search', async () => {
@@ -261,7 +266,7 @@ describe('AgentPreviewDock', () => {
 			},
 			{
 				testId: 'agent-preview-close-btn',
-				icon: 'chevrons-right',
+				icon: 'x',
 				label: 'agents.builder.preview.hide',
 			},
 		];
