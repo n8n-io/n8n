@@ -246,6 +246,17 @@ describe('AgentChatController background tasks', () => {
 		const { controller, agentsConfig, agentsService, agentExecutionService, backgroundJobService } =
 			makeController();
 		agentsService.findById.mockResolvedValue({ id: 'agent-1' } as never);
+		agentExecutionService.findThreadById.mockResolvedValue(thread);
+		backgroundJobService.listCurrentGroupForThread.mockResolvedValue([
+			{
+				id: 'job-1',
+				kind: 'subagent',
+				title: 'Check escalations',
+				status: 'running',
+				pauseRequestId: 'pause-1',
+				createdAt: new Date('2026-09-09T10:00:00Z'),
+			},
+		] as never);
 		agentExecutionService.canUseDraftThread.mockResolvedValueOnce(false);
 		await expect(controller.stopBackgroundJobs(request as never)).rejects.toThrow(NotFoundError);
 		expect(backgroundJobService.requestPause).not.toHaveBeenCalled();
@@ -253,7 +264,19 @@ describe('AgentChatController background tasks', () => {
 		await expect(controller.stopBackgroundJobs(request as never)).rejects.toThrow(BadRequestError);
 		expect(backgroundJobService.requestPause).not.toHaveBeenCalled();
 		agentsConfig.backgroundTasksEnabled = true;
-		await expect(controller.stopBackgroundJobs(request as never)).resolves.toEqual({ tasks: [] });
+		await expect(controller.stopBackgroundJobs(request as never)).resolves.toEqual({
+			pendingTaskIds: [],
+			tasks: [
+				{
+					id: 'job-1',
+					kind: 'subagent',
+					title: 'Check escalations',
+					status: 'running',
+					pauseRequested: true,
+					startedAt: '2026-09-09T10:00:00.000Z',
+				},
+			],
+		});
 		expect(backgroundJobService.requestPause).toHaveBeenCalledExactlyOnceWith(
 			'agent-1',
 			'thread-1',
