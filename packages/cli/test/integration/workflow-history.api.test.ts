@@ -478,3 +478,29 @@ describe('PATCH /workflow-history/workflow/:workflowId/versions/:versionId', () 
 		expect(getResponse.body.data.connections).toEqual(originalConnections);
 	});
 });
+
+describe('GET /workflow-history/workflow/:workflowId/publish-timeline', () => {
+	test('should return one page of events, newest first, with the version name', async () => {
+		const workflow = await createWorkflow(undefined, owner);
+		const version = await createWorkflowHistoryItem(workflow.id, { name: 'Release 1' });
+		const start = new Date('2026-01-01T00:00:00Z').getTime();
+		const events = [];
+		for (let i = 0; i < 5; i++) {
+			events.push(
+				await createWorkflowPublishHistoryItem(version, {
+					event: i % 2 === 0 ? 'activated' : 'deactivated',
+					createdAt: new Date(start + i * 60_000),
+				}),
+			);
+		}
+
+		const response = await authOwnerAgent
+			.get(`/workflow-history/workflow/${workflow.id}/publish-timeline`)
+			.query({ skip: 1, take: 2 });
+
+		expect(response.status).toBe(200);
+		const page = response.body.data as Array<{ id: number; event: string; versionName: string }>;
+		expect(page.map(({ id }) => id)).toEqual([events[3].id, events[2].id]);
+		expect(page[0]).toMatchObject({ event: 'deactivated', versionName: 'Release 1' });
+	});
+});

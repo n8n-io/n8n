@@ -322,7 +322,11 @@ export class WorkflowHistoryService {
 		return versions.map((v) => ({ versionId: v.versionId, createdAt: v.createdAt }));
 	}
 
-	async getPublishTimeline(user: User, workflowId: string) {
+	async getPublishTimeline(
+		user: User,
+		workflowId: string,
+		page: { offset: number; limit: number },
+	) {
 		const workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
 			'workflow:read',
 		]);
@@ -331,14 +335,7 @@ export class WorkflowHistoryService {
 			throw new SharedWorkflowNotFoundError('');
 		}
 
-		const events = await this.workflowPublishHistoryRepository
-			.createQueryBuilder('wph')
-			.leftJoinAndSelect('wph.user', 'user')
-			.leftJoin('wph.workflowHistory', 'wh')
-			.addSelect('wh.name')
-			.where('wph.workflowId = :workflowId', { workflowId: workflow.id })
-			.orderBy('wph.createdAt', 'ASC')
-			.getMany();
+		const events = await this.workflowPublishHistoryRepository.findTimelinePage(workflow.id, page);
 
 		return events.map((e) => ({
 			id: e.id,

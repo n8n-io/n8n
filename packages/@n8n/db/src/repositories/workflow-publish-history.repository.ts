@@ -64,6 +64,20 @@ export class WorkflowPublishHistoryRepository extends Repository<WorkflowPublish
 			.getMany();
 	}
 
+	async findTimelinePage(workflowId: string, { offset, limit }: { offset: number; limit: number }) {
+		// The joins are many-to-one, so `offset` and `limit` page the events.
+		return await this.createQueryBuilder('wph')
+			.leftJoinAndSelect('wph.user', 'user')
+			.leftJoin('wph.workflowHistory', 'wh')
+			.addSelect('wh.name')
+			.where('wph.workflowId = :workflowId', { workflowId })
+			.orderBy('wph.createdAt', 'DESC')
+			.addOrderBy('wph.id', 'DESC')
+			.offset(offset)
+			.limit(limit)
+			.getMany();
+	}
+
 	async getPublishedVersions(
 		workflowId: string,
 	): Promise<Array<Pick<WorkflowPublishHistory, 'versionId'>>> {

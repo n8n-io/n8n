@@ -477,9 +477,9 @@ describe('WorkflowHistoryService', () => {
 			const workflowId = '123';
 			workflowFinderService.findWorkflowForUser.mockResolvedValueOnce(null);
 
-			await expect(workflowHistoryService.getPublishTimeline(testUser, workflowId)).rejects.toThrow(
-				SharedWorkflowNotFoundError,
-			);
+			await expect(
+				workflowHistoryService.getPublishTimeline(testUser, workflowId, { offset: 0, limit: 10 }),
+			).rejects.toThrow(SharedWorkflowNotFoundError);
 		});
 
 		it('should return publish timeline events with version names', async () => {
@@ -512,17 +512,12 @@ describe('WorkflowHistoryService', () => {
 				},
 			];
 
-			const qb = {
-				leftJoinAndSelect: vi.fn().mockReturnThis(),
-				leftJoin: vi.fn().mockReturnThis(),
-				addSelect: vi.fn().mockReturnThis(),
-				where: vi.fn().mockReturnThis(),
-				orderBy: vi.fn().mockReturnThis(),
-				getMany: vi.fn().mockResolvedValueOnce(mockEvents),
-			};
-			workflowPublishHistoryRepository.createQueryBuilder.mockReturnValueOnce(qb as never);
+			workflowPublishHistoryRepository.findTimelinePage.mockResolvedValueOnce(mockEvents as never);
 
-			const result = await workflowHistoryService.getPublishTimeline(testUser, workflowId);
+			const result = await workflowHistoryService.getPublishTimeline(testUser, workflowId, {
+				offset: 20,
+				limit: 10,
+			});
 
 			expect(result).toEqual([
 				{
@@ -544,8 +539,10 @@ describe('WorkflowHistoryService', () => {
 					versionName: null,
 				},
 			]);
-			expect(qb.leftJoin).toHaveBeenCalledWith('wph.workflowHistory', 'wh');
-			expect(qb.addSelect).toHaveBeenCalledWith('wh.name');
+			expect(workflowPublishHistoryRepository.findTimelinePage).toHaveBeenCalledWith(workflowId, {
+				offset: 20,
+				limit: 10,
+			});
 		});
 	});
 
