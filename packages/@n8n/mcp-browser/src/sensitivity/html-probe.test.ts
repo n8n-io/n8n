@@ -17,6 +17,7 @@ function runProbeWithFrame(html: string, frameHtml: string) {
 	});
 	const frame = dom.window.document.querySelector('iframe');
 	frame?.contentDocument?.open();
+	// oxlint-disable-next-line typescript/no-deprecated
 	frame?.contentDocument?.write(frameHtml);
 	frame?.contentDocument?.close();
 	return dom.window.eval(HTML_PROBE_SCRIPT);

@@ -2,6 +2,7 @@ import type { MockInstance } from 'vitest';
 import { waitFor, within } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { createComponentRenderer } from '@/__tests__/render';
+import { createTestWorkflow } from '@/__tests__/mocks';
 import { type MockedStore, mockedStore } from '@/__tests__/utils';
 import { MODAL_CONFIRM, VIEWS } from '@/app/constants';
 import WorkflowCard from '@/app/components/WorkflowCard.vue';
@@ -15,6 +16,7 @@ import { useMessage } from '@/app/composables/useMessage';
 import { useToast } from '@n8n/composables/useToast';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
+import { useWorkflowActivate } from '@/app/composables/useWorkflowActivate';
 import { createTestingPinia } from '@pinia/testing';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useUsersStore } from '@n8n/stores/users.store';
@@ -65,9 +67,11 @@ vi.mock('@/app/composables/useMessage', () => {
 
 vi.mock('@/app/composables/useWorkflowActivate', () => {
 	const unpublishWorkflowFromHistory = vi.fn().mockResolvedValue(true);
+	const publishWorkflow = vi.fn().mockResolvedValue({ success: true });
 	return {
 		useWorkflowActivate: () => ({
 			unpublishWorkflowFromHistory,
+			publishWorkflow,
 		}),
 	};
 });
@@ -1365,6 +1369,141 @@ describe('WorkflowCard', () => {
 				expect(emitted()['workflow:unpublished']).toBeTruthy();
 				expect(emitted()['workflow:unpublished'][0]).toEqual([{ id: '1' }]);
 			});
+		});
+	});
+
+	describe('Publish functionality', () => {
+		const openActionsMenu = async (renderResult: { getByTestId: (id: string) => HTMLElement }) => {
+			const cardActions = renderResult.getByTestId('workflow-card-actions');
+			const cardActionsOpener = within(cardActions).getByRole('button');
+			const controllingId = cardActionsOpener.getAttribute('aria-controls');
+
+			await userEvent.click(cardActionsOpener);
+			const actions = document.querySelector<HTMLElement>(`#${controllingId}`);
+			if (!actions) {
+				throw new Error('Actions menu not found');
+			}
+			return actions;
+		};
+
+		it('should show "Publish" action when workflow is not published and user has permissions', async () => {
+			const data = createWorkflow({
+				activeVersionId: null, // Not published
+				scopes: ['workflow:publish'],
+			});
+
+			const { getByTestId } = renderComponent({ props: { data } });
+			const actions = await openActionsMenu({ getByTestId });
+
+			expect(actions).toHaveTextContent('Publish');
+		});
+
+		it('should not show "Publish" action when workflow is already published', async () => {
+			const data = createWorkflow({
+				activeVersionId: 'v1', // Published
+				scopes: ['workflow:publish'],
+			});
+
+			const { getByTestId } = renderComponent({ props: { data } });
+			const actions = await openActionsMenu({ getByTestId });
+
+			expect(actions).not.toHaveTextContent('Publish');
+		});
+
+		it('should not show "Publish" action when user lacks publish permission', async () => {
+			const data = createWorkflow({
+				activeVersionId: null,
+				scopes: ['workflow:read'], // No publish permission
+			});
+
+			const { getByTestId } = renderComponent({ props: { data } });
+			const actions = await openActionsMenu({ getByTestId });
+
+			expect(actions).not.toHaveTextContent('Publish');
+		});
+
+		it('should not show "Publish" action on archived workflows', async () => {
+			const data = createWorkflow({
+				activeVersionId: null,
+				isArchived: true,
+				scopes: ['workflow:publish'],
+			});
+
+			const { getByTestId } = renderComponent({ props: { data } });
+			const actions = await openActionsMenu({ getByTestId });
+
+			expect(actions).not.toHaveTextContent('Publish');
+		});
+
+		it('should emit workflow:published event when publish action is successful', async () => {
+			const { publishWorkflow } = useWorkflowActivate();
+			workflowsListStore.fetchWorkflow.mockResolvedValue(
+				createTestWorkflow({ id: '1', versionId: 'v2' }),
+			);
+			vi.mocked(publishWorkflow).mockResolvedValue({ success: true });
+
+			const data = createWorkflow({
+				activeVersionId: null,
+				scopes: ['workflow:publish'],
+			});
+
+			const { getByTestId, emitted } = renderComponent({ props: { data } });
+			const actions = await openActionsMenu({ getByTestId });
+
+			await userEvent.click(within(actions).getByTestId('action-publish'));
+
+			await waitFor(() => {
+				expect(workflowsListStore.fetchWorkflow).toHaveBeenCalledWith('1');
+				expect(publishWorkflow).toHaveBeenCalledWith('1', 'v2', { name: data.name });
+				expect(emitted()['workflow:published']).toBeTruthy();
+				expect(emitted()['workflow:published'][0]).toEqual([{ id: '1' }]);
+			});
+		});
+
+		it('should warn instead of publishing when the fetched workflow has no versionId', async () => {
+			const { publishWorkflow } = useWorkflowActivate();
+			workflowsListStore.fetchWorkflow.mockResolvedValue(
+				createTestWorkflow({ id: '1', versionId: '' }),
+			);
+
+			const data = createWorkflow({
+				activeVersionId: null,
+				scopes: ['workflow:publish'],
+			});
+
+			const { getByTestId } = renderComponent({ props: { data } });
+			const actions = await openActionsMenu({ getByTestId });
+
+			await userEvent.click(within(actions).getByTestId('action-publish'));
+
+			await waitFor(() => {
+				expect(toast.showMessage).toHaveBeenCalled();
+			});
+			expect(publishWorkflow).not.toHaveBeenCalled();
+		});
+
+		it('should not emit workflow:published when publish fails', async () => {
+			const { publishWorkflow } = useWorkflowActivate();
+			workflowsListStore.fetchWorkflow.mockResolvedValue(
+				createTestWorkflow({ id: '1', versionId: 'v2' }),
+			);
+			// The composable handles errors internally and reports failure in the result
+			vi.mocked(publishWorkflow).mockResolvedValue({ success: false, errorHandled: true });
+
+			const data = createWorkflow({
+				activeVersionId: null,
+				scopes: ['workflow:publish'],
+			});
+
+			const { getByTestId, emitted } = renderComponent({ props: { data } });
+			const actions = await openActionsMenu({ getByTestId });
+
+			await userEvent.click(within(actions).getByTestId('action-publish'));
+
+			await waitFor(() => {
+				expect(publishWorkflow).toHaveBeenCalled();
+			});
+			expect(emitted()['workflow:published']).toBeUndefined();
 		});
 	});
 

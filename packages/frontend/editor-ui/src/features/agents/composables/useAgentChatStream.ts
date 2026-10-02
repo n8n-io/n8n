@@ -45,6 +45,7 @@ import { getMessageThinkingSegments } from '@/features/ai/shared/agentsChat/thin
 import type { ChatMessage, ThinkingSegment, ToolCall } from '@/features/ai/shared/agentsChat/types';
 import { CHAT_MESSAGE_STATUS, TOOL_CALL_STATE } from '../constants';
 import { summariseToolCall } from '@/features/ai/shared/agentsChat/interactiveSummary';
+import { isBudgetStopCode, type BudgetNoticeCode } from '../utils/budget-config';
 import { isFailedDelegateOutput } from '../utils/delegate-tool';
 import { useAgentExecutionUpdates } from './useAgentExecutionUpdates';
 
@@ -71,6 +72,8 @@ export interface UseAgentChatStreamParams {
 	newSession?: Ref<boolean>;
 	onHistoryLoaded?: (count: number) => void;
 	onSessionCreated?: (sessionId: string) => void;
+	/** Builder preview shows the budget stop and alert cards. Other chats ignore them. */
+	budgetCards?: boolean;
 }
 
 type ResumePayload =
@@ -114,6 +117,18 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 	const consumedQueueIds = new Set<string>();
 	const steerableExecutionId = ref<string | null>(null);
 	const streams = new Map<AbortController, StreamSession>();
+	/**
+	 * Budget notices attached by streams that already ended, bucketed by the
+	 * target (project, agent, session) that produced them, then keyed by
+	 * execution id (or message id before `done`). The history read that
+	 * follows `done` consumes its own target's bucket once; a later refresh
+	 * must not reinsert a stop card and block Send again, and a refresh for
+	 * another target must not inherit it.
+	 */
+	const pendingBudgetNotices = new Map<
+		string,
+		Map<string, { notices: NonNullable<ChatMessage['budgetNotices']>; source: ChatMessage }>
+	>();
 	let queueVersion = 0;
 	let submissionVersion = 0;
 	const activeExecutionId = ref<string | null>(null);
@@ -226,7 +241,9 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			retryCount = 0;
 			clearTimeout(retryTimer);
 			if (!isStreamOpen.value && streamAtStart === streamVersion) {
-				messages.value = applyOpenSuspensions(convertDbMessages(dbMessages), openSuspensions);
+				messages.value = restoreBudgetNotices(
+					applyOpenSuspensions(convertDbMessages(dbMessages), openSuspensions),
+				);
 				isRecovering.value = false;
 				if (runningExecutionId !== undefined) activeExecutionId.value = runningExecutionId;
 				if (isCancelling.value) reconcileStop();
@@ -585,6 +602,118 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		session.current = msg;
 		session.minted.add(msg);
 		return msg;
+	}
+
+	function attachBudgetNotice(
+		session: StreamSession,
+		code: 'budget.monthly' | 'budget.session' | 'budget.alert',
+	): void {
+		const msg = ensureCurrent(session);
+		const notices = msg.budgetNotices ?? [];
+		if (notices.some((notice) => notice.code === code)) return;
+		msg.budgetNotices = [...notices, { id: crypto.randomUUID(), code }];
+		const key = session.executionId ?? msg.id;
+		let forTarget = pendingBudgetNotices.get(session.target);
+		if (!forTarget) {
+			forTarget = new Map();
+			pendingBudgetNotices.set(session.target, forTarget);
+		}
+		const entry = forTarget.get(key) ?? { notices: [], source: msg };
+		if (!entry.notices.some((notice) => notice.code === code)) {
+			entry.notices.push({ id: crypto.randomUUID(), code });
+		}
+		forTarget.set(key, entry);
+	}
+
+	/**
+	 * Budget cards are live-stream only: the stream attaches them to the
+	 * minted bubble, and every history read replaces the transcript wholesale.
+	 * Carry them forward from the messages being replaced — plus the bucket of
+	 * the streams that just ended — so a trailing refresh cannot wipe a card
+	 * nobody dismissed. Only an explicit clear (cap raised) drops them. A stop
+	 * before any assistant text has no persisted message to land on.
+	 */
+	function restoreBudgetNotices(next: ChatMessage[]): ChatMessage[] {
+		const pending = new Map<string, NonNullable<ChatMessage['budgetNotices']>>();
+		const sources = new Map<string, ChatMessage>();
+		const collect = (
+			key: string,
+			notices: NonNullable<ChatMessage['budgetNotices']>,
+			source: ChatMessage,
+		) => {
+			const merged = pending.get(key) ?? [];
+			for (const notice of notices) {
+				if (!merged.some((item) => item.code === notice.code)) merged.push(notice);
+			}
+			pending.set(key, merged);
+			if (!sources.has(key)) sources.set(key, source);
+		};
+		for (const message of messages.value) {
+			if (message.budgetNotices?.length) {
+				collect(message.executionId ?? message.id, message.budgetNotices, message);
+			}
+		}
+		// Consume only this target's bucket: buckets of other agents or
+		// sessions stay untouched so their own refresh restores them.
+		const forTarget = pendingBudgetNotices.get(targetKey());
+		if (forTarget) {
+			pendingBudgetNotices.delete(targetKey());
+			for (const [key, entry] of forTarget) collect(key, entry.notices, entry.source);
+		}
+		if (pending.size === 0) return next;
+
+		const restored = next.map((message) => ({ ...message }));
+		for (let index = restored.length - 1; index >= 0; index--) {
+			const message = restored[index];
+			if (message.role !== 'assistant' || message.executionId === undefined) continue;
+			const notices = pending.get(message.executionId);
+			if (!notices) continue;
+			message.budgetNotices = notices;
+			pending.delete(message.executionId);
+		}
+
+		for (const [key, notices] of pending) {
+			const source = sources.get(key);
+			if (!source) continue;
+			const anchor =
+				source.executionId === undefined
+					? -1
+					: restored.findLastIndex((message) => message.executionId === source.executionId);
+			restored.splice(anchor === -1 ? restored.length : anchor + 1, 0, {
+				...source,
+				budgetNotices: notices,
+			});
+		}
+		return restored;
+	}
+
+	/**
+	 * Drops the given notice codes from the live messages AND from the current
+	 * target's pending bucket. Both copies must go: the bucket is consumed by
+	 * the next history refresh and would otherwise re-attach a notice already
+	 * cleared from the messages. Other codes stay buffered so that refresh
+	 * still restores them; buckets of other targets are untouched.
+	 */
+	function clearBudgetNotices(codes: ReadonlySet<BudgetNoticeCode>): void {
+		messages.value = messages.value.map((message) => {
+			if (!message.budgetNotices?.some((notice) => codes.has(notice.code))) return message;
+			return {
+				...message,
+				budgetNotices: message.budgetNotices.filter((notice) => !codes.has(notice.code)),
+			};
+		});
+		const forTarget = pendingBudgetNotices.get(targetKey());
+		if (!forTarget) return;
+		for (const [key, entry] of forTarget) {
+			const kept = entry.notices.filter((notice) => !codes.has(notice.code));
+			if (kept.length === entry.notices.length) continue;
+			if (kept.length === 0) {
+				forTarget.delete(key);
+			} else {
+				forTarget.set(key, { ...entry, notices: kept });
+			}
+		}
+		if (forTarget.size === 0) pendingBudgetNotices.delete(targetKey());
 	}
 
 	function ensureReasoningSegment(session: StreamSession, id: string): ThinkingSegment {
@@ -1030,6 +1159,16 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				// Custom (sub-agent / app-defined) message envelope. Reserved
 				// for future use; nothing renders today.
 				break;
+			case 'finish': {
+				if (!params.budgetCards || event.finishReason !== 'guardrail') break;
+				const code = event.guardrail?.code;
+				if (code !== undefined && isBudgetStopCode(code)) attachBudgetNotice(session, code);
+				break;
+			}
+			case 'budget-notice': {
+				if (params.budgetCards) attachBudgetNotice(session, event.code);
+				break;
+			}
 			case 'warning': {
 				// Non-fatal run warning (e.g. an MCP server was unavailable, so its
 				// tools were skipped). The run continues; surfaced as a callout.
@@ -1079,6 +1218,17 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				if (event.executionId) {
 					for (const msg of session.minted) {
 						msg.executionId = event.executionId;
+					}
+					// Notices attached before `accepted` are keyed by message id; rekey
+					// them so the history refresh can match the persisted turn.
+					const forTarget = pendingBudgetNotices.get(session.target);
+					if (forTarget) {
+						for (const msg of session.minted) {
+							const entry = forTarget.get(msg.id);
+							if (!entry) continue;
+							forTarget.delete(msg.id);
+							forTarget.set(event.executionId, entry);
+						}
 					}
 				}
 				session.terminalEventReceived = true;
@@ -1655,6 +1805,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		loadHistory,
 		refresh,
 		clearHistory,
+		clearBudgetNotices,
 		sendMessage,
 		stopGenerating,
 		detachStream,

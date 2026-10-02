@@ -1,4 +1,5 @@
 export { EventService, type EventMap } from './events/event.service';
+export { isBillableExecution } from './executions/is-billable-execution';
 export {
 	CredentialsFinderService,
 	CREDENTIAL_USABILITY_SCOPES,
@@ -14,6 +15,10 @@ export {
 	type RoleDeletionChecker,
 } from './services/role-deletion-check-proxy.service';
 export { RoleService } from './services/role.service';
+export {
+	WorkflowSharingService,
+	type ShareWorkflowOptions,
+} from './services/workflow-sharing.service';
 export { FolderFinderService } from './services/folder-finder.service';
 export { UrlService } from './services/url.service';
 export {

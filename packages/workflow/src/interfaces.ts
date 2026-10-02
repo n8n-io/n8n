@@ -3802,7 +3802,7 @@ export interface IWorkflowExecutionDataProcess {
 	 * which answer the caller waits for. Without this field, nobody waits.
 	 */
 	engineV2Response?: {
-		responseMode: 'lastNode' | 'responseNode';
+		responseMode: 'lastNode' | 'responseNode' | 'streaming';
 	};
 	startedAt?: Date;
 

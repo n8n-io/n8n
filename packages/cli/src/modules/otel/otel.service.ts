@@ -36,11 +36,13 @@ const stripEmptyResolutionNote = (message: string) =>
 	message.replace(/\s*Resolution note:\s*$/, '');
 
 // Deprecated in `@opentelemetry/api` 1.x, but the only public source of a no-op tracer provider.
+// oxlint-disable-next-line typescript/no-deprecated
 const noopTracerProvider = new ProxyTracerProvider();
 
 function registeredGlobalTracerProvider(): TracerProvider | undefined {
 	const globalProvider = trace.getTracerProvider();
 	const delegate =
+		// oxlint-disable-next-line typescript/no-deprecated
 		globalProvider instanceof ProxyTracerProvider ? globalProvider.getDelegate() : globalProvider;
 	return delegate === noopTracerProvider.getDelegate() ? undefined : delegate;
 }

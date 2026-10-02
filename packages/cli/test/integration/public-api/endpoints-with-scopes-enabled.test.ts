@@ -1709,7 +1709,7 @@ describe('Public API endpoints with API key scopes', () => {
 					const ownerWorkflow = await createWorkflow({}, owner);
 
 					const jwtService = Container.get(JwtService);
-					const token = jwtService.sign({
+					const token = jwtService.sign('tokenExchange', {
 						iss: TOKEN_EXCHANGE_ISSUER,
 						sub: member.id,
 						iat: Math.floor(Date.now() / 1000),

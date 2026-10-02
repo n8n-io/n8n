@@ -165,11 +165,11 @@ describe('spawn', () => {
 	it('debits the parent thread as the root budget session and forwards the root cap', async () => {
 		const { backgroundRunner, runner, context } = setup();
 
-		await backgroundRunner.spawn(request, { ...context, rootSessionCapUsd: 0 });
+		await backgroundRunner.spawn(request, { ...context, rootSessionCapUsd: 2 });
 		await flushDetachedRun();
 		expect(runner.run.mock.calls[0][1]).toMatchObject({
 			rootSessionId: 'thread-1',
-			rootSessionCapUsd: 0,
+			rootSessionCapUsd: 2,
 			budgetForwarded: true,
 		});
 

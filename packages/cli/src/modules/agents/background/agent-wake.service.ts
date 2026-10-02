@@ -306,7 +306,9 @@ export class AgentWakeService {
 				message: formatWakeMessage(jobs),
 				backgroundJobSignal: {
 					tasks: jobs.flatMap(({ id, title, kind, status }) =>
-						status === 'running' || status === 'suspended' ? [] : [{ id, title, kind, status }],
+						status === 'running' || status === 'suspended' || status === 'paused'
+							? []
+							: [{ id, title, kind, status }],
 					),
 				},
 				memory: { threadId, resourceId },

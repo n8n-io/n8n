@@ -440,6 +440,7 @@ export class AgentChatController {
 				previewChat: true,
 				errorMode: 'forward',
 				onChunk,
+				onBudgetNotice: () => send({ type: 'budget-notice', code: 'budget.alert' }),
 				onExecutionStarted,
 				abortSignal,
 			});

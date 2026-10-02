@@ -1,4 +1,5 @@
 import { Service } from '@n8n/di';
+import { isRecord } from '@n8n/utils/is-record';
 import type {
 	INode,
 	IRun,
@@ -47,6 +48,7 @@ const SUPPORTED_RESPONSE_MODES = new Set<WebhookResponseMode>([
 	'onReceived',
 	'lastNode',
 	'responseNode',
+	'streaming',
 ]);
 
 /** What the request says about a run, before the webhook node has produced anything. */
@@ -128,6 +130,22 @@ export class EngineV2Webhooks {
 				`Engine v2 does not support the '${responseMode}' response mode yet. Respond immediately instead.`,
 			);
 		}
+
+		// With the raw body, a streaming Webhook node outputs a file after it sent
+		// the stream headers. `assertPayloadSupported` then cannot answer with a
+		// 400, so refuse the configuration here.
+		if (responseMode === 'streaming' && this.keepsRawBody(workflowStartNode)) {
+			throw new UserError(
+				`Engine v2 cannot stream a response for the "${workflowStartNode.name}" trigger with the Raw Body option yet.`,
+			);
+		}
+	}
+
+	private keepsRawBody(node: INode): boolean {
+		const options: unknown = node.parameters.options;
+		if (!isRecord(options)) return false;
+		// An expression can turn the option on, so only a missing or `false` value is safe.
+		return options.rawBody !== undefined && options.rawBody !== false;
 	}
 
 	/** Converts the data plane's answer to the shape the v1 response path reads. */

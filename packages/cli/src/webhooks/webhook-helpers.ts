@@ -1232,7 +1232,8 @@ export async function executeWebhook(
 				{ executionId },
 			);
 			// TODO: Add check for streaming nodes here
-			runData.httpResponse = res;
+			// On engine v2, the response registry writes the stream instead.
+			if (!routesToEngineV2) runData.httpResponse = res;
 			runData.streamingEnabled = true;
 			// No `responder.respondWith()` here, unlike the formPage and hostedChat
 			// branches: streaming requires the trigger to have taken over the
@@ -1246,14 +1247,19 @@ export async function executeWebhook(
 		if (engineV2ExecutionId !== undefined) {
 			// Before the run, because a short workflow answers before `startExecution`
 			// returns and nothing replays a missed response.
-			if (responseMode === 'lastNode' || responseMode === 'responseNode') {
+			if (
+				responseMode === 'lastNode' ||
+				responseMode === 'responseNode' ||
+				responseMode === 'streaming'
+			) {
 				// Loaded here, because only an engine v2 run needs the module code.
 				const { EngineV2WebhookResponseRegistry } = await import(
 					'@/modules/engine-v2/webhook-response/webhook-response-registry.service.js'
 				);
+				// The registry writes to `res` only when the expectation is `stream`.
 				pendingEngineV2Response = await Container.get(
 					EngineV2WebhookResponseRegistry,
-				).waitForResponse(engineV2ExecutionId, toResponseExpectation(responseMode));
+				).waitForResponse(engineV2ExecutionId, toResponseExpectation(responseMode), res);
 				runData.engineV2Response = { responseMode };
 			}
 			// The files the node stored are under this id, so the run must use it.
@@ -1300,6 +1306,7 @@ export async function executeWebhook(
 		}
 
 		if (shouldDeferOnReceivedResponse) {
+			// oxlint-disable-next-line typescript/no-deprecated
 			additionalKeys.$executionId = executionId;
 			additionalKeys.$execution = {
 				id: executionId,
@@ -1408,7 +1415,8 @@ export async function executeWebhook(
 				...(isUndeliverable ? { error: outcome.error } : {}),
 			});
 			// The webhook node can answer before the execution starts. Do not send a
-			// second response when the execution response later settles.
+			// second response when the execution response later settles. A streaming
+			// request is marked as answered, and the registry ends its stream.
 			if (!responder.hasResponded) {
 				responder.respondWith({
 					data: { message: errorResponse.responseMessage },
@@ -1551,6 +1559,11 @@ export async function executeWebhook(
 	} catch (e: unknown) {
 		// Nothing will ever answer this one, so stop waiting for it.
 		pendingEngineV2Response?.release();
+		// The trigger already sent the stream headers, so no error response can
+		// follow. End the stream, or the caller waits for chunks that never come.
+		if (routesToEngineV2 && responseMode === 'streaming' && res.headersSent && !res.writableEnded) {
+			res.end();
+		}
 
 		const error = ensureError(e);
 		let responseError: Error;
