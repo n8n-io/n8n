@@ -75,12 +75,17 @@ export async function getSupabaseProjects(this: ILoadOptionsFunctions) {
 
 const projectSecretKeyCache = new Map<string, Promise<string>>();
 
+function getOAuthCredentialId(context: IExecuteFunctions | ILoadOptionsFunctions) {
+	const credentialId = context.getNode().credentials?.supabaseOAuth2Api?.id;
+	return typeof credentialId === 'string' ? credentialId : undefined;
+}
+
 function getProjectSecretKeyCacheKey(
 	context: IExecuteFunctions | ILoadOptionsFunctions,
 	projectRef: string,
 ) {
-	const credentialId = context.getNode().credentials?.supabaseOAuth2Api?.id;
-	return typeof credentialId === 'string' ? `${credentialId}:${projectRef}` : undefined;
+	const credentialId = getOAuthCredentialId(context);
+	return credentialId ? `${credentialId}:${projectRef}` : undefined;
 }
 
 async function resolveProjectSecretKey(
@@ -280,7 +285,7 @@ export async function getApiDefinition(
 	const header = getSchemaHeader(this, 'GET', 'loadOptions');
 	let credentialIdentity: unknown;
 	if (credentialType === 'supabaseOAuth2Api') {
-		credentialIdentity = getProjectRef(this);
+		credentialIdentity = [getOAuthCredentialId(this), getProjectRef(this)];
 	} else {
 		const { host, serviceRole } = await this.getCredentials<SupabaseCredentials>(credentialType);
 		credentialIdentity = [host, serviceRole];

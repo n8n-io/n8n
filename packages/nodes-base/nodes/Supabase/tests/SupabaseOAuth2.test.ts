@@ -1,6 +1,6 @@
 import type { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-workflow';
 
-import { supabaseApiRequest } from '../GenericFunctions';
+import { getApiDefinition, supabaseApiRequest } from '../GenericFunctions';
 import { Supabase } from '../Supabase.node';
 
 const managedKey = (apiKey: string) => ({
@@ -164,6 +164,31 @@ describe('Supabase OAuth2', () => {
 		expect(otherCredential.dataRequest).toHaveBeenCalledWith(
 			expect.objectContaining({ headers: expect.objectContaining({ apikey: 'key-c' }) }),
 		);
+	});
+
+	it('should keep schema requests separate by OAuth credential', async () => {
+		const first = createOAuthContext({
+			credentialId: 'schema-credential-a',
+			projectRef: 'sharedproject',
+		});
+		const second = createOAuthContext({
+			credentialId: 'schema-credential-b',
+			projectRef: 'sharedproject',
+		});
+		first.managementRequest.mockResolvedValue([managedKey('key-a')]);
+		second.managementRequest.mockResolvedValue([managedKey('key-b')]);
+		first.dataRequest.mockResolvedValue({ definitions: { first: {} } });
+		second.dataRequest.mockResolvedValue({ definitions: { second: {} } });
+
+		const [firstDefinition, secondDefinition] = await Promise.all([
+			getApiDefinition.call(first.context as unknown as ILoadOptionsFunctions),
+			getApiDefinition.call(second.context as unknown as ILoadOptionsFunctions),
+		]);
+
+		expect(firstDefinition).toEqual({ definitions: { first: {} } });
+		expect(secondDefinition).toEqual({ definitions: { second: {} } });
+		expect(first.dataRequest).toHaveBeenCalledTimes(1);
+		expect(second.dataRequest).toHaveBeenCalledTimes(1);
 	});
 
 	it('should refresh the managed key and retry once after a 401 response', async () => {
