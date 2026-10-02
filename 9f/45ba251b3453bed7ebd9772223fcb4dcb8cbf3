@@ -1,0 +1,16 @@
+packages/cli/src/executions/__tests__/execution-crash.service.test.ts
+  h_b49cecddc99496 214-216,224-226,232-240
+packages/cli/src/executions/execution-crash.service.ts
+  h_b49cecddc99496 65-67
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "9f45ba251b3453bed7ebd9772223fcb4dcb8cbf3",
+  "prompts": {},
+  "humans": {
+    "h_b49cecddc99496": {
+      "author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}
