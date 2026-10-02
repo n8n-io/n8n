@@ -176,6 +176,7 @@ export class ScalingService {
 		this.assertQueue();
 
 		void this.defaultQueue.process(JOB_TYPE_NAME, concurrency, async (job: Job) => {
+			// Marked before any check, so the shutdown sweep never hands back a job already handled.
 			this.handlerSeen.add(String(job.id));
 
 			if (this.stopping) {
@@ -279,7 +280,12 @@ export class ScalingService {
 			this.globalConfig.generic.gracefulShutdownTimeout * Time.seconds.toMilliseconds;
 		const getRemainingWindowMs = () => Math.max(0, shutdownWindowMs - (Date.now() - start));
 
+<<<<<<< HEAD
 		await this.returnJobsFetchedBeforePause(getRemainingWindowMs());
+=======
+		// Before the drain, so the lock of a fetched job cannot expire and let the stall check fail it.
+		await this.returnJobsFetchedBeforePause(getRemainingWindowMs());
+>>>>>>> bf1e6e9ffeb (chore(core): Explain the shutdown sweep of jobs fetched before the pause)
 
 		// The budget bounds only the in-process wait. The queued-job wait stays
 		// unbounded, so a long queued execution still runs to completion.
@@ -391,6 +397,7 @@ export class ScalingService {
 		const timedOut = new Promise<void>((resolve) => {
 			timeout = setTimeout(
 				resolve,
+				// Leave the other half of what is left for the step that runs after this one.
 				Math.min(CURRENT_JOBS_SETTLE_TIMEOUT_MS, remainingWindowMs / 2),
 			);
 			timeout.unref();
@@ -569,8 +576,10 @@ export class ScalingService {
 	 * Register listeners on a `worker` process for Bull queue events.
 	 */
 	private registerWorkerListeners(queue: JobQueue) {
+		// Cleared only after Bull moved the job out of active, so a finished job is never swept.
 		queue.on('completed', (job: Job) => this.handlerSeen.delete(String(job.id)));
 		queue.on('failed', (job: Job | null) => {
+			// Bull's stall check emits failed for a job it has already removed, so job can be null.
 			if (job === null) return;
 			this.handlerSeen.delete(String(job.id));
 		});
