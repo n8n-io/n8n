@@ -2821,11 +2821,7 @@ export class InstanceAiAdapterService {
 					}
 					// A push from an earlier listener on this workflow can arrive late.
 					if (belongsToThisArm(execution)) {
-						return {
-							state: 'received',
-							executionId,
-							result: await awaitExecutionResult(executionId),
-						};
+						return { state: 'received', result: await awaitExecutionResult(executionId) };
 					}
 				}
 				// No push event named the execution: take the newest one of this arm. The workflow
@@ -2839,11 +2835,7 @@ export class InstanceAiAdapterService {
 					})
 				).find(belongsToThisArm);
 				if (received) {
-					return {
-						state: 'received',
-						executionId: received.id,
-						result: await awaitExecutionResult(received.id),
-					};
+					return { state: 'received', result: await awaitExecutionResult(received.id) };
 				}
 				// Past the deadline the registration is gone or about to go: the timeout push can
 				// reach the client before the deregistration completes.
