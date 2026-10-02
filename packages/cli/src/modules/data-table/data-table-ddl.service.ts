@@ -1,122 +1,38 @@
-import { CreateTable, DslColumn, withTransaction } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { DataSource, DataSourceOptions, EntityManager } from '@n8n/typeorm';
-import { UnexpectedError } from 'n8n-workflow';
 
-import { DataTableColumn } from './data-table-column.entity';
-import {
-	addColumnQuery,
-	deleteColumnQuery,
-	isValidDataTableId,
-	renameColumnQuery,
-	renameTableQuery,
-	toDslColumns,
-	toTableName,
-} from './utils/sql-utils';
+import { DataTableDDLRepository } from './data-table-ddl.repository';
 
-/**
- * Manages database schema operations for data tables (DDL).
- * Handles table creation, deletion, and structural modifications (columns).
- */
 @Service()
 export class DataTableDDLService {
-	constructor(private dataSource: DataSource) {}
+	constructor(private readonly ddlRepository: DataTableDDLRepository) {}
 
 	async createTableWithColumns(
-		dataTableId: string,
-		columns: DataTableColumn[],
-		trx?: EntityManager,
+		...args: Parameters<DataTableDDLRepository['createTableWithColumns']>
 	) {
-		// oxlint-disable-next-line typescript/no-deprecated
-		await withTransaction(this.dataSource.manager, trx, async (em) => {
-			if (!em.queryRunner) {
-				throw new UnexpectedError('QueryRunner is not available');
-			}
-
-			const dslColumns = [new DslColumn('id').int.autoGenerate2.primary, ...toDslColumns(columns)];
-			const createTable = new CreateTable(toTableName(dataTableId), '', em.queryRunner).withColumns(
-				...dslColumns,
-			).withTimestamps;
-
-			await createTable.execute(em.queryRunner);
-		});
+		await this.ddlRepository.createTableWithColumns(...args);
 	}
 
-	async dropTable(dataTableId: string, trx?: EntityManager) {
-		// oxlint-disable-next-line typescript/no-deprecated
-		await withTransaction(this.dataSource.manager, trx, async (em) => {
-			if (!em.queryRunner) {
-				throw new UnexpectedError('QueryRunner is not available');
-			}
-			await em.queryRunner.dropTable(toTableName(dataTableId), true);
-		});
+	async dropTable(...args: Parameters<DataTableDDLRepository['dropTable']>) {
+		await this.ddlRepository.dropTable(...args);
 	}
 
-	async renameTable(
-		oldDataTableId: string,
-		newDataTableId: string,
-		dbType: DataSourceOptions['type'],
-		trx?: EntityManager,
-	) {
-		// These ids come from git files and the local DB rather than validated
-		// API requests, so guard before deriving SQL identifiers from them
-		if (!isValidDataTableId(oldDataTableId) || !isValidDataTableId(newDataTableId)) {
-			throw new UnexpectedError('Invalid data table ID');
-		}
-		// oxlint-disable-next-line typescript/no-deprecated
-		await withTransaction(this.dataSource.manager, trx, async (em) => {
-			await em.query(
-				renameTableQuery(toTableName(oldDataTableId), toTableName(newDataTableId), dbType),
-			);
-		});
+	async renameTable(...args: Parameters<DataTableDDLRepository['renameTable']>) {
+		await this.ddlRepository.renameTable(...args);
 	}
 
-	async tableExists(dataTableId: string, trx?: EntityManager): Promise<boolean> {
-		// oxlint-disable-next-line typescript/no-deprecated
-		return await withTransaction(this.dataSource.manager, trx, async (em) => {
-			if (!em.queryRunner) {
-				throw new UnexpectedError('QueryRunner is not available');
-			}
-			return await em.queryRunner.hasTable(toTableName(dataTableId));
-		});
+	async tableExists(...args: Parameters<DataTableDDLRepository['tableExists']>): Promise<boolean> {
+		return await this.ddlRepository.tableExists(...args);
 	}
 
-	async addColumn(
-		dataTableId: string,
-		column: DataTableColumn,
-		dbType: DataSourceOptions['type'],
-		trx?: EntityManager,
-	) {
-		// oxlint-disable-next-line typescript/no-deprecated
-		await withTransaction(this.dataSource.manager, trx, async (em) => {
-			await em.query(addColumnQuery(toTableName(dataTableId), column, dbType));
-		});
+	async addColumn(...args: Parameters<DataTableDDLRepository['addColumn']>) {
+		await this.ddlRepository.addColumn(...args);
 	}
 
-	async dropColumnFromTable(
-		dataTableId: string,
-		columnName: string,
-		dbType: DataSourceOptions['type'],
-		trx?: EntityManager,
-	) {
-		// oxlint-disable-next-line typescript/no-deprecated
-		await withTransaction(this.dataSource.manager, trx, async (em) => {
-			await em.query(deleteColumnQuery(toTableName(dataTableId), columnName, dbType));
-		});
+	async dropColumnFromTable(...args: Parameters<DataTableDDLRepository['dropColumnFromTable']>) {
+		await this.ddlRepository.dropColumnFromTable(...args);
 	}
 
-	async renameColumn(
-		dataTableId: string,
-		oldColumnName: string,
-		newColumnName: string,
-		dbType: DataSourceOptions['type'],
-		trx?: EntityManager,
-	) {
-		// oxlint-disable-next-line typescript/no-deprecated
-		await withTransaction(this.dataSource.manager, trx, async (em) => {
-			await em.query(
-				renameColumnQuery(toTableName(dataTableId), oldColumnName, newColumnName, dbType),
-			);
-		});
+	async renameColumn(...args: Parameters<DataTableDDLRepository['renameColumn']>) {
+		await this.ddlRepository.renameColumn(...args);
 	}
 }

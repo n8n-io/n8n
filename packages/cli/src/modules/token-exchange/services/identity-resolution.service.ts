@@ -389,8 +389,7 @@ export class IdentityResolutionService {
 		}
 
 		if (Object.keys(profileUpdates).length > 0) {
-			// oxlint-disable-next-line typescript/no-deprecated
-			await this.userRepository.update(user.id, profileUpdates);
+			await this.userRepository.updateProfileNames(user.id, profileUpdates);
 			needsReload = true;
 		}
 

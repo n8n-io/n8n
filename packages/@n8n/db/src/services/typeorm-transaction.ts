@@ -1,6 +1,7 @@
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import { DataSource, EntityManager } from '@n8n/typeorm';
+import { UnexpectedError } from 'n8n-workflow';
 
 import type { IsolationLevel, OperationContext, RunOptions } from './transaction';
 import { Transaction, TransactionRunner } from './transaction';
@@ -21,6 +22,26 @@ export class TypeOrmTransaction extends Transaction {
 	getEntityManager(): EntityManager {
 		return this.#manager;
 	}
+}
+
+/** Adapt a caller that still passes a TypeORM manager to the transaction port. */
+export function contextFromEntityManager(manager?: EntityManager): OperationContext {
+	return manager ? { trx: new TypeOrmTransaction(manager) } : {};
+}
+
+/** Run a legacy repository operation with the manager owned by the active transaction. */
+export async function runWithEntityManager<T>(
+	runner: TransactionRunner,
+	manager: EntityManager | undefined,
+	fn: (manager: EntityManager) => Promise<T>,
+): Promise<T> {
+	return await runner.run(contextFromEntityManager(manager), async (ctx) => {
+		const trx = ctx.trx;
+		if (!(trx instanceof TypeOrmTransaction)) {
+			throw new UnexpectedError('Transaction was not created by the TypeORM runner');
+		}
+		return await fn(trx.getEntityManager());
+	});
 }
 
 /** TypeORM implementation of the {@link TransactionRunner} port. */

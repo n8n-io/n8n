@@ -92,6 +92,30 @@ export class UserRepository extends Repository<User> {
 		return await super.update(...args);
 	}
 
+	async disableMfa(userId: string): Promise<void> {
+		const user = await this.findOneByOrFail({ id: userId });
+		user.mfaEnabled = false;
+		user.mfaSecret = null;
+		user.mfaRecoveryCodes = [];
+		await this.save(user);
+	}
+
+	async updateProfileNames(
+		userId: string,
+		names: { firstName?: string; lastName?: string },
+	): Promise<void> {
+		const user = await this.findOneByOrFail({ id: userId });
+		Object.assign(user, names);
+		await this.save(user);
+	}
+
+	async setMfaCredentials(userId: string, secret: string, recoveryCodes: string[]): Promise<void> {
+		const user = await this.findOneByOrFail({ id: userId });
+		user.mfaSecret = secret;
+		user.mfaRecoveryCodes = recoveryCodes;
+		await this.save(user);
+	}
+
 	/**
 	 * Change a user's email only if it still equals `oldEmail`. Returns `'stale'`
 	 * when the email changed concurrently and `'email-taken'` when another user

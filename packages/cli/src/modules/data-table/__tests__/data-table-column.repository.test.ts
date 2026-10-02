@@ -1,6 +1,7 @@
 import { testModules } from '@n8n/backend-test-utils';
+import { contextFromEntityManager, type TransactionRunner } from '@n8n/db';
 import type { DataSource, EntityManager } from '@n8n/typeorm';
-import type { Mock, Mocked } from 'vitest';
+import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import { DataTableColumn } from '../data-table-column.entity';
@@ -15,6 +16,7 @@ describe('DataTableColumnRepository', () => {
 	let mockDataSource: DataSource;
 	let mockDDLService: Mocked<DataTableDDLService>;
 	let mockEntityManager: Mocked<EntityManager>;
+	const transactionRunner = mock<TransactionRunner>();
 
 	beforeAll(async () => {
 		await testModules.loadModules(['data-table']);
@@ -28,18 +30,14 @@ describe('DataTableColumnRepository', () => {
 			} as any,
 		});
 
-		// Mock the transaction method to execute the callback immediately
-		(mockEntityManager.transaction as Mock) = vi.fn(
-			async (callback: (em: EntityManager) => Promise<any>) => {
-				return await callback(mockEntityManager);
-			},
-		);
-
 		mockDataSource = mock<DataSource>({
 			manager: mockEntityManager,
 		});
 
-		repository = new DataTableColumnRepository(mockDataSource, mockDDLService);
+		transactionRunner.run.mockImplementation(
+			async (ctx, fn) => await fn(ctx.trx ? ctx : contextFromEntityManager(mockEntityManager)),
+		);
+		repository = new DataTableColumnRepository(mockDataSource, mockDDLService, transactionRunner);
 	});
 
 	describe('renameColumn', () => {

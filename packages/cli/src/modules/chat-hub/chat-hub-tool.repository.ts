@@ -1,14 +1,40 @@
+import { BaseRepository, TransactionRunner, contextFromEntityManager } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { DataSource, EntityManager, Repository } from '@n8n/typeorm';
+import { DataSource, EntityManager } from '@n8n/typeorm';
+
+import { NotFoundError } from '@n8n/errors';
 
 import { ChatHubAgent } from './chat-hub-agent.entity';
 import { ChatHubSession } from './chat-hub-session.entity';
 import { ChatHubTool, type IChatHubTool } from './chat-hub-tool.entity';
 
 @Service()
-export class ChatHubToolRepository extends Repository<ChatHubTool> {
-	constructor(dataSource: DataSource) {
-		super(ChatHubTool, dataSource.manager);
+export class ChatHubToolRepository extends BaseRepository<ChatHubTool> {
+	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
+		super(ChatHubTool, dataSource.manager, transactionRunner);
+	}
+
+	async updateOwnedTool(
+		id: string,
+		userId: string,
+		updates: Partial<IChatHubTool>,
+		trx?: EntityManager,
+	) {
+		return await this.runInTransaction(contextFromEntityManager(trx), async (em) => {
+			if (!(await this.getOneById(id, userId, em))) {
+				throw new NotFoundError('Chat hub tool not found');
+			}
+			return await this.updateTool(id, updates, em);
+		});
+	}
+
+	async deleteOwnedTool(id: string, userId: string, trx?: EntityManager): Promise<void> {
+		await this.runInTransaction(contextFromEntityManager(trx), async (em) => {
+			if (!(await this.getOneById(id, userId, em))) {
+				throw new NotFoundError('Chat hub tool not found');
+			}
+			await this.deleteTool(id, em);
+		});
 	}
 
 	async createTool(tool: Partial<IChatHubTool> & Pick<IChatHubTool, 'id'>, trx?: EntityManager) {
