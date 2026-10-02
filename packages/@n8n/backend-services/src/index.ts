@@ -1,4 +1,5 @@
 export { EventService, type EventMap } from './events/event.service';
+export { isBillableExecution } from './executions/is-billable-execution';
 export {
 	CredentialsFinderService,
 	CREDENTIAL_USABILITY_SCOPES,

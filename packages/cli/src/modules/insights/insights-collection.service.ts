@@ -1,4 +1,5 @@
 import { Logger } from '@n8n/backend-common';
+import { isBillableExecution } from '@n8n/backend-services';
 import { SharedWorkflowRepository } from '@n8n/db';
 import { OnLifecycleEvent, type WorkflowExecuteAfterContext } from '@n8n/decorators';
 import { Service } from '@n8n/di';
@@ -8,7 +9,6 @@ import { IRun, type ExecutionStatus, type WorkflowExecuteMode } from 'n8n-workfl
 
 import { InsightsMetadata } from '@/modules/insights/database/entities/insights-metadata';
 import { InsightsRaw } from '@/modules/insights/database/entities/insights-raw';
-import { isBillableExecution } from '@/utils/is-billable-execution';
 
 import { InsightsMetadataRepository } from './database/repositories/insights-metadata.repository';
 import { InsightsRawRepository } from './database/repositories/insights-raw.repository';
