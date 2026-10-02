@@ -48,6 +48,16 @@ function timeoutAfter(ms: number): { timedOut: Promise<typeof TIMED_OUT>; cancel
 	return { timedOut, cancel: () => clearTimeout(timer) };
 }
 
+/** A cancellable promise that rejects with the reason of `signal` when it aborts. */
+function rejectOnAbort(signal: AbortSignal): { aborted: Promise<never>; cancel: () => void } {
+	let onAbort = () => {};
+	const aborted = new Promise<never>((_resolve, reject) => {
+		onAbort = () => reject(signal.reason);
+	});
+	signal.addEventListener('abort', onAbort, { once: true });
+	return { aborted, cancel: () => signal.removeEventListener('abort', onAbort) };
+}
+
 /**
  * Runs a due poll occurrence's `poll()` once and dispatches only when it returns new data.
  * Carries no `deduplicationKey`: under the at-least-once scheduler contract an occurrence
@@ -153,11 +163,12 @@ export class PollTriggerTaskHandler implements TaskHandler {
 				// through the staged commit or __emit below), so an abandoned tick leaves
 				// the poll window untouched for the next occurrence to cover.
 				const deadline = timeoutAfter(this.pollTimeoutMs);
+				const leaseLoss = rejectOnAbort(leaseSignal);
 				const poll = this.triggersAndPollers.runPollFunction(workflow, node, pollFunctions);
 
 				let pollResponse: Awaited<typeof poll>;
 				try {
-					const outcome = await Promise.race([poll, deadline.timedOut]);
+					const outcome = await Promise.race([poll, deadline.timedOut, leaseLoss.aborted]);
 					leaseSignal.throwIfAborted();
 					if (outcome === TIMED_OUT) {
 						this.eventService.emit('poll-tick-timed-out', { nodeType: node.type });
@@ -181,6 +192,7 @@ export class PollTriggerTaskHandler implements TaskHandler {
 					pollResponse = outcome;
 				} finally {
 					deadline.cancel();
+					leaseLoss.cancel();
 				}
 				polled = true;
 
