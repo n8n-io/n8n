@@ -175,6 +175,16 @@ one exception: an instance `delegate` is satisfied only by an explicit project `
 never by a project's bare default. `policy-evaluator.ts` owns that law and is pure, so it is
 the place to read it.
 
+A `name` rule for a node also covers the `Tool` and `HitlTool` variants the registry generates
+from it at startup: a rule for `n8n-nodes-base.gmail` denies `n8n-nodes-base.gmailTool` and
+`n8n-nodes-base.gmailHitlTool` too. A real node whose name ends in `Tool` is not a variant of
+anything, and only its own name matches it. When one rule names the base and another names the
+variant, the first match in rule order decides, as it does when a `name` and a `package` rule
+overlap; a variant rule placed after its base rule can never match, and the write-time shadow
+lint warns about it. The verdict names the variant the user placed and the rule that decided.
+Grandfathering compares literal type names, so adding `gmailTool` to a workflow that already
+stores `gmail` is a new type and is judged.
+
 ### Reading it on the execution path
 
 `workflowStart` runs for every execution and every sub-execution, under a 250 ms deadline it
@@ -224,8 +234,6 @@ through a sealed repository method, and the lint rule that guards that has no al
 
 ## Known limits
 
-- **Sibling tool types are separate names.** A rule that denies `n8n-nodes-base.gmail` does not
-  deny `n8n-nodes-base.gmailTool`. The registry holds them as two types.
 - **A workflow carried inside a node's parameters is not read.** The check reads
   `workflow.nodes`. Node types inside an inline sub-workflow definition are invisible to it.
   The credential lock still catches such a node once it asks for a credential.

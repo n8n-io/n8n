@@ -12,7 +12,7 @@ import { PubSubRegistry } from '@/scaling/pubsub/pubsub.registry';
 import { Subscriber } from '@/scaling/pubsub/subscriber.service';
 import { SystemTaskRunner } from '@/scheduling/system-tasks/system-task-runner';
 import { JwtService } from '@/services/jwt.service';
-import { RedisClientService } from '@/services/redis-client.service';
+import { RedisClientService } from '@n8n/backend-services';
 import { WebhookServer } from '@/webhooks/webhook-server';
 
 import { BaseCommand } from '../base-command';
@@ -80,22 +80,20 @@ describe('Webhook', () => {
 		});
 
 		it('should call markAsReady after server starts', async () => {
-			// run() blocks forever with `await new Promise(() => {})`,
-			// so we don't await it — just let microtasks settle
+			// run() blocks forever with `await new Promise(() => {})`, so we don't
+			// await it - we poll until the step under test has happened.
 			void new Webhook().run();
 
-			await new Promise((resolve) => setTimeout(resolve, 0));
+			await vi.waitFor(() => expect(mockWebhookServer.markAsReady).toHaveBeenCalled());
 
 			expect(mockWebhookServer.start).toHaveBeenCalled();
-			expect(mockWebhookServer.markAsReady).toHaveBeenCalled();
 		});
 
 		it('should start the system tasks once the server is up', async () => {
 			void new Webhook().run();
 
-			await new Promise((resolve) => setTimeout(resolve, 0));
+			await vi.waitFor(() => expect(systemTaskRunner.init).toHaveBeenCalledTimes(1));
 
-			expect(systemTaskRunner.init).toHaveBeenCalledTimes(1);
 			expect(mockWebhookServer.start.mock.invocationCallOrder[0]).toBeLessThan(
 				systemTaskRunner.init.mock.invocationCallOrder[0],
 			);

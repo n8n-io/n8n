@@ -11,7 +11,11 @@ import { isTriggerNodeType } from 'n8n-workflow';
 import { z } from 'zod';
 
 import type { OrchestrationContext } from '../../types';
-import { analyzeVerificationResult, buildNodePreviews } from './verification/analyze-result';
+import {
+	analyzeVerificationResult,
+	buildEmptyOutputNote,
+	buildNodePreviews,
+} from './verification/analyze-result';
 import { deriveVerificationClaim } from './verification/claim';
 import {
 	handleMissingSimulationPlan,
@@ -191,6 +195,8 @@ const verifyBuiltWorkflowOutputSchema = z.object({
 	nodeErrors: z.array(executionNodeErrorSchema).optional(),
 	nodesNotReached: z.array(z.string()).optional(),
 	coverageNote: z.string().optional(),
+	/** Real nodes that returned only `{}` items. */
+	emptyOutputNote: z.string().optional(),
 	/**
 	 * Present only while the published version is older than the verified
 	 * draft. The claim carries the same fact as `liveState`; this is the
@@ -474,6 +480,12 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 				nodeErrors: analysis.nodeErrors.length > 0 ? analysis.nodeErrors : undefined,
 				nodesNotReached: analysis.nodesNotReached.length > 0 ? analysis.nodesNotReached : undefined,
 				coverageNote: analysis.coverageNote,
+				emptyOutputNote: buildEmptyOutputNote(
+					result.data,
+					workflow?.connections,
+					simulatedNames,
+					result.binaryOutputNodeNames,
+				),
 				liveStateNote: formatLiveStateNote(claim),
 				...(resolvedInput.includeData ? { data: result.data } : {}),
 				error: analysis.errorMessage,

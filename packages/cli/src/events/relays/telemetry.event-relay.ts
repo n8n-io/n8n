@@ -1,4 +1,6 @@
+import { EMPTY_CANVAS_GROUPS_FLAG } from '@n8n/api-types';
 import { LicenseState } from '@n8n/backend-common';
+import { EventService } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import {
 	CredentialsRepository,
@@ -16,6 +18,7 @@ import { snakeCase } from 'change-case';
 import { BinaryDataConfig, InstanceSettings } from 'n8n-core';
 import type {
 	ExecutionStatus,
+	FeatureFlags,
 	INode,
 	INodesGraphResult,
 	ITelemetryTrackProperties,
@@ -23,6 +26,7 @@ import type {
 	JsonValue,
 } from 'n8n-workflow';
 import {
+	getEmptyGroupAnchor,
 	hasCredentialChanges,
 	hasNonPositionalChanges,
 	TelemetryHelpers,
@@ -34,23 +38,27 @@ import semver from 'semver';
 import config from '@/config';
 import { N8N_VERSION } from '@/constants';
 import { DynamicCredentialsProxy } from '@/credentials/dynamic-credentials-proxy';
-import { EventService } from '@/events/event.service';
 import type { RelayEventMap } from '@/events/maps/relay.event-map';
 import { determineFinalExecutionStatus } from '@/execution-lifecycle/shared/shared-hook-functions';
 import type { IExecutionTrackProperties } from '@/interfaces';
 import { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { CREDENTIAL_TYPES_KIND } from '@/modules/type-availability-policies/constants';
-import { packageResolverFor } from '@/modules/type-availability-policies/package-resolver';
+import {
+	packageResolverFor,
+	policedTypeFor,
+} from '@/modules/type-availability-policies/package-resolver';
 import {
 	partitionTypesByAction,
 	type PackageResolver,
+	type PolicedType,
 } from '@/modules/type-availability-policies/policy-evaluator';
 import type {
 	PolicyAction,
 	PolicyRule,
 } from '@/modules/type-availability-policies/policy-rule.types';
 import { NodeTypes } from '@/node-types';
+import { PostHogClient } from '@/posthog';
 
 import { EventRelay } from './event-relay';
 import { Telemetry } from '../../telemetry';
@@ -68,6 +76,16 @@ function countNodesWithCustomTelemetryTags(nodes: INode[]): number {
 
 function countNodeCustomTelemetryTags(nodes: INode[]): number {
 	return nodes.reduce((total, node) => total + (node.customTelemetryTags?.tag?.length ?? 0), 0);
+}
+
+// Experiment cleanup: remove with emptyCanvasGroups (121_empty_canvas_groups).
+function countPublishedEmptyGroups(workflow: IWorkflowDb): number {
+	const publishedVersion = workflow.activeVersion;
+	if (!publishedVersion?.nodeGroups || !publishedVersion.nodes) return 0;
+
+	return publishedVersion.nodeGroups.filter(
+		(group) => getEmptyGroupAnchor(group, publishedVersion.nodes) !== undefined,
+	).length;
 }
 
 /**
@@ -122,13 +140,13 @@ const MAX_LISTED_POLICY_TYPES = 100;
 function summarizeTypeAvailability(
 	rules: readonly PolicyRule[],
 	defaultAction: PolicyAction,
-	typeNames: readonly string[],
+	types: readonly PolicedType[],
 	resolvePackage: PackageResolver,
 ) {
-	const partition = partitionTypesByAction(rules, defaultAction, typeNames, resolvePackage);
+	const partition = partitionTypesByAction(rules, defaultAction, types, resolvePackage);
 
 	return {
-		evaluated_type_count: typeNames.length,
+		evaluated_type_count: types.length,
 		blocked_type_count: partition.deny.length,
 		allowed_type_count: partition.allow.length,
 		delegated_type_count: partition.delegate.length,
@@ -184,6 +202,8 @@ export class TelemetryEventRelay extends EventRelay {
 		private readonly dynamicCredentialsProxy: DynamicCredentialsProxy,
 		private readonly dbConnection: DbConnection,
 		private readonly loadNodesAndCredentials: LoadNodesAndCredentials,
+		// Experiment cleanup: remove with emptyCanvasGroups (121_empty_canvas_groups).
+		private readonly postHogClient: PostHogClient,
 	) {
 		super(eventService);
 	}
@@ -563,6 +583,7 @@ export class TelemetryEventRelay extends EventRelay {
 			kind === CREDENTIAL_TYPES_KIND
 				? Object.keys(this.loadNodesAndCredentials.knownCredentials)
 				: Object.keys(this.nodeTypes.getKnownTypes());
+		const types = typeNames.map(policedTypeFor(kind, this.nodeTypes));
 		const resolvePackage = packageResolverFor(kind, this.loadNodesAndCredentials);
 
 		this.telemetry.track(
@@ -576,7 +597,7 @@ export class TelemetryEventRelay extends EventRelay {
 				is_first_write: before === null,
 				...countRuleActions(rulesAfter),
 				...countSelectorKinds(rulesAfter),
-				...summarizeTypeAvailability(rulesAfter, after.defaultAction, typeNames, resolvePackage),
+				...summarizeTypeAvailability(rulesAfter, after.defaultAction, types, resolvePackage),
 				previous_rule_count: rulesBefore?.length ?? null,
 				shadow_warning_count: warningCount,
 				version: after.version,
@@ -1268,14 +1289,28 @@ export class TelemetryEventRelay extends EventRelay {
 	}: RelayEventMap['workflow-activated']) {
 		const { privateCredentialsCount, privateCredentialTypes } =
 			await this.getPrivateCredentialUsage(workflow);
+		// Experiment cleanup: remove with emptyCanvasGroups (121_empty_canvas_groups).
+		const featureFlagUser =
+			'createdAt' in user && user.createdAt instanceof Date
+				? { id: user.id, createdAt: user.createdAt }
+				: undefined;
+		const featureFlags = featureFlagUser
+			? await this.postHogClient.getFeatureFlags(featureFlagUser).catch((): FeatureFlags => ({}))
+			: {};
+		const emptyGroupCount =
+			featureFlags[EMPTY_CANVAS_GROUPS_FLAG] === true
+				? countPublishedEmptyGroups(workflow)
+				: undefined;
 
-		this.telemetry.track('User activated workflow', {
+		this.telemetry.track(TELEMETRY_EVENT.WORKFLOW.USER_ACTIVATED_WORKFLOW, {
 			user_id: user.id,
 			workflow_id: workflowId,
 			public_api: publicApi,
 			source,
 			private_credentials_count: privateCredentialsCount,
 			private_credential_types: privateCredentialTypes,
+			// Experiment cleanup: remove with emptyCanvasGroups (121_empty_canvas_groups).
+			...(emptyGroupCount !== undefined ? { empty_group_count: emptyGroupCount } : {}),
 		});
 	}
 

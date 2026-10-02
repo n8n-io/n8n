@@ -1,0 +1,88 @@
+import { dbType, idStringifier, JsonColumn, WithTimestamps } from '@n8n/db';
+import {
+	Column,
+	Entity,
+	Generated,
+	Index,
+	JoinColumn,
+	ManyToOne,
+	PrimaryColumn,
+	type Relation,
+} from '@n8n/typeorm';
+
+import { AgentExecutionThread } from './agent-execution-thread.entity';
+import { AgentExecution } from './agent-execution.entity';
+import { AgentMessageEntity } from './agent-message.entity';
+import type { AgentQueueDispatch } from '../types/agent-queued-message';
+
+@Entity({ name: 'agent_message_queue' })
+@Index(['threadId', 'position'])
+@Index(['threadId'], { unique: true, where: '"executionId" IS NOT NULL' })
+@Index(['steeringExecutionId', 'steeringOrder'], {
+	unique: true,
+	where: '"steeringExecutionId" IS NOT NULL',
+})
+export class AgentMessageQueue extends WithTimestamps {
+	@Generated()
+	@PrimaryColumn({
+		type: dbType === 'sqlite' ? 'integer' : 'bigint',
+		transformer: idStringifier,
+		comment: 'Acceptance order; IDs are not reused',
+	})
+	id: string;
+
+	@Column({ type: 'int', default: 0, comment: 'Pending turn order within the session' })
+	position: number;
+
+	@ManyToOne(() => AgentExecutionThread, { onDelete: 'CASCADE' })
+	@JoinColumn({ name: 'threadId' })
+	thread: Relation<AgentExecutionThread>;
+
+	@Column({ type: 'varchar', length: 128 })
+	threadId: string;
+
+	@ManyToOne(() => AgentMessageEntity, { nullable: false, onDelete: 'CASCADE' })
+	@JoinColumn({ name: 'messageId', foreignKeyConstraintName: 'FK_agent_message_queue_messageId' })
+	message: Relation<AgentMessageEntity>;
+
+	@Index({ unique: true })
+	@Column({
+		type: 'varchar',
+		length: 36,
+		comment: 'Canonical input created when the queue accepts it',
+	})
+	messageId: string;
+
+	@JsonColumn({
+		comment: 'Dispatch, authorization, and reply context. Input is stored on the message',
+	})
+	payload: AgentQueueDispatch;
+
+	@ManyToOne(() => AgentExecution, { nullable: true, onDelete: 'NO ACTION' })
+	@JoinColumn({ name: 'executionId' })
+	execution: Relation<AgentExecution> | null;
+
+	@Index()
+	@Column({
+		type: 'varchar',
+		length: 36,
+		nullable: true,
+		comment: 'Current execution; NULL means pending',
+	})
+	executionId: string | null;
+
+	@ManyToOne(() => AgentExecution, { nullable: true, onDelete: 'NO ACTION' })
+	@JoinColumn({ name: 'steeringExecutionId' })
+	steeringExecution: Relation<AgentExecution> | null;
+
+	@Column({
+		type: 'varchar',
+		length: 36,
+		nullable: true,
+		comment: 'Execution reserved to consume this input',
+	})
+	steeringExecutionId: string | null;
+
+	@Column({ type: 'int', nullable: true, comment: 'Acceptance order among outstanding steers' })
+	steeringOrder: number | null;
+}

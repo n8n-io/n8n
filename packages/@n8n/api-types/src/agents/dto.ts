@@ -8,7 +8,7 @@ import {
 	MAX_AGENT_CHAT_ATTACHMENT_MIMETYPE_LENGTH,
 	MAX_AGENT_CHAT_ATTACHMENTS_PER_MESSAGE,
 } from './agent-chat-attachments.constants';
-import { AgentApprovalSchema } from './agent-integration.schema';
+import { AgentApprovalSchema, AgentTeamsSettingsSchema } from './agent-integration.schema';
 import { AgentVectorStoreConfigSchema, AgentJsonConfigSchema } from './agent-json-config.schema';
 import { agentSkillSchema, agentSkillShape } from './agent-skill.schema';
 import { agentTaskSchema } from './agent-task.schema';
@@ -40,10 +40,12 @@ export const AGENT_SESSION_ORIGINS = [
 	'sub-agent',
 	'schedule',
 	'workflow',
+	'n8n_chat_production',
 	'slack',
 	'telegram',
 	'linear',
 	'discord',
+	'teams',
 ] as const;
 
 export type AgentSessionStatus = (typeof AGENT_SESSION_STATUSES)[number];
@@ -53,6 +55,7 @@ const agentListFilterSchema = z
 	.object({
 		query: z.string().trim().min(1).max(128).optional(),
 		availableInMCP: z.boolean().optional(),
+		availableInChat: z.boolean().optional(),
 	})
 	.strict();
 
@@ -95,13 +98,15 @@ export class ListAgentSessionsQueryDto extends Z.class({
 	previewOnly: booleanFromString.optional(),
 	status: z.enum(AGENT_SESSION_STATUSES).optional(),
 	origin: z.enum(AGENT_SESSION_ORIGINS).optional(),
+	/** `mine` keeps only the sessions the requesting user owns. */
+	scope: z.enum(['all', 'mine']).optional(),
 	updatedAfter: z.coerce.date().optional(),
 	updatedBefore: z.coerce.date().optional(),
 }) {}
 
 export type AgentSessionQueryFilters = Pick<
 	ListAgentSessionsQueryDto,
-	'status' | 'origin' | 'updatedAfter' | 'updatedBefore' | 'previewOnly'
+	'status' | 'origin' | 'scope' | 'updatedAfter' | 'updatedBefore' | 'previewOnly'
 >;
 
 export class AgentProviderModelsQueryDto extends Z.class({
@@ -225,6 +230,7 @@ const agentChatMessageShape = {
 	// (attachment-only sends) — see the schema-level refinement below.
 	message: z.string(),
 	sessionId: z.string().min(1).optional(),
+	messageId: z.string().uuid().optional(),
 	newSession: z.literal(true).optional(),
 	attachments: z
 		.array(agentChatAttachmentSchema)
@@ -237,6 +243,10 @@ const agentChatMessageSchema = z
 	.refine((value) => value.message.trim().length > 0 || (value.attachments?.length ?? 0) > 0, {
 		message: 'Message text or at least one attachment is required',
 		path: ['message'],
+	})
+	.refine((value) => !value.messageId || !!value.sessionId, {
+		message: 'A session ID is required with a message ID',
+		path: ['sessionId'],
 	});
 
 /**
@@ -258,6 +268,19 @@ export class AgentChatMessageDto extends Z.class(agentChatMessageShape) {
 		return agentChatMessageSchema.parse(data);
 	}
 }
+
+export class AgentChatQueueUpdateDto extends Z.class({
+	message: z.string(),
+}) {}
+
+export class AgentChatQueueSteerDto extends Z.class({
+	executionId: z.string().min(1).max(36),
+}) {}
+
+export class AgentChatQueueReorderDto extends Z.class({
+	targetQueueId: z.string().regex(/^[1-9]\d*$/),
+	expectedQueueIds: z.array(z.string().regex(/^[1-9]\d*$/)).min(2),
+}) {}
 
 export class AgentChatResumeDto extends Z.class({
 	runId: z.string().min(1),
@@ -285,6 +308,16 @@ export class AgentConnectIntegrationDto extends Z.class({
 	replaces: z.object({ credentialId: z.string().min(1) }).optional(),
 	/** Channel actions that need approval before they run. */
 	approval: AgentApprovalSchema.optional(),
+}) {}
+
+/**
+ * The package is downloaded in the setup before the channel is connected, so
+ * the settings it must reflect exist only in the open form. Without them the
+ * first zip would ship the defaults whatever the user chose.
+ */
+export class AgentTeamsPackageDto extends Z.class({
+	credentialId: z.string().min(1).optional(),
+	settings: AgentTeamsSettingsSchema.optional(),
 }) {}
 
 export class AgentDisconnectIntegrationDto extends Z.class({

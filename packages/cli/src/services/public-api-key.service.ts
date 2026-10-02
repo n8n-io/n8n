@@ -21,8 +21,7 @@ import {
 } from '@n8n/typeorm';
 import { randomUUID } from 'crypto';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { BadRequestError, NotFoundError } from '@n8n/errors';
 import { UserManagementMailer } from '@/user-management/email';
 
 import { JwtService } from './jwt.service';
@@ -339,13 +338,14 @@ export class PublicApiKeyService {
 		const nowInSeconds = Math.floor(Date.now() / 1000);
 
 		return this.jwtService.sign(
-			{ sub: user.id, iss: API_KEY_ISSUER, aud: API_KEY_AUDIENCE, jti: randomUUID() },
+			'publicApiKey',
+			{ sub: user.id, iss: API_KEY_ISSUER, jti: randomUUID() },
 			{ ...(expiresAt && { expiresIn: expiresAt - nowInSeconds }) },
 		);
 	}
 
 	getApiKeyExpiration = (apiKey: string) => {
-		const decoded = this.jwtService.decode(apiKey);
+		const decoded = this.jwtService.decodeUnverified(apiKey);
 		return decoded?.exp ?? null;
 	};
 

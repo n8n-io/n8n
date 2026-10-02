@@ -1,4 +1,5 @@
 import { AzureOpenAIEmbeddings, OpenAIEmbeddings } from '@langchain/openai';
+import { aiClientFetch } from '@n8n/ai-utilities';
 import { createMockExecuteFunction } from 'n8n-nodes-base/test/nodes/Helpers';
 import type { INode, ISupplyDataFunctions } from 'n8n-workflow';
 import type { Mocked } from 'vitest';
@@ -91,6 +92,7 @@ describe('AzureOpenAIEmbeddings', () => {
 					azureOpenAIApiVersion: 'v1',
 					azureOpenAIBasePath: 'https://test-resource-name.openai.azure.com/openai/deployments',
 					configuration: {
+						fetch: aiClientFetch,
 						fetchOptions: {
 							dispatcher: expect.any(MockProxyAgent),
 						},
@@ -122,6 +124,7 @@ describe('AzureOpenAIEmbeddings', () => {
 					apiKey: 'test-api-key',
 					model: 'text-embedding-3-large',
 					configuration: expect.objectContaining({
+						fetch: aiClientFetch,
 						baseURL: 'https://test.services.ai.azure.com/openai/v1',
 					}),
 				}),

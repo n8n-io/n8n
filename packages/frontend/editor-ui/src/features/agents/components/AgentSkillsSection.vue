@@ -7,10 +7,12 @@ import { useAgentCapabilityIssueMessages } from '../composables/useAgentCapabili
 import type { AgentSkill } from '../types';
 import AgentChipButton from './AgentChipButton.vue';
 import AgentChipRow from './AgentChipRow.vue';
+import AgentItemContextMenu from './AgentItemContextMenu.vue';
 
 const props = withDefaults(
 	defineProps<{
-		skills: Array<{ id: string; skill: AgentSkill }>;
+		skills: Array<{ id: string; skill: AgentSkill; enabled?: boolean }>;
+		supportsActivation?: boolean;
 		disabled?: boolean;
 		showLabel?: boolean;
 		validationIssues?: AgentConfigValidationIssue[];
@@ -18,6 +20,7 @@ const props = withDefaults(
 	{
 		disabled: false,
 		showLabel: true,
+		supportsActivation: false,
 		validationIssues: () => [],
 	},
 );
@@ -26,6 +29,7 @@ const emit = defineEmits<{
 	'open-skill': [id: string];
 	'add-skill': [];
 	'remove-skill': [id: string];
+	'toggle-skill': [payload: { id: string; enabled: boolean }];
 }>();
 
 const i18n = useI18n();
@@ -45,18 +49,26 @@ const skillIssueMessages = computed(() =>
 		:show-label="props.showLabel"
 		@add="emit('add-skill')"
 	>
-		<div v-for="{ id, skill } in skills" :key="id" :class="$style.chipGroup">
-			<AgentChipButton
-				icon="book-open"
-				:invalid="(skillIssueMessages.get(id) ?? []).length > 0"
-				:invalid-reasons="skillIssueMessages.get(id) ?? []"
+		<div v-for="{ id, skill, enabled } in skills" :key="id" :class="$style.chipGroup">
+			<AgentItemContextMenu
 				:disabled="props.disabled"
-				:class="$style.skillChip"
-				data-testid="agent-capabilities-skill-row"
-				@click="emit('open-skill', id)"
+				:enabled="props.supportsActivation ? enabled !== false : undefined"
+				@update:enabled="emit('toggle-skill', { id, enabled: $event })"
+				@remove="emit('remove-skill', id)"
 			>
-				{{ skill.name || id }}
-			</AgentChipButton>
+				<AgentChipButton
+					icon="book-open"
+					:invalid="(skillIssueMessages.get(id) ?? []).length > 0"
+					:invalid-reasons="skillIssueMessages.get(id) ?? []"
+					:disabled="props.disabled"
+					:deactivated="enabled === false"
+					:class="$style.skillChip"
+					data-testid="agent-capabilities-skill-row"
+					@click="emit('open-skill', id)"
+				>
+					{{ skill.name || id }}
+				</AgentChipButton>
+			</AgentItemContextMenu>
 		</div>
 	</AgentChipRow>
 </template>

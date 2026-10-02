@@ -83,6 +83,7 @@ import {
 	WorkflowPublicationOutboxStatus,
 	WorkflowPublicationReason,
 } from './workflow-publication-outbox';
+import { WorkflowPublicationRetryState } from './workflow-publication-retry-state';
 import {
 	WorkflowPublicationTriggerStatus,
 	type WorkflowPublicationTriggerStatusType,
@@ -177,6 +178,7 @@ export {
 	WorkflowPublicationOutboxStatus,
 	WorkflowPublicationReason,
 	UNPUBLISH_VERSION_SENTINEL,
+	WorkflowPublicationRetryState,
 	WorkflowPublicationTriggerStatus,
 	type WorkflowPublicationTriggerStatusType,
 	type WorkflowPublicationTriggerKind,
@@ -246,6 +248,7 @@ export const entities = {
 	AuthProviderSyncHistory,
 	WorkflowHistory,
 	WorkflowPublicationOutbox,
+	WorkflowPublicationRetryState,
 	WorkflowPublicationTriggerStatus,
 	WorkflowPublishedVersion,
 	WorkflowPublishHistory,

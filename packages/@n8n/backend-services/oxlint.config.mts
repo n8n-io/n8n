@@ -30,15 +30,4 @@ export default defineConfig({
 		],
 		'n8n-local-rules/no-type-unsafe-event-emitter': 'error',
 	},
-	overrides: [
-		{
-			files: ['./test/**/*.ts', './src/**/__tests__/**/*.ts'],
-			// An override that names a jsPlugin rule must re-declare the plugin.
-			jsPlugins: ['@n8n/eslint-config/plugin'],
-			rules: {
-				'n8n-local-rules/misplaced-n8n-typeorm-import': 'off',
-				'n8n-local-rules/no-type-unsafe-event-emitter': 'off',
-			},
-		},
-	],
 });

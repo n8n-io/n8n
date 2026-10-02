@@ -10,7 +10,7 @@ import {
 import { In } from '@n8n/typeorm';
 
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
-import { CacheService } from '@/services/cache/cache.service';
+import { CacheService } from '@n8n/backend-services';
 import { createMemberWithApiKey, createOwnerWithApiKey } from '@test-integration/db/users';
 import { setupTestServer } from '@test-integration/utils';
 
@@ -56,7 +56,7 @@ describe('Security policy in Public API', () => {
 			const response = await testServer.publicApiAgentFor(owner).get('/settings/security-policy');
 
 			expect(response.status).toBe(200);
-			expect(response.body).toEqual({
+			expect(response.body).toStrictEqual({
 				personalSpacePublishing: true,
 				personalSpaceSharing: true,
 				publishedPersonalWorkflowsCount: 0,
@@ -181,6 +181,17 @@ describe('Security policy in Public API', () => {
 					personalSpaceSharing: true,
 					redactionEnforcement: 'nope',
 				});
+
+			expect(response.status).toBe(400);
+		});
+
+		it('rejects an unknown request body field with 400', async () => {
+			testServer.license.enable('feat:personalSpacePolicy');
+
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.put('/settings/security-policy')
+				.send({ ...fullPolicy, unknown: true });
 
 			expect(response.status).toBe(400);
 		});

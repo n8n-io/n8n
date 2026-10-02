@@ -6,7 +6,11 @@
 // and assembles the agent verification artifact.
 // ---------------------------------------------------------------------------
 
-import type { InstanceAiEvalAgentExecutionResult } from '@n8n/api-types';
+import { getProviderPrefix } from '@n8n/ai-utilities/agent-config';
+import {
+	getAgentModelProviderCredentialTypes,
+	type InstanceAiEvalAgentExecutionResult,
+} from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
 import { setTimeout as delay } from 'node:timers/promises';
 
@@ -14,6 +18,7 @@ import { agentHandler } from './artifacts/agent-handler';
 import { attributionForScenario, type EvalAttribution } from './attribution';
 import type { EvalLogger } from './logger';
 import { writeScenarioVerificationSnapshot, type VerificationArtifact } from './scenario-execution';
+import { reseedScenarioTables, type ScenarioSeedContext } from './seed-tables';
 import {
 	throwIfServerBudgetStop,
 	isTransientExecutionAbort,
@@ -30,34 +35,86 @@ import type {
 	ExecutionScenario,
 	TestCaseCredential,
 } from '../types';
+import type { CaseSeed } from './schema';
 
 /** LLM credential types the eval seeder can create (credentials/seeder.ts). */
 const LLM_CREDENTIAL_TYPES = new Set(['openAiApi', 'googlePalmApi']);
 
+/** The seed's config for the Agent under test, when the seed restored that Agent.
+ *  `createdAgentIds` is positional to `seed.agents`; an Agent the live turn
+ *  created is not in it. */
+export function seededAgentConfig(
+	seed: CaseSeed | undefined,
+	createdAgentIds: string[] | undefined,
+	agentId: string,
+): unknown {
+	if (seed?.mode !== 'inline') return undefined;
+	const index = (createdAgentIds ?? []).indexOf(agentId);
+	return index === -1 ? undefined : seed.agents[index]?.config;
+}
+
+/** Every model an Agent config names, by slot: the main model and each
+ *  `subAgents.modelsByDifficulty` tier — the slots the restore binds. */
+function modelSlots(config: unknown): Map<string, string> {
+	const slots = new Map<string, string>();
+	if (!isRecord(config)) return slots;
+	if (typeof config.model === 'string' && config.model !== '') slots.set('model', config.model);
+	const tiers = isRecord(config.subAgents) ? config.subAgents.modelsByDifficulty : undefined;
+	if (isRecord(tiers)) {
+		for (const [tier, entry] of Object.entries(tiers)) {
+			if (isRecord(entry) && typeof entry.model === 'string') slots.set(tier, entry.model);
+		}
+	}
+	return slots;
+}
+
 /**
- * A built Agent with no model cannot run. Who owns that depends on what the
- * case offered the builder: with no LLM credential declared, leaving the model
- * for setup is the builder's documented behaviour, so the eval is what cannot
- * proceed. With one declared, an empty model is the builder's miss.
+ * Decide, before running, a scenario whose Agent cannot run. A built Agent with
+ * no model: who owns that depends on what the case offered the builder. With no
+ * LLM credential declared, leaving the model for setup is the builder's
+ * documented behaviour, so the eval is what cannot proceed. With one declared,
+ * an empty model is the builder's miss.
+ *
+ * A seeded Agent with a model slot still on the seed's model, when the case
+ * declares no credential of that model's provider: the restore had nothing to
+ * bind and the builder sees only declared credentials, so the eval cannot run
+ * it. A slot the builder changed is the builder's. The captured config redacts
+ * `credential`, so the rule reads the inputs, not the credential.
  */
 export function draftAgentVerdict(
 	artifact: AgentArtifact | undefined,
 	credentials: TestCaseCredential[] | undefined,
-): { attribution: EvalAttribution; reasoning: string } | undefined {
+	seededConfig?: unknown,
+): { attribution: EvalAttribution; reasoning: string; execError: string } | undefined {
 	if (!artifact || !isRecord(artifact.config)) return undefined;
 	const model = artifact.config.model;
-	if (typeof model === 'string' && model.trim() !== '') return undefined;
+	if (typeof model === 'string' && model.trim() !== '') {
+		const seeded = modelSlots(seededConfig);
+		for (const [slot, slotModel] of modelSlots(artifact.config)) {
+			if (seeded.get(slot) !== slotModel) continue;
+			const types = getAgentModelProviderCredentialTypes(getProviderPrefix(slotModel));
+			if (types.length === 0 || (credentials ?? []).some((c) => types.includes(c.type))) continue;
+			return {
+				attribution: 'framework_issue',
+				reasoning: `The seeded Agent's model ${slotModel} needs a ${types.join(' or ')} credential, and the case declares none, so the eval has no credential to run the Agent with.`,
+				execError: 'Seeded Agent model has no declared credential',
+			};
+		}
+		return undefined;
+	}
 	const offeredLlmCredential = (credentials ?? []).some((c) => LLM_CREDENTIAL_TYPES.has(c.type));
 	return offeredLlmCredential
 		? {
 				attribution: 'builder_issue',
 				reasoning:
 					'The built Agent has no model although the case declared an LLM credential the builder could have used, so the scenario cannot run.',
+				execError: 'Agent has no model configured',
 			}
 		: {
 				attribution: 'framework_issue',
 				reasoning:
 					'The built Agent has no model. The case declared no LLM credential, so the builder left model selection to setup by design; the eval has no credential to run the Agent with.',
+				execError: 'Agent has no model configured',
 			};
 }
 
@@ -99,7 +156,8 @@ export async function fetchAgentScenarioContext(
 /**
  * Execute one scenario against a built first-class Agent and verify the
  * result — the agent-artifact counterpart of runScenario. The agent reasons
- * with its real model; its tools' outbound HTTP is served by the mock layer.
+ * with its real model; its tools' outbound HTTP is served by the mock layer and
+ * its Data Table tools read the real table, seeded with the scenario's rows first.
  */
 export async function executeAgentScenario(
 	client: N8nClient,
@@ -111,7 +169,18 @@ export async function executeAgentScenario(
 	testCaseName?: string,
 	buildTrace?: BuildTrace,
 	outputDir?: string,
+	seedContext?: ScenarioSeedContext,
 ): Promise<ExecutionScenarioResult> {
+	if (seedContext) {
+		await reseedScenarioTables(
+			client,
+			scenario,
+			seedContext.threadId,
+			seedContext.tableIdsByName,
+			logger,
+		);
+	}
+
 	const execStart = Date.now();
 	const projectId = await client.getPersonalProjectId();
 	let evalResult = await client.executeAgentWithLlmMock(

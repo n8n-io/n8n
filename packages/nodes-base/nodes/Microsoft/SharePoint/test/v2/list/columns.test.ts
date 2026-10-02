@@ -8,11 +8,11 @@ import { versionDescription } from '../../../v2/actions/versionDescription';
 import { getMappingColumns, itemColumns } from '../../../v2/list/columns';
 import type { SharePointListColumn } from '../../../v2/list/columns';
 import { MicrosoftSharePointV2 } from '../../../v2/MicrosoftSharePointV2.node';
-import * as transport from '../../../v2/transport';
-import type * as _importType0 from '../../../v2/transport';
+import * as transport from '../../../transport';
+import type * as _importType0 from '../../../transport';
 
-vi.mock('../../../v2/transport', async () => {
-	const originalModule = await vi.importActual<typeof _importType0>('../../../v2/transport');
+vi.mock('../../../transport', async () => {
+	const originalModule = await vi.importActual<typeof _importType0>('../../../transport');
 	return {
 		...originalModule,
 		microsoftApiRequest: vi.fn(),
@@ -420,7 +420,7 @@ describe('Microsoft SharePoint v2 — list columns as form fields', () => {
 		// Real transport here (not the stub): the reply is fed to the credential-
 		// specific request helper each auth mode routes through.
 		const { microsoftApiRequest: realMicrosoftApiRequest } =
-			await vi.importActual<typeof _importType0>('../../../v2/transport');
+			await vi.importActual<typeof _importType0>('../../../transport');
 		apiRequest
 			.mockImplementationOnce(realMicrosoftApiRequest)
 			.mockImplementationOnce(realMicrosoftApiRequest);
