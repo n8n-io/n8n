@@ -352,6 +352,39 @@ describe('Variables in Public API', () => {
 			);
 		});
 
+		it('should let a member create a variable in a project they can edit', async () => {
+			testServer.license.enable('feat:variables');
+			const member = await createMemberWithApiKey({ scopes: ['variable:create'] });
+			await linkUserToProject(member, project, 'project:editor');
+
+			const response = await testServer
+				.publicApiAgentFor(member)
+				.post('/variables')
+				.send({ key: 'key', value: 'value', projectId: project.id });
+
+			expect(response.status).toBe(201);
+			const created = await getVariableByKey('key');
+			expect(created).not.toBeNull();
+			await expect(getVariableByIdOrFail(created!.id)).resolves.toEqual(
+				expect.objectContaining({ project: expect.objectContaining({ id: project.id }) }),
+			);
+		});
+
+		it('should not let a member create a global variable', async () => {
+			testServer.license.enable('feat:variables');
+			const member = await createMemberWithApiKey({ scopes: ['variable:create'] });
+			await linkUserToProject(member, project, 'project:admin');
+
+			const response = await testServer
+				.publicApiAgentFor(member)
+				.post('/variables')
+				.send({ key: 'key', value: 'value' });
+
+			expect(response.status).toBe(403);
+			expect(response.body).toHaveProperty('message', 'You are not allowed to create a variable');
+			await expect(getVariableByKey('key')).resolves.toBeNull();
+		});
+
 		it('if not licensed, should reject', async () => {
 			const variablePayload = { key: 'key', value: 'value' };
 

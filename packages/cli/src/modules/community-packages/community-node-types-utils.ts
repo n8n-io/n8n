@@ -1,3 +1,4 @@
+import type { GatewayCreditsPromotion } from '@n8n/api-types';
 import type { INodeTypeDescription } from 'n8n-workflow';
 
 import { paginatedRequest, type StrapiFilters } from '@/utils/strapi-utils';
@@ -21,6 +22,7 @@ export type StrapiCommunityNodeType = {
 	nodeDescription: INodeTypeDescription;
 	nodeVersions?: Array<{ npmVersion: string; checksum: string }>;
 	aiNodeSdkVersion?: number;
+	gatewayCreditsPromotion?: GatewayCreditsPromotion | null;
 };
 
 /**
