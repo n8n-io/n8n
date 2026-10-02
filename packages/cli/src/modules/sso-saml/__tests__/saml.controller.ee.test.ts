@@ -202,6 +202,28 @@ describe('initSsoGet', () => {
 		expect(samlService.getLoginRequestUrl).toHaveBeenCalledWith('/workflows/123');
 	});
 
+	it('decodes valid escapes when the referer redirect also contains a malformed escape', async () => {
+		const req = mock<AuthlessRequest<{}, {}, {}, { redirect?: string }>>({
+			query: { redirect: '/default' },
+			headers: { referer: '/login?redirect=%252Fworkflows%252F123%ZZ' },
+		});
+
+		await controller.initSsoGet(req, mock<Response>());
+
+		expect(samlService.getLoginRequestUrl).toHaveBeenCalledWith('/workflows/123%ZZ');
+	});
+
+	it('preserves a literal plus and ampersand in the twice-decoded referer redirect', async () => {
+		const req = mock<AuthlessRequest<{}, {}, {}, { redirect?: string }>>({
+			query: { redirect: '/default' },
+			headers: { referer: '/login?redirect=%252Fworkflows%252F123%252Bnotes%2526tab=recent' },
+		});
+
+		await controller.initSsoGet(req, mock<Response>());
+
+		expect(samlService.getLoginRequestUrl).toHaveBeenCalledWith('/workflows/123+notes&tab=recent');
+	});
+
 	it('keeps the request redirect when the referer has duplicate redirect values', async () => {
 		const req = mock<AuthlessRequest<{}, {}, {}, { redirect?: string }>>({
 			query: { redirect: '/default' },

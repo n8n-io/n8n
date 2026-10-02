@@ -216,12 +216,10 @@ export class SamlController {
 				const parsedUrl = new URL(refererUrl, 'http://localhost');
 				const redirects = parsedUrl.searchParams.getAll('redirect');
 				if (redirects.length === 1 && redirects[0]) {
-					// The old parser decoded the query value twice.
-					try {
-						redirectUrl = decodeURIComponent(redirects[0]);
-					} catch {
-						redirectUrl = redirects[0];
-					}
+					// Keep literal plus and ampersand characters while decoding the value a second time.
+					const encodedValue = redirects[0].replaceAll('+', '%2B').replaceAll('&', '%26');
+					redirectUrl =
+						new URLSearchParams(`redirect=${encodedValue}`).get('redirect') ?? redirects[0];
 				}
 			}
 		} catch {
