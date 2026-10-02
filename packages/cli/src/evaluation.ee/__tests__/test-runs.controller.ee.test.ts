@@ -7,6 +7,7 @@ import type {
 	User,
 } from '@n8n/db';
 import type express from 'express';
+import { TestRunsListQueryDto } from '@n8n/api-types';
 
 import { ConflictError, NotFoundError } from '@n8n/errors';
 import type { TestRunnerService } from '@/evaluation.ee/test-runner/test-runner.service.ee';
@@ -116,6 +117,25 @@ describe('TestRunsController', () => {
 	});
 
 	describe('getMany', () => {
+		it('passes validated pagination to the test-run repository', async () => {
+			mockTestRunRepository.getMany.mockResolvedValue([]);
+			const req = {
+				params: { workflowId: mockWorkflowId },
+				user: mockUser,
+			} as unknown as TestRunsRequest.GetMany;
+
+			await testRunsController.getMany(
+				req,
+				{} as express.Response,
+				TestRunsListQueryDto.parse({ skip: '3', take: '200' }),
+			);
+
+			expect(mockTestRunRepository.getMany).toHaveBeenCalledWith(mockWorkflowId, {
+				offset: 3,
+				limit: 100,
+			});
+		});
+
 		it('should return test runs when user has access to the workflow', async () => {
 			const mockResult = [{ id: 'run1' }];
 			mockTestRunRepository.getMany.mockResolvedValue(mockResult as any);
@@ -123,10 +143,13 @@ describe('TestRunsController', () => {
 			const req = {
 				params: { workflowId: mockWorkflowId },
 				user: mockUser,
-				listQueryOptions: {},
 			} as unknown as TestRunsRequest.GetMany;
 
-			const result = await testRunsController.getMany(req);
+			const result = await testRunsController.getMany(
+				req,
+				{} as express.Response,
+				TestRunsListQueryDto.parse({}),
+			);
 
 			expect(mockWorkflowFinderService.findWorkflowForUser).toHaveBeenCalledWith(
 				mockWorkflowId,
@@ -146,10 +169,11 @@ describe('TestRunsController', () => {
 			const req = {
 				params: { workflowId: mockWorkflowId },
 				user: mockUser,
-				listQueryOptions: {},
 			} as unknown as TestRunsRequest.GetMany;
 
-			await expect(testRunsController.getMany(req)).rejects.toThrow(NotFoundError);
+			await expect(
+				testRunsController.getMany(req, {} as express.Response, TestRunsListQueryDto.parse({})),
+			).rejects.toThrow(NotFoundError);
 			expect(mockTestRunRepository.getMany).not.toHaveBeenCalled();
 		});
 
@@ -169,10 +193,13 @@ describe('TestRunsController', () => {
 			const req = {
 				params: { workflowId: mockWorkflowId },
 				user: mockUser,
-				listQueryOptions: {},
 			} as unknown as TestRunsRequest.GetMany;
 
-			const result = await testRunsController.getMany(req);
+			const result = await testRunsController.getMany(
+				req,
+				{} as express.Response,
+				TestRunsListQueryDto.parse({}),
+			);
 
 			expect(result).toEqual([
 				// Snapshot wins.

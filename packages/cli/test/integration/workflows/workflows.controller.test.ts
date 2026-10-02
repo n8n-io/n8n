@@ -2313,7 +2313,7 @@ describe('GET /workflows', () => {
 
 	describe('sortBy', () => {
 		test('should fail when trying to sort by non sortable column', async () => {
-			await authOwnerAgent.get('/workflows').query('sortBy=nonSortableColumn:asc').expect(500);
+			await authOwnerAgent.get('/workflows').query('sortBy=nonSortableColumn:asc').expect(400);
 		});
 
 		test('should sort by createdAt column', async () => {
@@ -2415,7 +2415,7 @@ describe('GET /workflows', () => {
 		});
 
 		test('should fail when skip is provided without take', async () => {
-			await authOwnerAgent.get('/workflows').query('skip=2').expect(500);
+			await authOwnerAgent.get('/workflows').query('skip=2').expect(400);
 		});
 
 		test('should handle skip with take parameter', async () => {
@@ -3171,7 +3171,7 @@ describe('GET /workflows?includeFolders=true', () => {
 			await authOwnerAgent
 				.get('/workflows')
 				.query('sortBy=nonSortableColumn:asc&?includeFolders=true')
-				.expect(500);
+				.expect(400);
 		});
 
 		test('should sort by createdAt column', async () => {
@@ -3332,7 +3332,7 @@ describe('GET /workflows?includeFolders=true', () => {
 		});
 
 		test('should fail when skip is provided without take', async () => {
-			await authOwnerAgent.get('/workflows?includeFolders=true').query('skip=2').expect(500);
+			await authOwnerAgent.get('/workflows?includeFolders=true').query('skip=2').expect(400);
 		});
 
 		test('should handle skip with take parameter', async () => {
