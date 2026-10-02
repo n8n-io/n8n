@@ -1,5 +1,6 @@
 import eslint from '@eslint/js';
 import { n8nCommunityNodesPlugin } from '@n8n/eslint-plugin-community-nodes';
+import type { Linter } from 'eslint';
 import { defineConfig, globalIgnores } from 'eslint/config';
 import { createTypeScriptImportResolver } from 'eslint-import-resolver-typescript';
 import importPlugin from 'eslint-plugin-import-x';
@@ -13,7 +14,7 @@ function createConfig(supportCloud = true): ConfigArray {
 		? n8nCommunityNodesPlugin.configs.recommended
 		: n8nCommunityNodesPlugin.configs.recommendedWithoutN8nCloudSupport;
 
-	const configs = [
+	return defineConfig(
 		globalIgnores(['dist']),
 		{
 			files: ['**/*.ts'],
@@ -21,7 +22,8 @@ function createConfig(supportCloud = true): ConfigArray {
 				eslint.configs.recommended,
 				tseslint.configs.recommended,
 				communityNodesRecommended,
-				importPlugin.configs['flat/recommended'],
+				// import-x uses typescript-eslint's ESLint types for its preset.
+				importPlugin.configs['flat/recommended'] as Linter.Config,
 			],
 			rules: {
 				'prefer-spread': 'off',
@@ -45,7 +47,8 @@ function createConfig(supportCloud = true): ConfigArray {
 				...n8nNodesPlugin.configs.community.rules,
 			},
 			languageOptions: {
-				parser: tseslint.parser,
+				// typescript-eslint bundles a parser type that differs from ESLint's parser type.
+				parser: tseslint.parser as Linter.Parser,
 				parserOptions: {
 					extraFileExtensions: ['.json'],
 				},
@@ -72,9 +75,7 @@ function createConfig(supportCloud = true): ConfigArray {
 				'n8n-nodes-base/node-param-type-options-max-value-present': 'off',
 			},
 		},
-	];
-	// typescript-eslint bundles a parser type that differs from ESLint's parser type.
-	return defineConfig(...(configs as unknown as Parameters<typeof defineConfig>));
+	);
 }
 export const config: ConfigArray = createConfig();
 export const configWithoutCloudSupport: ConfigArray = createConfig(false);
