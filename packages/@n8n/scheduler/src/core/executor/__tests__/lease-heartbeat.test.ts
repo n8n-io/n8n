@@ -215,6 +215,31 @@ describe('LeaseHeartbeat', () => {
 		heartbeat.stop();
 	});
 
+	it('includes a successful renewal response delay in the elapsed lease time', async () => {
+		let finishRenewal!: (renewed: boolean) => void;
+		const renew = vi
+			.fn()
+			.mockReturnValueOnce(
+				new Promise<boolean>((resolve) => {
+					finishRenewal = resolve;
+				}),
+			)
+			.mockReturnValue(new Promise<boolean>(() => {}));
+		const onRenewal = vi.fn();
+		const heartbeat = new LeaseHeartbeat(renew, options(), { onRenewal });
+		const responseDelayMs = 4_000;
+
+		await vi.advanceTimersByTimeAsync(INTERVAL_MS + responseDelayMs);
+		finishRenewal(true);
+		await vi.advanceTimersByTimeAsync(LEASE_MS - responseDelayMs - 1);
+		expect(onRenewal).toHaveBeenCalledExactlyOnceWith('renewed');
+
+		await vi.advanceTimersByTimeAsync(1);
+		expect(onRenewal.mock.calls).toEqual([['renewed'], ['expired']]);
+
+		heartbeat.stop();
+	});
+
 	it('measures the lease on a monotonic clock, so a wall-clock jump does not delay the expiry', async () => {
 		const renew = vi
 			.fn()

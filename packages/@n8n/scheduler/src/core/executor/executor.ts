@@ -259,6 +259,7 @@ export class Executor {
 		// => the row is gone, was reclaimed (epoch bumped), or was already dispatched on
 		// this lease; in every case don't run the handler. This compare-and-set, not the
 		// later marker, is what keeps the executor from calling a handler twice per lease.
+		// Response time includes database latency and would overestimate the remaining lease.
 		const leaseSetAt = performance.now();
 		const won = await this.store.beginDispatch(claim, this.leaseMs);
 		if (won === 0) {
