@@ -126,7 +126,7 @@ test.describe(
 	'Agent message queue @mode:multi-main',
 	{ annotation: [{ type: 'owner', description: 'Agent' }] },
 	() => {
-		test('preserves FIFO, deduplication, and remote steering across main crashes', async ({
+		test('preserves queue order, deduplication, and remote steering across main crashes', async ({
 			n8nContainer,
 			createApiForMain,
 		}) => {
@@ -226,6 +226,51 @@ test.describe(
 						({ message }) => message,
 					),
 				).toEqual(['fifo-remote', 'third']);
+				const firstQueueId = first.events.find((event) => event.type === 'message-queued')?.queueId;
+				assert(firstQueueId);
+				expect(
+					(
+						await consumer.agents.reorderQueuedMessage(
+							project.id,
+							agent.id,
+							threadId,
+							firstQueueId,
+							restored.items[0].id,
+							[restored.items[0].id, restored.items[1].id],
+						)
+					).status(),
+				).toBe(409);
+				const swaps = await Promise.all(
+					clients.map(
+						async (client) =>
+							await client.agents.reorderQueuedMessage(
+								project.id,
+								agent.id,
+								threadId,
+								restored.items[0].id,
+								restored.items[1].id,
+								[restored.items[0].id, restored.items[1].id],
+							),
+					),
+				);
+				expect(swaps.map((response) => response.status()).sort()).toEqual([200, 409]);
+				const appended = await open(0, threadId, 'append after reordering');
+				await expect
+					.poll(() => appended.events.find((event) => event.type === 'message-queued'))
+					.toBeTruthy();
+				const reordered = await consumer.agents.queuedMessages(project.id, agent.id, threadId);
+				expect(reordered.items.map(({ message }) => message)).toEqual([
+					'third',
+					'fifo-remote',
+					'append after reordering',
+				]);
+				await consumer.agents.removeQueuedMessage(
+					project.id,
+					agent.id,
+					threadId,
+					reordered.items[2].id,
+				);
+				appended.disconnect();
 				removable.disconnect();
 				const independent = await open(1, randomUUID(), 'independent', true);
 				expect(await independent.done).toBeUndefined();
@@ -247,9 +292,21 @@ test.describe(
 							),
 						{ timeout: 30_000 },
 					)
-					.toEqual(['cancelled', 'running']);
+					.toEqual(['cancelled', 'success', 'running']);
 				await signalMain(n8nContainer, 0, 'SIGCONT');
 				await expect.poll(() => executionId(second.events)).toBeTruthy();
+				expect(
+					(
+						await ingress.agents.reorderQueuedMessage(
+							project.id,
+							agent.id,
+							threadId,
+							restored.items[1].id,
+							restored.items[0].id,
+							[restored.items[1].id, restored.items[0].id],
+						)
+					).status(),
+				).toBe(409);
 				const steeringRequestId = randomUUID();
 				const steered = await open(0, threadId, 'additional input', undefined, steeringRequestId);
 				await expect
@@ -272,6 +329,26 @@ test.describe(
 						({ id }) => id === steerId,
 					)?.steeringExecutionId,
 				).toBe(executionId(second.events));
+				const later = await open(0, threadId, 'pending after steering');
+				await expect
+					.poll(() => later.events.find((event) => event.type === 'message-queued'))
+					.toBeTruthy();
+				const laterId = later.events.find((event) => event.type === 'message-queued')?.queueId;
+				assert(laterId);
+				expect(
+					(
+						await consumer.agents.reorderQueuedMessage(
+							project.id,
+							agent.id,
+							threadId,
+							steerId,
+							laterId,
+							[steerId, laterId],
+						)
+					).status(),
+				).toBe(409);
+				await consumer.agents.removeQueuedMessage(project.id, agent.id, threadId, laterId);
+				later.disconnect();
 				await expect
 					.poll(
 						async () =>
@@ -322,7 +399,7 @@ test.describe(
 					(await ingress.agents.executions(project.id, agent.id, threadId)).map(
 						({ userMessage }) => userMessage,
 					),
-				).toEqual(['fifo-blocked', 'fifo-remote\nadditional input', 'third']);
+				).toEqual(['fifo-blocked', 'third', 'fifo-remote\nadditional input']);
 
 				const crashThread = randomUUID();
 				const interruptedId = randomUUID();

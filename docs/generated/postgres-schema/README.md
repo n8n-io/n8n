@@ -24,7 +24,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.agent_execution_threads](public.agent_execution_threads.md) | 19 |  | BASE TABLE |
 | [public.agent_files](public.agent_files.md) | 10 |  | BASE TABLE |
 | [public.agent_history](public.agent_history.md) | 9 |  | BASE TABLE |
-| [public.agent_message_queue](public.agent_message_queue.md) | 9 |  | BASE TABLE |
+| [public.agent_message_queue](public.agent_message_queue.md) | 10 |  | BASE TABLE |
 | [public.agent_task_definition](public.agent_task_definition.md) | 8 |  | BASE TABLE |
 | [public.agent_task_run_lock](public.agent_task_run_lock.md) | 6 |  | BASE TABLE |
 | [public.agent_task_snapshot](public.agent_task_snapshot.md) | 9 |  | BASE TABLE |
@@ -618,6 +618,7 @@ erDiagram
   bigint id
   varchar_36_ messageId FK
   json payload
+  integer position
   varchar_36_ steeringExecutionId FK
   integer steeringOrder
   varchar_128_ threadId FK
