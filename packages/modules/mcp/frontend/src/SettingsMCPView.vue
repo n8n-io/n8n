@@ -55,7 +55,7 @@ const rbacStore = useRBACStore();
 const exposeAllOffer = capabilityRegistry.tryUse(capabilities.mcpExposeAllOffer);
 const isExposeAllOfferEnabled = computed(() => exposeAllOffer?.isEnabled() ?? false);
 
-const agentsModuleActive = computed(() => settingsStore.isModuleActive('agents'));
+const agentsEnabled = computed(() => settingsStore.isAgentsEnabled);
 
 const mcpStatusLoading = ref(false);
 const showDisableDialog = ref(false);
@@ -136,7 +136,7 @@ const fetchExposedWorkflowsCount = async () => {
 };
 
 const fetchExposedAgentsCount = async () => {
-	if (!agentsModuleActive.value) return;
+	if (!agentsEnabled.value) return;
 	try {
 		const response = await mcpStore.fetchAgentsAvailableForMCP(1, 1);
 		exposedAgentsCount.value = response.count;
@@ -377,7 +377,7 @@ onBeforeUnmount(() => {
 						</template>
 					</N8nSettingsRow>
 				</N8nSettingsRowGroup>
-				<N8nSettingsRowGroup v-if="agentsModuleActive">
+				<N8nSettingsRowGroup v-if="agentsEnabled">
 					<N8nSettingsRow
 						:title="i18n.baseText('settings.mcp.agentsExposed.title')"
 						:description="i18n.baseText('settings.mcp.agentsExposed.description')"

@@ -7,6 +7,7 @@ import type { ProjectRelationRepository, User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { QueryFailedError } from '@n8n/typeorm';
 import { mock } from 'vitest-mock-extended';
+import type { AgentsSettingsService } from '../agents-settings.service';
 
 import { ConflictError, NotFoundError } from '@n8n/errors';
 
@@ -60,7 +61,9 @@ function makeService() {
 	const agentExecutionService = mock<AgentExecutionService>();
 	const credentialsService = mock<CredentialsService>();
 	const projectScopeService = mock<ProjectScopeService>();
+	const agentsSettingsService = mock<AgentsSettingsService>();
 
+	agentsSettingsService.getEnabled.mockResolvedValue(true);
 	agentTaskService.requestReconcile.mockResolvedValue();
 	chatIntegrationService.disconnectChannel.mockResolvedValue();
 	testChatService.clearAllTestChatMessages.mockResolvedValue();
@@ -86,6 +89,7 @@ function makeService() {
 		agentExecutionService,
 		credentialsService,
 		projectScopeService,
+		agentsSettingsService,
 	);
 
 	return {
@@ -103,6 +107,7 @@ function makeService() {
 		agentExecutionService,
 		credentialsService,
 		projectScopeService,
+		agentsSettingsService,
 	};
 }
 
@@ -635,6 +640,26 @@ describe('AgentsService', () => {
 				},
 			} as never);
 		}
+
+		it('returns an empty chat list when agents are disabled', async () => {
+			const { service, agentRepository, projectScopeService, agentsSettingsService } =
+				makeService();
+			agentsSettingsService.getEnabled.mockResolvedValue(false);
+			projectScopeService.getProjectIds.mockResolvedValue(['project-1']);
+			agentRepository.findByProjectIdsPaginated.mockResolvedValue({
+				count: 1,
+				data: [makeReachableAgent()],
+			});
+
+			const result = await service.findChatReachableByUserPaginated(user, {
+				skip: 0,
+				take: 10,
+				filter: { availableInChat: true },
+			} as never);
+
+			expect(result).toEqual({ count: 0, data: [] });
+			expect(agentRepository.findByProjectIdsPaginated).not.toHaveBeenCalled();
+		});
 
 		it('scopes to agent:execute, the scope the production chat route requires', async () => {
 			const { service, agentRepository, projectRelationRepository, projectScopeService } =

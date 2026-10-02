@@ -175,6 +175,7 @@ export async function packSandboxLinkedWorkspacePackages(
 export async function packWorkspaceSdk(
 	logger: Logger,
 	packageName = '@n8n/workflow-sdk',
+	// oxlint-disable-next-line typescript/no-deprecated
 ): Promise<WorkspaceSdkTarball | null> {
 	if (!isLinkWorkspaceSdkEnabled()) return null;
 

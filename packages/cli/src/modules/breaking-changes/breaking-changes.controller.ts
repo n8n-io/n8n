@@ -1,28 +1,30 @@
 import {
-	BreakingChangeInstanceRuleResult,
 	BreakingChangeLightReportResult,
 	BreakingChangeReportQueryDto,
+	BreakingChangeVersion,
 	BreakingChangeWorkflowRuleResult,
 	WorkflowMigrationResult,
 } from '@n8n/api-types';
 import { AuthenticatedRequest } from '@n8n/db';
 import { Get, RestController, GlobalScope, Query, Post, Param } from '@n8n/decorators';
+import { NotFoundError } from '@n8n/errors';
 import { Response } from 'express';
 
-import { NotFoundError } from '@n8n/errors';
-
 import { BreakingChangeMigrationService } from './breaking-changes.migration.service';
-import { BreakingChangeService } from './breaking-changes.service';
+import { RuleRegistry } from './breaking-changes.rule-registry.service';
 import { MigrationFindingQueryService } from './query/migration-finding-query.service';
 import { MigrationFindingSyncService } from './sync/migration-finding-sync.service';
+
+/** The version the report targets when the request names none. */
+const DEFAULT_TARGET_VERSION: BreakingChangeVersion = 'v2';
 
 @RestController('/breaking-changes')
 export class BreakingChangesController {
 	constructor(
-		private readonly service: BreakingChangeService,
 		private readonly migrationService: BreakingChangeMigrationService,
 		private readonly syncService: MigrationFindingSyncService,
 		private readonly queryService: MigrationFindingQueryService,
+		private readonly ruleRegistry: RuleRegistry,
 	) {}
 
 	/**
@@ -36,7 +38,7 @@ export class BreakingChangesController {
 		_res: Response,
 		@Query query: BreakingChangeReportQueryDto,
 	): Promise<BreakingChangeLightReportResult> {
-		const version = query.version ?? 'v2';
+		const version = query.version ?? DEFAULT_TARGET_VERSION;
 		await this.syncService.syncIfStale(version);
 		return await this.queryService.getLightReport(version);
 	}
@@ -44,18 +46,20 @@ export class BreakingChangesController {
 	/** Re-scans every workflow, updates the finding table, and returns the fresh overview. */
 	@Post('/report/refresh')
 	@GlobalScope('breakingChanges:list')
-	async refreshCache(
+	async regenerate(
 		_req: AuthenticatedRequest,
 		_res: Response,
 		@Query query: BreakingChangeReportQueryDto,
 	): Promise<BreakingChangeLightReportResult> {
-		const version = query.version ?? 'v2';
+		const version = query.version ?? DEFAULT_TARGET_VERSION;
 		await this.syncService.sync(version);
 		return await this.queryService.getLightReport(version);
 	}
 
 	/**
-	 * Get specific breaking change rules
+	 * The detail of one workflow rule, read from the finding table like the
+	 * overview. The same stale check runs first, so a deep link on a fresh
+	 * instance is not empty.
 	 */
 	@Get('/report/:ruleId')
 	@GlobalScope('breakingChanges:list')
@@ -63,12 +67,15 @@ export class BreakingChangesController {
 		_req: AuthenticatedRequest,
 		_res: Response,
 		@Param('ruleId') ruleId: string,
-	): Promise<BreakingChangeInstanceRuleResult | BreakingChangeWorkflowRuleResult> {
-		const result = await this.service.getDetectionReportForRule(ruleId);
-		if (!result) {
+	): Promise<BreakingChangeWorkflowRuleResult> {
+		// The page names the rule but not the version, so the rule decides.
+		const rule = this.ruleRegistry.getRule(ruleId);
+		if (!rule) {
 			throw new NotFoundError(`Breaking change rule with ID '${ruleId}' not found.`);
 		}
-		return result;
+		const version = rule.getMetadata().version;
+		await this.syncService.syncIfStale(version);
+		return await this.queryService.getRuleFindings(version, ruleId);
 	}
 
 	/**

@@ -545,6 +545,7 @@ export class License implements LicenseProvider {
 
 	/** @deprecated Use `LicenseState` instead. */
 	isWithinUsersLimit() {
+		// oxlint-disable-next-line typescript/no-deprecated
 		return this.getUsersLimit() === UNLIMITED_LICENSE_QUOTA;
 	}
 

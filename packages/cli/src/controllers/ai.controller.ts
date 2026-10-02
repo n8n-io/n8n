@@ -227,6 +227,7 @@ export class AiController {
 		@Body payload: AiAskRequestDto,
 	): Promise<AiAssistantSDK.AskAiResponsePayload> {
 		try {
+			// oxlint-disable-next-line typescript/no-deprecated
 			return await this.aiService.askAi(payload, req.user);
 		} catch (e) {
 			throw this.toResponseError(e);

@@ -313,6 +313,33 @@ describe('AgentIntegrationPersistenceService', () => {
 			).rejects.toThrow(UserError);
 			expect(agentRepository.updateIntegrations).not.toHaveBeenCalled();
 		});
+
+		it('persists n8n Chat despite its empty credentialId', async () => {
+			const { service, agent, row } = setup();
+
+			const result = await service.applyIntegrationDelta(
+				agent,
+				{ add: { type: 'n8n_chat', credentialId: '' } },
+				byUser,
+			);
+
+			expect(result.changed).toBe(true);
+			expect(row.integrations).toEqual([{ type: 'n8n_chat', credentialId: '' }]);
+		});
+
+		it('keeps a single n8n Chat entry when connected twice', async () => {
+			const { service, agent, row } = setup({
+				integrations: [{ type: 'n8n_chat', credentialId: '' }],
+			});
+
+			await service.applyIntegrationDelta(
+				agent,
+				{ add: { type: 'n8n_chat', credentialId: '' } },
+				byUser,
+			);
+
+			expect(row.integrations).toEqual([{ type: 'n8n_chat', credentialId: '' }]);
+		});
 	});
 
 	describe('removing a channel', () => {

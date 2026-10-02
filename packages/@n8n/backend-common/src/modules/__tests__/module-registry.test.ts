@@ -177,6 +177,72 @@ describe('loadModules', () => {
 		expect(moduleRegistry.entities).toEqual([]);
 	});
 
+	describe('packaged modules', () => {
+		const newRegistry = () => {
+			const ModuleClass = { entities: vi.fn().mockReturnValue([]) };
+			const moduleMetadata = mock<ModuleMetadata>({
+				getClasses: vi.fn().mockReturnValue([ModuleClass]),
+			});
+			Container.get = vi.fn().mockReturnValue(ModuleClass);
+
+			return new ModuleRegistry(moduleMetadata, mock(), mock(), mock(), mock());
+		};
+
+		it('should load a module from the manifest instead of the filesystem', async () => {
+			const importPackagedModule = vi.fn().mockResolvedValue({});
+			const moduleRegistry = newRegistry();
+			moduleRegistry.registerPackagedModules({ insights: importPackagedModule });
+
+			await moduleRegistry.loadModules(['insights']);
+
+			expect(importPackagedModule).toHaveBeenCalledTimes(1);
+		});
+
+		it('should wrap a packaged module import failure', async () => {
+			const importError = new Error('Package import failed');
+			const moduleRegistry = newRegistry();
+			moduleRegistry.registerPackagedModules({
+				insights: vi.fn().mockRejectedValue(importError),
+			});
+
+			const loading = moduleRegistry.loadModules(['insights']);
+
+			await expect(loading).rejects.toThrow(ModuleLoadError);
+			await expect(loading).rejects.toThrow(importError.message);
+		});
+
+		it('should use the filesystem route for a module that is not in the manifest', async () => {
+			const importPackagedModule = vi.fn().mockResolvedValue({});
+			const moduleRegistry = newRegistry();
+			moduleRegistry.registerPackagedModules({ insights: importPackagedModule });
+
+			await expect(moduleRegistry.loadModules(['otel'])).rejects.toThrow(MissingModuleError);
+			expect(importPackagedModule).not.toHaveBeenCalled();
+		});
+
+		it('should load an eligible packaged module', async () => {
+			const importPackagedModule = vi.fn().mockResolvedValue({});
+			const moduleRegistry = newRegistry();
+			vi.spyOn(moduleRegistry, 'eligibleModules', 'get').mockReturnValue(['insights']);
+			moduleRegistry.registerPackagedModules({ insights: importPackagedModule });
+
+			await moduleRegistry.loadModules();
+
+			expect(importPackagedModule).toHaveBeenCalledTimes(1);
+		});
+
+		it('should not load an ineligible packaged module', async () => {
+			const importPackagedModule = vi.fn().mockResolvedValue({});
+			const moduleRegistry = newRegistry();
+			vi.spyOn(moduleRegistry, 'eligibleModules', 'get').mockReturnValue([]);
+			moduleRegistry.registerPackagedModules({ insights: importPackagedModule });
+
+			await moduleRegistry.loadModules();
+
+			expect(importPackagedModule).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('entrypoint resolution', () => {
 		const MISSING_DEPENDENCY = 'n8n-fixture-absent-dependency';
 

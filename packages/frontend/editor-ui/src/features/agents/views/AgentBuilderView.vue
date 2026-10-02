@@ -62,6 +62,7 @@ import {
 	updateAgentSkill,
 } from '../composables/useAgentApi';
 import { useAgentIntegrationsCatalog } from '../composables/useAgentIntegrationsCatalog';
+import { useN8nChatChannel } from '../channels/n8nChat/useN8nChatChannel';
 import type {
 	AgentResource,
 	AgentContinueLoadedEvent,
@@ -738,6 +739,8 @@ const visibleMainTabOptions = computed(() =>
 );
 
 const { ensureLoaded: ensureIntegrationsCatalog } = useAgentIntegrationsCatalog();
+// Without n8n Chat in the known trigger types, the baseline drops its chip.
+const { withN8nChat } = useN8nChatChannel();
 
 const builderTelemetry = useAgentBuilderTelemetry({
 	agentId,
@@ -1948,7 +1951,7 @@ async function onConfigUpdated(
 	// without waiting for a tab switch. Mirrors the initial baseline fetch.
 	const integrations = await ensureIntegrationsCatalog(targetProjectId).catch(() => []);
 	if (isStaleAgentTarget(targetProjectId, targetAgentId)) return false;
-	const triggerTypes = integrations.map((i) => i.type);
+	const triggerTypes = withN8nChat(integrations).map((i) => i.type);
 	const connected = await builderTelemetry.fetchInitialTriggersBaseline(triggerTypes);
 	if (isStaleAgentTarget(targetProjectId, targetAgentId)) return false;
 	if (connected) connectedTriggers.value = connected;
@@ -2239,6 +2242,30 @@ function openDescriptionModal() {
 	});
 }
 
+/**
+ * Saves through the same path as `openDescriptionModal`. The channel modal
+ * connects n8n Chat once this resolves, so the save must land first: a config
+ * save that lands later would carry `integrations` without n8n Chat.
+ */
+async function saveN8nChatDescription(description: string): Promise<void> {
+	const targetAgentId = agentId.value;
+	if (description !== (localConfig.value?.description ?? '')) {
+		onConfigFieldUpdate({ description });
+	}
+	// Flush even with nothing queued: it retries a snapshot that a failed save
+	// put back, and rethrows the error of a failed debounced save.
+	if (!isEditingLocked.value) await configAutosave.flushAutosave();
+	// A locked editor, a conflict reload or an agent switch ends the flush
+	// without this description.
+	if (
+		agentId.value !== targetAgentId ||
+		isEditingLocked.value ||
+		(localConfig.value?.description ?? '') !== description
+	) {
+		throw new Error(locale.baseText('agents.channels.n8nChat.description.saveError'));
+	}
+}
+
 async function onHeaderAction(action: string) {
 	if (action === 'edit-description') {
 		openDescriptionModal();
@@ -2513,7 +2540,7 @@ async function initialize({ preserveState = false }: { preserveState?: boolean }
 			// Non-fatal — on failure, leave connectedTriggers unchanged.
 			const integrations = await ensureIntegrationsCatalog(targetProjectId).catch(() => []);
 			if (!isCurrentInitialization()) return;
-			const triggerTypes = integrations.map((i) => i.type);
+			const triggerTypes = withN8nChat(integrations).map((i) => i.type);
 			const connected = await builderTelemetry.fetchInitialTriggersBaseline(triggerTypes);
 			if (
 				isCurrentInitialization() &&
@@ -3017,6 +3044,8 @@ useKeybindings({
 					:main-tab-options="visibleMainTabOptions"
 					:agent-unsaved="isUnsaved"
 					:ensure-agent-persisted="ensureAgentPersisted"
+					:saved-description="localConfig?.description ?? ''"
+					:save-description="saveN8nChatDescription"
 					:executions-description="executionsDescription"
 					:generating-eval-cases="agentEvalsStore.isGeneratingCases(agentId)"
 					:artifact-mode="isArtifactMode"
