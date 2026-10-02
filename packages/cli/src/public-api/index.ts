@@ -419,7 +419,9 @@ export const loadPublicApiVersions = async (
  * must keep working even when token-based access is disabled.
  */
 export function isApiKeyAuthEnabled(): boolean {
+	const licenseState = Container.get(LicenseState);
 	return (
-		!Container.get(GlobalConfig).publicApi.disabled && !Container.get(LicenseState).isAPIDisabled()
+		!Container.get(GlobalConfig).publicApi.disabled &&
+		(!licenseState.licenseProvider || !licenseState.isAPIDisabled())
 	);
 }

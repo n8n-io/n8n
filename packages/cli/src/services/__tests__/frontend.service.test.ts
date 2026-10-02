@@ -228,6 +228,8 @@ describe('FrontendService', () => {
 		globalConfig.aiGateway.enabled = false;
 		licenseState.isAiGatewayLicensed.mockReturnValue(false);
 		licenseState.isAiGatewayCloudUbbLicensed.mockReturnValue(false);
+		licenseState.getMaxUsers.mockReturnValue(100);
+		licenseState.isVariablesLicensed.mockReturnValue(false);
 	});
 
 	afterEach(() => {

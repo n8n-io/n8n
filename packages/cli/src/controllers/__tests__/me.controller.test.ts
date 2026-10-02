@@ -3,6 +3,7 @@ import { LicenseState } from '@n8n/backend-common';
 import { EventService } from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
+import { UNLIMITED_LICENSE_QUOTA } from '@n8n/constants';
 import type { AuthenticatedRequest, User, PublicUser, AuthIdentity } from '@n8n/db';
 import { GLOBAL_OWNER_ROLE, InvalidAuthTokenRepository, UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -38,7 +39,7 @@ describe('MeController', () => {
 	const userRepository = mockInstance(UserRepository);
 	const mockMfaService = mockInstance(MfaService);
 	mockInstance(InvalidAuthTokenRepository);
-	mockInstance(LicenseState).getMaxUsers.mockReturnValue(-1);
+	mockInstance(LicenseState).getMaxUsers.mockReturnValue(UNLIMITED_LICENSE_QUOTA);
 	const controller = Container.get(MeController);
 
 	beforeEach(() => {

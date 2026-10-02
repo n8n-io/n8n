@@ -2673,7 +2673,6 @@ function createWorkflowAdapterForTests(overrides?: {
 			isLicensed: vi.fn().mockImplementation((feat: string) => {
 				if (feat === 'feat:namedVersions') return overrides?.namedVersionsLicensed ?? false;
 				if (feat === 'feat:folders') return overrides?.foldersLicensed ?? false;
-				if (feat === 'feat:sharing') return overrides?.sharingEnabled ?? false;
 				return false;
 			}),
 		} as unknown as License,

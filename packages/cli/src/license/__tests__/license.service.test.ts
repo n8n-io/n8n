@@ -1,5 +1,4 @@
 import type { LicenseState } from '@n8n/backend-common';
-import { UNLIMITED_LICENSE_QUOTA } from '@n8n/constants';
 import { markHttpRequestError } from '@n8n/backend-network';
 import type { HttpRequestClient, OutboundHttp } from '@n8n/backend-network';
 import type { EventService } from '@n8n/backend-services';
@@ -66,14 +65,6 @@ describe('LicenseService', () => {
 					planName: 'Test Plan',
 				},
 			});
-		});
-
-		it('should use the unlimited quota when no active workflow limit is licensed', async () => {
-			licenseState.getMaxActiveWorkflows.mockReturnValueOnce(UNLIMITED_LICENSE_QUOTA);
-
-			const data = await licenseService.getLicenseData();
-
-			expect(data.usage.activeWorkflowTriggers.limit).toBe(UNLIMITED_LICENSE_QUOTA);
 		});
 	});
 

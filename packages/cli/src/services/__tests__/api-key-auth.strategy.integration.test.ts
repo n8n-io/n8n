@@ -1,4 +1,4 @@
-import { Logger } from '@n8n/backend-common';
+import { LicenseState, Logger, type LicenseProvider } from '@n8n/backend-common';
 import { testDb } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import type { AuthenticatedRequest, User } from '@n8n/db';
@@ -10,6 +10,7 @@ import { randomString } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import { TOKEN_EXCHANGE_ISSUER } from '@/modules/token-exchange/token-exchange.types';
+import { isApiKeyAuthEnabled } from '@/public-api';
 import { createOwnerWithApiKey } from '@test-integration/db/users';
 import { retryUntil } from '@test-integration/retry-until';
 
@@ -205,6 +206,36 @@ describe('ApiKeyAuthStrategy', () => {
 	});
 
 	describe('authenticate (wrapper)', () => {
+		it('allows API-key access before the license provider is initialized', () => {
+			const licenseState = Container.get(LicenseState);
+			const previousProvider = licenseState.licenseProvider;
+			licenseState.licenseProvider = null;
+			try {
+				expect(isApiKeyAuthEnabled()).toBe(true);
+				const globalConfig = Container.get(GlobalConfig);
+				const wasDisabled = globalConfig.publicApi.disabled;
+				globalConfig.publicApi.disabled = true;
+				try {
+					expect(isApiKeyAuthEnabled()).toBe(false);
+				} finally {
+					globalConfig.publicApi.disabled = wasDisabled;
+				}
+			} finally {
+				licenseState.licenseProvider = previousProvider;
+			}
+		});
+
+		it('respects the licensed public API restriction when a provider is initialized', () => {
+			const licenseState = Container.get(LicenseState);
+			const previousProvider = licenseState.licenseProvider;
+			licenseState.setLicenseProvider(mock<LicenseProvider>({ isLicensed: () => true }));
+			try {
+				expect(isApiKeyAuthEnabled()).toBe(false);
+			} finally {
+				licenseState.licenseProvider = previousProvider;
+			}
+		});
+
 		it('returns null when no x-n8n-api-key header is present', async () => {
 			expect(await strategy.authenticate(mockReqWithoutApiKey())).toBeNull();
 		});

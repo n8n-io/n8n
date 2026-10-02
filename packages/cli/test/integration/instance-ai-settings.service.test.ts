@@ -1,4 +1,6 @@
+import { LicenseState, type LicenseProvider } from '@n8n/backend-common';
 import { testDb } from '@n8n/backend-test-utils';
+import { GlobalConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import {
 	CredentialsRepository,
@@ -10,6 +12,7 @@ import { CREDENTIAL_BLANKING_VALUE } from 'n8n-workflow';
 
 import { CredentialsService } from '@/credentials/credentials.service';
 import { InstanceCredentialBroker } from '@/credentials/instance-credential-broker';
+import { License } from '@/license';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import {
 	INSTANCE_AI_DAYTONA_CREDENTIAL_POLICY,
@@ -28,6 +31,8 @@ describe('InstanceAiSettingsService (integration)', () => {
 	let assignmentRepository: InstanceCredentialAssignmentRepository;
 	let settingsRepository: SettingsRepository;
 	let owner: User;
+	let previousLicenseProvider: LicenseProvider | null;
+	let previousModelConfig: { model: string; modelApiKey: string; modelUrl: string };
 
 	const modelUpdate = {
 		modelConnection: { type: 'openAiApi', data: { apiKey: 'test-key' } },
@@ -36,6 +41,19 @@ describe('InstanceAiSettingsService (integration)', () => {
 
 	beforeAll(async () => {
 		await testDb.init();
+		const licenseState = Container.get(LicenseState);
+		previousLicenseProvider = licenseState.licenseProvider;
+		licenseState.setLicenseProvider(Container.get(License));
+		const aiConfig = Container.get(GlobalConfig).instanceAi;
+		previousModelConfig = {
+			model: aiConfig.model,
+			modelApiKey: aiConfig.modelApiKey,
+			modelUrl: aiConfig.modelUrl,
+		};
+		aiConfig.model = 'custom/test';
+		aiConfig.modelApiKey = '';
+		aiConfig.modelUrl = '';
+		vi.stubEnv('N8N_INSTANCE_AI_MODEL', '');
 		await initCredentialsTypes();
 
 		// The instance-ai module is not booted here; register its credential uses directly.
@@ -58,6 +76,9 @@ describe('InstanceAiSettingsService (integration)', () => {
 	});
 
 	afterAll(async () => {
+		Container.get(LicenseState).licenseProvider = previousLicenseProvider;
+		Object.assign(Container.get(GlobalConfig).instanceAi, previousModelConfig);
+		vi.unstubAllEnvs();
 		await testDb.terminate();
 	});
 
