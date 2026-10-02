@@ -270,9 +270,12 @@ describe('FrontendService', () => {
 
 		it('should refresh licensed features and quotas from LicenseState', async () => {
 			const { service } = createMockService();
-			licenseState.getMaxUsers.mockReturnValue(5);
+			licenseState.getMaxUsers
+				.mockReturnValueOnce(5)
+				.mockReturnValueOnce(5)
+				.mockReturnValueOnce(UNLIMITED_LICENSE_QUOTA);
 			licenseState.isSharingLicensed.mockReturnValueOnce(true);
-			licenseState.isVariablesLicensed.mockReturnValue(true);
+			licenseState.isVariablesLicensed.mockReturnValueOnce(true).mockReturnValueOnce(true);
 			licenseState.getMaxVariables.mockReturnValueOnce(10);
 
 			const licensed = await service.getSettings();
@@ -280,11 +283,11 @@ describe('FrontendService', () => {
 			expect(licensed.enterprise.sharing).toBe(true);
 			expect(licensed.variables.limit).toBe(10);
 
-			licenseState.getMaxUsers.mockReturnValueOnce(UNLIMITED_LICENSE_QUOTA);
 			licenseState.isSharingLicensed.mockReturnValueOnce(false);
 			const unlicensed = await service.getSettings();
 			expect(unlicensed.userManagement.quota).toBe(UNLIMITED_LICENSE_QUOTA);
 			expect(unlicensed.enterprise.sharing).toBe(false);
+			expect(unlicensed.enterprise.variables).toBe(false);
 		});
 
 		it('should expose excluded node types from NODES_EXCLUDE', async () => {
