@@ -75,12 +75,12 @@ export const Oauth2AuthenticationSchema = z.object({
 	// Upper bounds keep both windows from disabling `exp`/`nbf` checks. Relaxing later is additive.
 	maxTokenLifetimeSeconds: z.number().int().positive().max(86400).default(86400),
 	clockSkewSeconds: z.number().int().nonnegative().max(300).default(60),
-	// The client secret is not part of the document: see `TrustedSourceSecretsSchema`.
 	client: z
 		.discriminatedUnion('kind', [
 			z.object({
 				kind: z.literal('registered'),
 				clientId: z.string().min(1),
+				clientSecret: z.string().min(1).optional(),
 				scopes: z.array(z.string()).optional(),
 			}),
 			z.object({ kind: z.literal('virtual') }),
@@ -150,6 +150,7 @@ export const TrustedSourceConfigV1Schema = z.object({
 });
 export type TrustedSourceConfigV1 = z.infer<typeof TrustedSourceConfigV1Schema>;
 export type TrustedSourceConfigV1Input = z.input<typeof TrustedSourceConfigV1Schema>;
+export type TrustedSourceConfigInput = z.input<typeof TrustedSourceConfigSchema>;
 
 const ownerRoleIssue = (path: Array<string | number>): z.IssueData => ({
 	code: z.ZodIssueCode.custom,
@@ -255,19 +256,6 @@ export const trustedSourceConfigSchemaFor = (managedBy: ManagedBy) =>
 			}
 		}
 	});
-
-/**
- * Secret material of a trusted source. Stored apart from the config document in its own encrypted
- * column, so the document stays safe to return to an admin UI unchanged. Strict: a secret payload
- * with an unknown key is a bug, not a forward-compatible read.
- */
-export const TrustedSourceSecretsSchema = z
-	.object({
-		version: z.literal(1),
-		clientSecret: z.string().min(1).optional(),
-	})
-	.strict();
-export type TrustedSourceSecrets = z.infer<typeof TrustedSourceSecretsSchema>;
 
 type ConfigMigration = (config: TrustedSourceConfig) => TrustedSourceConfig;
 
