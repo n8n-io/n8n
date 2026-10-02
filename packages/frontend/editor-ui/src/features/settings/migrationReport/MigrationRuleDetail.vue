@@ -15,8 +15,8 @@ import {
 	N8nInputLabel,
 	N8nLink,
 	N8nLoading,
-	N8nOption,
-	N8nSelect,
+	N8nSelect2,
+	type SelectValue,
 	N8nSettingsLayout,
 	N8nText,
 } from '@n8n/design-system';
@@ -162,8 +162,23 @@ const onSearchInput = (value: string) => {
 	void debouncedSearch(value); // Debounce the filter update
 };
 
+const ALL_STATUSES = 'all';
+
+function onStatusFilter(value: SelectValue | undefined) {
+	if (value === undefined || value === ALL_STATUSES) {
+		statusFilter.value = '';
+		return;
+	}
+	if (value === 'active' || value === 'deactivated') {
+		statusFilter.value = value;
+	}
+}
+
 const statusOptions = computed(() => [
-	{ value: '', label: i18n.baseText('settings.migrationReport.detail.filter.status.all') },
+	{
+		value: ALL_STATUSES,
+		label: i18n.baseText('settings.migrationReport.detail.filter.status.all'),
+	},
 	{
 		value: 'active',
 		label: i18n.baseText('settings.migrationReport.detail.filter.status.active'),
@@ -316,18 +331,13 @@ const sortedWorkflows = computed(() => {
 						color="text-base"
 						class="mb-3xs"
 					/>
-					<N8nSelect
-						v-model="statusFilter"
+					<N8nSelect2
+						:model-value="statusFilter || ALL_STATUSES"
+						:items="statusOptions"
 						size="small"
 						data-test-id="migration-rule-status-filter"
-					>
-						<N8nOption
-							v-for="option in statusOptions"
-							:key="option.value"
-							:value="option.value"
-							:label="option.label"
-						/>
-					</N8nSelect>
+						@update:model-value="onStatusFilter"
+					/>
 				</template>
 			</ResourceFiltersDropdown>
 		</div>
