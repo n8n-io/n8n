@@ -16,7 +16,3 @@ export const REQUEST_BODY_HANDLERS: Record<RequestBodyMediaType, RequestBodyHand
 
 /** The media type every route had before `@Body` could declare one - the default for a route that doesn't. */
 export const JSON_REQUEST_BODY_MEDIA: RequestBodyMedia = { mediaType: 'application/json' };
-
-export function requestBodyHandlerFor(media: RequestBodyMedia): RequestBodyHandler {
-	return REQUEST_BODY_HANDLERS[media.mediaType];
-}

@@ -20,7 +20,7 @@ import type { ZodTypeAny } from 'zod';
 import type { RequestBodyHandler } from '@/public-api/media-types/request-body';
 import {
 	JSON_REQUEST_BODY_MEDIA,
-	requestBodyHandlerFor,
+	REQUEST_BODY_HANDLERS,
 } from '@/public-api/media-types/request-body';
 
 export const HTTP_METHODS = [
@@ -42,7 +42,7 @@ export type BodyArg = {
 	required?: boolean;
 	/** Defaults to JSON when `@Body` declares no media type. */
 	media: RequestBodyMedia;
-	/** Resolved once here from `media`, so callers don't each call `requestBodyHandlerFor` themselves. */
+	/** Resolved once here from `media`, so callers don't each look it up in `REQUEST_BODY_HANDLERS` themselves. */
 	handler: RequestBodyHandler;
 };
 type QueryArg = { type: 'query'; dto: ZodClass };
@@ -151,7 +151,7 @@ export function resolveRouteArgs(
 				dto: paramType,
 				...(arg.required !== undefined && { required: arg.required }),
 				media,
-				handler: requestBodyHandlerFor(media),
+				handler: REQUEST_BODY_HANDLERS[media.mediaType],
 			});
 			continue;
 		}
