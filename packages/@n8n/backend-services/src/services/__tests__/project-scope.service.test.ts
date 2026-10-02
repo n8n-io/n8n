@@ -1,9 +1,8 @@
-import { mockInstance } from '@n8n/backend-test-utils';
 import { ProjectRelationRepository, User } from '@n8n/db';
-
-import { RoleService } from '@n8n/backend-services';
+import { mock } from 'vitest-mock-extended';
 
 import { ProjectScopeService } from '../project-scope.service';
+import { RoleService } from '../role.service';
 
 const makeUser = (globalScopes: string[] = []) =>
 	Object.assign(new User(), {
@@ -15,8 +14,8 @@ const makeUser = (globalScopes: string[] = []) =>
 	});
 
 describe('ProjectScopeService', () => {
-	const roleService = mockInstance(RoleService);
-	const projectRelationRepository = mockInstance(ProjectRelationRepository);
+	const roleService = mock<RoleService>();
+	const projectRelationRepository = mock<ProjectRelationRepository>();
 	const service = new ProjectScopeService(roleService, projectRelationRepository);
 
 	beforeEach(() => {
