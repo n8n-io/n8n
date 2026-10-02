@@ -1,5 +1,6 @@
 import type { ToolDescriptor } from '@n8n/agents';
 import { type AgentJsonConfig } from '@n8n/api-types';
+import { UnexpectedError } from 'n8n-workflow';
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
@@ -118,6 +119,13 @@ describe('SubAgentSourceResolver', () => {
 				tools: {
 					lookup: { descriptor: customToolDescriptor, code: 'original tool body' },
 				},
+				skills: {
+					original_skill: {
+						name: 'Original skill',
+						description: 'Original description',
+						instructions: 'Original skill body',
+					},
+				},
 			}),
 		);
 		const original = await resolver.resolveForRuntime({ agentId }, { projectId });
@@ -136,6 +144,23 @@ describe('SubAgentSourceResolver', () => {
 				{ projectId, runtimeSnapshot: JSON.stringify(original) },
 			),
 		).rejects.toThrow();
+	});
+
+	it.each([
+		['empty snapshot', ''],
+		['invalid JSON', '{'],
+		['null snapshot', 'null'],
+		['missing source', '{}'],
+		['null source', '{"source":null}'],
+		['missing source ID', JSON.stringify({ source: { config: runnableConfig } })],
+		['invalid config', JSON.stringify({ source: { sourceId: agentId, config: {} } })],
+	])('rejects saved background configuration with %s', async (_description, runtimeSnapshot) => {
+		agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+
+		const result = resolver.resolveForRuntime({ agentId }, { projectId, runtimeSnapshot });
+
+		await expect(result).rejects.toThrow(UnexpectedError);
+		await expect(result).rejects.toThrow('Invalid saved background task configuration');
 	});
 
 	it('pins a resumed version over the currently published one in production runs', async () => {

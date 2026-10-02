@@ -745,12 +745,12 @@ describe('SubAgentRunner', () => {
 		);
 	});
 
-	it('resumes a paused child from its pinned runtime and reports another pause', async () => {
+	it.each(['saved', 'empty'])('resumes a paused child with its %s snapshot', async (snapshot) => {
 		const pinnedRuntimeSource = {
 			...runtimeSource,
 			source: { ...source, versionId: 'version-7' },
 		};
-		const runtimeSnapshot = JSON.stringify(pinnedRuntimeSource);
+		const runtimeSnapshot = snapshot === 'empty' ? '' : JSON.stringify(pinnedRuntimeSource);
 		const shouldPause = vi.fn().mockResolvedValue(true);
 		sourceResolver.resolveForRuntime.mockResolvedValue(pinnedRuntimeSource);
 		childAgent.resumePaused.mockImplementation(async (options) => {

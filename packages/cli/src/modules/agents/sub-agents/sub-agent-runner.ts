@@ -249,7 +249,9 @@ export class SubAgentRunner {
 			{
 				projectId: context.projectId,
 				usePublishedVersion: context.runType === 'production',
-				...(context.runtimeSnapshot ? { runtimeSnapshot: context.runtimeSnapshot } : {}),
+				...(context.runtimeSnapshot !== undefined
+					? { runtimeSnapshot: context.runtimeSnapshot }
+					: {}),
 			},
 		);
 
