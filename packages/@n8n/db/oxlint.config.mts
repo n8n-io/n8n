@@ -24,7 +24,7 @@ export default defineConfig({
 			files: ['src/migrations/**/*.ts'],
 			rules: {
 				'typescript/no-deprecated': 'off',
-			}
+			},
 		},
 		{
 			files: ['src/migrations/sqlite/1681134145996-AddUserActivatedProperty.ts'],
