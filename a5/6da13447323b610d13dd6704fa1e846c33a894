@@ -1,7 +1,10 @@
 packages/cli/test/integration/workflow-history-compaction-trim.task.test.ts
   s_be34f2a9936255::t_b1f7b7559c241e 1,18,22-28,73-74,78,80,83-84,89,99-100,111-115,117-120,126,128,130,132-133
+  s_be34f2a9936255::t_b0bd683611d5fd 1,18,22-28,73-74,78,80,83-84,89,99-100,111-115,117-120,126,128,130,132-133
 packages/workflow/test/workflow-diff.test.ts
   s_be34f2a9936255::t_6622d1a7c94da7 1449,1499-1507,1509-1510
+  s_be34f2a9936255::t_0a01ff2780b2b2 1449
+  s_be34f2a9936255::t_326cba7aa6f198 1499-1507,1509-1510
 ---
 {
   "schema_version": "authorship/3.0.0",
