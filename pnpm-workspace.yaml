@@ -48,6 +48,7 @@ packages:
   - packages/modules/**
   - packages/extensions/**
   - packages/testing/**
+  - '!packages/testing/playwright/fixtures/community-packages/packages/**'
 
 catalog:
   '@ai-sdk/alibaba': ^2.0.32
