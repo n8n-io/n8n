@@ -471,7 +471,10 @@ describe('AgentExecutionRepository', () => {
 					mock<ExecutionPersistence>(),
 					mock<Publisher>(),
 					mockLogger(),
-					mock<AgentsConfig>({ backgroundTasksEnabled: true }),
+					mock<AgentsConfig>({
+						backgroundTasksEnabled: true,
+						checkpointTtlSeconds: Container.get(AgentsConfig).checkpointTtlSeconds,
+					}),
 					mock<AgentExecutionUpdateBroadcaster>(),
 					storage,
 					Container.get(AgentMessageRepository),
