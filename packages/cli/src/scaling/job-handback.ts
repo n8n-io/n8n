@@ -11,7 +11,7 @@ function raiseAttemptsForHandBack(job: Job) {
 async function placeAtFrontOfBand(job: Job) {
 	try {
 		const { priority } = job.opts;
-		if (typeof priority !== 'number' || !(priority > 0)) return;
+		if (typeof priority !== 'number' || !(priority > 0) || priority >= 2 ** 52) return;
 		// Bull's retry reads the stored priority and inserts behind equal scores; half a step keeps the band.
 		await job.queue.client.hset(job.queue.toKey(String(job.id)), 'priority', priority - 0.5);
 	} catch {
