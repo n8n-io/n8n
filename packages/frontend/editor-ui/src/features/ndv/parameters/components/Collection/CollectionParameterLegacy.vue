@@ -19,7 +19,8 @@ import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { useAiGatewayStore } from '@/app/stores/aiGateway.store';
 import { useI18n } from '@n8n/i18n';
 
-import { N8nButton, N8nOption, N8nSelect, N8nText } from '@n8n/design-system';
+import { N8nButton, N8nSelect2, N8nText } from '@n8n/design-system';
+import type { SelectValue } from '@n8n/design-system';
 import { isPresent } from '@/app/utils/typesUtils';
 
 const selectedOption = ref<string | undefined>(undefined);
@@ -149,7 +150,15 @@ const parameterOptions = computed(() => {
 	return filteredOptions.value.filter((option) => !propertyNames.value.includes(option.name));
 });
 
-function optionSelected(optionName: string) {
+const addOptionItems = computed(() =>
+	parameterOptions.value.flatMap((item) => {
+		const label = getParameterOptionLabel(item);
+		if (!item.name || !label) return [];
+		return [{ value: item.name, label }];
+	}),
+);
+
+function optionSelected(optionName: SelectValue | undefined) {
 	const option = getOptionProperties(optionName);
 	if (!option) return;
 
@@ -237,26 +246,15 @@ function valueChanged(parameterData: IUpdateInformation) {
 					data-test-id="collection-parameter-add"
 					@click="optionSelected(parameter.options![0].name)"
 				/>
-				<div v-else :class="$style.addOption">
-					<N8nSelect
-						ref="addSelectRef"
-						v-model="selectedOption"
-						:placeholder="getPlaceholderText"
-						size="small"
-						filterable
-						data-test-id="collection-parameter-add"
-						@update:model-value="optionSelected"
-					>
-						<N8nOption
-							v-for="item in parameterOptions"
-							:key="item.name"
-							:label="getParameterOptionLabel(item)"
-							:value="item.name"
-							data-test-id="collection-parameter-option"
-						>
-						</N8nOption>
-					</N8nSelect>
-				</div>
+				<N8nSelect2
+					v-else
+					:model-value="selectedOption"
+					:items="addOptionItems"
+					:placeholder="getPlaceholderText"
+					size="small"
+					data-test-id="collection-parameter-add"
+					@update:model-value="optionSelected"
+				/>
 			</div>
 		</div>
 	</div>
@@ -293,48 +291,6 @@ function valueChanged(parameterData: IUpdateInformation) {
 		&.active,
 		&:focus {
 			outline: none;
-		}
-	}
-}
-
-.addOption {
-	> * {
-		border: none;
-	}
-
-	:global(.el-select .el-input.is-disabled) {
-		:global(.el-input__icon) {
-			opacity: 1 !important;
-			cursor: not-allowed;
-			color: var(--color--foreground--shade-1);
-		}
-		:global(.el-input__inner),
-		:global(.el-input__inner::placeholder) {
-			opacity: 1;
-			color: var(--color--foreground--shade-1);
-		}
-	}
-	:global(.el-select .el-input:not(.is-disabled) .el-input__icon) {
-		color: var(--color--text--shade-1);
-	}
-	:global(.el-input .el-input__inner) {
-		text-align: center;
-	}
-	:global(.el-input:not(.is-disabled) .el-input__inner) {
-		&,
-		&:hover,
-		&:focus {
-			padding-left: 35px;
-			border-radius: var(--radius);
-			color: var(--color--text--shade-1);
-			background-color: var(--color--background);
-			border-color: var(--color--foreground);
-			text-align: center;
-		}
-
-		&::placeholder {
-			color: var(--color--text--shade-1);
-			opacity: 1;
 		}
 	}
 }
