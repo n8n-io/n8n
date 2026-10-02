@@ -12,7 +12,7 @@ This file is the complete API reference. You do not have to read the SDK source.
   `__service__.item.getAll` is in `src/actions/item.get-all.ts`. `check` fails for another file name.
   Add each action to `actions`.
 - `src/actions/<resource>.<operation>.test.ts`: unit tests with `node:test`, `runAction` and `mockHttp`.
-- `src/actions/item.get-all.ts` and its test are an example: a list with `returnAll`, `limit` and cursor pages.
+- `src/actions/item.get-all.ts` and its test are an example: a declarative list with cursor pages.
   Rename or replace them.
 
 ## Commands
@@ -21,7 +21,7 @@ This file is the complete API reference. You do not have to read the SDK source.
 n8n-node-next check                      # tsc --strict plus contract checks
 n8n-node-next test                       # run src/**/*.test.ts; a test fails after 20 s
 n8n-node-next describe [actionId]        # the typed module the AI builder sees
-n8n-node-next run __service__.item.getAll --input '{"limit":5}' --credential-env __ENV__
+n8n-node-next run __service__.item.getAll --input '{"paging":{"mode":"limit","max":5}}' --credential-env __ENV__
 ```
 
 `run` calls the live API and prints the items. `--credential-env __ENV__` reads the field `apiKey`
@@ -65,7 +65,7 @@ export const createItem = item.action('create', {
 - `flow.effect`: `read` | `write` | `transform`. `flow.cardinality`: `per-item` (one output item per
   input item) or `1:N` (a list). `idempotent?: boolean`.
 - `run()` runs once per input item. A `per-item` action returns its output item. A `1:N` action is an
-  `async *run()` generator: `yield` each output item, or `yield* paginate(...)`. The types reject a
+  `async *run()` generator: `yield` each output item, or `yield* pages(...)`. The types reject a
   `per-item` generator and a `1:N` action that returns. n8n validates each item against `output` when it
   is returned or yielded, and pairs it with its input item.
 - In `run()`, a field with `.default(v)` is always set, also inside objects. Do not add `??` fallbacks.
@@ -118,8 +118,10 @@ export const createItem = item.action('create', {
 - Do not write retries. n8n retries a 429, 502, 503, 504 or a dropped connection up to 3 times, with
   backoff and `Retry-After`, for GET, HEAD, PUT, and every request of an action with `flow.idempotent: true`.
   `retry: true` also retries another method; `retry: false` never retries.
-- Paging: `paginate(http, { request(cursor, room), items(body), next(body), limit?, maxPages? })` yields
-  the items; see `src/actions/item.get-all.ts`. Do not write a page loop. One run may send 10000 requests.
+- Lists: `list: { path, query?, response, items(page, input), pages? }` replaces `run()` (see
+  `src/actions/item.get-all.ts`); `pages.style` is `cursor`, `link` or `offset`, and `pages` adds `paging`.
+  In `run()`: `pages(http, { page: schema, request(cursor, room), items, next, limit: limitOf(input.paging) })`.
+  Do not write a page loop. One run may send 10000 requests.
 
 ## Tests
 

@@ -14,7 +14,7 @@ import {
 } from '../table';
 
 export const appendSheetRow = sheet.action('append', {
-	patch: 5,
+	patch: 6,
 	action: 'Append row',
 	summary: 'Append one row per item. Never updates existing rows; use appendOrUpdate to upsert.',
 	flow: { effect: 'write', cardinality: 'per-item', idempotent: false },
@@ -29,11 +29,11 @@ export const appendSheetRow = sheet.action('append', {
 		const spreadsheetId = spreadsheetIdOf(input.spreadsheet);
 		const tab = await sheetOf(http, spreadsheetId, input.sheet);
 		const rows = await readValues(http, spreadsheetId, tab, 'FORMATTED_VALUE');
-		const headerRow = input.headerRow ?? 1;
+		const { headerRow } = input;
 		const header = await headerOf(http, spreadsheetId, tab, rows, headerRow, input.values);
 		const lastRow = Math.max(rows.length, headerRow) + 1;
 		const cells = rowCells(header, input.values);
-		await appendRow(http, spreadsheetId, tab, lastRow, cells, input.cellFormat ?? 'USER_ENTERED');
+		await appendRow(http, spreadsheetId, tab, lastRow, cells, input.cellFormat);
 		return input.values;
 	},
 });

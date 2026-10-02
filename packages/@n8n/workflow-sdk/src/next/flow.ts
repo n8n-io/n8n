@@ -119,6 +119,22 @@ export type Expression = `=${string}`;
  */
 export type Value<Item, Ctx, V> = V | ((item: Item, $: Dollar<Ctx>) => V) | Expression;
 
+/** One response of a paged request, as `$response` of the legacy HTTP Request pagination. */
+export interface ResponsePage {
+	/** The parsed JSON body. Its shape is not known, so reads compile. */
+	readonly body: Loose;
+	/** Lower-case names, e.g. `link`. */
+	readonly headers: Readonly<Record<string, string>>;
+	readonly statusCode: number;
+}
+
+/**
+ * A value the node reads from each response page, e.g. `(page) => page.body.next_cursor`. The
+ * lambda compiles to an expression over `$response`. It reads fields, list items, `.at(n)`,
+ * `.first()` and `.last()`, nothing else.
+ */
+export type PageValue<V> = ((page: ResponsePage) => V) | Expression;
+
 /**
  * Any value in an open object, as `unknown` accepts. Unlike `unknown`, it gives a lambda in
  * its place typed parameters.
@@ -1201,6 +1217,8 @@ export function contractStep<In, Ctx, Out, N extends string>(
 	requires?: Requires,
 	/** Set on the reply step of a native trigger. */
 	pairing?: Pairing,
+	/** The paths of the fields whose lambdas read each response page, e.g. `[['pages', 'next']]`. */
+	pageFields: ReadonlyArray<readonly string[]> = [],
 ): Step<In, Ctx, Out, N> {
 	const { name, sample, settings, ...fields } = config;
 	const { parameters, subnodes, unslotted } = splitSubnodes(fields);
@@ -1219,12 +1237,31 @@ export function contractStep<In, Ctx, Out, N extends string>(
 				unslotted.forEach((key) =>
 					compiler.issue(`${key} takes a contract sub-node of its module, not subnode()`),
 				);
-				const compiled = compiler.value(parameters);
+				const compiled = compileWithPages(compiler, parameters, pageFields);
 				// The slot goes last: no contract field may change the action that runs.
 				return { ...(isDataObject(compiled) ? compiled : {}), ...slot };
 			},
 		},
 	};
+}
+
+/** Compiles the lambdas at `pageFields` over the response page, and every other lambda over the item. */
+function compileWithPages(
+	compiler: Compiler,
+	value: unknown,
+	pageFields: ReadonlyArray<readonly string[]>,
+	at: readonly string[] = [],
+): unknown {
+	const startsWith = (path: readonly string[]) => at.every((key, index) => path[index] === key);
+	const inside = pageFields.filter(startsWith);
+	if (inside.some((path) => path.length === at.length)) return compiler.value(value, '$response');
+	if (inside.length === 0 || !isDataObject(value)) return compiler.value(value);
+	return Object.fromEntries(
+		Object.entries(value).map(([key, entry]) => [
+			key,
+			compileWithPages(compiler, entry, inside, [...at, key]),
+		]),
+	);
 }
 
 /**

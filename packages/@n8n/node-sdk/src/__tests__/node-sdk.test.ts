@@ -15,6 +15,7 @@ import {
 	num,
 	obj,
 	oneOf,
+	pageValue,
 	str,
 	toContract,
 	toNodeType,
@@ -149,6 +150,37 @@ describe('schema builders', () => {
 		const withoutDefault: RunInput<typeof input> = {};
 		const fromCaller: Infer<ReturnType<typeof obj<typeof input>>> = {};
 		expect([limit, withoutDefault, fromCaller]).toEqual([5, {}, {}]);
+	});
+
+	it('types a nested default as set in run() at any depth', () => {
+		const input = {
+			header: obj({ headerRow: num().default(1), sheet: str().optional() }).default({}),
+			rows: arr(obj({ format: oneOf('RAW', 'USER_ENTERED').default('RAW') })),
+			filter: obj({ max: num().default(10) }).optional(),
+			paging: variant('mode', { all: {}, limit: { max: num().default(50) } }).default({
+				mode: 'all',
+			}),
+		};
+		type Run = RunInput<typeof input>;
+		expectTypeOf<Run['header']>().toEqualTypeOf<{ headerRow: number; sheet?: string }>();
+		expectTypeOf<Run['rows'][number]['format']>().toEqualTypeOf<'RAW' | 'USER_ENTERED'>();
+		expectTypeOf<Run['filter']>().toEqualTypeOf<{ max: number } | undefined>();
+		expectTypeOf<Extract<Run['paging'], { mode: 'limit' }>['max']>().toEqualTypeOf<number>();
+		expectTypeOf<Infer<typeof input.header>>().toEqualTypeOf<{
+			headerRow?: number;
+			sheet?: string;
+		}>();
+
+		const read = task.action('read', {
+			action: 'Read a task',
+			summary: 'Read a task.',
+			flow: { effect: 'read', cardinality: 'per-item' },
+			input,
+			output: obj({ row: num() }),
+			run: async ({ input: { header, project } }) =>
+				await Promise.resolve({ row: header.headerRow + project.length }),
+		});
+		expect(read.id).toBe('todo.task.read');
 	});
 
 	it('builds a nullable schema', () => {
@@ -299,6 +331,49 @@ describe('toNodeType', () => {
 				url: 'https://todo.test/projects/p1/tasks',
 				qs: { max: 2 },
 			}),
+		]);
+	});
+
+	it('reads page value fields unresolved and resolves the other fields', async () => {
+		const readPages = todo.action('readPages', {
+			action: 'Read pages',
+			summary: 'Read the page values.',
+			flow: { effect: 'read', cardinality: 'per-item' },
+			input: { url: str(), pages: obj({ next: pageValue(str()) }) },
+			output: obj({ url: str(), next: str() }),
+			async run({ input }) {
+				return { url: input.url, next: input.pages.next };
+			},
+		});
+		const stored: Record<string, unknown> = {
+			url: '={{ $json.url }}',
+			pages: { next: '={{ $response.body.next }}' },
+		};
+		const resolved: Record<string, unknown> = { url: 'https://todo.test/a' };
+		const context = {
+			getInputData: () => [{ json: {} }],
+			getNode: () => ({ name: 'Pages', credentials: { todoApi: { id: '1', name: 'Todo' } } }),
+			getNodeParameter: (
+				name: string,
+				_item: number,
+				_fallback: unknown,
+				options?: { rawExpressions?: boolean },
+			) => {
+				if (options?.rawExpressions) return stored[name];
+				if (name in resolved) return resolved[name];
+				throw new Error('$response is not defined');
+			},
+			getCredentials: async () => ({}),
+			continueOnFail: () => false,
+		} as unknown as IExecuteFunctions;
+		const result = await new (toNodeType(readPages))().execute?.call(context);
+		expect(result).toEqual([
+			[
+				{
+					json: { url: 'https://todo.test/a', next: '={{ $response.body.next }}' },
+					pairedItem: { item: 0 },
+				},
+			],
 		]);
 	});
 

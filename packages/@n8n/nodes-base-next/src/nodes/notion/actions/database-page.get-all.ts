@@ -2,13 +2,13 @@ import {
 	arr,
 	bool,
 	int,
-	isRecord,
-	list,
+	jsonValue,
 	matches,
+	nullable,
 	num,
 	obj,
 	oneOf,
-	paginate,
+	pages,
 	str,
 	validate,
 	variant,
@@ -203,9 +203,16 @@ function outputFromProperties(
 	};
 }
 
+/** One page of a data source query: each result is simplified before it is checked. */
+const queryPage = obj({
+	results: arr(jsonValue()),
+	has_more: bool().optional(),
+	next_cursor: nullable(str()).optional(),
+}).with({ additionalProperties: true });
+
 export const getManyDatabasePages = databasePage.action('getAll', {
 	minor: 2,
-	patch: 1,
+	patch: 2,
 	action: 'Get many database pages',
 	summary: 'List pages of a Notion database, optionally filtered and sorted.',
 	flow: { effect: 'read', cardinality: '1:N', idempotent: true },
@@ -230,7 +237,8 @@ export const getManyDatabasePages = databasePage.action('getAll', {
 					}
 				: {}),
 		};
-		const results = paginate(http, {
+		const results = pages(http, {
+			page: queryPage,
 			request: (cursor, room) => ({
 				method: 'POST',
 				path: `/data_sources/${dataSourceId}/query`,
@@ -241,14 +249,9 @@ export const getManyDatabasePages = databasePage.action('getAll', {
 					...(cursor ? { start_cursor: cursor } : {}),
 				},
 			}),
-			items: (response) => list(isRecord(response) ? response.results : undefined),
+			items: (response) => response.results,
 			// Like v3, a missing `has_more` does not end the list.
-			next: (response) =>
-				isRecord(response) &&
-				response.has_more !== false &&
-				typeof response.next_cursor === 'string'
-					? response.next_cursor
-					: undefined,
+			next: (response) => (response.has_more === false ? undefined : response.next_cursor),
 			limit,
 		});
 		for await (const result of results) {

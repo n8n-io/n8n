@@ -7,6 +7,7 @@ import {
 } from 'n8n-workflow';
 
 import {
+	arr,
 	compat,
 	contractHash,
 	credential,
@@ -14,10 +15,11 @@ import {
 	defineNode,
 	diffContracts,
 	generateNodeModule,
+	int,
 	lintContract,
 	oneOf,
 	obj,
-	paginate,
+	pages,
 	str,
 	toContract,
 	toCredentialType,
@@ -172,18 +174,18 @@ describe('host egress', () => {
 	});
 
 	it('checks every page, so a next link to another host is refused', async () => {
-		const pages = echo.action('pages', {
+		const linked = echo.action('pages', {
 			action: 'Pages',
 			summary: 'Read pages.',
 			flow: { effect: 'read', cardinality: '1:N' },
 			input: {},
 			output,
 			async *run({ http }) {
-				yield* paginate(http, {
+				yield* pages(http, {
+					page: obj({ next: str() }),
 					request: (cursor) => (cursor ? { url: cursor } : { path: '/items' }),
 					items: () => [{ ok: 'page' }],
-					next: (body) =>
-						body && typeof body === 'object' && 'next' in body ? String(body.next) : undefined,
+					next: (body) => body.next,
 				});
 			},
 		});
@@ -191,7 +193,7 @@ describe('host egress', () => {
 			credentialType: 'echoApi',
 			replies: [{ next: 'https://other.test/page2' }],
 		});
-		await expect(executorOf(pages)(host)).rejects.toThrow('not to other.test');
+		await expect(executorOf(linked)(host)).rejects.toThrow('not to other.test');
 		expect(sent).toHaveLength(1);
 	});
 
@@ -318,7 +320,8 @@ describe('host egress', () => {
 			output,
 			poll: {
 				request: () => ({ url: 'https://other.test/changes' }),
-				items: () => [],
+				response: arr(obj({ id: int() })),
+				items: (page) => page,
 				cursor: { id: () => 1 },
 			},
 		});

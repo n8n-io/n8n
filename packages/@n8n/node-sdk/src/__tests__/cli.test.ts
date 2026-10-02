@@ -154,7 +154,14 @@ describe('n8n-node-next', () => {
 			node,
 			readFileSync(node, 'utf8').replace('https://api.todo.example.com/v1', baseUrl()),
 		);
-		const args = ['run', 'todo.item.getAll', '--input', '{"limit":1}', '--credential-env', 'TODO'];
+		const args = [
+			'run',
+			'todo.item.getAll',
+			'--input',
+			'{"paging":{"mode":"limit","max":1}}',
+			'--credential-env',
+			'TODO',
+		];
 		const ok = await cli(project, args, { TODO_API_KEY: 'secret' });
 		expect(ok.code).toBe(0);
 		expect(JSON.parse(ok.stdout)).toEqual([{ id: '1', name: 'First', ownerId: null }]);
@@ -168,7 +175,8 @@ describe('n8n-node-next', () => {
 		expect(denied.code).toBe(1);
 		expect(JSON.parse(denied.stderr).error.httpStatus).toBe(401);
 
-		const invalid = await cli(project, ['run', 'todo.item.getAll', '--input', '{"limit":0}']);
-		expect(JSON.parse(invalid.stderr).error.path).toBe('input.limit');
+		const input = '{"paging":{"mode":"limit","max":0}}';
+		const invalid = await cli(project, ['run', 'todo.item.getAll', '--input', input]);
+		expect(JSON.parse(invalid.stderr).error.path).toBe('input.paging.max');
 	});
 });

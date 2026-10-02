@@ -1,4 +1,4 @@
-import { arr, bool, int, nullable, obj, paginate, parse, str } from '@n8n/node-sdk';
+import { arr, nullable, obj, str } from '@n8n/node-sdk';
 
 import { item } from '../__slug__.node';
 
@@ -9,32 +9,24 @@ export const itemOutput = obj({
 	ownerId: nullable(str()).hint('null when nobody owns the item'),
 });
 
-// One page of the list response.
-const page = obj({ items: arr(itemOutput), nextCursor: nullable(str()).optional() });
-
 // The id is `__service__.item.getAll`, so this file is `actions/item.get-all.ts`.
 export const getManyItems = item.action('getAll', {
 	action: 'Get many items',
 	summary: 'List items, newest first.',
 	flow: { effect: 'read', cardinality: '1:N', idempotent: true },
-	input: {
-		returnAll: bool().default(false),
-		limit: int().with({ minimum: 1 }).default(50).hint('Used when returnAll is false'),
-	},
+	input: {},
 	output: itemOutput,
-	// A `1:N` action yields each output item. `paginate` owns the page loop: it stops at the
-	// limit, on the last page, and on a repeated cursor.
-	async *run({ input, http }) {
-		yield* paginate(http, {
-			// `room` is the limit minus the items so far. An undefined query value is not sent.
-			request: (cursor, room) => ({
-				path: '/items',
-				query: { pageSize: Math.min(room ?? 100, 100), cursor },
-			}),
-			// `parse` throws with each failing path when a page does not match.
-			items: (response) => parse(page, response).items,
-			next: (response) => parse(page, response).nextCursor ?? undefined,
-			limit: input.returnAll ? undefined : input.limit,
-		});
+	// n8n sends the requests of a `list`. It checks each page against `response`, and stops at the
+	// `paging` limit, on the last page, and on a repeated cursor. `pages` adds the `paging` input.
+	list: {
+		path: '/items',
+		response: obj({ items: arr(itemOutput), nextCursor: nullable(str()).optional() }),
+		items: (page) => page.items,
+		pages: {
+			style: 'cursor',
+			next: (page) => page.nextCursor,
+			send: { query: 'cursor' },
+			size: { query: 'pageSize', max: 100 },
+		},
 	},
 });

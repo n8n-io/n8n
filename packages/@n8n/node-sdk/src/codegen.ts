@@ -212,6 +212,11 @@ function renderTs(schema: JsonSchema, mode: Mode): string {
 	const supply = schema['x-n8n-supply'];
 	// A sub-node made before the call has unknown items, so it must not type the root's items.
 	if (supply !== undefined) return `Subnode<NoInfer<I>, NoInfer<C>, ${JSON.stringify(supply)}>`;
+	// A value of each response page: a lambda over the page, never over the item.
+	const page = schema['x-n8n-page'];
+	if (page !== undefined && mode.input) {
+		return `PageValue<${toTs(page, { input: false, indent: '', compact: true })}>`;
+	}
 	// Outputs keep `string`: a model ID that the provider gives back is not checked.
 	const catalog = schema['x-n8n-model-catalog'];
 	if (catalog !== undefined && schema.type === 'string' && mode.input) {
@@ -548,6 +553,30 @@ const freeName = (base: string, taken: ReadonlySet<string>) =>
 	) ?? base;
 
 /**
+ * The paths of the `pageValue()` fields of an input, e.g. `[["pages", "next"]]`. The typed flow
+ * compiles a lambda there over the page (`$response`), not over the item.
+ */
+function pageFieldsOf(schema: JsonSchema, at: readonly string[] = []): string[][] {
+	if (schema['x-n8n-page']) return [[...at]];
+	const found = [
+		...Object.entries(schema.properties ?? {}).flatMap(([name, child]) =>
+			pageFieldsOf(child, [...at, name]),
+		),
+		...(schema.oneOf ?? schema.anyOf ?? []).flatMap((branch) => pageFieldsOf(branch, at)),
+	];
+	return [...new Map(found.map((path) => [JSON.stringify(path), path])).values()];
+}
+
+/** `, a, b` without trailing `undefined`s. Version 1 alone is the default, so it is left out. */
+function trailingArgs(args: readonly string[]): string {
+	const kept = args.slice(
+		0,
+		args.length - [...args].reverse().findIndex((arg) => arg !== 'undefined'),
+	);
+	return kept.length === 1 && kept[0] === '1' ? '' : kept.map((arg) => `, ${arg}`).join('');
+}
+
+/**
  * The TypeScript module for one node's actions. The agent reads this text, and `tsc` checks
  * the workflow against it, so what the agent sees is exactly what is enforced.
  */
@@ -656,18 +685,18 @@ export function generateNodeModule(nodeId: string, contracts: readonly Generated
 			const flow = `${contract.flow.effect}, ${contract.flow.cardinality}${shown}${scopesNote(contract)}${egressNote(contract)}${replyNote(pairing, 'reply')}`;
 			const requires = requiresOf(contract);
 			const nodeVersion = typeVersion ?? contract.version;
-			const extra = pairing
-				? [requires ?? 'undefined', JSON.stringify(pairing)]
-				: requires
-					? [requires]
-					: [];
-			// Version 1 is the default, so most modules stay as short as before.
-			const version = slot
-				? `, ${slot.typeVersion}, ${JSON.stringify({ resource: slot.resource, operation: slot.operation })}`
-				: nodeVersion === 1 && extra.length === 0
-					? ''
-					: `, ${nodeVersion}`;
-			const tail = extra.length ? `${slot ? '' : ', undefined'}, ${extra.join(', ')}` : '';
+			const pageFields = pageFieldsOf(contract.input);
+			// A routed step has no reply pairing and no page values.
+			const args = (routed: boolean) =>
+				trailingArgs([
+					String(slot?.typeVersion ?? nodeVersion),
+					slot
+						? JSON.stringify({ resource: slot.resource, operation: slot.operation })
+						: 'undefined',
+					requires ?? 'undefined',
+					pairing && !routed ? JSON.stringify(pairing) : 'undefined',
+					pageFields.length && !routed ? JSON.stringify(pageFields) : 'undefined',
+				]);
 			const input = `${name}Input<In, Ctx>`;
 			// A passed item keeps the type of the item before.
 			const item = contract.output['x-n8n-passed'] ? 'In' : `OutputOf<N, ${name}Output>`;
@@ -680,14 +709,14 @@ export function generateNodeModule(nodeId: string, contracts: readonly Generated
 							`<In, Ctx, const N extends string, const C extends ${input}>(`,
 							`\tconfig: { name: N; sample?: Array<${entryItem}>; settings?: NodeSettings } & C & Exact<C, ${input} & { name: string; sample?: unknown; settings?: NodeSettings }>,`,
 							`): Step<In, Ctx, ${entryItem}, N> =>`,
-							`\tcontractStep(${JSON.stringify(nodeType)}, config${version}${tail})`,
+							`\tcontractStep(${JSON.stringify(nodeType)}, config${args(false)})`,
 						]
 					: !outputs
 						? [
 								'<In, Ctx, const N extends string>(',
 								`\tconfig: ${config} & ${input},`,
 								`): Step<In, Ctx, ${item}, N> =>`,
-								`\tcontractStep(${JSON.stringify(nodeType)}, config${version}${tail})`,
+								`\tcontractStep(${JSON.stringify(nodeType)}, config${args(false)})`,
 							]
 						: 'each' in outputs
 							? [
@@ -696,13 +725,13 @@ export function generateNodeModule(nodeId: string, contracts: readonly Generated
 									`\t\t${key(outputs.each)}: ReadonlyArray<${input}[${JSON.stringify(outputs.each)}][number] & { output: E }>;`,
 									'\t},',
 									`): RoutedStep<In, Ctx, ${item}, N, ${['E', ...(outputs.then ?? []).map((then) => JSON.stringify(then))].join(' | ')}> =>`,
-									`\troutedStep(${JSON.stringify(nodeType)}, config, ${JSON.stringify(outputs)}${version}${tail})`,
+									`\troutedStep(${JSON.stringify(nodeType)}, config, ${JSON.stringify(outputs)}${args(true)})`,
 								]
 							: [
 									'<In, Ctx, const N extends string>(',
 									`\tconfig: ${config} & ${input},`,
 									`): RoutedStep<In, Ctx, ${item}, N, ${outputs.map((output) => JSON.stringify(output)).join(' | ')}> =>`,
-									`\troutedStep(${JSON.stringify(nodeType)}, config, ${JSON.stringify(outputs)}${version}${tail})`,
+									`\troutedStep(${JSON.stringify(nodeType)}, config, ${JSON.stringify(outputs)}${args(true)})`,
 								];
 			return {
 				path,
@@ -790,6 +819,7 @@ export function generateNodeModule(nodeId: string, contracts: readonly Generated
 		...(body.includes('ModelOf<') ? ['type ModelOf'] : []),
 		'type NodeSettings',
 		...(derived || triggers.length > 0 ? ['type OutputOf'] : []),
+		...(body.includes('PageValue<') ? ['type PageValue'] : []),
 		...(routed ? ['type RoutedStep'] : []),
 		...(steps.length > 0 ? ['type Step'] : []),
 		...(body.includes('Subnode<') || suppliers.length > 0 ? ['type Subnode'] : []),

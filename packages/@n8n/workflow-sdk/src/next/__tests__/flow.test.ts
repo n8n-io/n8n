@@ -16,6 +16,7 @@ import {
 	type Flow,
 	type FromSchema,
 	type OutputNames,
+	type PageValue,
 	type ModelOf,
 	type Pairing,
 	type RoutedStep,
@@ -405,6 +406,40 @@ describe('workflow', () => {
 		});
 		// @ts-expect-error a plain string is not a number
 		manual().andThen(limit({ name: 'Limit', max: 'ten' }));
+	});
+
+	it('compiles a lambda in a page field over the response page, and others over the item', () => {
+		const get = <In, Ctx, const N extends string>(config: {
+			name: N;
+			url: Value<In, Ctx, string>;
+			pages: { style: 'cursor'; next: PageValue<string>; send: { query: string } };
+		}): Step<In, Ctx, unknown, N> =>
+			contractStep('httpRequest.get', config, 3, undefined, undefined, undefined, [
+				['pages', 'next'],
+			]);
+
+		const json = workflow(
+			'Customers',
+			manual({ sample: [{ base: 'https://x.test' }] }).andThen(
+				get({
+					name: 'Customers',
+					url: (item) => `${item.base}/customers`,
+					pages: {
+						style: 'cursor',
+						next: (page) => page.body.data.at(-1)?.id,
+						send: { query: 'starting_after' },
+					},
+				}),
+			),
+		).toJSON();
+		expect(json.nodes.find((n) => n.name === 'Customers')?.parameters).toEqual({
+			url: '={{ $json.base }}/customers',
+			pages: {
+				style: 'cursor',
+				next: '={{ $response.body.data.at(-1)?.id }}',
+				send: { query: 'starting_after' },
+			},
+		});
 	});
 
 	it('pins the action version of a contract step', () => {

@@ -34,7 +34,7 @@ const isNode = (value: unknown): value is NodeDefinition =>
 const isAction = (value: unknown): value is Action =>
 	isRecord(value) &&
 	typeof value.id === 'string' &&
-	(typeof value.run === 'function' || isRecord(value.request)) &&
+	(typeof value.run === 'function' || isRecord(value.request) || isRecord(value.list)) &&
 	isRecord(value.inputSchema) &&
 	Array.isArray(value.credentialTypes);
 

@@ -8,7 +8,7 @@ import {
 } from 'n8n-workflow';
 
 import { usesBinary, usesHostImports, usesSupplies, type ContractDocument } from './define';
-import type { JsonSchema } from './schema';
+import { hasPageValue, type JsonSchema } from './schema';
 
 /**
  * The `n8n:action` interface a bundle targets: `RunContext` and `Http` semantics, what `run()`
@@ -20,26 +20,33 @@ import type { JsonSchema } from './schema';
  * 2.2.0 adds binary data.
  * 2.3.0 adds the optional host imports (data tables, code, wait, the input of an item), named
  * inputs, and sub-node capabilities (`supplied()`).
+ * 2.4.0 adds the `list` binding, which the host pages through, and `pageValue()` inputs, which the
+ * host reads unresolved.
  */
 export type ActionApiVersion = `n8n:action@${number}.${number}.${number}`;
 
 /** The newest version this host runs. */
-export const ACTION_API_VERSION: ActionApiVersion = 'n8n:action@2.3.0';
+export const ACTION_API_VERSION: ActionApiVersion = 'n8n:action@2.4.0';
 
 /**
- * The version `freezeAction` writes: the lowest minor that has what the contract declares.
- * 2.3.0 for host imports, named inputs or sub-node capabilities, 2.2.0 for a binary field, else
- * 2.1.0, so an older host still runs every bundle that does not need the newer features. The
- * 2.1.0 features (the current item) are used in code, so the contract cannot show a lower minimum.
+ * The version `freezeAction` writes: the lowest minor that has what the action declares.
+ * 2.4.0 for a `list` binding or a `pageValue()` input, 2.3.0 for host imports, named inputs or
+ * sub-node capabilities, 2.2.0 for a binary field, else 2.1.0, so an older host still runs every
+ * bundle that does not need the newer features. The 2.1.0 features (the current item) are used
+ * in code, so the contract cannot show a lower minimum. The contract does not record the binding,
+ * so `list` tells it.
  */
 export const actionApiVersionOf = (
 	contract: Pick<ContractDocument, 'input' | 'output' | 'imports' | 'inputs'>,
+	list = false,
 ): ActionApiVersion =>
-	usesHostImports(contract) || usesSupplies(contract)
-		? 'n8n:action@2.3.0'
-		: usesBinary(contract)
-			? 'n8n:action@2.2.0'
-			: 'n8n:action@2.1.0';
+	list || hasPageValue(contract.input)
+		? 'n8n:action@2.4.0'
+		: usesHostImports(contract) || usesSupplies(contract)
+			? 'n8n:action@2.3.0'
+			: usesBinary(contract)
+				? 'n8n:action@2.2.0'
+				: 'n8n:action@2.1.0';
 
 /** The versions a host accepts when its config sets no range. */
 export const DEFAULT_ACTION_API_RANGE = '>=1.0.0 <3.0.0';

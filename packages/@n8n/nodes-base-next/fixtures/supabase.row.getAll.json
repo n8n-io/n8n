@@ -20,22 +20,16 @@
 				}
 			},
 			"responses": [
-				{
-					"body": [
-						{
-							"id": 1,
-							"plan": "free"
-						},
-						{
-							"id": 2,
-							"plan": "free"
-						}
-					],
-					"headers": {
-						"content-range": "0-1/*"
+				[
+					{
+						"id": 1,
+						"plan": "free"
 					},
-					"statusCode": 200
-				}
+					{
+						"id": 2,
+						"plan": "free"
+					}
+				]
 			],
 			"output": [
 				{

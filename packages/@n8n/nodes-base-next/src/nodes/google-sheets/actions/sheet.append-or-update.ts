@@ -18,7 +18,7 @@ import {
 } from '../table';
 
 export const appendOrUpdateSheetRow = sheet.action('appendOrUpdate', {
-	patch: 5,
+	patch: 6,
 	action: 'Append or update row',
 	summary: 'Upsert: update the row whose matchOn column equals the value in values, else append.',
 	flow: { effect: 'write', cardinality: 'per-item', idempotent: true },
@@ -56,7 +56,6 @@ export const appendOrUpdateSheetRow = sheet.action('appendOrUpdate', {
 		const values = Object.fromEntries(
 			Object.entries(input.values).map(([name, value]) => [name, value ?? '']),
 		);
-		const format = input.cellFormat ?? 'USER_ENTERED';
 		const index = rows
 			.slice(firstDataRow - 1)
 			.findIndex(
@@ -65,14 +64,14 @@ export const appendOrUpdateSheetRow = sheet.action('appendOrUpdate', {
 		if (index === -1) {
 			const lastRow = Math.max(rows.length, headerRow) + 1;
 			const cells = rowCells(header, values);
-			await appendRow(http, spreadsheetId, tab, lastRow, cells, format);
+			await appendRow(http, spreadsheetId, tab, lastRow, cells, input.cellFormat);
 		} else {
 			const cells = header.flatMap((name, column) =>
 				name === matchOn || values[name] === undefined || header.indexOf(name) !== column
 					? []
 					: [{ column, row: index + firstDataRow, value: toCell(values[name]) }],
 			);
-			if (cells.length) await updateCells(http, spreadsheetId, tab, cells, format);
+			if (cells.length) await updateCells(http, spreadsheetId, tab, cells, input.cellFormat);
 		}
 		return values;
 	},

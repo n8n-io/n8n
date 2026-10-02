@@ -3,11 +3,12 @@
 /// gives the JSON form of each type for the process and container runtimes.
 ///
 /// The package version is the `apiVersion` of a bundle, independent of the n8n version. A
-/// minor adds an optional import or field. A major breaks. The host implements 2.3.0. A
-/// bundle targets the lowest minor that has what its contract declares: 2.3.0 for host
-/// imports, named inputs or sub-node capabilities, 2.2.0 for binary data, else 2.1.0, so an
-/// older host still runs it. The sub-node capability exports are not in this file yet.
-package n8n:action@2.3.0;
+/// minor adds an optional import or field. A major breaks. The host implements 2.4.0. A
+/// bundle targets the lowest minor that has what its contract declares: 2.4.0 for a `list`
+/// binding or a `pageValue()` input, 2.3.0 for host imports, named inputs or sub-node
+/// capabilities, 2.2.0 for binary data, else 2.1.0, so an older host still runs it. The sub-node
+/// capability exports and the declarative bindings (`request`, `list`) are not in this file yet.
+package n8n:action@2.4.0;
 
 @since(version = 2.0.0)
 interface types {

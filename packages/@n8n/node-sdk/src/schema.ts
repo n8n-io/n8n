@@ -54,6 +54,8 @@ export interface JsonSchema {
 	'x-n8n-options'?: Readonly<Record<string, OptionLabel>>;
 	/** A hidden credential field that holds the base URL of its credential type. */
 	'x-n8n-base-url'?: true;
+	/** An expression over each response page, see `pageValue`. The schema of what it gives. */
+	'x-n8n-page'?: JsonSchema;
 	/** Sample values; the first one seeds verification fixtures. */
 	examples?: readonly unknown[];
 }
@@ -80,47 +82,52 @@ export interface EntryFields {
 
 declare const phantom: unique symbol;
 declare const hasDefault: unique symbol;
+declare const filled: unique symbol;
 
 /**
  * A schema for values of type `T`. `Opt` marks a field the author may omit. `Def` is `true`
  * only after `.default(v)`: n8n fills in the default, so `run()` always gets the field.
+ * `Run` is the value `run()` gets: `applyDefaults` fills nested defaults too.
  */
-export class Schema<T, Opt extends boolean = false, Def extends boolean = boolean> {
+export class Schema<T, Opt extends boolean = false, Def extends boolean = boolean, Run = T> {
 	declare readonly [phantom]?: T;
 	declare readonly [hasDefault]?: Def;
+	declare readonly [filled]?: Run;
 
 	constructor(
 		readonly json: JsonSchema,
 		readonly isOptional: Opt,
 	) {}
 
-	optional(): Schema<T, true> {
-		return new Schema<T, true>(this.json, true);
+	optional(): Schema<T, true, boolean, Run> {
+		return new Schema<T, true, boolean, Run>(this.json, true);
 	}
 
 	/** A default value also makes the field optional. */
-	default(value: T): Schema<T, true, true> {
-		return new Schema<T, true, true>({ ...this.json, default: value }, true);
+	default(value: T): Schema<T, true, true, Run> {
+		return new Schema<T, true, true, Run>({ ...this.json, default: value }, true);
 	}
 
-	hint(text: string): Schema<T, Opt, Def> {
-		return new Schema<T, Opt, Def>({ ...this.json, 'x-n8n-hint': text }, this.isOptional);
+	hint(text: string): Schema<T, Opt, Def, Run> {
+		return new Schema<T, Opt, Def, Run>({ ...this.json, 'x-n8n-hint': text }, this.isOptional);
 	}
 
-	describe(text: string): Schema<T, Opt, Def> {
-		return new Schema<T, Opt, Def>({ ...this.json, description: text }, this.isOptional);
+	describe(text: string): Schema<T, Opt, Def, Run> {
+		return new Schema<T, Opt, Def, Run>({ ...this.json, description: text }, this.isOptional);
 	}
 
 	/** Extra JSON Schema keywords (`pattern`, `minLength`, `format`, …). */
-	with(keywords: JsonSchema): Schema<T, Opt, Def> {
-		return new Schema<T, Opt, Def>({ ...this.json, ...keywords }, this.isOptional);
+	with(keywords: JsonSchema): Schema<T, Opt, Def, Run> {
+		return new Schema<T, Opt, Def, Run>({ ...this.json, ...keywords }, this.isOptional);
 	}
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- matches any schema in constraints
 export type AnySchema = Schema<any, boolean>;
 export type Shape = Record<string, AnySchema>;
-export type Infer<S> = S extends Schema<infer T, boolean> ? T : never;
+export type Infer<S> = S extends Schema<infer T, boolean, boolean, unknown> ? T : never;
+/** The value `run()` gets for `S`, with each default filled in at any depth. */
+type InferRun<S> = S extends Schema<unknown, boolean, boolean, infer R> ? R : never;
 
 type Simplify<T> = { [K in keyof T]: T[K] } & {};
 type RequiredKeys<S extends Shape> = {
@@ -130,6 +137,18 @@ type OptionalKeys<S extends Shape> = Exclude<keyof S, RequiredKeys<S>>;
 export type ObjectOf<S extends Shape> = Simplify<
 	{ [K in RequiredKeys<S>]: Infer<S[K]> } & { [K in OptionalKeys<S>]?: Infer<S[K]> }
 >;
+type FilledKeys<S extends Shape> = {
+	[K in keyof S]: S[K] extends Schema<unknown, true, true> ? K : never;
+}[keyof S];
+type UnsetKeys<S extends Shape> = Exclude<OptionalKeys<S>, FilledKeys<S>>;
+/**
+ * `ObjectOf` as `run()` gets it: a field with `.default(v)` is always set. Not simplified, so
+ * `toAction` still infers the generic shape of a node builder from it.
+ */
+export type RunFieldsOf<S extends Shape> = {
+	[K in Exclude<keyof S, UnsetKeys<S>>]: InferRun<S[K]>;
+} & { [K in UnsetKeys<S>]?: InferRun<S[K]> };
+type RunObjectOf<S extends Shape> = Simplify<RunFieldsOf<S>>;
 
 export const str = () => new Schema<string>({ type: 'string' }, false);
 export const num = () => new Schema<number>({ type: 'number' }, false);
@@ -143,10 +162,13 @@ export const oneOf = <const V extends readonly string[]>(...values: V) =>
 	new Schema<V[number]>({ enum: values }, false);
 
 export const arr = <S extends AnySchema>(items: S) =>
-	new Schema<ReadonlyArray<Infer<S>>>({ type: 'array', items: items.json }, false);
+	new Schema<ReadonlyArray<Infer<S>>, false, boolean, ReadonlyArray<InferRun<S>>>(
+		{ type: 'array', items: items.json },
+		false,
+	);
 
 /** The value or `null`. Use it in output schemas, e.g. `assignee: nullable(str())`. */
-export const nullable = <T, Opt extends boolean>(schema: Schema<T, Opt>) =>
+export const nullable = <T, Opt extends boolean>(schema: Schema<T, Opt, boolean, unknown>) =>
 	new Schema<T | null, Opt>({ anyOf: [schema.json, { type: 'null' }] }, schema.isOptional);
 
 function objectJson(shape: Shape, extra: JsonSchema = {}): JsonSchema {
@@ -162,7 +184,8 @@ function objectJson(shape: Shape, extra: JsonSchema = {}): JsonSchema {
 	};
 }
 
-export const obj = <S extends Shape>(shape: S) => new Schema<ObjectOf<S>>(objectJson(shape), false);
+export const obj = <S extends Shape>(shape: S) =>
+	new Schema<ObjectOf<S>, false, boolean, RunObjectOf<S>>(objectJson(shape), false);
 
 /** A value that matches one of the schemas, e.g. output shapes that depend on an input. */
 export const union = <const S extends readonly AnySchema[]>(...schemas: S) =>
@@ -202,6 +225,9 @@ export const declared = () =>
 type VariantOf<Tag extends string, B extends Record<string, Shape>> = {
 	[K in keyof B & string]: Simplify<{ [P in Tag]: K } & ObjectOf<B[K]>>;
 }[keyof B & string];
+type RunVariantOf<Tag extends string, B extends Record<string, Shape>> = {
+	[K in keyof B & string]: Simplify<{ [P in Tag]: K } & RunObjectOf<B[K]>>;
+}[keyof B & string];
 
 /**
  * A tagged union. The tag is a literal selector, so each branch lists only the fields it
@@ -210,8 +236,8 @@ type VariantOf<Tag extends string, B extends Record<string, Shape>> = {
 export function variant<const Tag extends string, B extends Record<string, Shape>>(
 	tag: Tag,
 	branches: B,
-): Schema<VariantOf<Tag, B>> {
-	return new Schema<VariantOf<Tag, B>>(
+): Schema<VariantOf<Tag, B>, false, boolean, RunVariantOf<Tag, B>> {
+	return new Schema<VariantOf<Tag, B>, false, boolean, RunVariantOf<Tag, B>>(
 		{
 			type: 'object',
 			discriminator: { propertyName: tag },
@@ -258,6 +284,73 @@ export const hasBinary = (schema: JsonSchema): boolean =>
 		...(schema.anyOf ?? []),
 		...(typeof schema.additionalProperties === 'object' ? [schema.additionalProperties] : []),
 	].some(hasBinary);
+
+/**
+ * A value that `run()` reads from each response page, e.g. the next cursor: an n8n expression
+ * over `$response` (`{ body, headers, statusCode }`), such as `={{ $response.body.next_cursor }}`.
+ * The host passes it on unresolved; `pageValueOf` reads it for each page. `gives` is the schema of
+ * what it reads. A typed flow writes it as a lambda over the page.
+ */
+export const pageValue = (gives: AnySchema) =>
+	new Schema<string>({ type: 'string', pattern: '^=', 'x-n8n-page': gives.json }, false);
+
+/** One read step: `.at(n)`, `.first()`, `.last()`, `.field`, or `[index]`, optionally chained. */
+const PAGE_STEPS =
+	/\??\.at\((-?\d+)\)|\.(first|last)\(\)|\??\.([A-Za-z_$][\w$]*)|\??\.?\[(\d+|"[^"]*"|'[^']*')\]/g;
+const PAGE_EXPRESSION = new RegExp(
+	String.raw`^=?\{\{\s*\$response((?:${PAGE_STEPS.source})*)\s*\}\}$`,
+);
+
+/** A response as a `pageValue()` reads it: `$response` of the legacy HTTP Request pagination. */
+export interface ResponsePage {
+	readonly body: unknown;
+	/** Lower-case names, e.g. `link`. */
+	readonly headers: Readonly<Record<string, string>>;
+	readonly statusCode: number;
+}
+
+/** One step into a JSON value. An own field only, so a step never reads the prototype. */
+function stepInto(value: unknown, [, at, end, name, index]: RegExpMatchArray): unknown {
+	if (Array.isArray(value) && (at !== undefined || end !== undefined)) {
+		return value.at(at !== undefined ? Number(at) : end === 'first' ? 0 : -1);
+	}
+	const key = name ?? (/^\d/.test(index ?? '') ? Number(index) : (index ?? '').slice(1, -1));
+	if (Array.isArray(value)) return typeof key === 'number' ? value[key] : undefined;
+	return typeof value === 'object' && value !== null && Object.hasOwn(value, key)
+		? Object.getOwnPropertyDescriptor(value, key)?.value
+		: undefined;
+}
+
+/**
+ * What a `pageValue()` expression reads from one page. It reads fields, list items, `.at(n)`,
+ * `.first()` and `.last()` of `$response`, e.g. `={{ $response.body.data.at(-1)?.id }}`. A missing
+ * step gives `undefined`, as optional chaining does. Any other expression throws.
+ */
+export function pageValueOf(expression: string, page: ResponsePage): unknown {
+	const path = PAGE_EXPRESSION.exec(expression.trim())?.[1];
+	if (path === undefined) {
+		throw new Error(
+			`A page value reads fields of $response, e.g. ={{ $response.body.next_cursor }}, not: ${expression}`,
+		);
+	}
+	return [...path.matchAll(PAGE_STEPS)].reduce<unknown>(
+		(value, step) => (value === null || value === undefined ? undefined : stepInto(value, step)),
+		page,
+	);
+}
+
+/** The expression is one that `pageValueOf` reads. */
+export const isPageExpression = (expression: string) => PAGE_EXPRESSION.test(expression.trim());
+
+/** The schema or one of its sub-schemas is a `pageValue()`. */
+export const hasPageValue = (schema: JsonSchema): boolean =>
+	schema['x-n8n-page'] !== undefined ||
+	[
+		...Object.values(schema.properties ?? {}),
+		...(schema.items ? [schema.items] : []),
+		...(schema.oneOf ?? []),
+		...(schema.anyOf ?? []),
+	].some(hasPageValue);
 
 /** A resource the user owns (a database, a channel), checked against its ID shape. */
 export interface Resource {

@@ -1,5 +1,5 @@
 import { lintContract, toContract, toNodeType, validate, type Action } from '@n8n/node-sdk';
-import { runAction } from '@n8n/node-sdk/testing';
+import { mockHttp, runAction } from '@n8n/node-sdk/testing';
 import type { IExecuteFunctions } from 'n8n-workflow';
 
 import { simplifyObjects } from 'n8n-nodes-base/dist/nodes/Notion/shared/GenericFunctions';
@@ -302,66 +302,149 @@ describe('notion.databasePage.getAll', () => {
 
 describe('httpRequest.get', () => {
 	const url = 'https://api.example.com/v1/customers';
-	const pages: Record<string, unknown> = {
-		first: { data: [{ id: 1 }, { id: 2 }], next_cursor: 'c2' },
-		c2: { data: [{ id: 3 }, { id: 4 }], next_cursor: 'c3' },
-		c3: { data: [{ id: 5 }], next_cursor: null },
-	};
-	const respond = ({ options }: Call) =>
-		pages[typeof options.qs?.cursor === 'string' ? options.qs.cursor : 'first'];
+	const customers = (ids: number[]) => ids.map((id) => ({ id: `cus_${id}` }));
+	const items = (result: Awaited<ReturnType<typeof runAction>>) =>
+		result.ok ? result.items : result;
 
-	it('follows the cursor into the query parameter until the cursor is null', async () => {
-		const { execute, calls } = run(
-			getRequest,
+	it('follows a Stripe-style cursor: the id of the last item, until has_more is false', async () => {
+		const fetch = mockHttp([
 			{
-				url,
-				query: { limit: '2' },
-				pagination: { cursorPath: 'next_cursor', queryParameter: 'cursor' },
+				path: '/v1/customers',
+				query: { starting_after: 'cus_2' },
+				reply: { json: { data: customers([3]), has_more: false } },
 			},
-			respond,
-		);
-		const [items = []] = (await execute) ?? [];
-		expect(calls.map((call) => call.options.qs)).toEqual([
-			{ limit: '2' },
-			{ limit: '2', cursor: 'c2' },
-			{ limit: '2', cursor: 'c3' },
+			{ path: '/v1/customers', reply: { json: { data: customers([1, 2]), has_more: true } } },
 		]);
-		expect(items.map((item) => item.json)).toEqual([pages.first, pages.c2, pages.c3]);
+		const input = {
+			url,
+			items: '={{ $response.body.data }}',
+			pages: {
+				style: 'cursor',
+				next: '={{ $response.body.data.at(-1)?.id }}',
+				send: { query: 'starting_after' },
+				more: '={{ $response.body.has_more }}',
+			},
+		};
+		expect(items(await runAction(getRequest, { input, fetch }))).toEqual(customers([1, 2, 3]));
+		expect(fetch.calls.map(({ query }) => query)).toEqual([{}, { starting_after: 'cus_2' }]);
 	});
 
-	it('reads a nested cursor and stops at maxPages', async () => {
-		const { execute, calls } = run(
-			getRequest,
-			{ url, pagination: { cursorPath: 'meta.next', queryParameter: 'page', maxPages: 2 } },
-			({ options }) => ({ meta: { next: Number(options.qs?.page ?? 6) + 1 } }),
+	it('sends a cursor in a header and stops when the response repeats it', async () => {
+		const fetch = mockHttp([
+			{ path: '/v1/customers', reply: { json: [{ id: 1 }], headers: { 'x-next': 'same' } } },
+		]);
+		const input = {
+			url,
+			pages: {
+				style: 'cursor',
+				next: "={{ $response.headers['x-next'] }}",
+				send: { header: 'X-Cursor' },
+			},
+		};
+		expect(items(await runAction(getRequest, { input, fetch }))).toEqual([{ id: 1 }, { id: 1 }]);
+		expect(fetch.calls.map(({ headers }) => headers['x-cursor'])).toEqual([undefined, 'same']);
+	});
+
+	it('follows the Link header, or a next URL in the body, relative to the URL', async () => {
+		const linked = mockHttp([
+			{ path: '/v1/customers', query: { page: '2' }, reply: { json: customers([2]) } },
+			{
+				path: '/v1/customers',
+				reply: { json: customers([1]), headers: { link: '</v1/customers?page=2>; rel="next"' } },
+			},
+		]);
+		const fromHeader = { url, pages: { style: 'link' } };
+		expect(items(await runAction(getRequest, { input: fromHeader, fetch: linked }))).toEqual(
+			customers([1, 2]),
 		);
-		const [items = []] = (await execute) ?? [];
-		expect(calls.map((call) => call.options.qs)).toEqual([{}, { page: '7' }]);
-		expect(items).toHaveLength(2);
-	});
-
-	it('stops when the response repeats a cursor', async () => {
-		const { execute, calls } = run(
-			getRequest,
-			{ url, pagination: { cursorPath: 'next', queryParameter: 'c' } },
-			() => ({ next: 'same' }),
+		const inBody = mockHttp([
+			{ path: '/v1/customers', query: { page: '2' }, reply: { json: { data: customers([2]) } } },
+			{
+				path: '/v1/customers',
+				reply: { json: { data: customers([1]), next: '/v1/customers?page=2' } },
+			},
+		]);
+		const fromBody = {
+			url,
+			items: '={{ $response.body.data }}',
+			pages: { style: 'link', next: '={{ $response.body.next }}' },
+		};
+		expect(items(await runAction(getRequest, { input: fromBody, fetch: inBody }))).toEqual(
+			customers([1, 2]),
 		);
-		const [items = []] = (await execute) ?? [];
-		expect(calls.map((call) => call.options.qs)).toEqual([{}, { c: 'same' }]);
-		expect(items).toHaveLength(2);
 	});
 
-	it('fetches one page without pagination', async () => {
-		const { execute, calls } = run(getRequest, { url }, respond);
-		const [items = []] = (await execute) ?? [];
-		expect(calls).toHaveLength(1);
-		expect(items.map((item) => item.json)).toEqual([pages.first]);
+	it('counts page numbers and stops at an empty page', async () => {
+		const page = (ids: number[]) => ({ json: { items: customers(ids) } });
+		const fetch = mockHttp([
+			{ path: '/v1/customers', query: { page: '2' }, reply: page([3, 4]) },
+			{ path: '/v1/customers', query: { page: '3' }, reply: page([]) },
+			{ path: '/v1/customers', reply: page([1, 2]) },
+		]);
+		const input = {
+			url,
+			items: '={{ $response.body.items }}',
+			pages: { style: 'offset', unit: 'page', send: { query: 'page' } },
+		};
+		expect(items(await runAction(getRequest, { input, fetch }))).toEqual(customers([1, 2, 3, 4]));
+		expect(fetch.calls.map(({ query }) => query)).toEqual([{}, { page: '2' }, { page: '3' }]);
 	});
 
-	it('rejects pagination without a query parameter', () => {
-		expect(
-			validate({ url, pagination: { cursorPath: 'next_cursor' } }, getRequest.inputSchema).join(),
-		).toContain('queryParameter');
+	it('counts items as the offset and stops at a short page and at maxPages', async () => {
+		const fetch = mockHttp([
+			{ path: '/v1/customers', query: { offset: '2' }, reply: { json: customers([3]) } },
+			{ path: '/v1/customers', reply: { json: customers([1, 2]) } },
+		]);
+		const input = {
+			url,
+			query: { limit: '2' },
+			pages: { style: 'offset', unit: 'item', size: 2, send: { query: 'offset' } },
+		};
+		expect(items(await runAction(getRequest, { input, fetch }))).toEqual(customers([1, 2, 3]));
+		const capped = { ...input, pages: { ...input.pages, maxPages: 1 } };
+		expect(items(await runAction(getRequest, { input: capped, fetch }))).toEqual(customers([1, 2]));
+	});
+
+	it('fetches one page without pages, and an array body emits one item per element', async () => {
+		const fetch = mockHttp([{ path: '/v1/customers', reply: { json: customers([1, 2]) } }]);
+		expect(items(await runAction(getRequest, { input: { url }, fetch }))).toEqual(
+			customers([1, 2]),
+		);
+		expect(fetch.calls).toHaveLength(1);
+	});
+
+	it('refuses a page value that is more than a read of $response', async () => {
+		const fetch = mockHttp([{ path: '/v1/customers', reply: { json: { next: 'c2' } } }]);
+		const input = {
+			url,
+			pages: {
+				style: 'cursor',
+				next: '={{ $response.body.next || $json.id }}',
+				send: { query: 'cursor' },
+			},
+		};
+		expect(await runAction(getRequest, { input, fetch })).toMatchObject({
+			ok: false,
+			error: { message: expect.stringContaining('A page value reads fields of $response') },
+		});
+	});
+
+	it('migrates v2 cursor pagination to a cursor page style', () => {
+		const v2 = {
+			url,
+			pagination: { cursorPath: 'meta.next-page', queryParameter: 'cursor', maxPages: 5 },
+		};
+		const migrated = getRequest.migrate?.(2, v2);
+		expect(migrated).toEqual({
+			url,
+			pages: {
+				style: 'cursor',
+				next: '={{ $response.body.meta["next-page"] }}',
+				send: { query: 'cursor' },
+				maxPages: 5,
+			},
+		});
+		expect(validate(migrated, getRequest.inputSchema)).toEqual([]);
 	});
 });
 

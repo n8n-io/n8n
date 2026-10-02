@@ -1,6 +1,7 @@
 import type { AnyCredentialType, Credential, CredentialKey } from './credentials';
 import {
 	hasBinary,
+	int,
 	obj,
 	passedItem,
 	type AnySchema,
@@ -9,8 +10,10 @@ import {
 	type Infer,
 	type JsonSchema,
 	type ObjectOf,
+	type RunFieldsOf,
 	Schema,
 	type Shape,
+	variant,
 } from './schema';
 import {
 	supplied,
@@ -21,6 +24,7 @@ import {
 	type SupplyKind,
 } from './subnodes';
 import type { PollConfig, TriggerKind, WebhookConfig, WebhookRequest } from './triggers';
+import { parse } from './validate';
 
 /** The integration identity: name, credential, and base URL shared by its actions. */
 export interface NodeDefinition {
@@ -195,52 +199,110 @@ export const isHttpError = (error: unknown): error is HttpError =>
 	error.headers !== null &&
 	'body' in error;
 
-export interface PaginateOptions<T> {
+/** What `next` knows about the page besides its body. */
+export interface PageState<T> {
+	/** The items of the page, before the limit cuts them. */
+	readonly items: readonly T[];
+	/** The cursor that the request of the page sent; undefined for the first page. */
+	readonly cursor?: string;
+	/** The limit minus the items before the page; undefined without a limit. */
+	readonly room?: number;
+}
+
+export interface PagesOptions<P, T> {
+	/**
+	 * The schema of one response, or a function that checks a response and gives the page, e.g.
+	 * after an in-band error check. `items` and `next` read the page it gives.
+	 */
+	readonly page: Schema<P, boolean, boolean, unknown> | ((response: unknown) => P);
 	/**
 	 * The request for one page. `cursor` is undefined for the first page. `room` is the limit
 	 * minus the items so far, e.g. for a page size parameter.
 	 */
 	request(cursor: string | undefined, room: number | undefined): HttpRequest;
-	/** The items in one page body. */
-	items(body: unknown): readonly T[];
-	/** The cursor of the next page, or undefined on the last page. */
-	next(body: unknown): string | undefined;
+	items(page: P): readonly T[];
+	/** The cursor of the next page. A missing, null or empty cursor ends the list. */
+	next(page: P, state: PageState<T>): string | number | null | undefined;
 	readonly limit?: number;
 	readonly maxPages?: number;
 }
 
 /**
- * Yields the items of each page in order. It stops at `limit` items, after `maxPages` pages,
- * at a page without a next cursor, and at a cursor it already sent, so an API that repeats a
- * cursor cannot loop. The host request limit also applies. It is a helper, not a host method:
- * it inlines into each bundle, so an older host runs it too.
+ * Yields the items of each page in order. It reads each response once, as `page` gives it, so
+ * a page in another shape fails with its path, e.g. `page.results: must be array`. It stops at
+ * `limit` items, after `maxPages` pages, at a page without a next cursor, and at a cursor it
+ * already sent, so an API that repeats a cursor cannot loop. The host request limit also
+ * applies. It is a helper, not a host method: it inlines into each bundle.
  */
-export async function* paginate<T>(
+export async function* pages<P, T>(
 	http: Http,
-	{ request, items, next, limit, maxPages = Infinity }: PaginateOptions<T>,
+	{ page: reader, request, items, next, limit, maxPages = Infinity }: PagesOptions<P, T>,
 ): AsyncGenerator<T, void, undefined> {
+	// Not `instanceof Schema`: a frozen bundle has its own copy of the SDK.
+	const read = (response: unknown): P =>
+		typeof reader === 'function' ? reader(response) : parse(reader, response, 'page');
 	// `for...of` also visits the pages the loop appends: one request per page.
-	const pages: Array<{ readonly cursor?: string; readonly emitted: number }> = [{ emitted: 0 }];
-	for (const { cursor, emitted } of pages) {
+	const queue: Array<{ readonly cursor?: string; readonly emitted: number }> = [{ emitted: 0 }];
+	for (const { cursor, emitted } of queue) {
 		const room = limit === undefined ? undefined : limit - emitted;
-		const body = await http.request(request(cursor, room));
-		const page = items(body).slice(0, room);
-		yield* page;
-		const nextCursor = next(body);
-		const count = emitted + page.length;
-		const sent = pages.some((entry) => entry.cursor === nextCursor);
-		if (nextCursor && !sent && pages.length < maxPages && (limit === undefined || count < limit)) {
-			pages.push({ cursor: nextCursor, emitted: count });
+		const page = read(await http.request(request(cursor, room)));
+		const all = items(page);
+		const kept = all.slice(0, room);
+		yield* kept;
+		const found = next(page, { items: all, cursor, room });
+		const nextCursor = found === null || found === undefined ? '' : String(found);
+		const count = emitted + kept.length;
+		const sent = queue.some((entry) => entry.cursor === nextCursor);
+		if (nextCursor && !sent && queue.length < maxPages && (limit === undefined || count < limit)) {
+			queue.push({ cursor: nextCursor, emitted: count });
 		}
 	}
 }
 
-type DefaultedKeys<S extends Shape> = {
-	[K in keyof S]: S[K] extends Schema<unknown, true, true> ? K : never;
-}[keyof S];
+/**
+ * The list input of every action that lists: all items, or at most `max`. A `list` binding with
+ * `pages` gets it, and the host applies it. A `run()` action declares it and reads `limitOf`.
+ */
+export const paging = variant('mode', {
+	all: {},
+	limit: { max: int().with({ minimum: 1 }) },
+}).default({ mode: 'limit', max: 50 });
 
-/** The input `run()` gets. n8n fills in each default, so a field with `.default(v)` is always set. */
-export type RunInput<S extends Shape> = ObjectOf<S> & { [K in DefaultedKeys<S>]: Infer<S[K]> };
+/** The item limit of `paging` for `pages`: undefined for all items. */
+export const limitOf = (value: Infer<typeof paging>) =>
+	value.mode === 'limit' ? value.max : undefined;
+
+/**
+ * The next offset of an offset list: the count of items so far (`item`), or the next page number
+ * (`page`; the first page is `start`, default 1). A page with no items, or with fewer items than
+ * the page size, is the last one. `cursor` is the offset that the page sent.
+ */
+export function nextOffsetOf(
+	unit: 'item' | 'page',
+	page: {
+		readonly count: number;
+		readonly size?: number;
+		readonly cursor?: string;
+		readonly start?: number;
+	},
+): number | undefined {
+	if (page.count === 0 || (page.size !== undefined && page.count < page.size)) return undefined;
+	if (unit === 'item') return Number(page.cursor ?? 0) + page.count;
+	return Number(page.cursor ?? page.start ?? 1) + 1;
+}
+
+/**
+ * The `rel="next"` URL of a `Link` header (RFC 8288), e.g. of the GitHub API. A relative URL
+ * counts only with `base`; the caller resolves it.
+ */
+export const nextLinkOf = (link: string | undefined, base?: string): string | undefined =>
+	link
+		?.split(',')
+		.map((part) => /<([^>]+)>\s*;(?:.*;)?\s*rel="?next"?\s*$/.exec(part)?.[1])
+		.find((url) => url !== undefined && URL.canParse(url, base));
+
+/** The input `run()` gets. Each default is filled in at any depth, so a defaulted field is set. */
+export type RunInput<S extends Shape> = RunFieldsOf<S>;
 
 export type LogLevel = 'debug' | 'info' | 'warn' | 'error';
 
@@ -567,29 +629,78 @@ export interface Egress<Input, H extends string = string> {
 	readonly fromInput?: UrlKeys<Input>;
 }
 
+/**
+ * A function of the item input. Method syntax keeps its parameter bivariant, so an action with
+ * its own input still fits the wide `Action` type.
+ */
+type FromInput<Input, T> = { of(input: Input): T }['of'];
+
 /** The declarative binding: data that says which request the host sends for each item. */
 export interface RequestBinding<Input, P extends string = string> {
 	readonly method?: HttpMethod;
 	/** After the node's `baseUrl`. `{field}` is the URL-encoded input field, e.g. `/pages/{page}`. */
 	readonly path: P & `/${string}` & RequestPath<P, Input>;
-	readonly query?: Readonly<Record<string, RequestValue<Input>>>;
-	readonly headers?: Readonly<Record<string, string>>;
+	/** Values by parameter name, or a function of the input for values that need code. */
+	readonly query?:
+		| Readonly<Record<string, RequestValue<Input>>>
+		| FromInput<Input, HttpRequest['query']>;
+	readonly headers?:
+		| Readonly<Record<string, string>>
+		| FromInput<Input, Readonly<Record<string, string>>>;
 	readonly body?: Readonly<Record<string, RequestValue<Input>>>;
 }
 
-/**
- * A `1:N` request names the response field with the items, e.g. `results`. One request, no
- * pages. The host sends one request per item, so a `batch` action has no request binding.
- */
-type RequestItems<C extends ActionFlow['cardinality']> = C extends '1:N'
-	? { readonly items: string }
-	: C extends 'batch'
-		? never
-		: { readonly items?: never };
+/** Where the host sends a page value: a query parameter or a field of the JSON body. */
+export type PageParam =
+	| { readonly query: string; readonly body?: never }
+	| { readonly body: string; readonly query?: never };
+
+/** The page size parameter, and the most items the API gives in one page. */
+export type PageSize = PageParam & { readonly max: number };
 
 /**
- * How the action runs: code (`run`), a request description the host sends (`request`), or a
- * built-in n8n node (`native`), as a native trigger does.
+ * How the host gets the next page of a `list` binding.
+ * - `cursor`: `next` reads the cursor from the page, and the host sends it in `send`.
+ * - `link`: the host follows the `rel="next"` URL of the `Link` header (RFC 8288).
+ * - `offset`: the host sends the count of items so far (`unit: 'item'`), or the page number
+ *   (`unit: 'page'`), in `send`, see `nextOffsetOf`. `items` must give one output per API item.
+ * The first request never sends a cursor. A repeated cursor ends the list.
+ */
+export type Pages<Page> =
+	| {
+			readonly style: 'cursor';
+			next(page: Page): string | number | null | undefined;
+			readonly send: PageParam;
+			readonly size?: PageSize;
+	  }
+	| { readonly style: 'link'; readonly size?: PageSize }
+	| ({ readonly style: 'offset'; readonly send: PageParam; readonly size?: PageSize } & (
+			| { readonly unit: 'item'; readonly start?: never }
+			| { readonly unit: 'page'; readonly start?: number }
+	  ));
+
+/**
+ * The declarative list of a `1:N` action: the host sends the request, checks each page against
+ * `response`, and emits what `items` gives. With `pages`, the host loops over the pages, and the
+ * action gets the `paging` input, which the host applies.
+ */
+export interface ListBinding<Input, P extends string, R extends AnySchema, Out>
+	extends RequestBinding<Input, P> {
+	/** The schema of one response body. A page in another shape fails with its path. */
+	readonly response: R;
+	/** The outputs of one page, e.g. `(page) => page.results`. */
+	items(page: Infer<R>, input: Input): readonly Out[];
+	/** Without it, the list is one request. */
+	readonly pages?: Pages<Infer<R>>;
+}
+
+/** `never` unless the cardinality is `C`: a `request` is per item, and a `list` is `1:N`. */
+type Only<Cardinality, C> = Cardinality extends C ? unknown : never;
+
+/**
+ * How the action runs: code (`run`), one request per item that the host sends (`request`), a
+ * list the host pages through (`list`), or a built-in n8n node (`native`), as a native trigger
+ * does.
  */
 export type ActionBinding<
 	Full extends Shape,
@@ -599,6 +710,7 @@ export type ActionBinding<
 	Outs extends ActionOutputs | undefined,
 	Im extends readonly HostImport[] = readonly HostImport[],
 	Ins extends ActionInputs | undefined = ActionInputs | undefined,
+	R extends AnySchema = AnySchema,
 > =
 	| {
 			/** `flow.cardinality` sets how often it runs and what it gives back, see `RunResult`. */
@@ -607,13 +719,24 @@ export type ActionBinding<
 					ImportsOf<Im, RunInput<Full>>,
 			): RunResult<F['cardinality'], Emit<F['cardinality'], Infer<O>, Outs>>;
 			readonly request?: never;
+			readonly list?: never;
 			readonly native?: never;
 	  }
 	| {
-			readonly request: RequestBinding<RunInput<Full>, P> & RequestItems<F['cardinality']>;
+			readonly request: RequestBinding<RunInput<Full>, P> & Only<F['cardinality'], 'per-item'>;
 			readonly run?: never;
+			readonly list?: never;
 			readonly native?: never;
 			// The response goes to the only output.
+			readonly outputs?: never;
+			readonly imports?: never;
+			readonly inputs?: never;
+	  }
+	| {
+			readonly list: ListBinding<RunInput<Full>, P, R, Infer<O>> & Only<F['cardinality'], '1:N'>;
+			readonly run?: never;
+			readonly request?: never;
+			readonly native?: never;
 			readonly outputs?: never;
 			readonly imports?: never;
 			readonly inputs?: never;
@@ -622,6 +745,7 @@ export type ActionBinding<
 			readonly native: NativeNode;
 			readonly run?: never;
 			readonly request?: never;
+			readonly list?: never;
 			readonly imports?: never;
 			readonly inputs?: never;
 	  };
@@ -696,8 +820,9 @@ export type ActionSpec<
 	H extends string = string,
 	Im extends readonly HostImport[] = readonly HostImport[],
 	Ins extends ActionInputs | undefined = ActionInputs | undefined,
+	R extends AnySchema = AnySchema,
 > = ActionSpecBase<Own, Full, O, F, Sc, Outs, H, Im, Ins> &
-	ActionBinding<Full, O, F, P, Outs, Im, Ins>;
+	ActionBinding<Full, O, F, P, Outs, Im, Ins, R>;
 
 /** What every contract has after its node built it. */
 interface Built {
@@ -746,8 +871,8 @@ type EmitRule<I, Out> = WebhookRequest extends Out
 	? unknown
 	: { readonly webhook: { emit(request: WebhookRequest, input: I): readonly Out[] } };
 
-type PollSource<I, T, Out> = {
-	readonly poll: PollConfig<I, T, Out>;
+type PollSource<I, T, Out, P = unknown> = {
+	readonly poll: PollConfig<I, T, Out, P>;
 	readonly webhook?: never;
 	readonly native?: never;
 };
@@ -805,10 +930,11 @@ export type TriggerSpec<
 	Sc extends string = string,
 	K extends string = string,
 	T = unknown,
+	P = unknown,
 > = TriggerHead<Own, O, Sc> &
 	(
 		| (WebhookSource<RunInput<Full>, Infer<O>, K> & EmitRule<RunInput<Full>, Infer<O>>)
-		| PollSource<RunInput<Full>, T, Infer<O>>
+		| PollSource<RunInput<Full>, T, Infer<O>, P>
 		| NativeSource<keyof Full & string>
 	);
 
@@ -896,9 +1022,10 @@ type NodeAction<N extends NodeDefinition, RS extends Shape, Path extends ActionP
 	const H extends string = string,
 	const Im extends readonly HostImport[] = [],
 	const Ins extends ActionInputs | undefined = undefined,
+	R extends AnySchema = AnySchema,
 >(
 	operation: string,
-	spec: ActionSpec<S, RS & S, O, F, ScopeOf<N>, P, Outs, H, Im, Ins> &
+	spec: ActionSpec<S, RS & S, O, F, ScopeOf<N>, P, Outs, H, Im, Ins, R> &
 		OutputsCheck<Outs, RS & S> &
 		InputsCheck<Ins, F>,
 ) => Action<RS & S, O, F, Outs, Im, Ins> & Path;
@@ -907,9 +1034,10 @@ type NodeTrigger<N extends NodeDefinition, RS extends Shape, Path extends Action
 	S extends Shape,
 	O extends AnySchema,
 	T = unknown,
+	P = unknown,
 >(
 	event: string,
-	spec: TriggerSpec<S, RS & S, O, ScopeOf<N>, CredentialKey<CredentialTypeOf<N>>, T>,
+	spec: TriggerSpec<S, RS & S, O, ScopeOf<N>, CredentialKey<CredentialTypeOf<N>>, T, P>,
 ) => Trigger<RS & S, O> & Path;
 
 /** A sub-node runs once per root run and gives one capability. */
@@ -965,6 +1093,16 @@ export type NodeBuilder<N extends NodeDefinition> = N & {
 	readonly trigger: NodeTrigger<N, Record<never, never>, ActionPath>;
 };
 
+/** A paged list gets the `paging` input, which the host applies. */
+const impliedInputOf = (spec: object): Record<never, never> =>
+	'list' in spec &&
+	typeof spec.list === 'object' &&
+	spec.list !== null &&
+	'pages' in spec.list &&
+	spec.list.pages !== undefined
+		? { paging }
+		: {};
+
 function buildersOf<N extends NodeDefinition, RS extends Shape, Path extends ActionPath>(
 	node: N,
 	shared: RS,
@@ -976,7 +1114,10 @@ function buildersOf<N extends NodeDefinition, RS extends Shape, Path extends Act
 } {
 	// Typed by `NodeAction`: a second generic signature would infer `P` again and not match.
 	const action: NodeAction<N, RS, Path> = (operation, spec) =>
-		toAction(node, pathOf(operation), { ...spec, input: { ...shared, ...spec.input } });
+		toAction(node, pathOf(operation), {
+			...spec,
+			input: { ...shared, ...spec.input, ...impliedInputOf(spec) },
+		});
 	const subnode: NodeSubnode<N, RS, Path> = (operation, { supplies, supply, ...spec }) =>
 		toAction<
 			RS & typeof spec.input,
@@ -996,9 +1137,9 @@ function buildersOf<N extends NodeDefinition, RS extends Shape, Path extends Act
 	return {
 		action,
 		subnode,
-		trigger: <S extends Shape, O extends AnySchema, T>(
+		trigger: <S extends Shape, O extends AnySchema, T, P>(
 			event: string,
-			spec: TriggerSpec<S, RS & S, O, ScopeOf<N>, CredentialKey<CredentialTypeOf<N>>, T>,
+			spec: TriggerSpec<S, RS & S, O, ScopeOf<N>, CredentialKey<CredentialTypeOf<N>>, T, P>,
 		) => {
 			const input: RS & S = { ...shared, ...spec.input };
 			return toTrigger<RS & S, O, Path>(node, pathOf(event), { ...spec, input });

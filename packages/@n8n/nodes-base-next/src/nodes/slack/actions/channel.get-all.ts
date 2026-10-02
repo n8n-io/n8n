@@ -1,11 +1,11 @@
-import { arr, bool, oneOf } from '@n8n/node-sdk';
+import { arr, bool, oneOf, paging } from '@n8n/node-sdk';
 
-import { paging } from '../../paging';
 import { channel, slackChannel, slackList, slackResponse } from '../slack.node';
 
 const page = slackResponse({ channels: arr(slackChannel) });
 
 export const getManySlackChannels = channel.action('getAll', {
+	patch: 1,
 	action: 'Get many channels',
 	summary: 'List Slack channels with their IDs, e.g. to find the ID of a #name.',
 	flow: { effect: 'read', cardinality: '1:N', idempotent: true },

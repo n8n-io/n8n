@@ -175,7 +175,8 @@ describe('native triggers', () => {
 			output: obj({ id: str() }),
 			poll: {
 				request: () => ({ path: '/items' }),
-				items: () => [],
+				response: arr(obj({ id: int() })),
+				items: (page) => page,
 				cursor: { id: () => 1 },
 			},
 		});

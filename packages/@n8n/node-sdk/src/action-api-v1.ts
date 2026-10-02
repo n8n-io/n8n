@@ -12,7 +12,7 @@ export interface RunContextV1 {
 }
 
 /** An `n8n:action@1` action: `run()` emits its items and gives back nothing. @1 has no `request`. */
-export type ActionV1 = Omit<Action, 'run' | 'request' | 'native'> & {
+export type ActionV1 = Omit<Action, 'run' | 'request' | 'list' | 'native'> & {
 	run(context: RunContextV1): Promise<void>;
 };
 

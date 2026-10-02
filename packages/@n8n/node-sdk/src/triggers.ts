@@ -18,6 +18,7 @@ import { credentialDataOf } from './credentials';
 import { actionHostsOf, credentialHostsOf, egressOf } from './egress';
 import {
 	isHttpError,
+	pages,
 	type Http,
 	type NativeEvent,
 	type HttpMethod,
@@ -40,8 +41,8 @@ import {
 	type FrozenVersion,
 } from './runtime';
 import { parameterValue, toProperty } from './properties';
-import type { Binary, Shape } from './schema';
-import { applyDefaults, validate } from './validate';
+import type { Binary, Schema, Shape } from './schema';
+import { applyDefaults, parse, validate } from './validate';
 
 /** What starts a trigger: a service webhook, a poll, or the event of a native trigger. */
 export type TriggerKind = 'webhook' | 'poll' | NativeEvent;
@@ -109,7 +110,7 @@ export type PollCursor<T> =
 	  }
 	| { id(item: T): number };
 
-export interface PollConfig<I, T, Out> {
+export interface PollConfig<I, T, Out, P = unknown> {
 	/**
 	 * `since` is the cursor (a time or an ID). It is not set in a manual run. `limit` is the most
 	 * items the host uses, e.g. 1 in a manual run, so the request can ask for a small page.
@@ -120,9 +121,11 @@ export interface PollConfig<I, T, Out> {
 		readonly page: string | undefined;
 		readonly limit: number | undefined;
 	}): HttpRequest;
-	items(body: unknown): readonly T[];
-	/** The next page of one poll. */
-	next?(body: unknown): string | undefined;
+	/** The schema of one response body. A page in another shape fails with its path. */
+	readonly response: Schema<P, boolean, boolean, unknown>;
+	items(page: P): readonly T[];
+	/** The cursor of the next page of one poll. A missing, null or empty cursor ends the poll. */
+	next?(page: P): string | null | undefined;
 	readonly cursor: PollCursor<T>;
 	/** 'skip' (the default): the first poll only sets the cursor. 'emit': it also emits. */
 	readonly firstRun?: 'skip' | 'emit';
@@ -395,26 +398,37 @@ function advance<T>(
 
 const MAX_PAGES = 100;
 
-async function fetchPages<I, T, Out>(
-	config: PollConfig<I, T, Out>,
+type HostPoll = PollConfig<RunInput<Shape>, unknown, unknown>;
+
+/** A poll as the host gets it: a bundle frozen before `response` existed has none. */
+type FrozenPoll = Omit<HostPoll, 'response'> & Partial<Pick<HostPoll, 'response'>>;
+
+async function fetchPages(
+	poll: FrozenPoll,
+	pageOf: (body: unknown) => unknown,
 	http: Http,
-	input: I,
+	input: RunInput<Shape>,
 	since: string | undefined,
-	page?: string,
-	count = 1,
-): Promise<readonly T[]> {
-	const body = await http.request(config.request({ input, since, page, limit: undefined }));
-	const items = config.items(body);
-	const next = config.next?.(body);
-	if (!next || next === page || count >= MAX_PAGES) return items;
-	return [...items, ...(await fetchPages(config, http, input, since, next, count + 1))];
+): Promise<readonly unknown[]> {
+	const fetched = pages(http, {
+		page: pageOf,
+		request: (page) => poll.request({ input, since, page, limit: undefined }),
+		items: (page) => poll.items(page),
+		next: (page) => poll.next?.(page),
+		maxPages: MAX_PAGES,
+	});
+	const items: unknown[] = [];
+	for await (const item of fetched) items.push(item);
+	return items;
 }
 
 async function runPoll(
 	trigger: Trigger,
-	poll: PollConfig<RunInput<Shape>, unknown, unknown>,
+	poll: FrozenPoll,
 	context: IPollFunctions,
 ): Promise<INodeExecutionData[][] | null> {
+	const { response } = poll;
+	const pageOf = (body: unknown) => (response ? parse(response, body, 'page') : body);
 	const input = inputOf(trigger, context);
 	const http = await httpOf(trigger, context);
 	const data = context.getWorkflowStaticData('node');
@@ -427,11 +441,11 @@ async function runPoll(
 		const body = await http.request(
 			poll.request({ input, since: undefined, page: undefined, limit: 1 }),
 		);
-		return emitted(poll.items(body).slice(0, 1).map(toOutput));
+		return emitted(poll.items(pageOf(body)).slice(0, 1).map(toOutput));
 	}
 	const state = pollStateOf(data);
 	const since = sinceOf(poll.cursor, state, Date.now());
-	const items = await fetchPages(poll, http, input, since);
+	const items = await fetchPages(poll, pageOf, http, input, since);
 	const next = advance(poll.cursor, items, since, state);
 	const isFirst = state.cursor === undefined;
 	// n8n persists the static data object, so the new state goes into it.

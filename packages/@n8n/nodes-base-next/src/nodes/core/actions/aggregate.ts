@@ -4,6 +4,7 @@ import { core } from '../core.node';
 import { getPath, pathOf, setPath } from '../path';
 
 export const aggregateItems = core.action('aggregate', {
+	patch: 1,
 	action: 'Aggregate items',
 	summary: 'Combine all items into one item: lists of field values, or the list of all items.',
 	flow: { effect: 'transform', cardinality: 'batch' },
@@ -30,11 +31,9 @@ export const aggregateItems = core.action('aggregate', {
 		const { aggregate } = input;
 		if (aggregate.mode === 'items') {
 			// The output lists the input objects, it does not copy them.
-			return [
-				{ json: { [aggregate.into ?? 'data']: items.map((item) => item.json) }, from: items },
-			];
+			return [{ json: { [aggregate.into]: items.map((item) => item.json) }, from: items }];
 		}
-		const { keepMissing = false, mergeLists = false } = aggregate;
+		const { keepMissing, mergeLists } = aggregate;
 		const outputs = aggregate.fields.map(({ field, as }) => ({
 			path: pathOf(field),
 			target: as ?? pathOf(field).at(-1) ?? field,

@@ -105,7 +105,7 @@ const input = {
 };
 
 export const readSheetRows = sheet.action('read', {
-	patch: 5,
+	patch: 6,
 	action: 'Get rows',
 	summary: 'Read rows, optionally only those matching column filters.',
 	flow: { effect: 'read', cardinality: '1:N', idempotent: true },
@@ -134,22 +134,15 @@ export const readSheetRows = sheet.action('read', {
 		const values = await readValues(http, spreadsheetId, tab, 'UNFORMATTED_VALUE');
 		if (values.length === 0) return;
 		const { header } = parameters;
-		const keyRow = header ? (header.headerRow ?? 1) - 1 : 0;
-		const dataStart = header ? (header.firstDataRow ?? 2) - 1 : 1;
+		const keyRow = header ? header.headerRow - 1 : 0;
+		const dataStart = header ? header.firstDataRow - 1 : 1;
 		const numbered = values.map((row, index) =>
 			index === keyRow ? keyCells([undefined, ...row]) : [index + 1, ...row],
 		);
 		const rows = header ? numbered : detectRange(numbered);
 		const filters = parameters.filters ?? [];
 		const found = filters.length
-			? lookup(
-					rows,
-					keyRow,
-					dataStart,
-					filters,
-					parameters.combine ?? 'AND',
-					parameters.allMatches ?? true,
-				)
+			? lookup(rows, keyRow, dataStart, filters, parameters.combine, parameters.allMatches)
 			: structure(rows, keyRow, dataStart);
 		for (const row of found) {
 			if (!matches(sheetRow, row)) throw new Error('Google Sheets returned a row without a number');

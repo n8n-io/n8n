@@ -3,7 +3,7 @@ import { isSensitiveKey } from '@n8n/utils/redaction/sensitive-key';
 import { scrubSecretsInText } from '@n8n/utils/scrub-secrets';
 import { safeRegex } from 'n8n-workflow';
 
-import type { AnySchema, Infer, JsonSchema } from './schema';
+import { isPageExpression, type AnySchema, type Infer, type JsonSchema } from './schema';
 
 /** The value, or no value. Narrows an API field that must be a list. */
 export const list = (value: unknown): readonly unknown[] => (Array.isArray(value) ? value : []);
@@ -63,6 +63,9 @@ export function validate(
 		if (current === undefined) return;
 		if (options.allowExpressions && isExpression(current)) {
 			if (node['x-n8n-literal']) issues.push(`${at}: must be a plain value, not an expression`);
+			if (node['x-n8n-page'] && typeof current === 'string' && !isPageExpression(current)) {
+				issues.push(`${at}: must read fields of $response, e.g. (page) => page.body.next_cursor`);
+			}
 			return;
 		}
 		if (node.oneOf && node.discriminator) {

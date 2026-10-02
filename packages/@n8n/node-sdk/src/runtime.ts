@@ -46,15 +46,29 @@ import {
 	type Http,
 	type HttpMethod,
 	type HttpRequest,
+	limitOf,
+	type ListBinding,
 	type LogLevel,
 	type NodeDefinition,
+	nextLinkOf,
+	nextOffsetOf,
+	type PageParam,
+	pages,
+	paging,
 	type RequestBinding,
 	type RequestValue,
 	type RunInput,
 	type RunLimits,
 	type Trigger,
 } from './define';
-import { hasBinary, type AnySchema, type Binary, type JsonSchema, type Shape } from './schema';
+import {
+	hasBinary,
+	hasPageValue,
+	type AnySchema,
+	type Binary,
+	type JsonSchema,
+	type Shape,
+} from './schema';
 import {
 	isSupply,
 	SUPPLY_CONNECTIONS,
@@ -64,7 +78,7 @@ import {
 	type SupplyField,
 	type SupplyKind,
 } from './subnodes';
-import { applyDefaults, list, validate } from './validate';
+import { applyDefaults, list, matches, parse, validate } from './validate';
 import {
 	ACTION_API_VERSION,
 	apiSemverOf,
@@ -315,8 +329,11 @@ export interface ExecutorHost {
 	/** The input items. A passed item keeps its binary data. */
 	readonly items: readonly INodeExecutionData[];
 	readonly node: INode;
-	/** The raw parameter value, as `getNodeParameter` returns it. */
-	parameter(name: string, itemIndex: number): unknown;
+	/**
+	 * The parameter value, as `getNodeParameter` returns it. `raw` keeps its expressions
+	 * unresolved, for a field with a `pageValue()` that `run()` reads for each page.
+	 */
+	parameter(name: string, itemIndex: number, raw?: boolean): unknown;
 	request(options: IHttpRequestOptions, credentialType: string | undefined): Promise<unknown>;
 	/**
 	 * The stored data of a credential: the fields `baseUrl` reads and the user's "Allowed HTTP
@@ -395,7 +412,8 @@ const SUPPLY_ITEM = 0;
 const hostOf = (context: IExecuteFunctions): ExecutorHost => ({
 	...hostBaseOf(context),
 	items: context.getInputData(),
-	parameter: (name, itemIndex) => context.getNodeParameter(name, itemIndex, undefined),
+	parameter: (name, itemIndex, raw) =>
+		context.getNodeParameter(name, itemIndex, undefined, raw ? { rawExpressions: true } : {}),
 	continueOnFail: () => context.continueOnFail(),
 	inputItems: (index) => {
 		try {
@@ -420,7 +438,8 @@ const hostOf = (context: IExecuteFunctions): ExecutorHost => ({
 const supplyHostOf = (context: ISupplyDataFunctions, itemIndex: number): ExecutorHost => ({
 	...hostBaseOf(context),
 	items: [{ json: {} }],
-	parameter: (name) => context.getNodeParameter(name, itemIndex, undefined),
+	parameter: (name, _itemIndex, raw) =>
+		context.getNodeParameter(name, itemIndex, undefined, raw ? { rawExpressions: true } : {}),
 	continueOnFail: () => false,
 	supplied: async (kind) =>
 		await context.getInputConnectionData(SUPPLY_CONNECTIONS[kind], itemIndex),
@@ -447,48 +466,90 @@ const queryValue = (value: unknown) =>
 		: JSON.stringify(value);
 
 /** The request of a declarative binding for one item's input. */
-export function requestOf<I>(
-	binding: RequestBinding<I>,
-	input: Readonly<Record<string, unknown>>,
-): HttpRequest {
+export function requestOf<I>(binding: RequestBinding<I>, input: I): HttpRequest {
+	const values: Readonly<Record<string, unknown>> = isRecord(input) ? input : {};
 	const path = binding.path.replace(/\{([^}]+)\}/g, (_, field: string) => {
-		const value = input[field];
+		const value = values[field];
 		// An empty segment sends the request to another URL, e.g. a collection.
 		if (value === undefined || value === '') {
 			throw new UserError(`The path field "${field}" has no value`);
 		}
 		return encodeURIComponent(String(queryValue(value)));
 	});
-	const query = inputValues(binding.query, input);
-	const body = inputValues(binding.body, input);
+	const query =
+		typeof binding.query === 'function' ? binding.query(input) : inputValues(binding.query, values);
+	const headers = typeof binding.headers === 'function' ? binding.headers(input) : binding.headers;
+	const body = inputValues(binding.body, values);
 	return {
 		method: binding.method ?? 'GET',
 		path: `/${path.replace(/^\//, '')}`,
 		...(query
 			? {
 					query: Object.fromEntries(
-						Object.entries(query).map(([key, value]) => [key, queryValue(value)]),
+						Object.entries(query).map(([key, value]) => [
+							key,
+							Array.isArray(value) || value === undefined ? value : queryValue(value),
+						]),
 					),
 				}
 			: {}),
-		...(binding.headers ? { headers: binding.headers } : {}),
+		...(headers ? { headers } : {}),
 		...(body ? { body } : {}),
 	};
 }
 
-/** What a declarative binding gives back for one item: the body, or the items in one field. */
-async function* requestItems<I>(
-	http: Http,
-	binding: RequestBinding<I>,
-	field: string,
-	input: Readonly<Record<string, unknown>>,
-) {
-	const body = await http.request(requestOf(binding, input));
-	const items = isRecord(body) ? body[field] : undefined;
-	if (!Array.isArray(items)) {
-		throw new UnexpectedError(`The response has no array in "${field}"`);
-	}
-	yield* items;
+/** The request with `value` in the query parameter or the body field that `param` names. */
+const withParam = (request: HttpRequest, param: PageParam, value: string | number): HttpRequest =>
+	param.query === undefined
+		? { ...request, body: { ...(isRecord(request.body) ? request.body : {}), [param.body]: value } }
+		: { ...request, query: { ...request.query, [param.query]: value } };
+
+/**
+ * The outputs of a `list` binding, page by page. The host checks each page against `response`,
+ * applies the `paging` input, and stops at the end of the list or at a repeated cursor.
+ */
+function listItems<I>(http: Http, binding: ListBinding<I, string, AnySchema, unknown>, input: I) {
+	const style = binding.pages;
+	const first = requestOf(binding, input);
+	const linked = style?.style === 'link';
+	// The `Link` header is in the full response, so a linked list reads it.
+	const pageOf = (response: unknown) => {
+		const full = linked && isRecord(response) ? response : {};
+		return {
+			body: parse(binding.response, linked ? full.body : response, 'page'),
+			link: isRecord(full.headers) ? headerText(full.headers.link) : undefined,
+		};
+	};
+	const byPage = style?.style === 'offset' && style.unit === 'page';
+	/** Page numbers count pages of one size, so a numbered list asks for the same size each time. */
+	const sizeFor = (room: number | undefined) =>
+		style?.size && (byPage ? style.size.max : Math.min(room ?? style.size.max, style.size.max));
+	const values: Readonly<Record<string, unknown>> = isRecord(input) ? input : {};
+	return pages(http, {
+		page: pageOf,
+		request: (cursor, room) => {
+			if (linked && cursor !== undefined) {
+				return { method: first.method, url: cursor, headers: first.headers, fullResponse: true };
+			}
+			const size = sizeFor(room);
+			const sized = style?.size && size !== undefined ? withParam(first, style.size, size) : first;
+			const sent =
+				style && style.style !== 'link' && cursor !== undefined
+					? withParam(sized, style.send, style.style === 'offset' ? Number(cursor) : cursor)
+					: sized;
+			return linked ? { ...sent, fullResponse: true } : sent;
+		},
+		items: ({ body }) => binding.items(body, input),
+		next: ({ body, link }, { items, cursor, room }) => {
+			if (style?.style === 'cursor') return style.next(body);
+			if (style?.style === 'link') return nextLinkOf(link);
+			if (style?.style !== 'offset') return undefined;
+			const { unit, start } = style;
+			return nextOffsetOf(unit, { count: items.length, size: sizeFor(room), cursor, start });
+		},
+		limit: style && matches(paging, values.paging) ? limitOf(values.paging) : undefined,
+		maxPages: style ? Infinity : 1,
+	});
 }
 
 /** The output names for the parameters of the first item, or `undefined` for one unnamed output. */
@@ -617,11 +678,16 @@ export function executorOf<S extends Shape, O extends AnySchema>(
 			.filter(([name, schema]) => toProperty(name, schema).type === 'json')
 			.map(([name]) => name),
 	);
+	const rawKeys = new Set(
+		Object.entries(action.input)
+			.filter(([, schema]) => hasPageValue(schema.json))
+			.map(([name]) => name),
+	);
 	const outputSchema: JsonSchema = action.output.json;
 	const passesOnly = outputSchema['x-n8n-passed'] === true;
 	const isInput = (value: unknown): value is RunInput<S> =>
 		validate(value, action.inputSchema).length === 0;
-	const { request: binding } = action;
+	const { request: binding, list: listBinding } = action;
 	const isBatch = action.flow.cardinality === 'batch';
 	const scope = isBatch ? 'one run' : 'one input item';
 	const binaryApi = usesBinary({ input: action.inputSchema, output: outputSchema });
@@ -837,7 +903,10 @@ export function executorOf<S extends Shape, O extends AnySchema>(
 				inputKeys
 					.map(
 						(key) =>
-							[key, parameterValue(host.parameter(key, itemIndex), jsonKeys.has(key))] as const,
+							[
+								key,
+								parameterValue(host.parameter(key, itemIndex, rawKeys.has(key)), jsonKeys.has(key)),
+							] as const,
 					)
 					.filter(([, value]) => value !== undefined && value !== ''),
 			);
@@ -1044,14 +1113,13 @@ export function executorOf<S extends Shape, O extends AnySchema>(
 			const input = await inputOf(itemIndex);
 			const route = routeOf(names, itemIndex);
 			const http = httpFor(itemIndex, input);
-			// The host sends a declarative request itself; no author code runs for it.
-			// Only a 1:N binding names `items`.
+			// The host sends a declarative request or list itself.
 			const result: Promise<unknown> | AsyncIterable<unknown> | Iterable<unknown> | undefined =
 				binding
-					? binding.items === undefined
-						? http.request(requestOf(binding, input))
-						: requestItems(http, binding, binding.items, input)
-					: action.run?.({ input, http, log, limits, binary: binaries, item, ...imports });
+					? http.request(requestOf(binding, input))
+					: listBinding
+						? listItems(http, listBinding, input)
+						: action.run?.({ input, http, log, limits, binary: binaries, item, ...imports });
 			if (!result) throw new UnexpectedError(`${action.id} has no run() and no request`);
 			if (action.flow.cardinality === 'per-item') return [route(await result, 0)];
 			return await collect(result, route);
@@ -1334,6 +1402,7 @@ const isContract = (value: unknown): value is Action | Trigger =>
 	Array.isArray(value.credentialTypes) &&
 	(typeof value.run === 'function' ||
 		isRecord(value.request) ||
+		isRecord(value.list) ||
 		isRecord(value.poll) ||
 		isRecord(value.webhook));
 

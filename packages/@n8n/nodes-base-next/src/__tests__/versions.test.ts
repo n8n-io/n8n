@@ -108,16 +108,28 @@ describe('bundled versions', () => {
 		);
 		expect(apiVersions).toEqual(
 			Object.fromEntries(
-				contracts.map((contract) => [contract.id, actionApiVersionOf(toContract(contract))]),
+				contracts.map((contract) => [
+					contract.id,
+					actionApiVersionOf(
+						toContract(contract),
+						'list' in contract && contract.list !== undefined,
+					),
+				]),
 			),
 		);
-		// Only the actions with host imports, named inputs or sub-node capabilities need the newest
-		// minor, and only the actions with binary data need 2.2.0.
+		// Only the paged lists need the newest minor, only the actions with host imports, named
+		// inputs or sub-node capabilities need 2.3.0, and only the actions with binary data need 2.2.0.
 		const withVersion = (apiVersion: string) =>
 			Object.keys(apiVersions)
 				.filter((id) => apiVersions[id] === apiVersion)
 				.sort();
 		expect(withVersion(ACTION_API_VERSION)).toEqual([
+			'github.issue.getAll',
+			'googleDrive.file.search',
+			'httpRequest.get',
+			'supabase.row.getAll',
+		]);
+		expect(withVersion('n8n:action@2.3.0')).toEqual([
 			'ai.agent',
 			'ai.classify',
 			'ai.prompt',
@@ -182,7 +194,7 @@ describe('bundled versions', () => {
 		} as unknown as IExecuteFunctions;
 
 		const HttpRequestGet = loadNodeClass({ id: 'httpRequest.get' }, VERSIONS_DIR);
-		const result = await new HttpRequestGet().getNodeType(2).execute?.call(context);
+		const result = await new HttpRequestGet().getNodeType(3).execute?.call(context);
 
 		expect(result).toEqual([
 			[
@@ -197,7 +209,7 @@ describe('bundled versions', () => {
 					action: 'httpRequest.get',
 					version: head?.manifest.semver,
 					bundleHash: head?.manifest.bundleHash,
-					apiVersion: 'n8n:action@2.1.0',
+					apiVersion: 'n8n:action@2.4.0',
 				},
 			},
 		]);

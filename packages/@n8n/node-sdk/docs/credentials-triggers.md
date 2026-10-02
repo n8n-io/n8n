@@ -198,16 +198,18 @@ export const webhookTrigger = webhook.trigger('trigger', {
 | Binding | Author writes | Who runs it |
 |---|---|---|
 | `run` | `run({ input, http })` | The bundle's code, through the host executor. |
-| `request` | `request: { method, path: '/users/{user}', query, body, items }` | The host executor. No author code runs. |
+| `request` | `request: { method, path: '/users/{user}', query, body }` | The host executor sends one request per item. |
+| `list` | `list: { path, query, response, items(page), pages }` | The host executor pages through the list. |
 | `mcp` | Nothing: `liftMcpTool(node, tool, client)` | The host's MCP client calls the tool. |
 | `native` | `native: { type: 'n8n-nodes-base.splitInBatches', version: 3 }` | n8n runs the built-in node. |
 
 - `request.path` is type checked: `{field}` must name a required input field. An optional field
   could leave the segment empty and send the request to another URL. At run time, an empty
-  value fails before the request. `query` and `body` values are literals or `{ input: 'field' }`.
-- A `1:N` request must name `items`, the response field with the items. A `per-item` request
-  cannot name it. A declarative request reads one page: it has no `next`. A paged endpoint
-  needs `run` with `paginate`.
+  value fails before the request. `query` and `body` values are literals or `{ input: 'field' }`;
+  `query` and `headers` can also be a function of the input.
+- `request` is for a `per-item` action. A `1:N` action lists with `list`: a `response` schema,
+  `items(page, input)`, and optional `pages` (`cursor`, `link` or `offset`). The host checks each
+  page, follows the pages, and applies the `paging` input that `pages` adds. `run()` uses `pages()`.
 - `liftMcpTool` maps `readOnlyHint` to `read` (idempotent), any other tool to `write`. The input
   is the tool's JSON Schema. The output is typed only with `outputSchema`. It reports schema
   keywords that the validator does not check, e.g. `$ref`.

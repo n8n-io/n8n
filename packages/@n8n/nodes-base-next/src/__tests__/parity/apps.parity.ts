@@ -127,13 +127,13 @@ describe('github.issue parity with GitHub v1.1', () => {
 		const allowed: AllowedDifference[] = [
 			...untypedFields(2),
 			{
-				path: `requests.GET ${API} #0.query.per_page`,
+				path: `requests.GET ${API} #0.query.page`,
 				kind: 'intended',
-				reason: 'Without pull requests, full pages fill the limit in fewer requests.',
+				reason: 'The first request always names page 1; the next pages follow the Link header.',
 			},
 		];
 		expect(compareRuns(legacy, next, allowed)).toEqual(equal);
-		expect(next.requests[`GET ${API} #0`]?.query.per_page).toBe('100');
+		expect(next.requests[`GET ${API} #0`]?.query.per_page).toBe('50');
 	});
 
 	const twoPages: ParityCase = {
@@ -157,6 +157,12 @@ describe('github.issue parity with GitHub v1.1', () => {
 			},
 		],
 	};
+	/** GitHub repeats every query parameter in its next link; these test links do not. */
+	const linkQuery: AllowedDifference[] = ['state', 'sort', 'direction'].map((name) => ({
+		path: `requests.GET ${API} #1.query.${name}`,
+		kind: 'intended',
+		reason: 'The next page is the URL of the Link header, as GitHub gives it.',
+	}));
 	const allLegacy = legacyNode({
 		resource: 'repository',
 		operation: 'getIssues',
@@ -176,7 +182,7 @@ describe('github.issue parity with GitHub v1.1', () => {
 		);
 		expect(legacy.error, legacy.unmatched.join('; ')).toBeUndefined();
 		expect(legacy.items).toHaveLength(3);
-		expect(compareRuns(legacy, next, untypedFields(3))).toEqual(equal);
+		expect(compareRuns(legacy, next, [...untypedFields(3), ...linkQuery])).toEqual(equal);
 	});
 
 	it('getAll leaves out pull requests by default', async () => {
@@ -192,6 +198,7 @@ describe('github.issue parity with GitHub v1.1', () => {
 				reason:
 					'GitHub lists pull requests as issues; includePullRequests (default false) keeps them.',
 			},
+			...linkQuery,
 		];
 		expect(compareRuns(legacy, next, allowed)).toEqual(equal);
 		expect(next.items.map(({ json }) => (json as Record<string, unknown>).html_url)).toEqual([
@@ -466,7 +473,12 @@ describe('supabase.row parity with Supabase v1', () => {
 		);
 		expect(legacy.error, legacy.unmatched.join('; ')).toBeUndefined();
 		expect(legacy.items).toHaveLength(1001);
-		expect(compareRuns(legacy, next, [])).toEqual(equal);
+		const pageSize: AllowedDifference[] = [0, 1].map((index) => ({
+			path: `requests.GET ${TABLE} #${index}.query.limit`,
+			kind: 'intended',
+			reason: 'An offset list sends its page size on every page, so a short page ends it.',
+		}));
+		expect(compareRuns(legacy, next, pageSize)).toEqual(equal);
 		expect(Object.keys(next.requests)).toEqual([`GET ${TABLE} #0`, `GET ${TABLE} #1`]);
 	});
 

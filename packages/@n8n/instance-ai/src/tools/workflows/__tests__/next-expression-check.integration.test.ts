@@ -161,7 +161,7 @@ export default workflow(
 				},
 			}),
 		)
-		.andThen(gmail.message.getAll({ name: 'Too many', paging: { mode: 'limit', max: 900 } })),
+		.andThen(gmail.message.getAll({ name: 'Too few', paging: { mode: 'limit', max: 0 } })),
 );
 `;
 		const result = await build(source);
@@ -175,7 +175,7 @@ export default workflow(
 			`${at(source, '"Strat"')}: error TS2345: Argument of type '"Strat"' is not assignable to parameter of type '"Get" | "Start"'.`,
 			`${at(source, "'={{ $json.Subject }}'")}: error TS2322: The expression result does not fit the field: Type 'string' is not assignable to type 'number'.`,
 			`${at(source, 'subjcet')}: error TS2551: Property 'subjcet' does not exist on type '{ id: string; subject: string; count: number; }'. Did you mean 'subject'?`,
-			'Node "Too many": input.paging.max: must be at most 500',
+			'Node "Too few": input.paging.max: must be at least 1',
 		]);
 	}, 120_000);
 

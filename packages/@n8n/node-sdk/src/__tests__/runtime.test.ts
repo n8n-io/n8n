@@ -9,10 +9,12 @@ import {
 	int,
 	isRecord,
 	json,
-	list,
 	obj,
 	oneOf,
-	paginate,
+	pages,
+	pageValue,
+	pageValueOf,
+	paging,
 	parse,
 	passedItem,
 	str,
@@ -380,7 +382,8 @@ describe('runAction', () => {
 	});
 });
 
-describe('paginate', () => {
+describe('pages', () => {
+	const itemPage = obj({ items: arr(item), next: str().optional() });
 	/** An action that lists `/items` pages by cursor and yields each item. */
 	const pagedAction = (limit?: number, maxPages?: number) =>
 		echoItem.action('list', {
@@ -390,14 +393,14 @@ describe('paginate', () => {
 			input: {},
 			output: item,
 			async *run({ http }) {
-				const pages = paginate(http, {
+				yield* pages(http, {
+					page: itemPage,
 					request: (cursor, room) => ({ path: '/items', query: { cursor, size: room } }),
-					items: (body) => (isRecord(body) ? list(body.items) : []),
-					next: (body) => (isRecord(body) && typeof body.next === 'string' ? body.next : undefined),
+					items: (body) => body.items,
+					next: (body) => body.next,
 					limit,
 					maxPages,
 				});
-				for await (const entry of pages) yield parse(item, entry);
 			},
 		});
 	const page = (ids: string[], next?: string) => ({ items: ids.map((id) => ({ id })), next });
@@ -426,6 +429,312 @@ describe('paginate', () => {
 		const { host, requests } = hostOf([page(['a'], 'c2'), page(['b'], 'c3'), page(['c'])]);
 		await executorOf(pagedAction(undefined, 2))(host);
 		expect(requests).toHaveLength(2);
+	});
+
+	it('fails a page in another shape with the path of the field', async () => {
+		const { host } = hostOf([{ items: 'x' }]);
+		await expect(executorOf(pagedAction())(host)).rejects.toThrow(
+			'page.items: must be array, got "x"',
+		);
+	});
+});
+
+describe('pageValueOf', () => {
+	const page = {
+		body: { data: [{ id: 'a' }, { id: 'b' }], meta: { 'next-page': 3 }, has_more: true },
+		headers: { link: '<https://x.test/2>; rel="next"' },
+		statusCode: 200,
+	};
+
+	it('reads fields, list items, at, first and last of $response', () => {
+		const read = (expression: string) => pageValueOf(expression, page);
+		expect(read('={{ $response.body.data.at(-1)?.id }}')).toBe('b');
+		expect(read('={{ $response.body.data.first().id }}')).toBe('a');
+		expect(read("={{ $response.body.data.last()['id'] }}")).toBe('b');
+		expect(read('={{ $response.body.data[0].id }}')).toBe('a');
+		expect(read('={{ $response.body.meta["next-page"] }}')).toBe(3);
+		expect(read('={{ $response.headers.link }}')).toBe(page.headers.link);
+		expect(read('={{ $response.statusCode }}')).toBe(200);
+		expect(read('={{ $response.body.missing.deeper }}')).toBeUndefined();
+		expect(read('={{ $response.body.constructor }}')).toBeUndefined();
+	});
+
+	it('refuses an expression that is more than a read of $response', () => {
+		['={{ !$response.body.has_more }}', '={{ $json.id }}', '={{ $response.body.f() }}'].forEach(
+			(expression) => {
+				expect(() => pageValueOf(expression, page)).toThrow(
+					'A page value reads fields of $response',
+				);
+			},
+		);
+	});
+
+	it('is checked at build time against the expressions it reads', () => {
+		const schema = obj({ next: pageValue(str()) }).json;
+		const check = (next: string) => validate({ next }, schema, { allowExpressions: true });
+		expect(check('={{ $response.body.data.at(-1)?.id }}')).toEqual([]);
+		expect(check('={{ !$response.body.done }}')).toEqual([
+			'input.next: must read fields of $response, e.g. (page) => page.body.next_cursor',
+		]);
+	});
+});
+
+describe('list binding', () => {
+	const message = obj({ id: str() });
+	const historyPage = obj({
+		messages: arr(message),
+		response_metadata: obj({ next_cursor: str().optional() }).optional(),
+	});
+	const history = echoItem.action('history', {
+		action: 'Get history',
+		summary: 'List the messages of a channel.',
+		flow: read,
+		input: { channel: str() },
+		output: message,
+		list: {
+			path: '/history',
+			query: { channel: { input: 'channel' } },
+			response: historyPage,
+			items: (page) => page.messages,
+			pages: {
+				style: 'cursor',
+				next: (page) => page.response_metadata?.next_cursor,
+				send: { query: 'cursor' },
+				size: { query: 'limit', max: 2 },
+			},
+		},
+	});
+	const messages = (ids: string[]) => ids.map((id) => ({ id }));
+	const ids = (result: Awaited<ReturnType<typeof runAction>>) =>
+		result.ok ? result.items.map((entry) => (isRecord(entry) ? entry.id : undefined)) : result;
+
+	it('follows a cursor and asks each page for the room the paging limit leaves', async () => {
+		const fetch = mockHttp([
+			{
+				path: '/history',
+				query: { cursor: 'c2' },
+				reply: { json: { messages: messages(['c']), response_metadata: { next_cursor: '' } } },
+			},
+			{
+				path: '/history',
+				reply: {
+					json: { messages: messages(['a', 'b']), response_metadata: { next_cursor: 'c2' } },
+				},
+			},
+		]);
+		const input = { channel: 'C1', paging: { mode: 'limit', max: 3 } };
+		expect(ids(await runAction(history, { input, fetch }))).toEqual(['a', 'b', 'c']);
+		expect(fetch.calls.map(({ query }) => query)).toEqual([
+			{ channel: 'C1', limit: '2' },
+			{ channel: 'C1', limit: '1', cursor: 'c2' },
+		]);
+	});
+
+	it('gives a paged list the standard paging input with a limit of 50', async () => {
+		expect(history.inputSchema.properties?.paging).toEqual(paging.json);
+		const many = Array.from({ length: 60 }, (_, index) => `m${index}`);
+		const fetch = mockHttp([
+			{
+				path: '/history',
+				reply: { json: { messages: messages(many), response_metadata: { next_cursor: 'c2' } } },
+			},
+		]);
+		const result = await runAction(history, { input: { channel: 'C1' }, fetch });
+		expect(ids(result)).toEqual(many.slice(0, 50));
+		expect(fetch.calls).toHaveLength(1);
+	});
+
+	it('stops when the API repeats a cursor', async () => {
+		const fetch = mockHttp([
+			{
+				path: '/history',
+				reply: { json: { messages: messages(['a']), response_metadata: { next_cursor: 'same' } } },
+			},
+		]);
+		const input = { channel: 'C1', paging: { mode: 'all' } };
+		expect(ids(await runAction(history, { input, fetch }))).toEqual(['a', 'a']);
+		expect(fetch.calls).toHaveLength(2);
+	});
+
+	it('fails a page in another shape with the path of the field', async () => {
+		const fetch = mockHttp([{ path: '/history', reply: { json: { messages: 'x' } } }]);
+		const result = await runAction(history, { input: { channel: 'C1' }, fetch });
+		expect(result).toMatchObject({
+			ok: false,
+			error: { message: expect.stringContaining('page.messages: must be array, got "x"') },
+		});
+	});
+
+	it('follows the next link of the Link header, with encoded path fields', async () => {
+		const issues = echoItem.action('issues', {
+			action: 'Get issues',
+			summary: 'List the issues of a repository.',
+			flow: read,
+			input: { owner: str(), withDrafts: bool().default(false) },
+			output: obj({ id: str(), draft: bool() }),
+			list: {
+				path: '/repos/{owner}/issues',
+				response: arr(obj({ id: str(), draft: bool() })),
+				items: (page, input) => page.filter((entry) => input.withDrafts || !entry.draft),
+				pages: { style: 'link', size: { query: 'per_page', max: 100 } },
+			},
+		});
+		const next = 'https://echo.test/repos/a%2Fb/issues?per_page=50&page=2';
+		const fetch = mockHttp([
+			{
+				path: '/repos/a%2Fb/issues',
+				query: { page: '2' },
+				reply: { json: [{ id: 'c', draft: false }] },
+			},
+			{
+				path: '/repos/a%2Fb/issues',
+				reply: {
+					json: [
+						{ id: 'a', draft: false },
+						{ id: 'b', draft: true },
+					],
+					headers: { link: `<${next}>; rel="next", <https://echo.test/x?page=9>; rel="last"` },
+				},
+			},
+		]);
+		expect(ids(await runAction(issues, { input: { owner: 'a/b' }, fetch }))).toEqual(['a', 'c']);
+		expect(fetch.calls.map(({ url }) => url)).toEqual([
+			'https://echo.test/repos/a%2Fb/issues?per_page=50',
+			next,
+		]);
+	});
+
+	it('counts items as the offset and stops at a page with fewer items than the page size', async () => {
+		const rows = echoItem.action('rows', {
+			action: 'Get rows',
+			summary: 'List rows.',
+			flow: read,
+			input: {},
+			output: message,
+			list: {
+				path: '/rows',
+				response: arr(message),
+				items: (page) => page,
+				pages: {
+					style: 'offset',
+					unit: 'item',
+					send: { query: 'offset' },
+					size: { query: 'limit', max: 2 },
+				},
+			},
+		});
+		const fetch = mockHttp([
+			{ path: '/rows', query: { offset: '2' }, reply: { json: messages(['c']) } },
+			{ path: '/rows', reply: { json: messages(['a', 'b']) } },
+		]);
+		const input = { paging: { mode: 'all' } };
+		expect(ids(await runAction(rows, { input, fetch }))).toEqual(['a', 'b', 'c']);
+		expect(fetch.calls.map(({ query }) => query)).toEqual([
+			{ limit: '2' },
+			{ limit: '2', offset: '2' },
+		]);
+	});
+
+	it('counts page numbers and stops at an empty page', async () => {
+		const numbered = echoItem.action('numbered', {
+			action: 'Get numbered pages',
+			summary: 'List items by page number.',
+			flow: read,
+			input: {},
+			output: message,
+			list: {
+				path: '/items',
+				response: obj({ items: arr(message) }),
+				items: (page) => page.items,
+				pages: { style: 'offset', unit: 'page', send: { query: 'page' } },
+			},
+		});
+		const fetch = mockHttp([
+			{ path: '/items', query: { page: '2' }, reply: { json: { items: messages(['c']) } } },
+			{ path: '/items', query: { page: '3' }, reply: { json: { items: [] } } },
+			{ path: '/items', reply: { json: { items: messages(['a', 'b']) } } },
+		]);
+		expect(ids(await runAction(numbered, { input: {}, fetch }))).toEqual(['a', 'b', 'c']);
+		expect(fetch.calls.map(({ query }) => query)).toEqual([{}, { page: '2' }, { page: '3' }]);
+	});
+
+	it('sends one request without pages, and adds no paging input', async () => {
+		const once = echoItem.action('once', {
+			action: 'Get once',
+			summary: 'List items in one request.',
+			flow: read,
+			input: {},
+			output: message,
+			list: { path: '/items', response: arr(message), items: (page) => page },
+		});
+		const fetch = mockHttp([{ path: '/items', reply: { json: messages(['a']) } }]);
+		expect(ids(await runAction(once, { input: {}, fetch }))).toEqual(['a']);
+		expect(once.inputSchema.properties).not.toHaveProperty('paging');
+	});
+
+	it('types the page, the input, the style and the items', () => {
+		echoItem.action('history', {
+			action: 'Get history',
+			summary: 'List the messages of a channel.',
+			flow: read,
+			input: { channel: str() },
+			output: message,
+			list: {
+				path: '/history',
+				// @ts-expect-error `chanel` is not an input field
+				query: { channel: { input: 'chanel' } },
+				response: historyPage,
+				items: (page) => page.messages,
+				pages: {
+					style: 'cursor',
+					// @ts-expect-error `next_curser` is not a field of the page
+					next: (page) => page.response_metadata?.next_curser,
+					send: { query: 'cursor' },
+				},
+			},
+		});
+		echoItem.action('history', {
+			action: 'Get history',
+			summary: 'List the messages of a channel.',
+			flow: read,
+			input: {},
+			output: message,
+			list: {
+				path: '/history',
+				response: historyPage,
+				items: (page) => page.messages,
+				// @ts-expect-error `links` is not a page style
+				pages: { style: 'links' },
+			},
+		});
+		echoItem.action('history', {
+			action: 'Get history',
+			summary: 'List the messages of a channel.',
+			flow: read,
+			input: {},
+			output: message,
+			list: {
+				path: '/history',
+				response: historyPage,
+				// @ts-expect-error an item has `id`, so `{ ids }` does not match the output
+				items: (page) => page.messages.map(({ id }) => ({ ids: id })),
+			},
+		});
+		echoItem.action('history', {
+			action: 'Get history',
+			summary: 'List the messages of a channel.',
+			flow: read,
+			input: {},
+			output: message,
+			list: {
+				path: '/history',
+				response: historyPage,
+				items: (page) => page.messages,
+				// @ts-expect-error `start` is the first page number, so an item offset has none
+				pages: { style: 'offset', unit: 'item', start: 1, send: { query: 'offset' } },
+			},
+		});
+		expect(true).toBe(true);
 	});
 });
 

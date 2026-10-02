@@ -26,6 +26,85 @@
 					"id": 2
 				}
 			]
+		},
+		{
+			"name": "stripe-style cursor pages",
+			"params": {
+				"url": "https://api.test/v1/customers",
+				"items": "={{ $response.body.data }}",
+				"pages": {
+					"style": "cursor",
+					"next": "={{ $response.body.data.at(-1)?.id }}",
+					"send": {
+						"query": "starting_after"
+					},
+					"more": "={{ $response.body.has_more }}"
+				}
+			},
+			"responses": [
+				{
+					"body": {
+						"data": [
+							{
+								"id": "cus_1"
+							},
+							{
+								"id": "cus_2"
+							}
+						],
+						"has_more": true
+					},
+					"headers": {},
+					"statusCode": 200
+				},
+				{
+					"body": {
+						"data": [
+							{
+								"id": "cus_3"
+							}
+						],
+						"has_more": false
+					},
+					"headers": {},
+					"statusCode": 200
+				}
+			],
+			"output": [
+				{
+					"id": "cus_1"
+				},
+				{
+					"id": "cus_2"
+				},
+				{
+					"id": "cus_3"
+				}
+			]
+		}
+	],
+	"migrations": [
+		{
+			"fromMajor": 2,
+			"params": {
+				"url": "https://api.test/items",
+				"pagination": {
+					"cursorPath": "next_cursor",
+					"queryParameter": "cursor",
+					"maxPages": 100
+				}
+			},
+			"expected": {
+				"url": "https://api.test/items",
+				"pages": {
+					"style": "cursor",
+					"next": "={{ $response.body.next_cursor }}",
+					"send": {
+						"query": "cursor"
+					},
+					"maxPages": 100
+				}
+			}
 		}
 	]
 }

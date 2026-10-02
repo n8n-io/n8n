@@ -9,13 +9,13 @@ const credential = { type: '__service__Api', data: { apiKey: 'test-key' } };
 const first = { id: 'itm_1', name: 'First', ownerId: null };
 const second = { id: 'itm_2', name: 'Second', ownerId: 'usr_1' };
 
-test('returnAll follows nextCursor to the last page', async () => {
+test('paging all follows nextCursor to the last page', async () => {
 	const fetch = mockHttp([
 		// When more routes match, the route with more matching query parameters answers.
 		{ path: '/items', reply: { json: { items: [first], nextCursor: 'c2' } } },
 		{ path: '/items', query: { cursor: 'c2' }, reply: { json: { items: [second], nextCursor: null } } },
 	]);
-	const result = await runAction(getManyItems, { input: { returnAll: true }, credential, fetch });
+	const result = await runAction(getManyItems, { input: { paging: { mode: 'all' } }, credential, fetch });
 	// Compare the whole result: on failure, the message shows `result.error`.
 	assert.deepEqual(result, { ok: true, items: [first, second] });
 	// `fetch.calls` records each request. Query values are strings; a JSON body is parsed.
@@ -26,11 +26,15 @@ test('returnAll follows nextCursor to the last page', async () => {
 	assert.equal(fetch.calls[0]?.headers.authorization, 'Bearer test-key');
 });
 
-test('limit stops without fetching the next page', async () => {
+test('a paging limit stops without fetching the next page', async () => {
 	const fetch = mockHttp([{ path: '/items', reply: { json: { items: [first, second], nextCursor: 'c2' } } }]);
-	const result = await runAction(getManyItems, { input: { limit: 1 }, credential, fetch });
+	const input = { paging: { mode: 'limit', max: 1 } };
+	const result = await runAction(getManyItems, { input, credential, fetch });
 	assert.deepEqual(result, { ok: true, items: [first] });
-	assert.equal(fetch.calls.length, 1);
+	assert.deepEqual(
+		fetch.calls.map((call) => call.query),
+		[{ pageSize: '1' }],
+	);
 });
 
 test('returns the status of a failed request', async () => {
@@ -40,6 +44,7 @@ test('returns the status of a failed request', async () => {
 });
 
 test('rejects a limit below 1', async () => {
-	const result = await runAction(getManyItems, { input: { limit: 0 }, credential });
-	assert.equal(result.ok ? undefined : result.error.path, 'input.limit');
+	const input = { paging: { mode: 'limit', max: 0 } };
+	const result = await runAction(getManyItems, { input, credential });
+	assert.equal(result.ok ? undefined : result.error.path, 'input.paging.max');
 });

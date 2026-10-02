@@ -235,10 +235,10 @@ import { googleGemini } from '@n8n/nodes/googleGemini';`;
 						limit: 0,
 					}),
 					node('Mail', '@n8n/nodes-base-next.gmailMessageGetAll', {
-						paging: { mode: 'limit', max: 900 },
+						paging: { mode: 'limit', max: 0 },
 					}),
 					node('Mail text', '@n8n/nodes-base-next.gmailMessageGetAll', {
-						paging: ' {"mode":"limit","max":900}',
+						paging: ' {"mode":"limit","max":0}',
 					}),
 				],
 			};
@@ -247,8 +247,8 @@ import { googleGemini } from '@n8n/nodes/googleGemini';`;
 					/^Node "Pages": input\.database: "not-an-id" is not Notion database ID/,
 				),
 				'Node "Pages": input.limit: must be at least 1',
-				'Node "Mail": input.paging.max: must be at most 500',
-				'Node "Mail text": input.paging.max: must be at most 500',
+				'Node "Mail": input.paging.max: must be at least 1',
+				'Node "Mail text": input.paging.max: must be at least 1',
 			]);
 		});
 

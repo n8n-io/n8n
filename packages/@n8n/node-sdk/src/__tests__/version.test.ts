@@ -16,6 +16,7 @@ import {
 	obj,
 	openContractPackage,
 	packageNameOf,
+	pageValue,
 	parseFixtures,
 	parseManifest,
 	resolveContractVersion,
@@ -43,7 +44,7 @@ import {
 } from '../publish';
 import { evaluateBundle } from '../runtime';
 import type { AnySchema } from '../schema';
-import { DEFAULT_ACTION_API_RANGE, semverRange, sha256 } from '../version';
+import { actionApiVersionOf, DEFAULT_ACTION_API_RANGE, semverRange, sha256 } from '../version';
 
 const demo = defineNode({ id: 'demo', displayName: 'Demo' });
 const FLOW: ActionFlow = { effect: 'transform', cardinality: 'per-item' };
@@ -638,6 +639,14 @@ describe('published versions', () => {
 			expect(manifest).not.toHaveProperty('abi');
 		});
 
+		it('is 2.4.0 for a list binding or a page value input', () => {
+			const contract = { input: obj({ url: str() }).json, output: obj({}).json };
+			const paged = { ...contract, input: obj({ next: pageValue(str()) }).json };
+			expect(actionApiVersionOf(contract)).toBe('n8n:action@2.1.0');
+			expect(actionApiVersionOf(contract, true)).toBe('n8n:action@2.4.0');
+			expect(actionApiVersionOf(paged)).toBe('n8n:action@2.4.0');
+		});
+
 		it('refuse a bundle outside the range, or of a minor this host lacks', async () => {
 			await writeShout('text');
 			const { manifest, bundle } = await freeze({ patch: 9 });
@@ -645,9 +654,10 @@ describe('published versions', () => {
 				toVersionedNodeType([frozenOf({ ...manifest, apiVersion }, bundle)]);
 
 			expect(() => typeOf('n8n:action@3.0.0')).toThrow(
-				'demo.echo@1.0.9 needs n8n:action@3.0.0. This host runs n8n:action >=1.0.0 <3.0.0 and implements n8n:action@1.0.0, n8n:action@2.3.0.',
+				'demo.echo@1.0.9 needs n8n:action@3.0.0. This host runs n8n:action >=1.0.0 <3.0.0 and implements n8n:action@1.0.0, n8n:action@2.4.0.',
 			);
-			expect(() => typeOf('n8n:action@2.4.0')).toThrow('needs n8n:action@2.4.0');
+			expect(() => typeOf('n8n:action@2.5.0')).toThrow('needs n8n:action@2.5.0');
+			expect(() => typeOf('n8n:action@2.4.0')).not.toThrow();
 			expect(() => typeOf('n8n:action@2.3.0')).not.toThrow();
 			expect(() => typeOf('n8n:action@2.2.0')).not.toThrow();
 			expect(() => typeOf('n8n:action@2.1.0')).not.toThrow();
@@ -684,7 +694,7 @@ describe('published versions', () => {
 			expect(() => evaluateBundle(bundle, 'n8n:action@3.0.0')).toThrow(
 				'This host cannot run n8n:action@3.0.0',
 			);
-			expect(() => evaluateBundle(bundle, 'n8n:action@2.4.0')).toThrow('cannot run');
+			expect(() => evaluateBundle(bundle, 'n8n:action@2.5.0')).toThrow('cannot run');
 			expect(evaluateBundle(bundle, 'n8n:action@2.0.0').id).toBe('demo.echo');
 			expect(evaluateBundle(bundle, 'n8n:action@2.1.0').id).toBe('demo.echo');
 			expect(evaluateBundle(bundle, ACTION_API_VERSION).id).toBe('demo.echo');

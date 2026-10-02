@@ -2,6 +2,7 @@ import { createHmac } from 'node:crypto';
 import type { IDataObject, IHttpRequestOptions, INodeType } from 'n8n-workflow';
 
 import {
+	arr,
 	compat,
 	contractHash,
 	credential,
@@ -10,12 +11,15 @@ import {
 	diffContracts,
 	generateNodeModule,
 	int,
+	nullable,
 	obj,
+	pageValue,
 	parse,
 	str,
 	t,
 	toContract,
 	toTriggerNodeType,
+	variant,
 } from '../index';
 import { requestOf } from '../runtime';
 import { mockHttp, runAction } from '../testing';
@@ -62,10 +66,11 @@ const listTasks = task.action('getAll', {
 	scopes: ['tasks:read'],
 	input: { limit: int().default(50) },
 	output: taskOutput,
-	request: {
+	list: {
 		path: '/projects/{project}/tasks',
 		query: { limit: { input: 'limit' } },
-		items: 'results',
+		response: obj({ results: arr(taskOutput) }),
+		items: (page) => page.results,
 	},
 });
 
@@ -134,7 +139,7 @@ describe('declarative request binding', () => {
 			flow: { effect: 'read', cardinality: '1:N' },
 			input: {},
 			output: taskOutput,
-			// @ts-expect-error a 1:N request names the response field with the items
+			// @ts-expect-error a 1:N action lists with `list`, not `request`
 			request: { path: '/projects/{project}/tasks' },
 		});
 		expect(true).toBe(true);
@@ -187,8 +192,9 @@ const created = task.trigger('created', {
 			path: `/projects/${input.project}/tasks`,
 			query: { after: since },
 		}),
-		items: (body) => (Array.isArray(body) ? body.filter((item) => item !== null) : []),
-		cursor: { id: (item: { id: string }) => Number(item.id) },
+		response: arr(taskOutput),
+		items: (page) => page,
+		cursor: { id: (item) => Number(item.id) },
 	},
 });
 
@@ -215,16 +221,12 @@ const edited = task.trigger('edited', {
 			path: `/projects/${input.project}/tasks`,
 			query: { after: since, page, size: limit },
 		}),
-		items: (body: unknown) =>
-			typeof body === 'object' && body !== null && 'items' in body && Array.isArray(body.items)
-				? body.items.filter(
-						(item): item is { id: string; title: string; at: string } => item !== null,
-					)
-				: [],
-		next: (body) =>
-			typeof body === 'object' && body !== null && 'next' in body && typeof body.next === 'string'
-				? body.next
-				: undefined,
+		response: obj({
+			items: arr(obj({ id: str(), title: str(), at: str() })),
+			next: str().optional(),
+		}),
+		items: (page) => page.items,
+		next: (page) => page.next,
 		cursor: { timestamp: (item) => item.at, key: (item) => item.id, precision: 'minute' },
 		map: ({ id, title }) => ({ id, title }),
 	},
@@ -344,6 +346,17 @@ describe('triggers', () => {
 			{ after: '2026-01-01T10:00:00.000Z', page: 'p2' },
 			{ after: '2026-01-01T10:00:00.000Z' },
 		]);
+	});
+
+	it('poll a trigger frozen without a response schema: items read the body', async () => {
+		if (!created.poll) throw new Error('created has no poll');
+		const { response: _, ...frozenPoll } = created.poll;
+		const frozen = { ...created, poll: frozenPoll } as unknown as typeof created;
+		const staticData: IDataObject = { cursor: '1' };
+		const replies = [[{ id: '2', title: 'B' }]];
+		const type: INodeType = new (toTriggerNodeType(frozen))();
+		const result = await type.poll?.call(pollContext(staticData, replies, []) as never);
+		expect(result?.[0]?.map(({ json }) => json)).toEqual([{ id: '2', title: 'B' }]);
 	});
 
 	it('poll in a manual run: one small page, the newest item, and the cursor stays', async () => {
@@ -500,5 +513,28 @@ describe('generateNodeModule', () => {
 		expect(module).toContain(
 			"import { contractStep, contractTrigger, type DeepPartial, type Flow, type NodeSettings, type OutputOf, type Step, type Value } from '@n8n/workflow-sdk/next';",
 		);
+	});
+
+	it('types a page value as a lambda over the page and names its path for the build', () => {
+		const search = task.action('search', {
+			action: 'Search tasks',
+			summary: 'Search tasks page by page.',
+			flow: { effect: 'read', cardinality: '1:N' },
+			input: {
+				pages: variant('style', { cursor: { next: pageValue(nullable(str())) } }).optional(),
+			},
+			output: taskOutput,
+			async *run() {
+				yield* [];
+			},
+		});
+		const text = generateNodeModule('tasks', [
+			{ contract: toContract(search), nodeType: 'n8n-nodes-tasks.search', operation: 'search' },
+		]);
+		expect(text).toContain('pages?: { style: "cursor"; next: PageValue<string | null> };');
+		expect(text).toContain(
+			'contractStep("n8n-nodes-tasks.search", config, 1, undefined, undefined, undefined, [["pages","next"]])',
+		);
+		expect(text).toContain('type OutputOf, type PageValue, type Step');
 	});
 });

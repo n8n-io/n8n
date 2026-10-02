@@ -1,16 +1,4 @@
-import {
-	arr,
-	bool,
-	int,
-	isRecord,
-	list,
-	obj,
-	oneOf,
-	paginate,
-	str,
-	variant,
-	type Infer,
-} from '@n8n/node-sdk';
+import { arr, bool, limitOf, obj, oneOf, pages, paging, str, type Infer } from '@n8n/node-sdk';
 
 import { message } from '../gmail.node';
 import { getMessage, labelsOf, simplifiedMessage } from '../message';
@@ -49,37 +37,37 @@ function queryOf(filter: Infer<typeof filters> | undefined) {
 	};
 }
 
+/** The IDs of one page of `messages.list`. */
+const idPage = obj({
+	messages: arr(obj({ id: str() }).with({ additionalProperties: true })).optional(),
+	nextPageToken: str().optional(),
+}).with({ additionalProperties: true });
+
 export const getManyGmailMessages = message.action('getAll', {
-	patch: 5,
+	minor: 1,
 	action: 'Get many messages',
 	summary: 'List messages that match a Gmail search.',
 	flow: { effect: 'read', cardinality: '1:N', idempotent: true },
 	input: {
 		filters: filters.optional(),
-		paging: variant('mode', {
-			all: {},
-			limit: { max: int().with({ minimum: 1, maximum: 500 }) },
-		}).default({ mode: 'limit', max: 50 }),
+		paging,
 	},
 	output: simplifiedMessage,
 	async *run({ input, http }) {
-		const paging = input.paging ?? { mode: 'limit', max: 50 };
 		const query = queryOf(input.filters);
-		const pages = paginate(http, {
+		const listed = pages(http, {
+			page: idPage,
+			// Gmail gives at most 500 IDs in one page.
 			request: (pageToken, room) => ({
 				path: '/messages',
-				query: { ...query, maxResults: room ?? 100, pageToken },
+				query: { ...query, maxResults: Math.min(room ?? 100, 500), pageToken },
 			}),
-			items: (body) =>
-				list(isRecord(body) ? body.messages : undefined).flatMap((entry) =>
-					isRecord(entry) && typeof entry.id === 'string' ? [entry.id] : [],
-				),
-			next: (body) =>
-				isRecord(body) && typeof body.nextPageToken === 'string' ? body.nextPageToken : undefined,
-			limit: paging.mode === 'limit' ? paging.max : undefined,
+			items: (page) => (page.messages ?? []).map(({ id }) => id),
+			next: (page) => page.nextPageToken,
+			limit: limitOf(input.paging),
 		});
 		const ids: string[] = [];
-		for await (const id of pages) ids.push(id);
+		for await (const id of listed) ids.push(id);
 		if (ids.length === 0) return;
 		const labels = await labelsOf(http);
 		for (const id of ids) yield await getMessage(http, id, labels);

@@ -38,7 +38,7 @@ export type Issue = Infer<typeof issue>;
 // The API response has more fields than the output; these schemas type what the output reads.
 const open = { additionalProperties: true } as const;
 const userResponse = user.with(open);
-const issueResponse = obj({
+export const issueResponse = obj({
 	id: int(),
 	['number']: int(),
 	title: str(),
@@ -61,8 +61,10 @@ const issueResponse = obj({
 const userOf = ({ login, id, html_url }: Infer<typeof userResponse>) => ({ login, id, html_url });
 
 /** The output fields of one issue of the GitHub REST API. Throws with the path of a bad field. */
-export function issueOf(value: unknown): Issue {
-	const raw = parse(issueResponse, value);
+export const issueOf = (value: unknown): Issue => issueFrom(parse(issueResponse, value));
+
+/** The output fields of one parsed issue response. */
+export function issueFrom(raw: Infer<typeof issueResponse>): Issue {
 	return {
 		id: raw.id,
 		['number']: raw['number'],

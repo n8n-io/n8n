@@ -1,6 +1,4 @@
-import { arr, bool, obj, oneOf, paginate, parse, str } from '@n8n/node-sdk';
-
-import { limitOf, paging } from '../../paging';
+import { arr, bool, obj, oneOf, str } from '@n8n/node-sdk';
 
 import { driveFile, driveIdOf, file, FILE_FIELDS, FOLDER_TYPE } from '../google-drive.node';
 
@@ -12,6 +10,7 @@ const filePage = obj({ files: arr(driveFile).optional(), nextPageToken: str().op
 });
 
 export const searchFiles = file.action('search', {
+	patch: 1,
 	action: 'Search files and folders',
 	summary: 'Find files and folders by name, folder, and type.',
 	flow: { effect: 'read', cardinality: '1:N', idempotent: true },
@@ -21,38 +20,39 @@ export const searchFiles = file.action('search', {
 		folderId: str().hint('Only items directly in this folder; ID or URL').optional(),
 		type: oneOf('all', 'files', 'folders').default('all'),
 		includeTrashed: bool().default(false),
-		paging,
 	},
 	output: driveFile,
-	async *run({ input, http }) {
-		const q = [
-			input.nameContains === undefined ? undefined : `name contains ${quoted(input.nameContains)}`,
-			// Parentheses keep the folder and trash terms on every alternative of an `or` query.
-			input.query === undefined || input.query.trim() === '' ? undefined : `(${input.query})`,
-			input.folderId === undefined ? undefined : `${quoted(driveIdOf(input.folderId))} in parents`,
-			input.type === 'folders' ? `mimeType = '${FOLDER_TYPE}'` : undefined,
-			input.type === 'files' ? `mimeType != '${FOLDER_TYPE}'` : undefined,
-			input.includeTrashed ? undefined : 'trashed = false',
-		]
-			.filter((term) => term !== undefined && term !== '')
-			.join(' and ');
-		yield* paginate(http, {
-			request: (pageToken, room) => ({
-				path: '/drive/v3/files',
-				query: {
-					q,
-					fields: `nextPageToken, files(${FILE_FIELDS.replace('kind,', '')})`,
-					includeItemsFromAllDrives: true,
-					supportsAllDrives: true,
-					spaces: 'appDataFolder, drive',
-					corpora: 'allDrives',
-					pageSize: Math.min(room ?? 1000, 1000),
-					pageToken,
-				},
-			}),
-			items: (body) => parse(filePage, body).files ?? [],
-			next: (body) => parse(filePage, body).nextPageToken,
-			limit: limitOf(input.paging),
-		});
+	list: {
+		path: '/drive/v3/files',
+		query: (input) => ({
+			q: [
+				input.nameContains === undefined
+					? undefined
+					: `name contains ${quoted(input.nameContains)}`,
+				// Parentheses keep the folder and trash terms on every alternative of an `or` query.
+				input.query === undefined || input.query.trim() === '' ? undefined : `(${input.query})`,
+				input.folderId === undefined
+					? undefined
+					: `${quoted(driveIdOf(input.folderId))} in parents`,
+				input.type === 'folders' ? `mimeType = '${FOLDER_TYPE}'` : undefined,
+				input.type === 'files' ? `mimeType != '${FOLDER_TYPE}'` : undefined,
+				input.includeTrashed ? undefined : 'trashed = false',
+			]
+				.filter((term) => term !== undefined && term !== '')
+				.join(' and '),
+			fields: `nextPageToken, files(${FILE_FIELDS.replace('kind,', '')})`,
+			includeItemsFromAllDrives: true,
+			supportsAllDrives: true,
+			spaces: 'appDataFolder, drive',
+			corpora: 'allDrives',
+		}),
+		response: filePage,
+		items: (page) => page.files ?? [],
+		pages: {
+			style: 'cursor',
+			next: (page) => page.nextPageToken,
+			send: { query: 'pageToken' },
+			size: { query: 'pageSize', max: 1000 },
+		},
 	},
 });

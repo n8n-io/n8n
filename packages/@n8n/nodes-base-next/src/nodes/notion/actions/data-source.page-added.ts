@@ -1,4 +1,4 @@
-import { arr, bool, json, nullable, obj, parse, str } from '@n8n/node-sdk';
+import { arr, bool, json, nullable, obj, str } from '@n8n/node-sdk';
 
 import { NOTION_VERSION } from '../data-source';
 import { dataSource } from '../notion.node';
@@ -23,7 +23,7 @@ const addedPage = obj({ id: str() }).with({
 });
 
 export const pageAdded = dataSource.trigger('pageAdded', {
-	patch: 2,
+	patch: 3,
 	trigger: 'On page added to data source',
 	summary: 'Starts when a page is added to a Notion data source.',
 	scopes: ['content:read'],
@@ -43,11 +43,9 @@ export const pageAdded = dataSource.trigger('pageAdded', {
 				...(page ? { start_cursor: page } : {}),
 			},
 		}),
-		items: (body) => parse(queryResponse, body).results,
-		next: (body) => {
-			const { has_more: hasMore, next_cursor: cursor } = parse(queryResponse, body);
-			return hasMore === true && cursor ? cursor : undefined;
-		},
+		response: queryResponse,
+		items: (page) => page.results,
+		next: (page) => (page.has_more === true ? page.next_cursor : undefined),
 		// Notion times have minute precision, so pages of the same minute are kept by ID.
 		cursor: {
 			timestamp: (page) => page.created_time,

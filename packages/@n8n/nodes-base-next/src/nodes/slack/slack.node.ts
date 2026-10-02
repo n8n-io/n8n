@@ -6,8 +6,10 @@ import {
 	defineNode,
 	defineResource,
 	int,
+	limitOf,
 	obj,
-	paginate,
+	pages,
+	type paging,
 	parse,
 	str,
 	t,
@@ -17,8 +19,6 @@ import {
 	type Infer,
 	type Shape,
 } from '@n8n/node-sdk';
-
-import { limitOf, type paging } from '../paging';
 
 export const slackToken = credentialType({
 	id: 'slack.token',
@@ -259,15 +259,12 @@ const cursorPage = slackResponse({
 		.optional(),
 });
 
-const nextCursor = (body: unknown) =>
-	parse(cursorPage, body).response_metadata?.next_cursor || undefined;
-
 // Slack recommends at most 200 entries per page.
 const PAGE_SIZE = 200;
 
 /**
- * The entries of a cursor list method, page by page, up to the paging limit. A declarative
- * SDK list binding should own this loop.
+ * The entries of a cursor list method, page by page, up to the paging limit. Each page needs
+ * the `ok` check first, so a declarative list cannot read it yet.
  */
 export function slackList<S extends AnySchema, T>(
 	http: Http,
@@ -279,13 +276,14 @@ export function slackList<S extends AnySchema, T>(
 		readonly paging: Infer<typeof paging>;
 	},
 ) {
-	return paginate(http, {
+	return pages(http, {
+		page: (body) => ({ entries: okBody(body, list.page), cursor: parse(cursorPage, body) }),
 		request: (cursor, room) => ({
 			path: list.path,
 			query: { ...list.query, limit: Math.min(room ?? PAGE_SIZE, PAGE_SIZE), cursor },
 		}),
-		items: (body) => list.items(okBody(body, list.page)),
-		next: nextCursor,
+		items: ({ entries }) => list.items(entries),
+		next: ({ cursor }) => cursor.response_metadata?.next_cursor,
 		limit: limitOf(list.paging),
 	});
 }

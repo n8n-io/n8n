@@ -1,6 +1,5 @@
-import { arr, bool, obj, ref, str } from '@n8n/node-sdk';
+import { arr, bool, obj, paging, ref, str } from '@n8n/node-sdk';
 
-import { paging } from '../../paging';
 import { channel, slackChannelId, slackMessage, slackList, slackResponse } from '../slack.node';
 
 const date = str().hint('ISO 8601 date or date-time');
@@ -14,6 +13,7 @@ function seconds(value: string, label: string) {
 const page = slackResponse({ messages: arr(slackMessage) });
 
 export const getSlackChannelHistory = channel.action('history', {
+	patch: 1,
 	action: 'Get message history',
 	summary: 'List the messages of a Slack channel, newest first. Thread replies are not included.',
 	flow: { effect: 'read', cardinality: '1:N', idempotent: true },

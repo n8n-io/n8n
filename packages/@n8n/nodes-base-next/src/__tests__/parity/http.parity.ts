@@ -100,7 +100,12 @@ describe('httpRequest.get parity with HTTP Request v4.5 GET', () => {
 					url: URL,
 					query: { status: 'open' },
 					headers: { 'X-Trace': 'parity' },
-					pagination: { cursorPath: 'next_cursor', queryParameter: 'cursor', maxPages: 100 },
+					pages: {
+						style: 'cursor',
+						next: '={{ $response.body.next_cursor }}',
+						send: { query: 'cursor' },
+						maxPages: 100,
+					},
 				},
 				'httpHeaderAuth',
 			),

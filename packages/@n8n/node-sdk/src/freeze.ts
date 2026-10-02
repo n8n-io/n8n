@@ -66,7 +66,7 @@ export async function freezeAction(entryFile: string, exportName: string): Promi
 	const manifest: VersionManifest = {
 		id: action.id,
 		semver: action.semver,
-		apiVersion: actionApiVersionOf(contract),
+		apiVersion: actionApiVersionOf(contract, 'list' in action && action.list !== undefined),
 		contractHash: contractHash(contract),
 		bundleHash: sha256(bundle),
 		contract,
