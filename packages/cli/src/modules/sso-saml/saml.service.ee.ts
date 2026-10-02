@@ -308,9 +308,9 @@ export class SamlService {
 
 		binding ??= this._samlPreferences.loginBinding ?? 'redirect';
 		const sp = this.getServiceProviderInstance();
-		// oxlint-disable-next-line typescript/no-deprecated
-		sp.entitySetting.relayState = relayState ?? this.urlService.getInstanceBaseUrl();
-		const loginRequest = sp.createLoginRequest(idp, binding);
+		const loginRequest = sp.createLoginRequest(idp, binding, {
+			relayState: relayState ?? this.urlService.getInstanceBaseUrl(),
+		});
 		return {
 			binding,
 			context: binding === 'post' ? loginRequest : loginRequest,

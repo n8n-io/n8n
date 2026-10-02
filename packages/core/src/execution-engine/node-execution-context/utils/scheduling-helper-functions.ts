@@ -1,5 +1,5 @@
 import { Container } from '@n8n/di';
-import type { SchedulingFunctions, Workflow, CronContext, Cron } from 'n8n-workflow';
+import type { SchedulingFunctions, Workflow, Cron } from 'n8n-workflow';
 
 import { ScheduledTaskManager } from '../../scheduled-task-manager';
 
@@ -13,8 +13,7 @@ export const getSchedulingFunctions = (
 	const scheduledTaskManager = Container.get(ScheduledTaskManager);
 	return {
 		registerCron: ({ expression, recurrence }: Cron, onTick: (scheduledT: Date) => void) => {
-			// oxlint-disable-next-line typescript/no-deprecated
-			const ctx: CronContext = {
+			const ctx = {
 				expression,
 				recurrence,
 				nodeId,
