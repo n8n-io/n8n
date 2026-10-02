@@ -22,7 +22,7 @@ import {
 } from './credential-dependency.repository';
 import { InstanceCredentialAssignmentRepository } from './instance-credential-assignment.repository';
 import { SharedCredentialsRepository } from './shared-credentials.repository';
-import type { ICredentialsDb, ListQuery } from '../entities/types-db';
+import type { ICredentialsDb, RepositoryListOptions } from '../entities/types-db';
 import type { OperationContext } from '../services/transaction';
 import { TransactionRunner } from '../services/transaction';
 import { isUniqueConstraintError } from '../utils/is-unique-constraint-error';
@@ -53,8 +53,7 @@ export type CredentialSharingRelation =
 // every shared project would multiply the joined rows by the project sizes.
 const DEFAULT_CREDENTIAL_RELATIONS: CredentialSharingRelation[] = ['shared', 'shared.project'];
 
-// oxlint-disable-next-line typescript/no-deprecated
-type CredentialsListQueryOptions = ListQuery.Options & {
+type CredentialsListQueryOptions = RepositoryListOptions & {
 	includeData?: boolean;
 	/** Also match global credentials, so they page, count and filter like every other row. */
 	includeGlobal?: boolean;

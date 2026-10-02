@@ -34,7 +34,7 @@ import { SharedWorkflow } from '../entities/shared-workflow';
 import type {
 	ListQueryDb,
 	FolderWithWorkflowAndSubFolderCount,
-	ListQuery,
+	RepositoryListOptions,
 } from '../entities/types-db';
 import { type OperationContext, TransactionRunner } from '../services/transaction';
 import { applyWorkflowBooleanSettingFilter } from '../utils/apply-workflow-boolean-setting-filter';
@@ -44,8 +44,7 @@ import { isStringArray } from '../utils/is-string-array';
 import { parseListQuerySortBy } from '../utils/list-query-sort';
 import { TimedQuery } from '../utils/timed-query';
 
-// oxlint-disable-next-line typescript/no-deprecated - Waiting for debt to be payed
-type WorkflowListQueryOptions = ListQuery.Options;
+type WorkflowListQueryOptions = RepositoryListOptions;
 
 type ResourceType = 'folder' | 'workflow';
 
