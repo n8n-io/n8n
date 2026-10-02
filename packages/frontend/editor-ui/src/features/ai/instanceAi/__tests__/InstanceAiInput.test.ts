@@ -314,16 +314,10 @@ describe('InstanceAiInput', () => {
 		);
 	});
 
-	it('uses the new agent placeholder for a pending agent artifact', () => {
+	it('uses the new agent placeholder when the caller passes its key', () => {
 		const { getByRole } = renderComponent({
 			props: {
-				contextChip: {
-					type: 'agent-artifact',
-					agentId: 'agent-1',
-					projectId: 'project-1',
-					isNewAgent: true,
-					label: 'New Agent',
-				},
+				placeholderKey: 'instanceAi.input.newAgentPlaceholder',
 			},
 		});
 
@@ -340,7 +334,6 @@ describe('InstanceAiInput', () => {
 					type: 'agent-artifact',
 					agentId: 'agent-1',
 					projectId: 'project-1',
-					isNewAgent: false,
 					label: 'Support Agent',
 				},
 			},
@@ -527,6 +520,7 @@ describe('InstanceAiInput', () => {
 			expect.any(Number),
 			expect.any(Function),
 			EMPTY_ASSISTANT_MENTION_COUNTS,
+			[],
 		]);
 		expect(textbox).toHaveValue('');
 	});
@@ -841,6 +835,7 @@ describe('InstanceAiInput', () => {
 				expect.any(Number),
 				expect.any(Function),
 				EMPTY_ASSISTANT_MENTION_COUNTS,
+				[],
 			],
 		]);
 		expect(textbox).toHaveValue('');
@@ -1039,6 +1034,7 @@ describe('InstanceAiInput', () => {
 				expect.any(Number),
 				expect.any(Function),
 				EMPTY_ASSISTANT_MENTION_COUNTS,
+				[],
 			],
 		]);
 	});
@@ -1083,6 +1079,7 @@ describe('InstanceAiInput', () => {
 				expect.any(Number),
 				expect.any(Function),
 				EMPTY_ASSISTANT_MENTION_COUNTS,
+				[],
 			],
 		]);
 	});
@@ -1139,11 +1136,12 @@ describe('InstanceAiInput', () => {
 		const chip = getByTestId('instance-ai-handoff-context-chip');
 
 		expect(chip).toHaveTextContent('SEO Auditor session');
-		expect(chip.querySelector('.n8n-tag')?.className).toContain('lg');
 		expect(chip.querySelector('[data-icon="robot"]')).toBeInTheDocument();
 		expect(chip.closest('[class*="inputWrapper"]')).toContainElement(textbox);
 
-		await userEvent.click(getByTestId('instance-ai-handoff-context-chip-dismiss'));
+		const dismiss = getByTestId('instance-ai-handoff-context-chip-dismiss');
+		expect(dismiss).toHaveAccessibleName('Close');
+		await userEvent.click(dismiss);
 
 		expect(emitted()['dismiss-context-chip']).toEqual([[]]);
 	});

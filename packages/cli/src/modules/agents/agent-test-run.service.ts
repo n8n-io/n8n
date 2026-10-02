@@ -25,6 +25,7 @@ import {
 import { AgentExecutionService } from './agent-execution.service';
 import { AgentValidationService } from './agent-validation.service';
 import { N8NCheckpointStorage } from './integrations/n8n-checkpoint-storage';
+import type { AgentExecutionStreamChunk } from './types/agent-steering';
 import { draftChatMemoryResourceId } from './utils/agent-memory-scope';
 import type { AgentSessionMode } from './utils/agent-thread-access';
 
@@ -46,6 +47,7 @@ export type PrepareDraftRunResult =
 interface DraftRunState {
 	response: string;
 	suspensions: AgentTestRunSuspension[];
+	maxIterations: boolean;
 	errorChunk?: Extract<StreamChunk, { type: 'error' }>;
 	observerFailed: boolean;
 	observerError?: unknown;
@@ -53,7 +55,7 @@ interface DraftRunState {
 
 interface DraftRunConsumptionOptions {
 	errorMode?: 'throw' | 'forward';
-	onChunk?: (chunk: StreamChunk) => void;
+	onChunk?: (chunk: AgentExecutionStreamChunk) => void;
 }
 
 export interface ExecutePreparedDraftRunInput
@@ -109,6 +111,8 @@ export interface AgentTestRunApproval extends ApprovalSuspendPayload {
 export type PreparedDraftRunResult = {
 	response: string;
 	executionId: string;
+	/** The run stopped on the iteration cap. It did not finish its work. */
+	maxIterations?: true;
 } & ({ status: 'completed' } | { status: 'suspended'; suspensions: AgentTestRunSuspension[] });
 
 export type AgentTestRunResult =
@@ -351,7 +355,7 @@ export class AgentTestRunService {
 	}
 
 	private async collectDraftRun(
-		stream: AsyncIterable<StreamChunk>,
+		stream: AsyncIterable<AgentExecutionStreamChunk>,
 		initialResponse: string,
 		getExecutionId: () => string | undefined,
 		{ errorMode = 'throw', onChunk }: DraftRunConsumptionOptions,
@@ -359,6 +363,7 @@ export class AgentTestRunService {
 		const state: DraftRunState = {
 			response: initialResponse,
 			suspensions: [],
+			maxIterations: false,
 			observerFailed: false,
 		};
 		try {
@@ -375,7 +380,11 @@ export class AgentTestRunService {
 		if (state.errorChunk) throw state.errorChunk.error;
 		const executionId = getExecutionId();
 		if (!executionId) throw new UnexpectedError('Agent execution completed without a recorded ID');
-		const metadata = { response: state.response, executionId };
+		const metadata = {
+			response: state.response,
+			executionId,
+			...(state.maxIterations ? { maxIterations: true as const } : {}),
+		};
 		if (state.suspensions.length > 0) {
 			return { status: 'suspended', ...metadata, suspensions: state.suspensions };
 		}
@@ -417,7 +426,7 @@ export class AgentTestRunService {
 	}
 
 	private observeDraftChunk(
-		chunk: StreamChunk,
+		chunk: AgentExecutionStreamChunk,
 		onChunk: DraftRunConsumptionOptions['onChunk'],
 		state: DraftRunState,
 	): void {
@@ -431,7 +440,7 @@ export class AgentTestRunService {
 	}
 
 	private collectDraftChunk(
-		chunk: StreamChunk,
+		chunk: AgentExecutionStreamChunk,
 		errorMode: DraftRunConsumptionOptions['errorMode'],
 		state: DraftRunState,
 	): void {
@@ -442,6 +451,8 @@ export class AgentTestRunService {
 		if (state.errorChunk) return;
 		if (chunk.type === 'text-delta') {
 			state.response += chunk.delta;
+		} else if (chunk.type === 'finish' && chunk.finishReason === 'max-iterations') {
+			state.maxIterations = true;
 		} else if (chunk.type === 'tool-call-suspended') {
 			state.suspensions.push({
 				runId: chunk.runId,

@@ -24,7 +24,7 @@ export class ExecuteWorkflowEachModeRule implements IBreakingChangeWorkflowRule 
 			description:
 				'The "Run once for each item" mode of the Execute Sub-workflow node is being removed. Use a Loop Over Items node before the node in "Run once with all items" mode instead.',
 			category: BreakingChangeCategory.workflow,
-			severity: 'medium',
+			impact: 'executionsFail',
 		};
 	}
 

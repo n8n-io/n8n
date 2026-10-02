@@ -6,6 +6,8 @@ import { stringify } from 'flatted';
 import type { ExecutionStatus, IRunExecutionData, IRunExecutionDataAll } from 'n8n-workflow';
 import { WAIT_FOR_SUB_EXECUTION, WAIT_INDEFINITELY } from 'n8n-workflow';
 
+import type { TracingContext } from '@/modules/otel/tracing-context';
+
 describe('ExecutionRepository', () => {
 	beforeAll(async () => {
 		await testDb.init();
@@ -192,7 +194,7 @@ describe('ExecutionRepository', () => {
 			status: ExecutionStatus,
 			extra: {
 				waitTill?: Date;
-				tracingContext?: { traceparent: string };
+				tracingContext?: TracingContext;
 				workflowVersionId?: string;
 				retryOf?: string;
 			} = {},

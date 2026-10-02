@@ -1,6 +1,6 @@
 {
   "name": "@n8n/ai-workflow-builder",
-  "version": "1.41.0",
+  "version": "1.42.0",
   "scripts": {
     "clean": "rimraf dist .turbo",
     "typecheck": "tsc --noEmit",
@@ -21,8 +21,8 @@
     "test:eval:coverage": "vitest run evaluations --coverage",
     "test:no-eval": "vitest run --exclude '**/evaluations/**'",
     "test:no-eval:coverage": "vitest run --exclude '**/evaluations/**' --coverage",
-    "lint": "eslint . --quiet",
-    "lint:fix": "eslint . --fix",
+    "lint": "oxlint --quiet",
+    "lint:fix": "oxlint --fix",
     "watch": "tsc-watch -p tsconfig.build.json --onCompilationComplete \"tsc-alias -p tsconfig.build.json\"",
     "deps:graph": "madge src/index.ts --image deps-graph.svg",
     "deps:graph:service": "madge src/ai-workflow-builder-agent.service.ts --image deps-service.svg",
@@ -85,6 +85,7 @@
     "zod": "catalog:"
   },
   "devDependencies": {
+    "@n8n/oxlint-config": "workspace:*",
     "@n8n/typescript-config": "workspace:*",
     "@n8n/vitest-config": "workspace:*",
     "@types/jsdom": "catalog:",
@@ -92,6 +93,8 @@
     "@types/turndown": "catalog:",
     "@vitest/coverage-v8": "catalog:",
     "madge": "^8.0.0",
+    "oxlint": "catalog:",
+    "oxlint-tsgolint": "catalog:",
     "tsx": "catalog:",
     "typescript": "catalog:typescript",
     "vite": "catalog:",

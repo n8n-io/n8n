@@ -5,6 +5,10 @@ import { concurrencyLimitSchema } from '../schemas';
 
 @Config
 export class InstanceAiConfig {
+	/** Enable workflow suggestion runtime integrations at startup. */
+	@Env('N8N_INSTANCE_AI_WORKFLOW_SUGGESTIONS_ENABLED')
+	workflowSuggestionsEnabled: boolean = false;
+
 	/** LLM model in provider/model format, or a bare model name for a custom endpoint. */
 	@Env('N8N_INSTANCE_AI_MODEL')
 	model: string = 'anthropic/claude-opus-4-8';
@@ -118,6 +122,14 @@ export class InstanceAiConfig {
 	sandboxEphemeral: boolean = false;
 
 	/**
+	 * Marks an instance that serves the Instance AI eval harness. Only then may an eval run
+	 * reset per-workflow state (Remove Duplicates history) around a scenario: on a normal
+	 * instance an eval pointed at a real workflow must leave its history alone.
+	 */
+	@Env('N8N_INSTANCE_AI_EVAL_INSTANCE')
+	evalInstance: boolean = false;
+
+	/**
 	 * Minutes an idle Daytona sandbox waits before it is stopped. Default 15 minutes.
 	 * `0` disables auto-stop (the sandbox stays running).
 	 */
@@ -198,6 +210,22 @@ export class InstanceAiConfig {
 	 */
 	@Env('N8N_INSTANCE_AI_NODE_CONTEXT_ENABLED')
 	canvasNodeContextEnabled: boolean = false;
+
+	/**
+	 * Pin every Instance AI run on this instance to one published prompt profile
+	 * (e.g. `concise@1`). Empty keeps the backend experiment assignment.
+	 *
+	 * Instance-wide on purpose, so the two system prompts never fragment the
+	 * prompt cache within one instance. A request-level `promptVersion` and a
+	 * value already selected for the thread both still win, so an eval keeps the
+	 * profile it pinned. Checkpoints do not store this pin, so a suspended run
+	 * that resumes after you change it uses the new value. Profiles are keyed by
+	 * build mode, so pinning a `default`-mode profile also overrides a
+	 * progressive building assignment. An unknown version fails the run, and n8n
+	 * keeps serving everything else.
+	 */
+	@Env('N8N_INSTANCE_AI_PROMPT_VERSION')
+	promptVersion: string = '';
 
 	/**
 	 * Force-enable the node-usage context surface for Instance AI — the `node-usage` action and

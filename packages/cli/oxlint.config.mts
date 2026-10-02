@@ -31,6 +31,30 @@ const instanceAiLazyRuntimeImports = [
 	message: INSTANCE_AI_LAZY_IMPORT_MESSAGE,
 }));
 
+// Only JwtService may reach the raw signing API: it derives the `aud` claim from
+// the token's purpose, which is what keeps a token for one purpose from being
+// presented for another. The error classes and types stay importable.
+const jsonwebtokenSigningRestriction = {
+	name: 'jsonwebtoken',
+	// An allowlist, not a denylist: the module's whole runtime surface is off
+	// limits except the error classes, so a member added upstream is restricted
+	// from the start. `allowTypeImports` keeps `Secret`, `Algorithm` and friends
+	// importable. A namespace import is restricted too — the linter cannot see
+	// which members it reaches for.
+	allowImportNames: ['JsonWebTokenError', 'TokenExpiredError', 'NotBeforeError'],
+	allowTypeImports: true,
+	message:
+		'Sign and verify through JwtService, so the token is bound to a purpose in token-purposes.ts.',
+};
+
+// `jsonwebtoken` declares no `exports`, so `jsonwebtoken/sign` and its siblings
+// resolve straight to the same functions and would slip past a name-only rule.
+const jsonwebtokenSubpathRestriction = {
+	group: ['jsonwebtoken/*'],
+	message:
+		'Sign and verify through JwtService, so the token is bound to a purpose in token-purposes.ts.',
+};
+
 const engineV2ModuleOnlyImport = {
 	name: '@n8n/engine',
 	allowTypeImports: true,
@@ -108,17 +132,6 @@ export default defineConfig({
 	},
 	overrides: [
 		{
-			// Shrink-only ratchet: the two import paths that upsert a whole credential row,
-			// including `type`. There is no sealed credential import method yet.
-			// NEVER add to this list — the override is per file, so a second write here
-			// goes unreported.
-			files: [
-				'./src/commands/import/credentials.ts',
-				'./src/modules/source-control.ee/source-control-import.service.ee.ts',
-			],
-			rules: { 'n8n-local-rules/no-unsealed-credentials-entity-write': 'off' },
-		},
-		{
 			// Public API guardrail: handlers/controllers must go through a service, never a repository.
 			files: ['./src/public-api/v1/handlers/**/*.ts', './src/public-api/v1/controllers/**/*.ts'],
 			excludeFiles: ['./src/public-api/**/__tests__/**/*.ts'],
@@ -141,22 +154,10 @@ export default defineConfig({
 			// `@PublicApiController` classes (API-70). NEVER add to this list — a new tuple handler
 			// must fail CI. Entries are removed as each handler becomes a controller.
 			files: [
-				'./src/public-api/v1/handlers/audit/audit.handler.ts',
-				'./src/public-api/v1/handlers/community-packages/community-packages.handler.ts',
-				'./src/public-api/v1/handlers/credentials/credentials.handler.ts',
-				'./src/public-api/v1/handlers/data-tables/data-tables.columns.handler.ts',
-				'./src/public-api/v1/handlers/data-tables/data-tables.rows.handler.ts',
-				'./src/public-api/v1/handlers/discover/discover.handler.ts',
 				'./src/public-api/v1/handlers/evaluations/evaluations.handler.ts',
-				'./src/public-api/v1/handlers/insights/insights.handler.ts',
 				'./src/public-api/v1/handlers/ldap/ldap.handler.ts',
 				'./src/public-api/v1/handlers/log-streaming/log-streaming.handler.ts',
 				'./src/public-api/v1/handlers/n8n-packages/n8n-packages.handler.ts',
-				'./src/public-api/v1/handlers/otel/otel.handler.ts',
-				'./src/public-api/v1/handlers/sso-oidc/sso-oidc.handler.ts',
-				'./src/public-api/v1/handlers/sso-saml/sso-saml.handler.ts',
-				'./src/public-api/v1/handlers/tags/tags.handler.ts',
-				'./src/public-api/v1/handlers/users/users.handler.ee.ts',
 				'./src/public-api/v1/handlers/workflows/workflows.handler.ts',
 			],
 			rules: {
@@ -171,7 +172,14 @@ export default defineConfig({
 				// wholesale rather than merging them.
 				'no-restricted-imports': [
 					'error',
-					{ paths: [POLICY_INTERNAL_RESTRICTION, engineV2ModuleOnlyImport] },
+					{
+						paths: [
+							POLICY_INTERNAL_RESTRICTION,
+							engineV2ModuleOnlyImport,
+							jsonwebtokenSigningRestriction,
+						],
+						patterns: [jsonwebtokenSubpathRestriction],
+					},
 				],
 			},
 		},
@@ -188,7 +196,9 @@ export default defineConfig({
 							POLICY_INTERNAL_RESTRICTION,
 							...instanceAiLazyRuntimeImports,
 							engineV2ModuleOnlyImport,
+							jsonwebtokenSigningRestriction,
 						],
+						patterns: [jsonwebtokenSubpathRestriction],
 					},
 				],
 			},
@@ -201,6 +211,55 @@ export default defineConfig({
 		{
 			files: ['./src/modules/agents/runtime/agent-isolate-pool.ts'],
 			rules: { 'prefer-const': 'off' },
+		},
+		{
+			// engine-v2 owns `@n8n/engine`, so the block above skips it wholesale — which
+			// would drop the JWT restriction too. Reinstate it here, without the engine
+			// restriction these files are exempt from.
+			files: ['./src/modules/engine-v2/**/*.ts'],
+			rules: {
+				'no-restricted-imports': [
+					'error',
+					{
+						paths: [POLICY_INTERNAL_RESTRICTION, jsonwebtokenSigningRestriction],
+						patterns: [jsonwebtokenSubpathRestriction],
+					},
+				],
+			},
+		},
+		{
+			// The two places that hold the raw signing API. NEVER add to this list.
+			files: [
+				// Owns the signing key and derives every audience from a purpose.
+				'./src/services/jwt.service.ts',
+				// Verifies subject tokens with a foreign key from the trusted-key store,
+				// against the audience that key is registered for.
+				'./src/modules/token-exchange/services/token-exchange.service.ts',
+			],
+			rules: {
+				'no-restricted-imports': [
+					'error',
+					{ paths: [POLICY_INTERNAL_RESTRICTION, engineV2ModuleOnlyImport] },
+				],
+			},
+		},
+		{
+			// Tests mint tokens as fixtures, including malformed ones a purpose cannot express.
+			files: ['./src/**/__tests__/**/*.ts'],
+			rules: {
+				'no-restricted-imports': [
+					'error',
+					{ paths: [POLICY_INTERNAL_RESTRICTION, engineV2ModuleOnlyImport] },
+				],
+			},
+		},
+		{
+			// engine-v2 tests reach for `@n8n/engine` the same way the module does, and
+			// the tests block above would reinstate the restriction they are exempt from.
+			files: ['./src/modules/engine-v2/**/__tests__/**/*.ts'],
+			rules: {
+				'no-restricted-imports': ['error', { paths: [POLICY_INTERNAL_RESTRICTION] }],
+			},
 		},
 		{
 			// Only the PEP may import the clearance minter.
@@ -247,14 +306,12 @@ export default defineConfig({
 				'./src/credentials/credential-connection-status-provider.interface.ts',
 				'./src/credentials/credential-connection-status-proxy.ts',
 				'./src/credentials/credential-dependency.service.ts',
-				'./src/credentials/credentials-finder.service.ts',
 				'./src/credentials/credentials.controller.ts',
 				'./src/credentials/credentials.service.ee.ts',
 				'./src/credentials/credentials.service.ts',
 				// workflows/
 				'./src/workflows/workflow-finder.service.ts',
 				'./src/workflows/workflow-history/workflow-history.service.ts',
-				'./src/workflows/workflow-sharing.service.ts',
 				'./src/workflows/workflow-validation.service.ts',
 				'./src/workflows/workflow.service.ee.ts',
 				'./src/workflows/workflow.service.ts',
@@ -262,7 +319,6 @@ export default defineConfig({
 				// services/ (incl. ownership.service.ts — surfaced only by the deep-path prefix change)
 				'./src/services/export.service.ts',
 				'./src/services/folder.service.ts',
-				'./src/services/folder-finder.service.ts',
 				'./src/services/hooks.service.ts',
 				'./src/services/import.service.ts',
 				'./src/services/ownership.service.ts',
@@ -277,7 +333,6 @@ export default defineConfig({
 				'./src/eventbus/message-event-bus/message-event-bus.ts',
 				'./src/evaluation.ee/evaluation-collection.service.ts',
 				'./src/evaluation.ee/test-runner/test-runner.service.ee.ts',
-				'./src/public-api/v1/handlers/tags/tags.handler.ts',
 				// modules/** non-persistence services surfaced by narrowing the exemption
 				'./src/modules/agents/agent-knowledge.service.ts',
 				'./src/modules/agents/agent-publish.service.ts',
@@ -387,7 +442,6 @@ export default defineConfig({
 			// tasks. NEVER add to this list — new periodic leader work must be a
 			// @SystemTask() class. Entries are removed as each migrates on its own ticket.
 			files: [
-				'./src/modules/instance-reporting.ee/instance-reporting-scheduler.service.ts',
 				'./src/services/pruning/executions-pruning.service.ts',
 				'./src/services/workflow-statistics-rollup.service.ts',
 			],

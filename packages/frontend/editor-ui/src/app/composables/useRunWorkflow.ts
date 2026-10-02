@@ -175,15 +175,15 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 				if (response !== MODAL_CONFIRM) {
 					return undefined;
 				}
+			}
 
+			if (isNewWorkflow || uiStore.stateIsDirty) {
 				const saved = await workflowSaving.saveCurrentWorkflow({
 					id: workflowDocumentStore.value.workflowId,
 				});
 				if (!saved) {
 					return undefined;
 				}
-			} else if (isNewWorkflow || (uiStore.stateIsDirty && settingsStore.isAutosaveEnabled)) {
-				await workflowSaving.saveCurrentWorkflow({ id: workflowDocumentStore.value.workflowId });
 			}
 
 			const workflowData = workflowDocumentStore.value.serialize();

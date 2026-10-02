@@ -206,6 +206,7 @@ N8N_EXPRESSION_ENGINE_IDLE_TIMEOUT=       # seconds; unset = pool never scales t
 # Experimental
 N8N_EXPRESSION_ENGINE_LAZY_ACQUIRE=false  # create the isolate on the first evaluation that needs it
 N8N_EXPRESSION_ENGINE_COMPILE_CACHE=false # reuse the V8 compile cache for the runtime bundle ('vm' only)
+N8N_EXPRESSION_ENGINE_NATIVE_EVALUATION=false # interpret expressions that fit the native subset in-process, no isolate
 
 # Bridge limits
 N8N_EXPRESSION_ENGINE_TIMEOUT=5000        # ms; positive integer

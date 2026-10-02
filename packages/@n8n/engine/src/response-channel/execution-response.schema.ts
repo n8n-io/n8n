@@ -5,6 +5,19 @@ import { jsonValueSchema } from '../common';
 // which import this module back.
 import { SETTLED_STEP_STATUSES } from '../execution/execution.types';
 
+/** The response kinds a caller can expect. */
+export const RESPONSE_EXPECTATION_KINDS = ['none', 'runEnd', 'stepResponse', 'stream'] as const;
+
+/**
+ * What the caller of an execution waits for. The caller sets it at start, and
+ * the engine stores it with the execution. `strict`, so a misspelled key fails.
+ */
+export const responseExpectationSchema = z
+	.object({
+		kind: z.enum(RESPONSE_EXPECTATION_KINDS),
+	})
+	.strict();
+
 /**
  * The one definition of a response's shape. A frame can cross a process
  * boundary, so it is parsed against this before a handler sees it.
@@ -23,6 +36,11 @@ export const executionResponseSchema = z.discriminatedUnion('type', [
 		executionId: z.string().min(1),
 		// A missing or undefined payload means an empty response.
 		payload: jsonValueSchema.optional(),
+	}),
+	z.object({
+		type: z.literal('chunk'),
+		executionId: z.string().min(1),
+		payload: jsonValueSchema,
 	}),
 	z.object({
 		type: z.literal('ended'),

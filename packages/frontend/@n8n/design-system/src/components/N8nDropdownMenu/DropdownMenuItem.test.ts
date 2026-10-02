@@ -326,7 +326,9 @@ describe('N8nDropdownMenuItem', () => {
 
 			await wrapper.findByText('Child');
 			expect(wrapper.emitted('select')).toBeUndefined();
-			expect(wrapper.emitted('update:subMenuOpen')?.at(-1)).toEqual([true]);
+			// Exactly one open: Reka echoes the open back once its controlled prop
+			// catches up, and that echo must not reach the parent as a second toggle.
+			expect(wrapper.emitted('update:subMenuOpen')).toEqual([[true]]);
 		});
 
 		it('should select a selectable parent with Enter', async () => {

@@ -13,9 +13,8 @@ import { usePostHog } from '@/app/stores/posthog.store';
 import { useI18n } from '@n8n/i18n';
 import { CANVAS_NODE_CONTEXT_FLAG } from '@n8n/api-types';
 import { getResourcePermissions } from '@n8n/permissions';
-import { useSettingsStore } from '@n8n/stores/settings.store';
 import type { INode, INodeTypeDescription } from 'n8n-workflow';
-import { NodeHelpers, WEBHOOK_NODE_TYPE } from 'n8n-workflow';
+import { getEmptyGroupAnchor, NodeHelpers, WEBHOOK_NODE_TYPE } from 'n8n-workflow';
 import { computed, type ComputedRef } from 'vue';
 import { isPresent } from '@/app/utils/typesUtils';
 import { useEditorContext } from '@/app/composables/useEditorContext';
@@ -89,13 +88,12 @@ export function useContextMenuItems(
 ): ComputedRef<Item[]> {
 	const uiStore = useUIStore();
 	const nodeTypesStore = useNodeTypesStore();
-	const settingsStore = useSettingsStore();
 	const workflowDocumentStore = injectWorkflowDocumentStore();
 	const sourceControlStore = useSourceControlStore();
 	const collaborationStore = useCollaborationStore();
 	const focusedNodesStore = useFocusedNodesStore();
 	const posthog = usePostHog();
-	const { resolveGroupableNodeIds } = useSelectionValidation();
+	const { resolveGroupableNodeIds, isSubworkflowConversionDisabled } = useSelectionValidation();
 	const groupView = injectContextMenuGroupView();
 	const i18n = useI18n();
 
@@ -133,6 +131,14 @@ export function useContextMenuItems(
 			.map((nodeId) => workflowDocumentStore?.value?.getNodeById(nodeId))
 			.filter(isPresent),
 	);
+
+	const isEmptyGroupTarget = computed(() => {
+		const groupId = targetGroupId?.value;
+		if (!groupId) return false;
+
+		const group = workflowDocumentStore?.value?.getGroupById(groupId);
+		return group !== undefined && getEmptyGroupAnchor(group, targetNodes.value) !== undefined;
+	});
 
 	// Mirrors the Cmd+G eligibility — the same resolver also produces the
 	// member ids at execution time, so enablement can't diverge from it.
@@ -257,12 +263,16 @@ export function useContextMenuItems(
 						shortcut: { keys: ['Space'] },
 						disabled: isReadOnly.value,
 					},
-					{
-						id: 'ungroup_nodes',
-						label: i18n.baseText('contextMenu.ungroupNodes'),
-						shortcut: { metaKey: true, shiftKey: true, keys: ['G'] },
-						disabled: isReadOnly.value,
-					},
+					...(!isEmptyGroupTarget.value
+						? [
+								{
+									id: 'ungroup_nodes' as const,
+									label: i18n.baseText('contextMenu.ungroupNodes'),
+									shortcut: { metaKey: true, shiftKey: true, keys: ['G'] },
+									disabled: isReadOnly.value,
+								},
+							]
+						: []),
 					...groupDescriptionActions,
 				]
 			: [];
@@ -277,9 +287,7 @@ export function useContextMenuItems(
 
 		const onlyStickies = nodes.every((node) => node.type === STICKY_NODE_TYPE);
 		const canExtract =
-			!settingsStore.isSubworkflowConversionDisabled &&
-			nodes.some(isExecutable) &&
-			!nodes.every(isAiSubNode);
+			!isSubworkflowConversionDisabled() && nodes.some(isExecutable) && !nodes.every(isAiSubNode);
 
 		const i18nOptions = isGroupTarget
 			? {
@@ -313,15 +321,17 @@ export function useContextMenuItems(
 			},
 		];
 
-		const extractionActions: Item[] = [
-			{
-				id: 'extract_sub_workflow',
-				divided: true,
-				label: i18n.baseText('contextMenu.extract', i18nOptions),
-				shortcut: { altKey: true, keys: ['X'] },
-				disabled: isReadOnly.value,
-			},
-		];
+		const extractionActions: Item[] = isEmptyGroupTarget.value
+			? []
+			: [
+					{
+						id: 'extract_sub_workflow',
+						divided: true,
+						label: i18n.baseText('contextMenu.extract', i18nOptions),
+						shortcut: { altKey: true, keys: ['X'] },
+						disabled: isReadOnly.value,
+					},
+				];
 
 		// Grouping doesn't apply to an existing group — it offers ungroup instead.
 		const groupingActions: Item[] = !isGroupTarget
@@ -455,12 +465,16 @@ export function useContextMenuItems(
 					label: i18n.baseText('contextMenu.addNode'),
 					disabled: isReadOnly.value,
 				},
-				{
-					id: 'add_sticky',
-					shortcut: { shiftKey: true, keys: ['s'] },
-					label: i18n.baseText('contextMenu.addSticky'),
-					disabled: isReadOnly.value,
-				},
+				...(nodeTypesStore.isNodeTypeUnavailable(STICKY_NODE_TYPE)
+					? []
+					: [
+							{
+								id: 'add_sticky' as const,
+								shortcut: { shiftKey: true, keys: ['s'] },
+								label: i18n.baseText('contextMenu.addSticky'),
+								disabled: isReadOnly.value,
+							},
+						]),
 				...layoutActions,
 				...groupViewActions,
 				// Join the group-view section
@@ -492,7 +506,6 @@ export function useContextMenuItems(
 					id: 'copy',
 					label: i18n.baseText('contextMenu.copy', i18nOptions),
 					shortcut: { metaKey: true, keys: ['C'] },
-					disabled: nodes.some(isRestricted),
 				},
 				{
 					id: 'duplicate',

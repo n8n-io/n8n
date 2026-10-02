@@ -3,12 +3,14 @@ import { z } from 'zod';
 
 import {
 	ExecutionNotFoundError,
+	type CancelExecutionService,
 	type ExecutionQueryService,
+	type ExecutionStatus,
 	type ExecutionView,
 	type ExecutionWithStepsView,
 	type StepView,
 } from '../../execution';
-import type { ExecutionSnapshot, StepDetail } from '../api.types';
+import type { CancelExecutionResponse, ExecutionSnapshot, StepDetail } from '../api.types';
 import { fail } from '../error-response';
 
 const ExecutionIdParams = z.object({ id: z.string().uuid() });
@@ -140,5 +142,38 @@ export function createGetExecutionHandler(executionQuery: ExecutionQueryService)
 		}
 
 		res.status(200).json(toExecutionSnapshot(execution));
+	};
+}
+
+export function createCancelExecutionHandler(
+	cancelExecution: CancelExecutionService,
+): RequestHandler {
+	return async (req, res) => {
+		const id = parseExecutionId(req, res);
+		if (id === null) return;
+
+		let status: ExecutionStatus;
+		try {
+			({ status } = await cancelExecution.cancel(id));
+		} catch (error) {
+			if (error instanceof ExecutionNotFoundError) {
+				fail(res, 404, { error: 'not_found' });
+				return;
+			}
+			throw error;
+		}
+
+		// A repeated cancel answers like the first, so a retried request is safe.
+		if (status !== 'cancelled') {
+			fail(res, 409, {
+				error: 'not_cancellable',
+				reason: `The execution has already ${status}`,
+				details: { status },
+			});
+			return;
+		}
+
+		const body: CancelExecutionResponse = { executionId: id, status };
+		res.status(200).json(body);
 	};
 }

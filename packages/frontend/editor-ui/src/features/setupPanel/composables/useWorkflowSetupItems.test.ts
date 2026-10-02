@@ -619,16 +619,42 @@ describe('useWorkflowSetupItems', () => {
 		).toBe(false);
 	});
 
+	it.each([false, true])(
+		'checks an OAuth selection before its nodes exist: %s',
+		async (connected) => {
+			const credential = { id: 'gmail-early', name: 'Gmail', type: 'gmailOAuth2' };
+			credentialsStore.getCredentialById = vi.fn().mockReturnValue(credential);
+			credentialsStore.getCredentialTypeByName = vi
+				.fn()
+				.mockReturnValue({ extends: ['oAuth2Api'] });
+			credentialsStore.getCredentialData.mockResolvedValue({
+				...credential,
+				data: connected ? { oauthTokenData: { access_token: 'test-token' } } : {},
+			} as ICredentialsDecryptedResponse);
+			hydrateWorkflow([]);
+			const state = useWorkflowSetupItems(() => WORKFLOW_ID);
+			expect(state.isCredentialConfigured(credential)).toBe(false);
+			expect(state.isCheckingOAuthCredentials.value).toBe(true);
+			await flushPromises();
+			expect(state.isCredentialConfigured(credential)).toBe(connected);
+			expect(state.isCheckingOAuthCredentials.value).toBe(false);
+		},
+	);
+
 	it.each([
 		'connected',
 		'disconnected',
 		'read-only shared credential',
+		'read-only shared read-error',
+		'editable missing data',
+		'unknown access missing data',
 		'clientCredentials',
 		'read-error',
 	] as const)('derives saved OAuth completion after loading a workflow: %s', async (scenario) => {
-		const scopes: ICredentialsResponse['scopes'] =
-			scenario === 'read-only shared credential'
-				? ['credential:read']
+		const scopes: ICredentialsResponse['scopes'] = scenario.startsWith('read-only')
+			? ['credential:read']
+			: scenario === 'unknown access missing data'
+				? undefined
 				: ['credential:read', 'credential:update'];
 		const credential = {
 			id: 'gmail-1',
@@ -641,6 +667,7 @@ describe('useWorkflowSetupItems', () => {
 		};
 		credentialsStore.getCredentialById = vi.fn().mockReturnValue(credential);
 		credentialsStore.getCredentialTypeByName = vi.fn().mockReturnValue({ extends: ['oAuth2Api'] });
+		vi.mocked(credentialsStore.hasUsableCredentialsForScope).mockReturnValue(true);
 		const read = Promise.withResolvers<ICredentialsDecryptedResponse | ICredentialsResponse>();
 		credentialsStore.getCredentialData.mockReturnValue(read.promise);
 		workflowsListStore.fetchWorkflow.mockResolvedValue(
@@ -661,12 +688,14 @@ describe('useWorkflowSetupItems', () => {
 			nodeBindings: [{ nodeName: 'Gmail' }],
 		});
 		expect(state.isItemDone(item)).toBe(false);
-		if (scenario === 'read-error') read.reject(new Error('Request failed'));
+		expect(state.credentialsAvailable.value).toBe(true);
+		expect(state.isCheckingOAuthCredentials.value).toBe(true);
+		if (scenario.endsWith('read-error')) read.reject(new Error('Request failed'));
 		else
 			read.resolve({
 				...credential,
 				data:
-					scenario === 'read-only shared credential'
+					scenario === 'read-only shared credential' || scenario.endsWith('missing data')
 						? undefined
 						: {
 								grantType:
@@ -675,7 +704,10 @@ describe('useWorkflowSetupItems', () => {
 							},
 			});
 		await flushPromises();
-		expect(state.isItemDone(item)).toBe(!['disconnected', 'read-error'].includes(scenario));
+		expect(state.isItemDone(item)).toBe(
+			scenario.startsWith('read-only') || ['connected', 'clientCredentials'].includes(scenario),
+		);
+		expect(state.isCheckingOAuthCredentials.value).toBe(false);
 	});
 
 	describe('OAuth connection refreshes', () => {
@@ -782,13 +814,16 @@ describe('useWorkflowSetupItems', () => {
 						? { updatedAt: '2026-09-23T00:00:00.000Z' as const }
 						: { scopes: ['credential:read'] }),
 				});
+				expect(state.isCheckingOAuthCredentials.value).toBe(true);
 				await flushPromises();
 				expect(credentialsStore.getCredentialData).toHaveBeenCalledTimes(3);
 				expect(credentialsStore.getCredentialData).toHaveBeenLastCalledWith({ id: first.id });
+				expect(state.isCheckingOAuthCredentials.value).toBe(true);
 				expect(state.isCredentialConfigured(first)).toBe(false);
 				expect(state.isCredentialConfigured(second)).toBe(true);
 				read.resolve({ ...first, data: change === 'permissions' ? undefined : {} });
 				await flushPromises();
+				expect(state.isCheckingOAuthCredentials.value).toBe(false);
 				expect(state.isCredentialConfigured(first)).toBe(change === 'permissions');
 			},
 		);
@@ -806,26 +841,38 @@ describe('useWorkflowSetupItems', () => {
 			expect(state.isCredentialConfigured(first)).toBe(true);
 		});
 
-		it('ignores an older read after a credential is removed and bound again', async () => {
-			const older = Promise.withResolvers<ICredentialsDecryptedResponse>();
-			credentialsStore.getCredentialData.mockReturnValueOnce(older.promise);
-			const state = useWorkflowSetupItems(() => WORKFLOW_ID);
-			await flushPromises();
-			const removed = workflow.nodes[0];
-			workflow.nodes = workflow.nodes.slice(1);
-			await state.refreshWorkflow({ force: true });
-			await flushPromises();
-			expect(state.isCredentialConfigured(second)).toBe(true);
-			credentialsStore.getCredentialData.mockResolvedValueOnce({ ...first, data: {} });
-			workflow.nodes.push(removed);
-			await state.refreshWorkflow({ force: true });
-			await flushPromises();
-			expect(credentialsStore.getCredentialData).toHaveBeenCalledTimes(3);
-			expect(state.isCredentialConfigured(first)).toBe(false);
-			older.resolve({ ...first, data: { oauthTokenData: true } });
-			await flushPromises();
-			expect(state.isCredentialConfigured(first)).toBe(false);
-		});
+		it.each([false, true])(
+			'ignores an older read after a credential is removed and bound again (early: %s)',
+			async (early) => {
+				const older = Promise.withResolvers<ICredentialsDecryptedResponse>();
+				credentialsStore.getCredentialData.mockReturnValueOnce(older.promise);
+				const savedNodes = workflow.nodes;
+				if (early) workflow.nodes = [];
+				const state = useWorkflowSetupItems(() => WORKFLOW_ID);
+				await flushPromises();
+				expect(state.isCredentialConfigured(first)).toBe(false);
+				if (early) {
+					await flushPromises();
+					workflow.nodes = savedNodes;
+					await state.refreshWorkflow({ force: true });
+					await flushPromises();
+				}
+				const removed = workflow.nodes[0];
+				workflow.nodes = workflow.nodes.slice(1);
+				await state.refreshWorkflow({ force: true });
+				await flushPromises();
+				expect(state.isCredentialConfigured(second)).toBe(true);
+				credentialsStore.getCredentialData.mockResolvedValueOnce({ ...first, data: {} });
+				workflow.nodes.push(removed);
+				await state.refreshWorkflow({ force: true });
+				await flushPromises();
+				expect(credentialsStore.getCredentialData).toHaveBeenCalledTimes(3);
+				expect(state.isCredentialConfigured(first)).toBe(false);
+				older.resolve({ ...first, data: { oauthTokenData: true } });
+				await flushPromises();
+				expect(state.isCredentialConfigured(first)).toBe(false);
+			},
+		);
 
 		it('refreshes credentials on a workflow switch and ignores the previous workflow read', async () => {
 			const older = Promise.withResolvers<ICredentialsDecryptedResponse>();

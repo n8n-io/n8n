@@ -1,0 +1,67 @@
+import { cadvisor } from './cadvisor';
+import { cloudflared } from './cloudflared';
+import { createEnginePostgresHelper, enginePostgres } from './engine-postgres';
+import { gitea, createGiteaHelper } from './gitea';
+import { kafka, createKafkaHelper } from './kafka';
+import { kent, createKentHelper } from './kent';
+import { keycloak, createKeycloakHelper } from './keycloak';
+import { loadBalancer } from './load-balancer';
+import { localstack, createLocalStackHelper } from './localstack';
+import { mailpit, createMailpitHelper } from './mailpit';
+import { mysqlService } from './mysql';
+import { ngrok } from './ngrok';
+import { createNpmRegistryHelper, npmRegistry } from './npm-registry';
+import { createObservabilityHelper } from './observability';
+import { postgres, createPostgresHelper } from './postgres';
+import { postgresExporter } from './postgres-exporter';
+import { proxy, createProxyHelper } from './proxy';
+import { redis } from './redis';
+import { sandbox } from './sandbox';
+import { taskRunner } from './task-runner';
+import { tracing, createTracingHelper } from './tracing';
+import type { Service, ServiceName, ServiceResult, HelperFactories } from './types';
+import { vector } from './vector';
+import { victoriaLogs } from './victoria-logs';
+import { victoriaMetrics } from './victoria-metrics';
+
+/** Service registry - must include all ServiceName entries */
+export const services: Record<ServiceName, Service<ServiceResult>> = {
+	postgres,
+	enginePostgres,
+	redis,
+	mailpit,
+	gitea,
+	keycloak,
+	victoriaLogs,
+	victoriaMetrics,
+	vector,
+	tracing,
+	proxy,
+	taskRunner,
+	loadBalancer,
+	cloudflared,
+	ngrok,
+	kafka,
+	mysql: mysqlService,
+	localstack,
+	kent,
+	postgresExporter,
+	cadvisor,
+	sandbox,
+	npmRegistry,
+};
+
+export const helperFactories: Partial<HelperFactories> = {
+	postgres: createPostgresHelper,
+	enginePostgres: createEnginePostgresHelper,
+	mailpit: createMailpitHelper,
+	gitea: createGiteaHelper,
+	keycloak: createKeycloakHelper,
+	observability: createObservabilityHelper,
+	tracing: createTracingHelper,
+	proxy: createProxyHelper,
+	kafka: createKafkaHelper,
+	localstack: createLocalStackHelper,
+	kent: createKentHelper,
+	npmRegistry: createNpmRegistryHelper,
+};

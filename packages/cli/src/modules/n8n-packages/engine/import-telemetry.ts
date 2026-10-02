@@ -1,4 +1,4 @@
-import type { EventService } from '@/events/event.service';
+import type { EventService } from '@n8n/backend-services';
 
 import type { CredentialBindingRequest } from '../entities/credential/credential.types';
 import type { DataTableImportRequest } from '../entities/data-table/data-table.types';

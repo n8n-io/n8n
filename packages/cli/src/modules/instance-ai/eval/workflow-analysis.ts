@@ -103,7 +103,8 @@ const PROTOCOL_BINARY_SUB_NODE_TYPES = new Set([
 
 /** Data Table row-read operations. Their output is the scenario's "stored state" — left
  * unpinned they read the REAL eval-instance table, polluted by the builder's own
- * verification runs, so scenario outcomes become a coin flip on build-phase leftovers. */
+ * verification runs, so scenario outcomes become a coin flip on build-phase leftovers.
+ * A table the harness reseeded for the scenario holds only its rows, so reads of it run live. */
 const DATA_TABLE_READ_OPERATIONS = new Set(['get', 'rowExists', 'rowNotExists']);
 
 /** Of the read operations, only `get` emits stored rows — `rowExists`/`rowNotExists`
@@ -130,10 +131,11 @@ export function emitsDataTableRows(node: INode): boolean {
 	return DATA_TABLE_ROW_EMITTING_OPERATIONS.has(params?.operation ?? 'insert');
 }
 
-/** Returns nodes that need pin data — AI roots (unless in `exclusionSet`), bypass-protocol nodes, and Data Table reads. */
+/** Returns nodes that need pin data — AI roots (unless in `exclusionSet`), bypass-protocol nodes, and Data Table reads (unless in `liveReads`). */
 export function identifyNodesForPinData(
 	workflow: IWorkflowBase,
 	exclusionSet?: Set<string>,
+	liveReads?: Set<string>,
 ): INode[] {
 	const aiRootNodes = findAiRootNodeNames(workflow.connections);
 
@@ -141,7 +143,7 @@ export function identifyNodesForPinData(
 		if (node.disabled) return false;
 		if (aiRootNodes.has(node.name) && !exclusionSet?.has(node.name)) return true;
 		if (BYPASS_NODE_TYPES.has(node.type)) return true;
-		if (isDataTableRead(node)) return true;
+		if (isDataTableRead(node)) return !liveReads?.has(node.name);
 		return false;
 	});
 }

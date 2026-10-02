@@ -5,7 +5,7 @@ import { mock } from 'vitest-mock-extended';
 
 import type { Push } from '@/push';
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
-import type { RoleService } from '@/services/role.service';
+import type { RoleService } from '@n8n/backend-services';
 
 import { AgentPushRecipientsService } from '../agent-push-recipients.service';
 import { AgentUpdateBroadcaster } from '../agent-update-broadcaster';

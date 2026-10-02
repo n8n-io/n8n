@@ -1,7 +1,7 @@
 import type {
 	BreakingChangeAffectedWorkflow,
 	BreakingChangeRecommendation,
-	BreakingChangeRuleSeverity,
+	BreakingChangeRuleImpact,
 	BreakingChangeVersion,
 } from '@n8n/api-types';
 import type { WorkflowEntity } from '@n8n/db';
@@ -26,7 +26,8 @@ export interface BreakingChangeRuleMetadata {
 	title: string;
 	description: string;
 	category: BreakingChangeCategory;
-	severity: BreakingChangeRuleSeverity;
+	/** What happens if the user does not fix this breaking change. */
+	impact: BreakingChangeRuleImpact;
 	documentationUrl?: string;
 }
 

@@ -4,7 +4,7 @@ How to prove, on one machine, that a dev n8n instance reports to a local
 instance-reporting receiver on `http://127.0.0.1:3456`, and that the two data
 points hold the numbers from `insights` and `workflow_statistics`.
 
-The daily timer makes an unassisted end-to-end run take up to 24 hours. The
+The daily report time makes an unassisted end-to-end run take up to 24 hours. The
 plan removes the wait: the scheduler re-derives "is a report due" from the
 database on every tick, so a report time in the past plus a restart forces the
 report immediately (the catch-up path). Nothing in the module is changed for
@@ -27,9 +27,8 @@ the test.
 - Keep the receiver's request log visible. You must see the raw body.
 - `sqlite3` is installed. The dev instance uses SQLite at
   `~/.n8n/database.sqlite` unless you set another database.
-- An n8n owner account exists on the instance (the report reads insights as the
-  instance owner). Complete the setup screen first if this is a fresh
-  `~/.n8n`.
+- An n8n owner account exists on the instance, so you can build the workflows
+  in step 2. Complete the setup screen first if this is a fresh `~/.n8n`.
 
 ```bash
 export N8N_DB=~/.n8n/database.sqlite   # used by the snippets below
@@ -50,7 +49,7 @@ export N8N_INSIGHTS_COMPACTION_INTERVAL_MINUTES=1
 export N8N_INSIGHTS_FLUSH_INTERVAL_SECONDS=5
 
 export N8N_LOG_LEVEL=debug
-export N8N_LOG_SCOPES=instance-reporting
+export N8N_LOG_SCOPES=instance-reporting,system-tasks
 
 pnpm dev
 ```
@@ -59,7 +58,7 @@ Expected on the first boot:
 
 - No warning about `N8N_INSTANCE_REPORTING_BASE_URL` being unset, and none
   about a missing license certificate.
-- The log line `Started the instance reporting timer`.
+- A system task routing log with `name: instance-reporting`.
 - A `Resolved the instance reporting time` line with a random `HH:mm` at or
   after `03:00`.
 
@@ -161,11 +160,18 @@ with:
 Confirm the numbers match what you recorded in step 2, and that `date` is
 yesterday's UTC date, not today's.
 
+"Exactly two entries" holds when `insights_by_period` has no rows older than
+yesterday, as on a fresh `~/.n8n`. The first report backfills the `insights`
+history. With an older database, it gives one `daily` point for every day from
+the oldest row to yesterday, oldest first, but for at most 89 days (the
+hour-to-day compaction threshold minus one). Days without rows inside that
+range carry `0`.
+
 **n8n side.**
 
 ```bash
 sqlite3 -header "$N8N_DB" \
-  "SELECT id, createdAt, deliveredAt, attempts, lastError, dataPoints
+  "SELECT id, reportDate, createdAt, deliveredAt, attempts, lastError, dataPoints
    FROM instance_monitoring_report ORDER BY createdAt DESC LIMIT 5;"
 ```
 
@@ -179,19 +185,19 @@ Run these after step 4. Each is short.
 
 | # | Scenario | Steps | Expected |
 |---|---|---|---|
-| 5.1 | No second report the same day | Restart the instance | No new request, no new row. `hasDeliveredToday` short-circuits the tick |
-| 5.2 | Retry resends the same measurement | Make the receiver answer 500. Delete today's delivered row, then restart | Request arrives, `lastError` holds `rejected with status 500`, `deliveredAt` NULL, `attempts` grows. Retries land ~5 minutes apart, 3 attempts in total, then `Giving up on the instance report for today`. Every retry carries the **same** `batchId` and the same values — no re-measurement |
+| 5.1 | No second report the same day | Restart the instance | No new request, no new row. `hasSettledToday` short-circuits the tick |
+| 5.2 | Retry resends the same measurement | Make the receiver answer 500. Delete today's delivered row, then restart | Request arrives, `lastError` holds `rejected with status 500`, `deliveredAt` NULL, `attempts` grows. Retries land about 15 minutes apart, 3 attempts in total, then `Giving up on the instance report for today`. Every retry carries the **same** `batchId` and the same values — no re-measurement |
 | 5.3 | Recovery keeps the pending row | During 5.2, switch the receiver back to 201 before the third attempt | The next attempt reuses the pending row and marks it delivered. No second row for the day |
 | 5.4 | Untrusted certificate | Set `N8N_LICENSE_CERT` to a certificate the receiver does not trust (any well-formed one from another CA), clear today's row, restart | The receiver answers 401, delivery fails, `lastError` names the status. Nothing is marked delivered |
-| 5.4b | No certificate | Unset `N8N_LICENSE_CERT`, clear today's row, restart | Warning `no license certificate, so no reports will be sent`; no timer, no request, no row |
+| 5.4b | No certificate | Unset `N8N_LICENSE_CERT`, clear today's row, restart | Warning `no license certificate, so no reports will be sent`; no reporting task, no request, no row |
 | 5.4c | Token set | Set `N8N_INSTANCE_REPORTING_AUTH_TOKEN` to a token the receiver accepts, unset `N8N_LICENSE_CERT`, clear today's row, restart | No certificate warning. The request carries `Authorization: Bearer <token>` and the body has no `licenseCert`. The receiver answers 201 and the row is marked delivered |
 | 5.5 | Non-201 success code is a failure | Make the receiver answer 200 | Treated as a rejection: `Instance report was rejected with status 200` |
 | 5.6 | Receiver down | Stop the receiver, clear today's row, restart | Delivery fails with a connection error in `lastError`; the instance stays healthy and keeps serving |
 | 5.7 | Redirect is not followed | Make the receiver answer 302 to another local port | The report is rejected with status 302. The second port never sees the license certificate |
-| 5.8 | Base URL unset | Unset `N8N_INSTANCE_REPORTING_BASE_URL`, restart | Warning `enabled but N8N_INSTANCE_REPORTING_BASE_URL is unset`; no timer, no request |
+| 5.8 | Base URL unset | Unset `N8N_INSTANCE_REPORTING_BASE_URL`, restart | Warning `enabled but N8N_INSTANCE_REPORTING_BASE_URL is unset`; no reporting task, no request |
 | 5.9 | Insights disabled | `N8N_DISABLED_MODULES=insights`, restart | Startup fails with the `UserError` that names both variables |
 | 5.10 | Trailing slash in the base URL | Use `http://127.0.0.1:3456/`, clear today's row, restart | The path is still `/api/v1/instance-reports`, with no double slash |
-| 5.11 | Slot still ahead | Set `reportTime` to a time later today, clear today's row, restart | No request. The log shows the timer armed for the remaining interval |
+| 5.11 | Slot still ahead | Set `reportTime` to a time later today, clear today's row, restart | No request. The task checks the report time on each 15-minute pass |
 
 `clear today's row` means:
 
@@ -226,10 +232,9 @@ want your dev data untouched.
   A loopback address therefore works without extra configuration.
 - **UTC everywhere.** The report time, the slot maths and the reported date are
   all UTC. Convert before you read the local clock.
-- **Multi-main.** Only the leader holds the timer. A single dev instance is
-  always the leader, so this plan cannot show handover. To cover it, run two
-  mains against the same Postgres with `N8N_MULTI_MAIN_SETUP_ENABLED=true` and
-  confirm only one request arrives per day, and that the follower starts the
-  timer after the leader stops.
+- **Multi-main.** Enable both scheduler flags on two mains. Confirm that a
+  follower can deliver a claimed report. Let both mains claim the same due
+  occurrence and confirm that one request arrives. Disable either flag on both
+  mains and confirm that only the leader's in-memory task runs.
 - **Request timeout.** Delivery gives up after 30 seconds. A receiver that
   sleeps longer is a way to check the timeout path in 5.6.

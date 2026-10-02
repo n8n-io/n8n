@@ -290,6 +290,13 @@ export abstract class AgentChatIntegration {
 	readonly disableStreaming: boolean = false;
 
 	/**
+	 * True when the platform renders only one streamed run per inbound turn, so
+	 * text following a card is posted buffered rather than streamed into the
+	 * message that preceded the card.
+	 */
+	readonly singleStreamedRunPerTurn: boolean = false;
+
+	/**
 	 * True when this integration is an internal channel (e.g. the in-app n8n
 	 * chat) that must not appear in the public integrations catalog or the
 	 * add-trigger UI.

@@ -259,7 +259,7 @@ describe('TestRunner', () => {
 			expect(taskCleanupSpy).toHaveBeenCalled();
 		});
 
-		it('should reject pending requests when task is cancelled', async () => {
+		it('should reject only pending requests for the cancelled task', async () => {
 			runner = newTestRunner();
 
 			const taskId = 'test-task';
@@ -283,6 +283,20 @@ describe('TestRunner', () => {
 				resolve: vi.fn(),
 				reject: nodeTypesRequestReject,
 			});
+			const otherDataRequest = {
+				taskId: 'other-task',
+				requestId: 'other-data-req',
+				resolve: vi.fn(),
+				reject: vi.fn(),
+			};
+			const otherNodeTypesRequest = {
+				taskId: 'other-task',
+				requestId: 'other-node-req',
+				resolve: vi.fn(),
+				reject: vi.fn(),
+			};
+			runner.dataRequests.set(otherDataRequest.requestId, otherDataRequest);
+			runner.nodeTypesRequests.set(otherNodeTypesRequest.requestId, otherNodeTypesRequest);
 
 			await runner.taskCancelled(taskId, 'test-reason');
 
@@ -298,8 +312,14 @@ describe('TestRunner', () => {
 				}),
 			);
 
-			expect(runner.dataRequests.size).toBe(0);
-			expect(runner.nodeTypesRequests.size).toBe(0);
+			expect(runner.dataRequests.size).toBe(1);
+			expect(runner.dataRequests.get(otherDataRequest.requestId)).toBe(otherDataRequest);
+			expect(otherDataRequest.reject).not.toHaveBeenCalled();
+			expect(runner.nodeTypesRequests.size).toBe(1);
+			expect(runner.nodeTypesRequests.get(otherNodeTypesRequest.requestId)).toBe(
+				otherNodeTypesRequest,
+			);
+			expect(otherNodeTypesRequest.reject).not.toHaveBeenCalled();
 		});
 	});
 

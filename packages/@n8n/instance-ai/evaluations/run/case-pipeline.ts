@@ -17,13 +17,19 @@ import { sentinelOutcomeFromVerdicts, type TargetOutput } from './reshape';
 import type { CliArgs } from '../cli/args';
 import {
 	draftAgentVerdict,
+	seededAgentConfig,
 	findAgentArtifactRef,
 	type AgentScenarioContext,
 } from '../harness/agent-execution';
 import { buildFailedOnInfra } from '../harness/build-workflow';
 import { cleanupBuild, effectiveTimeoutMs } from '../harness/cleanup';
 import type { EvalLogger } from '../harness/logger';
-import { scenariosRequireSerialSeeding, type ScenarioSeedContext } from '../harness/seed-tables';
+import { selectScenarioWorkflowId } from '../harness/scenario-execution';
+import {
+	scenariosRequireSerialSeeding,
+	workflowDeduplicates,
+	type ScenarioSeedContext,
+} from '../harness/seed-tables';
 import {
 	classifyScenarioExecutionError,
 	extractErrorMessage,
@@ -59,6 +65,16 @@ export interface CasePipeline {
 	 *  finalizes and persists every OTHER row's completed results. */
 	runRow: (inputs: ScenarioRowInputs) => Promise<TargetOutput>;
 }
+
+/** The queue decision re-runs the routing the scenario will make; only the run itself logs it. */
+const SILENT_LOGGER: EvalLogger = {
+	info() {},
+	verbose() {},
+	success() {},
+	warn() {},
+	error() {},
+	isVerbose: false,
+};
 
 export function createCasePipeline(deps: CasePipelineDeps): CasePipeline {
 	const {
@@ -203,7 +219,22 @@ export function createCasePipeline(deps: CasePipelineDeps): CasePipeline {
 		// still knows why the build ended) — attach them as-is.
 		const attachExpectations = async (output: TargetOutput): Promise<TargetOutput> => {
 			const verdicts = await verdictsPromise;
-			return verdicts && verdicts.length > 0 ? { ...output, expectationResults: verdicts } : output;
+			// A conversation a budget ended is graded on what was saved by then, but
+			// the iteration is neither a pass nor a failure: every row keeps its
+			// verdict for the record and is stamped `timeout` + `incomplete`, which
+			// keeps it out of the pass rate here and in lang-tracer.
+			const stamped: TargetOutput = build.timeout
+				? {
+						...output,
+						buildTimeout: build.timeout,
+						incomplete: true,
+						attribution: 'timeout',
+						failureCategory: 'build_timeout',
+					}
+				: output;
+			return verdicts && verdicts.length > 0
+				? { ...stamped, expectationResults: verdicts }
+				: stamped;
 		};
 
 		// A staged prior run that never produced an execution record leaves the case
@@ -270,6 +301,15 @@ export function createCasePipeline(deps: CasePipelineDeps): CasePipeline {
 				workflowJson: build.workflowJsons[0],
 				buildTrace: build.buildTrace,
 				...(verdicts && verdicts.length > 0 ? { expectationResults: verdicts } : {}),
+				// Same neutral stamp the scenario rows get (see `attachExpectations`).
+				...(build.timeout
+					? {
+							buildTimeout: build.timeout,
+							incomplete: true,
+							attribution: 'timeout' as const,
+							failureCategory: 'build_timeout',
+						}
+					: {}),
 			};
 		}
 
@@ -282,6 +322,7 @@ export function createCasePipeline(deps: CasePipelineDeps): CasePipeline {
 				// Seeding, transport and provider failures are harness/infra problems,
 				// not agent build failures — keep them out of the build_failure bucket,
 				// which lang-tracer's legacy map reads straight as `builder_issue`.
+				// (A timed-out build is re-stamped in `attachExpectations`.)
 				failureCategory:
 					build.seedingFailed || build.transportFailure ? 'framework_issue' : 'build_failure',
 				// The verdict lang-tracer actually stores. A provider outage is infra
@@ -317,10 +358,14 @@ export function createCasePipeline(deps: CasePipelineDeps): CasePipeline {
 			const agentArtifactFields = capturedAgent?.artifact
 				? { agentArtifact: capturedAgent.artifact }
 				: {};
-			const declaredCredentials = testCaseByFileSlug.get(inputs.testCaseFile)?.credentials;
-			// A draft Agent throws before its first model turn; running it only produces
-			// a red the judge pins on the builder. Decide ownership here instead.
-			const draft = draftAgentVerdict(capturedAgent?.artifact, declaredCredentials);
+			const testCase = testCaseByFileSlug.get(inputs.testCaseFile);
+			// An Agent that cannot run throws before its first model turn; running it
+			// only produces a red the judge pins on the builder. Decide ownership here.
+			const draft = draftAgentVerdict(
+				capturedAgent?.artifact,
+				testCase?.credentials,
+				seededAgentConfig(testCase?.seed, build.createdAgentIds, agentRef.id),
+			);
 			if (draft) {
 				logger.warn(`    [${scenario.name}] not run: ${draft.reasoning}`);
 				return await attachExpectations({
@@ -333,7 +378,7 @@ export function createCasePipeline(deps: CasePipelineDeps): CasePipeline {
 					reasoning: draft.reasoning,
 					failureCategory: draft.attribution,
 					attribution: draft.attribution,
-					execErrors: ['Agent has no model configured'],
+					execErrors: [draft.execError],
 					buildDurationMs,
 					...buildSpendFields,
 					execDurationMs: 0,
@@ -566,9 +611,30 @@ export function createCasePipeline(deps: CasePipelineDeps): CasePipeline {
 		// Scenarios of one case share tables by name, so seeded rows must not
 		// interleave — the retired direct loop ran them at concurrency 1; rows now
 		// arrive independently, so the gate is a per-build-key chain instead.
+		// Remove Duplicates keeps its keys per WORKFLOW on the backend, and the eval
+		// resets them around every run, so a deduping scenario queues on the backend
+		// and the workflow it will actually run: a sibling entry point, or a prebuilt
+		// id that several iterations share. With no workflow JSON to read, it queues.
+		const targetWorkflowId = selectScenarioWorkflowId(
+			scenario,
+			workflowId,
+			build.workflowJsons,
+			SILENT_LOGGER,
+		);
+		const target = build.workflowJsons.find((wf) => wf?.id === targetWorkflowId);
+		const dedupes = target
+			? workflowDeduplicates(target)
+			: build.workflowJsons.length === 0 || build.workflowJsons.some(workflowDeduplicates);
+		const runQueued = dedupes
+			? async () =>
+					await withSerialSeeding(
+						`${builtOnLane.runner.baseUrl}:${targetWorkflowId}`,
+						runWorkflowScenario,
+					)
+			: runWorkflowScenario;
 		return scenariosRequireSerialSeeding(authoredScenarios)
-			? await withSerialSeeding(cacheKey, runWorkflowScenario)
-			: await runWorkflowScenario();
+			? await withSerialSeeding(cacheKey, runQueued)
+			: await runQueued();
 	};
 
 	return { runRow };

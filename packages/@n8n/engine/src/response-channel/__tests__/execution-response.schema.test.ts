@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { executionResponseSchema } from '../execution-response.schema';
+import { executionResponseSchema, responseExpectationSchema } from '../execution-response.schema';
 
 const ended = (overrides: Record<string, unknown> = {}) => ({
 	type: 'ended',
@@ -31,6 +31,16 @@ describe('executionResponseSchema', () => {
 			executionId: 'exec-1',
 			error: { code: 'RESPONSE_TOO_LARGE', message: 'The response is too large.' },
 		});
+	});
+
+	it('accepts a chunk response', () => {
+		const chunk = {
+			type: 'chunk',
+			executionId: 'exec-1',
+			payload: { type: 'item', content: 'hi' },
+		};
+
+		expect(executionResponseSchema.parse(chunk)).toEqual(chunk);
 	});
 
 	it.each([
@@ -99,4 +109,17 @@ describe('executionResponseSchema', () => {
 
 		expect(parsed).not.toHaveProperty('extra');
 	});
+});
+
+describe('responseExpectationSchema', () => {
+	it.each(['none', 'runEnd', 'stepResponse', 'stream'])('accepts the kind %s', (kind) => {
+		expect(responseExpectationSchema.parse({ kind })).toEqual({ kind });
+	});
+
+	it.each([{ kind: 'chunks' }, { kind: 'none', extra: true }, {}, 'none'])(
+		'rejects %j',
+		(value) => {
+			expect(responseExpectationSchema.safeParse(value).success).toBe(false);
+		},
+	);
 });

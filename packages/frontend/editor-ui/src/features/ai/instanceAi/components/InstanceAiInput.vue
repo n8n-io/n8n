@@ -147,6 +147,7 @@ const emit = defineEmits<{
 		responseStartedAtEpochMs: number,
 		acceptDraft: () => void,
 		mentionCounts: AssistantMentionCounts,
+		mentionedWorkflowIds: readonly string[],
 	];
 	stop: [];
 	'dismiss-context-chip': [];
@@ -164,7 +165,9 @@ const emit = defineEmits<{
 const i18n = useI18n();
 const toast = useToast();
 const promptSuggestionsTelemetry = useInstanceAiPromptSuggestionsTelemetry();
-const mentionTelemetry = useAssistantAtMentionsTelemetry();
+const mentionTelemetry = useAssistantAtMentionsTelemetry({
+	threadId: () => props.currentThreadId || undefined,
+});
 const instanceAiStore = useInstanceAiStore();
 const inputText = ref('');
 const attachedFiles = ref<File[]>([]);
@@ -331,11 +334,12 @@ const mentionAvailability = useAssistantMentionAvailability({
 	projectId: () => props.mentionProjectId,
 	artifacts: () => props.mentionArtifacts,
 });
+const isSubmissionInFlight = computed(() => props.isSubmitting || isPreparingSubmission.value);
 const canUseMentions = computed(
 	() =>
 		shouldShowMentions.value &&
 		mentionAvailability.isAvailable.value &&
-		!isBusy.value &&
+		!isSubmissionInFlight.value &&
 		!isGatedBySetup.value,
 );
 const inputElement = computed(() => chatInputRef.value?.getInputElement() ?? null);
@@ -344,7 +348,18 @@ const mentions = useAssistantAtMentions({
 	enabled: canUseMentions,
 	getInputElement: () => inputElement.value ?? undefined,
 	onOpened: mentionTelemetry.trackPickerOpened,
+	onClosed: (info) => {
+		// Synchronous on purpose: the picker still shows what the user looked at.
+		// An empty state left before it settled reports first, in the order seen.
+		mentionPickerRef.value?.flushEmptySearch();
+		const metrics = mentionPickerRef.value?.getOpenMetrics();
+		if (metrics) mentionTelemetry.trackPickerDismissed(info, metrics);
+	},
 });
+
+function handleMentionEmptySearch(query: string): void {
+	mentionTelemetry.trackEmptySearch(query, { artifactCount: props.mentionArtifacts.length });
+}
 const mentionMenuOpen = mentions.menuOpen;
 const mentionQuery = mentions.query;
 watch(canUseMentions, (enabled, wasEnabled) => {
@@ -359,11 +374,12 @@ const mentionAttachments = useAssistantMentionAttachments({
 	onReferenceAdded: (reference) => emit('mention-reference-added', reference),
 	onReferenceRemoved: (referenceId) => emit('mention-reference-removed', referenceId),
 	onMentionRemoved: mentionTelemetry.trackMentionRemoved,
-	onCleared: mentions.close,
+	onCleared: () => mentions.close(false, 'unavailable'),
 });
 
 async function handleMentionSelection(selection: AssistantMentionSelection): Promise<void> {
-	const alreadyArtifact = props.mentionArtifacts.some(
+	// Read before the pick stages anything: a workflow mention opens its own tab.
+	const existingArtifact = props.mentionArtifacts.find(
 		(artifact) => artifact.id === selection.item.workflowId,
 	);
 	const result = mentionAttachments.select(selection);
@@ -374,7 +390,8 @@ async function handleMentionSelection(selection: AssistantMentionSelection): Pro
 		);
 		return;
 	}
-	if (result.status === 'added') mentionTelemetry.trackMentionSelected(selection, alreadyArtifact);
+	// A duplicate pick stages nothing, but it is still the pick that ends this open.
+	mentionTelemetry.trackMentionSelected(selection, existingArtifact);
 
 	if (result.truncated) {
 		toast.showError(
@@ -434,9 +451,6 @@ const placeholder = computed(() => {
 	if (props.contextualSuggestion) {
 		return props.contextualSuggestion;
 	}
-	if (props.contextChip?.type === 'agent-artifact' && props.contextChip.isNewAgent) {
-		return i18n.baseText('instanceAi.input.newAgentPlaceholder');
-	}
 	return i18n.baseText(props.placeholderKey ?? 'instanceAi.input.placeholder');
 });
 
@@ -473,6 +487,7 @@ function emitSubmittedMessage(
 	responseStartedAtEpochMs: number,
 	acceptDraft: () => void,
 	mentionCounts: AssistantMentionCounts,
+	mentionedWorkflowIds: readonly string[] = [],
 ) {
 	previewPrompt.value = null;
 	emit(
@@ -484,6 +499,7 @@ function emitSubmittedMessage(
 		responseStartedAtEpochMs,
 		acceptDraft,
 		mentionCounts,
+		mentionedWorkflowIds,
 	);
 }
 
@@ -577,6 +593,7 @@ function submitComposerMessage(
 		resources: InstanceAiResourceAttachment[];
 		mentionReferenceIds: readonly string[];
 		mentionCounts: AssistantMentionCounts;
+		mentionedWorkflowIds: readonly string[];
 	},
 ) {
 	if (!canSubmitMessage(message, attachments?.length ?? 0)) {
@@ -609,6 +626,8 @@ function submitComposerMessage(
 	const submittedFiles = draftSnapshot?.files ?? [...attachedFiles.value];
 	const submittedResources = draftSnapshot?.resources ?? [...attachedResources.value];
 	const mentionCounts = draftSnapshot?.mentionCounts ?? mentionAttachments.snapshotCounts();
+	const mentionedWorkflowIds =
+		draftSnapshot?.mentionedWorkflowIds ?? mentionAttachments.snapshotMentionedWorkflowIds();
 	const mentionSubmission = mentionAttachments.detachSubmission(draftSnapshot?.mentionReferenceIds);
 	emitSubmittedMessage(
 		message,
@@ -622,6 +641,7 @@ function submitComposerMessage(
 		responseStartedAtEpochMs,
 		mentionSubmission.accept,
 		mentionCounts,
+		mentionedWorkflowIds,
 	);
 	resetDraftComposer();
 }
@@ -663,6 +683,7 @@ async function handleSubmit() {
 	const submittedResources = [...attachedResources.value];
 	const mentionReferenceIds = mentionAttachments.snapshotSubmission();
 	const mentionCounts = mentionAttachments.snapshotCounts();
+	const mentionedWorkflowIds = mentionAttachments.snapshotMentionedWorkflowIds();
 	isPreparingSubmission.value = true;
 	let fileAttachments: InstanceAiAttachment[];
 	try {
@@ -684,7 +705,13 @@ async function handleSubmit() {
 		attachments.length ? attachments : undefined,
 		prefill,
 		responseStartedAtEpochMs,
-		{ files: submittedFiles, resources: submittedResources, mentionReferenceIds, mentionCounts },
+		{
+			files: submittedFiles,
+			resources: submittedResources,
+			mentionReferenceIds,
+			mentionCounts,
+			mentionedWorkflowIds,
+		},
 	);
 }
 
@@ -943,6 +970,7 @@ const resizable = computed(() => {
 					:disabled="!canUseMentions"
 					@update:model-value="mentions.handleMenuOpenChange"
 					@select="handleMentionSelection"
+					@empty-search="handleMentionEmptySearch"
 				/>
 			</template>
 		</ChatInputBase>

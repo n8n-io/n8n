@@ -3,14 +3,19 @@ import { setActivePinia } from 'pinia';
 import userEvent from '@testing-library/user-event';
 import { waitFor } from '@testing-library/vue';
 import type { IWorkflowDb } from '@/Interface';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { defineComponent, h, ref } from 'vue';
 
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore } from '@/__tests__/utils';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { sleep } from '@n8n/utils/sleep';
 
 import AssistantAtMentionPicker from './AssistantAtMentionPicker.vue';
-import type { AssistantMentionSelection } from './assistantAtMentions.types';
+import type {
+	AssistantMentionPickerOpenMetrics,
+	AssistantMentionSelection,
+} from './assistantAtMentions.types';
 
 const getWorkflow = vi.hoisted(() => vi.fn());
 
@@ -20,6 +25,32 @@ vi.mock('@/app/api/workflows', async (importOriginal) => ({
 }));
 
 const renderComponent = createComponentRenderer(AssistantAtMentionPicker);
+
+// The host reads the exposed metrics through a template ref; this harness does
+// the same so the test sees exactly what the dismissal event would receive.
+let readOpenMetrics: (() => AssistantMentionPickerOpenMetrics | undefined) | undefined;
+const PickerHarness = defineComponent({
+	name: 'PickerHarness',
+	props: {
+		modelValue: { type: Boolean, required: true },
+		query: { type: String, required: true },
+		projectId: { type: String, default: undefined },
+		artifacts: { type: Array, default: () => [] },
+	},
+	setup(props) {
+		const picker = ref<InstanceType<typeof AssistantAtMentionPicker> | null>(null);
+		readOpenMetrics = () => picker.value?.getOpenMetrics();
+		return () =>
+			h(AssistantAtMentionPicker, {
+				ref: picker,
+				modelValue: props.modelValue,
+				query: props.query,
+				projectId: props.projectId,
+				artifacts: props.artifacts as Array<{ id: string; name: string }>,
+			});
+	},
+});
+const renderHarness = createComponentRenderer(PickerHarness);
 
 function deferred<T>() {
 	let resolve!: (value: T) => void;
@@ -114,12 +145,30 @@ describe('AssistantAtMentionPicker', () => {
 		expect(getByTestId('instance-ai-mention-button')).toBeDisabled();
 	});
 
-	it('shows the empty recent-workflow state after browse completes', async () => {
-		const { findByText } = renderComponent({
+	it('shows the empty state without section headers when nothing is mentionable', async () => {
+		const { findByText, queryByText } = renderComponent({
 			props: { modelValue: true, query: '', projectId: undefined },
 		});
 
 		expect(await findByText('No recent workflows')).toBeVisible();
+		expect(queryByText('Workflows')).toBeNull();
+		expect(queryByText('Artifacts')).toBeNull();
+	});
+
+	it('hides the workflows section when only artifacts are available', async () => {
+		const { findByText, queryByText } = renderComponent({
+			props: {
+				modelValue: true,
+				query: '',
+				projectId: undefined,
+				artifacts: [{ id: 'w1', name: 'Orders' }],
+			},
+		});
+
+		expect(await findByText('Orders')).toBeVisible();
+		expect(await findByText('Artifacts')).toBeVisible();
+		expect(queryByText('Workflows')).toBeNull();
+		expect(queryByText('No recent workflows')).toBeNull();
 	});
 
 	it('renders ten skeleton rows while workflows load', async () => {
@@ -179,7 +228,7 @@ describe('AssistantAtMentionPicker', () => {
 
 		const groupResult = await findByRole('menuitem', { name: 'Orders > If checks' });
 		const nodeResult = await findByRole('menuitem', { name: 'Orders > If checks > If' });
-		expect(groupResult.querySelector('[data-icon="layers"]')).toBeVisible();
+		expect(groupResult.querySelector('[data-icon="group"]')).toBeVisible();
 		expect(nodeResult.querySelector('.n8n-node-icon')).toBeVisible();
 		expect(
 			[...nodeResult.querySelectorAll('[class*="breadcrumbAncestor"]')].map((element) =>
@@ -274,6 +323,114 @@ describe('AssistantAtMentionPicker', () => {
 		expect(groupRow?.querySelector('[data-sub-menu-action="open"]')).toHaveTextContent('2');
 	});
 
+	it('shows node counts for every artifact without opening a sub-menu', async () => {
+		const input = document.createElement('textarea');
+		const reference = document.createElement('div');
+		document.body.append(input, reference);
+		const artifacts = [
+			{ id: 'w1', name: 'Odd numbers', nodeCount: 1 },
+			{ id: 'w2', name: 'Even numbers', nodeCount: 2 },
+		];
+		getWorkflow.mockImplementation(async (_context: unknown, workflowId: string) => {
+			const artifact = artifacts.find(({ id }) => id === workflowId);
+			return {
+				id: workflowId,
+				name: artifact?.name,
+				versionId: `${workflowId}-version`,
+				nodes: Array.from({ length: artifact?.nodeCount ?? 0 }, (_, index) => ({
+					id: `${workflowId}-node-${index + 1}`,
+					name: `Node ${index + 1}`,
+					type: 'n8n-nodes-base.noOp',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+				})),
+				connections: {},
+			};
+		});
+
+		const { getByText } = renderComponent({
+			props: {
+				modelValue: true,
+				query: '',
+				artifacts: artifacts.map(({ id, name }) => ({ id, name })),
+				inputElement: input,
+				reference,
+			},
+		});
+		const openActionFor = (label: string) =>
+			getByText(label).closest('[role="menuitem"]')?.querySelector('[data-sub-menu-action="open"]');
+
+		await waitFor(() => {
+			expect(openActionFor('Odd numbers')).toHaveTextContent('1');
+			expect(openActionFor('Even numbers')).toHaveTextContent('2');
+		});
+		expect(getWorkflow).toHaveBeenCalledTimes(2);
+	});
+
+	it('exposes search metrics that count rows the user could not tell apart', async () => {
+		setActivePinia(createTestingPinia({ stubActions: true }));
+		const { useWorkflowsListStore } = await import('@/app/stores/workflowsList.store');
+		vi.mocked(useWorkflowsListStore().searchWorkflows).mockResolvedValue([
+			{ id: 'w1', name: 'Orders' },
+			{ id: 'w2', name: 'Orders' },
+			{ id: 'w3', name: 'Order archive' },
+		] as never);
+
+		const { getAllByRole } = renderHarness({
+			props: { modelValue: true, query: 'ord', projectId: 'project-1' },
+		});
+		await waitFor(() => expect(getAllByRole('menuitem')).toHaveLength(3));
+
+		expect(readOpenMetrics?.()).toEqual({
+			mode: 'search',
+			queryLength: 3,
+			resultCount: 3,
+			ambiguousResultCount: 2,
+			submenuOpenCount: 0,
+		});
+	});
+
+	it('counts sub-menu opens per picker open', async () => {
+		getWorkflow.mockResolvedValue({
+			id: 'w1',
+			name: 'Orders',
+			versionId: 'version-1',
+			nodes: [
+				{
+					id: 'node-1',
+					name: 'First',
+					type: 'n8n-nodes-base.noOp',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+				},
+			],
+			connections: {},
+		} as never);
+
+		const { findByText, rerender } = renderHarness({
+			props: { modelValue: true, query: '', artifacts: [{ id: 'w1', name: 'Orders' }] },
+		});
+		const workflowRow = (await findByText('Orders')).closest('[role="menuitem"]');
+		await userEvent.click(
+			workflowRow?.querySelector('[data-sub-menu-action="open"]') as HTMLElement,
+		);
+		await findByText('First');
+
+		expect(readOpenMetrics?.()).toEqual({
+			mode: 'browse',
+			queryLength: 0,
+			resultCount: 1,
+			ambiguousResultCount: 0,
+			submenuOpenCount: 1,
+		});
+
+		await rerender({ modelValue: false });
+		await rerender({ modelValue: true });
+		expect(readOpenMetrics?.()).toMatchObject({ submenuOpenCount: 0 });
+	});
+
 	it('shows a retry action when workflow browse fails', async () => {
 		setActivePinia(createTestingPinia());
 		const { useRecentWorkflowsStore } = await import('@/app/stores/recentWorkflows.store');
@@ -294,5 +451,54 @@ describe('AssistantAtMentionPicker', () => {
 		expect(await findByText("Workflows couldn't load. Try again.")).toBeVisible();
 		await userEvent.click(getByRole('menuitem', { name: 'Retry' }));
 		expect(recentWorkflowsStore.resolveRecentWorkflows).toHaveBeenCalledTimes(2);
+	});
+
+	describe('empty search reporting', () => {
+		// Shrinks the search debounce and the settle delay to a few milliseconds so a
+		// test observes the settled state without waiting out a real second.
+		const DEBOUNCE_MULTIPLIER = 0.02;
+		const settle = async () => await sleep(DEBOUNCE_MULTIPLIER * 1000 * 3);
+
+		async function renderEmptySearch(query: string) {
+			sessionStorage.setItem('N8N_DEBOUNCE_MULTIPLIER', String(DEBOUNCE_MULTIPLIER));
+			setActivePinia(createTestingPinia());
+			const { useWorkflowsListStore } = await import('@/app/stores/workflowsList.store');
+			vi.mocked(useWorkflowsListStore().searchWorkflows).mockResolvedValue([]);
+			return renderComponent({ props: { modelValue: true, query, projectId: 'project-1' } });
+		}
+
+		afterEach(() => sessionStorage.removeItem('N8N_DEBOUNCE_MULTIPLIER'));
+
+		it('reports a query once its empty state settles, and each distinct query once per open', async () => {
+			const { emitted, rerender } = await renderEmptySearch('zzz');
+
+			await waitFor(() => expect(emitted()['empty-search']).toEqual([['zzz']]));
+
+			await rerender({ query: 'zz' });
+			await waitFor(() => expect(emitted()['empty-search']).toEqual([['zzz'], ['zz']]));
+
+			await rerender({ query: 'zzz' });
+			await settle();
+			expect(emitted()['empty-search']).toEqual([['zzz'], ['zz']]);
+		});
+
+		it('skips a prefix the user typed straight through', async () => {
+			const { emitted, rerender } = await renderEmptySearch('z');
+
+			await rerender({ query: 'zz' });
+			await waitFor(() => expect(emitted()['empty-search']).toEqual([['zz']]));
+			await settle();
+
+			expect(emitted()['empty-search']).toEqual([['zz']]);
+		});
+
+		it('reports an empty state the picker closes on before it settles', async () => {
+			const { emitted, rerender, findByText } = await renderEmptySearch('zzz');
+			await findByText('No results');
+
+			await rerender({ modelValue: false });
+
+			expect(emitted()['empty-search']).toEqual([['zzz']]);
+		});
 	});
 });

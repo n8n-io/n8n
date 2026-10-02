@@ -87,6 +87,11 @@ export class PostHogClient {
 	}
 
 	track(payload: { userId: string; event: string; properties: ITelemetryTrackProperties }): void {
+		// `Telemetry.track` composes `userId` as `<instanceId>#<user_id>` and falls back to the
+		// bare instance id when the properties carry no `user_id`. Capturing that would create one
+		// phantom person profile per instance (#32344), so the event is dropped here. It still
+		// reaches RudderStack, which is why a backend event that forgets `user_id` goes missing
+		// from PostHog alone. `Telemetry.warnAboutMissingUserId` reports that case.
 		if (!payload.userId || payload.userId === this.instanceSettings.instanceId) return;
 
 		const instanceId = payload?.properties?.instance_id;

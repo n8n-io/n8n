@@ -7,7 +7,7 @@ import { mock } from 'vitest-mock-extended';
 import { FileNotFoundError } from 'n8n-core';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { NotFoundError } from '@n8n/errors';
 
 import type { AgentChatAttachmentService } from '../agent-chat-attachment.service';
 import { AgentChatController } from '../agent-chat.controller';
@@ -40,7 +40,12 @@ import {
 
 function makeController() {
 	const agentsService =
-		mock<Pick<AgentsService, 'findById' | 'findByProjectId' | 'findByProjectIdPaginated'>>();
+		mock<
+			Pick<
+				AgentsService,
+				'findById' | 'findByProjectId' | 'findByProjectIdPaginated' | 'isN8nChatPublished'
+			>
+		>();
 	const agentExecutionOrchestratorService = mock<AgentExecutionOrchestratorService>();
 	const agentsBuilderService = mock<AgentsBuilderService>();
 	const agentChatAttachmentService = mock<AgentChatAttachmentService>();
@@ -59,6 +64,7 @@ function makeController() {
 	const chatExecutionService = mock<AgentChatExecutionService>();
 	agentExecutionService.findThreadById.mockResolvedValue(null);
 	agentExecutionService.canUseDraftThread.mockResolvedValue(true);
+	agentExecutionService.canUseProductionChatThread.mockResolvedValue(true);
 	agentValidationService.validateAgentIsRunnable.mockResolvedValue({ missing: [] });
 	const agentTestRunService = new AgentTestRunService(
 		agentExecutionService,
@@ -70,7 +76,7 @@ function makeController() {
 	const messageQueue = mock<AgentMessageQueueService>();
 	messageQueue.enqueue.mockImplementation(async (_input, onInserted) => {
 		onInserted?.('queue-1');
-		return mock<AgentMessageQueue>({ id: 'queue-1' });
+		return { status: 'accepted', item: mock<AgentMessageQueue>({ id: 'queue-1' }) };
 	});
 	const previewStreams = new AgentQueuedPreviewStreamService(
 		mock<Publisher>(),
@@ -108,9 +114,10 @@ function makeController() {
 		agentChatAttachmentService,
 		agentsService: {
 			findById: agentsService.findById,
+			isN8nChatPublished: agentsService.isN8nChatPublished,
 			getConversationHistory: agentExecutionOrchestratorService.getConversationHistory,
 		} as Mocked<
-			Pick<AgentsService, 'findById'> &
+			Pick<AgentsService, 'findById' | 'isN8nChatPublished'> &
 				Pick<AgentExecutionOrchestratorService, 'getConversationHistory'>
 		>,
 	};
@@ -153,17 +160,68 @@ describe('AgentChatController route access scopes', () => {
 	const routes = getRoutesByHandlerName(AgentChatController);
 
 	it.each([
+		['productionChat', 'agent:execute'],
+		['productionChatResume', 'agent:execute'],
+		['cancelProductionChatExecution', 'agent:execute'],
+		['cancelProductionChatRun', 'agent:execute'],
+		['getProductionChatMessages', 'agent:read'],
+		['getProductionChatAttachment', 'agent:read'],
+		['getProductionQueuedMessages', 'agent:read'],
+		['updateProductionQueuedMessage', 'agent:execute'],
+		['removeProductionQueuedMessage', 'agent:execute'],
 		['chat', 'agent:execute'],
 		['chatResume', 'agent:execute'],
 		['cancelChatRun', 'agent:execute'],
 		['cancelChatExecution', 'agent:execute'],
 		['getChatMessages', 'agent:read'],
+		['getQueuedMessages', 'agent:read'],
+		['removeQueuedMessage', 'agent:execute'],
+		['updateQueuedMessage', 'agent:execute'],
+		['reorderQueuedMessage', 'agent:execute'],
+		['steerQueuedMessage', 'agent:execute'],
 		['getBackgroundJobs', 'agent:read'],
 		['getTestChatMessages', 'agent:read'],
 		['clearTestChatMessages', 'agent:update'],
 	])('%s uses %s', (handlerName, scope) => {
 		expect(routes.get(handlerName)?.accessScope?.scope).toBe(scope);
 	});
+});
+
+describe('AgentChatController queue mutations', () => {
+	it.each([
+		['updateQueuedMessage', 'updatePending', { message: 'Edited message' }],
+		[
+			'reorderQueuedMessage',
+			'reorderPending',
+			{ targetQueueId: '2', expectedQueueIds: ['1', '2'] },
+		],
+		['steerQueuedMessage', 'steer', { executionId: 'execution-1' }],
+	] as const)(
+		'%s reads the body after the request and response arguments',
+		async (handler, operation, payload) => {
+			const { controller, agentsService, messageQueue } = makeController();
+			agentsService.findById.mockResolvedValue({ id: 'agent-1' } as never);
+			const params = {
+				projectId: 'project-1',
+				agentId: 'agent-1',
+				threadId: 'thread-1',
+				queueId: '1',
+			};
+
+			await Reflect.apply(controller[handler], controller, [
+				{ params, user: { id: 'user-1' } },
+				makeSseResponse([]),
+				payload,
+			]);
+
+			expect(messageQueue[operation]).toHaveBeenCalledWith({
+				...params,
+				userId: 'user-1',
+				...payload,
+				...(operation === 'updatePending' ? { kind: 'preview' } : {}),
+			});
+		},
+	);
 });
 
 describe('AgentChatController background tasks', () => {
@@ -505,7 +563,7 @@ describe('AgentChatController SSE done payload', () => {
 		let receivedSignal: AbortSignal | undefined;
 		agentExecutionOrchestratorService[method].mockImplementation(async function* (config) {
 			receivedSignal = config.abortSignal;
-			config.onExecutionStarted?.('exec-99', 'thread-1');
+			config.onExecutionStarted?.('exec-99', 'thread-1', ['message-1']);
 			yield { type: 'finish', finishReason: 'stop' };
 			finalizationStarted.resolve();
 			await finalization.promise;
@@ -527,6 +585,7 @@ describe('AgentChatController SSE done payload', () => {
 
 		expect(events[0]).toEqual({
 			type: 'execution-started',
+			inputMessageIds: ['message-1'],
 			executionId: 'exec-99',
 			sessionId: 'thread-1',
 		});
@@ -576,7 +635,7 @@ describe('AgentChatController SSE done payload', () => {
 		});
 		agentExecutionOrchestratorService[method].mockImplementation(async function* (config) {
 			receivedSignal = (config as { abortSignal?: AbortSignal }).abortSignal;
-			if (accepted) config.onExecutionStarted?.('exec-99', 'thread-1');
+			if (accepted) config.onExecutionStarted?.('exec-99', 'thread-1', ['message-1']);
 			markStarted();
 			await runBlocked;
 			yield { type: 'finish', finishReason: 'stop' };
@@ -604,7 +663,7 @@ describe('AgentChatController SSE done payload', () => {
 		const lifecycle: string[] = [];
 		agentExecutionOrchestratorService[method].mockImplementation(async function* (config) {
 			receivedSignal = config.abortSignal;
-			config.onExecutionStarted?.('exec-99', 'thread-1');
+			config.onExecutionStarted?.('exec-99', 'thread-1', ['message-1']);
 			try {
 				yield { type: 'text-delta', id: 'text-1', delta: 'first' };
 				lifecycle.push('continued');
@@ -637,6 +696,29 @@ describe('AgentChatController SSE done payload', () => {
 			expect(writes.join('')).not.toContain('"execution-started"');
 		},
 	);
+});
+
+describe('AgentChatController budget notice', () => {
+	it('emits a budget-notice event when the resumed preview run reports one', async () => {
+		const { controller, agentExecutionOrchestratorService } = makeController();
+		agentExecutionOrchestratorService.resumeForChat.mockImplementation(async function* (config) {
+			config.onBudgetNotice?.();
+			yield { type: 'finish', finishReason: 'stop' };
+		});
+
+		const writes: string[] = [];
+		await controller.chatResume(
+			{ params: { projectId: 'project-1' }, user: { id: 'user-1' } } as never,
+			makeSseResponse(writes),
+			'agent-1',
+			{ runId: 'run-1', toolCallId: 'tc-1', resumeData: { approved: true } } as never,
+		);
+
+		const events = writes
+			.filter((line) => line.startsWith('data: '))
+			.map((line) => JSON.parse(line.slice(6).trim()) as { type: string });
+		expect(events).toContainEqual({ type: 'budget-notice', code: 'budget.alert' });
+	});
 });
 
 describe('AgentChatController HITL cancellation', () => {
@@ -737,16 +819,65 @@ describe('AgentChatController attachment cleanup on failed turns', () => {
 		expect(agentChatAttachmentService.deleteByIds).not.toHaveBeenCalled();
 	});
 
-	it('relays existing SSE events from the main that claims the message', async () => {
-		const { controller, messageQueue, previewStreams } = makeController();
+	it('completes a duplicate request without interrupting the accepted stream or its attachments', async () => {
+		const { controller, messageQueue, previewStreams, agentChatAttachmentService } =
+			makeController();
+		const commit = createDeferredPromise();
+		messageQueue.enqueue.mockImplementationOnce(async (_input, onInserted) => {
+			onInserted?.('queue-1');
+			await commit.promise;
+			return { status: 'accepted', item: mock<AgentMessageQueue>({ id: 'queue-1' }) };
+		});
 		const { res, events } = makeCleanupSseResponse();
+		const payload = {
+			message: 'hi',
+			sessionId: 'thread-1',
+			messageId: 'c4b02d7b-2088-41ce-9c6b-faf8c7b83d8a',
+			newSession: true as const,
+			attachments: [textAttachment('notes.txt')],
+		};
 		const request = controller.chat(
 			{ params: { projectId: 'project-1' }, user: { id: 'user-1' } } as never,
 			res,
 			'agent-1',
-			{ message: 'hi', sessionId: 'thread-1', newSession: true } as never,
+			payload,
 		);
 		await vi.waitFor(() => expect(messageQueue.enqueue).toHaveBeenCalled());
+		expect(events()).toEqual([]);
+		commit.resolve();
+		await vi.waitFor(() =>
+			expect(events()).toContainEqual({
+				type: 'message-queued',
+				queueId: 'queue-1',
+				sessionId: 'thread-1',
+			}),
+		);
+		messageQueue.enqueue.mockResolvedValueOnce({ status: 'duplicate' });
+		agentChatAttachmentService.storeInbound.mockResolvedValueOnce(
+			mock<AgentChatAttachment>({
+				id: 'duplicate-file',
+				fileName: 'notes.txt',
+				mimeType: 'text/plain',
+				fileSizeBytes: 5,
+			}),
+		);
+		const duplicate = makeCleanupSseResponse();
+		await controller.chat(
+			{ params: { projectId: 'project-1' }, user: { id: 'user-1' } } as never,
+			duplicate.res,
+			'agent-1',
+			payload,
+		);
+		expect(messageQueue.enqueue.mock.lastCall?.[0].payload).toMatchObject({
+			messageId: payload.messageId,
+			userId: 'user-1',
+		});
+		expect(duplicate.events()).toEqual([{ type: 'done' }]);
+		expect(duplicate.res.end).toHaveBeenCalledOnce();
+		expect(res.end).not.toHaveBeenCalled();
+		expect(agentChatAttachmentService.deleteByIds).toHaveBeenCalledExactlyOnceWith([
+			'duplicate-file',
+		]);
 		const started = {
 			type: 'execution-started' as const,
 			executionId: 'exec-1',
@@ -758,7 +889,11 @@ describe('AgentChatController attachment cleanup on failed turns', () => {
 		previewStreams.handleRelay({ queueId: 'queue-1', sequence: 2, event: done });
 		previewStreams.handleRelay({ queueId: 'queue-1', sequence: 3, event: null });
 		await request;
-		expect(events()).toEqual([started, done]);
+		expect(events()).toEqual([
+			{ type: 'message-queued', queueId: 'queue-1', sessionId: 'thread-1' },
+			started,
+			done,
+		]);
 		expect(res.end).toHaveBeenCalledOnce();
 	});
 
@@ -824,10 +959,12 @@ describe('AgentChatController attachment cleanup on failed turns', () => {
 		async (newSession) => {
 			const {
 				controller,
+				messageQueue,
 				agentExecutionService,
 				agentChatAttachmentService,
 				agentExecutionOrchestratorService,
 			} = makeController();
+			messageQueue.enqueue.mockResolvedValue({ status: 'duplicate' });
 			agentExecutionService.canUseDraftThread.mockImplementation(
 				async (_threadId, _projectId, _agentId, _userId, options) => !options?.previewChat,
 			);
@@ -838,6 +975,7 @@ describe('AgentChatController attachment cleanup on failed turns', () => {
 				'agent-1',
 				{
 					sessionId: 'thread-1',
+					messageId: 'c4b02d7b-2088-41ce-9c6b-faf8c7b83d8a',
 					newSession,
 					message: 'hi',
 					attachments: [textAttachment('notes.txt')],
@@ -845,6 +983,7 @@ describe('AgentChatController attachment cleanup on failed turns', () => {
 			);
 			expect(events()).toContainEqual(expect.objectContaining({ type: 'error' }));
 			expect(agentChatAttachmentService.storeInbound).not.toHaveBeenCalled();
+			expect(messageQueue.enqueue).not.toHaveBeenCalled();
 			expect(agentExecutionOrchestratorService.executeForChat).not.toHaveBeenCalled();
 		},
 	);
@@ -893,5 +1032,177 @@ describe('AgentChatController attachment download', () => {
 		await expect(controller.getChatAttachment(req, res)).rejects.toThrow(NotFoundError);
 		// Headers must not be written for a failed stream open.
 		expect((res as { setHeader: ReturnType<typeof vi.fn> }).setHeader).not.toHaveBeenCalled();
+	});
+});
+
+describe('AgentChatController production n8n Chat', () => {
+	const request = { params: { projectId: 'project-1' }, user: { id: 'user-1' } };
+
+	it('rejects an unpublished channel before starting a turn', async () => {
+		const { controller, agentsService, agentExecutionOrchestratorService } = makeController();
+		agentsService.isN8nChatPublished.mockResolvedValue(false);
+		const writes: string[] = [];
+		await controller.productionChat(request as never, makeSseResponse(writes), 'agent-1', {
+			message: 'hello',
+		} as never);
+		expect(writes).toContain(
+			'data: {"type":"error","message":"This agent is not available in n8n Chat.","errorCode":"agent_unavailable"}\n\n',
+		);
+		expect(agentExecutionOrchestratorService.executeForN8nChatPublished).not.toHaveBeenCalled();
+	});
+
+	it('queues a published turn with a user-owned memory resource and relays its stream', async () => {
+		const { controller, agentsService, messageQueue, previewStreams } = makeController();
+		agentsService.isN8nChatPublished.mockResolvedValue(true);
+		const writes: string[] = [];
+		const pending = controller.productionChat(
+			request as never,
+			makeSseResponse(writes),
+			'agent-1',
+			{ message: 'hello', messageId: 'c4b02d7b-2088-41ce-9c6b-faf8c7b83d8a' } as never,
+		);
+		await vi.waitFor(() => expect(messageQueue.enqueue).toHaveBeenCalled());
+		expect(messageQueue.enqueue.mock.lastCall?.[0]).toMatchObject({
+			agentId: 'agent-1',
+			projectId: 'project-1',
+			sessionMode: 'new',
+			source: 'n8n_chat_production',
+			payload: {
+				kind: 'n8n_chat',
+				message: 'hello',
+				messageId: 'c4b02d7b-2088-41ce-9c6b-faf8c7b83d8a',
+				userId: 'user-1',
+				resourceId: 'n8n-chat-production:user-1',
+			},
+		});
+		const threadId = messageQueue.enqueue.mock.lastCall![0].threadId;
+		const started = {
+			type: 'execution-started' as const,
+			executionId: 'exec-99',
+			sessionId: threadId,
+			inputMessageIds: ['message-1'],
+		};
+		await vi.waitFor(() => expect(writes.join('')).toContain('message-queued'));
+		previewStreams.handleRelay({ queueId: 'queue-1', sequence: 1, event: started });
+		previewStreams.handleRelay({ queueId: 'queue-1', sequence: 2, event: null });
+		await pending;
+		expect(
+			writes.filter((line) => line.startsWith('data:')).map((line) => JSON.parse(line.slice(6))),
+		).toEqual([{ type: 'message-queued', queueId: 'queue-1', sessionId: threadId }, started]);
+	});
+
+	it('keeps the client session ID for a new session so a retry is a duplicate', async () => {
+		const { controller, agentsService, agentExecutionService, messageQueue } = makeController();
+		agentsService.isN8nChatPublished.mockResolvedValue(true);
+		messageQueue.enqueue.mockResolvedValue({ status: 'duplicate' });
+		const writes: string[] = [];
+		await controller.productionChat(request as never, makeSseResponse(writes), 'agent-1', {
+			message: 'hello',
+			sessionId: 'thread-1',
+			newSession: true,
+		} as never);
+		expect(agentExecutionService.canUseProductionChatThread).toHaveBeenCalledWith(
+			'thread-1',
+			'project-1',
+			'agent-1',
+			'user-1',
+			'new',
+		);
+		expect(messageQueue.enqueue.mock.lastCall?.[0]).toMatchObject({
+			threadId: 'thread-1',
+			sessionMode: 'new',
+		});
+		expect(writes).toContain('data: {"type":"done"}\n\n');
+	});
+
+	it('rejects a foreign session before saving an attachment', async () => {
+		const { controller, agentsService, agentExecutionService, agentChatAttachmentService } =
+			makeController();
+		agentsService.isN8nChatPublished.mockResolvedValue(true);
+		agentExecutionService.canUseProductionChatThread.mockResolvedValue(false);
+		const writes: string[] = [];
+		await controller.productionChat(request as never, makeSseResponse(writes), 'agent-1', {
+			message: 'hello',
+			sessionId: 'foreign-thread',
+			attachments: [
+				{
+					fileName: 'note.txt',
+					mimeType: 'text/plain',
+					data: Buffer.from('hi').toString('base64'),
+				},
+			],
+		} as never);
+		expect(agentChatAttachmentService.storeInbound).not.toHaveBeenCalled();
+		expect(writes.some((line) => line.includes('Session not found'))).toBe(true);
+	});
+
+	it('checks publication and the production checkpoint scope before resuming', async () => {
+		const { controller, agentsService, agentExecutionOrchestratorService } = makeController();
+		agentsService.isN8nChatPublished.mockResolvedValue(true);
+		agentExecutionOrchestratorService.resumeForChat.mockImplementation(async function* (config) {
+			config.onExecutionStarted?.('exec-99', 'thread-1', ['message-1']);
+			yield { type: 'text-delta', id: 'text-1', delta: 'Done' };
+		});
+		const writes: string[] = [];
+		await controller.productionChatResume(request as never, makeSseResponse(writes), 'agent-1', {
+			runId: 'run-1',
+			toolCallId: 'call-1',
+			resumeData: { approved: true },
+		} as never);
+		expect(agentExecutionOrchestratorService.resumeForChat).toHaveBeenCalledWith(
+			expect.objectContaining({
+				usePublishedVersion: true,
+				source: 'n8n_chat_production',
+				expectedMemory: { resourceId: 'n8n-chat-production:user-1' },
+			}),
+		);
+		expect(
+			writes.filter((line) => line.startsWith('data:')).map((line) => JSON.parse(line.slice(6))),
+		).toContainEqual({
+			type: 'execution-started',
+			executionId: 'exec-99',
+			sessionId: 'thread-1',
+			inputMessageIds: ['message-1'],
+		});
+	});
+
+	it('rejects production resume when the channel is not published', async () => {
+		const { controller, agentsService, agentExecutionOrchestratorService } = makeController();
+		agentsService.isN8nChatPublished.mockResolvedValue(false);
+		const writes: string[] = [];
+		await controller.productionChatResume(request as never, makeSseResponse(writes), 'agent-1', {
+			runId: 'run-1',
+			toolCallId: 'call-1',
+			resumeData: { approved: true },
+		} as never);
+
+		expect(agentExecutionOrchestratorService.resumeForChat).not.toHaveBeenCalled();
+		expect(writes.some((line) => line.includes('agent_unavailable'))).toBe(true);
+	});
+
+	it('scopes the pending-message API to n8n Chat items', async () => {
+		const { controller, agentsService, messageQueue } = makeController();
+		agentsService.isN8nChatPublished.mockResolvedValue(true);
+		const params = {
+			projectId: 'project-1',
+			agentId: 'agent-1',
+			threadId: 'thread-1',
+			queueId: '1',
+		};
+		const req = { params, user: { id: 'user-1' } } as never;
+		await controller.getProductionQueuedMessages(req);
+		await controller.updateProductionQueuedMessage(req, makeSseResponse([]), { message: 'Edited' });
+		await controller.removeProductionQueuedMessage(req);
+		const scope = { ...params, userId: 'user-1', kind: 'n8n_chat' };
+		expect(messageQueue.listPending).toHaveBeenCalledWith(scope);
+		expect(messageQueue.updatePending).toHaveBeenCalledWith({ ...scope, message: 'Edited' });
+		expect(messageQueue.removePending).toHaveBeenCalledWith(scope);
+
+		agentsService.isN8nChatPublished.mockResolvedValue(false);
+		await expect(controller.getProductionQueuedMessages(req)).rejects.toThrow(NotFoundError);
+		await expect(
+			controller.updateProductionQueuedMessage(req, makeSseResponse([]), { message: 'x' }),
+		).rejects.toThrow(NotFoundError);
+		await expect(controller.removeProductionQueuedMessage(req)).rejects.toThrow(NotFoundError);
 	});
 });

@@ -10,32 +10,33 @@ import {
 } from '@n8n/design-system';
 import type { TableOptions } from '@n8n/design-system';
 
-import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
+import { useDocumentTitle } from '@n8n/composables/useDocumentTitle';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { useToast } from '@n8n/composables/useToast';
 import { useSettingsStore } from '@n8n/stores/settings.store';
-import { useUIStore } from '@/app/stores/ui.store';
 import type { McpAgent } from '@/features/ai/mcpAccess/mcp.types';
 import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
 import {
 	LOADING_INDICATOR_TIMEOUT,
-	MCP_CONNECT_AGENTS_MODAL_KEY,
 	MCP_DOCS_PAGE_URL,
 	MCP_SETTINGS_VIEW,
 } from '@/features/ai/mcpAccess/mcp.constants';
 import AgentsTable from '@/features/ai/mcpAccess/components/tabs/AgentsTable.vue';
+import MCPConnectAgentsModal from '@/features/ai/mcpAccess/modals/MCPConnectAgentsModal.vue';
 
 const i18n = useI18n();
 const toast = useToast();
 const telemetry = useTelemetry();
 const router = useRouter();
-const documentTitle = useDocumentTitle();
+const documentTitle = useDocumentTitle({
+	releaseChannel: useSettingsStore().settings.releaseChannel,
+});
 const mcpStore = useMCPStore();
 const settingsStore = useSettingsStore();
-const uiStore = useUIStore();
 
 const agentsLoading = ref(false);
+const showConnectAgentsDialog = ref(false);
 const availableAgents = ref<McpAgent[]>([]);
 const availableAgentsTotal = ref(0);
 const agentsTableState = ref<TableOptions>({
@@ -132,12 +133,7 @@ const onBulkRemoveAgentsMCPAccess = async (agentIds: string[]) => {
 };
 
 const openConnectAgentsModal = () => {
-	uiStore.openModalWithData({
-		name: MCP_CONNECT_AGENTS_MODAL_KEY,
-		data: {
-			onEnableMcpAccess: onBulkEnableAgentsMCPAccess,
-		},
-	});
+	showConnectAgentsDialog.value = true;
 	telemetry.track(TELEMETRY_EVENT.AGENTS.USER_CLICKED_CONNECT_AGENTS_FROM_MCP_SETTINGS, {});
 };
 
@@ -147,7 +143,7 @@ const onBack = () => {
 
 onMounted(async () => {
 	documentTitle.set(i18n.baseText('settings.mcp.agentsExposed.page.title'));
-	if (!mcpStore.mcpAccessEnabled || !settingsStore.isModuleActive('agents')) {
+	if (!mcpStore.mcpAccessEnabled || !settingsStore.isAgentsEnabled) {
 		await router.replace({ name: MCP_SETTINGS_VIEW });
 		return;
 	}
@@ -200,6 +196,10 @@ onMounted(async () => {
 				@update:options="onAgentsTableUpdate"
 			/>
 		</div>
+		<MCPConnectAgentsModal
+			v-model:open="showConnectAgentsDialog"
+			:enable-mcp-access="onBulkEnableAgentsMCPAccess"
+		/>
 	</N8nSettingsLayout>
 </template>
 

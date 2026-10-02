@@ -1,4 +1,5 @@
 import type { WorkflowGraph } from '../graph';
+import type { ResponseExpectation } from '../response-channel';
 import type {
 	CallerContext,
 	ExecutionMode,
@@ -19,6 +20,8 @@ interface BaseExecutionRecord {
 	workflow: WorkflowDocument;
 	triggerOutputs: TriggerOutputs | null;
 	callerContext: CallerContext;
+	/** What kind of a response the caller expects. */
+	responseExpectation: ResponseExpectation;
 }
 
 /** A new execution to persist. Timestamps are assigned by the store. */
@@ -56,9 +59,17 @@ export interface ExecutionStore {
 	/**
 	 * Record an execution's outcome: writes the final status and the finish time
 	 * together, as a compare-and-set on the live statuses, so they can't be
-	 * observed apart.
+	 * observed apart. Returns the finish time it wrote, so the caller reports the
+	 * time the row records, or `null` when the compare-and-set lost.
 	 */
-	finishExecution(id: string, status: 'completed' | 'failed'): Promise<boolean>;
+	finishExecution(id: string, status: 'completed' | 'failed'): Promise<{ finishedAt: Date } | null>;
+
+	/**
+	 * End an execution on request, from any status that has not ended. Returns
+	 * the finish time it wrote, so the caller reports the time the row records,
+	 * or `null` when the execution had already ended.
+	 */
+	cancelExecution(id: string): Promise<{ finishedAt: Date } | null>;
 
 	/**
 	 * Sets a live execution's status from the state of its steps: `waiting` when

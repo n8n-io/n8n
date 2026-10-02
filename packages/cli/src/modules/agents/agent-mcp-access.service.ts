@@ -3,7 +3,7 @@ import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 
 import { CollaborationService } from '@/collaboration/collaboration.service';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { BadRequestError } from '@n8n/errors';
 import { ProjectScopeService } from '@/permissions.ee/project-scope.service';
 
 import type { Agent } from './entities/agent.entity';

@@ -8,8 +8,7 @@ import type { Message, Thread } from 'chat';
 import escapeRegExp from 'lodash/escapeRegExp';
 import { InstanceSettings } from 'n8n-core';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ConflictError } from '@/errors/response-errors/conflict.error';
+import { BadRequestError, ConflictError } from '@n8n/errors';
 
 import { AgentRepository } from '../../repositories/agent.repository';
 import {

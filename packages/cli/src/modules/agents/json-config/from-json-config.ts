@@ -177,6 +177,7 @@ export async function buildFromJson(
 	// Tools
 	if (config.tools) {
 		for (const ref of config.tools) {
+			if (ref.enabled === false) continue;
 			const built = await resolveToolRef(ref, toolDescriptors, options);
 			if (built) {
 				agent.tool(built);
@@ -389,6 +390,7 @@ function getConfiguredSkillSource(
 	>();
 
 	for (const ref of refs) {
+		if (ref.enabled === false) continue;
 		if (seen.has(ref.id)) continue;
 		seen.add(ref.id);
 		const skill = skills[ref.id];

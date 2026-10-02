@@ -2,17 +2,12 @@ import { nextTick } from 'vue';
 import { createTestingPinia } from '@pinia/testing';
 import { waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
-import { createComponentRenderer } from '@/__tests__/render';
-import { mockedStore, type MockedStore } from '@/__tests__/utils';
+import { createComponentRenderer, mockedStore, type MockedStore } from '@n8n/frontend-test-utils';
 import SettingsMCPAgentsView from '@/features/ai/mcpAccess/SettingsMCPAgentsView.vue';
 import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
-import { useUIStore } from '@/app/stores/ui.store';
 import type { FrontendSettings } from '@n8n/api-types';
-import {
-	MCP_CONNECT_AGENTS_MODAL_KEY,
-	MCP_SETTINGS_VIEW,
-} from '@/features/ai/mcpAccess/mcp.constants';
+import { MCP_SETTINGS_VIEW } from '@/features/ai/mcpAccess/mcp.constants';
 import type { McpAgent } from '@/features/ai/mcpAccess/mcp.types';
 
 const { routerPush, routerReplace } = vi.hoisted(() => ({
@@ -31,7 +26,7 @@ vi.mock('vue-router', async (importOriginal) => ({
 	},
 }));
 
-vi.mock('@/app/composables/useDocumentTitle', () => ({
+vi.mock('@n8n/composables/useDocumentTitle', () => ({
 	useDocumentTitle: () => ({
 		set: vi.fn(),
 	}),
@@ -40,7 +35,6 @@ vi.mock('@/app/composables/useDocumentTitle', () => ({
 let pinia: ReturnType<typeof createTestingPinia>;
 let mcpStore: MockedStore<typeof useMCPStore>;
 let settingsStore: MockedStore<typeof useSettingsStore>;
-let uiStore: MockedStore<typeof useUIStore>;
 
 const createComponent = createComponentRenderer(SettingsMCPAgentsView, {
 	global: {
@@ -49,6 +43,11 @@ const createComponent = createComponentRenderer(SettingsMCPAgentsView, {
 				inheritAttrs: true,
 				template:
 					'<div><button data-test-id="agents-table-page-2" @click="$emit(\'update:options\', { page: 1, itemsPerPage: 10, sortBy: [] })">Page 2</button><button data-test-id="agents-table-page-size-50" @click="$emit(\'update:options\', { page: 3, itemsPerPage: 50, sortBy: [] })">Page size 50</button><button data-test-id="agents-table-bulk-remove" @click="$emit(\'bulkRemoveMcpAccess\', [\'agent-1\', \'agent-2\'])">Bulk remove</button>Agents Table</div>',
+			},
+			MCPConnectAgentsModal: {
+				props: ['open', 'enableMcpAccess'],
+				template:
+					'<div v-if="open" data-test-id="mcp-connect-agents-dialog-stub"><button data-test-id="stub-enable-access" @click="enableMcpAccess([\'agent-1\', \'agent-2\'])">Enable</button></div>',
 			},
 		},
 	},
@@ -75,7 +74,6 @@ describe('SettingsMCPAgentsView', () => {
 		pinia = createTestingPinia();
 		mcpStore = mockedStore(useMCPStore);
 		settingsStore = mockedStore(useSettingsStore);
-		uiStore = mockedStore(useUIStore);
 
 		settingsStore.settings = {
 			enterprise: {},
@@ -88,7 +86,7 @@ describe('SettingsMCPAgentsView', () => {
 				autoExposeNewWorkflows: false,
 			},
 		};
-		settingsStore.isModuleActive.mockReturnValue(true);
+		settingsStore.isAgentsEnabled = true;
 
 		mockAgentPages();
 	});
@@ -113,8 +111,8 @@ describe('SettingsMCPAgentsView', () => {
 		expect(mcpStore.fetchAgentsAvailableForMCPPage).not.toHaveBeenCalled();
 	});
 
-	it('should redirect to the MCP settings view when the agents module is inactive', async () => {
-		settingsStore.isModuleActive.mockReturnValue(false);
+	it('should redirect to the MCP settings view when agents are disabled', async () => {
+		settingsStore.isAgentsEnabled = false;
 
 		createComponent({ pinia });
 		await nextTick();
@@ -188,14 +186,7 @@ describe('SettingsMCPAgentsView', () => {
 			});
 			await userEvent.click(getByTestId('mcp-connect-agents-header-button'));
 
-			expect(uiStore.openModalWithData).toHaveBeenCalledWith(
-				expect.objectContaining({
-					name: MCP_CONNECT_AGENTS_MODAL_KEY,
-					data: expect.objectContaining({
-						onEnableMcpAccess: expect.any(Function),
-					}),
-				}),
-			);
+			expect(getByTestId('mcp-connect-agents-dialog-stub')).toBeInTheDocument();
 		});
 	});
 
@@ -216,22 +207,20 @@ describe('SettingsMCPAgentsView', () => {
 				expect(getByTestId('mcp-connect-agents-header-button')).toBeVisible();
 			});
 			await userEvent.click(getByTestId('mcp-connect-agents-header-button'));
-
-			const modalCall = vi.mocked(uiStore.openModalWithData).mock.calls.at(-1)?.[0] as unknown as {
-				data: { onEnableMcpAccess: (agentIds: string[]) => Promise<void> };
-			};
 			mcpStore.fetchAgentsAvailableForMCPPage.mockClear();
 
-			await modalCall.data.onEnableMcpAccess(['agent-1', 'agent-2']);
+			await userEvent.click(getByTestId('stub-enable-access'));
 
+			await waitFor(() => {
+				expect(mcpStore.fetchAgentsAvailableForMCPPage).toHaveBeenCalledWith(1, 10);
+			});
 			expect(mcpStore.toggleAgentsMcpAccess).toHaveBeenCalledWith(
 				{ agentIds: ['agent-1', 'agent-2'] },
 				true,
 			);
-			expect(mcpStore.fetchAgentsAvailableForMCPPage).toHaveBeenCalledWith(1, 10);
 		});
 
-		it('should remove MCP access for bulk-selected agents and refresh the table', async () => {
+		it('should disable MCP access for bulk-selected agents and refresh the table', async () => {
 			const { getByTestId } = createComponent({ pinia });
 			await nextTick();
 			mcpStore.fetchAgentsAvailableForMCPPage.mockClear();

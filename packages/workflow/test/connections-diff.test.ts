@@ -618,4 +618,111 @@ describe('compareConnections', () => {
 			expect(result.removed).toEqual({});
 		});
 	});
+
+	describe('special connection map keys', () => {
+		// Build connections with an own key that a plain object literal would
+		// otherwise route through the prototype (JSON.parse mirrors the request path).
+		const parseConnections = (json: string): IConnections => JSON.parse(json) as IConnections;
+
+		afterEach(() => {
+			// Guard against a leaked key surviving into other tests. The old accumulator could
+			// write onto Object.prototype (bare "__proto__" key) or onto the Object constructor
+			// itself ("constructor" key), so clear both.
+			delete (Object.prototype as Record<string, unknown>).main;
+			delete (Object as unknown as Record<string, unknown>).main;
+		});
+
+		it('should record a connection added under a special node name', () => {
+			const prev = parseConnections('{"__proto__":{"main":[[]]}}');
+			const next = parseConnections(
+				'{"__proto__":{"main":[[{"node":"node0","type":"main","index":0}]]}}',
+			);
+
+			const result = compareConnections(prev, next);
+
+			expect(({} as Record<string, unknown>).main).toBeUndefined();
+			expect(Object.prototype.hasOwnProperty.call(result.added, '__proto__')).toBe(true);
+			expect(result.added['__proto__'].main).toEqual([
+				{ sourceIndex: 0, value: { index: 0, connection: createConnection('node0', 'main', 0) } },
+			]);
+			expect(result.removed).toEqual({});
+		});
+
+		it('should record a connection removed under a special node name', () => {
+			const prev = parseConnections(
+				'{"__proto__":{"main":[[{"node":"node0","type":"main","index":0}]]}}',
+			);
+			const next = parseConnections('{"__proto__":{"main":[[]]}}');
+
+			const result = compareConnections(prev, next);
+
+			expect(({} as Record<string, unknown>).main).toBeUndefined();
+			expect(Object.prototype.hasOwnProperty.call(result.removed, '__proto__')).toBe(true);
+			expect(result.removed['__proto__'].main).toEqual([
+				{ sourceIndex: 0, value: { index: 0, connection: createConnection('node0', 'main', 0) } },
+			]);
+			expect(result.added).toEqual({});
+		});
+
+		it('should detect a connection added under a special input name', () => {
+			const prev = parseConnections('{"node1":{"__proto__":[[]]}}');
+			const next = parseConnections(
+				'{"node1":{"__proto__":[[{"node":"node0","type":"main","index":0}]]}}',
+			);
+
+			const result = compareConnections(prev, next);
+
+			expect(result.added.node1['__proto__']).toEqual([
+				{ sourceIndex: 0, value: { index: 0, connection: createConnection('node0', 'main', 0) } },
+			]);
+			expect(result.removed).toEqual({});
+		});
+
+		it('should detect a connection removed under a special input name', () => {
+			const prev = parseConnections(
+				'{"node1":{"__proto__":[[{"node":"node0","type":"main","index":0}]]}}',
+			);
+			const next = parseConnections('{"node1":{"__proto__":[[]]}}');
+
+			const result = compareConnections(prev, next);
+
+			expect(({} as Record<string, unknown>).main).toBeUndefined();
+			expect(result.removed.node1['__proto__']).toEqual([
+				{ sourceIndex: 0, value: { index: 0, connection: createConnection('node0', 'main', 0) } },
+			]);
+			expect(result.added).toEqual({});
+		});
+
+		it('should report no change when both sides carry a special key', () => {
+			const connections = parseConnections(
+				'{"__proto__":{"__proto__":[[{"node":"node0","type":"main","index":0}]]}}',
+			);
+
+			const result = compareConnections(connections, connections);
+
+			expect(({} as Record<string, unknown>).main).toBeUndefined();
+			expect(result.added).toEqual({});
+			expect(result.removed).toEqual({});
+		});
+
+		it('should not leak keys for "constructor" and "prototype" node names', () => {
+			const prev = parseConnections('{"constructor":{"main":[[]]},"prototype":{"main":[[]]}}');
+			const next = parseConnections(
+				'{"constructor":{"main":[[{"node":"node0","type":"main","index":0}]]},' +
+					'"prototype":{"main":[[{"node":"node0","type":"main","index":0}]]}}',
+			);
+
+			const result = compareConnections(prev, next);
+
+			// No write reached Object.prototype or the Object constructor. The old accumulator
+			// resolved "constructor"/"prototype" through the prototype chain, so these keys landed
+			// on inherited objects rather than as own keys of `added`.
+			expect(({} as Record<string, unknown>).main).toBeUndefined();
+			expect((Object as unknown as Record<string, unknown>).main).toBeUndefined();
+			expect(Object.prototype.hasOwnProperty.call(result.added, 'constructor')).toBe(true);
+			expect(Object.prototype.hasOwnProperty.call(result.added, 'prototype')).toBe(true);
+			expect(result.added['constructor'].main).toHaveLength(1);
+			expect(result.added['prototype'].main).toHaveLength(1);
+		});
+	});
 });

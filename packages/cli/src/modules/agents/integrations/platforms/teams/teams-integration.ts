@@ -10,16 +10,23 @@ import {
 	AgentChatIntegration,
 	type AgentChannelPreconditionContext,
 	type AgentChatIntegrationContext,
+	type BridgeExecutionContext,
+	type BridgeMessageContextParams,
+	type BridgeResumeExecutionContext,
 } from '../../agent-chat-integration';
 import { expandSelectsToButtons, type SuspendComponent } from '../../component-mapper';
 import { assertCredentialNotClaimed } from '../../credential-claim';
 import { loadTeamsAdapter } from '../../esm-loader';
 import { resolveIntegrationActionDefinitions } from '../../integration-tool-definitions';
+import { startTypingIndicator } from '../typing-indicator';
 
 /** Pinned so a stray TEAMS_API_URL env var cannot redirect proactive sends. */
 const TEAMS_API_URL = 'https://smba.trafficmanager.net/teams';
 
 const GLOBAL_GRAPH_API_BASE_URL = 'https://graph.microsoft.com';
+
+/** Interval picked to match Discord's; Teams does not document the expiry. */
+const TEAMS_TYPING_REFRESH_MS = 8000;
 
 /**
  * A tenant ID is a GUID or a verified domain. The value reaches the Teams SDK,
@@ -109,7 +116,18 @@ export class TeamsIntegration extends AgentChatIntegration {
 	 */
 	readonly targetSuspensionCardAtActingUser = true;
 
-	readonly disableStreaming = true;
+	/**
+	 * A direct message renders progressively; every other conversation posts one
+	 * message. The choice is made for each conversation in
+	 * `createBridgeExecutionContext` rather than here.
+	 */
+	readonly disableStreaming = false;
+
+	/**
+	 * Text that follows a card is posted on its own rather than folded back into
+	 * the message being edited above it.
+	 */
+	readonly singleStreamedRunPerTurn = true;
 
 	constructor(
 		private readonly logger: Logger,
@@ -154,6 +172,52 @@ export class TeamsIntegration extends AgentChatIntegration {
 	 */
 	normalizeComponents(components: SuspendComponent[]): SuspendComponent[] {
 		return expandSelectsToButtons(components);
+	}
+
+	/**
+	 * Only a direct message renders progressively. Post-and-edit would work in a
+	 * channel too, but a message that visibly rewrites itself is far more
+	 * disruptive there, so that stays a separate decision.
+	 */
+	async createBridgeExecutionContext(
+		params: BridgeMessageContextParams,
+	): Promise<BridgeExecutionContext> {
+		const streamable = params.thread.isDM;
+		return {
+			platformAgentContext: {},
+			forceBuffered: !streamable,
+			// A queued message is only captured here; the turn that would clear the
+			// indicator runs later, so starting one now leaves it refreshing alone.
+			statusHandle:
+				params.startStatus === false
+					? undefined
+					: this.startTyping(params.thread, params.logger, params.agentId),
+		};
+	}
+
+	/** A card action arrives as an invoke activity, which carries no streamer. */
+	async createResumeExecutionContext(params: {
+		thread: BridgeMessageContextParams['thread'];
+		logger: BridgeMessageContextParams['logger'];
+		agentId: string;
+	}): Promise<BridgeResumeExecutionContext> {
+		return {
+			forceBuffered: true,
+			statusHandle: this.startTyping(params.thread, params.logger, params.agentId),
+		};
+	}
+
+	private startTyping(
+		thread: BridgeMessageContextParams['thread'],
+		logger: BridgeMessageContextParams['logger'],
+		agentId: string,
+	) {
+		return startTypingIndicator(thread, {
+			logger,
+			agentId,
+			platform: 'Microsoft Teams',
+			refreshMs: TEAMS_TYPING_REFRESH_MS,
+		});
 	}
 
 	/**

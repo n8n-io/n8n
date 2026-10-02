@@ -2,7 +2,7 @@ import { mock } from 'vitest-mock-extended';
 
 import type { Push } from '@/push';
 import { WorkflowPushNotifier } from '@/workflows/workflow-push-notifier.service';
-import type { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
+import type { WorkflowSharingService } from '@n8n/backend-services';
 
 describe('WorkflowPushNotifier', () => {
 	const push = mock<Push>();

@@ -13,7 +13,7 @@ import type { ChatIntegrationService } from '../integrations/chat-integration.se
 import type { AgentChannelStatusRepository } from '../repositories/agent-channel-status.repository';
 import type { AgentRepository } from '../repositories/agent.repository';
 import type { CollaborationService } from '@/collaboration/collaboration.service';
-import { LockedError } from '@/errors/response-errors/locked.error';
+import { LockedError } from '@n8n/errors';
 import {
 	expectProjectScopedAgentRoutes,
 	getRoutesByHandlerName,
@@ -165,6 +165,29 @@ describe('AgentIntegrationsController integration management', () => {
 		expect(managementService.connect).toHaveBeenCalledWith(
 			expect.objectContaining({ agent, user, integration }),
 		);
+	});
+
+	it('delegates a credential-less n8n Chat connect', async () => {
+		const { controller, managementService, agentRepository } = makeController();
+		const integration = { type: 'n8n_chat', credentialId: '' } satisfies AgentIntegrationConfig;
+		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+		managementService.connect.mockResolvedValue({ integration, savedAgent: agent });
+
+		const result = await controller.connectIntegration(
+			{
+				params: { projectId: agent.projectId },
+				user,
+				body: integration,
+			} as never,
+			undefined as never,
+			agent.id,
+			integration as never,
+		);
+
+		expect(managementService.connect).toHaveBeenCalledWith(
+			expect.objectContaining({ agent, user, integration }),
+		);
+		expect(result).toEqual({ status: 'connected' });
 	});
 
 	it('reports configured when the saved agent is unpublished', async () => {
@@ -467,6 +490,39 @@ describe('AgentIntegrationsController channel status', () => {
 			{ type: slack.type, credentialId: slack.credentialId, status: 'connected' },
 			{ type: telegram.type, credentialId: telegram.credentialId, status: 'starting' },
 		]);
+	});
+
+	it('reports draft and active n8n Chat availability separately', async () => {
+		const agent = {
+			...publishedAgent,
+			activeVersion: {
+				schema: {
+					name: 'Agent',
+					model: 'openai:gpt-4o-mini',
+					instructions: 'Help',
+					integrations: [{ type: 'n8n_chat', credentialId: '' }],
+				},
+			},
+		} as Agent;
+		const { response } = await statusOf(agent, []);
+		expect(response.n8nChat).toEqual({ draftEnabled: false, publishedEnabled: true });
+		expect(response.integrations).toEqual([
+			{ type: slack.type, credentialId: slack.credentialId, status: 'starting' },
+			{ type: telegram.type, credentialId: telegram.credentialId, status: 'starting' },
+			{ type: 'n8n_chat', status: 'connected' },
+		]);
+		const unpublished = {
+			...agent,
+			activeVersionId: null,
+			activeVersion: null,
+			integrations: [...agent.integrations, { type: 'n8n_chat', credentialId: '' }],
+		} as Agent;
+		const { response: unpublishedResponse } = await statusOf(unpublished, []);
+		expect(unpublishedResponse.n8nChat).toEqual({ draftEnabled: true, publishedEnabled: false });
+		expect(unpublishedResponse.integrations).toContainEqual({
+			type: 'n8n_chat',
+			status: 'configured',
+		});
 	});
 
 	it('reports the reason a channel could not start', async () => {

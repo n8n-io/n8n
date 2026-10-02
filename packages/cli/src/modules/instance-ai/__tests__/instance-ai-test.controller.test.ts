@@ -15,7 +15,7 @@ import type { ProjectRepository, UserRepository, WorkflowRepository } from '@n8n
 import type { Request, Response } from 'express';
 import { mock } from 'vitest-mock-extended';
 
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { ForbiddenError } from '@n8n/errors';
 
 import type { InstanceAiMemoryService } from '../instance-ai-memory.service';
 import { InstanceAiTestController } from '../instance-ai-test.controller';

@@ -120,6 +120,7 @@ defineExpose({
 			:remote-method="searchWorkflows"
 			size="medium"
 			:popper-class="popperClass"
+			:teleported="false"
 			@visible-change="onVisibleChange"
 		>
 			<N8nOption v-if="showEmptyState" value="" disabled :class="$style['empty-option']">
