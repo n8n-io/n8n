@@ -22,6 +22,12 @@ import * as utils from '../shared/utils/';
 
 mockInstance(Telemetry);
 
+// Must run before `setupTestServer`: registering the public API router eagerly constructs
+// `N8nPackagesPublicController`'s DI graph (down to the credential matchers), which would
+// otherwise capture the real `CredentialTypes` singleton before this mock replaces it.
+const credentialTypesMock = mockInstance(CredentialTypes);
+credentialTypesMock.recognizes.mockReturnValue(true);
+
 const testServer = utils.setupTestServer({ endpointGroups: ['publicApi'] });
 
 let owner: User;
@@ -29,9 +35,6 @@ let ownerPersonalProject: Project;
 let authOwnerAgent: SuperAgentTest;
 
 beforeAll(async () => {
-	const credentialTypesMock = mockInstance(CredentialTypes);
-	credentialTypesMock.recognizes.mockReturnValue(true);
-
 	// Register node types so imports pass the default fail-on-missing-node-type check.
 	await utils.initNodeTypes();
 
