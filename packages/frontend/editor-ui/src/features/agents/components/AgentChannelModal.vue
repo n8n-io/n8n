@@ -516,8 +516,10 @@ async function saveN8nChat() {
 		if (settingUp) {
 			await connect(N8N_CHAT_INTEGRATION_TYPE, '');
 		}
-	} catch {
-		// Only `connect` is left to throw here, as with `saveChannelConfig`.
+	} catch (error) {
+		// Only `connect` is left to throw here. The n8n Chat view shows no inline
+		// error, so the failure goes to a toast.
+		toast.showError(error, i18n.baseText('agents.channels.modal.saveChannelError'));
 		trackSetupFailure(N8N_CHAT_INTEGRATION_TYPE, 'connect');
 		return;
 	} finally {
