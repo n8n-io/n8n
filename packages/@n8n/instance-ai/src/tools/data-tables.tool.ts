@@ -397,6 +397,24 @@ async function reportDataTable(
 	});
 }
 
+/**
+ * Report a table that a column action changed. The action accepts a table name
+ * as `dataTableId`, so resolve it to the table's ID. A failed lookup must not
+ * fail the change that already happened.
+ */
+async function reportResolvedDataTable(context: InstanceAiContext, input: DataTableReferenceInput) {
+	const table = await resolveDataTableReference(context, input, 'read').catch(() => ({
+		dataTableId: input.dataTableId,
+		dataTableName: input.dataTableName,
+		projectId: input.projectId,
+	}));
+	await reportDataTable(context, {
+		id: table.dataTableId,
+		name: table.dataTableName,
+		projectId: table.projectId,
+	});
+}
+
 async function handleList(
 	context: InstanceAiContext,
 	input: Extract<FullInput, { action: 'list' }>,
@@ -630,7 +648,7 @@ async function handleAddColumn(
 		{ name: input.columnName, type: input.type },
 		{ projectId: input.projectId },
 	);
-	await reportDataTable(context, { id: input.dataTableId });
+	await reportResolvedDataTable(context, input);
 	return { column };
 }
 
@@ -674,7 +692,7 @@ async function handleDeleteColumn(
 	await context.dataTableService.deleteColumn(input.dataTableId, input.columnId, {
 		projectId: input.projectId,
 	});
-	await reportDataTable(context, { id: input.dataTableId });
+	await reportResolvedDataTable(context, input);
 	return { success: true };
 }
 
@@ -719,7 +737,7 @@ async function handleRenameColumn(
 	await context.dataTableService.renameColumn(input.dataTableId, input.columnId, input.newName, {
 		projectId: input.projectId,
 	});
-	await reportDataTable(context, { id: input.dataTableId });
+	await reportResolvedDataTable(context, input);
 	return { success: true };
 }
 

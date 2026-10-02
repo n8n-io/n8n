@@ -756,8 +756,28 @@ describe('build-agent tool', () => {
 			expect(context.domainContext!.onArtifactChanged).toHaveBeenCalledWith({
 				type: 'agent',
 				id: 'agent-1',
+				projectId: 'proj-1',
 				name: 'New Agent',
 			});
+		});
+
+		it('reports an existing agent whose config the builder changed', async () => {
+			const { context, delegate } = makeContext();
+			vi.mocked(delegate.streamBuild).mockResolvedValue(
+				fakeStream(
+					[
+						toolCallChunk('call-1', 'write_config'),
+						toolResultChunk('call-1', { configMutated: true }),
+					],
+					'Updated it.',
+				),
+			);
+
+			await runTool(context, { message: 'Add a tool', agentId: 'agent-existing' });
+
+			expect(context.domainContext!.onArtifactChanged).toHaveBeenCalledWith(
+				expect.objectContaining({ type: 'agent', id: 'agent-existing', projectId: 'proj-1' }),
+			);
 		});
 
 		it('reports nothing when the builder did not change an existing agent', async () => {

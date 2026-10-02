@@ -1569,6 +1569,57 @@ describe('data-tables tool', () => {
 			});
 		});
 
+		it('reports the resolved table ID when a column action names the table', async () => {
+			const onArtifactChanged = vi.fn().mockResolvedValue(undefined);
+			const context = createMockContext({
+				onArtifactChanged,
+				permissions: { mutateDataTableSchema: 'always_allow' },
+			});
+			context.dataTableService.resolveTableReference = vi
+				.fn()
+				.mockResolvedValue({ id: 'dt-1', name: 'Contacts', projectId: 'proj-1' });
+
+			const tool = createDataTablesTool(context);
+			await executeTool(
+				tool,
+				{
+					action: 'add-column',
+					dataTableId: 'Contacts',
+					columnName: 'age',
+					type: 'number',
+				} as never,
+				noSuspendCtx(),
+			);
+
+			expect(onArtifactChanged).toHaveBeenCalledWith({
+				type: 'data-table',
+				id: 'dt-1',
+				name: 'Contacts',
+				projectId: 'proj-1',
+			});
+		});
+
+		it('reports the table as given when the lookup fails after a column change', async () => {
+			const onArtifactChanged = vi.fn().mockResolvedValue(undefined);
+			const context = createMockContext({
+				onArtifactChanged,
+				permissions: { mutateDataTableSchema: 'always_allow' },
+			});
+			context.dataTableService.resolveTableReference = vi
+				.fn()
+				.mockRejectedValue(new Error('Lookup unavailable'));
+
+			const tool = createDataTablesTool(context);
+			const result = await executeTool(
+				tool,
+				{ action: 'rename-column', dataTableId: 'dt-1', columnId: 'c-1', newName: 'age' } as never,
+				noSuspendCtx(),
+			);
+
+			expect(result).toEqual({ success: true });
+			expect(onArtifactChanged).toHaveBeenCalledWith({ type: 'data-table', id: 'dt-1' });
+		});
+
 		it('reports a table that the agent reads', async () => {
 			const onArtifactChanged = vi.fn().mockResolvedValue(undefined);
 			const context = createMockContext({ onArtifactChanged });

@@ -542,6 +542,7 @@ async function runBuilderConsumeLoop(params: {
 			await context.domainContext?.onArtifactChanged?.({
 				type: 'agent',
 				id: target.agentId,
+				projectId: target.projectId,
 				...(target.name ? { name: target.name } : {}),
 			});
 		}
