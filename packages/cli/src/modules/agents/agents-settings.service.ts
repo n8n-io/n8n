@@ -1,4 +1,3 @@
-import { LicenseState } from '@n8n/backend-common';
 import { SettingsRepository, type OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ForbiddenError } from '@n8n/errors';
@@ -7,18 +6,14 @@ const AGENTS_ENABLED_KEY = 'agents.enabled';
 
 @Service()
 export class AgentsSettingsService {
-	constructor(
-		private readonly settingsRepository: SettingsRepository,
-		private readonly licenseState: LicenseState,
-	) {}
+	constructor(private readonly settingsRepository: SettingsRepository) {}
 
 	async getEnabled(ctx: OperationContext = {}): Promise<boolean> {
 		// Read the saved value on admission so all processes use the same setting.
 		const setting = await this.settingsRepository.findByKeyInContext(AGENTS_ENABLED_KEY, ctx);
 		if (setting) return setting.value === 'true';
 
-		const planName = this.licenseState.getValue('planName') ?? 'Community';
-		return !planName.toLowerCase().includes('enterprise');
+		return true;
 	}
 
 	async setEnabled(enabled: boolean): Promise<void> {

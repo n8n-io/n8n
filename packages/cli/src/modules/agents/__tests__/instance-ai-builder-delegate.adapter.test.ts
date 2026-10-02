@@ -6,7 +6,6 @@ import type {
 	StreamChunk,
 } from '@n8n/agents';
 import type { AgentJsonConfig, AgentSkill } from '@n8n/api-types';
-import type { LicenseState } from '@n8n/backend-common';
 import type { Settings, SettingsRepository, User } from '@n8n/db';
 import type { InstanceAiCredentialService } from '@n8n/instance-ai';
 import { Like } from '@n8n/typeorm';
@@ -40,7 +39,7 @@ function setup(options: { useEvalModelCatalog?: boolean } = {}) {
 	const agentSkills = mock<AgentSkillsService>();
 	const credentialService = mock<InstanceAiCredentialService>();
 	const settingsRepository = mock<SettingsRepository>();
-	const agentsSettingsService = new AgentsSettingsService(settingsRepository, mock<LicenseState>());
+	const agentsSettingsService = new AgentsSettingsService(settingsRepository);
 
 	const service = new InstanceAiBuilderDelegateAdapterService(
 		agentsService,

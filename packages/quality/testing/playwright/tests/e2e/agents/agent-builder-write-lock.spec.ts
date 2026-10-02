@@ -15,10 +15,6 @@ test.describe(
 	'Agent builder write lock',
 	{ annotation: [{ type: 'owner', description: 'AI' }] },
 	() => {
-		test.beforeEach(async ({ api }) => {
-			await api.agents.setEnabled(true);
-		});
-
 		/**
 		 * Two tabs of the same user open the same agent. The first tab acquires the
 		 * write lock on first edit (lazy acquisition); the second tab is read-only

@@ -215,7 +215,6 @@ export class E2EController {
 		const getFeatureValue = <T extends keyof FeatureReturnType>(
 			feature: T,
 		): FeatureReturnType[T] => {
-			if (feature === 'planName') return 'Enterprise' as FeatureReturnType[T];
 			if (feature in this.numericFeatures) {
 				return this.numericFeatures[feature as NumericLicenseFeature] as FeatureReturnType[T];
 			} else {

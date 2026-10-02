@@ -11,7 +11,6 @@ import {
 	type CredentialProvider,
 } from '@n8n/agents';
 import { createTeamProject, mockLogger, testDb, testModules } from '@n8n/backend-test-utils';
-import type { LicenseState } from '@n8n/backend-common';
 import { AgentsConfig, AiConfig } from '@n8n/config';
 import { SettingsRepository, UserRepository, type OperationContext, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -171,7 +170,6 @@ describe('AgentExecutionRepository', () => {
 		);
 		const settingsService = new AgentsSettingsService(
 			new SettingsRepository(connection ?? repository.manager.connection, txRunner),
-			mock<LicenseState>(),
 		);
 		const executions = connection ? new AgentExecutionRepository(connection, txRunner) : repository;
 		const threads = connection

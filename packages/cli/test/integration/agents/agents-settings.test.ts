@@ -1,4 +1,4 @@
-import { LicenseState, Logger, ModuleRegistry } from '@n8n/backend-common';
+import { Logger, ModuleRegistry } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { SettingsRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -31,21 +31,13 @@ describe('Agents instance settings', () => {
 		await Container.get(SettingsRepository).delete({ key: 'agents.enabled' });
 		publisher.publishCommand.mockClear();
 		vi.spyOn(registry, 'refreshModuleSettings').mockResolvedValue(null);
-		vi.spyOn(Container.get(LicenseState), 'getValue').mockReturnValue('Enterprise');
 	});
 
 	afterEach(() => vi.restoreAllMocks());
 
-	it.each([
-		['Enterprise', false],
-		['Cloud Enterprise', false],
-		['Community', true],
-		['Business', true],
-		['Pro', true],
-	] as const)('uses the %s default without a saved setting', async (plan, enabled) => {
-		vi.mocked(Container.get(LicenseState).getValue).mockReturnValue(plan);
+	it('enables Agents by default without a saved setting', async () => {
 		const response = await owner.get('/agents/settings').expect(200);
-		expect(response.body.data).toEqual({ enabled });
+		expect(response.body.data).toEqual({ enabled: true });
 	});
 
 	it.each([false, true])(
@@ -58,7 +50,8 @@ describe('Agents instance settings', () => {
 			}
 			const repository = Container.get(SettingsRepository);
 			await repository.upsertByKey('instanceAi.settings', '{"enabled":false}', true, {});
-			const peer = new AgentsSettingsService(repository, Container.get(LicenseState));
+			await repository.upsertByKey('agents.enabled', 'false', true, {});
+			const peer = new AgentsSettingsService(repository);
 			await expect(peer.getEnabled()).resolves.toBe(false);
 
 			const response = await admin.put('/agents/settings').send({ enabled: true }).expect(200);
@@ -73,7 +66,6 @@ describe('Agents instance settings', () => {
 			}
 
 			await owner.put('/agents/settings').send({ enabled: false }).expect(200);
-			vi.mocked(Container.get(LicenseState).getValue).mockReturnValue('Community');
 			await expect(peer.assertEnabled()).rejects.toThrow('Agents are disabled');
 			expect((await owner.get('/agents/settings').expect(200)).body.data).toEqual({
 				enabled: false,
@@ -83,6 +75,7 @@ describe('Agents instance settings', () => {
 	);
 
 	it('requires an authenticated instance admin and a boolean setting', async () => {
+		await Container.get(AgentsSettingsService).setEnabled(false);
 		await server.authlessAgent.get('/agents/settings').expect(401);
 		await server.authlessAgent.put('/agents/settings').send({ enabled: true }).expect(401);
 		await member.get('/agents/settings').expect(403);
