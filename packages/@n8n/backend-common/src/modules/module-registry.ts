@@ -15,6 +15,9 @@ import { ModuleLoadError } from './errors/module-load.error';
 import { ModulesConfig } from './modules.config';
 import type { ModuleName } from './modules.config';
 
+/** Modules that load from workspace packages instead of the n8n modules directory. */
+export type PackagedModules = Partial<Record<ModuleName, () => Promise<unknown>>>;
+
 const getModuleEntryPath = (modulesDir: string, moduleName: string, isEnterprise = false) =>
 	path.join(modulesDir, isEnterprise ? `${moduleName}.ee` : moduleName, `${moduleName}.module.js`);
 
@@ -81,6 +84,12 @@ export class ModuleRegistry {
 
 	private readonly activeModules: string[] = [];
 
+	private readonly packagedModules: PackagedModules = {};
+
+	registerPackagedModules(packagedModules: PackagedModules) {
+		Object.assign(this.packagedModules, packagedModules);
+	}
+
 	get eligibleModules(): ModuleName[] {
 		const { enabledModules, disabledModules } = this.modulesConfig;
 
@@ -118,6 +127,18 @@ export class ModuleRegistry {
 		}
 
 		for (const moduleName of modules ?? this.eligibleModules) {
+			const importPackagedModule = this.packagedModules[moduleName];
+
+			if (importPackagedModule) {
+				try {
+					await importPackagedModule();
+				} catch (error) {
+					throw new ModuleLoadError(moduleName, error);
+				}
+
+				continue;
+			}
+
 			const entryPath = getModuleEntryPath(modulesDir, moduleName);
 
 			try {

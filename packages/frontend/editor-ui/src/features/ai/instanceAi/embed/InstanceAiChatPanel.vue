@@ -28,7 +28,7 @@ import type {
 	InstanceAiPrefillPayload,
 	InstanceAiThreadSummary,
 } from '@n8n/api-types';
-import { N8nHeading, N8nIconButton, N8nTooltip, TOOLTIP_DELAY_MS } from '@n8n/design-system';
+import { N8nIconButton, N8nTooltip, TOOLTIP_DELAY_MS } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@n8n/composables/useToast';
 import { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
@@ -495,16 +495,12 @@ function handleCloseShortcut(event: KeyboardEvent) {
 <template>
 	<div :class="$style.panel" data-test-id="instance-ai-embed-panel" @keydown="handleCloseShortcut">
 		<InstanceAiViewHeader
+			:title="currentThreadTitle"
 			:thread-id="activeThreadId"
 			:thread-list="{ filter: threadFilter, navigate: false, disabled: building }"
 			@select="onThreadSelect"
 			@deleted="onThreadDeleted"
 		>
-			<template #title>
-				<N8nHeading v-if="currentThreadTitle" tag="h2" size="small" :class="$style.title">
-					{{ currentThreadTitle }}
-				</N8nHeading>
-			</template>
 			<template #actions>
 				<N8nTooltip
 					:content="i18n.baseText('instanceAi.thread.new')"
@@ -579,12 +575,6 @@ function handleCloseShortcut(event: KeyboardEvent) {
 	height: 100%;
 	min-height: 0;
 	min-width: 0;
-}
-
-.title {
-	overflow: hidden;
-	text-overflow: ellipsis;
-	white-space: nowrap;
 }
 
 .body {

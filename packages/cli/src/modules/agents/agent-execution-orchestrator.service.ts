@@ -45,6 +45,7 @@ import {
 	type AgentSandboxPrincipalHash,
 } from './agent-sandbox-principal';
 import { AgentSandboxRuntimeService } from './agent-sandbox-runtime.service';
+import { AgentsSettingsService } from './agents-settings.service';
 import { buildAgentConfigurationTelemetry } from './agent-telemetry';
 import { AgentTurnExecutionService, type AgentTurnRequest } from './agent-turn-execution.service';
 import { withBudgetGuardrail } from './budget-guardrail';
@@ -295,6 +296,7 @@ export class AgentExecutionOrchestratorService {
 		private readonly chatExecutionService: AgentChatExecutionService,
 		private readonly backgroundJobRepository: AgentBackgroundJobRepository,
 		private readonly backgroundJobService: AgentBackgroundJobService,
+		private readonly settingsService: AgentsSettingsService,
 	) {}
 
 	async getSessionMode(threadId: string): Promise<AgentSessionMode> {
@@ -1007,6 +1009,10 @@ export class AgentExecutionOrchestratorService {
 	async *streamChatResponse(
 		config: StreamChatResponseConfig,
 	): AsyncGenerator<AgentExecutionStreamChunk> {
+		// Admitted runs and background continuations can finish after Agents is disabled.
+		if (!config.admittedExecution && !config.isWakeRun) {
+			await this.settingsService.assertEnabled();
+		}
 		yield* this.turnExecutionService.execute({
 			admittedExecution: config.admittedExecution,
 			onAdmitted: config.onAdmitted,
@@ -1078,6 +1084,7 @@ export class AgentExecutionOrchestratorService {
 			onExecutionRecorded?: (executionId: string) => void;
 			abortSignal?: AbortSignal;
 			automaticContinuationRunId?: string;
+			isWakeRun?: boolean;
 		},
 	): Promise<AgentRuntime> {
 		const {
@@ -1085,9 +1092,13 @@ export class AgentExecutionOrchestratorService {
 			abortSignal,
 			automaticContinuationRunId,
 			admittedExecution,
+			isWakeRun,
 			...recording
 		} = session;
 		abortSignal?.throwIfAborted();
+		if (!admittedExecution && !recording.resumeRunId && !isWakeRun) {
+			await this.settingsService.assertEnabled();
+		}
 		try {
 			return await this.runtimeCacheService.getRuntime(params);
 		} catch (error) {
@@ -1608,6 +1619,7 @@ export class AgentExecutionOrchestratorService {
 				resourceId: memory.resourceId,
 				userMessage: config.message,
 				hideUserMessageFromTranscript: true,
+				isWakeRun: true,
 				source: productionUserId ? N8N_CHAT_PRODUCTION_SOURCE : integrationType,
 				abortSignal,
 				access,
