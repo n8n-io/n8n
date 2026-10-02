@@ -40,7 +40,8 @@ import {
 	type CollapsedGroup,
 } from './group-layout-utils';
 import { parseVersion } from './string-utils';
-import { isAnchoredStickyNote, type GraphNode } from '../types/base';
+import { parseWorkflowJSON } from './workflow-import';
+import { isAnchoredStickyNote, type GraphNode, type WorkflowJSON } from '../types/base';
 import type { ResolvedNodeGroup } from './plugins/types';
 
 // ===========================================================================
@@ -271,6 +272,21 @@ export function getNodeDimensions(
 		width: DEFAULT_NODE_SIZE[0],
 		height: calculateNodeHeight(mainInputCount, mainOutputCount),
 	};
+}
+
+/** The canvas size of each node in a workflow JSON, by node name. */
+export function getWorkflowNodeDimensions(
+	json: WorkflowJSON,
+): Map<string, { width: number; height: number }> {
+	const { nodes } = parseWorkflowJSON(json);
+	const aiParentNames = getAiParentNames(nodes);
+	const aiConfigNames = getAiConfigNames(nodes);
+	return new Map(
+		[...nodes.keys()].map((name) => [
+			name,
+			getNodeDimensions(name, aiParentNames, aiConfigNames, nodes),
+		]),
+	);
 }
 
 // ---------------------------------------------------------------------------

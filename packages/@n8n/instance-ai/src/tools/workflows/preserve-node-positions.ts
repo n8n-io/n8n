@@ -3,8 +3,13 @@ import type { NodeJSON, WorkflowJSON } from '@n8n/workflow-sdk';
 import {
 	DEFAULT_NODE_SIZE,
 	GRID_SIZE,
+	GROUP_HEADER_HEIGHT,
+	GROUP_HEADER_WIDTH_COLLAPSED,
+	GROUP_PADDING_X,
+	GROUP_PADDING_Y_TOP,
 	NODE_X_SPACING,
 	NODE_Y_SPACING,
+	getWorkflowNodeDimensions,
 	isStickyNoteType,
 } from '@n8n/workflow-sdk';
 
@@ -17,6 +22,8 @@ interface Box {
 	y: number;
 	width: number;
 	height: number;
+	/** Group index for a member, -1 for free nodes and group chips. */
+	layer: number;
 }
 
 const [NODE_WIDTH, NODE_HEIGHT] = DEFAULT_NODE_SIZE;
@@ -37,8 +44,43 @@ function median(values: number[]): number {
 	return sorted.length % 2 === 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid];
 }
 
-function boxOf(node: NodeJSON): Box {
-	return { x: node.position[0], y: node.position[1], width: NODE_WIDTH, height: NODE_HEIGHT };
+function nodeBox(
+	node: NodeJSON,
+	sizes: ReadonlyMap<string, { width: number; height: number }>,
+	layer: number,
+): Box {
+	const { width, height } = sizes.get(node.name ?? '') ?? {
+		width: NODE_WIDTH,
+		height: NODE_HEIGHT,
+	};
+	return { x: node.position[0], y: node.position[1], width, height, layer };
+}
+
+/**
+ * The chip a collapsed group draws, hung off its members' top-left corner like
+ * the canvas does (computeGroupFrameRects). Saved positions describe the
+ * collapsed view: when a group expands, the canvas pushes its neighbours away.
+ */
+function chipBox(members: NodeJSON[]): Box {
+	const minX = Math.min(...members.map((node) => node.position[0]));
+	const minY = Math.min(...members.map((node) => node.position[1]));
+	return {
+		x: snapToGrid(minX - GROUP_PADDING_X),
+		y: snapToGrid(minY - GROUP_PADDING_Y_TOP - GROUP_HEADER_HEIGHT),
+		width: GROUP_HEADER_WIDTH_COLLAPSED,
+		height: GROUP_HEADER_HEIGHT,
+		layer: -1,
+	};
+}
+
+/** Member nodes of each group, resolved from the group's node ids. */
+function groupMembers(json: WorkflowJSON): NodeJSON[][] {
+	const byId = new Map(
+		(json.nodes ?? []).flatMap((node) => (node.id ? [[node.id, node] as const] : [])),
+	);
+	return (json.nodeGroups ?? [])
+		.map((group) => group.nodeIds.flatMap((id) => byId.get(id) ?? []))
+		.filter((members) => members.length > 0);
 }
 
 /** Overlap test with a one-grid-cell gutter, so nodes never end up flush. */
@@ -51,36 +93,140 @@ function intersects(a: Box, b: Box): boolean {
 	);
 }
 
-/** Direct predecessors and successors by node name, across all connection types. */
+/**
+ * Direct predecessors and successors by node name, across all connection types.
+ * `mainChildrenOf` follows the data flow only. `subNodesOf` lists the AI
+ * sub-nodes that feed a node.
+ */
 function buildAdjacency(json: WorkflowJSON): {
 	parentsOf: Map<string, string[]>;
 	childrenOf: Map<string, string[]>;
+	mainChildrenOf: Map<string, string[]>;
+	subNodesOf: Map<string, string[]>;
 } {
 	const parentsOf = new Map<string, string[]>();
 	const childrenOf = new Map<string, string[]>();
+	const mainChildrenOf = new Map<string, string[]>();
+	const subNodesOf = new Map<string, string[]>();
+	const push = (map: Map<string, string[]>, key: string, value: string) =>
+		map.set(key, [...(map.get(key) ?? []), value]);
 
 	for (const [source, connectionsByType] of Object.entries(json.connections ?? {})) {
 		if (!isRecord(connectionsByType)) continue;
-		for (const groups of Object.values(connectionsByType)) {
+		for (const [type, groups] of Object.entries(connectionsByType)) {
 			if (!Array.isArray(groups)) continue;
 			for (const group of groups) {
 				if (!Array.isArray(group)) continue;
 				for (const connection of group) {
 					if (!isRecord(connection) || typeof connection.node !== 'string') continue;
 					const target = connection.node;
-					childrenOf.set(source, [...(childrenOf.get(source) ?? []), target]);
-					parentsOf.set(target, [...(parentsOf.get(target) ?? []), source]);
+					push(childrenOf, source, target);
+					push(parentsOf, target, source);
+					if (type === 'main') push(mainChildrenOf, source, target);
+					if (type.startsWith('ai_')) push(subNodesOf, target, source);
 				}
 			}
 		}
 	}
 
-	return { parentsOf, childrenOf };
+	return { parentsOf, childrenOf, mainChildrenOf, subNodesOf };
 }
 
 interface Survivor {
 	node: NodeJSON;
 	saved: Position;
+}
+
+/** True when the build moved survivors, i.e. it laid the whole graph out again. */
+function wasRelaidOut(survivors: Survivor[]): boolean {
+	return survivors.some(
+		({ node, saved }) => node.position[0] !== saved[0] || node.position[1] !== saved[1],
+	);
+}
+
+/**
+ * Shift existing nodes right to make room for a node inserted between them, as
+ * the canvas does on insert. The room is the extra gap that the build's layout
+ * gave the insert, compared to the saved gap. Upstream nodes stay in place.
+ *
+ * Mutates the survivors' saved positions. Returns the spot of each inserted node
+ * next to its parent, in the saved frame.
+ */
+function makeRoomForInsertions(
+	survivors: Survivor[],
+	added: NodeJSON[],
+	json: WorkflowJSON,
+): Map<NodeJSON, Position> {
+	// Without a re-layout, the build's gaps say nothing about the saved canvas.
+	if (!wasRelaidOut(survivors)) return new Map();
+
+	const { mainChildrenOf, subNodesOf } = buildAdjacency(json);
+	const survivorByName = new Map(survivors.map((survivor) => [survivor.node.name ?? '', survivor]));
+	const addedNames = new Set(added.map((node) => node.name ?? ''));
+	const groups = groupMembers(json).map((members) => members.map((node) => node.name ?? ''));
+	const inserted: Array<[NodeJSON, Survivor]> = [];
+
+	for (const node of added) {
+		const name = node.name ?? '';
+		const parent = survivors.find(({ node: { name: parentName } }) =>
+			mainChildrenOf.get(parentName ?? '')?.includes(name),
+		);
+		if (!parent) continue;
+
+		// The first existing nodes after the insert, reached through added nodes only.
+		const next = new Set<Survivor>();
+		const walk = new Set([name]);
+		for (const current of walk) {
+			for (const child of mainChildrenOf.get(current) ?? []) {
+				const survivor = survivorByName.get(child);
+				if (survivor) next.add(survivor);
+				else if (addedNames.has(child)) walk.add(child);
+			}
+		}
+		// Appended after the parent, not inserted.
+		if (next.size === 0) continue;
+
+		// The downstream flow moves as one, with its sub-nodes and groups.
+		const downstream = new Set([...next].map((survivor) => survivor.node.name ?? ''));
+		for (const current of downstream) {
+			for (const other of [
+				...(mainChildrenOf.get(current) ?? []),
+				...(subNodesOf.get(current) ?? []),
+				...groups.filter((group) => group.includes(current)).flat(),
+			]) {
+				downstream.add(other);
+			}
+		}
+		// ponytail: a loop back to the parent, or a group shared with it, keeps the canvas as is.
+		if (downstream.has(parent.node.name ?? '')) continue;
+
+		const room = Math.max(
+			0,
+			...[...next].map(
+				(survivor) =>
+					survivor.node.position[0] -
+					parent.node.position[0] -
+					(survivor.saved[0] - parent.saved[0]),
+			),
+		);
+		for (const survivor of survivors) {
+			if (downstream.has(survivor.node.name ?? '')) {
+				survivor.saved = [survivor.saved[0] + room, survivor.saved[1]];
+			}
+		}
+		inserted.push([node, parent]);
+	}
+
+	// After every shift, so a parent that moved for an earlier insert is current.
+	return new Map(
+		inserted.map(([node, parent]) => [
+			node,
+			[
+				snapToGrid(parent.saved[0] + node.position[0] - parent.node.position[0]),
+				snapToGrid(parent.saved[1] + node.position[1] - parent.node.position[1]),
+			],
+		]),
+	);
 }
 
 /**
@@ -97,10 +243,7 @@ function resolveTranslation(
 	json: WorkflowJSON,
 ): Position {
 	// The build re-laid out the whole graph, so survivors give us the mapping directly.
-	const relaidOut = survivors.some(
-		({ node, saved }) => node.position[0] !== saved[0] || node.position[1] !== saved[1],
-	);
-	if (relaidOut) {
+	if (wasRelaidOut(survivors)) {
 		return [
 			median(survivors.map(({ node, saved }) => saved[0] - node.position[0])),
 			median(survivors.map(({ node, saved }) => saved[1] - node.position[1])),
@@ -140,29 +283,110 @@ function resolveTranslation(
 	return [savedMinX - addedMinX, savedMaxY + NODE_HEIGHT + NODE_Y_SPACING - addedMinY];
 }
 
-/**
- * Push added nodes down until they clear everything already on the canvas.
- * Sticky notes are ignored on both sides — they are meant to sit behind nodes.
- */
-function separateAddedNodes(added: NodeJSON[], allNodes: NodeJSON[]): void {
-	const addedSet = new Set(added);
-	const occupied = allNodes
-		.filter((node) => !addedSet.has(node) && !isStickyNoteType(node.type))
-		.map(boxOf);
+function findCollision(
+	boxes: Box[],
+	occupied: Box[],
+): { index: number; box: Box; other: Box } | undefined {
+	for (const [index, box] of boxes.entries()) {
+		const other = occupied.find(
+			(candidate) => candidate.layer === box.layer && intersects(box, candidate),
+		);
+		if (other) return { index, box, other };
+	}
+	return undefined;
+}
 
-	for (const node of added) {
-		if (isStickyNoteType(node.type)) continue;
+/** Shift a block in one direction until its footprint clears `occupied`. */
+function shiftUntilClear(
+	block: NodeJSON[],
+	footprint: () => Box[],
+	occupied: Box[],
+	direction: 'down' | 'up',
+): boolean {
+	for (let step = 0; step < MAX_SEPARATION_STEPS; step++) {
+		const collision = findCollision(footprint(), occupied);
+		if (!collision) return true;
 
-		for (let step = 0; step < MAX_SEPARATION_STEPS; step++) {
-			const collision = occupied.find((box) => intersects(box, boxOf(node)));
-			if (!collision) break;
-			node.position = [
-				node.position[0],
-				snapToGrid(collision.y + collision.height + NODE_Y_SPACING),
-			];
+		const { index, box, other } = collision;
+		const deltaY =
+			direction === 'down'
+				? other.y + other.height + NODE_Y_SPACING - box.y
+				: other.y - NODE_Y_SPACING - box.height - box.y;
+		for (const node of block) {
+			node.position = [node.position[0], snapToGrid(node.position[1] + deltaY)];
 		}
 
-		occupied.push(boxOf(node));
+		// The colliding chip did not move: an existing member pins that edge.
+		if (footprint()[index].y === box.y) return false;
+	}
+	return false;
+}
+
+/**
+ * Move added nodes clear of the nodes and group chips already on the canvas.
+ * Added nodes move in blocks (wired to each other or sharing a group), so the
+ * layout engine's rows stay intact. A block goes down first; if an existing
+ * member pins its group chip, it goes up instead.
+ * Members of a collapsed group hide behind its chip, so they only collide with
+ * each other. Sticky notes are ignored on both sides — they sit behind nodes.
+ */
+function separateAddedNodes(added: NodeJSON[], json: WorkflowJSON): void {
+	const nodes = json.nodes ?? [];
+	const addedSet = new Set(added);
+	const groups = groupMembers(json);
+	const { parentsOf, childrenOf } = buildAdjacency(json);
+	const sizes = getWorkflowNodeDimensions(json);
+
+	const boxesOf = (members: NodeJSON[]) =>
+		members
+			.filter((node) => !isStickyNoteType(node.type))
+			.map((node) =>
+				nodeBox(
+					node,
+					sizes,
+					groups.findIndex((group) => group.includes(node)),
+				),
+			);
+	const footprintOf = (members: NodeJSON[]) => [
+		...boxesOf(members),
+		...groups.filter((group) => group.some((node) => members.includes(node))).map(chipBox),
+	];
+
+	const occupied = [
+		...boxesOf(nodes.filter((node) => !addedSet.has(node))),
+		...groups.filter((group) => !group.some((node) => addedSet.has(node))).map(chipBox),
+	];
+
+	const addedByName = new Map(added.map((node) => [node.name ?? '', node]));
+	const neighboursOf = (node: NodeJSON) => [
+		...[
+			...(parentsOf.get(node.name ?? '') ?? []),
+			...(childrenOf.get(node.name ?? '') ?? []),
+		].flatMap((name) => addedByName.get(name) ?? []),
+		...groups.filter((group) => group.includes(node)).flatMap((group) => group),
+	];
+
+	const seen = new Set<NodeJSON>();
+	for (const start of added) {
+		if (seen.has(start)) continue;
+		seen.add(start);
+		const block = [start];
+		for (const node of block) {
+			for (const next of neighboursOf(node)) {
+				if (seen.has(next) || !addedSet.has(next)) continue;
+				seen.add(next);
+				block.push(next);
+			}
+		}
+
+		const footprint = () => footprintOf(block);
+		const origin = block.map((node) => node.position);
+		for (const direction of ['down', 'up'] as const) {
+			if (shiftUntilClear(block, footprint, occupied, direction)) break;
+			// ponytail: a block that clears neither way keeps its translated position.
+			block.forEach((node, i) => (node.position = origin[i]));
+		}
+		occupied.push(...footprint());
 	}
 }
 
@@ -176,7 +400,9 @@ function separateAddedNodes(added: NodeJSON[], allNodes: NodeJSON[]): void {
  * renamed node keeps its place, mirroring ensureWebhookIds.
  *
  * Nodes the build added are translated into the saved canvas's frame, keeping the
- * layout engine's relative arrangement, then nudged clear of anything they land on.
+ * layout engine's relative arrangement, then moved clear of anything they land on.
+ * A node inserted between existing nodes takes the spot next to its parent, and
+ * the existing nodes after it move right to make room.
  */
 export async function preserveExistingNodePositions(
 	json: WorkflowJSON,
@@ -243,9 +469,10 @@ export async function preserveExistingNodePositions(
 	if (survivors.length === 0) return;
 
 	if (added.length > 0) {
+		const spots = makeRoomForInsertions(survivors, added, json);
 		const [deltaX, deltaY] = resolveTranslation(survivors, added, json);
 		for (const node of added) {
-			node.position = [
+			node.position = spots.get(node) ?? [
 				snapToGrid(node.position[0] + deltaX),
 				snapToGrid(node.position[1] + deltaY),
 			];
@@ -256,5 +483,5 @@ export async function preserveExistingNodePositions(
 		node.position = saved;
 	}
 
-	if (added.length > 0) separateAddedNodes(added, nodes);
+	if (added.length > 0) separateAddedNodes(added, json);
 }
