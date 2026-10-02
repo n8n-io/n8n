@@ -51,8 +51,7 @@ export class LicenseService {
 			usage: {
 				activeWorkflowTriggers: {
 					value: triggerCount,
-					// oxlint-disable-next-line typescript/no-deprecated
-					limit: this.license.getTriggerLimit(),
+					limit: this.licenseState.getMaxActiveWorkflows(),
 					warningThreshold: 0.8,
 				},
 				workflowsHavingEvaluations: {

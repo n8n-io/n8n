@@ -235,7 +235,7 @@ export const baseConfig = defineConfig({
 	overrides: [
 		{
 			// Ignore deprecations in tests, as well as barrel files which are usually just exports
-			files: ['test/**/*.ts', '**/__tests__/*.ts', '**/*.test.ts', '**/index.ts'],
+			files: ['test/**/*.ts', '**/__tests__/**/*.ts', '**/*.test.ts', '**/index.ts'],
 			rules: {
 				'typescript/no-deprecated': 'off',
 			},

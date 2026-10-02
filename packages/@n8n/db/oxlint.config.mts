@@ -23,7 +23,7 @@ export default defineConfig({
 		{
 			files: ['src/migrations/**/*.ts'],
 			rules: {
-				'typescript/no-deprecated': 'warn',
+				'typescript/no-deprecated': 'off',
 			}
 		},
 		{

@@ -185,25 +185,30 @@ export class RoutingNode {
 				}
 
 				if (proxy) {
-					const proxyParsed = URL.parse(proxy)!;
-					const proxyProperties = ['host', 'port'];
+					const proxyParsed = URL.parse(proxy);
+					if (!proxyParsed) {
+						throw new NodeOperationError(node, 'The proxy is not valid', { runIndex, itemIndex });
+					}
 
-					for (const property of proxyProperties) {
-						if (
-							!(property in proxyParsed) ||
-							proxyParsed[property as keyof typeof proxyParsed] === null
-						) {
-							throw new NodeOperationError(node, 'The proxy is not valid', {
-								runIndex,
-								itemIndex,
-								description: `The proxy URL does not contain a valid value for "${property}"`,
-							});
-						}
+					const proxyPort = getExplicitPort(proxy);
+					if (!proxyParsed.hostname) {
+						throw new NodeOperationError(node, 'The proxy is not valid', {
+							runIndex,
+							itemIndex,
+							description: 'The proxy URL does not contain a valid value for "host"',
+						});
+					}
+					if (proxyPort === null) {
+						throw new NodeOperationError(node, 'The proxy is not valid', {
+							runIndex,
+							itemIndex,
+							description: 'The proxy URL does not contain a valid value for "port"',
+						});
 					}
 
 					itemContext[itemIndex].requestData.options.proxy = {
 						host: proxyParsed.hostname,
-						port: parseInt(proxyParsed.port),
+						port: proxyPort,
 						protocol: proxyParsed.protocol?.replace(/:$/, '') || undefined,
 					};
 
@@ -1263,4 +1268,17 @@ function getAuth(url: URL) {
 
 	const user = decodeURIComponent(url.username);
 	return url.password ? `${user}:${decodeURIComponent(url.password)}` : user;
+}
+
+function getExplicitPort(value: string): number | null {
+	const authorityStart = value.indexOf('//');
+	if (authorityStart < 0) return null;
+
+	const authority = value.slice(authorityStart + 2).split(/[/?#]/, 1)[0];
+	const hostAndPort = authority.slice(authority.lastIndexOf('@') + 1);
+	const match = /:(\d+)$/.exec(hostAndPort);
+	if (!match) return null;
+
+	const port = Number(match[1]);
+	return Number.isInteger(port) && port <= 65_535 ? port : null;
 }

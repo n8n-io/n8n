@@ -44,7 +44,7 @@ import { isStringArray } from '../utils/is-string-array';
 import { parseListQuerySortBy } from '../utils/list-query-sort';
 import { TimedQuery } from '../utils/timed-query';
 
-// oxlint-disable-next-line typescript/no-deprecated
+// oxlint-disable-next-line typescript/no-deprecated - Waiting for debt to be payed
 type WorkflowListQueryOptions = ListQuery.Options;
 
 type ResourceType = 'folder' | 'workflow';
