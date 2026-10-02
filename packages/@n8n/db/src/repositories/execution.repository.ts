@@ -573,6 +573,15 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 		execution: Partial<IExecutionResponse>,
 		conditions?: UpdateExecutionConditions,
 	): Promise<boolean> {
+		const statusConstraints = [
+			conditions?.requireStatus,
+			conditions?.requireStatuses,
+			conditions?.requireNotCanceled,
+		].filter((constraint) => constraint !== undefined);
+		if (statusConstraints.length > 1) {
+			throw new UnexpectedError('Only one `status` constraint can be applied per update');
+		}
+
 		const {
 			id,
 			data,

@@ -582,14 +582,10 @@ describe('processError', () => {
 		expect(stored?.status).toBe('running');
 	});
 
-	test('processError finalizes without running the after hook when a stalled-count error claims nothing', async () => {
+	test('processError claims an execution that is still new on a stalled-count error', async () => {
 		const workflow = await createWorkflow({}, owner);
-		const execution = await createExecution({ status: 'crashed', finished: false }, workflow);
-		const finalizeExecution = vi.spyOn(Container.get(ActiveExecutions), 'finalizeExecution');
-		vi.spyOn(
-			Container.get(ExecutionCrashService),
-			'markAsCrashedWithoutCounting',
-		).mockResolvedValue([]);
+		const execution = await createExecution({ status: 'new', finished: false }, workflow);
+		const executionRepository = Container.get(ExecutionRepository);
 
 		globalConfig.executions.mode = 'regular';
 		await runner.processError(
@@ -600,8 +596,11 @@ describe('processError', () => {
 			hooks,
 		);
 
-		expect(finalizeExecution).toHaveBeenCalledExactlyOnceWith(execution.id);
-		expect(watcher.workflowExecuteAfter).not.toHaveBeenCalled();
+		expect(watcher.workflowExecuteAfter).toHaveBeenCalledTimes(1);
+
+		// `new` is crashable, so the guarded write claims it without a running transition
+		const stored = await executionRepository.findSingleExecution(execution.id, {});
+		expect(stored?.status).toBe('crashed');
 	});
 
 	test('processError leaves a paused execution to the wait tracker on a stalled-count error', async () => {
