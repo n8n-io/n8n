@@ -1280,6 +1280,20 @@ describe('publishAsSystem()', () => {
 		expect(externalHooks.run).not.toHaveBeenCalled();
 	});
 
+	it('publishes a version when the legacy active flag is false', async () => {
+		const owner = await createOwner();
+		const workflow = await createActiveWorkflow({}, owner);
+		await workflowRepository.update(workflow.id, { active: false });
+
+		const result = await workflowService.publishAsSystem(
+			workflow.id,
+			{ nodes: systemNodes(), connections: {} },
+			workflow.activeVersionId as string,
+		);
+
+		expect(result.published).toBe(true);
+	});
+
 	it('returns superseded for a workflow without an active version and writes nothing', async () => {
 		const owner = await createOwner();
 		const workflow = await createWorkflowWithHistory({}, owner);
