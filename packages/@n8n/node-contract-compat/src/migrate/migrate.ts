@@ -1,3 +1,4 @@
+import { AUTHENTICATION } from '@n8n/node-sdk';
 import {
 	UnexpectedError,
 	type IExecuteFunctions,
@@ -5,24 +6,22 @@ import {
 	type INodeType,
 } from 'n8n-workflow';
 
-import { AUTHENTICATION } from './runtime';
-
 /** A resource and operation of a legacy node that a contract action runs. */
-export interface ComposedSlot {
+export interface MigratedSlot {
 	readonly resource: string;
 	readonly operation: string;
 	/** One version of the action's node type, from `toVersionedNodeType`. */
 	readonly action: INodeType;
 }
 
-export interface ComposeVersionOptions {
+export interface MigrateVersionOptions {
 	/** One version of the legacy node. It runs every slot that no contract action owns. */
 	readonly legacy: INodeType;
 	readonly version: number;
-	readonly slots: readonly ComposedSlot[];
+	readonly slots: readonly MigratedSlot[];
 }
 
-type Slot = Pick<ComposedSlot, 'resource' | 'operation'>;
+type Slot = Pick<MigratedSlot, 'resource' | 'operation'>;
 
 const SLOT_KEYS = ['resource', 'operation'] as const;
 
@@ -34,18 +33,18 @@ const showsOn = ({ displayOptions }: INodeProperties, { resource, operation }: S
 	allows(displayOptions?.show?.resource, resource) &&
 	allows(displayOptions?.show?.operation, operation);
 
-// A rule the composer cannot read could show a legacy field on an owned slot, or hide one
+// A rule that migrate cannot read could show a legacy field on an owned slot, or hide one
 // on a legacy slot.
-function assertComposable({ name, displayOptions }: INodeProperties) {
+function assertMigratable({ name, displayOptions }: INodeProperties) {
 	const show = displayOptions?.show;
 	if (show?.['@version'] !== undefined) {
-		throw new UnexpectedError(`Cannot compose "${name}": it shows by node version`);
+		throw new UnexpectedError(`Cannot migrate "${name}": it shows by node version`);
 	}
 	const conditional = SLOT_KEYS.some((key) =>
 		show?.[key]?.some((value) => typeof value === 'object' && value !== null),
 	);
 	if (conditional) {
-		throw new UnexpectedError(`Cannot compose "${name}": its resource or operation is a condition`);
+		throw new UnexpectedError(`Cannot migrate "${name}": its resource or operation is a condition`);
 	}
 }
 
@@ -69,7 +68,7 @@ function withoutSlot(property: INodeProperties, slot: Slot): INodeProperties[] {
 }
 
 /** The operation option of the slot shows the action's name, e.g. "Get many database pages". */
-function withActionLabel(property: INodeProperties, { resource, operation, action }: ComposedSlot) {
+function withActionLabel(property: INodeProperties, { resource, operation, action }: MigratedSlot) {
 	const label = action.description.defaults.name;
 	if (property.name !== 'operation' || !property.options || !label) return property;
 	if (!allows(property.displayOptions?.show?.resource, resource)) return property;
@@ -96,9 +95,9 @@ const hasOperation = (properties: readonly INodeProperties[], { resource, operat
  * n8n reads the one field that shows. It must not reuse the name of a legacy field that shows
  * on its own slot, such as `resource` or `authentication`: the two would share one value.
  */
-export function composeVersion({ legacy, version, slots }: ComposeVersionOptions): INodeType {
+export function migrateVersion({ legacy, version, slots }: MigrateVersionOptions): INodeType {
 	const legacyProperties = legacy.description.properties;
-	legacyProperties.forEach(assertComposable);
+	legacyProperties.forEach(assertMigratable);
 	const missing = slots.find((slot) => !hasOperation(legacyProperties, slot));
 	if (missing) {
 		throw new UnexpectedError(
@@ -142,7 +141,7 @@ export function composeVersion({ legacy, version, slots }: ComposeVersionOptions
 		.find(({ name }) => !credentials.some((credential) => credential.name === name));
 	if (foreign) {
 		throw new UnexpectedError(
-			`${legacy.description.name} has no credential ${foreign.name}, which a composed action uses`,
+			`${legacy.description.name} has no credential ${foreign.name}, which a migrated action uses`,
 		);
 	}
 

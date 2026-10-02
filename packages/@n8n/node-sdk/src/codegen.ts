@@ -108,7 +108,14 @@ function objectTs(
 	];
 	const { additionalProperties } = schema;
 	if (typeof additionalProperties === 'object') {
-		members.push({ doc: '', body: `[key: string]: ${toTs(additionalProperties, childMode)}` });
+		// tsc checks an optional field against the index type, and its value can be undefined.
+		const optional = properties.some(
+			([name]) => !required.has(name) && (mode.input || mode.optionalOutputs),
+		);
+		members.push({
+			doc: '',
+			body: `[key: string]: ${toTs(additionalProperties, childMode)}${optional ? ' | undefined' : ''}`,
+		});
 	} else if (additionalProperties === true || (additionalProperties === undefined && !mode.input)) {
 		// Open shape: reads compile, so missing type information never blocks a build.
 		members.push({ doc: '', body: '[key: string]: any' });
@@ -320,14 +327,17 @@ export interface GeneratedAction {
 	readonly pairing?: Pairing;
 }
 
-/** A native trigger and its reply step. The caller waits for the reply when `field` is `value`. */
+/**
+ * A native trigger and its reply step. The caller waits for the reply when `field` is `value`.
+ * Without `field`, the reply step always belongs to the trigger, e.g. a form page.
+ */
 export interface Pairing {
 	/** The node type of the trigger, e.g. `n8n-nodes-base.webhook`. */
 	readonly trigger: string;
 	/** The node type of the reply step, e.g. `n8n-nodes-base.respondToWebhook`. */
 	readonly reply: string;
-	readonly field: string;
-	readonly value: string;
+	readonly field?: string;
+	readonly value?: string;
 }
 
 /**
@@ -345,8 +355,7 @@ export function generatedTriggersOf(trigger: Trigger, nodeType: string): Generat
 	const pairing = reply && {
 		trigger: native.type,
 		reply: reply.native.type,
-		field: reply.awaits.field,
-		value: reply.awaits.value,
+		...(reply.awaits ? { field: reply.awaits.field, value: reply.awaits.value } : {}),
 	};
 	const own = { contract, nodeType: native.type, typeVersion: native.version, resource };
 	return [
@@ -423,8 +432,11 @@ const egressNote = ({ egress }: ContractDocument) => {
 };
 
 /** The reply step of a native trigger, and when its caller waits for it. */
-const replyNote = (pairing: Pairing | undefined) =>
-	pairing ? `; reply when ${pairing.field} is ${pairing.value}` : '';
+const replyNote = (pairing: Pairing | undefined, side: 'trigger' | 'reply') => {
+	if (pairing === undefined) return '';
+	if (pairing.field !== undefined) return `; reply when ${pairing.field} is ${pairing.value}`;
+	return side === 'reply' ? `; needs a ${pairing.trigger} trigger before it` : '';
+};
 
 /** What the flow build reads to compute the scopes of a workflow, e.g. `{ credential: "notion", scopes: [...] }`. */
 const requiresOf = ({ node, scopes }: ContractDocument) =>
@@ -611,6 +623,11 @@ export function generateNodeModule(nodeId: string, contracts: readonly Generated
 				: [
 						`export type ${name}Output = ${rootTs(contract.output, actionOutput, `${name}Output`)};`,
 					]),
+			...(contract.output['x-n8n-entry-fields']
+				? [
+						`export type ${name}Fields<C> = ${entryFieldsTs(contract.output['x-n8n-entry-fields'])};`,
+					]
+				: []),
 			...locals,
 		].join('\n');
 	});
@@ -625,7 +642,7 @@ export function generateNodeModule(nodeId: string, contracts: readonly Generated
 					summary: `${contract.action}. ${contract.summary} (sub-node: ${supplies})`,
 					text: [
 						'<In, Ctx>(',
-						`\tconfig: { name: string } & ${name}Input<In, Ctx>,`,
+						`\tconfig: { name: string; settings?: NodeSettings } & ${name}Input<In, Ctx>,`,
 						`): Subnode<In, Ctx, ${JSON.stringify(supplies)}> =>`,
 						`\tcontractSubnode(${JSON.stringify(nodeType)}, ${JSON.stringify(supplies)}, config${version})`,
 					].join('\n'),
@@ -633,7 +650,7 @@ export function generateNodeModule(nodeId: string, contracts: readonly Generated
 			}
 			const { outputs } = contract;
 			const shown = outputs ? `; outputs: ${outputsText(outputs)}` : '';
-			const flow = `${contract.flow.effect}, ${contract.flow.cardinality}${shown}${scopesNote(contract)}${egressNote(contract)}${replyNote(pairing)}`;
+			const flow = `${contract.flow.effect}, ${contract.flow.cardinality}${shown}${scopesNote(contract)}${egressNote(contract)}${replyNote(pairing, 'reply')}`;
 			const requires = requiresOf(contract);
 			const nodeVersion = typeVersion ?? contract.version;
 			const extra = pairing
@@ -651,29 +668,39 @@ export function generateNodeModule(nodeId: string, contracts: readonly Generated
 			const input = `${name}Input<In, Ctx>`;
 			// A passed item keeps the type of the item before.
 			const item = contract.output['x-n8n-passed'] ? 'In' : `OutputOf<N, ${name}Output>`;
-			const config = `{ name: N; sample?: ${contract.output['x-n8n-passed'] ? 'In' : `${name}Output`}[] }`;
-			const text = !outputs
-				? [
-						'<In, Ctx, const N extends string>(',
-						`\tconfig: ${config} & ${input},`,
-						`): Step<In, Ctx, ${item}, N> =>`,
-						`\tcontractStep(${JSON.stringify(nodeType)}, config${version}${tail})`,
-					]
-				: 'each' in outputs
+			const config = `{ name: N; sample?: ${contract.output['x-n8n-passed'] ? 'In' : `${name}Output`}[]; settings?: NodeSettings }`;
+			// The entries type the output, so the config is generic and checked key by key.
+			const entryItem = `OutputOf<N, ${name}Output & ${name}Fields<C>>`;
+			const text =
+				contract.output['x-n8n-entry-fields'] && !outputs
 					? [
-							'<In, Ctx, const N extends string, const E extends string>(',
-							`\tconfig: ${config} & Omit<${input}, ${JSON.stringify(outputs.each)}> & {`,
-							`\t\t${key(outputs.each)}: ReadonlyArray<${input}[${JSON.stringify(outputs.each)}][number] & { output: E }>;`,
-							'\t},',
-							`): RoutedStep<In, Ctx, ${item}, N, ${['E', ...(outputs.then ?? []).map((then) => JSON.stringify(then))].join(' | ')}> =>`,
-							`\troutedStep(${JSON.stringify(nodeType)}, config, ${JSON.stringify(outputs)}${version}${tail})`,
+							`<In, Ctx, const N extends string, const C extends ${input}>(`,
+							`\tconfig: { name: N; sample?: Array<${entryItem}>; settings?: NodeSettings } & C & Exact<C, ${input} & { name: string; sample?: unknown; settings?: NodeSettings }>,`,
+							`): Step<In, Ctx, ${entryItem}, N> =>`,
+							`\tcontractStep(${JSON.stringify(nodeType)}, config${version}${tail})`,
 						]
-					: [
-							'<In, Ctx, const N extends string>(',
-							`\tconfig: ${config} & ${input},`,
-							`): RoutedStep<In, Ctx, ${item}, N, ${outputs.map((output) => JSON.stringify(output)).join(' | ')}> =>`,
-							`\troutedStep(${JSON.stringify(nodeType)}, config, ${JSON.stringify(outputs)}${version}${tail})`,
-						];
+					: !outputs
+						? [
+								'<In, Ctx, const N extends string>(',
+								`\tconfig: ${config} & ${input},`,
+								`): Step<In, Ctx, ${item}, N> =>`,
+								`\tcontractStep(${JSON.stringify(nodeType)}, config${version}${tail})`,
+							]
+						: 'each' in outputs
+							? [
+									'<In, Ctx, const N extends string, const E extends string>(',
+									`\tconfig: ${config} & Omit<${input}, ${JSON.stringify(outputs.each)}> & {`,
+									`\t\t${key(outputs.each)}: ReadonlyArray<${input}[${JSON.stringify(outputs.each)}][number] & { output: E }>;`,
+									'\t},',
+									`): RoutedStep<In, Ctx, ${item}, N, ${['E', ...(outputs.then ?? []).map((then) => JSON.stringify(then))].join(' | ')}> =>`,
+									`\troutedStep(${JSON.stringify(nodeType)}, config, ${JSON.stringify(outputs)}${version}${tail})`,
+								]
+							: [
+									'<In, Ctx, const N extends string>(',
+									`\tconfig: ${config} & ${input},`,
+									`): RoutedStep<In, Ctx, ${item}, N, ${outputs.map((output) => JSON.stringify(output)).join(' | ')}> =>`,
+									`\troutedStep(${JSON.stringify(nodeType)}, config, ${JSON.stringify(outputs)}${version}${tail})`,
+								];
 			return {
 				path,
 				summary: `${contract.action}. ${contract.summary} (${flow})`,
@@ -720,8 +747,8 @@ export function generateNodeModule(nodeId: string, contracts: readonly Generated
 				...(entries ? [`const C extends ${name}Input`] : []),
 			];
 			const samples = `Array<DeepPartial<${item}>>`;
-			const head = `{ name: N;${declared.length ? ' schema?: S;' : ''} sample?: ${samples} }`;
-			const flowKeys = `{ name: string;${declared.length ? ' schema?: unknown;' : ''} sample?: unknown }`;
+			const head = `{ name: N;${declared.length ? ' schema?: S;' : ''} sample?: ${samples}; settings?: NodeSettings }`;
+			const flowKeys = `{ name: string;${declared.length ? ' schema?: unknown;' : ''} sample?: unknown; settings?: NodeSettings }`;
 			const input = entries ? `C & Exact<C, ${name}Input & ${flowKeys}>` : `${name}Input`;
 			const text = [
 				`<${generics.join(', ')}>(`,
@@ -730,7 +757,7 @@ export function generateNodeModule(nodeId: string, contracts: readonly Generated
 				`\tcontractTrigger(${JSON.stringify(nodeType)}, config${args.map((arg) => `, ${arg}`).join('')})`,
 			].join('\n');
 			const schemaNote = declared.length ? `; schema types ${declared.join(', ')}` : '';
-			const source = `trigger, ${contract.trigger ?? ''}${scopesNote(contract)}${schemaNote}${replyNote(pairing)}`;
+			const source = `trigger, ${contract.trigger ?? ''}${scopesNote(contract)}${schemaNote}${replyNote(pairing, 'trigger')}`;
 			return { path, summary: `${contract.action}. ${contract.summary} (${source})`, text };
 		},
 	);
@@ -740,7 +767,9 @@ export function generateNodeModule(nodeId: string, contracts: readonly Generated
 	const steps = named.filter(({ contract }) => !suppliedKindOf(contract.output));
 	const derived = steps.some(({ contract }) => !contract.output['x-n8n-passed']);
 	const declares = triggers.some(({ contract }) => declaredFieldsOf(contract.output).length > 0);
-	const hasEntries = triggers.some(({ contract }) => contract.output['x-n8n-entry-fields']);
+	const hasEntries = [...named, ...triggers].some(
+		({ contract }) => contract.output['x-n8n-entry-fields'],
+	);
 	const imports = [
 		...(steps.length > 0 ? ['contractStep'] : []),
 		...(suppliers.length > 0 ? ['contractSubnode'] : []),
@@ -756,6 +785,7 @@ export function generateNodeModule(nodeId: string, contracts: readonly Generated
 		...(triggers.length > 0 ? ['type Flow'] : []),
 		...(body.includes(`Value<I, C, ${OPEN_VALUE}>`) ? [`type ${OPEN_VALUE}`] : []),
 		...(body.includes('ModelOf<') ? ['type ModelOf'] : []),
+		'type NodeSettings',
 		...(derived || triggers.length > 0 ? ['type OutputOf'] : []),
 		...(routed ? ['type RoutedStep'] : []),
 		...(steps.length > 0 ? ['type Step'] : []),
@@ -769,6 +799,11 @@ export function generateNodeModule(nodeId: string, contracts: readonly Generated
 			`// Generated from the ${nodeId} action contracts. Do not edit.`,
 			...credentialLines(nodeId, contracts),
 			...joins,
+			...(routed
+				? [
+						'// A step with outputs: flow.route(step, { <output>: (flow) => … }) continues from each output; andThen only from the first.',
+					]
+				: []),
 			...(exported.length > 0
 				? [
 						`import { ${imports.join(', ')} } from '@n8n/workflow-sdk/next';`,

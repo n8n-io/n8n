@@ -25,7 +25,9 @@ import { sanitizeInputSchema } from '../agent/sanitize-mcp-schemas';
 import {
 	actionRow,
 	actionRowsOfNode,
+	builtInRowOf,
 	catalogRowsBesideModules,
+	contractReplacementOf,
 	namesDisplayName,
 	nearestNextActions,
 	nextNodeIdOfNodeType,
@@ -33,6 +35,7 @@ import {
 	nextNodeModule,
 	nextNodeView,
 	searchNextActions,
+	type NextNodeModule,
 } from './next-modules';
 import type { InstanceAiContext, NodeDescription } from '../types';
 import { warmWorkspace } from '../workspace/warm-workspace';
@@ -107,11 +110,12 @@ const moduleSearchAction = searchAction.extend({
 		.describe(
 			'Search nodes by service and operation, e.g. "notion get many pages", or by AI connection type. ' +
 				'`nodeModules` holds the typed module of each service: import it and call its actions. ' +
+				'`builtIns` are flow steps of `@n8n/workflow-sdk/next` that replace catalog nodes. ' +
 				'Pass `queries` with every service of the workflow in one call, also HTTP. ' +
 				'Call it in the same step as `load_skill`, not after it.',
 		),
 	connectionType: searchAction.shape.connectionType.describe('AI sub-node connection type'),
-	limit: searchAction.shape.limit.describe('Max results (default 10)'),
+	limit: searchAction.shape.limit.describe('Max results (default 10, at most 20)'),
 	queries: z
 		.array(z.string())
 		.min(1)
@@ -399,18 +403,29 @@ async function handleSearch(
 	};
 }
 
+const MAX_SEARCH_LIMIT = 20;
+
+/** About 8k tokens: six typed module views fit, and catalog rows are cut first. */
+const MAX_SEARCH_BYTES = 32_000;
+
 /**
- * A module node replaces its catalog hits. When a module covers the query, the other hits
- * are one-line rows. Otherwise they keep their catalog rows for `node()`.
+ * A module node or an SDK step replaces its catalog hits. When a module covers the query, or
+ * the query names an SDK step, the other hits are one-line rows. Otherwise they keep their
+ * catalog rows for `node()`.
  */
 async function searchOneWithModules(
 	context: InstanceAiContext,
 	input: SearchInput,
 	cache: SearchEngineCache,
 ) {
+	const query = input.query ?? '';
 	const catalog = await handleSearch(context, input, cache);
-	const coveredNodes = catalog.results.flatMap((hit) => nextNodeIdOfNodeType(hit.name) ?? []);
-	const results = catalog.results.filter((hit) => nextNodeIdOfNodeType(hit.name) === undefined);
+	const namesHit = (hit: { displayName: string }) => namesDisplayName(query, hit.displayName);
+	const builtInHits = catalog.results.filter((hit) => builtInRowOf(hit.name) !== undefined);
+	const builtIns = [...new Set(builtInHits.flatMap((hit) => builtInRowOf(hit.name) ?? []))];
+	const moduleHits = catalog.results.filter((hit) => builtInRowOf(hit.name) === undefined);
+	const coveredNodes = moduleHits.flatMap((hit) => nextNodeIdOfNodeType(hit.name) ?? []);
+	const results = moduleHits.filter((hit) => nextNodeIdOfNodeType(hit.name) === undefined);
 	// A sub-node search gets the sub-node actions of the module nodes that replace its hits.
 	const suppliers = input.connectionType
 		? supplierActionsOf(coveredNodes, input.connectionType)
@@ -422,24 +437,102 @@ async function searchOneWithModules(
 				otherActions: [],
 				coversQuery: false,
 			}
-		: searchNextActions(input.query ?? '', coveredNodes);
-	const otherActionsPart = otherActions.length ? { otherActions } : {};
-	if (nodes.length) {
+		: searchNextActions(
+				query,
+				coveredNodes,
+				moduleHits.filter(namesHit).flatMap((hit) => nextNodeIdOfNodeType(hit.name) ?? []),
+			);
+	const namesBuiltIn = builtInHits.some(namesHit);
+	// A named SDK step does the job, so the actions behind it (core.if for .branch) are noise.
+	const otherActionsPart = otherActions.length && !namesBuiltIn ? { otherActions } : {};
+	const builtInsPart = builtIns.length ? { builtIns } : {};
+	if (nodes.length || namesBuiltIn) {
 		// Other catalog hits of a query that the modules match fully are noise, unless the
 		// query names them, e.g. the legacy agent for "AI agent".
-		const shown = coversQuery
-			? results.filter((hit) => namesDisplayName(input.query ?? '', hit.displayName))
-			: results;
+		const shown = coversQuery ? results.filter(namesHit) : results;
 		const otherNodes = catalogRowsBesideModules(shown, nodes);
-		return { nodes, actions, ...otherActionsPart, ...(otherNodes.length ? { otherNodes } : {}) };
+		return {
+			nodes,
+			actions,
+			...builtInsPart,
+			...otherActionsPart,
+			...(otherNodes.length ? { otherNodes } : {}),
+		};
 	}
 	return {
 		nodes,
 		actions,
+		...builtInsPart,
 		...otherActionsPart,
 		results,
 		totalResults: results.length,
 	};
+}
+
+type ModuleSearch = Awaited<ReturnType<typeof searchOneWithModules>>;
+
+function moduleSearchResponse(
+	queries: ReadonlyArray<string | undefined>,
+	single: boolean,
+	searches: readonly ModuleSearch[],
+	nodeModules: readonly NextNodeModule[],
+) {
+	const modulesPart = nodeModules.length ? { nodeModules } : {};
+	if (single) {
+		const [{ nodes: _nodes, actions: _actions, ...search }] = searches;
+		return { ...modulesPart, ...search };
+	}
+	return {
+		...modulesPart,
+		searches: searches.map(({ nodes, actions: _actions, ...search }, index) => ({
+			query: queries[index],
+			...(nodes.length ? { modules: nodes } : {}),
+			...search,
+		})),
+	};
+}
+
+const byteSizeOf = (value: unknown) => Buffer.byteLength(JSON.stringify(value));
+
+const countDown = (from: number) => Array.from({ length: from + 1 }, (_, index) => from - index);
+
+const rowCountOf = (search: ModuleSearch) => ('results' in search ? search.results.length : 0);
+
+/**
+ * Keep a search answer under `MAX_SEARCH_BYTES`. Catalog rows go first, the same number from
+ * each query, then modules from the end. A `cut` note says what went and how to get it.
+ */
+function withinSearchBudget(
+	searches: readonly ModuleSearch[],
+	nodeModules: readonly NextNodeModule[],
+	respond: (searches: readonly ModuleSearch[], nodeModules: readonly NextNodeModule[]) => object,
+) {
+	const withRows = (cap: number) =>
+		searches.map((search) =>
+			'results' in search ? { ...search, results: search.results.slice(0, cap) } : search,
+		);
+	const fits = (kept: readonly ModuleSearch[], modules: readonly NextNodeModule[]) =>
+		byteSizeOf(respond(kept, modules)) <= MAX_SEARCH_BYTES;
+	const rowCap =
+		countDown(Math.max(0, ...searches.map(rowCountOf))).find((cap) =>
+			fits(withRows(cap), nodeModules),
+		) ?? 0;
+	const kept = withRows(rowCap);
+	const moduleCount =
+		countDown(nodeModules.length).find((count) => fits(kept, nodeModules.slice(0, count))) ?? 0;
+	const response = respond(kept, nodeModules.slice(0, moduleCount));
+	const cutRows =
+		searches.reduce((total, search) => total + rowCountOf(search), 0) -
+		kept.reduce((total, search) => total + rowCountOf(search), 0);
+	const cutModules = nodeModules.slice(moduleCount).map(({ node }) => node);
+	if (!cutRows && !cutModules.length) return response;
+	const parts = [
+		...(cutRows ? [`${cutRows} catalog rows (search with fewer queries for them)`] : []),
+		...(cutModules.length
+			? [`the modules ${cutModules.join(', ')} (get them with type-definition)`]
+			: []),
+	];
+	return { ...response, cut: `Cut to ${MAX_SEARCH_BYTES / 1000} KB: ${parts.join('; ')}.` };
 }
 
 /**
@@ -453,34 +546,53 @@ async function handleModuleSearch(
 ) {
 	const queryList = 'queries' in input ? input.queries : undefined;
 	const queries = queryList ?? [input.query];
+	const limit = Math.min(input.limit, MAX_SEARCH_LIMIT);
 	const searches = await Promise.all(
-		queries.map(async (query) => await searchOneWithModules(context, { ...input, query }, cache)),
+		queries.map(
+			async (query) => await searchOneWithModules(context, { ...input, query, limit }, cache),
+		),
 	);
 	const shownActions = new Set(searches.flatMap(({ actions }) => actions));
 	const nodeModules = [...new Set(searches.flatMap(({ nodes }) => nodes))].flatMap(
 		(nodeId) => nextNodeView(nodeId, shownActions) ?? [],
 	);
 	if (nodeModules.length) warmWorkspace(context);
-	const modulesPart = nodeModules.length ? { nodeModules } : {};
-	if (!queryList) {
-		const [{ nodes: _nodes, actions: _actions, ...single }] = searches;
-		return { ...modulesPart, ...single };
+	return withinSearchBudget(searches, nodeModules, (kept, modules) =>
+		moduleSearchResponse(queries, !queryList, kept, modules),
+	);
+}
+
+/**
+ * The module of a module id, an action id, or a catalog node type that a module replaces. An
+ * SDK step replaces its node type before a module does. A request with a resource and an
+ * operation gets the view that types their actions, or the catalog definition when no action
+ * runs them.
+ */
+function moduleOfRequest(request: NodeTypeRequest): NextNodeModule | undefined {
+	const nodeType = typeof request === 'string' ? request : request.nodeType;
+	const direct = nextNodeModule(nodeType);
+	if (direct) return direct;
+	const nodeId = builtInRowOf(nodeType) ? undefined : nextNodeIdOfNodeType(nodeType);
+	if (nodeId === undefined) return undefined;
+	const { resource, operation } = typeof request === 'string' ? {} : request;
+	if (resource === undefined || operation === undefined) {
+		const nodeModule = nextNodeModule(nodeId);
+		const hint = `// The typed module for ${nodeType}. For an operation without an action, request ${nodeType} with resource and operation.\n`;
+		return nodeModule && { ...nodeModule, module: `${hint}${nodeModule.module}` };
 	}
-	return {
-		...modulesPart,
-		searches: searches.map(({ nodes, actions: _actions, ...search }, index) => ({
-			query: queries[index],
-			...(nodes.length ? { modules: nodes } : {}),
-			...search,
-		})),
-	};
+	const replacement = contractReplacementOf({
+		type: nodeType,
+		parameters: { resource, operation },
+	});
+	if (replacement?.nodeId !== nodeId) return undefined;
+	return nextNodeView(nodeId, new Set(replacement.actions.map(({ id }) => id)));
 }
 
 async function handleDescribe(
 	context: InstanceAiContext,
 	input: Extract<FullInput, { action: 'describe' }>,
 ) {
-	const nodeModule = context.nodeContractsEnabled ? nextNodeModule(input.nodeType) : undefined;
+	const nodeModule = context.nodeContractsEnabled ? moduleOfRequest(input.nodeType) : undefined;
 	if (nodeModule) return { found: true, name: input.nodeType, ...nodeModule };
 
 	try {
@@ -501,8 +613,9 @@ async function handleDescribe(
 }
 
 /** The module text goes in `content`, the field that carries TypeScript definitions. */
-function resolveModuleDefinition(nodeType: string) {
-	const nodeModule = nextNodeModule(nodeType);
+function resolveModuleDefinition(request: NodeTypeRequest) {
+	const nodeType = typeof request === 'string' ? request : request.nodeType;
+	const nodeModule = moduleOfRequest(request);
 	if (!nodeModule) return undefined;
 	return { nodeType, node: nodeModule.node, import: nodeModule.import, content: nodeModule.module };
 }
@@ -529,7 +642,7 @@ async function resolveNodeTypeDefinitions(
 		nodeTypes.map(async (req) => {
 			const nodeType = typeof req === 'string' ? req : req.nodeType;
 			const moduleDefinition = context.nodeContractsEnabled
-				? resolveModuleDefinition(nodeType)
+				? resolveModuleDefinition(req)
 				: undefined;
 			if (moduleDefinition) {
 				warmWorkspace(context);
@@ -537,7 +650,9 @@ async function resolveNodeTypeDefinitions(
 			}
 
 			const options = typeof req === 'string' ? undefined : req;
-			const moduleNode = context.nodeContractsEnabled ? nextNodeIdOfNodeType(nodeType) : undefined;
+			const builtInRow = context.nodeContractsEnabled ? builtInRowOf(nodeType) : undefined;
+			const moduleNode =
+				context.nodeContractsEnabled && !builtInRow ? nextNodeIdOfNodeType(nodeType) : undefined;
 			const actions = moduleNode ? actionRowsOfNode(moduleNode) : [];
 
 			const result = await context.nodeService.getNodeTypeDefinition!(nodeType, options);
@@ -575,8 +690,9 @@ async function resolveNodeTypeDefinitions(
 			// The agent maps a classic definition to a guessed module unless told how to use it.
 			// A flow starts only from a trigger, so a trigger gets trigger(), not node().
 			const version = result.version ?? '<version>';
-			const noModuleHint =
-				!context.nodeContractsEnabled || moduleNode
+			const noModuleHint = builtInRow
+				? `// Use the flow step instead of node(): ${builtInRow}\n`
+				: !context.nodeContractsEnabled || moduleNode
 					? ''
 					: isTriggerNodeType(nodeType)
 						? `// No typed module. Start the flow with trigger({ name, type: '${nodeType}', version: ${version}, parameters, sample }) from '@n8n/workflow-sdk/next'.\n`

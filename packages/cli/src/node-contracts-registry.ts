@@ -5,14 +5,14 @@ import { Container, Service } from '@n8n/di';
 import { readFile } from 'fs/promises';
 import {
 	actions,
-	COMPOSED_NODES,
+	MIGRATED_NODES,
 	NODE_PACKAGE,
 	nodeTypeOf,
 	runsActionApi,
 	toVersionedNodeType,
 	toVersionedTriggerType,
 	triggers,
-	withComposedVersions,
+	withMigratedVersions,
 	type ContractStore,
 	type FrozenVersion,
 } from '@n8n/nodes-base-next';
@@ -183,19 +183,19 @@ export function composeContractNodes(
 	const majors = withStoredMajors(loaders, stored);
 	const nodes = new Map<string, LoadedClass<IVersionedNodeType>>([
 		...majors.map(({ nodeType, loaded }) => [nodeType, loaded] as const),
-		...Object.keys(COMPOSED_NODES).flatMap((nodeType) => {
+		...Object.keys(MIGRATED_NODES).flatMap((nodeType) => {
 			const legacy = versionedNodeOf(loaders, nodeType);
 			if (!legacy) return [];
 			const composed: LoadedClass<IVersionedNodeType> = {
 				...legacy,
-				type: withComposedVersions(nodeType, legacy.type),
+				type: withMigratedVersions(nodeType, legacy.type),
 			};
 			return [[nodeType, composed] as const];
 		}),
 	]);
 	// A copy, because later steps add options to the properties of the newest version.
 	const added = [...nodes].flatMap(([name, { type }]) =>
-		Object.keys(COMPOSED_NODES[name] ?? {}).map(
+		Object.keys(MIGRATED_NODES[name] ?? {}).map(
 			(version): INodeTypeDescription => ({
 				...deepCopy(type.getNodeType(Number(version)).description),
 				name,
@@ -205,7 +205,7 @@ export function composeContractNodes(
 	const patched = [...types, ...majors.flatMap(({ descriptions }) => descriptions)].map(
 		(description): INodeTypeDescription => {
 			const defaultVersion =
-				description.name in COMPOSED_NODES
+				description.name in MIGRATED_NODES
 					? nodes.get(description.name)?.type.description.defaultVersion
 					: undefined;
 			if (defaultVersion !== undefined) return { ...description, defaultVersion };

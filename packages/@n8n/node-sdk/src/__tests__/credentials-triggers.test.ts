@@ -495,7 +495,7 @@ describe('generateNodeModule', () => {
 			'contractTrigger("n8n-nodes-tasks.tasks.task.created", config, 1, {"credential":"tasks","scopes":["tasks:read"]}, {"example":',
 		);
 		expect(module).toContain(
-			"import { contractStep, contractTrigger, type DeepPartial, type Flow, type OutputOf, type Step, type Value } from '@n8n/workflow-sdk/next';",
+			"import { contractStep, contractTrigger, type DeepPartial, type Flow, type NodeSettings, type OutputOf, type Step, type Value } from '@n8n/workflow-sdk/next';",
 		);
 	});
 });

@@ -1,6 +1,6 @@
 /**
  * Typed workflow SDK. A workflow is a chain of immutable `Flow` values: start at a trigger,
- * then `andThen`, `branch`, and `orElse`, and the regions `forEach`, `loop`, `paginate`,
+ * then `andThen`, `branch`, `route`, and `orElse`, and the regions `forEach`, `loop`, `paginate`,
  * `pollUntil`, `switch`, `filter`, and `merge`. Lambdas compile to n8n expressions, and `tsc`
  * checks every read against the item type of the node before it. AI nodes take their chat
  * model, memory, tools, and output parser as `subnodes`.
@@ -26,6 +26,9 @@ import {
 	type Dollar,
 	type Flow,
 	type Loose,
+	type NodeSettings,
+	type NodeSpec,
+	type RoutedStep,
 	type Step,
 	type Subnode,
 	type Subnodes,
@@ -65,11 +68,15 @@ export type {
 	ModelCatalog,
 	ModelOf,
 	NodeOutputs,
+	NodeSettings,
 	OpenValue,
 	OutputNames,
 	OutputOf,
 	Pairing,
 	Requires,
+	RouteFlows,
+	RoutedCtx,
+	RoutedItem,
 	RoutedStep,
 	Step,
 	Subnode,
@@ -170,30 +177,43 @@ const compiledParameters = (compiler: Compiler, parameters: unknown) => {
 		: {};
 };
 
-/**
- * Any n8n node by type and version, for nodes without a typed module. Its output is `Loose`
- * unless you pass `sample` items. An AI node takes its sub-nodes in `subnodes`.
- */
-export function node<In, Ctx, const N extends string, Out = Loose>(config: {
+interface NodeConfig<In, Ctx, N extends string, Out> {
 	name: N;
 	type: string;
 	version: number;
 	parameters?: Params<In, Ctx>;
+	settings?: NodeSettings;
 	subnodes?: Subnodes<In, Ctx>;
 	sample?: readonly Out[];
-}): Step<In, Ctx, Out, N> {
-	const { name, type, version, parameters, subnodes, sample } = config;
-	return {
+}
+
+/**
+ * Any n8n node by type and version, for nodes without a typed module. Its output is `Loose`
+ * unless you pass `sample` items. An AI node takes its sub-nodes in `subnodes`. Name the main
+ * outputs in n8n order in `outputs`, e.g. `['true', 'false']` for IF, to wire each with
+ * `Flow.route`. Node settings go in `settings`, e.g. `{ retryOnFail: true }`, as on a typed step.
+ */
+export function node<In, Ctx, const N extends string, Out = Loose>(
+	config: NodeConfig<In, Ctx, N, Out>,
+): Step<In, Ctx, Out, N>;
+export function node<In, Ctx, const N extends string, const O extends string, Out = Loose>(
+	config: NodeConfig<In, Ctx, N, Out> & { outputs: readonly [O, O, ...O[]] },
+): RoutedStep<In, Ctx, Out, N, O>;
+export function node<In, Ctx, const N extends string, Out = Loose>(
+	config: NodeConfig<In, Ctx, N, Out> & { outputs?: readonly string[] },
+): Step<In, Ctx, Out, N> | RoutedStep<In, Ctx, Out, N, string> {
+	const { name, type, version, parameters, settings, subnodes, sample, outputs } = config;
+	const spec: NodeSpec = {
 		name,
-		spec: {
-			name,
-			type,
-			version,
-			sample,
-			parameters: (compiler) => compiledParameters(compiler, parameters),
-			...(subnodes ? { subnodes: subnodeSpecs(subnodes) } : {}),
-		},
+		type,
+		version,
+		sample,
+		parameters: (compiler) => compiledParameters(compiler, parameters),
+		...(settings ? { settings } : {}),
+		...(subnodes ? { subnodes: subnodeSpecs(subnodes) } : {}),
+		...(outputs ? { outputs: outputs.length } : {}),
 	};
+	return outputs ? { name, spec, outputs } : { name, spec };
 }
 
 /**
@@ -206,15 +226,17 @@ export function subnode<In, Ctx>(config: {
 	type: string;
 	version: number;
 	parameters?: Params<In, Ctx>;
+	settings?: NodeSettings;
 	subnodes?: Subnodes<In, Ctx>;
 }): Subnode<In, Ctx> {
-	const { name, type, version, parameters, subnodes } = config;
+	const { name, type, version, parameters, settings, subnodes } = config;
 	return {
 		spec: {
 			name,
 			type,
 			version,
 			parameters: (compiler) => compiledParameters(compiler, parameters),
+			...(settings ? { settings } : {}),
 			...(subnodes ? { subnodes: subnodeSpecs(subnodes) } : {}),
 		},
 	};
@@ -226,10 +248,18 @@ export function trigger<const N extends string, Out = Loose>(config: {
 	type: string;
 	version: number;
 	parameters?: Record<string, Json>;
+	settings?: NodeSettings;
 	sample?: readonly Out[];
 }): Flow<Out, Record<N, Out>> {
-	const { name, type, version, parameters, sample } = config;
-	return startFlow({ name, type, version, sample, parameters: () => ({ ...parameters }) });
+	const { name, type, version, parameters, settings, sample } = config;
+	return startFlow({
+		name,
+		type,
+		version,
+		sample,
+		...(settings ? { settings } : {}),
+		parameters: () => ({ ...parameters }),
+	});
 }
 
 /** Keys of `In` whose value is an array. */

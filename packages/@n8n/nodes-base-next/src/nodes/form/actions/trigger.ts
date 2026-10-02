@@ -16,6 +16,59 @@ const choices = {
 const text = { ...field, placeholder, defaultValue };
 const file = obj({ filename: str(), mimetype: str(), size: int() });
 
+const formFields = obj({
+	values: arr(
+		variant('fieldType', {
+			text,
+			textarea: text,
+			email: text,
+			['number']: text,
+			password: { ...field, placeholder },
+			date: { ...field, defaultValue },
+			dropdown: choices,
+			radio: choices,
+			checkbox: {
+				...choices,
+				limitSelection: oneOf('exact', 'range', 'unlimited').optional(),
+				numberOfSelections: int().optional(),
+				minSelections: int().optional(),
+				maxSelections: int().optional(),
+			},
+			file: {
+				...field,
+				multipleFiles: bool().optional(),
+				acceptFileTypes: str().optional().hint('e.g. .pdf, .jpg'),
+			},
+			hiddenField: { fieldName: str(), fieldValue: str().optional() },
+			html: { elementName: str().optional().hint('The output field'), html: str() },
+		}),
+	),
+});
+
+/** One output field per form field: a page emits the fields of its own form, as the trigger does. */
+const entryFields = {
+	list: ['formFields', 'values'],
+	key: ['fieldName', 'fieldLabel', 'elementName'],
+	type: 'fieldType',
+	types: {
+		['number']: num().json,
+		checkbox: arr(str()).json,
+		file: union(arr(file), file).hint(
+			'A list unless multipleFiles is false; the files are binaries of the item',
+		).json,
+	},
+	fallback: str().json,
+	required: 'requiredField',
+};
+
+const submitted = {
+	submittedAt: str().hint('ISO time, UTC unless options.useWorkflowTimezone'),
+	formMode: oneOf('test', 'production'),
+	user: obj({ id: str(), email: str(), firstName: str(), lastName: str() })
+		.optional()
+		.hint('For authentication n8nUserAuth: who submitted the form'),
+};
+
 /** The Form Trigger node, version 2.6. */
 export const formTrigger = form.trigger('trigger', {
 	trigger: 'On form submission',
@@ -26,34 +79,7 @@ export const formTrigger = form.trigger('trigger', {
 			.hint('Setup asks for the credential'),
 		formTitle: str().with({ minLength: 1 }),
 		formDescription: str().optional().hint('Shown under the title; HTML is allowed'),
-		formFields: obj({
-			values: arr(
-				variant('fieldType', {
-					text,
-					textarea: text,
-					email: text,
-					['number']: text,
-					password: { ...field, placeholder },
-					date: { ...field, defaultValue },
-					dropdown: choices,
-					radio: choices,
-					checkbox: {
-						...choices,
-						limitSelection: oneOf('exact', 'range', 'unlimited').optional(),
-						numberOfSelections: int().optional(),
-						minSelections: int().optional(),
-						maxSelections: int().optional(),
-					},
-					file: {
-						...field,
-						multipleFiles: bool().optional(),
-						acceptFileTypes: str().optional().hint('e.g. .pdf, .jpg'),
-					},
-					hiddenField: { fieldName: str(), fieldValue: str().optional() },
-					html: { elementName: str().optional().hint('The output field'), html: str() },
-				}),
-			),
-		}),
+		formFields,
 		responseMode: oneOf('onReceived', 'lastNode')
 			.default('onReceived')
 			.hint('lastNode: the form waits for the workflow to finish'),
@@ -74,29 +100,32 @@ export const formTrigger = form.trigger('trigger', {
 		}).optional(),
 	},
 	output: obj({
-		submittedAt: str().hint('ISO time, UTC unless options.useWorkflowTimezone'),
-		formMode: oneOf('test', 'production'),
+		...submitted,
 		formQueryParameters: record(union(str(), arr(str())))
 			.optional()
 			.hint('The query of the form URL, when it has one'),
-		user: obj({ id: str(), email: str(), firstName: str(), lastName: str() })
-			.optional()
-			.hint('For authentication n8nUserAuth: who submitted the form'),
-	}).with({
-		'x-n8n-entry-fields': {
-			list: ['formFields', 'values'],
-			key: ['fieldName', 'fieldLabel', 'elementName'],
-			type: 'fieldType',
-			types: {
-				['number']: num().json,
-				checkbox: arr(str()).json,
-				file: union(arr(file), file).hint(
-					'A list unless multipleFiles is false; the files are binaries of the item',
-				).json,
-			},
-			fallback: str().json,
-			required: 'requiredField',
-		},
-	}),
+	}).with({ 'x-n8n-entry-fields': entryFields }),
 	native: { type: 'n8n-nodes-base.formTrigger', version: 2.6, on: 'form' },
+	reply: {
+		operation: 'page',
+		action: 'Show the next form page',
+		summary:
+			'Shows the next page of the form to the same user and emits the fields they submit there.',
+		native: { type: 'n8n-nodes-base.form', version: 2.5 },
+		input: {
+			formFields,
+			limitWaitTime: bool().optional().hint('true: stop waiting after limitType'),
+			limitType: oneOf('afterTimeInterval', 'atSpecifiedTime').optional(),
+			resumeAmount: num().optional().hint('For limitType afterTimeInterval'),
+			resumeUnit: oneOf('minutes', 'hours', 'days').optional(),
+			maxDateAndTime: str().optional().hint('For limitType atSpecifiedTime: an ISO time'),
+			options: obj({
+				formTitle: str().optional(),
+				formDescription: str().optional().hint('HTML is allowed'),
+				buttonLabel: str().optional(),
+				customCss: str().optional(),
+			}).optional(),
+		},
+		output: obj(submitted).with({ 'x-n8n-entry-fields': entryFields }),
+	},
 });

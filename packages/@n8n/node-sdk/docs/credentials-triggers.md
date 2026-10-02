@@ -128,7 +128,7 @@ export const webhookTrigger = webhook.trigger('trigger', {
 | Part | Meaning |
 |---|---|
 | `input` | The parameters of the built-in node at `native.version`, as strict as the node allows. The flow emits them as they are. |
-| `native.on` | What starts it: `manual`, `schedule`, `webhook`, or `form`. The contract document has it in `trigger`. |
+| `native.on` | What starts it: `manual`, `schedule`, `webhook`, `form`, or `poll`. The contract document has it in `trigger`. |
 | `declared()` | An output field whose JSON Schema the workflow declares in `schema`, e.g. `schema: { body: { … } }`. It types the field, and without a `sample` it makes the trigger sample. It is not a node parameter, and n8n does not check the value at run time. Without a schema, the field is open JSON. |
 | `x-n8n-entry-fields` | One output field per entry of an input list, e.g. one per form field. The module types it from the config with `EntryFields`, and `Exact` names a misspelt key. |
 | `reply` | The step that answers the caller. The module has it beside the trigger (`webhook.respond`). The flow build fails when the trigger waits (`awaits`) and no reply follows, or when a reply follows a trigger that does not wait and no node between them waits (`awaits.field` is `awaits.value`, e.g. a Wait node). |
@@ -136,6 +136,9 @@ export const webhookTrigger = webhook.trigger('trigger', {
 - `generatedTriggersOf(trigger, nodeType)` gives the factories of a trigger. A native trigger
   emits its built-in node type and version, and its reply.
 - A native trigger is not frozen and has no node class. `triggerMethodsOf` throws for it.
+- An action can be native too: `native: { type, version }` instead of `run` or `request`, e.g.
+  `loop.batches` for Loop Over Items. It has the same rules: no bundle, no node class
+  (`toNodeType` and `executorOf` throw), and the flow emits the built-in node.
 
 ## Bindings
 
@@ -144,6 +147,7 @@ export const webhookTrigger = webhook.trigger('trigger', {
 | `run` | `run({ input, http })` | The bundle's code, through the host executor. |
 | `request` | `request: { method, path: '/users/{user}', query, body, items }` | The host executor. No author code runs. |
 | `mcp` | Nothing: `liftMcpTool(node, tool, client)` | The host's MCP client calls the tool. |
+| `native` | `native: { type: 'n8n-nodes-base.splitInBatches', version: 3 }` | n8n runs the built-in node. |
 
 - `request.path` is type checked: `{field}` must name a required input field. An optional field
   could leave the segment empty and send the request to another URL. At run time, an empty

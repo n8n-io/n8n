@@ -1,10 +1,15 @@
 import type { INodeProperties, INodeTypeDescription } from 'n8n-workflow';
 
-import { generateNodeModule } from '../../codegen';
-import { validate } from '../../validate';
-import { canonicalJson } from '../../version';
-import { liftNodeType, outputSchemaFrom, type LiftedAction } from '../lift';
-import { compileLifted, decompileLifted, normaliseParameters } from '../round-trip';
+import { canonicalJson, generateNodeModule, validate } from '@n8n/node-sdk';
+
+import {
+	deriveManifests,
+	fromLegacyParameters,
+	toLegacyParameters,
+	type DerivedAction,
+} from '../../index';
+import { outputSchemaFrom } from '../derive';
+import { normaliseParameters } from '../round-trip';
 
 const show = (rules: Record<string, unknown[]>) =>
 	({ displayOptions: { show: rules } }) as Pick<INodeProperties, 'displayOptions'>;
@@ -148,11 +153,11 @@ const request: INodeTypeDescription = {
 	],
 };
 
-const lift = (description: INodeTypeDescription) =>
-	liftNodeType(description, { packageName: 'n8n-nodes-base' });
+const derive = (description: INodeTypeDescription) =>
+	deriveManifests(description, { packageName: 'n8n-nodes-base' });
 
 const actionOf = (description: INodeTypeDescription, typeVersion: number, id: string) => {
-	const action = lift(description)
+	const action = derive(description)
 		.find((version) => version.typeVersion === typeVersion)
 		?.actions.find((candidate) => candidate.contract.id === id);
 	if (!action) throw new Error(`no ${id}@${typeVersion}`);
@@ -160,13 +165,13 @@ const actionOf = (description: INodeTypeDescription, typeVersion: number, id: st
 };
 
 const roundTrips = (
-	action: LiftedAction,
+	action: DerivedAction,
 	description: INodeTypeDescription,
 	parameters: object,
 ) => {
 	const { typeVersion } = action.compile.target;
-	const input = decompileLifted(action.compile, description, { ...parameters });
-	const back = compileLifted(action.compile, input);
+	const input = fromLegacyParameters(action.compile, description, { ...parameters });
+	const back = toLegacyParameters(action.compile, input);
 	return {
 		input,
 		equal:
@@ -175,9 +180,9 @@ const roundTrips = (
 	};
 };
 
-describe('liftNodeType', () => {
-	it('lifts one action per typeVersion, resource, and operation', () => {
-		const versions = lift(todo);
+describe('deriveManifests', () => {
+	it('derives one action per typeVersion, resource, and operation', () => {
+		const versions = derive(todo);
 		expect(versions.map((version) => version.typeVersion)).toEqual([1, 2]);
 		expect(versions[1]?.actions.map((action) => action.contract.id)).toEqual([
 			'todo.task.create',
@@ -189,7 +194,7 @@ describe('liftNodeType', () => {
 			semver: '2.0.0',
 			summary: 'Create a task',
 			credentials: ['todoApi'],
-			lifted: true,
+			derived: true,
 			outputClaim: 'unknown',
 			output: {},
 		});
@@ -248,7 +253,7 @@ describe('liftNodeType', () => {
 	});
 
 	it('uses a declared output schema and marks it inferred', () => {
-		const [version] = liftNodeType(request, {
+		const [version] = deriveManifests(request, {
 			packageName: 'n8n-nodes-base',
 			outputSchema: () =>
 				outputSchemaFrom({ type: 'object', version: 1, properties: { id: { type: 'string' } } }),
@@ -275,7 +280,7 @@ describe('liftNodeType', () => {
 	});
 });
 
-describe('compileLifted and decompileLifted', () => {
+describe('toLegacyParameters and fromLegacyParameters', () => {
 	it('round-trips saved parameters through the identity map', () => {
 		const create = actionOf(todo, 2, 'todo.task.create');
 		const saved = {
@@ -293,7 +298,7 @@ describe('compileLifted and decompileLifted', () => {
 		});
 		expect(validate(input, create.contract.input, { allowExpressions: true })).toEqual([]);
 		expect(equal).toBe(true);
-		expect(compileLifted(create.compile, input)).toEqual(saved);
+		expect(toLegacyParameters(create.compile, input)).toEqual(saved);
 	});
 
 	it('keeps the variant tag when it holds the default', () => {
@@ -306,7 +311,7 @@ describe('compileLifted and decompileLifted', () => {
 
 	it('drops parameters that the action does not show', () => {
 		const create = actionOf(todo, 1, 'todo.task.create');
-		const input = decompileLifted(create.compile, todo, {
+		const input = fromLegacyParameters(create.compile, todo, {
 			resource: 'task',
 			operation: 'create',
 			title: 't',

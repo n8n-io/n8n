@@ -309,12 +309,33 @@ export const SUBNODE_SLOTS = [
 
 export type SubnodeSlot = (typeof SUBNODE_SLOTS)[number][0];
 
+/**
+ * The settings of an n8n node, outside its parameters. `Flow.orElse` sets the error output
+ * (`onError: 'continueErrorOutput'`).
+ */
+export interface NodeSettings {
+	/** Run the node again when it fails: `maxTries` runs, `waitBetweenTries` ms apart. */
+	readonly retryOnFail?: boolean;
+	readonly maxTries?: number;
+	readonly waitBetweenTries?: number;
+	/** Emit one empty item when the node emits none. */
+	readonly alwaysOutputData?: boolean;
+	/** Run the node one time, for the first item only. */
+	readonly executeOnce?: boolean;
+	/** When the node fails: stop the workflow (default), or emit the error as an item. */
+	readonly onError?: 'stopWorkflow' | 'continueRegularOutput';
+	readonly notes?: string;
+	/** Show `notes` below the node on the canvas. */
+	readonly notesInFlow?: boolean;
+}
+
 /** A node that an AI node uses through an `ai_*` input. It never receives items. */
 export interface SubnodeSpec {
 	readonly name: string;
 	readonly type: string;
 	readonly version: number;
 	readonly parameters: (compiler: Compiler) => Record<string, unknown>;
+	readonly settings?: NodeSettings;
 	readonly subnodes?: SubnodeSpecs;
 }
 
@@ -328,6 +349,7 @@ export interface NodeSpec {
 	readonly trigger?: boolean;
 	readonly parameters: (compiler: Compiler) => Record<string, unknown>;
 	readonly sample?: readonly unknown[];
+	readonly settings?: NodeSettings;
 	readonly onError?: 'continueErrorOutput';
 	/** Main outputs before the error output. */
 	readonly outputs?: number;
@@ -341,14 +363,15 @@ export interface NodeSpec {
 /**
  * A native trigger and the step that replies to its caller, e.g. Webhook and Respond to
  * Webhook. The caller waits for the reply when the trigger parameter `field` is `value`.
+ * Without `field`, the step always belongs to the trigger, e.g. a form page.
  */
 export interface Pairing {
 	/** The node type of the trigger. */
 	readonly trigger: string;
 	/** The node type of the reply step. */
 	readonly reply: string;
-	readonly field: string;
-	readonly value: string;
+	readonly field?: string;
+	readonly value?: string;
 }
 
 /** The scopes of one credential that a contract node needs, e.g. `{ credential: 'notion', scopes: ['content:read'] }`. */
@@ -393,7 +416,7 @@ export interface Step<In, Ctx, Out, N extends string> {
 
 /**
  * A step with named outputs in n8n output order, from a contract with `outputs`.
- * `andThen` continues from the first output.
+ * `andThen` continues from the first output; `Flow.route` continues from each output.
  */
 export interface RoutedStep<In, Ctx, Out, N extends string, Names extends string>
 	extends Step<In, Ctx, Out, N> {
@@ -501,6 +524,7 @@ function splitSubnodes(fields: Readonly<Record<string, unknown>>): {
 /** Keys both branches share, so `$("Node")` after a join names a node every path ran. */
 type Common<A, B> = Pick<A, keyof A & keyof B>;
 
+/** The built-in Manual Trigger, which the native contract `manual.trigger` types. */
 export const MANUAL_NODE = { type: 'n8n-nodes-base.manualTrigger', version: 1 };
 /** The IF and Edit Fields contracts of `@n8n/nodes-base-next` (`core.if`, `core.set`). */
 export const BRANCH_NODE = { type: '@n8n/nodes-base-next.coreIf', version: 1 };
@@ -783,6 +807,65 @@ export function mergeFragment(
 const asFlow = <Item, Ctx>(fragment: Fragment) =>
 	new Flow<Item, Ctx>(fragment.graph, fragment.tails);
 
+const isRouted = <S extends object>(step: S): step is S & { readonly outputs: readonly string[] } =>
+	'outputs' in step && Array.isArray(step.outputs);
+
+const quoted = (names: readonly string[]) => names.map((name) => `"${name}"`).join(', ');
+
+/** @internal Run a routed step and build the flow of each output; outputs without one stop. */
+export function routeFragment(
+	from: Fragment,
+	step: { readonly name: string; readonly spec: NodeSpec; readonly outputs: readonly string[] },
+	flowOf: (output: string, flow: Fragment) => Fragment | undefined,
+	keys: readonly string[],
+): Fragment {
+	const { name, outputs } = step;
+	const unknown = keys.filter((key) => !outputs.includes(key));
+	const missing = outputs.slice(0, -1).filter((output) => !keys.includes(output));
+	const spec: NodeSpec = {
+		...step.spec,
+		parameters: (compiler) => {
+			if (unknown.length) {
+				compiler.issue(
+					`${name}: route names ${quoted(unknown)}, which are not outputs of ${name} (${quoted(outputs)})`,
+				);
+			}
+			if (missing.length) {
+				compiler.issue(
+					`${name}: items on ${quoted(missing)} stop. Give each output but the last a flow in route`,
+				);
+			}
+			return step.spec.parameters(compiler);
+		},
+	};
+	const graph = attach(from.graph, from.tails, spec);
+	const flows = outputs.flatMap((output, index) => {
+		const built = flowOf(output, { graph, tails: tail(name, index) });
+		return built ? [built] : [];
+	});
+	return {
+		graph: unionGraphs([graph, ...flows.map((flow) => flow.graph)]),
+		tails: flows.flatMap((flow) => flow.tails),
+	};
+}
+
+/**
+ * One flow per output name of a routed step; each gets the step output. `R` maps each output
+ * to the flow it builds, so a key that is no output name is `never`.
+ */
+export type RouteFlows<R, Names extends string, Out, Ctx> = {
+	readonly [K in keyof R]: K extends Names ? (flow: Flow<Out, Ctx>) => R[K] : never;
+};
+
+type RouteEnds<R> = {
+	[K in keyof R]-?: R[K] extends Flow<infer A, infer C> ? [A, C] : never;
+}[keyof R];
+
+/** The item after `route`: the item of any output flow. */
+export type RoutedItem<R> = RouteEnds<R>[0];
+/** Node names that every output flow ran, as after `branch`. */
+export type RoutedCtx<R> = Pick<RouteEnds<R>[1], keyof RouteEnds<R>[1]>;
+
 /** Keys of `Item` whose value is a string, so `switch` can route on them. */
 export type CaseField<Item> = {
 	[K in keyof Item]-?: Item[K] extends string ? K : never;
@@ -823,7 +906,46 @@ export class Flow<Item, Ctx> {
 
 	/** Run `step` on every item at the open ends. */
 	andThen<Out, N extends string>(step: Step<Item, Ctx, Out, N>): Flow<Out, Ctx & Record<N, Out>> {
-		return new Flow(attach(this.graph, this.tails, step.spec), [{ node: step.name, output: 0 }]);
+		const outputs = isRouted(step) ? step.outputs : [];
+		const dropped = outputs.slice(1, -1);
+		const spec: NodeSpec = dropped.length
+			? {
+					...step.spec,
+					parameters: (compiler) => {
+						compiler.issue(
+							`${step.name}: andThen continues only from output "${outputs[0] ?? ''}", so items on ${quoted(dropped)} stop. Use .route(step, { … }) to give each output a flow`,
+						);
+						return step.spec.parameters(compiler);
+					},
+				}
+			: step.spec;
+		return new Flow(attach(this.graph, this.tails, spec), [{ node: step.name, output: 0 }]);
+	}
+
+	/**
+	 * Run a step with named outputs, e.g. `dataTable.row.exists` or `ai.classify`, and continue
+	 * from each output with its own flow. Every output but the last needs a flow. The last output
+	 * is the "no" path (false, missing, other): without a flow its items stop.
+	 */
+	route<
+		Out,
+		const N extends string,
+		Names extends string,
+		R extends Readonly<Record<keyof R, Fragment>>,
+	>(
+		step: RoutedStep<Item, Ctx, Out, N, Names>,
+		routes: RouteFlows<R, Names, Out, Ctx & Record<N, Out>>,
+	): Flow<RoutedItem<R>, RoutedCtx<R>> {
+		const flows: Readonly<
+			Partial<Record<string, (flow: Flow<Out, Ctx & Record<N, Out>>) => Fragment>>
+		> = routes;
+		const fragment = routeFragment(
+			this,
+			step,
+			(output, flow) => flows[output]?.(asFlow(flow)),
+			Object.keys(routes),
+		);
+		return asFlow(fragment);
 	}
 
 	/**
@@ -1067,7 +1189,11 @@ export type OutputOf<N extends string, Default> = N extends keyof NodeOutputs
 export function contractStep<In, Ctx, Out, N extends string>(
 	id: string,
 	// The generated module types `sample`; `Out` comes from its declared return type.
-	config: { readonly name: N; readonly sample?: readonly unknown[] },
+	config: {
+		readonly name: N;
+		readonly sample?: readonly unknown[];
+		readonly settings?: NodeSettings;
+	},
 	/** The node version: the action major, or the version of a composed node. */
 	version = 1,
 	/** The resource and operation that select the action in a composed node version. */
@@ -1076,7 +1202,7 @@ export function contractStep<In, Ctx, Out, N extends string>(
 	/** Set on the reply step of a native trigger. */
 	pairing?: Pairing,
 ): Step<In, Ctx, Out, N> {
-	const { name, sample, ...fields } = config;
+	const { name, sample, settings, ...fields } = config;
 	const { parameters, subnodes, unslotted } = splitSubnodes(fields);
 	return {
 		name,
@@ -1085,6 +1211,7 @@ export function contractStep<In, Ctx, Out, N extends string>(
 			type: id,
 			version,
 			sample,
+			...(settings ? { settings } : {}),
 			...(requires ? { requires } : {}),
 			...(Object.keys(subnodes).length > 0 ? { subnodes } : {}),
 			...(pairing ? { pairing } : {}),
@@ -1107,10 +1234,10 @@ export function contractStep<In, Ctx, Out, N extends string>(
 export function contractSubnode<In, Ctx, const K extends SupplyKind>(
 	id: string,
 	kind: K,
-	config: { readonly name: string },
+	config: { readonly name: string; readonly settings?: NodeSettings },
 	version = 1,
 ): Subnode<In, Ctx, K> {
-	const { name, ...fields } = config;
+	const { name, settings, ...fields } = config;
 	const { parameters, subnodes, unslotted } = splitSubnodes(fields);
 	return {
 		slot: SUPPLY_SLOTS[kind],
@@ -1118,6 +1245,7 @@ export function contractSubnode<In, Ctx, const K extends SupplyKind>(
 			name,
 			type: id,
 			version,
+			...(settings ? { settings } : {}),
 			...(Object.keys(subnodes).length > 0 ? { subnodes } : {}),
 			parameters: (compiler) => {
 				unslotted.forEach((key) =>
@@ -1173,12 +1301,13 @@ export function contractTrigger<Out, const N extends string>(
 		readonly name: N;
 		readonly sample?: readonly unknown[];
 		readonly schema?: Readonly<Record<string, ValueSchema | undefined>>;
+		readonly settings?: NodeSettings;
 	},
 	version = 1,
 	requires?: Requires,
 	options: TriggerOptions = {},
 ): Flow<Out, Record<N, Out>> {
-	const { name, sample: given, ...input } = config;
+	const { name, sample: given, settings, ...input } = config;
 	const { pairing, example, takesSchema } = options;
 	// Only a trigger with declared output fields takes `schema`; for another it is a parameter.
 	const { schema, ...withoutSchema } = input;
@@ -1197,6 +1326,7 @@ export function contractTrigger<Out, const N extends string>(
 		type: id,
 		version,
 		sample,
+		...(settings ? { settings } : {}),
 		...(requires ? { requires } : {}),
 		...(pairing ? { pairing } : {}),
 		parameters: (compiler) => {
@@ -1207,9 +1337,11 @@ export function contractTrigger<Out, const N extends string>(
 }
 
 /** Output names: a fixed list, or one per entry of an input list, then the fixed ones. */
-type OutputList = readonly string[] | { readonly each: string; readonly then?: readonly string[] };
+export type OutputList =
+	| readonly string[]
+	| { readonly each: string; readonly then?: readonly string[] };
 
-const outputNamesOf = (outputs: OutputList, config: Readonly<Record<string, unknown>>) => {
+export const outputNamesOf = (outputs: OutputList, config: Readonly<Record<string, unknown>>) => {
 	if (!('each' in outputs)) return outputs;
 	const entries = config[outputs.each];
 	return [
@@ -1223,7 +1355,11 @@ const outputNamesOf = (outputs: OutputList, config: Readonly<Record<string, unkn
 /** A contract node with named outputs. Generated node modules call this, as `contractStep`. */
 export function routedStep<In, Ctx, Out, N extends string, Names extends string>(
 	id: string,
-	config: { readonly name: N; readonly sample?: readonly unknown[] },
+	config: {
+		readonly name: N;
+		readonly sample?: readonly unknown[];
+		readonly settings?: NodeSettings;
+	},
 	outputs: OutputList,
 	version = 1,
 	slot?: { readonly resource: string; readonly operation: string },
@@ -1424,9 +1560,17 @@ function pairingIssues(
 ): string[] {
 	const byName = new Map(graph.nodes.map((spec) => [spec.name, spec]));
 	const waits = (name: string, pairing: Pairing) =>
-		parametersOf.get(name)?.[pairing.field] === pairing.value;
+		pairing.field !== undefined && parametersOf.get(name)?.[pairing.field] === pairing.value;
 	return graph.nodes.flatMap((spec): string[] => {
 		const { pairing } = spec;
+		if (pairing && pairing.field === undefined) {
+			// n8n fails such a step at run time when its trigger is not before it.
+			const before = [...reachable(graph, spec.name, 'up')];
+			return spec.type === pairing.reply &&
+				!before.some((name) => byName.get(name)?.type === pairing.trigger)
+				? [`${spec.name}: needs a ${pairing.trigger} trigger before it`]
+				: [];
+		}
 		if (pairing?.trigger !== spec.type) return [];
 		const after = reachable(graph, spec.name, 'down');
 		const replies = [...after].filter((name) => byName.get(name)?.type === pairing.reply);
@@ -1487,6 +1631,7 @@ export function workflow(
 		config: {
 			name: spec.name,
 			parameters: spec.parameters(createCompiler(spec.name, nodeNames, issues)),
+			...spec.settings,
 			...(spec.subnodes ? { subnodes: subnodeConfig(spec.subnodes, subnodeInput) } : {}),
 		},
 	});
@@ -1502,6 +1647,7 @@ export function workflow(
 			const config = {
 				name: spec.name,
 				parameters: parametersOf.get(spec.name) ?? {},
+				...spec.settings,
 				...(spec.onError ? { onError: spec.onError } : {}),
 				...(spec.subnodes ? { subnodes: subnodeConfig(spec.subnodes, subnodeInput) } : {}),
 			};

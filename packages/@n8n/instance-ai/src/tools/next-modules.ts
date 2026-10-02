@@ -11,10 +11,11 @@ import {
 	toContract,
 	type Action,
 	type GeneratedAction,
+	type Trigger,
 } from '@n8n/node-sdk';
 import {
 	actions,
-	composedTargetOf,
+	migratedTargetOf,
 	nativeTriggers,
 	NODE_PACKAGE,
 	nodeTypeOf,
@@ -45,7 +46,7 @@ const triggersOfNode = (nodeId: string) =>
 function generatedActionOf(action: Action): GeneratedAction {
 	const { resource, operation } = action;
 	const contract = toContract(action);
-	const target = composedTargetOf(action);
+	const target = migratedTargetOf(action);
 	if (!target) return { contract, nodeType: nodeTypeOf(action), resource, operation };
 	const { nodeType, ...slot } = target;
 	return { contract, nodeType, resource, operation, slot };
@@ -104,10 +105,13 @@ const inputTypeOf = (action: Action) => `${action.id.split('.').map(capitalize).
 const otherActionLine = (action: Action) =>
 	`// ${action.id}(config: ${inputTypeOf(action)}) — ${action.action} (${action.flow.effect}, ${action.flow.cardinality})`;
 
+/** A search view types at most this many actions of a module; the rest are one line each. */
+const MAX_TYPED_ACTIONS = 3;
+
 /**
- * The search view of a module: the `shown` actions with their types, and one line for each
- * other action. The view is a valid module with fewer factories, so the agent can copy it.
- * The sandbox module keeps all actions.
+ * The search view of a module: the first `shown` actions (or the first actions, when none is
+ * shown) with their types, and one line for each other action. The view is a valid module with
+ * fewer factories, so the agent can copy it. The sandbox module keeps all actions.
  */
 export function nextNodeView(
 	nodeId: string,
@@ -115,13 +119,12 @@ export function nextNodeView(
 ): NextNodeModule | undefined {
 	const full = nextNodeModule(nodeId);
 	const own = actionsOfNode(nodeId);
-	const others = own.filter((action) => !shown.has(action.id));
-	if (!full || !others.length || others.length === own.length) return full;
+	const named = own.filter((action) => shown.has(action.id));
+	const typed = (named.length ? named : own).slice(0, MAX_TYPED_ACTIONS);
+	const others = own.filter((action) => !typed.includes(action));
+	if (!full || !others.length) return full;
 	const module = [
-		moduleOf(
-			nodeId,
-			own.filter((action) => shown.has(action.id)),
-		),
+		moduleOf(nodeId, typed),
 		`// Other actions. Get their types with type-definition "${nodeId}".`,
 		...others.map(otherActionLine),
 		'',
@@ -129,12 +132,18 @@ export function nextNodeView(
 	return { ...full, module };
 }
 
+/** The module node of a native trigger that types the built-in node type, e.g. `webhook`. */
+const nativeNodeIdOf = (nodeType: string) =>
+	allTriggers.find((trigger) => nativeTypesOf(trigger).includes(nodeType))?.node.id;
+
 /**
  * The module node that replaces a catalog node type. The legacy node of the same service
  * shares the node id, e.g. `n8n-nodes-base.notion` and `notion`.
  */
 export function nextNodeIdOfNodeType(nodeType: string): string | undefined {
 	if (nodeType.startsWith(`${NODE_PACKAGE}.`)) return nextNodeIdOf(nodeType);
+	const native = nativeNodeIdOf(nodeType);
+	if (native) return native;
 	const replacing = nextActions.find(({ node }) => node.replaces?.includes(nodeType));
 	if (replacing) return replacing.node.id;
 	const [, nodeId] = /^n8n-nodes-base\.(\w+)$/.exec(nodeType) ?? [];
@@ -185,6 +194,58 @@ export const actionRow = (action: Action) => `${action.id}: ${action.summary}`;
 
 export const actionRowsOfNode = (nodeId: string) => actionsOfNode(nodeId).map(actionRow);
 
+/**
+ * Steps of `@n8n/workflow-sdk/next` that replace a catalog node. `steps` are the SDK names: a
+ * function, or a method of the flow before the step.
+ */
+export const BUILT_IN_STEPS: ReadonlyArray<{
+	readonly nodeType: string;
+	readonly steps: readonly string[];
+	readonly row: string;
+}> = [
+	{
+		nodeType: 'n8n-nodes-base.manualTrigger',
+		steps: ['manual'],
+		row: "manual({ name, sample }): Starts the flow when the user clicks Execute. Import it from '@n8n/workflow-sdk/next'.",
+	},
+	{
+		nodeType: 'n8n-nodes-base.if',
+		steps: ['branch'],
+		row: '.branch({ name, if: (item) => boolean, then: (f) => …, else: (f) => … }): Routes each item by a condition (an IF node).',
+	},
+	{
+		nodeType: 'n8n-nodes-base.filter',
+		steps: ['filter'],
+		row: '.filter({ name, if: (item) => boolean }): Keeps the items that the condition holds for.',
+	},
+	{
+		nodeType: 'n8n-nodes-base.switch',
+		steps: ['switch'],
+		row: ".switch({ name, on: 'field', cases: { value: (f) => … }, default: (f) => … }): Routes each item by a string field.",
+	},
+	{
+		nodeType: 'n8n-nodes-base.merge',
+		steps: ['merge'],
+		row: ".merge({ name, join: 'append' | 'position' | { left, right }, branches: [(f) => …, (f) => …] }): Runs two branches on the same items and joins them.",
+	},
+	{
+		nodeType: 'n8n-nodes-base.splitInBatches',
+		steps: ['forEach', 'loop'],
+		row: '.forEach({ name, batchSize, body: (f) => … }) runs batches; .loop({ name, maxIterations, body, until, next }) repeats a body until a condition holds.',
+	},
+	{
+		nodeType: 'n8n-nodes-base.splitOut',
+		steps: ['splitOut'],
+		row: "splitOut({ name, field }): Emits one item for each element of a list field. Import it from '@n8n/workflow-sdk/next'.",
+	},
+];
+
+/** The SDK step row that replaces a catalog node type. A typed native trigger comes first. */
+export function builtInRowOf(nodeType: string): string | undefined {
+	if (nativeNodeIdOf(nodeType)) return undefined;
+	return BUILT_IN_STEPS.find((builtIn) => builtIn.nodeType === nodeType)?.row;
+}
+
 const words = (text: string) =>
 	text
 		.replace(/([a-z\d])([A-Z])/g, '$1 $2')
@@ -210,9 +271,15 @@ const hits = (term: string, vocabulary: readonly string[]) =>
 			(term.length >= 3 && word.length >= 3 && (isWordForm(word, term) || isWordForm(term, word))),
 	);
 
-const nodeWords = (action: Action) => words(`${action.node.id} ${action.node.displayName}`);
+const nodeWords = (step: Action | Trigger) => words(`${step.node.id} ${step.node.displayName}`);
 
-const actionWords = (action: Action) => words(`${action.id} ${action.action} ${action.summary}`);
+const actionWords = (step: Action | Trigger) =>
+	words(`${step.id} ${'action' in step ? step.action : step.trigger} ${step.summary}`);
+
+const stepsOfNode = (nodeId: string) => [...actionsOfNode(nodeId), ...triggersOfNode(nodeId)];
+
+/** "trigger" names a kind of step, not a node: "webhook trigger" names only `webhook`. */
+const KIND_WORDS = new Set(['trigger']);
 
 const scoreOf = (action: Action, terms: readonly string[]) =>
 	terms.reduce(
@@ -257,33 +324,44 @@ const MAX_OTHER_ACTIONS = 3;
 /**
  * One search query: the nodes whose module the query names, the ids of their actions that
  * the query names, and one-line rows for other matching actions. `coveredNodes` are module
- * nodes that the catalog search found. `coversQuery` is true when the named modules match
- * every query word.
+ * nodes that the catalog search found, and `namedNodes` those of them that the query names by
+ * their catalog display name. `coversQuery` is true when the named modules match every query word.
  * When the query names a module, other actions match only generic words such as "get",
  * so they are not listed.
  */
-export function searchNextActions(query: string, coveredNodes: readonly string[] = []) {
+export function searchNextActions(
+	query: string,
+	coveredNodes: readonly string[] = [],
+	namedNodes: readonly string[] = [],
+) {
 	const terms = termsOf(query);
 	const matches = findNextActions(query);
-	const named = [...new Set(matches.map((action) => action.node.id))].map((nodeId) => ({
-		nodeId,
-		terms: terms.filter((term) => actionsOfNode(nodeId).some((a) => hits(term, nodeWords(a)))),
-	}));
+	// Nodes with only triggers have no actions to match, so every node is a candidate.
+	const named = [...new Set([...matches.map((action) => action.node.id), ...nextNodeIds])]
+		.map((nodeId) => ({
+			nodeId,
+			terms: terms.filter((term) => stepsOfNode(nodeId).some((s) => hits(term, nodeWords(s)))),
+		}))
+		.filter(({ terms: own }) => own.some((term) => !KIND_WORDS.has(term)));
 	// "google sheets" names googleSheets, not also googleGemini through "google" alone.
-	const nodes = named
-		.filter(
-			({ terms: own }) =>
-				own.length &&
-				!named.some(
-					(other) =>
-						other.terms.length > own.length && own.every((term) => other.terms.includes(term)),
-				),
-		)
-		.map(({ nodeId }) => nodeId);
+	// A node with only triggers yields to a node with actions that the query names by the same
+	// words: "google sheets" names googleSheets, "google sheets trigger" names googleSheetsTrigger.
+	const yieldsTo = (own: (typeof named)[number], other: (typeof named)[number]) =>
+		own.terms.every((term) => other.terms.includes(term)) &&
+		(other.terms.length > own.terms.length ||
+			(actionsOfNode(own.nodeId).length === 0 && actionsOfNode(other.nodeId).length > 0));
+	const nodes = [
+		...new Set([
+			...named
+				.filter((own) => !named.some((other) => yieldsTo(own, other)))
+				.map(({ nodeId }) => nodeId),
+			...namedNodes,
+		]),
+	];
 	const others = nodes.length
 		? []
 		: [...new Set([...matches, ...coveredNodes.flatMap(actionsOfNode)])];
-	const moduleActions = nodes.flatMap(actionsOfNode);
+	const moduleActions = nodes.flatMap(stepsOfNode);
 	return {
 		nodes,
 		actions: nodes.flatMap((nodeId) => actionsNamedBy(nodeId, terms).map(({ id }) => id)),

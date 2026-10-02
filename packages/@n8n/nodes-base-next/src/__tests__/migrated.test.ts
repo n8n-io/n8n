@@ -2,11 +2,11 @@ import { Notion } from 'n8n-nodes-base/dist/nodes/Notion/Notion.node';
 import type { IExecuteFunctions, IHttpRequestOptions, INodeProperties } from 'n8n-workflow';
 
 import {
-	COMPOSED_NODES,
-	composedSlotOf,
-	composedTargetOf,
-	withComposedVersions,
-} from '../composed';
+	MIGRATED_NODES,
+	migratedSlotOf,
+	migratedTargetOf,
+	withMigratedVersions,
+} from '../migrated';
 import { actionOfNode, actions } from '../index';
 import { getManyDatabasePages } from '../nodes/notion/actions/database-page.get-all';
 import { versionsOf } from '../registry';
@@ -18,15 +18,15 @@ const showsOnOwnedSlot = ({ displayOptions }: INodeProperties) =>
 	[displayOptions?.show?.resource ?? ['databasePage']].flat().includes('databasePage') &&
 	[displayOptions?.show?.operation ?? ['getAll']].flat().includes('getAll');
 
-describe('composed nodes', () => {
+describe('migrated nodes', () => {
 	const legacy = new Notion();
-	const composed = withComposedVersions(NOTION, legacy);
-	const v4 = composed.getNodeType(4);
+	const migrated = withMigratedVersions(NOTION, legacy);
+	const v4 = migrated.getNodeType(4);
 
 	it('add Notion v4 as the default version and keep v1 to v3', () => {
-		expect(composed.description.defaultVersion).toBe(4);
-		expect(Object.keys(composed.nodeVersions).map(Number).sort()).toEqual([1, 2, 2.1, 2.2, 3, 4]);
-		expect(composed.getNodeType(3)).toBe(legacy.getNodeType(3));
+		expect(migrated.description.defaultVersion).toBe(4);
+		expect(Object.keys(migrated.nodeVersions).map(Number).sort()).toEqual([1, 2, 2.1, 2.2, 3, 4]);
+		expect(migrated.getNodeType(3)).toBe(legacy.getNodeType(3));
 		expect(v4.description).toMatchObject({ name: 'notion', displayName: 'Notion', version: 4 });
 	});
 
@@ -125,7 +125,7 @@ describe('composed nodes', () => {
 			typeVersion: 4,
 			parameters: { resource: 'databasePage', operation: 'getAll' },
 		};
-		expect(composedTargetOf(getManyDatabasePages)).toEqual({
+		expect(migratedTargetOf(getManyDatabasePages)).toEqual({
 			nodeType: NOTION,
 			typeVersion: 4,
 			resource: 'databasePage',
@@ -135,14 +135,14 @@ describe('composed nodes', () => {
 		expect(actionOfNode({ ...node, parameters: { resource: 'page', operation: 'create' } })).toBe(
 			undefined,
 		);
-		expect(composedSlotOf({ ...node, typeVersion: 3 })).toBeUndefined();
+		expect(migratedSlotOf({ ...node, typeVersion: 3 })).toBeUndefined();
 		expect(
 			actionOfNode({ type: '@n8n/nodes-base-next.notionDatabasePageGetAll', typeVersion: 1 }),
 		).toBe(getManyDatabasePages);
 	});
 
 	it('run only actions with a bundled version of the slot major', () => {
-		const slots = Object.values(COMPOSED_NODES).flatMap((versions) =>
+		const slots = Object.values(MIGRATED_NODES).flatMap((versions) =>
 			Object.values(versions).flatMap(({ slots: own }) => own),
 		);
 		const missing = slots.filter(

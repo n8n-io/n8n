@@ -1,5 +1,5 @@
 /**
- * MCP lift: one partial contract per tool of an MCP server. The tool's JSON Schema is the input,
+ * MCP lift: one derived manifest per tool of an MCP server. The tool's JSON Schema is the input,
  * its annotations set the flow, and `run` calls the tool through the host's MCP client. The
  * output is typed only when the tool declares an `outputSchema`.
  */
@@ -10,10 +10,10 @@ import {
 	toContract,
 	type Action,
 	type ActionFlow,
+	type DerivedManifest,
 	type NodeDefinition,
 } from '../define';
 import { json, Schema, type JsonSchema, type Shape } from '../schema';
-import type { LiftedContract } from './lift';
 
 /** A tool as the MCP `tools/list` result lists it. */
 export interface McpTool {
@@ -46,7 +46,7 @@ export interface McpClient {
 
 export interface LiftedMcpTool {
 	readonly action: Action;
-	readonly contract: LiftedContract;
+	readonly contract: DerivedManifest;
 	/** Schema keywords the validator does not check, e.g. `input.$ref`. */
 	readonly issues: readonly string[];
 }
@@ -131,7 +131,7 @@ export function liftMcpTool(
 		action,
 		contract: {
 			...toContract(action),
-			lifted: true,
+			derived: true,
 			semver: action.semver,
 			outputClaim: tool.outputSchema ? 'inferred' : 'unknown',
 		},

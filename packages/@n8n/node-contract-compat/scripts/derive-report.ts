@@ -1,32 +1,35 @@
 /**
- * Lifts every node description in the built `n8n-nodes-base` package to T1 partial contracts,
- * then measures coverage, the round trip on saved workflows, and the agent view size.
+ * Derives manifests for every node description in the built `n8n-nodes-base` package, then
+ * measures coverage, the round trip on saved workflows, and the agent view size.
  *
- * Usage: pnpm exec tsx scripts/lift-report.ts [out-dir]
- * Reads `packages/nodes-base/dist` (run the nodes-base build first). Writes `lifted.json`,
- * `report.json` and `report.md` to the out dir (default: `<tmp>/n8n-node-sdk-lift`).
+ * Usage: pnpm exec tsx scripts/derive-report.ts [out-dir]
+ * Reads `packages/nodes-base/dist` (run the nodes-base build first). Writes `derived.json`,
+ * `report.json` and `report.md` to the out dir (default: `<tmp>/n8n-node-contract-derive`).
  */
 import type { INodeParameters, INodeTypeDescription } from 'n8n-workflow';
 import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, relative } from 'node:path';
 
-import { generateNodeModule } from '../src/codegen';
+import { canonicalJson, generateNodeModule, validate } from '@n8n/node-sdk';
+
 import {
-	liftNodeType,
+	deriveManifests,
 	outputSchemaFrom,
+	type DerivedAction,
+	type DeriveIssueKind,
 	type LegacyTarget,
-	type LiftedAction,
-	type LiftIssueKind,
-} from '../src/lift/lift';
-import { compileLifted, decompileLifted, normaliseParameters } from '../src/lift/round-trip';
-import { validate } from '../src/validate';
-import { canonicalJson } from '../src/version';
+} from '../src/derive/derive';
+import {
+	fromLegacyParameters,
+	normaliseParameters,
+	toLegacyParameters,
+} from '../src/derive/round-trip';
 
 const REPO = join(__dirname, '..', '..', '..', '..');
 const NODES_BASE = join(REPO, 'packages', 'nodes-base');
 const PACKAGE_NAME = 'n8n-nodes-base';
-const OUT = process.argv[2] ?? join(tmpdir(), 'n8n-node-sdk-lift');
+const OUT = process.argv[2] ?? join(tmpdir(), 'n8n-node-contract-derive');
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
 	typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -64,7 +67,7 @@ async function loadCounter(): Promise<{ name: string; count: (text: string) => n
 }
 
 // ---------------------------------------------------------------------------------------------
-// Lift.
+// Derive.
 
 const descriptions = ((): INodeTypeDescription[] => {
 	const raw = readJson(join(NODES_BASE, 'dist/types/nodes.json'));
@@ -98,19 +101,19 @@ const outputSchema = (target: LegacyTarget) => {
 	return existsSync(file) ? outputSchemaFrom(readJson(file)) : undefined;
 };
 
-interface LiftRecord {
+interface DeriveRecord {
 	readonly description: INodeTypeDescription;
 	readonly typeVersion: number;
-	readonly actions: readonly LiftedAction[];
+	readonly actions: readonly DerivedAction[];
 }
-interface LiftFailure {
+interface DeriveFailure {
 	readonly name: string;
 	readonly error: string;
 }
 
-const lifted = descriptions.map((description): LiftRecord[] | LiftFailure => {
+const derived = descriptions.map((description): DeriveRecord[] | DeriveFailure => {
 	try {
-		return liftNodeType(description, { packageName: PACKAGE_NAME, outputSchema }).map(
+		return deriveManifests(description, { packageName: PACKAGE_NAME, outputSchema }).map(
 			(version) => ({ description, ...version }),
 		);
 	} catch (error) {
@@ -120,8 +123,8 @@ const lifted = descriptions.map((description): LiftRecord[] | LiftFailure => {
 		};
 	}
 });
-const records = lifted.flatMap((entry) => (Array.isArray(entry) ? entry : []));
-const failures = lifted.flatMap((entry) => (Array.isArray(entry) ? [] : [entry]));
+const records = derived.flatMap((entry) => (Array.isArray(entry) ? entry : []));
+const failures = derived.flatMap((entry) => (Array.isArray(entry) ? [] : [entry]));
 const actions = records.flatMap((record) => record.actions);
 
 const latestVersionOf = new Map(
@@ -144,7 +147,7 @@ const median = (values: readonly number[]) => {
 	return sorted.length === 0 ? 0 : (sorted[Math.floor(sorted.length / 2)] ?? 0);
 };
 
-const ISSUE_KINDS: readonly LiftIssueKind[] = [
+const ISSUE_KINDS: readonly DeriveIssueKind[] = [
 	'loadOptions',
 	'resourceLocator',
 	'collection',
@@ -155,7 +158,7 @@ const ISSUE_KINDS: readonly LiftIssueKind[] = [
 	'opaque',
 ];
 
-function coverageOf(set: readonly LiftedAction[]) {
+function coverageOf(set: readonly DerivedAction[]) {
 	const counts = set.map((action) => action.counts);
 	const leaves = sum(counts.map((count) => count.typed + count.loose + count.opaque));
 	return {
@@ -288,11 +291,11 @@ function roundTrip(node: SavedNode): RoundTrip {
 				selects(target.operation, original.operation),
 		);
 		if (!action) return { status: 'unknownAction', node };
-		const input = decompileLifted(action.compile, description, node.parameters);
+		const input = fromLegacyParameters(action.compile, description, node.parameters);
 		const back = normaliseParameters(
 			description,
 			typeVersion,
-			compileLifted(action.compile, input),
+			toLegacyParameters(action.compile, input),
 		);
 		const lostKeys = [...new Set([...Object.keys(original), ...Object.keys(back)])].filter(
 			(key) => canonicalJson(original[key]) !== canonicalJson(back[key]),
@@ -330,7 +333,7 @@ const compared = trips.flatMap((trip) =>
 );
 
 // ---------------------------------------------------------------------------------------------
-// Size: the typed module per lifted action vs the builder's node-definition file today.
+// Size: the typed module per derived action vs the builder's node-definition file today.
 
 const DEFS = join(NODES_BASE, 'dist/node-definitions/nodes', PACKAGE_NAME);
 const squash = (text: string) => text.replace(/_/g, '').toLowerCase();
@@ -367,9 +370,9 @@ function builderView(target: LegacyTarget, name: string): string | undefined {
 
 interface SizeRow {
 	readonly id: string;
-	readonly lifted: number;
+	readonly derived: number;
 	/** The module without the output type: the builder view has no output types. */
-	readonly liftedInput: number;
+	readonly derivedInput: number;
 	readonly builder?: number;
 }
 
@@ -378,9 +381,9 @@ interface SizeRow {
 async function main() {
 	const counter = await loadCounter();
 	const sizes = latestActions.map((action): SizeRow => {
-		// A lifted id is `<node>.<resource>.<operation>`, `<node>.<resource>` or `<node>.execute`.
+		// A derived id is `<node>.<resource>.<operation>`, `<node>.<resource>` or `<node>.execute`.
 		const [, ...path] = action.contract.id.split('.');
-		const moduleOf = (output: LiftedAction['contract']['output']) =>
+		const moduleOf = (output: DerivedAction['contract']['output']) =>
 			generateNodeModule(action.contract.node, [
 				{
 					contract: { ...action.contract, output },
@@ -392,8 +395,8 @@ async function main() {
 		const builder = builderView(action.compile.target, action.contract.node);
 		return {
 			id: `${action.contract.id}@${action.contract.semver}`,
-			lifted: counter.count(moduleOf(action.contract.output)),
-			liftedInput: counter.count(moduleOf({})),
+			derived: counter.count(moduleOf(action.contract.output)),
+			derivedInput: counter.count(moduleOf({})),
 			...(builder !== undefined ? { builder: counter.count(builder) } : {}),
 		};
 	});
@@ -428,7 +431,7 @@ async function main() {
 	const report = {
 		tokenizer: counter.name,
 		descriptions: descriptions.length,
-		liftFailures: failures,
+		deriveFailures: failures,
 		nodeTypes: new Set(descriptions.map((description) => description.name)).size,
 		nodeTypesWithActions: new Set(actions.map((action) => action.contract.node)).size,
 		nodeTypesWithoutActions: [
@@ -467,17 +470,17 @@ async function main() {
 		size: {
 			latestActions: sizes.length,
 			paired: paired.length,
-			liftedTotal: sum(paired.map((row) => row.lifted)),
-			liftedInputTotal: sum(paired.map((row) => row.liftedInput)),
-			liftedInputMedian: median(paired.map((row) => row.liftedInput)),
-			liftedInputSmaller: paired.filter((row) => row.liftedInput < row.builder).length,
+			derivedTotal: sum(paired.map((row) => row.derived)),
+			derivedInputTotal: sum(paired.map((row) => row.derivedInput)),
+			derivedInputMedian: median(paired.map((row) => row.derivedInput)),
+			derivedInputSmaller: paired.filter((row) => row.derivedInput < row.builder).length,
 			builderTotal: sum(paired.map((row) => row.builder)),
-			liftedMedian: median(paired.map((row) => row.lifted)),
+			derivedMedian: median(paired.map((row) => row.derived)),
 			builderMedian: median(paired.map((row) => row.builder)),
-			liftedSmaller: paired.filter((row) => row.lifted < row.builder).length,
-			largestLifted: [...sizes].sort((a, b) => b.lifted - a.lifted).slice(0, 10),
+			derivedSmaller: paired.filter((row) => row.derived < row.builder).length,
+			largestDerived: [...sizes].sort((a, b) => b.derived - a.derived).slice(0, 10),
 			worstInputRatio: [...paired]
-				.sort((a, b) => b.liftedInput / b.builder - a.liftedInput / a.builder)
+				.sort((a, b) => b.derivedInput / b.builder - a.derivedInput / a.builder)
 				.slice(0, 5),
 		},
 		offenders,
@@ -485,7 +488,7 @@ async function main() {
 
 	mkdirSync(OUT, { recursive: true });
 	writeFileSync(
-		join(OUT, 'lifted.json'),
+		join(OUT, 'derived.json'),
 		JSON.stringify(
 			actions.map(({ contract, compile, shape, issues }) => ({ contract, compile, shape, issues })),
 		),
@@ -493,15 +496,15 @@ async function main() {
 	writeFileSync(join(OUT, 'report.json'), JSON.stringify(report, null, 2));
 	const { roundTrip: trip, size } = report;
 	const markdown = [
-		'# T1 lift report',
+		'# Derive report',
 		'',
-		`- Descriptions: ${report.descriptions}, node types: ${report.nodeTypes}, lifted with actions: ${report.nodeTypesWithActions}, failures: ${failures.length}`,
+		`- Descriptions: ${report.descriptions}, node types: ${report.nodeTypes}, derived with actions: ${report.nodeTypesWithActions}, failures: ${failures.length}`,
 		`- typeVersions: ${report.typeVersions}, actions (all versions): ${report.allVersions.actions}, actions (latest): ${report.latestVersions.actions}`,
 		`- Latest shapes: ${JSON.stringify(report.latestVersions.shapes)}; clean: ${pct(report.latestVersions.cleanActions, report.latestVersions.actions)}; output inferred: ${report.latestVersions.outputInferred}`,
 		`- Latest fields: ${JSON.stringify(report.latestVersions.fields)}`,
 		`- Latest issues: ${JSON.stringify(report.latestVersions.issues)}`,
 		`- Round trip: ${trip.compared} compared of ${trip.uniqueNodes} unique nodes (${trip.files} files); equal ${trip.equal} (${pct(trip.equal, trip.compared)}); schema-valid ${trip.schemaValid} (${pct(trip.schemaValid, trip.compared)}); other package ${trip.otherPackage}, unknown version ${trip.unknownVersion}, unknown action ${trip.unknownAction.length}, only the __rl flag differs ${trip.locatorFlag}, errors ${trip.errors.length}`,
-		`- Size (${report.tokenizer}): ${size.paired} paired actions; input-only module ${size.liftedInputTotal} vs builder ${size.builderTotal} (${pct(size.liftedInputTotal, size.builderTotal)}), median ${size.liftedInputMedian} vs ${size.builderMedian}, smaller in ${pct(size.liftedInputSmaller, size.paired)}; with output types ${size.liftedTotal} (${pct(size.liftedTotal, size.builderTotal)}), median ${size.liftedMedian}, smaller in ${pct(size.liftedSmaller, size.paired)}`,
+		`- Size (${report.tokenizer}): ${size.paired} paired actions; input-only module ${size.derivedInputTotal} vs builder ${size.builderTotal} (${pct(size.derivedInputTotal, size.builderTotal)}), median ${size.derivedInputMedian} vs ${size.builderMedian}, smaller in ${pct(size.derivedInputSmaller, size.paired)}; with output types ${size.derivedTotal} (${pct(size.derivedTotal, size.builderTotal)}), median ${size.derivedMedian}, smaller in ${pct(size.derivedSmaller, size.paired)}`,
 		'',
 		'## Worst offenders',
 		...offenders.map(

@@ -283,6 +283,84 @@ describe('workflow', () => {
 		]);
 	});
 
+	it('continues from each named output with route, typed by the output names', () => {
+		interface Row {
+			email: string;
+		}
+		const exists = <In, Ctx, const N extends string>(config: {
+			name: N;
+		}): RoutedStep<In, Ctx, Row, N, 'exists' | 'missing'> =>
+			routedStep('@n8n/nodes-base-next.dataTableRowExists', config, ['exists', 'missing']);
+		const classify = <In, Ctx, const N extends string, const E extends string>(config: {
+			name: N;
+			categories: ReadonlyArray<{ output: E }>;
+		}): RoutedStep<In, Ctx, In, N, E | 'other'> =>
+			routedStep('@n8n/nodes-base-next.aiClassify', config, {
+				each: 'categories',
+				then: ['other'],
+			});
+		const routed = manual()
+			.andThen(getPages({ name: 'Tasks', database: 'abc' }))
+			.route(exists({ name: 'Known' }), {
+				exists: (flow) => flow.andThen(set({ name: 'Old', fields: { email: (row) => row.email } })),
+				missing: (flow) =>
+					flow.andThen(
+						set({ name: 'New', fields: { email: (row, $) => `${row.email} ${$('Tasks').name}` } }),
+					),
+			});
+		const json = workflow('Route', routed).toJSON();
+		expect(json.connections.Known?.main.map((out) => out?.map((c) => c.node))).toEqual([
+			['Old'],
+			['New'],
+		]);
+		routed.andThen(set({ name: 'After', fields: { email: (item) => item.email } }));
+		manual().route(exists({ name: 'Known' }), {
+			exists: (flow) => flow,
+			// @ts-expect-error -- "absent" is not an output of this step
+			absent: (flow) => flow,
+		});
+		const twoOutputs = classify({
+			name: 'Kind',
+			categories: [{ output: 'bug' }, { output: 'idea' }],
+		});
+		expect(() =>
+			workflow('Drops', manual().route(twoOutputs, { bug: (flow) => flow })).toJSON(),
+		).toThrow('Kind: items on "idea" stop. Give each output but the last a flow in route');
+		expect(() => workflow('Then', manual().andThen(twoOutputs)).toJSON()).toThrow(
+			'Kind: andThen continues only from output "bug", so items on "idea" stop. Use .route(step, { … }) to give each output a flow',
+		);
+		expect(
+			workflow('Two', manual().andThen(exists({ name: 'Known' }))).toJSON().nodes,
+		).toHaveLength(2);
+	});
+
+	it('routes the named outputs of a node() step, e.g. a legacy IF', () => {
+		const ifNode = node({
+			name: 'If',
+			type: 'n8n-nodes-base.if',
+			version: 2.2,
+			parameters: { conditions: {} },
+			outputs: ['true', 'false'],
+		});
+		const json = workflow(
+			'If',
+			manual().route(ifNode, {
+				true: (flow) => flow.andThen(set({ name: 'Yes', fields: { ok: true } })),
+				false: (flow) => flow.andThen(set({ name: 'No', fields: { ok: false } })),
+			}),
+		).toJSON();
+		expect(json.connections.If?.main.map((out) => out?.map((c) => c.node))).toEqual([
+			['Yes'],
+			['No'],
+		]);
+		manual().route(ifNode, {
+			// @ts-expect-error -- "maybe" is not an output of this node
+			maybe: (flow) => flow,
+		});
+		const plain = node({ name: 'Plain', type: 'n8n-nodes-base.noOp', version: 1 });
+		expect('outputs' in plain).toBe(false);
+	});
+
 	it('wires the binary of one contract step into the binary field of the next', () => {
 		const download = <In, Ctx, const N extends string>(config: {
 			name: N;
@@ -679,6 +757,30 @@ describe('native triggers', () => {
 		expect(workflow('Chat', chat).toJSON().nodes).toHaveLength(2);
 		const manualReply = manual().andThen(respond({ name: 'Reply', respondWith: 'json' }));
 		expect(workflow('Manual', manualReply).toJSON().nodes).toHaveLength(2);
+	});
+
+	it('checks that a form page has its form trigger before it', () => {
+		const formPairing: Pairing = {
+			trigger: 'n8n-nodes-base.formTrigger',
+			reply: 'n8n-nodes-base.form',
+		};
+		const form = contractTrigger('n8n-nodes-base.formTrigger', { name: 'Form' }, 2.6, undefined, {
+			pairing: formPairing,
+		});
+		const page = <In, Ctx>() =>
+			contractStep<In, Ctx, In, 'Page'>(
+				'n8n-nodes-base.form',
+				{ name: 'Page' },
+				2.5,
+				undefined,
+				undefined,
+				formPairing,
+			);
+		expect(workflow('Pages', form.andThen(page())).toJSON().nodes).toHaveLength(2);
+		expect(workflow('Form only', form).toJSON().nodes).toHaveLength(1);
+		expect(() => workflow('No form', manual().andThen(page())).toJSON()).toThrow(
+			'Page: needs a n8n-nodes-base.formTrigger trigger before it',
+		);
 	});
 
 	it('types a declared value schema and the fields of config entries', () => {

@@ -1,6 +1,11 @@
-import { composedTargetOf, nodeTypeOf } from '@n8n/nodes-base-next';
+import { validate } from '@n8n/node-sdk';
+import { flowNatives, migratedTargetOf, nodeTypeOf } from '@n8n/nodes-base-next';
+import * as flowSdk from '@n8n/workflow-sdk/next';
+import { manual, set, workflow } from '@n8n/workflow-sdk/next';
 
 import {
+	BUILT_IN_STEPS,
+	builtInRowOf,
 	catalogRowsBesideModules,
 	findNextActions,
 	namesDisplayName,
@@ -22,7 +27,7 @@ describe('next-modules', () => {
 
 		expect(text).toContain(`export const ${action.node.id} = {`);
 		expect(text).toContain(
-			JSON.stringify(composedTargetOf(action)?.nodeType ?? nodeTypeOf(action)),
+			JSON.stringify(migratedTargetOf(action)?.nodeType ?? nodeTypeOf(action)),
 		);
 	});
 
@@ -91,8 +96,52 @@ describe('next-modules', () => {
 		['@n8n/n8n-nodes-langchain.googleGemini', undefined],
 		['@n8n/n8n-nodes-langchain.chainLlm', 'ai'],
 		['@n8n/n8n-nodes-langchain.lmChatGoogleGemini', 'googleGemini'],
+		['n8n-nodes-base.webhook', 'webhook'],
+		['n8n-nodes-base.respondToWebhook', 'webhook'],
+		['n8n-nodes-base.scheduleTrigger', 'schedule'],
+		['n8n-nodes-base.formTrigger', 'form'],
+		['n8n-nodes-base.whatsAppTrigger', 'whatsAppTrigger'],
+		['n8n-nodes-base.facebookTrigger', 'facebookTrigger'],
+		['n8n-nodes-base.manualTrigger', undefined],
 	])('maps the catalog node type %s to the module node %s', (nodeType, nodeId) => {
 		expect(nextNodeIdOfNodeType(nodeType)).toBe(nodeId);
+	});
+
+	it.each([
+		['webhook trigger', ['webhook']],
+		['schedule trigger', ['schedule']],
+		['form trigger', ['form']],
+		['WhatsApp trigger', ['whatsAppTrigger']],
+		['facebook trigger', ['facebookTrigger']],
+		['manual trigger', []],
+	])('names the module of a native trigger for %s', (query, nodes) => {
+		expect(searchNextActions(query).nodes).toEqual(nodes);
+	});
+
+	it('covers a trigger query with the words of the trigger', () => {
+		expect(searchNextActions('webhook trigger').coversQuery).toBe(true);
+	});
+
+	it('names the module nodes whose catalog display name the query names', () => {
+		expect(searchNextActions('basic llm chain', ['ai'], ['ai'])).toMatchObject({
+			nodes: ['ai'],
+			otherActions: [],
+		});
+	});
+
+	it.each(BUILT_IN_STEPS.flatMap(({ nodeType, steps }) => steps.map((step) => [step, nodeType])))(
+		'names the SDK step %s for %s, which the flow SDK has',
+		(step, nodeType) => {
+			const isFunction = step in flowSdk;
+			const isFlowMethod = step in flowSdk.Flow.prototype;
+			expect(isFunction || isFlowMethod).toBe(true);
+			expect(builtInRowOf(nodeType)).toContain(isFunction ? `${step}({` : `.${step}({`);
+		},
+	);
+
+	it('has no SDK step row for a node type that a module types', () => {
+		expect(builtInRowOf('n8n-nodes-base.webhook')).toBeUndefined();
+		expect(builtInRowOf('n8n-nodes-base.mattermost')).toBeUndefined();
 	});
 
 	it('finds the chat model sub-nodes of module nodes for a sub-node search', () => {
@@ -146,6 +195,11 @@ describe('next-modules', () => {
 		expect(searchNextActions('notion and google sheets').nodes).toEqual(['googleSheets', 'notion']);
 	});
 
+	it('names a trigger-only node only when the query names more of it than a node with actions', () => {
+		expect(searchNextActions('google sheets').nodes).toEqual(['googleSheets']);
+		expect(searchNextActions('google sheets trigger').nodes).toEqual(['googleSheetsTrigger']);
+	});
+
 	it('matches an inflected query word to the action word it extends', () => {
 		expect(searchNextActions('slack sending message').actions).toEqual(['slack.message.send']);
 		expect(searchNextActions('slack posting message').actions).toEqual(['slack.message.send']);
@@ -176,6 +230,20 @@ describe('next-modules', () => {
 		expect(view?.module).toContain('type-definition "gmail"');
 		// Send is the largest Gmail action, so its view is about half of the module.
 		expect(view!.module.length).toBeLessThan(nodeModuleText('gmail')!.length * 0.6);
+	});
+
+	it('types at most three actions of a module in a search view', () => {
+		const slack = nextActions.filter(({ node }) => node.id === 'slack');
+		const typedOf = (view: string | undefined) =>
+			slack.filter(({ id }) => !view?.includes(`// ${id}(config:`)).map(({ id }) => id);
+
+		expect(slack.length).toBeGreaterThan(3);
+		expect(typedOf(nextNodeView('slack', new Set())?.module)).toEqual(
+			slack.slice(0, 3).map(({ id }) => id),
+		);
+		expect(
+			typedOf(nextNodeView('slack', new Set(slack.slice(-4).map(({ id }) => id)))?.module),
+		).toEqual(slack.slice(-4, -1).map(({ id }) => id));
 	});
 
 	it('shows the whole module when all or none of its actions are shown', () => {
@@ -224,5 +292,29 @@ describe('next-modules', () => {
 				.map((action) => action.id)
 				.slice(0, ids.length),
 		).toEqual(ids);
+	});
+
+	it('emits the flow native contracts from manual() and forEach', () => {
+		const json = workflow(
+			'Each',
+			manual({ sample: [{ n: 1 }, { n: 2 }] }).forEach({
+				name: 'Each',
+				batchSize: 1,
+				body: (each) => each.andThen(set({ name: 'Mark', fields: { n: (item) => item.n } })),
+			}),
+		).toJSON();
+		const issues = flowNatives.map((contract) => {
+			const emitted = json.nodes.find(({ type }) => type === contract.native?.type);
+			return [
+				contract.id,
+				emitted?.typeVersion === contract.native?.version,
+				validate(emitted?.parameters ?? {}, contract.inputSchema, { allowExpressions: true }),
+			];
+		});
+		expect(issues).toEqual([
+			['manual.trigger', true, []],
+			['loop.batches', true, []],
+		]);
+		expect(flowNatives.map(({ node }) => nodeModuleText(node.id))).toEqual([undefined, undefined]);
 	});
 });

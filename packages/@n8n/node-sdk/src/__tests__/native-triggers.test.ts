@@ -10,7 +10,10 @@ import {
 	parse,
 	replyContractOf,
 	str,
+	int,
+	passedItem,
 	toContract,
+	toNodeType,
 	toTriggerNodeType,
 	variant,
 	type NativeTrigger,
@@ -62,6 +65,26 @@ describe('native triggers', () => {
 		});
 		expect(() => toTriggerNodeType(call)).toThrow(
 			'hooks.trigger runs as the built-in node n8n-nodes-base.hook',
+		);
+	});
+
+	it('let an action run as a built-in node, as a native trigger does', () => {
+		const batches = hooks.action('batches', {
+			action: 'Loop in batches',
+			summary: 'Emits batches.',
+			flow: { effect: 'transform', cardinality: 'batch' },
+			outputs: ['done', 'loop'],
+			input: { batchSize: int() },
+			output: passedItem(),
+			native: { type: 'n8n-nodes-base.splitInBatches', version: 3 },
+		});
+		expect(toContract(batches)).toMatchObject({
+			id: 'hooks.batches',
+			outputs: ['done', 'loop'],
+			output: passedItem().json,
+		});
+		expect(() => toNodeType(batches)).toThrow(
+			'hooks.batches runs as the built-in node n8n-nodes-base.splitInBatches',
 		);
 	});
 
@@ -128,7 +151,7 @@ describe('native triggers', () => {
 			'trigger: <const N extends string, const S extends { body?: ValueSchema } = {}, const C extends HooksTriggerInput>(',
 		);
 		expect(text).toContain(
-			' config: { name: N; schema?: S; sample?: Array<DeepPartial<Declared<HooksTriggerOutput & HooksTriggerFields<C>, S>>> } & C & Exact<C, HooksTriggerInput & { name: string; schema?: unknown; sample?: unknown }>,',
+			' config: { name: N; schema?: S; sample?: Array<DeepPartial<Declared<HooksTriggerOutput & HooksTriggerFields<C>, S>>>; settings?: NodeSettings } & C & Exact<C, HooksTriggerInput & { name: string; schema?: unknown; sample?: unknown; settings?: NodeSettings }>,',
 		);
 		expect(text).toMatch(
 			/export type HooksTriggerOutput = \{[^]*body: \{ \[key: string\]: any \};/,
@@ -140,7 +163,7 @@ describe('native triggers', () => {
 			'(trigger, webhook; schema types body; reply when responseMode is responseNode)',
 		);
 		expect(text).toContain(
-			"import { contractStep, contractTrigger, type Declared, type DeepPartial, type EntryFields, type Exact, type Flow, type OutputOf, type Step, type Value, type ValueSchema } from '@n8n/workflow-sdk/next';",
+			"import { contractStep, contractTrigger, type Declared, type DeepPartial, type EntryFields, type Exact, type Flow, type NodeSettings, type OutputOf, type Step, type Value, type ValueSchema } from '@n8n/workflow-sdk/next';",
 		);
 	});
 

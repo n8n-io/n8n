@@ -37,6 +37,7 @@ export {
 	type DataTables,
 	type DataTableValue,
 	type DataTableValues,
+	type DerivedManifest,
 	type Egress,
 	type EgressHost,
 	type Emit,
@@ -141,6 +142,7 @@ export {
 } from './subnodes';
 export { isRecord } from '@n8n/utils/is-record';
 export {
+	AUTHENTICATION,
 	nodeNameOf,
 	runsActionApi,
 	setActionApiRange,
@@ -187,7 +189,6 @@ export {
 	type GeneratedAction,
 	type Pairing,
 } from './codegen';
-export { composeVersion, type ComposedSlot, type ComposeVersionOptions } from './compose';
 export {
 	liftMcpTool,
 	type LiftedMcpTool,

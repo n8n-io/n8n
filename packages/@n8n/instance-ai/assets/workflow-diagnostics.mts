@@ -119,6 +119,12 @@ const BLOCK = /\{\{([\s\S]*?)\}\}/g;
 /** Errors of TypeScript that are bugs in plain JavaScript too. Others are type strictness. */
 const CODE_ERRORS = new Set([2304, 2339, 2349, 2448, 2551, 2552, 2588]);
 
+/**
+ * A callback parameter over an untyped read, e.g. `$json.list.filter(o => …)` after `node()`.
+ * It is `any` in plain JavaScript too, and the expression cannot declare its type.
+ */
+const IMPLICIT_ANY_ERRORS = new Set([7006, 7031]);
+
 const SANDBOX_RULE = 'n8n';
 
 /** The exit code when the type check ran but the expression check did not. */
@@ -458,6 +464,7 @@ async function expressionErrors(
 				);
 				if (!replacement) return [];
 				const inside = inBody(replacement, diagnostic.pos);
+				if (inside && IMPLICIT_ANY_ERRORS.has(diagnostic.code)) return [];
 				if (replacement.kind === 'code') {
 					const syntax = diagnostic.code < 2000;
 					const added =

@@ -218,13 +218,38 @@ describe('workflows get-as-code integration', () => {
 			expect(result.code).not.toContain('resource');
 		});
 
-		it('returns SDK code when the typed format cannot express the workflow', async () => {
+		it('keeps node settings in the typed source', async () => {
 			const files = new Map<string, string>();
 			const workflow = makeContractWorkflow();
 			const context = makeContext(
 				{ ...workflow, nodes: workflow.nodes.map((node) => ({ ...node, retryOnFail: true })) },
 				files,
 			);
+			context.nodeContractsEnabled = true;
+			const tool = createWorkflowsTool(context);
+
+			const result = await executeTool<GetAsCodeResult>(tool, {
+				action: 'get-as-code',
+				workflowId: 'wf-managed',
+			});
+
+			expect(result.code).toMatch(/^import \{[^}]+\} from '@n8n\/workflow-sdk\/next';\n/);
+			expect(result.code).toContain('notion.databasePage.getAll({');
+			expect(result.code.match(/settings: \{\n\s+retryOnFail: true,/g)).toHaveLength(3);
+		});
+
+		it('returns SDK code when the typed format cannot express the workflow', async () => {
+			const files = new Map<string, string>();
+			const workflow = makeContractWorkflow();
+			const sticky = {
+				id: 'n4',
+				name: 'Note',
+				type: 'n8n-nodes-base.stickyNote',
+				typeVersion: 1,
+				position: [0, 200] as [number, number],
+				parameters: { content: 'Runs every Monday' },
+			};
+			const context = makeContext({ ...workflow, nodes: [...workflow.nodes, sticky] }, files);
 			context.nodeContractsEnabled = true;
 			const tool = createWorkflowsTool(context);
 

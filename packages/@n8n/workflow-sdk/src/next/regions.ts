@@ -4,7 +4,10 @@
  * reads back only when its parameters match exactly.
  */
 
-/** No node contract keeps state across runs yet, so `forEach` stays on Loop Over Items. */
+/**
+ * The native contract `loop.batches` types Loop Over Items. The engine and the editor treat
+ * this node type in a special way, so `forEach` emits the built-in node.
+ */
 export const LOOP_NODE = { type: 'n8n-nodes-base.splitInBatches', version: 3 };
 export const SWITCH_NODE = { type: '@n8n/nodes-base-next.coreSwitch', version: 1 };
 export const FILTER_NODE = { type: '@n8n/nodes-base-next.coreFilter', version: 1 };

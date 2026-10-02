@@ -317,7 +317,7 @@ describe('binary contracts', () => {
 			{ contract: toContract(download), operation: 'download', nodeType: 'files.download' },
 		]);
 		expect(text).toContain(
-			"import { contractStep, type Binary, type Dollar, type OutputOf, type Step, type Value } from '@n8n/workflow-sdk/next';",
+			"import { contractStep, type Binary, type Dollar, type NodeSettings, type OutputOf, type Step, type Value } from '@n8n/workflow-sdk/next';",
 		);
 		expect(text).toContain(
 			'export type FilesDownloadInput<I, C> = { url: Value<I, C, string>; file?: ((item: I, $: Dollar<C>) => Binary) };',

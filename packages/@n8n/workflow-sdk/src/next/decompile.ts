@@ -17,12 +17,16 @@ import {
 	loopFragment,
 	MANUAL_NODE,
 	mergeFragment,
+	outputNamesOf,
+	routeFragment,
 	SET_NODE,
 	setParameters,
 	startFlow,
 	SUBNODE_SLOTS,
 	switchFragment,
 	type Fragment,
+	type NodeSettings,
+	type OutputList,
 	type Step,
 	type SubnodeSlot,
 } from './flow';
@@ -74,6 +78,8 @@ export interface ContractFactory {
 	readonly closed?: boolean;
 	/** The inputs whose typed field takes an `=` expression string as its whole value. */
 	readonly expressionKeys: readonly string[];
+	/** The named outputs of a routed step; a node with a wired later output reads back as `route`. */
+	readonly outputs?: OutputList;
 }
 
 /**
@@ -173,6 +179,16 @@ type Segment =
 			readonly kind: 'merge';
 			readonly node: NamedNode;
 			readonly branches: ReadonlyArray<readonly Segment[]>;
+	  }
+	| {
+			readonly kind: 'route';
+			readonly node: NamedNode;
+			/** The output names in n8n order, and the flow of each output that has one. */
+			readonly outputs: readonly string[];
+			readonly routes: ReadonlyArray<{
+				readonly name: string;
+				readonly segments: readonly Segment[];
+			}>;
 	  };
 
 interface Chain {
@@ -352,31 +368,21 @@ function lambdaForExpression(expression: string, names: ReadonlySet<string>): st
 	});
 }
 
-interface ConvertOptions {
-	/** Node names that `$("Node")` may read. Without them, expressions stay strings. */
-	readonly names?: ReadonlySet<string>;
-	/** `node()` parameters take no lambda directly in an array. */
-	readonly arrayLambdas: boolean;
-}
-
-/** Parameters as a tree: each expression that a lambda compiles to becomes that lambda. */
-function convert(value: unknown, options: ConvertOptions): Tree {
+/**
+ * Parameters as a tree: each expression that a lambda compiles to becomes that lambda.
+ * `names` are the nodes that `$("Node")` may read. Without them, expressions stay strings.
+ */
+function convert(value: unknown, names?: ReadonlySet<string>): Tree {
 	if (typeof value === 'string') {
-		const { names } = options;
 		const lambda = names && value.startsWith('=') ? lambdaForExpression(value, names) : undefined;
 		return lambda ? new Code(lambda) : value;
 	}
-	if (Array.isArray(value)) {
-		const itemOptions = options.arrayLambdas ? options : { ...options, names: undefined };
-		return value.map((item) =>
-			typeof item === 'string' ? convert(item, itemOptions) : convert(item, options),
-		);
-	}
+	if (Array.isArray(value)) return value.map((item) => convert(item, names));
 	if (isRecord(value)) {
 		return Object.fromEntries(
 			Object.entries(value)
 				.filter(([, entry]) => entry !== undefined)
-				.map(([key, entry]) => [key, convert(entry, options)]),
+				.map(([key, entry]) => [key, convert(entry, names)]),
 		);
 	}
 	return typeof value === 'number' || typeof value === 'boolean' ? value : null;
@@ -392,12 +398,42 @@ function hasRawExpression(tree: Tree): boolean {
 }
 
 /** A JSON value as a tree, with every string kept as it is. */
-const plainTree = (value: unknown) => convert(value, { arrayLambdas: false });
+const plainTree = (value: unknown) => convert(value);
 
 // ── Node shapes ─────────────────────────────────────────────────────────────
 
+/** The settings the build writes back for `node`: as the serializer, it drops unset values. */
+function settingsOf(node: NodeJSON): NodeSettings {
+	const {
+		retryOnFail,
+		maxTries,
+		waitBetweenTries,
+		alwaysOutputData,
+		executeOnce,
+		onError,
+		notes,
+		notesInFlow,
+	} = node;
+	return {
+		...(retryOnFail ? { retryOnFail } : {}),
+		...(typeof maxTries === 'number' ? { maxTries } : {}),
+		...(typeof waitBetweenTries === 'number' ? { waitBetweenTries } : {}),
+		...(alwaysOutputData ? { alwaysOutputData } : {}),
+		...(executeOnce ? { executeOnce } : {}),
+		...(onError === 'stopWorkflow' || onError === 'continueRegularOutput' ? { onError } : {}),
+		...(notes ? { notes } : {}),
+		...(notesInFlow ? { notesInFlow } : {}),
+	};
+}
+
+const hasSettings = (node: NodeJSON) => Object.keys(settingsOf(node)).length > 0;
+
+/** A region or built-in step takes no node settings, so a node with settings keeps its call. */
 const isNodeType = (node: NodeJSON | undefined, type: { type: string; version: number }) =>
-	node?.type === type.type && node.typeVersion === type.version && node.onError === undefined;
+	node?.type === type.type &&
+	node.typeVersion === type.version &&
+	node.onError === undefined &&
+	!hasSettings(node);
 
 const expressionJs = (value: unknown) =>
 	typeof value === 'string' ? /^=\{\{ ([\s\S]*) \}\}$/.exec(value)?.[1] : undefined;
@@ -581,7 +617,9 @@ function fieldOf(value: unknown, names: ReadonlySet<string>): Tree | undefined {
 }
 
 function setShape(node: NamedNode, names: ReadonlySet<string>): Shape | undefined {
-	if (node.type !== SET_NODE.type || node.typeVersion !== SET_NODE.version) return undefined;
+	if (node.type !== SET_NODE.type || node.typeVersion !== SET_NODE.version || hasSettings(node)) {
+		return undefined;
+	}
 	const parameters = node.parameters ?? {};
 	const { fields, include } = parameters;
 	if (!isRecord(fields) || !isRecord(include)) return undefined;
@@ -608,9 +646,7 @@ function contractShape(
 	if (factory.closed && unknownKey) return undefined;
 	const takesExpression = new Set(factory.expressionKeys);
 	const parameters = Object.entries(node.parameters ?? {}).flatMap(([key, value]) =>
-		inputs.has(key) && value !== undefined
-			? [[key, convert(value, { names, arrayLambdas: true })] as const]
-			: [],
+		inputs.has(key) && value !== undefined ? [[key, convert(value, names)] as const] : [],
 	);
 	// An expression without a lambda form stays a string where the typed field takes one, and the
 	// build checks it there. Elsewhere (an enum, a nested field) tsc rejects it, so keep node().
@@ -645,9 +681,7 @@ function shapeOf(
 	if (region) return region;
 	if (isRoot) {
 		const isManual =
-			node.type === MANUAL_NODE.type &&
-			node.typeVersion === MANUAL_NODE.version &&
-			Object.keys(node.parameters ?? {}).length === 0;
+			isNodeType(node, MANUAL_NODE) && Object.keys(node.parameters ?? {}).length === 0;
 		if (isManual) return { kind: 'manual' };
 		// A contract trigger, e.g. the typed Webhook node, reads back as its module factory.
 		return contractShape(node, names, factoryOf(node, factories)) ?? { kind: 'trigger' };
@@ -659,9 +693,11 @@ function shapeOf(
 		switchShape(node, edges) ??
 		mergeShape(node) ??
 		setShape(node, names) ??
+		// A node() item is Loose, so a lambda over it can fail tsc (an implicit any) where the
+		// saved expression is correct. The expression check reads a string in place.
 		contractShape(node, names, factoryOf(node, factories)) ?? {
 			kind: 'node',
-			parameters: convert(node.parameters ?? {}, { names, arrayLambdas: false }),
+			parameters: plainTree(node.parameters ?? {}),
 		}
 	);
 }
@@ -747,8 +783,8 @@ function childrenOf(
 	return crowded ? undefined : children;
 }
 
-/** Node keys that the build sets or keeps from the saved workflow. */
-const KNOWN_KEYS = new Set([
+/** Node keys that the build sets, keeps from the saved workflow, or reads from `settings`. */
+const KNOWN_KEYS = new Set<string>([
 	'id',
 	'name',
 	'type',
@@ -758,11 +794,23 @@ const KNOWN_KEYS = new Set([
 	'credentials',
 	'webhookId',
 	'onError',
+	...Object.keys({
+		retryOnFail: true,
+		maxTries: true,
+		waitBetweenTries: true,
+		alwaysOutputData: true,
+		executeOnce: true,
+		notes: true,
+		notesInFlow: true,
+	} satisfies Record<Exclude<keyof NodeSettings, 'onError'>, true>),
 ]);
+
+/** n8n shows a sticky note on the canvas only; the flow format has no form for it. */
+const STICKY_NOTE = 'n8n-nodes-base.stickyNote';
 
 const isPlainNode = (node: NodeJSON): node is NamedNode =>
 	typeof node.name === 'string' &&
-	(node.onError === undefined || node.onError === 'continueErrorOutput') &&
+	node.type !== STICKY_NOTE &&
 	Object.entries(node).every(
 		([key, value]) => KNOWN_KEYS.has(key) || value === undefined || value === false,
 	);
@@ -841,6 +889,33 @@ function stepChain(graph: Graph, node: NamedNode, seen: ReadonlySet<string>): Ch
 			segments: [{ kind: 'loop', node, body: body.segments }],
 			tails:
 				shape.variant === 'paginate' ? body.tails : [{ node: shape.check, output: CHECK_DONE }],
+		};
+	}
+	const outputs =
+		shape?.kind === 'contract' && shape.factory.outputs
+			? outputNamesOf(shape.factory.outputs, node.parameters ?? {})
+			: [];
+	const wired = (output: number) =>
+		graph.edges.some((edge) => edge.from === node.name && edge.output === output);
+	if (
+		outputs.length > 1 &&
+		outputs.some((_name, output) => output > 0 && wired(output)) &&
+		node.onError !== 'continueErrorOutput'
+	) {
+		// Every output but the last needs a flow in route; an unwired one continues as it is.
+		const routed = outputs.flatMap((name, output) =>
+			wired(output) || output < outputs.length - 1 ? [{ name, chain: from(output) }] : [],
+		);
+		return {
+			segments: [
+				{
+					kind: 'route',
+					node,
+					outputs,
+					routes: routed.map(({ name, chain: { segments } }) => ({ name, segments })),
+				},
+			],
+			tails: routed.flatMap(({ chain: { tails } }) => tails),
 		};
 	}
 	const main = { node: node.name, output: 0 };
@@ -1008,6 +1083,15 @@ function replay(
 				return shape?.kind === 'merge'
 					? mergeFragment(current, segment.node.name, shape.join, segment.branches.map(again))
 					: current;
+			case 'route': {
+				const flows = new Map(segment.routes.map(({ name, segments }) => [name, again(segments)]));
+				return routeFragment(
+					current,
+					{ ...placeholderStep(segment.node), outputs: segment.outputs },
+					(output, flow) => flows.get(output)?.(flow),
+					[...flows.keys()],
+				);
+			}
 		}
 	}, from);
 	return new Flow(end.graph, end.tails);
@@ -1034,7 +1118,9 @@ function replaysGraph(graph: Graph, flows: readonly FlowPlan[]): boolean {
 		isEqual(new Set(specs.map(({ name }) => name)), new Set(graph.nodes.keys())) &&
 		isEqual(
 			new Set(specs.filter(({ onError }) => onError).map(({ name }) => name)),
-			new Set(saved.filter(({ onError }) => onError).map(({ name }) => name)),
+			new Set(
+				saved.filter(({ onError }) => onError === 'continueErrorOutput').map(({ name }) => name),
+			),
 		) &&
 		isEqual(
 			new Set(built.flatMap(({ edges }) => edges.map(edgeKey))),
@@ -1072,7 +1158,7 @@ function subnodesTree(graph: Graph, name: string): Tree | undefined {
 	const children = graph.children.get(name) ?? [];
 	if (children.length === 0) return undefined;
 	const call = (child: NamedNode): Tree =>
-		new Call('subnode', typedNode(graph, child, subnodeParameters(child, graph.names)));
+		new Call('subnode', typedNode(graph, child, plainTree(child.parameters ?? {})));
 	return Object.fromEntries(
 		SUBNODE_SLOTS.flatMap(([slot]) => {
 			const filled = children.filter((child) => child.slot === slot).map(({ node }) => call(node));
@@ -1082,8 +1168,9 @@ function subnodesTree(graph: Graph, name: string): Tree | undefined {
 	);
 }
 
-const subnodeParameters = (node: NamedNode, names: ReadonlySet<string>) =>
-	convert(node.parameters ?? {}, { names, arrayLambdas: false });
+/** The `settings` field of a node call, when the node has settings. */
+const settingsField = (node: NodeJSON): { settings?: Tree } =>
+	hasSettings(node) ? { settings: plainTree(settingsOf(node)) } : {};
 
 function typedNode(graph: Graph, node: NamedNode, parameters: Tree): Tree {
 	const subnodes = subnodesTree(graph, node.name);
@@ -1092,6 +1179,7 @@ function typedNode(graph: Graph, node: NamedNode, parameters: Tree): Tree {
 		type: node.type,
 		version: node.typeVersion,
 		...(isRecord(parameters) && Object.keys(parameters).length === 0 ? {} : { parameters }),
+		...settingsField(node),
 		...(subnodes ? { subnodes } : {}),
 	};
 }
@@ -1115,6 +1203,7 @@ function contractCall(graph: Graph, node: NamedNode, shape: ContractShape): Call
 		name: node.name,
 		...parameters,
 		...Object.fromEntries(fields),
+		...settingsField(node),
 	});
 }
 
@@ -1207,6 +1296,12 @@ function renderRegion(
 			...(segment.fallback ? { default: flowOf('flow', segment.fallback) } : {}),
 		});
 	}
+	if (segment.kind === 'route' && shape) {
+		const routes = Object.fromEntries(
+			segment.routes.map(({ name: output, segments }) => [output, flowOf('flow', segments)]),
+		);
+		return `\n${indent}.route(${renderCall(graph, segment.node, shape, indent)}, ${renderTree(routes, indent)})`;
+	}
 	if (segment.kind === 'merge' && shape?.kind === 'merge') {
 		return call('merge', {
 			name,
@@ -1256,6 +1351,11 @@ function segmentNodes(segments: readonly Segment[]): NamedNode[] {
 				];
 			case 'merge':
 				return [segment.node, ...segment.branches.flatMap(segmentNodes)];
+			case 'route':
+				return [
+					segment.node,
+					...segment.routes.flatMap(({ segments: inner }) => segmentNodes(inner)),
+				];
 		}
 	});
 }
@@ -1306,10 +1406,11 @@ function render(name: string, graph: Graph, flows: readonly FlowPlan[]): string 
 
 /**
  * `@n8n/workflow-sdk/next` source for a saved workflow, or `undefined` when the typed format
- * cannot express it (for example a sticky note, or a node setting such as `retryOnFail`).
- * Loop Over Items, Switch, Filter, and Merge nodes read back as regions when their wiring
- * and parameters are what the region builds. `factories` maps each contract node type, and
- * each `composedFactoryKey`, to its typed module factory.
+ * cannot express it (for example a sticky note, or a disabled node). Node settings such as
+ * `retryOnFail` read back as `settings`. Loop Over Items, Switch, Filter, and Merge nodes
+ * read back as regions when their wiring and parameters are what the region builds.
+ * `node()` and `subnode()` parameters keep their expressions as strings. `factories` maps
+ * each contract node type, and each `composedFactoryKey`, to its typed module factory.
  */
 export function decompileWorkflow(
 	json: WorkflowJSON,

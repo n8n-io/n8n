@@ -252,7 +252,7 @@ describe('sub-node contracts', () => {
 			{ contract: toContract(chatModel), nodeType: 'pkg.llmChatModel', operation: 'chatModel' },
 		]);
 		expect(module).toContain(
-			"import { contractSubnode, type ModelOf, type Subnode, type Value } from '@n8n/workflow-sdk/next';",
+			"import { contractSubnode, type ModelOf, type NodeSettings, type Subnode, type Value } from '@n8n/workflow-sdk/next';",
 		);
 		expect(module).toContain('model: Value<I, C, ModelOf<"llm">>;');
 		expect(module).toContain('): Subnode<In, Ctx, "chatModel"> =>');

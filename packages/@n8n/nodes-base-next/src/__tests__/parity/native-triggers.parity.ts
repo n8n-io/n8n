@@ -1,5 +1,6 @@
 import { obj, replyContractOf, validate, type JsonSchema, type Trigger } from '@n8n/node-sdk';
 import { FacebookTrigger } from 'n8n-nodes-base/dist/nodes/Facebook/FacebookTrigger.node';
+import { Form } from 'n8n-nodes-base/dist/nodes/Form/Form.node';
 import { FormTrigger } from 'n8n-nodes-base/dist/nodes/Form/FormTrigger.node';
 import { addFormResponseDataToReturnItem } from 'n8n-nodes-base/dist/nodes/Form/utils/utils';
 import { RespondToWebhook } from 'n8n-nodes-base/dist/nodes/RespondToWebhook/RespondToWebhook.node';
@@ -58,6 +59,7 @@ const enumOf = (schema: JsonSchema | undefined) => schema?.enum ?? [];
 const inputOf = (trigger: Trigger) => obj(trigger.input).json;
 const replyInput =
 	(webhookTrigger.kind === 'native' && replyContractOf(webhookTrigger)?.input) || {};
+const pageContract = formTrigger.kind === 'native' ? replyContractOf(formTrigger) : undefined;
 
 describe('native trigger contracts against the built-in nodes', () => {
 	const webhook = descriptionAt(new Webhook(), 2.2);
@@ -165,6 +167,25 @@ describe('native trigger contracts against the built-in nodes', () => {
 				options: { buttonLabel: 'Join' },
 			},
 			inputOf(formTrigger),
+		],
+		[
+			'form page',
+			new Form().description,
+			2.5,
+			{
+				formFields: {
+					values: [
+						{ fieldType: 'number', fieldLabel: 'Seats', requiredField: true },
+						{ fieldType: 'textarea', fieldLabel: 'Notes' },
+					],
+				},
+				limitWaitTime: true,
+				limitType: 'afterTimeInterval',
+				resumeAmount: 2,
+				resumeUnit: 'hours',
+				options: { formTitle: 'Step 2', buttonLabel: 'Next' },
+			},
+			pageContract?.input ?? {},
 		],
 		[
 			'WhatsApp events',
@@ -416,5 +437,40 @@ describe('native trigger contracts against the built-in nodes', () => {
 			return field.requiredField || value !== null ? validate(value, type, { path: key }) : [];
 		});
 		expect(issues).toEqual([]);
+	});
+
+	it('emit a form page as the built-in Form node: next page, fields typed as the trigger types them', () => {
+		const description = new Form().description;
+		expect([description.name, description.version]).toEqual([
+			'form',
+			expect.arrayContaining([2.5]),
+		]);
+		expect(keptBy(description, 2.5, {})).toMatchObject({ operation: 'page' });
+		expect(pageContract?.id).toBe('form.page');
+		const formFields = [
+			{ fieldType: 'number', fieldLabel: 'Seats', requiredField: true },
+			{ fieldType: 'text', fieldLabel: 'Notes' },
+		];
+		const item: INodeExecutionData = { json: {} };
+		addFormResponseDataToReturnItem(item, formFields, { 'field-0': '4' }, 2.5);
+		const json: IDataObject = {
+			...item.json,
+			submittedAt: '2026-01-01T00:00:00.000Z',
+			formMode: 'test',
+		};
+		expect(json).toEqual({
+			Seats: 4,
+			Notes: null,
+			submittedAt: json.submittedAt,
+			formMode: 'test',
+		});
+		const { Seats, Notes, ...base } = json;
+		expect(validate(base, pageContract?.output ?? {})).toEqual([]);
+		const entries = pageContract?.output['x-n8n-entry-fields'];
+		expect(validate(Seats, entries?.types.number ?? {})).toEqual([]);
+		expect(Notes).toBeNull();
+		expect(pageContract?.output['x-n8n-entry-fields']).toEqual(
+			formTrigger.output.json['x-n8n-entry-fields'],
+		);
 	});
 });

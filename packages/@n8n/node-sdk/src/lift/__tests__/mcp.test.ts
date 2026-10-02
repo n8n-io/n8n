@@ -77,7 +77,7 @@ describe('liftMcpTool', () => {
 			flow: { effect: 'read', cardinality: 'per-item', idempotent: true },
 			credentials: ['notionApi'],
 			input: { required: ['query'], properties: { limit: { type: 'integer', minimum: 1 } } },
-			lifted: true,
+			derived: true,
 			outputClaim: 'inferred',
 		});
 		expect(create?.contract).toMatchObject({

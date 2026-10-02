@@ -598,9 +598,14 @@ function fileNameOf(headers: Readonly<Record<string, string>>, url: string): str
  * Continue-on-fail gives an error item on the last output, which n8n routes to the error
  * output when the node has one.
  */
+/** A native action or trigger has no SDK runtime: n8n runs its built-in node, so nothing freezes or loads it. */
+export const nativeRunError = ({ id, native }: Pick<Action | Trigger, 'id' | 'native'>) =>
+	new UnexpectedError(`${id} runs as the built-in node ${native?.type ?? ''}`);
+
 export function executorOf<S extends Shape, O extends AnySchema>(
 	action: Action<S, O>,
 ): (host: ExecutorHost) => Promise<INodeExecutionData[][]> {
+	if (action.native) throw nativeRunError(action);
 	const supplyFields = supplyFieldsOf(action.input);
 	const supplyNames = new Set(supplyFields.map(({ name }) => name));
 	const inputKeys = Object.keys(action.input).filter((key) => !supplyNames.has(key));
@@ -1271,6 +1276,7 @@ function supplyDataOf(
 export function toNodeType<S extends Shape, O extends AnySchema>(
 	action: Action<S, O>,
 ): new () => INodeType {
+	if (action.native) throw nativeRunError(action);
 	const { selector, credentials } = credentialDescriptionOf(action);
 	const description: INodeTypeDescription = {
 		displayName: `${action.node.displayName}: ${action.action}`,

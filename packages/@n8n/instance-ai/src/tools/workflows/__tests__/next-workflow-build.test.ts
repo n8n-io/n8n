@@ -617,7 +617,7 @@ describe('tsc hints', () => {
 		const onStep = `${at}TS2339: Property 'orElse' does not exist on type 'Step<unknown, unknown, Loose, "Post">'.`;
 		const [step, first, second] = await withTscHints([onStep, unknownItem, unknownItem]);
 		expect(step).toMatch(
-			/^.+\nHint: A step has no methods: .+ Flow methods: andThen, branch, .*orElse/,
+			/^.+\nHint: A step has no methods: .+ Flow methods: andThen, route, branch, .*orElse/,
 		);
 		expect(first).toBe(`${unknownItem}\nHint: ${tscHintOf(unknownItem, [])}`);
 		expect(second).toBe(unknownItem);

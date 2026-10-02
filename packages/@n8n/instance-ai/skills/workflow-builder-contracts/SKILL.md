@@ -18,8 +18,8 @@ recommended_tools:
 
 # Workflow Builder
 
-You write one typed TypeScript file. Do not produce visible output until the
-final step, unless blocked. This skill and `nodes(action="type-definition")`
+You write one typed TypeScript file. Show no output until the final step,
+unless blocked. This skill and `nodes(action="type-definition")`
 are the full API: do not read SDK files. Only `build-workflow` has
 `@n8n/nodes/*` and runs `tsc`: do not run it.
 
@@ -27,11 +27,11 @@ are the full API: do not read SDK files. Only `build-workflow` has
 
 1. Call `nodes(action="search")` ONCE with `queries`: one short query per
    service, e.g. `["notion get many pages", "http request", "slack"]`. Use the
-   returned `nodeModules`. Use nodes from `results` with `node()`.
+   returned `nodeModules` and `builtIns`. Use nodes from `results` with
+   `node()`.
 2. Get other definitions in ONE `nodes(action="type-definition")` call.
-3. Call `build-workflow` with a stable `filePath`
-   (e.g. `src/workflows/main.workflow.ts`) and the complete source as
-   `sourceCode`.
+3. Call `build-workflow` with a stable `filePath` and the complete source
+   as `sourceCode`.
 4. Fix every `file:line` error. Pass the full source again, or edit the file
    with `workspace_str_replace_file` and build with `filePath` only.
 5. If the result has `postBuildFlow.required: true`, follow
@@ -82,12 +82,14 @@ export default workflow(
   adds an IF node. Without `else`, false items stop.
 - `.switch({ name, on, cases })`, `.merge({ name, join, branches })`, `.loop`,
   `.forEach`: Switch, Merge, loops.
+- `.route(step, { a: (f) => …, b: (f) => … })` follows each named output;
+  `.andThen` only the first.
 - `set({ name, fields: { total: (item) => item.a + item.b }, keep: 'all' })`
   makes fields. `keep: 'all'` keeps input fields.
 - `node({ name, type, version, parameters, sample })` adds any other node;
-  `trigger({ … })` any other trigger. `sample` items type the output.
-- `manual({ sample: [{ id: 1 }] })` types the trigger output. Verification
-  uses it.
+  `trigger({ … })` any other trigger. `sample` items type the output, e.g.
+  `manual({ sample: [{ id: 1 }] })`. Verification uses them.
+- Typed steps and `node()` take `settings: { retryOnFail: true, notes: '…' }`.
 
 ## AI nodes
 
@@ -99,7 +101,7 @@ node({ name: 'Agent', type: '@n8n/n8n-nodes-langchain.agent', version: 2.2,
   subnodes: { model: subnode({ name: 'Model', type: '@n8n/n8n-nodes-langchain.lmChatOpenAi', version: 1.2 }) } })
 ```
 
-Slots: `model`, `memory`, `tools` (a list), `outputParser`, `embedding`,
+Slots: `model`, `memory`, `tools`, `outputParser`, `embedding`,
 `vectorStore`, `retriever`, `documentLoader`, `textSplitter`, `reranker`.
 
 ## Lambdas
@@ -108,22 +110,21 @@ Slots: `model`, `memory`, `tools` (a list), `outputParser`, `embedding`,
 - Read only `item`, `$`, and JavaScript globals, never file constants.
 - `item` and `$('Node')` are JSON: `$('Hook').body`, not `.json` or `.item`.
 - `$.now` and `$.today` are Luxon dates. Use `$.date(iso)` to parse a string.
-- A `'={{ … }}'` string fits a field that takes a lambda. The build checks it like a lambda.
+- A `'={{ … }}'` string fits any lambda field. The build checks it.
 - Fix a type error at its cause. Do not add casts, `any`, or fallbacks.
 
 ## Values and credentials
 
-- Keep real values that the user gave or you found. Never invent IDs,
-  emails, or URLs. For an unknown value, write `placeholder('Database')` and
-  tell the user. Setup asks for it.
-- Do not write credentials. The build binds the one stored credential that
-  fits; setup asks for others. Never ask for secrets.
+- Keep real values you got or found. Never invent IDs,
+  emails, or URLs: write `placeholder('Database')` and tell the user.
+- Do not write credentials: the build binds stored ones, setup asks for
+  others. Never ask for secrets.
 
 ## Workflow rules
 
 1. Zero items end a path. Do not add empty-check gates.
-2. A write action outputs its API response, not its input. Use
-   `$('Node Name')` to read earlier data after it.
+2. A write action outputs its API response, not its input: read earlier
+   data with `$('Node Name')`.
 3. With more than {{TOP_LEVEL_ITEM_CEILING_PLACEHOLDER}} top-level items,
    pass `groupingDecision: 'not_warranted'` with a `groupingReason`.
 4. Build success is not proof. Do not publish automatically.

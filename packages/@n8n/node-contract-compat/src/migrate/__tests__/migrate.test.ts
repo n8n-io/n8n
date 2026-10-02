@@ -6,9 +6,9 @@ import type {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
-import { composeVersion } from '../compose';
-import { compat, credential, defineNode, int, obj, str } from '../index';
-import { toNodeType } from '../runtime';
+import { compat, credential, defineNode, int, obj, str, toNodeType } from '@n8n/node-sdk';
+
+import { migrateVersion } from '../../index';
 
 const tasks = defineNode({
 	id: 'tasks',
@@ -130,12 +130,12 @@ const legacyOf = (description: Partial<INodeTypeDescription> = {}): INodeType =>
 
 const slot = { resource: 'task', operation: 'getAll', action: contract };
 
-const composed = (legacy = legacyOf()) => composeVersion({ legacy, version: 4, slots: [slot] });
+const composed = (legacy = legacyOf()) => migrateVersion({ legacy, version: 4, slots: [slot] });
 
 const propertiesOf = (type: INodeType) =>
 	type.description.properties.map(({ name, displayOptions }) => [name, displayOptions?.show]);
 
-describe('composeVersion', () => {
+describe('migrateVersion', () => {
 	it('hides the legacy fields of the owned slot and shows the action fields there only', () => {
 		const owned = { resource: ['task'], operation: ['getAll'] };
 		expect(propertiesOf(composed())).toEqual([
@@ -169,7 +169,7 @@ describe('composeVersion', () => {
 	it('rejects an action credential that the legacy node does not have', () => {
 		const credentials = [{ name: 'tasksApi', required: true }];
 		expect(() => composed(legacyOf({ credentials }))).toThrow(
-			'tasks has no credential tasksOAuth2Api, which a composed action uses',
+			'tasks has no credential tasksOAuth2Api, which a migrated action uses',
 		);
 	});
 
@@ -188,7 +188,7 @@ describe('composeVersion', () => {
 
 	it('rejects a slot that the legacy node has no operation for', () => {
 		const missing = { ...slot, operation: 'delete' };
-		expect(() => composeVersion({ legacy: legacyOf(), version: 4, slots: [missing] })).toThrow(
+		expect(() => migrateVersion({ legacy: legacyOf(), version: 4, slots: [missing] })).toThrow(
 			'tasks has no operation task.delete',
 		);
 	});

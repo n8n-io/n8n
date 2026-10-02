@@ -32,6 +32,7 @@
     "test:unit": "vitest run"
   },
   "dependencies": {
+    "@n8n/node-contract-compat": "workspace:*",
     "@n8n/node-sdk": "workspace:*",
     "n8n-workflow": "workspace:*"
   },

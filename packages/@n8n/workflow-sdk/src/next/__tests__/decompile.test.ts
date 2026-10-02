@@ -17,6 +17,7 @@ import {
 	subnode,
 	workflow,
 	type Dollar,
+	type NodeSettings,
 	type Step,
 	type Subnode,
 } from '../index';
@@ -48,6 +49,7 @@ const notion = {
 			name: N;
 			database: string;
 			where?: Where;
+			settings?: NodeSettings;
 		}): Step<In, Ctx, Page, N> => contractStep(NOTION_TYPE, config),
 	},
 };
@@ -87,8 +89,11 @@ const ai = {
 };
 
 const openAi = {
-	chatModel: <In, Ctx>(config: { name: string; model: string }): Subnode<In, Ctx, 'chatModel'> =>
-		contractSubnode(MODEL_TYPE, 'chatModel', config),
+	chatModel: <In, Ctx>(config: {
+		name: string;
+		model: string;
+		settings?: NodeSettings;
+	}): Subnode<In, Ctx, 'chatModel'> => contractSubnode(MODEL_TYPE, 'chatModel', config),
 };
 
 const WEBHOOK_TYPE = 'n8n-nodes-base.webhook';
@@ -107,6 +112,7 @@ const webhook = {
 		httpMethod?: 'GET' | 'POST';
 		path: string;
 		responseMode?: 'onReceived' | 'responseNode';
+		settings?: NodeSettings;
 	}): next.Flow<{ body: { id: string } }, Record<N, { body: { id: string } }>> =>
 		next.contractTrigger(WEBHOOK_TYPE, config, 2.2, undefined, { pairing }),
 	respond: <In, Ctx, const N extends string>(config: {
@@ -117,7 +123,31 @@ const webhook = {
 		contractStep(RESPOND_TYPE, config, 1.5, undefined, undefined, pairing),
 };
 
+const EXISTS_TYPE = '@n8n/nodes-base-next.dataTableRowExists';
+
+const dataTable = {
+	row: {
+		exists: <In, Ctx, const N extends string>(config: {
+			name: N;
+			table: string;
+		}): next.RoutedStep<In, Ctx, In, N, 'exists' | 'missing'> =>
+			next.routedStep(EXISTS_TYPE, config, ['exists', 'missing']),
+	},
+};
+
 const factories = new Map<string, ContractFactory>([
+	[
+		EXISTS_TYPE,
+		{
+			module: 'dataTable',
+			from: '@n8n/nodes/dataTable',
+			path: 'row.exists',
+			version: 1,
+			inputKeys: ['table'],
+			expressionKeys: [],
+			outputs: ['exists', 'missing'],
+		},
+	],
 	[
 		AGENT_TYPE,
 		{
@@ -207,6 +237,7 @@ const modules: Record<string, unknown> = {
 	'@n8n/nodes/ai': { ai },
 	'@n8n/nodes/openAi': { openAi },
 	'@n8n/nodes/webhook': { webhook },
+	'@n8n/nodes/dataTable': { dataTable },
 };
 
 /** Run decompiled source as the sandbox does, with its imports bound to the modules above. */
@@ -370,6 +401,35 @@ describe('decompileWorkflow', () => {
 		expect(withoutWebhookIds(kept.rebuilt)).toEqual(withoutWebhookIds(extra));
 	});
 
+	it('round-trips a routed step whose later outputs have flows', () => {
+		const json = workflow(
+			'Known',
+			manual()
+				.route(dataTable.row.exists({ name: 'Known', table: 'leads' }), {
+					exists: (flow) => flow.andThen(set({ name: 'Old', fields: { seen: true } })),
+					missing: (flow) => flow.andThen(set({ name: 'New', fields: { seen: false } })),
+				})
+				.andThen(set({ name: 'After', fields: { done: true } })),
+		).toJSON();
+		const { source, rebuilt, again } = roundTrip(json);
+
+		expect(withoutIds(rebuilt)).toEqual(withoutIds(json));
+		expect(again).toBe(source);
+		expect(source).toContain('.route(dataTable.row.exists({');
+		expect(source).toContain('missing: (flow) => flow');
+
+		const onlyMissing = workflow(
+			'Missing',
+			manual().route(dataTable.row.exists({ name: 'Known', table: 'leads' }), {
+				exists: (flow) => flow,
+				missing: (flow) => flow.andThen(set({ name: 'New', fields: { seen: false } })),
+			}),
+		).toJSON();
+		const missing = roundTrip(onlyMissing);
+		expect(withoutIds(missing.rebuilt)).toEqual(withoutIds(onlyMissing));
+		expect(missing.source).toContain('exists: (flow) => flow,');
+	});
+
 	it('round-trips a branch, an error output, a join, and the node() escape hatch', () => {
 		const json = branchWorkflow().toJSON();
 		const { source, rebuilt, again } = roundTrip(json);
@@ -382,15 +442,37 @@ describe('decompileWorkflow', () => {
 		expect(source).toContain('keep: "all"');
 		expect(source).toContain('source: "notion"');
 		expect(source).toContain('first: $("Tasks").id');
-		expect(source).toContain('text: (_item, $) => `Done: ${$("Tasks").id}`,');
-		// No lambda compiles to $input, and node() takes no lambda directly in an array.
+		// A node() item is Loose, so its expressions stay strings for the expression check.
+		expect(source).toContain('text: "=Done: {{ $(\\"Tasks\\").item.json.id }}",');
 		expect(source).toContain('raw: "={{ $input.first().json.id }}",');
-		// A template literal would read as a string, and ({ … }) compiles to other text.
 		expect(source).toContain('object: "={{ { \\"id\\": $json.id } }}",');
 		expect(source).toContain('"={{ $json.id }}",');
 	});
 
 	it('round-trips a binary of the item and of an earlier node', () => {
+		const typed = notionWorkflow().toJSON();
+		const withQuery = {
+			...typed,
+			nodes: typed.nodes.map((n) =>
+				n.type === SEND_TYPE
+					? {
+							...n,
+							parameters: {
+								...n.parameters,
+								query: {
+									file: '={{ $binary.data }}',
+									first: '={{ $("Start").item.binary.data.fileName }}',
+								},
+							},
+						}
+					: n,
+			),
+		};
+		const step = roundTrip(withQuery);
+		expect(withoutIds(step.rebuilt)).toEqual(withoutIds(withQuery));
+		expect(step.source).toContain('file: (item) => item.binary.data,');
+		expect(step.source).toContain('first: (_item, $) => $("Start").binary.data.fileName,');
+
 		const json = workflow(
 			'Files',
 			manual().andThen(
@@ -410,9 +492,8 @@ describe('decompileWorkflow', () => {
 
 		expect(withoutIds(rebuilt)).toEqual(withoutIds(json));
 		expect(again).toBe(source);
-		expect(source).toContain('file: (item) => item.binary.data,');
-		expect(source).toContain('first: (_item, $) => $("Start").binary.data.fileName,');
-		// `item.binary` compiles to `$binary`, so the JSON field stays an expression.
+		expect(source).toContain('file: "={{ $binary.data }}",');
+		expect(source).toContain('first: "={{ $(\\"Start\\").item.binary.data.fileName }}",');
 		expect(source).toContain('field: "={{ $json.binary }}",');
 	});
 
@@ -561,7 +642,7 @@ describe('decompileWorkflow', () => {
 		expect(source).toContain('model: subnode({');
 		expect(source).toContain('tools: [');
 		expect(source).toContain('vectorStore: subnode({');
-		expect(source).toContain('text: (item) => item.question,');
+		expect(source).toContain('text: "={{ $json.question }}",');
 	});
 
 	it('round-trips a contract AI node with its contract sub-node in the slot field', () => {
@@ -590,6 +671,89 @@ describe('decompileWorkflow', () => {
 			),
 		};
 		expect(decompileWorkflow(legacyModel, factories)).toBeUndefined();
+	});
+
+	it('round-trips node settings on a trigger, a typed step, node(), and a sub-node', () => {
+		const json = workflow(
+			'Settings',
+			webhook
+				.trigger({ name: 'Hook', path: 'in', settings: { notes: 'From the CRM' } })
+				.andThen(
+					notion.databasePage.getAll({
+						name: 'Pages',
+						database: DATABASE,
+						settings: { retryOnFail: true, maxTries: 3, waitBetweenTries: 2000 },
+					}),
+				)
+				.andThen(
+					node({
+						name: 'Agent',
+						type: '@n8n/n8n-nodes-langchain.agent',
+						version: 2.2,
+						settings: {
+							alwaysOutputData: true,
+							executeOnce: true,
+							onError: 'continueRegularOutput',
+							notes: 'Answers once',
+							notesInFlow: true,
+						},
+						subnodes: {
+							model: subnode({
+								name: 'Model',
+								type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+								version: 1.2,
+								settings: { notes: 'Cheap model' },
+							}),
+						},
+					}),
+				)
+				.andThen(
+					node({
+						name: 'Send',
+						type: 'n8n-nodes-base.noOp',
+						version: 1,
+						settings: { onError: 'stopWorkflow', retryOnFail: true },
+					}),
+				)
+				.orElse((failed) => failed.andThen(set({ name: 'Log', fields: { failed: true } }))),
+		).toJSON();
+		const byName = new Map(json.nodes.map((n) => [n.name, n]));
+		expect(byName.get('Hook')).toMatchObject({ notes: 'From the CRM' });
+		expect(byName.get('Pages')).toMatchObject({ retryOnFail: true, maxTries: 3 });
+		expect(byName.get('Agent')).toMatchObject({
+			onError: 'continueRegularOutput',
+			notesInFlow: true,
+		});
+		expect(byName.get('Model')).toMatchObject({ notes: 'Cheap model' });
+		// The error output of orElse wins over the setting.
+		expect(byName.get('Send')).toMatchObject({ onError: 'continueErrorOutput', retryOnFail: true });
+
+		const { source, rebuilt, again } = roundTrip(json);
+		const withoutWebhookIds = (saved: WorkflowJSON) =>
+			withoutIds({ ...saved, nodes: saved.nodes.map(({ webhookId: _id, ...rest }) => rest) });
+		expect(withoutWebhookIds(rebuilt)).toEqual(withoutWebhookIds(json));
+		expect(again).toBe(source);
+		expect(source).toContain('webhook.trigger({');
+		expect(source).toContain('notion.databasePage.getAll({');
+		expect(source).toContain('retryOnFail: true,');
+		expect(source).toContain('onError: "continueRegularOutput",');
+		expect(source).toContain('.orElse((failed) => failed');
+	});
+
+	it('keeps a built-in step with node settings out of its region form', () => {
+		const json = workflow(
+			'Fields',
+			manual().andThen(set({ name: 'Fields', fields: { a: 1 } })),
+		).toJSON();
+		const withNotes = {
+			...json,
+			nodes: json.nodes.map((n) => ({ ...n, notes: `About ${n.name}` })),
+		};
+		const { source, rebuilt } = roundTrip(withNotes);
+		expect(source).not.toContain('manual(');
+		expect(source).not.toContain('set(');
+		expect(source).toContain('notes: "About Fields",');
+		expect(withoutIds(rebuilt)).toEqual(withoutIds(withNotes));
 	});
 
 	it('gives undefined for sub-node wiring the typed format cannot express', () => {
@@ -636,9 +800,9 @@ describe('decompileWorkflow', () => {
 				[trigger.name ?? '']: { main: [[{ node: pages.name ?? '', type: 'main', index: 1 }]] },
 			},
 		};
-		const retry = {
+		const disabled = {
 			...json,
-			nodes: json.nodes.map((n) => (n === pages ? { ...n, retryOnFail: true } : n)),
+			nodes: json.nodes.map((n) => (n === pages ? { ...n, disabled: true } : n)),
 		};
 		const sticky = {
 			...json,
@@ -651,12 +815,11 @@ describe('decompileWorkflow', () => {
 					typeVersion: 1,
 					position: [0, 0] as [number, number],
 					parameters: { content: 'hi' },
-					notes: 'x',
 				},
 			],
 		};
 		expect(decompileWorkflow(secondInput, factories)).toBeUndefined();
-		expect(decompileWorkflow(retry, factories)).toBeUndefined();
+		expect(decompileWorkflow(disabled, factories)).toBeUndefined();
 		expect(decompileWorkflow(sticky, factories)).toBeUndefined();
 	});
 });

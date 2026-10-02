@@ -31,6 +31,7 @@ import {
 	credentialDescriptionOf,
 	credentialTypeOf,
 	hasSelector,
+	nativeRunError,
 	nodeNameOf,
 	toRequestOptions,
 	verifiedBundleOf,
@@ -438,13 +439,9 @@ async function runPoll(
 	return emitted(isFirst && poll.firstRun !== 'emit' ? [] : next.fresh.map(toOutput));
 }
 
-/** A native trigger has no SDK runtime: n8n runs its built-in node, so nothing freezes or loads it. */
-const nativeError = (trigger: Trigger) =>
-	new UnexpectedError(`${trigger.id} runs as the built-in node ${trigger.native?.type ?? ''}`);
-
 /** The n8n description of a trigger. `polling` makes n8n add Poll Times and schedule polls. */
 export function triggerDescriptionOf(trigger: Trigger): INodeTypeDescription {
-	if (trigger.kind === 'native') throw nativeError(trigger);
+	if (trigger.kind === 'native') throw nativeRunError(trigger);
 	const { selector, credentials } = credentialDescriptionOf(trigger);
 	const base: INodeTypeDescription = {
 		displayName: `${trigger.node.displayName}: ${trigger.trigger}`,
@@ -479,7 +476,7 @@ export function triggerDescriptionOf(trigger: Trigger): INodeTypeDescription {
 export function triggerMethodsOf(
 	trigger: Trigger,
 ): Pick<INodeType, 'poll' | 'webhook' | 'webhookMethods'> {
-	if (trigger.kind === 'native') throw nativeError(trigger);
+	if (trigger.kind === 'native') throw nativeRunError(trigger);
 	if (trigger.poll) {
 		const { poll } = trigger;
 		return {

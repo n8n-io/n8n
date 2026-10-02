@@ -449,7 +449,7 @@ describe('generateNodeModule', () => {
 		});
 		const text = moduleOf(route, check);
 		expect(text).toContain(
-			"import { contractStep, routedStep, type OutputOf, type RoutedStep, type Step, type Value } from '@n8n/workflow-sdk/next';",
+			"import { contractStep, routedStep, type NodeSettings, type OutputOf, type RoutedStep, type Step, type Value } from '@n8n/workflow-sdk/next';",
 		);
 		expect(text).toContain(
 			'(transform, per-item; outputs: one per cases entry, named by its output, then fallback)',
@@ -507,7 +507,9 @@ describe('generateNodeModule', () => {
 		const text = moduleOf(append);
 		expect(text).toContain('{ values: Value<I, C, { [key: string]: Value<I, C, OpenValue> }> }');
 		expect(text).toContain('export type TodoRowAppendOutput = Record<string, unknown>;');
-		expect(text).toContain('import { contractStep, type OpenValue, type OutputOf,');
+		expect(text).toContain(
+			'import { contractStep, type OpenValue, type NodeSettings, type OutputOf,',
+		);
 		expect(moduleOf(listTasks)).not.toContain('OpenValue');
 	});
 

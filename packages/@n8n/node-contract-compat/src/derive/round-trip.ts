@@ -1,4 +1,4 @@
-/** Compile and decompile through a lifted identity map. */
+/** Legacy parameters to and from derived input, through the identity compile map. */
 import {
 	NodeHelpers,
 	isResourceLocatorValue,
@@ -7,7 +7,7 @@ import {
 	type NodeParameterValueType,
 } from 'n8n-workflow';
 
-import type { CompileMap } from './lift';
+import type { CompileMap } from './derive';
 
 function withLocatorFlag(value: NodeParameterValueType): NodeParameterValueType {
 	if (typeof value !== 'object' || value === null || Array.isArray(value)) return value;
@@ -21,8 +21,8 @@ function withoutLocatorFlag(value: NodeParameterValueType): NodeParameterValueTy
 	return rest;
 }
 
-/** Contract input to legacy parameters. Fields outside the map are dropped. */
-export function compileLifted(map: CompileMap, input: INodeParameters): INodeParameters {
+/** Derived input to legacy parameters. Fields outside the map are dropped. */
+export function toLegacyParameters(map: CompileMap, input: INodeParameters): INodeParameters {
 	const { resource, operation } = map.target;
 	return {
 		...(resource !== undefined ? { resource } : {}),
@@ -53,10 +53,10 @@ export const normaliseParameters = (
 	) ?? {};
 
 /**
- * Legacy parameters to contract input. Values that equal their default are left out, except
+ * Legacy parameters to derived input. Values that equal their default are left out, except
  * the variant tag.
  */
-export function decompileLifted(
+export function fromLegacyParameters(
 	map: CompileMap,
 	description: INodeTypeDescription,
 	parameters: INodeParameters,

@@ -1,6 +1,6 @@
 import { lintContract, replyContractOf, toContract } from '@n8n/node-sdk';
 
-import { actions, nativeTriggers, triggers } from '../index';
+import { actions, flowNatives, nativeTriggers, triggers } from '../index';
 
 describe('native triggers', () => {
 	it('run as built-in nodes, so nothing freezes or registers them', () => {
@@ -10,6 +10,7 @@ describe('native triggers', () => {
 			['form.trigger', 'native'],
 			['whatsAppTrigger.trigger', 'native'],
 			['facebookTrigger.trigger', 'native'],
+			['googleSheetsTrigger.trigger', 'native'],
 		]);
 		const frozen = new Set([...actions, ...triggers].map(({ id }) => id));
 		expect(nativeTriggers.filter(({ id }) => frozen.has(id))).toEqual([]);
@@ -22,5 +23,15 @@ describe('native triggers', () => {
 		});
 		expect(contracts.map(({ id }) => id)).toContain('webhook.respond');
 		expect(contracts.flatMap(lintContract)).toEqual([]);
+	});
+
+	it('include the flow natives, which run as built-in nodes too', () => {
+		expect(flowNatives.map(({ id, native }) => [id, native?.type])).toEqual([
+			['manual.trigger', 'n8n-nodes-base.manualTrigger'],
+			['loop.batches', 'n8n-nodes-base.splitInBatches'],
+		]);
+		const frozen = new Set([...actions, ...triggers].map(({ id }) => id));
+		expect(flowNatives.filter(({ id }) => frozen.has(id))).toEqual([]);
+		expect(flowNatives.map(toContract).flatMap(lintContract)).toEqual([]);
 	});
 });

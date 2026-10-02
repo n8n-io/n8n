@@ -587,7 +587,10 @@ type RequestItems<C extends ActionFlow['cardinality']> = C extends '1:N'
 		? never
 		: { readonly items?: never };
 
-/** How the action runs: code (`run`), or a request description the host sends (`request`). */
+/**
+ * How the action runs: code (`run`), a request description the host sends (`request`), or a
+ * built-in n8n node (`native`), as a native trigger does.
+ */
 export type ActionBinding<
 	Full extends Shape,
 	O extends AnySchema,
@@ -604,12 +607,21 @@ export type ActionBinding<
 					ImportsOf<Im, RunInput<Full>>,
 			): RunResult<F['cardinality'], Emit<F['cardinality'], Infer<O>, Outs>>;
 			readonly request?: never;
+			readonly native?: never;
 	  }
 	| {
 			readonly request: RequestBinding<RunInput<Full>, P> & RequestItems<F['cardinality']>;
 			readonly run?: never;
+			readonly native?: never;
 			// The response goes to the only output.
 			readonly outputs?: never;
+			readonly imports?: never;
+			readonly inputs?: never;
+	  }
+	| {
+			readonly native: NativeNode;
+			readonly run?: never;
+			readonly request?: never;
 			readonly imports?: never;
 			readonly inputs?: never;
 	  };
@@ -748,13 +760,14 @@ export interface NativeNode {
 	readonly version: number;
 }
 
-/** What starts a native trigger. */
-export type NativeEvent = 'manual' | 'schedule' | 'webhook' | 'form';
+/** What starts a native trigger. `poll`: n8n polls with the built-in node on its Poll Times. */
+export type NativeEvent = 'manual' | 'schedule' | 'webhook' | 'form' | 'poll';
 
 /**
- * The step that answers the caller of a native trigger, e.g. Respond to Webhook. It passes its
- * items on. The caller waits for it when the trigger field `awaits.field` is `awaits.value`, and
- * the build checks that the flow has the step exactly then.
+ * The step that answers the caller of a native trigger, e.g. Respond to Webhook or a form page.
+ * The caller waits for it when the trigger field `awaits.field` is `awaits.value`, and the build
+ * checks that the flow has the step exactly then. Without `awaits` the step always belongs to the
+ * trigger, and the build checks that the trigger comes before it.
  */
 export interface TriggerReply<Field extends string = string> {
 	/** The factory name next to the trigger, e.g. `respond`. */
@@ -768,7 +781,9 @@ export interface TriggerReply<Field extends string = string> {
 	 */
 	readonly input: Shape | AnySchema;
 	readonly native: NativeNode;
-	readonly awaits: { readonly field: Field; readonly value: string };
+	readonly awaits?: { readonly field: Field; readonly value: string };
+	/** Each output item. Without it the step passes its items on. */
+	readonly output?: AnySchema;
 }
 
 /**
@@ -1045,6 +1060,17 @@ export interface ContractDocument {
 	readonly inputs?: ActionInputs;
 }
 
+/**
+ * A manifest generated from a legacy node description or an MCP tool. It makes weak claims:
+ * consumers that need guarantees check `derived`.
+ */
+export interface DerivedManifest extends ContractDocument {
+	readonly derived: true;
+	/** typeVersion `x.y` maps to `x.y.0`. A derived manifest makes no semver claim beyond that. */
+	readonly semver: string;
+	readonly outputClaim: 'inferred' | 'unknown';
+}
+
 export interface ContractEgress {
 	readonly hosts?: readonly string[];
 	readonly fromInput?: string;
@@ -1097,7 +1123,7 @@ export const toContract = (source: ContractSource): ContractDocument => {
 	};
 };
 
-/** The reply step of a native trigger as an action contract: it writes the reply and passes its items on. */
+/** The reply step of a native trigger as an action contract: it writes the reply. */
 export function replyContractOf(trigger: NativeTrigger): ContractDocument | undefined {
 	const { reply } = trigger;
 	if (!reply) return undefined;
@@ -1112,7 +1138,7 @@ export function replyContractOf(trigger: NativeTrigger): ContractDocument | unde
 		flow: { effect: 'write', cardinality: 'per-item', passthrough: 'replace' },
 		credentials: [],
 		input: reply.input instanceof Schema ? reply.input.json : obj(reply.input).json,
-		output: passedItem().json,
+		output: (reply.output ?? passedItem()).json,
 	};
 }
 

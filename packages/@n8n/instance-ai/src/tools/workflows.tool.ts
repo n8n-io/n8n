@@ -16,7 +16,7 @@ import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
 import { toTs } from '@n8n/node-sdk';
-import { composedTargetOf, nodeTypeOf } from '@n8n/nodes-base-next';
+import { migratedTargetOf, nodeTypeOf } from '@n8n/nodes-base-next';
 import type { composedFactoryKey, ContractFactory } from '@n8n/workflow-sdk/next';
 
 import { approvalSummarySchema, formatApprovalMessage } from './approval-copy';
@@ -854,8 +854,9 @@ const contractFactories = (composedKey: typeof composedFactoryKey) =>
 				expressionKeys: Object.entries(action.input).flatMap(([key, schema]) =>
 					toTs(schema.json, { input: true, indent: '' }).startsWith('Value<') ? [key] : [],
 				),
+				...(action.outputs ? { outputs: action.outputs } : {}),
 			};
-			const target = composedTargetOf(action);
+			const target = migratedTargetOf(action);
 			const composed = target
 				? [
 						[

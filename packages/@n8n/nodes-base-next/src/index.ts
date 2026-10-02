@@ -44,6 +44,9 @@ import { createFolder } from './nodes/google-drive/actions/folder.create';
 import { pageAdded } from './nodes/notion/actions/data-source.page-added';
 import { facebookEvent } from './nodes/facebook-trigger/actions/trigger';
 import { formTrigger } from './nodes/form/actions/trigger';
+import { sheetRowsChanged } from './nodes/google-sheets-trigger/actions/trigger';
+import { loopBatches } from './nodes/loop/actions/batches';
+import { manualTrigger } from './nodes/manual/actions/trigger';
 import { scheduleTrigger } from './nodes/schedule/actions/trigger';
 import { webhookTrigger } from './nodes/webhook/actions/trigger';
 import { whatsAppEvent } from './nodes/whats-app-trigger/actions/trigger';
@@ -91,19 +94,19 @@ import { deleteSupabaseRows } from './nodes/supabase/actions/row.delete';
 import { getSupabaseRows } from './nodes/supabase/actions/row.get';
 import { getManySupabaseRows } from './nodes/supabase/actions/row.get-all';
 import { updateSupabaseRows } from './nodes/supabase/actions/row.update';
-import { composedSlotOf, type WorkflowNodeRef } from './composed';
+import { migratedSlotOf, type WorkflowNodeRef } from './migrated';
 
 export { versionsOf } from './registry';
 export {
-	COMPOSED_NODES,
-	composedSlotOf,
-	composedTargetOf,
-	withComposedVersions,
-	type ComposedSlotSpec,
-	type ComposedTarget,
-	type ComposedVersionSpec,
+	MIGRATED_NODES,
+	migratedSlotOf,
+	migratedTargetOf,
+	withMigratedVersions,
+	type MigratedSlotSpec,
+	type MigratedTarget,
+	type MigratedVersionSpec,
 	type WorkflowNodeRef,
-} from './composed';
+} from './migrated';
 export {
 	contractStore,
 	contractVersionLoader,
@@ -233,15 +236,22 @@ export const nativeTriggers: readonly Trigger[] = [
 	formTrigger,
 	whatsAppEvent,
 	facebookEvent,
+	sheetRowsChanged,
 ];
+
+/**
+ * Native contracts that a construct of the typed flow emits, so no module has a factory for
+ * them: `manual()` emits the Manual Trigger, and `forEach` emits Loop Over Items.
+ */
+export const flowNatives: ReadonlyArray<Action | Trigger> = [manualTrigger, loopBatches];
 
 /** The n8n node type of an action or a trigger, e.g. `@n8n/nodes-base-next.notionDatabasePageGetAll`. */
 export const nodeTypeOf = (action: Pick<Action, 'id'>) =>
 	`${NODE_PACKAGE}.${nodeNameOf(action.id)}`;
 
-/** The action a workflow node runs: a node type of this package, or a slot of a composed node. */
+/** The action a workflow node runs: a node type of this package, or a slot of a migrated node. */
 export function actionOfNode(node: WorkflowNodeRef): Action | undefined {
-	const slot = composedSlotOf(node);
+	const slot = migratedSlotOf(node);
 	return slot
 		? actions.find(({ id, version }) => id === slot.action.id && version === slot.major)
 		: actions.find((action) => nodeTypeOf(action) === node.type);

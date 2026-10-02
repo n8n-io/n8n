@@ -1,6 +1,6 @@
 /**
- * T1 lift: one partial contract per (node type, typeVersion, resource, operation) of a legacy
- * `INodeTypeDescription`. The legacy node still executes. The contract types the input, and an
+ * Derive: one derived manifest per (node type, typeVersion, resource, operation) of a legacy
+ * `INodeTypeDescription`. The legacy node still executes. The manifest types the input, and an
  * identity compile map takes it back to legacy parameters.
  */
 import {
@@ -15,9 +15,12 @@ import {
 	type NodeParameterValueType,
 } from 'n8n-workflow';
 
-import type { ContractDocument } from '../define';
-import type { JsonSchema } from '../schema';
-import { canonicalJson } from '../version';
+import {
+	canonicalJson,
+	type ContractDocument,
+	type DerivedManifest,
+	type JsonSchema,
+} from '@n8n/node-sdk';
 
 export interface LegacyTarget {
 	readonly type: string;
@@ -26,21 +29,21 @@ export interface LegacyTarget {
 	readonly operation?: string;
 }
 
-/** `resourceLocator` fields drop `__rl: true` in the contract. Compile adds it back. */
+/** `resourceLocator` fields drop `__rl: true` in the manifest. Compile adds it back. */
 export type CompileKind = 'identity' | 'resourceLocator';
 
 export interface CompileMap {
 	readonly target: LegacyTarget;
-	/** Contract field to legacy parameter path. The lift keeps the legacy names. */
+	/** Manifest field to legacy parameter path. Derive keeps the legacy names. */
 	readonly fields: Readonly<Record<string, { readonly path: string; readonly kind: CompileKind }>>;
 	/** The variant tag. Decompile keeps it when it holds the default, because a tag is required. */
 	readonly selector?: string;
 }
 
 /** `multiSelector`: more than one selector changes the shown fields, so the input stays flat. */
-export type LiftShape = 'flat' | 'variants' | 'multiSelector';
+export type DeriveShape = 'flat' | 'variants' | 'multiSelector';
 
-export type LiftIssueKind =
+export type DeriveIssueKind =
 	| 'loadOptions'
 	| 'resourceLocator'
 	| 'collection'
@@ -50,8 +53,8 @@ export type LiftIssueKind =
 	| 'multiSelector'
 	| 'opaque';
 
-export interface LiftIssue {
-	readonly kind: LiftIssueKind;
+export interface DeriveIssue {
+	readonly kind: DeriveIssueKind;
 	readonly field: string;
 	readonly detail: string;
 }
@@ -65,37 +68,30 @@ export interface FieldCounts {
 	readonly opaque: number;
 }
 
-export interface LiftedContract extends ContractDocument {
-	readonly lifted: true;
-	/** typeVersion `x.y` maps to `x.y.0`. A lifted contract makes no semver claim beyond that. */
-	readonly semver: string;
-	readonly outputClaim: 'inferred' | 'unknown';
-}
-
-export interface LiftedAction {
-	readonly contract: LiftedContract;
+export interface DerivedAction {
+	readonly contract: DerivedManifest;
 	readonly compile: CompileMap;
-	readonly shape: LiftShape;
-	readonly issues: readonly LiftIssue[];
+	readonly shape: DeriveShape;
+	readonly issues: readonly DeriveIssue[];
 	readonly counts: FieldCounts;
 }
 
 export type OutputSchemaLookup = (target: LegacyTarget) => JsonSchema | undefined;
 
-export interface LiftOptions {
+export interface DeriveOptions {
 	/** The package prefix of the legacy node type, e.g. `n8n-nodes-base`. */
 	readonly packageName: string;
 	readonly outputSchema?: OutputSchemaLookup;
 }
 
-// A lifted action does not know its effect. `write` is the safe claim for safety-gated features.
+// A derived action does not know its effect. `write` is the safe claim for safety-gated features.
 const UNKNOWN_FLOW: ContractDocument['flow'] = {
 	effect: 'write',
 	cardinality: 'per-item',
 	passthrough: 'replace',
 };
 
-// These types hold no user input that the legacy node reads from the contract.
+// These types hold no user input that the legacy node reads from the manifest.
 const NOT_INPUT: ReadonlySet<string> = new Set([
 	'notice',
 	'callout',
@@ -124,7 +120,7 @@ const leavesOf = (counts: FieldCounts) => counts.typed + counts.loose + counts.o
 interface FieldLift {
 	readonly schema: JsonSchema;
 	readonly counts: FieldCounts;
-	readonly issues: readonly LiftIssue[];
+	readonly issues: readonly DeriveIssue[];
 	readonly kind: CompileKind;
 }
 
@@ -135,7 +131,7 @@ const named = (name: string, lift: FieldLift): NamedLift => [name, lift];
 interface Context {
 	readonly description: INodeTypeDescription;
 	readonly node: { readonly typeVersion: number };
-	/** `resource` and `operation` when they select the action. They are not contract fields. */
+	/** `resource` and `operation` when they select the action. They are not manifest fields. */
 	readonly discriminators: ReadonlySet<string>;
 }
 
@@ -179,7 +175,7 @@ const isDynamic = (property: INodeProperties) =>
 const leaf = (
 	schema: JsonSchema,
 	kind: 'typed' | 'loose' | 'opaque',
-	issues: readonly LiftIssue[] = [],
+	issues: readonly DeriveIssue[] = [],
 ): FieldLift => ({ schema, counts: { ...ZERO, [kind]: 1 }, issues, kind: 'identity' });
 
 const objectOf = (
@@ -275,7 +271,7 @@ function locatorLift(property: INodeProperties, path: string, nested: boolean): 
 			required: [...Object.keys(flag), 'mode', 'value'],
 		})),
 	};
-	const issue = (detail: string): LiftIssue => ({ kind: 'resourceLocator', field: path, detail });
+	const issue = (detail: string): DeriveIssue => ({ kind: 'resourceLocator', field: path, detail });
 	const issues = [
 		...(listModes.length > 0 ? [issue('list mode needs a search call')] : []),
 		...(modes.length === 0 ? [issue('no modes declared')] : []),
@@ -371,7 +367,7 @@ function fieldLift(property: INodeProperties, path: string, nested = false): Fie
 				]);
 		}
 	})();
-	const expressionDefault: LiftIssue[] =
+	const expressionDefault: DeriveIssue[] =
 		typeof property.default === 'string' && property.default.startsWith('=')
 			? [{ kind: 'expressionDefault', field: path, detail: property.default }]
 			: [];
@@ -495,26 +491,26 @@ function valueSetsOf(context: Context, fixed: INodeParameters, depth: number): I
 	];
 }
 
-const dedupeIssues = (issues: readonly LiftIssue[]) => [
+const dedupeIssues = (issues: readonly DeriveIssue[]) => [
 	...new Map(issues.map((issue) => [`${issue.kind} ${issue.field}`, issue])).values(),
 ];
 
 interface InputLift {
 	readonly schema: JsonSchema;
 	readonly fields: readonly NamedLift[];
-	readonly issues: readonly LiftIssue[];
-	readonly shape: LiftShape;
+	readonly issues: readonly DeriveIssue[];
+	readonly shape: DeriveShape;
 	readonly selector?: string;
 }
 
-// n8n fills a default, so a field with a default is optional in the contract.
+// n8n fills a default, so a field with a default is optional in the manifest.
 const isRequired = (property: INodeProperties) =>
 	property.required === true && isEmpty(property.default);
 
 interface FieldsLift {
 	readonly fields: readonly NamedLift[];
 	readonly required: readonly string[];
-	readonly issues: readonly LiftIssue[];
+	readonly issues: readonly DeriveIssue[];
 }
 
 /**
@@ -544,7 +540,7 @@ function fieldsOf(
 	const conflicts = resolved
 		.filter(({ lifts }) => new Set(lifts.map(({ lift }) => canonicalJson(lift.schema))).size > 1)
 		.map(
-			({ name }): LiftIssue => ({
+			({ name }): DeriveIssue => ({
 				kind: 'conditionalDefault',
 				field: name,
 				detail: 'type or default depends on another field',
@@ -671,12 +667,12 @@ const semverOf = (typeVersion: number) => {
 	return `${major}.${minor}.0`;
 };
 
-function liftAction(
+function deriveAction(
 	versionContext: Context,
 	key: ActionKey,
-	options: LiftOptions,
+	options: DeriveOptions,
 	type: string,
-): LiftedAction {
+): DerivedAction {
 	const discriminators: INodeParameters = {
 		...(key.resource !== undefined ? { resource: key.resource } : {}),
 		...(key.operation !== undefined ? { operation: key.operation } : {}),
@@ -715,7 +711,7 @@ function liftAction(
 			credentials,
 			input: input.schema,
 			output: output ?? {},
-			lifted: true,
+			derived: true,
 			semver: semverOf(context.node.typeVersion),
 			outputClaim: output ? 'inferred' : 'unknown',
 		},
@@ -733,23 +729,23 @@ function liftAction(
 	};
 }
 
-export interface LiftedVersion {
+export interface DerivedVersion {
 	readonly typeVersion: number;
-	readonly actions: readonly LiftedAction[];
+	readonly actions: readonly DerivedAction[];
 }
 
-/** Lift every typeVersion of a legacy node description. */
-export function liftNodeType(
+/** The derived manifests of every typeVersion of a legacy node description. */
+export function deriveManifests(
 	description: INodeTypeDescription,
-	options: LiftOptions,
-): LiftedVersion[] {
+	options: DeriveOptions,
+): DerivedVersion[] {
 	const versions = Array.isArray(description.version) ? description.version : [description.version];
 	const type = `${options.packageName}.${description.name}`;
 	return versions.map((typeVersion) => {
 		const context: Context = { description, node: { typeVersion }, discriminators: new Set() };
 		return {
 			typeVersion,
-			actions: actionKeys(context).map((key) => liftAction(context, key, options, type)),
+			actions: actionKeys(context).map((key) => deriveAction(context, key, options, type)),
 		};
 	});
 }

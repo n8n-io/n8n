@@ -1394,6 +1394,210 @@ describe('nodes tool', () => {
 			);
 		});
 
+		const catalogNodes = (rows: Array<[string, string]>): SearchableNodeDescription[] =>
+			rows.map(([name, displayName]) => ({
+				name,
+				displayName,
+				description: `${displayName} node`,
+				version: 1,
+				inputs: ['main'],
+				outputs: ['main'],
+			}));
+
+		it('inlines the module of a native trigger instead of its catalog rows', async () => {
+			const context = createContractContext();
+			vi.mocked(context.nodeService.listSearchable).mockResolvedValue(
+				catalogNodes([
+					['n8n-nodes-base.webhook', 'Webhook'],
+					['n8n-nodes-base.n8nTrigger', 'n8n Trigger'],
+					['n8n-nodes-base.boxTrigger', 'Box Trigger'],
+				]),
+			);
+			const result = await executeTool<ModuleSearch>(createNodesTool(context, 'full'), {
+				action: 'search',
+				query: 'webhook trigger',
+				limit: 10,
+			});
+
+			expect(result.nodeModules?.map(({ node }) => node)).toEqual(['webhook']);
+			expect(result).not.toHaveProperty('results');
+		});
+
+		it('inlines the module that replaces a catalog node the query names', async () => {
+			const context = createContractContext();
+			vi.mocked(context.nodeService.listSearchable).mockResolvedValue(
+				catalogNodes([
+					['@n8n/n8n-nodes-langchain.chainLlm', 'Basic LLM Chain'],
+					['@n8n/n8n-nodes-langchain.chainSummarization', 'Summarization Chain'],
+				]),
+			);
+			const result = await executeTool<ModuleSearch>(createNodesTool(context, 'full'), {
+				action: 'search',
+				query: 'basic llm chain',
+				limit: 10,
+			});
+
+			expect(result.nodeModules?.map(({ node }) => node)).toEqual(['ai']);
+			expect(result).not.toHaveProperty('results');
+		});
+
+		it.each([
+			['manual trigger', 'n8n-nodes-base.manualTrigger', 'Manual Trigger', 'manual({'],
+			['if condition', 'n8n-nodes-base.if', 'If', '.branch({'],
+			['filter rows', 'n8n-nodes-base.filter', 'Filter', '.filter({'],
+			['split out items', 'n8n-nodes-base.splitOut', 'Split Out', 'splitOut({'],
+		])(
+			'answers "%s" with the SDK step instead of catalog rows',
+			async (query, nodeType, displayName, step) => {
+				const context = createContractContext();
+				vi.mocked(context.nodeService.listSearchable).mockResolvedValue(
+					catalogNodes([
+						[nodeType, displayName],
+						['n8n-nodes-base.compareDatasets', `${displayName} Compare Datasets`],
+					]),
+				);
+				const result = await executeTool<ModuleSearch & { builtIns?: string[] }>(
+					createNodesTool(context, 'full'),
+					{ action: 'search', query, limit: 10 },
+				);
+
+				expect(result.builtIns).toHaveLength(1);
+				expect(result.builtIns?.[0].startsWith(step)).toBe(true);
+				expect(result).not.toHaveProperty('results');
+				expect(result).not.toHaveProperty('otherActions');
+				expect(result.otherNodes).toEqual([
+					`n8n-nodes-base.compareDatasets: ${displayName} Compare Datasets`,
+				]);
+			},
+		);
+
+		it('searches at most 20 catalog rows per query', async () => {
+			const context = createContractContext();
+			vi.mocked(context.nodeService.listSearchable).mockResolvedValue(
+				catalogNodes(
+					Array.from({ length: 30 }, (_, index): [string, string] => [
+						`n8n-nodes-base.acme${index}`,
+						`Acme ${index}`,
+					]),
+				),
+			);
+			const result = await executeTool<ModuleSearch>(createNodesTool(context, 'full'), {
+				action: 'search',
+				query: 'acme',
+				limit: 50,
+			});
+
+			expect(result.results).toHaveLength(20);
+		});
+
+		it('cuts catalog rows to the byte budget and says so', async () => {
+			const context = createContractContext();
+			vi.mocked(context.nodeService.listSearchable).mockResolvedValue(
+				Array.from({ length: 20 }, (_, index) => ({
+					name: `n8n-nodes-base.acme${index}`,
+					displayName: `Acme ${index}`,
+					description: `Acme ${'x'.repeat(2_000)}`,
+					version: 1,
+					inputs: ['main'],
+					outputs: ['main'],
+				})),
+			);
+			const result = await executeTool<{
+				cut?: string;
+				searches: Array<{ results?: unknown[]; totalResults?: number }>;
+			}>(createNodesTool(context, 'full'), {
+				action: 'search',
+				queries: ['acme', 'acme', 'acme'],
+				limit: 20,
+			});
+
+			expect(Buffer.byteLength(JSON.stringify(result))).toBeLessThan(33_000);
+			expect(result.cut).toMatch(/^Cut to 32 KB: \d+ catalog rows/);
+			expect(result.searches[0].results?.length).toBeLessThan(20);
+			expect(result.searches[0].totalResults).toBe(20);
+		});
+
+		it('returns the module for the catalog type name of a module node', async () => {
+			const context = createContractContext();
+			const result = await executeTool<{ definitions: Array<Record<string, unknown>> }>(
+				createNodesTool(context, 'full'),
+				{ action: 'type-definition', nodeTypes: ['n8n-nodes-base.slack'] },
+			);
+			const described = await executeTool<Record<string, unknown>>(
+				createNodesTool(context, 'full'),
+				{ action: 'describe', nodeType: 'n8n-nodes-base.slack' },
+			);
+
+			expect(result.definitions[0]).toMatchObject({
+				nodeType: 'n8n-nodes-base.slack',
+				node: 'slack',
+				content: expect.stringContaining('export const slack = {'),
+			});
+			expect(described).toMatchObject({ found: true, node: 'slack' });
+			expect(context.nodeService.getNodeTypeDefinition).not.toHaveBeenCalled();
+			expect(context.nodeService.getDescription).not.toHaveBeenCalled();
+		});
+
+		it('types only the action that runs the requested resource and operation', async () => {
+			const context = createContractContext();
+			const result = await executeTool<{ definitions: Array<{ content: string }> }>(
+				createNodesTool(context, 'full'),
+				{
+					action: 'type-definition',
+					nodeTypes: [{ nodeType: 'n8n-nodes-base.slack', resource: 'message', operation: 'send' }],
+				},
+			);
+
+			expect(result.definitions[0].content).toContain('export type SlackMessageSendInput');
+			expect(result.definitions[0].content).not.toContain('export type SlackMessageUpdateInput');
+		});
+
+		it('points a catalog node with an SDK step to the step', async () => {
+			const context = createContractContext();
+			const result = await executeTool<{ definitions: Array<{ content: string }> }>(
+				createNodesTool(context, 'full'),
+				{ action: 'type-definition', nodeTypes: ['n8n-nodes-base.if'] },
+			);
+
+			expect(result.definitions[0].content).toMatch(
+				/^\/\/ Use the flow step instead of node\(\): \.branch\(\{/,
+			);
+		});
+
+		it('keeps search and type-definition unchanged with node contracts disabled', async () => {
+			const context = createContractContext();
+			context.nodeContractsEnabled = false;
+			vi.mocked(context.nodeService.listSearchable).mockResolvedValue(
+				catalogNodes([
+					['n8n-nodes-base.if', 'If'],
+					['n8n-nodes-base.webhook', 'Webhook'],
+				]),
+			);
+			const search = await executeTool<Record<string, unknown>>(createNodesTool(context, 'full'), {
+				action: 'search',
+				query: 'if',
+				limit: 50,
+			});
+			const definitions = await executeTool<{ definitions: Array<Record<string, unknown>> }>(
+				createNodesTool(context, 'full'),
+				{ action: 'type-definition', nodeTypes: ['n8n-nodes-base.slack', 'n8n-nodes-base.if'] },
+			);
+
+			expect(Object.keys(search)).toEqual(['results', 'totalResults']);
+			expect(definitions.definitions).toEqual([
+				{
+					nodeType: 'n8n-nodes-base.slack',
+					version: '2.3',
+					content: 'export type MattermostV23Params = {}',
+				},
+				{
+					nodeType: 'n8n-nodes-base.if',
+					version: '2.3',
+					content: 'export type MattermostV23Params = {}',
+				},
+			]);
+		});
+
 		it.each(['full', 'orchestrator'] as const)(
 			'returns the module text for module and action ids on the %s surface',
 			async (surface) => {
@@ -1442,7 +1646,7 @@ describe('nodes tool', () => {
 			expect(result.definitions[0].content).toBe(
 				"// No typed module. Use node({ name, type: 'n8n-nodes-base.mattermost', version: 2.3, parameters }) from '@n8n/workflow-sdk/next', or subnode({ … }) for an AI sub-node.\nexport type MattermostV23Params = {}",
 			);
-			expect(result.definitions[1].content).toBe('export type MattermostV23Params = {}');
+			expect(result.definitions[1].content).toContain('export const notion = {');
 			expect(result.definitions[2].content).toBe(
 				"// No typed module. Start the flow with trigger({ name, type: 'n8n-nodes-base.telegramTrigger', version: 2.3, parameters, sample }) from '@n8n/workflow-sdk/next'.\nexport type MattermostV23Params = {}",
 			);
@@ -1455,11 +1659,14 @@ describe('nodes tool', () => {
 			expect(off.definitions[0].content).toBe('export type MattermostV23Params = {}');
 		});
 
-		it('lists the module actions next to the legacy definition of the same service', async () => {
+		it('lists the module actions next to the legacy definition of an operation without an action', async () => {
 			const context = createContractContext();
 			const result = await executeTool<{ definitions: Array<{ actions?: string[] }> }>(
 				createNodesTool(context, 'full'),
-				{ action: 'type-definition', nodeTypes: ['n8n-nodes-base.notion'] },
+				{
+					action: 'type-definition',
+					nodeTypes: [{ nodeType: 'n8n-nodes-base.notion', resource: 'page', operation: 'create' }],
+				},
 			);
 
 			expect(result.definitions[0].actions).toEqual([

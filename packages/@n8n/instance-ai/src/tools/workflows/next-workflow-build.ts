@@ -10,7 +10,7 @@ import {
 	type NodeContractLock,
 	type ResourceField,
 } from '@n8n/node-sdk';
-import { actionOfNode, actions, composedSlotOf, versionsOf } from '@n8n/nodes-base-next';
+import { actionOfNode, actions, migratedSlotOf, versionsOf } from '@n8n/nodes-base-next';
 import { isRecord } from '@n8n/utils/is-record';
 import { hasPlaceholderDeep } from '@n8n/utils/placeholder';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
@@ -668,7 +668,7 @@ export function lockNodeContracts(workflow: WorkflowJSON): WorkflowJSON {
 		workflow.nodes.flatMap((node): Array<[string, NodeContractLock]> => {
 			const action = actionOfNode(node);
 			// A composed node version runs a fixed action major; a contract node type runs its own.
-			const major = composedSlotOf(node)?.major ?? node.typeVersion;
+			const major = migratedSlotOf(node)?.major ?? node.typeVersion;
 			const manifest = action
 				? versionsOf(action.id).find(({ manifest }) => manifest.contract.version === major)
 						?.manifest

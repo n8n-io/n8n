@@ -12,7 +12,15 @@ function typeErrors(source: string): string[] {
 	const root = mkdtempSync(path.join(tmpdir(), 'next-trigger-modules-'));
 	try {
 		mkdirSync(path.join(root, 'nodes'));
-		for (const id of ['webhook', 'schedule', 'form', 'whatsAppTrigger', 'facebookTrigger']) {
+		for (const id of [
+			'webhook',
+			'schedule',
+			'form',
+			'whatsAppTrigger',
+			'facebookTrigger',
+			'dataTable',
+			'googleSheetsTrigger',
+		]) {
 			writeFileSync(path.join(root, 'nodes', `${id}.ts`), nodeModuleText(id) ?? '');
 		}
 		writeFileSync(path.join(root, 'workflow.ts'), source);
@@ -196,6 +204,145 @@ form.trigger({ name: 'F', formTitle: 'T', formFields: { values: [{ fieldType: 'f
 		expect(errors[4]).toContain("Property 'filename' does not exist");
 		expect(errors[0]).toContain("Property 'Emial' does not exist");
 		expect(errors[1]).toContain("'item.Email' is possibly 'null'");
+	});
+
+	it('type a form page by its own fields, after the form trigger', () => {
+		const source = `${header}
+export default workflow(
+	'Signup pages',
+	form.trigger({
+		name: 'Signup',
+		formTitle: 'Sign up',
+		formFields: { values: [{ fieldType: 'email', fieldLabel: 'Email', requiredField: true }] },
+	})
+		.andThen(
+			form.page({
+				name: 'Plan',
+				formFields: {
+					values: [
+						{ fieldType: 'number', fieldLabel: 'Seats', requiredField: true },
+						{ fieldType: 'text', fieldLabel: 'Notes' },
+					],
+				},
+				options: { formTitle: 'Your plan' },
+			}),
+		)
+		.andThen(
+			set({
+				name: 'Lead',
+				fields: {
+					email: (_item, $) => $('Signup').Email,
+					seats: (item) => item.Seats + 1,
+					notes: (item) => item.Notes ?? '',
+					at: (item) => item.submittedAt,
+				},
+			}),
+		),
+);
+`;
+		expect(typeErrors(source)).toEqual([]);
+		expect(nodeModuleText('form')).toContain('contractStep("n8n-nodes-base.form", config, 2.5,');
+		const wrong = `${header}
+const plan = form.trigger({ name: 'S', formTitle: 'T', formFields: { values: [{ fieldType: 'email', fieldLabel: 'Email' }] } })
+	.andThen(form.page({ name: 'P', formFields: { values: [{ fieldType: 'number', fieldLabel: 'Seats' }] } }));
+plan.andThen(set({ name: 'A', fields: { x: (item) => item.Seat } }));
+plan.andThen(set({ name: 'B', fields: { x: (item) => item.Seats + 1 } }));
+form.trigger({ name: 'S', formTitle: 'T', formFields: { values: [{ fieldType: 'email', fieldLabel: 'E' }] } }).andThen(form.page({ name: 'P', formFields: { values: [{ fieldType: 'text', fieldLabl: 'X' }] } }));
+`;
+		const errors = typeErrors(wrong);
+		expect(errors.map((error) => error.split(' ')[0])).toEqual(
+			[8, 9, 10].map((line) => `workflow.ts:${line}`),
+		);
+		expect(errors[0]).toContain("Property 'Seat' does not exist");
+		expect(errors[1]).toContain("'item.Seats' is possibly 'null'");
+	});
+
+	it('type the rows of the Google Sheets Trigger as an open row of cells', () => {
+		expect(nextNodeModule('n8n-nodes-base.googleSheetsTrigger')?.node).toBe('googleSheetsTrigger');
+		const source = `${header}import { googleSheetsTrigger } from '@n8n/nodes/googleSheetsTrigger';
+export default workflow(
+	'New jobs',
+	googleSheetsTrigger
+		.trigger({
+			name: 'Jobs',
+			documentId: { __rl: true, mode: 'url', value: 'https://docs.google.com/spreadsheets/d/abc/edit' },
+			sheetName: { __rl: true, mode: 'id', value: '0' },
+			event: 'rowAdded',
+			pollTimes: { item: [{ mode: 'everyX', value: 5, unit: 'minutes' }] },
+		})
+		.andThen(set({ name: 'Job', fields: { title: (row) => String(row.Title), row: (row) => row.row_number ?? 0 } })),
+);
+`;
+		expect(typeErrors(source)).toEqual([]);
+		const wrong = `${header}import { googleSheetsTrigger } from '@n8n/nodes/googleSheetsTrigger';
+const doc = { __rl: true, mode: 'url', value: 'https://docs.google.com/spreadsheets/d/abc/edit' } as const;
+googleSheetsTrigger.trigger({ name: 'A', documentId: doc, sheetName: { __rl: true, mode: 'name', value: 'Jobs' } });
+googleSheetsTrigger.trigger({ name: 'B', documentId: doc, sheetName: { __rl: true, mode: 'id', value: '0' }, event: 'rowAddded' });
+googleSheetsTrigger.trigger({ name: 'C', documentId: doc, sheetName: { __rl: true, mode: 'id', value: '0' } }).andThen(set({ name: 'D', fields: { n: (row) => row.Title.toUpperCase() } }));
+`;
+		const errors = typeErrors(wrong);
+		expect([...new Set(errors.map((error) => error.split(' ')[0]))]).toEqual(
+			[7, 8, 9].map((line) => `workflow.ts:${line}`),
+		);
+	});
+
+	it('wire every named output of a routed step with route', () => {
+		const exists = `dataTable.row.exists({
+	name: 'Known',
+	table: { name: 'leads' },
+	where: { match: 'all', conditions: [{ column: 'email', op: 'eq', value: (item) => item.Email }] },
+})`;
+		const source = `${header}import { dataTable } from '@n8n/nodes/dataTable';
+export default workflow(
+	'Leads',
+	form.trigger({ name: 'Signup', formTitle: 'Sign up', formFields: { values: [{ fieldType: 'email', fieldLabel: 'Email', requiredField: true }] } })
+		.route(${exists}, {
+			exists: (flow) => flow.andThen(set({ name: 'Seen', fields: { email: (item) => item.Email } })),
+			missing: (flow) => flow.andThen(set({ name: 'Fresh', fields: { email: (item, $) => $('Signup').Email } })),
+		})
+		.andThen(set({ name: 'Done', fields: { email: (item) => item.email } })),
+);
+`;
+		expect(typeErrors(source)).toEqual([]);
+		expect(nodeModuleText('dataTable')).toContain('flow.route(step, {');
+		const wrong = `${header}import { dataTable } from '@n8n/nodes/dataTable';
+const start = form.trigger({ name: 'S', formTitle: 'T', formFields: { values: [{ fieldType: 'email', fieldLabel: 'Email', requiredField: true }] } });
+start.route(${exists}, { absent: (flow) => flow });
+`;
+		const errors = typeErrors(wrong);
+		expect(errors.map((error) => error.split(' ')[0])).toEqual([
+			'workflow.ts:11',
+			'workflow.ts:11',
+		]);
+		expect(errors[0]).toContain("is not assignable to type 'never'");
+	});
+
+	it('take node settings on every trigger and step, and reject unknown ones', () => {
+		const signup = (settings: string) =>
+			`form.trigger({ name: 'Signup', formTitle: 'Sign up', formFields: { values: [{ fieldType: 'email', fieldLabel: 'Email', requiredField: true }] }, settings: ${settings} })`;
+		const source = `${header}import { dataTable } from '@n8n/nodes/dataTable';
+export default workflow(
+	'Settings',
+	${signup("{ notes: 'Public form' }")}
+		.andThen(dataTable.row.insert({ name: 'Save', table: { name: 'leads' }, values: { email: (item) => item.Email }, settings: { retryOnFail: true, maxTries: 3, waitBetweenTries: 1000 } }))
+		.route(dataTable.row.exists({ name: 'Known', table: { name: 'leads' }, where: { match: 'all', conditions: [{ column: 'email', op: 'eq', value: (_item, $) => $('Signup').Email }] }, settings: { onError: 'continueRegularOutput' } }), {
+			exists: (flow) => flow,
+			missing: (flow) => flow,
+		}),
+	${incident.replace('})', "\tsettings: { notesInFlow: true, notes: 'Alerts' },\n})")},
+);
+`;
+		expect(typeErrors(source)).toEqual([]);
+		const wrong = `${header}export default workflow(
+	'Wrong settings',
+	${signup('{ retryOnFial: true }')},
+	webhook.trigger({ name: 'Hook', path: 'in', settings: { onError: 'continueErrorOutput' } }),
+);
+`;
+		const errors = typeErrors(wrong);
+		expect(errors.map((error) => error.split(' ')[0])).toEqual(['workflow.ts:7', 'workflow.ts:8']);
+		expect(errors[0]).toContain("Type 'true' is not assignable to type 'never'");
+		expect(errors[1]).toContain('"continueErrorOutput"');
 	});
 
 	it('type the Meta events of the WhatsApp and Facebook triggers', () => {

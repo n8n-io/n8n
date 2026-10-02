@@ -13,6 +13,9 @@ import { tmpdir } from 'node:os';
 import { dirname, isAbsolute, join } from 'node:path';
 import { promisify } from 'node:util';
 
+import type { WorkflowJSON } from '@n8n/workflow-sdk';
+
+import { executeTool } from '../../../__tests__/tool-test-utils';
 import type { InstanceAiContext } from '../../../types';
 import { packInstalledPackage } from '../../../workspace/pack-installed-package';
 import { BUILD_MJS, TSCONFIG_JSON } from '../../../workspace/sandbox-setup';
@@ -20,6 +23,7 @@ import {
 	loadWorkflowDiagnosticsWorker,
 	WORKFLOW_DIAGNOSTICS_FILENAME,
 } from '../../../workspace/sandbox-typescript';
+import { createWorkflowsTool } from '../../workflows.tool';
 import { compileWorkflowSource } from '../workflow-source-compiler';
 
 const exec = promisify(execFile);
@@ -283,5 +287,52 @@ export default workflow(
 `;
 		const result = await build(source);
 		expect(result.success ? [] : result.errors).toEqual([]);
+	}, 120_000);
+
+	it('builds a decompiled saved workflow unchanged, with its node settings', async () => {
+		const seed: WorkflowJSON = JSON.parse(
+			await readFile(
+				join(
+					__dirname,
+					'../../../../evaluations/node-contracts/seeds/nc-notion-edit-add-filter.off.json',
+				),
+				'utf8',
+			),
+		);
+		const withRetry = {
+			...seed,
+			nodes: seed.nodes.map((node) =>
+				node.type === 'n8n-nodes-base.httpRequest'
+					? { ...node, retryOnFail: true, maxTries: 3, onError: 'continueRegularOutput' as const }
+					: node,
+			),
+		};
+		const getAsCode = async (json: WorkflowJSON) => {
+			const tool = createWorkflowsTool({
+				...context,
+				workspace: undefined,
+				workflowService: {
+					get: async () => await Promise.resolve({ versionId: 'v1', checksum: 'c1' }),
+					getAsWorkflowJSON: async () => await Promise.resolve(json),
+				},
+			} as unknown as InstanceAiContext);
+			return await executeTool<{ code: string }>(tool, {
+				action: 'get-as-code',
+				workflowId: json.id ?? '',
+			});
+		};
+
+		for (const json of [seed, withRetry]) {
+			const { code } = await getAsCode(json);
+			expect(code).toContain("from '@n8n/workflow-sdk/next';");
+			// The Set node's expression has a callback over a Loose item: `.filter(o => …)`.
+			expect(code).toContain('.filter(o => ');
+			const result = await build(code);
+			expect(result.success ? [] : result.errors).toEqual([]);
+			if (!result.success) return;
+			const post = result.workflow.nodes.find((node) => node.name === 'POST Done Report');
+			expect(post?.retryOnFail).toBe(json === withRetry ? true : undefined);
+			expect(post?.onError).toBe(json === withRetry ? 'continueRegularOutput' : undefined);
+		}
 	}, 120_000);
 });

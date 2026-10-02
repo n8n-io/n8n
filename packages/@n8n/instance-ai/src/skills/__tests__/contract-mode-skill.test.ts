@@ -35,6 +35,8 @@ describe('contract-mode skill', () => {
 	it('teaches AI sub-nodes, trigger samples, orElse on the flow, and setup placeholders', () => {
 		expect(skill).toContain('subnodes: { model: subnode({');
 		expect(skill).toContain('manual({ sample:');
+		expect(skill).toContain('`settings: { retryOnFail: true');
+		expect(skill).toContain('`nodeModules` and `builtIns`');
 		expect(skill).toMatch(/\)\n {4}\.orElse\(\(failed\) => failed\.andThen\(/);
 		expect(skill).toContain("placeholder('Database')");
 		expect(skill).not.toContain("'<Notion tasks database ID>'");
@@ -47,6 +49,7 @@ describe('contract-mode skill', () => {
 	it('builds routes, joins and loops with the flow API, not WorkflowJSON', () => {
 		expect(skill).toContain('`.switch({ name, on, cases })`');
 		expect(skill).toContain('`.merge({ name, join, branches })`');
+		expect(skill).toContain('`.route(step, { a: (f) => …, b: (f) => … })`');
 		expect(skill).not.toContain('WorkflowJSON');
 	});
 
