@@ -303,13 +303,11 @@ describe('GET /workflow-history/workflow/:workflowId/version/:versionId', () => 
 			...v1,
 			createdAt: v1.createdAt.toISOString(),
 			updatedAt: v1.updatedAt.toISOString(),
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-			workflowPublishHistory: expect.arrayContaining([
+			workflowPublishHistory: [
 				{ ...wph1, createdAt: wph1.createdAt.toISOString() },
 				{ ...wph2, createdAt: wph2.createdAt.toISOString() },
-			]),
+			],
 		});
-		expect(resp.body.data.workflowPublishHistory).toHaveLength(2);
 	});
 });
 
