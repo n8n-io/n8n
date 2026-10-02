@@ -926,6 +926,32 @@ describe('Executor.fire lease renewal', () => {
 		await expect(firing).resolves.toMatchObject({ outcome: 'skipped-not-owned' });
 	});
 
+	it('includes the dispatch response delay in the elapsed lease time', async () => {
+		const { store, registry, executor } = setup({ leaseSeconds: LEASE_SECONDS });
+		const { handler, signal } = longRunning();
+		registry.resolve.mockReturnValue(handler);
+		let finishDispatch!: (rows: number) => void;
+		store.beginDispatch.mockReturnValue(
+			new Promise((resolve) => {
+				finishDispatch = resolve;
+			}),
+		);
+		store.renewLease.mockReturnValue(new Promise(() => {}));
+		store.rescheduleTask.mockResolvedValue(1);
+
+		const firing = executor.fire(HOST, claimedTask({ maxAttempts: 3 }));
+		const responseDelayMs = 4_000;
+		await vi.advanceTimersByTimeAsync(responseDelayMs);
+		finishDispatch(1);
+		await vi.advanceTimersByTimeAsync(LEASE_SECONDS * 1_000 - responseDelayMs - 1);
+		expect(signal().aborted).toBe(false);
+
+		await vi.advanceTimersByTimeAsync(1);
+		expect(signal().reason).toBeInstanceOf(LeaseLostError);
+		await expect(firing).resolves.toMatchObject({ outcome: 'rescheduled' });
+		expect(store.completeTask).not.toHaveBeenCalled();
+	});
+
 	// The row can still be ours, so count the attempt as the reaper would for an expired lease.
 	it.each([
 		{ maxAttempts: 3, outcome: 'rescheduled' },
