@@ -63,7 +63,6 @@ function detectionResult(
 			workflowResults,
 		},
 		totalWorkflows: 0,
-		shouldCache: false,
 		failedChecks,
 	};
 }
