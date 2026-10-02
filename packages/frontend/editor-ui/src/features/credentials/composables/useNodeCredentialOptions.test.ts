@@ -315,6 +315,46 @@ describe('useNodeCredentialOptions', () => {
 		expect(isCredentialExisting(slackNodeType.credentials[0])).toBe(false);
 	});
 
+	it('reports an in-scope configured credential as existing via usableCredentials map lookup', () => {
+		const nodeWithCredential = computed(
+			() =>
+				({
+					...slackNode,
+					credentials: { slackApi: { id: 'token-cred', name: 'Team Slack Token' } },
+				}) as INodeUi,
+		);
+		const { isCredentialExisting } = useNodeCredentialOptions(
+			nodeWithCredential,
+			computed(() => slackNodeType),
+			'slackApi',
+		);
+
+		expect(isCredentialExisting(slackNodeType.credentials[0])).toBe(true);
+	});
+
+	it('does not treat an instance-scoped usable credential as existing for node auth', () => {
+		credentialsStore.usableCredentials['token-cred'] = createCredential({
+			id: 'token-cred',
+			name: 'Team Slack Token',
+			type: 'slackApi',
+			usageScope: 'instance',
+		});
+		const nodeWithCredential = computed(
+			() =>
+				({
+					...slackNode,
+					credentials: { slackApi: { id: 'token-cred', name: 'Team Slack Token' } },
+				}) as INodeUi,
+		);
+		const { isCredentialExisting } = useNodeCredentialOptions(
+			nodeWithCredential,
+			computed(() => slackNodeType),
+			'slackApi',
+		);
+
+		expect(isCredentialExisting(slackNodeType.credentials[0])).toBe(false);
+	});
+
 	it('treats a configured credential as existing until the scope has been fetched', () => {
 		// Reporting it missing before the first fetch flashes "credential unavailable"
 		// and raises an NDV credential issue that isn't one.
