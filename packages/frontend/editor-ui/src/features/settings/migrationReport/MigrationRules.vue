@@ -17,9 +17,11 @@ import * as breakingChangesApi from '@n8n/rest-api-client/api/breaking-changes';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useAsyncState } from '@vueuse/core';
 import { computed, ref, useCssModule } from 'vue';
+import { I18nT } from 'vue-i18n';
 import orderBy from 'lodash/orderBy';
 import ImpactTag from './components/ImpactTag.vue';
 import EmptyTab from './components/EmptyTab.vue';
+import TimeAgo from '@/app/components/TimeAgo.vue';
 import { useI18n } from '@n8n/i18n';
 import { MIGRATION_REPORT_TARGET_VERSION } from '@n8n/api-types';
 import type { BreakingChangeRuleImpact } from '@n8n/api-types';
@@ -32,7 +34,6 @@ const i18n = useI18n();
 useDocumentTitle().set(i18n.baseText('settings.migrationReport'));
 
 const currentTab = ref('workflow-issues');
-const shouldShowRefreshButton = ref(false);
 
 const versionQuery = MIGRATION_REPORT_TARGET_VERSION
 	? { version: MIGRATION_REPORT_TARGET_VERSION }
@@ -52,14 +53,10 @@ const { state, isLoading, execute } = useAsyncState(async (refresh: boolean = fa
 		) {
 			currentTab.value = 'instance-issues';
 		}
-		shouldShowRefreshButton.value = response.shouldCache;
 
 		return response;
 	}
-	const response = await breakingChangesApi.getReport(rootStore.restApiContext, versionQuery);
-	shouldShowRefreshButton.value = response.shouldCache;
-
-	return response;
+	return await breakingChangesApi.getReport(rootStore.restApiContext, versionQuery);
 }, undefined);
 
 async function refreshReport() {
@@ -184,15 +181,28 @@ const sortedInstanceResults = computed(() => {
 			</div>
 			<div :class="$style.ActionBar">
 				<N8nTabs v-model="currentTab" :options="tabs" variant="modern" />
-				<N8nButton
-					variant="subtle"
-					v-if="shouldShowRefreshButton"
-					:label="i18n.baseText('settings.migrationReport.refreshButton')"
-					icon="refresh-cw"
-					:loading="isLoading"
-					:disabled="isLoading"
-					@click="refreshReport"
-				/>
+				<div :class="$style.RefreshGroup">
+					<N8nText
+						v-if="state?.report.generatedAt"
+						size="small"
+						color="text-light"
+						data-test-id="migration-report-last-synced"
+					>
+						<I18nT keypath="settings.migrationReport.lastSynced" tag="span" scope="global">
+							<template #time>
+								<TimeAgo :date="state.report.generatedAt.toString()" />
+							</template>
+						</I18nT>
+					</N8nText>
+					<N8nButton
+						variant="subtle"
+						:label="i18n.baseText('settings.migrationReport.refreshButton')"
+						icon="refresh-cw"
+						:loading="isLoading"
+						:disabled="isLoading"
+						@click="refreshReport"
+					/>
+				</div>
 			</div>
 
 			<N8nSettingsRowGroup v-if="isLoading">
@@ -361,6 +371,12 @@ const sortedInstanceResults = computed(() => {
 	justify-content: space-between;
 	align-items: center;
 	margin-bottom: var(--spacing--sm);
+}
+
+.RefreshGroup {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--xs);
 }
 
 .PLoading {

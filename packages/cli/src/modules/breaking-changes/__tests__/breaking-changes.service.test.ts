@@ -273,6 +273,124 @@ describe('BreakingChangeService', () => {
 		});
 	});
 
+	describe('detectRule()', () => {
+		const subWorkflowNodes = [
+			createNode('Execute Workflow Trigger', 'n8n-nodes-base.executeWorkflowTrigger'),
+			createNode('Wait', 'n8n-nodes-base.wait'),
+		];
+		const parentWorkflowNodes = [
+			createNode('Execute Workflow', 'n8n-nodes-base.executeWorkflow', {
+				source: 'database',
+				workflowId: 'sub-wf-1',
+			}),
+		];
+		let waitNodeRule: WaitNodeSubworkflowRule;
+
+		beforeEach(() => {
+			waitNodeRule = new WaitNodeSubworkflowRule();
+			ruleRegistry.registerAll([waitNodeRule]);
+
+			const { workflow: subWorkflow } = createWorkflow(
+				'sub-wf-1',
+				'Sub Workflow',
+				subWorkflowNodes,
+			);
+			const { workflow: parentWorkflow } = createWorkflow(
+				'parent-wf-1',
+				'Parent Workflow',
+				parentWorkflowNodes,
+			);
+			workflowRepository.find.mockResolvedValue([subWorkflow, parentWorkflow] as never);
+			workflowRepository.count.mockResolvedValue(2);
+		});
+
+		it('should run only the requested batch rule and return its result', async () => {
+			const otherRuleSpies = ruleRegistry
+				.getRules('v2')
+				.filter((rule): rule is RemovedNodesRule => 'detectWorkflow' in rule)
+				.map((rule) => vi.spyOn(rule, 'detectWorkflow'));
+
+			const result = await service.detectRule('v2', waitNodeRule);
+
+			expect(result?.ruleId).toBe('wait-node-subworkflow-v2');
+			expect(result?.affectedWorkflows.map((workflow) => workflow.id)).toEqual(['parent-wf-1']);
+			for (const spy of otherRuleSpies) expect(spy).not.toHaveBeenCalled();
+		});
+
+		it('should run only the requested workflow rule and return its result', async () => {
+			const collectSpy = vi.spyOn(waitNodeRule, 'collectWorkflowData');
+			const { workflow } = createWorkflow('wf-1', 'Test Workflow', [
+				createNode('Spontit Node', 'n8n-nodes-base.spontit'),
+			]);
+			workflowRepository.find.mockResolvedValue([workflow as never]);
+			workflowRepository.count.mockResolvedValue(1);
+			const removedNodesRule = ruleRegistry.getRule('removed-nodes-v2') as RemovedNodesRule;
+
+			const result = await service.detectRule('v2', removedNodesRule);
+
+			expect(result?.ruleId).toBe('removed-nodes-v2');
+			expect(result?.affectedWorkflows).toHaveLength(1);
+			expect(collectSpy).not.toHaveBeenCalled();
+		});
+
+		it('should return undefined when the rule affects no workflow', async () => {
+			workflowRepository.find.mockResolvedValue([]);
+			workflowRepository.count.mockResolvedValue(0);
+
+			await expect(service.detectRule('v2', waitNodeRule)).resolves.toBeUndefined();
+		});
+
+		it('should take the result from a full scan that is in flight instead of scanning again', async () => {
+			let releaseCount: (total: number) => void = () => {};
+			workflowRepository.count.mockReturnValueOnce(
+				new Promise<number>((resolve) => {
+					releaseCount = resolve;
+				}),
+			);
+
+			const fullScan = service.detect('v2');
+			const ruleScan = service.detectRule('v2', waitNodeRule);
+			releaseCount(2);
+			const [full, single] = await Promise.all([fullScan, ruleScan]);
+
+			// `count` runs once per scan, so it tells how many scans really ran.
+			expect(workflowRepository.count).toHaveBeenCalledTimes(1);
+			expect(single).toBe(
+				full.report.workflowResults.find((entry) => entry.ruleId === 'wait-node-subworkflow-v2'),
+			);
+		});
+
+		it('should make a full scan requested during a single-rule scan wait for it', async () => {
+			const steps: string[] = [];
+			vi.spyOn(waitNodeRule, 'reset').mockImplementation(() => steps.push('reset'));
+			const produceReport = waitNodeRule.produceReport.bind(waitNodeRule);
+			vi.spyOn(waitNodeRule, 'produceReport').mockImplementation(async () => {
+				steps.push('produceReport');
+				return await produceReport();
+			});
+			let releaseCount: (total: number) => void = () => {};
+			workflowRepository.count.mockReturnValueOnce(
+				new Promise<number>((resolve) => {
+					releaseCount = resolve;
+				}),
+			);
+
+			const ruleScan = service.detectRule('v2', waitNodeRule);
+			const fullScan = service.detect('v2');
+			releaseCount(2);
+			const [single, full] = await Promise.all([ruleScan, fullScan]);
+
+			expect(workflowRepository.count).toHaveBeenCalledTimes(2);
+			// The batch rule state of one scan is never reset by the other.
+			expect(steps).toEqual(['reset', 'produceReport', 'reset', 'produceReport']);
+			expect(single?.affectedWorkflows.map((workflow) => workflow.id)).toEqual(['parent-wf-1']);
+			expect(
+				full.report.workflowResults.find((entry) => entry.ruleId === 'wait-node-subworkflow-v2')
+					?.affectedWorkflows,
+			).toHaveLength(1);
+		});
+	});
+
 	describe('getDetectionReportForRule()', () => {
 		it('should return undefined for unknown rule ID', async () => {
 			const result = await service.getDetectionReportForRule('unknown-rule-id');

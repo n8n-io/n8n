@@ -127,6 +127,11 @@ function onTasksChanged() {
 	emit('tasks-changed');
 }
 
+function toggleTask(task: TaskRow, enabled: boolean) {
+	if (props.disabled || removingTaskId.value) return;
+	emit('toggle-task', { id: task.id, enabled });
+}
+
 async function removeTask(task: TaskRow) {
 	if (props.disabled || removingTaskId.value) return;
 	const { projectId, agentId } = props;
@@ -162,7 +167,6 @@ function openTaskModal(task: TaskRow | null) {
 						enabled: task.enabled,
 					}
 				: undefined,
-			onToggle: (payload: { id: string; enabled: boolean }) => emit('toggle-task', payload),
 			onPreview: (instructions: string) => emit('preview-task', instructions),
 			onSaved: () => {
 				if (isCurrentAgent(projectId, agentId)) onTasksChanged();
@@ -207,11 +211,14 @@ watch(
 			<div v-for="(task, taskIndex) in taskRows" :key="task.id" :class="$style.chipGroup">
 				<AgentItemContextMenu
 					:disabled="props.disabled || removingTaskId !== null"
+					:enabled="task.enabled"
+					@update:enabled="toggleTask(task, $event)"
 					@remove="removeTask(task)"
 				>
 					<N8nTooltip :content="taskScheduleTooltip(task)" placement="top" as-child>
 						<AgentChipButton
 							icon="clipboard-list"
+							:deactivated="!task.enabled"
 							:invalid="task.invalid"
 							:invalid-reasons="task.invalidReasons"
 							:disabled="props.disabled || removingTaskId === task.id"

@@ -133,6 +133,7 @@ export class AgentCustomToolsService {
 		const missing: string[] = [];
 
 		for (const ref of refs) {
+			if (ref.enabled === false) continue;
 			if (seen.has(ref.id)) continue;
 			seen.add(ref.id);
 			if (!tools[ref.id]) missing.push(ref.id);
