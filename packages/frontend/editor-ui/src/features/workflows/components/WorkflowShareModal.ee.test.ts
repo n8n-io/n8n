@@ -39,6 +39,10 @@ vi.mock('@/app/stores/workflowDocument.store', () => ({
 }));
 
 const mockRouteQuery = reactive<Record<string, string>>({});
+const { modalBusEmitMock, showErrorMock } = vi.hoisted(() => ({
+	modalBusEmitMock: vi.fn(),
+	showErrorMock: vi.fn(),
+}));
 vi.mock('vue-router', async (importOriginal) => {
 	return {
 		...(await importOriginal()),
@@ -50,7 +54,7 @@ vi.mock('vue-router', async (importOriginal) => {
 vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({
 		showMessage: vi.fn(),
-		showError: vi.fn(),
+		showError: showErrorMock,
 	}),
 }));
 vi.mock('@/app/composables/useMessage', () => ({
@@ -73,7 +77,7 @@ vi.mock('@n8n/permissions', async (importOriginal) => ({
 }));
 vi.mock('@n8n/utils/event-bus', () => ({
 	createEventBus: () => ({
-		emit: vi.fn(),
+		emit: modalBusEmitMock,
 	}),
 }));
 
@@ -139,6 +143,8 @@ describe('WorkflowShareModal.ee.vue', () => {
 		];
 
 		saveAsNewWorkflowMock.mockClear();
+		modalBusEmitMock.mockClear();
+		showErrorMock.mockClear();
 	});
 
 	it('should share new, unsaved workflow after saving it first', async () => {
@@ -181,6 +187,34 @@ describe('WorkflowShareModal.ee.vue', () => {
 				sharedWithProjects: [projectsStore.personalProjects[0]],
 			});
 		});
+	});
+
+	it('does not close the sharing modal when saving a new workflow fails', async () => {
+		// IAM-1480: A competing canvas save can make the first workflow create fail.
+		mockRouteQuery.new = 'true';
+		workflowsStore.workflowId = '';
+		mockWorkflowDocumentState.homeProject = {
+			id: 'personal-project-id',
+			name: 'Personal Project',
+			type: ProjectTypes.Personal,
+			icon: null,
+			createdAt: new Date().toISOString(),
+			updatedAt: new Date().toISOString(),
+		};
+		saveAsNewWorkflowMock.mockRejectedValueOnce(new Error('Workflow create failed (400)'));
+
+		const saveWorkflowSharedWithSpy = vi.spyOn(workflowsEEStore, 'saveWorkflowSharedWith');
+		const { getByTestId, getByRole } = renderComponent({ props: { data: { id: '' } } });
+		const projectSelectDropdownItems = await getDropdownItems(
+			getByTestId('project-sharing-select'),
+		);
+		await userEvent.click(projectSelectDropdownItems[0]);
+		await userEvent.click(getByRole('button', { name: 'Save' }));
+
+		await waitFor(() => expect(showErrorMock).toHaveBeenCalledOnce());
+		expect(saveAsNewWorkflowMock).toHaveBeenCalledOnce();
+		expect(saveWorkflowSharedWithSpy).not.toHaveBeenCalled();
+		expect(modalBusEmitMock).not.toHaveBeenCalledWith('close');
 	});
 
 	// Covers the quarantined e2e journey
