@@ -301,6 +301,7 @@ export class Supabase implements INodeType {
 							qs,
 							undefined,
 							header,
+							i,
 						);
 					} catch (error) {
 						if (this.continueOnFail()) {
@@ -341,7 +342,16 @@ export class Supabase implements INodeType {
 					}
 
 					try {
-						rows = await supabaseApiRequest.call(this, 'GET', endpoint, {}, qs, undefined, header);
+						rows = await supabaseApiRequest.call(
+							this,
+							'GET',
+							endpoint,
+							{},
+							qs,
+							undefined,
+							header,
+							i,
+						);
 					} catch (error) {
 						if (this.continueOnFail()) {
 							const executionData = this.helpers.constructExecutionMetaData(
@@ -416,6 +426,7 @@ export class Supabase implements INodeType {
 								qs,
 								undefined,
 								header,
+								i,
 							);
 							responseLength = newRows.length;
 							rows = rows.concat(newRows);
@@ -507,6 +518,7 @@ export class Supabase implements INodeType {
 							qs,
 							undefined,
 							header,
+							i,
 						);
 						const executionData = this.helpers.constructExecutionMetaData(
 							this.helpers.returnJsonArray(updatedRow as IDataObject[]),

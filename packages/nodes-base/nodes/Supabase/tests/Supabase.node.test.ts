@@ -349,6 +349,7 @@ describe('Test Supabase Node', () => {
 				expect.objectContaining({ order: 'id' }),
 				undefined,
 				{},
+				0,
 			);
 
 			supabaseApiRequest.mockRestore();
@@ -397,6 +398,7 @@ describe('Test Supabase Node', () => {
 			},
 			undefined,
 			{},
+			0,
 		);
 
 		supabaseApiRequest.mockRestore();
@@ -538,6 +540,7 @@ describe('Test Supabase Node', () => {
 					expect.anything(),
 					undefined,
 					expect.anything(),
+					0,
 				);
 				supabaseApiRequest.mockRestore();
 			},

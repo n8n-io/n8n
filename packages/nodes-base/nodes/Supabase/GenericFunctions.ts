@@ -34,8 +34,8 @@ function getCredentialType(context: IExecuteFunctions | ILoadOptionsFunctions) {
 	return authentication === 'oAuth2' ? 'supabaseOAuth2Api' : 'supabaseApi';
 }
 
-function getProjectRef(context: IExecuteFunctions | ILoadOptionsFunctions) {
-	const project = context.getNodeParameter('projectRef', 0);
+function getProjectRef(context: IExecuteFunctions | ILoadOptionsFunctions, itemIndex = 0) {
+	const project = context.getNodeParameter('projectRef', itemIndex);
 	if (typeof project !== 'string' || !project) throw new UserError('Select a Supabase project');
 	if (!/^[a-z0-9]+$/.test(project)) throw new UserError('The Supabase project ID is invalid');
 
@@ -202,6 +202,7 @@ export async function supabaseApiRequest(
 	qs: IDataObject = {},
 	uri?: string,
 	headers: IDataObject = {},
+	itemIndex = 0,
 ) {
 	const credentialType = getCredentialType(this);
 	let host: string;
@@ -209,7 +210,7 @@ export async function supabaseApiRequest(
 	let projectRef: string | undefined;
 
 	if (credentialType === 'supabaseOAuth2Api') {
-		projectRef = getProjectRef(this);
+		projectRef = getProjectRef(this, itemIndex);
 		host = `https://${projectRef}.supabase.co`;
 		projectKey = await getProjectSecretKey(this, projectRef);
 	} else {

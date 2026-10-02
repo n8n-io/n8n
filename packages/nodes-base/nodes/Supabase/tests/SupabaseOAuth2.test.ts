@@ -14,13 +14,15 @@ let contextId = 0;
 function createOAuthContext({
 	credentialId = `credential${++contextId}`,
 	projectRef = `project${contextId}`,
-}: { credentialId?: string; projectRef?: string } = {}) {
+}: { credentialId?: string; projectRef?: string | string[] } = {}) {
 	const managementRequest = vi.fn();
 	const dataRequest = vi.fn();
 	const context = {
-		getNodeParameter: vi.fn((name: string) => {
+		getNodeParameter: vi.fn((name: string, itemIndex = 0) => {
 			if (name === 'authentication') return 'oAuth2';
-			if (name === 'projectRef') return projectRef;
+			if (name === 'projectRef') {
+				return Array.isArray(projectRef) ? projectRef[itemIndex] : projectRef;
+			}
 			return undefined;
 		}),
 		getNode: vi.fn(() => ({
@@ -163,6 +165,26 @@ describe('Supabase OAuth2', () => {
 		);
 		expect(otherCredential.dataRequest).toHaveBeenCalledWith(
 			expect.objectContaining({ headers: expect.objectContaining({ apikey: 'key-c' }) }),
+		);
+	});
+
+	it('should resolve the project for the current input item', async () => {
+		const { context, managementRequest, dataRequest } = createOAuthContext({
+			projectRef: ['firstproject', 'secondproject'],
+		});
+		managementRequest.mockResolvedValue([managedKey('managed-key')]);
+		dataRequest.mockResolvedValue([]);
+
+		await supabaseApiRequest.call(context, 'GET', '/users', {}, {}, undefined, {}, 1);
+
+		expect(managementRequest).toHaveBeenCalledWith(
+			'supabaseOAuth2Api',
+			expect.objectContaining({
+				url: 'https://api.supabase.com/v1/projects/secondproject/api-keys',
+			}),
+		);
+		expect(dataRequest).toHaveBeenCalledWith(
+			expect.objectContaining({ url: 'https://secondproject.supabase.co/rest/v1/users' }),
 		);
 	});
 
