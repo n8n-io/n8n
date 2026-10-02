@@ -592,7 +592,7 @@ export class JobProcessor {
 	}
 
 	getRunningJobIds(): JobId[] {
-		return [...new Set([...Object.keys(this.runningJobs), ...this.trackedJobs.keys()])];
+		return [...this.trackedJobs.keys()];
 	}
 
 	getJobsInPreflight(): Array<{ jobId: JobId; executionId: string }> {
