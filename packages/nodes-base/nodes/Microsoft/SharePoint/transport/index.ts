@@ -81,9 +81,13 @@ export const REQUIRED_PERMISSIONS: Readonly<
 });
 
 export function getSharePointCredentialType(this: SharePointContext): SharePointCredentialType {
-	// In load-options contexts the 2nd arg is the fallback, not an item index — keep the 2-arg form
-	const selected = this.getNodeParameter('authentication', 0);
-	return selected === SERVICE_PRINCIPAL_AUTH ? SERVICE_PRINCIPAL_AUTH : 'microsoftOAuth2Api';
+	try {
+		// In load-options contexts the 2nd arg is the fallback, not an item index — keep the 2-arg form
+		const selected = this.getNodeParameter('authentication', 0);
+		return selected === SERVICE_PRINCIPAL_AUTH ? SERVICE_PRINCIPAL_AUTH : 'microsoftOAuth2Api';
+	} catch {
+		return 'microsoftOAuth2Api';
+	}
 }
 
 /** Best-effort lookup; load-options contexts may not expose resource/operation. */

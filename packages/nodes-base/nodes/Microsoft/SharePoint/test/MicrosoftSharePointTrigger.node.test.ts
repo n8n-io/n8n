@@ -1,9 +1,10 @@
 import { readFileSync } from 'fs';
-import type { IPollFunctions } from 'n8n-workflow';
+import type { INode, IPollFunctions } from 'n8n-workflow';
 import { join } from 'path';
 import { mock } from 'vitest-mock-extended';
 
 import { MicrosoftSharePointTrigger } from '../MicrosoftSharePointTrigger.node';
+import { microsoftApiRequest, SERVICE_PRINCIPAL_AUTH } from '../transport';
 
 describe('Microsoft SharePoint Trigger', () => {
 	const { description } = new MicrosoftSharePointTrigger();
@@ -28,9 +29,40 @@ describe('Microsoft SharePoint Trigger', () => {
 		expect(description.hidden).toBe(true);
 	});
 
-	it('carries no credential or parameter yet', () => {
-		expect(description.credentials).toBeUndefined();
-		expect(description.properties).toEqual([]);
+	it('declares its own credential pair, independent of the action node', () => {
+		expect(description.credentials?.map((c) => c.name)).toEqual([
+			'microsoftOAuth2Api',
+			SERVICE_PRINCIPAL_AUTH,
+		]);
+	});
+
+	it('leads with an authentication selector defaulting to the delegated credential', () => {
+		const auth = description.properties[0];
+
+		expect(auth.name).toBe('authentication');
+		expect(auth.type).toBe('options');
+		expect(auth.noDataExpression).toBe(true);
+		expect(auth.default).toBe('microsoftOAuth2Api');
+		expect((auth.options ?? []).map((o) => ('value' in o ? o.value : undefined))).toEqual([
+			'microsoftOAuth2Api',
+			SERVICE_PRINCIPAL_AUTH,
+		]);
+	});
+
+	it.each(['microsoftOAuth2Api', SERVICE_PRINCIPAL_AUTH])(
+		'gates the %s credential behind its own authentication value',
+		(name) => {
+			const credential = description.credentials?.find((c) => c.name === name);
+
+			expect(credential?.required).toBe(true);
+			expect(credential?.displayOptions?.show?.authentication).toEqual([name]);
+		},
+	);
+
+	it('does not offer the legacy SharePoint credential, whose tokens cannot reach Graph', () => {
+		expect(description.credentials?.map((c) => c.name)).not.toContain(
+			'microsoftSharePointOAuth2Api',
+		);
 	});
 
 	it('emits nothing until the poll is implemented', async () => {
@@ -46,5 +78,78 @@ describe('Microsoft SharePoint Trigger', () => {
 		) as { node: string };
 
 		expect(codex.node).toBe('n8n-nodes-base.microsoftSharePointTrigger');
+	});
+
+	describe('authenticating a poll', () => {
+		const pollContext = (authentication?: string) => {
+			const ctx = mock<IPollFunctions>();
+			ctx.getNode.mockReturnValue(mock<INode>());
+			ctx.getNodeParameter.mockImplementation(
+				(name: string, fallback?: unknown) =>
+					(name === 'authentication' ? (authentication ?? fallback) : fallback) as never,
+			);
+			ctx.getCredentials.mockResolvedValue({ graphApiBaseUrl: 'https://graph.microsoft.com' });
+			return ctx;
+		};
+
+		it.each([
+			['microsoftOAuth2Api', 'requestOAuth2'],
+			[SERVICE_PRINCIPAL_AUTH, 'requestWithAuthentication'],
+		] as const)('sends a %s poll through %s', async (authentication, helper) => {
+			const ctx = pollContext(authentication);
+			const send = vi.fn().mockResolvedValue({ value: [] });
+			ctx.helpers[helper] = send;
+
+			await microsoftApiRequest.call(ctx, 'GET', '/v1.0/sites/root');
+
+			expect(send).toHaveBeenCalledTimes(1);
+			expect(ctx.getCredentials).toHaveBeenCalledWith(authentication);
+		});
+
+		it.each([
+			[
+				'microsoftOAuth2Api',
+				'requestOAuth2',
+				'the signed-in account may not have access to this resource',
+			],
+			[
+				SERVICE_PRINCIPAL_AUTH,
+				'requestWithAuthentication',
+				'missing a consented application permission',
+			],
+		] as const)('explains a 403 in %s terms', async (authentication, helper, wording) => {
+			const ctx = pollContext(authentication);
+			ctx.helpers[helper] = vi
+				.fn()
+				.mockRejectedValue(Object.assign(new Error('Forbidden'), { statusCode: 403 }));
+
+			await expect(microsoftApiRequest.call(ctx, 'GET', '/v1.0/sites/root')).rejects.toMatchObject({
+				httpCode: '403',
+				message: expect.stringContaining(wording),
+			});
+		});
+
+		it('falls back to the delegated credential when reading the parameter throws', async () => {
+			const ctx = pollContext();
+			ctx.getNodeParameter.mockImplementation(() => {
+				throw new Error('Could not get parameter');
+			});
+			const send = vi.fn().mockResolvedValue({ value: [] });
+			ctx.helpers.requestOAuth2 = send;
+
+			await microsoftApiRequest.call(ctx, 'GET', '/v1.0/sites/root');
+
+			expect(ctx.getCredentials).toHaveBeenCalledWith('microsoftOAuth2Api');
+		});
+
+		it('falls back to the delegated credential when no authentication is set', async () => {
+			const ctx = pollContext();
+			const send = vi.fn().mockResolvedValue({ value: [] });
+			ctx.helpers.requestOAuth2 = send;
+
+			await microsoftApiRequest.call(ctx, 'GET', '/v1.0/sites/root');
+
+			expect(ctx.getCredentials).toHaveBeenCalledWith('microsoftOAuth2Api');
+		});
 	});
 });
