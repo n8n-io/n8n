@@ -217,7 +217,7 @@ const onBreadcrumbItemClick = async (item: PathItem) => {
 <template>
 	<div data-test-id="folder-card">
 		<RouterLink :to="cardUrl" @click="() => emit('folderOpened', { folder: props.data })">
-			<N8nCard hoverable>
+			<N8nCard :class="$style.card" hoverable>
 				<template #prepend>
 					<N8nIcon
 						data-test-id="folder-card-icon"
