@@ -68,6 +68,27 @@ describe('CachedMetricQuery', () => {
 		expect(query).not.toHaveBeenCalled();
 	});
 
+	it('skips the query when the database disconnects during a cache read', async () => {
+		const pendingCacheRead = createDeferredPromise<number | undefined>();
+		cacheService.get.mockReturnValueOnce(pendingCacheRead.promise);
+		const query = vi.fn().mockResolvedValue(7);
+		const cached = new CachedMetricQuery<number>({
+			cacheService,
+			cacheKey: 'key',
+			ttlMs: 1000,
+			query,
+			isDatabaseConnected: () => connected,
+		});
+
+		const read = cached.get();
+		connected = false;
+		pendingCacheRead.resolve(undefined);
+
+		await expect(read).resolves.toBeUndefined();
+		expect(query).not.toHaveBeenCalled();
+		expect(cacheService.set).not.toHaveBeenCalled();
+	});
+
 	it('skips a failed query when the database disconnects during collection', async () => {
 		cacheService.get.mockResolvedValue(undefined);
 		const query = vi.fn(async () => {

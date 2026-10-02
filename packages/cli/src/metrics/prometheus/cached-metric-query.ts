@@ -50,8 +50,8 @@ export class CachedMetricQuery<T extends JsonValue> {
 
 	async get(): Promise<T | undefined> {
 		try {
-			// A query started before the disconnection can stall until it times out.
-			if (this.inFlight && !this.isDatabaseConnected()) {
+			// Read the cache directly to avoid waiting for a query started before disconnection.
+			if (!this.isDatabaseConnected()) {
 				return await this.readCache();
 			}
 			this.inFlight ??= this.load().finally(() => {
