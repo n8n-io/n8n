@@ -5,6 +5,7 @@ import { mock } from 'vitest-mock-extended';
 import { AiService } from '@/services/ai.service';
 import { SandboxSettingsService } from '@/services/sandbox-settings.service';
 
+import { AgentsSettingsService } from '../agents-settings.service';
 import { AgentsModule } from '../agents.module';
 
 describe('AgentsModule', () => {
@@ -12,6 +13,10 @@ describe('AgentsModule', () => {
 
 	beforeEach(() => {
 		Container.reset();
+		Container.set(
+			AgentsSettingsService,
+			mock<AgentsSettingsService>({ getEnabled: async () => true }),
+		);
 		module = new AgentsModule();
 	});
 
