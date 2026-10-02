@@ -7,9 +7,12 @@ import {
 	type InstanceAiThreadTabsState,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
+import type { InstanceAiChangedArtifact } from '@n8n/instance-ai';
 
-import type { ArtifactTabChange } from './artifact-tab-change';
+import { DataTableRepository } from '@/modules/data-table/data-table.repository';
+
 import { InstanceAiThreadTabsRepository } from './repositories/instance-ai-thread-tabs.repository';
 
 function isSameTab(a: InstanceAiThreadTabRef, b: InstanceAiThreadTabRef) {
@@ -23,7 +26,7 @@ function isSameTab(a: InstanceAiThreadTabRef, b: InstanceAiThreadTabRef) {
  */
 export function withShownTab(
 	stored: InstanceAiThreadTabsState | null,
-	tab: ArtifactTabChange,
+	tab: InstanceAiChangedArtifact,
 ): InstanceAiThreadTabsState | null {
 	const existing = stored?.tabs.find((open) => isSameTab(open, tab));
 	// The tab renders this name until the thread's messages load. The ID is the last fallback.
@@ -81,6 +84,8 @@ export class InstanceAiThreadTabsService {
 	constructor(
 		private readonly logger: Logger,
 		private readonly threadTabsRepository: InstanceAiThreadTabsRepository,
+		private readonly workflowRepository: WorkflowRepository,
+		private readonly dataTableRepository: DataTableRepository,
 	) {}
 
 	async getState(threadId: string, userId: string): Promise<InstanceAiThreadTabsState | null> {
@@ -101,10 +106,32 @@ export class InstanceAiThreadTabsService {
 	 * does during a live run. A tab the user closed opens again. The first
 	 * artifact of a thread creates its stored tabs.
 	 */
-	async showArtifactTab(threadId: string, userId: string, tab: ArtifactTabChange): Promise<void> {
+	async showArtifactTab(
+		threadId: string,
+		userId: string,
+		artifact: InstanceAiChangedArtifact,
+	): Promise<void> {
+		const tab = await this.withCurrentName(artifact);
 		await this.threadTabsRepository.updateState(threadId, userId, (stored) =>
 			withShownTab(this.parseStored(threadId, stored), tab),
 		);
+	}
+
+	/** The current name of the artifact. A rename can make the name the tool knows stale. */
+	private async withCurrentName(
+		artifact: InstanceAiChangedArtifact,
+	): Promise<InstanceAiChangedArtifact> {
+		if (artifact.type === 'workflow') {
+			const [workflow] = await this.workflowRepository.findByIds([artifact.id], {
+				fields: ['name'],
+			});
+			return workflow ? { ...artifact, name: workflow.name } : artifact;
+		}
+		if (artifact.type === 'data-table') {
+			const [table] = await this.dataTableRepository.findSummariesByIds([artifact.id]);
+			return table ? { ...artifact, name: table.name, projectId: table.projectId } : artifact;
+		}
+		return artifact;
 	}
 
 	private parseStored(threadId: string, stored: unknown): InstanceAiThreadTabsState | null {

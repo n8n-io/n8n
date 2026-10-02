@@ -17,14 +17,9 @@ import { DurableEventLog, type DrainedEvent } from './durable-event-log';
  * run-scoped read goes to {@link DurableEventLog}, so all this owns is the
  * local SSE emitter and the cross-main relay.
  */
-/** Sees each event that this main publishes, once, before it is persisted. */
-export type PublishObserver = (threadId: string, event: InstanceAiEvent) => void;
-
 @Service()
 export class InProcessEventBus implements InstanceAiEventBus {
 	private readonly emitter = new EventEmitter();
-
-	private readonly publishObservers: PublishObserver[] = [];
 
 	constructor(
 		private readonly logger: Logger,
@@ -52,13 +47,6 @@ export class InProcessEventBus implements InstanceAiEventBus {
 		// persisted events must carry it too.
 		if (event.ts === undefined) {
 			event = { ...event, ts: Date.now() };
-		}
-		for (const observer of this.publishObservers) {
-			try {
-				observer(threadId, event);
-			} catch (error) {
-				this.logger.error('Instance AI publish observer failed', { threadId, error });
-			}
 		}
 		this.eventLog.publish(threadId, event, (drained) => this.onDrained(threadId, drained));
 	}
@@ -118,15 +106,6 @@ export class InProcessEventBus implements InstanceAiEventBus {
 		storedEvent,
 	}: { threadId: string; storedEvent: StoredEvent }): void {
 		if (this.hasSubscribers(threadId)) this.emitter.emit(threadId, storedEvent);
-	}
-
-	/**
-	 * Observe every event published on this main. Relayed events from sibling
-	 * mains do not reach observers, so each event is observed on one main only.
-	 * Observers run synchronously in `publish()` and must not block.
-	 */
-	observePublished(observer: PublishObserver): void {
-		this.publishObservers.push(observer);
 	}
 
 	subscribe(threadId: string, handler: (storedEvent: StoredEvent) => void): () => void {

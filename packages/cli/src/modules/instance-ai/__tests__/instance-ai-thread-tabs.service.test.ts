@@ -1,6 +1,9 @@
 import { MAX_INSTANCE_AI_THREAD_OPEN_TABS, type InstanceAiThreadTabsState } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
+import type { WorkflowEntity, WorkflowRepository } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
+
+import type { DataTableRepository } from '@/modules/data-table/data-table.repository';
 
 import { InstanceAiThreadTabsService, withShownTab } from '../instance-ai-thread-tabs.service';
 import type { InstanceAiThreadTabsRepository } from '../repositories/instance-ai-thread-tabs.repository';
@@ -11,7 +14,14 @@ const USER_ID = 'user-1';
 describe('InstanceAiThreadTabsService', () => {
 	const logger = mock<Logger>();
 	const repository = mock<InstanceAiThreadTabsRepository>();
-	const service = new InstanceAiThreadTabsService(logger, repository);
+	const workflowRepository = mock<WorkflowRepository>();
+	const dataTableRepository = mock<DataTableRepository>();
+	const service = new InstanceAiThreadTabsService(
+		logger,
+		repository,
+		workflowRepository,
+		dataTableRepository,
+	);
 
 	const state: InstanceAiThreadTabsState = {
 		tabs: [{ type: 'agent', id: 'agent-1', name: 'SEO Auditor' }],
@@ -21,6 +31,8 @@ describe('InstanceAiThreadTabsService', () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+		workflowRepository.findByIds.mockResolvedValue([]);
+		dataTableRepository.findSummariesByIds.mockResolvedValue([]);
 	});
 
 	it('returns the stored tabs', async () => {
@@ -94,6 +106,32 @@ describe('InstanceAiThreadTabsService', () => {
 			};
 			expect(update(null)).toEqual(created);
 			expect(update({ tabs: 'not-an-array' })).toEqual(created);
+		});
+
+		it('uses the current name of a workflow', async () => {
+			workflowRepository.findByIds.mockResolvedValue([mock<WorkflowEntity>({ name: 'Renamed' })]);
+
+			await service.showArtifactTab(THREAD_ID, USER_ID, {
+				type: 'workflow',
+				id: 'wf-1',
+				name: 'Sync',
+			});
+
+			const update = repository.updateState.mock.calls[0][2];
+			expect(update(null)?.tabs).toEqual([{ type: 'workflow', id: 'wf-1', name: 'Renamed' }]);
+		});
+
+		it('uses the current name and project of a data table', async () => {
+			dataTableRepository.findSummariesByIds.mockResolvedValue([
+				{ id: 'dt-1', name: 'Leads', projectId: 'project-1' },
+			]);
+
+			await service.showArtifactTab(THREAD_ID, USER_ID, { type: 'data-table', id: 'dt-1' });
+
+			const update = repository.updateState.mock.calls[0][2];
+			expect(update(null)?.tabs).toEqual([
+				{ type: 'data-table', id: 'dt-1', name: 'Leads', projectId: 'project-1' },
+			]);
 		});
 	});
 });

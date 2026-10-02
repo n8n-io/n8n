@@ -11,6 +11,7 @@ import {
 } from '@n8n/api-types';
 import type { InstanceAiApprovalDetails } from '@n8n/api-types';
 import { Tool } from '@n8n/agents';
+import { isRecord } from '@n8n/utils/is-record';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
@@ -551,6 +552,18 @@ function buildInputSchema(context: InstanceAiContext, options: WorkflowsToolOpti
 }
 
 // ── Handlers ────────────────────────────────────────────────────────────────
+
+/** A successful setup or restore changes the workflow, so report it to the host. */
+async function reportWorkflowChange<T>(
+	context: InstanceAiContext,
+	workflowId: string,
+	result: T,
+): Promise<T> {
+	if (isRecord(result) && result.success === true) {
+		await context.onArtifactChanged?.({ type: 'workflow', id: workflowId });
+	}
+	return result;
+}
 
 async function resolveWorkflowName(
 	context: InstanceAiContext,
@@ -2311,7 +2324,11 @@ export function createWorkflowsTool(
 				case 'unarchive':
 					return await handleUnarchive(context, workflowInput, ctx);
 				case 'setup':
-					return await handleSetup(context, workflowInput, ctx, setupState);
+					return await reportWorkflowChange(
+						context,
+						workflowInput.workflowId,
+						await handleSetup(context, workflowInput, ctx, setupState),
+					);
 				case 'validate':
 					return await handleValidate(context, workflowInput);
 				case 'publish':
@@ -2321,7 +2338,11 @@ export function createWorkflowsTool(
 				case 'list-versions':
 					return await handleListVersions(context, workflowInput);
 				case 'restore-version':
-					return await handleRestoreVersion(context, workflowInput, ctx);
+					return await reportWorkflowChange(
+						context,
+						workflowInput.workflowId,
+						await handleRestoreVersion(context, workflowInput, ctx),
+					);
 				case 'update-version':
 					return await handleUpdateVersion(context, workflowInput, ctx);
 				default:

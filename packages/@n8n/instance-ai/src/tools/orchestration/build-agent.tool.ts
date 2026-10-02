@@ -537,10 +537,15 @@ async function runBuilderConsumeLoop(params: {
 	// grades. A suspend resumes and settles through here; a cancel throws past it.
 	const settle = async (output: BuildAgentOutput): Promise<BuildAgentOutput> => {
 		if (output.configUpdated) await snapshotAgent(context, delegate, target, 'config-updated');
-		return {
-			...output,
-			agentChange: agentChangeFor(activity, output.configUpdated === true),
-		};
+		const agentChange = agentChangeFor(activity, output.configUpdated === true);
+		if (agentChange !== 'none') {
+			await context.domainContext?.onArtifactChanged?.({
+				type: 'agent',
+				id: target.agentId,
+				...(target.name ? { name: target.name } : {}),
+			});
+		}
+		return { ...output, agentChange };
 	};
 
 	const traceRun = await startSubAgentTrace(context, {

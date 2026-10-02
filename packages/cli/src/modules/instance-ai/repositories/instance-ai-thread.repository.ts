@@ -46,12 +46,6 @@ export class InstanceAiThreadRepository extends BaseRepository<InstanceAiThread>
 		});
 	}
 
-	/** The owner (`resourceId`) of a thread, or `null` when the thread does not exist. */
-	async findResourceId(threadId: string): Promise<string | null> {
-		const row = await this.findOne({ where: { id: threadId }, select: ['resourceId'] });
-		return row?.resourceId ?? null;
-	}
-
 	/**
 	 * One page of a user's threads, newest activity first, plus one lookahead row so the
 	 * caller can tell whether another page exists. `before` is the last row of the previous

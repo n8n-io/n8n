@@ -36,13 +36,6 @@ export class InstanceAiModule implements ModuleInterface {
 		const { InstanceAiEventRelay } = await import('./instance-ai-event-relay.service.js');
 		Container.get(InstanceAiEventRelay);
 
-		// Instantiating the tracker starts to observe the events, so the agent's
-		// artifact changes open their tabs also when no browser shows the thread.
-		const { InstanceAiArtifactTabsTracker } = await import(
-			'./instance-ai-artifact-tabs-tracker.service.js'
-		);
-		Container.get(InstanceAiArtifactTabsTracker);
-
 		// Startup sweep resolves runs the previous process left mid-flight by
 		// converting their in-flight tool calls into tool-interrupted facts and
 		// appending run-finish{interrupted}.
