@@ -20,6 +20,30 @@ export class WorkflowHistoryRepository extends BaseRepository<WorkflowHistory> {
 		super(WorkflowHistory, dataSource.manager, transactionRunner);
 	}
 
+	/**
+	 * The authors of the newest version per workflow, keyed by workflow id. `authors`
+	 * is the display name recorded at save time, not a user id. Workflows without a
+	 * version are absent from the result.
+	 */
+	async findLatestAuthorsByWorkflowIds(
+		workflowIds: string[],
+	): Promise<Map<string, { authors: string; at: Date }>> {
+		const latest = new Map<string, { authors: string; at: Date }>();
+		if (workflowIds.length === 0) return latest;
+
+		const rows = await this.find({
+			select: ['versionId', 'workflowId', 'authors', 'createdAt'],
+			where: { workflowId: In(workflowIds) },
+			order: { createdAt: 'DESC' },
+		});
+		for (const row of rows) {
+			if (!latest.has(row.workflowId)) {
+				latest.set(row.workflowId, { authors: row.authors, at: row.createdAt });
+			}
+		}
+		return latest;
+	}
+
 	async deleteEarlierThan(date: Date) {
 		return await this.delete({ createdAt: LessThan(date) });
 	}

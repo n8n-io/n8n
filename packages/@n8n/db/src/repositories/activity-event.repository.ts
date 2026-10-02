@@ -1,5 +1,15 @@
 import { Service } from '@n8n/di';
-import { And, DataSource, In, LessThan, LessThanOrEqual, MoreThan, Repository } from '@n8n/typeorm';
+import {
+	And,
+	DataSource,
+	In,
+	IsNull,
+	LessThan,
+	LessThanOrEqual,
+	MoreThan,
+	Not,
+	Repository,
+} from '@n8n/typeorm';
 import type { FindOperator, FindOptionsWhere } from '@n8n/typeorm';
 import type { IDataObject } from 'n8n-workflow';
 
@@ -76,6 +86,12 @@ function isEmptyScope(scope: ActivityProjectScope): boolean {
 /** No project predicate at all for a whole-instance reader, so the scope costs no bind parameters. */
 function projectScopeWhere(scope: ActivityProjectScope): FindOptionsWhere<ActivityEvent> {
 	return scope === 'all-projects' ? {} : { projectId: In(scope) };
+}
+
+/** A user and when they last acted on a resource. */
+export interface AttributedActivity {
+	userId: string;
+	at: Date;
 }
 
 @Service()
@@ -198,6 +214,32 @@ export class ActivityEventRepository extends Repository<ActivityEvent> {
 			order: { id: 'DESC' },
 			take: query.limit,
 		});
+	}
+
+	/**
+	 * The newest entry per resource that names a user, keyed by resource id. Reduced
+	 * here, not in SQL: `DISTINCT ON` is Postgres-only. Resources without such an
+	 * entry are absent from the result.
+	 */
+	async findLatestAttributedByResource(
+		resourceType: ActivityResourceType,
+		resourceIds: string[],
+	): Promise<Map<string, AttributedActivity>> {
+		const latest = new Map<string, AttributedActivity>();
+		if (resourceIds.length === 0) return latest;
+
+		const rows = await this.find({
+			select: ['id', 'resourceId', 'userId', 'createdAt'],
+			where: { resourceType, resourceId: In(resourceIds), userId: Not(IsNull()) },
+			order: { id: 'DESC' },
+		});
+		for (const row of rows) {
+			if (row.resourceId === null || row.userId === null) continue;
+			if (!latest.has(row.resourceId)) {
+				latest.set(row.resourceId, { userId: row.userId, at: row.createdAt });
+			}
+		}
+		return latest;
 	}
 
 	/** Retention by age. Returns how many entries went, so a caller can log a sweep worth noticing. */

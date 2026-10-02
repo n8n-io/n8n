@@ -1,5 +1,5 @@
 import { Service } from '@n8n/di';
-import { DataSource, Repository } from '@n8n/typeorm';
+import { DataSource, In, IsNull, Not, Repository } from '@n8n/typeorm';
 import type { EntityManager } from '@n8n/typeorm';
 
 import { WorkflowPublishHistory } from '../entities';
@@ -37,6 +37,30 @@ export class WorkflowPublishHistoryRepository extends Repository<WorkflowPublish
 			.distinct(true)
 			.where('wph.workflowId = :workflowId', { workflowId })
 			.getMany();
+	}
+
+	/**
+	 * The newest publish or unpublish per workflow that still names its user, keyed by
+	 * workflow id. Workflows without one are absent from the result.
+	 */
+	async findLatestAttributedByWorkflowIds(
+		workflowIds: string[],
+	): Promise<Map<string, { userId: string; at: Date }>> {
+		const latest = new Map<string, { userId: string; at: Date }>();
+		if (workflowIds.length === 0) return latest;
+
+		const rows = await this.find({
+			select: ['id', 'workflowId', 'userId', 'createdAt'],
+			where: { workflowId: In(workflowIds), userId: Not(IsNull()) },
+			order: { createdAt: 'DESC', id: 'DESC' },
+		});
+		for (const row of rows) {
+			if (row.userId === null) continue;
+			if (!latest.has(row.workflowId)) {
+				latest.set(row.workflowId, { userId: row.userId, at: row.createdAt });
+			}
+		}
+		return latest;
 	}
 
 	async findActivatedByUserId(workflowId: string): Promise<string | undefined> {
