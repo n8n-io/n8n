@@ -4,7 +4,7 @@ import {
 	type RestrictedInsightsByTime,
 } from '@n8n/api-types';
 import { LicenseState, Logger } from '@n8n/backend-common';
-import { WorkflowSharingService } from '@n8n/backend-services';
+import { ProjectScopeService, WorkflowSharingService } from '@n8n/backend-services';
 import type { User } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import { DateTime } from 'luxon';
@@ -12,8 +12,6 @@ import { InstanceSettings } from 'n8n-core';
 import { UserError } from 'n8n-workflow';
 
 import { ForbiddenError } from '@n8n/errors';
-import { userHasScopes } from '@/permissions.ee/check-access';
-
 import type { PeriodUnit, TypeUnit, ByTimeInsightType } from './database/entities/insights-shared';
 import { NumberToType } from './database/entities/insights-shared';
 import type { InsightsAccessFilter } from './database/repositories/insights-by-period.repository';
@@ -42,6 +40,7 @@ export class InsightsService {
 		private readonly instanceSettings: InstanceSettings,
 		private readonly logger: Logger,
 		private readonly workflowSharingService: WorkflowSharingService,
+		private readonly projectScopeService: ProjectScopeService,
 	) {
 		this.logger = this.logger.scoped('insights');
 	}
@@ -85,10 +84,10 @@ export class InsightsService {
 		projectId?: string,
 	): Promise<InsightsAccessFilter | undefined> {
 		if (projectId) {
-			const userHasRequiredProjectScopes = await userHasScopes(user, ['workflow:read'], false, {
-				projectId,
-			});
-			if (!userHasRequiredProjectScopes) {
+			const accessibleProjectIds = await this.projectScopeService.getProjectIds(user, [
+				'workflow:read',
+			]);
+			if (accessibleProjectIds !== null && !accessibleProjectIds.includes(projectId)) {
 				throw new ForbiddenError('You do not have access to insights for this project.');
 			}
 		}
