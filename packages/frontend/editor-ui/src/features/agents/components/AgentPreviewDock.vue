@@ -21,6 +21,7 @@ import type {
 	AgentJsonConfig,
 	AgentResource,
 } from '../types';
+import type { BudgetAmountField } from '../utils/budget-config';
 import AgentPersonalisationIcon from './AgentPersonalisationIcon.vue';
 import AgentPreviewChatPage from './AgentPreviewChatPage.vue';
 import AgentPreviewMoreMenu from './AgentPreviewMoreMenu.vue';
@@ -55,11 +56,22 @@ const props = withDefaults(
 		newSession?: boolean;
 		initialPrompt?: string;
 		canSendToAssistant?: boolean;
+		dismissedFixToolCallIds?: string[];
 		canDeleteSession?: boolean;
 		beforeSend?: () => Promise<void> | void;
 		isDeletingSession?: boolean;
+		budgetCards?: boolean;
+		/** Persists a raised budget cap. Omitted when the agent is read-only. */
+		increaseBudget?: (payload: { field: BudgetAmountField; amount: number }) => Promise<boolean>;
 	}>(),
-	{ newSession: false, canDeleteSession: false, isDeletingSession: false },
+	{
+		newSession: false,
+		canDeleteSession: false,
+		isDeletingSession: false,
+		dismissedFixToolCallIds: () => [],
+		budgetCards: false,
+		increaseBudget: undefined,
+	},
 );
 
 const emit = defineEmits<{
@@ -128,6 +140,10 @@ function getConversationMarkdown() {
 	return previewChatPage.value?.getConversationMarkdown() ?? '';
 }
 
+function clearBudgetStops(fields: BudgetAmountField[]) {
+	previewChatPage.value?.clearBudgetStops(fields);
+}
+
 function toggleFullWidth() {
 	storedLayout.value =
 		layout.value === PreviewLayout.Fullpage ? PreviewLayout.Docked : PreviewLayout.Fullpage;
@@ -145,17 +161,34 @@ watch(
 	{ flush: 'post' },
 );
 
-function isEscapeDisabled() {
-	return !props.isOpen || dock.value?.contains(document.activeElement) !== true;
+/** Handle the escape shortcut locally instead of useKeybindings so it also works while inputs have focus. */
+function handleEscapeKey(event: KeyboardEvent) {
+	if (event.defaultPrevented || event.isComposing || event.key !== 'Escape') {
+		return;
+	}
+
+	if (event.shiftKey || event.altKey || event.ctrlKey || event.metaKey) {
+		return;
+	}
+
+	if (
+		!props.isOpen ||
+		dock.value?.contains(event.target as Node) !== true ||
+		(event.target instanceof Element && event.target.closest('[role="dialog"]') !== null)
+	) {
+		return;
+	}
+
+	event.preventDefault();
+	event.stopPropagation();
+	close();
 }
 
 useKeybindings({
 	'ctrl+shift+;': createNewSession,
-	Escape: {
-		disabled: isEscapeDisabled,
-		run: close,
-	},
 });
+
+defineExpose({ clearBudgetStops });
 </script>
 
 <template>
@@ -165,6 +198,7 @@ useKeybindings({
 		:aria-label="i18n.baseText('agents.builder.preview.button')"
 		:aria-hidden="!props.isOpen"
 		:inert="!props.isOpen"
+		@keydown="handleEscapeKey"
 		:data-preview-layout="layout"
 		data-testid="agent-preview-dock"
 	>
@@ -278,7 +312,10 @@ useKeybindings({
 				:new-session="props.newSession"
 				:initial-prompt="props.initialPrompt"
 				:can-send-to-assistant="props.canSendToAssistant"
+				:dismissed-fix-tool-call-ids="props.dismissedFixToolCallIds"
 				:before-send="props.beforeSend"
+				:budget-cards="props.budgetCards"
+				:increase-budget="props.increaseBudget"
 				@continue-loaded="emit('continue-loaded', $event)"
 				@session-created="emit('session-created', $event)"
 				@open-build="emit('open-build')"

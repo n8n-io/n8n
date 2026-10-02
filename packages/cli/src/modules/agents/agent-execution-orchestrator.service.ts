@@ -3,6 +3,7 @@ import type {
 	AgentBackgroundJobSignal,
 	AgentMessageAuthor,
 	AgentChatMessagesResponse,
+	BudgetGuardrailConfig,
 } from '@n8n/api-types';
 import { N8N_CHAT_INTEGRATION_TYPE } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
@@ -40,11 +41,13 @@ import {
 	decodeAgentSandboxHostMetadata,
 	encodeAgentSandboxHostMetadata,
 	hashAgentSandboxPrincipal,
+	isAgentSandboxPrincipalHash,
 	type AgentSandboxPrincipalHash,
 } from './agent-sandbox-principal';
 import { AgentSandboxRuntimeService } from './agent-sandbox-runtime.service';
 import { buildAgentConfigurationTelemetry } from './agent-telemetry';
 import { AgentTurnExecutionService, type AgentTurnRequest } from './agent-turn-execution.service';
+import { withBudgetGuardrail } from './budget-guardrail';
 import { AgentExecutionRecordingError } from './agent-execution-recording.error';
 import type { AgentChatBridge } from './integrations/agent-chat-bridge';
 import {
@@ -59,6 +62,9 @@ import { IntegrationMessageContextService } from './integrations/integration-mes
 import { N8NCheckpointStorage } from './integrations/n8n-checkpoint-storage';
 import { modelStreamStallOptions } from './model-stream-stall-options';
 import { AgentRepository } from './repositories/agent.repository';
+import { AgentBackgroundJobRepository } from './repositories/agent-background-job.repository';
+import { AgentBackgroundJobService } from './background/agent-background-job.service';
+import { BACKGROUND_APPROVAL_RUN_PREFIX } from './background/sub-agent-background-state';
 import type { ToolRegistry } from './tool-registry';
 import type { StoredAttachmentRef } from './types/agent-chat-attachment';
 import type { AgentExecutionAdmission } from './types/agent-queued-message';
@@ -112,6 +118,8 @@ export interface ExecuteForChatConfig extends ChatExecutionInput, ChatExecutionC
 	 * callers (AI Assistant test calls, MCP, "Run now") leave it unset.
 	 */
 	previewChat?: boolean;
+	/** Preview chat sends the approaching-budget card. The run continues. */
+	onBudgetNotice?: () => void;
 	abortSignal?: AbortSignal;
 }
 
@@ -174,6 +182,8 @@ export interface ResumeForChatConfig extends ChatExecutionCallbacks {
 	 * callers (AI Assistant test calls, MCP, "Run now") leave it unset.
 	 */
 	previewChat?: boolean;
+	/** Preview chat sends the approaching-budget card. The run continues. */
+	onBudgetNotice?: () => void;
 	/** Allows an automatic preview resume to overlap its predecessor's finalization. */
 	automaticPreviewContinuation?: boolean;
 	abortSignal?: AbortSignal;
@@ -218,6 +228,8 @@ export interface StreamChatResponseConfig extends ChatExecutionInput, ChatExecut
 	messageContext?: IntegrationMessageContext | null;
 	agentInstance: RuntimeAgent;
 	toolRegistry: ToolRegistry;
+	/** Saved budget from the reconstructed runtime. Absent when the config has none. */
+	budget?: BudgetGuardrailConfig;
 	/** See `AgentRuntime.mcpServerAttributions`. */
 	mcpServerAttributions: Map<string, string>;
 	userId?: string;
@@ -233,9 +245,9 @@ export interface StreamChatResponseConfig extends ChatExecutionInput, ChatExecut
 		configuration: IAgentConfigurationTelemetryProperties;
 	};
 	previewChat?: boolean;
+	/** Preview chat sends the approaching-budget card. The run continues. */
+	onBudgetNotice?: () => void;
 	abortSignal?: AbortSignal;
-	/** Add full sanitized tool configuration to approval cards in preview chat. */
-	includeHitlToolDetails?: boolean;
 	sandboxPrincipalHash: AgentSandboxPrincipalHash;
 	/** Hide the internal wake instruction from the execution transcript. */
 	hideUserMessageFromTranscript?: boolean;
@@ -276,6 +288,8 @@ export class AgentExecutionOrchestratorService {
 		private readonly agentRepository: AgentRepository,
 		private readonly aiConfig: AiConfig,
 		private readonly chatExecutionService: AgentChatExecutionService,
+		private readonly backgroundJobRepository: AgentBackgroundJobRepository,
+		private readonly backgroundJobService: AgentBackgroundJobService,
 	) {}
 
 	async getSessionMode(threadId: string): Promise<AgentSessionMode> {
@@ -425,6 +439,7 @@ export class AgentExecutionOrchestratorService {
 	 * a human-in-the-loop action (button click, modal submission).
 	 */
 	async *resumeForChat(config: ResumeForChatConfig): AsyncGenerator<AgentExecutionStreamChunk> {
+		if (await this.resumeBackgroundForChat(config)) return;
 		const resume = { ...config, usePublishedVersion: config.usePublishedVersion ?? true };
 		if (
 			resume.source === N8N_CHAT_PRODUCTION_SOURCE &&
@@ -437,6 +452,116 @@ export class AgentExecutionOrchestratorService {
 			async () => await this.getResumeRuntime(resume, checkpoint),
 			(runtime) => this.resumeRuntimeTurn(resume, checkpoint, runtime),
 		);
+	}
+
+	async resumeBackgroundForChat(config: ResumeForChatConfig): Promise<boolean> {
+		if (!config.runId.startsWith(BACKGROUND_APPROVAL_RUN_PREFIX)) return false;
+		const job = await this.backgroundJobRepository.findById(
+			config.runId.slice(BACKGROUND_APPROVAL_RUN_PREFIX.length),
+		);
+		if (!job || job.parentAgentId !== config.agentId || job.status !== 'suspended') {
+			throw new UserError('This background approval is no longer available');
+		}
+		const resume = { ...config, usePublishedVersion: config.usePublishedVersion ?? true };
+		const approval = await this.backgroundJobService.getApproval(job);
+		if (
+			!approval ||
+			approval.token !== config.toolCallId ||
+			!isAgentSandboxPrincipalHash(job.parentPrincipalHash) ||
+			approval.scope.projectId !== config.projectId
+		) {
+			throw new UserError('This background approval is no longer available');
+		}
+		const memoryScope = {
+			threadId: job.parentThreadId,
+			resourceId: job.parentResourceId,
+			hostMetadata: encodeAgentSandboxHostMetadata({
+				projectId: config.projectId,
+				principalHash: job.parentPrincipalHash,
+			}),
+		};
+		if (
+			(config.expectedMemory?.threadId !== undefined &&
+				config.expectedMemory.threadId !== memoryScope.threadId) ||
+			(config.expectedMemory?.resourceId !== undefined &&
+				config.expectedMemory.resourceId !== memoryScope.resourceId)
+		) {
+			throw new UserError('This background approval does not belong to this chat');
+		}
+		await this.resolveResumeAccess(resume, memoryScope);
+		this.validateResumeSandbox(resume, memoryScope);
+		if (resume.usePublishedVersion) {
+			const expected = approval.metadata.messageContext;
+			const actual = config.messageContext;
+			const destination = expected?.replyTarget ?? expected?.target;
+			if (
+				!expected ||
+				!actual ||
+				actual.platform !== expected.platform ||
+				actual.integrationConnectionId !== expected.integrationConnectionId ||
+				!destination?.threadId ||
+				actual.target.threadId !== destination.threadId
+			) {
+				throw new UserError('This background approval does not belong to this chat');
+			}
+		}
+		const { SubAgentBackgroundRunner } = await import(
+			'./background/sub-agent-background-runner.js'
+		);
+		const { AgentsCredentialProvider } = await import('./adapters/agents-credential-provider.js');
+		const { CredentialsService } = await import('@/credentials/credentials.service.js');
+		await Container.get(SubAgentBackgroundRunner).resume(
+			job,
+			{ token: config.toolCallId, resumeData: config.resumeData },
+			{
+				projectId: config.projectId,
+				parentAgentId: job.parentAgentId,
+				credentialProvider: new AgentsCredentialProvider(
+					Container.get(CredentialsService),
+					config.projectId,
+					config.user,
+					job.subAgentId ?? undefined,
+				),
+				runType: resume.usePublishedVersion ? 'production' : 'test',
+				workflowToolExecutionMode: resume.usePublishedVersion ? 'integrated' : 'manual',
+				user: config.user,
+			},
+		);
+		return true;
+	}
+
+	async deliverBackgroundApproval(
+		config: Pick<ExecuteForWakeConfig, 'agentId' | 'projectId' | 'memory' | 'identity'>,
+		title: string,
+		approval: NonNullable<Awaited<ReturnType<AgentBackgroundJobService['getApproval']>>>,
+	): Promise<void> {
+		if (config.identity.type === 'draft') {
+			await this.assertDraftChatAccess({
+				...config,
+				user: config.identity.user,
+				sessionMode: 'existing',
+			});
+			return;
+		}
+		const delivery = await this.getWakeDelivery(
+			config.agentId,
+			config.identity.integrationType,
+			approval.metadata.messageContext,
+		);
+		await delivery.bridge.deliverBackgroundApproval(delivery.threadId, {
+			jobId: approval.metadata.jobId,
+			title,
+			token: approval.token,
+			toolCall: {
+				type: 'tool-call-suspended',
+				runId: approval.runId,
+				toolCallId: approval.pending.toolCallId,
+				toolName: approval.pending.toolName,
+				input: approval.pending.input,
+				suspendPayload: approval.pending.suspendPayload,
+				resumeSchema: approval.pending.resumeSchema,
+			},
+		});
 	}
 
 	/**
@@ -534,6 +659,7 @@ export class AgentExecutionOrchestratorService {
 					agentInstance: runtime.agent,
 					toolRegistry: runtime.toolRegistry,
 					mcpServerAttributions: runtime.mcpServerAttributions,
+					budget: runtime.budget,
 					agentId,
 					message,
 					modelMessage,
@@ -604,11 +730,13 @@ export class AgentExecutionOrchestratorService {
 						access: { accessScope: 'user', ownerId: user.id },
 						sessionMode,
 						abortSignal,
+						admittedExecution: config.admittedExecution,
 					},
 				),
 			async (runtime) => {
 				const messageContext = this.createN8nChatMessageContext(memory, user.id);
 				return this.streamChatResponse({
+					admittedExecution: config.admittedExecution,
 					access: { accessScope: 'user', ownerId: user.id },
 					messageContext,
 					onAdmitted: async () =>
@@ -620,6 +748,7 @@ export class AgentExecutionOrchestratorService {
 					agentInstance: runtime.agent,
 					toolRegistry: runtime.toolRegistry,
 					mcpServerAttributions: runtime.mcpServerAttributions,
+					budget: runtime.budget,
 					agentId,
 					projectId,
 					message,
@@ -629,7 +758,6 @@ export class AgentExecutionOrchestratorService {
 					productionN8nChat: true,
 					source: N8N_CHAT_PRODUCTION_SOURCE,
 					telemetry: { runType: 'production', configuration: runtime.telemetryConfiguration },
-					includeHitlToolDetails: true,
 					sandboxPrincipalHash,
 					sessionMode,
 					abortSignal,
@@ -678,6 +806,7 @@ export class AgentExecutionOrchestratorService {
 					agentInstance: runtime.agent,
 					toolRegistry: runtime.toolRegistry,
 					mcpServerAttributions: runtime.mcpServerAttributions,
+					budget: runtime.budget,
 					agentId,
 					message,
 					memory,
@@ -735,6 +864,7 @@ export class AgentExecutionOrchestratorService {
 					agentInstance: runtime.agent,
 					toolRegistry: runtime.toolRegistry,
 					mcpServerAttributions: runtime.mcpServerAttributions,
+					budget: runtime.budget,
 					agentId,
 					userId: user.id,
 					message,
@@ -882,7 +1012,6 @@ export class AgentExecutionOrchestratorService {
 				threadId: config.memory.threadId,
 			},
 			backgroundJobSignal: config.backgroundJobSignal,
-			includeHitlToolDetails: config.includeHitlToolDetails,
 			onExecutionRecorded: config.onExecutionRecorded,
 			previewChat: config.previewChat,
 			productionN8nChat: config.source === N8N_CHAT_PRODUCTION_SOURCE,
@@ -955,7 +1084,6 @@ export class AgentExecutionOrchestratorService {
 		try {
 			return await this.runtimeCacheService.getRuntime(params);
 		} catch (error) {
-			if (admittedExecution) throw error;
 			abortSignal?.throwIfAborted();
 			const { agentId, projectId } = params;
 			let agent;
@@ -970,22 +1098,25 @@ export class AgentExecutionOrchestratorService {
 					params.usePublishedVersion && agent.activeVersion?.schema
 						? getPublishedAgentSnapshot(agent)
 						: agent;
-				await this.turnExecutionService.recordFailedStart(
-					{
-						...recording,
-						agentId,
-						agentName: selected.schema?.name ?? agent.name,
-						projectId,
-						telemetry: {
-							userId: params.attributionUserId ?? params.user?.id,
-							runType: params.usePublishedVersion ? 'production' : 'test',
-							configuration: buildAgentConfigurationTelemetry(selected),
-						},
+				const failed = {
+					...recording,
+					agentId,
+					agentName: selected.schema?.name ?? agent.name,
+					projectId,
+					telemetry: {
+						userId: params.attributionUserId ?? params.user?.id,
+						runType: params.usePublishedVersion ? ('production' as const) : ('test' as const),
+						configuration: buildAgentConfigurationTelemetry(selected),
 					},
-					error,
-					onExecutionRecorded,
-					{ previewChat: params.previewChat, automaticContinuationRunId },
-				);
+				};
+				if (admittedExecution) {
+					await this.turnExecutionService.recordFailedAdmission(admittedExecution, failed, error);
+				} else {
+					await this.turnExecutionService.recordFailedStart(failed, error, onExecutionRecorded, {
+						previewChat: params.previewChat,
+						automaticContinuationRunId,
+					});
+				}
 			}
 			throw error;
 		}
@@ -1044,8 +1175,6 @@ export class AgentExecutionOrchestratorService {
 			toolRegistry: runtime.toolRegistry,
 			mcpServerAttributions: runtime.mcpServerAttributions,
 			context: { projectId: config.projectId, agentId: config.agentId, threadId },
-			includeHitlToolDetails:
-				!config.usePublishedVersion || config.source === N8N_CHAT_PRODUCTION_SOURCE,
 			previewChat: config.previewChat,
 			productionN8nChat: config.source === N8N_CHAT_PRODUCTION_SOURCE,
 			automaticPreviewContinuation: config.automaticPreviewContinuation,
@@ -1073,7 +1202,17 @@ export class AgentExecutionOrchestratorService {
 		return {
 			type: 'resume',
 			resumeData: config.resumeData,
-			options: this.createResumeOptions(config, memoryScope, messageContext, tracing),
+			options: withBudgetGuardrail(
+				this.createResumeOptions(config, memoryScope, messageContext, tracing),
+				{
+					budget: runtime.budget,
+					sessionId: memoryScope.threadId,
+					agentId: config.agentId,
+					...(config.previewChat && config.onBudgetNotice
+						? { onNotice: config.onBudgetNotice }
+						: {}),
+				},
+			),
 			recording: this.createResumeRecording(config, checkpoint, runtime, executionSource),
 		};
 	}
@@ -1277,6 +1416,7 @@ export class AgentExecutionOrchestratorService {
 			agentInstance: runtime.agent,
 			toolRegistry: runtime.toolRegistry,
 			mcpServerAttributions: runtime.mcpServerAttributions,
+			budget: runtime.budget,
 			agentId,
 			userId: user.id,
 			message,
@@ -1287,8 +1427,8 @@ export class AgentExecutionOrchestratorService {
 			telemetry: { runType: 'test', configuration: runtime.telemetryConfiguration },
 			onExecutionRecorded,
 			abortSignal,
-			includeHitlToolDetails: true,
 			previewChat,
+			onBudgetNotice: config.onBudgetNotice,
 			onExecutionStarted: config.onExecutionStarted,
 			sandboxPrincipalHash,
 			sessionMode,
@@ -1350,17 +1490,27 @@ export class AgentExecutionOrchestratorService {
 		return {
 			type: 'start',
 			input,
-			options: {
-				persistence: { threadId, resourceId, hostMetadata },
-				executionCounter: createAgentExecutionCounter(this.telemetry, {
+			options: withBudgetGuardrail(
+				{
+					persistence: { threadId, resourceId, hostMetadata },
+					executionCounter: createAgentExecutionCounter(this.telemetry, {
+						agentId,
+						userId,
+						runType: telemetry.runType,
+					}),
+					...modelStreamStallOptions(this.aiConfig),
+					...(tracing ? { telemetry: tracing } : {}),
+					...(abortSignal ? { abortSignal } : {}),
+				},
+				{
+					budget: config.budget,
+					sessionId: threadId,
 					agentId,
-					userId,
-					runType: telemetry.runType,
-				}),
-				...modelStreamStallOptions(this.aiConfig),
-				...(tracing ? { telemetry: tracing } : {}),
-				...(abortSignal ? { abortSignal } : {}),
-			},
+					...(config.previewChat && config.onBudgetNotice
+						? { onNotice: config.onBudgetNotice }
+						: {}),
+				},
+			),
 			recording: this.createChatRecording(config),
 		};
 	}
@@ -1457,6 +1607,7 @@ export class AgentExecutionOrchestratorService {
 			agentInstance: runtime.agent,
 			toolRegistry: runtime.toolRegistry,
 			mcpServerAttributions: runtime.mcpServerAttributions,
+			budget: runtime.budget,
 			agentId,
 			...(isDraft
 				? { userId: identity.user.id }
@@ -1472,7 +1623,6 @@ export class AgentExecutionOrchestratorService {
 				configuration: runtime.telemetryConfiguration,
 			},
 			abortSignal,
-			includeHitlToolDetails: isDraft || Boolean(productionUserId),
 			sandboxPrincipalHash: identity.principalHash,
 			hideUserMessageFromTranscript: true,
 			isWakeRun: true,

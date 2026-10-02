@@ -1,11 +1,14 @@
 import type {
 	AgentApproval,
+	AgentBudgetSpend,
 	AgentBackgroundJobsResponse,
 	AgentCapabilitySummary,
 	AgentChatMessagesResponse,
 	AgentChatQueueResponse,
 	AgentChatQueueUpdateDto,
 	AgentChatQueueSteerDto,
+	AgentChatQueueReorderDto,
+	AgentChatResumeDto,
 	AgentConfigMutationResponse,
 	AgentConfigResponse,
 	AgentConfigValidationResponse,
@@ -447,6 +450,18 @@ export const listAgentVersions = async (
 	);
 };
 
+export const getAgentBudgetSpend = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+): Promise<AgentBudgetSpend> => {
+	return await makeRestApiRequest<AgentBudgetSpend>(
+		context,
+		'GET',
+		`/projects/${projectId}/agents/v2/${agentId}/budget`,
+	);
+};
+
 export const getAgentConfig = async (
 	context: IRestApiContext,
 	projectId: string,
@@ -547,6 +562,21 @@ export const getAgentBackgroundJobs = async (
 	);
 };
 
+export const resumeAgentBackgroundJob = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	threadId: string,
+	payload: AgentChatResumeDto,
+): Promise<void> => {
+	await makeRestApiRequest(
+		context,
+		'POST',
+		`/projects/${encodeURIComponent(projectId)}/agents/v2/${encodeURIComponent(agentId)}/chat/${encodeURIComponent(threadId)}/background-tasks/resume`,
+		payload,
+	);
+};
+
 export const getAgentChatQueue = async (
 	context: IRestApiContext,
 	projectId: string,
@@ -572,6 +602,22 @@ export const updateAgentQueuedMessage = async (
 		context,
 		'PATCH',
 		`/projects/${encodeURIComponent(projectId)}/agents/v2/${encodeURIComponent(agentId)}/chat/${encodeURIComponent(threadId)}/queue/${encodeURIComponent(queueId)}`,
+		payload,
+	);
+};
+
+export const reorderAgentQueuedMessage = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	threadId: string,
+	queueId: string,
+	payload: AgentChatQueueReorderDto,
+): Promise<void> => {
+	await makeRestApiRequest(
+		context,
+		'POST',
+		`/projects/${encodeURIComponent(projectId)}/agents/v2/${encodeURIComponent(agentId)}/chat/${encodeURIComponent(threadId)}/queue/${encodeURIComponent(queueId)}/reorder`,
 		payload,
 	);
 };

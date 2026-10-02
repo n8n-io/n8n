@@ -76,6 +76,7 @@ const workflowSharedWithProjects = computed(
 		workflowDocumentStore.value?.sharedWithProjects ?? workflowListEntry.value?.sharedWithProjects,
 );
 const loading = ref(true);
+let initializationPromise: Promise<void> | undefined;
 const isDirty = ref(false);
 const modalBus = createEventBus();
 const sharedWithProjects = ref([
@@ -209,10 +210,10 @@ const onSave = async () => {
 			title: i18n.baseText('workflows.shareModal.onSave.success.title'),
 		});
 		isDirty.value = false;
+		modalBus.emit('close');
 	} catch (error) {
 		toast.showError(error, i18n.baseText('workflows.shareModal.onSave.error.title'));
 	} finally {
-		modalBus.emit('close');
 		loading.value = false;
 	}
 };
@@ -230,7 +231,9 @@ const onCloseModal = async () => {
 		);
 
 		if (shouldSave === MODAL_CONFIRM) {
-			return await onSave();
+			await initializationPromise;
+			await onSave();
+			return false;
 		}
 	}
 
@@ -257,7 +260,8 @@ const initialize = async () => {
 };
 
 onMounted(async () => {
-	await initialize();
+	initializationPromise = initialize();
+	await initializationPromise;
 });
 
 watch(

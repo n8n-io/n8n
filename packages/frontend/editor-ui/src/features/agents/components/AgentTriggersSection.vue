@@ -1,15 +1,26 @@
 <script setup lang="ts">
-import type { AgentConfigValidationIssue, AgentJsonTaskConfig } from '@n8n/api-types';
+import type {
+	AgentConfigValidationIssue,
+	AgentJsonConfig,
+	AgentJsonTaskConfig,
+} from '@n8n/api-types';
 import { updatedIconSet, type IconName } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { computed, onBeforeUnmount, onMounted, ref, toRef, watch } from 'vue';
 import { agentsEventBus } from '../agents.eventBus';
+import {
+	agentChannelPlatforms,
+	createAgentChannelRuntime,
+	getAgentChannelPlatform,
+} from '../channels/registry';
+import { useAgentChannelRemoval } from '../composables/useAgentChannelRemoval';
 import { useAgentIntegrationsCatalog } from '../composables/useAgentIntegrationsCatalog';
 import { useAgentIntegrationStatus } from '../composables/useAgentIntegrationStatus';
 import AgentChannelModal, { type ChannelView } from './AgentChannelModal.vue';
 import AgentChipButton from './AgentChipButton.vue';
 import AgentChipRow from './AgentChipRow.vue';
+import AgentItemContextMenu from './AgentItemContextMenu.vue';
 import AgentSchedulesRow from './AgentSchedulesRow.vue';
 
 const props = withDefaults(
@@ -27,6 +38,7 @@ const props = withDefaults(
 		/** No agent row exists yet — nothing can be connected to it. */
 		agentUnsaved?: boolean;
 		ensureAgentPersisted?: () => Promise<void>;
+		personalisation?: AgentJsonConfig['personalisation'] | null;
 	}>(),
 	{
 		connectedTriggers: () => [],
@@ -37,6 +49,7 @@ const props = withDefaults(
 		simpleChannelSetup: false,
 		taskRefs: () => [],
 		ensureAgentPersisted: undefined,
+		personalisation: null,
 	},
 );
 
@@ -52,8 +65,52 @@ const emit = defineEmits<{
 const i18n = useI18n();
 const credentialsStore = useCredentialsStore();
 const { catalog, ensureLoaded } = useAgentIntegrationsCatalog();
-const { connectedCredentials, runtimeErrors, hasRuntimeError, fetchStatus } =
-	useAgentIntegrationStatus(props.projectId, props.agentId);
+const integrationStatus = useAgentIntegrationStatus(props.projectId, props.agentId);
+const { connectedCredentials, runtimeErrors, hasRuntimeError, fetchStatus } = integrationStatus;
+
+const runtimeContext = {
+	projectId: computed(() => props.projectId),
+	agentId: computed(() => props.agentId),
+	credentialModalOpen: ref(false),
+	fetchStatus,
+	isConnected: integrationStatus.isConnected,
+	isConfigured: integrationStatus.isConfigured,
+};
+const runtimes = Object.fromEntries(
+	Object.values(agentChannelPlatforms).map((platform) => [
+		platform.type,
+		createAgentChannelRuntime(platform, {
+			...runtimeContext,
+			selectedCredentialId: computed(() => connectedCredentials.value[platform.type] ?? ''),
+		}),
+	]),
+);
+const fallbackRuntime = createAgentChannelRuntime(getAgentChannelPlatform('unknown'), {
+	...runtimeContext,
+	selectedCredentialId: ref(''),
+});
+const {
+	pendingDisconnect,
+	disconnectConfirmationComponent,
+	removing: removingChannel,
+	requestDisconnect,
+	confirmDisconnect,
+} = useAgentChannelRemoval({
+	projectId: () => props.projectId,
+	agentId: () => props.agentId,
+	isPublished: () => props.isPublished,
+	disabled: () => props.disabled,
+	status: integrationStatus,
+	runtimeFor: async (channelType) => {
+		const runtime = runtimes[channelType] ?? fallbackRuntime;
+		await runtime.load();
+		return runtime;
+	},
+	onRemoved: (channelType) => {
+		if (!integrationStatus.isConfigured(channelType)) handleChannelDisconnected(channelType);
+		emit('agent-changed');
+	},
+});
 
 const credentialNamesById = ref<Record<string, string>>({});
 const channelModalOpen = ref(false);
@@ -206,18 +263,23 @@ function handleChannelDisconnected(channelType: string) {
 			:disabled="props.disabled"
 			@add="openChannelModal"
 		>
-			<AgentChipButton
+			<AgentItemContextMenu
 				v-for="channel in channelRows"
 				:key="channel.type"
-				:icon="channel.icon"
-				:invalid="channel.invalidReasons.length > 0"
-				:invalid-reasons="channel.invalidReasons"
-				:disabled="props.disabled"
-				:class="$style.channelChip"
-				@click="openChannelEdit(channel.type)"
+				:disabled="props.disabled || removingChannel"
+				@remove="requestDisconnect(channel.type, connectedCredentials[channel.type] ?? '')"
 			>
-				{{ channel.label }}
-			</AgentChipButton>
+				<AgentChipButton
+					:icon="channel.icon"
+					:invalid="channel.invalidReasons.length > 0"
+					:invalid-reasons="channel.invalidReasons"
+					:disabled="props.disabled || removingChannel"
+					:class="$style.channelChip"
+					@click="openChannelEdit(channel.type)"
+				>
+					{{ channel.label }}
+				</AgentChipButton>
+			</AgentItemContextMenu>
 		</AgentChipRow>
 
 		<AgentSchedulesRow
@@ -243,11 +305,22 @@ function handleChannelDisconnected(channelType: string) {
 			:agent-id="agentId"
 			:project-id="projectId"
 			:is-published="isPublished"
+			:disabled="props.disabled"
 			:simple-setup="simpleChannelSetup"
 			:ensure-agent-persisted="ensureAgentPersisted"
+			:personalisation="personalisation"
 			@channel-connected="handleChannelConnected"
 			@channel-disconnected="handleChannelDisconnected"
 			@agent-changed="emit('agent-changed')"
+		/>
+
+		<component
+			:is="disconnectConfirmationComponent"
+			v-if="pendingDisconnect && disconnectConfirmationComponent"
+			:open="true"
+			:loading="removingChannel"
+			@cancel="pendingDisconnect = null"
+			@confirm="confirmDisconnect"
 		/>
 	</div>
 </template>

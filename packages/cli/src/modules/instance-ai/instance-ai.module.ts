@@ -118,6 +118,12 @@ export class InstanceAiModule implements ModuleInterface {
 		const { InstanceAiEventLogEntry } = await import(
 			'./entities/instance-ai-event-log-entry.entity.js'
 		);
+		const { WorkflowSuggestion } = await import(
+			'./workflow-suggestions/database/workflow-suggestion.entity.js'
+		);
+		const { WorkflowSuggestionActivity } = await import(
+			'./workflow-suggestions/database/workflow-suggestion-activity.entity.js'
+		);
 
 		return [
 			InstanceAiThread,
@@ -133,6 +139,8 @@ export class InstanceAiModule implements ModuleInterface {
 			InstanceAiThreadGrant,
 			InstanceAiThreadTabs,
 			InstanceAiEventLogEntry,
+			WorkflowSuggestion,
+			WorkflowSuggestionActivity,
 		];
 	}
 

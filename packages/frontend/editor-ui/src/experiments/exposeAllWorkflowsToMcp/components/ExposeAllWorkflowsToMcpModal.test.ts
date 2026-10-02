@@ -75,7 +75,7 @@ describe('ExposeAllWorkflowsToMcpModal', () => {
 	it('renders the copy and both actions', () => {
 		const { getByText, getByTestId } = renderComponent({ pinia, props: defaultProps });
 
-		expect(getByText('Expose all workflows to MCP?')).toBeInTheDocument();
+		expect(getByText('Enable MCP access for all workflows?')).toBeInTheDocument();
 		expect(getByTestId('expose-all-workflows-mcp-description')).toBeInTheDocument();
 		expect(getByTestId('expose-all-workflows-mcp-not-now-button')).toBeInTheDocument();
 		expect(getByTestId('expose-all-workflows-mcp-confirm-button')).toBeInTheDocument();

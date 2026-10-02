@@ -2,6 +2,7 @@ import { EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE, getChildNodes, type IConnections } 
 
 import type { AgentApproval, AgentIntegrationSettings } from './agent-integration.schema';
 import type { AgentJsonConfig } from './agent-json-config.schema';
+import type { AgentPersonalisation } from './agent-personalisation';
 import type { AgentBackgroundJobSignal } from './background-job';
 
 export type AgentActor = 'user' | 'builder' | 'mcp';
@@ -406,6 +407,27 @@ export interface AgentChatMessagesResponse {
 	activeExecutionId?: string | null;
 }
 
+/**
+ * One agent as the n8n chat page lists it.
+ *
+ * Deliberately narrow. Its audience holds `agent:execute` alone — a
+ * `project:chatUser` can start a production chat but has no `agent:read` — so
+ * the published instructions, tools and skills must not travel with the list.
+ * The page needs a label, an avatar and the owning project, and nothing else.
+ */
+export interface AgentChatListItem {
+	id: string;
+	name: string;
+	/** Icon and gradient from the published config; unset when the agent has none. */
+	personalisation?: AgentPersonalisation;
+	project: { id: string; name: string };
+}
+
+export interface AgentChatListResponse {
+	count: number;
+	data: AgentChatListItem[];
+}
+
 export interface AgentSessionLangSmithExportResponse {
 	traceId: string;
 }
@@ -413,6 +435,10 @@ export interface AgentSessionLangSmithExportResponse {
 /**
  * Integration type for n8n Chat. Preview injects its tools per run. A configured
  * channel entry enables production chat after publish.
+ *
+ * Publish is what moves the channel live, so the published snapshot is the
+ * source of truth for availability: `AgentRepository.isN8nChatPublished` reads
+ * it for one agent, `applyFilters` for the `availableInChat` list filter.
  */
 export const N8N_CHAT_INTEGRATION_TYPE = 'n8n_chat' as const;
 /** Fixed tool names for the implicit in-app chat integration (no credential suffixes). */

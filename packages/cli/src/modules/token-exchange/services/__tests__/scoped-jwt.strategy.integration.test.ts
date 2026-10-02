@@ -12,7 +12,7 @@ import { TOKEN_EXCHANGE_ISSUER } from '../../token-exchange.types';
 import { ScopedJwtStrategy } from '../scoped-jwt.strategy';
 
 const instanceSettings = mock<InstanceSettings>({ encryptionKey: 'test-key' });
-const jwtService = new JwtService(instanceSettings, mock());
+const jwtService = new JwtService(instanceSettings, mock(), mock());
 
 function makeBearerReq(token: string): AuthenticatedRequest {
 	const req = mock<AuthenticatedRequest>();
@@ -21,7 +21,7 @@ function makeBearerReq(token: string): AuthenticatedRequest {
 }
 
 function makeScopedJwt(sub: string, actSub?: string): string {
-	return jwtService.sign({
+	return jwtService.sign('tokenExchange', {
 		iss: TOKEN_EXCHANGE_ISSUER,
 		sub,
 		...(actSub && { act: { sub: actSub } }),
@@ -99,7 +99,9 @@ describe('ScopedJwtStrategy (integration)', () => {
 
 		it('rejects tokens that fail validation', async () => {
 			// Wrong issuer → abstain. Subject missing / disabled / disabled-actor → fail.
-			expect(await strategy.buildTokenGrant(jwtService.sign({ iss: 'n8n', sub: '1' }))).toBeNull();
+			expect(
+				await strategy.buildTokenGrant(jwtService.sign('tokenExchange', { iss: 'n8n', sub: '1' })),
+			).toBeNull();
 			expect(
 				await strategy.buildTokenGrant(makeScopedJwt('422b72e6-2df2-47c9-8082-f8393b088fde')),
 			).toBe(false);

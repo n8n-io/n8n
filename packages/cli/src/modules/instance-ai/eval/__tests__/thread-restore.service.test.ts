@@ -624,6 +624,7 @@ describe('EvalThreadRestoreService', () => {
 
 		beforeEach(() => {
 			moduleRegistry.isActive.calledWith('agents').mockReturnValue(true);
+			credentialsRepo.findByTypesInProject.mockResolvedValue([]);
 		});
 
 		it('creates the agent at its seeded id, carrying its config and skill bodies', async () => {
@@ -750,6 +751,99 @@ describe('EvalThreadRestoreService', () => {
 				name: 'Support Triage',
 				instructions: 'Triage inbound tickets.',
 				vectorStores: [{ indexName: 'docs', name: 'docs' }],
+			});
+		});
+
+		describe('model credential', () => {
+			const credential = (id: string) => mock<CredentialsEntity>({ id, name: `cred ${id}` });
+			const openAiAgent = () => {
+				const agent = seedAgent();
+				return {
+					...agent,
+					config: {
+						...agent.config,
+						model: 'openai/gpt-4.1-mini',
+						credential: 'cred-from-source-instance',
+						subAgents: {
+							modelsByDifficulty: {
+								low: { model: 'openai/gpt-4.1-nano', credential: 'cred-source-low' },
+								high: { model: 'google/gemini-2.5-pro', credential: 'cred-source-high' },
+							},
+						},
+					},
+				};
+			};
+
+			it("binds each model to the project's one allowed credential of its provider's type", async () => {
+				// The workflow counterpart is `resolveNodeCredentials`. Without it the
+				// restored agent has no model credential and no scenario can run it.
+				credentialsRepo.findByTypesInProject.mockImplementation(async (types) => {
+					if (types.includes('openAiApi')) return [credential('cred-openai')];
+					if (types.includes('googlePalmApi')) return [credential('cred-gemini')];
+					return [];
+				});
+
+				await service.restoreAgents(
+					[openAiAgent()],
+					'project-1',
+					new Map(),
+					new Set(['cred-openai', 'cred-gemini']),
+				);
+
+				const [, , options] = agentsService.create.mock.calls[0];
+				expect(options?.schema).toMatchObject({
+					credential: 'cred-openai',
+					subAgents: {
+						modelsByDifficulty: {
+							low: { credential: 'cred-openai' },
+							high: { credential: 'cred-gemini' },
+						},
+					},
+				});
+			});
+
+			it('keeps the blank when the allowlist admits none of the candidates', async () => {
+				credentialsRepo.findByTypesInProject.mockResolvedValue([credential('cred-openai')]);
+
+				await service.restoreAgents([openAiAgent()], 'project-1', new Map(), new Set(['other']));
+
+				const [, , options] = agentsService.create.mock.calls[0];
+				expect(options?.schema).toMatchObject({ credential: '' });
+			});
+
+			it('keeps the blank under an empty allowlist, the pin of a case that declares none', async () => {
+				credentialsRepo.findByTypesInProject.mockResolvedValue([credential('cred-openai')]);
+
+				await service.restoreAgents([openAiAgent()], 'project-1', new Map(), new Set());
+
+				const [, , options] = agentsService.create.mock.calls[0];
+				expect(options?.schema).toMatchObject({ credential: '' });
+			});
+
+			it('keeps the blank when two credentials match, rather than picking one', async () => {
+				credentialsRepo.findByTypesInProject.mockResolvedValue([
+					credential('cred-a'),
+					credential('cred-b'),
+				]);
+
+				await service.restoreAgents([openAiAgent()], 'project-1');
+
+				const [, , options] = agentsService.create.mock.calls[0];
+				expect(options?.schema).toMatchObject({ credential: '' });
+			});
+
+			it('leaves a draft agent with no model unbound', async () => {
+				credentialsRepo.findByTypesInProject.mockResolvedValue([credential('cred-openai')]);
+				const agent = seedAgent();
+
+				await service.restoreAgents(
+					[{ ...agent, config: { ...agent.config, model: '' } }],
+					'project-1',
+				);
+
+				const [, , options] = agentsService.create.mock.calls[0];
+				expect(options?.schema).not.toHaveProperty('credential');
+				expect(credentialsRepo.findByTypesInProject).not.toHaveBeenCalled();
 			});
 		});
 

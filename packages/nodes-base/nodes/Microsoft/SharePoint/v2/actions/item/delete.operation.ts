@@ -5,7 +5,7 @@ import { assertPathSegment } from '../../helpers/utils';
 import { itemRLC, untilListSelected } from '../../item';
 import { listRLC, untilSiteSelected } from '../../list';
 import { resolveSiteId, siteRLC } from '../../site';
-import { microsoftApiRequest } from '../../transport';
+import { microsoftApiRequest } from '../../../transport';
 
 const properties: INodeProperties[] = [
 	{

@@ -16,6 +16,8 @@ const numericIdParamSchema = (description: string) =>
 
 const stringIdParamSchema = (description: string) => z.string().openapi({ param: { description } });
 
+const NANOID_REGEX = /^[A-Za-z0-9]{16}$/;
+
 export const executionIdParamSchema = numericIdParamSchema('The ID of the execution.');
 
 export const workflowIdParamSchema = stringIdParamSchema('The ID of the workflow.');
@@ -58,8 +60,12 @@ export const communityPackageNameParamSchema = z
 
 export const dataTableIdParamSchema = z
 	.string()
-	.regex(/^[A-Za-z0-9]{16}$/, 'must match format "nanoid"')
+	.regex(NANOID_REGEX, 'must match format "nanoid"')
 	.openapi({ format: 'nanoid', param: { description: 'The ID of the data table' } });
+export const columnIdParamSchema = z
+	.string()
+	.regex(NANOID_REGEX, 'must match format "nanoid"')
+	.openapi({ format: 'nanoid', param: { description: 'The ID of the column' } });
 export const variableIdParamSchema = stringIdParamSchema('The ID of the variable.');
 export const nodeTypePolicyIdParamSchema = stringIdParamSchema(
 	'The ID of the node type policy document.',

@@ -7,10 +7,7 @@ import type { INode, INodeTypeDescription } from 'n8n-workflow';
 import { getActiveCredentialTypes, UserError } from 'n8n-workflow';
 
 import { isCredSharingEnabled } from '@/constants/credential-sharing';
-import {
-	CredentialsFinderService,
-	type UnusableCredential,
-} from '@/credentials/credentials-finder.service';
+import { CredentialsFinderService, type UnusableCredential } from '@n8n/backend-services';
 import { NodeTypes } from '@/node-types';
 import { OwnershipService } from '@/services/ownership.service';
 import { ProjectService } from '@/services/project.service.ee';

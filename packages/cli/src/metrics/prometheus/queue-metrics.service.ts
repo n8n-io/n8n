@@ -59,5 +59,15 @@ export class PrometheusQueueMetricsService implements PrometheusMetricsCollector
 			completedCounter.inc(jobCounts.completed);
 			failedCounter.inc(jobCounts.failed);
 		});
+
+		const completionMissedCounter = new promClient.Counter({
+			name: `${prefix}scaling_mode_queue_jobs_completion_missed`,
+			help: 'Total number of jobs whose completion event this main missed and settled from the database instead, by execution status found there.',
+			labelNames: ['status'],
+		});
+
+		this.eventService.on('job-completion-missed', ({ status }) => {
+			completionMissedCounter.inc({ status }, 1);
+		});
 	}
 }

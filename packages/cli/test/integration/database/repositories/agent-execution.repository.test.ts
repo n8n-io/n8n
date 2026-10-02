@@ -3,7 +3,13 @@ import type {
 	AgentSessionQueryFilters,
 	AgentSessionStatus,
 } from '@n8n/api-types';
-import { Agent as RuntimeAgent, Tool, type SerializableAgentState } from '@n8n/agents';
+import {
+	Agent as RuntimeAgent,
+	INLINE_SUB_AGENT_ID,
+	Tool,
+	type SerializableAgentState,
+	type CredentialProvider,
+} from '@n8n/agents';
 import { createTeamProject, mockLogger, testDb, testModules } from '@n8n/backend-test-utils';
 import { AgentsConfig, AiConfig } from '@n8n/config';
 import { UserRepository, type OperationContext, type User } from '@n8n/db';
@@ -21,7 +27,20 @@ import { mock } from 'vitest-mock-extended';
 import { z } from 'zod';
 
 import type { Telemetry } from '@/telemetry';
+import type { Publisher } from '@/scaling/pubsub/publisher.service';
 import type { ExternalHooks } from '@/external-hooks';
+import { AgentBackgroundJobRepository } from '@/modules/agents/repositories/agent-background-job.repository';
+import { AgentBackgroundJobService } from '@/modules/agents/background/agent-background-job.service';
+import { SubAgentBackgroundRunner } from '@/modules/agents/background/sub-agent-background-runner';
+import { SubAgentRunner } from '@/modules/agents/sub-agents/sub-agent-runner';
+import type { SubAgentSourceResolver } from '@/modules/agents/sub-agents/sub-agent-source-resolver';
+import { AgentRuntimeReconstructionService } from '@/modules/agents/agent-runtime-reconstruction.service';
+import type {
+	AgentWorkspaceService,
+	AgentWorkspaceAcquisition,
+} from '@/modules/agents/agent-workspace.service';
+import type { ExecutionPersistence } from '@/executions/execution-persistence';
+import { AgentWakeService } from '@/modules/agents/background/agent-wake.service';
 import { AgentExecutionOrchestratorService } from '@/modules/agents/agent-execution-orchestrator.service';
 import type { AgentRuntimeCacheService } from '@/modules/agents/agent-runtime-cache.service';
 import type { AgentRunTracingService } from '@/modules/agents/agent-run-tracing.service';
@@ -41,6 +60,7 @@ import type { AgentExecutionUpdateBroadcaster } from '@/modules/agents/agent-exe
 import { AgentInterruptedExecutionSweeper } from '@/modules/agents/agent-interrupted-execution-sweeper';
 import { AgentTurnExecutionService } from '@/modules/agents/agent-turn-execution.service';
 import type { AgentExecutionStreamChunk } from '@/modules/agents/types/agent-steering';
+import type { AgentToolApprovalService } from '@/modules/agents/agent-tool-approval.service';
 import {
 	AgentMessageQueueService,
 	type ClaimedAgentMessage,
@@ -60,8 +80,6 @@ import {
 	type AgentExecutionAdmission,
 	type QueuedIntegrationMessage,
 } from '@/modules/agents/types/agent-queued-message';
-import type { AgentBackgroundJobService } from '@/modules/agents/background/agent-background-job.service';
-import type { AgentWakeService } from '@/modules/agents/background/agent-wake.service';
 import { ExecutionRecorder, type TimelineEvent } from '@/modules/agents/execution-recorder';
 import type { AgentExecutionLogStore } from '@/modules/agents/execution-log/agent-execution-log-store';
 import { N8NCheckpointStorage } from '@/modules/agents/integrations/n8n-checkpoint-storage';
@@ -235,6 +253,7 @@ describe('AgentExecutionRepository', () => {
 				chatExecutionService,
 				queue,
 				steering,
+				mock<AgentToolApprovalService>(),
 			),
 		};
 	}
@@ -345,6 +364,355 @@ describe('AgentExecutionRepository', () => {
 			pendingToolCalls: { ...checkpoint.pendingToolCalls, ...pendingToolCalls },
 		});
 	}
+
+	describe('background child approvals', () => {
+		afterEach(async () => {
+			vi.restoreAllMocks();
+			await Container.get(AgentBackgroundJobRepository).delete({});
+		});
+
+		async function startBackgroundChild(gates = 1) {
+			const parent = await createThread();
+			const jobs = Container.get(AgentBackgroundJobRepository);
+			const { turns, checkpointStorage: storage } = recordingServices();
+			const principalHash = hashAgentSandboxPrincipal({ type: 'n8n-user', userId: 'user-1' });
+			const action = vi.fn().mockResolvedValue('Done');
+			const tool = new Tool('approve')
+				.description('Run the approved action')
+				.input(z.object({}))
+				.requireApproval()
+				.handler(action);
+			const model = new MockLanguageModelV3({
+				doStream: async ({ prompt }) => {
+					const completed = prompt.filter((message) => message.role === 'tool').length;
+					const needsApproval = completed < gates;
+					return {
+						stream: convertArrayToReadableStream([
+							...(needsApproval
+								? [
+										{
+											type: 'tool-call' as const,
+											toolCallId: `gate-${completed}`,
+											toolName: 'approve',
+											input: '{}',
+										},
+									]
+								: []),
+							{
+								type: 'finish',
+								finishReason: { unified: needsApproval ? 'tool-calls' : 'stop', raw: undefined },
+								usage: {
+									inputTokens: { total: 1, noCache: 1, cacheRead: 0, cacheWrite: 0 },
+									outputTokens: { total: 1, text: 1, reasoning: 0 },
+								},
+							},
+						]),
+					};
+				},
+			});
+			const workspace = mock<AgentWorkspaceAcquisition>({
+				handle: mock<AgentWorkspaceAcquisition['handle']>(),
+			});
+			const workspaceService = mock<AgentWorkspaceService>();
+			workspaceService.getAgentWorkspace.mockResolvedValue(workspace);
+			const reconstruction = mock<AgentRuntimeReconstructionService>();
+			reconstruction.reconstructFromResolvedSource.mockImplementation(
+				async ({ parentWorkspace }) => {
+					expect(parentWorkspace?.handle).toBe(workspace.handle);
+					return {
+						agent: new RuntimeAgent('Child')
+							.instructions('Complete the task.')
+							.model(model)
+							.tool(tool)
+							.checkpoint(storage.getStorage(agentId)),
+						toolRegistry: new Map(),
+						mcpServerAttributions: new Map(),
+					};
+				},
+			);
+			const wake = mock<AgentWakeService>();
+			const getService = Container.get.bind(Container);
+			vi.spyOn(Container, 'get').mockImplementation((service) => {
+				if (service === AgentRuntimeReconstructionService) return reconstruction;
+				if (service === AgentWakeService) return wake;
+				return getService(service);
+			});
+			const sourceResolver = mock<SubAgentSourceResolver>();
+			const versionId = uuid();
+			sourceResolver.resolveForRuntime.mockResolvedValue({
+				source: {
+					sourceId: agentId,
+					versionId,
+					config: {
+						name: 'Child',
+						model: 'mock/model',
+						credential: 'credential-1',
+						instructions: 'Complete the task.',
+					},
+				},
+				toolDescriptors: {},
+				toolCodeByName: {},
+				skills: {},
+			});
+			const context = {
+				projectId,
+				parentAgentId: agentId,
+				credentialProvider: mock<CredentialProvider>(),
+				runType: 'production' as const,
+			};
+			const createMain = () => {
+				const service = new AgentBackgroundJobService(
+					jobs,
+					repository,
+					mock<ExecutionPersistence>(),
+					mock<Publisher>(),
+					mockLogger(),
+					mock<AgentsConfig>({ backgroundTasksEnabled: true }),
+					mock<AgentExecutionUpdateBroadcaster>(),
+					storage,
+				);
+				const runner = new SubAgentBackgroundRunner(
+					new SubAgentRunner(
+						sourceResolver,
+						turns,
+						storage,
+						mockLogger(),
+						new AiConfig(),
+						mock<AgentToolApprovalService>(),
+					),
+					service,
+					mockLogger(),
+					jobs,
+					workspaceService,
+				);
+				return { service, runner };
+			};
+			const main = createMain();
+			const receipt = await main.runner.spawn(
+				{
+					subAgentId: agentId,
+					source: { agentId },
+					taskName: 'Research',
+					goal: 'Complete the task.',
+					parentThreadId: parent.id,
+					parentResourceId: 'draft-chat:user-1',
+					parentSandboxPrincipalHash: principalHash,
+				},
+				{ ...context, parentWorkspaceHandle: workspace.handle },
+			);
+			if (receipt.status !== 'started') throw new Error('Expected a started child');
+			const readApproval = async () => {
+				const job = await jobs.findOneByOrFail({ id: receipt.jobId });
+				const approval = await main.service.getApproval(job);
+				if (!approval) throw new Error('Expected a pending approval');
+				return { job, approval };
+			};
+			await vi.waitFor(async () =>
+				expect(await jobs.findById(receipt.jobId)).toMatchObject({
+					status: 'suspended',
+					error: null,
+				}),
+			);
+			await vi.waitFor(() => expect(wake.requestWake).toHaveBeenCalledWith(parent.id));
+			return {
+				...main,
+				...(await readApproval()),
+				action,
+				context,
+				createMain,
+				jobs,
+				parent,
+				principalHash,
+				readApproval,
+				reconstruction,
+				sourceResolver,
+				storage,
+				versionId,
+				wake,
+				workspaceService,
+			};
+		}
+
+		it.each([true, false])(
+			'resumes the exact child after recovery with approved=%s',
+			async (approved) => {
+				const fixture = await startBackgroundChild();
+				const { job, approval, jobs, context, parent, storage } = fixture;
+				expect(fixture.action).not.toHaveBeenCalled();
+				expect(await storage.findSuspendedForThread(agentId, parent.id)).toBeNull();
+				expect(job.timeoutAt).toEqual(approval.expiresAt);
+				expect(await threadRepo.findOneByOrFail({ id: job.childThreadId! })).toMatchObject({
+					parentThreadId: parent.id,
+					parentAgentId: agentId,
+				});
+
+				// Recover the window after checkpoint persistence and before the job was parked.
+				await jobs.resumeIfSuspended(job.id, new Date(Date.now() - 1));
+				const recovered = fixture.createMain();
+				await recovered.service.reconcile();
+				const current = await fixture.readApproval();
+				expect(current.job.status).toBe('suspended');
+				expect(current.approval.token).toBe(approval.token);
+				await recovered.runner.resume(
+					current.job,
+					{ token: approval.token, resumeData: { approved } },
+					context,
+				);
+				await vi.waitFor(async () =>
+					expect(await jobs.findById(job.id)).toMatchObject({
+						status: 'completed',
+						childThreadId: job.childThreadId,
+					}),
+				);
+				expect(fixture.action).toHaveBeenCalledTimes(approved ? 1 : 0);
+				expect(fixture.workspaceService.getAgentWorkspace).toHaveBeenCalledWith(
+					projectId,
+					agentId,
+					fixture.principalHash,
+				);
+				expect(fixture.sourceResolver.resolveForRuntime).toHaveBeenLastCalledWith(
+					{ agentId, versionId: fixture.versionId },
+					{ projectId, usePublishedVersion: true },
+				);
+				const runs = await repository.findByThreadIdOrdered(job.childThreadId!);
+				expect(runs).toHaveLength(2);
+				expect(runs[1].timeline).toContainEqual(
+					expect.objectContaining({ type: 'hitl-response', response: { approved } }),
+				);
+				expect(
+					await Container.get(AgentCheckpointRepository).findByRunId(approval.runId),
+				).toMatchObject({ expired: true, state: null });
+			},
+		);
+
+		it('ignores responses, acknowledgments, and expiry checks from the previous gate', async () => {
+			const fixture = await startBackgroundChild(2);
+			const { job, approval, runner, context, jobs } = fixture;
+			const outcomes = await Promise.allSettled([
+				runner.resume(job, { token: approval.token, resumeData: { approved: true } }, context),
+				fixture
+					.createMain()
+					.runner.resume(job, { token: approval.token, resumeData: { approved: true } }, context),
+			]);
+			expect(outcomes.map(({ status }) => status).sort()).toEqual(['fulfilled', 'rejected']);
+			await vi.waitFor(async () => {
+				const current = await fixture.readApproval();
+				expect(current.job.status).toBe('suspended');
+				expect(current.approval.token).not.toBe(approval.token);
+			});
+			const next = await fixture.readApproval();
+			expect(
+				await fixture.service.settle(
+					job.id,
+					{ status: 'failed', error: 'Approval expired' },
+					{ status: 'suspended', timeoutAt: job.timeoutAt },
+				),
+			).toBe(false);
+			await jobs.markApprovalDelivered(job.id, approval.runId, approval.serializedState);
+			expect((await jobs.findById(job.id))?.notifiedAt).toBeNull();
+			await expect(
+				runner.resume(
+					next.job,
+					{ token: approval.token, resumeData: { approved: false } },
+					context,
+				),
+			).rejects.toThrow('no longer available');
+			expect(fixture.action).toHaveBeenCalledTimes(1);
+			await runner.resume(
+				next.job,
+				{ token: next.approval.token, resumeData: { approved: true } },
+				context,
+			);
+			await vi.waitFor(async () =>
+				expect(await jobs.findById(job.id)).toMatchObject({ status: 'completed' }),
+			);
+			expect(fixture.action).toHaveBeenCalledTimes(2);
+		});
+
+		it('records the decision when background resume admission fails', async () => {
+			const { job, approval, runner, service, context, jobs } = await startBackgroundChild();
+			vi.spyOn(service, 'resume').mockRejectedValueOnce(new Error('Database unavailable'));
+			await expect(
+				runner.resume(job, { token: approval.token, resumeData: { approved: true } }, context),
+			).rejects.toThrow('could not be resumed');
+			expect(await jobs.findById(job.id)).toMatchObject({ status: 'failed' });
+			const runs = await repository.findByThreadIdOrdered(job.childThreadId!);
+			expect(runs[1].timeline).toContainEqual(
+				expect.objectContaining({ type: 'hitl-response', response: { approved: true } }),
+			);
+		});
+
+		it('retries terminal child and descendant cleanup after recovery', async () => {
+			const { job, approval, service, jobs, storage, createMain } = await startBackgroundChild();
+			const childRunId = uuid();
+			await storage.getStorage(agentId).save(childRunId, {
+				...approval.checkpoint,
+				persistence: { ...approval.checkpoint.persistence!, threadId: uuid() },
+			});
+			await storage.getStorage(agentId).save(approval.runId, {
+				...approval.checkpoint,
+				pendingToolCalls: {
+					[approval.pending.toolCallId]: {
+						...approval.pending,
+						continuation: {
+							runId: childRunId,
+							toolCallId: 'nested-gate',
+							taskPath: '/root/research_0/nested_0',
+							subAgentId: INLINE_SUB_AGENT_ID,
+							childCount: 1,
+						},
+					},
+				},
+			});
+			const checkpoints = Container.get(AgentCheckpointRepository);
+			const expire = storage.delete.bind(storage);
+			let fail = true;
+			vi.spyOn(storage, 'delete').mockImplementation(async (runId, owner) => {
+				if (runId === childRunId && fail) {
+					fail = false;
+					throw new Error('Database unavailable');
+				}
+				await expire(runId, owner);
+			});
+			await service.cancel(job.parentThreadId, job.id);
+			expect(await jobs.findById(job.id)).toMatchObject({ status: 'cancelled' });
+			expect(await checkpoints.findByRunId(approval.runId)).toMatchObject({ expired: false });
+			await createMain().service.reconcile();
+			for (const runId of [approval.runId, childRunId]) {
+				expect(await checkpoints.findByRunId(runId)).toMatchObject({ expired: true, state: null });
+			}
+		});
+
+		it.each(['cancel', 'expire', 'cancel parent'] as const)(
+			'clears a pending child approval on %s',
+			async (reason) => {
+				const { job, approval, runner, service, context, jobs, action, wake } =
+					await startBackgroundChild();
+				wake.requestWake.mockClear();
+				if (reason === 'expire') {
+					await jobs.update(job.id, { timeoutAt: new Date(Date.now() - 1) });
+					await service.reconcile();
+				} else if (reason === 'cancel parent') {
+					await service.cancelForParent(agentId, job.parentThreadId, job.parentResourceId);
+				} else {
+					await service.cancel(job.parentThreadId, job.id);
+				}
+				const ended = await jobs.findOneByOrFail({ id: job.id });
+				expect(ended.status).toBe(reason === 'expire' ? 'failed' : 'cancelled');
+				if (reason === 'expire') {
+					expect(ended.error).toBe('Approval expired');
+					expect(wake.requestWake).toHaveBeenCalledWith(job.parentThreadId);
+				}
+				expect(
+					await Container.get(AgentCheckpointRepository).findByRunId(approval.runId),
+				).toMatchObject({ expired: true, state: null });
+				await expect(
+					runner.resume(job, { token: approval.token, resumeData: { approved: true } }, context),
+				).rejects.toThrow('no longer available');
+				expect(action).not.toHaveBeenCalled();
+			},
+		);
+	});
 
 	function createApprovalAgentFactory(threadId: string, ownerId?: string, approvals = 1) {
 		type ModelStreamPart = Awaited<
@@ -551,6 +919,42 @@ describe('AgentExecutionRepository', () => {
 			competing.restore();
 		}
 	}
+
+	it('clears retained delegated state with missing and cyclic references', async () => {
+		const { threadId, suspension, checkpointRepo, storage } = await startSuspendedApprovalRun();
+		const state = (await checkpointRepo.findByRunId(suspension.runId))!.state;
+		if (!state) throw new Error('Expected checkpoint state');
+		const child = { runId: uuid(), agentId, threadId: uuid() };
+		const nested = { runId: uuid(), agentId, threadId: uuid() };
+		const missing = { runId: uuid(), agentId, threadId: uuid() };
+		await checkpointRepo.update(
+			{ runId: suspension.runId },
+			{ state: checkpointStateWithChildren(state, threadId, [child]) },
+		);
+		await checkpointRepo.insert([
+			{
+				...child,
+				expired: true,
+				state: checkpointStateWithChildren(state, child.threadId, [missing, nested]),
+			},
+			{
+				...nested,
+				expired: false,
+				state: checkpointStateWithChildren(state, nested.threadId, [
+					{ runId: suspension.runId, agentId, threadId },
+				]),
+			},
+		]);
+
+		await storage.deleteDelegatedForThread(agentId, threadId);
+
+		for (const runId of [suspension.runId, child.runId, nested.runId]) {
+			expect(await checkpointRepo.findByRunId(runId)).toMatchObject({
+				expired: true,
+				state: null,
+			});
+		}
+	});
 
 	it('removes retained and delegated checkpoints without deleting child history', async () => {
 		const { threadId, suspension, checkpointRepo, storage } = await startSuspendedApprovalRun();
@@ -1032,6 +1436,8 @@ describe('AgentExecutionRepository', () => {
 				agentRepo,
 				new AiConfig(),
 				mock<AgentChatExecutionService>(),
+				mock<AgentBackgroundJobRepository>(),
+				mock<AgentBackgroundJobService>(),
 			);
 			const resume = async (
 				user: User,
@@ -1215,7 +1621,7 @@ describe('AgentExecutionRepository', () => {
 				const initialInputs = await services.messageRepository.findExecutionInputs([
 					predecessor.id,
 				]);
-				const target = { projectId, agentId, threadId, userId: owner.id };
+				const target = { projectId, agentId, threadId, userId: owner.id, kind: 'preview' as const };
 				const b = await enqueue(services, input(threadId, 'B'));
 				const c = await enqueue(services, input(threadId, 'C'));
 				const runtime = fixture.makeAgent(services.checkpointStorage.getStorage(agentId));
@@ -1291,11 +1697,72 @@ describe('AgentExecutionRepository', () => {
 			},
 		);
 
+		it('moves pending messages across multiple positions and rejects a changed order', async () => {
+			const local = recordingServices();
+			const remote = recordingServices(undefined, peer);
+			const threadId = uuid();
+			const target = { projectId, agentId, threadId, userId: owner.id, kind: 'preview' as const };
+			await enqueue(local, input(threadId, 'A', 'new'));
+			const active = await claim(local, threadId);
+			const data = input(threadId, 'B');
+			data.payload.attachments = [
+				{ id: 'file-b', fileName: 'notes.txt', mimeType: 'text/plain', sizeBytes: 3 },
+			];
+			const b = await enqueue(local, data);
+			const c = await enqueue(local, input(threadId, 'C'));
+			const d = await enqueue(local, input(threadId, 'D'));
+			const steer = await enqueue(local, input(threadId, 'Steering input'));
+			await local.queue.steer({
+				...target,
+				queueId: steer.id,
+				executionId: active.admission.executionId,
+			});
+			const original = await local.messageRepository.findOneByOrFail({ id: b.messageId });
+			const move = {
+				...target,
+				queueId: b.id,
+				targetQueueId: d.id,
+				expectedQueueIds: [b.id, c.id, d.id],
+			};
+			const results = await Promise.allSettled([
+				local.queue.reorderPending(move),
+				remote.queue.reorderPending(move),
+			]);
+			expect(results.map(({ status }) => status).sort()).toEqual(['fulfilled', 'rejected']);
+			expect((await remote.queue.listPending(target)).items.map(({ id }) => id)).toEqual([
+				steer.id,
+				c.id,
+				d.id,
+				b.id,
+			]);
+			await expect(remote.queue.reorderPending(move)).rejects.toThrow('The queue has changed');
+			await remote.queue.reorderPending({
+				...move,
+				targetQueueId: c.id,
+				expectedQueueIds: [c.id, d.id, b.id],
+			});
+			for (const queueId of [active.item.id, steer.id]) {
+				await expect(local.queue.reorderPending({ ...move, queueId })).rejects.toThrow(
+					'The queue has changed',
+				);
+			}
+			expect((await local.queue.listPending(target)).items.map(({ id }) => id)).toEqual([
+				steer.id,
+				b.id,
+				c.id,
+				d.id,
+			]);
+			expect(await local.messageRepository.findOneByOrFail({ id: b.messageId })).toEqual(original);
+			expect(await repository.findOneByOrFail({ id: active.admission.executionId })).toMatchObject({
+				status: 'running',
+			});
+		});
+
 		it('consumes reserved messages in acceptance order and retains their history after interruption', async () => {
 			const local = recordingServices();
 			const remote = recordingServices(undefined, peer);
 			const threadId = uuid();
-			const target = { projectId, agentId, threadId, userId: owner.id };
+			const target = { projectId, agentId, threadId, userId: owner.id, kind: 'preview' as const };
 			await enqueue(local, input(threadId, 'A', 'new'));
 			const active = await claim(local, threadId);
 			const executionId = active.admission.executionId;
@@ -1430,7 +1897,7 @@ describe('AgentExecutionRepository', () => {
 		it('rolls back messages and timeline markers if consumption fails', async () => {
 			const services = recordingServices();
 			const threadId = uuid();
-			const target = { projectId, agentId, threadId, userId: owner.id };
+			const target = { projectId, agentId, threadId, userId: owner.id, kind: 'preview' as const };
 			await enqueue(services, input(threadId, 'A', 'new'));
 			const active = await claim(services, threadId);
 			const executionId = active.admission.executionId;
@@ -1484,7 +1951,7 @@ describe('AgentExecutionRepository', () => {
 				const local = recordingServices();
 				const remote = recordingServices(undefined, peer);
 				const threadId = uuid();
-				const target = { projectId, agentId, threadId, userId: owner.id };
+				const target = { projectId, agentId, threadId, userId: owner.id, kind: 'preview' as const };
 				await enqueue(local, input(threadId, 'A', 'new'));
 				const active = await claim(local, threadId);
 				const executionId = active.admission.executionId;
@@ -1581,6 +2048,7 @@ describe('AgentExecutionRepository', () => {
 					agentId,
 					threadId,
 					userId: owner.id,
+					kind: 'preview' as const,
 					queueId: c.id,
 					executionId,
 				};
@@ -1775,10 +2243,59 @@ describe('AgentExecutionRepository', () => {
 			},
 		);
 
+		it('identifies a session from its queued first message before any execution exists', async () => {
+			const services = recordingServices(Container.get(N8nMemory).getImplementation(agentId));
+			const threadId = uuid();
+			const pending = await enqueue(services, {
+				...input(threadId, 'hello', 'new'),
+				source: 'n8n_chat_production',
+				payload: {
+					kind: 'n8n_chat',
+					message: 'hello',
+					userId: owner.id,
+					resourceId: `n8n-chat-production:${owner.id}`,
+				},
+			});
+			expect((await repository.findFirstSourceByThreadIds([threadId])).get(threadId)).toBe(
+				'n8n_chat_production',
+			);
+			const target = { projectId, agentId, threadId, userId: owner.id, kind: 'preview' as const };
+			expect(
+				(await services.queue.listPending({ ...target, kind: 'n8n_chat' })).items.map(
+					({ id }) => id,
+				),
+			).toEqual([pending.id]);
+			await expect(services.queue.listPending({ ...target, kind: 'preview' })).rejects.toThrow(
+				'Session not found',
+			);
+
+			// Removing the only input leaves a session without a source. Its owner keeps access.
+			await services.queue.removePending({ ...target, kind: 'n8n_chat', queueId: pending.id });
+			expect(
+				await services.executionService.canUseProductionChatThread(
+					threadId,
+					projectId,
+					agentId,
+					owner.id,
+					'existing',
+				),
+			).toBe(true);
+			expect(await services.queue.listPending({ ...target, kind: 'n8n_chat' })).toEqual({
+				items: [],
+				steerableExecutionId: null,
+			});
+			expect(
+				await services.executionService.canUseDraftThread(threadId, projectId, agentId, owner.id, {
+					previewChat: true,
+					sessionMode: 'existing',
+				}),
+			).toBe(false);
+		});
+
 		it('lists only pending Preview input and removes its attachments without affecting the active run', async () => {
 			const services = recordingServices(Container.get(N8nMemory).getImplementation(agentId));
 			const threadId = uuid();
-			const target = { projectId, agentId, threadId, userId: owner.id };
+			const target = { projectId, agentId, threadId, userId: owner.id, kind: 'preview' as const };
 			await enqueue(services, input(threadId, 'active', 'new'));
 			const active = await claim(services, threadId);
 			const pendingInput = input(threadId, 'pending', 'existing', uuid());
@@ -1850,6 +2367,7 @@ describe('AgentExecutionRepository', () => {
 				agentId,
 				threadId,
 				userId: owner.id,
+				kind: 'preview' as const,
 				queueId: first.id,
 				message: 'updated',
 			};
@@ -1916,7 +2434,14 @@ describe('AgentExecutionRepository', () => {
 				const remote = recordingServices(undefined, peer);
 				const threadId = uuid();
 				const item = await enqueue(local, input(threadId, 'first', 'new'));
-				const target = { projectId, agentId, threadId, userId: owner.id, queueId: item.id };
+				const target = {
+					projectId,
+					agentId,
+					threadId,
+					userId: owner.id,
+					queueId: item.id,
+					kind: 'preview' as const,
+				};
 				const acquired = createDeferredPromise();
 				const release = createDeferredPromise();
 				const lock = local.threads.lockById.bind(local.threads);
