@@ -1,5 +1,6 @@
 import { mock } from 'vitest-mock-extended';
 
+import { LeaseLostError } from '../../errors';
 import type { ClaimedTask } from '../../types';
 import { backoff } from '../backoff';
 import { Executor } from '../executor';
@@ -49,6 +50,8 @@ const setup = (options?: Partial<ExecutorOptions>) => {
 		onFire: vi.fn(),
 		onRetry: vi.fn(),
 		onLeaseLost: vi.fn(),
+		onLeaseRenewal: vi.fn(),
+		onLeaseRenewalError: vi.fn(),
 	} satisfies ExecutorHooks;
 	// A see-through tracing hook that records its calls and just runs the fire.
 	// The executor's only obligation is to route every fire through this hook;
@@ -228,7 +231,7 @@ describe('Executor.fire', () => {
 		const result = await executor.fire(HOST, task);
 
 		expect(result).toEqual({ outcome: 'completed' });
-		expect(handler.execute).toHaveBeenCalledWith(task, expect.any(Object));
+		expect(handler.execute).toHaveBeenCalledWith(task, expect.any(Object), expect.any(AbortSignal));
 		expect(store.completeTask).toHaveBeenCalledWith({
 			host: HOST,
 			id: task.id,
@@ -759,6 +762,146 @@ describe('Executor.fire metrics hooks', () => {
 		});
 
 		await expect(executor.fire(HOST, claimedTask())).resolves.toEqual({ outcome: 'completed' });
+	});
+});
+
+describe('Executor.fire lease renewal', () => {
+	// A 15s lease renews every 5 seconds, the shortest interval.
+	const LEASE_SECONDS = 15;
+	const RENEWAL_INTERVAL_MS = 5_000;
+
+	beforeEach(() => {
+		vi.useFakeTimers();
+	});
+
+	afterEach(() => {
+		vi.useRealTimers();
+	});
+
+	/** A handler that stays pending until `finish` is called, and exposes the signal it got. */
+	const longRunning = () => {
+		let finish!: () => void;
+		let signal!: AbortSignal;
+		const handler: TaskHandler = {
+			execute: vi.fn(async (_task: ClaimedTask, report: DispatchReporter, s: AbortSignal) => {
+				signal = s;
+				await new Promise<void>((resolve) => {
+					finish = resolve;
+					s.addEventListener('abort', () => resolve());
+				});
+				if (s.aborted) {
+					throw s.reason;
+				}
+				return report.notDispatched();
+			}),
+		};
+		return { handler, finish: () => finish(), signal: () => signal };
+	};
+
+	it('renews the lease while the handler runs, and stops once it settles', async () => {
+		const { store, registry, hooks, executor } = setup({ leaseSeconds: LEASE_SECONDS });
+		const { handler, finish } = longRunning();
+		registry.resolve.mockReturnValue(handler);
+		store.beginDispatch.mockResolvedValue(1);
+		store.renewLease.mockResolvedValue(true);
+		store.completeTask.mockResolvedValue(1);
+		const task = claimedTask();
+
+		const firing = executor.fire(HOST, task);
+		await vi.advanceTimersByTimeAsync(2 * RENEWAL_INTERVAL_MS);
+
+		expect(store.renewLease).toHaveBeenCalledTimes(2);
+		expect(store.renewLease).toHaveBeenCalledWith(
+			{ host: HOST, id: task.id, claimedEpoch: task.leaseEpoch },
+			LEASE_SECONDS * 1_000,
+		);
+		expect(hooks.onLeaseRenewal).toHaveBeenCalledWith(task, 'renewed');
+
+		finish();
+		await expect(firing).resolves.toEqual({ outcome: 'completed' });
+		await vi.advanceTimersByTimeAsync(3 * RENEWAL_INTERVAL_MS);
+		expect(store.renewLease).toHaveBeenCalledTimes(2);
+	});
+
+	it('aborts the handler signal with a LeaseLostError when a renewal finds the claim gone', async () => {
+		const { store, registry, hooks, executor } = setup({ leaseSeconds: LEASE_SECONDS });
+		const { handler, signal } = longRunning();
+		registry.resolve.mockReturnValue(handler);
+		store.beginDispatch.mockResolvedValue(1);
+		store.renewLease.mockResolvedValue(false);
+		store.rescheduleTask.mockResolvedValue(0);
+		const task = claimedTask({ maxAttempts: 3 });
+
+		const firing = executor.fire(HOST, task);
+		await vi.advanceTimersByTimeAsync(RENEWAL_INTERVAL_MS);
+
+		expect(signal().reason).toBeInstanceOf(LeaseLostError);
+		expect(hooks.onLeaseRenewal).toHaveBeenCalledWith(task, 'lost');
+		// The reclaimed row rejects the handler's late outcome.
+		await expect(firing).resolves.toMatchObject({ outcome: 'skipped-not-owned' });
+		expect(hooks.onLeaseLost).toHaveBeenCalledWith(task.taskType);
+	});
+
+	it('aborts the handler signal once renewals fail for a whole lease', async () => {
+		const { store, registry, hooks, executor } = setup({ leaseSeconds: LEASE_SECONDS });
+		const { handler, signal } = longRunning();
+		registry.resolve.mockReturnValue(handler);
+		store.beginDispatch.mockResolvedValue(1);
+		store.renewLease.mockRejectedValue(new Error('db down'));
+		store.rescheduleTask.mockResolvedValue(0);
+		const task = claimedTask({ maxAttempts: 3 });
+
+		const firing = executor.fire(HOST, task);
+		await vi.advanceTimersByTimeAsync(LEASE_SECONDS * 1_000);
+
+		// The reaper of another instance may reclaim the expired lease and run it again.
+		expect(signal().reason).toBeInstanceOf(LeaseLostError);
+		expect(hooks.onLeaseRenewal).toHaveBeenCalledWith(task, 'expired');
+		await expect(firing).resolves.toMatchObject({ outcome: 'skipped-not-owned' });
+	});
+
+	// The row can still be ours, so count the attempt as the reaper would for an expired lease.
+	it.each([
+		{ maxAttempts: 3, outcome: 'rescheduled' },
+		{ maxAttempts: 1, outcome: 'dead-lettered' },
+	])(
+		'counts an attempt for a run aborted while it still owns the row (maxAttempts $maxAttempts)',
+		async ({ maxAttempts, outcome }) => {
+			const { store, registry, executor } = setup({ leaseSeconds: LEASE_SECONDS });
+			const { handler } = longRunning();
+			registry.resolve.mockReturnValue(handler);
+			store.beginDispatch.mockResolvedValue(1);
+			store.renewLease.mockRejectedValue(new Error('db down'));
+			store.rescheduleTask.mockResolvedValue(1);
+			store.failTaskTerminal.mockResolvedValue(1);
+			const task = claimedTask({ maxAttempts });
+
+			const firing = executor.fire(HOST, task);
+			await vi.advanceTimersByTimeAsync(LEASE_SECONDS * 1_000);
+
+			await expect(firing).resolves.toMatchObject({ outcome });
+			expect(store.releaseClaim).not.toHaveBeenCalled();
+		},
+	);
+
+	it('reports a failed renewal without aborting the handler', async () => {
+		const { store, registry, hooks, executor } = setup({ leaseSeconds: LEASE_SECONDS });
+		const { handler, finish, signal } = longRunning();
+		const failure = new Error('db down');
+		registry.resolve.mockReturnValue(handler);
+		store.beginDispatch.mockResolvedValue(1);
+		store.renewLease.mockRejectedValue(failure);
+		store.completeTask.mockResolvedValue(1);
+		const task = claimedTask();
+
+		const firing = executor.fire(HOST, task);
+		await vi.advanceTimersByTimeAsync(RENEWAL_INTERVAL_MS);
+
+		expect(hooks.onLeaseRenewalError).toHaveBeenCalledWith(task, failure);
+		expect(signal().aborted).toBe(false);
+
+		finish();
+		await expect(firing).resolves.toEqual({ outcome: 'completed' });
 	});
 });
 

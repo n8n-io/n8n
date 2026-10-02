@@ -2,16 +2,25 @@ import { Time } from '@n8n/constants';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 
 import { backoff } from './backoff';
+import { LeaseLostError } from '../errors';
+import { LeaseHeartbeat } from './lease-heartbeat';
+import type { LeaseRenewalResult } from './lease-heartbeat';
 import { DEFAULT_EXECUTOR_OPTIONS, type ExecutorOptions } from './options';
 import type { PrecisionTimer } from './precision-timer';
 import type { ClaimedTaskRef, ClaimDueTasksBatch, ExecutorTaskStore } from './store';
 import { createDispatchReporter } from './task-handler';
-import type { TaskHandlerRegistry } from './task-handler';
+import type { DispatchReporter, TaskHandler, TaskHandlerRegistry } from './task-handler';
 import { noopExecutorTracing } from './tracing';
 import type { ExecutorTracing, FireResult } from './tracing';
 import type { ClaimedTask } from '../types';
 
 type ClaimedEntry = { host: string; task: ClaimedTask };
+
+type HeartbeatRun = {
+	claim: ClaimedTaskRef;
+	/** `performance.now()` just before the write that last set the lease. */
+	leaseSetAt: number;
+};
 
 /**
  * Observability callbacks for the executor's non-fatal incidents. Every one is
@@ -41,6 +50,9 @@ export interface ExecutorHooks {
 	/** A best-effort claim release failed; the reaper still recovers the row. */
 	onReleaseError?: (taskId: string, error: unknown) => void;
 
+	/** A lease renewal write failed; the next renewal tries again. */
+	onLeaseRenewalError?: (task: ClaimedTask, error: unknown) => void;
+
 	// Fire-path metrics hooks (the normal path), distinct from the incident hooks above.
 
 	/** A claimed task was dispatched to its handler; `lagSeconds` is fire time minus its effective `runAt` (clamped >= 0). */
@@ -56,6 +68,12 @@ export interface ExecutorHooks {
 	 * overlap, surfaced so it can be counted.
 	 */
 	onLeaseLost?: (taskType: string) => void;
+	/**
+	 * A running handler's lease was renewed, a renewal found its claim gone
+	 * ('lost'), or no renewal succeeded for a whole lease ('expired').
+	 * Both of the latter abort the handler's signal.
+	 */
+	onLeaseRenewal?: (task: ClaimedTask, result: LeaseRenewalResult) => void;
 }
 
 /**
@@ -65,7 +83,8 @@ export interface ExecutorHooks {
  * handler the executor takes a pre-dispatch mutex ({@link ExecutorTaskStore.beginDispatch}):
  * an atomic compare-and-set that stamps `startedAt` and returns 1 for a single
  * winner, so the handler runs at most once per lease. That same write refreshes the
- * lease, giving the handler a full lease for its execution window.
+ * lease, and a heartbeat renews it while the handler runs, so a long handler keeps
+ * its claim for as long as its instance is alive.
  *
  * The contract is at-least-once. Ownership only lasts as long as the lease: if an
  * owner is lost past it (crash or partition), the reaper reclaims the row, clears
@@ -235,6 +254,7 @@ export class Executor {
 		// => the row is gone, was reclaimed (epoch bumped), or was already dispatched on
 		// this lease; in every case don't run the handler. This compare-and-set, not the
 		// later marker, is what keeps the executor from calling a handler twice per lease.
+		const leaseSetAt = performance.now();
 		const won = await this.store.beginDispatch(claim, this.leaseMs);
 		if (won === 0) {
 			return { outcome: 'skipped-not-owned' };
@@ -271,7 +291,10 @@ export class Executor {
 		// handler failure. Such a failure propagates out (caught by the detached `.catch`
 		// in claimAndSchedule) and leaves the row `running` for the reaper.
 		try {
-			await handler.execute(task, report);
+			await this.executeWithHeartbeat(handler, task, report, {
+				claim,
+				leaseSetAt,
+			});
 		} catch (error) {
 			await dispatchMark;
 			return await this.recordHandlerFailure(task, claim, error, dispatchMark !== undefined);
@@ -330,6 +353,37 @@ export class Executor {
 		}
 		this.hooks.onLeaseLost?.(task.taskType);
 		return { outcome: 'skipped-not-owned', errorMessage };
+	}
+
+	/**
+	 * Run the handler while a heartbeat renews the claim's lease, until it settles.
+	 * A lost claim aborts the handler's signal.
+	 */
+	private async executeWithHeartbeat(
+		handler: TaskHandler,
+		task: ClaimedTask,
+		report: DispatchReporter,
+		{ claim, leaseSetAt }: HeartbeatRun,
+	): Promise<void> {
+		const lease = new AbortController();
+		const heartbeat = new LeaseHeartbeat(
+			async () => await this.store.renewLease(claim, this.leaseMs),
+			{ leaseDurationMs: this.leaseMs, leaseSetAt },
+			{
+				onRenewal: (result) => {
+					this.hooks.onLeaseRenewal?.(task, result);
+					if (result !== 'renewed') {
+						lease.abort(new LeaseLostError());
+					}
+				},
+				onRenewalError: (error) => this.hooks.onLeaseRenewalError?.(task, error),
+			},
+		);
+		try {
+			await handler.execute(task, report, lease.signal);
+		} finally {
+			heartbeat.stop();
+		}
 	}
 
 	/** Release a claim, reporting but swallowing failures: the reaper still recovers the row. */
