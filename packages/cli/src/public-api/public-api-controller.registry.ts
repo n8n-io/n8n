@@ -4,7 +4,12 @@ import type { BooleanLicenseFeature } from '@n8n/constants';
 import { UNLIMITED_LICENSE_QUOTA } from '@n8n/constants';
 import type { AuthenticatedRequest } from '@n8n/db';
 import { ControllerRegistryMetadata } from '@n8n/decorators';
-import type { AccessScope, ApiKeyScopeRequirement, Controller } from '@n8n/decorators';
+import type {
+	AccessScope,
+	ApiKeyScopeRequirement,
+	Controller,
+	RequestBodyMedia,
+} from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import type { Request, RequestHandler, Response, Router } from 'express';
 import { Router as createRouter } from 'express';
@@ -12,8 +17,10 @@ import { z } from 'zod';
 import type { ZodTypeAny } from 'zod';
 
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
-import { BadRequestError } from '@n8n/errors';
+import { BadRequestError, UnsupportedMediaTypeError } from '@n8n/errors';
 import { License } from '@/license';
+import { assertContentType } from '@/public-api/media-types/content-type';
+import type { RequestBodyHandler } from '@/public-api/media-types/request-body';
 import {
 	JSON_REQUEST_BODY_MEDIA,
 	requestBodyHandlerFor,
@@ -164,9 +171,9 @@ export class PublicApiControllerRegistry {
 				middlewares.push(this.createUserQuotaMiddleware());
 			}
 
-			// After every access gate, the body is pared and validated.
+			// After every access gate, the body's Content-Type is checked and then parsed.
 			if (bodyHandler) {
-				middlewares.push(bodyHandler.createMiddleware(bodyMedia, bodyRequired));
+				middlewares.push(this.createBodyMiddleware(bodyMedia, bodyRequired, bodyHandler));
 			}
 
 			middlewares.push(...controllerMiddlewares, ...(route.middlewares ?? []));
@@ -245,6 +252,49 @@ export class PublicApiControllerRegistry {
 		return (_req, res, next) => {
 			if (Container.get(LicenseState).getMaxUsers() !== UNLIMITED_LICENSE_QUOTA) {
 				res.status(403).json({ message: USER_QUOTA_FORBIDDEN_MESSAGE });
+				return;
+			}
+
+			next();
+		};
+	}
+
+	/**
+	 * Checks the request's `Content-Type` against the route's `@Body` media type, shared by every
+	 * handler so none of them has to check it themselves. Skips `handler.parseBody` (and calls
+	 * `next()` right away) when the body is optional and absent, or when the handler has nothing
+	 * left to parse (e.g. JSON, whose body the app-wide `bodyParser` already parsed upstream).
+	 */
+	private createBodyMiddleware(
+		media: RequestBodyMedia,
+		bodyRequired: boolean,
+		handler: RequestBodyHandler,
+	): RequestHandler {
+		return async (req, res, next) => {
+			let matched: boolean;
+			try {
+				matched = assertContentType({
+					header: req.headers['content-type'],
+					expected: media.mediaType,
+					bodyRequired,
+				});
+			} catch (error) {
+				sendPublicApiErrorResponse(
+					res,
+					error instanceof UnsupportedMediaTypeError ? error : new Error(String(error)),
+				);
+				return;
+			}
+
+			if (!matched || !handler.parseBody) {
+				next();
+				return;
+			}
+
+			try {
+				await handler.parseBody(media, req, res);
+			} catch (error) {
+				sendPublicApiErrorResponse(res, error instanceof Error ? error : new Error(String(error)));
 				return;
 			}
 

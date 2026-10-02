@@ -1,5 +1,5 @@
 import type { RequestBodyMedia, RequestBodyMediaType } from '@n8n/decorators';
-import type { Request, RequestHandler } from 'express';
+import type { Request, Response } from 'express';
 import type { ZodError } from 'zod';
 
 export interface RequestBodyHandler {
@@ -10,11 +10,13 @@ export interface RequestBodyHandler {
 	/** Whether `/discover` shows a request schema for a route declaring this media type. */
 	readonly discoverable: boolean;
 	/**
-	 * Builds the middleware that checks `Content-Type` and parses the body into whatever shape
-	 * `readInput` later reads back. The registry runs it after the auth/scope/license/quota gates and
-	 * before controller and route middlewares.
+	 * Parses the body into whatever shape `readInput` later reads back. The registry calls this
+	 * only after it has already confirmed the request's `Content-Type` matches `mediaType` - and
+	 * skips it entirely when the body is optional and absent - so this never needs to check
+	 * `Content-Type` itself. Omit it when matching `Content-Type` is the only work needed, e.g.
+	 * JSON, whose body the app-wide `bodyParser` already parsed upstream of the registry.
 	 */
-	createMiddleware(media: RequestBodyMedia, bodyRequired: boolean): RequestHandler;
+	parseBody?(media: RequestBodyMedia, req: Request, res: Response): Promise<void>;
 	/** The value the route's `@Body` DTO validates. */
 	readInput(req: Request): unknown;
 	/** The public message for a value that failed the `@Body` DTO's `.safeParse()`. */

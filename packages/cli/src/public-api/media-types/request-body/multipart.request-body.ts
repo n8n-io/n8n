@@ -1,11 +1,9 @@
-import { UnexpectedError, UnsupportedMediaTypeError } from '@n8n/errors';
+import { UnexpectedError } from '@n8n/errors';
 import type { Request } from 'express';
 import type { ZodError } from 'zod';
 
 import { formatValidationError } from '@/public-api/public-api-validation-error';
-import { sendPublicApiErrorResponse } from '@/public-api/v1/public-api-error-response';
 
-import { assertContentType } from '../content-type';
 import { toPublicApiError } from './multipart-errors';
 import { loadMultipartParser } from './multipart-parser';
 import type { RequestBodyHandler } from './types';
@@ -56,51 +54,24 @@ export const multipartRequestBody: RequestBodyHandler = {
 	errorStatuses: [413, 415, 500],
 	discoverable: false,
 
-	createMiddleware(media, bodyRequired) {
-		// Early throw if media type does not match this handler
+	async parseBody(media, req, res) {
 		if (media.mediaType !== 'multipart/form-data') {
 			throw new UnexpectedError(
-				'multipartRequestBody.createMiddleware called with a non-multipart media type',
+				'multipartRequestBody.parseBody called with a non-multipart media type',
 			);
 		}
 
-		return async (req, res, next) => {
-			let matched: boolean;
-			try {
-				matched = assertContentType({
-					header: req.headers['content-type'],
-					expected: 'multipart/form-data',
-					bodyRequired,
-				});
-			} catch (error) {
-				sendPublicApiErrorResponse(
-					res,
-					error instanceof UnsupportedMediaTypeError ? error : new Error(String(error)),
-				);
-				return;
-			}
+		const parse = await loadMultipartParser(media.uploadLimits());
 
-			if (!matched) {
-				next();
-				return;
-			}
-
-			let parse;
-			try {
-				parse = await loadMultipartParser(media.uploadLimits());
-			} catch (error) {
-				sendPublicApiErrorResponse(res, error instanceof Error ? error : new Error(String(error)));
-				return;
-			}
-
-			void parse(req, res, (error: unknown) => {
+		await new Promise<void>((resolve, reject) => {
+			void parse(req, res, (error?: unknown) => {
 				if (error) {
-					sendPublicApiErrorResponse(res, toPublicApiError(error));
+					reject(toPublicApiError(error));
 					return;
 				}
-				next();
+				resolve();
 			});
-		};
+		});
 	},
 
 	readInput(req) {
