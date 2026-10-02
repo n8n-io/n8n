@@ -1,0 +1,20 @@
+packages/cli/src/services/__tests__/public-api-key.service.integration.test.ts
+  s_dcb6bd65424655::t_8bb8a010ea036b 78,80,87,164,169
+  ai_agent 4-8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "366cdc5b92be384c25ba3c647b1480451d8de51a",
+  "prompts": {},
+  "sessions": {
+    "s_dcb6bd65424655": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "69ce718b-17f3-42de-9a05-27fd10459d9c",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Uddish Verma <uddish.verma@n8n.io>"
+    }
+  }
+}
