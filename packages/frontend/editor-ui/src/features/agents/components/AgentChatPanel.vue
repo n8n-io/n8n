@@ -74,7 +74,6 @@ const props = withDefaults(
 		beforeSend?: () => Promise<void> | void;
 		inputDraft?: string;
 		backgroundJobsActive?: boolean;
-		stubQueue?: boolean;
 	}>(),
 	{
 		visible: true,
@@ -87,7 +86,6 @@ const props = withDefaults(
 		beforeSend: undefined,
 		inputDraft: undefined,
 		backgroundJobsActive: false,
-		stubQueue: false,
 	},
 );
 
@@ -110,12 +108,12 @@ const toast = useToast();
 
 const {
 	messages,
-	queuedMessages: liveQueuedMessages,
+	queuedMessages,
 	removingQueueIds,
 	steeringQueueIds,
 	canSteer,
 	steerQueuedMessage,
-	removeQueuedMessage: removeLiveQueuedMessage,
+	removeQueuedMessage,
 	reorderQueuedMessage,
 	isReorderingQueue,
 	isSubmitting,
@@ -147,53 +145,15 @@ const {
 	onSessionCreated: (sessionId) => emit('session-created', sessionId),
 });
 
-const stubAttachmentFiles = [
-	new File(['Sample attachment'], 'project-brief.txt', { type: 'text/plain' }),
-	new File(['Sample attachment'], 'requirements.md', { type: 'text/markdown' }),
-];
-const stubQueueFiles = new Map<string, File[]>([['preview-stub-1', stubAttachmentFiles]]);
-const stubQueuedMessages = ref<AgentChatQueueItem[]>(
-	Array.from({ length: 5 }, (_, index) => ({
-		id: `preview-stub-${index + 1}`,
-		message: `Sample queued message ${index + 1}`,
-		attachments:
-			index === 0
-				? stubAttachmentFiles.map((file, fileIndex) => ({
-						id: `preview-stub-attachment-${fileIndex + 1}`,
-						fileName: file.name,
-						mimeType: file.type,
-						sizeBytes: file.size,
-					}))
-				: undefined,
-		createdAt: new Date().toISOString(),
-		steeringExecutionId: index === 2 ? 'preview-stub-running' : null,
-	})),
-);
-const queuedMessages = computed(() =>
-	props.stubQueue ? stubQueuedMessages.value : liveQueuedMessages.value,
-);
-
-/** Remove this stub wrapper when the sample queue is no longer needed. */
-async function removeQueuedMessageWithStub(id: string): Promise<'removed' | 'failed'> {
-	if (!props.stubQueue) return await removeLiveQueuedMessage(id);
-	const item = stubQueuedMessages.value.find((entry) => entry.id === id);
-	if (!item || item.steeringExecutionId) return 'failed';
-	stubQueuedMessages.value = stubQueuedMessages.value.filter((entry) => entry.id !== id);
-	stubQueueFiles.delete(id);
-	return 'removed';
-}
-
 const editingQueueId = ref<string>();
 const queueRows = queuedMessages;
 const messageQueue = useTemplateRef<InstanceType<typeof ChatMessageQueue>>('messageQueue');
 const queueExpanded = ref(false);
 const queueOrder = shallowRef<AgentChatQueueItem[]>();
 const displayedQueueRows = computed(() => queueOrder.value ?? queueRows.value);
-const visibleQueueRows = computed(() =>
-	queueExpanded.value ? displayedQueueRows.value : displayedQueueRows.value.slice(0, 2),
-);
 async function startQueueEdit(item: AgentChatQueueItem) {
 	if (hasDraft.value || isQueueItemBusy(item) || isSubmissionBlocked.value) return;
+	queueExpanded.value = true;
 	const target = {
 		projectId: props.projectId,
 		agentId: props.agentId,
@@ -210,20 +170,18 @@ async function startQueueEdit(item: AgentChatQueueItem) {
 	editingQueueId.value = item.id;
 	try {
 		/** Load attachments before removal so a failed download leaves the message queued. */
-		const files = props.stubQueue
-			? [...(stubQueueFiles.get(item.id) ?? [])]
-			: await Promise.all(
-					(item.attachments ?? []).map(async (attachment) => {
-						const url = `${rootStore.restApiContext.baseUrl}/projects/${encodeURIComponent(target.projectId)}/agents/v2/${encodeURIComponent(target.agentId)}/chat/attachments/${encodeURIComponent(attachment.id)}`;
-						const response = await fetch(url, { credentials: 'include' });
-						if (!response.ok) throw new Error(`Attachment download failed: ${response.status}`);
-						return new File([await response.blob()], attachment.fileName, {
-							type: attachment.mimeType,
-						});
-					}),
-				);
+		const files = await Promise.all(
+			(item.attachments ?? []).map(async (attachment) => {
+				const url = `${rootStore.restApiContext.baseUrl}/projects/${encodeURIComponent(target.projectId)}/agents/v2/${encodeURIComponent(target.agentId)}/chat/attachments/${encodeURIComponent(attachment.id)}`;
+				const response = await fetch(url, { credentials: 'include' });
+				if (!response.ok) throw new Error(`Attachment download failed: ${response.status}`);
+				return new File([await response.blob()], attachment.fileName, {
+					type: attachment.mimeType,
+				});
+			}),
+		);
 		if (!isCurrentTarget() || hasDraft.value) return;
-		const result = await removeQueuedMessageWithStub(item.id);
+		const result = await removeQueuedMessage(item.id);
 		if (result !== 'removed' || !isCurrentTarget()) return;
 		inputText.value = item.message;
 		attachedFiles.value = files;
@@ -731,34 +689,11 @@ function consumeQueuedExternalMessage(message: string) {
 	emit('initial-consumed');
 }
 
-/** Remove this stub when the sample queue is no longer needed. */
-function sendQueuedMessageStub(text: string, files: File[]): SubmitResult {
-	const id = `preview-stub-${crypto.randomUUID()}`;
-	stubQueueFiles.set(id, files);
-	stubQueuedMessages.value.push({
-		id,
-		message: text,
-		attachments: files.map((file) => ({
-			id: crypto.randomUUID(),
-			fileName: file.name,
-			mimeType: file.type,
-			sizeBytes: file.size,
-		})),
-		createdAt: new Date().toISOString(),
-		steeringExecutionId: null,
-	});
-	inputText.value = '';
-	attachedFiles.value = [];
-	consumeQueuedExternalMessage(text);
-	return 'sent';
-}
-
 async function onSubmit(): Promise<SubmitResult> {
 	const text = inputText.value.trim();
 	const files = [...attachedFiles.value];
 	if (!text && files.length === 0) return 'rejected';
 	if (isSubmissionBlocked.value) return 'busy';
-	if (props.stubQueue) return sendQueuedMessageStub(text, files);
 	const target = {
 		projectId: props.projectId,
 		agentId: props.agentId,
@@ -804,6 +739,7 @@ async function onSubmit(): Promise<SubmitResult> {
 			});
 			if (inputText.value.trim() === text) inputText.value = '';
 			attachedFiles.value = attachedFiles.value.filter((file) => !files.includes(file));
+			queueExpanded.value = false;
 			consumeQueuedExternalMessage(text);
 		});
 		isPreparingToSend.value = false;
@@ -1060,9 +996,7 @@ onBeforeUnmount(() => {
 					<ChatMessageQueue
 						v-if="displayedQueueRows.length"
 						ref="messageQueue"
-						:items="queuedMessages"
 						:displayed-items="displayedQueueRows"
-						:visible-items="visibleQueueRows"
 						:expanded="queueExpanded"
 						:is-reordering="isReorderingQueue"
 						:can-edit="!hasDraft && !isSubmissionBlocked"
@@ -1073,9 +1007,10 @@ onBeforeUnmount(() => {
 						@update:expanded="queueExpanded = $event"
 						@drag-start="startQueueDrag"
 						@drag-end="endQueueDrag"
+						@move="moveQueueItem(queueRows, $event.from, $event.to)"
 						@steer="steerQueuedMessage"
 						@edit="startQueueEdit"
-						@remove="removeQueuedMessageWithStub"
+						@remove="removeQueuedMessage"
 					/>
 				</template>
 				<template v-if="attachedFiles.length > 0" #attachments>

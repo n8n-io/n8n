@@ -43,9 +43,8 @@ const items: AgentChatQueueItem[] = [
 
 function mountQueue(
 	overrides: Partial<{
-		items: AgentChatQueueItem[];
 		displayedItems: AgentChatQueueItem[];
-		visibleItems: AgentChatQueueItem[];
+
 		expanded: boolean;
 		isReordering: boolean;
 		canEdit: boolean;
@@ -56,9 +55,8 @@ function mountQueue(
 ) {
 	return mount(ChatMessageQueue, {
 		props: {
-			items,
 			displayedItems: items,
-			visibleItems: items.slice(0, 2),
+
 			expanded: false,
 			isReordering: false,
 			canEdit: true,
@@ -93,13 +91,30 @@ describe('ChatMessageQueue', () => {
 
 	it('uses a static queue icon when only one item is displayed', () => {
 		const wrapper = mountQueue({
-			items: [items[0]],
 			displayedItems: [items[0]],
-			visibleItems: [items[0]],
 		});
 
 		expect(wrapper.find('button[aria-expanded]').exists()).toBe(false);
 		expect(wrapper.find('[data-testid="agent-queue-drag-handle"]').exists()).toBe(false);
+	});
+
+	it.each([
+		{ key: 'ArrowUp', to: 0 },
+		{ key: 'ArrowDown', to: 2 },
+	])('requests a keyboard move with $key', async ({ key, to }) => {
+		const wrapper = mountQueue({ expanded: true });
+		await wrapper
+			.get('[data-queue-id="2"] [data-testid="agent-queue-drag-handle"]')
+			.trigger('keydown', { key });
+		expect(wrapper.emitted('move')).toEqual([[{ from: 1, to }]]);
+	});
+
+	it('ignores keyboard moves while saving the queue order', async () => {
+		const wrapper = mountQueue({ expanded: true, isReordering: true });
+		await wrapper
+			.get('[data-testid="agent-queue-drag-handle"]')
+			.trigger('keydown', { key: 'ArrowDown' });
+		expect(wrapper.emitted('move')).toBeUndefined();
 	});
 
 	it('forwards drag lifecycle events', async () => {
@@ -130,9 +145,8 @@ describe('ChatMessageQueue', () => {
 	it('disables actions and dragging for a busy item', () => {
 		const busyItem = { ...items[0], steeringExecutionId: 'execution-1' };
 		const wrapper = mountQueue({
-			items: [busyItem, items[1]],
 			displayedItems: [busyItem, items[1]],
-			visibleItems: [busyItem, items[1]],
+
 			canDragQueueItem: (index) => index !== 0,
 			isQueueItemBusy: (item) => item.id === busyItem.id,
 		});

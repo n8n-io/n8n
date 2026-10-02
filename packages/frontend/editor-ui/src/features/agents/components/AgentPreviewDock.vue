@@ -302,7 +302,6 @@ useKeybindings({
 				:can-send-to-assistant="props.canSendToAssistant"
 				:dismissed-fix-tool-call-ids="props.dismissedFixToolCallIds"
 				:before-send="props.beforeSend"
-				:stub-queue="true"
 				@continue-loaded="emit('continue-loaded', $event)"
 				@session-created="emit('session-created', $event)"
 				@open-build="emit('open-build')"

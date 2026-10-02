@@ -25,7 +25,6 @@ const props = withDefaults(
 		canSendToAssistant?: boolean;
 		dismissedFixToolCallIds?: string[];
 		beforeSend?: () => Promise<void> | void;
-		stubQueue?: boolean;
 		layout?: 'page' | 'dock';
 	}>(),
 	{ visible: true, newSession: false, layout: 'dock', dismissedFixToolCallIds: () => [] },
@@ -87,7 +86,6 @@ defineExpose({ focusInput, getConversationMarkdown });
 				:can-send-to-assistant="canSendToAssistant"
 				:dismissed-fix-tool-call-ids="dismissedFixToolCallIds"
 				:before-send="beforeSend"
-				:stub-queue="stubQueue"
 				@continue-loaded="emit('continue-loaded', $event)"
 				@session-created="emit('session-created', $event)"
 				@initial-consumed="emit('initial-consumed')"

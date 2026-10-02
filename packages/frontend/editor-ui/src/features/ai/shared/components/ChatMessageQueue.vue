@@ -13,9 +13,7 @@ import { useI18n } from '@n8n/i18n';
 import type { AgentChatQueueItem } from '@n8n/api-types';
 
 const props = defineProps<{
-	items: AgentChatQueueItem[];
 	displayedItems: AgentChatQueueItem[];
-	visibleItems: AgentChatQueueItem[];
 	expanded: boolean;
 	isReordering: boolean;
 	canEdit: boolean;
@@ -29,6 +27,7 @@ const emit = defineEmits<{
 	'update:expanded': [value: boolean];
 	'drag-start': [];
 	'drag-end': [event: { oldIndex?: number; newIndex?: number }];
+	move: [event: { from: number; to: number }];
 	steer: [id: string];
 	edit: [item: AgentChatQueueItem];
 	remove: [id: string];
@@ -48,6 +47,15 @@ function focusItem(id: string) {
 			`[data-queue-id="${id}"] [data-testid="agent-queue-drag-handle"]:not(:disabled)`,
 		)
 		?.focus();
+}
+
+function onQueueHandleKeydown(event: KeyboardEvent, index: number) {
+	if (props.isReordering || event.isComposing || !['ArrowUp', 'ArrowDown'].includes(event.key)) {
+		return;
+	}
+	event.preventDefault();
+	event.stopPropagation();
+	emit('move', { from: index, to: index + (event.key === 'ArrowUp' ? -1 : 1) });
 }
 
 function getQueueNotice(item: AgentChatQueueItem) {
@@ -141,7 +149,9 @@ defineExpose({ focusItem });
 											interpolate: { position: index + 1, count: displayedItems.length },
 										})
 									"
+									aria-keyshortcuts="ArrowUp ArrowDown"
 									data-testid="agent-queue-drag-handle"
+									@keydown="onQueueHandleKeydown($event, index)"
 								/>
 							</N8nTooltip>
 							<N8nIcon
