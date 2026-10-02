@@ -1,6 +1,10 @@
 import type { EventService } from '@n8n/backend-services';
 import type { Mocked } from 'vitest';
-import { DEFAULT_AGENT_PERSONALISATION, type AgentJsonConfig } from '@n8n/api-types';
+import {
+	DEFAULT_AGENT_PERSONALISATION,
+	type AgentIntegrationConfig,
+	type AgentJsonConfig,
+} from '@n8n/api-types';
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { User, WorkflowRepository } from '@n8n/db';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
@@ -18,11 +22,14 @@ import type { AgentSkillsService } from '../agent-skills.service';
 import type { AgentUpdateBroadcaster } from '../agent-update-broadcaster';
 import type { AgentValidationService } from '../agent-validation.service';
 import type { Agent } from '../entities/agent.entity';
+import { syncAgentIntegrations } from '../integrations/integrations-sync';
 import { composeJsonConfig } from '../json-config/agent-config-composition';
 import type { NodeToolAiGatewayService } from '../json-config/node-tool-ai-gateway.service';
 import type { AgentTaskRepository } from '../repositories/agent-task.repository';
 import type { AgentRepository } from '../repositories/agent.repository';
 import { getAgentConfigHash } from '../utils/agent-config-hash';
+
+vi.mock('../integrations/integrations-sync', () => ({ syncAgentIntegrations: vi.fn() }));
 
 const agentId = 'agent-1';
 const projectId = 'project-1';
@@ -424,6 +431,43 @@ describe('AgentConfigService', () => {
 			expect(runtimeCacheService.clearRuntimes).toHaveBeenCalledWith(agentId);
 		});
 
+		it('keeps omitted integrations without syncing channels', async () => {
+			const { service, agentRepository } = makeService();
+			const slack = { type: 'slack', credentialId: 'slack-cred' } as const;
+			const agent = makeAgent({ integrations: [slack] });
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+
+			await service.updateConfig(agentId, projectId, { ...baseConfig }, user, fencedOn(agent));
+
+			const saved = agentRepository.saveDraftFenced.mock.calls.at(-1)?.[0] as Agent;
+			expect(saved.integrations).toEqual([slack]);
+			expect(syncAgentIntegrations).not.toHaveBeenCalled();
+		});
+
+		it('removes omitted integrations and disconnects them when clearOmittedOptionalFields is set', async () => {
+			const { service, agentRepository } = makeService();
+			const telegram: AgentIntegrationConfig = {
+				type: 'telegram',
+				credentialId: 'telegram-cred',
+				settings: { accessMode: 'private', allowedUsers: ['@someone'] },
+			};
+			const agent = makeAgent({ integrations: [telegram] });
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+
+			await service.updateConfig(
+				agentId,
+				projectId,
+				{ ...baseConfig, instructions: 'Reached through an entrypoint workflow' },
+				user,
+				{ clearOmittedOptionalFields: true, ...fencedOn(agent) },
+			);
+
+			const saved = agentRepository.saveDraftFenced.mock.calls.at(-1)?.[0] as Agent;
+			expect(saved.schema?.instructions).toBe('Reached through an entrypoint workflow');
+			expect(saved.integrations).toEqual([]);
+			expect(syncAgentIntegrations).toHaveBeenCalledWith(saved, [telegram], [], expect.anything());
+		});
+
 		it('persists n8n Chat as a draft channel', async () => {
 			const { service, agentRepository } = makeService();
 			const agent = makeAgent({ integrations: [{ type: 'slack', credentialId: 'slack-cred' }] });
@@ -543,6 +587,66 @@ describe('AgentConfigService', () => {
 			expect(saved.schema).not.toHaveProperty('credential');
 			expect(saved.schema).not.toHaveProperty('tools');
 			expect(result.config).not.toHaveProperty('credential');
+		});
+
+		it('keeps a stored empty description when the write omits it', async () => {
+			const { service, agentRepository } = makeService();
+			const agent = makeAgent({
+				schema: { ...baseConfig, description: '' } as unknown as AgentJsonConfig,
+			});
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+
+			await service.updateConfig(agentId, projectId, { ...baseConfig }, user, fencedOn(agent));
+
+			const saved = agentRepository.saveDraftFenced.mock.calls.at(-1)?.[0] as Agent;
+			expect(saved.schema).toHaveProperty('description', '');
+		});
+
+		it('deletes the resources of omitted tools, skills, and tasks when clearOmittedOptionalFields is set', async () => {
+			const { service, agentRepository, agentTaskRepository } = makeService();
+			const agent = makeAgent({
+				schema: {
+					...baseConfig,
+					tools: [{ type: 'custom', id: 'tool_1' }],
+					skills: [{ type: 'skill', id: 'skill-1' }],
+					tasks: [{ type: 'task', id: 'task-1', enabled: true }],
+				} as unknown as AgentJsonConfig,
+				tools: storedCustomTool,
+				skills: { 'skill-1': { name: 'Skill' } } as unknown as Agent['skills'],
+			});
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+			agentTaskRepository.findByAgentId.mockResolvedValue([{ id: 'task-1' }] as never);
+
+			await service.updateConfig(agentId, projectId, { ...baseConfig }, user, {
+				clearOmittedOptionalFields: true,
+				...fencedOn(agent),
+			});
+
+			const saved = agentRepository.saveDraftFenced.mock.calls.at(-1)?.[0] as Agent;
+			expect(saved.tools).toEqual({});
+			expect(saved.skills).toEqual({});
+			expect(agentTaskRepository.delete).toHaveBeenCalledWith(['task-1']);
+		});
+
+		it('keeps the resources of omitted tools, skills, and tasks by default', async () => {
+			const { service, agentRepository, agentTaskRepository } = makeService();
+			const agent = makeAgent({
+				schema: {
+					...baseConfig,
+					tools: [{ type: 'custom', id: 'tool_1' }],
+					skills: [{ type: 'skill', id: 'skill-1' }],
+				} as unknown as AgentJsonConfig,
+				tools: storedCustomTool,
+				skills: { 'skill-1': { name: 'Skill' } } as unknown as Agent['skills'],
+			});
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+
+			await service.updateConfig(agentId, projectId, { ...baseConfig }, user, fencedOn(agent));
+
+			const saved = agentRepository.saveDraftFenced.mock.calls.at(-1)?.[0] as Agent;
+			expect(saved.tools).toEqual(storedCustomTool);
+			expect(Object.keys(saved.skills ?? {})).toEqual(['skill-1']);
+			expect(agentTaskRepository.delete).not.toHaveBeenCalled();
 		});
 
 		it('resolves accessible credentials via the user when one is provided', async () => {
