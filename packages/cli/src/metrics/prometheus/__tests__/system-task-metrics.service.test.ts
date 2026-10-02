@@ -1,10 +1,10 @@
+import type { CacheService, EventService } from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { PrometheusMetricsConfig } from '@n8n/config';
+import type { ScheduledJob, ScheduledJobRepository } from '@n8n/db';
 import promClient from 'prom-client';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
-
-import type { EventService } from '@/events/event.service';
 
 import { LAG_BUCKETS_SECONDS } from '../constant';
 import { PrometheusSystemTaskMetricsService } from '../system-task-metrics.service';
@@ -19,6 +19,8 @@ describe('PrometheusSystemTaskMetricsService', () => {
 		includeSystemTaskMetrics: true,
 	});
 	const eventService = mock<EventService>();
+	const cacheService = mock<CacheService>();
+	const scheduledJobRepository = mock<ScheduledJobRepository>();
 
 	let service: PrometheusSystemTaskMetricsService;
 	const ctorByType = { Counter: vi.fn(), Gauge: vi.fn(), Histogram: vi.fn() };
@@ -37,7 +39,10 @@ describe('PrometheusSystemTaskMetricsService', () => {
 			this.valuesByLabels.set(JSON.stringify(labels), value),
 		);
 		observe = vi.fn();
+		zero = vi.fn((labels: object) => this.valuesByLabels.set(JSON.stringify(labels), 0));
 		remove = vi.fn((labels: object) => this.valuesByLabels.delete(JSON.stringify(labels)));
+
+		collect?: () => Promise<void>;
 
 		value(labels: object) {
 			return this.valuesByLabels.get(JSON.stringify(labels));
@@ -51,8 +56,9 @@ describe('PrometheusSystemTaskMetricsService', () => {
 
 	function fake(type: keyof typeof ctorByType) {
 		return class extends FakeMetric {
-			constructor(opts: { name: string }) {
+			constructor(opts: { name: string; collect?: () => Promise<void> }) {
 				super();
+				this.collect = opts.collect;
 				ctorByType[type](opts);
 				instancesByName.set(opts.name, this);
 			}
@@ -73,7 +79,13 @@ describe('PrometheusSystemTaskMetricsService', () => {
 			Histogram: fake('Histogram'),
 		});
 
-		service = new PrometheusSystemTaskMetricsService(config, eventService);
+		cacheService.get.mockResolvedValue(undefined);
+		service = new PrometheusSystemTaskMetricsService(
+			config,
+			eventService,
+			cacheService,
+			scheduledJobRepository,
+		);
 	});
 
 	afterEach(() => {
@@ -125,6 +137,34 @@ describe('PrometheusSystemTaskMetricsService', () => {
 				'myapp_system_task_next_run_timestamp_seconds',
 				'myapp_system_task_scheduled',
 			]);
+		});
+
+		it('keeps the label names of every series', () => {
+			service.init();
+
+			const labelsByName = Object.fromEntries(
+				[
+					...ctorByType.Histogram.mock.calls,
+					...ctorByType.Counter.mock.calls,
+					...ctorByType.Gauge.mock.calls,
+				].map(([opts]) => {
+					const { name, labelNames } = opts as { name: string; labelNames: string[] };
+					return [name, labelNames];
+				}),
+			);
+			expect(labelsByName).toEqual({
+				n8n_system_task_run_duration_seconds: ['task', 'mode', 'result'],
+				n8n_system_task_fire_lag_seconds: ['task'],
+				n8n_system_task_runs_skipped_total: ['task', 'reason'],
+				n8n_system_task_provision_check_failures_total: ['task'],
+				n8n_system_task_retries_total: ['task'],
+				n8n_system_task_last_success_timestamp_seconds: ['task', 'mode'],
+				n8n_system_task_runs_in_flight: ['task', 'mode'],
+				n8n_system_task_info: ['task', 'mode'],
+				n8n_system_task_interval_seconds: ['task'],
+				n8n_system_task_next_run_timestamp_seconds: ['task'],
+				n8n_system_task_scheduled: ['task', 'mode'],
+			});
 		});
 
 		it('gives the fire lag histogram buckets that reach a day', () => {
@@ -285,6 +325,166 @@ describe('PrometheusSystemTaskMetricsService', () => {
 				task: 'sweep',
 			});
 			expect(metric('system_task_info').value(instanceTimer)).toBe(1);
+		});
+	});
+
+	describe('zeroed counts', () => {
+		it('starts the success and failure series of a routed task at zero', () => {
+			service.init();
+
+			handler('system-task-routed')({ name: 'prune', mode: 'durable' });
+
+			const runDuration = metric('system_task_run_duration_seconds');
+			expect(runDuration.value({ task: 'prune', mode: 'durable', result: 'success' })).toBe(0);
+			expect(runDuration.value({ task: 'prune', mode: 'durable', result: 'failure' })).toBe(0);
+		});
+
+		it('starts the retry and skip counters of a timer task at zero', () => {
+			service.init();
+
+			handler('system-task-routed')({ name: 'sweep', mode: 'instance_timer' });
+
+			expect(metric('system_task_retries_total').value({ task: 'sweep' })).toBe(0);
+			for (const reason of ['overlap', 'provisioned_elsewhere', 'aborted', 'coalesced']) {
+				expect(metric('system_task_runs_skipped_total').value({ task: 'sweep', reason })).toBe(0);
+			}
+		});
+
+		it('does not start the retry and skip counters of a durable task', () => {
+			service.init();
+
+			handler('system-task-routed')({ name: 'prune', mode: 'durable' });
+
+			expect(metric('system_task_retries_total').inc).not.toHaveBeenCalled();
+			expect(metric('system_task_runs_skipped_total').inc).not.toHaveBeenCalled();
+		});
+
+		it('zeroes the run series of a leader timer task only on the first takeover', () => {
+			service.init();
+			handler('system-task-routed')({ name: 'prune', mode: 'leader_timer' });
+
+			handler('system-task-timers-started')({});
+			handler('system-task-timers-stopped')({});
+			handler('system-task-timers-started')({});
+
+			expect(metric('system_task_run_duration_seconds').zero).toHaveBeenCalledTimes(2);
+		});
+	});
+
+	describe('durable job state', () => {
+		const job = (
+			overrides: Partial<Pick<ScheduledJob, 'ownerId' | 'nextRunAt'> & { runnable: boolean }>,
+		) => ({
+			ownerId: 'prune',
+			runnable: true,
+			nextRunAt: new Date(NOW.getTime() + 60_000),
+			...overrides,
+		});
+
+		async function scrape() {
+			await metric('system_task_scheduled').collect!();
+			await metric('system_task_next_run_timestamp_seconds').collect!();
+		}
+
+		it('reads nothing while no task runs durably', async () => {
+			service.init();
+			handler('system-task-routed')({ name: 'prune', mode: 'leader_timer' });
+
+			await scrape();
+
+			expect(scheduledJobRepository.findScheduleStatesByOwnerType).not.toHaveBeenCalled();
+		});
+
+		it('exports the stored next run of a durable task and marks it scheduled', async () => {
+			scheduledJobRepository.findScheduleStatesByOwnerType.mockResolvedValue([job({})]);
+			service.init();
+			handler('system-task-routed')({ name: 'prune', mode: 'durable' });
+
+			await scrape();
+
+			expect(scheduledJobRepository.findScheduleStatesByOwnerType).toHaveBeenCalledWith(
+				'system-task',
+			);
+			expect(metric('system_task_scheduled').value({ task: 'prune', mode: 'durable' })).toBe(1);
+			expect(metric('system_task_next_run_timestamp_seconds').value({ task: 'prune' })).toBe(
+				NOW.getTime() / 1000 + 60,
+			);
+		});
+
+		it.each([
+			['is missing', []],
+			['is not runnable', [job({ runnable: false })]],
+		])('marks a durable task unscheduled when its job %s', async (_, jobs) => {
+			scheduledJobRepository.findScheduleStatesByOwnerType.mockResolvedValue(jobs);
+			service.init();
+			handler('system-task-routed')({ name: 'prune', mode: 'durable' });
+
+			await scrape();
+
+			expect(metric('system_task_scheduled').value({ task: 'prune', mode: 'durable' })).toBe(0);
+			expect(metric('system_task_next_run_timestamp_seconds').remove).toHaveBeenCalledWith({
+				task: 'prune',
+			});
+		});
+
+		it('ignores the jobs of tasks this instance does not run durably', async () => {
+			scheduledJobRepository.findScheduleStatesByOwnerType.mockResolvedValue([
+				job({}),
+				job({ ownerId: 'other' }),
+			]);
+			service.init();
+			handler('system-task-routed')({ name: 'prune', mode: 'durable' });
+
+			await scrape();
+
+			expect(metric('system_task_scheduled').value({ task: 'other', mode: 'durable' })).toBe(
+				undefined,
+			);
+		});
+
+		it('reads the jobs once for both gauges and caches them for the metrics interval', async () => {
+			const cache = new Map<string, unknown>();
+			cacheService.get.mockImplementation(async (key: string) => cache.get(key));
+			cacheService.set.mockImplementation(async (key: string, value: unknown) => {
+				cache.set(key, value);
+			});
+			scheduledJobRepository.findScheduleStatesByOwnerType.mockResolvedValue([job({})]);
+			config.schedulerMetricsInterval = 20;
+			service.init();
+			handler('system-task-routed')({ name: 'prune', mode: 'durable' });
+
+			await scrape();
+
+			expect(scheduledJobRepository.findScheduleStatesByOwnerType).toHaveBeenCalledTimes(1);
+			expect(cacheService.set).toHaveBeenCalledExactlyOnceWith(
+				'metrics:system-tasks:durable-jobs:v1',
+				[{ task: 'prune', runnable: true, nextRunAtSeconds: NOW.getTime() / 1000 + 60 }],
+				20_000,
+			);
+		});
+
+		it('serves both gauges from the cache without reading the jobs', async () => {
+			cacheService.get.mockResolvedValue([
+				{ task: 'prune', runnable: true, nextRunAtSeconds: 1234 },
+			]);
+			service.init();
+			handler('system-task-routed')({ name: 'prune', mode: 'durable' });
+
+			await scrape();
+
+			expect(scheduledJobRepository.findScheduleStatesByOwnerType).not.toHaveBeenCalled();
+			expect(metric('system_task_scheduled').value({ task: 'prune', mode: 'durable' })).toBe(1);
+			expect(metric('system_task_next_run_timestamp_seconds').value({ task: 'prune' })).toBe(1234);
+		});
+
+		it('keeps the last values when the job read fails', async () => {
+			scheduledJobRepository.findScheduleStatesByOwnerType.mockRejectedValue(new Error('db down'));
+			service.init();
+			handler('system-task-routed')({ name: 'prune', mode: 'durable' });
+
+			await expect(scrape()).resolves.toBeUndefined();
+
+			expect(metric('system_task_scheduled').value({ task: 'prune', mode: 'durable' })).toBe(1);
 		});
 	});
 

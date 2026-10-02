@@ -470,14 +470,24 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 		// separately and only a verdict's OWN `incomplete` excludes it — the row's flag
 		// does not reach them. A priorRuns case is usually expectation-only, so without
 		// this the single graded unit still lands in the builder's baseline as a red.
+		// A budget ended the conversation: every verdict of the iteration is kept
+		// for the record but counts neither way, same as its scenario rows (see
+		// `attachExpectations`). The deterministic ones too, or the iteration
+		// would still score on them.
+		const timedOut = (verdicts: BuildExpectationResult[]): BuildExpectationResult[] =>
+			verdicts.map((v) => ({ ...v, incomplete: true, attribution: 'timeout' as const }));
 		if (build.priorRunFailed) {
+			const unjudged = allFailVerdicts(
+				collectExpectations(testCase),
+				`not judged — prior run staging did not land, so the case premise is missing: ${build.priorRunFailed}`,
+			);
+			// The row for this build is re-stamped `timeout` too, so the two agree.
 			buildExpectationsByKey.set(
 				key,
 				Promise.resolve(
-					allFailVerdicts(
-						collectExpectations(testCase),
-						`not judged — prior run staging did not land, so the case premise is missing: ${build.priorRunFailed}`,
-					).map((verdict) => ({ ...verdict, attribution: 'framework_issue' as const })),
+					build.timeout
+						? timedOut(unjudged)
+						: unjudged.map((verdict) => ({ ...verdict, attribution: 'framework_issue' as const })),
 				),
 			);
 			return;
@@ -515,12 +525,14 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 		// and reshape's side band) then carry the same verdict (TRUST-375).
 		const infraFailed = buildFailedOnInfra(build);
 		const attribute = (verdicts: BuildExpectationResult[]): BuildExpectationResult[] =>
-			verdicts.map((v) => ({
-				// An attribution already set is a decision the caller made with more
-				// context than this closure has; don't overwrite it.
-				...v,
-				attribution: v.attribution ?? attributionForExpectation(v, infraFailed),
-			}));
+			build.timeout
+				? timedOut(verdicts)
+				: verdicts.map((v) => ({
+						// An attribution already set is a decision the caller made with more
+						// context than this closure has; don't overwrite it.
+						...v,
+						attribution: v.attribution ?? attributionForExpectation(v, infraFailed),
+					}));
 		// The lane's deterministic verdicts ride along on EVERY path, including the
 		// unjudged one: they describe what the run actually did to the provider and
 		// to n8n, which stays true whether or not the author expectations got judged.
@@ -528,8 +540,12 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 		// agent's miss or infra's", and these are measurements, not judgements.
 		const withInjected = async (
 			verdicts: BuildExpectationResult[] | Promise<BuildExpectationResult[]>,
-		): Promise<BuildExpectationResult[]> =>
-			injected ? [...(await verdicts), ...(await injected)] : await verdicts;
+		): Promise<BuildExpectationResult[]> => {
+			const own = await verdicts;
+			if (!injected) return own;
+			const measured = await injected;
+			return [...own, ...(build.timeout ? timedOut(measured) : measured)];
+		};
 		// Recorded as incomplete rather than dropped, so the case keeps its unit
 		// count and the report says why they weren't graded.
 		if (unjudged.length > 0) {
@@ -537,7 +553,7 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 			return;
 		}
 		if (expectations.length === 0) {
-			if (injected) buildExpectationsByKey.set(key, injected);
+			if (injected) buildExpectationsByKey.set(key, withInjected([]));
 			return;
 		}
 		buildExpectationsByKey.set(
@@ -710,7 +726,7 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 			const timeoutMs = effectiveTimeoutMs(entry.complexity, args.timeoutMs);
 			if (timeoutMs !== args.timeoutMs) {
 				logger.info(
-					`  Complex case: per-iteration budget ${String(Math.round(timeoutMs / 1000))}s [${fileSlug}]`,
+					`  Complex case: per-turn budget ${String(Math.round(timeoutMs / 1000))}s [${fileSlug}]`,
 				);
 			}
 			// Transport failures are not agent verdicts — retry on a different lane

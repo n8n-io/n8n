@@ -23,6 +23,8 @@ import {
 	getAgentChatQueue,
 	removeAgentQueuedMessage,
 	updateAgentQueuedMessage,
+	steerAgentQueuedMessage,
+	reorderAgentQueuedMessage,
 	getTestChatMessages,
 } from './useAgentApi';
 
@@ -86,6 +88,7 @@ type ResumePayload =
 
 const STOP_ACCEPTANCE_TIMEOUT_MS = 30 * TIME.SECOND;
 const MAX_WAITING_STREAMS = 2;
+const MAX_START_VALIDATION_ATTEMPTS = 3;
 
 function getApprovalDecision(value: unknown): boolean | undefined {
 	if (!isRecord(value) || typeof value.approved !== 'boolean') return undefined;
@@ -106,6 +109,10 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 	const isSubmitting = ref(false);
 	const queuedMessages = ref<AgentChatQueueItem[]>([]);
 	const removingQueueIds = ref(new Set<string>());
+	const steeringQueueIds = ref(new Set<string>());
+	const isReorderingQueue = ref(false);
+	const consumedQueueIds = new Set<string>();
+	const steerableExecutionId = ref<string | null>(null);
 	const streams = new Map<AbortController, StreamSession>();
 	let queueVersion = 0;
 	let submissionVersion = 0;
@@ -116,6 +123,14 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		() => isStreamOpen.value || activeExecutionId.value !== null || isRecovering.value,
 	);
 	const isCancelling = ref(false);
+	const canSteer = computed(
+		() =>
+			!!steerableExecutionId.value &&
+			steerableExecutionId.value === activeExecutionId.value &&
+			!isCancelling.value &&
+			!isLoadingHistory.value &&
+			!findTailOpenInteractive(messages.value),
+	);
 	let stopTargetId: string | undefined;
 	const abortController = ref<AbortController | null>(null);
 	const streamSettlements = new WeakMap<AbortController, Promise<void>>();
@@ -126,6 +141,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 	let disposed = false;
 	let historyVersion = 0;
 	let streamVersion = 0;
+	let ownershipVersion = 0;
 	let refreshAfterStream = false;
 	let retryCount = 0;
 	let retryTimer: ReturnType<typeof setTimeout> | undefined;
@@ -302,8 +318,10 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				params.agentId.value,
 				threadId,
 			);
-			if (!disposed && target === targetKey() && version === queueVersion)
-				queuedMessages.value = result.items;
+			if (!disposed && target === targetKey() && version === queueVersion) {
+				queuedMessages.value = result.items.filter((item) => !consumedQueueIds.has(item.id));
+				steerableExecutionId.value = result.steerableExecutionId ?? null;
+			}
 		} catch (error) {
 			if (!disposed && target === targetKey() && version === queueVersion) {
 				showError(error, locale.baseText('agents.chat.queue.loadError'));
@@ -341,6 +359,72 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			return 'failed';
 		} finally {
 			if (!disposed && target === targetKey()) refreshHistoryFromPush();
+		}
+	}
+
+	async function reorderQueuedMessage(
+		queueId: string,
+		targetQueueId: string,
+		expectedQueueIds: string[],
+	): Promise<void> {
+		const threadId = params.continueSessionId?.value ?? acceptedSessionId.value;
+		if (!threadId || disposed || isReorderingQueue.value) return;
+		const target = targetKey();
+		isReorderingQueue.value = true;
+		try {
+			await reorderAgentQueuedMessage(
+				rootStore.restApiContext,
+				params.projectId.value,
+				params.agentId.value,
+				threadId,
+				queueId,
+				{ targetQueueId, expectedQueueIds },
+			);
+		} catch (error) {
+			if (!disposed && target === targetKey()) {
+				const status = isRecord(error) ? error.httpStatusCode : undefined;
+				const key =
+					status === 404 || status === 409
+						? 'agents.chat.queue.reorderUnavailable'
+						: 'agents.chat.queue.reorderError';
+				showError(error, locale.baseText(key));
+			}
+		} finally {
+			if (!disposed && target === targetKey()) {
+				await refreshQueue();
+				if (!disposed && target === targetKey()) isReorderingQueue.value = false;
+			}
+		}
+	}
+
+	async function steerQueuedMessage(queueId: string): Promise<void> {
+		const threadId = params.continueSessionId?.value ?? acceptedSessionId.value;
+		const executionId = steerableExecutionId.value;
+		if (!threadId || !executionId || !canSteer.value || steeringQueueIds.value.has(queueId)) return;
+		const target = targetKey();
+		steeringQueueIds.value.add(queueId);
+		try {
+			await steerAgentQueuedMessage(
+				rootStore.restApiContext,
+				params.projectId.value,
+				params.agentId.value,
+				threadId,
+				queueId,
+				{ executionId },
+			);
+			if (disposed || target !== targetKey()) return;
+			queuedMessages.value = queuedMessages.value.map((item) =>
+				item.id === queueId ? { ...item, steeringExecutionId: executionId } : item,
+			);
+		} catch (error) {
+			if (!disposed && target === targetKey())
+				showError(error, locale.baseText('agents.chat.queue.steerError'));
+		} finally {
+			if (!disposed && target === targetKey()) {
+				queueVersion++;
+				await refreshQueue();
+				steeringQueueIds.value.delete(queueId);
+			}
 		}
 	}
 
@@ -393,6 +477,13 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		refreshHistoryFromPush();
 	}
 	watch(
+		[activeExecutionId, abortController],
+		() => {
+			ownershipVersion++;
+		},
+		{ flush: 'sync' },
+	);
+	watch(
 		() => pushStore.isConnected,
 		(connected) => {
 			if (connected) refresh();
@@ -406,6 +497,10 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		messages.value = [];
 		queuedMessages.value = [];
 		removingQueueIds.value.clear();
+		steeringQueueIds.value.clear();
+		isReorderingQueue.value = false;
+		consumedQueueIds.clear();
+		steerableExecutionId.value = null;
 		queueVersion++;
 		activeExecutionId.value = null;
 		acceptedSessionId.value = undefined;
@@ -447,6 +542,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		queueId?: string;
 		userMessage?: ChatMessage;
 		executionId?: string;
+		needsStartValidation?: boolean;
 		busy?: boolean;
 		onAccepted?: () => void;
 		/**
@@ -654,6 +750,25 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		}
 	}
 
+	function applySteeredMessage(
+		event: Extract<AgentSseEvent, { type: 'message-steered' }>,
+		session: StreamSession,
+	): void {
+		if (event.executionId !== session.executionId || consumedQueueIds.has(event.queueId)) return;
+		consumedQueueIds.add(event.queueId);
+		queueVersion++;
+		queuedMessages.value = queuedMessages.value.filter((item) => item.id !== event.queueId);
+		for (const [controller, waiting] of streams) {
+			if (waiting.queueId === event.queueId && !waiting.executionId) controller.abort();
+		}
+		if (!messages.value.some((message) => message.id === event.message.id)) {
+			settleOpenReasoning(session);
+			if (session.current) markMessageSuccessIfSettled(session.current);
+			session.current = undefined;
+			messages.value.push(...convertDbMessages([event.message]));
+		}
+	}
+
 	function handleEvent(
 		event: AgentSseEvent,
 		session: StreamSession,
@@ -673,15 +788,29 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				detachExcessWaitingStreams();
 				session.onAccepted?.();
 				session.onAccepted = undefined;
+				if (consumedQueueIds.has(event.queueId)) {
+					session.controller.abort();
+					return { done: true };
+				}
 				queueVersion++;
 				refreshHistoryFromPush();
 				break;
+			case 'message-steered':
+				applySteeredMessage(event, session);
+				break;
 			case 'execution-started':
 				if (session.userMessage) {
-					// Local messages enter FIFO order. An earlier request cannot own a later turn.
-					for (const [controller, earlier] of streams) {
-						if (controller === session.controller) break;
-						if (earlier.userMessage) controller.abort();
+					const inputMessageId = event.inputMessageIds?.[0];
+					if (inputMessageId) session.userMessage.id = inputMessageId;
+				}
+				for (const [controller, other] of streams) {
+					if (controller === session.controller) continue;
+					if (other.executionId) {
+						finalizeStream(other);
+						controller.abort();
+					} else {
+						// A waiting stream can carry a buffered start from a completed execution.
+						other.needsStartValidation = true;
 					}
 				}
 				abortController.value = session.controller;
@@ -969,6 +1098,34 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		}
 	}
 
+	async function handleDelayedExecutionStart(
+		event: Extract<AgentSseEvent, { type: 'execution-started' }>,
+		session: StreamSession,
+	): Promise<{ done?: boolean } | undefined> {
+		const isCurrent = () =>
+			!disposed && !session.controller.signal.aborted && session.target === targetKey();
+		for (let attempt = 0; attempt < MAX_START_VALIDATION_ATTEMPTS && isCurrent(); attempt++) {
+			const ownershipAtStart = ownershipVersion;
+			const history = await getChatMessages(
+				rootStore.restApiContext,
+				params.projectId.value,
+				params.agentId.value,
+				event.sessionId,
+			).catch(() => undefined);
+			if (!isCurrent()) break;
+			// Timeline updates do not invalidate execution ownership.
+			if (ownershipAtStart !== ownershipVersion) continue;
+			if (history?.activeExecutionId !== event.executionId) break;
+			// The buffered stream replays this execution from the start.
+			messages.value = messages.value.filter(
+				(message) => message.executionId !== event.executionId,
+			);
+			return handleEvent(event, session);
+		}
+		session.controller.abort();
+		return { done: true };
+	}
+
 	async function consumeStream(
 		response: Response,
 		session: StreamSession,
@@ -996,7 +1153,10 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 					} catch {
 						continue;
 					}
-					const result = handleEvent(event, session);
+					const result =
+						event.type === 'execution-started' && session.needsStartValidation
+							? await handleDelayedExecutionStart(event, session)
+							: handleEvent(event, session);
 					if (result?.done) {
 						break readerLoop;
 					}
@@ -1141,6 +1301,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		const newSession = params.newSession?.value === true && sessionId !== acknowledgedSessionId;
 		if (sessionId) {
 			body.sessionId = sessionId;
+			body.messageId = userMessage?.id;
 			if (newSession) body.newSession = true;
 		}
 		if (files?.length) {
@@ -1474,9 +1635,14 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 
 	return {
 		queuedMessages,
+		canSteer,
+		steeringQueueIds,
+		steerQueuedMessage,
 		removingQueueIds,
 		removeQueuedMessage,
 		updateQueuedMessage,
+		isReorderingQueue,
+		reorderQueuedMessage,
 		isSubmitting,
 		isLoadingHistory,
 		messages,

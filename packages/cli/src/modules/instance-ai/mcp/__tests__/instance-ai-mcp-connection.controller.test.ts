@@ -1,8 +1,8 @@
 import type { AuthenticatedRequest, CredentialsEntity, User } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
-import type { CredentialsFinderService } from '@/credentials/credentials-finder.service';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import type { CredentialsFinderService } from '@n8n/backend-services';
+import { NotFoundError } from '@n8n/errors';
 import type { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
 import type { McpRegistryServer } from '@/modules/mcp-registry/registry/mcp-registry.types';
 
@@ -172,7 +172,11 @@ describe('InstanceAiMcpConnectionController', () => {
 		it('returns tool statuses for the authenticated user’s connections', async () => {
 			const { controller, service } = createController();
 			const tools = [
-				{ id: 'conn-1', status: 'connected' as const, tools: [{ name: 'search' }] },
+				{
+					id: 'conn-1',
+					status: 'connected' as const,
+					tools: [{ name: 'search', category: 'read' as const }],
+				},
 				{
 					id: 'conn-2',
 					status: 'disconnected' as const,
@@ -197,8 +201,13 @@ describe('InstanceAiMcpConnectionController', () => {
 			credentialsFinderService.findCredentialForUser.mockResolvedValue(credential);
 			mcpRegistryService.get.mockResolvedValue(linearServer);
 			const payload = {
-				inclusionMode: 'except' as const,
-				excludedTools: ['t1'],
+				toolPermissions: {
+					categories: {
+						read: 'always_allow' as const,
+						write: 'require_approval' as const,
+					},
+					tools: { t1: 'blocked' as const },
+				},
 			};
 
 			const result = await controller.update(authedRequest(), {} as never, 'conn-1', payload);

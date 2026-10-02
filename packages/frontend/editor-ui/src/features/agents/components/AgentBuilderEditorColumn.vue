@@ -42,7 +42,7 @@ const props = defineProps<{
 	agentFilesUploading: boolean;
 	knowledgeBaseEnabled: boolean;
 	deletingAgentFileId?: string | null;
-	appliedSkills: Array<{ id: string; skill: AgentSkill }>;
+	appliedSkills: Array<{ id: string; skill: AgentSkill; enabled?: boolean }>;
 	connectedTriggers: string[];
 	canEditAgent: boolean;
 	/** `agent:execute`, which a project viewer holds without holding update. */
@@ -70,12 +70,14 @@ const isMcpAvailable = computed(
 const emit = defineEmits<{
 	'update:activeMainTab': [tab: AgentBuilderMainTab];
 	'update:config': [updates: Partial<AgentJsonConfig>, meta?: { source: 'auto' }];
+	'draft:config': [];
 	'open-tool': [target: ToolOpenTarget];
 	'open-skill': [id: string];
 	'add-tool': [mode: ToolPickerMode];
 	'add-skill': [];
 	'remove-tool': [index: number];
 	'remove-skill': [id: string];
+	'toggle-skill': [payload: { id: string; enabled: boolean }];
 	'upload-files': [files: File[]];
 	'delete-file': [file: AgentFileDto];
 	'add-vector-store': [];
@@ -128,6 +130,7 @@ const i18n = useI18n();
 						:disabled="childrenDisabled"
 						:project-id="projectId"
 						@update:config="(changes, meta) => emit('update:config', changes, meta)"
+						@draft:config="emit('draft:config')"
 					/>
 
 					<AgentPanel
@@ -136,6 +139,7 @@ const i18n = useI18n();
 						data-testid="agent-skills-panel"
 					>
 						<AgentSkillsSection
+							supports-activation
 							:skills="appliedSkills"
 							:disabled="childrenDisabled"
 							:show-label="false"
@@ -143,6 +147,7 @@ const i18n = useI18n();
 							@open-skill="emit('open-skill', $event)"
 							@add-skill="emit('add-skill')"
 							@remove-skill="emit('remove-skill', $event)"
+							@toggle-skill="emit('toggle-skill', $event)"
 						/>
 					</AgentPanel>
 
@@ -172,6 +177,7 @@ const i18n = useI18n();
 							:agent-unsaved="agentUnsaved"
 							:ensure-agent-persisted="ensureAgentPersisted"
 							:task-refs="localConfig?.tasks ?? []"
+							:personalisation="localConfig?.personalisation ?? agent?.schema?.personalisation"
 							:reload-key="tasksReloadKey"
 							@update:connected-triggers="emit('update:connected-triggers', $event)"
 							@trigger-added="emit('trigger-added', $event)"
@@ -187,6 +193,7 @@ const i18n = useI18n();
 						:description="i18n.baseText('agents.builder.capabilities.description')"
 					>
 						<AgentCapabilitiesSection
+							supports-activation
 							:config="localConfig"
 							:tools="localConfig?.tools ?? []"
 							:custom-tools="agent?.tools ?? {}"

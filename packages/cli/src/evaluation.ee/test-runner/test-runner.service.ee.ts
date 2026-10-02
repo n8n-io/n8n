@@ -1,4 +1,5 @@
 import { Logger } from '@n8n/backend-common';
+import { EventService } from '@n8n/backend-services';
 import { ExecutionsConfig } from '@n8n/config';
 import type { EvaluationConfig, User } from '@n8n/db';
 import {
@@ -49,7 +50,6 @@ import {
 	checkNodeParameterNotEmpty,
 	extractTokenUsage,
 } from '@/evaluation.ee/test-runner/utils.ee';
-import { EventService } from '@/events/event.service';
 import { License } from '@/license';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { OwnershipService } from '@/services/ownership.service';

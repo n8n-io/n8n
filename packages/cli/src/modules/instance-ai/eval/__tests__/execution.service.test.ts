@@ -1,7 +1,7 @@
 import type { Mock } from 'vitest';
 import type { Logger } from '@n8n/backend-common';
-import type { ExecutionsConfig } from '@n8n/config';
-import type { User } from '@n8n/db';
+import type { ExecutionsConfig, InstanceAiConfig } from '@n8n/config';
+import type { ProcessedDataRepository, User } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 import type { BinaryDataService } from 'n8n-core';
 import type {
@@ -114,6 +114,7 @@ import {
 	generateMockHints,
 	identifyNodesForHints,
 	identifyNodesForPinData,
+	isDataTableRead,
 	partitionAiRoots,
 } from '../workflow-analysis';
 import type { MockHints } from '../workflow-analysis';
@@ -224,6 +225,8 @@ describe('EvalExecutionService', () => {
 	const loadNodesAndCredentials = mock<LoadNodesAndCredentials>();
 	const ownershipService = mock<OwnershipService>();
 	const dataTableService = mock<DataTableService>();
+	const processedDataRepository = mock<ProcessedDataRepository>();
+	const instanceAiConfig = { evalInstance: true } as InstanceAiConfig;
 
 	// Captured configureAdditionalData closure so tests can re-invoke it on a
 	// stub additionalData without booting the real runner.
@@ -260,6 +263,8 @@ describe('EvalExecutionService', () => {
 			loadNodesAndCredentials,
 			ownershipService,
 			dataTableService,
+			processedDataRepository,
+			instanceAiConfig,
 		);
 		// Reset to safe default — tests that flip queue mode reassign in-test.
 		Object.assign(executionsConfig, { mode: 'regular' });
@@ -666,6 +671,31 @@ describe('EvalExecutionService', () => {
 			expect(workflowStaticDataService.saveStaticDataById).toHaveBeenCalledWith('wf-1', {});
 		});
 
+		it('clears the workflow deduplication state before and after each run', async () => {
+			workflowFinderService.findWorkflowForUser.mockResolvedValue(makeWorkflowEntity() as never);
+
+			await service.executeWithLlmMock('wf-1', makeUser());
+			await service.executeWithLlmMock('wf-1', makeUser());
+
+			const clears = processedDataRepository.deleteForWorkflow.mock;
+			expect(clears.calls).toEqual([['wf-1'], ['wf-1'], ['wf-1'], ['wf-1']]);
+			// Keys that builder-verify runs recorded must be gone before the first scenario reads them.
+			const runs = workflowRunner.run.mock.invocationCallOrder;
+			expect(clears.invocationCallOrder[0]).toBeLessThan(runs[0]);
+			expect(clears.invocationCallOrder[1]).toBeGreaterThan(runs[0]);
+		});
+
+		it('leaves the deduplication state alone on an instance that is not an eval instance', async () => {
+			instanceAiConfig.evalInstance = false;
+			try {
+				workflowFinderService.findWorkflowForUser.mockResolvedValue(makeWorkflowEntity() as never);
+				await service.executeWithLlmMock('wf-1', makeUser());
+				expect(processedDataRepository.deleteForWorkflow).not.toHaveBeenCalled();
+			} finally {
+				instanceAiConfig.evalInstance = true;
+			}
+		});
+
 		it('preserves an intentional zero-item bypass pin instead of injecting a phantom item', async () => {
 			const bypassNode = {
 				id: 'node-3',
@@ -854,6 +884,7 @@ describe('EvalExecutionService', () => {
 			expect(identifyNodesForPinDataMock).toHaveBeenCalledWith(
 				expect.objectContaining({ id: 'wf-1' }),
 				undefined,
+				new Set(),
 			);
 		});
 
@@ -937,6 +968,7 @@ describe('EvalExecutionService', () => {
 				expect(identifyNodesForPinDataMock).toHaveBeenCalledWith(
 					expect.objectContaining({ id: 'wf-1' }),
 					new Set(['Agent']),
+					new Set(),
 				);
 			});
 
@@ -1922,6 +1954,67 @@ describe('EvalExecutionService', () => {
 
 			expect(dataTableService.getColumns).not.toHaveBeenCalled();
 			expect(generatePinDataMock.mock.calls[0][0].dataTableColumns).toBeUndefined();
+		});
+	});
+
+	describe('seeded Data Table reads (via execution)', () => {
+		function readNode(name: string, dataTableId: unknown): INode {
+			return {
+				id: name,
+				name,
+				type: 'n8n-nodes-base.dataTable',
+				typeVersion: 1,
+				position: [200, 0],
+				parameters: { resource: 'row', operation: 'get', dataTableId },
+			} as INode;
+		}
+
+		beforeEach(() => {
+			vi.mocked(isDataTableRead).mockImplementation(
+				(node: INode) => node.type === 'n8n-nodes-base.dataTable',
+			);
+			ownershipService.getWorkflowProjectCached.mockResolvedValue({ id: 'proj-1' } as never);
+		});
+
+		it('leaves the reads of a seeded table out of the pinned nodes', async () => {
+			workflowFinderService.findWorkflowForUser.mockResolvedValue(
+				makeWorkflowEntity({
+					nodes: [
+						makeStartNode(),
+						readNode('Read Seeded', { __rl: true, mode: 'list', value: 'dt-seeded' }),
+						// Spelt in another case: the node resolves names case-insensitively.
+						readNode('Read Named', { __rl: true, mode: 'name', value: 'stock [SEED 1a2b3c4d]' }),
+						readNode('Read Other', { __rl: true, mode: 'id', value: 'dt-other' }),
+						// A name the seed did not create stays pinned.
+						readNode('Read Unseeded', { __rl: true, mode: 'name', value: 'Orders' }),
+					],
+				}) as never,
+			);
+			dataTableService.findDataTablesByIds.mockResolvedValue([
+				{ id: 'dt-seeded', name: 'Customers' },
+				{ id: 'dt-named', name: 'Stock [seed 1a2b3c4d]' },
+			] as never);
+
+			await service.executeWithLlmMock('wf-1', makeUser(), {
+				seededDataTableIds: ['dt-seeded', 'dt-named'],
+			});
+
+			expect(dataTableService.findDataTablesByIds).toHaveBeenCalledWith(['dt-seeded', 'dt-named']);
+			const liveReads = identifyNodesForPinDataMock.mock.calls[0][2];
+			expect([...(liveReads ?? [])]).toEqual(['Read Seeded', 'Read Named']);
+		});
+
+		it('pins every read when the caller seeded no table', async () => {
+			workflowFinderService.findWorkflowForUser.mockResolvedValue(
+				makeWorkflowEntity({
+					nodes: [makeStartNode(), readNode('Read', { __rl: true, mode: 'id', value: 'dt-1' })],
+				}) as never,
+			);
+
+			await service.executeWithLlmMock('wf-1', makeUser());
+
+			expect([...(identifyNodesForPinDataMock.mock.calls[0][2] ?? [])]).toEqual([]);
+			expect(ownershipService.getWorkflowProjectCached).not.toHaveBeenCalled();
 		});
 	});
 

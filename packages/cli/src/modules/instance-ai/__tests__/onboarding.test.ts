@@ -4,7 +4,7 @@ import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { describe, expect, it } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { BadRequestError } from '@n8n/errors';
 import type { Telemetry } from '@/telemetry';
 
 import type { InstanceAiPendingConfirmation } from '../entities/instance-ai-pending-confirmation.entity';
@@ -149,7 +149,7 @@ describe('InstanceAiOnboardingService answerCard', () => {
 		expect(memoryService.seedOpeningMessages).toHaveBeenCalledWith(
 			THREAD_ID,
 			user.id,
-			'Got it. Finally, tell me a little about how you use Gmail and Slack.',
+			'Last one: what do you usually do in Gmail and Slack?',
 			expect.stringContaining('<onboarding-answer>'),
 		);
 	});
