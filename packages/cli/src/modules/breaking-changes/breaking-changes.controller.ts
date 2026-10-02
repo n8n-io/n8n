@@ -14,6 +14,7 @@ import { BreakingChangeMigrationService } from './breaking-changes.migration.ser
 import { RuleRegistry } from './breaking-changes.rule-registry.service';
 import { MigrationFindingQueryService } from './query/migration-finding-query.service';
 import { MigrationFindingSyncService } from './sync/migration-finding-sync.service';
+import { isWorkflowLevelRule } from './types';
 
 /** The version the report targets when the request names none. */
 const DEFAULT_TARGET_VERSION: BreakingChangeVersion = 'v2';
@@ -68,9 +69,11 @@ export class BreakingChangesController {
 		_res: Response,
 		@Param('ruleId') ruleId: string,
 	): Promise<BreakingChangeWorkflowRuleResult> {
-		// The page names the rule but not the version, so the rule decides.
+		// The page names the rule but not the version, so the rule decides. Only
+		// workflow rules have a detail page; an instance rule is rejected before the
+		// stale check, which can be a full scan.
 		const rule = this.ruleRegistry.getRule(ruleId);
-		if (!rule) {
+		if (!rule || !isWorkflowLevelRule(rule)) {
 			throw new NotFoundError(`Breaking change rule with ID '${ruleId}' not found.`);
 		}
 		const version = rule.getMetadata().version;

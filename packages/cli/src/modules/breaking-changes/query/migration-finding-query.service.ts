@@ -23,29 +23,19 @@ import { MigrationFindingSyncRepository } from '../database/repositories/migrati
 import { MigrationFindingRepository } from '../database/repositories/migration-finding.repository';
 import { groupNodesByType } from '../group-nodes-by-type';
 import { summarizeExecutionStatistics } from '../summarize-execution-statistics';
-import type {
-	IBreakingChangeBatchWorkflowRule,
-	IBreakingChangeInstanceRule,
-	IBreakingChangeRule,
-	IBreakingChangeWorkflowRule,
+import {
+	isInstanceRule,
+	isWorkflowLevelRule,
+	type IBreakingChangeBatchWorkflowRule,
+	type IBreakingChangeWorkflowRule,
+	type WorkflowLevelRule,
 } from '../types';
 import { N8N_VERSION } from '../../../constants';
-
-/** The rule kinds whose hits the sync writes to the finding table. */
-type WorkflowLevelRule = IBreakingChangeWorkflowRule | IBreakingChangeBatchWorkflowRule;
 
 type LightWorkflowResult = BreakingChangeLightReportResult['report']['workflowResults'][number];
 
 /** The rule fields both report types share. */
 type RuleDescription = Omit<BreakingChangeWorkflowRuleResult, 'affectedWorkflows'>;
-
-function isWorkflowLevelRule(rule: IBreakingChangeRule): rule is WorkflowLevelRule {
-	return 'detectWorkflow' in rule || 'collectWorkflowData' in rule;
-}
-
-function isInstanceRule(rule: IBreakingChangeRule): rule is IBreakingChangeInstanceRule {
-	return 'detect' in rule;
-}
 
 /** The same fields the scan loads, so a rule sees the same workflow data on both paths. */
 const WORKFLOW_FIELDS = ['name', 'active', 'activeVersionId', 'nodes', 'updatedAt'];
