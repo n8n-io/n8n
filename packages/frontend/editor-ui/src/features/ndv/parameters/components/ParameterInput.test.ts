@@ -1,6 +1,7 @@
 import { computed, defineComponent, h, nextTick, reactive, shallowRef } from 'vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import {
+	ParameterSelectV2Key,
 	ToolConfigCredentialSelectedKey,
 	WorkflowDocumentStoreKey,
 	WorkflowIdKey,
@@ -327,6 +328,65 @@ describe('ParameterInput.vue', () => {
 		expect(optionsInDropdown).toHaveLength(2);
 		expect(optionsInDropdown[0]).toHaveAttribute('aria-disabled', 'true');
 		expect(optionsInDropdown[1]).not.toHaveAttribute('aria-disabled', 'true');
+	});
+
+	test('renders options with N8nSelect2 when the host opts in', async () => {
+		const { getByRole, getByTestId, getByText, emitted } = renderComponent({
+			props: {
+				path: 'parameters.method',
+				parameter: createTestNodeProperties({
+					displayName: 'Method',
+					name: 'method',
+					type: 'options',
+					options: [
+						{ name: 'GET', value: 'GET' },
+						{ name: 'POST', value: 'POST', description: 'Send a body' },
+					],
+					default: 'POST',
+				}),
+				modelValue: 'POST',
+			},
+			global: {
+				provide: {
+					[ParameterSelectV2Key as symbol]: true,
+				},
+			},
+		});
+
+		expect(getByTestId('select-trigger')).toHaveTextContent('POST');
+		await userEvent.click(getByTestId('select-trigger'));
+		expect(getByText('Send a body')).toBeVisible();
+		await userEvent.click(getByRole('option', { name: 'GET' }));
+		expect(emitted('update')).toContainEqual([expect.objectContaining({ value: 'GET' })]);
+	});
+
+	test('matches a string model to a numeric option on the v2 select', async () => {
+		const { getByRole, getByTestId, emitted } = renderComponent({
+			props: {
+				path: 'facility',
+				parameter: createTestNodeProperties({
+					displayName: 'Facility',
+					name: 'facility',
+					type: 'options',
+					options: [
+						{ name: 'Kernel', value: 0 },
+						{ name: 'Local0', value: 16 },
+					],
+					default: '16',
+				}),
+				modelValue: '16',
+			},
+			global: {
+				provide: {
+					[ParameterSelectV2Key as symbol]: true,
+				},
+			},
+		});
+
+		expect(getByTestId('select-trigger')).toHaveTextContent('Local0');
+		await userEvent.click(getByTestId('select-trigger'));
+		await userEvent.click(getByRole('option', { name: 'Kernel' }));
+		expect(emitted('update')).toContainEqual([expect.objectContaining({ value: 0 })]);
 	});
 
 	describe('AI gateway action filtering', () => {
