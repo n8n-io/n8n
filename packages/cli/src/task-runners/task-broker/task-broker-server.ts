@@ -15,7 +15,6 @@ import {
 	createServer as createHttpServer,
 } from 'node:http';
 import type { AddressInfo, Socket } from 'node:net';
-import { parse as parseUrl } from 'node:url';
 import { type WebSocket, Server as WSServer } from 'ws';
 
 import { bodyParser, rawBodyReader } from '@/middlewares';
@@ -211,7 +210,7 @@ export class TaskBrokerServer {
 		head: Buffer,
 	) => {
 		try {
-			const parsedUrl = parseUrl(request.url, true);
+			const parsedUrl = new URL(request.url, 'http://localhost');
 
 			if (parsedUrl.pathname !== this.upgradeEndpoint) {
 				this.failUpgradeRequest(socket, 404);
@@ -228,8 +227,8 @@ export class TaskBrokerServer {
 				return;
 			}
 
-			const reportedRunnerId =
-				typeof parsedUrl.query.id === 'string' ? parsedUrl.query.id : undefined;
+			const runnerIds = parsedUrl.searchParams.getAll('id');
+			const reportedRunnerId = runnerIds.length === 1 ? runnerIds[0] : undefined;
 			if (!reportedRunnerId) {
 				this.logger.warn(
 					'Task runner connection attempt failed: missing runner ID in query parameters',

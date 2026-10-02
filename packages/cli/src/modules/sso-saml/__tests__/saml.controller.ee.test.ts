@@ -182,6 +182,38 @@ describe('Test views', () => {
 	});
 });
 
+describe('initSsoGet', () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+		samlService.getLoginRequestUrl.mockResolvedValue({
+			binding: 'redirect',
+			context: { context: 'https://idp.example.com/login' } as any,
+		});
+	});
+
+	it('decodes a relative referer redirect twice', async () => {
+		const req = mock<AuthlessRequest<{}, {}, {}, { redirect?: string }>>({
+			query: { redirect: '/default' },
+			headers: { referer: '/login?redirect=%252Fworkflows%252F123' },
+		});
+
+		await controller.initSsoGet(req, mock<Response>());
+
+		expect(samlService.getLoginRequestUrl).toHaveBeenCalledWith('/workflows/123');
+	});
+
+	it('keeps the request redirect when the referer has duplicate redirect values', async () => {
+		const req = mock<AuthlessRequest<{}, {}, {}, { redirect?: string }>>({
+			query: { redirect: '/default' },
+			headers: { referer: 'https://example.test/login?redirect=/first&redirect=/second' },
+		});
+
+		await controller.initSsoGet(req, mock<Response>());
+
+		expect(samlService.getLoginRequestUrl).toHaveBeenCalledWith('/default');
+	});
+});
+
 describe('configTestPost', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();

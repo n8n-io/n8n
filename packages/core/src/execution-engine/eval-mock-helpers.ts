@@ -7,7 +7,7 @@
  * type definitions in index.ts (module augmentation).
  */
 
-import type { IHttpRequestOptions, INode, INodeProperties, IRequestOptions } from 'n8n-workflow';
+import type { IHttpRequestOptions, INode, INodeProperties } from 'n8n-workflow';
 import { generateKeyPairSync } from 'node:crypto';
 import { STATUS_CODES } from 'node:http';
 import { Readable } from 'node:stream';
@@ -157,42 +157,6 @@ export function serializeMockToHttpResponse(
 		return { ...common, body: mock.body };
 	}
 	return { ...common, body: mock.body, __bodyResolved: true };
-}
-
-/**
- * Normalize legacy IRequestOptions or (uri, options) args into IHttpRequestOptions
- * for the eval mock handler. The legacy API has three mutually exclusive body
- * slots: `body`, `formData` (multipart), and `form` (URL-encoded) — fold them
- * all into `body` so the mock layer sees the payload regardless of transport
- * encoding (the binary redactor reduces multipart to part metadata before the
- * LLM). `simple: false` becomes `ignoreHttpStatusErrors`.
- */
-export function normalizeLegacyRequest(
-	// oxlint-disable-next-line typescript/no-deprecated
-	uriOrObject: string | IRequestOptions,
-	// oxlint-disable-next-line typescript/no-deprecated
-	options?: IRequestOptions,
-): IHttpRequestOptions {
-	if (typeof uriOrObject === 'string') {
-		return {
-			url: uriOrObject,
-			method: options?.method,
-			headers: options?.headers,
-			body: (options?.body ?? options?.formData ?? options?.form) as IHttpRequestOptions['body'],
-			qs: options?.qs,
-			...(options?.simple === false ? { ignoreHttpStatusErrors: true } : {}),
-		};
-	}
-	return {
-		url: uriOrObject.url ?? uriOrObject.uri ?? '',
-		method: uriOrObject.method,
-		headers: uriOrObject.headers,
-		body: (uriOrObject.body ??
-			uriOrObject.formData ??
-			uriOrObject.form) as IHttpRequestOptions['body'],
-		qs: uriOrObject.qs,
-		...(uriOrObject.simple === false ? { ignoreHttpStatusErrors: true } : {}),
-	};
 }
 
 /**

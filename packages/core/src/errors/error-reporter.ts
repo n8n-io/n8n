@@ -1,5 +1,5 @@
 import { inTest, Logger } from '@n8n/backend-common';
-import { isAxiosError } from '@n8n/backend-network';
+import { isAxiosError } from 'axios';
 import { type InstanceType } from '@n8n/constants';
 import { Service } from '@n8n/di';
 import type { ReportingOptions } from '@n8n/errors';
@@ -361,7 +361,6 @@ export class ErrorReporter {
 			return null;
 		}
 
-		// oxlint-disable-next-line typescript/no-deprecated
 		if (isAxiosError(originalException)) return null;
 
 		if (originalException instanceof BaseError) {

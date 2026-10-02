@@ -5,9 +5,7 @@ import { AuthenticatedRequest } from '@n8n/db';
 import { Get, Post, RestController, GlobalScope, Body } from '@n8n/decorators';
 import { Response } from 'express';
 import { CREDENTIAL_BLANKING_VALUE } from 'n8n-workflow';
-import querystring from 'querystring';
 import type { PostBindingContext } from 'samlify/types/src/entity';
-import url from 'url';
 
 import { AuthService } from '@/auth/auth.service';
 import { AuthError, ForbiddenError } from '@n8n/errors';
@@ -215,12 +213,14 @@ export class SamlController {
 		try {
 			const refererUrl = req.headers.referer;
 			if (refererUrl) {
-				// oxlint-disable-next-line typescript/no-deprecated
-				const parsedUrl = url.parse(refererUrl);
-				if (parsedUrl?.query) {
-					const parsedQueryParams = querystring.parse(parsedUrl.query);
-					if (parsedQueryParams.redirect && typeof parsedQueryParams.redirect === 'string') {
-						redirectUrl = querystring.unescape(parsedQueryParams.redirect);
+				const parsedUrl = new URL(refererUrl, 'http://localhost');
+				const redirects = parsedUrl.searchParams.getAll('redirect');
+				if (redirects.length === 1 && redirects[0]) {
+					// The old parser decoded the query value twice.
+					try {
+						redirectUrl = decodeURIComponent(redirects[0]);
+					} catch {
+						redirectUrl = redirects[0];
 					}
 				}
 			}

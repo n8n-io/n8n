@@ -164,11 +164,7 @@ export function removeEmptyBody(requestOptions: IHttpRequestOptions | IRequestOp
 	}
 }
 
-/**
- * @deprecated Prefer the package's single entry point:
- * `Container.get(OutboundHttp).requests({ ssrf }).request(options)`.
- * Kept exported for callers not yet migrated to the facade.
- */
+/** Internal HTTP request implementation. Call through `OutboundHttp` in production code. */
 export async function httpRequest(
 	requestOptions: IHttpRequestOptions & { returnFullResponse: true },
 	ssrfBridge?: SsrfBridge,

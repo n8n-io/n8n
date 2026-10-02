@@ -61,6 +61,26 @@ describe('ChatServer', () => {
 		);
 	});
 
+	it('handles a relative upgrade URL with a query string', () => {
+		chatServer.setup(mockHttpServer, mockApp);
+		const upgradeHandler = mockHttpServer.on.mock.calls[0][1];
+		const req = { url: '/chat?sessionId=123' } as ChatRequest;
+
+		upgradeHandler(req, mock(), Buffer.alloc(0));
+
+		expect(mockWsServer.handleUpgrade).toHaveBeenCalledOnce();
+	});
+
+	it('ignores an invalid upgrade URL', () => {
+		chatServer.setup(mockHttpServer, mockApp);
+		const upgradeHandler = mockHttpServer.on.mock.calls[0][1];
+
+		expect(() =>
+			upgradeHandler({ url: 'http://[' } as ChatRequest, mock(), Buffer.alloc(0)),
+		).not.toThrow();
+		expect(mockWsServer.handleUpgrade).not.toHaveBeenCalled();
+	});
+
 	it('calls attachToApp after WebSocket upgrade', () => {
 		chatServer.setup(mockHttpServer, mockApp);
 

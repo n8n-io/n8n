@@ -7,9 +7,9 @@ import {
 	buildEvalMockCredentials,
 	callEvalMockHandler,
 	isSecretCredentialProperty,
-	normalizeLegacyRequest,
 	serializeMockToHttpResponse,
 } from '../eval-mock-helpers';
+import { normalizeLegacyRequest } from '../node-execution-context/utils/request-helpers/legacy-request-adapter';
 import type { EvalLlmMockHandler, EvalMockHttpResponse } from '../index';
 
 // ---------------------------------------------------------------------------

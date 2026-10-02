@@ -9,7 +9,6 @@ import { ServerResponse } from 'http';
 import type { Server } from 'http';
 import pick from 'lodash/pick';
 import { InstanceSettings } from 'n8n-core';
-import { parse as parseUrl } from 'url';
 import { Server as WSServer } from 'ws';
 
 import { AuthService } from '@/auth/auth.service';
@@ -71,7 +70,8 @@ export class Push extends TypedEmitter<PushEvents> {
 		if (this.useWebSockets) {
 			const wsServer = new WSServer({ noServer: true });
 			server.on('upgrade', (request: WebSocketPushRequest, socket, upgradeHead) => {
-				if (parseUrl(request.url).pathname === `/${restEndpoint}/push`) {
+				if (!URL.canParse(request.url, 'http://localhost')) return;
+				if (new URL(request.url, 'http://localhost').pathname === `/${restEndpoint}/push`) {
 					wsServer.handleUpgrade(request, socket, upgradeHead, (ws) => {
 						request.ws = ws;
 

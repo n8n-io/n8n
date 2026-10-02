@@ -1,4 +1,6 @@
 import FormData from 'form-data';
+import { HttpProxyAgent } from 'http-proxy-agent';
+import { HttpsProxyAgent } from 'https-proxy-agent';
 import type { Agent as HttpsAgent } from 'https';
 import type { IHttpRequestMethods, IRequestOptions } from 'n8n-workflow';
 import nock from 'nock';
@@ -10,6 +12,16 @@ import { buildAxiosConfigFromLegacyRequest } from '../legacy';
 const TEST_CA_CERT = '-----BEGIN CERTIFICATE-----\nTEST\n-----END CERTIFICATE-----';
 
 describe('buildAxiosConfigFromLegacyRequest', () => {
+	test('routes an explicit proxy through the legacy agents', async () => {
+		const options = await buildAxiosConfigFromLegacyRequest({
+			url: 'https://example.com/data',
+			proxy: 'http://proxy.example.com:3128',
+		});
+
+		expect(options.httpAgent).toBeInstanceOf(HttpProxyAgent);
+		expect(options.httpsAgent).toBeInstanceOf(HttpsProxyAgent);
+	});
+
 	test('should handle basic request options', async () => {
 		const axiosOptions = await buildAxiosConfigFromLegacyRequest({
 			url: 'https://example.com',
