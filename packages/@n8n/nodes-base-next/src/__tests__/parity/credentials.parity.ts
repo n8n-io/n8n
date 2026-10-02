@@ -1,7 +1,9 @@
 import { credentialType, t, toCredentialType, type AnyCredentialType } from '@n8n/node-sdk';
 import { DatadogApi } from 'n8n-nodes-base/dist/credentials/DatadogApi.credentials';
+import { GithubApi } from 'n8n-nodes-base/dist/credentials/GithubApi.credentials';
 import { NotionApi } from 'n8n-nodes-base/dist/credentials/NotionApi.credentials';
 import { NotionOAuth2Api } from 'n8n-nodes-base/dist/credentials/NotionOAuth2Api.credentials';
+import { SupabaseApi } from 'n8n-nodes-base/dist/credentials/SupabaseApi.credentials';
 import { TrelloApi } from 'n8n-nodes-base/dist/credentials/TrelloApi.credentials';
 import { ZendeskApi } from 'n8n-nodes-base/dist/credentials/ZendeskApi.credentials';
 import type {
@@ -10,8 +12,22 @@ import type {
 	IHttpRequestOptions,
 } from 'n8n-workflow';
 
+import { githubToken } from '../../nodes/github/github.node';
+import { geminiKey } from '../../nodes/google-gemini/google-gemini.node';
 import { notionOAuth2, notionToken } from '../../nodes/notion/credentials';
-import { differences, explained, signRequest, type AllowedDifference } from './harness';
+import { supabaseKey } from '../../nodes/supabase/supabase.node';
+import {
+	differences,
+	explained,
+	requireBuilt,
+	signRequest,
+	type AllowedDifference,
+} from './harness';
+
+// The legacy type ships in nodes-langchain, which this package does not depend on.
+const { GooglePalmApi } = requireBuilt(
+	'@n8n/nodes-langchain/dist/credentials/GooglePalmApi.credentials.js',
+) as { GooglePalmApi: new () => ICredentialType };
 
 // Shape proofs: these three types are not ported, so they live here and not in a node folder.
 const zendeskToken = credentialType({
@@ -112,6 +128,7 @@ async function compareCredential(
 }
 
 const clean = { unexplained: [], stale: [] };
+const NEEDED = 'The type cannot sign without the field; the legacy class leaves it optional';
 const intended = (path: string, reason: string): AllowedDifference => ({
 	path,
 	kind: 'intended',
@@ -222,6 +239,75 @@ describe('credential types against the legacy classes', () => {
 					intended('described.authenticate', 'Data instead of an authenticate function'),
 					intended('described.test.request.baseURL', 'The API base URL'),
 					intended('described.test.request.url', 'A secret never goes into a URL'),
+				],
+			),
+		).toEqual(clean);
+	});
+	it('supabase.secretKey: two headers as a generic block', async () => {
+		expect(
+			await compareCredential(
+				new SupabaseApi(),
+				supabaseKey,
+				[
+					{
+						data: { host: 'https://acme.supabase.co', serviceRole: 'sb-1' },
+						request: {
+							url: 'https://acme.supabase.co/rest/v1/customers',
+							headers: { Prefer: 'return=representation' },
+						},
+					},
+				],
+				[
+					intended('described.properties[0].required', NEEDED),
+					intended('described.properties[1].required', NEEDED),
+					intended('described.test.request.headers', 'Prefer applies to writes; the test reads'),
+				],
+			),
+		).toEqual(clean);
+	});
+
+	it('github.token: a token header as a generic block', async () => {
+		expect(
+			await compareCredential(
+				new GithubApi(),
+				githubToken,
+				[
+					{
+						data: { server: 'https://api.github.com', user: 'ada', accessToken: 'ghp-1' },
+						request: { url: 'https://api.github.com/repos/a/b/issues', headers: { Accept: '*/*' } },
+					},
+				],
+				[
+					intended('described.properties[0].required', NEEDED),
+					intended('described.properties[2].required', NEEDED),
+					intended('described.test.request.baseURL', 'The field always has a value'),
+					intended('described.test.request.method', 'GET is the default'),
+					intended(
+						'described.authenticate.properties.headers.Authorization',
+						'The field always has a value',
+					),
+				],
+			),
+		).toEqual(clean);
+	});
+
+	it('googleGemini.apiKey: a query parameter as a generic block', async () => {
+		expect(
+			await compareCredential(
+				new GooglePalmApi(),
+				geminiKey,
+				[
+					{
+						data: { host: 'https://generativelanguage.googleapis.com', apiKey: 'g-1' },
+						request: {
+							url: 'https://generativelanguage.googleapis.com/v1beta/models',
+							qs: { pageSize: 1 },
+						},
+					},
+				],
+				[
+					intended('described.test.request.baseURL', 'The base URL of the actions'),
+					intended('described.test.request.url', 'The same request, split at the base URL'),
 				],
 			),
 		).toEqual(clean);

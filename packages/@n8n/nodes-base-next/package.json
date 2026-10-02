@@ -48,7 +48,13 @@
   "license": "LicenseRef-n8n-sustainable-use",
   "n8n": {
     "n8nNodesApiVersion": 1,
-    "credentials": [],
+    "credentials": [
+      "dist/credentials/NotionApi.credentials.js",
+      "dist/credentials/NotionOAuth2Api.credentials.js",
+      "dist/credentials/GooglePalmApi.credentials.js",
+      "dist/credentials/GithubApi.credentials.js",
+      "dist/credentials/SupabaseApi.credentials.js"
+    ],
     "nodes": [
       "dist/nodes/NotionDatabasePageGetAll.node.js",
       "dist/nodes/NotionUserGet.node.js",

@@ -20,7 +20,9 @@ import { InstanceSettings } from 'n8n-core';
 import {
 	deepCopy,
 	VersionedNodeType,
+	type ICredentialType,
 	type INodeTypeDescription,
+	type KnownNodesAndCredentials,
 	type IVersionedNodeType,
 	type LoadedClass,
 	type NodeLoader,
@@ -215,4 +217,53 @@ export function composeContractNodes(
 		},
 	);
 	return { nodes, types: [...patched, ...added] };
+}
+
+/** What the editor shows of a replaced credential type when the contract type has none. */
+const PRESENTATION = ['icon', 'iconColor', 'iconUrl', 'httpRequestNode'] as const;
+
+/**
+ * A credential type of this package replaces the type of the same name from another package, for
+ * example `notionApi` of n8n-nodes-base, so legacy nodes sign with the contract type too. The
+ * caller lists the types of this package last. The replacement keeps the supported nodes of
+ * both, and the icon and HTTP Request settings of the replaced type when it has none.
+ */
+export function preferContractCredentials(
+	loaders: Readonly<Record<string, NodeLoader>>,
+	known: KnownNodesAndCredentials['credentials'],
+	types: readonly ICredentialType[],
+) {
+	const own = Object.keys(loaders[NODE_PACKAGE]?.known.credentials ?? {});
+	const replaced = new Map(
+		own.flatMap((name) => {
+			const entries = types.filter((type) => type.name === name);
+			const contract = entries.at(-1);
+			if (!contract || entries.length < 2) return [];
+			const supportedNodes = [...new Set(entries.flatMap((entry) => entry.supportedNodes ?? []))];
+			const presentation = PRESENTATION.flatMap((key) => {
+				const value = entries.map((entry) => entry[key]).findLast((v) => v !== undefined);
+				return value === undefined ? [] : [[key, value] as const];
+			});
+			const merged: ICredentialType = {
+				...contract,
+				...Object.fromEntries(presentation),
+				supportedNodes,
+			};
+			return [[name, { merged, contract }] as const];
+		}),
+	);
+	return {
+		known: Object.fromEntries(
+			Object.entries(known).map(([name, entry]) => {
+				const supportedNodes = replaced.get(name)?.merged.supportedNodes;
+				// A copy: the AI tools add their variants to the known entry only, as for legacy types.
+				return [name, supportedNodes ? { ...entry, supportedNodes: [...supportedNodes] } : entry];
+			}),
+		),
+		types: types.flatMap((type) => {
+			const entry = replaced.get(type.name);
+			if (!entry) return [type];
+			return type === entry.contract ? [entry.merged] : [];
+		}),
+	};
 }

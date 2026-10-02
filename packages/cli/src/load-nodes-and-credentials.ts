@@ -584,7 +584,7 @@ export class LoadNodesAndCredentials {
 		const loaded: LoadedNodesAndCredentials = { nodes: {}, credentials: {} };
 		const types: Types = { nodes: [], credentials: [] };
 
-		for (const loader of Object.values(this.loaders)) {
+		for (const loader of this.loadersByPrecedence()) {
 			// Reload types if they were released from memory
 			await loader.ensureTypesLoaded();
 
@@ -649,6 +649,16 @@ export class LoadNodesAndCredentials {
 			this.logger.error('Cannot read the node contracts store', { error: ensureError(error) });
 			return undefined;
 		});
+		if (contracts) {
+			// Before the AI tools, so the tool variants of legacy nodes keep their credentials.
+			const preferred = contracts.preferContractCredentials(
+				this.loaders,
+				known.credentials,
+				types.credentials,
+			);
+			known.credentials = preferred.known;
+			types.credentials = preferred.types;
+		}
 
 		// Publish the rebuilt registry. Everything below runs synchronously until the
 		// post-processor loop, so no reader can observe a half-built registry.
@@ -732,10 +742,22 @@ export class LoadNodesAndCredentials {
 		return loader ? loader.resolveSourcePath(sourcePath) : sourcePath;
 	}
 
+	/**
+	 * The loaders in the order in which a later credential type replaces an earlier one of the
+	 * same name. With node contracts on, the contract package goes last, so its credential types
+	 * replace the legacy classes, also for legacy nodes.
+	 */
+	private loadersByPrecedence(): NodeLoader[] {
+		const loaders = Object.values(this.loaders);
+		if (!this.globalConfig.instanceAi.nodeContractsEnabled) return loaders;
+		const isContracts = (loader: NodeLoader) => loader.packageName === '@n8n/nodes-base-next';
+		return [...loaders.filter((loader) => !isContracts(loader)), ...loaders.filter(isContracts)];
+	}
+
 	getCredential(credentialType: string): LoadedClass<ICredentialType> {
 		const { loadedCredentials } = this;
 
-		for (const loader of Object.values(this.loaders)) {
+		for (const loader of this.loadersByPrecedence()) {
 			if (credentialType in loader.known.credentials) {
 				const loaded = loader.getCredential(credentialType);
 				loadedCredentials[credentialType] = loaded;

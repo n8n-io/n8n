@@ -1,19 +1,33 @@
-import { compat, credential, defineNode, str } from '@n8n/node-sdk';
+import { credential, credentialType, defineNode, str, t } from '@n8n/node-sdk';
 
-// The legacy type stays the definition. Its host is the project URL without `/rest/v1`.
-const host = str();
+export const supabaseKey = credentialType({
+	id: 'supabase.secretKey',
+	legacyName: 'supabaseApi',
+	displayName: 'Supabase API',
+	docs: 'supabase',
+	fields: {
+		host: t
+			.url('Host')
+			.describe(
+				'Your Supabase project URL without the <code>/rest/v1</code> path. If you copied the full Data API URL, remove the <code>/rest/v1</code> suffix.',
+			)
+			.with({ examples: ['https://your_account.supabase.co'] }),
+		serviceRole: t
+			.secret('Secret Key')
+			.describe(
+				'Your Supabase project secret key. You can create one in the <a href="https://supabase.com/dashboard/project/_/settings/api-keys" target="_blank">API Keys settings</a> of your project. Legacy service_role secrets are also supported.',
+			),
+	},
+	baseUrl: '{host}/rest/v1',
+	auth: (a) =>
+		a.apply({ headers: { apikey: '{serviceRole}', Authorization: 'Bearer {serviceRole}' } }),
+	test: { get: '/' },
+});
 
 export const supabase = defineNode({
 	id: 'supabase',
 	displayName: 'Supabase',
-	credential: credential({
-		types: [
-			compat('supabaseApi', {
-				fields: { host },
-				baseUrl: '{host}/rest/v1',
-			}),
-		],
-	}),
+	credential: credential({ types: [supabaseKey] }),
 });
 
 export const row = supabase.resource('row', {

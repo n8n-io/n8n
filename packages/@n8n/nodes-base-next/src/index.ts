@@ -1,4 +1,4 @@
-import { nodeNameOf, type Action, type Trigger } from '@n8n/node-sdk';
+import { nodeNameOf, type Action, type AnyCredentialType, type Trigger } from '@n8n/node-sdk';
 
 import { runAgent } from './nodes/ai/actions/agent';
 import { classifyText } from './nodes/ai/actions/classify';
@@ -225,6 +225,15 @@ export const actions: readonly Action[] = [
 
 /** Every trigger this package ships, one n8n node type each. */
 export const triggers: readonly Trigger[] = [pageAdded, repositoryEvent];
+
+/**
+ * The credential types of the shipped nodes that this package defines, one n8n class each. With
+ * the node contracts flag on, each replaces the legacy class of the same name. A compat type stays
+ * the legacy class.
+ */
+export const credentialTypes: readonly AnyCredentialType[] = [
+	...new Set([...actions, ...triggers].flatMap(({ node }) => node.credential?.types ?? [])),
+].filter(({ scheme }) => scheme.kind !== 'compat');
 
 /**
  * Triggers that a built-in n8n node runs. They have no bundle and no node type of this package:

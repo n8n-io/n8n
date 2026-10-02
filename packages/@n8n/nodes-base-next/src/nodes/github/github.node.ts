@@ -1,7 +1,24 @@
-import { compat, credential, defineNode, str } from '@n8n/node-sdk';
+import { compat, credential, credentialType, defineNode, str, t } from '@n8n/node-sdk';
 
-// The legacy types stay the definition. Both hold the server of GitHub Enterprise.
-const fields = { server: str().default('https://api.github.com') };
+const DEFAULT_SERVER = 'https://api.github.com';
+
+export const githubToken = credentialType({
+	id: 'github.token',
+	legacyName: 'githubApi',
+	displayName: 'GitHub API',
+	docs: 'github',
+	fields: {
+		server: t
+			.url('Github Server')
+			.default(DEFAULT_SERVER)
+			.describe('The server to connect to. Only has to be set if Github Enterprise is used.'),
+		user: t.text('User').optional(),
+		accessToken: t.secret('Access Token'),
+	},
+	baseUrl: '{server}',
+	auth: (a) => a.header('Authorization', 'token {accessToken}'),
+	test: { get: '/user' },
+});
 
 export const github = defineNode({
 	id: 'github',
@@ -9,8 +26,13 @@ export const github = defineNode({
 	// The scopes are GitHub OAuth scopes. A token with fine-grained permissions maps to them.
 	credential: credential({
 		types: [
-			compat('githubApi', { id: 'github.token', fields, baseUrl: '{server}' }),
-			compat('githubOAuth2Api', { id: 'github.oauth2', fields, baseUrl: '{server}' }),
+			githubToken,
+			// The legacy type stays the definition: its OAuth2 endpoints depend on the server.
+			compat('githubOAuth2Api', {
+				id: 'github.oauth2',
+				fields: { server: str().default(DEFAULT_SERVER) },
+				baseUrl: '{server}',
+			}),
 		],
 		scopes: {
 			repo: 'Read and write repositories',

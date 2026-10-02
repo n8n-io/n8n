@@ -38,7 +38,8 @@ function run(
 		getInputData: () => [{ json: {} }],
 		getNode: () => ({ name: 'Node', credentials }),
 		getNodeParameter: (name: string) => parameters[name],
-		getCredentials: async () => ({}),
+		// The Gemini credential has a base URL, so the runtime reads its data.
+		getCredentials: async () => ({ apiKey: 'g-1' }),
 		continueOnFail: () => false,
 		helpers: {
 			httpRequestWithAuthentication: async (credentialType: string, options: Options) => {

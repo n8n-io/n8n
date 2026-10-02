@@ -16,11 +16,17 @@ import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { compileFunction } from 'node:vm';
-import type { IExecuteFunctions, VersionedNodeType } from 'n8n-workflow';
+import type { ICredentialType, IExecuteFunctions, VersionedNodeType } from 'n8n-workflow';
 
-import { actionEntries, freezeAll, NODES_DIR, nodeClassFile } from '../../scripts/freeze';
+import {
+	actionEntries,
+	credentialClassFile,
+	freezeAll,
+	NODES_DIR,
+	nodeClassFile,
+} from '../../scripts/freeze';
 import { FIXTURES_DIR } from '../../scripts/publish';
-import { actions, triggers } from '../index';
+import { actions, credentialTypes, triggers } from '../index';
 import { versionsOf, VERSIONS_DIR } from '../registry';
 
 /**
@@ -40,6 +46,13 @@ function loadNodeClass(contract: Parameters<typeof nodeClassFile>[0], dir: strin
 }
 
 const contracts = [...actions, ...triggers];
+
+const n8nManifest = () => {
+	const manifest: unknown = JSON.parse(
+		readFileSync(path.resolve(__dirname, '../../package.json'), 'utf8'),
+	);
+	return sdk.isRecord(manifest) && sdk.isRecord(manifest.n8n) ? manifest.n8n : {};
+};
 
 const fixturesOf = (actionId: string) =>
 	parseFixtures(readFileSync(path.join(FIXTURES_DIR, `${actionId}.json`), 'utf8'));
@@ -79,11 +92,9 @@ describe('bundled versions', () => {
 	});
 
 	it('match the n8n.nodes list of package.json with one generated class file each', () => {
-		const manifest: unknown = JSON.parse(
-			readFileSync(path.resolve(__dirname, '../../package.json'), 'utf8'),
+		expect(n8nManifest().nodes).toEqual(
+			contracts.map((contract) => `dist/${nodeClassFile(contract).file}`),
 		);
-		const listed = sdk.isRecord(manifest) && sdk.isRecord(manifest.n8n) ? manifest.n8n.nodes : [];
-		expect(listed).toEqual(contracts.map((contract) => `dist/${nodeClassFile(contract).file}`));
 	});
 
 	it('load from the generated class files with the class name of each file', () => {
@@ -190,6 +201,57 @@ describe('bundled versions', () => {
 				},
 			},
 		]);
+	});
+});
+
+describe('credential classes', () => {
+	const ownTypes = [
+		...new Map(
+			contracts
+				.flatMap(({ node }) => node.credential?.types ?? [])
+				.filter(({ scheme }) => scheme.kind !== 'compat')
+				.map((type) => [type.name, type]),
+		).values(),
+	];
+
+	it('match the n8n.credentials list of package.json with every non-compat type of a shipped node', () => {
+		expect(ownTypes.map(({ name }) => name)).toContain('notionApi');
+		expect(credentialTypes).toEqual(ownTypes);
+		expect(n8nManifest().credentials).toEqual(
+			ownTypes.map((type) => `dist/${credentialClassFile(type).file}`),
+		);
+	});
+
+	it('load from the generated class files as the projected type with the legacy name', () => {
+		const loaded = credentialTypes.map((type) => {
+			const { file, source } = credentialClassFile(type);
+			const [className = ''] = path.parse(file).name.split('.');
+			const modules: Record<string, unknown> = {
+				'@n8n/node-sdk': sdk,
+				'../index': { credentialTypes },
+			};
+			const module: { exports: Record<string, unknown> } = { exports: {} };
+			compileFunction(source, ['exports', 'require'])(module.exports, (id: string) => modules[id]);
+			const Class = module.exports[className] as new () => ICredentialType;
+			const instance = new Class();
+			// A generated `authenticate` is a new function each time.
+			const { authenticate } = instance;
+			return {
+				className: instance.constructor.name,
+				...instance,
+				authenticate: typeof authenticate,
+			};
+		});
+		expect(loaded).toEqual(
+			credentialTypes.map((type) => {
+				const projected = sdk.toCredentialType(type);
+				return {
+					className: `${type.name.charAt(0).toUpperCase()}${type.name.slice(1)}`,
+					...projected,
+					authenticate: typeof projected?.authenticate,
+				};
+			}),
+		);
 	});
 });
 

@@ -1,9 +1,9 @@
-import { nodeNameOf, type Action, type Trigger } from '@n8n/node-sdk';
+import { nodeNameOf, type Action, type AnyCredentialType, type Trigger } from '@n8n/node-sdk';
 import { freezeAction, writeFrozenAction } from '@n8n/node-sdk/freeze';
 import { mkdirSync, readdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 
-import { actions, triggers } from '../src/index';
+import { actions, credentialTypes, triggers } from '../src/index';
 import { VERSIONS_DIR } from '../src/registry';
 
 /** One folder per service, e.g. `google-sheets/` with `actions/sheet.append.ts`. */
@@ -73,6 +73,39 @@ export function writeNodeClasses(distDir: string) {
 	});
 }
 
+/**
+ * The n8n class file of a credential type, relative to `dist`. The class has the legacy name, e.g.
+ * `credentials/NotionApi.credentials.js` exports `NotionApi` with the type `notionApi`.
+ */
+export function credentialClassFile(type: Pick<AnyCredentialType, 'id' | 'name'>) {
+	const className = `${type.name.charAt(0).toUpperCase()}${type.name.slice(1)}`;
+	const source = [
+		'"use strict";',
+		'const { toCredentialType } = require("@n8n/node-sdk");',
+		'const { credentialTypes } = require("../index");',
+		`const type = credentialTypes.find(({ id }) => id === ${JSON.stringify(type.id)});`,
+		`class ${className} {`,
+		'\tconstructor() {',
+		'\t\tObject.assign(this, toCredentialType(type));',
+		'\t}',
+		'}',
+		`exports.${className} = ${className};`,
+		'',
+	].join('\n');
+	return { file: `credentials/${className}.credentials.js`, className, source };
+}
+
+/** Writes one class file per credential type into `distDir`, after `tsc` built `dist/index.js`. */
+export function writeCredentialClasses(distDir: string) {
+	mkdirSync(path.join(distDir, 'credentials'), { recursive: true });
+	credentialTypes.map(credentialClassFile).forEach(({ file, source }) => {
+		writeFileSync(path.join(distDir, file), source);
+	});
+}
+
 if (require.main === module) {
-	void freezeAll(VERSIONS_DIR).then(() => writeNodeClasses(DIST_DIR));
+	void freezeAll(VERSIONS_DIR).then(() => {
+		writeNodeClasses(DIST_DIR);
+		writeCredentialClasses(DIST_DIR);
+	});
 }
