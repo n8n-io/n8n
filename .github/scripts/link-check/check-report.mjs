@@ -11,8 +11,9 @@
  *   network errors are opened again in headless Chrome. Many sites block HTTP
  *   clients but serve browsers, and a second request confirms that a server or
  *   connection failure persists.
- *   Chrome stops after 8 minutes, so that the job ends with a report. Links that
- *   Chrome did not open count as broken.
+ *   Chrome opens no new links after 8 minutes, so that the job ends with a
+ *   report. A page that is open can take one more minute. Links that Chrome did
+ *   not open count as broken.
  *
  * - A broken docs.n8n.io link on a line that changed in the last 30 days is
  *   pending, not broken. Code often ships before its docs page. Needs git
