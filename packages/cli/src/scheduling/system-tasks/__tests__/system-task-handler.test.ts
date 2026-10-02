@@ -1,7 +1,7 @@
 import type { EventService } from '@n8n/backend-services';
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { ClaimedTask, DispatchReporter } from '@n8n/scheduler';
-import { createDispatchReporter } from '@n8n/scheduler';
+import { createDispatchReporter, LeaseLostError } from '@n8n/scheduler';
 import { Tracing } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
@@ -75,6 +75,27 @@ describe('SystemTaskHandler', () => {
 
 		await expect(executing).rejects.toThrow();
 		expect(onRunError).not.toHaveBeenCalled();
+	});
+
+	it('propagates the lease error when the run resolves after its claim is lost', async () => {
+		const { task, report, handler, onRunError, eventService, leaseController } =
+			setup('idempotent');
+		task.onRun = async (signal) =>
+			await new Promise<void>((resolve) => {
+				signal.addEventListener('abort', () => resolve(), { once: true });
+			});
+		const error = new LeaseLostError();
+
+		const executing = handler.execute(claimed, report, leaseController.signal);
+		leaseController.abort(error);
+
+		await expect(executing).rejects.toBe(error);
+		expect(report.dispatched).not.toHaveBeenCalled();
+		expect(onRunError).not.toHaveBeenCalled();
+		expect(eventService.emit).toHaveBeenCalledWith(
+			'system-task-run-settled',
+			expect.objectContaining({ mode: 'durable', result: 'aborted' }),
+		);
 	});
 
 	it('leaves idempotent work retryable', async () => {

@@ -74,10 +74,14 @@ export interface SystemTask {
 	readonly concurrencyLimit?: number | null;
 
 	/**
-	 * Executes one occurrence of the task. `signal` aborts when the run should
-	 * stop early: the instance is shutting down or, for a run on the in-memory
-	 * timer, leadership was lost. Honoring it is optional, but a run that
-	 * ignores it delays stepdown and shutdown until it settles.
+	 * Executes one occurrence of the task. A run may take as long as it needs.
+	 * `signal` aborts when the run should stop early: the instance is shutting
+	 * down, leadership was lost (in-memory timer), or another instance may take
+	 * the occurrence over (durable). Honoring it is optional, but a run that
+	 * ignores it delays stepdown and shutdown, and may overlap another run.
+	 * An idempotent durable run that settles after another instance may take the
+	 * occurrence over counts as interrupted: it uses an attempt and is retried,
+	 * even if it finished its work.
 	 */
 	run(signal: AbortSignal): Promise<void>;
 }
