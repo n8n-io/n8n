@@ -1,6 +1,7 @@
 import { testDb } from '@n8n/backend-test-utils';
+import { GlobalConfig } from '@n8n/config';
 import type { ScheduledJob as ScheduledJobEntity, ScheduledTask } from '@n8n/db';
-import { ScheduledJobRepository, ScheduledTaskRepository } from '@n8n/db';
+import { DataSource, ScheduledJobRepository, ScheduledTaskRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 
 import { selfOwned } from './shared/job-factory';
@@ -11,6 +12,7 @@ import { selfOwned } from './shared/job-factory';
  * Due-ness uses the DB clock, so tasks are made due with a `runAt` in the past.
  */
 describe('ScheduledTaskRepository executor methods', () => {
+	const isPostgres = process.env.DB_TYPE === 'postgresdb';
 	const TASK_TYPE = 'scheduleTrigger';
 	const HOST_A = 'main-a';
 	const HOST_B = 'main-b';
@@ -18,6 +20,7 @@ describe('ScheduledTaskRepository executor methods', () => {
 	// can't drift it towards now().
 	const past = () => new Date(Date.now() - 60_000);
 
+	let dataSource: DataSource;
 	let jobRepository: ScheduledJobRepository;
 	let taskRepository: ScheduledTaskRepository;
 	let job: ScheduledJobEntity;
@@ -56,7 +59,10 @@ describe('ScheduledTaskRepository executor methods', () => {
 	const reload = async (id: string) => await taskRepository.findOneByOrFail({ id });
 
 	beforeAll(async () => {
+		// Use separate connections for concurrent claims.
+		Container.get(GlobalConfig).database.postgresdb.poolSize = 4;
 		await testDb.init();
+		dataSource = Container.get(DataSource);
 		jobRepository = Container.get(ScheduledJobRepository);
 		taskRepository = Container.get(ScheduledTaskRepository);
 	});
@@ -236,6 +242,377 @@ describe('ScheduledTaskRepository executor methods', () => {
 
 			const second = await taskRepository.claimDueTasks(claimOpts({ host: HOST_B }));
 			expect(second).toHaveLength(0);
+		});
+	});
+
+	describe('claimDueTasks under a concurrencyLimit', () => {
+		const createLimitedJob = async (concurrencyLimit: number | null) => {
+			const jobName = `limited-${Math.random().toString(36).slice(2)}`;
+			return await jobRepository.save(
+				jobRepository.create({
+					name: jobName,
+					...selfOwned(jobName),
+					taskType: TASK_TYPE,
+					payload: {},
+					kind: 'interval',
+					intervalSeconds: 60,
+					enabled: true,
+					nextRunAt: new Date('2026-01-01T00:00:00.000Z'),
+					maxAttempts: 1,
+					concurrencyLimit,
+				}),
+			);
+		};
+
+		const statusOf = async (id: string) => (await reload(id)).status;
+
+		const runningCountOf = async (jobId: number) =>
+			await taskRepository.countBy({ jobId, status: 'running' });
+
+		it('claims one of two due occurrences of a limit-1 job and keeps the other pending', async () => {
+			const limited = await createLimitedJob(1);
+			const first = await createTask({ jobId: limited.id, runAt: new Date(Date.now() - 30_000) });
+			const second = await createTask({ jobId: limited.id, runAt: new Date(Date.now() - 20_000) });
+
+			const claimed = await taskRepository.claimDueTasks(claimOpts());
+
+			expect(claimed.map((t) => t.id)).toEqual([first.id]);
+			expect(await statusOf(second.id)).toBe('pending');
+			expect((await reload(second.id)).claimedBy).toBeNull();
+			expect(await runningCountOf(limited.id)).toBe(1);
+		});
+
+		it('counts an occurrence already running elsewhere against the limit, even past its deadline', async () => {
+			const limited = await createLimitedJob(1);
+			await createTask({
+				jobId: limited.id,
+				status: 'running',
+				claimedBy: HOST_B,
+				leaseExpiresAt: new Date(Date.now() + 60_000),
+				leaseEpoch: 1,
+				missedAfter: new Date(Date.now() - 60_000),
+			});
+			const due = await createTask({ jobId: limited.id });
+
+			const claimed = await taskRepository.claimDueTasks(claimOpts());
+
+			expect(claimed).toHaveLength(0);
+			expect(await statusOf(due.id)).toBe('pending');
+			expect(await runningCountOf(limited.id)).toBe(1);
+		});
+
+		it('never has two running occurrences of a limit-1 job across passes', async () => {
+			const limited = await createLimitedJob(1);
+			await createTask({ jobId: limited.id });
+			await createTask({ jobId: limited.id });
+
+			const first = await taskRepository.claimDueTasks(claimOpts());
+			const second = await taskRepository.claimDueTasks(claimOpts({ host: HOST_B }));
+
+			expect(first).toHaveLength(1);
+			expect(second).toHaveLength(0);
+			expect(await runningCountOf(limited.id)).toBe(1);
+		});
+
+		it('runs two of three due occurrences of a limit-2 job and keeps the third pending', async () => {
+			const limited = await createLimitedJob(2);
+			const a = await createTask({ jobId: limited.id, runAt: new Date(Date.now() - 30_000) });
+			const b = await createTask({ jobId: limited.id, runAt: new Date(Date.now() - 20_000) });
+			const c = await createTask({ jobId: limited.id, runAt: new Date(Date.now() - 10_000) });
+
+			const claimed = await taskRepository.claimDueTasks(claimOpts());
+
+			expect(new Set(claimed.map((t) => t.id))).toEqual(new Set([a.id, b.id]));
+			expect(await statusOf(c.id)).toBe('pending');
+			expect(await runningCountOf(limited.id)).toBe(2);
+		});
+
+		it('claims a held occurrence once a slot frees up, while its deadline is ahead', async () => {
+			const limited = await createLimitedJob(1);
+			await createTask({ jobId: limited.id, runAt: new Date(Date.now() - 30_000) });
+			const held = await createTask({
+				jobId: limited.id,
+				runAt: new Date(Date.now() - 20_000),
+				missedAfter: new Date(Date.now() + 60_000),
+			});
+
+			const [running] = await taskRepository.claimDueTasks(claimOpts());
+			expect(await taskRepository.claimDueTasks(claimOpts())).toHaveLength(0);
+
+			await taskRepository.completeTask({
+				host: HOST_A,
+				id: running.id,
+				claimedEpoch: running.leaseEpoch,
+			});
+
+			const claimed = await taskRepository.claimDueTasks(claimOpts());
+
+			expect(claimed.map((t) => t.id)).toEqual([held.id]);
+			expect(await runningCountOf(limited.id)).toBe(1);
+		});
+
+		it('retires a held occurrence as missed once its deadline passes, without running it', async () => {
+			const limited = await createLimitedJob(1);
+			await createTask({ jobId: limited.id, runAt: new Date(Date.now() - 30_000) });
+			const held = await createTask({
+				jobId: limited.id,
+				runAt: new Date(Date.now() - 20_000),
+				missedAfter: new Date(Date.now() + 60_000),
+			});
+
+			expect(await taskRepository.claimDueTasks(claimOpts())).toHaveLength(1);
+			expect(await statusOf(held.id)).toBe('pending');
+
+			await taskRepository.update(held.id, { missedAfter: new Date(Date.now() - 1_000) });
+
+			expect(await taskRepository.claimDueTasks(claimOpts())).toHaveLength(0);
+			expect(await taskRepository.retireMissedPending(10)).toBe(1);
+
+			const retired = await reload(held.id);
+			expect(retired.status).toBe('missed');
+			expect(retired.claimedBy).toBeNull();
+			expect(retired.startedAt).toBeNull();
+		});
+
+		it('claims the next occurrence without waiting for an expired one to retire', async () => {
+			const limited = await createLimitedJob(1);
+			const expired = await createTask({
+				jobId: limited.id,
+				runAt: new Date(Date.now() - 30_000),
+				missedAfter: new Date(Date.now() - 60_000),
+			});
+			const ready = await createTask({
+				jobId: limited.id,
+				runAt: new Date(Date.now() - 20_000),
+			});
+
+			const claimed = await taskRepository.claimDueTasks(claimOpts());
+
+			expect(claimed.map((task) => task.id)).toEqual([ready.id]);
+			expect(await statusOf(expired.id)).toBe('pending');
+			expect(await taskRepository.retireMissedPending(10)).toBe(1);
+			expect(await statusOf(expired.id)).toBe('missed');
+		});
+
+		it('lets a retry past its deadline take a slot', async () => {
+			const limited = await createLimitedJob(1);
+			const retry = await createTask({
+				jobId: limited.id,
+				runAt: new Date(Date.now() - 30_000),
+				missedAfter: new Date(Date.now() - 60_000),
+				attempts: 1,
+				maxAttempts: 2,
+			});
+			const next = await createTask({
+				jobId: limited.id,
+				runAt: new Date(Date.now() - 20_000),
+			});
+
+			const claimed = await taskRepository.claimDueTasks(claimOpts());
+
+			expect(claimed.map((task) => task.id)).toEqual([retry.id]);
+			expect(await statusOf(next.id)).toBe('pending');
+		});
+
+		it('fills the batch with other jobs when a limited job holds occurrences back', async () => {
+			const limited = await createLimitedJob(1);
+			for (const offset of [50_000, 40_000, 30_000]) {
+				await createTask({ jobId: limited.id, runAt: new Date(Date.now() - offset) });
+			}
+			// Later than every limited task, so a cap applied after the batch size would skip them.
+			const unlimitedA = await createTask({ runAt: new Date(Date.now() - 20_000) });
+			const unlimitedB = await createTask({ runAt: new Date(Date.now() - 10_000) });
+
+			const claimed = await taskRepository.claimDueTasks(claimOpts({ batchSize: 3 }));
+
+			expect(claimed).toHaveLength(3);
+			expect(claimed.map((t) => t.id)).toEqual(
+				expect.arrayContaining([unlimitedA.id, unlimitedB.id]),
+			);
+			expect(await runningCountOf(limited.id)).toBe(1);
+		});
+
+		it('claims every due occurrence of an unlimited job', async () => {
+			const unlimited = await createLimitedJob(null);
+			const created = await Promise.all([
+				createTask({ jobId: unlimited.id }),
+				createTask({ jobId: unlimited.id }),
+				createTask({ jobId: unlimited.id }),
+			]);
+
+			const claimed = await taskRepository.claimDueTasks(claimOpts());
+
+			expect(new Set(claimed.map((t) => t.id))).toEqual(new Set(created.map((t) => t.id)));
+		});
+
+		it('never lets two concurrent claimers exceed a limit together', async () => {
+			const limited = await createLimitedJob(1);
+			await Promise.all([
+				createTask({ jobId: limited.id }),
+				createTask({ jobId: limited.id }),
+				createTask({ jobId: limited.id }),
+			]);
+
+			const [a, b] = await Promise.all([
+				taskRepository.claimDueTasks(claimOpts({ host: HOST_A })),
+				taskRepository.claimDueTasks(claimOpts({ host: HOST_B })),
+			]);
+
+			expect(a.length + b.length).toBe(1);
+			expect(await runningCountOf(limited.id)).toBe(1);
+		});
+
+		it('keeps claiming unlimited work while another claimer holds a limited job', async () => {
+			const limited = await createLimitedJob(1);
+			await createTask({ jobId: limited.id });
+			const unlimited = await Promise.all([createTask(), createTask(), createTask(), createTask()]);
+
+			const [a, b] = await Promise.all([
+				taskRepository.claimDueTasks(claimOpts({ host: HOST_A })),
+				taskRepository.claimDueTasks(claimOpts({ host: HOST_B })),
+			]);
+
+			const ids = [...a, ...b].map((t) => t.id);
+			expect(new Set(ids).size).toBe(ids.length);
+			expect(ids).toEqual(expect.arrayContaining(unlimited.map((t) => t.id)));
+			expect(ids).toHaveLength(unlimited.length + 1);
+		});
+
+		// Only Postgres needs these checks. SQLite runs one claim at a time.
+		describe.runIf(isPostgres)('across concurrent Postgres claimers', () => {
+			const PAUSE_UPDATE = 46202026;
+			const PAUSE_SNAPSHOT = 46202027;
+
+			const jobTable = () => dataSource.driver.escape(jobRepository.metadata.tableName);
+			const taskTable = () => dataSource.driver.escape(taskRepository.metadata.tableName);
+
+			/** Settles once exactly one session is waiting on the given advisory lock. */
+			const waitForBlockedOn = async (key: number) =>
+				await expect
+					.poll(
+						async () => {
+							const rows = await dataSource.query<Array<{ count: string }>>(
+								`SELECT count(*) FROM pg_locks
+								  WHERE locktype = 'advisory' AND objid = $1 AND NOT granted`,
+								[key],
+							);
+							return Number(rows[0].count);
+						},
+						{ timeout: 5_000 },
+					)
+					.toBe(1);
+
+			it('fills the batch from other jobs when a limited job is locked', async () => {
+				const limited = await createLimitedJob(1);
+				// Earlier than the other task, so a claim that waited for the lock would return it first.
+				await createTask({ jobId: limited.id, runAt: new Date(Date.now() - 50_000) });
+				const available = await createTask({ runAt: new Date(Date.now() - 10_000) });
+				const locker = dataSource.createQueryRunner();
+				await locker.connect();
+				await locker.startTransaction();
+
+				try {
+					await locker.query(`SELECT "id" FROM ${jobTable()} WHERE "id" = $1 FOR NO KEY UPDATE`, [
+						limited.id,
+					]);
+
+					const claimed = await taskRepository.claimDueTasks(claimOpts());
+
+					expect(claimed.map((task) => task.id)).toEqual([available.id]);
+					expect(await runningCountOf(limited.id)).toBe(0);
+				} finally {
+					await locker.rollbackTransaction();
+					await locker.release();
+				}
+			});
+
+			it('claims nothing on a snapshot taken before another claimer bumped the job', async () => {
+				const limited = await createLimitedJob(1);
+				const first = await createTask({
+					jobId: limited.id,
+					runAt: new Date(Date.now() - 30_000),
+				});
+
+				// Pause claim A inside its update, after it picks its tasks.
+				await dataSource.query(`CREATE FUNCTION pause_claim_update() RETURNS trigger LANGUAGE plpgsql AS $$
+						BEGIN
+							IF NEW."claimedBy" = '${HOST_A}' THEN PERFORM pg_advisory_xact_lock(${PAUSE_UPDATE}); END IF;
+							RETURN NEW;
+						END $$`);
+				await dataSource.query(`CREATE TRIGGER pause_claim_update BEFORE UPDATE ON ${taskTable()}
+						FOR EACH ROW EXECUTE FUNCTION pause_claim_update()`);
+				// Pause claim B after it reads the tasks, before it reaches the job row.
+				await dataSource.query(`CREATE FUNCTION pause_claim_snapshot(types text[]) RETURNS text[] LANGUAGE plpgsql AS $$
+						BEGIN
+							PERFORM pg_advisory_xact_lock(${PAUSE_SNAPSHOT});
+							RETURN types;
+						END $$`);
+
+				const barrier = dataSource.createQueryRunner();
+				await barrier.connect();
+				const originalQuery = taskRepository.query.bind(taskRepository);
+				const querySpy = vi.spyOn(taskRepository, 'query');
+				let claimA: Promise<ScheduledTask[]> | undefined;
+				let claimB: Promise<ScheduledTask[]> | undefined;
+				let a: ScheduledTask[] = [];
+				let b: ScheduledTask[] = [];
+
+				try {
+					await barrier.query(`SELECT pg_advisory_lock(${PAUSE_UPDATE})`);
+					await barrier.query(`SELECT pg_advisory_lock(${PAUSE_SNAPSHOT})`);
+
+					claimA = taskRepository.claimDueTasks(claimOpts({ host: HOST_A }));
+					await waitForBlockedOn(PAUSE_UPDATE);
+
+					// An earlier task takes the job's only place, so B's old read would
+					// pick a task that A never claimed.
+					const earlier = new Date(first.runAt.getTime() - 1_000);
+					await dataSource.transaction(
+						async (manager) =>
+							await taskRepository.insertIgnoringDuplicates(manager, [
+								{
+									jobId: limited.id,
+									taskType: TASK_TYPE,
+									payload: {},
+									scheduledFor: earlier,
+									runAt: earlier,
+									maxAttempts: 1,
+									missedAfter: null,
+								},
+							]),
+					);
+
+					querySpy.mockImplementation(
+						async (sql: string, parameters?: unknown[]) =>
+							await originalQuery(
+								sql.replace('= ANY($3)', '= ANY(pause_claim_snapshot($3::text[]))'),
+								parameters,
+							),
+					);
+					claimB = taskRepository.claimDueTasks(claimOpts({ host: HOST_B }));
+					await waitForBlockedOn(PAUSE_SNAPSHOT);
+
+					await barrier.query(`SELECT pg_advisory_unlock(${PAUSE_UPDATE})`);
+					a = await claimA;
+					await barrier.query(`SELECT pg_advisory_unlock(${PAUSE_SNAPSHOT})`);
+					b = await claimB;
+				} finally {
+					await barrier.query('SELECT pg_advisory_unlock_all()');
+					if (claimA) a = await claimA;
+					if (claimB) b = await claimB;
+					querySpy.mockRestore();
+					await barrier.release();
+					await dataSource.query(`DROP TRIGGER pause_claim_update ON ${taskTable()}`);
+					await dataSource.query('DROP FUNCTION pause_claim_update()');
+					await dataSource.query('DROP FUNCTION pause_claim_snapshot(text[])');
+				}
+
+				expect(a.map((task) => task.id)).toEqual([first.id]);
+				expect(b).toHaveLength(0);
+				expect(await runningCountOf(limited.id)).toBe(1);
+				// The claim must not change the job's data.
+				expect(await jobRepository.findOneByOrFail({ id: limited.id })).toEqual(limited);
+			}, 20_000);
 		});
 	});
 
