@@ -14,7 +14,7 @@ import {
 	type INodeTypeDescription,
 	type NodeParameterValueType,
 } from 'n8n-workflow';
-import { computed, toValue, type MaybeRefOrGetter } from 'vue';
+import { computed, toRaw, toValue, type MaybeRefOrGetter } from 'vue';
 
 export interface CredentialDropdownOption extends ICredentialsResponse {
 	typeDisplayName: string;
@@ -25,13 +25,6 @@ export function useNodeCredentialOptions(
 	nodeType: MaybeRefOrGetter<INodeTypeDescription | null>,
 	overrideCredType: MaybeRefOrGetter<NodeParameterValueType | undefined>,
 	displayAllOptions: MaybeRefOrGetter<boolean> = false,
-	/** When provided, build dropdown options from this list instead of the
-	 *  shared usable-credentials slice. Hosts that already hold the exact,
-	 *  project-scoped, type-matched credential list (e.g. the Instance AI
-	 *  setup card, which receives it in the suspend payload) pass it here so
-	 *  the dropdown does not depend on a slice that may be empty or cleared
-	 *  by a competing scoped fetch. */
-	overrideCredentials: MaybeRefOrGetter<ICredentialsResponse[] | undefined> = undefined,
 ) {
 	const nodeHelpers = useNodeHelpers();
 	const credentialsStore = useCredentialsStore();
@@ -59,29 +52,42 @@ export function useNodeCredentialOptions(
 		credentialTypesNodeDescriptionDisplayed.value.every(({ type }) => isCredentialExisting(type)),
 	);
 
+	function isUsableProjectCredential(
+		option: ICredentialsResponse,
+		credentialTypeName?: string,
+	): boolean {
+		if (credentialTypeName && option.type !== credentialTypeName) {
+			return false;
+		}
+		if ((option.usageScope ?? 'project') !== 'project') {
+			return false;
+		}
+		if (toValue(node)?.type === HTTP_REQUEST_NODE_TYPE && option.isManaged) {
+			return false;
+		}
+		return true;
+	}
+
 	function getCredentialOptions(types: string[]): CredentialDropdownOption[] {
-		const override = toValue(overrideCredentials);
-		let options: CredentialDropdownOption[] = [];
-		types.forEach((type) => {
-			// The override is a host-supplied, already-scoped list; fall back to the
-			// shared usable-credentials slice when no override is given. An unfetched
-			// slice reads as empty, never as a fallback to the flat map — falling
-			// back is the bug this override exists to avoid.
-			const source = override
-				? override.filter((credential) => credential.type === type)
-				: credentialsStore.allUsableCredentialsByType[type];
-			options = options.concat(
-				source?.map<CredentialDropdownOption>((option: ICredentialsResponse) => ({
-					...option,
-					typeDisplayName: credentialsStore.getCredentialTypeByName(type)?.displayName ?? '',
-				})) ?? [],
-			);
-		});
+		const options: CredentialDropdownOption[] = [];
 
-		options = options.filter((option) => (option.usageScope ?? 'project') === 'project');
+		for (const type of types) {
+			const typeDisplayName = credentialsStore.getCredentialTypeByName(type)?.displayName ?? '';
+			const credentials = credentialsStore.allUsableCredentialsByType[type] ?? [];
 
-		if (toValue(node)?.type === HTTP_REQUEST_NODE_TYPE) {
-			options = options.filter((option) => !option.isManaged);
+			for (const option of credentials) {
+				if (!isUsableProjectCredential(option)) {
+					continue;
+				}
+
+				// Spread toRaw(...) instead of the reactive proxy. NDV open used to
+				// `{...option}` every usable credential, which made Vue track each key
+				// and froze the main thread on large instances (thousands of credentials).
+				options.push({
+					...(toRaw(option) as ICredentialsResponse),
+					typeDisplayName,
+				});
+			}
 		}
 
 		return options;
@@ -162,8 +168,11 @@ export function useNodeCredentialOptions(
 		// Until the scoped fetch lands there is nothing to match against, and reporting
 		// a configured credential as missing raises a credential issue that isn't one.
 		if (!credentialsStore.hasFetchedUsableCredentials) return true;
-		const options = getCredentialOptions([credentialType.name]);
-		return !!options.find((option: ICredentialsResponse) => option.id === credential.id);
+
+		// O(1) map lookup — do not rebuild the full dropdown options list just to
+		// check whether the selected id is still in scope.
+		const usable = credentialsStore.usableCredentials[credential.id];
+		return !!usable && isUsableProjectCredential(usable, credentialType.name);
 	}
 
 	return {
