@@ -11,6 +11,7 @@ import { VIEWS } from '@/app/constants';
 import { modules } from '@/app/modules.manifest';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
+import { AGENTS_SETTINGS_VIEW } from '@/features/agents/constants';
 import {
 	INSTANCE_AI_NEW_VIEW,
 	INSTANCE_AI_SETTINGS_VIEW,
@@ -70,6 +71,9 @@ const checkModuleAvailability = (options: any) => {
 	const settingsStore = useSettingsStore();
 	if (!settingsStore.isModuleActive(options.to.meta.moduleName)) {
 		return false;
+	}
+	if (options.to.meta.moduleName === 'agents' && options.to.name !== AGENTS_SETTINGS_VIEW) {
+		return settingsStore.isAgentsEnabled;
 	}
 
 	// When the admin toggle is off, instance-ai routes are disabled except the

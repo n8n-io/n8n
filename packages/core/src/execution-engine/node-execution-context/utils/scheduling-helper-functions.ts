@@ -13,6 +13,7 @@ export const getSchedulingFunctions = (
 	const scheduledTaskManager = Container.get(ScheduledTaskManager);
 	return {
 		registerCron: ({ expression, recurrence }: Cron, onTick: (scheduledT: Date) => void) => {
+			// oxlint-disable-next-line typescript/no-deprecated
 			const ctx: CronContext = {
 				expression,
 				recurrence,

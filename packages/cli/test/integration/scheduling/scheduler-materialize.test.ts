@@ -118,7 +118,7 @@ describe('scheduler materialization', () => {
 		);
 
 		expect(await taskRepo.claimDueTasks(claimOpts())).toHaveLength(0);
-		expect(await taskRepo.retireMissedPending(10)).toBe(1);
+		expect((await taskRepo.retireMissedPending(10)).retired).toBe(1);
 		expect((await taskRepo.findOneByOrFail({ id: task.id })).status).toBe('missed');
 	});
 

@@ -28,7 +28,7 @@ export class ScopedJwtStrategy implements AuthStrategy {
 		const issuer = options?.issuer ?? TOKEN_EXCHANGE_ISSUER;
 
 		// 1. Decode (unverified) — check iss before expensive signature verification
-		const decoded = this.jwtService.decode<IssuedJwtPayload>(token);
+		const decoded = this.jwtService.decodeUnverified<IssuedJwtPayload>(token);
 		if (!decoded || decoded.iss !== issuer) {
 			return null; // Not a token-exchange JWT — pass to next strategy
 		}
@@ -36,7 +36,7 @@ export class ScopedJwtStrategy implements AuthStrategy {
 		// 2. Verify signature + expiry
 		let payload: IssuedJwtPayload;
 		try {
-			payload = this.jwtService.verify<IssuedJwtPayload>(token, {
+			payload = this.jwtService.verify<IssuedJwtPayload>('tokenExchange', token, {
 				issuer,
 			});
 		} catch (error) {
