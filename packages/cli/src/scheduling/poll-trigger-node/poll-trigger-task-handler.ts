@@ -228,6 +228,11 @@ export class PollTriggerTaskHandler implements TaskHandler {
 				if (!polled) {
 					await this.recordFailureIfActive(workflowId, nodeId, error, state);
 				}
+				// Another instance may already own this occurrence and poll the same window.
+				if (leaseSignal.aborted) {
+					this.logger.debug('Claim lost during poll; not routing the error', logContext);
+					return report.notDispatched();
+				}
 				pollFunctions.__emitError(ensureError(error));
 				this.logger.debug('Poll failed at runtime; routed to the error workflow', logContext);
 				// The error was handed off, so this occurrence is handled and must not retry.
