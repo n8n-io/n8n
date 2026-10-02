@@ -1,6 +1,6 @@
-// The JS form of the imports of `wit/guest.wit` that `guest.ts` uses, as ComponentizeJS
-// gives them: `json` is text, `option` is `undefined`, and a `result` error throws an error
-// with a `payload`.
+// The JS form of the imports of `wit/guest.wit` that the guests use, as ComponentizeJS gives
+// them: `json` is text, `option` is `undefined`, `u64` is a bigint, a resource is a class, and
+// a `result` error throws an error with a `payload`.
 
 declare module 'n8n:js-guest/bundle@1.0.0' {
 	export function source(): string;
@@ -111,4 +111,86 @@ declare module 'n8n:node-contract/wait@2.5.0' {
 
 declare module 'n8n:node-contract/input-of@2.5.0' {
 	export function get(item: number): string;
+}
+
+declare module 'n8n:node-contract/run-credential@2.5.0' {
+	export function get(): { type: string; fields: string } | undefined;
+}
+
+declare module 'n8n:node-contract/binary@2.5.0' {
+	import type { HttpRequest, HttpResponse } from 'n8n:node-contract/http@2.5.0';
+	export interface BinaryMeta {
+		mimeType: string;
+		fileName?: string;
+		bytes?: bigint;
+	}
+	export class Binary {
+		meta(): BinaryMeta;
+		reader(): BinaryReader;
+		id(): bigint;
+	}
+	export class BinaryReader {
+		read(maxBytes: number): Uint8Array;
+	}
+	export class BinaryWriter {
+		constructor(mimeType: string, fileName?: string);
+		write(chunk: Uint8Array): void;
+		static finish(writer: BinaryWriter): Binary;
+	}
+	export function open(id: bigint): Binary;
+	export function send(request: Omit<HttpRequest, 'body'>, body: Binary): HttpResponse;
+	export function fetch(
+		request: HttpRequest,
+		body?: Binary,
+	): { status: number; headers: Array<[string, string]>; body: Binary };
+}
+
+declare module 'n8n:node-contract/capabilities@2.5.0' {
+	export interface ToolCall {
+		id: string;
+		name: string;
+		args: string;
+	}
+	export type ChatMessage =
+		| { tag: 'system' | 'user'; val: string }
+		| { tag: 'assistant'; val: { content: string; toolCalls?: ToolCall[] } }
+		| { tag: 'tool'; val: { toolCallId: string; name: string; content: string } };
+	export interface ChatRequest {
+		messages: ChatMessage[];
+		tools?: Array<{ name: string; description: string; input: string }>;
+		output?: string;
+	}
+	export interface ChatReply {
+		text: string;
+		toolCalls: ToolCall[];
+		finishReason: string;
+		usage?: { inputTokens: number; outputTokens: number };
+	}
+	export class ChatModel {
+		model(): string;
+		chat(request: ChatRequest): ChatReply;
+	}
+	export class Memory {
+		load(): ChatMessage[];
+		save(messages: ChatMessage[]): void;
+	}
+	export class Tool {
+		name(): string;
+		description(): string;
+		input(): string;
+		call(args: string): string;
+	}
+	export class Embeddings {
+		embed(texts: string[]): Float64Array[];
+	}
+	export type Capability =
+		| { tag: 'chat-model'; val: ChatModel }
+		| { tag: 'memory'; val: Memory }
+		| { tag: 'tool'; val: Tool }
+		| { tag: 'embeddings'; val: Embeddings };
+}
+
+declare module 'n8n:node-contract/supplied@2.5.0' {
+	import type { Capability } from 'n8n:node-contract/capabilities@2.5.0';
+	export function open(id: bigint): Capability;
 }

@@ -1443,6 +1443,32 @@ mod tests {
     }
 
     #[test]
+    fn capabilities_are_host_resources_of_an_action_and_guest_resources_of_a_provider() {
+        let wit = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../spec/wit");
+        let resources = |world: &str| {
+            let spec = Spec::load(&wit, world).unwrap();
+            let mut names: Vec<String> = spec
+                .host_resources
+                .keys()
+                .filter_map(|id| spec.resolve.types[*id].name.clone())
+                .collect();
+            names.sort();
+            names
+        };
+        assert!(resources("action-bundle").contains(&"chat-model".to_string()));
+        assert!(resources("action-bundle").contains(&"binary-writer".to_string()));
+        assert_eq!(resources("provider-bundle"), Vec::<String>::new());
+        let provider = Spec::load(&wit, "provider-bundle").unwrap();
+        let mut exports: Vec<&str> = provider
+            .exports
+            .values()
+            .map(|id| provider.interface_name(*id))
+            .collect();
+        exports.sort();
+        assert_eq!(exports, ["capabilities", "provider"]);
+    }
+
+    #[test]
     fn kebab_names_become_lower_camel_case() {
         assert_eq!(camel("timeout-ms"), "timeoutMs");
         assert_eq!(camel("is-not-empty"), "isNotEmpty");

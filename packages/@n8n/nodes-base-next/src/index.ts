@@ -1,4 +1,5 @@
 import {
+	compat,
 	isToolContract,
 	nodeNameOf,
 	toContract,
@@ -259,6 +260,20 @@ export const credentialTypes: readonly AnyCredentialType[] = [
 		),
 	),
 ].filter(({ scheme }) => scheme.kind !== 'compat');
+
+/**
+ * The credential type of a name for a sandboxed bundle: the type of a shipped node, else a compat
+ * type when n8n has the name (`known`). The hosts and the base URL never come from the bundle.
+ */
+export function sandboxCredentialTypeOf(known: (name: string) => boolean) {
+	const shipped = new Map(
+		[...actions, ...triggers, ...nativeTriggers]
+			.flatMap(({ node }) => node.credential?.types ?? [])
+			.map((type) => [type.name, type]),
+	);
+	return (name: string): AnyCredentialType | undefined =>
+		shipped.get(name) ?? (known(name) ? compat(name) : undefined);
+}
 
 /**
  * Native contracts that a construct of the typed flow emits, so no module has a factory for

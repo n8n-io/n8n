@@ -4,16 +4,28 @@ import { createServer, type Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { Readable } from 'node:stream';
 import type { IHttpRequestOptions, INode } from 'n8n-workflow';
 
-import { compat } from '../credentials';
+import { compat, credentialType, t } from '../credentials';
 import { freezeAction } from '../freeze';
 import { sandboxedVersionOf, type SandboxOptions } from '../sandbox';
-import type { ExecutorHost } from '../runtime';
+import type { BinaryStore, ExecutorHost } from '../runtime';
 
 const SANDBOX = path.resolve(__dirname, '..', '..', 'sandbox');
 const SIDECAR = path.join(SANDBOX, 'sidecar', 'target', 'release', 'n8n-sandbox');
-const GUEST = path.join(SANDBOX, 'dist', 'guest.wasm');
+const GUESTS = path.join(SANDBOX, 'dist');
+const GUEST = path.join(GUESTS, 'action.wasm');
+
+const acmeToken = () =>
+	credentialType({
+		id: 'acme.token',
+		legacyName: 'acmeApi',
+		displayName: 'Acme API',
+		fields: { account: t.text('Account ID'), apiKey: t.secret('API Key') },
+		baseUrl: 'https://api.acme.test',
+		auth: (a) => a.bearer('apiKey'),
+	});
 
 const node: INode = {
 	id: '1',
@@ -24,8 +36,17 @@ const node: INode = {
 	parameters: {},
 };
 
-const PROBES = (port: number) => `import { compat, credential, defineNode, obj, str } from '@n8n/node-sdk';
+const PROBES = (port: number) => `import { binary, compat, credential, credentialType, defineNode, obj, str, t } from '@n8n/node-sdk';
 const probe = defineNode({ id: 'probe', displayName: 'Probe' });
+const acmeToken = credentialType({
+	id: 'acme.token',
+	legacyName: 'acmeApi',
+	displayName: 'Acme API',
+	fields: { account: t.text('Account ID'), apiKey: t.secret('API Key') },
+	baseUrl: 'https://api.acme.test',
+	auth: (a) => a.bearer('apiKey'),
+});
+const acme = defineNode({ id: 'acme', displayName: 'Acme', credential: credential({ types: [acmeToken] }) });
 const slackApi = compat('slackApi', { hosts: ['evil.example'] });
 const thief = defineNode({
 	id: 'thief',
@@ -89,6 +110,43 @@ export const randomProbe = spec(async () => ({
 export const echoProbe = spec(async ({ http }) => ({
 	value: JSON.stringify(await http.request({ url: 'https://api.example.com/echo', fullResponse: true })),
 }), { egress: { hosts: ['api.example.com'] } });
+export const credentialProbe = spec(async ({ credential }) => ({ value: JSON.stringify(credential) }), {}, acme);
+export const credentialErrorProbe = spec(async (context) => {
+	try {
+		return { value: JSON.stringify(context.credential) };
+	} catch (error) {
+		return { value: String(error.message) };
+	}
+}, {}, acme);
+export const binaryProbe = spec(
+	async ({ input, http, binary: files }) => {
+		const chunks: Uint8Array[] = [];
+		for await (const chunk of input.file.read()) chunks.push(chunk);
+		const copy = await files.create({ mimeType: 'application/octet-stream', fileName: 'copy.bin' }, chunks);
+		const sent = await http.request({ method: 'POST', url: 'https://api.example.com/upload', body: copy });
+		const fetched = await http.request({ url: 'https://api.example.com/file', response: 'binary' });
+		const size = chunks.reduce((sum, chunk) => sum + chunk.length, 0);
+		const value = JSON.stringify({ size, chunks: chunks.length, meta: input.file.meta, sent, fetched: fetched.meta });
+		return { value, copy, fetched };
+	},
+	{
+		input: { file: binary() },
+		output: obj({ value: str(), copy: binary(), fetched: binary() }),
+		egress: { hosts: ['api.example.com'] },
+	},
+);
+export const openStreamsProbe = spec(
+	async ({ input, binary: files }) => {
+		for await (const _chunk of input.file.read()) break;
+		const failing = async function* () {
+			yield 'part';
+			throw new Error('chunks failed');
+		};
+		await files.create({ mimeType: 'text/plain' }, failing()).catch(() => undefined);
+		return { value: 'done' };
+	},
+	{ input: { file: binary() } },
+);
 `;
 
 const PROBE_NAMES = [
@@ -106,6 +164,10 @@ const PROBE_NAMES = [
 	'pollutionProbe',
 	'randomProbe',
 	'echoProbe',
+	'credentialProbe',
+	'credentialErrorProbe',
+	'binaryProbe',
+	'openStreamsProbe',
 ] as const;
 
 type ProbeName = (typeof PROBE_NAMES)[number];
@@ -116,12 +178,14 @@ describe.skipIf(!existsSync(SIDECAR) || !existsSync(GUEST))('the sandbox', () =>
 	const requests: IHttpRequestOptions[] = [];
 	const options = (): SandboxOptions => ({
 		sidecar: SIDECAR,
-		guest: GUEST,
+		guests: GUESTS,
 		cacheDir: path.join(dirs.root, 'cache'),
 		credentialType: (name) =>
 			name === 'slackApi'
 				? compat('slackApi', { hosts: ['slack.com'], baseUrl: 'https://slack.com/api' })
-				: undefined,
+				: name === 'acmeApi'
+					? acmeToken()
+					: undefined,
 		limits: { cpuMs: 1_000, memoryMb: 64, wallMs: 20_000 },
 	});
 
@@ -136,15 +200,16 @@ describe.skipIf(!existsSync(SIDECAR) || !existsSync(GUEST))('the sandbox', () =>
 		continueOnFail: () => false,
 	});
 
-	const run = async (name: ProbeName) => {
+	const outputOf = async (name: ProbeName, host = hostOf()) => {
 		const frozen = await freezeAction(path.join(dirs.root, 'probes.ts'), name);
 		const { executor } = await sandboxedVersionOf(
 			{ manifest: frozen.manifest, readBundle: async () => frozen.bundle },
 			options(),
 		);
-		const [[output] = []] = await executor(hostOf());
-		return output?.json.value;
+		const [[output] = []] = await executor(host);
+		return output;
 	};
+	const run = async (name: ProbeName, host = hostOf()) => (await outputOf(name, host))?.json.value;
 
 	beforeAll(async () => {
 		dirs.root = await mkdtemp(path.join(tmpdir(), 'node-sdk-sandbox-'));
@@ -249,5 +314,121 @@ describe.skipIf(!existsSync(SIDECAR) || !existsSync(GUEST))('the sandbox', () =>
 		expect(requests).toEqual([
 			expect.objectContaining({ method: 'GET', url: 'https://api.example.com/echo' }),
 		]);
+	});
+
+	it('gives run() the plain fields of the credential, and no secret', async () => {
+		const value = await run('credentialProbe', {
+			...hostOf(),
+			node: { ...node, credentials: { acmeApi: { id: '1', name: 'Acme' } } },
+			credentialData: async () => ({ account: 'acc-1', apiKey: 'key-secret-1' }),
+		});
+		expect(value).toBe(JSON.stringify({ type: 'acmeApi', fields: { account: 'acc-1' } }));
+	});
+
+	it('gives run() no stored value when the stored credential data does not match its fields', async () => {
+		const value = await run('credentialErrorProbe', {
+			...hostOf(),
+			node: { ...node, credentials: { acmeApi: { id: '1', name: 'Acme' } } },
+			credentialData: async () => ({
+				account: { hidden: 'stored-value-1' },
+				apiKey: 'key-secret-1',
+			}),
+		});
+		expect(value).toBe('The stored data of the credential does not match its declared fields');
+	});
+
+	it('streams binary data in chunks through the host, in both directions', async () => {
+		const input = Buffer.alloc(3 * 1024 * 1024 + 7, 'abc');
+		const fetched = Buffer.from('fetched bytes');
+		const uploaded: Buffer[] = [];
+		const bufferOf = async (stream: AsyncIterable<Buffer>) => {
+			const chunks: Buffer[] = [];
+			for await (const chunk of stream) chunks.push(chunk);
+			return Buffer.concat(chunks);
+		};
+		const store: BinaryStore = {
+			input: async () => ({
+				data: input.toString('base64'),
+				mimeType: 'text/plain',
+				fileName: 'in.txt',
+				bytes: input.length,
+			}),
+			read: async (entry) => Readable.from([Buffer.from(entry.data, 'base64')]),
+			write: async (stream, { mimeType, fileName }) => {
+				const bytes = await bufferOf(stream);
+				return {
+					data: bytes.toString('base64'),
+					mimeType: mimeType ?? 'application/octet-stream',
+					...(fileName ? { fileName } : {}),
+				};
+			},
+		};
+		const output = await outputOf('binaryProbe', {
+			...hostOf(),
+			parameter: (name) => (name === 'file' ? 'data' : undefined),
+			binary: store,
+			request: async (request) => {
+				requests.push(request);
+				if (request.body instanceof Readable) uploaded.push(await bufferOf(request.body));
+				return request.encoding === 'stream'
+					? {
+							body: Readable.from([fetched]),
+							headers: { 'content-type': 'image/png' },
+							statusCode: 200,
+						}
+					: { body: { ok: true }, headers: {}, statusCode: 200 };
+			},
+		});
+		expect(JSON.parse(output?.json.value as string)).toEqual({
+			size: input.length,
+			chunks: 4,
+			meta: { mimeType: 'text/plain', fileName: 'in.txt', bytes: input.length },
+			sent: { ok: true },
+			fetched: { mimeType: 'image/png', fileName: 'file' },
+		});
+		// `equals`, not `toEqual`: a deep compare of 3 MB takes seconds.
+		expect(uploaded.map((bytes) => bytes.equals(input))).toEqual([true]);
+		expect(Buffer.from(output?.binary?.copy?.data ?? '', 'base64').equals(input)).toBe(true);
+		expect(Buffer.from(output?.binary?.fetched?.data ?? '', 'base64')).toEqual(fetched);
+		expect(output?.binary?.copy).toMatchObject({
+			mimeType: 'application/octet-stream',
+			fileName: 'copy.bin',
+		});
+	});
+
+	it('closes the binary readers and writers that a run leaves open', async () => {
+		const reads: Readable[] = [];
+		const writes: Array<Promise<unknown>> = [];
+		const store: BinaryStore = {
+			input: async () => ({
+				data: Buffer.alloc(3 * 1024 * 1024).toString('base64'),
+				mimeType: 'text/plain',
+			}),
+			read: async (entry) => {
+				const stream = Readable.from([Buffer.from(entry.data, 'base64'), Buffer.from('end')]);
+				reads.push(stream);
+				return stream;
+			},
+			write: async (stream) => {
+				const write = (async () => {
+					for await (const _chunk of stream);
+					return { data: '', mimeType: 'text/plain' };
+				})();
+				writes.push(write);
+				return await write;
+			},
+		};
+		const value = await run('openStreamsProbe', {
+			...hostOf(),
+			parameter: (name) => (name === 'file' ? 'data' : undefined),
+			binary: store,
+		});
+		const settled = await Promise.race([
+			Promise.allSettled(writes).then((results) => results.map(({ status }) => status)),
+			new Promise((resolve) => setTimeout(() => resolve('pending'), 1_000)),
+		]);
+		expect(value).toBe('done');
+		expect(reads.map((stream) => stream.destroyed)).toEqual([true]);
+		expect(settled).toEqual(['rejected']);
 	});
 });

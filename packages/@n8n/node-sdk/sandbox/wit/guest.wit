@@ -11,3 +11,9 @@ world action-js {
     include n8n:node-contract/action-bundle@2.5.0;
     import bundle;
 }
+
+/// The provider world of the Node Contract, for a JS bundle.
+world provider-js {
+    include n8n:node-contract/provider-bundle@2.5.0;
+    import bundle;
+}

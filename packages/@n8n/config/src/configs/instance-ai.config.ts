@@ -5,6 +5,7 @@ import { Config, Env } from '../decorators';
 import { concurrencyLimitSchema } from '../schemas';
 
 const nodeContractsUpdatePolicySchema = z.enum(['tolerant', 'strict']);
+const nodeContractSandboxSchema = z.enum(['off', 'stored', 'all']);
 
 @Config
 export class InstanceAiConfig {
@@ -268,6 +269,29 @@ export class InstanceAiConfig {
 	 */
 	@Env('N8N_NODE_CONTRACT_RANGE')
 	nodeContractRange: string = '>=1.0.0 <3.0.0';
+
+	/**
+	 * Where contract bundles run. `off`: in the n8n process. `stored`: a version that n8n does
+	 * not bundle runs in the WASM sandbox, the bundled versions in the n8n process. `all`: every
+	 * version runs in the sandbox.
+	 */
+	@Env('N8N_NODE_CONTRACT_SANDBOX', nodeContractSandboxSchema)
+	nodeContractSandbox: z.infer<typeof nodeContractSandboxSchema> = 'off';
+
+	/** The `n8n-sandbox` binary. Needed when the sandbox is on. */
+	@Env('N8N_NODE_CONTRACT_SANDBOX_SIDECAR')
+	nodeContractSandboxSidecar: string = '';
+
+	/** The directory of the guest components `action.wasm` and `provider.wasm`. Needed when the sandbox is on. */
+	@Env('N8N_NODE_CONTRACT_SANDBOX_GUESTS')
+	nodeContractSandboxGuests: string = '';
+
+	/**
+	 * A directory that only n8n can write: the compiled guests and the verified bundles. Empty:
+	 * `node-contracts/sandbox` in the n8n folder.
+	 */
+	@Env('N8N_NODE_CONTRACT_SANDBOX_CACHE_DIR')
+	nodeContractSandboxCacheDir: string = '';
 
 	/**
 	 * Force-enable folder exploration in Instance AI: folder attribution and

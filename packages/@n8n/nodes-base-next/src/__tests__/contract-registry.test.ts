@@ -9,6 +9,7 @@ import {
 } from '@n8n/node-sdk';
 import { freezeAction, type FrozenAction } from '@n8n/node-sdk/freeze';
 import { packContractPackage } from '@n8n/node-sdk/publish';
+import { sandboxExecutorLoader } from '@n8n/node-sdk/sandbox';
 import { generateKeyPairSync } from 'node:crypto';
 import { link, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { createServer, type Server } from 'node:http';
@@ -21,14 +22,26 @@ import {
 	contractStore,
 	contractVersionLoader,
 	syncContractStore,
+	useContractRegistry,
 	type ContractRegistryOptions,
 	type ContractStoreOptions,
 } from '../contract-registry';
+import { versionsOf } from '../registry';
 
 vi.mock('node:fs/promises', async (importOriginal) => {
 	const fs = await importOriginal<typeof import('node:fs/promises')>();
 	return { ...fs, link: vi.fn(fs.link) };
 });
+
+vi.mock('@n8n/node-sdk', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@n8n/node-sdk')>()),
+	setExecutorLoader: vi.fn(),
+}));
+
+vi.mock('@n8n/node-sdk/sandbox', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@n8n/node-sdk/sandbox')>()),
+	sandboxExecutorLoader: vi.fn(),
+}));
 
 const echoSource = (minor: number, patch: number, text: string) => `
 import { defineNode, obj, str } from '@n8n/node-sdk';
@@ -406,5 +419,34 @@ describe('syncContractStore', () => {
 		} finally {
 			setNodeContractRange('>=1.0.0 <3.0.0');
 		}
+	});
+});
+
+describe('useContractRegistry', () => {
+	const inProcessOf = (scope: 'stored' | 'all') => {
+		vi.mocked(sandboxExecutorLoader).mockClear();
+		useContractRegistry({
+			policy: 'tolerant',
+			store: storeOf(),
+			metaOf: async () => undefined,
+			nodeContractRange: '>=1.0.0 <3.0.0',
+			sandbox: {
+				options: { sidecar: '', guests: '', cacheDir: '', credentialType: () => undefined },
+				scope,
+			},
+		});
+		const [[, inProcess] = []] = vi.mocked(sandboxExecutorLoader).mock.calls;
+		return inProcess;
+	};
+	const [{ manifest }] = versionsOf('httpRequest.send');
+
+	it('runs only the versions that this package bundles in this process with the stored scope', () => {
+		const inProcess = inProcessOf('stored');
+		expect(inProcess?.(manifest)).toBe(true);
+		expect(inProcess?.({ ...manifest, bundleHash: 'sha256-stored' })).toBe(false);
+	});
+
+	it('runs every version in the sandbox with the all scope', () => {
+		expect(inProcessOf('all')?.(manifest)).toBe(false);
 	});
 });

@@ -20,9 +20,11 @@ import {
 	type ContractStore,
 	type FrozenVersion,
 } from '@n8n/nodes-base-next';
+import { existsSync } from 'fs';
 import { InstanceSettings } from 'n8n-core';
 import {
 	deepCopy,
+	UserError,
 	VersionedNodeType,
 	type ICredentialType,
 	type INodeTypeDescription,
@@ -33,6 +35,7 @@ import {
 } from 'n8n-workflow';
 import path from 'path';
 
+import { CredentialTypes } from '@/credential-types';
 import { convertNodeToAiTool } from '@/tool-generation';
 
 // Recent executions only; a contract node reads the meta of its own execution.
@@ -92,7 +95,9 @@ export async function storedContractVersions(): Promise<
  */
 export async function useNodeContractsRegistry() {
 	const { instanceAi } = Container.get(GlobalConfig);
-	const { setCodeLanguages, useContractRegistry } = await import('@n8n/nodes-base-next');
+	const { sandboxCredentialTypeOf, setCodeLanguages, useContractRegistry } = await import(
+		'@n8n/nodes-base-next'
+	);
 	// The Code contracts follow the same switch as the Code node.
 	setCodeLanguages(
 		Container.get(NodesConfig).pythonEnabled ? ['javascript', 'python'] : ['javascript'],
@@ -107,9 +112,28 @@ export async function useNodeContractsRegistry() {
 		return workflow?.meta;
 	};
 
+	const scope = instanceAi.nodeContractSandbox;
+	const sandbox =
+		scope === 'off'
+			? undefined
+			: {
+					scope,
+					options: {
+						...sandboxFilesOf(instanceAi),
+						cacheDir:
+							instanceAi.nodeContractSandboxCacheDir ||
+							path.join(Container.get(NodeContractsStore).dir, 'sandbox'),
+						// The credential hosts and base URLs come from n8n, never from a bundle.
+						credentialType: sandboxCredentialTypeOf((name) =>
+							Container.get(CredentialTypes).recognizes(name),
+						),
+					},
+				};
+
 	useContractRegistry({
 		policy: instanceAi.nodeContractsUpdatePolicy,
 		nodeContractRange: instanceAi.nodeContractRange,
+		sandbox,
 		store: await Container.get(NodeContractsStore).open(),
 		metaOf: async (context) => {
 			const { id } = context.getWorkflow();
@@ -128,6 +152,20 @@ export async function useNodeContractsRegistry() {
 			});
 		},
 	});
+}
+
+/** The sidecar and the guests of the sandbox. A missing file stops the start: no bundle may run unsandboxed. */
+function sandboxFilesOf(instanceAi: GlobalConfig['instanceAi']) {
+	const sidecar = instanceAi.nodeContractSandboxSidecar;
+	const guests = instanceAi.nodeContractSandboxGuests;
+	const files = [sidecar, path.join(guests, 'action.wasm'), path.join(guests, 'provider.wasm')];
+	const missing = !sidecar || !guests ? files : files.filter((file) => !existsSync(file));
+	if (missing.length > 0) {
+		throw new UserError(
+			`N8N_NODE_CONTRACT_SANDBOX is ${instanceAi.nodeContractSandbox}, and the sandbox files are missing: ${missing.join(', ')}. Set N8N_NODE_CONTRACT_SANDBOX_SIDECAR and N8N_NODE_CONTRACT_SANDBOX_GUESTS.`,
+		);
+	}
+	return { sidecar, guests };
 }
 
 /** The legacy node of a full node type, when its loader has it and it has versions. */

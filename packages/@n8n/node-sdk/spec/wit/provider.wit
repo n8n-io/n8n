@@ -8,6 +8,10 @@ interface provider {
     use errors.{run-error};
     use capabilities.{capability};
 
+    /// The manifest contract, as `action.describe` gives it.
+    @since(version = 2.5.0)
+    describe: func() -> json;
+
     /// Makes the capability of the manifest kind for one run of the root node. The host
     /// resolved, defaulted and validated `input` against the manifest input. Requests of the
     /// capability use the credential and the egress of the provider.
@@ -21,6 +25,8 @@ world provider-bundle {
     import http;
     import log;
     import limits;
+    @since(version = 2.5.0)
+    import run-credential;
     export capabilities;
     export provider;
 }

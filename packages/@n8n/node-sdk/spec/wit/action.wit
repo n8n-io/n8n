@@ -105,5 +105,7 @@ world action-bundle {
     import input-of;
     @since(version = 2.3.0)
     import supplied;
+    @since(version = 2.5.0)
+    import run-credential;
     export action;
 }

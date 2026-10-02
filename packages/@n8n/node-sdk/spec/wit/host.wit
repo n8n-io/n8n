@@ -98,6 +98,24 @@ interface log {
     log: func(level: level, message: string);
 }
 
+/// The credential of the run without its secrets. The host never gives a secret field, a token,
+/// or a field that the credential type does not declare.
+@since(version = 2.5.0)
+interface run-credential {
+    use types.{json};
+
+    record run-credential {
+        /// The n8n credential type, for example `slackApi`.
+        %type: string,
+        /// The declared fields that are not secret, as one object.
+        fields: json,
+    }
+
+    /// None when the run has no credential. An error when the stored data does not match the
+    /// declared fields, so only a bundle that reads the credential fails.
+    get: func() -> result<option<run-credential>, string>;
+}
+
 @since(version = 2.0.0)
 interface limits {
     /// The limits for one run: one input item, or all input items of a `batch` run. The host

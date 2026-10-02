@@ -270,65 +270,49 @@ const shippedCredentialTypes = new Map(
 );
 const sandbox = {
 	sidecar: path.join(SANDBOX, 'sidecar/target/release/n8n-sandbox'),
-	guest: path.join(SANDBOX, 'dist/guest.wasm'),
+	guests: path.join(SANDBOX, 'dist'),
 	credentialType: (name: string) => shippedCredentialTypes.get(name),
 };
+// `pnpm --filter @n8n/node-sdk sandbox:build` builds them.
+const sandboxBuilt = [
+	sandbox.sidecar,
+	...['action', 'provider'].map((kind) => path.join(sandbox.guests, `${kind}.wasm`)),
+].every(existsSync);
 
-// `pnpm --filter @n8n/node-sdk sandbox:build` builds both.
-describe.skipIf(!existsSync(sandbox.sidecar) || !existsSync(sandbox.guest))(
-	'bundled versions in the sandbox',
-	() => {
-		const cacheDir = mkdtempSync(path.join(tmpdir(), 'nodes-base-next-sandbox-'));
-		afterAll(() => rmSync(cacheDir, { recursive: true, force: true }));
+describe.skipIf(!sandboxBuilt)('bundled versions in the sandbox', () => {
+	const cacheDir = mkdtempSync(path.join(tmpdir(), 'nodes-base-next-sandbox-'));
+	afterAll(() => rmSync(cacheDir, { recursive: true, force: true }));
 
-		it('replay the fixtures of the HEAD of each action that the sandbox runs', async () => {
-			const refused: Record<string, string> = {};
-			const issues: string[] = [];
-			// One at a time: the first load compiles the guest for all.
-			for (const { id } of actions) {
-				const [head] = versionsOf(id);
-				if (!head) throw new Error(`${id} has no bundled HEAD`);
-				const loaded = await sandboxedVersionOf(head, { ...sandbox, cacheDir }).catch(
-					(error: Error) => {
-						refused[id] = error.message;
-						return undefined;
-					},
-				);
-				if (!loaded) continue;
-				// `migrate` has no export in the action world, so only executions replay.
-				const fixtures = { ...fixturesOf(id), migrations: [] };
-				const bundle = await head.readBundle();
-				const replayed = await replayFixtures({ manifest: head.manifest, bundle }, fixtures, {
-					contract: loaded.action,
-					executor: loaded.executor,
-				});
-				issues.push(...replayed);
-			}
-			expect(issues).toEqual([]);
-			const providers = 'uses providers, which the sandbox does not have yet';
-			const binary = 'uses binary data, which the sandbox does not have yet';
-			const provider = 'is a provider; the sandbox runs actions only';
-			expect(refused).toEqual({
-				'ai.agent': `ai.agent ${providers}`,
-				'ai.classify': `ai.classify ${providers}`,
-				'ai.prompt': `ai.prompt ${providers}`,
-				'anthropic.chatModel': `anthropic.chatModel ${provider}`,
-				'gmail.message.send': `gmail.message.send ${binary}`,
-				'googleDrive.file.upload': `googleDrive.file.upload ${binary}`,
-				'googleGemini.chatModel': `googleGemini.chatModel ${provider}`,
-				'httpRequest.download': `httpRequest.download ${binary}`,
-				'httpRequest.send': `httpRequest.send ${binary}`,
-				'minimax.chatModel': `minimax.chatModel ${provider}`,
-				// `\p{…}` in a regex: the JS engine of the guest has no Unicode data.
-				'notion.databasePage.getAll': expect.stringContaining('Unicode property escape'),
-				'openAi.chatModel': `openAi.chatModel ${provider}`,
-				'openAi.image.generate': `openAi.image.generate ${binary}`,
-				'slack.file.upload': `slack.file.upload ${binary}`,
-				'xAi.chatModel': `xAi.chatModel ${provider}`,
+	it('replay the fixtures of the HEAD of each action that the sandbox runs', async () => {
+		const refused: Record<string, string> = {};
+		const issues: string[] = [];
+		// One at a time: the first load compiles the guest for all.
+		for (const { id } of actions) {
+			const [head] = versionsOf(id);
+			if (!head) throw new Error(`${id} has no bundled HEAD`);
+			const loaded = await sandboxedVersionOf(head, { ...sandbox, cacheDir }).catch(
+				(error: Error) => {
+					refused[id] = error.message;
+					return undefined;
+				},
+			);
+			if (!loaded) continue;
+			// `migrate` has no export in the action world, so only executions replay.
+			const fixtures = { ...fixturesOf(id), migrations: [] };
+			const bundle = await head.readBundle();
+			const replayed = await replayFixtures({ manifest: head.manifest, bundle }, fixtures, {
+				contract: loaded.action,
+				executor: loaded.executor,
 			});
-		}, 120_000);
-	},
-);
+			issues.push(...replayed);
+		}
+		expect(issues).toEqual([]);
+		expect(refused).toEqual({
+			// `\p{…}` in a regex: the JS engine of the guest has no Unicode data.
+			'notion.databasePage.getAll': expect.stringContaining('Unicode property escape'),
+		});
+	}, 120_000);
+});
 
 describe('credential classes', () => {
 	const ownTypes = [

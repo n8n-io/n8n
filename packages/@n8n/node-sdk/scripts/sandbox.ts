@@ -1,6 +1,7 @@
-// Builds the sandbox: the generic JS guest component (`sandbox/dist/guest.wasm`) and the
-// wasmtime sidecar (`sandbox/sidecar/target/release/n8n-sandbox`). A dev step: it needs
-// cargo and fetches ComponentizeJS with npx. Usage: `pnpm sandbox:build [guest|sidecar]`.
+// Builds the sandbox: the generic JS guest component of each kind interface
+// (`sandbox/dist/action.wasm`, `sandbox/dist/provider.wasm`) and the wasmtime sidecar
+// (`sandbox/sidecar/target/release/n8n-sandbox`). A dev step: it needs cargo and fetches
+// ComponentizeJS with npx. Usage: `pnpm sandbox:build [guest|sidecar]`.
 import { execFileSync } from 'node:child_process';
 import { cpSync, mkdirSync, readFileSync, rmSync } from 'node:fs';
 import path from 'node:path';
@@ -11,13 +12,15 @@ const DIST = path.join(SANDBOX, 'dist');
 const COMPONENTIZE = '@bytecodealliance/componentize-js@0.23.0';
 const UNAVAILABLE = 'n8n-guest-unavailable';
 
-async function buildGuest() {
+/** The guest of each kind interface: its entry in `sandbox/` and its world in `wit/guest.wit`. */
+const GUESTS = { action: 'n8n:js-guest/action-js', provider: 'n8n:js-guest/provider-js' };
+
+async function buildGuest(kind: keyof typeof GUESTS, wit: string) {
 	const { build } = await import('esbuild');
-	mkdirSync(DIST, { recursive: true });
 	const source = path.join(ROOT, 'src');
-	const guest = path.join(DIST, 'guest.js');
+	const guest = path.join(DIST, `${kind}.js`);
 	await build({
-		entryPoints: [path.join(SANDBOX, 'guest.ts')],
+		entryPoints: [path.join(SANDBOX, `${kind}.ts`)],
 		outfile: guest,
 		bundle: true,
 		format: 'esm',
@@ -94,13 +97,7 @@ async function buildGuest() {
 	const unavailable = [...code.matchAll(new RegExp(`${UNAVAILABLE}:([^"]+)`, 'g'))].map(
 		([, name]) => name,
 	);
-	if (unavailable.length > 0) throw new Error(`The guest needs ${unavailable.join(', ')}`);
-	const wit = path.join(DIST, 'wit');
-	rmSync(wit, { recursive: true, force: true });
-	cpSync(path.join(SANDBOX, 'wit'), wit, { recursive: true });
-	cpSync(path.join(ROOT, 'spec', 'wit'), path.join(wit, 'deps', 'node-contract'), {
-		recursive: true,
-	});
+	if (unavailable.length > 0) throw new Error(`The ${kind} guest needs ${unavailable.join(', ')}`);
 	// `random` stays on: the sidecar links `wasi:random` to the OS random source.
 	execFileSync(
 		'npx',
@@ -111,17 +108,28 @@ async function buildGuest() {
 			'--wit',
 			wit,
 			'--world-name',
-			'n8n:js-guest/action-js',
+			GUESTS[kind],
 			'--disable',
 			'stdio',
 			'clocks',
 			'http',
 			'fetch-event',
 			'--out',
-			path.join(DIST, 'guest.wasm'),
+			path.join(DIST, `${kind}.wasm`),
 		],
 		{ stdio: 'inherit' },
 	);
+}
+
+async function buildGuests() {
+	mkdirSync(DIST, { recursive: true });
+	const wit = path.join(DIST, 'wit');
+	rmSync(wit, { recursive: true, force: true });
+	cpSync(path.join(SANDBOX, 'wit'), wit, { recursive: true });
+	cpSync(path.join(ROOT, 'spec', 'wit'), path.join(wit, 'deps', 'node-contract'), {
+		recursive: true,
+	});
+	for (const kind of ['action', 'provider'] as const) await buildGuest(kind, wit);
 }
 
 function buildSidecar() {
@@ -133,6 +141,6 @@ function buildSidecar() {
 
 const step = process.argv[2];
 void (async () => {
-	if (step !== 'sidecar') await buildGuest();
+	if (step !== 'sidecar') await buildGuests();
 	if (step !== 'guest') buildSidecar();
 })();

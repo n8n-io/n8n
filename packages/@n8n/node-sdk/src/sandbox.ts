@@ -1,8 +1,10 @@
 import { spawn } from 'node:child_process';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { createHash, randomUUID } from 'node:crypto';
+import { once } from 'node:events';
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import { PassThrough } from 'node:stream';
 import { toHostname, UnexpectedError, UserError } from 'n8n-workflow';
 
 import type { AnyCredentialType } from './credentials';
@@ -11,6 +13,7 @@ import {
 	usesBinary,
 	usesSupplies,
 	type Action,
+	type Binaries,
 	type DataTable,
 	type DataTableColumnType,
 	type DataTableCondition,
@@ -18,7 +21,9 @@ import {
 	type HostImport,
 	type HostImports,
 	type Http,
+	type HttpError,
 	type HttpMethod,
+	type HttpRequest,
 	type InputItem,
 	type LogLevel,
 	type NodeDefinition,
@@ -29,11 +34,26 @@ import {
 	executorOf,
 	loadExecutor,
 	verifiedCodeOf,
+	withBinaries,
 	type Executor,
 	type ExecutorLoader,
 	type FrozenVersion,
 } from './runtime';
-import { Schema, type JsonSchema, type Shape } from './schema';
+import { Schema, type Binary, type JsonSchema, type Shape } from './schema';
+import {
+	isSupply,
+	suppliedKindOf,
+	supplyFieldsOf,
+	supplyOf,
+	type ChatMessage,
+	type ChatReply,
+	type ChatRequest,
+	type ChatUsage,
+	type Supplies,
+	type SupplyKind,
+	type ToolCall,
+	type ToolDefinition,
+} from './subnodes';
 import { NODE_CONTRACT_VERSION, type VersionManifest } from './version';
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -53,8 +73,8 @@ export interface SandboxLimits {
 export interface SandboxOptions {
 	/** The `n8n-sandbox` binary. */
 	readonly sidecar: string;
-	/** The generic JS guest component, `guest.wasm`. */
-	readonly guest: string;
+	/** The directory of the generic JS guest components: `action.wasm` and `provider.wasm`. */
+	readonly guests: string;
 	/**
 	 * A directory that only n8n can write. It holds the compiled guest and the verified bundles,
 	 * and the sidecar loads native code from it.
@@ -107,8 +127,13 @@ interface Connection {
 	close(): void;
 }
 
+/** The kinds whose interface the sandbox runs, each with its own guest component. */
+type SandboxKind = 'action' | 'provider';
+
 interface SessionConfig {
 	readonly options: SandboxOptions;
+	readonly kind: SandboxKind;
+	readonly guest: string;
 	readonly guestSha256: string;
 	readonly limits: SandboxLimits;
 	readonly manifest: VersionManifest;
@@ -123,12 +148,20 @@ const IMPORT_INTERFACES: Readonly<Record<HostImport, string>> = {
 	inputOf: 'input-of',
 };
 
-/** The imports of the action world that the manifest grants. */
-const grantsOf = ({ contract }: VersionManifest) => [
+/** The imports of the world that the manifest grants. A provider gets only the base imports. */
+const grantsOf = ({ kind, contract }: VersionManifest) => [
 	'http',
 	'log',
 	'limits',
-	...(contract.imports ?? []).map((name) => IMPORT_INTERFACES[name]),
+	'run-credential',
+	...(kind === 'provider'
+		? []
+		: [
+				...(contract.imports ?? []).map((name) => IMPORT_INTERFACES[name]),
+				...(usesBinary(contract) ? ['binary'] : []),
+				// An action is no provider, so it uses supplies only through its input fields.
+				...(usesSupplies(contract) ? ['supplied', 'capabilities'] : []),
+			]),
 ];
 
 /** One sidecar process: one component instance, so one node execution shares no state with another. */
@@ -137,7 +170,7 @@ function connect(config: SessionConfig): Connection {
 	const child = spawn(
 		options.sidecar,
 		[
-			...['--wit', SPEC_WIT, '--world', 'action-bundle', '--component', options.guest],
+			...['--wit', SPEC_WIT, '--world', `${config.kind}-bundle`, '--component', config.guest],
 			...['--component-sha256', config.guestSha256],
 			...grants.flatMap((grant) => ['--grant', grant]),
 			...['--bundle', bundleFile, '--bundle-sha256', manifest.bundleHash],
@@ -279,8 +312,10 @@ async function openSession(config: SessionConfig): Promise<Connection> {
 		const started = await connection.request('[initialize]', {
 			nodeContract: NODE_CONTRACT_VERSION,
 		});
-		if (!isRecord(started) || started.kind !== 'action') {
-			throw new UnexpectedError(`${config.manifest.id} is not an action bundle`);
+		if (!isRecord(started) || started.kind !== config.kind) {
+			throw new UnexpectedError(
+				`${config.manifest.id} is not a bundle of the ${config.kind} interface`,
+			);
 		}
 		return connection;
 	} catch (error) {
@@ -390,18 +425,155 @@ async function tableResult<T>(run: () => Promise<T>): Promise<T> {
 	}
 }
 
-interface RunCalls {
-	readonly calls: GuestCalls;
-	/** The host error that a run error names, so the executor sees the error of the host. */
-	errorOf(message: string): unknown;
+const httpErrorOf = (error: HttpError, message: string) => ({
+	message,
+	status: error.status,
+	headers: headerPairsOf(error.headers),
+	body: error.body ?? null,
+});
+
+// ── The chat types of `capabilities` in their JSON-RPC form ─────────────────────────────
+
+const isJsonSchema = (value: unknown): value is JsonSchema => isRecord(value);
+
+const isToolCall = (value: unknown): value is ToolCall =>
+	isRecord(value) &&
+	typeof value.id === 'string' &&
+	typeof value.name === 'string' &&
+	isRecord(value.args);
+
+const isToolCalls = (value: unknown): value is ToolCall[] =>
+	Array.isArray(value) && value.every(isToolCall);
+
+const isToolDefinition = (value: unknown): value is ToolDefinition =>
+	isRecord(value) &&
+	typeof value.name === 'string' &&
+	typeof value.description === 'string' &&
+	isJsonSchema(value.input);
+
+const isTokens = (value: unknown): value is ChatUsage =>
+	isRecord(value) &&
+	typeof value.inputTokens === 'number' &&
+	typeof value.outputTokens === 'number';
+
+function wireMessageOf(message: ChatMessage) {
+	switch (message.role) {
+		case 'system':
+		case 'user':
+			return { tag: message.role, val: message.content };
+		case 'assistant':
+			return {
+				tag: 'assistant',
+				val: {
+					content: message.content,
+					...(message.toolCalls ? { toolCalls: message.toolCalls } : {}),
+				},
+			};
+		case 'tool':
+			return {
+				tag: 'tool',
+				val: { toolCallId: message.toolCallId, name: message.name, content: message.content },
+			};
+	}
 }
 
-/** The context that the executor gives `run()`. */
+function messageOfWire(value: unknown): ChatMessage | undefined {
+	if (!isRecord(value)) return undefined;
+	const { tag, val } = value;
+	if ((tag === 'system' || tag === 'user') && typeof val === 'string') {
+		return { role: tag, content: val };
+	}
+	if (tag === 'assistant' && isRecord(val) && typeof val.content === 'string') {
+		const { content, toolCalls } = val;
+		if (toolCalls === undefined) return { role: 'assistant', content };
+		return isToolCalls(toolCalls) ? { role: 'assistant', content, toolCalls } : undefined;
+	}
+	if (
+		tag === 'tool' &&
+		isRecord(val) &&
+		typeof val.toolCallId === 'string' &&
+		typeof val.name === 'string' &&
+		typeof val.content === 'string'
+	) {
+		return { role: 'tool', toolCallId: val.toolCallId, name: val.name, content: val.content };
+	}
+	return undefined;
+}
+
+function messagesOfWire(value: unknown): ChatMessage[] | undefined {
+	if (!Array.isArray(value)) return undefined;
+	const messages = value.flatMap((entry) => messageOfWire(entry) ?? []);
+	return messages.length === value.length ? messages : undefined;
+}
+
+function chatRequestOfWire(value: unknown): ChatRequest | undefined {
+	if (!isRecord(value)) return undefined;
+	const messages = messagesOfWire(value.messages);
+	const { tools, output } = value;
+	const toolsValid = tools === undefined || (Array.isArray(tools) && tools.every(isToolDefinition));
+	if (!messages || !toolsValid || !(output === undefined || isJsonSchema(output))) return undefined;
+	return {
+		messages,
+		...(Array.isArray(tools) ? { tools: tools.filter(isToolDefinition) } : {}),
+		...(output === undefined ? {} : { output }),
+	};
+}
+
+const wireRequestOf = ({ messages, tools, output }: ChatRequest) => ({
+	messages: messages.map(wireMessageOf),
+	...(tools
+		? { tools: tools.map(({ name, description, input }) => ({ name, description, input })) }
+		: {}),
+	...(output ? { output } : {}),
+});
+
+const wireReplyOf = ({ text, toolCalls, finishReason, usage }: ChatReply) => ({
+	text,
+	toolCalls: toolCalls.map(({ id, name, args }) => ({ id, name, args })),
+	finishReason,
+	...(usage ? { usage: { inputTokens: usage.inputTokens, outputTokens: usage.outputTokens } } : {}),
+});
+
+function replyOfWire(value: unknown): ChatReply | undefined {
+	if (
+		!isRecord(value) ||
+		typeof value.text !== 'string' ||
+		typeof value.finishReason !== 'string' ||
+		!isToolCalls(value.toolCalls) ||
+		!(value.usage === undefined || isTokens(value.usage))
+	) {
+		return undefined;
+	}
+	const { text, toolCalls, finishReason, usage } = value;
+	return { text, toolCalls, finishReason, ...(usage ? { usage } : {}) };
+}
+
+const isVectors = (value: unknown): value is number[][] =>
+	Array.isArray(value) &&
+	value.every(
+		(vector) => Array.isArray(vector) && vector.every((entry) => typeof entry === 'number'),
+	);
+
+interface RunCalls {
+	readonly calls: GuestCalls;
+	/** Ends the binary readers and writers that the guest left open, so no store stream stays open. */
+	close(): void;
+	/** The host error that a run error names, so the executor sees the error of the host. */
+	errorOf(message: string): unknown;
+	/** The run input as the guest reads it: `{ "$binary": id }` and `{ "$capability": id }` at the handles. */
+	guestInput(input: unknown): Promise<unknown>;
+	/** An output item of the guest, with the binaries of this run at its binary fields. */
+	hostJson(json: unknown): unknown;
+}
+
+/** The context that the executor gives `run()`. `credential` is a getter: read it only when the guest asks. */
 type SandboxContext = {
 	readonly input: unknown;
 	readonly http: Http;
 	log(level: LogLevel, message: string): void;
 	readonly limits: RunLimits;
+	readonly binary?: Binaries;
+	readonly credential?: unknown;
 	readonly item?: InputItem;
 	readonly items?: readonly InputItem[];
 	readonly inputs?: Readonly<Record<string, readonly InputItem[]>>;
@@ -411,14 +583,113 @@ const LOG_LEVELS: ReadonlySet<string> = new Set(['debug', 'info', 'warn', 'error
 const isLogLevel = (value: unknown): value is LogLevel =>
 	typeof value === 'string' && LOG_LEVELS.has(value);
 
-function callsOf(context: SandboxContext, items: readonly InputItem[]): RunCalls {
+const isBinary = (value: unknown): value is Binary =>
+	isRecord(value) &&
+	isRecord(value.meta) &&
+	typeof value.meta.mimeType === 'string' &&
+	typeof value.read === 'function';
+
+/** The most bytes of one `binary-reader.read`, so a chunk stays a small JSON-RPC message. */
+const MAX_CHUNK_BYTES = 4 * 1024 * 1024;
+
+interface Reader {
+	readonly chunks: AsyncIterator<Uint8Array>;
+	readonly buffered: Buffer[];
+	readonly state: { done: boolean };
+}
+
+/** The next chunk of at most `max` bytes; an empty chunk at the end. */
+async function readChunk(reader: Reader, max: number): Promise<Buffer> {
+	for (;;) {
+		const size = reader.buffered.reduce((sum, chunk) => sum + chunk.length, 0);
+		if (size >= max || reader.state.done) break;
+		const next = await reader.chunks.next();
+		if (next.done) reader.state.done = true;
+		else reader.buffered.push(Buffer.from(next.value));
+	}
+	const all = Buffer.concat(reader.buffered.splice(0));
+	if (all.length > max) reader.buffered.push(all.subarray(max));
+	return all.subarray(0, max);
+}
+
+interface Writer {
+	readonly stream: PassThrough;
+	readonly created: Promise<Binary>;
+}
+
+interface Capability {
+	readonly kind: SupplyKind;
+	readonly value: unknown;
+}
+
+/** The JSON-RPC resource of a kind in `capabilities`. */
+const CAPABILITY_RESOURCES: Readonly<Record<SupplyKind, string>> = {
+	chatModel: 'chat-model',
+	memory: 'memory',
+	tool: 'tool',
+	embeddings: 'embeddings',
+};
+
+function callsOf(
+	context: SandboxContext,
+	items: readonly InputItem[],
+	contract: VersionManifest['contract'],
+): RunCalls {
 	const given = new Map<string, unknown>();
-	const tables = new Map<number, DataTable>();
+	// One counter for all host handles of a run, so a number names one thing only.
 	const counter = { next: 1 };
+	const tables = new Map<number, DataTable>();
+	const files = new Map<number, Binary>();
+	const fileIds = new Map<Binary, number>();
+	const readers = new Map<number, Reader>();
+	const writers = new Map<number, Writer>();
+	const supplied = new Map<number, Capability>();
+	const capabilities = new Map<number, Capability>();
 	const tableOf = (handle: unknown) => {
 		const table = typeof handle === 'number' ? tables.get(handle) : undefined;
 		if (!table) throw new RpcError(-32602, `No table ${String(handle)}`);
 		return table;
+	};
+	const fileIdOf = (file: Binary) => {
+		const known = fileIds.get(file);
+		if (known !== undefined) return known;
+		const id = counter.next++;
+		files.set(id, file);
+		fileIds.set(file, id);
+		return id;
+	};
+	const fileOf = (id: unknown) => {
+		const file = typeof id === 'number' ? files.get(id) : undefined;
+		if (!file) throw new RpcError(-32602, `No binary ${String(id)}`);
+		return file;
+	};
+	const readerOf = (handle: unknown) => {
+		const reader = typeof handle === 'number' ? readers.get(handle) : undefined;
+		if (!reader) throw new RpcError(-32602, `No binary reader ${String(handle)}`);
+		return reader;
+	};
+	const writerOf = (handle: unknown) => {
+		const writer = typeof handle === 'number' ? writers.get(handle) : undefined;
+		if (!writer) throw new RpcError(-32602, `No binary writer ${String(handle)}`);
+		return writer;
+	};
+	const closeReader = (handle: number) => {
+		const reader = readers.get(handle);
+		readers.delete(handle);
+		void reader?.chunks.return?.().catch(() => undefined);
+	};
+	// The store write of a destroyed writer rejects, and `created` ignores that rejection.
+	const closeWriter = (handle: number) => {
+		writers.get(handle)?.stream.destroy();
+		writers.delete(handle);
+	};
+	const capabilityOf = <K extends SupplyKind>(handle: unknown, kind: K): Supplies[K] => {
+		const capability = typeof handle === 'number' ? capabilities.get(handle) : undefined;
+		const value = capability?.value;
+		if (capability?.kind !== kind || !isSupply(kind, value)) {
+			throw new RpcError(-32602, `No ${kind} ${String(handle)}`);
+		}
+		return value;
 	};
 	const imports = (name: HostImport) => {
 		const service = context[name];
@@ -431,7 +702,27 @@ function callsOf(context: SandboxContext, items: readonly InputItem[]): RunCalls
 		if (!('open' in service)) throw new RpcError(-32601, 'dataTables is not granted');
 		return service;
 	};
-	const http = async ({ request }: Record<string, unknown>) => {
+	const binaries = () => {
+		if (!context.binary) throw new RpcError(-32601, 'binary is not granted');
+		return context.binary;
+	};
+	const errorText = (error: unknown) => (error instanceof Error ? error.message : String(error));
+	/** A failed `result<_, string>`; the run error that names it gives the executor the host error. */
+	const textFailure = (error: unknown) => {
+		given.set(errorText(error), error);
+		return resultError(errorText(error));
+	};
+	/** A failed `result<_, run-error>` of a capability. */
+	const runFailure = (error: unknown) => {
+		const message = errorText(error);
+		given.set(message, error);
+		return resultError(message, {
+			message,
+			...(isHttpError(error) ? { response: httpErrorOf(error, message) } : {}),
+		});
+	};
+	/** The request options of an `http-request`, or of a `binary-request` without `body`. */
+	const requestOf = (request: unknown, withBody: boolean): HttpRequest => {
 		if (
 			!isRecord(request) ||
 			!isHttpMethod(request.method) ||
@@ -440,7 +731,7 @@ function callsOf(context: SandboxContext, items: readonly InputItem[]): RunCalls
 			!isPairs(request.query) ||
 			!isPairs(request.headers)
 		) {
-			throw new RpcError(-32602, 'http.request needs an http-request');
+			throw new RpcError(-32602, 'The request is not an http-request');
 		}
 		const { val } = request.target;
 		const target =
@@ -451,17 +742,20 @@ function callsOf(context: SandboxContext, items: readonly InputItem[]): RunCalls
 				val: 'The request path must start with one "/"',
 			});
 		}
+		return {
+			...target,
+			method: request.method,
+			query: queryOf(request.query),
+			headers: Object.fromEntries(request.headers),
+			...(withBody && 'body' in request ? { body: request.body } : {}),
+			...(typeof request.timeoutMs === 'number' ? { timeoutMs: request.timeoutMs } : {}),
+			...(typeof request.retry === 'boolean' ? { retry: request.retry } : {}),
+		};
+	};
+	/** Sends a request through the executor; a failure is the `http-failure` of the WIT `result`. */
+	const send = async (options: HttpRequest) => {
 		try {
-			const response = await context.http.request({
-				...target,
-				method: request.method,
-				query: queryOf(request.query),
-				headers: Object.fromEntries(request.headers),
-				...('body' in request ? { body: request.body } : {}),
-				...(typeof request.timeoutMs === 'number' ? { timeoutMs: request.timeoutMs } : {}),
-				...(typeof request.retry === 'boolean' ? { retry: request.retry } : {}),
-				fullResponse: true,
-			});
+			const response = await context.http.request({ ...options, fullResponse: true });
 			if (!isFullResponse(response))
 				throw new UnexpectedError('The HTTP client gave no full response');
 			return {
@@ -470,30 +764,225 @@ function callsOf(context: SandboxContext, items: readonly InputItem[]): RunCalls
 				body: response.body ?? null,
 			};
 		} catch (error) {
-			const message = error instanceof Error ? error.message : String(error);
+			const message = errorText(error);
 			given.set(message, error);
 			throw isHttpError(error)
-				? resultError('response', {
-						tag: 'response',
-						val: {
-							message,
-							status: error.status,
-							headers: headerPairsOf(error.headers),
-							body: error.body ?? null,
-						},
-					})
+				? resultError('response', { tag: 'response', val: httpErrorOf(error, message) })
 				: resultError('transport', { tag: 'transport', val: message });
 		}
 	};
+	const shape = shapeOf(contract.input);
+	const supplyFields = supplyFieldsOf(shape);
+	const binaryKeys = Object.entries(contract.output.properties ?? {})
+		.filter(([, field]) => field['x-n8n-binary'] === true)
+		.map(([key]) => key);
+	const guestInput = async (input: unknown) => {
+		const withFiles = await withBinaries(input, contract.input, async (file) => {
+			if (!isBinary(file)) throw new UnexpectedError(`${String(file)} is not a binary`);
+			return { $binary: fileIdOf(file) };
+		});
+		if (!isRecord(withFiles) || supplyFields.length === 0) return withFiles;
+		const refOf = (kind: SupplyKind) => (value: unknown) => {
+			const id = counter.next++;
+			supplied.set(id, { kind, value });
+			return { $capability: id };
+		};
+		const refs = supplyFields.flatMap(({ name, kind, many }) => {
+			const value = withFiles[name];
+			if (value === undefined) return [];
+			return [[name, many && Array.isArray(value) ? value.map(refOf(kind)) : refOf(kind)(value)]];
+		});
+		return { ...withFiles, ...Object.fromEntries(refs) };
+	};
+	// A field that names no binary of this run stays as it is, so the executor refuses it.
+	const hostJson = (json: unknown) =>
+		binaryKeys.length === 0 || !isRecord(json)
+			? json
+			: Object.fromEntries(
+					Object.entries(json).map(([key, value]) => {
+						const id = binaryKeys.includes(key) && isRecord(value) ? value.$binary : undefined;
+						const file = typeof id === 'number' ? files.get(id) : undefined;
+						return [key, file ?? value];
+					}),
+				);
 	const calls: GuestCalls = async (method, params) => {
 		switch (method) {
 			case 'http.request':
-				return await http(params);
+				return await send(requestOf(params.request, true));
 			case 'log.log':
 				if (isLogLevel(params.level)) context.log(params.level, String(params.message));
 				return null;
 			case 'limits.get':
 				return { maxRequests: context.limits.maxRequests, maxItems: context.limits.maxItems };
+			case 'run-credential.get':
+				try {
+					const { credential } = context;
+					return isRecord(credential) ? { type: credential.type, fields: credential.fields } : null;
+				} catch (error) {
+					// The host error can quote stored values, so the guest gets a fixed text.
+					const message = 'The stored data of the credential does not match its declared fields';
+					given.set(message, error);
+					throw resultError(message);
+				}
+			case 'binary.open': {
+				const { id } = params;
+				if (typeof id !== 'number' || !files.has(id)) throw resultError(`No binary ${String(id)}`);
+				return id;
+			}
+			case 'binary.binary.meta': {
+				const { mimeType, fileName, bytes } = fileOf(params.self).meta;
+				return {
+					mimeType,
+					...(fileName === undefined ? {} : { fileName }),
+					...(bytes === undefined ? {} : { bytes }),
+				};
+			}
+			case 'binary.binary.id':
+				fileOf(params.self);
+				return params.self;
+			case 'binary.binary.reader': {
+				const chunks = fileOf(params.self).read()[Symbol.asyncIterator]();
+				const handle = counter.next++;
+				readers.set(handle, { chunks, buffered: [], state: { done: false } });
+				return handle;
+			}
+			case 'binary.binary-reader.read': {
+				const reader = readerOf(params.self);
+				const { maxBytes } = params;
+				if (typeof maxBytes !== 'number') throw new RpcError(-32602, 'read needs maxBytes');
+				try {
+					const chunk = await readChunk(reader, Math.min(maxBytes, MAX_CHUNK_BYTES));
+					return chunk.toString('base64');
+				} catch (error) {
+					throw textFailure(error);
+				}
+			}
+			case 'binary.binary-reader.[drop]':
+				closeReader(Number(params.self));
+				return null;
+			case 'binary.binary-writer.[new]': {
+				const { mimeType, fileName } = params;
+				if (
+					typeof mimeType !== 'string' ||
+					!(fileName === undefined || typeof fileName === 'string')
+				) {
+					throw new RpcError(-32602, 'A binary writer needs a MIME type');
+				}
+				const stream = new PassThrough();
+				const meta = { mimeType, ...(fileName === undefined ? {} : { fileName }) };
+				const created = binaries().create(meta, stream);
+				// A failed store write rejects at `write` or `finish`.
+				created.catch(() => undefined);
+				const handle = counter.next++;
+				writers.set(handle, { stream, created });
+				return handle;
+			}
+			case 'binary.binary-writer.write': {
+				const { stream, created } = writerOf(params.self);
+				if (typeof params.chunk !== 'string') throw new RpcError(-32602, 'write needs a chunk');
+				try {
+					if (!stream.write(Buffer.from(params.chunk, 'base64'))) {
+						await Promise.race([once(stream, 'drain'), created]);
+					}
+					return null;
+				} catch (error) {
+					throw textFailure(error);
+				}
+			}
+			case 'binary.binary-writer.finish': {
+				const { stream, created } = writerOf(params.writer);
+				writers.delete(Number(params.writer));
+				stream.end();
+				try {
+					return fileIdOf(await created);
+				} catch (error) {
+					throw textFailure(error);
+				}
+			}
+			case 'binary.binary-writer.[drop]':
+				closeWriter(Number(params.self));
+				return null;
+			case 'binary.send':
+				return await send({ ...requestOf(params.request, false), body: fileOf(params.body) });
+			case 'binary.fetch': {
+				const body = params.body === undefined ? undefined : fileOf(params.body);
+				const request = requestOf(params.request, body === undefined);
+				if (body !== undefined && isRecord(params.request) && 'body' in params.request) {
+					throw new RpcError(-32602, 'fetch takes a JSON body or a binary body, not both');
+				}
+				const response = await send({
+					...request,
+					...(body === undefined ? {} : { body }),
+					response: 'binary',
+				});
+				if (!isBinary(response.body)) throw new UnexpectedError('The HTTP client gave no binary');
+				return { ...response, body: fileIdOf(response.body) };
+			}
+			case 'supplied.open': {
+				const { id } = params;
+				const capability = typeof id === 'number' ? supplied.get(id) : undefined;
+				if (!capability) throw resultError(`No capability ${String(id)}`);
+				const handle = counter.next++;
+				capabilities.set(handle, capability);
+				return { tag: capability.kind, val: handle };
+			}
+			case 'capabilities.chat-model.model':
+				return capabilityOf(params.self, 'chatModel').model;
+			case 'capabilities.chat-model.chat': {
+				const model = capabilityOf(params.self, 'chatModel');
+				const request = chatRequestOfWire(params.request);
+				if (!request) throw new RpcError(-32602, 'chat needs a chat-request');
+				try {
+					return wireReplyOf(await model.chat(request));
+				} catch (error) {
+					throw runFailure(error);
+				}
+			}
+			case 'capabilities.memory.load':
+				try {
+					const messages = await capabilityOf(params.self, 'memory').load();
+					return messages.map(wireMessageOf);
+				} catch (error) {
+					throw error instanceof RpcError ? error : runFailure(error);
+				}
+			case 'capabilities.memory.save': {
+				const memory = capabilityOf(params.self, 'memory');
+				const messages = messagesOfWire(params.messages);
+				if (!messages) throw new RpcError(-32602, 'save needs chat messages');
+				try {
+					await memory.save(messages);
+					return null;
+				} catch (error) {
+					throw runFailure(error);
+				}
+			}
+			case 'capabilities.tool.name':
+				return capabilityOf(params.self, 'tool').name;
+			case 'capabilities.tool.description':
+				return capabilityOf(params.self, 'tool').description;
+			case 'capabilities.tool.input':
+				return capabilityOf(params.self, 'tool').input;
+			case 'capabilities.tool.call': {
+				const tool = capabilityOf(params.self, 'tool');
+				if (!isRecord(params.args)) throw new RpcError(-32602, 'call needs args');
+				try {
+					return (await tool.call(params.args)) ?? null;
+				} catch (error) {
+					throw runFailure(error);
+				}
+			}
+			case 'capabilities.embeddings.embed': {
+				const embeddings = capabilityOf(params.self, 'embeddings');
+				const { texts } = params;
+				if (!Array.isArray(texts) || !texts.every((text) => typeof text === 'string')) {
+					throw new RpcError(-32602, 'embed needs texts');
+				}
+				try {
+					return await embeddings.embed(texts);
+				} catch (error) {
+					throw runFailure(error);
+				}
+			}
 			case 'data-tables.open': {
 				const { table } = params;
 				if (!isRecord(table) || typeof table.val !== 'string') {
@@ -652,11 +1141,24 @@ function callsOf(context: SandboxContext, items: readonly InputItem[]): RunCalls
 				}
 				return await tableResult(async () => await inputOf(item));
 			}
+			// A binary stays for the node execution, so a dropped handle can still be an output.
+			case 'binary.binary.[drop]':
+				return null;
+			case 'capabilities.chat-model.[drop]':
+			case 'capabilities.memory.[drop]':
+			case 'capabilities.tool.[drop]':
+			case 'capabilities.embeddings.[drop]':
+				capabilities.delete(Number(params.self));
+				return null;
 			default:
 				throw new RpcError(-32601, `method not found: ${method}`);
 		}
 	};
-	return { calls, errorOf: (message) => given.get(message) };
+	const close = () => {
+		[...readers.keys()].forEach(closeReader);
+		[...writers.keys()].forEach(closeWriter);
+	};
+	return { calls, close, errorOf: (message) => given.get(message), guestInput, hostJson };
 }
 
 // ── The sandboxed action ────────────────────────────────────────────────────────────────
@@ -687,24 +1189,27 @@ function runErrorOf(error: unknown, calls: RunCalls): unknown {
 interface RunPlan {
 	readonly id: string;
 	readonly resource: 'item-run' | 'join-run';
-	readonly params: Record<string, unknown>;
 	readonly items: readonly InputItem[];
+	/** The constructor parameters, with the run input as the guest reads it. */
+	params(input: unknown): Record<string, unknown>;
 	/** The value the executor reads for one output of the guest. */
-	valueOf(output: unknown): unknown;
+	valueOf(output: unknown, hostJson: (json: unknown) => unknown): unknown;
 }
 
 async function* outputsOf(
 	plan: RunPlan,
 	context: SandboxContext,
 	start: () => Promise<Connection>,
+	contract: VersionManifest['contract'],
 ) {
 	const shared = sessions.getStore();
 	const connection = await (shared ?? start)();
-	const calls = callsOf(context, plan.items);
+	const calls = callsOf(context, plan.items, contract);
 	const stop = connection.serve(calls.calls);
 	const handles = new Map<'handle', unknown>();
 	try {
-		const handle = await connection.request(`action.${plan.resource}.[new]`, plan.params);
+		const params = plan.params(await calls.guestInput(context.input));
+		const handle = await connection.request(`action.${plan.resource}.[new]`, params);
 		handles.set('handle', handle);
 		for (;;) {
 			const taken = await connection.request(`action.${plan.resource}.[take]`, {
@@ -712,12 +1217,13 @@ async function* outputsOf(
 				max: TAKE,
 			});
 			if (!isOutputs(taken)) throw new UnexpectedError(`${plan.id} gave no outputs`);
-			for (const output of taken.outputs) yield plan.valueOf(output);
+			for (const output of taken.outputs) yield plan.valueOf(output, calls.hostJson);
 			if (taken.error !== undefined) throw runErrorOf(taken.error, calls);
 			if (taken.done) return;
 		}
 	} finally {
 		stop();
+		calls.close();
 		if (handles.has('handle')) {
 			connection.notify(`action.${plan.resource}.[drop]`, { self: handles.get('handle') });
 		}
@@ -745,12 +1251,14 @@ function itemValueOf(
 	const plain =
 		action.outputs === undefined && !batch && action.output.json['x-n8n-passed'] !== true;
 	const itemAt = (index: unknown) => (typeof index === 'number' ? items[index] : undefined);
-	return (output: unknown): unknown => {
+	return (output: unknown, hostJson: (json: unknown) => unknown): unknown => {
 		if (!isRouted(output))
 			throw new UnexpectedError(`${action.id} gave an output that is not a routed-output`);
 		const { to, output: value } = output;
 		const route = to === undefined ? {} : { to };
-		if (value.tag === 'item') return plain ? value.val : { ...route, json: value.val };
+		if (value.tag === 'item') {
+			return plain ? hostJson(value.val) : { ...route, json: hostJson(value.val) };
+		}
 		if (plain)
 			throw new UnexpectedError(`${action.id} gave a ${value.tag} output, and it has no routes`);
 		if (value.tag === 'passed') return { ...route, item: itemAt(value.val) };
@@ -758,7 +1266,11 @@ function itemValueOf(
 			throw new UnexpectedError(`${action.id} gave an output that is not an output`);
 		}
 		const [json, from] = value.val;
-		return { ...route, json, from: from.length === 1 ? itemAt(from[0]) : from.map(itemAt) };
+		return {
+			...route,
+			json: hostJson(json),
+			from: from.length === 1 ? itemAt(from[0]) : from.map(itemAt),
+		};
 	};
 }
 
@@ -767,7 +1279,7 @@ function joinValueOf(id: string, inputs: ReadonlyArray<readonly InputItem[]>) {
 		isRecord(ref) && typeof ref.input === 'number' && typeof ref.item === 'number'
 			? inputs[ref.input]?.[ref.item]
 			: undefined;
-	return (output: unknown): unknown => {
+	return (output: unknown, hostJson: (json: unknown) => unknown): unknown => {
 		if (!isRouted(output))
 			throw new UnexpectedError(`${id} gave an output that is not a routed-join-output`);
 		const { to, output: value } = output;
@@ -777,7 +1289,11 @@ function joinValueOf(id: string, inputs: ReadonlyArray<readonly InputItem[]>) {
 			throw new UnexpectedError(`${id} gave an output that is not a join output`);
 		}
 		const [json, from] = value.val;
-		return { ...route, json, from: from.length === 1 ? itemOf(from[0]) : from.map(itemOf) };
+		return {
+			...route,
+			json: hostJson(json),
+			from: from.length === 1 ? itemOf(from[0]) : from.map(itemOf),
+		};
 	};
 }
 
@@ -863,6 +1379,113 @@ function nodeOf(
 	};
 }
 
+/** A value that a sandboxed provider gave in the right shape, or an error that names the provider. */
+function providerValue<T>(id: string, value: T | undefined, what: string): T {
+	if (value === undefined) throw new UserError(`${id} gave ${what} in another shape`);
+	return value;
+}
+
+/**
+ * The capability of a sandboxed provider. Each method call runs `supply()` in a new instance
+ * and then the method: the root node calls the capability after the node execution of the
+ * provider ended, so the guest keeps no state between two calls. The requests use the context,
+ * so the credential, the egress and the request limit of the provider apply.
+ */
+async function suppliedOf(
+	manifest: VersionManifest,
+	context: SandboxContext,
+	start: () => Promise<Connection>,
+): Promise<unknown> {
+	const { id, contract } = manifest;
+	const kind = suppliedKindOf(contract.output);
+	if (!kind) throw new UnexpectedError(`${id} supplies no capability`);
+	const resource = `capabilities.${CAPABILITY_RESOURCES[kind]}`;
+	const items = context.item ? [context.item] : [];
+	type Use<T> = (
+		call: (method: string, params?: Record<string, unknown>) => Promise<unknown>,
+	) => Promise<T>;
+	const supply = async <T>(open: () => Promise<Connection>, shared: boolean, use: Use<T>) => {
+		const connection = await open();
+		const calls = callsOf(context, items, contract);
+		const stop = connection.serve(calls.calls);
+		try {
+			const capability = await connection.request('provider.supply', { input: context.input });
+			if (!isRecord(capability) || capability.tag !== kind || typeof capability.val !== 'number') {
+				throw new UserError(`${id} supplied no ${kind}`);
+			}
+			const self = capability.val;
+			const result = await use(
+				async (method, params = {}) =>
+					await connection.request(`${resource}.${method}`, { ...params, self }),
+			);
+			connection.notify(`${resource}.[drop]`, { self });
+			return result;
+		} catch (error) {
+			throw isRecord(error) && isRecord(error.data) ? runErrorOf(error.data, calls) : error;
+		} finally {
+			stop();
+			calls.close();
+			if (!shared) connection.close();
+		}
+	};
+	const shared = sessions.getStore();
+	// The members the root reads without a call come from the instance of this node execution.
+	const now = async <T>(use: Use<T>) => await supply(shared ?? start, shared !== undefined, use);
+	const later = async <T>(use: Use<T>) => await supply(start, false, use);
+	const capability = await (async (): Promise<unknown> => {
+		switch (kind) {
+			case 'chatModel':
+				return {
+					model: await now(async (call) => await call('model')),
+					chat: async (request: ChatRequest) =>
+						providerValue(
+							id,
+							replyOfWire(
+								await later(
+									async (call) => await call('chat', { request: wireRequestOf(request) }),
+								),
+							),
+							'a chat reply',
+						),
+				};
+			case 'memory':
+				return {
+					load: async () =>
+						providerValue(
+							id,
+							messagesOfWire(await later(async (call) => await call('load'))),
+							'messages',
+						),
+					save: async (messages: readonly ChatMessage[]) => {
+						await later(
+							async (call) => await call('save', { messages: messages.map(wireMessageOf) }),
+						);
+					},
+				};
+			case 'tool': {
+				const [name, description, input] = await now(
+					async (call) => await Promise.all([call('name'), call('description'), call('input')]),
+				);
+				return {
+					name,
+					description,
+					input,
+					call: async (args: Readonly<Record<string, unknown>>) =>
+						await later(async (call) => await call('call', { args })),
+				};
+			}
+			case 'embeddings':
+				return {
+					embed: async (texts: readonly string[]) => {
+						const vectors = await later(async (call) => await call('embed', { texts }));
+						return providerValue(id, isVectors(vectors) ? vectors : undefined, 'vectors');
+					},
+				};
+		}
+	})();
+	return providerValue(id, isSupply(kind, capability) ? capability : undefined, `a ${kind}`);
+}
+
 const shapeOf = (schema: JsonSchema): Shape => {
 	const required = new Set(schema.required ?? []);
 	return Object.fromEntries(
@@ -906,21 +1529,23 @@ function sandboxedAction(
 		...(contract.imports ? { imports: contract.imports } : {}),
 	};
 	const run = (context: SandboxContext): AsyncGenerator<unknown> | Promise<unknown> => {
+		if (manifest.kind === 'provider') return suppliedOf(manifest, context, start);
 		if (contract.inputs) {
 			const inputs = contract.inputs.map((name) => context.inputs?.[name] ?? []);
 			return outputsOf(
 				{
 					id: manifest.id,
 					resource: 'join-run',
-					params: {
-						input: context.input,
+					params: (input) => ({
+						input,
 						inputs: inputs.map((list) => list.map(({ json }) => json)),
-					},
+					}),
 					items: inputs[0] ?? [],
 					valueOf: joinValueOf(manifest.id, inputs),
 				},
 				context,
 				start,
+				contract,
 			);
 		}
 		const items = context.items ?? (context.item ? [context.item] : []);
@@ -928,12 +1553,13 @@ function sandboxedAction(
 			{
 				id: manifest.id,
 				resource: 'item-run',
-				params: { input: context.input, items: items.map(({ json }) => json) },
+				params: (input) => ({ input, items: items.map(({ json }) => json) }),
 				items,
 				valueOf: itemValueOf(shell, items),
 			},
 			context,
 			start,
+			contract,
 		);
 		return flow.cardinality === 'per-item' ? only(manifest.id, outputs) : outputs;
 	};
@@ -969,13 +1595,22 @@ async function bundleFileOf(options: SandboxOptions, manifest: VersionManifest, 
 	return file;
 }
 
-/** What the sandbox cannot run yet. The host runs such a bundle nowhere, not in this process. */
+/** What the sandbox cannot run. The host runs such a bundle nowhere, not in this process. */
 function unsupported({ id, kind, nodeContract, contract }: VersionManifest): string | undefined {
-	if (kind !== 'action') return `${id} is a ${kind}; the sandbox runs actions only`;
+	if (kind !== 'action' && kind !== 'provider') {
+		return `${id} is a ${kind}; the sandbox runs actions and providers only`;
+	}
 	if (nodeContract.startsWith('1.'))
 		return `${id} targets Node Contract ${nodeContract}; the sandbox runs 2.1.0 or newer`;
-	if (usesBinary(contract)) return `${id} uses binary data, which the sandbox does not have yet`;
-	if (usesSupplies(contract)) return `${id} uses providers, which the sandbox does not have yet`;
+	if (kind === 'action') return undefined;
+	if (!suppliedKindOf(contract.output))
+		return `${id} is a derived provider; n8n runs its legacy node`;
+	const takesSupplies = Object.values(contract.input.properties ?? {}).some(
+		(field) => supplyOf(field) !== undefined,
+	);
+	if (usesBinary(contract) || contract.imports?.length || takesSupplies) {
+		return `${id} uses more than http, log and limits, which the provider interface does not give`;
+	}
 	return undefined;
 }
 
@@ -984,10 +1619,14 @@ export async function sandboxedVersionOf(frozen: FrozenVersion, options: Sandbox
 	const { manifest } = frozen;
 	const missing = unsupported(manifest);
 	if (missing) throw new UserError(missing);
+	const kind: SandboxKind = manifest.kind === 'provider' ? 'provider' : 'action';
 	const code = await verifiedCodeOf(frozen);
+	const guest = path.join(options.guests, `${kind}.wasm`);
 	const config: SessionConfig = {
 		options,
-		guestSha256: await guestSha256Of(options.guest),
+		kind,
+		guest,
+		guestSha256: await guestSha256Of(guest),
 		limits: { ...DEFAULT_LIMITS, ...options.limits },
 		manifest,
 		bundleFile: await bundleFileOf(options, manifest, code),
@@ -996,7 +1635,7 @@ export async function sandboxedVersionOf(frozen: FrozenVersion, options: Sandbox
 	const start = async () => await openSession(config);
 	const describing = await start();
 	const described = await describing
-		.request('action.describe', {})
+		.request(`${kind}.describe`, {})
 		.finally(() => describing.close());
 	const action = sandboxedAction(
 		manifest,

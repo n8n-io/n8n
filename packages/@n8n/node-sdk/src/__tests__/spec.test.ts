@@ -13,6 +13,8 @@ import {
 import type { RunContextV1 } from '../action-api-v1';
 import type { CustomAuth } from '../credentials';
 import type {
+	ActionBinding,
+	ActionFlow,
 	BatchContext,
 	CodeRequest,
 	DataTable,
@@ -45,7 +47,7 @@ import {
 	versionManifestSchema,
 	type CredentialManifest,
 } from '../manifest';
-import type { BinaryMeta, Shape } from '../schema';
+import type { AnySchema, BinaryMeta, Shape } from '../schema';
 import {
 	SUPPLY_CONNECTIONS,
 	type ChatModel,
@@ -246,11 +248,17 @@ describe('the action interface', () => {
 		// An action gets an optional import only when its manifest lists it. A provider capability
 		// comes in the input, at a `supplied()` field.
 		const optional = keysOf<HostImports<unknown>>()(['dataTables', 'code', 'wait', 'inputOf']);
-		expect(sorted(['input', 'item', ...action.imports])).toEqual(
-			sorted([...context, ...optional, 'supplied']),
+		type Bound = Extract<
+			ActionBinding<Shape, AnySchema, ActionFlow, string, undefined>,
+			{ run: unknown }
+		>;
+		const credential = keysOf<Pick<Parameters<Bound['run']>[0], 'credential'>>()(['credential']);
+		const imports = action.imports.map((name) => (name === 'runCredential' ? 'credential' : name));
+		expect(sorted(['input', 'item', ...imports])).toEqual(
+			sorted([...context, ...optional, ...credential, 'supplied']),
 		);
-		expect(sorted(['input', 'items', ...action.imports])).toEqual(
-			sorted([...batch, ...optional, 'supplied']),
+		expect(sorted(['input', 'items', ...imports])).toEqual(
+			sorted([...batch, ...optional, ...credential, 'supplied']),
 		);
 		expect(action.exports).toEqual(['action']);
 	});
@@ -401,9 +409,10 @@ describe('the provider interface', () => {
 			expect(sorted(wit.methods('capabilities', resource))).toEqual(sorted(keys));
 		});
 		expect(wit.world('provider-bundle').exports).toEqual(['capabilities', 'provider']);
-		expect(wit.funcs('provider')).toEqual(
-			keysOf<Pick<SubnodeSpec<Shape, Shape, 'chatModel'>, 'supply'>>()(['supply']),
-		);
+		expect(wit.funcs('provider')).toEqual([
+			'describe',
+			...keysOf<Pick<SubnodeSpec<Shape, Shape, 'chatModel'>, 'supply'>>()(['supply']),
+		]);
 	});
 
 	it('has the chat types of the TS types', () => {

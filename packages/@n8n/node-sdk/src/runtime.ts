@@ -655,10 +655,10 @@ interface Routed {
 }
 
 /** `value` with each binary in it replaced by `resolve(binary)`, along `schema`. */
-async function withBinaries(
+export async function withBinaries(
 	value: unknown,
 	schema: JsonSchema,
-	resolve: (binary: unknown) => Promise<Binary>,
+	resolve: (binary: unknown) => Promise<unknown>,
 ): Promise<unknown> {
 	if (value === undefined || !hasBinary(schema)) return value;
 	if (schema['x-n8n-binary']) return await resolve(value);
@@ -1590,6 +1590,8 @@ const executorLoader = new Map<'loader', ExecutorLoader>();
 
 export const setExecutorLoader = (loader: ExecutorLoader) => {
 	executorLoader.set('loader', loader);
+	// An executor of the old loader must not run on.
+	executors.clear();
 };
 
 /**

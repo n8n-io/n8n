@@ -66,7 +66,7 @@ What each minor added (`@since` in the WIT, `x-n8n-since` in the schema):
 | 2.2.0 | `binary` |
 | 2.3.0 | `data-tables`, `code`, `wait`, `input-of`; `join-run` (named inputs); `capabilities`, `supplied`, the provider interface |
 | 2.4.0 | the `list` binding and `pageValue()` inputs (JS runtime only, no WIT form) |
-| 2.5.0 | the manifest fields `kind`, `nodeContract`, `sdk`, `credentials`; credential manifests; the trigger and credential interfaces |
+| 2.5.0 | the manifest fields `kind`, `nodeContract`, `sdk`, `credentials`; credential manifests; the trigger and credential interfaces; the `run-credential` import (the plain credential fields of `run()`); `provider.describe` |
 | unstable | `credential.exchange`, `credential.refresh` (`credential-exchange`); the lookup interface (`lookup`) |
 
 A manifest frozen before 2.5.0 has `apiVersion: "n8n:action@x.y.z"` or `abi: 1 | 2` instead of

@@ -1951,6 +1951,36 @@
 			],
 			"x-direction": "guest-to-host",
 			"x-since": "2.3.0"
+		},
+		{
+			"name": "run-credential.get",
+			"description": "None when the run has no credential. An error when the stored data does not match the\ndeclared fields, so only a bundle that reads the credential fails.",
+			"paramStructure": "by-name",
+			"params": [],
+			"result": {
+				"name": "result",
+				"schema": {
+					"oneOf": [
+						{
+							"$ref": "#/components/schemas/run-credential.run-credential"
+						},
+						{
+							"type": "null"
+						}
+					]
+				}
+			},
+			"errors": [
+				{
+					"code": -32000,
+					"message": "The error of the WIT result."
+				}
+			],
+			"x-error": {
+				"type": "string"
+			},
+			"x-direction": "guest-to-host",
+			"x-since": "2.5.0"
 		}
 	],
 	"components": {
@@ -3188,6 +3218,24 @@
 					"warn",
 					"error"
 				]
+			},
+			"run-credential.run-credential": {
+				"type": "object",
+				"properties": {
+					"type": {
+						"description": "The n8n credential type, for example `slackApi`.",
+						"type": "string"
+					},
+					"fields": {
+						"description": "The declared fields that are not secret, as one object.",
+						"$ref": "#/components/schemas/types.json"
+					}
+				},
+				"required": [
+					"type",
+					"fields"
+				],
+				"additionalProperties": false
 			}
 		}
 	}

@@ -1,7 +1,15 @@
 import { arr, binary, bool, isRecord, matches, obj, str, variant, type Http } from '@n8n/node-sdk';
 
 import { message } from '../gmail.node';
-import { addressList, displayName, encodeWords, mixedMessage, oneLine } from '../mime';
+import {
+	addressList,
+	base64Of,
+	displayName,
+	encodeWords,
+	mixedMessage,
+	oneLine,
+	utf8,
+} from '../mime';
 
 const ATTRIBUTION = 'This email was sent automatically with ';
 const LINK =
@@ -81,12 +89,15 @@ export const sendGmailMessage = message.action('send', {
 				([name, value]) => (value ? [`${name}: ${value}`] : []),
 			),
 			'',
-			Buffer.from(content).toString('base64').replace(/.{76}/g, '$&\r\n'),
+			base64Of(utf8(content)).replace(/.{76}/g, '$&\r\n'),
 		].join('\r\n');
 		const response = await http.request({
 			method: 'POST',
 			path: '/messages/send',
-			body: { raw: Buffer.from(mime).toString('base64url') },
+			// base64url without padding, as Gmail reads `raw`.
+			body: {
+				raw: base64Of(utf8(mime)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''),
+			},
 		});
 		if (!matches(sent, response)) throw new Error('Gmail returned no message ID');
 		return response;

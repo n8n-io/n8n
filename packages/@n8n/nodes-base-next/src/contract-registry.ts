@@ -8,6 +8,7 @@ import {
 	resolveContractVersion,
 	runsNodeContract,
 	setContractVersionLoader,
+	setExecutorLoader,
 	setNodeContractRange,
 	verifyManifestSignature,
 	type ContractPackage,
@@ -18,6 +19,7 @@ import {
 	type NodeContractVersion,
 	type VersionManifest,
 } from '@n8n/node-sdk';
+import { sandboxExecutorLoader, type SandboxOptions } from '@n8n/node-sdk/sandbox';
 import { access, link, mkdir, readdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { UserError, type IExecuteFunctions, type ISupplyDataFunctions } from 'n8n-workflow';
@@ -47,6 +49,11 @@ export interface ContractRegistryOptions {
 	readonly metaOf: (context: IExecuteFunctions | ISupplyDataFunctions) => Promise<unknown>;
 	/** The Node Contract versions a bundle may declare, e.g. `>=1.0.0 <3.0.0`. */
 	readonly nodeContractRange: string;
+	/**
+	 * Runs bundles in the WASM sandbox. `stored`: the versions that this package does not bundle.
+	 * `all`: every version. Without it, every bundle runs in this process.
+	 */
+	readonly sandbox?: { readonly options: SandboxOptions; readonly scope: 'stored' | 'all' };
 }
 
 /**
@@ -435,10 +442,36 @@ export function contractVersionLoader(options: ContractRegistryOptions): Contrac
 	};
 }
 
-/** Sets the Node Contract range and the version loader of this package's node-sdk, which its nodes run with. */
+const bundledVersionsOf = (actionId: string) => {
+	try {
+		return versionsOf(actionId);
+	} catch {
+		// Not an action of this package, or a build without frozen versions.
+		return [];
+	}
+};
+
+const bundledHead = (actionId: string) => bundledVersionsOf(actionId)[0];
+
+/** n8n builds and ships a bundled version with this package, so it may run in this process. */
+const isBundled = (manifest: VersionManifest) =>
+	bundledVersionsOf(manifest.id).some(
+		(version) => version.manifest.bundleHash === manifest.bundleHash,
+	);
+
+/**
+ * Sets the Node Contract range, the version loader and the sandbox of this package's node-sdk,
+ * which its nodes run with.
+ */
 export const useContractRegistry = (options: ContractRegistryOptions) => {
 	setNodeContractRange(options.nodeContractRange);
 	setContractVersionLoader(contractVersionLoader(options));
+	if (options.sandbox) {
+		const { scope } = options.sandbox;
+		setExecutorLoader(
+			sandboxExecutorLoader(options.sandbox.options, scope === 'all' ? () => false : isBundled),
+		);
+	}
 };
 
 /** A workflow node and its lock. */
@@ -456,15 +489,6 @@ export interface ContractSyncResult {
 	/** Nodes whose locked bundle declares a Node Contract version that this host does not run. */
 	readonly unsupported: ReadonlyArray<LockedNode & { readonly nodeContract: NodeContractVersion }>;
 }
-
-const bundledHead = (actionId: string) => {
-	try {
-		return versionsOf(actionId)[0];
-	} catch {
-		// Not an action of this package, or a build without frozen versions.
-		return undefined;
-	}
-};
 
 /**
  * Puts the locked bundle of each node into the store, one bundle at a time, and checks its
