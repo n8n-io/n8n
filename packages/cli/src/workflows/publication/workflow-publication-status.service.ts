@@ -1,6 +1,7 @@
 import type { WorkflowPublicationStatus, WorkflowListPublicationStatus } from '@n8n/api-types';
 import {
 	WorkflowPublicationOutboxRepository,
+	type OperationContext,
 	type WorkflowPublicationTriggerStatus,
 	WorkflowPublicationTriggerStatusRepository,
 } from '@n8n/db';
@@ -23,10 +24,13 @@ export class WorkflowPublicationStatusService {
 	 * NOTE: we only update the trigger statuses when a publication is completed,
 	 * so if there is a publication in progress, the trigger statuses may not reflect the latest state.
 	 */
-	async getStatus(workflowId: string): Promise<WorkflowPublicationStatus> {
+	async getStatus(
+		workflowId: string,
+		ctx: OperationContext = {},
+	): Promise<WorkflowPublicationStatus> {
 		const [inFlightPublication, currentTriggerStatuses] = await Promise.all([
-			this.outboxRepository.findInFlightByWorkflowId(workflowId),
-			this.triggerStatusRepository.findByWorkflowId(workflowId),
+			this.outboxRepository.findInFlightByWorkflowId(workflowId, ctx),
+			this.triggerStatusRepository.findByWorkflowId(workflowId, ctx),
 		]);
 
 		const triggers = currentTriggerStatuses.map((r) => ({

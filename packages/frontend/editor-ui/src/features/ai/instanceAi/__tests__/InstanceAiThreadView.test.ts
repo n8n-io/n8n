@@ -1394,7 +1394,7 @@ describe('InstanceAiThreadView', () => {
 		});
 	});
 
-	it('shows the new-agent context until the first successful message submission', async () => {
+	it('attaches the new-agent context until the first successful message submission', async () => {
 		thread.sseState = 'disconnected';
 		vi.mocked(thread.loadHistoricalMessages).mockResolvedValue('skipped');
 		store.threads = [
@@ -1435,7 +1435,8 @@ describe('InstanceAiThreadView', () => {
 		expect(preview).toHaveAttribute('data-agent-id', 'agent-1');
 		expect(preview).toHaveAttribute('data-project-id', 'project-1');
 		expect(thread.sendMessage).not.toHaveBeenCalled();
-		expect(getByTestId('instance-ai-input-context-chip')).toHaveTextContent('New Agent');
+		// A brand-new agent shows no composer chip — the attachment still rides.
+		expect(getByTestId('instance-ai-input-context-chip')).toHaveTextContent('');
 
 		await userEvent.click(getByTestId('instance-ai-input-submit'));
 
@@ -1454,7 +1455,7 @@ describe('InstanceAiThreadView', () => {
 			handoffContext: undefined,
 		});
 		expect(getPendingAgentAttachment('thread-1')).not.toBeNull();
-		expect(getByTestId('instance-ai-input-context-chip')).toHaveTextContent('New Agent');
+		expect(getByTestId('instance-ai-input-context-chip')).toHaveTextContent('');
 
 		await userEvent.click(getByTestId('instance-ai-input-submit'));
 
@@ -1510,11 +1511,12 @@ describe('InstanceAiThreadView', () => {
 			pending: true,
 		});
 
-		const { getByTestId } = renderView({ props: { threadId: 'thread-1' } });
+		const { findByTestId, getByTestId } = renderView({ props: { threadId: 'thread-1' } });
 
-		await vi.waitFor(() => {
-			expect(getByTestId('instance-ai-input-context-chip')).toHaveTextContent('Support Agent');
-		});
+		// The stash is still the pending new-agent one, so no chip — but the
+		// attachment follows the bound target's persisted name.
+		await findByTestId('instance-ai-agent-preview-stub');
+		expect(getByTestId('instance-ai-input-context-chip')).toHaveTextContent('');
 		await userEvent.click(getByTestId('instance-ai-input-submit'));
 
 		expect(thread.sendMessage).toHaveBeenCalledWith('Normal message', {

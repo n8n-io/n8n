@@ -85,6 +85,7 @@ describe('UsersController', () => {
 				where: { id: inviteeId },
 			});
 			expect(jwtService.sign).toHaveBeenCalledWith(
+				'invite',
 				{
 					inviterId,
 					inviteeId,
@@ -143,6 +144,7 @@ describe('UsersController', () => {
 			await controller.generateInviteLink(request, mock<Response>());
 
 			expect(jwtService.sign).toHaveBeenCalledWith(
+				'invite',
 				{
 					inviterId,
 					inviteeId,

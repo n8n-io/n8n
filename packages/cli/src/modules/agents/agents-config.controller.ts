@@ -1,4 +1,9 @@
-import { type AgentConfigValidationResponse, UpdateAgentConfigDto } from '@n8n/api-types';
+import {
+	type AgentBudgetSpend,
+	type AgentConfigValidationResponse,
+	UpdateAgentConfigDto,
+} from '@n8n/api-types';
+import { budgetMonthKey } from '@n8n/agents';
 import type { AuthenticatedRequest } from '@n8n/db';
 import { Body, Delete, Get, Param, ProjectScope, Put, RestController } from '@n8n/decorators';
 import type { Response } from 'express';
@@ -7,6 +12,7 @@ import { AgentsCredentialProvider } from './adapters/agents-credential-provider'
 import { AgentConfigService } from './agent-config.service';
 import { AgentCustomToolsService } from './agent-custom-tools.service';
 import { AgentValidationService } from './agent-validation.service';
+import { AgentSpendLedger } from './budget-guardrail';
 import { AgentRepository } from './repositories/agent.repository';
 import { getAgentConfigHash } from './utils/agent-config-hash';
 import { CollaborationService } from '@/collaboration/collaboration.service';
@@ -22,7 +28,22 @@ export class AgentsConfigController {
 		private readonly credentialsService: CredentialsService,
 		private readonly agentRepository: AgentRepository,
 		private readonly collaborationService: CollaborationService,
+		private readonly agentSpendLedger: AgentSpendLedger,
 	) {}
+
+	@Get('/:agentId/budget')
+	@ProjectScope('agent:read')
+	async getBudget(
+		req: AuthenticatedRequest<{ projectId: string; agentId: string }>,
+	): Promise<AgentBudgetSpend> {
+		const { projectId, agentId } = req.params;
+		const agent = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
+		if (!agent) {
+			throw new NotFoundError('Agent not found');
+		}
+		const spentUsd = await this.agentSpendLedger.ledger.read(budgetMonthKey(agentId));
+		return { spentUsd };
+	}
 
 	@Get('/:agentId/config')
 	@ProjectScope('agent:read')

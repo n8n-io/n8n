@@ -396,27 +396,67 @@ describe('MigrationRules', () => {
 	});
 
 	describe('refresh functionality', () => {
-		it('should show refresh button when shouldCache is true', async () => {
+		it.each([true, false])(
+			'should always show the Refresh button (shouldCache: %s)',
+			async (shouldCache) => {
+				vi.mocked(breakingChangesApi.getReport).mockResolvedValue({ ...mockReport, shouldCache });
+
+				renderComponent();
+
+				await waitFor(() => {
+					expect(screen.getByText('Test Rule 1')).toBeInTheDocument();
+				});
+
+				expect(screen.getByText('Refresh')).toBeInTheDocument();
+			},
+		);
+
+		it('should show when the report was last synced, from generatedAt', async () => {
+			// One year in the past, so the relative label is stable whatever the test date.
+			const generatedAt = new Date(Date.now() - 365 * 24 * 60 * 60 * 1000);
+			vi.mocked(breakingChangesApi.getReport).mockResolvedValue(
+				createMockReport({
+					report: {
+						generatedAt,
+						targetVersion: '2.0.0',
+						currentVersion: '1.0.0',
+						workflowResults: [mockWorkflowIssue],
+						instanceResults: [],
+					},
+				}),
+			);
+
 			renderComponent();
 
 			await waitFor(() => {
-				expect(screen.getByText('Refresh')).toBeInTheDocument();
+				const lastSynced = screen.getByTestId('migration-report-last-synced');
+				expect(lastSynced).toHaveTextContent(/Last synced\s+1 year ago/);
 			});
 		});
 
-		it('should hide refresh button when shouldCache is false', async () => {
-			vi.mocked(breakingChangesApi.getReport).mockResolvedValue({
-				...mockReport,
-				shouldCache: false,
-			});
+		it('should update the last synced time after Refresh', async () => {
+			const oldDate = new Date(Date.now() - 365 * 24 * 60 * 60 * 1000);
+			const newDate = new Date(Date.now() - 60 * 1000);
+			vi.mocked(breakingChangesApi.getReport).mockResolvedValue(
+				createMockReport({ report: { ...mockReport.report, generatedAt: oldDate } }),
+			);
+			vi.mocked(breakingChangesApi.refreshReport).mockResolvedValue(
+				createMockReport({ report: { ...mockReport.report, generatedAt: newDate } }),
+			);
 
 			renderComponent();
 
 			await waitFor(() => {
-				expect(screen.getByText('Test Rule 1')).toBeInTheDocument();
+				expect(screen.getByTestId('migration-report-last-synced')).toHaveTextContent(/1 year ago/);
 			});
 
-			expect(screen.queryByText('Refresh')).not.toBeInTheDocument();
+			await userEvent.click(screen.getByText('Refresh'));
+
+			await waitFor(() => {
+				expect(screen.getByTestId('migration-report-last-synced')).toHaveTextContent(
+					/1 minute ago/,
+				);
+			});
 		});
 
 		it('should refresh and reload data when clicked', async () => {

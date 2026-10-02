@@ -16,7 +16,7 @@ import type { Push } from '@/push';
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
 import { PublicationStatusReporter } from '@/workflows/publication/publication-status-reporter';
 import { WorkflowPushNotifier } from '@/workflows/workflow-push-notifier.service';
-import type { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
+import type { WorkflowSharingService } from '@n8n/backend-services';
 
 describe('PublicationStatusReporter', () => {
 	const logger = mock<Logger>();

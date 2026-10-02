@@ -1,4 +1,5 @@
 <script lang="ts" setup>
+import { useDocumentVisibility } from '@/app/composables/useDocumentVisibility';
 import { useGlobalEntityCreation } from '@/app/composables/useGlobalEntityCreation';
 import { VIEWS } from '@/app/constants';
 import { sourceControlEventBus } from '@/features/integrations/sourceControl.ee/sourceControl.eventBus';
@@ -87,6 +88,12 @@ watch(
 	},
 	{ immediate: true },
 );
+
+// Another tab can start a chat; refresh the list when the user comes back to this one.
+const { onDocumentVisible } = useDocumentVisibility();
+onDocumentVisible(() => {
+	if (isInstanceAiNavVisible.value) void instanceAiStore.loadThreads();
+});
 
 watch(favoritesCollapsed, (val) =>
 	localStorage.setItem(FAVORITES_COLLAPSED_KEY.value, String(val)),

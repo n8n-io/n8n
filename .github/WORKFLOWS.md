@@ -884,8 +884,10 @@ The file drives four workflows:
 ### Required reviews
 
 An entry with the `required` option makes team approval mandatory: when a PR
-changes a file whose winning entry carries `required`, a member of each listed
-team must approve the PR. `ci-owners-required-reviews.yml` evaluates this on
+changes a non-test file whose winning entry carries `required`, a member of each
+listed team must approve the PR. Test files match the shared patterns in
+`test-files.mjs` and do not trigger required reviews.
+`ci-owners-required-reviews.yml` evaluates this on
 PR changes and review events, and reports a commit status
 named **Required Reviews** on the head SHA. A missing approval reports
 `pending` ("Waiting for approval from: …"), not `failure`, so an unreviewed PR

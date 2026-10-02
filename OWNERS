@@ -8,8 +8,8 @@
 #
 # Last-match-wins: specific rules MUST come AFTER general rules.
 #
-# The `required` option makes team approval mandatory: a member of the team
-# must approve the PR before merge. This is enforced by the
+# The `required` option makes team approval mandatory for non-test files: a
+# member of the team must approve the PR before merge. This is enforced by the
 # "Required Reviews" commit status (ci-owners-required-reviews.yml).
 # All other entries are advisory (reviewer recommendations and opt-in
 # reviewer auto-assignment).

@@ -12,6 +12,7 @@ export default defineConfig({
 		'coverage/**/*',
 		'scripts/**/*',
 		'janitor.config.mjs',
+		'fixtures/community-packages/packages/**/*.js',
 	],
 	rules: {
 		'playwright/missing-playwright-await': 'error',

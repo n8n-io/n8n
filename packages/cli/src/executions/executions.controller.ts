@@ -7,7 +7,7 @@ import type { Response } from 'express';
 import { BadRequestError, NotFoundError, NotImplementedError } from '@n8n/errors';
 import { License } from '@/license';
 import { isPositiveInteger } from '@/utils';
-import { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
+import { WorkflowSharingService } from '@n8n/backend-services';
 
 import { isExecutionIdV2 } from './execution-id';
 import { ExecutionListService } from './execution-list.service';
