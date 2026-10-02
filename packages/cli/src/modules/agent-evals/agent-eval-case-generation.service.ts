@@ -4,8 +4,11 @@ import {
 	MANAGED_CREDENTIAL_TOKEN,
 	type AgentEvalDraftCase,
 	type AgentJsonConfig,
+	type CreateDraftDatasetResult,
 	type GenerateDraftCasesOptions,
 	type GenerateDraftCasesResult,
+	type PreviewRunOptions,
+	type PreviewRunResult,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
@@ -19,6 +22,7 @@ import { InstanceWriteAccessService } from '@/services/instance-write-access.ser
 
 import { AgentEvalsFlagGate } from './agent-evals-flag-gate';
 import { AgentConfigService } from '../agents/agent-config.service';
+import { AgentTestRunService } from '../agents/agent-test-run.service';
 import {
 	buildAgentSummary,
 	buildCaseGenerationUserPrompt,
@@ -89,6 +93,7 @@ export class AgentEvalCaseGenerationService {
 		private readonly datasetRepository: AgentEvalDatasetRepository,
 		private readonly flagGate: AgentEvalsFlagGate,
 		private readonly instanceWriteAccess: InstanceWriteAccessService,
+		private readonly agentTestRunService: AgentTestRunService,
 	) {}
 
 	/**
@@ -129,6 +134,17 @@ export class AgentEvalCaseGenerationService {
 		// persisted dataset.
 		const cases = boundCases(generated, tuples.length);
 
+		// `save: false` is a preview — the caller gets the drafts back without
+		// anything persisted, so showing them (and letting the user trim/extend
+		// the batch) never leaves a dataset behind if nothing is committed.
+		if (options.save === false) {
+			this.logger.debug('Generated draft eval cases (preview, not persisted)', {
+				agentId,
+				caseCount: cases.length,
+			});
+			return { cases };
+		}
+
 		// Blank/whitespace names fall back to the agent-derived default.
 		const trimmedName = options.datasetName?.trim();
 		const baseName =
@@ -149,6 +165,79 @@ export class AgentEvalCaseGenerationService {
 		});
 
 		return { datasetId, dataTableId, cases };
+	}
+
+	/**
+	 * Create an empty draft dataset — the same Data Table (input/criteria
+	 * columns) and dataset pointer `generateDraftCases` would create, but with no
+	 * rows and no LLM call. For committing a `save: false` preview: once the user
+	 * picks which previewed (and self-written) cases to keep, this gives them a
+	 * real dataset to insert those rows into via the existing case-creation route,
+	 * without the frontend needing to know or guess the column names.
+	 */
+	async createEmptyDataset(
+		user: User,
+		projectId: string,
+		agentId: string,
+		datasetName?: string,
+	): Promise<CreateDraftDatasetResult> {
+		await this.flagGate.assertEnabled(user);
+		this.assertInstanceWriteAccess();
+
+		const config = await this.agentConfigService.getConfig(agentId, projectId);
+		const trimmedName = datasetName?.trim();
+		const baseName =
+			trimmedName && trimmedName.length > 0 ? trimmedName : defaultDatasetName(config.name);
+
+		return await this.persistDataset(projectId, agentId, user.id, baseName, []);
+	}
+
+	/**
+	 * Draft exactly one case (`count: 1, save: false` — nothing persisted) and
+	 * immediately run it against the agent through the same path Preview Chat
+	 * and the builder's own `call_agent` tool use ({@link AgentTestRunService}) —
+	 * no Data Table, no dataset, no eval-run row. Backs "try it once" and its
+	 * "needs work" retries, which would otherwise litter a fresh dataset+row on
+	 * every attempt the user doesn't keep.
+	 */
+	async previewRun(
+		user: User,
+		projectId: string,
+		agentId: string,
+		options: PreviewRunOptions = {},
+	): Promise<PreviewRunResult> {
+		const drafted = await this.generateDraftCases(user, projectId, agentId, {
+			...options,
+			count: 1,
+			save: false,
+		});
+		const draftCase = drafted.cases[0];
+		if (!draftCase) return { status: 'failed' };
+
+		const credentialProvider = createAgentCredentialProvider(
+			this.credentialsService,
+			projectId,
+			user,
+			agentId,
+		);
+		const result = await this.agentTestRunService.executeDraftRun({
+			agentId,
+			projectId,
+			user,
+			message: draftCase.input,
+			credentialProvider,
+			source: 'agent-eval-preview',
+		});
+
+		if (result.status !== 'completed') return { status: 'failed' };
+
+		return {
+			status: 'completed',
+			input: draftCase.input,
+			whatToCheck: draftCase.whatToCheck,
+			scenario: draftCase.scenario,
+			response: result.response,
+		};
 	}
 
 	// ---- internals ----
@@ -282,11 +371,14 @@ export class AgentEvalCaseGenerationService {
 		}
 
 		try {
-			const rows = cases.map((c) => ({
-				[INPUT_COLUMN]: c.input,
-				[CRITERIA_COLUMN]: c.whatToCheck,
-			}));
-			await this.dataTableService.insertRows(table.id, projectId, rows);
+			// Empty for `createEmptyDataset` — nothing to insert yet.
+			if (cases.length > 0) {
+				const rows = cases.map((c) => ({
+					[INPUT_COLUMN]: c.input,
+					[CRITERIA_COLUMN]: c.whatToCheck,
+				}));
+				await this.dataTableService.insertRows(table.id, projectId, rows);
+			}
 
 			const dataset = await this.datasetRepository.createDataset({
 				name,

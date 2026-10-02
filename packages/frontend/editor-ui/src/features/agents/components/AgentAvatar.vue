@@ -4,7 +4,7 @@ import { useI18n } from '@n8n/i18n';
 import { computed } from 'vue';
 
 export type AgentAvatarKind = 'pass' | 'work' | 'fail' | 'idle' | 'strong' | 'waiting';
-export type AgentAvatarSize = 'xs' | 'row' | 'sm' | 'md';
+export type AgentAvatarSize = 'xs' | 'row' | 'sm' | 'md' | 'lg';
 
 const props = defineProps<{
 	kind: AgentAvatarKind;
@@ -100,6 +100,10 @@ const label = computed(() => {
 
 .md {
 	--avatar-size: 30px;
+}
+
+.lg {
+	--avatar-size: 34px;
 }
 
 .good {

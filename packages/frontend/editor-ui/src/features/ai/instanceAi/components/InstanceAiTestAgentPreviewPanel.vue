@@ -8,7 +8,7 @@
  * `INSTANCE_AI_TEST_AGENT_PREVIEW_EXPERIMENT` flag, alongside the original
  * `InstanceAiTestAgentPanel`.
  */
-import { computed, onBeforeUnmount, onMounted, ref, watchEffect } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import type { AgentEvalDraftCase, AgentEvalResultStatus } from '@n8n/api-types';
 import { N8nButton, N8nCard, N8nInput, N8nSpinner, N8nText, N8nIcon } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
@@ -16,7 +16,7 @@ import { useToast } from '@n8n/composables/useToast';
 
 import { useAgentEvalsStore } from '@/features/agents/agentEvals.store';
 import type { AgentEvalCase } from '@/features/agents/agentEvals.types';
-import { readAgentAnswer, readCaseRequest } from '@/features/agents/utils/agent-eval-review';
+import { readAgentAnswer } from '@/features/agents/utils/agent-eval-review';
 import { isDataTableDataset, toCaseSource } from '@/features/agents/utils/agentEvalCases.utils';
 import type { AgentAvatarKind } from '@/features/agents/components/AgentAvatar.vue';
 import EvalInitialSample from '@/features/agents/components/EvalInitialSample.vue';
@@ -69,14 +69,20 @@ type Phase =
 // Skips straight to the confirmation state when the builder already ran an
 // equivalent test — there is nothing to generate or wait on.
 const phase = ref<Phase>(props.initialCase ? 'awaiting-confirmation' : 'generating-preview');
-const previewRunId = ref<string | null>(null);
+// The drafted test message and the agent's real answer to it — set directly
+// from `previewRun`'s response, which already ran the agent and returned the
+// final text. No run id, no polling: unlike the suite below, this never
+// touches a Data Table, dataset, or eval-run row at all.
+const previewRequest = ref<string | null>(null);
+const previewAnswer = ref<string | null>(null);
+// Generated with `save: false` — a preview, not yet persisted. Nothing backs
+// these rows until "Check your agent" commits them, so dismissing or
+// refreshing mid-preview leaves no orphaned dataset behind.
 const suiteCases = ref<AgentEvalDraftCase[]>([]);
-// Frozen once the suite is generated — `suiteCases` itself keeps growing as the
-// user adds their own examples, so this is the only record of how many of its
-// entries are the generated batch the slider trims, versus the user's own.
-const generatedCaseCount = ref(0);
+// The user's own additions, kept the same way — in memory only, appended to
+// the committed dataset alongside the slider's picked generated cases.
+const suiteOwnExamples = ref<string[]>([]);
 const suiteDatasetId = ref<string | null>(null);
-const addingExample = ref(false);
 // Null until "Check your agent" has trimmed the dataset to its cap — set, it
 // replaces the slider/editor view with each case's live run status.
 const suiteCaseRows = ref<AgentEvalCase[] | null>(null);
@@ -91,18 +97,11 @@ const useInitialCase = ref(Boolean(props.initialCase));
 // own test result (`initialCase`), which was never scenario-generated.
 const previewScenario = ref<string | null>(null);
 
-const previewResult = computed(() =>
-	previewRunId.value ? store.getReview(previewRunId.value).results[0] : undefined,
-);
 const previewInput = computed(() =>
-	useInitialCase.value
-		? (props.initialCase?.message ?? '')
-		: readCaseRequest(previewResult.value?.input),
+	useInitialCase.value ? (props.initialCase?.message ?? '') : (previewRequest.value ?? ''),
 );
 const previewOutput = computed(() =>
-	useInitialCase.value
-		? (props.initialCase?.response ?? '')
-		: readAgentAnswer(previewResult.value?.output ?? null),
+	useInitialCase.value ? (props.initialCase?.response ?? '') : (previewAnswer.value ?? ''),
 );
 
 // Each row's live state: "waiting" until its case has a settled result, then
@@ -144,26 +143,16 @@ type PreviewRevision = { suggestion: string; previousInput: string; previousOutp
 async function runGeneratedPreview(revision?: PreviewRevision) {
 	try {
 		const { projectId, agentId } = props.target;
-		const result = await store.generateDraftCases(projectId, agentId, {
-			count: 1,
-			...(revision
-				? {
-						suggestion: revision.suggestion,
-						previousInput: revision.previousInput,
-						previousOutput: revision.previousOutput,
-					}
-				: {}),
-		});
+		const result = await store.previewRun(projectId, agentId, revision);
 		if (!isMounted) return;
-		previewScenario.value = result.cases[0]?.scenario ?? null;
-		const run = await store.startRun(projectId, agentId, result.datasetId);
-		if (!isMounted) return;
-		previewRunId.value = run.id;
-		await store.openRun(projectId, agentId, run.id);
-		if (!isMounted) return;
-		if (store.isRunInFlight(run.id)) {
-			store.startPollingRun(projectId, agentId, run.id);
+		if (result.status !== 'completed') {
+			failAndDismiss(new Error('Preview run did not complete successfully'));
+			return;
 		}
+		previewScenario.value = result.scenario || null;
+		previewRequest.value = result.input;
+		previewAnswer.value = result.response;
+		phase.value = 'awaiting-confirmation';
 	} catch (error) {
 		failAndDismiss(error);
 	}
@@ -173,40 +162,6 @@ function generatePreviewCase() {
 	if (props.initialCase) return;
 	return runGeneratedPreview();
 }
-
-// Reactive rather than a promise chain: `startPollingRun` self-schedules and
-// never resolves, so settlement can only be observed through the store's
-// reactive state — same pattern `AgentEvalResultsPanel` uses.
-function checkPreviewSettled() {
-	if (phase.value !== 'generating-preview') return;
-	if (!previewRunId.value) return;
-	if (store.hasLostTrackOfRun(previewRunId.value)) {
-		failAndDismiss(new Error('Lost track of the preview run'));
-		return;
-	}
-	// `getReview` returns an empty review (`run: null`) before `openRun` has
-	// loaded anything — that empty state is not "in flight" either, so without
-	// this check the watcher would confirm on a preview that never loaded.
-	const review = store.getReview(previewRunId.value);
-	if (!review.run) return;
-	// Deliberately not gated on `isRunInFlight` (the run's own status): the
-	// store's poll updates `run.status` to its settled value in one patch, then
-	// refreshes `results` in a second, later patch (`pollRunOnce` calls
-	// `settleRun` only after that first patch). Reading here in between would
-	// see a settled run next to a still-pending case and misreport failure.
-	// The case's own status is the only thing that tells us it is done.
-	const resultStatus = review.results[0]?.status;
-	if (resultStatus === undefined || resultStatus === 'new' || resultStatus === 'running') return;
-	// A settled case can still fail — an error/cancelled case has no answer to
-	// confirm, so it gets the same treatment as losing track of the run.
-	if (resultStatus !== 'success') {
-		failAndDismiss(new Error('Preview run did not complete successfully'));
-		return;
-	}
-	phase.value = 'awaiting-confirmation';
-}
-
-watchEffect(checkPreviewSettled);
 
 onMounted(generatePreviewCase);
 onBeforeUnmount(() => {
@@ -233,12 +188,15 @@ async function onConfirm() {
 				: {};
 		// Fetches a full batch of 10 up front — the examples panel's slider
 		// only trims how many are displayed, no repeated generation calls as
-		// the user drags it.
-		const result = await store.generateDraftCases(projectId, agentId, { count: 10, ...example });
+		// the user drags it. `save: false`: nothing is persisted until "Check
+		// your agent" commits the picked subset.
+		const result = await store.generateDraftCases(projectId, agentId, {
+			count: 10,
+			save: false,
+			...example,
+		});
 		if (!isMounted) return;
 		suiteCases.value = result.cases;
-		generatedCaseCount.value = result.cases.length;
-		suiteDatasetId.value = result.datasetId;
 		phase.value = 'suite-ready';
 	} catch (error) {
 		failAndDismiss(error);
@@ -254,49 +212,43 @@ function resolveSuiteSource() {
 	return dataset && isDataTableDataset(dataset) ? toCaseSource(dataset) : null;
 }
 
-async function onAddExample(input: string) {
-	const source = resolveSuiteSource();
-	if (!source) return;
-	const { projectId } = props.target;
-	addingExample.value = true;
-	try {
-		const created = await store.createCase(projectId, source, { input, whatToCheck: '' });
-		if (!isMounted || !created) return;
-		// No `scenario` — it's an LLM-generated tag, not something a user's own
-		// typed example has. The examples panel only labels rows with a non-empty one.
-		suiteCases.value = [
-			...suiteCases.value,
-			{ input: created.input, whatToCheck: created.whatToCheck, scenario: '' },
-		];
-	} finally {
-		if (isMounted) addingExample.value = false;
-	}
+/** Kept in memory only — nothing is persisted until "Check your agent" commits. */
+function onAddExample(input: string) {
+	suiteOwnExamples.value = [...suiteOwnExamples.value, input];
 }
 
 /**
- * Trims the generated batch down to the slider's cap (the user's own examples,
- * appended after it, are always kept), then runs the agent over what remains.
- * From here the panel shows each case's live status instead of the editor.
+ * Commits the preview: creates a real (empty) dataset, inserts the slider's
+ * selected generated cases plus every self-written one as rows, then runs the
+ * agent over them. From here the panel shows each case's live status instead
+ * of the editor. Nothing from the preview is persisted before this point.
  */
 async function onCheckAgent(count: number) {
 	if (suiteCaseRows.value) return;
-	const source = resolveSuiteSource();
-	if (!source || !suiteDatasetId.value) return;
 	const { projectId, agentId } = props.target;
 
 	startingSuiteRun.value = true;
 	try {
+		const created = await store.createDraftDataset(projectId, agentId);
+		const newDataset = store.getDatasets(agentId).find((d) => d.id === created.datasetId);
+		const source = newDataset && isDataTableDataset(newDataset) ? toCaseSource(newDataset) : null;
+		if (!source) throw new Error('The draft dataset has no writable case columns');
+		suiteDatasetId.value = created.datasetId;
+
+		const toCreate = [
+			...suiteCases.value
+				.slice(0, count)
+				.map((c) => ({ input: c.input, whatToCheck: c.whatToCheck })),
+			...suiteOwnExamples.value.map((input) => ({ input, whatToCheck: '' })),
+		];
+		await Promise.all(toCreate.map((value) => store.createCase(projectId, source, value)));
+		if (!isMounted) return;
+
 		const cases = await store.fetchCases(projectId, source);
 		if (!isMounted) return;
+		suiteCaseRows.value = cases;
 
-		const overflow = cases.slice(count, generatedCaseCount.value);
-		await Promise.all(overflow.map((c) => store.deleteCase(projectId, source, c.rowId)));
-		if (!isMounted) return;
-
-		const overflowRowIds = new Set(overflow.map((c) => c.rowId));
-		suiteCaseRows.value = cases.filter((c) => !overflowRowIds.has(c.rowId));
-
-		const run = await store.startRun(projectId, agentId, suiteDatasetId.value);
+		const run = await store.startRun(projectId, agentId, created.datasetId);
 		if (!isMounted) return;
 		suiteRunId.value = run.id;
 		await store.openRun(projectId, agentId, run.id);
@@ -304,6 +256,9 @@ async function onCheckAgent(count: number) {
 		if (store.isRunInFlight(run.id)) {
 			store.startPollingRun(projectId, agentId, run.id);
 		}
+	} catch (error) {
+		if (!isMounted) return;
+		toast.showError(error, i18n.baseText('agents.builder.agentEvals.run.startError'));
 	} finally {
 		if (isMounted) startingSuiteRun.value = false;
 	}
@@ -397,12 +352,13 @@ function onNeedsWork() {
 async function onSubmitSampleInput() {
 	const suggestion = sampleInput.value.trim();
 	if (!suggestion || phase.value !== 'awaiting-sample-input') return;
-	// Read before resetting state below — once `previewRunId` is cleared these
-	// computeds have nothing left to read the prior try's input/output from.
+	// Read before resetting state below — once cleared these computeds have
+	// nothing left to read the prior try's input/output from.
 	const previousInput = previewInput.value;
 	const previousOutput = previewOutput.value ?? '';
 	useInitialCase.value = false;
-	previewRunId.value = null;
+	previewRequest.value = null;
+	previewAnswer.value = null;
 	phase.value = 'generating-preview';
 	await runGeneratedPreview({ suggestion, previousInput, previousOutput });
 }
@@ -518,7 +474,6 @@ function onDontCreateEvals() {
 				:preview-output="previewOutput ?? ''"
 				:preview-scenario="previewScenario"
 				:examples="suiteCases"
-				:adding-example="addingExample"
 				:case-runs="suiteCaseRuns"
 				:starting-run="startingSuiteRun"
 				:stopping-run="stoppingSuiteRun"

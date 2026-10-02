@@ -6,8 +6,11 @@ import type {
 	AgentEvalRunSummary,
 	CreateAgentEvalDatasetDto,
 	CreateAgentEvalRunPayload,
+	CreateDraftDatasetResult,
 	GenerateDraftCasesOptions,
 	GenerateDraftCasesResult,
+	PreviewRunOptions,
+	PreviewRunResult,
 	UpdateAgentEvalDatasetPayload,
 } from '@n8n/api-types';
 import { ModuleRegistry } from '@n8n/backend-common';
@@ -132,6 +135,31 @@ export class AgentEvalService {
 	): Promise<GenerateDraftCasesResult> {
 		await this.assertAgentInProject(agentId, projectId);
 		return await this.caseGenerationService.generateDraftCases(user, projectId, agentId, options);
+	}
+
+	async createDraftDataset(
+		user: User,
+		agentId: string,
+		projectId: string,
+		datasetName?: string,
+	): Promise<CreateDraftDatasetResult> {
+		await this.assertAgentInProject(agentId, projectId);
+		return await this.caseGenerationService.createEmptyDataset(
+			user,
+			projectId,
+			agentId,
+			datasetName,
+		);
+	}
+
+	async previewRun(
+		user: User,
+		agentId: string,
+		projectId: string,
+		options: PreviewRunOptions,
+	): Promise<PreviewRunResult> {
+		await this.assertAgentInProject(agentId, projectId);
+		return await this.caseGenerationService.previewRun(user, projectId, agentId, options);
 	}
 
 	// ---- runs ----

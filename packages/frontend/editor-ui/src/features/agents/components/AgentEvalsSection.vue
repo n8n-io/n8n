@@ -7,14 +7,17 @@
  * run of the newest dataset itself rather than depending on a list view.
  */
 import { computed, onMounted, ref, watch } from 'vue';
+import type { AgentEvalDraftCase } from '@n8n/api-types';
 import { N8nButton, N8nCallout, N8nIcon, N8nLoading, N8nText } from '@n8n/design-system';
 import { useToast } from '@n8n/composables/useToast';
 import { useI18n } from '@n8n/i18n';
 
+import { useTestAgentPreviewExperiment } from '@/experiments/testAgentPreview/useTestAgentPreviewExperiment';
 import { useAgentEvalsStore } from '../agentEvals.store';
-import { isDataTableDataset } from '../utils/agentEvalCases.utils';
+import { isDataTableDataset, toCaseSource } from '../utils/agentEvalCases.utils';
 import AgentEvalCasesCard from './AgentEvalCasesCard.vue';
 import AgentEvalResultsPanel from './AgentEvalResultsPanel.vue';
+import AgentEvalsEmptyStatePreview from './AgentEvalsEmptyStatePreview.vue';
 
 const props = defineProps<{
 	projectId: string;
@@ -35,6 +38,7 @@ const emit = defineEmits<{
 const i18n = useI18n();
 const toast = useToast();
 const store = useAgentEvalsStore();
+const { isFeatureEnabled: showEmptyStatePreview } = useTestAgentPreviewExperiment();
 
 const datasets = computed(() => store.getDatasets(props.agentId));
 // Datasets come back newest-first, and generation makes exactly one; a picker is
@@ -56,6 +60,31 @@ const caseDataset = computed(() =>
 	dataset.value && isDataTableDataset(dataset.value) ? dataset.value : null,
 );
 
+// The experiment's empty-state preview generates a full batch of 10 up front
+// (same as the instanceAi test-agent-preview flow), but with `save: false` —
+// nothing is persisted, so refreshing the page before committing to any of
+// them leaves no half-finished dataset behind. Own-added examples are kept
+// the same way, purely in memory, until "Add checks" commits the lot.
+const previewCases = ref<AgentEvalDraftCase[]>([]);
+const previewOwnExamples = ref<string[]>([]);
+const hasPreview = computed(() => previewCases.value.length > 0);
+const addingChecks = ref(false);
+
+const loadPreview = async () => {
+	if (hasPreview.value) return;
+	try {
+		const result = await store.generateDraftCases(props.projectId, props.agentId, {
+			count: 10,
+			save: false,
+		});
+		previewCases.value = result.cases;
+	} catch (error) {
+		// Degrades to the plain "Generate test cases" card — a failed preview
+		// generation shouldn't block the regular path forward.
+		toast.showError(error, i18n.baseText('agents.builder.agentEvals.generateError'));
+	}
+};
+
 const load = async () => {
 	if (!props.agentId || props.agentUnsaved) {
 		hasSettled.value = true;
@@ -66,7 +95,10 @@ const load = async () => {
 	try {
 		const fetched = await store.fetchDatasets(props.projectId, props.agentId);
 		const newest = fetched[0];
-		if (!newest) return;
+		if (!newest) {
+			if (showEmptyStatePreview.value) await loadPreview();
+			return;
+		}
 		await store.resolveLatestRunId(props.projectId, props.agentId, newest.id);
 	} catch (error) {
 		// Degrades to the first-run state rather than a permanent skeleton: with no
@@ -83,6 +115,44 @@ const onRerun = async () => {
 		await store.startRun(props.projectId, props.agentId, dataset.value.id);
 	} catch (error) {
 		toast.showError(error, i18n.baseText('agents.builder.agentEvals.review.rerunError'));
+	}
+};
+
+/** "Add your own example" from the preview slider: kept in memory only —
+ *  nothing is persisted until "Add checks" commits the whole batch. */
+const onAddPreviewExample = (input: string) => {
+	previewOwnExamples.value = [...previewOwnExamples.value, input];
+};
+
+/**
+ * Commits the preview: creates a real (empty) dataset, inserts the slider's
+ * selected generated cases plus every self-written one as rows, runs the
+ * agent over them, then reloads — which switches the view from the preview
+ * straight to the run's results, same as the instanceAi flow's "Check your
+ * agent". Nothing from the preview is persisted before this point.
+ */
+const onAddChecks = async (count: number) => {
+	addingChecks.value = true;
+	try {
+		const created = await store.createDraftDataset(props.projectId, props.agentId);
+		const newDataset = store.getDatasets(props.agentId).find((d) => d.id === created.datasetId);
+		const source = newDataset && isDataTableDataset(newDataset) ? toCaseSource(newDataset) : null;
+		if (!source) throw new Error('The draft dataset has no writable case columns');
+
+		const toCreate = [
+			...previewCases.value
+				.slice(0, count)
+				.map((c) => ({ input: c.input, whatToCheck: c.whatToCheck })),
+			...previewOwnExamples.value.map((input) => ({ input, whatToCheck: '' })),
+		];
+		await Promise.all(toCreate.map((value) => store.createCase(props.projectId, source, value)));
+
+		await store.startRun(props.projectId, props.agentId, created.datasetId);
+		await load();
+	} catch (error) {
+		toast.showError(error, i18n.baseText('agents.builder.agentEvals.run.startError'));
+	} finally {
+		addingChecks.value = false;
 	}
 };
 
@@ -124,6 +194,14 @@ watch(() => props.agentId, load);
 		<N8nCallout v-else-if="dataset" theme="info" data-testid="agent-evals-external-source">
 			{{ i18n.baseText('agents.builder.agentEvals.external.description') }}
 		</N8nCallout>
+
+		<AgentEvalsEmptyStatePreview
+			v-else-if="showEmptyStatePreview && hasPreview"
+			:examples="previewCases"
+			:adding-checks="addingChecks"
+			@add-example="onAddPreviewExample"
+			@add-checks="onAddChecks"
+		/>
 
 		<div v-else :class="$style.emptyState" data-testid="agent-evals-empty-state">
 			<div :class="$style.iconBadge">

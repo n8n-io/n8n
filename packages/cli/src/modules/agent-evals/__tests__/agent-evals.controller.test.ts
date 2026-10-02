@@ -93,9 +93,11 @@ describe('AgentEvalsController', () => {
 			listRatingsForResult: 'agent:read',
 			listLatestRatingsForRun: 'agent:read',
 			createDataset: 'agent:update',
+			createDraftDataset: 'agent:update',
 			updateDataset: 'agent:update',
 			deleteDataset: 'agent:update',
 			generateDraftCases: 'agent:update',
+			previewRun: 'agent:update',
 			rateResult: 'agent:update',
 			cancelRun: 'agent:update',
 			startRun: 'agent:execute',
@@ -235,6 +237,25 @@ describe('AgentEvalsController', () => {
 			await controller.startRun(datasetReq(), undefined, {});
 
 			expect(service.startRun).toHaveBeenCalledWith(user, AGENT_ID, PROJECT_ID, 'ds-1', {});
+		});
+
+		it('creates a draft dataset for the path agent', async () => {
+			await controller.createDraftDataset(agentReq(), undefined, { datasetName: 'My checks' });
+
+			expect(service.createDraftDataset).toHaveBeenCalledWith(
+				user,
+				AGENT_ID,
+				PROJECT_ID,
+				'My checks',
+			);
+		});
+
+		it('previews a run for the path agent', async () => {
+			await controller.previewRun(agentReq(), undefined, { suggestion: 'be nicer' });
+
+			expect(service.previewRun).toHaveBeenCalledWith(user, AGENT_ID, PROJECT_ID, {
+				suggestion: 'be nicer',
+			});
 		});
 
 		it('reports a delete as a success envelope', async () => {

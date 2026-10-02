@@ -256,6 +256,11 @@ export type AgentEvalDraftCase = z.infer<typeof agentEvalDraftCaseSchema>;
 // `exampleInput`/`exampleOutput` are a known-good pair — one the user already
 // approved — grounding fresh generations in that same style and scope. The
 // service only uses this when both are set.
+//
+// `save` defaults to true (persist a dataset, as this endpoint always has).
+// `save: false` skips persistence entirely — no Data Table, no dataset row —
+// so a caller can preview drafts (e.g. before the user has committed to any
+// of them) without leaving an empty, never-run dataset behind on a refresh.
 const generateDraftCasesOptionsShape = {
 	count: z.number().int().min(1).optional(),
 	datasetName: z.string().min(1).optional(),
@@ -264,13 +269,56 @@ const generateDraftCasesOptionsShape = {
 	previousOutput: z.string().optional(),
 	exampleInput: z.string().min(1).optional(),
 	exampleOutput: z.string().min(1).optional(),
+	save: z.boolean().optional(),
 };
 export const generateDraftCasesOptionsSchema = z.object(generateDraftCasesOptionsShape);
 export type GenerateDraftCasesOptions = z.infer<typeof generateDraftCasesOptionsSchema>;
 export class GenerateDraftCasesOptionsDto extends Z.class(generateDraftCasesOptionsShape) {}
 
+/** `datasetId`/`dataTableId` are absent when called with `save: false`. */
 export type GenerateDraftCasesResult = {
-	datasetId: string;
-	dataTableId: string;
+	datasetId?: string;
+	dataTableId?: string;
 	cases: AgentEvalDraftCase[];
 };
+
+// Request body for the draft-dataset endpoint: creates an empty dataset (a
+// Data Table with the same columns case generation writes, plus its pointer
+// row) and nothing else — no LLM call, no rows. Lets a caller turn a `save:
+// false` preview into a real, run-able dataset once the user commits to it,
+// without regenerating or guessing the column names.
+const createDraftDatasetOptionsShape = {
+	datasetName: z.string().min(1).optional(),
+};
+export const createDraftDatasetOptionsSchema = z.object(createDraftDatasetOptionsShape);
+export type CreateDraftDatasetOptions = z.infer<typeof createDraftDatasetOptionsSchema>;
+export class CreateDraftDatasetOptionsDto extends Z.class(createDraftDatasetOptionsShape) {}
+
+export type CreateDraftDatasetResult = {
+	datasetId: string;
+	dataTableId: string;
+};
+
+// Request body for the preview-run endpoint: drafts exactly one case (the
+// same way `generateDraftCases` would with `count: 1, save: false`) and
+// immediately executes it against the agent through the same path Preview
+// Chat uses — no Data Table, no dataset, no eval-run row. Lets "try it once"
+// (and its "needs work" retries) run freely without leaving anything behind.
+const previewRunOptionsShape = {
+	suggestion: z.string().min(1).optional(),
+	previousInput: z.string().min(1).optional(),
+	previousOutput: z.string().optional(),
+};
+export const previewRunOptionsSchema = z.object(previewRunOptionsShape);
+export type PreviewRunOptions = z.infer<typeof previewRunOptionsSchema>;
+export class PreviewRunOptionsDto extends Z.class(previewRunOptionsShape) {}
+
+/**
+ * `failed` covers every non-completed outcome (a suspended tool approval, a
+ * misconfigured agent, an empty draft) — the preview has no UI for resuming
+ * an approval or surfacing missing config, so all of them read the same way
+ * the eval-run version did: a generic "didn't complete" failure.
+ */
+export type PreviewRunResult =
+	| { status: 'completed'; input: string; whatToCheck: string; scenario: string; response: string }
+	| { status: 'failed' };

@@ -841,6 +841,10 @@ export {
 	agentEvalDraftCaseSchema,
 	generateDraftCasesOptionsSchema,
 	GenerateDraftCasesOptionsDto,
+	createDraftDatasetOptionsSchema,
+	CreateDraftDatasetOptionsDto,
+	previewRunOptionsSchema,
+	PreviewRunOptionsDto,
 } from './schemas/agent-evals.schema';
 export type {
 	AgentEvalColumnMapping,
@@ -863,6 +867,10 @@ export type {
 	AgentEvalDraftCase,
 	GenerateDraftCasesOptions,
 	GenerateDraftCasesResult,
+	CreateDraftDatasetOptions,
+	CreateDraftDatasetResult,
+	PreviewRunOptions,
+	PreviewRunResult,
 } from './schemas/agent-evals.schema';
 
 export {

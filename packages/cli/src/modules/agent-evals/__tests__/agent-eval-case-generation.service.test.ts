@@ -9,6 +9,7 @@ import { ForbiddenError, NotFoundError } from '@n8n/errors';
 import type { InstanceWriteAccessService } from '@/services/instance-write-access.service';
 
 import type { AgentConfigService } from '../../agents/agent-config.service';
+import type { AgentTestRunService } from '../../agents/agent-test-run.service';
 import type { DataTable } from '../../data-table/data-table.entity';
 import type { DataTableService } from '../../data-table/data-table.service';
 import { DataTableNameConflictError } from '../../data-table/errors/data-table-name-conflict.error';
@@ -78,6 +79,7 @@ describe('AgentEvalCaseGenerationService', () => {
 	let datasetRepository: Mocked<AgentEvalDatasetRepository>;
 	let flagGate: Mocked<AgentEvalsFlagGate>;
 	let instanceWriteAccess: Mocked<InstanceWriteAccessService>;
+	let agentTestRunService: Mocked<AgentTestRunService>;
 
 	beforeEach(() => {
 		logger = mock<Logger>();
@@ -89,6 +91,7 @@ describe('AgentEvalCaseGenerationService', () => {
 		flagGate = mock<AgentEvalsFlagGate>();
 		instanceWriteAccess = mock<InstanceWriteAccessService>();
 		instanceWriteAccess.isReadOnly.mockReturnValue(false);
+		agentTestRunService = mock<AgentTestRunService>();
 
 		generateMock.mockReset();
 		resolveModelMock.mockReset();
@@ -108,6 +111,7 @@ describe('AgentEvalCaseGenerationService', () => {
 			datasetRepository,
 			flagGate,
 			instanceWriteAccess,
+			agentTestRunService,
 		);
 	});
 
@@ -446,5 +450,174 @@ describe('AgentEvalCaseGenerationService', () => {
 		expect(datasetRepository.createDataset).toHaveBeenCalledWith(
 			expect.objectContaining({ name: 'Draft cases for Support Bot (2)' }),
 		);
+	});
+
+	describe('save: false (preview, no persistence)', () => {
+		it('returns the drafted cases without creating a Data Table or dataset', async () => {
+			const cases = makeCases(10);
+			generateMock.mockResolvedValue({ structuredOutput: { cases } });
+
+			const result = await service.generateDraftCases(user, 'project-1', 'agent-1', {
+				count: 10,
+				save: false,
+			});
+
+			expect(result).toEqual({ cases });
+			expect(dataTableService.createDataTable).not.toHaveBeenCalled();
+			expect(dataTableService.insertRows).not.toHaveBeenCalled();
+			expect(datasetRepository.createDataset).not.toHaveBeenCalled();
+		});
+
+		it('still generates from the agent model (only persistence is skipped)', async () => {
+			generateMock.mockResolvedValue({ structuredOutput: { cases: makeCases(3) } });
+
+			await service.generateDraftCases(user, 'project-1', 'agent-1', { count: 3, save: false });
+
+			expect(generateMock).toHaveBeenCalledWith(
+				expect.stringContaining('Write exactly 3'),
+				expect.anything(),
+			);
+		});
+	});
+
+	describe('createEmptyDataset', () => {
+		it('creates the Data Table + dataset pointer with no rows, no LLM call', async () => {
+			const result = await service.createEmptyDataset(user, 'project-1', 'agent-1');
+
+			expect(generateMock).not.toHaveBeenCalled();
+			expect(dataTableService.createDataTable).toHaveBeenCalledWith('project-1', {
+				name: 'Draft cases for Support Bot',
+				columns: [
+					{ name: 'input', type: 'string' },
+					{ name: 'criteria', type: 'string' },
+				],
+			});
+			expect(dataTableService.insertRows).not.toHaveBeenCalled();
+			expect(datasetRepository.createDataset).toHaveBeenCalledWith({
+				name: 'Draft cases for Support Bot',
+				agentId: 'agent-1',
+				datasetSource: 'data_table',
+				datasetRef: { dataTableId: 'dt-1' },
+				columnMapping: { input: 'input', criteria: 'criteria' },
+				createdById: 'user-1',
+			});
+			expect(result).toEqual({ datasetId: 'ds-1', dataTableId: 'dt-1' });
+		});
+
+		it('honors a custom dataset name', async () => {
+			await service.createEmptyDataset(user, 'project-1', 'agent-1', 'My checks');
+
+			expect(dataTableService.createDataTable).toHaveBeenCalledWith(
+				'project-1',
+				expect.objectContaining({ name: 'My checks' }),
+			);
+		});
+
+		it('rejects when the agent-evals flag is disabled', async () => {
+			flagGate.assertEnabled.mockRejectedValue(new NotFoundError('Not found'));
+
+			await expect(service.createEmptyDataset(user, 'project-1', 'agent-1')).rejects.toThrow(
+				NotFoundError,
+			);
+			expect(dataTableService.createDataTable).not.toHaveBeenCalled();
+		});
+
+		it('rejects on a source-control read-only instance', async () => {
+			instanceWriteAccess.isReadOnly.mockReturnValue(true);
+
+			await expect(service.createEmptyDataset(user, 'project-1', 'agent-1')).rejects.toThrow(
+				ForbiddenError,
+			);
+			expect(dataTableService.createDataTable).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('previewRun', () => {
+		it('drafts one case and runs it against the agent, persisting nothing', async () => {
+			generateMock.mockResolvedValue({ structuredOutput: { cases: makeCases(1) } });
+			agentTestRunService.executeDraftRun.mockResolvedValue({
+				status: 'completed',
+				response: 'The answer is 42.',
+				executionId: 'exec-1',
+				sessionId: 'session-1',
+			});
+
+			const result = await service.previewRun(user, 'project-1', 'agent-1');
+
+			expect(agentTestRunService.executeDraftRun).toHaveBeenCalledWith(
+				expect.objectContaining({
+					agentId: 'agent-1',
+					projectId: 'project-1',
+					user,
+					message: 'input 1',
+					source: 'agent-eval-preview',
+				}),
+			);
+			expect(result).toEqual({
+				status: 'completed',
+				input: 'input 1',
+				whatToCheck: 'check 1',
+				scenario: 'scenario 1',
+				response: 'The answer is 42.',
+			});
+			expect(dataTableService.createDataTable).not.toHaveBeenCalled();
+			expect(datasetRepository.createDataset).not.toHaveBeenCalled();
+		});
+
+		it('passes revision context through to the one-case draft', async () => {
+			generateMock.mockResolvedValue({ structuredOutput: { cases: makeCases(1) } });
+			agentTestRunService.executeDraftRun.mockResolvedValue({
+				status: 'completed',
+				response: 'answer',
+				executionId: 'exec-1',
+				sessionId: 'session-1',
+			});
+
+			await service.previewRun(user, 'project-1', 'agent-1', {
+				suggestion: 'Mention the ticket number.',
+				previousInput: 'Summarize the outage',
+				previousOutput: 'It is down.',
+			});
+
+			const [prompt] = generateMock.mock.calls[0];
+			expect(prompt).toContain('Write exactly 1 replacement test case');
+			expect(prompt).toContain('Mention the ticket number.');
+		});
+
+		it('reports failure without calling the agent when generation yields no case', async () => {
+			generateMock.mockResolvedValue({ structuredOutput: { cases: [] } });
+
+			await expect(service.previewRun(user, 'project-1', 'agent-1')).rejects.toThrow(
+				/fewer valid cases than requested/,
+			);
+			expect(agentTestRunService.executeDraftRun).not.toHaveBeenCalled();
+		});
+
+		it('reports failure when the run suspends on a tool approval', async () => {
+			generateMock.mockResolvedValue({ structuredOutput: { cases: makeCases(1) } });
+			agentTestRunService.executeDraftRun.mockResolvedValue({
+				status: 'suspended',
+				suspensions: [],
+				response: '',
+				executionId: 'exec-1',
+				sessionId: 'session-1',
+			});
+
+			const result = await service.previewRun(user, 'project-1', 'agent-1');
+
+			expect(result).toEqual({ status: 'failed' });
+		});
+
+		it('reports failure when the agent is misconfigured', async () => {
+			generateMock.mockResolvedValue({ structuredOutput: { cases: makeCases(1) } });
+			agentTestRunService.executeDraftRun.mockResolvedValue({
+				status: 'agent_misconfigured',
+				missing: ['model'],
+			});
+
+			const result = await service.previewRun(user, 'project-1', 'agent-1');
+
+			expect(result).toEqual({ status: 'failed' });
+		});
 	});
 });

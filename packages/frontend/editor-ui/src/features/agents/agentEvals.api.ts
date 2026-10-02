@@ -6,8 +6,12 @@ import type {
 	AgentEvalRunRecord,
 	AgentEvalRunSummary,
 	CreateAgentEvalRatingPayload,
+	CreateDraftDatasetOptions,
+	CreateDraftDatasetResult,
 	GenerateDraftCasesOptions,
 	GenerateDraftCasesResult,
+	PreviewRunOptions,
+	PreviewRunResult,
 } from '@n8n/api-types';
 import type { IRestApiContext } from '@n8n/rest-api-client';
 import { makeRestApiRequest } from '@n8n/rest-api-client';
@@ -44,6 +48,39 @@ export const generateDraftCases = async (
 		context,
 		'POST',
 		`${evalsPath(projectId, agentId)}/generate`,
+		options,
+	);
+};
+
+// Creates an empty draft dataset — the same Data Table + columns
+// `generateDraftCases` would, but with no rows and no LLM call. Backs
+// committing a `save: false` preview once the user picks which cases to keep.
+export const createDraftDataset = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	options: CreateDraftDatasetOptions = {},
+) => {
+	return await makeRestApiRequest<CreateDraftDatasetResult>(
+		context,
+		'POST',
+		`${evalsPath(projectId, agentId)}/datasets/draft`,
+		options,
+	);
+};
+
+// Drafts one case and runs it against the agent directly — no Data Table, no
+// dataset, no eval-run row. Backs "try it once" and its "needs work" retries.
+export const previewRun = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	options: PreviewRunOptions = {},
+) => {
+	return await makeRestApiRequest<PreviewRunResult>(
+		context,
+		'POST',
+		`${evalsPath(projectId, agentId)}/preview-run`,
 		options,
 	);
 };

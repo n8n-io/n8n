@@ -2485,32 +2485,12 @@ describe('InstanceAiThreadView', () => {
 					: undefined,
 			);
 			const evalsStore = mockedStore(useAgentEvalsStore);
-			evalsStore.generateDraftCases.mockResolvedValueOnce({
-				datasetId: 'dataset-1',
-				dataTableId: 'table-1',
-				cases: [
-					{ input: 'Summarize the thread', whatToCheck: 'mentions the outage', scenario: 'Vague' },
-				],
-			});
-			evalsStore.startRun.mockResolvedValue({ id: 'run-1' } as never);
-			evalsStore.openRun.mockResolvedValue(undefined);
-			evalsStore.isRunInFlight.mockReturnValue(false);
-			evalsStore.getReview.mockReturnValue({
-				run: { status: 'completed' } as never,
-				results: [
-					{
-						status: 'success',
-						input: { input: 'Summarize the thread' },
-						output: { finalText: 'Done.' },
-					} as never,
-				],
-				resultsCount: 1,
-				ratingsByResultId: {},
-				pendingByResultId: {},
-				draftsByResultId: {},
-				counts: null,
-				loading: false,
-				loadingMore: false,
+			evalsStore.previewRun.mockResolvedValueOnce({
+				status: 'completed',
+				input: 'Summarize the thread',
+				whatToCheck: 'mentions the outage',
+				scenario: 'Vague',
+				response: 'Done.',
 			});
 			return evalsStore;
 		}
@@ -2569,6 +2549,7 @@ describe('InstanceAiThreadView', () => {
 			expect(await findByText('Summarize the thread about the outage')).toBeInTheDocument();
 			expect(await findByText('Ticket #48219 is a P1 SSO outage.')).toBeInTheDocument();
 			expect(await findByTestId('instance-ai-test-agent-preview-looks-good')).toBeEnabled();
+			expect(evalsStore.previewRun).not.toHaveBeenCalled();
 			expect(evalsStore.generateDraftCases).not.toHaveBeenCalled();
 			expect(evalsStore.startRun).not.toHaveBeenCalled();
 		});
@@ -2607,7 +2588,7 @@ describe('InstanceAiThreadView', () => {
 			expect(evalsStore.requestEvalsFocus).not.toHaveBeenCalled();
 		});
 
-		it('keeps the preview panel visible through generation even though it populates the dataset cache', async () => {
+		it('keeps the preview panel visible if the dataset cache populates from elsewhere mid-flow', async () => {
 			seedReadyAgent();
 			const evalsStore = seedPreviewVariant();
 
@@ -2616,40 +2597,27 @@ describe('InstanceAiThreadView', () => {
 			// `activeTestAgentOffer` would never re-run and the bug this test
 			// targets could never reproduce. Backing the mocks with real refs makes
 			// reading them inside the computed register a dependency, so flipping
-			// the refs (as the real store's fetch does once it populates its
-			// reactive dataset cache) reactively re-triggers the computed, exactly
-			// like the production side effect this test is guarding against.
+			// the refs reactively re-triggers the computed.
+			//
+			// Neither the preview's own `previewRun` nor the suite's `save: false`
+			// generation touch the dataset cache anymore — the only way it can now
+			// populate mid-flow is externally, e.g. the user generating cases from
+			// the Evals tab in another view while this offer is still showing. The
+			// latch (`latchedTestAgentOffer`) must keep the already-offered panel up
+			// regardless.
 			const isLoadedRef = ref(false);
 			const datasetsRef = ref<Array<{ id: string }>>([]);
 			evalsStore.isLoaded.mockImplementation(() => isLoadedRef.value);
 			evalsStore.getDatasets.mockImplementation(() => datasetsRef.value as never);
 
-			// Override generateDraftCases to mimic the real store's side effect: once
-			// it resolves, the dataset cache reflects the newly created dataset —
-			// this is exactly the condition that used to unmount the panel.
-			evalsStore.generateDraftCases.mockReset();
-			evalsStore.generateDraftCases.mockImplementation(async () => {
-				isLoadedRef.value = true;
-				datasetsRef.value = [{ id: 'dataset-1' }];
-				return {
-					datasetId: 'dataset-1',
-					dataTableId: 'table-1',
-					cases: [
-						{
-							input: 'Summarize the thread',
-							whatToCheck: 'mentions the outage',
-							scenario: 'Vague',
-						},
-					],
-				};
-			});
-
 			const { findByTestId, queryByTestId } = renderView({ props: { threadId: 'thread-1' } });
 
-			// The panel must still be there once generation (and its side effect) has
-			// resolved — it must not have unmounted itself.
 			expect(await findByTestId('instance-ai-test-agent-preview-panel')).toBeInTheDocument();
+
+			isLoadedRef.value = true;
+			datasetsRef.value = [{ id: 'dataset-1' }];
 			await flushPromises();
+
 			expect(await findByTestId('instance-ai-test-agent-preview-panel')).toBeInTheDocument();
 			expect(queryByTestId('instance-ai-test-agent-panel')).not.toBeInTheDocument();
 		});
@@ -2748,31 +2716,12 @@ describe('InstanceAiThreadView', () => {
 		it('offers the preview variant when forced, with no PostHog override at all', async () => {
 			seedReadyAgent();
 			const evalsStore = mockedStore(useAgentEvalsStore);
-			evalsStore.generateDraftCases.mockResolvedValueOnce({
-				datasetId: 'dataset-1',
-				dataTableId: 'table-1',
-				cases: [
-					{ input: 'Summarize the thread', whatToCheck: 'mentions the outage', scenario: 'Vague' },
-				],
-			});
-			evalsStore.startRun.mockResolvedValue({ id: 'run-1' } as never);
-			evalsStore.openRun.mockResolvedValue(undefined);
-			evalsStore.getReview.mockReturnValue({
-				run: { status: 'completed' } as never,
-				results: [
-					{
-						status: 'success',
-						input: { input: 'Summarize the thread' },
-						output: { finalText: 'Done.' },
-					} as never,
-				],
-				resultsCount: 1,
-				ratingsByResultId: {},
-				pendingByResultId: {},
-				draftsByResultId: {},
-				counts: null,
-				loading: false,
-				loadingMore: false,
+			evalsStore.previewRun.mockResolvedValueOnce({
+				status: 'completed',
+				input: 'Summarize the thread',
+				whatToCheck: 'mentions the outage',
+				scenario: 'Vague',
+				response: 'Done.',
 			});
 			useSettingsStore().settings.evaluation = {
 				...useSettingsStore().settings.evaluation,
@@ -2926,31 +2875,12 @@ describe('InstanceAiThreadView', () => {
 				},
 			});
 			const evalsStore = mockedStore(useAgentEvalsStore);
-			evalsStore.generateDraftCases.mockResolvedValueOnce({
-				datasetId: 'dataset-1',
-				dataTableId: 'table-1',
-				cases: [
-					{ input: 'A different question', whatToCheck: 'something else', scenario: 'Vague' },
-				],
-			});
-			evalsStore.startRun.mockResolvedValue({ id: 'run-1' } as never);
-			evalsStore.openRun.mockResolvedValue(undefined);
-			evalsStore.getReview.mockReturnValue({
-				run: { status: 'completed' } as never,
-				results: [
-					{
-						status: 'success',
-						input: { input: 'A different question' },
-						output: { finalText: 'A freshly generated answer.' },
-					} as never,
-				],
-				resultsCount: 1,
-				ratingsByResultId: {},
-				pendingByResultId: {},
-				draftsByResultId: {},
-				counts: null,
-				loading: false,
-				loadingMore: false,
+			evalsStore.previewRun.mockResolvedValueOnce({
+				status: 'completed',
+				input: 'A different question',
+				whatToCheck: 'something else',
+				scenario: 'Vague',
+				response: 'A freshly generated answer.',
 			});
 
 			const { findByTestId, findByText, queryByText } = renderView({
@@ -2961,7 +2891,7 @@ describe('InstanceAiThreadView', () => {
 			// unrelated `call_agent` result — proof the offer never got that
 			// result as its `initialCase`.
 			expect(await findByTestId('instance-ai-test-agent-preview-panel')).toBeInTheDocument();
-			expect(evalsStore.generateDraftCases).toHaveBeenCalled();
+			expect(evalsStore.previewRun).toHaveBeenCalled();
 			expect(await findByText('A freshly generated answer.')).toBeInTheDocument();
 			expect(queryByText('Ticket #48219 is a P1 SSO outage.')).not.toBeInTheDocument();
 		});

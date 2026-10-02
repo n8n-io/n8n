@@ -12,6 +12,7 @@ import type {
 const {
 	getDatasets,
 	generateDraftCases,
+	createDraftDataset,
 	listRuns,
 	getRunDetail,
 	getRunSummary,
@@ -21,6 +22,7 @@ const {
 } = vi.hoisted(() => ({
 	getDatasets: vi.fn(),
 	generateDraftCases: vi.fn(),
+	createDraftDataset: vi.fn(),
 	listRuns: vi.fn(),
 	getRunDetail: vi.fn(),
 	getRunSummary: vi.fn(),
@@ -32,6 +34,7 @@ const {
 vi.mock('../agentEvals.api', () => ({
 	getDatasets,
 	generateDraftCases,
+	createDraftDataset,
 	listRuns,
 	getRunDetail,
 	getRunSummary,
@@ -205,6 +208,42 @@ describe('useAgentEvalsStore', () => {
 			await expect(store.generateDraftCases(PROJECT_ID, AGENT_ID)).rejects.toThrow('no model');
 
 			expect(store.isGeneratingCases(AGENT_ID)).toBe(false);
+		});
+
+		it('skips the dataset re-read for a save:false preview — nothing was persisted', async () => {
+			generateDraftCases.mockResolvedValue({
+				cases: [{ input: 'hi', whatToCheck: 'is polite' }],
+			});
+			const store = useAgentEvalsStore();
+
+			const result = await store.generateDraftCases(PROJECT_ID, AGENT_ID, {
+				count: 10,
+				save: false,
+			});
+
+			expect(result.cases).toHaveLength(1);
+			expect(getDatasets).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('createDraftDataset', () => {
+		it('creates the empty dataset and re-reads the dataset list', async () => {
+			createDraftDataset.mockResolvedValue({ datasetId: 'd1', dataTableId: 'dt-1' });
+			getDatasets.mockResolvedValue([dataset('d1')]);
+			const store = useAgentEvalsStore();
+
+			const result = await store.createDraftDataset(PROJECT_ID, AGENT_ID, {
+				datasetName: 'My checks',
+			});
+
+			expect(createDraftDataset).toHaveBeenCalledWith(
+				{ instanceId: 'test-instance-id' },
+				PROJECT_ID,
+				AGENT_ID,
+				{ datasetName: 'My checks' },
+			);
+			expect(result).toEqual({ datasetId: 'd1', dataTableId: 'dt-1' });
+			expect(store.getDatasets(AGENT_ID).map((d) => d.id)).toEqual(['d1']);
 		});
 	});
 

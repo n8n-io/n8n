@@ -18,7 +18,9 @@ import type {
 	AgentEvalRunStatus,
 	AgentEvalRunSummary,
 	AgentEvalVote,
+	CreateDraftDatasetOptions,
 	GenerateDraftCasesOptions,
+	PreviewRunOptions,
 } from './agentEvals.types';
 import { AGENT_EVAL_RESULTS_DEFAULT_TAKE, MAX_ITEMS_PER_PAGE } from './agentEvals.types';
 import { AGENT_EVAL_CASES_PAGE_SIZE } from './constants';
@@ -219,6 +221,9 @@ export const useAgentEvalsStore = defineStore(STORES.AGENT_EVALS, () => {
 	// server-side and cost model credits, so a transient refresh failure must not
 	// surface as a generation failure (user retries → duplicate dataset). A stale
 	// cache self-heals on the next fetch.
+	//
+	// `save: false` persists nothing server-side, so there is no new dataset to
+	// pick up — skipped rather than firing a pointless refetch.
 	const generateDraftCases = async (
 		projectId: string,
 		agentId: string,
@@ -232,11 +237,42 @@ export const useAgentEvalsStore = defineStore(STORES.AGENT_EVALS, () => {
 				agentId,
 				options,
 			);
-			await fetchDatasets(projectId, agentId).catch(() => null);
+			if (options.save !== false) {
+				await fetchDatasets(projectId, agentId).catch(() => null);
+			}
 			return result;
 		} finally {
 			generatingCases.value = { ...generatingCases.value, [agentId]: false };
 		}
+	};
+
+	// An empty dataset — no LLM call, no rows — for committing a `save: false`
+	// preview: once the user picks which cases to keep, they're inserted into
+	// this via `createCase`. Refreshed the same way `generateDraftCases` is, so
+	// the caller can resolve it through `getDatasets` right after.
+	const createDraftDataset = async (
+		projectId: string,
+		agentId: string,
+		options: CreateDraftDatasetOptions = {},
+	) => {
+		const result = await agentEvalsApi.createDraftDataset(
+			rootStore.restApiContext,
+			projectId,
+			agentId,
+			options,
+		);
+		await fetchDatasets(projectId, agentId).catch(() => null);
+		return result;
+	};
+
+	// Drafts one case and runs it against the agent directly — no Data Table, no
+	// dataset, no eval-run row, so nothing here needs a cache refresh.
+	const previewRun = async (
+		projectId: string,
+		agentId: string,
+		options: PreviewRunOptions = {},
+	) => {
+		return await agentEvalsApi.previewRun(rootStore.restApiContext, projectId, agentId, options);
 	};
 
 	// ---- runs + review ----
@@ -951,6 +987,8 @@ export const useAgentEvalsStore = defineStore(STORES.AGENT_EVALS, () => {
 		isGeneratingCases,
 		fetchDatasets,
 		generateDraftCases,
+		createDraftDataset,
+		previewRun,
 		getReview,
 		getLatestRunId,
 		isStartingRun,
