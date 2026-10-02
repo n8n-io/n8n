@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   check:
-    name: Check links in product code
+    name: Check links in packages/
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:

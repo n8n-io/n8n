@@ -5,22 +5,24 @@
  * Usage:
  *   node .github/scripts/link-check/check-report.mjs lychee-report.json
  *
+ * Lychee cannot do this itself: it cannot run a browser, it checks anchors the
+ * same way on all hosts, and it does not know when a line changed.
+ *
  * - Missing anchors count only on docs.n8n.io. Many other sites add their
- *   anchors with JavaScript, which lychee does not run.
- * - Redirects that lychee rejects, 403, 429, 999, server errors, timeouts, and
- *   network errors are opened again in headless Chrome. Many sites block HTTP
- *   clients but serve browsers, and a second request confirms that a server or
- *   connection failure persists.
- *   Chrome opens no new links after 8 minutes, so that the job ends with a
- *   report. A page that is open can take one more minute. Links that Chrome did
- *   not open count as broken.
- *
+ *   anchors with JavaScript.
+ * - 403, 429, 999, rejected redirects, 5xx, timeouts, and network errors open
+ *   again in headless Chrome. Many sites block HTTP clients but serve browsers,
+ *   and a later request shows if a failure persists. Chrome opens no new links
+ *   after 8 minutes, and an open page can take one more minute. Links that
+ *   Chrome did not open count as broken.
  * - A broken docs.n8n.io link on a line that changed in the last 30 days is
- *   pending, not broken. Code often ships before its docs page. Needs git
- *   history for that period.
+ *   pending, because code often ships before its docs page. Needs git history
+ *   for that period.
+ * - Other failures, such as 404, are broken.
  *
- * Prints the broken links, adds them to $GITHUB_STEP_SUMMARY, and exits 1 if
- * there are any. Needs Chrome, which GitHub-hosted Ubuntu runners include.
+ * Prints the broken and pending links, adds them to $GITHUB_STEP_SUMMARY, and
+ * exits 1 if there are broken links. Needs Chrome, which GitHub-hosted Ubuntu
+ * runners include.
  */
 import { execFileSync } from 'node:child_process';
 import { appendFile, readFile } from 'node:fs/promises';

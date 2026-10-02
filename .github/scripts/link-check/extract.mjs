@@ -1,19 +1,24 @@
 #!/usr/bin/env node
 /**
- * Write a copy of each product code file with only the links that lychee checks.
+ * Prepare the input for lychee: a copy of each file in packages/ with only the
+ * links that a person follows.
  *
  * Usage, from the repository root:
  *   node .github/scripts/link-check/extract.mjs <out-dir>
  *
- * Writes the copies to <out-dir> with the same relative paths, and prints the
- * paths. Run lychee in <out-dir>, so that its report shows the repository paths.
+ * Lychee cannot do this itself. Its exclude rules see only the URL or the file
+ * path, so they cannot tell an API base URL in a string from a help link.
  *
- * Each copy keeps only lines where a URL is a link that a person follows: HTML
- * and markdown links, doc link properties, comments, URLs in text, codex files,
- * and locale files. It blanks all other lines, so line numbers stay correct.
- * This skips API endpoints, OAuth URLs, base URLs, and placeholders in string
- * values. It also expands docs URLs that the editor builds at runtime, and
- * removes string escapes that lychee otherwise reads as part of a URL.
+ * - `git grep` lists the tracked files with a URL, a credential docs slug, or
+ *   DOCS_DOMAIN.
+ * - Each copy keeps HTML and markdown links, doc link properties, comments,
+ *   URLs in text that is not an example, and all lines of codex and locale
+ *   files. Other lines are blank, so the report shows the real file:line.
+ * - URLs that the code builds at runtime (credential slugs, DOCS_DOMAIN) are
+ *   expanded, and string escapes that lychee reads as part of a URL are removed.
+ *
+ * Prints the paths of the copies. Run lychee in <out-dir>, so that its report
+ * shows repository paths.
  */
 import { spawn } from 'node:child_process';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';

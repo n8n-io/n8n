@@ -1,4 +1,4 @@
-# Weekly link check for product code. See .github/workflows/test-link-check-weekly.yml.
+# Weekly check of the links in packages/. See .github/workflows/test-link-check-weekly.yml.
 # Run from the repository root:
 #   dir=$(mktemp -d)
 #   node .github/scripts/link-check/extract.mjs "$dir" \
