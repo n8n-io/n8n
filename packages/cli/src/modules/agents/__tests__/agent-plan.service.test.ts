@@ -88,7 +88,16 @@ describe('AgentPlanService', () => {
 			{
 				...write,
 				formatVersion: 1,
-				data: next.data,
+				data: {
+					...proposed,
+					items: [
+						{
+							...proposed.items[0],
+							startedAt: expect.any(String),
+							endedAt: expect.any(String),
+						},
+					],
+				},
 			},
 			ctx,
 		);

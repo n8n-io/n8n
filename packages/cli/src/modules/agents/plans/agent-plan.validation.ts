@@ -176,6 +176,13 @@ export function prepareAgentPlan(
 			if (item.status === 'pending') fail(id, 'In progress items cannot become Pending');
 			if (
 				item.kind === 'task' &&
+				old.item.kind === 'task' &&
+				item.fallbackFor !== old.item.fallbackFor
+			) {
+				fail(id, 'An In progress task cannot change its fallbackFor');
+			}
+			if (
+				item.kind === 'task' &&
 				(item.description !== old.item.description || !isEqual(item.dependsOn, old.item.dependsOn))
 			) {
 				fail(id, 'An In progress task cannot change its description or dependencies');

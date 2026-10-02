@@ -417,6 +417,40 @@ describe('Agent plan timestamps', () => {
 });
 
 describe('Agent plan fallbacks', () => {
+	it.each(['add', 'remove', 'change'] as const)(
+		'permits a Pending task to %s its fallback link, but freezes it after starting',
+		(operation) => {
+			const original = task();
+			const other = task();
+			const initial = prepare(plan(original, other));
+			const failed = prepare(
+				setStatuses(initial, { [original.id]: 'failed', [other.id]: 'failed' }),
+				initial,
+			);
+			const replacement = task({
+				fallbackFor: operation === 'add' ? undefined : original.id,
+			});
+			const pending = prepare(plan(...failed.items, replacement), failed);
+			const fallbackFor = operation === 'remove' ? undefined : other.id;
+			const changed = { ...replacement, fallbackFor };
+			expect(prepare(plan(...failed.items, changed), pending).items[2]).toEqual(changed);
+			const running = prepare(setStatuses(pending, { [replacement.id]: 'in_progress' }), pending);
+			for (const status of ['in_progress', 'done', 'failed', 'cancelled'] as const) {
+				const proposal = plan(...failed.items, {
+					...(running.items[2] as AgentPlanTask),
+					fallbackFor,
+					status,
+				});
+				expect(() => prepare(proposal, running, ended)).toThrow(
+					'An In progress task cannot change its fallbackFor',
+				);
+				expect(() =>
+					prepare(setStatuses(running, { [replacement.id]: status }), running, ended),
+				).not.toThrow();
+			}
+		},
+	);
+
 	it.each(['failed', 'cancelled'] as const)(
 		'redirects pending tasks and groups after %s work',
 		(status) => {
