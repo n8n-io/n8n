@@ -91,6 +91,16 @@ beforeEach(() => {
 	);
 });
 
+test('should explain the retired --file flag even without --id', async () => {
+	workflowRepository.findOneBy.mockClear();
+	const cmd = new Execute();
+	// @ts-expect-error Protected property
+	cmd.flags = { file: 'workflow.json' };
+
+	await expect(cmd.run()).rejects.toThrow('The --file flag is no longer supported');
+	expect(workflowRepository.findOneBy).not.toHaveBeenCalled();
+});
+
 test('should start a task runner and the policy modules', async () => {
 	// arrange
 
