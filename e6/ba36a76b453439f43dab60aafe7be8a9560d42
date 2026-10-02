@@ -1,0 +1,31 @@
+packages/@n8n/db/src/repositories/workflow-history.repository.ts
+  s_be34f2a9936255::t_d3b04718f19892 2,163,182,185-186
+packages/cli/src/services/pruning/__tests__/workflow-history-compaction.service.test.ts
+  s_be34f2a9936255::t_a633801c8504f8 26,233-236,244-245,249-328
+packages/cli/src/services/pruning/workflow-history-compaction.service.ts
+  s_be34f2a9936255::t_a7294d9b016230 11,129,171,183-188,190,200-201
+packages/cli/test/integration/database/repositories/workflow-history.repository.test.ts
+  s_be34f2a9936255::t_ff5ec03c7ec1f5 9,30-32,59-83,140-164,205,207,210-216,219-225,228-234,267-477
+packages/cli/test/integration/workflow-history-compaction-trim.task.test.ts
+  s_be34f2a9936255::t_01ecd0ca9d476e 8,43-52,87-94,96,107-123,129,154-195
+packages/workflow/src/workflow-diff.ts
+  s_be34f2a9936255::t_e5c94bccaefb8b 364-365,367
+packages/workflow/test/workflow-diff.test.ts
+  s_be34f2a9936255::t_49fdde303ca1f6 27,1394-1579
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e6ba36a76b453439f43dab60aafe7be8a9560d42",
+  "prompts": {},
+  "sessions": {
+    "s_be34f2a9936255": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9a0f2c47-6407-4069-a583-c102c8290868",
+        "model": "unknown"
+      },
+      "human_author": "Veljko Terzic <veljko.terzic@n8n.io>"
+    }
+  }
+}
