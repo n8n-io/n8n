@@ -12,8 +12,8 @@
  * - `git grep` lists the tracked files with a URL, a credential docs slug, or
  *   DOCS_DOMAIN.
  * - Each copy keeps HTML and markdown links, doc link properties, comments,
- *   URLs in text that is not an example, and all lines of codex and locale
- *   files. Other lines are blank, so the report shows the real file:line.
+ *   URLs in text that is not an example, and all lines of codex, locale, and
+ *   markdown files. Other lines are blank, so the report shows the real file:line.
  * - URLs that the code builds at runtime (credential slugs, DOCS_DOMAIN) are
  *   expanded, and string escapes that lychee reads as part of a URL are removed.
  *
@@ -27,7 +27,7 @@ import { createInterface } from 'node:readline';
 import { pathToFileURL } from 'node:url';
 
 const FILE_PATTERNS = ['http://', 'https://', "documentationUrl = '", 'DOCS_DOMAIN'];
-const FILE_GLOBS = ['ts', 'vue', 'json', 'mjs', 'js'].map((ext) => `packages/**/*.${ext}`);
+const FILE_GLOBS = ['ts', 'vue', 'json', 'mjs', 'js', 'md'].map((ext) => `packages/**/*.${ext}`);
 
 const KEY =
 	/(?:doc|docs|documentation|help|learn|guide|info|more|reference|support|pricing|terms|privacy|legal|page|article|blog|video|tutorial)\w*(?:url|uri|link|href)["']?\s*[:=]/i;
@@ -67,7 +67,7 @@ const endsWithKey = (line) => /[:=]\s*$/.test(line) && KEY_AT_END.test(line);
 
 /** Returns the text of `path` with every line blanked that has no link to check. */
 export function filterText(path, text) {
-	const keepAll = /(\.node\.json|\/locales\/[^/]+\.json)$/.test(path);
+	const keepAll = /(\.node\.json|\/locales\/[^/]+\.json|\.md)$/.test(path);
 	const credential = path.endsWith('.credentials.ts');
 	const lines = text.split('\n').map((raw) => normalize(raw, credential));
 	return lines

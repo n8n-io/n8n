@@ -45,6 +45,8 @@ exclude = [
 	'^https?://([^/]*\.)?(your|my-|xyzcompany|contoso|tenant123|company\.|n8n\.host)',
 	'^https?://(resourcename\.openai\.azure\.com|bucket\.host|mcp\.github\.com)',
 	'xxxxx|USERID|PRESENTATION_ID|/org/repo|/user/repository|1ABC123XYZ',
+	'^https?://(example\.rocket\.chat|docs\.myservice\.com)',
+	'^https://github\.com/(acme|myuser)/',
 	# A private document in a code comment.
 	'^https://docs\.google\.com/document/d/1TUJGUf5HUv9e6MJBzcOsPruxXDeGMnGYTBWfkMagcg4',
 	'^https://samltest\.id/',
@@ -53,6 +55,7 @@ exclude = [
 	'/oauth2?/(v\d+/)?(token|authorize)',
 	'^https?://[^/]+\.googleapis\.com',
 	'^https?://graph\.microsoft\.com',
+	'^https://api\.smith\.langchain\.com',
 	'^https://www\.reddit\.com/.*\.json$',
 	# A URL prefix that the editor appends package names to.
 	'^https://www\.npmjs\.com/package/$',

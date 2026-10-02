@@ -35,8 +35,11 @@ test('removes string escapes from URLs', () => {
 	]);
 });
 
-test('keeps every line of codex and locale files', () => {
+test('keeps every line of codex, locale, and markdown files', () => {
 	assert.deepEqual(filter('X.node.json', ['{"url": "https://docs.example.org/g"}']), [
 		'{"url": "https://docs.example.org/g"}',
+	]);
+	assert.deepEqual(filter('README.md', ["baseURL: 'https://docs.example.org/h'"]), [
+		"baseURL: 'https://docs.example.org/h'",
 	]);
 });

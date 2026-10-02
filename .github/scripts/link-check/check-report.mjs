@@ -132,10 +132,11 @@ async function checkPage(context, url) {
 			.catch(() => {});
 		const result = { status, title: await page.title() };
 		console.log(`browser: ${result.status} "${result.title}" ${url}`);
-		return isBrowserPass(result);
+		return result;
 	} catch (error) {
-		console.log(`browser: failed ${url}: ${error.message.split('\n')[0]}`);
-		return false;
+		const reason = error.message.split('\n')[0];
+		console.log(`browser: failed ${url}: ${reason}`);
+		return { status: 0, title: reason };
 	} finally {
 		await page.close();
 	}
@@ -156,14 +157,14 @@ async function checkInBrowser(urls) {
 	});
 
 	const queue = groupByHost(urls);
-	const passed = new Set();
+	const results = new Map();
 	const skipped = [];
 	const deadline = Date.now() + BROWSER_BUDGET_MS;
 	const worker = async () => {
 		for (let group = queue.shift(); group; group = queue.shift()) {
 			for (const url of group) {
 				if (Date.now() > deadline) skipped.push(url);
-				else if (await checkPage(context, url)) passed.add(url);
+				else results.set(url, await checkPage(context, url));
 			}
 		}
 	};
@@ -172,7 +173,7 @@ async function checkInBrowser(urls) {
 	if (skipped.length > 0) {
 		console.log(`browser: time budget used, did not open ${skipped.length} links`);
 	}
-	return passed;
+	return results;
 }
 
 function formatReport(broken) {
@@ -196,11 +197,19 @@ async function main() {
 	const toBrowser = [
 		...new Set(failures.filter((f) => classify(f) === 'browser').map((f) => f.url)),
 	];
-	const passedInBrowser = toBrowser.length > 0 ? await checkInBrowser(toBrowser) : new Set();
+	const browserResults = toBrowser.length > 0 ? await checkInBrowser(toBrowser) : new Map();
 
-	const broken = failures.filter(
-		(f) => classify(f) === 'broken' || (classify(f) === 'browser' && !passedInBrowser.has(f.url)),
-	);
+	const broken = failures.flatMap((f) => {
+		const kind = classify(f);
+		if (kind === 'broken') return [f];
+		if (kind !== 'browser') return [];
+		// Links that Chrome did not open keep the reason from lychee.
+		const result = browserResults.get(f.url);
+		if (!result) return [f];
+		return isBrowserPass(result)
+			? []
+			: [{ ...f, text: `browser ${result.status} "${result.title}"` }];
+	});
 	const now = Date.now();
 	const pending = new Set(broken.filter((f) => isInGracePeriod(f, lineChangedAt(f), now)));
 	const lines = formatReport(broken.filter((f) => !pending.has(f)));
