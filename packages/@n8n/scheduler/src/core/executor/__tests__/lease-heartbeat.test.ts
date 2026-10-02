@@ -34,6 +34,21 @@ describe('LeaseHeartbeat', () => {
 		heartbeat.stop();
 	});
 
+	it('does not keep the process alive', async () => {
+		const renew = vi.fn().mockResolvedValue(true);
+		const heartbeat = new LeaseHeartbeat(renew, options());
+		const timers = heartbeat as unknown as Record<'beatTimer' | 'expiryTimer', NodeJS.Timeout>;
+		expect(timers.beatTimer.hasRef()).toBe(false);
+		expect(timers.expiryTimer.hasRef()).toBe(false);
+
+		await vi.advanceTimersByTimeAsync(INTERVAL_MS);
+		expect(renew).toHaveBeenCalledTimes(1);
+		expect(timers.beatTimer.hasRef()).toBe(false);
+		expect(timers.expiryTimer.hasRef()).toBe(false);
+
+		heartbeat.stop();
+	});
+
 	it('rounds the interval down, so the last renewal of a lease lands before it expires', async () => {
 		const renew = vi.fn().mockResolvedValue(true);
 		const heartbeat = new LeaseHeartbeat(renew, {
