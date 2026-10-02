@@ -111,7 +111,20 @@ export class ModuleRegistry {
 	 * setup.
 	 */
 	async loadModules(modules?: ModuleName[]) {
-		const modulesDir = this.resolveModulesDir();
+		let modulesDir: string;
+
+		try {
+			// docker + tests
+			const n8nPackagePath = require.resolve('n8n/package.json');
+			const n8nRoot = path.dirname(n8nPackagePath);
+			const srcDirExists = existsSync(path.join(n8nRoot, 'src'));
+			const dir = process.env.NODE_ENV === 'test' && srcDirExists ? 'src' : 'dist';
+			modulesDir = path.join(n8nRoot, dir, 'modules');
+		} catch {
+			// local dev
+			// n8n binary is inside the bin folder, so we need to go up two levels
+			modulesDir = path.resolve(process.argv[1], '../../dist/modules');
+		}
 
 		for (const moduleName of modules ?? this.eligibleModules) {
 			const importPackagedModule = this.packagedModules[moduleName];
@@ -169,21 +182,6 @@ export class ModuleRegistry {
 			if (loaders?.length) this.nodeLoaders.push(...loaders);
 
 			await Container.get(ModuleClass).commands?.();
-		}
-	}
-
-	private resolveModulesDir() {
-		try {
-			// docker + tests
-			const n8nPackagePath = require.resolve('n8n/package.json');
-			const n8nRoot = path.dirname(n8nPackagePath);
-			const srcDirExists = existsSync(path.join(n8nRoot, 'src'));
-			const dir = process.env.NODE_ENV === 'test' && srcDirExists ? 'src' : 'dist';
-			return path.join(n8nRoot, dir, 'modules');
-		} catch {
-			// local dev
-			// n8n binary is inside the bin folder, so we need to go up two levels
-			return path.resolve(process.argv[1], '../../dist/modules');
 		}
 	}
 
