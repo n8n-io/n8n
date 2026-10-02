@@ -32,10 +32,15 @@ const props = defineProps<{
 	/** True from "Save check" until the regenerate-and-rerun request resolves. */
 	savingCheck?: boolean;
 	view?: 'small' | 'complete';
-	/** Why this case errored, read from the result's `errorDetails`. Not rendered
-	 *  yet — plumbed through so a later pass can surface it without another
-	 *  round trip to the review utils. */
+	/** Why this case errored, read from the result's `errorDetails`. */
 	errorMessage?: string | null;
+	/** No `agent:update` — disables the correction controls (not expanding/viewing). */
+	disabled?: boolean;
+	/** True where there's no backend primitive to persist a correction yet (the
+	 *  checks panel, for an already-committed run) — hides the note/Save-check
+	 *  flow but keeps "Actually fine" available, since that's a local override
+	 *  with nothing to persist. */
+	hideRevise?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -112,15 +117,16 @@ watch(
 
 			<N8nText color="text-light" size="small">
 				<N8nTimeAgo v-if="date" :date="date" />
-				<span v-else>{{ i18n.baseText('instanceAi.testAgentPreview.avatar.notRun') }}</span>
-			</N8nText>
-
-			<N8nText v-if="showNotRun" color="text-light" size="small">
-				{{ i18n.baseText('instanceAi.testAgentPreview.avatar.notRun') }}
+				<!-- Only idle is genuinely "not run" — a waiting row has no date yet
+				     either, but it's running, not never-run, so its slot stays empty
+				     rather than claiming the wrong thing. -->
+				<span v-else-if="status === 'idle'">
+					{{ i18n.baseText('instanceAi.testAgentPreview.avatar.notRun') }}
+				</span>
 			</N8nText>
 
 			<button
-				v-else-if="canExpand"
+				v-if="canExpand"
 				type="button"
 				:class="$style.expandToggle"
 				:data-test-id="testId && `${testId}-toggle`"
@@ -158,23 +164,27 @@ watch(
 			/>
 
 			<template v-if="needsCorrection">
-				<N8nText bold color="text-dark" :class="$style.correctionHint">
-					{{ i18n.baseText('instanceAi.testAgentPreview.inputCorrectionHint') }}
-				</N8nText>
-				<N8nInput
-					v-model="suggestion"
-					type="textarea"
-					:autosize="{ minRows: 2, maxRows: 6 }"
-					:placeholder="i18n.baseText('instanceAi.testAgentPreview.inputCorrectionPlaceholder')"
-					:data-test-id="testId && `${testId}-suggestion`"
-					@keydown.meta.enter="onSaveCheck"
-					@keydown.ctrl.enter="onSaveCheck"
-				/>
+				<template v-if="!hideRevise">
+					<N8nText bold color="text-dark" :class="$style.correctionHint">
+						{{ i18n.baseText('instanceAi.testAgentPreview.inputCorrectionHint') }}
+					</N8nText>
+					<N8nInput
+						v-model="suggestion"
+						type="textarea"
+						:autosize="{ minRows: 2, maxRows: 6 }"
+						:disabled="disabled"
+						:placeholder="i18n.baseText('instanceAi.testAgentPreview.inputCorrectionPlaceholder')"
+						:data-test-id="testId && `${testId}-suggestion`"
+						@keydown.meta.enter="onSaveCheck"
+						@keydown.ctrl.enter="onSaveCheck"
+					/>
+				</template>
 				<div :class="$style.correctionActions">
 					<N8nButton
+						v-if="!hideRevise"
 						variant="solid"
 						size="small"
-						:disabled="!suggestion.trim()"
+						:disabled="disabled || !suggestion.trim()"
 						:loading="savingCheck"
 						:data-test-id="testId && `${testId}-save-check`"
 						@click="onSaveCheck"
@@ -184,7 +194,7 @@ watch(
 					<N8nButton
 						variant="ghost"
 						size="small"
-						:disabled="savingCheck"
+						:disabled="disabled || savingCheck"
 						:data-test-id="testId && `${testId}-actually-fine`"
 						@click="onActuallyFine"
 					>

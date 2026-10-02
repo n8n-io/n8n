@@ -426,6 +426,72 @@ describe('InstanceAiTestAgentPreviewPanel', () => {
 		expect(queryByTestId('instance-ai-test-agent-examples-case-3')).not.toBeInTheDocument();
 	});
 
+	it('deletes the draft dataset when a case fails to save, and never starts a run', async () => {
+		const store = useAgentEvalsStore();
+		mockPreviewRun(store);
+		vi.spyOn(store, 'generateDraftCases').mockResolvedValue({
+			cases: [{ input: 'a', whatToCheck: 'b', scenario: 'Vague' }],
+		});
+		vi.spyOn(store, 'createDraftDataset').mockResolvedValue({
+			datasetId: 'dataset-2',
+			dataTableId: 'table-2',
+			columnMapping: { input: 'input', criteria: 'criteria' },
+		});
+		vi.spyOn(store, 'createCase').mockRejectedValue(new Error('row insert failed'));
+		const deleteDataset = vi.spyOn(store, 'deleteDataset').mockResolvedValue(undefined as never);
+		const startRun = vi.spyOn(store, 'startRun');
+
+		const user = userEvent.setup();
+		const { getByTestId, findByTestId } = renderComponent();
+		await waitFor(() =>
+			expect(getByTestId('instance-ai-test-agent-preview-looks-good')).toBeEnabled(),
+		);
+		await user.click(getByTestId('instance-ai-test-agent-preview-looks-good'));
+		await findByTestId('instance-ai-test-agent-examples-check-agent');
+
+		await user.click(getByTestId('instance-ai-test-agent-examples-check-agent'));
+
+		await waitFor(() =>
+			expect(deleteDataset).toHaveBeenCalledWith('project-1', 'agent-1', 'dataset-2'),
+		);
+		expect(startRun).not.toHaveBeenCalled();
+		await waitFor(() => expect(showErrorMock).toHaveBeenCalled());
+	});
+
+	// Once `startRun` has been sent, a failure is ambiguous — the request may
+	// have reached the server and seeded a real run before the response itself
+	// failed. Deleting the dataset here would cascade a run that may actually
+	// exist, so rollback only ever covers failures strictly before submission.
+	it('does not delete the dataset when only starting the run fails', async () => {
+		const store = useAgentEvalsStore();
+		mockPreviewRun(store);
+		vi.spyOn(store, 'generateDraftCases').mockResolvedValue({
+			cases: [{ input: 'a', whatToCheck: 'b', scenario: 'Vague' }],
+		});
+		vi.spyOn(store, 'createDraftDataset').mockResolvedValue({
+			datasetId: 'dataset-2',
+			dataTableId: 'table-2',
+			columnMapping: { input: 'input', criteria: 'criteria' },
+		});
+		vi.spyOn(store, 'createCase').mockResolvedValue(null);
+		vi.spyOn(store, 'fetchCases').mockResolvedValue([{ rowId: 1, input: 'a', whatToCheck: 'b' }]);
+		vi.spyOn(store, 'startRun').mockRejectedValue(new Error('timeout'));
+		const deleteDataset = vi.spyOn(store, 'deleteDataset');
+
+		const user = userEvent.setup();
+		const { getByTestId, findByTestId } = renderComponent();
+		await waitFor(() =>
+			expect(getByTestId('instance-ai-test-agent-preview-looks-good')).toBeEnabled(),
+		);
+		await user.click(getByTestId('instance-ai-test-agent-preview-looks-good'));
+		await findByTestId('instance-ai-test-agent-examples-check-agent');
+
+		await user.click(getByTestId('instance-ai-test-agent-examples-check-agent'));
+
+		await waitFor(() => expect(showErrorMock).toHaveBeenCalled());
+		expect(deleteDataset).not.toHaveBeenCalled();
+	});
+
 	it('hides the confirmed try, shows how many are left, and stops the run on request', async () => {
 		const store = useAgentEvalsStore();
 		mockPreviewRun(store);

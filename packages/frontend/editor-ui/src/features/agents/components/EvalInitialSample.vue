@@ -3,9 +3,10 @@ import ChatBubble from './ChatBubble.vue';
 import AgentAnswerCard from './AgentAnswerCard.vue';
 import { N8nCallout } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
+import { computed } from 'vue';
 import { type AgentAvatarKind } from './AgentAvatar.vue';
 
-defineProps<{
+const props = defineProps<{
 	previewInput: string;
 	previewOutput: string;
 	errorMessage?: string;
@@ -13,6 +14,12 @@ defineProps<{
 }>();
 
 const i18n = useI18n();
+
+// Keyed to `status`, not to whether an `errorMessage` happens to be set — a
+// local "Actually fine" override changes `status` to pass without touching
+// `errorMessage`, and the banner must follow that, not keep showing the old
+// failure text.
+const isFailing = computed(() => props.status === 'work' || props.status === 'fail');
 </script>
 
 <template>
@@ -27,16 +34,14 @@ const i18n = useI18n();
 			:status="status"
 		/>
 		<div v-if="previewOutput" :class="$style.calloutPadding">
-			<N8nCallout :theme="!!errorMessage ? 'warning' : 'success'" iconless>
-				<strong
-					>{{
-						i18n.baseText(
-							errorMessage
-								? 'agents.builder.agentEvals.checks.status.breaksRule'
-								: 'agents.builder.agentEvals.checks.status.followsRule',
-						)
-					}}.</strong
-				>
+			<N8nCallout :theme="isFailing ? 'warning' : 'success'" iconless>
+				<strong>{{
+					i18n.baseText(
+						isFailing
+							? 'agents.builder.agentEvals.checks.status.breaksRule'
+							: 'agents.builder.agentEvals.checks.status.followsRule',
+					)
+				}}</strong>
 				{{ errorMessage }}
 			</N8nCallout>
 		</div>

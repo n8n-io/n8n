@@ -240,6 +240,12 @@ async function onCheckAgent(count: number) {
 	const { projectId, agentId } = props.target;
 
 	startingSuiteRun.value = true;
+	// Once `startRun` has been sent, a failure is ambiguous: the request may
+	// have reached the server and seeded a real run before the response itself
+	// failed or timed out. Rolling back past this point would delete that run
+	// and its results along with the dataset — so rollback is only for
+	// failures strictly before submission, where nothing has been seeded yet.
+	let runSubmitted = false;
 	try {
 		const created = await store.createDraftDataset(projectId, agentId);
 		suiteDatasetId.value = created.datasetId;
@@ -271,6 +277,7 @@ async function onCheckAgent(count: number) {
 		);
 		suiteCaseRows.value = cases;
 
+		runSubmitted = true;
 		const run = await store.startRun(projectId, agentId, created.datasetId);
 		if (!isMounted) return;
 		suiteRunId.value = run.id;
@@ -280,11 +287,11 @@ async function onCheckAgent(count: number) {
 			store.startPollingRun(projectId, agentId, run.id);
 		}
 	} catch (error) {
-		if (suiteDatasetId.value) {
-			// A partial insert (or a run that never started) would otherwise leave a
-			// persisted-but-incomplete dataset behind — delete it rather than let a
-			// retry pile up another one alongside it. Runs regardless of `isMounted`:
-			// the dataset already exists server-side either way.
+		if (suiteDatasetId.value && !runSubmitted) {
+			// A partial insert leaves a persisted-but-incomplete dataset behind —
+			// delete it rather than let a retry pile up another one alongside it.
+			// Runs regardless of `isMounted`: the dataset already exists
+			// server-side either way.
 			await store.deleteDataset(projectId, agentId, suiteDatasetId.value).catch(() => null);
 			suiteDatasetId.value = null;
 		}

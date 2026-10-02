@@ -55,9 +55,13 @@ vi.mock('../components/AgentEvalChecksPanel.vue', () => ({
 vi.mock('../components/AgentEvalsEmptyStatePreview.vue', () => ({
 	default: {
 		name: 'AgentEvalsEmptyStatePreview',
-		props: ['examples', 'loading', 'addingChecks'],
+		props: ['examples', 'loading', 'addingChecks', 'disabled'],
 		emits: ['add-example', 'add-checks'],
-		template: `<div data-testid="agent-evals-empty-state-preview" :data-loading="loading">{{ examples.length }}
+		template: `<div
+			data-testid="agent-evals-empty-state-preview"
+			:data-loading="loading"
+			:data-disabled="disabled"
+		>{{ examples.length }}
 			<button data-testid="stub-add-example" @click="$emit('add-example', 'own example')" />
 			<button data-testid="stub-add-checks" @click="$emit('add-checks', 2)" /></div>`,
 	},
@@ -297,6 +301,7 @@ describe('AgentEvalsSection', () => {
 		const renderPreview = async (
 			generatedCases: AgentEvalDraftCase[],
 			configure?: (store: ReturnType<typeof useAgentEvalsStore>) => void,
+			props: Record<string, unknown> = {},
 		) => {
 			const pinia = createTestingPinia({ stubActions: true });
 			const store = useAgentEvalsStore();
@@ -308,7 +313,7 @@ describe('AgentEvalsSection', () => {
 			vi.mocked(store.generateDraftCases).mockResolvedValue({ cases: generatedCases });
 			configure?.(store);
 
-			const rendered = renderComponent({ pinia });
+			const rendered = renderComponent({ pinia, props });
 			await flushPromises();
 			return { ...rendered, store };
 		};
@@ -324,6 +329,21 @@ describe('AgentEvalsSection', () => {
 			});
 			expect(getByTestId('agent-evals-empty-state-preview')).toBeInTheDocument();
 			expect(queryByTestId('agent-evals-empty-state')).not.toBeInTheDocument();
+		});
+
+		// AgentEvalsEmptyStatePreview is mocked above, so this only proves the
+		// prop reaches it — the component's own test covers what it does with it.
+		it('forwards disabled to the preview for a viewer without agent:update', async () => {
+			const { getByTestId } = await renderPreview(
+				[{ input: 'case 1', whatToCheck: 'check 1', scenario: 'A' }],
+				undefined,
+				{ disabled: true },
+			);
+
+			expect(getByTestId('agent-evals-empty-state-preview')).toHaveAttribute(
+				'data-disabled',
+				'true',
+			);
 		});
 
 		it('shows the empty-state preview with its slider loading right away, instead of blocking the whole section behind a skeleton', async () => {

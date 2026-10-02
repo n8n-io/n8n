@@ -166,6 +166,12 @@ const onAddChecks = async (count: number) => {
 	// yet" apart from "created, but the commit failed partway through" — only
 	// the latter has anything to roll back.
 	let createdDatasetId: string | undefined;
+	// Once `startRun` has been sent, a failure is ambiguous: the request may
+	// have reached the server and seeded a real run before the response itself
+	// failed or timed out. Rolling back past this point would delete that run
+	// and its results along with the dataset — so rollback is only for
+	// failures strictly before submission, where nothing has been seeded yet.
+	let runSubmitted = false;
 	try {
 		const created = await store.createDraftDataset(props.projectId, props.agentId);
 		createdDatasetId = created.datasetId;
@@ -184,13 +190,13 @@ const onAddChecks = async (count: number) => {
 		];
 		await Promise.all(toCreate.map((value) => store.createCase(props.projectId, source, value)));
 
+		runSubmitted = true;
 		await store.startRun(props.projectId, props.agentId, created.datasetId);
 		await load();
 	} catch (error) {
-		if (createdDatasetId) {
-			// A partial insert (or a run that never started) would otherwise leave a
-			// persisted-but-incomplete dataset behind — delete it rather than let a
-			// retry pile up another one alongside it.
+		if (createdDatasetId && !runSubmitted) {
+			// A partial insert leaves a persisted-but-incomplete dataset behind —
+			// delete it rather than let a retry pile up another one alongside it.
 			await store.deleteDataset(props.projectId, props.agentId, createdDatasetId).catch(() => null);
 		}
 		toast.showError(error, i18n.baseText('agents.builder.agentEvals.run.startError'));

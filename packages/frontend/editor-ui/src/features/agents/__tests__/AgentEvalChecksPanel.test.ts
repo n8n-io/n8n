@@ -1,7 +1,8 @@
-import { configure } from '@testing-library/vue';
+import { configure, within } from '@testing-library/vue';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { ref } from 'vue';
 
 import { createComponentRenderer } from '@/__tests__/render';
 import { useAgentEvalsStore } from '../agentEvals.store';
@@ -11,12 +12,34 @@ import AgentEvalChecksPanel from '../components/AgentEvalChecksPanel.vue';
 configure({ testIdAttribute: 'data-testid' });
 
 // The rows have their own suite; this one is about the panel around them.
+// Typed (not array) prop declarations so a bare `hide-revise` attribute
+// coerces to boolean `true`, same as the real component the mock stands in for.
 vi.mock('../components/AgentEvalTryRow.vue', () => ({
 	default: {
 		name: 'AgentEvalTryRow',
-		props: ['status', 'input', 'output', 'label', 'testId'],
+		props: {
+			status: {},
+			input: {},
+			output: {},
+			label: {},
+			testId: {},
+			disabled: { type: Boolean },
+			hideRevise: { type: Boolean },
+		},
 		emits: ['save-check', 'actually-fine'],
-		template: `<div :data-testid="testId" :data-status="status">{{ input }}</div>`,
+		// A plain, testId-free button: a testid built from the row's own (which
+		// starts with the same "agent-eval-check-" every row testid shares) would
+		// match every row-counting `getAllByTestId(/agent-eval-check-/)` query in
+		// this file. Tests scope into it with `within(row)` instead.
+		template: `<div
+			:data-testid="testId"
+			:data-status="status"
+			:data-disabled="disabled"
+			:data-hide-revise="hideRevise"
+		>
+			{{ input }}
+			<button @click="$emit('actually-fine')">actually fine</button>
+		</div>`,
 	},
 }));
 
@@ -43,7 +66,12 @@ const renderComponent = createComponentRenderer(AgentEvalChecksPanel, {
 });
 
 const render = (
-	review: { results?: AgentEvalResultRecord[]; resultsCount?: number; loadingMore?: boolean } = {},
+	review: {
+		results?: AgentEvalResultRecord[];
+		resultsCount?: number;
+		loadingMore?: boolean;
+		disabled?: boolean;
+	} = {},
 	inFlight = false,
 ) => {
 	const pinia = createTestingPinia({ stubActions: true });
@@ -62,6 +90,38 @@ const render = (
 	});
 	vi.mocked(store.isRunInFlight).mockReturnValue(inFlight);
 	vi.mocked(store.isStartingRun).mockReturnValue(false);
+
+	return { ...renderComponent({ pinia, props: { disabled: review.disabled } }), store };
+};
+
+/**
+ * Mutable, growable mock: each `loadMoreResults` call grows a `ref` that
+ * `getReview` reads from. It has to be a real ref — the component's `review`
+ * computed only re-evaluates `getReview()` when one of its reads touches an
+ * actual reactive dependency; a plain mutable variable closed over by
+ * `mockImplementation` would update the data but never trigger a re-render.
+ */
+const renderWithGrowablePage = (allResults: AgentEvalResultRecord[], pageSize: number) => {
+	const pinia = createTestingPinia({ stubActions: true });
+	const store = useAgentEvalsStore();
+
+	const loadedCount = ref(pageSize);
+	vi.mocked(store.getReview).mockImplementation(() => ({
+		run: null,
+		results: allResults.slice(0, loadedCount.value),
+		resultsCount: allResults.length,
+		ratingsByResultId: {},
+		pendingByResultId: {},
+		draftsByResultId: {},
+		counts: null,
+		loading: false,
+		loadingMore: false,
+	}));
+	vi.mocked(store.isRunInFlight).mockReturnValue(false);
+	vi.mocked(store.isStartingRun).mockReturnValue(false);
+	vi.mocked(store.loadMoreResults).mockImplementation(async () => {
+		loadedCount.value = Math.min(loadedCount.value + pageSize, allResults.length);
+	});
 
 	return { ...renderComponent({ pinia }), store };
 };
@@ -199,5 +259,83 @@ describe('AgentEvalChecksPanel', () => {
 		const { getByTestId } = render({ results: [result('c1', 'running')] }, true);
 
 		expect(getByTestId('agent-eval-checks-run-all')).toHaveAttribute('disabled');
+	});
+
+	it('forwards disabled and hides the no-op Save-check flow on every row', () => {
+		const { getByTestId } = render({
+			results: [result('c1', 'success')],
+			disabled: true,
+		});
+
+		const row = getByTestId('agent-eval-check-c1');
+		expect(row).toHaveAttribute('data-disabled', 'true');
+		expect(row).toHaveAttribute('data-hide-revise', 'true');
+	});
+
+	// Filtering by status needs the whole run, not just the first loaded page —
+	// left to a manual "Show more cases" click, a run bigger than one page would
+	// under-count every pill and hide matching rows from the filter.
+	it('eagerly loads every remaining page so counts and filtering cover the whole run', async () => {
+		const allResults = [
+			result('pass-1', 'success'),
+			result('pass-2', 'success'),
+			result('fail-1', 'error'),
+		];
+		const { getByTestId, store } = renderWithGrowablePage(allResults, 1);
+
+		await vi.waitFor(() => {
+			expect(getByTestId('agent-eval-checks-filter-all')).toHaveTextContent('3');
+		});
+		expect(store.loadMoreResults).toHaveBeenCalledTimes(2);
+		expect(getByTestId('agent-eval-checks-filter-needs-work')).toHaveTextContent('1');
+	});
+
+	it('stops loading more once a call makes no progress, instead of looping forever', async () => {
+		const pinia = createTestingPinia({ stubActions: true });
+		const store = useAgentEvalsStore();
+		// Always reports one more case than it ever actually returns.
+		vi.mocked(store.getReview).mockReturnValue({
+			run: null,
+			results: [result('c1', 'success')],
+			resultsCount: 5,
+			ratingsByResultId: {},
+			pendingByResultId: {},
+			draftsByResultId: {},
+			counts: null,
+			loading: false,
+			loadingMore: false,
+		});
+		vi.mocked(store.isRunInFlight).mockReturnValue(false);
+		vi.mocked(store.isStartingRun).mockReturnValue(false);
+		vi.mocked(store.loadMoreResults).mockResolvedValue(undefined);
+
+		renderComponent({ pinia });
+
+		await vi.waitFor(() => expect(store.loadMoreResults).toHaveBeenCalled());
+		// A second tick would mean it's still spinning rather than having given up.
+		await new Promise((resolve) => setTimeout(resolve, 10));
+		expect(store.loadMoreResults).toHaveBeenCalledTimes(1);
+	});
+
+	// Marking the last needs-work row "actually fine" makes `filteredRows` fall
+	// back to unfiltered already (guarded by the live count), but without also
+	// resetting `statusFilter` itself, no pill would read as selected even
+	// though every row is now showing.
+	it('resets the filter to "all" once marking the last needs-work row "actually fine" empties it', async () => {
+		const user = userEvent.setup();
+		const { getByTestId, getAllByTestId, queryByTestId } = render({
+			results: [result('pass-1', 'success'), result('fail-1', 'error')],
+		});
+
+		await user.click(getByTestId('agent-eval-checks-filter-needs-work'));
+		expect(getAllByTestId(/agent-eval-check-/)).toHaveLength(1);
+
+		const row = getByTestId('agent-eval-check-fail-1');
+		await user.click(within(row).getByRole('button'));
+
+		// The needs-work pill is gone (nothing needs work anymore) and every row
+		// shows again — "all" is active, not a stale "needs-work" with no pill lit.
+		expect(queryByTestId('agent-eval-checks-filter-needs-work')).not.toBeInTheDocument();
+		expect(getAllByTestId(/agent-eval-check-/)).toHaveLength(2);
 	});
 });

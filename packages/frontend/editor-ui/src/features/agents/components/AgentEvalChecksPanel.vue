@@ -30,10 +30,6 @@ const props = defineProps<{
 
 const emit = defineEmits<{
 	rerun: [];
-	/** "Save check" on a failing row — not wired to a backend action yet; the
-	 *  committed-run runner has no per-row rerun primitive, so a real fix here
-	 *  is a follow-up. Forwarded so a caller can act on it once that exists. */
-	'revise-case': [payload: { resultId: string; suggestion: string }];
 }>();
 
 const i18n = useI18n();
@@ -151,17 +147,20 @@ const sortedRows = computed(() =>
 );
 
 const filteredRows = computed(() => {
-	// Guarded by the live count, not just which pill is selected: if the
-	// filtered-on status's count drops to 0 (its pill disappears, e.g. every
-	// "needs work" row got fixed), this falls back to unfiltered instead of
-	// leaving the list empty behind a filter with no pill left to clear it.
-	if (statusFilter.value === 'pass' && passedCount.value > 0) {
-		return sortedRows.value.filter((row) => row.status === 'pass');
-	}
-	if (statusFilter.value === 'needs-work' && needsWorkCount.value > 0) {
+	if (statusFilter.value === 'pass') return sortedRows.value.filter((row) => row.status === 'pass');
+	if (statusFilter.value === 'needs-work') {
 		return sortedRows.value.filter((row) => row.status === 'work' || row.status === 'fail');
 	}
 	return sortedRows.value;
+});
+
+// If the filtered-on status's count drops to 0 (its pill disappears, e.g.
+// every "needs work" row got fixed), reset to "all" rather than leaving the
+// filter pointed at a pill that no longer exists — `filteredRows` would still
+// show every row either way, but with no pill reading as selected.
+watch([needsWorkCount, passedCount], ([needsWork, passed]) => {
+	if (statusFilter.value === 'needs-work' && needsWork === 0) statusFilter.value = 'all';
+	if (statusFilter.value === 'pass' && passed === 0) statusFilter.value = 'all';
 });
 
 function setStatusFilter(filter: StatusFilter) {
@@ -170,10 +169,6 @@ function setStatusFilter(filter: StatusFilter) {
 
 function onActuallyFine(resultId: string) {
 	manualStatusOverrides.value = { ...manualStatusOverrides.value, [resultId]: 'pass' };
-}
-
-function onSaveCheck(resultId: string, suggestion: string) {
-	emit('revise-case', { resultId, suggestion });
 }
 
 const load = async () => {
@@ -196,8 +191,37 @@ const onLoadMore = async () => {
 	}
 };
 
+// The status pills and `filteredRows` only ever see `rows`, which is built
+// from the loaded page — left to manual "Show more cases" clicks, a run
+// bigger than one page would under-count every pill and hide matching rows
+// until the reviewer paged them all in by hand. Pulls in the rest on its own
+// once the run has settled (a run still in flight gets this for free the
+// moment polling's own re-reads catch it up), so counts and filtering always
+// reflect the whole run.
+let loadingRemaining = false;
+const loadRemainingResults = async () => {
+	if (loadingRemaining) return;
+	loadingRemaining = true;
+	try {
+		let loadedCount = results.value.length;
+		while (!inFlight.value && hasMore.value) {
+			await store.loadMoreResults(props.projectId, props.agentId, props.runId);
+			// A call that doesn't grow the page can't ever satisfy `hasMore` —
+			// stop rather than spin forever against a backend (or test double)
+			// that keeps reporting more without actually returning any.
+			if (results.value.length === loadedCount) break;
+			loadedCount = results.value.length;
+		}
+	} catch (error) {
+		toast.showError(error, i18n.baseText('agents.builder.agentEvals.review.loadError'));
+	} finally {
+		loadingRemaining = false;
+	}
+};
+
 onMounted(load);
 watch(() => props.runId, load);
+watch([inFlight, hasMore], () => void loadRemainingResults(), { immediate: true });
 onBeforeUnmount(store.stopPollingRun);
 </script>
 
@@ -246,9 +270,10 @@ onBeforeUnmount(store.stopPollingRun);
 				:output="row.output"
 				:date="row.runAt"
 				:error-message="row.errorMessage"
+				:disabled="disabled"
+				hide-revise
 				view="complete"
 				:test-id="`agent-eval-check-${row.id}`"
-				@save-check="onSaveCheck(row.id, $event)"
 				@actually-fine="onActuallyFine(row.id)"
 			/>
 		</div>
@@ -288,7 +313,7 @@ onBeforeUnmount(store.stopPollingRun);
 	width: 100%;
 	border-radius: var(--radius--xl);
 	border: var(--border);
-	background-color: white;
+	background-color: var(--background--base);
 }
 
 .list > * {

@@ -51,7 +51,7 @@ const statusLabel = computed(() => {
 	return labelByKind[props.kind];
 });
 
-const label = computed(() =>
+const accessibleLabel = computed(() =>
 	props.label ? `${props.label} — ${statusLabel.value}` : statusLabel.value,
 );
 </script>
@@ -61,8 +61,8 @@ const label = computed(() =>
 		:class="[$style.avatar, $style[size], $style[tone]]"
 		:data-tone="tone"
 		:data-waiting="kind === 'waiting' ? '' : undefined"
-		:aria-label="label"
-		:title="label"
+		:aria-label="accessibleLabel"
+		:title="accessibleLabel"
 		role="img"
 	>
 		<N8nIcon :class="$style.icon" :icon="icon" />

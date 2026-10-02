@@ -274,10 +274,16 @@ export const useAgentEvalsStore = defineStore(STORES.AGENT_EVALS, () => {
 	// dataset is already gone server-side, so a refetch isn't needed to notice.
 	const deleteDataset = async (projectId: string, agentId: string, datasetId: string) => {
 		await agentEvalsApi.deleteDataset(rootStore.restApiContext, projectId, agentId, datasetId);
-		setDatasets(
-			agentId,
-			(datasetsByAgentId.value[agentId] ?? []).filter((d) => d.id !== datasetId),
-		);
+		const current = datasetsByAgentId.value[agentId];
+		// Only updates an already-loaded cache. If nothing has been successfully
+		// fetched for this agent yet (e.g. `createDraftDataset`'s own best-effort
+		// refresh failed), writing `[]` here would make `isLoaded` report true for
+		// a read that never actually happened.
+		if (current)
+			setDatasets(
+				agentId,
+				current.filter((d) => d.id !== datasetId),
+			);
 	};
 
 	// Drafts one case and runs it against the agent directly — no Data Table, no

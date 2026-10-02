@@ -13,6 +13,7 @@ const {
 	getDatasets,
 	generateDraftCases,
 	createDraftDataset,
+	deleteDataset,
 	previewRun,
 	listRuns,
 	getRunDetail,
@@ -24,6 +25,7 @@ const {
 	getDatasets: vi.fn(),
 	generateDraftCases: vi.fn(),
 	createDraftDataset: vi.fn(),
+	deleteDataset: vi.fn(),
 	previewRun: vi.fn(),
 	listRuns: vi.fn(),
 	getRunDetail: vi.fn(),
@@ -37,6 +39,7 @@ vi.mock('../agentEvals.api', () => ({
 	getDatasets,
 	generateDraftCases,
 	createDraftDataset,
+	deleteDataset,
 	previewRun,
 	listRuns,
 	getRunDetail,
@@ -231,7 +234,11 @@ describe('useAgentEvalsStore', () => {
 
 	describe('createDraftDataset', () => {
 		it('creates the empty dataset and re-reads the dataset list', async () => {
-			createDraftDataset.mockResolvedValue({ datasetId: 'd1', dataTableId: 'dt-1' });
+			createDraftDataset.mockResolvedValue({
+				datasetId: 'd1',
+				dataTableId: 'dt-1',
+				columnMapping: { input: 'input', criteria: 'criteria' },
+			});
 			getDatasets.mockResolvedValue([dataset('d1')]);
 			const store = useAgentEvalsStore();
 
@@ -245,8 +252,43 @@ describe('useAgentEvalsStore', () => {
 				AGENT_ID,
 				{ datasetName: 'My checks' },
 			);
-			expect(result).toEqual({ datasetId: 'd1', dataTableId: 'dt-1' });
+			expect(result).toEqual({
+				datasetId: 'd1',
+				dataTableId: 'dt-1',
+				columnMapping: { input: 'input', criteria: 'criteria' },
+			});
 			expect(store.getDatasets(AGENT_ID).map((d) => d.id)).toEqual(['d1']);
+		});
+	});
+
+	describe('deleteDataset', () => {
+		it('deletes via the API and evicts the dataset from an already-loaded cache', async () => {
+			deleteDataset.mockResolvedValue({ success: true });
+			getDatasets.mockResolvedValue([dataset('d1'), dataset('d2')]);
+			const store = useAgentEvalsStore();
+			await store.fetchDatasets(PROJECT_ID, AGENT_ID);
+
+			await store.deleteDataset(PROJECT_ID, AGENT_ID, 'd1');
+
+			expect(deleteDataset).toHaveBeenCalledWith(
+				{ instanceId: 'test-instance-id' },
+				PROJECT_ID,
+				AGENT_ID,
+				'd1',
+			);
+			expect(store.getDatasets(AGENT_ID).map((d) => d.id)).toEqual(['d2']);
+		});
+
+		// Writing `[]` here for an agent whose datasets were never successfully
+		// fetched (e.g. `createDraftDataset`'s own best-effort refresh failed)
+		// would make `isLoaded` report true for a read that never happened.
+		it('leaves an unloaded cache alone rather than writing an empty list into it', async () => {
+			deleteDataset.mockResolvedValue({ success: true });
+			const store = useAgentEvalsStore();
+
+			await store.deleteDataset(PROJECT_ID, AGENT_ID, 'd1');
+
+			expect(store.isLoaded(AGENT_ID)).toBe(false);
 		});
 	});
 

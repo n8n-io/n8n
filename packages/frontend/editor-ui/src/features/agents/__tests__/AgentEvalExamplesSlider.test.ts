@@ -77,6 +77,55 @@ describe('AgentEvalExamplesSlider', () => {
 		).toBeNull();
 	});
 
+	it('disables the add-your-own input for a read-only viewer', () => {
+		const { getByTestId } = renderComponent({ props: { disabled: true } });
+
+		expect(getByTestId('instance-ai-test-agent-examples-add-own-input')).toBeDisabled();
+	});
+
+	it('does not accept a typed example while disabled', async () => {
+		const user = userEvent.setup();
+		const { getByTestId, emitted } = renderComponent({ props: { disabled: true } });
+
+		// A disabled native input can't receive focus or keystrokes at all.
+		await user.type(
+			getByTestId('instance-ai-test-agent-examples-add-own-input'),
+			'My own example{Enter}',
+		);
+
+		expect(emitted()['add-example']).toBeUndefined();
+	});
+
+	// Rows are keyed by index/id, not input text, precisely so two cases that
+	// happen to share wording don't collide on the same key and get merged.
+	it('renders two generated examples with identical wording as separate rows', () => {
+		const duplicateWording = [
+			{ input: 'Same question', whatToCheck: 'check 1', scenario: 'Vague' },
+			{ input: 'Same question', whatToCheck: 'check 2', scenario: 'Happy path' },
+		];
+		const { getAllByTestId } = createComponentRenderer(AgentEvalExamplesSlider, {
+			props: { examples: duplicateWording },
+		})();
+
+		expect(getAllByTestId('instance-ai-test-agent-examples-example')).toHaveLength(2);
+	});
+
+	it('renders two self-written examples with identical wording as separate rows', async () => {
+		const user = userEvent.setup();
+		const { getByTestId, getAllByTestId } = renderComponent();
+
+		await user.type(
+			getByTestId('instance-ai-test-agent-examples-add-own-input'),
+			'Same custom example{Enter}',
+		);
+		await user.type(
+			getByTestId('instance-ai-test-agent-examples-add-own-input'),
+			'Same custom example{Enter}',
+		);
+
+		expect(getAllByTestId('instance-ai-test-agent-examples-own-example')).toHaveLength(2);
+	});
+
 	it('picks up the real batch once it lands, instead of staying stuck at 1 from the pre-generation mount', async () => {
 		// Both callers mount this while generation is still in flight — `loading:
 		// true` and `examples: []` — then swap in the real batch once it
