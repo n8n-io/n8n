@@ -1,0 +1,16 @@
+packages/cli/src/modules/agents/repositories/agent-plan.repository.ts
+  h_7555c3ee6524cf 74,80,116,123,136,143,168,187,189
+packages/cli/test/integration/database/repositories/agent-plan.repository.test.ts
+  h_7555c3ee6524cf 75,137,170,176,190,196,265,274,279,307
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "74497c015215019a0c67d5e6e34939adee8929f3",
+  "prompts": {},
+  "humans": {
+    "h_7555c3ee6524cf": {
+      "author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}
