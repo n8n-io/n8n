@@ -102,6 +102,8 @@ const triggerIcon = computed((): IconName => {
 			return 'slack';
 		case 'instance-ai':
 			return 'sparkles';
+		case 'n8n_chat_production':
+			return 'message-square';
 		default:
 			return 'bolt-filled';
 	}
@@ -116,6 +118,9 @@ const triggerLabel = computed((): string => {
 	// Instance AI runs are labelled with the product name, not the source id.
 	if (source === 'instance-ai') {
 		return i18n.baseText('agentSessions.origin.instanceAi');
+	}
+	if (source === 'n8n_chat_production') {
+		return i18n.baseText('agentSessions.origin.n8nChat');
 	}
 	return source.charAt(0).toUpperCase() + source.slice(1);
 });
