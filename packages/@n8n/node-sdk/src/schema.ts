@@ -20,6 +20,8 @@ export interface JsonSchema {
 	minItems?: number;
 	/** A secret: n8n stores and sends it, and never shows or returns it. */
 	writeOnly?: boolean;
+	/** n8n sets the value, not the user. The form hides it. */
+	readOnly?: boolean;
 	properties?: Record<string, JsonSchema>;
 	required?: readonly string[];
 	additionalProperties?: boolean | JsonSchema;
@@ -48,8 +50,17 @@ export interface JsonSchema {
 	'x-n8n-declared'?: true;
 	/** On a trigger output: one more field per entry of an input list, e.g. per form field. */
 	'x-n8n-entry-fields'?: EntryFields;
+	/** The label and description of each `enum` value. */
+	'x-n8n-options'?: Readonly<Record<string, OptionLabel>>;
+	/** A hidden credential field that holds the base URL of its credential type. */
+	'x-n8n-base-url'?: true;
 	/** Sample values; the first one seeds verification fixtures. */
 	examples?: readonly unknown[];
+}
+
+export interface OptionLabel {
+	readonly name: string;
+	readonly description?: string;
 }
 
 /** Output fields that the entries of an input list name, e.g. one field per form field. */

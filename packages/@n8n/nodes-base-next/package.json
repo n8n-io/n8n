@@ -52,8 +52,16 @@
       "dist/credentials/NotionApi.credentials.js",
       "dist/credentials/NotionOAuth2Api.credentials.js",
       "dist/credentials/GooglePalmApi.credentials.js",
+      "dist/credentials/OpenAiApi.credentials.js",
+      "dist/credentials/AnthropicApi.credentials.js",
+      "dist/credentials/MinimaxApi.credentials.js",
+      "dist/credentials/XAiApi.credentials.js",
+      "dist/credentials/SlackApi.credentials.js",
+      "dist/credentials/WhatsAppApi.credentials.js",
       "dist/credentials/GithubApi.credentials.js",
-      "dist/credentials/SupabaseApi.credentials.js"
+      "dist/credentials/SupabaseApi.credentials.js",
+      "dist/credentials/WhatsAppTriggerApi.credentials.js",
+      "dist/credentials/FacebookGraphAppApi.credentials.js"
     ],
     "nodes": [
       "dist/nodes/NotionDatabasePageGetAll.node.js",

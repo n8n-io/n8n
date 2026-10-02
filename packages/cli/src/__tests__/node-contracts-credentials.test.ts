@@ -142,11 +142,55 @@ describe('credential types of the node contracts package', () => {
 		for (const [name, legacyNode] of [
 			['githubApi', 'n8n-nodes-base.github'],
 			['supabaseApi', 'n8n-nodes-base.supabase'],
+			['openAiApi', 'n8n-nodes-base.openAi'],
+			['slackApi', 'n8n-nodes-base.slack'],
+			['whatsAppApi', 'n8n-nodes-base.whatsApp'],
+			['whatsAppTriggerApi', 'n8n-nodes-base.whatsAppTrigger'],
+			['facebookGraphAppApi', 'n8n-nodes-base.facebookTrigger'],
 		]) {
 			expect(instance.knownCredentials[name].sourcePath).toContain(NEXT);
 			expect(credentialTypes.getSupportedNodes(name)).toContain(legacyNode);
 			expect(instance.types.credentials.filter((type) => type.name === name)).toHaveLength(1);
 		}
+		expect(credentialTypes.getByName('slackApi').test).toEqual({
+			request: { baseURL: 'https://slack.com/api', url: '/users.profile.get' },
+			rules: [
+				{
+					type: 'responseSuccessBody',
+					properties: { key: 'error', value: 'invalid_auth', message: 'Invalid access token' },
+				},
+			],
+		});
+	});
+
+	it('sign with the user header of openAiApi as the legacy class does', async () => {
+		const data: ICredentialDataDecryptedObject = {
+			apiKey: 'sk-1',
+			organizationId: 'org-1',
+			url: 'https://api.openai.com/v1',
+			header: true,
+			headerName: 'X-Proxy',
+			headerValue: 'p-1',
+		};
+		const request = { url: 'https://api.openai.com/v1/models', headers: { Accept: '*/*' } };
+		const signed = await Promise.all(
+			[true, false].map(async (enabled) => {
+				const { instance, helper } = await loaded(enabled);
+				const source = instance.knownCredentials.openAiApi.sourcePath;
+				const options = await helper.authenticate(data, 'openAiApi', structuredClone(request));
+				return { source: path.relative(PACKAGES, source), headers: options.headers };
+			}),
+		);
+		const headers = {
+			Accept: '*/*',
+			Authorization: 'Bearer sk-1',
+			'OpenAI-Organization': 'org-1',
+			'X-Proxy': 'p-1',
+		};
+		expect(signed).toEqual([
+			{ source: `${NEXT}/dist/credentials/OpenAiApi.credentials.js`, headers },
+			{ source: 'nodes-base/dist/credentials/OpenAiApi.credentials.js', headers },
+		]);
 	});
 
 	it('sign the requests of a contract Notion node and of a legacy Notion v2 node', async () => {

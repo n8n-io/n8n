@@ -1,8 +1,8 @@
 import {
 	arr,
 	bool,
-	compat,
 	credential,
+	credentialType,
 	defineNode,
 	defineResource,
 	int,
@@ -10,6 +10,7 @@ import {
 	paginate,
 	parse,
 	str,
+	t,
 	type AnySchema,
 	type Http,
 	type HttpRequest,
@@ -19,14 +20,51 @@ import {
 
 import { limitOf, type paging } from '../paging';
 
+export const slackToken = credentialType({
+	id: 'slack.token',
+	legacyName: 'slackApi',
+	displayName: 'Slack API',
+	docs: 'slack',
+	fields: {
+		accessToken: t
+			.secret('Access Token')
+			.describe(
+				'In your Slack app, open OAuth & Permissions. Copy the Bot User OAuth Token (xoxb-) or User OAuth Token (xoxp-), depending on the operations you need.',
+			),
+		signatureSecret: t
+			.secret('Signature Secret')
+			.optional()
+			.describe(
+				'The signature secret is used to verify the authenticity of requests sent by Slack.',
+			),
+		// n8n sets these when it builds a managed Slack app, e.g. for an Agent.
+		managedAppId: t.hidden('Managed App ID'),
+		teamId: t.hidden('Slack Team ID'),
+		managerCredentialId: t.hidden('Manager Credential ID'),
+		agentId: t.hidden('Agent ID'),
+	},
+	baseUrl: 'https://slack.com/api',
+	// `files.slack.com` takes the bytes of a file upload.
+	hosts: ['slack.com', 'files.slack.com'],
+	auth: (a) => a.bearer('accessToken'),
+	// Slack answers 200 with `ok: false` to a bad token.
+	test: {
+		get: '/users.profile.get',
+		failWhen: [{ body: { error: 'invalid_auth' }, message: 'Invalid access token' }],
+	},
+	notice: {
+		text: 'We strongly recommend setting up a <a href="https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.slacktrigger/#verify-the-webhook" target="_blank">signing secret</a> to ensure the authenticity of requests.',
+		when: { signatureSecret: '' },
+	},
+});
+
 export const slack = defineNode({
 	id: 'slack',
 	displayName: 'Slack',
 	// Only the token credential: `slackOAuth2Api` signs with the user token at
-	// `authed_user.access_token`, and a compat type cannot name that token path yet.
-	// `files.slack.com` takes the bytes of a file upload.
+	// `authed_user.access_token`, and an OAuth2 type cannot name that token path yet.
 	credential: credential({
-		types: [compat('slackApi', { hosts: ['slack.com', 'files.slack.com'] })],
+		types: [slackToken],
 		scopes: {
 			'chat:write': 'Send, update and delete messages as the app',
 			'channels:history': 'Read messages in public channels',

@@ -1,7 +1,7 @@
 import {
 	arr,
-	compat,
 	credential,
+	credentialType,
 	defineNode,
 	defineResource,
 	int,
@@ -11,19 +11,41 @@ import {
 	parse,
 	ref,
 	str,
+	t,
 	type Http,
 } from '@n8n/node-sdk';
+
+// The legacy node pins this Graph API version; Meta serves an expired version as the oldest live one.
+const GRAPH_API = 'https://graph.facebook.com/v13.0';
+
+export const whatsAppToken = credentialType({
+	id: 'whatsApp.token',
+	legacyName: 'whatsAppApi',
+	displayName: 'WhatsApp API',
+	docs: 'whatsapp',
+	fields: {
+		accessToken: t.secret('Access Token'),
+		businessAccountId: t.text('Business Account ID'),
+	},
+	baseUrl: GRAPH_API,
+	hosts: ['graph.facebook.com'],
+	auth: (a) => a.bearer('accessToken'),
+	test: {
+		get: '/',
+		ignoreHttpStatusErrors: true,
+		failWhen: [{ body: { error: { type: 'OAuthException' } }, message: 'Invalid access token' }],
+	},
+});
 
 export const whatsApp = defineNode({
 	id: 'whatsApp',
 	displayName: 'WhatsApp Business Cloud',
 	// The scopes are Meta app permissions of the system user token.
 	credential: credential({
-		types: [compat('whatsAppApi', { hosts: ['graph.facebook.com'] })],
+		types: [whatsAppToken],
 		scopes: { whatsapp_business_messaging: 'Send messages from a business phone number' },
 	}),
-	// The legacy node pins this Graph API version; Meta serves an expired version as the oldest live one.
-	baseUrl: 'https://graph.facebook.com/v13.0',
+	baseUrl: GRAPH_API,
 });
 
 export const whatsAppPhoneNumber = defineResource({

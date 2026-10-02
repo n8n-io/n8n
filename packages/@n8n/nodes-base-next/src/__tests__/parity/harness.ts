@@ -37,6 +37,7 @@ import type {
 	INode,
 	INodeExecutionData,
 	INodeParameters,
+	INodeProperties,
 	INodeType,
 	INodeTypes,
 	IVersionedNodeType,
@@ -275,15 +276,7 @@ class ParityCredentialsHelper extends workflowLib.ICredentialsHelper {
 	}
 }
 
-/**
- * Signs one request with a credential type as n8n core does: a function runs, a generic block
- * resolves through the expression engine.
- */
-export async function signRequest(
-	type: ICredentialType,
-	data: ICredentialDataDecryptedObject,
-	request: IHttpRequestOptions,
-): Promise<IHttpRequestOptions> {
+function credentialWorkflow() {
 	const node: INode = {
 		id: 'sign',
 		name: 'Sign',
@@ -302,6 +295,47 @@ export async function signRequest(
 			getKnownTypes: () => ({}),
 		} as unknown as INodeTypes,
 	});
+	return { node, workflow };
+}
+
+/**
+ * The data a node reads from a credential, as `CredentialsHelper.applyDefaultsAndOverwrites`
+ * builds it: each property default filled in, then each expression resolved with `$self`.
+ */
+export function readCredential(
+	properties: INodeProperties[],
+	data: ICredentialDataDecryptedObject,
+): unknown {
+	const { node, workflow } = credentialWorkflow();
+	const filled = workflowLib.NodeHelpers.getNodeParameters(
+		properties,
+		data as INodeParameters,
+		true,
+		false,
+		null,
+		null,
+	);
+	return workflow.expression.getComplexParameterValue(
+		node,
+		filled ?? {},
+		'internal',
+		{},
+		undefined,
+		undefined,
+		filled ?? {},
+	);
+}
+
+/**
+ * Signs one request with a credential type as n8n core does: a function runs, a generic block
+ * resolves through the expression engine.
+ */
+export async function signRequest(
+	type: ICredentialType,
+	data: ICredentialDataDecryptedObject,
+	request: IHttpRequestOptions,
+): Promise<IHttpRequestOptions> {
+	const { node, workflow } = credentialWorkflow();
 	const copy = { ...request, ...(request.headers ? { headers: { ...request.headers } } : {}) };
 	return await new ParityCredentialsHelper([type], data).authenticate(
 		data,

@@ -51,13 +51,21 @@ Use the first `auth` that fits:
 | `a.query(name, template)` | one query parameter | `a.query('key', '{apiKey}')` |
 | `a.basic(username, password)` | HTTP basic | `a.basic('{email}/token', '{apiToken}')` (Zendesk) |
 | `a.apply({ headers, query, defaults })` | several places | Datadog, Trello |
+| `a.apply({ headers, userHeader: true })` | also one header that the user names (fields `header`, `headerName`, `headerValue`) | OpenAI, Anthropic |
 | `a.when(field, cases)` | one placement per value of an options field | an auth-type switch |
 | `a.oauth2.authorizationCode(...)` | RFC 6749 §4.1. PKCE S256 is on; a port of a legacy type without PKCE sets `pkce: false` | Notion OAuth2 |
 | `a.oauth2.clientCredentials(...)` | RFC 6749 §4.4 | |
+| `a.none()` | nothing. The built-in node that uses the type reads its fields | WhatsApp and Facebook trigger apps |
 | `a.custom({ reason, sign })` | code signs each request and sees every secret. `reason` is required | the last resort |
 
 - Fields: `t.secret(title)` (masked, only n8n and `custom` read it), `t.text(title)`, `t.url(title)`,
-  or any schema, e.g. `oneOf('eu', 'us')` for `a.when` or a base URL map.
+  `t.options(title, { eu: { name: 'Europe' } })` (an options field with labels), or any schema,
+  e.g. `oneOf('eu', 'us')` for `a.when` or a base URL map.
+- Hidden fields: `t.hidden(title, value)` is a value that n8n sets, e.g. the ID of a managed Slack
+  app. `t.baseUrl()` holds the `baseUrl` of the type, filled from the other fields, for legacy
+  nodes that read the URL from the credential data (xAI, MiniMax). Both are JSON Schema `readOnly`.
+- `notice: { text, when: { signatureSecret: '' } }` shows a text after the fields, optionally only
+  while a field has a value.
 - A template `{field}` must name a field. A secret never goes into `baseUrl` or `test`.
 - An empty optional field drops its header or query parameter. `defaults` are set only when the
   request has no header of that name. A placement merges into a new request; it never replaces
@@ -67,6 +75,13 @@ Use the first `auth` that fits:
   URL, a value in the host must be one host label, a value in the path is URL-encoded. The base
   URL replaces the node's, and its host is a credential host. `hosts` adds more hosts.
 - `test: { get: '/users/me' }` is a GET after `baseUrl` with the credential applied.
+  `{ post: '/oauth/access_token', body: { client_id: '{clientId}' } }` is a POST with a body; the
+  body may hold secrets, the path never does. `headers` are literal headers the API needs.
+- `failWhen: [{ body: { error: 'invalid_auth' }, message }]` fails the test when the response
+  body has that value, for an API that answers 2xx to a bad key. Each body names one value, as a
+  nested object (`{ error: { type: 'OAuthException' } }`), not a dot path.
+  `ignoreHttpStatusErrors: true` lets only `failWhen` decide. Both project to the legacy `rules`
+  and request options.
 
 `toCredentialType` projects a type to the legacy `ICredentialType` that n8n core runs. A placement
 becomes a generic `authenticate` block. What that block cannot express (`defaults`, optional

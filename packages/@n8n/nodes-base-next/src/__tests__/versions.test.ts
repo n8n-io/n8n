@@ -26,7 +26,7 @@ import {
 	nodeClassFile,
 } from '../../scripts/freeze';
 import { FIXTURES_DIR } from '../../scripts/publish';
-import { actions, credentialTypes, triggers } from '../index';
+import { actions, credentialTypes, nativeTriggers, triggers } from '../index';
 import { versionsOf, VERSIONS_DIR } from '../registry';
 
 /**
@@ -207,7 +207,7 @@ describe('bundled versions', () => {
 describe('credential classes', () => {
 	const ownTypes = [
 		...new Map(
-			contracts
+			[...contracts, ...nativeTriggers]
 				.flatMap(({ node }) => node.credential?.types ?? [])
 				.filter(({ scheme }) => scheme.kind !== 'compat')
 				.map((type) => [type.name, type]),
@@ -215,7 +215,9 @@ describe('credential classes', () => {
 	];
 
 	it('match the n8n.credentials list of package.json with every non-compat type of a shipped node', () => {
-		expect(ownTypes.map(({ name }) => name)).toContain('notionApi');
+		expect(ownTypes.map(({ name }) => name)).toEqual(
+			expect.arrayContaining(['notionApi', 'slackApi', 'whatsAppTriggerApi']),
+		);
 		expect(credentialTypes).toEqual(ownTypes);
 		expect(n8nManifest().credentials).toEqual(
 			ownTypes.map((type) => `dist/${credentialClassFile(type).file}`),

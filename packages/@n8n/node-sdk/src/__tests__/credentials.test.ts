@@ -241,6 +241,208 @@ describe('credentialType', () => {
 	});
 });
 
+describe('credential tests, hidden fields, notices and user headers', () => {
+	it('projects failWhen to responseSuccessBody rules and keeps status errors when asked', () => {
+		const chat = credentialType({
+			id: 'chat.token',
+			displayName: 'Chat',
+			fields: { token: t.secret('Token') },
+			baseUrl: 'https://chat.test/api',
+			auth: (a) => a.bearer('token'),
+			test: {
+				get: '/files?purpose=check',
+				headers: { 'Api-Version': '1' },
+				ignoreHttpStatusErrors: true,
+				failWhen: [
+					{ body: { error: 'invalid_auth' }, message: 'Invalid token' },
+					{ body: { base_resp: { status_code: 1004 } }, message: 'Wrong region' },
+				],
+			},
+		});
+		expect(projected(chat).test).toEqual({
+			request: {
+				baseURL: 'https://chat.test/api',
+				url: '/files?purpose=check',
+				headers: { 'Api-Version': '1' },
+				ignoreHttpStatusErrors: true,
+			},
+			rules: [
+				{
+					type: 'responseSuccessBody',
+					properties: { key: 'error', value: 'invalid_auth', message: 'Invalid token' },
+				},
+				{
+					type: 'responseSuccessBody',
+					properties: { key: 'base_resp.status_code', value: 1004, message: 'Wrong region' },
+				},
+			],
+		});
+	});
+
+	it('projects a POST test with a body, and a fields-only type without authenticate', () => {
+		const app = credentialType({
+			id: 'meta.app',
+			displayName: 'App',
+			fields: { clientId: t.text('Client ID'), clientSecret: t.secret('Client Secret') },
+			baseUrl: 'https://graph.test/v1',
+			auth: (a) => a.none(),
+			test: {
+				post: '/oauth/access_token',
+				body: { client_id: '{clientId}', grant_type: 'client_credentials' },
+			},
+		});
+		const type = projected(app);
+		expect(type.authenticate).toBeUndefined();
+		expect(type.test).toEqual({
+			request: {
+				baseURL: 'https://graph.test/v1',
+				url: '/oauth/access_token',
+				method: 'POST',
+				body: { client_id: '={{$credentials.clientId}}', grant_type: 'client_credentials' },
+			},
+		});
+	});
+
+	it('projects hidden fields, a base URL field, option labels and a notice', () => {
+		const regional = credentialType({
+			id: 'regional.apiKey',
+			displayName: 'Regional',
+			fields: {
+				apiKey: t.secret('API Key'),
+				region: t
+					.options('Region', {
+						eu: { name: 'Europe', description: 'eu.api.test' },
+						us: { name: 'United States' },
+					})
+					.default('eu'),
+				url: t.baseUrl(),
+				appId: t.hidden('App ID'),
+				secret: t.secret('Signing Secret').optional().hint('Only for webhooks'),
+			},
+			baseUrl: { on: 'region', values: { eu: 'https://eu.api.test', us: 'https://us.api.test' } },
+			auth: (a) => a.bearer('apiKey'),
+			notice: { text: 'Set a signing secret', when: { secret: '' } },
+		});
+		expect(projected(regional).properties.slice(1)).toEqual([
+			{
+				displayName: 'Region',
+				name: 'region',
+				type: 'options',
+				options: [
+					{ name: 'Europe', value: 'eu', description: 'eu.api.test' },
+					{ name: 'United States', value: 'us' },
+				],
+				default: 'eu',
+				required: true,
+			},
+			{
+				displayName: 'Base URL',
+				name: 'url',
+				type: 'hidden',
+				default: '={{ {"eu":"https://eu.api.test","us":"https://us.api.test"}[$self.region] }}',
+			},
+			{ displayName: 'App ID', name: 'appId', type: 'hidden', default: '' },
+			{
+				displayName: 'Signing Secret',
+				name: 'secret',
+				type: 'string',
+				hint: 'Only for webhooks',
+				typeOptions: { password: true },
+				default: '',
+			},
+			{
+				displayName: 'Set a signing secret',
+				name: 'notice',
+				type: 'notice',
+				default: '',
+				displayOptions: { show: { secret: [''] } },
+			},
+		]);
+		const constant = credentialType({
+			id: 'constant.apiKey',
+			displayName: 'Constant',
+			fields: { apiKey: t.secret('API Key'), url: t.baseUrl() },
+			baseUrl: 'https://api.constant.test/v1',
+			auth: (a) => a.bearer('apiKey'),
+		});
+		expect(projected(constant).properties[1]).toEqual({
+			displayName: 'Base URL',
+			name: 'url',
+			type: 'hidden',
+			default: 'https://api.constant.test/v1',
+		});
+	});
+
+	it('adds the user header fields and sends the header only when it is on', async () => {
+		const proxied = credentialType({
+			id: 'proxied.apiKey',
+			displayName: 'Proxied',
+			fields: { apiKey: t.secret('API Key') },
+			auth: (a) => a.apply({ headers: { 'x-api-key': '{apiKey}' }, userHeader: true }),
+		});
+		expect(projected(proxied).properties.map(({ name }) => name)).toEqual([
+			'apiKey',
+			'header',
+			'headerName',
+			'headerValue',
+		]);
+		expect(projected(proxied).properties[3]).toMatchObject({
+			typeOptions: { password: true, ignoreCredentialExpressionResolveError: true },
+			displayOptions: { show: { header: [true] } },
+		});
+		const request = { url: 'https://x.test', headers: { 'X-Gateway': 'node', Accept: '*/*' } };
+		const data = { apiKey: 'k', headerName: 'x-gateway', headerValue: 'g-1' };
+		expect(await sign(proxied, { ...data, header: false }, request)).toEqual({
+			url: 'https://x.test',
+			headers: { 'X-Gateway': 'node', Accept: '*/*', 'x-api-key': 'k' },
+		});
+		expect(await sign(proxied, { ...data, header: true }, request)).toEqual({
+			url: 'https://x.test',
+			headers: { Accept: '*/*', 'x-api-key': 'k', 'x-gateway': 'g-1' },
+		});
+		expect(
+			await sign(proxied, { ...data, header: true, headerName: 'X-API-KEY' }, request),
+		).toEqual({
+			url: 'https://x.test',
+			headers: { 'X-Gateway': 'node', Accept: '*/*', 'X-API-KEY': 'g-1' },
+		});
+	});
+
+	it('refuses test rules, base URL fields and user headers that cannot work', () => {
+		const rule = { body: { error: { type: 'x', code: 1 } }, message: 'm' };
+		expect(() =>
+			credentialType({
+				id: 'loose.token',
+				displayName: 'Loose',
+				fields: { token: t.secret('Token'), url: t.baseUrl() },
+				auth: (a) => a.bearer('token'),
+			}),
+		).toThrow('a base URL field needs a baseUrl');
+		expect(() =>
+			credentialType({
+				id: 'loose.token',
+				displayName: 'Loose',
+				fields: { token: t.secret('Token'), url: t.baseUrl() },
+				baseUrl: '{url}',
+				auth: (a) => a.apply({ headers: { 'X-Key': '{token}' }, userHeader: true }),
+				test: { get: '//other.test/me', failWhen: [rule, { body: { 'a.b': 1 }, message: 'm' }] },
+			}),
+		).toThrow(
+			'Credential loose.token: baseUrl: {url} is not a field, or a secret; ' +
+				'test: //other.test/me must be a path without {field}; ' +
+				'failWhen: each body names one value; failWhen: the key a.b has a . or a bracket',
+		);
+		expect(() =>
+			credentialType({
+				id: 'loose.token',
+				displayName: 'Loose',
+				fields: { token: t.secret('Token'), header: t.text('Header') },
+				auth: (a) => a.apply({ headers: { 'X-Key': '{token}' }, userHeader: true }),
+			}),
+		).toThrow('userHeader: header is a field of userHeader');
+	});
+});
+
 describe('credentialBaseUrlOf', () => {
 	const server = compat('serverApi', {
 		fields: { server: t.url('Server').default('https://api.server.test'), team: str().optional() },
@@ -334,6 +536,23 @@ describe('credential types in tsc', () => {
 			fields,
 			// @ts-expect-error `{nope}` is not a field
 			auth: (a) => a.apply({ headers: { 'X-Key': '{apiKey}' }, defaults: { 'X-Other': '{nope}' } }),
+		});
+		credentialType({
+			id: 'probe.token',
+			displayName: 'Probe',
+			fields,
+			baseUrl: 'https://api.probe.test',
+			auth: (a) => a.none(),
+			// @ts-expect-error `{clientId}` is not a field
+			test: { post: '/token', body: { client_id: '{clientId}' } },
+		});
+		credentialType({
+			id: 'probe.token',
+			displayName: 'Probe',
+			fields,
+			auth: (a) => a.bearer('apiKey'),
+			// @ts-expect-error `regoin` is not a field
+			notice: { text: 'Pick a region', when: { regoin: 'eu' } },
 		});
 		compat('probeApi', {
 			fields,

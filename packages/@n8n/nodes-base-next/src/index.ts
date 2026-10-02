@@ -227,15 +227,6 @@ export const actions: readonly Action[] = [
 export const triggers: readonly Trigger[] = [pageAdded, repositoryEvent];
 
 /**
- * The credential types of the shipped nodes that this package defines, one n8n class each. With
- * the node contracts flag on, each replaces the legacy class of the same name. A compat type stays
- * the legacy class.
- */
-export const credentialTypes: readonly AnyCredentialType[] = [
-	...new Set([...actions, ...triggers].flatMap(({ node }) => node.credential?.types ?? [])),
-].filter(({ scheme }) => scheme.kind !== 'compat');
-
-/**
  * Triggers that a built-in n8n node runs. They have no bundle and no node type of this package:
  * the typed flow emits the built-in node with the typed parameters.
  */
@@ -247,6 +238,19 @@ export const nativeTriggers: readonly Trigger[] = [
 	facebookEvent,
 	sheetRowsChanged,
 ];
+
+/**
+ * The credential types of the shipped nodes that this package defines, one n8n class each. With
+ * the node contracts flag on, each replaces the legacy class of the same name, also for the
+ * built-in node of a native trigger. A compat type stays the legacy class.
+ */
+export const credentialTypes: readonly AnyCredentialType[] = [
+	...new Set(
+		[...actions, ...triggers, ...nativeTriggers].flatMap(
+			({ node }) => node.credential?.types ?? [],
+		),
+	),
+].filter(({ scheme }) => scheme.kind !== 'compat');
 
 /**
  * Native contracts that a construct of the typed flow emits, so no module has a factory for

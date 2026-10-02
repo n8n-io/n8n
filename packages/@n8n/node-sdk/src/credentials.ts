@@ -2,7 +2,9 @@ import { isRecord } from '@n8n/utils/is-record';
 import {
 	UserError,
 	type IAuthenticateGeneric,
+	type IAuthenticateRuleResponseSuccessBody,
 	type ICredentialDataDecryptedObject,
+	type ICredentialTestRequest,
 	type ICredentialType,
 	type IHttpRequestOptions,
 	type INodeProperties,
@@ -16,6 +18,7 @@ import {
 	type AnySchema,
 	type Infer,
 	type JsonSchema,
+	type OptionLabel,
 	type Shape,
 } from './schema';
 import { applyDefaults, validate } from './validate';
@@ -35,6 +38,20 @@ export const t = {
 	text: (title: string) => str().with({ title }),
 	/** A server URL, e.g. of a self-hosted instance. */
 	url: (title: string) => str().with({ title, format: 'uri' }),
+	/** An options field with a label for each value, e.g. `{ eu: { name: 'Europe' } }`. */
+	options: <const O extends Readonly<Record<string, OptionLabel>>>(title: string, options: O) =>
+		new Schema<keyof O & string>(
+			{ title, enum: Object.keys(options), 'x-n8n-options': options },
+			false,
+		),
+	/** A value that n8n sets, not the user, e.g. the ID of a managed app. The form hides it. */
+	hidden: (title: string, value = '') => str().default(value).with({ title, readOnly: true }),
+	/**
+	 * A hidden field that holds the `baseUrl` of the type, filled from the other fields. Legacy
+	 * nodes that read the URL from the credential data, e.g. `url`, get the same value.
+	 */
+	baseUrl: (title = 'Base URL') =>
+		str().optional().with({ title, readOnly: true, 'x-n8n-base-url': true }),
 };
 
 /** The decrypted data of a credential type, each default filled in. */
@@ -99,6 +116,8 @@ export interface Placement {
 	/** Headers n8n sets only when the request has no header of that name. */
 	readonly defaults: Values;
 	readonly basic?: { readonly username: string; readonly password: string };
+	/** The user may add one header of their own, e.g. for a proxy in front of the API. */
+	readonly userHeader?: true;
 }
 
 /** One placement per value of an options field. */
@@ -123,6 +142,11 @@ export interface OAuth2Grant {
 	readonly authorizationQuery: Values;
 }
 
+/** n8n puts nothing into requests. The built-in node that uses the type reads its fields. */
+export interface NoAuth {
+	readonly kind: 'none';
+}
+
 /** The escape hatch: code signs each request. It sees every secret. */
 export interface CustomAuth<F extends Shape = Shape> {
 	readonly kind: 'custom';
@@ -136,6 +160,7 @@ export type CredentialScheme<F extends Shape = Shape> =
 	| Placement
 	| When
 	| OAuth2Grant
+	| NoAuth
 	| CustomAuth<F>
 	/** The type stays a legacy class in nodes-base. Only its name is shared. */
 	| { readonly kind: 'compat' };
@@ -186,6 +211,11 @@ export interface AuthBuilders<F extends Shape> {
 		readonly headers?: Templates<F, H>;
 		readonly query?: Templates<F, Q>;
 		readonly defaults?: Templates<F, D>;
+		/**
+		 * Adds the fields `header`, `headerName` and `headerValue`: one header the user names. It
+		 * replaces a header of the same name.
+		 */
+		readonly userHeader?: true;
 	}): Placement;
 	/** The placement depends on an options field. `tsc` needs one case per value. */
 	when<const K extends OptionName<F>>(
@@ -199,6 +229,8 @@ export interface AuthBuilders<F extends Shape> {
 		/** RFC 6749 §4.4. */
 		clientCredentials(spec: ClientCredentialsSpec): OAuth2Grant;
 	};
+	/** Fields only: n8n puts nothing into requests, e.g. an app secret that verifies webhooks. */
+	none(): NoAuth;
 	/** The last resort, when no placement fits. `reason` says why. */
 	custom(spec: {
 		readonly reason: string;
@@ -231,8 +263,41 @@ export interface CredentialType<Name extends string = string, F extends Shape = 
 	 * hosts and without `baseUrl` keeps the legacy meaning of that setting.
 	 */
 	readonly hosts?: readonly string[];
-	/** The request that tests a credential: a GET of this path after `baseUrl`. */
-	readonly test?: { readonly get: string };
+	/** The request that tests a credential, after `baseUrl` with the credential applied. */
+	readonly test?: CredentialTest;
+	/** A text the form shows after the fields. */
+	readonly notice?: Notice;
+}
+
+/** A JSON body pattern with one value at its end, e.g. `{ error: { type: 'OAuthException' } }`. */
+export interface BodyMatch {
+	readonly [key: string]: string | number | boolean | BodyMatch;
+}
+
+/** The test fails with `message` when the response body matches `body`. */
+export interface TestRule {
+	readonly body: BodyMatch;
+	readonly message: string;
+}
+
+interface TestOptions {
+	/** Literal headers the API needs on each request, e.g. a version. */
+	readonly headers?: Values;
+	/** An HTTP error status does not fail the test. Only `failWhen` does. */
+	readonly ignoreHttpStatusErrors?: true;
+	/** For an API that answers 2xx to a bad key, e.g. Slack `{ ok: false, error: 'invalid_auth' }`. */
+	readonly failWhen?: readonly TestRule[];
+}
+
+/** A GET of a path, or a POST of a path with a body. */
+export type CredentialTest = TestOptions &
+	({ readonly get: string } | { readonly post: string; readonly body?: Values });
+
+/** A text the form shows, e.g. a security tip. */
+export interface Notice {
+	readonly text: string;
+	/** The form shows it only while each named field has this value. */
+	readonly when?: Readonly<Partial<Record<string, string | number | boolean>>>;
 }
 
 export type AnyCredentialType = CredentialType<string, Shape>;
@@ -292,6 +357,7 @@ const placement = (spec: Partial<Omit<Placement, 'kind'>>): Placement => ({
 	query: spec.query ?? {},
 	defaults: spec.defaults ?? {},
 	...(spec.basic ? { basic: spec.basic } : {}),
+	...(spec.userHeader ? { userHeader: true } : {}),
 });
 
 const templatesOf = (scheme: Placement): string[] => [
@@ -331,8 +397,56 @@ function authBuilders<F extends Shape>(): AuthBuilders<F> {
 				authorizationQuery: {},
 			}),
 		},
+		none: () => ({ kind: 'none' }),
 		custom: (spec) => ({ kind: 'custom', reason: spec.reason, sign: spec.sign }),
 	};
+}
+
+const placementsOf = (scheme: CredentialScheme): readonly Placement[] =>
+	scheme.kind === 'apply' ? [scheme] : scheme.kind === 'when' ? Object.values(scheme.cases) : [];
+
+const isBaseUrlField = (schema: AnySchema | undefined) => schema?.json['x-n8n-base-url'] === true;
+
+const testPathOf = (test: CredentialTest) => ('get' in test ? test.get : test.post);
+
+/** Each value of a body pattern with the keys on its way, e.g. `[['error', 'type'], 'x']`. */
+const leavesOf = (
+	match: BodyMatch,
+	at: readonly string[] = [],
+): Array<readonly [readonly string[], string | number | boolean]> =>
+	Object.entries(match).flatMap(([key, value]) => {
+		if (typeof value === 'object') return leavesOf(value, [...at, key]);
+		const leaf: readonly [readonly string[], string | number | boolean] = [[...at, key], value];
+		return [leaf];
+	});
+
+function testIssues(type: AnyCredentialType): string[] {
+	const { test, fields = {} } = type;
+	if (!test) return [];
+	const path = testPathOf(test);
+	const body = 'post' in test ? Object.values(test.body ?? {}) : [];
+	return [
+		...(type.baseUrl === undefined ? ['test needs a baseUrl'] : []),
+		// `//host` would leave the base URL host.
+		...(/^\/(?!\/)[^{\\]*$/.test(path) ? [] : [`test: ${path} must be a path without {field}`]),
+		...body
+			.flatMap(varsOf)
+			.filter((name) => !(name in fields))
+			.map((name) => `test.body: {${name}} is not a field`),
+		...Object.values(test.headers ?? {})
+			.filter((value) => value.includes('{'))
+			.map((value) => `test.headers: ${value} must be a literal`),
+		...(test.failWhen ?? []).flatMap(({ body: match }) => {
+			const leaves = leavesOf(match);
+			const keys = leaves.flatMap(([keyPath]) => keyPath);
+			return [
+				...(leaves.length === 1 ? [] : ['failWhen: each body names one value']),
+				...keys
+					.filter((key) => /[.[\]]/.test(key))
+					.map((key) => `failWhen: the key ${key} has a . or a bracket`),
+			];
+		}),
+	];
 }
 
 /** The problems of a definition that `tsc` does not see in plain JavaScript. */
@@ -340,10 +454,11 @@ function definitionIssues(type: AnyCredentialType): string[] {
 	const fields = type.fields ?? {};
 	const unknown = (templates: readonly string[], allowed: (name: string) => boolean) =>
 		templates.flatMap(varsOf).filter((name) => !allowed(name));
-	const { scheme, baseUrl, test } = type;
-	const placements =
-		scheme.kind === 'apply' ? [scheme] : scheme.kind === 'when' ? Object.values(scheme.cases) : [];
-	const plainField = (name: string) => name in fields && !isSecretField(fields[name]);
+	const { scheme, baseUrl } = type;
+	const placements = placementsOf(scheme);
+	const plainField = (name: string) =>
+		name in fields && !isSecretField(fields[name]) && !isBaseUrlField(fields[name]);
+	const hasBaseUrlField = Object.values(fields).some(isBaseUrlField);
 	return [
 		...(type.hosts ?? [])
 			.filter((host) => !isHostPattern(host))
@@ -369,8 +484,16 @@ function definitionIssues(type: AnyCredentialType): string[] {
 			? [`when: ${scheme.field} is not a field`]
 			: []),
 		...(scheme.kind === 'custom' && scheme.reason.trim() === '' ? ['custom needs a reason'] : []),
-		...(test && baseUrl === undefined ? ['test needs a baseUrl'] : []),
-		...(test && !/^\/[^{]*$/.test(test.get) ? ['test.get must be a path without {field}'] : []),
+		...(hasBaseUrlField && baseUrl === undefined ? ['a base URL field needs a baseUrl'] : []),
+		...(placements.some((placement) => placement.userHeader)
+			? userHeaderProperties()
+					.filter(({ name }) => name in fields)
+					.map(({ name }) => `userHeader: ${name} is a field of userHeader`)
+			: []),
+		...Object.keys(type.notice?.when ?? {})
+			.filter((name) => !(name in fields))
+			.map((name) => `notice: ${name} is not a field`),
+		...testIssues(type),
 	];
 }
 
@@ -400,6 +523,7 @@ export function credentialType<
 	const F extends Shape = NoFields,
 	const Name extends string = Id,
 	const B extends string = never,
+	const TB extends Values = NoFields,
 >(spec: {
 	/** `service.scheme`, e.g. `notion.token`. */
 	readonly id: Id;
@@ -413,8 +537,19 @@ export function credentialType<
 	/** Hosts besides the host of `baseUrl`. */
 	readonly hosts?: readonly string[];
 	readonly auth: (a: AuthBuilders<F>) => CredentialScheme<F>;
-	/** A GET of this path after `baseUrl`, with the credential applied. */
-	readonly test?: { readonly get: `/${string}` };
+	/**
+	 * A GET of this path, or a POST with a body, after `baseUrl` with the credential applied. The
+	 * body may hold secrets; the path never does.
+	 */
+	readonly test?: TestOptions &
+		(
+			| { readonly get: `/${string}` }
+			| { readonly post: `/${string}`; readonly body?: Templates<F, TB> }
+		);
+	readonly notice?: {
+		readonly text: string;
+		readonly when?: { readonly [K in FieldName<F>]?: string | number | boolean };
+	};
 }): CredentialType<Name, F> {
 	// `Name` is `legacyName`, or `Id` without it. tsc cannot link the default, so a guard narrows.
 	const name: string = spec.legacyName ?? spec.id;
@@ -430,6 +565,7 @@ export function credentialType<
 		...(spec.baseUrl === undefined ? {} : { baseUrl: spec.baseUrl }),
 		...(spec.hosts ? { hosts: spec.hosts } : {}),
 		...(spec.test ? { test: spec.test } : {}),
+		...(spec.notice ? { notice: spec.notice } : {}),
 	});
 }
 
@@ -523,16 +659,21 @@ export function credentialBaseUrlOf(type: AnyCredentialType, raw: unknown): stri
 	});
 }
 
-// n8n core resolves `{{$credentials.<field>}}` when it signs a request or runs a test.
-const toExpression = (template: string) =>
+/**
+ * n8n core resolves `{{$credentials.<field>}}` when it signs a request or runs a test, and
+ * `{{$self.<field>}}` in the default of a hidden field when it reads the credential.
+ */
+type DataVariable = '$credentials' | '$self';
+
+const toExpression = (template: string, data: DataVariable = '$credentials') =>
 	varsOf(template).length === 0
 		? template
-		: `=${template.replace(PLACEHOLDER, (_, name: string) => `{{$credentials.${name}}}`)}`;
+		: `=${template.replace(PLACEHOLDER, (_, name: string) => `{{${data}.${name}}}`)}`;
 
-const baseUrlExpression = (baseUrl: string | BaseUrlMap) =>
+const baseUrlExpression = (baseUrl: string | BaseUrlMap, data: DataVariable = '$credentials') =>
 	typeof baseUrl === 'string'
-		? toExpression(baseUrl)
-		: `={{ ${JSON.stringify(baseUrl.values)}[$credentials.${baseUrl.on}] }}`;
+		? toExpression(baseUrl, data)
+		: `={{ ${JSON.stringify(baseUrl.values)}[${data}.${baseUrl.on}] }}`;
 
 const mapValues = (values: Values, map: (value: string) => string) =>
 	Object.fromEntries(Object.entries(values).map(([key, value]) => [key, map(value)]));
@@ -561,6 +702,7 @@ function genericOf(scheme: Placement): IAuthenticateGeneric {
 /** The generic block of core sends an empty value and has no defaults, so these need a function. */
 const isGeneric = (type: AnyCredentialType, scheme: Placement) =>
 	!hasEntries(scheme.defaults) &&
+	!scheme.userHeader &&
 	templatesOf(scheme)
 		.flatMap(varsOf)
 		.every((name) => !canBeEmpty(type.fields?.[name]));
@@ -587,18 +729,22 @@ function applyPlacement(
 			}),
 		);
 	const lower = (values: object) => new Set(Object.keys(values).map((key) => key.toLowerCase()));
-	const placed = filled(scheme.headers);
-	const own = lower(placed);
-	const sent = Object.entries(request.headers ?? {}).filter(([key]) => !own.has(key.toLowerCase()));
-	const present = lower(request.headers ?? {});
-	const defaults = Object.entries(filled(scheme.defaults)).filter(
-		([key]) => !present.has(key.toLowerCase()),
-	);
+	const without = (values: object, names: Set<string>) =>
+		Object.entries(values).filter(([key]) => !names.has(key.toLowerCase()));
+	const { header, headerName, headerValue } = data;
+	const user =
+		scheme.userHeader && header === true && typeof headerName === 'string' && headerName !== ''
+			? { [headerName]: asText(headerValue) }
+			: {};
+	const placed = { ...Object.fromEntries(without(filled(scheme.headers), lower(user))), ...user };
+	const sent = without(request.headers ?? {}, lower(placed));
+	const present = lower({ ...request.headers, ...placed });
+	const defaults = without(filled(scheme.defaults), present);
 	const username = scheme.basic ? fill(scheme.basic.username) : undefined;
 	const password = scheme.basic ? fill(scheme.basic.password) : undefined;
 	return {
 		...request,
-		...(hasEntries(scheme.headers) || hasEntries(scheme.defaults)
+		...(hasEntries(scheme.headers) || hasEntries(scheme.defaults) || scheme.userHeader
 			? { headers: { ...Object.fromEntries(sent), ...placed, ...Object.fromEntries(defaults) } }
 			: {}),
 		...(hasEntries(scheme.query) ? { qs: { ...request.qs, ...filled(scheme.query) } } : {}),
@@ -620,24 +766,44 @@ function placementOf(
 	return chosen;
 }
 
-const fieldProperty = (name: string, schema: AnySchema): INodeProperties => {
+const fieldProperty = (
+	type: AnyCredentialType,
+	name: string,
+	schema: AnySchema,
+): INodeProperties => {
 	const { json } = schema;
+	const displayName = json.title ?? name;
+	if (json.readOnly) {
+		const value =
+			isBaseUrlField(schema) && type.baseUrl !== undefined
+				? baseUrlExpression(type.baseUrl, '$self')
+				: asText(json.default);
+		return hidden(displayName, name, value);
+	}
 	const placeholder = json.examples?.[0];
-	const description = json.description ?? json['x-n8n-hint'];
+	const hint = json['x-n8n-hint'];
 	const base = {
-		displayName: json.title ?? name,
+		displayName,
 		name,
 		...(canBeEmpty(schema) ? {} : { required: true }),
-		...(description ? { description } : {}),
+		...(json.description ? { description: json.description } : {}),
+		...(hint ? { hint } : {}),
 		...(typeof placeholder === 'string' ? { placeholder } : {}),
 		...(isSecretField(schema) ? { typeOptions: { password: true } } : {}),
 	};
 	if (json.enum) {
-		const options = json.enum.flatMap((value) =>
-			typeof value === 'string' || typeof value === 'number'
-				? [{ name: String(value), value }]
-				: [],
-		);
+		const labels = json['x-n8n-options'] ?? {};
+		const options = json.enum.flatMap((value) => {
+			if (typeof value !== 'string' && typeof value !== 'number') return [];
+			const label = labels[String(value)];
+			return [
+				{
+					name: label?.name ?? String(value),
+					value,
+					...(label?.description ? { description: label.description } : {}),
+				},
+			];
+		});
 		const fallback = options[0]?.value ?? '';
 		const initial = json.default;
 		return {
@@ -710,6 +876,68 @@ const oauth2Properties = (grant: OAuth2Grant): INodeProperties[] => {
 	];
 };
 
+/** The form fields of `userHeader`, as the legacy OpenAI and Anthropic types have them. */
+const userHeaderProperties = (): INodeProperties[] => {
+	const shown = {
+		typeOptions: { ignoreCredentialExpressionResolveError: true },
+		displayOptions: { show: { header: [true] } },
+		default: '',
+	};
+	return [
+		{ displayName: 'Add Custom Header', name: 'header', type: 'boolean', default: false },
+		{ displayName: 'Header Name', name: 'headerName', type: 'string', ...shown },
+		{
+			displayName: 'Header Value',
+			name: 'headerValue',
+			type: 'string',
+			...shown,
+			typeOptions: { ...shown.typeOptions, password: true },
+		},
+	];
+};
+
+const noticeProperty = ({ text, when }: Notice): INodeProperties => ({
+	displayName: text,
+	name: 'notice',
+	type: 'notice',
+	default: '',
+	...(when
+		? {
+				displayOptions: {
+					show: Object.fromEntries(
+						Object.entries(when).flatMap(([field, value]) =>
+							value === undefined ? [] : [[field, [value]]],
+						),
+					),
+				},
+			}
+		: {}),
+});
+
+const rulesOf = (rules: readonly TestRule[]): IAuthenticateRuleResponseSuccessBody[] =>
+	rules.flatMap(({ body, message }) =>
+		leavesOf(body).map(([path, value]) => ({
+			type: 'responseSuccessBody',
+			properties: { key: path.join('.'), value, message },
+		})),
+	);
+
+function testOf(type: AnyCredentialType): { test?: ICredentialTestRequest } {
+	const { test, baseUrl } = type;
+	if (!test || baseUrl === undefined) return {};
+	const request: ICredentialTestRequest['request'] = {
+		baseURL: baseUrlExpression(baseUrl),
+		url: testPathOf(test),
+		...(test.headers ? { headers: test.headers } : {}),
+		...('post' in test
+			? { method: 'POST', ...(test.body ? { body: mapValues(test.body, toExpression) } : {}) }
+			: {}),
+		...(test.ignoreHttpStatusErrors ? { ignoreHttpStatusErrors: true } : {}),
+	};
+	const rules = rulesOf(test.failWhen ?? []);
+	return { test: { request, ...(rules.length > 0 ? { rules } : {}) } };
+}
+
 type Authenticate = (
 	data: ICredentialDataDecryptedObject,
 	request: IHttpRequestOptions,
@@ -723,18 +951,18 @@ type Authenticate = (
 export function toCredentialType(type: AnyCredentialType): ICredentialType | undefined {
 	const { scheme } = type;
 	if (scheme.kind === 'compat') return undefined;
-	const properties = Object.entries(type.fields ?? {}).map(([name, schema]) =>
-		fieldProperty(name, schema),
-	);
+	const properties = [
+		...Object.entries(type.fields ?? {}).map(([name, schema]) => fieldProperty(type, name, schema)),
+		...(placementsOf(scheme).some(({ userHeader }) => userHeader) ? userHeaderProperties() : []),
+		...(type.notice ? [noticeProperty(type.notice)] : []),
+	];
 	const base = {
 		name: type.name,
 		displayName: type.displayName,
 		...(type.documentationUrl ? { documentationUrl: type.documentationUrl } : {}),
 	};
-	const test =
-		type.test && type.baseUrl !== undefined
-			? { test: { request: { baseURL: baseUrlExpression(type.baseUrl), url: type.test.get } } }
-			: {};
+	const test = testOf(type);
+	if (scheme.kind === 'none') return { ...base, properties, ...test };
 	if (scheme.kind === 'oauth2') {
 		return {
 			...base,
