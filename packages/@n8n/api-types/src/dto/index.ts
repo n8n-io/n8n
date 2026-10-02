@@ -725,3 +725,5 @@ export {
 	promotePackageResultSchema,
 	promotionGitResultSchema,
 } from './promotions/promotion-operations.dto';
+
+export { ScimConfigPatchDto } from './scim';
