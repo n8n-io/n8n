@@ -13,7 +13,12 @@ export class WorkflowHistoryPruningTask implements SystemTask {
 
 	readonly effects: SystemTaskEffects = 'idempotent';
 
-	readonly placement: SystemTaskPlacement = { scope: 'cluster', durable: true };
+	readonly placement: SystemTaskPlacement = {
+		scope: 'cluster',
+		durable: true,
+		// Only the leader prunes, so a new leader runs once at takeover instead of waiting an hour.
+		runOnTakeover: true,
+	};
 
 	constructor(private readonly workflowHistoryManager: WorkflowHistoryManager) {}
 
