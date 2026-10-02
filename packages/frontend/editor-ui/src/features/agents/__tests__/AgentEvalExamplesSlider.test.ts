@@ -25,12 +25,13 @@ describe('AgentEvalExamplesSlider', () => {
 		expect(queryByTestId('agent-eval-examples-slider-loading')).not.toBeInTheDocument();
 	});
 
-	it('shows a loader instead of the slider/list/input while loading, with no examples yet', () => {
-		const { getByTestId, queryByTestId } = renderComponent({
+	it('shows a spinner saying cases are being generated, instead of the slider/list/input', () => {
+		const { getByTestId, getByText, queryByTestId } = renderComponent({
 			props: { loading: true, examples: [] },
 		});
 
 		expect(getByTestId('agent-eval-examples-slider-loading')).toBeInTheDocument();
+		expect(getByText('Adding more cases to your eval suite…')).toBeInTheDocument();
 		expect(queryByTestId('instance-ai-test-agent-examples-slider')).not.toBeInTheDocument();
 		expect(queryByTestId('instance-ai-test-agent-examples-add-own-input')).not.toBeInTheDocument();
 	});

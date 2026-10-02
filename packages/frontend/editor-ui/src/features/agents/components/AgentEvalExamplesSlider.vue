@@ -7,7 +7,7 @@
 import { computed, ref } from 'vue';
 import type { AgentEvalDraftCase } from '@n8n/api-types';
 import { ElSlider } from 'element-plus';
-import { N8nIcon, N8nInput, N8nLoading } from '@n8n/design-system';
+import { N8nIcon, N8nInput, N8nSpinner, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import AgentEvalTryRow from '@/features/agents/components/AgentEvalTryRow.vue';
 
@@ -72,8 +72,15 @@ defineExpose({ sliderValue, focusOwnInput });
 </script>
 
 <template>
-	<div v-if="loading" :class="$style.root" data-test-id="agent-eval-examples-slider-loading">
-		<N8nLoading :rows="4" />
+	<div
+		v-if="loading"
+		:class="[$style.root, $style.loadingRow]"
+		data-test-id="agent-eval-examples-slider-loading"
+	>
+		<N8nSpinner size="small" />
+		<N8nText color="text-base">
+			{{ i18n.baseText('instanceAi.testAgentPreview.generatingSuite') }}
+		</N8nText>
 	</div>
 	<div v-else :class="$style.root">
 		<div :class="$style.sliderRow" data-test-id="instance-ai-test-agent-examples-slider">
@@ -145,6 +152,12 @@ defineExpose({ sliderValue, focusOwnInput });
 	align-items: stretch;
 	gap: var(--spacing--sm);
 	width: 100%;
+}
+
+.loadingRow {
+	flex-direction: row;
+	align-items: center;
+	gap: var(--spacing--2xs);
 }
 
 .sliderRow {
