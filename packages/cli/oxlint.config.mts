@@ -312,7 +312,6 @@ export default defineConfig({
 				// workflows/
 				'./src/workflows/workflow-finder.service.ts',
 				'./src/workflows/workflow-history/workflow-history.service.ts',
-				'./src/workflows/workflow-sharing.service.ts',
 				'./src/workflows/workflow-validation.service.ts',
 				'./src/workflows/workflow.service.ee.ts',
 				'./src/workflows/workflow.service.ts',
