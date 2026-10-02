@@ -219,6 +219,7 @@ function getInputClass(isEmpty: boolean): string {
 				</slot>
 			</template>
 		</TagsInputRoot>
+		<slot name="trailing" />
 	</div>
 </template>
 
@@ -276,6 +277,7 @@ function getInputClass(isEmpty: boolean): string {
 }
 
 .embedded {
+	display: flex;
 	width: 100%;
 }
 
