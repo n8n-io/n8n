@@ -183,6 +183,9 @@ import {
 	shouldTraceContextInjection,
 } from './instance-context.service';
 import { composeLocalMcpServers } from './browser/composite-local-mcp-server';
+import { BrowserRouterService } from './browser/browser-router.service';
+import { isCloudBrowserEnabledForRun } from './browser/cloud-browser-availability';
+import { CloudBrowserService } from './browser/cloud-browser.service';
 import { InstanceAiBrowserSessionService } from './browser/instance-ai-browser-session.service';
 import { enabledToolCategories, resolveComputerUseState } from './computer-use-availability';
 import { dropRejectedAttachmentsFromHistory } from './drop-rejected-attachments';
@@ -698,6 +701,8 @@ export class InstanceAiService {
 
 	private readonly aiConfig: AiConfig;
 
+	private readonly isCloudDeployment: boolean;
+
 	private readonly oauth2CallbackUrl: string;
 
 	private readonly webhookBaseUrl: string;
@@ -806,6 +811,8 @@ export class InstanceAiService {
 		private readonly settingsService: InstanceAiSettingsService,
 		private readonly gatewayService: InstanceAiGatewayService,
 		private readonly browserSessionService: InstanceAiBrowserSessionService,
+		private readonly browserRouterService: BrowserRouterService,
+		private readonly cloudBrowserService: CloudBrowserService,
 		private readonly memoryService: InstanceAiMemoryService,
 		private readonly agentMemory: TypeORMAgentMemory,
 		private readonly checkpointStore: TypeORMAgentCheckpointStore,
@@ -852,6 +859,7 @@ export class InstanceAiService {
 		);
 		this.instanceAiConfig = globalConfig.instanceAi;
 		this.aiConfig = globalConfig.ai;
+		this.isCloudDeployment = globalConfig.deployment.type === 'cloud';
 		this.backgroundTasks = new BackgroundTaskManager(
 			MAX_CONCURRENT_BACKGROUND_TASKS_PER_THREAD,
 			this.instanceAiConfig.maxConcurrentSubAgents,
@@ -2073,6 +2081,7 @@ export class InstanceAiService {
 
 		this.gatewayService.disconnectAll();
 		await this.browserSessionService.shutdown();
+		await this.cloudBrowserService.shutdown();
 		this.sandboxService.stopSandboxExpiryTimers();
 
 		// Thread-scoped sandboxes survive service shutdown so a restarted process
@@ -2493,6 +2502,8 @@ export class InstanceAiService {
 		proxyRunConfig?: Awaited<ReturnType<InstanceAiService['createProxyRunConfig']>>,
 		instanceContextGates?: InstanceContextGates,
 		experimentGates?: Awaited<ReturnType<InstanceAiAdapterService['resolveExperimentGates']>>,
+		/** Background tasks pass `false`: nothing would release a cloud session they open. */
+		{ allowCloudBrowser = true }: { allowCloudBrowser?: boolean } = {},
 	) {
 		const memory = this.agentMemory;
 		const boundProjectId = await memory.getThreadProjectId(threadId);
@@ -2602,7 +2613,23 @@ export class InstanceAiService {
 		const browserMcpServer = browserUseEnabledGlobally
 			? this.browserSessionService.findMcpServer(user.id)
 			: undefined;
-		const localMcpServer = composeLocalMcpServers(gatewayMcpServer, browserMcpServer);
+		const cloudBrowserEnabled = isCloudBrowserEnabledForRun({
+			allowed: allowCloudBrowser,
+			rolledOut: gates.cloudBrowserFlagEnabled,
+			onCloud: this.isCloudDeployment,
+			browserUseEnabled: browserUseEnabledGlobally,
+			cloudBrowserEnabled: adminSettings.cloudBrowserEnabled,
+		});
+		const browserServer = await this.browserRouterService.resolveForRun({
+			user,
+			threadId,
+			runId,
+			extensionServer: browserMcpServer,
+			cloudBrowserEnabled,
+		});
+		// Shapes the prompt: the cloud browser replaces the "connect the extension" guidance.
+		context.cloudBrowserEnabled = browserServer !== undefined && browserServer !== browserMcpServer;
+		const localMcpServer = composeLocalMcpServers(gatewayMcpServer, browserServer);
 		if (localMcpServer) {
 			context.localMcpServer = localMcpServer;
 		}
@@ -2679,7 +2706,7 @@ export class InstanceAiService {
 			};
 		}
 
-		browserMcpServer?.setDomainGate({
+		browserServer?.setDomainGate({
 			tracker: domainTracker,
 			runId,
 			permissionMode: context.permissions?.fetchUrl,
@@ -3634,6 +3661,10 @@ export class InstanceAiService {
 			createInertAbortSignal(),
 			graph.messageGroupId,
 			this.threadPushRef.get(threadId),
+			undefined,
+			undefined,
+			undefined,
+			{ allowCloudBrowser: false },
 		);
 		environment.orchestrationContext.tracing = this.tracing.getTraceContext(graph.planRunId);
 		return environment.orchestrationContext;
@@ -4867,6 +4898,7 @@ export class InstanceAiService {
 			// route execution events to the user's iframe session. The next
 			// startRun overwrites it; thread-cleanup deletes it on dispose.
 			this.domainAccessTrackersByThread.get(threadId)?.clearRun(runId);
+			if (!segmentSuspended) await this.cloudBrowserService.releaseRun(runId);
 			if (messageTraceFinalization) {
 				if (tracing) {
 					await this.tracing.finalizeMessageTraceRoot(runId, tracing, messageTraceFinalization);
@@ -6423,6 +6455,9 @@ export class InstanceAiService {
 		} finally {
 			this.runState.clearActiveRun(opts.threadId, opts.resumeExecutionToken);
 			const segmentSuspended = messageTraceFinalization?.status === 'suspended';
+			if (!skipPostRunCleanup && !segmentSuspended) {
+				await this.cloudBrowserService.releaseRun(opts.runId);
+			}
 			// See note in executeRun's finally — keep threadPushRef alive for
 			// post-run planned-task dispatch.
 			if (!skipPostRunCleanup && messageTraceFinalization) {
@@ -6791,6 +6826,7 @@ export class InstanceAiService {
 			status: 'cancelled',
 			reason,
 		});
+		await this.cloudBrowserService.releaseRun(suspended.runId);
 
 		const archivedWorkflowIds = await this.temporaryWorkflowService.reapForRun(
 			suspended.threadId,

@@ -102,6 +102,10 @@ export class CloudBrowserService {
 		}
 	}
 
+	getSessionServer(runId: string): BrowserLocalMcpServer | undefined {
+		return this.sessionsByRun.get(runId)?.mcpServer;
+	}
+
 	/** Disconnects from and releases the run's session, if it has one. */
 	async endSession(runId: string): Promise<void> {
 		const session = this.sessionsByRun.get(runId);

@@ -8,6 +8,9 @@ const REQUEST_SOURCE_HEADERS = { 'x-n8n-request-source': 'ai-assistant' };
 
 const SESSIONS_PATH = '/browserbase/v1/sessions';
 
+/** The gateway reads the token from Browserbase's own API key header on Browserbase routes. */
+const TOKEN_HEADER = 'x-bb-api-key';
+
 export interface BrowserbaseSession {
 	sessionId: string;
 	/** CDP WebSocket URL of the session's browser. */
@@ -28,7 +31,13 @@ export class AiGatewayBrowserbaseService {
 			connectUrl?: unknown;
 		}>(
 			userId,
-			{ method: 'POST', path: SESSIONS_PATH, headers: REQUEST_SOURCE_HEADERS, body: {} },
+			{
+				method: 'POST',
+				path: SESSIONS_PATH,
+				headers: REQUEST_SOURCE_HEADERS,
+				tokenHeader: TOKEN_HEADER,
+				body: {},
+			},
 			'Failed to create browser session',
 		);
 
@@ -45,6 +54,7 @@ export class AiGatewayBrowserbaseService {
 				method: 'POST',
 				path: `${SESSIONS_PATH}/${encodeURIComponent(sessionId)}`,
 				headers: REQUEST_SOURCE_HEADERS,
+				tokenHeader: TOKEN_HEADER,
 				body: { status: 'REQUEST_RELEASE' },
 			},
 			'Failed to release browser session',

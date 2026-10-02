@@ -441,4 +441,37 @@ describe('getComputerUsePrompt', () => {
 			expect(result).not.toContain('browser_tab_open');
 		});
 	});
+
+	describe('with the cloud browser enabled', () => {
+		const localOnly = state(connected('filesystem'), DISCONNECTED);
+
+		it('adds the cloud browser section, even without Computer Use', () => {
+			const result = getComputerUsePrompt({ state: undefined, cloudBrowserEnabled: true });
+
+			expect(result).toContain('### Cloud Browser');
+			expect(result).toContain('browser_start_session');
+			expect(result).toContain('browser_end_session');
+			expect(result).toContain('search_tools');
+		});
+
+		it('stops pointing at the extension while it is not connected', () => {
+			const notConnected = getComputerUsePrompt({
+				state: bothDisconnected,
+				cloudBrowserEnabled: true,
+			});
+			const localConnected = getComputerUsePrompt({ state: localOnly, cloudBrowserEnabled: true });
+
+			expect(notConnected).not.toContain('"Connect browser"');
+			expect(localConnected).not.toContain('Browser Automation (Disabled');
+			expect(localConnected).not.toContain('Browser Automation (Unavailable)');
+			expect(localConnected).toContain('### Cloud Browser');
+		});
+
+		it('keeps the real-browser rules when the extension is connected too', () => {
+			const result = getComputerUsePrompt({ state: browserLive, cloudBrowserEnabled: true });
+
+			expect(result).toContain('Browser Automation rules');
+			expect(result).toContain('### Cloud Browser');
+		});
+	});
 });

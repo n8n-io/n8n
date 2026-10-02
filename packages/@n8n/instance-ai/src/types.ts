@@ -1639,6 +1639,8 @@ export interface InstanceAiContext {
 	localMcpServer?: LocalMcpServer;
 	/** Per-channel Computer Use state — drives system prompt guidance. */
 	computerUseState?: ComputerUseState;
+	/** The run can start cloud browser sessions — drives system prompt guidance. */
+	cloudBrowserEnabled?: boolean;
 	/** Per-action HITL permission overrides. When absent, tools default to requiring approval. */
 	permissions?: InstanceAiPermissions;
 	/** When set, `runWorkflow: 'always_allow'` only short-circuits HITL approval for these workflow IDs.

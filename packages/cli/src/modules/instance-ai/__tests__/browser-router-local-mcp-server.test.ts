@@ -1,11 +1,14 @@
-import type { McpTool } from '@n8n/api-types';
+import { GATEWAY_CONFIRMATION_REQUIRED_PREFIX, type McpTool } from '@n8n/api-types';
 import type { DomainAccessTracker } from '@n8n/instance-ai';
 import { mock } from 'vitest-mock-extended';
 
 import type { BrowserDomainGate, BrowserLocalMcpServer } from '../browser/browser-local-mcp-server';
+import type { Mock } from 'vitest';
+
 import {
 	BrowserRouterLocalMcpServer,
 	type BrowserBackend,
+	type BrowserRouterOptions,
 } from '../browser/browser-router-local-mcp-server';
 
 function browserTool(name: string): McpTool {
@@ -45,7 +48,7 @@ describe('BrowserRouterLocalMcpServer', () => {
 			start: vi.fn().mockResolvedValue(inner),
 			end: vi.fn().mockResolvedValue(undefined),
 		};
-		router = new BrowserRouterLocalMcpServer(BROWSER_TOOLS, backend as BrowserBackend);
+		router = new BrowserRouterLocalMcpServer(BROWSER_TOOLS, [backend as BrowserBackend]);
 	});
 
 	it('lists the session tools and the shared browser tools, without connect and disconnect', () => {
@@ -145,6 +148,20 @@ describe('BrowserRouterLocalMcpServer', () => {
 		expect(textOf(result)).toContain('release failed');
 	});
 
+	it('continues a session handed over from an earlier router for the same run', async () => {
+		const handedOver = new BrowserRouterLocalMcpServer(BROWSER_TOOLS, [backend as BrowserBackend], {
+			activeServer: inner,
+		});
+
+		const result = await handedOver.callTool(NAVIGATE);
+		const start = await handedOver.callTool(START);
+
+		expect(inner.callTool).toHaveBeenCalledWith(NAVIGATE);
+		expect(textOf(result)).toBe('navigated');
+		expect(start.isError).toBe(true);
+		expect(backend.start).not.toHaveBeenCalled();
+	});
+
 	it('applies the domain gate to the session server, whether set before or after the start', async () => {
 		const gate = mock<BrowserDomainGate>({ tracker: mock<DomainAccessTracker>() });
 		const laterGate = mock<BrowserDomainGate>({ tracker: mock<DomainAccessTracker>() });
@@ -155,5 +172,78 @@ describe('BrowserRouterLocalMcpServer', () => {
 
 		expect(inner.setDomainGate).toHaveBeenNthCalledWith(1, gate);
 		expect(inner.setDomainGate).toHaveBeenNthCalledWith(2, laterGate);
+	});
+
+	it('points browser_connect hints at browser_start_session', async () => {
+		inner.callTool.mockResolvedValue({
+			content: [{ type: 'text', text: 'Connection lost. Call browser_connect to reconnect.' }],
+			isError: true,
+		});
+		await router.callTool(START);
+
+		const result = await router.callTool(NAVIGATE);
+
+		expect(textOf(result)).toBe('Connection lost. Call browser_start_session to reconnect.');
+	});
+
+	describe('with two browsers', () => {
+		let local: { kind: 'local'; start: ReturnType<typeof vi.fn>; end: ReturnType<typeof vi.fn> };
+		let onChoice: Mock<NonNullable<BrowserRouterOptions['onChoice']>>;
+
+		beforeEach(() => {
+			local = {
+				kind: 'local',
+				start: vi.fn().mockResolvedValue(inner),
+				end: vi.fn().mockResolvedValue(undefined),
+			};
+			onChoice = vi
+				.fn<NonNullable<BrowserRouterOptions['onChoice']>>()
+				.mockResolvedValue(undefined);
+			router = new BrowserRouterLocalMcpServer(
+				BROWSER_TOOLS,
+				[local as BrowserBackend, backend as BrowserBackend],
+				{ onChoice },
+			);
+		});
+
+		it('asks the user to pick a browser before starting one', async () => {
+			const result = await router.callTool(START);
+
+			expect(result.isError).toBe(true);
+			const text = textOf(result);
+			expect(text.startsWith(GATEWAY_CONFIRMATION_REQUIRED_PREFIX)).toBe(true);
+			const payload = JSON.parse(text.slice(GATEWAY_CONFIRMATION_REQUIRED_PREFIX.length)) as {
+				options: string[];
+			};
+			expect(payload.options).toEqual([
+				'useLocalBrowserForChat',
+				'useLocalBrowserAlways',
+				'useCloudBrowserForChat',
+				'useCloudBrowserAlways',
+			]);
+			expect(local.start).not.toHaveBeenCalled();
+			expect(backend.start).not.toHaveBeenCalled();
+		});
+
+		it.each([
+			['useCloudBrowserForChat', 'cloud', 'chat'],
+			['useCloudBrowserAlways', 'cloud', 'always'],
+			['useLocalBrowserForChat', 'local', 'chat'],
+			['useLocalBrowserAlways', 'local', 'always'],
+		])('starts the browser picked with %s', async (decision, kind, scope) => {
+			const result = await router.callTool({ ...START, arguments: { _confirmation: decision } });
+
+			expect(result.isError).toBeUndefined();
+			expect(textOf(result)).toContain(`Started a ${kind} browser session`);
+			expect(onChoice).toHaveBeenCalledWith(kind, scope);
+			expect((kind === 'cloud' ? backend : local).start).toHaveBeenCalled();
+		});
+
+		it('asks again when the answer is not a browser choice', async () => {
+			const result = await router.callTool({ ...START, arguments: { _confirmation: 'allowOnce' } });
+
+			expect(textOf(result).startsWith(GATEWAY_CONFIRMATION_REQUIRED_PREFIX)).toBe(true);
+			expect(onChoice).not.toHaveBeenCalled();
+		});
 	});
 });

@@ -8,6 +8,7 @@ import {
 } from '@n8n/agents';
 import {
 	GATEWAY_CONFIRMATION_REQUIRED_PREFIX,
+	instanceGatewayResourceDecisionSchema,
 	gatewayConfirmationRequiredPayloadSchema,
 	instanceAiConfirmationSeveritySchema,
 	type GatewayConfirmationRequiredPayload,
@@ -60,8 +61,6 @@ const gatewayConfirmationSuspendSchema = z.object({
 	resourceDecision: gatewayConfirmationRequiredPayloadSchema,
 });
 
-const gatewayResourceDecisionSchema = z.enum(['denyOnce', 'allowOnce', 'allowForSession']);
-
 const gatewayConfirmationRequiredWirePayloadSchema =
 	gatewayConfirmationRequiredPayloadSchema.extend({
 		options: z.array(z.string()),
@@ -69,7 +68,7 @@ const gatewayConfirmationRequiredWirePayloadSchema =
 
 export const gatewayConfirmationResumeSchema = z.object({
 	approved: z.boolean(),
-	resourceDecision: gatewayResourceDecisionSchema.optional(),
+	resourceDecision: instanceGatewayResourceDecisionSchema.optional(),
 });
 
 // ---------------------------------------------------------------------------
@@ -78,8 +77,8 @@ export const gatewayConfirmationResumeSchema = z.object({
 
 function isGatewayResourceDecision(
 	option: string,
-): option is z.infer<typeof gatewayResourceDecisionSchema> {
-	return gatewayResourceDecisionSchema.safeParse(option).success;
+): option is z.infer<typeof instanceGatewayResourceDecisionSchema> {
+	return instanceGatewayResourceDecisionSchema.safeParse(option).success;
 }
 
 function isMcpContentBlock(value: unknown): value is McpContentBlock {

@@ -62,13 +62,17 @@ vi.mock('@/app/utils/rbac/permissions', () => ({
 	hasPermission: vi.fn().mockReturnValue(true),
 }));
 
-const { computerUseExperimentMock, contextPreferencesEnabledMock, routerPushMock } = vi.hoisted(
-	() => ({
-		computerUseExperimentMock: vi.fn(),
-		contextPreferencesEnabledMock: vi.fn(() => true),
-		routerPushMock: vi.fn(),
-	}),
-);
+const {
+	computerUseExperimentMock,
+	cloudBrowserExperimentMock,
+	contextPreferencesEnabledMock,
+	routerPushMock,
+} = vi.hoisted(() => ({
+	computerUseExperimentMock: vi.fn(),
+	cloudBrowserExperimentMock: vi.fn(),
+	contextPreferencesEnabledMock: vi.fn(() => true),
+	routerPushMock: vi.fn(),
+}));
 
 vi.mock('vue-router', async (importOriginal) => ({
 	...(await importOriginal()),
@@ -77,6 +81,10 @@ vi.mock('vue-router', async (importOriginal) => ({
 
 vi.mock('@/experiments/instanceAiComputerUse', () => ({
 	useInstanceAiComputerUseExperiment: computerUseExperimentMock,
+}));
+
+vi.mock('@/experiments/instanceAiCloudBrowser', () => ({
+	useInstanceAiCloudBrowserExperiment: cloudBrowserExperimentMock,
 }));
 
 vi.mock('@/features/settings/context/context.utils', () => ({
@@ -117,6 +125,7 @@ describe('SettingsInstanceAiView', () => {
 		vi.mocked(fetchSettings).mockResolvedValue(null as never);
 		vi.mocked(hasPermission).mockReturnValue(true);
 		computerUseExperimentMock.mockReturnValue({ isFeatureEnabled: ref(true) });
+		cloudBrowserExperimentMock.mockReturnValue({ isFeatureEnabled: ref(false) });
 		const pinia = createTestingPinia({ stubActions: false });
 		setActivePinia(pinia);
 		fetchCredentialTypesSpy = vi
@@ -558,6 +567,35 @@ describe('SettingsInstanceAiView', () => {
 		it('shows the browser use toggle', () => {
 			const { getByTestId } = renderComponent();
 			expect(getByTestId('n8n-agent-browser-use-toggle')).toBeVisible();
+		});
+	});
+
+	describe('Cloud browser settings', () => {
+		beforeEach(() => {
+			cloudBrowserExperimentMock.mockReturnValue({ isFeatureEnabled: ref(true) });
+			setModuleSettings(settingsStore, { ...defaultModuleSettings, cloudManaged: true });
+		});
+
+		it('shows the cloud browser toggle on cloud when the experiment is enabled', () => {
+			const { getByTestId } = renderComponent();
+
+			expect(getByTestId('n8n-agent-cloud-browser-toggle')).toBeVisible();
+		});
+
+		it('hides the cloud browser toggle off cloud', () => {
+			setModuleSettings(settingsStore, { ...defaultModuleSettings, cloudManaged: false });
+
+			const { queryByTestId } = renderComponent();
+
+			expect(queryByTestId('n8n-agent-cloud-browser-toggle')).toBeNull();
+		});
+
+		it('hides the cloud browser toggle when the experiment is disabled', () => {
+			cloudBrowserExperimentMock.mockReturnValue({ isFeatureEnabled: ref(false) });
+
+			const { queryByTestId } = renderComponent();
+
+			expect(queryByTestId('n8n-agent-cloud-browser-toggle')).toBeNull();
 		});
 	});
 

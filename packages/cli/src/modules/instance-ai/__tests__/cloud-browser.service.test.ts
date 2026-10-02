@@ -184,6 +184,19 @@ describe('CloudBrowserService', () => {
 		});
 	});
 
+	describe('getSessionServer()', () => {
+		it("returns the server of the run's open session, and nothing once it ends", async () => {
+			const server = await service.startSession(USER_ID, 'run-1');
+
+			expect(service.getSessionServer('run-1')).toBe(server);
+			expect(service.getSessionServer('run-2')).toBeUndefined();
+
+			await service.endSession('run-1');
+
+			expect(service.getSessionServer('run-1')).toBeUndefined();
+		});
+	});
+
 	describe('endSession()', () => {
 		it('disconnects and releases the run session', async () => {
 			await service.startSession(USER_ID, 'run-1');

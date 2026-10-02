@@ -761,6 +761,11 @@ export const instanceGatewayResourceDecisionSchema = z.enum([
 	'denyOnce',
 	'allowOnce',
 	'allowForSession',
+	// Picks a browser when both the extension and the cloud browser are available.
+	'useLocalBrowserForChat',
+	'useLocalBrowserAlways',
+	'useCloudBrowserForChat',
+	'useCloudBrowserAlways',
 ]);
 export type InstanceGatewayResourceDecision = z.infer<typeof instanceGatewayResourceDecisionSchema>;
 
@@ -2870,6 +2875,8 @@ export const INSTANCE_ACTIVITY_CONTEXT_FLAG = '114_instance_activity_context';
 
 /** Per-user rollout gate for the cloud browser. Placeholder key until the PostHog flag exists. */
 export const INSTANCE_AI_CLOUD_BROWSER_FLAG = '1xx_instance_ai_cloud_browser';
+/** Matches the editor's experiment variant, so one PostHog flag gates both. */
+export const INSTANCE_AI_CLOUD_BROWSER_ENABLED_VARIANT = 'variant';
 
 /**
  * `110_instance_ai_folder_exploration` is multivariate — the enabled arm is a

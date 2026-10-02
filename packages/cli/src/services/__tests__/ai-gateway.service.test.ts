@@ -940,6 +940,38 @@ describe('AiGatewayService', () => {
 			);
 		});
 
+		it('sends the token in the given header instead of Authorization', async () => {
+			requestMock
+				.mockResolvedValueOnce(ok({ token: 'mock-jwt', expiresIn: 3600 }))
+				.mockResolvedValueOnce(ok({}));
+			const service = makeService();
+
+			await service.sendGatewayRequestForUser(
+				USER_ID,
+				{ method: 'POST', path: '/browserbase/v1/sessions', tokenHeader: 'x-bb-api-key' },
+				'Failed',
+			);
+
+			expect(requestMock).toHaveBeenNthCalledWith(
+				2,
+				expect.objectContaining({ headers: { 'x-bb-api-key': 'mock-jwt' } }),
+			);
+		});
+
+		it('passes the gateway error message through', async () => {
+			requestMock
+				.mockResolvedValueOnce(ok({ token: 'mock-jwt', expiresIn: 3600 }))
+				.mockResolvedValueOnce({
+					statusCode: 402,
+					body: { error: { message: 'Your Assistant credits have been depleted.' } },
+				});
+			const service = makeService();
+
+			await expect(
+				service.sendGatewayRequestForUser(USER_ID, { method: 'GET', path: '/wallet' }, 'Failed'),
+			).rejects.toThrow('Failed: Your Assistant credits have been depleted.');
+		});
+
 		it('throws UserError with the error message when the gateway returns a non-ok status', async () => {
 			requestMock
 				.mockResolvedValueOnce(ok({ token: 'mock-jwt', expiresIn: 3600 }))

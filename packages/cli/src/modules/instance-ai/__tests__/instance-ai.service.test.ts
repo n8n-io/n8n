@@ -502,6 +502,7 @@ type ShutdownServiceInternals = {
 	gatewayService: { disconnectAll: MockedFunction<() => void> };
 	sandboxService: { stopSandboxExpiryTimers: MockedFunction<() => void> };
 	browserSessionService: { shutdown: MockedFunction<() => Promise<void>> };
+	cloudBrowserService: { shutdown: MockedFunction<() => Promise<void>> };
 	domainAccessTrackersByThread: Map<string, unknown>;
 	eventBus: { clear: MockedFunction<() => void> };
 	eventLog: { flushAll: MockedFunction<() => Promise<void>> };
@@ -513,6 +514,7 @@ type ShutdownServiceInternals = {
 
 type TerminalGuardOrderServiceInternals = {
 	terminalOutcome: InstanceAiTerminalOutcomeService;
+	cloudBrowserService: { releaseRun: Mock };
 	checkpointStore: {
 		load: Mock<(key: string) => Promise<SerializableAgentState | undefined>>;
 		save: Mock<(key: string, state: SerializableAgentState) => Promise<void>>;
@@ -704,6 +706,7 @@ function createTerminalGuardOrderService(): TerminalGuardOrderServiceInternals {
 	service.failedInternalFollowUpStreaks = new Map();
 	service.schedulePlannedTasks = vi.fn(async () => {});
 	service.preserveHitlOnShutdown = new Set();
+	service.cloudBrowserService = { releaseRun: vi.fn(async () => {}) };
 
 	service.terminalOutcome = new InstanceAiTerminalOutcomeService({
 		eventBus: service.eventBus,
@@ -741,6 +744,7 @@ function stubInitialRunSurface(
 		resolveContextAttachments: vi.fn(() => []),
 		createProxyRunConfig: vi.fn(async () => ({})),
 		browserSessionService: { getExtensionTraceContext: vi.fn() },
+		cloudBrowserService: { releaseRun: vi.fn(async () => {}), shutdown: vi.fn(async () => {}) },
 		readThreadProvenance: vi.fn(async () => ({})),
 		isRunDebugEnabled: vi.fn(() => false),
 		createExecutionEnvironment: vi.fn(async () => ({
@@ -909,6 +913,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			sendCorrectionToTask: Mock;
 			sandboxService: InstanceAiSandboxService;
 			browserSessionService: { findMcpServer: Mock };
+			browserRouterService: { resolveForRun: Mock };
 			domainAccessTrackersByThread: Map<string, unknown>;
 			threadGrantRepo: { findKeys: Mock };
 			evalCredentialAllowlists: EvalThreadCredentialAllowlistService;
@@ -992,6 +997,11 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		service.sendCorrectionToTask = vi.fn();
 		service.domainAccessTrackersByThread = new Map();
 		service.browserSessionService = { findMcpServer: vi.fn(() => undefined) };
+		service.browserRouterService = {
+			resolveForRun: vi.fn(
+				async ({ extensionServer }: { extensionServer: unknown }) => extensionServer,
+			),
+		};
 		service.threadGrantRepo = { findKeys: vi.fn(async () => new Set<string>()) };
 		service.sandboxService = new InstanceAiSandboxService({
 			config: { sandboxEnabled: true, sandboxProvider: 'daytona' } as InstanceAiConfig,
@@ -1277,6 +1287,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			sendCorrectionToTask: Mock;
 			sandboxService: InstanceAiSandboxService;
 			browserSessionService: { findMcpServer: Mock };
+			browserRouterService: { resolveForRun: Mock };
 			domainAccessTrackersByThread: Map<string, unknown>;
 			threadGrantRepo: { findKeys: Mock };
 			evalCredentialAllowlists: EvalThreadCredentialAllowlistService;
@@ -1354,6 +1365,11 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		service.sendCorrectionToTask = vi.fn();
 		service.domainAccessTrackersByThread = new Map();
 		service.browserSessionService = { findMcpServer: vi.fn(() => undefined) };
+		service.browserRouterService = {
+			resolveForRun: vi.fn(
+				async ({ extensionServer }: { extensionServer: unknown }) => extensionServer,
+			),
+		};
 		service.threadGrantRepo = { findKeys: vi.fn(async () => new Set<string>()) };
 		service.sandboxService = new InstanceAiSandboxService({
 			config: { sandboxEnabled: true, sandboxProvider: 'daytona' } as InstanceAiConfig,
@@ -1442,6 +1458,7 @@ describe('InstanceAiService — shutdown', () => {
 		service.gatewayService = { disconnectAll: vi.fn() };
 		service.sandboxService = { stopSandboxExpiryTimers: vi.fn() };
 		service.browserSessionService = { shutdown: vi.fn(async () => {}) };
+		service.cloudBrowserService = { shutdown: vi.fn(async () => {}) };
 		service.domainAccessTrackersByThread = new Map();
 		service.eventBus = { clear: vi.fn() };
 		service.eventLog = { flushAll: vi.fn(async () => {}) };
@@ -1451,6 +1468,8 @@ describe('InstanceAiService — shutdown', () => {
 		service.instanceAiErrorReporter = createInstanceAiErrorReporterMock();
 
 		await service.shutdown();
+
+		expect(service.cloudBrowserService.shutdown).toHaveBeenCalledTimes(1);
 
 		// Shutdown only stops the idle-eviction timers; thread-scoped sandboxes
 		// are left intact (via the delegated sandboxService) so a restarted
@@ -2232,6 +2251,7 @@ type SuspendedRunResumeServiceInternals = {
 	rebuildAgentForResume: Mock;
 	threadPushRef: { get: Mock };
 	browserSessionService: { getExtensionTraceContext: Mock };
+	cloudBrowserService: { releaseRun: Mock };
 };
 
 function createSuspendedRunResumeService(): SuspendedRunResumeServiceInternals {
@@ -2283,6 +2303,7 @@ function createSuspendedRunResumeService(): SuspendedRunResumeServiceInternals {
 	service.browserSessionService = {
 		getExtensionTraceContext: vi.fn(() => ({ connectionState: 'disconnected' })),
 	};
+	service.cloudBrowserService = { releaseRun: vi.fn(async () => {}) };
 	return service;
 }
 
@@ -3757,6 +3778,62 @@ describe('InstanceAiService — terminal response guard wiring', () => {
 		expect(setupEvents).toHaveLength(2);
 	});
 
+	it('releases the cloud browser session when a resumed run completes', async () => {
+		const service = createTerminalGuardOrderService();
+		const abortController = new AbortController();
+		mockClaimedResumeResult({
+			status: 'completed',
+			agentRunId: 'agent-run-1',
+			text: Promise.resolve('done'),
+			workSummary: emptyWorkSummary(),
+		});
+
+		await service.processResumedStream(
+			{},
+			{},
+			{
+				runId: 'run-1',
+				agentRunId: 'agent-run-1',
+				threadId: 'thread-a',
+				user: fakeUser,
+				toolCallId: 'tool-call-1',
+				signal: abortController.signal,
+				abortController,
+			},
+		);
+
+		expect(service.cloudBrowserService.releaseRun).toHaveBeenCalledWith('run-1');
+	});
+
+	it('keeps the cloud browser session when a resumed run suspends again', async () => {
+		const service = createTerminalGuardOrderService();
+		vi.spyOn(service.terminalOutcome, 'evaluateWaitingResponse').mockResolvedValue(undefined);
+		const abortController = new AbortController();
+		mockClaimedResumeResult({
+			status: 'suspended',
+			agentRunId: 'agent-run-1',
+			text: Promise.resolve(''),
+			workSummary: emptyWorkSummary(),
+			suspension: { toolCallId: 'tool-call-1', requestId: 'req-1', suspendPayload: {} },
+		});
+
+		await service.processResumedStream(
+			{},
+			{},
+			{
+				runId: 'run-1',
+				agentRunId: 'agent-run-1',
+				threadId: 'thread-a',
+				user: fakeUser,
+				toolCallId: 'tool-call-1',
+				signal: abortController.signal,
+				abortController,
+			},
+		);
+
+		expect(service.cloudBrowserService.releaseRun).not.toHaveBeenCalled();
+	});
+
 	it('claims credits for the consumed segment when a resumed run suspends again', async () => {
 		const service = createTerminalGuardOrderService();
 		vi.spyOn(service.terminalOutcome, 'evaluateWaitingResponse').mockResolvedValue(undefined);
@@ -3979,6 +4056,7 @@ describe('InstanceAiService — terminal response guard wiring', () => {
 			inFlightExecutions: new Set<Promise<unknown>>(),
 			gatewayService: { disconnectAll: vi.fn() },
 			browserSessionService: { shutdown: vi.fn(async () => {}) },
+			cloudBrowserService: { shutdown: vi.fn(async () => {}) },
 			sandboxService: { stopSandboxExpiryTimers: vi.fn() },
 			domainAccessTrackersByThread: new Map(),
 			eventLog: { flushAll: vi.fn(async () => {}) },
@@ -5098,6 +5176,7 @@ describe('InstanceAiService run input gates', () => {
 			instanceAiErrorReporter: { beginRun: vi.fn(), endRun: vi.fn() },
 			createProxyRunConfig: vi.fn(async () => ({})),
 			browserSessionService: { getExtensionTraceContext: vi.fn() },
+			cloudBrowserService: { releaseRun: vi.fn(async () => {}), shutdown: vi.fn(async () => {}) },
 			readThreadProvenance: vi.fn(async () => ({})),
 			instanceContext: { buildBlock },
 			reclassifyMaskedStreamFailure: vi.fn(async (error: unknown) => {
@@ -5152,6 +5231,17 @@ describe('InstanceAiService run input gates', () => {
 		expect(input).toContain(
 			'<instance-urls>\nWebhook base URL: https://acme.example.com/webhook\nForm base URL: https://acme.example.com/form\n</instance-urls>',
 		);
+	});
+
+	it('releases the run cloud browser session when the run ends', async () => {
+		const { service } = createRunInputService(false);
+
+		await service.executeRun(fakeUser, 'thread-1', 'run-1', 'Check a site', new AbortController());
+
+		const { cloudBrowserService } = service as unknown as {
+			cloudBrowserService: { releaseRun: Mock };
+		};
+		expect(cloudBrowserService.releaseRun).toHaveBeenCalledWith('run-1');
 	});
 
 	it('omits the instance URLs on an internal follow-up', async () => {
@@ -5229,6 +5319,7 @@ describe('InstanceAiService — user message persistence on cancel', () => {
 		schedulePlannedTasks: Mock;
 		taskProjector: { syncFromWorkflowLoop: Mock };
 		browserSessionService: { getExtensionTraceContext: Mock };
+		cloudBrowserService: { releaseRun: Mock };
 		adapterService: { resolveExperimentGates: Mock };
 	};
 
@@ -5251,6 +5342,7 @@ describe('InstanceAiService — user message persistence on cancel', () => {
 		service.browserSessionService = {
 			getExtensionTraceContext: vi.fn(() => ({ connectionState: 'disconnected' })),
 		};
+		service.cloudBrowserService = { releaseRun: vi.fn(async () => {}) };
 		service.adapterService = {
 			resolveExperimentGates: vi.fn(async () => ({ nodeContextEnabled: false })),
 		};

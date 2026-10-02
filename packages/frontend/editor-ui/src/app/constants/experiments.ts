@@ -120,6 +120,11 @@ export const INSTANCE_AI_SPLIT_EMPTY_STATE_EXPERIMENT = createExperiment(
 
 export const INSTANCE_AI_COMPUTER_USE_EXPERIMENT = createExperiment('091_instance_ai_computer_use');
 
+/** Placeholder key until the PostHog flag exists; must match the backend's `INSTANCE_AI_CLOUD_BROWSER_FLAG`. */
+export const INSTANCE_AI_CLOUD_BROWSER_EXPERIMENT = createExperiment(
+	'1xx_instance_ai_cloud_browser',
+);
+
 export const EXPOSE_ALL_WORKFLOWS_TO_MCP_EXPERIMENT = createExperiment(
 	'095_expose_all_workflows_to_mcp',
 );
@@ -191,6 +196,7 @@ export const EXPERIMENTS_TO_TRACK = [
 	INSTANCE_AI_PERSONALIZED_PROMPT_SUGGESTIONS_EXPERIMENT.name,
 	INSTANCE_AI_SPLIT_EMPTY_STATE_EXPERIMENT.name,
 	INSTANCE_AI_COMPUTER_USE_EXPERIMENT.name,
+	INSTANCE_AI_CLOUD_BROWSER_EXPERIMENT.name,
 	EXPOSE_ALL_WORKFLOWS_TO_MCP_EXPERIMENT.name,
 	TRIAL_INTRO_MODAL_EXPERIMENT.name,
 	INLINE_AGENTS_EXPERIMENT.name,

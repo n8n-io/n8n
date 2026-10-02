@@ -178,10 +178,44 @@ ${getSignalList(available, 'bullet').join('\n')}
 `;
 }
 
-export function getComputerUsePrompt({ state }: { state: ComputerUseState | undefined }): string {
+const CLOUD_BROWSER_SECTION = `
+### Cloud Browser
+
+You can use a cloud browser with the browser_* tools. It runs on n8n's infrastructure, not on the user's computer, so it is not signed in to anything.
+
+- Call \`browser_start_session\` first, before searching for or loading any other browser tool. If the user also has the browser extension connected, they may be asked which browser to use; the result says which one started.
+- Then load the browser tools the task needs with a single \`search_tools\` call (for example \`browser_navigate\`, \`browser_snapshot\`, \`browser_click\`, \`browser_type\`), rather than one search per tool.
+- A cloud browser session is billed for every minute it is open. Start one session per task, and call \`browser_end_session\` as soon as you no longer need it.
+- Only one session can be open at a time, and the instance has a limit on concurrent sessions. If a session cannot start (for example a session limit or no credits left), tell the user what the error says. Do not retry in a loop.
+- Each message starts with a clean browser: the session ends when your reply finishes, and no cookies, logins or tabs carry over.
+- You cannot sign in for the user in the cloud browser. If a task needs a signed-in account, tell the user.
+- Some sites block automated browsers (CAPTCHAs, "unusual traffic" or "access denied" pages). Do not try to get around this. Tell the user the site blocked the cloud browser.
+- **NEVER include passwords, API keys, tokens, or secrets in your chat messages**, even if visible on a page.`;
+
+export function getComputerUsePrompt({
+	state,
+	cloudBrowserEnabled = false,
+}: {
+	state: ComputerUseState | undefined;
+	/** The run can start cloud browser sessions through `browser_start_session`. */
+	cloudBrowserEnabled?: boolean;
+}): string {
+	const extensionPrompt = getExtensionComputerUsePrompt(state, cloudBrowserEnabled);
+	if (!cloudBrowserEnabled) return extensionPrompt;
+	return [extensionPrompt, CLOUD_BROWSER_SECTION].filter(Boolean).join('\n');
+}
+
+function getExtensionComputerUsePrompt(
+	state: ComputerUseState | undefined,
+	cloudBrowserEnabled: boolean,
+): string {
 	if (!state) return '';
 
-	const available = availableChannels(state);
+	// With the cloud browser on, an unconnected extension is not offered as the way to browse.
+	const offerExtension = !cloudBrowserEnabled || state.browser.status === 'connected';
+	const available = availableChannels(state).filter(
+		(channel) => channel !== 'browser' || offerExtension,
+	);
 	if (available.length === 0) return '';
 
 	const connectedChannels = CHANNEL_ORDER.filter(
@@ -241,12 +275,13 @@ secrets; never ask the user to paste secret values into chat.
 
 The browser_navigate tool requires a connected tab to already be open. For fresh browser connection or when browser_navigate fails use browser_tab_open to open the url in a new tab.
 If a browser_* tool call fails because the browser is unreachable (e.g. connection lost, extension not responding), ask the user to verify the **n8n Browser Use** Chrome extension is installed and connected. If needed, they can reinstall from the Chrome Web Store: ${BROWSER_USE_EXTENSION_URL}`);
-	} else if (available.includes('browser')) {
+	} else if (offerExtension && available.includes('browser')) {
 		promptParts.push(`
 ### Browser Automation (Disabled in Computer Use)
 
 Browser tools are not connected. If the user asks for browser automation, tell them to select the + button beside the chat input, select "Connect browser", and follow the setup instructions. The setup requires the n8n Browser Use Chrome extension from the Chrome Web Store: ${BROWSER_USE_EXTENSION_URL}`);
-	} else {
+	} else if (offerExtension) {
+		// Without the cloud browser there is no other way to browse.
 		promptParts.push(`
 ### Browser Automation (Unavailable)
 

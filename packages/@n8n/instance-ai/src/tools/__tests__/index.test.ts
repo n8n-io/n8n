@@ -278,6 +278,12 @@ describe('domain tool construction', () => {
 		expect(orchestrationTools.has('eval-data')).toBe(false);
 	});
 
+	it('keeps the browser session tools always loaded, so the first browser call needs no tool search', () => {
+		expect(ALWAYS_LOADED_TOOL_NAMES.has('browser_start_session')).toBe(true);
+		expect(ALWAYS_LOADED_TOOL_NAMES.has('browser_end_session')).toBe(true);
+		expect(ALWAYS_LOADED_TOOL_NAMES.has('browser_navigate')).toBe(false);
+	});
+
 	it('registers build-agent only when a builder delegate is present on the domain context', () => {
 		const withoutDelegate = createOrchestrationTools(
 			makeContext({ domainContext: {} } as Partial<InstanceAiContext>) as never,

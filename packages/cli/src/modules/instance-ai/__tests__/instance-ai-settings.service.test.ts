@@ -2542,6 +2542,14 @@ describe('InstanceAiSettingsService', () => {
 			});
 		});
 
+		it('returns the saved browser preference for run start, if any', () => {
+			expect(service.getBrowserUsePreference(user({ browserUsePreference: 'cloud' }))).toBe(
+				'cloud',
+			);
+			expect(service.getBrowserUsePreference(user({ browserUsePreference: null }))).toBeUndefined();
+			expect(service.getBrowserUsePreference(user())).toBeUndefined();
+		});
+
 		it('saves the browser preference', async () => {
 			await service.updateUserPreferences(user(), { browserUsePreference: 'local' });
 

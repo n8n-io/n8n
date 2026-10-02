@@ -57,6 +57,11 @@ export const ORCHESTRATION_TOOL_NAMES = new Set<string>(Object.values(ORCHESTRAT
 
 export const ALWAYS_LOADED_TOOL_NAMES = new Set<string>([
 	DOMAIN_TOOL_IDS.ASK_USER,
+	// The cloud browser router's entry points. Every browser task starts with
+	// browser_start_session, so deferring it adds a search before any page opens.
+	// Only runs with the cloud browser register them.
+	'browser_start_session',
+	'browser_end_session',
 	// Registered on onboarding threads only, so every other thread pays nothing for the entry.
 	// Deferring it would price the user's "let me out" at search_tools + load_tool.
 	DOMAIN_TOOL_IDS.LEAVE_ONBOARDING,

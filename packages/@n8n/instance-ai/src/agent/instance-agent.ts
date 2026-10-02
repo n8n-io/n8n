@@ -204,6 +204,7 @@ export async function createInstanceAgent(
 			resolvePromptProfile({}).profile.systemPromptVersion,
 		{
 			computerUseState: context.computerUseState,
+			cloudBrowserEnabled: context.cloudBrowserEnabled,
 			toolSearchEnabled: hasDeferrableTools,
 			mcpToolSearchEnabled: hasDeferredExternalMcpTools,
 			licenseHints: context.licenseHints,

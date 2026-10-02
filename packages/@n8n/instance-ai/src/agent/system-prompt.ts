@@ -12,6 +12,7 @@ import type { ComputerUseState } from '../types';
 
 interface SystemPromptOptions {
 	computerUseState?: ComputerUseState;
+	cloudBrowserEnabled?: boolean;
 	toolSearchEnabled?: boolean;
 	mcpToolSearchEnabled?: boolean;
 	/** Human-readable hints about licensed features that are NOT available on this instance. */
@@ -245,6 +246,7 @@ export function createSystemPromptRenderer(communicationStyleSection: string) {
 	return function getSystemPromptForStyle(options: SystemPromptOptions = {}): string {
 		const {
 			computerUseState,
+			cloudBrowserEnabled,
 			toolSearchEnabled,
 			mcpToolSearchEnabled,
 			licenseHints,
@@ -298,7 +300,7 @@ Don't fabricate provider setup mechanics (credential field names, secret values,
 
 ${UNTRUSTED_CONTENT_DOCTRINE}
 
-${getComputerUsePrompt({ state: computerUseState })}
+${getComputerUsePrompt({ state: computerUseState, cloudBrowserEnabled })}
 ${getLicenseLimitationsSection(licenseHints)}
 ${getReadOnlySection(branchReadOnly)}
 ${getLimitedModeSection(parameterValuesHidden)}

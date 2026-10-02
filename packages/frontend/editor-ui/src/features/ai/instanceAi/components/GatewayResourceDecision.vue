@@ -12,12 +12,23 @@ import ConfirmationFooter from './ConfirmationFooter.vue';
 import ConfirmationPreview from './ConfirmationPreview.vue';
 import SplitButton from './SplitButton.vue';
 
-type InstanceGatewayResourceDecision = 'denyOnce' | 'allowOnce' | 'allowForSession';
+type InstanceGatewayResourceDecision =
+	| 'denyOnce'
+	| 'allowOnce'
+	| 'allowForSession'
+	| 'useLocalBrowserForChat'
+	| 'useLocalBrowserAlways'
+	| 'useCloudBrowserForChat'
+	| 'useCloudBrowserAlways';
 
 const INSTANCE_GATEWAY_RESOURCE_DECISIONS = [
 	'denyOnce',
 	'allowOnce',
 	'allowForSession',
+	'useLocalBrowserForChat',
+	'useLocalBrowserAlways',
+	'useCloudBrowserForChat',
+	'useCloudBrowserAlways',
 ] as const satisfies readonly InstanceGatewayResourceDecision[];
 
 function isInstanceGatewayResourceDecision(
@@ -47,7 +58,27 @@ const DECISION_LABELS: Record<InstanceGatewayResourceDecision, string> = {
 	allowOnce: i18n.baseText('instanceAi.gatewayConfirmation.allowOnce'),
 	allowForSession: i18n.baseText('instanceAi.gatewayConfirmation.allowForSession'),
 	denyOnce: i18n.baseText('instanceAi.gatewayConfirmation.denyOnce'),
+	useLocalBrowserForChat: i18n.baseText('instanceAi.gatewayConfirmation.useLocalBrowserForChat'),
+	useLocalBrowserAlways: i18n.baseText('instanceAi.gatewayConfirmation.useLocalBrowserAlways'),
+	useCloudBrowserForChat: i18n.baseText('instanceAi.gatewayConfirmation.useCloudBrowserForChat'),
+	useCloudBrowserAlways: i18n.baseText('instanceAi.gatewayConfirmation.useCloudBrowserAlways'),
 };
+
+/** Each browser offered for this chat, with "always" in its dropdown. */
+const BROWSER_CHOICES = [
+	{ forChat: 'useLocalBrowserForChat', always: 'useLocalBrowserAlways', testId: 'local' },
+	{ forChat: 'useCloudBrowserForChat', always: 'useCloudBrowserAlways', testId: 'cloud' },
+] as const;
+
+const browserChoices = computed(() =>
+	BROWSER_CHOICES.filter((choice) => props.options.includes(choice.forChat)).map((choice) => ({
+		primary: optionEntry(choice.forChat),
+		items: props.options.includes(choice.always)
+			? [{ id: choice.always, label: getDecisionLabel(choice.always) }]
+			: [],
+		testId: choice.testId,
+	})),
+);
 
 function getDecisionLabel(decision: InstanceGatewayResourceDecision): string {
 	return DECISION_LABELS[decision];
@@ -96,12 +127,16 @@ async function confirm(decision: InstanceGatewayResourceDecision) {
 		<div :class="$style.body">
 			<N8nText tag="div" size="medium" bold>
 				{{
-					i18n.baseText('instanceAi.gatewayConfirmation.prompt', {
-						interpolate: { resources: props.resource },
-					})
+					browserChoices.length > 0
+						? i18n.baseText('instanceAi.gatewayConfirmation.browserChoicePrompt')
+						: i18n.baseText('instanceAi.gatewayConfirmation.prompt', {
+								interpolate: { resources: props.resource },
+							})
 				}}
 			</N8nText>
-			<ConfirmationPreview>{{ props.description }}</ConfirmationPreview>
+			<ConfirmationPreview v-if="browserChoices.length === 0">{{
+				props.description
+			}}</ConfirmationPreview>
 		</div>
 
 		<ConfirmationFooter>
@@ -113,6 +148,19 @@ async function confirm(decision: InstanceGatewayResourceDecision) {
 				:label="denyPrimary.label"
 				data-test-id="gateway-decision-deny"
 				@click="confirm(denyPrimary.decision)"
+			/>
+
+			<!-- Browser choice -->
+			<SplitButton
+				v-for="choice in browserChoices"
+				:key="choice.testId"
+				variant="outline"
+				:label="choice.primary.label"
+				:items="choice.items"
+				:data-test-id="`gateway-decision-browser-${choice.testId}`"
+				caret-aria-label="More browser options"
+				@click="confirm(choice.primary.decision)"
+				@select="(id: string) => isInstanceGatewayResourceDecision(id) && confirm(id)"
 			/>
 
 			<!-- Approve side -->

@@ -34,7 +34,11 @@ import {
 } from '@n8n/instance-ai';
 import { hasGlobalScope } from '@n8n/permissions';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
-import type { ICredentialDataDecryptedObject, IUserSettings } from 'n8n-workflow';
+import type {
+	BrowserUsePreference,
+	ICredentialDataDecryptedObject,
+	IUserSettings,
+} from 'n8n-workflow';
 import { jsonParse, UnexpectedError } from 'n8n-workflow';
 
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
@@ -1292,6 +1296,11 @@ export class InstanceAiSettingsService {
 
 	isCloudBrowserEnabled(): boolean {
 		return this.config.cloudBrowserEnabled;
+	}
+
+	/** The browser the user picked "always" when both browsers are available, if any. */
+	getBrowserUsePreference(user: User): BrowserUsePreference | undefined {
+		return this.readUserPreferences(user).browserUsePreference ?? undefined;
 	}
 
 	/** Whether this instance is in the activation-capped trial cohort. */

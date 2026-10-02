@@ -412,6 +412,49 @@ describe('createToolsFromLocalMcpServer', () => {
 			});
 		});
 
+		it('calls suspend() with browser choice options', async () => {
+			const browserChoice = {
+				toolGroup: 'browser',
+				resource: 'browser',
+				description: 'Choose which browser n8n Assistant should use',
+				options: ['useLocalBrowserForChat', 'useCloudBrowserAlways'],
+			};
+			const server = makeMockServer();
+			server.callTool.mockResolvedValue({
+				content: [
+					{
+						type: 'text',
+						text: `${GATEWAY_CONFIRMATION_REQUIRED_PREFIX}${JSON.stringify(browserChoice)}`,
+					},
+				],
+				isError: true,
+			});
+			const suspend = vi.fn().mockResolvedValue(undefined);
+			const execute = getExecute(server);
+
+			await execute({}, makeCtx({ suspend }));
+
+			expect(suspend).toHaveBeenCalledTimes(1);
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+			expect(suspend.mock.calls[0][0].resourceDecision).toMatchObject(browserChoice);
+		});
+
+		it('re-calls the server with a browser choice on resume', async () => {
+			const server = makeMockServer();
+			server.callTool.mockResolvedValue({ content: [{ type: 'text', text: 'started' }] });
+			const execute = getExecute(server);
+
+			await execute(
+				{},
+				makeCtx({ resumeData: { approved: true, resourceDecision: 'useCloudBrowserForChat' } }),
+			);
+
+			expect(server.callTool).toHaveBeenCalledWith(
+				{ name: 'write_file', arguments: { _confirmation: 'useCloudBrowserForChat' } },
+				expect.anything(),
+			);
+		});
+
 		it('calls suspend() for a JSON-envelope GATEWAY_CONFIRMATION_REQUIRED error', async () => {
 			const server = makeMockServer();
 			server.callTool.mockResolvedValue(JSON_ENVELOPE_CONFIRMATION_ERROR);

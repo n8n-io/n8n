@@ -10,6 +10,7 @@ import { GlobalConfig } from '@n8n/config';
 import { LICENSE_FEATURES } from '@n8n/constants';
 import { UserRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { isRecord } from '@n8n/utils/is-record';
 import { InstanceSettings } from 'n8n-core';
 import type { ICredentialDataDecryptedObject, IHttpRequestMethods, INode } from 'n8n-workflow';
 import { OperationalError, UserError } from 'n8n-workflow';
@@ -107,7 +108,9 @@ export class AiGatewayService {
 				ignoreHttpStatusErrors: true, // A non-2xx status is surfaced as a `UserError` carrying the status code
 			});
 		if (response.statusCode < 200 || response.statusCode >= 300) {
-			throw new UserError(`${errorMessage}: HTTP ${response.statusCode}`);
+			// The gateway's error messages are written for users, e.g. "credits depleted".
+			const gatewayMessage = gatewayErrorMessage(response.body);
+			throw new UserError(`${errorMessage}: ${gatewayMessage ?? `HTTP ${response.statusCode}`}`);
 		}
 		return response.body as T;
 	}
@@ -329,17 +332,25 @@ export class AiGatewayService {
 			path: string;
 			headers?: Record<string, string>;
 			body?: unknown;
+			/**
+			 * Header that carries the token. Provider routes read it from the provider's own
+			 * API key header (e.g. `x-bb-api-key`); other routes use `Authorization: Bearer`.
+			 */
+			tokenHeader?: string;
 		},
 		errorMessage: string,
 	): Promise<T> {
 		const baseUrl = this.requireBaseUrl();
 		const jwt = await this.getOrFetchToken(userId);
+		const authHeaders = options.tokenHeader
+			? { [options.tokenHeader]: jwt }
+			: { Authorization: `Bearer ${jwt}` };
 
 		return await this.gatewayRequest<T>(
 			{
 				method: options.method,
 				url: `${baseUrl}${AiGatewayService.GATEWAY_PATH_PREFIX}${options.path}`,
-				headers: { ...options.headers, Authorization: `Bearer ${jwt}` },
+				headers: { ...options.headers, ...authHeaders },
 				body: options.body,
 			},
 			errorMessage,
@@ -593,4 +604,9 @@ export class AiGatewayService {
 		});
 		return token;
 	}
+}
+
+function gatewayErrorMessage(body: unknown): string | undefined {
+	if (!isRecord(body) || !isRecord(body.error)) return undefined;
+	return typeof body.error.message === 'string' ? body.error.message : undefined;
 }
