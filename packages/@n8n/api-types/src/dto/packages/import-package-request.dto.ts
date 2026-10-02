@@ -145,8 +145,9 @@ export class ImportPackageRequestDto extends Z.class(
 		).openapi({
 			description:
 				'Controls whether imported workflows are published after content is written. ' +
-				'`preserve-published-state` (default) follows the existing target workflow when matched, ' +
-				'or the package state for a new workflow.',
+				'`preserve-published-state` (default) keeps new workflows inactive, and republishes an ' +
+				'updated workflow only when it was already published and the package carries the ' +
+				'version the source publishes.',
 		}),
 		workflowIdPolicy: optionalEnum(['new', 'source'], 'source').openapi({
 			description:

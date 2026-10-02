@@ -16,7 +16,7 @@ import { Z } from '../../zod-class';
 const importPackageSummarySchema = z.object({
 	sourceN8nVersion: z.string(),
 	sourceId: z.string(),
-	exportedAt: z.string(),
+	exportedAt: z.string().datetime(),
 });
 
 const workflowPublishingOutcomeSchema = z.object({
@@ -74,8 +74,8 @@ const importCredentialSummarySchema = z.object({
 });
 
 const importDataTableSummarySchema = z.object({
-	matched: z.number(),
-	created: z.number(),
+	matched: z.number().int().nonnegative(),
+	created: z.number().int().nonnegative(),
 });
 
 const importVariableSummarySchema = z.object({
