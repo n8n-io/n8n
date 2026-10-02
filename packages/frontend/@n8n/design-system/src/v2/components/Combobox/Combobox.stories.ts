@@ -225,6 +225,7 @@ function useRemoteWorkflowSearch(getSelectedIds: () => string[]) {
 		}
 
 		query.value = value;
+		requestId += 1;
 		if (value === '' && idleResults.value.length > 0) {
 			showIdleResults();
 			return;
