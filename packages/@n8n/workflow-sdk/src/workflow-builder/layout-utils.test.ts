@@ -10,8 +10,12 @@ import {
 	DEFAULT_Y,
 	DEFAULT_NODE_SIZE,
 } from './constants';
-import { calculateNodePositions, calculateNodePositionsDagre } from './layout-utils';
-import type { GraphNode, ConnectionTarget } from '../types/base';
+import {
+	calculateNodePositions,
+	calculateNodePositionsDagre,
+	getWorkflowNodeDimensions,
+} from './layout-utils';
+import type { GraphNode, ConnectionTarget, NodeJSON, WorkflowJSON } from '../types/base';
 
 // Helper to create connection targets
 function makeTarget(node: string, type: string = 'main', index: number = 0): ConnectionTarget {
@@ -559,5 +563,53 @@ describe('calculateNodePositionsDagre', () => {
 			expect(withUnresolvedMember).toEqual(withOnlySurvivingMember);
 			expect(withUnresolvedMember).not.toEqual(withoutGroup);
 		});
+	});
+});
+
+describe('getWorkflowNodeDimensions', () => {
+	const jsonNode = (name: string, type: string): NodeJSON => ({
+		id: name,
+		name,
+		type,
+		typeVersion: 1,
+		position: [0, 0],
+	});
+
+	it('makes a node taller for each output above two', () => {
+		const json: WorkflowJSON = {
+			name: 'Switch',
+			nodes: [
+				jsonNode('Switch', 'n8n-nodes-base.switch'),
+				...['A', 'B', 'C', 'D'].map((name) => jsonNode(name, 'n8n-nodes-base.noOp')),
+			],
+			connections: {
+				Switch: {
+					main: ['A', 'B', 'C', 'D'].map((node) => [{ node, type: 'main', index: 0 }]),
+				},
+			},
+		};
+
+		const dimensions = getWorkflowNodeDimensions(json);
+
+		expect(dimensions.get('Switch')).toEqual({ width: 96, height: 160 });
+		expect(dimensions.get('A')).toEqual({ width: 96, height: 96 });
+	});
+
+	it('gives AI sub-nodes and their host node the canvas sizes', () => {
+		const json: WorkflowJSON = {
+			name: 'Agent',
+			nodes: [
+				jsonNode('Agent', '@n8n/n8n-nodes-langchain.agent'),
+				jsonNode('Model', '@n8n/n8n-nodes-langchain.lmChatOpenAi'),
+			],
+			connections: {
+				Model: { ai_languageModel: [[{ node: 'Agent', type: 'ai_languageModel', index: 0 }]] },
+			},
+		};
+
+		const dimensions = getWorkflowNodeDimensions(json);
+
+		expect(dimensions.get('Agent')).toEqual({ width: 224, height: 96 });
+		expect(dimensions.get('Model')).toEqual({ width: 80, height: 80 });
 	});
 });
