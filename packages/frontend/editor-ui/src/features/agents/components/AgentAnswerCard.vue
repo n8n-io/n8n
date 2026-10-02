@@ -1,17 +1,18 @@
 <script setup lang="ts">
 import AgentMarkdownChunk from '@/features/agents/components/AgentMarkdownChunk.vue';
 import ChatBubble from './ChatBubble.vue';
-import AgentAvatar from './AgentAvatar.vue';
+import AgentAvatar, { type AgentAvatarKind } from './AgentAvatar.vue';
 
 defineProps<{
 	answeredAt?: string | null;
 	source: string;
+	status?: AgentAvatarKind;
 }>();
 </script>
 
 <template>
 	<div :class="$style.root">
-		<AgentAvatar kind="idle" size="sm" />
+		<AgentAvatar :kind="status ?? 'idle'" size="sm" />
 		<ChatBubble :class="$style.content" position="left">
 			<AgentMarkdownChunk :source="source" />
 		</ChatBubble>

@@ -1,4 +1,4 @@
-import type { JsonObject } from 'n8n-workflow';
+import type { IDataObject, JsonObject } from 'n8n-workflow';
 
 import type { AgentEvalRatingRecord } from '../../agentEvals.types';
 import type { ReviewDraft } from '../agent-eval-review';
@@ -7,6 +7,7 @@ import {
 	readAgentAnswer,
 	readCaseRequest,
 	readCorrectionText,
+	readErrorMessage,
 	resolveReviewRowView,
 } from '../agent-eval-review';
 
@@ -73,6 +74,37 @@ describe.each([
 		['undefined', undefined],
 	])('returns null for %s', (_case, input) => {
 		expect(read(input)).toBeNull();
+	});
+});
+
+describe('readErrorMessage', () => {
+	// Most failure paths in agent-eval-runner.service.ts write `{ message }`.
+	it('reads a plain message', () => {
+		expect(readErrorMessage({ message: 'Case has no value in the mapped input column.' })).toBe(
+			'Case has no value in the mapped input column.',
+		);
+	});
+
+	// A failed-but-ran execution writes `{ errors, finalText }` instead, with no
+	// `message` key — joined into one line rather than picking just the first.
+	it('joins an errors array when there is no message', () => {
+		expect(readErrorMessage({ errors: ['Tool timed out', 'No response from model'] })).toBe(
+			'Tool timed out; No response from model',
+		);
+	});
+
+	it('prefers message over errors when both are present', () => {
+		expect(readErrorMessage({ message: 'Run failed', errors: ['ignored'] })).toBe('Run failed');
+	});
+
+	test.each([
+		['an empty object', {}],
+		['a non-array errors', { errors: 'not an array' }],
+		['an errors array with no strings', { errors: [1, null] }],
+		['null', null],
+		['undefined', undefined],
+	])('returns null for %s', (_label, input) => {
+		expect(readErrorMessage(input as IDataObject | null)).toBeNull();
 	});
 });
 

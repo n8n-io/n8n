@@ -110,6 +110,46 @@ describe('AgentEvalChecksPanel', () => {
 		expect(getByTestId('agent-eval-checks-filter-all')).toHaveTextContent('4');
 	});
 
+	describe('pill visibility', () => {
+		// Each pill is dynamic on its own count — a run that's all passing still
+		// shows "Pass" and "All", it just has nothing to show under "Needs work".
+		it('hides the needs-work pill but shows pass and all when everything passes', () => {
+			const { queryByTestId, getByTestId } = render({
+				results: [result('pass-1', 'success'), result('pass-2', 'success')],
+			});
+
+			expect(queryByTestId('agent-eval-checks-filter-needs-work')).not.toBeInTheDocument();
+			expect(getByTestId('agent-eval-checks-filter-pass')).toHaveTextContent('2');
+			expect(getByTestId('agent-eval-checks-filter-all')).toHaveTextContent('2');
+		});
+
+		it('hides the pass pill but shows needs-work and all when everything needs work', () => {
+			const { queryByTestId, getByTestId } = render({
+				results: [result('fail-1', 'error'), result('fail-2', 'error')],
+			});
+
+			expect(queryByTestId('agent-eval-checks-filter-pass')).not.toBeInTheDocument();
+			expect(getByTestId('agent-eval-checks-filter-needs-work')).toHaveTextContent('2');
+			expect(getByTestId('agent-eval-checks-filter-all')).toHaveTextContent('2');
+		});
+
+		it('shows all three pills once both statuses are present', () => {
+			const { getByTestId } = render({
+				results: [result('pass-1', 'success'), result('fail-1', 'error')],
+			});
+
+			expect(getByTestId('agent-eval-checks-filter-needs-work')).toBeInTheDocument();
+			expect(getByTestId('agent-eval-checks-filter-pass')).toBeInTheDocument();
+			expect(getByTestId('agent-eval-checks-filter-all')).toBeInTheDocument();
+		});
+
+		it('hides the whole filter row when there are no results yet', () => {
+			const { queryByTestId } = render({ results: [] });
+
+			expect(queryByTestId('agent-eval-checks-filter-all')).not.toBeInTheDocument();
+		});
+	});
+
 	describe('status filter', () => {
 		const renderFour = () =>
 			render({

@@ -10,13 +10,13 @@
  * never passes `label` to `AgentEvalTryRow`.
  */
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
-import { N8nButton, N8nText } from '@n8n/design-system';
+import { N8nButton } from '@n8n/design-system';
 import { useToast } from '@n8n/composables/useToast';
-import { useI18n } from '@n8n/i18n';
+import { useI18n, type BaseTextKey } from '@n8n/i18n';
 
 import { useAgentEvalsStore } from '../agentEvals.store';
 import type { AgentEvalResultStatus } from '../agentEvals.types';
-import { readAgentAnswer, readCaseRequest } from '../utils/agent-eval-review';
+import { readAgentAnswer, readCaseRequest, readErrorMessage } from '../utils/agent-eval-review';
 import AgentAvatar, { type AgentAvatarKind } from './AgentAvatar.vue';
 import AgentEvalTryRow from './AgentEvalTryRow.vue';
 
@@ -70,6 +70,8 @@ type CheckRow = {
 	status: AgentAvatarKind;
 	input: string;
 	output: string | null;
+	runAt: string | null;
+	errorMessage: string | null;
 };
 
 const rows = computed<CheckRow[]>(() =>
@@ -80,6 +82,8 @@ const rows = computed<CheckRow[]>(() =>
 			status: override ?? resultStatusToKind(result.status),
 			input: readCaseRequest(result.input),
 			output: readAgentAnswer(result.output),
+			runAt: result.runAt,
+			errorMessage: readErrorMessage(result.errorDetails),
 		};
 	}),
 );
@@ -91,6 +95,45 @@ const needsWorkCount = computed(
 
 type StatusFilter = 'all' | 'pass' | 'needs-work';
 const statusFilter = ref<StatusFilter>('all');
+
+type StatusFilterOption = {
+	key: StatusFilter;
+	/** No avatar for "All" — it isn't one of `AgentAvatar`'s statuses. */
+	avatarKind?: AgentAvatarKind;
+	count: number;
+	labelKey: BaseTextKey;
+	/** "All" stays up regardless of count; the status pills only earn their
+	 *  place once there's at least one row in that status. */
+	alwaysShown?: boolean;
+};
+
+// One definition per pill, each carrying its own live count — rendered by
+// looping over this instead of hand-writing a button per status, so a pill
+// only ever exists when its count backs it up.
+const statusFilterOptions = computed<StatusFilterOption[]>(() => [
+	{
+		key: 'needs-work',
+		avatarKind: 'work',
+		count: needsWorkCount.value,
+		labelKey: 'agents.builder.agentEvals.checks.needsWork',
+	},
+	{
+		key: 'pass',
+		avatarKind: 'pass',
+		count: passedCount.value,
+		labelKey: 'agents.builder.agentEvals.checks.pass',
+	},
+	{
+		key: 'all',
+		count: rows.value.length,
+		labelKey: 'agents.builder.agentEvals.checks.all',
+		alwaysShown: true,
+	},
+]);
+
+const visibleStatusFilters = computed(() =>
+	statusFilterOptions.value.filter((option) => option.alwaysShown || option.count > 0),
+);
 
 // Needs-work first, then pass, so the rows a reviewer should act on are
 // never buried below the ones that already look fine — regardless of filter.
@@ -108,8 +151,14 @@ const sortedRows = computed(() =>
 );
 
 const filteredRows = computed(() => {
-	if (statusFilter.value === 'pass') return sortedRows.value.filter((row) => row.status === 'pass');
-	if (statusFilter.value === 'needs-work') {
+	// Guarded by the live count, not just which pill is selected: if the
+	// filtered-on status's count drops to 0 (its pill disappears, e.g. every
+	// "needs work" row got fixed), this falls back to unfiltered instead of
+	// leaving the list empty behind a filter with no pill left to clear it.
+	if (statusFilter.value === 'pass' && passedCount.value > 0) {
+		return sortedRows.value.filter((row) => row.status === 'pass');
+	}
+	if (statusFilter.value === 'needs-work' && needsWorkCount.value > 0) {
 		return sortedRows.value.filter((row) => row.status === 'work' || row.status === 'fail');
 	}
 	return sortedRows.value;
@@ -155,55 +204,29 @@ onBeforeUnmount(store.stopPollingRun);
 <template>
 	<section :class="$style.panel" data-testid="agent-eval-checks-panel">
 		<header :class="$style.header">
-			<div :class="$style.filters">
-				<button
+			<div v-if="rows.length > 0" :class="$style.filters">
+				<N8nButton
+					v-for="option in visibleStatusFilters"
+					:key="option.key"
 					type="button"
-					:class="[$style.filterPill, statusFilter === 'needs-work' && $style.filterPillActive]"
-					data-testid="agent-eval-checks-filter-needs-work"
-					@click="setStatusFilter('needs-work')"
+					size="small"
+					:variant="statusFilter === option.key ? 'outline' : 'subtle'"
+					:data-testid="`agent-eval-checks-filter-${option.key}`"
+					@click="setStatusFilter(option.key)"
 				>
-					<AgentAvatar kind="work" size="xs" />
-					<N8nText size="small">
-						{{
-							i18n.baseText('agents.builder.agentEvals.checks.needsWork', {
-								adjustToNumber: needsWorkCount,
-								interpolate: { count: String(needsWorkCount) },
-							})
-						}}
-					</N8nText>
-				</button>
-				<button
-					type="button"
-					:class="[$style.filterPill, statusFilter === 'pass' && $style.filterPillActive]"
-					data-testid="agent-eval-checks-filter-pass"
-					@click="setStatusFilter('pass')"
-				>
-					<AgentAvatar kind="pass" size="xs" />
-					<N8nText size="small">
-						{{
-							i18n.baseText('agents.builder.agentEvals.checks.pass', {
-								interpolate: { count: String(passedCount) },
-							})
-						}}
-					</N8nText>
-				</button>
-				<button
-					type="button"
-					:class="[$style.filterPill, statusFilter === 'all' && $style.filterPillActive]"
-					data-testid="agent-eval-checks-filter-all"
-					@click="setStatusFilter('all')"
-				>
-					<N8nText size="small">
-						{{
-							i18n.baseText('agents.builder.agentEvals.checks.all', {
-								interpolate: { count: String(rows.length) },
-							})
-						}}
-					</N8nText>
-				</button>
+					<template v-if="option.avatarKind" #icon>
+						<AgentAvatar :kind="option.avatarKind" size="xs" />
+					</template>
+					{{
+						i18n.baseText(option.labelKey, {
+							adjustToNumber: option.count,
+							interpolate: { count: String(option.count) },
+						})
+					}}
+				</N8nButton>
 			</div>
 			<N8nButton
-				variant="outline"
+				variant="subtle"
 				size="small"
 				:disabled="disabled || rerunning"
 				:loading="rerunning || inFlight"
@@ -221,6 +244,9 @@ onBeforeUnmount(store.stopPollingRun);
 				:status="row.status"
 				:input="row.input"
 				:output="row.output"
+				:date="row.runAt"
+				:error-message="row.errorMessage"
+				view="complete"
 				:test-id="`agent-eval-check-${row.id}`"
 				@save-check="onSaveCheck(row.id, $event)"
 				@actually-fine="onActuallyFine(row.id)"
@@ -256,37 +282,31 @@ onBeforeUnmount(store.stopPollingRun);
 	gap: var(--spacing--2xs);
 }
 
-.filterPill {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--3xs);
-	padding: var(--spacing--3xs) var(--spacing--xs);
-	background: none;
-	border: var(--border);
-	border-radius: var(--radius--lg);
-	cursor: pointer;
-	color: var(--text-color--base);
-}
-
-.filterPillActive {
-	background-color: var(--background--base);
-	border-color: var(--border-color--dark, var(--border-color));
-	color: var(--text-color--dark);
-}
-
 .list {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--2xs);
 	width: 100%;
+	border-radius: var(--radius--xl);
+	border: var(--border);
+	background-color: white;
 }
 
 .list > * {
-	border: var(--border);
-	// 10px (right) has no matching token between 8px and 12px — kept as a
-	// literal for the extra breathing room next to the row's chevron/icon.
-	padding: var(--spacing--3xs) 10px var(--spacing--3xs) var(--spacing--2xs);
-	border-radius: var(--radius--lg);
+	padding: 11px 16px;
+	border-bottom: var(--border);
+}
+
+.list > *:first-of-type {
+	border-radius: var(--radius--xl) var(--radius--xl) 0 0;
+}
+
+.list > *:last-of-type {
+	border-radius: 0 0 var(--radius--xl) var(--radius--xl);
+	border-bottom: none;
+}
+
+.list > *:hover {
+	background-color: var(--color--background);
 }
 
 .loadMore {

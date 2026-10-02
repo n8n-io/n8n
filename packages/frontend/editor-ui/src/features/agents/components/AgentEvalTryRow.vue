@@ -8,8 +8,15 @@
  * with no output, to reach the correction form.
  */
 import { computed, ref, watch } from 'vue';
-import { N8nButton, N8nIcon, N8nInput, N8nText } from '@n8n/design-system';
-import { useI18n } from '@n8n/i18n';
+import {
+	N8nButton,
+	N8nIcon,
+	N8nInput,
+	N8nText,
+	N8nTimeAgo,
+	type TextColor,
+} from '@n8n/design-system';
+import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import AgentAvatar, { type AgentAvatarKind } from './AgentAvatar.vue';
 import EvalInitialSample from './EvalInitialSample.vue';
 
@@ -21,8 +28,14 @@ const props = defineProps<{
 	label?: string;
 	/** Base id for this row; its toggle and expanded sample suffix it with `-toggle` / `-placeholder`. */
 	testId?: string;
+	date?: string | null;
 	/** True from "Save check" until the regenerate-and-rerun request resolves. */
 	savingCheck?: boolean;
+	view?: 'small' | 'complete';
+	/** Why this case errored, read from the result's `errorDetails`. Not rendered
+	 *  yet — plumbed through so a later pass can surface it without another
+	 *  round trip to the review utils. */
+	errorMessage?: string | null;
 }>();
 
 const emit = defineEmits<{
@@ -44,6 +57,23 @@ const needsCorrection = computed(() => props.status === 'work' || props.status =
 // to reach the correction form, so this isn't gated on output alone.
 const canExpand = computed(() => props.output !== null || needsCorrection.value);
 const showNotRun = computed(() => props.status === 'idle' && props.output === null);
+
+type StatusText = { labelKey: BaseTextKey; color: TextColor };
+
+// Only `view="complete"` reads this — the plain row's header already says its
+// own thing in place of a status line (the scenario `label`, or the identical
+// "not run" text via `showNotRun`).
+const STATUS_TEXT: Record<AgentAvatarKind, StatusText> = {
+	pass: { labelKey: 'agents.builder.agentEvals.checks.status.passes', color: 'success' },
+	strong: { labelKey: 'agents.builder.agentEvals.checks.status.passes', color: 'success' },
+	waiting: { labelKey: 'agents.builder.agentEvals.checks.status.running', color: 'text-light' },
+	idle: { labelKey: 'agents.builder.agentEvals.checks.status.neverRan', color: 'text-light' },
+	work: { labelKey: 'agents.builder.agentEvals.checks.status.needsWork', color: 'warning' },
+	fail: { labelKey: 'agents.builder.agentEvals.checks.status.needsWork', color: 'danger' },
+};
+
+const statusText = computed(() => i18n.baseText(STATUS_TEXT[props.status].labelKey));
+const statusColor = computed(() => STATUS_TEXT[props.status].color);
 
 function toggleExpanded() {
 	if (!canExpand.value) return;
@@ -73,7 +103,33 @@ watch(
 
 <template>
 	<div :class="$style.root" :data-test-id="testId">
-		<div :class="$style.header">
+		<div v-if="view === 'complete'" :class="$style.header" @click="toggleExpanded">
+			<AgentAvatar :kind="status" size="sm" />
+			<div :class="$style.headerTitle">
+				<N8nText color="text-dark" size="medium" bold>{{ input }}</N8nText>
+				<N8nText :color="statusColor" size="small">{{ statusText }}</N8nText>
+			</div>
+
+			<N8nText color="text-light" size="small">
+				<N8nTimeAgo v-if="date" :date="date" />
+				<span v-else>{{ i18n.baseText('instanceAi.testAgentPreview.avatar.notRun') }}</span>
+			</N8nText>
+
+			<N8nText v-if="showNotRun" color="text-light" size="small">
+				{{ i18n.baseText('instanceAi.testAgentPreview.avatar.notRun') }}
+			</N8nText>
+
+			<button
+				v-else-if="canExpand"
+				type="button"
+				:class="$style.expandToggle"
+				:data-test-id="testId && `${testId}-toggle`"
+			>
+				<N8nIcon :icon="expanded ? 'chevron-up' : 'chevron-down'" size="small" />
+			</button>
+		</div>
+
+		<div v-else :class="$style.header" @click="toggleExpanded">
 			<AgentAvatar :kind="status" size="sm" />
 			<N8nText v-if="label" color="text-light" size="small">{{ label }}</N8nText>
 			<N8nText color="text-dark" :class="$style.inputText" size="small">{{ input }}</N8nText>
@@ -85,7 +141,6 @@ watch(
 				type="button"
 				:class="$style.expandToggle"
 				:data-test-id="testId && `${testId}-toggle`"
-				@click="toggleExpanded"
 			>
 				<N8nIcon :icon="expanded ? 'chevron-up' : 'chevron-down'" size="small" />
 			</button>
@@ -95,7 +150,12 @@ watch(
 			:class="$style.sample"
 			:data-test-id="testId && `${testId}-placeholder`"
 		>
-			<EvalInitialSample :preview-input="input" :preview-output="output ?? ''" />
+			<EvalInitialSample
+				:preview-input="input"
+				:preview-output="output ?? ''"
+				:error-message="errorMessage ?? undefined"
+				:status="status"
+			/>
 
 			<template v-if="needsCorrection">
 				<N8nText bold color="text-dark" :class="$style.correctionHint">
@@ -140,7 +200,15 @@ watch(
 .header {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing--2xs);
+	gap: var(--spacing--sm);
+	cursor: pointer;
+}
+
+.headerTitle {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--5xs);
+	flex: 1;
 }
 
 .inputText {
