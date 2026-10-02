@@ -14,7 +14,7 @@ import {
 	type ListAgentsQueryDto,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { EventService } from '@n8n/backend-services';
+import { EventService, ProjectScopeService } from '@n8n/backend-services';
 import { In, isUniqueConstraintError, ProjectRelationRepository, type User } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import { hasGlobalScope } from '@n8n/permissions';
@@ -26,7 +26,6 @@ import { v4 as uuid } from 'uuid';
 // eslint-disable-next-line import-x/no-cycle
 import { CredentialsService } from '@/credentials/credentials.service';
 import { ConflictError } from '@n8n/errors';
-import { ProjectScopeService } from '@/permissions.ee/project-scope.service';
 
 import { getAgentOrThrow } from './utils/get-agent-or-throw';
 import { AgentChatAttachmentService } from './agent-chat-attachment.service';
@@ -34,6 +33,7 @@ import { AgentExecutionService } from './agent-execution.service';
 import { AgentKnowledgeService } from './agent-knowledge.service';
 import { AgentRuntimeCacheService } from './agent-runtime-cache.service';
 import { AgentTestChatService } from './agent-test-chat.service';
+import { AgentsSettingsService } from './agents-settings.service';
 import { Agent } from './entities/agent.entity';
 import { ChatIntegrationService } from './integrations/chat-integration.service';
 import { decomposeJsonConfig } from './json-config/agent-config-composition';
@@ -85,6 +85,7 @@ export class AgentsService {
 		private readonly agentExecutionService: AgentExecutionService,
 		private readonly credentialsService: CredentialsService,
 		private readonly projectScopeService: ProjectScopeService,
+		private readonly settingsService: AgentsSettingsService,
 	) {}
 
 	/**
@@ -130,6 +131,7 @@ export class AgentsService {
 			user,
 		}: CreateAgentOptions = {},
 	): Promise<{ agent: Agent; adopted: boolean }> {
+		await this.settingsService.assertEnabled();
 		const { schemaConfig, integrations } = await this.prepareInitialConfig(projectId, name, {
 			schema,
 			user,
@@ -334,6 +336,7 @@ export class AgentsService {
 		user: User,
 		options: ListAgentsQueryDto,
 	): Promise<AgentChatListResponse> {
+		if (!(await this.settingsService.getEnabled())) return { count: 0, data: [] };
 		const projectIds = await this.projectScopeService.getProjectIds(user, ['agent:execute']);
 		const { count, data } = await this.agentRepository.findByProjectIdsPaginated(
 			projectIds,

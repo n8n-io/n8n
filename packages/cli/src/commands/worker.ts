@@ -99,6 +99,7 @@ export class Worker extends BaseCommand<z.infer<typeof flagsSchema>> {
 				);
 			}
 
+			// oxlint-disable-next-line typescript/no-deprecated
 			const timeout = isValid ? parsed : this.globalConfig.queue.bull.gracefulShutdownTimeout;
 			// One field arms the force-exit timer, the other sizes the shutdown drains.
 			this.gracefulShutdownTimeoutInS = timeout;

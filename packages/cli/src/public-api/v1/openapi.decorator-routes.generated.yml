@@ -155,6 +155,11 @@ paths:
   /insights/summary:
     get:
       $ref: ./handlers/insights/spec/paths/getInsightsSummary.generated.yml
+  /settings/ldap:
+    get:
+      $ref: ./handlers/settings/spec/paths/getLdapConfiguration.generated.yml
+    put:
+      $ref: ./handlers/settings/spec/paths/updateLdapConfiguration.generated.yml
   /node-type-policies/instance:
     get:
       $ref: ./handlers/node-type-policies/spec/paths/getNodeTypeInstancePolicy.generated.yml

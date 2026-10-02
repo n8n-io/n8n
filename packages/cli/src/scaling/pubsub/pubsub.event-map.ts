@@ -47,6 +47,7 @@ export type PubSubCommandMap = {
 
 	'reload-otel-config': never;
 	'reload-instance-ai-settings': never;
+	'reload-agents-settings': never;
 
 	// #region Community packages
 

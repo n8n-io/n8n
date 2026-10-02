@@ -2,7 +2,7 @@ import type { INodeListSearchResult } from 'n8n-workflow';
 
 import { type GraphSearchReply } from '../helpers/utils';
 import { resolveSiteId } from '../site';
-import { microsoftApiRequest, type SharePointContext } from '../transport';
+import { microsoftApiRequest, type SharePointContext } from '../../transport';
 
 type SharePointDrive = { id?: string; name?: string; system?: object };
 type DriveSearchReply = GraphSearchReply<SharePointDrive>;

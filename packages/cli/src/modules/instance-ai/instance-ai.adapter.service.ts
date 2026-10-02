@@ -477,6 +477,7 @@ export class InstanceAiAdapterService {
 			 *  read on every `list()`: the harness appends credentials it creates
 			 *  mid-run, after this context is built. */
 			getCredentialIdAllowlist?: () => string[] | undefined;
+			resumeAgentBuild?: boolean;
 			/** Eval-only: resolve a credential's connection test as successful without
 			 *  contacting the provider. A predicate rather than a list because the
 			 *  harness registers bypasses mid-run, after this context is built. */
@@ -521,6 +522,7 @@ export class InstanceAiAdapterService {
 			threadId,
 			projectId,
 			getCredentialIdAllowlist,
+			resumeAgentBuild = false,
 			shouldBypassCredentialTest,
 			agentId,
 			configEvalsEnabled,
@@ -541,7 +543,7 @@ export class InstanceAiAdapterService {
 		// underlying config is cached process-wide (1h TTL) so this rarely hits
 		// the network, and telemetry must never block context creation.
 		void this.trackGatewayAvailability();
-		const builderDelegateAdapter = this.getBuilderDelegateAdapter();
+		const builderDelegateAdapter = this.getBuilderDelegateAdapter(resumeAgentBuild);
 		const credentialService = this.createCredentialAdapter(
 			user,
 			projectId,
@@ -658,8 +660,15 @@ export class InstanceAiAdapterService {
 	 * (and the build-agent sub-agent tool it powers) is simply absent from the
 	 * context.
 	 */
-	private getBuilderDelegateAdapter(): InstanceAiBuilderDelegateAdapterService | null {
-		if (!Container.get(ModuleRegistry).isActive('agents')) return null;
+	private getBuilderDelegateAdapter(
+		resumeAgentBuild: boolean,
+	): InstanceAiBuilderDelegateAdapterService | null {
+		const moduleRegistry = Container.get(ModuleRegistry);
+		if (
+			!moduleRegistry.isActive('agents') ||
+			(!resumeAgentBuild && moduleRegistry.settings.get('agents')?.enabled === false)
+		)
+			return null;
 		try {
 			return Container.get(InstanceAiBuilderDelegateAdapterService);
 		} catch (error) {
@@ -1749,6 +1758,7 @@ export class InstanceAiAdapterService {
 				try {
 					// Enforce credential tamper protection — same guard as the
 					// REST controller (workflows.controller PATCH /:workflowId).
+					// oxlint-disable-next-line typescript/no-deprecated
 					if (license.isSharingEnabled()) {
 						updateData = await enterpriseWorkflowService.preventTampering(
 							updateData,
@@ -1848,6 +1858,7 @@ export class InstanceAiAdapterService {
 				try {
 					// Enforce credential tamper protection — same guard as the
 					// REST controller (workflows.controller PATCH /:workflowId).
+					// oxlint-disable-next-line typescript/no-deprecated
 					if (license.isSharingEnabled()) {
 						updateData = await enterpriseWorkflowService.preventTampering(
 							updateData,

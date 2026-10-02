@@ -148,6 +148,7 @@ export class ChatHubExecutionWatcherService {
 		// 'workflowExecuteAfter' hook fires one more time after it should have stopped in 'waiting'
 		// state on a Chat response node. On this final hook call the runData.status is 'success' even though
 		// the execution isn't finished. On single-main mode this does not happen.
+		// oxlint-disable-next-line typescript/no-deprecated
 		if (runData.finished) {
 			await this.pushFinalResults(context, message);
 			await this.executionStore.remove(executionId);

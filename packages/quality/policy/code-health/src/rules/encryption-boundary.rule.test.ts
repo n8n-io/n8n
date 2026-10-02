@@ -24,6 +24,18 @@ import { baseConfig } from '@n8n/eslint-config/base';
 export default defineConfig(baseConfig);
 `;
 
+const OXLINT_BOUNDARY_CONFIG = `import { backendConfig } from '@n8n/oxlint-config/backend';
+import { defineConfig } from 'oxlint';
+
+export default defineConfig({ extends: [backendConfig] });
+`;
+
+const OXLINT_NODES_CONFIG = `import { nodesConfig } from '@n8n/oxlint-config/nodes';
+import { defineConfig } from 'oxlint';
+
+export default defineConfig({ extends: [nodesConfig] });
+`;
+
 describe('EncryptionBoundaryRule', () => {
 	let rootDir: string;
 	let rule: EncryptionBoundaryRule;
@@ -49,12 +61,13 @@ describe('EncryptionBoundaryRule', () => {
 		deps: Record<string, string>,
 		section = 'dependencies',
 		config: string | null = BOUNDARY_CONFIG,
+		configFilename = 'eslint.config.mjs',
 	): void {
 		write(
 			`${dir}/package.json`,
 			JSON.stringify({ name: path.basename(dir), [section]: deps }, null, 2),
 		);
-		if (config !== null) write(`${dir}/eslint.config.mjs`, config);
+		if (config !== null) write(`${dir}/${configFilename}`, config);
 	}
 
 	async function analyze(): Promise<string[]> {
@@ -76,6 +89,30 @@ describe('EncryptionBoundaryRule', () => {
 			expect(await analyze()).toEqual([]);
 		});
 
+		it('accepts an Oxlint package that extends backendConfig', async () => {
+			writePackage(
+				'packages/a',
+				{ 'n8n-core': 'workspace:*' },
+				'dependencies',
+				OXLINT_BOUNDARY_CONFIG,
+				'oxlint.config.mts',
+			);
+
+			expect(await analyze()).toEqual([]);
+		});
+
+		it('accepts an Oxlint package on nodesConfig', async () => {
+			writePackage(
+				'packages/a',
+				{ 'n8n-core': 'workspace:*' },
+				'dependencies',
+				OXLINT_NODES_CONFIG,
+				'oxlint.config.mts',
+			);
+
+			expect(await analyze()).toEqual([]);
+		});
+
 		it('flags a package on baseConfig only', async () => {
 			writePackage('packages/a', { 'n8n-core': 'workspace:*' }, 'dependencies', BASE_CONFIG);
 
@@ -93,14 +130,14 @@ describe('EncryptionBoundaryRule', () => {
 			expect(await analyze()).toHaveLength(1);
 		});
 
-		it('flags a package with no ESLint config at all', async () => {
+		it('flags a package with no supported lint config', async () => {
 			writePackage('packages/a', { 'n8n-core': 'workspace:*' }, 'dependencies', null);
 
 			const violations = await analyze();
 
 			expect(violations).toHaveLength(1);
 			expect(violations[0]).toContain('packages/a/package.json:1');
-			expect(violations[0]).toContain('has no ESLint config');
+			expect(violations[0]).toContain('has no supported lint config');
 		});
 
 		it('treats @n8n/db and devDependencies as triggers too', async () => {

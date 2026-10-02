@@ -32,6 +32,7 @@ export const FINISH_REASONS = [
 	'tool-calls',
 	'error',
 	'other',
+	'paused',
 ] as const;
 
 export type FinishReason = (typeof FINISH_REASONS)[number];
@@ -222,6 +223,10 @@ export interface AgentInputBoundary {
 }
 
 export interface ExecutionOptions {
+	/** Expose local and provider tools to the model. Defaults to true. */
+	toolsEnabled?: boolean;
+	/** Request a cooperative pause before the next model step. */
+	shouldPause?: () => Promise<boolean>;
 	/** Commit additional input between model calls. Stream consumers must acknowledge input-boundary chunks. */
 	onInputBoundary?: (boundary: AgentInputBoundary) => Promise<AgentDbMessage[]>;
 	maxIterations?: number;
@@ -432,6 +437,11 @@ export interface BuiltAgent {
 		method: 'stream',
 		data: unknown,
 		options: ResumeOptions & ExecutionOptions,
+	): Promise<StreamResult>;
+
+	/** Resume a user pause without repeating completed tools. */
+	resumePaused(
+		options: Omit<ResumeOptions, 'toolCallId'> & ExecutionOptions,
 	): Promise<StreamResult>;
 
 	/** Approve a tool that uses requireApproval or needsApprovalFn */

@@ -4,7 +4,7 @@ import { returnAllOrLimit } from '../../../../../../utils/descriptions';
 import { updateDisplayOptions } from '../../../../../../utils/utilities';
 import { LIST_SIMPLIFY_SELECT } from '../../helpers/utils';
 import { resolveSiteId, siteRLC } from '../../site';
-import { microsoftApiRequestAllItems } from '../../transport';
+import { microsoftApiRequestAllItems } from '../../../transport';
 
 const properties: INodeProperties[] = [
 	{ ...siteRLC, description: 'Select the site to retrieve lists from' },

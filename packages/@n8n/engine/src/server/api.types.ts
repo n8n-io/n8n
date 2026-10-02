@@ -19,6 +19,8 @@ export type SearchExecutionsRequest = ExecutionListQuery;
 export interface CancelExecutionResponse {
 	executionId: string;
 	status: 'cancelled';
+	/** When the execution ended, ISO-8601. The same time on a repeated cancel. */
+	finishedAt: string;
 }
 
 /** `T` without its `K` fields. */
