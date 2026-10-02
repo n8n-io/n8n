@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
 import {
-	N8nOption,
-	N8nSelect,
+	N8nSelect2,
 	N8nSettingsRow,
 	N8nSettingsRowGroup,
 	N8nSettingsSection,
+	type SelectValue,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@n8n/composables/useToast';
@@ -22,9 +22,22 @@ const toast = useToast();
 const rootEl = ref<HTMLElement | null>(null);
 const highlighted = ref(false);
 
-const selected = computed<DefaultEditor>({
-	get: () => store.resolvedDefaultEditor,
-	set: (value) => {
+const editorItems = computed(() => [
+	{
+		value: 'assistant',
+		label: i18n.baseText('experiments.openWorkflowInAssistant.setting.assistant'),
+	},
+	{
+		value: 'manual',
+		label: i18n.baseText('experiments.openWorkflowInAssistant.setting.manual'),
+	},
+]);
+
+const selected = computed({
+	get(): DefaultEditor {
+		return store.resolvedDefaultEditor;
+	},
+	set(value: SelectValue | undefined) {
 		store.saveDefaultEditor(value).catch((error: unknown) => {
 			toast.showError(
 				error,
@@ -58,16 +71,12 @@ onMounted(() => {
 					:description="i18n.baseText('experiments.openWorkflowInAssistant.setting.description')"
 				>
 					<template #action>
-						<N8nSelect v-model="selected" size="small" data-test-id="default-editor-select">
-							<N8nOption
-								value="assistant"
-								:label="i18n.baseText('experiments.openWorkflowInAssistant.setting.assistant')"
-							/>
-							<N8nOption
-								value="manual"
-								:label="i18n.baseText('experiments.openWorkflowInAssistant.setting.manual')"
-							/>
-						</N8nSelect>
+						<N8nSelect2
+							v-model="selected"
+							:items="editorItems"
+							size="small"
+							data-test-id="default-editor-select"
+						/>
 					</template>
 				</N8nSettingsRow>
 			</N8nSettingsRowGroup>
