@@ -8,7 +8,7 @@ import { useAgentsN8nChatFlag } from './useAgentsN8nChatFlag';
 import type { AgentConfigFingerprint, AgentTelemetryStatus } from './agentTelemetry.utils';
 
 export type AgentCreateSource = 'button' | 'dropdown' | 'card';
-export type N8nChatAgentSource = 'card' | 'library';
+export type N8nChatAgentSource = 'card' | 'library' | 'dropdown';
 
 export function useAgentTelemetry() {
 	const telemetry = useTelemetry();

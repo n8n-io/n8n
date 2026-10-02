@@ -33,6 +33,7 @@ const {
 	appSettingsStoreMock,
 	agentsN8nChatVariant,
 	replaceMock,
+	pushMock,
 	showErrorMock,
 	telemetryTrack,
 } = vi.hoisted(() => ({
@@ -101,6 +102,7 @@ const {
 	workflowPreviewSuggestionsComponent: { name: 'WorkflowPreviewSuggestionsStub' },
 	personalizedPromptSuggestionsComponent: { name: 'InstanceAiPersonalizedPromptSuggestionsStub' },
 	replaceMock: vi.fn(),
+	pushMock: vi.fn(),
 	showErrorMock: vi.fn(),
 	telemetryTrack: vi.fn(),
 }));
@@ -277,6 +279,40 @@ vi.mock('@/features/agents/n8nChatPage/components/N8nChatAgentSection.vue', () =
 	},
 }));
 
+vi.mock('@/features/agents/n8nChatPage/components/N8nChatAgentPicker.vue', () => ({
+	default: {
+		name: 'N8nChatAgentPickerStub',
+		props: { modelValue: { required: false, default: null }, projectId: { required: false } },
+		emits: ['update:modelValue'],
+		data: () => ({
+			agent: {
+				id: 'agent-1',
+				name: 'Support Agent',
+				project: { id: 'project-1', name: 'Project' },
+			},
+		}),
+		template: `
+			<div data-test-id="n8n-chat-agent-picker-stub">
+				<button
+					data-test-id="n8n-chat-agent-picker-stub-select-agent"
+					@click="$emit('update:modelValue', agent)"
+				>select agent</button>
+				<button
+					data-test-id="n8n-chat-agent-picker-stub-select-assistant"
+					@click="$emit('update:modelValue', null)"
+				>select assistant</button>
+			</div>
+		`,
+	},
+}));
+
+// Not otherwise exercised by this view's tests; defaults on so the mentions-gating
+// tests below can prove the agent-selection gate rather than a flag that's already off.
+const mentionsFlagEnabled = { value: true };
+vi.mock('@/features/ai/assistant-at-mentions/composables/useIsAssistantAtMentionsEnabled', () => ({
+	useIsAssistantAtMentionsEnabled: () => computed(() => mentionsFlagEnabled.value),
+}));
+
 vi.mock('uuid', () => ({
 	v4: () => 'thread-placeholder',
 }));
@@ -284,7 +320,7 @@ vi.mock('uuid', () => ({
 vi.mock('vue-router', async (importOriginal) => ({
 	...(await importOriginal()),
 	useRoute: () => ({ query: routeQuery }),
-	useRouter: () => ({ push: vi.fn(), replace: replaceMock }),
+	useRouter: () => ({ push: pushMock, replace: replaceMock }),
 }));
 
 const InstanceAiInputStub = defineComponent({
@@ -300,6 +336,9 @@ const InstanceAiInputStub = defineComponent({
 		isSubmitting: { type: Boolean, required: false },
 		isWorkflowBuilderAvailable: { type: Boolean, required: false },
 		fixedRows: { type: Number, required: false },
+		contextualSuggestion: { type: String, required: false, default: null },
+		placeholder: { type: String, required: false },
+		mentionsEnabled: { type: Boolean, required: false },
 	},
 	emits: ['submit'],
 	setup(props, { emit, expose, slots }) {
@@ -414,6 +453,16 @@ const InstanceAiInputStub = defineComponent({
 					props.isWorkflowBuilderAvailable === false ? 'unavailable' : 'available',
 				),
 				h(
+					'span',
+					{ 'data-test-id': 'instance-ai-input-placeholder' },
+					props.placeholder ?? 'unset',
+				),
+				h(
+					'span',
+					{ 'data-test-id': 'instance-ai-input-mentions-enabled' },
+					String(props.mentionsEnabled),
+				),
+				h(
 					'button',
 					{
 						'data-test-id': 'instance-ai-input-stub-submit',
@@ -500,6 +549,7 @@ describe('InstanceAiEmptyView', () => {
 		cloudPlanStoreMock.state.initialized = false;
 		cloudPlanStoreMock.currentUserCloudInfo = null;
 		appSettingsStoreMock.isCloudDeployment = false;
+		mentionsFlagEnabled.value = true;
 	});
 
 	afterEach(() => {
@@ -1373,5 +1423,99 @@ describe('InstanceAiEmptyView', () => {
 				expect(getByTestId('instance-ai-input-suggestions-component')).toHaveTextContent('set');
 			},
 		);
+	});
+
+	describe('n8n Chat variant B', () => {
+		beforeEach(() => {
+			agentsN8nChatVariant.value = 'variant-b';
+		});
+
+		it('renders the picker instead of the empty-state title', () => {
+			const { getByTestId, queryByTestId } = renderView();
+
+			expect(getByTestId('n8n-chat-agent-picker-stub')).toBeInTheDocument();
+			expect(queryByTestId('instance-ai-empty-state')).not.toBeInTheDocument();
+		});
+
+		it('forces the default layout, even with the proactive starter and split-layout experiments on', () => {
+			experimentMocks.proactiveAgentEnabled.value = true;
+			experimentMocks.splitBelowInputVariant.value = true;
+
+			const { getByTestId, queryByTestId } = renderView();
+
+			expect(queryByTestId('instance-ai-proactive-starter')).not.toBeInTheDocument();
+			expect(queryByTestId('instance-ai-split-empty-state')).not.toBeInTheDocument();
+			expect(getByTestId('n8n-chat-agent-picker-stub')).toBeInTheDocument();
+		});
+
+		it('shows the control suggestions with the Assistant label, and the Assistant placeholder, by default', () => {
+			const { getByTestId } = renderView();
+
+			expect(getByTestId('instance-ai-input-suggestions')).toHaveTextContent('4');
+			expect(getByTestId('instance-ai-input-suggestions-component')).toHaveTextContent('set');
+			expect(getByTestId('instance-ai-input-suggestions-component-props')).toHaveTextContent(
+				'"label":"Try asking n8n Assistant"',
+			);
+			expect(getByTestId('instance-ai-input-placeholder')).toHaveTextContent('Ask n8n Assistant…');
+		});
+
+		it('hides suggestions and shows the agent name in the placeholder once an agent is selected', async () => {
+			const { getByTestId } = renderView();
+
+			await fireEvent.click(getByTestId('n8n-chat-agent-picker-stub-select-agent'));
+			await nextTick();
+
+			expect(getByTestId('instance-ai-input-suggestions')).toHaveTextContent('unset');
+			expect(getByTestId('instance-ai-input-suggestions-component')).toHaveTextContent('unset');
+			expect(getByTestId('instance-ai-input-placeholder')).toHaveTextContent('Ask Support Agent…');
+		});
+
+		it('keeps the composer usable for a selected agent when the workflow builder is unavailable', async () => {
+			useSettingsStore().moduleSettings = {
+				'instance-ai': {
+					...defaultModuleSettings,
+					sandboxEnabled: false,
+					workflowBuilderAvailable: false,
+				},
+			};
+			const { getByTestId, queryByTestId } = renderView();
+			expect(getByTestId('instance-ai-input-availability')).toHaveTextContent('unavailable');
+
+			await fireEvent.click(getByTestId('n8n-chat-agent-picker-stub-select-agent'));
+			await nextTick();
+
+			expect(getByTestId('instance-ai-input-availability')).toHaveTextContent('available');
+			expect(queryByTestId('instance-ai-workflow-builder-unavailable')).not.toBeInTheDocument();
+		});
+
+		it('disables mentions once an agent is selected, and re-enables them back on the Assistant', async () => {
+			const { getByTestId } = renderView();
+
+			expect(getByTestId('instance-ai-input-mentions-enabled')).toHaveTextContent('true');
+
+			await fireEvent.click(getByTestId('n8n-chat-agent-picker-stub-select-agent'));
+			await nextTick();
+			expect(getByTestId('instance-ai-input-mentions-enabled')).toHaveTextContent('false');
+
+			await fireEvent.click(getByTestId('n8n-chat-agent-picker-stub-select-assistant'));
+			await nextTick();
+			expect(getByTestId('instance-ai-input-mentions-enabled')).toHaveTextContent('true');
+		});
+
+		it('navigates to the agent chat route on submit, without starting an Assistant thread', async () => {
+			const { getByTestId } = renderView();
+
+			await fireEvent.click(getByTestId('n8n-chat-agent-picker-stub-select-agent'));
+			await nextTick();
+			await fireEvent.click(getByTestId('instance-ai-input-stub-submit'));
+			await flushPromises();
+
+			expect(pushMock).toHaveBeenCalledWith({
+				name: 'AgentN8nChatView',
+				params: { agentId: 'agent-1' },
+			});
+			expect(store.syncThread).not.toHaveBeenCalled();
+			expect(thread.sendMessage).not.toHaveBeenCalled();
+		});
 	});
 });
