@@ -1,4 +1,4 @@
-import { WithTimestamps } from '@n8n/db';
+import { DateTimeColumn, WithTimestamps } from '@n8n/db';
 import type { User, WorkflowEntity } from '@n8n/db';
 import {
 	Column,
@@ -45,4 +45,8 @@ export class MigrationWorkflowOwner extends WithTimestamps {
 	@ManyToOne('User', { onDelete: 'SET NULL', nullable: true })
 	@JoinColumn({ name: 'assignedById' })
 	assignedBy: Relation<User> | null;
+
+	/** When a person assigned the owner. `null` for a suggestion. */
+	@DateTimeColumn({ nullable: true })
+	assignedAt: Date | null;
 }
