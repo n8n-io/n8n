@@ -12,3 +12,4 @@ export {
 } from './task-handler';
 export { PrecisionTimer, type TimerBackend } from './precision-timer';
 export { backoff, type BackoffOptions } from './backoff';
+export { MIN_RENEWAL_INTERVAL_MS } from './lease-constants';

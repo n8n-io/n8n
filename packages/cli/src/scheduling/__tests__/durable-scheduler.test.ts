@@ -135,6 +135,26 @@ describe('DurableScheduler', () => {
 		});
 	});
 
+	describe('short lease warning', () => {
+		it('warns when the lease ends before its first renewal', () => {
+			const { logger } = makeScheduler({ leaseDurationSeconds: 5 });
+
+			expect(logger.warn).toHaveBeenCalledWith(
+				expect.stringContaining('lease duration'),
+				expect.objectContaining({ leaseDurationSeconds: 5, minRenewalIntervalSeconds: 5 }),
+			);
+		});
+
+		it('does not warn when the lease renews before it ends', () => {
+			const { logger } = makeScheduler({ leaseDurationSeconds: 6 });
+
+			expect(logger.warn).not.toHaveBeenCalledWith(
+				expect.stringContaining('lease duration'),
+				expect.anything(),
+			);
+		});
+	});
+
 	describe('drain rate warning', () => {
 		it('warns when a pass cannot drain the fastest possible schedule before the next one is due', () => {
 			// maxPerJob is 1000: a schedule as fast as this instance allows (the default
