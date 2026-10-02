@@ -168,6 +168,7 @@ export class WorkflowCreationService {
 		} = options;
 
 		// Ensure workflow is created as inactive
+		// oxlint-disable-next-line typescript/no-deprecated
 		newWorkflow.active = false;
 		newWorkflow.versionId = uuid();
 		newWorkflow.parentFolder = null;

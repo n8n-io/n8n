@@ -525,6 +525,7 @@ export class UserService {
 			);
 		}
 
+		// oxlint-disable-next-line typescript/no-deprecated
 		if (!this.license.isWithinUsersLimit()) {
 			this.logger.debug(
 				'Request to send email invite(s) to user(s) failed because the user limit quota has been reached',
@@ -540,6 +541,7 @@ export class UserService {
 		}
 
 		const attributes = invitations.map(({ email, role }) => {
+			// oxlint-disable-next-line typescript/no-deprecated
 			if (role === 'global:admin' && !this.license.isAdvancedPermissionsLicensed()) {
 				throw new ForbiddenError(
 					'Cannot invite admin user without advanced permissions. Please upgrade to a license that includes this feature.',

@@ -589,6 +589,7 @@ export class EvalThreadRestoreService {
 
 		await this.workflowRepo.runInTransaction({ policyCleared: cleared }, async (em, ctx) => {
 			if (stored) {
+				// oxlint-disable-next-line typescript/no-deprecated
 				const { name, nodes, connections, active, versionId, parentFolder } = entity;
 				await this.workflowRepo.updateContent(
 					workflow.id,

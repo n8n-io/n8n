@@ -106,6 +106,7 @@ export class ChatHubToolService {
 		updates: ChatHubUpdateToolRequest,
 		trx?: EntityManager,
 	): Promise<ChatHubTool> {
+		// oxlint-disable-next-line typescript/no-deprecated
 		const tool = await withTransaction(this.chatToolRepository.manager, trx, async (em) => {
 			const existingTool = await this.chatToolRepository.getOneById(id, user.id, em);
 			if (!existingTool) {
@@ -133,6 +134,7 @@ export class ChatHubToolService {
 	}
 
 	async deleteTool(id: string, userId: string, trx?: EntityManager): Promise<void> {
+		// oxlint-disable-next-line typescript/no-deprecated
 		await withTransaction(this.chatToolRepository.manager, trx, async (em) => {
 			const existingTool = await this.chatToolRepository.getOneById(id, userId, em);
 			if (!existingTool) {

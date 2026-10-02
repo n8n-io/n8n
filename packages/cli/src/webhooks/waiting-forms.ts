@@ -109,6 +109,7 @@ export class WaitingForms extends WaitingWebhooks {
 
 		let lastNodeExecuted = execution.data.resultData.lastNodeExecuted as string;
 
+		// oxlint-disable-next-line typescript/no-deprecated
 		if (execution.finished) {
 			const workflow = this.createWorkflow(execution.workflowData);
 			const completionPage = this.findCompletionPage(

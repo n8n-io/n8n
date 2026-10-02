@@ -157,6 +157,7 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 			this.abortSignal,
 			this.parentNode,
 		);
+		// oxlint-disable-next-line typescript/no-deprecated - Still used by some edge cases
 		context.addInputData(NodeConnectionTypes.AiTool, replacements.inputData);
 		return context;
 	}

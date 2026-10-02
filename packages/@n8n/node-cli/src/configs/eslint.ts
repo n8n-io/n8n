@@ -11,6 +11,7 @@ function createConfig(supportCloud = true): ConfigArray {
 		? n8nCommunityNodesPlugin.configs.recommended
 		: n8nCommunityNodesPlugin.configs.recommendedWithoutN8nCloudSupport;
 
+	// oxlint-disable-next-line typescript/no-deprecated - We're moving away from eslint
 	return tseslint.config(
 		globalIgnores(['dist']),
 		{

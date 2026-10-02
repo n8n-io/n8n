@@ -192,6 +192,7 @@ export class ExecuteNodeService {
 		newWorkflow.isArchived = true;
 		newWorkflow.versionId = uuid();
 		newWorkflow.name = `Execute node ${node.type}`;
+		// oxlint-disable-next-line typescript/no-deprecated
 		newWorkflow.active = false;
 		newWorkflow.activeVersionId = null;
 		newWorkflow.nodes = [node];

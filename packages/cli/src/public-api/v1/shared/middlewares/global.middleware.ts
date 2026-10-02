@@ -172,6 +172,7 @@ export const validLicenseWithUserQuota = (
 	next: express.NextFunction,
 ): express.Response | void => {
 	const license = Container.get(License);
+	// oxlint-disable-next-line typescript/no-deprecated
 	if (license.getUsersLimit() !== UNLIMITED_LICENSE_QUOTA) {
 		return res.status(403).json({
 			message: USER_QUOTA_FORBIDDEN_MESSAGE,

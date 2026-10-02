@@ -97,6 +97,7 @@ export class DataTableColumnRepository extends Repository<DataTableColumn> {
 	}
 
 	async addColumn(dataTableId: string, schema: DataTableCreateColumnSchema, trx?: EntityManager) {
+		// oxlint-disable-next-line typescript/no-deprecated
 		return await withTransaction(this.manager, trx, async (em) => {
 			this.validateNotSystemColumn(schema.name);
 			await this.validateUniqueColumnName(schema.name, dataTableId, em);
@@ -123,6 +124,7 @@ export class DataTableColumnRepository extends Repository<DataTableColumn> {
 	}
 
 	async deleteColumn(dataTableId: string, column: DataTableColumn, trx?: EntityManager) {
+		// oxlint-disable-next-line typescript/no-deprecated
 		await withTransaction(this.manager, trx, async (em) => {
 			await em.remove(DataTableColumn, column);
 
@@ -142,6 +144,7 @@ export class DataTableColumnRepository extends Repository<DataTableColumn> {
 		targetIndex: number,
 		trx?: EntityManager,
 	) {
+		// oxlint-disable-next-line typescript/no-deprecated
 		await withTransaction(this.manager, trx, async (em) => {
 			const columnCount = await em.countBy(DataTableColumn, { dataTableId });
 
@@ -167,6 +170,7 @@ export class DataTableColumnRepository extends Repository<DataTableColumn> {
 		newName: string,
 		trx?: EntityManager,
 	) {
+		// oxlint-disable-next-line typescript/no-deprecated
 		return await withTransaction(this.manager, trx, async (em) => {
 			this.validateNotSystemColumn(newName);
 			await this.validateUniqueColumnName(newName, dataTableId, em);
@@ -188,6 +192,7 @@ export class DataTableColumnRepository extends Repository<DataTableColumn> {
 	}
 
 	async shiftColumns(dataTableId: string, lowestIndex: number, delta: -1 | 1, trx?: EntityManager) {
+		// oxlint-disable-next-line typescript/no-deprecated
 		await withTransaction(this.manager, trx, async (em) => {
 			await em
 				.createQueryBuilder()

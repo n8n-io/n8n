@@ -66,7 +66,7 @@ it.each([
 ])('should reject the nonsensical override %o', (override) => {
 	expect(() =>
 		resolveSystemTaskRunOptions(taskWith({ effects: 'idempotent', ...override })),
-	).toThrowError(
+	).toThrow(
 		expect.objectContaining({
 			message: 'A system task declares an out-of-range option',
 			extra: expect.objectContaining({ name: 'test-task', field: Object.keys(override)[0] }),
@@ -108,7 +108,7 @@ it.each([0, -5, 2.5, NaN, Infinity, 2_147_484])(
 	(retryDelaySeconds) => {
 		expect(() =>
 			validateSystemTask(taskWith({ effects: 'idempotent', retryDelaySeconds })),
-		).toThrowError(
+		).toThrow(
 			expect.objectContaining({
 				message: 'A system task declares an out-of-range retry delay',
 				extra: { name: 'test-task', retryDelaySeconds },
@@ -134,7 +134,7 @@ it.each([0, -1, NaN, Infinity])(
 					placement: { scope: 'instance', instanceTypes: ['main'] },
 				}),
 			),
-		).toThrowError(
+		).toThrow(
 			expect.objectContaining({
 				message: 'A system task declares an interval that is not positive and finite',
 				extra: { name: 'test-task', intervalSeconds },
