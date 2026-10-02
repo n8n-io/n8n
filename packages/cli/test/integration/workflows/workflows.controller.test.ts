@@ -1184,6 +1184,18 @@ describe('GET /workflows', () => {
 		expect(response.body).toEqual({ count: 0, data: [] });
 	});
 
+	test('should ignore null optional filters', async () => {
+		const workflow = await createWorkflow({ name: 'Unfiltered workflow' }, owner);
+
+		const response = await authOwnerAgent
+			.get('/workflows')
+			.query({ filter: JSON.stringify({ active: null, projectId: null }) })
+			.expect(200);
+
+		expect(response.body.count).toBe(1);
+		expect(response.body.data).toEqual([expect.objectContaining({ id: workflow.id })]);
+	});
+
 	describe('ids filter', () => {
 		test('should omit requested workflows that the user cannot read or that do not exist', async () => {
 			const readableWorkflow = await createWorkflow({ name: 'Readable' }, member);

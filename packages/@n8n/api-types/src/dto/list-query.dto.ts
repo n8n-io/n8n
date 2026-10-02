@@ -51,6 +51,9 @@ function parsedFilter<T extends z.ZodTypeAny>(schema: T) {
 				ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Invalid filter format' });
 				return z.NEVER;
 			}
+			if (parsed !== null && typeof parsed === 'object' && !Array.isArray(parsed)) {
+				parsed = Object.fromEntries(Object.entries(parsed).filter(([, field]) => field !== null));
+			}
 			const result = schema.safeParse(parsed);
 			if (result.success) return Object.keys(result.data).length ? result.data : undefined;
 			ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Invalid filter fields' });

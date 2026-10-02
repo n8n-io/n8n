@@ -35,6 +35,15 @@ describe('list query DTOs', () => {
 		expect(WorkflowListQueryDto.safeParse({ sortBy: 'id:asc' }).success).toBe(false);
 	});
 
+	it('ignores null optional workflow filters', () => {
+		expect(
+			WorkflowListQueryDto.parse({
+				filter: JSON.stringify({ active: null, ids: null, projectId: 'project-1' }),
+			}).filter,
+		).toEqual({ projectId: 'project-1' });
+		expect(WorkflowListQueryDto.parse({ filter: '{"active":null}' }).filter).toBeUndefined();
+	});
+
 	it('parses credential filters and selects without workflow fields', () => {
 		const query = CredentialsGetManyRequestQuery.parse({
 			filter: JSON.stringify({ name: 'test', projectId: 'project-1', ignored: 'value' }),
@@ -45,6 +54,17 @@ describe('list query DTOs', () => {
 		expect(query.filter).toEqual({ name: 'test', projectId: 'project-1' });
 		expect(query.select).toEqual({ id: true, type: true });
 		expect(query.take).toBe(5);
+	});
+
+	it('ignores null optional credential filters', () => {
+		expect(
+			CredentialsGetManyRequestQuery.parse({
+				filter: JSON.stringify({ name: null, type: null, projectId: 'project-1' }),
+			}).filter,
+		).toEqual({ projectId: 'project-1' });
+		expect(
+			CredentialsGetManyRequestQuery.parse({ filter: '{"name":null}' }).filter,
+		).toBeUndefined();
 	});
 
 	it('uses the workflow schema for MCP and caps test-run pages', () => {
