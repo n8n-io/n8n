@@ -6,6 +6,7 @@ import type { GlobalConfig } from '@n8n/config';
 import type { ExecutionRepository } from '@n8n/db';
 import type { IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type { Response } from 'express';
+import type { InstanceSettings } from 'n8n-core';
 import type {
 	ExecutionStatus,
 	IExecuteResponsePromiseData,
@@ -89,6 +90,7 @@ describe('ActiveExecutions', () => {
 			concurrencyControl,
 			mock(),
 			executionsConfig,
+			mock(),
 		);
 
 		executionRepository.cancelManyRunning.mockResolvedValue();
@@ -302,6 +304,7 @@ describe('ActiveExecutions', () => {
 				realConcurrencyControl,
 				mock(),
 				executionsConfig,
+				mock(),
 			);
 
 			let resolvedId: string | undefined;
@@ -330,6 +333,7 @@ describe('ActiveExecutions', () => {
 				realConcurrencyControl,
 				mock(),
 				executionsConfig,
+				mock(),
 			);
 
 			await evalActiveExecutions.add(evalExecutionData);
@@ -473,6 +477,7 @@ describe('ActiveExecutions', () => {
 				concurrencyControl,
 				mock(),
 				executionsConfig,
+				mock(),
 			);
 
 			executionData.httpResponse = mock<Response>();
@@ -849,6 +854,92 @@ describe('ActiveExecutions', () => {
 				waitingExecutionId2,
 				expect.any(SystemShutdownExecutionCancelledError),
 			);
+		});
+	});
+
+	describe('shutdown with an execution enqueued as a Bull job', () => {
+		const buildActiveExecutions = (instanceType: InstanceSettings['instanceType']) => {
+			const queueExecutionsConfig = mock<ExecutionsConfig>({ mode: 'queue' });
+			const instanceSettings = mock<InstanceSettings>({ instanceType });
+			return new ActiveExecutions(
+				logger,
+				executionRepository,
+				executionPersistence,
+				concurrencyControl,
+				mock(),
+				queueExecutionsConfig,
+				instanceSettings,
+			);
+		};
+
+		const raceShutdownAgainstTimeout = async (instance: ActiveExecutions) => {
+			return await Promise.race([
+				instance.shutdown().then(() => 'shutdown'),
+				new Promise((resolve) => setTimeout(() => resolve('timeout'), 50)),
+			]);
+		};
+
+		beforeEach(() => {
+			(sleep as Mock).mockImplementation(async () => await new Promise(() => {}));
+		});
+
+		afterEach(() => {
+			(sleep as Mock).mockReset();
+		});
+
+		test('resolves promptly on a worker instance', async () => {
+			const workerActiveExecutions = buildActiveExecutions('worker');
+			const executionId = await workerActiveExecutions.add(executionData);
+			workerActiveExecutions.attachWorkflowExecution(executionId, workflowExecution, {
+				isQueueJob: true,
+			});
+			const cancel = vi.spyOn(workflowExecution, 'cancel');
+
+			const outcome = await raceShutdownAgainstTimeout(workerActiveExecutions);
+
+			expect(outcome).toBe('shutdown');
+			expect(workerActiveExecutions.getActiveExecutions()).toHaveLength(0);
+			expect(cancel).not.toHaveBeenCalled();
+		});
+
+		test('keeps waiting on a main instance', async () => {
+			const mainActiveExecutions = buildActiveExecutions('main');
+			const executionId = await mainActiveExecutions.add(executionData);
+			mainActiveExecutions.attachWorkflowExecution(executionId, workflowExecution, {
+				isQueueJob: true,
+			});
+
+			const outcome = await raceShutdownAgainstTimeout(mainActiveExecutions);
+
+			expect(outcome).toBe('timeout');
+		});
+
+		test('resolves on a worker instance when an execution is enqueued while shutdown waits', async () => {
+			(sleep as Mock).mockImplementation(
+				async () => await new Promise((resolve) => setTimeout(resolve, 0)),
+			);
+			const workerActiveExecutions = buildActiveExecutions('worker');
+			const inProcessExecutionId = await workerActiveExecutions.add(executionData);
+			workerActiveExecutions.attachWorkflowExecution(inProcessExecutionId, workflowExecution);
+
+			const shutdown = workerActiveExecutions.shutdown().then(() => 'shutdown');
+
+			executionPersistence.create.mockResolvedValueOnce(FAKE_SECOND_EXECUTION_ID);
+			const enqueuedExecutionId = await workerActiveExecutions.add(executionData);
+			workerActiveExecutions.attachWorkflowExecution(enqueuedExecutionId, workflowExecution, {
+				isQueueJob: true,
+			});
+			const cancel = vi.spyOn(workflowExecution, 'cancel');
+			workerActiveExecutions.finalizeExecution(inProcessExecutionId, fullRunData);
+
+			const outcome = await Promise.race([
+				shutdown,
+				new Promise((resolve) => setTimeout(() => resolve('timeout'), 50)),
+			]);
+
+			expect(outcome).toBe('shutdown');
+			expect(workerActiveExecutions.getActiveExecutions()).toHaveLength(0);
+			expect(cancel).not.toHaveBeenCalled();
 		});
 	});
 });
