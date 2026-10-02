@@ -22,6 +22,7 @@ import AgentPersonalisationIcon from '../components/AgentPersonalisationIcon.vue
 import N8nChatPageLayout from './components/N8nChatPageLayout.vue';
 import N8nChatThreadHistory from './components/N8nChatThreadHistory.vue';
 import { useAgentN8nChatThreadsStore } from './n8nChatThreads.store';
+import { consumePendingN8nChatMessage } from './pendingN8nChatMessage';
 import ProjectIcon from '@/features/collaboration/projects/components/ProjectIcon.vue';
 
 // `agentThreadId` (not `threadId`): this route's sibling `InstanceAiLayout` reads
@@ -97,6 +98,20 @@ watch(
 	},
 	{ immediate: true },
 );
+
+// The Assistant's "Chat with" picker hands its first message off through this
+// module rather than through props: the agent must load before the panel
+// renders, so the message can't travel with the initial route. The pending
+// message is one-shot by itself, but `panel` only ever transitions from unset
+// to set once per (agent, no-thread) mount, so this also fires at most once.
+// Consumed on every visit, even one that never mounts the panel (a thread URL, an
+// unavailable agent), so a hand-off can't leak into a later visit.
+let pendingMessage = consumePendingN8nChatMessage(props.agentId);
+watch(panel, (current) => {
+	if (!current || !pendingMessage || props.agentThreadId) return;
+	current.sendMessageFromOutside(pendingMessage.text, pendingMessage.files);
+	pendingMessage = undefined;
+});
 
 function onSessionCreated(sessionId: string): void {
 	void router.replace({

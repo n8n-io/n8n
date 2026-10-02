@@ -7,6 +7,7 @@ import { v4 as uuidv4 } from 'uuid';
 import type {
 	AgentChatListItem,
 	InstanceAiAttachment,
+	InstanceAiFileAttachment,
 	InstanceAiThreadSource,
 } from '@n8n/api-types';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
@@ -94,6 +95,11 @@ import { useAgentsN8nChatVariant } from '@/features/agents/composables/useAgents
 import { AGENT_N8N_CHAT_VIEW } from '@/features/agents/constants';
 import N8nChatAgentSection from '@/features/agents/n8nChatPage/components/N8nChatAgentSection.vue';
 import N8nChatAgentPicker from '@/features/agents/n8nChatPage/components/N8nChatAgentPicker.vue';
+import {
+	consumePendingN8nChatMessage,
+	stashPendingN8nChatMessage,
+} from '@/features/agents/n8nChatPage/pendingN8nChatMessage';
+import { base64ToFile } from '@/app/utils/fileUtils';
 
 // Experiment cleanup: remove with instanceAiPromptSuggestionsV2.
 const INSTANCE_AI_PROMPT_SUGGESTIONS_V2_TITLE_KEY: BaseTextKey =
@@ -623,12 +629,28 @@ async function handleSubmit(
 	mentionedWorkflowIds: readonly string[] = [],
 ) {
 	if (selectedChatAgent.value) {
-		// Message hand-off into the agent's own thread lands in a follow-up change;
-		// for now, submitting just takes the user to its n8n Chat page.
-		void router.push({
-			name: AGENT_N8N_CHAT_VIEW,
-			params: { agentId: selectedChatAgent.value.id },
-		});
+		const agentId = selectedChatAgent.value.id;
+		// Resource attachments (workflow/agent/nodes references) don't apply to an
+		// agent's own n8n Chat page, only binary files do.
+		const fileAttachments = (attachments ?? []).filter(
+			(attachment): attachment is InstanceAiFileAttachment => attachment.type === 'file',
+		);
+		const files = fileAttachments.map((attachment) =>
+			base64ToFile(attachment.data, attachment.fileName, attachment.mimeType),
+		);
+		// Nothing the agent can take (e.g. only resource references): keep the draft.
+		if (!message.trim() && files.length === 0) {
+			restoreDraftAfterFailedSubmit(restoreDraft);
+			return;
+		}
+		stashPendingN8nChatMessage({ agentId, text: message, files });
+		acceptDraft();
+		const failure = await router.push({ name: AGENT_N8N_CHAT_VIEW, params: { agentId } });
+		// A blocked or cancelled navigation must not leave the hand-off for a later visit.
+		if (failure) {
+			consumePendingN8nChatMessage(agentId);
+			restoreDraftAfterFailedSubmit(restoreDraft);
+		}
 		return;
 	}
 

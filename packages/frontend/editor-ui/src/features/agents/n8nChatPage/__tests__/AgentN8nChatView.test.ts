@@ -16,6 +16,7 @@ import { INSTANCE_AI_VIEW } from '@/features/ai/instanceAi/constants';
 
 import { AGENT_N8N_CHAT_VIEW } from '../../constants';
 import { useAgentN8nChatThreadsStore } from '../n8nChatThreads.store';
+import { consumePendingN8nChatMessage, stashPendingN8nChatMessage } from '../pendingN8nChatMessage';
 import AgentN8nChatView from '../AgentN8nChatView.vue';
 
 const getN8nChatAgentMock = vi.fn();
@@ -307,6 +308,55 @@ describe('AgentN8nChatView', () => {
 		await wrapper.get('[data-testid="n8n-chat-back"]').trigger('click');
 		expect(pushMock).toHaveBeenCalledWith({ name: INSTANCE_AI_VIEW });
 		expect(backMock).not.toHaveBeenCalled();
+	});
+
+	describe('a pending message handed off from the n8n Assistant picker', () => {
+		it('sends it once the panel loads, with its text and files', async () => {
+			const file = new File(['a'], 'a.txt');
+			stashPendingN8nChatMessage({ agentId: 'agent-1', text: 'hello agent', files: [file] });
+
+			renderView();
+			await flushPromises();
+
+			expect(sendMessageFromOutsideMock).toHaveBeenCalledExactlyOnceWith('hello agent', [file]);
+		});
+
+		it('sends nothing when there is no pending message', async () => {
+			renderView();
+			await flushPromises();
+
+			expect(sendMessageFromOutsideMock).not.toHaveBeenCalled();
+		});
+
+		it('sends nothing when the URL already has a thread id', async () => {
+			stashPendingN8nChatMessage({ agentId: 'agent-1', text: 'hello agent', files: [] });
+
+			renderView({ agentThreadId: 'thread-99' });
+			await flushPromises();
+
+			expect(sendMessageFromOutsideMock).not.toHaveBeenCalled();
+			expect(consumePendingN8nChatMessage('agent-1')).toBeUndefined();
+		});
+
+		it('drops the pending message when the agent cannot load', async () => {
+			getN8nChatAgentMock.mockRejectedValue({ httpStatusCode: 404 });
+			stashPendingN8nChatMessage({ agentId: 'agent-1', text: 'hello agent', files: [] });
+
+			renderView();
+			await flushPromises();
+
+			expect(sendMessageFromOutsideMock).not.toHaveBeenCalled();
+			expect(consumePendingN8nChatMessage('agent-1')).toBeUndefined();
+		});
+
+		it('ignores a pending message stored for a different agent', async () => {
+			stashPendingN8nChatMessage({ agentId: 'agent-2', text: 'hello agent', files: [] });
+
+			renderView({ agentId: 'agent-1' });
+			await flushPromises();
+
+			expect(sendMessageFromOutsideMock).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('refreshing the n8n Chat threads store', () => {
