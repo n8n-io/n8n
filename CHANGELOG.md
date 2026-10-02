@@ -1,3 +1,11 @@
+## [2.41.6](https://github.com/n8n-io/n8n/compare/n8n@2.41.5...n8n@2.41.6) (2026-10-02)
+
+
+### Bug Fixes
+
+* **core:** Keep the task runner running on an unhandled promise rejection ([#40092](https://github.com/n8n-io/n8n/issues/40092)) ([d719c87](https://github.com/n8n-io/n8n/commit/d719c878a0965101650665200176a835224ed3bf))
+
+
 ## [2.41.5](https://github.com/n8n-io/n8n/compare/n8n@2.41.4...n8n@2.41.5) (2026-10-01)
 
 
