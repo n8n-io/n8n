@@ -124,8 +124,8 @@ describe('MigrationFindingSyncService', () => {
 		ruleRegistry.getRules.mockReturnValue(rules('rule-a', 'rule-b'));
 		findingRepository.listForWorkflows.mockResolvedValue([]);
 		breakingChangeService.detect.mockResolvedValue(detectionResult([]));
-		// By default this instance wins the claim, as on a single main.
-		syncRepository.tryClaim.mockResolvedValue(true);
+		// By default this instance wins the claim and keeps it, as on a single main.
+		givenPersistedSyncRecord(null);
 
 		service = new MigrationFindingSyncService(
 			breakingChangeService,
@@ -166,6 +166,7 @@ describe('MigrationFindingSyncService', () => {
 		expect(syncRepository.tryClaim).toHaveBeenCalledWith(...claimOf());
 		expect(syncRepository.markComplete).toHaveBeenCalledWith(
 			TARGET_VERSION,
+			expect.any(Date),
 			expect.any(Date),
 			expect.anything(),
 		);
@@ -329,7 +330,11 @@ describe('MigrationFindingSyncService', () => {
 			extra: { targetVersion: TARGET_VERSION, batchStart: 'wf-0100' },
 		});
 		expect(syncRepository.markComplete).not.toHaveBeenCalled();
-		expect(syncRepository.markFailed).toHaveBeenCalledWith(TARGET_VERSION, expect.anything());
+		expect(syncRepository.markFailed).toHaveBeenCalledWith(
+			TARGET_VERSION,
+			expect.any(Date),
+			expect.anything(),
+		);
 	});
 
 	it('does not write the sync record before every batch is done', async () => {
@@ -341,6 +346,7 @@ describe('MigrationFindingSyncService', () => {
 		});
 		syncRepository.markComplete.mockImplementation(async () => {
 			order.push('sync-record');
+			return true;
 		});
 
 		await service.sync(TARGET_VERSION);
@@ -351,9 +357,10 @@ describe('MigrationFindingSyncService', () => {
 	it('claims the record before the scan and the first batch', async () => {
 		givenWorkflows(150);
 		const order: string[] = [];
-		syncRepository.tryClaim.mockImplementation(async () => {
+		const claim = syncRepository.tryClaim.getMockImplementation()!;
+		syncRepository.tryClaim.mockImplementation(async (...args) => {
 			order.push('claim');
-			return true;
+			return await claim(...args);
 		});
 		breakingChangeService.detect.mockImplementation(async () => {
 			order.push('detect');
@@ -365,6 +372,7 @@ describe('MigrationFindingSyncService', () => {
 		});
 		syncRepository.markComplete.mockImplementation(async () => {
 			order.push('sync-record');
+			return true;
 		});
 
 		await service.sync(TARGET_VERSION);
@@ -386,11 +394,13 @@ describe('MigrationFindingSyncService', () => {
 			} as MigrationFindingSync;
 			return true;
 		});
-		syncRepository.markComplete.mockImplementation(async (_version, syncedAt) => {
+		syncRepository.markComplete.mockImplementation(async (_version, _claimedAt, syncedAt) => {
 			record = { ...record, status: 'complete', syncedAt } as MigrationFindingSync;
+			return true;
 		});
 		syncRepository.markFailed.mockImplementation(async () => {
 			record = { ...record, status: 'failed' } as MigrationFindingSync;
+			return true;
 		});
 		return () => record;
 	}
@@ -434,6 +444,30 @@ describe('MigrationFindingSyncService', () => {
 			expect(record()?.status).toBe('failed');
 			expect(txRunner.run).not.toHaveBeenCalled();
 		});
+	});
+
+	it('stops writing and does not finalize when another instance takes the claim over mid-run', async () => {
+		givenWorkflows(250);
+		const record = givenPersistedSyncRecord(null);
+		txRunner.run.mockImplementationOnce(async (ctx, fn) => {
+			const result = await fn(ctx);
+			// Another main re-claims the record while this run is between batches.
+			await syncRepository.tryClaim(
+				TARGET_VERSION,
+				FINGERPRINT,
+				new Date(Date.now() + 1),
+				new Date(),
+				{},
+			);
+			return result;
+		});
+
+		await service.sync(TARGET_VERSION);
+
+		expect(txRunner.run).toHaveBeenCalledTimes(1);
+		expect(syncRepository.markComplete).not.toHaveBeenCalled();
+		expect(syncRepository.markFailed).not.toHaveBeenCalled();
+		expect(record()?.status).toBe('running');
 	});
 
 	describe('rule set fingerprint', () => {
@@ -501,16 +535,45 @@ describe('MigrationFindingSyncService', () => {
 			expect(syncRepository.markComplete).not.toHaveBeenCalled();
 		});
 
-		it('stops waiting when the other claim is older than the claim timeout', async () => {
+		it('takes over a claim that is older than the claim timeout', async () => {
 			const abandoned = new Date(Date.now() - MigrationFindingSyncService.CLAIM_TIMEOUT_MS - 1);
-			syncRepository.getForVersion.mockResolvedValue(runningRecord(abandoned));
+			let record = runningRecord(abandoned);
+			syncRepository.getForVersion.mockImplementation(async () => record);
+			syncRepository.tryClaim
+				.mockResolvedValueOnce(false)
+				.mockImplementationOnce(async (_version, _fingerprint, claimedAt) => {
+					record = runningRecord(claimedAt);
+					return true;
+				});
 
 			const run = service.sync(TARGET_VERSION);
 			await vi.advanceTimersByTimeAsync(MigrationFindingSyncService.WAIT_POLL_MS);
 			await run;
 
-			expect(syncRepository.getForVersion).toHaveBeenCalledTimes(1);
-			expect(breakingChangeService.detect).not.toHaveBeenCalled();
+			expect(syncRepository.tryClaim).toHaveBeenCalledTimes(2);
+			expect(breakingChangeService.detect).toHaveBeenCalledTimes(1);
+			expect(syncRepository.markComplete).toHaveBeenCalledTimes(1);
+		});
+
+		it('claims the record itself when the run it waited for failed', async () => {
+			let record = runningRecord(new Date());
+			syncRepository.getForVersion.mockImplementation(async () => record);
+			syncRepository.tryClaim
+				.mockResolvedValueOnce(false)
+				.mockImplementationOnce(async (_version, _fingerprint, claimedAt) => {
+					record = runningRecord(claimedAt);
+					return true;
+				});
+
+			const run = service.sync(TARGET_VERSION);
+			await vi.advanceTimersByTimeAsync(MigrationFindingSyncService.WAIT_POLL_MS / 2);
+			record = { ...record, status: 'failed' } as MigrationFindingSync;
+			await vi.advanceTimersByTimeAsync(MigrationFindingSyncService.WAIT_POLL_MS);
+			await run;
+
+			expect(syncRepository.tryClaim).toHaveBeenCalledTimes(2);
+			expect(breakingChangeService.detect).toHaveBeenCalledTimes(1);
+			expect(syncRepository.markComplete).toHaveBeenCalledTimes(1);
 		});
 
 		it('gives up after the wait timeout while the other run is still going', async () => {
@@ -737,7 +800,7 @@ describe('MigrationFindingSyncService', () => {
 
 		it('syncs when there is no sync record', async () => {
 			givenWorkflows(2);
-			syncRepository.getForVersion.mockResolvedValue(null);
+			givenPersistedSyncRecord(null);
 
 			await service.syncIfStale(TARGET_VERSION);
 
@@ -747,7 +810,7 @@ describe('MigrationFindingSyncService', () => {
 
 		it('syncs when the stored fingerprint differs from the current rule set', async () => {
 			givenWorkflows(2);
-			syncRepository.getForVersion.mockResolvedValue(syncRecord(['rule-a']));
+			givenPersistedSyncRecord(syncRecord(['rule-a']));
 
 			await service.syncIfStale(TARGET_VERSION);
 
@@ -757,7 +820,7 @@ describe('MigrationFindingSyncService', () => {
 
 		it('syncs when the last run for the version failed', async () => {
 			givenWorkflows(2);
-			syncRepository.getForVersion.mockResolvedValue(syncRecord(['rule-a', 'rule-b'], 'failed'));
+			givenPersistedSyncRecord(syncRecord(['rule-a', 'rule-b'], 'failed'));
 
 			await service.syncIfStale(TARGET_VERSION);
 

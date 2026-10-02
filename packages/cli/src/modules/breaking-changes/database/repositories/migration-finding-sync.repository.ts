@@ -19,64 +19,84 @@ export class MigrationFindingSyncRepository extends BaseRepository<MigrationFind
 	}
 
 	/**
-	 * Takes the record of the version for a run that starts now, unless another
-	 * run holds it: a `running` record claimed after `staleBefore`. Returns whether
-	 * the claim succeeded. Each statement is atomic on its own, so two mains that
-	 * claim at the same time cannot both win.
+	 * Takes the record of the version for a run that starts at `claimedAt`, unless
+	 * another run holds it: a `running` record claimed after `staleBefore`. Returns
+	 * whether the claim succeeded. `claimedAt` identifies the run from then on: the
+	 * terminal updates below take effect only while the record still carries it.
 	 */
 	async tryClaim(
 		targetVersion: BreakingChangeVersion,
 		ruleSetFingerprint: string,
-		startedAt: Date,
+		claimedAt: Date,
 		staleBefore: Date,
 		ctx: OperationContext,
 	): Promise<boolean> {
 		const manager = this.managerFor(ctx);
-		const claim = { status: 'running' as const, startedAt, ruleSetFingerprint };
 
-		// An existing record that is not running, or whose run is abandoned, can be taken over.
+		// Make sure a row exists, so the update below is the single arbiter. The result
+		// of an ignored insert is not reliable across drivers, so it is not inspected.
+		await manager
+			.createQueryBuilder()
+			.insert()
+			.into(MigrationFindingSync)
+			.values({
+				targetVersion,
+				status: 'failed',
+				startedAt: null,
+				syncedAt: null,
+				ruleSetFingerprint,
+			})
+			.orIgnore()
+			.execute();
+
+		// One UPDATE decides: a record that is not running, or whose run is abandoned,
+		// can be taken over. Two mains that race here cannot both affect the row.
 		// `EntityManager.update` reads an array as a list of ids, so the OR goes through the builder.
 		const updated = await manager
 			.createQueryBuilder()
 			.update(MigrationFindingSync)
-			.set(claim)
+			.set({ status: 'running', startedAt: claimedAt, ruleSetFingerprint })
 			.where([
 				{ targetVersion, status: Not('running') },
 				{ targetVersion, status: 'running', startedAt: LessThan(staleBefore) },
 			])
 			.execute();
-		if ((updated.affected ?? 0) > 0) return true;
-
-		// No record yet, or another run holds it. Only the first inserter of a new record wins.
-		const inserted = await manager
-			.createQueryBuilder()
-			.insert()
-			.into(MigrationFindingSync)
-			.values({ targetVersion, syncedAt: null, ...claim })
-			.orIgnore()
-			.execute();
-		return inserted.identifiers.length > 0;
+		return (updated.affected ?? 0) > 0;
 	}
 
-	/** Records that the run finished with every batch written. */
+	/**
+	 * Records that the run claimed at `claimedAt` finished with every batch written.
+	 * Returns `false` when another run has taken the record over in the meantime.
+	 */
 	async markComplete(
 		targetVersion: BreakingChangeVersion,
+		claimedAt: Date,
 		syncedAt: Date,
 		ctx: OperationContext,
-	): Promise<void> {
-		await this.managerFor(ctx).update(
+	): Promise<boolean> {
+		const result = await this.managerFor(ctx).update(
 			MigrationFindingSync,
-			{ targetVersion },
+			{ targetVersion, status: 'running', startedAt: claimedAt },
 			{ status: 'complete', syncedAt },
 		);
+		return (result.affected ?? 0) > 0;
 	}
 
-	/** Records that the run stopped early, so the version reads as stale. Keeps the last complete time. */
-	async markFailed(targetVersion: BreakingChangeVersion, ctx: OperationContext): Promise<void> {
-		await this.managerFor(ctx).update(
+	/**
+	 * Records that the run claimed at `claimedAt` stopped early, so the version reads
+	 * as stale. Keeps the last complete time. Returns `false` when another run has
+	 * taken the record over in the meantime.
+	 */
+	async markFailed(
+		targetVersion: BreakingChangeVersion,
+		claimedAt: Date,
+		ctx: OperationContext,
+	): Promise<boolean> {
+		const result = await this.managerFor(ctx).update(
 			MigrationFindingSync,
-			{ targetVersion },
+			{ targetVersion, status: 'running', startedAt: claimedAt },
 			{ status: 'failed' },
 		);
+		return (result.affected ?? 0) > 0;
 	}
 }

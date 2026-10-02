@@ -23,6 +23,9 @@ export function computeRuleSetFingerprint(ruleIds: string[]): string {
 		.digest('hex');
 }
 
+type ScanResult = 'complete' | 'partial' | 'lost';
+type WaitOutcome = 'complete' | 'retry' | 'timeout';
+
 /**
  * Brings the `migration_finding` table in step with detection results: a full
  * scan over every workflow, or a re-check of one workflow after it was saved.
@@ -109,40 +112,75 @@ export class MigrationFindingSyncService {
 	private async runSync(targetVersion: BreakingChangeVersion): Promise<void> {
 		// The claim is the cross-main lock. The main that wins it scans and writes;
 		// every other main waits for the record to leave `running`, then reads.
-		const now = new Date();
-		const claimed = await this.syncRepository.tryClaim(
-			targetVersion,
-			this.fingerprint(targetVersion),
-			now,
-			new Date(now.getTime() - MigrationFindingSyncService.CLAIM_TIMEOUT_MS),
-			{},
-		);
-		if (!claimed) {
+		// A run that fails elsewhere, or an abandoned claim, is retried here until the deadline.
+		const deadline = Date.now() + MigrationFindingSyncService.WAIT_TIMEOUT_MS;
+		let outcome: WaitOutcome;
+		do {
+			const claimedAt = new Date();
+			const claimed = await this.syncRepository.tryClaim(
+				targetVersion,
+				this.fingerprint(targetVersion),
+				claimedAt,
+				new Date(claimedAt.getTime() - MigrationFindingSyncService.CLAIM_TIMEOUT_MS),
+				{},
+			);
+			if (claimed) {
+				await this.runClaimedSync(targetVersion, claimedAt);
+				return;
+			}
+
 			this.logger.debug('Another instance is syncing migration findings, waiting for it', {
 				targetVersion,
 			});
-			await this.waitForOtherSync(targetVersion);
-			return;
-		}
+			outcome = await this.waitForOtherSync(targetVersion, deadline);
+		} while (outcome === 'retry');
 
-		this.logger.debug('Starting migration finding sync', { targetVersion });
-		try {
-			const complete = await this.scanAndWrite(targetVersion);
-			if (complete) {
-				await this.syncRepository.markComplete(targetVersion, new Date(), {});
-				this.logger.debug('Migration finding sync completed', { targetVersion });
-			} else {
-				// A partial sync must not read as complete, so the next read syncs again.
-				await this.syncRepository.markFailed(targetVersion, {});
-			}
-		} catch (error) {
-			await this.syncRepository.markFailed(targetVersion, {});
-			throw error;
+		if (outcome === 'timeout') {
+			this.logger.warn('Gave up waiting for another instance to sync migration findings', {
+				targetVersion,
+			});
 		}
 	}
 
-	/** Scans every workflow and writes the table in batches. Returns `false` when a batch failed. */
-	private async scanAndWrite(targetVersion: BreakingChangeVersion): Promise<boolean> {
+	/** Runs the sync this instance holds the claim for, and records how it ended. */
+	private async runClaimedSync(
+		targetVersion: BreakingChangeVersion,
+		claimedAt: Date,
+	): Promise<void> {
+		this.logger.debug('Starting migration finding sync', { targetVersion });
+		let result: ScanResult;
+		try {
+			result = await this.scanAndWrite(targetVersion, claimedAt);
+		} catch (error) {
+			await this.syncRepository.markFailed(targetVersion, claimedAt, {});
+			throw error;
+		}
+
+		if (result === 'lost') return;
+
+		// The terminal update takes effect only while the record still carries this
+		// claim, so a run that outlived its claim cannot overwrite the replacement's state.
+		const recorded =
+			result === 'complete'
+				? await this.syncRepository.markComplete(targetVersion, claimedAt, new Date(), {})
+				: await this.syncRepository.markFailed(targetVersion, claimedAt, {});
+		if (!recorded) {
+			this.logger.warn('Migration finding sync finished after its claim was taken over', {
+				targetVersion,
+			});
+			return;
+		}
+		this.logger.debug(`Migration finding sync ${result}`, { targetVersion });
+	}
+
+	/**
+	 * Scans every workflow and writes the table in batches. `partial` when a batch
+	 * failed. `lost` when another run took the claim over, which stops the writes.
+	 */
+	private async scanAndWrite(
+		targetVersion: BreakingChangeVersion,
+		claimedAt: Date,
+	): Promise<ScanResult> {
 		// One full, uncached scan. Batch rules need every workflow to produce a result,
 		// so the scan runs first and the table is updated from its output afterwards.
 		const { report, failedChecks } = await this.breakingChangeService.detect(targetVersion);
@@ -167,6 +205,16 @@ export class MigrationFindingSyncService {
 		let failedBatches = 0;
 		do {
 			workflowIds = await this.workflowRepository.getIdsAfter(afterId, take);
+
+			// The scan can take long. A run whose claim was taken over must not write
+			// over the replacement run, so the claim is checked again before every batch.
+			if (!(await this.holdsClaim(targetVersion, claimedAt))) {
+				this.logger.info('Stopping migration finding sync, another instance took the claim over', {
+					targetVersion,
+				});
+				return 'lost';
+			}
+
 			try {
 				await this.syncBatch(targetVersion, workflowIds, hitsByWorkflow, unknownByWorkflow);
 			} catch (error) {
@@ -189,29 +237,38 @@ export class MigrationFindingSyncService {
 				targetVersion,
 				failedBatches,
 			});
-			return false;
+			return 'partial';
 		}
-		return true;
+		return 'complete';
+	}
+
+	private async holdsClaim(
+		targetVersion: BreakingChangeVersion,
+		claimedAt: Date,
+	): Promise<boolean> {
+		const record = await this.syncRepository.getForVersion(targetVersion, {});
+		return record?.status === 'running' && record.startedAt?.getTime() === claimedAt.getTime();
 	}
 
 	/**
-	 * Polls the sync record until another main's run has left `running`. Gives up
-	 * after `WAIT_TIMEOUT_MS`, or when the claim is old enough to count as
-	 * abandoned: the caller then serves the table as it is, and the next request
-	 * claims the record itself.
+	 * Polls the sync record until another instance's run has left `running`.
+	 * `complete` means the table is current. `retry` means the run failed or its
+	 * claim is old enough to count as abandoned, so the caller should claim it.
+	 * `timeout` means the deadline passed: the caller serves the table as it is.
 	 */
-	private async waitForOtherSync(targetVersion: BreakingChangeVersion): Promise<void> {
-		const deadline = Date.now() + MigrationFindingSyncService.WAIT_TIMEOUT_MS;
+	private async waitForOtherSync(
+		targetVersion: BreakingChangeVersion,
+		deadline: number,
+	): Promise<WaitOutcome> {
 		while (Date.now() < deadline) {
 			await sleep(MigrationFindingSyncService.WAIT_POLL_MS);
 			const record = await this.syncRepository.getForVersion(targetVersion, {});
-			if (record?.status !== 'running') return;
+			if (record?.status === 'complete') return 'complete';
+			if (record?.status !== 'running') return 'retry';
 			const claimAge = Date.now() - (record.startedAt?.getTime() ?? 0);
-			if (claimAge > MigrationFindingSyncService.CLAIM_TIMEOUT_MS) return;
+			if (claimAge > MigrationFindingSyncService.CLAIM_TIMEOUT_MS) return 'retry';
 		}
-		this.logger.warn('Gave up waiting for another instance to sync migration findings', {
-			targetVersion,
-		});
+		return 'timeout';
 	}
 
 	private fingerprint(targetVersion: BreakingChangeVersion): string {

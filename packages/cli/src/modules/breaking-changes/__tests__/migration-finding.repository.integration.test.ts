@@ -445,7 +445,7 @@ describe('MigrationFindingSyncRepository', () => {
 		await syncRepository.tryClaim('v3', 'fp-1', now, staleBefore, ctx);
 		const syncedAt = new Date(now.getTime() + 5 * 1000);
 
-		await syncRepository.markComplete('v3', syncedAt, ctx);
+		expect(await syncRepository.markComplete('v3', now, syncedAt, ctx)).toBe(true);
 
 		const completed = await syncRepository.getForVersion('v3', ctx);
 		expect(completed?.status).toBe('complete');
@@ -463,16 +463,11 @@ describe('MigrationFindingSyncRepository', () => {
 	test('markFailed keeps the last complete time and frees the record for the next claim', async () => {
 		await syncRepository.tryClaim('v3', 'fp-1', now, staleBefore, ctx);
 		const syncedAt = new Date(now.getTime() + 5 * 1000);
-		await syncRepository.markComplete('v3', syncedAt, ctx);
-		await syncRepository.tryClaim(
-			'v3',
-			'fp-2',
-			new Date(now.getTime() + 60 * 1000),
-			staleBefore,
-			ctx,
-		);
+		await syncRepository.markComplete('v3', now, syncedAt, ctx);
+		const secondClaim = new Date(now.getTime() + 60 * 1000);
+		await syncRepository.tryClaim('v3', 'fp-2', secondClaim, staleBefore, ctx);
 
-		await syncRepository.markFailed('v3', ctx);
+		expect(await syncRepository.markFailed('v3', secondClaim, ctx)).toBe(true);
 
 		const failed = await syncRepository.getForVersion('v3', ctx);
 		expect(failed?.status).toBe('failed');
@@ -492,10 +487,40 @@ describe('MigrationFindingSyncRepository', () => {
 		await syncRepository.tryClaim('v2', 'fp-v2', now, staleBefore, ctx);
 		await syncRepository.tryClaim('v3', 'fp-v3', now, staleBefore, ctx);
 
-		await syncRepository.markComplete('v3', now, ctx);
+		await syncRepository.markComplete('v3', now, now, ctx);
 
 		expect((await syncRepository.getForVersion('v2', ctx))?.status).toBe('running');
 		expect((await syncRepository.getForVersion('v3', ctx))?.status).toBe('complete');
+	});
+
+	test('only one of two concurrent claims for a fresh version wins', async () => {
+		const results = await Promise.all([
+			syncRepository.tryClaim('v3', 'fp-1', now, staleBefore, ctx),
+			syncRepository.tryClaim('v3', 'fp-2', now, staleBefore, ctx),
+		]);
+
+		expect(results.filter(Boolean)).toHaveLength(1);
+		expect(await syncRepository.count()).toBe(1);
+		expect((await syncRepository.getForVersion('v3', ctx))?.status).toBe('running');
+	});
+
+	test('markComplete and markFailed do nothing for a claim that was taken over', async () => {
+		await syncRepository.tryClaim('v3', 'fp-1', now, staleBefore, ctx);
+		const takeover = new Date(now.getTime() + 60 * 60 * 1000);
+		await syncRepository.tryClaim(
+			'v3',
+			'fp-2',
+			takeover,
+			new Date(takeover.getTime() - 10 * 60 * 1000),
+			ctx,
+		);
+
+		expect(await syncRepository.markComplete('v3', now, takeover, ctx)).toBe(false);
+		expect(await syncRepository.markFailed('v3', now, ctx)).toBe(false);
+
+		const record = await syncRepository.getForVersion('v3', ctx);
+		expect(record).toMatchObject({ status: 'running', ruleSetFingerprint: 'fp-2', syncedAt: null });
+		expect(record?.startedAt?.getTime()).toBe(takeover.getTime());
 	});
 
 	test('rejects a status outside the enum', async () => {
