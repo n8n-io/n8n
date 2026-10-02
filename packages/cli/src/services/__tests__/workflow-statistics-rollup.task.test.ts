@@ -42,12 +42,12 @@ describe('WorkflowStatisticsRollupTask', () => {
 		},
 	);
 
-	it('should omit the budget for an in-memory run', async () => {
-		const task = makeTask();
+	it('should pass a budget below the interval to an in-memory run, whatever the lease', async () => {
+		const task = makeTask({ leaseDurationSeconds: 1 });
 		const signal = new AbortController().signal;
 
 		await task.run(signal, { durable: false });
 
-		expect(rollupService.rollup).toHaveBeenCalledExactlyOnceWith(signal, undefined);
+		expect(rollupService.rollup).toHaveBeenCalledExactlyOnceWith(signal, 4000);
 	});
 });

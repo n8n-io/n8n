@@ -12,6 +12,9 @@ import { WorkflowStatisticsRollupService } from './workflow-statistics-rollup.se
 
 const ROLLUP_INTERVAL_SECONDS = 5;
 
+/** Ends a run before the next occurrence, so a backlog does not cause overlap skips. */
+const IN_MEMORY_RUN_BUDGET_MS = (ROLLUP_INTERVAL_SECONDS - 1) * Time.seconds.toMilliseconds;
+
 /**
  * Folds the pending workflow statistics increments into the counters, and
  * fires the first-occurrence milestone events.
@@ -44,6 +47,9 @@ export class WorkflowStatisticsRollupTask implements SystemTask {
 	}
 
 	async run(signal: AbortSignal, { durable }: SystemTaskRunContext): Promise<void> {
-		await this.rollupService.rollup(signal, durable ? this.durableRunBudgetMs : undefined);
+		await this.rollupService.rollup(
+			signal,
+			durable ? this.durableRunBudgetMs : IN_MEMORY_RUN_BUDGET_MS,
+		);
 	}
 }
