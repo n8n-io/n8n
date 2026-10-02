@@ -9,6 +9,14 @@ import * as helpers from '../../../../../utils/helpers';
 import * as tracing from '../../../../../utils/tracing';
 import { toolsAgentExecute } from '../../agents/ToolsAgent/V1/execute';
 
+// getInputConnectionData is stubbed to return the same mock for every connection type
+// below, so isolate memory here too. Otherwise the model mock leaks in as "memory" and
+// loadMemory/saveToMemory run against an object that isn't a real BaseChatMemory.
+vi.mock('../../agents/ToolsAgent/common', async () => ({
+	...(await vi.importActual('../../agents/ToolsAgent/common')),
+	getOptionalMemory: vi.fn(),
+}));
+
 const mockHelpers = mock<IExecuteFunctions['helpers']>();
 const mockContext = mock<IExecuteFunctions>({ helpers: mockHelpers });
 const ensureWithConfig = <T extends object>(executor: T) => {
@@ -75,8 +83,10 @@ describe('toolsAgentExecute', () => {
 
 		expect(mockExecutor.invoke).toHaveBeenCalledTimes(2);
 		expect(result[0]).toHaveLength(2);
-		expect(result[0][0].json).toEqual({ output: { text: 'success 1' } });
-		expect(result[0][1].json).toEqual({ output: { text: 'success 2' } });
+		// No memory node is connected in this test, so the output stays the raw
+		// string the executor returned instead of going through the JSON parse gate.
+		expect(result[0][0].json).toEqual({ output: '{"text":"success 1"}' });
+		expect(result[0][1].json).toEqual({ output: '{"text":"success 2"}' });
 	});
 
 	it('should handle errors when continueOnFail is true', async () => {
@@ -123,7 +133,9 @@ describe('toolsAgentExecute', () => {
 		const result = await toolsAgentExecute.call(mockContext);
 
 		expect(result[0]).toHaveLength(2);
-		expect(result[0][0].json).toEqual({ output: { text: 'success' } });
+		// No memory node is connected in this test, so the output stays the raw
+		// string the executor returned instead of going through the JSON parse gate.
+		expect(result[0][0].json).toEqual({ output: '{ "text": "success" }' });
 		expect(result[0][1].json).toEqual({ error: 'Test error' });
 	});
 
