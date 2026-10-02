@@ -216,4 +216,16 @@ describe('MfaService', () => {
 			expect(mockCacheService.set).toHaveBeenCalledWith(MFA_CACHE_KEY, 'false');
 		});
 	});
+
+	it('disables MFA after a valid code', async () => {
+		mockUserRepository.findOneByOrFail.mockResolvedValue(
+			mock<Awaited<ReturnType<UserRepository['findOneByOrFail']>>>({ mfaSecret: 'encrypted' }),
+		);
+		mockCipher.decryptV2.mockResolvedValue('secret');
+		mockTotpService.verifySecret.mockReturnValue(true);
+
+		await mfaService.disableMfaWithMfaCode('user-id', '123456');
+
+		expect(mockUserRepository.disableMfaForUser).toHaveBeenCalledWith('user-id');
+	});
 });
