@@ -1,8 +1,10 @@
 import type { Logger } from '@n8n/backend-common';
 import type { CacheService } from '@n8n/backend-services';
 import type { DeploymentKey, DeploymentKeyRepository } from '@n8n/db';
-import type { Cipher } from 'n8n-core';
+import type { Cipher, InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
+
+import { JwtService } from '@/services/jwt.service';
 
 import { OAUTH_SIGNING_KEY_TYPE } from '../oauth-signing-key.constants';
 import { OAuthSigningKeyService } from '../oauth-signing-key.service';
@@ -71,6 +73,17 @@ export const createSigningKeyService = () => {
 	const keyStore = createDeploymentKeyStore();
 	const cipher = createTaggingCipher();
 	const { cache, store: cacheStore } = createMapCache();
-	const service = new OAuthSigningKeyService(keyStore.repository, cipher, cache, mock<Logger>());
+	const jwtService = new JwtService(
+		mock<InstanceSettings>({ encryptionKey: 'test-key' }),
+		mock(),
+		mock(),
+	);
+	const service = new OAuthSigningKeyService(
+		keyStore.repository,
+		cipher,
+		cache,
+		mock<Logger>(),
+		jwtService,
+	);
 	return { service, keyStore, cipher, cache, cacheStore };
 };

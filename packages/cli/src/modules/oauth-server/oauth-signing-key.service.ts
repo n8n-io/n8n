@@ -5,12 +5,13 @@ import type { DeploymentKey } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { generateNanoId } from '@n8n/utils/generate-nano-id';
 import type { JWK } from 'jose';
-import jwt from 'jsonwebtoken';
 import { Cipher } from 'n8n-core';
 import { jsonParse, UnexpectedError } from 'n8n-workflow';
 import type { JsonWebKey, KeyObject } from 'node:crypto';
 import { createPrivateKey, generateKeyPair } from 'node:crypto';
 import { promisify } from 'node:util';
+
+import { JwtService } from '@/services/jwt.service';
 
 import {
 	OAUTH_SIGNING_ALGORITHM,
@@ -58,6 +59,7 @@ export class OAuthSigningKeyService {
 		private readonly cipher: Cipher,
 		private readonly cacheService: CacheService,
 		private readonly logger: Logger,
+		private readonly jwtService: JwtService,
 	) {}
 
 	/**
@@ -84,14 +86,14 @@ export class OAuthSigningKeyService {
 		};
 	}
 
-	/** Signs an RFC 9068 access token with the active key. */
-	signAccessToken(payload: object): string {
+	/** Signs an RFC 9068 access token for `audience` with the active key. */
+	signAccessToken(payload: object, audience: string): string {
 		if (!this.activeKey) {
 			throw new UnexpectedError('OAuth signing key is not initialized');
 		}
 
 		const { kid, privateKey } = this.activeKey;
-		return jwt.sign(payload, privateKey, {
+		return this.jwtService.signForResourceWithKey(payload, audience, privateKey, {
 			algorithm: OAUTH_SIGNING_ALGORITHM,
 			header: { alg: OAUTH_SIGNING_ALGORITHM, typ: 'at+jwt', kid },
 		});

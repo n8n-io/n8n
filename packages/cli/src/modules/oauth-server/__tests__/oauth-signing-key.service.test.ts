@@ -17,9 +17,10 @@ import { createSigningKeyService } from './signing-key-fixtures';
 const ISSUER = 'https://n8n.example.com';
 const AUDIENCE = `${ISSUER}/mcp-server/http`;
 
+/** The audience is passed to `signAccessToken` on its own. */
 const claims = () => {
 	const now = Math.floor(Date.now() / 1000);
-	return { iss: ISSUER, aud: AUDIENCE, sub: 'user-1', iat: now, exp: now + 3600 };
+	return { iss: ISSUER, sub: 'user-1', iat: now, exp: now + 3600 };
 };
 
 const makeUniqueViolation = (code: string): QueryFailedError => {
@@ -63,9 +64,9 @@ describe('OAuthSigningKeyService', () => {
 			await service.initialize();
 
 			expect(keyStore.repository.insertActiveOAuthSigningKey).not.toHaveBeenCalled();
-			expect(jwt.decode(service.signAccessToken(claims()), { complete: true })?.header.kid).toBe(
-				'existing-key',
-			);
+			expect(
+				jwt.decode(service.signAccessToken(claims(), AUDIENCE), { complete: true })?.header.kid,
+			).toBe('existing-key');
 		});
 
 		it('generates a key whose kid is the row id, wraps it, and drops the cached key list', async () => {
@@ -86,9 +87,9 @@ describe('OAuthSigningKeyService', () => {
 				crv: 'P-256',
 			});
 			expect(cache.delete).toHaveBeenCalledWith(OAUTH_SIGNING_KEYS_CACHE_KEY);
-			expect(jwt.decode(service.signAccessToken(claims()), { complete: true })?.header.kid).toBe(
-				id,
-			);
+			expect(
+				jwt.decode(service.signAccessToken(claims(), AUDIENCE), { complete: true })?.header.kid,
+			).toBe(id);
 		});
 
 		it.each([
@@ -104,9 +105,9 @@ describe('OAuthSigningKeyService', () => {
 			await service.initialize();
 
 			expect(keyStore.rows).toHaveLength(1);
-			expect(jwt.decode(service.signAccessToken(claims()), { complete: true })?.header.kid).toBe(
-				'winner',
-			);
+			expect(
+				jwt.decode(service.signAccessToken(claims(), AUDIENCE), { complete: true })?.header.kid,
+			).toBe('winner');
 		});
 
 		it('rejects a stored key whose kid does not match its row id', async () => {
@@ -124,7 +125,9 @@ describe('OAuthSigningKeyService', () => {
 	it('throws when signing before initialize', () => {
 		const { service } = createSigningKeyService();
 
-		expect(() => service.signAccessToken(claims())).toThrow('OAuth signing key is not initialized');
+		expect(() => service.signAccessToken(claims(), AUDIENCE)).toThrow(
+			'OAuth signing key is not initialized',
+		);
 	});
 
 	it('publishes only the public members of the key', async () => {
@@ -172,7 +175,7 @@ describe('OAuthSigningKeyService', () => {
 		const { service } = createSigningKeyService();
 		await service.initialize();
 
-		const token = service.signAccessToken(claims());
+		const token = service.signAccessToken(claims(), AUDIENCE);
 		const jwks = createLocalJWKSet({ keys: await service.getPublicJwks() });
 
 		const { payload, protectedHeader } = await jwtVerify(token, jwks, {
