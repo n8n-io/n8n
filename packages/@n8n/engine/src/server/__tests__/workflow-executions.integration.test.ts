@@ -691,8 +691,9 @@ describe('GET /api/workflow-executions/:id (integration)', () => {
 describe('POST /api/workflow-executions/:id/cancel (integration)', () => {
 	const cancel = (id: string) =>
 		request(url).post(`/api/workflow-executions/${id}/cancel`).set(authHeader());
+	/** Started expecting the run end, so a cancel owes the caller an `ended` response. */
 	async function start() {
-		const body = startBody();
+		const body = startBody({ responseExpectation: { kind: 'runEnd' } });
 		await request(url).post('/api/workflow-executions').set(authHeader()).send(body).expect(201);
 		return body.executionId;
 	}
