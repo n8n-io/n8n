@@ -19,7 +19,7 @@ export const ldapConfigurationPublicSchema = z
 		connectionSecurity: connectionSecuritySchema.openapi(
 			ldapConfigurationFieldDocs.connectionSecurity,
 		),
-		connectionPort: z.number().int().openapi(ldapConfigurationFieldDocs.connectionPort),
+		connectionPort: z.number().openapi(ldapConfigurationFieldDocs.connectionPort),
 		baseDn: z.string().openapi(ldapConfigurationFieldDocs.baseDn),
 		bindingAdminDn: z.string().openapi(ldapConfigurationFieldDocs.bindingAdminDn),
 		bindingAdminPassword: z.string().openapi(ldapConfigurationFieldDocs.bindingAdminPassword),
@@ -30,12 +30,9 @@ export const ldapConfigurationPublicSchema = z
 		ldapIdAttribute: z.string().openapi(ldapConfigurationFieldDocs.ldapIdAttribute),
 		userFilter: z.string().openapi(ldapConfigurationFieldDocs.userFilter),
 		synchronizationEnabled: z.boolean().openapi(ldapConfigurationFieldDocs.synchronizationEnabled),
-		synchronizationInterval: z
-			.number()
-			.int()
-			.openapi(ldapConfigurationFieldDocs.synchronizationInterval),
-		searchPageSize: z.number().int().openapi(ldapConfigurationFieldDocs.searchPageSize),
-		searchTimeout: z.number().int().openapi(ldapConfigurationFieldDocs.searchTimeout),
+		synchronizationInterval: z.number().openapi(ldapConfigurationFieldDocs.synchronizationInterval),
+		searchPageSize: z.number().openapi(ldapConfigurationFieldDocs.searchPageSize),
+		searchTimeout: z.number().openapi(ldapConfigurationFieldDocs.searchTimeout),
 		enforceEmailUniqueness: z.boolean().openapi(ldapConfigurationFieldDocs.enforceEmailUniqueness),
 	})
 	.openapi({

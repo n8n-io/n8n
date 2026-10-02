@@ -53,6 +53,22 @@ describe('LDAP DTOs', () => {
 			expect(result.data?.connectionSecurity).toBe('startTls');
 		});
 
+		it('returns non-integer numbers the editor can store and rejects them on update', () => {
+			const withFractions = {
+				...fullBody,
+				connectionPort: 389.5,
+				synchronizationInterval: 60.5,
+				searchPageSize: 1000.5,
+				searchTimeout: 60.5,
+			};
+
+			expect(LdapConfigurationPublicDto.safeParse(withFractions).success).toBe(true);
+
+			const update = UpdateLdapConfigurationPublicDto.safeParse(withFractions);
+			assert(!update.success, 'expected a non-integer connectionPort to fail');
+			expect(update.error.issues[0].path).toEqual(['connectionPort']);
+		});
+
 		it('rejects connectionPort as a string instead of number', () => {
 			const result = UpdateLdapConfigurationPublicDto.safeParse({
 				...fullBody,

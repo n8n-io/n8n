@@ -25,7 +25,7 @@ properties:
     description: TLS/SSL security mode for the LDAP connection.
     example: none
   connectionPort:
-    type: integer
+    type: number
     description: LDAP server port.
     example: 389
   baseDn:
@@ -68,15 +68,15 @@ properties:
     description: Whether automatic LDAP synchronization is enabled.
     example: false
   synchronizationInterval:
-    type: integer
+    type: number
     description: Interval in minutes between automatic synchronizations. Ignored if synchronizationEnabled is false.
     example: 60
   searchPageSize:
-    type: integer
+    type: number
     description: Number of LDAP entries to fetch per search page.
     example: 1000
   searchTimeout:
-    type: integer
+    type: number
     description: LDAP search timeout in seconds.
     example: 60
   enforceEmailUniqueness:
