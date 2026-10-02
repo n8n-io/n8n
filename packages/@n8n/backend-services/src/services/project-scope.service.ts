@@ -1,3 +1,4 @@
+<<<<<<<< e18afc84ccee:packages/@n8n/backend-services/src/services/project-scope.service.ts
 import { ProjectRelationRepository, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { hasGlobalScope, type Scope } from '@n8n/permissions';
@@ -28,3 +29,6 @@ export class ProjectScopeService {
 		return await this.projectRelationRepository.getAccessibleProjectsByRoles(user.id, roles);
 	}
 }
+========
+export { ProjectScopeService } from '@n8n/backend-services';
+>>>>>>>> 84fc5c701859:packages/cli/src/permissions.ee/project-scope.service.ts

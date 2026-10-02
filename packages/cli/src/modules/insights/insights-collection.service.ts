@@ -3,13 +3,11 @@ import { isBillableExecution } from '@n8n/backend-services';
 import { SharedWorkflowRepository } from '@n8n/db';
 import { OnLifecycleEvent, type WorkflowExecuteAfterContext } from '@n8n/decorators';
 import { Service } from '@n8n/di';
-import { In } from '@n8n/typeorm';
 import { DateTime } from 'luxon';
 import { IRun, type ExecutionStatus, type WorkflowExecuteMode } from 'n8n-workflow';
 
-import { InsightsMetadata } from '@/modules/insights/database/entities/insights-metadata';
-import { InsightsRaw } from '@/modules/insights/database/entities/insights-raw';
-
+import { InsightsMetadata } from './database/entities/insights-metadata';
+import { InsightsRaw } from './database/entities/insights-raw';
 import { InsightsMetadataRepository } from './database/repositories/insights-metadata.repository';
 import { InsightsRawRepository } from './database/repositories/insights-raw.repository';
 import { InsightsConfig } from './insights.config';
@@ -233,38 +231,40 @@ export class InsightsCollectionService {
 			workflowIdNames.set(event.workflowId, event.workflowName);
 		}
 
-		const sharedWorkflows = await this.sharedWorkflowRepository.find({
-			where: { workflowId: In([...workflowIdNames.keys()]), role: 'workflow:owner' },
-			relations: { project: true },
-		});
+		const ownerProjects = await this.sharedWorkflowRepository.findOwnerProjectsByWorkflowIds([
+			...workflowIdNames.keys(),
+		]);
 
 		// Upsert metadata for the workflows that are not already in the cache or have
 		// different project or workflow names
-		const metadataToUpsert = sharedWorkflows.reduce((acc, workflow) => {
-			const cachedMetadata = this.cachedMetadata.get(workflow.workflowId);
+		const metadataToUpsert: InsightsMetadata[] = [];
+		for (const [workflowId, workflowName] of workflowIdNames) {
+			const project = ownerProjects.get(workflowId);
+			if (!project) continue;
+
+			const cachedMetadata = this.cachedMetadata.get(workflowId);
 			if (
 				!cachedMetadata ||
-				cachedMetadata.projectId !== workflow.projectId ||
-				cachedMetadata.projectName !== workflow.project.name ||
-				cachedMetadata.workflowName !== workflowIdNames.get(workflow.workflowId)
+				cachedMetadata.projectId !== project.id ||
+				cachedMetadata.projectName !== project.name ||
+				cachedMetadata.workflowName !== workflowName
 			) {
 				const metadata = new InsightsMetadata();
-				metadata.projectId = workflow.projectId;
-				metadata.projectName = workflow.project.name;
-				metadata.workflowId = workflow.workflowId;
-				metadata.workflowName = workflowIdNames.get(workflow.workflowId)!;
+				metadata.projectId = project.id;
+				metadata.projectName = project.name;
+				metadata.workflowId = workflowId;
+				metadata.workflowName = workflowName;
 
-				acc.push(metadata);
+				metadataToUpsert.push(metadata);
 			}
-			return acc;
-		}, [] as InsightsMetadata[]);
+		}
 
 		this.logger.debug(`Saving ${metadataToUpsert.length} insights metadata for workflows`);
-		await this.insightsMetadataRepository.upsert(metadataToUpsert, ['workflowId']);
+		await this.insightsMetadataRepository.upsertWorkflowMetadata(metadataToUpsert);
 
-		const upsertMetadata = await this.insightsMetadataRepository.findBy({
-			workflowId: In(metadataToUpsert.map((m) => m.workflowId)),
-		});
+		const upsertMetadata = await this.insightsMetadataRepository.findByWorkflowIds(
+			metadataToUpsert.map((metadata) => metadata.workflowId),
+		);
 		for (const metadata of upsertMetadata) {
 			this.cachedMetadata.set(metadata.workflowId, metadata);
 		}

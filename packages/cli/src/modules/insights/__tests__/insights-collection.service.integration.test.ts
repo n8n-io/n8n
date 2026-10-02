@@ -8,17 +8,15 @@ import {
 import type { Project, WorkflowEntity, IWorkflowDb, SharedWorkflowRepository } from '@n8n/db';
 import type { WorkflowExecuteAfterContext } from '@n8n/decorators';
 import { Container } from '@n8n/di';
-import { In } from '@n8n/typeorm';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { DateTime } from 'luxon';
 import { type ExecutionStatus, type IRun, type WorkflowExecuteMode } from 'n8n-workflow';
 import assert from 'node:assert';
 import { mock } from 'vitest-mock-extended';
 
-import type { TypeUnit } from '@/modules/insights/database/entities/insights-shared';
-import { InsightsMetadataRepository } from '@/modules/insights/database/repositories/insights-metadata.repository';
-import { InsightsRawRepository } from '@/modules/insights/database/repositories/insights-raw.repository';
-
+import type { TypeUnit } from '../database/entities/insights-shared';
+import { InsightsMetadataRepository } from '../database/repositories/insights-metadata.repository';
+import { InsightsRawRepository } from '../database/repositories/insights-raw.repository';
 import { InsightsCollectionService } from '../insights-collection.service';
 import { InsightsConfig } from '../insights.config';
 
@@ -283,9 +281,9 @@ describe('workflowExecuteAfterHandler - cacheMetadata', () => {
 
 	// Mock the repositories functions
 	const repositoryMocks = {
-		find: vi.fn(),
-		findBy: vi.fn(),
-		upsert: vi.fn(),
+		findOwnerProjectsByWorkflowIds: vi.fn(),
+		findByWorkflowIds: vi.fn(),
+		upsertWorkflowMetadata: vi.fn(),
 		insert: vi.fn(),
 	};
 	const sharedWorkflowRepositoryMock = mock<SharedWorkflowRepository>(repositoryMocks);
@@ -319,15 +317,12 @@ describe('workflowExecuteAfterHandler - cacheMetadata', () => {
 		project = await createTeamProject();
 		workflow = await createWorkflow({}, project);
 
-		repositoryMocks.find = vi.fn().mockResolvedValue([
-			{
-				workflow,
-				workflowId: workflow.id,
-				projectId: 'project-id',
-				project: { name: 'project-name' },
-			},
-		]);
-		repositoryMocks.findBy = vi.fn().mockResolvedValue([
+		repositoryMocks.findOwnerProjectsByWorkflowIds.mockReset();
+		repositoryMocks.findOwnerProjectsByWorkflowIds.mockResolvedValue(
+			new Map([[workflow.id, mock<Project>({ id: 'project-id', name: 'project-name' })]]),
+		);
+		repositoryMocks.findByWorkflowIds.mockReset();
+		repositoryMocks.findByWorkflowIds.mockResolvedValue([
 			{
 				metaId: 'meta-id',
 				workflowId: workflow.id,
@@ -336,6 +331,8 @@ describe('workflowExecuteAfterHandler - cacheMetadata', () => {
 				projectName: 'project-name',
 			},
 		]);
+		repositoryMocks.upsertWorkflowMetadata.mockClear();
+		repositoryMocks.insert.mockClear();
 	});
 
 	test('reuses cached metadata for subsequent executions of the same workflow', async () => {
@@ -350,11 +347,8 @@ describe('workflowExecuteAfterHandler - cacheMetadata', () => {
 		await insightsCollectionService.flushEvents();
 
 		// ASSERT
-		expect(repositoryMocks.find).toHaveBeenCalledWith({
-			where: { workflowId: In([workflow.id]), role: 'workflow:owner' },
-			relations: { project: true },
-		});
-		expect(repositoryMocks.upsert).toHaveBeenCalledWith(
+		expect(repositoryMocks.findOwnerProjectsByWorkflowIds).toHaveBeenCalledWith([workflow.id]);
+		expect(repositoryMocks.upsertWorkflowMetadata).toHaveBeenCalledWith(
 			expect.arrayContaining([
 				{
 					workflowId: workflow.id,
@@ -363,7 +357,6 @@ describe('workflowExecuteAfterHandler - cacheMetadata', () => {
 					projectName: 'project-name',
 				},
 			]),
-			['workflowId'],
 		);
 
 		// ACT AGAIN with the same workflow
@@ -371,10 +364,10 @@ describe('workflowExecuteAfterHandler - cacheMetadata', () => {
 		await insightsCollectionService.flushEvents();
 
 		// ASSERT AGAIN
-		repositoryMocks.find.mockClear();
-		repositoryMocks.upsert.mockClear();
-		expect(repositoryMocks.find).not.toHaveBeenCalled();
-		expect(repositoryMocks.upsert).not.toHaveBeenCalled();
+		repositoryMocks.findOwnerProjectsByWorkflowIds.mockClear();
+		repositoryMocks.upsertWorkflowMetadata.mockClear();
+		expect(repositoryMocks.findOwnerProjectsByWorkflowIds).not.toHaveBeenCalled();
+		expect(repositoryMocks.upsertWorkflowMetadata).not.toHaveBeenCalled();
 	});
 
 	test('updates cached metadata if workflow details change', async () => {
@@ -386,8 +379,8 @@ describe('workflowExecuteAfterHandler - cacheMetadata', () => {
 		await insightsCollectionService.flushEvents();
 
 		// ASSERT
-		expect(repositoryMocks.find).toHaveBeenCalled();
-		expect(repositoryMocks.upsert).toHaveBeenCalled();
+		expect(repositoryMocks.findOwnerProjectsByWorkflowIds).toHaveBeenCalled();
+		expect(repositoryMocks.upsertWorkflowMetadata).toHaveBeenCalled();
 
 		// Change the workflow name
 		workflow.name = 'new-workflow-name';
@@ -397,11 +390,8 @@ describe('workflowExecuteAfterHandler - cacheMetadata', () => {
 		await insightsCollectionService.flushEvents();
 
 		// ASSERT AGAIN
-		expect(repositoryMocks.find).toHaveBeenCalledWith({
-			where: { workflowId: In([workflow.id]), role: 'workflow:owner' },
-			relations: { project: true },
-		});
-		expect(repositoryMocks.upsert).toHaveBeenCalledWith(
+		expect(repositoryMocks.findOwnerProjectsByWorkflowIds).toHaveBeenCalledWith([workflow.id]);
+		expect(repositoryMocks.upsertWorkflowMetadata).toHaveBeenCalledWith(
 			expect.arrayContaining([
 				{
 					workflowId: workflow.id,
@@ -410,7 +400,6 @@ describe('workflowExecuteAfterHandler - cacheMetadata', () => {
 					projectName: 'project-name',
 				},
 			]),
-			['workflowId'],
 		);
 	});
 });
@@ -427,11 +416,11 @@ describe('workflowExecuteAfterHandler - flushEvents', () => {
 		insertInsightsRaw: vi.fn(),
 	};
 	const sharedWorkflowRepositoryMock = mock<SharedWorkflowRepository>({
-		find: repoMocks.findSharedWorkflowRepositoryMock,
+		findOwnerProjectsByWorkflowIds: repoMocks.findSharedWorkflowRepositoryMock,
 	});
 	const metadataRepositoryMock = mock<InsightsMetadataRepository>({
-		findBy: repoMocks.findByMetadata,
-		upsert: repoMocks.upsertMetadata,
+		findByWorkflowIds: repoMocks.findByMetadata,
+		upsertWorkflowMetadata: repoMocks.upsertMetadata,
 	});
 	const insightsRawRepositoryMock = mock<InsightsRawRepository>({
 		insert: repoMocks.insertInsightsRaw,
@@ -459,14 +448,9 @@ describe('workflowExecuteAfterHandler - flushEvents', () => {
 	beforeEach(async () => {
 		project = await createTeamProject();
 		workflow = await createWorkflow({ settings: { timeSavedPerExecution: 1 } }, project);
-		repoMocks.findSharedWorkflowRepositoryMock.mockResolvedValue([
-			{
-				workflow,
-				workflowId: workflow.id,
-				projectId: 'project-id',
-				project: { name: 'project-name' },
-			},
-		]);
+		repoMocks.findSharedWorkflowRepositoryMock.mockResolvedValue(
+			new Map([[workflow.id, mock<Project>({ id: 'project-id', name: 'project-name' })]]),
+		);
 		repoMocks.findByMetadata.mockResolvedValue([
 			{
 				metaId: 'meta-id',
