@@ -1,13 +1,7 @@
 import type { Logger } from '@n8n/backend-common';
 import type { OutboundHttp } from '@n8n/backend-network';
 import type { Context } from '@opentelemetry/api';
-import {
-	context,
-	createContextKey,
-	propagation,
-	ROOT_CONTEXT,
-	trace,
-} from '@opentelemetry/api';
+import { context, createContextKey, propagation, ROOT_CONTEXT, trace } from '@opentelemetry/api';
 import type { ReadableSpan } from '@opentelemetry/sdk-trace-base';
 import {
 	InMemorySpanExporter,
