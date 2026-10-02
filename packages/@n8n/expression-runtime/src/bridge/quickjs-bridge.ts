@@ -1,3 +1,4 @@
+import { LruCache } from '@n8n/utils/lru-cache';
 import { readFileSync } from 'node:fs';
 import * as path from 'node:path';
 
@@ -12,7 +13,6 @@ import {
 	TRANSFER_OPAQUE_KEY,
 	TRANSFER_TYPE_KEY,
 } from '../runtime/transfer';
-import { LruCache } from '../evaluator/lru-cache';
 import {
 	dispatchHostCall,
 	getArrayElement,

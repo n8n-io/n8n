@@ -211,15 +211,7 @@ export declare namespace AnnotationTagsRequest {
 export declare namespace NodeRequest {
 	type GetAll = AuthenticatedRequest;
 
-	type Post = AuthenticatedRequest<
-		{},
-		{},
-		{ name?: string; verify?: boolean; version?: string; checksum?: string }
-	>;
-
 	type Delete = AuthenticatedRequest<{}, {}, {}, { name: string }>;
-
-	type Update = Post;
 }
 
 // ----------------------------------
@@ -286,6 +278,18 @@ export declare namespace ProjectRequest {
 		lastName: string;
 		role: ProjectRole | AssignableProjectRole;
 	};
+	/**
+	 * A user who reaches a project through a global role instead of a project
+	 * relation. Instance owners and admins always have full project access, so
+	 * the member list shows them even when no relation row exists.
+	 */
+	type ProjectImplicitMemberResponse = {
+		id: string;
+		email: string;
+		firstName: string;
+		lastName: string;
+		globalRole: { slug: string; displayName: string };
+	};
 	type ProjectWithRelations = {
 		id: string;
 		name: string | undefined;
@@ -293,7 +297,9 @@ export declare namespace ProjectRequest {
 		type: ProjectType;
 		description: string | null;
 		customTelemetryTags: Array<{ key: string; value: string }>;
+		creatorId: string | null;
 		relations: ProjectRelationResponse[];
+		implicitMembers: ProjectImplicitMemberResponse[];
 		scopes: Scope[];
 		rolesManaged: boolean;
 	};

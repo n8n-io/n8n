@@ -90,6 +90,11 @@ export class ActiveWorkflowTriggers {
 		return Array.from(this.activeTriggersByWorkflowId.keys());
 	}
 
+	/** Sizes of the in-memory collections, for diagnostics and tests. */
+	getDiagnosticCounts() {
+		return { workflows: this.activeTriggersByWorkflowId.size };
+	}
+
 	/**
 	 * Returns the workflow data for the given ID if currently active in memory.
 	 */

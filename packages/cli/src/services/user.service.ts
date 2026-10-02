@@ -1,5 +1,6 @@
 import type { RoleChangeRequestDto } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { EventService, UrlService, RoleService } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import type { PublicUser } from '@n8n/db';
 import {
@@ -33,20 +34,14 @@ import { JwtService } from './jwt.service';
 import { OwnershipService } from './ownership.service';
 import { ProjectService } from './project.service.ee';
 import { PublicApiKeyService } from './public-api-key.service';
-import { RoleService } from './role.service';
 
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { InternalServerError } from '@/errors/response-errors/internal-server.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { EventService } from '@/events/event.service';
+import { BadRequestError, ForbiddenError, InternalServerError, NotFoundError } from '@n8n/errors';
 import { ExternalHooks } from '@/external-hooks';
 import type { Invitation } from '@/interfaces';
 import { License } from '@/license';
 import { PostHogClient } from '@/posthog';
 import type { UserRequest } from '@/requests';
-import { UrlService } from '@/services/url.service';
 import { isSsoCurrentAuthenticationMethod } from '@/sso.ee/sso-helpers';
 import { UserManagementMailer } from '@/user-management/email';
 
@@ -215,6 +210,7 @@ export class UserService {
 			Object.entries(toInviteUsers).map(async ([email, id]) => {
 				// Always use JWT-based tamper-proof invite links
 				const token = this.jwtService.sign(
+					'invite',
 					{
 						inviterId: owner.id,
 						inviteeId: id,
@@ -457,7 +453,10 @@ export class UserService {
 		token: string,
 	): Promise<{ inviterId: string; inviteeId: string }> {
 		try {
-			const decoded = this.jwtService.verify<{ inviterId: string; inviteeId: string }>(token);
+			const decoded = this.jwtService.verify<{ inviterId: string; inviteeId: string }>(
+				'invite',
+				token,
+			);
 			if (!decoded.inviterId || !decoded.inviteeId) {
 				this.logger.debug('Invalid JWT token payload - missing inviterId or inviteeId');
 				throw new BadRequestError('Invalid invite URL');

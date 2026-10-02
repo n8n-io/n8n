@@ -7,7 +7,7 @@ import { untilFolderSelected, folderRLC } from '../../folder';
 import { getUploadBufferWithinCap, validateSharePointFileName } from '../../helpers/utils';
 import { untilSiteSelected } from '../../list';
 import { resolveSiteId, siteRLC } from '../../site';
-import { microsoftApiRequest } from '../../transport';
+import { microsoftApiRequest } from '../../../transport';
 
 const properties: INodeProperties[] = [
 	{

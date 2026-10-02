@@ -19,6 +19,7 @@ export const AGENT_VECTOR_STORES_MODAL_KEY = 'agentVectorStoresModal';
 export const AGENT_JSON_IMPORT_MODAL_KEY = 'agentJsonImportModal';
 export const AGENT_CONFIRMATION_MODAL_KEY = 'agentConfirmation';
 export const AGENT_DUPLICATE_MODAL_KEY = 'agentDuplicateModal';
+export const AGENT_DESCRIPTION_MODAL_KEY = 'agentDescriptionModal';
 export const AGENT_EPISODIC_MEMORY_CREDENTIAL_TYPE = 'openAiApi';
 
 /** Synthetic tree key for the combined "Agent" panel (name/model/credential/instructions). */

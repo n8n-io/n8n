@@ -4,10 +4,7 @@ import { InstanceSettingsLoaderConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import type { MessageEventBusDestinationOptions } from 'n8n-workflow';
 
-import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ConflictError } from '@/errors/response-errors/conflict.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { BadRequestError, ConflictError, NotFoundError } from '@n8n/errors';
 import { eventNamesAll } from '@/eventbus/event-message-classes';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { createMessageEventBusDestination } from '@/modules/log-streaming.ee/create-message-event-bus-destination';
@@ -36,6 +33,11 @@ const findDestinationOrFail = async (id: string): Promise<MessageEventBusDestina
 		throw new NotFoundError(`Log streaming destination with id "${id}" could not be found`);
 	}
 	return destination;
+};
+
+const getCredentialsFinderService = async () => {
+	const { CredentialsFinderService } = await import('@n8n/backend-services');
+	return Container.get(CredentialsFinderService);
 };
 
 type LogStreamingHandlers = {
@@ -89,7 +91,7 @@ const logStreamingHandlers: LogStreamingHandlers = {
 			const options = toInternalDestinationOptions(parseResult.data);
 
 			await assertUserCanUseDestinationCredentials(
-				Container.get(CredentialsFinderService),
+				await getCredentialsFinderService(),
 				req.user,
 				options,
 			);
@@ -123,7 +125,7 @@ const logStreamingHandlers: LogStreamingHandlers = {
 			const options = { ...toInternalDestinationOptions(parseResult.data), id: req.params.id };
 
 			await assertUserCanUseDestinationCredentials(
-				Container.get(CredentialsFinderService),
+				await getCredentialsFinderService(),
 				req.user,
 				options,
 			);
@@ -147,7 +149,7 @@ const logStreamingHandlers: LogStreamingHandlers = {
 		async (req, res) => {
 			const destination = await findDestinationOrFail(req.params.id);
 			await assertUserCanUseDestinationCredentials(
-				Container.get(CredentialsFinderService),
+				await getCredentialsFinderService(),
 				req.user,
 				destination,
 			);

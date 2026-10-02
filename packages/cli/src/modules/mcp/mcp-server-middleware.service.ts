@@ -3,7 +3,7 @@ import { Service } from '@n8n/di';
 import { NextFunction, Response, Request } from 'express';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 
-import { AuthError } from '@/errors/response-errors/auth.error';
+import { AuthError } from '@n8n/errors';
 import { JwtService } from '@/services/jwt.service';
 import {
 	OAuthTokenVerifierProxy,
@@ -44,7 +44,7 @@ export class McpServerMiddlewareService {
 	async getUserForToken(token: string): Promise<UserWithContext> {
 		let decoded: { meta?: { isOAuth?: boolean } };
 		try {
-			decoded = this.jwtService.decode<{ meta?: { isOAuth?: boolean } }>(token);
+			decoded = this.jwtService.decodeUnverified<{ meta?: { isOAuth?: boolean } }>(token);
 		} catch (error) {
 			return {
 				user: null,

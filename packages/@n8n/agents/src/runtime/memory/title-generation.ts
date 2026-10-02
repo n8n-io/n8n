@@ -1,12 +1,21 @@
 import type { LanguageModel } from 'ai';
 
 import type { BuiltMemory, BuiltTelemetry, TitleGenerationConfig } from '../../types';
-import type { AgentExecutionCounter, ModelConfig } from '../../types/sdk/agent';
+import type {
+	AgentExecutionCounter,
+	ModelConfig,
+	PromptCachingConfig,
+	SideCallUsageReport,
+	TokenUsage,
+} from '../../types/sdk/agent';
 import type { AgentDbMessage } from '../../types/sdk/message';
+import { getModelIdString } from '../../utils/model';
 import { createFilteredLogger } from '../logger';
 import { incrementTokenCountFromUsage } from '../loop/execution-counter';
+import { computeSideCallCost } from '../loop/side-call-cost';
 import { loadAi } from '../model/lazy-ai';
 import { createModel, type FetchFn } from '../model/model-factory';
+import { toTokenUsage } from '../streaming/stream';
 import { buildAiSdkTelemetry } from '../telemetry/telemetry-options';
 
 const logger = createFilteredLogger();
@@ -144,13 +153,16 @@ export async function generateTitleFromMessage(
  * it; falls back to treating the whole response as a plain title if the model
  * ignores the JSON format.
  *
- * Returns `null` on empty/trivial input or empty LLM output.
+ * Returns `null` only on empty/trivial input (no model call is made). When the
+ * model is called, returns an object with `usage` and `title` set to `null`
+ * when no usable title could be extracted, so the caller can still price the
+ * billed turn.
  */
 export async function generateTitleAndEmojiFromMessage(
 	model: LanguageModel,
 	userMessage: string,
 	opts?: { instructions?: string; executionCounter?: AgentExecutionCounter },
-): Promise<{ title: string; emoji?: string } | null> {
+): Promise<{ title: string | null; emoji?: string; usage?: TokenUsage } | null> {
 	const trimmed = userMessage.trim();
 	if (!trimmed) return null;
 
@@ -170,13 +182,14 @@ ${trimmed}
 		messages: [{ role: 'user', content: wrappedMessage }],
 	});
 	incrementTokenCountFromUsage(opts?.executionCounter, result.usage);
+	const usage = toTokenUsage(result.usage, result.providerMetadata);
 
 	let text = result.text?.trim();
-	if (!text) return null;
+	if (!text) return { title: null, usage };
 
 	// Strip <think>...</think> blocks (e.g. from DeepSeek R1) before JSON parsing.
 	text = text.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
-	if (!text) return null;
+	if (!text) return { title: null, usage };
 
 	let rawTitle = '';
 	let emoji: string | undefined;
@@ -197,9 +210,9 @@ ${trimmed}
 	}
 
 	const title = sanitizeTitle(rawTitle);
-	if (!title) return null;
+	if (!title) return { title: null, emoji, usage };
 
-	return { title, emoji };
+	return { title, emoji, usage };
 }
 
 /**
@@ -221,6 +234,13 @@ export async function generateThreadTitle(opts: {
 	/** Messages from the current turn, used to find the first user message. */
 	turnDelta: AgentDbMessage[];
 	executionCounter?: AgentExecutionCounter;
+	/**
+	 * Host callback that receives the priced title-generation usage so it can
+	 * add the USD cost to the execution and thread totals. Best-effort.
+	 */
+	onSideCallUsage?: (report: SideCallUsageReport) => void | Promise<void>;
+	/** Agent prompt-caching config, used to resolve Anthropic cache-write pricing for the title model. */
+	promptCaching?: PromptCachingConfig;
 }): Promise<void> {
 	try {
 		const thread = await opts.memory.getThread(opts.threadId);
@@ -243,7 +263,27 @@ export async function generateThreadTitle(opts: {
 		});
 		if (!generated) return;
 
-		const { title, emoji } = generated;
+		const { title, emoji, usage } = generated;
+
+		// Price the title model turn and forward it to the host so it adds the
+		// cost to the execution and thread totals. Report immediately after the
+		// model call — independent of whether a usable title was extracted or
+		// later persistence succeeds — so a billed turn is never left unpriced.
+		// Best-effort: a catalog lookup or host failure is logged and never
+		// breaks title generation. Awaited (not fire-and-forget) so the cost is
+		// captured deterministically before generateThreadTitle resolves, while
+		// still best-effort: reportTitleUsage swallows its own errors.
+		if (usage && opts.onSideCallUsage) {
+			await reportTitleUsage(
+				opts.onSideCallUsage,
+				getModelIdString(titleModelId),
+				usage,
+				opts.promptCaching,
+			);
+		}
+
+		// No usable title — the model call was still billed (reported above).
+		if (!title) return;
 
 		// Store emoji in thread metadata
 		const metadata = { ...(thread?.metadata ?? {}), ...(emoji && { emoji }) };
@@ -256,5 +296,30 @@ export async function generateThreadTitle(opts: {
 		});
 	} catch (error) {
 		logger.warn('Failed to generate thread title', { error });
+	}
+}
+
+/**
+ * Price a title-generation model turn and forward it to the host. Best-effort:
+ * a catalog lookup or host failure is logged and never breaks title generation.
+ */
+async function reportTitleUsage(
+	onSideCallUsage: (report: SideCallUsageReport) => void | Promise<void>,
+	modelId: string,
+	usage: TokenUsage,
+	promptCaching?: PromptCachingConfig,
+): Promise<void> {
+	try {
+		const cost = await computeSideCallCost(modelId, usage, promptCaching);
+		if (cost === undefined) return;
+		await onSideCallUsage({
+			task: 'title',
+			model: modelId,
+			usage,
+			cost,
+			reportId: crypto.randomUUID(),
+		});
+	} catch (error) {
+		logger.warn('Failed to report title generation usage', { error });
 	}
 }

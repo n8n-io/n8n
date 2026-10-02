@@ -10,13 +10,14 @@ import { BINARY_ENCODING } from 'n8n-workflow';
 export const ENCODED_BUFFER_KEY = '__@N8nEncodedBuffer@__';
 
 /**
- * Replaces a Buffer body with its base64 envelope. Any other body passes through.
+ * Replaces a Buffer body with its base64 envelope. Every other value passes
+ * through, a payload that is not a full response included.
  *
- * @param response Full response. Mutated and returned.
+ * @param response Response to send. Mutated and returned.
  * @returns The same `response`.
  */
-export function encodeBufferBody<T extends IN8nHttpFullResponse>(response: T): T {
-	if (Buffer.isBuffer(response.body)) {
+export function encodeBufferBody<T>(response: T): T {
+	if (hasResponseBody(response) && Buffer.isBuffer(response.body)) {
 		response.body = { [ENCODED_BUFFER_KEY]: response.body.toString(BINARY_ENCODING) };
 	}
 
