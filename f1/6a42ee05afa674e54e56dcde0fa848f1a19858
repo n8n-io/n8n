@@ -1,0 +1,17 @@
+packages/frontend/editor-ui/src/features/agents/n8nChatPage/AgentN8nChatView.vue
+  ai_agent 125
+packages/frontend/editor-ui/src/features/agents/n8nChatPage/__tests__/AgentN8nChatView.router.test.ts
+  ai_agent 5
+packages/frontend/editor-ui/src/features/agents/n8nChatPage/mergeRecentChats.ts
+  ai_agent 29,35,76
+packages/frontend/editor-ui/src/features/agents/n8nChatPage/useRecentChats.ts
+  ai_agent 20
+packages/frontend/editor-ui/src/features/agents/constants.ts
+  ai_agent 50,53
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "f16a42ee05afa674e54e56dcde0fa848f1a19858",
+  "prompts": {}
+}
