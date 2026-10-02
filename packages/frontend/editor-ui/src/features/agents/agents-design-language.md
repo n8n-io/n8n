@@ -27,11 +27,12 @@ title, origin, date, token count, and actions visible without overlap.
 
 ## Preview history
 
-Use the shared `ChatHistoryDropdownTrigger` in the Preview dock, as the Assistant
-does. Show the history label only before a session starts. Keep the history icon
-and its tooltip after the session starts. Show the session title beside it as a
-small heading. Keep the history button and actions at their content width.
-Truncate the title in the remaining space.
+Use the shared `ChatHistoryDropdownTrigger` in the Preview dock and the Assistant.
+The shared button shows the history icon and the chat title. Click the title or
+the icon to open history. Show only “Chat history” when no chat title exists. Do
+not show “New session” before the Preview session starts. Truncate long titles
+inside the shared button. Keep the header actions visible.
+Use the `x` icon for the Preview close action, as the Assistant does.
 
 ## Item context menus
 

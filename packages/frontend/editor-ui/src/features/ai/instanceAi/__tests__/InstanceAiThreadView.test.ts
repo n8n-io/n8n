@@ -605,13 +605,13 @@ describe('InstanceAiThreadView', () => {
 		expect(routerPushSpy).toHaveBeenCalledExactlyOnceWith({ name: INSTANCE_AI_VIEW });
 	});
 
-	it('hides the Chat history label when the session title is visible', function () {
+	it('shows the session title in the history button', function () {
 		const { getByRole } = renderView({ props: { threadId: 'thread-1' } });
-		const button = getByRole('button', { name: 'Chat history' });
+		const button = getByRole('button', { name: 'Test thread' });
 
-		expect(getByRole('heading', { name: 'Test thread', level: 2 })).toBeVisible();
+		expect(within(button).getByText('Test thread')).toBeVisible();
 		expect(within(button).queryByText('Chat history')).not.toBeInTheDocument();
-		expect(button).toHaveAttribute('data-icon-only', 'true');
+		expect(button).toHaveAttribute('aria-haspopup', 'menu');
 	});
 
 	it('shows the Chat history label when the session has no visible title', function () {
@@ -625,7 +625,7 @@ describe('InstanceAiThreadView', () => {
 		expect(button).not.toHaveAttribute('data-icon-only', 'true');
 	});
 
-	it('hides the Chat history label when the session title becomes visible', async function () {
+	it('replaces Chat history with the title when the session title loads', async function () {
 		store.threads = [{ ...store.threads[0], title: NEW_CONVERSATION_TITLE }];
 		const { getByRole } = renderView({ props: { threadId: 'thread-1' } });
 		const button = getByRole('button', { name: 'Chat history' });
@@ -634,9 +634,9 @@ describe('InstanceAiThreadView', () => {
 		store.threads = [{ ...store.threads[0], title: 'Loaded session title' }];
 		await nextTick();
 
-		expect(getByRole('heading', { name: 'Loaded session title', level: 2 })).toBeVisible();
+		expect(within(button).getByText('Loaded session title')).toBeVisible();
 		expect(within(button).queryByText('Chat history')).not.toBeInTheDocument();
-		expect(button).toHaveAttribute('data-icon-only', 'true');
+		expect(button).toHaveAccessibleName('Loaded session title');
 	});
 
 	it('does not pass suggestions to its composer', () => {

@@ -13,7 +13,7 @@ import InstanceAiThreadList from './InstanceAiThreadList.vue';
 
 const props = withDefaults(
 	defineProps<{
-		showThreadHistoryLabel?: boolean;
+		title?: string;
 		/** Falls back to the route param when omitted (the full assistant page's own use). */
 		threadId?: string;
 		/** Passed through to `InstanceAiThreadList` — an embedding host scopes
@@ -25,7 +25,7 @@ const props = withDefaults(
 		};
 	}>(),
 	{
-		showThreadHistoryLabel: true,
+		title: undefined,
 		threadId: undefined,
 		threadList: undefined,
 	},
@@ -76,13 +76,13 @@ function handleThreadSelect(threadId: string) {
 			>
 				<template #trigger>
 					<ChatHistoryDropdownTrigger
-						:show-label="props.showThreadHistoryLabel"
+						:title="props.title"
 						data-test-id="instance-ai-sidebar-toggle"
 					/>
 				</template>
 			</InstanceAiThreadList>
 		</div>
-		<slot name="title" />
+		<slot name="status" />
 		<div :class="$style.headerActions">
 			<CreditsSettingsDropdown
 				v-if="store.creditsRemaining !== undefined"
@@ -119,17 +119,15 @@ function handleThreadSelect(threadId: string) {
 }
 
 .headerActions {
-	margin-left: auto;
+	margin-inline-start: auto;
+	flex-shrink: 0;
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--4xs);
 }
 
 .threadHistory {
-	// The dropdown trigger wrapper sets `min-width: 0`. A long title would
-	// shrink it and the button would paint over the heading. Keep the button
-	// at its content width; the title is the part that truncates.
-	flex-shrink: 0;
+	min-width: 0;
 }
 
 .readOnlyBanner {

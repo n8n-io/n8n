@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { N8nHeading, N8nIconButton, N8nTooltip, TOOLTIP_DELAY_MS } from '@n8n/design-system';
+import { N8nIconButton, N8nTooltip, TOOLTIP_DELAY_MS } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { computed, nextTick, useTemplateRef, watch } from 'vue';
 import { useStorage } from '@vueuse/core';
@@ -208,23 +208,12 @@ defineExpose({ clearBudgetStops });
 					>
 						<template #trigger>
 							<ChatHistoryDropdownTrigger
-								:show-label="!props.hasSession"
+								:title="props.hasSession ? props.sessionTitle : undefined"
 								data-testid="agent-preview-history-trigger"
 							/>
 						</template>
 					</AgentSessionHistoryDropdown>
 				</div>
-				<N8nHeading
-					v-if="props.sessionTitle"
-					tag="h2"
-					size="small"
-					:class="$style.sessionTitle"
-					:title="props.sessionTitle"
-					data-testid="agent-preview-session-title"
-				>
-					{{ props.sessionTitle }}
-				</N8nHeading>
-
 				<div :class="$style.actions">
 					<N8nTooltip
 						v-if="props.hasSession && props.effectiveSessionId"
@@ -281,7 +270,7 @@ defineExpose({ clearBudgetStops });
 						:shortcut="{ metaKey: false, shiftKey: false, keys: ['esc'] }"
 					>
 						<N8nIconButton
-							icon="chevrons-right"
+							icon="x"
 							variant="ghost"
 							size="small"
 							icon-size="large"
@@ -375,15 +364,7 @@ defineExpose({ clearBudgetStops });
 }
 
 .sessionHistory {
-	flex-shrink: 0;
-}
-
-.sessionTitle {
 	min-width: 0;
-	flex: 1;
-	overflow: hidden;
-	text-overflow: ellipsis;
-	white-space: nowrap;
 }
 
 .actions {

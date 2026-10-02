@@ -36,7 +36,7 @@ describe('AgentSessionHistoryDropdown', () => {
 		expect(result.queryByText('agents.builder.chat.sessionPicker.empty')).not.toBeInTheDocument();
 	});
 
-	it('searches and selects a session with the history icon', async () => {
+	it('opens history from the session title, searches, and selects a session', async () => {
 		storeState.loading = false;
 		const renderComponent = createComponentRenderer(AgentSessionHistoryDropdown);
 		const result = renderComponent({
@@ -50,12 +50,12 @@ describe('AgentSessionHistoryDropdown', () => {
 				],
 			},
 			slots: {
-				trigger: () => h(ChatHistoryDropdownTrigger, { showLabel: false }),
+				trigger: () => h(ChatHistoryDropdownTrigger, { title: 'Quarterly review' }),
 			},
 		});
 
-		const trigger = result.getByRole('button', { name: 'instanceAi.sidebar.chatHistory' });
-		await userEvent.click(trigger);
+		const trigger = result.getByRole('button', { name: 'Quarterly review' });
+		await userEvent.click(result.getByText('Quarterly review'));
 		expect(trigger).toHaveAttribute('aria-expanded', 'true');
 		await userEvent.type(
 			result.getByPlaceholderText('agents.builder.chat.sessionPicker.searchPlaceholder'),
