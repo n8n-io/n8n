@@ -1055,7 +1055,8 @@ export class AgentRuntimeReconstructionService {
 		if (!backgroundTasksEnabled) return;
 		// Background tools attach only to the root agent, so its cap is the root cap.
 		const budget = config.config?.guardrails?.budget;
-		const rootSessionCapUsd = budget?.enabled ? budget.sessionCostCapUsd : undefined;
+		const sessionCap = budget?.enabled ? budget.sessionCostCapUsd : undefined;
+		const rootSessionCapUsd = sessionCap !== undefined && sessionCap > 0 ? sessionCap : undefined;
 		await this.attachBackgroundJobTools({
 			...delegationParams,
 			...(parentWorkspaceHandle !== undefined ? { parentWorkspaceHandle } : {}),

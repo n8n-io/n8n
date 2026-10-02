@@ -246,6 +246,7 @@ export class AgentMessageQueueConsumer {
 			abortSignal: signal,
 			errorMode: 'forward',
 			onChunk: (chunk) => emitChunkEvents(chunk, send),
+			onBudgetNotice: () => send({ type: 'budget-notice', code: 'budget.alert' }),
 		});
 		if (result.status === 'completed')
 			send({ type: 'done', sessionId: thread.id, executionId: admission.executionId });
