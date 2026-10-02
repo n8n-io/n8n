@@ -8120,6 +8120,8 @@
 	"agents.chat.clearHistory": "Clear chat history",
 	"agents.chat.input.placeholder": "Type a message...",
 	"agents.chat.input.placeholder.withAgent": "Message {agentName}…",
+	"agents.chat.input.placeholder.withQueue.mac": "Press Option + ↑ to edit the last queued message",
+	"agents.chat.input.placeholder.withQueue.other": "Press Alt + ↑ to edit the last queued message",
 	"agents.chat.attachments.tooLarge": "{fileName} exceeds the {limit} MB attachment limit",
 	"agents.chat.attachments.tooMany": "You can attach up to {limit} files per message",
 	"agents.chat.attachments.unavailable": "No longer available",
