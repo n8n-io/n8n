@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ref } from 'vue';
 import { fireEvent, waitFor } from '@testing-library/vue';
+import userEvent from '@testing-library/user-event';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import { createComponentRenderer } from '@/__tests__/render';
@@ -602,10 +603,7 @@ describe('SettingsInstanceAiView', () => {
 		});
 
 		it('offers only always_allow and blocked for createPreference', async () => {
-			// N8nSelect (element-plus) teleports its option list to the document
-			// body and only mounts it once open, so the options never show up in
-			// `select.textContent`. Open the select and read the teleported list
-			// instead of the select's own DOM subtree.
+			// The menu is portaled and mounts when the trigger opens.
 			const { getByTestId, getByLabelText, queryAllByText } = renderComponent();
 			await fireEvent.click(
 				getByLabelText('Toggle settings.n8nAgent.permissions.group.preferences'),
@@ -613,7 +611,7 @@ describe('SettingsInstanceAiView', () => {
 			const select = await waitFor(() => getByTestId('n8n-agent-permission-createPreference'));
 			expect(select).toBeVisible();
 
-			await fireEvent.click(select.querySelector('input')!);
+			await userEvent.click(select);
 			await waitFor(() =>
 				expect(queryAllByText('settings.n8nAgent.permissions.alwaysAllow').length).toBeGreaterThan(
 					0,
@@ -693,8 +691,8 @@ describe('SettingsInstanceAiView', () => {
 			await waitFor(() => expect(getByTestId('n8n-agent-permission-createFolder')).toBeVisible());
 
 			const select = getByTestId('n8n-agent-permission-createFolder');
-			await fireEvent.click(select.querySelector('input')!);
-			await fireEvent.click(getAllByText('settings.n8nAgent.permissions.alwaysAllow')[0]);
+			await userEvent.click(select);
+			await userEvent.click(getAllByText('settings.n8nAgent.permissions.alwaysAllow')[0]);
 
 			expect(setPermission).toHaveBeenCalledWith('createFolder', 'always_allow');
 			expect(save).toHaveBeenCalled();
