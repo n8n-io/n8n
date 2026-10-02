@@ -7,7 +7,7 @@ import {
 	type Workspace,
 	type WorkspaceSandbox,
 } from '@n8n/agents';
-import { GROUPING_GUIDANCE } from '@n8n/workflow-sdk/prompts/sdk-reference';
+import { GROUPING_GUIDANCE, SDK_FUNCTIONS_SENTENCE } from '@n8n/workflow-sdk/prompts/sdk-reference';
 import { jsonParse, TOP_LEVEL_ITEM_CEILING } from 'n8n-workflow';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
@@ -490,6 +490,17 @@ describe('grouping guidance injection', () => {
 
 		expect(skill.instructions).toContain(`still above\n${TOP_LEVEL_ITEM_CEILING} items`);
 		expect(skill.instructions).not.toContain('{{TOP_LEVEL_ITEM_CEILING_PLACEHOLDER}}');
+	});
+
+	it('resolves the SDK function list from the shared sentence', async () => {
+		const skill = await loadInstanceAiRuntimeSkillSource().loadSkill('workflow-builder');
+
+		if (!skill) {
+			throw new Error('Expected the workflow-builder skill to load');
+		}
+
+		expect(skill.instructions).toContain(SDK_FUNCTIONS_SENTENCE);
+		expect(skill.instructions).not.toContain('{{SDK_FUNCTIONS_PLACEHOLDER}}');
 	});
 
 	it('keeps the builder skill file free of its own grouping criteria', async () => {
