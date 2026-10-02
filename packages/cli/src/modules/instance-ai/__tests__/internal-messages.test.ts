@@ -91,6 +91,7 @@ describe('cleanStoredUserMessage', () => {
 	it('hides the Execute block while preserving the user message', () => {
 		const block = buildWorkflowTestRequestBlock('wf-1');
 		expect(block).toContain(JSON.stringify({ workflowId: 'wf-1' }));
+		expect(block).toContain('executions(action="listen") for a Webhook or Form Trigger');
 		expect(cleanStoredUserMessage(`${block}\n\nRun a test.`)).toBe('Run a test.');
 	});
 
@@ -1081,6 +1082,27 @@ describe('buildThreadContextBlock', () => {
 			'<instance-urls>\nWebhook base URL: https://acme.app.n8n.cloud/webhook\nForm base URL: https://acme.app.n8n.cloud/form\n</instance-urls>',
 		);
 		expect(cleanStoredUserMessage(stored)).toBe('share the form link');
+	});
+
+	it('adds the test URLs and their caveat when the instance provides them', () => {
+		const block = buildInstanceUrlsBlock({
+			webhookBaseUrl: 'https://acme.app.n8n.cloud/webhook',
+			formBaseUrl: 'https://acme.app.n8n.cloud/form',
+			webhookTestBaseUrl: 'https://acme.app.n8n.cloud/webhook-test',
+			formTestBaseUrl: 'https://acme.app.n8n.cloud/form-test',
+		});
+
+		expect(block).toBe(
+			[
+				'<instance-urls>',
+				'Webhook base URL: https://acme.app.n8n.cloud/webhook',
+				'Form base URL: https://acme.app.n8n.cloud/form',
+				'Webhook test base URL: https://acme.app.n8n.cloud/webhook-test',
+				'Form test base URL: https://acme.app.n8n.cloud/form-test',
+				'Test URLs answer only while executions(action="listen") has armed the trigger; production URLs need a published workflow.',
+				'</instance-urls>',
+			].join('\n'),
+		);
 	});
 
 	it('leaves a user-authored inner-tag lookalike after the wrapper visible', () => {
