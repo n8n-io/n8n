@@ -305,6 +305,11 @@ paths:
   /source-control/pull:
     post:
       $ref: ./handlers/source-control/spec/paths/pullSourceControl.generated.yml
+  /settings/sso/saml:
+    get:
+      $ref: ./handlers/settings/spec/paths/getSamlConfiguration.generated.yml
+    put:
+      $ref: ./handlers/settings/spec/paths/updateSamlConfiguration.generated.yml
   /tags:
     get:
       $ref: ./handlers/tags/spec/paths/getTags.generated.yml

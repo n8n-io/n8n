@@ -352,6 +352,7 @@ describe('get-user-preferences MCP tool', () => {
 			expect(telemetry.track).toHaveBeenCalledWith(
 				TELEMETRY_EVENT.CONTEXT.PREFERENCES_READ_OVER_MCP,
 				{
+					user_id: 'user-1',
 					count: 1,
 					scope_types: ['instance'],
 					rendered_length: expect.any(Number),
@@ -368,7 +369,7 @@ describe('get-user-preferences MCP tool', () => {
 
 			expect(telemetry.track).toHaveBeenCalledWith(
 				TELEMETRY_EVENT.CONTEXT.PREFERENCES_READ_OVER_MCP,
-				{ count: 0, scope_types: [], rendered_length: 0, project_scoped: true },
+				{ user_id: 'user-1', count: 0, scope_types: [], rendered_length: 0, project_scoped: true },
 			);
 		});
 

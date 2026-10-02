@@ -40,7 +40,7 @@ const {
 			return this.runtimes.get(threadId);
 		},
 	},
-	router: { push: vi.fn() },
+	router: { push: vi.fn(), resolve: vi.fn(() => ({ href: '/settings/context/preferences' })) },
 	mcpStore: {
 		connections: [] as Array<Record<string, unknown>>,
 		fetchConnectionsLazy: vi.fn(),
@@ -485,13 +485,17 @@ describe('useInstanceAiInputMenuItems', () => {
 			expect(findItem(menuItems.value, 'preference-user-1')?.label).toBe('new');
 		});
 
-		it('links to the Context settings page', async () => {
+		it('opens the Context settings page in a new tab', async () => {
 			featureFlags.preferences = true;
+			const openSpy = vi.spyOn(window, 'open').mockReturnValue(null);
 
 			const { menuItems } = useInstanceAiInputMenuItems(vi.fn(), () => 'thread-1');
 			await findItem(menuItems.value, 'preferences-manage')?.data?.action?.();
 
-			expect(router.push).toHaveBeenCalledWith({ name: 'SettingsContextPreferences' });
+			expect(router.resolve).toHaveBeenCalledWith({ name: 'SettingsContextPreferences' });
+			expect(openSpy).toHaveBeenCalledWith('/settings/context/preferences', '_blank');
+			expect(router.push).not.toHaveBeenCalled();
+			openSpy.mockRestore();
 		});
 	});
 });

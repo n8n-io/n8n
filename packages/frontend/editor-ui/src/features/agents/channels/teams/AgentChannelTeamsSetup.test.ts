@@ -1,7 +1,9 @@
 import { createComponentRenderer } from '@/__tests__/render';
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import { createTestingPinia } from '@pinia/testing';
-import { configure, fireEvent, waitFor } from '@testing-library/vue';
+import { configure, fireEvent, waitFor, within } from '@testing-library/vue';
+import { flushPromises } from '@vue/test-utils';
+import { saveAs } from 'file-saver';
 
 import AgentChannelTeamsSetup from './AgentChannelTeamsSetup.vue';
 import type { TeamsCredentialCheck } from '@n8n/api-types';
@@ -27,6 +29,11 @@ vi.mock('file-saver', () => ({
 	saveAs: vi.fn(),
 }));
 
+const { showMessage, showError } = vi.hoisted(() => ({ showMessage: vi.fn(), showError: vi.fn() }));
+vi.mock('@n8n/composables/useToast', () => ({
+	useToast: () => ({ showMessage, showError }),
+}));
+
 vi.mock('./api', () => ({
 	checkTeamsCredential: vi.fn(),
 	getTeamsSetupState: vi.fn(),
@@ -47,6 +54,35 @@ const renderComponent = createComponentRenderer(AgentChannelTeamsSetup);
 
 // N8nSwitch2 is a Reka UI switch: a button with aria-checked, not an input.
 const checkedSwitch = (el: HTMLElement) => el.getAttribute('aria-checked') === 'true';
+
+// A picked credential has a bot ID, which unlocks the last two steps once verified.
+const withBot = () =>
+	vi.mocked(getTeamsSetupState).mockResolvedValue({
+		messagingEndpointUrl: ENDPOINT,
+		botId: CLIENT_ID,
+		deployToAzureUrl: DEPLOY_URL,
+		credentialClaimedBy: null,
+		defaultDisplayName: DEFAULT_NAME,
+		defaultDescription: DEFAULT_DESCRIPTION,
+	});
+
+const WHERE_TITLE = 'agents.channels.teams.setup.availability.whereTitle';
+const SUMMARY_SEPARATOR = 'agents.channels.teams.setup.availability.summarySeparator';
+
+// The panel starts collapsed and mounts its rows only once opened. In setup it
+// also stays inert until the credential is verified.
+const openAvailability = async (getByTestId: (id: string) => HTMLElement) => {
+	await waitFor(() => expect(getByTestId('teams-availability').closest('[inert]')).toBeNull());
+	await fireEvent.click(
+		within(getByTestId('teams-availability')).getByLabelText(`Toggle ${WHERE_TITLE}`),
+	);
+	await waitFor(() => expect(getByTestId('teams-scope-channels')).toBeVisible());
+};
+
+const expectSummary = async (getByTestId: (id: string) => HTMLElement, summary: string) =>
+	await waitFor(() =>
+		expect(within(getByTestId('teams-availability')).getByText(summary)).toBeVisible(),
+	);
 
 const props = (overrides: Record<string, unknown> = {}) => ({
 	mode: 'setup' as const,
@@ -83,31 +119,63 @@ describe('AgentChannelTeamsSetup', () => {
 
 	afterEach(() => vi.useRealTimers());
 
-	describe('step 1, the credential', () => {
-		it('leads with the Entra registration the rest is built from', async () => {
+	describe('step 1, register the app', () => {
+		it('links to the Entra registration the rest is built from', async () => {
 			const { getByTestId } = renderComponent({ props: props() });
 
 			await waitFor(() => expect(getByTestId('teams-entra-register-link')).toBeVisible());
 		});
 
-		it('says up front what account and permissions are needed', async () => {
-			const { getByTestId } = renderComponent({ props: props() });
-
-			await waitFor(() => expect(getByTestId('teams-create-bot-prerequisites')).toBeVisible());
-		});
-
-		it('comes before the deployment, which cannot be filled in without it', async () => {
+		it('comes before the credential, which is made from it', async () => {
 			const { container } = renderComponent({ props: props() });
 
-			await waitFor(() => expect(container.textContent).toContain('setup.createCredential.title'));
+			await waitFor(() => expect(container.textContent).toContain('setup.registerApp.title'));
 			const text = container.textContent ?? '';
+			expect(text.indexOf('setup.registerApp.title')).toBeLessThan(
+				text.indexOf('setup.createCredential.title'),
+			);
 			expect(text.indexOf('setup.createCredential.title')).toBeLessThan(
 				text.indexOf('setup.createBot.title'),
 			);
 		});
 	});
 
-	describe('step 2, deploy the bot', () => {
+	describe('step 2, the credential', () => {
+		it('confirms a credential that reaches Microsoft', async () => {
+			const { getByTestId } = renderComponent({ props: props({ modelValue: 'cred-1' }) });
+
+			await waitFor(() => expect(getByTestId('teams-credential-verified')).toBeVisible());
+		});
+
+		it('says nothing about a credential until one is picked', async () => {
+			const { queryByTestId } = renderComponent({ props: props() });
+
+			await waitFor(() => expect(getTeamsSetupState).toHaveBeenCalled());
+			expect(queryByTestId('teams-credential-verified')).toBeNull();
+			expect(queryByTestId('teams-credential-problem')).toBeNull();
+		});
+
+		it('explains a rejected credential and offers a retry', async () => {
+			vi.mocked(checkTeamsCredential).mockResolvedValue({
+				status: 'failed',
+				reason: 'unreachable',
+			});
+
+			const { getByTestId } = renderComponent({ props: props({ modelValue: 'cred-1' }) });
+			await waitFor(() =>
+				expect(getByTestId('teams-credential-problem')).toHaveTextContent(
+					'setup.install.failed.unreachable',
+				),
+			);
+
+			vi.mocked(checkTeamsCredential).mockClear();
+			await fireEvent.click(getByTestId('teams-credential-recheck'));
+
+			await waitFor(() => expect(checkTeamsCredential).toHaveBeenCalled());
+		});
+	});
+
+	describe('step 3, deploy the bot', () => {
 		it('keeps the endpoint URL out of the way, since the deployment sets it', async () => {
 			const { getByTestId, container } = renderComponent({ props: props() });
 
@@ -126,7 +194,7 @@ describe('AgentChannelTeamsSetup', () => {
 			});
 		});
 
-		it('withholds the deployment until a credential supplies the Entra IDs', async () => {
+		it('disables the deployment until a credential supplies the Entra IDs', async () => {
 			vi.mocked(getTeamsSetupState).mockResolvedValue({
 				messagingEndpointUrl: ENDPOINT,
 				botId: null,
@@ -136,18 +204,29 @@ describe('AgentChannelTeamsSetup', () => {
 				defaultDescription: DEFAULT_DESCRIPTION,
 			});
 
-			const { getByTestId, queryByTestId } = renderComponent({ props: props() });
+			const { getByTestId } = renderComponent({ props: props() });
 
-			await waitFor(() => expect(getByTestId('teams-deploy-blocked')).toBeVisible());
-			expect(queryByTestId('teams-deploy-to-azure')).toBeNull();
+			await waitFor(() => expect(getByTestId('teams-deploy-to-azure')).toBeDisabled());
+			expect(getByTestId('teams-deploy-blocked')).toHaveTextContent('createBot.needsCredential');
 		});
 
-		it('offers the deployment once the credential is picked', async () => {
+		it('offers the deployment once the credential checks out', async () => {
 			const { getByTestId } = renderComponent({ props: props({ modelValue: 'cred-1' }) });
 
 			await waitFor(() => {
 				expect(getByTestId('teams-deploy-to-azure')).toHaveAttribute('href', DEPLOY_URL);
 			});
+		});
+
+		it('withholds the deployment while the credential fails its check', async () => {
+			vi.mocked(checkTeamsCredential).mockResolvedValue({ status: 'failed', reason: 'rejected' });
+
+			const { getByTestId } = renderComponent({ props: props({ modelValue: 'cred-1' }) });
+
+			await waitFor(() => expect(getByTestId('teams-credential-problem')).toBeVisible());
+			expect(getByTestId('teams-deploy-to-azure')).toBeDisabled();
+			expect(getByTestId('teams-deploy-to-azure')).not.toHaveAttribute('href');
+			expect(getByTestId('teams-deploy-blocked')).toHaveTextContent('createBot.needsCredential');
 		});
 
 		it('rebuilds the deployment when the credential changes, since it is baked in', async () => {
@@ -163,106 +242,212 @@ describe('AgentChannelTeamsSetup', () => {
 		});
 	});
 
-	describe('step 3, availability', () => {
-		it('shows direct chat as fixed, with no control to change it', async () => {
-			const { getByTestId } = renderComponent({ props: props() });
+	describe('step 4, availability', () => {
+		it('stays locked until the credential checks out', async () => {
+			withBot();
+			vi.mocked(checkTeamsCredential).mockResolvedValue({ status: 'failed', reason: 'rejected' });
 
-			await waitFor(() => expect(getByTestId('teams-scope-direct')).toBeVisible());
-			expect(getByTestId('teams-scope-direct').querySelector('[role="switch"]')).toBeNull();
+			const { getByTestId } = renderComponent({ props: props({ modelValue: 'cred-1' }) });
+
+			await waitFor(() => expect(getByTestId('teams-credential-problem')).toBeVisible());
+			// Inert, so keyboard focus cannot reach the panel either.
+			expect(getByTestId('teams-availability-step')).toHaveAttribute('inert');
 		});
 
-		it('starts with everything else off', async () => {
-			const { getByTestId } = renderComponent({ props: props() });
+		it('starts collapsed, summarised, with everything but direct chat off', async () => {
+			withBot();
+			const { getByTestId, queryByTestId } = renderComponent({
+				props: props({ modelValue: 'cred-1' }),
+			});
 
-			await waitFor(() => expect(getByTestId('teams-scope-channels')).toBeVisible());
+			await expectSummary(getByTestId, 'agents.channels.teams.setup.availability.directChatOnly');
+			expect(queryByTestId('teams-scope-channels')).toBeNull();
+
+			await openAvailability(getByTestId);
 			expect(checkedSwitch(getByTestId('teams-scope-channels'))).toBe(false);
 			expect(checkedSwitch(getByTestId('teams-scope-groups'))).toBe(false);
 		});
 
-		it('summarises each panel, so a collapsed one still says what it is set to', async () => {
-			const { getByTestId } = renderComponent({ props: props() });
+		it('shows a read permission only while its surface is on', async () => {
+			withBot();
+			const { getByTestId, queryByTestId } = renderComponent({
+				props: props({ modelValue: 'cred-1' }),
+			});
+			await openAvailability(getByTestId);
 
-			await waitFor(() => expect(getByTestId('teams-where-summary')).toBeVisible());
-			expect(getByTestId('teams-where-summary').textContent).toContain(
-				'setup.availability.directChat',
-			);
-			expect(getByTestId('teams-reading-summary').textContent).toContain(
-				'setup.availability.readingSummaryNone',
-			);
-
+			expect(queryByTestId('teams-read-channels')).toBeNull();
 			await fireEvent.click(getByTestId('teams-scope-channels'));
-
-			await waitFor(() =>
-				expect(getByTestId('teams-where-summary').textContent).toContain(
-					'setup.availability.teamChannels',
-				),
-			);
-		});
-
-		it('collapses an open panel when its header is clicked', async () => {
-			const { getByTestId } = renderComponent({ props: props() });
-
-			await waitFor(() => expect(getByTestId('teams-scope-channels')).toBeVisible());
-			await fireEvent.click(getByTestId('teams-where-summary'));
-
-			await waitFor(() => expect(getByTestId('teams-scope-channels')).not.toBeVisible());
-		});
-
-		it('keeps a read permission locked until its surface is on', async () => {
-			const { getByTestId } = renderComponent({ props: props() });
 
 			await waitFor(() => expect(getByTestId('teams-read-channels')).toBeVisible());
-			expect(getByTestId('teams-read-channels')).toBeDisabled();
-
-			await fireEvent.click(getByTestId('teams-scope-channels'));
-
-			await waitFor(() => expect(getByTestId('teams-read-channels')).not.toBeDisabled());
+			expect(queryByTestId('teams-read-groups')).toBeNull();
 		});
 
-		it('clears a read permission when its surface is turned back off', async () => {
-			const { getByTestId } = renderComponent({ props: props() });
+		it('summarises each choice, so the collapsed panel says what it is set to', async () => {
+			withBot();
+			const { getByTestId } = renderComponent({ props: props({ modelValue: 'cred-1' }) });
+			await openAvailability(getByTestId);
 
-			await waitFor(() => expect(getByTestId('teams-scope-channels')).toBeVisible());
 			await fireEvent.click(getByTestId('teams-scope-channels'));
-			await waitFor(() => expect(getByTestId('teams-read-channels')).not.toBeDisabled());
+			await waitFor(() => expect(getByTestId('teams-read-channels')).toBeVisible());
 			await fireEvent.click(getByTestId('teams-read-channels'));
-			await waitFor(() => expect(checkedSwitch(getByTestId('teams-read-channels'))).toBe(true));
 
+			await expectSummary(
+				getByTestId,
+				[
+					'agents.channels.teams.setup.availability.directChat',
+					'agents.channels.teams.setup.availability.teamChannels',
+					'agents.channels.teams.setup.availability.readsChannels',
+				].join(SUMMARY_SEPARATOR),
+			);
+		});
+
+		it('clears a read permission when its surface goes off, so turning it back on starts cleared', async () => {
+			withBot();
+			const { getByTestId } = renderComponent({ props: props({ modelValue: 'cred-1' }) });
+			await openAvailability(getByTestId);
+
+			await fireEvent.click(getByTestId('teams-scope-channels'));
+			await waitFor(() => expect(getByTestId('teams-read-channels')).toBeVisible());
+			await fireEvent.click(getByTestId('teams-read-channels'));
+			await fireEvent.click(getByTestId('teams-scope-channels'));
 			await fireEvent.click(getByTestId('teams-scope-channels'));
 
 			await waitFor(() => expect(checkedSwitch(getByTestId('teams-read-channels'))).toBe(false));
 		});
 
 		it('restores saved settings', async () => {
+			withBot();
 			const { getByTestId } = renderComponent({
-				props: props({ savedSettings: { teamChannels: true, readAllChannelMessages: true } }),
+				props: props({
+					modelValue: 'cred-1',
+					savedSettings: { teamChannels: true, readAllChannelMessages: true },
+				}),
 			});
 
-			await waitFor(() => expect(checkedSwitch(getByTestId('teams-scope-channels'))).toBe(true));
+			await openAvailability(getByTestId);
+			expect(checkedSwitch(getByTestId('teams-scope-channels'))).toBe(true);
 			expect(checkedSwitch(getByTestId('teams-read-channels'))).toBe(true);
 		});
 	});
 
-	describe('step 4, install', () => {
-		it('withholds the package until a credential is picked', async () => {
-			const { getByTestId, queryByTestId } = renderComponent({ props: props() });
+	describe('step 5, connect', () => {
+		it('shows the identity Teams will display', async () => {
+			withBot();
+			const { getByTestId } = renderComponent({ props: props({ modelValue: 'cred-1' }) });
 
-			await waitFor(() => expect(getByTestId('teams-package-blocked')).toBeVisible());
-			expect(queryByTestId('teams-download-package')).toBeNull();
+			await waitFor(() => expect(getByTestId('teams-identity')).toHaveTextContent(DEFAULT_NAME));
+			expect(getByTestId('teams-identity')).toHaveTextContent(DEFAULT_DESCRIPTION);
+		});
+
+		it('stays locked until the credential checks out', async () => {
+			withBot();
+			vi.mocked(checkTeamsCredential).mockResolvedValue({ status: 'failed', reason: 'rejected' });
+
+			const { getByTestId } = renderComponent({ props: props({ modelValue: 'cred-1' }) });
+
+			await waitFor(() => expect(getByTestId('teams-credential-problem')).toBeVisible());
+			expect(getByTestId('teams-download-package')).toBeDisabled();
+		});
+
+		it('stays locked while no credential is picked, and says why', async () => {
+			const { getByTestId } = renderComponent({ props: props() });
+
+			await waitFor(() => expect(getByTestId('teams-download-package')).toBeDisabled());
+			expect(getByTestId('teams-package-blocked')).toBeVisible();
+		});
+
+		const connectAndFail = async () => {
+			withBot();
+			const utils = renderComponent({ props: props({ modelValue: 'cred-1' }) });
+			await waitFor(() => expect(utils.getByTestId('teams-download-package')).toBeEnabled());
+			await fireEvent.click(utils.getByTestId('teams-download-package'));
+			await waitFor(() => expect(utils.emitted().connect).toHaveLength(1));
+			await utils.rerender(props({ modelValue: 'cred-1', errorMessage: 'Bot rejected' }));
+			return utils;
+		};
+
+		it('shows a failed connect next to the button that started it, and only there', async () => {
+			const { getByTestId, queryByText } = await connectAndFail();
+
+			await waitFor(() =>
+				expect(getByTestId('teams-connect-error')).toHaveTextContent('Bot rejected'),
+			);
+			expect(queryByText('Bot rejected')).toBeNull();
+		});
+
+		it('retries a failed connect without downloading the package again', async () => {
+			const { getByTestId, emitted } = await connectAndFail();
+			await waitFor(() => expect(getByTestId('teams-connect-retry')).toBeVisible());
+
+			await fireEvent.click(getByTestId('teams-connect-retry'));
+
+			expect(emitted().connect).toHaveLength(2);
+			expect(fetchTeamsAppPackage).toHaveBeenCalledTimes(1);
+		});
+
+		it('keeps a conflict in step 2, since it is about the credential', async () => {
+			withBot();
+			const { getByText, queryByTestId } = renderComponent({
+				props: props({ modelValue: 'cred-1', errorMessage: 'Bot in use', errorIsConflict: true }),
+			});
+
+			await waitFor(() => expect(getByText('Bot in use')).toBeVisible());
+			expect(queryByTestId('teams-connect-error')).toBeNull();
+		});
+
+		it('does not connect a credential picked while the package downloads', async () => {
+			withBot();
+			let release: ((blob: Blob) => void) | undefined;
+			vi.mocked(fetchTeamsAppPackage).mockImplementation(
+				async () => await new Promise((resolve) => (release = resolve)),
+			);
+			const { getByTestId, emitted, rerender } = renderComponent({
+				props: props({ modelValue: 'cred-1' }),
+			});
+			await waitFor(() => expect(getByTestId('teams-download-package')).toBeEnabled());
+			await fireEvent.click(getByTestId('teams-download-package'));
+			await waitFor(() => expect(fetchTeamsAppPackage).toHaveBeenCalled());
+
+			await rerender(props({ modelValue: 'cred-2' }));
+			release?.(new Blob(['zip']));
+			await flushPromises();
+
+			expect(emitted().connect).toBeFalsy();
+			expect(showMessage).not.toHaveBeenCalled();
+			await waitFor(() => expect(getByTestId('teams-stale-download')).toBeVisible());
+		});
+
+		it('offers the package on a connected channel even when the check does not pass', async () => {
+			withBot();
+			vi.mocked(checkTeamsCredential).mockResolvedValue({
+				status: 'failed',
+				reason: 'unreachable',
+			});
+
+			const { getByTestId } = renderComponent({
+				props: props({ modelValue: 'cred-1', connected: true }),
+			});
+
+			await waitFor(() => expect(getByTestId('teams-download-package')).toBeEnabled());
+		});
+
+		it('does not connect again when the channel is already connected', async () => {
+			withBot();
+			const { getByTestId, emitted } = renderComponent({
+				props: props({ modelValue: 'cred-1', connected: true }),
+			});
+			await waitFor(() => expect(getByTestId('teams-download-package')).toBeEnabled());
+
+			await fireEvent.click(getByTestId('teams-download-package'));
+
+			await waitFor(() => expect(saveAs).toHaveBeenCalled());
+			expect(emitted().connect).toBeFalsy();
 		});
 
 		it('fetches the package rather than linking to it, so the session survives', async () => {
-			vi.mocked(getTeamsSetupState).mockResolvedValue({
-				messagingEndpointUrl: ENDPOINT,
-				botId: CLIENT_ID,
-				deployToAzureUrl: DEPLOY_URL,
-				credentialClaimedBy: null,
-				defaultDisplayName: DEFAULT_NAME,
-				defaultDescription: DEFAULT_DESCRIPTION,
-			});
-
-			const { getByTestId } = renderComponent({ props: props({ connected: true }) });
-			await waitFor(() => expect(getByTestId('teams-download-package')).toBeVisible());
+			withBot();
+			const { getByTestId } = renderComponent({ props: props({ modelValue: 'cred-1' }) });
+			await waitFor(() => expect(getByTestId('teams-download-package')).toBeEnabled());
 			expect(getByTestId('teams-download-package')).not.toHaveAttribute('href');
 
 			await fireEvent.click(getByTestId('teams-download-package'));
@@ -271,66 +456,51 @@ describe('AgentChannelTeamsSetup', () => {
 			expect(vi.mocked(fetchTeamsAppPackage).mock.calls[0]?.slice(1, 3)).toEqual(['p', 'a']);
 		});
 
-		it('reports a failed download instead of silently doing nothing', async () => {
-			vi.mocked(getTeamsSetupState).mockResolvedValue({
-				messagingEndpointUrl: ENDPOINT,
-				botId: CLIENT_ID,
-				deployToAzureUrl: DEPLOY_URL,
-				credentialClaimedBy: null,
-				defaultDisplayName: DEFAULT_NAME,
-				defaultDescription: DEFAULT_DESCRIPTION,
+		it('connects once the package is saved, since the modal closes on connect', async () => {
+			withBot();
+			const { getByTestId, emitted } = renderComponent({ props: props({ modelValue: 'cred-1' }) });
+			await waitFor(() => expect(getByTestId('teams-download-package')).toBeEnabled());
+
+			await fireEvent.click(getByTestId('teams-download-package'));
+
+			await waitFor(() => expect(emitted().connect).toBeTruthy());
+			expect(saveAs).toHaveBeenCalled();
+			expect(showMessage).toHaveBeenCalledWith(
+				expect.objectContaining({ title: 'agents.channels.teams.setup.install.downloaded' }),
+			);
+		});
+
+		it('does nothing more once the view is gone before the download finishes', async () => {
+			withBot();
+			let release: ((blob: Blob) => void) | undefined;
+			vi.mocked(fetchTeamsAppPackage).mockImplementation(
+				async () => await new Promise((resolve) => (release = resolve)),
+			);
+			const { getByTestId, emitted, unmount } = renderComponent({
+				props: props({ modelValue: 'cred-1' }),
 			});
+			await waitFor(() => expect(getByTestId('teams-download-package')).toBeEnabled());
+			await fireEvent.click(getByTestId('teams-download-package'));
+			await waitFor(() => expect(fetchTeamsAppPackage).toHaveBeenCalled());
+
+			unmount();
+			release?.(new Blob(['zip']));
+			await flushPromises();
+
+			expect(showMessage).not.toHaveBeenCalled();
+			expect(emitted().connect).toBeFalsy();
+		});
+
+		it('reports a failed download and does not connect', async () => {
+			withBot();
 			vi.mocked(fetchTeamsAppPackage).mockRejectedValue(new Error('401'));
 
-			const { getByTestId } = renderComponent({ props: props({ connected: true }) });
-			await waitFor(() => expect(getByTestId('teams-download-package')).toBeVisible());
+			const { getByTestId, emitted } = renderComponent({ props: props({ modelValue: 'cred-1' }) });
+			await waitFor(() => expect(getByTestId('teams-download-package')).toBeEnabled());
 			await fireEvent.click(getByTestId('teams-download-package'));
 
 			await waitFor(() => expect(getByTestId('teams-download-error')).toBeVisible());
-		});
-
-		it('keeps connecting locked until the credential reaches Microsoft', async () => {
-			vi.mocked(checkTeamsCredential).mockResolvedValue({ status: 'failed', reason: 'rejected' });
-
-			const { getByTestId } = renderComponent({ props: props({ modelValue: 'cred-1' }) });
-
-			await waitFor(() => expect(getByTestId('teams-credential-problem')).toBeVisible());
-			expect(getByTestId('teams-connect')).toBeDisabled();
-		});
-
-		it('unlocks saving once the credential checks out, without announcing it', async () => {
-			const { getByTestId, queryByTestId } = renderComponent({
-				props: props({ modelValue: 'cred-1' }),
-			});
-
-			await waitFor(() => expect(getByTestId('teams-connect')).not.toBeDisabled());
-			// An enabled button says it already; a success line would only repeat it.
-			expect(queryByTestId('teams-credential-problem')).toBeNull();
-			expect(queryByTestId('teams-connect-blocked')).toBeNull();
-		});
-
-		it('offers a retry when the check failed', async () => {
-			vi.mocked(checkTeamsCredential).mockResolvedValue({
-				status: 'failed',
-				reason: 'unreachable',
-			});
-
-			const { getByTestId } = renderComponent({ props: props({ modelValue: 'cred-1' }) });
-			await waitFor(() => expect(getByTestId('teams-credential-recheck')).toBeVisible());
-
-			vi.mocked(checkTeamsCredential).mockClear();
-			await fireEvent.click(getByTestId('teams-credential-recheck'));
-
-			await waitFor(() => expect(checkTeamsCredential).toHaveBeenCalled());
-		});
-
-		it('keeps connecting for last, because the modal closes on it', async () => {
-			const { getByTestId, emitted } = renderComponent({ props: props({ modelValue: 'cred-1' }) });
-
-			await waitFor(() => expect(getByTestId('teams-connect')).toBeVisible());
-			await fireEvent.click(getByTestId('teams-connect'));
-
-			expect(emitted().connect).toBeTruthy();
+			expect(emitted().connect).toBeFalsy();
 		});
 	});
 
@@ -351,23 +521,18 @@ describe('AgentChannelTeamsSetup', () => {
 			expect(getByTestId('teams-description')).toBeVisible();
 		});
 
-		it('starts the availability panels collapsed, summarised', async () => {
-			const { getByTestId } = renderComponent({ props: settingsProps() });
+		it('starts the availability panel collapsed, summarised', async () => {
+			const { getByTestId, queryByTestId } = renderComponent({ props: settingsProps() });
 
-			await waitFor(() => expect(getByTestId('teams-where-summary')).toBeVisible());
-			// Rendered but folded away, so settings opens on the summary rather than
-			// on five controls.
-			expect(getByTestId('teams-scope-channels')).not.toBeVisible();
-			expect(getByTestId('teams-reading-summary')).toBeVisible();
+			// Settings opens on the summary rather than on every control.
+			await expectSummary(getByTestId, 'agents.channels.teams.setup.availability.directChatOnly');
+			expect(queryByTestId('teams-scope-channels')).toBeNull();
 		});
 
-		it('opens a collapsed panel when its header is clicked', async () => {
+		it('opens a collapsed panel with its chevron', async () => {
 			const { getByTestId } = renderComponent({ props: settingsProps() });
 
-			await waitFor(() => expect(getByTestId('teams-where-summary')).toBeVisible());
-			await fireEvent.click(getByTestId('teams-where-summary'));
-
-			await waitFor(() => expect(getByTestId('teams-scope-channels')).toBeVisible());
+			await openAvailability(getByTestId);
 		});
 
 		it('shows what the manifest would use as a placeholder, not as a value', async () => {
@@ -414,19 +579,17 @@ describe('AgentChannelTeamsSetup', () => {
 			expect(getByTestId('teams-description').querySelector('input')).toHaveValue(
 				'Answers questions',
 			);
-			// Mounted while collapsed, so its state is readable without expanding.
-			expect(checkedSwitch(getByTestId('teams-scope-channels'))).toBe(true);
+			await expectSummary(
+				getByTestId,
+				[
+					'agents.channels.teams.setup.availability.directChat',
+					'agents.channels.teams.setup.availability.teamChannels',
+				].join(SUMMARY_SEPARATOR),
+			);
 		});
 
 		it('offers the package again, so a change can be applied', async () => {
-			vi.mocked(getTeamsSetupState).mockResolvedValue({
-				messagingEndpointUrl: ENDPOINT,
-				botId: CLIENT_ID,
-				deployToAzureUrl: DEPLOY_URL,
-				credentialClaimedBy: null,
-				defaultDisplayName: DEFAULT_NAME,
-				defaultDescription: DEFAULT_DESCRIPTION,
-			});
+			withBot();
 
 			const { getByTestId } = renderComponent({ props: settingsProps() });
 
@@ -462,18 +625,11 @@ describe('AgentChannelTeamsSetup', () => {
 	});
 
 	it('downloads the package with the availability chosen in the stepper, not the stored one', async () => {
-		vi.mocked(getTeamsSetupState).mockResolvedValue({
-			messagingEndpointUrl: ENDPOINT,
-			botId: CLIENT_ID,
-			deployToAzureUrl: DEPLOY_URL,
-			credentialClaimedBy: null,
-			defaultDisplayName: DEFAULT_NAME,
-			defaultDescription: DEFAULT_DESCRIPTION,
-		});
+		withBot();
 
 		const { getByTestId } = renderComponent({ props: props({ modelValue: 'cred-1' }) });
 
-		await waitFor(() => expect(getByTestId('teams-download-package')).toBeVisible());
+		await openAvailability(getByTestId);
 		await fireEvent.click(getByTestId('teams-scope-channels'));
 		await fireEvent.click(getByTestId('teams-download-package'));
 
@@ -511,7 +667,7 @@ describe('AgentChannelTeamsSetup', () => {
 			);
 		});
 
-		it('offers neither the deployment nor the package', async () => {
+		it('offers neither the deployment nor the package, though the credential works', async () => {
 			claimed();
 
 			const { getByTestId, queryByTestId } = renderComponent({
@@ -519,17 +675,86 @@ describe('AgentChannelTeamsSetup', () => {
 			});
 
 			await waitFor(() => expect(getByTestId('teams-credential-claimed')).toBeVisible());
-			expect(queryByTestId('teams-deploy-to-azure')).toBeNull();
-			expect(queryByTestId('teams-download-package')).toBeNull();
+			expect(queryByTestId('teams-credential-verified')).toBeNull();
+			expect(getByTestId('teams-deploy-to-azure')).toBeDisabled();
+			expect(getByTestId('teams-download-package')).toBeDisabled();
+		});
+	});
+
+	describe('an agent that is not saved yet', () => {
+		it('saves the agent before asking for the setup state of a picked credential', async () => {
+			const ensureAgentPersisted = vi.fn().mockResolvedValue(undefined);
+
+			renderComponent({ props: props({ modelValue: 'cred-1', ensureAgentPersisted }) });
+
+			await waitFor(() =>
+				expect(getTeamsSetupState).toHaveBeenCalledWith(expect.anything(), 'p', 'a', 'cred-1'),
+			);
+			expect(ensureAgentPersisted.mock.invocationCallOrder[0]).toBeLessThan(
+				vi.mocked(getTeamsSetupState).mock.invocationCallOrder[0],
+			);
 		});
 
-		it('keeps connect disabled even though the credential itself works', async () => {
-			claimed();
+		it('does not save the agent while no credential is picked', async () => {
+			const ensureAgentPersisted = vi.fn().mockResolvedValue(undefined);
 
-			const { getByTestId } = renderComponent({ props: props({ modelValue: 'cred-1' }) });
+			renderComponent({ props: props({ ensureAgentPersisted }) });
 
-			await waitFor(() => expect(getByTestId('teams-credential-claimed')).toBeVisible());
-			expect(getByTestId('teams-connect')).toBeDisabled();
+			await waitFor(() => expect(getTeamsSetupState).toHaveBeenCalled());
+			expect(ensureAgentPersisted).not.toHaveBeenCalled();
+		});
+
+		it('keeps the last steps locked when saving the agent fails', async () => {
+			withBot();
+			const ensureAgentPersisted = vi.fn().mockRejectedValue(new Error('offline'));
+
+			const { getByTestId, emitted } = renderComponent({
+				props: props({ modelValue: 'cred-1', ensureAgentPersisted }),
+			});
+
+			await waitFor(() => expect(getByTestId('teams-credential-verified')).toBeVisible());
+			expect(getTeamsSetupState).not.toHaveBeenCalledWith(expect.anything(), 'p', 'a', 'cred-1');
+			expect(getByTestId('teams-download-package')).toBeDisabled();
+			expect(emitted().connect).toBeFalsy();
+			expect(showError).toHaveBeenCalledWith(
+				expect.any(Error),
+				'agents.channels.modal.saveChannelError',
+			);
+		});
+
+		it('offers a retry that saves the agent again', async () => {
+			withBot();
+			const ensureAgentPersisted = vi
+				.fn()
+				.mockRejectedValueOnce(new Error('offline'))
+				.mockResolvedValue(undefined);
+
+			const { getByTestId, queryByTestId } = renderComponent({
+				props: props({ modelValue: 'cred-1', ensureAgentPersisted }),
+			});
+
+			await waitFor(() => expect(getByTestId('teams-setup-load-failed')).toBeVisible());
+			// The credential is verified, so a hint pointing back at it would be wrong.
+			expect(queryByTestId('teams-package-blocked')).toBeNull();
+
+			await fireEvent.click(getByTestId('teams-setup-retry'));
+
+			await waitFor(() => expect(getByTestId('teams-download-package')).toBeEnabled());
+			expect(ensureAgentPersisted).toHaveBeenCalledTimes(2);
+			expect(queryByTestId('teams-setup-load-failed')).toBeNull();
+		});
+
+		it('does not report a save failure when only the setup state fails to load', async () => {
+			vi.mocked(getTeamsSetupState).mockRejectedValue(new Error('offline'));
+			const ensureAgentPersisted = vi.fn().mockResolvedValue(undefined);
+
+			renderComponent({ props: props({ modelValue: 'cred-1', ensureAgentPersisted }) });
+
+			await waitFor(() =>
+				expect(getTeamsSetupState).toHaveBeenCalledWith(expect.anything(), 'p', 'a', 'cred-1'),
+			);
+			await flushPromises();
+			expect(showError).not.toHaveBeenCalled();
 		});
 	});
 
@@ -540,15 +765,16 @@ describe('AgentChannelTeamsSetup', () => {
 				.mockResolvedValueOnce({ status: 'ok' })
 				.mockImplementationOnce(async () => await new Promise((resolve) => (release = resolve)));
 
+			withBot();
 			const { getByTestId, rerender } = renderComponent({
 				props: props({ modelValue: 'cred-1' }),
 			});
-			await waitFor(() => expect(getByTestId('teams-connect')).toBeEnabled());
+			await waitFor(() => expect(getByTestId('teams-download-package')).toBeEnabled());
 
 			await rerender(props({ modelValue: 'cred-2' }));
 
 			// The second check has not answered yet, so nothing is verified.
-			await waitFor(() => expect(getByTestId('teams-connect')).toBeDisabled());
+			await waitFor(() => expect(getByTestId('teams-download-package')).toBeDisabled());
 			release?.({ status: 'ok' });
 		});
 
@@ -560,7 +786,7 @@ describe('AgentChannelTeamsSetup', () => {
 				)
 				.mockResolvedValueOnce({ status: 'failed', reason: 'rejected' });
 
-			const { getByTestId, rerender } = renderComponent({
+			const { getByTestId, queryByTestId, rerender } = renderComponent({
 				props: props({ modelValue: 'cred-1' }),
 			});
 			await rerender(props({ modelValue: 'cred-2' }));
@@ -568,16 +794,17 @@ describe('AgentChannelTeamsSetup', () => {
 
 			// The first credential's answer lands last and must be discarded.
 			releaseFirst?.({ status: 'ok' });
+			await flushPromises();
 
-			await waitFor(() => expect(getByTestId('teams-connect')).toBeDisabled());
+			expect(queryByTestId('teams-credential-verified')).toBeNull();
+			expect(getByTestId('teams-credential-problem')).toBeVisible();
 		});
 	});
 
 	it('adopts saved settings that arrive after the view is rendered', async () => {
 		const { getByTestId, rerender } = renderComponent({ props: props({ mode: 'edit' }) });
 
-		// The panels start collapsed here, so the switch is present but not shown.
-		await waitFor(() => expect(getByTestId('teams-scope-channels')).toBeInTheDocument());
+		await openAvailability(getByTestId);
 		expect(checkedSwitch(getByTestId('teams-scope-channels'))).toBe(false);
 
 		await rerender(props({ mode: 'edit', savedSettings: { teamChannels: true } }));
@@ -588,7 +815,7 @@ describe('AgentChannelTeamsSetup', () => {
 	it('keeps an edit when saved settings arrive afterwards', async () => {
 		const { getByTestId, rerender } = renderComponent({ props: props({ mode: 'edit' }) });
 
-		await waitFor(() => expect(getByTestId('teams-scope-groups')).toBeInTheDocument());
+		await openAvailability(getByTestId);
 		await fireEvent.click(getByTestId('teams-scope-groups'));
 
 		await rerender(props({ mode: 'edit', savedSettings: { teamChannels: true } }));
@@ -602,6 +829,7 @@ describe('AgentChannelTeamsSetup', () => {
 
 		const name = () => getByTestId('teams-display-name').querySelector('input');
 		await waitFor(() => expect(name()).toBeInTheDocument());
+		await openAvailability(getByTestId);
 		await fireEvent.update(name() as HTMLInputElement, 'My own name');
 
 		await rerender(
@@ -639,16 +867,6 @@ describe('AgentChannelTeamsSetup', () => {
 	});
 
 	describe('telemetry', () => {
-		const withBot = () =>
-			vi.mocked(getTeamsSetupState).mockResolvedValue({
-				messagingEndpointUrl: ENDPOINT,
-				botId: CLIENT_ID,
-				deployToAzureUrl: DEPLOY_URL,
-				credentialClaimedBy: null,
-				defaultDisplayName: DEFAULT_NAME,
-				defaultDescription: DEFAULT_DESCRIPTION,
-			});
-
 		it('tracks a credential that checks out', async () => {
 			renderComponent({ props: props({ modelValue: 'cred-1' }) });
 
@@ -738,13 +956,14 @@ describe('AgentChannelTeamsSetup', () => {
 				)
 				.mockResolvedValueOnce({ status: 'failed', reason: 'rejected' });
 
-			const { getByTestId, rerender } = renderComponent({
+			const { getByTestId, queryByTestId, rerender } = renderComponent({
 				props: props({ modelValue: 'cred-1' }),
 			});
 			await rerender(props({ modelValue: 'cred-2' }));
 			await waitFor(() => expect(getByTestId('teams-credential-problem')).toBeVisible());
 			releaseFirst?.({ status: 'ok' });
-			await waitFor(() => expect(getByTestId('teams-connect')).toBeDisabled());
+			await flushPromises();
+			expect(queryByTestId('teams-credential-verified')).toBeNull();
 
 			const checks = trackMock.mock.calls.filter(
 				([event]) => event === TELEMETRY_EVENT.AGENTS.USER_CHECKED_TEAMS_CHANNEL_CREDENTIAL,
@@ -755,8 +974,8 @@ describe('AgentChannelTeamsSetup', () => {
 
 		it('tracks a successful package download', async () => {
 			withBot();
-			const { getByTestId } = renderComponent({ props: props({ connected: true }) });
-			await waitFor(() => expect(getByTestId('teams-download-package')).toBeVisible());
+			const { getByTestId } = renderComponent({ props: props({ modelValue: 'cred-1' }) });
+			await waitFor(() => expect(getByTestId('teams-download-package')).toBeEnabled());
 
 			await fireEvent.click(getByTestId('teams-download-package'));
 
@@ -771,8 +990,8 @@ describe('AgentChannelTeamsSetup', () => {
 		it('tracks a failed package download', async () => {
 			withBot();
 			vi.mocked(fetchTeamsAppPackage).mockRejectedValue(new Error('401'));
-			const { getByTestId } = renderComponent({ props: props({ connected: true }) });
-			await waitFor(() => expect(getByTestId('teams-download-package')).toBeVisible());
+			const { getByTestId } = renderComponent({ props: props({ modelValue: 'cred-1' }) });
+			await waitFor(() => expect(getByTestId('teams-download-package')).toBeEnabled());
 
 			await fireEvent.click(getByTestId('teams-download-package'));
 

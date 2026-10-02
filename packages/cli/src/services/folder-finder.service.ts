@@ -1,11 +1,8 @@
-import type { Folder, User } from '@n8n/db';
-import { chunkIds, FolderRepository } from '@n8n/db';
+import type { Folder, OperationContext, User } from '@n8n/db';
+import { FolderAccessRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { hasGlobalScope, type Scope } from '@n8n/permissions';
-import type { FindOptionsWhere } from '@n8n/typeorm';
-import { In } from '@n8n/typeorm';
-
-import { RoleService } from '@/services/role.service';
+import { RoleService } from '@n8n/backend-services';
 
 /**
  * Resolves folders by id for a user, enforcing access through the folder's home
@@ -16,14 +13,17 @@ import { RoleService } from '@/services/role.service';
 @Service()
 export class FolderFinderService {
 	constructor(
-		private readonly folderRepository: FolderRepository,
+		private readonly folderAccessRepository: FolderAccessRepository,
 		private readonly roleService: RoleService,
 	) {}
 
-	async findExistingFolderIds(folderIds: string[]): Promise<Set<string>> {
+	async findExistingFolderIds(
+		folderIds: string[],
+		ctx: OperationContext = {},
+	): Promise<Set<string>> {
 		if (folderIds.length === 0) return new Set();
 
-		return await this.folderRepository.findExistingIds(folderIds);
+		return await this.folderAccessRepository.findExistingFolderIds(folderIds, ctx);
 	}
 
 	/**
@@ -53,12 +53,13 @@ export class FolderFinderService {
 	async findFolderFilterIdsWithoutAccessCheck(
 		folderId: string,
 		includeDescendants: boolean,
+		ctx: OperationContext = {},
 	): Promise<string[]> {
-		const existing = await this.findExistingFolderIds([folderId]);
+		const existing = await this.findExistingFolderIds([folderId], ctx);
 		if (!existing.has(folderId)) return [];
 		if (!includeDescendants) return [folderId];
 
-		const descendantIds = await this.folderRepository.getAllFolderIdsInSubtrees([folderId]);
+		const descendantIds = await this.folderAccessRepository.findDescendantIds([folderId], ctx);
 		return [folderId, ...descendantIds];
 	}
 
@@ -66,19 +67,21 @@ export class FolderFinderService {
 		folderIds: string[],
 		user: User,
 		scopes: Scope[],
+		ctx: OperationContext = {},
 	): Promise<Folder[]> {
 		if (folderIds.length === 0) return [];
 
-		const accessWhere = await this.buildFolderReadWhere(user, scopes);
-
-		const folders = new Map<string, Folder>();
-		for (const chunk of chunkIds(folderIds)) {
-			const found = await this.folderRepository.find({
-				where: { id: In(chunk), ...accessWhere },
-			});
-			for (const folder of found) folders.set(folder.id, folder);
-		}
-		return [...folders.values()];
+		const access = hasGlobalScope(user, scopes, { mode: 'allOf' })
+			? null
+			: {
+					userId: user.id,
+					projectRoles: await this.roleService.rolesWithScope(
+						'project',
+						scopes,
+						async () => await this.folderAccessRepository.findRolesForAccessCheck(ctx),
+					),
+				};
+		return await this.folderAccessRepository.findFoldersByIdsForUser(folderIds, access, ctx);
 	}
 
 	/**
@@ -91,20 +94,22 @@ export class FolderFinderService {
 		folderIds: string[],
 		user: User,
 		scopes: Scope[],
+		ctx: OperationContext = {},
 	): Promise<Folder[]> {
 		if (folderIds.length === 0) return [];
 
 		// One recursive query for every requested subtree, rather than one per id.
-		const descendantIds = await this.folderRepository.getAllFolderIdsInSubtrees(folderIds);
+		const descendantIds = await this.folderAccessRepository.findDescendantIds(folderIds, ctx);
 		const allFolderIds = [...new Set([...folderIds, ...descendantIds])];
 
-		return await this.findFoldersByIdsForUser(allFolderIds, user, scopes);
+		return await this.findFoldersByIdsForUser(allFolderIds, user, scopes, ctx);
 	}
 
 	async findFolderAncestorChainsForUser(
 		folderIds: string[],
 		user: User,
 		scopes: Scope[],
+		ctx: OperationContext = {},
 	): Promise<Map<string, Folder[]>> {
 		if (folderIds.length === 0) return new Map();
 
@@ -112,7 +117,7 @@ export class FolderFinderService {
 		let currentIds = [...new Set(folderIds)];
 
 		while (currentIds.length > 0) {
-			const folders = await this.findFoldersByIdsForUser(currentIds, user, scopes);
+			const folders = await this.findFoldersByIdsForUser(currentIds, user, scopes, ctx);
 			for (const folder of folders) {
 				foldersById.set(folder.id, folder);
 			}
@@ -145,29 +150,7 @@ export class FolderFinderService {
 	/**
 	 * List all folder ids in a project
 	 */
-	async findFolderIdsInProject(projectId: string): Promise<string[]> {
-		const folders = await this.folderRepository.find({
-			where: { homeProject: { id: projectId } },
-			select: { id: true },
-		});
-		return folders.map((folder) => folder.id);
-	}
-
-	private async buildFolderReadWhere(
-		user: User,
-		scopes: Scope[],
-	): Promise<FindOptionsWhere<Folder>> {
-		if (hasGlobalScope(user, scopes, { mode: 'allOf' })) return {};
-
-		const projectRoles = await this.roleService.rolesWithScope('project', scopes);
-
-		return {
-			homeProject: {
-				projectRelations: {
-					role: In(projectRoles),
-					userId: user.id,
-				},
-			},
-		};
+	async findFolderIdsInProject(projectId: string, ctx: OperationContext = {}): Promise<string[]> {
+		return await this.folderAccessRepository.findFolderIdsInProject(projectId, ctx);
 	}
 }
