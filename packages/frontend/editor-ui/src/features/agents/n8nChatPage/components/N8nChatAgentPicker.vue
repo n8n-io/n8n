@@ -15,6 +15,7 @@ import { getDebounceTime } from '@n8n/composables/useDebounce';
 import { DEBOUNCE_TIME } from '@/app/constants';
 import { AGENT_N8N_CHAT_LIBRARY_VIEW } from '../../constants';
 import { useN8nChatAgents } from '../composables/useN8nChatAgents';
+import { useN8nAssistantIdentity } from '../composables/useN8nAssistantIdentity';
 import { useAgentTelemetry } from '../../composables/useAgentTelemetry';
 import { useAgentPermissions } from '../../composables/useAgentPermissions';
 import { useCreateAgent } from '../../composables/useCreateAgent';
@@ -49,10 +50,7 @@ const { agents, count, isLoading } = useN8nChatAgents({
 	pageSize: PAGE_SIZE,
 });
 
-const assistantName = computed(() => i18n.baseText('instanceAi.view.title'));
-const assistantDescription = computed(() =>
-	i18n.baseText('agents.n8nChatPage.picker.assistantDescription'),
-);
+const { name: assistantName, description: assistantDescription } = useN8nAssistantIdentity();
 
 // The dropdown's internal search mode manages the search text and keyboard
 // navigation but renders no filtering of its own (DropdownMenuSearchableContent
