@@ -124,6 +124,8 @@ packages/cli/src/modules/mcp/                           @n8n-io/adore
 packages/cli/src/modules/quick-connect/                 @n8n-io/relay
 packages/cli/src/modules/chat-hub/                      @n8n-io/chat
 packages/cli/src/modules/instance-ai/                   @n8n-io/ai-assistant
+packages/cli/src/modules/agents/                        @n8n-io/agent
+packages/cli/src/modules/agent-evals/                   @n8n-io/agent
 
 packages/cli/src/modules/community-packages/            @n8n-io/nodes
 
@@ -182,6 +184,16 @@ packages/cli/src/services/dynamic-node-parameters.service.ts @n8n-io/nodes
 
 packages/frontend/editor-ui/                            @n8n-io/frontend
 packages/frontend/editor-ui/src/features/ai/            @n8n-io/ai-assistant
+packages/frontend/editor-ui/src/features/ai/assistant-at-mentions/ @n8n-io/ai-assistant
+packages/frontend/editor-ui/src/features/ai/assistant/  @n8n-io/ai-assistant
+packages/frontend/editor-ui/src/features/ai/chatHub/    @n8n-io/chat
+packages/frontend/editor-ui/src/features/ai/components/ @n8n-io/agent
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/ @n8n-io/ai-trust
+packages/frontend/editor-ui/src/features/ai/gateway/    @n8n-io/relay
+packages/frontend/editor-ui/src/features/ai/instanceAi/ @n8n-io/ai-assistant
+packages/frontend/editor-ui/src/features/ai/mcpAccess/  @n8n-io/adore
+packages/frontend/editor-ui/src/features/ai/shared/     @n8n-io/agent
+packages/frontend/editor-ui/src/features/agents/        @n8n-io/agent
 packages/frontend/editor-ui/src/features/credentials/   @n8n-io/iam
 packages/frontend/editor-ui/src/features/execution/     @n8n-io/ligo
 packages/frontend/editor-ui/src/features/integrations/  @n8n-io/ligo
