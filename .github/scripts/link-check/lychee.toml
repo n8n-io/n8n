@@ -12,8 +12,9 @@ include_fragments = "anchor-only"
 
 user_agent = "Mozilla/5.0 (compatible; n8n-link-check; +https://github.com/n8n-io/n8n)"
 timeout = 20
-max_retries = 2
-retry_wait_time = 2
+# Retries wait 5, 10, 20, and 40 seconds, so that short server outages pass.
+max_retries = 4
+retry_wait_time = 5
 max_redirects = 10
 max_concurrency = 32
 host_concurrency = 4
