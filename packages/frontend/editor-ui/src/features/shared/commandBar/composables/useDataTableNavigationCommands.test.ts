@@ -1,3 +1,4 @@
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { flushPromises } from '@vue/test-utils';
 import * as dataTableApi from '@/features/core/dataTable/dataTable.api';
 import { ref } from 'vue';
@@ -152,6 +153,79 @@ describe('useDataTableNavigationCommands', () => {
 		expect(
 			commands.value.find((command) => command.id === 'open-data-table')?.children,
 		).toHaveLength(1);
+	});
+
+	it.each(['older-first', 'latest-first'])(
+		'keeps the latest command search when responses finish %s',
+		async (order) => {
+			vi.useFakeTimers();
+			try {
+				Object.defineProperty(mockDataTableStore, 'canViewDataTables', { value: true });
+				const older = createDeferredPromise<{ count: number; data: DataTable[] }>();
+				const latest = createDeferredPromise<{ count: number; data: DataTable[] }>();
+				vi.mocked(dataTableApi.fetchDataTablesApi)
+					.mockReturnValueOnce(older.promise)
+					.mockReturnValueOnce(latest.promise);
+				const { commands, handlers, isLoading } = useDataTableNavigationCommands({
+					lastQuery: ref('Latest'),
+					activeNodeId: ref(null),
+					currentProjectName: ref('Project'),
+				});
+				handlers.onCommandBarNavigateTo('open-data-table');
+				handlers.onCommandBarChange('Latest');
+				const data = [
+					createMockDataTable('older', 'Older'),
+					createMockDataTable('latest', 'Latest'),
+				];
+				if (order === 'older-first') {
+					older.resolve({ count: 2, data });
+					await flushPromises();
+					expect(isLoading.value).toBe(true);
+					expect(commands.value.find((c) => c.id === 'open-data-table')?.children).toEqual([]);
+				}
+				await vi.advanceTimersByTimeAsync(300);
+				latest.resolve({ count: 2, data });
+				await flushPromises();
+				if (order === 'latest-first') {
+					older.resolve({ count: 2, data });
+					await flushPromises();
+				}
+				expect(commands.value.find((c) => c.id === 'open-data-table')?.children).toEqual([
+					expect.objectContaining({ id: 'latest' }),
+				]);
+				expect(isLoading.value).toBe(false);
+			} finally {
+				vi.useRealTimers();
+			}
+		},
+	);
+
+	it('cancels pending search work when leaving data table commands', async () => {
+		vi.useFakeTimers();
+		try {
+			Object.defineProperty(mockDataTableStore, 'canViewDataTables', { value: true });
+			const pending = createDeferredPromise<{ count: number; data: DataTable[] }>();
+			vi.mocked(dataTableApi.fetchDataTablesApi).mockReturnValueOnce(pending.promise);
+			const { commands, handlers, isLoading } = useDataTableNavigationCommands({
+				lastQuery: ref(''),
+				activeNodeId: ref(null),
+				currentProjectName: ref('Project'),
+			});
+			handlers.onCommandBarNavigateTo('open-data-table');
+			handlers.onCommandBarChange('Pending');
+			handlers.onCommandBarNavigateTo(null);
+			pending.resolve({ count: 1, data: [createMockDataTable('pending', 'Pending')] });
+			await vi.advanceTimersByTimeAsync(300);
+			await flushPromises();
+			expect(commands.value.find((c) => c.id === 'open-data-table')?.children).toEqual([]);
+			expect(isLoading.value).toBe(false);
+			expect(dataTableApi.fetchDataTablesApi).toHaveBeenCalledTimes(1);
+			handlers.onCommandBarNavigateTo('open-data-table');
+			await flushPromises();
+			expect(dataTableApi.fetchDataTablesApi).toHaveBeenCalledTimes(2);
+		} finally {
+			vi.useRealTimers();
+		}
 	});
 
 	describe('create data table command', () => {

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useLatestFetch } from '@/app/composables/useLatestFetch';
 import { onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
@@ -28,21 +29,24 @@ const mcpStore = useMCPStore();
 const rbacStore = useRBACStore();
 
 const oAuthClientsLoading = ref(true);
+const { next: nextFetch } = useLatestFetch();
 const { revokeClient, revoking, isRevokingForOther, requestRevoke, cancelRevoke, confirmRevoke } =
 	useOAuthClientRevoke();
 
 const fetchoAuthCLients = async () => {
+	const isCurrent = nextFetch();
 	try {
 		oAuthClientsLoading.value = true;
 		await mcpStore.getAllOAuthClients();
 	} catch (error) {
 		toast.showError(error, i18n.baseText('settings.mcp.error.fetching.oAuthClients'));
 	} finally {
-		oAuthClientsLoading.value = false;
+		if (isCurrent()) oAuthClientsLoading.value = false;
 	}
 };
 
 const onOwnershipChange = async (ownership: 'mine' | 'all') => {
+	const isCurrent = nextFetch();
 	// Reflect the tab in the URL right away (replace keeps history clean /
 	// back-button safe). Written before the fetch: the tab is the user's choice,
 	// not the fetch result, so a slow earlier fetch can't stamp a stale tab later.
@@ -58,7 +62,7 @@ const onOwnershipChange = async (ownership: 'mine' | 'all') => {
 	} catch (error) {
 		toast.showError(error, i18n.baseText('settings.mcp.error.fetching.oAuthClients'));
 	} finally {
-		oAuthClientsLoading.value = false;
+		if (isCurrent()) oAuthClientsLoading.value = false;
 	}
 };
 

@@ -1,3 +1,4 @@
+import { useLatestFetch } from '@/app/composables/useLatestFetch';
 import { fetchDataTablesApi } from '@/features/core/dataTable/dataTable.api';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { computed, ref, type Ref } from 'vue';
@@ -39,6 +40,7 @@ export function useDataTableNavigationCommands(options: {
 	const availableDataTables = ref<DataTable[]>([]);
 	const isLoading = ref(false);
 	const hasDataFetched = ref(false);
+	const { next: nextFetch } = useLatestFetch();
 
 	const currentProjectId = computed(() => {
 		return typeof route.params.projectId === 'string'
@@ -60,7 +62,7 @@ export function useDataTableNavigationCommands(options: {
 		});
 	}
 
-	const fetchDataTablesImpl = async (query: string) => {
+	const fetchDataTablesImpl = async (query: string, isCurrent: () => boolean) => {
 		try {
 			const trimmed = (query || '').trim();
 
@@ -70,6 +72,7 @@ export function useDataTableNavigationCommands(options: {
 					skip: 0,
 					take: 1000,
 				});
+				if (!isCurrent()) return;
 				availableDataTables.value = data;
 				hasDataFetched.value = true;
 			}
@@ -81,9 +84,9 @@ export function useDataTableNavigationCommands(options: {
 
 			dataTableResults.value = orderResultByCurrentProjectFirst(filtered);
 		} catch {
-			dataTableResults.value = [];
+			if (isCurrent()) dataTableResults.value = [];
 		} finally {
-			isLoading.value = false;
+			if (isCurrent()) isLoading.value = false;
 		}
 	};
 
@@ -193,6 +196,9 @@ export function useDataTableNavigationCommands(options: {
 	});
 
 	function onCommandBarChange(query: string) {
+		// Invalidate the previous query before the debounce starts.
+		const isCurrent = nextFetch();
+		fetchDataTablesDebounced.cancel();
 		if (!dataTableStore.canViewDataTables) {
 			return;
 		}
@@ -203,17 +209,22 @@ export function useDataTableNavigationCommands(options: {
 
 		if (isInDataTableParent || isRootWithQuery) {
 			isLoading.value = true;
-			void fetchDataTablesDebounced(trimmed);
+			void fetchDataTablesDebounced(trimmed, isCurrent);
+		} else {
+			isLoading.value = false;
+			dataTableResults.value = [];
 		}
 	}
 
 	function onCommandBarNavigateTo(to: string | null) {
+		const isCurrent = nextFetch();
+		fetchDataTablesDebounced.cancel();
 		activeNodeId.value = to;
 
 		if (to === ITEM_ID.OPEN_DATA_TABLE) {
 			isLoading.value = true;
-			void fetchDataTablesImpl('');
-		} else if (to === null) {
+			void fetchDataTablesImpl('', isCurrent);
+		} else {
 			isLoading.value = false;
 			dataTableResults.value = [];
 			hasDataFetched.value = false;

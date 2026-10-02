@@ -1,7 +1,8 @@
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { flushPromises } from '@vue/test-utils';
 import { nextTick } from 'vue';
 import { createTestingPinia } from '@pinia/testing';
-import { waitFor } from '@testing-library/vue';
+import { fireEvent, waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { createComponentRenderer, mockedStore, type MockedStore } from '@n8n/frontend-test-utils';
 import MCPWorkflowsSelect from '@/features/ai/mcpAccess/components/MCPWorkflowsSelect.vue';
@@ -184,6 +185,51 @@ describe('MCPWorkflowsSelect', () => {
 			});
 		});
 	});
+
+	it.each(['older-first', 'latest-first', 'older-error'])(
+		'keeps the latest remote search state when responses finish %s',
+		async (order) => {
+			const older = createDeferredPromise<{ count: number; data: McpWorkflow[] }>();
+			const latest = createDeferredPromise<{ count: number; data: McpWorkflow[] }>();
+			const { getByTestId, queryByText } = createComponent({
+				pinia,
+				global: {
+					stubs: {
+						ElSelect: {
+							props: ['remoteMethod', 'loading'],
+							template: `<div><input data-test-id="search" @input="remoteMethod($event.target.value)" /><span v-if="loading">Searching</span><slot /></div>`,
+						},
+						ElOption: { template: '<div><slot /></div>' },
+					},
+				},
+			});
+			await flushPromises();
+			mcpStore.getMcpEligibleWorkflows
+				.mockReturnValueOnce(older.promise)
+				.mockReturnValueOnce(latest.promise);
+			await fireEvent.update(getByTestId('search'), 'Older');
+			await fireEvent.update(getByTestId('search'), 'Latest');
+			const finishOlder = () => {
+				if (order === 'older-error') older.reject(new Error('Search failed'));
+				else older.resolve({ count: 1, data: [createWorkflow({ name: 'Older' })] });
+			};
+			if (order !== 'latest-first') {
+				finishOlder();
+				await flushPromises();
+				expect(queryByText('Searching')).toBeVisible();
+				expect(queryByText('Older')).not.toBeInTheDocument();
+			}
+			latest.resolve({ count: 1, data: [createWorkflow({ name: 'Latest' })] });
+			await flushPromises();
+			if (order === 'latest-first') {
+				finishOlder();
+				await flushPromises();
+			}
+			expect(queryByText('Latest')).toBeVisible();
+			expect(queryByText('Older')).not.toBeInTheDocument();
+			expect(queryByText('Searching')).not.toBeInTheDocument();
+		},
+	);
 
 	describe('Remote search', () => {
 		it('should search workflows when user types in input', async () => {
