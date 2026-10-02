@@ -5,7 +5,7 @@ import type {
 } from '@n8n/api-types';
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { TransactionRunner, WorkflowRepository } from '@n8n/db';
-import type { ErrorReporter, InstanceSettings } from 'n8n-core';
+import type { ErrorReporter } from 'n8n-core';
 import type { MockProxy } from 'vitest-mock-extended';
 import { mock } from 'vitest-mock-extended';
 
@@ -89,15 +89,13 @@ describe('MigrationFindingSyncService', () => {
 	let syncRepository: MockProxy<MigrationFindingSyncRepository>;
 	let txRunner: MockProxy<TransactionRunner>;
 	let errorReporter: MockProxy<ErrorReporter>;
-	let isLeader: boolean;
 	let service: MigrationFindingSyncService;
 
-	// A getter, so a test can take leadership away while a sync is running.
-	const instanceSettings = {
-		get isLeader() {
-			return isLeader;
-		},
-	} as InstanceSettings;
+	const FINGERPRINT = computeRuleSetFingerprint(['rule-a', 'rule-b']);
+
+	/** The claim call a run makes: version, fingerprint, start time, stale cut-off, context. */
+	const claimOf = (fingerprint = FINGERPRINT) =>
+		[TARGET_VERSION, fingerprint, expect.any(Date), expect.any(Date), expect.anything()] as const;
 
 	/** Feeds `getIdsAfter` from a mutable list, so a test can remove a workflow between pages. */
 	function givenWorkflows(count: number) {
@@ -119,7 +117,6 @@ describe('MigrationFindingSyncService', () => {
 		syncRepository = mock<MigrationFindingSyncRepository>();
 		txRunner = mock<TransactionRunner>();
 		errorReporter = mock<ErrorReporter>();
-		isLeader = true;
 
 		txRunner.run.mockImplementation(async (ctx, fn) => await fn(ctx));
 		// By default every paged id still exists when the batch re-checks it.
@@ -127,6 +124,8 @@ describe('MigrationFindingSyncService', () => {
 		ruleRegistry.getRules.mockReturnValue(rules('rule-a', 'rule-b'));
 		findingRepository.listForWorkflows.mockResolvedValue([]);
 		breakingChangeService.detect.mockResolvedValue(detectionResult([]));
+		// By default this instance wins the claim, as on a single main.
+		syncRepository.tryClaim.mockResolvedValue(true);
 
 		service = new MigrationFindingSyncService(
 			breakingChangeService,
@@ -135,7 +134,6 @@ describe('MigrationFindingSyncService', () => {
 			findingRepository,
 			syncRepository,
 			txRunner,
-			instanceSettings,
 			mockLogger(),
 			errorReporter,
 		);
@@ -165,14 +163,13 @@ describe('MigrationFindingSyncService', () => {
 		);
 		expect(findingRepository.markFixedForIds).not.toHaveBeenCalled();
 		expect(findingRepository.updateStatusForIds).not.toHaveBeenCalled();
-		expect(syncRepository.upsertForVersion).toHaveBeenCalledWith(
-			{
-				targetVersion: TARGET_VERSION,
-				syncedAt: expect.any(Date),
-				ruleSetFingerprint: computeRuleSetFingerprint(['rule-a', 'rule-b']),
-			},
+		expect(syncRepository.tryClaim).toHaveBeenCalledWith(...claimOf());
+		expect(syncRepository.markComplete).toHaveBeenCalledWith(
+			TARGET_VERSION,
+			expect.any(Date),
 			expect.anything(),
 		);
+		expect(syncRepository.markFailed).not.toHaveBeenCalled();
 	});
 
 	it('writes no finding changes when a second sync reports the same hits', async () => {
@@ -189,7 +186,7 @@ describe('MigrationFindingSyncService', () => {
 		expect(findingRepository.insertMany).not.toHaveBeenCalled();
 		expect(findingRepository.markFixedForIds).not.toHaveBeenCalled();
 		expect(findingRepository.updateStatusForIds).not.toHaveBeenCalled();
-		expect(syncRepository.upsertForVersion).toHaveBeenCalledTimes(1);
+		expect(syncRepository.markComplete).toHaveBeenCalledTimes(1);
 	});
 
 	it('marks a vanished hit fixed and reopens a returning hit', async () => {
@@ -256,7 +253,7 @@ describe('MigrationFindingSyncService', () => {
 			expect.anything(),
 		);
 		expect(findingRepository.markFixedForIds).toHaveBeenCalledWith([2], expect.anything());
-		expect(syncRepository.upsertForVersion).toHaveBeenCalledTimes(1);
+		expect(syncRepository.markComplete).toHaveBeenCalledTimes(1);
 	});
 
 	it('runs one transaction per batch of 100 workflows', async () => {
@@ -268,7 +265,7 @@ describe('MigrationFindingSyncService', () => {
 		expect(findingRepository.listForWorkflows).toHaveBeenCalledTimes(3);
 		expect(findingRepository.listForWorkflows.mock.calls[0][1]).toHaveLength(100);
 		expect(findingRepository.listForWorkflows.mock.calls[2][1]).toHaveLength(50);
-		expect(syncRepository.upsertForVersion).toHaveBeenCalledTimes(1);
+		expect(syncRepository.markComplete).toHaveBeenCalledTimes(1);
 	});
 
 	it('still visits every remaining workflow when one is deleted between pages', async () => {
@@ -312,10 +309,10 @@ describe('MigrationFindingSyncService', () => {
 			[{ targetVersion: TARGET_VERSION, ruleId: 'rule-a', workflowId: 'wf-0000' }],
 			expect.anything(),
 		);
-		expect(syncRepository.upsertForVersion).toHaveBeenCalledTimes(1);
+		expect(syncRepository.markComplete).toHaveBeenCalledTimes(1);
 	});
 
-	it('continues with the next batch when one batch fails, and records no sync', async () => {
+	it('continues with the next batch when one batch fails, and marks the run failed', async () => {
 		givenWorkflows(250);
 		const failure = new Error('batch failed');
 		txRunner.run
@@ -331,7 +328,8 @@ describe('MigrationFindingSyncService', () => {
 		expect(errorReporter.error).toHaveBeenCalledWith(failure, {
 			extra: { targetVersion: TARGET_VERSION, batchStart: 'wf-0100' },
 		});
-		expect(syncRepository.upsertForVersion).not.toHaveBeenCalled();
+		expect(syncRepository.markComplete).not.toHaveBeenCalled();
+		expect(syncRepository.markFailed).toHaveBeenCalledWith(TARGET_VERSION, expect.anything());
 	});
 
 	it('does not write the sync record before every batch is done', async () => {
@@ -341,7 +339,7 @@ describe('MigrationFindingSyncService', () => {
 			order.push('batch');
 			return await fn(ctx);
 		});
-		syncRepository.upsertForVersion.mockImplementation(async () => {
+		syncRepository.markComplete.mockImplementation(async () => {
 			order.push('sync-record');
 		});
 
@@ -350,11 +348,12 @@ describe('MigrationFindingSyncService', () => {
 		expect(order).toEqual(['batch', 'batch', 'sync-record']);
 	});
 
-	it('clears the previous sync record before the scan and the first batch', async () => {
+	it('claims the record before the scan and the first batch', async () => {
 		givenWorkflows(150);
 		const order: string[] = [];
-		syncRepository.deleteForVersion.mockImplementation(async () => {
-			order.push('clear-record');
+		syncRepository.tryClaim.mockImplementation(async () => {
+			order.push('claim');
+			return true;
 		});
 		breakingChangeService.detect.mockImplementation(async () => {
 			order.push('detect');
@@ -364,36 +363,51 @@ describe('MigrationFindingSyncService', () => {
 			order.push('batch');
 			return await fn(ctx);
 		});
-		syncRepository.upsertForVersion.mockImplementation(async () => {
+		syncRepository.markComplete.mockImplementation(async () => {
 			order.push('sync-record');
 		});
 
 		await service.sync(TARGET_VERSION);
 
-		expect(syncRepository.deleteForVersion).toHaveBeenCalledWith(TARGET_VERSION, expect.anything());
-		expect(order).toEqual(['clear-record', 'detect', 'batch', 'batch', 'sync-record']);
+		expect(syncRepository.tryClaim).toHaveBeenCalledWith(...claimOf());
+		expect(order).toEqual(['claim', 'detect', 'batch', 'batch', 'sync-record']);
 	});
 
-	describe('recovery from an interrupted sync', () => {
-		/** Backs the sync repository mock with one in-memory record, so the next read sees the writes. */
-		function givenPersistedSyncRecord() {
-			let record: MigrationFindingSync | null = {
-				targetVersion: TARGET_VERSION,
-				syncedAt: new Date(),
-				ruleSetFingerprint: computeRuleSetFingerprint(['rule-a', 'rule-b']),
+	/** Backs the sync repository mock with one in-memory record, so later reads see the writes. */
+	function givenPersistedSyncRecord(initial: MigrationFindingSync | null) {
+		let record = initial;
+		syncRepository.getForVersion.mockImplementation(async () => record);
+		syncRepository.tryClaim.mockImplementation(async (_version, ruleSetFingerprint, startedAt) => {
+			record = {
+				...(record ?? { targetVersion: TARGET_VERSION, syncedAt: null }),
+				status: 'running',
+				startedAt,
+				ruleSetFingerprint,
 			} as MigrationFindingSync;
-			syncRepository.getForVersion.mockImplementation(async () => record);
-			syncRepository.deleteForVersion.mockImplementation(async () => {
-				record = null;
-			});
-			syncRepository.upsertForVersion.mockImplementation(async (next) => {
-				record = next as MigrationFindingSync;
-			});
-		}
+			return true;
+		});
+		syncRepository.markComplete.mockImplementation(async (_version, syncedAt) => {
+			record = { ...record, status: 'complete', syncedAt } as MigrationFindingSync;
+		});
+		syncRepository.markFailed.mockImplementation(async () => {
+			record = { ...record, status: 'failed' } as MigrationFindingSync;
+		});
+		return () => record;
+	}
 
-		it('leaves no record after a failed batch, so the next read syncs again', async () => {
+	describe('recovery from an interrupted sync', () => {
+		const completeRecord = () =>
+			({
+				targetVersion: TARGET_VERSION,
+				status: 'complete',
+				startedAt: new Date(),
+				syncedAt: new Date(),
+				ruleSetFingerprint: FINGERPRINT,
+			}) as MigrationFindingSync;
+
+		it('marks the run failed after a failed batch, so the next read syncs again', async () => {
 			givenWorkflows(250);
-			givenPersistedSyncRecord();
+			const record = givenPersistedSyncRecord(completeRecord());
 			txRunner.run
 				.mockImplementationOnce(async (ctx, fn) => await fn(ctx))
 				.mockImplementationOnce(async () => {
@@ -401,31 +415,24 @@ describe('MigrationFindingSyncService', () => {
 				});
 
 			await service.sync(TARGET_VERSION);
-			expect(await syncRepository.getForVersion(TARGET_VERSION, {})).toBeNull();
+			expect(record()?.status).toBe('failed');
 
 			await service.syncIfStale(TARGET_VERSION);
 
 			expect(breakingChangeService.detect).toHaveBeenCalledTimes(2);
-			expect(await syncRepository.getForVersion(TARGET_VERSION, {})).not.toBeNull();
+			expect(record()?.status).toBe('complete');
 		});
 
-		it('leaves no record after a leadership loss, so the next read on the leader syncs again', async () => {
-			givenWorkflows(250);
-			givenPersistedSyncRecord();
-			txRunner.run.mockImplementationOnce(async (ctx, fn) => {
-				const result = await fn(ctx);
-				isLeader = false;
-				return result;
-			});
+		it('marks the run failed and rethrows when the scan itself throws', async () => {
+			givenWorkflows(2);
+			const record = givenPersistedSyncRecord(completeRecord());
+			const failure = new Error('scan failed');
+			breakingChangeService.detect.mockRejectedValueOnce(failure);
 
-			await service.sync(TARGET_VERSION);
-			expect(await syncRepository.getForVersion(TARGET_VERSION, {})).toBeNull();
+			await expect(service.sync(TARGET_VERSION)).rejects.toBe(failure);
 
-			isLeader = true;
-			await service.syncIfStale(TARGET_VERSION);
-
-			expect(breakingChangeService.detect).toHaveBeenCalledTimes(2);
-			expect(await syncRepository.getForVersion(TARGET_VERSION, {})).not.toBeNull();
+			expect(record()?.status).toBe('failed');
+			expect(txRunner.run).not.toHaveBeenCalled();
 		});
 	});
 
@@ -450,39 +457,75 @@ describe('MigrationFindingSyncService', () => {
 			await service.sync(TARGET_VERSION);
 
 			expect(ruleRegistry.getRules).toHaveBeenCalledWith(TARGET_VERSION);
-			expect(syncRepository.upsertForVersion).toHaveBeenCalledWith(
-				expect.objectContaining({
-					ruleSetFingerprint: computeRuleSetFingerprint(['rule-y', 'rule-z']),
-				}),
-				expect.anything(),
+			expect(syncRepository.tryClaim).toHaveBeenCalledWith(
+				...claimOf(computeRuleSetFingerprint(['rule-y', 'rule-z'])),
 			);
 		});
 	});
 
-	it('computes and writes nothing when the instance is not the leader', async () => {
-		isLeader = false;
-		givenWorkflows(3);
+	describe('another instance holds the claim', () => {
+		const runningRecord = (startedAt: Date) =>
+			({
+				targetVersion: TARGET_VERSION,
+				status: 'running',
+				startedAt,
+				syncedAt: null,
+				ruleSetFingerprint: FINGERPRINT,
+			}) as MigrationFindingSync;
 
-		await service.sync(TARGET_VERSION);
-
-		expect(breakingChangeService.detect).not.toHaveBeenCalled();
-		expect(workflowRepository.getIdsAfter).not.toHaveBeenCalled();
-		expect(txRunner.run).not.toHaveBeenCalled();
-		expect(syncRepository.upsertForVersion).not.toHaveBeenCalled();
-	});
-
-	it('stops writing and records no sync when leadership is lost between batches', async () => {
-		givenWorkflows(250);
-		txRunner.run.mockImplementation(async (ctx, fn) => {
-			const result = await fn(ctx);
-			isLeader = false;
-			return result;
+		beforeEach(() => {
+			vi.useFakeTimers();
+			givenWorkflows(3);
+			syncRepository.tryClaim.mockResolvedValue(false);
 		});
 
-		await service.sync(TARGET_VERSION);
+		afterEach(() => {
+			vi.useRealTimers();
+		});
 
-		expect(txRunner.run).toHaveBeenCalledTimes(1);
-		expect(syncRepository.upsertForVersion).not.toHaveBeenCalled();
+		it('scans nothing and waits until the other run has left running', async () => {
+			syncRepository.getForVersion
+				.mockResolvedValueOnce(runningRecord(new Date()))
+				.mockResolvedValueOnce({
+					...runningRecord(new Date()),
+					status: 'complete',
+				} as MigrationFindingSync);
+
+			const run = service.sync(TARGET_VERSION);
+			await vi.advanceTimersByTimeAsync(MigrationFindingSyncService.WAIT_POLL_MS * 2);
+			await run;
+
+			expect(syncRepository.getForVersion).toHaveBeenCalledTimes(2);
+			expect(breakingChangeService.detect).not.toHaveBeenCalled();
+			expect(txRunner.run).not.toHaveBeenCalled();
+			expect(syncRepository.markComplete).not.toHaveBeenCalled();
+		});
+
+		it('stops waiting when the other claim is older than the claim timeout', async () => {
+			const abandoned = new Date(Date.now() - MigrationFindingSyncService.CLAIM_TIMEOUT_MS - 1);
+			syncRepository.getForVersion.mockResolvedValue(runningRecord(abandoned));
+
+			const run = service.sync(TARGET_VERSION);
+			await vi.advanceTimersByTimeAsync(MigrationFindingSyncService.WAIT_POLL_MS);
+			await run;
+
+			expect(syncRepository.getForVersion).toHaveBeenCalledTimes(1);
+			expect(breakingChangeService.detect).not.toHaveBeenCalled();
+		});
+
+		it('gives up after the wait timeout while the other run is still going', async () => {
+			syncRepository.getForVersion.mockImplementation(async () => runningRecord(new Date()));
+
+			const run = service.sync(TARGET_VERSION);
+			await vi.advanceTimersByTimeAsync(MigrationFindingSyncService.WAIT_TIMEOUT_MS * 2);
+			await run;
+
+			const polls =
+				MigrationFindingSyncService.WAIT_TIMEOUT_MS / MigrationFindingSyncService.WAIT_POLL_MS;
+			expect(syncRepository.getForVersion.mock.calls.length).toBeLessThanOrEqual(polls);
+			expect(syncRepository.getForVersion.mock.calls.length).toBeGreaterThan(polls / 2);
+			expect(breakingChangeService.detect).not.toHaveBeenCalled();
+		});
 	});
 
 	it('shares one run between two concurrent calls for the same version', async () => {
@@ -491,7 +534,7 @@ describe('MigrationFindingSyncService', () => {
 		await Promise.all([service.sync(TARGET_VERSION), service.sync(TARGET_VERSION)]);
 
 		expect(breakingChangeService.detect).toHaveBeenCalledTimes(1);
-		expect(syncRepository.upsertForVersion).toHaveBeenCalledTimes(1);
+		expect(syncRepository.markComplete).toHaveBeenCalledTimes(1);
 	});
 
 	it('starts a new run once the previous one has finished', async () => {
@@ -522,12 +565,12 @@ describe('MigrationFindingSyncService', () => {
 		});
 
 		afterEach(() => {
-			// A per-workflow sync is not a full scan, so it must never claim one.
-			expect(syncRepository.upsertForVersion).not.toHaveBeenCalled();
+			// A per-workflow sync is not a full scan, so it must never claim or complete one.
+			expect(syncRepository.tryClaim).not.toHaveBeenCalled();
+			expect(syncRepository.markComplete).not.toHaveBeenCalled();
 		});
 
-		it('inserts an open finding for a workflow that now trips a rule, on any main', async () => {
-			isLeader = false;
+		it('inserts an open finding for a workflow that now trips a rule', async () => {
 			breakingChangeService.detectWorkflowHits.mockResolvedValue({
 				hits: [{ ruleId: 'rule-a', workflowId: WORKFLOW_ID }],
 				failedChecks: [],
@@ -679,9 +722,14 @@ describe('MigrationFindingSyncService', () => {
 	});
 
 	describe('syncIfStale', () => {
-		function syncRecord(ruleIds: string[]): MigrationFindingSync {
+		function syncRecord(
+			ruleIds: string[],
+			status: MigrationFindingSync['status'] = 'complete',
+		): MigrationFindingSync {
 			return {
 				targetVersion: TARGET_VERSION,
+				status,
+				startedAt: new Date(),
 				syncedAt: new Date(),
 				ruleSetFingerprint: computeRuleSetFingerprint(ruleIds),
 			} as MigrationFindingSync;
@@ -694,7 +742,7 @@ describe('MigrationFindingSyncService', () => {
 			await service.syncIfStale(TARGET_VERSION);
 
 			expect(breakingChangeService.detect).toHaveBeenCalledWith(TARGET_VERSION);
-			expect(syncRepository.upsertForVersion).toHaveBeenCalledTimes(1);
+			expect(syncRepository.markComplete).toHaveBeenCalledTimes(1);
 		});
 
 		it('syncs when the stored fingerprint differs from the current rule set', async () => {
@@ -704,12 +752,36 @@ describe('MigrationFindingSyncService', () => {
 			await service.syncIfStale(TARGET_VERSION);
 
 			expect(breakingChangeService.detect).toHaveBeenCalledWith(TARGET_VERSION);
-			expect(syncRepository.upsertForVersion).toHaveBeenCalledWith(
-				expect.objectContaining({
-					ruleSetFingerprint: computeRuleSetFingerprint(['rule-a', 'rule-b']),
-				}),
-				expect.anything(),
-			);
+			expect(syncRepository.tryClaim).toHaveBeenCalledWith(...claimOf());
+		});
+
+		it('syncs when the last run for the version failed', async () => {
+			givenWorkflows(2);
+			syncRepository.getForVersion.mockResolvedValue(syncRecord(['rule-a', 'rule-b'], 'failed'));
+
+			await service.syncIfStale(TARGET_VERSION);
+
+			expect(breakingChangeService.detect).toHaveBeenCalledWith(TARGET_VERSION);
+			expect(syncRepository.markComplete).toHaveBeenCalledTimes(1);
+		});
+
+		it('waits for a run on another instance instead of reading the table mid-sync', async () => {
+			vi.useFakeTimers();
+			try {
+				syncRepository.tryClaim.mockResolvedValue(false);
+				syncRepository.getForVersion
+					.mockResolvedValueOnce(syncRecord(['rule-a', 'rule-b'], 'running'))
+					.mockResolvedValueOnce(syncRecord(['rule-a', 'rule-b'], 'complete'));
+
+				const stale = service.syncIfStale(TARGET_VERSION);
+				await vi.advanceTimersByTimeAsync(MigrationFindingSyncService.WAIT_POLL_MS);
+				await stale;
+
+				expect(syncRepository.tryClaim).toHaveBeenCalledTimes(1);
+				expect(breakingChangeService.detect).not.toHaveBeenCalled();
+			} finally {
+				vi.useRealTimers();
+			}
 		});
 
 		it('awaits a sync that is already in flight instead of reading mid-sync', async () => {
@@ -745,7 +817,7 @@ describe('MigrationFindingSyncService', () => {
 			await service.syncIfStale(TARGET_VERSION);
 
 			expect(breakingChangeService.detect).not.toHaveBeenCalled();
-			expect(syncRepository.upsertForVersion).not.toHaveBeenCalled();
+			expect(syncRepository.tryClaim).not.toHaveBeenCalled();
 		});
 
 		it('reads the record for the requested version', async () => {
