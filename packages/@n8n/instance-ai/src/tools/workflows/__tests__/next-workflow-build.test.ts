@@ -13,8 +13,10 @@ import {
 	nodeOutputsDeclaration,
 	staticInputIssues,
 	synthesizedFixtures,
+	tscHintOf,
 	typecheckWorkflowSource,
 	usedNodeIds,
+	withTscHints,
 	workflowExpressions,
 } from '../next-workflow-build';
 
@@ -520,5 +522,125 @@ import { googleGemini } from '@n8n/nodes/googleGemini';`;
 			const unbound = { name: 'wf', connections: {}, nodes: [getNode('https://other.test', {})] };
 			expect(await contractEgressWarnings(contextOf(DOMAINS), unbound)).toEqual([]);
 		});
+	});
+});
+
+describe('tsc hints', () => {
+	const at = 'src/workflows/main.workflow.ts(12,5): error ';
+	const methods = ['andThen', 'branch', 'orElse'];
+
+	it.each([
+		[
+			"TS2339: Property 'andThen' does not exist on type 'Step<unknown, unknown, HttpRequestGetOutput, \"Fetch\">'.",
+			'A step has no methods: pass it to a flow method, e.g. `flow.andThen(step)`. Flow methods: andThen, branch, orElse.',
+		],
+		[
+			'TS2339: Property \'onKept\' does not exist on type \'RoutedStep<unknown, unknown, unknown, "Only Text", "discarded" | "kept">\'.',
+			'A step has no methods: pass it to a flow method, e.g. `flow.andThen(step)`. Flow methods: andThen, branch, orElse.',
+		],
+		[
+			"TS2551: Property 'andthen' does not exist on type 'Flow<Loose, Record<\"Start\", Loose>>'. Did you mean 'andThen'?",
+			'Flow methods: andThen, branch, orElse.',
+		],
+		[
+			"TS2339: Property 'tableName' does not exist on type 'never'.",
+			'This value has no fields. Items are plain JSON: write `item.field`, not `item.json.field`. Give the trigger `sample` items to type its fields.',
+		],
+		[
+			"TS18046: 'item' is of type 'unknown'.",
+			'This value has no type. Fix the first error of the same chain first. Else type the node before it: `sample` items, a webhook `schema`, or `returns` on a code step.',
+		],
+		[
+			"TS2571: Object is of type 'unknown'.",
+			'This value has no type. Fix the first error of the same chain first. Else type the node before it: `sample` items, a webhook `schema`, or `returns` on a code step.',
+		],
+		[
+			"TS2322: The expression result does not fit the field: Type 'unknown' is not assignable to type 'string'.",
+			'This value has no type. Fix the first error of the same chain first. Else type the node before it: `sample` items, a webhook `schema`, or `returns` on a code step.',
+		],
+		[
+			"TS18046: 'item.client_numbers' is of type 'unknown'.",
+			'This field has no declared type. Declare it where the data enters (a webhook `schema`, `sample` items, or `returns` on a code step), or narrow it first, e.g. `Array.isArray(item.list)`.',
+		],
+		[
+			"TS7006: Parameter 'failed' implicitly has an 'any' type.",
+			"This lambda gets no parameter types. Fix the first error of the same call or chain first (a method or field that does not exist). Do not annotate the parameters. If no error comes before it, write the value as a `'={{ … }}'` string.",
+		],
+		[
+			"TS2322: Type '(item: { body: { severity?: string; }; }) => string | undefined' is not assignable to type 'string | ((item: { body: { severity?: string; }; }) => string)'.",
+			'The value can be undefined. A `schema` field is optional until its `required` list names it: add it there, or read a field that is always set.',
+		],
+		[
+			"TS2345: Argument of type '\"Incident Webhook\"' is not assignable to parameter of type 'never'.",
+			"`$('Node')` reads only a node that runs before this one on the same path, by its exact `name`. If an earlier error breaks the chain, fix it first.",
+		],
+		[
+			"TS2740: Type '{ body: { id: string; }; }' is missing the following properties from type '{ headers: { [key: string]: string; }; body: Loose; }': headers, params, query, webhookUrl, and 2 more.",
+			'Add the fields that the message names. `nodes(action="type-definition")` shows the full type.',
+		],
+		[
+			"TS2353: Object literal may only specify known properties, and 'alwaysOutputData' does not exist in type '{ name: \"Get rows\"; type: string; }'.",
+			'Remove this field, or use a field that the type lists: `nodes(action="type-definition")` shows them. Node settings that the type does not list are not available.',
+		],
+		[
+			"TS2307: Cannot find module '@n8n/nodes/dataTable/row' or its corresponding type declarations.",
+			'Import only `@n8n/workflow-sdk/next` and the typed modules `@n8n/nodes/<id>` that `nodes(action="search")` returns. Use `node({ type, version, parameters })` for other nodes.',
+		],
+		[
+			"TS2305: Module '\"@n8n/nodes/slack\"' has no exported member 'slackSend'.",
+			"A typed module exports one object named after its id, e.g. `import { slack } from '@n8n/nodes/slack'`. Its steps are members: `slack.message.send({ … })`.",
+		],
+		[
+			"TS2305: Module '\"@n8n/workflow-sdk/next\"' has no exported member 'expr'.",
+			"Import only the flow API that the skill names. Write an n8n expression as a `'={{ … }}'` string.",
+		],
+		[
+			"TS2592: Cannot find name '$'. Do you need to install type definitions for jQuery?",
+			"In a lambda, `$` is the second parameter: `(item, $) => $('Node').field`.",
+		],
+	])('hints %s', (message, hint) => {
+		expect(tscHintOf(`${at}${message}`, methods)).toBe(hint);
+	});
+
+	it.each([
+		"TS2339: Property 'idd' does not exist on type '{ id: string; }'.",
+		"TS2322: Type 'string' is not assignable to type 'number'.",
+		'TS2345: Argument of type \'"Strat"\' is not assignable to parameter of type \'"Get" | "Start"\'.',
+		"TS2304: Cannot find name '$pageCount'.",
+		'n8n: Code cannot read process.',
+	])('gives no hint for %s', (message) => {
+		expect(tscHintOf(`${at}${message}`, methods)).toBeUndefined();
+	});
+
+	it('adds each hint once, after the first error it fits, with the real flow methods', async () => {
+		const unknownItem = `${at}TS18046: 'item' is of type 'unknown'.`;
+		const onStep = `${at}TS2339: Property 'orElse' does not exist on type 'Step<unknown, unknown, Loose, "Post">'.`;
+		const [step, first, second] = await withTscHints([onStep, unknownItem, unknownItem]);
+		expect(step).toMatch(
+			/^.+\nHint: A step has no methods: .+ Flow methods: andThen, branch, .*orElse/,
+		);
+		expect(first).toBe(`${unknownItem}\nHint: ${tscHintOf(unknownItem, [])}`);
+		expect(second).toBe(unknownItem);
+	});
+
+	it('adds the hints to the type check errors', async () => {
+		const error = "src/workflow.ts(1,1): error TS7006: Parameter 'f' implicitly has an 'any' type.";
+		const result = await typecheckWorkflowSource(
+			{
+				workspace: {
+					filesystem: { provider: 'local', basePath: '/workspace' },
+					sandbox: {
+						executeCommand: vi.fn(async () => ({
+							exitCode: 0,
+							stdout: JSON.stringify([error]),
+							stderr: '',
+						})),
+					},
+				},
+				logger: { warn: vi.fn() },
+			} as unknown as InstanceAiContext,
+			'src/workflow.ts',
+		);
+		expect(result.errors).toEqual([`${error}\nHint: ${tscHintOf(error, [])}`]);
 	});
 });

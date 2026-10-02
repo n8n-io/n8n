@@ -496,6 +496,132 @@ const parseTypecheckErrors = (stdout: string): string[] | undefined => {
 
 const STDERR_TAIL = 1_000;
 
+const UNTYPED_HINT =
+	'This value has no type. Fix the first error of the same chain first. Else type the node before it: `sample` items, a webhook `schema`, or `returns` on a code step.';
+
+/**
+ * A fix in the flow SDK for a frequent `tsc` error of a workflow source, by code and by the first
+ * line of the message. `flowMethods` are the methods of `Flow`. The first rule that matches wins.
+ */
+const TSC_HINTS: ReadonlyArray<{
+	readonly codes: readonly number[];
+	readonly message: RegExp;
+	readonly hint: (flowMethods: string) => string;
+}> = [
+	{
+		codes: [2339, 2551],
+		message: /on type '(?:Routed)?Step</,
+		hint: (methods) =>
+			`A step has no methods: pass it to a flow method, e.g. \`flow.andThen(step)\`. Flow methods: ${methods}.`,
+	},
+	{
+		codes: [2339, 2551],
+		message: /on type 'Flow</,
+		hint: (methods) => `Flow methods: ${methods}.`,
+	},
+	{
+		codes: [2339],
+		message: /on type 'never'/,
+		hint: () =>
+			'This value has no fields. Items are plain JSON: write `item.field`, not `item.json.field`. Give the trigger `sample` items to type its fields.',
+	},
+	{ codes: [18046], message: /^'[\w$]+' is of type 'unknown'/, hint: () => UNTYPED_HINT },
+	{
+		codes: [18046],
+		message: /is of type 'unknown'/,
+		hint: () =>
+			'This field has no declared type. Declare it where the data enters (a webhook `schema`, `sample` items, or `returns` on a code step), or narrow it first, e.g. `Array.isArray(item.list)`.',
+	},
+	{ codes: [2571], message: /is of type 'unknown'/, hint: () => UNTYPED_HINT },
+	{
+		codes: [7006],
+		message: /implicitly has an 'any' type/,
+		hint: () =>
+			"This lambda gets no parameter types. Fix the first error of the same call or chain first (a method or field that does not exist). Do not annotate the parameters. If no error comes before it, write the value as a `'={{ … }}'` string.",
+	},
+	{
+		codes: [2322, 2345],
+		message: /(?:^|: )(?:Type|Argument of type) '.*\| undefined' is not assignable/,
+		hint: () =>
+			'The value can be undefined. A `schema` field is optional until its `required` list names it: add it there, or read a field that is always set.',
+	},
+	{
+		codes: [2322, 2345],
+		message: /(?:^|: )(?:Type|Argument of type) 'unknown' is not assignable/,
+		hint: () => UNTYPED_HINT,
+	},
+	{
+		codes: [2345],
+		message: /^Argument of type '"[^"]*"' is not assignable to parameter of type 'never'/,
+		hint: () =>
+			"`$('Node')` reads only a node that runs before this one on the same path, by its exact `name`. If an earlier error breaks the chain, fix it first.",
+	},
+	{
+		codes: [2739, 2740, 2741],
+		message: /missing the following propert|is missing in type/,
+		hint: () =>
+			'Add the fields that the message names. `nodes(action="type-definition")` shows the full type.',
+	},
+	{
+		codes: [2353],
+		message: /may only specify known properties/,
+		hint: () =>
+			'Remove this field, or use a field that the type lists: `nodes(action="type-definition")` shows them. Node settings that the type does not list are not available.',
+	},
+	{
+		codes: [2307],
+		message: /^Cannot find module/,
+		hint: () =>
+			'Import only `@n8n/workflow-sdk/next` and the typed modules `@n8n/nodes/<id>` that `nodes(action="search")` returns. Use `node({ type, version, parameters })` for other nodes.',
+	},
+	{
+		codes: [2305],
+		message: /^Module '"@n8n\/nodes\//,
+		hint: () =>
+			"A typed module exports one object named after its id, e.g. `import { slack } from '@n8n/nodes/slack'`. Its steps are members: `slack.message.send({ … })`.",
+	},
+	{
+		codes: [2305],
+		message: /^Module '"@n8n\/workflow-sdk\/next"'/,
+		hint: () =>
+			"Import only the flow API that the skill names. Write an n8n expression as a `'={{ … }}'` string.",
+	},
+	{
+		codes: [2304, 2552, 2581, 2592],
+		// Expressions and Code text always have `$`: only a lambda without the parameter lacks it.
+		message: /^Cannot find name '\$'/,
+		hint: () => "In a lambda, `$` is the second parameter: `(item, $) => $('Node').field`.",
+	},
+];
+
+const TSC_ERROR = /error TS(\d+): ([^\n]*)/;
+
+/** The hint for one `tsc` error line of a workflow source, if a rule matches. */
+export function tscHintOf(error: string, flowMethods: readonly string[]): string | undefined {
+	const [, code, message] = TSC_ERROR.exec(error) ?? [];
+	if (code === undefined || message === undefined) return undefined;
+	const rule = TSC_HINTS.find(
+		(each) => each.codes.includes(Number(code)) && each.message.test(message),
+	);
+	return rule?.hint(flowMethods.join(', '));
+}
+
+/**
+ * Each `tsc` error with a hint line after it. A hint comes once, after the first error it fits:
+ * the later errors with the same cause need no copy.
+ */
+export async function withTscHints(errors: readonly string[]): Promise<string[]> {
+	const { Flow } = await import('@n8n/workflow-sdk/next');
+	const flowMethods = Object.getOwnPropertyNames(Flow.prototype).filter(
+		(name) => name !== 'constructor',
+	);
+	const hints = errors.map((error) => tscHintOf(error, flowMethods));
+	return errors.map((error, index) => {
+		const hint = hints[index];
+		return hint === undefined || hints.indexOf(hint) < index ? error : `${error}\nHint: ${hint}`;
+	});
+}
+
 /**
  * Type-check a workflow source with the node contracts tsconfig in the sandbox, with the n8n
  * expressions of {@link EXPRESSIONS_PATH}. A check that does not complete (no worker, out of
@@ -516,7 +642,8 @@ export async function typecheckWorkflowSource(
 		`WORKFLOW_DIAGNOSTICS_DEADLINE_MS=${TYPECHECK_TIMEOUT_MS - 1_000} exec node --max-old-space-size=512 --import tsx ${WORKFLOW_DIAGNOSTICS_FILENAME} '${escapeSingleQuotes(sourcePath)}' ${NEXT_TSCONFIG_FILENAME} ${EXPRESSIONS_PATH}`,
 		{ cwd: root, abortSignal, timeout: TYPECHECK_TIMEOUT_MS },
 	);
-	const errors = parseTypecheckErrors(result.stdout);
+	const parsed = parseTypecheckErrors(result.stdout);
+	const errors = parsed && (await withTscHints(parsed));
 	if (result.exitCode === 0 && errors) return { errors };
 	context.logger.warn('Workflow type check did not complete', {
 		exitCode: result.exitCode,
