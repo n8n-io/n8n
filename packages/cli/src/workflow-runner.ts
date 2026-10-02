@@ -337,7 +337,17 @@ export class WorkflowRunner {
 				return;
 			}
 
-			await this.executionCrashService.announceStalledExecution(executionId);
+			try {
+				await this.executionCrashService.announceStalledExecution(executionId);
+			} catch (announceError) {
+				// The announce is telemetry; its failure must not abort finalization
+				// for an execution already persisted as crashed.
+				this.logger.warn('Could not announce the stalled execution as crashed', {
+					executionId,
+					error: ensureError(announceError),
+				});
+				this.errorReporter.error(ensureError(announceError), { executionId });
+			}
 		}
 
 		// Remove from active execution with empty data. That will

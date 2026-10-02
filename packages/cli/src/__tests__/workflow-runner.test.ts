@@ -530,6 +530,30 @@ describe('processError', () => {
 		expect(stored?.status).toBe('crashed');
 	});
 
+	test('processError still finalizes and runs hooks when the crash announcement fails', async () => {
+		const workflow = await createWorkflow({}, owner);
+		const execution = await createExecution({ status: 'running', finished: false }, workflow);
+		const finalizeExecution = vi.spyOn(Container.get(ActiveExecutions), 'finalizeExecution');
+		vi.spyOn(Container.get(ExecutionCrashService), 'announceStalledExecution').mockRejectedValue(
+			new Error('database connection reset'),
+		);
+
+		globalConfig.executions.mode = 'regular';
+		await runner.processError(
+			new MaxStalledCountError(new Error('job stalled more than maxStalledCount')),
+			new Date(),
+			'webhook',
+			execution.id,
+			hooks,
+		);
+
+		expect(finalizeExecution).toHaveBeenCalledWith(
+			execution.id,
+			expect.objectContaining({ status: 'crashed' }),
+		);
+		expect(watcher.workflowExecuteAfter).toHaveBeenCalledTimes(1);
+	});
+
 	test('processError finalizes without hooks when the stalled-count claim cannot persist', async () => {
 		const workflow = await createWorkflow({}, owner);
 		const execution = await createExecution({ status: 'running', finished: false }, workflow);
