@@ -1,0 +1,77 @@
+{
+	"executions": [
+		{
+			"name": "text reply",
+			"params": {
+				"model": "gpt-5-mini",
+				"prompt": "Translate to German: Hello",
+				"system": "Reply with the translation only"
+			},
+			"responses": [
+				{
+					"choices": [
+						{
+							"index": 0,
+							"message": {
+								"role": "assistant",
+								"content": "Hallo"
+							},
+							"finish_reason": "stop"
+						}
+					],
+					"usage": {
+						"prompt_tokens": 5,
+						"completion_tokens": 1
+					}
+				}
+			],
+			"output": [
+				{
+					"text": "Hallo"
+				}
+			]
+		},
+		{
+			"name": "reply typed by schema",
+			"params": {
+				"model": "gpt-5-mini",
+				"prompt": "Label: broken parcel",
+				"schema": {
+					"type": "object",
+					"properties": {
+						"label": {
+							"enum": ["complaint", "praise"]
+						}
+					},
+					"required": ["label"]
+				}
+			},
+			"responses": [
+				{
+					"choices": [
+						{
+							"index": 0,
+							"message": {
+								"role": "assistant",
+								"content": "{\"label\":\"complaint\"}"
+							},
+							"finish_reason": "stop"
+						}
+					],
+					"usage": {
+						"prompt_tokens": 5,
+						"completion_tokens": 1
+					}
+				}
+			],
+			"output": [
+				{
+					"text": "{\"label\":\"complaint\"}",
+					"output": {
+						"label": "complaint"
+					}
+				}
+			]
+		}
+	]
+}

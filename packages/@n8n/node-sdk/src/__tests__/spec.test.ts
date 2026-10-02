@@ -4,7 +4,17 @@ import path from 'node:path';
 import type { RunContextV1 } from '../action-api-v1';
 import type {
 	BatchContext,
+	CodeRequest,
+	DataTableColumn,
+	DataTableColumnType,
+	DataTableCondition,
+	DataTableFilter,
+	DataTableInfo,
+	DataTableListQuery,
+	DataTableOperator,
+	DataTableQuery,
 	Emit,
+	HostImports,
 	HttpError,
 	HttpMethod,
 	HttpRequest,
@@ -33,7 +43,9 @@ const membersOf =
 	) =>
 		values;
 
-const camel = (name: string) => name.replace(/-(\w)/g, (_, letter: string) => letter.toUpperCase());
+// `%` escapes a WIT keyword; the name has no `%`.
+const camel = (name: string) =>
+	name.replace(/^%/, '').replace(/-(\w)/g, (_, letter: string) => letter.toUpperCase());
 
 /** Records, enums, and world imports of a WIT file. An import newer than `implemented` stays out. */
 function witShape(file: string, implemented: string) {
@@ -50,13 +62,13 @@ function witShape(file: string, implemented: string) {
 	const records = Object.fromEntries(
 		Object.entries(blocks('record')).map(([name, body]) => [
 			name,
-			[...body.matchAll(/([\w-]+)\s*:/g)].map(([, field = '']) => camel(field)),
+			[...body.matchAll(/(%?[\w-]+)\s*:/g)].map(([, field = '']) => camel(field)),
 		]),
 	);
 	const enums = Object.fromEntries(
 		Object.entries(blocks('enum')).map(([name, body]) => [
 			name,
-			body.split(',').map((entry) => entry.trim()),
+			body.split(',').map((entry) => camel(entry.trim())),
 		]),
 	);
 	const variants = Object.fromEntries(
@@ -130,8 +142,10 @@ describe('spec/n8n-action@2.wit', () => {
 			'limits',
 			'binary',
 		]);
-		expect(sorted(['input', 'item', ...wit.imports])).toEqual(sorted(context));
-		expect(sorted(['input', 'items', ...wit.imports])).toEqual(sorted(batch));
+		// An action gets an optional import only when its contract lists it.
+		const optional = keysOf<HostImports<unknown>>()(['dataTables', 'code', 'wait', 'inputOf']);
+		expect(sorted(['input', 'item', ...wit.imports])).toEqual(sorted([...context, ...optional]));
+		expect(sorted(['input', 'items', ...wit.imports])).toEqual(sorted([...batch, ...optional]));
 		expect(wit.text).toContain('constructor(input: json, items: list<json>);');
 	});
 
@@ -151,6 +165,64 @@ describe('spec/n8n-action@2.wit', () => {
 		);
 		expect(wit.enums['http-method']).toEqual(methods);
 		expect(wit.enums.level).toEqual(membersOf<LogLevel>()(['debug', 'info', 'warn', 'error']));
+	});
+
+	it('imports the optional host imports from 2.3.0 only', () => {
+		expect(witShape('n8n-action@2.wit', '2.2.0').imports).not.toContain('dataTables');
+		expect(wit.imports).toEqual(expect.arrayContaining(['dataTables', 'code', 'wait', 'inputOf']));
+	});
+
+	it('has the data table and code types of the TS types', () => {
+		expect(sorted(wit.records.column ?? [])).toEqual(
+			sorted(keysOf<DataTableColumn>()(['name', 'type'])),
+		);
+		expect(wit.enums['column-type']).toEqual(
+			membersOf<DataTableColumnType>()(['string', 'number', 'boolean', 'date']),
+		);
+		expect(wit.enums.operator).toEqual(
+			membersOf<DataTableOperator>()([
+				'eq',
+				'neq',
+				'like',
+				'ilike',
+				'gt',
+				'gte',
+				'lt',
+				'lte',
+				'isEmpty',
+				'isNotEmpty',
+			]),
+		);
+		expect(sorted(wit.records.condition ?? [])).toEqual(
+			sorted(keysOf<Extract<DataTableCondition, { value: unknown }>>()(['column', 'op', 'value'])),
+		);
+		expect(sorted(wit.records.filter ?? [])).toEqual(
+			sorted(keysOf<DataTableFilter>()(['match', 'conditions'])),
+		);
+		expect(sorted(wit.records['row-query'] ?? [])).toEqual(
+			sorted(keysOf<DataTableQuery>()(['filter', 'sort', 'offset', 'limit'])),
+		);
+		expect(sorted(wit.records['table-info'] ?? [])).toEqual(
+			sorted(keysOf<DataTableInfo>()(['id', 'name', 'columns', 'createdAt', 'updatedAt'])),
+		);
+		expect(sorted(wit.records['list-query'] ?? [])).toEqual(
+			sorted(keysOf<DataTableListQuery>()(['name', 'sort', 'offset', 'limit'])),
+		);
+		expect(wit.enums['table-field']).toEqual(
+			membersOf<NonNullable<DataTableListQuery['sort']>['by']>()([
+				'name',
+				'createdAt',
+				'updatedAt',
+			]),
+		);
+		expect(sorted(wit.records['code-request'] ?? [])).toEqual(
+			sorted(keysOf<CodeRequest>()(['language', 'code', 'mode'])),
+		);
+		expect(wit.enums.language).toEqual(
+			membersOf<CodeRequest['language']>()(['javascript', 'python']),
+		);
+		expect(wit.enums.mode).toEqual(membersOf<CodeRequest['mode']>()(['all', 'each']));
+		expect(wit.text).toContain('constructor(input: json, inputs: list<list<json>>);');
 	});
 
 	it('imports binary from 2.2.0 only', () => {

@@ -3,13 +3,14 @@ import {
 	CHECK_AGAIN,
 	CHECK_DONE,
 	CHECK_LIMIT,
+	FALLBACK_OUTPUT,
 	FILTER_NODE,
 	filterParameters,
 	LOOP_DONE,
 	LOOP_EACH,
 	LOOP_NODE,
 	LOOP_STATE_NODE,
-	MERGE_NODE,
+	mergeNodeOf,
 	STOP_NODE,
 	SWITCH_NODE,
 	WAIT_NODE,
@@ -106,10 +107,17 @@ export interface Binary {
 }
 
 /**
- * A fixed value, or a lambda that n8n evaluates for each item. A lambda compiles to an n8n
- * expression, so it may read only `item`, `$`, and JavaScript globals, never local variables.
+ * An n8n expression, e.g. `={{ $json.id }}` or `=Hi {{ $json.name }}`. The build checks it as it
+ * checks a lambda: against the item of the node before, earlier nodes, and the field type.
  */
-export type Value<Item, Ctx, V> = V | ((item: Item, $: Dollar<Ctx>) => V);
+export type Expression = `=${string}`;
+
+/**
+ * A fixed value, a lambda that n8n evaluates for each item, or an expression string. A lambda
+ * compiles to an n8n expression, so it may read only `item`, `$`, and JavaScript globals, never
+ * local variables.
+ */
+export type Value<Item, Ctx, V> = V | ((item: Item, $: Dollar<Ctx>) => V) | Expression;
 
 /**
  * Any value in an open object, as `unknown` accepts. Unlike `unknown`, it gives a lambda in
@@ -119,6 +127,153 @@ export type OpenValue = {} | null | undefined;
 
 /** An item on an error output: the failed item's fields plus `error`. */
 export type ErrorItem = Loose & { error: { message: string; description?: string | null } };
+
+type Primitive = string | number | boolean | null;
+
+/**
+ * A JSON Schema that a workflow declares for data it receives, e.g. the body of a webhook. A
+ * field not in `required` is optional. An object with `properties` has only those fields,
+ * unless `additionalProperties` is `true`.
+ */
+export interface ValueSchema {
+	readonly type?: 'string' | 'number' | 'integer' | 'boolean' | 'null' | 'array' | 'object';
+	readonly enum?: readonly Primitive[];
+	readonly const?: Primitive;
+	readonly properties?: { readonly [key: string]: ValueSchema };
+	readonly required?: readonly string[];
+	readonly additionalProperties?: boolean;
+	readonly items?: ValueSchema;
+	readonly description?: string;
+	readonly format?: string;
+	readonly examples?: readonly unknown[];
+}
+
+type Simplify<T> = { [K in keyof T]: T[K] } & {};
+
+type ObjectFromSchema<S extends ValueSchema> = S extends {
+	readonly properties: infer P extends { readonly [key: string]: ValueSchema };
+}
+	? Simplify<
+			{
+				-readonly [K in keyof P as K extends RequiredOf<S> ? K : never]: FromSchema<P[K]>;
+			} & {
+				-readonly [K in keyof P as K extends RequiredOf<S> ? never : K]?: FromSchema<P[K]>;
+			} & (S extends { readonly additionalProperties: true } ? Loose : unknown)
+		>
+	: Loose;
+
+type RequiredOf<S> = S extends { readonly required: ReadonlyArray<infer R> } ? R : never;
+
+/** The TypeScript type of the values a `ValueSchema` allows. */
+export type FromSchema<S> = S extends { readonly const: infer C }
+	? C
+	: S extends { readonly enum: ReadonlyArray<infer E> }
+		? E
+		: S extends { readonly type: 'string' }
+			? string
+			: S extends { readonly type: 'number' | 'integer' }
+				? number
+				: S extends { readonly type: 'boolean' }
+					? boolean
+					: S extends { readonly type: 'null' }
+						? null
+						: S extends { readonly type: 'array' }
+							? Array<S extends { readonly items: infer I } ? FromSchema<I> : unknown>
+							: S extends ValueSchema
+								? ObjectFromSchema<S>
+								: Loose;
+
+/** Output `O` with each field that `S` declares typed by its schema. */
+export type Declared<O, S> = Simplify<
+	Omit<O, keyof S> & { -readonly [K in keyof S]-?: FromSchema<NonNullable<S[K]>> }
+>;
+
+type AllKeys<T> = T extends unknown ? keyof T : never;
+
+type ValueAt<T, K> = T extends unknown ? (K extends keyof T ? T[K] : never) : never;
+
+/** `T` with each key that `Shape` does not have, at any depth, typed `never`, so tsc names it. */
+export type Exact<T, Shape> = unknown extends Shape
+	? T
+	: T extends readonly unknown[]
+		? { [I in keyof T]: Exact<T[I], NonNullable<Shape> extends ReadonlyArray<infer E> ? E : never> }
+		: T extends object
+			? {
+					[K in keyof T]: K extends AllKeys<NonNullable<Shape>>
+						? Exact<T[K], ValueAt<NonNullable<Shape>, K>>
+						: never;
+				}
+			: T;
+
+type At<T, P extends readonly string[]> = P extends readonly [
+	infer H extends string,
+	...infer R extends string[],
+]
+	? T extends { readonly [K in H]?: infer V }
+		? At<NonNullable<V>, R>
+		: never
+	: T;
+
+type EntryKey<E, Keys extends readonly string[]> = Keys extends readonly [
+	infer K extends string,
+	...infer R extends string[],
+]
+	? E extends { readonly [P in K]: infer V extends string }
+		? V
+		: EntryKey<E, R>
+	: never;
+
+/**
+ * One field per entry of the list at path `List` of the config `C`, e.g. per form field. The
+ * first entry field in `Keys` names it; the entry field `TypeField` picks its type in `Types`.
+ * It is `null` unless the entry field `Required` is `true`.
+ */
+export type EntryFields<
+	C,
+	List extends readonly string[],
+	Keys extends readonly string[],
+	TypeField extends string,
+	Types,
+	Fallback,
+	Required extends string = never,
+> = At<C, List> extends ReadonlyArray<infer E>
+	? Simplify<{
+			-readonly [X in E as EntryKey<X, Keys>]:
+				| (X extends { readonly [P in TypeField]: infer T }
+						? T extends keyof Types
+							? Types[T]
+							: Fallback
+						: Fallback)
+				| (X extends { readonly [P in Required]: true } ? never : null);
+		}>
+	: unknown;
+
+/** One value that `schema` allows, for a trigger sample. */
+function exampleOfSchema(schema: ValueSchema): unknown {
+	if (schema.const !== undefined) return schema.const;
+	if (schema.examples?.length) return schema.examples[0];
+	if (schema.enum?.length) return schema.enum[0];
+	switch (schema.type) {
+		case 'string':
+			return 'example';
+		case 'number':
+		case 'integer':
+			return 1;
+		case 'boolean':
+			return true;
+		case 'null':
+			return null;
+		case 'array':
+			return schema.items ? [exampleOfSchema(schema.items)] : [];
+		default:
+			return Object.fromEntries(
+				Object.entries(schema.properties ?? {}).map(([key, child]) => [
+					key,
+					exampleOfSchema(child),
+				]),
+			);
+	}
+}
 
 // ── Graph ───────────────────────────────────────────────────────────────────
 
@@ -171,7 +326,22 @@ export interface NodeSpec {
 	readonly outputs?: number;
 	/** The credential scopes the node needs. The build unions them per workflow. */
 	readonly requires?: Requires;
+	/** A native trigger or its reply step. The build checks that the two go together. */
+	readonly pairing?: Pairing;
 	readonly subnodes?: SubnodeSpecs;
+}
+
+/**
+ * A native trigger and the step that replies to its caller, e.g. Webhook and Respond to
+ * Webhook. The caller waits for the reply when the trigger parameter `field` is `value`.
+ */
+export interface Pairing {
+	/** The node type of the trigger. */
+	readonly trigger: string;
+	/** The node type of the reply step. */
+	readonly reply: string;
+	readonly field: string;
+	readonly value: string;
 }
 
 /** The scopes of one credential that a contract node needs, e.g. `{ credential: 'notion', scopes: ['content:read'] }`. */
@@ -236,13 +406,27 @@ export type OutputNames<S> = S extends RoutedStep<
 	? Names
 	: never;
 
+/** What a contract sub-node supplies, e.g. `chatModel`. `node` is a sub-node from `subnode()`. */
+export type SupplyKind = 'chatModel' | 'memory' | 'tool' | 'embeddings';
+
+/** The slot of each kind that a contract sub-node supplies. */
+export const SUPPLY_SLOTS = {
+	chatModel: 'model',
+	memory: 'memory',
+	tool: 'tools',
+	embeddings: 'embedding',
+} as const satisfies Record<SupplyKind, SubnodeSlot>;
+
 /**
- * A sub-node from `subnode()`, e.g. a chat model or a tool. n8n evaluates its lambdas with the
- * item of the AI node that uses it, so they read that node's input `In`.
+ * A sub-node, e.g. a chat model or a tool. n8n evaluates its lambdas with the item of the AI
+ * node that uses it, so they read that node's input `In`. `K` is what it supplies: a contract
+ * root node takes only contract sub-nodes of its kind, and `node()` takes only `subnode()`.
  */
-export interface Subnode<In, Ctx> {
+export interface Subnode<In, Ctx, K extends SupplyKind | 'node' = 'node'> {
 	readonly spec: SubnodeSpec;
-	readonly [phantom]?: { readonly read: (item: In, ctx: Ctx) => void };
+	/** The slot of a contract sub-node in its root node. */
+	readonly slot?: SubnodeSlot;
+	readonly [phantom]?: { readonly read: (item: In, ctx: Ctx) => void; readonly supplies: K };
 }
 
 /** The sub-nodes of an AI node (Agent, Basic LLM Chain, Vector Store, …) by slot. */
@@ -270,6 +454,41 @@ export function subnodeSpecs<In, Ctx>(subnodes: Subnodes<In, Ctx>): SubnodeSpecs
 			return list.length > 0 ? [[slot, list.map((entry) => entry.spec)]] : [];
 		}),
 	);
+}
+
+const isSubnodeValue = (value: unknown): value is Subnode<unknown, unknown, SupplyKind> =>
+	isDataObject(value) && isDataObject(value.spec) && typeof value.spec.parameters === 'function';
+
+/**
+ * The fields of a contract config that hold contract sub-nodes, as sub-node specs by slot,
+ * and the other fields as parameters. n8n connects a sub-node; it is no parameter.
+ */
+function splitSubnodes(fields: Readonly<Record<string, unknown>>): {
+	parameters: Record<string, unknown>;
+	subnodes: SubnodeSpecs;
+	unslotted: string[];
+} {
+	const entries = Object.entries(fields);
+	const subnodesOf = (value: unknown) =>
+		Array.isArray(value) && value.length > 0 && value.every(isSubnodeValue)
+			? value
+			: isSubnodeValue(value)
+				? [value]
+				: undefined;
+	const held = entries.flatMap(([key, value]) => {
+		const list = subnodesOf(value);
+		return list ? list.map((subnode) => ({ key, subnode })) : [];
+	});
+	const heldKeys = new Set(held.map(({ key }) => key));
+	const subnodes = held.reduce<SubnodeSpecs>((specs, { subnode }) => {
+		if (subnode.slot === undefined) return specs;
+		return { ...specs, [subnode.slot]: [...(specs[subnode.slot] ?? []), subnode.spec] };
+	}, {});
+	return {
+		parameters: Object.fromEntries(entries.filter(([key]) => !heldKeys.has(key))),
+		subnodes,
+		unslotted: held.filter(({ subnode }) => subnode.slot === undefined).map(({ key }) => key),
+	};
 }
 
 /** Keys both branches share, so `$("Node")` after a join names a node every path ran. */
@@ -419,8 +638,9 @@ export interface LoopOptions {
 }
 
 /**
- * @internal A while loop in today's nodes: head (Set) → body → check (Switch) → next (Set)
- * → [wait] → head. The check also fails the run at `maxIterations` (Stop and Error).
+ * @internal A while loop in node contracts: head (loop state) → body → check (Switch) → next
+ * (loop state) → [wait] → head. The check also fails the run at `maxIterations` (Stop and
+ * Error).
  */
 export function loopFragment(
 	from: Fragment,
@@ -500,7 +720,12 @@ export function switchFragment(
 		type: router.type,
 		version: router.version,
 		outputs: router.outputs,
-		parameters: () => router.parameters,
+		parameters: (compiler) => {
+			if (cases.some(([key]) => key === FALLBACK_OUTPUT)) {
+				compiler.issue(`switch case "${FALLBACK_OUTPUT}" is the name of the output for no case`);
+			}
+			return router.parameters;
+		},
 	};
 	const graph = attach(from.graph, from.tails, spec);
 	const { caseOutputs, defaultOutput } = router;
@@ -516,15 +741,17 @@ export function switchFragment(
 	};
 }
 
-/** @internal Keep the items a condition holds for (a Filter node). */
+/** @internal Keep the items a condition holds for (the Filter contract). */
 export function filterFragment(
 	from: Fragment,
 	name: string,
 	condition: (compiler: Compiler) => string,
 ): Fragment {
+	// The Filter contract sends the other items to its second output, which stays open.
 	const spec: NodeSpec = {
 		name,
 		...FILTER_NODE,
+		outputs: 2,
 		parameters: (compiler) => filterParameters(condition(compiler)),
 	};
 	return { graph: attach(from.graph, from.tails, spec), tails: tail(name, 0) };
@@ -538,7 +765,7 @@ export function mergeFragment(
 	branches: ReadonlyArray<(flow: Fragment) => Fragment>,
 ): Fragment {
 	const joined = branches.map((branch) => branch(from));
-	const spec: NodeSpec = { name, ...MERGE_NODE, parameters: () => mergeParameters(join) };
+	const spec: NodeSpec = { name, ...mergeNodeOf(join), parameters: () => mergeParameters(join) };
 	const edges = joined.flatMap((flow, input) => wire(flow.tails, name, input));
 	return {
 		graph: unionGraphs([from.graph, ...joined.map((flow) => flow.graph), { nodes: [spec], edges }]),
@@ -839,8 +1066,11 @@ export function contractStep<In, Ctx, Out, N extends string>(
 	/** The resource and operation that select the action in a composed node version. */
 	slot?: { readonly resource: string; readonly operation: string },
 	requires?: Requires,
+	/** Set on the reply step of a native trigger. */
+	pairing?: Pairing,
 ): Step<In, Ctx, Out, N> {
-	const { name, sample, ...parameters } = config;
+	const { name, sample, ...fields } = config;
+	const { parameters, subnodes, unslotted } = splitSubnodes(fields);
 	return {
 		name,
 		spec: {
@@ -849,7 +1079,12 @@ export function contractStep<In, Ctx, Out, N extends string>(
 			version,
 			sample,
 			...(requires ? { requires } : {}),
+			...(Object.keys(subnodes).length > 0 ? { subnodes } : {}),
+			...(pairing ? { pairing } : {}),
 			parameters: (compiler) => {
+				unslotted.forEach((key) =>
+					compiler.issue(`${key} takes a contract sub-node of its module, not subnode()`),
+				);
 				const compiled = compiler.value(parameters);
 				// The slot goes last: no contract field may change the action that runs.
 				return { ...(isDataObject(compiled) ? compiled : {}), ...slot };
@@ -858,20 +1093,85 @@ export function contractStep<In, Ctx, Out, N extends string>(
 	};
 }
 
-/** Start a flow at a contract trigger. Generated node modules call this. */
+/**
+ * A contract sub-node, e.g. a chat model. Generated node modules call this. A root node
+ * takes it in the input field of its kind.
+ */
+export function contractSubnode<In, Ctx, const K extends SupplyKind>(
+	id: string,
+	kind: K,
+	config: { readonly name: string },
+	version = 1,
+): Subnode<In, Ctx, K> {
+	const { name, ...fields } = config;
+	const { parameters, subnodes, unslotted } = splitSubnodes(fields);
+	return {
+		slot: SUPPLY_SLOTS[kind],
+		spec: {
+			name,
+			type: id,
+			version,
+			...(Object.keys(subnodes).length > 0 ? { subnodes } : {}),
+			parameters: (compiler) => {
+				unslotted.forEach((key) =>
+					compiler.issue(`${key} takes a contract sub-node of its module, not subnode()`),
+				);
+				const compiled = compiler.value(parameters);
+				return isDataObject(compiled) ? compiled : {};
+			},
+		},
+	};
+}
+
+/**
+ * Model IDs by model catalog provider (models.dev), e.g. `openai`. The build adds the
+ * catalog it knows by declaration merging.
+ */
+export interface ModelCatalog {}
+
+/** A model ID of provider `P` in the catalog. Any string when the build has no catalog for `P`. */
+export type ModelOf<P extends string> = P extends keyof ModelCatalog ? ModelCatalog[P] : string;
+
+/** What a generated module adds for a native trigger. */
+export interface TriggerOptions {
+	readonly pairing?: Pairing;
+	/** An output item; a declared schema replaces its fields to make the trigger sample. */
+	readonly example?: Readonly<Record<string, unknown>>;
+}
+
+/**
+ * Start a flow at a contract trigger. Generated node modules call this. `schema` holds the JSON
+ * Schemas of declared output fields: it types the output, and without a `sample` it makes one.
+ * It is not a node parameter.
+ */
 export function contractTrigger<Out, const N extends string>(
 	id: string,
-	config: { readonly name: N; readonly sample?: readonly unknown[] },
+	config: {
+		readonly name: N;
+		readonly sample?: readonly unknown[];
+		readonly schema?: Readonly<Record<string, ValueSchema | undefined>>;
+	},
 	version = 1,
 	requires?: Requires,
+	options: TriggerOptions = {},
 ): Flow<Out, Record<N, Out>> {
-	const { name, sample, ...parameters } = config;
+	const { name, sample: given, ...input } = config;
+	const { pairing, example } = options;
+	// Only a trigger with declared output fields takes `schema`; for another it is a parameter.
+	const { schema, ...withoutSchema } = input;
+	const parameters = example ? withoutSchema : input;
+	const declared = Object.entries((example && schema) || {}).flatMap(([field, fieldSchema]) =>
+		fieldSchema ? [[field, exampleOfSchema(fieldSchema)] as const] : [],
+	);
+	const sample =
+		given ?? (declared.length ? [{ ...example, ...Object.fromEntries(declared) }] : undefined);
 	return startFlow({
 		name,
 		type: id,
 		version,
 		sample,
 		...(requires ? { requires } : {}),
+		...(pairing ? { pairing } : {}),
 		parameters: (compiler) => {
 			const compiled = compiler.value(parameters);
 			return isDataObject(compiled) ? compiled : {};
@@ -1064,6 +1364,63 @@ function subnodeConfig(
 	};
 }
 
+/** The nodes that `start` reaches along the edges, forward or backward, without `start`. */
+function reachable(graph: Graph, start: string, direction: 'down' | 'up'): Set<string> {
+	const next = (name: string) =>
+		graph.edges.flatMap((edge) =>
+			direction === 'down'
+				? edge.from === name
+					? [edge.to]
+					: []
+				: edge.to === name
+					? [edge.from]
+					: [],
+		);
+	const seen = new Set<string>();
+	const queue = next(start);
+	for (const name of queue) {
+		if (seen.has(name)) continue;
+		seen.add(name);
+		queue.push(...next(name));
+	}
+	return seen;
+}
+
+/**
+ * The checks n8n makes when a native trigger runs, made at build time. A reply step can also
+ * belong to another node that waits for it, e.g. a Wait node that resumes on a webhook or a
+ * Chat Trigger, so a reply step alone is never an issue.
+ */
+function pairingIssues(
+	graph: Graph,
+	parametersOf: ReadonlyMap<string, Readonly<Record<string, unknown>>>,
+): string[] {
+	const byName = new Map(graph.nodes.map((spec) => [spec.name, spec]));
+	const waits = (name: string, pairing: Pairing) =>
+		parametersOf.get(name)?.[pairing.field] === pairing.value;
+	return graph.nodes.flatMap((spec): string[] => {
+		const { pairing } = spec;
+		if (pairing?.trigger !== spec.type) return [];
+		const after = reachable(graph, spec.name, 'down');
+		const replies = [...after].filter((name) => byName.get(name)?.type === pairing.reply);
+		if (waits(spec.name, pairing)) {
+			return replies.length === 0
+				? [
+						`${spec.name}: ${pairing.field} is "${pairing.value}", so the flow needs its reply step after it. Add it, or set another ${pairing.field}`,
+					]
+				: [];
+		}
+		const ownedByNodeBetween = (reply: string) =>
+			[...reachable(graph, reply, 'up')].some((name) => after.has(name) && waits(name, pairing));
+		return replies
+			.filter((reply) => !ownedByNodeBetween(reply))
+			.map(
+				(reply) =>
+					`${reply}: replies to "${spec.name}", which does not wait for it. Set ${pairing.field}: "${pairing.value}" on "${spec.name}"`,
+			);
+	});
+}
+
 /** Combine flows (one per trigger) into the workflow to save. */
 export function workflow(
 	options: string | WorkflowOptions,
@@ -1106,12 +1463,18 @@ export function workflow(
 			...(spec.subnodes ? { subnodes: subnodeConfig(spec.subnodes, subnodeInput) } : {}),
 		},
 	});
+	const parametersOf = new Map(
+		graph.nodes.map((spec) => [
+			spec.name,
+			spec.parameters(createCompiler(spec.name, nodeNames, issues)),
+		]),
+	);
+	issues.push(...pairingIssues(graph, parametersOf));
 	const instances = new Map(
 		graph.nodes.map((spec) => {
-			const compiler = createCompiler(spec.name, nodeNames, issues);
 			const config = {
 				name: spec.name,
-				parameters: spec.parameters(compiler),
+				parameters: parametersOf.get(spec.name) ?? {},
 				...(spec.onError ? { onError: spec.onError } : {}),
 				...(spec.subnodes ? { subnodes: subnodeConfig(spec.subnodes, subnodeInput) } : {}),
 			};

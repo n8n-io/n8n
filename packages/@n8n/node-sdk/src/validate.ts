@@ -272,6 +272,8 @@ function patternExample(pattern: string): string | undefined {
 
 /** One plausible value for `schema`, for verification fixtures when a node declares none. */
 export function exampleOf(schema: JsonSchema): unknown {
+	// A capability from a sub-node is no data, so it has no example.
+	if (schema['x-n8n-supply'] !== undefined) return undefined;
 	if (schema.const !== undefined) return schema.const;
 	if (schema['x-n8n-binary']) return 'data';
 	if (schema.default !== undefined) return schema.default;

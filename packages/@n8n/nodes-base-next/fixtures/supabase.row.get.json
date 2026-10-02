@@ -1,0 +1,30 @@
+{
+	"executions": [
+		{
+			"name": "by id",
+			"params": {
+				"table": "customers",
+				"where": {
+					"id": 3
+				}
+			},
+			"responses": [
+				[
+					{
+						"id": 3,
+						"plan": "free"
+					}
+				]
+			],
+			"output": [
+				{
+					"id": 3,
+					"plan": "free"
+				}
+			],
+			"credential": {
+				"host": "https://acme.supabase.co"
+			}
+		}
+	]
+}

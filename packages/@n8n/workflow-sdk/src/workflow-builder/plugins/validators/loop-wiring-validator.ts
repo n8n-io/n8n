@@ -12,11 +12,22 @@ import { parseVersion } from '../../string-utils';
 import type { PluginContext, ValidationIssue, ValidatorPlugin } from '../types';
 
 const LOOP_TYPE = 'n8n-nodes-base.splitInBatches';
-const MERGE_TYPE = 'n8n-nodes-base.merge';
-const IF_TYPE = 'n8n-nodes-base.if';
+const MERGE_TYPES = new Set([
+	'n8n-nodes-base.merge',
+	'@n8n/nodes-base-next.mergeAppend',
+	'@n8n/nodes-base-next.mergeCombine',
+]);
+const IF_TYPES = new Set(['n8n-nodes-base.if', '@n8n/nodes-base-next.coreIf']);
 const SWITCH_TYPE = 'n8n-nodes-base.switch';
 const FILTER_TYPE = 'n8n-nodes-base.filter';
-const STOP_TYPE = 'n8n-nodes-base.stopAndError';
+/** The Switch contract: one output per case, then `fallback`. */
+const CONTRACT_SWITCH_TYPE = '@n8n/nodes-base-next.coreSwitch';
+/** The Filter contract: `kept`, then `discarded`. */
+const CONTRACT_FILTER_TYPE = '@n8n/nodes-base-next.coreFilter';
+const STOP_TYPES = new Set([
+	'n8n-nodes-base.stopAndError',
+	'@n8n/nodes-base-next.stopAndErrorStop',
+]);
 
 export interface LoopWiringNode {
 	readonly name: string;
@@ -55,9 +66,28 @@ function loopSlots(version: number) {
 	return version >= 3 ? { done: 0, loop: 1 } : { done: 1, loop: 0 };
 }
 
-/** The main outputs of a routing node, or `undefined` for a node that is not one. */
-function routingOutputs(node: LoopWiringNode): number | undefined {
-	if (node.type === IF_TYPE) return 2;
+const listOf = (value: unknown): unknown[] => {
+	if (Array.isArray(value)) return value;
+	if (typeof value !== 'string') return [];
+	try {
+		const parsed: unknown = JSON.parse(value);
+		return Array.isArray(parsed) ? parsed : [];
+	} catch {
+		return [];
+	}
+};
+
+/**
+ * The main outputs of a routing node, or `undefined` for a node that is not one. The fallback
+ * of the Switch contract counts only when it connects: an open one is a legacy Switch without
+ * a fallback output.
+ */
+function routingOutputs(node: LoopWiringNode, connects: (output: number) => boolean) {
+	if (IF_TYPES.has(node.type) || node.type === CONTRACT_FILTER_TYPE) return 2;
+	if (node.type === CONTRACT_SWITCH_TYPE) {
+		const cases = listOf(node.parameters?.cases).length;
+		return cases + (connects(cases) ? 1 : 0);
+	}
 	if (node.type !== SWITCH_TYPE) return undefined;
 	const { mode, numberOutputs, rules, options } = node.parameters ?? {};
 	if (mode === 'expression') return typeof numberOutputs === 'number' ? numberOutputs : 4;
@@ -120,7 +150,8 @@ export function loopWiringIssues(
 			// Stop and Error fails the run, so its items are not lost without a sign.
 			const returnsHome = (start: readonly string[]) =>
 				start.some((target) => target === name || members.has(target)) ||
-				(start.length > 0 && start.every((target) => byName.get(target)?.type === STOP_TYPE));
+				(start.length > 0 &&
+					start.every((target) => STOP_TYPES.has(byName.get(target)?.type ?? '')));
 			// An inner loop may return to its outer loop node from its done output.
 			const leadsBack = (start: readonly string[]) =>
 				start.some(
@@ -170,7 +201,7 @@ export function loopWiringIssues(
 						),
 					];
 				}
-				const outputs = routingOutputs(node);
+				const outputs = routingOutputs(node, (output) => targetsOf(node.name, output).length > 0);
 				const lost = Array.from({ length: outputs ?? 0 }, (_, output) => output).filter(
 					(output) => !returnsHome(targetsOf(node.name, output)),
 				);
@@ -204,7 +235,7 @@ export function loopWiringIssues(
 					),
 				);
 			const merges = memberNodes
-				.filter((node) => node.type === MERGE_TYPE)
+				.filter((node) => MERGE_TYPES.has(node.type))
 				.map((node) =>
 					issue(
 						'LOOP_MERGE_IN_BODY',

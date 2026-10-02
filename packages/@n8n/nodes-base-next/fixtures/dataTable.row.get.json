@@ -1,0 +1,93 @@
+{
+	"executions": [
+		{
+			"name": "stops at the limit",
+			"params": {
+				"table": {
+					"id": "t1"
+				},
+				"where": {
+					"match": "all",
+					"conditions": [
+						{
+							"op": "eq",
+							"column": "plan",
+							"value": "pro"
+						}
+					]
+				},
+				"limit": 2
+			},
+			"responses": [],
+			"imports": [
+				{
+					"count": 3,
+					"rows": [
+						{
+							"id": 1,
+							"email": "ada@example.com",
+							"plan": "pro",
+							"createdAt": "2026-03-01T10:00:00.000Z",
+							"updatedAt": "2026-03-01T10:00:00.000Z"
+						},
+						{
+							"id": 3,
+							"email": "cy@example.com",
+							"plan": "pro",
+							"createdAt": "2026-03-01T10:00:00.000Z",
+							"updatedAt": "2026-03-01T10:00:00.000Z"
+						}
+					]
+				}
+			],
+			"output": [
+				{
+					"id": 1,
+					"email": "ada@example.com",
+					"plan": "pro",
+					"createdAt": "2026-03-01T10:00:00.000Z",
+					"updatedAt": "2026-03-01T10:00:00.000Z"
+				},
+				{
+					"id": 3,
+					"email": "cy@example.com",
+					"plan": "pro",
+					"createdAt": "2026-03-01T10:00:00.000Z",
+					"updatedAt": "2026-03-01T10:00:00.000Z"
+				}
+			]
+		},
+		{
+			"name": "reads every page without a limit",
+			"params": {
+				"table": {
+					"name": "leads"
+				}
+			},
+			"responses": [],
+			"imports": [
+				{
+					"count": 1,
+					"rows": [
+						{
+							"id": 1,
+							"email": "ada@example.com",
+							"plan": "pro",
+							"createdAt": "2026-03-01T10:00:00.000Z",
+							"updatedAt": "2026-03-01T10:00:00.000Z"
+						}
+					]
+				}
+			],
+			"output": [
+				{
+					"id": 1,
+					"email": "ada@example.com",
+					"plan": "pro",
+					"createdAt": "2026-03-01T10:00:00.000Z",
+					"updatedAt": "2026-03-01T10:00:00.000Z"
+				}
+			]
+		}
+	]
+}

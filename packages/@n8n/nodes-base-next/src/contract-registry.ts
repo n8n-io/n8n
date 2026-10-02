@@ -20,7 +20,7 @@ import {
 } from '@n8n/node-sdk';
 import { access, link, mkdir, readdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import { UserError, type IExecuteFunctions } from 'n8n-workflow';
+import { UserError, type IExecuteFunctions, type ISupplyDataFunctions } from 'n8n-workflow';
 
 import { versionsOf } from './registry';
 
@@ -43,8 +43,8 @@ export interface ContractRegistryOptions {
 	/** The instance policy. `meta.nodeContractsPolicy` of a workflow overrides it. */
 	readonly policy: NodeContractsPolicy;
 	readonly store: ContractStore;
-	/** The `meta` of the running workflow. */
-	readonly metaOf: (context: IExecuteFunctions) => Promise<unknown>;
+	/** The `meta` of the running workflow, from a root node or a sub-node. */
+	readonly metaOf: (context: IExecuteFunctions | ISupplyDataFunctions) => Promise<unknown>;
 	/** The `n8n:action` versions a bundle may declare, e.g. `>=1.0.0 <3.0.0`. */
 	readonly apiRange: string;
 }

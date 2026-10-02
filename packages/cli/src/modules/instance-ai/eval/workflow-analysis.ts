@@ -15,6 +15,7 @@ import {
 	UserError,
 } from 'n8n-workflow';
 
+import { dataTableReadView } from './data-table-pin-filter';
 import { buildDateAnchors } from './date-anchors';
 import { extractNodeConfig } from './node-config';
 
@@ -112,7 +113,8 @@ const DATA_TABLE_READ_OPERATIONS = new Set(['get', 'rowExists', 'rowNotExists'])
  *  does not describe their output. */
 const DATA_TABLE_ROW_EMITTING_OPERATIONS = new Set(['get']);
 
-export function isDataTableRead(node: INode): boolean {
+export function isDataTableRead(contractOrLegacy: INode): boolean {
+	const node = dataTableReadView(contractOrLegacy);
 	if (node.type !== 'n8n-nodes-base.dataTable') return false;
 	const params = node.parameters as { resource?: string; operation?: string } | undefined;
 	// Node defaults: resource 'row', operation 'insert' (a write) — only pin explicit reads.
@@ -125,7 +127,8 @@ export function isDataTableRead(node: INode): boolean {
 /** True for Data Table reads whose output IS stored rows — the only reads a real
  *  column contract applies to. Still pinned like any other read; they just get
  *  prompt-only generation instead of enforced column names. */
-export function emitsDataTableRows(node: INode): boolean {
+export function emitsDataTableRows(contractOrLegacy: INode): boolean {
+	const node = dataTableReadView(contractOrLegacy);
 	if (!isDataTableRead(node)) return false;
 	const params = node.parameters as { operation?: string } | undefined;
 	return DATA_TABLE_ROW_EMITTING_OPERATIONS.has(params?.operation ?? 'insert');

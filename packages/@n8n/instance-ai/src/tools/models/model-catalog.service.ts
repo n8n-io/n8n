@@ -64,6 +64,15 @@ function compareModels(
 	return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
 }
 
+/** Models that take and give text, without the ones the provider retired. */
+const textModels = (models: Record<string, ModelInfo>) =>
+	Object.values(models).filter(
+		(model) =>
+			model.status !== 'deprecated' &&
+			model.modalities?.input?.includes('text') &&
+			model.modalities.output?.includes('text'),
+	);
+
 export class ModelCatalogService {
 	private snapshot?: CatalogSnapshot;
 	private refreshPromise?: Promise<void>;
@@ -89,8 +98,8 @@ export class ModelCatalogService {
 			await raceWithAbort(this.refreshPromise, abortSignal);
 		}
 
-		const snapshot = this.snapshot;
-		if (!snapshot || Date.now() - snapshot.fetchedAt >= MAX_STALE_AGE_MS) {
+		const snapshot = this.usable();
+		if (!snapshot) {
 			return {
 				...base,
 				status: 'catalog_unavailable',
@@ -108,13 +117,7 @@ export class ModelCatalogService {
 			return { ...metadata, status: 'unknown_provider' };
 		}
 
-		const models = Object.values(snapshot.catalog[providerId].models)
-			.filter(
-				(model) =>
-					model.status !== 'deprecated' &&
-					model.modalities?.input?.includes('text') &&
-					model.modalities.output?.includes('text'),
-			)
+		const models = textModels(snapshot.catalog[providerId].models)
 			.filter(
 				(model) =>
 					!query ||
@@ -129,6 +132,27 @@ export class ModelCatalogService {
 			models: models.slice(0, input.limit),
 			hasMore: models.length > input.limit,
 		};
+	}
+
+	/**
+	 * The IDs of the current text models of `provider`, for the typed build. `undefined` when
+	 * the catalog is unavailable or has no such provider, so the build keeps any model ID.
+	 */
+	async modelIds(provider: string, abortSignal?: AbortSignal): Promise<string[] | undefined> {
+		if (!this.snapshot || Date.now() - this.snapshot.fetchedAt >= FRESH_TTL_MS) {
+			this.refreshPromise ??= this.refresh().finally(() => {
+				this.refreshPromise = undefined;
+			});
+			await raceWithAbort(this.refreshPromise, abortSignal);
+		}
+		const snapshot = this.usable();
+		if (!snapshot || !Object.hasOwn(snapshot.catalog, provider)) return undefined;
+		return textModels(snapshot.catalog[provider].models).map(({ id }) => id);
+	}
+
+	private usable(): CatalogSnapshot | undefined {
+		const { snapshot } = this;
+		return snapshot && Date.now() - snapshot.fetchedAt < MAX_STALE_AGE_MS ? snapshot : undefined;
 	}
 
 	private async refresh(): Promise<void> {
@@ -150,3 +174,6 @@ export class ModelCatalogService {
 		}
 	}
 }
+
+/** One catalog for the process: the search tool and the typed build share its cache. */
+export const modelCatalog = new ModelCatalogService();

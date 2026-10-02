@@ -65,7 +65,11 @@ import {
 	isOpenAiResponsesUrl,
 	normalizeOpenAiResponsesMockResponse,
 } from './openai-responses-envelope';
-import { applyDataTableReadParameters } from './data-table-pin-filter';
+import {
+	applyDataTableReadParameters,
+	contractTableLocator,
+	isContractRowCheck,
+} from './data-table-pin-filter';
 import { generatePinData } from './pin-data-generator';
 import {
 	buildVendorLlmRouting,
@@ -85,6 +89,9 @@ import {
 // Constants
 // ---------------------------------------------------------------------------
 
+const CONTRACT_WAIT_INTERVAL = '@n8n/nodes-base-next.waitInterval';
+const CONTRACT_WAIT_TYPES = new Set([CONTRACT_WAIT_INTERVAL, '@n8n/nodes-base-next.waitUntil']);
+
 /** Max output items per branch kept in the artifact. The full count lives in `outputCount`. */
 const MAX_OUTPUT_ITEMS_PER_BRANCH = 10;
 
@@ -96,8 +103,11 @@ interface RunBudget {
 }
 
 /** A Data Table node's locator: the id it carries, or the name when it is in `name` mode. */
-function dataTableLocator(node: INode): { mode: 'name' | 'id'; value: string } | undefined {
-	const locator = node.parameters?.dataTableId as
+function dataTableLocator(
+	contractOrLegacy: INode,
+): { mode: 'name' | 'id'; value: string } | undefined {
+	const locator = (contractTableLocator(contractOrLegacy) ??
+		contractOrLegacy.parameters?.dataTableId) as
 		| { mode?: unknown; value?: unknown }
 		| string
 		| undefined;
@@ -301,7 +311,18 @@ export class EvalExecutionService {
 		);
 
 		// Phase 1.5: Generate pin data for nodes that bypass the HTTP mock layer
-		const liveReads = await this.liveDataTableReads(workflowEntity, seededDataTableIds);
+		const isSeeded = await this.seededTableTest(seededDataTableIds);
+		const liveReads = new Set(
+			workflowEntity.nodes
+				.filter((node) => isDataTableRead(node) && isSeeded(node))
+				.map((node) => node.name),
+		);
+		for (const node of workflowEntity.nodes) {
+			if (node.disabled || !isContractRowCheck(node) || isSeeded(node)) continue;
+			hints.warnings.push(
+				`Data table check "${node.name}" read its table live: a pin fills only the first output of a node, and the scenario seeded no rows into this table, so its exists/missing routing depends on rows left by earlier runs`,
+			);
+		}
 		if (liveReads.size > 0) {
 			this.logger.debug(`[EvalMock] Reading seeded Data Tables live: ${[...liveReads].join(', ')}`);
 		}
@@ -449,15 +470,13 @@ export class EvalExecutionService {
 		return Object.keys(columnsByNode).length > 0 ? columnsByNode : undefined;
 	}
 
-	/** Data Table reads bound to a table the caller reseeded for this scenario. That
-	 *  table holds the scenario's rows, so the read runs live and also sees the
-	 *  writes the run makes before it. */
-	private async liveDataTableReads(
-		workflowEntity: IWorkflowBase,
+	/** True for a Data Table node bound to a table the caller reseeded for this
+	 *  scenario. That table holds the scenario's rows, so a read of it runs live and
+	 *  also sees the writes the run makes before it. */
+	private async seededTableTest(
 		seededDataTableIds: string[] | undefined,
-	): Promise<Set<string>> {
-		const live = new Set<string>();
-		if (!seededDataTableIds?.length) return live;
+	): Promise<(node: INode) => boolean> {
+		if (!seededDataTableIds?.length) return () => false;
 		const seeded = new Set(seededDataTableIds);
 		// The node resolves a `name` locator case-insensitively at run time
 		// (`LOWER(name) LIKE LOWER(:name)`), so the seeded tables are matched the
@@ -466,17 +485,15 @@ export class EvalExecutionService {
 		for (const table of await this.dataTableService.findDataTablesByIds(seededDataTableIds)) {
 			seededByLowerName.set(table.name.toLowerCase(), table.id);
 		}
-		for (const node of workflowEntity.nodes) {
-			if (!isDataTableRead(node)) continue;
+		return (node) => {
 			const locator = dataTableLocator(node);
-			if (!locator) continue;
+			if (!locator) return false;
 			const tableId =
 				locator.mode === 'name'
 					? seededByLowerName.get(locator.value.toLowerCase())
 					: locator.value;
-			if (tableId !== undefined && seeded.has(tableId)) live.add(node.name);
-		}
-		return live;
+			return tableId !== undefined && seeded.has(tableId);
+		};
 	}
 
 	/** The table a Data Table node binds, for the column shapes. `name` mode is
@@ -536,7 +553,14 @@ export class EvalExecutionService {
 		// wait config in the workflow JSON. Webhook/form-resume waits are left
 		// untouched (they model an external event, not the passage of time).
 		for (const node of workflowEntity.nodes) {
-			if (node.disabled || node.type !== 'n8n-nodes-base.wait') continue;
+			if (node.disabled) continue;
+			// The node contracts of Wait hold items for time only.
+			if (CONTRACT_WAIT_TYPES.has(node.type)) {
+				node.type = CONTRACT_WAIT_INTERVAL;
+				node.parameters = { amount: 0, unit: 'seconds' };
+				continue;
+			}
+			if (node.type !== 'n8n-nodes-base.wait') continue;
 			const resume = node.parameters?.resume;
 			if (resume === 'webhook' || resume === 'form') continue;
 			node.parameters = { ...node.parameters, resume: 'timeInterval', amount: 0, unit: 'seconds' };

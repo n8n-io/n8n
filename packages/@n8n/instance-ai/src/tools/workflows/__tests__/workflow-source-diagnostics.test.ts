@@ -77,7 +77,7 @@ describe('appendWorkflowSourceDiagnostics', () => {
 		expect(await result).toEqual(original);
 		expect(runInSandbox).toHaveBeenCalledWith(
 			context.workspace,
-			"exec node --max-old-space-size=512 --import tsx workflow-diagnostics.mts '/sandbox/src/main.ts'",
+			"WORKFLOW_DIAGNOSTICS_DEADLINE_MS=4000 exec node --max-old-space-size=512 --import tsx workflow-diagnostics.mts '/sandbox/src/main.ts'",
 			expect.objectContaining({ timeout: 5_000 }),
 		);
 	});

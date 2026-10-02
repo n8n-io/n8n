@@ -1,0 +1,91 @@
+{
+	"executions": [
+		{
+			"name": "routes to the category the model picks",
+			"params": {
+				"text": "The parcel came broken",
+				"categories": [
+					{
+						"output": "complaint"
+					},
+					{
+						"output": "praise",
+						"description": "The user is happy"
+					}
+				]
+			},
+			"items": [
+				{
+					"id": 1
+				}
+			],
+			"supplied": {
+				"model": {
+					"data": {
+						"model": "fake"
+					},
+					"results": [
+						{
+							"text": "{\"categories\":[\"complaint\"]}",
+							"toolCalls": [],
+							"finishReason": "stop"
+						}
+					]
+				}
+			},
+			"responses": [],
+			"outputs": [
+				[
+					{
+						"id": 1
+					}
+				],
+				[],
+				[]
+			]
+		},
+		{
+			"name": "routes to other when no category fits",
+			"params": {
+				"text": "Hello",
+				"categories": [
+					{
+						"output": "complaint"
+					},
+					{
+						"output": "praise"
+					}
+				]
+			},
+			"items": [
+				{
+					"id": 2
+				}
+			],
+			"supplied": {
+				"model": {
+					"data": {
+						"model": "fake"
+					},
+					"results": [
+						{
+							"text": "{\"categories\":[]}",
+							"toolCalls": [],
+							"finishReason": "stop"
+						}
+					]
+				}
+			},
+			"responses": [],
+			"outputs": [
+				[],
+				[],
+				[
+					{
+						"id": 2
+					}
+				]
+			]
+		}
+	]
+}

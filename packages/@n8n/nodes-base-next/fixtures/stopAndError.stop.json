@@ -1,0 +1,18 @@
+{
+	"executions": [
+		{
+			"name": "fails with the message",
+			"params": {
+				"message": "The order has no customer"
+			},
+			"items": [
+				{
+					"a": 1
+				}
+			],
+			"responses": [],
+			"output": [],
+			"error": "The order has no customer"
+		}
+	]
+}

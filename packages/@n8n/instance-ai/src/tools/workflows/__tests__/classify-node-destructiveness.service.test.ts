@@ -354,6 +354,35 @@ describe('classifyNodesForSimulation', () => {
 		});
 	});
 
+	it('judges the wait and code contracts as their legacy nodes', async () => {
+		const verdicts = await classify([
+			trigger,
+			{
+				name: 'Short',
+				type: '@n8n/nodes-base-next.waitInterval',
+				parameters: { amount: 30, unit: 'seconds' },
+			},
+			{
+				name: 'Long',
+				type: '@n8n/nodes-base-next.waitInterval',
+				parameters: { amount: 2, unit: 'hours' },
+			},
+			{
+				name: 'Until',
+				type: '@n8n/nodes-base-next.waitUntil',
+				parameters: { time: '2030-01-01T00:00:00Z' },
+			},
+			{
+				name: 'Pure',
+				type: '@n8n/nodes-base-next.codeJavaScript',
+				parameters: { code: 'return $input.all();' },
+			},
+		]);
+		expect(
+			['Short', 'Long', 'Until', 'Pure'].map((name) => verdictOf(verdicts, name)?.verdict),
+		).toEqual(['execute', 'simulate', 'simulate', 'execute']);
+	});
+
 	it('simulates a default wait node (1 hour time interval)', async () => {
 		const verdicts = await classify([
 			trigger,

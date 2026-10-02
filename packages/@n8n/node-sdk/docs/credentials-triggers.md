@@ -101,6 +101,42 @@ sequenceDiagram
   type from the frozen versions, as `toVersionedNodeType` does for actions.
 - The trigger contract has `trigger: 'poll' | 'webhook'` and the flow `read, 1:N`.
 
+## Native triggers
+
+n8n treats some trigger node types in a special way: test URLs, form pages, schedules, manual
+runs, verification pin data, and the eval harness read them by type. A native trigger types such a
+built-in node. n8n runs the built-in node; the SDK runs nothing.
+
+```ts
+export const webhookTrigger = webhook.trigger('trigger', {
+	trigger: 'On webhook call',
+	summary: 'Starts the workflow when an HTTP request reaches the webhook path.',
+	input: { httpMethod: oneOf('GET', 'POST'), path: str(), responseMode: oneOf('onReceived', 'responseNode') },
+	output: obj({ headers: record(str()), body: declared() }),
+	native: { type: 'n8n-nodes-base.webhook', version: 2.2, on: 'webhook' },
+	reply: {
+		operation: 'respond',
+		action: 'Respond to webhook',
+		summary: 'Sends the HTTP reply to the webhook caller and passes the items on.',
+		native: { type: 'n8n-nodes-base.respondToWebhook', version: 1.5 },
+		awaits: { field: 'responseMode', value: 'responseNode' },
+		input: { respondWith: oneOf('json', 'text') },
+	},
+});
+```
+
+| Part | Meaning |
+|---|---|
+| `input` | The parameters of the built-in node at `native.version`, as strict as the node allows. The flow emits them as they are. |
+| `native.on` | What starts it: `manual`, `schedule`, `webhook`, or `form`. The contract document has it in `trigger`. |
+| `declared()` | An output field whose JSON Schema the workflow declares in `schema`, e.g. `schema: { body: { … } }`. It types the field, and without a `sample` it makes the trigger sample. It is not a node parameter, and n8n does not check the value at run time. Without a schema, the field is open JSON. |
+| `x-n8n-entry-fields` | One output field per entry of an input list, e.g. one per form field. The module types it from the config with `EntryFields`, and `Exact` names a misspelt key. |
+| `reply` | The step that answers the caller. The module has it beside the trigger (`webhook.respond`). The flow build fails when the trigger waits (`awaits`) and no reply follows, or when a reply follows a trigger that does not wait and no node between them waits (`awaits.field` is `awaits.value`, e.g. a Wait node). |
+
+- `generatedTriggersOf(trigger, nodeType)` gives the factories of a trigger. A native trigger
+  emits its built-in node type and version, and its reply.
+- A native trigger is not frozen and has no node class. `triggerMethodsOf` throws for it.
+
 ## Bindings
 
 | Binding | Author writes | Who runs it |

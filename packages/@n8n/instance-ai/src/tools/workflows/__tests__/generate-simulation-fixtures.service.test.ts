@@ -575,6 +575,19 @@ describe('withPassThroughFloor', () => {
 		expect(result.Hold).toEqual([{ email: 'ada@example.com', id: 7 }]);
 	});
 
+	it.each(['@n8n/nodes-base-next.waitInterval', '@n8n/nodes-base-next.waitUntil'])(
+		'rebuilds the contract wait %s from its input',
+		(waitType) => {
+			const result = withPassThroughFloor(
+				{ 'Get Contact': [{ email: 'ada@example.com' }], Hold: [{ invented: 'wrong' }] },
+				chain(waitType),
+				{ outputSchemaLookup: lookupBrevoOnly },
+			);
+
+			expect(result.Hold).toEqual([{ email: 'ada@example.com' }]);
+		},
+	);
+
 	it('leaves a declared fixture on a pass-through node exactly as the source wrote it', () => {
 		// A declared fixture is explicit author intent — the scenario the run is
 		// meant to exercise — so it outranks anything derived from upstream.

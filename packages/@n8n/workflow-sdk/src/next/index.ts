@@ -31,7 +31,14 @@ import {
 	type Subnodes,
 } from './flow';
 
-export { workflow, Flow, contractStep, contractTrigger, routedStep } from './flow';
+export {
+	workflow,
+	Flow,
+	contractStep,
+	contractSubnode,
+	contractTrigger,
+	routedStep,
+} from './flow';
 export { placeholder } from '../workflow-builder/node-builders/node-builder';
 export {
 	composedFactoryKey,
@@ -46,19 +53,30 @@ export type {
 	CaseField,
 	CaseItem,
 	DateTime,
+	Declared,
 	Dollar,
+	EntryFields,
 	ErrorItem,
+	Exact,
+	Expression,
+	FromSchema,
 	Loose,
+	ModelCatalog,
+	ModelOf,
 	NodeOutputs,
 	OpenValue,
 	OutputNames,
 	OutputOf,
+	Pairing,
 	Requires,
 	RoutedStep,
 	Step,
 	Subnode,
 	Subnodes,
+	SupplyKind,
+	TriggerOptions,
 	Value,
+	ValueSchema,
 	Workflow,
 	WorkflowOptions,
 } from './flow';

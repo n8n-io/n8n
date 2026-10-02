@@ -3,9 +3,11 @@
 /// gives the JSON form of each type for the process and container runtimes.
 ///
 /// The package version is the `apiVersion` of a bundle, independent of the n8n version. A
-/// minor adds an optional import or field. A major breaks. The host implements 2.2.0. A
-/// bundle without binary data targets 2.1.0, so a 2.1.0 host still runs it.
-package n8n:action@2.2.0;
+/// minor adds an optional import or field. A major breaks. The host implements 2.3.0. A
+/// bundle targets the lowest minor that has what its contract declares: 2.3.0 for host
+/// imports, named inputs or sub-node capabilities, 2.2.0 for binary data, else 2.1.0, so an
+/// older host still runs it. The sub-node capability exports are not in this file yet.
+package n8n:action@2.3.0;
 
 @since(version = 2.0.0)
 interface types {
@@ -147,6 +149,37 @@ interface action {
         /// contract output, and checks each index and output name.
         next: func() -> result<option<routed-output>, run-error>;
     }
+
+    /// An item of one of the named inputs.
+    @since(version = 2.3.0)
+    record item-ref {
+        /// The index of the input in the contract `inputs`.
+        input: u32,
+        item: u32,
+    }
+
+    /// One output of a `join-run`.
+    @since(version = 2.3.0)
+    variant join-output {
+        /// The input item, passed on unchanged with its binary data.
+        passed(item-ref),
+        /// A new item, made from these input items.
+        made(tuple<json, list<item-ref>>),
+    }
+
+    @since(version = 2.3.0)
+    record routed-join-output {
+        to: option<string>,
+        output: join-output,
+    }
+
+    /// The run of an action with named inputs: one run with the items of each input, in the
+    /// order of the contract `inputs`, and the input of the first item of the first input.
+    @since(version = 2.3.0)
+    resource join-run {
+        constructor(input: json, inputs: list<list<json>>);
+        next: func() -> result<option<routed-join-output>, run-error>;
+    }
 }
 
 /// Binary data stays in the host. An action holds a handle and never gets all the bytes at
@@ -217,11 +250,174 @@ interface binary {
     fetch: func(request: http-request, body: option<borrow<binary>>) -> result<binary-response, http-failure>;
 }
 
+/// The n8n data tables of the project that owns the workflow. A date cell crosses as ISO 8601
+/// text; the host converts it for a date column. Only an action that lists `dataTables` in
+/// its contract `imports` gets it.
+@since(version = 2.3.0)
+interface data-tables {
+    use types.{json};
+
+    enum column-type { %string, number, boolean, date }
+
+    record column {
+        name: string,
+        %type: column-type,
+    }
+
+    /// A table by its ID, or by its name in the project of the workflow.
+    variant table-ref {
+        id(string),
+        name(string),
+    }
+
+    enum operator { eq, neq, like, ilike, gt, gte, lt, lte, is-empty, is-not-empty }
+
+    record condition {
+        column: string,
+        op: operator,
+        /// A cell value. None for `is-empty` and `is-not-empty`.
+        value: option<json>,
+    }
+
+    enum match { all, any }
+
+    record filter {
+        match: match,
+        conditions: list<condition>,
+    }
+
+    enum direction { asc, desc }
+
+    record sort {
+        column: string,
+        direction: direction,
+    }
+
+    record row-query {
+        filter: option<filter>,
+        sort: option<sort>,
+        offset: option<u32>,
+        /// The most rows of one page.
+        limit: u32,
+    }
+
+    record row-page {
+        /// All rows that the filter matches.
+        count: u64,
+        /// Each row is an object: `id`, `createdAt`, `updatedAt`, and one field per column.
+        rows: list<json>,
+    }
+
+    resource table {
+        id: func() -> string;
+        columns: func() -> result<list<column>, string>;
+        rows: func(query: row-query) -> result<row-page, string>;
+        /// One write for all rows. Gives the rows with their system columns.
+        insert: func(rows: list<json>) -> result<list<json>, string>;
+        /// Sets `values` on each row that the filter matches. Gives the changed rows.
+        update: func(filter: filter, values: json) -> result<list<json>, string>;
+        /// `update`, or one new row when the filter matches no row.
+        upsert: func(filter: filter, values: json) -> result<list<json>, string>;
+        /// Gives the deleted rows.
+        delete: func(filter: filter) -> result<list<json>, string>;
+        /// Deletes every row. Gives how many it deleted.
+        clear: func() -> result<u64, string>;
+        rename: func(name: string) -> result<bool, string>;
+        /// Deletes the table and its rows.
+        drop: func() -> result<bool, string>;
+    }
+
+    /// A table without its rows. Dates are ISO 8601 text.
+    record table-info {
+        id: string,
+        name: string,
+        columns: list<column>,
+        created-at: string,
+        updated-at: string,
+    }
+
+    enum table-field { name, created-at, updated-at }
+
+    record table-sort {
+        by: table-field,
+        direction: direction,
+    }
+
+    record list-query {
+        /// Tables whose name matches, without case.
+        name: option<string>,
+        sort: option<table-sort>,
+        offset: option<u32>,
+        limit: u32,
+    }
+
+    record table-page {
+        count: u64,
+        tables: list<table-info>,
+    }
+
+    record new-table {
+        name: string,
+        columns: list<column>,
+    }
+
+    open: func(table: table-ref) -> result<table, string>;
+    list: func(query: list-query) -> result<table-page, string>;
+    create: func(table: new-table) -> result<table-info, string>;
+}
+
+/// User code in the n8n task runner, as the Code node runs it. The code reads the input items
+/// of the node. Only an action that lists `code` in its contract `imports` gets it.
+@since(version = 2.3.0)
+interface code {
+    use types.{json};
+
+    enum language { javascript, python }
+
+    /// `all`: one run that reads every input item. `each`: one run for each input item.
+    enum mode { all, each }
+
+    record code-request {
+        language: language,
+        code: string,
+        mode: mode,
+    }
+
+    /// What the code returns, not checked. For `each`, a list with one value for each item.
+    run: func(request: code-request) -> result<json, string>;
+}
+
+/// Only an action that lists `wait` in its contract `imports` gets it.
+@since(version = 2.3.0)
+interface wait {
+    /// The outputs of this run continue at `at` (milliseconds since the epoch), not before.
+    /// The host can suspend the execution after the run.
+    until: func(at: u64) -> result<_, string>;
+}
+
+/// The input of one item of a `batch` run. Only an action that lists `inputOf` in its
+/// contract `imports` gets it.
+@since(version = 2.3.0)
+interface input-of {
+    use types.{json};
+
+    /// The host resolved, defaulted and validated the input for the item at this index.
+    get: func(item: u32) -> result<json, string>;
+}
+
 world bundle {
     import http;
     import log;
     import limits;
     @since(version = 2.2.0)
     import binary;
+    @since(version = 2.3.0)
+    import data-tables;
+    @since(version = 2.3.0)
+    import code;
+    @since(version = 2.3.0)
+    import wait;
+    @since(version = 2.3.0)
+    import input-of;
     export action;
 }

@@ -1,0 +1,25 @@
+import { int, modelId, num } from '@n8n/node-sdk';
+
+import { chatCompletionsModel } from '../../open-ai/chat-completions';
+import { minimax } from '../minimax.node';
+
+export const minimaxChatModel = minimax.subnode('chatModel', {
+	action: 'MiniMax Chat Model',
+	summary: 'A MiniMax chat model for an AI node, e.g. ai.prompt or ai.agent.',
+	supplies: 'chatModel',
+	input: {
+		model: modelId('minimax').hint(
+			'A model ID from the catalog, e.g. MiniMax-M2; never invent one',
+		),
+		temperature: num().with({ minimum: 0, maximum: 2 }).optional(),
+		maxTokens: int().with({ minimum: 1 }).optional().hint('Most tokens in one reply'),
+		topP: num().with({ minimum: 0, maximum: 1 }).optional(),
+	},
+	async supply({ input, http }) {
+		// MiniMax puts its reasoning in the reply text unless the request splits it out.
+		return chatCompletionsModel(http, input, {
+			maxTokensField: 'max_tokens',
+			extraBody: { reasoning_split: true },
+		});
+	},
+});

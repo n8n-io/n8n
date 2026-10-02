@@ -2034,6 +2034,41 @@ describe('EvalExecutionService', () => {
 			expect([...(liveReads ?? [])]).toEqual(['Read Seeded', 'Read Named']);
 		});
 
+		it('flags a contract row check on a table the scenario did not seed', async () => {
+			const check = (name: string, table: unknown): INode =>
+				({
+					id: name,
+					name,
+					type: '@n8n/nodes-base-next.dataTableRowExists',
+					typeVersion: 1,
+					position: [200, 0],
+					parameters: { table },
+				}) as INode;
+			workflowFinderService.findWorkflowForUser.mockResolvedValue(
+				makeWorkflowEntity({
+					nodes: [
+						makeStartNode(),
+						check('Check Seeded', { name: 'customers' }),
+						check('Check Text', '{"id":"dt-seeded"}'),
+						check('Check Other', { id: 'dt-other' }),
+					],
+				}) as never,
+			);
+			dataTableService.findDataTablesByIds.mockResolvedValue([
+				{ id: 'dt-seeded', name: 'Customers' },
+			] as never);
+
+			const result = await service.executeWithLlmMock('wf-1', makeUser(), {
+				seededDataTableIds: ['dt-seeded'],
+			});
+
+			const flagged = result.hints.warnings.filter((warning) =>
+				warning.startsWith('Data table check'),
+			);
+			expect(flagged).toEqual([expect.stringContaining('"Check Other"')]);
+			expect([...(identifyNodesForPinDataMock.mock.calls[0][2] ?? [])]).toEqual([]);
+		});
+
 		it('pins every read when the caller seeded no table', async () => {
 			workflowFinderService.findWorkflowForUser.mockResolvedValue(
 				makeWorkflowEntity({

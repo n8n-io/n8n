@@ -1,0 +1,22 @@
+{
+	"executions": [
+		{
+			"name": "to trash",
+			"params": {
+				"fileId": "https://drive.google.com/file/d/1FileAbCdEfGhIjKlMnOpQrStUvWxYz0/view"
+			},
+			"responses": [
+				{
+					"id": "1FileAbCdEfGhIjKlMnOpQrStUvWxYz0",
+					"trashed": true
+				}
+			],
+			"output": [
+				{
+					"id": "1FileAbCdEfGhIjKlMnOpQrStUvWxYz0",
+					"success": true
+				}
+			]
+		}
+	]
+}

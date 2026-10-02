@@ -1,0 +1,74 @@
+{
+	"executions": [
+		{
+			"name": "wraps the objects the code returns",
+			"params": {
+				"code": "return $input.all().map((item) => ({ name: item.json.name.toUpperCase() }));",
+				"mode": "allItems"
+			},
+			"items": [
+				{
+					"name": "ada"
+				},
+				{
+					"name": "bo"
+				}
+			],
+			"responses": [],
+			"imports": [
+				[
+					{
+						"name": "ADA"
+					},
+					{
+						"name": "BO"
+					}
+				]
+			],
+			"output": [
+				{
+					"name": "ADA"
+				},
+				{
+					"name": "BO"
+				}
+			]
+		},
+		{
+			"name": "checks each item against returns",
+			"params": {
+				"code": "return { total: $json.price * 2 };",
+				"mode": "eachItem",
+				"returns": {
+					"type": "object",
+					"properties": {
+						"total": {
+							"type": "number"
+						}
+					},
+					"required": ["total"]
+				}
+			},
+			"items": [
+				{
+					"price": 2
+				}
+			],
+			"responses": [],
+			"imports": [
+				[
+					{
+						"json": {
+							"total": 4
+						}
+					}
+				]
+			],
+			"output": [
+				{
+					"total": 4
+				}
+			]
+		}
+	]
+}

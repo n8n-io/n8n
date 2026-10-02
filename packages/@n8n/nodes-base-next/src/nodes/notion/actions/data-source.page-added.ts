@@ -1,27 +1,19 @@
-import { isRecord, list, obj, str } from '@n8n/node-sdk';
+import { arr, bool, json, nullable, obj, parse, str } from '@n8n/node-sdk';
 
 import { NOTION_VERSION } from '../data-source';
 import { dataSource } from '../notion.node';
 import { SIMPLIFIED, simplifyProperty } from '../simplify';
 
-interface NotionPage {
-	readonly id: string;
-	readonly created_time: string;
-	readonly properties: Record<string, unknown>;
-}
-
-const pagesOf = (body: unknown): NotionPage[] =>
-	list(isRecord(body) ? body.results : undefined).flatMap((page) =>
-		isRecord(page) && typeof page.id === 'string' && typeof page.created_time === 'string'
-			? [
-					{
-						id: page.id,
-						created_time: page.created_time,
-						properties: isRecord(page.properties) ? page.properties : {},
-					},
-				]
-			: [],
-	);
+/** The fields of a data source query response that the poll reads. */
+const queryResponse = obj({
+	results: arr(
+		obj({ id: str(), created_time: str(), properties: json() }).with({
+			additionalProperties: true,
+		}),
+	),
+	has_more: bool().optional(),
+	next_cursor: nullable(str()).optional(),
+}).with({ additionalProperties: true });
 
 /** A page as the legacy trigger emits it with `simple: true`: the ID and each property by name. */
 const addedPage = obj({ id: str() }).with({
@@ -31,7 +23,7 @@ const addedPage = obj({ id: str() }).with({
 });
 
 export const pageAdded = dataSource.trigger('pageAdded', {
-	patch: 1,
+	patch: 2,
 	trigger: 'On page added to data source',
 	summary: 'Starts when a page is added to a Notion data source.',
 	scopes: ['content:read'],
@@ -40,7 +32,7 @@ export const pageAdded = dataSource.trigger('pageAdded', {
 	poll: {
 		request: ({ input, since, page, limit }) => ({
 			method: 'POST',
-			path: `/data_sources/${input.dataSource}/query`,
+			path: `/data_sources/${encodeURIComponent(input.dataSource)}/query`,
 			headers: NOTION_VERSION,
 			body: {
 				page_size: limit ?? 100,
@@ -51,11 +43,11 @@ export const pageAdded = dataSource.trigger('pageAdded', {
 				...(page ? { start_cursor: page } : {}),
 			},
 		}),
-		items: pagesOf,
-		next: (body) =>
-			isRecord(body) && body.has_more === true && typeof body.next_cursor === 'string'
-				? body.next_cursor
-				: undefined,
+		items: (body) => parse(queryResponse, body).results,
+		next: (body) => {
+			const { has_more: hasMore, next_cursor: cursor } = parse(queryResponse, body);
+			return hasMore === true && cursor ? cursor : undefined;
+		},
 		// Notion times have minute precision, so pages of the same minute are kept by ID.
 		cursor: {
 			timestamp: (page) => page.created_time,

@@ -1,0 +1,64 @@
+{
+	"executions": [
+		{
+			"name": "calls a tool, then answers",
+			"params": {
+				"prompt": "What is the status of order 7?"
+			},
+			"supplied": {
+				"model": {
+					"data": {
+						"model": "fake"
+					},
+					"results": [
+						{
+							"text": "",
+							"toolCalls": [
+								{
+									"id": "call-1",
+									"name": "order",
+									"args": {
+										"id": 7
+									}
+								}
+							],
+							"finishReason": "tool_calls"
+						},
+						{
+							"text": "Order 7 has shipped.",
+							"toolCalls": [],
+							"finishReason": "stop"
+						}
+					]
+				},
+				"tools": [
+					{
+						"data": {
+							"name": "order",
+							"description": "Get an order by ID",
+							"input": {
+								"type": "object",
+								"properties": {
+									"id": {
+										"type": "number"
+									}
+								}
+							}
+						},
+						"results": [
+							{
+								"status": "shipped"
+							}
+						]
+					}
+				]
+			},
+			"responses": [],
+			"output": [
+				{
+					"text": "Order 7 has shipped."
+				}
+			]
+		}
+	]
+}

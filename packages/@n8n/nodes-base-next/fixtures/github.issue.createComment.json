@@ -1,0 +1,43 @@
+{
+	"executions": [
+		{
+			"name": "comment",
+			"params": {
+				"authentication": "githubApi",
+				"owner": "acme",
+				"repository": "widgets",
+				"issueNumber": 101,
+				"body": "Fixed in #112"
+			},
+			"responses": [
+				{
+					"id": 555,
+					"html_url": "https://github.com/acme/widgets/issues/101#issuecomment-555",
+					"body": "Fixed in #112",
+					"user": {
+						"login": "ada",
+						"id": 7
+					},
+					"created_at": "2026-09-03T09:00:00Z",
+					"updated_at": "2026-09-03T09:00:00Z"
+				}
+			],
+			"output": [
+				{
+					"id": 555,
+					"html_url": "https://github.com/acme/widgets/issues/101#issuecomment-555",
+					"body": "Fixed in #112",
+					"user": {
+						"login": "ada",
+						"id": 7
+					},
+					"created_at": "2026-09-03T09:00:00Z",
+					"updated_at": "2026-09-03T09:00:00Z"
+				}
+			],
+			"credential": {
+				"server": "https://api.github.com"
+			}
+		}
+	]
+}

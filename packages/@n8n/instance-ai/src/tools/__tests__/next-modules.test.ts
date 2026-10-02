@@ -3,9 +3,11 @@ import { composedTargetOf, nodeTypeOf } from '@n8n/nodes-base-next';
 import {
 	catalogRowsBesideModules,
 	findNextActions,
+	namesDisplayName,
 	nearestNextActions,
 	nextActions,
 	nextNodeIdOfNodeType,
+	supplierActionsOf,
 	nextNodeModule,
 	nextNodeView,
 	nodeModuleText,
@@ -13,15 +15,24 @@ import {
 } from '../next-modules';
 
 describe('next-modules', () => {
-	it.each(nextActions.map((action) => [action.id, action] as const))(
-		'generates the %s factory into its node module',
+	it.each(
+		nextActions.filter(({ inputs }) => !inputs).map((action) => [action.id, action] as const),
+	)('generates the %s factory into its node module', (_id, action) => {
+		const text = nodeModuleText(action.node.id);
+
+		expect(text).toContain(`export const ${action.node.id} = {`);
+		expect(text).toContain(
+			JSON.stringify(composedTargetOf(action)?.nodeType ?? nodeTypeOf(action)),
+		);
+	});
+
+	it.each(nextActions.filter(({ inputs }) => inputs).map((action) => [action.id, action] as const))(
+		'names the %s join in its node module, which a flow region builds',
 		(_id, action) => {
 			const text = nodeModuleText(action.node.id);
 
-			expect(text).toContain(`export const ${action.node.id} = {`);
-			expect(text).toContain(
-				JSON.stringify(composedTargetOf(action)?.nodeType ?? nodeTypeOf(action)),
-			);
+			expect(text).toContain(`// ${action.id}: ${action.action}.`);
+			expect(text).not.toContain(nodeTypeOf(action));
 		},
 	);
 
@@ -51,8 +62,8 @@ describe('next-modules', () => {
 	});
 
 	it('has no module for a node without actions', () => {
-		expect(nodeModuleText('slack')).toBeUndefined();
-		expect(nextNodeModule('slack.message.send')).toBeUndefined();
+		expect(nodeModuleText('mattermost')).toBeUndefined();
+		expect(nextNodeModule('mattermost.message.post')).toBeUndefined();
 	});
 
 	it.each([
@@ -71,15 +82,35 @@ describe('next-modules', () => {
 		['n8n-nodes-base.notion', 'notion'],
 		['n8n-nodes-base.httpRequest', 'httpRequest'],
 		['@n8n/nodes-base-next.httpRequestSend', 'httpRequest'],
-		['n8n-nodes-base.slack', undefined],
+		['n8n-nodes-base.slack', 'slack'],
+		['n8n-nodes-base.mattermost', undefined],
 		['@n8n/n8n-nodes-langchain.notion', undefined],
+		['@n8n/n8n-nodes-langchain.lmChatOpenAi', 'openAi'],
+		['@n8n/n8n-nodes-langchain.agent', undefined],
+		['@n8n/n8n-nodes-langchain.openAi', undefined],
+		['@n8n/n8n-nodes-langchain.googleGemini', undefined],
+		['@n8n/n8n-nodes-langchain.chainLlm', 'ai'],
+		['@n8n/n8n-nodes-langchain.lmChatGoogleGemini', 'googleGemini'],
 	])('maps the catalog node type %s to the module node %s', (nodeType, nodeId) => {
 		expect(nextNodeIdOfNodeType(nodeType)).toBe(nodeId);
 	});
 
+	it('finds the chat model sub-nodes of module nodes for a sub-node search', () => {
+		expect(
+			supplierActionsOf(['openAi', 'ai', 'openAi'], 'ai_languageModel').map(({ id }) => id),
+		).toEqual(['openAi.chatModel']);
+		expect(supplierActionsOf(['openAi'], 'ai_tool')).toEqual([]);
+	});
+
+	it('finds the catalog nodes whose display name the query names', () => {
+		expect(namesDisplayName('AI agent with tools', 'AI Agent')).toBe(true);
+		expect(namesDisplayName('AI agent', 'AI Agent Tool')).toBe(false);
+		expect(namesDisplayName('notion get many database pages', 'Notion Trigger')).toBe(false);
+	});
+
 	it('ranks the action that the query names first', () => {
 		expect(findNextActions('notion get many pages')[0]?.id).toBe('notion.databasePage.getAll');
-		expect(findNextActions('slack')).toEqual([]);
+		expect(findNextActions('mattermost')).toEqual([]);
 	});
 
 	it('inlines only nodes the query names and keeps other matches to one line', () => {
@@ -89,9 +120,9 @@ describe('next-modules', () => {
 			otherActions: [],
 			coversQuery: true,
 		});
-		const slack = searchNextActions('slack send');
-		expect(slack.nodes).toEqual([]);
-		expect(slack.otherActions).toContain(
+		const mattermost = searchNextActions('mattermost send');
+		expect(mattermost.nodes).toEqual([]);
+		expect(mattermost.otherActions).toContain(
 			'httpRequest.send: POST, PUT, PATCH, or DELETE to any HTTP API.',
 		);
 	});
@@ -107,12 +138,17 @@ describe('next-modules', () => {
 
 	it('covers a query only when the named modules match every query word', () => {
 		expect(searchNextActions('notion database trigger').coversQuery).toBe(false);
-		expect(searchNextActions('slack').coversQuery).toBe(false);
+		expect(searchNextActions('mattermost').coversQuery).toBe(false);
 	});
 
 	it('names only the node that matches the most node words', () => {
 		expect(searchNextActions('google sheets append row').nodes).toEqual(['googleSheets']);
 		expect(searchNextActions('notion and google sheets').nodes).toEqual(['googleSheets', 'notion']);
+	});
+
+	it('matches an inflected query word to the action word it extends', () => {
+		expect(searchNextActions('slack sending message').actions).toEqual(['slack.message.send']);
+		expect(searchNextActions('slack posting message').actions).toEqual(['slack.message.send']);
 	});
 
 	it.each([
@@ -146,7 +182,7 @@ describe('next-modules', () => {
 		const all = new Set(['httpRequest.get', 'httpRequest.send', 'httpRequest.download']);
 		expect(nextNodeView('httpRequest', all)).toEqual(nextNodeModule('httpRequest'));
 		expect(nextNodeView('httpRequest', new Set())).toEqual(nextNodeModule('httpRequest'));
-		expect(nextNodeView('slack', all)).toBeUndefined();
+		expect(nextNodeView('mattermost', all)).toBeUndefined();
 	});
 
 	it('lists the actions of module nodes that the catalog search found', () => {
@@ -180,7 +216,7 @@ describe('next-modules', () => {
 
 	it.each([
 		['notion.page.getAll', ['notion.databasePage.getAll']],
-		['slack.message.send', ['httpRequest.send']],
+		['mattermost.message.send', ['httpRequest.send']],
 		['n8n-nodes-base.unknown', []],
 	])('returns the nearest actions for %s', (id, ids) => {
 		expect(

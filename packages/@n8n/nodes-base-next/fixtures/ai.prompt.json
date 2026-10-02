@@ -1,0 +1,69 @@
+{
+	"executions": [
+		{
+			"name": "text reply",
+			"params": {
+				"prompt": "Say hi",
+				"system": "Answer in one word"
+			},
+			"supplied": {
+				"model": {
+					"data": {
+						"model": "fake"
+					},
+					"results": [
+						{
+							"text": "Hi",
+							"toolCalls": [],
+							"finishReason": "stop"
+						}
+					]
+				}
+			},
+			"responses": [],
+			"output": [
+				{
+					"text": "Hi"
+				}
+			]
+		},
+		{
+			"name": "reply typed by schema",
+			"params": {
+				"prompt": "Name a colour",
+				"schema": {
+					"type": "object",
+					"properties": {
+						"colour": {
+							"type": "string"
+						}
+					},
+					"required": ["colour"]
+				}
+			},
+			"supplied": {
+				"model": {
+					"data": {
+						"model": "fake"
+					},
+					"results": [
+						{
+							"text": "```json\n{\"colour\":\"red\"}\n```",
+							"toolCalls": [],
+							"finishReason": "stop"
+						}
+					]
+				}
+			},
+			"responses": [],
+			"output": [
+				{
+					"text": "```json\n{\"colour\":\"red\"}\n```",
+					"output": {
+						"colour": "red"
+					}
+				}
+			]
+		}
+	]
+}

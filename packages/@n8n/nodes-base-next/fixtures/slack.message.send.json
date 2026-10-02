@@ -1,0 +1,69 @@
+{
+	"executions": [
+		{
+			"name": "channel message with attribution",
+			"params": { "channel": "#ops-digest", "text": "3 open tickets" },
+			"responses": [
+				{
+					"ok": true,
+					"channel": "C0OPSDIGEST",
+					"ts": "1700000000.000100",
+					"message": {
+						"type": "message",
+						"user": "U0BOT",
+						"text": "3 open tickets\n_Automated with <https://n8n.io/?utm_source=n8n-internal&utm_medium=powered_by&utm_campaign=n8n-nodes-base.slack|n8n>_",
+						"ts": "1700000000.000100"
+					}
+				}
+			],
+			"output": [
+				{
+					"ok": true,
+					"channel": "C0OPSDIGEST",
+					"ts": "1700000000.000100",
+					"message": {
+						"type": "message",
+						"user": "U0BOT",
+						"text": "3 open tickets\n_Automated with <https://n8n.io/?utm_source=n8n-internal&utm_medium=powered_by&utm_campaign=n8n-nodes-base.slack|n8n>_",
+						"ts": "1700000000.000100"
+					}
+				}
+			]
+		},
+		{
+			"name": "thread reply",
+			"params": {
+				"channel": "C0OPSDIGEST",
+				"text": "Fixed",
+				"threadTs": "1700000000.000100",
+				"appendAttribution": false
+			},
+			"responses": [
+				{
+					"ok": true,
+					"channel": "C0OPSDIGEST",
+					"ts": "1700000001.000200",
+					"message": {
+						"type": "message",
+						"text": "Fixed",
+						"ts": "1700000001.000200",
+						"thread_ts": "1700000000.000100"
+					}
+				}
+			],
+			"output": [
+				{
+					"ok": true,
+					"channel": "C0OPSDIGEST",
+					"ts": "1700000001.000200",
+					"message": {
+						"type": "message",
+						"text": "Fixed",
+						"ts": "1700000001.000200",
+						"thread_ts": "1700000000.000100"
+					}
+				}
+			]
+		}
+	]
+}

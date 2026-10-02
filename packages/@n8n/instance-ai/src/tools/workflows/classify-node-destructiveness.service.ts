@@ -21,6 +21,7 @@ import { isRecord } from '@n8n/utils/is-record';
 import { isAiRootNodeType, type WorkflowJSON } from '@n8n/workflow-sdk';
 import { z } from 'zod';
 
+import { legacyTwinOf } from './legacy-twins';
 import { isTriggerNodeType } from './workflow-json-utils';
 import { AGENT_TOOL_NODE_TYPE, createVerificationGraph } from './verification-graph';
 import type { ModelConfig } from '../../types';
@@ -218,6 +219,8 @@ function deterministicVerdict(
 	if (mockedNodeNames.has(node.name)) {
 		return deterministic(node.name, 'simulate', 'Credentials are not configured for this node');
 	}
+	const twin = legacyTwinOf(node);
+	if (twin !== node) return deterministicVerdict(twin, mockedNodeNames);
 
 	// Action contracts declare their effect, so their verdict needs no LLM call.
 	const contractAction = actionOfNode(node);

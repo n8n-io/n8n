@@ -1,8 +1,8 @@
 import { jsonParse } from 'n8n-workflow';
-import { execFile } from 'node:child_process';
+import { execFile, spawn } from 'node:child_process';
 import { mkdtemp, mkdir, readFile, writeFile, symlink, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { dirname, join } from 'node:path';
+import { basename, dirname, join } from 'node:path';
 import { promisify } from 'node:util';
 
 import {
@@ -124,6 +124,58 @@ const expected: { nested: { value: number } } = actual;`;
 				expect.stringMatching(/src\/main.ts\(3,\d+\): error TS2322:[\s\S]*\n.*nested.value/),
 			]),
 		);
+	});
+
+	/** The tsc API processes that a worker started in this test's folder. */
+	async function tscProcesses() {
+		const { stdout } = await exec('ps', ['-Ao', 'pid=,command=']);
+		return stdout
+			.split('\n')
+			.filter((line) => line.includes('--api') && line.includes(basename(root)));
+	}
+
+	async function waitFor(check: () => Promise<boolean>) {
+		for (const _ of Array(250).keys()) {
+			if (await check()) return true;
+			await new Promise((resolve) => setTimeout(resolve, 20));
+		}
+		return false;
+	}
+
+	it('stops its tsc process when the host terminates it', async () => {
+		await writeFile(
+			join(root, 'src/main.ts'),
+			"import { workflow } from '@n8n/workflow-sdk';\nexport default workflow('id', 'name');",
+		);
+		// An idle tsc stops by itself; a busy one does not. Several runs make a busy kill likely.
+		for (const _ of Array(3).keys()) {
+			const worker = spawn(
+				process.execPath,
+				['--import', 'tsx', WORKFLOW_DIAGNOSTICS_FILENAME, './src/main.ts'],
+				{ cwd: root, stdio: 'ignore' },
+			);
+			const exited = new Promise((resolve) => worker.once('exit', resolve));
+			expect(await waitFor(async () => (await tscProcesses()).length > 0)).toBe(true);
+			worker.kill('SIGTERM');
+			await exited;
+
+			expect(await waitFor(async () => (await tscProcesses()).length === 0)).toBe(true);
+		}
+	});
+
+	it('ends at its deadline and stops its tsc process', async () => {
+		await writeFile(
+			join(root, 'src/main.ts'),
+			"import { workflow } from '@n8n/workflow-sdk';\nexport default workflow('id', 'name');",
+		);
+		const result = exec(
+			process.execPath,
+			['--import', 'tsx', WORKFLOW_DIAGNOSTICS_FILENAME, './src/main.ts'],
+			{ cwd: root, env: { ...process.env, WORKFLOW_DIAGNOSTICS_DEADLINE_MS: '1' } },
+		);
+
+		await expect(result).rejects.toMatchObject({ code: 124 });
+		expect(await waitFor(async () => (await tscProcesses()).length === 0)).toBe(true);
 	});
 
 	it('accepts Node globals', async () => {

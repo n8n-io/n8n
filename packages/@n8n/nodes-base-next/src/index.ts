@@ -1,5 +1,9 @@
 import { nodeNameOf, type Action, type Trigger } from '@n8n/node-sdk';
 
+import { runAgent } from './nodes/ai/actions/agent';
+import { classifyText } from './nodes/ai/actions/classify';
+import { promptModel } from './nodes/ai/actions/prompt';
+import { anthropicChatModel } from './nodes/anthropic/actions/chat-model';
 import { aggregateItems } from './nodes/core/actions/aggregate';
 import { dateTime } from './nodes/core/actions/date-time';
 import { filterItems } from './nodes/core/actions/filter';
@@ -15,6 +19,7 @@ import { switchCases } from './nodes/core/actions/switch';
 import { getGmailMessage } from './nodes/gmail/actions/message.get';
 import { getManyGmailMessages } from './nodes/gmail/actions/message.get-all';
 import { sendGmailMessage } from './nodes/gmail/actions/message.send';
+import { geminiChatModel } from './nodes/google-gemini/actions/chat-model';
 import { messageGemini } from './nodes/google-gemini/actions/text.message';
 import { appendSheetRow } from './nodes/google-sheets/actions/sheet.append';
 import { appendOrUpdateSheetRow } from './nodes/google-sheets/actions/sheet.append-or-update';
@@ -22,10 +27,70 @@ import { readSheetRows } from './nodes/google-sheets/actions/sheet.read';
 import { downloadFile } from './nodes/http-request/actions/download';
 import { getRequest } from './nodes/http-request/actions/get';
 import { sendRequest } from './nodes/http-request/actions/send';
+import { createIssue } from './nodes/github/actions/issue.create';
+import { commentOnIssue } from './nodes/github/actions/issue.create-comment';
+import { getIssue } from './nodes/github/actions/issue.get';
+import { getManyIssues } from './nodes/github/actions/issue.get-all';
+import { updateIssue } from './nodes/github/actions/issue.update';
 import { repositoryEvent } from './nodes/github/actions/repository.event';
+import { minimaxChatModel } from './nodes/minimax/actions/chat-model';
+import { createDocument } from './nodes/google-docs/actions/document.create';
+import { getDocument } from './nodes/google-docs/actions/document.get';
+import { updateDocument } from './nodes/google-docs/actions/document.update';
+import { deleteFile } from './nodes/google-drive/actions/file.delete';
+import { searchFiles } from './nodes/google-drive/actions/file.search';
+import { uploadFile } from './nodes/google-drive/actions/file.upload';
+import { createFolder } from './nodes/google-drive/actions/folder.create';
 import { pageAdded } from './nodes/notion/actions/data-source.page-added';
+import { facebookEvent } from './nodes/facebook-trigger/actions/trigger';
+import { formTrigger } from './nodes/form/actions/trigger';
+import { scheduleTrigger } from './nodes/schedule/actions/trigger';
+import { webhookTrigger } from './nodes/webhook/actions/trigger';
+import { whatsAppEvent } from './nodes/whats-app-trigger/actions/trigger';
 import { getManyDatabasePages } from './nodes/notion/actions/database-page.get-all';
 import { getUser } from './nodes/notion/actions/user.get';
+import { runJavaScript } from './nodes/code/actions/java-script';
+import { runPython } from './nodes/code/actions/python';
+import { deleteRows } from './nodes/data-table/actions/row.delete';
+import { rowExists } from './nodes/data-table/actions/row.exists';
+import { getRows } from './nodes/data-table/actions/row.get';
+import { insertRows } from './nodes/data-table/actions/row.insert';
+import { updateRows } from './nodes/data-table/actions/row.update';
+import { upsertRows } from './nodes/data-table/actions/row.upsert';
+import { clearTable } from './nodes/data-table/actions/table.clear';
+import { createTable } from './nodes/data-table/actions/table.create';
+import { deleteTable } from './nodes/data-table/actions/table.delete';
+import { listTables } from './nodes/data-table/actions/table.list';
+import { renameTable } from './nodes/data-table/actions/table.rename';
+import { setLoopState } from './nodes/loop-state/actions/set';
+import { appendItems } from './nodes/merge/actions/append';
+import { combineItems } from './nodes/merge/actions/combine';
+import { passItems } from './nodes/no-op/actions/pass';
+import { stopWithError } from './nodes/stop-and-error/actions/stop';
+import { waitInterval } from './nodes/wait/actions/interval';
+import { waitUntil } from './nodes/wait/actions/until';
+import { openAiChatModel } from './nodes/open-ai/actions/chat-model';
+import { generateImage } from './nodes/open-ai/actions/image.generate';
+import { messageOpenAi } from './nodes/open-ai/actions/text.message';
+import { xAiChatModel } from './nodes/x-ai/actions/chat-model';
+import { createSlackChannel } from './nodes/slack/actions/channel.create';
+import { getSlackChannel } from './nodes/slack/actions/channel.get';
+import { getManySlackChannels } from './nodes/slack/actions/channel.get-all';
+import { getSlackChannelHistory } from './nodes/slack/actions/channel.history';
+import { uploadSlackFile } from './nodes/slack/actions/file.upload';
+import { deleteSlackMessage } from './nodes/slack/actions/message.delete';
+import { getSlackPermalink } from './nodes/slack/actions/message.get-permalink';
+import { sendSlackMessage } from './nodes/slack/actions/message.send';
+import { updateSlackMessage } from './nodes/slack/actions/message.update';
+import { addSlackReaction } from './nodes/slack/actions/reaction.add';
+import { getSlackUser } from './nodes/slack/actions/user.get';
+import { sendWhatsAppMessage } from './nodes/whats-app/actions/message.send';
+import { sendWhatsAppTemplate } from './nodes/whats-app/actions/message.send-template';
+import { createSupabaseRow } from './nodes/supabase/actions/row.create';
+import { deleteSupabaseRows } from './nodes/supabase/actions/row.delete';
+import { getSupabaseRows } from './nodes/supabase/actions/row.get';
+import { getManySupabaseRows } from './nodes/supabase/actions/row.get-all';
+import { updateSupabaseRows } from './nodes/supabase/actions/row.update';
 import { composedSlotOf, type WorkflowNodeRef } from './composed';
 
 export { versionsOf } from './registry';
@@ -57,6 +122,7 @@ export {
 	exampleOf,
 	matches,
 	runsActionApi,
+	setCodeLanguages,
 	toVersionedNodeType,
 	toVersionedTriggerType,
 	type FrozenVersion,
@@ -92,10 +158,82 @@ export const actions: readonly Action[] = [
 	ifCondition,
 	switchCases,
 	filterItems,
+	insertRows,
+	getRows,
+	rowExists,
+	updateRows,
+	upsertRows,
+	deleteRows,
+	createTable,
+	listTables,
+	renameTable,
+	clearTable,
+	deleteTable,
+	runJavaScript,
+	runPython,
+	appendItems,
+	combineItems,
+	waitInterval,
+	waitUntil,
+	stopWithError,
+	passItems,
+	setLoopState,
+	promptModel,
+	runAgent,
+	classifyText,
+	openAiChatModel,
+	generateImage,
+	messageOpenAi,
+	geminiChatModel,
+	anthropicChatModel,
+	minimaxChatModel,
+	xAiChatModel,
+	sendSlackMessage,
+	updateSlackMessage,
+	deleteSlackMessage,
+	getSlackPermalink,
+	getSlackChannelHistory,
+	getSlackChannel,
+	getManySlackChannels,
+	createSlackChannel,
+	addSlackReaction,
+	getSlackUser,
+	uploadSlackFile,
+	sendWhatsAppMessage,
+	sendWhatsAppTemplate,
+	getManyIssues,
+	getIssue,
+	createIssue,
+	getDocument,
+	createDocument,
+	uploadFile,
+	getManySupabaseRows,
+	createSupabaseRow,
+	deleteSupabaseRows,
+	updateIssue,
+	commentOnIssue,
+	updateDocument,
+	searchFiles,
+	deleteFile,
+	createFolder,
+	getSupabaseRows,
+	updateSupabaseRows,
 ];
 
 /** Every trigger this package ships, one n8n node type each. */
 export const triggers: readonly Trigger[] = [pageAdded, repositoryEvent];
+
+/**
+ * Triggers that a built-in n8n node runs. They have no bundle and no node type of this package:
+ * the typed flow emits the built-in node with the typed parameters.
+ */
+export const nativeTriggers: readonly Trigger[] = [
+	webhookTrigger,
+	scheduleTrigger,
+	formTrigger,
+	whatsAppEvent,
+	facebookEvent,
+];
 
 /** The n8n node type of an action or a trigger, e.g. `@n8n/nodes-base-next.notionDatabasePageGetAll`. */
 export const nodeTypeOf = (action: Pick<Action, 'id'>) =>

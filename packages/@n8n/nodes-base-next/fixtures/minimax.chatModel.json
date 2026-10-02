@@ -1,0 +1,46 @@
+{
+	"executions": [
+		{
+			"name": "one reply",
+			"params": {
+				"model": "MiniMax-M2"
+			},
+			"calls": [
+				{
+					"method": "chat",
+					"args": [
+						{
+							"messages": [
+								{
+									"role": "user",
+									"content": "Hi"
+								}
+							]
+						}
+					]
+				}
+			],
+			"responses": [
+				{
+					"choices": [
+						{
+							"index": 0,
+							"message": {
+								"role": "assistant",
+								"content": "Hello"
+							},
+							"finish_reason": "stop"
+						}
+					]
+				}
+			],
+			"output": [
+				{
+					"text": "Hello",
+					"toolCalls": [],
+					"finishReason": "stop"
+				}
+			]
+		}
+	]
+}

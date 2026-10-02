@@ -1,0 +1,58 @@
+{
+	"executions": [
+		{
+			"name": "stores the fields of each item in one write",
+			"params": {
+				"table": {
+					"name": "leads"
+				}
+			},
+			"items": [
+				{
+					"email": "ada@example.com",
+					"plan": "pro"
+				},
+				{
+					"email": "bo@example.com",
+					"plan": "free",
+					"id": 9
+				}
+			],
+			"responses": [],
+			"imports": [
+				[
+					{
+						"id": 1,
+						"email": "ada@example.com",
+						"plan": "pro",
+						"createdAt": "2026-03-01T10:00:00.000Z",
+						"updatedAt": "2026-03-01T10:00:00.000Z"
+					},
+					{
+						"id": 2,
+						"email": "bo@example.com",
+						"plan": "free",
+						"createdAt": "2026-03-01T10:00:00.000Z",
+						"updatedAt": "2026-03-01T10:00:00.000Z"
+					}
+				]
+			],
+			"output": [
+				{
+					"id": 1,
+					"email": "ada@example.com",
+					"plan": "pro",
+					"createdAt": "2026-03-01T10:00:00.000Z",
+					"updatedAt": "2026-03-01T10:00:00.000Z"
+				},
+				{
+					"id": 2,
+					"email": "bo@example.com",
+					"plan": "free",
+					"createdAt": "2026-03-01T10:00:00.000Z",
+					"updatedAt": "2026-03-01T10:00:00.000Z"
+				}
+			]
+		}
+	]
+}

@@ -1,0 +1,55 @@
+{
+	"executions": [
+		{
+			"name": "markdown content",
+			"params": {
+				"title": "Acme guide",
+				"folderId": "1FolderAbCdEfGhIjKlMnOpQrStUvWx",
+				"content": {
+					"format": "markdown",
+					"markdown": "# Guide\n\n- **Q1** first\n- Q2"
+				}
+			},
+			"responses": [
+				{
+					"kind": "drive#file",
+					"id": "1NewDocAbCdEfGhIjKlMnOpQrStUvWxYz",
+					"name": "Acme guide",
+					"mimeType": "application/vnd.google-apps.document"
+				},
+				{
+					"documentId": "1NewDocAbCdEfGhIjKlMnOpQrStUvWxYz",
+					"replies": []
+				}
+			],
+			"output": [
+				{
+					"documentId": "1NewDocAbCdEfGhIjKlMnOpQrStUvWxYz",
+					"title": "Acme guide",
+					"url": "https://docs.google.com/document/d/1NewDocAbCdEfGhIjKlMnOpQrStUvWxYz/edit"
+				}
+			]
+		},
+		{
+			"name": "no content",
+			"params": {
+				"title": "Empty"
+			},
+			"responses": [
+				{
+					"kind": "drive#file",
+					"id": "1EmptyDocAbCdEfGhIjKlMnOpQrStUvWxY",
+					"name": "Empty",
+					"mimeType": "application/vnd.google-apps.document"
+				}
+			],
+			"output": [
+				{
+					"documentId": "1EmptyDocAbCdEfGhIjKlMnOpQrStUvWxY",
+					"title": "Empty",
+					"url": "https://docs.google.com/document/d/1EmptyDocAbCdEfGhIjKlMnOpQrStUvWxY/edit"
+				}
+			]
+		}
+	]
+}

@@ -1,0 +1,47 @@
+{
+	"executions": [
+		{
+			"name": "gives the inserted row when none matches",
+			"params": {
+				"table": {
+					"name": "leads"
+				},
+				"where": {
+					"match": "all",
+					"conditions": [
+						{
+							"op": "eq",
+							"column": "email",
+							"value": "new@example.com"
+						}
+					]
+				},
+				"values": {
+					"email": "new@example.com",
+					"plan": "free"
+				}
+			},
+			"responses": [],
+			"imports": [
+				[
+					{
+						"id": 4,
+						"email": "new@example.com",
+						"plan": "free",
+						"createdAt": "2026-03-01T10:00:00.000Z",
+						"updatedAt": "2026-03-01T10:00:00.000Z"
+					}
+				]
+			],
+			"output": [
+				{
+					"id": 4,
+					"email": "new@example.com",
+					"plan": "free",
+					"createdAt": "2026-03-01T10:00:00.000Z",
+					"updatedAt": "2026-03-01T10:00:00.000Z"
+				}
+			]
+		}
+	]
+}

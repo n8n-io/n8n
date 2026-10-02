@@ -1,0 +1,40 @@
+{
+	"executions": [
+		{
+			"name": "upgrade",
+			"params": {
+				"table": "customers",
+				"filter": {
+					"match": "all",
+					"conditions": [
+						{
+							"op": "eq",
+							"column": "id",
+							"value": 3
+						}
+					]
+				},
+				"columns": {
+					"plan": "pro"
+				}
+			},
+			"responses": [
+				[
+					{
+						"id": 3,
+						"plan": "pro"
+					}
+				]
+			],
+			"output": [
+				{
+					"id": 3,
+					"plan": "pro"
+				}
+			],
+			"credential": {
+				"host": "https://acme.supabase.co"
+			}
+		}
+	]
+}

@@ -1,17 +1,23 @@
 /**
- * The legacy nodes that flow regions compile to, and their parameters. Build and decompile both
- * use these builders, so a saved region reads back only when its parameters match exactly.
+ * The nodes that flow regions compile to, and their parameters: node contracts where one
+ * exists, else legacy nodes. Build and decompile both use these builders, so a saved region
+ * reads back only when its parameters match exactly.
  */
 
+/** No node contract keeps state across runs yet, so `forEach` stays on Loop Over Items. */
 export const LOOP_NODE = { type: 'n8n-nodes-base.splitInBatches', version: 3 };
-export const SWITCH_NODE = { type: 'n8n-nodes-base.switch', version: 3.2 };
-export const FILTER_NODE = { type: 'n8n-nodes-base.filter', version: 2.2 };
-export const MERGE_NODE = { type: 'n8n-nodes-base.merge', version: 3.2 };
-export const WAIT_NODE = { type: 'n8n-nodes-base.wait', version: 1.1 };
-export const STOP_NODE = { type: 'n8n-nodes-base.stopAndError', version: 1 };
-export const SPLIT_OUT_NODE = { type: 'n8n-nodes-base.splitOut', version: 1 };
-/** Loop state needs a raw JSON output, which the Edit Fields contract of `set` does not have. */
-export const LOOP_STATE_NODE = { type: 'n8n-nodes-base.set', version: 3.4 };
+export const SWITCH_NODE = { type: '@n8n/nodes-base-next.coreSwitch', version: 1 };
+export const FILTER_NODE = { type: '@n8n/nodes-base-next.coreFilter', version: 1 };
+export const WAIT_NODE = { type: '@n8n/nodes-base-next.waitInterval', version: 1 };
+export const STOP_NODE = { type: '@n8n/nodes-base-next.stopAndErrorStop', version: 1 };
+export const SPLIT_OUT_NODE = { type: '@n8n/nodes-base-next.coreSplitOut', version: 1 };
+/** The item of a loop pass is a whole object, which the Edit Fields contract cannot emit. */
+export const LOOP_STATE_NODE = { type: '@n8n/nodes-base-next.loopStateSet', version: 1 };
+
+/** The `where` of a core routing contract that holds when the compiled JavaScript is true. */
+export const trueWhere = (js: string) => ({
+	conditions: [{ type: 'boolean', left: `={{ ${js} }}`, test: { op: 'true' } }],
+});
 
 /** Loop Over Items output slots (v3). */
 export const LOOP_DONE = 0;
@@ -47,38 +53,33 @@ const passOf = (head: string) =>
 
 /** The head keeps the state and sets the pass: 0 on entry, the carried count on a return. */
 export const loopHeadParameters = (head: string, back: string) => ({
-	mode: 'raw',
-	jsonOutput: `={{ ({ ...$json, ${JSON.stringify(passKey(head))}: $prevNode.name === ${JSON.stringify(back)} ? $json[${JSON.stringify(passKey(head))}] : 0 }) }}`,
-	includeOtherFields: false,
-	options: {},
+	state: `={{ ({ ...$json, ${JSON.stringify(passKey(head))}: $prevNode.name === ${JSON.stringify(back)} ? $json[${JSON.stringify(passKey(head))}] : 0 }) }}`,
 });
 
-/** Switch outputs of a loop check. */
+/** Switch outputs of a loop check: the cases `done` and `limit`, then the fallback. */
 export const CHECK_DONE = 0;
 export const CHECK_LIMIT = 1;
 export const CHECK_AGAIN = 2;
 
-export const loopCheckSuffix = (head: string, maxIterations: number) =>
-	` ? ${CHECK_DONE} : ${passOf(head)} + 1 >= ${maxIterations} ? ${CHECK_LIMIT} : ${CHECK_AGAIN} }}`;
+export const loopLimitTest = (head: string, maxIterations: number) =>
+	`${passOf(head)} + 1 >= ${maxIterations}`;
 
 export const loopCheckParameters = (head: string, until: string, maxIterations: number) => ({
-	mode: 'expression',
-	numberOutputs: 3,
-	output: `={{ (${until})${loopCheckSuffix(head, maxIterations)}`,
+	cases: [
+		{ output: 'done', where: trueWhere(until) },
+		{ output: 'limit', where: trueWhere(loopLimitTest(head, maxIterations)) },
+	],
 });
 
 export const loopNextSuffix = (head: string) =>
 	`), ${JSON.stringify(passKey(head))}: ${passOf(head)} + 1 }) }}`;
 
 export const loopNextParameters = (head: string, next: string) => ({
-	mode: 'raw',
-	jsonOutput: `={{ ({ ...(${next}${loopNextSuffix(head)}`,
-	includeOtherFields: false,
-	options: {},
+	state: `={{ ({ ...(${next}${loopNextSuffix(head)}`,
 });
 
 export const loopLimitParameters = (head: string, maxIterations: number) => ({
-	errorMessage: `${head} stopped after ${maxIterations} passes without meeting its exit condition`,
+	message: `${head} stopped after ${maxIterations} passes without meeting its exit condition`,
 });
 
 /** `pollUntil` runs its attempt again on the same state. */
@@ -94,51 +95,33 @@ export interface Interval {
 	readonly unit: WaitUnit;
 }
 
-export const waitParameters = ({ amount, unit }: Interval) => ({
-	resume: 'timeInterval',
-	amount,
-	unit,
-});
+export const waitParameters = ({ amount, unit }: Interval) => ({ amount, unit });
 
 // ── switch, filter, merge ───────────────────────────────────────────────────
 
-/** The legacy Filter parameters of `filter` for the compiled JavaScript of its condition. */
-export const filterParameters = (condition: string) => ({
-	conditions: {
-		options: { caseSensitive: true, leftValue: '', typeValidation: 'strict', version: 2 },
+/** The Filter contract parameters of `filter` for the compiled JavaScript of its condition. */
+export const filterParameters = (condition: string) => ({ where: trueWhere(condition) });
+
+const equalsCase = (field: string, value: string) => ({
+	output: value,
+	where: {
 		conditions: [
 			{
-				id: 'condition-0',
-				leftValue: `={{ ${condition} }}`,
-				rightValue: '',
-				operator: { type: 'boolean', operation: 'true', singleValue: true },
+				type: 'string',
+				left: `={{ $json[${JSON.stringify(field)}] }}`,
+				test: { op: 'equals', right: value },
 			},
 		],
-		combinator: 'and',
 	},
-	options: {},
 });
 
-const equalsRule = (field: string, value: string, index: number) => ({
-	conditions: {
-		options: { caseSensitive: true, leftValue: '', typeValidation: 'strict', version: 2 },
-		conditions: [
-			{
-				id: `case-${index}`,
-				leftValue: `={{ $json[${JSON.stringify(field)}] }}`,
-				rightValue: value,
-				operator: { type: 'string', operation: 'equals' },
-			},
-		],
-		combinator: 'and',
-	},
-	renameOutput: true,
-	outputKey: value,
-});
+/** The Switch contract names its last output `fallback`, so a case cannot have that name. */
+export const FALLBACK_OUTPUT = 'fallback';
 
 /**
- * How `switch` routes items to cases: the node, and the output of each case. Today this is a
- * legacy Switch node. A node contract with named outputs can replace it here only.
+ * How `switch` routes items to cases: the Switch contract, and the output of each case. The
+ * contract always has a fallback output. Without a default, nothing connects to it, and the
+ * items that match no case stop there, as with a legacy Switch without a fallback.
  */
 export interface CaseRouter {
 	readonly type: string;
@@ -147,7 +130,7 @@ export interface CaseRouter {
 	readonly outputs: number;
 	/** The output of each case, in the order of the keys. */
 	readonly caseOutputs: readonly number[];
-	/** The output of the default, or `undefined` when the router has none. */
+	/** The output of the default, or `undefined` when the region has none. */
 	readonly defaultOutput: number | undefined;
 }
 
@@ -158,12 +141,8 @@ export function caseRouter(
 ): CaseRouter {
 	return {
 		...SWITCH_NODE,
-		parameters: {
-			mode: 'rules',
-			rules: { values: keys.map((key, index) => equalsRule(field, key, index)) },
-			options: hasDefault ? { fallbackOutput: 'extra', renameFallbackOutput: 'default' } : {},
-		},
-		outputs: keys.length + (hasDefault ? 1 : 0),
+		parameters: { cases: keys.map((key) => equalsCase(field, key)) },
+		outputs: keys.length + 1,
 		caseOutputs: keys.map((_key, index) => index),
 		defaultOutput: hasDefault ? keys.length : undefined,
 	};
@@ -171,18 +150,17 @@ export function caseRouter(
 
 export type MergeJoin = 'append' | 'position' | { readonly left: string; readonly right: string };
 
+/** `merge` builds the Merge node contracts, whose inputs are named left and right. */
+export const MERGE_APPEND_NODE = { type: '@n8n/nodes-base-next.mergeAppend', version: 1 };
+export const MERGE_COMBINE_NODE = { type: '@n8n/nodes-base-next.mergeCombine', version: 1 };
+
+export const mergeNodeOf = (join: MergeJoin) =>
+	join === 'append' ? MERGE_APPEND_NODE : MERGE_COMBINE_NODE;
+
 export function mergeParameters(join: MergeJoin) {
-	if (join === 'append') return { mode: 'append' };
-	if (join === 'position') return { mode: 'combine', combineBy: 'combineByPosition', options: {} };
-	return {
-		mode: 'combine',
-		combineBy: 'combineByFields',
-		advanced: true,
-		mergeByFields: { values: [{ field1: join.left, field2: join.right }] },
-		joinMode: 'keepMatches',
-		outputDataFrom: 'both',
-		options: {},
-	};
+	if (join === 'append') return {};
+	if (join === 'position') return { by: { by: 'position' } };
+	return { by: { by: 'fields', left: join.left, right: join.right, join: 'inner' } };
 }
 
-export const splitOutParameters = (field: string) => ({ fieldToSplitOut: field, options: {} });
+export const splitOutParameters = (field: string) => ({ field });

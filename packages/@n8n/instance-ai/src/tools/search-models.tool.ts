@@ -1,12 +1,10 @@
 import { Tool } from '@n8n/agents';
 
-import { ModelCatalogService } from './models/model-catalog.service';
+import { modelCatalog } from './models/model-catalog.service';
 import { searchModelsInputSchema, searchModelsOutputSchema } from './models/schemas';
 import { DOMAIN_TOOL_IDS } from './tool-ids';
 
-const catalogService = new ModelCatalogService();
-
-export function createSearchModelsTool(service = catalogService) {
+export function createSearchModelsTool(service = modelCatalog) {
 	return new Tool(DOMAIN_TOOL_IDS.SEARCH_MODELS)
 		.description(
 			'Search models.dev for recent text-generation models when selecting a new model without a relevant credential or a suitable named builder-hint recommendation. ' +

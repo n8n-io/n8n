@@ -1,0 +1,20 @@
+{
+	"executions": [
+		{
+			"name": "deletes the table",
+			"params": {
+				"table": {
+					"id": "t1"
+				}
+			},
+			"responses": [],
+			"imports": [true],
+			"output": [
+				{
+					"id": "t1",
+					"deleted": true
+				}
+			]
+		}
+	]
+}

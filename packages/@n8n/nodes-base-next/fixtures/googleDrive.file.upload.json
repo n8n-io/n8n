@@ -1,0 +1,43 @@
+{
+	"executions": [
+		{
+			"name": "to My Drive",
+			"params": {
+				"file": "data",
+				"name": "ai_media.jpg"
+			},
+			"binary": {
+				"data": {
+					"data": "/9j/4AAQSkZJRgABAQ==",
+					"mimeType": "image/jpeg",
+					"fileName": "image.jpg"
+				}
+			},
+			"responses": [
+				{
+					"body": "",
+					"headers": {
+						"location": "https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable&upload_id=abc"
+					},
+					"statusCode": 200
+				},
+				{
+					"kind": "drive#file",
+					"id": "1UploadedAbCdEfGhIjKlMnOpQrStUvWx",
+					"name": "ai_media.jpg",
+					"mimeType": "image/jpeg",
+					"webViewLink": "https://drive.google.com/file/d/1UploadedAbCdEfGhIjKlMnOpQrStUvWx/view"
+				}
+			],
+			"output": [
+				{
+					"kind": "drive#file",
+					"id": "1UploadedAbCdEfGhIjKlMnOpQrStUvWx",
+					"name": "ai_media.jpg",
+					"mimeType": "image/jpeg",
+					"webViewLink": "https://drive.google.com/file/d/1UploadedAbCdEfGhIjKlMnOpQrStUvWx/view"
+				}
+			]
+		}
+	]
+}

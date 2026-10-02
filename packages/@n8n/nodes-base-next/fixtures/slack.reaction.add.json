@@ -1,0 +1,22 @@
+{
+	"executions": [
+		{
+			"name": "reaction",
+			"params": {
+				"channel": "C0OPS",
+				"ts": "1700000000.000100",
+				"name": "white_check_mark"
+			},
+			"responses": [
+				{
+					"ok": true
+				}
+			],
+			"output": [
+				{
+					"ok": true
+				}
+			]
+		}
+	]
+}

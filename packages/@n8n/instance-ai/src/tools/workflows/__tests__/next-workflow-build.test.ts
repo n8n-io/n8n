@@ -1,15 +1,20 @@
 import { versionsOf } from '@n8n/nodes-base-next';
-import type { WorkflowJSON } from '@n8n/workflow-sdk';
+import type { IDataObject, WorkflowJSON } from '@n8n/workflow-sdk';
 
 import type { InstanceAiContext } from '../../../types';
 import {
 	contractEgressWarnings,
 	fetchResourceFields,
+	catalogProvidersOf,
+	legacyNodeIssues,
 	lockNodeContracts,
+	modelCatalogFile,
 	nextWorkspaceFiles,
 	nodeOutputsDeclaration,
+	staticInputIssues,
 	synthesizedFixtures,
 	usedNodeIds,
+	workflowExpressions,
 } from '../next-workflow-build';
 
 const source = `import { workflow, manual } from '@n8n/workflow-sdk/next';
@@ -26,6 +31,7 @@ describe('next workflow build', () => {
 		expect(result.ok && [...result.files.keys()]).toEqual([
 			'tsconfig.next.json',
 			'.n8n/node-outputs.d.ts',
+			'.n8n/expressions.json',
 			'.n8n/nodes/notion.ts',
 			'.n8n/nodes/httpRequest.ts',
 		]);
@@ -34,10 +40,24 @@ describe('next workflow build', () => {
 		);
 	});
 
+	it('types the model fields of the imported modules by the model catalog', async () => {
+		const ai = `import { ai } from '@n8n/nodes/ai';
+import { openAi } from '@n8n/nodes/openAi';
+import { googleGemini } from '@n8n/nodes/googleGemini';`;
+		expect(catalogProvidersOf(ai)).toEqual(['openai', 'google']);
+		expect(catalogProvidersOf(source)).toEqual([]);
+		const file = await modelCatalogFile(ai, async (provider) =>
+			provider === 'openai' ? ['gpt-5', 'gpt-5-mini'] : undefined,
+		);
+		expect(file).toContain('openai: "gpt-5" | "gpt-5-mini";');
+		expect(file).not.toContain('google');
+		expect(await modelCatalogFile(source, async () => ['x'])).toBe('export {};\n');
+	});
+
 	it('names the typed modules when a source imports an unknown one', () => {
-		expect(nextWorkspaceFiles("import { slack } from '@n8n/nodes/slack';")).toEqual({
+		expect(nextWorkspaceFiles("import { mattermost } from '@n8n/nodes/mattermost';")).toEqual({
 			ok: false,
-			errors: [expect.stringContaining('No typed node module "@n8n/nodes/slack"')],
+			errors: [expect.stringContaining('No typed node module "@n8n/nodes/mattermost"')],
 		});
 	});
 
@@ -76,6 +96,167 @@ describe('next workflow build', () => {
 		});
 		expect(synthesizedFixtures(workflow, { 'Done tasks': [{ id: 'mine' }] })).toEqual({
 			'Done tasks': [{ id: 'mine' }],
+		});
+	});
+
+	const node = (name: string, type: string, parameters: IDataObject) => ({
+		id: name,
+		name,
+		type,
+		typeVersion: 1,
+		position: [0, 0] as [number, number],
+		parameters,
+	});
+
+	it('lists the expressions and the Code node JavaScript of a built workflow', () => {
+		const workflow: WorkflowJSON = {
+			name: 'Lists',
+			connections: {},
+			nodes: [
+				node('Get', '@n8n/nodes-base-next.gmailMessageGet', { messageId: '={{ $json.id }}' }),
+				node('Set', '@n8n/nodes-base-next.coreSet', {
+					fields: { quoted: '={{ "={{ $json.id }}" }}', plain: 'text' },
+				}),
+				node('Code', 'n8n-nodes-base.code', { jsCode: 'return $input.all();' }),
+				node('Python', 'n8n-nodes-base.code', { language: 'python', pythonCode: 'return []' }),
+			],
+		};
+		expect(JSON.parse(workflowExpressions(workflow))).toEqual({
+			expressions: ['={{ $json.id }}', '={{ "={{ $json.id }}" }}'],
+			code: ['return $input.all();'],
+		});
+		expect(workflowExpressions({ ...workflow, nodes: [] })).toBe('{"expressions":[],"code":[]}\n');
+	});
+
+	it('notes a node() that a typed step replaces, and names the step or the module', async () => {
+		const source = `export default workflow('Legacy', manual()
+	.andThen(node({ name: 'Mail', type: 'n8n-nodes-base.gmail', version: 2.1, parameters: {} }))
+	.andThen(node({ name: 'Labels', type: 'n8n-nodes-base.gmail', version: 2.1 }))
+	.andThen(node({ name: 'Keep', type: 'n8n-nodes-base.filter', version: 2.2 }))
+	.andThen(node({ name: 'Fetch', type: 'n8n-nodes-base.httpRequest', version: 4.2 }))
+	.andThen(node({ name: 'Ping', type: 'n8n-nodes-base.mattermost', version: 2.3 }))
+	.filter({ name: 'Region filter', if: (item) => item.ok }));`;
+		const workflow: WorkflowJSON = {
+			name: 'Legacy',
+			connections: {},
+			nodes: [
+				node('Mail', 'n8n-nodes-base.gmail', { resource: 'message', operation: 'getAll' }),
+				node('Labels', 'n8n-nodes-base.gmail', { resource: 'label', operation: 'getAll' }),
+				node('Keep', 'n8n-nodes-base.filter', {}),
+				node('Fetch', 'n8n-nodes-base.httpRequest', { method: 'GET' }),
+				node('Ping', 'n8n-nodes-base.mattermost', {}),
+				node('Region filter', 'n8n-nodes-base.filter', {}),
+			],
+		};
+		expect(await legacyNodeIssues(source, workflow)).toEqual([
+			{
+				code: 'CONTRACT_NODE_AVAILABLE',
+				nodeName: 'Mail',
+				severity: 'informational',
+				message:
+					'"Mail" is a legacy n8n-nodes-base.gmail node. Use the typed step gmail.message.getAll (import { gmail } from \'@n8n/nodes/gmail\') instead of node({ type }), unless the step lacks an option that this node needs.',
+			},
+			expect.objectContaining({
+				nodeName: 'Keep',
+				severity: 'informational',
+				message: expect.stringContaining('Use the typed step core.filter'),
+			}),
+			expect.objectContaining({
+				nodeName: 'Fetch',
+				severity: 'informational',
+				message: expect.stringContaining(
+					'has httpRequest.get, httpRequest.send, httpRequest.download',
+				),
+			}),
+		]);
+	});
+
+	describe('staticInputIssues', () => {
+		it('fails fixed values that the action rejects at run time, by node and field', () => {
+			const workflow: WorkflowJSON = {
+				name: 'Static',
+				connections: {},
+				nodes: [
+					node('Pages', '@n8n/nodes-base-next.notionDatabasePageGetAll', {
+						database: 'not-an-id',
+						limit: 0,
+					}),
+					node('Mail', '@n8n/nodes-base-next.gmailMessageGetAll', {
+						paging: { mode: 'limit', max: 900 },
+					}),
+					node('Mail text', '@n8n/nodes-base-next.gmailMessageGetAll', {
+						paging: ' {"mode":"limit","max":900}',
+					}),
+				],
+			};
+			expect(staticInputIssues(workflow)).toEqual([
+				expect.stringMatching(
+					/^Node "Pages": input\.database: "not-an-id" is not Notion database ID/,
+				),
+				'Node "Pages": input.limit: must be at least 1',
+				'Node "Mail": input.paging.max: must be at most 500',
+				'Node "Mail text": input.paging.max: must be at most 500',
+			]);
+		});
+
+		it('catches the R3 literal probes and reads a composed slot without its slot keys', () => {
+			const workflow: WorkflowJSON = {
+				name: 'Probes',
+				connections: {},
+				nodes: [
+					node('B3', '@n8n/nodes-base-next.notionDatabasePageGetAll', {
+						database: '<Notion tasks database ID>',
+					}),
+					node('B6 fraction', '@n8n/nodes-base-next.gmailMessageGetAll', {
+						paging: { mode: 'limit', max: 2.5 },
+					}),
+					node('B6 zero', '@n8n/nodes-base-next.gmailMessageGetAll', {
+						paging: { mode: 'limit', max: 0 },
+					}),
+					node('B8', '@n8n/nodes-base-next.googleSheetsSheetRead', {
+						spreadsheet: '1abcdefghijklmnopqrstuvwxyz0123',
+						sheet: { mode: 'id', id: 'Sheet1' },
+					}),
+					{
+						...node('Composed', 'n8n-nodes-base.notion', {
+							resource: 'databasePage',
+							operation: 'getAll',
+							database: '<Notion tasks database ID>',
+						}),
+						typeVersion: 4,
+					},
+				],
+			};
+			expect(staticInputIssues(workflow)).toEqual([
+				expect.stringMatching(
+					/^Node "B3": input\.database: "<Notion tasks database ID>" is not Notion database ID/,
+				),
+				'Node "B6 fraction": input.paging.max: must be integer, got 2.5',
+				'Node "B6 zero": input.paging.max: must be at least 1',
+				expect.stringMatching(/^Node "B8": input\.sheet\.id: "Sheet1" is not A numeric sheet gid/),
+				expect.stringMatching(
+					/^Node "Composed": input\.database: "<Notion tasks database ID>" is not Notion database ID/,
+				),
+			]);
+		});
+
+		it('leaves expressions, placeholders, missing fields, and other nodes to the run', () => {
+			const workflow: WorkflowJSON = {
+				name: 'Later',
+				connections: {},
+				nodes: [
+					node('Pages', '@n8n/nodes-base-next.notionDatabasePageGetAll', {
+						database: '={{ $json.db }}',
+						limit: '={{ $json.limit }}',
+					}),
+					node('User', '@n8n/nodes-base-next.notionUserGet', {
+						user: '<__PLACEHOLDER_VALUE__Notion user ID__>',
+					}),
+					node('Mail', '@n8n/nodes-base-next.gmailMessageGet', {}),
+					node('Other', 'n8n-nodes-base.noOp', { database: 'not-an-id' }),
+				],
+			};
+			expect(staticInputIssues(workflow)).toEqual([]);
 		});
 	});
 

@@ -4,7 +4,7 @@ import {
 	type InstanceAiCredentialSetupHint,
 	type InstanceAiPermissions,
 } from '@n8n/api-types';
-import { generateWorkflowCode } from '@n8n/workflow-sdk';
+import { generateWorkflowCode, type IDataObject } from '@n8n/workflow-sdk';
 import type { Mock } from 'vitest';
 
 import { executeTool } from '../../__tests__/tool-test-utils';
@@ -240,6 +240,49 @@ describe('workflows tool', () => {
 				nodes: [],
 				code: '// generated code',
 			});
+		});
+
+		it('decompiles a raw expression into a typed step only where the field takes a string', async () => {
+			const contract = (name: string, type: string, parameters: IDataObject) => ({
+				id: name,
+				name,
+				type: `@n8n/nodes-base-next.${type}`,
+				typeVersion: 1,
+				position: [0, 0] as [number, number],
+				parameters,
+			});
+			const context = createMockContext({ nodeContractsEnabled: true });
+			vi.mocked(context.workflowService.getAsWorkflowJSON).mockResolvedValue({
+				name: 'Mail',
+				nodes: [
+					{
+						id: 'Start',
+						name: 'Start',
+						type: 'n8n-nodes-base.manualTrigger',
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {},
+					},
+					contract('Get', 'gmailMessageGet', { messageId: '={{ $input.first().json.id }}' }),
+					contract('List', 'gmailMessageGetAll', {
+						paging: { mode: '={{ $input.first().json.mode }}', max: 5 },
+					}),
+				],
+				connections: {
+					Start: { main: [[{ node: 'Get', type: 'main', index: 0 }]] },
+					Get: { main: [[{ node: 'List', type: 'main', index: 0 }]] },
+				},
+			});
+
+			const result = await executeTool<{ code: string }>(
+				createWorkflowsTool(context),
+				{ action: 'get-as-code', workflowId: 'w1' } as never,
+				{} as never,
+			);
+
+			expect(result.code).toContain('gmail.message.get(');
+			expect(result.code).toContain('messageId: "={{ $input.first().json.id }}"');
+			expect(result.code).toContain('type: "@n8n/nodes-base-next.gmailMessageGetAll"');
 		});
 
 		it('should support a filtered safe action surface', () => {

@@ -1,0 +1,58 @@
+// The globals of each scope by name, for a check that declares them as locals. A separate entry
+// point: importing it does not load the global declarations of the package.
+
+/** The globals of an `ItemScope`. */
+export const itemScopeGlobals = [
+	'$now',
+	'$today',
+	'DateTime',
+	'Duration',
+	'Interval',
+	'$vars',
+	'$env',
+	'$secrets',
+	'$execution',
+	'$evaluation',
+	'$mode',
+	'$workflow',
+	'$jmespath',
+	'$jmesPath',
+	'$evaluateExpression',
+	'$json',
+	'$data',
+	'$binary',
+	'$input',
+	'$thisItem',
+	'$',
+	'$node',
+	'$items',
+	'$item',
+	'$parameter',
+	'$rawParameter',
+	'$itemIndex',
+	'$runIndex',
+	'$position',
+	'$thisItemIndex',
+	'$thisRunIndex',
+	'$prevNode',
+	'$nodeVersion',
+	'$nodeId',
+	'$webhookId',
+	'$executionId',
+	'$resumeWebhookUrl',
+	'$tool',
+	'$agentInfo',
+	'$getPairedItem',
+	'$fromAI',
+	'$fromAi',
+	'$fromai',
+] as const;
+
+/** The globals of a `CodeScope`. */
+export const codeScopeGlobals = [
+	...itemScopeGlobals,
+	'items',
+	'item',
+	'$getWorkflowStaticData',
+	'helpers',
+] as const;

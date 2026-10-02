@@ -15,21 +15,28 @@ import { detectSlackBlocksShape } from './detect-slack-blocks-shape';
 import { detectUnparseableOpenAiSchema } from './detect-unparseable-openai-schema';
 import { detectWrongKindLocatorValues } from './detect-wrong-kind-locator';
 import { collectValidationIssues, type ValidationWarning } from './workflow-validation-warnings';
+import { modelCatalog } from '../models/model-catalog.service';
 import { traceSandboxOperation, sandboxFileBytes } from '../../tracing/sandbox-tracing';
 import type { InstanceAiContext } from '../../types';
 import { escapeSingleQuotes, runInSandbox } from '../../workspace/sandbox-fs';
-import { writeWorkspaceFile, writeWorkspaceFileMap } from '../../workspace/workspace-files';
+import { writeWorkspaceFileMap } from '../../workspace/workspace-files';
 import { joinWorkspacePath } from '../../workspace/workspace-paths';
 import {
+	EMPTY_EXPRESSIONS,
 	EMPTY_OUTPUTS,
+	EXPRESSIONS_PATH,
 	fetchResourceFields,
 	lockNodeContracts,
 	NEXT_TSCONFIG_FILENAME,
+	MODEL_CATALOG_PATH,
+	modelCatalogFile,
 	NODE_OUTPUTS_PATH,
 	nextWorkspaceFiles,
 	nodeOutputsDeclaration,
+	staticInputIssues,
 	synthesizedFixtures,
 	typecheckWorkflowSource,
+	workflowExpressions,
 } from './next-workflow-build';
 
 export type WorkflowSourceCompiler = 'workflow-json' | 'sandbox-tsx';
@@ -445,7 +452,15 @@ async function compileNextWorkflowSource(
 		};
 	}
 	const fileOptions = { logger: context.logger, resourceLabel: 'Typed node module', abortSignal };
-	await writeWorkspaceFileMap(workspace, prepared.files, fileOptions);
+	const catalog = await modelCatalogFile(
+		source,
+		async (provider) => await modelCatalog.modelIds(provider, abortSignal),
+	);
+	await writeWorkspaceFileMap(
+		workspace,
+		new Map([...prepared.files, [MODEL_CATALOG_PATH, catalog]]),
+		fileOptions,
+	);
 	const built = await compileTypeScriptWorkflowSource(
 		context,
 		filePath,
@@ -455,20 +470,26 @@ async function compileNextWorkflowSource(
 	const resourceFields = built.success
 		? await fetchResourceFields(context, built.workflow)
 		: undefined;
-	const outputs = built.success
-		? nodeOutputsDeclaration(built.workflow, resourceFields)
-		: EMPTY_OUTPUTS;
-	// Empty outputs are in place from before the build. Only other outputs need a write.
-	if (outputs !== EMPTY_OUTPUTS) {
-		await writeWorkspaceFile(workspace, NODE_OUTPUTS_PATH, outputs, fileOptions);
-	}
+	const revealed = built.success
+		? new Map([
+				[NODE_OUTPUTS_PATH, nodeOutputsDeclaration(built.workflow, resourceFields)],
+				[EXPRESSIONS_PATH, workflowExpressions(built.workflow)],
+			])
+		: new Map<string, string>();
+	// Empty files are in place from before the build. Only other contents need a write.
+	const changed = new Map(
+		[...revealed].filter(([, text]) => text !== EMPTY_OUTPUTS && text !== EMPTY_EXPRESSIONS),
+	);
+	if (changed.size > 0) await writeWorkspaceFileMap(workspace, changed, fileOptions);
 	const typeErrors = await typecheckWorkflowSource(context, filePath, abortSignal);
-	if (typeErrors && typeErrors.length > 0) {
+	const inputIssues = built.success ? staticInputIssues(built.workflow) : [];
+	const errors = [...(typeErrors ?? []), ...inputIssues];
+	if (errors.length > 0) {
 		return {
 			success: false,
 			reason: 'workflow_source_type_errors',
 			editable: true,
-			errors: built.success ? typeErrors : [...new Set([...built.errors, ...typeErrors])],
+			errors: built.success ? errors : [...new Set([...built.errors, ...errors])],
 			summary: 'Workflow source has type errors.',
 		};
 	}

@@ -1,0 +1,48 @@
+{
+	"executions": [
+		{
+			"name": "two pages",
+			"params": {
+				"nameContains": "report",
+				"paging": {
+					"mode": "all"
+				}
+			},
+			"responses": [
+				{
+					"files": [
+						{
+							"id": "1FileAbCdEfGhIjKlMnOpQrStUvWxYz0",
+							"name": "report.pdf",
+							"mimeType": "application/pdf",
+							"webViewLink": "https://drive.google.com/file/d/1FileAbCdEfGhIjKlMnOpQrStUvWxYz0/view"
+						}
+					],
+					"nextPageToken": "p2"
+				},
+				{
+					"files": [
+						{
+							"id": "1FolderAbCdEfGhIjKlMnOpQrStUvWx",
+							"name": "Reports",
+							"mimeType": "application/vnd.google-apps.folder"
+						}
+					]
+				}
+			],
+			"output": [
+				{
+					"id": "1FileAbCdEfGhIjKlMnOpQrStUvWxYz0",
+					"name": "report.pdf",
+					"mimeType": "application/pdf",
+					"webViewLink": "https://drive.google.com/file/d/1FileAbCdEfGhIjKlMnOpQrStUvWxYz0/view"
+				},
+				{
+					"id": "1FolderAbCdEfGhIjKlMnOpQrStUvWx",
+					"name": "Reports",
+					"mimeType": "application/vnd.google-apps.folder"
+				}
+			]
+		}
+	]
+}

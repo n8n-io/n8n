@@ -38,8 +38,31 @@ export interface JsonSchema {
 	'x-n8n-value-types'?: Record<string, JsonSchema>;
 	/** A file in the n8n binary data store. `run()` gets and gives a `Binary` handle. */
 	'x-n8n-binary'?: true;
+	/** A capability a sub-node supplies through an `ai_*` connection, e.g. `chatModel`. */
+	'x-n8n-supply'?: string;
+	/** A model ID of this provider in the model catalog (models.dev), e.g. `openai`. */
+	'x-n8n-model-catalog'?: string;
+	/** A trigger output field whose JSON Schema the workflow declares, e.g. a webhook body. */
+	'x-n8n-declared'?: true;
+	/** On a trigger output: one more field per entry of an input list, e.g. per form field. */
+	'x-n8n-entry-fields'?: EntryFields;
 	/** Sample values; the first one seeds verification fixtures. */
 	examples?: readonly unknown[];
+}
+
+/** Output fields that the entries of an input list name, e.g. one field per form field. */
+export interface EntryFields {
+	/** The path of the list in the input, e.g. `['formFields', 'values']`. */
+	readonly list: readonly string[];
+	/** The entry fields that name the output field. The first one that is set wins. */
+	readonly key: readonly string[];
+	/** The entry field whose value picks the type of the output field. */
+	readonly type: string;
+	readonly types: Readonly<Record<string, JsonSchema>>;
+	/** The type for any other entry type. */
+	readonly fallback: JsonSchema;
+	/** The boolean entry field that makes the value never `null`. */
+	readonly required?: string;
 }
 
 declare const phantom: unique symbol;
@@ -152,6 +175,16 @@ export const passedItem = () =>
 /** Any JSON object; its fields are not checked. */
 export const json = () =>
 	new Schema<Record<string, unknown>>({ type: 'object', additionalProperties: true }, false);
+
+/**
+ * A trigger output field whose shape the workflow declares, e.g. the body a webhook receives.
+ * The typed flow takes its JSON Schema in `schema`. Without one, it is any JSON object.
+ */
+export const declared = () =>
+	new Schema<Record<string, unknown>>(
+		{ type: 'object', additionalProperties: true, 'x-n8n-declared': true },
+		false,
+	);
 
 type VariantOf<Tag extends string, B extends Record<string, Shape>> = {
 	[K in keyof B & string]: Simplify<{ [P in Tag]: K } & ObjectOf<B[K]>>;

@@ -135,10 +135,11 @@ export const MOCK_QUIRKS: MockQuirk[] = [
 			'  * `POST /api/files.upload` (legacy single-step) → `{ ok: true, file: { id, name, mimetype, url_private, ... } }` — singular `file` object.\n' +
 			'  * `GET /api/files.info` → `{ ok: true, file: { ... } }` (singular).\n' +
 			'  * `GET /api/files.list` → `{ ok: true, files: [ ... ] }` (plural array).\n' +
-			'  * `POST /api/chat.postMessage` → `{ ok: true, channel, ts, message: { ... } }`.\n\n' +
+			'  * `POST /api/chat.postMessage` → ALWAYS `{ ok: true, channel: "<channel ID>", ts, message: { type: "message", ts, text } }`, also when the scenario quotes a shorter body such as `{ ok: true, ts }`. Use the values the scenario gives (for example `ts`) and fill in the other fields.\n' +
+			'  * `POST /api/chat.update` → ALWAYS `{ ok: true, channel, ts, text, message: { type: "message", ts, text } }`.\n\n' +
 			'When the request multipart/PUT body contains a file part (`__redacted: "multipart"` or `__redacted: "buffer"`), still return the JSON envelope appropriate for the endpoint — the upload "succeeds" from the API perspective regardless of what bytes were sent. Use the same `file_id` (or `files[0].id`) across the three-step upload chain so downstream nodes can correlate.',
 		rationale:
-			'Slack file API is JSON-everywhere even when uploading bytes. Two failure modes happen in practice: (a) the LLM picks `binary` for `files.upload` because of the path + multipart body, breaking JSON consumers; (b) the LLM uses singular `file` for `files.completeUploadExternal` instead of the plural `files[]` array, which the v2.4 node then drops to an empty object, losing the file ID downstream.',
+			'Slack file API is JSON-everywhere even when uploading bytes. Two failure modes happen in practice: (a) the LLM picks `binary` for `files.upload` because of the path + multipart body, breaking JSON consumers; (b) the LLM uses singular `file` for `files.completeUploadExternal` instead of the plural `files[]` array, which the v2.4 node then drops to an empty object, losing the file ID downstream. Real Slack always returns `channel` and `message` from chat.postMessage, and the contract Slack node validates them, so a scenario that quotes only `{ ok, ts }` must not shorten the mock body.',
 		addedAt: '2026-05-19',
 	},
 	{

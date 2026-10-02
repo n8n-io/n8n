@@ -100,12 +100,47 @@ describe('bundled versions', () => {
 				contracts.map((contract) => [contract.id, actionApiVersionOf(toContract(contract))]),
 			),
 		);
-		// Only the actions with binary data need the newest minor.
-		expect(
+		// Only the actions with host imports, named inputs or sub-node capabilities need the newest
+		// minor, and only the actions with binary data need 2.2.0.
+		const withVersion = (apiVersion: string) =>
 			Object.keys(apiVersions)
-				.filter((id) => apiVersions[id] === ACTION_API_VERSION)
-				.sort(),
-		).toEqual(['gmail.message.send', 'httpRequest.download', 'httpRequest.send']);
+				.filter((id) => apiVersions[id] === apiVersion)
+				.sort();
+		expect(withVersion(ACTION_API_VERSION)).toEqual([
+			'ai.agent',
+			'ai.classify',
+			'ai.prompt',
+			'anthropic.chatModel',
+			'code.javaScript',
+			'code.python',
+			'dataTable.row.delete',
+			'dataTable.row.exists',
+			'dataTable.row.get',
+			'dataTable.row.insert',
+			'dataTable.row.update',
+			'dataTable.row.upsert',
+			'dataTable.table.clear',
+			'dataTable.table.create',
+			'dataTable.table.delete',
+			'dataTable.table.list',
+			'dataTable.table.rename',
+			'googleGemini.chatModel',
+			'merge.append',
+			'merge.combine',
+			'minimax.chatModel',
+			'openAi.chatModel',
+			'wait.interval',
+			'wait.until',
+			'xAi.chatModel',
+		]);
+		expect(withVersion('n8n:action@2.2.0')).toEqual([
+			'gmail.message.send',
+			'googleDrive.file.upload',
+			'httpRequest.download',
+			'httpRequest.send',
+			'openAi.image.generate',
+			'slack.file.upload',
+		]);
 	});
 
 	it('replay the fixtures of the HEAD through the current executor', async () => {

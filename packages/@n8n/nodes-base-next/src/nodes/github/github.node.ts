@@ -26,3 +26,15 @@ export const repository = github.resource('repository', {
 		repository: str().hint('Repository name, without the owner'),
 	},
 });
+
+// The names go into the request path, so a name of only dots must not pass.
+export const issueResource = github.resource('issue', {
+	input: {
+		owner: str()
+			.with({ pattern: '^[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?$' })
+			.hint('User or organization name, e.g. acme'),
+		repository: str()
+			.with({ pattern: '^(?!\\.{1,2}$)[A-Za-z0-9._-]+$' })
+			.hint('Repository name without the owner, e.g. widgets'),
+	},
+});

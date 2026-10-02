@@ -1,0 +1,46 @@
+{
+	"executions": [
+		{
+			"name": "gives the changed rows",
+			"params": {
+				"table": {
+					"name": "leads"
+				},
+				"where": {
+					"match": "any",
+					"conditions": [
+						{
+							"op": "eq",
+							"column": "email",
+							"value": "ada@example.com"
+						}
+					]
+				},
+				"values": {
+					"plan": "team"
+				}
+			},
+			"responses": [],
+			"imports": [
+				[
+					{
+						"id": 1,
+						"email": "ada@example.com",
+						"plan": "team",
+						"createdAt": "2026-03-01T10:00:00.000Z",
+						"updatedAt": "2026-03-01T10:00:00.000Z"
+					}
+				]
+			],
+			"output": [
+				{
+					"id": 1,
+					"email": "ada@example.com",
+					"plan": "team",
+					"createdAt": "2026-03-01T10:00:00.000Z",
+					"updatedAt": "2026-03-01T10:00:00.000Z"
+				}
+			]
+		}
+	]
+}

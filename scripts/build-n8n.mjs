@@ -331,7 +331,13 @@ try {
 	// The AI builder packs the sandbox-linked packages (SANDBOX_LINKED_WORKSPACE_PACKAGES in
 	// instance-ai) into its sandbox and type-checks workflow code against them, so their
 	// declarations must stay.
-	const sandboxTypedPackages = ['@n8n/errors', '@n8n/utils', 'n8n-workflow', '@n8n/workflow-sdk'];
+	const sandboxTypedPackages = [
+		'@n8n/errors',
+		'@n8n/utils',
+		'n8n-workflow',
+		'@n8n/workflow-sdk',
+		'@n8n/expression-types',
+	];
 	const keepSandboxTypes = sandboxTypedPackages.flatMap((name) => [
 		'-not',
 		'-path',
@@ -426,6 +432,7 @@ try {
 		'*/@n8n/instance-ai/knowledge-base/*',
 		'*/dist/node-definitions/*',
 		'*/node_modules/@n8n/workflow-sdk/dist/next/index.d.ts',
+		'*/node_modules/@n8n/expression-types/dist/index.d.ts',
 		// source-map-support reads these for our own stack traces.
 		`${workspacePackageGlob}/dist/*.js.map`,
 		// The only agent-browser binary the Alpine image can run.

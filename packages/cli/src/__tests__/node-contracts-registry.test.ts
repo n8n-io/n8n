@@ -1,6 +1,6 @@
 import { OutboundHttp } from '@n8n/backend-network';
 import { mockInstance } from '@n8n/backend-test-utils';
-import { GlobalConfig } from '@n8n/config';
+import { GlobalConfig, NodesConfig } from '@n8n/config';
 import { WorkflowRepository, type WorkflowEntity } from '@n8n/db';
 import type { ContractRegistryOptions, ContractStoreOptions } from '@n8n/nodes-base-next';
 import { mock } from 'vitest-mock-extended';
@@ -10,8 +10,10 @@ import type { IExecuteFunctions } from 'n8n-workflow';
 import { useNodeContractsRegistry } from '../node-contracts-registry';
 
 const registered: ContractRegistryOptions[] = [];
+const languages: string[][] = [];
 vi.mock('@n8n/nodes-base-next', () => ({
 	useContractRegistry: (options: ContractRegistryOptions) => registered.push(options),
+	setCodeLanguages: (allowed: string[]) => languages.push(allowed),
 	contractStore: (options: ContractStoreOptions) => options,
 }));
 
@@ -25,6 +27,7 @@ describe('useNodeContractsRegistry', () => {
 		},
 	} as unknown as GlobalConfig);
 	mockInstance(InstanceSettings, { n8nFolder: '/n8n' });
+	mockInstance(NodesConfig, { pythonEnabled: false });
 	mockInstance(OutboundHttp).transport.mockReturnValue(
 		mock<ReturnType<OutboundHttp['transport']>>(),
 	);
@@ -56,5 +59,7 @@ describe('useNodeContractsRegistry', () => {
 		expect(await options?.metaOf(contextOf('2'))).toBe(meta);
 		expect(workflowRepository.findByIds).toHaveBeenCalledTimes(2);
 		expect(workflowRepository.findByIds).toHaveBeenCalledWith(['wf'], { fields: ['meta'] });
+		// N8N_PYTHON_ENABLED=false turns Python off for the Code contracts too.
+		expect(languages).toEqual([['javascript']]);
 	});
 });

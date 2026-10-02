@@ -10,6 +10,7 @@ import {
 import * as next from '../index';
 import {
 	contractStep,
+	contractSubnode,
 	manual,
 	node,
 	set,
@@ -17,6 +18,7 @@ import {
 	workflow,
 	type Dollar,
 	type Step,
+	type Subnode,
 } from '../index';
 
 interface Page {
@@ -73,7 +75,95 @@ const httpRequest = {
 	}): Step<In, Ctx, { ok: boolean }, N> => contractStep(SEND_TYPE, config),
 };
 
+const AGENT_TYPE = '@n8n/nodes-base-next.aiAgent';
+const MODEL_TYPE = '@n8n/nodes-base-next.openAiChatModel';
+
+const ai = {
+	agent: <In, Ctx, const N extends string>(config: {
+		name: N;
+		model: Subnode<NoInfer<In>, NoInfer<Ctx>, 'chatModel'>;
+		prompt: string | ((item: In) => string);
+	}): Step<In, Ctx, { text: string }, N> => contractStep(AGENT_TYPE, config),
+};
+
+const openAi = {
+	chatModel: <In, Ctx>(config: { name: string; model: string }): Subnode<In, Ctx, 'chatModel'> =>
+		contractSubnode(MODEL_TYPE, 'chatModel', config),
+};
+
+const WEBHOOK_TYPE = 'n8n-nodes-base.webhook';
+const RESPOND_TYPE = 'n8n-nodes-base.respondToWebhook';
+const pairing = {
+	trigger: WEBHOOK_TYPE,
+	reply: RESPOND_TYPE,
+	field: 'responseMode',
+	value: 'responseNode',
+};
+
+// A stand-in for `@n8n/nodes/webhook`: native contracts emit the built-in nodes.
+const webhook = {
+	trigger: <const N extends string>(config: {
+		name: N;
+		httpMethod?: 'GET' | 'POST';
+		path: string;
+		responseMode?: 'onReceived' | 'responseNode';
+	}): next.Flow<{ body: { id: string } }, Record<N, { body: { id: string } }>> =>
+		next.contractTrigger(WEBHOOK_TYPE, config, 2.2, undefined, { pairing }),
+	respond: <In, Ctx, const N extends string>(config: {
+		name: N;
+		respondWith: 'json' | 'text';
+		responseBody?: unknown;
+	}): Step<In, Ctx, In, N> =>
+		contractStep(RESPOND_TYPE, config, 1.5, undefined, undefined, pairing),
+};
+
 const factories = new Map<string, ContractFactory>([
+	[
+		AGENT_TYPE,
+		{
+			module: 'ai',
+			from: '@n8n/nodes/ai',
+			path: 'agent',
+			version: 1,
+			inputKeys: ['model', 'tools', 'memory', 'prompt', 'system'],
+			expressionKeys: ['prompt', 'system'],
+		},
+	],
+	[
+		MODEL_TYPE,
+		{
+			module: 'openAi',
+			from: '@n8n/nodes/openAi',
+			path: 'chatModel',
+			version: 1,
+			inputKeys: ['model', 'temperature'],
+			expressionKeys: ['model', 'temperature'],
+		},
+	],
+	[
+		WEBHOOK_TYPE,
+		{
+			module: 'webhook',
+			from: '@n8n/nodes/webhook',
+			path: 'trigger',
+			version: 2.2,
+			inputKeys: ['httpMethod', 'path', 'responseMode'],
+			expressionKeys: [],
+			closed: true,
+		},
+	],
+	[
+		RESPOND_TYPE,
+		{
+			module: 'webhook',
+			from: '@n8n/nodes/webhook',
+			path: 'respond',
+			version: 1.5,
+			inputKeys: ['respondWith', 'responseBody'],
+			expressionKeys: [],
+			closed: true,
+		},
+	],
 	[
 		NOTION_TYPE,
 		{
@@ -82,6 +172,7 @@ const factories = new Map<string, ContractFactory>([
 			path: 'databasePage.getAll',
 			version: 1,
 			inputKeys: ['database', 'where', 'limit', 'sort'],
+			expressionKeys: ['database', 'limit'],
 		},
 	],
 	[
@@ -92,6 +183,7 @@ const factories = new Map<string, ContractFactory>([
 			path: 'databasePage.getAll',
 			version: 4,
 			inputKeys: ['database', 'where', 'limit', 'sort'],
+			expressionKeys: ['database', 'limit'],
 		},
 	],
 	[
@@ -102,6 +194,7 @@ const factories = new Map<string, ContractFactory>([
 			path: 'send',
 			version: 1,
 			inputKeys: ['method', 'url', 'query', 'headers', 'body'],
+			expressionKeys: ['url'],
 		},
 	],
 ]);
@@ -111,6 +204,9 @@ const modules: Record<string, unknown> = {
 	'@n8n/nodes/notion': { notion },
 	'@n8n/nodes/httpRequest': { httpRequest },
 	'@n8n/nodes/composedNotion': { composedNotion },
+	'@n8n/nodes/ai': { ai },
+	'@n8n/nodes/openAi': { openAi },
+	'@n8n/nodes/webhook': { webhook },
 };
 
 /** Run decompiled source as the sandbox does, with its imports bound to the modules above. */
@@ -236,6 +332,44 @@ describe('decompileWorkflow', () => {
 		expect(source).toContain('json: (item) => ({');
 	});
 
+	it('round-trips a contract trigger and its reply step', () => {
+		const json = workflow(
+			'Echo',
+			webhook
+				.trigger({ name: 'Hook', httpMethod: 'POST', path: 'echo', responseMode: 'responseNode' })
+				.andThen(
+					webhook.respond({
+						name: 'Reply',
+						respondWith: 'json',
+						responseBody: (_item: unknown, $: Dollar<{ Hook: { body: { id: string } } }>) => ({
+							id: $('Hook').body.id,
+						}),
+					}),
+				),
+		).toJSON();
+		const { source, rebuilt, again } = roundTrip(json);
+		const withoutWebhookIds = (saved: WorkflowJSON) =>
+			withoutIds({ ...saved, nodes: saved.nodes.map(({ webhookId: _id, ...rest }) => rest) });
+
+		expect(withoutWebhookIds(rebuilt)).toEqual(withoutWebhookIds(json));
+		expect(again).toBe(source);
+		expect(source).toContain("import { webhook } from '@n8n/nodes/webhook';");
+		expect(source).toContain('webhook.trigger({');
+		expect(source).toContain('webhook.respond({');
+
+		const extra = {
+			...json,
+			nodes: json.nodes.map((n) =>
+				n.type === RESPOND_TYPE
+					? { ...n, parameters: { ...n.parameters, enableResponseOutput: true } }
+					: n,
+			),
+		};
+		const kept = roundTrip(extra);
+		expect(kept.source).not.toContain('webhook.respond({');
+		expect(withoutWebhookIds(kept.rebuilt)).toEqual(withoutWebhookIds(extra));
+	});
+
 	it('round-trips a branch, an error output, a join, and the node() escape hatch', () => {
 		const json = branchWorkflow().toJSON();
 		const { source, rebuilt, again } = roundTrip(json);
@@ -301,22 +435,45 @@ describe('decompileWorkflow', () => {
 		expect(source).not.toContain('authentication');
 	});
 
-	it('keeps a contract node with a raw expression or another version in node()', () => {
+	it('keeps an expression without a lambda form as a string in the typed contract step', () => {
 		const json = notionWorkflow().toJSON();
 		const changed = {
 			...json,
 			nodes: json.nodes.map((n) =>
 				n.type === NOTION_TYPE
 					? { ...n, parameters: { ...n.parameters, database: '={{ $input.first().json.db }}' } }
-					: n.type === SEND_TYPE
-						? { ...n, typeVersion: 2 }
-						: n,
+					: n,
 			),
 		};
 		const { source, rebuilt } = roundTrip(changed);
-		expect(source).toContain(`type: "${NOTION_TYPE}"`);
+		expect(source).toContain('notion.databasePage.getAll({');
+		expect(source).toContain('database: "={{ $input.first().json.db }}"');
+		expect(withoutIds(rebuilt)).toEqual(withoutIds(changed));
+	});
+
+	it('keeps a contract node in node() when a field that takes no expression string has one', () => {
+		const json = notionWorkflow().toJSON();
+		const changed = {
+			...json,
+			nodes: json.nodes.map((n) =>
+				n.type === SEND_TYPE
+					? { ...n, parameters: { ...n.parameters, method: '={{ $input.first().json.verb }}' } }
+					: n,
+			),
+		};
+		const { source, rebuilt } = roundTrip(changed);
 		expect(source).toContain(`type: "${SEND_TYPE}"`);
-		expect(source).not.toContain('@n8n/nodes/');
+		expect(withoutIds(rebuilt)).toEqual(withoutIds(changed));
+	});
+
+	it('keeps a contract node of another version in node()', () => {
+		const json = notionWorkflow().toJSON();
+		const changed = {
+			...json,
+			nodes: json.nodes.map((n) => (n.type === SEND_TYPE ? { ...n, typeVersion: 2 } : n)),
+		};
+		const { source, rebuilt } = roundTrip(changed);
+		expect(source).toContain(`type: "${SEND_TYPE}"`);
 		expect(withoutIds(rebuilt)).toEqual(withoutIds(changed));
 	});
 
@@ -407,6 +564,34 @@ describe('decompileWorkflow', () => {
 		expect(source).toContain('text: (item) => item.question,');
 	});
 
+	it('round-trips a contract AI node with its contract sub-node in the slot field', () => {
+		const json = workflow(
+			'Answer',
+			manual().andThen(
+				ai.agent({
+					name: 'Agent',
+					model: openAi.chatModel({ name: 'Model', model: 'gpt-5-mini' }),
+					prompt: 'Hi',
+				}),
+			),
+		).toJSON();
+		const { source, rebuilt, again } = roundTrip(json);
+
+		expect(withoutIds(rebuilt)).toEqual(withoutIds(json));
+		expect(again).toBe(source);
+		expect(source).toContain("import { workflow, manual } from '@n8n/workflow-sdk/next';");
+		expect(source).toContain("import { openAi } from '@n8n/nodes/openAi';");
+		expect(source).toContain('model: openAi.chatModel({');
+
+		const legacyModel = {
+			...json,
+			nodes: json.nodes.map((n) =>
+				n.name === 'Model' ? { ...n, type: '@n8n/n8n-nodes-langchain.lmChatOpenAi' } : n,
+			),
+		};
+		expect(decompileWorkflow(legacyModel, factories)).toBeUndefined();
+	});
+
 	it('gives undefined for sub-node wiring the typed format cannot express', () => {
 		const model = (name: string) =>
 			subnode({ name, type: '@n8n/n8n-nodes-langchain.lmChatOpenAi', version: 1.2 });
@@ -491,5 +676,15 @@ describe('locateNextNodes', () => {
 		expect(lines[(located.find(({ name }) => name === 'Has owner?')?.line ?? 0) - 1]).toContain(
 			'.branch({',
 		);
+	});
+
+	it('names the type of a node() call only', () => {
+		const located = locateNextNodes(`manual()
+	.andThen(node({ name: 'Mail', type: 'n8n-nodes-base.gmail', version: 2.1 }))
+	.andThen(set({ name: 'Fields', fields: {} }));`);
+		expect(located).toEqual([
+			{ name: 'Mail', line: 2, type: 'n8n-nodes-base.gmail' },
+			{ name: 'Fields', line: 3 },
+		]);
 	});
 });

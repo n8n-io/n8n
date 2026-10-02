@@ -2,16 +2,20 @@
  * Discovery over the typed node modules of `@n8n/nodes-base-next`. The agent imports a
  * module as `@n8n/nodes/<nodeId>`, and `tsc` checks the workflow against the same text.
  */
+import { isRecord } from '@n8n/utils/is-record';
 import {
 	generateNodeModule,
+	SUPPLY_CONNECTIONS,
+	suppliedKindOf,
+	generatedTriggersOf,
 	toContract,
 	type Action,
 	type GeneratedAction,
-	type Trigger,
 } from '@n8n/node-sdk';
 import {
 	actions,
 	composedTargetOf,
+	nativeTriggers,
 	NODE_PACKAGE,
 	nodeTypeOf,
 	triggers,
@@ -25,12 +29,17 @@ export interface NextNodeModule {
 	readonly module: string;
 }
 
+const allTriggers = [...triggers, ...nativeTriggers];
+
 /** The ids of the typed node modules, as the agent imports them: `@n8n/nodes/<id>`. */
-export const nextNodeIds: readonly string[] = [...new Set(nextActions.map(({ node }) => node.id))];
+export const nextNodeIds: readonly string[] = [
+	...new Set([...nextActions, ...allTriggers].map(({ node }) => node.id)),
+];
 
 const actionsOfNode = (nodeId: string) => nextActions.filter((action) => action.node.id === nodeId);
 
-const triggersOfNode = (nodeId: string) => triggers.filter((trigger) => trigger.node.id === nodeId);
+const triggersOfNode = (nodeId: string) =>
+	allTriggers.filter((trigger) => trigger.node.id === nodeId);
 
 /** An action that owns a slot of a composed node emits that node, e.g. Notion v4. */
 function generatedActionOf(action: Action): GeneratedAction {
@@ -42,18 +51,18 @@ function generatedActionOf(action: Action): GeneratedAction {
 	return { contract, nodeType, resource, operation, slot };
 }
 
-const generatedTriggerOf = (trigger: Trigger): GeneratedAction => ({
-	contract: toContract(trigger),
-	nodeType: nodeTypeOf(trigger),
-	resource: trigger.resource,
-	operation: trigger.operation,
-});
+/** The trigger factories of all modules, with the reply steps of native triggers. */
+export const nextTriggerFactories: readonly GeneratedAction[] = allTriggers.flatMap((trigger) =>
+	generatedTriggersOf(trigger, nodeTypeOf(trigger)),
+);
 
 /** A module has the given actions and every trigger of the node: a workflow starts at one. */
 const moduleOf = (nodeId: string, own: readonly Action[]) =>
 	generateNodeModule(nodeId, [
 		...own.map(generatedActionOf),
-		...triggersOfNode(nodeId).map(generatedTriggerOf),
+		...triggersOfNode(nodeId).flatMap((trigger) =>
+			generatedTriggersOf(trigger, nodeTypeOf(trigger)),
+		),
 	]);
 
 /** The generated TypeScript module for every action and trigger of one node. */
@@ -62,10 +71,23 @@ export function nodeModuleText(nodeId: string): string | undefined {
 	return own.length || triggersOfNode(nodeId).length ? moduleOf(nodeId, own) : undefined;
 }
 
-/** The node id for a node id, an action id, or an executable node type of this package. */
+/** The built-in node types that a native trigger and its reply step emit. */
+const nativeTypesOf = (trigger: (typeof allTriggers)[number]) =>
+	trigger.kind === 'native'
+		? [trigger.native.type, ...(trigger.reply ? [trigger.reply.native.type] : [])]
+		: [];
+
+/**
+ * The node id for a node id, an action id, an executable node type of this package, or a
+ * built-in node type that a native trigger types.
+ */
 function nextNodeIdOf(ref: string): string | undefined {
-	return [...nextActions, ...triggers].find(
-		(contract) => contract.node.id === ref || contract.id === ref || nodeTypeOf(contract) === ref,
+	return [...nextActions, ...allTriggers].find(
+		(contract) =>
+			contract.node.id === ref ||
+			contract.id === ref ||
+			nodeTypeOf(contract) === ref ||
+			('kind' in contract && nativeTypesOf(contract).includes(ref)),
 	)?.node.id;
 }
 
@@ -113,8 +135,50 @@ export function nextNodeView(
  */
 export function nextNodeIdOfNodeType(nodeType: string): string | undefined {
 	if (nodeType.startsWith(`${NODE_PACKAGE}.`)) return nextNodeIdOf(nodeType);
+	const replacing = nextActions.find(({ node }) => node.replaces?.includes(nodeType));
+	if (replacing) return replacing.node.id;
 	const [, nodeId] = /^n8n-nodes-base\.(\w+)$/.exec(nodeType) ?? [];
 	return nodeId !== undefined && actionsOfNode(nodeId).length ? nodeId : undefined;
+}
+
+/** The contract actions that can do the job of a legacy node. */
+export interface ContractReplacement {
+	readonly nodeId: string;
+	readonly actions: readonly Action[];
+	/** The actions run the same resource and operation, so the node has one replacement. */
+	readonly exact: boolean;
+}
+
+/** The factory of an action in its module, e.g. `databasePage.getAll` of `notion`. */
+export const factoryPathOf = (action: Pick<Action, 'resource' | 'operation'>) =>
+	[action.resource, action.operation].filter(Boolean).join('.');
+
+const LEGACY_TYPE = /^(?:n8n-nodes-base|@n8n\/n8n-nodes-langchain)\.(\w+)$/;
+
+/**
+ * The contract actions that replace a legacy node. The legacy node of a service shares the node
+ * id (`n8n-nodes-base.gmail` and `gmail`), a core node shares the action name (`n8n-nodes-base.set`
+ * and `core.set`), and the resource and operation must match where the actions have them.
+ */
+export function contractReplacementOf(node: {
+	readonly type: string;
+	readonly parameters?: unknown;
+}): ContractReplacement | undefined {
+	const [, name] = LEGACY_TYPE.exec(node.type) ?? [];
+	if (name === undefined) return undefined;
+	const core = nextActions.find((action) => action.node.id === 'core' && action.operation === name);
+	if (core) return { nodeId: 'core', actions: [core], exact: true };
+	const own = actionsOfNode(name);
+	if (own.length === 0) return undefined;
+	const { resource, operation } = isRecord(node.parameters) ? node.parameters : {};
+	const slotted = own.filter((action) => action.resource !== undefined);
+	if (slotted.length === 0 || typeof resource !== 'string' || typeof operation !== 'string') {
+		return { nodeId: name, actions: own, exact: false };
+	}
+	const same = slotted.filter(
+		(action) => action.resource === resource && action.operation === operation,
+	);
+	return same.length > 0 ? { nodeId: name, actions: same, exact: true } : undefined;
 }
 
 export const actionRow = (action: Action) => `${action.id}: ${action.summary}`;
@@ -128,12 +192,22 @@ const words = (text: string) =>
 		.split(/[^a-z\d]+/)
 		.filter(Boolean);
 
-/** Short query words ("a", "to") match too much prose, so they only match whole words. */
+/** `long` is a form of `short`: a short ending ("sheet", "sheets") or "-ing" ("send", "sending"). */
+const isWordForm = (long: string, short: string) =>
+	long.startsWith(short) &&
+	(long.length - short.length <= 2 ||
+		(short.length >= 4 && long.length - short.length === 3 && long.endsWith('ing')));
+
+/**
+ * Short query words ("a", "to") match too much prose, so they only match whole words. A longer
+ * word matches its word forms, not another word: "database" does not name "data", and "append"
+ * does not name WhatsApp by "app".
+ */
 const hits = (term: string, vocabulary: readonly string[]) =>
 	vocabulary.some(
 		(word) =>
 			word === term ||
-			(term.length >= 3 && word.length >= 3 && (word.startsWith(term) || term.startsWith(word))),
+			(term.length >= 3 && word.length >= 3 && (isWordForm(word, term) || isWordForm(term, word))),
 	);
 
 const nodeWords = (action: Action) => words(`${action.node.id} ${action.node.displayName}`);
@@ -147,7 +221,11 @@ const scoreOf = (action: Action, terms: readonly string[]) =>
 		0,
 	);
 
-const termsOf = (query: string) => words(query).filter((term) => term.length >= 2);
+/** Words that join other words name no node, e.g. the "and" of "Stop and Error". */
+const JOINING_WORDS = new Set(['and', 'or', 'the', 'for', 'with', 'from', 'into', 'then']);
+
+const termsOf = (query: string) =>
+	words(query).filter((term) => term.length >= 2 && !JOINING_WORDS.has(term));
 
 /**
  * The actions of a node that the query names beyond the node name, e.g. `send` in
@@ -219,6 +297,23 @@ export function searchNextActions(query: string, coveredNodes: readonly string[]
 			),
 	};
 }
+
+/** The sub-node actions of `nodeIds` that a root node takes on `connectionType`, e.g. `ai_languageModel`. */
+export function supplierActionsOf(nodeIds: readonly string[], connectionType: string): Action[] {
+	return [...new Set(nodeIds)].flatMap((nodeId) =>
+		actionsOfNode(nodeId).filter((action) => {
+			const kind = suppliedKindOf(action.output.json);
+			return kind !== undefined && SUPPLY_CONNECTIONS[kind] === connectionType;
+		}),
+	);
+}
+
+/** The query names every word of the display name, e.g. "AI agent" names `AI Agent`. */
+export const namesDisplayName = (query: string, displayName: string) => {
+	const terms = termsOf(query);
+	const own = words(displayName);
+	return own.length > 0 && own.every((word) => hits(word, terms));
+};
 
 const MAX_CATALOG_ROWS = 3;
 

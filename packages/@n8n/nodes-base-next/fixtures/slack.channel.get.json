@@ -1,0 +1,51 @@
+{
+	"executions": [
+		{
+			"name": "channel",
+			"params": {
+				"channel": "C0GENERAL1"
+			},
+			"responses": [
+				{
+					"ok": true,
+					"channel": {
+						"id": "C0GENERAL1",
+						"name": "general",
+						"is_channel": true,
+						"is_private": false,
+						"is_archived": false,
+						"is_member": true,
+						"created": 1700000000,
+						"creator": "U01",
+						"topic": {
+							"value": "Company news"
+						},
+						"purpose": {
+							"value": "Everyone"
+						},
+						"num_members": 42
+					}
+				}
+			],
+			"output": [
+				{
+					"id": "C0GENERAL1",
+					"name": "general",
+					"is_channel": true,
+					"is_private": false,
+					"is_archived": false,
+					"is_member": true,
+					"created": 1700000000,
+					"creator": "U01",
+					"topic": {
+						"value": "Company news"
+					},
+					"purpose": {
+						"value": "Everyone"
+					},
+					"num_members": 42
+				}
+			]
+		}
+	]
+}

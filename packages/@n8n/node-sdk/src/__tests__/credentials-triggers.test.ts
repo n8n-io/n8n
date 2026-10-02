@@ -11,6 +11,7 @@ import {
 	generateNodeModule,
 	int,
 	obj,
+	parse,
 	str,
 	toContract,
 	toTriggerNodeType,
@@ -249,6 +250,7 @@ const hooked = task.trigger('commented', {
 				path: `/projects/${input.project}/hooks/${id}`,
 			}),
 		},
+		emit: ({ body }) => [parse(taskEvent, body, 'body')],
 	},
 });
 

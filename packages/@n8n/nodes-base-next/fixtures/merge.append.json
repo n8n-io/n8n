@@ -1,0 +1,35 @@
+{
+	"executions": [
+		{
+			"name": "emits left, then right",
+			"params": {},
+			"inputs": [
+				[
+					{
+						"a": 1
+					}
+				],
+				[
+					{
+						"b": 2
+					},
+					{
+						"b": 3
+					}
+				]
+			],
+			"responses": [],
+			"output": [
+				{
+					"a": 1
+				},
+				{
+					"b": 2
+				},
+				{
+					"b": 3
+				}
+			]
+		}
+	]
+}

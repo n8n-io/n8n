@@ -1,0 +1,136 @@
+{
+	"executions": [
+		{
+			"name": "one reply",
+			"params": {
+				"model": "gpt-5-mini",
+				"temperature": 0.2
+			},
+			"calls": [
+				{
+					"method": "chat",
+					"args": [
+						{
+							"messages": [
+								{
+									"role": "system",
+									"content": "Be short"
+								},
+								{
+									"role": "user",
+									"content": "Hi"
+								}
+							]
+						}
+					]
+				}
+			],
+			"responses": [
+				{
+					"id": "chatcmpl-1",
+					"object": "chat.completion",
+					"choices": [
+						{
+							"index": 0,
+							"message": {
+								"role": "assistant",
+								"content": "Hello!"
+							},
+							"finish_reason": "stop"
+						}
+					],
+					"usage": {
+						"prompt_tokens": 9,
+						"completion_tokens": 2,
+						"total_tokens": 11
+					}
+				}
+			],
+			"output": [
+				{
+					"text": "Hello!",
+					"toolCalls": [],
+					"finishReason": "stop",
+					"usage": {
+						"inputTokens": 9,
+						"outputTokens": 2
+					}
+				}
+			]
+		},
+		{
+			"name": "a tool call",
+			"params": {
+				"model": "gpt-5-mini"
+			},
+			"calls": [
+				{
+					"method": "chat",
+					"args": [
+						{
+							"messages": [
+								{
+									"role": "user",
+									"content": "Order 7?"
+								}
+							],
+							"tools": [
+								{
+									"name": "order",
+									"description": "Get an order",
+									"input": {
+										"type": "object",
+										"properties": {
+											"id": {
+												"type": "number"
+											}
+										}
+									}
+								}
+							]
+						}
+					]
+				}
+			],
+			"responses": [
+				{
+					"choices": [
+						{
+							"index": 0,
+							"message": {
+								"role": "assistant",
+								"content": null,
+								"tool_calls": [
+									{
+										"id": "call_1",
+										"type": "function",
+										"function": {
+											"name": "order",
+											"arguments": "{\"id\":7}"
+										}
+									}
+								]
+							},
+							"finish_reason": "tool_calls"
+						}
+					]
+				}
+			],
+			"output": [
+				{
+					"text": "",
+					"toolCalls": [
+						{
+							"id": "call_1",
+							"name": "order",
+							"args": {
+								"id": 7
+							}
+						}
+					],
+					"finishReason": "tool_calls"
+				}
+			]
+		}
+	]
+}

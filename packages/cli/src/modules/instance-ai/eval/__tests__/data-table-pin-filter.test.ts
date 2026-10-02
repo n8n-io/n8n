@@ -1,6 +1,7 @@
 import type { IDataObject, INode, INodeExecutionData } from 'n8n-workflow';
 
-import { applyDataTableReadParameters } from '../data-table-pin-filter';
+import { applyDataTableReadParameters, dataTableReadView } from '../data-table-pin-filter';
+import { emitsDataTableRows, isDataTableRead } from '../workflow-analysis';
 
 function readNode(parameters: Record<string, unknown>): INode {
 	return {
@@ -200,5 +201,47 @@ describe('applyDataTableReadParameters', () => {
 			applyDataTableReadParameters(readNode({ returnAll: '={{ $json.all }}', limit: 1 }), seeded)
 				.items,
 		).toEqual(seeded);
+	});
+});
+
+describe('dataTableReadView', () => {
+	const contractNode = (parameters: Record<string, unknown>): INode => ({
+		id: 'node-2',
+		name: 'Get Rows',
+		type: '@n8n/nodes-base-next.dataTableRowGet',
+		typeVersion: 1,
+		position: [0, 0],
+		parameters: parameters as INode['parameters'],
+	});
+
+	it('reads the Get rows contract as a Data Table get, from values or editor text', () => {
+		const where = { match: 'all', conditions: [{ op: 'gt', column: 'employees', value: 20 }] };
+		const fromFlow = contractNode({ table: { name: 'Companies' }, where, limit: 1 });
+		const fromEditor = contractNode({
+			table: '{"id":"t1"}',
+			where: JSON.stringify(where),
+			sort: '{"column":"employees","direction":"desc"}',
+		});
+
+		expect(isDataTableRead(fromFlow)).toBe(true);
+		expect(emitsDataTableRows(fromFlow)).toBe(true);
+		expect(dataTableReadView(fromFlow).parameters).toMatchObject({
+			dataTableId: { __rl: true, mode: 'name', value: 'Companies' },
+			matchType: 'allConditions',
+			returnAll: false,
+			limit: 1,
+		});
+		expect(
+			applyDataTableReadParameters(fromFlow, seeded).items.map((item) => item.json.country),
+		).toEqual(['FR']);
+		expect(
+			applyDataTableReadParameters(fromEditor, seeded).items.map((item) => item.json.country),
+		).toEqual(['US', 'FR']);
+	});
+
+	it('leaves the row check and other nodes as they are', () => {
+		const exists = { ...contractNode({}), type: '@n8n/nodes-base-next.dataTableRowExists' };
+		expect(dataTableReadView(exists)).toBe(exists);
+		expect(isDataTableRead(exists)).toBe(false);
 	});
 });

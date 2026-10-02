@@ -1,0 +1,83 @@
+{
+	"executions": [
+		{
+			"name": "joins equal ids and keeps the rest in an outer join",
+			"params": {
+				"by": {
+					"by": "fields",
+					"left": "id",
+					"right": "id",
+					"join": "outer"
+				}
+			},
+			"inputs": [
+				[
+					{
+						"id": 1,
+						"name": "Ada"
+					},
+					{
+						"id": 3,
+						"name": "Cy"
+					}
+				],
+				[
+					{
+						"id": 1,
+						"plan": "pro"
+					},
+					{
+						"id": 2,
+						"plan": "free"
+					}
+				]
+			],
+			"responses": [],
+			"output": [
+				{
+					"id": 1,
+					"name": "Ada",
+					"plan": "pro"
+				},
+				{
+					"id": 3,
+					"name": "Cy"
+				},
+				{
+					"id": 2,
+					"plan": "free"
+				}
+			]
+		},
+		{
+			"name": "pairs items by position",
+			"params": {
+				"by": {
+					"by": "position"
+				}
+			},
+			"inputs": [
+				[
+					{
+						"a": 1
+					},
+					{
+						"a": 2
+					}
+				],
+				[
+					{
+						"b": 1
+					}
+				]
+			],
+			"responses": [],
+			"output": [
+				{
+					"a": 1,
+					"b": 1
+				}
+			]
+		}
+	]
+}

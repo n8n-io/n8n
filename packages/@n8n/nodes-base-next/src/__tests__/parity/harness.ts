@@ -40,7 +40,9 @@ import type {
 	INodeType,
 	INodeTypes,
 	IVersionedNodeType,
+	NodeConnectionType,
 	IWorkflowExecuteAdditionalData,
+	DataTableProxyProvider,
 	NodeParameterValue,
 	Workflow,
 } from 'n8n-workflow';
@@ -110,6 +112,8 @@ export interface ParityRun {
 	/** The items of the first output as the node gave them. */
 	readonly output: INodeExecutionData[];
 	readonly error?: string;
+	/** When the node put the execution to wait: the time it resumes, in ms. Not compared. */
+	readonly waitTill?: number;
 }
 
 export interface NodeUnderTest {
@@ -119,6 +123,14 @@ export interface NodeUnderTest {
 	readonly typeVersion: number;
 	readonly parameters: INodeParameters;
 	readonly credential?: string;
+	/** Sub-nodes on the `ai_*` inputs of the node, e.g. a chat model. */
+	readonly subnodes?: readonly SubnodeUnderTest[];
+}
+
+/** A sub-node and the connection type it supplies through, e.g. `ai_languageModel`. */
+export interface SubnodeUnderTest extends Omit<NodeUnderTest, 'subnodes'> {
+	readonly name: string;
+	readonly connection: NodeConnectionType;
 }
 
 const parameterOf = (value: unknown): NodeParameterValue =>
@@ -162,6 +174,12 @@ export interface ParityCase {
 	readonly headers?: readonly string[];
 	/** The workflow time zone. The n8n default when omitted. */
 	readonly timezone?: string;
+	/** The items of each main input, for a node with more than one input. They replace `input`. */
+	readonly inputs?: ReadonlyArray<readonly IDataObject[]>;
+	/** The data tables of the execution. */
+	readonly dataTables?: DataTableProxyProvider;
+	/** The task runner: the answer to each task the node starts. */
+	readonly runner?: IWorkflowExecuteAdditionalData['startRunnerTask'];
 }
 
 /** Resolves `={{$credentials.x}}` in generic credentials, as the CLI credentials helper does. */
@@ -252,6 +270,7 @@ const unavailable = async () => await Promise.reject(new Error('Not available in
 function additionalDataOf(
 	credentialsHelper: ParityCredentialsHelper,
 	node: INode,
+	parityCase?: ParityCase,
 ): IWorkflowExecuteAdditionalData {
 	const now = new Date();
 	return {
@@ -270,7 +289,10 @@ function additionalDataOf(
 		executeWorkflow: unavailable,
 		getRunExecutionData: async () => undefined,
 		getRuntimeCredential: async () => undefined,
-		startRunnerTask: unavailable,
+		startRunnerTask: parityCase?.runner ?? unavailable,
+		...(parityCase?.dataTables
+			? { 'data-table': { dataTableProxyProvider: parityCase.dataTables } }
+			: {}),
 		logAiEvent: () => {},
 		currentNodeExecutionIndex: 0,
 		executionId: '1',
@@ -401,25 +423,37 @@ export async function runNode(node: NodeUnderTest, parityCase: ParityCase): Prom
 		parityCase.routes,
 		parityCase.headers ?? ['authorization', 'content-type'],
 	);
-	const workflowNode: INode = {
-		id: 'node',
-		name: 'Node',
-		type: node.type,
-		typeVersion: node.typeVersion,
+	const workflowNodeOf = (under: Omit<NodeUnderTest, 'subnodes'>, name: string): INode => ({
+		id: name,
+		name,
+		type: under.type,
+		typeVersion: under.typeVersion,
 		position: [0, 0],
-		parameters: node.parameters,
-		...(node.credential ? { credentials: { [node.credential]: { id: '1', name: 'parity' } } } : {}),
-	};
+		parameters: under.parameters,
+		...(under.credential
+			? { credentials: { [under.credential]: { id: '1', name: 'parity' } } }
+			: {}),
+	});
+	const workflowNode = workflowNodeOf(node, 'Node');
+	const subnodes = node.subnodes ?? [];
+	const typeOf = (type: string) =>
+		(type === node.type ? node : subnodes.find((subnode) => subnode.type === type))?.nodeType ??
+		node.nodeType;
 	const nodeTypes: INodeTypes = {
-		getByName: () => node.nodeType,
-		getByNameAndVersion: (_type, version) =>
-			workflowLib.NodeHelpers.getVersionedNodeType(node.nodeType, version),
+		getByName: (type) => typeOf(type),
+		getByNameAndVersion: (type, version) =>
+			workflowLib.NodeHelpers.getVersionedNodeType(typeOf(type), version),
 		getKnownTypes: () => ({}),
 	};
 	const workflow = new workflowLib.Workflow({
 		id: 'parity',
-		nodes: [workflowNode],
-		connections: {},
+		nodes: [workflowNode, ...subnodes.map((subnode) => workflowNodeOf(subnode, subnode.name))],
+		connections: Object.fromEntries(
+			subnodes.map(({ name, connection }) => [
+				name,
+				{ [connection]: [[{ node: workflowNode.name, type: connection, index: 0 }]] },
+			]),
+		),
 		active: false,
 		nodeTypes,
 		...(parityCase.timezone ? { settings: { timezone: parityCase.timezone } } : {}),
@@ -431,7 +465,7 @@ export async function runNode(node: NodeUnderTest, parityCase: ParityCase): Prom
 		parityCase.credential?.data ?? {},
 	);
 	const execution = new core.WorkflowExecute(
-		additionalDataOf(helper, workflowNode),
+		additionalDataOf(helper, workflowNode, parityCase),
 		'manual',
 		workflowLib.createRunExecutionData({
 			executionData: {
@@ -439,12 +473,12 @@ export async function runNode(node: NodeUnderTest, parityCase: ParityCase): Prom
 					{
 						node: startNode,
 						data: {
-							main: [
-								parityCase.input.map((json) => ({
+							main: (parityCase.inputs ?? [parityCase.input]).map((items) =>
+								items.map((json) => ({
 									json,
 									...(parityCase.binary ? { binary: parityCase.binary } : {}),
 								})),
-							],
+							),
 						},
 						source: null,
 					},
@@ -464,6 +498,7 @@ export async function runNode(node: NodeUnderTest, parityCase: ParityCase): Prom
 		otherOutputs: others.map((output) => (output ?? []).map(normalItem)),
 		output: first ?? [],
 		...(failure ? { error: messageOf(failure) } : {}),
+		...(run.data.waitTill ? { waitTill: run.data.waitTill.getTime() } : {}),
 	};
 }
 

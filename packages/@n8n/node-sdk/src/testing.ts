@@ -9,8 +9,15 @@ import type {
 } from 'n8n-workflow';
 
 import { toCredentialType } from './credentials';
-import { isHttpError, type Action, type HttpError } from './define';
+import {
+	isHttpError,
+	type Action,
+	type CodeRunner,
+	type DataTables,
+	type HttpError,
+} from './define';
 import { AUTHENTICATION, executorOf, nodeNameOf, type ExecutorHost } from './runtime';
+import type { Supplies, SupplyKind } from './subnodes';
 
 export interface RunActionOptions {
 	readonly input: unknown;
@@ -21,6 +28,16 @@ export interface RunActionOptions {
 	readonly credentials?: readonly ICredentialType[];
 	/** Defaults to the global `fetch`. Pass `mockHttp(...)` in unit tests. */
 	readonly fetch?: typeof fetch;
+	/** The items of each named input, for an action with `inputs`. It replaces `items`. */
+	readonly inputs?: ReadonlyArray<readonly IDataObject[]>;
+	/** The data tables of an action that imports `dataTables`. */
+	readonly dataTables?: DataTables;
+	/** The task runner of an action that imports `code`. */
+	readonly code?: CodeRunner;
+	/** The wait of an action that imports `wait`. */
+	readonly waitUntil?: (at: Date) => Promise<void>;
+	/** What the sub-nodes supply, by kind: a capability, or a list for a list field. */
+	readonly supplies?: { readonly [K in SupplyKind]?: Supplies[K] | ReadonlyArray<Supplies[K]> };
 }
 
 export interface RunActionError {
@@ -195,9 +212,15 @@ export async function runAction(
 				? { [credential.name]: { id: null, name: credential.name } }
 				: {},
 	};
-	const items = (options.items ?? [{}]).map((json) => ({ json: { ...json } }));
+	const itemsOf = (list: readonly IDataObject[]) => list.map((json) => ({ json: { ...json } }));
+	const inputs = options.inputs?.map(itemsOf);
+	const items = inputs?.[0] ?? itemsOf(options.items ?? [{}]);
 	const host: ExecutorHost = {
 		items,
+		inputItems: (index) => inputs?.[index] ?? [],
+		dataTables: options.dataTables,
+		code: options.code,
+		waitUntil: options.waitUntil,
 		node,
 		parameter: (name) =>
 			name === AUTHENTICATION
@@ -215,6 +238,7 @@ export async function runAction(
 		},
 		credentialData: async () => await Promise.resolve(data),
 		continueOnFail: () => false,
+		supplied: async (kind) => await Promise.resolve(options.supplies?.[kind]),
 	};
 	try {
 		const outputs = (await executorOf(action)(host)).map((output) =>

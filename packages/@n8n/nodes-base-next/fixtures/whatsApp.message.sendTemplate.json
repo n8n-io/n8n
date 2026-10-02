@@ -1,0 +1,62 @@
+{
+	"executions": [
+		{
+			"name": "template with body values",
+			"params": {
+				"phoneNumberId": "106540352242922",
+				"to": "+4915112345678",
+				"template": "order_confirmation",
+				"language": "en_US",
+				"components": [
+					{
+						"type": "body",
+						"parameters": [
+							{
+								"type": "text",
+								"text": "Ada"
+							},
+							{
+								"type": "currency",
+								"code": "EUR",
+								"amount": 12.5,
+								"fallback": "€12.50"
+							}
+						]
+					}
+				]
+			},
+			"responses": [
+				{
+					"messaging_product": "whatsapp",
+					"contacts": [
+						{
+							"input": "4915112345678",
+							"wa_id": "4915112345678"
+						}
+					],
+					"messages": [
+						{
+							"id": "wamid.TEMPLATE1"
+						}
+					]
+				}
+			],
+			"output": [
+				{
+					"messaging_product": "whatsapp",
+					"contacts": [
+						{
+							"input": "4915112345678",
+							"wa_id": "4915112345678"
+						}
+					],
+					"messages": [
+						{
+							"id": "wamid.TEMPLATE1"
+						}
+					]
+				}
+			]
+		}
+	]
+}

@@ -1,0 +1,88 @@
+{
+	"executions": [
+		{
+			"name": "by id",
+			"params": {
+				"user": {
+					"by": "id",
+					"id": "U0ADA"
+				}
+			},
+			"responses": [
+				{
+					"ok": true,
+					"user": {
+						"id": "U0ADA",
+						"name": "ada",
+						"real_name": "Ada Lovelace",
+						"deleted": false,
+						"is_bot": false,
+						"tz": "Europe/London",
+						"profile": {
+							"email": "ada@example.com",
+							"display_name": "ada",
+							"real_name": "Ada Lovelace"
+						}
+					}
+				}
+			],
+			"output": [
+				{
+					"id": "U0ADA",
+					"name": "ada",
+					"real_name": "Ada Lovelace",
+					"deleted": false,
+					"is_bot": false,
+					"tz": "Europe/London",
+					"profile": {
+						"email": "ada@example.com",
+						"display_name": "ada",
+						"real_name": "Ada Lovelace"
+					}
+				}
+			]
+		},
+		{
+			"name": "by email",
+			"params": {
+				"user": {
+					"by": "email",
+					"email": "ada@example.com"
+				}
+			},
+			"responses": [
+				{
+					"ok": true,
+					"user": {
+						"id": "U0ADA",
+						"name": "ada",
+						"real_name": "Ada Lovelace",
+						"deleted": false,
+						"is_bot": false,
+						"tz": "Europe/London",
+						"profile": {
+							"email": "ada@example.com",
+							"display_name": "ada",
+							"real_name": "Ada Lovelace"
+						}
+					}
+				}
+			],
+			"output": [
+				{
+					"id": "U0ADA",
+					"name": "ada",
+					"real_name": "Ada Lovelace",
+					"deleted": false,
+					"is_bot": false,
+					"tz": "Europe/London",
+					"profile": {
+						"email": "ada@example.com",
+						"display_name": "ada",
+						"real_name": "Ada Lovelace"
+					}
+				}
+			]
+		}
+	]
+}

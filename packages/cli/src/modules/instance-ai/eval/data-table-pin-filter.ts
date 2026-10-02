@@ -4,7 +4,7 @@ import {
 	type DataTableReadCondition,
 	type DataTableReadParameters,
 } from '@n8n/workflow-sdk';
-import type { INode, INodeExecutionData } from 'n8n-workflow';
+import type { INode, INodeExecutionData, INodeParameters, NodeParameterValue } from 'n8n-workflow';
 
 type Row = INodeExecutionData['json'];
 type RowPredicate = (row: Row) => boolean;
@@ -18,10 +18,83 @@ export interface PinnedReadFilterResult {
 }
 
 // A condition the harness cannot evaluate counts as a match and lifts the limit, so no row the real node might return is dropped.
+const CONTRACT_ROW_GET = '@n8n/nodes-base-next.dataTableRowGet';
+const CONTRACT_ROW_EXISTS = '@n8n/nodes-base-next.dataTableRowExists';
+
+const isObject = (value: unknown): value is Record<string, unknown> =>
+	typeof value === 'object' && value !== null && !Array.isArray(value);
+
+/** The editor keeps a `json` parameter of a contract as text; the flow SDK saves the value. */
+const contractParameter = (value: unknown): unknown => {
+	if (typeof value !== 'string' || !/^\s*[[{]/.test(value)) return value;
+	try {
+		const parsed: unknown = JSON.parse(value);
+		return parsed;
+	} catch {
+		return value;
+	}
+};
+
+const cellOf = (value: unknown): NodeParameterValue =>
+	typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean'
+		? value
+		: null;
+
+/**
+ * The contract that checks a row routes items to `exists` or `missing`. A pin fills only the
+ * first output, so it runs live: its result is valid only on a table the scenario seeded.
+ */
+export const isContractRowCheck = (node: INode) => node.type === CONTRACT_ROW_EXISTS;
+
+/** The `{ id } | { name }` table of a data table contract, as a legacy table locator. */
+export function contractTableLocator(node: INode): INodeParameters | undefined {
+	if (node.type !== CONTRACT_ROW_GET && node.type !== CONTRACT_ROW_EXISTS) return undefined;
+	const table = contractParameter(node.parameters?.table);
+	if (!isObject(table)) return undefined;
+	return typeof table.name === 'string'
+		? { __rl: true, mode: 'name', value: table.name }
+		: { __rl: true, mode: 'id', value: typeof table.id === 'string' ? table.id : '' };
+}
+
+/**
+ * The Get rows node contract with the parameters of a Data Table `get`, so the pin and filter
+ * rules of the legacy read apply to it. Other nodes stay as they are.
+ */
+export function dataTableReadView(node: INode): INode {
+	if (node.type !== CONTRACT_ROW_GET) return node;
+	const parameter = (name: string) => contractParameter(node.parameters?.[name]);
+	const [where, sort, limit] = ['where', 'sort', 'limit'].map(parameter);
+	const locator = contractTableLocator(node);
+	const conditions = isObject(where) && Array.isArray(where.conditions) ? where.conditions : [];
+	const parameters: INodeParameters = {
+		resource: 'row',
+		operation: 'get',
+		...(locator ? { dataTableId: locator } : {}),
+		matchType: isObject(where) && where.match === 'all' ? 'allConditions' : 'anyCondition',
+		filters: {
+			conditions: conditions.filter(isObject).map(({ column, op, value }) => ({
+				keyName: typeof column === 'string' ? column : '',
+				condition: typeof op === 'string' ? op : 'eq',
+				...(value === undefined ? {} : { keyValue: cellOf(value) }),
+			})),
+		},
+		...(typeof limit === 'number' ? { returnAll: false, limit } : { returnAll: true }),
+		...(isObject(sort) && typeof sort.column === 'string'
+			? {
+					orderBy: true,
+					orderByColumn: sort.column,
+					orderByDirection: sort.direction === 'desc' ? 'DESC' : 'ASC',
+				}
+			: {}),
+	};
+	return { ...node, type: 'n8n-nodes-base.dataTable', parameters };
+}
+
 export function applyDataTableReadParameters(
-	node: INode,
+	contractOrLegacy: INode,
 	items: INodeExecutionData[],
 ): PinnedReadFilterResult {
+	const node = dataTableReadView(contractOrLegacy);
 	const read = readDataTableReadParameters(node);
 	if (!read) {
 		return {

@@ -1,0 +1,21 @@
+{
+	"executions": [
+		{
+			"name": "passes the items on",
+			"params": {
+				"time": "2026-03-01T10:00:00+01:00"
+			},
+			"items": [
+				{
+					"a": 1
+				}
+			],
+			"responses": [],
+			"output": [
+				{
+					"a": 1
+				}
+			]
+		}
+	]
+}

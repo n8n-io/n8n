@@ -1,0 +1,42 @@
+{
+	"executions": [
+		{
+			"name": "gives the deleted rows",
+			"params": {
+				"table": {
+					"id": "t1"
+				},
+				"where": {
+					"match": "all",
+					"conditions": [
+						{
+							"op": "isEmpty",
+							"column": "plan"
+						}
+					]
+				}
+			},
+			"responses": [],
+			"imports": [
+				[
+					{
+						"id": 5,
+						"email": "old@example.com",
+						"plan": null,
+						"createdAt": "2026-03-01T10:00:00.000Z",
+						"updatedAt": "2026-03-01T10:00:00.000Z"
+					}
+				]
+			],
+			"output": [
+				{
+					"id": 5,
+					"email": "old@example.com",
+					"plan": null,
+					"createdAt": "2026-03-01T10:00:00.000Z",
+					"updatedAt": "2026-03-01T10:00:00.000Z"
+				}
+			]
+		}
+	]
+}

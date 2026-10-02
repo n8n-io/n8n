@@ -1,0 +1,139 @@
+{
+	"executions": [
+		{
+			"name": "one reply",
+			"params": {
+				"model": "gemini-2.5-flash",
+				"temperature": 0.2
+			},
+			"calls": [
+				{
+					"method": "chat",
+					"args": [
+						{
+							"messages": [
+								{
+									"role": "system",
+									"content": "Be short"
+								},
+								{
+									"role": "user",
+									"content": "Hi"
+								}
+							]
+						}
+					]
+				}
+			],
+			"responses": [
+				{
+					"candidates": [
+						{
+							"content": {
+								"parts": [
+									{
+										"text": "Hello"
+									},
+									{
+										"text": " there"
+									}
+								],
+								"role": "model"
+							},
+							"finishReason": "STOP",
+							"index": 0
+						}
+					],
+					"usageMetadata": {
+						"promptTokenCount": 4,
+						"candidatesTokenCount": 2,
+						"totalTokenCount": 6
+					}
+				}
+			],
+			"output": [
+				{
+					"text": "Hello there",
+					"toolCalls": [],
+					"finishReason": "stop",
+					"usage": {
+						"inputTokens": 4,
+						"outputTokens": 2
+					}
+				}
+			]
+		},
+		{
+			"name": "a function call",
+			"params": {
+				"model": "models/gemini-2.5-flash"
+			},
+			"calls": [
+				{
+					"method": "chat",
+					"args": [
+						{
+							"messages": [
+								{
+									"role": "user",
+									"content": "Order 7?"
+								}
+							],
+							"tools": [
+								{
+									"name": "order",
+									"description": "Get an order",
+									"input": {
+										"type": "object",
+										"properties": {
+											"id": {
+												"type": "number"
+											}
+										}
+									}
+								}
+							]
+						}
+					]
+				}
+			],
+			"responses": [
+				{
+					"candidates": [
+						{
+							"content": {
+								"parts": [
+									{
+										"functionCall": {
+											"name": "order",
+											"args": {
+												"id": 7
+											}
+										}
+									}
+								],
+								"role": "model"
+							},
+							"finishReason": "STOP"
+						}
+					]
+				}
+			],
+			"output": [
+				{
+					"text": "",
+					"toolCalls": [
+						{
+							"id": "order-0",
+							"name": "order",
+							"args": {
+								"id": 7
+							}
+						}
+					],
+					"finishReason": "tool_calls"
+				}
+			]
+		}
+	]
+}

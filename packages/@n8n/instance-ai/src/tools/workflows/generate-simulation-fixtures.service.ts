@@ -36,6 +36,7 @@ import {
 import { getParentNodes, mapConnectionsByDestination, type IConnections } from 'n8n-workflow';
 import { z } from 'zod';
 
+import { legacyTwinOf } from './legacy-twins';
 import { isTriggerNodeType } from './workflow-json-utils';
 import type { Logger } from '../../logger';
 import type { ModelConfig } from '../../types';
@@ -184,7 +185,9 @@ const WAIT_NODE_TYPE = 'n8n-nodes-base.wait';
  * classifier always simulates, so treating every wait as pass-through would
  * throw away the only output they really have.
  */
-function passThroughAddedKeys(node: NamedNode): readonly string[] | undefined {
+function passThroughAddedKeys(contractOrLegacy: NamedNode): readonly string[] | undefined {
+	// A contract wait passes its input on as the timer wait it is judged as.
+	const node = legacyTwinOf(contractOrLegacy);
 	if (node.type !== WAIT_NODE_TYPE) return PASS_THROUGH_AI_ROOTS.get(node.type);
 	const params = isRecord(node.parameters) ? node.parameters : {};
 	const resume = typeof params.resume === 'string' ? params.resume : 'timeInterval';

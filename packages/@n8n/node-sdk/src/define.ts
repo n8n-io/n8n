@@ -2,16 +2,25 @@ import type { AnyCredentialType, Credential, CredentialKey } from './credentials
 import {
 	hasBinary,
 	obj,
+	passedItem,
 	type AnySchema,
 	type Binary,
 	type BinaryMeta,
 	type Infer,
 	type JsonSchema,
 	type ObjectOf,
-	type Schema,
+	Schema,
 	type Shape,
 } from './schema';
-import type { PollConfig, TriggerKind, WebhookConfig } from './triggers';
+import {
+	supplied,
+	suppliedKindOf,
+	supplyIssues,
+	supplyOf,
+	type Supplies,
+	type SupplyKind,
+} from './subnodes';
+import type { PollConfig, TriggerKind, WebhookConfig, WebhookRequest } from './triggers';
 
 /** The integration identity: name, credential, and base URL shared by its actions. */
 export interface NodeDefinition {
@@ -22,6 +31,12 @@ export interface NodeDefinition {
 	readonly credential?: Credential;
 	readonly baseUrl?: string;
 	readonly icon?: string;
+	/**
+	 * Legacy node types that this node does the whole job of, e.g.
+	 * `@n8n/n8n-nodes-langchain.lmChatOpenAi`. Search shows this node instead of them, so a
+	 * legacy node with operations this node lacks must not be in the list.
+	 */
+	readonly replaces?: readonly string[];
 }
 
 /** The scopes an action of node `N` may list. */
@@ -86,6 +101,13 @@ type EntryListKey<S extends Shape> = {
 /** Outputs per entry must name an input list whose entries each have an `output` name. */
 type OutputsCheck<Outs, Full extends Shape> = Outs extends OutputsPerEntry
 	? { readonly outputs: { readonly each: EntryListKey<Full> } }
+	: unknown;
+
+/** Named inputs read all items of each input at once, so only a `batch` action has them. */
+type InputsCheck<Ins, F extends ActionFlow> = Ins extends ActionInputs
+	? F['cardinality'] extends 'batch'
+		? unknown
+		: { readonly flow: { readonly cardinality: 'batch' } }
 	: unknown;
 
 /** The input item or items that an output item comes from. */
@@ -272,6 +294,197 @@ export type ContextOf<C extends ActionFlow['cardinality'], Input> = C extends 'b
 	? BatchContext<Input>
 	: RunContext<Input>;
 
+/**
+ * The named inputs of an action that joins item streams, in n8n input order, e.g.
+ * `['left', 'right']`. Only a `batch` action has them.
+ */
+export type ActionInputs = readonly [string, string, ...string[]];
+
+/** The context of a run with named inputs: the items of each input, and the parameters once. */
+export interface InputsContext<Input, Name extends string> extends RunHost {
+	/** Parameters read once, at the first item of the first input, and validated. */
+	readonly input: Input;
+	/** The items of each input, in order. An input without a connection has no items. */
+	readonly inputs: { readonly [K in Name]: readonly InputItem[] };
+}
+
+/** The run context for the cardinality and the named inputs of an action. */
+export type RunContextOf<
+	C extends ActionFlow['cardinality'],
+	Input,
+	Ins extends ActionInputs | undefined,
+> = Ins extends ActionInputs ? InputsContext<Input, Ins[number]> : ContextOf<C, Input>;
+
+// ── Host imports of n8n:action@2.3.0 ──────────────────────────────────────────
+
+export type DataTableColumnType = 'string' | 'number' | 'boolean' | 'date';
+
+/** A cell value. A date cell is an ISO 8601 string. */
+export type DataTableValue = string | number | boolean | null;
+
+export interface DataTableColumn {
+	readonly name: string;
+	readonly type: DataTableColumnType;
+}
+
+/** A table by its ID, or by its name in the project of the workflow. */
+export type DataTableRef =
+	| { readonly id: string; readonly name?: never }
+	| { readonly name: string; readonly id?: never };
+
+export type DataTableOperator =
+	| 'eq'
+	| 'neq'
+	| 'like'
+	| 'ilike'
+	| 'gt'
+	| 'gte'
+	| 'lt'
+	| 'lte'
+	| 'isEmpty'
+	| 'isNotEmpty';
+
+/** `isEmpty` and `isNotEmpty` take no value; every other operator takes one. */
+export type DataTableCondition =
+	| {
+			readonly column: string;
+			readonly op: Exclude<DataTableOperator, 'isEmpty' | 'isNotEmpty'>;
+			readonly value: DataTableValue;
+	  }
+	| { readonly column: string; readonly op: 'isEmpty' | 'isNotEmpty' };
+
+export interface DataTableFilter {
+	readonly match: 'all' | 'any';
+	readonly conditions: readonly DataTableCondition[];
+}
+
+/** A stored row: the system columns `id`, `createdAt` and `updatedAt`, and one value per column. */
+export type DataTableRow = {
+	readonly id: number;
+	readonly createdAt: string;
+	readonly updatedAt: string;
+} & Readonly<Record<string, DataTableValue>>;
+
+export type DataTableValues = Readonly<Record<string, DataTableValue>>;
+
+export interface DataTableQuery {
+	readonly filter?: DataTableFilter;
+	readonly sort?: { readonly column: string; readonly direction: 'asc' | 'desc' };
+	readonly offset?: number;
+	/** The most rows of one page. */
+	readonly limit: number;
+}
+
+/** One table. The host converts a date cell to and from ISO 8601 text. */
+export interface DataTable {
+	readonly id: string;
+	columns(): Promise<readonly DataTableColumn[]>;
+	/** One page of rows, and the count of all rows that the filter matches. */
+	rows(query: DataTableQuery): Promise<{
+		readonly count: number;
+		readonly rows: readonly DataTableRow[];
+	}>;
+	/** Inserts the rows in one write and gives them back with their system columns. */
+	insert(rows: readonly DataTableValues[]): Promise<readonly DataTableRow[]>;
+	/** Sets `values` on each row that the filter matches, and gives the changed rows. */
+	update(filter: DataTableFilter, values: DataTableValues): Promise<readonly DataTableRow[]>;
+	/** `update`, or one new row with `values` when the filter matches no row. */
+	upsert(filter: DataTableFilter, values: DataTableValues): Promise<readonly DataTableRow[]>;
+	/** Deletes each row that the filter matches, and gives the deleted rows. */
+	delete(filter: DataTableFilter): Promise<readonly DataTableRow[]>;
+	/** Deletes every row, and gives how many it deleted. */
+	clear(): Promise<number>;
+	/** True when the table has the new name. */
+	rename(name: string): Promise<boolean>;
+	/** Deletes the table and its rows. True when it is gone. */
+	drop(): Promise<boolean>;
+}
+
+/** A table of the project, without its rows. Dates are ISO 8601 text. */
+export interface DataTableInfo {
+	readonly id: string;
+	readonly name: string;
+	readonly columns: readonly DataTableColumn[];
+	readonly createdAt: string;
+	readonly updatedAt: string;
+}
+
+export interface DataTableListQuery {
+	/** Tables whose name matches, without case. */
+	readonly name?: string;
+	readonly sort?: {
+		readonly by: 'name' | 'createdAt' | 'updatedAt';
+		readonly direction: 'asc' | 'desc';
+	};
+	readonly offset?: number;
+	/** The most tables of one page. */
+	readonly limit: number;
+}
+
+/** The n8n data tables of the project that owns the workflow. */
+export interface DataTables {
+	open(table: DataTableRef): Promise<DataTable>;
+	/** One page of tables, and the count of all tables that the query matches. */
+	list(query: DataTableListQuery): Promise<{
+		readonly count: number;
+		readonly tables: readonly DataTableInfo[];
+	}>;
+	/** A new table with the columns in this order. */
+	create(table: {
+		readonly name: string;
+		readonly columns: readonly DataTableColumn[];
+	}): Promise<DataTableInfo>;
+}
+
+export interface CodeRequest {
+	readonly language: 'javascript' | 'python';
+	readonly code: string;
+	/** `all`: one run that reads every input item. `each`: one run for each input item. */
+	readonly mode: 'all' | 'each';
+}
+
+/**
+ * User code in the n8n task runner. The code reads the input items of the node with `$input`,
+ * as in the Code node. The runner has no network access.
+ */
+export interface CodeRunner {
+	/**
+	 * What the code returns, not checked: for `all`, its return value; for `each`, a list with
+	 * the return value for each input item, in order. A code error throws.
+	 */
+	run(request: CodeRequest): Promise<unknown>;
+}
+
+export interface Wait {
+	/**
+	 * The outputs of this run continue at `at`, not before. The host can suspend the execution
+	 * after the run, so do no more work after the call.
+	 */
+	until(at: Date): Promise<void>;
+}
+
+/**
+ * The optional host imports of `n8n:action@2.3.0`. An action lists the ones it uses in
+ * `imports`, its run context gets only those, and its bundle targets 2.3.0.
+ */
+export interface HostImports<Input> {
+	readonly dataTables: DataTables;
+	readonly code: CodeRunner;
+	readonly wait: Wait;
+	/** The parameters of an input item of a `batch` run, resolved and validated for that item. */
+	inputOf(item: InputItem): Promise<Input>;
+}
+
+export type HostImport = keyof HostImports<unknown>;
+
+/**
+ * The context fields of the declared host imports. Any action can be typed as `Action`, so its
+ * wide form has each import as optional.
+ */
+export type ImportsOf<Im extends readonly HostImport[], Input> = readonly HostImport[] extends Im
+	? Partial<HostImports<Input>>
+	: Pick<HostImports<Input>, Im[number]>;
+
 /** What `run()` gives back. The host validates each output item and sets its lineage. */
 export type RunResult<C extends ActionFlow['cardinality'], E> = C extends '1:N'
 	? AsyncIterable<E>
@@ -381,11 +594,14 @@ export type ActionBinding<
 	F extends ActionFlow,
 	P extends string,
 	Outs extends ActionOutputs | undefined,
+	Im extends readonly HostImport[] = readonly HostImport[],
+	Ins extends ActionInputs | undefined = ActionInputs | undefined,
 > =
 	| {
 			/** `flow.cardinality` sets how often it runs and what it gives back, see `RunResult`. */
 			run(
-				context: ContextOf<F['cardinality'], RunInput<Full>>,
+				context: RunContextOf<F['cardinality'], RunInput<Full>, Ins> &
+					ImportsOf<Im, RunInput<Full>>,
 			): RunResult<F['cardinality'], Emit<F['cardinality'], Infer<O>, Outs>>;
 			readonly request?: never;
 	  }
@@ -394,6 +610,8 @@ export type ActionBinding<
 			readonly run?: never;
 			// The response goes to the only output.
 			readonly outputs?: never;
+			readonly imports?: never;
+			readonly inputs?: never;
 	  };
 
 interface ContractSpec<Own extends Shape, O extends AnySchema, Sc extends string> {
@@ -425,6 +643,8 @@ interface ActionSpecBase<
 	Sc extends string,
 	Outs extends ActionOutputs | undefined,
 	H extends string,
+	Im extends readonly HostImport[],
+	Ins extends ActionInputs | undefined,
 > extends ContractSpec<Own, O, Sc> {
 	/** The label users pick, e.g. "Get many database pages". */
 	readonly action: string;
@@ -432,6 +652,10 @@ interface ActionSpecBase<
 	readonly egress?: Egress<RunInput<Full>, H>;
 	/** Named outputs. An input list can name them, e.g. one output per Switch case. */
 	readonly outputs?: Outs;
+	/** The optional host imports `run()` uses. Each one is a permission, as a scope is. */
+	readonly imports?: Im;
+	/** Named inputs, for an action that joins item streams. */
+	readonly inputs?: Ins;
 	/**
 	 * Pure hatch: the output shape for these parameters (fields a filter guarantees, fields a
 	 * mapping creates). Leaves other than discriminators may still be expression strings.
@@ -458,7 +682,10 @@ export type ActionSpec<
 	P extends string = string,
 	Outs extends ActionOutputs | undefined = undefined,
 	H extends string = string,
-> = ActionSpecBase<Own, Full, O, F, Sc, Outs, H> & ActionBinding<Full, O, F, P, Outs>;
+	Im extends readonly HostImport[] = readonly HostImport[],
+	Ins extends ActionInputs | undefined = ActionInputs | undefined,
+> = ActionSpecBase<Own, Full, O, F, Sc, Outs, H, Im, Ins> &
+	ActionBinding<Full, O, F, P, Outs, Im, Ins>;
 
 /** What every contract has after its node built it. */
 interface Built {
@@ -480,7 +707,9 @@ export type Action<
 	O extends AnySchema = AnySchema,
 	F extends ActionFlow = ActionFlow,
 	Outs extends ActionOutputs | undefined = ActionOutputs | undefined,
-> = ActionSpec<S, S, O, F, string, string, Outs> & Built;
+	Im extends readonly HostImport[] = readonly HostImport[],
+	Ins extends ActionInputs | undefined = ActionInputs | undefined,
+> = ActionSpec<S, S, O, F, string, string, Outs, string, Im, Ins> & Built;
 
 type TriggerHead<Own extends Shape, O extends AnySchema, Sc extends string> = ContractSpec<
 	Own,
@@ -494,11 +723,66 @@ type TriggerHead<Own extends Shape, O extends AnySchema, Sc extends string> = Co
 type WebhookSource<I, Out, K extends string> = {
 	readonly webhook: WebhookConfig<I, Out, K>;
 	readonly poll?: never;
+	readonly native?: never;
 };
 
-type PollSource<I, T, Out> = { readonly poll: PollConfig<I, T, Out>; readonly webhook?: never };
+/**
+ * Without `emit`, the item is the request. So a trigger whose output is not the request shape
+ * must map the request in `emit`.
+ */
+type EmitRule<I, Out> = WebhookRequest extends Out
+	? unknown
+	: { readonly webhook: { emit(request: WebhookRequest, input: I): readonly Out[] } };
 
-/** What an author writes for one trigger: a webhook the service calls, or a poll. */
+type PollSource<I, T, Out> = {
+	readonly poll: PollConfig<I, T, Out>;
+	readonly webhook?: never;
+	readonly native?: never;
+};
+
+/** A built-in n8n node that runs a contract. The contract types its parameters and its items. */
+export interface NativeNode {
+	/** The n8n node type, e.g. `n8n-nodes-base.webhook`. */
+	readonly type: string;
+	/** The node version that the contract types. */
+	readonly version: number;
+}
+
+/** What starts a native trigger. */
+export type NativeEvent = 'manual' | 'schedule' | 'webhook' | 'form';
+
+/**
+ * The step that answers the caller of a native trigger, e.g. Respond to Webhook. It passes its
+ * items on. The caller waits for it when the trigger field `awaits.field` is `awaits.value`, and
+ * the build checks that the flow has the step exactly then.
+ */
+export interface TriggerReply<Field extends string = string> {
+	/** The factory name next to the trigger, e.g. `respond`. */
+	readonly operation: string;
+	readonly action: string;
+	/** At most 120 characters. */
+	readonly summary: string;
+	/**
+	 * The parameters of the reply node: fields, or one `variant` when the fields depend on a
+	 * tag, e.g. `respondWith`. The node keeps the tag and the fields flat, as a variant does.
+	 */
+	readonly input: Shape | AnySchema;
+	readonly native: NativeNode;
+	readonly awaits: { readonly field: Field; readonly value: string };
+}
+
+/**
+ * A trigger that a built-in n8n node runs, because n8n treats the node type in a special way
+ * (test URLs, form pages, schedules, manual runs). The input is the node's parameters.
+ */
+type NativeSource<Field extends string> = {
+	readonly native: NativeNode & { readonly on: NativeEvent };
+	readonly reply?: TriggerReply<Field>;
+	readonly webhook?: never;
+	readonly poll?: never;
+};
+
+/** What an author writes for one trigger: a webhook the service calls, a poll, or a native node. */
 export type TriggerSpec<
 	Own extends Shape,
 	Full extends Shape,
@@ -507,7 +791,11 @@ export type TriggerSpec<
 	K extends string = string,
 	T = unknown,
 > = TriggerHead<Own, O, Sc> &
-	(WebhookSource<RunInput<Full>, Infer<O>, K> | PollSource<RunInput<Full>, T, Infer<O>>);
+	(
+		| (WebhookSource<RunInput<Full>, Infer<O>, K> & EmitRule<RunInput<Full>, Infer<O>>)
+		| PollSource<RunInput<Full>, T, Infer<O>>
+		| NativeSource<keyof Full & string>
+	);
 
 /** A trigger starts an execution. Each emitted item matches `output`. `kind` names its source. */
 export type Trigger<S extends Shape = Shape, O extends AnySchema = AnySchema> = TriggerHead<
@@ -519,7 +807,11 @@ export type Trigger<S extends Shape = Shape, O extends AnySchema = AnySchema> = 
 	(
 		| ({ readonly kind: 'webhook' } & WebhookSource<RunInput<S>, Infer<O>, string>)
 		| ({ readonly kind: 'poll' } & PollSource<RunInput<S>, unknown, Infer<O>>)
+		| ({ readonly kind: 'native' } & NativeSource<string>)
 	);
+
+/** A trigger that a built-in n8n node runs. */
+export type NativeTrigger = Extract<Trigger, { readonly kind: 'native' }>;
 
 /** Where a contract sits in its node: the resource, if any, and the operation or event. */
 export interface ActionPath {
@@ -558,11 +850,13 @@ function toAction<
 	F extends ActionFlow,
 	Outs extends ActionOutputs | undefined,
 	P extends ActionPath,
+	Im extends readonly HostImport[],
+	Ins extends ActionInputs | undefined,
 >(
 	node: NodeDefinition,
 	path: P,
-	spec: ActionSpec<S, S, O, F, string, string, Outs>,
-): Action<S, O, F, Outs> & P {
+	spec: ActionSpec<S, S, O, F, string, string, Outs, string, Im, Ins>,
+): Action<S, O, F, Outs, Im, Ins> & P {
 	return { ...spec, ...path, ...built(node, path, spec) };
 }
 
@@ -572,6 +866,7 @@ function toTrigger<S extends Shape, O extends AnySchema, P extends ActionPath>(
 	spec: TriggerSpec<S, S, O>,
 ): Trigger<S, O> & P {
 	const head = { ...spec, ...path, ...built(node, path, spec) };
+	if (spec.native) return { ...head, kind: 'native', native: spec.native };
 	return spec.poll
 		? { ...head, kind: 'poll', poll: spec.poll }
 		: { ...head, kind: 'webhook', webhook: spec.webhook };
@@ -584,10 +879,14 @@ type NodeAction<N extends NodeDefinition, RS extends Shape, Path extends ActionP
 	const P extends string = string,
 	const Outs extends ActionOutputs | undefined = undefined,
 	const H extends string = string,
+	const Im extends readonly HostImport[] = [],
+	const Ins extends ActionInputs | undefined = undefined,
 >(
 	operation: string,
-	spec: ActionSpec<S, RS & S, O, F, ScopeOf<N>, P, Outs, H> & OutputsCheck<Outs, RS & S>,
-) => Action<RS & S, O, F, Outs> & Path;
+	spec: ActionSpec<S, RS & S, O, F, ScopeOf<N>, P, Outs, H, Im, Ins> &
+		OutputsCheck<Outs, RS & S> &
+		InputsCheck<Ins, F>,
+) => Action<RS & S, O, F, Outs, Im, Ins> & Path;
 
 type NodeTrigger<N extends NodeDefinition, RS extends Shape, Path extends ActionPath> = <
 	S extends Shape,
@@ -598,10 +897,43 @@ type NodeTrigger<N extends NodeDefinition, RS extends Shape, Path extends Action
 	spec: TriggerSpec<S, RS & S, O, ScopeOf<N>, CredentialKey<CredentialTypeOf<N>>, T>,
 ) => Trigger<RS & S, O> & Path;
 
+/** A sub-node runs once per root run and gives one capability. */
+const SUPPLY_FLOW = { effect: 'read', cardinality: 'per-item' } as const satisfies ActionFlow;
+
+/**
+ * What an author writes for a sub-node: the kind it supplies and `supply()`, which makes the
+ * capability. The SDK sets the flow and the output.
+ */
+export type SubnodeSpec<
+	Own extends Shape,
+	Full extends Shape,
+	K extends SupplyKind,
+	Sc extends string = string,
+	H extends string = string,
+> = Omit<ContractSpec<Own, AnySchema, Sc>, 'output'> & {
+	/** The label users pick, e.g. "OpenAI Chat Model". */
+	readonly action: string;
+	readonly supplies: K;
+	readonly egress?: Egress<RunInput<Full>, H>;
+	/** Requests of the capability use the credential and the egress of the sub-node. */
+	supply(context: RunContext<RunInput<Full>>): Promise<Supplies[K]>;
+};
+
+type NodeSubnode<N extends NodeDefinition, RS extends Shape, Path extends ActionPath> = <
+	S extends Shape,
+	const K extends SupplyKind,
+	const H extends string = string,
+>(
+	operation: string,
+	spec: SubnodeSpec<S, RS & S, K, ScopeOf<N>, H>,
+) => Action<RS & S, Schema<Supplies[K], false>, typeof SUPPLY_FLOW> & Path;
+
 /** A resource of a node. Its `input` goes into the input of each of its actions and triggers. */
 export interface NodeResource<N extends NodeDefinition, RS extends Shape> {
 	readonly name: string;
 	readonly action: NodeAction<N, RS, ResourcePath>;
+	/** A sub-node on this resource, e.g. `chat.subnode('model', …)`. */
+	readonly subnode: NodeSubnode<N, RS, ResourcePath>;
 	/** A trigger on this resource, e.g. `databasePage.trigger('added', …)`. */
 	readonly trigger: NodeTrigger<N, RS, ResourcePath>;
 }
@@ -613,6 +945,8 @@ export type NodeBuilder<N extends NodeDefinition> = N & {
 		options?: { readonly input: RS },
 	): NodeResource<N, RS>;
 	readonly action: NodeAction<N, Record<never, never>, ActionPath>;
+	/** A sub-node that supplies a capability to root nodes, e.g. `openAi.subnode('chatModel', …)`. */
+	readonly subnode: NodeSubnode<N, Record<never, never>, ActionPath>;
 	readonly trigger: NodeTrigger<N, Record<never, never>, ActionPath>;
 };
 
@@ -620,12 +954,33 @@ function buildersOf<N extends NodeDefinition, RS extends Shape, Path extends Act
 	node: N,
 	shared: RS,
 	pathOf: (operation: string) => Path,
-): { readonly action: NodeAction<N, RS, Path>; readonly trigger: NodeTrigger<N, RS, Path> } {
+): {
+	readonly action: NodeAction<N, RS, Path>;
+	readonly subnode: NodeSubnode<N, RS, Path>;
+	readonly trigger: NodeTrigger<N, RS, Path>;
+} {
 	// Typed by `NodeAction`: a second generic signature would infer `P` again and not match.
 	const action: NodeAction<N, RS, Path> = (operation, spec) =>
 		toAction(node, pathOf(operation), { ...spec, input: { ...shared, ...spec.input } });
+	const subnode: NodeSubnode<N, RS, Path> = (operation, { supplies, supply, ...spec }) =>
+		toAction<
+			RS & typeof spec.input,
+			Schema<Supplies[typeof supplies], false>,
+			typeof SUPPLY_FLOW,
+			undefined,
+			Path,
+			readonly [],
+			undefined
+		>(node, pathOf(operation), {
+			...spec,
+			input: { ...shared, ...spec.input },
+			flow: SUPPLY_FLOW,
+			output: supplied(supplies),
+			run: supply,
+		});
 	return {
 		action,
+		subnode,
 		trigger: <S extends Shape, O extends AnySchema, T>(
 			event: string,
 			spec: TriggerSpec<S, RS & S, O, ScopeOf<N>, CredentialKey<CredentialTypeOf<N>>, T>,
@@ -684,6 +1039,10 @@ export interface ContractDocument {
 	readonly outputs?: ActionOutputs;
 	/** The declared egress, hosts sorted. Absent when the action reaches its base URL hosts only. */
 	readonly egress?: ContractEgress;
+	/** The optional host imports, sorted. Absent when it uses none. */
+	readonly imports?: readonly HostImport[];
+	/** Named inputs in n8n input order. Absent for one input. */
+	readonly inputs?: ActionInputs;
 }
 
 export interface ContractEgress {
@@ -695,8 +1054,9 @@ type ContractSource = Pick<
 	Action,
 	'id' | 'version' | 'node' | 'summary' | 'credentialTypes' | 'inputSchema' | 'output'
 > & { readonly scopes?: readonly string[] } & (
-		| Pick<Action, 'action' | 'flow' | 'outputs' | 'egress'>
-		| Pick<Trigger, 'trigger' | 'kind'>
+		| Pick<Action, 'action' | 'flow' | 'outputs' | 'egress' | 'imports' | 'inputs'>
+		| (Pick<Trigger, 'trigger'> &
+				({ readonly kind: 'webhook' | 'poll' } | Pick<NativeTrigger, 'kind' | 'native'>))
 	);
 
 /** Hosts are a set, so their order is not part of the contract. */
@@ -712,6 +1072,8 @@ const TRIGGER_FLOW: ActionFlow = { effect: 'read', cardinality: '1:N' };
 
 export const toContract = (source: ContractSource): ContractDocument => {
 	const egress = 'kind' in source ? undefined : contractEgressOf(source.egress);
+	const imports = 'kind' in source ? [] : [...new Set(source.imports ?? [])].sort();
+	const inputs = 'kind' in source ? undefined : source.inputs;
 	return {
 		id: source.id,
 		version: source.version,
@@ -723,13 +1085,36 @@ export const toContract = (source: ContractSource): ContractDocument => {
 		credentials: source.credentialTypes,
 		// Optional keys keep the hash of each contract that has neither.
 		...(source.scopes?.length ? { scopes: source.scopes } : {}),
-		...('kind' in source ? { trigger: source.kind } : {}),
+		...('kind' in source
+			? { trigger: source.kind === 'native' ? source.native.on : source.kind }
+			: {}),
 		input: source.inputSchema,
 		output: source.output.json,
 		...(!('kind' in source) && source.outputs ? { outputs: source.outputs } : {}),
 		...(egress ? { egress } : {}),
+		...(imports.length ? { imports } : {}),
+		...(inputs ? { inputs } : {}),
 	};
 };
+
+/** The reply step of a native trigger as an action contract: it writes the reply and passes its items on. */
+export function replyContractOf(trigger: NativeTrigger): ContractDocument | undefined {
+	const { reply } = trigger;
+	if (!reply) return undefined;
+	return {
+		id: [trigger.node.id, trigger.resource, reply.operation]
+			.filter((part) => part !== undefined)
+			.join('.'),
+		version: trigger.version,
+		node: trigger.node.id,
+		action: reply.action,
+		summary: reply.summary,
+		flow: { effect: 'write', cardinality: 'per-item', passthrough: 'replace' },
+		credentials: [],
+		input: reply.input instanceof Schema ? reply.input.json : obj(reply.input).json,
+		output: passedItem().json,
+	};
+}
 
 /** Output names, fixed ones only: names that come from the input are known at run time. */
 export const fixedOutputNames = (outputs: ActionOutputs | undefined): readonly string[] =>
@@ -749,6 +1134,26 @@ function hints(schema: JsonSchema): string[] {
 /** The action has a `binary()` field, so its bundle targets `n8n:action@2.2.0`. */
 export const usesBinary = (contract: Pick<ContractDocument, 'input' | 'output'>) =>
 	hasBinary(contract.input) || hasBinary(contract.output);
+
+/** The action declares host imports or named inputs, so its bundle targets `n8n:action@2.3.0`. */
+export const usesHostImports = (contract: Pick<ContractDocument, 'imports' | 'inputs'>) =>
+	Boolean(contract.imports?.length) || contract.inputs !== undefined;
+
+/** The action supplies a sub-node capability or reads one, so its bundle targets `n8n:action@2.3.0`. */
+export const usesSupplies = (contract: Pick<ContractDocument, 'input' | 'output'>) =>
+	suppliedKindOf(contract.output) !== undefined ||
+	Object.values(contract.input.properties ?? {}).some((field) => supplyOf(field) !== undefined);
+
+const HOST_IMPORTS: ReadonlySet<string> = new Set<HostImport>([
+	'dataTables',
+	'code',
+	'wait',
+	'inputOf',
+]);
+
+/** A contract read from a manifest can name anything, so the runtime checks each import. */
+export const isHostImport = (value: unknown): value is HostImport =>
+	typeof value === 'string' && HOST_IMPORTS.has(value);
 
 /**
  * A binary output field becomes `item.binary.<field>`, so it must be a top-level field, and
@@ -800,6 +1205,18 @@ export function lintContract(contract: ContractDocument): string[] {
 			? [`${contract.id}: an input binary must be a field, a list item, or in a variant branch`]
 			: []),
 		...egressIssues(contract),
+		...inputIssues(contract),
+		...supplyIssues(contract.id, contract.input, contract.output, contract.flow),
+	];
+}
+
+function inputIssues({ id, inputs, flow, imports }: ContractDocument): string[] {
+	return [
+		...(inputs && new Set(inputs).size < inputs.length ? [`${id}: input names repeat`] : []),
+		...(inputs && flow.cardinality !== 'batch' ? [`${id}: named inputs need batch`] : []),
+		...(imports ?? [])
+			.filter((name) => !isHostImport(name))
+			.map((name) => `${id}: ${String(name)} is not a host import`),
 	];
 }
 

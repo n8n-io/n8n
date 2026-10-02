@@ -1,4 +1,4 @@
-import { arr, bool, isRecord, json, obj, str } from '@n8n/node-sdk';
+import { arr, bool, int, json, obj, parse, str } from '@n8n/node-sdk';
 
 import { repository } from '../github.node';
 
@@ -12,10 +12,14 @@ const delivery = obj({
 const hookPath = ({
 	owner,
 	repository: name,
-}: { owner: string; repository: string }): `/${string}` => `/repos/${owner}/${name}/hooks`;
+}: { owner: string; repository: string }): `/${string}` =>
+	`/repos/${encodeURIComponent(owner)}/${encodeURIComponent(name)}/hooks`;
+
+/** The fields of a create response that registration reads. */
+const createdHook = obj({ id: int(), active: bool() }).with({ additionalProperties: true });
 
 export const repositoryEvent = repository.trigger('event', {
-	patch: 1,
+	patch: 2,
 	trigger: 'On repository event',
 	summary: 'Starts on each GitHub event of a repository, e.g. a push or an opened issue.',
 	scopes: ['admin:repo_hook'],
@@ -48,12 +52,15 @@ export const repositoryEvent = repository.trigger('event', {
 				},
 			}),
 			// Like the legacy trigger: a webhook that is not active did not register.
-			id: (body) =>
-				isRecord(body) && body.active === true && typeof body.id === 'number'
-					? String(body.id)
-					: undefined,
-			check: ({ input, id }) => ({ path: `${hookPath(input)}/${id}` }),
-			delete: ({ input, id }) => ({ method: 'DELETE', path: `${hookPath(input)}/${id}` }),
+			id: (body) => {
+				const { id, active } = parse(createdHook, body);
+				return active ? String(id) : undefined;
+			},
+			check: ({ input, id }) => ({ path: `${hookPath(input)}/${encodeURIComponent(id)}` }),
+			delete: ({ input, id }) => ({
+				method: 'DELETE',
+				path: `${hookPath(input)}/${encodeURIComponent(id)}`,
+			}),
 		},
 		// GitHub pings a new webhook: a hook ID without an action. It starts no execution.
 		emit: (request) =>

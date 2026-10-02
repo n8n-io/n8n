@@ -1218,9 +1218,9 @@ describe('nodes tool', () => {
 				outputs: ['main'],
 			},
 			{
-				name: 'n8n-nodes-base.slack',
-				displayName: 'Slack',
-				description: 'Consume Slack API',
+				name: 'n8n-nodes-base.mattermost',
+				displayName: 'Mattermost',
+				description: 'Consume Mattermost API',
 				version: 2.3,
 				inputs: ['main'],
 				outputs: ['main'],
@@ -1238,7 +1238,7 @@ describe('nodes tool', () => {
 			});
 			context.nodeService.getNodeTypeDefinition = vi.fn().mockResolvedValue({
 				version: '2.3',
-				content: 'export type SlackV23Params = {}',
+				content: 'export type MattermostV23Params = {}',
 			});
 			return context;
 		}
@@ -1308,6 +1308,33 @@ describe('nodes tool', () => {
 			expect(await search('notion get many database pages')).not.toHaveProperty('otherNodes');
 		});
 
+		it('keeps the legacy agent beside the ai module for an AI agent search', async () => {
+			const context = createContractContext();
+			vi.mocked(context.nodeService.listSearchable).mockResolvedValue([
+				...searchableNodes,
+				...[
+					['@n8n/n8n-nodes-langchain.agent', 'AI Agent'],
+					['@n8n/n8n-nodes-langchain.chainLlm', 'Basic LLM Chain'],
+					['@n8n/n8n-nodes-langchain.agentTool', 'AI Agent Tool'],
+				].map(([name, displayName]) => ({
+					name,
+					displayName,
+					description: 'Generates an action plan with an AI agent',
+					version: 1,
+					inputs: ['main'],
+					outputs: ['main'],
+				})),
+			]);
+			const result = await executeTool<ModuleSearch>(createNodesTool(context, 'full'), {
+				action: 'search',
+				query: 'AI agent',
+				limit: 10,
+			});
+
+			expect(result.nodeModules?.map(({ node }) => node)).toContain('ai');
+			expect(result.otherNodes).toEqual(['@n8n/n8n-nodes-langchain.agent: AI Agent']);
+		});
+
 		it('searches several services in one call and inlines each module once', async () => {
 			const context = createContractContext();
 			const result = await executeTool<{
@@ -1315,7 +1342,7 @@ describe('nodes tool', () => {
 				searches: Array<ModuleSearch & { query: string; modules?: string[] }>;
 			}>(createNodesTool(context, 'full'), {
 				action: 'search',
-				queries: ['notion get many pages', 'http get', 'http send', 'slack'],
+				queries: ['notion get many pages', 'http get', 'http send', 'mattermost'],
 				limit: 5,
 			});
 
@@ -1326,11 +1353,11 @@ describe('nodes tool', () => {
 				{ query: 'notion get many pages', modules: ['notion'] },
 				{ query: 'http get', modules: ['httpRequest'] },
 				{ query: 'http send', modules: ['httpRequest'] },
-				{ query: 'slack', modules: undefined },
+				{ query: 'mattermost', modules: undefined },
 			]);
 			expect(result.searches[3].results).toEqual([
 				expect.objectContaining({
-					name: 'n8n-nodes-base.slack',
+					name: 'n8n-nodes-base.mattermost',
 					version: 2.3,
 					discriminators: { resources: [{ name: 'message', operations: ['post'] }] },
 				}),
@@ -1357,7 +1384,7 @@ describe('nodes tool', () => {
 			const context = createContractContext();
 			const result = await executeTool<ModuleSearch>(createNodesTool(context, 'full'), {
 				action: 'search',
-				query: 'slack send',
+				query: 'mattermost send',
 				limit: 5,
 			});
 
@@ -1375,7 +1402,7 @@ describe('nodes tool', () => {
 					createNodesTool(context, surface),
 					{
 						action: 'type-definition',
-						nodeTypes: ['notion', 'httpRequest.send', 'n8n-nodes-base.slack'],
+						nodeTypes: ['notion', 'httpRequest.send', 'n8n-nodes-base.mattermost'],
 					},
 				);
 
@@ -1392,7 +1419,7 @@ describe('nodes tool', () => {
 						import: "import { httpRequest } from '@n8n/nodes/httpRequest';",
 						content: expect.stringContaining('send'),
 					},
-					{ nodeType: 'n8n-nodes-base.slack', version: '2.3', content: expect.any(String) },
+					{ nodeType: 'n8n-nodes-base.mattermost', version: '2.3', content: expect.any(String) },
 				]);
 				expect(context.nodeService.getNodeTypeDefinition).toHaveBeenCalledTimes(1);
 			},
@@ -1404,24 +1431,28 @@ describe('nodes tool', () => {
 				createNodesTool(context, 'full'),
 				{
 					action: 'type-definition',
-					nodeTypes: ['n8n-nodes-base.slack', 'n8n-nodes-base.notion', 'n8n-nodes-base.webhook'],
+					nodeTypes: [
+						'n8n-nodes-base.mattermost',
+						'n8n-nodes-base.notion',
+						'n8n-nodes-base.telegramTrigger',
+					],
 				},
 			);
 
 			expect(result.definitions[0].content).toBe(
-				"// No typed module. Use node({ name, type: 'n8n-nodes-base.slack', version: 2.3, parameters }) from '@n8n/workflow-sdk/next', or subnode({ … }) for an AI sub-node.\nexport type SlackV23Params = {}",
+				"// No typed module. Use node({ name, type: 'n8n-nodes-base.mattermost', version: 2.3, parameters }) from '@n8n/workflow-sdk/next', or subnode({ … }) for an AI sub-node.\nexport type MattermostV23Params = {}",
 			);
-			expect(result.definitions[1].content).toBe('export type SlackV23Params = {}');
+			expect(result.definitions[1].content).toBe('export type MattermostV23Params = {}');
 			expect(result.definitions[2].content).toBe(
-				"// No typed module. Start the flow with trigger({ name, type: 'n8n-nodes-base.webhook', version: 2.3, parameters, sample }) from '@n8n/workflow-sdk/next'.\nexport type SlackV23Params = {}",
+				"// No typed module. Start the flow with trigger({ name, type: 'n8n-nodes-base.telegramTrigger', version: 2.3, parameters, sample }) from '@n8n/workflow-sdk/next'.\nexport type MattermostV23Params = {}",
 			);
 
 			context.nodeContractsEnabled = false;
 			const off = await executeTool<{ definitions: Array<{ content: string }> }>(
 				createNodesTool(context, 'full'),
-				{ action: 'type-definition', nodeTypes: ['n8n-nodes-base.slack'] },
+				{ action: 'type-definition', nodeTypes: ['n8n-nodes-base.mattermost'] },
 			);
-			expect(off.definitions[0].content).toBe('export type SlackV23Params = {}');
+			expect(off.definitions[0].content).toBe('export type MattermostV23Params = {}');
 		});
 
 		it('lists the module actions next to the legacy definition of the same service', async () => {
@@ -1472,7 +1503,7 @@ describe('nodes tool', () => {
 			const context = createContractContext();
 			const result = await executeTool(createNodesTool(context, 'full'), {
 				action: 'describe',
-				nodeType: 'n8n-nodes-base.slack',
+				nodeType: 'n8n-nodes-base.mattermost',
 			});
 
 			expect(result).toMatchObject({ found: true, properties: [{ type: 'credentialsSelect' }] });
@@ -1503,12 +1534,12 @@ describe('nodes tool', () => {
 			const context = createContractContext();
 			await executeTool(createNodesTool(context, 'full'), {
 				action: 'search',
-				query: 'slack send',
+				query: 'mattermost send',
 				limit: 5,
 			});
 			await executeTool(createNodesTool(context, 'full'), {
 				action: 'type-definition',
-				nodeTypes: ['n8n-nodes-base.slack'],
+				nodeTypes: ['n8n-nodes-base.mattermost'],
 			});
 
 			expect(warmWorkspace).not.toHaveBeenCalled();

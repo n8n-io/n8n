@@ -1,0 +1,34 @@
+{
+	"executions": [
+		{
+			"name": "reads the items of the runner",
+			"params": {
+				"code": "return [{'count': len(_items)}]",
+				"mode": "allItems"
+			},
+			"items": [
+				{
+					"a": 1
+				},
+				{
+					"a": 2
+				}
+			],
+			"responses": [],
+			"imports": [
+				[
+					{
+						"json": {
+							"count": 2
+						}
+					}
+				]
+			],
+			"output": [
+				{
+					"count": 2
+				}
+			]
+		}
+	]
+}

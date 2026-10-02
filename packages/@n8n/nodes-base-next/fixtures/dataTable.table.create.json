@@ -1,0 +1,119 @@
+{
+	"executions": [
+		{
+			"name": "creates the table when no table has the name",
+			"params": {
+				"name": "Signups",
+				"columns": [
+					{
+						"name": "email",
+						"type": "string"
+					},
+					{
+						"name": "plan",
+						"type": "string"
+					}
+				]
+			},
+			"responses": [],
+			"imports": [
+				{
+					"count": 0,
+					"tables": []
+				},
+				{
+					"id": "t1",
+					"name": "Signups",
+					"columns": [
+						{
+							"name": "email",
+							"type": "string"
+						},
+						{
+							"name": "plan",
+							"type": "string"
+						}
+					],
+					"createdAt": "2026-03-01T10:00:00.000Z",
+					"updatedAt": "2026-03-01T10:00:00.000Z"
+				}
+			],
+			"output": [
+				{
+					"id": "t1",
+					"name": "Signups",
+					"columns": [
+						{
+							"name": "email",
+							"type": "string"
+						},
+						{
+							"name": "plan",
+							"type": "string"
+						}
+					],
+					"createdAt": "2026-03-01T10:00:00.000Z",
+					"updatedAt": "2026-03-01T10:00:00.000Z"
+				}
+			]
+		},
+		{
+			"name": "gives the table that has the name",
+			"params": {
+				"name": "Signups",
+				"columns": [
+					{
+						"name": "email",
+						"type": "string"
+					},
+					{
+						"name": "plan",
+						"type": "string"
+					}
+				]
+			},
+			"responses": [],
+			"imports": [
+				{
+					"count": 1,
+					"tables": [
+						{
+							"id": "t1",
+							"name": "Signups",
+							"columns": [
+								{
+									"name": "email",
+									"type": "string"
+								},
+								{
+									"name": "plan",
+									"type": "string"
+								}
+							],
+							"createdAt": "2026-03-01T10:00:00.000Z",
+							"updatedAt": "2026-03-01T10:00:00.000Z"
+						}
+					]
+				}
+			],
+			"output": [
+				{
+					"id": "t1",
+					"name": "Signups",
+					"columns": [
+						{
+							"name": "email",
+							"type": "string"
+						},
+						{
+							"name": "plan",
+							"type": "string"
+						}
+					],
+					"createdAt": "2026-03-01T10:00:00.000Z",
+					"updatedAt": "2026-03-01T10:00:00.000Z"
+				}
+			]
+		}
+	]
+}

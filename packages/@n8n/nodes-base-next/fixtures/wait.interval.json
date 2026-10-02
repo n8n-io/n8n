@@ -1,0 +1,22 @@
+{
+	"executions": [
+		{
+			"name": "passes the items on",
+			"params": {
+				"amount": 0,
+				"unit": "seconds"
+			},
+			"items": [
+				{
+					"a": 1
+				}
+			],
+			"responses": [],
+			"output": [
+				{
+					"a": 1
+				}
+			]
+		}
+	]
+}

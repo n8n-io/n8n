@@ -1,0 +1,20 @@
+import { passedItem, str } from '@n8n/node-sdk';
+
+import { stopAndError } from '../stop-and-error.node';
+
+export const stopWithError = stopAndError.action('stop', {
+	action: 'Stop with an error',
+	summary: 'Fail the execution with this message when items arrive. It emits no item.',
+	flow: { effect: 'transform', cardinality: 'batch' },
+	input: {
+		message: str().with({ minLength: 1 }),
+		description: str().optional().hint('More detail n8n shows under the message'),
+	},
+	output: passedItem(),
+	// eslint-disable-next-line require-yield -- the action ends every run with its error
+	*run({ input }) {
+		throw Object.assign(new Error(input.message), {
+			...(input.description ? { description: input.description } : {}),
+		});
+	},
+});

@@ -415,6 +415,53 @@ export const ping = demo.trigger('ping', {
 		]);
 	});
 
+	it('replays with the credential fields of a fixture and refuses a secret there', async () => {
+		const entry = path.join(dirs.root, 'server.ts');
+		await writeFile(
+			entry,
+			`import { bearer, credential, defineNode, obj, str } from '@n8n/node-sdk';
+const demo = defineNode({
+	id: 'demo',
+	displayName: 'Demo',
+	credential: credential({
+		types: [bearer({ name: 'demoApi', displayName: 'Demo', fields: { server: str() }, baseUrl: ({ server }) => server })],
+	}),
+});
+export const read = demo.action('read', {
+	action: 'Read',
+	summary: 'Read the text.',
+	flow: { effect: 'read', cardinality: 'per-item' },
+	input: {},
+	output: obj({ text: str() }),
+	async run({ http }) {
+		return { text: String(await http.request({ path: '/text' })) };
+	},
+});
+`,
+		);
+		const frozen = await freezeAction(entry, 'read');
+		const fixture = (credential?: Record<string, unknown>) => ({
+			executions: [
+				{ name: 'read', params: {}, responses: ['hi'], output: [{ text: 'hi' }], credential },
+			],
+		});
+
+		await expect(
+			replayFixtures(frozen, fixture({ server: 'https://demo.example.com' })),
+		).resolves.toEqual([]);
+		await expect(replayFixtures(frozen, fixture())).resolves.toEqual([
+			expect.stringContaining('demo.read@1.0.0 fixture "read": Credential demoApi'),
+		]);
+		await expect(
+			replayFixtures(frozen, fixture({ server: 'https://demo.example.com', token: 't' })),
+		).resolves.toEqual([
+			'demo.read@1.0.0 fixture "read": A fixture credential holds only fields of demoApi, not token',
+		]);
+		await expect(
+			checkPublish(undefined, frozen, fixture({ server: 'https://demo.example.com', token: 't' })),
+		).rejects.toThrow('not token');
+	});
+
 	it('takes a major without migrate when the old input still fits', async () => {
 		const prev = await v1();
 		const next = await freeze({ version: 2, input: '{ text: str(), prefix: str().optional() }' });
@@ -598,9 +645,10 @@ describe('published versions', () => {
 				toVersionedNodeType([frozenOf({ ...manifest, apiVersion }, bundle)]);
 
 			expect(() => typeOf('n8n:action@3.0.0')).toThrow(
-				'demo.echo@1.0.9 needs n8n:action@3.0.0. This host runs n8n:action >=1.0.0 <3.0.0 and implements n8n:action@1.0.0, n8n:action@2.2.0.',
+				'demo.echo@1.0.9 needs n8n:action@3.0.0. This host runs n8n:action >=1.0.0 <3.0.0 and implements n8n:action@1.0.0, n8n:action@2.3.0.',
 			);
-			expect(() => typeOf('n8n:action@2.3.0')).toThrow('needs n8n:action@2.3.0');
+			expect(() => typeOf('n8n:action@2.4.0')).toThrow('needs n8n:action@2.4.0');
+			expect(() => typeOf('n8n:action@2.3.0')).not.toThrow();
 			expect(() => typeOf('n8n:action@2.2.0')).not.toThrow();
 			expect(() => typeOf('n8n:action@2.1.0')).not.toThrow();
 			expect(() => typeOf('n8n:action@2.0.3')).not.toThrow();
@@ -636,7 +684,7 @@ describe('published versions', () => {
 			expect(() => evaluateBundle(bundle, 'n8n:action@3.0.0')).toThrow(
 				'This host cannot run n8n:action@3.0.0',
 			);
-			expect(() => evaluateBundle(bundle, 'n8n:action@2.3.0')).toThrow('cannot run');
+			expect(() => evaluateBundle(bundle, 'n8n:action@2.4.0')).toThrow('cannot run');
 			expect(evaluateBundle(bundle, 'n8n:action@2.0.0').id).toBe('demo.echo');
 			expect(evaluateBundle(bundle, 'n8n:action@2.1.0').id).toBe('demo.echo');
 			expect(evaluateBundle(bundle, ACTION_API_VERSION).id).toBe('demo.echo');

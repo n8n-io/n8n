@@ -3134,6 +3134,39 @@ describe('createBuildWorkflowTool', () => {
 		expect(getAllowedHttpRequestDomains).not.toHaveBeenCalled();
 	});
 
+	it('saves a legacy node() that a typed step replaces, with a note that names the step', async () => {
+		const mail = {
+			id: '1',
+			name: 'Mail',
+			type: 'n8n-nodes-base.gmail',
+			typeVersion: 2.1,
+			position: [0, 0] as [number, number],
+			parameters: { resource: 'message', operation: 'getAll', returnAll: true },
+		};
+		vi.mocked(compileWorkflowSource).mockResolvedValueOnce({
+			success: true,
+			workflow: { name: 'Mail', nodes: [mail], connections: {} },
+			warnings: [],
+			compiler: 'sandbox-tsx',
+		});
+		const { context, filePath } = makeContext({
+			source:
+				"export default workflow('Mail', manual().andThen(node({ name: 'Mail', type: 'n8n-nodes-base.gmail', version: 2.1 })));",
+			overrides: { nodeContractsEnabled: true },
+		});
+
+		const result = await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
+			filePath,
+			name: 'Mail',
+		});
+
+		expect(result.success).toBe(true);
+		expect(result.warnings).toContainEqual(
+			expect.stringContaining('[CONTRACT_NODE_AVAILABLE]: "Mail" is a legacy n8n-nodes-base.gmail'),
+		);
+		expect(context.workflowService.createFromWorkflowJSON).toHaveBeenCalled();
+	});
+
 	it('keeps repeated validation-error escalation stable when diagnostics are unavailable', async () => {
 		const { context, filePath } = makeContext({ source: 'workflow source' });
 		const validationResult = {

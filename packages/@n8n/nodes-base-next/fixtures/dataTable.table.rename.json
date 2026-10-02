@@ -1,0 +1,22 @@
+{
+	"executions": [
+		{
+			"name": "renames the table",
+			"params": {
+				"table": {
+					"id": "t1"
+				},
+				"name": "Leads"
+			},
+			"responses": [],
+			"imports": [true],
+			"output": [
+				{
+					"id": "t1",
+					"name": "Leads",
+					"renamed": true
+				}
+			]
+		}
+	]
+}

@@ -45,13 +45,15 @@ const ENV_FLAG = 'N8N_INSTANCE_AI_SANDBOX_LINK_SDK';
 /**
  * Packages installed into the sandbox when workspace linking is enabled. `@n8n/errors` is
  * linked because the workspace copy can gain exports before its version is bumped, and
- * `n8n-workflow` fails to load against the older published copy.
+ * `n8n-workflow` fails to load against the older published copy. Node contracts type-check
+ * n8n expressions against `@n8n/expression-types`.
  */
 export const SANDBOX_LINKED_WORKSPACE_PACKAGES = [
 	'@n8n/errors',
 	'@n8n/utils',
 	'n8n-workflow',
 	'@n8n/workflow-sdk',
+	'@n8n/expression-types',
 ] as const;
 
 export interface WorkspacePackageTarball {
@@ -151,7 +153,7 @@ export async function packHostSandboxPackages(logger: Logger): Promise<Workspace
 		const tarball = await packWorkspacePackage(logger, packageName);
 		if (!tarball) {
 			throw new Error(
-				`${packageName} could not be packed for the sandbox. Run \`pnpm build\` for packages/@n8n/utils, packages/workflow, and packages/@n8n/workflow-sdk.`,
+				`${packageName} could not be packed for the sandbox. Run \`pnpm build\` for packages/@n8n/utils, packages/workflow, packages/@n8n/workflow-sdk, and packages/@n8n/expression-types.`,
 			);
 		}
 		packed.push(tarball);

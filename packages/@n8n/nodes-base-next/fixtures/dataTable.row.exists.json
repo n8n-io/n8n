@@ -1,0 +1,60 @@
+{
+	"executions": [
+		{
+			"name": "routes each item by a match",
+			"params": {
+				"table": {
+					"name": "leads"
+				},
+				"where": {
+					"match": "all",
+					"conditions": [
+						{
+							"op": "eq",
+							"column": "email",
+							"value": "ada@example.com"
+						}
+					]
+				}
+			},
+			"items": [
+				{
+					"email": "ada@example.com"
+				},
+				{
+					"email": "new@example.com"
+				}
+			],
+			"responses": [],
+			"imports": [
+				{
+					"count": 1,
+					"rows": [
+						{
+							"id": 1,
+							"email": "ada@example.com",
+							"createdAt": "2026-03-01T10:00:00.000Z",
+							"updatedAt": "2026-03-01T10:00:00.000Z"
+						}
+					]
+				},
+				{
+					"count": 0,
+					"rows": []
+				}
+			],
+			"outputs": [
+				[
+					{
+						"email": "ada@example.com"
+					}
+				],
+				[
+					{
+						"email": "new@example.com"
+					}
+				]
+			]
+		}
+	]
+}

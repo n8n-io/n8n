@@ -47,6 +47,12 @@ export function isAllowedNode(s: string): s is AllowedNode {
 	return ALLOWED_NODES.includes(s as AllowedNode);
 }
 
+/**
+ * Node contracts run in the node-sdk runtime. It gives data tables only to an action whose
+ * contract imports `dataTables`, so the nodes of the package can have the proxy.
+ */
+const CONTRACT_NODES_PREFIX = '@n8n/nodes-base-next.';
+
 @Service()
 export class DataTableProxyService implements DataTableProxyProvider {
 	constructor(
@@ -68,7 +74,7 @@ export class DataTableProxyService implements DataTableProxyProvider {
 	}
 
 	private validateRequest(node: INode) {
-		if (!isAllowedNode(node.type)) {
+		if (!isAllowedNode(node.type) && !node.type.startsWith(CONTRACT_NODES_PREFIX)) {
 			throw new Error('This proxy is only available for Data table nodes');
 		}
 	}

@@ -1,17 +1,28 @@
 import {
 	contractStep,
+	contractSubnode,
 	contractTrigger,
 	manual,
 	node,
 	routedStep,
 	set,
 	subnode,
+	trigger,
 	workflow,
 	type Binary,
+	type Declared,
 	type Dollar,
+	type EntryFields,
+	type Flow,
+	type FromSchema,
 	type OutputNames,
+	type ModelOf,
+	type Pairing,
 	type RoutedStep,
 	type Step,
+	type Subnode,
+	type Value,
+	type ValueSchema,
 } from '../index';
 import { compileLambda } from '../lambda';
 
@@ -301,6 +312,23 @@ describe('workflow', () => {
 		manual().andThen(upload({ name: 'Upload', file: { mimeType: 'text/csv' } }));
 	});
 
+	it('takes an expression string in a typed field and passes it on unchanged', () => {
+		const limit = <In, Ctx, const N extends string>(config: {
+			name: N;
+			max: Value<In, Ctx, number>;
+		}): Step<In, Ctx, unknown, N> => contractStep('core.limit', config);
+
+		const json = workflow(
+			'Limit',
+			manual().andThen(limit({ name: 'Limit', max: '={{ $json.count }}' })),
+		).toJSON();
+		expect(json.nodes.find((n) => n.name === 'Limit')?.parameters).toEqual({
+			max: '={{ $json.count }}',
+		});
+		// @ts-expect-error a plain string is not a number
+		manual().andThen(limit({ name: 'Limit', max: 'ten' }));
+	});
+
 	it('pins the action version of a contract step', () => {
 		const pinned = contractStep('notion.databasePage.getAll', { name: 'Tasks' }, 2);
 		const json = workflow('Pinned', manual().andThen(pinned)).toJSON();
@@ -402,6 +430,62 @@ describe('workflow', () => {
 		});
 	});
 
+	it('wires contract sub-nodes by the kind they supply', () => {
+		const chatModel = <In, Ctx>(
+			config: { name: string } & { model: Value<In, Ctx, ModelOf<'openai'>> },
+		): Subnode<In, Ctx, 'chatModel'> => contractSubnode('pkg.openAiChatModel', 'chatModel', config);
+		const tool = <In, Ctx>(config: { name: string } & { url: string }): Subnode<In, Ctx, 'tool'> =>
+			contractSubnode('pkg.httpTool', 'tool', config);
+		const agent = <In, Ctx, const N extends string>(
+			config: { name: N } & {
+				model: Subnode<In, Ctx, 'chatModel'>;
+				tools?: Array<Subnode<In, Ctx, 'tool'>>;
+				prompt: Value<In, Ctx, string>;
+			},
+		): Step<In, Ctx, { text: string }, N> => contractStep('pkg.aiAgent', config);
+		const wf = workflow(
+			'Answer',
+			manual({ sample: [{ question: 'What is n8n?', model: 'gpt-5-mini' }] }).andThen(
+				agent({
+					name: 'Agent',
+					model: chatModel({ name: 'Model', model: (item) => item.model }),
+					tools: [tool({ name: 'Fetch', url: 'https://example.com' })],
+					prompt: (item) => item.question,
+				}),
+			),
+		);
+		const json = wf.toJSON();
+		expect(json.nodes.map((n) => [n.name, n.parameters])).toEqual([
+			['Start', {}],
+			['Agent', { prompt: '={{ $json.question }}' }],
+			['Model', { model: '={{ $json.model }}' }],
+			['Fetch', { url: 'https://example.com' }],
+		]);
+		const into = (type: string) => [[{ node: 'Agent', type, index: 0 }]];
+		expect(json.connections.Model).toEqual({ ai_languageModel: into('ai_languageModel') });
+		expect(json.connections.Fetch).toEqual({ ai_tool: into('ai_tool') });
+
+		agent({
+			name: 'Wrong kind',
+			// @ts-expect-error a tool does not supply a chat model
+			model: tool({ name: 'T', url: 'https://example.com' }),
+			prompt: 'Hi',
+		});
+		agent({
+			name: 'Legacy',
+			// @ts-expect-error a contract root takes contract sub-nodes only
+			model: subnode({ name: 'M', type: '@n8n/n8n-nodes-langchain.lmChatOpenAi', version: 1.2 }),
+			prompt: 'Hi',
+		});
+		node({
+			name: 'Legacy agent',
+			type: '@n8n/n8n-nodes-langchain.agent',
+			version: 2.2,
+			// @ts-expect-error a legacy root node cannot run a contract sub-node
+			subnodes: { model: chatModel({ name: 'M2', model: 'gpt-5-mini' }) },
+		});
+	});
+
 	it('reports a sub-node that reuses a node name', () => {
 		const wf = workflow(
 			'Clash',
@@ -463,5 +547,132 @@ describe('workflow', () => {
 		manual()
 			.andThen(node({ name: 'Anything', type: 'n8n-nodes-base.noOp', version: 1 }))
 			.andThen(set({ name: 'Loose', fields: { read: (item) => item.whatever } }));
+	});
+});
+
+describe('native triggers', () => {
+	interface Request {
+		headers: Record<string, string>;
+		body: Record<string, unknown>;
+	}
+	const pairing: Pairing = {
+		trigger: 'n8n-nodes-base.webhook',
+		reply: 'n8n-nodes-base.respondToWebhook',
+		field: 'responseMode',
+		value: 'responseNode',
+	};
+	// The calls a generated module makes for the Webhook and Respond to Webhook contracts.
+	const hook = <const N extends string, const S extends { body?: ValueSchema } = {}>(config: {
+		name: N;
+		path: string;
+		responseMode?: string;
+		schema?: S;
+	}): Flow<Declared<Request, S>, Record<N, Declared<Request, S>>> =>
+		contractTrigger('n8n-nodes-base.webhook', config, 2.2, undefined, {
+			pairing,
+			example: { headers: {}, body: {} },
+		});
+	const respond = <In, Ctx, const N extends string>(config: {
+		name: N;
+		respondWith: string;
+	}): Step<In, Ctx, In, N> =>
+		contractStep('n8n-nodes-base.respondToWebhook', config, 1.5, undefined, undefined, pairing);
+	const incident = {
+		type: 'object',
+		properties: { severity: { enum: ['critical', 'info'] }, count: { type: 'integer' } },
+		required: ['severity'],
+	} as const;
+
+	it('makes the trigger sample from a declared schema, and keeps the schema out of the node', () => {
+		const wf = workflow(
+			'Incidents',
+			hook({ name: 'Hook', path: 'incidents', schema: { body: incident } }).andThen(
+				set({ name: 'Severity', fields: { severity: (item) => item.body.severity } }),
+			),
+		);
+		const json = wf.generatePinData().toJSON();
+		expect(json.nodes.find((n) => n.name === 'Hook')?.parameters).toEqual({ path: 'incidents' });
+		expect(json.pinData).toEqual({
+			Hook: [{ headers: {}, body: { severity: 'critical', count: 1 } }],
+		});
+		const table = contractTrigger('n8n-nodes-base.postgresTrigger', {
+			name: 'Table',
+			schema: 'public',
+		} as never);
+		expect(workflow('Table', table).toJSON().nodes[0]?.parameters).toEqual({ schema: 'public' });
+		hook({ name: 'Hook', path: 'p', schema: { body: incident } }).andThen(
+			// @ts-expect-error the declared body has no such field
+			set({ name: 'Typo', fields: { x: (item) => item.body.severty } }),
+		);
+	});
+
+	it('checks that a webhook that waits for a reply has one, and that it waits for its replies', () => {
+		const waiting = hook({ name: 'Hook', path: 'p', responseMode: 'responseNode' });
+		expect(() => workflow('No reply', waiting).toJSON()).toThrow(
+			'Hook: responseMode is "responseNode", so the flow needs its reply step after it',
+		);
+		const json = workflow(
+			'Reply',
+			waiting.andThen(respond({ name: 'Reply', respondWith: 'json' })),
+		).toJSON();
+		expect(json.nodes.map((n) => n.type)).toEqual([
+			'n8n-nodes-base.webhook',
+			'n8n-nodes-base.respondToWebhook',
+		]);
+		const immediate = hook({ name: 'Hook', path: 'p' }).andThen(
+			respond({ name: 'Reply', respondWith: 'json' }),
+		);
+		expect(() => workflow('Immediate', immediate).toJSON()).toThrow(
+			'Reply: replies to "Hook", which does not wait for it. Set responseMode: "responseNode" on "Hook"',
+		);
+	});
+
+	it('accepts a reply that another node waits for, as n8n does', () => {
+		const wait = node({
+			name: 'Wait',
+			type: 'n8n-nodes-base.wait',
+			version: 1.1,
+			parameters: { resume: 'webhook', responseMode: 'responseNode' },
+		});
+		const underWait = hook({ name: 'Hook', path: 'p' })
+			.andThen(wait)
+			.andThen(respond({ name: 'Reply', respondWith: 'json' }));
+		expect(workflow('Wait', underWait).toJSON().nodes).toHaveLength(3);
+		const chat = trigger({
+			name: 'Chat',
+			type: '@n8n/n8n-nodes-langchain.chatTrigger',
+			version: 1.3,
+			parameters: { public: true, mode: 'webhook', options: { responseMode: 'responseNode' } },
+		}).andThen(respond({ name: 'Reply', respondWith: 'json' }));
+		expect(workflow('Chat', chat).toJSON().nodes).toHaveLength(2);
+		const manualReply = manual().andThen(respond({ name: 'Reply', respondWith: 'json' }));
+		expect(workflow('Manual', manualReply).toJSON().nodes).toHaveLength(2);
+	});
+
+	it('types a declared value schema and the fields of config entries', () => {
+		type Body = FromSchema<typeof incident>;
+		const body: Body = { severity: 'info' };
+		// @ts-expect-error severity takes the enum values only
+		const wrong: Body = { severity: 'low' };
+		// @ts-expect-error an object with properties has only those fields
+		const extra: Body = { severity: 'info', other: 1 };
+		type Fields = EntryFields<
+			{
+				fields: [
+					{ label: 'Email'; kind: 'email'; required: true },
+					{ label: 'Age'; kind: 'number' },
+				];
+			},
+			['fields'],
+			['label'],
+			'kind',
+			{ ['number']: number },
+			string,
+			'required'
+		>;
+		const fields: Fields = { Email: 'a@b.c', Age: null };
+		// @ts-expect-error a field that is not required may be null
+		const age: number = fields.Age;
+		expect([body, wrong, extra, age]).toHaveLength(4);
 	});
 });

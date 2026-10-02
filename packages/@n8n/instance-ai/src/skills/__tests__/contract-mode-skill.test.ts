@@ -42,6 +42,6 @@ describe('contract-mode skill', () => {
 	});
 
 	it('stays small', () => {
-		expect(Buffer.byteLength(skill)).toBeLessThan(5_000);
+		expect(Buffer.byteLength(skill)).toBeLessThan(5_200);
 	});
 });

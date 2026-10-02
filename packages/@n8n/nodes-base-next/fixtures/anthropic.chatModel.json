@@ -1,0 +1,117 @@
+{
+	"executions": [
+		{
+			"name": "one reply",
+			"params": {
+				"model": "claude-sonnet-4-5"
+			},
+			"calls": [
+				{
+					"method": "chat",
+					"args": [
+						{
+							"messages": [
+								{
+									"role": "system",
+									"content": "Be short"
+								},
+								{
+									"role": "user",
+									"content": "Hi"
+								}
+							]
+						}
+					]
+				}
+			],
+			"responses": [
+				{
+					"id": "msg_1",
+					"type": "message",
+					"role": "assistant",
+					"content": [
+						{
+							"type": "text",
+							"text": "Hello!"
+						}
+					],
+					"stop_reason": "end_turn",
+					"usage": {
+						"input_tokens": 10,
+						"output_tokens": 3
+					}
+				}
+			],
+			"output": [
+				{
+					"text": "Hello!",
+					"toolCalls": [],
+					"finishReason": "stop",
+					"usage": {
+						"inputTokens": 10,
+						"outputTokens": 3
+					}
+				}
+			]
+		},
+		{
+			"name": "a structured reply through the output tool",
+			"params": {
+				"model": "claude-sonnet-4-5"
+			},
+			"calls": [
+				{
+					"method": "chat",
+					"args": [
+						{
+							"messages": [
+								{
+									"role": "user",
+									"content": "Colour?"
+								}
+							],
+							"output": {
+								"type": "object",
+								"properties": {
+									"colour": {
+										"type": "string"
+									}
+								}
+							}
+						}
+					]
+				}
+			],
+			"responses": [
+				{
+					"content": [
+						{
+							"type": "tool_use",
+							"id": "toolu_1",
+							"name": "__n8n_output",
+							"input": {
+								"colour": "red"
+							}
+						}
+					],
+					"stop_reason": "tool_use",
+					"usage": {
+						"input_tokens": 12,
+						"output_tokens": 5
+					}
+				}
+			],
+			"output": [
+				{
+					"text": "{\"colour\":\"red\"}",
+					"toolCalls": [],
+					"finishReason": "stop",
+					"usage": {
+						"inputTokens": 12,
+						"outputTokens": 5
+					}
+				}
+			]
+		}
+	]
+}

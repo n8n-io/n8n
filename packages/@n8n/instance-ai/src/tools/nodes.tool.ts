@@ -26,8 +26,10 @@ import {
 	actionRow,
 	actionRowsOfNode,
 	catalogRowsBesideModules,
+	namesDisplayName,
 	nearestNextActions,
 	nextNodeIdOfNodeType,
+	supplierActionsOf,
 	nextNodeModule,
 	nextNodeView,
 	searchNextActions,
@@ -409,13 +411,26 @@ async function searchOneWithModules(
 	const catalog = await handleSearch(context, input, cache);
 	const coveredNodes = catalog.results.flatMap((hit) => nextNodeIdOfNodeType(hit.name) ?? []);
 	const results = catalog.results.filter((hit) => nextNodeIdOfNodeType(hit.name) === undefined);
+	// A sub-node search gets the sub-node actions of the module nodes that replace its hits.
+	const suppliers = input.connectionType
+		? supplierActionsOf(coveredNodes, input.connectionType)
+		: [];
 	const { nodes, actions, otherActions, coversQuery } = input.connectionType
-		? { nodes: [], actions: [], otherActions: [], coversQuery: false }
+		? {
+				nodes: [...new Set(suppliers.map(({ node }) => node.id))],
+				actions: suppliers.map(({ id }) => id),
+				otherActions: [],
+				coversQuery: false,
+			}
 		: searchNextActions(input.query ?? '', coveredNodes);
 	const otherActionsPart = otherActions.length ? { otherActions } : {};
 	if (nodes.length) {
-		// Other catalog hits of a query that the modules match fully are noise.
-		const otherNodes = coversQuery ? [] : catalogRowsBesideModules(results, nodes);
+		// Other catalog hits of a query that the modules match fully are noise, unless the
+		// query names them, e.g. the legacy agent for "AI agent".
+		const shown = coversQuery
+			? results.filter((hit) => namesDisplayName(input.query ?? '', hit.displayName))
+			: results;
+		const otherNodes = catalogRowsBesideModules(shown, nodes);
 		return { nodes, actions, ...otherActionsPart, ...(otherNodes.length ? { otherNodes } : {}) };
 	}
 	return {

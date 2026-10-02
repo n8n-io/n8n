@@ -1,0 +1,30 @@
+{
+	"executions": [
+		{
+			"name": "private channel",
+			"params": {
+				"name": "#launch",
+				"isPrivate": true
+			},
+			"responses": [
+				{
+					"ok": true,
+					"channel": {
+						"id": "C0LAUNCH01",
+						"name": "launch",
+						"is_channel": true,
+						"is_private": true
+					}
+				}
+			],
+			"output": [
+				{
+					"id": "C0LAUNCH01",
+					"name": "launch",
+					"is_channel": true,
+					"is_private": true
+				}
+			]
+		}
+	]
+}

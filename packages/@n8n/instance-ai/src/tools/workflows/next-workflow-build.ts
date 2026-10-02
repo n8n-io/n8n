@@ -3,18 +3,22 @@ import {
 	credentialHostsOf,
 	egressIssuesOf,
 	exampleOf,
+	modelCatalogDeclaration,
 	toTs,
+	validate,
 	type JsonSchema,
 	type NodeContractLock,
 	type ResourceField,
 } from '@n8n/node-sdk';
 import { actionOfNode, actions, composedSlotOf, versionsOf } from '@n8n/nodes-base-next';
+import { isRecord } from '@n8n/utils/is-record';
+import { hasPlaceholderDeep } from '@n8n/utils/placeholder';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import { z } from 'zod';
 
 import type { ValidationWarning } from './workflow-validation-warnings';
 import type { ExploreResourcesParams, InstanceAiContext } from '../../types';
-import { nextNodeIds, nodeModuleText } from '../next-modules';
+import { contractReplacementOf, factoryPathOf, nextNodeIds, nodeModuleText } from '../next-modules';
 import { escapeSingleQuotes, runInSandbox } from '../../workspace/sandbox-fs';
 import { WORKFLOW_DIAGNOSTICS_FILENAME } from '../../workspace/sandbox-typescript';
 import { joinWorkspacePath } from '../../workspace/workspace-paths';
@@ -27,6 +31,9 @@ import { joinWorkspacePath } from '../../workspace/workspace-paths';
 
 export const NEXT_TSCONFIG_FILENAME = 'tsconfig.next.json';
 export const NODE_OUTPUTS_PATH = '.n8n/node-outputs.d.ts';
+export const MODEL_CATALOG_PATH = '.n8n/model-catalog.d.ts';
+/** The strings the type check reads as n8n expressions and as Code node JavaScript. */
+export const EXPRESSIONS_PATH = '.n8n/expressions.json';
 
 const NEXT_TSCONFIG = JSON.stringify(
 	{
@@ -55,6 +62,8 @@ function nodeModule(nodeId: string): string | undefined {
 
 export const EMPTY_OUTPUTS = 'export {};\n';
 
+export const EMPTY_EXPRESSIONS = `${JSON.stringify({ expressions: [], code: [] })}\n`;
+
 /** Files to write before the build: the tsconfig, the imported node modules, empty outputs. */
 export function nextWorkspaceFiles(
 	source: string,
@@ -75,9 +84,41 @@ export function nextWorkspaceFiles(
 		files: new Map([
 			[NEXT_TSCONFIG_FILENAME, NEXT_TSCONFIG],
 			[NODE_OUTPUTS_PATH, EMPTY_OUTPUTS],
+			[EXPRESSIONS_PATH, EMPTY_EXPRESSIONS],
 			...modules.flatMap(([id, text]) => (text ? [[`.n8n/nodes/${id}.ts`, text] as const] : [])),
 		]),
 	};
+}
+
+/** The model catalog providers that the model fields of the imported modules name. */
+export const catalogProvidersOf = (source: string) => [
+	...new Set(
+		actions
+			.filter(({ node }) => usedNodeIds(source).includes(node.id))
+			.flatMap(({ inputSchema }) =>
+				Object.values(inputSchema.properties ?? {}).flatMap((field) =>
+					field['x-n8n-model-catalog'] ? [field['x-n8n-model-catalog']] : [],
+				),
+			),
+	),
+];
+
+/**
+ * The declaration that types the model fields of the imported modules by the model catalog,
+ * so `tsc` rejects a model ID that the provider does not offer. A provider that the catalog
+ * does not know keeps any model ID.
+ */
+export async function modelCatalogFile(
+	source: string,
+	modelIds: (provider: string) => Promise<readonly string[] | undefined>,
+): Promise<string> {
+	const entries = await Promise.all(
+		catalogProvidersOf(source).map(
+			async (provider) =>
+				[provider, (await modelIds(provider).catch(() => undefined)) ?? []] as const,
+		),
+	);
+	return modelCatalogDeclaration(Object.fromEntries(entries));
 }
 
 /**
@@ -316,11 +357,127 @@ export async function contractEgressWarnings(
 	return checks.flat();
 }
 
+const CODE_NODE_TYPE = 'n8n-nodes-base.code';
+
+const expressionStrings = (value: unknown): string[] => {
+	if (typeof value === 'string') return value.startsWith('=') ? [value] : [];
+	if (Array.isArray(value)) return value.flatMap(expressionStrings);
+	return isRecord(value) ? Object.values(value).flatMap(expressionStrings) : [];
+};
+
+/**
+ * The strings the built workflow keeps as n8n expressions, and the JavaScript of its Code nodes,
+ * for {@link EXPRESSIONS_PATH}. The type check finds the literal of each in the source and checks
+ * it in place. A string that a node quotes as a constant, e.g. in `set()`, is not in the list.
+ */
+export function workflowExpressions(workflow: WorkflowJSON): string {
+	const expressions = [
+		...new Set(workflow.nodes.flatMap((node) => expressionStrings(node.parameters))),
+	];
+	const code = [
+		...new Set(
+			workflow.nodes.flatMap(({ type, parameters = {} }) => {
+				const { jsCode, language = 'javaScript' } = parameters;
+				return type === CODE_NODE_TYPE &&
+					language === 'javaScript' &&
+					typeof jsCode === 'string' &&
+					!jsCode.startsWith('=')
+					? [jsCode]
+					: [];
+			}),
+		),
+	];
+	return expressions.length + code.length === 0
+		? EMPTY_EXPRESSIONS
+		: `${JSON.stringify({ expressions, code })}\n`;
+}
+
+const SCALAR_TYPES: ReadonlySet<unknown> = new Set(['string', 'number', 'integer', 'boolean']);
+
+/**
+ * A `json` field holds JSON text that the run parses before it validates: as node-sdk
+ * `toProperty` and `parameterValue` (properties.ts), every field that is not a binary, an enum,
+ * or a scalar.
+ */
+function asRun(value: unknown, schema: JsonSchema | undefined): unknown {
+	if (typeof value !== 'string' || !/^\s*[[{]/.test(value)) return value;
+	if (!schema || schema['x-n8n-binary'] || schema.enum || SCALAR_TYPES.has(schema.type)) {
+		return value;
+	}
+	try {
+		return JSON.parse(value);
+	} catch {
+		return value;
+	}
+}
+
+/**
+ * The run-time input validator on the fixed values of each contract node, so a value that the
+ * action rejects (a pattern, a range, an enum, an expression in a plain field) fails the build
+ * with its node and field, not the run. Expressions and placeholders wait for the run; the type
+ * check reports a missing field.
+ */
+export function staticInputIssues(workflow: WorkflowJSON): string[] {
+	return workflow.nodes.flatMap((node) => {
+		const action = actionOfNode(node);
+		if (!action || !node.name || node.disabled) return [];
+		const parameters = node.parameters ?? {};
+		const fields = action.inputSchema.properties ?? {};
+		const input = Object.fromEntries(
+			Object.keys(fields).flatMap((key) => {
+				const value = parameters[key];
+				return value === undefined || value === '' || hasPlaceholderDeep(value)
+					? []
+					: [[key, asRun(value, fields[key])]];
+			}),
+		);
+		return validate(input, action.inputSchema, { allowExpressions: true })
+			.filter((issue) => !issue.endsWith(': is required'))
+			.map((issue) => `Node "${node.name}": ${issue}`);
+	});
+}
+
+/**
+ * A note for each `node({ type })` that a typed contract step can replace: the step of the same
+ * resource and operation, or the module (e.g. HTTP Request, whose action follows the method).
+ * It does not block: no action declares a lossless map from the legacy parameters, so the step
+ * can lack an option that the node uses. Nodes that the flow SDK makes itself (filter, switch,
+ * loops) are not `node()` calls.
+ */
+export async function legacyNodeIssues(
+	source: string,
+	workflow: WorkflowJSON,
+): Promise<ValidationWarning[]> {
+	const { locateNextNodes } = await import('@n8n/workflow-sdk/next');
+	const written = new Set(
+		locateNextNodes(source).flatMap(({ name, type }) => (type === undefined ? [] : [name])),
+	);
+	return workflow.nodes.flatMap((node): ValidationWarning[] => {
+		if (!node.name || !written.has(node.name) || actionOfNode(node)) return [];
+		const replacement = contractReplacementOf(node);
+		if (!replacement) return [];
+		const { nodeId, actions: own, exact } = replacement;
+		const steps = own.map((action) => `${action.node.id}.${factoryPathOf(action)}`).join(', ');
+		const from = `import { ${nodeId} } from '@n8n/nodes/${nodeId}'`;
+		return [
+			{
+				code: 'CONTRACT_NODE_AVAILABLE',
+				nodeName: node.name,
+				severity: 'informational',
+				message: exact
+					? `"${node.name}" is a legacy ${node.type} node. Use the typed step ${steps} (${from}) instead of node({ type }), unless the step lacks an option that this node needs.`
+					: `"${node.name}" is a legacy ${node.type} node. The typed module ${nodeId} (${from}) has ${steps}: use the step that does this job instead of node({ type }).`,
+			},
+		];
+	});
+}
+
 const TYPECHECK_TIMEOUT_MS = 60_000;
 
 /**
- * Type-check a workflow source with the node contracts tsconfig in the sandbox. Returns the
- * errors, or `undefined` when the check could not run.
+ * Type-check a workflow source with the node contracts tsconfig in the sandbox, with the n8n
+ * expressions of {@link EXPRESSIONS_PATH}. Returns the errors, or `undefined` when the check
+ * could not run.
  */
 export async function typecheckWorkflowSource(
 	context: InstanceAiContext,
@@ -333,12 +490,16 @@ export async function typecheckWorkflowSource(
 	const sourcePath = joinWorkspacePath(root, filePath);
 	const result = await runInSandbox(
 		workspace,
-		`exec node --max-old-space-size=512 --import tsx ${WORKFLOW_DIAGNOSTICS_FILENAME} '${escapeSingleQuotes(sourcePath)}' ${NEXT_TSCONFIG_FILENAME}`,
+		`WORKFLOW_DIAGNOSTICS_DEADLINE_MS=${TYPECHECK_TIMEOUT_MS - 1_000} exec node --max-old-space-size=512 --import tsx ${WORKFLOW_DIAGNOSTICS_FILENAME} '${escapeSingleQuotes(sourcePath)}' ${NEXT_TSCONFIG_FILENAME} ${EXPRESSIONS_PATH}`,
 		{ cwd: root, abortSignal, timeout: TYPECHECK_TIMEOUT_MS },
 	);
 	if (result.exitCode !== 0) {
 		context.logger.debug('Workflow type check unavailable', { stderr: result.stderr });
 		return undefined;
+	}
+	// The worker writes to stderr when the expression check could not run.
+	if (result.stderr.trim() !== '') {
+		context.logger.warn('Workflow expression check unavailable', { stderr: result.stderr });
 	}
 	const parsed: unknown = JSON.parse(result.stdout);
 	return z.array(z.string()).parse(parsed);

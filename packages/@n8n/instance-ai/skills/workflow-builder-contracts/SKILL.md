@@ -44,7 +44,7 @@ make the smallest change, and build with the returned `filePath`. Keep its
 
 Import the flow API from `@n8n/workflow-sdk/next`. The only typed modules are
 {{NODE_CONTRACT_MODULES_PLACEHOLDER}}: import them from `@n8n/nodes/<id>`.
-Every other node uses `node()`.
+Use a typed step for every node that has one. Every other node uses `node()`.
 
 ```ts
 import { workflow, manual, set } from '@n8n/workflow-sdk/next';
@@ -107,6 +107,7 @@ For a Switch, Text Classifier, Merge, or loop, build WorkflowJSON
 - Read only `item`, `$`, and JavaScript globals, never file constants.
 - `item` and `$('Node')` are JSON: `$('Hook').body`, not `.json` or `.item`.
 - `$.now` and `$.today` are Luxon dates. Use `$.date(iso)` to parse a string.
+- A `'={{ … }}'` string fits a field that takes a lambda. The build checks it like a lambda.
 - Fix a type error at its cause. Do not add casts, `any`, or fallbacks.
 
 ## Values and credentials

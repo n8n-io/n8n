@@ -1,0 +1,65 @@
+{
+	"executions": [
+		{
+			"name": "one square image",
+			"params": {
+				"model": "gpt-image-1",
+				"prompt": "A red hiking backpack on white",
+				"size": "1024x1024"
+			},
+			"responses": [
+				{
+					"created": 1,
+					"data": [
+						{
+							"b64_json": "iVBORw0KGgpmYWtlLWltYWdl"
+						}
+					]
+				}
+			],
+			"output": [{}],
+			"outputBinary": [
+				{
+					"data": {
+						"data": "iVBORw0KGgpmYWtlLWltYWdl",
+						"mimeType": "image/png",
+						"fileName": "data"
+					}
+				}
+			]
+		},
+		{
+			"name": "dall-e-3 with its revised prompt",
+			"params": {
+				"model": "dall-e-3",
+				"prompt": "A backpack",
+				"quality": "hd"
+			},
+			"responses": [
+				{
+					"created": 1,
+					"data": [
+						{
+							"b64_json": "iVBORw0KGgpmYWtlLWltYWdl",
+							"revised_prompt": "A red backpack"
+						}
+					]
+				}
+			],
+			"output": [
+				{
+					"revisedPrompt": "A red backpack"
+				}
+			],
+			"outputBinary": [
+				{
+					"data": {
+						"data": "iVBORw0KGgpmYWtlLWltYWdl",
+						"mimeType": "image/png",
+						"fileName": "data"
+					}
+				}
+			]
+		}
+	]
+}

@@ -1,5 +1,5 @@
 import { OutboundHttp } from '@n8n/backend-network';
-import { GlobalConfig } from '@n8n/config';
+import { GlobalConfig, NodesConfig } from '@n8n/config';
 import { WorkflowRepository } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import { readFile } from 'fs/promises';
@@ -84,7 +84,11 @@ export async function storedContractVersions(): Promise<
  */
 export async function useNodeContractsRegistry() {
 	const { instanceAi } = Container.get(GlobalConfig);
-	const { useContractRegistry } = await import('@n8n/nodes-base-next');
+	const { setCodeLanguages, useContractRegistry } = await import('@n8n/nodes-base-next');
+	// The Code contracts follow the same switch as the Code node.
+	setCodeLanguages(
+		Container.get(NodesConfig).pythonEnabled ? ['javascript', 'python'] : ['javascript'],
+	);
 	const metaByExecution = new Map<string, Promise<unknown>>();
 
 	const metaOf = async (workflowId: string | undefined) => {

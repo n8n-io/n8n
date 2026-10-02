@@ -1,0 +1,50 @@
+{
+  "name": "@n8n/expression-types",
+  "version": "0.1.0",
+  "private": true,
+  "description": "TypeScript types of the n8n expression environment: globals per context and extension methods",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./globals": {
+      "types": "./dist/globals.d.ts",
+      "default": "./dist/globals.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist/**/*"
+  ],
+  "scripts": {
+    "clean": "rimraf dist .turbo",
+    "dev": "pnpm watch",
+    "typecheck": "tsc --noEmit",
+    "build": "tsc -p tsconfig.build.json",
+    "build:unchecked": "tsc -p tsconfig.build.json --noCheck",
+    "format": "biome format --write .",
+    "format:check": "biome ci .",
+    "lint": "eslint . --quiet",
+    "lint:fix": "eslint . --fix",
+    "watch": "tsc -p tsconfig.build.json --watch",
+    "gen-extensions": "tsx scripts/gen-extensions.ts && biome format --write src/extensions.ts",
+    "test": "vitest run",
+    "test:unit": "vitest run"
+  },
+  "dependencies": {
+    "@types/luxon": "catalog:"
+  },
+  "devDependencies": {
+    "@n8n/eslint-config": "workspace:*",
+    "@n8n/typescript-config": "workspace:*",
+    "@n8n/vitest-config": "workspace:*",
+    "n8n-workflow": "workspace:*",
+    "tsx": "catalog:",
+    "typescript": "catalog:typescript",
+    "vitest": "catalog:"
+  },
+  "license": "LicenseRef-n8n-sustainable-use"
+}

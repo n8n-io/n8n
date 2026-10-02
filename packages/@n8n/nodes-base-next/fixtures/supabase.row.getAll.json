@@ -1,0 +1,55 @@
+{
+	"executions": [
+		{
+			"name": "limited",
+			"params": {
+				"table": "customers",
+				"filter": {
+					"match": "all",
+					"conditions": [
+						{
+							"op": "eq",
+							"column": "plan",
+							"value": "free"
+						}
+					]
+				},
+				"paging": {
+					"mode": "limit",
+					"max": 2
+				}
+			},
+			"responses": [
+				{
+					"body": [
+						{
+							"id": 1,
+							"plan": "free"
+						},
+						{
+							"id": 2,
+							"plan": "free"
+						}
+					],
+					"headers": {
+						"content-range": "0-1/*"
+					},
+					"statusCode": 200
+				}
+			],
+			"output": [
+				{
+					"id": 1,
+					"plan": "free"
+				},
+				{
+					"id": 2,
+					"plan": "free"
+				}
+			],
+			"credential": {
+				"host": "https://acme.supabase.co"
+			}
+		}
+	]
+}

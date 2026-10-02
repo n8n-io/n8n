@@ -1,0 +1,67 @@
+{
+	"executions": [
+		{
+			"name": "churned and free",
+			"params": {
+				"table": "customers",
+				"filter": {
+					"match": "all",
+					"conditions": [
+						{
+							"op": "eq",
+							"column": "status",
+							"value": "churned"
+						},
+						{
+							"op": "eq",
+							"column": "plan",
+							"value": "free"
+						}
+					]
+				}
+			},
+			"responses": [
+				[
+					{
+						"id": 3,
+						"email": "c@example.com",
+						"status": "churned",
+						"plan": "free"
+					}
+				]
+			],
+			"output": [
+				{
+					"id": 3,
+					"email": "c@example.com",
+					"status": "churned",
+					"plan": "free"
+				}
+			],
+			"credential": {
+				"host": "https://acme.supabase.co"
+			}
+		},
+		{
+			"name": "nothing matched",
+			"params": {
+				"table": "customers",
+				"filter": {
+					"match": "any",
+					"conditions": [
+						{
+							"op": "in",
+							"column": "id",
+							"values": [98, 99]
+						}
+					]
+				}
+			},
+			"responses": [[]],
+			"output": [],
+			"credential": {
+				"host": "https://acme.supabase.co"
+			}
+		}
+	]
+}

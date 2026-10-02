@@ -8,8 +8,17 @@ import { promisify } from 'node:util';
 import { gzipSync } from 'node:zlib';
 import { UnexpectedError, UserError, type INode, type INodeExecutionData } from 'n8n-workflow';
 
+import type { Action, DataTable, DataTables } from './define';
 import { freezeAction, type FrozenAction } from './freeze';
+import {
+	isDataTableColumns,
+	isDataTableInfo,
+	isDataTableList,
+	isDataTablePage,
+	isDataTableRows,
+} from './host-imports';
 import { evaluateBundle, executorOf, type BinaryStore, type ExecutorHost } from './runtime';
+import { replaySupply, suppliedKindOf, supplyFieldsOf, type SupplyKind } from './subnodes';
 import { validate } from './validate';
 import {
 	canonicalJson,
@@ -44,6 +53,43 @@ async function bufferOf(stream: AsyncIterable<unknown>): Promise<Buffer> {
 }
 
 /** A binary store in memory, with the input binaries of the fixture. */
+/** The host imports of a fixture: each data table call and code run takes the next recorded answer. */
+function fixtureImports(fixture: ExecutionFixture) {
+	const answers = [...(fixture.imports ?? [])];
+	const next = <T>(what: string, guard: (value: unknown) => value is T): T => {
+		if (answers.length === 0) throw new UserError(`No recorded import answer is left for ${what}`);
+		const answer = answers.shift();
+		if (!guard(answer)) throw new UserError(`The recorded answer for ${what} has the wrong shape`);
+		return answer;
+	};
+	const anything = (_value: unknown): _value is unknown => true;
+	const isNumber = (value: unknown): value is number => typeof value === 'number';
+	const isBoolean = (value: unknown): value is boolean => typeof value === 'boolean';
+	const tableOf = (id: string): DataTable => ({
+		id,
+		columns: async () => next('columns', isDataTableColumns),
+		rows: async () => next('rows', isDataTablePage),
+		insert: async () => next('insert', isDataTableRows),
+		update: async () => next('update', isDataTableRows),
+		upsert: async () => next('upsert', isDataTableRows),
+		delete: async () => next('delete', isDataTableRows),
+		clear: async () => next('clear', isNumber),
+		rename: async () => next('rename', isBoolean),
+		drop: async () => next('drop', isBoolean),
+	});
+	const dataTables: DataTables = {
+		open: async (table) => tableOf(table.id ?? table.name),
+		list: async () => next('list', isDataTableList),
+		create: async () => next('create', isDataTableInfo),
+	};
+	const host: Pick<ExecutorHost, 'dataTables' | 'code' | 'waitUntil'> = {
+		dataTables,
+		code: { run: async () => next('code', anything) },
+		waitUntil: async () => await Promise.resolve(),
+	};
+	return { host, unused: () => answers.length };
+}
+
 const fixtureBinaryStore = ({ binary }: ExecutionFixture): BinaryStore => ({
 	input: async (itemIndex, value) => {
 		const found = typeof value === 'string' && itemIndex === 0 ? binary?.[value] : value;
@@ -61,6 +107,22 @@ const fixtureBinaryStore = ({ binary }: ExecutionFixture): BinaryStore => ({
 		};
 	},
 });
+
+/**
+ * A fixture holds only the declared fields of a credential type, so it never holds a secret.
+ * The replay signs no request, so each declared secret gets a stand-in value.
+ */
+function fixtureCredential(action: Action, type: string, data: ExecutionFixture['credential']) {
+	const declared = action.node.credential?.types.find(({ name }) => name === type);
+	const refused = Object.keys(data ?? {}).filter((key) => !(key in (declared?.fields ?? {})));
+	if (refused.length > 0) {
+		throw new UserError(
+			`A fixture credential holds only fields of ${type}, not ${refused.join(', ')}`,
+		);
+	}
+	const secrets = Object.keys(declared?.secrets ?? {}).map((key) => [key, 'fixture'] as const);
+	return { ...Object.fromEntries(secrets), ...data };
+}
 
 /** The recorded binary as the HTTP client gives a streamed response. */
 function streamedResponse(recorded: unknown) {
@@ -93,6 +155,29 @@ function outputBinaryOf(items: readonly INodeExecutionData[]) {
 	return binaries.some((binary) => binary !== undefined) ? binaries : undefined;
 }
 
+/** The recorded capabilities of a fixture, for the sub-node fields of `input`. */
+function fixtureSupplies(fixture: ExecutionFixture, fields: ReturnType<typeof supplyFieldsOf>) {
+	return async (kind: SupplyKind) => {
+		const field = fields.find((entry) => entry.kind === kind);
+		const recorded = field ? fixture.supplied?.[field.name] : undefined;
+		if (recorded === undefined) return field?.many ? [] : undefined;
+		const list = 'results' in recorded ? [recorded] : recorded;
+		const values = list.map(({ data, results }) => replaySupply(kind, data ?? {}, results));
+		return field?.many ? values : values[0];
+	};
+}
+
+/** The results of the calls a fixture makes on the capability that a sub-node gave. */
+async function callResults(supply: unknown, calls: ExecutionFixture['calls']) {
+	if (!isRecord(supply)) throw new UnexpectedError('The sub-node gave no capability');
+	return await (calls ?? []).reduce<Promise<unknown[]>>(async (done, { method, args }) => {
+		const member = supply[method];
+		if (typeof member !== 'function') throw new UserError(`The capability has no ${method}()`);
+		const result: unknown = await Reflect.apply(member, supply, args);
+		return [...(await done), result];
+	}, Promise.resolve([]));
+}
+
 /**
  * Replays fixtures through the current host executor: execution fixtures against the bundle,
  * migration pairs against its `migrate`. An executor change that alters an old version fails.
@@ -121,6 +206,8 @@ export async function replayFixtures(
 		return [...executions, ...migrations];
 	}
 	const run = executorOf(contract);
+	const supplyFields = supplyFieldsOf(contract.input);
+	const supplier = suppliedKindOf(contract.output.json) !== undefined;
 	// n8n fills each property default into the parameters it runs with.
 	const defaults = new Map(manifest.description.properties.map((p) => [p.name, p.default]));
 	const node: INode = {
@@ -137,8 +224,12 @@ export async function replayFixtures(
 	const executions = await Promise.all(
 		fixtures.executions.map(async (fixture) => {
 			const responses = [...fixture.responses];
+			const inputs = fixture.inputs?.map((list) => list.map((json) => ({ json: { ...json } })));
+			const imports = fixtureImports(fixture);
 			const host: ExecutorHost = {
-				items: (fixture.items ?? [{}]).map((json) => ({ json: { ...json } })),
+				items: inputs?.[0] ?? (fixture.items ?? [{}]).map((json) => ({ json: { ...json } })),
+				inputItems: (index) => inputs?.[index] ?? [],
+				...imports.host,
 				node,
 				parameter: (name) => fixture.params[name] ?? defaults.get(name),
 				request: async (options) => {
@@ -148,11 +239,17 @@ export async function replayFixtures(
 				},
 				continueOnFail: () => false,
 				binary: fixtureBinaryStore(fixture),
+				supplied: fixtureSupplies(fixture, supplyFields),
+				// A field the fixture does not record, e.g. a base URL, takes its default.
+				credentialData: async (type) => fixtureCredential(contract, type, fixture.credential),
 			};
 			const at = `${manifest.id}@${manifest.semver} fixture "${fixture.name}"`;
 			try {
 				const items = await run(host);
-				const outputs = items.map((output) => output.map((item) => item.json));
+				// A sub-node gives its capability; the fixture checks what its calls return.
+				const outputs = supplier
+					? [await callResults(items[0]?.[0]?.json, fixture.calls)]
+					: items.map((output) => output.map((item) => item.json));
 				const output = fixture.outputs ? outputs : outputs[0];
 				// Named outputs record no binaries, so any binary there fails the check.
 				const outputBinary = outputBinaryOf(fixture.outputs ? items.flat() : (items[0] ?? []));
@@ -164,9 +261,11 @@ export async function replayFixtures(
 						? []
 						: [`${at}: output binaries ${JSON.stringify(outputBinary)}`]),
 					...(responses.length ? [`${at}: ${responses.length} responses not requested`] : []),
+					...(imports.unused() ? [`${at}: ${imports.unused()} import answers not used`] : []),
+					...(fixture.error === undefined ? [] : [`${at}: no error, expected "${fixture.error}"`]),
 				];
 			} catch (error) {
-				return [`${at}: ${errorMessage(error)}`];
+				return errorMessage(error) === fixture.error ? [] : [`${at}: ${errorMessage(error)}`];
 			}
 		}),
 	);

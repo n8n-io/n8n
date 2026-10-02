@@ -82,7 +82,7 @@ import {
 	preserveExistingNodeGroupIds,
 	preserveExistingSetupValues,
 } from './workflow-json-utils';
-import { contractEgressWarnings } from './next-workflow-build';
+import { contractEgressWarnings, legacyNodeIssues } from './next-workflow-build';
 import { computeChangedNodeNames, downgradeUnchangedNodeBlockers } from './workflow-node-diff';
 import { compileWorkflowSource } from './workflow-source-compiler';
 import { appendWorkflowSourceDiagnostics } from './workflow-source-diagnostics';
@@ -1337,6 +1337,11 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 					isAuxiliarySupportingWorkflow,
 					withEscalation,
 				});
+			}
+
+			// Node contracts: name the typed step for each legacy node() that has one.
+			if (context.nodeContractsEnabled) {
+				informational.push(...(await legacyNodeIssues(sourceCode, json)));
 			}
 
 			// The credentials are bound now, so the build sees the hosts each node may reach.

@@ -1,0 +1,41 @@
+{
+	"executions": [
+		{
+			"name": "replace text",
+			"params": {
+				"channel": "C0OPS",
+				"ts": "1700000000.000100",
+				"text": "Fixed",
+				"appendAttribution": false
+			},
+			"responses": [
+				{
+					"ok": true,
+					"channel": "C0OPS",
+					"ts": "1700000000.000100",
+					"text": "Fixed",
+					"message": {
+						"type": "message",
+						"user": "U0BOT",
+						"text": "Fixed",
+						"ts": "1700000000.000100"
+					}
+				}
+			],
+			"output": [
+				{
+					"ok": true,
+					"channel": "C0OPS",
+					"ts": "1700000000.000100",
+					"text": "Fixed",
+					"message": {
+						"type": "message",
+						"user": "U0BOT",
+						"text": "Fixed",
+						"ts": "1700000000.000100"
+					}
+				}
+			]
+		}
+	]
+}

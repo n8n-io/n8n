@@ -1,0 +1,28 @@
+import { obj, oneOf, str } from '@n8n/node-sdk';
+
+import { direction, limit, pagesOf, table, tableInfo } from '../data-table.node';
+
+export const listTables = table.action('list', {
+	action: 'List tables',
+	summary: 'List the data tables of the project, optionally by name. One item per table.',
+	flow: { effect: 'read', cardinality: '1:N' },
+	imports: ['dataTables'],
+	input: {
+		name: str().optional().hint('Tables whose name contains this text, case ignored'),
+		sort: obj({ by: oneOf('name', 'createdAt', 'updatedAt'), direction }).optional(),
+		limit: limit.optional(),
+	},
+	output: tableInfo,
+	async *run({ input, dataTables }) {
+		const { name, sort } = input;
+		yield* pagesOf(async (offset, room) => {
+			const page = await dataTables.list({
+				offset,
+				limit: room,
+				...(name === undefined ? {} : { name }),
+				...(sort ? { sort } : {}),
+			});
+			return { count: page.count, entries: page.tables };
+		}, input.limit);
+	},
+});

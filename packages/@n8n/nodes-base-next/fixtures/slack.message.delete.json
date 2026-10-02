@@ -1,0 +1,25 @@
+{
+	"executions": [
+		{
+			"name": "delete",
+			"params": {
+				"channel": "C0OPS",
+				"ts": "1700000000.000100"
+			},
+			"responses": [
+				{
+					"ok": true,
+					"channel": "C0OPS",
+					"ts": "1700000000.000100"
+				}
+			],
+			"output": [
+				{
+					"ok": true,
+					"channel": "C0OPS",
+					"ts": "1700000000.000100"
+				}
+			]
+		}
+	]
+}

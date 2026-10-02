@@ -1,0 +1,78 @@
+{
+	"executions": [
+		{
+			"name": "two pages",
+			"params": {
+				"paging": {
+					"mode": "all"
+				}
+			},
+			"responses": [
+				{
+					"ok": true,
+					"channels": [
+						{
+							"id": "C0GENERAL1",
+							"name": "general",
+							"is_channel": true,
+							"is_private": false,
+							"is_archived": false,
+							"is_member": true,
+							"created": 1700000000,
+							"creator": "U01",
+							"topic": {
+								"value": "Company news"
+							},
+							"purpose": {
+								"value": "Everyone"
+							},
+							"num_members": 42
+						}
+					],
+					"response_metadata": {
+						"next_cursor": "c2"
+					}
+				},
+				{
+					"ok": true,
+					"channels": [
+						{
+							"id": "C0RANDOM01",
+							"name": "random",
+							"is_channel": true,
+							"is_private": false
+						}
+					],
+					"response_metadata": {
+						"next_cursor": ""
+					}
+				}
+			],
+			"output": [
+				{
+					"id": "C0GENERAL1",
+					"name": "general",
+					"is_channel": true,
+					"is_private": false,
+					"is_archived": false,
+					"is_member": true,
+					"created": 1700000000,
+					"creator": "U01",
+					"topic": {
+						"value": "Company news"
+					},
+					"purpose": {
+						"value": "Everyone"
+					},
+					"num_members": 42
+				},
+				{
+					"id": "C0RANDOM01",
+					"name": "random",
+					"is_channel": true,
+					"is_private": false
+				}
+			]
+		}
+	]
+}

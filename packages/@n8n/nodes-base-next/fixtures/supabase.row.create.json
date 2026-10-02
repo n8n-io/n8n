@@ -1,0 +1,33 @@
+{
+	"executions": [
+		{
+			"name": "one row",
+			"params": {
+				"table": "customers",
+				"columns": {
+					"email": "d@example.com",
+					"plan": "pro"
+				}
+			},
+			"responses": [
+				[
+					{
+						"id": 4,
+						"email": "d@example.com",
+						"plan": "pro"
+					}
+				]
+			],
+			"output": [
+				{
+					"id": 4,
+					"email": "d@example.com",
+					"plan": "pro"
+				}
+			],
+			"credential": {
+				"host": "https://acme.supabase.co"
+			}
+		}
+	]
+}

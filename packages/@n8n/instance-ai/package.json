@@ -77,6 +77,7 @@
     "@n8n/agents": "workspace:*",
     "@n8n/ai-utilities": "workspace:*",
     "@n8n/api-types": "workspace:*",
+    "@n8n/expression-types": "workspace:*",
     "@n8n/mcp-browser": "workspace:*",
     "@n8n/node-sdk": "workspace:*",
     "@n8n/nodes-base-next": "workspace:*",

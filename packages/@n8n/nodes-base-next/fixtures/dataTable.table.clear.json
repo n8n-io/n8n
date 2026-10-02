@@ -1,0 +1,20 @@
+{
+	"executions": [
+		{
+			"name": "deletes every row",
+			"params": {
+				"table": {
+					"id": "t1"
+				}
+			},
+			"responses": [],
+			"imports": [4],
+			"output": [
+				{
+					"id": "t1",
+					"deletedRows": 4
+				}
+			]
+		}
+	]
+}

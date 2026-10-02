@@ -131,6 +131,12 @@ describe('findMockQuirks (real registry)', () => {
 			expect(joined).toMatch(/files\.info[\s\S]*singular/);
 		});
 
+		it('returns Slack guidance that keeps the full chat.postMessage body when the scenario quotes a shorter one', () => {
+			const guidance = findMockQuirks('Slack', 'POST', '/api/chat.postMessage').join('\n');
+			expect(guidance).toMatch(/chat\.postMessage` → ALWAYS[^\n]*channel[^\n]*message: \{ type/);
+			expect(guidance).toMatch(/chat\.postMessage[^\n]*shorter body/);
+		});
+
 		it('returns S3 guidance distinguishing GetObject from PutObject', () => {
 			const guidance = findMockQuirks('S3', 'GET', '/some-key.pdf');
 			expect(guidance.length).toBeGreaterThan(0);

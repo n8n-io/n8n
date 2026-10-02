@@ -38,13 +38,12 @@ import {
 	LOOP_NODE,
 	LOOP_STATE_NODE,
 	loopCheckParameters,
-	loopCheckSuffix,
 	loopHeadParameters,
 	loopLimitParameters,
 	loopNextParameters,
 	loopNextSuffix,
 	loopNodeNames,
-	MERGE_NODE,
+	mergeNodeOf,
 	mergeParameters,
 	noNextPage,
 	samePass,
@@ -71,6 +70,10 @@ export interface ContractFactory {
 	readonly version: number;
 	/** The parameters the factory takes. The host sets the others, e.g. `authentication`. */
 	readonly inputKeys: readonly string[];
+	/** No host sets a parameter, as for a native node. A node with another parameter keeps its JSON. */
+	readonly closed?: boolean;
+	/** The inputs whose typed field takes an `=` expression string as its whole value. */
+	readonly expressionKeys: readonly string[];
 }
 
 /**
@@ -190,6 +193,8 @@ interface Graph {
 	readonly shapes: ReadonlyMap<string, Shape>;
 	/** The sub-nodes of each AI node and sub-node, by parent name. */
 	readonly children: ReadonlyMap<string, readonly Child[]>;
+	/** The contract shape of each sub-node that a contract node takes. */
+	readonly subnodeShapes: ReadonlyMap<string, ContractShape>;
 	readonly names: ReadonlySet<string>;
 }
 
@@ -347,12 +352,6 @@ function lambdaForExpression(expression: string, names: ReadonlySet<string>): st
 	});
 }
 
-interface Converted {
-	readonly tree: Tree;
-	/** An expression stayed a string because no lambda compiles to it. */
-	readonly raw: boolean;
-}
-
 interface ConvertOptions {
 	/** Node names that `$("Node")` may read. Without them, expressions stay strings. */
 	readonly names?: ReadonlySet<string>;
@@ -360,38 +359,40 @@ interface ConvertOptions {
 	readonly arrayLambdas: boolean;
 }
 
-function convert(value: unknown, options: ConvertOptions): Converted {
+/** Parameters as a tree: each expression that a lambda compiles to becomes that lambda. */
+function convert(value: unknown, options: ConvertOptions): Tree {
 	if (typeof value === 'string') {
 		const { names } = options;
 		const lambda = names && value.startsWith('=') ? lambdaForExpression(value, names) : undefined;
-		return lambda
-			? { tree: new Code(lambda), raw: false }
-			: { tree: value, raw: value.startsWith('=') };
+		return lambda ? new Code(lambda) : value;
 	}
 	if (Array.isArray(value)) {
 		const itemOptions = options.arrayLambdas ? options : { ...options, names: undefined };
-		const items = value.map((item) =>
+		return value.map((item) =>
 			typeof item === 'string' ? convert(item, itemOptions) : convert(item, options),
 		);
-		return { tree: items.map(({ tree }) => tree), raw: items.some(({ raw }) => raw) };
 	}
 	if (isRecord(value)) {
-		const entries = Object.entries(value)
-			.filter(([, entry]) => entry !== undefined)
-			.map(([key, entry]) => ({ key, converted: convert(entry, options) }));
-		return {
-			tree: Object.fromEntries(entries.map(({ key, converted }) => [key, converted.tree])),
-			raw: entries.some(({ converted }) => converted.raw),
-		};
+		return Object.fromEntries(
+			Object.entries(value)
+				.filter(([, entry]) => entry !== undefined)
+				.map(([key, entry]) => [key, convert(entry, options)]),
+		);
 	}
-	return {
-		tree: typeof value === 'number' || typeof value === 'boolean' ? value : null,
-		raw: false,
-	};
+	return typeof value === 'number' || typeof value === 'boolean' ? value : null;
+}
+
+function hasRawExpression(tree: Tree): boolean {
+	if (typeof tree === 'string') return tree.startsWith('=');
+	if (Array.isArray(tree)) return tree.some(hasRawExpression);
+	if (tree === null || typeof tree !== 'object' || tree instanceof Code || tree instanceof Call) {
+		return false;
+	}
+	return Object.values(tree).some(hasRawExpression);
 }
 
 /** A JSON value as a tree, with every string kept as it is. */
-const plainTree = (value: unknown) => convert(value, { arrayLambdas: false }).tree;
+const plainTree = (value: unknown) => convert(value, { arrayLambdas: false });
 
 // ── Node shapes ─────────────────────────────────────────────────────────────
 
@@ -415,12 +416,16 @@ function branchShape(node: NamedNode, names: ReadonlySet<string>): Shape | undef
 	return condition ? { kind: 'branch', condition } : undefined;
 }
 
-/** The condition lambda of the legacy Filter node that `filter` built. */
+/** The compiled JavaScript of a `where` with one `trueWhere` condition. */
+const trueWhereJs = (where: unknown) => {
+	const first = firstOf(isRecord(where) ? where.conditions : undefined);
+	return expressionJs(isRecord(first) ? first.left : undefined);
+};
+
+/** The condition lambda of the Filter contract that `filter` built. */
 function filterShape(node: NamedNode, names: ReadonlySet<string>): Shape | undefined {
 	if (!isNodeType(node, FILTER_NODE)) return undefined;
-	const conditions: unknown = node.parameters?.conditions;
-	const first = firstOf(isRecord(conditions) ? conditions.conditions : undefined);
-	const js = expressionJs(isRecord(first) ? first.leftValue : undefined);
+	const js = trueWhereJs(node.parameters?.where);
 	if (js === undefined || !isEqual(filterParameters(js), node.parameters)) return undefined;
 	const condition = lambdaForJs(js, names);
 	return condition ? { kind: 'filter', condition } : undefined;
@@ -477,17 +482,20 @@ function loopShape(
 	if (!isEqual(loopHeadParameters(head, back), node.parameters)) return undefined;
 
 	const check = nodes.get(parts.check);
-	const output = check?.parameters?.output;
-	const max =
-		typeof output === 'string' ? / >= (\d+) \? \d+ : \d+ \}\}$/.exec(output)?.[1] : undefined;
+	const cases: unknown = check?.parameters?.cases;
+	const [done, limitCase] = Array.isArray(cases) ? cases : [];
+	const until = trueWhereJs(isRecord(done) ? done.where : undefined);
+	const limitJs = trueWhereJs(isRecord(limitCase) ? limitCase.where : undefined);
+	const max = limitJs === undefined ? undefined : / >= (\d+)$/.exec(limitJs)?.[1];
 	const maxIterations = Number(max);
-	const until = between(output, '={{ (', `)${loopCheckSuffix(head, maxIterations)}`);
-	if (!isNodeType(check, SWITCH_NODE) || until === undefined) return undefined;
+	if (!isNodeType(check, SWITCH_NODE) || until === undefined || max === undefined) {
+		return undefined;
+	}
 	if (!isEqual(loopCheckParameters(head, until, maxIterations), check?.parameters))
 		return undefined;
 
 	const nextNode = nodes.get(parts.next);
-	const next = between(nextNode?.parameters?.jsonOutput, '={{ ({ ...(', loopNextSuffix(head));
+	const next = between(nextNode?.parameters?.state, '={{ ({ ...(', loopNextSuffix(head));
 	if (!isNodeType(nextNode, LOOP_STATE_NODE) || next === undefined) return undefined;
 	if (!isEqual(loopNextParameters(head, next), nextNode?.parameters)) return undefined;
 
@@ -525,22 +533,22 @@ const loopParts = (head: string, shape: LoopShape) => {
 	];
 };
 
-function switchShape(node: NamedNode): Shape | undefined {
-	const { rules, options } = node.parameters ?? {};
-	const values: unknown = isRecord(rules) ? rules.values : undefined;
-	if (!Array.isArray(values)) return undefined;
-	const keys = values.map((rule: unknown) => (isRecord(rule) ? rule.outputKey : undefined));
-	const first: unknown = values[0];
-	const conditions = isRecord(first) && isRecord(first.conditions) ? first.conditions : undefined;
-	const condition: unknown = Array.isArray(conditions?.conditions)
-		? conditions.conditions[0]
-		: undefined;
-	const leftValue = isRecord(condition) ? condition.leftValue : undefined;
-	const quoted = between(leftValue, '={{ $json[', '] }}');
+/** The Switch contract always has a fallback output; the region has a default when it connects. */
+function switchShape(node: NamedNode, edges: readonly Edge[]): Shape | undefined {
+	const { cases } = node.parameters ?? {};
+	if (!Array.isArray(cases)) return undefined;
+	const keys = cases.map((entry: unknown) => (isRecord(entry) ? entry.output : undefined));
+	const first: unknown = cases[0];
+	const where = isRecord(first) && isRecord(first.where) ? first.where : undefined;
+	const condition = firstOf(where?.conditions);
+	const left = isRecord(condition) ? condition.left : undefined;
+	const quoted = between(left, '={{ $json[', '] }}');
 	const field = parseJson(quoted);
 	const caseKeys = keys.filter((key): key is string => typeof key === 'string');
 	if (typeof field !== 'string' || caseKeys.length !== keys.length) return undefined;
-	const hasDefault = isRecord(options) && options.fallbackOutput === 'extra';
+	const hasDefault = edges.some(
+		(edge) => edge.from === node.name && edge.output === caseKeys.length,
+	);
 	const router = caseRouter(field, caseKeys, hasDefault);
 	return isNodeType(node, router) && isEqual(router.parameters, node.parameters)
 		? { kind: 'switch', field, keys: caseKeys, router }
@@ -548,17 +556,17 @@ function switchShape(node: NamedNode): Shape | undefined {
 }
 
 function mergeShape(node: NamedNode): Shape | undefined {
-	if (!isNodeType(node, MERGE_NODE)) return undefined;
-	const { mode, combineBy, mergeByFields } = node.parameters ?? {};
-	const values: unknown = isRecord(mergeByFields) ? mergeByFields.values : undefined;
-	const pair: unknown = Array.isArray(values) ? values[0] : undefined;
-	const fields =
-		isRecord(pair) && typeof pair.field1 === 'string' && typeof pair.field2 === 'string'
-			? { left: pair.field1, right: pair.field2 }
-			: undefined;
-	const join: MergeJoin | undefined =
-		mode === 'append' ? 'append' : combineBy === 'combineByPosition' ? 'position' : fields;
-	return join && isEqual(mergeParameters(join), node.parameters)
+	const { by } = node.parameters ?? {};
+	const join: MergeJoin | undefined = !isRecord(by)
+		? 'append'
+		: by.by === 'position'
+			? 'position'
+			: typeof by.left === 'string' && typeof by.right === 'string'
+				? { left: by.left, right: by.right }
+				: undefined;
+	return join &&
+		isNodeType(node, mergeNodeOf(join)) &&
+		isEqual(mergeParameters(join), node.parameters)
 		? { kind: 'merge', join }
 		: undefined;
 }
@@ -587,19 +595,32 @@ function setShape(node: NamedNode, names: ReadonlySet<string>): Shape | undefine
 	return { kind: 'set', fields: Object.fromEntries(converted), keepAll };
 }
 
+type ContractShape = Extract<Shape, { kind: 'contract' }>;
+
 function contractShape(
 	node: NamedNode,
 	names: ReadonlySet<string>,
 	factory: ContractFactory | undefined,
-): Shape | undefined {
+): ContractShape | undefined {
 	if (factory?.version !== node.typeVersion) return undefined;
 	const inputs = new Set(factory.inputKeys);
-	const parameters = Object.fromEntries(
-		Object.entries(node.parameters ?? {}).filter(([key]) => inputs.has(key)),
+	const unknownKey = Object.keys(node.parameters ?? {}).some((key) => !inputs.has(key));
+	if (factory.closed && unknownKey) return undefined;
+	const takesExpression = new Set(factory.expressionKeys);
+	const parameters = Object.entries(node.parameters ?? {}).flatMap(([key, value]) =>
+		inputs.has(key) && value !== undefined
+			? [[key, convert(value, { names, arrayLambdas: true })] as const]
+			: [],
 	);
-	const converted = convert(parameters, { names, arrayLambdas: true });
-	// A raw expression may not fit the typed field, so the node keeps its JSON in node().
-	return converted.raw ? undefined : { kind: 'contract', factory, parameters: converted.tree };
+	// An expression without a lambda form stays a string where the typed field takes one, and the
+	// build checks it there. Elsewhere (an enum, a nested field) tsc rejects it, so keep node().
+	const typed = parameters.every(
+		([key, tree]) =>
+			(typeof tree === 'string' && takesExpression.has(key)) || !hasRawExpression(tree),
+	);
+	return typed
+		? { kind: 'contract', factory, parameters: Object.fromEntries(parameters) }
+		: undefined;
 }
 
 /** The slot decides first, so a legacy field of another slot never reads as contract input. */
@@ -618,6 +639,7 @@ function shapeOf(
 	names: ReadonlySet<string>,
 	factories: ReadonlyMap<string, ContractFactory>,
 	regions: ReadonlyMap<string, Shape>,
+	edges: readonly Edge[],
 ): Shape {
 	const region = regions.get(node.name);
 	if (region) return region;
@@ -626,18 +648,20 @@ function shapeOf(
 			node.type === MANUAL_NODE.type &&
 			node.typeVersion === MANUAL_NODE.version &&
 			Object.keys(node.parameters ?? {}).length === 0;
-		return { kind: isManual ? 'manual' : 'trigger' };
+		if (isManual) return { kind: 'manual' };
+		// A contract trigger, e.g. the typed Webhook node, reads back as its module factory.
+		return contractShape(node, names, factoryOf(node, factories)) ?? { kind: 'trigger' };
 	}
 	return (
 		branchShape(node, names) ??
 		filterShape(node, names) ??
 		forEachShape(node) ??
-		switchShape(node) ??
+		switchShape(node, edges) ??
 		mergeShape(node) ??
 		setShape(node, names) ??
 		contractShape(node, names, factoryOf(node, factories)) ?? {
 			kind: 'node',
-			parameters: convert(node.parameters ?? {}, { names, arrayLambdas: false }).tree,
+			parameters: convert(node.parameters ?? {}, { names, arrayLambdas: false }),
 		}
 	);
 }
@@ -1059,7 +1083,7 @@ function subnodesTree(graph: Graph, name: string): Tree | undefined {
 }
 
 const subnodeParameters = (node: NamedNode, names: ReadonlySet<string>) =>
-	convert(node.parameters ?? {}, { names, arrayLambdas: false }).tree;
+	convert(node.parameters ?? {}, { names, arrayLambdas: false });
 
 function typedNode(graph: Graph, node: NamedNode, parameters: Tree): Tree {
 	const subnodes = subnodesTree(graph, node.name);
@@ -1070,6 +1094,28 @@ function typedNode(graph: Graph, node: NamedNode, parameters: Tree): Tree {
 		...(isRecord(parameters) && Object.keys(parameters).length === 0 ? {} : { parameters }),
 		...(subnodes ? { subnodes } : {}),
 	};
+}
+
+/**
+ * A contract node call. A contract root node takes each contract sub-node in the input field
+ * named by its slot, e.g. `model: openAi.chatModel({ … })`.
+ */
+function contractCall(graph: Graph, node: NamedNode, shape: ContractShape): Call {
+	const parameters = isRecord(shape.parameters) ? shape.parameters : {};
+	const children = graph.children.get(node.name) ?? [];
+	const fields = SUBNODE_SLOTS.flatMap(([slot]) => {
+		const calls = children.flatMap(({ slot: own, node: child }) => {
+			const childShape = own === slot ? graph.subnodeShapes.get(child.name) : undefined;
+			return childShape ? [contractCall(graph, child, childShape)] : [];
+		});
+		if (calls.length === 0) return [];
+		return [[slot, LIST_SLOTS.has(slot) ? calls : calls[0]] as const];
+	});
+	return new Call(`${shape.factory.module}.${shape.factory.path}`, {
+		name: node.name,
+		...parameters,
+		...Object.fromEntries(fields),
+	});
 }
 
 function renderCall(graph: Graph, node: NamedNode, shape: Shape, indent: string): string {
@@ -1086,11 +1132,8 @@ function renderCall(graph: Graph, node: NamedNode, shape: Shape, indent: string)
 			};
 			return `set(${renderTree(config, indent)})`;
 		}
-		case 'contract': {
-			const parameters = isRecord(shape.parameters) ? shape.parameters : {};
-			const call = `${shape.factory.module}.${shape.factory.path}`;
-			return `${call}(${renderTree({ name: node.name, ...parameters }, indent)})`;
-		}
+		case 'contract':
+			return renderTree(contractCall(graph, node, shape), indent);
 		case 'node':
 			return `node(${renderTree(typedNode(graph, node, shape.parameters), indent)})`;
 		default:
@@ -1224,14 +1267,17 @@ function render(name: string, graph: Graph, flows: readonly FlowPlan[]): string 
 			const shape = graph.shapes.get(node.name);
 			return shape ? [shape] : [];
 		});
+	const legacyChildren = [...graph.children.values()]
+		.flat()
+		.some(({ node }) => !graph.subnodeShapes.has(node.name));
 	const kinds = new Set<string>([
 		'workflow',
 		...shapes.map(({ kind }) => kind),
-		...(graph.children.size > 0 ? ['subnode'] : []),
+		...(legacyChildren ? ['subnode'] : []),
 	]);
 	const factories = [
 		...new Map(
-			shapes
+			[...shapes, ...graph.subnodeShapes.values()]
 				.flatMap((shape) =>
 					shape.kind === 'contract' ? [{ key: shape.factory.module, factory: shape.factory }] : [],
 				)
@@ -1298,15 +1344,27 @@ export function decompileWorkflow(
 	const shapes = new Map(
 		mainNodes.map((node) => [
 			node.name,
-			shapeOf(node, !targets.has(node.name), names, factories, regions),
+			shapeOf(node, !targets.has(node.name), names, factories, regions, edges.main),
 		]),
 	);
-	// Only node() takes sub-nodes.
-	const hosted = [...children.keys()].every(
-		(parent) => subnodeNames.has(parent) || shapes.get(parent)?.kind === 'node',
+	// A sub-node of a contract node is a contract sub-node, and node() takes legacy sub-nodes only.
+	const subnodeShapes = new Map(
+		plain.flatMap((node) => {
+			if (!subnodeNames.has(node.name)) return [];
+			const shape = contractShape(node, names, factoryOf(node, factories));
+			return shape ? [[node.name, shape] as const] : [];
+		}),
+	);
+	const isContract = (parent: string) =>
+		subnodeNames.has(parent) ? subnodeShapes.has(parent) : shapes.get(parent)?.kind === 'contract';
+	const hosted = [...children].every(([parent, list]) =>
+		isContract(parent)
+			? list.every(({ node }) => subnodeShapes.has(node.name))
+			: (subnodeNames.has(parent) || shapes.get(parent)?.kind === 'node') &&
+				list.every(({ node }) => !subnodeShapes.has(node.name)),
 	);
 	if (!hosted) return undefined;
-	const graph: Graph = { nodes, edges: edges.main, shapes, children, names };
+	const graph: Graph = { nodes, edges: edges.main, shapes, children, subnodeShapes, names };
 	const flows = mainNodes
 		.filter((node) => !targets.has(node.name))
 		.map((root) => ({
@@ -1317,8 +1375,13 @@ export function decompileWorkflow(
 	return render(json.name, graph, flows);
 }
 
-/** The node name and 1-based line of each `…({ name: '…' })` call, in source order. */
-export function locateNextNodes(source: string): Array<{ name: string; line: number }> {
+/**
+ * The node name and 1-based line of each `…({ name: '…' })` call, in source order, and the
+ * `type` that a `node({ type: '…' })` call names.
+ */
+export function locateNextNodes(
+	source: string,
+): Array<{ name: string; line: number; type?: string }> {
 	const program = (() => {
 		try {
 			return acorn.parse(prepareSourceForLint(source).code, {
@@ -1337,18 +1400,23 @@ export function locateNextNodes(source: string): Array<{ name: string; line: num
 	return (program ? calls(program) : []).flatMap((call) => {
 		const [config] = call.arguments;
 		if (config?.type !== 'ObjectExpression') return [];
-		const name = config.properties.find(
-			(property) =>
-				property.type === 'Property' &&
-				!property.computed &&
-				property.key.type === 'Identifier' &&
-				property.key.name === 'name',
-		);
-		const value = name?.type === 'Property' ? name.value : undefined;
+		const literal = (key: string) => {
+			const property = config.properties.find(
+				(each) =>
+					each.type === 'Property' &&
+					!each.computed &&
+					each.key.type === 'Identifier' &&
+					each.key.name === key,
+			);
+			const value = property?.type === 'Property' ? property.value : undefined;
+			return value?.type === 'Literal' && typeof value.value === 'string' ? value.value : undefined;
+		};
+		const name = literal('name');
+		const type = literal('type');
 		// A chained call such as `.branch({…})` starts where the flow before it starts.
 		const at = call.callee.type === 'MemberExpression' ? call.callee.property : call;
-		return value?.type === 'Literal' && typeof value.value === 'string' && at.loc
-			? [{ name: value.value, line: at.loc.start.line }]
+		return name !== undefined && at.loc
+			? [{ name, line: at.loc.start.line, ...(type === undefined ? {} : { type }) }]
 			: [];
 	});
 }

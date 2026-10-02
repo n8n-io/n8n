@@ -217,7 +217,7 @@ const connections = (json: WorkflowJSON, name: string) =>
 		(targets ?? []).map((target) => `${target.node}#${target.index}`),
 	);
 
-describe('regions compile to legacy nodes', () => {
+describe('regions compile to node contracts', () => {
 	it('wires forEach to Loop Over Items with a reset for the inner loop', () => {
 		const json = forEachWorkflow().toJSON();
 		expect(connections(json, 'Each customer')).toEqual([['Report#0'], ['Orders#0']]);
@@ -240,11 +240,21 @@ describe('regions compile to legacy nodes', () => {
 			['Count next#0'],
 		]);
 		expect(connections(json, 'Count next')).toEqual([['Count#0']]);
-		expect(json.nodes.find((n) => n.name === 'Count until')?.parameters).toEqual({
-			mode: 'expression',
-			numberOutputs: 3,
-			output: '={{ ($json.n >= 3) ? 0 : $("Count").item.json["Count pass"] + 1 >= 10 ? 1 : 2 }}',
+		const until = (left: string) => ({
+			conditions: [{ type: 'boolean', left, test: { op: 'true' } }],
 		});
+		const check = json.nodes.find((n) => n.name === 'Count until');
+		expect(check?.type).toBe('@n8n/nodes-base-next.coreSwitch');
+		expect(check?.parameters).toEqual({
+			cases: [
+				{ output: 'done', where: until('={{ $json.n >= 3 }}') },
+				{ output: 'limit', where: until('={{ $("Count").item.json["Count pass"] + 1 >= 10 }}') },
+			],
+		});
+		const types = new Set(json.nodes.map((n) => n.type));
+		expect([...types].filter((type) => !type.startsWith('@n8n/nodes-base-next.'))).toEqual([
+			'n8n-nodes-base.manualTrigger',
+		]);
 	});
 
 	it('emits every page of paginate and waits between pollUntil attempts', () => {
@@ -254,11 +264,9 @@ describe('regions compile to legacy nodes', () => {
 		const poll = pollWorkflow().toJSON();
 		expect(connections(poll, 'Poll next')).toEqual([['Poll wait#0']]);
 		expect(connections(poll, 'Poll wait')).toEqual([['Poll#0']]);
-		expect(poll.nodes.find((n) => n.name === 'Poll wait')?.parameters).toEqual({
-			resume: 'timeInterval',
-			amount: 0,
-			unit: 'seconds',
-		});
+		const wait = poll.nodes.find((n) => n.name === 'Poll wait');
+		expect(wait?.type).toBe('@n8n/nodes-base-next.waitInterval');
+		expect(wait?.parameters).toEqual({ amount: 0, unit: 'seconds' });
 	});
 
 	it('routes switch cases by output, and merges branches by input', () => {
@@ -612,6 +620,38 @@ describe('loopWiringIssues', () => {
 				],
 			),
 		).toEqual([]);
+	});
+
+	it('knows the routing contracts: an open fallback is no output, an open discarded is', () => {
+		const contract = (name: string, type: string, parameters?: Record<string, unknown>) => ({
+			...plain(name, `@n8n/nodes-base-next.${type}`),
+			...(parameters ? { parameters } : {}),
+		});
+		const cases = { cases: [{ output: 'a' }, { output: 'b' }] };
+		expect(
+			codes(
+				[plain('Start'), sib('Loop'), contract('Route', 'coreSwitch', cases), plain('Work')],
+				[
+					...all,
+					edge('Loop', 1, 'Route'),
+					edge('Route', 0, 'Work'),
+					edge('Route', 1, 'Work'),
+					edge('Work', 0, 'Loop'),
+				],
+			),
+		).toEqual([]);
+		expect(
+			codes(
+				[plain('Start'), sib('Loop'), contract('Keep', 'coreFilter'), plain('Work')],
+				[...all, edge('Loop', 1, 'Keep'), edge('Keep', 0, 'Work'), edge('Work', 0, 'Loop')],
+			),
+		).toEqual(['LOOP_BRANCH_DROPS_ITEMS@Keep']);
+		expect(
+			codes(
+				[plain('Start'), sib('Loop'), contract('Check', 'coreIf'), plain('Work')],
+				[...all, edge('Loop', 1, 'Check'), edge('Check', 0, 'Work'), edge('Work', 0, 'Loop')],
+			),
+		).toEqual(['LOOP_BRANCH_DROPS_ITEMS@Check']);
 	});
 
 	it('checks the outer body before an inner loop', () => {

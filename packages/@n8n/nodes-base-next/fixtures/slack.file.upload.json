@@ -1,0 +1,42 @@
+{
+	"executions": [
+		{
+			"name": "share in channel",
+			"params": {
+				"file": "data",
+				"channel": "C0OPS",
+				"initialComment": "Q3 numbers"
+			},
+			"binary": {
+				"data": {
+					"data": "aWQsdG90YWwKMSw0Mgo=",
+					"mimeType": "text/csv",
+					"fileName": "q3.csv"
+				}
+			},
+			"responses": [
+				{
+					"ok": true,
+					"upload_url": "https://files.slack.com/upload/v1/ABC",
+					"file_id": "F0REPORT"
+				},
+				"OK - 13",
+				{
+					"ok": true,
+					"files": [
+						{
+							"id": "F0REPORT",
+							"title": "q3.csv"
+						}
+					]
+				}
+			],
+			"output": [
+				{
+					"id": "F0REPORT",
+					"title": "q3.csv"
+				}
+			]
+		}
+	]
+}

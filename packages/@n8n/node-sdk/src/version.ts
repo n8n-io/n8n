@@ -7,7 +7,7 @@ import {
 	type INodeTypeDescription,
 } from 'n8n-workflow';
 
-import { usesBinary, type ContractDocument } from './define';
+import { usesBinary, usesHostImports, usesSupplies, type ContractDocument } from './define';
 import type { JsonSchema } from './schema';
 
 /**
@@ -18,20 +18,28 @@ import type { JsonSchema } from './schema';
  * major breaks.
  * 2.1.0 adds the current input item, the batch cardinality, and named outputs.
  * 2.2.0 adds binary data.
+ * 2.3.0 adds the optional host imports (data tables, code, wait, the input of an item), named
+ * inputs, and sub-node capabilities (`supplied()`).
  */
 export type ActionApiVersion = `n8n:action@${number}.${number}.${number}`;
 
 /** The newest version this host runs. */
-export const ACTION_API_VERSION: ActionApiVersion = 'n8n:action@2.2.0';
+export const ACTION_API_VERSION: ActionApiVersion = 'n8n:action@2.3.0';
 
 /**
- * The version `freezeAction` writes: 2.2.0 for an action with a binary field, else 2.1.0, so
- * a host that implements 2.1.0 still runs every bundle without binary data. The 2.1.0
- * features (the current item) are used in code, so the contract cannot show a lower minimum.
+ * The version `freezeAction` writes: the lowest minor that has what the contract declares.
+ * 2.3.0 for host imports, named inputs or sub-node capabilities, 2.2.0 for a binary field, else
+ * 2.1.0, so an older host still runs every bundle that does not need the newer features. The
+ * 2.1.0 features (the current item) are used in code, so the contract cannot show a lower minimum.
  */
 export const actionApiVersionOf = (
-	contract: Pick<ContractDocument, 'input' | 'output'>,
-): ActionApiVersion => (usesBinary(contract) ? ACTION_API_VERSION : 'n8n:action@2.1.0');
+	contract: Pick<ContractDocument, 'input' | 'output' | 'imports' | 'inputs'>,
+): ActionApiVersion =>
+	usesHostImports(contract) || usesSupplies(contract)
+		? 'n8n:action@2.3.0'
+		: usesBinary(contract)
+			? 'n8n:action@2.2.0'
+			: 'n8n:action@2.1.0';
 
 /** The versions a host accepts when its config sets no range. */
 export const DEFAULT_ACTION_API_RANGE = '>=1.0.0 <3.0.0';
@@ -131,6 +139,9 @@ export const contractHash = (contract: ContractDocument) =>
 			...(contract.egress
 				? { egress: { ...contract.egress, hosts: [...(contract.egress.hosts ?? [])].sort() } }
 				: {}),
+			// A host import is a permission, as a host is. A set.
+			...(contract.imports?.length ? { imports: [...contract.imports].sort() } : {}),
+			...(contract.inputs ? { inputs: contract.inputs } : {}),
 		}),
 	);
 
@@ -242,6 +253,7 @@ const EXACT_KEYWORDS = [
 	'x-n8n-ref',
 	'x-n8n-literal',
 	'x-n8n-passed',
+	'x-n8n-declared',
 ] as const;
 
 function boundChanges(side: Side, at: string, prev: JsonSchema, next: JsonSchema) {
@@ -397,6 +409,24 @@ function egressChanges(prev: ContractDocument, next: ContractDocument): Contract
 	];
 }
 
+/** n8n saves a connection by input index, as by output index. */
+function inputChanges(prev: ContractDocument, next: ContractDocument): ContractChange[] {
+	if (canonicalJson(prev.inputs) === canonicalJson(next.inputs)) return [];
+	const text = (inputs: ContractDocument['inputs']) => inputs?.join(', ') ?? 'one input';
+	return [major(`inputs ${text(prev.inputs)} → ${text(next.inputs)}`)];
+}
+
+/** A new host import is a new permission, as a new egress host is: a major. A removed one is a minor. */
+function importChanges(prev: ContractDocument, next: ContractDocument): ContractChange[] {
+	const [before, after] = [prev.imports ?? [], next.imports ?? []];
+	return [
+		...after.filter((name) => !before.includes(name)).map((name) => major(`import ${name} added`)),
+		...before
+			.filter((name) => !after.includes(name))
+			.map((name): ContractChange => ({ kind: 'minor', text: `import ${name} removed` })),
+	];
+}
+
 /**
  * Classifies the change between two versions of one action: additive optional input (or a
  * new required input with a default), a removed scope or a removed egress host is minor; a
@@ -423,7 +453,9 @@ export function diffContracts(prev: ContractDocument, next: ContractDocument): C
 			.filter((scope) => !(next.scopes ?? []).includes(scope))
 			.map((scope): ContractChange => ({ kind: 'minor', text: `scope ${scope} removed` })),
 		...outputChanges(prev, next),
+		...inputChanges(prev, next),
 		...egressChanges(prev, next),
+		...importChanges(prev, next),
 		...prev.credentials
 			.filter((type) => !next.credentials.includes(type))
 			.map((type) => major(`credential ${type} removed`)),
@@ -451,6 +483,21 @@ export interface FixtureBinary {
 	readonly fileName?: string;
 }
 
+/**
+ * A recorded capability from a sub-node, for a root action: its data members (`model`, the
+ * `name` of a tool), and the results of its method calls in call order.
+ */
+export interface FixtureSupply {
+	readonly data?: Readonly<Record<string, unknown>>;
+	readonly results: readonly unknown[];
+}
+
+/** One call of the capability a sub-node action supplies. */
+export interface FixtureCall {
+	readonly method: string;
+	readonly args: readonly unknown[];
+}
+
 /** One recorded run. */
 export type ExecutionFixture = {
 	readonly name: string;
@@ -462,6 +509,22 @@ export type ExecutionFixture = {
 	readonly binary?: Readonly<Record<string, FixtureBinary>>;
 	/** HTTP response bodies, in request order. A `response: 'binary'` request gets a `FixtureBinary`. */
 	readonly responses: readonly unknown[];
+	/** The items of each named input. They replace `items`. */
+	readonly inputs?: ReadonlyArray<readonly IDataObject[]>;
+	/**
+	 * The answers of the host imports, in call order: one for each data table call (`columns`,
+	 * `rows`, `insert`, `update`, `upsert`, `delete`, `clear`, `rename`, `drop`, `list`,
+	 * `create`) and each code run. Opening a table and a wait answer at once.
+	 */
+	readonly imports?: readonly unknown[];
+	/** The message of the error the run ends with. The output is then empty. */
+	readonly error?: string;
+	/** What the sub-nodes supply, by input field: one capability, or a list. */
+	readonly supplied?: Readonly<Record<string, FixtureSupply | readonly FixtureSupply[]>>;
+	/** For a sub-node action: the calls of its capability. `output` holds their results. */
+	readonly calls?: readonly FixtureCall[];
+	/** Stored credential fields that code reads, e.g. a server URL. Never a secret. */
+	readonly credential?: Readonly<Record<string, unknown>>;
 } & (
 	| {
 			/** The expected output items (`json`) of an action with one output. */
@@ -499,13 +562,35 @@ export const isFixtureBinary = (value: unknown): value is FixtureBinary =>
 const isBinaryMap = (value: unknown) =>
 	isRecord(value) && Object.values(value).every(isFixtureBinary);
 
+const isFixtureSupply = (value: unknown): value is FixtureSupply =>
+	isRecord(value) &&
+	(value.data === undefined || isRecord(value.data)) &&
+	Array.isArray(value.results);
+
+const isSupplyMap = (value: unknown) =>
+	isRecord(value) &&
+	Object.values(value).every((entry) =>
+		Array.isArray(entry) ? entry.every(isFixtureSupply) : isFixtureSupply(entry),
+	);
+
+const isFixtureCall = (value: unknown): value is FixtureCall =>
+	isRecord(value) && typeof value.method === 'string' && Array.isArray(value.args);
+
 const isExecutionFixture = (value: unknown): value is ExecutionFixture =>
 	isRecord(value) &&
 	typeof value.name === 'string' &&
 	isRecord(value.params) &&
 	(value.items === undefined || (Array.isArray(value.items) && value.items.every(isRecord))) &&
+	(value.inputs === undefined ||
+		(Array.isArray(value.inputs) &&
+			value.inputs.every((list) => Array.isArray(list) && list.every(isRecord)))) &&
+	(value.imports === undefined || Array.isArray(value.imports)) &&
+	(value.error === undefined || typeof value.error === 'string') &&
 	Array.isArray(value.responses) &&
 	(value.binary === undefined || isBinaryMap(value.binary)) &&
+	(value.supplied === undefined || isSupplyMap(value.supplied)) &&
+	(value.calls === undefined || (Array.isArray(value.calls) && value.calls.every(isFixtureCall))) &&
+	(value.credential === undefined || isRecord(value.credential)) &&
 	(value.outputs === undefined
 		? Array.isArray(value.output) &&
 			(value.outputBinary === undefined ||

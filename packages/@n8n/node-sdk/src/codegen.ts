@@ -1,5 +1,14 @@
-import { usesBinary, type ActionOutputs, type ContractDocument } from './define';
-import { hasBinary, type JsonSchema } from './schema';
+import {
+	replyContractOf,
+	toContract,
+	usesBinary,
+	type ActionOutputs,
+	type ContractDocument,
+	type Trigger,
+} from './define';
+import { hasBinary, type EntryFields as EntryFieldsSpec, type JsonSchema } from './schema';
+import { suppliedKindOf } from './subnodes';
+import { exampleOf } from './validate';
 
 const pascal = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
 const typeName = (id: string) => id.split('.').map(pascal).join('');
@@ -19,6 +28,8 @@ interface Mode {
 	input: boolean;
 	/** Input leaves take plain values: a trigger has no item to read. */
 	plain?: boolean;
+	/** An optional output field prints as optional, so a read of it needs a check. */
+	optionalOutputs?: boolean;
 	indent: string;
 	/** Print short objects without docs on one line. The agent reads every byte of a module. */
 	compact?: boolean;
@@ -88,7 +99,7 @@ function objectTs(
 		...(tag ? [{ doc: '', body: `${key(tag.name)}: ${tag.values}` }] : []),
 		...properties.map(([name, child]) => ({
 			doc: doc(shownDoc(name, child), inner),
-			body: `${key(name)}${required.has(name) || !mode.input ? '' : '?'}: ${toTs(child, childMode)}`,
+			body: `${key(name)}${required.has(name) || (!mode.input && !mode.optionalOutputs) ? '' : '?'}: ${toTs(child, childMode)}`,
 		})),
 		...Object.entries(schema.patternProperties ?? {}).map(([pattern, child]) => ({
 			doc: patternDoc(schema, child, mode, inner),
@@ -190,6 +201,15 @@ function variantTs(schema: JsonSchema, branches: readonly JsonSchema[], mode: Mo
 function renderTs(schema: JsonSchema, mode: Mode): string {
 	// The host takes a binary of the item, never a value that the workflow writes.
 	if (schema['x-n8n-binary']) return mode.input ? '((item: I, $: Dollar<C>) => Binary)' : 'Binary';
+	// A sub-node of the kind, never a value: n8n connects it to the root node.
+	const supply = schema['x-n8n-supply'];
+	// A sub-node made before the call has unknown items, so it must not type the root's items.
+	if (supply !== undefined) return `Subnode<NoInfer<I>, NoInfer<C>, ${JSON.stringify(supply)}>`;
+	// Outputs keep `string`: a model ID that the provider gives back is not checked.
+	const catalog = schema['x-n8n-model-catalog'];
+	if (catalog !== undefined && schema.type === 'string' && mode.input) {
+		return leaf(`ModelOf<${JSON.stringify(catalog)}>`, schema, mode);
+	}
 	if (schema.const !== undefined) return JSON.stringify(schema.const);
 	if (schema.enum) return schema.enum.map((value) => JSON.stringify(value)).join(' | ');
 	if (schema.discriminator && schema.oneOf) return variantTs(schema, schema.oneOf, mode);
@@ -208,6 +228,9 @@ function renderTs(schema: JsonSchema, mode: Mode): string {
 		case 'array':
 			return `Array<${schema.items ? toTs(schema.items, mode) : 'any'}>`;
 		case 'object':
+			// Until the workflow declares it, a declared field reads like an open shape, so a
+			// decompiled flow without its schema still compiles.
+			if (schema['x-n8n-declared'] && !mode.input) return '{ [key: string]: any }';
 			if (schema.additionalProperties === true && !schema.properties) {
 				// Each key takes a lambda too. `Record<string, unknown>` gives it no parameter types.
 				return mode.input && !mode.plain && !schema['x-n8n-literal']
@@ -291,7 +314,81 @@ export interface GeneratedAction {
 		readonly resource: string;
 		readonly operation: string;
 	};
+	/** The node version the factory emits when it is not the contract major: a native node. */
+	readonly typeVersion?: number;
+	/** The native trigger and reply step pair that the flow build checks. */
+	readonly pairing?: Pairing;
 }
+
+/** A native trigger and its reply step. The caller waits for the reply when `field` is `value`. */
+export interface Pairing {
+	/** The node type of the trigger, e.g. `n8n-nodes-base.webhook`. */
+	readonly trigger: string;
+	/** The node type of the reply step, e.g. `n8n-nodes-base.respondToWebhook`. */
+	readonly reply: string;
+	readonly field: string;
+	readonly value: string;
+}
+
+/**
+ * The factories of a trigger: the trigger, and the reply step of a native trigger. A native
+ * trigger emits its built-in node; another trigger emits `nodeType`.
+ */
+export function generatedTriggersOf(trigger: Trigger, nodeType: string): GeneratedAction[] {
+	const { resource } = trigger;
+	const contract = toContract(trigger);
+	if (trigger.kind !== 'native') {
+		return [{ contract, nodeType, resource, operation: trigger.operation }];
+	}
+	const { native, reply } = trigger;
+	const replyContract = replyContractOf(trigger);
+	const pairing = reply && {
+		trigger: native.type,
+		reply: reply.native.type,
+		field: reply.awaits.field,
+		value: reply.awaits.value,
+	};
+	const own = { contract, nodeType: native.type, typeVersion: native.version, resource };
+	return [
+		{ ...own, operation: trigger.operation, ...(pairing ? { pairing } : {}) },
+		...(reply && replyContract && pairing
+			? [
+					{
+						contract: replyContract,
+						nodeType: reply.native.type,
+						typeVersion: reply.native.version,
+						resource,
+						operation: reply.operation,
+						pairing,
+					},
+				]
+			: []),
+	];
+}
+
+/** An example of the JSON of an output item: binary fields go to `binary`, not the JSON. */
+const jsonExampleOf = (output: JsonSchema) =>
+	exampleOf({
+		...output,
+		properties: Object.fromEntries(
+			Object.entries(output.properties ?? {}).filter(([, field]) => !field['x-n8n-binary']),
+		),
+	});
+
+/** The `EntryFields` type of a trigger output, over the config `C`. */
+function entryFieldsTs(entries: EntryFieldsSpec): string {
+	const output: Mode = { input: false, indent: '', compact: true };
+	const types = Object.entries(entries.types)
+		.map(([name, schema]) => `${key(name)}: ${toTs(schema, output)}`)
+		.join('; ');
+	return `EntryFields<C, ${JSON.stringify(entries.list)}, ${JSON.stringify(entries.key)}, ${JSON.stringify(entries.type)}, { ${types} }, ${toTs(entries.fallback, output)}${entries.required ? `, ${JSON.stringify(entries.required)}` : ''}>`;
+}
+
+/** The top-level output fields whose JSON Schema the workflow declares. */
+const declaredFieldsOf = (output: JsonSchema) =>
+	Object.entries(output.properties ?? {}).flatMap(([name, field]) =>
+		field['x-n8n-declared'] ? [name] : [],
+	);
 
 const scopesNote = ({ scopes }: ContractDocument) =>
 	scopes?.length ? `; scopes: ${scopes.join(', ')}` : '';
@@ -304,6 +401,10 @@ const egressNote = ({ egress }: ContractDocument) => {
 	];
 	return hosts.length ? `; hosts: ${hosts.join(', ')}` : '';
 };
+
+/** The reply step of a native trigger, and when its caller waits for it. */
+const replyNote = (pairing: Pairing | undefined) =>
+	pairing ? `; reply when ${pairing.field} is ${pairing.value}` : '';
 
 /** What the flow build reads to compute the scopes of a workflow, e.g. `{ credential: "notion", scopes: [...] }`. */
 const requiresOf = ({ node, scopes }: ContractDocument) =>
@@ -418,7 +519,14 @@ const freeName = (base: string, taken: ReadonlySet<string>) =>
 export function generateNodeModule(nodeId: string, contracts: readonly GeneratedAction[]): string {
 	const input: Mode = { input: true, indent: '', compact: true };
 	const output: Mode = { input: false, indent: '', compact: true };
-	const actions = contracts.filter(({ contract }) => !contract.trigger);
+	// An action with named inputs joins branches, so a flow region builds it, not a step.
+	const actions = contracts.filter(({ contract }) => !contract.trigger && !contract.inputs);
+	const joins = contracts
+		.filter(({ contract }) => contract.inputs)
+		.map(
+			({ contract }) =>
+				`// ${contract.id}: ${contract.action}. ${contract.summary} (inputs: ${contract.inputs?.join(', ') ?? ''}). A flow region with branches builds it.`,
+		);
 	const triggers = contracts.filter(({ contract }) => contract.trigger);
 	const named = actions.map((action) => ({
 		...action,
@@ -472,26 +580,54 @@ export function generateNodeModule(nodeId: string, contracts: readonly Generated
 			const mode = withAliases(shape.input ? actionInput : actionOutput);
 			return [`type ${alias.name}${params} = ${renderTs(shape.schema, mode)};`];
 		});
+		// An action without input takes only a name; `Record<string, never>` would make it `never`.
+		const inputTs = rootTs(contract.input, actionInput, `${name}Input`);
 		return [
-			`export type ${name}Input<I, C> = ${rootTs(contract.input, actionInput, `${name}Input`)};`,
-			`export type ${name}Output = ${rootTs(contract.output, actionOutput, `${name}Output`)};`,
+			inputTs === 'Record<string, never>'
+				? `export type ${name}Input<_I, _C> = Record<never, never>;`
+				: `export type ${name}Input<I, C> = ${inputTs};`,
+			...(suppliedKindOf(contract.output)
+				? []
+				: [
+						`export type ${name}Output = ${rootTs(contract.output, actionOutput, `${name}Output`)};`,
+					]),
 			...locals,
 		].join('\n');
 	});
 	const factories = named.map(
-		({ contract, name, nodeType, slot, resource, operation }): Factory => {
+		({ contract, name, nodeType, slot, resource, operation, typeVersion, pairing }): Factory => {
 			const path = resource === undefined ? [operation] : [resource, operation];
+			const supplies = suppliedKindOf(contract.output);
+			if (supplies) {
+				const version = contract.version === 1 ? '' : `, ${contract.version}`;
+				return {
+					path,
+					summary: `${contract.action}. ${contract.summary} (sub-node: ${supplies})`,
+					text: [
+						'<In, Ctx>(',
+						`\tconfig: { name: string } & ${name}Input<In, Ctx>,`,
+						`): Subnode<In, Ctx, ${JSON.stringify(supplies)}> =>`,
+						`\tcontractSubnode(${JSON.stringify(nodeType)}, ${JSON.stringify(supplies)}, config${version})`,
+					].join('\n'),
+				};
+			}
 			const { outputs } = contract;
 			const shown = outputs ? `; outputs: ${outputsText(outputs)}` : '';
-			const flow = `${contract.flow.effect}, ${contract.flow.cardinality}${shown}${scopesNote(contract)}${egressNote(contract)}`;
+			const flow = `${contract.flow.effect}, ${contract.flow.cardinality}${shown}${scopesNote(contract)}${egressNote(contract)}${replyNote(pairing)}`;
 			const requires = requiresOf(contract);
+			const nodeVersion = typeVersion ?? contract.version;
+			const extra = pairing
+				? [requires ?? 'undefined', JSON.stringify(pairing)]
+				: requires
+					? [requires]
+					: [];
 			// Version 1 is the default, so most modules stay as short as before.
 			const version = slot
 				? `, ${slot.typeVersion}, ${JSON.stringify({ resource: slot.resource, operation: slot.operation })}`
-				: contract.version === 1 && !requires
+				: nodeVersion === 1 && extra.length === 0
 					? ''
-					: `, ${contract.version}`;
-			const tail = requires ? `${slot ? '' : ', undefined'}, ${requires}` : '';
+					: `, ${nodeVersion}`;
+			const tail = extra.length ? `${slot ? '' : ', undefined'}, ${extra.join(', ')}` : '';
 			const input = `${name}Input<In, Ctx>`;
 			// A passed item keeps the type of the item before.
 			const item = contract.output['x-n8n-passed'] ? 'In' : `OutputOf<N, ${name}Output>`;
@@ -527,56 +663,133 @@ export function generateNodeModule(nodeId: string, contracts: readonly Generated
 	);
 	// A trigger starts a flow. Its input takes plain values: there is no item to read yet.
 	const plain: Mode = { ...input, plain: true };
+	// A trigger output marks its optional fields, e.g. a WhatsApp event has messages or statuses.
+	const triggerOutput: Mode = { ...output, optionalOutputs: true };
 	const triggerTypes = triggers.map(({ contract }) => {
 		const name = typeName(contract.id);
+		const entries = contract.output['x-n8n-entry-fields'];
 		return [
 			`export type ${name}Input = ${renderTs(contract.input, plain)};`,
-			`export type ${name}Output = ${renderTs(contract.output, output)};`,
+			`export type ${name}Output = ${renderTs(itemSchema(contract.output), triggerOutput)};`,
+			...(entries ? [`export type ${name}Fields<C> = ${entryFieldsTs(entries)};`] : []),
 		].join('\n');
 	});
-	const triggerFactories = triggers.map(({ contract, nodeType, resource, operation }): Factory => {
-		const path = resource === undefined ? [operation] : [resource, operation];
-		const name = typeName(contract.id);
-		const out = `OutputOf<N, ${name}Output>`;
-		const requires = requiresOf(contract);
-		const tail = `${contract.version === 1 && !requires ? '' : `, ${contract.version}`}${requires ? `, ${requires}` : ''}`;
-		const text = [
-			'<const N extends string>(',
-			`\tconfig: { name: N; sample?: ${name}Output[] } & ${name}Input,`,
-			`): Flow<${out}, Record<N, ${out}>> =>`,
-			`\tcontractTrigger(${JSON.stringify(nodeType)}, config${tail})`,
-		].join('\n');
-		const source = `trigger, ${contract.trigger ?? ''}${scopesNote(contract)}`;
-		return { path, summary: `${contract.action}. ${contract.summary} (${source})`, text };
-	});
+	const triggerFactories = triggers.map(
+		({ contract, nodeType, resource, operation, typeVersion, pairing }): Factory => {
+			const path = resource === undefined ? [operation] : [resource, operation];
+			const name = typeName(contract.id);
+			const declared = declaredFieldsOf(contract.output);
+			const entries = contract.output['x-n8n-entry-fields'];
+			const own = entries ? `${name}Output & ${name}Fields<C>` : `${name}Output`;
+			const item = declared.length ? `Declared<${own}, S>` : own;
+			const out = `OutputOf<N, ${item}>`;
+			const requires = requiresOf(contract);
+			const nodeVersion = typeVersion ?? contract.version;
+			// The example fills the fields that a declared schema does not, for the trigger sample.
+			const options =
+				pairing || declared.length
+					? JSON.stringify({
+							...(pairing ? { pairing } : {}),
+							...(declared.length ? { example: jsonExampleOf(contract.output) } : {}),
+						})
+					: undefined;
+			const args = [
+				...(nodeVersion !== 1 || requires || options ? [String(nodeVersion)] : []),
+				...(requires || options ? [requires ?? 'undefined'] : []),
+				...(options ? [options] : []),
+			];
+			const schemas = declared.map((field) => `${key(field)}?: ValueSchema`).join('; ');
+			// The entries type the output, so the config is generic and checked key by key.
+			const generics = [
+				'const N extends string',
+				...(declared.length ? [`const S extends { ${schemas} } = {}`] : []),
+				...(entries ? [`const C extends ${name}Input`] : []),
+			];
+			const samples = entries ? `Array<${item}>` : `${item}[]`;
+			const head = `{ name: N;${declared.length ? ' schema?: S;' : ''} sample?: ${samples} }`;
+			const flowKeys = `{ name: string;${declared.length ? ' schema?: unknown;' : ''} sample?: unknown }`;
+			const input = entries ? `C & Exact<C, ${name}Input & ${flowKeys}>` : `${name}Input`;
+			const text = [
+				`<${generics.join(', ')}>(`,
+				`\tconfig: ${head} & ${input},`,
+				`): Flow<${out}, Record<N, ${out}>> =>`,
+				`\tcontractTrigger(${JSON.stringify(nodeType)}, config${args.map((arg) => `, ${arg}`).join('')})`,
+			].join('\n');
+			const schemaNote = declared.length ? `; schema types ${declared.join(', ')}` : '';
+			const source = `trigger, ${contract.trigger ?? ''}${scopesNote(contract)}${schemaNote}${replyNote(pairing)}`;
+			return { path, summary: `${contract.action}. ${contract.summary} (${source})`, text };
+		},
+	);
 	const body = [...types, ...triggerTypes].join('\n\n');
 	const routed = named.some(({ contract }) => contract.outputs !== undefined);
-	const derived = named.some(({ contract }) => !contract.output['x-n8n-passed']);
+	const suppliers = named.filter(({ contract }) => suppliedKindOf(contract.output));
+	const steps = named.filter(({ contract }) => !suppliedKindOf(contract.output));
+	const derived = steps.some(({ contract }) => !contract.output['x-n8n-passed']);
+	const declares = triggers.some(({ contract }) => declaredFieldsOf(contract.output).length > 0);
+	const hasEntries = triggers.some(({ contract }) => contract.output['x-n8n-entry-fields']);
 	const imports = [
-		...(named.length > 0 ? ['contractStep'] : []),
+		...(steps.length > 0 ? ['contractStep'] : []),
+		...(suppliers.length > 0 ? ['contractSubnode'] : []),
 		...(triggers.length > 0 ? ['contractTrigger'] : []),
 		...(routed ? ['routedStep'] : []),
-		...(named.some(({ contract }) => usesBinary(contract)) ? ['type Binary'] : []),
+		...([...named, ...triggers].some(({ contract }) => usesBinary(contract))
+			? ['type Binary']
+			: []),
+		...(declares ? ['type Declared'] : []),
 		...(named.some(({ contract }) => hasBinary(contract.input)) ? ['type Dollar'] : []),
+		...(hasEntries ? ['type EntryFields', 'type Exact'] : []),
 		...(triggers.length > 0 ? ['type Flow'] : []),
 		...(body.includes(`Value<I, C, ${OPEN_VALUE}>`) ? [`type ${OPEN_VALUE}`] : []),
+		...(body.includes('ModelOf<') ? ['type ModelOf'] : []),
 		...(derived || triggers.length > 0 ? ['type OutputOf'] : []),
 		...(routed ? ['type RoutedStep'] : []),
-		...(named.length > 0 ? ['type Step', 'type Value'] : []),
+		...(steps.length > 0 ? ['type Step'] : []),
+		...(body.includes('Subnode<') || suppliers.length > 0 ? ['type Subnode'] : []),
+		...(body.includes('Value<') ? ['type Value'] : []),
+		...(declares ? ['type ValueSchema'] : []),
 	];
+	const exported = [...factories, ...triggerFactories];
 	return (
 		[
 			`// Generated from the ${nodeId} action contracts. Do not edit.`,
 			...credentialLines(nodeId, contracts),
-			`import { ${imports.join(', ')} } from '@n8n/workflow-sdk/next';`,
-			'',
-			body,
-			'',
-			`export const ${nodeId} = ${nest([...factories, ...triggerFactories], '')};`,
+			...joins,
+			...(exported.length > 0
+				? [
+						`import { ${imports.join(', ')} } from '@n8n/workflow-sdk/next';`,
+						'',
+						body,
+						'',
+						`export const ${nodeId} = ${nest(exported, '')};`,
+					]
+				: ['export {};']),
 			'',
 		]
 			.join('\n')
 			// The agent reads the module in a JSON string, where a space costs fewer tokens than a tab.
 			.replace(/^\t+/gm, (tabs) => ' '.repeat(tabs.length))
 	);
+}
+
+/**
+ * The declaration that types `ModelOf<provider>` in `@n8n/workflow-sdk/next` by a model
+ * catalog, e.g. `{ openai: ['gpt-5', 'gpt-5-mini'] }`. A provider without IDs stays untyped.
+ */
+export function modelCatalogDeclaration(catalog: Readonly<Record<string, readonly string[]>>) {
+	const members = Object.entries(catalog)
+		.filter(([, ids]) => ids.length > 0)
+		.map(
+			([provider, ids]) =>
+				`\t\t${key(provider)}: ${[...new Set(ids)].map((id) => JSON.stringify(id)).join(' | ')};`,
+		);
+	if (members.length === 0) return 'export {};\n';
+	return [
+		'export {};',
+		"declare module '@n8n/workflow-sdk/next' {",
+		'\tinterface ModelCatalog {',
+		...members,
+		'\t}',
+		'}',
+		'',
+	].join('\n');
 }

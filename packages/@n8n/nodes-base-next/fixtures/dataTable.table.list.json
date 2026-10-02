@@ -1,0 +1,50 @@
+{
+	"executions": [
+		{
+			"name": "lists every table",
+			"params": {},
+			"responses": [],
+			"imports": [
+				{
+					"count": 1,
+					"tables": [
+						{
+							"id": "t1",
+							"name": "Signups",
+							"columns": [
+								{
+									"name": "email",
+									"type": "string"
+								},
+								{
+									"name": "plan",
+									"type": "string"
+								}
+							],
+							"createdAt": "2026-03-01T10:00:00.000Z",
+							"updatedAt": "2026-03-01T10:00:00.000Z"
+						}
+					]
+				}
+			],
+			"output": [
+				{
+					"id": "t1",
+					"name": "Signups",
+					"columns": [
+						{
+							"name": "email",
+							"type": "string"
+						},
+						{
+							"name": "plan",
+							"type": "string"
+						}
+					],
+					"createdAt": "2026-03-01T10:00:00.000Z",
+					"updatedAt": "2026-03-01T10:00:00.000Z"
+				}
+			]
+		}
+	]
+}

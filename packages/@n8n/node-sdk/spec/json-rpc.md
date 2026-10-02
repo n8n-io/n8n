@@ -20,6 +20,7 @@ same fixtures.
 | `option<json>` | `{ "some": <value> }`, or `null` for none, because a JSON value can be `null` |
 | `record` | object. Field names change from kebab case to lower camel case: `timeout-ms` → `timeoutMs`. |
 | `enum` | the case name as a string, as written: `"GET"`, `"warn"` |
+| `%name`, a WIT keyword used as a name | the name without `%`: `%type` → `type`, `%string` → `"string"` |
 | `variant` | `{ "tag": "<case>", "val": <payload> }`. A case without a payload has no `val`. |
 | `result<T, E>` of a function | `T` is the JSON-RPC `result`. `E` is in the JSON-RPC `error`: `code` −32000, `message` is `E` for a string, the case name for a variant, else `E.message`. `data` is `E`. |
 | `result<_, E>` of a function | the JSON-RPC `result` is `null` |
@@ -51,6 +52,18 @@ the ids of the two sides never collide.
 | guest → host | `log.log` | `{ level, message }` → `null` |
 | guest → host | `limits.get` | `{}` → `{ maxRequests, maxItems }` |
 | guest → host | `binary.*` (2.2.0) | see `n8n-action@2.wit`. A binary in the run input or in an item is `{ "$binary": <id> }`. |
+| host → guest | `action.join-run.new` (2.3.0) | `{ input, inputs }` → handle. `inputs` has one list of items for each named input. |
+| host → guest | `action.join-run.next` (2.3.0) | `{ self }` → `{ "some": { to, output } }`, or `null` at the end |
+| host → guest | `action.join-run.drop` (2.3.0) | `{ self }` → `null` |
+| guest → host | `data-tables.open` (2.3.0) | `{ table }` → handle, e.g. `{ "table": { "tag": "name", "val": "leads" } }` |
+| guest → host | `data-tables.table.rows` (2.3.0) | `{ self, query }` → `{ count, rows }`. Also `columns`, `insert`, `update`, `upsert`, `delete`, `clear`, `rename`, `drop`, `id`. |
+| guest → host | `data-tables.list`, `data-tables.create` (2.3.0) | `{ query }` → `{ count, tables }`; `{ table: { name, columns } }` → the table |
+| guest → host | `code.run` (2.3.0) | `{ request: { language, code, mode } }` → what the code returns |
+| guest → host | `wait.until` (2.3.0) | `{ at }` (milliseconds since the epoch) → `null` |
+| guest → host | `input-of.get` (2.3.0) | `{ item }` → the input of that item |
+
+A host gives the 2.3.0 imports only to a bundle whose contract lists them in `imports`. A
+call to another import fails with `code` −32601 (method not found).
 
 `n8n:action@1` has `action.describe`, `action.run` (`{ input }` → `null`) and the import
 `emit` (`{ item }` → `null`). The host runs it through the @1 adapter.

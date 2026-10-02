@@ -17,21 +17,32 @@ import {
 	type IHttpRequestOptions,
 	type INode,
 	type INodeExecutionData,
+	type INodeInputConfiguration,
 	type INodeProperties,
+	type IPairedItemData,
 	type INodeType,
 	type INodeTypeDescription,
+	type ISupplyDataFunctions,
+	type SupplyData,
 } from 'n8n-workflow';
 
 import { fromActionApiV1 } from './action-api-v1';
 import { credentialDataOf } from './credentials';
+import { codeRunnerOf, dataTableHostOf, dataTablesOf } from './host-imports';
 import { actionHostsOf, credentialHostsOf, egressOf } from './egress';
 import { parameterValue, toProperty } from './properties';
 import {
 	isHttpError,
 	usesBinary,
 	type Action,
+	type ActionInputs,
 	type ActionOutputs,
 	type Binaries,
+	type CodeRunner,
+	type DataTable,
+	type DataTables,
+	type HostImport,
+	type HostImports,
 	type Http,
 	type HttpMethod,
 	type HttpRequest,
@@ -44,7 +55,16 @@ import {
 	type Trigger,
 } from './define';
 import { hasBinary, type AnySchema, type Binary, type JsonSchema, type Shape } from './schema';
-import { applyDefaults, validate } from './validate';
+import {
+	isSupply,
+	SUPPLY_CONNECTIONS,
+	suppliedKindOf,
+	supplyFieldsOf,
+	supplyOf,
+	type SupplyField,
+	type SupplyKind,
+} from './subnodes';
+import { applyDefaults, list, validate } from './validate';
 import {
 	ACTION_API_VERSION,
 	apiSemverOf,
@@ -307,9 +327,25 @@ export interface ExecutorHost {
 	readonly limits?: Partial<RunLimits>;
 	/** Needed by an action with a `binary()` field only. */
 	readonly binary?: BinaryStore;
+	/** The items of input `index`, for an action with named inputs. Input 0 is `items`. */
+	inputItems?(index: number): readonly INodeExecutionData[];
+	/** Needed by an action that imports `dataTables`. */
+	readonly dataTables?: DataTables;
+	/** Needed by an action that imports `code`. */
+	readonly code?: CodeRunner;
+	/** Needed by an action that imports `wait`: the next nodes run at `at`, not before. */
+	waitUntil?(at: Date): Promise<void>;
+	/**
+	 * What the sub-nodes of a `kind` supply: one value, a list, or `undefined`. Needed by an
+	 * action with a `supplied()` input field only.
+	 */
+	supplied?(kind: SupplyKind): Promise<unknown>;
 }
 
-const binaryStoreOf = (context: IExecuteFunctions): BinaryStore => ({
+/** The n8n context of a node run: `execute()` of a root node, `supplyData()` of a sub-node. */
+type NodeContext = IExecuteFunctions | ISupplyDataFunctions;
+
+const binaryStoreOf = (context: NodeContext): BinaryStore => ({
 	input: async (itemIndex, value) => {
 		if (typeof value !== 'string' && !isBinaryValue(value)) {
 			throw new NodeOperationError(
@@ -334,21 +370,57 @@ const binaryStoreOf = (context: IExecuteFunctions): BinaryStore => ({
 		await context.helpers.prepareBinaryData(bytes, fileName, mimeType),
 });
 
-const hostOf = (context: IExecuteFunctions): ExecutorHost => ({
-	items: context.getInputData(),
+/** The host parts that do not depend on the items of the run. */
+const hostBaseOf = (context: NodeContext) => ({
 	node: context.getNode(),
-	parameter: (name, itemIndex) => context.getNodeParameter(name, itemIndex, undefined),
-	request: async (options, credentialType) => {
+	request: async (options: IHttpRequestOptions, credentialType: string | undefined) => {
 		const response: unknown = credentialType
 			? await context.helpers.httpRequestWithAuthentication.call(context, credentialType, options)
 			: await context.helpers.httpRequest(options);
 		return response;
 	},
-	credentialData: async (type) => await context.getCredentials(type),
-	continueOnFail: () => context.continueOnFail(),
-	wait: async (ms) => await sleep(ms, context.getExecutionCancelSignal()),
-	log: (level, message) => context.logger[level](message, { node: context.getNode().name }),
+	credentialData: async (type: string) => await context.getCredentials(type),
+	wait: async (ms: number) => await sleep(ms, context.getExecutionCancelSignal()),
+	log: (level: LogLevel, message: string) =>
+		context.logger[level](message, { node: context.getNode().name }),
 	binary: binaryStoreOf(context),
+});
+
+// n8n gives sub-nodes the root item 0, as the legacy chains read their model.
+const SUPPLY_ITEM = 0;
+
+const hostOf = (context: IExecuteFunctions): ExecutorHost => ({
+	...hostBaseOf(context),
+	items: context.getInputData(),
+	parameter: (name, itemIndex) => context.getNodeParameter(name, itemIndex, undefined),
+	continueOnFail: () => context.continueOnFail(),
+	inputItems: (index) => {
+		try {
+			return context.getInputData(index);
+		} catch {
+			// An input without a connection has no data.
+			return [];
+		}
+	},
+	dataTables: dataTablesOf(dataTableHostOf(context)),
+	code: codeRunnerOf(context),
+	// A time wait gives no resume URL, as the Wait node does for a time interval.
+	waitUntil: async (at) => await context.putExecutionToWait(at, { acceptsResumeRequest: false }),
+	supplied: async (kind) =>
+		await context.getInputConnectionData(SUPPLY_CONNECTIONS[kind], SUPPLY_ITEM),
+});
+
+/**
+ * A sub-node runs as one item. Its parameters resolve against item `itemIndex` of the root
+ * node, and a failure always reaches the root node.
+ */
+const supplyHostOf = (context: ISupplyDataFunctions, itemIndex: number): ExecutorHost => ({
+	...hostBaseOf(context),
+	items: [{ json: {} }],
+	parameter: (name) => context.getNodeParameter(name, itemIndex, undefined),
+	continueOnFail: () => false,
+	supplied: async (kind) =>
+		await context.getInputConnectionData(SUPPLY_CONNECTIONS[kind], itemIndex),
 });
 
 const inputValue = <I>(value: RequestValue<I>, input: Readonly<Record<string, unknown>>) =>
@@ -431,6 +503,31 @@ function outputNamesOf(
 	];
 }
 
+/** The capabilities the sub-nodes supply, by field. A value of another kind fails the run. */
+async function readSupplies(
+	actionId: string,
+	fields: readonly SupplyField[],
+	host: ExecutorHost,
+): Promise<Record<string, unknown>> {
+	const { supplied } = host;
+	if (!supplied) throw new UnexpectedError(`${actionId} takes sub-nodes, and this host has none`);
+	const entries = await Promise.all(
+		fields.map(async ({ name, kind, many }) => {
+			const value = await supplied(kind);
+			const values = many ? list(value) : value === undefined ? [] : [value];
+			if (!values.every((entry) => isSupply(kind, entry))) {
+				throw new NodeOperationError(
+					host.node,
+					`The ${name} input needs a ${kind} from a node contract sub-node`,
+					{ description: 'Connect a sub-node of @n8n/nodes-base-next to this input.' },
+				);
+			}
+			return [name, many ? values : values[0]] as const;
+		}),
+	);
+	return Object.fromEntries(entries.filter(([, value]) => value !== undefined));
+}
+
 /** One output item and the output it goes to. */
 interface Routed {
 	readonly output: number;
@@ -504,7 +601,9 @@ function fileNameOf(headers: Readonly<Record<string, string>>, url: string): str
 export function executorOf<S extends Shape, O extends AnySchema>(
 	action: Action<S, O>,
 ): (host: ExecutorHost) => Promise<INodeExecutionData[][]> {
-	const inputKeys = Object.keys(action.input);
+	const supplyFields = supplyFieldsOf(action.input);
+	const supplyNames = new Set(supplyFields.map(({ name }) => name));
+	const inputKeys = Object.keys(action.input).filter((key) => !supplyNames.has(key));
 	const jsonKeys = new Set(
 		Object.entries(action.input)
 			.filter(([name, schema]) => toProperty(name, schema).type === 'json')
@@ -521,9 +620,14 @@ export function executorOf<S extends Shape, O extends AnySchema>(
 	const binaryKeys = Object.entries(outputSchema.properties ?? {})
 		.filter(([, field]) => field['x-n8n-binary'])
 		.map(([key]) => key);
+	const declared: ReadonlySet<HostImport> = new Set(action.imports ?? []);
 
 	return async (host) => {
 		const { items } = host;
+		const inputNames = action.inputs;
+		const inputLists: ReadonlyArray<readonly INodeExecutionData[]> = inputNames
+			? inputNames.map((_name, index) => (index === 0 ? items : (host.inputItems?.(index) ?? [])))
+			: [items];
 		// The bundle of an action without a binary field targets 2.1.0, which has no binary data.
 		const binaryStore = (): BinaryStore => {
 			if (!binaryApi) {
@@ -712,6 +816,14 @@ export function executorOf<S extends Shape, O extends AnySchema>(
 			return { request };
 		};
 
+		// One read per run: each read runs the sub-nodes and adds a sub-node run in n8n.
+		const supplies = new Map<'supplies', Promise<Record<string, unknown>>>();
+		const suppliesOf = async () => {
+			const read = supplies.get('supplies') ?? readSupplies(action.id, supplyFields, host);
+			supplies.set('supplies', read);
+			return await read;
+		};
+
 		const inputOf = async (itemIndex: number): Promise<RunInput<S>> => {
 			const parameters = Object.fromEntries(
 				inputKeys
@@ -735,11 +847,16 @@ export function executorOf<S extends Shape, O extends AnySchema>(
 				);
 			}
 			const defaulted = applyDefaults(parameters, action.inputSchema);
-			const input = binaryApi
+			const withFiles = binaryApi
 				? await withBinaries(defaulted, action.inputSchema, async (value) =>
 						handleOf(await binaryStore().input(itemIndex, value)),
 					)
 				: defaulted;
+			// After the defaults: a capability is not data, so nothing may copy it.
+			const input =
+				supplyFields.length > 0 && isRecord(withFiles)
+					? { ...withFiles, ...(await suppliesOf()) }
+					: withFiles;
 			if (!isInput(input)) {
 				const issues = validate(input, action.inputSchema);
 				throw new NodeOperationError(host.node, issues.join('; '), { itemIndex });
@@ -747,22 +864,79 @@ export function executorOf<S extends Shape, O extends AnySchema>(
 			return input;
 		};
 
-		// Identity, not equality: a passed item must be one of the input items.
-		const indexOf = new Map<unknown, number>(items.map((item, index) => [item, index]));
+		// Identity, not equality: a passed item must be one of the input items, of any input.
+		const sources = new Map<
+			unknown,
+			{ readonly pair: IPairedItemData; readonly data: INodeExecutionData }
+		>(
+			inputLists.flatMap((list, input) =>
+				list.map(
+					(data, item) => [data, { pair: input > 0 ? { item, input } : { item }, data }] as const,
+				),
+			),
+		);
 		const fail = (message: string, itemIndex: number) =>
 			new NodeOperationError(host.node, message, { itemIndex });
 
+		const openTables = new Map<string, Promise<DataTable>>();
+		const refuse = (name: HostImport) => {
+			throw new UnexpectedError(`${action.id} does not list "${name}" in its imports`);
+		};
+		const hostService = <T>(name: HostImport, service: T | undefined): T => {
+			if (!declared.has(name)) return refuse(name);
+			if (service === undefined) {
+				throw new UnexpectedError(`${action.id} imports "${name}", and this host has none`);
+			}
+			return service;
+		};
+		/** Only the declared imports work. The others throw, so a bundle cannot reach past its contract. */
+		const imports: HostImports<RunInput<S>> = {
+			dataTables: {
+				// One open per table and run: a per-item action names the same table for each item.
+				open: async (table) => {
+					const key = JSON.stringify(table);
+					const opened =
+						openTables.get(key) ?? hostService('dataTables', host.dataTables).open(table);
+					openTables.set(key, opened);
+					return await opened.catch((error: unknown) => {
+						openTables.delete(key);
+						throw error;
+					});
+				},
+				list: async (query) => await hostService('dataTables', host.dataTables).list(query),
+				create: async (table) => await hostService('dataTables', host.dataTables).create(table),
+			},
+			code: { run: async (request) => await hostService('code', host.code).run(request) },
+			wait: {
+				until: async (at) => {
+					if (Number.isNaN(at.getTime())) throw new UserError('The wait time is not a date');
+					await hostService('wait', host.waitUntil)(at);
+				},
+			},
+			inputOf: async (item) => {
+				if (!declared.has('inputOf')) return refuse('inputOf');
+				const source = sources.get(item);
+				if (source === undefined || (source.pair.input ?? 0) > 0) {
+					throw new UnexpectedError(
+						`${action.id} reads the input of an item that is not an input item`,
+					);
+				}
+				return await inputOf(source.pair.item);
+			},
+		};
+
 		/** `current` is the input item of a per-item run; a batch output names its own lineage. */
 		const routeOf = (names: readonly string[] | undefined, current: number | undefined) => {
-			const pairOf = (source: unknown, at: number) => {
-				const index = indexOf.get(source);
-				if (index === undefined)
+			const sourceOf = (source: unknown, at: number) => {
+				const known = sources.get(source);
+				if (known === undefined)
 					throw fail(
 						`${action.id} output ${at} names an item that is not an input item`,
 						current ?? 0,
 					);
-				return { item: index };
+				return known;
 			};
+			const pairOf = (source: unknown, at: number) => sourceOf(source, at).pair;
 			const lineageOf = (from: unknown, at: number) => {
 				if (current !== undefined) return { item: current };
 				if (!Array.isArray(from)) return pairOf(from, at);
@@ -832,9 +1006,7 @@ export function executorOf<S extends Shape, O extends AnySchema>(
 					if (current !== undefined && value.item !== items[current]) {
 						throw fail(`${action.id} passes on an item other than the current item`, current);
 					}
-					const pairedItem = pairOf(value.item, at);
-					const passed = items[pairedItem.item];
-					if (!passed) throw fail(`${action.id} output ${at} has no input item`, current ?? 0);
+					const { pair: pairedItem, data: passed } = sourceOf(value.item, at);
 					checked(passed.json, at);
 					return { output, data: { ...passed, pairedItem } };
 				}
@@ -871,7 +1043,7 @@ export function executorOf<S extends Shape, O extends AnySchema>(
 					? binding.items === undefined
 						? http.request(requestOf(binding, input))
 						: requestItems(http, binding, binding.items, input)
-					: action.run?.({ input, http, log, limits, binary: binaries, item });
+					: action.run?.({ input, http, log, limits, binary: binaries, item, ...imports });
 			if (!result) throw new UnexpectedError(`${action.id} has no run() and no request`);
 			if (action.flow.cardinality === 'per-item') return [route(await result, 0)];
 			return await collect(result, route);
@@ -903,22 +1075,30 @@ export function executorOf<S extends Shape, O extends AnySchema>(
 
 		const run = async (): Promise<{ names: readonly string[] | undefined; routed: Routed[] }> => {
 			const names = namesOf();
-			if (items.length === 0) return { names, routed: [] };
+			if (inputLists.every((list) => list.length === 0)) return { names, routed: [] };
 			if (isBatch) {
 				try {
 					const input = await inputOf(0);
-					const result = action.run?.({
+					const context = {
 						input,
 						http: httpFor(0, input),
 						log,
 						limits,
 						binary: binaries,
-						items,
-					});
+						...imports,
+					};
+					const result = inputNames
+						? action.run?.({
+								...context,
+								inputs: Object.fromEntries(
+									inputNames.map((name, index) => [name, inputLists[index] ?? []]),
+								),
+							})
+						: action.run?.({ ...context, items });
 					return { names, routed: await collect(result, routeOf(names, undefined)) };
 				} catch (error) {
 					if (!host.continueOnFail()) throw error;
-					const all = items.map((_item, index) => ({ item: index }));
+					const all = [...sources.values()].map(({ pair }) => pair);
 					return { names, routed: [errorItem(error, all, names)] };
 				}
 			}
@@ -986,6 +1166,107 @@ function outputsOf(
 	return { outputs: outputs.map(() => 'main'), outputNames: [...outputs] };
 }
 
+/** Named inputs run when one of them has items, as the Merge node does. */
+const mainInputsOf = (
+	inputs: ActionInputs | undefined,
+): Pick<INodeTypeDescription, 'requiredInputs'> & {
+	inputs: Array<'main' | INodeInputConfiguration>;
+} =>
+	inputs
+		? {
+				inputs: inputs.map((displayName) => ({ type: 'main', displayName })),
+				requiredInputs: 1,
+			}
+		: { inputs: ['main'] };
+
+const SUPPLY_LABELS: Record<SupplyKind, string> = {
+	chatModel: 'Chat Model',
+	memory: 'Memory',
+	tool: 'Tool',
+	embeddings: 'Embeddings',
+};
+
+/** The n8n input of a `supplied()` field. A list takes any number of sub-nodes. */
+const supplyInputOf = ({ kind, many, required, title }: SupplyField): INodeInputConfiguration => ({
+	type: SUPPLY_CONNECTIONS[kind],
+	displayName: title ?? SUPPLY_LABELS[kind],
+	required,
+	...(many ? {} : { maxConnections: 1 }),
+});
+
+/**
+ * The n8n inputs and outputs. A sub-node has no main connection: n8n runs it when its root
+ * node reads it.
+ */
+function connectionsOf(
+	action: Action,
+): Pick<INodeTypeDescription, 'inputs' | 'requiredInputs' | 'outputs' | 'outputNames'> {
+	const supplyInputs = supplyFieldsOf(action.input).map(supplyInputOf);
+	const kind = suppliedKindOf(action.output.json);
+	if (kind) {
+		return {
+			inputs: supplyInputs,
+			outputs: [SUPPLY_CONNECTIONS[kind]],
+			outputNames: [SUPPLY_LABELS[kind]],
+		};
+	}
+	const main = mainInputsOf(action.inputs);
+	return { ...main, inputs: [...main.inputs, ...supplyInputs], ...outputsOf(action.outputs) };
+}
+
+/**
+ * Records each call of a capability as a run of the sub-node, as the legacy sub-nodes do, so
+ * the editor and the execution data show what the root node asked and got.
+ */
+function recordedSupply(
+	value: Record<string, unknown>,
+	kind: SupplyKind,
+	context: ISupplyDataFunctions,
+): Record<string, unknown> {
+	const type = SUPPLY_CONNECTIONS[kind];
+	// A JSON copy: the run data must not hold functions or change with the capability.
+	const dataOf = (entry: unknown): IDataObject => {
+		const text = JSON.stringify(entry ?? null);
+		const parsed: unknown = JSON.parse(text);
+		return isRecord(parsed) ? parsed : { value: text };
+	};
+	return Object.fromEntries(
+		Object.entries(value).map(([key, member]) => {
+			if (typeof member !== 'function') return [key, member];
+			const call = async (...args: unknown[]) => {
+				const { index } = context.addInputData(type, [[{ json: { [key]: dataOf(args[0]) } }]]);
+				try {
+					const result: unknown = await Reflect.apply(member, value, args);
+					context.addOutputData(type, index, [[{ json: { response: dataOf(result) } }]]);
+					return result;
+				} catch (error) {
+					context.addOutputData(
+						type,
+						index,
+						new NodeOperationError(context.getNode(), errorMessage(error)),
+					);
+					throw error;
+				}
+			};
+			return [key, call];
+		}),
+	);
+}
+
+/** The `supplyData()` result of a sub-node from the one output item its run gives. */
+function supplyDataOf(
+	actionId: string,
+	kind: SupplyKind,
+	outputs: INodeExecutionData[][],
+	context: ISupplyDataFunctions,
+): SupplyData {
+	const value = outputs[0]?.[0]?.json;
+	if (!isSupply(kind, value)) {
+		throw new UnexpectedError(`${actionId} supplies ${kind}, and its run() gave something else`);
+	}
+	return { response: recordedSupply(value, kind, context) };
+}
+
 /** An n8n node type for one action; the platform part is `executorOf`. */
 export function toNodeType<S extends Shape, O extends AnySchema>(
 	action: Action<S, O>,
@@ -998,16 +1279,27 @@ export function toNodeType<S extends Shape, O extends AnySchema>(
 		version: action.version,
 		description: action.summary,
 		defaults: { name: action.action },
-		inputs: ['main'],
-		...outputsOf(action.outputs),
+		...connectionsOf(action),
 		credentials,
 		properties: [
 			...selector,
-			...Object.entries(action.input).map(([name, schema]) => toProperty(name, schema)),
+			...Object.entries(action.input)
+				.filter(([, schema]) => supplyOf(schema.json) === undefined)
+				.map(([name, schema]) => toProperty(name, schema)),
 		],
 	};
 
 	const run = executorOf(action);
+	const kind = suppliedKindOf(action.output.json);
+	if (kind) {
+		return class implements INodeType {
+			description = description;
+
+			async supplyData(this: ISupplyDataFunctions, itemIndex: number) {
+				return supplyDataOf(action.id, kind, await run(supplyHostOf(this, itemIndex)), this);
+			}
+		};
+	}
 	return class implements INodeType {
 		description = description;
 
@@ -1143,7 +1435,7 @@ async function loadExecutor(frozen: FrozenVersion, head: FrozenVersion) {
  * result must have the same major. The host sets it once at start.
  */
 export type ContractVersionLoader = (
-	context: IExecuteFunctions,
+	context: NodeContext,
 	head: FrozenVersion,
 ) => Promise<FrozenVersion>;
 
@@ -1154,10 +1446,11 @@ export const setContractVersionLoader = (loader: ContractVersionLoader) => {
 	versionLoader.set('loader', loader);
 };
 
-async function executeVersion(context: IExecuteFunctions, head: FrozenVersion) {
+/** The executor of the version a node runs, and its manifest. */
+async function versionExecutorOf(context: NodeContext, head: FrozenVersion) {
 	const loader = versionLoader.get('loader');
 	const frozen = loader ? await loader(context, head) : head;
-	const { id, semver, apiVersion, bundleHash, contract } = frozen.manifest;
+	const { id, semver, bundleHash, contract } = frozen.manifest;
 	if (contract.version !== head.manifest.contract.version || id !== head.manifest.id) {
 		throw new UnexpectedError(
 			`${id}@${semver} cannot run as ${head.manifest.id}@${head.manifest.semver}`,
@@ -1174,9 +1467,26 @@ async function executeVersion(context: IExecuteFunctions, head: FrozenVersion) {
 			throw error;
 		});
 	executors.set(key, executor);
-	const outputs = await (await executor)(hostOf(context));
+	return { executor: await executor, manifest: frozen.manifest };
+}
+
+async function executeVersion(context: IExecuteFunctions, head: FrozenVersion) {
+	const { executor, manifest } = await versionExecutorOf(context, head);
+	const outputs = await executor(hostOf(context));
+	const { id, semver, bundleHash, apiVersion } = manifest;
 	context.setMetadata({ nodeContract: { action: id, version: semver, bundleHash, apiVersion } });
 	return outputs;
+}
+
+async function supplyVersion(
+	context: ISupplyDataFunctions,
+	head: FrozenVersion,
+	kind: SupplyKind,
+	itemIndex: number,
+) {
+	const { executor, manifest } = await versionExecutorOf(context, head);
+	const outputs = await executor(supplyHostOf(context, itemIndex));
+	return supplyDataOf(manifest.id, kind, outputs, context);
 }
 
 /**
@@ -1206,11 +1516,26 @@ export function versionedTypeOf(
 	};
 }
 
-/** The versioned node type of an action. The bundle loads on the first execution of its version. */
+/**
+ * The versioned node type of an action. The bundle loads on the first execution of its version.
+ * A sub-node action supplies its capability instead.
+ */
 export const toVersionedNodeType = (versions: readonly FrozenVersion[]) =>
-	versionedTypeOf(versions, (frozen) => ({
-		description: frozen.manifest.description,
-		async execute(this: IExecuteFunctions) {
-			return await executeVersion(this, frozen);
-		},
-	}));
+	versionedTypeOf(versions, (frozen): INodeType => {
+		const { description, contract } = frozen.manifest;
+		const kind = suppliedKindOf(contract.output);
+		if (kind) {
+			return {
+				description,
+				async supplyData(this: ISupplyDataFunctions, itemIndex: number) {
+					return await supplyVersion(this, frozen, kind, itemIndex);
+				},
+			};
+		}
+		return {
+			description,
+			async execute(this: IExecuteFunctions) {
+				return await executeVersion(this, frozen);
+			},
+		};
+	});

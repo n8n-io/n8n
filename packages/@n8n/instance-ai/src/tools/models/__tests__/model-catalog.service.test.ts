@@ -266,6 +266,19 @@ describe('ModelCatalogService', () => {
 		);
 	});
 
+	it('lists every current text model ID of a provider for the typed build', async () => {
+		fetchCatalog.mockResolvedValue(
+			catalog([
+				model('gpt-5'),
+				model('gpt-5-mini'),
+				model('retired', { status: 'deprecated' }),
+				model('image-only', { modalities: { input: ['text'], output: ['image'] } }),
+			]),
+		);
+		expect(await service.modelIds('openai')).toEqual(['gpt-5', 'gpt-5-mini']);
+		expect(await service.modelIds('nope')).toBeUndefined();
+	});
+
 	it('bounds a stalled fetch to five seconds and retries on a later call', async () => {
 		const pending = createDeferredPromise<ProviderCatalog>();
 		fetchCatalog.mockReturnValueOnce(pending.promise);

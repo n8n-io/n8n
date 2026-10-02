@@ -15,11 +15,12 @@ import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
+import { toTs } from '@n8n/node-sdk';
 import { composedTargetOf, nodeTypeOf } from '@n8n/nodes-base-next';
 import type { composedFactoryKey, ContractFactory } from '@n8n/workflow-sdk/next';
 
 import { approvalSummarySchema, formatApprovalMessage } from './approval-copy';
-import { nextActions } from './next-modules';
+import { factoryPathOf, nextActions, nextTriggerFactories } from './next-modules';
 import { sanitizeInputSchema } from '../agent/sanitize-mcp-schemas';
 import { WorkflowSnapshotChangedError } from '../errors/workflow-snapshot-changed.error';
 import type { FolderResolutionFailure, InstanceAiContext, SetupItemsEmitter } from '../types';
@@ -814,14 +815,45 @@ async function readConsistentWorkflowSnapshot(
  * `decompileWorkflow`. Both read back as the same factory, which builds the composed node.
  */
 const contractFactories = (composedKey: typeof composedFactoryKey) =>
-	new Map<string, ContractFactory>(
-		nextActions.flatMap((action) => {
+	new Map<string, ContractFactory>([
+		...nextTriggerFactories.map(({ contract, nodeType, typeVersion, resource, operation }) => {
+			// A variant input, e.g. Respond to Webhook, has its fields in its branches.
+			const fields = [contract.input, ...(contract.input.oneOf ?? [])].flatMap((schema) =>
+				Object.entries(schema.properties ?? {}),
+			);
+			const factory: ContractFactory = {
+				module: contract.node,
+				from: `@n8n/nodes/${contract.node}`,
+				path: [resource, operation].filter(Boolean).join('.'),
+				version: typeVersion ?? contract.version,
+				// A native node has no host-set parameters: the contract input is all of them.
+				closed: typeVersion !== undefined,
+				inputKeys: [...new Set(fields.map(([key]) => key))],
+				// A trigger input takes plain values: there is no item to read yet. A reply step
+				// reads its item, as an action does.
+				expressionKeys: contract.trigger
+					? []
+					: [
+							...new Set(
+								fields.flatMap(([key, schema]) =>
+									toTs(schema, { input: true, indent: '' }).startsWith('Value<') ? [key] : [],
+								),
+							),
+						],
+			};
+			return [nodeType, factory] as const;
+		}),
+		...nextActions.flatMap((action) => {
 			const factory: ContractFactory = {
 				module: action.node.id,
 				from: `@n8n/nodes/${action.node.id}`,
-				path: [action.resource, action.operation].filter(Boolean).join('.'),
+				path: factoryPathOf(action),
 				version: action.version,
 				inputKeys: Object.keys(action.input),
+				// The generated field type decides: a `Value<…>` field takes an expression string.
+				expressionKeys: Object.entries(action.input).flatMap(([key, schema]) =>
+					toTs(schema.json, { input: true, indent: '' }).startsWith('Value<') ? [key] : [],
+				),
 			};
 			const target = composedTargetOf(action);
 			const composed = target
@@ -834,7 +866,7 @@ const contractFactories = (composedKey: typeof composedFactoryKey) =>
 				: [];
 			return [[nodeTypeOf(action), factory] as const, ...composed];
 		}),
-	);
+	]);
 
 const NEXT_SDK_IMPORT = "from '@n8n/workflow-sdk/next'";
 
