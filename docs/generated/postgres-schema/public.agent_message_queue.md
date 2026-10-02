@@ -9,6 +9,7 @@
 | id | bigint |  | false |  |  | Acceptance order; IDs are not reused |
 | messageId | varchar(36) |  | false |  | [public.agents_messages](public.agents_messages.md) | Canonical input created when the queue accepts it |
 | payload | json |  | false |  |  | Dispatch, authorization, and reply context. Input is stored on the message |
+| position | integer | 0 | false |  |  | Pending turn order within the session |
 | steeringExecutionId | varchar(36) |  | true |  | [public.agent_execution](public.agent_execution.md) | Execution reserved to consume this input |
 | steeringOrder | integer |  | true |  |  | Acceptance order among outstanding steers |
 | threadId | varchar(128) |  | false |  | [public.agent_execution_threads](public.agent_execution_threads.md) |  |
@@ -27,6 +28,7 @@
 | agent_message_queue_id_not_null | n | NOT NULL id |
 | agent_message_queue_messageId_not_null | n | NOT NULL "messageId" |
 | agent_message_queue_payload_not_null | n | NOT NULL payload |
+| agent_message_queue_position_not_null | n | NOT NULL "position" |
 | agent_message_queue_threadId_not_null | n | NOT NULL "threadId" |
 | agent_message_queue_updatedAt_not_null | n | NOT NULL "updatedAt" |
 
@@ -38,7 +40,7 @@
 | IDX_agent_message_queue_messageId | CREATE UNIQUE INDEX "IDX_agent_message_queue_messageId" ON public.agent_message_queue USING btree ("messageId") |
 | IDX_agent_message_queue_steeringExecutionId_steeringOrder | CREATE UNIQUE INDEX "IDX_agent_message_queue_steeringExecutionId_steeringOrder" ON public.agent_message_queue USING btree ("steeringExecutionId", "steeringOrder") WHERE ("steeringExecutionId" IS NOT NULL) |
 | IDX_agent_message_queue_threadId | CREATE UNIQUE INDEX "IDX_agent_message_queue_threadId" ON public.agent_message_queue USING btree ("threadId") WHERE ("executionId" IS NOT NULL) |
-| IDX_c1db6ea2d031cc49100535e6c6 | CREATE INDEX "IDX_c1db6ea2d031cc49100535e6c6" ON public.agent_message_queue USING btree ("threadId", id) |
+| IDX_agent_message_queue_threadId_position | CREATE INDEX "IDX_agent_message_queue_threadId_position" ON public.agent_message_queue USING btree ("threadId", "position") |
 | PK_733d8c959a6057f04f4da5ab721 | CREATE UNIQUE INDEX "PK_733d8c959a6057f04f4da5ab721" ON public.agent_message_queue USING btree (id) |
 
 ## Relations
@@ -57,6 +59,7 @@ erDiagram
   bigint id
   varchar_36_ messageId FK
   json payload
+  integer position
   varchar_36_ steeringExecutionId FK
   integer steeringOrder
   varchar_128_ threadId FK

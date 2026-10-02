@@ -1684,6 +1684,20 @@ describe('AgentExecutionService', () => {
 			).toBe(allowed);
 		});
 
+		it('rejects a new session ID that another memory scope already uses', async () => {
+			agentExecutionThreadRepository.findOneBy.mockResolvedValue(null);
+			memoryBackend.getThread.mockResolvedValue(mock({ resourceId: 'draft-chat:user-1' }));
+			expect(
+				await service.canUseProductionChatThread(
+					'thread-1',
+					'project-1',
+					'agent-1',
+					'user-1',
+					'new',
+				),
+			).toBe(false);
+		});
+
 		it('rejects another owner and an unknown existing session', async () => {
 			agentExecutionThreadRepository.findOneBy.mockResolvedValue(
 				makeThread({ ownerId: 'other-user' }),

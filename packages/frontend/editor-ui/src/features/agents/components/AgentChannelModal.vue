@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { AgentApproval } from '@n8n/api-types';
+import type { AgentApproval, AgentJsonConfig } from '@n8n/api-types';
 import { useToast } from '@n8n/composables/useToast';
 import { N8nButton, N8nIcon, N8nText } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
@@ -16,6 +16,7 @@ import type {
 	AgentChannelViewExpose,
 } from '../channels/types';
 import { useAgentChannelSetup } from '../composables/useAgentChannelSetup';
+import { useAgentChannelRemoval } from '../composables/useAgentChannelRemoval';
 import { useAgentIntegrationStatus } from '../composables/useAgentIntegrationStatus';
 import { useAgentIntegrationsCatalog } from '../composables/useAgentIntegrationsCatalog';
 import { useAgentTelemetry } from '../composables/useAgentTelemetry';
@@ -30,15 +31,19 @@ interface Props {
 	agentId: string;
 	projectId: string;
 	view: ChannelView;
+	disabled?: boolean;
 	isPublished?: boolean;
 	simpleSetup?: boolean;
 	ensureAgentPersisted?: () => Promise<void>;
+	personalisation?: AgentJsonConfig['personalisation'] | null;
 }
 
 const props = withDefaults(defineProps<Props>(), {
+	disabled: false,
 	isPublished: false,
 	simpleSetup: false,
 	ensureAgentPersisted: undefined,
+	personalisation: null,
 });
 
 const emit = defineEmits<{
@@ -53,6 +58,7 @@ const i18n = useI18n();
 const toast = useToast();
 const agentTelemetry = useAgentTelemetry();
 const { catalog, ensureLoaded } = useAgentIntegrationsCatalog();
+const integrationStatus = useAgentIntegrationStatus(props.projectId, props.agentId);
 const {
 	fetchStatus,
 	connectedCredentials,
@@ -66,9 +72,8 @@ const {
 	isConfigured: isIntegrationConfigured,
 	hasRuntimeError,
 	connect,
-	disconnect,
 	clearError: clearIntegrationError,
-} = useAgentIntegrationStatus(props.projectId, props.agentId);
+} = integrationStatus;
 
 const currentView = ref<ChannelView>(props.view);
 const openedFromList = ref(props.view === 'list');
@@ -76,11 +81,6 @@ const viewSession = ref(0);
 const credentialIdAtEditOpen = ref('');
 const channelActionInFlight = ref(false);
 const saveAttempted = ref(false);
-const pendingDisconnect = ref<{
-	channelType: string;
-	credentialId: string;
-	closeAfter: boolean;
-} | null>(null);
 
 function channelTypeFromView(view: ChannelView): string | null {
 	if (view === 'list') return null;
@@ -229,21 +229,31 @@ const channelViewLoading = computed(() => channelViewRef.value?.loading === true
 const actionInFlight = computed(
 	() =>
 		channelActionInFlight.value ||
+		removingChannel.value ||
 		channelViewLoading.value ||
 		(selectedChannelType.value ? isLoading(selectedChannelType.value) : false),
 );
 const listLoading = computed(
 	() => actionInFlight.value || Object.values(runtimes).some((runtime) => runtime.loading.value),
 );
-const disconnectConfirmationComponent = computed(() => {
-	const pending = pendingDisconnect.value;
-	return pending
-		? getAgentChannelPlatform(pending.channelType).disconnectConfirmationComponent
-		: undefined;
-});
-const disconnectConfirmationLoading = computed(() => {
-	const pending = pendingDisconnect.value;
-	return pending ? isLoading(pending.channelType) : false;
+const {
+	pendingDisconnect,
+	disconnectConfirmationComponent,
+	removing: removingChannel,
+	requestDisconnect,
+	confirmDisconnect,
+} = useAgentChannelRemoval({
+	projectId: () => props.projectId,
+	agentId: () => props.agentId,
+	isPublished: () => props.isPublished,
+	disabled: () => props.disabled || channelActionInFlight.value || channelViewLoading.value,
+	status: integrationStatus,
+	runtimeFor,
+	onRemoved: (channelType) => {
+		if (!isIntegrationConfigured(channelType)) emit('channel-disconnected', channelType);
+		emit('agent-changed');
+		completeAndClose();
+	},
 });
 
 const headerContentDisabled = computed(
@@ -447,91 +457,12 @@ function handlePlatformConnected() {
 	completeAndClose();
 }
 
-async function handleDisconnected(
-	channelType: string,
-	credentialId?: string,
-	options: { deleteExternalResource?: boolean } = {},
-) {
-	// Draft channels (configured but missing a credential) have no connected
-	// credential — send '' so the backend removes the draft entry by type.
-	const result = await disconnect(
-		channelType,
-		credentialId ?? connectedCredentials.value[channelType] ?? '',
-		options,
-	);
-	await fetchStatus([channelType]);
-	if (!isIntegrationConfigured(channelType)) {
-		emit('channel-disconnected', channelType);
-	}
-	emit('agent-changed');
-	return result;
-}
-
-async function disconnectChannel(
-	channelType: string,
-	credentialId: string,
-	closeAfter: boolean,
-	deleteExternalResource?: boolean,
-) {
-	try {
-		const result = await handleDisconnected(channelType, credentialId, {
-			deleteExternalResource,
-		});
-		if (result.warning) {
-			const presentation = getAgentChannelPlatform(channelType).presentDisconnectWarning?.(
-				result.warning,
-				{ text: (key) => i18n.baseText(key) },
-			);
-			if (presentation) {
-				toast.showMessage({
-					type: 'warning',
-					title: presentation.title,
-					message: presentation.message,
-					duration: 0,
-				});
-			}
-		}
-		pendingDisconnect.value = null;
-		if (closeAfter) completeAndClose();
-	} catch (error) {
-		toast.showError(error, i18n.baseText('agents.channels.modal.removeChannelError'));
-	}
-}
-
-function requestDisconnect(channelType: string, credentialId: string, closeAfter: boolean) {
-	// The list view can target a channel other than the selected one, so its own
-	// loading state is checked on top of the modal-wide action.
-	if (actionInFlight.value || isLoading(channelType)) return;
-	const platform = getAgentChannelPlatform(channelType);
-	if (
-		platform.shouldConfirmDisconnect?.(runtimeFor(channelType), credentialId, {
-			isPublished: props.isPublished,
-		})
-	) {
-		pendingDisconnect.value = { channelType, credentialId, closeAfter };
-		return;
-	}
-	void disconnectChannel(channelType, credentialId, closeAfter);
-}
-
-function confirmDisconnect(deleteExternalResource: boolean) {
-	const pending = pendingDisconnect.value;
-	if (!pending) return;
-	void disconnectChannel(
-		pending.channelType,
-		pending.credentialId,
-		pending.closeAfter,
-		deleteExternalResource,
-	);
-}
-
 function removeCurrentChannel() {
 	const channelType = selectedChannelType.value;
 	if (!channelType) return;
-	requestDisconnect(
+	void requestDisconnect(
 		channelType,
 		credentialIdAtEditOpen.value || connectedCredentials.value[channelType] || '',
-		true,
 	);
 }
 
@@ -632,6 +563,8 @@ watch(
 					:agent-name="agentId"
 					:project-id="projectId"
 					:agent-id="agentId"
+					:personalisation="personalisation"
+					:ensure-agent-persisted="ensureAgentPersisted"
 					:force-new-credential="false"
 					:simple-setup="simpleSetup"
 					:runtime="currentRuntime"
@@ -663,7 +596,7 @@ watch(
 				variant="ghost"
 				size="medium"
 				:loading="selectedChannelType ? isLoading(selectedChannelType) : false"
-				:disabled="actionInFlight || !selectedChannelType"
+				:disabled="disabled || actionInFlight || !selectedChannelType"
 				data-testid="agent-channel-remove-channel"
 				@click="removeCurrentChannel"
 			>
@@ -687,7 +620,7 @@ watch(
 			:is="disconnectConfirmationComponent"
 			v-if="pendingDisconnect && disconnectConfirmationComponent"
 			:open="true"
-			:loading="disconnectConfirmationLoading"
+			:loading="removingChannel"
 			@cancel="pendingDisconnect = null"
 			@confirm="confirmDisconnect"
 		/>

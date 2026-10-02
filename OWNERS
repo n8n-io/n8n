@@ -254,8 +254,7 @@ docker/get-n8n.sh                                       @n8n-io/qa-dx required
 
 # QA
 
-packages/testing/                                       @n8n-io/qa-dx
-packages/@n8n/benchmark/                                @n8n-io/qa-dx
+packages/quality/                                       @n8n-io/qa-dx
 packages/@n8n/vitest-config/                            @n8n-io/qa-dx
 
 # Encryption boundary (IAM) — the encryption area and its guardrail rules.

@@ -567,13 +567,14 @@ describe('AgentConfigService', () => {
 			expect((saved.schema as AgentJsonConfig).credential).toBe('user-cred');
 		});
 
-		it('rewrites an id-valued legacy ref without touching stable workflow refs', async () => {
+		it('normalizes active legacy workflow refs and handles reactivation', async () => {
 			const { service, agentRepository, workflowRepository } = makeService();
 			const agent = makeAgent();
 			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
 			workflowRepository.findManyByAgentToolReferences.mockResolvedValue([
 				{ id: 'wf-id-1', name: 'Dice Roller' },
 				{ id: 'wf-2', name: 'Existing Name' },
+				{ id: 'wf-disabled', name: 'Deferred Workflow' },
 			] as never);
 
 			await service.updateConfig(
@@ -590,6 +591,7 @@ describe('AgentConfigService', () => {
 						},
 						{ type: 'workflow', workflow: 'Existing Name' },
 						{ type: 'workflow', workflow: 'ghost' },
+						{ type: 'workflow', workflow: 'wf-disabled', enabled: false },
 						{
 							type: 'workflow',
 							workflowId: 'wf-stable',
@@ -601,6 +603,11 @@ describe('AgentConfigService', () => {
 				byUser,
 			);
 
+			expect(workflowRepository.findManyByAgentToolReferences).toHaveBeenCalledExactlyOnceWith(
+				projectId,
+				['wf-id-1', 'Existing Name', 'ghost'],
+				['wf-id-1', 'Existing Name', 'ghost'],
+			);
 			const saved = agentRepository.saveDraftFenced.mock.calls.at(-1)?.[0] as Agent;
 			expect(saved.schema?.tools).toEqual([
 				{
@@ -611,11 +618,26 @@ describe('AgentConfigService', () => {
 				},
 				{ type: 'workflow', workflow: 'Existing Name' },
 				{ type: 'workflow', workflow: 'ghost' },
+				{ type: 'workflow', workflow: 'wf-disabled', enabled: false },
 				{
 					type: 'workflow',
 					workflowId: 'wf-stable',
 					workflow: 'Old Stable Name',
 				},
+			]);
+
+			const reactivated = await service.updateConfig(
+				agentId,
+				projectId,
+				{
+					...baseConfig,
+					tools: [{ type: 'workflow', workflow: 'wf-disabled', enabled: true }],
+				},
+				user,
+				fencedOn(agent),
+			);
+			expect(reactivated.config.tools).toEqual([
+				{ type: 'workflow', workflow: 'Deferred Workflow', enabled: true },
 			]);
 		});
 
@@ -654,12 +676,14 @@ describe('AgentConfigService', () => {
 				{
 					...baseConfig,
 					tools: [
-						{ type: 'custom', id: 'tool_1' },
+						{ type: 'custom', id: 'tool_1', enabled: false, requireApproval: true },
 						{ type: 'custom', id: 'missing_tool' },
+						{ type: 'custom', id: 'disabled_missing_tool', enabled: false },
 					],
 					skills: [
-						{ type: 'skill', id: 'skill-1' },
+						{ type: 'skill', id: 'skill-1', enabled: false },
 						{ type: 'skill', id: 'missing-skill' },
+						{ type: 'skill', id: 'disabled-missing-skill', enabled: false },
 					],
 					tasks: [
 						{ type: 'task', id: 'task-1', enabled: true },
@@ -671,13 +695,53 @@ describe('AgentConfigService', () => {
 			);
 
 			const saved = agentRepository.saveDraftFenced.mock.calls[0][0];
-			expect(saved.schema?.tools).toEqual([{ type: 'custom', id: 'tool_1' }]);
-			expect(saved.schema?.skills).toEqual([{ type: 'skill', id: 'skill-1' }]);
+			expect(saved.schema?.tools).toEqual([
+				{ type: 'custom', id: 'tool_1', enabled: false, requireApproval: true },
+				{ type: 'custom', id: 'disabled_missing_tool', enabled: false },
+			]);
+			expect(saved.schema?.skills).toEqual([
+				{ type: 'skill', id: 'skill-1', enabled: false },
+				{ type: 'skill', id: 'disabled-missing-skill', enabled: false },
+			]);
 			expect(saved.schema?.tasks).toEqual([{ type: 'task', id: 'task-1', enabled: true }]);
 			expect(Object.keys(saved.tools)).toEqual(['tool_1']);
 			expect(agentTaskRepository.delete).toHaveBeenCalledWith(['task-2']);
 			expect(agentSkillsService.removeUnreferencedSkills).toHaveBeenCalled();
 			expect(runtimeCacheService.clearRuntimes).toHaveBeenCalledWith(agentId);
+		});
+
+		it('retains missing references when reactivating saved capabilities', async () => {
+			const { service, agentRepository } = makeService();
+			const config: AgentJsonConfig = {
+				...baseConfig,
+				tools: [{ type: 'custom', id: 'missing_tool', enabled: false, requireApproval: true }],
+				skills: [{ type: 'skill', id: 'missing_skill', enabled: false }],
+				subAgents: { agents: [{ agentId: 'missing-agent', enabled: false, useWhen: 'Review' }] },
+			};
+			const agent = makeAgent({ schema: config });
+			agentRepository.findByIdAndProjectId.mockImplementation(async (id) =>
+				id === agentId ? agent : null,
+			);
+			const activated: AgentJsonConfig = {
+				...config,
+				tools: [{ type: 'custom', id: 'missing_tool', enabled: true, requireApproval: true }],
+				skills: [{ type: 'skill', id: 'missing_skill', enabled: true }],
+				subAgents: { agents: [{ agentId: 'missing-agent', enabled: true, useWhen: 'Review' }] },
+			};
+
+			const deactivated = await service.updateConfig(
+				agentId,
+				projectId,
+				config,
+				user,
+				fencedOn(agent),
+			);
+			expect(deactivated.config.subAgents).toEqual(config.subAgents);
+			await service.updateConfig(agentId, projectId, activated, user, fencedOn(agent));
+
+			expect(agentRepository.saveDraftFenced.mock.calls.at(-1)?.[0].schema).toMatchObject(
+				activated,
+			);
 		});
 
 		it('sanitizes inaccessible credentials before saving nested config', async () => {
@@ -890,7 +954,9 @@ describe('AgentConfigService', () => {
 						maxChildren: 3,
 						agents: [
 							{ agentId: 'missing-agent', useWhen: 'Use for missing work.' },
-							{ agentId: 'agent-2', useWhen: 'Use for billing escalations.' },
+							{ agentId: 'disabled-missing-agent', enabled: false },
+							{ agentId: 'agent-3', useWhen: 'Use for later work.', enabled: false },
+							{ agentId: 'agent-2', useWhen: 'Use for billing escalations.', enabled: true },
 							{ agentId: 'agent-2', useWhen: 'Use for duplicate work.' },
 						],
 					},
@@ -901,8 +967,16 @@ describe('AgentConfigService', () => {
 
 			expect(agentRepository.saveDraftFenced.mock.calls[0][0].schema?.subAgents).toEqual({
 				maxChildren: 3,
-				agents: [{ agentId: 'agent-2', useWhen: 'Use for billing escalations.' }],
+				agents: [
+					{ agentId: 'agent-3', useWhen: 'Use for later work.', enabled: false },
+					{ agentId: 'agent-2', useWhen: 'Use for billing escalations.', enabled: true },
+				],
 			});
+			expect(agentRepository.findByIdAndProjectId).toHaveBeenCalledWith('agent-3', projectId);
+			expect(agentRepository.findByIdAndProjectId).toHaveBeenCalledWith(
+				'disabled-missing-agent',
+				projectId,
+			);
 			expect(
 				agentRepository.findByIdAndProjectId.mock.calls.filter(([id]) => id === 'agent-2'),
 			).toHaveLength(1);
@@ -924,18 +998,25 @@ describe('AgentConfigService', () => {
 				agents: [{ agentId: 'agent-3', useWhen: 'Use for unpublished work.' }],
 			});
 
-			await expect(
-				service.updateConfig(
-					agentId,
-					projectId,
-					{
-						...baseConfig,
-						subAgents: { agents: [{ agentId, useWhen: 'Use for self-delegation.' }] },
-					},
-					user,
-					fencedOn(agent),
-				),
-			).rejects.toThrow('cannot use itself');
+			agentRepository.saveDraftFenced.mockClear();
+			for (const enabled of [true, false]) {
+				agentRepository.findByIdAndProjectId
+					.mockResolvedValueOnce(agent)
+					.mockResolvedValueOnce(null);
+				await expect(
+					service.updateConfig(
+						agentId,
+						projectId,
+						{
+							...baseConfig,
+							subAgents: { agents: [{ agentId, enabled, useWhen: 'Use for self-delegation.' }] },
+						},
+						user,
+						fencedOn(agent),
+					),
+				).rejects.toThrow('cannot use itself');
+			}
+			expect(agentRepository.saveDraftFenced).not.toHaveBeenCalled();
 		});
 
 		it('reports setup completion after claiming the marker', async () => {
