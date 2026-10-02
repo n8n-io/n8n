@@ -92,6 +92,14 @@ export class UserRepository extends Repository<User> {
 		return await super.update(...args);
 	}
 
+	async disableMfaForUser(userId: string) {
+		await super.update(userId, {
+			mfaEnabled: false,
+			mfaSecret: null,
+			mfaRecoveryCodes: [],
+		});
+	}
+
 	/**
 	 * Change a user's email only if it still equals `oldEmail`. Returns `'stale'`
 	 * when the email changed concurrently and `'email-taken'` when another user
