@@ -5,7 +5,12 @@ import {
 	type HttpRequestClient,
 	type SsrfBridge,
 } from '@n8n/backend-network';
-import { CacheService, EventService, UrlService } from '@n8n/backend-services';
+import {
+	CacheService,
+	EventService,
+	UrlService,
+	CredentialsFinderService,
+} from '@n8n/backend-services';
 import { GlobalConfig, SsrfProtectionConfig } from '@n8n/config';
 import type { AuthenticatedRequest, CredentialsEntity, ICredentialsDb } from '@n8n/db';
 import { CredentialsRepository } from '@n8n/db';
@@ -22,7 +27,6 @@ import {
 	RESPONSE_ERROR_MESSAGES,
 } from '@/constants';
 import { AuthService } from '@/auth/auth.service';
-import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { CredentialsHelper } from '@/credentials-helper';
 import { AuthError, BadRequestError, NotFoundError } from '@n8n/errors';
 import type { OAuthRequest } from '@/requests';

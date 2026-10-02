@@ -4,7 +4,7 @@ import type { InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
 import type { Push } from '@/push';
-import type { RoleService } from '@/services/role.service';
+import type { RoleService } from '@n8n/backend-services';
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
 
 import { AgentPushRecipientsService } from '../agent-push-recipients.service';

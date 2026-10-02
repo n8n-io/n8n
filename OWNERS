@@ -28,6 +28,8 @@ packages/@n8n/config/                                   @n8n-io/catalysts
 packages/@n8n/backend-common/                           @n8n-io/catalysts
 packages/@n8n/backend-network/                          @n8n-io/catalysts
 packages/@n8n/backend-services/                         @n8n-io/catalysts
+packages/@n8n/backend-services/src/services/role.service.ts       @n8n-io/iam
+packages/@n8n/backend-services/src/services/role-cache.service.ts @n8n-io/iam
 packages/@n8n/backend-test-utils/                       @n8n-io/catalysts
 packages/@n8n/di/                                       @n8n-io/catalysts
 packages/@n8n/errors/                                   @n8n-io/catalysts
@@ -155,8 +157,6 @@ packages/cli/src/controllers/e2e.controller.ts          						@n8n-io/qa-dx
 # CLI services
 packages/cli/src/services/jwt.service.ts                @n8n-io/iam
 packages/cli/src/services/user.service.ts               @n8n-io/iam
-packages/cli/src/services/role.service.ts               @n8n-io/iam
-packages/cli/src/services/role-cache.service.ts         @n8n-io/iam
 packages/cli/src/services/password.utility.ts           @n8n-io/iam
 packages/cli/src/services/public-api-key.service.ts     @n8n-io/iam
 packages/cli/src/services/security-settings.service.ts  @n8n-io/iam
@@ -254,8 +254,7 @@ docker/get-n8n.sh                                       @n8n-io/qa-dx required
 
 # QA
 
-packages/testing/                                       @n8n-io/qa-dx
-packages/@n8n/benchmark/                                @n8n-io/qa-dx
+packages/quality/                                       @n8n-io/qa-dx
 packages/@n8n/vitest-config/                            @n8n-io/qa-dx
 
 # Encryption boundary (IAM) — the encryption area and its guardrail rules.

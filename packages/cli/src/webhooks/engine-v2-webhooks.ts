@@ -3,7 +3,6 @@ import type {
 	INode,
 	IRun,
 	IRunData,
-	IWebhookResponseData,
 	IWorkflowBase,
 	WebhookResponseMode,
 	WorkflowExecuteMode,
@@ -23,7 +22,6 @@ import {
 import { MCP_TRIGGER_NODE_TYPE } from '@/constants';
 import { EngineDataPlaneProxyService } from '@/services/engine-data-plane-proxy.service';
 import { EngineV2Dispatcher } from '@/services/engine-v2-dispatcher.service';
-import { EngineV2PayloadGuard } from '@/services/engine-v2-payload-guard.service';
 import type { WebhookRunOutcome } from '@/modules/engine-v2/webhook-response/webhook-outcome';
 
 /**
@@ -70,7 +68,6 @@ export type EngineV2WebhookRequest = {
 export class EngineV2Webhooks {
 	constructor(
 		private readonly dispatcher: EngineV2Dispatcher,
-		private readonly payloadGuard: EngineV2PayloadGuard,
 		private readonly proxy: EngineDataPlaneProxyService,
 	) {}
 
@@ -173,18 +170,5 @@ export class EngineV2Webhooks {
 				},
 			}),
 		};
-	}
-
-	/**
-	 * Rejects a payload the engine cannot carry.
-	 *
-	 * Only the webhook node's own output says whether the request brought a file,
-	 * so this runs after the node, unlike {@link assertSupported}.
-	 */
-	assertPayloadSupported(webhookResultData: IWebhookResponseData): void {
-		this.payloadGuard.assertNoFiles(
-			webhookResultData.workflowData ?? [],
-			'Engine v2 cannot receive files from a webhook yet.',
-		);
 	}
 }

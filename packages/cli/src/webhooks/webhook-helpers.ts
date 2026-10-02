@@ -22,6 +22,7 @@ import type {
 	IExecuteData,
 	IN8nHttpFullResponse,
 	INode,
+	INodeExecutionData,
 	IPinData,
 	IRunExecutionData,
 	IWebhookData,
@@ -70,9 +71,10 @@ import {
 	NotFoundError,
 	UnsupportedMediaTypeError,
 } from '@n8n/errors';
-import { createExecutionIdV2 } from '@/executions/execution-id';
+import { createExecutionIdV2, type ExecutionIdV2 } from '@/executions/execution-id';
 import { parseBody } from '@/middlewares';
 import { WebhookResponseRelay } from '@/scaling/webhook-response-relay';
+import { EngineV2PayloadFiles } from '@/services/engine-v2-payload-files.service';
 import {
 	type AuthFailureReason,
 	OAuthTokenVerifierProxy,
@@ -1035,6 +1037,10 @@ export async function executeWebhook(
 
 	/** Whether this run goes to the engine v2 data plane instead of the v1 path. */
 	let routesToEngineV2 = false;
+	/** The id of the v2 run, created before the webhook node runs. */
+	let engineV2ExecutionId: ExecutionIdV2 | undefined;
+	/** What the webhook node produced for a v2 run, until the dispatcher takes it. */
+	let engineV2Payload: INodeExecutionData[][] | undefined;
 	let pendingEngineV2Response: WebhookResponseWait | undefined;
 	let runExecutionDataMerge = {};
 	const engineV2Webhooks = Container.get(EngineV2Webhooks);
@@ -1047,6 +1053,10 @@ export async function executeWebhook(
 		routesToEngineV2 = engineV2Webhooks.handles(workflowData, executionMode);
 		if (routesToEngineV2) {
 			engineV2Webhooks.assertSupported({ workflowStartNode, responseMode, executionId });
+			// Created before the node runs, so a file the node stores is written under
+			// the path of its run from the start, and no rename is needed later.
+			engineV2ExecutionId = createExecutionIdV2();
+			additionalData.executionId = engineV2ExecutionId;
 		}
 
 		if (
@@ -1107,6 +1117,7 @@ export async function executeWebhook(
 		});
 		const { webhookResultData } = invocationResult;
 		runExecutionDataMerge = invocationResult.runExecutionDataChanges;
+		if (routesToEngineV2) engineV2Payload = webhookResultData.workflowData;
 
 		if (cleanupMultipartFiles && webhookResultData.webhookResponse instanceof Readable) {
 			deferCleanupUntilStreamEnds(webhookResultData.webhookResponse, res, cleanupMultipartFiles);
@@ -1128,10 +1139,6 @@ export async function executeWebhook(
 			responder,
 		});
 		if (!shouldContinueWorkflowExecution) return;
-
-		// Engine v2 cannot receive files yet. A file exists only in the node's output,
-		// so this check runs after the node, unlike `engineV2Webhooks.assertSupported()`.
-		if (routesToEngineV2) engineV2Webhooks.assertPayloadSupported(webhookResultData);
 
 		// Reactive credential-status gate. Runs only once we know the workflow will
 		// execute (workflowData is defined), so a falsy "Only Run If" short-circuits
@@ -1236,19 +1243,21 @@ export async function executeWebhook(
 			responder.markResponded();
 		}
 
-		// Before the run, because a short workflow answers before `startExecution`
-		// returns and nothing replays a missed response. The id is minted here, so
-		// the run and the listener agree on it.
-		if (routesToEngineV2 && (responseMode === 'lastNode' || responseMode === 'responseNode')) {
-			const engineExecutionId = createExecutionIdV2();
-			// Loaded here, because only an engine v2 run needs the module code.
-			const { EngineV2WebhookResponseRegistry } = await import(
-				'@/modules/engine-v2/webhook-response/webhook-response-registry.service.js'
-			);
-			pendingEngineV2Response = await Container.get(
-				EngineV2WebhookResponseRegistry,
-			).waitForResponse(engineExecutionId, toResponseExpectation(responseMode));
-			runData.engineV2Response = { executionId: engineExecutionId, responseMode };
+		if (engineV2ExecutionId !== undefined) {
+			// Before the run, because a short workflow answers before `startExecution`
+			// returns and nothing replays a missed response.
+			if (responseMode === 'lastNode' || responseMode === 'responseNode') {
+				// Loaded here, because only an engine v2 run needs the module code.
+				const { EngineV2WebhookResponseRegistry } = await import(
+					'@/modules/engine-v2/webhook-response/webhook-response-registry.service.js'
+				);
+				pendingEngineV2Response = await Container.get(
+					EngineV2WebhookResponseRegistry,
+				).waitForResponse(engineV2ExecutionId, toResponseExpectation(responseMode));
+				runData.engineV2Response = { responseMode };
+			}
+			// The files the node stored are under this id, so the run must use it.
+			runData.engineV2ExecutionId = engineV2ExecutionId;
 		}
 
 		// Extract W3C trace context from webhook headers for OTEL propagation.
@@ -1264,6 +1273,10 @@ export async function executeWebhook(
 					typeof tracestate === 'string' && tracestate.length <= 512 ? tracestate : undefined,
 			};
 		}
+
+		// From here the dispatcher owns the payload: it deletes the files when the
+		// data plane does not accept the run.
+		engineV2Payload = undefined;
 
 		// Start now to run the workflow
 		executionId = await Container.get(WorkflowRunner).run(
@@ -1558,6 +1571,11 @@ export async function executeWebhook(
 		return;
 	} finally {
 		await cleanupMultipartFiles?.();
+		// The run never reached the dispatcher, so the files the webhook node stored
+		// belong to no execution and the control plane deletes them.
+		if (engineV2Payload !== undefined) {
+			await Container.get(EngineV2PayloadFiles).discard(engineV2Payload);
+		}
 	}
 }
 

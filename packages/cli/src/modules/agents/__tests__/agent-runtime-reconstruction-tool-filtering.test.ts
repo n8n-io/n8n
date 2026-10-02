@@ -18,7 +18,7 @@ import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
 
 import type { ActiveExecutions } from '@/active-executions';
-import type { CredentialsFinderService } from '@/credentials/credentials-finder.service';
+import type { CredentialsFinderService } from '@n8n/backend-services';
 import { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks';
 import type { EphemeralNodeExecutor } from '@/node-execution';
 import type { OauthService } from '@/oauth/oauth.service';
@@ -320,6 +320,30 @@ describe('AgentRuntimeReconstructionService — per-user tool filtering', () => 
 			['credential:read'],
 		);
 		expect(toolNamesPassedToBuildFromJson()).toEqual(['Get date']);
+	});
+
+	it('skips disabled tools before looking up user access', async () => {
+		vi.mocked(userHasScopes).mockResolvedValue(true);
+		const { service, credentialsFinderService, workflowFinderService, workflowRepository } =
+			makeService({});
+		const entity = makeAgentEntity([
+			{ ...nodeToolWithCredential, enabled: false },
+			{ ...workflowTool, enabled: false },
+			customTool,
+		]);
+
+		await service.reconstructFromAgentEntity(
+			entity,
+			mock<CredentialProvider>(),
+			'test',
+			undefined,
+			testUser,
+		);
+
+		expect(toolNamesPassedToBuildFromJson()).toEqual(['custom_tool']);
+		expect(credentialsFinderService.findCredentialForUser).not.toHaveBeenCalled();
+		expect(workflowFinderService.findWorkflowForUser).not.toHaveBeenCalled();
+		expect(workflowRepository.findOneByAgentToolReference).not.toHaveBeenCalled();
 	});
 
 	it('drops a workflow tool the user cannot access, keeps one they can', async () => {

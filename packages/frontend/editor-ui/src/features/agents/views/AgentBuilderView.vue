@@ -92,6 +92,7 @@ import {
 	AGENT_PREVIEW_VIEW,
 	AGENT_SESSION_DETAIL_VIEW,
 	AGENT_JSON_IMPORT_MODAL_KEY,
+	AGENT_DESCRIPTION_MODAL_KEY,
 	AGENT_VECTOR_STORES_MODAL_KEY,
 	ASSISTANT_THREAD_PARAM,
 	CONTINUE_SESSION_ID_PARAM,
@@ -2019,19 +2020,14 @@ watch(
 );
 
 const headerActions = computed(() => {
-	const actions: Array<ActionDropdownItem<string>> = [
-		{
-			id: 'export-json',
-			label: locale.baseText('agents.builder.exportJson' as BaseTextKey),
-			icon: 'download',
-		},
-	];
+	const actions: Array<ActionDropdownItem<string>> = [];
 
+	// Same order as the workflow menu: description and favorite first, then import/export.
 	if (effectiveCanEditAgent.value) {
 		actions.push({
-			id: 'import-json',
-			label: locale.baseText('agents.builder.importJson' as BaseTextKey),
-			icon: 'upload',
+			id: 'edit-description',
+			label: locale.baseText('agents.builder.editDescription'),
+			icon: 'tags',
 		});
 	}
 
@@ -2043,6 +2039,21 @@ const headerActions = computed(() => {
 					? locale.baseText('favorites.remove')
 					: locale.baseText('favorites.add'),
 			icon: isFavorite.value === true ? 'star-filled' : 'star',
+		});
+	}
+
+	actions.push({
+		id: 'export-json',
+		label: locale.baseText('agents.builder.exportJson' as BaseTextKey),
+		icon: 'download',
+		divided: actions.length > 0,
+	});
+
+	if (effectiveCanEditAgent.value) {
+		actions.push({
+			id: 'import-json',
+			label: locale.baseText('agents.builder.importJson' as BaseTextKey),
+			icon: 'upload',
 		});
 	}
 
@@ -2103,7 +2114,30 @@ function openImportJsonModal() {
 	});
 }
 
+function openDescriptionModal() {
+	if (!localConfig.value) return;
+	const targetAgentId = agentId.value;
+
+	uiStore.openModalWithData({
+		name: AGENT_DESCRIPTION_MODAL_KEY,
+		data: {
+			agentName: localConfig.value.name,
+			description: localConfig.value.description ?? '',
+			onConfirm: (description: string) => {
+				// The modal outlives navigation: drop the edit if another agent is open now.
+				if (agentId.value !== targetAgentId) return;
+				// Send '' to clear: the backend keeps the stored value for omitted fields.
+				onConfigFieldUpdate({ description });
+			},
+		},
+	});
+}
+
 async function onHeaderAction(action: string) {
+	if (action === 'edit-description') {
+		openDescriptionModal();
+		return;
+	}
 	if (action === 'version-history') {
 		onToggleVersionHistory();
 		return;
@@ -2892,6 +2926,7 @@ useKeybindings({
 					@remove-vector-store="onRemoveVectorStore"
 					@remove-tool="caps.onRemoveTool"
 					@remove-skill="caps.onRemoveSkill"
+					@toggle-skill="caps.onToggleSkill"
 					@update:connected-triggers="caps.onConnectedTriggersUpdate"
 					@trigger-added="caps.onTriggerAdded"
 					@toggle-task="caps.onToggleTask"

@@ -1,4 +1,8 @@
-import { assertSubAgentTaskPath, type SerializableAgentState } from '@n8n/agents';
+import {
+	assertSubAgentTaskPath,
+	type ApprovalResumePayload,
+	type SerializableAgentState,
+} from '@n8n/agents';
 import { SUB_AGENT_TASK_DIFFICULTIES } from '@n8n/api-types';
 import { z } from 'zod';
 
@@ -10,12 +14,15 @@ export const BACKGROUND_APPROVAL_RUN_PREFIX = 'background-job-';
 export const PARENT_TASK_CANCELLED_REASON = new DOMException('Parent task cancelled', 'AbortError');
 
 export function parseBackgroundApprovalAction(actionId: string) {
-	const match = /^bg:([a-f\d-]{36}):([\w-]{22}):([01])$/i.exec(actionId);
+	const match = /^bg:([a-f\d-]{36}):([\w-]{22}):([01s])$/i.exec(actionId);
 	if (!match) return undefined;
+	const decision = match[3].toLowerCase();
+	const resumeData: ApprovalResumePayload = { approved: decision !== '0' };
+	if (decision === 's') resumeData.scope = 'session';
 	return {
 		runId: `${BACKGROUND_APPROVAL_RUN_PREFIX}${match[1]}`,
 		toolCallId: match[2],
-		resumeData: { approved: match[3] === '1' },
+		resumeData,
 	};
 }
 

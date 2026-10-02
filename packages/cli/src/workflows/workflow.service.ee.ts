@@ -32,7 +32,7 @@ import {
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { isCredSharingEnabled } from '@/constants/credential-sharing';
-import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
+import { CredentialsFinderService } from '@n8n/backend-services';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { EnterpriseCredentialsService } from '@/credentials/credentials.service.ee';
 import { FolderNotFoundError } from '@/errors/folder-not-found.error';
@@ -821,7 +821,7 @@ export class EnterpriseWorkflowService {
 		credentialIds: string[],
 		projectId: string,
 	) {
-		await this.workflowRepository.manager.transaction(async (trx) => {
+		await this.workflowRepository.runInTransaction({}, async (trx, ctx) => {
 			let credentialIdsToShare: string[];
 
 			if (hasGlobalScope(user, ['credential:share'], { mode: 'allOf' })) {
@@ -831,7 +831,7 @@ export class EnterpriseWorkflowService {
 					await this.credentialsFinderService.getCredentialIdsByUserAndRole(
 						[user.id],
 						{ scopes: ['credential:share'] },
-						trx,
+						ctx,
 					),
 				);
 				credentialIdsToShare = credentialIds.filter((id) => accessibleIds.has(id));
