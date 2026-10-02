@@ -1,7 +1,11 @@
 import { testDb } from '@n8n/backend-test-utils';
 import { ApiKeyRepository, GLOBAL_MEMBER_ROLE, GLOBAL_OWNER_ROLE } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { getOwnerOnlyApiKeyScopes, type ApiKeyScope } from '@n8n/permissions';
+import {
+	getOwnerOnlyApiKeyScopes,
+	MEMBER_API_KEY_SCOPES,
+	type ApiKeyScope,
+} from '@n8n/permissions';
 import type { InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
@@ -71,22 +75,16 @@ describe('PublicApiKeyService', () => {
 			);
 		});
 
-		it('should keep the variable scopes a member may hold', async () => {
-			const variableScopes: ApiKeyScope[] = [
-				'variable:create',
-				'variable:update',
-				'variable:delete',
-				'variable:list',
-			];
+		it('should keep every scope a member may hold', async () => {
 			const adminUser = await createAdminWithApiKey({
-				scopes: [...variableScopes, 'user:create'],
+				scopes: [...MEMBER_API_KEY_SCOPES, 'user:create'],
 			});
 			const apiKeyId = adminUser.apiKeys[0].id;
 
 			await publicApiKeyService.removeOwnerOnlyScopesFromApiKeys(adminUser);
 
 			const apiKeyOnDb = await apiKeyRepository.findOneByOrFail({ id: apiKeyId });
-			expect(apiKeyOnDb.scopes).toEqual(variableScopes);
+			expect(apiKeyOnDb.scopes).toEqual(MEMBER_API_KEY_SCOPES);
 		});
 	});
 
@@ -163,41 +161,12 @@ describe('PublicApiKeyService', () => {
 			expect(result).toBe(false);
 		});
 
-		it('should let a member grant folder scopes, which apply to their own projects', async () => {
-			// Arrange
-			const folderScopes: ApiKeyScope[] = [
-				'folder:create',
-				'folder:read',
-				'folder:update',
-				'folder:delete',
-				'folder:list',
-			];
-
-			// Act
+		it('should let a member grant every member scope', async () => {
 			const result = publicApiKeyService.apiKeyHasValidScopesForRole(
 				{
 					role: GLOBAL_MEMBER_ROLE,
 				},
-				folderScopes,
-			);
-
-			// Assert
-			expect(result).toBe(true);
-		});
-
-		it('should let a member grant variable scopes, which apply to projects they can edit', async () => {
-			const variableScopes: ApiKeyScope[] = [
-				'variable:create',
-				'variable:update',
-				'variable:delete',
-				'variable:list',
-			];
-
-			const result = publicApiKeyService.apiKeyHasValidScopesForRole(
-				{
-					role: GLOBAL_MEMBER_ROLE,
-				},
-				variableScopes,
+				MEMBER_API_KEY_SCOPES,
 			);
 
 			expect(result).toBe(true);
