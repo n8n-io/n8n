@@ -1,18 +1,24 @@
-import { ModuleMetadata } from '@n8n/decorators';
+import { ModuleMetadata, type ModuleInterface } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import {
 	AuthenticationService,
 	IdentityService,
+	LocalAuthorizationServer,
 	migrateToLatest,
 	TrustedSourceConfigSchema,
 	TrustedSourceGate,
+	TrustedSourceStore,
 	type Extracted,
 	type TrustedSource,
 	type Verified,
 } from '@n8n/inbound-auth';
+import { OperationalError } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 // Importing the module runs the @BackendModule decorator, registering its metadata.
 import { InboundAuthCoreModule } from '../inbound-auth-core.module';
+import { TrustedSourceDiscoveryTask } from '../trusted-source-discovery.task';
+import { TrustedSourceDbStore } from '../trusted-source.store';
 
 describe('InboundAuthCoreModule', () => {
 	describe('init', () => {
@@ -24,8 +30,22 @@ describe('InboundAuthCoreModule', () => {
 			credential: { kind: 'bearer', token: 'a.b.c' },
 		} satisfies Extracted;
 
+		const dbStore = mock<TrustedSourceDbStore>();
+
 		beforeAll(async () => {
+			Container.set(TrustedSourceDbStore, dbStore);
 			await new InboundAuthCoreModule().init();
+		});
+
+		it('binds the TrustedSourceStore contract to the database store', () => {
+			expect(Container.get(TrustedSourceStore)).toBe(dbStore);
+		});
+
+		it('binds a LocalAuthorizationServer that rejects until the OAuth2 server registers itself', async () => {
+			const server = Container.get(LocalAuthorizationServer);
+
+			await expect(server.getMetadata()).rejects.toThrow(OperationalError);
+			await expect(server.getJwks()).rejects.toThrow(OperationalError);
 		});
 
 		it('binds an AuthenticationService that fails closed until a driver is registered', async () => {
@@ -90,6 +110,13 @@ describe('InboundAuthCoreModule', () => {
 		expect(entry).toBeDefined();
 		expect(entry?.instanceTypes).toEqual(['main', 'webhook', 'worker']);
 		expect(entry?.licenseFlag).toBeUndefined();
+	});
+
+	it('exposes the discovery task as its only system task', async () => {
+		const module: ModuleInterface = new InboundAuthCoreModule();
+
+		expect(module.systemTasks).toBeDefined();
+		expect(await module.systemTasks?.()).toEqual([TrustedSourceDiscoveryTask]);
 	});
 
 	it('exposes its entities so the datasource picks them up', async () => {

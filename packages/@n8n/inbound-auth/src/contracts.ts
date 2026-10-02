@@ -3,7 +3,7 @@ import type { AuthPrincipal, SecurityContext } from '@n8n/permissions';
 import type { OAuthResourceGrant } from 'n8n-workflow';
 
 import type { Extracted, Inbound, Result, Verified } from './pipeline';
-import type { TrustedSource } from './trusted-source';
+import type { AuthorizationServerMetadata, Jwk, TrustedSource } from './trusted-source';
 import type { SurfaceId } from './trusted-source-config';
 
 /** What a protected resource reads from the user. The `User` entity satisfies it. */
@@ -112,6 +112,13 @@ export abstract class TrustedSourceStore {
 	abstract getByIssuer(issuer: string): Promise<TrustedSource | undefined>;
 
 	abstract listBySurface(surface: SurfaceId): Promise<TrustedSource[]>;
+}
+
+/** The running instance's own OAuth2 server, read in process so its source is discovered like any other. */
+export abstract class LocalAuthorizationServer {
+	abstract getMetadata(): Promise<AuthorizationServerMetadata>;
+
+	abstract getJwks(): Promise<{ keys: Jwk[] }>;
 }
 
 export abstract class TrustedSourceGate {
