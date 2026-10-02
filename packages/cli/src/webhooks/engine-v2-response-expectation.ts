@@ -14,6 +14,8 @@ export function toResponseExpectation(responseMode?: EngineV2ResponseMode): Resp
 			return { kind: 'runEnd' };
 		case 'responseNode':
 			return { kind: 'stepResponse' };
+		case 'streaming':
+			return { kind: 'stream' };
 		default:
 			// `onReceived`, triggers, pollers and manual runs: nobody listens.
 			return { kind: 'none' };
