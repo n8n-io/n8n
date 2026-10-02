@@ -1176,6 +1176,8 @@
 	"credentialEdit.credentialEdit.docs": "Docs",
 	"credentialEdit.oAuthButton.connectMyAccount": "Connect my account",
 	"credentialEdit.oAuthButton.signInWithGoogle": "Sign in with Google",
+	"credentialSharing.blocked": "Uses {credential}. Only {owner} can run or publish with it. You can still edit the workflow and switch to a credential you can use.",
+	"credentialSharing.blocked.unknownOwner": "Uses {credential}. Only its owner can run or publish with it. You can still edit the workflow and switch to a credential you can use.",
 	"credentialEdit.credentialSharing.info.owner": "Sharing a credential allows people to use it in their workflows. They cannot access credential details.",
 	"credentialEdit.credentialSharing.info.sharee.team": "Only users with credential sharing permission can change who this credential is shared with",
 	"credentialEdit.credentialSharing.info.sharee.personal": "Only {credentialOwnerName} or users with credential sharing permission can change who this credential is shared with",
