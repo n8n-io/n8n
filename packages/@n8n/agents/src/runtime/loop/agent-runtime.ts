@@ -418,7 +418,11 @@ export class AgentRuntime {
 		if (!(await this.runState.claimResume(this.runId, state))) {
 			throw new StaleResumeError('This run has already resumed');
 		}
-		this.updateState({ status: 'running', persistence: resumeOptions.persistence });
+		this.updateState({
+			status: 'running',
+			finishReason: undefined,
+			persistence: resumeOptions.persistence,
+		});
 		const abortScope = this.eventBus.createAbortScope(resumeOptions.abortSignal);
 		try {
 			await onResumeClaimed?.();
@@ -427,11 +431,9 @@ export class AgentRuntime {
 		} catch (error) {
 			abortScope.dispose();
 			// No task action has started. Keep the checkpoint available for a retry.
-			await this.runState.suspend(this.runId, {
-				...state,
-				persistence: resumeOptions.persistence,
-			});
-			this.updateState({ status: 'suspended', finishReason: 'paused' });
+			const suspendedState = { ...state, persistence: resumeOptions.persistence };
+			await this.runState.suspend(this.runId, suspendedState);
+			this.updateState(suspendedState);
 			throw error;
 		}
 	}

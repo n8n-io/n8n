@@ -3517,10 +3517,9 @@ describe('AgentRuntime — user pause', () => {
 
 			streamText.mockReset().mockReturnValue(makeStreamSuccess('Finished from the saved results'));
 			const resumes = await Promise.allSettled(
-				[1, 2].map(async () => {
-					const restarted = createRuntimeWithCheckpointStore([tool], store);
-					return await restarted.resumePaused({ runId });
-				}),
+				[runtime, createRuntimeWithCheckpointStore([tool], store)].map(
+					async (resumeRuntime) => await resumeRuntime.resumePaused({ runId }),
+				),
 			);
 			expect(resumes.filter((resume) => resume.status === 'fulfilled')).toHaveLength(1);
 			for (const resume of resumes) {
@@ -3530,6 +3529,7 @@ describe('AgentRuntime — user pause', () => {
 						finishReason: 'stop',
 					});
 			}
+			expect(runtime.getState()).toMatchObject({ status: 'success', finishReason: undefined });
 			expect(handler).toHaveBeenCalledTimes(2);
 			expect(JSON.stringify(streamText.mock.calls[0][0].messages)).toContain(
 				'Saved partial result',
@@ -3550,21 +3550,42 @@ describe('AgentRuntime — user pause', () => {
 			const result = await runtime.generate('Start later', {
 				shouldPause: async () => true,
 				maxIterations: 10,
+				persistence:
+					failure === 'metadata'
+						? undefined
+						: {
+								threadId: 'child',
+								resourceId: 'user',
+								hostMetadata: { actor: 'saved', source: 'checkpoint' },
+							},
 			});
 			expect(result.finishReason).toBe('paused');
 			expect(generateText).not.toHaveBeenCalled();
 			const original = await store.load(result.runId);
+			const resumeRuntime = createRuntimeWithCheckpointStore([], store);
 			await expect(
-				runtime.resumePaused({
+				resumeRuntime.resumePaused({
 					runId: result.runId,
 					maxIterations: failure === 'options' ? 1 : 10,
-					hostMetadata: failure === 'metadata' ? { actor: 'selected' } : undefined,
+					hostMetadata: { actor: 'selected' },
 					onResumeClaimed: async () => {
 						throw new Error('Admission failed');
 					},
 				}),
 			).rejects.toThrow(message);
-			expect(await store.load(result.runId)).toEqual(original);
+			const expectedCheckpoint =
+				failure === 'admission'
+					? {
+							...original,
+							persistence: {
+								threadId: 'child',
+								resourceId: 'user',
+								hostMetadata: { actor: 'selected', source: 'checkpoint' },
+							},
+						}
+					: original;
+			expect(await store.load(result.runId)).toEqual(expectedCheckpoint);
+			if (failure === 'admission') expect(resumeRuntime.getState()).toEqual(expectedCheckpoint);
 			expect(streamText).not.toHaveBeenCalled();
 
 			streamText.mockReturnValue(makeStreamSuccess());
