@@ -58,6 +58,8 @@ exclude = [
 	# Bot checks block GitHub runners, also in a browser.
 	'^https://www\.contentful\.com/',
 	'^https://postgrest\.org/',
+	# The OpenAI dashboard passes the bot check only sometimes. Its docs moved to developers.openai.com.
+	'^https://platform\.openai\.com/',
 	# Private to n8n employees.
 	'^https://n8nio\.slack\.com/',
 	'^https://github\.com/n8n-io/license-management',

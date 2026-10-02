@@ -10,6 +10,8 @@
  * - Redirects that lychee rejects, 403, 429, 999, timeouts, and network errors
  *   are opened again in headless Chrome. Many sites block HTTP clients but serve
  *   browsers, and a second request confirms that a connection failure persists.
+ *   Chrome stops after 8 minutes, so that the job ends with a report. Links that
+ *   Chrome did not open count as broken.
  *
  * - A broken docs.n8n.io link on a line that changed in the last 30 days is
  *   pending, not broken. Code often ships before its docs page. Needs git
@@ -24,6 +26,7 @@ import { pathToFileURL } from 'node:url';
 
 const STRICT_ANCHOR_HOST = 'docs.n8n.io';
 const BROWSER_CONCURRENCY = 4;
+const BROWSER_BUDGET_MS = 8 * 60 * 1000;
 const GRACE_PERIOD_MS = 30 * 24 * 60 * 60 * 1000;
 const BROWSER_STATUSES = new Set([403, 429, 999]);
 const CHALLENGE_TITLE = /just a moment|attention required|security checkpoint/i;
@@ -149,15 +152,21 @@ async function checkInBrowser(urls) {
 
 	const queue = groupByHost(urls);
 	const passed = new Set();
+	const skipped = [];
+	const deadline = Date.now() + BROWSER_BUDGET_MS;
 	const worker = async () => {
 		for (let group = queue.shift(); group; group = queue.shift()) {
 			for (const url of group) {
-				if (await checkPage(context, url)) passed.add(url);
+				if (Date.now() > deadline) skipped.push(url);
+				else if (await checkPage(context, url)) passed.add(url);
 			}
 		}
 	};
 	await Promise.all(Array.from({ length: BROWSER_CONCURRENCY }, worker));
 	await browser.close();
+	if (skipped.length > 0) {
+		console.log(`browser: time budget used, did not open ${skipped.length} links`);
+	}
 	return passed;
 }
 
