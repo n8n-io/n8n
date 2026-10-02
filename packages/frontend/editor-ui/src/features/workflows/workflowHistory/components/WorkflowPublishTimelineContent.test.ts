@@ -1,4 +1,5 @@
 import { createTestingPinia } from '@pinia/testing';
+import { waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore } from '@/__tests__/utils';
@@ -57,7 +58,10 @@ describe('WorkflowPublishTimelineContent', () => {
 		const { findByText, workflowHistoryStore } = renderWithEvents([]);
 		await findByText('This workflow has no publish history yet.');
 
-		expect(workflowHistoryStore.getPublishTimeline).toHaveBeenCalledWith(workflowId);
+		expect(workflowHistoryStore.getPublishTimeline).toHaveBeenCalledWith(workflowId, {
+			take: 100,
+			skip: 0,
+		});
 	});
 
 	it('should render a published entry with its version name', async () => {
@@ -227,5 +231,85 @@ describe('WorkflowPublishTimelineContent', () => {
 		const { findByText } = renderComponent({ pinia, props: { workflowId } });
 
 		expect(await findByText('Published')).toBeInTheDocument();
+	});
+
+	describe('paging', () => {
+		let scrollToEnd = () => {};
+
+		beforeEach(() => {
+			scrollToEnd = () => {};
+			vi.stubGlobal(
+				'IntersectionObserver',
+				class {
+					constructor(callback: IntersectionObserverCallback) {
+						scrollToEnd = () =>
+							callback(
+								[{ isIntersecting: true } as IntersectionObserverEntry],
+								this as unknown as IntersectionObserver,
+							);
+					}
+
+					observe = vi.fn();
+
+					disconnect = vi.fn();
+
+					unobserve = vi.fn();
+
+					takeRecords = vi.fn();
+				},
+			);
+		});
+
+		afterEach(() => {
+			vi.unstubAllGlobals();
+		});
+
+		const buildPage = (count: number, firstId: number, newest: Date) =>
+			Array.from({ length: count }, (_, i) =>
+				buildEvent({
+					id: firstId + i,
+					createdAt: new Date(newest.getTime() - i * 60_000).toISOString(),
+				}),
+			);
+
+		const renderWithPages = (...pages: PublishTimelineEvent[][]) => {
+			const pinia = createTestingPinia({ stubActions: false });
+			const workflowHistoryStore = mockedStore(useWorkflowHistoryStore);
+			for (const page of pages) {
+				workflowHistoryStore.getPublishTimeline.mockResolvedValueOnce(page);
+			}
+			workflowHistoryStore.getVersionFirstAdoptionDate.mockResolvedValue(null);
+
+			return { ...renderComponent({ pinia, props: { workflowId } }), workflowHistoryStore };
+		};
+
+		it('should request the next page when the end of the list becomes visible', async () => {
+			const newest = new Date('2026-03-01T10:00:00Z');
+			const { findAllByText, getAllByText, workflowHistoryStore } = renderWithPages(
+				buildPage(100, 1, newest),
+				buildPage(1, 101, new Date(newest.getTime() - 100 * 60_000)),
+			);
+			expect(await findAllByText('Published')).toHaveLength(100);
+
+			scrollToEnd();
+
+			await waitFor(() => expect(workflowHistoryStore.getPublishTimeline).toHaveBeenCalledTimes(2));
+			expect(workflowHistoryStore.getPublishTimeline).toHaveBeenLastCalledWith(workflowId, {
+				take: 100,
+				skip: 100,
+			});
+			await waitFor(() => expect(getAllByText('Published')).toHaveLength(101));
+		});
+
+		it('should not request another page after a page that is not full', async () => {
+			const { findAllByText, workflowHistoryStore } = renderWithPages(
+				buildPage(3, 1, new Date('2026-03-01T10:00:00Z')),
+			);
+			expect(await findAllByText('Published')).toHaveLength(3);
+
+			scrollToEnd();
+
+			expect(workflowHistoryStore.getPublishTimeline).toHaveBeenCalledTimes(1);
+		});
 	});
 });
