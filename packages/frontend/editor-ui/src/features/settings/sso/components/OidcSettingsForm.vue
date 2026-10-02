@@ -4,7 +4,8 @@ import { MODAL_CONFIRM } from '@/app/constants';
 import { SupportedProtocols, useSSOStore } from '../sso.store';
 import { useI18n } from '@n8n/i18n';
 
-import { N8nButton, N8nInput, N8nOption, N8nSelect } from '@n8n/design-system';
+import { N8nButton, N8nInput, N8nSelect2, N8nStatusDot } from '@n8n/design-system';
+import type { SelectValue } from '@n8n/design-system';
 import { computed, onMounted, ref } from 'vue';
 import { useToast } from '@n8n/composables/useToast';
 import { useMessage } from '@/app/composables/useMessage';
@@ -51,9 +52,18 @@ type PromptType = 'login' | 'none' | 'consent' | 'select_account' | 'create';
 
 const prompt = ref<PromptType>('select_account');
 
-const handlePromptChange = (value: PromptType) => {
-	prompt.value = value;
-};
+const enabledDisabledItems = [
+	{ value: 'enabled', label: 'Enabled', 'data-test-id': 'sso-oidc-toggle-option' },
+	{ value: 'disabled', label: 'Disabled', 'data-test-id': 'sso-oidc-toggle-option' },
+] as const;
+
+type EnabledDisabledValue = (typeof enabledDisabledItems)[number]['value'];
+
+const [enabledItem, disabledItem] = enabledDisabledItems;
+
+function onEnabledToggle(value: SelectValue | undefined, assign: (enabled: boolean) => void) {
+	assign(value === enabledItem.value);
+}
 
 type PromptDescription = {
 	label: string;
@@ -70,6 +80,11 @@ const promptDescriptions: PromptDescription[] = [
 	},
 	{ label: i18n.baseText('settings.sso.settings.oidc.prompt.create'), value: 'create' },
 ];
+
+const promptItems = promptDescriptions.map((option) => ({
+	...option,
+	'data-test-id': 'oidc-prompt-filter-option',
+}));
 
 const authenticationContextClassReference = ref('');
 const additionalScopes = ref('');
@@ -329,20 +344,13 @@ onMounted(async () => {
 			</div>
 			<div :class="$style.group">
 				<label>Prompt</label>
-				<N8nSelect
-					:model-value="prompt"
+				<N8nSelect2
+					v-model="prompt"
+					:items="promptItems"
+					size="large"
 					:disabled="isSsoManagedByEnv"
 					data-test-id="oidc-prompt"
-					@update:model-value="handlePromptChange"
-				>
-					<N8nOption
-						v-for="option in promptDescriptions"
-						:key="option.value"
-						:label="option.label"
-						data-test-id="oidc-prompt-filter-option"
-						:value="option.value"
-					/>
-				</N8nSelect>
+				/>
 				<small>The prompt parameter to use when authenticating with the OIDC provider</small>
 			</div>
 		</div>
@@ -416,19 +424,23 @@ onMounted(async () => {
 					<small>Allow users to sign in through your identity provider</small>
 				</div>
 				<div :class="$style.settingsItemControl">
-					<N8nSelect
-						:model-value="ssoStore.isOidcLoginEnabled ? 'enabled' : 'disabled'"
+					<N8nSelect2
+						:model-value="ssoStore.isOidcLoginEnabled ? enabledItem.value : disabledItem.value"
+						:items="enabledDisabledItems"
 						size="medium"
 						data-test-id="sso-oidc-toggle"
 						:disabled="isSsoManagedByEnv"
-						@update:model-value="ssoStore.isOidcLoginEnabled = $event === 'enabled'"
+						@update:model-value="
+							onEnabledToggle($event, (enabled) => (ssoStore.isOidcLoginEnabled = enabled))
+						"
 					>
-						<template #prefix>
-							<span v-if="ssoStore.isOidcLoginEnabled" :class="$style.greenDot" />
+						<template #item-leading="{ item, ui }">
+							<N8nStatusDot
+								:class="ui.class"
+								:variant="item.value === enabledItem.value ? 'success' : 'danger'"
+							/>
 						</template>
-						<N8nOption value="enabled" label="Enabled" data-test-id="sso-oidc-toggle-option" />
-						<N8nOption value="disabled" label="Disabled" data-test-id="sso-oidc-toggle-option" />
-					</N8nSelect>
+					</N8nSelect2>
 				</div>
 			</div>
 			<div :class="$style.settingsItem">
@@ -437,19 +449,23 @@ onMounted(async () => {
 					<small>Also end your session at the identity provider when signing out of n8n</small>
 				</div>
 				<div :class="$style.settingsItemControl">
-					<N8nSelect
-						:model-value="rpInitiatedLogoutEnabled ? 'enabled' : 'disabled'"
+					<N8nSelect2
+						:model-value="rpInitiatedLogoutEnabled ? enabledItem.value : disabledItem.value"
+						:items="enabledDisabledItems"
 						size="medium"
 						data-test-id="sso-oidc-logout-toggle"
 						:disabled="isSsoManagedByEnv"
-						@update:model-value="rpInitiatedLogoutEnabled = $event === 'enabled'"
+						@update:model-value="
+							onEnabledToggle($event, (enabled) => (rpInitiatedLogoutEnabled = enabled))
+						"
 					>
-						<template #prefix>
-							<span v-if="rpInitiatedLogoutEnabled" :class="$style.greenDot" />
+						<template #item-leading="{ item, ui }">
+							<N8nStatusDot
+								:class="ui.class"
+								:variant="item.value === enabledItem.value ? 'success' : 'danger'"
+							/>
 						</template>
-						<N8nOption value="enabled" label="Enabled" />
-						<N8nOption value="disabled" label="Disabled" />
-					</N8nSelect>
+					</N8nSelect2>
 				</div>
 			</div>
 		</div>
