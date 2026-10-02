@@ -153,6 +153,8 @@ const approvalTitleKeys = new Map<string, BaseTextKey>(
 			'instanceAi.tools.nodes.execute.imperativeWithResource',
 			'instanceAi.tools.executions.run.imperative',
 			'instanceAi.tools.executions.run.imperativeWithResource',
+			'instanceAi.tools.executions.listen.imperative',
+			'instanceAi.tools.executions.listen.imperativeWithResource',
 			'instanceAi.tools.credentials.delete.imperative',
 			'instanceAi.tools.data-tables.create.imperative',
 			'instanceAi.tools.data-tables.create.imperativeWithResource',

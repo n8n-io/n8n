@@ -5214,7 +5214,6 @@ describe('createExecutionAdapter test listeners', () => {
 
 		expect(outcome).toMatchObject({
 			state: 'received',
-			executionId: 'exec-1',
 			result: { executionId: 'exec-1', status: 'success' },
 		});
 	});
@@ -5277,7 +5276,7 @@ describe('createExecutionAdapter test listeners', () => {
 			armedAt: '2026-01-01T00:00:00.000Z',
 		});
 
-		expect(outcome).toMatchObject({ state: 'received', executionId: 'exec-2' });
+		expect(outcome).toMatchObject({ state: 'received', result: { executionId: 'exec-2' } });
 	});
 
 	it('ignores a queued execution created before arming', async () => {
@@ -5325,7 +5324,6 @@ describe('createExecutionAdapter test listeners', () => {
 
 			await expect(pending).resolves.toMatchObject({
 				state: 'received',
-				executionId: 'exec-1',
 				result: { executionId: 'exec-1', status: 'success' },
 			});
 		} finally {
@@ -5348,7 +5346,7 @@ describe('createExecutionAdapter test listeners', () => {
 			armedAt: '2026-01-01T00:00:00.000Z',
 		});
 
-		expect(outcome).toMatchObject({ state: 'received', executionId: 'exec-1' });
+		expect(outcome).toMatchObject({ state: 'received', result: { executionId: 'exec-1' } });
 	});
 
 	it('stays armed while the registration is present and nothing has arrived', async () => {

@@ -991,9 +991,9 @@ export function createThreadRuntime(
 		}
 		const action = typeof args.action === 'string' ? args.action : '';
 		const workflowId = resolveAlwaysAllowWorkflowId(args, confirmationWorkflowId);
-		// Running a workflow grants "always allow" per workflow, so the grant applies only to the
-		// workflow the user approved.
-		if (toolName === 'executions' && action === 'run') {
+		// Running a workflow, or listening on its test URL, grants "always allow" per workflow,
+		// so the grant applies only to the workflow the user approved.
+		if (toolName === 'executions' && (action === 'run' || action === 'listen')) {
 			return buildRunWorkflowSessionGrantKey(workflowId);
 		}
 		// Running one node grants "always allow" per node, so a debug loop on one
