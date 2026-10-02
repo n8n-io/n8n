@@ -275,27 +275,34 @@ describe('FrontendService', () => {
 
 	describe('getSettings', () => {
 		it.each([
-			{ state: 'unlicensed', users: UNLIMITED_LICENSE_QUOTA, team: 0, enabled: false },
-			{ state: 'licensed', users: 25, team: 5, enabled: true },
+			{
+				state: 'unlicensed',
+				users: UNLIMITED_LICENSE_QUOTA,
+				team: 0,
+				sharing: false,
+				folders: false,
+			},
+			{ state: 'licensed', users: 25, team: 5, sharing: true, folders: false },
 			{
 				state: 'unlimited',
 				users: UNLIMITED_LICENSE_QUOTA,
 				team: UNLIMITED_LICENSE_QUOTA,
-				enabled: true,
+				sharing: false,
+				folders: true,
 			},
-		])('should surface $state license settings', async ({ users, team, enabled }) => {
+		])('should surface $state license settings', async ({ users, team, sharing, folders }) => {
 			licenseState.getMaxUsers.mockReturnValue(users);
 			licenseState.getMaxTeamProjects.mockReturnValue(team);
-			licenseState.isSharingLicensed.mockReturnValue(enabled);
-			licenseState.isFoldersLicensed.mockReturnValue(enabled);
+			licenseState.isSharingLicensed.mockReturnValue(sharing);
+			licenseState.isFoldersLicensed.mockReturnValue(folders);
 			const { service } = createMockService();
 
 			const settings = await service.getSettings();
 
 			expect(settings.userManagement.quota).toBe(users);
 			expect(settings.enterprise.projects.team.limit).toBe(team);
-			expect(settings.enterprise.sharing).toBe(enabled);
-			expect(settings.folders.enabled).toBe(enabled);
+			expect(settings.enterprise.sharing).toBe(sharing);
+			expect(settings.folders.enabled).toBe(folders);
 			expect(license.getUsersLimit).not.toHaveBeenCalled();
 			expect(license.getTeamProjectLimit).not.toHaveBeenCalled();
 		});
