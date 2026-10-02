@@ -1,6 +1,6 @@
 import type { MigrationContext, ReversibleMigration } from '../migration-types';
 
-export class AddAgentBackgroundJobPause1790870286644 implements ReversibleMigration {
+export class AddAgentBackgroundJobPause1790937677019 implements ReversibleMigration {
 	async up({
 		schemaBuilder: { addColumns, column, dropEnumCheck, addEnumCheck },
 		escape,
