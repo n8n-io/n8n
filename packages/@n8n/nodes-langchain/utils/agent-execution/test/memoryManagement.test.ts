@@ -59,6 +59,36 @@ describe('memoryManagement', () => {
 			expect(result).toEqual([]);
 		});
 
+		it('should filter out malformed messages with empty or blank string content', async () => {
+			const validToolCallAIMessage = new AIMessage({
+				content: '',
+				tool_calls: [{ id: 'call-1', name: 'tool', args: {}, type: 'tool_call' as const }],
+			});
+			const validToolMessage = new ToolMessage({ content: 'Result', tool_call_id: 'call-1', name: 'tool' });
+			const chatHistory = [
+				new HumanMessage('Hello'),
+				new AIMessage('Hi there!'),
+				new HumanMessage(''), // Empty string
+				new HumanMessage('   '), // Blank string after trimming
+				new AIMessage({ content: [] }), // Empty array
+				new AIMessage({ content: null as any }), // Null content
+				validToolCallAIMessage, // Should be kept because it has tool_calls
+				validToolMessage, // Prevent the AIMessage from being cleaned up as an orphan
+			];
+			mockMemory.loadMemoryVariables.mockResolvedValue({ chat_history: chatHistory });
+
+			const result = await loadMemory(mockMemory);
+
+			// Should only keep the first two valid messages, the tool call message, and the tool result
+			expect(result).toHaveLength(4);
+			expect(result?.[0]).toBeInstanceOf(HumanMessage);
+			expect(result?.[0].content).toBe('Hello');
+			expect(result?.[1]).toBeInstanceOf(AIMessage);
+			expect(result?.[1].content).toBe('Hi there!');
+			expect(result?.[2]).toBe(validToolCallAIMessage);
+			expect(result?.[3]).toBe(validToolMessage);
+		});
+
 		it('should remove orphaned ToolMessage at start of chat history', async () => {
 			// Simulates memory trimming that removed the AIMessage but left the ToolMessage
 			const chatHistory = [

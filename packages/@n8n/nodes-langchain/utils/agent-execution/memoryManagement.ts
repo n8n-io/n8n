@@ -250,6 +250,25 @@ export async function loadMemory(
 	const memoryVariables = await memory.loadMemoryVariables({});
 	let chatHistory = (memoryVariables['chat_history'] as BaseMessage[]) || [];
 
+	// Filter out completely empty or blank string messages (e.g. from malformed DB rows)
+	chatHistory = chatHistory.filter((msg) => {
+		if (msg instanceof HumanMessage || msg instanceof AIMessage) {
+			const hasToolCalls = 'tool_calls' in msg && Array.isArray(msg.tool_calls) && msg.tool_calls.length > 0;
+			if (hasToolCalls) return true;
+
+			if (typeof msg.content === 'string') {
+				return msg.content.trim() !== '';
+			}
+			if (Array.isArray(msg.content) && msg.content.length === 0) {
+				return false;
+			}
+			if (msg.content === null || msg.content === undefined) {
+				return false;
+			}
+		}
+		return true;
+	});
+
 	// Clean up any orphaned messages from previous trimming operations
 	chatHistory = cleanupOrphanedMessages(chatHistory);
 
