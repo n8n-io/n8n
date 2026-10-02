@@ -1062,7 +1062,9 @@ describe('ScalingService', () => {
 
 					await scalingService.stop();
 
-					expect(scopedLogger.warn).toHaveBeenCalledTimes(1);
+					expect(scopedLogger.warn).toHaveBeenCalledWith(
+						'Skipped handing back jobs fetched before the pause: queue has no lock token',
+					);
 					expect(queue.getActive).not.toHaveBeenCalled();
 				});
 
