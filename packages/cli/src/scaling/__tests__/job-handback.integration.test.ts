@@ -110,7 +110,7 @@ describe.skipIf(!REDIS_HOST || !REDIS_PORT)('handBackJob (real Redis)', () => {
 		const failedOnWorkerA = once(workerA, 'failed') as Promise<[Job, Error]>;
 		void workerA.process(JOB_TYPE_NAME, 1, async (activeJob: Job) => {
 			await workerA.pause(true, true);
-			handBackJob(activeJob);
+			await handBackJob(activeJob);
 		});
 
 		const [handedBackJob] = await failedOnWorkerA;
@@ -148,7 +148,7 @@ describe.skipIf(!REDIS_HOST || !REDIS_PORT)('handBackJob (real Redis)', () => {
 		void workerA.process(JOB_TYPE_NAME, 1, async (activeJob: Job) => {
 			markStarted(activeJob);
 			await released;
-			handBackJob(activeJob);
+			await handBackJob(activeJob);
 		});
 
 		const activeJob = await started;
@@ -191,7 +191,7 @@ describe.skipIf(!REDIS_HOST || !REDIS_PORT)('handBackJob (real Redis)', () => {
 		const failedOnWorkerA = once(workerA, 'failed') as Promise<[Job, Error]>;
 		void workerA.process(JOB_TYPE_NAME, 1, async (activeJob: Job) => {
 			await workerA.pause(true, true);
-			handBackJob(activeJob);
+			await handBackJob(activeJob);
 		});
 
 		const [handedBackJob] = await failedOnWorkerA;
