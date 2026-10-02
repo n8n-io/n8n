@@ -82,7 +82,8 @@ export class ControllerRegistry {
 		// Register regular routes
 		for (const [handlerName, route] of metadata.routes) {
 			// Guard against internal API using non-JSON body media types.
-			// We may support non-JSON media types in the future, but for now they are only supported on `@PublicApiController` routes.
+			// We may support non-JSON media types in the future, but for now they are only supported
+			// on `@PublicApiController` routes.
 			const nonJsonBodyArg = route.args.find(
 				(arg): arg is BodyArg =>
 					arg?.type === 'body' &&

@@ -135,7 +135,8 @@ async function buildEovEndpoints(): Promise<EndpointInfo[]> {
 
 function buildDecoratorEndpoints(): EndpointInfo[] {
 	return resolvePublicApiRoutes().map((route) => {
-		// A non-JSON body shows no request schema (`discoverable: false` on its handler), so a client doesn't assume one.
+		// A non-JSON body shows no request schema (`discoverable: false` on its handler), so a
+		// client doesn't assume one.
 		const handler = route.requestBodyDto
 			? requestBodyHandlerFor(route.requestBodyMedia ?? JSON_REQUEST_BODY_MEDIA)
 			: undefined;

@@ -10,8 +10,8 @@ function readMediaType(header: string): { mediaType: string; reported: string } 
 	const mediaType = rawMediaType.trim().toLowerCase();
 	const parameters = new Map<string, string>();
 
-	// Parameter sorting & returning of the reported string is kept only for parity
-	// with the EOV handler, we may be able to remove and simplify this method in future.
+	// Parameter sorting and returning of the reported string is kept only for parity with the
+	// EOV handler — we may be able to remove and simplify this method in future.
 	for (const part of parameterParts) {
 		const separator = part.indexOf('=');
 		if (separator === -1) {
@@ -36,8 +36,8 @@ function readMediaType(header: string): { mediaType: string; reported: string } 
 
 /**
  * Checks a request's `Content-Type` against the media type a route's `@Body` declares. Returns
- * whether the header matched telling the caller whether there's a body of that type to parse otherwise
- * throws an error.
+ * whether the header matched — telling the caller whether there's a body of that type to parse —
+ * otherwise throws an error.
  *
  * The legacy validator accepted only JSON. It reported a header that names no media type — absent,
  * empty, or whitespace — as the literal `undefined`, and rejected it only when the body was
