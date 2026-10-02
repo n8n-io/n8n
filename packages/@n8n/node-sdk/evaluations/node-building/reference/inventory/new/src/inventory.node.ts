@@ -1,15 +1,16 @@
-import { apiKey, credential, defineNode } from '@n8n/node-sdk';
+import { credential, credentialType, defineNode, t } from '@n8n/node-sdk';
 
 export const node = defineNode({
 	id: 'inventory',
 	displayName: 'Inventory',
 	credential: credential({
 		types: [
-			apiKey({
-				name: 'inventoryApi',
+			credentialType({
+				id: 'inventory.apiKey',
+				legacyName: 'inventoryApi',
 				displayName: 'Inventory API',
-				key: 'Authorization',
-				prefix: 'ApiKey ',
+				fields: { apiKey: t.secret('API Key') },
+				auth: (a) => a.header('Authorization', 'ApiKey {apiKey}'),
 			}),
 		],
 	}),

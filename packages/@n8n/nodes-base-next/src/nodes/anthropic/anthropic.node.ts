@@ -10,7 +10,7 @@ export const anthropic = defineNode({
 			compat('anthropicApi', {
 				fields: { url: str().default(DEFAULT_URL) },
 				hosts: ['api.anthropic.com'],
-				baseUrl: ({ url }) => url || DEFAULT_URL,
+				baseUrl: '{url}',
 			}),
 		],
 	}),

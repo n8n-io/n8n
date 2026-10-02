@@ -1,37 +1,30 @@
-import { custom, oauth2, str } from '@n8n/node-sdk';
+import { credentialType, t } from '@n8n/node-sdk';
 
-/**
- * The legacy `notionApi`, as a value. `custom` because the type sets `Notion-Version` only when
- * the request has none, which a header template cannot express.
- */
-export const notionApi = custom({
-	name: 'notionApi',
+const baseUrl = 'https://api.notion.com/v1';
+
+export const notionToken = credentialType({
+	id: 'notion.token',
+	legacyName: 'notionApi',
 	displayName: 'Notion API',
-	documentationUrl: 'notion',
-	hosts: ['api.notion.com'],
-	secrets: { apiKey: str().with({ title: 'Internal Integration Secret' }) },
-	async authenticate({ apiKey }, request) {
-		const headers = { ...request.headers };
-		return await Promise.resolve({
-			...request,
-			headers: {
-				...headers,
-				// The legacy type sends a trailing space. Keep the header byte for byte.
-				Authorization: `Bearer ${apiKey} `,
-				'Notion-Version': headers['Notion-Version'] ?? '2022-02-22',
-			},
-		});
-	},
-	test: { request: { baseURL: 'https://api.notion.com/v1', url: '/users/me' } },
+	docs: 'notion',
+	fields: { apiKey: t.secret('Internal Integration Secret') },
+	baseUrl,
+	auth: (a) => a.bearer('apiKey', { defaults: { 'Notion-Version': '2022-02-22' } }),
+	test: { get: '/users/me' },
 });
 
-/** The legacy `notionOAuth2Api`: config only. n8n core runs the OAuth2 flow. */
-export const notionOAuth2Api = oauth2({
-	name: 'notionOAuth2Api',
+export const notionOAuth2 = credentialType({
+	id: 'notion.oauth2',
+	legacyName: 'notionOAuth2Api',
 	displayName: 'Notion OAuth2 API',
-	documentationUrl: 'notion',
-	hosts: ['api.notion.com'],
-	authorizationUrl: 'https://api.notion.com/v1/oauth/authorize',
-	tokenUrl: 'https://api.notion.com/v1/oauth/token',
-	clientAuth: 'header',
+	docs: 'notion',
+	baseUrl,
+	// The legacy type has no PKCE.
+	auth: (a) =>
+		a.oauth2.authorizationCode({
+			authorizationEndpoint: 'https://api.notion.com/v1/oauth/authorize',
+			tokenEndpoint: 'https://api.notion.com/v1/oauth/token',
+			clientAuth: 'client_secret_basic',
+			pkce: false,
+		}),
 });

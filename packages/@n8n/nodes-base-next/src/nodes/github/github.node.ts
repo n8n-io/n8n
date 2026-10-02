@@ -1,8 +1,7 @@
 import { compat, credential, defineNode, str } from '@n8n/node-sdk';
 
 // The legacy types stay the definition. Both hold the server of GitHub Enterprise.
-const server = str().default('https://api.github.com');
-const serverUrl = ({ server: url }: { server: string }) => url || 'https://api.github.com';
+const fields = { server: str().default('https://api.github.com') };
 
 export const github = defineNode({
 	id: 'github',
@@ -10,8 +9,8 @@ export const github = defineNode({
 	// The scopes are GitHub OAuth scopes. A token with fine-grained permissions maps to them.
 	credential: credential({
 		types: [
-			compat('githubApi', { fields: { server }, baseUrl: serverUrl }),
-			compat('githubOAuth2Api', { fields: { server }, baseUrl: serverUrl }),
+			compat('githubApi', { id: 'github.token', fields, baseUrl: '{server}' }),
+			compat('githubOAuth2Api', { id: 'github.oauth2', fields, baseUrl: '{server}' }),
 		],
 		scopes: {
 			repo: 'Read and write repositories',

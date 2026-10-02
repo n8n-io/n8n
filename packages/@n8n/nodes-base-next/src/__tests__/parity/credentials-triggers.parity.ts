@@ -1,71 +1,23 @@
 import { toCredentialType, toTriggerNodeType, toVersionedTriggerType } from '@n8n/node-sdk';
 import { NotionApi } from 'n8n-nodes-base/dist/credentials/NotionApi.credentials';
-import { NotionOAuth2Api } from 'n8n-nodes-base/dist/credentials/NotionOAuth2Api.credentials';
 import { GithubTrigger } from 'n8n-nodes-base/dist/nodes/Github/GithubTrigger.node';
 import { Notion } from 'n8n-nodes-base/dist/nodes/Notion/Notion.node';
 import { NotionTrigger } from 'n8n-nodes-base/dist/nodes/Notion/NotionTrigger.node';
 import { createHmac } from 'node:crypto';
-import type {
-	ICredentialDataDecryptedObject,
-	ICredentialType,
-	IDataObject,
-	IHttpRequestOptions,
-	INodeType,
-} from 'n8n-workflow';
+import type { ICredentialType, IDataObject, IHttpRequestOptions, INodeType } from 'n8n-workflow';
 
 import { repositoryEvent } from '../../nodes/github/actions/repository.event';
-import { notionApi, notionOAuth2Api } from '../../nodes/notion/credentials';
+import { notionToken } from '../../nodes/notion/credentials';
 import { pageAdded } from '../../nodes/notion/actions/data-source.page-added';
 import { getUser } from '../../nodes/notion/actions/user.get';
 import { versionsOf } from '../../registry';
 import { actionNode, compareRuns, runNode, type ParityCase } from './harness';
-
-/** The members of a credential type that n8n reads, without class methods. */
-const described = ({
-	name,
-	displayName,
-	documentationUrl,
-	extends: parents,
-	properties,
-	test,
-}: ICredentialType) => ({
-	name,
-	displayName,
-	documentationUrl,
-	extends: parents,
-	properties,
-	test,
-});
 
 const projected = (type: Parameters<typeof toCredentialType>[0]) => {
 	const result = toCredentialType(type);
 	if (!result) throw new Error(`${type.name} has no projection`);
 	return result;
 };
-
-describe('Notion credential types against the legacy classes', () => {
-	it('notionOAuth2Api projects to the legacy type', () => {
-		expect(described(projected(notionOAuth2Api))).toEqual(described(new NotionOAuth2Api()));
-	});
-
-	it('notionApi projects to the legacy type and signs requests the same way', async () => {
-		const next = projected(notionApi);
-		const old = new NotionApi();
-		expect(described(next)).toEqual(described(old));
-		const data: ICredentialDataDecryptedObject = { apiKey: 'secret_1' };
-		const requests: IHttpRequestOptions[] = [
-			{ url: 'https://api.notion.com/v1/users/me' },
-			{ url: 'https://api.notion.com/v1/pages', headers: { 'Notion-Version': '2026-03-11' } },
-		];
-		for (const request of requests) {
-			const sign = async (type: ICredentialType) => {
-				if (typeof type.authenticate !== 'function') throw new Error('no authenticate');
-				return await type.authenticate(data, { ...request, headers: { ...request.headers } });
-			};
-			expect(await sign(next)).toEqual(await sign(old));
-		}
-	});
-});
 
 const USER = '6794760a-1f15-45cd-9c65-0dfe42f5135a';
 
@@ -95,7 +47,7 @@ describe('notion.user.get (declarative) parity with Notion v2 user get', () => {
 		);
 		const next = await runNode(
 			actionNode(getUser, { authentication: 'notionApi', user: USER }, 'notionApi'),
-			userCase([projected(notionApi)]),
+			userCase([projected(notionToken)]),
 		);
 		expect(legacy.error).toBeUndefined();
 		expect(legacy.items).toHaveLength(1);

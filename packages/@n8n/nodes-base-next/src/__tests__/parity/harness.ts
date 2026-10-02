@@ -223,11 +223,21 @@ class ParityCredentialsHelper extends workflowLib.ICredentialsHelper {
 					typeof value === 'string' ? resolveText(value) : value,
 				]),
 			);
-		const { headers, qs } = authenticate.properties;
+		// As `CredentialsHelper.authenticate`: each value goes into the request part of the same name.
+		const { headers, qs, auth } = authenticate.properties;
 		return {
 			...requestOptions,
 			headers: { ...requestOptions.headers, ...resolveAll(headers) },
-			qs: { ...requestOptions.qs, ...resolveAll(qs) },
+			...(qs ? { qs: { ...requestOptions.qs, ...resolveAll(qs) } } : {}),
+			...(auth
+				? {
+						auth: {
+							...requestOptions.auth,
+							username: resolveText(auth.username),
+							password: resolveText(auth.password),
+						},
+					}
+				: {}),
 		};
 	}
 
@@ -263,6 +273,43 @@ class ParityCredentialsHelper extends workflowLib.ICredentialsHelper {
 	getCredentialsProperties(type: string) {
 		return this.typeOf(type)?.properties ?? [];
 	}
+}
+
+/**
+ * Signs one request with a credential type as n8n core does: a function runs, a generic block
+ * resolves through the expression engine.
+ */
+export async function signRequest(
+	type: ICredentialType,
+	data: ICredentialDataDecryptedObject,
+	request: IHttpRequestOptions,
+): Promise<IHttpRequestOptions> {
+	const node: INode = {
+		id: 'sign',
+		name: 'Sign',
+		type: 'sign',
+		typeVersion: 1,
+		position: [0, 0],
+		parameters: {},
+	};
+	const workflow = new workflowLib.Workflow({
+		nodes: [node],
+		connections: {},
+		active: false,
+		nodeTypes: {
+			getByName: () => undefined,
+			getByNameAndVersion: () => undefined,
+			getKnownTypes: () => ({}),
+		} as unknown as INodeTypes,
+	});
+	const copy = { ...request, ...(request.headers ? { headers: { ...request.headers } } : {}) };
+	return await new ParityCredentialsHelper([type], data).authenticate(
+		data,
+		type.name,
+		copy,
+		workflow,
+		node,
+	);
 }
 
 const unavailable = async () => await Promise.reject(new Error('Not available in parity tests'));
@@ -561,10 +608,14 @@ export function compareRuns(
 			error: next.error,
 		},
 	);
-	return {
-		unexplained: found.filter(
-			(difference) => !allowlist.some((entry) => covers(entry, difference)),
-		),
-		stale: allowlist.filter((entry) => !found.some((difference) => covers(entry, difference))),
-	};
+	return explained(found, allowlist);
 }
+
+/** The differences no allowlist entry covers, and the entries that cover nothing. */
+export const explained = (
+	found: readonly Difference[],
+	allowlist: readonly AllowedDifference[],
+) => ({
+	unexplained: found.filter((difference) => !allowlist.some((entry) => covers(entry, difference))),
+	stale: allowlist.filter((entry) => !found.some((difference) => covers(entry, difference))),
+});

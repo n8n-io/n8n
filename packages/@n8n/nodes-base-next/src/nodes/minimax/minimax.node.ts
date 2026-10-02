@@ -10,8 +10,10 @@ export const minimax = defineNode({
 			compat('minimaxApi', {
 				fields: { region: oneOf('international', 'china').default('international') },
 				hosts: ['api.minimax.io', 'api.minimaxi.com'],
-				baseUrl: ({ region }) =>
-					region === 'china' ? 'https://api.minimaxi.com/v1' : INTERNATIONAL,
+				baseUrl: {
+					on: 'region',
+					values: { international: INTERNATIONAL, china: 'https://api.minimaxi.com/v1' },
+				},
 			}),
 		],
 	}),

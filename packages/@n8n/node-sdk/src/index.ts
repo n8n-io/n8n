@@ -88,20 +88,29 @@ export {
 	type DataTableHost,
 } from './host-imports';
 export {
-	apiKey,
-	bearer,
 	compat,
 	credential,
 	credentialDataOf,
-	custom,
-	oauth2,
+	credentialType,
+	t,
 	toCredentialType,
 	type AnyCredentialType,
+	type AuthBuilders,
+	type BaseUrl,
+	type BaseUrlMap,
+	type ClientAuth,
 	type Credential,
 	type CredentialData,
 	type CredentialKey,
 	type CredentialScheme,
 	type CredentialType,
+	type CustomAuth,
+	type OAuth2Grant,
+	type Placement,
+	type Secret,
+	type Template,
+	type UrlTemplate,
+	type When,
 } from './credentials';
 export { credentialHostsOf, egressIssuesOf, type EgressIssues } from './egress';
 export {

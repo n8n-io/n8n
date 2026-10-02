@@ -10,7 +10,7 @@ export const supabase = defineNode({
 		types: [
 			compat('supabaseApi', {
 				fields: { host },
-				baseUrl: ({ host: url }: { host: string }) => `${url.replace(/\/+$/, '')}/rest/v1`,
+				baseUrl: '{host}/rest/v1',
 			}),
 		],
 	}),

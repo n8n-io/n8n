@@ -27,7 +27,7 @@ import {
 } from 'n8n-workflow';
 
 import { fromActionApiV1 } from './action-api-v1';
-import { credentialDataOf } from './credentials';
+import { credentialBaseUrlOf } from './credentials';
 import { codeRunnerOf, dataTableHostOf, dataTablesOf } from './host-imports';
 import { actionHostsOf, credentialHostsOf, egressOf } from './egress';
 import { parameterValue, toProperty } from './properties';
@@ -254,8 +254,11 @@ export async function baseUrlOf(
 	read: (type: string) => Promise<unknown>,
 ): Promise<string | undefined> {
 	const value = node.credential?.types.find(({ name }) => name === type);
-	if (!type || !value?.baseUrl) return node.baseUrl;
-	return value.baseUrl(credentialDataOf(value, await read(type)));
+	if (!type || value?.baseUrl === undefined) return node.baseUrl;
+	const { baseUrl } = value;
+	return typeof baseUrl === 'string' && !baseUrl.includes('{')
+		? baseUrl
+		: credentialBaseUrlOf(value, await read(type));
 }
 
 /** The node description parts for the credential: the selector and the credential slots. */
