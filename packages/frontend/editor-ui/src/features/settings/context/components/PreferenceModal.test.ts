@@ -3,6 +3,7 @@ import { type MockedStore, mockedStore } from '@/__tests__/utils';
 import { createTestingPinia } from '@pinia/testing';
 import { STORES } from '@n8n/stores';
 import { useUsersStore } from '@n8n/stores/users.store';
+import { screen } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { mock } from 'vitest-mock-extended';
 
@@ -84,12 +85,17 @@ let pinia: ReturnType<typeof createTestingPinia>;
 let contextStore: MockedStore<typeof useContextStore>;
 let usersStore: MockedStore<typeof useUsersStore>;
 
-function scopeOptions() {
-	return Array.from(document.querySelectorAll('li.el-select-dropdown__item'));
+async function scopeOptions() {
+	const listOpen = document.querySelector('[role="listbox"][data-state="open"]');
+	if (!listOpen) {
+		await userEvent.click(screen.getByRole('combobox'));
+	}
+	return await screen.findAllByRole('option');
 }
 
-function findOption(label: string) {
-	return scopeOptions().find((li) => li.textContent?.includes(label));
+async function findOption(label: string) {
+	const options = await scopeOptions();
+	return options.find((option) => option.textContent?.includes(label));
 }
 
 describe('PreferenceModal', () => {
@@ -102,42 +108,42 @@ describe('PreferenceModal', () => {
 	});
 
 	describe('scope options', () => {
-		it('always offers the user scope, which follows the user into every project', () => {
+		it('always offers the user scope, which follows the user into every project', async () => {
 			renderModal({ props: { open: true, preference: null }, pinia });
 
-			expect(findOption('Just you · All projects')).toBeDefined();
+			expect(await findOption('Just you · All projects')).toBeDefined();
 		});
 
-		it('offers the personal project next to it, for preferences that apply only there', () => {
+		it('offers the personal project next to it, for preferences that apply only there', async () => {
 			renderModal({ props: { open: true, preference: null }, pinia });
 
-			expect(findOption('Just you · Personal project')).toBeDefined();
+			expect(await findOption('Just you · Personal project')).toBeDefined();
 		});
 
-		it('hides "Everyone" from a user who is not an instance owner or admin', () => {
+		it('hides "Everyone" from a user who is not an instance owner or admin', async () => {
 			usersStore.currentUser = currentUser([]);
 
 			renderModal({ props: { open: true, preference: null }, pinia });
 
-			expect(findOption('Everyone')).toBeUndefined();
+			expect(await findOption('Everyone')).toBeUndefined();
 		});
 
-		it('offers "Everyone" to an instance owner or admin', () => {
+		it('offers "Everyone" to an instance owner or admin', async () => {
 			usersStore.currentUser = currentUser(['aiPreference:create']);
 
 			renderModal({ props: { open: true, preference: null }, pinia });
 
-			expect(findOption('Everyone')).toBeDefined();
+			expect(await findOption('Everyone')).toBeDefined();
 		});
 
-		it('offers only the projects the user may write', () => {
+		it('offers only the projects the user may write', async () => {
 			renderModal({ props: { open: true, preference: null }, pinia });
 
-			expect(findOption('Writable Project')).toBeDefined();
-			expect(findOption('Read Only Project')).toBeUndefined();
+			expect(await findOption('Writable Project')).toBeDefined();
+			expect(await findOption('Read Only Project')).toBeUndefined();
 		});
 
-		it('keeps the current scope selectable when editing, even without the create right there', () => {
+		it('keeps the current scope selectable when editing, even without the create right there', async () => {
 			// Staying put needs only the update right the Edit button already checked.
 			const preference: Preference = {
 				id: 'p1',
@@ -154,10 +160,10 @@ describe('PreferenceModal', () => {
 
 			renderModal({ props: { open: true, preference }, pinia });
 
-			expect(findOption('Read Only Project')).toBeDefined();
+			expect(await findOption('Read Only Project')).toBeDefined();
 		});
 
-		it('locks the scope when the row may be edited but not deleted, because a move deletes it', () => {
+		it('locks the scope when the row may be edited but not deleted, because a move deletes it', async () => {
 			const preference: Preference = {
 				id: 'p1',
 				content: 'Use sub-workflows.',
@@ -174,11 +180,11 @@ describe('PreferenceModal', () => {
 			renderModal({ props: { open: true, preference }, pinia });
 
 			// The row stays where it is; the content is still editable.
-			expect(scopeOptions()).toHaveLength(1);
-			expect(findOption('Writable Project')).toBeDefined();
+			expect(await scopeOptions()).toHaveLength(1);
+			expect(await findOption('Writable Project')).toBeDefined();
 		});
 
-		it("adds another user's row as its own option, so an admin can edit it in place", () => {
+		it("adds another user's row as its own option, so an admin can edit it in place", async () => {
 			usersStore.currentUser = currentUser(['aiPreference:create', 'aiPreference:update']);
 			const preference: Preference = {
 				id: 'p1',
@@ -195,7 +201,7 @@ describe('PreferenceModal', () => {
 
 			renderModal({ props: { open: true, preference }, pinia });
 
-			expect(findOption('Jane Doe · All projects')).toBeDefined();
+			expect(await findOption('Jane Doe · All projects')).toBeDefined();
 		});
 	});
 
@@ -488,7 +494,7 @@ describe('PreferenceModal', () => {
 
 			const { getByTestId } = renderModal({ props: { open: true, preference }, pinia });
 
-			await userEvent.click(findOption('Just you · All projects')!);
+			await userEvent.click((await findOption('Just you · All projects'))!);
 			await userEvent.click(getByTestId('preference-modal-save-button'));
 
 			expect(contextStore.updatePreference).toHaveBeenCalledWith('p1', {
@@ -537,7 +543,7 @@ describe('PreferenceModal', () => {
 				getByTestId('preference-modal-text-input').querySelector('textarea')!,
 				'Only here.',
 			);
-			await userEvent.click(findOption('Just you · Personal project')!);
+			await userEvent.click((await findOption('Just you · Personal project'))!);
 			await userEvent.click(getByTestId('preference-modal-save-button'));
 
 			expect(contextStore.createPreference).toHaveBeenCalledWith({
