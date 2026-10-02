@@ -146,6 +146,7 @@ export class PollTriggerTaskHandler implements TaskHandler {
 			// poll() does count: it repeats every tick just like a failing source.
 			let polled = false;
 			try {
+				leaseSignal.throwIfAborted();
 				// `poll()` takes no abort signal, so the deadline abandons it rather than
 				// cancelling it: the call keeps running until it settles on its own, and its
 				// outcome is discarded. The cursor never moves on that path (it only moves
@@ -157,6 +158,7 @@ export class PollTriggerTaskHandler implements TaskHandler {
 				let pollResponse: Awaited<typeof poll>;
 				try {
 					const outcome = await Promise.race([poll, deadline.timedOut]);
+					leaseSignal.throwIfAborted();
 					if (outcome === TIMED_OUT) {
 						this.eventService.emit('poll-tick-timed-out', { nodeType: node.type });
 						this.logger.warn('Poll exceeded its timeout and was abandoned', {
@@ -166,7 +168,14 @@ export class PollTriggerTaskHandler implements TaskHandler {
 						// Not routed to the error workflow: an abandoned poll produces no run, and
 						// an error run is one. It does count as a poll failure, so a source that
 						// keeps hanging is re-polled at a widening interval like any failing source.
-						await this.recordFailureIfActive(workflowId, nodeId, new PollTimeoutError(), state);
+						await this.recordFailureIfActive(
+							workflowId,
+							nodeId,
+							new PollTimeoutError(),
+							state,
+							leaseSignal,
+						);
+						leaseSignal.throwIfAborted();
 						return report.notDispatched();
 					}
 					pollResponse = outcome;
@@ -176,22 +185,19 @@ export class PollTriggerTaskHandler implements TaskHandler {
 				polled = true;
 
 				await this.pollBackoffService.recordSuccess({ workflowId, nodeId, state });
+				leaseSignal.throwIfAborted();
 
 				if (pollResponse !== null) {
 					// poll() can run for a while (network I/O against the polled source), so
 					// the workflow may have been deactivated while it was in flight. There is
 					// no in-memory registration to check here, so re-read the stored active state.
-					if (!(await this.workflowRepository.isActive(workflowId))) {
+					const isActive = await this.workflowRepository.isActive(workflowId);
+					leaseSignal.throwIfAborted();
+					if (!isActive) {
 						this.logger.debug(
 							'Workflow deactivated during poll; discarding the result',
 							logContext,
 						);
-						return report.notDispatched();
-					}
-
-					// Another instance may already own this occurrence and poll the same window.
-					if (leaseSignal.aborted) {
-						this.logger.debug('Claim lost during poll; discarding the result', logContext);
 						return report.notDispatched();
 					}
 
@@ -205,9 +211,13 @@ export class PollTriggerTaskHandler implements TaskHandler {
 				// its own. Active state is re-read first so a workflow deactivated mid-poll
 				// doesn't get its cursor moved.
 				try {
-					if (await this.workflowRepository.isActive(workflowId))
+					const isActive = await this.workflowRepository.isActive(workflowId);
+					leaseSignal.throwIfAborted();
+					if (isActive) {
 						await commitStagedCursor(pollFunctions);
+					}
 				} catch (error) {
+					leaseSignal.throwIfAborted();
 					// The poll itself succeeded, so a failed cursor write is logged rather
 					// than routed to the error workflow.
 					this.errorReporter.error(error, {
@@ -219,20 +229,19 @@ export class PollTriggerTaskHandler implements TaskHandler {
 					);
 				}
 
+				leaseSignal.throwIfAborted();
 				this.logger.debug('Poll returned no new data; nothing to hand off', logContext);
 				return report.notDispatched();
 			} catch (error) {
+				// A clean return completes the occurrence, so cancellation must reject.
+				leaseSignal.throwIfAborted();
 				// Routed to the error workflow instead of rethrown, which would retry and
 				// dead-letter without ever running it. __emitError commits no cursor, so
 				// the cursor holds and the next tick retries the same window.
 				if (!polled) {
-					await this.recordFailureIfActive(workflowId, nodeId, error, state);
+					await this.recordFailureIfActive(workflowId, nodeId, error, state, leaseSignal);
 				}
-				// Another instance may already own this occurrence and poll the same window.
-				if (leaseSignal.aborted) {
-					this.logger.debug('Claim lost during poll; not routing the error', logContext);
-					return report.notDispatched();
-				}
+				leaseSignal.throwIfAborted();
 				pollFunctions.__emitError(ensureError(error));
 				this.logger.debug('Poll failed at runtime; routed to the error workflow', logContext);
 				// The error was handed off, so this occurrence is handled and must not retry.
@@ -248,8 +257,10 @@ export class PollTriggerTaskHandler implements TaskHandler {
 		nodeId: string,
 		error: unknown,
 		state: PollerFailureState | null,
+		leaseSignal: AbortSignal,
 	): Promise<void> {
 		const isActive = await this.workflowRepository.isActive(workflowId).catch(() => true);
+		leaseSignal.throwIfAborted();
 		if (isActive) {
 			await this.pollBackoffService.recordFailure({
 				workflowId,

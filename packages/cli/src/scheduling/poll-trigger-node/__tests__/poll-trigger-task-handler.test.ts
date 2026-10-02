@@ -3,7 +3,13 @@ import type { Logger } from '@n8n/backend-common';
 import type { EventService } from '@n8n/backend-services';
 import type { GlobalConfig } from '@n8n/config';
 import type { PollerFullState, WorkflowRepository } from '@n8n/db';
-import { createDispatchReporter, type ClaimedTask } from '@n8n/scheduler';
+import {
+	createDispatchReporter,
+	createScheduler,
+	type ClaimedTask,
+	type SchedulerMetrics,
+	type SchedulerTaskStore,
+} from '@n8n/scheduler';
 import type { ErrorReporter, TriggersAndPollers } from 'n8n-core';
 import type { INode, INodeExecutionData, IPollFunctions, IWorkflowBase } from 'n8n-workflow';
 import { UnexpectedError, Workflow, WorkflowExpression } from 'n8n-workflow';
@@ -245,19 +251,53 @@ describe('PollTriggerTaskHandler', () => {
 			expect(releaseIsolate).toHaveBeenCalledTimes(1);
 		});
 
-		test('discards the result and reports no dispatch when the claim was lost during poll()', async () => {
+		test.each([
+			['data', pollData],
+			['no data', null],
+		])('rejects after lease loss when the poll returns %s', async (_name, pollResult) => {
 			const lease = new AbortController();
+			const reason = new Error('lease expired');
 			triggersAndPollers.runPollFunction.mockImplementation(async () => {
-				lease.abort();
-				return pollData;
+				lease.abort(reason);
+				return pollResult;
 			});
 
-			await handler.execute(buildTask(), report, lease.signal);
+			await expect(handler.execute(buildTask(), report, lease.signal)).rejects.toBe(reason);
 
 			expect(pollFunctions.__emit).not.toHaveBeenCalled();
+			expect(pollFunctions.__emitError).not.toHaveBeenCalled();
+			expect(pollFunctions.__commitCursor).not.toHaveBeenCalled();
+			expect(pollBackoffService.recordSuccess).not.toHaveBeenCalled();
+			expect(pollBackoffService.recordFailure).not.toHaveBeenCalled();
 			expect(onDispatch).not.toHaveBeenCalled();
 			expect(releaseIsolate).toHaveBeenCalledTimes(1);
 		});
+
+		test.each([
+			['data', pollData],
+			['no data', null],
+		])(
+			'rejects if the lease is lost during the active-state lookup with %s',
+			async (_name, pollResult) => {
+				const lease = new AbortController();
+				const reason = new Error('lease expired');
+				triggersAndPollers.runPollFunction.mockResolvedValue(pollResult);
+				workflowRepository.isActive.mockImplementationOnce(async () => {
+					lease.abort(reason);
+					return true;
+				});
+
+				await expect(handler.execute(buildTask(), report, lease.signal)).rejects.toBe(reason);
+
+				expect(pollFunctions.__emit).not.toHaveBeenCalled();
+				expect(pollFunctions.__emitError).not.toHaveBeenCalled();
+				expect(pollFunctions.__commitCursor).not.toHaveBeenCalled();
+				expect(pollBackoffService.recordFailure).not.toHaveBeenCalled();
+				expect(errorReporter.error).not.toHaveBeenCalled();
+				expect(onDispatch).not.toHaveBeenCalled();
+				expect(releaseIsolate).toHaveBeenCalledTimes(1);
+			},
+		);
 
 		test('discards the result and reports no dispatch when the workflow was deactivated during poll()', async () => {
 			workflowRepository.isActive.mockResolvedValue(false);
@@ -314,14 +354,16 @@ describe('PollTriggerTaskHandler', () => {
 
 		test('does not route a poll() error to the error workflow when the claim was lost during poll()', async () => {
 			const lease = new AbortController();
+			const reason = new Error('lease expired');
 			triggersAndPollers.runPollFunction.mockImplementation(async () => {
-				lease.abort();
+				lease.abort(reason);
 				throw new Error('poll source unreachable');
 			});
 
-			await handler.execute(buildTask(), report, lease.signal);
+			await expect(handler.execute(buildTask(), report, lease.signal)).rejects.toBe(reason);
 
 			expect(pollFunctions.__emitError).not.toHaveBeenCalled();
+			expect(pollBackoffService.recordFailure).not.toHaveBeenCalled();
 			expect(onDispatch).not.toHaveBeenCalled();
 			expect(releaseIsolate).toHaveBeenCalledTimes(1);
 		});
@@ -350,6 +392,27 @@ describe('PollTriggerTaskHandler', () => {
 	});
 
 	describe('cursor commit', () => {
+		test.each([false, true])(
+			'propagates lease loss during a cursor commit (write fails: %s)',
+			async (fails) => {
+				const lease = new AbortController();
+				const reason = new Error('lease expired');
+				triggersAndPollers.runPollFunction.mockResolvedValue(null);
+				pollFunctions.__commitCursor.mockImplementationOnce(async () => {
+					lease.abort(reason);
+					if (fails) throw new Error('cursor write failed');
+				});
+
+				await expect(handler.execute(buildTask(), report, lease.signal)).rejects.toBe(reason);
+
+				expect(pollFunctions.__emitError).not.toHaveBeenCalled();
+				expect(pollBackoffService.recordFailure).not.toHaveBeenCalled();
+				expect(errorReporter.error).not.toHaveBeenCalled();
+				expect(onDispatch).not.toHaveBeenCalled();
+				expect(releaseIsolate).toHaveBeenCalledTimes(1);
+			},
+		);
+
 		const cases: Array<
 			[string, { poll: INodeExecutionData[][] | null | Error; active: boolean; commits: number }]
 		> = [
@@ -425,6 +488,45 @@ describe('PollTriggerTaskHandler', () => {
 		afterEach(() => {
 			vi.useRealTimers();
 		});
+
+		test.each(['poll', 'active-state lookup', 'failure write'])(
+			'rejects a timed-out poll if the lease was lost during the %s',
+			async (abortDuring) => {
+				const lease = new AbortController();
+				const reason = new Error('lease expired');
+				triggersAndPollers.runPollFunction.mockImplementationOnce(async () => {
+					if (abortDuring === 'poll') lease.abort(reason);
+					return await new Promise(() => {});
+				});
+				if (abortDuring === 'active-state lookup') {
+					workflowRepository.isActive.mockImplementationOnce(async () => {
+						lease.abort(reason);
+						return true;
+					});
+				}
+				if (abortDuring === 'failure write') {
+					pollBackoffService.recordFailure.mockImplementationOnce(async () => {
+						lease.abort(reason);
+					});
+				}
+
+				const rejected = expect(handler.execute(buildTask(), report, lease.signal)).rejects.toBe(
+					reason,
+				);
+				await vi.advanceTimersByTimeAsync(pollTimeoutMs);
+				await rejected;
+
+				expect(pollBackoffService.recordFailure).toHaveBeenCalledTimes(
+					abortDuring === 'failure write' ? 1 : 0,
+				);
+				expect(pollBackoffService.recordSuccess).not.toHaveBeenCalled();
+				expect(pollFunctions.__emit).not.toHaveBeenCalled();
+				expect(pollFunctions.__emitError).not.toHaveBeenCalled();
+				expect(pollFunctions.__commitCursor).not.toHaveBeenCalled();
+				expect(onDispatch).not.toHaveBeenCalled();
+				expect(releaseIsolate).toHaveBeenCalledTimes(1);
+			},
+		);
 
 		test('abandons a poll that outlives the timeout and reports no dispatch', async () => {
 			triggersAndPollers.runPollFunction.mockReturnValue(new Promise(() => {}));
@@ -527,6 +629,68 @@ describe('PollTriggerTaskHandler', () => {
 		});
 	});
 
+	describe('lease cancellation through the executor', () => {
+		beforeEach(() => {
+			vi.useFakeTimers();
+		});
+
+		afterEach(() => {
+			vi.useRealTimers();
+		});
+
+		test.each([
+			{ maxAttempts: 3, ownsClaim: true },
+			{ maxAttempts: 1, ownsClaim: true },
+			{ maxAttempts: 3, ownsClaim: false },
+		])(
+			'counts a failed attempt only for a current claim (maxAttempts: $maxAttempts, owned: $ownsClaim)',
+			async ({ maxAttempts, ownsClaim }) => {
+				const task = buildTask({ maxAttempts, runAt: new Date() });
+				const store = mock<SchedulerTaskStore>();
+				const metrics = mock<SchedulerMetrics>();
+				store.claimDueTasks.mockResolvedValue([task]);
+				store.beginDispatch.mockResolvedValue(1);
+				store.markDispatched.mockResolvedValue(1);
+				store.completeTask.mockResolvedValue(1);
+				store.renewLease.mockRejectedValue(new Error('database unavailable'));
+				store.rescheduleTask.mockResolvedValue(ownsClaim ? 1 : 0);
+				store.failTaskTerminal.mockResolvedValue(ownsClaim ? 1 : 0);
+				let finishPoll!: (data: INodeExecutionData[][]) => void;
+				triggersAndPollers.runPollFunction.mockReturnValueOnce(
+					new Promise((resolve) => {
+						finishPoll = resolve;
+					}),
+				);
+				const scheduler = createScheduler({
+					hostId: 'test-host',
+					taskStore: store,
+					materializerTransaction: vi.fn(),
+					executor: { leaseSeconds: 15, lookaheadSeconds: 1 },
+					metrics,
+				});
+				scheduler.registerTaskHandler(POLL_TRIGGER_TASK_TYPE, handler);
+
+				await scheduler.execute();
+				await vi.advanceTimersByTimeAsync(15_001);
+				expect(metrics.recordLeaseRenewal).toHaveBeenCalledWith(POLL_TRIGGER_TASK_TYPE, 'expired');
+				finishPoll(pollData);
+				await vi.advanceTimersByTimeAsync(0);
+				await scheduler.stop();
+
+				expect(store.markDispatched).not.toHaveBeenCalled();
+				expect(store.completeTask).not.toHaveBeenCalled();
+				expect(store.rescheduleTask).toHaveBeenCalledTimes(maxAttempts > 1 ? 1 : 0);
+				expect(store.failTaskTerminal).toHaveBeenCalledTimes(maxAttempts === 1 ? 1 : 0);
+				expect(metrics.recordRetry).toHaveBeenCalledTimes(ownsClaim && maxAttempts > 1 ? 1 : 0);
+				expect(metrics.recordDeadLettered).toHaveBeenCalledTimes(maxAttempts === 1 ? 1 : 0);
+				expect(metrics.recordLeaseLost).toHaveBeenCalledTimes(ownsClaim ? 0 : 1);
+				expect(pollFunctions.__emit).not.toHaveBeenCalled();
+				expect(pollFunctions.__emitError).not.toHaveBeenCalled();
+				expect(releaseIsolate).toHaveBeenCalledTimes(1);
+			},
+		);
+	});
+
 	describe('failures', () => {
 		test('rejects a task whose payload is missing workflowId or nodeId', async () => {
 			const task = buildTask({ payload: { nodeId: 'node-1' } });
@@ -596,6 +760,52 @@ describe('PollTriggerTaskHandler', () => {
 		afterEach(() => {
 			vi.useRealTimers();
 		});
+
+		test('rejects if the lease is lost during the success write', async () => {
+			const lease = new AbortController();
+			const reason = new Error('lease expired');
+			pollBackoffService.recordSuccess.mockImplementationOnce(async () => {
+				lease.abort(reason);
+			});
+
+			await expect(handler.execute(buildTask(), report, lease.signal)).rejects.toBe(reason);
+
+			expect(pollFunctions.__emit).not.toHaveBeenCalled();
+			expect(pollFunctions.__emitError).not.toHaveBeenCalled();
+			expect(pollBackoffService.recordFailure).not.toHaveBeenCalled();
+			expect(onDispatch).not.toHaveBeenCalled();
+			expect(releaseIsolate).toHaveBeenCalledTimes(1);
+		});
+
+		test.each(['active-state lookup', 'failure write'])(
+			'rejects a poll error if the lease is lost during the %s',
+			async (abortDuring) => {
+				const lease = new AbortController();
+				const reason = new Error('lease expired');
+				triggersAndPollers.runPollFunction.mockRejectedValueOnce(
+					new Error('poll source unreachable'),
+				);
+				if (abortDuring === 'active-state lookup') {
+					workflowRepository.isActive.mockImplementationOnce(async () => {
+						lease.abort(reason);
+						return true;
+					});
+				} else {
+					pollBackoffService.recordFailure.mockImplementationOnce(async () => {
+						lease.abort(reason);
+					});
+				}
+
+				await expect(handler.execute(buildTask(), report, lease.signal)).rejects.toBe(reason);
+
+				expect(pollBackoffService.recordFailure).toHaveBeenCalledTimes(
+					abortDuring === 'failure write' ? 1 : 0,
+				);
+				expect(pollFunctions.__emitError).not.toHaveBeenCalled();
+				expect(onDispatch).not.toHaveBeenCalled();
+				expect(releaseIsolate).toHaveBeenCalledTimes(1);
+			},
+		);
 
 		test('skips the tick while backing off, without loading the workflow or polling', async () => {
 			const state: PollerFullState = {
