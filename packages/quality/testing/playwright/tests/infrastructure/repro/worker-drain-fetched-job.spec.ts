@@ -24,7 +24,7 @@ test('worker drain: job fetched before SIGTERM finishes or goes back to the queu
 	});
 	const s = new Scenario('worker-drain-fetched-job', repro, testInfo.outputPath());
 
-	try {
+	await s.run(testInfo, async () => {
 		await repro.signIn();
 		const path = webhookPath('fetched');
 		await repro.createWorkflow(
@@ -89,8 +89,5 @@ test('worker drain: job fetched before SIGTERM finishes or goes back to the queu
 			expect.soft(s.result.stallLogged, 'main logs a stalled job').toBe(true);
 			expect.soft(execution.stalledError, 'execution fails as stalled').toBe(true);
 		}
-	} finally {
-		s.finish(testInfo.errors.length === 0);
-		await repro.stop();
-	}
+	});
 });

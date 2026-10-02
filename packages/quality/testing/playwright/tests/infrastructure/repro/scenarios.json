@@ -4,5 +4,11 @@
 		"spec": "worker-drain-fetched-job.spec.ts",
 		"before": "n8nio/n8n:2.42.2",
 		"after": "n8nio/n8n:repro-cat4728-fix"
+	},
+	"worker-drain-detached-subworkflow": {
+		"issue": "CAT-4349",
+		"spec": "worker-drain-detached-subworkflow.spec.ts",
+		"before": "n8nio/n8n:2.38.7",
+		"after": "n8nio/n8n:2.39.0"
 	}
 }

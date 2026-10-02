@@ -228,8 +228,14 @@ export class ReproStack {
 		if (res.status !== 200) throw new Error(`login failed: ${res.status}`);
 	}
 
-	/** Creates a workflow, activates it unless told not to, and returns its id. */
-	async createWorkflow(workflow: Record<string, unknown>, options: { activate?: boolean } = {}) {
+	/**
+	 * Creates a workflow and returns its id. Activates it unless `activate` is false;
+	 * with 'try', an activation the version refuses is ignored.
+	 */
+	async createWorkflow(
+		workflow: Record<string, unknown>,
+		options: { activate?: boolean | 'try' } = {},
+	) {
 		const created = await this.request('POST', '/rest/workflows', workflow);
 		if (created.status !== 200) throw new Error(`create workflow: ${JSON.stringify(created.body)}`);
 		const { id, versionId } = (created.body as { data: { id: string; versionId: string } }).data;
@@ -238,7 +244,9 @@ export class ReproStack {
 		if (res.status === 404 || res.status === 405) {
 			res = await this.request('PATCH', `/rest/workflows/${id}`, { active: true, versionId });
 		}
-		if (res.status !== 200) throw new Error(`activate workflow: ${JSON.stringify(res.body)}`);
+		if (res.status !== 200 && options.activate !== 'try') {
+			throw new Error(`activate workflow: ${JSON.stringify(res.body)}`);
+		}
 		return id;
 	}
 
@@ -596,6 +604,21 @@ export class Scenario {
 			}
 		}
 		return out;
+	}
+
+	/** Runs the scenario body, then records the result and stops the stack, whatever the outcome. */
+	async run(testInfo: { errors: unknown[] }, body: () => Promise<void>) {
+		let threw = false;
+		try {
+			await body();
+		} catch (error) {
+			threw = true;
+			this.result.error = error instanceof Error ? error.message : String(error);
+			throw error;
+		} finally {
+			this.finish(!threw && testInfo.errors.length === 0);
+			await this.repro.stop();
+		}
 	}
 
 	finish(passed: boolean) {

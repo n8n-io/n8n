@@ -19,7 +19,14 @@ const option = (name, fallback) => {
 };
 const runs = Number(option('runs', '5'));
 const onlyVariant = option('variant', undefined);
-const out = option('out', join(process.env.TMPDIR ?? '/tmp', 'repro-results', new Date().toISOString().replace(/[:.]/g, '-')));
+const out = option(
+	'out',
+	join(
+		process.env.TMPDIR ?? '/tmp',
+		'repro-results',
+		new Date().toISOString().replace(/[:.]/g, '-'),
+	),
+);
 const selected = args.length ? args : Object.keys(manifest);
 
 for (const name of selected) {
@@ -32,7 +39,8 @@ for (const name of selected) {
 const runnersImage = (image) => image.replace(/\/n8n:/, '/runners:');
 
 function ensureImage(image) {
-	if (spawnSync('docker', ['image', 'inspect', image], { stdio: 'ignore' }).status === 0) return true;
+	if (spawnSync('docker', ['image', 'inspect', image], { stdio: 'ignore' }).status === 0)
+		return true;
 	if (image.includes(':repro-')) {
 		console.error(`missing local build ${image}; build it as the README describes`);
 		return false;
@@ -81,7 +89,10 @@ for (const name of selected) {
 			},
 		);
 		const lines = existsSync(results)
-			? readFileSync(results, 'utf8').split('\n').filter(Boolean).map((l) => JSON.parse(l))
+			? readFileSync(results, 'utf8')
+					.split('\n')
+					.filter(Boolean)
+					.map((l) => JSON.parse(l))
 			: [];
 		rows.push({
 			name,
