@@ -11,7 +11,6 @@ export {
 } from './entities/abstract-entity';
 
 export { generateNanoId } from '@n8n/utils/generate-nano-id';
-export { bindStringList, inBoundStringList } from './utils/bound-list';
 export { chunkIds } from './utils/chunk-ids';
 export { dbNowLiteral, dbNowPlusMsLiteral, parseDbTime } from './utils/dialect-time';
 export { escapeLike, LIKE_ESCAPE_CLAUSE } from './utils/escape-like';

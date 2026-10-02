@@ -2,7 +2,13 @@ import difference from 'lodash/difference';
 import mapValues from 'lodash/mapValues';
 import partition from 'lodash/partition';
 
-import { bindStringList, inBoundStringList } from '../utils/bound-list';
+const bindStringList = (isPostgres: boolean, values: string[]) =>
+	isPostgres ? values : JSON.stringify(values);
+
+const inBoundStringList = (isPostgres: boolean, parameter: string) =>
+	isPostgres
+		? `= ANY(CAST(:${parameter} AS text[]))`
+		: `IN (SELECT value FROM json_each(:${parameter}))`;
 
 export interface NodeTypesInProjects {
 	projectIds: string[];

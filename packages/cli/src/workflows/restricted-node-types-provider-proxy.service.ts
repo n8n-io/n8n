@@ -1,14 +1,8 @@
-import type { RestrictedNodeTypes } from '@n8n/db';
+import type { WorkflowIdsQuery } from '@n8n/db';
 import { Service } from '@n8n/di';
 
-export const NO_RESTRICTED_NODE_TYPES: RestrictedNodeTypes = {
-	shared: [],
-	byProjects: [],
-	nodeTypesInUse: [],
-};
-
 export interface RestrictedNodeTypesProvider {
-	findRestrictedNodeTypesInUse(): Promise<RestrictedNodeTypes>;
+	findRestrictedWorkflowIds(): Promise<WorkflowIdsQuery | null>;
 }
 
 @Service()
@@ -19,7 +13,7 @@ export class RestrictedNodeTypesProviderProxy implements RestrictedNodeTypesProv
 		this.provider = provider;
 	}
 
-	async findRestrictedNodeTypesInUse(): Promise<RestrictedNodeTypes> {
-		return (await this.provider?.findRestrictedNodeTypesInUse()) ?? NO_RESTRICTED_NODE_TYPES;
+	async findRestrictedWorkflowIds(): Promise<WorkflowIdsQuery | null> {
+		return (await this.provider?.findRestrictedWorkflowIds()) ?? null;
 	}
 }

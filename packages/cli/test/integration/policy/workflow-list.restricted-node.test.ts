@@ -15,6 +15,8 @@ import { Container } from '@n8n/di';
 import type { INode } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
+import { RestrictedWorkflowRepository } from '@/modules/type-availability-policies/database/repositories/restricted-workflow.repository';
+
 import { createFolder } from '../shared/db/folders';
 import { createOwner } from '../shared/db/users';
 import type { SuperAgentTest } from '../shared/types';
@@ -227,7 +229,7 @@ describe('GET /workflows with the restricted node filter', () => {
 	});
 });
 
-describe('WorkflowRepository with restricted node types', () => {
+describe('RestrictedWorkflowRepository', () => {
 	test('matches each project by its own outcome, however many projects have one', async () => {
 		const grouped = await createTeamProject('Own outcome', owner);
 		const allowlist = await createTeamProject('Allowlist', owner);
@@ -275,11 +277,11 @@ describe('WorkflowRepository with restricted node types', () => {
 				unrestrictedHttp,
 			].map(({ id }) => id),
 			{
-				restrictedNodeTypes: {
+				workflowIdsIn: Container.get(RestrictedWorkflowRepository).restrictedWorkflowIdsQuery({
 					shared: [HTTP_REQUEST],
 					byProjects,
 					nodeTypesInUse,
-				},
+				}),
 			},
 		);
 
