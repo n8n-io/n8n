@@ -146,7 +146,7 @@ const {
 
 const stubQueuedMessages = Array.from({ length: 5 }, (_, index) => ({
 	id: `preview-stub-${index + 1}`,
-	message: `Sample queued message ${index + 1}`,
+	message: `Sample queued message jkasdjkasdjkasdjkasdjkkjasdjkasdjkasdjkasdjkasdjkasdjkasdjkasdjkasdjk ${index + 1}`,
 	createdAt: new Date().toISOString(),
 	steeringExecutionId: index === 2 ? 'preview-stub-running' : null,
 }));

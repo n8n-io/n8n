@@ -2,9 +2,8 @@
 import { computed, useId, useTemplateRef } from 'vue';
 import Draggable from 'vuedraggable';
 import {
-	N8nAiActivityStepButton,
-	N8nAiActivityStepChevron,
 	N8nButton,
+	N8nHoverCard,
 	N8nIcon,
 	N8nIconButton,
 	N8nInput,
@@ -64,217 +63,275 @@ function focusItem(id: string) {
 		?.focus();
 }
 
+function getQueueNotice(item: AgentChatQueueItem) {
+	if (props.queueEdit?.item.id === item.id && props.queueEdit.unavailable) {
+		return locale.baseText(
+			item.steeringExecutionId && props.items.includes(item)
+				? 'agents.chat.queue.editSteeringUnavailable'
+				: 'agents.chat.queue.editUnavailable',
+		);
+	}
+
+	if (item.steeringExecutionId) {
+		return locale.baseText('agents.chat.queue.steering');
+	}
+
+	return undefined;
+}
+
+function getAttachmentFileNames(item: AgentChatQueueItem) {
+	return item.attachments?.map((attachment) => attachment.fileName).join(', ');
+}
+
 defineExpose({ focusItem });
 </script>
 
 <template>
 	<div ref="messageQueue" :class="$style.messageQueue" data-testid="agent-message-queue">
-		<Draggable
-			:id="queueListId"
-			:model-value="visibleItems"
-			item-key="id"
-			tag="ul"
-			:class="[$style.backgroundJobList, $style.queueList]"
-			:handle="`.${$style.queueDragHandle}:not(:disabled)`"
-			:disabled="!!queueEdit || isReordering"
-			:move="canDropQueueItem"
-			:ghost-class="$style.queueGhost"
-			:drag-class="$style.queueDragging"
-			@start="emit('drag-start')"
-			@end="emit('drag-end', $event)"
-		>
-			<template #item="{ element: item, index }">
-				<li :data-queue-id="item.id" data-testid="agent-queued-message">
-					<N8nTooltip
-						:content="locale.baseText('agents.chat.queue.reorderTooltip')"
-						:disabled="!canDragQueueItem(index)"
-						placement="top"
-					>
-						<N8nButton
-							icon-only
-							variant="ghost"
-							size="xsmall"
-							:class="$style.queueDragHandle"
-							:disabled="!canDragQueueItem(index)"
-							:aria-label="
-								locale.baseText('agents.chat.queue.reorder', {
-									interpolate: { position: index + 1, count: displayedItems.length },
-								})
-							"
-							aria-keyshortcuts="ArrowUp ArrowDown"
-							data-testid="agent-queue-drag-handle"
-							@keydown="emit('handle-keydown', $event, index)"
-						>
-							<template #icon>
-								<N8nIcon icon="grip-vertical" size="large" aria-hidden="true" />
-							</template>
-						</N8nButton>
-					</N8nTooltip>
-					<div :class="$style.queuePreview" :title="item.message">
-						<N8nInput
-							v-if="queueEdit && queueEdit.item.id === item.id"
-							:model-value="queueEdit.text"
-							type="textarea"
-							size="small"
-							:autosize="{ minRows: 1, maxRows: 6 }"
-							:readonly="queueEdit.unavailable || queueEdit.saving"
-							:aria-label="locale.baseText('agents.chat.queue.edit')"
-							autofocus
-							@update:model-value="queueEdit.text = $event"
-							@keydown="emit('edit-keydown', $event)"
-						/>
-						<N8nText v-else-if="item.message" bold step="xs" color="text-light">{{
-							item.message
-						}}</N8nText>
-						<N8nText
-							v-if="queueEdit && queueEdit.item.id === item.id && queueEdit.unavailable"
-							:class="$style.queueEditNotice"
-							role="status"
-							bold
-							step="xs"
-							color="text-light"
-						>
-							{{
-								locale.baseText(
-									item.steeringExecutionId && items.includes(item)
-										? 'agents.chat.queue.editSteeringUnavailable'
-										: 'agents.chat.queue.editUnavailable',
-								)
-							}}
-						</N8nText>
-						<N8nText
-							v-else-if="item.steeringExecutionId"
-							:class="$style.queueEditNotice"
-							role="status"
-							bold
-							step="xs"
-							color="text-light"
-						>
-							{{ locale.baseText('agents.chat.queue.steering') }}
-						</N8nText>
-						<span v-for="attachment in item.attachments" :key="attachment.id">{{
-							attachment.fileName
-						}}</span>
-					</div>
-					<div :class="$style.queueActions">
-						<template v-if="queueEdit && queueEdit.item.id === item.id">
-							<N8nTooltip
-								:content="locale.baseText('agents.chat.queue.save')"
-								:disabled="!canSaveQueueEdit"
-								placement="top"
-							>
-								<N8nButton
-									icon-only
-									variant="ghost"
-									size="xsmall"
-									:disabled="!canSaveQueueEdit"
-									:aria-label="locale.baseText('agents.chat.queue.save')"
-									@click="emit('save')"
-								>
-									<template #icon
-										><N8nIcon icon="check" size="large" aria-hidden="true"
-									/></template>
-								</N8nButton>
-							</N8nTooltip>
-							<N8nTooltip
-								:content="locale.baseText('agents.chat.queue.cancelEdit')"
-								:disabled="queueEdit.saving"
-								placement="top"
-							>
-								<N8nButton
-									icon-only
-									variant="ghost"
-									size="xsmall"
-									:disabled="queueEdit.saving"
-									:aria-label="locale.baseText('agents.chat.queue.cancelEdit')"
-									@click="emit('cancelEdit')"
-								>
-									<template #icon><N8nIcon icon="x" size="large" aria-hidden="true" /></template>
-								</N8nButton>
-							</N8nTooltip>
-						</template>
-						<template v-else>
-							<N8nTooltip
-								:content="locale.baseText('agents.chat.queue.steerTooltip')"
-								:disabled="!canSteer || !!queueEdit || isQueueItemBusy(item)"
-								placement="top"
-							>
-								<N8nButton
-									variant="ghost"
-									size="xsmall"
-									:disabled="!canSteer || !!queueEdit || isQueueItemBusy(item)"
-									:aria-label="locale.baseText('agents.chat.queue.steer')"
-									@click="emit('steer', item.id)"
-								>
-									<template #icon
-										><N8nIcon icon="corner-down-right" size="large" aria-hidden="true"
-									/></template>
-									{{ locale.baseText('agents.chat.queue.steer') }}
-								</N8nButton>
-							</N8nTooltip>
-							<N8nTooltip
-								:content="locale.baseText('agents.chat.queue.edit')"
-								:disabled="!!queueEdit || isQueueItemBusy(item)"
-								placement="top"
-							>
-								<N8nIconButton
-									icon="pencil"
-									variant="ghost"
-									size="xsmall"
-									icon-size="medium"
-									:disabled="!!queueEdit || isQueueItemBusy(item)"
-									:aria-label="locale.baseText('agents.chat.queue.edit')"
-									@click="emit('edit', item)"
-								/>
-							</N8nTooltip>
-							<N8nTooltip
-								:content="locale.baseText('agents.chat.queue.remove')"
-								:disabled="isQueueItemBusy(item)"
-								placement="top"
-							>
-								<N8nIconButton
-									icon="trash-2"
-									variant="ghost"
-									size="xsmall"
-									icon-size="medium"
-									:disabled="isQueueItemBusy(item)"
-									:aria-label="locale.baseText('agents.chat.queue.remove')"
-									@click="emit('remove', item.id)"
-								/>
-							</N8nTooltip>
-						</template>
-					</div>
-				</li>
-			</template>
-		</Draggable>
-		<N8nAiActivityStepButton
-			v-if="displayedItems.length > 2"
+		<button
+			v-if="displayedItems.length > 1"
+			type="button"
+			:class="[$style.queueToggle, { [$style.queueToggleExpanded]: expanded }]"
 			:aria-expanded="expanded"
+			:aria-label="
+				locale.baseText('agents.chat.queue.title', {
+					adjustToNumber: displayedItems.length,
+					interpolate: { count: displayedItems.length },
+				})
+			"
 			:aria-controls="queueListId"
 			:disabled="isReordering"
-			full-width
 			@click="expanded = !expanded"
 		>
-			{{
-				items.length > 2
-					? locale.baseText('agents.chat.queue.title', {
-							adjustToNumber: items.length - 2,
-							interpolate: { count: items.length - 2 },
-						})
-					: locale.baseText('agents.chat.queue.edit')
-			}}
-			<template #suffix><N8nAiActivityStepChevron :open="expanded" direction="down" /></template>
-		</N8nAiActivityStepButton>
+			<N8nIcon icon="list-end" size="medium" aria-hidden="true" />
+			<N8nText bold step="xs" color="text-light">
+				{{
+					locale.baseText('agents.chat.queue.title', {
+						adjustToNumber: displayedItems.length,
+						interpolate: { count: displayedItems.length },
+					})
+				}}
+			</N8nText>
+			<N8nIcon
+				:icon="expanded ? 'chevron-up' : 'chevron-down'"
+				:class="$style.queueToggleChevron"
+				size="small"
+				aria-hidden="true"
+			/>
+		</button>
+		<div
+			:class="[
+				$style.queueContent,
+				{ [$style.queueContentOpen]: expanded || displayedItems.length === 1 },
+			]"
+			:inert="!expanded && displayedItems.length > 1"
+		>
+			<Draggable
+				:id="queueListId"
+				:model-value="displayedItems"
+				item-key="id"
+				tag="ul"
+				:class="[$style.backgroundJobList, $style.queueList]"
+				:handle="`.${$style.queueDragHandle}:not(:disabled)`"
+				:disabled="!!queueEdit || isReordering"
+				:move="canDropQueueItem"
+				:ghost-class="$style.queueGhost"
+				:drag-class="$style.queueDragging"
+				@start="emit('drag-start')"
+				@end="emit('drag-end', $event)"
+			>
+				<template #item="{ element: item, index }">
+					<li :data-queue-id="item.id" data-testid="agent-queued-message">
+						<N8nTooltip
+							:content="locale.baseText('agents.chat.queue.reorderTooltip')"
+							:disabled="!canDragQueueItem(index)"
+							placement="top"
+						>
+							<N8nIconButton
+								icon="grip-vertical"
+								variant="ghost"
+								icon-size="medium"
+								size="xsmall"
+								:class="$style.queueDragHandle"
+								:disabled="!canDragQueueItem(index)"
+								:aria-label="
+									locale.baseText('agents.chat.queue.reorder', {
+										interpolate: { position: index + 1, count: displayedItems.length },
+									})
+								"
+								aria-keyshortcuts="ArrowUp ArrowDown"
+								data-testid="agent-queue-drag-handle"
+								@keydown="emit('handle-keydown', $event, index)"
+							/>
+						</N8nTooltip>
+						<div :class="$style.queuePreview" :title="item.message">
+							<N8nInput
+								v-if="queueEdit && queueEdit.item.id === item.id"
+								:model-value="queueEdit.text"
+								type="textarea"
+								size="small"
+								:autosize="{ minRows: 1, maxRows: 6 }"
+								:readonly="queueEdit.unavailable || queueEdit.saving"
+								:aria-label="locale.baseText('generic.edit')"
+								autofocus
+								@update:model-value="queueEdit.text = $event"
+								@keydown="emit('edit-keydown', $event)"
+							/>
+							<N8nText v-else-if="item.message" bold step="xs" color="text-light">{{
+								item.message
+							}}</N8nText>
+						</div>
+						<N8nHoverCard v-if="item.attachments?.length" side="top">
+							<template #trigger>
+								<span
+									:class="$style.queueIndicator"
+									:aria-label="getAttachmentFileNames(item)"
+									role="img"
+									tabindex="0"
+								>
+									<N8nIcon icon="paperclip" size="medium" />
+								</span>
+							</template>
+							<template #content>
+								<ul :class="$style.queueAttachmentList">
+									<li v-for="attachment in item.attachments" :key="attachment.id">
+										<N8nText size="small">{{ attachment.fileName }}</N8nText>
+									</li>
+								</ul>
+							</template>
+						</N8nHoverCard>
+						<N8nTooltip
+							:content="getQueueNotice(item)"
+							:disabled="!getQueueNotice(item)"
+							placement="top"
+							as-child
+						>
+							<div
+								:class="[
+									$style.queueActions,
+									{ [$style.queueActionsWithNotice]: getQueueNotice(item) },
+								]"
+								:aria-label="getQueueNotice(item)"
+								:tabindex="getQueueNotice(item) ? 0 : undefined"
+								role="group"
+							>
+								<N8nButton
+									v-if="getQueueNotice(item)"
+									variant="ghost"
+									size="xsmall"
+									disabled
+									:aria-label="locale.baseText('agents.chat.queue.steer')"
+								>
+									<template #icon>
+										<N8nIcon icon="corner-down-right" size="large" aria-hidden="true" />
+									</template>
+									{{ locale.baseText('agents.chat.queue.steer') }}
+								</N8nButton>
+								<template v-if="queueEdit && queueEdit.item.id === item.id">
+									<N8nTooltip
+										:content="locale.baseText('generic.save')"
+										:disabled="!canSaveQueueEdit"
+										placement="top"
+									>
+										<N8nButton
+											icon-only
+											variant="ghost"
+											size="xsmall"
+											:disabled="!canSaveQueueEdit"
+											:aria-label="locale.baseText('agents.chat.queue.save')"
+											@click="emit('save')"
+										>
+											<template #icon
+												><N8nIcon icon="check" size="large" aria-hidden="true"
+											/></template>
+										</N8nButton>
+									</N8nTooltip>
+									<N8nTooltip
+										:content="locale.baseText('generic.cancel')"
+										:disabled="!!getQueueNotice(item) || queueEdit.saving"
+										placement="top"
+									>
+										<N8nButton
+											icon-only
+											variant="ghost"
+											size="xsmall"
+											:disabled="queueEdit.saving"
+											:aria-label="locale.baseText('agents.chat.queue.cancelEdit')"
+											@click="emit('cancelEdit')"
+										>
+											<template #icon
+												><N8nIcon icon="x" size="large" aria-hidden="true"
+											/></template>
+										</N8nButton>
+									</N8nTooltip>
+								</template>
+								<template v-else>
+									<N8nTooltip
+										v-if="!getQueueNotice(item)"
+										:content="locale.baseText('agents.chat.queue.steerTooltip')"
+										:disabled="!canSteer || !!queueEdit || isQueueItemBusy(item)"
+										placement="top"
+									>
+										<N8nButton
+											variant="ghost"
+											size="xsmall"
+											:disabled="!canSteer || !!queueEdit || isQueueItemBusy(item)"
+											:aria-label="locale.baseText('agents.chat.queue.steer')"
+											@click="emit('steer', item.id)"
+										>
+											<template #icon
+												><N8nIcon icon="corner-down-right" size="large" aria-hidden="true"
+											/></template>
+											{{ locale.baseText('agents.chat.queue.steer') }}
+										</N8nButton>
+									</N8nTooltip>
+									<N8nTooltip
+										:content="locale.baseText('generic.edit')"
+										:disabled="!!queueEdit || isQueueItemBusy(item)"
+										placement="top"
+									>
+										<N8nIconButton
+											icon="pencil"
+											variant="ghost"
+											size="xsmall"
+											icon-size="medium"
+											:disabled="!!queueEdit || isQueueItemBusy(item)"
+											:aria-label="locale.baseText('generic.edit')"
+											@click="emit('edit', item)"
+										/>
+									</N8nTooltip>
+									<N8nTooltip
+										:content="locale.baseText('generic.delete')"
+										:disabled="isQueueItemBusy(item)"
+										placement="top"
+									>
+										<N8nIconButton
+											icon="trash-2"
+											variant="ghost"
+											size="xsmall"
+											icon-size="medium"
+											:disabled="isQueueItemBusy(item)"
+											:aria-label="locale.baseText('generic.delete')"
+											@click="emit('remove', item.id)"
+										/>
+									</N8nTooltip>
+								</template>
+							</div>
+						</N8nTooltip>
+					</li>
+				</template>
+			</Draggable>
+		</div>
 	</div>
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/motion';
+@use '@n8n/design-system/css/mixins/utils';
+@use '@n8n/design-system/css/mixins/mixins';
+
 .messageQueue {
 	min-width: 0;
-	--ai-activity-step--height: auto;
-	--ai-activity-step--min-height: var(--height--xl);
-	--ai-activity-step--padding: var(--spacing--xs) var(--spacing--sm);
-	--ai-activity-step--color: var(--text-color);
 	--text-color: light-dark(var(--color--neutral-600), var(--text-color--subtler));
 	--icon-color: var(--color--neutral-400);
 
@@ -299,15 +356,20 @@ defineExpose({ focusItem });
 	list-style: none;
 	margin: 0;
 	padding: 0;
-	width: 100%;
-	overflow-y: auto;
+	min-height: 0;
+	overflow-x: hidden;
+	overflow-y: scroll;
+	max-height: 180px;
+	scrollbar-gutter: stable;
+	@include mixins.hoverable-scroll-bar;
+	@include mixins.scroll-mask(bottom);
 }
 
 .backgroundJobList li {
 	display: flex;
 	align-items: center;
-	justify-content: space-between;
-	padding-inline: var(--spacing--2xs);
+	justify-content: flex-start;
+	padding-inline: var(--spacing--xs);
 	gap: var(--spacing--2xs);
 	height: var(--height--lg);
 	font-size: var(--font-size--sm);
@@ -316,25 +378,67 @@ defineExpose({ focusItem });
 	line-height: var(--line-height--lg);
 }
 
-.messageQueue :global(button[aria-expanded]),
-.queueList > li {
-	font-size: var(--font-size--2xs);
+.queueContent {
+	display: grid;
+	width: 100%;
+	grid-template-rows: 0fr;
+	transition: grid-template-rows var(--duration--snappy) var(--easing--ease-out);
+	overflow: hidden;
+	@include motion.reduced-motion;
 }
 
-.messageQueue > .queueList:not(:last-child) {
-	padding-bottom: 0;
+.queueContentOpen {
+	grid-template-rows: 1fr;
+}
+.queueToggle {
+	display: flex;
+	align-items: center;
+	justify-content: flex-start;
+	gap: var(--spacing--xs);
+	width: 100%;
+	height: var(--height--lg);
+	padding: var(--spacing--xs);
+	border: 0;
+	background: transparent;
+	color: var(--text-color);
+	font: inherit;
+	cursor: pointer;
+
+	> :global(.n8n-icon) {
+		flex-shrink: 0;
+		margin-inline-end: var(--spacing--3xs);
+	}
+
+	&:disabled {
+		cursor: default;
+	}
+
+	&:focus-visible {
+		outline: var(--border);
+		outline-offset: calc(-1 * var(--spacing--5xs));
+	}
+}
+.queueToggleChevron {
+	margin-inline-start: auto;
+}
+
+.queueToggleExpanded {
+	border-bottom: var(--border);
 }
 
 .queueActions {
+	margin-inline-start: auto;
 	display: flex;
 	align-self: center;
 	flex-shrink: 0;
+	margin-inline-end: calc(var(--spacing--xs) * -1);
 }
 
 .queueDragHandle {
 	flex-shrink: 0;
 	cursor: grab;
 	touch-action: none;
+	margin-inline-start: calc(var(--spacing--3xs) * -1);
 
 	&:active {
 		cursor: grabbing;
@@ -353,15 +457,30 @@ defineExpose({ focusItem });
 	cursor: grabbing;
 }
 
-.queueEditNotice {
-	margin: var(--spacing--3xs) 0;
-	font-size: var(--font-size--2xs);
+.queueActionsWithNotice :global(button:disabled) {
+	pointer-events: none;
+}
+
+.queueIndicator {
+	display: inline-flex;
+	flex-shrink: 0;
+	align-items: center;
+}
+
+.queueAttachmentList {
+	list-style: none;
+	margin: 0;
+	padding: var(--spacing--xs);
+	overflow-wrap: anywhere;
 }
 
 .queuePreview {
-	flex: 1;
 	min-width: 0;
 	display: flex;
 	flex-direction: column;
+
+	> :global(.n8n-text) {
+		@include utils.utils-ellipsis;
+	}
 }
 </style>
