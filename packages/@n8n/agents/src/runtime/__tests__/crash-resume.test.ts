@@ -70,9 +70,8 @@ function makeStreamSuccess(text = 'Hello') {
 		stream: makeChunkStream([{ type: 'text-delta', id: 'text-1', text }]),
 		finishReason: Promise.resolve('stop'),
 		usage: Promise.resolve({ inputTokens: 10, outputTokens: 5, totalTokens: 15 }),
-		response: Promise.resolve({
-			messages: [{ role: 'assistant', content: [{ type: 'text', text }] }],
-		}),
+		responseMessages: Promise.resolve([{ role: 'assistant', content: [{ type: 'text', text }] }]),
+		finalStep: Promise.resolve({ providerMetadata: undefined }),
 		toolCalls: Promise.resolve([]),
 	};
 }
@@ -82,14 +81,13 @@ function makeStreamWithToolCall(toolCallId: string, args: Record<string, unknown
 		stream: makeChunkStream([{ type: 'text-delta', id: 'text-1', text: 'working...' }]),
 		finishReason: Promise.resolve('tool-calls'),
 		usage: Promise.resolve({ inputTokens: 10, outputTokens: 5, totalTokens: 15 }),
-		response: Promise.resolve({
-			messages: [
-				{
-					role: 'assistant',
-					content: [{ type: 'tool-call', toolCallId, toolName: 'lookup', args }],
-				},
-			],
-		}),
+		responseMessages: Promise.resolve([
+			{
+				role: 'assistant',
+				content: [{ type: 'tool-call', toolCallId, toolName: 'lookup', args }],
+			},
+		]),
+		finalStep: Promise.resolve({ providerMetadata: undefined }),
 		toolCalls: Promise.resolve([{ toolCallId, toolName: 'lookup', input: args }]),
 	};
 }
@@ -256,21 +254,20 @@ describe('step checkpoints + crash resume (durable-log RFC)', () => {
 			stream: makeChunkStream([{ type: 'text-delta', id: 'text-1', text: 'asking...' }]),
 			finishReason: Promise.resolve('tool-calls'),
 			usage: Promise.resolve({ inputTokens: 10, outputTokens: 5, totalTokens: 15 }),
-			response: Promise.resolve({
-				messages: [
-					{
-						role: 'assistant',
-						content: [
-							{
-								type: 'tool-call',
-								toolCallId: 'tc-hitl',
-								toolName: 'approve',
-								args: { question: 'ok?' },
-							},
-						],
-					},
-				],
-			}),
+			responseMessages: Promise.resolve([
+				{
+					role: 'assistant',
+					content: [
+						{
+							type: 'tool-call',
+							toolCallId: 'tc-hitl',
+							toolName: 'approve',
+							args: { question: 'ok?' },
+						},
+					],
+				},
+			]),
+			finalStep: Promise.resolve({ providerMetadata: undefined }),
 			toolCalls: Promise.resolve([
 				{ toolCallId: 'tc-hitl', toolName: 'approve', input: { question: 'ok?' } },
 			]),

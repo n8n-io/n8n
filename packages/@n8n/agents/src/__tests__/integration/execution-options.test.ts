@@ -25,7 +25,7 @@ describe('execution options integration', () => {
 		expect(fetchCalls.length).toBeGreaterThan(0);
 	});
 
-	it('calls onStepStart and onStepFinish for generate and stream', async () => {
+	it('calls onStepStart and onStepEnd for generate and stream', async () => {
 		const generateStepStart = vi.fn();
 		const generateStepFinish = vi.fn();
 		const streamStepStart = vi.fn();
@@ -36,13 +36,13 @@ describe('execution options integration', () => {
 
 		const generateResult = await agent.generate('Say generate.', {
 			onStepStart: generateStepStart,
-			onStepFinish: generateStepFinish,
+			onStepEnd: generateStepFinish,
 		});
 		expect(generateResult.finishReason).toBe('stop');
 
 		const { stream } = await agent.stream('Say stream.', {
 			onStepStart: streamStepStart,
-			onStepFinish: streamStepFinish,
+			onStepEnd: streamStepFinish,
 		});
 		await collectStreamChunks(stream);
 

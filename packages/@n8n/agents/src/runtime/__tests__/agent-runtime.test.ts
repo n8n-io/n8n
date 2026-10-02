@@ -96,12 +96,56 @@ type AiImport = typeof import('ai');
 // Mock generateText and streamText from the 'ai' package
 vi.mock('ai', async () => {
 	const actual = await vi.importActual<AiImport>('ai');
+	// Keep existing model fixtures in one place while exercising the current SDK result shape.
+	const generateMock = vi.fn();
+	const streamMock = vi.fn();
 	return {
 		...actual,
 		embed: vi.fn(),
 		embedMany: vi.fn(),
-		generateText: vi.fn(),
-		streamText: vi.fn(),
+		generateText: new Proxy(generateMock, {
+			apply: async (target, thisArg, args) => {
+				const result: unknown = await Reflect.apply(target, thisArg, args);
+				if (!result || typeof result !== 'object') return result;
+				const legacy = result as {
+					response?: { messages: unknown[] };
+					responseMessages?: unknown[];
+					providerMetadata?: unknown;
+					finalStep?: unknown;
+				};
+				return {
+					...legacy,
+					responseMessages: legacy.responseMessages ?? legacy.response?.messages,
+					finalStep: legacy.finalStep ?? { providerMetadata: legacy.providerMetadata },
+				};
+			},
+		}),
+		streamText: new Proxy(streamMock, {
+			apply: (target, thisArg, args) => {
+				const result: unknown = Reflect.apply(target, thisArg, args);
+				if (!result || typeof result !== 'object') return result;
+				const legacy = result as {
+					response?: PromiseLike<{ messages: unknown[] }>;
+					responseMessages?: PromiseLike<unknown[]>;
+					providerMetadata?: PromiseLike<unknown>;
+					finalStep?: PromiseLike<unknown>;
+				};
+				const responseMessages =
+					legacy.responseMessages ??
+					Promise.resolve(legacy.response).then((response) => response?.messages);
+				// Aborted streams need no result. Mark the derived promise as handled.
+				void Promise.resolve(responseMessages).catch(() => {});
+				return {
+					...legacy,
+					responseMessages,
+					finalStep:
+						legacy.finalStep ??
+						Promise.resolve(legacy.providerMetadata).then((providerMetadata) => ({
+							providerMetadata,
+						})),
+				};
+			},
+		}),
 		tool: vi.fn((config: unknown) => config),
 		jsonSchema: vi.fn((schema: unknown) => ({ _type: 'jsonSchema', schema })),
 		Output: {
@@ -1047,6 +1091,47 @@ describe('AgentRuntime — execution counters', () => {
 			expect(args.onStepStart).toBe(onStepStart);
 			expect(args.onStepEnd).toBe(onStepEnd);
 		}
+	});
+
+	it('preserves messages and final-step metadata in generate and stream results', async () => {
+		const usage = { inputTokens: 10, outputTokens: 5, totalTokens: 15 };
+		const providerMetadata = { openai: { cachedPromptTokens: 3 } };
+		const responseMessages = [{ role: 'assistant', content: [{ type: 'text', text: 'Hello' }] }];
+		generateText.mockResolvedValue({
+			finishReason: 'stop',
+			usage,
+			responseMessages,
+			finalStep: { providerMetadata },
+			toolCalls: [],
+		});
+		streamText.mockReturnValue({
+			stream: makeChunkStream([{ type: 'text-delta', id: 'text-1', text: 'Hello' }]),
+			finishReason: Promise.resolve('stop'),
+			usage: Promise.resolve(usage),
+			responseMessages: Promise.resolve(responseMessages),
+			finalStep: Promise.resolve({ providerMetadata }),
+			toolCalls: Promise.resolve([]),
+		});
+		const { runtime } = createRuntime();
+		const generated = await runtime.generate('hi');
+		const streamed = await collectChunks((await runtime.stream('hi')).stream);
+		const expectedUsage = {
+			promptTokens: 10,
+			completionTokens: 5,
+			totalTokens: 15,
+			inputTokenDetails: { noCache: 7, cacheRead: 3 },
+		};
+		expect(generated.messages).toMatchObject(responseMessages);
+		expect(generated.finishReason).toBe('stop');
+		expect(generated.usage).toMatchObject(expectedUsage);
+		expect(streamed).toContainEqual(
+			expect.objectContaining({ type: 'text-delta', delta: 'Hello' }),
+		);
+		expect(streamed.at(-1)).toMatchObject({
+			type: 'finish',
+			finishReason: 'stop',
+			usage: expectedUsage,
+		});
 	});
 
 	it('allows system-role messages in generateText and streamText history', async () => {
@@ -10173,8 +10258,11 @@ describe('AgentRuntime — oversized tool results', () => {
 			type: 'content' as const,
 			value: [
 				{
-					type: 'file-data' as const,
-					data: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'.repeat(8_000),
+					type: 'file' as const,
+					data: {
+						type: 'data' as const,
+						data: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'.repeat(8_000),
+					},
 					mediaType: 'application/pdf',
 				},
 			],
@@ -10559,8 +10647,8 @@ describe('AgentRuntime — oversized tool results', () => {
 				},
 			];
 			const filePart = {
-				type: 'file-data' as const,
-				data: 'base64-pdf',
+				type: 'file' as const,
+				data: { type: 'data' as const, data: 'base64-pdf' },
 				mediaType: 'application/pdf',
 			};
 			const tool: BuiltTool = {

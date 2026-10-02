@@ -27,10 +27,10 @@ export type McpCallToolResult = CallToolResult;
 async function importMcpSdk() {
 	const [
 		{ Client },
-		// oxlint-disable-next-line typescript/no-deprecated
+		// oxlint-disable-next-line typescript/no-deprecated -- Explicit SSE keeps older servers available.
 		{ SSEClientTransport },
 		{ StdioClientTransport },
-		{ StreamableHTTPClientTransport },
+		{ StreamableHTTPClientTransport, StreamableHTTPError },
 		{ CallToolResultSchema },
 	] = await Promise.all([
 		import('@modelcontextprotocol/sdk/client/index.js'),
@@ -44,6 +44,7 @@ async function importMcpSdk() {
 		SSEClientTransport,
 		StdioClientTransport,
 		StreamableHTTPClientTransport,
+		StreamableHTTPError,
 		CallToolResultSchema,
 	};
 }
@@ -111,14 +112,41 @@ export class McpConnection {
 		// open (doDisconnect() no-ops while `closed` is true).
 		this.closed = false;
 		this.disconnectPromise = undefined;
+		const connectionPromise = this.doConnect();
+		this.connectionPromise = connectionPromise;
+		try {
+			await connectionPromise;
+		} catch (error) {
+			if (this.connectionPromise === connectionPromise) this.connectionPromise = undefined;
+			throw error;
+		}
+	}
+
+	private async doConnect(): Promise<void> {
 		const sdk = await loadMcpSdk();
 		this.client = new sdk.Client({ name: '@n8n/agents', version: '0.1.0' }, { capabilities: {} });
-		this.connectionPromise = this.connectWithTransport(this.createTransport(this.config, sdk));
+		await this.connectPreferredTransport(sdk);
+	}
+
+	private async connectPreferredTransport(sdk: McpSdkModule): Promise<void> {
 		try {
-			await this.connectionPromise;
+			await this.connectWithTransport(this.createTransport(this.config, sdk));
 		} catch (error) {
-			this.connectionPromise = undefined;
-			throw error;
+			// An unconfigured HTTP endpoint may still serve legacy SSE. Retry only when
+			// it rejects Streamable HTTP; explicit transport choices never fall back.
+			if (
+				!this.config.url ||
+				this.config.transport !== undefined ||
+				!(error instanceof sdk.StreamableHTTPError) ||
+				(error.code !== 404 && error.code !== 405)
+			) {
+				throw error;
+			}
+			await this.client?.close();
+			this.client = new sdk.Client({ name: '@n8n/agents', version: '0.1.0' }, { capabilities: {} });
+			await this.connectWithTransport(
+				this.createSseTransport(new URL(this.config.url), this.config, sdk),
+			);
 		}
 	}
 
@@ -284,19 +312,20 @@ export class McpConnection {
 				? { headers: config.headers }
 				: undefined;
 
-			if (config.transport === 'streamableHttp') {
-				return new sdk.StreamableHTTPClientTransport(url, {
-					requestInit,
-					fetch: config.fetch,
-				});
-			}
-
-			return new sdk.SSEClientTransport(url, {
+			if (config.transport === 'sse') return this.createSseTransport(url, config, sdk);
+			return new sdk.StreamableHTTPClientTransport(url, {
 				requestInit,
 				fetch: config.fetch,
-				eventSourceInit: config.fetch ? { fetch: config.fetch } : undefined,
 			});
 		}
 		throw new Error(`MCP server "${config.name}": provide either "url" or "command"`);
+	}
+
+	private createSseTransport(url: URL, config: McpServerConfig, sdk: McpSdkModule): McpTransport {
+		return new sdk.SSEClientTransport(url, {
+			requestInit: config.headers ? { headers: config.headers } : undefined,
+			fetch: config.fetch,
+			eventSourceInit: config.fetch ? { fetch: config.fetch } : undefined,
+		});
 	}
 }
