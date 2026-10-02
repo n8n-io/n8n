@@ -87,6 +87,7 @@ export class ChatExecutionManager {
 			name: workflowData.name,
 			nodes: workflowData.nodes,
 			connections: workflowData.connections,
+			// oxlint-disable-next-line typescript/no-deprecated
 			active: workflowData.active,
 			nodeTypes: this.nodeTypes,
 			staticData: workflowData.staticData,

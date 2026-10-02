@@ -154,6 +154,7 @@ export class ChatHubWorkflowService {
 
 		newWorkflow.versionId = uuidv4();
 		newWorkflow.name = `Chat ${sessionId}`;
+		// oxlint-disable-next-line typescript/no-deprecated
 		newWorkflow.active = false;
 		newWorkflow.activeVersionId = null;
 		newWorkflow.nodes = nodes;
@@ -238,6 +239,7 @@ export class ChatHubWorkflowService {
 
 		newWorkflow.versionId = uuidv4();
 		newWorkflow.name = `Chat ${sessionId} (Title Generation)`;
+		// oxlint-disable-next-line typescript/no-deprecated
 		newWorkflow.active = false;
 		newWorkflow.activeVersionId = null;
 		newWorkflow.nodes = nodes;
@@ -1889,6 +1891,7 @@ You can update the most recent document using the commands described above, or c
 		newWorkflow.id = workflowId;
 		newWorkflow.versionId = uuidv4();
 		newWorkflow.name = `Chat files insertion ${uuidv4()}`;
+		// oxlint-disable-next-line typescript/no-deprecated
 		newWorkflow.active = false;
 		newWorkflow.activeVersionId = null;
 		newWorkflow.nodes = nodes;

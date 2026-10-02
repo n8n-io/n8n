@@ -85,6 +85,7 @@ export class CredentialsController {
 		}
 	}
 
+	// oxlint-disable-next-line typescript/no-deprecated
 	@Get('/', { middlewares: listQueryMiddleware })
 	async getMany(
 		req: CredentialRequest.GetMany,

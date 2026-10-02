@@ -257,6 +257,7 @@ export class PublicApiKeyService {
 	}
 
 	async deleteAllApiKeysForUser(user: User, tx?: EntityManager) {
+		// oxlint-disable-next-line typescript/no-deprecated
 		return await withTransaction(this.apiKeyRepository.manager, tx, async (em) => {
 			const userApiKeys = await em.find(ApiKey, {
 				where: { userId: user.id, audience: API_KEY_AUDIENCE },

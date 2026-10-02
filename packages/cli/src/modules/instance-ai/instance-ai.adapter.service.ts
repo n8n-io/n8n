@@ -1716,6 +1716,7 @@ export class InstanceAiAdapterService {
 				try {
 					// Enforce credential tamper protection — same guard as the
 					// REST controller (workflows.controller PATCH /:workflowId).
+					// oxlint-disable-next-line typescript/no-deprecated
 					if (license.isSharingEnabled()) {
 						updateData = await enterpriseWorkflowService.preventTampering(
 							updateData,
@@ -1814,6 +1815,7 @@ export class InstanceAiAdapterService {
 				try {
 					// Enforce credential tamper protection — same guard as the
 					// REST controller (workflows.controller PATCH /:workflowId).
+					// oxlint-disable-next-line typescript/no-deprecated
 					if (license.isSharingEnabled()) {
 						updateData = await enterpriseWorkflowService.preventTampering(
 							updateData,

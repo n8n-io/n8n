@@ -1300,6 +1300,7 @@ export async function executeWebhook(
 		}
 
 		if (shouldDeferOnReceivedResponse) {
+			// oxlint-disable-next-line typescript/no-deprecated
 			additionalKeys.$executionId = executionId;
 			additionalKeys.$execution = {
 				id: executionId,

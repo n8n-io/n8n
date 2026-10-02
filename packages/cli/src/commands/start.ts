@@ -361,6 +361,7 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 	 * database yet when the follower starts up.
 	 */
 	private async ensureMultiMainLicensed() {
+		// oxlint-disable-next-line typescript/no-deprecated
 		if (this.license.isMultiMainLicensed()) return;
 
 		if (!this.instanceSettings.isLeader) {
@@ -372,6 +373,7 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 				);
 				await sleep(delayMs);
 				await this.license.reload();
+				// oxlint-disable-next-line typescript/no-deprecated
 				if (this.license.isMultiMainLicensed()) return;
 			}
 		}

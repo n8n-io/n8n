@@ -43,6 +43,7 @@ export class DataTableRepository extends Repository<DataTable> {
 	 * update failures don't affect the primary data operations.
 	 */
 	async touchUpdatedAt(dataTableId: string, trx?: EntityManager) {
+		// oxlint-disable-next-line typescript/no-deprecated
 		await withTransaction(this.manager, trx, async (em) => {
 			await em.update(DataTable, { id: dataTableId }, { updatedAt: new Date() });
 		}).catch((error) => {
@@ -57,6 +58,7 @@ export class DataTableRepository extends Repository<DataTable> {
 		trx?: EntityManager,
 		explicitId?: string,
 	) {
+		// oxlint-disable-next-line typescript/no-deprecated
 		return await withTransaction(this.manager, trx, async (em) => {
 			if (columns.some((c) => !isValidColumnName(c.name))) {
 				throw new DataTableValidationError(DATA_TABLE_COLUMN_ERROR_MESSAGE);
@@ -113,6 +115,7 @@ export class DataTableRepository extends Repository<DataTable> {
 	}
 
 	async deleteDataTable(dataTableId: string, trx?: EntityManager) {
+		// oxlint-disable-next-line typescript/no-deprecated
 		return await withTransaction(this.manager, trx, async (em) => {
 			await em.delete(DataTable, { id: dataTableId });
 			await this.ddlService.dropTable(dataTableId, em);
@@ -127,6 +130,7 @@ export class DataTableRepository extends Repository<DataTable> {
 	) {
 		if (fromProjectId === toProjectId) return false;
 
+		// oxlint-disable-next-line typescript/no-deprecated
 		return await withTransaction(this.manager, trx, async (em) => {
 			const existingTables = await em.findBy(DataTable, { projectId: fromProjectId });
 
@@ -163,6 +167,7 @@ export class DataTableRepository extends Repository<DataTable> {
 	}
 
 	async deleteDataTableByProjectId(projectId: string, trx?: EntityManager) {
+		// oxlint-disable-next-line typescript/no-deprecated
 		return await withTransaction(this.manager, trx, async (em) => {
 			const existingTables = await em.findBy(DataTable, { projectId });
 
@@ -177,6 +182,7 @@ export class DataTableRepository extends Repository<DataTable> {
 	}
 
 	async deleteDataTableAll(trx?: EntityManager) {
+		// oxlint-disable-next-line typescript/no-deprecated
 		return await withTransaction(this.manager, trx, async (em) => {
 			const existingTables = await em.findBy(DataTable, {});
 

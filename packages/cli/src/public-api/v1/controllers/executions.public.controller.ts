@@ -445,6 +445,7 @@ function toPublicTracingContext(tracingContext: unknown): TracingContext | null 
 
 function toBaseFields(execution: PublicExecution) {
 	return {
+		// oxlint-disable-next-line typescript/no-deprecated
 		finished: execution.finished,
 		mode: execution.mode,
 		retryOf: execution.retryOf ?? null,
@@ -469,6 +470,7 @@ function toBaseFields(execution: PublicExecution) {
 function toExecutionListItem(execution: PublicExecution) {
 	return {
 		id: execution.id,
+		// oxlint-disable-next-line typescript/no-deprecated
 		finished: execution.finished,
 		mode: execution.mode,
 		retryOf: execution.retryOf ?? null,
@@ -554,6 +556,7 @@ function toRetriedExecutionPublicDto(
 		mode: retried.mode,
 		startedAt: retried.startedAt.toISOString(),
 		workflowId: retried.workflowId,
+		// oxlint-disable-next-line typescript/no-deprecated
 		finished: retried.finished,
 		retryOf: retried.retryOf ?? null,
 		status: retried.status,
