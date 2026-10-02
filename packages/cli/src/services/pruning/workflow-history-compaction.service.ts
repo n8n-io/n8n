@@ -8,6 +8,7 @@ import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { sleep } from '@n8n/utils/sleep';
+import { DateTime } from 'luxon';
 import { DiffMetaData, DiffRule, RULES, SKIP_RULES } from 'n8n-workflow';
 import { strict } from 'node:assert';
 
@@ -125,6 +126,7 @@ export class WorkflowHistoryCompactionService {
 
 		try {
 			await this.compactHistories(
+				this.startOfToday(),
 				startDelta,
 				endDelta,
 				[
@@ -166,6 +168,7 @@ export class WorkflowHistoryCompactionService {
 
 		try {
 			await this.compactHistories(
+				new Date(),
 				startDelta,
 				endDelta,
 				[RULES.mergeAdditiveChanges],
@@ -177,7 +180,14 @@ export class WorkflowHistoryCompactionService {
 		}
 	}
 
+	/** Every trim pass of one day reads the same window, so a repeated pass finds nothing new. */
+	private startOfToday(): Date {
+		return DateTime.now().setZone(this.globalConfig.generic.timezone).startOf('day').toJSDate();
+	}
+
+	/** The window ends `endDeltaMs` before `anchor` and starts `startDeltaMs` before it. */
 	private async compactHistories(
+		anchor: Date,
 		startDeltaMs: number,
 		endDeltaMs: number,
 		rules: DiffRule[],
@@ -187,8 +197,8 @@ export class WorkflowHistoryCompactionService {
 	): Promise<void> {
 		const compactionStartTime = Date.now();
 
-		const startDate = new Date(compactionStartTime - startDeltaMs);
-		const endDate = new Date(compactionStartTime - endDeltaMs);
+		const startDate = new Date(anchor.getTime() - startDeltaMs);
+		const endDate = new Date(anchor.getTime() - endDeltaMs);
 
 		const startIso = startDate.toISOString();
 		const endIso = endDate.toISOString();

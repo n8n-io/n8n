@@ -361,13 +361,10 @@ export function groupWorkflows<W extends WorkflowDiffBase = WorkflowDiffBase>(
 	const n = remaining.length;
 
 	const metaData = {
-		// check latest and an "average" workflow to get a somewhat accurate representation
-		// without counting through the entire history
+		// The newest version is never removed, so a pass over the survivors of a
+		// pass scores the same and removes nothing more.
 		workflowSizeScore: metaDataFields?.workflowSizeScore
-			? Math.max(
-					determineNodeParametersSize(workflows[Math.floor(workflows.length / 2)]),
-					determineNodeParametersSize(workflows[workflows.length - 1]),
-				)
+			? determineNodeParametersSize(workflows[workflows.length - 1])
 			: undefined,
 	} satisfies DiffMetaData;
 

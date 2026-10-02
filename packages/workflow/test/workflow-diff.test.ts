@@ -24,6 +24,7 @@ import {
 	type DiffableWorkflow,
 	type DiffMetaData,
 	type DiffRule,
+	type WorkflowDiffBase,
 } from '../src/workflow-diff';
 
 describe('NodeDiffStatus', () => {
@@ -1388,5 +1389,191 @@ describe('hasCredentialChanges', () => {
 
 		// When a node is deleted, it's not considered a credential change
 		expect(result).toBe(false);
+	});
+});
+
+describe('groupWorkflows with the trim rule', () => {
+	const MINUTE_MS = 60 * 1_000;
+
+	// The rule exactly as the workflow history trim task configures it.
+	const trimRule = RULES.makeMergeDependingOnSizeRule(
+		new Map([
+			[0, MINUTE_MS],
+			[100, 10 * MINUTE_MS],
+			[1000, 120 * MINUTE_MS],
+			[5000, 300 * MINUTE_MS],
+			[10000, 600 * MINUTE_MS],
+		]),
+	);
+
+	type Version = WorkflowDiffBase & { versionId: string; authors: string };
+	type VersionOptions = { size?: 'small' | 'large'; authors?: string };
+
+	const version = (
+		versionId: string,
+		seconds: number,
+		{ size = 'small', authors = 'Test User' }: VersionOptions = {},
+	) =>
+		mock<Version>({
+			versionId,
+			createdAt: new Date(seconds * 1_000),
+			nodes: [{ id: 'n', name: 'n', parameters: { a: size === 'large' ? 'x'.repeat(200) : 'x' } }],
+			connections: {},
+			name: null,
+			authors,
+		});
+
+	const trim = (versions: Version[]) =>
+		groupWorkflows(versions, [trimRule], [SKIP_RULES.skipDifferentUsers], {
+			workflowSizeScore: true,
+		}).remaining.map((v) => v.versionId);
+
+	const survivorsOf = (versions: Version[]) => {
+		const kept = trim(versions);
+		return versions.filter((v) => kept.includes(v.versionId));
+	};
+
+	it('keeps the newest version', () => {
+		const versions = Array.from({ length: 10 }, (_, k) => version(`v${k}`, k));
+
+		expect(trim(versions)).toContain('v9');
+	});
+
+	it('keeps a version whose gap to the kept neighbour equals the bucket', () => {
+		expect(trim([version('v0', 0), version('v1', 60)])).toEqual(['v0', 'v1']);
+	});
+
+	it('merges a version whose gap to the kept neighbour is one millisecond short of the bucket', () => {
+		expect(trim([version('v0', 0.001), version('v1', 60)])).toEqual(['v1']);
+	});
+
+	it('measures the gap to the kept neighbour, not to a merged one', () => {
+		expect(trim([version('v0', 0), version('v1', 50), version('v2', 100)])).toEqual(['v0', 'v2']);
+	});
+
+	it('never merges versions by different authors', () => {
+		const versions = [
+			version('v0', 0, { authors: 'a' }),
+			version('v1', 10, { authors: 'b' }),
+			version('v2', 20, { authors: 'b' }),
+		];
+
+		expect(trim(versions)).toEqual(['v0', 'v2']);
+	});
+
+	it('removes nothing from the survivors of a pass, constant size', () => {
+		const versions = Array.from({ length: 30 }, (_, k) => version(`v${k}`, k * 10));
+		const once = trim(versions);
+
+		expect(trim(survivorsOf(versions))).toEqual(once);
+	});
+
+	it('takes the size score from the newest version', () => {
+		// The middle version is large. The newest is small, so the bucket is one minute.
+		const versions = [
+			version('v0', 0, { size: 'large' }),
+			version('v1', 300, { size: 'large' }),
+			version('v2', 600),
+		];
+
+		expect(trim(versions)).toEqual(['v0', 'v1', 'v2']);
+	});
+
+	it('removes nothing from the survivors of a pass, mixed sizes', () => {
+		const versions = [
+			version('v0', 0),
+			version('v1', 100),
+			version('v2', 200, { size: 'large' }),
+			version('v3', 280),
+			version('v4', 300),
+			version('v5', 380),
+			version('v6', 400),
+		];
+		const once = trim(versions);
+
+		expect(once).toEqual(['v0', 'v1', 'v2', 'v4', 'v6']);
+		expect(trim(survivorsOf(versions))).toEqual(once);
+	});
+
+	it('widens the bucket when the newest version is large', () => {
+		// A score above 100 keeps one version per ten minutes.
+		const versions = [version('v0', 1), version('v1', 300), version('v2', 600, { size: 'large' })];
+
+		expect(trim(versions)).toEqual(['v2']);
+	});
+
+	it('keeps the bucket of the newest version when older versions are large', () => {
+		const versions = [
+			version('v0', 0, { size: 'large' }),
+			version('v1', 100, { size: 'large' }),
+			version('v2', 200, { size: 'large' }),
+			version('v3', 300),
+		];
+
+		expect(trim(versions)).toEqual(['v0', 'v1', 'v2', 'v3']);
+	});
+
+	it('keeps a version whose gap spans a removed one', () => {
+		// 0, 55, 110: 55 is merged into 110, then 0 is 110 away from the anchor and kept.
+		expect(trim([version('v0', 0), version('v1', 55), version('v2', 110)])).toEqual(['v0', 'v2']);
+	});
+
+	it('removes nothing from the survivors of a pass, random histories', () => {
+		// mulberry32, so every run sees the same histories.
+		let seed = 0x9e3779b9;
+		const random = () => {
+			seed = (seed + 0x6d2b79f5) | 0;
+			let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+			t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+			return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+		};
+
+		for (let run = 0; run < 300; run++) {
+			const count = 1 + Math.floor(random() * 40);
+			const seconds = Array.from({ length: count }, () => Math.floor(random() * 3_600)).sort(
+				(a, b) => a - b,
+			);
+			const versions = seconds.map((s, k) =>
+				version(`v${k}`, s, {
+					size: random() < 0.2 ? 'large' : 'small',
+					authors: random() < 0.1 ? 'other' : 'Test User',
+				}),
+			);
+
+			const once = trim(versions);
+			const twice = trim(survivorsOf(versions));
+
+			expect(twice).toEqual(once);
+			expect(once).toContain(`v${count - 1}`);
+		}
+	});
+
+	it('leaves every kept pair by one author at least a bucket apart', () => {
+		let seed = 42;
+		const random = () => {
+			seed = (seed + 0x6d2b79f5) | 0;
+			let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+			t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+			return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+		};
+
+		for (let run = 0; run < 300; run++) {
+			const count = 2 + Math.floor(random() * 40);
+			const seconds = Array.from({ length: count }, () => Math.floor(random() * 3_600)).sort(
+				(a, b) => a - b,
+			);
+			const newestIsLarge = random() < 0.5;
+			const versions = seconds.map((s, k) =>
+				version(`v${k}`, s, { size: newestIsLarge && k === count - 1 ? 'large' : 'small' }),
+			);
+			const bucketMs = newestIsLarge ? 10 * MINUTE_MS : MINUTE_MS;
+
+			const kept = survivorsOf(versions);
+
+			for (let k = 1; k < kept.length; k++) {
+				const gap = kept[k].createdAt.getTime() - kept[k - 1].createdAt.getTime();
+				expect(gap).toBeGreaterThanOrEqual(bucketMs);
+			}
+		}
 	});
 });

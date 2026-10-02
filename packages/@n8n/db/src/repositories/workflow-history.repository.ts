@@ -1,5 +1,5 @@
 import { Service } from '@n8n/di';
-import { DataSource, In, LessThan } from '@n8n/typeorm';
+import { DataSource, In, IsNull, LessThan } from '@n8n/typeorm';
 import { DiffMetaData, DiffRule, groupWorkflows, SKIP_RULES } from 'n8n-workflow';
 
 import { WorkflowHistory, WorkflowEntity, WorkflowPublishedVersion } from '../entities';
@@ -160,6 +160,7 @@ export class WorkflowHistoryRepository extends BaseRepository<WorkflowHistory> {
 				startDate,
 			})
 			.orderBy('wh.createdAt', 'ASC')
+			.addOrderBy('wh.versionId', 'ASC')
 			.getMany();
 
 		// Group by workflowId
@@ -178,8 +179,11 @@ export class WorkflowHistoryRepository extends BaseRepository<WorkflowHistory> {
 			metaData,
 		);
 
+		// A version named after the read above stays, like one named before it.
 		const { affected } = await this.delete({
 			versionId: In(grouped.removed.map((x) => x.versionId)),
+			name: IsNull(),
+			description: IsNull(),
 		});
 		return { seen: workflows.length, deleted: affected ?? grouped.removed.length };
 	}

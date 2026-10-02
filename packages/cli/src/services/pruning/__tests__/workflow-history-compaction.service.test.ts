@@ -23,6 +23,7 @@ describe('WorkflowHistoryCompactionService', () => {
 		skipOnStartUp: false,
 	});
 	const globalConfig = mock<GlobalConfig>({
+		generic: { timezone: 'Europe/Berlin' },
 		workflowHistory: {
 			pruneTime: -1,
 		},
@@ -229,18 +230,100 @@ describe('WorkflowHistoryCompactionService', () => {
 			expect(workflowHistoryRepository.pruneHistory).toHaveBeenCalledOnce();
 		});
 
-		it('should trim over the window between trimmingMinimumAge and the time window', async () => {
+		it('should trim over the window between trimmingMinimumAge and the time window, anchored to the start of the day in the instance timezone', async () => {
+			// 03:00 UTC on 10 November is 04:00 in Berlin, whose day started at 23:00 UTC the day before.
+			vi.setSystemTime(new Date('2026-11-10T03:00:00.000Z'));
+			const startOfDay = new Date('2026-11-09T23:00:00.000Z');
 			const workflowHistoryRepository = mock<WorkflowHistoryRepository>();
 			workflowHistoryRepository.getWorkflowIdsInRange.mockResolvedValue([]);
 			const { compactingService } = createService(workflowHistoryRepository);
 
 			await compactingService['trimLongRunningHistories'](new AbortController().signal);
 
-			const now = Date.now();
 			expect(workflowHistoryRepository.getWorkflowIdsInRange).toHaveBeenCalledWith(
-				new Date(now - 9 * Time.days.toMilliseconds),
-				new Date(now - 7 * Time.days.toMilliseconds),
+				new Date(startOfDay.getTime() - 9 * Time.days.toMilliseconds),
+				new Date(startOfDay.getTime() - 7 * Time.days.toMilliseconds),
 			);
+		});
+
+		it('should read the same trim window for every pass of one day', async () => {
+			const workflowHistoryRepository = mock<WorkflowHistoryRepository>();
+			workflowHistoryRepository.getWorkflowIdsInRange.mockResolvedValue([]);
+			const { compactingService } = createService(workflowHistoryRepository);
+
+			vi.setSystemTime(new Date('2026-11-10T03:00:00.000Z'));
+			await compactingService['trimLongRunningHistories'](new AbortController().signal);
+			vi.setSystemTime(new Date('2026-11-10T22:59:59.999Z'));
+			await compactingService['trimLongRunningHistories'](new AbortController().signal);
+
+			const [first, second] = workflowHistoryRepository.getWorkflowIdsInRange.mock.calls;
+			expect(second).toEqual(first);
+		});
+
+		it('should move the trim window by one day at midnight in the instance timezone', async () => {
+			const workflowHistoryRepository = mock<WorkflowHistoryRepository>();
+			workflowHistoryRepository.getWorkflowIdsInRange.mockResolvedValue([]);
+			const { compactingService } = createService(workflowHistoryRepository);
+
+			vi.setSystemTime(new Date('2026-11-10T22:59:59.999Z'));
+			await compactingService['trimLongRunningHistories'](new AbortController().signal);
+			vi.setSystemTime(new Date('2026-11-10T23:00:00.000Z'));
+			await compactingService['trimLongRunningHistories'](new AbortController().signal);
+
+			const [[firstStart, firstEnd], [secondStart, secondEnd]] =
+				workflowHistoryRepository.getWorkflowIdsInRange.mock.calls;
+			expect(secondStart.getTime() - firstStart.getTime()).toBe(Time.days.toMilliseconds);
+			expect(secondEnd.getTime() - firstEnd.getTime()).toBe(Time.days.toMilliseconds);
+		});
+
+		it.each([
+			// The day in Berlin starts an hour before UTC in winter, two hours in summer.
+			['Europe/Berlin', '2026-11-10T03:00:00.000Z', '2026-11-09T23:00:00.000Z'],
+			['Europe/Berlin', '2026-07-10T03:00:00.000Z', '2026-07-09T22:00:00.000Z'],
+			// At 03:00 UTC it is still the day before in New York.
+			['America/New_York', '2026-11-10T03:00:00.000Z', '2026-11-09T05:00:00.000Z'],
+			['UTC', '2026-11-10T03:00:00.000Z', '2026-11-10T00:00:00.000Z'],
+			// 25 October 2026 has 25 hours in Berlin; the day still starts at its own midnight.
+			['Europe/Berlin', '2026-10-25T03:00:00.000Z', '2026-10-24T22:00:00.000Z'],
+		])(
+			'should anchor the trim window to the start of the day in %s',
+			async (timezone, now, startOfDay) => {
+				vi.setSystemTime(new Date(now));
+				const workflowHistoryRepository = mock<WorkflowHistoryRepository>();
+				workflowHistoryRepository.getWorkflowIdsInRange.mockResolvedValue([]);
+				const compactingService = new WorkflowHistoryCompactionService(
+					config,
+					mock<GlobalConfig>({ generic: { timezone }, workflowHistory: { pruneTime: -1 } }),
+					mockLogger(),
+					mock<InstanceSettings>({ isLeader: true, instanceType: 'main', isMultiMain: true }),
+					dbConnection,
+					workflowHistoryRepository,
+					mock<EventService>(),
+				);
+
+				await compactingService['trimLongRunningHistories'](new AbortController().signal);
+
+				const anchorMs = new Date(startOfDay).getTime();
+				expect(workflowHistoryRepository.getWorkflowIdsInRange).toHaveBeenCalledWith(
+					new Date(anchorMs - 9 * Time.days.toMilliseconds),
+					new Date(anchorMs - 7 * Time.days.toMilliseconds),
+				);
+			},
+		);
+
+		it('should keep the optimize window on the clock while the trim window is anchored', async () => {
+			vi.setSystemTime(new Date('2026-11-10T03:00:00.000Z'));
+			const workflowHistoryRepository = mock<WorkflowHistoryRepository>();
+			workflowHistoryRepository.getWorkflowIdsInRange.mockResolvedValue([]);
+			const { compactingService } = createService(workflowHistoryRepository);
+
+			await compactingService['optimizeHistories'](new AbortController().signal);
+			await compactingService['trimLongRunningHistories'](new AbortController().signal);
+
+			const [[, optimizeEnd], [, trimEnd]] =
+				workflowHistoryRepository.getWorkflowIdsInRange.mock.calls;
+			expect(optimizeEnd).toEqual(new Date('2026-11-09T03:00:00.000Z'));
+			expect(trimEnd).toEqual(new Date('2026-11-02T23:00:00.000Z'));
 		});
 
 		it('should not emit telemetry when no workflows are in range', async () => {
