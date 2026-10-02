@@ -166,11 +166,14 @@ describe('AgentPreviewDock', () => {
 		localStorage.removeItem('N8N_AGENT_PREVIEW_LAYOUT');
 	});
 
-	it('renders chat history and the session title before the compact actions', () => {
-		const wrapper = mountDock();
+	it('hides the history label when a session starts and keeps the header actions compact', async () => {
+		const wrapper = mountDock({ hasSession: false });
 		const title = wrapper.get('[data-testid="agent-preview-session-title"]');
 		const history = wrapper.get('[data-testid="agent-preview-history-trigger"]');
 
+		expect(history.text()).toBe('instanceAi.sidebar.chatHistory');
+		await wrapper.setProps({ hasSession: true });
+		expect(history.text()).toBe('');
 		expect(title.text()).toBe('Order help');
 		expect(title.element.tagName).toBe('H2');
 		expect(history.attributes()).toMatchObject({

@@ -207,7 +207,10 @@ defineExpose({ clearBudgetStops });
 						@delete="emit('delete-session', $event)"
 					>
 						<template #trigger>
-							<ChatHistoryDropdownTrigger data-testid="agent-preview-history-trigger" />
+							<ChatHistoryDropdownTrigger
+								:show-label="!props.hasSession"
+								data-testid="agent-preview-history-trigger"
+							/>
 						</template>
 					</AgentSessionHistoryDropdown>
 				</div>

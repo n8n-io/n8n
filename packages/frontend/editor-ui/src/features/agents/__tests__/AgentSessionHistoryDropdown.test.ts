@@ -36,7 +36,7 @@ describe('AgentSessionHistoryDropdown', () => {
 		expect(result.queryByText('agents.builder.chat.sessionPicker.empty')).not.toBeInTheDocument();
 	});
 
-	it('searches and selects a session through the shared history trigger', async () => {
+	it('searches and selects a session with the history icon', async () => {
 		storeState.loading = false;
 		const renderComponent = createComponentRenderer(AgentSessionHistoryDropdown);
 		const result = renderComponent({
@@ -50,7 +50,7 @@ describe('AgentSessionHistoryDropdown', () => {
 				],
 			},
 			slots: {
-				trigger: () => h(ChatHistoryDropdownTrigger),
+				trigger: () => h(ChatHistoryDropdownTrigger, { showLabel: false }),
 			},
 		});
 
