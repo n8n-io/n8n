@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, ref, watch } from 'vue';
+import { computed, ref, shallowRef, watch } from 'vue';
 import { N8nIcon, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import DataTableTable from '@/features/core/dataTable/components/dataGrid/DataTableTable.vue';
@@ -26,13 +26,14 @@ const sourceControlStore = useSourceControlStore();
 type TablePreview = {
 	key: number;
 	dataTable: DataTable;
-	readOnly: boolean;
 };
 
-const displayedTable = ref<TablePreview | null>(null);
-const pendingTable = ref<TablePreview | null>(null);
+const tableSlots = shallowRef<{ displayed: TablePreview | null; pending: TablePreview | null }>({
+	displayed: null,
+	pending: null,
+});
 const tables = computed(() =>
-	[displayedTable.value, pendingTable.value].filter((table) => table !== null),
+	[tableSlots.value.displayed, tableSlots.value.pending].filter((table) => table !== null),
 );
 const isLoading = ref(false);
 const fetchError = ref<string | null>(null);
@@ -51,34 +52,33 @@ const isReadOnly = computed(
 );
 
 function showTable(key: number) {
-	if (pendingTable.value?.key !== key) return;
-	displayedTable.value = pendingTable.value;
-	pendingTable.value = null;
+	const { pending } = tableSlots.value;
+	if (pending?.key !== key) return;
+	tableSlots.value = { displayed: pending, pending: null };
 	isLoading.value = false;
 }
 
 function onLoadError(key: number) {
-	if (pendingTable.value?.key !== key) return;
+	if (tableSlots.value.pending?.key !== key) return;
 
-	displayedTable.value = null;
-	pendingTable.value = null;
+	tableSlots.value = { displayed: null, pending: null };
 	isLoading.value = false;
 	fetchError.value = i18n.baseText('instanceAi.dataTablePreview.fetchError');
 }
 
 watch(
-	() => [props.dataTableId, props.projectId, props.refreshKey, isReadOnly.value] as const,
-	async ([id, projectId, , readOnly], _previous, onCleanup) => {
+	() => [props.dataTableId, props.projectId, props.refreshKey] as const,
+	async ([id, projectId], _previous, onCleanup) => {
 		let cancelled = false;
 		onCleanup(() => {
 			cancelled = true;
 		});
 
-		pendingTable.value = null;
+		tableSlots.value = { displayed: tableSlots.value.displayed, pending: null };
 		fetchError.value = null;
 		isLoading.value = !!id && !!projectId;
 		if (!id || !projectId) {
-			displayedTable.value = null;
+			tableSlots.value = { displayed: null, pending: null };
 			return;
 		}
 		const key = ++requestKey.value;
@@ -87,9 +87,12 @@ watch(
 		const result = await dataTableStore.fetchDataTableDetails(id, projectId).catch(() => null);
 		if (cancelled) return;
 		if (result) {
-			pendingTable.value = { key, dataTable: result, readOnly };
+			tableSlots.value = {
+				displayed: tableSlots.value.displayed,
+				pending: { key, dataTable: result },
+			};
 		} else {
-			displayedTable.value = null;
+			tableSlots.value = { displayed: null, pending: null };
 			isLoading.value = false;
 			fetchError.value = i18n.baseText('instanceAi.dataTablePreview.fetchError');
 		}
@@ -108,24 +111,24 @@ watch(
 		<div
 			v-for="table in tables"
 			:key="table.key"
-			:class="{ [$style.pendingTable]: table.key !== displayedTable?.key }"
-			:aria-hidden="table.key !== displayedTable?.key"
+			:class="{ [$style.pendingTable]: table.key !== tableSlots.displayed?.key }"
+			:aria-hidden="table.key !== tableSlots.displayed?.key"
 			:inert="isLoading || undefined"
 			:data-table-id="table.dataTable.id"
 			data-test-id="instance-ai-data-table-grid"
 		>
 			<DataTableTable
 				:data-table="table.dataTable"
-				:read-only="table.readOnly || (isLoading && table.key === displayedTable?.key)"
+				:read-only="isReadOnly || (isLoading && table.key === tableSlots.displayed?.key)"
 				@ready="showTable(table.key)"
 				@load-error="onLoadError(table.key)"
 			/>
 		</div>
 
-		<DataTableLoadingIndicator v-if="isLoading && displayedTable" :key="requestKey" />
+		<DataTableLoadingIndicator v-if="isLoading && tableSlots.displayed" :key="requestKey" />
 
 		<div
-			v-if="isLoading && !displayedTable"
+			v-if="isLoading && !tableSlots.displayed"
 			:class="$style.centerState"
 			data-test-id="instance-ai-data-table-loading"
 		>

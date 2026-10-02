@@ -52,6 +52,7 @@ const i18n = useI18n();
 const { debounce } = useDebounce();
 const rowData = ref<DataTableRow[]>([]);
 const hasRecords = computed(() => rowData.value.length > 0);
+let isGridReady = false;
 
 const defaultColDef = computed(() => ({
 	...GRID_FILTER_CONFIG.defaultColDef,
@@ -145,6 +146,7 @@ async function fetchDataTableRowsFunction() {
 
 const initialize = async (params: GridReadyEvent) => {
 	agGrid.onGridReady(params);
+	isGridReady = true;
 	dataTableColumns.loadColumns(props.dataTable.columns);
 	agGrid.setGridData({ colDefs: dataTableColumns.colDefs.value });
 	const loaded = await dataTableOperations.fetchDataTableRows();
@@ -164,6 +166,19 @@ const customNoRowsOverlay = `<div class="no-rows-overlay ag-overlay-no-rows-cent
 
 // Keep the loading state to suppress "No rows", without showing a loading pill.
 const customLoadingOverlay = '<span aria-hidden="true"></span>';
+
+watch(
+	() => props.readOnly,
+	(readOnly) => {
+		if (!isGridReady) return;
+		if (readOnly) {
+			agGrid.gridApi.value.stopEditing(true);
+			selection.handleClearSelection();
+		}
+		// Checkbox renderers cache whether their cells are editable.
+		agGrid.gridApi.value.refreshCells({ force: true });
+	},
+);
 
 watch([agGrid.currentSortBy, agGrid.currentSortOrder], async () => {
 	await setCurrentPage(1);
@@ -208,8 +223,9 @@ defineExpose({
 				:animate-rows="false"
 				:theme="n8nTheme"
 				:suppress-drag-leave-hides-columns="true"
+				:suppress-movable-columns="props.readOnly"
 				:loading="dataTableOperations.contentLoading.value"
-				:row-selection="selection.rowSelection"
+				:row-selection="selection.rowSelection.value"
 				:get-row-id="(params: GetRowIdParams) => String(params.data.id)"
 				:stop-editing-when-cells-lose-focus="true"
 				:undo-redo-cell-editing="true"
