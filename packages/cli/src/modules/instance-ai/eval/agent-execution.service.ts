@@ -29,6 +29,7 @@ import { CredentialsService } from '@/credentials/credentials.service';
 // availability at runtime.
 import { AgentRuntimeReconstructionService } from '@/modules/agents/agent-runtime-reconstruction.service';
 import { hashAgentSandboxPrincipal } from '@/modules/agents/agent-sandbox-principal';
+import { AgentsSettingsService } from '@/modules/agents/agents-settings.service';
 import type { Agent as AgentEntity } from '@/modules/agents/entities/agent.entity';
 import { sanitizeToolName } from '@/modules/agents/json-config/agent-config-composition';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
@@ -124,6 +125,11 @@ export class EvalAgentExecutionService {
 
 		if (!this.moduleRegistry.isActive('agents')) {
 			return this.errorResult('Agent eval execution requires the agents module to be active.');
+		}
+		if (!(await Container.get(AgentsSettingsService).getEnabled())) {
+			return this.errorResult(
+				'Agents are disabled. Ask an instance admin to enable them in Settings > Agents.',
+			);
 		}
 
 		const { projectId } = options;

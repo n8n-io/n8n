@@ -34,6 +34,7 @@ import { AgentExecutionService } from './agent-execution.service';
 import { AgentKnowledgeService } from './agent-knowledge.service';
 import { AgentRuntimeCacheService } from './agent-runtime-cache.service';
 import { AgentTestChatService } from './agent-test-chat.service';
+import { AgentsSettingsService } from './agents-settings.service';
 import { Agent } from './entities/agent.entity';
 import { ChatIntegrationService } from './integrations/chat-integration.service';
 import { decomposeJsonConfig } from './json-config/agent-config-composition';
@@ -85,6 +86,7 @@ export class AgentsService {
 		private readonly agentExecutionService: AgentExecutionService,
 		private readonly credentialsService: CredentialsService,
 		private readonly projectScopeService: ProjectScopeService,
+		private readonly settingsService: AgentsSettingsService,
 	) {}
 
 	/**
@@ -130,6 +132,7 @@ export class AgentsService {
 			user,
 		}: CreateAgentOptions = {},
 	): Promise<{ agent: Agent; adopted: boolean }> {
+		await this.settingsService.assertEnabled();
 		const { schemaConfig, integrations } = await this.prepareInitialConfig(projectId, name, {
 			schema,
 			user,
@@ -334,6 +337,7 @@ export class AgentsService {
 		user: User,
 		options: ListAgentsQueryDto,
 	): Promise<AgentChatListResponse> {
+		if (!(await this.settingsService.getEnabled())) return { count: 0, data: [] };
 		const projectIds = await this.projectScopeService.getProjectIds(user, ['agent:execute']);
 		const { count, data } = await this.agentRepository.findByProjectIdsPaginated(
 			projectIds,

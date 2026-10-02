@@ -17,6 +17,10 @@ import { paginationSchema } from '../dto/pagination/pagination.dto';
 import { booleanFromString } from '../schemas/boolean-from-string';
 import { Z } from '../zod-class';
 
+export class AgentsSettingsDto extends Z.class({
+	enabled: z.boolean(),
+}) {}
+
 export const AGENTS_LIST_SORT_OPTIONS = [
 	'name:asc',
 	'name:desc',

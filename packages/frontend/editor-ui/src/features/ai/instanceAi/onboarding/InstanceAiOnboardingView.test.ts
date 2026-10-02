@@ -132,7 +132,7 @@ function setupStore(overrides: Record<string, unknown> = {}) {
 			...overrides,
 		} as never,
 	});
-	vi.mocked(store.fetch).mockResolvedValue(undefined);
+	vi.mocked(store.fetch).mockResolvedValue(true);
 	vi.mocked(store.persistEnabled).mockResolvedValue(true);
 	const credentialsStore = useCredentialsStore();
 	vi.mocked(credentialsStore.fetchCredentialTypes).mockResolvedValue(undefined as never);

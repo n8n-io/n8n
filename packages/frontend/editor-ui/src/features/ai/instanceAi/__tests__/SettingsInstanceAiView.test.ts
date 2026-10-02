@@ -248,7 +248,7 @@ describe('SettingsInstanceAiView', () => {
 		});
 
 		it('chains missing setup steps while keeping settings-style actions', async () => {
-			vi.mocked(store.fetch).mockResolvedValue(undefined);
+			vi.mocked(store.fetch).mockResolvedValue(true);
 			vi.mocked(store.verifyModel).mockResolvedValue({ ok: true });
 			vi.mocked(store.verifySandbox).mockResolvedValue({ ok: true });
 			vi.mocked(store.save).mockImplementation(async () => {
@@ -470,6 +470,9 @@ describe('SettingsInstanceAiView', () => {
 			await waitFor(() => expect(store.isLoading).toBe(false));
 			expect(getByTestId('n8n-agent-model-env-value')).toBeVisible();
 			expect(getByTestId('n8n-agent-sandbox-env-value')).toBeVisible();
+			expect(getByTestId('n8n-agent-sandbox-env-value')).toHaveTextContent(
+				'instanceAi.onboarding.foundOnServer',
+			);
 
 			await fireEvent.click(getByTestId('n8n-agent-model-row'));
 			await fireEvent.click(getByTestId('n8n-agent-sandbox-row'));

@@ -22,6 +22,27 @@ export class SettingsRepository extends BaseRepository<Settings> {
 		return await this.managerFor(ctx).findOneBy(Settings, { key });
 	}
 
+	async getOrCreateWithReadLock(
+		key: string,
+		defaultValue: string,
+		loadOnStartup: boolean,
+		ctx: OperationContext,
+	): Promise<Settings> {
+		const manager = this.managerFor(ctx);
+		await manager
+			.createQueryBuilder()
+			.insert()
+			.into(Settings)
+			.values({ key, value: defaultValue, loadOnStartup })
+			.orIgnore()
+			.execute();
+		return await manager.findOneOrFail(Settings, {
+			where: { key },
+			lock:
+				manager.connection.options.type === 'postgres' ? { mode: 'pessimistic_read' } : undefined,
+		});
+	}
+
 	async upsertByKey(
 		key: string,
 		value: string,

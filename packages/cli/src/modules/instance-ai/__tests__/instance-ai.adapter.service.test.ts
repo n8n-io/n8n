@@ -1830,7 +1830,7 @@ import type { AiPreferenceService } from '@/services/ai-preference.service';
 
 import type { OutboundHttp } from '@n8n/backend-network';
 import { ModuleRegistry } from '@n8n/backend-common';
-import type { InstanceAiBuilderDelegate } from '@n8n/instance-ai';
+import type { InstanceAiBuilderDelegate, OrchestrationContext } from '@n8n/instance-ai';
 
 import { InstanceAiAdapterService } from '../instance-ai.adapter.service';
 import { InstanceAiBuilderDelegateAdapterService } from '@/modules/agents/instance-ai-builder-delegate.adapter';
@@ -7586,7 +7586,7 @@ describe('createContext — builder delegate wiring', () => {
 
 	/** Route Container.get for the two tokens createContext resolves when wiring the builder delegate. */
 	function mockBuilderModuleActive(delegate: InstanceAiBuilderDelegate) {
-		const moduleRegistry = { isActive: vi.fn().mockReturnValue(true) };
+		const moduleRegistry = { isActive: vi.fn().mockReturnValue(true), settings: new Map() };
 		const builderDelegateAdapter = { createDelegate: vi.fn().mockReturnValue(delegate) };
 		vi.spyOn(Container, 'get').mockImplementation((token: unknown) => {
 			if (token === ModuleRegistry) return moduleRegistry;
@@ -7595,6 +7595,53 @@ describe('createContext — builder delegate wiring', () => {
 		});
 		return builderDelegateAdapter;
 	}
+
+	it.each([
+		{
+			name: 'omits new Agent builds when Agents are disabled',
+			moduleActive: true,
+			resumeAgentBuild: false,
+			expected: false,
+		},
+		{
+			name: 'keeps admitted Agent builds when Agents are disabled',
+			moduleActive: true,
+			resumeAgentBuild: true,
+			expected: true,
+		},
+		{
+			name: 'omits admitted Agent builds when the module is inactive',
+			moduleActive: false,
+			resumeAgentBuild: true,
+			expected: false,
+		},
+	])('$name', async ({ moduleActive, resumeAgentBuild, expected }) => {
+		const { createOrchestrationTools } = await import(
+			'../../../../../@n8n/instance-ai/dist/tools/index.js'
+		);
+		const service = createAdapterWithGatewayMock(vi.fn());
+		const delegate = mock<InstanceAiBuilderDelegate>();
+		mockBuilderModuleActive(delegate);
+		const moduleRegistry = Container.get(ModuleRegistry);
+		vi.mocked(moduleRegistry.isActive).mockReturnValue(moduleActive);
+		moduleRegistry.settings.set('agents', { enabled: false });
+
+		const context = service.createContext(mockUser, {
+			threadId: 'thread-1',
+			projectId: 'proj-1',
+			agentId: 'agent-42',
+			resumeAgentBuild,
+		});
+		const orchestrationContext = mock<OrchestrationContext>();
+		orchestrationContext.domainContext = context;
+		const tools = createOrchestrationTools(orchestrationContext);
+
+		expect(context.builderDelegate).toBe(expected ? delegate : undefined);
+		expect(context.agentBuilderTarget).toEqual(
+			expected ? { agentId: 'agent-42', projectId: 'proj-1' } : undefined,
+		);
+		expect(tools.has('build-agent')).toBe(expected);
+	});
 
 	it('enables deterministic Agent Builder model catalogs for eval threads', () => {
 		const service = createAdapterWithGatewayMock(vi.fn(), { telemetry: { track: vi.fn() } });

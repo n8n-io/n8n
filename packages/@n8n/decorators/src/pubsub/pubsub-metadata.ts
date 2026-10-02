@@ -42,6 +42,7 @@ export type PubSubEventName =
 	| 'reload-mcp-registry'
 	| 'reload-otel-config'
 	| 'reload-instance-ai-settings'
+	| 'reload-agents-settings'
 	| 'cancel-test-run'
 	| 'cancel-collection'
 	| 'agent-chat-integration-changed'

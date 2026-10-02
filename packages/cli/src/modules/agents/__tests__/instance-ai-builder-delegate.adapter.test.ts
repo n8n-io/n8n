@@ -6,7 +6,7 @@ import type {
 	StreamChunk,
 } from '@n8n/agents';
 import type { AgentJsonConfig, AgentSkill } from '@n8n/api-types';
-import type { User } from '@n8n/db';
+import type { Settings, SettingsRepository, User } from '@n8n/db';
 import type { InstanceAiCredentialService } from '@n8n/instance-ai';
 import { Like } from '@n8n/typeorm';
 import { UserError } from 'n8n-workflow';
@@ -16,6 +16,7 @@ import { ForbiddenError, NotFoundError } from '@n8n/errors';
 import * as checkAccess from '@/permissions.ee/check-access';
 
 import type { AgentsService } from '../agents.service';
+import { AgentsSettingsService } from '../agents-settings.service';
 import type { AgentsBuilderService } from '../builder/agents-builder.service';
 import type { AgentThreadEntity } from '../entities/agent-thread.entity';
 import type { Agent } from '../entities/agent.entity';
@@ -37,6 +38,17 @@ function setup(options: { useEvalModelCatalog?: boolean } = {}) {
 	const agentConfig = mock<AgentConfigService>();
 	const agentSkills = mock<AgentSkillsService>();
 	const credentialService = mock<InstanceAiCredentialService>();
+	const settingsRepository = mock<SettingsRepository>();
+	const agentsSettingsService = new AgentsSettingsService(
+		settingsRepository,
+		mock(),
+		mock(),
+		mock(),
+		mock(),
+		mock(),
+		mock(),
+		mock(),
+	);
 
 	const service = new InstanceAiBuilderDelegateAdapterService(
 		agentsService,
@@ -45,6 +57,7 @@ function setup(options: { useEvalModelCatalog?: boolean } = {}) {
 		agentThreadRepository,
 		agentConfig,
 		agentSkills,
+		agentsSettingsService,
 	);
 
 	const user = mock<User>({ id: 'user-1' });
@@ -71,6 +84,7 @@ function setup(options: { useEvalModelCatalog?: boolean } = {}) {
 		credentialProvider,
 		credentialProviderFor,
 		credentialService,
+		settingsRepository,
 	};
 }
 
@@ -200,21 +214,30 @@ describe('InstanceAiBuilderDelegateAdapterService', () => {
 			expect(sessionArg).not.toHaveProperty('telemetry');
 		});
 
-		it('rejects when the user lacks agent:update scope', async () => {
-			const { delegate, agentsBuilderService } = setup();
-			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(false);
+		it.each([
+			{ hasScope: false, enabled: true },
+			{ hasScope: true, enabled: false },
+		])(
+			'rejects a new build with scope $hasScope and Agents enabled $enabled',
+			async ({ hasScope, enabled }) => {
+				const { delegate, agentsBuilderService, settingsRepository } = setup();
+				vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(hasScope);
+				settingsRepository.findByKeyInContext.mockResolvedValue(
+					mock<Settings>({ value: String(enabled) }),
+				);
 
-			await expect(
-				delegate.streamBuild('agent-1', 'hi', {
-					threadId: 'ia-builder:t:agent-1',
-					hostThreadId: 'thread-1',
-					runId: 'run-1',
-					modelConfig: 'anthropic/claude-sonnet-host-resolved',
-					abortSignal,
-				}),
-			).rejects.toThrow(ForbiddenError);
-			expect(agentsBuilderService.buildAgent).not.toHaveBeenCalled();
-		});
+				await expect(
+					delegate.streamBuild('agent-1', 'hi', {
+						threadId: 'ia-builder:t:agent-1',
+						hostThreadId: 'thread-1',
+						runId: 'run-1',
+						modelConfig: 'anthropic/claude-sonnet-host-resolved',
+						abortSignal,
+					}),
+				).rejects.toThrow(ForbiddenError);
+				expect(agentsBuilderService.buildAgent).not.toHaveBeenCalled();
+			},
+		);
 
 		it('builds the credential provider from the concrete target agent id', async () => {
 			const { delegate, agentsBuilderService, credentialProviderFor } = setup();
@@ -234,57 +257,69 @@ describe('InstanceAiBuilderDelegateAdapterService', () => {
 	});
 
 	describe('resumeBuild', () => {
-		it('forwards to agentsBuilderService.resumeBuild and accumulates text-delta chunks', async () => {
-			const { delegate, agentsBuilderService, user, credentialProvider, credentialService } =
-				setup();
-			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
-			const mcpTools = fakeMcpTools();
+		it.each([true, false])(
+			'resumes the saved builder call with Agents enabled %s',
+			async (enabled) => {
+				const {
+					delegate,
+					agentsBuilderService,
+					user,
+					credentialProvider,
+					credentialService,
+					settingsRepository,
+				} = setup();
+				vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
+				settingsRepository.findByKeyInContext.mockResolvedValue(
+					mock<Settings>({ value: String(enabled) }),
+				);
+				const mcpTools = fakeMcpTools();
 
-			const chunks: StreamChunk[] = [
-				{ type: 'text-delta', id: '1', delta: 'Using ' },
-				{ type: 'text-delta', id: '2', delta: 'Slack.' },
-			];
-			agentsBuilderService.resumeBuild.mockReturnValue(asAsyncGenerator(chunks));
+				const chunks: StreamChunk[] = [
+					{ type: 'text-delta', id: '1', delta: 'Using ' },
+					{ type: 'text-delta', id: '2', delta: 'Slack.' },
+				];
+				agentsBuilderService.resumeBuild.mockReturnValue(asAsyncGenerator(chunks));
 
-			const turn = await delegate.resumeBuild(
-				'agent-1',
-				{ runId: 'run-1', toolCallId: 'call-1', resumeData: { approved: true } },
-				{
-					threadId: 'ia-builder:t:agent-1',
-					hostThreadId: 'thread-1',
-					runId: 'run-1',
-					modelConfig: 'anthropic/claude-sonnet-host-resolved',
-					abortSignal,
-					mcpTools,
-				},
-			);
+				const turn = await delegate.resumeBuild(
+					'agent-1',
+					{ runId: 'run-1', toolCallId: 'call-1', resumeData: { approved: true } },
+					{
+						threadId: 'ia-builder:t:agent-1',
+						hostThreadId: 'thread-1',
+						runId: 'run-1',
+						modelConfig: 'anthropic/claude-sonnet-host-resolved',
+						abortSignal,
+						mcpTools,
+					},
+				);
 
-			const seen: unknown[] = [];
-			for await (const chunk of turn.fullStream) seen.push(chunk);
+				const seen: unknown[] = [];
+				for await (const chunk of turn.fullStream) seen.push(chunk);
 
-			expect(seen).toHaveLength(2);
-			await expect(turn.text).resolves.toBe('Using Slack.');
-			expect(agentsBuilderService.resumeBuild).toHaveBeenCalledWith(
-				'agent-1',
-				'project-1',
-				'run-1',
-				'call-1',
-				{ approved: true },
-				credentialProvider,
-				credentialService,
-				user,
-				{
-					threadId: 'ia-builder:t:agent-1',
-					hostThreadId: 'thread-1',
-					runId: 'run-1',
-					modelConfig: 'anthropic/claude-sonnet-host-resolved',
-					abortSignal,
-					instructionsAddendum: INSTANCE_AI_BUILDER_ADDENDUM,
-					mcpTools,
-					onRequiredArtifact: expect.any(Function),
-				},
-			);
-		});
+				expect(seen).toHaveLength(2);
+				await expect(turn.text).resolves.toBe('Using Slack.');
+				expect(agentsBuilderService.resumeBuild).toHaveBeenCalledWith(
+					'agent-1',
+					'project-1',
+					'run-1',
+					'call-1',
+					{ approved: true },
+					credentialProvider,
+					credentialService,
+					user,
+					{
+						threadId: 'ia-builder:t:agent-1',
+						hostThreadId: 'thread-1',
+						runId: 'run-1',
+						modelConfig: 'anthropic/claude-sonnet-host-resolved',
+						abortSignal,
+						instructionsAddendum: INSTANCE_AI_BUILDER_ADDENDUM,
+						mcpTools,
+						onRequiredArtifact: expect.any(Function),
+					},
+				);
+			},
+		);
 
 		it('enables deterministic model catalogs when an eval session resumes', async () => {
 			const { delegate, agentsBuilderService } = setup({ useEvalModelCatalog: true });

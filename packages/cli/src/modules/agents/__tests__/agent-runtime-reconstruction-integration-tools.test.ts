@@ -14,6 +14,7 @@ import type {
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
+import type { AgentsSettingsService } from '../agents-settings.service';
 
 import type { ActiveExecutions } from '@/active-executions';
 import type { ExternalHooks } from '@/external-hooks';
@@ -302,6 +303,7 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			mock<AgentChatExecutionService>(),
 			mock<AgentBackgroundJobRepository>(),
 			mock<AgentBackgroundJobService>(),
+			mock<AgentsSettingsService>(),
 		);
 		agentIntegrationPersistenceService = new AgentIntegrationPersistenceService(
 			agentRepository,
@@ -352,6 +354,7 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			agentExecutionService,
 			credentialsService,
 			mock<ProjectScopeService>(),
+			mock<AgentsSettingsService>(),
 		);
 		service = agentExecutionOrchestratorService;
 		markSharedTestSetupAsUsed(

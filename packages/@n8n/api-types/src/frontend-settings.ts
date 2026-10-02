@@ -435,6 +435,7 @@ export type FrontendModuleSettings = {
 	 * Client settings for the agents module.
 	 */
 	agents?: {
+		enabled?: boolean;
 		/**
 		 * Enabled agent sub-feature modules. Each token unlocks a specific
 		 * capability inside the agents module (see the backend's
