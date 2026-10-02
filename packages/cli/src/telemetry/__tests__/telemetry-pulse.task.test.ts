@@ -28,6 +28,7 @@ describe('TelemetryPulseTask', () => {
 			misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
 			misfireGraceSeconds: 3600,
 			maxAttempts: 1,
+			concurrencyLimit: 1,
 		});
 	});
 
