@@ -1,0 +1,21 @@
+packages/cli/test/integration/workflow-history-compaction-trim.task.test.ts
+  s_be34f2a9936255::t_b1f7b7559c241e 1,18,22-28,73-74,78,80,83-84,89,99-100,111-115,117-120,126,128,130,132-133
+packages/workflow/test/workflow-diff.test.ts
+  s_be34f2a9936255::t_6622d1a7c94da7 1449,1499-1507,1509-1510
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a56da13447323b610d13dd6704fa1e846c33a894",
+  "prompts": {},
+  "sessions": {
+    "s_be34f2a9936255": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9a0f2c47-6407-4069-a583-c102c8290868",
+        "model": "unknown"
+      },
+      "human_author": "Veljko Terzic <veljko.terzic@n8n.io>"
+    }
+  }
+}
