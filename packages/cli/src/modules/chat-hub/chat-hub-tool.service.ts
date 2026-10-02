@@ -9,7 +9,7 @@ import { Service } from '@n8n/di';
 import type { INode } from 'n8n-workflow';
 import { collectExpressionDefaults, findDisallowedChatToolExpressions } from 'n8n-workflow';
 
-import { BadRequestError } from '@n8n/errors';
+import { BadRequestError, NotFoundError } from '@n8n/errors';
 import { NodeTypes } from '@/node-types';
 
 import type { ChatHubTool } from './chat-hub-tool.entity';
@@ -109,6 +109,9 @@ export class ChatHubToolService {
 		const updateData: Partial<ChatHubTool> = {};
 
 		if (updates.definition !== undefined) {
+			if (!(await this.chatToolRepository.getOneById(id, user.id, trx))) {
+				throw new NotFoundError('Chat hub tool not found');
+			}
 			this.validateToolExpressions(updates.definition);
 			updateData.definition = updates.definition;
 			updateData.name = updates.definition.name;

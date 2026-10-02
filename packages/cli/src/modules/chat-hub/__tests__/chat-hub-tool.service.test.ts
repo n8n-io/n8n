@@ -285,6 +285,7 @@ describe('ChatHubToolService', () => {
 			const updatedDef: INode = { ...mockDefinition, name: 'Updated Tool' };
 			const updatedTool = makeTool({ name: 'Updated Tool', definition: updatedDef });
 
+			chatToolRepository.getOneById.mockResolvedValue(existingTool);
 			chatToolRepository.updateOwnedTool.mockResolvedValue(updatedTool);
 
 			const result = await service.updateTool(existingTool.id, mockUser, {
@@ -337,6 +338,7 @@ describe('ChatHubToolService', () => {
 
 		it('should reject disallowed expressions in definition update', async () => {
 			const existingTool = makeTool();
+			chatToolRepository.getOneById.mockResolvedValue(existingTool);
 
 			const defWithExpression: INode = {
 				...mockDefinition,
@@ -350,6 +352,19 @@ describe('ChatHubToolService', () => {
 				service.updateTool(existingTool.id, mockUser, { definition: defWithExpression }),
 			).rejects.toThrow(BadRequestError);
 
+			expect(chatToolRepository.updateOwnedTool).not.toHaveBeenCalled();
+		});
+
+		it('should return NotFoundError before validating a missing tool definition', async () => {
+			const defWithExpression: INode = {
+				...mockDefinition,
+				parameters: { url: '={{ $json.url }}' },
+			};
+			chatToolRepository.getOneById.mockResolvedValue(null);
+
+			await expect(
+				service.updateTool(uuid(), mockUser, { definition: defWithExpression }),
+			).rejects.toThrow(NotFoundError);
 			expect(chatToolRepository.updateOwnedTool).not.toHaveBeenCalled();
 		});
 

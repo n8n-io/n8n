@@ -24,7 +24,7 @@ export class ChatHubToolRepository extends BaseRepository<ChatHubTool> {
 			if (!(await this.getOneById(id, userId, em))) {
 				throw new NotFoundError('Chat hub tool not found');
 			}
-			return await this.updateTool(id, updates, em);
+			return await this.updateTool(id, userId, updates, em);
 		});
 	}
 
@@ -33,7 +33,7 @@ export class ChatHubToolRepository extends BaseRepository<ChatHubTool> {
 			if (!(await this.getOneById(id, userId, em))) {
 				throw new NotFoundError('Chat hub tool not found');
 			}
-			await this.deleteTool(id, em);
+			await this.deleteTool(id, userId, em);
 		});
 	}
 
@@ -45,17 +45,24 @@ export class ChatHubToolRepository extends BaseRepository<ChatHubTool> {
 		});
 	}
 
-	async updateTool(id: string, updates: Partial<IChatHubTool>, trx?: EntityManager) {
+	async updateTool(
+		id: string,
+		userId: string,
+		updates: Partial<IChatHubTool>,
+		trx?: EntityManager,
+	) {
 		const em = trx ?? this.manager;
-		await em.update(ChatHubTool, { id }, updates);
-		return await em.findOneOrFail(ChatHubTool, {
-			where: { id },
-		});
+		const result = await em.update(ChatHubTool, { id, ownerId: userId }, updates);
+		if (!result.affected) throw new NotFoundError('Chat hub tool not found');
+		const tool = await em.findOne(ChatHubTool, { where: { id, ownerId: userId } });
+		if (!tool) throw new NotFoundError('Chat hub tool not found');
+		return tool;
 	}
 
-	async deleteTool(id: string, trx?: EntityManager) {
+	async deleteTool(id: string, userId: string, trx?: EntityManager) {
 		const em = trx ?? this.manager;
-		return await em.delete(ChatHubTool, { id });
+		const result = await em.delete(ChatHubTool, { id, ownerId: userId });
+		if (!result.affected) throw new NotFoundError('Chat hub tool not found');
 	}
 
 	async getManyByUserId(userId: string) {

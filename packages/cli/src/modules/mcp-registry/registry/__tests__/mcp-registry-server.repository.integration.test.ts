@@ -8,10 +8,6 @@ beforeAll(async () => {
 	await testDb.init();
 });
 
-beforeEach(async () => {
-	await Container.get(McpRegistryServerRepository).clear();
-});
-
 afterAll(async () => {
 	await testDb.terminate();
 });
@@ -19,7 +15,7 @@ afterAll(async () => {
 it('keeps the latest fetch for each slug', async () => {
 	const repository = Container.get(McpRegistryServerRepository);
 	const row = {
-		slug: 'sample',
+		slug: 'upsert-fetched-servers-test',
 		status: 'active' as const,
 		version: '1',
 		registryUpdatedAt: new Date('2026-01-01T00:00:00Z'),

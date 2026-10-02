@@ -1,6 +1,7 @@
 import { createTeamProject, testDb, testModules } from '@n8n/backend-test-utils';
 import { Container } from '@n8n/di';
 
+import { DataTableDDLRepository } from '../data-table-ddl.repository';
 import { DataTableDDLService } from '../data-table-ddl.service';
 import { DataTableRepository } from '../data-table.repository';
 
@@ -44,5 +45,6 @@ it('joins an existing transaction for table deletion', async () => {
 	).rejects.toThrow('abort deletion');
 
 	expect(await repository.findOneBy({ id: table.id })).not.toBeNull();
+	expect(await Container.get(DataTableDDLRepository).tableExists(table.id)).toBe(true);
 	await repository.deleteDataTable(table.id);
 });

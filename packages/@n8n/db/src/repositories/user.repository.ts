@@ -93,27 +93,37 @@ export class UserRepository extends Repository<User> {
 	}
 
 	async disableMfa(userId: string): Promise<void> {
-		const user = await this.findOneByOrFail({ id: userId });
-		user.mfaEnabled = false;
-		user.mfaSecret = null;
-		user.mfaRecoveryCodes = [];
-		await this.save(user);
+		await this.findOneByOrFail({ id: userId });
+		await this.manager.update(
+			User,
+			{ id: userId },
+			{ mfaEnabled: false, mfaSecret: null, mfaRecoveryCodes: [] },
+		);
 	}
 
 	async updateProfileNames(
 		userId: string,
 		names: { firstName?: string; lastName?: string },
 	): Promise<void> {
-		const user = await this.findOneByOrFail({ id: userId });
-		Object.assign(user, names);
-		await this.save(user);
+		await this.manager.transaction(async (trx) => {
+			const user = await trx.findOneOrFail(User, {
+				where: { id: userId },
+				...(trx.connection.options.type === 'postgres'
+					? { lock: { mode: 'pessimistic_write' as const } }
+					: {}),
+			});
+			Object.assign(user, names);
+			await trx.save(User, user);
+		});
 	}
 
 	async setMfaCredentials(userId: string, secret: string, recoveryCodes: string[]): Promise<void> {
-		const user = await this.findOneByOrFail({ id: userId });
-		user.mfaSecret = secret;
-		user.mfaRecoveryCodes = recoveryCodes;
-		await this.save(user);
+		await this.findOneByOrFail({ id: userId });
+		await this.manager.update(
+			User,
+			{ id: userId },
+			{ mfaSecret: secret, mfaRecoveryCodes: recoveryCodes },
+		);
 	}
 
 	/**
