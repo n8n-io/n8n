@@ -1,3 +1,4 @@
+import type { SerializableAgentState } from '@n8n/agents';
 import { LockService, type Logger } from '@n8n/backend-common';
 import { createTeamProject, testDb, testModules } from '@n8n/backend-test-utils';
 import type { AgentsConfig } from '@n8n/config';
@@ -17,7 +18,7 @@ import { AgentBackgroundJobService } from '@/modules/agents/background/agent-bac
 import { AgentWakeService, WAKE_DEBOUNCE_MS } from '@/modules/agents/background/agent-wake.service';
 import type { AgentBackgroundJob } from '@/modules/agents/entities/agent-background-job.entity';
 import type { Agent } from '@/modules/agents/entities/agent.entity';
-import type { N8NCheckpointStorage } from '@/modules/agents/integrations/n8n-checkpoint-storage';
+import { N8NCheckpointStorage } from '@/modules/agents/integrations/n8n-checkpoint-storage';
 import type { ChatIntegrationRegistry } from '@/modules/agents/integrations/agent-chat-integration';
 import { AgentBackgroundJobRepository } from '@/modules/agents/repositories/agent-background-job.repository';
 import type { AgentExecutionRepository } from '@/modules/agents/repositories/agent-execution.repository';
@@ -367,6 +368,7 @@ describe('AgentBackgroundJobRepository', () => {
 
 	it('pauses only after checkpoint persistence and execution finalization', async () => {
 		const checkpoints = Container.get(AgentCheckpointRepository);
+		const checkpointStorage = Container.get(N8NCheckpointStorage);
 		const threads = Container.get(AgentExecutionThreadRepository);
 		const childThreadId = uuid();
 		const runId = uuid();
@@ -394,12 +396,32 @@ describe('AgentBackgroundJobRepository', () => {
 			settledAt: null,
 		});
 		const job = await repository.findOneByOrFail({ id });
-		const original = JSON.stringify({ status: 'suspended', pendingToolCalls: { approval: {} } });
-		const state = JSON.stringify({
+		const checkpoint: SerializableAgentState = {
 			status: 'suspended',
-			finishReason: 'paused',
-			pendingToolCalls: { approval: {} },
-		});
+			messageList: { messages: [], historyIds: [], inputIds: [], responseIds: [] },
+			persistence: {
+				threadId: childThreadId,
+				resourceId: 'draft-chat:user-1',
+				delegated: true,
+			},
+			pendingToolCalls: {
+				approval: {
+					toolCallId: 'approval',
+					toolName: 'approve_action',
+					input: { id: 'item-1' },
+					suspended: true,
+					suspendPayload: {
+						type: 'approval',
+						toolName: 'approve_action',
+						args: { id: 'item-1' },
+					},
+					resumeSchema: { type: 'object', properties: { approved: { type: 'boolean' } } },
+					runId,
+				},
+			},
+		};
+		const original = JSON.stringify(checkpoint);
+		const state = JSON.stringify({ ...checkpoint, finishReason: 'paused' });
 		try {
 			expect(await repository.pauseIfRequested(job, 'Progress', runId, state)).toBe(false);
 			const updatedAt = new Date(Date.now() - 60_000);
@@ -410,13 +432,26 @@ describe('AgentBackgroundJobRepository', () => {
 				state: original,
 				updatedAt,
 			});
-			expect(await checkpoints.markUserPaused(runId, agentId, original, state, updatedAt)).toBe(
-				true,
-			);
-			expect((await checkpoints.findByRunId(runId))?.updatedAt).toEqual(updatedAt);
-			expect(await checkpoints.markUserPaused(runId, agentId, original, state, updatedAt)).toBe(
-				false,
-			);
+			const suspension = { runId, checkpoint, serializedState: original, updatedAt };
+			expect(await checkpointStorage.markUserPaused(uuid(), suspension)).toBe(false);
+			expect(
+				await checkpointStorage.markUserPaused(agentId, {
+					...suspension,
+					updatedAt: new Date(updatedAt.getTime() - 1),
+				}),
+			).toBe(false);
+			expect(await checkpoints.findByRunId(runId)).toMatchObject({
+				agentId,
+				state: original,
+				updatedAt,
+			});
+			expect(await checkpointStorage.markUserPaused(agentId, suspension)).toBe(true);
+			expect(await checkpointStorage.markUserPaused(agentId, suspension)).toBe(false);
+			expect(await checkpoints.findByRunId(runId)).toMatchObject({
+				agentId,
+				state,
+				updatedAt,
+			});
 			expect(await repository.pauseIfRequested(job, 'Progress', runId, state)).toBe(false);
 			await repository.manager.update(AgentExecution, executionId, { status: 'success' });
 			expect(await repository.pauseIfRequested(job, 'Progress', runId, original)).toBe(false);
