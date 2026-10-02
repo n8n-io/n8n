@@ -77,6 +77,7 @@ function setup(options: { backgroundTasksEnabled?: boolean } = {}) {
 	const updateBroadcaster = mock<AgentExecutionUpdateBroadcaster>();
 	const agentsConfig = mock<AgentsConfig>({
 		backgroundTasksEnabled: options.backgroundTasksEnabled ?? false,
+		checkpointTtlSeconds: 96 * 3600,
 	});
 	(logger.scoped as Mock).mockReturnValue(logger);
 
@@ -89,6 +90,10 @@ function setup(options: { backgroundTasksEnabled?: boolean } = {}) {
 	jobRepository.findActivePastTimeout.mockResolvedValue([]);
 	jobRepository.findSettledSubAgentsWithCheckpoints.mockResolvedValue([]);
 	jobRepository.findRequestedPauses.mockResolvedValue([]);
+	jobRepository.findPausedWithoutCheckpoint.mockResolvedValue([]);
+	jobRepository.retainLatestPausedGroup.mockResolvedValue([]);
+	jobRepository.reservePausedGroup.mockResolvedValue('reserved');
+	executionRepository.findRunningByThread.mockResolvedValue([]);
 	executionRepository.findLatestStatusesByThreadIds.mockResolvedValue(new Map());
 
 	const service = new AgentBackgroundJobService(
@@ -156,7 +161,8 @@ describe('user pause', () => {
 		receivedAt?: number;
 		execution?: Partial<AgentExecution>;
 		input?: Partial<AgentMessageEntity>;
-		expected: 'stopping' | 'ready' | 'unavailable';
+		admission?: 'limit-reached';
+		expected: 'stopping' | 'ready' | 'unavailable' | 'limit-reached';
 	}>([
 		{
 			name: 'a running job',
@@ -166,6 +172,19 @@ describe('user pause', () => {
 		{ name: 'an unreported pause', job: { notifiedAt: null }, expected: 'stopping' },
 		{ name: 'input received before the report', receivedAt: 1000, expected: 'stopping' },
 		{ name: 'input received after the report', expected: 'ready' },
+		{ name: 'too few active slots', admission: 'limit-reached', expected: 'limit-reached' },
+		{
+			name: 'a resume reservation from an earlier parent turn',
+			job: { status: 'suspended', updatedAt: new Date(2500) },
+			execution: { startedAt: new Date(4000) },
+			expected: 'ready',
+		},
+		{
+			name: 'a resume reservation from the current parent turn',
+			job: { status: 'suspended', updatedAt: new Date(4500) },
+			execution: { startedAt: new Date(4000) },
+			expected: 'stopping',
+		},
 		{
 			name: 'a finished parent execution',
 			execution: { status: 'success' },
@@ -188,13 +207,19 @@ describe('user pause', () => {
 		},
 	])(
 		'returns $expected for $name',
-		async ({ job: jobOverrides, receivedAt = 3000, execution, input, expected }) => {
+		async ({ job: jobOverrides, receivedAt = 3000, execution, input, admission, expected }) => {
 			const { service, jobRepository, executionRepository, messageRepository } = setup();
 			const job = makeJob({
 				status: 'paused',
 				pauseRequestId: 'stop-1',
 				notifiedAt: new Date(2000),
 				...jobOverrides,
+			});
+			jobRepository.findRequestedPauses.mockResolvedValue([job]);
+			jobRepository.releasePausedResume.mockImplementation(async () => {
+				job.status = 'paused';
+				job.timeoutAt = null;
+				return true;
 			});
 			jobRepository.findByParentThread.mockResolvedValue([
 				job,
@@ -224,13 +249,16 @@ describe('user pause', () => {
 					],
 				]),
 			);
-			const result = await service.getResumeCandidates(
+			if (admission) jobRepository.reservePausedGroup.mockResolvedValue(admission);
+			const result = await service.preparePausedResume(
 				'agent-1',
 				'thread-1',
 				'draft-chat:user-1',
 				'execution-1',
 			);
-			expect(result).toEqual({ status: expected, jobs: expected === 'ready' ? [job] : [] });
+			expect(result).toMatchObject({ status: expected, jobs: expected === 'ready' ? [job] : [] });
+			if (expected === 'stopping' || expected === 'unavailable')
+				expect(jobRepository.reservePausedGroup).not.toHaveBeenCalled();
 		},
 	);
 

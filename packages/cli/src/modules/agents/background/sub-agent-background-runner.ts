@@ -9,6 +9,7 @@ import { v4 as uuid } from 'uuid';
 
 import {
 	AgentBackgroundJobService,
+	EXPIRED_BACKGROUND_CHECKPOINT_ERROR,
 	SUB_AGENT_BACKGROUND_TIMEOUT_MS,
 	type BackgroundJobReceipt,
 } from './agent-background-job.service';
@@ -255,13 +256,13 @@ export class SubAgentBackgroundRunner {
 	async resumePaused(
 		job: AgentBackgroundJob,
 		context: { projectId: string; parentAgentId: string } & BackgroundSubAgentRunContext,
+		reservationTimeoutAt: Date,
 	): Promise<void> {
 		if (job.status !== 'paused' || !job.pauseRequestId || !job.notifiedAt) {
 			throw new UserError('Wait for the combined status report, then ask to continue again');
 		}
 		const suspension = await this.jobService.getCheckpoint(job);
-		if (!suspension)
-			throw new UserError('This background task checkpoint has expired and cannot be resumed');
+		if (!suspension) throw new UserError(EXPIRED_BACKGROUND_CHECKPOINT_ERROR);
 		const { metadata, scope, checkpoint } = suspension;
 		if (scope.projectId !== context.projectId || job.parentAgentId !== context.parentAgentId) {
 			throw new UserError('This background task is not available');
@@ -275,6 +276,7 @@ export class SubAgentBackgroundRunner {
 					job.pauseRequestId,
 					'suspended',
 					suspension.expiresAt,
+					reservationTimeoutAt,
 				))
 			) {
 				throw new UserError('This background task has already resumed');
@@ -320,7 +322,11 @@ export class SubAgentBackgroundRunner {
 						shouldPause: async () => await this.jobService.shouldPause(job.id),
 						beforeResume: async () => {
 							const current = await this.jobRepository.findById(job.id);
-							if (current?.status !== 'paused' || current.pauseRequestId !== pauseRequestId) {
+							if (
+								current?.status !== 'suspended' ||
+								current.pauseRequestId !== pauseRequestId ||
+								current.timeoutAt?.getTime() !== reservationTimeoutAt.getTime()
+							) {
 								throw new UserError('This background task has already resumed');
 							}
 						},
@@ -333,6 +339,7 @@ export class SubAgentBackgroundRunner {
 									pauseRequestId,
 									'running',
 									timeoutAt,
+									reservationTimeoutAt,
 								))
 							) {
 								throw new UserError('This background task has already ended');

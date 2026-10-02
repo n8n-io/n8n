@@ -88,6 +88,7 @@ async function flushDetachedRun() {
 }
 
 describe('resumePaused', () => {
+	const reservationTimeoutAt = new Date(Date.now() + SUB_AGENT_BACKGROUND_TIMEOUT_MS);
 	const job = mock<AgentBackgroundJob>({
 		id: 'job-1',
 		status: 'paused',
@@ -128,7 +129,11 @@ describe('resumePaused', () => {
 				},
 			};
 		setupResult.jobService.getCheckpoint.mockResolvedValue(suspension);
-		setupResult.jobRepository.findById.mockResolvedValue(job);
+		setupResult.jobRepository.findById.mockResolvedValue({
+			...job,
+			status: 'suspended',
+			timeoutAt: reservationTimeoutAt,
+		});
 		setupResult.jobRepository.resumeIfPaused.mockResolvedValue(true);
 		return { ...setupResult, suspension };
 	}
@@ -141,7 +146,7 @@ describe('resumePaused', () => {
 			runContext.abortSignal?.throwIfAborted();
 			return completedRunResult();
 		});
-		await backgroundRunner.resumePaused(job, context);
+		await backgroundRunner.resumePaused(job, context, reservationTimeoutAt);
 		await flushDetachedRun();
 		expect(runner.resumePaused).toHaveBeenCalledWith(
 			expect.objectContaining({ childThreadId: job.childThreadId, childRunId: 'run-1' }),
@@ -152,6 +157,7 @@ describe('resumePaused', () => {
 			'stop-1',
 			'running',
 			expect.any(Date),
+			reservationTimeoutAt,
 		);
 		expect(jobRepository.resumeIfPaused.mock.calls[0][3].getTime()).toBeGreaterThan(
 			Date.now() + SUB_AGENT_BACKGROUND_TIMEOUT_MS - 1000,
@@ -167,7 +173,7 @@ describe('resumePaused', () => {
 			jobService.registerAbortController.mock.lastCall?.[1].abort();
 			return true;
 		});
-		await backgroundRunner.resumePaused(job, context);
+		await backgroundRunner.resumePaused(job, context, reservationTimeoutAt);
 		await flushDetachedRun();
 		expect(runner.resumePaused.mock.lastCall?.[1].abortSignal?.aborted).toBe(true);
 	});
@@ -182,18 +188,21 @@ describe('resumePaused', () => {
 				pending: { toolCallId: 'gate', suspended: true },
 			}),
 		);
-		await backgroundRunner.resumePaused(job, context);
+		await backgroundRunner.resumePaused(job, context, reservationTimeoutAt);
 		expect(jobRepository.resumeIfPaused).toHaveBeenCalledWith(
 			job.id,
 			'stop-1',
 			'suspended',
 			expect.any(Date),
+			reservationTimeoutAt,
 		);
 		expect(jobService.notifyResumed).toHaveBeenCalledWith(job.id);
 		expect(runner.resumeForeground).not.toHaveBeenCalled();
 		expect(runner.resumePaused).not.toHaveBeenCalled();
 		jobRepository.resumeIfPaused.mockResolvedValue(false);
-		await expect(backgroundRunner.resumePaused(job, context)).rejects.toThrow('already resumed');
+		await expect(backgroundRunner.resumePaused(job, context, reservationTimeoutAt)).rejects.toThrow(
+			'already resumed',
+		);
 
 		const resumedJob: AgentBackgroundJob = { ...job, status: 'suspended', pauseRequestId: null };
 		jobRepository.findById.mockResolvedValue(resumedJob);
@@ -239,7 +248,7 @@ describe('resumePaused', () => {
 	it('rejects an expired checkpoint without starting replacement work', async () => {
 		const { backgroundRunner, runner, jobService, context } = prepare();
 		jobService.getCheckpoint.mockResolvedValue(undefined);
-		await expect(backgroundRunner.resumePaused(job, context)).rejects.toThrow(
+		await expect(backgroundRunner.resumePaused(job, context, reservationTimeoutAt)).rejects.toThrow(
 			'checkpoint has expired',
 		);
 		expect(runner.resumePaused).not.toHaveBeenCalled();

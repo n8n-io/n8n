@@ -338,7 +338,7 @@ describe('resume_background_jobs', () => {
 		const { options, jobService, backgroundRunner } = setup();
 		const tool = createResumeBackgroundJobsTool(options);
 		expect(await tool.handler!({}, { persistence })).toMatchObject({ status: 'unavailable' });
-		expect(jobService.getResumeCandidates).not.toHaveBeenCalled();
+		expect(jobService.preparePausedResume).not.toHaveBeenCalled();
 		const userPersistence = {
 			...persistence,
 			hostMetadata: {
@@ -347,16 +347,18 @@ describe('resume_background_jobs', () => {
 				[EXECUTION_METADATA_KEY]: 'execution-1',
 			},
 		};
-		jobService.getResumeCandidates.mockResolvedValue({ status: 'stopping', jobs: [] });
-		expect(await tool.handler!({}, { persistence: userPersistence })).toMatchObject({
-			status: 'stopping',
-		});
+		for (const status of ['stopping', 'limit-reached', 'expired'] as const) {
+			jobService.preparePausedResume.mockResolvedValue({ status, jobs: [] });
+			expect(await tool.handler!({}, { persistence: userPersistence })).toMatchObject({ status });
+		}
 		expect(backgroundRunner.resumePaused).not.toHaveBeenCalled();
+		expect(jobService.releaseResumeReservations).not.toHaveBeenCalled();
 		const jobs = [
 			mock<AgentBackgroundJob>({ id: 'job-1' }),
 			mock<AgentBackgroundJob>({ id: 'job-2' }),
 		];
-		jobService.getResumeCandidates.mockResolvedValue({ status: 'ready', jobs });
+		const timeoutAt = new Date(Date.now() + 60_000);
+		jobService.preparePausedResume.mockResolvedValue({ status: 'ready', jobs, timeoutAt });
 		backgroundRunner.resumePaused
 			.mockResolvedValueOnce(undefined)
 			.mockRejectedValueOnce(new Error('checkpoint has expired'));
@@ -371,13 +373,14 @@ describe('resume_background_jobs', () => {
 				},
 			],
 		});
-		expect(jobService.getResumeCandidates).toHaveBeenLastCalledWith(
+		expect(jobService.preparePausedResume).toHaveBeenLastCalledWith(
 			'agent-1',
 			'thread-1',
 			'resource-1',
 			'execution-1',
 		);
 		expect(backgroundRunner.resumePaused).toHaveBeenCalledTimes(2);
+		expect(jobService.releaseResumeReservations).toHaveBeenCalledWith(jobs, timeoutAt);
 	});
 });
 

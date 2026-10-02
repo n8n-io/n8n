@@ -4,7 +4,8 @@ import { AgentsConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import { OnPubSubEvent } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
-import { createHash, randomUUID } from 'node:crypto';
+import { createHash } from 'node:crypto';
+import { v7 as uuidv7 } from 'uuid';
 import type { ExecutionStatus, IRunData, ITaskData, TerminalExecutionStatus } from 'n8n-workflow';
 import { isTerminalExecutionStatus, WorkflowOperationError } from 'n8n-workflow';
 
@@ -36,6 +37,10 @@ import {
 export const MAX_RUNNING_JOBS_PER_THREAD = 5;
 export const SUB_AGENT_BACKGROUND_TIMEOUT_MS = 30 * Time.minutes.toMilliseconds;
 export const SETTLED_JOB_RETENTION_MS = 30 * Time.days.toMilliseconds;
+export const EXPIRED_BACKGROUND_CHECKPOINT_ERROR =
+	'This background task checkpoint has expired and cannot be resumed';
+export const REPLACED_PAUSE_GROUP_NOTICE =
+	'This stopped group replaced the previous stopped group. The previous tasks can no longer be resumed.';
 
 export type BackgroundJobReceipt =
 	| { status: 'started'; jobId: string }
@@ -219,6 +224,7 @@ export class AgentBackgroundJobService {
 			if (job && job.status !== 'running' && job.status !== 'suspended' && job.status !== 'paused')
 				await this.clearChildCheckpoint(job);
 			if (!settled || !job) return settled;
+			if (job.pauseRequestId) await this.retainPausedGroup(job);
 			this.notifyJobUpdate(job);
 			await this.requestWakeSafely(job.parentThreadId);
 			return true;
@@ -278,11 +284,12 @@ export class AgentBackgroundJobService {
 		parentThreadId: string,
 		parentResourceId: string,
 	): Promise<void> {
+		await this.pruneExpiredPausedJobs(parentThreadId);
 		await this.jobRepository.requestPause(
 			parentAgentId,
 			parentThreadId,
 			parentResourceId,
-			randomUUID(),
+			uuidv7(),
 		);
 		this.updateBroadcaster.notifyBackgroundJobsUpdated(parentAgentId, parentThreadId);
 		const jobs = await this.jobRepository.findByParentThread(parentThreadId);
@@ -303,7 +310,7 @@ export class AgentBackgroundJobService {
 		return Boolean(job?.pauseRequestId);
 	}
 
-	async getResumeCandidates(
+	async preparePausedResume(
 		parentAgentId: string,
 		parentThreadId: string,
 		parentResourceId: string,
@@ -325,6 +332,22 @@ export class AgentBackgroundJobService {
 			)
 			.at(-1);
 		if (!userInput) return { status: 'unavailable' as const, jobs: [] };
+		await this.pruneExpiredPausedJobs(parentThreadId);
+		const requested = await this.jobRepository.findRequestedPauses(parentThreadId);
+		let restored = false;
+		for (const job of requested) {
+			if (
+				job.parentAgentId === parentAgentId &&
+				job.parentResourceId === parentResourceId &&
+				job.status === 'suspended' &&
+				job.pauseRequestId &&
+				job.notifiedAt &&
+				job.timeoutAt &&
+				job.updatedAt < (execution.startedAt ?? execution.createdAt)
+			)
+				restored = (await this.releaseResumeReservations([job], job.timeoutAt)) || restored;
+		}
+		if (restored) await this.pruneExpiredPausedJobs(parentThreadId);
 		const jobs = (await this.jobRepository.findByParentThread(parentThreadId)).filter(
 			(job) =>
 				job.parentAgentId === parentAgentId &&
@@ -332,17 +355,75 @@ export class AgentBackgroundJobService {
 				job.pauseRequestId,
 		);
 		if (
-			jobs.some(
-				(job) =>
-					job.status === 'running' ||
-					job.status === 'suspended' ||
-					!job.notifiedAt ||
-					userInput.createdAt <= job.notifiedAt,
-			)
+			jobs.some((job) => job.status === 'running' || job.status === 'suspended' || !job.notifiedAt)
 		) {
 			return { status: 'stopping' as const, jobs: [] };
 		}
-		return { status: 'ready' as const, jobs: jobs.filter((job) => job.status === 'paused') };
+		const latestId = jobs
+			.flatMap((job) => (job.status === 'paused' && job.pauseRequestId ? [job.pauseRequestId] : []))
+			.sort((a, b) => Number(b[14] === '7') - Number(a[14] === '7') || b.localeCompare(a))[0];
+		const group = jobs.filter((job) => job.pauseRequestId === latestId);
+		if (group.some((job) => job.notifiedAt && userInput.createdAt <= job.notifiedAt))
+			return { status: 'stopping' as const, jobs: [] };
+		const paused = group.filter((job) => job.status === 'paused');
+		const timeoutAt = new Date(Date.now() + SUB_AGENT_BACKGROUND_TIMEOUT_MS);
+		if (!latestId) {
+			if (jobs.some((job) => job.error === EXPIRED_BACKGROUND_CHECKPOINT_ERROR))
+				return { status: 'expired' as const, jobs: [] };
+			return { status: 'ready' as const, jobs: [], timeoutAt };
+		}
+		const admission = await this.jobRepository.reservePausedGroup(
+			parentThreadId,
+			latestId,
+			paused.map((job) => job.id),
+			timeoutAt,
+			MAX_RUNNING_JOBS_PER_THREAD,
+		);
+		if (admission === 'limit-reached') return { status: 'limit-reached' as const, jobs: [] };
+		if (admission !== 'reserved') return { status: 'stopping' as const, jobs: [] };
+		return { status: 'ready' as const, jobs: paused, timeoutAt };
+	}
+
+	async releaseResumeReservations(jobs: AgentBackgroundJob[], timeoutAt: Date): Promise<boolean> {
+		let released = false;
+		for (const job of jobs) {
+			if (!job.pauseRequestId) continue;
+			try {
+				if (await this.jobRepository.releasePausedResume(job.id, job.pauseRequestId, timeoutAt)) {
+					this.notifyJobUpdate(job);
+					released = true;
+				}
+			} catch (error) {
+				this.logger.warn('Failed to release background resume capacity', { jobId: job.id, error });
+			}
+		}
+		return released;
+	}
+
+	async pruneExpiredPausedJobs(parentThreadId?: string): Promise<void> {
+		const cutoff = new Date(
+			Date.now() - this.agentsConfig.checkpointTtlSeconds * Time.seconds.toMilliseconds,
+		);
+		for (const job of await this.jobRepository.findPausedWithoutCheckpoint(
+			cutoff,
+			parentThreadId,
+		)) {
+			await this.settle(
+				job.id,
+				{ status: 'failed', error: EXPIRED_BACKGROUND_CHECKPOINT_ERROR },
+				{ status: 'paused', pauseRequestId: job.pauseRequestId },
+			);
+		}
+	}
+
+	private async retainPausedGroup(job: AgentBackgroundJob): Promise<void> {
+		const replaced = await this.jobRepository.retainLatestPausedGroup(
+			job.parentAgentId,
+			job.parentThreadId,
+			job.parentResourceId,
+			REPLACED_PAUSE_GROUP_NOTICE,
+		);
+		for (const previous of replaced) await this.clearChildCheckpoint(previous);
 	}
 
 	async notifyResumed(jobId: string): Promise<void> {
@@ -354,7 +435,11 @@ export class AgentBackgroundJobService {
 
 	async pause(jobId: string): Promise<boolean> {
 		const job = await this.jobRepository.findById(jobId);
-		if (!job?.pauseRequestId || (job.status !== 'running' && job.status !== 'suspended'))
+		if (
+			!job?.pauseRequestId ||
+			job.notifiedAt ||
+			(job.status !== 'running' && job.status !== 'suspended')
+		)
 			return false;
 		let suspension = await this.getCheckpoint(job);
 		if (!suspension || !job.subAgentId) return false;
@@ -371,6 +456,7 @@ export class AgentBackgroundJobService {
 			suspension.serializedState,
 		);
 		if (paused) {
+			await this.retainPausedGroup(job);
 			this.notifyJobUpdate(job);
 			await this.requestWakeSafely(job.parentThreadId);
 		}
@@ -467,6 +553,7 @@ export class AgentBackgroundJobService {
 	 * Jobs of the given thread, with running rows reconciled first.
 	 */
 	async listForThread(parentThreadId: string, ids?: string[]): Promise<BackgroundJobView[]> {
+		await this.pruneExpiredPausedJobs(parentThreadId);
 		let jobs = await this.jobRepository.findByParentThread(parentThreadId, ids);
 
 		const settledSubAgents = await this.failOrphanedSubAgentJobs(jobs);
@@ -508,7 +595,10 @@ export class AgentBackgroundJobService {
 		const stoppingRequests = new Set(
 			candidates
 				.filter(
-					(job) => job.pauseRequestId && (job.status === 'running' || job.status === 'suspended'),
+					(job) =>
+						job.pauseRequestId &&
+						!job.notifiedAt &&
+						(job.status === 'running' || job.status === 'suspended'),
 				)
 				.map((job) => job.pauseRequestId),
 		);
@@ -675,9 +765,19 @@ export class AgentBackgroundJobService {
 			await this.clearChildCheckpoint(job);
 		}
 		for (const job of await this.jobRepository.findRequestedPauses()) {
-			if (job.status !== 'paused') await this.pause(job.id);
+			if (job.status === 'suspended' && job.notifiedAt && job.timeoutAt) {
+				if (
+					(await this.executionRepository.findRunningByThread(job.parentThreadId, {})).length === 0
+				)
+					await this.releaseResumeReservations([job], job.timeoutAt);
+			} else if (job.status === 'paused') {
+				await this.retainPausedGroup(job);
+			} else {
+				await this.pause(job.id);
+			}
 		}
 		await this.failJobsPastTimeout();
+		await this.pruneExpiredPausedJobs();
 		await this.failOrphanedSubAgentJobs(await this.jobRepository.findRunningJobs('subagent'));
 		await this.reconcileWorkflowJobs();
 	}
@@ -795,6 +895,10 @@ export class AgentBackgroundJobService {
 		const timedOut = await this.jobRepository.findActivePastTimeout(new Date());
 		for (const job of timedOut) {
 			if (job.status !== 'running' && job.status !== 'suspended') continue;
+			if (job.status === 'suspended' && job.pauseRequestId && job.notifiedAt && job.timeoutAt) {
+				await this.releaseResumeReservations([job], job.timeoutAt);
+				continue;
+			}
 			if (job.status === 'running' && (await this.suspend(job.id))) continue;
 			// Settle first so the timeout is recorded as the reason — an abort-first
 			// order would race the aborted run's own settle write. Grab the handle

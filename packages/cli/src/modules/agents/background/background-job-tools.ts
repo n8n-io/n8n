@@ -8,6 +8,7 @@ import { decodeAgentSandboxHostMetadata } from '../agent-sandbox-principal';
 import { readIntegrationMessageContext } from '../integrations/integration-message-context';
 import { isTaskRunMemoryResourceId } from '../utils/agent-memory-scope';
 import type { AgentBackgroundJobService } from './agent-background-job.service';
+import { EXPIRED_BACKGROUND_CHECKPOINT_ERROR } from './agent-background-job.service';
 import {
 	BACKGROUND_PAUSE_USER_TURN_KEY,
 	PARENT_TASK_CANCELLED_REASON,
@@ -273,36 +274,52 @@ export function createResumeBackgroundJobsTool(
 					note: 'Resuming needs an explicit user request in Preview.',
 				};
 			}
-			const candidates = await options.jobService.getResumeCandidates(
+			const candidates = await options.jobService.preparePausedResume(
 				options.parentAgentId,
 				persistence.threadId,
 				persistence.resourceId,
 				executionId,
 			);
+			if (candidates.status === 'limit-reached') {
+				return {
+					status: candidates.status,
+					note: 'There are not enough active task slots for the stopped group. Wait for active tasks to finish, then ask to continue again.',
+				};
+			}
+			if (candidates.status === 'expired')
+				return { status: candidates.status, note: EXPIRED_BACKGROUND_CHECKPOINT_ERROR };
 			if (candidates.status !== 'ready') {
 				return {
 					status: candidates.status,
 					note: 'Wait for the combined status report, then ask to continue again.',
 				};
 			}
-			const results = await Promise.allSettled(
-				candidates.jobs.map(
-					async (job) =>
-						await options.backgroundRunner.resumePaused(job, {
-							...options.runContext,
-							projectId: options.projectId,
-							parentAgentId: options.parentAgentId,
-						}),
-				),
-			);
-			return {
-				status: 'resumed',
-				jobs: results.map((result, index) => ({
-					jobId: candidates.jobs[index].id,
-					status: result.status === 'fulfilled' ? 'resumed' : 'failed',
-					...(result.status === 'rejected' ? { error: String(result.reason) } : {}),
-				})),
-			};
+			try {
+				const results = await Promise.allSettled(
+					candidates.jobs.map(
+						async (job) =>
+							await options.backgroundRunner.resumePaused(
+								job,
+								{
+									...options.runContext,
+									projectId: options.projectId,
+									parentAgentId: options.parentAgentId,
+								},
+								candidates.timeoutAt,
+							),
+					),
+				);
+				return {
+					status: 'resumed',
+					jobs: results.map((result, index) => ({
+						jobId: candidates.jobs[index].id,
+						status: result.status === 'fulfilled' ? 'resumed' : 'failed',
+						...(result.status === 'rejected' ? { error: String(result.reason) } : {}),
+					})),
+				};
+			} finally {
+				await options.jobService.releaseResumeReservations(candidates.jobs, candidates.timeoutAt);
+			}
 		})
 		.build();
 }
