@@ -1,5 +1,6 @@
 import { mockLogger, testDb } from '@n8n/backend-test-utils';
-import { GlobalConfig, SchedulerConfig } from '@n8n/config';
+import { GlobalConfig } from '@n8n/config';
+import type { SchedulerConfig } from '@n8n/config';
 import { DbLockService, StatisticsNames, WorkflowStatisticsRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { sleep } from '@n8n/utils/sleep';
@@ -44,8 +45,8 @@ describe.skipIf(!isPostgres)('WorkflowStatisticsRollupTask', () => {
 				Container.get(DbLockService),
 				repository,
 				statisticsService,
-				Container.get(SchedulerConfig),
 			),
+			mock<SchedulerConfig>({ leaseDurationSeconds: 60 }),
 		);
 	});
 
@@ -107,11 +108,16 @@ describe.skipIf(!isPostgres)('WorkflowStatisticsRollupTask', () => {
 		await seedIncrements();
 		const { lockSkips } = holdFirstFoldUntilLockSkip();
 
-		await Promise.all(Array.from({ length: OVERLAPPING_RUNS }, async () => await task.run(signal)));
+		await Promise.all(
+			Array.from(
+				{ length: OVERLAPPING_RUNS },
+				async () => await task.run(signal, { durable: true }),
+			),
+		);
 		expect(lockSkips()).toBeGreaterThan(0);
 		// A run that lost the lock stops early, so finish any backlog it left.
 		while ((await pendingIncrements()) > 0) {
-			await task.run(signal);
+			await task.run(signal, { durable: true });
 		}
 
 		const counters = await repository.findBy({ name: StatisticsNames.productionSuccess });

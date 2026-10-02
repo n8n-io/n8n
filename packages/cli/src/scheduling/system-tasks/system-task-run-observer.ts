@@ -19,8 +19,12 @@ const SYSTEM_TASK_ATTRIBUTES = {
  * tick, so an abort that follows the call cannot preempt the run, and rejects
  * rather than throws if `run` throws synchronously.
  */
-async function startRun(task: Pick<SystemTask, 'run'>, signal: AbortSignal): Promise<void> {
-	await task.run(signal);
+async function startRun(
+	task: Pick<SystemTask, 'run'>,
+	signal: AbortSignal,
+	mode: SystemTaskMode,
+): Promise<void> {
+	await task.run(signal, { durable: mode === 'durable' });
 }
 
 /** How one observed run ended. A rejected run carries its error. */
@@ -59,7 +63,7 @@ export async function observeSystemTaskRun(
 	return await startSpan(spanOptions, async (span: Span) => {
 		const startedAt = performance.now();
 		emitSystemTaskMetric(eventService, 'system-task-run-started', { name, mode });
-		const outcome = await startRun(task, signal).then(
+		const outcome = await startRun(task, signal, mode).then(
 			(): SystemTaskRunOutcome => ({
 				result: signal.aborted ? 'aborted' : 'success',
 				rejected: false,

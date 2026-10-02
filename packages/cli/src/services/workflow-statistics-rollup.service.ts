@@ -1,6 +1,4 @@
 import { Logger } from '@n8n/backend-common';
-import { SchedulerConfig } from '@n8n/config';
-import { Time } from '@n8n/constants';
 import { DbLock, DbLockService, WorkflowStatisticsRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { sleep } from '@n8n/utils/sleep';
@@ -16,8 +14,6 @@ const BATCH_SIZE = 5000;
 /** Pause between full batches, i.e. while backlog remains. */
 const BATCH_DELAY_MS = 250;
 
-export const ROLLUP_INTERVAL_SECONDS = 5;
-
 /** Consecutive lock skips after which to warn that the lock is persistently held elsewhere. */
 const SKIP_WARN_THRESHOLD = 5;
 
@@ -31,32 +27,23 @@ export class WorkflowStatisticsRollupService {
 
 	private totalLockSkips = 0;
 
-	/**
-	 * Leaves a margin below the task interval and the durable lease, for a batch
-	 * slower than the one before. The lease is not renewed while a run is in progress.
-	 */
-	private readonly runBudgetMs: number;
-
 	constructor(
 		private readonly logger: Logger,
 		private readonly errorReporter: ErrorReporter,
 		private readonly dbLockService: DbLockService,
 		private readonly repository: WorkflowStatisticsRepository,
 		private readonly statisticsService: WorkflowStatisticsService,
-		schedulerConfig: SchedulerConfig,
 	) {
 		this.logger = this.logger.scoped('workflow-statistics');
-		this.runBudgetMs =
-			(Math.min(ROLLUP_INTERVAL_SECONDS, schedulerConfig.leaseDurationSeconds) - 1) *
-			Time.seconds.toMilliseconds;
 	}
 
 	/**
 	 * Fold batches until one comes back partial, the signal aborts, or the run
-	 * budget has no room left for another batch.
+	 * budget has no room left for another batch. The optional budget is in
+	 * milliseconds. It limits additional batches, but does not interrupt a batch.
 	 */
-	async rollup(signal: AbortSignal): Promise<void> {
-		const deadline = Date.now() + this.runBudgetMs;
+	async rollup(signal: AbortSignal, runBudgetMs = Number.POSITIVE_INFINITY): Promise<void> {
+		const deadline = Date.now() + runBudgetMs;
 		let batchStartedAt = Date.now();
 		while (
 			!signal.aborted &&

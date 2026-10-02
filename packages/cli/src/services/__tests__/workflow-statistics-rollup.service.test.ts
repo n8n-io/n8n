@@ -1,5 +1,4 @@
 import type { Logger } from '@n8n/backend-common';
-import type { SchedulerConfig } from '@n8n/config';
 import type { DbLockService, WorkflowStatisticsRepository } from '@n8n/db';
 import { StatisticsNames } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
@@ -12,7 +11,7 @@ import { WorkflowStatisticsRollupService } from '../workflow-statistics-rollup.s
 type RollupResult = Awaited<ReturnType<WorkflowStatisticsRepository['rollupIncrements']>>;
 
 describe('WorkflowStatisticsRollupService', () => {
-	const makeService = ({ leaseDurationSeconds = 60 } = {}) => {
+	const makeService = () => {
 		const errorReporter = mock<ErrorReporter>();
 		const dbLockService = mock<DbLockService>();
 		const repository = mock<WorkflowStatisticsRepository>();
@@ -24,7 +23,6 @@ describe('WorkflowStatisticsRollupService', () => {
 			dbLockService,
 			repository,
 			statisticsService,
-			mock<SchedulerConfig>({ leaseDurationSeconds }),
 		);
 		return { service, logger, errorReporter, dbLockService, repository, statisticsService };
 	};
@@ -32,7 +30,8 @@ describe('WorkflowStatisticsRollupService', () => {
 	const rollup = async (
 		service: WorkflowStatisticsRollupService,
 		signal = new AbortController().signal,
-	) => await service.rollup(signal);
+		runBudgetMs?: number,
+	) => await service.rollup(signal, runBudgetMs);
 
 	const batchOf = (increments: number): RollupResult => ({ increments, firstOccurrences: [] });
 
@@ -109,6 +108,20 @@ describe('WorkflowStatisticsRollupService', () => {
 			expect(dbLockService.tryWithLock).toHaveBeenCalledTimes(2);
 		});
 
+		it('drains beyond the task interval when no run budget is supplied', async () => {
+			const { service, dbLockService } = makeService();
+			for (let i = 0; i < 24; i++) {
+				dbLockService.tryWithLock.mockResolvedValueOnce(batchOf(5000));
+			}
+			dbLockService.tryWithLock.mockResolvedValueOnce(batchOf(12));
+
+			const run = rollup(service);
+			await vi.runAllTimersAsync();
+			await run;
+
+			expect(dbLockService.tryWithLock).toHaveBeenCalledTimes(25);
+		});
+
 		it('stops at once when aborted during the pause between batches', async () => {
 			const { service, dbLockService } = makeService();
 			dbLockService.tryWithLock.mockResolvedValue(batchOf(5000));
@@ -122,12 +135,32 @@ describe('WorkflowStatisticsRollupService', () => {
 			expect(dbLockService.tryWithLock).toHaveBeenCalledTimes(1);
 		});
 
+		it('stops an unbudgeted drain when aborted past the task interval', async () => {
+			const { service, dbLockService } = makeService();
+			dbLockService.tryWithLock.mockResolvedValue(batchOf(5000));
+			const controller = new AbortController();
+
+			let settled = false;
+			void rollup(service, controller.signal).then(() => (settled = true));
+			await vi.advanceTimersByTimeAsync(10_000);
+			expect(settled).toBe(false);
+			const batchesBeforeAbort = dbLockService.tryWithLock.mock.calls.length;
+
+			controller.abort();
+			await vi.advanceTimersByTimeAsync(0);
+
+			expect(settled).toBe(true);
+			expect(batchesBeforeAbort).toBeGreaterThan(20);
+			expect(dbLockService.tryWithLock).toHaveBeenCalledTimes(batchesBeforeAbort);
+			expect(vi.getTimerCount()).toBe(0);
+		});
+
 		it('stops once the run budget is spent, leaving the backlog to the next run', async () => {
 			const { service, dbLockService } = makeService();
 			dbLockService.tryWithLock.mockResolvedValue(batchOf(5000));
 
 			let settled = false;
-			const run = rollup(service).then(() => (settled = true));
+			const run = rollup(service, undefined, 4000).then(() => (settled = true));
 			await vi.advanceTimersByTimeAsync(4000);
 
 			expect(settled).toBe(true);
@@ -140,7 +173,7 @@ describe('WorkflowStatisticsRollupService', () => {
 			dbLockService.tryWithLock.mockResolvedValue(batchOf(5000));
 
 			let settled = false;
-			void rollup(service).then(() => (settled = true));
+			void rollup(service, undefined, 4000).then(() => (settled = true));
 			await vi.advanceTimersByTimeAsync(3750);
 
 			expect(settled).toBe(true);
@@ -154,23 +187,33 @@ describe('WorkflowStatisticsRollupService', () => {
 			});
 
 			let settled = false;
-			void rollup(service).then(() => (settled = true));
+			void rollup(service, undefined, 4000).then(() => (settled = true));
 			await vi.advanceTimersByTimeAsync(3250);
 
 			expect(settled).toBe(true);
 			expect(dbLockService.tryWithLock).toHaveBeenCalledTimes(2);
 		});
 
-		it('shrinks the run budget below a lease shorter than the interval', async () => {
-			const { service, dbLockService } = makeService({ leaseDurationSeconds: 2 });
+		it('uses the run budget supplied by the caller', async () => {
+			const { service, dbLockService } = makeService();
 			dbLockService.tryWithLock.mockResolvedValue(batchOf(5000));
 
 			let settled = false;
-			void rollup(service).then(() => (settled = true));
+			void rollup(service, undefined, 1000).then(() => (settled = true));
 			await vi.advanceTimersByTimeAsync(750);
 
 			expect(settled).toBe(true);
 			expect(dbLockService.tryWithLock).toHaveBeenCalledTimes(4);
+		});
+
+		it('folds one batch when the run budget is zero', async () => {
+			const { service, dbLockService } = makeService();
+			dbLockService.tryWithLock.mockResolvedValue(batchOf(5000));
+
+			await rollup(service, undefined, 0);
+
+			expect(dbLockService.tryWithLock).toHaveBeenCalledTimes(1);
+			expect(vi.getTimerCount()).toBe(0);
 		});
 
 		it('does not fold when the signal is already aborted', async () => {

@@ -72,7 +72,11 @@ export interface SystemTask {
 	 * timer, leadership was lost. Honoring it is optional, but a run that
 	 * ignores it delays stepdown and shutdown until it settles.
 	 */
-	run(signal: AbortSignal): Promise<void>;
+	run(signal: AbortSignal, context: SystemTaskRunContext): Promise<void>;
+}
+
+export interface SystemTaskRunContext {
+	readonly durable: boolean;
 }
 
 /** How a task's occurrences are retried and how late they may still run. */

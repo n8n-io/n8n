@@ -9,6 +9,7 @@ export {
 export type {
 	SystemTaskClass,
 	SystemTaskEffects,
+	SystemTaskRunContext,
 	SystemTaskRunOptions,
 	SystemTaskSchedule,
 } from './system-task';
