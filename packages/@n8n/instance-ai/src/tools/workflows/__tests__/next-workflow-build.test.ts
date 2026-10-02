@@ -293,6 +293,27 @@ import { googleGemini } from '@n8n/nodes/googleGemini';`;
 			]);
 		});
 
+		it('checks the fixed values of a tool node and leaves its model fields to the tool', () => {
+			const workflow: WorkflowJSON = {
+				name: 'Tools',
+				connections: {},
+				nodes: [
+					node('Pages', '@n8n/nodes-base-next.notionDatabasePageGetAllTool', {
+						database: 'not-an-id',
+						limit: "={{ $fromAi('limit') }}",
+					}),
+					node('Model pages', '@n8n/nodes-base-next.notionDatabasePageGetAllTool', {
+						database: "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('database') }}",
+					}),
+				],
+			};
+			expect(staticInputIssues(workflow)).toEqual([
+				expect.stringMatching(
+					/^Node "Pages": input\.database: "not-an-id" is not Notion database ID/,
+				),
+			]);
+		});
+
 		it('leaves expressions, placeholders, missing fields, and other nodes to the run', () => {
 			const workflow: WorkflowJSON = {
 				name: 'Later',
@@ -431,6 +452,29 @@ import { googleGemini } from '@n8n/nodes/googleGemini';`;
 			expect(locked.meta).toEqual({
 				nodeContracts: {
 					Get: { action: 'notion.databasePage.getAll', version: semver, bundleHash, contractHash },
+				},
+			});
+		});
+
+		it('locks a contract tool node to the version of its action', () => {
+			const tool = {
+				id: '3',
+				name: 'Fetch',
+				type: '@n8n/nodes-base-next.httpRequestGetTool',
+				typeVersion: 3,
+				position: [0, 0] as [number, number],
+			};
+			const locked = lockNodeContracts({ name: 'wf', nodes: [nodes[0], tool], connections: {} });
+			const [head] = versionsOf('httpRequest.get');
+
+			expect(locked.meta).toEqual({
+				nodeContracts: {
+					Fetch: {
+						action: 'httpRequest.get',
+						version: head.manifest.semver,
+						bundleHash: head.manifest.bundleHash,
+						contractHash: head.manifest.contractHash,
+					},
 				},
 			});
 		});

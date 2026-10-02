@@ -521,8 +521,11 @@ describe('generateNodeModule', () => {
 			'contractStep("n8n-nodes-base.todo", config, 4, {"resource":"task","operation":"getAll"})',
 		);
 		// The types the agent reads stay the same; only the call differs.
-		const call = /contractStep\(.*\)/;
-		expect(text.replace(call, '')).toBe(moduleOf(listTasks).replace(call, ''));
+		const typesOf = (module: string) =>
+			module.split('\n').filter((line) => line.startsWith('export type'));
+		expect(typesOf(text)).toEqual(typesOf(moduleOf(listTasks)));
+		// The host makes tool node types of its own actions only.
+		expect(text).not.toContain('getAllTool');
 	});
 
 	it('emits the operation-only slot of a derived action', () => {
@@ -619,7 +622,7 @@ describe('generateNodeModule', () => {
 		expect(text).toContain('{ values: Value<I, C, { [key: string]: Value<I, C, OpenValue> }> }');
 		expect(text).toContain('export type TodoRowAppendOutput = Record<string, unknown>;');
 		expect(text).toContain(
-			'import { contractStep, type OpenValue, type NodeSettings, type OutputOf,',
+			'import { contractStep, contractTool, type OpenValue, type NodeSettings, type OutputOf,',
 		);
 		expect(moduleOf(listTasks)).not.toContain('OpenValue');
 	});

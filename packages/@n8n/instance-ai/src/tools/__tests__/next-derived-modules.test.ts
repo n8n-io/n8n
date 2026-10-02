@@ -16,6 +16,7 @@ import {
 	hasDerivedModule,
 	isInstalledNodeType,
 	missingNodeTypeIssue,
+	nextNodeModule,
 	nodeTypeOfModulePath,
 } from '../next-modules';
 import { missingNodeTypeErrors, nextWorkspaceFiles } from '../workflows/next-workflow-build';
@@ -377,6 +378,53 @@ describe('derived node modules', () => {
 			]);
 			expect(typeErrors(flow('{ model, tools: [model] }'), modules)).toEqual([
 				expect.stringMatching(/workflow\.ts:8 error TS2322: .*"ai_languageModel".*"ai_tool"/),
+			]);
+		});
+
+		// Each case runs a real tsc.
+		it('checks a contract action tool in a derived and a contract agent with tsc', () => {
+			const modules = {
+				...Object.fromEntries([AGENT, CHAT, ACME].map((t) => [t, moduleOf(t)])),
+				...Object.fromEntries(
+					['httpRequest', 'ai', 'openAi'].map((id) => [id, nextNodeModule(id)?.module ?? '']),
+				),
+			};
+			const flow = (tool: string, contractTools = '[fetch]') =>
+				[
+					"import { workflow, fromModel } from '@n8n/workflow-sdk/next';",
+					"import { acmeTrigger } from '@n8n/nodes/n8n-nodes-acme/acmeTrigger';",
+					"import { agentRoot } from '@n8n/nodes/@n8n/n8n-nodes-langchain/agentRoot';",
+					"import { lmChatAcme } from '@n8n/nodes/@n8n/n8n-nodes-langchain/lmChatAcme';",
+					"import { httpRequest } from '@n8n/nodes/httpRequest';",
+					"import { ai } from '@n8n/nodes/ai';",
+					"import { openAi } from '@n8n/nodes/openAi';",
+					'const model = lmChatAcme.execute({ name: "Model" });',
+					`const fetch = ${tool};`,
+					`export default workflow('Ask', acmeTrigger.trigger({ name: 'Event', text: 'a' }).andThen(agentRoot.execute({ name: 'Agent', text: 'Hi', providers: { model, tools: [fetch] } })).andThen(ai.agent({ name: 'Contract Agent', prompt: 'Hi', model: openAi.chatModel({ name: 'GPT', model: 'gpt-5-mini' }), tools: ${contractTools} })));`,
+					'',
+				].join('\n');
+			const getTool = (fields: string) => `httpRequest.getTool({ name: 'Fetch', ${fields} })`;
+
+			expect(
+				typeErrors(flow(getTool("url: fromModel('The page URL'), query: { lang: 'en' }")), modules),
+			).toEqual([]);
+			expect(
+				typeErrors(flow(getTool("url: 'https://acme.dev', query: fromModel()")), modules),
+			).toEqual([]);
+			expect(typeErrors(flow(getTool('url: 42')), modules)).toEqual([
+				expect.stringContaining('workflow.ts:9 error TS2322'),
+			]);
+			expect(typeErrors(flow(getTool("query: { lang: 'en' }")), modules)).toEqual([
+				expect.stringContaining('workflow.ts:9 error TS2345'),
+			]);
+			expect(
+				typeErrors(flow("httpRequest.get({ name: 'Get', url: 'https://acme.dev' })"), modules),
+			).toEqual([
+				expect.stringContaining('workflow.ts:10 error TS2322'),
+				expect.stringContaining('workflow.ts:10 error TS2322'),
+			]);
+			expect(typeErrors(flow(getTool('url: fromModel()'), '[model]'), modules)).toEqual([
+				expect.stringMatching(/workflow\.ts:10 error TS2322: .*"ai_languageModel".*"tool"/),
 			]);
 		});
 	});

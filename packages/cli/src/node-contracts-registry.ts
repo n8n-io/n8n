@@ -9,9 +9,13 @@ import {
 	NODE_PACKAGE,
 	nodeTypeOf,
 	runsNodeContract,
+	toolActions,
+	toolTypeOf,
 	toVersionedNodeType,
+	toVersionedToolType,
 	toVersionedTriggerType,
 	triggers,
+	versionsOf,
 	withMigratedVersions,
 	type ContractStore,
 	type FrozenVersion,
@@ -28,6 +32,8 @@ import {
 	type NodeLoader,
 } from 'n8n-workflow';
 import path from 'path';
+
+import { convertNodeToAiTool } from '@/tool-generation';
 
 // Recent executions only; a contract node reads the meta of its own execution.
 const MAX_CACHED_EXECUTIONS = 100;
@@ -147,10 +153,7 @@ function withStoredMajors(
 		...triggers.map((contract) => ({ contract, typeOf: toVersionedTriggerType })),
 	];
 	return contracts.flatMap(({ contract, typeOf }) => {
-		const others = (stored.get(contract.id) ?? []).filter(
-			({ manifest }) =>
-				manifest.contract.version !== contract.version && runsNodeContract(manifest.nodeContract),
-		);
+		const others = otherMajorsOf(contract, stored);
 		const nodeType = nodeTypeOf(contract);
 		const head = others.length > 0 ? versionedNodeOf(loaders, nodeType) : undefined;
 		if (!head) return [];
@@ -171,6 +174,39 @@ function withStoredMajors(
 	});
 }
 
+/** The stored majors of an action that the bundled HEAD does not have. */
+const otherMajorsOf = (
+	contract: { readonly id: string; readonly version: number },
+	stored: ReadonlyMap<string, readonly FrozenVersion[]>,
+) =>
+	(stored.get(contract.id) ?? []).filter(
+		({ manifest }) =>
+			manifest.contract.version !== contract.version && runsNodeContract(manifest.nodeContract),
+	);
+
+/**
+ * The agent tool node types of the actions, e.g. `@n8n/nodes-base-next.httpRequestGetTool`. The
+ * host generates them as the tool variants of legacy nodes, with the same description changes.
+ * A tool supplies the action itself, so the tool schema is the action input schema.
+ */
+function toolNodesOf(
+	loaders: Readonly<Record<string, NodeLoader>>,
+	stored: ReadonlyMap<string, readonly FrozenVersion[]>,
+) {
+	return toolActions.flatMap((action) => {
+		const base = versionedNodeOf(loaders, nodeTypeOf(action));
+		if (!base) return [];
+		const nodeType = toolTypeOf(action);
+		const describe = (description: INodeTypeDescription): INodeTypeDescription => ({
+			...convertNodeToAiTool({ description: deepCopy(description) }).description,
+			name: nodeType,
+		});
+		const versions = [...versionsOf(action.id), ...otherMajorsOf(action, stored)];
+		const type = new (toVersionedToolType(versions, describe))();
+		return [[nodeType, { sourcePath: base.sourcePath, type }] as const];
+	});
+}
+
 /**
  * Adds the composed versions of legacy nodes, for example Notion v4, and the stored majors of
  * action nodes to the node classes and to the types that the editor reads. The node type of
@@ -185,6 +221,7 @@ export function composeContractNodes(
 	const majors = withStoredMajors(loaders, stored);
 	const nodes = new Map<string, LoadedClass<IVersionedNodeType>>([
 		...majors.map(({ nodeType, loaded }) => [nodeType, loaded] as const),
+		...toolNodesOf(loaders, stored),
 		...Object.keys(MIGRATED_NODES).flatMap((nodeType) => {
 			const legacy = versionedNodeOf(loaders, nodeType);
 			if (!legacy) return [];

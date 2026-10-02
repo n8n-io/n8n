@@ -16,7 +16,7 @@ import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
 import { toTs } from '@n8n/node-sdk';
-import { migratedTargetOf, nodeTypeOf } from '@n8n/nodes-base-next';
+import { migratedTargetOf, nodeTypeOf, toolActions, toolTypeOf } from '@n8n/nodes-base-next';
 import type { composedFactoryKey, ContractFactory } from '@n8n/workflow-sdk/next';
 
 import { approvalSummarySchema, formatApprovalMessage } from './approval-copy';
@@ -865,7 +865,21 @@ const contractFactories = (composedKey: typeof composedFactoryKey) =>
 						] as const,
 					]
 				: [];
-			return [[nodeTypeOf(action), factory] as const, ...composed];
+			// The host makes a tool node type of a tool action; a `$fromAI()` field is `fromModel()`.
+			const tool = toolActions.includes(action)
+				? [
+						[
+							toolTypeOf(action),
+							{
+								...factory,
+								path: `${factory.path}Tool`,
+								inputKeys: ['toolDescription', ...factory.inputKeys],
+								tool: true,
+							},
+						] as const,
+					]
+				: [];
+			return [[nodeTypeOf(action), factory] as const, ...composed, ...tool];
 		}),
 	]);
 

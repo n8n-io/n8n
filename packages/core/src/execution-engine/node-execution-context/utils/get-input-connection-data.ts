@@ -61,6 +61,49 @@ function isTool(value: unknown): value is StructuredTool | Tool {
 	);
 }
 
+/** The tool that a node contract tool node supplies: a JSON Schema input and a `call`. */
+interface ContractTool {
+	readonly name: string;
+	readonly description: string;
+	readonly input: Record<string, unknown>;
+	call(args: Record<string, unknown>): Promise<unknown>;
+}
+
+const isContractTool = (value: unknown): value is ContractTool =>
+	typeof value === 'object' &&
+	value !== null &&
+	!isTool(value) &&
+	'call' in value &&
+	typeof value.call === 'function' &&
+	'name' in value &&
+	typeof value.name === 'string' &&
+	'description' in value &&
+	typeof value.description === 'string' &&
+	'input' in value &&
+	typeof value.input === 'object' &&
+	value.input !== null;
+
+/**
+ * A node contract tool is provider-neutral. Root nodes read LangChain tools, so the host wraps
+ * it, and its JSON Schema stays the tool schema. A node contract root node reads it back.
+ */
+function withLangChainTool(supplyData: SupplyData): SupplyData {
+	const tool = supplyData.response;
+	if (!isContractTool(tool)) return supplyData;
+	return {
+		...supplyData,
+		response: new DynamicStructuredTool({
+			name: tool.name,
+			description: tool.description,
+			schema: tool.input,
+			func: async (args: Record<string, unknown>) => {
+				const result = await tool.call(args);
+				return typeof result === 'string' ? result : JSON.stringify(result);
+			},
+		}),
+	};
+}
+
 export function createHitlToolkit(
 	connectedToolsOrToolkits: SupplyDataToolResponse[] | SupplyDataToolResponse | undefined,
 	hitlNode: INode,
@@ -512,7 +555,9 @@ export async function getInputConnectionData(
 		} else {
 			const context = contextFactory(parentRunIndex, parentInputData);
 			try {
-				const supplyData = await connectedNodeType.supplyData.call(context, itemIndex);
+				const supplied = await connectedNodeType.supplyData.call(context, itemIndex);
+				const supplyData =
+					connectionType === NodeConnectionTypes.AiTool ? withLangChainTool(supplied) : supplied;
 				const response = supplyData.response;
 
 				extendResponseMetadata(response, connectedNode);

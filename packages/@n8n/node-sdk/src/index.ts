@@ -4,6 +4,7 @@ export {
 	defineNode,
 	fixedOutputNames,
 	isHttpError,
+	isToolContract,
 	limitOf,
 	lintContract,
 	nextLinkOf,
@@ -174,6 +175,7 @@ export {
 	setContractVersionLoader,
 	toNodeType,
 	toVersionedNodeType,
+	toVersionedToolType,
 	type ContractVersionLoader,
 	type FrozenVersion,
 } from './runtime';

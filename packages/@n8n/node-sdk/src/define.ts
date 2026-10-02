@@ -1311,6 +1311,32 @@ export const usesSupplies = (contract: Pick<ContractDocument, 'input' | 'output'
 	suppliedKindOf(contract.output) !== undefined ||
 	Object.values(contract.input.properties ?? {}).some((field) => supplyOf(field) !== undefined);
 
+/**
+ * The host makes an agent tool of the action: a model calls it with JSON and reads its JSON
+ * result. It reads or writes, one run for each call, with one data input and one data output.
+ * A transform is no tool, because the model can change data itself. A batch reads all input
+ * items, and a tool call has none.
+ */
+export function isToolContract(contract: ContractDocument): boolean {
+	const required = new Set(contract.input.required ?? []);
+	return (
+		!('derived' in contract) &&
+		contract.trigger === undefined &&
+		contract.flow.effect !== 'transform' &&
+		contract.flow.cardinality !== 'batch' &&
+		// A tool call runs without the host imports of a step.
+		!usesHostImports(contract) &&
+		contract.outputs === undefined &&
+		contract.output['x-n8n-passed'] !== true &&
+		!usesSupplies(contract) &&
+		// The result goes to the model as JSON, and a model cannot give a file.
+		!hasBinary(contract.output) &&
+		!Object.entries(contract.input.properties ?? {}).some(
+			([name, field]) => required.has(name) && hasBinary(field),
+		)
+	);
+}
+
 const HOST_IMPORTS: ReadonlySet<string> = new Set<HostImport>([
 	'dataTables',
 	'code',

@@ -35,6 +35,9 @@ describe('contract-mode skill', () => {
 
 	it('teaches AI providers, trigger samples, orElse on the flow, and setup placeholders', () => {
 		expect(skill).toContain('providers: { model: lmChatOpenAi.execute({');
+		expect(skill).toContain(
+			"httpRequest.getTool({ name: 'Fetch', url: fromModel('The page URL') })",
+		);
 		expect(skill).not.toContain('subnode');
 		expect(skill).toContain('manual({ sample:');
 		expect(skill).toContain('`settings: { retryOnFail: true');

@@ -132,6 +132,8 @@ describe('credential types of the node contracts package', () => {
 			...(listed[0].supportedNodes ?? []),
 			'n8n-nodes-base.notionTool',
 			'n8n-nodes-base.notionTool',
+			'@n8n/nodes-base-next.notionDatabasePageGetAllTool',
+			'@n8n/nodes-base-next.notionUserGetTool',
 		]);
 		// The editor shows the HTTP Request option only for a type with `authenticate`.
 		expect(JSON.stringify(listed[0])).toContain('"authenticate":{}');

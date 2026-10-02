@@ -69,7 +69,12 @@ const composedNotion = {
 	},
 };
 
+const GET_TOOL_TYPE = '@n8n/nodes-base-next.httpRequestGetTool';
+
 const httpRequest = {
+	getTool: <In, Ctx>(
+		config: next.ToolConfig<{ url: string; query?: Record<string, string> }>,
+	): Provider<In, Ctx, 'tool'> => next.contractTool(GET_TOOL_TYPE, config, 3),
 	send: <In, Ctx, const N extends string>(config: {
 		name: N;
 		method: 'POST' | 'PUT';
@@ -85,6 +90,7 @@ const ai = {
 	agent: <In, Ctx, const N extends string>(config: {
 		name: N;
 		model: Provider<NoInfer<In>, NoInfer<Ctx>, 'chatModel'>;
+		tools?: ReadonlyArray<Provider<NoInfer<In>, NoInfer<Ctx>, 'tool'>>;
 		prompt: string | ((item: In) => string);
 	}): Step<In, Ctx, { text: string }, N> => contractStep(AGENT_TYPE, config),
 };
@@ -137,6 +143,18 @@ const dataTable = {
 };
 
 const factories = new Map<string, ContractFactory>([
+	[
+		GET_TOOL_TYPE,
+		{
+			module: 'httpRequest',
+			from: '@n8n/nodes/httpRequest',
+			path: 'getTool',
+			version: 3,
+			inputKeys: ['toolDescription', 'url', 'query'],
+			expressionKeys: ['url'],
+			tool: true,
+		},
+	],
 	[
 		EXISTS_TYPE,
 		{
@@ -271,7 +289,10 @@ const agent = {
 	execute: <In, Ctx, const N extends string>(config: {
 		name: N;
 		text: string;
-		providers: { model: Provider<NoInfer<In>, NoInfer<Ctx>, 'ai_languageModel'> };
+		providers: {
+			model: Provider<NoInfer<In>, NoInfer<Ctx>, 'ai_languageModel'>;
+			tools?: ReadonlyArray<Provider<NoInfer<In>, NoInfer<Ctx>, 'ai_tool' | 'tool'>>;
+		};
 	}): Step<In, Ctx, In, N> => contractStep(LEGACY_AGENT_TYPE, config, 3.1),
 };
 const lmChatAcme = {
@@ -833,6 +854,95 @@ describe('decompileWorkflow', () => {
 			),
 		};
 		expect(decompileWorkflow(legacyModel, factories)).toBeUndefined();
+	});
+
+	it('round-trips a contract action tool in a contract and a derived AI node', () => {
+		const fetchPage = () =>
+			httpRequest.getTool({
+				name: 'Fetch page',
+				url: next.fromModel('The page URL'),
+				query: { lang: 'en' },
+			});
+		const json = workflow(
+			'Research',
+			manual()
+				.andThen(
+					ai.agent({
+						name: 'Agent',
+						model: openAi.chatModel({ name: 'Model', model: 'gpt-5-mini' }),
+						tools: [fetchPage()],
+						prompt: 'Hi',
+					}),
+				)
+				.andThen(
+					agent.execute({
+						name: 'Legacy Agent',
+						text: 'Hi',
+						providers: {
+							model: lmChatAcme.execute({ name: 'Legacy Model', model: 'acme-1' }),
+							tools: [{ ...fetchPage(), spec: { ...fetchPage().spec, name: 'Fetch again' } }],
+						},
+					}),
+				),
+		).toJSON();
+		const tool = json.nodes.find(({ name }) => name === 'Fetch page');
+		expect(tool?.parameters).toEqual({
+			url: '={{ /*n8n-auto-generated-fromAI-override*/ $fromAI("url", "The page URL") }}',
+			query: { lang: 'en' },
+		});
+		expect(json.connections['Fetch page']).toEqual({
+			ai_tool: [[{ node: 'Agent', type: 'ai_tool', index: 0 }]],
+		});
+		expect(json.connections['Fetch again']).toEqual({
+			ai_tool: [[{ node: 'Legacy Agent', type: 'ai_tool', index: 0 }]],
+		});
+
+		const { source, rebuilt, again } = roundTrip(json, readDerived);
+
+		expect(withoutIds(rebuilt)).toEqual(withoutIds(json));
+		expect(again).toBe(source);
+		expect(source).toContain(
+			"import { workflow, manual, fromModel } from '@n8n/workflow-sdk/next';",
+		);
+		expect(source).toContain('url: fromModel("The page URL"),');
+		expect(source).toMatch(/tools: \[\n\s+httpRequest\.getTool\(\{\n\s+name: "Fetch page",/);
+		expect(source).toMatch(
+			/providers: \{[\s\S]+tools: \[\n\s+httpRequest\.getTool\(\{\n\s+name: "Fetch again",/,
+		);
+	});
+
+	it('round-trips escapes in a fromModel() description', () => {
+		const json = workflow(
+			'Escapes',
+			manual().andThen(
+				ai.agent({
+					name: 'Agent',
+					model: openAi.chatModel({ name: 'Model', model: 'gpt-5-mini' }),
+					tools: [
+						httpRequest.getTool({
+							name: 'Fetch page',
+							url: next.fromModel('The "page" URL\nwith \\ and é'),
+						}),
+					],
+					prompt: 'Hi',
+				}),
+			),
+		).toJSON();
+		const { source, rebuilt } = roundTrip(json);
+
+		expect(withoutIds(rebuilt)).toEqual(withoutIds(json));
+		expect(source).toContain('url: fromModel("The \\"page\\" URL\\nwith \\\\ and é"),');
+	});
+
+	it('keeps fromModel() out of a step', () => {
+		const step = httpRequest.send({
+			name: 'Post',
+			method: 'POST',
+			url: next.fromModel() as unknown as string,
+		});
+		expect(() => workflow('Wrong', manual().andThen(step)).toJSON()).toThrow(
+			'url: fromModel() fills a field of a tool only',
+		);
 	});
 
 	it('round-trips node settings on a trigger, a typed step, node(), and a provider', () => {

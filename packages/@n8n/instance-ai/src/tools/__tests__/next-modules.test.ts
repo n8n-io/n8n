@@ -103,6 +103,10 @@ describe('next-modules', () => {
 		['n8n-nodes-base.whatsAppTrigger', 'whatsAppTrigger'],
 		['n8n-nodes-base.facebookTrigger', 'facebookTrigger'],
 		['n8n-nodes-base.manualTrigger', undefined],
+		['n8n-nodes-base.slackTool', 'slack'],
+		['n8n-nodes-base.httpRequestTool', 'httpRequest'],
+		['n8n-nodes-base.mattermostTool', undefined],
+		['@n8n/nodes-base-next.httpRequestGetTool', 'httpRequest'],
 	])('maps the catalog node type %s to the module node %s', (nodeType, nodeId) => {
 		expect(nextNodeIdOfNodeType(nodeType)).toBe(nodeId);
 	});
@@ -149,6 +153,10 @@ describe('next-modules', () => {
 			supplierActionsOf(['openAi', 'ai', 'openAi'], 'ai_languageModel').map(({ id }) => id),
 		).toEqual(['openAi.chatModel']);
 		expect(supplierActionsOf(['openAi'], 'ai_tool')).toEqual([]);
+		expect(supplierActionsOf(['httpRequest'], 'ai_tool').map(({ id }) => id)).toEqual([
+			'httpRequest.get',
+			'httpRequest.send',
+		]);
 	});
 
 	it('finds the catalog nodes whose display name the query names', () => {

@@ -6,6 +6,7 @@ import path from 'node:path';
 import { mock } from 'vitest-mock-extended';
 
 import { LoadNodesAndCredentials } from '../load-nodes-and-credentials';
+import { NodeTypes } from '../node-types';
 import { composeContractNodes } from '../node-contracts-registry';
 
 const PACKAGES = path.resolve(__dirname, '../../..');
@@ -115,6 +116,28 @@ describe('composeContractNodes', () => {
 		expect(loaded?.description.defaultVersion).toBe(1);
 		expect(loaded?.getNodeType(2).webhook ?? loaded?.getNodeType(2).poll).toBeDefined();
 		expect(types.filter(({ name }) => name === nodeType).map(versionOf)).toEqual(['1', '2']);
+	});
+
+	it('adds an agent tool node type for each tool action, which supplies its tool', async () => {
+		const instance = await postProcessed(true);
+		const tool = '@n8n/nodes-base-next.httpRequestGetTool';
+		const description = instance.types.nodes.find(({ name }) => name === tool);
+
+		expect(description).toMatchObject({ outputs: ['ai_tool'], inputs: [], hidden: true });
+		expect(description?.properties.map(({ name }) => name)).toContain('toolDescription');
+		expect(instance.types.nodes.some(({ name }) => name.endsWith('httpRequestDownloadTool'))).toBe(
+			false,
+		);
+		expect(instance.recognizesNode(tool)).toBe(true);
+		const nodeTypes = new NodeTypes(mock(), instance);
+		const [head] = versionsOf('httpRequest.get');
+		const version = head?.manifest.contract.version;
+		const resolved = nodeTypes.getByNameAndVersion(tool, version);
+		expect(resolved.description).toMatchObject({ name: tool, outputs: ['ai_tool'] });
+		expect(typeof resolved.supplyData).toBe('function');
+		// An agent that has the engine run its tool calls runs the node.
+		expect(typeof resolved.execute).toBe('function');
+		expect(nodeTypes.getSupportedVersions(tool)).toEqual([version]);
 	});
 
 	it('keeps the types unchanged when node contracts are off', async () => {

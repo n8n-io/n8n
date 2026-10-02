@@ -16,7 +16,7 @@
  *    recoverable; running a destructive operation against user data is not.
  */
 
-import { actionOfNode } from '@n8n/nodes-base-next';
+import { actionOfNode, toolActionOfNode } from '@n8n/nodes-base-next';
 import { isRecord } from '@n8n/utils/is-record';
 import { isAiRootNodeType, type WorkflowJSON } from '@n8n/workflow-sdk';
 import { z } from 'zod';
@@ -223,7 +223,7 @@ function deterministicVerdict(
 	if (twin !== node) return deterministicVerdict(twin, mockedNodeNames);
 
 	// Action contracts declare their effect, so their verdict needs no LLM call.
-	const contractAction = actionOfNode(node);
+	const contractAction = actionOfNode(node) ?? toolActionOfNode(node);
 	if (contractAction) {
 		const { action, flow, node: contractNode } = contractAction;
 		if (flow.effect === 'write') {

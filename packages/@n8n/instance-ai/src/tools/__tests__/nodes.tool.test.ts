@@ -1309,6 +1309,33 @@ describe('nodes tool', () => {
 			expect(await search('notion get many database pages')).not.toHaveProperty('otherNodes');
 		});
 
+		it('gives the tool factories of a module instead of the tool variant of its legacy node', async () => {
+			const context = createContractContext();
+			vi.mocked(context.nodeService.listSearchable).mockResolvedValue(
+				[
+					['n8n-nodes-base.slackTool', 'Slack Tool'],
+					['@n8n/n8n-nodes-langchain.toolCode', 'Code Tool'],
+				].map(([name, displayName]) => ({
+					name,
+					displayName,
+					description: 'A tool for an AI agent',
+					version: 1,
+					inputs: [],
+					outputs: ['ai_tool'],
+				})),
+			);
+			const result = await executeTool<ModuleSearch>(createNodesTool(context, 'full'), {
+				action: 'search',
+				connectionType: 'ai_tool',
+				query: 'slack',
+				limit: 10,
+			});
+
+			expect(result.nodeModules?.map(({ node }) => node)).toEqual(['slack']);
+			expect(result.nodeModules?.[0]?.module).toContain('sendTool: <In, Ctx>(');
+			expect(JSON.stringify(result)).not.toContain('n8n-nodes-base.slackTool');
+		});
+
 		it('keeps the legacy agent beside the ai module for an AI agent search', async () => {
 			const context = createContractContext();
 			vi.mocked(context.nodeService.listSearchable).mockResolvedValue([

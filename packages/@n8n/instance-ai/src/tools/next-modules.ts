@@ -31,6 +31,8 @@ import {
 	nativeTriggers,
 	NODE_PACKAGE,
 	nodeTypeOf,
+	toolActions,
+	toolTypeOf,
 	triggers,
 } from '@n8n/nodes-base-next';
 
@@ -95,13 +97,15 @@ const nativeTypesOf = (trigger: (typeof allTriggers)[number]) =>
  * built-in node type that a native trigger types.
  */
 function nextNodeIdOf(ref: string): string | undefined {
-	return [...nextActions, ...allTriggers].find(
-		(contract) =>
-			contract.node.id === ref ||
-			contract.id === ref ||
-			nodeTypeOf(contract) === ref ||
-			('kind' in contract && nativeTypesOf(contract).includes(ref)),
-	)?.node.id;
+	return (
+		[...nextActions, ...allTriggers].find(
+			(contract) =>
+				contract.node.id === ref ||
+				contract.id === ref ||
+				nodeTypeOf(contract) === ref ||
+				('kind' in contract && nativeTypesOf(contract).includes(ref)),
+		)?.node.id ?? toolActions.find((action) => toolTypeOf(action) === ref)?.node.id
+	);
 }
 
 /** The module for a node id (`notion`), an action id, or a node type of this package. */
@@ -160,6 +164,10 @@ const nativeNodeIdOf = (nodeType: string) =>
  */
 export function nextNodeIdOfNodeType(nodeType: string): string | undefined {
 	if (nodeType.startsWith(`${NODE_PACKAGE}.`)) return nextNodeIdOf(nodeType);
+	// The tool variant of a legacy node goes with its node, e.g. `slackTool` with `slack`.
+	const toolOf = nodeType.endsWith('Tool') ? nodeType.slice(0, -'Tool'.length) : undefined;
+	const toolNodeId = toolOf && nextNodeIdOfNodeType(toolOf);
+	if (toolNodeId) return toolNodeId;
 	const native = nativeNodeIdOf(nodeType);
 	if (native) return native;
 	const replacing = nextActions.find(({ node }) => node.replaces?.includes(nodeType));
@@ -394,12 +402,16 @@ export function searchNextActions(
 	};
 }
 
-/** The sub-node actions of `nodeIds` that a root node takes on `connectionType`, e.g. `ai_languageModel`. */
+/**
+ * The sub-node actions of `nodeIds` that a root node takes on `connectionType`, e.g.
+ * `ai_languageModel`. On `ai_tool`, each tool action also goes: its module has a tool factory.
+ */
 export function supplierActionsOf(nodeIds: readonly string[], connectionType: string): Action[] {
 	return [...new Set(nodeIds)].flatMap((nodeId) =>
 		actionsOfNode(nodeId).filter((action) => {
 			const kind = suppliedKindOf(action.output.json);
-			return kind !== undefined && SUPPLY_CONNECTIONS[kind] === connectionType;
+			if (kind !== undefined) return SUPPLY_CONNECTIONS[kind] === connectionType;
+			return connectionType === SUPPLY_CONNECTIONS.tool && toolActions.includes(action);
 		}),
 	);
 }

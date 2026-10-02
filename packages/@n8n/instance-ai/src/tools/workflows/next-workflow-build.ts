@@ -10,10 +10,17 @@ import {
 	type NodeContractLock,
 	type ResourceField,
 } from '@n8n/node-sdk';
-import { actionOfNode, actions, migratedSlotOf, versionsOf } from '@n8n/nodes-base-next';
+import {
+	actionOfNode,
+	actions,
+	migratedSlotOf,
+	toolActionOfNode,
+	versionsOf,
+} from '@n8n/nodes-base-next';
 import { isRecord } from '@n8n/utils/is-record';
 import { hasPlaceholderDeep } from '@n8n/utils/placeholder';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
+import { isFromAIOnlyExpression } from 'n8n-workflow';
 import { z } from 'zod';
 
 import type { ValidationWarning } from './workflow-validation-warnings';
@@ -354,7 +361,7 @@ export async function contractEgressWarnings(
 ): Promise<ValidationWarning[]> {
 	const checks = await Promise.all(
 		workflow.nodes.map(async (node): Promise<ValidationWarning[]> => {
-			const action = actionOfNode(node);
+			const action = actionOfNode(node) ?? toolActionOfNode(node);
 			if (!action?.egress || !node.name || node.disabled) return [];
 			const parameters = node.parameters ?? {};
 			const { authentication } = parameters;
@@ -461,14 +468,18 @@ function asRun(value: unknown, schema: JsonSchema | undefined): unknown {
  */
 export function staticInputIssues(workflow: WorkflowJSON): string[] {
 	return workflow.nodes.flatMap((node) => {
-		const action = actionOfNode(node);
+		const tool = toolActionOfNode(node);
+		const action = actionOfNode(node) ?? tool;
 		if (!action || !node.name || node.disabled) return [];
 		const parameters = node.parameters ?? {};
 		const fields = action.inputSchema.properties ?? {};
+		// The model fills a tool field that is one `$fromAI()` call, and the tool checks it.
+		const fromModel = (value: unknown) =>
+			tool !== undefined && typeof value === 'string' && isFromAIOnlyExpression(value);
 		const input = Object.fromEntries(
 			Object.keys(fields).flatMap((key) => {
 				const value = parameters[key];
-				return value === undefined || value === '' || hasPlaceholderDeep(value)
+				return value === undefined || value === '' || hasPlaceholderDeep(value) || fromModel(value)
 					? []
 					: [[key, asRun(value, fields[key])]];
 			}),
@@ -705,7 +716,7 @@ export async function typecheckWorkflowSource(
 export function lockNodeContracts(workflow: WorkflowJSON): WorkflowJSON {
 	const nodeContracts = Object.fromEntries(
 		workflow.nodes.flatMap((node): Array<[string, NodeContractLock]> => {
-			const action = actionOfNode(node);
+			const action = actionOfNode(node) ?? toolActionOfNode(node);
 			// A composed node version runs a fixed action major; a contract node type runs its own.
 			const major = migratedSlotOf(node)?.major ?? node.typeVersion;
 			const manifest = action

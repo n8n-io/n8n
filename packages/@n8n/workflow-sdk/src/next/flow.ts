@@ -492,7 +492,8 @@ export interface Providers<In, Ctx> {
 	/** A chat model. */
 	model?: SlotProvider<In, Ctx, 'ai_languageModel'>;
 	memory?: SlotProvider<In, Ctx, 'ai_memory'>;
-	tools?: ReadonlyArray<SlotProvider<In, Ctx, 'ai_tool'>>;
+	/** The host gives a contract tool to a LangChain root node as a LangChain tool. */
+	tools?: ReadonlyArray<Provider<In, Ctx, 'node' | 'ai_tool' | 'tool'>>;
 	outputParser?: SlotProvider<In, Ctx, 'ai_outputParser'>;
 	embedding?: SlotProvider<In, Ctx, 'ai_embedding'>;
 	vectorStore?: SlotProvider<In, Ctx, 'ai_vectorStore'>;
@@ -1278,6 +1279,7 @@ export function contractStep<In, Ctx, Out, N extends string>(
 				unslotted.forEach((key) =>
 					compiler.issue(`${key} takes a contract provider of its module, not provider()`),
 				);
+				modelFieldIssues(compiler, parameters);
 				const compiled = compileWithPages(compiler, parameters, pageFields);
 				// The slot goes last: no contract field may change the action that runs.
 				return { ...(isDataObject(compiled) ? compiled : {}), ...slot };
@@ -1335,8 +1337,109 @@ export function contractProvider<In, Ctx, const K extends SupplyKind | ProviderC
 				unslotted.forEach((key) =>
 					compiler.issue(`${key} takes a contract provider of its module, not provider()`),
 				);
+				modelFieldIssues(compiler, parameters);
 				const compiled = compiler.value(parameters);
 				return { ...(isDataObject(compiled) ? compiled : {}), ...selector };
+			},
+		},
+	};
+}
+
+const FROM_MODEL: unique symbol = Symbol('fromModel');
+
+/** A tool field that the model fills, see `fromModel()`. */
+export interface FromModel {
+	readonly [FROM_MODEL]: string;
+}
+
+/**
+ * A field of an agent tool that the model fills when it calls the tool. The workflow fixes the
+ * other fields, so the model cannot change them. `description` tells the model what to give;
+ * without it, the model reads the description of the field.
+ */
+export const fromModel = (description = ''): FromModel => ({ [FROM_MODEL]: description });
+
+const isFromModel = (value: unknown): value is FromModel =>
+	isDataObject(value) && FROM_MODEL in value;
+
+/** A step or a provider is no tool, so the model fills none of its fields. */
+function modelFieldIssues(compiler: Compiler, parameters: Readonly<Record<string, unknown>>) {
+	Object.entries(parameters)
+		.filter(([, value]) => isFromModel(value))
+		.forEach(([key]) => compiler.issue(`${key}: fromModel() fills a field of a tool only`));
+}
+
+/** The marker that the editor adds to a field the model fills, so it shows that field so. */
+const FROM_AI_MARKER = '/*n8n-auto-generated-fromAI-override*/';
+
+const QUOTED = '(?:\'(?:[^\'\\\\]|\\\\.)*\'|"(?:[^"\\\\]|\\\\.)*"|`(?:[^`\\\\]|\\\\.)*`)';
+const WHOLE_FROM_AI = new RegExp(
+	`^=\\{\\{\\s*(?:\\/\\*[^*]*\\*\\/\\s*)?\\$fromAI\\(\\s*${QUOTED}(?:\\s*,\\s*(${QUOTED}))?(?:\\s*,\\s*${QUOTED})?\\s*\\)\\s*\\}\\}$`,
+);
+
+/** The `$fromAI()` expression of a field that the model fills, as the editor writes it. */
+const fromAiExpression = (key: string, description: string) =>
+	`={{ ${FROM_AI_MARKER} $fromAI(${[key, ...(description ? [description] : [])].map((text) => JSON.stringify(text)).join(', ')}) }}`;
+
+/**
+ * The description of a field value that is one `$fromAI()` call, or `undefined` for another
+ * value. The decompiler reads it back as `fromModel()`.
+ */
+export function fromAiDescriptionOf(value: unknown): string | undefined {
+	if (typeof value !== 'string') return undefined;
+	const match = WHOLE_FROM_AI.exec(value.trim());
+	if (!match) return undefined;
+	const quoted = match[1];
+	if (!quoted) return '';
+	const unescaped = () => quoted.slice(1, -1).replace(/\\(.)/g, '$1');
+	// `fromModel()` writes a JSON string. Other quotes come from the editor or the user.
+	if (!quoted.startsWith('"')) return unescaped();
+	try {
+		const parsed: unknown = JSON.parse(quoted);
+		return typeof parsed === 'string' ? parsed : unescaped();
+	} catch {
+		return unescaped();
+	}
+}
+
+/**
+ * The config of an agent tool: each input field takes a value, or `fromModel()` to let the
+ * model fill it. `toolDescription` is what the model reads; the action summary when not set.
+ */
+export type ToolConfig<I> = {
+	readonly name: string;
+	readonly settings?: NodeSettings;
+	readonly toolDescription?: string;
+} & { [K in keyof I]: I[K] | FromModel };
+
+/**
+ * The agent tool of an action. Generated node modules call this. A contract root node takes it
+ * in `tools`, and a derived root node in `providers.tools`.
+ */
+export function contractTool<In, Ctx>(
+	id: string,
+	config: ToolConfig<Record<never, never>>,
+	version = 1,
+	/** The paths of the fields whose lambdas read each response page, as for `contractStep`. */
+	pageFields: ReadonlyArray<readonly string[]> = [],
+): Provider<In, Ctx, 'tool'> {
+	const { name, settings, ...fields } = config;
+	const parameters = Object.fromEntries(
+		Object.entries(fields).map(([key, value]) => [
+			key,
+			isFromModel(value) ? fromAiExpression(key, value[FROM_MODEL]) : value,
+		]),
+	);
+	return {
+		slot: 'tools',
+		spec: {
+			name,
+			type: id,
+			version,
+			...(settings ? { settings } : {}),
+			parameters: (compiler) => {
+				const compiled = compileWithPages(compiler, parameters, pageFields);
+				return isDataObject(compiled) ? compiled : {};
 			},
 		},
 	};

@@ -39,7 +39,9 @@ export {
 	Flow,
 	contractStep,
 	contractProvider,
+	contractTool,
 	contractTrigger,
+	fromModel,
 	routedStep,
 } from './flow';
 export { placeholder } from '../workflow-builder/node-builders/node-builder';
@@ -65,6 +67,7 @@ export type {
 	ErrorItem,
 	Exact,
 	Expression,
+	FromModel,
 	FromSchema,
 	Loose,
 	ModelCatalog,
@@ -87,6 +90,7 @@ export type {
 	Provider,
 	Providers,
 	SupplyKind,
+	ToolConfig,
 	TriggerOptions,
 	Value,
 	ValueSchema,

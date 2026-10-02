@@ -2,10 +2,12 @@ import type { INode, ISupplyDataFunctions } from 'n8n-workflow';
 
 import {
 	arr,
+	binary,
 	compat,
 	credential,
 	defineNode,
 	generateNodeModule,
+	isToolContract,
 	lintContract,
 	modelCatalogDeclaration,
 	modelId,
@@ -15,8 +17,12 @@ import {
 	supplied,
 	toContract,
 	toNodeType,
+	toTs,
+	type ActionFlow,
+	type AnySchema,
 	type ChatModel,
 	type ChatRequest,
+	type Shape,
 	type Tool,
 } from '../index';
 import { executorOf, type ExecutorHost } from '../runtime';
@@ -193,6 +199,66 @@ describe('sub-node contracts', () => {
 		]);
 	});
 
+	it('read a LangChain tool with a JSON Schema back as a tool, and keep a zod one out', async () => {
+		const calls: unknown[] = [];
+		const langChainTool = {
+			name: 'lookup',
+			description: 'Look up a record.',
+			schema: { type: 'object', properties: { id: { type: 'string' } } },
+			invoke: async (args: unknown) => {
+				calls.push(args);
+				return '{"ok":true}';
+			},
+		};
+		const host = (tool: unknown): ExecutorHost => ({
+			items: [{ json: {} }],
+			node,
+			parameter: (name) => (name === 'prompt' ? 'hi' : undefined),
+			request: async () => await Promise.reject(new Error('no requests')),
+			continueOnFail: () => false,
+			supplied: async (kind) => (kind === 'chatModel' ? fakeModel('hi') : [tool]),
+		});
+		const [items] = await executorOf(ask)(host(langChainTool));
+		expect(items?.[0]?.json).toEqual({ text: 'hi', tools: ['lookup'] });
+
+		const zodLike = { ...langChainTool, schema: { type: 'object', safeParse: () => ({}) } };
+		await expect(executorOf(ask)(host(zodLike))).rejects.toThrow(
+			'The tools input needs a tool from a node contract sub-node',
+		);
+	});
+
+	it('make agent tools of the actions that read or write one call at a time', () => {
+		const tool = (
+			flow: ActionFlow,
+			input: Shape = { id: str() },
+			output: AnySchema = obj({ ok: str() }),
+		) =>
+			isToolContract(
+				toContract(
+					ai.action('probe', {
+						action: 'Probe',
+						summary: 'Probe.',
+						flow,
+						input,
+						output,
+						async run() {
+							return {};
+						},
+					}),
+				),
+			);
+		const read: ActionFlow = { effect: 'read', cardinality: 'per-item' };
+		expect(tool(read)).toBe(true);
+		expect(tool({ effect: 'write', cardinality: '1:N' })).toBe(true);
+		expect(tool({ effect: 'transform', cardinality: 'per-item' })).toBe(false);
+		expect(tool({ effect: 'write', cardinality: 'batch' })).toBe(false);
+		expect(tool(read, { file: binary() })).toBe(false);
+		expect(tool(read, { file: binary().optional(), id: str() })).toBe(true);
+		expect(tool(read, { id: str() }, obj({ file: binary() }))).toBe(false);
+		expect(isToolContract(toContract(chatModel))).toBe(false);
+		expect(isToolContract(toContract(ask))).toBe(false);
+	});
+
 	it('replay recorded results in call order', async () => {
 		const model = replaySupply('chatModel', { model: 'fake' }, ['a', 'b']);
 		const chat = model.chat;
@@ -264,6 +330,33 @@ describe('sub-node contracts', () => {
 		]);
 		expect(root).toContain('model: Provider<NoInfer<I>, NoInfer<C>, "chatModel">;');
 		expect(root).toContain('tools?: Array<Provider<NoInfer<I>, NoInfer<C>, "tool">>;');
+	});
+
+	it('generate a tool factory for a tool action, which a derived tools slot also takes', () => {
+		const lookup = llm.action('lookup', {
+			action: 'Look up',
+			summary: 'Look up a record.',
+			flow: { effect: 'read', cardinality: 'per-item', idempotent: true },
+			input: { id: str() },
+			output: obj({ ok: str() }),
+			async run() {
+				return { ok: 'yes' };
+			},
+		});
+		const module = generateNodeModule('llm', [
+			{ contract: toContract(lookup), nodeType: 'pkg.llmLookup', operation: 'lookup' },
+			{ contract: toContract(chatModel), nodeType: 'pkg.llmChatModel', operation: 'chatModel' },
+		]);
+		expect(module).toContain('/** Look up, as an agent tool (read, idempotent) */');
+		expect(module).toContain(
+			'lookupTool: <In, Ctx>(config: ToolConfig<LlmLookupInput<In, Ctx>>): Provider<In, Ctx, "tool"> =>',
+		);
+		expect(module).toContain('contractTool("pkg.llmLookupTool", config)');
+		expect(module).not.toContain('chatModelTool');
+		const slot = { type: 'array', items: { 'x-n8n-supply': 'ai_tool' } } as const;
+		expect(toTs(slot, { input: true, indent: '', compact: true })).toBe(
+			'Array<Provider<NoInfer<I>, NoInfer<C>, "ai_tool" | "tool">>',
+		);
 	});
 
 	it('declare a model catalog for ModelOf', () => {

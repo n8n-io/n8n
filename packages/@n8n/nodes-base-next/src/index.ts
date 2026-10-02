@@ -1,4 +1,11 @@
-import { nodeNameOf, type Action, type AnyCredentialType, type Trigger } from '@n8n/node-sdk';
+import {
+	isToolContract,
+	nodeNameOf,
+	toContract,
+	type Action,
+	type AnyCredentialType,
+	type Trigger,
+} from '@n8n/node-sdk';
 
 import { runAgent } from './nodes/ai/actions/agent';
 import { classifyText } from './nodes/ai/actions/classify';
@@ -127,6 +134,7 @@ export {
 	runsNodeContract,
 	setCodeLanguages,
 	toVersionedNodeType,
+	toVersionedToolType,
 	toVersionedTriggerType,
 	type FrozenVersion,
 	type NodeContractLock,
@@ -261,6 +269,18 @@ export const flowNatives: ReadonlyArray<Action | Trigger> = [manualTrigger, loop
 /** The n8n node type of an action or a trigger, e.g. `@n8n/nodes-base-next.notionDatabasePageGetAll`. */
 export const nodeTypeOf = (action: Pick<Action, 'id'>) =>
 	`${NODE_PACKAGE}.${nodeNameOf(action.id)}`;
+
+/** The actions that the host also gives as agent tools, see `isToolContract`. */
+export const toolActions: readonly Action[] = actions.filter((action) =>
+	isToolContract(toContract(action)),
+);
+
+/** The n8n node type of the agent tool of an action, e.g. `@n8n/nodes-base-next.httpRequestGetTool`. */
+export const toolTypeOf = (action: Pick<Action, 'id'>) => `${nodeTypeOf(action)}Tool`;
+
+/** The action that a tool node of this package runs. */
+export const toolActionOfNode = (node: Pick<WorkflowNodeRef, 'type'>) =>
+	toolActions.find((action) => toolTypeOf(action) === node.type);
 
 /** The action a workflow node runs: a node type of this package, or a slot of a migrated node. */
 export function actionOfNode(node: WorkflowNodeRef): Action | undefined {

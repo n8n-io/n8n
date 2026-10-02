@@ -13,6 +13,7 @@ import {
 	edgeKey,
 	filterFragment,
 	Flow,
+	fromAiDescriptionOf,
 	forEachFragment,
 	loopFragment,
 	MANUAL_NODE,
@@ -87,6 +88,8 @@ export interface ContractFactory {
 	 * each in the input field of its slot. Its providers read back through the legacy reader.
 	 */
 	readonly groupsProviders?: true;
+	/** The factory makes an agent tool: a field that is one `$fromAI()` call reads as `fromModel()`. */
+	readonly tool?: true;
 }
 
 /**
@@ -650,6 +653,15 @@ function setShape(node: NamedNode, names: ReadonlySet<string>): Shape | undefine
 
 type ContractShape = Extract<Shape, { kind: 'contract' }>;
 
+const fromModelCode = (description: string) =>
+	new Code(description ? `fromModel(${JSON.stringify(description)})` : 'fromModel()');
+
+const fillsFromModel = ({ parameters }: ContractShape) =>
+	isRecord(parameters) &&
+	Object.values(parameters).some(
+		(value) => value instanceof Code && value.text.startsWith('fromModel('),
+	);
+
 function contractShape(
 	node: NamedNode,
 	names: ReadonlySet<string>,
@@ -660,9 +672,13 @@ function contractShape(
 	const unknownKey = Object.keys(node.parameters ?? {}).some((key) => !inputs.has(key));
 	if (factory.closed && unknownKey) return undefined;
 	const takesExpression = new Set(factory.expressionKeys);
-	const parameters = Object.entries(node.parameters ?? {}).flatMap(([key, value]) =>
-		inputs.has(key) && value !== undefined ? [[key, convert(value, names)] as const] : [],
-	);
+	const parameters = Object.entries(node.parameters ?? {}).flatMap(([key, value]) => {
+		if (!inputs.has(key) || value === undefined) return [];
+		const description = factory.tool ? fromAiDescriptionOf(value) : undefined;
+		const tree: Tree =
+			description === undefined ? convert(value, names) : fromModelCode(description);
+		return [[key, tree] as const];
+	});
 	// An expression without a lambda form stays a string where the typed field takes one, and the
 	// build checks it there. Elsewhere (an enum, a nested field) tsc rejects it, so keep node().
 	const typed = parameters.every(
@@ -1358,7 +1374,7 @@ function renderSegments(graph: Graph, segments: readonly Segment[], indent: stri
 		.join('');
 }
 
-const HELPERS = ['workflow', 'manual', 'trigger', 'set', 'node', 'provider'];
+const HELPERS = ['workflow', 'manual', 'trigger', 'set', 'node', 'provider', 'fromModel'];
 
 function segmentNodes(segments: readonly Segment[]): NamedNode[] {
 	return segments.flatMap((segment) => {
@@ -1403,6 +1419,7 @@ function render(name: string, graph: Graph, flows: readonly FlowPlan[]): string 
 		'workflow',
 		...shapes.map(({ kind }) => kind),
 		...(legacyChildren ? ['provider'] : []),
+		...([...graph.providerShapes.values()].some(fillsFromModel) ? ['fromModel'] : []),
 	]);
 	const factories = [
 		...new Map(

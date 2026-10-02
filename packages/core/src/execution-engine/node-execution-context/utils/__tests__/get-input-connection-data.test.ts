@@ -554,6 +554,35 @@ describe('getInputConnectionData', () => {
 			expect(result).toEqual([mockTool]);
 			expect(supplyData).toHaveBeenCalled();
 		});
+
+		it('should wrap a node contract tool as a LangChain tool with its JSON Schema', async () => {
+			const input = {
+				type: 'object',
+				properties: { url: { type: 'string' } },
+				required: ['url'],
+				additionalProperties: false,
+			};
+			const call = vi.fn().mockResolvedValue([{ status: 200 }]);
+			supplyData.mockResolvedValueOnce({
+				response: { name: 'Fetch', description: 'Fetch a page.', input, call },
+			});
+			agentNodeType.description.inputs = [{ type: NodeConnectionTypes.AiTool, required: true }];
+			vi.spyOn(executeContext, 'getConnections').mockReturnValueOnce([
+				[{ node: toolNode.name, type: NodeConnectionTypes.AiTool, index: 0 }],
+			]);
+
+			const [tool] = (await executeContext.getInputConnectionData(
+				NodeConnectionTypes.AiTool,
+				0,
+			)) as DynamicStructuredTool[];
+
+			expect(tool).toBeInstanceOf(DynamicStructuredTool);
+			expect(tool.name).toBe('Fetch');
+			expect(tool.schema).toEqual(input);
+			expect(tool.metadata).toMatchObject({ sourceNodeName: toolNode.name });
+			await expect(tool.invoke({ url: 'https://acme.dev' })).resolves.toBe('[{"status":200}]');
+			expect(call).toHaveBeenCalledWith({ url: 'https://acme.dev' });
+		});
 	});
 });
 

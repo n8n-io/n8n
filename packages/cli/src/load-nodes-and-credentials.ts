@@ -707,6 +707,8 @@ export class LoadNodesAndCredentials {
 	}
 
 	recognizesNode(fullNodeType: string): boolean {
+		// A composed type can end in `Tool`, e.g. the tool of a node contract action.
+		if (this.composedNodes.has(fullNodeType)) return true;
 		const [packageName, nodeType] = fullNodeType.split('.');
 		const { loaders } = this;
 		const loader = loaders[packageName];

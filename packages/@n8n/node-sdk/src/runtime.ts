@@ -6,11 +6,16 @@ import { compileFunction } from 'node:vm';
 import {
 	BINARY_ENCODING,
 	isBinaryValue,
+	isFromAIOnlyExpression,
+	jsonParse,
+	nodeNameToToolName,
 	NodeOperationError,
 	safeRegex,
+	traverseNodeParameters,
 	UnexpectedError,
 	UserError,
 	VersionedNodeType,
+	type FromAIArgument,
 	type IBinaryData,
 	type IDataObject,
 	type IExecuteFunctions,
@@ -33,6 +38,7 @@ import { actionHostsOf, credentialHostsOf, egressOf } from './egress';
 import { parameterValue, toProperty } from './properties';
 import {
 	isHttpError,
+	isToolContract,
 	usesBinary,
 	type Action,
 	type ActionInputs,
@@ -70,6 +76,7 @@ import {
 	type Shape,
 } from './schema';
 import {
+	fromLangChainTool,
 	isSupply,
 	SUPPLY_CONNECTIONS,
 	suppliedKindOf,
@@ -77,6 +84,7 @@ import {
 	supplyOf,
 	type SupplyField,
 	type SupplyKind,
+	type Tool,
 } from './subnodes';
 import { applyDefaults, list, matches, parse, validate } from './validate';
 import {
@@ -576,7 +584,9 @@ async function readSupplies(
 	const entries = await Promise.all(
 		fields.map(async ({ name, kind, many }) => {
 			const value = await supplied(kind);
-			const values = many ? list(value) : value === undefined ? [] : [value];
+			const values = (many ? list(value) : value === undefined ? [] : [value]).map((entry) =>
+				fromLangChainTool(kind, entry),
+			);
 			if (!values.every((entry) => isSupply(kind, entry))) {
 				throw new NodeOperationError(
 					host.node,
@@ -1508,9 +1518,16 @@ async function versionExecutorOf(context: NodeContext, head: FrozenVersion) {
 async function executeVersion(context: IExecuteFunctions, head: FrozenVersion) {
 	const { executor, manifest } = await versionExecutorOf(context, head);
 	const outputs = await executor(hostOf(context));
-	const { id, semver, bundleHash, nodeContract } = manifest;
-	context.setMetadata({ nodeContract: { action: id, version: semver, bundleHash, nodeContract } });
+	recordVersion(context, manifest);
 	return outputs;
+}
+
+/** The run data tells which version of the action ran. */
+function recordVersion(
+	context: IExecuteFunctions,
+	{ id, semver, bundleHash, nodeContract }: FrozenVersion['manifest'],
+) {
+	context.setMetadata({ nodeContract: { action: id, version: semver, bundleHash, nodeContract } });
 }
 
 async function supplyVersion(
@@ -1568,9 +1585,140 @@ export const toVersionedNodeType = (versions: readonly FrozenVersion[]) =>
 			};
 		}
 		return {
-			description,
+			// The host generates the tool node types from this flag, as for a legacy node.
+			description: isToolContract(contract) ? { ...description, usableAsTool: true } : description,
 			async execute(this: IExecuteFunctions) {
 				return await executeVersion(this, frozen);
 			},
 		};
 	});
+
+/**
+ * The description of a field that the model fills: its value is one `$fromAI()` call. A field
+ * without `$fromAI()` is set by the workflow.
+ */
+function modelFieldOf(
+	node: INode,
+	name: string,
+	raw: unknown,
+): { description: string } | undefined {
+	const calls: FromAIArgument[] = [];
+	traverseNodeParameters(raw, calls);
+	const [call] = calls;
+	if (!call) return undefined;
+	if (calls.length === 1 && typeof raw === 'string' && isFromAIOnlyExpression(raw)) {
+		return { description: call.description ?? '' };
+	}
+	throw new NodeOperationError(node, `The ${name} field uses $fromAI() inside a value`, {
+		description: `A node contract tool takes whole fields from the model. Set ${name} to {{ $fromAI('${name}') }}, or give it a value without $fromAI().`,
+	});
+}
+
+/** A field schema as a model reads it: without the n8n keywords, and the hint as its description. */
+const modelSchemaOf = (schema: JsonSchema): JsonSchema =>
+	jsonParse<JsonSchema>(
+		JSON.stringify(schema, (key, value: unknown) => {
+			if (key.startsWith('x-n8n-')) return undefined;
+			if (!isRecord(value) || value.description !== undefined) return value;
+			const hint = value['x-n8n-hint'];
+			return typeof hint === 'string' ? { ...value, description: hint } : value;
+		}),
+	);
+
+/** The input schema of a tool: the contract schemas of the fields that the model fills. */
+function toolInputOf(input: JsonSchema, descriptions: ReadonlyMap<string, string>): JsonSchema {
+	const fields = Object.entries(input.properties ?? {}).filter(([name]) => descriptions.has(name));
+	return {
+		type: 'object',
+		properties: Object.fromEntries(
+			fields.map(([name, field]) => {
+				const description = descriptions.get(name);
+				return [name, modelSchemaOf(description ? { ...field, description } : field)];
+			}),
+		),
+		required: (input.required ?? []).filter((name) => descriptions.has(name)),
+		additionalProperties: false,
+	};
+}
+
+/**
+ * The tool of one tool node. The model gives the fields that the workflow sets to `$fromAI()`,
+ * and the workflow fixes the others. A call runs the version the node runs, with the same
+ * credential, egress and limits as a step. The bundle loads on the first call.
+ */
+function toolOf(context: NodeContext, frozen: FrozenVersion, itemIndex: number) {
+	const node = context.getNode();
+	const { contract } = frozen.manifest;
+	const descriptions = new Map(
+		Object.entries(contract.input.properties ?? {}).flatMap(([name, schema]) => {
+			const raw = context.getNodeParameter(name, itemIndex, undefined, { rawExpressions: true });
+			const field = modelFieldOf(node, name, raw);
+			if (field && hasPageValue(schema)) {
+				throw new NodeOperationError(node, `The model cannot fill ${name}: it reads each page`);
+			}
+			return field ? [[name, field.description] as const] : [];
+		}),
+	);
+	const description = context.getNodeParameter('toolDescription', itemIndex, '');
+	return {
+		name: nodeNameToToolName(node),
+		description:
+			typeof description === 'string' && description.trim() ? description : contract.summary,
+		input: toolInputOf(contract.input, descriptions),
+		async call(args: Readonly<Record<string, unknown>>) {
+			const { executor } = await versionExecutorOf(context, frozen);
+			const outputs = await executor({
+				...hostBaseOf(context),
+				items: [{ json: {} }],
+				// Only the model fields come from the model, so it cannot change a fixed field.
+				parameter: (name, _index, raw) =>
+					descriptions.has(name)
+						? args[name]
+						: context.getNodeParameter(
+								name,
+								itemIndex,
+								undefined,
+								raw ? { rawExpressions: true } : {},
+							),
+				continueOnFail: () => false,
+			});
+			return (outputs[0] ?? []).map(({ json }) => json);
+		},
+	} satisfies Tool;
+}
+
+/**
+ * The versioned node type of the agent tool of an action, with one version per major.
+ * `describe` makes the tool description of a version, so the host names all its tools one way.
+ */
+export const toVersionedToolType = (
+	versions: readonly FrozenVersion[],
+	describe: (description: INodeTypeDescription) => INodeTypeDescription,
+) =>
+	versionedTypeOf(
+		versions.map((frozen) => ({
+			...frozen,
+			manifest: { ...frozen.manifest, description: describe(frozen.manifest.description) },
+		})),
+		(frozen): INodeType => ({
+			description: frozen.manifest.description,
+			async supplyData(this: ISupplyDataFunctions, itemIndex: number) {
+				return { response: recordedSupply(toolOf(this, frozen, itemIndex), 'tool', this) };
+			},
+			// An agent that has the engine run its tool calls runs this node: each item is one call.
+			async execute(this: IExecuteFunctions) {
+				const outputs = await this.getInputData().reduce<Promise<INodeExecutionData[]>>(
+					async (done, item, index) => {
+						const results = await toolOf(this, frozen, index).call(item.json);
+						return [
+							...(await done),
+							...results.map((json) => ({ json, pairedItem: { item: index } })),
+						];
+					},
+					Promise.resolve([]),
+				);
+				recordVersion(this, (await versionExecutorOf(this, frozen)).manifest);
+				return [outputs];
+			},
+		}),
+	);

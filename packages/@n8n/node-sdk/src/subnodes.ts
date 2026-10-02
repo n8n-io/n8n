@@ -222,6 +222,27 @@ export function isSupply<K extends SupplyKind>(kind: K, value: unknown): value i
 }
 
 /**
+ * The host gives each tool to a root node as a LangChain tool. A LangChain tool with a JSON
+ * Schema, as the host makes of a node contract tool, is a `Tool` again. Others stay as they are.
+ */
+export function fromLangChainTool(kind: SupplyKind, value: unknown): unknown {
+	if (kind !== 'tool' || isSupply(kind, value) || !isRecord(value)) return value;
+	const { name, description, schema, invoke } = value;
+	const isJsonSchema =
+		isRecord(schema) && typeof schema.type === 'string' && typeof schema.safeParse !== 'function';
+	if (typeof invoke !== 'function' || !isJsonSchema) return value;
+	return {
+		name,
+		description,
+		input: schema,
+		call: async (args: Readonly<Record<string, unknown>>) => {
+			const result: unknown = await Reflect.apply(invoke, value, [args]);
+			return result;
+		},
+	};
+}
+
+/**
  * A capability of `kind` that answers each method call with the next of `results`, for
  * fixtures and tests. `data` sets its other members, e.g. the `model` or the `name` of a tool.
  */

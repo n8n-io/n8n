@@ -1,4 +1,5 @@
 import {
+	isToolContract,
 	replyContractOf,
 	toContract,
 	usesBinary,
@@ -221,7 +222,9 @@ function renderTs(schema: JsonSchema, mode: Mode): string {
 	// A trigger has no item, so it takes a provider of any item.
 	if (supply !== undefined) {
 		const items = mode.plain ? 'never, never' : 'NoInfer<I>, NoInfer<C>';
-		return `Provider<${items}, ${JSON.stringify(supply)}>`;
+		// The host gives a contract tool to a LangChain root node as a LangChain tool.
+		const kinds = supply === 'ai_tool' ? '"ai_tool" | "tool"' : JSON.stringify(supply);
+		return `Provider<${items}, ${kinds}>`;
 	}
 	// A value of each response page: a lambda over the page, never over the item.
 	const page = schema['x-n8n-page'];
@@ -756,6 +759,28 @@ export function generateNodeModule(nodeId: string, contracts: readonly Generated
 			};
 		},
 	);
+	// The host makes an agent tool node type of each tool action of this package.
+	const tools = named.filter(
+		({ contract, slot, typeVersion }) =>
+			!slot && typeVersion === undefined && isToolContract(contract),
+	);
+	const toolFactories = tools.map(({ contract, name, nodeType, resource, operation }): Factory => {
+		const tool = `${operation}Tool`;
+		const pageFields = pageFieldsOf(contract.input);
+		const args = trailingArgs([
+			String(contract.version),
+			pageFields.length ? JSON.stringify(pageFields) : 'undefined',
+		]);
+		const idempotent = contract.flow.idempotent ? ', idempotent' : '';
+		return {
+			path: resource === undefined ? [tool] : [resource, tool],
+			summary: `${contract.action}, as an agent tool (${contract.flow.effect}${idempotent})`,
+			text: [
+				`<In, Ctx>(config: ToolConfig<${name}Input<In, Ctx>>): Provider<In, Ctx, "tool"> =>`,
+				`\tcontractTool(${JSON.stringify(`${nodeType}Tool`)}, config${args})`,
+			].join('\n'),
+		};
+	});
 	// A trigger starts a flow. Its input takes plain values: there is no item to read yet.
 	const plain: Mode = { ...input, plain: true };
 	// A trigger output marks its optional fields, e.g. a WhatsApp event has messages or statuses.
@@ -822,6 +847,7 @@ export function generateNodeModule(nodeId: string, contracts: readonly Generated
 	const imports = [
 		...(suppliers.length > 0 ? ['contractProvider'] : []),
 		...(steps.length > 0 ? ['contractStep'] : []),
+		...(tools.length > 0 ? ['contractTool'] : []),
 		...(triggers.length > 0 ? ['contractTrigger'] : []),
 		...(routed ? ['routedStep'] : []),
 		...([...named, ...triggers].some(({ contract }) => usesBinary(contract))
@@ -837,13 +863,16 @@ export function generateNodeModule(nodeId: string, contracts: readonly Generated
 		'type NodeSettings',
 		...(derived || triggers.length > 0 ? ['type OutputOf'] : []),
 		...(body.includes('PageValue<') ? ['type PageValue'] : []),
-		...(body.includes('Provider<') || suppliers.length > 0 ? ['type Provider'] : []),
+		...(body.includes('Provider<') || suppliers.length > 0 || tools.length > 0
+			? ['type Provider']
+			: []),
 		...(routed ? ['type RoutedStep'] : []),
 		...(steps.length > 0 ? ['type Step'] : []),
+		...(tools.length > 0 ? ['type ToolConfig'] : []),
 		...(body.includes('Value<') ? ['type Value'] : []),
 		...(declares ? ['type ValueSchema'] : []),
 	];
-	const exported = [...factories, ...triggerFactories];
+	const exported = [...factories, ...toolFactories, ...triggerFactories];
 	return (
 		[
 			`// Generated from the ${nodeId} action contracts. Do not edit.`,
@@ -852,6 +881,11 @@ export function generateNodeModule(nodeId: string, contracts: readonly Generated
 			...(routed
 				? [
 						'// A step with outputs: flow.route(step, { <output>: (flow) => … }) continues from each output; andThen only from the first.',
+					]
+				: []),
+			...(tools.length > 0
+				? [
+						'// An <action>Tool factory gives the action to an AI agent as a tool: the model fills each fromModel() field, and the workflow fixes the others.',
 					]
 				: []),
 			...(exported.length > 0

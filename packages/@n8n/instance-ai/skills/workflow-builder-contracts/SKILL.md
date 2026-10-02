@@ -100,6 +100,10 @@ agent.execute({ name: 'Agent', promptType: 'define', text: (item) => item.questi
   providers: { model: lmChatOpenAi.execute({ name: 'Model', model: { mode: 'id', value: 'gpt-5-mini' } }) } })
 ```
 
+A typed action is also an agent tool: put `<action>Tool` in `tools`. The model
+fills each `fromModel()` field, and the workflow fixes the others, e.g.
+`httpRequest.getTool({ name: 'Fetch', url: fromModel('The page URL') })`.
+
 ## Lambdas
 
 - Write `(item, $) => <one expression>`. A template literal becomes text.
