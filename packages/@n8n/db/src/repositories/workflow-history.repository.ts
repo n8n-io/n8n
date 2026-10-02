@@ -1,5 +1,5 @@
 import { Service } from '@n8n/di';
-import { DataSource, In, LessThan } from '@n8n/typeorm';
+import { DataSource, In, IsNull, LessThan } from '@n8n/typeorm';
 import { DiffMetaData, DiffRule, groupWorkflows, SKIP_RULES } from 'n8n-workflow';
 
 import { WorkflowHistory, WorkflowEntity, WorkflowPublishedVersion } from '../entities';
@@ -160,26 +160,36 @@ export class WorkflowHistoryRepository extends BaseRepository<WorkflowHistory> {
 				startDate,
 			})
 			.orderBy('wh.createdAt', 'ASC')
+			.addOrderBy('wh.versionId', 'ASC')
 			.getMany();
 
-		// Group by workflowId
 		const publishedVersions =
 			await this.workflowPublishHistoryRepository.getPublishedVersions(workflowId);
+		const current = await this.manager
+			.createQueryBuilder(WorkflowEntity, 'w')
+			.select('w.versionId', 'versionId')
+			.where('w.id = :workflowId', { workflowId })
+			.getRawOne<{ versionId: string }>();
+		const protectedVersions = new Set(
+			publishedVersions.map((v) => v.versionId).filter((v) => v !== null),
+		);
+		if (current) protectedVersions.add(current.versionId);
 		const grouped = groupWorkflows<WorkflowHistory>(
 			workflows,
 			rules,
 			[
-				this.makeSkipActiveAndNamedVersionsRule(
-					new Set(publishedVersions.map((v) => v.versionId).filter((v) => v !== null)),
-				),
+				this.makeSkipActiveAndNamedVersionsRule(protectedVersions),
 				SKIP_RULES.skipDifferentUsers,
 				...skipRules,
 			],
 			metaData,
 		);
 
+		// A version named after the read above stays, like one named before it.
 		const { affected } = await this.delete({
 			versionId: In(grouped.removed.map((x) => x.versionId)),
+			name: IsNull(),
+			description: IsNull(),
 		});
 		return { seen: workflows.length, deleted: affected ?? grouped.removed.length };
 	}
