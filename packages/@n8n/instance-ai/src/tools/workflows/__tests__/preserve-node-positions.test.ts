@@ -176,20 +176,19 @@ describe('preserveExistingNodePositions', () => {
 		});
 
 		it('pushes an added node clear of a survivor it would have landed on', async () => {
-			// D was dragged well to the right, so the spot after B, taken from the
-			// build, lands right on top of it.
+			// D was dragged well to the right, so the median translation drops the new
+			// node right on top of it.
 			const saved = workflow([node('A', [100, 100]), node('B', [300, 100]), node('D', [780, 100])]);
 			const built = workflow(
 				[node('A', [0, 0]), node('B', [224, 0]), node('D', [448, 0]), node('C', [672, 0])],
-				{ ...wire('B', 'C'), ...wire('C', 'D') },
+				wire('D', 'C'),
 			);
 
 			await preserveExistingNodePositions(built, 'wf-1', contextReturning(saved));
 
 			expect(positionsByName(built).D).toEqual([780, 100]);
-			// Placed 448px after B as in the build (x=748), snapped to the 16px grid,
-			// then pushed below D.
-			expect(positionsByName(built).C).toEqual([752, 288]);
+			// Translated to x=772, snapped to the 16px grid, then pushed below D.
+			expect(positionsByName(built).C).toEqual([768, 288]);
 		});
 
 		it('uses the drawn height of a node with many outputs', async () => {

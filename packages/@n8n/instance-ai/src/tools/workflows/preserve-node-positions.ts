@@ -44,16 +44,13 @@ function median(values: number[]): number {
 	return sorted.length % 2 === 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid];
 }
 
-function nodeBox(
-	node: NodeJSON,
-	sizes: ReadonlyMap<string, { width: number; height: number }>,
-	layer: number,
-): Box {
-	const { width, height } = sizes.get(node.name ?? '') ?? {
-		width: NODE_WIDTH,
-		height: NODE_HEIGHT,
-	};
-	return { x: node.position[0], y: node.position[1], width, height, layer };
+const nameOf = (node: NodeJSON) => node.name ?? '';
+
+/** Everything reachable from `start` through `next`, in visit order. */
+function reach<T>(start: Iterable<T>, next: (item: T) => Iterable<T>): Set<T> {
+	const seen = new Set(start);
+	for (const item of seen) for (const other of next(item)) seen.add(other);
+	return seen;
 }
 
 /**
@@ -93,44 +90,37 @@ function intersects(a: Box, b: Box): boolean {
 	);
 }
 
-/**
- * Direct predecessors and successors by node name, across all connection types.
- * `mainChildrenOf` follows the data flow only. `subNodesOf` lists the AI
- * sub-nodes that feed a node.
- */
-function buildAdjacency(json: WorkflowJSON): {
-	parentsOf: Map<string, string[]>;
-	childrenOf: Map<string, string[]>;
-	mainChildrenOf: Map<string, string[]>;
-	subNodesOf: Map<string, string[]>;
-} {
-	const parentsOf = new Map<string, string[]>();
-	const childrenOf = new Map<string, string[]>();
-	const mainChildrenOf = new Map<string, string[]>();
-	const subNodesOf = new Map<string, string[]>();
-	const push = (map: Map<string, string[]>, key: string, value: string) =>
-		map.set(key, [...(map.get(key) ?? []), value]);
+interface Edge {
+	from: string;
+	to: string;
+	type: string;
+}
 
-	for (const [source, connectionsByType] of Object.entries(json.connections ?? {})) {
+/** Every connection by node name, across all connection types. */
+function edgesOf(json: WorkflowJSON): Edge[] {
+	const edges: Edge[] = [];
+	for (const [from, connectionsByType] of Object.entries(json.connections ?? {})) {
 		if (!isRecord(connectionsByType)) continue;
 		for (const [type, groups] of Object.entries(connectionsByType)) {
 			if (!Array.isArray(groups)) continue;
 			for (const group of groups) {
 				if (!Array.isArray(group)) continue;
 				for (const connection of group) {
-					if (!isRecord(connection) || typeof connection.node !== 'string') continue;
-					const target = connection.node;
-					push(childrenOf, source, target);
-					push(parentsOf, target, source);
-					if (type === 'main') push(mainChildrenOf, source, target);
-					if (type.startsWith('ai_')) push(subNodesOf, target, source);
+					if (isRecord(connection) && typeof connection.node === 'string') {
+						edges.push({ from, to: connection.node, type });
+					}
 				}
 			}
 		}
 	}
-
-	return { parentsOf, childrenOf, mainChildrenOf, subNodesOf };
+	return edges;
 }
+
+const parentsOf = (edges: Edge[], name: string) =>
+	edges.filter((edge) => edge.to === name).map((edge) => edge.from);
+
+const childrenOf = (edges: Edge[], name: string) =>
+	edges.filter((edge) => edge.from === name).map((edge) => edge.to);
 
 interface Survivor {
 	node: NodeJSON;
@@ -160,45 +150,43 @@ function makeRoomForInsertions(
 	// Without a re-layout, the build's gaps say nothing about the saved canvas.
 	if (!wasRelaidOut(survivors)) return new Map();
 
-	const { mainChildrenOf, subNodesOf } = buildAdjacency(json);
-	const survivorByName = new Map(survivors.map((survivor) => [survivor.node.name ?? '', survivor]));
-	const addedNames = new Set(added.map((node) => node.name ?? ''));
-	const groups = groupMembers(json).map((members) => members.map((node) => node.name ?? ''));
+	const edges = edgesOf(json);
+	const mainEdges = edges.filter((edge) => edge.type === 'main');
+	const aiEdges = edges.filter((edge) => edge.type.startsWith('ai_'));
+	const groups = groupMembers(json).map((members) => members.map(nameOf));
+	const survivorByName = new Map(survivors.map((survivor) => [nameOf(survivor.node), survivor]));
+	const addedNames = new Set(added.map(nameOf));
 	const inserted: Array<[NodeJSON, Survivor]> = [];
 
 	for (const node of added) {
-		const name = node.name ?? '';
-		const parent = survivors.find(({ node: { name: parentName } }) =>
-			mainChildrenOf.get(parentName ?? '')?.includes(name),
+		const parent = survivors.find((survivor) =>
+			childrenOf(mainEdges, nameOf(survivor.node)).includes(nameOf(node)),
 		);
 		if (!parent) continue;
 
 		// The first existing nodes after the insert, reached through added nodes only.
-		const next = new Set<Survivor>();
-		const walk = new Set([name]);
-		for (const current of walk) {
-			for (const child of mainChildrenOf.get(current) ?? []) {
-				const survivor = survivorByName.get(child);
-				if (survivor) next.add(survivor);
-				else if (addedNames.has(child)) walk.add(child);
-			}
-		}
+		const run = reach([nameOf(node)], (name) =>
+			childrenOf(mainEdges, name).filter((child) => addedNames.has(child)),
+		);
+		const next = new Set(
+			[...run]
+				.flatMap((name) => childrenOf(mainEdges, name))
+				.flatMap((child) => survivorByName.get(child) ?? []),
+		);
 		// Appended after the parent, not inserted.
 		if (next.size === 0) continue;
 
-		// The downstream flow moves as one, with its sub-nodes and groups.
-		const downstream = new Set([...next].map((survivor) => survivor.node.name ?? ''));
-		for (const current of downstream) {
-			for (const other of [
-				...(mainChildrenOf.get(current) ?? []),
-				...(subNodesOf.get(current) ?? []),
-				...groups.filter((group) => group.includes(current)).flat(),
-			]) {
-				downstream.add(other);
-			}
-		}
+		// The downstream flow moves as one, with its AI sub-nodes and groups.
+		const downstream = reach(
+			[...next].map((survivor) => nameOf(survivor.node)),
+			(name) => [
+				...childrenOf(mainEdges, name),
+				...parentsOf(aiEdges, name),
+				...groups.filter((group) => group.includes(name)).flat(),
+			],
+		);
 		// ponytail: a loop back to the parent, or a group shared with it, keeps the canvas as is.
-		if (downstream.has(parent.node.name ?? '')) continue;
+		if (downstream.has(nameOf(parent.node))) continue;
 
 		const room = Math.max(
 			0,
@@ -210,7 +198,7 @@ function makeRoomForInsertions(
 			),
 		);
 		for (const survivor of survivors) {
-			if (downstream.has(survivor.node.name ?? '')) {
+			if (downstream.has(nameOf(survivor.node))) {
 				survivor.saved = [survivor.saved[0] + room, survivor.saved[1]];
 			}
 		}
@@ -253,20 +241,20 @@ function resolveTranslation(
 	// The build kept the survivors' positions, so the layout engine skipped them and
 	// only the added nodes were placed — in a frame unrelated to the saved canvas.
 	// Anchor on a wired neighbour that did survive.
-	const savedByName = new Map(survivors.map(({ node, saved }) => [node.name ?? '', saved]));
-	const { parentsOf, childrenOf } = buildAdjacency(json);
+	const savedByName = new Map(survivors.map(({ node, saved }) => [nameOf(node), saved]));
+	const edges = edgesOf(json);
 
 	for (const node of added) {
 		if (!node.name) continue;
 
-		for (const parent of parentsOf.get(node.name) ?? []) {
+		for (const parent of parentsOf(edges, node.name)) {
 			const anchor = savedByName.get(parent);
 			if (anchor) {
 				return [anchor[0] + NODE_STEP_X - node.position[0], anchor[1] - node.position[1]];
 			}
 		}
 
-		for (const child of childrenOf.get(node.name) ?? []) {
+		for (const child of childrenOf(edges, node.name)) {
 			const anchor = savedByName.get(child);
 			if (anchor) {
 				return [anchor[0] - NODE_STEP_X - node.position[0], anchor[1] - node.position[1]];
@@ -325,28 +313,27 @@ function shiftUntilClear(
 /**
  * Move added nodes clear of the nodes and group chips already on the canvas.
  * Added nodes move in blocks (wired to each other or sharing a group), so the
- * layout engine's rows stay intact. A block goes down first; if an existing
+ * layout engine's rows stay intact. A block goes down first. If an existing
  * member pins its group chip, it goes up instead.
  * Members of a collapsed group hide behind its chip, so they only collide with
- * each other. Sticky notes are ignored on both sides — they sit behind nodes.
+ * each other. Sticky notes are ignored on both sides, because they sit behind nodes.
  */
 function separateAddedNodes(added: NodeJSON[], json: WorkflowJSON): void {
 	const nodes = json.nodes ?? [];
 	const addedSet = new Set(added);
+	const addedByName = new Map(added.map((node) => [nameOf(node), node]));
 	const groups = groupMembers(json);
-	const { parentsOf, childrenOf } = buildAdjacency(json);
+	const edges = edgesOf(json);
 	const sizes = getWorkflowNodeDimensions(json);
 
-	const boxesOf = (members: NodeJSON[]) =>
+	const boxesOf = (members: NodeJSON[]): Box[] =>
 		members
 			.filter((node) => !isStickyNoteType(node.type))
-			.map((node) =>
-				nodeBox(
-					node,
-					sizes,
-					groups.findIndex((group) => group.includes(node)),
-				),
-			);
+			.map((node) => {
+				const size = sizes.get(nameOf(node)) ?? { width: NODE_WIDTH, height: NODE_HEIGHT };
+				const layer = groups.findIndex((group) => group.includes(node));
+				return { x: node.position[0], y: node.position[1], ...size, layer };
+			});
 	const footprintOf = (members: NodeJSON[]) => [
 		...boxesOf(members),
 		...groups.filter((group) => group.some((node) => members.includes(node))).map(chipBox),
@@ -357,27 +344,20 @@ function separateAddedNodes(added: NodeJSON[], json: WorkflowJSON): void {
 		...groups.filter((group) => !group.some((node) => addedSet.has(node))).map(chipBox),
 	];
 
-	const addedByName = new Map(added.map((node) => [node.name ?? '', node]));
-	const neighboursOf = (node: NodeJSON) => [
-		...[
-			...(parentsOf.get(node.name ?? '') ?? []),
-			...(childrenOf.get(node.name ?? '') ?? []),
-		].flatMap((name) => addedByName.get(name) ?? []),
-		...groups.filter((group) => group.includes(node)).flatMap((group) => group),
-	];
+	// Added nodes wired to the node or in a group with it.
+	const linkedTo = (node: NodeJSON) =>
+		[
+			...[...parentsOf(edges, nameOf(node)), ...childrenOf(edges, nameOf(node))].flatMap(
+				(name) => addedByName.get(name) ?? [],
+			),
+			...groups.filter((group) => group.includes(node)).flat(),
+		].filter((other) => addedSet.has(other));
 
-	const seen = new Set<NodeJSON>();
+	const placed = new Set<NodeJSON>();
 	for (const start of added) {
-		if (seen.has(start)) continue;
-		seen.add(start);
-		const block = [start];
-		for (const node of block) {
-			for (const next of neighboursOf(node)) {
-				if (seen.has(next) || !addedSet.has(next)) continue;
-				seen.add(next);
-				block.push(next);
-			}
-		}
+		if (placed.has(start)) continue;
+		const block = [...reach([start], linkedTo)];
+		block.forEach((node) => placed.add(node));
 
 		const footprint = () => footprintOf(block);
 		const origin = block.map((node) => node.position);
