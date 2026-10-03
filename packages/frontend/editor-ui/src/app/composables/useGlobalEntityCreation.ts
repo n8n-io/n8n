@@ -14,10 +14,16 @@ import { useCloudPlanStore } from '@n8n/stores/cloudPlan.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { useUIStore } from '@/app/stores/ui.store';
+import { useFoldersStore } from '@/features/core/folders/folders.store';
+import { foldersEventBus } from '@/features/core/folders/folders.eventBus';
+import { useFolders } from '@/features/core/folders/composables/useFolders';
+import { useMessage } from '@/app/composables/useMessage';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { VARIABLE_MODAL_KEY } from '@/features/settings/environments.ee/environments.constants';
 import { PROJECT_DATA_TABLES } from '@/features/core/dataTable/constants';
+import { COMMUNITY_PLUS_ENROLLMENT_MODAL } from '@/features/settings/usage/usage.constants';
 import { getResourcePermissions } from '@n8n/permissions';
+import { MODAL_CONFIRM } from '@/app/constants';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import type { Scope } from '@n8n/permissions';
 import type { RouteLocationRaw } from 'vue-router';
@@ -57,6 +63,7 @@ export const useGlobalEntityCreation = () => {
 	const DATA_TABLE_MENU_ID = 'data-table';
 	const AGENTS_MENU_ID = 'agent';
 	const INSTANCE_AI_THREAD_MENU_ID = 'instance-ai-thread';
+	const FOLDER_MENU_ID = 'folder';
 	const DEFAULT_ICON: IconName = 'layers';
 
 	const settingsStore = useSettingsStore();
@@ -65,14 +72,21 @@ export const useGlobalEntityCreation = () => {
 	const sourceControlStore = useSourceControlStore();
 	const usersStore = useUsersStore();
 	const uiStore = useUIStore();
+	const foldersStore = useFoldersStore();
+	const folderHelpers = useFolders();
 
 	const router = useRouter();
 	const i18n = useI18n();
+	const message = useMessage();
 	const toast = useToast();
 	const telemetry = useTelemetry();
 	const { createAgent } = useCreateAgent();
 
 	const isCreatingProject = ref(false);
+
+	const folderProject = computed(
+		() => projectsStore.currentProject ?? projectsStore.personalProject,
+	);
 
 	const displayProjects = computed(() =>
 		sortByProperty(
@@ -196,6 +210,28 @@ export const useGlobalEntityCreation = () => {
 		};
 	});
 
+	const folderItem = computed<Item | null>(() => {
+		const canUserRegisterCommunityPlus = getResourcePermissions(
+			usersStore.currentUser?.globalScopes,
+		).community.register;
+		const folderProjectPermissions = getResourcePermissions(folderProject.value?.scopes).folder;
+
+		if (
+			!settingsStore.isFoldersFeatureEnabled &&
+			(settingsStore.deploymentType !== 'default' || !canUserRegisterCommunityPlus)
+		) {
+			return null;
+		}
+
+		return {
+			id: FOLDER_MENU_ID,
+			title: i18n.baseText('projects.menu.create.folder'),
+			disabled:
+				settingsStore.isFoldersFeatureEnabled &&
+				(sourceControlStore.preferences.branchReadOnly || !folderProjectPermissions.create),
+		};
+	});
+
 	const menu = computed<Item[]>(() => {
 		const workflowTitle = i18n.baseText('projects.menu.create.workflow');
 		const credentialTitle = i18n.baseText('projects.menu.create.credential');
@@ -204,6 +240,7 @@ export const useGlobalEntityCreation = () => {
 		const instanceAiTrailing = instanceAiThreadItem.value ? [instanceAiThreadItem.value] : [];
 		const variableTrailing = variableItem.value ? [variableItem.value] : [];
 		const dataTableTrailing = dataTableItem.value ? [dataTableItem.value] : [];
+		const folderTrailing = folderItem.value ? [folderItem.value] : [];
 
 		// Community
 		if (!projectsStore.isTeamProjectFeatureEnabled) {
@@ -229,6 +266,7 @@ export const useGlobalEntityCreation = () => {
 						},
 					},
 				},
+				...folderTrailing,
 				...variableTrailing,
 				...dataTableTrailing,
 				...(isAgentsModuleActive.value
@@ -273,6 +311,7 @@ export const useGlobalEntityCreation = () => {
 						params: { projectId: projectsStore.personalProject?.id, credentialId: 'create' },
 					},
 				},
+				...folderTrailing,
 				...variableTrailing,
 				...dataTableTrailing,
 				...(isAgentsModuleActive.value
@@ -366,6 +405,7 @@ export const useGlobalEntityCreation = () => {
 				}),
 			},
 			...variableTrailing,
+			...folderTrailing,
 			...dataTableTrailing,
 			...(isAgentsModuleActive.value
 				? [
@@ -429,7 +469,63 @@ export const useGlobalEntityCreation = () => {
 		}
 	};
 
+	const createFolder = async () => {
+		const project = folderProject.value;
+		if (!project) return;
+
+		const parentName =
+			project.type === 'personal'
+				? i18n.baseText('projects.menu.personal')
+				: (project.name ?? i18n.baseText('projects.menu.personal'));
+		const promptResponse = await message.prompt(
+			i18n.baseText('folders.add.to.parent.message', {
+				interpolate: { parent: parentName },
+			}),
+			{
+				confirmButtonText: i18n.baseText('generic.create'),
+				cancelButtonText: i18n.baseText('generic.cancel'),
+				inputValidator: folderHelpers.validateFolderName,
+				customClass: 'add-folder-modal',
+			},
+		);
+
+		if (promptResponse.action !== MODAL_CONFIRM || !promptResponse.value) return;
+
+		try {
+			const newFolder = await foldersStore.createFolder(promptResponse.value, project.id);
+			const newFolderURL = router.resolve({
+				name: VIEWS.PROJECTS_FOLDERS,
+				params: { projectId: project.id, folderId: newFolder.id },
+			}).href;
+			toast.showToast({
+				title: i18n.baseText('folders.add.success.title'),
+				message: i18n.baseText('folders.add.success.message', {
+					interpolate: { link: newFolderURL, folderName: newFolder.name },
+				}),
+				type: 'success',
+			});
+			foldersEventBus.emit('folder-created', { projectId: project.id });
+			telemetry.track('User created folder', { folder_id: newFolder.id });
+		} catch (error) {
+			toast.showError(error, i18n.baseText('folders.create.error.title'));
+		}
+	};
+
 	const handleSelect = (id: string) => {
+		if (id === FOLDER_MENU_ID) {
+			if (!settingsStore.isFoldersFeatureEnabled) {
+				uiStore.openModalWithData({
+					name: COMMUNITY_PLUS_ENROLLMENT_MODAL,
+					data: {
+						customHeading: i18n.baseText('folders.registeredCommunity.cta.heading'),
+					},
+				});
+			} else {
+				void createFolder();
+			}
+			return;
+		}
+
 		if (id.startsWith('variable-') && id !== 'variable-title') {
 			const projectId =
 				id === 'variable-global'
