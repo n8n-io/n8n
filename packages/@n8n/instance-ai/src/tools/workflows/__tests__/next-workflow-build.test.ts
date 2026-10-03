@@ -1,5 +1,7 @@
 import { versionsOf } from '@n8n/nodes-base-next';
 import type { IDataObject, WorkflowJSON } from '@n8n/workflow-sdk';
+import { Workflow, type IConnections, type INode, type INodeTypes } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import type { InstanceAiContext } from '../../../types';
 import { derivedNodeTypes } from '../../__tests__/derived-node-types';
@@ -441,6 +443,90 @@ import { googleGemini } from '@n8n/nodes/googleGemini';`;
 				property_status: 'example',
 				property_story_points: 1,
 			});
+		});
+	});
+
+	describe('synthesizedFixtures read keys', () => {
+		const getAll = '@n8n/nodes-base-next.notionDatabasePageGetAll';
+		const deals: WorkflowJSON = {
+			name: 'Deals',
+			connections: {
+				'Get Deals': { main: [[{ node: 'Build Rows', type: 'main', index: 0 }]] },
+				'Build Rows': { main: [[{ node: 'Upsert', type: 'main', index: 0 }]] },
+			},
+			nodes: [
+				node('Get Deals', getAll, { database: 'x' }),
+				node('Build Rows', '@n8n/nodes-base-next.coreSet', {
+					fields: {
+						'Deal ID': '={{ $json.property_deal_id }}',
+						Stage: '={{ $json["property_stage"] }}',
+						Typo: '={{ $json.not_a_property }}',
+					},
+				}),
+				node('Upsert', '@n8n/nodes-base-next.googleSheetsSheetAppendOrUpdate', {
+					values: {
+						'Deal ID': '={{ $json["Deal ID"] }}',
+						Grandchild: '={{ $json.property_grandchild }}',
+						Owner: "={{ $('Get Deals').first().json.property_owner }}",
+						Amount: '={{ $("Get Deals").item.json["property_amount"] }}',
+					},
+				}),
+			],
+		};
+
+		it('adds the keys that later nodes read and that an open output allows', () => {
+			const fixtures = synthesizedFixtures(deals);
+			expect(fixtures['Get Deals']?.[0]).toMatchObject({
+				property_deal_id: 'example property_deal_id',
+				property_stage: 'example property_stage',
+				property_owner: 'example property_owner',
+				property_amount: 'example property_amount',
+			});
+			expect(fixtures['Get Deals']?.[0]).not.toHaveProperty('not_a_property');
+			expect(fixtures['Get Deals']?.[0]).not.toHaveProperty('property_grandchild');
+			expect(fixtures['Build Rows']?.[0]).toEqual({
+				'Deal ID': 'example Deal ID',
+				property_grandchild: 'example property_grandchild',
+			});
+		});
+
+		it('keeps the closed key space of a resource lookup', () => {
+			const resourceFields = new Map([['Get Deals', [{ name: 'Stage', value: 'Stage|select' }]]]);
+			const [item] = synthesizedFixtures(deals, {}, resourceFields)['Get Deals'] ?? [];
+			expect(item).toHaveProperty('property_stage');
+			expect(item).not.toHaveProperty('property_deal_id');
+		});
+
+		it('resolves the Notion property read of a built Set node to a value', async () => {
+			const { manual, node: anyNode, set, workflow } = await import('@n8n/workflow-sdk/next');
+			const built = workflow(
+				'Deals',
+				manual(),
+				anyNode({ name: 'Get Deals', type: getAll, version: 1, parameters: { database: 'x' } }),
+				set({ name: 'Build Rows', fields: { 'Deal ID': (deal) => deal.property_deal_id } }),
+			).toJSON();
+			const rows = built.nodes.find(({ name }) => name === 'Build Rows');
+			const raw = rows?.parameters?.fields;
+			expect(raw).toEqual({ 'Deal ID': '={{ $json.property_deal_id }}' });
+
+			const [item] = synthesizedFixtures(built)['Get Deals'] ?? [];
+			const engine = new Workflow({
+				nodes: built.nodes as INode[],
+				connections: built.connections as IConnections,
+				active: false,
+				nodeTypes: mock<INodeTypes>(),
+			});
+			const resolved = engine.expression.getParameterValue(
+				'={{ $json.property_deal_id }}',
+				null,
+				0,
+				0,
+				'Build Rows',
+				[{ json: item as IDataObject }],
+				'manual',
+				{},
+			);
+			expect(resolved).toBe('example property_deal_id');
 		});
 	});
 

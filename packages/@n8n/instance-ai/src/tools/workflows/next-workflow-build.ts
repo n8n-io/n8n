@@ -12,8 +12,13 @@ import {
 } from '@n8n/nodes-base-next';
 import { isRecord } from '@n8n/utils/is-record';
 import { hasPlaceholderDeep } from '@n8n/utils/placeholder';
-import type { WorkflowJSON } from '@n8n/workflow-sdk';
-import { isFromAIOnlyExpression } from 'n8n-workflow';
+import { toEngineConnections, type WorkflowJSON } from '@n8n/workflow-sdk';
+import {
+	getChildNodes,
+	isFromAIOnlyExpression,
+	NodeConnectionTypes,
+	safeRegex,
+} from 'n8n-workflow';
 import { z } from 'zod';
 
 import type { ValidationWarning } from './workflow-validation-warnings';
@@ -289,6 +294,74 @@ export async function fetchResourceFields(
 
 type Fixtures = NonNullable<WorkflowJSON['pinData']>;
 
+// `.json` of the input item: `$json`, `$input.item.json`, `$input.first().json`, …
+const ITEM_JSON =
+	/\$json\b|\$input\s*\.\s*(?:item|first\(\s*\)|last\(\s*\)|all\(\s*\)\s*\[\s*\d+\s*\])\s*\.\s*json\b/g;
+// `.json` of a named node: `$("Node").item.json`, `$("Node").first().json`, `$node["Node"].json`, …
+const NODE_JSON =
+	/\$\(\s*(['"])(.*?)\1\s*\)\s*\.\s*(?:item|first\(\s*\)|last\(\s*\)|all\(\s*\)\s*\[\s*\d+\s*\]|itemMatching\([^)]*\))\s*\.\s*json\b|\$node\[\s*(['"])(.*?)\3\s*\]\s*\.\s*json\b/g;
+// The key that follows `.json`: `.key` or `["key"]`.
+const KEY_READ = /^\s*(?:\.\s*([A-Za-z_$][\w$]*)|\[\s*(['"])(.*?)\2\s*\])/;
+
+const keyAfter = (text: string, at: number) => {
+	const match = KEY_READ.exec(text.slice(at));
+	return match?.[1] ?? match?.[3];
+};
+
+const scriptsOf = (node: WorkflowJSON['nodes'][number]) => [
+	...expressionStrings(node.parameters),
+	...javaScriptOf(node),
+];
+
+/**
+ * The top-level output keys of `nodeName` that the workflow reads: `$json` reads in its direct
+ * children, and reads by node name anywhere.
+ */
+function readKeysOf(workflow: WorkflowJSON, nodeName: string): Set<string> {
+	const children = new Set(
+		getChildNodes(toEngineConnections(workflow.connections), nodeName, NodeConnectionTypes.Main, 1),
+	);
+	return new Set(
+		workflow.nodes
+			.flatMap((node) =>
+				scriptsOf(node).flatMap((text) => [
+					...(node.name && children.has(node.name)
+						? [...text.matchAll(ITEM_JSON)].map((match) =>
+								keyAfter(text, match.index + match[0].length),
+							)
+						: []),
+					...[...text.matchAll(NODE_JSON)]
+						.filter((match) => (match[2] ?? match[4]) === nodeName)
+						.map((match) => keyAfter(text, match.index + match[0].length)),
+				]),
+			)
+			.filter((key): key is string => key !== undefined),
+	);
+}
+
+/**
+ * An example value for each read key that an open output allows but the example lacks, so a
+ * correct read of an open key does not resolve to empty. A key that the schema does not allow
+ * stays absent.
+ */
+function readKeyExamples(
+	schema: JsonSchema,
+	example: Record<string, unknown>,
+	keys: ReadonlySet<string>,
+): Record<string, unknown> {
+	const { patternProperties = {}, additionalProperties } = schema;
+	return Object.fromEntries(
+		[...keys].flatMap((key): Array<[string, unknown]> => {
+			if (key in example || schema.properties?.[key]) return [];
+			const child =
+				Object.entries(patternProperties).find(([pattern]) => safeRegex.test(pattern, key))?.[1] ??
+				(additionalProperties === true ? {} : additionalProperties || undefined);
+			if (!child) return [];
+			return [[key, child.type === undefined ? `example ${key}` : exampleOf(child)]];
+		}),
+	);
+}
+
 /**
  * One example item for each contract node without declared output. Verification then
  * simulates read nodes instead of calling the service, and needs no LLM to invent the output
@@ -302,12 +375,14 @@ export function synthesizedFixtures(
 	const synthesized = workflow.nodes.flatMap((node): Array<[string, Fixtures[string]]> => {
 		const action = actionOfNode(node);
 		if (!action || !node.name || declared[node.name]) return [];
-		const example = exampleOf(
-			outputOf(action, node.parameters ?? {}, resourceFields.get(node.name)),
-		);
-		return typeof example === 'object' && example !== null && !Array.isArray(example)
-			? [[node.name, [Object.fromEntries(Object.entries(example))]]]
-			: [];
+		const schema = outputOf(action, node.parameters ?? {}, resourceFields.get(node.name));
+		const example = exampleOf(schema);
+		if (!isRecord(example)) return [];
+		const item: object = {
+			...example,
+			...readKeyExamples(schema, example, readKeysOf(workflow, node.name)),
+		};
+		return [[node.name, [Object.fromEntries(Object.entries(item))]]];
 	});
 	return { ...declared, ...Object.fromEntries(synthesized) };
 }
@@ -408,6 +483,15 @@ const expressionStrings = (value: unknown): string[] => {
 	return isRecord(value) ? Object.values(value).flatMap(expressionStrings) : [];
 };
 
+function javaScriptOf({ type, parameters = {} }: WorkflowJSON['nodes'][number]): string[] {
+	const field = JAVASCRIPT_CODE_FIELDS.get(type);
+	const text = field === undefined ? undefined : parameters[field];
+	const { language = 'javaScript' } = parameters;
+	return language === 'javaScript' && typeof text === 'string' && !text.startsWith('=')
+		? [text]
+		: [];
+}
+
 /**
  * The strings the built workflow keeps as n8n expressions, and the JavaScript of its Code nodes,
  * for {@link EXPRESSIONS_PATH}. The type check finds the `expr()` call or literal of each in the
@@ -418,18 +502,7 @@ export function workflowExpressions(workflow: WorkflowJSON): string {
 	const expressions = [
 		...new Set(workflow.nodes.flatMap((node) => expressionStrings(node.parameters))),
 	];
-	const code = [
-		...new Set(
-			workflow.nodes.flatMap(({ type, parameters = {} }) => {
-				const field = JAVASCRIPT_CODE_FIELDS.get(type);
-				const text = field === undefined ? undefined : parameters[field];
-				const { language = 'javaScript' } = parameters;
-				return language === 'javaScript' && typeof text === 'string' && !text.startsWith('=')
-					? [text]
-					: [];
-			}),
-		),
-	];
+	const code = [...new Set(workflow.nodes.flatMap(javaScriptOf))];
 	return expressions.length + code.length === 0
 		? EMPTY_EXPRESSIONS
 		: `${JSON.stringify({ expressions, code })}\n`;
