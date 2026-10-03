@@ -50,7 +50,7 @@ flowchart LR
 
 | Version | Of what | Where | At run time |
 |---|---|---|---|
-| Node Contract version | the spec | `nodeContract` in each manifest; the WIT package version | Yes: the host range `N8N_NODE_CONTRACT_RANGE` (default `>=1.0.0 <3.0.0`) and the newest minor that the host implements |
+| Node Contract version | the spec | `nodeContract` in each manifest; the WIT package version | Yes: the host range `N8N_NODE_CONTRACT_RANGE` (default `>=2.0.0 <3.0.0`) and the newest minor that the host implements |
 | action, trigger, provider version | the content | `semver` (the major is the n8n `typeVersion`) | Yes: a workflow pins it |
 | credential version | the content | `semver` of the credential manifest; an action pins `<name>@<major>` in `credentials` | Yes: the pin |
 | SDK version | `@n8n/node-sdk` | `sdk` in each manifest | No: for traceability only |
@@ -60,7 +60,6 @@ What each minor added (`@since` in the WIT, `x-n8n-since` in the schema):
 
 | Version | Adds |
 |---|---|
-| 1.0.0 | `n8n-action@1.wit`: `run` emits items. The host runs it through `src/action-api-v1.ts`. |
 | 2.0.0 | `http`, `log`, `limits`; the `run` resource |
 | 2.1.0 | `item-run`: the current item, the `batch` cardinality, named outputs |
 | 2.2.0 | `binary` |
@@ -69,10 +68,9 @@ What each minor added (`@since` in the WIT, `x-n8n-since` in the schema):
 | 2.5.0 | the manifest fields `kind`, `nodeContract`, `sdk`, `credentials`; credential manifests; the trigger and credential interfaces; the `run-credential` import (the plain credential fields of `run()`); `provider.describe` |
 | unstable | `credential.exchange`, `credential.refresh` (`credential-exchange`); the lookup interface (`lookup`) |
 
-A manifest frozen before 2.5.0 has `apiVersion: "n8n:action@x.y.z"` or `abi: 1 | 2` instead of
-`nodeContract`. The host still reads it: `n8n:action@x.y.z` is Node Contract `x.y.z`, and
-`abi: n` is `n.0.0`. The same applies to the packument field `n8nContract` of a published
-version.
+The host reads only manifests with `nodeContract`. It refuses a manifest without it, such as
+one frozen before 2.5.0, and a bundle of Node Contract 1.x. Freeze such a version again. The
+packument field `n8nContract` of a published version also states `nodeContract`.
 
 ## Rules
 
@@ -99,7 +97,6 @@ version.
 | Path | What |
 |---|---|
 | `spec/wit/*.wit` | Package `n8n:node-contract@2.5.0`: `host.wit` (capabilities and shared types), one file per kind |
-| `spec/n8n-action@1.wit` | The 1.x major, for the @1 adapter |
 | `spec/manifest.schema.json` | Generated from `src/manifest.ts` |
 | `spec/<kind>.openrpc.json` | Generated from `spec/wit` |
 | `spec/json-rpc.md` | The JSON-RPC mapping |

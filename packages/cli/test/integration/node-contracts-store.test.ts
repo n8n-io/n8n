@@ -54,7 +54,8 @@ const { packContractPackage } = sdkRequire('@n8n/node-sdk/publish') as {
 };
 
 const NEXT = path.resolve(__dirname, '../../../@n8n/nodes-base-next');
-const SEND = '@n8n/nodes-base-next.httpRequestSend';
+const GET = '@n8n/nodes-base-next.httpRequestGet';
+const OLDER = '2.0.0';
 
 const keys = generateKeyPairSync('ed25519', {
 	publicKeyEncoding: { type: 'spki', format: 'pem' },
@@ -80,9 +81,9 @@ const lockOf = ({ id, semver, bundleHash, contractHash }: Manifest) => ({
 	contractHash,
 });
 
-const majorsOfSend = () =>
+const majorsOfGet = () =>
 	Object.keys(
-		(Container.get(LoadNodesAndCredentials).getNode(SEND).type as IVersionedNodeType).nodeVersions,
+		(Container.get(LoadNodesAndCredentials).getNode(GET).type as IVersionedNodeType).nodeVersions,
 	);
 
 mockInstance(Push);
@@ -94,11 +95,11 @@ beforeAll(async () => {
 	state.storeDir = path.join(Container.get(InstanceSettings).n8nFolder, 'node-contracts');
 	await rm(state.storeDir, { recursive: true, force: true });
 
-	const v1 = await pack(path.join(NEXT, 'fixtures/versions/httpRequest.send@1.0.2'));
-	const v2 = await pack(path.join(NEXT, 'dist/versions/httpRequest.send'));
-	registry.versions.set('1.0.2', v1);
-	registry.versions.set(v2.manifest.semver, v2);
-	const name = sdk.packageNameOf('httpRequest.send');
+	const older = await pack(path.join(NEXT, `fixtures/versions/httpRequest.get@${OLDER}`));
+	const head = await pack(path.join(NEXT, 'dist/versions/httpRequest.get'));
+	registry.versions.set(OLDER, older);
+	registry.versions.set(head.manifest.semver, head);
+	const name = sdk.packageNameOf('httpRequest.get');
 	registry.server.on('request', (request, response) => {
 		const tarball = /^\/tarballs\/(.+)\.tgz$/.exec(request.url ?? '')?.[1];
 		const found = tarball ? registry.versions.get(tarball) : undefined;
@@ -119,13 +120,10 @@ beforeAll(async () => {
 			response.end(JSON.stringify({ name, versions: Object.fromEntries(versions) }));
 		} else if (found) {
 			response.end(found.data);
-		} else if (request.url === '/echo') {
-			const chunks: Buffer[] = [];
-			request.on('data', (chunk: Buffer) => chunks.push(chunk));
-			request.on('end', () => {
-				response.setHeader('content-type', 'application/json');
-				response.end(JSON.stringify({ received: JSON.parse(Buffer.concat(chunks).toString()) }));
-			});
+		} else if (request.url?.startsWith('/echo?')) {
+			const { searchParams } = new URL(request.url, registry.url);
+			response.setHeader('content-type', 'application/json');
+			response.end(JSON.stringify({ received: Object.fromEntries(searchParams) }));
 		} else {
 			response.statusCode = 404;
 			response.end();
@@ -144,11 +142,11 @@ beforeAll(async () => {
 		nodeContractsRegistryUrl: registry.url,
 		nodeContractsPublicKeyFile: publicKeyFile,
 		nodeContractsUpdatePolicy: 'strict',
-		nodeContractRange: '>=1.0.0 <3.0.0',
+		nodeContractRange: '>=2.0.0 <3.0.0',
 	});
 
 	// The store holds only the HEAD.
-	await (await Container.get(NodeContractsStore).open()).add(v2.data);
+	await (await Container.get(NodeContractsStore).open()).add(head.data);
 	await useNodeContractsRegistry();
 	await utils.initBinaryDataService();
 	const next = new ContractNodeLoader();
@@ -165,28 +163,28 @@ afterAll(async () => {
 	await testDb.terminate();
 });
 
-async function createV1Workflow() {
-	const v1 = registry.versions.get('1.0.2');
-	if (!v1) throw new Error('1.0.2 is not published');
+function publishedOlder() {
+	const older = registry.versions.get(OLDER);
+	if (!older) throw new Error(`${OLDER} is not published`);
+	return older;
+}
+
+async function createOlderWorkflow() {
 	return await createWorkflow(
 		{
-			name: 'Send on major 1',
+			name: 'Get on major 2',
 			nodes: [
 				{
-					id: 'send',
-					name: 'Send',
-					type: SEND,
-					typeVersion: 1,
+					id: 'get',
+					name: 'Get',
+					type: GET,
+					typeVersion: 2,
 					position: [0, 0],
-					parameters: {
-						method: 'POST',
-						url: `${registry.url}/echo`,
-						body: '{"kind":"json","json":{"name":"Ada"}}',
-					},
+					parameters: { url: `${registry.url}/echo?name=Ada` },
 				},
 			],
 			connections: {},
-			meta: { nodeContracts: { Send: lockOf(v1.manifest) } } as IWorkflowBase['meta'],
+			meta: { nodeContracts: { Get: lockOf(publishedOlder().manifest) } } as IWorkflowBase['meta'],
 		},
 		state.owner,
 	);
@@ -216,7 +214,7 @@ async function runToEnd(workflow: IWorkflowBase) {
 		includeData: true,
 		unflattenData: true,
 	});
-	const [task] = execution?.data.resultData.runData.Send ?? [];
+	const [task] = execution?.data.resultData.runData.Get ?? [];
 	return {
 		status: execution?.status,
 		items: task?.data?.main[0]?.map(({ json }) => json),
@@ -225,19 +223,19 @@ async function runToEnd(workflow: IWorkflowBase) {
 }
 
 describe('node contracts store', () => {
-	it('fetches the locked 1.x at sync, lists majors 1 and 3, and runs the workflow on 1.x', async () => {
-		const workflow = await createV1Workflow();
-		expect(majorsOfSend()).toEqual(['3']);
+	it('fetches the locked older major at sync, lists majors 2 and 3, and runs the workflow on it', async () => {
+		const workflow = await createOlderWorkflow();
+		expect(majorsOfGet()).toEqual(['3']);
 
 		const result = await Container.get(NodeContractsSync).run({ refreshNodeTypes: true });
 
-		expect(result.added.map(({ semver }) => semver)).toEqual(['1.0.2']);
+		expect(result.added.map(({ semver }) => semver)).toEqual([OLDER]);
 		expect(result.failed).toEqual([]);
-		expect(majorsOfSend()).toEqual(['1', '3']);
+		expect(majorsOfGet()).toEqual(['2', '3']);
 		const versions = Container.get(LoadNodesAndCredentials)
-			.types.nodes.filter(({ name }) => name === SEND)
+			.types.nodes.filter(({ name }) => name === GET)
 			.map(({ version }) => version);
-		expect(versions.sort()).toEqual([1, 3]);
+		expect(versions.sort()).toEqual([2, 3]);
 		expect(Container.get(Push).broadcast).toHaveBeenCalledWith({
 			type: 'nodeDescriptionUpdated',
 			data: {},
@@ -246,47 +244,46 @@ describe('node contracts store', () => {
 		expect(await runToEnd(workflow)).toEqual({
 			status: 'success',
 			items: [{ received: { name: 'Ada' } }],
-			ran: expect.objectContaining({ version: '1.0.2', nodeContract: '1.0.0' }),
+			ran: expect.objectContaining({ version: OLDER, nodeContract: '2.1.0' }),
 		});
 	});
 
 	it('fetches a bundle that is not in the store before the run', async () => {
-		const workflow = await createV1Workflow();
-		const { bundleHash } = registry.versions.get('1.0.2')?.manifest ?? { bundleHash: '' };
+		const workflow = await createOlderWorkflow();
+		const { bundleHash } = publishedOlder().manifest;
 		await rm(path.join(state.storeDir, `${bundleHash}.tgz`));
 		// As after a restart: the node types come from the store.
 		await Container.get(LoadNodesAndCredentials).refreshNodeTypes();
-		expect(majorsOfSend()).toEqual(['3']);
+		expect(majorsOfGet()).toEqual(['3']);
 
 		expect(await runToEnd(workflow)).toMatchObject({
 			status: 'success',
 			items: [{ received: { name: 'Ada' } }],
 		});
-		expect(majorsOfSend()).toEqual(['1', '3']);
+		expect(majorsOfGet()).toEqual(['2', '3']);
 		expect(await (await Container.get(NodeContractsStore).open()).bundleHashes()).toContain(
 			bundleHash,
 		);
 	});
 
 	it('names the action, version, bundle hash, and registry when the fetch before the run fails', async () => {
-		const workflow = await createV1Workflow();
-		const v1 = registry.versions.get('1.0.2');
-		if (!v1) throw new Error('1.0.2 is not published');
-		registry.versions.delete('1.0.2');
-		await rm(path.join(state.storeDir, `${v1.manifest.bundleHash}.tgz`));
+		const workflow = await createOlderWorkflow();
+		const older = publishedOlder();
+		registry.versions.delete(OLDER);
+		await rm(path.join(state.storeDir, `${older.manifest.bundleHash}.tgz`));
 		await Container.get(LoadNodesAndCredentials).refreshNodeTypes();
 		try {
 			await expect(runToEnd(workflow)).rejects.toThrow(
-				`Cannot get httpRequest.send@1.0.2 (bundle ${v1.manifest.bundleHash}) from the registry ${registry.url}`,
+				`Cannot get httpRequest.get@${OLDER} (bundle ${older.manifest.bundleHash}) from the registry ${registry.url}`,
 			);
 		} finally {
-			registry.versions.set('1.0.2', v1);
+			registry.versions.set(OLDER, older);
 		}
 	});
 
 	it('fetches a missing bundle once and rebuilds the node types once for parallel runs', async () => {
-		const workflow = await createV1Workflow();
-		const { bundleHash } = registry.versions.get('1.0.2')?.manifest ?? { bundleHash: '' };
+		const workflow = await createOlderWorkflow();
+		const { bundleHash } = publishedOlder().manifest;
 		await rm(path.join(state.storeDir, `${bundleHash}.tgz`), { force: true });
 		const loadNodesAndCredentials = Container.get(LoadNodesAndCredentials);
 		await loadNodesAndCredentials.refreshNodeTypes();
@@ -295,41 +292,45 @@ describe('node contracts store', () => {
 			const sync = Container.get(NodeContractsSync);
 			await Promise.all([sync.prepareRun(workflow), sync.prepareRun(workflow)]);
 			expect(rebuild).toHaveBeenCalledTimes(1);
-			expect(majorsOfSend()).toEqual(['1', '3']);
+			expect(majorsOfGet()).toEqual(['2', '3']);
 		} finally {
 			rebuild.mockRestore();
 		}
 	});
 
+	// Narrow the range after the rebuild: some bundled HEADs also need 2.1.0.
 	it('refuses a run without a rebuild when the host does not run the Node Contract version of its lock', async () => {
-		const workflow = await createV1Workflow();
+		const workflow = await createOlderWorkflow();
 		const { instanceAi } = Container.get(GlobalConfig);
 		const loadNodesAndCredentials = Container.get(LoadNodesAndCredentials);
-		instanceAi.nodeContractRange = '>=2.0.0 <3.0.0';
-		await useNodeContractsRegistry();
+		await rm(path.join(state.storeDir, `${publishedOlder().manifest.bundleHash}.tgz`), {
+			force: true,
+		});
 		await loadNodesAndCredentials.refreshNodeTypes();
+		instanceAi.nodeContractRange = '>=2.2.0 <3.0.0';
+		await useNodeContractsRegistry();
 		const refresh = vi.spyOn(loadNodesAndCredentials, 'refreshNodeTypes');
 		try {
-			expect(majorsOfSend()).toEqual(['3']);
+			expect(majorsOfGet()).toEqual(['3']);
 			await expect(runToEnd(workflow)).rejects.toThrow(
-				'its lock httpRequest.send@1.0.2 (bundle 4571314301c3',
+				`its lock httpRequest.get@${OLDER} (bundle ${publishedOlder().manifest.bundleHash.slice(0, 12)}`,
 			);
 			await expect(runToEnd(workflow)).rejects.toThrow(
-				'needs Node Contract 1.0.0, which this host does not run',
+				'needs Node Contract 2.1.0, which this host does not run',
 			);
 			expect(refresh).not.toHaveBeenCalled();
 		} finally {
 			refresh.mockRestore();
-			instanceAi.nodeContractRange = '>=1.0.0 <3.0.0';
+			instanceAi.nodeContractRange = '>=2.0.0 <3.0.0';
 			await useNodeContractsRegistry();
 			await loadNodesAndCredentials.refreshNodeTypes();
 		}
 	});
 
 	it('reports the workflow when the host no longer runs the Node Contract version of its lock', async () => {
-		const workflow = await createV1Workflow();
+		const workflow = await createOlderWorkflow();
 		const { instanceAi } = Container.get(GlobalConfig);
-		instanceAi.nodeContractRange = '>=2.0.0 <3.0.0';
+		instanceAi.nodeContractRange = '>=2.2.0 <3.0.0';
 		await useNodeContractsRegistry();
 		try {
 			const { unsupported } = await Container.get(NodeContractsSync).run({
@@ -338,12 +339,12 @@ describe('node contracts store', () => {
 			expect(unsupported).toContainEqual(
 				expect.objectContaining({
 					workflowId: workflow.id,
-					node: 'Send',
-					nodeContract: '1.0.0',
+					node: 'Get',
+					nodeContract: '2.1.0',
 				}),
 			);
 		} finally {
-			instanceAi.nodeContractRange = '>=1.0.0 <3.0.0';
+			instanceAi.nodeContractRange = '>=2.0.0 <3.0.0';
 			await useNodeContractsRegistry();
 		}
 	});

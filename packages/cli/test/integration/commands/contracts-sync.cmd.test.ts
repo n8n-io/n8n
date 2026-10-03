@@ -35,9 +35,9 @@ const { packContractPackage } = sdkRequire('@n8n/node-sdk/publish') as {
 	): Buffer;
 };
 
-const V1 = path.resolve(
+const OLDER = path.resolve(
 	__dirname,
-	'../../../../@n8n/nodes-base-next/fixtures/versions/httpRequest.send@1.0.2',
+	'../../../../@n8n/nodes-base-next/fixtures/versions/httpRequest.get@2.0.0',
 );
 
 const keyPair = () =>
@@ -57,24 +57,24 @@ const lockedWorkflow = async ({ id, semver, bundleHash, contractHash }: Manifest
 	await createWorkflow({
 		nodes: [
 			{
-				id: 'send',
-				name: 'Send',
-				type: '@n8n/nodes-base-next.httpRequestSend',
-				typeVersion: 1,
+				id: 'get',
+				name: 'Get',
+				type: '@n8n/nodes-base-next.httpRequestGet',
+				typeVersion: 2,
 				position: [0, 0],
 				parameters: {},
 			},
 		],
 		meta: {
-			nodeContracts: { Send: { action: id, version: semver, bundleHash, contractHash } },
+			nodeContracts: { Get: { action: id, version: semver, bundleHash, contractHash } },
 		} as IWorkflowBase['meta'],
 	});
 
 beforeAll(async () => {
 	state.dir = await mkdtemp(path.join(tmpdir(), 'contracts-sync-'));
 	state.storeDir = path.join(Container.get(InstanceSettings).n8nFolder, 'node-contracts');
-	const manifest = parseManifest(await readFile(path.join(V1, 'manifest.json'), 'utf8'));
-	const bundle = await readFile(path.join(V1, 'bundle.cjs'), 'utf8');
+	const manifest = parseManifest(await readFile(path.join(OLDER, 'manifest.json'), 'utf8'));
+	const bundle = await readFile(path.join(OLDER, 'bundle.cjs'), 'utf8');
 	state.manifest = manifest;
 	const tarball = (key: string) =>
 		packContractPackage({ manifest, bundle }, { executions: [] }, key);

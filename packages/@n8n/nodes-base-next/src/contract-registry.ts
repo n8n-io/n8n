@@ -8,8 +8,8 @@ import {
 } from '@n8n/node-sdk/host';
 import {
 	compareSemver,
-	declaredNodeContractOf,
 	integrityOf,
+	isNodeContractVersion,
 	openContractPackage,
 	packageNameOf,
 	parseSemver,
@@ -49,7 +49,7 @@ export interface ContractRegistryOptions {
 	readonly store: ContractStore;
 	/** The `meta` of the running workflow, from a root node or a sub-node. */
 	readonly metaOf: (context: IExecuteFunctions | ISupplyDataFunctions) => Promise<unknown>;
-	/** The Node Contract versions a bundle may declare, e.g. `>=1.0.0 <3.0.0`. */
+	/** The Node Contract versions a bundle may declare, e.g. `>=2.0.0 <3.0.0`. */
 	readonly nodeContractRange: string;
 	/**
 	 * Runs bundles in the WASM sandbox. `stored`: the versions that this package does not bundle.
@@ -152,7 +152,9 @@ const publishedVersions = (packument: unknown): PublishedVersion[] =>
 		const { tarball, integrity } = dist;
 		if (typeof tarball !== 'string' || typeof integrity !== 'string') return [];
 		const { contractHash, bundleHash } = contract;
-		const nodeContract = declaredNodeContractOf(contract);
+		const nodeContract = isNodeContractVersion(contract.nodeContract)
+			? contract.nodeContract
+			: undefined;
 		return [{ version, nodeContract, contractHash, bundleHash, tarball, integrity }];
 	});
 

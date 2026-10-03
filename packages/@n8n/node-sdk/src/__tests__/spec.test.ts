@@ -10,7 +10,6 @@ import {
 	type WitPackage,
 	type WitTypeDef,
 } from '../../scripts/spec';
-import type { RunContextV1 } from '../action-api-v1';
 import type { CustomAuth } from '../credentials';
 import type {
 	ActionBinding,
@@ -42,7 +41,6 @@ import type {
 } from '../define';
 import {
 	credentialManifestSchema,
-	legacyManifestSchema,
 	versionManifestSchema,
 	type CredentialManifest,
 } from '../manifest';
@@ -477,22 +475,6 @@ describe('the lookup interface', () => {
 	});
 });
 
-describe('spec/n8n-action@1.wit', () => {
-	const v1 = readWit('n8n-action@1.wit');
-	const shape = shapeOf(v1);
-
-	it('has one adapter context field per host import, plus input', () => {
-		const context = keysOf<RunContextV1>()(['input', 'http', 'emit']);
-		expect(sorted(['input', ...shape.world('bundle').imports])).toEqual(sorted(context));
-	});
-
-	it('has the HTTP types of @2', () => {
-		expect(sorted(shape.fields('http', 'http-request'))).toEqual(sorted(httpRequestKeys));
-		expect(sorted(shape.fields('http', 'http-error'))).toEqual(sorted(httpErrorKeys));
-		expect(shape.cases('http', 'http-method')).toEqual(httpMethods);
-	});
-});
-
 describe('spec/manifest.schema.json', () => {
 	const schema: unknown = JSON.parse(
 		readFileSync(path.resolve(__dirname, '../../spec/manifest.schema.json'), 'utf8'),
@@ -541,7 +523,7 @@ describe('spec/manifest.schema.json', () => {
 		);
 		expect(schema).toMatchObject({
 			$schema: 'https://json-schema.org/draft/2020-12/schema',
-			oneOf: [versionManifestSchema.json, credentialManifestSchema.json, legacyManifestSchema.json],
+			oneOf: [versionManifestSchema.json, credentialManifestSchema.json],
 		});
 	});
 

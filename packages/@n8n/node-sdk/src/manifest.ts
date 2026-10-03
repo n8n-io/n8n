@@ -124,17 +124,6 @@ export const versionManifestSchema = typed<VersionManifest>()(
 		.with({ title: 'Action, trigger or provider manifest', ...OPEN }),
 );
 
-/** A manifest that freeze wrote before 2.5.0: `apiVersion`, or `abi` before that. */
-export const legacyManifestSchema = t
-	.union(
-		t.obj({
-			apiVersion: t.str().with({ pattern: '^n8n:action@\\d+\\.\\d+\\.\\d+$' }),
-			...versionFields,
-		}),
-		t.obj({ abi: t.union(constant(1), constant(2)), ...versionFields }),
-	)
-	.with({ title: 'Action manifest before 2.5.0. A host still reads it.' });
-
 const values = () => t.record(t.str());
 
 const placement = typed<Extract<CredentialScheme, { kind: 'apply' }>>()(
@@ -323,7 +312,7 @@ export const manifestJsonSchema = (version: string) => ({
 	title: 'n8n Node Contract manifest',
 	description:
 		'Generated from src/manifest.ts by scripts/spec.ts. Do not edit. `x-n8n-since` is the Node Contract version that added a field. The `contract.input` and `contract.output` schemas follow the contract format of the SDK.',
-	oneOf: [versionManifestSchema.json, credentialManifestSchema.json, legacyManifestSchema.json],
+	oneOf: [versionManifestSchema.json, credentialManifestSchema.json],
 });
 
 /** The credential manifest that freeze writes. A compat type has none. */

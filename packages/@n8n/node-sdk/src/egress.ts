@@ -104,7 +104,7 @@ function filledHost(template: string, input: Readonly<Record<string, unknown>>) 
 
 /** What the host allows for the requests of one item. */
 export interface EgressPolicy {
-	/** The hosts the action may reach. `undefined` for an action with no declared and no base URL hosts. */
+	/** The hosts the action may reach. `undefined` is no limit: a trigger without base URL hosts. */
 	readonly action: Hosts;
 	/**
 	 * The action hosts that also bind each redirect hop. A host from input does not: the user
@@ -117,9 +117,9 @@ export interface EgressPolicy {
 
 /**
  * The action hosts for one item: the base URL hosts, the declared hosts with their input fields
- * filled, and the host of the `fromInput` field. An action without egress and without a base
- * URL has no action limit, so a version frozen before egress still runs; the credential hosts
- * still apply.
+ * filled, and the host of the `fromInput` field. No `egress` and no base URL is no action limit,
+ * which only a trigger uses: an action without `egress` gives `{ hosts: [] }` and reaches only
+ * its base URL hosts. The credential hosts still apply.
  */
 export function actionHostsOf(
 	egress: ContractEgress | undefined,

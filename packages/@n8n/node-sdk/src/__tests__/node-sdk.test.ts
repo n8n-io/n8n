@@ -1,4 +1,10 @@
-import { NodeApiError, type IExecuteFunctions, type INode, type JsonObject } from 'n8n-workflow';
+import {
+	NodeApiError,
+	safeRegex,
+	type IExecuteFunctions,
+	type INode,
+	type JsonObject,
+} from 'n8n-workflow';
 
 import { generateNodeModule } from '../entry/codegen';
 import { compat, credential } from '../entry/credentials';
@@ -15,6 +21,9 @@ import {
 	type JsonSchema,
 	type RunInput,
 } from '../index';
+import { evaluateBundle } from '../runtime';
+import { testPattern } from '../validate';
+import { NODE_CONTRACT_VERSION } from '../version';
 
 const todo = defineNode({
 	id: 'todo',
@@ -464,6 +473,76 @@ describe('exampleOf', () => {
 	it('falls back for a pattern construct it does not know', () => {
 		expect(exampleOf(t.str().with({ pattern: '^[^x]+$' }).json)).toBe('example');
 		expect(exampleOf(t.str().with({ pattern: '^(?=a)a$' }).json)).toBe('example');
+	});
+});
+
+describe('testPattern', () => {
+	const ID = '[0-9a-f]{8}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{12}';
+	const page = t.obj({ id: t.str().with({ pattern: ID }) }).with({
+		patternProperties: { '^property_[a-z0-9_]+$': {} },
+		additionalProperties: false,
+	});
+	const items = Array.from({ length: 300 }, (_, index) => ({
+		id: '2a3b4c5d6e7f40818293a4b5c6d7e8f9',
+		property_name: `Task ${index}`,
+		property_story_points: index,
+	}));
+
+	afterEach(() => vi.restoreAllMocks());
+
+	it('validates many items without a safeRegex call for a pattern with a linear match time', () => {
+		const test = vi.spyOn(safeRegex, 'test');
+		expect(items.flatMap((item) => validate(item, page.json))).toEqual([]);
+		expect(validate({ id: 'x', other: 1 }, page.json)).toHaveLength(2);
+		expect(test).not.toHaveBeenCalled();
+	});
+
+	it.each([
+		['(a+)+$', 'a'.repeat(20)],
+		['^[^@\\s]+@[^@\\s]+$', 'ada@example.com'],
+		['a+b', 'aab'],
+		['^(?:a|b){2,}$', 'ab'],
+		['(a)\\1', 'aa'],
+		['(?<=a)b', 'ab'],
+		[ID, `${'0'.repeat(31)}g`.repeat(20)],
+	])('leaves %s to safeRegex', (pattern, input) => {
+		const test = vi.spyOn(safeRegex, 'test');
+		expect(testPattern(pattern, input)).toBe(new RegExp(pattern).test(input));
+		expect(test).toHaveBeenCalledWith(pattern, input, undefined);
+	});
+
+	it.each([
+		[ID, ['2a3b4c5d-6e7f-4081-8293-a4b5c6d7e8f9', 'x', '']],
+		['^property_[a-z0-9_]+$', ['property_a_1', 'property_', 'xproperty_a']],
+		['^[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?$', ['n8n-io', '-n8n', 'a']],
+		['^(?!\\.{1,2}$)[A-Za-z0-9._-]+$', ['..', 'a.b', '.']],
+		['^(?:[CGDUW][A-Z0-9]{2,}|#?[a-z0-9_-]{1,80})$', ['C123', '#general', 'C']],
+		[
+			'^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}(:\\d{2}(\\.\\d+)?)?(Z|[+-]\\d{2}:\\d{2})$',
+			['2026-09-15T09:30Z', '2026-09-15'],
+		],
+		['^[\\]a]$', [']', 'a', 'b']],
+	])('gives the safeRegex result for %s', (pattern, inputs) => {
+		expect(inputs.map((input) => testPattern(pattern, input))).toEqual(
+			inputs.map((input) => safeRegex.test(pattern, input)),
+		);
+	});
+
+	it('throws the safeRegex error for an invalid pattern', () => {
+		expect(() => testPattern('a(', 'a')).toThrow(/Invalid regular expression/);
+	});
+
+	it('is the safeRegex.test that a frozen bundle imports', () => {
+		const bundle = `module.exports = { default: {
+			id: 'demo.probe', version: 1, credentialTypes: [], run: () => [],
+			probe: (pattern, input) => require('n8n-workflow').safeRegex.test(pattern, input),
+		} };`;
+		const { probe } = evaluateBundle(bundle, NODE_CONTRACT_VERSION) as unknown as {
+			probe: (pattern: string, input: string) => boolean;
+		};
+		const test = vi.spyOn(safeRegex, 'test');
+		expect([probe(ID, items[0].id), probe(ID, 'x')]).toEqual([true, false]);
+		expect(test).not.toHaveBeenCalled();
 	});
 });
 

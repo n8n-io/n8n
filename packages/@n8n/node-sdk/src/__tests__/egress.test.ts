@@ -265,6 +265,26 @@ describe('host egress', () => {
 		expect(sent).toEqual([]);
 	});
 
+	it('refuses every request of an action without egress and without a base URL', async () => {
+		const bare = defineNode({ id: 'bare', displayName: 'Bare' });
+		const probe = bare.action('probe', {
+			action: 'Probe',
+			summary: 'Probe.',
+			flow: { effect: 'read', cardinality: 'per-item' },
+			input: {},
+			output,
+			async run({ http }) {
+				await http.request({ url: 'https://api.example.com/x' });
+				return { ok: 'yes' };
+			},
+		});
+		const { host, sent } = hostOf({});
+		await expect(executorOf(probe)(host)).rejects.toThrow(
+			'Host not allowed: bare.probe may send requests to no host, not to api.example.com',
+		);
+		expect(sent).toEqual([]);
+	});
+
 	it('takes the host of a credential base URL from its fields', async () => {
 		const { host, sent } = hostOf({
 			credentialType: 'serverApi',
@@ -482,7 +502,7 @@ describe('egress in the contract', () => {
 		const { egress: _, ...undeclared } = contract;
 		expect(diffContracts(undeclared, contract).kind).toBe('major');
 		expect(diffContracts(contract, undeclared).changes).toEqual([
-			{ kind: 'major', text: 'egress removed' },
+			{ kind: 'minor', text: 'egress the host of input.url removed' },
 		]);
 	});
 

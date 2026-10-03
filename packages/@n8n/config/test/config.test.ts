@@ -389,7 +389,7 @@ describe('GlobalConfig', () => {
 			nodeContractsUpdatePolicy: 'tolerant',
 			nodeContractsRegistryUrl: '',
 			nodeContractsPublicKeyFile: '',
-			nodeContractRange: '>=1.0.0 <3.0.0',
+			nodeContractRange: '>=2.0.0 <3.0.0',
 			nodeContractSandbox: 'off',
 			nodeContractSandboxSidecar: '',
 			nodeContractSandboxGuests: '',

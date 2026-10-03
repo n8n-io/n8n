@@ -7,8 +7,7 @@
 /// manifest format (`../manifest.schema.json`) has the same version. A minor adds an optional
 /// import, export or field. A major breaks. `@since` tells which minor added an item. A
 /// bundle states the lowest version that has all it uses (`nodeContract` in its manifest), so
-/// an older host still runs it. Bundles that state `apiVersion: "n8n:action@x.y.z"` target
-/// the Node Contract version `x.y.z`.
+/// an older host still runs it.
 package n8n:node-contract@2.5.0;
 
 @since(version = 2.0.0)

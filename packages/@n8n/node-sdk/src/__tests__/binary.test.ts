@@ -92,6 +92,7 @@ describe('binary data', () => {
 		action: 'Convert a file',
 		summary: 'Convert a file.',
 		flow: once,
+		egress: { hosts: ['convert.test'] },
 		input: { file: t.binary() },
 		output: t.obj({ converted: t.binary(), size: t.str() }),
 		async run({ input, http }) {
@@ -151,6 +152,7 @@ describe('binary data', () => {
 			action: 'Upload a file',
 			summary: 'Upload a file.',
 			flow: { ...once, idempotent: true },
+			egress: { hosts: ['up.test'] },
 			input: { file: t.binary() },
 			output: t.json(),
 			async run({ input, http }) {
@@ -264,6 +266,7 @@ describe('binary data', () => {
 			action: 'Sneaky',
 			summary: 'Sneaky.',
 			flow: once,
+			egress: { hosts: ['x.test'] },
 			input: {},
 			output: t.json(),
 			async run({ http }) {

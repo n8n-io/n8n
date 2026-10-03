@@ -8,7 +8,7 @@ import {
 } from 'n8n-workflow';
 
 import { usesBinary, usesHostImports, usesProviders, type ContractDocument } from './define';
-import { legacyManifestSchema, versionManifestSchema } from './manifest';
+import { versionManifestSchema } from './manifest';
 import { hasPageValue, type JsonSchema } from './schema';
 import { providedOf } from './providers';
 import { matches } from './validate';
@@ -26,7 +26,6 @@ import { matches } from './validate';
  * host reads unresolved.
  * 2.5.0 adds the manifest format with `kind`, `sdk` and credential majors, credential
  * manifests, and the trigger, credential and provider interfaces.
- * A bundle of the 1.x major runs through the adapter `action-api-v1.ts`.
  */
 export type NodeContractVersion = `${number}.${number}.${number}`;
 
@@ -34,14 +33,12 @@ export type NodeContractVersion = `${number}.${number}.${number}`;
 export const NODE_CONTRACT_VERSION: NodeContractVersion = '2.5.0';
 
 /** The newest version of each major that this host runs. */
-export const IMPLEMENTED_NODE_CONTRACTS: readonly NodeContractVersion[] = [
-	'1.0.0',
-	NODE_CONTRACT_VERSION,
-];
+export const IMPLEMENTED_NODE_CONTRACTS: readonly NodeContractVersion[] = [NODE_CONTRACT_VERSION];
 
 /** The versions a host accepts when its config sets no range. */
-export const DEFAULT_NODE_CONTRACT_RANGE = '>=1.0.0 <3.0.0';
+export const DEFAULT_NODE_CONTRACT_RANGE = '>=2.0.0 <3.0.0';
 
+/** True for a `major.minor.patch` text, e.g. the `nodeContract` of a packument entry. */
 export const isNodeContractVersion = (value: unknown): value is NodeContractVersion =>
 	typeof value === 'string' && /^\d+\.\d+\.\d+$/.test(value);
 
@@ -73,23 +70,6 @@ export const requiredNodeContractOf = (
 			: usesBinary(contract)
 				? '2.2.0'
 				: '2.1.0';
-
-/**
- * The version a manifest states: `nodeContract`, or for a manifest frozen before it the
- * `apiVersion: "n8n:action@x.y.z"` or `abi: 1 | 2`. The action API versions are the Node
- * Contract versions of the same number.
- */
-export function declaredNodeContractOf(
-	value: Record<string, unknown>,
-): NodeContractVersion | undefined {
-	if (isNodeContractVersion(value.nodeContract)) return value.nodeContract;
-	const legacy =
-		typeof value.apiVersion === 'string'
-			? /^n8n:action@(.*)$/.exec(value.apiVersion)?.[1]
-			: undefined;
-	if (isNodeContractVersion(legacy)) return legacy;
-	return value.abi === 1 || value.abi === 2 ? `${value.abi}.0.0` : undefined;
-}
 
 /** A newer minor than the host has uses imports or fields that the host lacks. */
 export const implementsNodeContract = (version: NodeContractVersion) => {
@@ -263,7 +243,7 @@ const COMPARATORS: ReadonlyMap<string, (order: number) => boolean> = new Map([
 ]);
 
 /**
- * A test for a semver range: comparator sets joined by `||`, e.g. `>=1.0.0 <3.0.0`. Each
+ * A test for a semver range: comparator sets joined by `||`, e.g. `>=2.0.0 <3.0.0`. Each
  * comparator has a full `major.minor.patch` version.
  */
 export function semverRange(range: string): (version: string) => boolean {
@@ -275,7 +255,7 @@ export function semverRange(range: string): (version: string) => boolean {
 				const [, operator = '=', bound = ''] = /^(>=|<=|>|<|=)?(\d+\.\d+\.\d+)$/.exec(part) ?? [];
 				const test = COMPARATORS.get(operator);
 				if (!bound || !test) {
-					throw new UserError(`"${range}" is not a semver range, for example ">=1.0.0 <3.0.0"`);
+					throw new UserError(`"${range}" is not a semver range, for example ">=2.0.0 <3.0.0"`);
 				}
 				return (version: string) => test(compareSemver(version, bound));
 			}),
@@ -284,33 +264,35 @@ export function semverRange(range: string): (version: string) => boolean {
 }
 
 /**
- * Reads a manifest of an action, trigger or provider. A manifest frozen by an older SDK gets its
- * `kind` from its contract and its `nodeContract` from `apiVersion` or `abi`.
+ * Reads a manifest of an action, trigger or provider. A manifest without `nodeContract` comes
+ * from a freeze before Node Contract 2.5.0, and this host does not read it.
  */
 export function parseManifest(text: string): VersionManifest {
 	const value: unknown = JSON.parse(text);
-	const current = matches(versionManifestSchema, value) ? value : undefined;
-	const legacy = !current && matches(legacyManifestSchema, value) ? value : undefined;
-	const fields = current ?? legacy;
-	const nodeContract = current?.nodeContract ?? (legacy && declaredNodeContractOf(legacy));
+	if (isRecord(value) && !('nodeContract' in value)) {
+		const name = [value.id, value.semver].filter((part) => typeof part === 'string').join('@');
+		throw new UserError(
+			`The manifest of ${name || 'a version'} has no nodeContract. This host reads only manifests with nodeContract (the format from Node Contract 2.5.0): freeze the version again.`,
+		);
+	}
 	if (
-		!fields ||
-		!nodeContract ||
-		contractHash(fields.contract) !== fields.contractHash ||
-		parseSemver(fields.semver).major !== fields.contract.version
+		!matches(versionManifestSchema, value) ||
+		contractHash(value.contract) !== value.contractHash ||
+		parseSemver(value.semver).major !== value.contract.version
 	) {
 		throw new UnexpectedError('The version manifest is not valid or its contract changed');
 	}
-	const { id, semver, contractHash: hash, bundleHash, contract, description } = fields;
+	const { kind, id, semver, nodeContract, sdk, credentials, bundleHash, contract, description } =
+		value;
 	// Fields that this host does not know stay out.
 	return {
-		kind: current?.kind ?? manifestKindOf(contract),
+		kind,
 		id,
 		semver,
 		nodeContract,
-		...(current?.sdk === undefined ? {} : { sdk: current.sdk }),
-		...(current?.credentials ? { credentials: current.credentials } : {}),
-		contractHash: hash,
+		...(sdk === undefined ? {} : { sdk }),
+		...(credentials ? { credentials } : {}),
+		contractHash: value.contractHash,
 		bundleHash,
 		contract,
 		description,
@@ -498,12 +480,11 @@ const egressSources = ({ egress }: ContractDocument) => [
 
 /**
  * A new host is a new permission, as a new scope is, so a user must accept it: a major. A
- * removed host only narrows what the action reaches: a minor. A removed `egress` is a major:
- * without a base URL, an action without `egress` has no action limit.
+ * removed host only narrows what the action reaches: a minor. A removed `egress` removes its
+ * hosts, because an action without `egress` reaches only its base URL hosts.
  */
 function egressChanges(prev: ContractDocument, next: ContractDocument): ContractChange[] {
 	const [before, after] = [egressSources(prev), egressSources(next)];
-	if (prev.egress && !next.egress) return [major('egress removed')];
 	return [
 		...after.filter((host) => !before.includes(host)).map((host) => major(`egress ${host} added`)),
 		...before

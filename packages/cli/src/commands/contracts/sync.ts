@@ -42,7 +42,7 @@ export class ContractsSyncCommand extends BaseCommand<z.infer<typeof flagsSchema
 			refreshNodeTypes: false,
 		});
 		this.logger.info(
-			`Added ${added.length} bundles. ${failed.length} locked nodes have no bundle. ${unsupported.length} locked nodes need an n8n:action version that this host does not run.`,
+			`Added ${added.length} bundles. ${failed.length} locked nodes have no bundle. ${unsupported.length} locked nodes need a Node Contract version that this host does not run.`,
 		);
 		if (failed.length > 0 || unsupported.length > 0) {
 			throw new UserError('Some saved workflows cannot run their locked node versions');

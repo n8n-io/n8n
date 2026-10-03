@@ -643,8 +643,6 @@ describe('published versions', () => {
 			const { manifest } = await freeze({ patch: 8 });
 			expect(manifest).toMatchObject({ kind: 'action', nodeContract: '2.1.0' });
 			expect(manifest.sdk).toMatch(/^\d+\.\d+\.\d+$/);
-			expect(manifest).not.toHaveProperty('apiVersion');
-			expect(manifest).not.toHaveProperty('abi');
 		});
 
 		it('is 2.4.0 for a list binding or a page value input', () => {
@@ -662,7 +660,7 @@ describe('published versions', () => {
 				toVersionedNodeType([frozenOf({ ...manifest, nodeContract }, bundle)]);
 
 			expect(() => typeOf('3.0.0')).toThrow(
-				'demo.echo@1.0.9 needs Node Contract 3.0.0. This host runs >=1.0.0 <3.0.0 and implements 1.0.0, 2.5.0.',
+				'demo.echo@1.0.9 needs Node Contract 3.0.0. This host runs >=2.0.0 <3.0.0 and implements 2.5.0.',
 			);
 			expect(() => typeOf('2.6.0')).toThrow('needs Node Contract 2.6.0');
 			expect(() => typeOf('2.5.0')).not.toThrow();
@@ -672,9 +670,9 @@ describe('published versions', () => {
 			expect(() => typeOf('2.1.0')).not.toThrow();
 			expect(() => typeOf('2.0.3')).not.toThrow();
 
-			setNodeContractRange('>=2.0.0 <3.0.0');
+			setNodeContractRange('>=1.0.0 <3.0.0');
 			expect(() => typeOf('1.0.0')).toThrow(
-				'needs Node Contract 1.0.0. This host runs >=2.0.0 <3.0.0',
+				'needs Node Contract 1.0.0. This host runs >=1.0.0 <3.0.0 and implements 2.5.0.',
 			);
 			// The range also applies at run time, to a version the registry loader picks.
 			setNodeContractRange(DEFAULT_NODE_CONTRACT_RANGE);
@@ -685,22 +683,20 @@ describe('published versions', () => {
 			);
 		});
 
-		it('reads the apiVersion or abi field of a manifest frozen before nodeContract', async () => {
+		it('refuses a manifest without nodeContract and names its version', async () => {
 			await writeShout('text');
 			const { manifest } = await freeze({ patch: 10 });
-			const { kind: _kind, nodeContract: _nodeContract, sdk: _sdk, ...fields } = manifest;
-			const legacy = (extra: Record<string, unknown>) => JSON.stringify({ ...fields, ...extra });
-			const read = { ...fields, kind: 'action' };
+			const { nodeContract: _, ...fields } = manifest;
+			const unversioned = (extra: Record<string, unknown>) =>
+				JSON.stringify({ ...fields, ...extra });
+			const refusal =
+				'The manifest of demo.echo@1.0.10 has no nodeContract. This host reads only manifests with nodeContract (the format from Node Contract 2.5.0): freeze the version again.';
 
-			expect(parseManifest(legacy({ abi: 1 }))).toEqual({ ...read, nodeContract: '1.0.0' });
-			expect(parseManifest(legacy({ abi: 2 }))).toEqual({ ...read, nodeContract: '2.0.0' });
-			expect(parseManifest(legacy({ apiVersion: 'n8n:action@2.4.0' }))).toEqual({
-				...read,
-				nodeContract: '2.4.0',
-			});
-			expect(() => parseManifest(legacy({ abi: 3 }))).toThrow('not valid');
-			expect(() => parseManifest(legacy({ apiVersion: 'n8n:trigger@1.0.0' }))).toThrow('not valid');
-			expect(() => parseManifest(JSON.stringify(fields))).toThrow('not valid');
+			expect(() => parseManifest(unversioned({ abi: 1 }))).toThrow(refusal);
+			expect(() => parseManifest(unversioned({ apiVersion: 'n8n:action@2.4.0' }))).toThrow(refusal);
+			expect(() => parseManifest(JSON.stringify({ ...manifest, nodeContract: 'x' }))).toThrow(
+				'not valid',
+			);
 		});
 
 		it('ignores a manifest field that this host does not know', async () => {
@@ -716,6 +712,9 @@ describe('published versions', () => {
 				'This host cannot run Node Contract 3.0.0',
 			);
 			expect(() => evaluateBundle(bundle, '2.6.0')).toThrow('cannot run');
+			expect(() => evaluateBundle(bundle, '1.0.0')).toThrow(
+				'This host cannot run Node Contract 1.0.0. It implements 2.5.0.',
+			);
 			expect(evaluateBundle(bundle, '2.0.0').id).toBe('demo.echo');
 			expect(evaluateBundle(bundle, '2.1.0').id).toBe('demo.echo');
 			expect(evaluateBundle(bundle, NODE_CONTRACT_VERSION).id).toBe('demo.echo');

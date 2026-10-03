@@ -1,20 +1,22 @@
 {
-	"id": "httpRequest.send",
-	"semver": "1.0.2",
-	"abi": 1,
-	"contractHash": "98b01125fff30dbd2f299b19089da98af134f2f936fdfd306849dde9d8cf1dad",
-	"bundleHash": "4571314301c3736a274c06a3a7ea034ae5fbad56033e8a1cfdc3f9f4ace1214e",
+	"kind": "action",
+	"id": "httpRequest.get",
+	"semver": "2.0.0",
+	"nodeContract": "2.1.0",
+	"sdk": "0.1.0",
+	"contractHash": "5ae606b376c24af8f78e267055f0d437364695efda7c9d177fba971585f86d9d",
+	"bundleHash": "719736b31b4969e2a174f913e5d212c9c768f73984ac897d39ccc1894d9547a5",
 	"contract": {
-		"id": "httpRequest.send",
-		"version": 1,
+		"id": "httpRequest.get",
+		"version": 2,
 		"node": "httpRequest",
-		"action": "Send a request",
-		"summary": "POST, PUT, PATCH, or DELETE to any HTTP API.",
+		"action": "GET a URL",
+		"summary": "Read from any HTTP API. Use a dedicated action when one exists for the service.",
 		"flow": {
-			"effect": "write",
-			"cardinality": "per-item",
-			"passthrough": "replace",
-			"idempotent": false
+			"effect": "read",
+			"cardinality": "1:N",
+			"idempotent": true,
+			"passthrough": "replace"
 		},
 		"credentials": [
 			"httpHeaderAuth",
@@ -26,14 +28,6 @@
 		"input": {
 			"type": "object",
 			"properties": {
-				"method": {
-					"enum": [
-						"POST",
-						"PUT",
-						"PATCH",
-						"DELETE"
-					]
-				},
 				"url": {
 					"type": "string",
 					"x-n8n-hint": "Full URL; never URL-encode an expression"
@@ -52,78 +46,32 @@
 					},
 					"x-n8n-hint": "Never put secrets here; attach a credential"
 				},
-				"body": {
+				"pagination": {
 					"type": "object",
-					"discriminator": {
-						"propertyName": "kind"
-					},
-					"oneOf": [
-						{
-							"type": "object",
-							"properties": {
-								"kind": {
-									"const": "json",
-									"x-n8n-literal": true
-								},
-								"json": {
-									"type": "object",
-									"additionalProperties": true,
-									"x-n8n-hint": "A JSON object; build it in one lambda, never as a string"
-								}
-							},
-							"required": [
-								"kind",
-								"json"
-							],
-							"additionalProperties": false
+					"properties": {
+						"cursorPath": {
+							"type": "string",
+							"x-n8n-hint": "Dot path to the next cursor in the response body, e.g. next_cursor"
 						},
-						{
-							"type": "object",
-							"properties": {
-								"kind": {
-									"const": "form",
-									"x-n8n-literal": true
-								},
-								"fields": {
-									"type": "object",
-									"additionalProperties": {
-										"type": "string"
-									}
-								}
-							},
-							"required": [
-								"kind",
-								"fields"
-							],
-							"additionalProperties": false
+						"queryParameter": {
+							"type": "string",
+							"x-n8n-hint": "Query parameter that sends the cursor, e.g. cursor"
 						},
-						{
-							"type": "object",
-							"properties": {
-								"kind": {
-									"const": "text",
-									"x-n8n-literal": true
-								},
-								"text": {
-									"type": "string"
-								},
-								"contentType": {
-									"type": "string",
-									"x-n8n-hint": "e.g. text/plain"
-								}
-							},
-							"required": [
-								"kind",
-								"text",
-								"contentType"
-							],
-							"additionalProperties": false
+						"maxPages": {
+							"type": "integer",
+							"minimum": 1,
+							"default": 100
 						}
-					]
+					},
+					"required": [
+						"cursorPath",
+						"queryParameter"
+					],
+					"additionalProperties": false,
+					"x-n8n-hint": "Cursor pagination; each page emits items; stops on a null or empty cursor"
 				}
 			},
 			"required": [
-				"method",
 				"url"
 			],
 			"additionalProperties": false
@@ -131,19 +79,22 @@
 		"output": {
 			"type": "object",
 			"additionalProperties": true,
-			"x-n8n-hint": "The parsed response body"
+			"x-n8n-hint": "The parsed response body; an array body emits one item per element"
+		},
+		"egress": {
+			"fromInput": "url"
 		}
 	},
 	"description": {
-		"displayName": "HTTP Request: Send a request",
-		"name": "httpRequestSend",
+		"displayName": "HTTP Request: GET a URL",
+		"name": "httpRequestGet",
 		"group": [
-			"output"
+			"input"
 		],
-		"version": 1,
-		"description": "POST, PUT, PATCH, or DELETE to any HTTP API.",
+		"version": 2,
+		"description": "Read from any HTTP API. Use a dedicated action when one exists for the service.",
 		"defaults": {
-			"name": "Send a request"
+			"name": "GET a URL"
 		},
 		"inputs": [
 			"main"
@@ -242,31 +193,6 @@
 				"default": "none"
 			},
 			{
-				"displayName": "method",
-				"name": "method",
-				"required": true,
-				"type": "options",
-				"options": [
-					{
-						"name": "POST",
-						"value": "POST"
-					},
-					{
-						"name": "PUT",
-						"value": "PUT"
-					},
-					{
-						"name": "PATCH",
-						"value": "PATCH"
-					},
-					{
-						"name": "DELETE",
-						"value": "DELETE"
-					}
-				],
-				"default": "POST"
-			},
-			{
 				"displayName": "url",
 				"name": "url",
 				"required": true,
@@ -291,9 +217,10 @@
 				"default": ""
 			},
 			{
-				"displayName": "body",
-				"name": "body",
+				"displayName": "pagination",
+				"name": "pagination",
 				"required": false,
+				"description": "Cursor pagination; each page emits items; stops on a null or empty cursor",
 				"type": "json",
 				"default": ""
 			}

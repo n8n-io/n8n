@@ -58,7 +58,7 @@ describe.skipIf(!built)('node contracts in the sandbox', () => {
 			nodeContractsRegistryUrl: '',
 			nodeContractsPublicKeyFile: '',
 			nodeContractsUpdatePolicy: 'strict',
-			nodeContractRange: '>=1.0.0 <3.0.0',
+			nodeContractRange: '>=2.0.0 <3.0.0',
 			nodeContractSandboxSidecar: sidecar,
 			nodeContractSandboxGuests: guests,
 			nodeContractSandboxCacheDir: cacheDir(),

@@ -194,7 +194,7 @@ const run = async (
 			policy: 'tolerant',
 			store: storeOf(options),
 			metaOf: async () => meta,
-			nodeContractRange: '>=1.0.0 <3.0.0',
+			nodeContractRange: '>=2.0.0 <3.0.0',
 			...options,
 		}),
 	);
@@ -233,15 +233,9 @@ describe('contractVersionLoader', () => {
 		expect(await run(locked('1.0.0'))).toEqual(['HELLO']);
 	});
 
-	it('reads the abi field of a packument entry published before apiVersion', async () => {
+	it('applies no newer patch from a packument entry without nodeContract', async () => {
 		publish(frozenOf('1.0.1'), privateKey, { nodeContract: undefined, abi: 2 });
-		expect(await run(locked('1.0.0'))).toEqual(['hello?']);
-	});
-
-	it('reads the apiVersion field of a packument entry published before nodeContract', async () => {
-		const legacy = { nodeContract: undefined, apiVersion: 'n8n:action@2.1.0' };
-		publish(frozenOf('1.0.1'), privateKey, legacy);
-		expect(await run(locked('1.0.0'))).toEqual(['hello?']);
+		expect(await run(locked('1.0.0'))).toEqual(['HELLO']);
 	});
 
 	it('applies no newer patch outside the Node Contract range of the host', async () => {
@@ -410,13 +404,28 @@ describe('syncContractStore', () => {
 		expect(result.unsupported).toEqual([]);
 	});
 
+	it('reports a locked bundle whose manifest has no nodeContract', async () => {
+		const frozen = frozenOf('1.0.0');
+		const { nodeContract: _, ...unversioned } = frozen.manifest;
+		publish({
+			...frozen,
+			manifest: { ...unversioned, abi: 2 } as unknown as typeof frozen.manifest,
+		});
+		const result = await syncContractStore(storeOf(), [nodeOf('1.0.0')]);
+		expect(result.failed.map(({ error }) => error)).toEqual([
+			expect.stringContaining(
+				'The manifest of demo.echo@1.0.0 has no nodeContract. This host reads only manifests with nodeContract (the format from Node Contract 2.5.0)',
+			),
+		]);
+	});
+
 	it('reports nodes whose locked bundle needs a Node Contract version the host does not run', async () => {
 		setNodeContractRange('>=3.0.0 <4.0.0');
 		try {
 			const result = await syncContractStore(storeOf(), [nodeOf('1.0.0')]);
 			expect(result.unsupported).toEqual([{ ...nodeOf('1.0.0'), nodeContract: '2.1.0' }]);
 		} finally {
-			setNodeContractRange('>=1.0.0 <3.0.0');
+			setNodeContractRange('>=2.0.0 <3.0.0');
 		}
 	});
 });
@@ -428,7 +437,7 @@ describe('useContractRegistry', () => {
 			policy: 'tolerant',
 			store: storeOf(),
 			metaOf: async () => undefined,
-			nodeContractRange: '>=1.0.0 <3.0.0',
+			nodeContractRange: '>=2.0.0 <3.0.0',
 			sandbox: {
 				options: { sidecar: '', guests: '', cacheDir: '', credentialType: () => undefined },
 				scope,

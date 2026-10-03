@@ -171,11 +171,11 @@ describe('bundled versions', () => {
 			expect(issuesOf(path.join(copy, 'credentials'), credentialDirs)).toEqual([]);
 		});
 
-		it('with the manifests frozen before nodeContract', () => {
-			const legacyDir = path.resolve(__dirname, '../../fixtures/versions');
-			const legacy = readdirSync(legacyDir);
-			expect(legacy.length).toBeGreaterThan(0);
-			expect(issuesOf(legacyDir, legacy)).toEqual([]);
+		it('with the older majors in fixtures/versions', () => {
+			const olderDir = path.resolve(__dirname, '../../fixtures/versions');
+			const older = readdirSync(olderDir);
+			expect(older.length).toBeGreaterThan(0);
+			expect(issuesOf(olderDir, older)).toEqual([]);
 		});
 	});
 

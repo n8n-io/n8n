@@ -185,7 +185,6 @@ A real API call takes 50 to 500 ms, so the sandbox adds little to an HTTP-bound 
 
 - Triggers (the trigger world), credentials (the credential world) and lookups in the sandbox.
   The sidecar is generic: each needs host answers in `src/sandbox.ts` and a guest entry.
-- Node Contract 1.x bundles do not run in the sandbox.
 - `migrate` has no export in the action world, so a sandboxed replay replays executions only.
 - The node `baseUrl` of a sandboxed bundle comes from its `describe()`. Its host must be an
   `egress` host or a credential host (backlog E7).
@@ -226,9 +225,9 @@ logic is in `src/egress.ts`.
   as the legacy HTTP Request node does: `all` is no limit, `domains` is the list, `none` refuses.
 - An action declares `egress`: static hosts, host templates over enum input fields
   (`{region}.api.example.com`), or `fromInput` for a URL field. Without it, the action reaches
-  the hosts of the node and credential base URLs. In-process, an action with no base URL and no
-  `egress` has no action limit, so a version frozen before `egress` still runs. The credential
-  hosts apply. In the sandbox, such an action reaches no host.
+  the hosts of the node and credential base URLs only. An action with no base URL and no
+  `egress` reaches no host, in-process and in the sandbox. A trigger with no base URL has no
+  host limit. The credential hosts apply.
 - The host refuses a request outside the action hosts or the credential hosts before it sends it.
   A refused request is not retried. Every page is a new request, so every page is checked.
 - The host sets `allowedDomains` on the request options, so the request layer checks every

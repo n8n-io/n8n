@@ -85,9 +85,6 @@ The guest answers with the `nodeContract` and the `kind` of its bundle. The host
 connection when the bundle version is outside the configured range (`N8N_NODE_CONTRACT_RANGE`)
 or needs a newer minor than the host implements.
 
-`n8n:action@1` (`n8n-action@1.wit`) has `action.describe`, `action.run` (`{ input }` → `null`)
-and the import `emit` (`{ item }` → `null`). The host runs it through the @1 adapter.
-
 ## Transports
 
 - Process runner: one JSON message per line (newline-delimited JSON) on stdin and stdout.

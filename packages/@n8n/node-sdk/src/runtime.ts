@@ -31,7 +31,6 @@ import {
 	type SupplyData,
 } from 'n8n-workflow';
 
-import { fromActionApiV1 } from './action-api-v1';
 import { credentialBaseUrlOf, plainFieldsOf, redactedValue, secretRedactorOf } from './credentials';
 import { codeRunnerOf, dataTableHostOf, dataTablesOf } from './host-imports';
 import { actionHostsOf, credentialHostsOf, egressOf } from './egress';
@@ -86,7 +85,15 @@ import {
 	type ProviderKind,
 	type Tool,
 } from './providers';
-import { applyDefaults, binaryKeyIssue, list, matches, parsePage, validate } from './validate';
+import {
+	applyDefaults,
+	binaryKeyIssue,
+	list,
+	matches,
+	parsePage,
+	testPattern,
+	validate,
+} from './validate';
 import {
 	assertNodeContract,
 	implementsNodeContract,
@@ -889,7 +896,8 @@ export function executorOf<S extends Shape, O extends AnySchema>(
 				credentialType && host.credentialData ? await credentialData(credentialType) : {};
 			try {
 				return {
-					...actionHostsOf(action.egress, input, [action.node.baseUrl, baseUrl]),
+					// No egress and no base URL is no host, as in the sandbox.
+					...actionHostsOf(action.egress ?? { hosts: [] }, input, [action.node.baseUrl, baseUrl]),
 					credential: credentialType
 						? credentialHostsOf(credentialValue, data, {
 								surface: action.node.displayName,
@@ -1552,8 +1560,14 @@ export interface FrozenVersion {
 	readBundle(): Promise<string>;
 }
 
-/** Host modules a frozen bundle may import. They are part of every Node Contract version. */
-const HOST_MODULES: Readonly<Record<string, unknown>> = { 'n8n-workflow': { safeRegex } };
+/**
+ * Host modules a frozen bundle may import. They are part of every Node Contract version. A
+ * bundle checks its outputs with the SDK `validate`, which calls `safeRegex.test` for each key,
+ * so `test` is `testPattern`: the same result, without a `vm` call for a pattern that it allows.
+ */
+const HOST_MODULES: Readonly<Record<string, unknown>> = {
+	'n8n-workflow': { safeRegex: { ...safeRegex, test: testPattern } },
+};
 
 const isContract = (value: unknown): value is Action | Trigger =>
 	isRecord(value) &&
@@ -1566,10 +1580,7 @@ const isContract = (value: unknown): value is Action | Trigger =>
 		isRecord(value.poll) ||
 		isRecord(value.webhook));
 
-/**
- * Runs a CommonJS bundle from `freezeAction` and returns the action or trigger it exports.
- * An @1 bundle runs through its adapter, so the executor sees @2 only.
- */
+/** Runs a CommonJS bundle from `freezeAction` and returns the action or trigger it exports. */
 export function evaluateBundle(code: string, nodeContract: NodeContractVersion): Action | Trigger {
 	if (!implementsNodeContract(nodeContract)) {
 		throw new UserError(
@@ -1583,9 +1594,8 @@ export function evaluateBundle(code: string, nodeContract: NodeContractVersion):
 	};
 	Reflect.apply(compileFunction(code, ['module', 'require']), undefined, [module, hostRequire]);
 	const exported = isRecord(module.exports) ? module.exports.default : undefined;
-	const contract = nodeContract.startsWith('1.') ? fromActionApiV1(exported) : exported;
-	if (!isContract(contract)) throw new UnexpectedError('The bundle does not export a contract');
-	return contract;
+	if (!isContract(exported)) throw new UnexpectedError('The bundle does not export a contract');
+	return exported;
 }
 
 /** The code of a frozen version, after its Node Contract version and its hash are checked. */

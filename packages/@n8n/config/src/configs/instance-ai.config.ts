@@ -280,7 +280,7 @@ export class InstanceAiConfig {
 	 * lowest major only in an n8n major release.
 	 */
 	@Env('N8N_NODE_CONTRACT_RANGE')
-	nodeContractRange: string = '>=1.0.0 <3.0.0';
+	nodeContractRange: string = '>=2.0.0 <3.0.0';
 
 	/**
 	 * Where contract bundles run. `off`: in the n8n process. `stored`: a version that n8n does

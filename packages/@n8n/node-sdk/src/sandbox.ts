@@ -1622,12 +1622,10 @@ async function bundleFileOf(options: SandboxOptions, manifest: VersionManifest, 
 }
 
 /** What the sandbox cannot run. The host runs such a bundle nowhere, not in this process. */
-function unsupported({ id, kind, nodeContract, contract }: VersionManifest): string | undefined {
+function unsupported({ id, kind, contract }: VersionManifest): string | undefined {
 	if (kind !== 'action' && kind !== 'provider') {
 		return `${id} is a ${kind}; the sandbox runs actions and providers only`;
 	}
-	if (nodeContract.startsWith('1.'))
-		return `${id} targets Node Contract ${nodeContract}; the sandbox runs 2.1.0 or newer`;
 	if (kind === 'action') return undefined;
 	if (!providedKindOf(contract.output))
 		return `${id} is a derived provider; n8n runs its legacy node`;

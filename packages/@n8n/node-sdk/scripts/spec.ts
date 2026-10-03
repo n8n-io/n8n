@@ -911,7 +911,6 @@ export function wasmToolsProblems(): string[] {
 		});
 	try {
 		run([NODE_CONTRACT_WIT]);
-		run(['n8n-action@1.wit']);
 		const resolved: unknown = JSON.parse(run(['--all-features', '--json', NODE_CONTRACT_WIT]));
 		const text = (byInterface: Record<string, unknown>) =>
 			JSON.stringify(Object.entries(byInterface).sort(([a], [b]) => a.localeCompare(b)));
