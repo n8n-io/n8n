@@ -6,7 +6,9 @@
 
 ## Rule Details
 
-Warns when a node has more than 5 operations without organizing them into resources. The resource/operation pattern improves user experience by grouping related operations together, making complex nodes easier to navigate.
+Warns when a regular node has no Operation field or an operation option has no action label. The rule checks only inline properties and options. It skips triggers and AI-only sub-nodes. A node with one operation still needs an Operation field. A node with one resource can omit the Resource field.
+
+Warns when a node has more than 5 operations without organizing them into resources. Group related operations to make complex nodes easier to navigate.
 
 When you have many operations, users benefit from having them organized into logical resource groups (e.g., "User", "Project", "File") rather than seeing a long flat list of operations.
 
@@ -25,13 +27,13 @@ export class MyNode implements INodeType {
         name: 'operation',
         type: 'options',
         options: [
-          { name: 'Get User', value: 'getUser' },
-          { name: 'Create User', value: 'createUser' },
-          { name: 'Update User', value: 'updateUser' },
-          { name: 'Delete User', value: 'deleteUser' },
-          { name: 'Get Project', value: 'getProject' },
-          { name: 'Create Project', value: 'createProject' },
-          { name: 'List Files', value: 'listFiles' },
+          { name: 'Get User', value: 'getUser', action: 'Get a user' },
+          { name: 'Create User', value: 'createUser', action: 'Create a user' },
+          { name: 'Update User', value: 'updateUser', action: 'Update a user' },
+          { name: 'Delete User', value: 'deleteUser', action: 'Delete a user' },
+          { name: 'Get Project', value: 'getProject', action: 'Get a project' },
+          { name: 'Create Project', value: 'createProject', action: 'Create a project' },
+          { name: 'List Files', value: 'listFiles', action: 'List files' },
           // 7+ operations without resources - hard to navigate!
         ],
       },
@@ -70,10 +72,10 @@ export class MyNode implements INodeType {
           },
         },
         options: [
-          { name: 'Get', value: 'get' },
-          { name: 'Create', value: 'create' },
-          { name: 'Update', value: 'update' },
-          { name: 'Delete', value: 'delete' },
+          { name: 'Get', value: 'get', action: 'Get a user' },
+          { name: 'Create', value: 'create', action: 'Create a user' },
+          { name: 'Update', value: 'update', action: 'Update a user' },
+          { name: 'Delete', value: 'delete', action: 'Delete a user' },
         ],
         default: 'get',
       },
@@ -82,3 +84,5 @@ export class MyNode implements INodeType {
   };
 }
 ```
+
+For a node with one resource, omit the Resource field. Keep the Operation field and set `action` on its option.
