@@ -20,6 +20,12 @@ methods of a node's `webhookMethods` that:
 - have an empty body, or
 - contain only a `return true`, `return false`, or bare `return` statement.
 
+A lifecycle method may be written in place or declared once in the same file
+and handed over by name (`{ default: { delete: removeWebhook } }`). The name is
+only followed when nothing in the file can change it afterwards. A method that
+comes from an import, or whose name is reassigned later, has `catch` blocks the
+rule leaves alone, because the body it can read may not be the one that runs.
+
 Handle the error instead: log it (so it surfaces in execution logs) and/or
 rethrow it. A `catch` that logs before returning, rethrows, or returns a
 computed value is allowed.
