@@ -1,0 +1,85 @@
+name: 'Test: Link Check Weekly'
+
+on:
+  schedule:
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: Check links in packages/
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      LYCHEE_VERSION: '0.24.2'
+      LYCHEE_SHA256: '1f4e0ef7f6554a6ed33dd7ac144fb2e1bbed98598e7af973042fc5cd43951c9a'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # The report script uses git blame to find links on lines that changed in the last 30 days.
+      - name: Fetch recent history
+        run: git fetch --quiet --shallow-since="35 days ago" origin "$GITHUB_SHA"
+
+      - name: Setup Node.js
+        uses: ./.github/actions/setup-nodejs
+        with:
+          build-command: ''
+          install-command: pnpm install --frozen-lockfile --dir ./.github/scripts --lockfile-dir ${{ github.workspace }}/.github/scripts --ignore-workspace
+          cache-dependency-path: .github/scripts/pnpm-lock.yaml
+
+      - name: Install lychee
+        run: |
+          curl -sSfL -o lychee.tar.gz "https://github.com/lycheeverse/lychee/releases/download/lychee-v${LYCHEE_VERSION}/lychee-x86_64-unknown-linux-gnu.tar.gz"
+          echo "${LYCHEE_SHA256}  lychee.tar.gz" | sha256sum --check
+          tar -xzf lychee.tar.gz --strip-components=1 -C /usr/local/bin lychee-x86_64-unknown-linux-gnu/lychee
+          lychee --version
+
+      # The next step decides which failures are broken links.
+      - name: Run lychee
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Lychee runs on filtered copies of the files, so its report shows the repository paths.
+          dir="$RUNNER_TEMP/link-check"
+          mkdir -p "$dir"
+          node .github/scripts/link-check/extract.mjs "$dir" \
+            | (cd "$dir" && lychee --config "$GITHUB_WORKSPACE/.github/scripts/link-check/lychee.toml" --files-from - --output "$GITHUB_WORKSPACE/lychee-report.json") \
+            2> >(grep -v 'No files found for this input source' >&2) || status=$?
+          # Lychee exits 2 when it finds failing links. Any other failure stops the job.
+          if [ "${status:-0}" -ne 0 ] && [ "${status:-0}" -ne 2 ]; then exit "$status"; fi
+
+      - name: Check report
+        run: node .github/scripts/link-check/check-report.mjs lychee-report.json
+
+      - name: Upload report
+        if: always()
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: lychee-report
+          path: lychee-report.json
+          if-no-files-found: ignore
+
+  notify-on-failure:
+    name: Notify on failure
+    runs-on: ubuntu-latest
+    needs: [check]
+    if: ${{ always() && contains(needs.*.result, 'failure') }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          sparse-checkout: .github/scripts/slack
+          sparse-checkout-cone-mode: false
+      - name: Notify Slack
+        env:
+          SLACK_TOKEN: ${{ secrets.QBOT_SLACK_TOKEN }}
+        run: |
+          node .github/scripts/slack/notify.mjs \
+            --channel '#team-nodes' \
+            --text "Weekly link check failed - ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"

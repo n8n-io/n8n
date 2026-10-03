@@ -1205,7 +1205,7 @@ Learn more about QueryBuilder [here](./docs/select-query-builder.md).
 
 ## Samples
 
-Take a look at the samples in [sample](https://github.com/typeorm/typeorm/tree/master/sample) for examples of usage.
+Take a look at the samples in [sample](https://github.com/typeorm/typeorm/tree/0.3.28/sample) for examples of usage.
 
 There are a few repositories that you can clone and start with:
 

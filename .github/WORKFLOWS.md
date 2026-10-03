@@ -26,7 +26,7 @@ Complete reference for n8n's `.github/` folder.
 │   ├── update-changelog.mjs              # Generate CHANGELOG
 │   ├── trim-fe-packageJson.js            # Strip frontend devDeps
 │   ├── ensure-provenance-fields.mjs      # Add license/author fields
-│   ├── validate-docs-links.js            # Check documentation URLs
+│   ├── link-check/                       # Weekly link check config and report
 │   ├── send-build-stats.mjs              # Turbo build telemetry → webhook
 │   └── docker/
 │       ├── docker-tags.mjs               # Generate image tags
@@ -601,7 +601,6 @@ Push to master
 | Daily 00:00               | `test-e2e-performance-reusable.yml`| Performance E2E         |
 | Daily 00:00               | `release-storybook.yml`       | Storybook deploy         |
 | Daily 00:00               | `release-chromatic.yml`       | Visual regression        |
-| Daily 00:00               | `util-check-docs-urls.yml`        | Doc link validation      |
 | Daily 01:30, 02:30, 03:30 | `test-benchmark-nightly.yml`      | Performance benchmarks   |
 | Daily 02:00               | `test-get-n8n.yml`                | get.n8n.io installer health |
 | Daily 02:00               | `test-e2e-pc-nightly.yml`         | E2E on the `-pc` image   |
@@ -611,6 +610,7 @@ Push to master
 | Daily 08:00               | `build-v3-nightly.yml`            | Nightly v3 Docker images |
 | Monday 00:00              | `util-update-node-popularity.yml` | Node usage stats         |
 | Monday 02:00              | `test-e2e-coverage-weekly.yml`    | Weekly E2E coverage      |
+| Monday 06:00              | `test-link-check-weekly.yml`      | Broken links in `packages/` |
 | Saturday 22:00            | `test-evals-ai.yml`               | AI workflow evals        |
 | 1st of month 04:00        | `util-refresh-cubic-schema.yml`   | Refresh vendored cubic schema |
 
@@ -789,7 +789,7 @@ Scripts in `.github/scripts/`:
 
 | Script                  | Purpose           | Called By                 |
 |-------------------------|-------------------|---------------------------|
-| `validate-docs-links.js`| Check doc URLs    | `util-check-docs-urls.yml`|
+| `link-check/check-report.mjs` | Decide which lychee failures are broken links | `test-link-check-weekly.yml` |
 | `send-build-stats.mjs`  | Build telemetry   | `setup-nodejs` action     |
 | `resolve-pnpm-version.mjs` | Publish the pinned pnpm version and its executable cache key | `setup-nodejs` action |
 | `nightly-sbom-context.mjs` | Resolve the source SHA and image tag for nightly SBOM validation | `test-sbom-nightly.yml` |

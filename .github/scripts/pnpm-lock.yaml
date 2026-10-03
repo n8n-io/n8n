@@ -181,6 +181,9 @@ importers:
       minimatch:
         specifier: 10.2.4
         version: 10.2.4
+      playwright-core:
+        specifier: 1.62.1
+        version: 1.62.1
       semver:
         specifier: 7.7.4
         version: 7.7.4
@@ -1051,6 +1054,11 @@ packages:
 
   picocolors@1.1.1:
     resolution: {integrity: sha512-xceH2snhtb5M9liqDsmEw56le376mTZkEX/jEb/RxNFyegNul7eNslCXP9FDj/Lcu0X8KEyMceP2ntpaHrDEVA==}
+
+  playwright-core@1.62.1:
+    resolution: {integrity: sha512-wPYSwEBJY9GHraISXqyqtx0na0LpO3XEX7jNDhntbex7tzUS7kLnZsOlFruFJB4Hi/rhDMjXGqHewDZ68nYZVw==}
+    engines: {node: '>=20'}
+    hasBin: true
 
   proc-log@6.1.0:
     resolution: {integrity: sha512-iG+GYldRf2BQ0UDUAd6JQ/RwzaQy6mXmsk/IzlYyal4A4SNFw54MeH4/tLkF4I5WoWG9SQwuqWzS99jaFQHBuQ==}
@@ -2304,6 +2312,8 @@ snapshots:
       minipass: 7.1.3
 
   picocolors@1.1.1: {}
+
+  playwright-core@1.62.1: {}
 
   proc-log@6.1.0: {}
 

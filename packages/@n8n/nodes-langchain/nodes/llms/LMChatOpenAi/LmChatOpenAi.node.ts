@@ -709,7 +709,7 @@ export class LmChatOpenAi implements INodeType {
 						name: 'promptConfig',
 						type: 'fixedCollection',
 						description:
-							'Configure the reusable prompt template configured via OpenAI Dashboard. <a href="https://platform.openai.com/docs/guides/prompt-engineering#reusable-prompts">Learn more</a>.',
+							'Configure the reusable prompt template configured via OpenAI Dashboard. <a href="https://developers.openai.com/api/docs/guides/prompting/migrate-from-prompt-object">Learn more</a>.',
 						default: { promptOptions: [{ promptId: '' }] },
 						options: [
 							{

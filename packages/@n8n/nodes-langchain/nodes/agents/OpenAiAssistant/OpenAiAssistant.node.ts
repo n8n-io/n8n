@@ -279,7 +279,7 @@ export class OpenAiAssistant implements INodeType {
 			},
 			{
 				displayName:
-					'Upload files for retrieval using the <a href="https://platform.openai.com/playground" target="_blank">OpenAI website<a/>',
+					'Upload files for retrieval using the <a href="https://platform.openai.com/storage/files" target="_blank">OpenAI website<a/>',
 				name: 'noticeTools',
 				type: 'notice',
 				typeOptions: {

@@ -1,0 +1,76 @@
+# Weekly check of the links in packages/. See .github/workflows/test-link-check-weekly.yml.
+# Run from the repository root:
+#   dir=$(mktemp -d)
+#   node .github/scripts/link-check/extract.mjs "$dir" \
+#     | (cd "$dir" && lychee --config "$OLDPWD/.github/scripts/link-check/lychee.toml" --files-from - --output "$OLDPWD/report.json")
+#   node .github/scripts/link-check/check-report.mjs report.json
+
+no_progress = true
+mode = "plain"
+format = "json"
+include_fragments = "anchor-only"
+
+user_agent = "Mozilla/5.0 (compatible; n8n-link-check; +https://github.com/n8n-io/n8n)"
+timeout = 20
+# Retries wait 5, 10, 20, and 40 seconds, so that short server outages pass.
+max_retries = 4
+retry_wait_time = 5
+max_redirects = 10
+max_concurrency = 32
+host_concurrency = 4
+host_request_interval = "100ms"
+scheme = ["https", "http"]
+exclude_all_private = true
+
+# npmjs.com shows GitHub runners a bot challenge, also in a browser. The registry API does not.
+remap = ['^https://www\.npmjs\.com/package/(.+)$ https://registry.npmjs.org/$1']
+
+exclude_path = [
+	'\.(test|spec)\.',
+	'/__tests?__/',
+	'/(test|tests|fixtures|e2e)/',
+	'test-helpers\.ts$',
+	'^packages/quality/',
+	# These comments contain URLs that lychee cannot parse, which fails the run.
+	'^packages/@n8n/engine/src/database/data-source\.ts$',
+	'^packages/@n8n/utils/src/scrub-secrets\.ts$',
+]
+
+exclude = [
+	# Template strings and URLs built at runtime.
+	'%7B', '\{', '\$', '%24',
+	# Placeholder and example values.
+	'^https?://([^/@]*@)?[^./:@]+(:\d+)?(/|$)',
+	'^https?://([^/]+\.)?(example|test)\.(com|org|net|nonexistent)',
+	'^https?://([^/]*\.)?(your|my-|xyzcompany|contoso|tenant123|company\.|n8n\.host)',
+	'^https?://(resourcename\.openai\.azure\.com|bucket\.host|mcp\.github\.com)',
+	'xxxxx|USERID|PRESENTATION_ID|/org/repo|/user/repository|1ABC123XYZ',
+	'^https?://(example\.rocket\.chat|docs\.myservice\.com)',
+	'^https://github\.com/(acme|myuser)/',
+	# A private document in a code comment.
+	'^https://docs\.google\.com/document/d/1TUJGUf5HUv9e6MJBzcOsPruxXDeGMnGYTBWfkMagcg4',
+	'^https://samltest\.id/',
+	# API endpoints. They reject plain GET requests.
+	'^https?://api[.-][^/]*/(.*/)?v\d+(\.\d+)?(/|$)',
+	'/oauth2?/(v\d+/)?(token|authorize)',
+	'^https?://[^/]+\.googleapis\.com',
+	'^https?://graph\.microsoft\.com',
+	'^https://api\.smith\.langchain\.com',
+	'^https://www\.reddit\.com/.*\.json$',
+	# A URL prefix that the editor appends package names to.
+	'^https://www\.npmjs\.com/package/$',
+	# Bot checks block GitHub runners, also in a browser.
+	'^https://www\.contentful\.com/',
+	'^https://postgrest\.org/',
+	# The OpenAI dashboard passes the bot check only sometimes. Its docs moved to developers.openai.com.
+	'^https://platform\.openai\.com/',
+	# Private to n8n employees.
+	'^https://n8nio\.slack\.com/',
+	'^https://github\.com/n8n-io/license-management',
+	# Attribution headers copied as-is from a third-party library.
+	'^http://(getsprink\.com|brett-zamir\.me)',
+]
+
+# docs.n8n.io has most of the links. It is our own site, so allow a shorter interval.
+[hosts."docs.n8n.io"]
+request_interval = "50ms"
