@@ -1184,6 +1184,18 @@ describe('GET /workflows', () => {
 		expect(response.body).toEqual({ count: 0, data: [] });
 	});
 
+	test('should ignore null optional filters', async () => {
+		const workflow = await createWorkflow({ name: 'Unfiltered workflow' }, owner);
+
+		const response = await authOwnerAgent
+			.get('/workflows')
+			.query({ filter: JSON.stringify({ active: null, projectId: null }) })
+			.expect(200);
+
+		expect(response.body.count).toBe(1);
+		expect(response.body.data).toEqual([expect.objectContaining({ id: workflow.id })]);
+	});
+
 	describe('ids filter', () => {
 		test('should omit requested workflows that the user cannot read or that do not exist', async () => {
 			const readableWorkflow = await createWorkflow({ name: 'Readable' }, member);
@@ -2313,7 +2325,7 @@ describe('GET /workflows', () => {
 
 	describe('sortBy', () => {
 		test('should fail when trying to sort by non sortable column', async () => {
-			await authOwnerAgent.get('/workflows').query('sortBy=nonSortableColumn:asc').expect(500);
+			await authOwnerAgent.get('/workflows').query('sortBy=nonSortableColumn:asc').expect(400);
 		});
 
 		test('should sort by createdAt column', async () => {
@@ -2415,7 +2427,7 @@ describe('GET /workflows', () => {
 		});
 
 		test('should fail when skip is provided without take', async () => {
-			await authOwnerAgent.get('/workflows').query('skip=2').expect(500);
+			await authOwnerAgent.get('/workflows').query('skip=2').expect(400);
 		});
 
 		test('should handle skip with take parameter', async () => {
@@ -3171,7 +3183,7 @@ describe('GET /workflows?includeFolders=true', () => {
 			await authOwnerAgent
 				.get('/workflows')
 				.query('sortBy=nonSortableColumn:asc&?includeFolders=true')
-				.expect(500);
+				.expect(400);
 		});
 
 		test('should sort by createdAt column', async () => {
@@ -3332,7 +3344,7 @@ describe('GET /workflows?includeFolders=true', () => {
 		});
 
 		test('should fail when skip is provided without take', async () => {
-			await authOwnerAgent.get('/workflows?includeFolders=true').query('skip=2').expect(500);
+			await authOwnerAgent.get('/workflows?includeFolders=true').query('skip=2').expect(400);
 		});
 
 		test('should handle skip with take parameter', async () => {

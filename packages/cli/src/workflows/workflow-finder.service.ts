@@ -1,4 +1,4 @@
-import type { SharedWorkflow, User, WorkflowEntity, ListQuery } from '@n8n/db';
+import type { SharedWorkflow, User, WorkflowEntity } from '@n8n/db';
 import {
 	SharedWorkflowRepository,
 	FolderRepository,
@@ -450,8 +450,7 @@ export class WorkflowFinderService {
 			? [folderId, ...(await this.folderRepository.getAllFolderIdsInHierarchy(folderId, projectId))]
 			: undefined;
 
-		// oxlint-disable-next-line typescript/no-deprecated
-		const select: NonNullable<ListQuery.Options['select']> = {
+		const select: Record<string, true> = {
 			id: true,
 			name: true,
 			active: true,

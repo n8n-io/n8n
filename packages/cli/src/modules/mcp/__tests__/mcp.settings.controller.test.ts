@@ -1,4 +1,5 @@
 import { Logger, ModuleRegistry } from '@n8n/backend-common';
+import { McpWorkflowsListQueryDto } from '@n8n/api-types';
 import { EventService } from '@n8n/backend-services';
 import { InstanceSettingsLoaderConfig } from '@n8n/config';
 import { type ApiKey, type AuthenticatedRequest, User, Role } from '@n8n/db';
@@ -68,14 +69,16 @@ const createRes = () => {
 	return res;
 };
 
-const createListQueryReq = (
-	user: User,
-	listQueryOptions: ListQuery.Options = {},
-): ListQuery.Request =>
-	({
-		user,
-		listQueryOptions,
-	}) as unknown as ListQuery.Request;
+const createListQueryReq = (user: User) => createReq({}, { user });
+
+const createListQuery = (options: ListQuery.Options = {}) =>
+	McpWorkflowsListQueryDto.parse({
+		...options,
+		filter: options.filter ? JSON.stringify(options.filter) : undefined,
+		select: options.select ? JSON.stringify(Object.keys(options.select)) : undefined,
+		take: options.take?.toString(),
+		skip: options.skip?.toString(),
+	});
 
 describe('McpSettingsController', () => {
 	const logger = mock<Logger>();
@@ -308,7 +311,7 @@ describe('McpSettingsController', () => {
 
 			workflowService.getMany.mockResolvedValue({ workflows: mockWorkflows, count: 2 });
 
-			await controller.getMcpEligibleWorkflows(req, res);
+			await controller.getMcpEligibleWorkflows(req, res, createListQuery());
 
 			expect(workflowService.getMany).toHaveBeenCalledWith(
 				user,
@@ -329,7 +332,7 @@ describe('McpSettingsController', () => {
 
 			workflowService.getMany.mockResolvedValue({ workflows: mockWorkflows, count: 2 });
 
-			await controller.getMcpEligibleWorkflows(req, res);
+			await controller.getMcpEligibleWorkflows(req, res, createListQuery());
 
 			expect(res.json).toHaveBeenCalledWith({ count: 2, data: mockWorkflows });
 		});
@@ -340,14 +343,15 @@ describe('McpSettingsController', () => {
 
 			workflowService.getMany.mockResolvedValue({ workflows: [], count: 0 });
 
-			await controller.getMcpEligibleWorkflows(req, res);
+			await controller.getMcpEligibleWorkflows(req, res, createListQuery());
 
 			expect(res.json).toHaveBeenCalledWith({ count: 0, data: [] });
 		});
 
 		test('merges user-provided filter options with required filters', async () => {
-			const req = createListQueryReq(user, {
-				filter: { name: 'test-workflow' },
+			const req = createListQueryReq(user);
+			const query = createListQuery({
+				filter: { query: 'test-workflow' },
 				take: 10,
 				skip: 5,
 			});
@@ -355,13 +359,13 @@ describe('McpSettingsController', () => {
 
 			workflowService.getMany.mockResolvedValue({ workflows: [], count: 0 });
 
-			await controller.getMcpEligibleWorkflows(req, res);
+			await controller.getMcpEligibleWorkflows(req, res, query);
 
 			expect(workflowService.getMany).toHaveBeenCalledWith(
 				user,
 				expect.objectContaining({
 					filter: expect.objectContaining({
-						name: 'test-workflow',
+						query: 'test-workflow',
 						isArchived: false,
 						availableInMCP: false,
 					}),
@@ -373,7 +377,8 @@ describe('McpSettingsController', () => {
 		});
 
 		test('required filters override user-provided conflicting filters', async () => {
-			const req = createListQueryReq(user, {
+			const req = createListQueryReq(user);
+			const query = createListQuery({
 				filter: {
 					active: false,
 					isArchived: true,
@@ -384,7 +389,7 @@ describe('McpSettingsController', () => {
 
 			workflowService.getMany.mockResolvedValue({ workflows: [], count: 0 });
 
-			await controller.getMcpEligibleWorkflows(req, res);
+			await controller.getMcpEligibleWorkflows(req, res, query);
 
 			expect(workflowService.getMany).toHaveBeenCalledWith(
 				user,

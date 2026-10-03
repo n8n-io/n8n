@@ -21,6 +21,7 @@ import type {
 	INodeCredentialTestRequest,
 	IPersonalizationSurveyAnswersV4,
 } from 'n8n-workflow';
+import { BadRequestError } from '@n8n/errors';
 
 export type AuthlessRequest<
 	RouteParams = {},
@@ -56,6 +57,19 @@ export function appendListQueryOptions(req: Request, options: ListQuery.Options)
 	listReq.listQueryOptions = { ...listReq.listQueryOptions, ...options };
 }
 
+export function listQueryOptionsFromQuery(query: ListQuery.Options): ListQuery.Options {
+	const { filter, select, skip, take, sortBy } = query;
+	if (skip !== undefined && take === undefined) {
+		throw new BadRequestError('Please specify `take` when using `skip`');
+	}
+	return {
+		...(filter && { filter }),
+		...(select && { select }),
+		...(take !== undefined && { skip: skip ?? 0, take }),
+		...(sortBy && { sortBy }),
+	};
+}
+
 // ----------------------------------
 //            list query
 // ----------------------------------
@@ -85,14 +99,7 @@ export declare namespace CredentialRequest {
 
 	type Get = AuthenticatedRequest<{ credentialId: string }, {}, {}, Record<string, string>>;
 
-	type GetMany = AuthenticatedRequest<
-		{},
-		{},
-		{},
-		ListQuery.Params & { includeScopes?: string; includeFolders?: string }
-	> & {
-		listQueryOptions: ListQuery.Options;
-	};
+	type GetMany = AuthenticatedRequest;
 
 	type Delete = Get;
 

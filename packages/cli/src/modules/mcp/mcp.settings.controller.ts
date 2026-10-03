@@ -2,12 +2,12 @@ import { ModuleRegistry, Logger } from '@n8n/backend-common';
 import { EventService } from '@n8n/backend-services';
 import { InstanceSettingsLoaderConfig } from '@n8n/config';
 import { type AuthenticatedRequest } from '@n8n/db';
-import { Body, Post, Get, Patch, RestController, GlobalScope } from '@n8n/decorators';
+import { McpWorkflowsListQueryDto } from '@n8n/api-types';
+import { Body, Post, Get, Patch, RestController, GlobalScope, Query } from '@n8n/decorators';
 import type { Response } from 'express';
 
 import { ForbiddenError } from '@n8n/errors';
-import { listQueryMiddleware } from '@/middlewares';
-import type { ListQuery } from '@/requests';
+import { listQueryOptionsFromQuery } from '@/requests';
 import { WorkflowService } from '@/workflows/workflow.service';
 
 import { UpdateAllowedRedirectUrisDto } from './dto/update-allowed-redirect-uris.dto';
@@ -89,13 +89,17 @@ export class McpSettingsController {
 		return { success: true };
 	}
 
-	// oxlint-disable-next-line typescript/no-deprecated
-	@Get('/workflows', { middlewares: listQueryMiddleware })
-	async getMcpEligibleWorkflows(req: ListQuery.Request, res: Response) {
-		const options: ListQuery.Options = {
-			...req.listQueryOptions,
+	@Get('/workflows')
+	async getMcpEligibleWorkflows(
+		req: AuthenticatedRequest,
+		res: Response,
+		@Query query: McpWorkflowsListQueryDto,
+	) {
+		const parsedOptions = listQueryOptionsFromQuery(query);
+		const options = {
+			...parsedOptions,
 			filter: {
-				...req.listQueryOptions?.filter,
+				...parsedOptions.filter,
 				isArchived: false,
 				availableInMCP: false,
 			},
