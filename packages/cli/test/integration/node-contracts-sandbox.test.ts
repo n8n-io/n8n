@@ -135,7 +135,7 @@ describe.skipIf(!built)('node contracts in the sandbox', () => {
 			status: 'success',
 			items: [{ received: { name: 'Ada' } }],
 		});
-		expect(existsSync(cacheDir())).toBe(false);
+		expect(existsSync(path.join(cacheDir(), 'bundles'))).toBe(false);
 	});
 
 	it('runs the same action in the sandbox when N8N_NODE_CONTRACT_SANDBOX is all', async () => {

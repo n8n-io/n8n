@@ -158,8 +158,11 @@ interface SessionConfig {
 	readonly guest: string;
 	readonly guestSha256: string;
 	readonly limits: SandboxLimits;
-	readonly manifest: VersionManifest;
-	readonly bundleFile: string;
+	/** The name in the errors: the action id, or the guest at warm-up. */
+	readonly label: string;
+	readonly nodeContract: string;
+	/** Without a bundle, the sidecar only compiles and starts the guest. */
+	readonly bundle?: { readonly file: string; readonly sha256: string };
 	readonly grants: readonly string[];
 }
 
@@ -190,15 +193,15 @@ const grantsOf = ({ kind, contract }: VersionManifest) => {
 
 /** One sidecar process: one component instance, so one node execution shares no state with another. */
 function connect(config: SessionConfig): Connection {
-	const { options, limits, manifest, bundleFile, grants } = config;
+	const { options, limits, label, bundle, grants } = config;
 	const child = spawn(
 		options.sidecar,
 		[
 			...['--wit', SPEC_WIT, '--world', `${config.kind}-bundle`, '--component', config.guest],
 			...['--component-sha256', config.guestSha256],
 			...grants.flatMap((grant) => ['--grant', grant]),
-			...['--bundle', bundleFile, '--bundle-sha256', manifest.bundleHash],
-			...['--node-contract', manifest.nodeContract, '--cache', options.cacheDir],
+			...(bundle ? ['--bundle', bundle.file, '--bundle-sha256', bundle.sha256] : []),
+			...['--node-contract', config.nodeContract, '--cache', options.cacheDir],
 			...['--memory-mb', String(limits.memoryMb), '--cpu-ms', String(limits.cpuMs)],
 		],
 		{ stdio: ['pipe', 'pipe', 'pipe'], env: {}, windowsHide: true },
@@ -216,7 +219,7 @@ function connect(config: SessionConfig): Connection {
 		child.kill('SIGKILL');
 	};
 	const timer = setTimeout(
-		() => fail(new UserError(`${manifest.id} ran longer than ${limits.wallMs} ms and was stopped`)),
+		() => fail(new UserError(`${label} ran longer than ${limits.wallMs} ms and was stopped`)),
 		limits.wallMs,
 	);
 	const send = (message: Record<string, unknown>) => {
@@ -272,9 +275,7 @@ function connect(config: SessionConfig): Connection {
 		partial.push(open);
 		state.partialLength += open.length;
 		if (state.partialLength > limits.maxMessageBytes) {
-			fail(
-				new UserError(`${manifest.id} gave a message larger than ${limits.maxMessageBytes} bytes`),
-			);
+			fail(new UserError(`${label} gave a message larger than ${limits.maxMessageBytes} bytes`));
 			return;
 		}
 		try {
@@ -317,7 +318,7 @@ function connect(config: SessionConfig): Connection {
 		},
 		serve(calls) {
 			// The guest calls carry no run, so one connection runs one run at a time.
-			if (served.has('calls')) throw new UnexpectedError(`${manifest.id} runs one run at a time`);
+			if (served.has('calls')) throw new UnexpectedError(`${label} runs one run at a time`);
 			served.set('calls', calls);
 			return () => served.delete('calls');
 		},
@@ -337,9 +338,7 @@ async function openSession(config: SessionConfig): Promise<Connection> {
 			nodeContract: NODE_CONTRACT_VERSION,
 		});
 		if (!isRecord(started) || started.kind !== config.kind) {
-			throw new UnexpectedError(
-				`${config.manifest.id} is not a bundle of the ${config.kind} interface`,
-			);
+			throw new UnexpectedError(`${config.label} is not a bundle of the ${config.kind} interface`);
 		}
 		return connection;
 	} catch (error) {
@@ -1666,8 +1665,9 @@ export async function sandboxedVersionOf(frozen: FrozenVersion, options: Sandbox
 		guest,
 		guestSha256: await guestSha256Of(guest),
 		limits: { ...DEFAULT_LIMITS, ...options.limits },
-		manifest,
-		bundleFile: await bundleFileOf(options, manifest, code),
+		label: manifest.id,
+		nodeContract: manifest.nodeContract,
+		bundle: { file: await bundleFileOf(options, manifest, code), sha256: manifest.bundleHash },
 		grants: grantsOf(manifest),
 	};
 	const start = async () => await openSession(config);
@@ -1681,6 +1681,35 @@ export async function sandboxedVersionOf(frozen: FrozenVersion, options: Sandbox
 		start,
 	);
 	return { action, start, executor: sandboxedExecutor(executorOf(action), start) };
+}
+
+/**
+ * Compiles the guest of each kind into `options.cacheDir`, so that the first sandboxed run does
+ * not wait for the compile (about 2 s for each guest). It starts one sidecar for each guest
+ * without a bundle and stops it after `[initialize]`. The guests compile one after the other to
+ * keep the load at start low.
+ *
+ * @throws when a sidecar cannot start or a guest cannot compile. Then the first run compiles.
+ */
+export async function warmSandbox(options: SandboxOptions): Promise<void> {
+	// The sidecar creates a missing cache directory with the umask mode, which others can read.
+	await mkdir(options.cacheDir, { recursive: true, mode: 0o700 });
+	const kinds: readonly SandboxKind[] = ['action', 'provider'];
+	await kinds.reduce(async (previous, kind) => {
+		await previous;
+		const guest = path.join(options.guests, `${kind}.wasm`);
+		const session = await openSession({
+			options,
+			kind,
+			guest,
+			guestSha256: await guestSha256Of(guest),
+			limits: { ...DEFAULT_LIMITS, ...options.limits },
+			label: `The ${kind} guest`,
+			nodeContract: NODE_CONTRACT_VERSION,
+			grants: [],
+		});
+		session.close();
+	}, Promise.resolve());
 }
 
 /** One connection for all runs of one node execution, opened at the first run. */

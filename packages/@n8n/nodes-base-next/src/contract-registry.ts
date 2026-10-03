@@ -23,10 +23,15 @@ import {
 	type NodeContractVersion,
 	type VersionManifest,
 } from '@n8n/node-sdk/registry';
-import { sandboxExecutorLoader, type SandboxOptions } from '@n8n/node-sdk/sandbox';
+import { sandboxExecutorLoader, warmSandbox, type SandboxOptions } from '@n8n/node-sdk/sandbox';
 import { access, link, mkdir, readdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import { UserError, type IExecuteFunctions, type ISupplyDataFunctions } from 'n8n-workflow';
+import {
+	LoggerProxy,
+	UserError,
+	type IExecuteFunctions,
+	type ISupplyDataFunctions,
+} from 'n8n-workflow';
 
 import { versionsOf } from './registry';
 
@@ -469,7 +474,8 @@ const isBundled = (manifest: VersionManifest) =>
 
 /**
  * Sets the Node Contract range, the version loader, the sandbox and the run profile listener of
- * this package's node-sdk, which its nodes run with.
+ * this package's node-sdk, which its nodes run with. With a sandbox, it also starts to compile
+ * the sandbox guests and does not wait for the result.
  */
 export const useContractRegistry = (options: ContractRegistryOptions) => {
 	setNodeContractRange(options.nodeContractRange);
@@ -479,6 +485,10 @@ export const useContractRegistry = (options: ContractRegistryOptions) => {
 		const { scope } = options.sandbox;
 		setExecutorLoader(
 			sandboxExecutorLoader(options.sandbox.options, scope === 'all' ? () => false : isBundled),
+		);
+		// Without the warm-up, the first sandboxed run compiles the guest, so a failure only costs time.
+		void warmSandbox(options.sandbox.options).catch((error: unknown) =>
+			LoggerProxy.debug(`The sandbox guests did not compile at start: ${errorMessage(error)}`),
 		);
 	}
 };

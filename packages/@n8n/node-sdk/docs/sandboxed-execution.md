@@ -190,12 +190,18 @@ Measured on macOS arm64 (load 9 to 12), medians, for `slack.message.send`,
 
 | | in-process | sandbox |
 |---|---|---|
-| first load ever (compile the guest) | — | 2.0 to 2.2 s once per guest and machine |
+| first load ever (compile the guest) | — | 2.0 to 2.2 s once per guest and cache directory, at n8n start (see below) |
 | load of a bundle (`describe`) | 1 to 4 ms | 13 to 17 ms once per bundle |
 | node execution with 1 item | 0.1 to 0.2 ms | 12 to 15 ms (a new sidecar and instance) |
 | each more item | 10 to 100 µs | 0.2 ms (no request) to 1.1 ms (4 requests) |
 
 A real API call takes 50 to 500 ms, so the sandbox adds little to an HTTP-bound action.
+
+`useContractRegistry` of nodes-base-next calls `warmSandbox(options)` when the sandbox is on. It
+compiles `action.wasm` and `provider.wasm` into the cache directory, one after the other, and n8n
+does not wait for it. A sidecar without `--bundle` compiles the guest at `[initialize]`. A run
+that starts before the compile ends, or after a failed warm-up, compiles the guest itself. Two
+compiles at the same time are safe: the sidecar writes the `.cwasm` atomically.
 
 ## Not built yet
 

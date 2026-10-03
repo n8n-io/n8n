@@ -1,5 +1,5 @@
 import { existsSync } from 'node:fs';
-import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, readdir, rm, stat, writeFile } from 'node:fs/promises';
 import { createServer, type Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { tmpdir } from 'node:os';
@@ -10,7 +10,7 @@ import type { IHttpRequestOptions, INode } from 'n8n-workflow';
 import { compat, defineCredential, field } from '../credentials';
 import { freezeAction, GUEST_LACKS } from '../freeze';
 import { defineNode, t } from '../index';
-import { sandboxedVersionOf, type SandboxOptions } from '../sandbox';
+import { sandboxedVersionOf, warmSandbox, type SandboxOptions } from '../sandbox';
 import { executorOf, type BinaryStore, type ExecutorHost } from '../runtime';
 
 const SANDBOX = path.resolve(__dirname, '..', '..', 'sandbox');
@@ -225,16 +225,17 @@ describe.skipIf(!existsSync(SIDECAR) || !existsSync(GUEST))('the sandbox', () =>
 		continueOnFail: () => false,
 	});
 
-	const outputOf = async (name: ProbeName, host = hostOf()) => {
+	const outputOf = async (name: ProbeName, host = hostOf(), sandbox = options()) => {
 		const frozen = await freezeAction(path.join(dirs.root, 'probes.ts'), name);
 		const { executor } = await sandboxedVersionOf(
 			{ manifest: frozen.manifest, readBundle: async () => frozen.bundle },
-			options(),
+			sandbox,
 		);
 		const [[output] = []] = await executor(host);
 		return output;
 	};
-	const run = async (name: ProbeName, host = hostOf()) => (await outputOf(name, host))?.json.value;
+	const run = async (name: ProbeName, host = hostOf(), sandbox = options()) =>
+		(await outputOf(name, host, sandbox))?.json.value;
 
 	beforeAll(async () => {
 		dirs.root = await mkdtemp(path.join(tmpdir(), 'node-sdk-sandbox-'));
@@ -258,6 +259,22 @@ describe.skipIf(!existsSync(SIDECAR) || !existsSync(GUEST))('the sandbox', () =>
 		requests.length = 0;
 		canary.hits = 0;
 	});
+
+	it('compiles both guests at warm-up, so a later run compiles nothing', async () => {
+		const warm = { ...options(), cacheDir: path.join(dirs.root, 'warm-cache') };
+		const compiled = async () => {
+			const files = (await readdir(warm.cacheDir)).filter((file) => file.endsWith('.cwasm')).sort();
+			return await Promise.all(
+				files.map(async (file) => [file, (await stat(path.join(warm.cacheDir, file))).mtimeMs]),
+			);
+		};
+		await warmSandbox(warm);
+		const warmed = await compiled();
+		expect(warmed).toHaveLength(2);
+		expect((await stat(warm.cacheDir)).mode & 0o777).toBe(0o700);
+		await expect(run('pollutionProbe', hostOf(), warm)).resolves.toBe('yes');
+		expect(await compiled()).toEqual(warmed);
+	}, 30_000);
 
 	it('gives the bundle no global fetch', async () => {
 		await expect(run('fetchProbe')).rejects.toThrow('fetch is not available in the sandbox');

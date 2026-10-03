@@ -7,14 +7,19 @@ import {
 import { integrityOf, packageNameOf, type NodeContractLock } from '@n8n/node-sdk/registry';
 import { freezeAction, type FrozenAction } from '@n8n/node-sdk/freeze';
 import { packContractPackage } from '@n8n/node-sdk/publish';
-import { sandboxExecutorLoader } from '@n8n/node-sdk/sandbox';
+import { sandboxExecutorLoader, warmSandbox } from '@n8n/node-sdk/sandbox';
 import { generateKeyPairSync } from 'node:crypto';
 import { link, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { createServer, type Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import type { IExecuteFunctions, INodeExecutionData, ITaskMetadata } from 'n8n-workflow';
+import {
+	LoggerProxy,
+	type IExecuteFunctions,
+	type INodeExecutionData,
+	type ITaskMetadata,
+} from 'n8n-workflow';
 
 import {
 	contractStore,
@@ -39,6 +44,7 @@ vi.mock('@n8n/node-sdk/host', async (importOriginal) => ({
 vi.mock('@n8n/node-sdk/sandbox', async (importOriginal) => ({
 	...(await importOriginal<typeof import('@n8n/node-sdk/sandbox')>()),
 	sandboxExecutorLoader: vi.fn(),
+	warmSandbox: vi.fn(async () => undefined),
 }));
 
 const echoSource = (minor: number, text: string) => `
@@ -432,21 +438,45 @@ describe('syncContractStore', () => {
 });
 
 describe('useContractRegistry', () => {
-	const inProcessOf = (scope: 'stored' | 'all') => {
-		vi.mocked(sandboxExecutorLoader).mockClear();
+	const sandboxOptions = {
+		sidecar: '',
+		guests: '',
+		cacheDir: '',
+		credentialType: () => undefined,
+	};
+	const use = (sandbox?: ContractRegistryOptions['sandbox']) =>
 		useContractRegistry({
 			policy: 'tolerant',
 			store: storeOf(),
 			metaOf: async () => undefined,
 			nodeContractRange: '>=2.0.0 <3.0.0',
-			sandbox: {
-				options: { sidecar: '', guests: '', cacheDir: '', credentialType: () => undefined },
-				scope,
-			},
+			sandbox,
 		});
+	const inProcessOf = (scope: 'stored' | 'all') => {
+		vi.mocked(sandboxExecutorLoader).mockClear();
+		use({ options: sandboxOptions, scope });
 		const [[, inProcess] = []] = vi.mocked(sandboxExecutorLoader).mock.calls;
 		return inProcess;
 	};
+
+	beforeEach(() => vi.mocked(warmSandbox).mockClear());
+
+	it('compiles the sandbox guests at start only with a sandbox', () => {
+		use();
+		expect(warmSandbox).not.toHaveBeenCalled();
+		use({ options: sandboxOptions, scope: 'stored' });
+		expect(warmSandbox).toHaveBeenCalledWith(sandboxOptions);
+	});
+
+	it('logs a failed guest compile at debug and starts', async () => {
+		const debug = vi.spyOn(LoggerProxy, 'debug');
+		vi.mocked(warmSandbox).mockRejectedValueOnce(new Error('no sidecar'));
+		expect(() => use({ options: sandboxOptions, scope: 'stored' })).not.toThrow();
+		await vi.waitFor(() =>
+			expect(debug).toHaveBeenCalledWith('The sandbox guests did not compile at start: no sidecar'),
+		);
+		debug.mockRestore();
+	});
 	const [{ manifest }] = versionsOf('httpRequest.send');
 
 	it('runs only the versions that this package bundles in this process with the stored scope', () => {
