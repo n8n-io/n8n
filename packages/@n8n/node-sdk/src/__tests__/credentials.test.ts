@@ -1032,6 +1032,40 @@ describe('renamed fields', () => {
 	});
 });
 
+describe('stored credential data', () => {
+	const acme = defineCredential({
+		id: 'acme.token',
+		displayName: 'Acme',
+		fields: {
+			apiToken: field.secret('API Token'),
+			account: field.text('Account'),
+			region: field.options('Region', { eu: { name: 'EU' }, us: { name: 'US' } }).default('eu'),
+		},
+		baseUrl: 'https://{region}.acme.test',
+		auth: (a) => a.bearer('apiToken'),
+	});
+
+	it('fills a declared field that the stored data lacks with its default, without a change to the stored data', () => {
+		const stored = Object.freeze({ apiToken: 'tok-1', account: 'a-1' });
+		expect(credentialDataOf(acme, stored)).toEqual({
+			apiToken: 'tok-1',
+			account: 'a-1',
+			region: 'eu',
+		});
+		expect(credentialBaseUrlOf(acme, stored)).toBe('https://eu.acme.test');
+		expect(stored).toEqual({ apiToken: 'tok-1', account: 'a-1' });
+	});
+
+	it('refuses a required field without a default, with the field and type names but no secret', () => {
+		expect(() => credentialDataOf(acme, { apiToken: 'tok-1' })).toThrow(
+			'Credential acme.token: acme.token.account: is required',
+		);
+		const refusal = () => credentialDataOf(acme, { apiToken: 73519046, account: 'a-1' });
+		expect(refusal).toThrow('acme.token.apiToken: must be string, got [REDACTED]');
+		expect(refusal).not.toThrow('73519046');
+	});
+});
+
 describe('secretRedactorOf', () => {
 	it('removes secrets, derived tokens, base64 and URL-encoded forms, and basic pairs', () => {
 		const zendesk = defineCredential({

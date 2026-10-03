@@ -5,12 +5,14 @@ import type {
 	IExecuteFunctions,
 	IHttpRequestOptions,
 	IVersionedNodeType,
+	IWorkflowExecuteAdditionalData,
 } from 'n8n-workflow';
 import path from 'node:path';
 import { mock } from 'vitest-mock-extended';
 
 import { CredentialTypes } from '../credential-types';
 import { CredentialsHelper } from '../credentials-helper';
+import type { CredentialsOverwrites } from '../credentials-overwrites';
 import { LoadNodesAndCredentials } from '../load-nodes-and-credentials';
 import { ContractNodeLoader } from '../node-contracts-registry';
 
@@ -37,9 +39,11 @@ async function loaded(nodeContractsEnabled: boolean) {
 	instance.loaders = { [NEXT]: next, 'n8n-nodes-base': nodesBase };
 	await instance.postProcessLoaders();
 	const credentialTypes = new CredentialTypes(instance);
+	const credentialsOverwrites = mock<CredentialsOverwrites>();
+	credentialsOverwrites.applyOverwrite.mockImplementation((_type, data) => data);
 	const helper = new CredentialsHelper(
 		credentialTypes,
-		mock(),
+		credentialsOverwrites,
 		mock(),
 		mock(),
 		mock(),
@@ -208,6 +212,33 @@ describe('credential types of the node contracts package', () => {
 			{ source: `${NEXT}/dist/versions/credentials/openAi.apiKey/manifest.json`, headers },
 			{ source: 'nodes-base/dist/credentials/OpenAiApi.credentials.js', headers },
 		]);
+	});
+
+	it('sign a stored openAiApi credential without its newer fields', async () => {
+		const { helper } = await loaded(true);
+		const stored: ICredentialDataDecryptedObject = Object.freeze({ apiKey: 'sk-1' });
+
+		const data = await helper.applyDefaultsAndOverwrites(
+			mock<IWorkflowExecuteAdditionalData>({ variables: {} }),
+			stored,
+			'openAiApi',
+			'internal',
+		);
+		const options = await helper.authenticate(data, 'openAiApi', {
+			url: `${String(data.url)}/models`,
+		});
+
+		expect(data).toEqual({
+			apiKey: 'sk-1',
+			organizationId: '',
+			url: 'https://api.openai.com/v1',
+			header: false,
+			allowedHttpRequestDomains: 'all',
+		});
+		expect(options).toEqual({
+			url: 'https://api.openai.com/v1/models',
+			headers: { Authorization: 'Bearer sk-1' },
+		});
 	});
 
 	it('sign the requests of a contract Notion node and of a legacy Notion v2 node', async () => {

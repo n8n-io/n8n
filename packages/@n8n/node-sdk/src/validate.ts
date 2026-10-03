@@ -17,8 +17,8 @@ export const list = (value: unknown): readonly unknown[] => (Array.isArray(value
 const SHOWN_LENGTH = 80;
 
 /** Issues go to logs and to the AI builder, so a value never shows a secret or a whole body. */
-function shown(value: unknown, at: string): string {
-	if (isSensitiveKey(at.split('.').pop() ?? '')) return '[REDACTED]';
+function shown(value: unknown, at: string, node: JsonSchema): string {
+	if (node.writeOnly || isSensitiveKey(at.split('.').pop() ?? '')) return '[REDACTED]';
 	const text = scrubSecretsInText(JSON.stringify(value) ?? String(value));
 	return text.length > SHOWN_LENGTH ? `${text.slice(0, SHOWN_LENGTH - 1)}…` : text;
 }
@@ -284,18 +284,20 @@ export function validate(
 			return;
 		}
 		if (node.enum && !node.enum.includes(current)) {
-			issues.push(`${at}: must be ${describe(node)}, got ${shown(current, at)}`);
+			issues.push(`${at}: must be ${describe(node)}, got ${shown(current, at, node)}`);
 			return;
 		}
 		if (node.type && !typeMatches(current, node.type)) {
-			issues.push(`${at}: must be ${describe(node)}, got ${shown(current, at)}`);
+			issues.push(`${at}: must be ${describe(node)}, got ${shown(current, at, node)}`);
 			return;
 		}
 		if (typeof current === 'string') {
 			if (node.minLength && current.length < node.minLength)
 				issues.push(`${at}: must not be empty`);
 			if (node.pattern && !testPattern(node.pattern, current)) {
-				issues.push(`${at}: ${shown(current, at)} is not ${node['x-n8n-hint'] ?? node.pattern}`);
+				issues.push(
+					`${at}: ${shown(current, at, node)} is not ${node['x-n8n-hint'] ?? node.pattern}`,
+				);
 			}
 		}
 		if (typeof current === 'number') {
