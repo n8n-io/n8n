@@ -97,7 +97,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [invalid_auth_token](invalid_auth_token.md) | 2 |  | table |
 | [mcp_registry_server](mcp_registry_server.md) | 7 |  | table |
 | [migration_finding](migration_finding.md) | 10 |  | table |
-| [migration_finding_sync](migration_finding_sync.md) | 3 |  | table |
+| [migration_finding_sync](migration_finding_sync.md) | 5 |  | table |
 | [oauth_access_tokens](oauth_access_tokens.md) | 3 |  | table |
 | [oauth_authorization_codes](oauth_authorization_codes.md) | 13 |  | table |
 | [oauth_clients](oauth_clients.md) | 10 |  | table |
@@ -1312,6 +1312,8 @@ erDiagram
 }
 "migration_finding_sync" {
   varchar_128_ ruleSetFingerprint
+  datetime_3_ startedAt
+  varchar_16_ status
   datetime_3_ syncedAt
   varchar_16_ targetVersion PK
 }

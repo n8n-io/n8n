@@ -401,67 +401,133 @@ describe('MigrationFindingRepository', () => {
 });
 
 describe('MigrationFindingSyncRepository', () => {
-	test('getForVersion returns null when no scan ran for the version', async () => {
+	const now = new Date('2026-03-01T12:00:00.000Z');
+	const staleBefore = new Date(now.getTime() - 10 * 60 * 1000);
+
+	test('getForVersion returns null when no run ever claimed the version', async () => {
 		expect(await syncRepository.getForVersion('v3', ctx)).toBeNull();
 	});
 
-	test('upsertForVersion inserts a record and then overwrites it', async () => {
-		const firstSync = new Date('2026-01-01T00:00:00.000Z');
-		await syncRepository.upsertForVersion(
-			{ targetVersion: 'v3', syncedAt: firstSync, ruleSetFingerprint: 'fp-1' },
-			ctx,
+	test('tryClaim creates a running record for a version without one', async () => {
+		expect(await syncRepository.tryClaim('v3', 'fp-1', now, staleBefore, ctx)).toBe(true);
+
+		const record = await syncRepository.getForVersion('v3', ctx);
+		expect(record).toMatchObject({ status: 'running', ruleSetFingerprint: 'fp-1', syncedAt: null });
+		expect(record?.startedAt?.getTime()).toBe(now.getTime());
+	});
+
+	test('tryClaim is refused while a recent run holds the record', async () => {
+		await syncRepository.tryClaim('v3', 'fp-1', now, staleBefore, ctx);
+
+		const later = new Date(now.getTime() + 60 * 1000);
+		expect(await syncRepository.tryClaim('v3', 'fp-2', later, staleBefore, ctx)).toBe(false);
+
+		const record = await syncRepository.getForVersion('v3', ctx);
+		expect(record).toMatchObject({ status: 'running', ruleSetFingerprint: 'fp-1' });
+		expect(record?.startedAt?.getTime()).toBe(now.getTime());
+	});
+
+	test('tryClaim takes over a running record whose claim is older than staleBefore', async () => {
+		await syncRepository.tryClaim('v3', 'fp-1', now, staleBefore, ctx);
+
+		const muchLater = new Date(now.getTime() + 60 * 60 * 1000);
+		const laterStaleBefore = new Date(muchLater.getTime() - 10 * 60 * 1000);
+		expect(await syncRepository.tryClaim('v3', 'fp-2', muchLater, laterStaleBefore, ctx)).toBe(
+			true,
 		);
 
-		const inserted = await syncRepository.getForVersion('v3', ctx);
-		expect(inserted?.syncedAt.getTime()).toBe(firstSync.getTime());
-		expect(inserted?.ruleSetFingerprint).toBe('fp-1');
+		const record = await syncRepository.getForVersion('v3', ctx);
+		expect(record).toMatchObject({ status: 'running', ruleSetFingerprint: 'fp-2' });
+		expect(record?.startedAt?.getTime()).toBe(muchLater.getTime());
+	});
 
-		const secondSync = new Date('2026-02-01T00:00:00.000Z');
-		await syncRepository.upsertForVersion(
-			{ targetVersion: 'v3', syncedAt: secondSync, ruleSetFingerprint: 'fp-2' },
-			ctx,
-		);
+	test('markComplete finishes the run and a later claim reuses the record', async () => {
+		await syncRepository.tryClaim('v3', 'fp-1', now, staleBefore, ctx);
+		const syncedAt = new Date(now.getTime() + 5 * 1000);
 
-		const updated = await syncRepository.getForVersion('v3', ctx);
-		expect(updated?.syncedAt.getTime()).toBe(secondSync.getTime());
-		expect(updated?.ruleSetFingerprint).toBe('fp-2');
+		expect(await syncRepository.markComplete('v3', now, syncedAt, ctx)).toBe(true);
+
+		const completed = await syncRepository.getForVersion('v3', ctx);
+		expect(completed?.status).toBe('complete');
+		expect(completed?.syncedAt?.getTime()).toBe(syncedAt.getTime());
+
+		const later = new Date(now.getTime() + 60 * 1000);
+		expect(await syncRepository.tryClaim('v3', 'fp-2', later, staleBefore, ctx)).toBe(true);
+		const reclaimed = await syncRepository.getForVersion('v3', ctx);
+		expect(reclaimed).toMatchObject({ status: 'running', ruleSetFingerprint: 'fp-2' });
+		// The last complete time survives the new claim.
+		expect(reclaimed?.syncedAt?.getTime()).toBe(syncedAt.getTime());
 		expect(await syncRepository.count()).toBe(1);
 	});
 
+	test('markFailed keeps the last complete time and frees the record for the next claim', async () => {
+		await syncRepository.tryClaim('v3', 'fp-1', now, staleBefore, ctx);
+		const syncedAt = new Date(now.getTime() + 5 * 1000);
+		await syncRepository.markComplete('v3', now, syncedAt, ctx);
+		const secondClaim = new Date(now.getTime() + 60 * 1000);
+		await syncRepository.tryClaim('v3', 'fp-2', secondClaim, staleBefore, ctx);
+
+		expect(await syncRepository.markFailed('v3', secondClaim, ctx)).toBe(true);
+
+		const failed = await syncRepository.getForVersion('v3', ctx);
+		expect(failed?.status).toBe('failed');
+		expect(failed?.syncedAt?.getTime()).toBe(syncedAt.getTime());
+		expect(
+			await syncRepository.tryClaim(
+				'v3',
+				'fp-3',
+				new Date(now.getTime() + 120 * 1000),
+				staleBefore,
+				ctx,
+			),
+		).toBe(true);
+	});
+
 	test('keeps the records of different target versions apart', async () => {
-		const syncedAt = new Date('2026-01-01T00:00:00.000Z');
-		await syncRepository.upsertForVersion(
-			{ targetVersion: 'v2', syncedAt, ruleSetFingerprint: 'fp-v2' },
-			ctx,
-		);
-		await syncRepository.upsertForVersion(
-			{ targetVersion: 'v3', syncedAt, ruleSetFingerprint: 'fp-v3' },
-			ctx,
-		);
+		await syncRepository.tryClaim('v2', 'fp-v2', now, staleBefore, ctx);
+		await syncRepository.tryClaim('v3', 'fp-v3', now, staleBefore, ctx);
 
-		expect((await syncRepository.getForVersion('v2', ctx))?.ruleSetFingerprint).toBe('fp-v2');
-		expect((await syncRepository.getForVersion('v3', ctx))?.ruleSetFingerprint).toBe('fp-v3');
+		await syncRepository.markComplete('v3', now, now, ctx);
+
+		expect((await syncRepository.getForVersion('v2', ctx))?.status).toBe('running');
+		expect((await syncRepository.getForVersion('v3', ctx))?.status).toBe('complete');
 	});
 
-	test('deleteForVersion removes the record of that version only', async () => {
-		const syncedAt = new Date('2026-01-01T00:00:00.000Z');
-		await syncRepository.upsertForVersion(
-			{ targetVersion: 'v2', syncedAt, ruleSetFingerprint: 'fp-v2' },
-			ctx,
-		);
-		await syncRepository.upsertForVersion(
-			{ targetVersion: 'v3', syncedAt, ruleSetFingerprint: 'fp-v3' },
-			ctx,
-		);
+	test('only one of two concurrent claims for a fresh version wins', async () => {
+		const results = await Promise.all([
+			syncRepository.tryClaim('v3', 'fp-1', now, staleBefore, ctx),
+			syncRepository.tryClaim('v3', 'fp-2', now, staleBefore, ctx),
+		]);
 
-		await syncRepository.deleteForVersion('v3', ctx);
-
-		expect(await syncRepository.getForVersion('v3', ctx)).toBeNull();
-		expect((await syncRepository.getForVersion('v2', ctx))?.ruleSetFingerprint).toBe('fp-v2');
+		expect(results.filter(Boolean)).toHaveLength(1);
+		expect(await syncRepository.count()).toBe(1);
+		expect((await syncRepository.getForVersion('v3', ctx))?.status).toBe('running');
 	});
 
-	test('deleteForVersion is a no-op when the version has no record', async () => {
-		await expect(syncRepository.deleteForVersion('v3', ctx)).resolves.toBeUndefined();
-		expect(await syncRepository.count()).toBe(0);
+	test('markComplete and markFailed do nothing for a claim that was taken over', async () => {
+		await syncRepository.tryClaim('v3', 'fp-1', now, staleBefore, ctx);
+		const takeover = new Date(now.getTime() + 60 * 60 * 1000);
+		await syncRepository.tryClaim(
+			'v3',
+			'fp-2',
+			takeover,
+			new Date(takeover.getTime() - 10 * 60 * 1000),
+			ctx,
+		);
+
+		expect(await syncRepository.markComplete('v3', now, takeover, ctx)).toBe(false);
+		expect(await syncRepository.markFailed('v3', now, ctx)).toBe(false);
+
+		const record = await syncRepository.getForVersion('v3', ctx);
+		expect(record).toMatchObject({ status: 'running', ruleSetFingerprint: 'fp-2', syncedAt: null });
+		expect(record?.startedAt?.getTime()).toBe(takeover.getTime());
+	});
+
+	test('rejects a status outside the enum', async () => {
+		await syncRepository.tryClaim('v3', 'fp-1', now, staleBefore, ctx);
+
+		await expect(
+			syncRepository.update({ targetVersion: 'v3' }, { status: 'done' as never }),
+		).rejects.toThrow();
 	});
 });
