@@ -298,6 +298,8 @@ describe('emit-instance-ai', () => {
 			'dropInvalidWorkflowJsonGroups',
 			'toEngineConnections',
 			'toGroupValidationNodes',
+			// Canvas geometry for host-side node placement
+			'getWorkflowNodeDimensions',
 			// Plugin registration
 			'registerDefaultPlugins',
 			// Generate-types module (build-time type generation, never appears in workflows)

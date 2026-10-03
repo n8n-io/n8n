@@ -262,4 +262,9 @@ export {
 	DEFAULT_NODE_SIZE,
 	NODE_X_SPACING,
 	NODE_Y_SPACING,
+	GROUP_PADDING_X,
+	GROUP_PADDING_Y_TOP,
+	GROUP_HEADER_HEIGHT,
+	GROUP_HEADER_WIDTH_COLLAPSED,
 } from './workflow-builder/constants';
+export { getWorkflowNodeDimensions } from './workflow-builder/layout-utils';

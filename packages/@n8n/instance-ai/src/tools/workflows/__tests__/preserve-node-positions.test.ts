@@ -158,13 +158,30 @@ describe('preserveExistingNodePositions', () => {
 			expect(positionsByName(built).Orphan).toEqual([320, 672]);
 		});
 
+		it('moves the nodes after an inserted node right to make room for it', async () => {
+			const saved = workflow([node('A', [0, 0]), node('B', [224, 0]), node('Other', [0, 400])]);
+			const built = workflow(
+				[node('A', [0, 0]), node('X', [224, 0]), node('B', [448, 0]), node('Other', [0, 200])],
+				{ ...wire('A', 'X'), ...wire('X', 'B') },
+			);
+
+			await preserveExistingNodePositions(built, 'wf-1', contextReturning(saved));
+
+			expect(positionsByName(built)).toEqual({
+				A: [0, 0],
+				X: [224, 0],
+				B: [448, 0],
+				Other: [0, 400],
+			});
+		});
+
 		it('pushes an added node clear of a survivor it would have landed on', async () => {
 			// D was dragged well to the right, so the median translation drops the new
 			// node right on top of it.
 			const saved = workflow([node('A', [100, 100]), node('B', [300, 100]), node('D', [780, 100])]);
 			const built = workflow(
 				[node('A', [0, 0]), node('B', [224, 0]), node('D', [448, 0]), node('C', [672, 0])],
-				{ ...wire('B', 'C'), ...wire('C', 'D') },
+				wire('D', 'C'),
 			);
 
 			await preserveExistingNodePositions(built, 'wf-1', contextReturning(saved));
@@ -172,6 +189,56 @@ describe('preserveExistingNodePositions', () => {
 			expect(positionsByName(built).D).toEqual([780, 100]);
 			// Translated to x=772, snapped to the 16px grid, then pushed below D.
 			expect(positionsByName(built).C).toEqual([768, 288]);
+		});
+
+		it('uses the drawn height of a node with many outputs', async () => {
+			// The canvas draws a node with four outputs 160px tall, not 96px.
+			const saved = workflow([node('Route', [400, 400], 'n8n-nodes-base.switch')]);
+			const built = workflow(
+				[node('Route', [0, 0], 'n8n-nodes-base.switch'), node('C', [0, 128])],
+				{ Route: { main: [[], [], [], [{ node: 'C', type: 'main', index: 0 }]] } },
+			);
+
+			await preserveExistingNodePositions(built, 'wf-1', contextReturning(saved));
+
+			// Translated to y=528, inside the Switch, then pushed below it.
+			expect(positionsByName(built).C).toEqual([400, 656]);
+		});
+
+		it('pushes an added node clear of a collapsed group header', async () => {
+			// The build laid everything out 400px higher. The group header hangs above
+			// its members, so C lands on the header without touching a node.
+			const saved = workflow([node('M1', [400, 400]), node('M2', [608, 400])]);
+			const built = {
+				...workflow([node('M1', [400, 0]), node('M2', [608, 0]), node('C', [448, -128])]),
+				nodeGroups: [{ id: 'g', name: 'Group', nodeIds: ['m1', 'm2'] }],
+			};
+
+			await preserveExistingNodePositions(built, 'wf-1', contextReturning(saved));
+
+			// Pushed below the header. M1 hides behind the collapsed header, so it does not count.
+			expect(positionsByName(built).C).toEqual([448, 464]);
+		});
+
+		it('moves a new group up when an existing member pins its header onto a node', async () => {
+			// N joins existing node X in a new group. The header hangs off X, so pushing
+			// N down never clears the header from the trigger.
+			const saved = workflow([node('Trigger', [96, 400]), node('X', [432, 560])]);
+			const built = {
+				...workflow([node('Trigger', [96, 0]), node('N', [224, 160]), node('X', [432, 160])], {
+					...wire('Trigger', 'N'),
+					...wire('N', 'X'),
+				}),
+				nodeGroups: [{ id: 'g', name: 'Group', nodeIds: ['n', 'x'] }],
+			};
+
+			await preserveExistingNodePositions(built, 'wf-1', contextReturning(saved));
+
+			expect(positionsByName(built)).toEqual({
+				Trigger: [96, 400],
+				X: [432, 560],
+				N: [224, 336],
+			});
 		});
 
 		it('does not push an added node off a sticky note', async () => {
