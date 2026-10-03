@@ -33,7 +33,7 @@ import {
 } from 'n8n-workflow';
 import type PCancelable from 'p-cancelable';
 import type { Mock, MockedClass, MockInstance } from 'vitest';
-import { mock } from 'vitest-mock-extended';
+import { mock, type MockProxy } from 'vitest-mock-extended';
 import { z } from 'zod';
 
 import { CredentialsHelper } from '@/credentials-helper';
@@ -260,6 +260,112 @@ describe('JobProcessor', () => {
 		await expect(jobProcessor.processJob(job)).rejects.toThrow('workflow run rejected');
 
 		expect(jobProcessor.getRunningJobIds()).toEqual([]);
+	});
+
+	describe('jobs in preflight', () => {
+		const createJobProcessor = (executionPersistence: ExecutionPersistence) =>
+			new JobProcessor(
+				logger,
+				mock<ExecutionRepository>(),
+				executionPersistence,
+				mock(),
+				mock(),
+				mock(),
+				createManualExecutionServiceMock(),
+				executionsConfig,
+				mock(),
+				mock(),
+			);
+
+		const createPendingExecution = (executionPersistence: MockProxy<ExecutionPersistence>) => {
+			let resolveExecution: (execution: IExecutionResponse) => void = () => {};
+			executionPersistence.findSingleExecution.mockReturnValue(
+				new Promise<IExecutionResponse>((resolve) => (resolveExecution = resolve)),
+			);
+			return () => resolveExecution(mock<IExecutionResponse>({ status: 'crashed' }));
+		};
+
+		it('should list a job as running and in preflight, but not in the running jobs summary, while its execution is still being loaded', async () => {
+			const executionPersistence = mock<ExecutionPersistence>();
+			const settleExecution = createPendingExecution(executionPersistence);
+			const jobProcessor = createJobProcessor(executionPersistence);
+			const job = mock<Job>({
+				id: 'job-1',
+				data: { executionId: 'exec-1', loadStaticData: false },
+			});
+
+			const processing = jobProcessor.processJob(job);
+
+			expect(jobProcessor.getRunningJobIds()).toContain('job-1');
+			expect(jobProcessor.getRunningJobsSummary()).toEqual([]);
+			expect(jobProcessor.getJobsInPreflight()).toEqual([
+				{ jobId: 'job-1', executionId: 'exec-1' },
+			]);
+
+			settleExecution();
+			await processing;
+			expect(jobProcessor.getRunningJobIds()).not.toContain('job-1');
+			expect(jobProcessor.getJobsInPreflight()).toEqual([]);
+		});
+
+		it('should list a job as running but no longer in preflight once its execution has loaded and its run has started', async () => {
+			const executionRepository = mock<ExecutionRepository>();
+			const executionPersistence = mock<ExecutionPersistence>();
+			executionPersistence.findSingleExecution.mockResolvedValueOnce(
+				mock<IExecutionResponse>({
+					mode: 'manual',
+					workflowData: { id: 'workflow-id', nodes: [], staticData: {} },
+					data: mock<IRunExecutionData>({ executionData: undefined }),
+				}),
+			);
+
+			const cancel = vi.fn();
+			const runPromise = new Promise<IRun>(() => {});
+			const workflowRun = Object.assign(runPromise, { cancel }) as unknown as PCancelable<IRun>;
+
+			const manualExecutionService = mock<ManualExecutionService>();
+			manualExecutionService.runManually.mockReturnValue(workflowRun);
+
+			const jobProcessor = new JobProcessor(
+				logger,
+				executionRepository,
+				executionPersistence,
+				mock(),
+				mock(),
+				mock(),
+				manualExecutionService,
+				executionsConfig,
+				mock(),
+				mock(),
+			);
+
+			const job = mock<Job>({
+				id: 'job-1',
+				data: { executionId: 'exec-1', loadStaticData: false },
+			});
+
+			void jobProcessor.processJob(job);
+
+			await vi.waitFor(() => expect(jobProcessor.getRunningJobsSummary()).not.toEqual([]));
+
+			expect(jobProcessor.getJobsInPreflight()).toEqual([]);
+			expect(jobProcessor.getRunningJobIds()).toContain('job-1');
+		});
+
+		it('should stop tracking a job when loading its execution fails', async () => {
+			const executionPersistence = mock<ExecutionPersistence>();
+			executionPersistence.findSingleExecution.mockRejectedValue(new Error('database unavailable'));
+			const jobProcessor = createJobProcessor(executionPersistence);
+			const job = mock<Job>({
+				id: 'job-1',
+				data: { executionId: 'exec-1', loadStaticData: false },
+			});
+
+			await expect(jobProcessor.processJob(job)).rejects.toThrow('database unavailable');
+
+			expect(jobProcessor.getRunningJobIds()).not.toContain('job-1');
+			expect(jobProcessor.getJobsInPreflight()).toEqual([]);
+		});
 	});
 
 	it('should send job-finished with success=false when execution has errors', async () => {
@@ -2594,6 +2700,56 @@ describe('JobProcessor', () => {
 				'execution-cancelled',
 				expect.objectContaining({ reason: 'manual' }),
 			);
+		});
+
+		it('should stop counting a job as running once it is cancelled, before its run settles', async () => {
+			vi.useFakeTimers();
+
+			const executionRepository = mock<ExecutionRepository>();
+			const executionPersistence = mock<ExecutionPersistence>();
+			executionPersistence.findSingleExecution.mockResolvedValueOnce(
+				mock<IExecutionResponse>({
+					mode: 'manual',
+					workflowData: {
+						id: 'workflow-id',
+						nodes: [],
+						staticData: {},
+						settings: { executionTimeout: 5 },
+					},
+					data: mock<IRunExecutionData>({ executionData: undefined }),
+				}),
+			);
+
+			const cancel = vi.fn();
+			const runPromise = new Promise<IRun>(() => {});
+			const workflowRun = Object.assign(runPromise, { cancel }) as unknown as PCancelable<IRun>;
+
+			const manualExecutionService = mock<ManualExecutionService>();
+			manualExecutionService.runManually.mockReturnValue(workflowRun);
+
+			const jobProcessor = new JobProcessor(
+				logger,
+				executionRepository,
+				executionPersistence,
+				mock(),
+				mock(),
+				mock(),
+				manualExecutionService,
+				executionsConfig,
+				mock(),
+				mock(),
+			);
+
+			const job = mock<Job>({ data: { executionId: 'execution-id', loadStaticData: false } });
+
+			void jobProcessor.processJob(job);
+
+			await vi.advanceTimersByTimeAsync(0);
+			expect(jobProcessor.getRunningJobIds()).toContain(String(job.id));
+
+			jobProcessor.stopJob(job.id);
+
+			expect(jobProcessor.getRunningJobIds()).not.toContain(String(job.id));
 		});
 
 		it('keeps a stop reported as manual when the timeout elapses before the run settles', async () => {
