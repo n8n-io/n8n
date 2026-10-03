@@ -2,6 +2,13 @@
 @use '../../design-system/src/css/reset.scss';
 @use '../../design-system/src/css/index.scss';
 
+#storybook-root {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	width: 100%;
+}
+
 .sbdocs.sbdocs-content {
 	:is(h1, h2, h3, h4, h5, h6):not(:where(.sb-unstyled, .sb-unstyled *)) {
 		border-bottom: none;
