@@ -2,7 +2,7 @@ import { Container } from '@n8n/di';
 import type { ZodTypeAny } from 'zod';
 
 import { ControllerRegistryMetadata } from './controller-registry-metadata';
-import type { Arg, Controller } from './types';
+import type { Arg, Controller, RequestBodyMedia } from './types';
 
 const ArgDecorator =
 	(arg: Arg): ParameterDecorator =>
@@ -14,8 +14,15 @@ const ArgDecorator =
 		routeMetadata.args[parameterIndex] = arg;
 	};
 
-export interface BodyOptions {
-	required?: boolean;
+export type BodyOptions = { required?: boolean } & (RequestBodyMedia | { mediaType?: undefined });
+
+function stripExtraPropertiesFromRequestBodyMedia(options: RequestBodyMedia): RequestBodyMedia {
+	switch (options.mediaType) {
+		case 'application/json':
+			return { mediaType: 'application/json' };
+		case 'multipart/form-data':
+			return { mediaType: 'multipart/form-data', uploadLimits: options.uploadLimits };
+	}
 }
 
 /** Injects the request body into the handler */
@@ -35,12 +42,18 @@ export function Body(
 		return ArgDecorator({ type: 'body' })(targetOrOptions as object, propertyKey, parameterIndex);
 	}
 
-	// Factory form e.g. `@Body() body: MyDto` or `@Body({ required: true }) body: MyDto`
+	// Factory form e.g. `@Body() body: MyDto` or `@Body({ required: true })` (public API only)
 	const options = targetOrOptions as BodyOptions | undefined;
-	return ArgDecorator({
-		type: 'body',
-		...(options?.required !== undefined && { required: options.required }),
-	});
+	const arg: Arg = { type: 'body' };
+
+	if (options?.required !== undefined) {
+		arg.required = options.required;
+	}
+	if (options?.mediaType !== undefined) {
+		arg.media = stripExtraPropertiesFromRequestBodyMedia(options);
+	}
+
+	return ArgDecorator(arg);
 }
 
 /** Injects the request query into the handler */
