@@ -19,7 +19,8 @@ type InstanceGatewayResourceDecision =
 	| 'useLocalBrowserForChat'
 	| 'useLocalBrowserAlways'
 	| 'useCloudBrowserForChat'
-	| 'useCloudBrowserAlways';
+	| 'useCloudBrowserAlways'
+	| 'continueAfterTakeover';
 
 const INSTANCE_GATEWAY_RESOURCE_DECISIONS = [
 	'denyOnce',
@@ -29,6 +30,7 @@ const INSTANCE_GATEWAY_RESOURCE_DECISIONS = [
 	'useLocalBrowserAlways',
 	'useCloudBrowserForChat',
 	'useCloudBrowserAlways',
+	'continueAfterTakeover',
 ] as const satisfies readonly InstanceGatewayResourceDecision[];
 
 function isInstanceGatewayResourceDecision(
@@ -62,7 +64,11 @@ const DECISION_LABELS: Record<InstanceGatewayResourceDecision, string> = {
 	useLocalBrowserAlways: i18n.baseText('instanceAi.gatewayConfirmation.useLocalBrowserAlways'),
 	useCloudBrowserForChat: i18n.baseText('instanceAi.gatewayConfirmation.useCloudBrowserForChat'),
 	useCloudBrowserAlways: i18n.baseText('instanceAi.gatewayConfirmation.useCloudBrowserAlways'),
+	continueAfterTakeover: i18n.baseText('instanceAi.gatewayConfirmation.continueAfterTakeover'),
 };
+
+/** The agent handed the cloud browser to the user for a step only they can do. */
+const isTakeover = computed(() => props.options.includes('continueAfterTakeover'));
 
 /** Each browser offered for this chat, with "always" in its dropdown. */
 const BROWSER_CHOICES = [
@@ -88,9 +94,15 @@ function optionEntry(decision: InstanceGatewayResourceDecision): OptionEntry {
 	return { decision, label: getDecisionLabel(decision) };
 }
 
-const denyPrimary = computed(() =>
-	props.options.includes('denyOnce') ? optionEntry('denyOnce') : undefined,
-);
+const denyPrimary = computed(() => {
+	if (!props.options.includes('denyOnce')) return undefined;
+	return isTakeover.value
+		? {
+				decision: 'denyOnce' as const,
+				label: i18n.baseText('instanceAi.gatewayConfirmation.cancelTakeover'),
+			}
+		: optionEntry('denyOnce');
+});
 
 const approvePrimary = computed(() =>
 	props.options.includes('allowOnce') ? optionEntry('allowOnce') : undefined,
@@ -127,11 +139,13 @@ async function confirm(decision: InstanceGatewayResourceDecision) {
 		<div :class="$style.body">
 			<N8nText tag="div" size="medium" bold>
 				{{
-					browserChoices.length > 0
-						? i18n.baseText('instanceAi.gatewayConfirmation.browserChoicePrompt')
-						: i18n.baseText('instanceAi.gatewayConfirmation.prompt', {
-								interpolate: { resources: props.resource },
-							})
+					isTakeover
+						? i18n.baseText('instanceAi.gatewayConfirmation.takeoverPrompt')
+						: browserChoices.length > 0
+							? i18n.baseText('instanceAi.gatewayConfirmation.browserChoicePrompt')
+							: i18n.baseText('instanceAi.gatewayConfirmation.prompt', {
+									interpolate: { resources: props.resource },
+								})
 				}}
 			</N8nText>
 			<ConfirmationPreview v-if="browserChoices.length === 0">{{
@@ -161,6 +175,15 @@ async function confirm(decision: InstanceGatewayResourceDecision) {
 				caret-aria-label="More browser options"
 				@click="confirm(choice.primary.decision)"
 				@select="(id: string) => isInstanceGatewayResourceDecision(id) && confirm(id)"
+			/>
+
+			<N8nButton
+				v-if="isTakeover"
+				variant="solid"
+				size="medium"
+				:label="getDecisionLabel('continueAfterTakeover')"
+				data-test-id="gateway-decision-continue-after-takeover"
+				@click="confirm('continueAfterTakeover')"
 			/>
 
 			<!-- Approve side -->

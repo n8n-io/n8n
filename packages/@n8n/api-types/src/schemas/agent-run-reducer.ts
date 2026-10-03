@@ -624,6 +624,7 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 		// the plus menu read it from the durable log, so the run tree holds no copy.
 		case 'filesystem-request':
 		case 'thread-title-updated':
+		case 'browser-live-view':
 		case 'preferences-applied': {
 			// Handled externally — no state change
 			break;

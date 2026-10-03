@@ -74,6 +74,7 @@ import InstanceAiInput from './InstanceAiInput.vue';
 import InstanceAiMarkdown from './InstanceAiMarkdown.vue';
 import AttachmentPreview from './AttachmentPreview.vue';
 import InstanceAiStatusBar from './InstanceAiStatusBar.vue';
+import InstanceAiBrowserLiveView from './InstanceAiBrowserLiveView.vue';
 import InstanceAiConfirmationPanel from './InstanceAiConfirmationPanel.vue';
 import WorkflowBuilderUnavailableNotice from './WorkflowBuilderUnavailableNotice.vue';
 import LimitedModeNotice from './LimitedModeNotice.vue';
@@ -949,6 +950,7 @@ defineExpose({
 							:agent-node="builder"
 						/>
 					</div>
+					<InstanceAiBrowserLiveView />
 					<!-- Inline confirmations (plan review, text, setup, credential,
 						 gateway resource-decision, continue) render in
 						 the chat flow. Floating-eligible items take over the chat

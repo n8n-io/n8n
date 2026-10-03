@@ -62,6 +62,7 @@ export const ALWAYS_LOADED_TOOL_NAMES = new Set<string>([
 	// Only runs with the cloud browser register them.
 	'browser_start_session',
 	'browser_end_session',
+	'browser_request_takeover',
 	// Registered on onboarding threads only, so every other thread pays nothing for the entry.
 	// Deferring it would price the user's "let me out" at search_tools + load_tool.
 	DOMAIN_TOOL_IDS.LEAVE_ONBOARDING,

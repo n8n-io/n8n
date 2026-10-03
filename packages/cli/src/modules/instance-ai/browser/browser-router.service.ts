@@ -52,7 +52,7 @@ export class BrowserRouterService {
 
 		const cloud: BrowserBackend = {
 			kind: 'cloud',
-			start: async () => await this.cloudBrowserService.startSession(user.id, runId),
+			start: async () => await this.cloudBrowserService.startSession(user.id, runId, threadId),
 			end: async () => await this.cloudBrowserService.endSession(runId),
 		};
 		// A run's agent can be rebuilt (e.g. on resume), so keep any session it already opened.

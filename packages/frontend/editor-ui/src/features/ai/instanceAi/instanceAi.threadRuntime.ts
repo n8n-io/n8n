@@ -520,6 +520,8 @@ export function createThreadRuntime(
 	 * menu that disagrees with what the assistant received is worse than no menu.
 	 */
 	const appliedPreferences = ref<AiPreferencesAppliedPayload | null>(null);
+	/** Live view of the run's open cloud browser session, if any. */
+	const browserLiveViewUrl = ref<string | null>(null);
 	const debugEvents = ref<Array<{ timestamp: string; event: InstanceAiEvent }>>([]);
 	const resolvedConfirmationIds = reactive(
 		new Map<string, 'approved' | 'changes-requested' | 'denied' | 'deferred'>(),
@@ -1232,6 +1234,9 @@ export function createThreadRuntime(
 			) {
 				hooks.onOnboardingLeft?.(threadId, 'run_failed');
 			}
+			if (parsed.data.type === 'browser-live-view') {
+				browserLiveViewUrl.value = parsed.data.payload.liveViewUrl;
+			}
 			if (parsed.data.type === 'preferences-applied') {
 				// Last write wins, like `latestTasks` and `latestSetupItems`: a thread runs one
 				// turn at a time and each turn publishes one of these, so arrival order is turn
@@ -1430,6 +1435,7 @@ export function createThreadRuntime(
 		latestTasks.value = null;
 		latestSetupItems.value = null;
 		appliedPreferences.value = null;
+		browserLiveViewUrl.value = null;
 		activeRunId.value = null;
 		debugEvents.value = [];
 		resetFeedback();
@@ -1937,6 +1943,7 @@ export function createThreadRuntime(
 		archivedWorkflowIds,
 		latestTasks,
 		appliedPreferences,
+		browserLiveViewUrl,
 		debugEvents,
 		resolvedConfirmationIds,
 		sessionAlwaysAllowKeys,

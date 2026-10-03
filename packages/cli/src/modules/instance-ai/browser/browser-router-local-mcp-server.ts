@@ -30,6 +30,7 @@ export interface BrowserRouterOptions {
 
 const START_SESSION_TOOL = 'browser_start_session';
 const END_SESSION_TOOL = 'browser_end_session';
+const TAKEOVER_TOOL = 'browser_request_takeover';
 
 /** Session tools the router replaces with its own start and end. */
 const HIDDEN_BROWSER_TOOLS = new Set(['browser_connect', 'browser_disconnect']);
@@ -59,6 +60,23 @@ const SESSION_TOOLS: McpTool[] = [
 		name: END_SESSION_TOOL,
 		description: 'End the current browser session.',
 		inputSchema: { type: 'object', properties: {} },
+		annotations: { category: 'browser' },
+	},
+	{
+		name: TAKEOVER_TOOL,
+		description:
+			'Hand the cloud browser to the user for a step only they can do, such as signing in, ' +
+			'a 2FA code or a CAPTCHA. Open the page first. Returns when the user is done.',
+		inputSchema: {
+			type: 'object',
+			properties: {
+				message: {
+					type: 'string',
+					description: 'What the user should do in the browser, e.g. "Sign in to Google".',
+				},
+			},
+			required: ['message'],
+		},
 		annotations: { category: 'browser' },
 	},
 ];
@@ -112,6 +130,7 @@ export class BrowserRouterLocalMcpServer implements LocalMcpServer {
 		if (req.name === START_SESSION_TOOL)
 			return await this.startSession(req.arguments._confirmation);
 		if (req.name === END_SESSION_TOOL) return await this.endSession();
+		if (req.name === TAKEOVER_TOOL) return this.requestTakeover(req.arguments);
 
 		if (!this.browserToolNames.has(req.name)) {
 			return errorResult(`Unknown browser tool: ${req.name}`);
@@ -157,6 +176,28 @@ export class BrowserRouterLocalMcpServer implements LocalMcpServer {
 		return backend;
 	}
 
+	/** Suspends the run until the user finishes their step in the live view. */
+	private requestTakeover(args: Record<string, unknown>): McpToolCallResult {
+		if (this.active?.backend?.kind !== 'cloud') {
+			return errorResult('Takeover needs an active cloud browser session.');
+		}
+		if (args._confirmation === 'continueAfterTakeover') {
+			return textResult(
+				'The user finished in the browser. Take a fresh browser_snapshot before continuing: the page has changed.',
+			);
+		}
+		if (args._confirmation === 'denyOnce') {
+			return textResult('The user declined to take over the browser.');
+		}
+		const message = typeof args.message === 'string' ? args.message : 'Finish this step';
+		return confirmationRequiredResult({
+			toolGroup: 'browser',
+			resource: 'browser',
+			description: message,
+			options: ['continueAfterTakeover', 'denyOnce'],
+		});
+	}
+
 	private async endSession(): Promise<McpToolCallResult> {
 		if (!this.active) {
 			return errorResult('No browser session is active.');
@@ -178,12 +219,21 @@ function browserChoiceRequiredResult(backends: BrowserBackend[]): McpToolCallRes
 	const options = [...BROWSER_CHOICES]
 		.filter(([, choice]) => backends.some((backend) => backend.kind === choice.kind))
 		.map(([decision]) => decision);
-	const payload = {
+	return confirmationRequiredResult({
 		toolGroup: 'browser',
 		resource: 'browser',
 		description: 'Choose which browser n8n Assistant should use',
 		options,
-	};
+	});
+}
+
+/** Suspends the tool call until the user picks one of `options` in the chat. */
+function confirmationRequiredResult(payload: {
+	toolGroup: string;
+	resource: string;
+	description: string;
+	options: InstanceGatewayResourceDecision[];
+}): McpToolCallResult {
 	return {
 		content: [
 			{ type: 'text', text: `${GATEWAY_CONFIRMATION_REQUIRED_PREFIX}${JSON.stringify(payload)}` },

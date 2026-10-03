@@ -47,6 +47,27 @@ export class AiGatewayBrowserbaseService {
 		return { sessionId: response.id, connectUrl: response.connectUrl };
 	}
 
+	/** URL of a page that shows the session's browser live, and lets the viewer use it. */
+	async getLiveViewUrl(userId: string, sessionId: string): Promise<string> {
+		const response = await this.aiGatewayService.sendGatewayRequestForUser<{
+			debuggerFullscreenUrl?: unknown;
+		}>(
+			userId,
+			{
+				method: 'GET',
+				path: `${SESSIONS_PATH}/${encodeURIComponent(sessionId)}/debug`,
+				headers: REQUEST_SOURCE_HEADERS,
+				tokenHeader: TOKEN_HEADER,
+			},
+			'Failed to get browser live view',
+		);
+
+		if (typeof response?.debuggerFullscreenUrl !== 'string') {
+			throw new UserError('Gateway credits returned an invalid browser live view response.');
+		}
+		return response.debuggerFullscreenUrl;
+	}
+
 	async releaseSession(userId: string, sessionId: string): Promise<void> {
 		await this.aiGatewayService.sendGatewayRequestForUser(
 			userId,

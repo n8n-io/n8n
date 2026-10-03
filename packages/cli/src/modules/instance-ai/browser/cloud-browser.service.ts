@@ -1,6 +1,7 @@
 import { Logger } from '@n8n/backend-common';
 import { UserRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { orchestratorAgentId } from '@n8n/instance-ai';
 import type {
 	BrowserConnection,
 	CreateCredentialPayload,
@@ -16,15 +17,18 @@ import { CredentialsService } from '@/credentials/credentials.service';
 import { AiGatewayBrowserbaseService } from '@/services/ai-gateway-browserbase.service';
 
 import { BrowserLocalMcpServer } from './browser-local-mcp-server';
+import { InProcessEventBus } from '../event-bus/in-process-event-bus';
 
 /** Creates and releases cloud browser sessions. One implementation per cloud browser vendor. */
 export interface CloudBrowserSessionProvider {
 	createSession(userId: string): Promise<{ sessionId: string; connectUrl: string }>;
+	getLiveViewUrl(userId: string, sessionId: string): Promise<string>;
 	releaseSession(userId: string, sessionId: string): Promise<void>;
 }
 
 interface CloudBrowserSession {
 	userId: string;
+	threadId: string;
 	sessionId: string;
 	connection: BrowserConnection;
 	mcpServer: BrowserLocalMcpServer;
@@ -50,13 +54,18 @@ export class CloudBrowserService {
 		provider: AiGatewayBrowserbaseService,
 		private readonly userRepository: UserRepository,
 		private readonly credentialsService: CredentialsService,
+		private readonly eventBus: InProcessEventBus,
 	) {
 		this.logger = logger.scoped('instance-ai');
 		this.provider = provider;
 	}
 
 	/** Starts a session for the run and returns the browser server connected to it. */
-	async startSession(userId: string, runId: string): Promise<BrowserLocalMcpServer> {
+	async startSession(
+		userId: string,
+		runId: string,
+		threadId: string,
+	): Promise<BrowserLocalMcpServer> {
 		if (this.sessionsByRun.has(runId) || this.startingRuns.has(runId)) {
 			throw new UserError('A browser session is already active. End it before starting a new one.');
 		}
@@ -92,10 +101,12 @@ export class CloudBrowserService {
 			const mcpServer = new BrowserLocalMcpServer(toolkit, toolContext, this.logger);
 			this.sessionsByRun.set(runId, {
 				userId,
+				threadId,
 				sessionId,
 				connection: toolkit.connection,
 				mcpServer,
 			});
+			await this.publishLiveView(userId, runId, threadId, sessionId);
 			return mcpServer;
 		} finally {
 			this.startingRuns.delete(runId);
@@ -111,6 +122,7 @@ export class CloudBrowserService {
 		const session = this.sessionsByRun.get(runId);
 		if (!session) return;
 		this.sessionsByRun.delete(runId);
+		this.publishLiveViewUrl(session.threadId, runId, null);
 
 		try {
 			await session.connection.shutdown();
@@ -139,6 +151,33 @@ export class CloudBrowserService {
 		await Promise.all(
 			[...this.sessionsByRun.keys()].map(async (runId) => await this.releaseRun(runId)),
 		);
+	}
+
+	/** Shows the session's live view in the chat. Without one the session still works. */
+	private async publishLiveView(
+		userId: string,
+		runId: string,
+		threadId: string,
+		sessionId: string,
+	): Promise<void> {
+		try {
+			const liveViewUrl = await this.provider.getLiveViewUrl(userId, sessionId);
+			this.publishLiveViewUrl(threadId, runId, liveViewUrl);
+		} catch (error) {
+			this.logger.warn('Failed to get cloud browser live view', {
+				sessionId,
+				error: errorMessage(error),
+			});
+		}
+	}
+
+	private publishLiveViewUrl(threadId: string, runId: string, liveViewUrl: string | null): void {
+		this.eventBus.publish(threadId, {
+			type: 'browser-live-view',
+			runId,
+			agentId: orchestratorAgentId(runId),
+			payload: { liveViewUrl },
+		});
 	}
 
 	private async createCredential(

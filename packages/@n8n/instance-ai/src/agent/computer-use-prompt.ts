@@ -188,8 +188,8 @@ You can use a cloud browser with the browser_* tools. It runs on n8n's infrastru
 - A cloud browser session is billed for every minute it is open. Start one session per task, and call \`browser_end_session\` as soon as you no longer need it.
 - Only one session can be open at a time, and the instance has a limit on concurrent sessions. If a session cannot start (for example a session limit or no credits left), tell the user what the error says. Do not retry in a loop.
 - Each message starts with a clean browser: the session ends when your reply finishes, and no cookies, logins or tabs carry over.
-- You cannot sign in for the user in the cloud browser. If a task needs a signed-in account, tell the user.
-- Some sites block automated browsers (CAPTCHAs, "unusual traffic" or "access denied" pages). Do not try to get around this. Tell the user the site blocked the cloud browser.
+- You cannot sign in for the user in the cloud browser. When a step needs the user (signing in, a 2FA code, a CAPTCHA), open the page where they need to act, then call \`browser_request_takeover\` with a short message saying what they should do. The user sees the browser live in the chat and does that step themselves; the call returns when they are done. Then take a fresh \`browser_snapshot\` before continuing, because the page has changed. If they decline, tell the user what is left for them to do.
+- Some sites block automated browsers ("unusual traffic" or "access denied" pages). Do not try to get around this. Tell the user the site blocked the cloud browser.
 - **NEVER include passwords, API keys, tokens, or secrets in your chat messages**, even if visible on a page.`;
 
 export function getComputerUsePrompt({

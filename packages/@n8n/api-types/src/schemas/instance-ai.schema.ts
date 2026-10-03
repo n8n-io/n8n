@@ -245,6 +245,7 @@ export const instanceAiEventTypeSchema = z.enum([
 	'preference-card',
 	'filesystem-request',
 	'thread-title-updated',
+	'browser-live-view',
 	'status',
 	'error',
 ]);
@@ -766,6 +767,8 @@ export const instanceGatewayResourceDecisionSchema = z.enum([
 	'useLocalBrowserAlways',
 	'useCloudBrowserForChat',
 	'useCloudBrowserAlways',
+	// The user finished their step in the cloud browser (e.g. signing in).
+	'continueAfterTakeover',
 ]);
 export type InstanceGatewayResourceDecision = z.infer<typeof instanceGatewayResourceDecisionSchema>;
 
@@ -1249,6 +1252,11 @@ export const threadTitleUpdatedPayloadSchema = z.object({
 	title: z.string(),
 });
 
+/** The cloud browser's live view. `liveViewUrl` is null once the session ends. */
+export const browserLiveViewPayloadSchema = z.object({
+	liveViewUrl: z.string().url().nullable(),
+});
+
 /**
  * What the saved AI preferences contributed to one turn.
  *
@@ -1392,6 +1400,11 @@ export const instanceAiEventSchema = z.discriminatedUnion('type', [
 		type: z.literal('thread-title-updated'),
 		...eventBase,
 		payload: threadTitleUpdatedPayloadSchema,
+	}),
+	z.object({
+		type: z.literal('browser-live-view'),
+		...eventBase,
+		payload: browserLiveViewPayloadSchema,
 	}),
 ]);
 
