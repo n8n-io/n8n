@@ -35,6 +35,12 @@ import { Folder } from './folder';
 import { FolderTagMapping } from './folder-tag-mapping';
 import { InstanceCredentialAssignment } from './instance-credential-assignment';
 import { InvalidAuthToken } from './invalid-auth-token';
+import {
+	NodeContractVersion,
+	nodeContractVersionKinds,
+	type NodeContractSignature,
+	type NodeContractVersionKind,
+} from './node-contract-version';
 import { PollerState } from './poller-state';
 import { ProcessedData } from './processed-data';
 import { Project } from './project';
@@ -123,6 +129,10 @@ export {
 	InvalidAuthToken,
 	InstanceCredentialAssignment,
 	AiBuilderTemporaryWorkflow,
+	NodeContractVersion,
+	nodeContractVersionKinds,
+	type NodeContractSignature,
+	type NodeContractVersionKind,
 	PollerState,
 	ProcessedData,
 	Settings,
@@ -217,6 +227,7 @@ export const entities = {
 	InvalidAuthToken,
 	InstanceCredentialAssignment,
 	AiBuilderTemporaryWorkflow,
+	NodeContractVersion,
 	PollerState,
 	ProcessedData,
 	Settings,

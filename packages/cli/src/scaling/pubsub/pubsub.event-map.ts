@@ -45,6 +45,8 @@ export type PubSubCommandMap = {
 
 	'reload-mcp-registry': never;
 
+	'reload-node-contracts': never;
+
 	'reload-otel-config': never;
 	'reload-instance-ai-settings': never;
 	'reload-agents-settings': never;

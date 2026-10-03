@@ -1,10 +1,10 @@
 import { createWorkflow, mockInstance, testDb } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
+import { NodeContractVersionRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { InstanceSettings } from 'n8n-core';
 import type { IWorkflowBase } from 'n8n-workflow';
 import { generateKeyPairSync } from 'node:crypto';
-import { mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { createServer } from 'node:http';
 import { createRequire } from 'node:module';
 import type { AddressInfo } from 'node:net';
@@ -49,7 +49,7 @@ const keys = keyPair();
 mockInstance(LoadNodesAndCredentials);
 const command = setupTestCommand(ContractsSyncCommand);
 
-const state = { dir: '', storeDir: '', manifest: undefined as unknown as Manifest };
+const state = { dir: '', manifest: undefined as unknown as Manifest };
 const registry = { requests: 0, server: createServer() };
 
 const lockedWorkflow = async ({ id, semver, bundleHash, contractHash }: Manifest) =>
@@ -71,7 +71,6 @@ const lockedWorkflow = async ({ id, semver, bundleHash, contractHash }: Manifest
 
 beforeAll(async () => {
 	state.dir = await mkdtemp(path.join(tmpdir(), 'contracts-sync-'));
-	state.storeDir = path.join(Container.get(InstanceSettings).n8nFolder, 'node-contracts');
 	const manifestText = await readFile(path.join(OLDER, 'manifest.json'), 'utf8');
 	const bundle = await readFile(path.join(OLDER, 'bundle.cjs'), 'utf8');
 	state.manifest = sdk.parseManifest(manifestText);
@@ -100,15 +99,18 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
-	await testDb.truncate(['WorkflowEntity']);
-	await rm(state.storeDir, { recursive: true, force: true });
+	await testDb.truncate(['WorkflowEntity', 'NodeContractVersion']);
 });
 
 afterAll(async () => {
 	registry.server.close();
 	await rm(state.dir, { recursive: true, force: true });
-	await rm(state.storeDir, { recursive: true, force: true });
 });
+
+const storedVersions = async () =>
+	(await Container.get(NodeContractVersionRepository).findManifests()).map(
+		({ contractId, version }) => `${contractId}@${version}`,
+	);
 
 const folder = (name: string) => `--registry=${pathToFileURL(path.join(state.dir, name)).href}`;
 
@@ -117,10 +119,7 @@ test('contracts:sync --registry=file://… adds each signed locked version to th
 
 	await command.run([folder('signed')]);
 
-	expect(await readdir(path.join(state.storeDir, 'index'))).toEqual(['httpRequest.get.ndjson']);
-	expect(await readdir(path.join(state.storeDir, 'blobs/sha256'))).toContain(
-		state.manifest.bundleHash,
-	);
+	expect(await storedVersions()).toEqual([`httpRequest.get@${state.manifest.semver}`]);
 	expect(registry.requests).toBe(0);
 });
 
@@ -149,5 +148,5 @@ test('contracts:sync skips a version without the trusted signature', async () =>
 	await expect(command.run([folder('untrusted')])).rejects.toThrow(
 		'Some saved workflows cannot run their locked node versions',
 	);
-	expect(await readdir(state.storeDir).catch(() => [])).toEqual([]);
+	expect(await storedVersions()).toEqual([]);
 });

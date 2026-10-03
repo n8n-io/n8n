@@ -1,8 +1,16 @@
+import { Logger } from '@n8n/backend-common';
 import { OutboundHttp } from '@n8n/backend-network';
 import { EventService } from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig, NodesConfig } from '@n8n/config';
-import { WorkflowRepository, type WorkflowEntity } from '@n8n/db';
+import {
+	NodeContractVersionRepository,
+	WorkflowRepository,
+	type NodeContractVersion,
+	type WorkflowEntity,
+} from '@n8n/db';
+import { PubSubMetadata } from '@n8n/decorators';
+import { Container } from '@n8n/di';
 import type {
 	ContractRegistryOptions,
 	ContractStoreOptions,
@@ -16,8 +24,11 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 
 import { CredentialTypes } from '@/credential-types';
+import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import { Publisher } from '@/scaling/pubsub/publisher.service';
 
-import { useNodeContractsRegistry } from '../node-contracts-registry';
+import { NodeContractsStore, useNodeContractsRegistry } from '../node-contracts-registry';
+import { NodeContractsSync } from '../node-contracts-sync';
 
 const registered: ContractRegistryOptions[] = [];
 const languages: string[][] = [];
@@ -27,7 +38,16 @@ vi.mock('@n8n/nodes-base-next', () => ({
 	useContractRegistry: (options: ContractRegistryOptions) => registered.push(options),
 	setCodeLanguages: (allowed: string[]) => languages.push(allowed),
 	contractStore: (options: ContractStoreOptions) => options,
+	locksOf: () => [['Echo', { action: 'demo.echo', version: '1.0.0' }]],
+	syncContractStore: async () => ({
+		added: [{ id: 'demo.echo', semver: '1.0.0', bundleHash: 'a' }],
+		failed: [],
+		unsupported: [],
+	}),
 }));
+
+const repository = mockInstance(NodeContractVersionRepository);
+const publisher = mockInstance(Publisher);
 
 describe('useNodeContractsRegistry', () => {
 	const globalConfig = mockInstance(GlobalConfig, {
@@ -39,7 +59,11 @@ describe('useNodeContractsRegistry', () => {
 			nodeContractSandbox: 'off',
 		},
 	} as unknown as GlobalConfig);
-	mockInstance(InstanceSettings, { n8nFolder: '/n8n' });
+	const instanceSettings = mockInstance(InstanceSettings, {
+		n8nFolder: '/n8n',
+		instanceType: 'main',
+		isFollower: false,
+	});
 	mockInstance(NodesConfig, { pythonEnabled: false, egressInputHosts: ['*.acme.test'] });
 	mockInstance(OutboundHttp).transport.mockReturnValue(
 		mock<ReturnType<OutboundHttp['transport']>>(),
@@ -64,7 +88,7 @@ describe('useNodeContractsRegistry', () => {
 			store: {
 				registryUrl: 'http://registry.test',
 				publicKey: undefined,
-				storeDir: '/n8n/node-contracts',
+				store: Container.get(NodeContractsStore).rows,
 			},
 		});
 		expect([...(options?.egressInputHosts ?? [])]).toEqual(['*.acme.test']);
@@ -125,5 +149,108 @@ describe('useNodeContractsRegistry', () => {
 			globalConfig.instanceAi.nodeContractSandbox = 'off';
 			await rm(dir, { recursive: true, force: true });
 		}
+	});
+
+	it('fetches from the registry only on a main that is not a follower', async () => {
+		registered.length = 0;
+		await useNodeContractsRegistry();
+		const { mayFetch } = registered[0]?.store as unknown as ContractStoreOptions;
+		expect(mayFetch?.()).toBe(true);
+		Object.assign(instanceSettings, { isFollower: true });
+		expect(mayFetch?.()).toBe(false);
+		Object.assign(instanceSettings, { isFollower: false, instanceType: 'worker' });
+		expect(mayFetch?.()).toBe(false);
+		Object.assign(instanceSettings, { instanceType: 'main' });
+	});
+});
+
+describe('NodeContractsStore', () => {
+	const row: NodeContractVersion = {
+		digest: `sha256:${'a'.repeat(64)}`,
+		contractId: 'demo.echo',
+		version: '1.0.0',
+		kind: 'action',
+		manifest: '{}\n',
+		bundle: 'module.exports = {}',
+		fixtures: null,
+		signatures: [{ key: `sha256:${'b'.repeat(64)}`, sig: 'c2ln' }],
+		published: new Date('2026-10-02T12:00:00.000Z'),
+		createdAt: new Date(),
+	};
+	const version = {
+		id: 'demo.echo',
+		version: '1.0.0',
+		kind: 'action' as const,
+		manifest: row.digest,
+		manifestText: row.manifest,
+		bundle: 'module.exports = {}',
+		signatures: row.signatures,
+		published: '2026-10-02T12:00:00.000Z',
+	};
+
+	it('maps the rows of the table to versions of the instance store', async () => {
+		repository.findAllForExport.mockResolvedValue([row]);
+		repository.findBundle.mockResolvedValue(null);
+		repository.existsByDigest.mockResolvedValue(true);
+		const { rows } = Container.get(NodeContractsStore);
+
+		expect(await rows.has(row.digest)).toBe(true);
+		expect(repository.existsByDigest).toHaveBeenCalledWith(row.digest);
+		expect(await rows.versions()).toEqual([{ ...version, fixtures: undefined }]);
+		expect(await rows.bundle(row.digest)).toBeUndefined();
+	});
+
+	it('inserts versions, and drops a published value that is not a date', async () => {
+		await Container.get(NodeContractsStore).rows.insert([
+			version,
+			{ ...version, version: '1.0.1', published: 'yesterday' },
+		]);
+
+		const inserted = {
+			digest: row.digest,
+			contractId: 'demo.echo',
+			version: '1.0.0',
+			kind: 'action',
+			manifest: row.manifest,
+			bundle: row.bundle,
+			fixtures: null,
+			signatures: row.signatures,
+			published: row.published,
+		};
+		expect(repository.insertNew).toHaveBeenCalledWith([
+			inserted,
+			{ ...inserted, version: '1.0.1', published: null },
+		]);
+		expect(publisher.publishCommand).not.toHaveBeenCalled();
+	});
+
+	it('tells the other mains to reload once for a sync that adds versions', async () => {
+		mockInstance(Logger);
+		mockInstance(LoadNodesAndCredentials);
+		mockInstance(WorkflowRepository).findNodeContractMetaPage.mockResolvedValue([
+			{ id: 'wf', name: 'Flow', meta: {} } as unknown as WorkflowEntity,
+		]);
+
+		const { added } = await Container.get(NodeContractsSync).run({ refreshNodeTypes: false });
+
+		expect(added).toHaveLength(2);
+		expect(publisher.publishCommand).toHaveBeenCalledTimes(1);
+		expect(publisher.publishCommand).toHaveBeenCalledWith({ command: 'reload-node-contracts' });
+	});
+
+	it('reloads the node types of a main when another main adds versions', async () => {
+		const loadNodesAndCredentials = mockInstance(LoadNodesAndCredentials);
+		const handler = Container.get(PubSubMetadata)
+			.getHandlers()
+			.find(({ eventName }) => eventName === 'reload-node-contracts');
+		expect(handler).toMatchObject({
+			eventHandlerClass: NodeContractsStore,
+			methodName: 'reloadNodeTypes',
+			filter: { instanceType: 'main' },
+		});
+
+		await Container.get(NodeContractsStore).reloadNodeTypes();
+
+		expect(loadNodesAndCredentials.refreshNodeTypes).toHaveBeenCalledWith();
 	});
 });

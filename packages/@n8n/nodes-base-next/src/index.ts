@@ -114,6 +114,8 @@ export {
 export {
 	contractStore,
 	contractVersionLoader,
+	exportContractStore,
+	importContractStore,
 	locksOf,
 	syncContractStore,
 	useContractRegistry,
@@ -121,7 +123,9 @@ export {
 	type ContractStore,
 	type ContractStoreOptions,
 	type ContractSyncResult,
+	type InstanceStore,
 	type LockedNode,
+	type StoredVersion,
 } from './contract-registry';
 // The cli builds node and credential types from manifests and checks eval mock values with the
 // node-sdk instance of this package.
@@ -140,7 +144,10 @@ export {
 	type RunProfile,
 } from '@n8n/node-sdk/host';
 export {
+	STORE_CATALOG_FILE,
+	storeFilesOfDir,
 	storeIndexFileOf,
+	storeReader,
 	type NodeContractLock,
 	type VersionManifest,
 } from '@n8n/node-sdk/registry';

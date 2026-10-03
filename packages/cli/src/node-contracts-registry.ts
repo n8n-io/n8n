@@ -2,7 +2,8 @@ import { Logger } from '@n8n/backend-common';
 import { OutboundHttp } from '@n8n/backend-network';
 import { EventService } from '@n8n/backend-services';
 import { GlobalConfig, NodesConfig, type NodePermissionClass } from '@n8n/config';
-import { WorkflowRepository } from '@n8n/db';
+import { NodeContractVersionRepository, WorkflowRepository } from '@n8n/db';
+import { OnPubSubEvent } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import { readFile } from 'fs/promises';
 import {
@@ -26,6 +27,7 @@ import {
 	withMigratedVersions,
 	type ContractStore,
 	type FrozenVersion,
+	type InstanceStore,
 } from '@n8n/nodes-base-next';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { existsSync } from 'fs';
@@ -53,12 +55,17 @@ import {
 import path from 'path';
 
 import { CredentialTypes } from '@/credential-types';
+import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { convertNodeToAiTool } from '@/tool-generation';
 
 // Recent executions only; a contract node reads the meta of its own execution.
 const MAX_CACHED_EXECUTIONS = 100;
 
-/** The action versions that n8n does not bundle, in `<n8nFolder>/node-contracts/`. */
+/**
+ * The versions that n8n does not bundle, in the `node_contract_version` table. Every main and
+ * worker reads the same rows. Only the leader main and the `contracts:*` commands fetch from the
+ * registry, so a worker never needs registry egress.
+ */
 @Service()
 export class NodeContractsStore {
 	private readonly stores = new Map<string, Promise<ContractStore>>();
@@ -66,10 +73,78 @@ export class NodeContractsStore {
 	constructor(
 		private readonly globalConfig: GlobalConfig,
 		private readonly instanceSettings: InstanceSettings,
+		private readonly repository: NodeContractVersionRepository,
 	) {}
 
+	/** The folder of files that belong to the store, e.g. the sandbox cache. */
 	get dir() {
 		return path.join(this.instanceSettings.n8nFolder, 'node-contracts');
+	}
+
+	/** The rows of the table. */
+	readonly rows: InstanceStore = {
+		manifests: async (id) =>
+			(await this.repository.findManifests(id)).map((row) => ({
+				id: row.contractId,
+				version: row.version,
+				kind: row.kind,
+				manifest: row.digest,
+				manifestText: row.manifest,
+				signatures: row.signatures,
+			})),
+		has: async (digest) => await this.repository.existsByDigest(digest),
+		bundle: async (digest) => (await this.repository.findBundle(digest)) ?? undefined,
+		versions: async () =>
+			(await this.repository.findAllForExport()).map((row) => ({
+				id: row.contractId,
+				version: row.version,
+				kind: row.kind,
+				manifest: row.digest,
+				manifestText: row.manifest,
+				bundle: row.bundle ?? undefined,
+				fixtures: row.fixtures ?? undefined,
+				signatures: row.signatures,
+				published: row.published?.toISOString(),
+			})),
+		insert: async (versions) => {
+			await this.repository.insertNew(
+				versions.map((version) => ({
+					digest: version.manifest,
+					contractId: version.id,
+					version: version.version,
+					kind: version.kind,
+					manifest: version.manifestText,
+					bundle: version.bundle ?? null,
+					fixtures: version.fixtures ?? null,
+					signatures: [...(version.signatures ?? [])],
+					published: publishedDateOf(version.published),
+				})),
+			);
+		},
+	};
+
+	/** Only the leader main and the `contracts:*` commands fetch from the registry and add rows. */
+	mayFetch() {
+		const { instanceType, isFollower } = this.instanceSettings;
+		return instanceType === 'main' && !isFollower;
+	}
+
+	/** Tells the other mains to list the stored versions again. Send it once after each batch of adds. */
+	async reloadOtherMains() {
+		await Container.get(Publisher).publishCommand({ command: 'reload-node-contracts' });
+	}
+
+	/** Another main added versions: the node types list them now. */
+	@OnPubSubEvent('reload-node-contracts', { instanceType: 'main' })
+	async reloadNodeTypes() {
+		const { LoadNodesAndCredentials } = await import('@/load-nodes-and-credentials.js');
+		await Container.get(LoadNodesAndCredentials).refreshNodeTypes();
+	}
+
+	/** PEM of the trusted publisher key, or `undefined` when none is set. */
+	async publicKey() {
+		const file = this.globalConfig.instanceAi.nodeContractsPublicKeyFile;
+		return file ? await readFile(file, 'utf8') : undefined;
 	}
 
 	/** The store with the configured registry, or with `registryUrl`. */
@@ -83,11 +158,12 @@ export class NodeContractsStore {
 
 	private async create(registryUrl: string) {
 		const { contractStore } = await import('@n8n/nodes-base-next');
-		const publicKeyFile = this.globalConfig.instanceAi.nodeContractsPublicKeyFile;
 		return contractStore({
 			registryUrl,
-			publicKey: publicKeyFile ? await readFile(publicKeyFile, 'utf8') : undefined,
-			storeDir: this.dir,
+			publicKey: await this.publicKey(),
+			store: this.rows,
+			// A worker and a follower main read the rows that the leader main fetched.
+			mayFetch: () => this.mayFetch(),
 			// The registry URL is operator config, not user input, so the SSRF policy does not apply.
 			fetch: async (url, init) =>
 				await Container.get(OutboundHttp)
@@ -95,6 +171,12 @@ export class NodeContractsStore {
 					.asCustomFetch()(url, init),
 		});
 	}
+}
+
+// The signature does not cover `published`, so a value that is not a date is dropped.
+function publishedDateOf(published: string | undefined) {
+	const date = published === undefined ? undefined : new Date(published);
+	return date && !Number.isNaN(date.getTime()) ? date : null;
 }
 
 /** The newest stored version of each major, by action id. */

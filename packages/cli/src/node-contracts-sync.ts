@@ -1,5 +1,6 @@
 import { Logger } from '@n8n/backend-common';
 import { WorkflowRepository } from '@n8n/db';
+import { OnLeaderTakeover } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import {
 	locksOf,
@@ -9,10 +10,12 @@ import {
 	syncContractStore,
 	type ContractStore,
 	type ContractSyncResult,
+	type LockedNode,
 	type NodeContractLock,
 	type VersionManifest,
 } from '@n8n/nodes-base-next';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
+import { InstanceSettings } from 'n8n-core';
 import { UserError, type INode, type IWorkflowBase } from 'n8n-workflow';
 
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
@@ -42,13 +45,19 @@ export interface NodeContractsSyncOptions {
 export class NodeContractsSync {
 	constructor(
 		private readonly logger: Logger,
+		private readonly instanceSettings: InstanceSettings,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly nodeContractsStore: NodeContractsStore,
 		private readonly loadNodesAndCredentials: LoadNodesAndCredentials,
 	) {}
 
-	/** Starts the sync in the background. Startup does not wait for it, and a failure only logs. */
+	/**
+	 * Starts the sync in the background on the leader main: one pass at start and one catch-up
+	 * pass on leader takeover. Startup does not wait for it, and a failure only logs.
+	 */
+	@OnLeaderTakeover()
 	start() {
+		if (!this.instanceSettings.isLeader) return;
 		void this.run({ refreshNodeTypes: true }).catch((error: unknown) => {
 			this.logger.error('The node contracts sync failed', { error: ensureError(error) });
 		});
@@ -58,7 +67,9 @@ export class NodeContractsSync {
 	async run(options: NodeContractsSyncOptions): Promise<ContractSyncResult> {
 		const store = await this.nodeContractsStore.open(options.registryUrl);
 		const published = await this.syncPages(store, options, true, undefined);
-		return merge(published, await this.syncPages(store, options, false, undefined));
+		const result = merge(published, await this.syncPages(store, options, false, undefined));
+		if (result.added.length > 0) await this.nodeContractsStore.reloadOtherMains();
+		return result;
 	}
 
 	private async syncPages(
@@ -67,23 +78,47 @@ export class NodeContractsSync {
 		published: boolean,
 		afterId: string | undefined,
 	): Promise<ContractSyncResult> {
-		const workflows = await this.workflowRepository.findNodeContractMetaPage({
-			published,
-			afterId,
-			take: PAGE_SIZE,
-		});
-		const nodes = workflows.flatMap(({ id, name, meta }) =>
-			locksOf(meta).map(([node, lock]) => ({ workflowId: id, workflowName: name, node, lock })),
-		);
+		const { nodes, next } = await this.lockedPage(published, afterId);
 		const result = nodes.length > 0 ? await syncContractStore(store, nodes) : NO_RESULT;
 		this.report(result);
 		const newMajor = () => !this.listsAll(result.added);
 		if (options.refreshNodeTypes && newMajor()) {
 			await this.loadNodesAndCredentials.refreshNodeTypes(newMajor);
 		}
+		if (next === undefined) return result;
+		return merge(result, await this.syncPages(store, options, published, next));
+	}
+
+	/** The locked nodes of one page of workflows, and the id that the next page starts after. */
+	private async lockedPage(published: boolean, afterId: string | undefined) {
+		const workflows = await this.workflowRepository.findNodeContractMetaPage({
+			published,
+			afterId,
+			take: PAGE_SIZE,
+		});
+		const nodes: LockedNode[] = workflows.flatMap(({ id, name, meta }) =>
+			locksOf(meta).map(([node, lock]) => ({ workflowId: id, workflowName: name, node, lock })),
+		);
 		const last = workflows.at(-1);
-		if (workflows.length < PAGE_SIZE || !last) return result;
-		return merge(result, await this.syncPages(store, options, published, last.id));
+		return { nodes, next: workflows.length < PAGE_SIZE ? undefined : last?.id };
+	}
+
+	/** The locks of all saved workflows. */
+	async locks(): Promise<NodeContractLock[]> {
+		return [
+			...(await this.locksOfPages(true, undefined)),
+			...(await this.locksOfPages(false, undefined)),
+		];
+	}
+
+	private async locksOfPages(
+		published: boolean,
+		afterId: string | undefined,
+	): Promise<NodeContractLock[]> {
+		const { nodes, next } = await this.lockedPage(published, afterId);
+		const locks = nodes.map(({ lock }) => lock);
+		if (next === undefined) return locks;
+		return [...locks, ...(await this.locksOfPages(published, next))];
 	}
 
 	private report({ added, failed, unsupported }: ContractSyncResult) {
@@ -153,7 +188,12 @@ export class NodeContractsSync {
 				return manifest;
 			}),
 		);
+		const newMajor = !this.listsAll(manifests);
 		await this.loadNodesAndCredentials.refreshNodeTypes(() => !this.listsAll(manifests));
+		// Only a host that fetches adds rows. A worker or a follower read a row that the leader announced.
+		if (newMajor && this.nodeContractsStore.mayFetch()) {
+			await this.nodeContractsStore.reloadOtherMains();
+		}
 	}
 }
 

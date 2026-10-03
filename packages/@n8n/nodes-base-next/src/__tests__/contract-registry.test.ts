@@ -10,13 +10,15 @@ import {
 	manifestTextOf,
 	signStoreManifest,
 	storeBlobFileOf,
+	storeFilesOfDir,
 	storeIndexFileOf,
+	storeReader,
 	type NodeContractLock,
 } from '@n8n/node-sdk/registry';
 import { freezeAction, type FrozenAction } from '@n8n/node-sdk/freeze';
 import { sandboxExecutorLoader, warmSandbox } from '@n8n/node-sdk/sandbox';
 import { generateKeyPairSync } from 'node:crypto';
-import { link, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { link, mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { createServer, type Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { tmpdir } from 'node:os';
@@ -29,12 +31,17 @@ import {
 } from 'n8n-workflow';
 
 import {
+	admitVersions,
 	contractStore,
 	contractVersionLoader,
+	exportContractStore,
+	importContractStore,
 	syncContractStore,
 	useContractRegistry,
 	type ContractRegistryOptions,
 	type ContractStoreOptions,
+	type InstanceStore,
+	type StoredVersion,
 } from '../contract-registry';
 import { getRequest } from '../nodes/http-request/actions/get';
 import { versionsOf } from '../registry';
@@ -88,9 +95,27 @@ interface Published {
 	readonly line?: Readonly<Record<string, unknown>>;
 }
 
+/** An instance store in memory, as the database table of the cli keeps it. */
+const memoryStore = () => {
+	const rows = new Map<string, StoredVersion>();
+	const store: InstanceStore = {
+		manifests: async (id) => [...rows.values()].filter((row) => id === undefined || row.id === id),
+		has: async (manifest) => rows.has(manifest),
+		bundle: async (manifest) => rows.get(manifest)?.bundle,
+		versions: async () => [...rows.values()],
+		insert: async (versions) => {
+			versions.forEach(
+				(version) => rows.has(version.manifest) || rows.set(version.manifest, version),
+			);
+		},
+	};
+	return { rows, store };
+};
+
 /** The versions in the fake registry, by version. A test may replace one. */
 const published = new Map<string, Published>();
-const dirs = { root: '', store: '', registry: '' };
+const dirs = { root: '', registry: '' };
+const instance = { current: memoryStore() };
 const registry = { url: '', server: createServer() };
 const versions = new Map<string, FrozenAction>();
 
@@ -160,7 +185,7 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
-	dirs.store = await mkdtemp(path.join(dirs.root, 'store-'));
+	instance.current = memoryStore();
 	published.clear();
 	['1.0.0', '1.0.1', '1.1.0'].forEach((version) =>
 		published.set(version, { frozen: frozenOf(version), key: privateKey }),
@@ -204,14 +229,16 @@ const storeOf = (options: Partial<ContractStoreOptions> = {}) =>
 	contractStore({
 		registryUrl: registry.url,
 		publicKey,
-		storeDir: dirs.store,
+		store: instance.current.store,
 		fetch: async (url, init) => await fetch(url, init),
 		...options,
 	});
 
 const run = async (
 	meta: unknown,
-	options: Partial<Omit<ContractRegistryOptions, 'store'> & ContractStoreOptions> = {},
+	options: Partial<
+		Omit<ContractRegistryOptions, 'store'> & Omit<ContractStoreOptions, 'store'>
+	> = {},
 	metadata: ITaskMetadata[] = [],
 	head = bundled('1.1.0'),
 ) => {
@@ -351,10 +378,9 @@ describe('contractStore', () => {
 	it('adds a version once and never replaces it', async () => {
 		const store = storeOf();
 		const { manifest } = await store.locked(lockOf('1.0.0'));
-		const index = path.join(dirs.store, storeIndexFileOf('demo.echo'));
-		const lines = await readFile(index, 'utf8');
+		const [row] = instance.current.rows.values();
 		await storeOf().locked(lockOf('1.0.0'));
-		expect(await readFile(index, 'utf8')).toBe(lines);
+		expect([...instance.current.rows.values()]).toEqual([row]);
 		expect([...(await store.bundleHashes())]).toEqual([manifest.bundleHash]);
 	});
 
@@ -367,12 +393,28 @@ describe('contractStore', () => {
 		expect(versions.get('demo.echo')?.map(({ manifest }) => manifest.semver)).toEqual(['1.0.1']);
 	});
 
-	it('loads a bundle from the registry again when its file is gone', async () => {
+	it('fetches a version again when the store no longer has it', async () => {
 		const store = storeOf();
-		const version = await store.locked(lockOf('1.0.0'));
-		await rm(path.join(dirs.store, storeBlobFileOf(`sha256:${lockOf('1.0.0').bundleHash}`)));
-		expect(await version.readBundle()).toBe(frozenOf('1.0.0').bundle);
-		expect(await store.bundleHashes()).toContain(lockOf('1.0.0').bundleHash);
+		await store.locked(lockOf('1.0.0'));
+		instance.current.rows.clear();
+		await store.locked(lockOf('1.0.0'));
+		expect([...instance.current.rows.values()].map(({ version }) => version)).toEqual(['1.0.0']);
+	});
+
+	it('reads only the store on a host that may not fetch', async () => {
+		await storeOf().locked(lockOf('1.0.1'));
+		const fetchRegistry = vi.fn(async () => new Response(null, { status: 500 }));
+		const worker = storeOf({ mayFetch: () => false, fetch: fetchRegistry });
+		expect(await (await worker.locked(lockOf('1.0.1'))).readBundle()).toBe(
+			frozenOf('1.0.1').bundle,
+		);
+		expect(
+			(await worker.newerPatches(lockOf('1.0.0'))).map(({ manifest }) => manifest.semver),
+		).toEqual(['1.0.1']);
+		await expect(worker.locked(lockOf('1.0.0'))).rejects.toThrow(
+			'only the leader main fetches from the registry',
+		);
+		expect(fetchRegistry).not.toHaveBeenCalled();
 	});
 
 	it('fails a request after the timeout', async () => {
@@ -385,15 +427,6 @@ describe('contractStore', () => {
 		});
 		await expect(store.locked(lockOf('1.0.0'))).rejects.toThrow(
 			`Cannot get demo.echo@1.0.0 (bundle ${lockOf('1.0.0').bundleHash}) from the registry ${registry.url}`,
-		);
-	});
-
-	it('stores a blob by rename when the file system has no hard links', async () => {
-		vi.mocked(link).mockRejectedValueOnce(Object.assign(new Error('no links'), { code: 'EPERM' }));
-		const { manifest } = await storeOf().locked(lockOf('1.0.0'));
-		expect([...(await storeOf().bundleHashes())]).toEqual([manifest.bundleHash]);
-		expect(await (await storeOf({ registryUrl: '' }).locked(lockOf('1.0.0'))).readBundle()).toBe(
-			frozenOf('1.0.0').bundle,
 		);
 	});
 
@@ -420,6 +453,102 @@ describe('contractStore', () => {
 		const store = storeOf();
 		const stored = await store.locked(lockOf('1.0.1'));
 		expect(await run(locked('1.0.0'), { publicKey: undefined }, [], stored)).toEqual(['HELLO']);
+	});
+});
+
+describe('importContractStore and exportContractStore', () => {
+	/** Every file of a directory and its bytes. */
+	const treeOf = async (dir: string) => {
+		const entries = await readdir(dir, { recursive: true, withFileTypes: true });
+		const files = entries
+			.filter((entry) => entry.isFile())
+			.map((entry) => path.relative(dir, path.join(entry.parentPath, entry.name)))
+			.sort();
+		return Object.fromEntries(
+			await Promise.all(
+				files.map(async (file) => [file, (await readFile(path.join(dir, file))).toString('hex')]),
+			),
+		);
+	};
+
+	/** A store folder with fixtures and publish dates, as `publish:contracts` writes it. */
+	const sourceDir = async (key = privateKey) => {
+		const dir = await mkdtemp(path.join(dirs.root, 'source-'));
+		await addToStore(
+			dir,
+			['1.0.0', '1.0.1', '1.1.0'].map((version) => {
+				const { manifest, bundle } = frozenOf(version);
+				const manifestText = manifestTextOf(manifest);
+				return {
+					manifestText,
+					bundle,
+					fixtures: `{"executions":[],"version":"${version}"}\n`,
+					signatures: [signStoreManifest(manifestText, key)],
+					published: '2026-10-02T12:00:00.000Z',
+				};
+			}),
+		);
+		return dir;
+	};
+
+	const importDir = async (dir: string) =>
+		await importContractStore(storeReader(storeFilesOfDir(dir)), instance.current.store, publicKey);
+
+	it('exports the same layout bytes that it imported', async () => {
+		const dir = await sourceDir();
+		expect((await importDir(dir)).map(({ version }) => version)).toEqual([
+			'1.0.0',
+			'1.0.1',
+			'1.1.0',
+		]);
+		expect(await importDir(dir)).toEqual([]);
+		const out = await mkdtemp(path.join(dirs.root, 'export-'));
+		await exportContractStore(instance.current.store, out);
+		expect(await treeOf(out)).toEqual(await treeOf(dir));
+	});
+
+	it('adds nothing when a blob does not match its digest', async () => {
+		const dir = await sourceDir();
+		const file = path.join(dir, storeBlobFileOf(`sha256:${lockOf('1.0.1').bundleHash}`));
+		await writeFile(file, Buffer.concat([await readFile(file), Buffer.from([0])]));
+		await expect(importDir(dir)).rejects.toThrow('does not match its digest');
+		expect(instance.current.rows.size).toBe(0);
+	});
+
+	it('adds nothing without the trusted signature', async () => {
+		await expect(importDir(await sourceDir(strangerKey))).rejects.toThrow(
+			'is not signed by the trusted key',
+		);
+		expect(instance.current.rows.size).toBe(0);
+	});
+
+	it('refuses other bytes for a stored version', async () => {
+		await importDir(await sourceDir());
+		const [row] = instance.current.rows.values();
+		if (!row) throw new Error('nothing imported');
+		await expect(
+			admitVersions(instance.current.store, [{ ...row, manifest: `sha256:${'f'.repeat(64)}` }]),
+		).rejects.toThrow('demo.echo@1.0.0 is in the store with other bytes');
+	});
+
+	it('exports blobs by rename when the file system has no hard links', async () => {
+		await storeOf().locked(lockOf('1.0.0'));
+		vi.mocked(link).mockRejectedValueOnce(Object.assign(new Error('no links'), { code: 'EPERM' }));
+		const out = await mkdtemp(path.join(dirs.root, 'export-'));
+		await exportContractStore(instance.current.store, out);
+		instance.current = memoryStore();
+		expect((await importDir(out)).map(({ version }) => version)).toEqual(['1.0.0']);
+	});
+
+	it('exports only the versions that the filter takes', async () => {
+		await importDir(await sourceDir());
+		const out = await mkdtemp(path.join(dirs.root, 'export-'));
+		const records = await exportContractStore(
+			instance.current.store,
+			out,
+			({ version }) => version === '1.0.1',
+		);
+		expect(records.map(({ version }) => version)).toEqual(['1.0.1']);
 	});
 });
 

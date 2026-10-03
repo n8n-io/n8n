@@ -1,16 +1,15 @@
 import { createWorkflow, mockInstance, testDb } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
-import { ExecutionRepository, type User } from '@n8n/db';
+import { ExecutionRepository, NodeContractVersionRepository, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { versionsOf } from '@n8n/nodes-base-next';
-import { InstanceSettings } from 'n8n-core';
 import {
 	createRunExecutionData,
 	type INode,
 	type IVersionedNodeType,
 	type IWorkflowBase,
 } from 'n8n-workflow';
-import { generateKeyPairSync } from 'node:crypto';
+import { createHash, generateKeyPairSync } from 'node:crypto';
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { createServer } from 'node:http';
 import type { AddressInfo } from 'node:net';
@@ -39,10 +38,15 @@ interface Manifest {
 	readonly contractHash: string;
 }
 
+interface StoreSignature {
+	readonly key: string;
+	readonly sig: string;
+}
+
 interface StoreVersion {
 	readonly manifestText: string;
 	readonly bundle: string;
-	readonly signatures?: unknown[];
+	readonly signatures?: StoreSignature[];
 }
 
 // The cli does not depend on the node-sdk, so load it through the package that does.
@@ -51,8 +55,7 @@ const sdk = sdkRequire('@n8n/node-sdk/registry') as {
 	parseManifest(text: string): Manifest;
 	addToStore(dir: string, versions: StoreVersion[]): Promise<unknown>;
 	manifestTextOf(manifest: Manifest): string;
-	signStoreManifest(manifestText: string, privateKey: string): unknown;
-	storeBlobFileOf(digest: string): string;
+	signStoreManifest(manifestText: string, privateKey: string): StoreSignature;
 };
 
 const NEXT = path.resolve(__dirname, '../../../@n8n/nodes-base-next');
@@ -82,7 +85,7 @@ const registry = {
 	server: createServer(),
 	versions: new Map<string, Published>(),
 };
-const state = { dir: '', storeDir: '', owner: undefined as unknown as User };
+const state = { dir: '', owner: undefined as unknown as User };
 
 /** Writes the registry store again from `registry.versions`. */
 const writeRegistry = async () => {
@@ -93,8 +96,9 @@ const writeRegistry = async () => {
 	);
 };
 
-const bundleFileOf = ({ bundleHash }: Manifest) =>
-	path.join(state.storeDir, sdk.storeBlobFileOf(`sha256:${bundleHash}`));
+/** Removes a version from the store, as on an instance that never fetched it. */
+const unstore = async ({ id, semver }: Manifest) =>
+	await Container.get(NodeContractVersionRepository).delete({ contractId: id, version: semver });
 
 const lockOf = ({ id, semver, bundleHash, contractHash }: Manifest) => ({
 	action: id,
@@ -114,8 +118,6 @@ beforeAll(async () => {
 	await testDb.init();
 	state.owner = await createOwner();
 	state.dir = await mkdtemp(path.join(tmpdir(), 'node-contracts-store-'));
-	state.storeDir = path.join(Container.get(InstanceSettings).n8nFolder, 'node-contracts');
-	await rm(state.storeDir, { recursive: true, force: true });
 
 	const olderDir = path.join(NEXT, `fixtures/versions/httpRequest.get@${OLDER}`);
 	const older = signed(
@@ -162,7 +164,15 @@ beforeAll(async () => {
 	});
 
 	// The store holds only the HEAD.
-	await sdk.addToStore(state.storeDir, [head.version]);
+	await Container.get(NodeContractsStore).rows.insert([
+		{
+			id: head.manifest.id,
+			version: head.manifest.semver,
+			kind: 'action',
+			manifest: `sha256:${createHash('sha256').update(head.version.manifestText).digest('hex')}`,
+			...head.version,
+		},
+	]);
 	await useNodeContractsRegistry();
 	await utils.initBinaryDataService();
 	const next = new ContractNodeLoader();
@@ -175,7 +185,6 @@ beforeAll(async () => {
 afterAll(async () => {
 	registry.server.close();
 	await rm(state.dir, { recursive: true, force: true });
-	await rm(state.storeDir, { recursive: true, force: true });
 	await testDb.terminate();
 });
 
@@ -267,7 +276,7 @@ describe('node contracts store', () => {
 	it('fetches a bundle that is not in the store before the run', async () => {
 		const workflow = await createOlderWorkflow();
 		const { bundleHash } = publishedOlder().manifest;
-		await rm(bundleFileOf(publishedOlder().manifest));
+		await unstore(publishedOlder().manifest);
 		// As after a restart: the node types come from the store.
 		await Container.get(LoadNodesAndCredentials).refreshNodeTypes();
 		expect(majorsOfGet()).toEqual(['3']);
@@ -287,7 +296,7 @@ describe('node contracts store', () => {
 		const older = publishedOlder();
 		registry.versions.delete(OLDER);
 		await writeRegistry();
-		await rm(bundleFileOf(older.manifest));
+		await unstore(older.manifest);
 		await Container.get(LoadNodesAndCredentials).refreshNodeTypes();
 		try {
 			await expect(runToEnd(workflow)).rejects.toThrow(
@@ -301,7 +310,7 @@ describe('node contracts store', () => {
 
 	it('fetches a missing bundle once and rebuilds the node types once for parallel runs', async () => {
 		const workflow = await createOlderWorkflow();
-		await rm(bundleFileOf(publishedOlder().manifest), { force: true });
+		await unstore(publishedOlder().manifest);
 		const loadNodesAndCredentials = Container.get(LoadNodesAndCredentials);
 		await loadNodesAndCredentials.refreshNodeTypes();
 		const rebuild = vi.spyOn(loadNodesAndCredentials, 'postProcessLoaders');
@@ -320,7 +329,7 @@ describe('node contracts store', () => {
 		const workflow = await createOlderWorkflow();
 		const { instanceAi } = Container.get(GlobalConfig);
 		const loadNodesAndCredentials = Container.get(LoadNodesAndCredentials);
-		await rm(bundleFileOf(publishedOlder().manifest), { force: true });
+		await unstore(publishedOlder().manifest);
 		await loadNodesAndCredentials.refreshNodeTypes();
 		instanceAi.nodeContractRange = '>=2.2.0 <3.0.0';
 		await useNodeContractsRegistry();

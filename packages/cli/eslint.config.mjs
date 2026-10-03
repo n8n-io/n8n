@@ -422,6 +422,7 @@ export default defineConfig(
 			'./src/scheduling/system-tasks/system-task-runner.ts',
 			'./src/active-workflow-manager.ts',
 			'./src/metrics/prometheus/instance-role-metrics.service.ts',
+			'./src/node-contracts-sync.ts',
 			'./src/scaling/scaling.service.ts',
 			'./src/wait-tracker.ts',
 			'./src/workflows/publication/workflow-publication-outbox-consumer.ts',

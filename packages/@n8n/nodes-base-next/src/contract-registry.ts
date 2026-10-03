@@ -12,10 +12,9 @@ import {
 import {
 	addToStore,
 	compareSemver,
+	parseManifest,
 	parseSemver,
 	resolveContractVersion,
-	storeBlobFileOf,
-	storeFilesOfDir,
 	storeFilesOfUrl,
 	storeReader,
 	verifyStoreSignature,
@@ -24,11 +23,11 @@ import {
 	type NodeContractVersion,
 	type StoreReader,
 	type StoreRecord,
+	type StoreSignature,
+	type StoreVersion,
 	type VersionManifest,
 } from '@n8n/node-sdk/registry';
 import { sandboxExecutorLoader, warmSandbox, type SandboxOptions } from '@n8n/node-sdk/sandbox';
-import { access } from 'node:fs/promises';
-import path from 'node:path';
 import {
 	LoggerProxy,
 	UserError,
@@ -49,8 +48,13 @@ export interface ContractStoreOptions {
 	 * Without it, no patch newer than the lock applies.
 	 */
 	readonly publicKey: string | undefined;
-	/** The instance store, in the store layout. It adds versions and never removes one. */
-	readonly storeDir: string;
+	/** The store of the instance. Each version that the registry gives goes into it. */
+	readonly store: InstanceStore;
+	/**
+	 * False on a host that only reads the store, e.g. a worker. Then a version that the store
+	 * does not have fails. Default: true.
+	 */
+	readonly mayFetch?: () => boolean;
 	readonly fetch: (url: string, init: { signal: AbortSignal }) => Promise<Response>;
 	/** For each registry request. */
 	readonly fetchTimeoutMs?: number;
@@ -90,6 +94,62 @@ export interface ContractStore {
 	versions(): Promise<ReadonlyMap<string, readonly FrozenVersion[]>>;
 	/** Signed patches of the locked major.minor with the locked contract hash. */
 	newerPatches(lock: NodeContractLock): Promise<FrozenVersion[]>;
+}
+
+/** A version in the store of an instance: its bytes and the index line fields that identify it. */
+export type StoredVersion = StoreVersion &
+	Pick<StoreRecord, 'id' | 'version' | 'kind' | 'manifest'>;
+
+/** A stored version without its bundle and fixtures. */
+export type StoredManifest = Pick<
+	StoredVersion,
+	'id' | 'version' | 'kind' | 'manifest' | 'manifestText' | 'signatures'
+>;
+
+/**
+ * The store of an instance, e.g. a database table that every main and worker reads. It keeps
+ * whole versions: each version that it lists has its bundle. It does not check the versions:
+ * `admitVersions` checks them before they go in.
+ */
+export interface InstanceStore {
+	/** The stored versions of one id, or of every id. */
+	manifests(id?: string): Promise<readonly StoredManifest[]>;
+	/** Whether the store has the version of a manifest digest. */
+	has(manifest: string): Promise<boolean>;
+	/** The bundle of a stored version by its manifest digest, or `undefined`. */
+	bundle(manifest: string): Promise<string | undefined>;
+	/** Every stored version with its bundle and fixtures. */
+	versions(): Promise<readonly StoredVersion[]>;
+	/** Inserts versions. It skips each manifest digest that it has. */
+	insert(versions: readonly StoredVersion[]): Promise<void>;
+}
+
+/**
+ * Inserts checked versions into the store and returns the versions that it did not have. A
+ * stored version stays, and other bytes for its id and version are refused.
+ */
+export async function admitVersions(
+	store: InstanceStore,
+	versions: readonly StoredVersion[],
+): Promise<StoredVersion[]> {
+	const ids = [...new Set(versions.map(({ id }) => id))];
+	const stored = (await Promise.all(ids.map(async (id) => await store.manifests(id)))).flat();
+	const conflict = versions.find((version) =>
+		stored.some(
+			({ id, version: semver, manifest }) =>
+				id === version.id && semver === version.version && manifest !== version.manifest,
+		),
+	);
+	if (conflict) {
+		throw new UserError(`${conflict.id}@${conflict.version} is in the store with other bytes`);
+	}
+	const added = versions.filter(
+		(version, index) =>
+			!stored.some(({ manifest }) => manifest === version.manifest) &&
+			versions.findIndex(({ manifest }) => manifest === version.manifest) === index,
+	);
+	if (added.length > 0) await store.insert(added);
+	return added;
 }
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -159,10 +219,10 @@ interface LoadedVersion {
 }
 
 export function contractStore(options: ContractStoreOptions): ContractStore {
-	const { registryUrl, publicKey, storeDir } = options;
+	const { registryUrl, publicKey, store } = options;
+	const mayFetch = options.mayFetch ?? (() => true);
 	const timeoutMs = options.fetchTimeoutMs ?? DEFAULT_FETCH_TIMEOUT_MS;
-	const local = storeReader(storeFilesOfDir(storeDir));
-	const registry = registryUrl
+	const registryReader = registryUrl
 		? storeReader(
 				storeFilesOfUrl(
 					registryUrl,
@@ -171,64 +231,117 @@ export function contractStore(options: ContractStoreOptions): ContractStore {
 			)
 		: undefined;
 	const indexes = new Map<string, { at: number; records: Promise<StoreRecord[]> }>();
+	/** Stored versions by id, so a tolerant run does not read the store each time. */
+	const storedById = new Map<string, { at: number; records: Promise<VersionManifest[]> }>();
 	/** Loads in flight, so parallel executions download a version once. */
 	const loading = new Map<string, Promise<LoadedVersion>>();
-	/** Checked manifests by bundle hash. A stored blob never changes, so they stay valid. */
-	const manifests = new Map<string, VersionManifest>();
+	/** Checked stored manifests and their digests by bundle hash. A stored version never changes. */
+	const stored = new Map<string, { manifest: VersionManifest; digest: string }>();
 
-	const registryRecordsOf = async (id: string) => {
-		if (!registry) throw new UserError('No registry is set');
-		const cached = indexes.get(id);
+	const registryOf = () => {
+		if (!registryReader) throw new UserError('No registry is set');
+		if (!mayFetch()) {
+			throw new UserError(
+				'The node contracts store does not have this version, and only the leader main fetches from the registry. Run "n8n contracts:sync" or "n8n contracts:import".',
+			);
+		}
+		return registryReader;
+	};
+
+	const cachedFor = async <T>(
+		cache: Map<string, { at: number; records: Promise<T[]> }>,
+		id: string,
+		read: () => Promise<T[]>,
+	) => {
+		const cached = cache.get(id);
 		if (cached && Date.now() - cached.at < INDEX_TTL_MS) return await cached.records;
-		const records = registry.records(id);
-		indexes.set(id, { at: Date.now(), records });
+		const records = read();
+		cache.set(id, { at: Date.now(), records });
 		return await records.catch((error: unknown) => {
-			indexes.delete(id);
+			cache.delete(id);
 			throw error;
 		});
 	};
 
-	/** The manifest of a line, signed by the trusted key when one is set, or `undefined` when its blob is missing. */
-	const checkedManifest = async (store: StoreReader, record: StoreRecord) => {
-		const read = await store.readManifest(record);
-		if (!read) return undefined;
-		const { text, manifest } = read;
-		if (manifest.kind === 'credential') {
-			throw new UserError(`${manifest.id}@${manifest.semver} is a credential type`);
-		}
-		if (publicKey && !verifyStoreSignature(record, text, publicKey)) {
+	const registryRecordsOf = async (id: string) =>
+		await cachedFor(indexes, id, async () => await registryOf().records(id));
+
+	const assertSigned = (
+		manifest: VersionManifest,
+		text: string,
+		signatures: readonly StoreSignature[] | undefined,
+	) => {
+		if (publicKey && !verifyStoreSignature({ signatures }, text, publicKey)) {
 			throw new UserError(
 				`${manifest.id}@${manifest.semver} (bundle ${manifest.bundleHash}) is not signed by the trusted key`,
 			);
 		}
-		manifests.set(manifest.bundleHash, manifest);
-		return { text, manifest };
+		return manifest;
 	};
 
-	/** The stored version of the lock, or `undefined` when a line or blob is missing. */
+	/** The manifest of a registry line, signed by the trusted key when one is set. */
+	const registryManifest = async (record: StoreRecord) => {
+		const read = await registryOf().readManifest(record);
+		if (!read) throw new UserError(`The registry has no manifest ${record.manifest}`);
+		const { text, manifest } = read;
+		if (manifest.kind === 'credential') {
+			throw new UserError(`${manifest.id}@${manifest.semver} is a credential type`);
+		}
+		return { text, manifest: assertSigned(manifest, text, record.signatures) };
+	};
+
+	/** The manifest of a stored version, signed by the trusted key when one is set. */
+	const storedManifestOf = ({ manifest: digest, manifestText, signatures }: StoredManifest) => {
+		const manifest = assertSigned(parseManifest(manifestText), manifestText, signatures);
+		stored.set(manifest.bundleHash, { manifest, digest });
+		return manifest;
+	};
+
+	/** The checked stored versions of one id or of all ids. A bad version is skipped. */
+	const storedManifests = async (id?: string) =>
+		(await store.manifests(id)).flatMap((entry) => {
+			if (entry.kind === 'credential') return [];
+			try {
+				return [storedManifestOf(entry)];
+			} catch {
+				return [];
+			}
+		});
+
+	/** The stored version of the lock, or `undefined` when the store does not have it. */
 	const fromStore = async (lock: NodeContractLock): Promise<LoadedVersion | undefined> => {
-		const record = (await local.records(lock.action)).find(
-			({ version, bundle }) =>
-				version === lock.version && bundle === bundleDigestOf(lock.bundleHash),
+		const entry = (await store.manifests(lock.action)).find(
+			({ version }) => version === lock.version,
 		);
-		const checked = record && (await checkedManifest(local, record));
-		const bundle = checked && (await local.blob(bundleDigestOf(lock.bundleHash)));
-		return checked && bundle && { manifest: checked.manifest, bundle: bundle.toString('utf8') };
+		const manifest = entry && storedManifestOf(entry);
+		if (!entry || manifest?.bundleHash !== lock.bundleHash) return undefined;
+		const bundle = await store.bundle(entry.manifest);
+		return bundle === undefined ? undefined : { manifest, bundle };
 	};
 
 	/** Copies a registry version into the store when its manifest matches `expected`. */
 	const download = async (record: StoreRecord, expected: NodeContractLock) => {
-		if (!registry) throw new UserError('No registry is set');
-		const checked = await checkedManifest(registry, record);
-		if (!checked) throw new UserError(`The registry has no manifest ${record.manifest}`);
+		const checked = await registryManifest(record);
 		assertLocked(checked.manifest, expected);
-		const bundle = await registry.blob(bundleDigestOf(expected.bundleHash));
+		const bundle = await registryOf().blob(bundleDigestOf(expected.bundleHash));
 		if (!bundle) throw new UserError(`The registry has no bundle ${expected.bundleHash}`);
-		const { signatures, published } = record;
-		await addToStore(storeDir, [
-			{ manifestText: checked.text, bundle: bundle.toString('utf8'), signatures, published },
+		const { id, version, kind, manifest, signatures, published } = record;
+		const code = bundle.toString('utf8');
+		await admitVersions(store, [
+			{
+				id,
+				version,
+				kind,
+				manifest,
+				manifestText: checked.text,
+				bundle: code,
+				signatures,
+				published,
+			},
 		]);
-		return { manifest: checked.manifest, bundle: bundle.toString('utf8') };
+		storedById.delete(id);
+		stored.set(checked.manifest.bundleHash, { manifest: checked.manifest, digest: manifest });
+		return { manifest: checked.manifest, bundle: code };
 	};
 
 	const fromRegistry = async (lock: NodeContractLock) => {
@@ -261,7 +374,7 @@ export function contractStore(options: ContractStoreOptions): ContractStore {
 		return await loaded;
 	};
 
-	/** The bundle loads on the first execution. When its blob is gone, it loads from the registry again. */
+	/** The bundle loads on the first execution. */
 	const storedVersion = (manifest: VersionManifest): FrozenVersion => {
 		const version = {
 			manifest,
@@ -271,24 +384,31 @@ export function contractStore(options: ContractStoreOptions): ContractStore {
 		return version;
 	};
 
-	const hasBlob = async (bundleHash: string) =>
-		await access(path.join(storeDir, storeBlobFileOf(bundleDigestOf(bundleHash)))).then(
-			() => true,
-			() => false,
+	const isNewerPatch = (
+		lock: NodeContractLock,
+		candidate: Pick<StoreRecord, 'version' | 'nodeContract' | 'contractHash'>,
+	) => {
+		const locked = parseSemver(lock.version);
+		const { major, minor, patch } = parseSemver(candidate.version);
+		return (
+			major === locked.major &&
+			minor === locked.minor &&
+			patch > locked.patch &&
+			runsNodeContract(candidate.nodeContract) &&
+			candidate.contractHash === lock.contractHash
 		);
+	};
 
-	/** The stored versions whose bundle blob is there. */
-	const storedManifests = async () => {
-		const records = await Promise.all(
-			(await local.catalog()).map(async ({ id }) => await local.records(id)),
-		);
-		const manifestsOf = await Promise.all(
-			records.flat().map(async (record) => {
-				const manifest = (await checkedManifest(local, record).catch(() => undefined))?.manifest;
-				return manifest && (await hasBlob(manifest.bundleHash)) ? [manifest] : [];
-			}),
-		);
-		return manifestsOf.flat();
+	/** On a host that does not fetch: the signed patches in the store. */
+	const storedPatches = async (lock: NodeContractLock) => {
+		const stored = await cachedFor(
+			storedById,
+			lock.action,
+			async () => await storedManifests(lock.action),
+		).catch(() => []);
+		return stored
+			.filter((manifest) => isNewerPatch(lock, { ...manifest, version: manifest.semver }))
+			.map(storedVersion);
 	};
 
 	return {
@@ -299,9 +419,9 @@ export function contractStore(options: ContractStoreOptions): ContractStore {
 		},
 
 		async locked(lock) {
-			const known = manifests.get(lock.bundleHash);
-			if (known && (await hasBlob(lock.bundleHash)) && !mismatchOf(known, lock)) {
-				return storedVersion(known);
+			const known = stored.get(lock.bundleHash);
+			if (known && !mismatchOf(known.manifest, lock) && (await store.has(known.digest))) {
+				return storedVersion(known.manifest);
 			}
 			return storedVersion((await load(lock)).manifest);
 		},
@@ -325,25 +445,16 @@ export function contractStore(options: ContractStoreOptions): ContractStore {
 		},
 
 		async newerPatches(lock) {
-			if (!registry || !publicKey) return [];
-			const locked = parseSemver(lock.version);
+			if (!publicKey) return [];
+			if (!registryReader || !mayFetch()) return await storedPatches(lock);
 			const records = await registryRecordsOf(lock.action).catch(() => []);
-			const candidates = records.filter(({ version, nodeContract, contractHash }) => {
-				const { major, minor, patch } = parseSemver(version);
-				return (
-					major === locked.major &&
-					minor === locked.minor &&
-					patch > locked.patch &&
-					runsNodeContract(nodeContract) &&
-					contractHash === lock.contractHash
-				);
-			});
+			const candidates = records.filter((record) => isNewerPatch(lock, record));
 			const patches = await Promise.all(
 				candidates.map(async (record) => {
 					if (!record.bundle) return [];
 					const bundleHash = record.bundle.slice('sha256:'.length);
 					const expected = { ...lock, version: record.version, bundleHash };
-					const known = manifests.get(bundleHash);
+					const known = stored.get(bundleHash)?.manifest;
 					if (known && !mismatchOf(known, expected)) return [storedVersion(known)];
 					// A tampered or unsigned patch never runs; the locked version runs instead.
 					const version =
@@ -513,4 +624,69 @@ export async function syncContractStore(
 				: group.map((node) => ({ ...node, nodeContract: manifest.nodeContract })),
 		),
 	};
+}
+
+/** A version of a store, after its blobs, its index line and, with a key, its signature are checked. */
+async function verifiedVersionOf(
+	source: StoreReader,
+	record: StoreRecord,
+	publicKey: string | undefined,
+): Promise<StoredVersion> {
+	const { id, version, kind, manifest, signatures, published } = record;
+	const at = `${id}@${version}`;
+	const read = await source.readManifest(record);
+	if (!read) throw new UserError(`The store has no manifest of ${at}`);
+	if (publicKey && !verifyStoreSignature(record, read.text, publicKey)) {
+		throw new UserError(`${at} is not signed by the trusted key`);
+	}
+	const textOf = async (digest: string | undefined) => {
+		if (digest === undefined) return undefined;
+		const bytes = await source.blob(digest);
+		if (!bytes) throw new UserError(`The store has no blob ${digest} of ${at}`);
+		return bytes.toString('utf8');
+	};
+	return {
+		id,
+		version,
+		kind,
+		manifest,
+		manifestText: read.text,
+		bundle: await textOf(record.bundle),
+		fixtures: await textOf(record.fixtures),
+		signatures,
+		published,
+	};
+}
+
+/**
+ * Puts each version of a store, e.g. an export or a registry folder, into the instance store.
+ * It first checks every version: the digest of each blob, the index line against its manifest,
+ * and the signature when a key is set. When one check fails, it adds nothing.
+ */
+export async function importContractStore(
+	source: StoreReader,
+	store: InstanceStore,
+	publicKey: string | undefined,
+): Promise<StoredVersion[]> {
+	const ids = [...new Set((await source.catalog()).map(({ id }) => id))];
+	const records = (await Promise.all(ids.map(async (id) => await source.records(id)))).flat();
+	const versions = await Promise.all(
+		records.map(async (record) => await verifiedVersionOf(source, record, publicKey)),
+	);
+	return await admitVersions(store, versions);
+}
+
+/**
+ * Writes the stored versions that `include` accepts to `dir`, in the store layout. The index of
+ * each id lists its versions in semver order, so the same rows give the same bytes.
+ */
+export async function exportContractStore(
+	store: InstanceStore,
+	dir: string,
+	include: (version: StoredVersion) => boolean = () => true,
+): Promise<StoreRecord[]> {
+	const versions = (await store.versions())
+		.filter(include)
+		.sort((a, b) => a.id.localeCompare(b.id) || compareSemver(a.version, b.version));
+	return await addToStore(dir, versions);
 }

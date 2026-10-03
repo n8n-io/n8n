@@ -78,6 +78,7 @@ export namespace PubSub {
 			ToCommand<'reload-sso-provisioning-configuration'>;
 		export type ReloadSourceControlConfiguration = ToCommand<'reload-source-control-config'>;
 		export type ReloadMcpRegistry = ToCommand<'reload-mcp-registry'>;
+		export type ReloadNodeContracts = ToCommand<'reload-node-contracts'>;
 		export type ReloadOtelConfig = ToCommand<'reload-otel-config'>;
 		export type ReloadInstanceAiSettings = ToCommand<'reload-instance-ai-settings'>;
 		export type ReloadAgentsSettings = ToCommand<'reload-agents-settings'>;
@@ -132,6 +133,7 @@ export namespace PubSub {
 		| Commands.ReloadSsoProvisioningConfiguration
 		| Commands.ReloadSourceControlConfiguration
 		| Commands.ReloadMcpRegistry
+		| Commands.ReloadNodeContracts
 		| Commands.ReloadOtelConfig
 		| Commands.ReloadInstanceAiSettings
 		| Commands.ReloadAgentsSettings

@@ -82,6 +82,7 @@ export type {
 	RetiredTask,
 	ScheduledTaskMetricSnapshot,
 } from './scheduled-task.repository';
+export { NodeContractVersionRepository } from './node-contract-version.repository';
 export {
 	PollerStateRepository,
 	type PollerCursor,

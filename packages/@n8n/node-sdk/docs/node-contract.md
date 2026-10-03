@@ -75,8 +75,11 @@ index line of a version in a store also states `nodeContract`.
 
 ## Store layout
 
-The embedded store of a release, the store of an instance and a registry use one layout
-(`src/store.ts`). A registry is the same files, served at `https://…` or `file://…`.
+The embedded store of a release, an instance export and a registry use one layout
+(`src/store.ts`). A registry is the same files, served at `https://…` or `file://…`. An
+instance keeps its versions in the `node_contract_version` table: one row for each manifest
+digest. `n8n contracts:import --input=<dir>` adds the verified versions of a folder to the
+table, and `n8n contracts:export --output=<dir> [--pinned]` writes the table in this layout.
 
 | File | Content |
 |---|---|
