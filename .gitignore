@@ -38,6 +38,9 @@ build-storybook.log
 build.log
 tcr-dry.log
 .agent-setup/
+.memory-runs/
+*.heapsnapshot
+*.heapprofile
 .agent-recordings/
 .vitest-profile/
 .pi-subagents/

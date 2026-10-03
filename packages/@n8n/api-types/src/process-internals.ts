@@ -10,6 +10,8 @@ export interface ProcessInternals {
 	version: 1;
 	instanceType: 'main' | 'worker' | 'webhook' | 'engine';
 	hostId: string;
+	/** Changes on process restart, including restarts with the same container hostname. */
+	processStartId: string;
 	isLeader: boolean;
 	/** `process.memoryUsage()`, in bytes. */
 	memory: {
