@@ -1,12 +1,12 @@
 import { validate, type Action } from '@n8n/node-sdk';
 import { toNodeType } from '@n8n/node-sdk/host';
-import { lintContract, toContract } from '@n8n/node-sdk/registry';
+import { checkAction, checkCredentialType } from '@n8n/node-sdk/registry';
 import { mockHttp, runAction } from '@n8n/node-sdk/testing';
 import type { IExecuteFunctions } from 'n8n-workflow';
 
 import { simplifyObjects } from 'n8n-nodes-base/dist/nodes/Notion/shared/GenericFunctions';
 
-import { actions, nodeTypeOf } from '../index';
+import { actions, credentialTypes, nodeTypeOf, triggers } from '../index';
 import { dateTime } from '../nodes/items/actions/date-time';
 import { getRequest } from '../nodes/http-request/actions/get';
 import { sendRequest } from '../nodes/http-request/actions/send';
@@ -74,8 +74,9 @@ function run(
 }
 
 describe('contracts', () => {
-	it('lint clean and map to node types', () => {
-		expect(actions.flatMap((action) => lintContract(toContract(action)))).toEqual([]);
+	it('pass the checks of n8n-node-next check and map to node types', () => {
+		expect([...actions, ...triggers].flatMap(checkAction)).toEqual([]);
+		expect(credentialTypes.flatMap(checkCredentialType)).toEqual([]);
 		expect(nodeTypeOf(getManyDatabasePages)).toBe('@n8n/nodes-base-next.notionDatabasePageGetAll');
 	});
 });

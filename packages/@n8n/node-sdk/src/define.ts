@@ -1,3 +1,4 @@
+import { isRecord } from '@n8n/utils/is-record';
 import { UserError } from 'n8n-workflow';
 
 import type { AnyCredentialType, Credential, CredentialKey, RunCredential } from './credentials';
@@ -23,7 +24,7 @@ import {
 	type ProviderKind,
 } from './providers';
 import type { PollConfig, TriggerKind, WebhookConfig, WebhookRequest } from './triggers';
-import { readAs } from './validate';
+import { exampleOf, readAs, validate } from './validate';
 
 /**
  * The integration identity: name, credential, and base URL shared by its actions.
@@ -1978,15 +1979,34 @@ const hasHiddenBinary = (schema: JsonSchema): boolean => {
 	return hidden.some(hasBinary) || visible.some(hasHiddenBinary);
 };
 
-/** Prose budgets from the contract format: summary at most 120, each hint at most 80. */
+/** A hint such as "A string" tells nothing that the schema does not. */
+const TYPE_ONLY_HINT = /^(an? )?(string|text|number|integer|boolean|object|array|list|value)$/i;
+
+/**
+ * The problems of a contract that its data shows. Prose: one summary sentence of at most 120
+ * characters that ends with a period, and hints of at most 80 characters, without a period, that
+ * tell more than the type. Then outputs, binaries, egress, inputs and providers.
+ */
 export function lintContract(contract: ContractDocument): string[] {
 	const names = fixedOutputNames(contract.outputs);
+	const summary = contract.summary.trim();
+	const allHints = [...hints(contract.input), ...hints(contract.output)];
 	return [
 		...(contract.summary.length > 120 ? [`${contract.id}: summary is over 120 characters`] : []),
+		...(summary === '' ? [`${contract.id}: summary is empty`] : []),
+		...(summary !== '' && !summary.endsWith('.')
+			? [`${contract.id}: summary must end with a period`]
+			: []),
 		...(new Set(names).size < names.length ? [`${contract.id}: output names repeat`] : []),
-		...[...hints(contract.input), ...hints(contract.output)]
+		...allHints
 			.filter((hint) => hint.length > 80)
 			.map((hint) => `${contract.id}: hint is over 80 characters: ${hint}`),
+		...allHints
+			.filter((hint) => hint.trim().endsWith('.'))
+			.map((hint) => `${contract.id}: hint must not end with a period: ${hint}`),
+		...allHints
+			.filter((hint) => TYPE_ONLY_HINT.test(hint.trim()))
+			.map((hint) => `${contract.id}: hint only names the type: ${hint}`),
 		...binaryOutputIssues(contract),
 		...(hasHiddenBinary(contract.input)
 			? [`${contract.id}: an input binary must be a field, a list item, or in a variant branch`]
@@ -1994,6 +2014,60 @@ export function lintContract(contract: ContractDocument): string[] {
 		...egressIssues(contract),
 		...inputIssues(contract),
 		...providerIssues(contract.id, contract.input, contract.output, contract.flow),
+	];
+}
+
+/** Each `examples` value in `schema`, checked against the schema that lists it. */
+function exampleIssues(schema: JsonSchema, at: string): string[] {
+	const own = (schema.examples ?? []).flatMap((example, index) =>
+		validate(example, schema, { path: `${at}.examples[${index}]` }),
+	);
+	const { additionalProperties } = schema;
+	const children: Array<[string, JsonSchema]> = [
+		...Object.entries(schema.properties ?? {}).map(([key, child]): [string, JsonSchema] => [
+			`${at}.${key}`,
+			child,
+		]),
+		...(schema.items ? [[`${at}[]`, schema.items] satisfies [string, JsonSchema]] : []),
+		...(schema.oneOf ?? schema.anyOf ?? []).map((child): [string, JsonSchema] => [at, child]),
+		...(typeof additionalProperties === 'object'
+			? [[`${at}.*`, additionalProperties] satisfies [string, JsonSchema]]
+			: []),
+	];
+	return [...own, ...children.flatMap(([path, child]) => exampleIssues(child, path))];
+}
+
+/** An item of the derived shape must also match `output`, which n8n checks at run time. */
+function deriveOutputIssues(action: Action): string[] {
+	if (!action.deriveOutput) return [];
+	const sample = exampleOf(action.inputSchema);
+	// Without a valid sample input there is nothing to derive from.
+	if (!isRecord(sample) || validate(sample, action.inputSchema).length > 0) return [];
+	try {
+		const derived = action.deriveOutput(sample);
+		return validate(exampleOf(derived), action.output.json, { path: 'deriveOutput' });
+	} catch (error) {
+		return [`deriveOutput: throws for ${JSON.stringify(sample)}: ${String(error)}`];
+	}
+}
+
+/**
+ * The problems of an action or a trigger, one line each: `<id>: <schema path>: <problem>`.
+ * It adds to `lintContract` what needs the code: `examples` against their schema, `deriveOutput`
+ * against `output`, and scopes against the credential of the node.
+ */
+export function checkAction(action: Action | Trigger): string[] {
+	const scopes = Object.keys(action.node.credential?.scopes ?? {});
+	return [
+		...lintContract(toContract(action)),
+		...[
+			...exampleIssues(action.inputSchema, 'input'),
+			...exampleIssues(action.output.json, 'output'),
+			...('kind' in action ? [] : deriveOutputIssues(action)),
+			...action.scopes
+				.filter((scope) => !scopes.includes(scope))
+				.map((scope) => `scopes: "${scope}" is not a scope of the node's credential`),
+		].map((issue) => `${action.id}: ${issue}`),
 	];
 }
 

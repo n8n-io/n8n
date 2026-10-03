@@ -2,7 +2,7 @@ import type { ICredentialType, IHttpRequestHelper, IHttpRequestOptions } from 'n
 
 import { compat, defineCredential, field, type AnyCredentialType } from '../entry/credentials';
 import { credentialTypeOfManifest, toCredentialType } from '../entry/host';
-import { parseCredentialManifest } from '../entry/registry';
+import { checkCredentialType, parseCredentialManifest } from '../entry/registry';
 import { t } from '../index';
 import {
 	credentialBaseUrlOf,
@@ -1201,5 +1201,34 @@ describe('credentialTypeOfManifest', () => {
 		expect(() => fromManifest(custom)).toThrow(
 			'Credential acme.signed: a custom scheme needs a credential bundle',
 		);
+	});
+});
+
+describe('checkCredentialType', () => {
+	it('reports a free-text field whose name looks like a secret', () => {
+		const acme = defineCredential({
+			id: 'acme.token',
+			legacyName: 'acmeApi',
+			displayName: 'Acme API',
+			fields: {
+				password: field.text('Password'),
+				clientSecret: t.str().optional(),
+				apiKey: field.secret('API Key'),
+				authorizationUrl: field.url('Authorization URL'),
+				accessTokenUrl: field.url('Access Token URL'),
+				cookieDomain: t.str().with({ title: 'Cookie Domain', format: 'hostname' }),
+				useAccessToken: t.bool(),
+				authorization: field.options('Authorization', { header: { name: 'Header' } }),
+				accessToken: field.hidden('Access Token'),
+				url: field.baseUrl(),
+			},
+			baseUrl: 'https://api.acme.test',
+			auth: (a) => a.bearer('apiKey'),
+		});
+		expect(checkCredentialType(acme)).toEqual([
+			'acme.token: password looks like a secret. Use field.secret.',
+			'acme.token: clientSecret looks like a secret. Use field.secret.',
+		]);
+		expect(checkCredentialType(compat('acmeApi', { fields: { password: t.str() } }))).toEqual([]);
 	});
 });

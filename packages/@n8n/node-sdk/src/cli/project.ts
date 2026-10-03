@@ -4,16 +4,8 @@ import { pathToFileURL } from 'node:url';
 
 import type { ICredentialType } from 'n8n-workflow';
 
-import { toCredentialType } from '../credentials';
-import {
-	actionFileOf,
-	lintContract,
-	toContract,
-	type Action,
-	type NodeDefinition,
-} from '../define';
-import type { JsonSchema } from '../schema';
-import { exampleOf, validate } from '../validate';
+import { checkCredentialType, toCredentialType } from '../credentials';
+import { actionFileOf, checkAction, type Action, type NodeDefinition } from '../define';
 
 export interface Project {
 	readonly root: string;
@@ -76,60 +68,18 @@ function fileOf(root: string, id: string): string {
 	return relative(root, file ?? join(root, 'src', 'index.ts'));
 }
 
-/** Each `examples` value in `schema`, checked against the schema that lists it. */
-function exampleIssues(schema: JsonSchema, at: string): string[] {
-	const own = (schema.examples ?? []).flatMap((example, index) =>
-		validate(example, schema, { path: `${at}.examples[${index}]` }),
-	);
-	const { additionalProperties } = schema;
-	const children: Array<[string, JsonSchema]> = [
-		...Object.entries(schema.properties ?? {}).map(([key, child]): [string, JsonSchema] => [
-			`${at}.${key}`,
-			child,
-		]),
-		...(schema.items ? [[`${at}[]`, schema.items] satisfies [string, JsonSchema]] : []),
-		...(schema.oneOf ?? schema.anyOf ?? []).map((child): [string, JsonSchema] => [at, child]),
-		...(typeof additionalProperties === 'object'
-			? [[`${at}.*`, additionalProperties] satisfies [string, JsonSchema]]
-			: []),
-	];
-	return [...own, ...children.flatMap(([path, child]) => exampleIssues(child, path))];
-}
-
-/** An item of the derived shape must also match `output`, which n8n checks at run time. */
-function deriveOutputIssues(action: Action): string[] {
-	if (!action.deriveOutput) return [];
-	const sample = exampleOf(action.inputSchema);
-	// Without a valid sample input there is nothing to derive from.
-	if (!isRecord(sample) || validate(sample, action.inputSchema).length > 0) return [];
-	try {
-		const derived = action.deriveOutput(sample);
-		return validate(exampleOf(derived), action.output.json, { path: 'deriveOutput' });
-	} catch (error) {
-		return [`deriveOutput: throws for ${JSON.stringify(sample)}: ${String(error)}`];
-	}
-}
-
-const TEMPLATE_FIELD = /\$credentials\.(\w+)/g;
-
-function credentialIssues(credential: ICredentialType): string[] {
-	const auth = credential.authenticate;
-	if (!auth || typeof auth === 'function') return [];
-	const fields = new Set(credential.properties.map(({ name }) => name));
-	const templates = [
-		...Object.values(auth.properties.headers ?? {}),
-		...Object.values(auth.properties.qs ?? {}),
-	].map(String);
-	return templates
-		.flatMap((template) => [...template.matchAll(TEMPLATE_FIELD)].map((match) => match[1] ?? ''))
-		.filter((field) => !fields.has(field))
-		.map((field) => `authenticate: $credentials.${field} is not a property`);
+/** The action files that no action names, e.g. a new file that `src/index.ts` does not list. */
+function unlistedActionFiles(root: string, actions: readonly Action[]): string[] {
+	const dir = join(root, 'src', 'actions');
+	const listed = new Set(actions.map((action) => join('src', actionFileOf(action))));
+	return (existsSync(dir) ? readdirSync(dir) : [])
+		.filter((file) => file.endsWith('.ts') && !file.endsWith('.test.ts'))
+		.map((file) => join('src', 'actions', file))
+		.filter((file) => !listed.has(file));
 }
 
 /** Contract checks, one line each: `<file>: <action id>: <schema path>: <problem>`. */
-export function checkContracts({ root, node, actions, credentials }: Project): string[] {
-	const scopes = Object.keys(node.credential?.scopes ?? {});
-	const at = (id: string) => (issue: string) => `${fileOf(root, id)}: ${id}: ${issue}`;
+export function checkContracts({ root, node, actions }: Project): string[] {
 	const actionIssues = actions.flatMap((action, index) => {
 		// The file name repeats the resource and operation of the id, so a renamed action fails here.
 		const file = join('src', actionFileOf(action));
@@ -138,17 +88,16 @@ export function checkContracts({ root, node, actions, credentials }: Project): s
 			...(hasFile ? [] : [`file: must be ${file}`]),
 			...(actions.findIndex(({ id }) => id === action.id) < index ? ['id: is not unique'] : []),
 			...(action.node.id !== node.id ? [`node: is "${action.node.id}", not "${node.id}"`] : []),
-			...lintContract(toContract(action)).map((issue) => issue.replace(`${action.id}: `, '')),
-			...exampleIssues(action.inputSchema, 'input'),
-			...exampleIssues(action.output.json, 'output'),
-			...deriveOutputIssues(action),
-			...action.scopes
-				.filter((scope) => !scopes.includes(scope))
-				.map((scope) => `scopes: "${scope}" is not a scope of the node's credential`),
+			...checkAction(action).map((issue) => issue.replace(`${action.id}: `, '')),
 		].map((issue) => `${hasFile ? file : join('src', 'index.ts')}: ${action.id}: ${issue}`);
 	});
 	return [
 		...actionIssues,
-		...credentials.flatMap((credential) => credentialIssues(credential).map(at(credential.name))),
+		...unlistedActionFiles(root, actions).map(
+			(file) => `${file}: exports no action that src/index.ts lists`,
+		),
+		...(node.credential?.types ?? []).flatMap((type) =>
+			checkCredentialType(type).map((issue) => `${fileOf(root, type.id)}: ${issue}`),
+		),
 	];
 }

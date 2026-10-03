@@ -1,5 +1,6 @@
 import { isRecord } from '@n8n/utils/is-record';
 import { DEFAULT_PLACEHOLDER } from '@n8n/utils/redaction/redact-text';
+import { isSensitiveKey } from '@n8n/utils/redaction/sensitive-key';
 import { scrubSecretsInText } from '@n8n/utils/scrub-secrets';
 import {
 	OperationalError,
@@ -1842,6 +1843,49 @@ export function toCredentialType(type: AnyCredentialType): ICredentialType | und
 			: { ...signed, allowedDomains: request.allowedDomains };
 	};
 	return { ...base, properties, ...exchange, authenticate, ...test };
+}
+
+const TEMPLATE_FIELD = /\$credentials\.(\w+)/g;
+
+function credentialIssues(credential: ICredentialType): string[] {
+	const auth = credential.authenticate;
+	if (!auth || typeof auth === 'function') return [];
+	const fields = new Set(credential.properties.map(({ name }) => name));
+	const templates = [
+		...Object.values(auth.properties.headers ?? {}),
+		...Object.values(auth.properties.qs ?? {}),
+	].map(String);
+	return templates
+		.flatMap((template) => [...template.matchAll(TEMPLATE_FIELD)].map((match) => match[1] ?? ''))
+		.filter((field) => !fields.has(field))
+		.map((field) => `authenticate: $credentials.${field} is not a property`);
+}
+
+/**
+ * A field that the user types as free text. A secret is such a field. An options, URL, host name or
+ * hidden field is not.
+ */
+const isFreeText = (schema: AnySchema) =>
+	schema.json.type === 'string' &&
+	schema.json.enum === undefined &&
+	schema.json.format === undefined &&
+	schema.json.readOnly !== true &&
+	!isSecretField(schema);
+
+/**
+ * The problems of a credential type that its definition does not refuse, one line each:
+ * `<credential id>: <problem>`. A free-text field whose name looks like a secret, e.g. `password`,
+ * must be `field.secret`. A `compat` type keeps the fields of its legacy class, so it has none.
+ */
+export function checkCredentialType(type: AnyCredentialType): string[] {
+	if (type.scheme.kind === 'compat') return [];
+	const projected = toCredentialType(type);
+	return [
+		...Object.entries(type.fields ?? {})
+			.filter(([name, schema]) => isSensitiveKey(name) && isFreeText(schema))
+			.map(([name]) => `${name} looks like a secret. Use field.secret.`),
+		...(projected ? credentialIssues(projected) : []),
+	].map((issue) => `${type.id}: ${issue}`);
 }
 
 /** The n8n credential type of a credential manifest: the host reads only data, never author code. */

@@ -369,6 +369,33 @@ describe('checkPublish', () => {
 		);
 	});
 
+	it('reports fixture params that the action does not declare', async () => {
+		await writeShout('text.toUpperCase()');
+		const frozen = await freeze();
+		const fixtures = (params: Record<string, unknown>) => ({
+			executions: [{ name: 'echo', params, responses: ['!'], output: [{ text: 'HELLO!' }] }],
+		});
+
+		await expect(replayFixtures(frozen, fixtures({ text: 'hello' }))).resolves.toEqual([]);
+		await expect(replayFixtures(frozen, fixtures({ text: 'hello', txt: 'x' }))).resolves.toEqual([
+			'demo.echo@1.0.0 fixture "echo": params not declared: txt',
+		]);
+		const failing = {
+			executions: [
+				{
+					name: 'echo',
+					params: { text: 'hello', txt: 'x' },
+					responses: [],
+					output: [],
+					error: 'No recorded response is left',
+				},
+			],
+		};
+		await expect(replayFixtures(frozen, failing)).resolves.toEqual([
+			'demo.echo@1.0.0 fixture "echo": params not declared: txt',
+		]);
+	});
+
 	it('needs migrate and a fixture pair for a major that breaks old input', async () => {
 		const prev = await v1();
 		const v2 = { version: 2, input: '{ message: str() }', text: 'input.message' };

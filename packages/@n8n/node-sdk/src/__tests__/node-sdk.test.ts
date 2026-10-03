@@ -250,6 +250,31 @@ describe('schema builders', () => {
 		expect(lintContract(toContract(due))).toEqual([]);
 	});
 
+	it('lints the summary and the hints', () => {
+		const prose = (summary: string, hint: string) =>
+			lintContract(
+				toContract(
+					task.action('rename', {
+						action: 'Rename a task',
+						summary,
+						flow: { effect: 'write', cardinality: 'per-item' },
+						input: { name: t.str().hint(hint) },
+						output: t.obj({}),
+						run: async () => await Promise.resolve({}),
+					}),
+				),
+			);
+		expect(prose('Rename a task.', 'The new title')).toEqual([]);
+		expect(prose(' ', 'A string')).toEqual([
+			'todo.task.rename: summary is empty',
+			'todo.task.rename: hint only names the type: A string',
+		]);
+		expect(prose('Rename a task', 'The new title.')).toEqual([
+			'todo.task.rename: summary must end with a period',
+			'todo.task.rename: hint must not end with a period: The new title.',
+		]);
+	});
+
 	it('builds a nullable schema', () => {
 		const assignee = t.nullable(t.str()).hint('null when unassigned');
 		const value: Infer<typeof assignee> = null;

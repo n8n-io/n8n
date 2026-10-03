@@ -107,6 +107,17 @@ describe('n8n-node-next', () => {
 		);
 	});
 
+	it('check reports an action file that src/index.ts does not list', async () => {
+		const file = join(project, 'src/actions/item.create.ts');
+		writeFileSync(file, 'export const unlisted = 1;\n');
+		const result = await cli(project, ['check']);
+		rmSync(file);
+		expect(result.code).toBe(1);
+		expect(result.stderr).toContain(
+			'src/actions/item.create.ts: exports no action that src/index.ts lists',
+		);
+	});
+
 	it('test runs the node:test files', async () => {
 		const result = await cli(project, ['test']);
 		expect(result.code).toBe(0);

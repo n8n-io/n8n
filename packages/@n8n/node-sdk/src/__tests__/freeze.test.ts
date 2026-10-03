@@ -48,6 +48,13 @@ describe('freezeAction', () => {
 		['Intl', "new Intl.NumberFormat('de').format(1)", '', 'the global Intl'],
 		['fetch', "await fetch('https://example.com')", '', 'the global fetch'],
 		['globalThis.fetch', "await globalThis.fetch('https://example.com')", '', 'the global fetch'],
+		['setTimeout', 'setTimeout(() => undefined, 0)', '', 'the global setTimeout'],
+		[
+			'globalThis.setInterval',
+			'globalThis.setInterval(() => undefined, 1)',
+			'',
+			'the global setInterval',
+		],
 		[
 			'a Node module',
 			"createHash('sha1')",

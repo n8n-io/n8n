@@ -1,5 +1,6 @@
 export {
 	actionFileOf,
+	checkAction,
 	lintContract,
 	replyContractOf,
 	toContract,
@@ -35,4 +36,5 @@ export {
 	type Semver,
 	type VersionManifest,
 } from '../version';
+export { checkCredentialType } from '../credentials';
 export { parseCredentialManifest, type CredentialManifest } from '../manifest';

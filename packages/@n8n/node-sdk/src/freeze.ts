@@ -79,10 +79,11 @@ export const GUEST_LACKS = [
 ] as const;
 
 /**
- * The globals that freeze refuses. The guest has `fetch` only as a stub that throws, and in the
- * n8n process `fetch` sends a request past the egress check of the host.
+ * The globals that freeze refuses. The guest has `fetch` and the timers only as stubs that throw.
+ * In the n8n process, `fetch` sends a request past the egress check of the host, and a timer
+ * runs code after the run.
  */
-const REFUSED_GLOBALS = [...GUEST_LACKS, 'fetch'];
+const REFUSED_GLOBALS = [...GUEST_LACKS, 'fetch', 'setTimeout', 'setInterval'];
 
 const LACKS_MARKER = '__n8n_guest_lacks_';
 
@@ -182,7 +183,7 @@ export async function freezeAction(entryFile: string, exportName: string): Promi
 	const gaps = await sandboxGapsOf(bundle, [...new Set(modules)]);
 	if (gaps.length > 0) {
 		throw new UserError(
-			`${exportName} in ${entryFile} uses what a bundle may not use: ${gaps.join(', ')}. Use web APIs, http.request for requests, and no Unicode property escapes.`,
+			`${exportName} in ${entryFile} uses what a bundle may not use: ${gaps.join(', ')}. Use web APIs, http.request for requests, no timers, and no Unicode property escapes.`,
 		);
 	}
 	const action = evaluateBundle(bundle, NODE_CONTRACT_VERSION);

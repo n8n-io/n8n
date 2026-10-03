@@ -48,7 +48,7 @@ export const __service__Api = defineCredential({ id: '__service__.apiKey', legac
 // src/actions/item.create.ts; the id is `__service__.item.create`
 export const createItem = item.action('create', {
 	action: 'Create an item',               // the label users pick
-	summary: 'Create one item.',            // at most 120 characters
+	summary: 'Create one item.',            // one sentence, at most 120 characters, ends with a period
 	flow: { effect: 'write', cardinality: 'per-item', idempotent: false },
 	scopes: ['items:write'],                // scopes of the node's credential; tsc rejects others
 	input: { name: t.str(), ownerId: t.str().optional() },  // run() also gets `workspace` from the resource
@@ -94,8 +94,8 @@ export const createItem = item.action('create', {
 | `t.variant('mode', { a: {...}, b: {...} })` | tagged union | fields that depend on a choice |
 | `t.union(a, b)` | `A \| B` | a value that matches one of the schemas |
 
-- Chain `.optional()`, `.default(v)` (also optional for callers), `.hint(text)` (at most 80 characters),
-  `.describe(text)`, `.with({ pattern, minimum, maximum, minLength, format, examples })`.
+- Chain `.optional()`, `.default(v)` (also optional for callers), `.describe(text)`,
+  `.hint(text)` (at most 80 characters, no period, more than the type), `.with({ pattern, minimum, maximum, minLength, format, examples })`.
 - `t.obj` rejects fields it does not list. To return an API object unchanged, list all of its fields,
   or keep unlisted fields with `t.obj({ ... }).with({ additionalProperties: true })`.
 - Every `examples` value must match its schema. Do not make a field conditionally required: use `t.variant`.

@@ -73,15 +73,15 @@ const spec = (run: (context: any) => Promise<unknown>, extra: Record<string, unk
 		run,
 	} as any);
 const canary = 'http://127.0.0.1:${port}/';
-export const fetchProbe = spec(async () => ({ value: String(await fetch(canary)) }));
 // Names built at run time pass the freeze check, so the sandbox must stop them.
+export const fetchProbe = spec(async () => ({ value: String(await (globalThis as any)[['fet', 'ch'].join('')](canary)) }));
 export const processProbe = spec(async () => ({ value: String((globalThis as any)[['pro', 'cess'].join('')].env.SANDBOX_CANARY) }));
 export const importProbe = spec(async () => ({ value: String(await import(['node', 'fs'].join(':'))) }));
 export const globalsProbe = spec(async () => ({
 	value: JSON.stringify(${JSON.stringify(GUEST_LACKS)}.filter((name) => name in globalThis)),
 }));
 export const timerProbe = spec(async ({ http }) => {
-	setTimeout(() => void http.request({ url: canary }), 0);
+	(globalThis as any)[['set', 'Timeout'].join('')](() => void http.request({ url: canary }), 0);
 	return { value: 'scheduled' };
 });
 export const loopProbe = spec(async () => {

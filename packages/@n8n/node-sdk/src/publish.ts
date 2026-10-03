@@ -270,6 +270,10 @@ export async function replayFixtures(
 				credentialData: async (type) => fixtureCredential(contract, type, fixture.credential),
 			};
 			const at = `${manifest.id}@${manifest.semver} fixture "${fixture.name}"`;
+			const undeclared = Object.keys(fixture.params).filter((name) => !defaults.has(name));
+			const paramIssues = undeclared.length
+				? [`${at}: params not declared: ${undeclared.join(', ')}`]
+				: [];
 			try {
 				const items = await run(host);
 				// A provider gives its capability; the fixture checks what its calls return.
@@ -280,6 +284,7 @@ export async function replayFixtures(
 				// Named outputs record no binaries, so any binary there fails the check.
 				const outputBinary = outputBinaryOf(fixture.outputs ? items.flat() : (items[0] ?? []));
 				return [
+					...paramIssues,
 					...(canonicalJson(output) === canonicalJson(fixture.outputs ?? fixture.output)
 						? []
 						: [`${at}: output ${JSON.stringify(output)}`]),
@@ -291,7 +296,10 @@ export async function replayFixtures(
 					...(fixture.error === undefined ? [] : [`${at}: no error, expected "${fixture.error}"`]),
 				];
 			} catch (error) {
-				return errorMessage(error) === fixture.error ? [] : [`${at}: ${errorMessage(error)}`];
+				return [
+					...paramIssues,
+					...(errorMessage(error) === fixture.error ? [] : [`${at}: ${errorMessage(error)}`]),
+				];
 			}
 		}),
 	);
