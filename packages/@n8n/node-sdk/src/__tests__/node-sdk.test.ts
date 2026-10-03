@@ -9,7 +9,7 @@ import {
 
 import { generateNodeModule } from '../entry/codegen';
 import { compat, credential } from '../entry/credentials';
-import { exampleOf, toNodeType } from '../entry/host';
+import { exampleOf, resourceLookupsOf, toNodeType } from '../entry/host';
 import { actionFileOf, lintContract, toContract } from '../entry/registry';
 import {
 	defineNode,
@@ -393,6 +393,125 @@ function fakeContext(
 	// The runtime reads only these members.
 	return { context: context as unknown as IExecuteFunctions, requests, hints };
 }
+
+describe('resourceOutput', () => {
+	const sheet = todo.resource('sheet', {
+		input: { sheet: t.str().with({ pattern: '[0-9a-f]{8}' }).hint('Sheet ID or URL') },
+	});
+	const legacy = {
+		nodeType: 'n8n-nodes-base.todo',
+		methodName: 'getColumns',
+		parameters: { resource: 'sheet' },
+	};
+	const readRows = sheet.action('read', {
+		action: 'Read rows',
+		summary: 'Read the rows of a sheet.',
+		flow: { effect: 'read', cardinality: '1:N' },
+		input: {},
+		output: t.obj({ id: t.str() }),
+		resourceOutput: {
+			method: 'todo.sheetColumns',
+			input: 'sheet',
+			loadOptions: [
+				{ ...legacy, version: 2, idParameter: 'sheetId' },
+				{ ...legacy, version: 1, idParameter: 'sheet' },
+			],
+			toOutput: (fields) => t.obj({ id: t.str(), [fields[0]?.name ?? 'x']: t.str() }).json,
+		},
+		async *run() {},
+	});
+	const contract = toContract(readRows);
+
+	it('puts the pointer without its hatch into the output of the contract document', () => {
+		expect(contract.output['x-n8n-resource']).toEqual({
+			method: 'todo.sheetColumns',
+			input: 'sheet',
+			loadOptions: [
+				{ ...legacy, version: 2, idParameter: 'sheetId' },
+				{ ...legacy, version: 1, idParameter: 'sheet' },
+			],
+		});
+		expect(toContract(listTasks).output['x-n8n-resource']).toBeUndefined();
+		expect(lintContract(contract)).toEqual([]);
+	});
+
+	it('types the input field of the pointer', () => {
+		sheet.action('read', {
+			action: 'Read rows',
+			summary: 'Read the rows of a sheet.',
+			flow: { effect: 'read', cardinality: '1:N' },
+			input: {},
+			output: t.obj({ id: t.str() }),
+			resourceOutput: {
+				method: 'todo.sheetColumns',
+				// @ts-expect-error `table` is no input field
+				input: 'table',
+				loadOptions: [],
+				toOutput: () => ({}),
+			},
+			async *run() {},
+		});
+	});
+
+	it('gives the lookup calls in order, with the ID that the input pattern finds', () => {
+		const calls = resourceLookupsOf(contract, { sheet: 'https://todo.test/s/0badcafe/rows' });
+		expect(calls).toEqual([
+			{
+				nodeType: 'n8n-nodes-base.todo',
+				version: 2,
+				methodName: 'getColumns',
+				currentNodeParameters: {
+					resource: 'sheet',
+					sheetId: { __rl: true, mode: 'id', value: '0badcafe' },
+				},
+			},
+			{
+				nodeType: 'n8n-nodes-base.todo',
+				version: 1,
+				methodName: 'getColumns',
+				currentNodeParameters: {
+					resource: 'sheet',
+					sheet: { __rl: true, mode: 'id', value: '0badcafe' },
+				},
+			},
+		]);
+	});
+
+	it('gives no call for an expression, a value without an ID, or a contract without a pointer', () => {
+		expect(resourceLookupsOf(contract, { sheet: '={{ $json.sheet }}' })).toEqual([]);
+		expect(resourceLookupsOf(contract, { sheet: 'no id here' })).toEqual([]);
+		expect(resourceLookupsOf(contract, {})).toEqual([]);
+		expect(resourceLookupsOf(toContract(listTasks), { project: '0badcafe' })).toEqual([]);
+	});
+
+	it('takes the whole value as the ID when the input field has no pattern, and none for a bad one', () => {
+		const withSheet = (sheetField: JsonSchema) => ({
+			...contract,
+			input: { ...contract.input, properties: { sheet: sheetField } },
+		});
+		const open = withSheet({ type: 'string' });
+		expect(resourceLookupsOf(withSheet({ pattern: '(' }), { sheet: 'Sheet 1' })).toEqual([]);
+		expect(resourceLookupsOf(open, { sheet: 'Sheet 1' })[0]?.currentNodeParameters).toMatchObject({
+			sheetId: { value: 'Sheet 1' },
+		});
+	});
+
+	it('refuses a pointer to no input field, a pointer without calls, and a required typical field', () => {
+		const pointer = contract.output['x-n8n-resource'];
+		if (!pointer) throw new Error('no pointer');
+		const output = {
+			...contract.output,
+			'x-n8n-resource': { ...pointer, input: 'table', loadOptions: [] },
+			properties: { id: { type: 'string' as const, 'x-n8n-claim': 'typical' as const } },
+			required: ['id'],
+		};
+		expect(lintContract({ ...contract, output })).toEqual([
+			'todo.sheet.read: resourceOutput.input names no input field: table',
+			'todo.sheet.read: resourceOutput lists no loadOptions call',
+			'todo.sheet.read: output.id is typical, so it must not be required',
+		]);
+	});
+});
 
 describe('toNodeType', () => {
 	const NodeType = toNodeType(listTasks);

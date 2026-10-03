@@ -1,3 +1,6 @@
+import { resourceLookupsOf } from '@n8n/node-sdk/host';
+import { toContract } from '@n8n/node-sdk/registry';
+
 import { getManyDatabasePages } from '../nodes/notion/actions/database-page.get-all';
 
 const fields = [
@@ -44,5 +47,22 @@ describe('notion.databasePage.getAll resourceOutput', () => {
 		});
 		expect(output?.properties?.property_story_points).toEqual({ type: 'number' });
 		expect(output?.required?.filter((key) => key === 'property_story_points')).toHaveLength(1);
+	});
+
+	it('lists the properties with the legacy Notion node, data source first, then database', () => {
+		const id = '0123456789abcdef0123456789abcdef';
+		const calls = resourceLookupsOf(toContract(getManyDatabasePages), {
+			database: `https://www.notion.so/Tasks-${id}`,
+		});
+		const legacy = {
+			nodeType: 'n8n-nodes-base.notion',
+			methodName: 'getFilterProperties',
+		};
+		const parameters = { resource: 'databasePage', operation: 'getAll' };
+		const locator = { __rl: true, mode: 'id', value: id };
+		expect(calls).toEqual([
+			{ ...legacy, version: 3, currentNodeParameters: { ...parameters, dataSourceId: locator } },
+			{ ...legacy, version: 2.2, currentNodeParameters: { ...parameters, databaseId: locator } },
+		]);
 	});
 });

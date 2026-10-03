@@ -99,6 +99,41 @@ packument field `n8nContract` of a published version also states `nodeContract`.
   sandbox reads only the manifest, and refuses a bundle whose `baseUrl` host is not in it.
 - WIT describes only code that runs. A native trigger and a declarative credential scheme have
   a manifest and no bundle.
+- An output keyword that a host ignores does not raise the Node Contract minor:
+  `x-n8n-claim` and `x-n8n-resource` are for builders, and a host runs a bundle that has them
+  as before.
+
+## Version of an action change
+
+`diffContracts` (`src/version.ts`) gives the kind of a change between two contract documents.
+The publish gate (`checkPublish`) refuses a smaller bump. A patch must keep the contract hash.
+
+| Change | Kind |
+|---|---|
+| Prose only (`title`, `description`, `x-n8n-hint`, `examples`, summary) | patch |
+| An optional input, or a required input with a default | minor |
+| A required output field becomes typical (`x-n8n-claim: 'typical'`, not in `required`) | minor |
+| An optional or typical output field becomes typical or required | minor |
+| A removed scope, egress host, host import, provider call or binary data access; a first scope declaration | minor |
+| Other `loadOptions` calls in `x-n8n-resource`, with the same `method` and `input` | minor |
+| A new required input, or a narrower input | major |
+| A removed output field, or a field that becomes optional (from required or typical) | major |
+| An added or removed `x-n8n-resource`, or another `method` or `input` in it | major |
+| A changed flow, output list, input list or trigger kind; a new scope, egress host, host import, provider call, binary data access or credential type; a removed credential type | major |
+
+Output claims:
+
+- **required**: the field is in `required`. Code can read it without a check.
+- **typical**: the service sends the field as a rule, but a plan, a permission or an API
+  version can leave it out. Write `.with({ 'x-n8n-claim': 'typical' }).optional()`. A required
+  field cannot be typical (`lintContract`).
+- **optional**: absence is normal.
+
+Resource pointer: `resourceOutput` writes `output['x-n8n-resource']`. It names the input field
+that holds the resource ID, and the legacy load-options calls that list the fields of the
+resource. A builder runs the calls with `resourceLookupsOf` and the node's credential, and
+gives the fields to the `toOutput` hatch. When the input field has a `pattern`, the ID is the
+first match in the value, for example in a URL.
 
 ## Files and commands
 

@@ -403,7 +403,12 @@ import { googleGemini } from '@n8n/nodes/googleGemini';`;
 				tasks,
 			);
 			expect(result.get('Tasks')).toEqual(fields);
-			expect(outcomeLogged(logger)).toMatchObject({ nodeName: 'Tasks', outcome: 'ok', fields: 2 });
+			expect(outcomeLogged(logger)).toMatchObject({
+				nodeName: 'Tasks',
+				method: 'notion.dataSourceProperties',
+				outcome: 'ok',
+				fields: 2,
+			});
 			expect(exploreResources).toHaveBeenNthCalledWith(1, {
 				nodeType: 'n8n-nodes-base.notion',
 				version: 3,
@@ -421,6 +426,18 @@ import { googleGemini } from '@n8n/nodes/googleGemini';`;
 				version: 2.2,
 				currentNodeParameters: { databaseId: { __rl: true, mode: 'id', value: databaseId } },
 			});
+		});
+
+		it('skips the lookup when the database is an expression or holds no ID', async () => {
+			const exploreResources = vi.fn();
+			const withDatabase = (database: string): WorkflowJSON => ({
+				...tasks,
+				nodes: tasks.nodes.map((node) => ({ ...node, parameters: { database } })),
+			});
+			const context = makeContext(exploreResources);
+			expect((await fetchResourceFields(context, withDatabase('={{ $json.db }}'))).size).toBe(0);
+			expect((await fetchResourceFields(context, withDatabase('Tasks'))).size).toBe(0);
+			expect(exploreResources).not.toHaveBeenCalled();
 		});
 
 		it('skips the lookup when more than one credential could be bound', async () => {

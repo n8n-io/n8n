@@ -381,6 +381,27 @@ function enumChanges(side: Side, at: string, prev: JsonSchema, next: JsonSchema)
 
 const isRequired = (schema: JsonSchema, name: string) => (schema.required ?? []).includes(name);
 
+const CLAIMS = ['optional', 'typical', 'required'] as const;
+
+const claimOf = (parent: JsonSchema, name: string, field: JsonSchema) =>
+	isRequired(parent, name) ? 2 : field['x-n8n-claim'] === 'typical' ? 1 : 0;
+
+/**
+ * Only a field that becomes optional drops a guarantee that code relies on: a major. A typical
+ * field may be absent already, and its type stays, so required → typical is a minor.
+ */
+function outputClaimChanges(
+	path: string,
+	[prev, old]: [JsonSchema, JsonSchema],
+	[next, now]: [JsonSchema, JsonSchema],
+	name: string,
+): ContractChange[] {
+	const [before, after] = [claimOf(prev, name, old), claimOf(next, name, now)];
+	if (before === after) return [];
+	const text = `${path} is ${CLAIMS[after]}`;
+	return [after === 0 ? major(text) : { kind: 'minor', text }];
+}
+
 function propertyChanges(side: Side, at: string, prev: JsonSchema, next: JsonSchema) {
 	const [before, after] = [prev.properties ?? {}, next.properties ?? {}];
 	const names = [...new Set([...Object.keys(before), ...Object.keys(after)])];
@@ -396,15 +417,17 @@ function propertyChanges(side: Side, at: string, prev: JsonSchema, next: JsonSch
 			];
 		}
 		const requiredChange =
-			isRequired(prev, name) === required
-				? []
-				: [
-						narrowed(
-							side,
-							required && !defaulted,
-							`${path} is ${required ? 'required' : 'optional'}`,
-						),
-					];
+			side === 'output'
+				? outputClaimChanges(path, [prev, old], [next, now], name)
+				: isRequired(prev, name) === required
+					? []
+					: [
+							narrowed(
+								side,
+								required && !defaulted,
+								`${path} is ${required ? 'required' : 'optional'}`,
+							),
+						];
 		return [...requiredChange, ...schemaChanges(side, path, old, now)];
 	});
 }
@@ -430,6 +453,19 @@ function variantChanges(side: Side, at: string, prev: JsonSchema, next: JsonSche
 	});
 }
 
+/**
+ * With a pointer, the fields come from the user's resource. So static to dynamic, and back,
+ * is a major, as is another resource or field list. Other calls for the same fields are a minor.
+ */
+function resourceChanges(at: string, prev: JsonSchema, next: JsonSchema): ContractChange[] {
+	const [old, now] = [prev['x-n8n-resource'], next['x-n8n-resource']];
+	if (canonicalJson(old) === canonicalJson(now)) return [];
+	if (!old || !now) return [major(`${at} ${now ? 'adds' : 'drops'} x-n8n-resource`)];
+	return old.method === now.method && old.input === now.input
+		? [{ kind: 'minor', text: `${at} changes the x-n8n-resource loadOptions` }]
+		: [major(`${at} changes x-n8n-resource`)];
+}
+
 /** Classifies one schema change by the rules of the contract diff engine. */
 function schemaChanges(
 	side: Side,
@@ -451,6 +487,7 @@ function schemaChanges(
 			: []),
 		...enumChanges(side, at, prev, next),
 		...boundChanges(side, at, prev, next),
+		...resourceChanges(at, prev, next),
 		...propertyChanges(side, at, prev, next),
 		...itemChanges,
 		...variantChanges(side, at, prev, next),
@@ -527,10 +564,11 @@ function inputChanges(prev: ContractDocument, next: ContractDocument): ContractC
 
 /**
  * Classifies the change between two versions of one action: additive optional input (or a
- * new required input with a default), a removed scope, egress host or import is minor; a new
- * required input, a removed or narrowed output, a changed output list, a changed flow, an added
- * permission (scope, egress host, import, credential type) or a removed credential type is
- * major; no normative change is a patch.
+ * new required input with a default), a removed scope, egress host or import, or a required
+ * output field that becomes typical is minor; a new required input, a removed or narrowed
+ * output, an output field that becomes optional, an added or removed `x-n8n-resource`, a
+ * changed output list, a changed flow, an added permission (scope, egress host, import,
+ * credential type) or a removed credential type is major; no normative change is a patch.
  */
 export function diffContracts(prev: ContractDocument, next: ContractDocument): ContractDiff {
 	const input = schemaChanges('input', 'input', prev.input, next.input);

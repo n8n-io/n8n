@@ -210,8 +210,14 @@ const queryPage = t
 	})
 	.with({ additionalProperties: true });
 
+const LEGACY_PROPERTIES = {
+	nodeType: 'n8n-nodes-base.notion',
+	methodName: 'getFilterProperties',
+	parameters: { resource: 'databasePage', operation: 'getAll' },
+};
+
 export const getManyDatabasePages = databasePage.action('getAll', {
-	minor: 2,
+	minor: 3,
 	action: 'Get many database pages',
 	summary: 'List pages of a Notion database, optionally filtered and sorted.',
 	flow: { effect: 'read', cardinality: '1:N', idempotent: true },
@@ -219,7 +225,16 @@ export const getManyDatabasePages = databasePage.action('getAll', {
 	input,
 	output: page,
 	deriveOutput,
-	resourceOutput: { method: 'notion.dataSourceProperties', toOutput: outputFromProperties },
+	resourceOutput: {
+		method: 'notion.dataSourceProperties',
+		input: 'database',
+		// v3 reads a data source ID and v2.2 a database ID; the action accepts both.
+		loadOptions: [
+			{ ...LEGACY_PROPERTIES, version: 3, idParameter: 'dataSourceId' },
+			{ ...LEGACY_PROPERTIES, version: 2.2, idParameter: 'databaseId' },
+		],
+		toOutput: outputFromProperties,
+	},
 	async *run({ input: parameters, http }) {
 		const dataSourceId = await dataSourceOf(http, notionIdOf(parameters.database));
 		const { where, limit, sort } = parameters;

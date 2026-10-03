@@ -1,8 +1,14 @@
 import { getWorkspaceRoot } from '@n8n/agents/sandbox';
 import { validate, type JsonSchema, type ResourceField } from '@n8n/node-sdk';
 import { modelCatalogDeclaration, toTs } from '@n8n/node-sdk/codegen';
-import { credentialHostsOf, egressIssuesOf, exampleOf } from '@n8n/node-sdk/host';
-import type { NodeContractLock } from '@n8n/node-sdk/registry';
+import {
+	credentialHostsOf,
+	egressIssuesOf,
+	exampleOf,
+	resourceLookupsOf,
+	type ResourceLookupCall,
+} from '@n8n/node-sdk/host';
+import { toContract, type NodeContractLock } from '@n8n/node-sdk/registry';
 import {
 	actionOfNode,
 	actions,
@@ -22,7 +28,7 @@ import {
 import { z } from 'zod';
 
 import type { ValidationWarning } from './workflow-validation-warnings';
-import type { ExploreResourcesParams, InstanceAiContext } from '../../types';
+import type { InstanceAiContext } from '../../types';
 import type { FixtureOrigin } from '../../workflow-loop/workflow-loop-state';
 import {
 	contractReplacementOf,
@@ -188,44 +194,6 @@ export function outputOf(
 /** Resource fields by node name, from `fetchResourceFields`. */
 export type ResourceFields = ReadonlyMap<string, readonly ResourceField[]>;
 
-type LookupCall = Pick<ExploreResourcesParams, 'nodeType' | 'version' | 'methodName'> & {
-	currentNodeParameters: Record<string, unknown>;
-};
-
-// Same ID pattern as the Notion action; the legacy locator accepts an ID only.
-const NOTION_ID = /[0-9a-f]{8}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{12}/i;
-
-const idLocator = (value: string) => ({ __rl: true, mode: 'id', value });
-
-/**
- * The lookups `resourceOutput.method` names, as load-options calls on legacy nodes. The host
- * tries the calls in order and keeps the first that lists fields.
- */
-const RESOURCE_LOOKUPS: Record<string, (parameters: Record<string, unknown>) => LookupCall[]> = {
-	// v3 reads a data source ID and v2 a database ID; the action accepts both.
-	'notion.dataSourceProperties': ({ database }) => {
-		const id =
-			typeof database === 'string' && !database.startsWith('=')
-				? NOTION_ID.exec(database)?.[0]
-				: undefined;
-		if (!id) return [];
-		const base = { nodeType: 'n8n-nodes-base.notion', methodName: 'getFilterProperties' };
-		const databasePage = { resource: 'databasePage', operation: 'getAll' };
-		return [
-			{
-				...base,
-				version: 3,
-				currentNodeParameters: { ...databasePage, dataSourceId: idLocator(id) },
-			},
-			{
-				...base,
-				version: 2.2,
-				currentNodeParameters: { ...databasePage, databaseId: idLocator(id) },
-			},
-		];
-	},
-};
-
 const RESOURCE_LOOKUP_TIMEOUT_MS = 5_000;
 
 async function withTimeout<T>(work: Promise<T>, fallback: T, timeoutMs: number): Promise<T> {
@@ -245,7 +213,7 @@ interface Lookup {
 
 async function firstFields(
 	explore: NonNullable<InstanceAiContext['nodeService']['exploreResources']>,
-	[call, ...rest]: LookupCall[],
+	[call, ...rest]: readonly ResourceLookupCall[],
 	credential: { credentialType: string; credentialId: string },
 ): Promise<Lookup> {
 	if (!call) return { fields: [], outcome: 'failed' };
@@ -261,9 +229,9 @@ async function firstFields(
 }
 
 /**
- * The fields of the resource each node reads, for actions with `resourceOutput`. The source
- * binds no credential, so the lookup uses the node's credential or else the sole stored
- * credential the action accepts. Best effort: a failed or slow lookup leaves the node out.
+ * The fields of the resource each node reads, for contracts with an `x-n8n-resource` pointer.
+ * The source binds no credential, so the lookup uses the node's credential or else the sole
+ * stored credential the action accepts. Best effort: a failed or slow lookup leaves the node out.
  */
 export async function fetchResourceFields(
 	context: InstanceAiContext,
@@ -273,11 +241,11 @@ export async function fetchResourceFields(
 	if (!explore) return new Map();
 	const targets = workflow.nodes.flatMap((node) => {
 		const action = actionOfNode(node);
-		const calls = action?.resourceOutput
-			? (RESOURCE_LOOKUPS[action.resourceOutput.method]?.(node.parameters ?? {}) ?? [])
-			: [];
+		const contract = action && toContract(action);
+		const method = contract?.output['x-n8n-resource']?.method;
+		const calls = contract ? resourceLookupsOf(contract, node.parameters ?? {}) : [];
 		return action && node.name && calls.length > 0
-			? [{ name: node.name, node, action, calls }]
+			? [{ name: node.name, node, action, method, calls }]
 			: [];
 	});
 	if (targets.length === 0) return new Map();
@@ -286,7 +254,7 @@ export async function fetchResourceFields(
 		(await context.nodeService.resourceLookupTimeoutMs?.().catch(() => undefined)) ??
 		RESOURCE_LOOKUP_TIMEOUT_MS;
 	const fetched = await Promise.all(
-		targets.map(async ({ name, node, action, calls }) => {
+		targets.map(async ({ name, node, action, method, calls }) => {
 			const bound = Object.entries(node.credentials ?? {}).flatMap(([type, value]) =>
 				action.credentialTypes.includes(type) && typeof value?.id === 'string'
 					? [{ credentialType: type, credentialId: value.id }]
@@ -308,7 +276,7 @@ export async function fetchResourceFields(
 				: { fields: [], outcome: 'no-credential' };
 			context.logger.debug('Resource lookup for a node contract', {
 				nodeName: name,
-				method: action.resourceOutput?.method,
+				method,
 				outcome,
 				fields: fields.length,
 			});

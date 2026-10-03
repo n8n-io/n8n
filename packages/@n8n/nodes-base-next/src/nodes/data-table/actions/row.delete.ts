@@ -1,4 +1,4 @@
-import { row, ROW_COLUMNS, rowFromColumns, storedRow, toFilter, where } from '../data-table.node';
+import { row, storedRow, toFilter, where } from '../data-table.node';
 
 export const deleteRows = row.action('delete', {
 	action: 'Delete rows',
@@ -7,7 +7,6 @@ export const deleteRows = row.action('delete', {
 	imports: ['dataTables'],
 	input: { where },
 	output: storedRow,
-	resourceOutput: { method: ROW_COLUMNS, toOutput: rowFromColumns },
 	async *run({ input, dataTables }) {
 		const table = await dataTables.open(input.table);
 		yield* await table.delete(toFilter(input.where));

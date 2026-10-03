@@ -228,6 +228,15 @@ export function testPattern(pattern: string, input: string, flags?: string): boo
 		: safeRegex.test(pattern, input, flags);
 }
 
+/** The first match of `pattern` in `input`, with the timeout of `safeRegex`. None for a bad pattern. */
+export function firstMatchOf(pattern: string, input: string): string | undefined {
+	try {
+		return safeRegex.exec(pattern, input)?.[0];
+	} catch {
+		return undefined;
+	}
+}
+
 const FORMAT_EXAMPLES: Record<string, string> = {
 	date: '2026-09-15',
 	'date-time': '2026-09-15T09:30:00.000Z',

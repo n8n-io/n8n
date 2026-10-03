@@ -5,7 +5,7 @@ import {
 	type InputItem,
 } from '@n8n/node-sdk';
 
-import { cellsOf, row, ROW_COLUMNS, rowFromColumns, storedRow, values } from '../data-table.node';
+import { cellsOf, row, storedRow, values } from '../data-table.node';
 
 interface Write {
 	readonly table: DataTableRef;
@@ -19,7 +19,6 @@ export const insertRows = row.action('insert', {
 	imports: ['dataTables', 'inputOf'],
 	input: { values: values.optional().hint('Omit to store the fields of the item') },
 	output: storedRow,
-	resourceOutput: { method: ROW_COLUMNS, toOutput: rowFromColumns },
 	async *run({ items, dataTables, inputOf }) {
 		const inputs = await Promise.all(items.map(async (item) => await inputOf(item)));
 		// Items can name different tables. Each table gets one write, in the order of its first item.

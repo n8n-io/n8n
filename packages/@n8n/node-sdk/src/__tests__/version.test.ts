@@ -181,6 +181,51 @@ describe('diffContracts', () => {
 		expect(diff(t.obj({ text: t.str(), tags: t.arr(t.str()), extra: t.str() })).kind).toBe('minor');
 	});
 
+	it('classifies a required output field that becomes typical as a minor, and optional as a major', () => {
+		const at = (text: AnySchema) =>
+			contractOf({ input: baseInput, output: t.obj({ id: t.str(), text }) });
+		const required = at(t.str());
+		const typical = at(t.str().with({ 'x-n8n-claim': 'typical' }).optional());
+		const optional = at(t.str().optional());
+		expect(diffContracts(required, typical).changes).toEqual([
+			{ kind: 'minor', text: 'output.text is typical' },
+		]);
+		expect(diffContracts(typical, optional).changes).toEqual([
+			{ kind: 'major', text: 'output.text is optional' },
+		]);
+		expect(diffContracts(required, optional).kind).toBe('major');
+		expect(diffContracts(optional, typical).kind).toBe('minor');
+		expect(diffContracts(typical, required).kind).toBe('minor');
+		expect(contractHash(typical)).not.toBe(contractHash(optional));
+	});
+
+	it('classifies an added or removed resource pointer, or another resource, as a major', () => {
+		const call = {
+			nodeType: 'n8n-nodes-base.demo',
+			version: 2,
+			methodName: 'getFields',
+			parameters: {},
+			idParameter: 'id',
+		};
+		const pointer = { method: 'demo.fields', input: 'text', loadOptions: [call] };
+		const pointed = (resource: typeof pointer) => ({
+			...base,
+			output: { ...base.output, 'x-n8n-resource': resource },
+		});
+		expect(diffContracts(base, pointed(pointer)).changes).toEqual([
+			{ kind: 'major', text: 'output adds x-n8n-resource' },
+		]);
+		expect(diffContracts(pointed(pointer), base).kind).toBe('major');
+		expect(diffContracts(pointed(pointer), pointed({ ...pointer, input: 'mode' })).kind).toBe(
+			'major',
+		);
+		const fallback = { ...pointer, loadOptions: [call, { ...call, version: 1 }] };
+		expect(diffContracts(pointed(pointer), pointed(fallback)).changes).toEqual([
+			{ kind: 'minor', text: 'output changes the x-n8n-resource loadOptions' },
+		]);
+		expect(contractHash(pointed(pointer))).not.toBe(contractHash(base));
+	});
+
 	it('classifies a changed flow as a major', () => {
 		expect(kindOf({ input: baseInput, flow: { ...FLOW, cardinality: '1:N' } })).toBe('major');
 	});

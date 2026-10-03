@@ -3,8 +3,6 @@ import {
 	limit,
 	pagesOf,
 	row,
-	ROW_COLUMNS,
-	rowFromColumns,
 	sort,
 	storedRow,
 	SYSTEM_COLUMNS,
@@ -23,7 +21,6 @@ export const getRows = row.action('get', {
 		limit: limit.optional(),
 	},
 	output: storedRow,
-	resourceOutput: { method: ROW_COLUMNS, toOutput: rowFromColumns },
 	async *run({ input, dataTables }) {
 		const table = await dataTables.open(input.table);
 		const { sort: order } = input;

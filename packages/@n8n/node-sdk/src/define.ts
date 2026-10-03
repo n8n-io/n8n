@@ -12,6 +12,7 @@ import {
 	type Infer,
 	type JsonSchema,
 	type ObjectOf,
+	type ResourcePointer,
 	type RunFieldsOf,
 	type Shape,
 } from './schema';
@@ -24,7 +25,7 @@ import {
 	type ProviderKind,
 } from './providers';
 import type { PollConfig, TriggerKind, WebhookConfig, WebhookRequest } from './triggers';
-import { exampleOf, readAs, validate } from './validate';
+import { exampleOf, firstMatchOf, readAs, validate } from './validate';
 
 /**
  * The integration identity: name, credential, and base URL shared by its actions.
@@ -1227,14 +1228,23 @@ interface ActionSpecBase<
 	 */
 	deriveOutput?(input: ObjectOf<Full>): JsonSchema;
 	/**
-	 * Pure hatch: the output shape from the fields of the resource these parameters name.
-	 * `method` names a lookup the host runs with the node's credential. Without fields, the host
-	 * keeps `deriveOutput`.
+	 * The output from the fields of the resource that an input field names. The contract
+	 * document holds the pointer as `output['x-n8n-resource']`, so a builder can list the fields
+	 * with the node's credential. Without fields, the builder keeps `deriveOutput`.
+	 *
+	 * @example
+	 * ```ts
+	 * resourceOutput: {
+	 *   method: 'notion.dataSourceProperties',
+	 *   input: 'database',
+	 *   loadOptions: [{ nodeType: 'n8n-nodes-base.notion', version: 3, methodName: 'getFilterProperties',
+	 *     parameters: { resource: 'databasePage', operation: 'getAll' }, idParameter: 'dataSourceId' }],
+	 *   toOutput: outputFromProperties,
+	 * },
+	 * ```
 	 */
-	readonly resourceOutput?: {
-		/** The lookup that lists the fields, e.g. `notion.dataSourceProperties`. */
-		readonly method: string;
-		/** The output schema from the fields and the parameters. No I/O. */
+	readonly resourceOutput?: ResourcePointer<keyof Full & string> & {
+		/** Pure hatch: the output schema from the fields and the parameters. No I/O. */
 		toOutput(fields: readonly ResourceField[], input: ObjectOf<Full>): JsonSchema;
 	};
 }
@@ -1795,7 +1805,10 @@ type ContractSource = Pick<
 	/** The scopes that the contract needs. */
 	readonly scopes?: readonly string[];
 } & (
-		| Pick<Action, 'action' | 'flow' | 'outputs' | 'egress' | 'imports' | 'inputs'>
+		| Pick<
+				Action,
+				'action' | 'flow' | 'outputs' | 'egress' | 'imports' | 'inputs' | 'resourceOutput'
+		  >
 		| (Pick<Trigger, 'trigger'> &
 				(
 					| {
@@ -1834,6 +1847,7 @@ export const toContract = (source: ContractSource): ContractDocument => {
 		'kind' in source ? undefined : contractEgressOf(source.egress, source.node.baseUrl);
 	const imports = 'kind' in source ? [] : [...new Set(source.imports ?? [])].sort();
 	const inputs = 'kind' in source ? undefined : source.inputs;
+	const resource = 'kind' in source ? undefined : source.resourceOutput;
 	return {
 		id: source.id,
 		version: source.version,
@@ -1849,7 +1863,16 @@ export const toContract = (source: ContractSource): ContractDocument => {
 			? { trigger: source.kind === 'native' ? source.native.on : source.kind }
 			: {}),
 		input: source.inputSchema,
-		output: source.output.json,
+		output: resource
+			? {
+					...source.output.json,
+					'x-n8n-resource': {
+						method: resource.method,
+						input: resource.input,
+						loadOptions: resource.loadOptions,
+					},
+				}
+			: source.output.json,
 		...(!('kind' in source) && source.outputs ? { outputs: source.outputs } : {}),
 		...(egress ? { egress } : {}),
 		...(imports.length ? { imports } : {}),
@@ -2012,6 +2035,8 @@ export function lintContract(contract: ContractDocument): string[] {
 			? [`${contract.id}: an input binary must be a field, a list item, or in a variant branch`]
 			: []),
 		...egressIssues(contract),
+		...resourceIssues(contract),
+		...typicalIssues(contract.id, 'output', contract.output),
 		...inputIssues(contract),
 		...providerIssues(contract.id, contract.input, contract.output, contract.flow),
 	];
@@ -2079,6 +2104,70 @@ function inputIssues({ id, inputs, flow, imports }: ContractDocument): string[] 
 			.filter((name) => !isHostImport(name))
 			.map((name) => `${id}: ${String(name)} is not a host import`),
 	];
+}
+
+function resourceIssues({ id, input, output }: ContractDocument): string[] {
+	const pointer = output['x-n8n-resource'];
+	if (!pointer) return [];
+	return [
+		...(input.properties?.[pointer.input]
+			? []
+			: [`${id}: resourceOutput.input names no input field: ${pointer.input}`]),
+		...(pointer.loadOptions.length ? [] : [`${id}: resourceOutput lists no loadOptions call`]),
+	];
+}
+
+/** A typical field may be absent, so it cannot be required. */
+function typicalIssues(id: string, at: string, schema: JsonSchema): string[] {
+	const required = schema.required ?? [];
+	return [
+		...Object.entries(schema.properties ?? {}).flatMap(([name, field]) => [
+			...(field['x-n8n-claim'] === 'typical' && required.includes(name)
+				? [`${id}: ${at}.${name} is typical, so it must not be required`]
+				: []),
+			...typicalIssues(id, `${at}.${name}`, field),
+		]),
+		...(schema.items ? typicalIssues(id, `${at}[]`, schema.items) : []),
+		...[...(schema.oneOf ?? []), ...(schema.anyOf ?? [])].flatMap((branch) =>
+			typicalIssues(id, at, branch),
+		),
+	];
+}
+
+/** A lookup call of the builder: a load-options call on a legacy node. */
+export interface ResourceLookupCall {
+	/** The legacy node type, e.g. `n8n-nodes-base.notion`. */
+	readonly nodeType: string;
+	/** The legacy node version. */
+	readonly version: number;
+	/** The load-options method. */
+	readonly methodName: string;
+	/** The node parameters of the call, the resource ID included. */
+	readonly currentNodeParameters: Record<string, unknown>;
+}
+
+/**
+ * The calls that list the fields of the resource the parameters name, in the order to try them.
+ * None when the contract has no `x-n8n-resource`, or the input field holds no ID.
+ */
+export function resourceLookupsOf(
+	contract: Pick<ContractDocument, 'input' | 'output'>,
+	parameters: Readonly<Record<string, unknown>>,
+): ResourceLookupCall[] {
+	const pointer = contract.output['x-n8n-resource'];
+	const value = pointer ? parameters[pointer.input] : undefined;
+	if (!pointer || typeof value !== 'string' || value.startsWith('=')) return [];
+	const pattern = contract.input.properties?.[pointer.input]?.pattern;
+	const id = pattern === undefined ? value : firstMatchOf(pattern, value);
+	if (!id) return [];
+	return pointer.loadOptions.map(
+		({ nodeType, version, methodName, parameters: fixed, idParameter }) => ({
+			nodeType,
+			version,
+			methodName,
+			currentNodeParameters: { ...fixed, [idParameter]: { __rl: true, mode: 'id', value: id } },
+		}),
+	);
 }
 
 /** A template field stands for one host label, so the pattern check reads it as one. */

@@ -1,13 +1,4 @@
-import {
-	cellsOf,
-	row,
-	ROW_COLUMNS,
-	rowFromColumns,
-	storedRow,
-	toFilter,
-	values,
-	where,
-} from '../data-table.node';
+import { cellsOf, row, storedRow, toFilter, values, where } from '../data-table.node';
 
 export const upsertRows = row.action('upsert', {
 	action: 'Upsert rows',
@@ -16,7 +7,6 @@ export const upsertRows = row.action('upsert', {
 	imports: ['dataTables'],
 	input: { where, values: values.optional().hint('Omit to set the fields of the item') },
 	output: storedRow,
-	resourceOutput: { method: ROW_COLUMNS, toOutput: rowFromColumns },
 	async *run({ input, item, dataTables }) {
 		const table = await dataTables.open(input.table);
 		yield* await table.upsert(toFilter(input.where), input.values ?? cellsOf(item));

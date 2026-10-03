@@ -5,7 +5,7 @@ export {
 	type ContractPermissions,
 	type EgressIssues,
 } from '../egress';
-export { isToolContract } from '../define';
+export { isToolContract, resourceLookupsOf, type ResourceLookupCall } from '../define';
 export { credentialTypeOfManifest, toCredentialType } from '../credentials';
 export { setCodeLanguages } from '../host-imports';
 export {

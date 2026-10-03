@@ -2,14 +2,11 @@ import {
 	defineNode,
 	t,
 	UserError,
-	type DataTableColumnType,
 	type DataTableFilter,
 	type DataTableValue,
 	type DataTableValues,
 	type Infer,
 	type InputItem,
-	type JsonSchema,
-	type ResourceField,
 } from '@n8n/node-sdk';
 
 /** Rows of the n8n data tables of the workflow's project. The host gives the tables; no credential. */
@@ -96,36 +93,6 @@ export const storedRow = t
 	.with({
 		additionalProperties: { ...cell.json, 'x-n8n-hint': 'One field per column, by column name' },
 	});
-
-const CELL_TYPES: Record<DataTableColumnType, JsonSchema> = {
-	['string']: { type: 'string' },
-	['number']: { type: 'number' },
-	['boolean']: { type: 'boolean' },
-	date: { type: 'string', format: 'date-time' },
-};
-
-const isColumnType = (value: unknown): value is DataTableColumnType =>
-	typeof value === 'string' && value in CELL_TYPES;
-
-/**
- * Closes the row type on the columns of the table, so a misspelled column fails `tsc`. The
- * lookup lists each column with its type as the value. A cell can be empty: null.
- */
-export function rowFromColumns(fields: readonly ResourceField[]): JsonSchema {
-	const columns = fields.flatMap(({ name, value }) =>
-		isColumnType(value) && !SYSTEM_COLUMNS.includes(name)
-			? [[name, { anyOf: [CELL_TYPES[value], { type: 'null' }] }] as const]
-			: [],
-	);
-	return {
-		...storedRow.json,
-		properties: { ...storedRow.json.properties, ...Object.fromEntries(columns) },
-		required: [...(storedRow.json.required ?? []), ...columns.map(([name]) => name)],
-		additionalProperties: false,
-	};
-}
-
-export const ROW_COLUMNS = 'dataTable.columns';
 
 export const direction = t.oneOf('asc', 'desc');
 

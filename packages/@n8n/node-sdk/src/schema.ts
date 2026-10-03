@@ -82,6 +82,13 @@ export interface JsonSchema {
 	'x-n8n-declared'?: true;
 	/** On a trigger output: one more field per entry of an input list, e.g. per form field. */
 	'x-n8n-entry-fields'?: EntryFields;
+	/**
+	 * On an output field outside `required`: the service sends it as a rule, but a plan, a
+	 * permission or an API version can leave it out. Without it, absence is normal.
+	 */
+	'x-n8n-claim'?: 'typical';
+	/** On an action output: the output fields come from a resource, see `resourceOutput`. */
+	'x-n8n-resource'?: ResourcePointer;
 	/** The label and description of each `enum` value. */
 	'x-n8n-options'?: Readonly<Record<string, OptionLabel>>;
 	/** A hidden credential field that holds the base URL of its credential type. */
@@ -116,6 +123,36 @@ export interface EntryFields {
 	readonly fallback: JsonSchema;
 	/** The boolean entry field that makes the value never `null`. */
 	readonly required?: string;
+}
+
+/**
+ * A load-options call of a legacy n8n node that lists the fields of a resource. Each listed
+ * option is one field: its name and its value.
+ */
+export interface LegacyFieldList {
+	/** The legacy node type, e.g. `n8n-nodes-base.notion`. */
+	readonly nodeType: string;
+	/** The legacy node version, e.g. `2.2`. */
+	readonly version: number;
+	/** The load-options method, e.g. `getFilterProperties`. */
+	readonly methodName: string;
+	/** The other node parameters of the call, e.g. `{ resource: 'databasePage' }`. */
+	readonly parameters: Readonly<Record<string, string | number | boolean>>;
+	/** The node parameter that gets the resource ID, as a resource locator in ID mode. */
+	readonly idParameter: string;
+}
+
+/** Where the output fields of an action come from: the resource that an input field names. */
+export interface ResourcePointer<K extends string = string> {
+	/** The name of the field list, e.g. `notion.dataSourceProperties`. */
+	readonly method: string;
+	/**
+	 * The input field that names the resource, e.g. `database`. When the field has a `pattern`,
+	 * the ID is the first match in the value, e.g. in a URL. An expression names no resource.
+	 */
+	readonly input: K;
+	/** The calls that list the fields, in order. The first that lists fields wins. */
+	readonly loadOptions: readonly LegacyFieldList[];
 }
 
 declare const phantom: unique symbol;
