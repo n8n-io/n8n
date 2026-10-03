@@ -19,7 +19,7 @@ import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { assertNever } from '@/utils';
 
 import { JOB_TYPE_NAME } from './constants';
-import { handBackJob } from './job-handback';
+import { getLockToken, handBackJob, handBackUnstartedJobs } from './job-handback';
 import { JobOutcomeTracker } from './job-outcome-tracker';
 import { JobProcessor } from './job-processor';
 import { DEFAULT_QUEUE_NAME, resolveQueueName, resolveWorkerPoolName } from './queue-name';
@@ -57,6 +57,8 @@ export class ScalingService {
 	private createBullQueue?: (name: string) => JobQueue;
 
 	private stopping = false;
+
+	private readonly handlerSeen = new Set<string>();
 
 	constructor(
 		private readonly logger: Logger,
@@ -174,6 +176,9 @@ export class ScalingService {
 		this.assertQueue();
 
 		void this.defaultQueue.process(JOB_TYPE_NAME, concurrency, async (job: Job) => {
+			// Marked before any check, so the shutdown sweep never hands back a job already handled.
+			this.handlerSeen.add(String(job.id));
+
 			if (this.stopping) {
 				const { executionId } = job.data;
 				const jobId = job.id;
@@ -273,6 +278,10 @@ export class ScalingService {
 
 		const shutdownWindowMs =
 			this.globalConfig.generic.gracefulShutdownTimeout * Time.seconds.toMilliseconds;
+		const getRemainingWindowMs = () => Math.max(0, shutdownWindowMs - (Date.now() - start));
+
+		// Before the drain, so the lock of a fetched job cannot expire and let the stall check fail it.
+		await this.handBackJobsFetchedBeforePause(getRemainingWindowMs());
 
 		// The budget bounds only the in-process wait. The queued-job wait stays
 		// unbounded, so a long queued execution still runs to completion.
@@ -282,7 +291,6 @@ export class ScalingService {
 		const hasInProcessExecutionsToDrain = () =>
 			this.activeExecutions.getRunningExecutionIds().length !== 0;
 		const isWithinDrainBudget = () => Date.now() - start < drainTimeoutMs;
-		const getRemainingWindowMs = () => Math.max(0, shutdownWindowMs - (Date.now() - start));
 
 		let count = 0;
 
@@ -333,17 +341,6 @@ export class ScalingService {
 
 	// Waits for fetches in flight at the pause, so a job that reaches the handler is handed back before exit.
 	private async waitForCurrentQueueJobs(remainingWindowMs: number) {
-		let timeout: NodeJS.Timeout | undefined;
-
-		const timedOut = new Promise<void>((resolve) => {
-			timeout = setTimeout(
-				resolve,
-				// Leave the other half of what is left for the cancel step that follows.
-				Math.min(CURRENT_JOBS_SETTLE_TIMEOUT_MS, remainingWindowMs / 2),
-			);
-			timeout.unref();
-		});
-
 		const settled = Promise.all(
 			[...this.queueByName.values()].map(async (queue) => await queue.whenCurrentJobsFinished()),
 		).catch((error) => {
@@ -351,8 +348,59 @@ export class ScalingService {
 			this.logger.warn('Failed to wait for current queue jobs before stopping', { error });
 		});
 
+		await this.raceSettleTimeout(settled, remainingWindowMs);
+	}
+
+	private async handBackJobsFetchedBeforePause(remainingWindowMs: number) {
+		const token = getLockToken(this.defaultQueue);
+
+		if (token === undefined) {
+			this.logger.warn(
+				'Skipped handing back jobs fetched before the pause: queue has no lock token',
+			);
+			return;
+		}
+
+		const handedBack = handBackUnstartedJobs(
+			this.defaultQueue,
+			token,
+			(jobId) => this.handlerSeen.has(jobId),
+			(jobId, error) => {
+				this.logger.warn(`Failed to hand back job ${jobId} fetched before the pause`, {
+					jobId,
+					error,
+				});
+			},
+		)
+			.then((jobIds) => {
+				if (jobIds.length > 0) {
+					this.logger.info(
+						`Handed back ${jobIds.length} jobs fetched before the pause (job IDs: ${jobIds.join(', ')})`,
+						{ jobIds },
+					);
+				}
+			})
+			.catch((error) => {
+				this.logger.warn('Failed to hand back jobs fetched before the pause', { error });
+			});
+
+		await this.raceSettleTimeout(handedBack, remainingWindowMs);
+	}
+
+	private async raceSettleTimeout(work: Promise<unknown>, remainingWindowMs: number) {
+		let timeout: NodeJS.Timeout | undefined;
+
+		const timedOut = new Promise<void>((resolve) => {
+			timeout = setTimeout(
+				resolve,
+				// Leave the other half of what is left for the step that runs after this one.
+				Math.min(CURRENT_JOBS_SETTLE_TIMEOUT_MS, remainingWindowMs / 2),
+			);
+			timeout.unref();
+		});
+
 		try {
-			await Promise.race([settled, timedOut]);
+			await Promise.race([work, timedOut]);
 		} finally {
 			clearTimeout(timeout);
 		}
@@ -543,6 +591,14 @@ export class ScalingService {
 	 * Register listeners on a `worker` process for Bull queue events.
 	 */
 	private registerWorkerListeners(queue: JobQueue) {
+		// Cleared only after Bull moved the job out of active, so a finished job is never swept.
+		queue.on('completed', (job: Job) => this.handlerSeen.delete(String(job.id)));
+		queue.on('failed', (job: Job | null) => {
+			// Bull's stall check emits failed for a job it has already removed, so job can be null.
+			if (job === null) return;
+			this.handlerSeen.delete(String(job.id));
+		});
+
 		queue.on('global:progress', (jobId: JobId, msg: unknown) => {
 			if (!this.isJobMessage(msg)) return;
 
