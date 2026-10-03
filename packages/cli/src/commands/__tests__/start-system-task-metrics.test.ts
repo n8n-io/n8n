@@ -4,7 +4,7 @@ import '@/zod-alias-support';
 import { Logger } from '@n8n/backend-common';
 import { mockInstance, mockLogger } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
-import { DbConnection, ScheduledJobRepository, SettingsRepository } from '@n8n/db';
+import { DbConnection, SettingsRepository } from '@n8n/db';
 import { SystemTaskMetadata } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import type { NextFunction, Request, Response } from 'express';
@@ -18,6 +18,7 @@ import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus'
 import { LogStreamingEventRelay } from '@/events/relays/log-streaming.event-relay';
 import { EnqueuedExecutionRecoveryService } from '@/executions/enqueued-execution-recovery.service';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import { DatabaseMetricQueryService } from '@/metrics/prometheus/database-metric-query.service';
 import { PrometheusMetricsService } from '@/metrics/prometheus/prometheus.service';
 import { PrometheusSystemTaskMetricsService } from '@/metrics/prometheus/system-task-metrics.service';
 import { WorkflowIndexService } from '@/modules/workflow-index/workflow-index.service';
@@ -91,7 +92,7 @@ describe('Start system task metrics', () => {
 		mockInstance(SystemTaskJobRegistrar);
 		mockInstance(SystemTaskScheduledJobOwner);
 		mockInstance(SettingsRepository, { findBy: async () => [] });
-		mockInstance(ScheduledJobRepository);
+		mockInstance(DatabaseMetricQueryService);
 		activeWorkflowManager = mockInstance(ActiveWorkflowManager);
 
 		// Keep the real system task collector. Other collectors are outside this test.

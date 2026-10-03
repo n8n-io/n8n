@@ -1,6 +1,6 @@
 import { PrometheusMetricsConfig, WorkflowsConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
-import { WorkflowPublicationOutboxRepository, WorkflowPublicationOutboxStatus } from '@n8n/db';
+import { WorkflowPublicationOutboxStatus } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 import promClient from 'prom-client';
@@ -8,20 +8,15 @@ import promClient from 'prom-client';
 import { EventService } from '@n8n/backend-services';
 
 import type { PrometheusMetricsCollector } from './base';
-import { CachedMetricQueryFactory, toGaugeValue } from './cached-metric-query';
+import { toGaugeValue } from './cached-metric-query';
 import { DURATION_BUCKETS_SECONDS } from './constant';
+import { DatabaseMetricQueryService } from './database-metric-query.service';
 
 const ALL_STATUSES = Object.values(WorkflowPublicationOutboxStatus);
 const ACTIVE_STATUSES = [
 	WorkflowPublicationOutboxStatus.Pending,
 	WorkflowPublicationOutboxStatus.InProgress,
 ];
-
-const RECORD_STATS_CACHE_KEY = 'metrics:workflow-publication:outbox-record-stats:v2';
-
-/** Per-status count and oldest-record epoch ms (`oldestMs`) for a single status. */
-type StatusStats = { count: number; oldestMs: number };
-type StatusStatsByStatus = Partial<Record<WorkflowPublicationOutboxStatus, StatusStats>>;
 
 /**
  * Collects Prometheus metrics for the workflow publication service. Opt-in via
@@ -38,8 +33,7 @@ export class PrometheusWorkflowPublicationMetricsService implements PrometheusMe
 		private readonly workflowsConfig: WorkflowsConfig,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly eventService: EventService,
-		private readonly outboxRepository: WorkflowPublicationOutboxRepository,
-		private readonly cachedMetricQueries: CachedMetricQueryFactory,
+		private readonly databaseQueries: DatabaseMetricQueryService,
 	) {}
 
 	get enabled(): boolean {
@@ -60,25 +54,13 @@ export class PrometheusWorkflowPublicationMetricsService implements PrometheusMe
 	}
 
 	private initOutboxGauges() {
-		const repository = this.outboxRepository;
 		const prefix = this.config.prefix;
 		// One grouped query (COUNT + MIN createdAt per status) feeds both gauges;
 		// cache it so a tight scrape interval doesn't hammer the outbox table. Within
 		// a scrape, coalescing collapses both gauges' collects to a single query.
 		const cacheTtl = this.config.workflowPublicationMetricInterval * Time.seconds.toMilliseconds;
 
-		const query = this.cachedMetricQueries.create<StatusStatsByStatus>({
-			cacheKey: RECORD_STATS_CACHE_KEY,
-			ttlMs: cacheTtl,
-			query: async () => {
-				const stats = await repository.getRecordStatsByStatus();
-				const byStatus: StatusStatsByStatus = {};
-				for (const [status, { count, oldestCreatedAt }] of stats) {
-					byStatus[status] = { count, oldestMs: oldestCreatedAt.getTime() };
-				}
-				return byStatus;
-			},
-		});
+		const query = this.databaseQueries.workflowPublication(cacheTtl);
 
 		new promClient.Gauge({
 			name: `${prefix}workflow_publication_outbox_records`,
