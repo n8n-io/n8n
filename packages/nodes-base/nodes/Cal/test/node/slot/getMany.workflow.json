@@ -1,0 +1,101 @@
+{
+	"name": "Cal.com slot getMany",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "2b2d5a4f-0000-4000-8000-000000000001",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [-560, 780]
+		},
+		{
+			"parameters": {
+				"resource": "slot",
+				"operation": "getMany",
+				"eventType": {
+					"__rl": true,
+					"value": "1234",
+					"mode": "id"
+				},
+				"start": "2033-09-05",
+				"end": "2033-09-06",
+				"simple": true
+			},
+			"id": "2b2d5a4f-0000-4000-8000-000000000002",
+			"name": "Cal.com",
+			"type": "n8n-nodes-base.cal",
+			"typeVersion": 1,
+			"position": [-320, 780],
+			"credentials": {
+				"calApi": {
+					"id": "1",
+					"name": "Cal account"
+				}
+			}
+		},
+		{
+			"parameters": {},
+			"id": "2b2d5a4f-0000-4000-8000-000000000003",
+			"name": "No Operation, do nothing",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [-80, 780]
+		}
+	],
+	"pinData": {
+		"No Operation, do nothing": [
+			{
+				"json": {
+					"date": "2033-09-05",
+					"start": "2033-09-05T10:00:00+02:00",
+					"end": "2033-09-05T10:30:00+02:00"
+				}
+			},
+			{
+				"json": {
+					"date": "2033-09-05",
+					"start": "2033-09-05T11:00:00+02:00",
+					"end": "2033-09-05T11:30:00+02:00"
+				}
+			},
+			{
+				"json": {
+					"date": "2033-09-06",
+					"start": "2033-09-06T09:00:00+02:00",
+					"end": "2033-09-06T09:30:00+02:00"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Cal.com",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Cal.com": {
+			"main": [
+				[
+					{
+						"node": "No Operation, do nothing",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {},
+	"versionId": "2b2d5a4f-0000-4000-8000-0000000000ff",
+	"id": "CalSlotGetMany",
+	"meta": {},
+	"tags": []
+}
