@@ -78,6 +78,26 @@ export interface RunRequest {
 	readonly responseBytes?: number;
 	/** The `RunRpc.id` of the guest call that sent the attempt. Set only in the sandbox. */
 	readonly rpc?: number;
+	/** The request body as `payloadOf` gives it. Set only with a payload capture mode. */
+	readonly requestBody?: string;
+	/** The response body as `payloadOf` gives it, also of an HTTP error. Set only with a payload capture mode. */
+	readonly responseBody?: string;
+}
+
+/**
+ * What a run profile keeps of the data of a run, for development only. `shape`: the keys, the
+ * types and the sizes. `redacted`: the values without the secrets of the credential.
+ */
+export type PayloadCapture = 'shape' | 'redacted';
+
+/** The input and output items of a run as `payloadOf` gives them. */
+export interface RunPayloads {
+	/** The capture mode that made the texts. */
+	readonly capture: PayloadCapture;
+	/** The input of the first 20 items. */
+	readonly inputs: readonly string[];
+	/** The first 20 output items, in the order the run validated them. */
+	readonly outputs: readonly string[];
 }
 
 /** Who sends a JSON-RPC request: the host calls an export, the guest calls an import. */
@@ -149,6 +169,8 @@ export interface RunProfile {
 	readonly outputValidateMs: number;
 	/** The distinct output issues that passed on with a warning. */
 	readonly driftIssues: number;
+	/** The input and output items. Set only with a payload capture mode. */
+	readonly payloads?: RunPayloads;
 }
 
 /** The node run of a profile: the host finds its trace span from these. */
@@ -163,19 +185,111 @@ export interface RunProfileMeta {
 export type RunProfileListener = (meta: RunProfileMeta, profile: RunProfile) => void;
 
 // One slot: the host sets it once at start, as the executor loader.
-const listeners = new Map<'listener', RunProfileListener>();
+const listeners = new Map<
+	'listener',
+	{ readonly listener: RunProfileListener; readonly payloads?: PayloadCapture }
+>();
 
-/** Sets the listener of run profiles. Without one, the runtime records nothing. */
-export const setRunProfileListener = (listener: RunProfileListener | undefined) => {
-	if (listener) listeners.set('listener', listener);
+/**
+ * Sets the listener of run profiles. Without one, the runtime records nothing. With `payloads`,
+ * the profile also keeps the input, the output and the HTTP bodies of each run, cut to 2048
+ * characters each. Use it in development only: the data goes to the listener.
+ */
+export const setRunProfileListener = (
+	listener: RunProfileListener | undefined,
+	payloads?: PayloadCapture,
+) => {
+	if (listener) listeners.set('listener', { listener, payloads });
 	else listeners.delete('listener');
 };
 
-/** The listener of run profiles, if the host set one. */
+/** The listener of run profiles and its payload capture mode, if the host set one. */
 export const runProfileListener = () => listeners.get('listener');
 
 /** The profile keeps this many attempts and this many JSON-RPC messages, so a long run does not hold memory. */
 const MAX_PROFILED = 200;
+
+/** The profile keeps the payloads of this many input items and this many output items. */
+export const MAX_PAYLOADS = 20;
+
+/** The most characters of one payload text. A longer text is cut and ends with `…`. */
+export const MAX_PAYLOAD_LENGTH = 2048;
+
+/** A payload text shows a deeper subtree as `…`. Each level is one generator on the stack. */
+const MAX_PAYLOAD_DEPTH = 64;
+
+/** The parts of the payload text of `value`, in order. The caller stops to read at its limit, so a cycle ends. */
+function* payloadParts(
+	value: unknown,
+	capture: PayloadCapture,
+	redact: (text: string) => string,
+	depth = 0,
+): Generator<string> {
+	const shape = capture === 'shape';
+	if (typeof value === 'string') {
+		// Redacted before the cut, so the cut cannot keep a part of a secret.
+		yield shape
+			? `string(${value.length})`
+			: JSON.stringify(redact(value).slice(0, MAX_PAYLOAD_LENGTH));
+	} else if (typeof value === 'number' || typeof value === 'bigint') {
+		yield shape ? typeof value : redact(String(value));
+	} else if (value === null || value === undefined || typeof value === 'boolean') {
+		yield shape && typeof value === 'boolean' ? 'boolean' : String(value);
+	} else if (typeof value !== 'object') {
+		yield typeof value;
+	} else if (value instanceof Uint8Array) {
+		yield `bytes(${value.byteLength})`;
+	} else if (depth >= MAX_PAYLOAD_DEPTH) {
+		yield '…';
+	} else if (Array.isArray(value)) {
+		if (shape) {
+			yield `array(${value.length})`;
+			if (value.length === 0) return;
+			yield '<';
+			yield* payloadParts(value[0], capture, redact, depth + 1);
+			yield '>';
+			return;
+		}
+		yield '[';
+		for (const [index, entry] of value.entries()) {
+			if (index > 0) yield ',';
+			yield* payloadParts(entry, capture, redact, depth + 1);
+		}
+		yield ']';
+	} else if (
+		Object.getPrototypeOf(value) !== Object.prototype &&
+		Object.getPrototypeOf(value) !== null
+	) {
+		// A class instance, e.g. a stream or a date, is not JSON data.
+		yield (typeof value.constructor === 'function' && value.constructor.name) || 'object';
+	} else {
+		yield '{';
+		for (const [index, [key, entry]] of Object.entries(value).entries()) {
+			yield `${index > 0 ? ',' : ''}${JSON.stringify(redact(key))}:`;
+			yield* payloadParts(entry, capture, redact, depth + 1);
+		}
+		yield '}';
+	}
+}
+
+/**
+ * The text of a value for a run profile, at most `MAX_PAYLOAD_LENGTH` characters plus `…`.
+ * `redact` removes the secrets of the credential from each key and value.
+ */
+export function payloadOf(
+	value: unknown,
+	capture: PayloadCapture,
+	redact: (text: string) => string,
+): string {
+	const parts: string[] = [];
+	const size = { length: 0 };
+	for (const part of payloadParts(value, capture, redact)) {
+		parts.push(part);
+		size.length += part.length;
+		if (size.length > MAX_PAYLOAD_LENGTH) return `${parts.join('').slice(0, MAX_PAYLOAD_LENGTH)}…`;
+	}
+	return parts.join('');
+}
 
 /** Epoch milliseconds with a fraction, from the monotonic clock. */
 const now = () => performance.timeOrigin + performance.now();
@@ -205,10 +319,12 @@ export interface RunRecorder {
 	request(request: RunRequest): void;
 	/** Adds a JSON-RPC request or notification of the sandbox. */
 	rpc(rpc: RunRpc): void;
-	/** Adds the time to make the input of one item. */
-	input(ms: number): void;
-	/** Adds the time to validate one output item. */
-	output(ms: number): void;
+	/** The payload capture mode of the run. Absent: the run records no payload. */
+	readonly payloads?: PayloadCapture;
+	/** Adds the time to make the input of one item. The recorder calls `payload` only for an item it keeps. */
+	input(ms: number, payload?: () => string): void;
+	/** Adds the time to validate one output item. The recorder calls `payload` only for an item it keeps. */
+	output(ms: number, payload?: () => string): void;
 	/** Sets the count of output issues that passed on. */
 	drift(issues: number): void;
 }
@@ -219,11 +335,16 @@ type Identity = Pick<RunProfile, 'action' | 'version' | 'bundleHash' | 'nodeCont
 type Outcome = { readonly outputItems: number } | { readonly errorType: string };
 
 /** A recorder of one run that starts now, and the function that ends it. */
-export function runRecorder(inputItems: number) {
+export function runRecorder(inputItems: number, payloads?: PayloadCapture) {
 	const startMs = now();
 	const phases: RunPhase[] = [];
 	const requests: RunRequest[] = [];
 	const rpcs: RunRpc[] = [];
+	const inputs: string[] = [];
+	const outputs: string[] = [];
+	const keep = (list: string[], payload: (() => string) | undefined) => {
+		if (payload && list.length < MAX_PAYLOADS) list.push(payload());
+	};
 	const totals: { path?: RunProfile['path'] } & Record<
 		'requests' | 'rpcs' | 'retries' | 'pages' | 'inputMs' | 'outputMs' | 'drift',
 		number
@@ -238,6 +359,7 @@ export function runRecorder(inputItems: number) {
 	};
 	const recorder: RunRecorder = {
 		now,
+		...(payloads ? { payloads } : {}),
 		path: (path) => {
 			totals.path = path;
 		},
@@ -254,11 +376,13 @@ export function runRecorder(inputItems: number) {
 			totals.rpcs += 1;
 			if (rpcs.length < MAX_PROFILED) rpcs.push(rpc);
 		},
-		input: (ms) => {
+		input: (ms, payload) => {
 			totals.inputMs += ms;
+			keep(inputs, payload);
 		},
-		output: (ms) => {
+		output: (ms, payload) => {
 			totals.outputMs += ms;
+			keep(outputs, payload);
 		},
 		drift: (issues) => {
 			totals.drift = issues;
@@ -282,6 +406,9 @@ export function runRecorder(inputItems: number) {
 		inputMs: totals.inputMs,
 		outputValidateMs: totals.outputMs,
 		driftIssues: totals.drift,
+		...(payloads
+			? { payloads: { capture: payloads, inputs: [...inputs], outputs: [...outputs] } }
+			: {}),
 	});
 	return { recorder, profile };
 }

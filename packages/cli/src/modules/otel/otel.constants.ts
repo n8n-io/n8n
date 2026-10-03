@@ -91,6 +91,12 @@ export const ATTR = {
 	CREDENTIAL_TYPE: 'n8n.credential.type',
 	CREDENTIAL_SCHEME: 'n8n.credential.scheme',
 	HTTP_PAGE: 'n8n.http.page',
+	// Set only with N8N_NODE_CONTRACT_TRACE_PAYLOADS, for development.
+	CONTRACT_PAYLOADS: 'n8n.contract.payloads',
+	CONTRACT_INPUT_PAYLOADS: 'n8n.contract.input.payloads',
+	CONTRACT_OUTPUT_PAYLOADS: 'n8n.contract.output.payloads',
+	HTTP_REQUEST_BODY: 'n8n.http.request.body',
+	HTTP_RESPONSE_BODY: 'n8n.http.response.body',
 
 	HTTP_REQUEST_METHOD: ATTR_HTTP_REQUEST_METHOD,
 	HTTP_REQUEST_RESEND_COUNT: ATTR_HTTP_REQUEST_RESEND_COUNT,

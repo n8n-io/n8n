@@ -6,6 +6,7 @@ import { concurrencyLimitSchema } from '../schemas';
 
 const nodeContractsUpdatePolicySchema = z.enum(['tolerant', 'strict']);
 const nodeContractSandboxSchema = z.enum(['off', 'stored', 'all']);
+const nodeContractTracePayloadsSchema = z.enum(['off', 'shape', 'redacted']);
 
 @Config
 export class InstanceAiConfig {
@@ -307,6 +308,16 @@ export class InstanceAiConfig {
 	 */
 	@Env('N8N_NODE_CONTRACT_SANDBOX_CACHE_DIR')
 	nodeContractSandboxCacheDir: string = '';
+
+	/**
+	 * For development only. Adds the data of each contract node run to its trace: the input, the
+	 * output and the HTTP request and response bodies. `shape`: the keys, the types and the sizes.
+	 * `redacted`: the values without the secrets of the credential. The trace keeps the first 20
+	 * input and output items, and cuts each value to 2048 characters. n8n logs a warning at start
+	 * when it is on. An unknown value logs a config error, and n8n uses `off`.
+	 */
+	@Env('N8N_NODE_CONTRACT_TRACE_PAYLOADS', nodeContractTracePayloadsSchema)
+	nodeContractTracePayloads: z.infer<typeof nodeContractTracePayloadsSchema> = 'off';
 
 	/**
 	 * Force-enable folder exploration in Instance AI: folder attribution and

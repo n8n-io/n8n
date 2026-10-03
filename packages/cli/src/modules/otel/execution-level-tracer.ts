@@ -461,6 +461,10 @@ function contractRunAttributes(profile: RunProfile): Attributes {
 		[ATTR.CONTRACT_DRIFT_ISSUES]: profile.driftIssues,
 		[ATTR.CONTRACT_SPANS_DROPPED]: dropped > 0 ? dropped : undefined,
 		[ATTR.ERROR_TYPE]: profile.errorType,
+		[ATTR.CONTRACT_PAYLOADS]: profile.payloads?.capture,
+		// `Attributes` takes only a mutable array.
+		[ATTR.CONTRACT_INPUT_PAYLOADS]: profile.payloads && [...profile.payloads.inputs],
+		[ATTR.CONTRACT_OUTPUT_PAYLOADS]: profile.payloads && [...profile.payloads.outputs],
 	};
 }
 
@@ -508,6 +512,8 @@ function requestAttributes(request: RunProfile['requests'][number]): Attributes 
 		[ATTR.ERROR_TYPE]: request.errorType,
 		[ATTR.HTTP_REQUEST_BODY_SIZE]: request.requestBytes,
 		[ATTR.HTTP_RESPONSE_BODY_SIZE]: request.responseBytes,
+		[ATTR.HTTP_REQUEST_BODY]: request.requestBody,
+		[ATTR.HTTP_RESPONSE_BODY]: request.responseBody,
 	};
 }
 

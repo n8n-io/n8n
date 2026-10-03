@@ -397,6 +397,7 @@ describe('GlobalConfig', () => {
 			nodeContractSandboxSidecar: '',
 			nodeContractSandboxGuests: '',
 			nodeContractSandboxCacheDir: '',
+			nodeContractTracePayloads: 'off',
 			folderExplorationEnabled: false,
 			activationCapped: false,
 			activationLockMessageThreshold: 1,

@@ -27,6 +27,8 @@ export {
 } from '../runtime';
 export {
 	setRunProfileListener,
+	type PayloadCapture,
+	type RunPayloads,
 	type RunPhase,
 	type RunProfile,
 	type RunProfileListener,

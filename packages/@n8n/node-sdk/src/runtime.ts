@@ -42,6 +42,7 @@ import type { CredentialManifest } from './manifest';
 import { parameterValue, toProperty } from './properties';
 import {
 	bytesOf,
+	payloadOf,
 	runProfileListener,
 	runRecorder,
 	type RunProfile,
@@ -336,16 +337,16 @@ export function withResponse(error: unknown): unknown {
 /** The parts of an HTTP attempt that its request gives. */
 type RequestLabel = Omit<
 	RunRequest,
-	'startMs' | 'endMs' | 'resendCount' | 'status' | 'errorType' | 'responseBytes'
+	'startMs' | 'endMs' | 'resendCount' | 'status' | 'errorType' | 'responseBytes' | 'responseBody'
 >;
 
-type AttemptOutcome = Pick<RunRequest, 'status' | 'errorType' | 'responseBytes'>;
+type AttemptOutcome = Pick<RunRequest, 'status' | 'errorType' | 'responseBytes' | 'responseBody'>;
 
 const DEFAULT_PORTS: Readonly<Record<string, number>> = { 'http:': 80, 'https:': 443 };
 
 function requestLabelOf(
 	options: IHttpRequestOptions,
-	fields: Pick<RequestLabel, 'itemIndex' | 'template' | 'page' | 'requestBytes'>,
+	fields: Pick<RequestLabel, 'itemIndex' | 'template' | 'page' | 'requestBytes' | 'requestBody'>,
 ): RequestLabel {
 	const url = new URL(options.url);
 	return {
@@ -1083,6 +1084,21 @@ export function executorOf<S extends Shape, O extends AnySchema>(
 			const fresh = secretRedactorOf(credentialValue, now);
 			return (text: string) => fresh(redact(text));
 		};
+		const capture = recorder?.payloads;
+		// n8n can store a new token during a request, so the payload redactor reads the data again after it.
+		const payloadRedactor = new Map<'redact', (text: string) => string>();
+		const payloadRedact = () => payloadRedactor.get('redact') ?? redact;
+		const payloadTextOf = (value: unknown) =>
+			capture === undefined || value === undefined
+				? undefined
+				: payloadOf(value, capture, payloadRedact());
+		const payloadFor = (value: unknown) =>
+			capture === undefined ? undefined : () => payloadOf(value, capture, payloadRedact());
+		const refreshesPayloadRedactor = capture !== undefined && storesTokens;
+		const responseBodyOf = (body: unknown) => {
+			const text = payloadTextOf(body);
+			return text === undefined ? {} : { responseBody: text };
+		};
 		// Read when `run()` reads it: stored data that fails the declared fields fails only then.
 		const runCredentials = new Map<'credential', RunCredentialValue>();
 		const runCredential = (): RunCredentialValue => {
@@ -1131,11 +1147,12 @@ export function executorOf<S extends Shape, O extends AnySchema>(
 		const recordAttempt = (
 			label: RequestLabel | undefined,
 			startMs: number | undefined,
+			endMs: number | undefined,
 			resendCount: number,
 			outcome: () => AttemptOutcome,
 		) => {
-			if (!recorder || !label || startMs === undefined) return;
-			recorder.request({ ...label, startMs, endMs: recorder.now(), resendCount, ...outcome() });
+			if (!recorder || !label || startMs === undefined || endMs === undefined) return;
+			recorder.request({ ...label, startMs, endMs, resendCount, ...outcome() });
 		};
 
 		/** `build` gives the options of each attempt, so a stream body opens again for a retry. */
@@ -1149,15 +1166,25 @@ export function executorOf<S extends Shape, O extends AnySchema>(
 			try {
 				const options = await build();
 				const response = await host.request(options, credentialType);
-				recordAttempt(label, startMs, retry, () =>
-					responseOutcomeOf(response, options.returnFullResponse === true),
-				);
+				const full = options.returnFullResponse === true;
+				const endMs = recorder?.now();
+				if (refreshesPayloadRedactor) payloadRedactor.set('redact', await redactNow());
+				recordAttempt(label, startMs, endMs, retry, () => ({
+					...responseOutcomeOf(response, full),
+					...responseBodyOf(full && isRecord(response) ? response.body : response),
+				}));
 				return response;
 			} catch (caught) {
 				const error = withResponse(caught);
-				recordAttempt(label, startMs, retry, () => attemptOutcomeOf(error));
+				const endMs = recorder?.now();
+				const refreshed = refreshesPayloadRedactor ? await redactNow() : undefined;
+				if (refreshed) payloadRedactor.set('redact', refreshed);
+				recordAttempt(label, startMs, endMs, retry, () => ({
+					...attemptOutcomeOf(error),
+					...(isHttpError(error) ? responseBodyOf(error.body) : {}),
+				}));
 				const delay = retryable ? retryDelay(error, retry) : undefined;
-				if (delay === undefined) throw redactedError(error, await redactNow());
+				if (delay === undefined) throw redactedError(error, refreshed ?? (await redactNow()));
 				// The failed attempt is not read, so free its connection.
 				if (isHttpError(error) && error.body instanceof Readable) error.body.destroy();
 				await wait(delay);
@@ -1244,6 +1271,7 @@ export function executorOf<S extends Shape, O extends AnySchema>(
 					itemIndex,
 				});
 				const requestOptions = allowedDomains === undefined ? built : { ...built, allowedDomains };
+				const requestBody = payloadTextOf(requestOptions.body);
 				const label =
 					recorder &&
 					requestLabelOf(requestOptions, {
@@ -1253,6 +1281,7 @@ export function executorOf<S extends Shape, O extends AnySchema>(
 						requestBytes: entries.has(options.body)
 							? entries.get(options.body)?.bytes
 							: bytesOf(requestOptions.body),
+						...(requestBody === undefined ? {} : { requestBody }),
 					});
 				const response =
 					options.response === 'binary' || entries.has(options.body)
@@ -1321,7 +1350,9 @@ export function executorOf<S extends Shape, O extends AnySchema>(
 		const inputOf = async (itemIndex: number): Promise<RunInput<S>> => {
 			const startMs = recorder?.now();
 			const input = await readInput(itemIndex);
-			if (recorder && startMs !== undefined) recorder.input(recorder.now() - startMs);
+			if (recorder && startMs !== undefined) {
+				recorder.input(recorder.now() - startMs, payloadFor(input));
+			}
 			return input;
 		};
 
@@ -1410,7 +1441,9 @@ export function executorOf<S extends Shape, O extends AnySchema>(
 			const checked = (json: unknown, at: number) => {
 				const startMs = recorder?.now();
 				const issues = validate(json, outputSchema, { path: `output[${at}]` });
-				if (recorder && startMs !== undefined) recorder.output(recorder.now() - startMs);
+				if (recorder && startMs !== undefined) {
+					recorder.output(recorder.now() - startMs, payloadFor(json));
+				}
 				if (issues.length > 0 && host.warn && isRecord(json)) {
 					addDrift(issues);
 					return json;
@@ -2115,15 +2148,16 @@ async function versionExecutorOf(context: NodeContext, head: FrozenVersion) {
 }
 
 async function executeVersion(context: IExecuteFunctions, head: FrozenVersion) {
-	const listener = runProfileListener();
-	if (!listener) {
+	const slot = runProfileListener();
+	if (!slot) {
 		const { executor, manifest } = await versionExecutorOf(context, head);
 		const outputs = await executor(hostOf(context));
 		recordVersion(context, manifest);
 		return outputs;
 	}
+	const { listener, payloads } = slot;
 	const host = hostOf(context);
-	const { recorder, profile } = runRecorder(host.items.length);
+	const { recorder, profile } = runRecorder(host.items.length, payloads);
 	const loadStart = recorder.now();
 	const { executor, manifest, cached } = await versionExecutorOf(context, head);
 	recorder.phase({ name: 'load', startMs: loadStart, endMs: recorder.now(), cached });

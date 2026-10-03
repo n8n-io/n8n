@@ -8,6 +8,7 @@ import {
 	setRunProfileListener,
 	type ContractVersionLoader,
 	type FrozenVersion,
+	type PayloadCapture,
 	type RunProfileListener,
 } from '@n8n/node-sdk/host';
 import {
@@ -79,6 +80,11 @@ export interface ContractRegistryOptions {
 	readonly sandbox?: { readonly options: SandboxOptions; readonly scope: 'stored' | 'all' };
 	/** Gets the run profile of each node execution, e.g. for traces. Without it, nothing is recorded. */
 	readonly onRunProfile?: RunProfileListener;
+	/**
+	 * Also records the input, the output and the HTTP bodies of each run in the profile. For
+	 * development only. Without it, the profile has no payload.
+	 */
+	readonly tracePayloads?: PayloadCapture;
 	/** The host patterns that a URL from input may reach, in-process and in the sandbox. Empty: no limit. */
 	readonly egressInputHosts?: readonly string[];
 	/**
@@ -654,7 +660,7 @@ export const useContractRegistry = (options: ContractRegistryOptions) => {
 	setNodeContractRange(options.nodeContractRange);
 	setContractVersionLoader(contractVersionLoader(options));
 	setCredentialManifests(credentialManifestsOf(options.store, options.hasOtherCredentialType));
-	setRunProfileListener(options.onRunProfile);
+	setRunProfileListener(options.onRunProfile, options.tracePayloads);
 	setEgressInputHosts(options.egressInputHosts ?? []);
 	if (options.sandbox) {
 		const { scope } = options.sandbox;

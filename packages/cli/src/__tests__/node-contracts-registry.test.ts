@@ -57,6 +57,7 @@ describe('useNodeContractsRegistry', () => {
 			nodeContractsPublicKeyFile: '',
 			nodeContractRange: '>=2.0.0 <3.0.0',
 			nodeContractSandbox: 'off',
+			nodeContractTracePayloads: 'off',
 		},
 	} as unknown as GlobalConfig);
 	const instanceSettings = mockInstance(InstanceSettings, {
@@ -115,6 +116,35 @@ describe('useNodeContractsRegistry', () => {
 			nodeName: 'Query',
 			profile,
 		});
+	});
+
+	it('records no payload and logs no warning by default', async () => {
+		const logger = mockInstance(Logger);
+		registered.length = 0;
+
+		await useNodeContractsRegistry();
+
+		expect(registered[0]?.tracePayloads).toBeUndefined();
+		expect(logger.warn).not.toHaveBeenCalled();
+	});
+
+	it('passes the payload capture mode and logs one warning at start', async () => {
+		const logger = mockInstance(Logger);
+		registered.length = 0;
+		const { instanceAi } = globalConfig;
+		instanceAi.nodeContractTracePayloads = 'redacted';
+
+		try {
+			await useNodeContractsRegistry();
+		} finally {
+			instanceAi.nodeContractTracePayloads = 'off';
+		}
+
+		expect(registered[0]?.tracePayloads).toBe('redacted');
+		expect(logger.warn).toHaveBeenCalledTimes(1);
+		expect(logger.warn).toHaveBeenCalledWith(
+			expect.stringContaining('N8N_NODE_CONTRACT_TRACE_PAYLOADS is "redacted"'),
+		);
 	});
 
 	it('passes the sandbox files, a cache dir in the n8n folder, and the n8n credential names', async () => {

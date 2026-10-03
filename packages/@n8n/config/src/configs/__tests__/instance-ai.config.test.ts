@@ -50,3 +50,34 @@ describe('InstanceAiConfig concurrency caps', () => {
 		);
 	});
 });
+
+describe('InstanceAiConfig nodeContractTracePayloads', () => {
+	beforeEach(() => {
+		Container.reset();
+		vi.unstubAllEnvs();
+	});
+
+	afterEach(() => {
+		vi.restoreAllMocks();
+	});
+
+	it('is off by default', () => {
+		expect(Container.get(GlobalConfig).instanceAi.nodeContractTracePayloads).toBe('off');
+	});
+
+	it.each(['shape', 'redacted'] as const)('accepts %s', (value) => {
+		vi.stubEnv('N8N_NODE_CONTRACT_TRACE_PAYLOADS', value);
+
+		expect(Container.get(GlobalConfig).instanceAi.nodeContractTracePayloads).toBe(value);
+	});
+
+	it('reports an unknown value and stays off', () => {
+		const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+		vi.stubEnv('N8N_NODE_CONTRACT_TRACE_PAYLOADS', 'full');
+
+		expect(Container.get(GlobalConfig).instanceAi.nodeContractTracePayloads).toBe('off');
+		expect(warn).toHaveBeenCalledWith(
+			expect.stringContaining('Invalid value for N8N_NODE_CONTRACT_TRACE_PAYLOADS'),
+		);
+	});
+});

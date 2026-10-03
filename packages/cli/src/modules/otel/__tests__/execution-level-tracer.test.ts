@@ -1271,6 +1271,45 @@ describe('ExecutionLevelTracer', () => {
 			expect(run.attributes['n8n.contract.spans_dropped']).toBe(6);
 		});
 
+		it('adds the payloads of the profile to contract.run and to each HTTP span', () => {
+			const [first, second] = notionProfile.requests;
+			const captured: RunProfile = {
+				...notionProfile,
+				payloads: {
+					capture: 'shape',
+					inputs: ['{"database":string(36)}'],
+					outputs: ['{"id":string(36)}', '{"id":string(36)}'],
+				},
+				requests: [
+					{
+						...first,
+						requestBody: '{}',
+						responseBody: '{"results":array(100)<{"id":string(36)}>}',
+					},
+					{ ...second, requestBody: '{"start_cursor":string(36)}' },
+				],
+			};
+			startNode('exec-payloads');
+			tracer.recordContractRun('exec-payloads', 'Notion', captured);
+			endNode('exec-payloads');
+
+			const [run] = named('contract.run');
+			const posts = named('POST');
+			expect(run.attributes).toMatchObject({
+				'n8n.contract.payloads': 'shape',
+				'n8n.contract.input.payloads': ['{"database":string(36)}'],
+				'n8n.contract.output.payloads': ['{"id":string(36)}', '{"id":string(36)}'],
+			});
+			expect(posts.map(({ attributes }) => attributes)).toEqual([
+				expect.objectContaining({
+					'n8n.http.request.body': '{}',
+					'n8n.http.response.body': '{"results":array(100)<{"id":string(36)}>}',
+				}),
+				expect.objectContaining({ 'n8n.http.request.body': '{"start_cursor":string(36)}' }),
+			]);
+			expect(posts[1].attributes).not.toHaveProperty('n8n.http.response.body');
+		});
+
 		it('adds no span without an active node span', () => {
 			tracer.startWorkflow({ executionId: 'exec-no-node', workflow: defaultWorkflow });
 			tracer.recordContractRun('exec-no-node', 'Notion', notionProfile);

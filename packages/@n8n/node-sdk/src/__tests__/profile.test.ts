@@ -4,6 +4,9 @@ import { compat, credential } from '../entry/credentials';
 import { toContract } from '../define';
 import { defineNode, t } from '../index';
 import {
+	MAX_PAYLOAD_LENGTH,
+	MAX_PAYLOADS,
+	payloadOf,
 	runRecorder,
 	setRunProfileListener,
 	type RunProfile,
@@ -235,6 +238,170 @@ describe('run profile', () => {
 			requestCount: 201,
 			rpcs: 200,
 			rpcCount: 201,
+		});
+	});
+
+	describe('with payload capture', () => {
+		const CANARY = 'canary-5d1e9b7f3a2c4086';
+		// The request layer signs with the stored token, and the API echoes the header back.
+		const canaryContext = () => {
+			const { context } = contextOf([]);
+			const signed: string[] = [];
+			const replies = [
+				(authorization: string) => ({ results: [{ id: authorization }], next_cursor: CANARY }),
+				() => ({ results: [{ id: 'c' }] }),
+			];
+			return {
+				signed,
+				context: {
+					...context,
+					getCredentials: async () => ({ token: CANARY }),
+					helpers: {
+						httpRequestWithAuthentication: async (_type: string, options: IHttpRequestOptions) => {
+							const authorization = `Bearer ${CANARY}`;
+							signed.push(String({ ...options.headers, authorization }.authorization));
+							return replies.shift()?.(authorization);
+						},
+					},
+				} as unknown as IExecuteFunctions,
+			};
+		};
+
+		it('records shapes and no secret in shape mode', async () => {
+			setRunProfileListener((meta, profile) => profiles.push([meta, profile]), 'shape');
+			const { context, signed } = canaryContext();
+
+			const [outputs = []] = await execute(context);
+
+			expect(signed).toEqual([`Bearer ${CANARY}`, `Bearer ${CANARY}`]);
+			expect(outputs.map(({ json }) => json.id)).toEqual([`Bearer ${CANARY}`, 'c']);
+			const [[, profile]] = profiles as [[RunProfileMeta, RunProfile]];
+			expect(JSON.stringify(profile)).not.toContain(CANARY);
+			expect(profile.payloads).toEqual({
+				capture: 'shape',
+				inputs: ['{"table":string(5),"paging":{"mode":string(5),"max":number}}'],
+				outputs: ['{"id":string(30)}', '{"id":string(1)}'],
+			});
+			expect(
+				profile.requests.map(({ requestBody, responseBody }) => [requestBody, responseBody]),
+			).toEqual([
+				['{}', '{"results":array(1)<{"id":string(30)}>,"next_cursor":string(23)}'],
+				['{"start_cursor":string(23)}', '{"results":array(1)<{"id":string(1)}>}'],
+			]);
+		});
+
+		it('records values without the secret in redacted mode', async () => {
+			setRunProfileListener((meta, profile) => profiles.push([meta, profile]), 'redacted');
+			const { context } = canaryContext();
+
+			await execute(context);
+
+			const [[, profile]] = profiles as [[RunProfileMeta, RunProfile]];
+			expect(JSON.stringify(profile)).not.toContain(CANARY);
+			expect(profile.payloads).toEqual({
+				capture: 'redacted',
+				inputs: ['{"table":"tasks","paging":{"mode":"limit","max":50}}'],
+				outputs: [expect.stringContaining('[REDACTED]'), '{"id":"c"}'],
+			});
+			expect(
+				profile.requests.map(({ requestBody, responseBody }) => [requestBody, responseBody]),
+			).toEqual([
+				[
+					'{}',
+					expect.stringMatching(
+						/^\{"results":\[\{"id":".*\[REDACTED\].*"\}\],"next_cursor":"\[REDACTED\]"\}$/,
+					),
+				],
+				['{"start_cursor":"[REDACTED]"}', '{"results":[{"id":"c"}]}'],
+			]);
+		});
+
+		it('redacts a token that n8n stores during the run', async () => {
+			setRunProfileListener((meta, profile) => profiles.push([meta, profile]), 'redacted');
+			const REFRESHED = 'refreshed-8c2e4a6b0d1f3579';
+			const stored = new Map([['token', CANARY]]);
+			const { context } = canaryContext();
+			const replies = [{ results: [{ id: 'a' }], next_cursor: REFRESHED }, { results: [] }];
+
+			await execute({
+				...context,
+				getCredentials: async () => Object.fromEntries(stored),
+				helpers: {
+					httpRequestWithAuthentication: async () => {
+						stored.set('token', REFRESHED);
+						return replies.shift();
+					},
+				},
+			} as unknown as IExecuteFunctions);
+
+			const [[, profile]] = profiles as [[RunProfileMeta, RunProfile]];
+			expect(profile.requests[0]?.responseBody).toContain('[REDACTED]');
+			expect(JSON.stringify(profile)).not.toContain(REFRESHED);
+		});
+
+		it('records no payload without a capture mode', async () => {
+			const { context } = canaryContext();
+
+			await execute(context);
+
+			const [[, profile]] = profiles as [[RunProfileMeta, RunProfile]];
+			expect(profile.payloads).toBeUndefined();
+			expect(
+				profile.requests.every(
+					(request) => !('requestBody' in request || 'responseBody' in request),
+				),
+			).toBe(true);
+		});
+
+		it('cuts a payload at its limit and keeps the first inputs and outputs only', () => {
+			const { recorder, profile } = runRecorder(1, 'redacted');
+			const made = vi.fn(() =>
+				payloadOf({ text: 'x'.repeat(MAX_PAYLOAD_LENGTH * 2) }, 'redacted', String),
+			);
+			Array.from({ length: MAX_PAYLOADS + 1 }, () => {
+				recorder.input(1, made);
+				recorder.output(1, made);
+			});
+
+			const { payloads } = profile(
+				{ action: 'a', version: '1.0.0', bundleHash: 'b', nodeContract: NODE_CONTRACT_VERSION },
+				{ outputItems: 0 },
+			);
+
+			expect(payloads?.inputs).toHaveLength(MAX_PAYLOADS);
+			expect(payloads?.outputs).toHaveLength(MAX_PAYLOADS);
+			expect(payloads?.inputs[0]).toHaveLength(MAX_PAYLOAD_LENGTH + 1);
+			expect(payloads?.inputs[0]?.endsWith('…')).toBe(true);
+			expect(made).toHaveBeenCalledTimes(MAX_PAYLOADS * 2);
+		});
+
+		it('describes each kind of value, and stops at the depth limit on a cycle', () => {
+			const cycle: Record<string, unknown> = {};
+			cycle.self = cycle;
+			const value = {
+				s: 'abc',
+				n: 1.5,
+				b: true,
+				none: null,
+				list: [],
+				bytes: new Uint8Array(3),
+				run: () => undefined,
+				when: new Date(0),
+			};
+			const redact = (text: string) => text.replace('abc', '[REDACTED]');
+
+			expect(payloadOf(value, 'shape', redact)).toBe(
+				'{"s":string(3),"n":number,"b":boolean,"none":null,"list":array(0),"bytes":bytes(3),"run":function,"when":Date}',
+			);
+			expect(payloadOf(value, 'redacted', redact)).toBe(
+				'{"s":"[REDACTED]","n":1.5,"b":true,"none":null,"list":[],"bytes":bytes(3),"run":function,"when":Date}',
+			);
+			expect(payloadOf({ abc: 1 }, 'shape', redact)).toBe('{"[REDACTED]":number}');
+			expect(payloadOf(cycle, 'shape', redact)).toBe(`${'{"self":'.repeat(64)}…${'}'.repeat(64)}`);
+			const loop: unknown[] = [];
+			loop.push(loop);
+			expect(payloadOf(loop, 'shape', redact)).toBe(`${'array(1)<'.repeat(64)}…${'>'.repeat(64)}`);
+			expect(payloadOf(loop, 'redacted', redact)).toBe(`${'['.repeat(64)}…${']'.repeat(64)}`);
 		});
 	});
 

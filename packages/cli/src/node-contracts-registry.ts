@@ -452,6 +452,13 @@ export async function useNodeContractsRegistry() {
 		return workflow?.meta;
 	};
 
+	const tracePayloads = instanceAi.nodeContractTracePayloads;
+	if (tracePayloads !== 'off') {
+		Container.get(Logger).warn(
+			`N8N_NODE_CONTRACT_TRACE_PAYLOADS is "${tracePayloads}": the traces of contract nodes hold the input, the output and the HTTP bodies of each run. Use it in development only.`,
+		);
+	}
+
 	const scope = instanceAi.nodeContractSandbox;
 	const sandbox =
 		scope === 'off'
@@ -477,6 +484,7 @@ export async function useNodeContractsRegistry() {
 		egressInputHosts: nodes.egressInputHosts,
 		hasOtherCredentialType: hasOtherCredentialTypeInN8n,
 		store: await Container.get(NodeContractsStore).open(),
+		tracePayloads: tracePayloads === 'off' ? undefined : tracePayloads,
 		onRunProfile: ({ executionId, nodeName }, profile) =>
 			Container.get(EventService).emit('node-contract-run-profiled', {
 				executionId,

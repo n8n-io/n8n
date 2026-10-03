@@ -5,6 +5,7 @@ import type { AddressInfo } from 'node:net';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { Readable } from 'node:stream';
+import { isRecord } from '@n8n/utils/is-record';
 import type { IHttpRequestOptions, INode } from 'n8n-workflow';
 
 import { compat, defineCredential, field } from '../credentials';
@@ -135,6 +136,13 @@ export const failureProbe = spec(async ({ http }) => {
 		return { value: JSON.stringify(error.headers) };
 	}
 }, { egress: { hosts: ['api.example.com'] } });
+export const canaryProbe = spec(
+	async ({ input, http }) => ({
+		value: JSON.stringify(await http.request({ method: 'POST', url: 'https://api.acme.test/echo', body: { note: input.note } })),
+	}),
+	{ egress: { hosts: ['api.acme.test'] }, input: { note: str() } },
+	acme,
+);
 export const credentialProbe = spec(async ({ credential }) => ({ value: JSON.stringify(credential) }), {}, acme);
 export const credentialErrorProbe = spec(async (context) => {
 	try {
@@ -191,6 +199,7 @@ const PROBE_NAMES = [
 	'randomProbe',
 	'echoProbe',
 	'failureProbe',
+	'canaryProbe',
 	'credentialProbe',
 	'credentialErrorProbe',
 	'binaryProbe',
@@ -479,6 +488,58 @@ describe.skipIf(!existsSync(SIDECAR) || !existsSync(GUEST))('the sandbox', () =>
 		expect(times).toEqual([...times].sort((a = 0, b = 0) => a - b));
 		expect(call?.endMs).toBeLessThanOrEqual(take?.endMs ?? 0);
 	});
+
+	it.each(['shape', 'redacted'] as const)(
+		'records %s payloads without the credential secret',
+		async (capture) => {
+			const CANARY = 'canary-0e4b8d2f6a9c1357';
+			const { recorder, profile } = runRecorder(1, capture);
+			const host: ExecutorHost = {
+				...hostOf(),
+				node: { ...node, credentials: { acmeApi: { id: '1', name: 'Acme' } } },
+				parameter: (name) => (name === 'note' ? 'hello' : undefined),
+				credentialData: async () => ({ account: 'acc-1', apiKey: CANARY }),
+				recorder,
+				// The request layer signs with the key, and the API echoes the header back.
+				request: async (options) => ({
+					body: {
+						authorization: `Bearer ${CANARY}`,
+						note: isRecord(options.body) ? options.body.note : undefined,
+					},
+					headers: { 'content-type': 'application/json' },
+					statusCode: 200,
+				}),
+			};
+
+			const value = await run('canaryProbe', host);
+
+			expect(value).toContain(CANARY);
+			const recorded = profile(
+				{
+					action: 'probe',
+					version: '1.0.0',
+					bundleHash: 'hash',
+					nodeContract: NODE_CONTRACT_VERSION,
+				},
+				{ outputItems: 1 },
+			);
+			expect(JSON.stringify(recorded)).not.toContain(CANARY);
+			expect(recorded.payloads).toMatchObject({
+				capture,
+				inputs: [capture === 'shape' ? '{"note":string(5)}' : '{"note":"hello"}'],
+				outputs: [expect.any(String)],
+			});
+			expect(recorded.requests).toEqual([
+				expect.objectContaining({
+					requestBody: capture === 'shape' ? '{"note":string(5)}' : '{"note":"hello"}',
+					responseBody:
+						capture === 'shape'
+							? '{"authorization":string(30),"note":string(5)}'
+							: expect.stringContaining('[REDACTED]'),
+				}),
+			]);
+		},
+	);
 
 	it('gives the guest an error answer when the host answer cannot be encoded', async () => {
 		const body: Record<string, unknown> = {};
