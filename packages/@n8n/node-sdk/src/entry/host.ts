@@ -16,6 +16,7 @@ export {
 	setCredentialManifests,
 	setEgressInputHosts,
 	setExecutorLoader,
+	setMaxResponseBytes,
 	toNodeType,
 	toVersionedNodeType,
 	toVersionedToolType,

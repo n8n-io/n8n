@@ -445,6 +445,23 @@ describe.skipIf(!existsSync(SIDECAR) || !existsSync(GUEST))('the sandbox', () =>
 		]);
 	});
 
+	it('fails a response over the limit of the host, as in-process', async () => {
+		const host: ExecutorHost = {
+			...hostOf(),
+			maxResponseBytes: 1024,
+			request: async (request) => {
+				requests.push(request);
+				throw Object.assign(new Error('maxContentLength size of 1024 exceeded'), {
+					code: 'ERR_BAD_RESPONSE',
+				});
+			},
+		};
+		await expect(run('echoProbe', host)).rejects.toThrow(
+			'probe.probe got a response larger than 1024 bytes',
+		);
+		expect(requests).toEqual([expect.objectContaining({ maxResponseBytes: 1024 })]);
+	});
+
 	it('records the sandbox start, each JSON-RPC message, and the guest request under its call', async () => {
 		const { recorder, profile } = runRecorder(1);
 
@@ -681,6 +698,39 @@ describe.skipIf(!existsSync(SIDECAR) || !existsSync(GUEST))('the sandbox', () =>
 			mimeType: 'application/octet-stream',
 			fileName: 'copy.bin',
 		});
+	});
+
+	it('stops a binary download over the limit of the host, as in-process', async () => {
+		const pulled = { chunks: 0 };
+		function* chunks() {
+			for (const _ of Array.from({ length: 1000 })) {
+				pulled.chunks += 1;
+				yield Buffer.alloc(1024);
+			}
+		}
+		const store: BinaryStore = {
+			input: async () => ({ data: 'eA==', mimeType: 'text/plain', bytes: 1 }),
+			read: async (entry) => Readable.from([Buffer.from(entry.data, 'base64')]),
+			write: async (stream) => {
+				const read = { bytes: 0 };
+				for await (const chunk of stream) read.bytes += (chunk as Buffer).length;
+				return { data: '', mimeType: 'application/octet-stream', bytes: read.bytes };
+			},
+		};
+		const host: ExecutorHost = {
+			...hostOf(),
+			parameter: (name) => (name === 'file' ? 'data' : undefined),
+			binary: store,
+			maxResponseBytes: 4096,
+			request: async (request) =>
+				request.encoding === 'stream'
+					? { body: Readable.from(chunks()), headers: {}, statusCode: 200 }
+					: { body: { ok: true }, headers: {}, statusCode: 200 },
+		};
+		await expect(run('binaryProbe', host)).rejects.toThrow(
+			'probe.probe got a response larger than 4096 bytes',
+		);
+		expect(pulled.chunks).toBeLessThan(64);
 	});
 
 	it('closes the binary readers and writers that a run leaves open', async () => {

@@ -615,6 +615,11 @@ export interface IHttpRequestOptions {
 		protocol?: string;
 	};
 	timeout?: number;
+	/**
+	 * The most bytes of the response body, after decompression. Over the limit, the client reads no
+	 * more and fails the request. Absent is no limit.
+	 */
+	maxResponseBytes?: number;
 	json?: boolean;
 	abortSignal?: GenericAbortSignal;
 	/**

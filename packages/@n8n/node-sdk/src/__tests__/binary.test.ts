@@ -558,6 +558,65 @@ describe('binary egress', () => {
 		expect(writes).toEqual([]);
 	});
 
+	it('stops a binary download at the response limit, and reads no more of it', async () => {
+		const pulled = { chunks: 0 };
+		function* chunks() {
+			for (const _ of Array.from({ length: 1000 })) {
+				pulled.chunks += 1;
+				yield Buffer.alloc(1024);
+			}
+		}
+		const { store, writes } = memoryStore();
+		const reply = () => ({ body: Readable.from(chunks()), headers: {}, statusCode: 200 });
+		const { host } = hostOf({ url: 'https://api.hosted.test/big' }, [reply], {
+			binary: store,
+			maxResponseBytes: 4096,
+		});
+
+		await expect(executorOf(fetchFile)(host)).rejects.toThrow(
+			'hosted.fetchFile got a response larger than 4096 bytes',
+		);
+		expect(pulled.chunks).toBeLessThan(64);
+		expect(writes).toEqual([]);
+	});
+
+	it('refuses a binary download whose declared length is over the limit, before it reads', async () => {
+		const pulled = { chunks: 0 };
+		function* chunks() {
+			pulled.chunks += 1;
+			yield Buffer.alloc(8192);
+		}
+		const { store } = memoryStore();
+		const reply = () => ({
+			body: Readable.from(chunks()),
+			headers: { 'content-length': '8192' },
+			statusCode: 200,
+		});
+		const { host } = hostOf({ url: 'https://api.hosted.test/big' }, [reply], {
+			binary: store,
+			maxResponseBytes: 4096,
+		});
+
+		await expect(executorOf(fetchFile)(host)).rejects.toThrow(
+			'hosted.fetchFile got a response larger than 4096 bytes',
+		);
+		expect(pulled.chunks).toBe(0);
+	});
+
+	it('stores a binary download of exactly the limit, and gives the client no limit for it', async () => {
+		const { store, writes } = memoryStore();
+		const { host, requests } = hostOf(
+			{ url: 'https://api.hosted.test/file' },
+			[streamed('x'.repeat(4096), { 'content-length': '4096' })],
+			{ binary: store, maxResponseBytes: 4096 },
+		);
+
+		await executorOf(fetchFile)(host);
+
+		expect(writes.map(({ bytes }) => bytes)).toEqual([4096]);
+		expect(requests[0]).not.toHaveProperty('maxResponseBytes');
+	});
+
 	it('refuses a binary response from a host outside the allowed hosts', async () => {
 		const { store, writes } = memoryStore();
 		const { host, requests } = hostOf({ url: 'https://other.test/file.png' }, [], {

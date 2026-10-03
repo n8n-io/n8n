@@ -39,7 +39,7 @@ export function convertN8nRequestToAxios(
 		auth,
 		url,
 		maxBodyLength: Infinity,
-		maxContentLength: Infinity,
+		maxContentLength: n8nRequest.maxResponseBytes ?? Infinity,
 	} as AxiosRequestConfig;
 
 	axiosRequest.params = n8nRequest.qs;

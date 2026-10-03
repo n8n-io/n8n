@@ -2,6 +2,7 @@ import { z } from 'zod';
 
 import { CommaSeparatedStringArray } from '../custom-types';
 import { Config, Env } from '../decorators';
+import { nonnegativeIntSchema } from '../schemas';
 
 /**
  * The broad permission classes that `N8N_NODE_PERMISSIONS_DENY` can deny:
@@ -98,4 +99,13 @@ export class NodesConfig {
 	 */
 	@Env('N8N_NODE_EGRESS_INPUT_HOSTS')
 	egressInputHosts: CommaSeparatedStringArray<string> = [];
+
+	/**
+	 * The most MiB of one HTTP response body that a contract node reads, after decompression. A
+	 * response over the limit fails the item, and n8n reads no more of it. The limit applies to a
+	 * file download too. `0` is no limit. Legacy nodes, e.g. `n8n-nodes-base.httpRequest`, are not
+	 * affected.
+	 */
+	@Env('N8N_NODE_RESPONSE_SIZE_MAX', nonnegativeIntSchema)
+	responseSizeMaxMiB: number = 100;
 }

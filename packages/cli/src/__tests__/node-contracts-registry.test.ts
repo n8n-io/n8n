@@ -66,7 +66,11 @@ describe('useNodeContractsRegistry', () => {
 		instanceType: 'main',
 		isFollower: false,
 	});
-	mockInstance(NodesConfig, { pythonEnabled: false, egressInputHosts: ['*.acme.test'] });
+	mockInstance(NodesConfig, {
+		pythonEnabled: false,
+		egressInputHosts: ['*.acme.test'],
+		responseSizeMaxMiB: 2,
+	});
 	mockInstance(OutboundHttp).transport.mockReturnValue(
 		mock<ReturnType<OutboundHttp['transport']>>(),
 	);
@@ -94,6 +98,7 @@ describe('useNodeContractsRegistry', () => {
 			},
 		});
 		expect([...(options?.egressInputHosts ?? [])]).toEqual(['*.acme.test']);
+		expect(options?.maxResponseBytes).toBe(2 * 1024 * 1024);
 		expect(await options?.metaOf(contextOf('1'))).toBe(meta);
 		expect(await options?.metaOf(contextOf('1'))).toBe(meta);
 		expect(await options?.metaOf(contextOf('2'))).toBe(meta);

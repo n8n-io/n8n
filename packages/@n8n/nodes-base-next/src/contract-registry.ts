@@ -4,6 +4,7 @@ import {
 	setCredentialManifests,
 	setEgressInputHosts,
 	setExecutorLoader,
+	setMaxResponseBytes,
 	setNodeContractRange,
 	setRunProfileListener,
 	type ContractOrigin,
@@ -89,6 +90,11 @@ export interface ContractRegistryOptions {
 	readonly tracePayloads?: PayloadCapture;
 	/** The host patterns that a URL from input may reach, in-process and in the sandbox. Empty: no limit. */
 	readonly egressInputHosts?: readonly string[];
+	/**
+	 * The most bytes of one HTTP response body, in-process and in the sandbox. `Infinity` is no
+	 * limit. Absent: the node-sdk default, 100 MiB.
+	 */
+	readonly maxResponseBytes?: number;
 	/**
 	 * Whether another package of n8n has a credential type of this name, e.g. a legacy class. That
 	 * type signs, so a stored credential manifest of the name does not apply.
@@ -688,8 +694,9 @@ export function credentialManifestsOf(
 
 /**
  * Sets the Node Contract range, the version loader, the credential manifests, the sandbox, the
- * run profile listener and the input hosts of this package's node-sdk, which its nodes run with. With a sandbox, it also
- * starts to compile the sandbox guests and does not wait for the result.
+ * run profile listener, the input hosts and the response limit of this package's node-sdk, which
+ * its nodes run with. With a sandbox, it also starts to compile the sandbox guests and does not
+ * wait for the result.
  */
 export const useContractRegistry = (options: ContractRegistryOptions) => {
 	setNodeContractRange(options.nodeContractRange);
@@ -697,6 +704,7 @@ export const useContractRegistry = (options: ContractRegistryOptions) => {
 	setCredentialManifests(credentialManifestsOf(options.store, options.hasOtherCredentialType));
 	setRunProfileListener(options.onRunProfile, options.tracePayloads);
 	setEgressInputHosts(options.egressInputHosts ?? []);
+	setMaxResponseBytes(options.maxResponseBytes);
 	if (options.sandbox) {
 		const { scope } = options.sandbox;
 		setExecutorLoader(

@@ -215,6 +215,7 @@ describe('GlobalConfig', () => {
 			mergeSqlSandboxMemoryLimitMb: 64,
 			permissionsDeny: [],
 			egressInputHosts: [],
+			responseSizeMaxMiB: 100,
 		},
 		publicApi: {
 			disabled: false,
@@ -791,15 +792,17 @@ describe('GlobalConfig', () => {
 		expect(config.endpoints.metrics.includeNodeContractMetrics).toBe(true);
 	});
 
-	it('should parse N8N_NODE_PERMISSIONS_DENY and N8N_NODE_EGRESS_INPUT_HOSTS from env variables', () => {
+	it('should parse N8N_NODE_PERMISSIONS_DENY, N8N_NODE_EGRESS_INPUT_HOSTS and N8N_NODE_RESPONSE_SIZE_MAX from env variables', () => {
 		process.env = {
 			N8N_NODE_PERMISSIONS_DENY: 'egress-input,code,files,full-community',
 			N8N_NODE_EGRESS_INPUT_HOSTS: 'api.acme.test,*.acme.test',
+			N8N_NODE_RESPONSE_SIZE_MAX: '0',
 		};
 		const { nodes } = Container.get(GlobalConfig);
 
 		expect([...nodes.permissionsDeny]).toEqual(['egress-input', 'code', 'files', 'full-community']);
 		expect([...nodes.egressInputHosts]).toEqual(['api.acme.test', '*.acme.test']);
+		expect(nodes.responseSizeMaxMiB).toBe(0);
 	});
 
 	it('should fail on an unknown class in N8N_NODE_PERMISSIONS_DENY', () => {

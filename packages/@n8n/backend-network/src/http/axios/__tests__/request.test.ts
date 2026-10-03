@@ -285,6 +285,19 @@ describe('httpRequest', () => {
 		scope.done();
 	});
 
+	test('should fail a response body over maxResponseBytes, and pass one at the limit', async () => {
+		const scope = nock(baseUrl).get('/big').times(2).reply(200, 'x'.repeat(2048));
+		const request = { method: 'GET', url: `${baseUrl}/big` } as const;
+
+		await expect(httpRequest({ ...request, maxResponseBytes: 1024 })).rejects.toThrow(
+			'maxContentLength size of 1024 exceeded',
+		);
+		await expect(httpRequest({ ...request, maxResponseBytes: 2048 })).resolves.toBe(
+			'x'.repeat(2048),
+		);
+		scope.done();
+	});
+
 	test('should ignore invalid baseURL when url is absolute', async () => {
 		const scope = nock(baseUrl)
 			.get('/users')

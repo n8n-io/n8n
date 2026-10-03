@@ -492,6 +492,8 @@ export async function useNodeContractsRegistry() {
 		nodeContractRange: instanceAi.nodeContractRange,
 		sandbox,
 		egressInputHosts: nodes.egressInputHosts,
+		maxResponseBytes:
+			nodes.responseSizeMaxMiB === 0 ? Infinity : nodes.responseSizeMaxMiB * 1024 * 1024,
 		hasOtherCredentialType: hasOtherCredentialTypeInN8n,
 		store: await Container.get(NodeContractsStore).open(),
 		tracePayloads: tracePayloads === 'off' ? undefined : tracePayloads,

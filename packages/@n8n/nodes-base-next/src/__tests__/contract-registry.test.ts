@@ -945,4 +945,27 @@ describe('useContractRegistry', () => {
 		expect(httpRequest).not.toHaveBeenCalled();
 		use();
 	});
+
+	it('gives the response limit to each request of a node run', async () => {
+		useContractRegistry({
+			policy: 'tolerant',
+			store: storeOf(),
+			metaOf: async () => undefined,
+			nodeContractRange: '>=2.0.0 <3.0.0',
+			maxResponseBytes: 1024,
+		});
+		const httpRequest = vi.fn().mockResolvedValue([]);
+		const context = {
+			getInputData: () => [{ json: {} }],
+			getNode: () => ({ name: 'GET', credentials: {} }),
+			getNodeParameter: (name: string) => (name === 'url' ? 'https://api.test/x' : undefined),
+			continueOnFail: () => false,
+			helpers: { httpRequest },
+		} as unknown as IExecuteFunctions;
+		const NodeType = toNodeType(getRequest);
+
+		await new NodeType().execute?.call(context);
+		expect(httpRequest).toHaveBeenCalledWith(expect.objectContaining({ maxResponseBytes: 1024 }));
+		use();
+	});
 });

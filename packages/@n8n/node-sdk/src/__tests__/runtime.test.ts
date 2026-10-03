@@ -1,4 +1,10 @@
-import { NodeOperationError, type IHttpRequestOptions, type INode } from 'n8n-workflow';
+import {
+	NodeApiError,
+	NodeOperationError,
+	type IHttpRequestOptions,
+	type INode,
+	type JsonObject,
+} from 'n8n-workflow';
 
 import { compat, credential, defineCredential, field } from '../entry/credentials';
 import {
@@ -218,6 +224,30 @@ describe('executorOf', () => {
 			await expect(executorOf(pager)(items.host)).rejects.toThrow(
 				'echo.item.page yielded 2 items for one input item, the most one run may yield',
 			);
+		});
+
+		it('asks the client to stop at the response limit, and names the limit when it stops', async () => {
+			const action = fetchAction({ path: path`/items` });
+			const under = hostOf([[{ id: 'a' }]], { maxResponseBytes: 1024 });
+			await expect(executorOf(action)(under.host)).resolves.toMatchObject([
+				[{ json: { id: 'a' } }],
+			]);
+			expect(under.requests[0]).toMatchObject({ maxResponseBytes: 1024 });
+
+			const stopped = Object.assign(new Error('maxContentLength size of 1024 exceeded'), {
+				code: 'ERR_BAD_RESPONSE',
+			});
+			const over = hostOf([new NodeApiError(node, stopped as unknown as JsonObject)], {
+				maxResponseBytes: 1024,
+			});
+			await expect(executorOf(action)(over.host)).rejects.toThrow(
+				'echo.item.fetch got a response larger than 1024 bytes, the most one response may have. The n8n setting N8N_NODE_RESPONSE_SIZE_MAX sets the limit',
+			);
+			expect(over.requests).toHaveLength(1);
+
+			const unlimited = hostOf([[]], { maxResponseBytes: Infinity });
+			await executorOf(action)(unlimited.host);
+			expect(unlimited.requests[0]).not.toHaveProperty('maxResponseBytes');
 		});
 
 		it('gives run() limits that it cannot change', async () => {

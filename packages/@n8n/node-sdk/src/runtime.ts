@@ -521,6 +521,9 @@ function credentialDescriptionOf({
 	return { selector, credentials };
 }
 
+// The same default as `N8N_AI_MAX_RESPONSE_SIZE`, the response limit of the n8n AI clients.
+const DEFAULT_MAX_RESPONSE_BYTES = 100 * 1024 * 1024;
+
 // An action that logs in a loop must not fill the n8n log.
 const MAX_LOG_LENGTH = 2_000;
 const MAX_LOG_LINES = 100;
@@ -578,6 +581,13 @@ export interface ExecutorHost {
 	/** Limits that replace the defaults of `RunLimits`. */
 	readonly limits?: Partial<RunLimits>;
 	/**
+	 * The most bytes of one HTTP response body, after decompression. `Infinity` is no limit.
+	 * Default: 100 MiB. `request` gets it as `maxResponseBytes` for a body that the client
+	 * buffers, and must read no more than the limit. The executor counts the bytes of a binary
+	 * response itself. n8n sets it from `N8N_NODE_RESPONSE_SIZE_MAX`.
+	 */
+	readonly maxResponseBytes?: number;
+	/**
 	 * The host patterns that a URL from input (`egress.fromInput`) may reach, and its redirect
 	 * hops with the action hosts. Absent or empty is no limit. n8n sets it from
 	 * `N8N_NODE_EGRESS_INPUT_HOSTS`.
@@ -632,6 +642,15 @@ const binaryStoreOf = (context: NodeContext): BinaryStore => ({
 
 // One slot: the host sets the admin list once at start, as the executor loader.
 const egressInputHosts = new Map<'hosts', readonly string[]>();
+const maxResponseBytesSlot = new Map<'bytes', number | undefined>();
+
+/**
+ * Sets the most bytes of one HTTP response body in every node run. `Infinity` is no limit.
+ * `undefined` is the default of `ExecutorHost.maxResponseBytes`.
+ */
+export const setMaxResponseBytes = (bytes: number | undefined) => {
+	maxResponseBytesSlot.set('bytes', bytes);
+};
 
 /** Sets the hosts that a URL from input may reach in every node run. Empty is no limit. */
 export const setEgressInputHosts = (hosts: readonly string[]) => {
@@ -646,6 +665,7 @@ export const setEgressInputHosts = (hosts: readonly string[]) => {
 const hostBaseOf = (context: NodeContext) => ({
 	node: context.getNode(),
 	egressInputHosts: egressInputHosts.get('hosts'),
+	maxResponseBytes: maxResponseBytesSlot.get('bytes'),
 	request: async (options: IHttpRequestOptions, credentialType: string | undefined) => {
 		const response: unknown = credentialType
 			? await context.helpers.httpRequestWithAuthentication.call(context, credentialType, options)
@@ -1039,6 +1059,16 @@ export function executorOf<S extends Shape, O extends AnySchema>(
 
 		// Frozen: `run()` gets the object that the host enforces.
 		const limits: RunLimits = Object.freeze({ ...DEFAULT_RUN_LIMITS, ...host.limits });
+		const maxResponseBytes = host.maxResponseBytes ?? DEFAULT_MAX_RESPONSE_BYTES;
+		const responseTooLarge = () =>
+			new UserError(
+				`${action.id} got a response larger than ${maxResponseBytes} bytes, the most one response may have. The n8n setting N8N_NODE_RESPONSE_SIZE_MAX sets the limit`,
+			);
+		// axios gives no own code when it stops at `maxContentLength`, only this message.
+		const stoppedAtLimit = (error: unknown) =>
+			errorChain(error).some(
+				({ message }) => message === `maxContentLength size of ${maxResponseBytes} exceeded`,
+			);
 		const wait = host.wait ?? (async (ms: number) => await sleep(ms));
 		const selected = hasSelector(action) ? host.parameter(AUTHENTICATION, 0) : undefined;
 		const credentialType = credentialTypeOf(action, host.node, selected);
@@ -1183,6 +1213,7 @@ export function executorOf<S extends Shape, O extends AnySchema>(
 					...attemptOutcomeOf(error),
 					...(isHttpError(error) ? responseBodyOf(error.body) : {}),
 				}));
+				if (stoppedAtLimit(error)) throw responseTooLarge();
 				const delay = retryable ? retryDelay(error, retry) : undefined;
 				if (delay === undefined) throw redactedError(error, refreshed ?? (await redactNow()));
 				// The failed attempt is not read, so free its connection.
@@ -1228,10 +1259,31 @@ export function executorOf<S extends Shape, O extends AnySchema>(
 				throw new UnexpectedError('The HTTP client gave no response stream');
 			}
 			const headers = headersOf(isRecord(response) ? response.headers : undefined);
-			const entry = await store.write(stream, {
-				mimeType: headers['content-type']?.split(';')[0]?.trim() || undefined,
-				fileName: fileNameOf(headers, options.url),
-			});
+			// After decompression, the HTTP client can keep the compressed `content-length`. Only a body
+			// that compression makes larger, a few bytes under the limit, fails here too early.
+			if (Number(headers['content-length']) > maxResponseBytes) {
+				stream.destroy();
+				throw responseTooLarge();
+			}
+			// Count the bytes as they arrive, so the store never gets more than the limit.
+			const read = { bytes: 0 };
+			async function* limited(source: AsyncIterable<unknown>) {
+				for await (const chunk of source) {
+					read.bytes += bytesOf(chunk) ?? 0;
+					// The throw ends `for await`, and that destroys the response stream.
+					if (read.bytes > maxResponseBytes) throw responseTooLarge();
+					yield chunk;
+				}
+			}
+			const entry = await store
+				.write(Readable.from(limited(stream), { objectMode: false }), {
+					mimeType: headers['content-type']?.split(';')[0]?.trim() || undefined,
+					fileName: fileNameOf(headers, options.url),
+				})
+				.catch((error: unknown) => {
+					// The store can wrap the stream error, so the count decides.
+					throw read.bytes > maxResponseBytes ? responseTooLarge() : error;
+				});
 			const file = handleOf(entry);
 			const statusCode = isRecord(response) ? response.statusCode : undefined;
 			return request.fullResponse ? { body: file, headers, statusCode } : file;
@@ -1270,7 +1322,13 @@ export function executorOf<S extends Shape, O extends AnySchema>(
 					actionId: action.id,
 					itemIndex,
 				});
-				const requestOptions = allowedDomains === undefined ? built : { ...built, allowedDomains };
+				// The client stops a buffered body at the limit. The executor counts a binary stream.
+				const withLimit =
+					options.response === 'binary' || !Number.isFinite(maxResponseBytes)
+						? built
+						: { ...built, maxResponseBytes };
+				const requestOptions =
+					allowedDomains === undefined ? withLimit : { ...withLimit, allowedDomains };
 				const requestBody = payloadTextOf(requestOptions.body);
 				const label =
 					recorder &&
