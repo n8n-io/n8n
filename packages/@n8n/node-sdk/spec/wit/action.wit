@@ -1,4 +1,4 @@
-package n8n:node-contract@2.6.0;
+package n8n:node-contract@2.7.0;
 
 /// What an action bundle exports.
 ///
@@ -85,6 +85,34 @@ interface action {
         constructor(input: json, inputs: list<list<json>>);
         next: func() -> result<option<routed-join-output>, run-error>;
     }
+
+    /// The result of one input item of a `chunk-run`.
+    @since(version = 2.7.0)
+    variant item-outcome {
+        /// The one output of the item.
+        output(routed-output),
+        /// The error of the item.
+        failed(run-error),
+    }
+
+    /// The run of a `per-item` action over many input items, in order, with one outcome per
+    /// item. Before the work of an item, the guest calls `chunk.item` with its index, so the
+    /// host applies the input of that item to the host calls that follow. Without
+    /// `continue-on-fail`, the run ends after the first failed item.
+    @since(version = 2.7.0)
+    resource chunk-run {
+        /// `inputs` has the run input of each item of `items`, at the same index.
+        constructor(inputs: list<json>, items: list<json>, continue-on-fail: bool);
+        next: func() -> result<option<item-outcome>, run-error>;
+    }
+}
+
+/// The item marker of a `chunk-run`.
+@since(version = 2.7.0)
+interface chunk {
+    /// The guest starts the input item at this index of the chunk. The host accepts only the
+    /// next index, and fails the run on another index or on a host call before the first item.
+    item: func(index: u32);
 }
 
 /// An action: it reads items and gives items. The host gives an optional import only to an
@@ -109,5 +137,7 @@ world action-bundle {
     import supplied;
     @since(version = 2.5.0)
     import run-credential;
+    @since(version = 2.7.0)
+    import chunk;
     export action;
 }

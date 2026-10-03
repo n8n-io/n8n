@@ -1,12 +1,13 @@
 // The generic JS guest of the action interface: it runs an action bundle and gives it the run
 // context over the imports of the action world.
-import * as witBinary from 'n8n:node-contract/binary@2.6.0';
-import { run as witCode } from 'n8n:node-contract/code@2.6.0';
-import * as witTables from 'n8n:node-contract/data-tables@2.6.0';
-import { get as witInputOf } from 'n8n:node-contract/input-of@2.6.0';
-import { get as witLimits } from 'n8n:node-contract/limits@2.6.0';
-import { open as witSupplied } from 'n8n:node-contract/supplied@2.6.0';
-import { until as witUntil } from 'n8n:node-contract/wait@2.6.0';
+import * as witBinary from 'n8n:node-contract/binary@2.7.0';
+import { item as witChunkItem } from 'n8n:node-contract/chunk@2.7.0';
+import { run as witCode } from 'n8n:node-contract/code@2.7.0';
+import * as witTables from 'n8n:node-contract/data-tables@2.7.0';
+import { get as witInputOf } from 'n8n:node-contract/input-of@2.7.0';
+import { get as witLimits } from 'n8n:node-contract/limits@2.7.0';
+import { open as witSupplied } from 'n8n:node-contract/supplied@2.7.0';
+import { until as witUntil } from 'n8n:node-contract/wait@2.7.0';
 
 import type {
 	Action,
@@ -195,17 +196,26 @@ const dataTables: DataTables = {
 	create: async (table) => call(() => witTables.create({ ...table, columns: [...table.columns] })),
 };
 
+/** The index of an input item by identity, or -1. A run with many items looks up each output. */
+const indexOfIn = (items: readonly unknown[]) => {
+	const indexes = new Map(items.map((item, index) => [item, index]));
+	return (item: unknown) => indexes.get(item) ?? -1;
+};
+
 /** Every host import, as in the host process: the sidecar refuses one the manifest does not grant. */
-const importsOf = (items: readonly InputItem[]): HostImports<Record<string, unknown>> => ({
-	dataTables,
-	code: { run: async (request) => call(() => parsed(witCode(request))) },
-	wait: { until: async (at) => call(() => witUntil(BigInt(at.getTime()))) },
-	inputOf: async (item) => {
-		const index = items.indexOf(item);
-		if (index < 0) throw new Error('inputOf needs an input item of this run');
-		return call(() => inputOf(witInputOf(index)));
-	},
-});
+const importsOf = (items: readonly InputItem[]): HostImports<Record<string, unknown>> => {
+	const indexOf = indexOfIn(items);
+	return {
+		dataTables,
+		code: { run: async (request) => call(() => parsed(witCode(request))) },
+		wait: { until: async (at) => call(() => witUntil(BigInt(at.getTime()))) },
+		inputOf: async (item) => {
+			const index = indexOf(item);
+			if (index < 0) throw new Error('inputOf needs an input item of this run');
+			return call(() => inputOf(witInputOf(index)));
+		},
+	};
+};
 
 /** The capability of a provider, at `{ "$capability": id }` of the run input. */
 function capabilityOf(ref: unknown): unknown {
@@ -293,14 +303,22 @@ const isIterable = (value: unknown): value is Iterable<unknown> =>
 
 const isInputLists = (value: unknown): value is readonly InputItem[][] => Array.isArray(value);
 
+/** What the runs of one item-run, join-run or chunk-run share, and the item of a per-item run. */
+interface RunShared {
+	readonly limits: ReturnType<typeof witLimits>;
+	readonly imports: ReturnType<typeof importsOf>;
+	readonly item: InputItem | undefined;
+}
+
 /** The raw outputs of one run, as `run()` or a binding gives them. */
 async function* valuesOf(
 	action: Action,
 	input: Record<string, unknown>,
 	items: readonly InputItem[],
 	inputs: Readonly<Record<string, readonly InputItem[]>> | readonly InputItem[][] | undefined,
+	shared: RunShared = { limits: witLimits(), imports: importsOf(items), item: items[0] },
 ): AsyncGenerator<unknown> {
-	const context = { input, http, log, limits: witLimits(), binary, ...importsOf(items) };
+	const context = { input, http, log, limits: shared.limits, binary, ...shared.imports };
 	const batch = action.flow.cardinality === 'batch';
 	// The WIT has no warning, so the drift of a page goes to the log, once per run.
 	const warned = new Set<string>();
@@ -319,7 +337,7 @@ async function* valuesOf(
 					? action.run?.(withCredential({ ...context, inputs }))
 					: batch
 						? action.run?.(withCredential({ ...context, items }))
-						: action.run?.(withCredential({ ...context, item: items[0] ?? { json: {} } }));
+						: action.run?.(withCredential({ ...context, item: shared.item ?? { json: {} } }));
 	if (action.flow.cardinality === 'per-item' && !isAsyncIterable(result)) {
 		yield await result;
 		return;
@@ -376,7 +394,7 @@ async function* routed(
 	const items = jsons.map(
 		(json): InputItem => Object.freeze({ json: Object.freeze(parsed(json)) }),
 	);
-	const indexOf = (item: unknown) => items.findIndex((entry) => entry === item);
+	const indexOf = indexOfIn(items);
 	for await (const value of valuesOf(action, await runInputOf(action, input), items, undefined)) {
 		yield routedOf(action, value, indexOf);
 	}
@@ -408,13 +426,10 @@ async function* joined(
 	const items = lists.map((list) =>
 		list.map((json): InputItem => Object.freeze({ json: Object.freeze(parsed(json)) })),
 	);
-	const refOf = (item: unknown) => {
-		const index = items.findIndex((list) => list.some((entry) => entry === item));
-		return {
-			input: index,
-			item: index < 0 ? -1 : (items[index]?.findIndex((entry) => entry === item) ?? -1),
-		};
-	};
+	const refs = new Map<unknown, { input: number; item: number }>(
+		items.flatMap((list, input) => list.map((entry, item) => [entry, { input, item }])),
+	);
+	const refOf = (item: unknown) => refs.get(item) ?? { input: -1, item: -1 };
 	// Counted inputs are a list in input order, named inputs a record.
 	const inputs =
 		declared === undefined || 'count' in declared
@@ -445,6 +460,68 @@ class JoinRun {
 	}
 }
 
+type ItemOutcome =
+	| { tag: 'output'; val: RoutedOutput }
+	| { tag: 'failed'; val: ReturnType<typeof runErrorOf> };
+
+async function outcomeOf(
+	action: Action,
+	input: string,
+	items: readonly InputItem[],
+	shared: RunShared,
+	indexOf: (item: unknown) => number,
+): Promise<ItemOutcome> {
+	try {
+		const values: unknown[] = [];
+		const runInput = await runInputOf(action, input);
+		for await (const value of valuesOf(action, runInput, items, undefined, shared))
+			values.push(value);
+		if (values.length !== 1) {
+			throw new Error(`${action.id} is per-item, and it gave ${values.length} outputs`);
+		}
+		return { tag: 'output', val: routedOf(action, values[0], indexOf) };
+	} catch (error) {
+		return { tag: 'failed', val: runErrorOf(error) };
+	}
+}
+
+async function* chunked(
+	inputs: readonly string[],
+	jsons: readonly string[],
+	continueOnFail: boolean,
+): AsyncGenerator<ItemOutcome, void, undefined> {
+	const action = actionOf();
+	const items = jsons.map(
+		(json): InputItem => Object.freeze({ json: Object.freeze(parsed(json)) }),
+	);
+	const indexOf = indexOfIn(items);
+	const imports = importsOf(items);
+	// The limits are the same for each item, so one call after the first marker reads them.
+	const limits = new Map<'limits', ReturnType<typeof witLimits>>();
+	for (const [index, item] of items.entries()) {
+		witChunkItem(index);
+		const known = limits.get('limits') ?? witLimits();
+		limits.set('limits', known);
+		const shared = { limits: known, imports, item };
+		const outcome = await outcomeOf(action, inputs[index] ?? '{}', items, shared, indexOf);
+		yield outcome;
+		if (outcome.tag === 'failed' && !continueOnFail) return;
+	}
+}
+
+/** `action.chunk-run`: one run of a per-item action over many items. */
+class ChunkRun {
+	private readonly outcomes: AsyncGenerator<ItemOutcome, void, undefined>;
+
+	constructor(inputs: string[], items: string[], continueOnFail: boolean) {
+		this.outcomes = chunked(inputs, items, continueOnFail);
+	}
+
+	async next() {
+		return await nextOf(this.outcomes);
+	}
+}
+
 /** `action.run` of Node Contract 2.0.0. Every bundle of this SDK targets 2.1.0 or newer. */
 class Run {
 	async next(): Promise<string | undefined> {
@@ -454,4 +531,4 @@ class Run {
 	}
 }
 
-export const action = { describe, Run, ItemRun, JoinRun };
+export const action = { describe, Run, ItemRun, JoinRun, ChunkRun };

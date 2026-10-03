@@ -1,0 +1,135 @@
+import { execFileSync, spawn } from 'node:child_process';
+import { randomUUID } from 'node:crypto';
+import { link, rm } from 'node:fs/promises';
+import path from 'node:path';
+
+import { connectChild, type GuestRuntime } from '../sandbox';
+
+/** `node:24-slim` (linux/amd64 and linux/arm64), pinned so a tag push cannot change the guest. */
+export const CONTAINER_IMAGE =
+	'node@sha256:0e0ff40c39bc087845bfb27465a0df4ea419520094bc35842ff83dd8cbe6f9b6';
+
+/** The Node guest that the package build writes (`scripts/node-guest.ts`). */
+export const CONTAINER_GUEST = path.resolve(__dirname, '..', '..', 'dist', 'guest', 'action.cjs');
+
+const GUEST_PATH = '/guest/action.cjs';
+const BUNDLE_PATH = '/bundle/bundle.js';
+
+/** The guest, the image, the permissions and the limits of `containerRuntime`. */
+export interface ContainerOptions {
+	/** The Node guest of both kinds. Default: `CONTAINER_GUEST`. */
+	readonly guest?: string;
+	/**
+	 * An image with `node` on the PATH, pinned by digest or image id, for a manifest without
+	 * `runtime`. Default: `CONTAINER_IMAGE`.
+	 */
+	readonly image?: string;
+	/** Lets the bundle run the tools of the image, with `/tmp` to read and write their files. */
+	readonly allowChildProcess?: boolean;
+	/** Directories in the image from which the bundle can load native addons, e.g. `sharp`. */
+	readonly allowAddons?: readonly string[];
+	/** The OCI runtime of docker, e.g. `runsc` for gVisor. Default: the default of docker. */
+	readonly ociRuntime?: 'runc' | 'runsc';
+	/** Per container. Memory comes from `SandboxLimits.memoryMb`. */
+	readonly limits?: {
+		/** CPUs of the container. Default: 1. */
+		readonly cpus?: number;
+		/** Processes and threads of the container. Default: 64. */
+		readonly pids?: number;
+	};
+}
+
+/** Throws a clear error when docker is missing or the pinned image is not pulled. */
+function checkImage(image: string) {
+	try {
+		execFileSync('docker', ['image', 'inspect', '--format', '{{.Id}}', image], {
+			stdio: ['ignore', 'ignore', 'pipe'],
+			encoding: 'utf8',
+		});
+	} catch (error) {
+		const code = error instanceof Error && 'code' in error ? error.code : undefined;
+		if (code === 'ENOENT') throw new Error('The container runtime needs docker on the PATH');
+		const stderr =
+			error instanceof Error && 'stderr' in error && typeof error.stderr === 'string'
+				? error.stderr.trim()
+				: '';
+		throw new Error(
+			stderr.includes('No such image')
+				? `The container runtime needs the image ${image}. Run: docker pull ${image}`
+				: `The container runtime cannot use docker: ${stderr || String(error)}`,
+		);
+	}
+}
+
+const permissionsOf = (childProcess: boolean, addons: readonly string[]) => [
+	...(childProcess
+		? ['--allow-child-process', '--allow-fs-read=/tmp', '--allow-fs-write=/tmp']
+		: []),
+	...(addons.length > 0
+		? ['--allow-addons', ...addons.map((dir) => `--allow-fs-read=${dir}`)]
+		: []),
+];
+
+/**
+ * One container per session with the Node guest. A contract with `runtime` runs in its own image
+ * with its own permissions; the image and permission options apply to every other contract.
+ * Docker must see the paths of the guest and the bundle: a bind mount of a path that the daemon
+ * does not share fails at `docker run`.
+ */
+export function containerRuntime({
+	guest = CONTAINER_GUEST,
+	image = CONTAINER_IMAGE,
+	allowChildProcess = false,
+	allowAddons = [],
+	ociRuntime,
+	limits: { cpus = 1, pids = 64 } = {},
+}: ContainerOptions = {}): GuestRuntime {
+	checkImage(image);
+	const checked = new Set([image]);
+	return {
+		name: 'container',
+		async start(session) {
+			const { kind, limits, manifest, bundleFile, grants } = session;
+			const own = manifest.contract.runtime;
+			const used = own?.image ?? image;
+			if (!checked.has(used)) {
+				checkImage(used);
+				checked.add(used);
+			}
+			const permissions = own
+				? permissionsOf(own.childProcess ?? false, own.addons ?? [])
+				: permissionsOf(allowChildProcess, allowAddons);
+			const name = `n8n-guest-${randomUUID()}`;
+			// Docker in a VM with virtiofs (colima) can mount a stale file at a path that the cache
+			// renamed a new bundle to a moment ago. A new name for each session avoids that.
+			const mounted = `${bundleFile}.${name}`;
+			await link(bundleFile, mounted);
+			const child = spawn(
+				'docker',
+				[
+					...['run', '-i', '--rm', '--name', name, '--pull', 'never'],
+					...['--network', 'none', '--read-only', '--tmpfs', '/tmp', '--cap-drop', 'ALL'],
+					...['--security-opt', 'no-new-privileges', '--user', '10001:10001'],
+					...['--memory', `${limits.memoryMb}m`, '--memory-swap', `${limits.memoryMb}m`],
+					...['--cpus', String(cpus), '--pids-limit', String(pids)],
+					...(ociRuntime ? ['--runtime', ociRuntime] : []),
+					...['--mount', `type=bind,src=${guest},dst=${GUEST_PATH},readonly`],
+					...['--mount', `type=bind,src=${mounted},dst=${BUNDLE_PATH},readonly`],
+					used,
+					...['node', '--permission', `--allow-fs-read=${BUNDLE_PATH}`, ...permissions, GUEST_PATH],
+					...['--kind', kind],
+					...grants.flatMap((grant) => ['--grant', grant]),
+					...['--bundle', BUNDLE_PATH, '--bundle-sha256', manifest.bundleHash],
+					...['--node-contract', manifest.nodeContract],
+				],
+				{ stdio: ['pipe', 'pipe', 'pipe'], windowsHide: true },
+			);
+			// Killing the docker client does not stop the container, e.g. a guest in an endless loop.
+			child.once('close', () => {
+				spawn('docker', ['rm', '--force', name], { stdio: 'ignore' }).on('error', () => {});
+				void rm(mounted, { force: true });
+			});
+			return connectChild(child, { limits: session.limits, label: session.manifest.id });
+		},
+	};
+}

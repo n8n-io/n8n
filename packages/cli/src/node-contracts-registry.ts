@@ -8,9 +8,10 @@ import {
 	WorkflowRepository,
 	type NodeContractManifestRow,
 } from '@n8n/db';
-import { OnPubSubEvent } from '@n8n/decorators';
+import { OnPubSubEvent, OnShutdown } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import { createHash } from 'crypto';
+import { execFile } from 'child_process';
 import { readFile } from 'fs/promises';
 import {
 	bundledCredentialsOf,
@@ -40,6 +41,9 @@ import {
 	type FrozenVersion,
 	type InstanceStore,
 	type StoreStatusRecord,
+	type GuestRuntime,
+	type RuntimeAvailability,
+	type RuntimeName,
 } from '@n8n/nodes-base-next';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { existsSync } from 'fs';
@@ -55,7 +59,6 @@ import {
 import {
 	deepCopy,
 	jsonParse,
-	UserError,
 	type VersionedNodeType,
 	type ICredentialType,
 	type ICredentialTypeData,
@@ -67,6 +70,7 @@ import {
 	type NodeLoader,
 } from 'n8n-workflow';
 import path from 'path';
+import { promisify } from 'util';
 
 import { CredentialTypes } from '@/credential-types';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
@@ -75,6 +79,9 @@ import { convertNodeToAiTool } from '@/tool-generation';
 
 // Recent executions only; a contract node reads the meta of its own execution.
 const MAX_CACHED_EXECUTIONS = 100;
+
+// Each session key keeps this many guests started. A pool has no cap across keys yet.
+const POOL_SIZE = 1;
 
 /**
  * The versions that n8n does not bundle, in the `node_contract_version` table. Every main and
@@ -465,17 +472,83 @@ export class ContractNodeLoader implements NodeLoader {
 	}
 }
 
+/** The guest runtimes of node contracts. Each one is made at its first use and closed at shutdown. */
+@Service()
+export class NodeContractsRuntimes {
+	private readonly made = new Map<RuntimeName, GuestRuntime & { close(): void }>();
+
+	/** The runtime of `name`, made by `make` at the first call. */
+	get(name: RuntimeName, make: () => GuestRuntime & { close(): void }) {
+		const known = this.made.get(name);
+		if (known) return known;
+		const runtime = make();
+		this.made.set(name, runtime);
+		return runtime;
+	}
+
+	@OnShutdown()
+	close() {
+		this.made.forEach((runtime) => runtime.close());
+		this.made.clear();
+	}
+}
+
+/** Why the `wasm` runtime cannot start: the sidecar or the guests are missing. */
+function wasmMissingOf({ instanceAi }: GlobalConfig) {
+	const sidecar = instanceAi.nodeContractSandboxSidecar;
+	const guests = instanceAi.nodeContractSandboxGuests;
+	if (!sidecar || !guests) {
+		return 'N8N_NODE_CONTRACT_SANDBOX_SIDECAR or N8N_NODE_CONTRACT_SANDBOX_GUESTS is not set';
+	}
+	const files = [
+		sidecar,
+		...['action.wasm', 'provider.wasm', 'trigger.wasm'].map((guest) => path.join(guests, guest)),
+	];
+	const missing = files.filter((file) => !existsSync(file));
+	return missing.length > 0 ? `the sandbox files are missing: ${missing.join(', ')}` : undefined;
+}
+
+/** The OCI runtime of docker, or why the `container` runtime is not available. */
+async function containerOciOf({
+	instanceAi,
+}: GlobalConfig): Promise<{ oci: 'runc' | 'runsc' } | { missing: string }> {
+	if (!instanceAi.nodesNextContainerEnabled) return { missing: 'container is not enabled' };
+	try {
+		const { stdout } = await promisify(execFile)(
+			'docker',
+			['info', '--format', '{{range $name, $_ := .Runtimes}}{{$name}} {{end}}'],
+			{ timeout: 10_000 },
+		);
+		return { oci: stdout.split(/\s+/).includes('runsc') ? 'runsc' : 'runc' };
+	} catch (error) {
+		Container.get(Logger).warn('The container runtime is not available: docker does not answer', {
+			error: ensureError(error),
+		});
+		return { missing: 'container is not available: docker does not answer' };
+	}
+}
+
 /**
- * Lets each contract node run the version that the lock in `meta.nodeContracts` resolves to.
+ * Lets each contract node run the version that the lock in `meta.nodeContracts` resolves to, in
+ * the runtime that `N8N_NODES_NEXT_RUNTIMES_*` allows for its trust class.
  * Known limit: the lock comes from the saved workflow. An execution of an unsaved change or
  * of a published history version uses the meta of the current saved workflow.
  */
 export async function useNodeContractsRegistry() {
-	const { instanceAi } = Container.get(GlobalConfig);
-	const { sandboxCredentialTypeOf, setCodeLanguages, useContractRegistry } = await import(
-		'@n8n/nodes-base-next'
-	);
+	const globalConfig = Container.get(GlobalConfig);
+	const { instanceAi } = globalConfig;
+	const logger = Container.get(Logger);
 	const nodes = Container.get(NodesConfig);
+	const {
+		containerRuntime,
+		pooledRuntime,
+		sandboxCredentialTypeOf,
+		setCodeLanguages,
+		useContractRegistry,
+		warmSandbox,
+		wasmReuseRuntime,
+		workerRuntime,
+	} = await import('@n8n/nodes-base-next');
 	// The Code contracts follow the same switch as the Code node.
 	setCodeLanguages(nodes.pythonEnabled ? ['javascript', 'python'] : ['javascript']);
 	const metaByExecution = new Map<string, Promise<unknown>>();
@@ -495,29 +568,75 @@ export async function useNodeContractsRegistry() {
 		);
 	}
 
-	const scope = instanceAi.nodeContractSandbox;
-	const sandbox =
-		scope === 'off'
-			? undefined
-			: {
-					scope,
-					options: {
-						...sandboxFilesOf(instanceAi),
-						cacheDir:
-							instanceAi.nodeContractSandboxCacheDir ||
-							path.join(Container.get(NodeContractsStore).dir, 'sandbox'),
-						// The credential hosts and base URLs never come from a bundle.
-						credentialType: sandboxCredentialTypeOf((name) =>
-							Container.get(CredentialTypes).recognizes(name),
-						),
-					},
-				};
+	const lists = {
+		'first-party': instanceAi.nodesNextRuntimesFirstParty,
+		community: instanceAi.nodesNextRuntimesCommunity,
+		private: instanceAi.nodesNextRuntimesPrivate,
+	};
+	const listed = new Set(Object.values(lists).flat());
+	for (const origin of ['community', 'private'] as const) {
+		const unbounded = lists[origin].filter((name) => name === 'in-process' || name === 'worker');
+		if (unbounded.length > 0) {
+			logger.warn(
+				`N8N_NODES_NEXT_RUNTIMES_${origin.toUpperCase()} has ${unbounded.join(', ')}: ${origin} node code runs without a security boundary`,
+			);
+		}
+	}
+	const wasmMissing = wasmMissingOf(globalConfig);
+	if (wasmMissing && listed.has('wasm')) {
+		logger.warn(`The wasm runtime is not available: ${wasmMissing}`);
+	}
+	const container = await containerOciOf(globalConfig);
+	const available: RuntimeAvailability = {
+		missing: {
+			...(wasmMissing && {
+				wasm: 'wasm is not available: the sandbox sidecar is not installed',
+			}),
+			...('missing' in container && { container: container.missing }),
+		},
+		...('oci' in container && { containerOci: container.oci }),
+	};
+	const runtimes = Container.get(NodeContractsRuntimes);
+	const { nodeContractSandboxSidecar: sidecar, nodeContractSandboxGuests: guests } = instanceAi;
+	const cacheDir =
+		instanceAi.nodeContractSandboxCacheDir ||
+		path.join(Container.get(NodeContractsStore).dir, 'sandbox');
+	if (!wasmMissing && listed.has('wasm')) {
+		// Without the warm-up, the first run in wasm compiles the guest, so a failure only costs time.
+		void warmSandbox({ sidecar, guests, cacheDir }).catch((error: unknown) =>
+			logger.debug(`The sandbox guests did not compile at start: ${ensureError(error).message}`),
+		);
+	}
 
 	useContractRegistry({
 		policy: instanceAi.nodeContractsUpdatePolicy,
 		revokedAllowed: instanceAi.nodeContractsRevokedAllow,
 		nodeContractRange: instanceAi.nodeContractRange,
-		sandbox,
+		runtimes: {
+			lists,
+			available,
+			log: (message) => logger.debug(message),
+			runtimes: {
+				worker: () =>
+					runtimes.get('worker', () => pooledRuntime(workerRuntime(), { size: POOL_SIZE })),
+				...(!wasmMissing && {
+					wasm: () => runtimes.get('wasm', () => wasmReuseRuntime({ sidecar, guests })),
+				}),
+				...('oci' in container && {
+					container: () =>
+						runtimes.get('container', () =>
+							pooledRuntime(containerRuntime({ ociRuntime: container.oci }), { size: POOL_SIZE }),
+						),
+				}),
+			},
+		},
+		sandbox: {
+			cacheDir,
+			// The credential hosts and base URLs never come from a bundle.
+			credentialType: sandboxCredentialTypeOf((name) =>
+				Container.get(CredentialTypes).recognizes(name),
+			),
+		},
 		egressInputHosts: nodes.egressInputHosts,
 		permissionsDeny: nodes.permissionsDeny,
 		maxResponseBytes:
@@ -553,23 +672,6 @@ export async function useNodeContractsRegistry() {
 			});
 		},
 	});
-}
-
-/** The sidecar and the guests of the sandbox. A missing file stops the start: no bundle may run unsandboxed. */
-function sandboxFilesOf(instanceAi: GlobalConfig['instanceAi']) {
-	const sidecar = instanceAi.nodeContractSandboxSidecar;
-	const guests = instanceAi.nodeContractSandboxGuests;
-	const files = [
-		sidecar,
-		...['action.wasm', 'provider.wasm', 'trigger.wasm'].map((guest) => path.join(guests, guest)),
-	];
-	const missing = !sidecar || !guests ? files : files.filter((file) => !existsSync(file));
-	if (missing.length > 0) {
-		throw new UserError(
-			`N8N_NODE_CONTRACT_SANDBOX is ${instanceAi.nodeContractSandbox}, and the sandbox files are missing: ${missing.join(', ')}. Set N8N_NODE_CONTRACT_SANDBOX_SIDECAR and N8N_NODE_CONTRACT_SANDBOX_GUESTS.`,
-		);
-	}
-	return { sidecar, guests };
 }
 
 /**

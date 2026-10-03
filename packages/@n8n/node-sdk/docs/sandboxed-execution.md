@@ -1,15 +1,17 @@
 # Sandboxed execution of contract actions
 
-Status: built for action and provider bundles, binary data included. The runtime choice comes from a benchmark of node:vm,
-isolated-vm, WASM components and a task-runner process on real bundles, with the escape tests
-below. Only the WASM component in a wasmtime sidecar stopped every escape with a clear error and
-enforced CPU, memory and wall-clock limits itself.
+Status: built for action and provider bundles, binary data included. A version runs in one of
+four runtimes: `in-process`, `worker`, `wasm` and `container`. A runtime policy picks the runtime
+from the trust class and the needs of the version (see "Runtimes and the runtime policy"). Only
+the WASM component in a wasmtime sidecar stopped every escape with a clear error and enforced CPU,
+memory and wall-clock limits itself.
 
 ## Goal
 
 A node can bring any dependency, and later another language, and still run safely. It is bound
 only by its permissions: the imports of its world and its manifest. First-party bundles can run
-in-process. Community and AI-generated bundles run in the sandbox.
+in-process or in a worker. Community and AI-generated bundles run in the WASM sandbox or in a
+container.
 
 ## Model: the world is the permission set
 
@@ -67,11 +69,13 @@ flowchart LR
   sidecar through `n8n:js-guest/bundle` (`sandbox/wit/guest.wit`). That interface is not a
   capability and the host never answers it. The bundle runs in the same JS realm as the guest, so
   the guest is not a trust boundary: the sidecar and the host are.
-- `src/sandbox.ts`: `sandboxExecutorLoader(options, inProcess)` gives the `ExecutorLoader` of
-  `setExecutorLoader` (`src/runtime.ts`). A version that `inProcess` accepts (for example a
-  version with the origin `first-party`) runs through `loadExecutor` in this process. Every other
-  version runs in the sandbox. The sandboxed action takes its contract from the signed manifest; the
-  host runs no bundle code. `replayFixtures` takes the same action and executor, so publish can
+- `src/sandbox.ts`: `policyExecutorLoader(policy, options)` gives the `ExecutorLoader` of
+  `setExecutorLoader` (`src/runtime.ts`). It runs each version in the runtime that
+  `runtimeNameOf` (`src/runtime-policy.ts`) gives: `in-process` through `loadExecutor`, every
+  other runtime through `sandboxedVersionOf` with that `GuestRuntime`. `policy.log` gets one
+  line for each version it loads, e.g. `items.set@1.0.0 (first-party) runs in worker`, for a
+  debug log. The sandboxed action takes
+  its contract from the signed manifest; the host runs no bundle code. `replayFixtures` takes the same action and executor, so publish can
   replay the fixtures in the sandbox.
 - The credential types of a sandboxed action come from the host (`options.credentialType`) by
   the names in the manifest. Their hosts and base URLs never come from the bundle. The bundle
@@ -122,8 +126,8 @@ flowchart LR
   result is its one output item. So a trigger request takes the egress, the input hosts, the
   response limit, the refusal report, the retries and the redaction of an action request.
 - `toVersionedTriggerType` gets the executor from the executor loader of the host, as an action
-  does. `sandboxExecutorLoader` runs a first-party trigger in this process
-  (`loadTriggerExecutor`) and every other trigger in `trigger.wasm`.
+  does. `policyExecutorLoader` runs a trigger in `in-process` (`loadTriggerExecutor`) or in
+  `wasm` (`trigger.wasm`), by the list of its origin.
 - The guest runs `runTriggerCall`, the same code as in this process. The host keeps the state in
   the static data of the node, generates the webhook secret, and checks the webhook signature
   of the manifest (`contract.verify`) before the guest gets the request. The trigger world has
@@ -132,12 +136,50 @@ flowchart LR
 - The host refuses a webhook bundle whose signature is not the signature of its manifest, in this
   process and in the sandbox (from `describe()`).
 
+## Runtimes and the runtime policy
+
+All runtimes use the same host imports, so the egress, credential, output and binary checks are
+the same. Only the isolation and the cost change. Each runtime other than `in-process` speaks
+`spec/json-rpc.md` with the same JS guest.
+
+| Runtime | What runs the bundle | Isolation | In n8n |
+|---|---|---|---|
+| `in-process` | the n8n process (`loadExecutor`) | none | always available |
+| `worker` | a `worker_threads` worker (`src/runtimes/worker.ts`), one per node execution | a crash or an out-of-memory error stops only the worker. Not a security boundary: the worker shares the process, its permissions and the network. | always available. A pool keeps 1 started worker per session key. |
+| `wasm` | the generic guest component in an `n8n-sandbox` sidecar (`src/runtimes/wasm-reuse.ts`). A sidecar serves the next session of the same bundle after `[reset]`, with a fresh instance. | the only runtime that passes every escape check | when the sidecar and the guests exist |
+| `container` | `docker run` of the Node guest (`src/runtimes/container.ts`): `--network none`, read-only root, `--cap-drop ALL`, no new privileges, user 10001, memory, CPU and pids limits | the container. `runsc` (gVisor) when `docker info` lists it, else `runc`. | only when `N8N_NODES_NEXT_CONTAINER_ENABLED=true` and docker answers. A pool keeps 1 started container per session key. |
+
+The policy (`src/runtime-policy.ts`):
+
+- **Needs** come from the contract. `web` (no `runtime` field): web APIs and host imports only.
+  `image`: the action spec declares `runtime: { image: '<ref>@sha256:<digest>', childProcess?,
+  addons? }`. Freeze refuses an image without a digest. The image is part of the contract hash,
+  and the version needs Node Contract 2.7.0. Such a version runs only in `container`, in its own
+  image, with `--allow-child-process` and `--allow-addons` from the contract.
+- **Trust class**: the origin that the store recorded for the version (see the notes under "n8n configuration"):
+  `first-party` (in the release, or signed by the first-party key), `community` (signed by the
+  vetting key) or `private` (signed by no trusted key: local, unsigned or AI-made). Each class has
+  its own list.
+- **Resolution**: the first runtime of the trust class's list that serves the needs and is
+  available. A community or private version runs in a container only with `runsc`.
+- **Triggers** run only in `in-process` or `wasm`: the Node guest of `worker` and `container`
+  has no trigger world. So a first-party trigger runs in the n8n process by default, and a
+  community or private trigger in `wasm`.
+- When no runtime fits, the version does not load. The error names the need, the trust class and
+  what is missing, for example `slack.message.send@1.2.0 (community) needs one of wasm,
+  container; wasm is not available: the sandbox sidecar is not installed; container is not
+  enabled`.
+- Credentials are declarative manifests: they need no runtime.
+
 ### n8n configuration
 
 | Variable | Default | Meaning |
 |---|---|---|
-| `N8N_NODE_CONTRACT_SANDBOX` | `off` | `off`: every bundle runs in the n8n process. `stored`: a version that is not first-party runs in the sandbox. `all`: every version runs in the sandbox. n8n logs a warning for another value and uses `off`, as for each n8n setting. |
-| `N8N_NODE_CONTRACT_SANDBOX_SIDECAR` | — | The `n8n-sandbox` binary. |
+| `N8N_NODES_NEXT_RUNTIMES_FIRST_PARTY` | `worker,in-process,wasm,container` | The runtimes of first-party versions, the preferred one first. |
+| `N8N_NODES_NEXT_RUNTIMES_COMMUNITY` | `wasm,container` | The runtimes of community versions (signed by the vetting key), the preferred one first. An admin can add `in-process` or `worker`. n8n then logs a warning at start: community code runs without a security boundary. |
+| `N8N_NODES_NEXT_RUNTIMES_PRIVATE` | `wasm,container` | The runtimes of private versions (signed by no trusted key), the preferred one first. The same warning as for the community list applies. |
+| `N8N_NODES_NEXT_CONTAINER_ENABLED` | `false` | Lets versions run in Docker containers. Needs `docker` on the PATH and the pinned images pulled. |
+| `N8N_NODE_CONTRACT_SANDBOX_SIDECAR` | — | The `n8n-sandbox` binary of the `wasm` runtime. |
 | `N8N_NODE_CONTRACT_SANDBOX_GUESTS` | — | The directory with `action.wasm`, `provider.wasm` and `trigger.wasm`. |
 | `N8N_NODE_CONTRACT_SANDBOX_CACHE_DIR` | `<n8n folder>/node-contracts/sandbox` | Compiled guests and verified bundles. Only n8n may write it. |
 | `N8N_NODE_CONTRACTS_FIRST_PARTY_KEY_FILE` | — | PEM of the first-party key. A version that it signs is first-party. |
@@ -153,13 +195,77 @@ flowchart LR
   first-party version, n8n serves it with the origin that the keys give now.
 - An id has no namespace part, so only the first-party key puts a version in the `n8n` namespace.
   An id such as `n8n.echo` from another key stays community.
-- With `stored`, only first-party versions run in the n8n process. The origin decides only the
-  isolation: the permissions and the host checks are the same for all origins.
+- The origin picks the runtime list. It decides only the isolation: the permissions and the host
+  checks are the same for all origins.
 - A newer patch of a locked version applies only when it has the origin of the locked version.
   So the vetting key cannot patch a first-party version. When the locked version does not load,
   only a first-party patch applies.
-- n8n stops at start when the sandbox is on and a file is missing, so no bundle runs outside it.
+- An unknown runtime name, a name twice, or an empty list stops n8n at start.
+- n8n logs one warning at start when a listed runtime cannot start: the sandbox files are
+  missing, or docker does not answer. n8n starts. Only the versions that need that runtime fail.
+- With the defaults and no sidecar, community and private versions do not run: n8n does not ship
+  the sidecar yet.
+- `useNodeContractsRegistry` (`packages/cli/src/node-contracts-registry.ts`) makes each runtime
+  at its first use and closes the pools and the parked sidecars at shutdown.
 - The credential types come from the shipped nodes, else a `compat` type for a name that n8n has.
+
+### Measured costs
+
+macOS arm64 (M2 Pro), Node 24, colima with `runc`, a loaded machine: the ratios hold, the
+absolute numbers are noisy. Source: `.scratch/runtime-poc/RESULTS.md` of the runtime PoC.
+
+| | in-process | worker + pool | wasm (reuse) | container + pool |
+|---|---|---|---|---|
+| session start and close | — | 1.3 ms | 0.25 ms | 16 ms (150 to 450 ms without a pool) |
+| `slack.message.send`, executions per second at 1 / 10 / 50 in parallel | 1310 / 804 / 580 | 124 / 179 / 71 | 190 / 187 / 271 | 16 / fails / fails |
+| `notion.databasePage.getAll`, per execution, 100 in a row | 3.1 ms | 14 ms | 64 ms | 74 ms |
+| `core.set` with 10k items, ratio to in-process | 1× | 11× | 55× | 212× |
+| `core.sort` with 10k items (one batch), ratio to in-process | 1× | 3.7× | 38× | 10× |
+| memory per guest | — | ~25 MB in the n8n process | ~26 MB | ~26 MB |
+
+- A `per-item` action pays one `[new]` and `[take]` round trip per item: about 0.1 ms in a worker,
+  0.4 to 1.8 ms in WASM, 1.4 ms in a container through colima. Chunked runs (`chunkItems`) cut
+  this 3.5× in a worker and 1.2 to 1.6× in WASM. n8n does not turn them on yet.
+- WASM spends most of a short run on the evaluation of the bundle in each fresh instance. A
+  per-bundle snapshot (`wasm-snapshot`, not wired in n8n) brings the Notion case to 14.5 ms.
+- A 50 MB item passes only in-process. The other runtimes stop at their 256 MB memory limit.
+- Native tools in a container: an ffmpeg thumbnail takes 214 ms with a pool, a Chromium
+  screenshot 1.5 s, a sharp resize 62 ms.
+
+### Escape matrix by runtime
+
+`scripts/runtime-matrix.ts` runs the fixture replay and the escape probes of
+`src/__tests__/sandbox.test.ts` in each runtime.
+
+| Check | in-process | worker | wasm | container |
+|---|---|---|---|---|
+| fixture replay (84 actions) | pass | pass | pass | pass |
+| global `fetch` | FAIL | pass (stub) | pass | pass (stub) |
+| `process.env` | FAIL | pass (empty) | pass | pass (empty) |
+| `import('node:fs')` | pass | FAIL | pass | FAIL (the root file system is read-only) |
+| network through `node:http` | FAIL | FAIL | pass | pass (`--network none`) |
+| late `setTimeout` | FAIL | pass (stub) | pass | pass (stub) |
+| endless loop | n/a | pass (wall clock) | pass (CPU limit) | pass (wall clock) |
+| memory blow-up | n/a | pass | pass | pass (exit 137) |
+| ungranted import, egress, credential secret | pass | pass | pass | pass |
+| prototype pollution | FAIL | pass | pass | pass |
+
+### Known issues
+
+- The WASM guest clock does not move during a run: each `Date.now()` difference is 0.
+- Two freeze gaps. A package without `exports` freezes only with `mainFields`, which
+  `platform: 'neutral'` does not set. The `typeof` guard check counts one guard for the whole
+  bundle, so luxon freezes and then fails in WASM with `Intl is not defined`.
+- Chunked runs read ahead: a side-effect action can run items that the host does not take yet,
+  and a chunk has a count limit (1000), not a byte limit.
+- The snapshot cache has no cap: 79 bundles took 3.6 GB.
+- The pools and the reused sidecars have no cap per key, no total cap and no maximum age.
+- A container gets 64 pids by default. Chromium hangs at 64 pids; 256 work. An image manifest
+  cannot set pids yet.
+- The container runtime needs Docker. It is tested with colima and `runc` only. `runsc` (gVisor)
+  is not tested here.
+- The n8n image does not ship the sidecar and the guests yet, so `wasm` is not available by
+  default.
 
 ## Limits
 
@@ -247,7 +353,6 @@ compiles at the same time are safe: the sidecar writes the `.cwasm` atomically.
   Notion query.
 - Release: build `n8n-sandbox` per platform in CI and sign it with the guest components. Precompile the
   guest at install. `pnpm sandbox:build` is the dev step; nothing downloads at run time.
-- A pool of started sidecars would remove most of the 12 to 15 ms per node execution.
 
 ## Languages
 

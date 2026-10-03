@@ -46,6 +46,7 @@ function (`data-tables.table.drop` deletes a table; `data-tables.table.[drop]` f
 | Method | Params → result |
 |---|---|
 | `[initialize]` | `{ nodeContract }` → `{ nodeContract, kind }` |
+| `[reset]` | `{}` → `null`. Drops the component instance. The next `[initialize]` starts a fresh one. |
 | `<interface>.<resource>.[new]` | the constructor parameters → handle |
 | `<interface>.<resource>.[drop]` | `{ self }`. A notification. |
 | `<interface>.<resource>.[take]` | `{ self, max }` → `{ outputs, done, error? }`, for a resource with `next` |
@@ -71,6 +72,12 @@ call to another import with `code` −32601 (method not found). A WASM runner st
 component (a trap) before such a call gets to the host, because a WIT function without a
 `result` cannot give an error. The component then answers each later call with that error.
 
+A `chunk-run` (Node Contract 2.5.0) runs many items of a `per-item` action in one run. Before
+the work of an item, the guest sends the notification `chunk.item` with the index of the item.
+The host then applies the input of that item to the host calls that follow. The host accepts
+only the next index (0, 1, 2, …), and fails the run on another index or on a host call before
+the first item. `[take]` gives one `item-outcome` per item: `output` or `failed`.
+
 ## Guest rules
 
 - A run starts its work at the first `next` (or `[take]`), not in the constructor. A WIT
@@ -84,6 +91,12 @@ The host sends `[initialize]` with `{ nodeContract }`, the version that the host
 The guest answers with the `nodeContract` and the `kind` of its bundle. The host closes the
 connection when the bundle version is outside the configured range (`N8N_NODE_CONTRACT_RANGE`)
 or needs a newer minor than the host implements.
+
+A runner that serves more than one session sends `[reset]` after a session, then `[initialize]`
+for the next one. The new instance shares no state with the old one: it gets its own memory, CPU
+budget, memory limit and handle tables, and it evaluates the bundle again. The process arguments
+(component, bundle, grants, limits) stay the same, so a runner reuses a process only for sessions
+with the same arguments. `[reset]` also clears the error of a stopped component.
 
 ## Transports
 

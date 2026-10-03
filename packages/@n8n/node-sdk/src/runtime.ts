@@ -80,6 +80,7 @@ import {
 	pathSegmentOf,
 	type RequestBinding,
 	type RequestValue,
+	type RunContext,
 	type RunInput,
 	type RunLimits,
 	toContract,
@@ -893,6 +894,22 @@ async function readCapabilities(
 	return Object.fromEntries(entries.filter(([, value]) => value !== undefined));
 }
 
+/** The context that `run()` gets for one item of a chunk. */
+export type ChunkContext = RunContext<unknown> &
+	HostImports<unknown> & { readonly credential?: unknown };
+
+/** The output that `run()` gives for one item, or the error of that item. */
+export type ItemOutcome = { readonly value: unknown } | { readonly error: unknown };
+
+/**
+ * Runs a `per-item` action over many items at once, e.g. in one guest run of the sandbox. It
+ * gives one outcome per context, in order. Without `continueOnFail`, it ends after the first error.
+ */
+export type ChunkRunner = (
+	contexts: readonly ChunkContext[],
+	continueOnFail: boolean,
+) => AsyncIterable<ItemOutcome>;
+
 /** One output item and the output it goes to. */
 interface Routed {
 	readonly output: number;
@@ -977,7 +994,7 @@ export const nativeRunError = ({ id, native }: Pick<Action | Trigger, 'id' | 'na
  * output when the node has one.
  */
 export function executorOf<S extends Shape, O extends AnySchema>(
-	action: Action<S, O>,
+	action: Action<S, O> & { readonly runChunk?: ChunkRunner },
 ): (host: ExecutorHost) => Promise<INodeExecutionData[][]> {
 	if (action.native) throw nativeRunError(action);
 	const providerFields = providerInputsOf(action.input);
@@ -1604,6 +1621,23 @@ export function executorOf<S extends Shape, O extends AnySchema>(
 			return routed;
 		};
 
+		const itemContextOf = (
+			item: INodeExecutionData,
+			input: RunInput<S>,
+			http: Http,
+		): RunContext<RunInput<S>> & HostImports<RunInput<S>> & { readonly credential: unknown } => ({
+			input,
+			http,
+			log,
+			limits,
+			binary: binaries,
+			item,
+			get credential() {
+				return runCredential();
+			},
+			...imports,
+		});
+
 		const runItem = async (itemIndex: number, names: readonly string[] | undefined) => {
 			const item = items[itemIndex];
 			if (!item) return [];
@@ -1621,21 +1655,55 @@ export function executorOf<S extends Shape, O extends AnySchema>(
 					? http.request(requestOf(binding, input))
 					: listBinding
 						? listItems(http, listBinding, input, host.warn ? addDrift : undefined)
-						: action.run?.({
-								input,
-								http,
-								log,
-								limits,
-								binary: binaries,
-								item,
-								get credential() {
-									return runCredential();
-								},
-								...imports,
-							});
+						: action.run?.(itemContextOf(item, input, http));
 			if (!result) throw new UnexpectedError(`${action.id} has no run() and no request`);
 			if (action.flow.cardinality === 'per-item') return [route(await result, 0)];
 			return await collect(result, route);
+		};
+
+		/**
+		 * The per-item run of all items through `runChunk`. The inputs come first. Without
+		 * continue-on-fail, the items before a failed input still run, and then the input error fails.
+		 */
+		const runChunked = async (
+			runChunk: ChunkRunner,
+			names: readonly string[] | undefined,
+		): Promise<Routed[]> => {
+			const continueOnFail = host.continueOnFail();
+			const prepared: Array<{ itemIndex: number; context?: ChunkContext; error?: unknown }> = [];
+			for (const [itemIndex, item] of items.entries()) {
+				try {
+					const input = await inputOf(itemIndex);
+					prepared.push({
+						itemIndex,
+						context: itemContextOf(item, input, httpFor(itemIndex, input)),
+					});
+				} catch (error) {
+					prepared.push({ itemIndex, error });
+					if (!continueOnFail) break;
+				}
+			}
+			const contexts = prepared.flatMap(({ context }) => (context ? [context] : []));
+			const outcomes = runChunk(contexts, continueOnFail)[Symbol.asyncIterator]();
+			const routed: Routed[] = [];
+			try {
+				for (const { itemIndex, context, error } of prepared) {
+					const next = context ? await outcomes.next() : undefined;
+					try {
+						if (!context) throw error;
+						if (!next || next.done)
+							throw new UnexpectedError(`${action.id} gave no outcome for item ${itemIndex}`);
+						if ('error' in next.value) throw next.value.error;
+						routed.push(routeOf(names, itemIndex)(next.value.value, 0));
+					} catch (failure) {
+						if (!continueOnFail) throw failure;
+						routed.push(errorItem(failure, { item: itemIndex }, names));
+					}
+				}
+			} finally {
+				await outcomes.return?.();
+			}
+			return routed;
 		};
 
 		// The last output is the "no" path of a routing action: false, discarded, or fallback.
@@ -1709,6 +1777,9 @@ export function executorOf<S extends Shape, O extends AnySchema>(
 					const all = [...sources.values()].map(({ pair }) => pair);
 					return { names, routed: [errorItem(error, all, names)] };
 				}
+			}
+			if (action.runChunk && action.flow.cardinality === 'per-item') {
+				return { names, routed: await runChunked(action.runChunk, names) };
 			}
 			// One list for all items: a copy per item would make a large input quadratic.
 			const routed: Routed[] = [];

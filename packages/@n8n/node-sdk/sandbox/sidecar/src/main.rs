@@ -18,7 +18,7 @@ use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 use wasmtime::component::types::ComponentItem;
 use wasmtime::component::{
-    Component, Func, Instance, Linker, ResourceAny, ResourceDynamic, ResourceType, Val,
+    Component, Func, Instance, InstancePre, Linker, ResourceAny, ResourceDynamic, ResourceType, Val,
 };
 use wasmtime::{
     bail, format_err, AsContextMut, Config, Engine, ResourceLimiter, Result, Store,
@@ -922,6 +922,8 @@ struct Host {
     engine: Engine,
     io: Arc<Mutex<Io>>,
     spec: Arc<Spec>,
+    /// The linked component. It holds no guest state, so `[reset]` keeps it.
+    pre: Option<InstancePre<State>>,
     live: Option<Live>,
     /// The error that stopped the component. Every later call gets it.
     stopped: Option<String>,
@@ -975,18 +977,8 @@ impl Host {
         Ok(code)
     }
 
-    fn initialize(&mut self, params: &Value) -> Result<Value> {
-        if self.live.is_some() {
-            bail!("[initialize] comes once");
-        }
-        let host_version = params["nodeContract"].as_str().unwrap_or_default();
-        let major = |version: &str| version.split('.').next().unwrap_or_default().to_string();
-        if major(host_version) != major(&self.spec.version) {
-            bail!(
-                "The host implements Node Contract {host_version}, the sidecar {}",
-                self.spec.version
-            );
-        }
+    /// The component with its imports linked. Each instance of it starts with no guest state.
+    fn link(&self) -> Result<InstancePre<State>> {
         let short_imports: HashMap<&str, &str> = self
             .spec
             .imports
@@ -1033,6 +1025,25 @@ impl Host {
                 bail!("The component does not export {name}");
             }
         }
+        linker.instantiate_pre(&component)
+    }
+
+    fn initialize(&mut self, params: &Value) -> Result<Value> {
+        if self.live.is_some() {
+            bail!("[initialize] comes once");
+        }
+        let host_version = params["nodeContract"].as_str().unwrap_or_default();
+        let major = |version: &str| version.split('.').next().unwrap_or_default().to_string();
+        if major(host_version) != major(&self.spec.version) {
+            bail!(
+                "The host implements Node Contract {host_version}, the sidecar {}",
+                self.spec.version
+            );
+        }
+        let pre = match &self.pre {
+            Some(pre) => pre.clone(),
+            None => self.pre.insert(self.link()?).clone(),
+        };
         let state = State {
             io: self.io.clone(),
             limiter: Limiter {
@@ -1050,7 +1061,7 @@ impl Host {
         let mut store = Store::new(&self.engine, state);
         store.limiter(|state| &mut state.limiter);
         store.set_epoch_deadline(ticks(Duration::from_millis(self.args.cpu_ms)));
-        let instance = linker.instantiate(&mut store, &component)?;
+        let instance = pre.instantiate(&mut store)?;
         self.live = Some(Live {
             store,
             instance,
@@ -1208,6 +1219,13 @@ impl Host {
                 .initialize(params)
                 .map_err(|e| rpc_error(-32000, format!("{e:#}")));
         }
+        if method == "[reset]" {
+            // A new store gives the next `[initialize]` what a new process gives: fresh guest
+            // memory, CPU budget, memory limit, handle tables and bundle state.
+            self.live = None;
+            self.stopped = None;
+            return Ok(Value::Null);
+        }
         if let Some(message) = &self.stopped {
             return Err(rpc_error(-32000, message.clone()));
         }
@@ -1297,6 +1315,7 @@ fn main() -> Result<()> {
         engine,
         io: io.clone(),
         spec,
+        pre: None,
         live: None,
         stopped: None,
     };

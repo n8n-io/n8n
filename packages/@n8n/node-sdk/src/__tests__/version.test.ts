@@ -81,6 +81,14 @@ describe('contractHash', () => {
 			contractHash(base),
 		);
 	});
+
+	it('moves with the runtime image', () => {
+		const imaged = { ...base, runtime: { image: `node@sha256:${'a'.repeat(64)}` } };
+		expect(contractHash(imaged)).not.toBe(contractHash(base));
+		expect(
+			contractHash({ ...imaged, runtime: { image: `node@sha256:${'b'.repeat(64)}` } }),
+		).not.toBe(contractHash(imaged));
+	});
 });
 
 describe('named outputs', () => {
@@ -274,6 +282,21 @@ describe('diffContracts', () => {
 			kind: 'major',
 			text: 'binary data access added',
 		});
+	});
+
+	it('classifies an added runtime or permission as a major, another image as a minor', () => {
+		const image = (digit: string) => `node@sha256:${digit.repeat(64)}`;
+		const imaged = { ...base, runtime: { image: image('a') } };
+		expect(diffContracts(base, imaged).changes).toEqual([
+			{ kind: 'major', text: 'runtime image added' },
+		]);
+		expect(diffContracts(imaged, base).kind).toBe('minor');
+		expect(diffContracts(imaged, { ...base, runtime: { image: image('b') } }).changes).toEqual([
+			{ kind: 'minor', text: `runtime image ${image('a')} → ${image('b')}` },
+		]);
+		expect(
+			diffContracts(imaged, { ...base, runtime: { image: image('a'), childProcess: true } }).kind,
+		).toBe('major');
 	});
 
 	it('compares nested fields', () => {
@@ -803,6 +826,12 @@ describe('published versions', () => {
 			);
 		});
 
+		it('is 2.7.0 for a runtime image', () => {
+			const contract = { input: t.obj({ url: t.str() }).json, output: t.obj({}).json };
+			const runtime = { image: `node@sha256:${'a'.repeat(64)}` };
+			expect(requiredNodeContractOf({ ...contract, runtime }, true)).toBe('2.7.0');
+		});
+
 		it('refuse a bundle outside the range, or of a minor this host lacks', async () => {
 			await writeShout('text');
 			const { manifest, bundle } = await freeze();
@@ -810,9 +839,9 @@ describe('published versions', () => {
 				toVersionedNodeType([frozenOf({ ...manifest, nodeContract }, bundle)]);
 
 			expect(() => typeOf('3.0.0')).toThrow(
-				'demo.echo@1.0.0 needs Node Contract 3.0.0. This host runs >=2.0.0 <3.0.0 and implements 2.6.0.',
+				'demo.echo@1.0.0 needs Node Contract 3.0.0. This host runs >=2.0.0 <3.0.0 and implements 2.7.0.',
 			);
-			expect(() => typeOf('2.7.0')).toThrow('needs Node Contract 2.7.0');
+			expect(() => typeOf('2.8.0')).toThrow('needs Node Contract 2.8.0');
 			expect(() => typeOf('2.6.0')).not.toThrow();
 			expect(() => typeOf('2.5.0')).not.toThrow();
 			expect(() => typeOf('2.4.0')).not.toThrow();
@@ -823,7 +852,7 @@ describe('published versions', () => {
 
 			setNodeContractRange('>=1.0.0 <3.0.0');
 			expect(() => typeOf('1.0.0')).toThrow(
-				'needs Node Contract 1.0.0. This host runs >=1.0.0 <3.0.0 and implements 2.6.0.',
+				'needs Node Contract 1.0.0. This host runs >=1.0.0 <3.0.0 and implements 2.7.0.',
 			);
 			// The range also applies at run time, to a version the registry loader picks.
 			setNodeContractRange(DEFAULT_NODE_CONTRACT_RANGE);
@@ -856,15 +885,27 @@ describe('published versions', () => {
 			expect(parseManifest(JSON.stringify({ ...manifest, later: { x: 1 } }))).toEqual(manifest);
 		});
 
+		it('keeps the runtime and refuses an image without a digest', async () => {
+			await writeShout('text');
+			const { manifest } = await freeze();
+			const withImage = (image: string) => {
+				const contract = { ...manifest.contract, runtime: { image } };
+				return { ...manifest, contract, contractHash: contractHash(contract) };
+			};
+			const imaged = withImage(`node@sha256:${'a'.repeat(64)}`);
+			expect(parseManifest(JSON.stringify(imaged))).toEqual(imaged);
+			expect(() => parseManifest(JSON.stringify(withImage('node:24-slim')))).toThrow('not valid');
+		});
+
 		it('is refused by evaluateBundle for a major or minor this host lacks', async () => {
 			await writeShout('text');
 			const { bundle } = await freeze();
 			expect(() => evaluateBundle(bundle, '3.0.0')).toThrow(
 				'This host cannot run Node Contract 3.0.0',
 			);
-			expect(() => evaluateBundle(bundle, '2.7.0')).toThrow('cannot run');
+			expect(() => evaluateBundle(bundle, '2.8.0')).toThrow('cannot run');
 			expect(() => evaluateBundle(bundle, '1.0.0')).toThrow(
-				'This host cannot run Node Contract 1.0.0. It implements 2.6.0.',
+				'This host cannot run Node Contract 1.0.0. It implements 2.7.0.',
 			);
 			expect(evaluateBundle(bundle, '2.0.0').id).toBe('demo.echo');
 			expect(evaluateBundle(bundle, '2.1.0').id).toBe('demo.echo');

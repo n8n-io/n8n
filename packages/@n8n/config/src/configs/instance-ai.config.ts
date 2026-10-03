@@ -6,8 +6,45 @@ import { Config, Env } from '../decorators';
 import { concurrencyLimitSchema } from '../schemas';
 
 const nodeContractsUpdatePolicySchema = z.enum(['tolerant', 'strict']);
-const nodeContractSandboxSchema = z.enum(['off', 'stored', 'all']);
 const nodeContractTracePayloadsSchema = z.enum(['off', 'shape', 'redacted']);
+
+const NODES_NEXT_RUNTIMES = ['in-process', 'worker', 'wasm', 'container'] as const;
+
+type NodesNextRuntime = (typeof NODES_NEXT_RUNTIMES)[number];
+
+// A wrong list must stop the start: a fallback to the default could change where community code runs.
+const checkRuntimes = (envName: string, names: readonly string[]) => {
+	const unknown = names.find((name) => !NODES_NEXT_RUNTIMES.some((known) => known === name));
+	if (unknown !== undefined) {
+		throw new Error(
+			`${envName} has the unknown runtime "${unknown}". Valid runtimes: ${NODES_NEXT_RUNTIMES.join(', ')}.`,
+		);
+	}
+	const repeated = names.find((name, index) => names.indexOf(name) !== index);
+	if (repeated !== undefined) throw new Error(`${envName} has the runtime "${repeated}" twice.`);
+	if (names.length === 0) throw new Error(`${envName} has no runtime.`);
+};
+
+class FirstPartyRuntimes extends CommaSeparatedStringArray<NodesNextRuntime> {
+	constructor(str: string) {
+		super(str);
+		checkRuntimes('N8N_NODES_NEXT_RUNTIMES_FIRST_PARTY', this);
+	}
+}
+
+class CommunityRuntimes extends CommaSeparatedStringArray<NodesNextRuntime> {
+	constructor(str: string) {
+		super(str);
+		checkRuntimes('N8N_NODES_NEXT_RUNTIMES_COMMUNITY', this);
+	}
+}
+
+class PrivateRuntimes extends CommaSeparatedStringArray<NodesNextRuntime> {
+	constructor(str: string) {
+		super(str);
+		checkRuntimes('N8N_NODES_NEXT_RUNTIMES_PRIVATE', this);
+	}
+}
 
 @Config
 export class InstanceAiConfig {
@@ -311,19 +348,38 @@ export class InstanceAiConfig {
 	nodeContractRange: string = '>=2.0.0 <3.0.0';
 
 	/**
-	 * Where contract bundles run. `off`: in the n8n process. `stored`: a version that is not
-	 * first-party runs in the WASM sandbox. A first-party version runs in the n8n process: a
-	 * version of the release, or a version that the first-party key signs. `all`: every version
-	 * runs in the sandbox.
+	 * The runtimes of first-party node versions, the preferred one first. A version is first-party
+	 * when n8n bundles it or the first-party key of `N8N_NODE_CONTRACTS_FIRST_PARTY_KEY_FILE` signs
+	 * it. Runtimes: `in-process`, `worker`, `wasm`, `container`.
 	 */
-	@Env('N8N_NODE_CONTRACT_SANDBOX', nodeContractSandboxSchema)
-	nodeContractSandbox: z.infer<typeof nodeContractSandboxSchema> = 'off';
+	@Env('N8N_NODES_NEXT_RUNTIMES_FIRST_PARTY')
+	nodesNextRuntimesFirstParty: FirstPartyRuntimes = ['worker', 'in-process', 'wasm', 'container'];
 
-	/** The `n8n-sandbox` binary. Needed when the sandbox is on. */
+	/**
+	 * The runtimes of community node versions, the preferred one first: the versions that the
+	 * vetting key of `N8N_NODE_CONTRACTS_VETTING_KEY_FILE` signs. `in-process` and `worker` give no
+	 * security boundary, so n8n logs a warning at start when this list has them.
+	 */
+	@Env('N8N_NODES_NEXT_RUNTIMES_COMMUNITY')
+	nodesNextRuntimesCommunity: CommunityRuntimes = ['wasm', 'container'];
+
+	/**
+	 * The runtimes of private node versions, the preferred one first: the versions that no trusted
+	 * key signs, e.g. a version that only its lock anchors. `in-process` and `worker` give no
+	 * security boundary, so n8n logs a warning at start when this list has them.
+	 */
+	@Env('N8N_NODES_NEXT_RUNTIMES_PRIVATE')
+	nodesNextRuntimesPrivate: PrivateRuntimes = ['wasm', 'container'];
+
+	/** Lets node versions run in Docker containers. Needs `docker` on the PATH. */
+	@Env('N8N_NODES_NEXT_CONTAINER_ENABLED')
+	nodesNextContainerEnabled: boolean = false;
+
+	/** The `n8n-sandbox` binary. The `wasm` runtime needs it. */
 	@Env('N8N_NODE_CONTRACT_SANDBOX_SIDECAR')
 	nodeContractSandboxSidecar: string = '';
 
-	/** The directory of the guest components `action.wasm`, `provider.wasm` and `trigger.wasm`. Needed when the sandbox is on. */
+	/** The directory of the guest components `action.wasm`, `provider.wasm` and `trigger.wasm`. The `wasm` runtime needs it. */
 	@Env('N8N_NODE_CONTRACT_SANDBOX_GUESTS')
 	nodeContractSandboxGuests: string = '';
 

@@ -27,19 +27,14 @@ import {
 	freezeNative,
 	type FrozenAction,
 } from '@n8n/node-sdk/freeze';
-import { sandboxExecutorLoader, warmSandbox } from '@n8n/node-sdk/sandbox';
+import { policyExecutorLoader } from '@n8n/node-sdk/sandbox';
 import { generateKeyPairSync } from 'node:crypto';
 import { link, mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { createServer, type Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import {
-	LoggerProxy,
-	type IExecuteFunctions,
-	type INodeExecutionData,
-	type ITaskMetadata,
-} from 'n8n-workflow';
+import type { IExecuteFunctions, INodeExecutionData, ITaskMetadata } from 'n8n-workflow';
 
 import {
 	admitVersions,
@@ -69,12 +64,12 @@ vi.mock('node:fs/promises', async (importOriginal) => {
 vi.mock('@n8n/node-sdk/host', async (importOriginal) => ({
 	...(await importOriginal<typeof import('@n8n/node-sdk/host')>()),
 	setExecutorLoader: vi.fn(),
+	setTriggerPolicy: vi.fn(),
 }));
 
 vi.mock('@n8n/node-sdk/sandbox', async (importOriginal) => ({
 	...(await importOriginal<typeof import('@n8n/node-sdk/sandbox')>()),
-	sandboxExecutorLoader: vi.fn(),
-	warmSandbox: vi.fn(async () => undefined),
+	policyExecutorLoader: vi.fn(),
 }));
 
 const echoSource = (minor: number, text: string, imports = '') => `
@@ -1093,77 +1088,43 @@ describe('syncContractStore', () => {
 });
 
 describe('useContractRegistry', () => {
-	const sandboxOptions = {
-		sidecar: '',
-		guests: '',
-		cacheDir: '',
-		credentialType: () => undefined,
-	};
-	const use = (sandbox?: ContractRegistryOptions['sandbox']) =>
+	const use = (options: Partial<ContractRegistryOptions> = {}) =>
 		useContractRegistry({
 			policy: 'tolerant',
 			store: storeOf(),
 			metaOf: async () => undefined,
 			nodeContractRange: '>=2.0.0 <3.0.0',
-			sandbox,
+			runtimes: {
+				lists: { 'first-party': ['in-process'], community: ['wasm'], private: ['wasm'] },
+				available: { missing: {} },
+				runtimes: {},
+			},
+			sandbox: { cacheDir: '', credentialType: () => undefined },
+			...options,
 		});
-	const inProcessOf = (scope: 'stored' | 'all') => {
-		vi.mocked(sandboxExecutorLoader).mockClear();
-		use({ options: sandboxOptions, scope });
-		const [[, inProcess] = []] = vi.mocked(sandboxExecutorLoader).mock.calls;
-		return inProcess;
-	};
 
-	beforeEach(() => vi.mocked(warmSandbox).mockClear());
-
-	it('compiles the sandbox guests at start only with a sandbox', () => {
-		use();
-		expect(warmSandbox).not.toHaveBeenCalled();
-		use({ options: sandboxOptions, scope: 'stored' });
-		expect(warmSandbox).toHaveBeenCalledWith(sandboxOptions);
+	it('gives the runtime policy to the version loader', () => {
+		const runtimes = {
+			lists: { 'first-party': ['worker'], community: ['wasm'], private: ['container'] },
+			available: { missing: {} },
+			runtimes: {},
+		} as const;
+		vi.mocked(policyExecutorLoader).mockClear();
+		use({ runtimes });
+		expect(policyExecutorLoader).toHaveBeenCalledWith(runtimes, expect.anything());
 	});
 
-	it('logs a failed guest compile at debug and starts', async () => {
-		const debug = vi.spyOn(LoggerProxy, 'debug');
-		vi.mocked(warmSandbox).mockRejectedValueOnce(new Error('no sidecar'));
-		expect(() => use({ options: sandboxOptions, scope: 'stored' })).not.toThrow();
-		await vi.waitFor(() =>
-			expect(debug).toHaveBeenCalledWith('The sandbox guests did not compile at start: no sidecar'),
-		);
-		debug.mockRestore();
-	});
-	const [embedded] = versionsOf('httpRequest.send');
-
-	it('runs only first-party versions in this process with the stored scope', () => {
-		const inProcess = inProcessOf('stored');
-		if (!embedded) throw new Error('httpRequest.send is not bundled');
-		expect(embedded.origin).toBe('first-party');
-		expect(inProcess?.(embedded)).toBe(true);
-		expect(inProcess?.({ ...embedded, origin: 'community' })).toBe(false);
-		expect(inProcess?.({ ...embedded, origin: 'private' })).toBe(false);
-	});
-
-	it('runs every version in the sandbox with the all scope', () => {
-		if (!embedded) throw new Error('httpRequest.send is not bundled');
-		expect(inProcessOf('all')?.(embedded)).toBe(false);
-	});
-
-	it('runs a first-party version from the registry in this process with the stored scope', async () => {
+	it('gives a bundled version and a version that the first-party key signs the first-party origin', async () => {
+		const [embedded] = versionsOf('httpRequest.send');
+		expect(embedded?.origin).toBe('first-party');
 		await publish(frozenOf('1.0.0'), firstParty.privateKey);
 		const version = await storeOf({ keys: bothKeys }).locked(lockOf('1.0.0'));
-		expect(inProcessOf('stored')?.(version)).toBe(true);
+		expect(version.origin).toBe('first-party');
 	});
 
 	it('refuses a URL from input outside the input hosts in a node run', async () => {
 		const onPermissionRefused = vi.fn();
-		useContractRegistry({
-			policy: 'tolerant',
-			store: storeOf(),
-			metaOf: async () => undefined,
-			nodeContractRange: '>=2.0.0 <3.0.0',
-			egressInputHosts: [' Allowed.test'],
-			onPermissionRefused,
-		});
+		use({ egressInputHosts: [' Allowed.test'], onPermissionRefused });
 		const httpRequest = vi.fn();
 		const context = {
 			getInputData: () => [{ json: {} }],
@@ -1189,13 +1150,7 @@ describe('useContractRegistry', () => {
 	});
 
 	it('gives the response limit to each request of a node run', async () => {
-		useContractRegistry({
-			policy: 'tolerant',
-			store: storeOf(),
-			metaOf: async () => undefined,
-			nodeContractRange: '>=2.0.0 <3.0.0',
-			maxResponseBytes: 1024,
-		});
+		use({ maxResponseBytes: 1024 });
 		const httpRequest = vi.fn().mockResolvedValue([]);
 		const context = {
 			getInputData: () => [{ json: {} }],

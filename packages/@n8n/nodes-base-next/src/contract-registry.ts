@@ -47,7 +47,8 @@ import {
 	type StoreYank,
 	type VersionManifest,
 } from '@n8n/node-sdk/registry';
-import { sandboxExecutorLoader, warmSandbox, type SandboxOptions } from '@n8n/node-sdk/sandbox';
+import type { RuntimePolicy } from '@n8n/node-sdk/runtimes';
+import { policyExecutorLoader, type SandboxOptions } from '@n8n/node-sdk/sandbox';
 import {
 	LoggerProxy,
 	UserError,
@@ -91,10 +92,11 @@ export interface ContractRegistryOptions {
 	/** The Node Contract versions a bundle may declare, e.g. `>=2.0.0 <3.0.0`. */
 	readonly nodeContractRange: string;
 	/**
-	 * Runs bundles in the WASM sandbox. `stored`: every version that is not first-party. `all`:
-	 * every version. Without it, every bundle runs in this process.
+	 * Where each version runs, by its origin: `first-party`, `community` or `private`.
 	 */
-	readonly sandbox?: { readonly options: SandboxOptions; readonly scope: 'stored' | 'all' };
+	readonly runtimes: RuntimePolicy;
+	/** The cache, the credential types and the limits of the runtimes other than `in-process`. */
+	readonly sandbox: SandboxOptions;
 	/** Gets the run profile of each node execution, e.g. for traces. Without it, nothing is recorded. */
 	readonly onRunProfile?: RunProfileListener;
 	/** Gets each request or bundle that a permission refuses, e.g. for the audit log. */
@@ -845,7 +847,9 @@ export function contractStore(options: ContractStoreOptions): ContractStore {
  * newest stored version of an older major. A yanked version runs only as the locked version or
  * `head`. A revoked version does not run unless `revokedAllowed` lists it.
  */
-export function contractVersionLoader(options: ContractRegistryOptions): ContractVersionLoader {
+export function contractVersionLoader(
+	options: Omit<ContractRegistryOptions, 'runtimes' | 'sandbox' | 'nodeContractRange'>,
+): ContractVersionLoader {
 	const { store } = options;
 	const allowed = new Set(options.revokedAllowed ?? []);
 	const deny = options.permissionsDeny ?? [];
@@ -937,9 +941,6 @@ const bundledVersionsOf = (actionId: string) => {
 
 const bundledHead = (actionId: string) => bundledVersionsOf(actionId)[0];
 
-/** Only n8n vouches for a first-party version, so only it may run in this process. */
-const isFirstParty = ({ origin }: FrozenVersion) => origin === 'first-party';
-
 /**
  * The credential manifest of a name: the bundled one, which n8n registers and signs with, else
  * the newest one in the store, unless another package has a type of that name.
@@ -955,10 +956,9 @@ export function credentialManifestsOf(
 }
 
 /**
- * Sets the Node Contract range, the version loader, the credential manifests, the sandbox, the
- * run profile listener, the permission refusal listener, the input hosts and the response limit
- * of this package's node-sdk, which its nodes run with. With a sandbox, it also starts to compile
- * the sandbox guests and does not wait for the result.
+ * Sets the Node Contract range, the version loader, the credential manifests, the runtime
+ * policy, the run profile listener, the permission refusal listener, the input hosts and the
+ * response limit of this package's node-sdk, which its nodes run with.
  */
 export const useContractRegistry = (options: ContractRegistryOptions) => {
 	setNodeContractRange(options.nodeContractRange);
@@ -968,16 +968,7 @@ export const useContractRegistry = (options: ContractRegistryOptions) => {
 	setPermissionRefusalListener(options.onPermissionRefused);
 	setEgressInputHosts(options.egressInputHosts ?? []);
 	setMaxResponseBytes(options.maxResponseBytes);
-	if (options.sandbox) {
-		const { scope } = options.sandbox;
-		setExecutorLoader(
-			sandboxExecutorLoader(options.sandbox.options, scope === 'all' ? () => false : isFirstParty),
-		);
-		// Without the warm-up, the first sandboxed run compiles the guest, so a failure only costs time.
-		void warmSandbox(options.sandbox.options).catch((error: unknown) =>
-			LoggerProxy.debug(`The sandbox guests did not compile at start: ${errorMessage(error)}`),
-		);
-	}
+	setExecutorLoader(policyExecutorLoader(options.runtimes, options.sandbox));
 };
 
 /** A workflow node and its lock. */

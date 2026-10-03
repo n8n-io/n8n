@@ -18,7 +18,7 @@ it('GUEST_LACKS are globals of Node, besides the CommonJS names', () => {
 	expect(GUEST_LACKS.filter((name) => !(name in globalThis))).toEqual(['__dirname', '__filename']);
 });
 
-const probeSource = (value: string, header = '') => `import { defineNode, t } from '@n8n/node-sdk';
+const probeSource = (value: string, header = '', spec = '') => `import { defineNode, t } from '@n8n/node-sdk';
 const { obj, str } = t;
 ${header}
 const probe = defineNode({ id: 'probe', displayName: 'Probe' });
@@ -28,15 +28,16 @@ export const probeAction = probe.action('probe', {
 	flow: { effect: 'read', cardinality: 'per-item' },
 	input: {},
 	output: obj({ value: str() }),
+	${spec}
 	run: async () => ({ value: String(${value}) }),
 } as any);
 `;
 
 describe('freezeAction', () => {
 	const dirs = { root: '' };
-	const freeze = async (value: string, header?: string) => {
+	const freeze = async (value: string, header?: string, spec?: string) => {
 		const entry = path.join(dirs.root, `${Math.random().toString(36).slice(2)}.ts`);
-		await writeFile(entry, probeSource(value, header));
+		await writeFile(entry, probeSource(value, header, spec));
 		return await freezeAction(entry, 'probeAction');
 	};
 
@@ -46,6 +47,23 @@ describe('freezeAction', () => {
 
 	afterAll(async () => {
 		await rm(dirs.root, { recursive: true, force: true });
+	});
+
+	it('writes the image of the action to the contract', async () => {
+		const image = `node@sha256:${'a'.repeat(64)}`;
+		const { manifest } = await freeze(
+			"'x'",
+			'',
+			`runtime: { image: '${image}', childProcess: true },`,
+		);
+		expect(manifest.contract.runtime).toEqual({ image, childProcess: true });
+		expect(manifest.nodeContract).toBe('2.7.0');
+	});
+
+	it('refuses an image without a digest', async () => {
+		await expect(freeze("'x'", '', "runtime: { image: 'node:24-slim' },")).rejects.toThrow(
+			'Pin it by digest',
+		);
 	});
 
 	it.each([

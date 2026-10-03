@@ -81,3 +81,64 @@ describe('InstanceAiConfig nodeContractTracePayloads', () => {
 		);
 	});
 });
+
+describe('InstanceAiConfig node runtimes', () => {
+	beforeEach(() => {
+		Container.reset();
+		vi.unstubAllEnvs();
+	});
+
+	it('defaults to worker first for first-party and wasm first for community', () => {
+		const { instanceAi } = Container.get(GlobalConfig);
+
+		expect(instanceAi.nodesNextRuntimesFirstParty).toEqual([
+			'worker',
+			'in-process',
+			'wasm',
+			'container',
+		]);
+		expect(instanceAi.nodesNextRuntimesCommunity).toEqual(['wasm', 'container']);
+		expect(instanceAi.nodesNextRuntimesPrivate).toEqual(['wasm', 'container']);
+		expect(instanceAi.nodesNextContainerEnabled).toBe(false);
+	});
+
+	it('reads the lists in their order', () => {
+		vi.stubEnv('N8N_NODES_NEXT_RUNTIMES_FIRST_PARTY', 'in-process,worker');
+		vi.stubEnv('N8N_NODES_NEXT_RUNTIMES_COMMUNITY', 'container,wasm,worker');
+		vi.stubEnv('N8N_NODES_NEXT_RUNTIMES_PRIVATE', 'container');
+		vi.stubEnv('N8N_NODES_NEXT_CONTAINER_ENABLED', 'true');
+
+		const { instanceAi } = Container.get(GlobalConfig);
+
+		expect(instanceAi.nodesNextRuntimesFirstParty).toEqual(['in-process', 'worker']);
+		expect(instanceAi.nodesNextRuntimesCommunity).toEqual(['container', 'wasm', 'worker']);
+		expect(instanceAi.nodesNextRuntimesPrivate).toEqual(['container']);
+		expect(instanceAi.nodesNextContainerEnabled).toBe(true);
+	});
+
+	it.each([
+		['wasm,docker', 'N8N_NODES_NEXT_RUNTIMES_COMMUNITY has the unknown runtime "docker"'],
+		['wasm,wasm', 'N8N_NODES_NEXT_RUNTIMES_COMMUNITY has the runtime "wasm" twice'],
+		['', 'N8N_NODES_NEXT_RUNTIMES_COMMUNITY has no runtime'],
+	])('refuses the community list "%s"', (value, error) => {
+		vi.stubEnv('N8N_NODES_NEXT_RUNTIMES_COMMUNITY', value);
+
+		expect(() => Container.get(GlobalConfig)).toThrow(error);
+	});
+
+	it('refuses an unknown private runtime', () => {
+		vi.stubEnv('N8N_NODES_NEXT_RUNTIMES_PRIVATE', 'wasm,docker');
+
+		expect(() => Container.get(GlobalConfig)).toThrow(
+			'N8N_NODES_NEXT_RUNTIMES_PRIVATE has the unknown runtime "docker"',
+		);
+	});
+
+	it('refuses an unknown first-party runtime', () => {
+		vi.stubEnv('N8N_NODES_NEXT_RUNTIMES_FIRST_PARTY', 'worker,wasm-reuse');
+
+		expect(() => Container.get(GlobalConfig)).toThrow(
+			'N8N_NODES_NEXT_RUNTIMES_FIRST_PARTY has the unknown runtime "wasm-reuse"',
+		);
+	});
+});

@@ -1,6 +1,6 @@
 {
 	"$schema": "https://json-schema.org/draft/2020-12/schema",
-	"$id": "urn:n8n:node-contract:manifest@2.6.0",
+	"$id": "urn:n8n:node-contract:manifest@2.7.0",
 	"title": "n8n Node Contract manifest",
 	"description": "Generated from src/manifest.ts by scripts/spec.ts. Do not edit. `x-n8n-since` is the Node Contract version that added a field. The `contract.input` and `contract.output` schemas follow the contract format of the SDK.",
 	"oneOf": [
@@ -282,6 +282,30 @@
 									"x-n8n-since": "2.6.0"
 								}
 							]
+						},
+						"runtime": {
+							"type": "object",
+							"properties": {
+								"image": {
+									"type": "string",
+									"pattern": "@sha256:[0-9a-f]{64}$"
+								},
+								"childProcess": {
+									"type": "boolean"
+								},
+								"addons": {
+									"type": "array",
+									"items": {
+										"type": "string"
+									}
+								}
+							},
+							"required": [
+								"image"
+							],
+							"additionalProperties": false,
+							"description": "The container image the action needs. Absent: web APIs and host imports only.",
+							"x-n8n-since": "2.7.0"
 						}
 					},
 					"required": [
@@ -1270,6 +1294,30 @@
 									"x-n8n-since": "2.6.0"
 								}
 							]
+						},
+						"runtime": {
+							"type": "object",
+							"properties": {
+								"image": {
+									"type": "string",
+									"pattern": "@sha256:[0-9a-f]{64}$"
+								},
+								"childProcess": {
+									"type": "boolean"
+								},
+								"addons": {
+									"type": "array",
+									"items": {
+										"type": "string"
+									}
+								}
+							},
+							"required": [
+								"image"
+							],
+							"additionalProperties": false,
+							"description": "The container image the action needs. Absent: web APIs and host imports only.",
+							"x-n8n-since": "2.7.0"
 						}
 					},
 					"required": [
@@ -1539,6 +1587,30 @@
 											"x-n8n-since": "2.6.0"
 										}
 									]
+								},
+								"runtime": {
+									"type": "object",
+									"properties": {
+										"image": {
+											"type": "string",
+											"pattern": "@sha256:[0-9a-f]{64}$"
+										},
+										"childProcess": {
+											"type": "boolean"
+										},
+										"addons": {
+											"type": "array",
+											"items": {
+												"type": "string"
+											}
+										}
+									},
+									"required": [
+										"image"
+									],
+									"additionalProperties": false,
+									"description": "The container image the action needs. Absent: web APIs and host imports only.",
+									"x-n8n-since": "2.7.0"
 								}
 							},
 							"required": [

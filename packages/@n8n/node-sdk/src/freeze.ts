@@ -241,6 +241,13 @@ export async function freezeAction(
 		);
 	}
 	const action = evaluateBundle(bundle, NODE_CONTRACT_VERSION);
+	const runtime = 'runtime' in action ? action.runtime : undefined;
+	// A tag can point to other bytes later, so only a digest pins what the version runs.
+	if (runtime && !/@sha256:[0-9a-f]{64}$/.test(runtime.image)) {
+		throw new UserError(
+			`${exportName} in ${entryFile} needs the image ${runtime.image}. Pin it by digest: <ref>@sha256:<digest>.`,
+		);
+	}
 	const contract = toContract(action);
 	const credentials = credentialPinsOf(action);
 	const bundleHash = sha256(bundle);

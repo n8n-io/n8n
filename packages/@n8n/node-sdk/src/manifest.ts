@@ -14,7 +14,7 @@ import type {
 	CustomAuth,
 	Notice,
 } from './credentials';
-import type { ContractDocument, NativeNode } from './define';
+import type { ActionRuntime, ContractDocument, NativeNode } from './define';
 import { Schema, t, type AnySchema, type Infer, type JsonSchema } from './schema';
 import { matches } from './validate';
 import type { StoreDeprecation, StoreRecord, StoreRevoke, StoreYank } from './store';
@@ -26,6 +26,7 @@ const constant = <const V extends string | number | boolean>(value: V) =>
 
 const SINCE_2_5 = { 'x-n8n-since': '2.5.0' } as const satisfies JsonSchema;
 const SINCE_2_6 = { 'x-n8n-since': '2.6.0' } as const satisfies JsonSchema;
+const SINCE_2_7 = { 'x-n8n-since': '2.7.0' } as const satisfies JsonSchema;
 
 /**
  * A reader ignores a top-level field it does not know, so a newer SDK can add an annotation.
@@ -93,6 +94,14 @@ const signature = typed<Signature>()(
 	}),
 );
 
+const runtime = typed<ActionRuntime>()(
+	t.obj({
+		image: t.str().with({ pattern: '@sha256:[0-9a-f]{64}$' }),
+		childProcess: t.bool().optional(),
+		addons: names().optional(),
+	}),
+);
+
 const contract = typed<ContractDocument>()(
 	t.obj({
 		id: t.str(),
@@ -123,6 +132,10 @@ const contract = typed<ContractDocument>()(
 					.describe('Inputs counted by the integer input field `count`.')
 					.with(SINCE_2_6),
 			)
+			.optional(),
+		runtime: runtime
+			.describe('The container image the action needs. Absent: web APIs and host imports only.')
+			.with(SINCE_2_7)
 			.optional(),
 	}),
 );

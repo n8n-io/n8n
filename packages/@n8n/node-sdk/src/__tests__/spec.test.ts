@@ -251,7 +251,10 @@ describe('the action interface', () => {
 			{ run: unknown }
 		>;
 		const credential = keysOf<Pick<Parameters<Bound['run']>[0], 'credential'>>()(['credential']);
-		const imports = action.imports.map((name) => (name === 'runCredential' ? 'credential' : name));
+		// `chunk` names the item of a chunk-run to the host; `run()` never sees it.
+		const imports = action.imports
+			.filter((name) => name !== 'chunk')
+			.map((name) => (name === 'runCredential' ? 'credential' : name));
 		expect(sorted(['input', 'item', ...imports])).toEqual(
 			sorted([...context, ...optional, ...credential, 'supplied']),
 		);
@@ -285,6 +288,7 @@ describe('the action interface', () => {
 		expect(constructorOf('run')).toEqual(['input']);
 		expect(constructorOf('item-run')).toEqual(['input', 'items']);
 		expect(constructorOf('join-run')).toEqual(['input', 'inputs']);
+		expect(constructorOf('chunk-run')).toEqual(['inputs', 'items', 'continue-on-fail']);
 	});
 });
 

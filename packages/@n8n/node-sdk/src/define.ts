@@ -1206,6 +1206,19 @@ export type ActionBinding<
 			readonly inputs?: never;
 	  };
 
+/**
+ * A container image that the action needs, e.g. for ffmpeg or a native addon. Such an action runs
+ * only in the `container` runtime.
+ */
+export interface ActionRuntime {
+	/** An image with `node` on the PATH, pinned by digest: `<ref>@sha256:<digest>`. */
+	readonly image: string;
+	/** Lets the bundle run the tools of the image, with `/tmp` to read and write their files. */
+	readonly childProcess?: boolean;
+	/** Directories in the image from which the bundle can load native addons. */
+	readonly addons?: readonly string[];
+}
+
 interface ContractSpec<Own extends Shape, O extends AnySchema, Sc extends string> {
 	/**
 	 * Integer major. It is the n8n `typeVersion`. Bump it for a breaking contract change.
@@ -1265,6 +1278,8 @@ interface ActionSpecBase<
 	 * @see `docs/sandboxed-execution.md`
 	 */
 	readonly egress?: Egress<RunInput<Full>, H>;
+	/** The container image the action needs. Without it, the action uses web APIs only. */
+	readonly runtime?: ActionRuntime;
 	/** Named outputs. An input list can name them, e.g. one output per Switch case. */
 	readonly outputs?: Outs;
 	/** The optional host imports `run()` uses. Each one is a permission, as a scope is. */
@@ -1835,6 +1850,8 @@ export interface ContractDocument {
 	readonly imports?: readonly HostImport[];
 	/** Named inputs in n8n input order, or the field that counts them. Absent for one input. */
 	readonly inputs?: ActionInputs;
+	/** The container image the action needs. Absent: web APIs and host imports only. */
+	readonly runtime?: ActionRuntime;
 }
 
 /**
@@ -1867,7 +1884,14 @@ type ContractSource = Pick<
 } & (
 		| Pick<
 				Action,
-				'action' | 'flow' | 'outputs' | 'egress' | 'imports' | 'inputs' | 'resourceOutput'
+				| 'action'
+				| 'flow'
+				| 'outputs'
+				| 'egress'
+				| 'imports'
+				| 'inputs'
+				| 'resourceOutput'
+				| 'runtime'
 		  >
 		| (Pick<Trigger, 'trigger'> &
 				(
@@ -1936,6 +1960,7 @@ export const toContract = (source: ContractSource): ContractDocument => {
 	const endpoint = customEndpointOf(
 		'kind' in source && source.kind !== 'native' ? source.webhook?.endpoint : undefined,
 	);
+	const runtime = 'kind' in source ? undefined : source.runtime;
 	return {
 		id: source.id,
 		version: source.version,
@@ -1969,6 +1994,7 @@ export const toContract = (source: ContractSource): ContractDocument => {
 		...(egress ? { egress } : {}),
 		...(imports.length ? { imports } : {}),
 		...(inputs ? { inputs } : {}),
+		...(runtime ? { runtime } : {}),
 	};
 };
 

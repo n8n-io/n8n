@@ -3,15 +3,15 @@
 // JS realm, so this code is not a trust boundary: the sidecar links only the granted imports,
 // and the host checks every call and every output.
 import { source } from 'n8n:js-guest/bundle@1.0.0';
-import type * as wit from 'n8n:node-contract/capabilities@2.6.0';
+import type * as wit from 'n8n:node-contract/capabilities@2.7.0';
 import {
 	request as witRequest,
 	type HttpError as WitHttpError,
 	type HttpFailure,
 	type HttpRequest as WitHttpRequest,
-} from 'n8n:node-contract/http@2.6.0';
-import { log as witLog } from 'n8n:node-contract/log@2.6.0';
-import { get as witCredential } from 'n8n:node-contract/run-credential@2.6.0';
+} from 'n8n:node-contract/http@2.7.0';
+import { log as witLog } from 'n8n:node-contract/log@2.7.0';
+import { get as witCredential } from 'n8n:node-contract/run-credential@2.7.0';
 import { OperationalError, safeRegex, UserError } from 'n8n-workflow';
 
 import { isHttpError, type Action, type Http, type HttpRequest, type Trigger } from '../src/define';
@@ -56,10 +56,16 @@ const HOST_MODULES: Readonly<Record<string, unknown>> = {
 	'n8n-workflow': { safeRegex, OperationalError, UserError },
 };
 
-/** The bundle loads at the first call, not at build time: its source is an import. */
+/**
+ * The generic guest loads the bundle at the first call: its source is an import. A snapshot guest
+ * (`snapshot-entry.ts`) evaluates its bundle at build time.
+ */
 const loaded = new Map<'bundle', unknown>();
-function exportOf(): unknown {
-	if (loaded.has('bundle')) return loaded.get('bundle');
+const exportOf = (): unknown =>
+	loaded.has('bundle') ? loaded.get('bundle') : evaluateBundle(source());
+
+/** Evaluates the code of a bundle once and keeps its default export. */
+export function evaluateBundle(code: string): unknown {
 	const module: { exports: unknown } = { exports: {} };
 	const hostRequire = (id: string) => {
 		if (!(id in HOST_MODULES)) throw new Error(`A frozen bundle cannot import ${id}`);
@@ -67,7 +73,7 @@ function exportOf(): unknown {
 	};
 	// The engine has no `node:vm`. The bundle runs in this realm either way.
 	// eslint-disable-next-line @typescript-eslint/no-implied-eval, no-new-func
-	const evaluate = new Function('module', 'require', source());
+	const evaluate = new Function('module', 'require', code);
 	Reflect.apply(evaluate, undefined, [module, hostRequire]);
 	const exported = isRecord(module.exports) ? module.exports.default : undefined;
 	loaded.set('bundle', exported);

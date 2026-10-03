@@ -30,11 +30,13 @@ import { matches } from './validate';
  * manifests, and the trigger, credential and provider interfaces.
  * 2.6.0 adds counted inputs (`inputs: { count }`), whose number a parameter sets, and output key
  * patterns that hold binaries (`t.indexedBinaries()`).
+ * 2.7.0 adds the `runtime` of a version, a container image pinned by digest, and the `chunk`
+ * import and `chunk-run` of the sandbox guest.
  */
 export type NodeContractVersion = `${number}.${number}.${number}`;
 
 /** The newest version this host implements. */
-export const NODE_CONTRACT_VERSION: NodeContractVersion = '2.6.0';
+export const NODE_CONTRACT_VERSION: NodeContractVersion = '2.7.0';
 
 /** The newest version of each major that this host runs. */
 export const IMPLEMENTED_NODE_CONTRACTS: readonly NodeContractVersion[] = [NODE_CONTRACT_VERSION];
@@ -60,18 +62,20 @@ export const manifestKindOf = (
  * needs no newer minor.
  */
 export const requiredNodeContractOf = (
-	contract: Pick<ContractDocument, 'input' | 'output' | 'imports' | 'inputs'>,
+	contract: Pick<ContractDocument, 'input' | 'output' | 'imports' | 'inputs' | 'runtime'>,
 	list = false,
 ): NodeContractVersion =>
-	inputCountOf(contract) !== undefined || usesBinaryKeyPattern(contract)
-		? '2.6.0'
-		: list || hasPageValue(contract.input)
-			? '2.4.0'
-			: usesHostImports(contract) || usesProviders(contract)
-				? '2.3.0'
-				: usesBinary(contract)
-					? '2.2.0'
-					: '2.1.0';
+	contract.runtime
+		? '2.7.0'
+		: inputCountOf(contract) !== undefined || usesBinaryKeyPattern(contract)
+			? '2.6.0'
+			: list || hasPageValue(contract.input)
+				? '2.4.0'
+				: usesHostImports(contract) || usesProviders(contract)
+					? '2.3.0'
+					: usesBinary(contract)
+						? '2.2.0'
+						: '2.1.0';
 
 /** A newer minor than the host has uses imports or fields that the host lacks. */
 export const implementsNodeContract = (version: NodeContractVersion) => {
@@ -210,6 +214,8 @@ export const contractHash = (contract: ContractDocument) =>
 			// A host import is a permission, as a host is. A set.
 			...(contract.imports?.length ? { imports: [...contract.imports].sort() } : {}),
 			...(contract.inputs ? { inputs: contract.inputs } : {}),
+			// The image is what the code runs on, so a tolerant patch must not change it.
+			...(contract.runtime ? { runtime: contract.runtime } : {}),
 		}),
 	);
 
@@ -614,6 +620,28 @@ export function addedPermissionsOf(
 	return entriesOf(next).filter((entry) => !before.has(entry));
 }
 
+const runtimeEntries = (runtime: ContractDocument['runtime']) =>
+	runtime
+		? [
+				'image',
+				...(runtime.childProcess ? ['child process'] : []),
+				...(runtime.addons ?? []).map((dir) => `addons ${dir}`),
+			]
+		: [];
+
+/**
+ * The runtime is a permission: an added image, child process or addon directory is a major, as
+ * an added scope is. Another image with the same permissions is a minor.
+ */
+function runtimeChanges(prev: ContractDocument, next: ContractDocument): ContractChange[] {
+	const [before, after] = [prev.runtime, next.runtime];
+	const image: ContractChange[] =
+		before && after && before.image !== after.image
+			? [{ kind: 'minor', text: `runtime image ${before.image} → ${after.image}` }]
+			: [];
+	return [...setChanges('runtime', runtimeEntries(before), runtimeEntries(after)), ...image];
+}
+
 /** n8n saves a connection by input index, as by output index. */
 function inputChanges(prev: ContractDocument, next: ContractDocument): ContractChange[] {
 	if (canonicalJson(prev.inputs) === canonicalJson(next.inputs)) return [];
@@ -628,13 +656,13 @@ function inputChanges(prev: ContractDocument, next: ContractDocument): ContractC
 
 /**
  * Classifies the change between two versions of one action: additive optional input (or a
- * new required input with a default), a removed scope, egress host or import, a required
- * output field that becomes typical, or a credential that becomes optional is minor; a new
- * required input, a removed or narrowed output, an output field that becomes optional, an added
- * or removed `x-n8n-resource`, a changed output list, a changed flow, a changed webhook
- * endpoint, a credential that becomes required, an added permission (scope, egress host,
- * import, credential type) or a removed credential type is major; no normative change is a
- * patch.
+ * new required input with a default), a removed scope, egress host or import, another runtime
+ * image, a required output field that becomes typical, or a credential that becomes optional is
+ * minor; a new required input, a removed or narrowed output, an output field that becomes
+ * optional, an added or removed `x-n8n-resource`, a changed output list, a changed flow, a
+ * changed webhook endpoint, a credential that becomes required, an added permission (scope,
+ * egress host, import, credential type, runtime image, child process, addon directory) or a
+ * removed credential type is major; no normative change is a patch.
  */
 export function diffContracts(prev: ContractDocument, next: ContractDocument): ContractDiff {
 	const input = schemaChanges('input', 'input', prev.input, next.input);
@@ -654,6 +682,7 @@ export function diffContracts(prev: ContractDocument, next: ContractDocument): C
 				? [minor('credential became optional')]
 				: [major('credential became required')]),
 		...permissionChanges(prev, next),
+		...runtimeChanges(prev, next),
 		...outputChanges(prev, next),
 		...inputChanges(prev, next),
 		...input,

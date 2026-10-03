@@ -161,6 +161,19 @@ export {
 	type StoreStatusRecord,
 	type VersionManifest,
 } from '@n8n/node-sdk/registry';
+// The cli makes the runtimes of the runtime policy with the node-sdk instance of this package.
+export {
+	containerRuntime,
+	pooledRuntime,
+	RUNTIME_NAMES,
+	wasmReuseRuntime,
+	workerRuntime,
+	type RuntimeAvailability,
+	type RuntimeLists,
+	type RuntimeName,
+	type RuntimePolicy,
+} from '@n8n/node-sdk/runtimes';
+export { warmSandbox, wasmSidecarRuntime, type GuestRuntime } from '@n8n/node-sdk/sandbox';
 
 export const NODE_PACKAGE = '@n8n/nodes-base-next';
 

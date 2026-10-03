@@ -1,4 +1,4 @@
-import { spawn } from 'node:child_process';
+import { spawn, type ChildProcessWithoutNullStreams } from 'node:child_process';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { createHash, randomUUID } from 'node:crypto';
 import { once } from 'node:events';
@@ -36,9 +36,12 @@ import {
 	loadExecutor,
 	verifiedCodeOf,
 	withBinaries,
+	type ChunkContext,
+	type ChunkRunner,
 	type Executor,
 	type ExecutorLoader,
 	type FrozenVersion,
+	type ItemOutcome,
 } from './runtime';
 import { hasBinary, Schema, shapeOf, type Binary, type JsonSchema } from './schema';
 import {
@@ -62,6 +65,7 @@ import {
 	triggerCallOf,
 	type TriggerCall,
 } from './triggers';
+import { runtimeNameOf, type RuntimePolicy } from './runtime-policy';
 import { NODE_CONTRACT_VERSION, type VersionManifest } from './version';
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -101,10 +105,12 @@ export interface SandboxLimits {
  * @see `docs/sandboxed-execution.md`
  */
 export interface SandboxOptions {
-	/** The `n8n-sandbox` binary. */
-	readonly sidecar: string;
+	/** The `n8n-sandbox` binary. The default runtime needs it. */
+	readonly sidecar?: string;
 	/** The directory of the generic JS guest components: `action.wasm`, `provider.wasm` and `trigger.wasm`. */
-	readonly guests: string;
+	readonly guests?: string;
+	/** Where the guests run. Default: `wasmSidecarRuntime` with `sidecar` and `guests`. */
+	readonly runtime?: GuestRuntime;
 	/**
 	 * A directory that only n8n can write. It holds the compiled guest and the verified bundles,
 	 * and the sidecar loads native code from it.
@@ -118,6 +124,11 @@ export interface SandboxOptions {
 	readonly credentialType: (name: string) => AnyCredentialType | undefined;
 	/** Limits that replace the defaults of `SandboxLimits`. */
 	readonly limits?: Partial<SandboxLimits>;
+	/**
+	 * Runs the items of a `per-item` action in `chunk-run`s, not in one `item-run` per item. The
+	 * guest must export `chunk-run`. Default: off.
+	 */
+	readonly chunkItems?: boolean;
 }
 
 const DEFAULT_LIMITS: SandboxLimits = {
@@ -160,31 +171,58 @@ const errorAnswer = (error: unknown) => {
 
 type GuestCalls = (method: string, params: Record<string, unknown>) => Promise<unknown>;
 
-interface Connection {
+/** A JSON-RPC connection to one guest, see `spec/json-rpc.md`. */
+export interface Connection {
+	/** Sends a request to the guest and gives its result. */
 	request(method: string, params: Record<string, unknown>): Promise<unknown>;
+	/** Sends a notification to the guest. */
 	notify(method: string, params: Record<string, unknown>): void;
 	/** The guest calls go to `calls` until the returned function runs. */
 	serve(calls: GuestCalls): () => boolean;
+	/**
+	 * Adds each later message to the run profile of `recorder` until the returned function runs. A
+	 * transport that cannot measure its messages does not have it.
+	 */
+	trace?(recorder: RunRecorder): () => boolean;
+	/** Stops the guest. */
 	close(): void;
 }
 
 /** The kinds whose interface the sandbox runs, each with its own guest component. */
-type SandboxKind = 'action' | 'provider' | 'trigger';
+export type SandboxKind = 'action' | 'provider' | 'trigger';
 
 const SANDBOX_KINDS: readonly SandboxKind[] = ['action', 'provider', 'trigger'];
 
-interface SessionConfig {
-	readonly options: SandboxOptions;
+/** What a runtime needs to start a guest for one bundle. */
+export interface GuestSession {
+	/** The interface that the guest runs. */
 	readonly kind: SandboxKind;
-	readonly guest: string;
-	readonly guestSha256: string;
-	readonly limits: SandboxLimits;
-	/** The name in the errors: the action id, or the guest at warm-up. */
-	readonly label: string;
-	readonly nodeContract: string;
-	/** Without a bundle, the sidecar only compiles and starts the guest. */
-	readonly bundle?: { readonly file: string; readonly sha256: string };
+	/** The verified manifest of the bundle. */
+	readonly manifest: VersionManifest;
+	/** The verified bundle, named by its hash. */
+	readonly bundleFile: string;
+	/** The imports of the world that the manifest grants. */
 	readonly grants: readonly string[];
+	/** The limits of the session. */
+	readonly limits: SandboxLimits;
+	/** A directory that only n8n can write. */
+	readonly cacheDir: string;
+}
+
+/**
+ * Starts guests that speak `spec/json-rpc.md`. The host checks stay in this module, so every
+ * runtime gets the same egress, credential and output checks. The host sends `[initialize]`.
+ */
+export interface GuestRuntime {
+	/** The name in logs and run profiles, e.g. `worker`. */
+	readonly name: string;
+	/** Starts a guest for one session. */
+	start(session: GuestSession): Promise<Connection>;
+	/**
+	 * The compiled guests of the session in the cache. A runtime that compiles no guest does not
+	 * have it.
+	 */
+	compiled?(session: GuestSession): Promise<readonly string[]>;
 }
 
 const IMPORT_INTERFACES: Readonly<Record<HostImport, string>> = {
@@ -194,11 +232,18 @@ const IMPORT_INTERFACES: Readonly<Record<HostImport, string>> = {
 	inputOf: 'input-of',
 };
 
+/** Whether the items of this action run in `chunk-run`s. */
+const chunksItems = ({ kind, contract }: VersionManifest, { chunkItems }: SandboxOptions) =>
+	chunkItems === true &&
+	kind === 'action' &&
+	contract.flow.cardinality === 'per-item' &&
+	contract.inputs === undefined;
+
 /**
  * The imports of the world that the manifest grants. A provider gets only the base imports. A
  * trigger gets no credential data: the host applies the credential to each request.
  */
-const grantsOf = ({ kind, contract }: VersionManifest) => {
+const grantsOf = ({ kind, contract }: VersionManifest, chunked: boolean) => {
 	if (kind === 'trigger') return ['http', 'log', 'limits'];
 	const { imports, binary, supplied } = permissionsOf(contract);
 	return [
@@ -206,6 +251,7 @@ const grantsOf = ({ kind, contract }: VersionManifest) => {
 		'log',
 		'limits',
 		'run-credential',
+		...(chunked ? ['chunk'] : []),
 		...(kind === 'provider'
 			? []
 			: [
@@ -233,26 +279,84 @@ interface Answer {
 /** The guest call that the host answers now, so an HTTP attempt names the call that sent it. */
 const guestCalls = new AsyncLocalStorage<number>();
 
-/**
- * One sidecar process: one component instance, so one node execution shares no state with another.
- * With a recorder, each message goes into the run profile.
- */
-function connect(config: SessionConfig, recorder?: RunRecorder): Connection {
-	const { options, limits, label, bundle, grants } = config;
-	const child = spawn(
-		options.sidecar,
+/** The guests of `wasmSidecarRuntime`: one wasmtime sidecar process per session. */
+export interface WasmSidecarOptions {
+	/** The `n8n-sandbox` binary. */
+	readonly sidecar: string;
+	/** The directory with `action.wasm` and `provider.wasm`. */
+	readonly guests: string;
+}
+
+/** What one sidecar process runs. Without a bundle, the sidecar only compiles and starts the guest. */
+interface SidecarRun {
+	readonly kind: SandboxKind;
+	readonly limits: SandboxLimits;
+	readonly grants: readonly string[];
+	readonly cacheDir: string;
+	readonly nodeContract: string;
+	readonly bundle?: { readonly file: string; readonly sha256: string };
+}
+
+async function spawnSidecar({ sidecar, guests }: WasmSidecarOptions, run: SidecarRun) {
+	const { kind, limits, bundle } = run;
+	const guest = path.join(guests, `${kind}.wasm`);
+	return spawn(
+		sidecar,
 		[
-			...['--wit', SPEC_WIT, '--world', `${config.kind}-bundle`, '--component', config.guest],
-			...['--component-sha256', config.guestSha256],
-			...grants.flatMap((grant) => ['--grant', grant]),
+			...['--wit', SPEC_WIT, '--world', `${kind}-bundle`, '--component', guest],
+			...['--component-sha256', await guestSha256Of(guest)],
+			...run.grants.flatMap((grant) => ['--grant', grant]),
 			...(bundle ? ['--bundle', bundle.file, '--bundle-sha256', bundle.sha256] : []),
-			...['--node-contract', config.nodeContract, '--cache', options.cacheDir],
+			...['--node-contract', run.nodeContract, '--cache', run.cacheDir],
 			...['--memory-mb', String(limits.memoryMb), '--cpu-ms', String(limits.cpuMs)],
 		],
 		{ stdio: ['pipe', 'pipe', 'pipe'], env: {}, windowsHide: true },
 	);
+}
+
+/** One sidecar process: one component instance, so one node execution shares no state with another. */
+export function wasmSidecarRuntime(options: WasmSidecarOptions): GuestRuntime {
+	return {
+		name: 'wasm-sidecar',
+		async start(session) {
+			const { manifest } = session;
+			const child = await spawnSidecar(options, {
+				...session,
+				nodeContract: manifest.nodeContract,
+				bundle: { file: session.bundleFile, sha256: manifest.bundleHash },
+			});
+			return connectChild(child, { limits: session.limits, label: manifest.id });
+		},
+		async compiled({ kind, cacheDir }) {
+			const digest = await guestSha256Of(path.join(options.guests, `${kind}.wasm`));
+			// The sidecar names a compiled guest `<digest>-<engine>.cwasm`.
+			return (await readdir(cacheDir).catch((): string[] => [])).filter(
+				(name) => name.startsWith(`${digest}-`) && name.endsWith('.cwasm'),
+			);
+		},
+	};
+}
+
+/**
+ * The connection to a child process that speaks `spec/json-rpc.md` as newline-delimited JSON on
+ * stdin and stdout. It kills the child at the wall clock limit and on a message larger than
+ * `maxMessageBytes`.
+ */
+export function connectChild(
+	child: ChildProcessWithoutNullStreams,
+	{
+		limits,
+		label,
+	}: {
+		/** The limits of the session. */
+		readonly limits: SandboxLimits;
+		/** The name of the session in the errors, e.g. the action id. */
+		readonly label: string;
+	},
+): Connection {
 	const pending = new Map<number, { resolve(answer: Answer): void; reject(error: Error): void }>();
 	const state = { next: 1, rpc: 1, partialLength: 0, stderr: '' };
+	const traced = new Map<'recorder', RunRecorder>();
 	// The chunks of an incomplete line, so a long line is joined once.
 	const partial: string[] = [];
 	const served = new Map<'calls', GuestCalls>();
@@ -263,12 +367,22 @@ function connect(config: SessionConfig, recorder?: RunRecorder): Connection {
 		pending.clear();
 		child.kill('SIGKILL');
 	};
-	const timer = setTimeout(
-		() => fail(new UserError(`${label} ran longer than ${limits.wallMs} ms and was stopped`)),
-		limits.wallMs,
-	);
+	// The wall clock starts at the first request, so a prestarted guest loses no run time.
+	const timers = new Map<'wall', NodeJS.Timeout>();
+	const startClock = () => {
+		if (timers.has('wall')) return;
+		timers.set(
+			'wall',
+			setTimeout(
+				() => fail(new UserError(`${label} ran longer than ${limits.wallMs} ms and was stopped`)),
+				limits.wallMs,
+			),
+		);
+	};
+	const stopClock = () => clearTimeout(timers.get('wall'));
 	/** Writes a message. With a recorder, it gives the line for the profile. */
 	const send = (message: Record<string, unknown>): Line | undefined => {
+		const recorder = traced.get('recorder');
 		// An answer can come after the sidecar stopped, e.g. at the wall clock limit.
 		if (failure.has('error')) return undefined;
 		if (!recorder) {
@@ -288,6 +402,7 @@ function connect(config: SessionConfig, recorder?: RunRecorder): Connection {
 		line: Line | undefined,
 	) => {
 		const calls = served.get('calls');
+		const recorder = traced.get('recorder');
 		const rpcId = state.rpc++;
 		const result = await (async () => {
 			try {
@@ -324,6 +439,7 @@ function connect(config: SessionConfig, recorder?: RunRecorder): Connection {
 		});
 	};
 	const receive = (text: string) => {
+		const recorder = traced.get('recorder');
 		const startMs = recorder?.now();
 		const message: unknown = JSON.parse(text);
 		const line =
@@ -374,7 +490,7 @@ function connect(config: SessionConfig, recorder?: RunRecorder): Connection {
 		fail(new UnexpectedError(`The sandbox did not start: ${error.message}`)),
 	);
 	child.on('exit', (code, signal) => {
-		clearTimeout(timer);
+		stopClock();
 		fail(
 			new UnexpectedError(
 				`The sandbox stopped (${signal ?? `exit ${code}`})${state.stderr ? `: ${state.stderr.trim()}` : ''}`,
@@ -383,10 +499,12 @@ function connect(config: SessionConfig, recorder?: RunRecorder): Connection {
 	});
 	return {
 		async request(method, params) {
+			startClock();
 			const known = failure.get('error');
 			if (known) throw known;
 			const id = state.next++;
 			const rpcId = state.rpc++;
+			const recorder = traced.get('recorder');
 			const answered = new Promise<Answer>((resolve, reject) =>
 				pending.set(id, { resolve, reject }),
 			);
@@ -419,6 +537,7 @@ function connect(config: SessionConfig, recorder?: RunRecorder): Connection {
 		},
 		notify(method, params) {
 			const sent = send({ method, params });
+			const recorder = traced.get('recorder');
 			if (!recorder || !sent) return;
 			recorder.rpc({
 				id: state.rpc++,
@@ -436,8 +555,12 @@ function connect(config: SessionConfig, recorder?: RunRecorder): Connection {
 			served.set('calls', calls);
 			return () => served.delete('calls');
 		},
+		trace(recorder) {
+			traced.set('recorder', recorder);
+			return () => traced.delete('recorder');
+		},
 		close() {
-			clearTimeout(timer);
+			stopClock();
 			failure.set('error', failure.get('error') ?? new UnexpectedError('The sandbox is closed'));
 			child.stdin.end();
 			child.kill('SIGKILL');
@@ -445,32 +568,34 @@ function connect(config: SessionConfig, recorder?: RunRecorder): Connection {
 	};
 }
 
-/** The compiled guests of the session in the cache. The sidecar names them `<digest>-<engine>.cwasm`. */
-const compiledGuestsOf = async ({ options, guestSha256 }: SessionConfig) =>
-	(await readdir(options.cacheDir).catch((): string[] => [])).filter(
-		(name) => name.startsWith(`${guestSha256}-`) && name.endsWith('.cwasm'),
-	);
-
-async function openSession(config: SessionConfig, recorder?: RunRecorder): Promise<Connection> {
-	const before = recorder ? await compiledGuestsOf(config) : [];
+async function openSession(
+	runtime: GuestRuntime,
+	config: GuestSession,
+	recorder?: RunRecorder,
+): Promise<Connection> {
+	const before = recorder && runtime.compiled ? await runtime.compiled(config) : [];
 	const startMs = recorder?.now();
-	const connection = connect(config, recorder);
+	const connection = await runtime.start(config);
+	if (recorder) connection.trace?.(recorder);
 	try {
 		const started = await connection.request('[initialize]', {
 			nodeContract: NODE_CONTRACT_VERSION,
 		});
 		if (!isRecord(started) || started.kind !== config.kind) {
-			throw new UnexpectedError(`${config.label} is not a bundle of the ${config.kind} interface`);
+			throw new UnexpectedError(
+				`${config.manifest.id} is not a bundle of the ${config.kind} interface`,
+			);
 		}
 		if (recorder && startMs !== undefined) {
 			const endMs = recorder.now();
 			// A compile writes a new file, also when the file of an older engine is there.
-			const after = await compiledGuestsOf(config);
+			const after = runtime.compiled ? await runtime.compiled(config) : [];
 			recorder.phase({
 				name: 'sandboxStart',
 				startMs,
 				endMs,
-				compileCached: after.length > 0 && after.every((name) => before.includes(name)),
+				compileCached:
+					!runtime.compiled || (after.length > 0 && after.every((name) => before.includes(name))),
 			});
 		}
 		return connection;
@@ -818,8 +943,9 @@ const CAPABILITY_RESOURCES: Readonly<Record<ProviderKind, string>> = {
 	embeddings: 'embeddings',
 };
 
+/** `contextOf` gives the context of the current item, so a chunk-run serves each item with its own. */
 function callsOf(
-	context: SandboxContext,
+	contextOf: () => SandboxContext,
 	items: readonly InputItem[],
 	contract: VersionManifest['contract'],
 ): RunCalls {
@@ -883,7 +1009,7 @@ function callsOf(
 		return value;
 	};
 	const imports = (name: HostImport) => {
-		const service = context[name];
+		const service = contextOf()[name];
 		if (service === undefined) throw new RpcError(-32601, `${name} is not granted`);
 		return service;
 	};
@@ -894,8 +1020,9 @@ function callsOf(
 		return service;
 	};
 	const binaries = () => {
-		if (!context.binary) throw new RpcError(-32601, 'binary is not granted');
-		return context.binary;
+		const { binary } = contextOf();
+		if (!binary) throw new RpcError(-32601, 'binary is not granted');
+		return binary;
 	};
 	const errorText = (error: unknown) => (error instanceof Error ? error.message : String(error));
 	/** A failed `result<_, string>`; the run error that names it gives the executor the host error. */
@@ -947,7 +1074,7 @@ function callsOf(
 	/** Sends a request through the executor; a failure is the `http-failure` of the WIT `result`. */
 	const send = async (options: HttpRequest) => {
 		try {
-			const response = await context.http.request({ ...options, fullResponse: true });
+			const response = await contextOf().http.request({ ...options, fullResponse: true });
 			if (!isFullResponse(response))
 				throw new UnexpectedError('The HTTP client gave no full response');
 			return {
@@ -1001,13 +1128,15 @@ function callsOf(
 			case 'http.request':
 				return await send(requestOf(params.request, true));
 			case 'log.log':
-				if (isLogLevel(params.level)) context.log(params.level, String(params.message));
+				if (isLogLevel(params.level)) contextOf().log(params.level, String(params.message));
 				return null;
-			case 'limits.get':
-				return { maxRequests: context.limits.maxRequests, maxItems: context.limits.maxItems };
+			case 'limits.get': {
+				const { limits } = contextOf();
+				return { maxRequests: limits.maxRequests, maxItems: limits.maxItems };
+			}
 			case 'run-credential.get':
 				try {
-					const { credential } = context;
+					const { credential } = contextOf();
 					return isRecord(credential) ? { type: credential.type, fields: credential.fields } : null;
 				} catch (error) {
 					// The host error can quote stored values, so the guest gets a fixed text.
@@ -1395,7 +1524,7 @@ async function* outputsOf(
 ) {
 	const shared = sessions.getStore();
 	const connection = await (shared ?? start)();
-	const calls = callsOf(context, plan.items, contract);
+	const calls = callsOf(() => context, plan.items, contract);
 	const stop = connection.serve(calls.calls);
 	const handles = new Map<'handle', unknown>();
 	try {
@@ -1486,6 +1615,133 @@ function joinValueOf(id: string, inputs: ReadonlyArray<readonly InputItem[]>) {
 			from: from.length === 1 ? itemOf(from[0]) : from.map(itemOf),
 		};
 	};
+}
+
+/** Items per `chunk-run`, so its constructor message stays small. */
+const CHUNK_ITEMS = 1000;
+
+/**
+ * One `chunk-run`. The guest names each item with `chunk.item` before the host calls of the
+ * item, so each call gets the context of its item. Another index than the next one, a call
+ * before the first item, or an outcome before its item fails the run. Another error, e.g. a
+ * stopped guest, is the error of each item that has no outcome yet.
+ */
+async function* chunkRun(
+	manifest: VersionManifest,
+	valueOf: (items: readonly InputItem[]) => ReturnType<typeof itemValueOf>,
+	contexts: readonly ChunkContext[],
+	continueOnFail: boolean,
+	connection: Connection,
+): AsyncGenerator<ItemOutcome> {
+	const { id, contract } = manifest;
+	const items = contexts.map(({ item }) => item);
+	const state = { current: -1, given: 0 };
+	const broken = new Map<'error', UnexpectedError>();
+	const violation = (message: string) => {
+		const error = broken.get('error') ?? new UnexpectedError(`${id} ${message}`);
+		broken.set('error', error);
+		return error;
+	};
+	const contextOf = () => {
+		const context = contexts[state.current];
+		if (!context) throw new RpcError(-32603, `${id} has no current item`);
+		return context;
+	};
+	const calls = callsOf(contextOf, items, contract);
+	const served: GuestCalls = async (method, params) => {
+		const known = broken.get('error');
+		if (known) throw new RpcError(-32603, known.message);
+		if (method === 'chunk.item') {
+			const next = state.current + 1;
+			if (params.index !== next || next >= contexts.length) {
+				throw new RpcError(
+					-32602,
+					violation(`named item ${String(params.index)}, and the next item is ${next}`).message,
+				);
+			}
+			state.current = next;
+			return null;
+		}
+		if (state.current < 0) {
+			throw new RpcError(-32603, violation(`called ${method} before the first item`).message);
+		}
+		return await calls.calls(method, params);
+	};
+	const valueAt = valueOf(items);
+	const outcomeOf = (outcome: unknown): ItemOutcome => {
+		if (!isRecord(outcome) || (outcome.tag !== 'output' && outcome.tag !== 'failed')) {
+			throw violation('gave an outcome that is not an item-outcome');
+		}
+		if (state.given > state.current) {
+			throw violation(`gave the outcome of item ${state.given} before the item started`);
+		}
+		state.given += 1;
+		if (outcome.tag === 'failed') return { error: runErrorOf(outcome.val, calls) };
+		try {
+			return { value: valueAt(outcome.val, calls.hostJson) };
+		} catch (error) {
+			return { error };
+		}
+	};
+	const stop = connection.serve(served);
+	const handles = new Map<'handle', unknown>();
+	try {
+		const inputs = await Promise.all(
+			contexts.map(async ({ input }) => await calls.guestInput(input)),
+		);
+		const handle = await connection.request('action.chunk-run.[new]', {
+			inputs,
+			items: items.map(({ json }) => json),
+			continueOnFail,
+		});
+		handles.set('handle', handle);
+		for (;;) {
+			const taken = await connection.request('action.chunk-run.[take]', {
+				self: handle,
+				max: TAKE,
+			});
+			if (!isOutputs(taken)) throw violation('gave no outcomes');
+			const outcomes = taken.outputs.map(outcomeOf);
+			const known = broken.get('error');
+			if (known) throw known;
+			yield* outcomes;
+			if (taken.error !== undefined) throw runErrorOf(taken.error, calls);
+			if (taken.done) return;
+		}
+	} catch (error) {
+		const known = broken.get('error');
+		if (known) throw known;
+		yield* contexts.slice(state.given).map(() => ({ error }));
+	} finally {
+		stop();
+		calls.close();
+		if (handles.has('handle')) {
+			connection.notify('action.chunk-run.[drop]', { self: handles.get('handle') });
+		}
+	}
+}
+
+/** The outcomes of a per-item action over many items, in `chunk-run`s of `CHUNK_ITEMS`. */
+async function* chunkOutcomesOf(
+	manifest: VersionManifest,
+	valueOf: (items: readonly InputItem[]) => ReturnType<typeof itemValueOf>,
+	contexts: readonly ChunkContext[],
+	continueOnFail: boolean,
+	start: () => Promise<Connection>,
+): AsyncGenerator<ItemOutcome> {
+	if (contexts.length === 0) return;
+	const shared = sessions.getStore();
+	const connection = await (shared ?? start)();
+	const slices = Array.from({ length: Math.ceil(contexts.length / CHUNK_ITEMS) }, (_, index) =>
+		contexts.slice(index * CHUNK_ITEMS, (index + 1) * CHUNK_ITEMS),
+	);
+	try {
+		for (const slice of slices) {
+			yield* chunkRun(manifest, valueOf, slice, continueOnFail, connection);
+		}
+	} finally {
+		if (!shared) connection.close();
+	}
 }
 
 /** The single output of a per-item run. */
@@ -1590,7 +1846,7 @@ async function providerCapabilityOf(
 	) => Promise<T>;
 	const supply = async <T>(open: () => Promise<Connection>, shared: boolean, use: Use<T>) => {
 		const connection = await open();
-		const calls = callsOf(context, items, contract);
+		const calls = callsOf(() => context, items, contract);
 		const stop = connection.serve(calls.calls);
 		try {
 			const capability = await connection.request('provider.supply', { input: context.input });
@@ -1693,7 +1949,7 @@ async function sandboxedTriggerCall(
 	const call: TriggerCall = triggerCallOf(context.item?.json);
 	const shared = sessions.getStore();
 	const connection = await (shared ?? start)();
-	const calls = callsOf(context, [], manifest.contract);
+	const calls = callsOf(() => context, [], manifest.contract);
 	const stop = connection.serve(calls.calls);
 	const { input } = context;
 	const request = async (name: string, params: Record<string, unknown>) =>
@@ -1753,7 +2009,8 @@ function sandboxedAction(
 	manifest: VersionManifest,
 	node: NodeDefinition,
 	start: () => Promise<Connection>,
-): Action {
+	chunked: boolean,
+): Action & { readonly runChunk?: ChunkRunner } {
 	const { contract } = manifest;
 	const { flow } = contract;
 	const shell = {
@@ -1819,7 +2076,15 @@ function sandboxedAction(
 		);
 		return flow.cardinality === 'per-item' ? only(manifest.id, outputs) : outputs;
 	};
-	return { ...shell, run };
+	const runChunk: ChunkRunner = (contexts, continueOnFail) =>
+		chunkOutcomesOf(
+			manifest,
+			(items) => itemValueOf(shell, items),
+			contexts,
+			continueOnFail,
+			start,
+		);
+	return { ...shell, run, ...(chunked ? { runChunk } : {}) };
 }
 
 // The guest is 13 MB, so its digest is read once per process.
@@ -1875,19 +2140,16 @@ export async function sandboxedVersionOf(frozen: FrozenVersion, options: Sandbox
 	if (missing) throw new UserError(missing);
 	const kind: SandboxKind = manifest.kind;
 	const code = await verifiedCodeOf(frozen);
-	const guest = path.join(options.guests, `${kind}.wasm`);
-	const config: SessionConfig = {
-		options,
+	const config: GuestSession = {
 		kind,
-		guest,
-		guestSha256: await guestSha256Of(guest),
 		limits: { ...DEFAULT_LIMITS, ...options.limits },
-		label: manifest.id,
-		nodeContract: manifest.nodeContract,
-		bundle: { file: await bundleFileOf(options, manifest, code), sha256: manifest.bundleHash },
-		grants: grantsOf(manifest),
+		manifest,
+		bundleFile: await bundleFileOf(options, manifest, code),
+		grants: grantsOf(manifest, chunksItems(manifest, options)),
+		cacheDir: options.cacheDir,
 	};
-	const start = async (recorder?: RunRecorder) => await openSession(config, recorder);
+	const runtime = runtimeOf(options);
+	const start = async (recorder?: RunRecorder) => await openSession(runtime, config, recorder);
 	const describing = await start();
 	const described = await describing
 		.request(`${kind}.describe`, {})
@@ -1900,36 +2162,49 @@ export async function sandboxedVersionOf(frozen: FrozenVersion, options: Sandbox
 		manifest,
 		await nodeOf(manifest, described, options.credentialType),
 		start,
+		chunksItems(manifest, options),
 	);
 	return { action, start, executor: sandboxedExecutor(executorOf(action), start) };
 }
 
 /**
- * Compiles the guest of each kind into `options.cacheDir`, so that the first sandboxed run does
+ * Compiles the guest of each kind into `cacheDir`, so that the first run in a WASM runtime does
  * not wait for the compile (about 2 s for each guest). It starts one sidecar for each guest
  * without a bundle and stops it after `[initialize]`. The guests compile one after the other to
  * keep the load at start low.
  *
  * @throws when a sidecar cannot start or a guest cannot compile. Then the first run compiles.
  */
-export async function warmSandbox(options: SandboxOptions): Promise<void> {
+export async function warmSandbox(
+	options: WasmSidecarOptions & Pick<SandboxOptions, 'cacheDir' | 'limits'>,
+): Promise<void> {
 	// The sidecar creates a missing cache directory with the umask mode, which others can read.
 	await mkdir(options.cacheDir, { recursive: true, mode: 0o700 });
+	const limits = { ...DEFAULT_LIMITS, ...options.limits };
 	await SANDBOX_KINDS.reduce(async (previous, kind) => {
 		await previous;
-		const guest = path.join(options.guests, `${kind}.wasm`);
-		const session = await openSession({
-			options,
+		const child = await spawnSidecar(options, {
 			kind,
-			guest,
-			guestSha256: await guestSha256Of(guest),
-			limits: { ...DEFAULT_LIMITS, ...options.limits },
-			label: `The ${kind} guest`,
-			nodeContract: NODE_CONTRACT_VERSION,
+			limits,
 			grants: [],
+			cacheDir: options.cacheDir,
+			nodeContract: NODE_CONTRACT_VERSION,
 		});
-		session.close();
+		const connection = connectChild(child, { limits, label: `The ${kind} guest` });
+		try {
+			await connection.request('[initialize]', { nodeContract: NODE_CONTRACT_VERSION });
+		} finally {
+			connection.close();
+		}
 	}, Promise.resolve());
+}
+
+function runtimeOf({ runtime, sidecar, guests }: SandboxOptions): GuestRuntime {
+	if (runtime) return runtime;
+	if (!sidecar || !guests) {
+		throw new UnexpectedError('The sandbox needs a runtime, or a sidecar and guests');
+	}
+	return wasmSidecarRuntime({ sidecar, guests });
 }
 
 /** One connection for all runs of one node execution, opened at the first run. */
@@ -1968,20 +2243,28 @@ function sandboxedExecutor(
 }
 
 /**
- * The executor loader of a host with a sandbox: a version that `inProcess` trusts, e.g. by its
- * origin, runs in this process, every other version in the sandbox. Both paths use the same host imports, so the
- * egress, credential and limit checks are the same. A sandboxed version gets its credential
- * types from the credential manifests of the host, else from `options.credentialType`, so it
- * needs no HEAD bundle for them.
+ * The executor loader of the runtime policy: each version runs in the runtime that
+ * `runtimeNameOf` gives for its origin, `in-process` through `loadExecutor`. All runtimes use the
+ * same host imports, so the egress, credential and limit checks are the same. A sandboxed version
+ * gets its credential types from the credential manifests of the host, else from
+ * `options.credentialType`, so it needs no HEAD bundle for them.
  */
-export function sandboxExecutorLoader(
+export function policyExecutorLoader(
+	policy: RuntimePolicy,
 	options: SandboxOptions,
-	inProcess: (frozen: FrozenVersion) => boolean = () => false,
 ): ExecutorLoader {
-	return async (frozen) =>
-		!inProcess(frozen)
-			? (await sandboxedVersionOf(frozen, options)).executor
-			: frozen.manifest.kind === 'trigger'
+	return async (frozen) => {
+		const { manifest } = frozen;
+		const name = runtimeNameOf(policy, frozen);
+		policy.log?.(`${manifest.id}@${manifest.semver} (${frozen.origin}) runs in ${name}`);
+		if (name === 'in-process') {
+			return manifest.kind === 'trigger'
 				? await loadTriggerExecutor(frozen)
 				: await loadExecutor(frozen);
+		}
+		const runtime = policy.runtimes[name];
+		if (!runtime)
+			throw new UnexpectedError(`The ${name} runtime is available, but the host gave none`);
+		return (await sandboxedVersionOf(frozen, { ...options, runtime: runtime() })).executor;
+	};
 }

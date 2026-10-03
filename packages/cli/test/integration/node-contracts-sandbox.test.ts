@@ -12,7 +12,11 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
-import { ContractNodeLoader, useNodeContractsRegistry } from '@/node-contracts-registry';
+import {
+	ContractNodeLoader,
+	NodeContractsRuntimes,
+	useNodeContractsRegistry,
+} from '@/node-contracts-registry';
 import { Push } from '@/push';
 import { WorkflowRunner } from '@/workflow-runner';
 
@@ -25,7 +29,7 @@ const guests = path.join(SANDBOX, 'dist');
 // `pnpm --filter @n8n/node-sdk sandbox:build` builds them.
 const built = [
 	sidecar,
-	...['action', 'provider'].map((kind) => path.join(guests, `${kind}.wasm`)),
+	...['action', 'provider', 'trigger'].map((kind) => path.join(guests, `${kind}.wasm`)),
 ].every(existsSync);
 
 const state = { dir: '', url: '', owner: undefined as unknown as User };
@@ -41,7 +45,7 @@ const server = createServer((request, response) => {
 
 mockInstance(Push);
 
-describe.skipIf(!built)('node contracts in the sandbox', () => {
+describe('node contracts in their runtimes', () => {
 	const cacheDir = () => path.join(state.dir, 'cache');
 
 	beforeAll(async () => {
@@ -73,13 +77,14 @@ describe.skipIf(!built)('node contracts in the sandbox', () => {
 	});
 
 	afterAll(async () => {
+		Container.get(NodeContractsRuntimes).close();
 		server.close();
 		await rm(state.dir, { recursive: true, force: true });
 		await testDb.terminate();
 	});
 
-	async function runSend(sandbox: 'off' | 'stored' | 'all') {
-		Container.get(GlobalConfig).instanceAi.nodeContractSandbox = sandbox;
+	async function runSend(firstParty: GlobalConfig['instanceAi']['nodesNextRuntimesFirstParty']) {
+		Container.get(GlobalConfig).instanceAi.nodesNextRuntimesFirstParty = firstParty;
 		await useNodeContractsRegistry();
 		const node: INode = {
 			id: 'send',
@@ -94,7 +99,7 @@ describe.skipIf(!built)('node contracts in the sandbox', () => {
 			},
 		};
 		const workflow = await createWorkflow(
-			{ name: `Send, sandbox ${sandbox}`, nodes: [node], connections: {} },
+			{ name: `Send, runtimes ${firstParty.join(',')}`, nodes: [node], connections: {} },
 			state.owner,
 		);
 		const executionId = await Container.get(WorkflowRunner).run(
@@ -123,30 +128,64 @@ describe.skipIf(!built)('node contracts in the sandbox', () => {
 		return { status: execution?.status, items: task?.data?.main[0]?.map(({ json }) => json) };
 	}
 
-	it('runs a contract action in the n8n process when the sandbox is off', async () => {
-		expect(await runSend('off')).toEqual({
-			status: 'success',
-			items: [{ received: { name: 'Ada' } }],
-		});
-		expect(existsSync(cacheDir())).toBe(false);
-	});
+	const bundles = async () => {
+		const [{ manifest }] = versionsOf('httpRequest.send');
+		return { written: await readdir(path.join(cacheDir(), 'bundles')), manifest };
+	};
 
-	it('runs a first-party version in the n8n process when the sandbox is stored', async () => {
-		expect(await runSend('stored')).toEqual({
+	it('runs a bundled version in the n8n process when in-process comes first', async () => {
+		expect(await runSend(['in-process', 'worker'])).toEqual({
 			status: 'success',
 			items: [{ received: { name: 'Ada' } }],
 		});
 		expect(existsSync(path.join(cacheDir(), 'bundles'))).toBe(false);
 	});
 
-	it('runs the same action in the sandbox when N8N_NODE_CONTRACT_SANDBOX is all', async () => {
-		const [{ manifest }] = versionsOf('httpRequest.send');
+	it('runs a bundled version in a worker with the default first-party list', async () => {
+		const made = vi.spyOn(Container.get(NodeContractsRuntimes), 'get');
 
-		expect(await runSend('all')).toEqual({
+		expect(await runSend(['worker', 'in-process', 'wasm', 'container'])).toEqual({
 			status: 'success',
 			items: [{ received: { name: 'Ada' } }],
 		});
-		// Only the sandbox writes the verified bundle to its cache.
-		expect(await readdir(path.join(cacheDir(), 'bundles'))).toEqual([`${manifest.bundleHash}.cjs`]);
+		expect(made).toHaveBeenCalledWith('worker', expect.any(Function));
+		// Only a runtime outside this process reads the verified bundle from the cache.
+		const { written, manifest } = await bundles();
+		expect(written).toEqual([`${manifest.bundleHash}.cjs`]);
 	}, 60_000);
+
+	it('does not run a version whose permission class is denied, whatever the runtime lists', async () => {
+		const loadNodesAndCredentials = Container.get(LoadNodesAndCredentials);
+		const { loaders } = loadNodesAndCredentials;
+		const denied = new ContractNodeLoader([], [], undefined, ['egress-input']);
+		await denied.loadAll();
+		loadNodesAndCredentials.loaders = { '@n8n/nodes-base-next': denied };
+		await loadNodesAndCredentials.postProcessLoaders();
+		const made = vi.spyOn(Container.get(NodeContractsRuntimes), 'get');
+		try {
+			await expect(runSend(['in-process', 'worker'])).rejects.toThrow(
+				'Unrecognized node type: @n8n/nodes-base-next.httpRequestSend',
+			);
+			expect(made).not.toHaveBeenCalled();
+		} finally {
+			loadNodesAndCredentials.loaders = loaders;
+			await loadNodesAndCredentials.postProcessLoaders();
+		}
+	}, 60_000);
+
+	it.skipIf(!built)(
+		'runs the action in the WASM sandbox when wasm comes first',
+		async () => {
+			const made = vi.spyOn(Container.get(NodeContractsRuntimes), 'get');
+
+			expect(await runSend(['wasm'])).toEqual({
+				status: 'success',
+				items: [{ received: { name: 'Ada' } }],
+			});
+			expect(made).toHaveBeenCalledWith('wasm', expect.any(Function));
+			const { written, manifest } = await bundles();
+			expect(written).toEqual([`${manifest.bundleHash}.cjs`]);
+		},
+		60_000,
+	);
 });

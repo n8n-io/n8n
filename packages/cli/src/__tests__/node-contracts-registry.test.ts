@@ -20,7 +20,7 @@ import type {
 import { mock } from 'vitest-mock-extended';
 import { InstanceSettings } from 'n8n-core';
 import type { IExecuteFunctions, INode } from 'n8n-workflow';
-import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { chmod, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
@@ -28,11 +28,17 @@ import { CredentialTypes } from '@/credential-types';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 
-import { NodeContractsStore, useNodeContractsRegistry } from '../node-contracts-registry';
+import {
+	NodeContractsRuntimes,
+	NodeContractsStore,
+	useNodeContractsRegistry,
+} from '../node-contracts-registry';
 import { NodeContractsSync } from '../node-contracts-sync';
 
 const registered: ContractRegistryOptions[] = [];
 const languages: string[][] = [];
+const closed: string[] = [];
+const warmed: object[] = [];
 vi.mock('@n8n/nodes-base-next', () => ({
 	sandboxCredentialTypeOf: (known: (name: string) => boolean) => (name: string) =>
 		known(name) ? { name } : undefined,
@@ -46,6 +52,23 @@ vi.mock('@n8n/nodes-base-next', () => ({
 		added: [{ id: 'demo.echo', semver: '1.0.0', bundleHash: 'a' }],
 		failed: [],
 		unsupported: [],
+	}),
+	workerRuntime: () => ({ name: 'worker' }),
+	containerRuntime: (options: object) => ({ name: 'container', options }),
+	warmSandbox: async (options: object) => {
+		warmed.push(options);
+		if (warmed.length > 1) throw new Error('no sidecar');
+	},
+	wasmReuseRuntime: (options: object) => ({
+		name: 'wasm-reuse',
+		options,
+		close: () => closed.push('wasm-reuse'),
+	}),
+	pooledRuntime: (inner: { name: string }, options: object) => ({
+		name: `${inner.name}-pool`,
+		inner,
+		options,
+		close: () => closed.push(`${inner.name}-pool`),
 	}),
 }));
 
@@ -62,10 +85,17 @@ describe('useNodeContractsRegistry', () => {
 			nodeContractsVettingKeyFile: '',
 			nodeContractsRevokedAllow: ['demo.echo@1.0.0'],
 			nodeContractRange: '>=2.0.0 <3.0.0',
-			nodeContractSandbox: 'off',
 			nodeContractTracePayloads: 'off',
+			nodesNextRuntimesFirstParty: ['worker', 'in-process', 'wasm', 'container'],
+			nodesNextRuntimesCommunity: ['wasm', 'container'],
+			nodesNextRuntimesPrivate: ['wasm', 'container'],
+			nodesNextContainerEnabled: false,
+			nodeContractSandboxSidecar: '',
+			nodeContractSandboxGuests: '',
+			nodeContractSandboxCacheDir: '',
 		},
 	} as unknown as GlobalConfig);
+	const logger = mockInstance(Logger);
 	const instanceSettings = mockInstance(InstanceSettings, {
 		n8nFolder: '/n8n',
 		instanceType: 'main',
@@ -114,7 +144,68 @@ describe('useNodeContractsRegistry', () => {
 		expect(workflowRepository.findByIds).toHaveBeenCalledWith(['wf'], { fields: ['meta'] });
 		// N8N_PYTHON_ENABLED=false turns Python off for the Code contracts too.
 		expect(languages).toEqual([['javascript']]);
-		expect(options?.sandbox).toBeUndefined();
+	});
+
+	it('passes the default lists, a worker pool, and the runtimes that cannot start', async () => {
+		registered.length = 0;
+		await useNodeContractsRegistry();
+		const runtimes = registered[0]?.runtimes;
+
+		expect(Array.from(runtimes?.lists['first-party'] ?? [])).toEqual([
+			'worker',
+			'in-process',
+			'wasm',
+			'container',
+		]);
+		expect(Array.from(runtimes?.lists.community ?? [])).toEqual(['wasm', 'container']);
+		expect(Array.from(runtimes?.lists.private ?? [])).toEqual(['wasm', 'container']);
+		expect(runtimes?.available).toEqual({
+			missing: {
+				wasm: 'wasm is not available: the sandbox sidecar is not installed',
+				container: 'container is not enabled',
+			},
+		});
+		expect(Object.keys(runtimes?.runtimes ?? {})).toEqual(['worker']);
+		expect(runtimes?.runtimes.worker?.()).toMatchObject({
+			name: 'worker-pool',
+			options: { size: 1 },
+		});
+		expect(logger.warn).toHaveBeenCalledTimes(1);
+		expect(logger.warn).toHaveBeenCalledWith(
+			'The wasm runtime is not available: N8N_NODE_CONTRACT_SANDBOX_SIDECAR or N8N_NODE_CONTRACT_SANDBOX_GUESTS is not set',
+		);
+	});
+
+	it('warns when the community or private list has a runtime without a security boundary', async () => {
+		const { instanceAi } = globalConfig;
+		instanceAi.nodesNextRuntimesCommunity = ['wasm', 'worker', 'in-process'];
+		instanceAi.nodesNextRuntimesPrivate = ['in-process'];
+		try {
+			await useNodeContractsRegistry();
+
+			expect(logger.warn).toHaveBeenCalledWith(
+				'N8N_NODES_NEXT_RUNTIMES_COMMUNITY has worker, in-process: community node code runs without a security boundary',
+			);
+			expect(logger.warn).toHaveBeenCalledWith(
+				'N8N_NODES_NEXT_RUNTIMES_PRIVATE has in-process: private node code runs without a security boundary',
+			);
+		} finally {
+			instanceAi.nodesNextRuntimesCommunity = ['wasm', 'container'];
+			instanceAi.nodesNextRuntimesPrivate = ['wasm', 'container'];
+		}
+	});
+
+	it('makes each runtime once and closes it at shutdown', async () => {
+		closed.length = 0;
+		registered.length = 0;
+		await useNodeContractsRegistry();
+		await useNodeContractsRegistry();
+		const [first, second] = registered.map((options) => options.runtimes.runtimes.worker?.());
+
+		expect(first).toBe(second);
+		Container.get(NodeContractsRuntimes).close();
+		expect(closed).toEqual(['worker-pool']);
+		expect(registered[0]?.runtimes.runtimes.worker?.()).not.toBe(first);
 	});
 
 	it('relays each run profile on the event service', async () => {
@@ -165,18 +256,18 @@ describe('useNodeContractsRegistry', () => {
 		expect(eventService.emit).toHaveBeenCalledWith('node-contract-installed', install);
 	});
 
-	it('records no payload and logs no warning by default', async () => {
-		const logger = mockInstance(Logger);
+	it('records no payload and logs no payload warning by default', async () => {
+		logger.warn.mockClear();
 		registered.length = 0;
 
 		await useNodeContractsRegistry();
 
 		expect(registered[0]?.tracePayloads).toBeUndefined();
-		expect(logger.warn).not.toHaveBeenCalled();
+		expect(logger.warn).not.toHaveBeenCalledWith(expect.stringContaining('TRACE_PAYLOADS'));
 	});
 
 	it('passes the payload capture mode and logs one warning at start', async () => {
-		const logger = mockInstance(Logger);
+		logger.warn.mockClear();
 		registered.length = 0;
 		const { instanceAi } = globalConfig;
 		instanceAi.nodeContractTracePayloads = 'redacted';
@@ -188,13 +279,12 @@ describe('useNodeContractsRegistry', () => {
 		}
 
 		expect(registered[0]?.tracePayloads).toBe('redacted');
-		expect(logger.warn).toHaveBeenCalledTimes(1);
 		expect(logger.warn).toHaveBeenCalledWith(
 			expect.stringContaining('N8N_NODE_CONTRACT_TRACE_PAYLOADS is "redacted"'),
 		);
 	});
 
-	it('passes the sandbox files, a cache dir in the n8n folder, and the n8n credential names', async () => {
+	it('passes wasm when the sandbox files exist, a cache dir in the n8n folder, and the n8n credential names', async () => {
 		const dir = await mkdtemp(path.join(tmpdir(), 'node-contracts-sandbox-'));
 		const files = ['n8n-sandbox', 'action.wasm', 'provider.wasm', 'trigger.wasm'].map((name) =>
 			path.join(dir, name),
@@ -202,30 +292,111 @@ describe('useNodeContractsRegistry', () => {
 		await Promise.all(files.map(async (file) => await writeFile(file, '')));
 		mockInstance(CredentialTypes).recognizes.mockImplementation((name) => name === 'slackApi');
 		Object.assign(globalConfig.instanceAi, {
-			nodeContractSandbox: 'stored',
 			nodeContractSandboxSidecar: files[0],
 			nodeContractSandboxGuests: dir,
-			nodeContractSandboxCacheDir: '',
 		});
 		try {
 			registered.length = 0;
+			warmed.length = 0;
+			Container.get(NodeContractsRuntimes).close();
 			await useNodeContractsRegistry();
 			const [options] = registered;
-			expect(options?.sandbox).toMatchObject({
-				scope: 'stored',
-				options: { sidecar: files[0], guests: dir, cacheDir: '/n8n/node-contracts/sandbox' },
-			});
-			expect(options?.sandbox?.options.credentialType('slackApi')).toEqual({ name: 'slackApi' });
-			expect(options?.sandbox?.options.credentialType('evilApi')).toBeUndefined();
 
+			expect(warmed).toEqual([
+				{ sidecar: files[0], guests: dir, cacheDir: '/n8n/node-contracts/sandbox' },
+			]);
+
+			expect(options?.runtimes.available.missing.wasm).toBeUndefined();
+			expect(options?.runtimes.runtimes.wasm?.()).toMatchObject({
+				name: 'wasm-reuse',
+				options: { sidecar: files[0], guests: dir },
+			});
+			expect(options?.sandbox.cacheDir).toBe('/n8n/node-contracts/sandbox');
+			expect(options?.sandbox.credentialType('slackApi')).toEqual({ name: 'slackApi' });
+			expect(options?.sandbox.credentialType('evilApi')).toBeUndefined();
+
+			await useNodeContractsRegistry();
+			await vi.waitFor(() =>
+				expect(logger.debug).toHaveBeenCalledWith(
+					'The sandbox guests did not compile at start: no sidecar',
+				),
+			);
 			globalConfig.instanceAi.nodeContractSandboxGuests = path.join(dir, 'missing');
-			await expect(useNodeContractsRegistry()).rejects.toThrow(
-				'N8N_NODE_CONTRACT_SANDBOX is stored, and the sandbox files are missing',
+			await useNodeContractsRegistry();
+			expect(warmed).toHaveLength(2);
+			expect(registered[2]?.runtimes.runtimes.wasm).toBeUndefined();
+			expect(logger.warn).toHaveBeenCalledWith(
+				expect.stringContaining('The wasm runtime is not available: the sandbox files are missing'),
 			);
 		} finally {
-			globalConfig.instanceAi.nodeContractSandbox = 'off';
+			Object.assign(globalConfig.instanceAi, {
+				nodeContractSandboxSidecar: '',
+				nodeContractSandboxGuests: '',
+			});
 			await rm(dir, { recursive: true, force: true });
 		}
+	});
+
+	describe('container', () => {
+		const state = { dir: '', path: process.env.PATH };
+
+		/** A `docker` on the PATH that prints `output` for `docker info`, or fails. */
+		const fakeDocker = async (script: string) => {
+			state.dir = await mkdtemp(path.join(tmpdir(), 'node-contracts-docker-'));
+			const docker = path.join(state.dir, 'docker');
+			await writeFile(docker, `#!/bin/sh\n${script}\n`);
+			await chmod(docker, 0o755);
+			process.env.PATH = `${state.dir}${path.delimiter}${state.path ?? ''}`;
+		};
+
+		beforeEach(() => {
+			globalConfig.instanceAi.nodesNextContainerEnabled = true;
+			registered.length = 0;
+			Container.get(NodeContractsRuntimes).close();
+		});
+
+		afterEach(async () => {
+			globalConfig.instanceAi.nodesNextContainerEnabled = false;
+			process.env.PATH = state.path;
+			await rm(state.dir, { recursive: true, force: true });
+		});
+
+		it('uses runsc when docker lists it', async () => {
+			await fakeDocker("echo 'io.containerd.runc.v2 runc runsc '");
+			await useNodeContractsRegistry();
+			const runtimes = registered[0]?.runtimes;
+
+			expect(runtimes?.available).toEqual({
+				missing: { wasm: 'wasm is not available: the sandbox sidecar is not installed' },
+				containerOci: 'runsc',
+			});
+			expect(runtimes?.runtimes.container?.()).toMatchObject({
+				name: 'container-pool',
+				inner: { options: { ociRuntime: 'runsc' } },
+			});
+		});
+
+		it('uses runc when docker does not list runsc', async () => {
+			await fakeDocker("echo 'io.containerd.runc.v2 runc '");
+			await useNodeContractsRegistry();
+
+			expect(registered[0]?.runtimes.available.containerOci).toBe('runc');
+		});
+
+		it('is not available and warns when docker does not answer', async () => {
+			await fakeDocker('exit 1');
+			await useNodeContractsRegistry();
+			const runtimes = registered[0]?.runtimes;
+
+			expect(runtimes?.available.missing.container).toBe(
+				'container is not available: docker does not answer',
+			);
+			expect(runtimes?.runtimes.container).toBeUndefined();
+			expect(logger.warn).toHaveBeenCalledWith(
+				'The container runtime is not available: docker does not answer',
+				expect.anything(),
+			);
+		});
 	});
 
 	it('fetches from the registry only on a main that is not a follower', async () => {

@@ -1,7 +1,7 @@
 # The Node Contract
 
 The Node Contract is the spec between nodes and the n8n engine. It has one version,
-`n8n:node-contract@x.y.z` (now 2.6.0), and two parts:
+`n8n:node-contract@x.y.z` (now 2.7.0), and two parts:
 
 - The **manifest format** tells what a thing is, as data. The host reads a manifest before it
   loads code. Source: `src/manifest.ts`. Spec: `spec/manifest.schema.json` (JSON Schema
@@ -67,6 +67,7 @@ What each minor added (`@since` in the WIT, `x-n8n-since` in the schema):
 | 2.4.0 | the `list` binding and `t.pageValue()` inputs (JS runtime only, no WIT form) |
 | 2.5.0 | the manifest fields `kind`, `nodeContract`, `sdk`, `credentials`; credential manifests; the trigger and credential interfaces; the `run-credential` import (the plain credential fields of `run()`); `provider.describe` |
 | 2.6.0 | counted inputs (`inputs: { count }` in the contract): a parameter sets the number of inputs, and `join-run` takes one list per input; output key patterns that hold binaries (`t.indexedBinaries()`, `t.openBinaries()`) |
+| 2.7.0 | the contract field `runtime`: a container image pinned by digest; the `chunk` import (`chunk.item`) |
 | unstable | `credential.exchange`, `credential.refresh` (`credential-exchange`); the lookup interface (`lookup`) |
 
 The host reads only manifests with `nodeContract`. It refuses a manifest without it, such as
@@ -132,7 +133,7 @@ host without a registry, import a copy of the registry folder.
 ## Rules
 
 - Freeze writes the lowest version that has what a bundle uses
-  (`requiredNodeContractOf`): 2.6.0 for counted inputs or a binary key pattern, 2.4.0 for a
+  (`requiredNodeContractOf`): 2.7.0 for a `runtime` image, 2.6.0 for counted inputs or a binary key pattern, 2.4.0 for a
   `list` binding or a `t.pageValue()` input, 2.3.0 for host imports, named inputs or a provider
   capability, 2.2.0 for a binary field, else 2.1.0. So an older host still runs it. A JS trigger bundle follows the same rule: hosts before 2.5.0 run
   triggers in JS. The trigger interface of 2.5.0 is its WIT form, for a sandbox runner.
@@ -216,7 +217,7 @@ first match in the value, for example in a URL.
 
 | Path | What |
 |---|---|
-| `spec/wit/*.wit` | Package `n8n:node-contract@2.6.0`: `host.wit` (capabilities and shared types), one file per kind |
+| `spec/wit/*.wit` | Package `n8n:node-contract@2.7.0`: `host.wit` (capabilities and shared types), one file per kind |
 | `spec/manifest.schema.json` | Generated from `src/manifest.ts` |
 | `spec/<kind>.openrpc.json` | Generated from `spec/wit` |
 | `spec/json-rpc.md` | The JSON-RPC mapping |

@@ -15,9 +15,10 @@ import { freezeAction, GUEST_LACKS } from '../freeze';
 import { defineNode, t } from '../index';
 import { runRecorder } from '../profile';
 import {
+	policyExecutorLoader,
 	sandboxedVersionOf,
-	sandboxExecutorLoader,
 	warmSandbox,
+	wasmSidecarRuntime,
 	type SandboxOptions,
 } from '../sandbox';
 import {
@@ -301,7 +302,7 @@ describe.skipIf(!existsSync(SIDECAR) || !existsSync(GUEST))('the sandbox', () =>
 				files.map(async (file) => [file, (await stat(path.join(warm.cacheDir, file))).mtimeMs]),
 			);
 		};
-		await warmSandbox(warm);
+		await warmSandbox({ ...warm, sidecar: SIDECAR, guests: GUESTS });
 		const warmed = await compiled();
 		expect(warmed).toHaveLength(3);
 		expect((await stat(warm.cacheDir)).mode & 0o777).toBe(0o700);
@@ -845,9 +846,22 @@ describe.skipIf(!existsSync(SIDECAR) || !existsSync(TRIGGER_GUEST))(
 			const { manifest, bundle } = await freezeAction(path.join(dirs.root, 'triggers.ts'), name);
 			return { manifest, origin, readBundle: async () => bundle };
 		};
-		/** The node type of a trigger with the loader of `N8N_NODE_CONTRACT_SANDBOX=stored`. */
+		/** A loader that runs first-party versions in this process and every other one in wasm. */
+		const loaderOf = (sandbox: SandboxOptions) =>
+			policyExecutorLoader(
+				{
+					lists: { 'first-party': ['in-process'], community: ['wasm'], private: ['wasm'] },
+					available: { missing: {} },
+					runtimes: {
+						wasm: () =>
+							wasmSidecarRuntime({ sidecar: sandbox.sidecar ?? '', guests: sandbox.guests ?? '' }),
+					},
+				},
+				sandbox,
+			);
+		/** The node type of a trigger with the default runtime lists. */
 		const typeOf = async (version: FrozenVersion, sandbox = options()): Promise<INodeType> => {
-			setExecutorLoader(sandboxExecutorLoader(sandbox, ({ origin }) => origin === 'first-party'));
+			setExecutorLoader(loaderOf(sandbox));
 			return new (toVersionedTriggerType([version]))().getNodeType(1);
 		};
 		const contextOf = (staticData: IDataObject, replies: unknown[]) => ({
@@ -875,7 +889,17 @@ describe.skipIf(!existsSync(SIDECAR) || !existsSync(TRIGGER_GUEST))(
 		});
 
 		afterAll(async () => {
-			setExecutorLoader(sandboxExecutorLoader(options(), () => true));
+			const inProcess = ['in-process' as const];
+			setExecutorLoader(
+				policyExecutorLoader(
+					{
+						lists: { 'first-party': inProcess, community: inProcess, private: inProcess },
+						available: { missing: {} },
+						runtimes: {},
+					},
+					options(),
+				),
+			);
 			await rm(dirs.root, { recursive: true, force: true });
 		});
 

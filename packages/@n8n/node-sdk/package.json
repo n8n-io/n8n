@@ -49,6 +49,10 @@
       "types": "./dist/sandbox.d.ts",
       "default": "./dist/sandbox.js"
     },
+    "./runtimes": {
+      "types": "./dist/entry/runtimes.d.ts",
+      "default": "./dist/entry/runtimes.js"
+    },
     "./lint": {
       "types": "./dist/lint.d.ts",
       "default": "./dist/lint.js"
@@ -63,8 +67,8 @@
     "clean": "rimraf dist .turbo",
     "dev": "pnpm watch",
     "typecheck": "tsc --noEmit",
-    "build": "tsc -p tsconfig.build.json",
-    "build:unchecked": "tsc -p tsconfig.build.json --noCheck",
+    "build": "tsc -p tsconfig.build.json && tsx scripts/node-guest.ts",
+    "build:unchecked": "tsc -p tsconfig.build.json --noCheck && tsx scripts/node-guest.ts",
     "format": "biome format --write .",
     "format:check": "biome ci .",
     "lint": "eslint . --quiet",
