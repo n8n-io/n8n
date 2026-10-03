@@ -247,7 +247,7 @@ describe('workflows tool', () => {
 				id: name,
 				name,
 				type: `@n8n/nodes-base-next.${type}`,
-				typeVersion: 1,
+				typeVersion: 2,
 				position: [0, 0] as [number, number],
 				parameters,
 			});

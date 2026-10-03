@@ -199,7 +199,7 @@ describe('compileWorkflowSource', () => {
 						id: 'get',
 						name: 'Get',
 						type: '@n8n/nodes-base-next.gmailMessageGet',
-						typeVersion: 1,
+						typeVersion: 2,
 						position: [200, 0],
 						parameters: getParameters,
 					},

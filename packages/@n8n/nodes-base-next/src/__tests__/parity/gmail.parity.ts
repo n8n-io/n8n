@@ -428,3 +428,122 @@ describe('gmail.message.get parity with Gmail v2.2 message get', () => {
 		expect(compareRuns(legacy, next, ALLOWED)).toEqual({ unexplained: [], stale: [] });
 	});
 });
+
+const RAW = Buffer.from(
+	[
+		'From: "Ada Lovelace" <ada@example.com>',
+		'To: grace@example.com, "Doe, John" <john@example.com>',
+		'Cc: undisclosed-recipients:;',
+		'Subject: =?UTF-8?B?R3LDvMOfZSBhdXMgS8O2bG4=?=',
+		'Date: Thu, 01 Jan 2026 10:00:00 +0000',
+		'Message-ID: <m1@mail.example.com>',
+		'References: <m0@mail.example.com>',
+		'Content-Type: multipart/mixed; boundary="outer"',
+		'',
+		'--outer',
+		'Content-Type: multipart/alternative; boundary="inner"',
+		'',
+		'--inner',
+		'Content-Type: text/plain; charset=UTF-8',
+		'Content-Transfer-Encoding: quoted-printable',
+		'',
+		'Caf=C3=A9 opens at 9. See https://n8n.io/docs.',
+		'--inner',
+		'Content-Type: text/html; charset=UTF-8',
+		'',
+		'<p>Caf&eacute; opens at 9.</p>',
+		'--inner--',
+		'--outer',
+		'Content-Type: application/pdf; name="invoice.pdf"',
+		'Content-Disposition: attachment; filename="invoice.pdf"',
+		'Content-Transfer-Encoding: base64',
+		'',
+		Buffer.from('%PDF-1.4').toString('base64'),
+		'--outer--',
+		'',
+	].join('\r\n'),
+).toString('base64url');
+
+const rawMessage = (id: string): Route => ({
+	method: 'GET',
+	url: `${API}/messages/${id}`,
+	query: { format: 'raw' },
+	json: {
+		id,
+		threadId: `thread-${id}`,
+		labelIds: ['INBOX', 'UNREAD'],
+		snippet: `Snippet ${id}`,
+		sizeEstimate: 2048,
+		historyId: '981',
+		internalDate: '1767225600000',
+		raw: RAW,
+	},
+});
+
+describe('gmail.message.get with simplify off, parity with Gmail v2.2 simple off', () => {
+	const parityCase: ParityCase = {
+		credential,
+		input: [{ id: 'm1' }, { id: 'm2' }],
+		routes: [rawMessage('m1'), rawMessage('m2')],
+	};
+
+	it('sends the same requests and emits the same parsed mail', async () => {
+		const legacy = await runNode(
+			legacyNode({ operation: 'get', messageId: '={{ $json.id }}', simple: false }),
+			parityCase,
+		);
+		const next = await runNode(
+			actionNode(getGmailMessage, { messageId: '={{ $json.id }}', simplify: false }, 'gmailOAuth2'),
+			parityCase,
+		);
+		expect(legacy.error, legacy.unmatched.join('; ')).toBeUndefined();
+		expect(legacy.items).toHaveLength(2);
+		expect(legacy.items[0]?.json).toMatchObject({
+			from: { value: [{ address: 'ada@example.com' }] },
+		});
+		expect(compareRuns(legacy, next, [])).toEqual({ unexplained: [], stale: [] });
+	});
+});
+
+describe('gmail.message.getAll with simplify off, parity with Gmail v2.2 simple off', () => {
+	const parityCase: ParityCase = {
+		credential,
+		input: [{}],
+		routes: [
+			{
+				method: 'GET',
+				url: `${API}/messages`,
+				json: { messages: [{ id: 'm1' }, { id: 'm2' }], resultSizeEstimate: 2 },
+			},
+			rawMessage('m1'),
+			rawMessage('m2'),
+		],
+	};
+
+	const ALLOWED: readonly AllowedDifference[] = ['m1', 'm2'].map(
+		(id): AllowedDifference => ({
+			path: `requests.GET ${API}/messages/${id} #0.query.maxResults`,
+			kind: 'intended',
+			reason:
+				'The legacy node reuses the list query on each message request; the message endpoint ignores it.',
+		}),
+	);
+
+	it('sends the same requests and emits the same parsed mail', async () => {
+		const legacy = await runNode(
+			legacyNode({ operation: 'getAll', returnAll: false, limit: 2, simple: false, filters: {} }),
+			parityCase,
+		);
+		const next = await runNode(
+			actionNode(
+				getManyGmailMessages,
+				{ paging: { mode: 'limit', max: 2 }, simplify: false },
+				'gmailOAuth2',
+			),
+			parityCase,
+		);
+		expect(legacy.error, legacy.unmatched.join('; ')).toBeUndefined();
+		expect(legacy.items).toHaveLength(2);
+		expect(compareRuns(legacy, next, ALLOWED)).toEqual({ unexplained: [], stale: [] });
+	});
+});

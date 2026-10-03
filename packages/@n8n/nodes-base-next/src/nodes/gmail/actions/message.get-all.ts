@@ -1,7 +1,14 @@
 import { limitOf, pages, paging, path, t, UserError, type Infer } from '@n8n/node-sdk';
 
 import { message } from '../gmail.node';
-import { getMessage, labelsOf, simplifiedMessage } from '../message';
+import {
+	getFullMessage,
+	getMessage,
+	labelsOf,
+	messageOutput,
+	messageOutputOf,
+	simplify,
+} from '../message';
 
 const filters = t.obj({
 	q: t.str().hint('Gmail search syntax, e.g. "is:unread from:ada@example.com"').optional(),
@@ -46,15 +53,18 @@ const idPage = t
 	.with({ additionalProperties: true });
 
 export const getManyGmailMessages = message.action('getAll', {
-	minor: 1,
+	// Major 2: `simplify: false` gives the full parsed mail.
+	version: 2,
 	action: 'Get many messages',
 	summary: 'List messages that match a Gmail search.',
 	flow: { effect: 'read', cardinality: '1:N', idempotent: true },
 	input: {
 		filters: filters.optional(),
 		paging,
+		simplify,
 	},
-	output: simplifiedMessage,
+	output: messageOutput,
+	deriveOutput: messageOutputOf,
 	async *run({ input, http }) {
 		const query = queryOf(input.filters);
 		const listed = pages(http, {
@@ -71,6 +81,10 @@ export const getManyGmailMessages = message.action('getAll', {
 		const ids: string[] = [];
 		for await (const id of listed) ids.push(id);
 		if (ids.length === 0) return;
+		if (!input.simplify) {
+			for (const id of ids) yield await getFullMessage(http, id);
+			return;
+		}
 		const labels = await labelsOf(http);
 		for (const id of ids) yield await getMessage(http, id, labels);
 	},

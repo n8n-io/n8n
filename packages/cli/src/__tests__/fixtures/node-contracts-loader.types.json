@@ -286,33 +286,33 @@
 		},
 		{
 			"name": "@n8n/nodes-base-next.gmailMessageGet",
-			"version": 1,
+			"version": 2,
 			"hidden": true,
 			"usableAsTool": true,
 			"credentials": ["gmailOAuth2"],
-			"properties": ["messageId"]
+			"properties": ["messageId", "simplify"]
 		},
 		{
 			"name": "@n8n/nodes-base-next.gmailMessageGetAll",
-			"version": 1,
+			"version": 2,
 			"hidden": true,
 			"usableAsTool": true,
 			"credentials": ["gmailOAuth2"],
-			"properties": ["filters", "paging"]
+			"properties": ["filters", "paging", "simplify"]
 		},
 		{
 			"name": "@n8n/nodes-base-next.gmailMessageGetAllTool",
-			"version": 1,
+			"version": 2,
 			"hidden": true,
 			"credentials": ["gmailOAuth2"],
-			"properties": ["toolDescription", "filters", "paging"]
+			"properties": ["toolDescription", "filters", "paging", "simplify"]
 		},
 		{
 			"name": "@n8n/nodes-base-next.gmailMessageGetTool",
-			"version": 1,
+			"version": 2,
 			"hidden": true,
 			"credentials": ["gmailOAuth2"],
-			"properties": ["toolDescription", "messageId"]
+			"properties": ["toolDescription", "messageId", "simplify"]
 		},
 		{
 			"name": "@n8n/nodes-base-next.gmailMessageSend",

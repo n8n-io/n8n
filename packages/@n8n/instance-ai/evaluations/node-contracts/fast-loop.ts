@@ -1988,14 +1988,15 @@ async function triageGmailOutput(workflow: WorkflowResponse, gmail: WorkflowNode
 			gmail,
 			sourceStep(parentName(workflow, gmail.name), [{}]),
 			(request) => {
-				const { pathname } = new URL(requestUrl(request));
+				const { pathname, searchParams } = new URL(requestUrl(request));
 				if (pathname.endsWith('/labels')) return GMAIL_LABELS;
 				if (pathname.endsWith('/messages')) {
 					return { messages: TRIAGE_EMAILS.map(({ id }) => ({ id, threadId: `t-${id}` })) };
 				}
 				const email = TRIAGE_EMAILS.find(({ id }) => pathname.endsWith(`/messages/${id}`));
 				if (!email) throw new Error(`unexpected request ${pathname}`);
-				return triageMetadata(email);
+				// `simplify: false` reads the raw message.
+				return searchParams.get('format') === 'raw' ? triageRaw(email) : triageMetadata(email);
 			},
 		);
 		const list = requests

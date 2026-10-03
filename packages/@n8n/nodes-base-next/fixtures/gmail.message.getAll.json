@@ -112,6 +112,133 @@
 					"Subject": "Hello"
 				}
 			]
+		},
+		{
+			"name": "full messages, parsed",
+			"params": {
+				"paging": {
+					"mode": "limit",
+					"max": 2
+				},
+				"simplify": false
+			},
+			"responses": [
+				{
+					"messages": [
+						{
+							"id": "m1"
+						},
+						{
+							"id": "m2"
+						}
+					]
+				},
+				{
+					"id": "m1",
+					"threadId": "t-m1",
+					"labelIds": ["INBOX"],
+					"sizeEstimate": 512,
+					"snippet": "ignored",
+					"raw": "RnJvbTogIkFkYSBMb3ZlbGFjZSIgPGFkYUBleGFtcGxlLmNvbT4NClRvOiBncmFjZUBleGFtcGxlLmNvbSwgIkRvZSwgSm9obiIgPGpvaG5AZXhhbXBsZS5jb20-DQpTdWJqZWN0OiA9P1VURi04P0I_UjNMRHZNT2ZaU0JoZFhNZ1M4TzJiRzQ9Pz0NCkRhdGU6IFRodSwgMDEgSmFuIDIwMjYgMTA6MDA6MDAgKzAwMDANCk1lc3NhZ2UtSUQ6IDxtMUBtYWlsLmV4YW1wbGUuY29tPg0KQ29udGVudC1UeXBlOiBtdWx0aXBhcnQvYWx0ZXJuYXRpdmU7IGJvdW5kYXJ5PSJiMSINCg0KLS1iMQ0KQ29udGVudC1UeXBlOiB0ZXh0L3BsYWluOyBjaGFyc2V0PVVURi04DQpDb250ZW50LVRyYW5zZmVyLUVuY29kaW5nOiBxdW90ZWQtcHJpbnRhYmxlDQoNCkNhZj1DMz1BOSBvcGVucyBhdCA5LiBTZWUgaHR0cHM6Ly9uOG4uaW8vZG9jcy4NCi0tYjENCkNvbnRlbnQtVHlwZTogdGV4dC9odG1sOyBjaGFyc2V0PVVURi04DQoNCjxwPkNhZiZlYWN1dGU7IG9wZW5zIGF0IDkuPC9wPg0KLS1iMS0tDQo"
+				},
+				{
+					"id": "m2",
+					"threadId": "t-m2",
+					"labelIds": ["INBOX"],
+					"sizeEstimate": 512,
+					"snippet": "ignored",
+					"raw": "RnJvbTogPT9JU08tODg1OS0xP1E_Sj1GNnJnPz0gPGpvZXJnQGV4YW1wbGUuZGU-DQpUbzogYWRhQGV4YW1wbGUuY29tDQpTdWJqZWN0OiA9P0lTTy04ODU5LTE_UT9Hcj1GQz1ERmU_PQ0KRGF0ZTogRnJpLCAwMiBKYW4gMjAyNiAwODowMDowMCArMDEwMA0KSW4tUmVwbHktVG86IDxtMUBtYWlsLmV4YW1wbGUuY29tPg0KUmVmZXJlbmNlczogPG0wQG1haWwuZXhhbXBsZS5jb20-IDxtMUBtYWlsLmV4YW1wbGUuY29tPg0KQ29udGVudC1UeXBlOiB0ZXh0L3BsYWluOyBjaGFyc2V0PUlTTy04ODU5LTENCkNvbnRlbnQtVHJhbnNmZXItRW5jb2Rpbmc6IHF1b3RlZC1wcmludGFibGUNCg0KR3I9RkM9REZlIGF1cyBNPUZDbmNoZW4NCg"
+				}
+			],
+			"output": [
+				{
+					"id": "m1",
+					"threadId": "t-m1",
+					"labelIds": ["INBOX"],
+					"sizeEstimate": 512,
+					"headers": {
+						"from": "From: \"Ada Lovelace\" <ada@example.com>",
+						"to": "To: grace@example.com, \"Doe, John\" <john@example.com>",
+						"subject": "Subject: =?UTF-8?B?R3LDvMOfZSBhdXMgS8O2bG4=?=",
+						"date": "Date: Thu, 01 Jan 2026 10:00:00 +0000",
+						"message-id": "Message-ID: <m1@mail.example.com>",
+						"content-type": "Content-Type: multipart/alternative; boundary=\"b1\""
+					},
+					"html": "<p>Caf&eacute; opens at 9.</p>",
+					"text": "Café opens at 9. See https://n8n.io/docs.",
+					"textAsHtml": "<p>Caf&eacute; opens at 9. See <a href=\"https://n8n.io/docs\">https://n8n.io/docs</a>.</p>",
+					"subject": "Grüße aus Köln",
+					"date": "2026-01-01T10:00:00.000Z",
+					"to": {
+						"value": [
+							{
+								"address": "grace@example.com",
+								"name": ""
+							},
+							{
+								"address": "john@example.com",
+								"name": "Doe, John"
+							}
+						],
+						"html": "<span class=\"mp_address_group\"><a href=\"mailto:grace@example.com\" class=\"mp_address_email\">grace@example.com</a></span>, <span class=\"mp_address_group\"><span class=\"mp_address_name\">Doe, John</span> &lt;<a href=\"mailto:john@example.com\" class=\"mp_address_email\">john@example.com</a>&gt;</span>",
+						"text": "grace@example.com, \"Doe, John\" <john@example.com>"
+					},
+					"from": {
+						"value": [
+							{
+								"address": "ada@example.com",
+								"name": "Ada Lovelace"
+							}
+						],
+						"html": "<span class=\"mp_address_group\"><span class=\"mp_address_name\">Ada Lovelace</span> &lt;<a href=\"mailto:ada@example.com\" class=\"mp_address_email\">ada@example.com</a>&gt;</span>",
+						"text": "\"Ada Lovelace\" <ada@example.com>"
+					},
+					"messageId": "<m1@mail.example.com>"
+				},
+				{
+					"id": "m2",
+					"threadId": "t-m2",
+					"labelIds": ["INBOX"],
+					"sizeEstimate": 512,
+					"headers": {
+						"from": "From: =?ISO-8859-1?Q?J=F6rg?= <joerg@example.de>",
+						"to": "To: ada@example.com",
+						"subject": "Subject: =?ISO-8859-1?Q?Gr=FC=DFe?=",
+						"date": "Date: Fri, 02 Jan 2026 08:00:00 +0100",
+						"in-reply-to": "In-Reply-To: <m1@mail.example.com>",
+						"references": "References: <m0@mail.example.com> <m1@mail.example.com>",
+						"content-type": "Content-Type: text/plain; charset=ISO-8859-1",
+						"content-transfer-encoding": "Content-Transfer-Encoding: quoted-printable"
+					},
+					"text": "Grüße aus München\n",
+					"textAsHtml": "<p>Gr&uuml;&szlig;e aus M&uuml;nchen</p>",
+					"subject": "Grüße",
+					"references": ["<m0@mail.example.com>", "<m1@mail.example.com>"],
+					"date": "2026-01-02T07:00:00.000Z",
+					"to": {
+						"value": [
+							{
+								"address": "ada@example.com",
+								"name": ""
+							}
+						],
+						"html": "<span class=\"mp_address_group\"><a href=\"mailto:ada@example.com\" class=\"mp_address_email\">ada@example.com</a></span>",
+						"text": "ada@example.com"
+					},
+					"from": {
+						"value": [
+							{
+								"address": "joerg@example.de",
+								"name": "Jörg"
+							}
+						],
+						"html": "<span class=\"mp_address_group\"><span class=\"mp_address_name\">J&#xF6;rg</span> &lt;<a href=\"mailto:joerg@example.de\" class=\"mp_address_email\">joerg@example.de</a>&gt;</span>",
+						"text": "\"Jörg\" <joerg@example.de>"
+					},
+					"inReplyTo": "<m1@mail.example.com>",
+					"html": false
+				}
+			]
 		}
 	]
 }

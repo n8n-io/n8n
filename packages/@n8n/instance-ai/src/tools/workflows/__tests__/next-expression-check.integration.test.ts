@@ -169,7 +169,7 @@ export default workflow(
 			`${at(source, '$now.toISo', 5)}: error TS2551: Property 'toISo' does not exist on type 'DateTime'. Did you mean 'toISO'?`,
 			`${at(source, '$pageCount')}: error TS2304: Cannot find name '$pageCount'.`,
 			`${at(source, '"Strat"')}: error TS2345: Argument of type '"Strat"' is not assignable to parameter of type '"Get" | "Start"'.`,
-			`${at(source, "'={{ $json.Subject }}'")}: error TS2322: The expression result does not fit the field: Type 'undefined' is not assignable to type 'number'.`,
+			`${at(source, "'={{ $json.Subject }}'")}: error TS2322: The expression result does not fit the field: Type 'string' is not assignable to type 'number'.`,
 			`${at(source, 'subjcet')}: error TS2551: Property 'subjcet' does not exist on type '{ id: string; subject: string; count: number; }'. Did you mean 'subject'?`,
 			'Node "Too few": input.paging.max: must be at least 1',
 		]);
@@ -308,6 +308,37 @@ export default workflow(
 		expect(result.errors.at(-1)).toMatch(
 			/^The type check did not complete \(exit code 3\)\. Call build-workflow again with the same filePath\.\nExpression check failed: /,
 		);
+	}, 120_000);
+
+	it('types the full message of simplify: false, so the sender is from.value[0].address', async () => {
+		const source = `import { workflow, manual } from '@n8n/workflow-sdk/next';
+import { gmail } from '@n8n/nodes/gmail';
+
+export default workflow(
+	'Full message',
+	manual({ sample: ${SAMPLE} }),
+	gmail.message.get({ name: 'Get', messageId: '={{ $json.id }}', simplify: false }),
+	gmail.message.send({
+				name: 'Reply',
+				to: '={{ $json.from.value[0].address }}',
+				subject: '={{ $json.subject ?? "" }}',
+				body: { format: 'text', text: '={{ $json.text ?? $json.headers.subject }}' },
+			}),
+	gmail.message.send({
+				name: 'Wrong',
+				to: "={{ $('Get').item.json.From }}",
+				subject: 'x',
+				body: { format: 'text', text: 'x' },
+			}),
+);
+`;
+		const result = await build(source);
+		const errors = result.success ? [] : result.errors;
+		expect(errors).toHaveLength(1);
+		expect(errors[0]).toContain(
+			`${at(source, 'From }}')}: error TS2551: Property 'From' does not exist`,
+		);
+		expect(errors[0]).toContain("Did you mean 'from'?");
 	}, 120_000);
 
 	it('builds when every expression and the Code node fit', async () => {

@@ -1,7 +1,10 @@
 import { validate, type Action } from '@n8n/node-sdk';
 import { toNodeType } from '@n8n/node-sdk/host';
 import type { IDataObject, IExecuteFunctions } from 'n8n-workflow';
-import { simplifyOutput } from 'n8n-nodes-base/dist/nodes/Google/Gmail/GenericFunctions';
+import {
+	parseRawEmail,
+	simplifyOutput,
+} from 'n8n-nodes-base/dist/nodes/Google/Gmail/GenericFunctions';
 import { GoogleSheet } from 'n8n-nodes-base/dist/nodes/Google/Sheet/v2/helpers/GoogleSheet';
 import { prepareSheetData } from 'n8n-nodes-base/dist/nodes/Google/Sheet/v2/helpers/GoogleSheets.utils';
 
@@ -419,16 +422,174 @@ describe('gmail.message.get', () => {
 		expect(await items).toEqual(await legacySimplified(['m9']));
 	});
 
-	it('emits a message with missing fields and names them in a warning', async () => {
+	it('emits a message with missing fields and warns', async () => {
 		const { historyId: _historyId, sizeEstimate: _size, ...partial } = metadata('m9');
 		const { items, hints } = run(getGmailMessage, { messageId: 'm9' }, (options) =>
 			options.url === `${GMAIL}/labels` ? LABELS : partial,
 		);
 		expect((await items)?.map((item) => item.id)).toEqual(['m9']);
+		// The output is a union of both shapes, so the warning cannot name the fields.
 		expect(hints.map(({ message }) => message)).toEqual([
-			expect.stringContaining(
-				'output[0].historyId: is required; output[0].sizeEstimate: is required',
+			expect.stringContaining('output[0]: does not match any allowed shape'),
+		]);
+	});
+});
+
+const crlf = (text: string) => text.replace(/\r?\n/g, '\r\n');
+const b64 = (text: string) => Buffer.from(text).toString('base64');
+
+const RAW_MESSAGES: Record<string, string> = {
+	plain: `From: "Ada Lovelace" <ada@example.com>
+To: grace@example.com, "Doe, John" <john@example.com>, Linus <linus@example.org>
+Cc: Team: a@example.com, B <b@example.com>;, undisclosed-recipients:;
+Reply-To: <reply@example.com>
+Subject: =?UTF-8?B?R3LDvMOfZSBhdXMgS8O2bG4=?=
+Date: Thu, 01 Jan 2026 10:00:00 +0000
+Message-ID: <abc123@mail.example.com>
+In-Reply-To: <prev@mail.example.com>
+References: <one@example.com> <prev@mail.example.com>
+Content-Type: text/plain; charset="UTF-8"
+
+Hello Grace,
+
+See https://n8n.io/docs, www.example.com/a. or help@example.com (@ada_l).
+"Tom & Jerry" <tag> caf\u00e9 \u2013 5 \u20ac \u4e2d \ud83d\ude00
+`,
+	alternative: `From: Ada <ada@example.com>
+To: grace@example.com
+Subject: A long subject
+ folded onto a second line
+Date: Fri, 2 Jan 2026 08:30:00 -0500
+Content-Type: multipart/alternative; boundary="b1"
+
+--b1
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: quoted-printable
+
+Caf=C3=A9 opens at 9 =E2=80=93 don=E2=80=99t be l=
+ate.
+--b1
+Content-Type: text/html; charset=UTF-8
+Content-Transfer-Encoding: quoted-printable
+
+<div>Caf=C3=A9 opens at 9</div>
+--b1--
+`,
+	mixed: `From: billing@example.com
+To: Ada <ada@example.com>
+Subject: Invoice
+Date: Sat, 3 Jan 2026 12:00:00 +0100
+Content-Type: multipart/mixed; boundary="outer"
+
+--outer
+Content-Type: multipart/related; boundary="inner"
+
+--inner
+Content-Type: text/html; charset=utf-8
+
+<p>Logo: <img src="cid:logo@x"></p>
+--inner
+Content-Type: image/png
+Content-ID: <logo@x>
+Content-Transfer-Encoding: base64
+
+${b64('PNG')}
+--inner--
+--outer
+Content-Type: text/plain; charset=windows-1252
+Content-Transfer-Encoding: quoted-printable
+
+=93Smart=94 quotes
+--outer
+Content-Type: application/pdf; name="invoice.pdf"
+Content-Disposition: attachment; filename*=UTF-8''r%C3%A9sum%C3%A9.pdf
+Content-Transfer-Encoding: base64
+
+${b64('%PDF-1.4')}
+--outer--
+`,
+	htmlOnly: `From: =?ISO-8859-1?Q?J=F6rg?= <joerg@example.de>
+Subject: =?ISO-8859-1?Q?Gr=FC=DFe?=
+Date: Sun, 4 Jan 2026 07:00:00 +0000
+Content-Type: text/html; charset=utf-8
+
+<html><head><style>p{}</style></head><body><h1>News</h1><p>Read <a href="https://n8n.io/blog">our blog</a>.</p><ul><li>One</li><li>Two</li></ul><br>Caf&eacute;&nbsp;bye</body></html>
+`,
+	flowed: `From: ada@example.com
+Subject:
+Content-Type: text/plain; charset=utf-8; format=flowed; delsp=yes
+
+This line was  
+wrapped.
+`,
+};
+
+/** The item that the v2 node emits with `simple: false`. */
+async function legacyFull(message: IDataObject) {
+	const legacy = { getNodeParameter: () => false };
+	const { json } = await parseRawEmail.call(
+		legacy as unknown as IExecuteFunctions,
+		message,
+		'attachment_',
+	);
+	return json;
+}
+
+const rawMessage = (id: string, source: string) => ({
+	id,
+	threadId: `t-${id}`,
+	labelIds: ['INBOX'],
+	sizeEstimate: 2048,
+	snippet: 'Snippet',
+	raw: Buffer.from(crlf(source)).toString('base64url'),
+});
+
+describe('gmail.message.get with simplify off', () => {
+	it.each(Object.entries(RAW_MESSAGES))(
+		'parses the %s message like the v2 node',
+		async (id, source) => {
+			const message = rawMessage(id, source);
+			const { items, calls, hints } = run(
+				getGmailMessage,
+				{ messageId: id, simplify: false },
+				() => message,
+			);
+			expect(await items).toEqual([await legacyFull(message)]);
+			expect(calls.map(({ options }) => [options.url, options.qs])).toEqual([
+				[`${GMAIL}/messages/${id}`, { format: 'raw' }],
+			]);
+			expect(hints).toEqual([]);
+		},
+	);
+
+	it('names the message that has no raw content', async () => {
+		const { items } = run(getGmailMessage, { messageId: 'm9', simplify: false }, () =>
+			metadata('m9'),
+		);
+		await expect(items).rejects.toThrow('Gmail returned message m9 without its raw content');
+	});
+});
+
+describe('gmail.message.getAll with simplify off', () => {
+	it('parses each message and skips the label lookup', async () => {
+		const sources = Object.entries(RAW_MESSAGES);
+		const { items, calls } = run(
+			getManyGmailMessages,
+			{ paging: { mode: 'limit', max: 2 }, simplify: false },
+			(options) =>
+				options.url === `${GMAIL}/messages`
+					? { messages: sources.slice(0, 2).map(([id]) => ({ id })) }
+					: rawMessage(...(sources.find(([id]) => options.url.endsWith(`/${id}`)) ?? sources[0])),
+		);
+		expect(await items).toEqual(
+			await Promise.all(
+				sources.slice(0, 2).map(async ([id, source]) => await legacyFull(rawMessage(id, source))),
 			),
+		);
+		expect(calls.map(({ options }) => options.url)).toEqual([
+			`${GMAIL}/messages`,
+			`${GMAIL}/messages/plain`,
+			`${GMAIL}/messages/alternative`,
 		]);
 	});
 });
