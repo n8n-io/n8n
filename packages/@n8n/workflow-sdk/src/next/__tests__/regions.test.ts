@@ -450,30 +450,34 @@ describe('regions compile to node contracts', () => {
 		});
 	});
 
-	it('merges more than two branches in one legacy Merge node, input by branch', () => {
+	it('merges more than two branches in one Merge contract that counts its inputs', () => {
 		const appended = mergeThreeWorkflow('append').toJSON();
-		const all = appended.nodes.find((n) => n.name === 'All');
-		expect(all).toMatchObject({
-			type: 'n8n-nodes-base.merge',
-			typeVersion: 3.2,
-			parameters: { mode: 'append', numberInputs: 3 },
+		expect(appended.nodes.find((n) => n.name === 'All')).toMatchObject({
+			type: '@n8n/nodes-base-next.mergeAppend',
+			typeVersion: 2,
+			parameters: { inputs: 3 },
 		});
 		expect(connections(appended, 'Tags')).toEqual([['All#2']]);
 		const joined = mergeThreeWorkflow('position').toJSON();
-		expect(joined.nodes.find((n) => n.name === 'All')?.parameters).toEqual({
-			mode: 'combine',
-			combineBy: 'combineByPosition',
-			numberInputs: 3,
-			options: {
-				clashHandling: { values: { resolveClash: 'preferLast', mergeMode: 'deepMerge' } },
-			},
+		expect(joined.nodes.find((n) => n.name === 'All')).toMatchObject({
+			type: '@n8n/nodes-base-next.mergeCombineByPosition',
+			typeVersion: 1,
+			parameters: { inputs: 3 },
 		});
-		// Two branches keep the Merge contract.
-		expect(
-			mergeJoinWorkflow('append')
+		expect(JSON.stringify(joined)).not.toContain('n8n-nodes-base.merge');
+		// Two branches set no count: n8n stores no default.
+		const both = (join: 'append' | 'position') =>
+			mergeJoinWorkflow(join)
 				.toJSON()
-				.nodes.find((n) => n.name === 'Both')?.type,
-		).toBe('@n8n/nodes-base-next.mergeAppend');
+				.nodes.find((n) => n.name === 'Both');
+		expect(both('append')).toMatchObject({
+			type: '@n8n/nodes-base-next.mergeAppend',
+			parameters: {},
+		});
+		expect(both('position')).toMatchObject({
+			type: '@n8n/nodes-base-next.mergeCombineByPosition',
+			parameters: {},
+		});
 	});
 
 	it('reports a merge by fields of more than two branches as a build problem', () => {

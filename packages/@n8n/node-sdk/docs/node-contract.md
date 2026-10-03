@@ -1,7 +1,7 @@
 # The Node Contract
 
 The Node Contract is the spec between nodes and the n8n engine. It has one version,
-`n8n:node-contract@x.y.z` (now 2.5.0), and two parts:
+`n8n:node-contract@x.y.z` (now 2.6.0), and two parts:
 
 - The **manifest format** tells what a thing is, as data. The host reads a manifest before it
   loads code. Source: `src/manifest.ts`. Spec: `spec/manifest.schema.json` (JSON Schema
@@ -66,6 +66,7 @@ What each minor added (`@since` in the WIT, `x-n8n-since` in the schema):
 | 2.3.0 | `data-tables`, `code`, `wait`, `input-of`; `join-run` (named inputs); `capabilities`, `supplied`, the provider interface |
 | 2.4.0 | the `list` binding and `t.pageValue()` inputs (JS runtime only, no WIT form) |
 | 2.5.0 | the manifest fields `kind`, `nodeContract`, `sdk`, `credentials`; credential manifests; the trigger and credential interfaces; the `run-credential` import (the plain credential fields of `run()`); `provider.describe` |
+| 2.6.0 | counted inputs (`inputs: { count }` in the contract): a parameter sets the number of inputs, and `join-run` takes one list per input; output key patterns that hold binaries (`t.indexedBinaries()`, `t.openBinaries()`) |
 | unstable | `credential.exchange`, `credential.refresh` (`credential-exchange`); the lookup interface (`lookup`) |
 
 The host reads only manifests with `nodeContract`. It refuses a manifest without it, such as
@@ -92,9 +93,9 @@ and `published`. Freeze adds none of them, so it writes the same bytes for the s
 ## Rules
 
 - Freeze writes the lowest version that has what a bundle uses
-  (`requiredNodeContractOf`): 2.4.0 for a `list` binding or a `t.pageValue()` input, 2.3.0 for
-  host imports, named inputs or a provider capability, 2.2.0 for a binary field, else 2.1.0. So
-  an older host still runs it. A JS trigger bundle follows the same rule: hosts before 2.5.0 run
+  (`requiredNodeContractOf`): 2.6.0 for counted inputs or a binary key pattern, 2.4.0 for a
+  `list` binding or a `t.pageValue()` input, 2.3.0 for host imports, named inputs or a provider
+  capability, 2.2.0 for a binary field, else 2.1.0. So an older host still runs it. A JS trigger bundle follows the same rule: hosts before 2.5.0 run
   triggers in JS. The trigger interface of 2.5.0 is its WIT form, for a sandbox runner.
 - The host runs a bundle when its version is in the configured range and the host implements
   that minor. Raise the lowest major of the range only in an n8n major release.
@@ -117,9 +118,12 @@ and `published`. Freeze adds none of them, so it writes the same bytes for the s
 - WIT describes only code that runs. A native trigger and a declarative credential scheme have
   a manifest and no bundle.
 - Binary key patterns (`t.indexedBinaries()`, `t.openBinaries()`, an output `patternProperties`
-  entry with `x-n8n-binary`) use the `binary` import of 2.2.0, so freeze writes 2.2.0. A host
-  from before this keyword keeps such a binary in the JSON. No such host is released; the next
-  Node Contract minor takes the keyword.
+  entry with `x-n8n-binary`) use the `binary` import of 2.2.0, but a host before 2.6.0 keeps
+  such a binary in the JSON. So freeze writes 2.6.0.
+- Counted inputs: the contract `inputs: { count: '<field>' }` names an integer input field with
+  `minimum` and `maximum` (`lintContract`). The host makes one n8n input per count from the
+  parameter, as the legacy Merge node does with `numberInputs`, and `run()` gets one item list
+  per input. A host before 2.6.0 cannot make the inputs, so freeze writes 2.6.0.
 - An output keyword that a host ignores does not raise the Node Contract minor:
   `x-n8n-claim` and `x-n8n-resource` are for builders, and a host runs a bundle that has them
   as before.
@@ -161,7 +165,7 @@ first match in the value, for example in a URL.
 
 | Path | What |
 |---|---|
-| `spec/wit/*.wit` | Package `n8n:node-contract@2.5.0`: `host.wit` (capabilities and shared types), one file per kind |
+| `spec/wit/*.wit` | Package `n8n:node-contract@2.6.0`: `host.wit` (capabilities and shared types), one file per kind |
 | `spec/manifest.schema.json` | Generated from `src/manifest.ts` |
 | `spec/<kind>.openrpc.json` | Generated from `spec/wit` |
 | `spec/json-rpc.md` | The JSON-RPC mapping |

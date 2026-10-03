@@ -569,7 +569,10 @@ export default workflow(
 		expect(result.success ? [] : result.errors).toEqual([]);
 		if (!result.success) return;
 		const parts = result.workflow.nodes.find((node) => node.name === 'Parts');
-		expect(parts?.type).toBe('n8n-nodes-base.merge');
+		expect(parts).toMatchObject({
+			type: '@n8n/nodes-base-next.mergeCombineByPosition',
+			parameters: { inputs: 3 },
+		});
 		expect(result.workflow.nodes.map((node) => node.name)).toContain('Each workflow start');
 		expect(result.workflow.nodes.map((node) => node.name)).not.toContain('Walk limit');
 	}, 120_000);

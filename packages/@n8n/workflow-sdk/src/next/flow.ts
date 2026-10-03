@@ -999,7 +999,7 @@ export function mergeFragment(
 	const inputs = branches.length;
 	const spec: NodeSpec = {
 		name,
-		...mergeNodeOf(join, inputs),
+		...mergeNodeOf(join),
 		parameters: (compiler) => {
 			if (inputs < 2 || inputs > MERGE_MAX_INPUTS) {
 				compiler.issue(`merge takes 2 to ${MERGE_MAX_INPUTS} branches, not ${inputs}`);

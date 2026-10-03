@@ -1,0 +1,81 @@
+{
+	"executions": [
+		{
+			"name": "joins item i of 3 inputs, the last input wins a clash",
+			"params": {
+				"inputs": 3
+			},
+			"inputs": [
+				[
+					{
+						"id": 1,
+						"name": "Ada"
+					},
+					{
+						"id": 2
+					}
+				],
+				[
+					{
+						"id": 1,
+						"city": "London"
+					},
+					{
+						"id": 2,
+						"city": "Paris"
+					}
+				],
+				[
+					{
+						"id": 1,
+						"name": "Ada L."
+					}
+				]
+			],
+			"responses": [],
+			"output": [
+				{
+					"id": 1,
+					"name": "Ada L.",
+					"city": "London"
+				}
+			]
+		},
+		{
+			"name": "keeps unpaired positions, and the first input wins a clash",
+			"params": {
+				"inputs": 2,
+				"unpaired": true,
+				"prefer": "first"
+			},
+			"inputs": [
+				[
+					{
+						"id": 1,
+						"name": "Ada"
+					}
+				],
+				[
+					{
+						"id": 9,
+						"tag": "x"
+					},
+					{
+						"id": 2
+					}
+				]
+			],
+			"responses": [],
+			"output": [
+				{
+					"id": 1,
+					"name": "Ada",
+					"tag": "x"
+				},
+				{
+					"id": 2
+				}
+			]
+		}
+	]
+}

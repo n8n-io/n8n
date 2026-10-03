@@ -1,7 +1,7 @@
 {
 	"executions": [
 		{
-			"name": "emits left, then right",
+			"name": "emits input 1, then input 2",
 			"params": {},
 			"inputs": [
 				[
@@ -28,6 +28,40 @@
 				},
 				{
 					"b": 3
+				}
+			]
+		},
+		{
+			"name": "emits 3 inputs in input order",
+			"params": {
+				"inputs": 3
+			},
+			"inputs": [
+				[
+					{
+						"a": 1
+					}
+				],
+				[],
+				[
+					{
+						"c": 3
+					},
+					{
+						"c": 4
+					}
+				]
+			],
+			"responses": [],
+			"output": [
+				{
+					"a": 1
+				},
+				{
+					"c": 3
+				},
+				{
+					"c": 4
 				}
 			]
 		}

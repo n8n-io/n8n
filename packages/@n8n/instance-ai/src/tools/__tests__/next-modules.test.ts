@@ -42,6 +42,15 @@ describe('next-modules', () => {
 		},
 	);
 
+	it('names the inputs of each Merge join: a count of 2 to 10, or left and right', () => {
+		const text = nodeModuleText('merge') ?? '';
+
+		expect(text).toContain('// merge.append: Append items.');
+		expect(text).toContain('// merge.combineByPosition: Combine items by position.');
+		expect(text.match(/\(inputs: 2 to 10, set by inputs\)/g)).toHaveLength(2);
+		expect(text).toContain('(inputs: left, right)');
+	});
+
 	it('builds the composed Notion v4 node for an action that owns its slot', () => {
 		expect(nodeModuleText('notion')).toContain(
 			'contractStep("n8n-nodes-base.notion", config, 4, {"resource":"databasePage","operation":"getAll"}, {"credential":"notion","scopes":["content:read"]})',

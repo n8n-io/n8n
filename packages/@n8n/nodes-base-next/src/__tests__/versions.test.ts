@@ -111,12 +111,19 @@ describe('bundled versions', () => {
 				]),
 			),
 		);
-		// Only the paged lists need 2.4.0, only the actions with host imports, named inputs or
-		// providers need 2.3.0, and only the actions with binary data need 2.2.0.
+		// Only counted inputs and binary key patterns need 2.6.0, only the paged lists need 2.4.0,
+		// only the actions with host imports, named inputs or providers need 2.3.0, and only the
+		// actions with binary data need 2.2.0.
 		const withVersion = (version: string) =>
 			Object.keys(versions)
 				.filter((id) => versions[id] === version)
 				.sort();
+		expect(withVersion('2.6.0')).toEqual([
+			'gmail.message.get',
+			'gmail.message.getAll',
+			'merge.append',
+			'merge.combineByPosition',
+		]);
 		expect(withVersion('2.5.0')).toEqual([]);
 		expect(withVersion('2.4.0')).toEqual([
 			'github.issue.getAll',
@@ -143,7 +150,6 @@ describe('bundled versions', () => {
 			'dataTable.table.list',
 			'dataTable.table.rename',
 			'googleGemini.chatModel',
-			'merge.append',
 			'merge.combine',
 			'minimax.chatModel',
 			'openAi.chatModel',
@@ -152,8 +158,6 @@ describe('bundled versions', () => {
 			'xAi.chatModel',
 		]);
 		expect(withVersion('2.2.0')).toEqual([
-			'gmail.message.get',
-			'gmail.message.getAll',
 			'gmail.message.send',
 			'googleDrive.file.upload',
 			'httpRequest.download',

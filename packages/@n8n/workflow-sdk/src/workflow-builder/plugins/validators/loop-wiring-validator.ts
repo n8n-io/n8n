@@ -16,6 +16,7 @@ const MERGE_TYPES = new Set([
 	'n8n-nodes-base.merge',
 	'@n8n/nodes-base-next.mergeAppend',
 	'@n8n/nodes-base-next.mergeCombine',
+	'@n8n/nodes-base-next.mergeCombineByPosition',
 ]);
 const IF_TYPES = new Set(['n8n-nodes-base.if', '@n8n/nodes-base-next.conditionIf']);
 const SWITCH_TYPE = 'n8n-nodes-base.switch';

@@ -1,4 +1,4 @@
-package n8n:node-contract@2.5.0;
+package n8n:node-contract@2.6.0;
 
 /// What an action bundle exports.
 ///
@@ -53,10 +53,10 @@ interface action {
         next: func() -> result<option<routed-output>, run-error>;
     }
 
-    /// An item of one of the named inputs.
+    /// An item of one of the inputs.
     @since(version = 2.3.0)
     record item-ref {
-        /// The index of the input in the manifest `inputs`.
+        /// The index of the input: in the manifest `inputs` names, or below the count.
         input: u32,
         item: u32,
     }
@@ -78,6 +78,8 @@ interface action {
 
     /// The run of an action with named inputs: one run with the items of each input, in the
     /// order of the manifest `inputs`, and the input of the first item of the first input.
+    /// Since 2.6.0, an action with counted inputs (`inputs: { count }`) runs here too. The host
+    /// gives one list per input, as many as the count field of `input` sets.
     @since(version = 2.3.0)
     resource join-run {
         constructor(input: json, inputs: list<list<json>>);

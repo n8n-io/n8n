@@ -744,8 +744,13 @@ type SandboxContext = {
 	readonly credential?: unknown;
 	readonly item?: InputItem;
 	readonly items?: readonly InputItem[];
-	readonly inputs?: Readonly<Record<string, readonly InputItem[]>>;
+	readonly inputs?: Readonly<Record<string, readonly InputItem[]>> | InputLists;
 } & Partial<HostImports<unknown>>;
+
+/** The items of each counted input, in input order. */
+type InputLists = ReadonlyArray<readonly InputItem[]>;
+
+const isInputLists = (value: unknown): value is InputLists => Array.isArray(value);
 
 const LOG_LEVELS: ReadonlySet<string> = new Set(['debug', 'info', 'warn', 'error']);
 const isLogLevel = (value: unknown): value is LogLevel =>
@@ -1690,7 +1695,12 @@ function sandboxedAction(
 	const run = (context: SandboxContext): AsyncGenerator<unknown> | Promise<unknown> => {
 		if (manifest.kind === 'provider') return providerCapabilityOf(manifest, context, start);
 		if (contract.inputs) {
-			const inputs = contract.inputs.map((name) => context.inputs?.[name] ?? []);
+			const given = context.inputs;
+			const inputs = isInputLists(given)
+				? given
+				: 'count' in contract.inputs
+					? []
+					: contract.inputs.map((name) => given?.[name] ?? []);
 			return outputsOf(
 				{
 					id: manifest.id,

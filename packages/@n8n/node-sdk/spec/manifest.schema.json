@@ -1,6 +1,6 @@
 {
 	"$schema": "https://json-schema.org/draft/2020-12/schema",
-	"$id": "urn:n8n:node-contract:manifest@2.5.0",
+	"$id": "urn:n8n:node-contract:manifest@2.6.0",
 	"title": "n8n Node Contract manifest",
 	"description": "Generated from src/manifest.ts by scripts/spec.ts. Do not edit. `x-n8n-since` is the Node Contract version that added a field. The `contract.input` and `contract.output` schemas follow the contract format of the SDK.",
 	"oneOf": [
@@ -184,11 +184,29 @@
 							}
 						},
 						"inputs": {
-							"type": "array",
-							"items": {
-								"type": "string"
-							},
-							"minItems": 2
+							"anyOf": [
+								{
+									"type": "array",
+									"items": {
+										"type": "string"
+									},
+									"minItems": 2
+								},
+								{
+									"type": "object",
+									"properties": {
+										"count": {
+											"type": "string"
+										}
+									},
+									"required": [
+										"count"
+									],
+									"additionalProperties": false,
+									"description": "Inputs counted by the integer input field `count`.",
+									"x-n8n-since": "2.6.0"
+								}
+							]
 						}
 					},
 					"required": [

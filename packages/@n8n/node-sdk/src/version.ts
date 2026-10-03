@@ -6,7 +6,14 @@ import {
 	type INodeTypeDescription,
 } from 'n8n-workflow';
 
-import { usesBinary, usesHostImports, usesProviders, type ContractDocument } from './define';
+import {
+	inputCountOf,
+	usesBinary,
+	usesBinaryKeyPattern,
+	usesHostImports,
+	usesProviders,
+	type ContractDocument,
+} from './define';
 import { permissionsOf, type ContractPermissions } from './egress';
 import { versionManifestSchema } from './manifest';
 import { hasPageValue, type JsonSchema } from './schema';
@@ -26,11 +33,13 @@ import { matches } from './validate';
  * host reads unresolved.
  * 2.5.0 adds the manifest format with `kind`, `sdk` and credential majors, credential
  * manifests, and the trigger, credential and provider interfaces.
+ * 2.6.0 adds counted inputs (`inputs: { count }`), whose number a parameter sets, and output key
+ * patterns that hold binaries (`t.indexedBinaries()`).
  */
 export type NodeContractVersion = `${number}.${number}.${number}`;
 
 /** The newest version this host implements. */
-export const NODE_CONTRACT_VERSION: NodeContractVersion = '2.5.0';
+export const NODE_CONTRACT_VERSION: NodeContractVersion = '2.6.0';
 
 /** The newest version of each major that this host runs. */
 export const IMPLEMENTED_NODE_CONTRACTS: readonly NodeContractVersion[] = [NODE_CONTRACT_VERSION];
@@ -59,13 +68,15 @@ export const requiredNodeContractOf = (
 	contract: Pick<ContractDocument, 'input' | 'output' | 'imports' | 'inputs'>,
 	list = false,
 ): NodeContractVersion =>
-	list || hasPageValue(contract.input)
-		? '2.4.0'
-		: usesHostImports(contract) || usesProviders(contract)
-			? '2.3.0'
-			: usesBinary(contract)
-				? '2.2.0'
-				: '2.1.0';
+	inputCountOf(contract) !== undefined || usesBinaryKeyPattern(contract)
+		? '2.6.0'
+		: list || hasPageValue(contract.input)
+			? '2.4.0'
+			: usesHostImports(contract) || usesProviders(contract)
+				? '2.3.0'
+				: usesBinary(contract)
+					? '2.2.0'
+					: '2.1.0';
 
 /** A newer minor than the host has uses imports or fields that the host lacks. */
 export const implementsNodeContract = (version: NodeContractVersion) => {
@@ -566,7 +577,12 @@ function permissionChanges(prev: ContractDocument, next: ContractDocument): Cont
 /** n8n saves a connection by input index, as by output index. */
 function inputChanges(prev: ContractDocument, next: ContractDocument): ContractChange[] {
 	if (canonicalJson(prev.inputs) === canonicalJson(next.inputs)) return [];
-	const text = (inputs: ContractDocument['inputs']) => inputs?.join(', ') ?? 'one input';
+	const text = (inputs: ContractDocument['inputs']) =>
+		inputs === undefined
+			? 'one input'
+			: 'count' in inputs
+				? `counted by ${inputs.count}`
+				: inputs.join(', ');
 	return [major(`inputs ${text(prev.inputs)} → ${text(next.inputs)}`)];
 }
 

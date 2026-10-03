@@ -49,10 +49,10 @@ import {
 import {
 	DEFAULT_RUN_LIMITS,
 	isHttpError,
+	inputCountOf,
 	isToolContract,
 	usesBinary,
 	type Action,
-	type ActionInputs,
 	type ActionOutputs,
 	type Binaries,
 	type CodeRunner,
@@ -967,13 +967,21 @@ export function executorOf<S extends Shape, O extends AnySchema>(
 	const binaryApi = usesBinary({ input: action.inputSchema, output: outputSchema });
 	const isBinaryKey = outputBinaryKeys(outputSchema);
 	const declared: ReadonlySet<HostImport> = new Set(action.imports ?? []);
+	const counted = inputCountOf({ input: action.inputSchema, inputs: action.inputs });
+	const inputNames = action.inputs && !('count' in action.inputs) ? action.inputs : undefined;
+	// Counted inputs read every possible input. The count of the run cuts the list.
+	const inputCount = counted?.max ?? inputNames?.length ?? 1;
+	const countOf = (input: unknown) => {
+		const value = counted && isRecord(input) ? input[counted.field] : undefined;
+		return typeof value === 'number' ? value : (counted?.initial ?? inputCount);
+	};
 
 	return async (host) => {
 		const { items, recorder } = host;
-		const inputNames = action.inputs;
-		const inputLists: ReadonlyArray<readonly INodeExecutionData[]> = inputNames
-			? inputNames.map((_name, index) => (index === 0 ? items : (host.inputItems?.(index) ?? [])))
-			: [items];
+		const inputLists: ReadonlyArray<readonly INodeExecutionData[]> = Array.from(
+			{ length: inputCount },
+			(_, index) => (index === 0 ? items : (host.inputItems?.(index) ?? [])),
+		);
 		// The bundle of an action without a binary field targets 2.1.0, which has no binary data.
 		const binaryStore = (): BinaryStore => {
 			if (!binaryApi) {
@@ -1562,23 +1570,31 @@ export function executorOf<S extends Shape, O extends AnySchema>(
 						...imports,
 					};
 					// A getter, not a value: a spread would read the credential before `run()` does.
-					const result = inputNames
+					const result = counted
 						? action.run?.({
 								...context,
 								get credential() {
 									return runCredential();
 								},
-								inputs: Object.fromEntries(
-									inputNames.map((name, index) => [name, inputLists[index] ?? []]),
-								),
+								inputs: inputLists.slice(0, countOf(input)),
 							})
-						: action.run?.({
-								...context,
-								get credential() {
-									return runCredential();
-								},
-								items,
-							});
+						: inputNames
+							? action.run?.({
+									...context,
+									get credential() {
+										return runCredential();
+									},
+									inputs: Object.fromEntries(
+										inputNames.map((name, index) => [name, inputLists[index] ?? []]),
+									),
+								})
+							: action.run?.({
+									...context,
+									get credential() {
+										return runCredential();
+									},
+									items,
+								});
 					return { names, routed: await collect(result, routeOf(names, undefined)) };
 				} catch (error) {
 					// A batch fails as a whole, so no item index fits.
@@ -1663,18 +1679,55 @@ function outputsOf(
 	return { outputs: outputs.map(() => 'main'), outputNames: [...outputs] };
 }
 
-/** Named inputs run when one of them has items, as the Merge node does. */
-const mainInputsOf = (
-	inputs: ActionInputs | undefined,
-): Pick<INodeTypeDescription, 'requiredInputs'> & {
-	inputs: Array<'main' | INodeInputConfiguration>;
-} =>
-	inputs
+/**
+ * The n8n inputs of counted inputs, then `then`: one per count, as the legacy Merge node makes
+ * them. n8n evaluates this function as an expression, so the count follows the parameter.
+ */
+function countedInputs(
+	parameters: Record<string, unknown>,
+	field: string,
+	bounds: { min: number; max: number; initial: number },
+	then: unknown[],
+) {
+	const value = Number(parameters[field] ?? bounds.initial);
+	const count = Number.isInteger(value)
+		? Math.min(bounds.max, Math.max(bounds.min, value))
+		: bounds.initial;
+	const main = Array.from({ length: count }, (_, index) => ({
+		type: 'main',
+		displayName: `Input ${index + 1}`,
+	}));
+	return [...main, ...then];
+}
+
+/** @internal Exported for a test: the description keeps it as expression text only. */
+export const countedInputsOf = countedInputs;
+
+/** Inputs run when one of them has items, as the Merge node does. */
+function mainInputsOf(
+	action: Action,
+	supplyInputs: INodeInputConfiguration[],
+): Pick<INodeTypeDescription, 'inputs' | 'requiredInputs'> {
+	const counted = inputCountOf({ input: action.inputSchema, inputs: action.inputs });
+	if (counted) {
+		const { field, ...bounds } = counted;
+		const args = [field, bounds, supplyInputs].map((value) => JSON.stringify(value)).join(', ');
+		return {
+			inputs: `={{(${countedInputs.toString()})($parameter, ${args})}}`,
+			requiredInputs: 1,
+		};
+	}
+	const { inputs } = action;
+	return inputs && !('count' in inputs)
 		? {
-				inputs: inputs.map((displayName) => ({ type: 'main', displayName })),
+				inputs: [
+					...inputs.map((displayName): INodeInputConfiguration => ({ type: 'main', displayName })),
+					...supplyInputs,
+				],
 				requiredInputs: 1,
 			}
-		: { inputs: ['main'] };
+		: { inputs: ['main', ...supplyInputs] };
+}
 
 const SUPPLY_LABELS: Record<ProviderKind, string> = {
 	chatModel: 'Chat Model',
@@ -1712,8 +1765,7 @@ function connectionsOf(
 			outputNames: [SUPPLY_LABELS[kind]],
 		};
 	}
-	const main = mainInputsOf(action.inputs);
-	return { ...main, inputs: [...main.inputs, ...supplyInputs], ...outputsOf(action.outputs) };
+	return { ...mainInputsOf(action, supplyInputs), ...outputsOf(action.outputs) };
 }
 
 /**

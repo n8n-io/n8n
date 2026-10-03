@@ -1,9 +1,16 @@
-import { defineNode, isRecord } from '@n8n/node-sdk';
+import { defineNode, isRecord, t } from '@n8n/node-sdk';
 
-/** Joins two item streams. Each action has the inputs left and right, in this order. */
+/** Joins item streams: 2 to 10 counted inputs, or the inputs left and right of `combine`. */
 export const merge = defineNode({ id: 'merge', displayName: 'Merge' });
 
 export const INPUTS = ['left', 'right'] as const;
+
+/** The number of inputs of an action with counted inputs, as the legacy Merge node allows. */
+export const INPUT_COUNT = t
+	.int()
+	.with({ minimum: 2, maximum: 10 })
+	.default(2)
+	.hint('Number of inputs, from 2 to 10');
 
 /**
  * `source` merged into `target` at every depth, as lodash `merge` does: objects by key,

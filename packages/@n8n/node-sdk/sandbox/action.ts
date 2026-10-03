@@ -1,12 +1,12 @@
 // The generic JS guest of the action interface: it runs an action bundle and gives it the run
 // context over the imports of the action world.
-import * as witBinary from 'n8n:node-contract/binary@2.5.0';
-import { run as witCode } from 'n8n:node-contract/code@2.5.0';
-import * as witTables from 'n8n:node-contract/data-tables@2.5.0';
-import { get as witInputOf } from 'n8n:node-contract/input-of@2.5.0';
-import { get as witLimits } from 'n8n:node-contract/limits@2.5.0';
-import { open as witSupplied } from 'n8n:node-contract/supplied@2.5.0';
-import { until as witUntil } from 'n8n:node-contract/wait@2.5.0';
+import * as witBinary from 'n8n:node-contract/binary@2.6.0';
+import { run as witCode } from 'n8n:node-contract/code@2.6.0';
+import * as witTables from 'n8n:node-contract/data-tables@2.6.0';
+import { get as witInputOf } from 'n8n:node-contract/input-of@2.6.0';
+import { get as witLimits } from 'n8n:node-contract/limits@2.6.0';
+import { open as witSupplied } from 'n8n:node-contract/supplied@2.6.0';
+import { until as witUntil } from 'n8n:node-contract/wait@2.6.0';
 
 import type {
 	Action,
@@ -291,12 +291,14 @@ const isAsyncIterable = (value: unknown): value is AsyncIterable<unknown> =>
 const isIterable = (value: unknown): value is Iterable<unknown> =>
 	typeof value === 'object' && value !== null && Symbol.iterator in value;
 
+const isInputLists = (value: unknown): value is readonly InputItem[][] => Array.isArray(value);
+
 /** The raw outputs of one run, as `run()` or a binding gives them. */
 async function* valuesOf(
 	action: Action,
 	input: Record<string, unknown>,
 	items: readonly InputItem[],
-	inputs: Readonly<Record<string, readonly InputItem[]>> | undefined,
+	inputs: Readonly<Record<string, readonly InputItem[]>> | readonly InputItem[][] | undefined,
 ): AsyncGenerator<unknown> {
 	const context = { input, http, log, limits: witLimits(), binary, ...importsOf(items) };
 	const batch = action.flow.cardinality === 'batch';
@@ -311,11 +313,13 @@ async function* valuesOf(
 		? http.request(requestOf(action.request, input))
 		: action.list
 			? listItems(http, action.list, input, drift)
-			: inputs
+			: isInputLists(inputs)
 				? action.run?.(withCredential({ ...context, inputs }))
-				: batch
-					? action.run?.(withCredential({ ...context, items }))
-					: action.run?.(withCredential({ ...context, item: items[0] ?? { json: {} } }));
+				: inputs
+					? action.run?.(withCredential({ ...context, inputs }))
+					: batch
+						? action.run?.(withCredential({ ...context, items }))
+						: action.run?.(withCredential({ ...context, item: items[0] ?? { json: {} } }));
 	if (action.flow.cardinality === 'per-item' && !isAsyncIterable(result)) {
 		yield await result;
 		return;
@@ -400,7 +404,7 @@ async function* joined(
 	lists: readonly string[][],
 ): AsyncGenerator<{ to?: string; output: JoinOutput }, void, undefined> {
 	const action = actionOf();
-	const names = action.inputs ?? [];
+	const declared = action.inputs;
 	const items = lists.map((list) =>
 		list.map((json): InputItem => Object.freeze({ json: Object.freeze(parsed(json)) })),
 	);
@@ -411,7 +415,11 @@ async function* joined(
 			item: index < 0 ? -1 : (items[index]?.findIndex((entry) => entry === item) ?? -1),
 		};
 	};
-	const inputs = Object.fromEntries(names.map((name, index) => [name, items[index] ?? []]));
+	// Counted inputs are a list in input order, named inputs a record.
+	const inputs =
+		declared === undefined || 'count' in declared
+			? items
+			: Object.fromEntries(declared.map((name, index) => [name, items[index] ?? []]));
 	const runInput = await runInputOf(action, input);
 	for await (const value of valuesOf(action, runInput, items[0] ?? [], inputs)) {
 		if (!isRecord(value)) throw new Error(`${action.id} gave an output that is not an object`);
@@ -424,7 +432,7 @@ async function* joined(
 	}
 }
 
-/** `action.join-run`: the run of an action with named inputs. */
+/** `action.join-run`: the run of an action with named or counted inputs. */
 class JoinRun {
 	private readonly outputs: AsyncGenerator<{ to?: string; output: JoinOutput }, void, undefined>;
 

@@ -30,7 +30,8 @@ export function toProperty(name: string, schema: AnySchema): INodeProperties {
 				? [{ name: String(value), value }]
 				: [],
 		);
-		return { ...base, type: 'options', options, default: unset ? '' : (options[0]?.value ?? '') };
+		const initial = options.find(({ value }) => value === json.default) ?? options[0];
+		return { ...base, type: 'options', options, default: unset ? '' : (initial?.value ?? '') };
 	}
 	switch (json.type) {
 		case 'string':

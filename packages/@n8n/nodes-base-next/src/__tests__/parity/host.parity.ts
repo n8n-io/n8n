@@ -39,6 +39,7 @@ import { renameTable } from '../../nodes/data-table/actions/table.rename';
 import { setLoopState } from '../../nodes/loop-state/actions/set';
 import { appendItems } from '../../nodes/merge/actions/append';
 import { combineItems } from '../../nodes/merge/actions/combine';
+import { combineByPosition } from '../../nodes/merge/actions/combine-by-position';
 import { passItems } from '../../nodes/no-op/actions/pass';
 import { stopWithError } from '../../nodes/stop-and-error/actions/stop';
 import { waitInterval } from '../../nodes/wait/actions/interval';
@@ -858,7 +859,17 @@ const emptyBinaries = ({ items }: ParityRun): AllowedDifference[] =>
 			: [],
 	);
 
+const notes: IDataObject[] = [
+	{ id: 1, note: 'vip', address: { city: 'Paris' } },
+	{ id: 2, note: 'new' },
+];
+
 const mergeCase = (): ParityCase => ({ input: [], inputs: [customers, orders], routes: [] });
+const mergeCaseOf3 = (): ParityCase => ({
+	input: [],
+	inputs: [customers, orders, notes],
+	routes: [],
+});
 
 const pairsOf = ({ items }: ParityRun) => items.map(({ json }) => json);
 
@@ -867,9 +878,10 @@ async function expectMergeParity(
 	action: Action,
 	contract: Record<string, unknown>,
 	allowed: (before: ParityRun) => AllowedDifference[] = () => [],
+	parityCase = mergeCase,
 ) {
-	const before = await runNode(legacy(new Merge(), 'merge', 3.2, parameters), mergeCase());
-	const after = await runNode(actionNode(action, contract), mergeCase());
+	const before = await runNode(legacy(new Merge(), 'merge', 3.2, parameters), parityCase());
+	const after = await runNode(actionNode(action, contract), parityCase());
 	expect(before.error).toBeUndefined();
 	expect(after.error).toBeUndefined();
 	expect(pairsOf(after)).toEqual(pairsOf(before));
@@ -885,6 +897,57 @@ describe('merge parity', () => {
 		const after = await expectMergeParity({ mode: 'append' }, appendItems, {});
 		expect(after.items[3]?.pairedItem).toEqual({ item: 0, input: 1 });
 	});
+
+	it('appends the items of 3 inputs in input order', async () => {
+		const after = await expectMergeParity(
+			{ mode: 'append', numberInputs: 3 },
+			appendItems,
+			{ inputs: 3 },
+			() => [],
+			mergeCaseOf3,
+		);
+		expect(after.items).toHaveLength(customers.length + orders.length + notes.length);
+		expect(after.items.at(-1)?.pairedItem).toEqual({ item: 1, input: 2 });
+	});
+
+	it.each([
+		['preferLast', 'last', false],
+		['preferLast', 'last', true],
+		['preferInput1', 'first', false],
+	])(
+		'combines 3 inputs by position with %s as %s, unpaired %s',
+		async (resolveClash, prefer, unpaired) => {
+			// Legacy lists the item of the preferred input twice.
+			const once = ({ items }: ParityRun): AllowedDifference[] =>
+				items.flatMap(({ pairedItem }, index) =>
+					Array.isArray(pairedItem) && pairedItem.length > 3
+						? [
+								{
+									path: `items[${index}].pairedItem[3]`,
+									kind: 'intended' as const,
+									reason: 'Once',
+								},
+							]
+						: [],
+				);
+			const after = await expectMergeParity(
+				{
+					mode: 'combine',
+					combineBy: 'combineByPosition',
+					numberInputs: 3,
+					options: {
+						clashHandling: { values: { resolveClash, mergeMode: 'deepMerge' } },
+						includeUnpaired: unpaired,
+					},
+				},
+				combineByPosition,
+				{ inputs: 3, prefer, unpaired },
+				once,
+				mergeCaseOf3,
+			);
+			expect(after.items).toHaveLength(unpaired ? 3 : 2);
+		},
+	);
 
 	it('combines by position, with and without unpaired items', async () => {
 		// Legacy lists the item of the preferred input twice.

@@ -71,6 +71,7 @@ import { renameTable } from './nodes/data-table/actions/table.rename';
 import { setLoopState } from './nodes/loop-state/actions/set';
 import { appendItems } from './nodes/merge/actions/append';
 import { combineItems } from './nodes/merge/actions/combine';
+import { combineByPosition } from './nodes/merge/actions/combine-by-position';
 import { passItems } from './nodes/no-op/actions/pass';
 import { stopWithError } from './nodes/stop-and-error/actions/stop';
 import { waitInterval } from './nodes/wait/actions/interval';
@@ -187,6 +188,7 @@ export const actions: readonly Action[] = [
 	runPython,
 	appendItems,
 	combineItems,
+	combineByPosition,
 	waitInterval,
 	waitUntil,
 	stopWithError,

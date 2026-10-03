@@ -166,34 +166,32 @@ export function caseRouter(
 
 export type MergeJoin = 'append' | 'position' | { readonly left: string; readonly right: string };
 
-/** `merge` builds the Merge node contracts, whose inputs are named left and right. */
-export const MERGE_APPEND_NODE = { type: '@n8n/nodes-base-next.mergeAppend', version: 1 };
+/**
+ * `merge` builds the Merge node contracts. Append and combine by position count their inputs
+ * (`inputs`, 2 when unset); combine by fields has the inputs left and right.
+ */
+export const MERGE_APPEND_NODE = { type: '@n8n/nodes-base-next.mergeAppend', version: 2 };
+export const MERGE_POSITION_NODE = {
+	type: '@n8n/nodes-base-next.mergeCombineByPosition',
+	version: 1,
+};
 export const MERGE_COMBINE_NODE = { type: '@n8n/nodes-base-next.mergeCombine', version: 1 };
-/** The contracts take 2 inputs. For more branches `merge` builds the legacy Merge node. */
-export const MERGE_NODE = { type: 'n8n-nodes-base.merge', version: 3.2 };
-/** The most inputs of the legacy Merge node. */
+/** The most inputs of the Merge contracts. */
 export const MERGE_MAX_INPUTS = 10;
 
-export const mergeNodeOf = (join: MergeJoin, inputs = 2) =>
-	inputs > 2 ? MERGE_NODE : join === 'append' ? MERGE_APPEND_NODE : MERGE_COMBINE_NODE;
+export const mergeNodeOf = (join: MergeJoin) =>
+	join === 'append'
+		? MERGE_APPEND_NODE
+		: join === 'position'
+			? MERGE_POSITION_NODE
+			: MERGE_COMBINE_NODE;
 
+/** The parameters of the Merge contract. n8n stores no default, so 2 inputs set no count. */
 export function mergeParameters(join: MergeJoin, inputs = 2) {
-	if (inputs > 2) {
-		return join === 'append'
-			? { mode: 'append', numberInputs: inputs }
-			: {
-					mode: 'combine',
-					combineBy: 'combineByPosition',
-					numberInputs: inputs,
-					// As the contract joins: deep, and the last input wins a clash.
-					options: {
-						clashHandling: { values: { resolveClash: 'preferLast', mergeMode: 'deepMerge' } },
-					},
-				};
+	if (typeof join === 'object') {
+		return { by: { by: 'fields', left: join.left, right: join.right, join: 'inner' } };
 	}
-	if (join === 'append') return {};
-	if (join === 'position') return { by: { by: 'position' } };
-	return { by: { by: 'fields', left: join.left, right: join.right, join: 'inner' } };
+	return inputs === 2 ? {} : { inputs };
 }
 
 export const splitOutParameters = (field: string) => ({ field });

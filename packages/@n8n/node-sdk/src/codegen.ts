@@ -1,4 +1,5 @@
 import {
+	inputCountOf,
 	isToolContract,
 	replyContractOf,
 	toContract,
@@ -674,13 +675,21 @@ export function generateNodeModule(nodeId: string, contracts: readonly Generated
 		optionalOutputs: true,
 		nullableOutputs: true,
 	};
-	// An action with named inputs joins branches, so a flow region builds it, not a step.
+	// An action with named or counted inputs joins branches, so a flow region builds it, not a step.
 	const actions = contracts.filter(({ contract }) => !contract.trigger && !contract.inputs);
+	const inputsText = (contract: ContractDocument) => {
+		const counted = inputCountOf(contract);
+		return counted
+			? `${counted.min} to ${counted.max}, set by ${counted.field}`
+			: contract.inputs && !('count' in contract.inputs)
+				? contract.inputs.join(', ')
+				: '';
+	};
 	const joins = contracts
 		.filter(({ contract }) => contract.inputs)
 		.map(
 			({ contract }) =>
-				`// ${contract.id}: ${contract.action}. ${contract.summary} (inputs: ${contract.inputs?.join(', ') ?? ''}). A flow region with branches builds it.`,
+				`// ${contract.id}: ${contract.action}. ${contract.summary} (inputs: ${inputsText(contract)}). A flow region with branches builds it.`,
 		);
 	const triggers = contracts.filter(({ contract }) => contract.trigger);
 	const named = actions.map((action) => ({

@@ -150,17 +150,35 @@ type OutputsCheck<Outs, Full extends Shape> = Outs extends OutputsPerEntry
 		}
 	: unknown;
 
-/** Named inputs read all items of each input at once, so only a `batch` action has them. */
-type InputsCheck<Ins, F extends ActionFlow> = Ins extends ActionInputs
-	? F['cardinality'] extends 'batch'
-		? unknown
-		: {
-				/** An action with named inputs runs as a batch. */
-				readonly flow: {
-					/** Named inputs need `batch`. */
-					readonly cardinality: 'batch';
-				};
-			}
+/** The input fields that can set an input count: integers. */
+type CountKey<S extends Shape> = {
+	[K in keyof S]: NonNullable<Infer<S[K]>> extends number ? K : never;
+}[keyof S] &
+	string;
+
+/**
+ * Inputs read all items of each input at once, so only a `batch` action has them. A count names
+ * an integer input field.
+ */
+type InputsCheck<Ins, F extends ActionFlow, Full extends Shape> = Ins extends ActionInputs
+	? (F['cardinality'] extends 'batch'
+			? unknown
+			: {
+					/** An action with named inputs runs as a batch. */
+					readonly flow: {
+						/** Named inputs need `batch`. */
+						readonly cardinality: 'batch';
+					};
+				}) &
+			(Ins extends InputCount
+				? {
+						/** Inputs counted by a parameter. */
+						readonly inputs: {
+							/** An integer input field with `minimum` and `maximum`. */
+							readonly count: CountKey<Full>;
+						};
+					}
+				: unknown)
 	: unknown;
 
 /** The input item or items that an output item comes from. */
@@ -589,10 +607,19 @@ export type ContextOf<C extends ActionFlow['cardinality'], Input> = C extends 'b
 	: RunContext<Input>;
 
 /**
- * The named inputs of an action that joins item streams, in n8n input order, e.g.
- * `['left', 'right']`. Only a `batch` action has them.
+ * Inputs whose count the input field `count` sets, e.g. `{ count: 'inputs' }` with
+ * `inputs: t.int().with({ minimum: 2, maximum: 10 }).default(2)`. The field bounds the count.
  */
-export type ActionInputs = readonly [string, string, ...string[]];
+export interface InputCount {
+	/** The integer input field that sets the number of inputs. */
+	readonly count: string;
+}
+
+/**
+ * The inputs of an action that joins item streams: names in n8n input order, e.g.
+ * `['left', 'right']`, or a count that a parameter sets. Only a `batch` action has them.
+ */
+export type ActionInputs = readonly [string, string, ...string[]] | InputCount;
 
 /** The context of a run with named inputs: the items of each input, and the parameters once. */
 export interface InputsContext<Input, Name extends string> extends RunHost {
@@ -602,12 +629,27 @@ export interface InputsContext<Input, Name extends string> extends RunHost {
 	readonly inputs: { readonly [K in Name]: readonly InputItem[] };
 }
 
-/** The run context for the cardinality and the named inputs of an action. */
+/** The context of a run with counted inputs: the items of each input, and the parameters once. */
+export interface CountedInputsContext<Input> extends RunHost {
+	/** Parameters read once, at the first item of the first input, and validated. */
+	readonly input: Input;
+	/**
+	 * The items of each input, in input order, one list per counted input. An input without a
+	 * connection has no items.
+	 */
+	readonly inputs: ReadonlyArray<readonly InputItem[]>;
+}
+
+/** The run context for the cardinality and the inputs of an action. */
 export type RunContextOf<
 	C extends ActionFlow['cardinality'],
 	Input,
 	Ins extends ActionInputs | undefined,
-> = Ins extends ActionInputs ? InputsContext<Input, Ins[number]> : ContextOf<C, Input>;
+> = Ins extends InputCount
+	? CountedInputsContext<Input>
+	: Ins extends ReadonlyArray<infer Name extends string>
+		? InputsContext<Input, Name>
+		: ContextOf<C, Input>;
 
 // ── Host imports of Node Contract 2.3.0 ──────────────────────────────────────────
 
@@ -1220,7 +1262,7 @@ interface ActionSpecBase<
 	readonly outputs?: Outs;
 	/** The optional host imports `run()` uses. Each one is a permission, as a scope is. */
 	readonly imports?: Im;
-	/** Named inputs, for an action that joins item streams. */
+	/** Named or counted inputs, for an action that joins item streams. */
 	readonly inputs?: Ins;
 	/**
 	 * Pure hatch: the output shape for these parameters (fields a filter guarantees, fields a
@@ -1523,7 +1565,7 @@ type NodeAction<N extends NodeDefinition, RS extends Shape, Path extends ActionP
 	operation: string,
 	spec: ActionSpec<S, RS & S, O, F, ScopeOf<N>, P, Outs, H, Im, Ins, R, RunCredentialOf<N>> &
 		OutputsCheck<Outs, RS & S> &
-		InputsCheck<Ins, F>,
+		InputsCheck<Ins, F, RS & S>,
 ) => Action<RS & S, O, F, Outs, Im, Ins> & Path;
 
 type NodeTrigger<N extends NodeDefinition, RS extends Shape, Path extends ActionPath> = <
@@ -1773,7 +1815,7 @@ export interface ContractDocument {
 	readonly egress?: ContractEgress;
 	/** The optional host imports, sorted. Absent when it uses none. */
 	readonly imports?: readonly HostImport[];
-	/** Named inputs in n8n input order. Absent for one input. */
+	/** Named inputs in n8n input order, or the field that counts them. Absent for one input. */
 	readonly inputs?: ActionInputs;
 }
 
@@ -1921,6 +1963,36 @@ export const usesBinary = (contract: Pick<ContractDocument, 'input' | 'output'>)
 /** The action declares host imports or named inputs, so its bundle targets Node Contract 2.3.0. */
 export const usesHostImports = (contract: Pick<ContractDocument, 'imports' | 'inputs'>) =>
 	Boolean(contract.imports?.length) || contract.inputs !== undefined;
+
+/** The count field of counted inputs, and the bounds and the default that its schema sets. */
+export interface InputCountField {
+	readonly field: string;
+	readonly min: number;
+	readonly max: number;
+	readonly initial: number;
+}
+
+/** The count field of an action with counted inputs. None for named inputs or one input. */
+export function inputCountOf(
+	contract: Pick<ContractDocument, 'input' | 'inputs'>,
+): InputCountField | undefined {
+	const { inputs } = contract;
+	if (inputs === undefined || !('count' in inputs)) return undefined;
+	const schema = contract.input.properties?.[inputs.count];
+	const min = schema?.minimum ?? 1;
+	const max = schema?.maximum ?? min;
+	const initial = typeof schema?.default === 'number' ? schema.default : min;
+	return { field: inputs.count, min, max, initial };
+}
+
+/**
+ * An output key pattern holds binaries (`t.indexedBinaries()`), so the bundle targets Node
+ * Contract 2.6.0. A host before it keeps such a binary in the JSON.
+ */
+export const usesBinaryKeyPattern = ({ output }: Pick<ContractDocument, 'output'>) =>
+	[output, ...(output.anyOf ?? [])].some((object) =>
+		Object.values(object.patternProperties ?? {}).some((field) => field['x-n8n-binary']),
+	);
 
 /** The action supplies a provider capability or reads one, so its bundle targets Node Contract 2.3.0. */
 export const usesProviders = (contract: Pick<ContractDocument, 'input' | 'output'>) =>
@@ -2124,10 +2196,28 @@ export function checkAction(action: Action | Trigger): string[] {
 	];
 }
 
-function inputIssues({ id, inputs, flow, imports }: ContractDocument): string[] {
+/** A count field is a required integer with bounds, so the host never makes an unbounded list. */
+function inputCountIssues({ id, input, inputs }: ContractDocument): string[] {
+	if (inputs === undefined || !('count' in inputs)) return [];
+	const field = input.properties?.[inputs.count];
+	if (!field) return [`${id}: inputs.count names no input field: ${inputs.count}`];
+	const { type, minimum, maximum } = field;
 	return [
-		...(inputs && new Set(inputs).size < inputs.length ? [`${id}: input names repeat`] : []),
+		...(type === 'integer' ? [] : [`${id}: inputs.count field ${inputs.count} is not an integer`]),
+		...(minimum === undefined || minimum < 1 || maximum === undefined || maximum < minimum
+			? [`${id}: inputs.count field ${inputs.count} needs a minimum of 1 or more and a maximum`]
+			: []),
+	];
+}
+
+function inputIssues(contract: ContractDocument): string[] {
+	const { id, inputs, flow, imports } = contract;
+	return [
+		...(inputs && !('count' in inputs) && new Set(inputs).size < inputs.length
+			? [`${id}: input names repeat`]
+			: []),
 		...(inputs && flow.cardinality !== 'batch' ? [`${id}: named inputs need batch`] : []),
+		...inputCountIssues(contract),
 		...(imports ?? [])
 			.filter((name) => !isHostImport(name))
 			.map((name) => `${id}: ${String(name)} is not a host import`),

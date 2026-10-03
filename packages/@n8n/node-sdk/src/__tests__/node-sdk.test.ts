@@ -25,6 +25,7 @@ import {
 	type JsonSchema,
 	type RunInput,
 } from '../index';
+import { toProperty } from '../properties';
 import { evaluateBundle } from '../runtime';
 import { testPattern } from '../validate';
 import { NODE_CONTRACT_VERSION } from '../version';
@@ -525,6 +526,13 @@ describe('toNodeType', () => {
 			['paging', 'json', true, '{}'],
 			['status', 'options', false, ''],
 		]);
+	});
+
+	it('gives an options property the default of its schema, else the first option', () => {
+		const defaultOf = (schema: AnySchema) => toProperty('order', schema).default;
+		expect(defaultOf(t.oneOf('first', 'last').default('last'))).toBe('last');
+		expect(defaultOf(t.oneOf('first', 'last'))).toBe('first');
+		expect(defaultOf(t.oneOf('first', 'last').optional())).toBe('');
 	});
 
 	it('adds one authentication selector when the node takes several credential types', () => {

@@ -24,6 +24,7 @@ const constant = <const V extends string | number | boolean>(value: V) =>
 	new Schema<V>({ const: value }, false);
 
 const SINCE_2_5 = { 'x-n8n-since': '2.5.0' } as const satisfies JsonSchema;
+const SINCE_2_6 = { 'x-n8n-since': '2.6.0' } as const satisfies JsonSchema;
 
 /**
  * A reader ignores a top-level field it does not know, so a newer SDK can add an annotation.
@@ -92,7 +93,15 @@ const contract = typed<ContractDocument>()(
 			.optional(),
 		egress: t.obj({ hosts: names().optional(), fromInput: t.str().optional() }).optional(),
 		imports: t.arr(t.oneOf('dataTables', 'code', 'wait', 'inputOf')).optional(),
-		inputs: names().with({ minItems: 2 }).optional(),
+		inputs: t
+			.union(
+				names().with({ minItems: 2 }),
+				t
+					.obj({ count: t.str() })
+					.describe('Inputs counted by the integer input field `count`.')
+					.with(SINCE_2_6),
+			)
+			.optional(),
 	}),
 );
 

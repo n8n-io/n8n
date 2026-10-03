@@ -1,13 +1,24 @@
-import type {
-	IDataTableProjectService,
-	IExecuteFunctions,
-	INode,
-	INodeExecutionData,
+import {
+	NodeHelpers,
+	Workflow,
+	type IDataTableProjectService,
+	type IExecuteFunctions,
+	type INode,
+	type INodeExecutionData,
 } from 'n8n-workflow';
 
 import { generateNodeModule } from '../entry/codegen';
 import { lintContract, toContract } from '../entry/registry';
-import { defineNode, t, type DataTableFilter, type DataTableRow } from '../index';
+import {
+	defineNode,
+	t,
+	validate,
+	type DataTableFilter,
+	type DataTableRow,
+	type InputItem,
+	type JsonSchema,
+} from '../index';
+import { versionManifestSchema } from '../manifest';
 import {
 	codeRunnerOf,
 	dataTablesOf,
@@ -15,7 +26,7 @@ import {
 	tableIdByName,
 	type DataTableHost,
 } from '../host-imports';
-import { executorOf, toNodeType, type ExecutorHost } from '../runtime';
+import { countedInputsOf, executorOf, toNodeType, type ExecutorHost } from '../runtime';
 import { contractHash, diffContracts, requiredNodeContractOf } from '../version';
 
 const demo = defineNode({ id: 'demo', displayName: 'Demo' });
@@ -457,6 +468,162 @@ describe('named inputs', () => {
 			input: {},
 			output: t.json(),
 			run: async () => await Promise.resolve({}),
+		});
+	});
+});
+
+describe('counted inputs', () => {
+	const count = t.int().with({ minimum: 2, maximum: 4 }).default(2).hint('Number of inputs');
+	const append = demo.action('append', {
+		action: 'Append',
+		summary: 'Pass on the items of each input, in input order.',
+		flow: { effect: 'transform', cardinality: 'batch' },
+		inputs: { count: 'inputs' },
+		input: { inputs: count },
+		output: t.passedItem(),
+		*run({ inputs }) {
+			for (const list of inputs) yield* list.map((item) => ({ item }));
+		},
+	});
+	const lists = [
+		[{ json: { a: 1 } }],
+		[{ json: { b: 2 } }],
+		[{ json: { c: 3 } }, { json: { c: 4 } }],
+	];
+	const hostWith = (inputs: number | undefined) =>
+		hostOf({
+			items: lists[0],
+			parameter: (name) => (name === 'inputs' ? inputs : undefined),
+			inputItems: (index) => lists[index] ?? [],
+		});
+
+	it('runs with one item list per counted input, and pairs each item with its input', async () => {
+		const [output] = await executorOf(append)(hostWith(3));
+		expect(output).toEqual([
+			{ json: { a: 1 }, pairedItem: { item: 0 } },
+			{ json: { b: 2 }, pairedItem: { item: 0, input: 1 } },
+			{ json: { c: 3 }, pairedItem: { item: 0, input: 2 } },
+			{ json: { c: 4 }, pairedItem: { item: 1, input: 2 } },
+		]);
+	});
+
+	it('reads only as many inputs as the count, and the default without one', async () => {
+		const [output] = await executorOf(append)(hostWith(undefined));
+		expect(output?.map(({ json }) => json)).toEqual([{ a: 1 }, { b: 2 }]);
+		await expect(executorOf(append)(hostWith(5))).rejects.toThrow('inputs');
+	});
+
+	it('makes the n8n inputs from the parameter, within the bounds', () => {
+		const { description } = new (toNodeType(append))();
+		expect(description.inputs).toMatch(/^=\{\{\(.*\)\(\$parameter, "inputs", /s);
+		expect(description.requiredInputs).toBe(1);
+		const bounds = { min: 2, max: 4, initial: 2 };
+		const names = (parameters: Record<string, unknown>) =>
+			countedInputsOf(parameters, 'inputs', bounds, []).map(
+				(entry) => (entry as { displayName: string }).displayName,
+			);
+		expect(names({ inputs: 3 })).toEqual(['Input 1', 'Input 2', 'Input 3']);
+		expect(names({})).toEqual(['Input 1', 'Input 2']);
+		expect(names({ inputs: 9 })).toHaveLength(4);
+		expect(names({ inputs: 'x' })).toHaveLength(2);
+	});
+
+	it('gives n8n the inputs that the expression of the node type makes', () => {
+		const NodeType = toNodeType(append);
+		const nodeType = new NodeType();
+		const inputsOf = (parameters: INode['parameters']) => {
+			const workflowNode = { ...node, parameters };
+			const workflow = new Workflow({
+				nodes: [workflowNode],
+				connections: {},
+				active: false,
+				nodeTypes: {
+					getByName: () => nodeType,
+					getByNameAndVersion: () => nodeType,
+					getKnownTypes: () => ({}),
+				},
+			});
+			return NodeHelpers.getNodeInputs(workflow, workflowNode, nodeType.description);
+		};
+		expect(inputsOf({ inputs: 3 })).toEqual([
+			{ type: 'main', displayName: 'Input 1' },
+			{ type: 'main', displayName: 'Input 2' },
+			{ type: 'main', displayName: 'Input 3' },
+		]);
+		expect(inputsOf({})).toHaveLength(2);
+	});
+
+	it('declares the count field in the contract, the manifest and the module', () => {
+		const contract = toContract(append);
+		expect(contract.inputs).toEqual({ count: 'inputs' });
+		expect(lintContract(contract)).toEqual([]);
+		expect(requiredNodeContractOf(contract)).toBe('2.6.0');
+		expect(diffContracts({ ...contract, inputs: ['left', 'right'] }, contract).changes).toEqual([
+			{ kind: 'major', text: 'inputs left, right → counted by inputs' },
+		]);
+		const inputsSchema = versionManifestSchema.json.properties?.contract?.properties?.inputs ?? {};
+		expect(validate(contract.inputs, inputsSchema)).toEqual([]);
+		expect(validate({ count: 3 }, inputsSchema)).not.toEqual([]);
+		const module = generateNodeModule('demo', [
+			{ contract, nodeType: 'demo.append', operation: 'append' },
+		]);
+		expect(module).toContain(
+			'(inputs: 2 to 4, set by inputs). A flow region with branches builds it.',
+		);
+	});
+
+	it('needs a bounded integer count field', () => {
+		const contract = toContract(append);
+		const withField = (field: JsonSchema) => ({
+			...contract,
+			input: { ...contract.input, properties: { inputs: field } },
+		});
+		expect(lintContract({ ...contract, inputs: { count: 'missing' } })).toEqual([
+			'demo.append: inputs.count names no input field: missing',
+		]);
+		expect(lintContract(withField({ type: 'string' }))).toEqual([
+			'demo.append: inputs.count field inputs is not an integer',
+			'demo.append: inputs.count field inputs needs a minimum of 1 or more and a maximum',
+		]);
+		expect(lintContract(withField({ type: 'integer', minimum: 2 }))).toEqual([
+			'demo.append: inputs.count field inputs needs a minimum of 1 or more and a maximum',
+		]);
+	});
+
+	it('types the count field and the run context', () => {
+		demo.action('appendText', {
+			action: 'Append',
+			summary: 'Not an integer count.',
+			flow: { effect: 'transform', cardinality: 'batch' },
+			// @ts-expect-error -- the count names an integer field
+			inputs: { count: 'label' },
+			input: { label: t.str() },
+			output: t.passedItem(),
+			*run({ inputs }) {
+				yield* (inputs[0] ?? []).map((item) => ({ item }));
+			},
+		});
+		demo.action('appendEach', {
+			action: 'Append each',
+			summary: 'Not a batch.',
+			// @ts-expect-error -- counted inputs need batch
+			flow: { effect: 'transform', cardinality: 'per-item' },
+			inputs: { count: 'inputs' },
+			input: { inputs: count },
+			output: t.json(),
+			run: async () => await Promise.resolve({}),
+		});
+		demo.action('appendNamed', {
+			action: 'Append named',
+			summary: 'Counted inputs have no names.',
+			flow: { effect: 'transform', cardinality: 'batch' },
+			inputs: { count: 'inputs' },
+			input: { inputs: count },
+			output: t.passedItem(),
+			*run({ inputs }) {
+				// @ts-expect-error -- counted inputs are a list
+				yield* inputs.left.map((item: InputItem) => ({ item }));
+			},
 		});
 	});
 });

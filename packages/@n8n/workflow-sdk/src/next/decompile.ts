@@ -55,6 +55,8 @@ import {
 	loopNextParameters,
 	loopNextSuffix,
 	loopNodeNames,
+	MERGE_APPEND_NODE,
+	MERGE_POSITION_NODE,
 	mergeNodeOf,
 	mergeParameters,
 	noNextPage,
@@ -658,24 +660,19 @@ function switchShape(node: NamedNode, edges: readonly Edge[]): Shape | undefined
 }
 
 function mergeShape(node: NamedNode): Shape | undefined {
-	const { by, mode, numberInputs } = node.parameters ?? {};
-	// More than 2 branches join in the legacy Merge node, which counts its inputs.
-	const inputs = typeof numberInputs === 'number' && numberInputs > 2 ? numberInputs : 2;
-	const join: MergeJoin | undefined =
-		inputs > 2
-			? mode === 'append'
-				? 'append'
-				: 'position'
-			: !isRecord(by)
-				? 'append'
-				: by.by === 'position'
-					? 'position'
-					: typeof by.left === 'string' && typeof by.right === 'string'
-						? { left: by.left, right: by.right }
-						: undefined;
+	const parameters = node.parameters ?? {};
+	const { by, inputs: count } = parameters;
+	const inputs = typeof count === 'number' ? count : 2;
+	const join: MergeJoin | undefined = isNodeType(node, MERGE_APPEND_NODE)
+		? 'append'
+		: isNodeType(node, MERGE_POSITION_NODE)
+			? 'position'
+			: isRecord(by) && typeof by.left === 'string' && typeof by.right === 'string'
+				? { left: by.left, right: by.right }
+				: undefined;
 	return join &&
-		isNodeType(node, mergeNodeOf(join, inputs)) &&
-		isEqual(mergeParameters(join, inputs), node.parameters)
+		isNodeType(node, mergeNodeOf(join)) &&
+		isEqual(mergeParameters(join, inputs), parameters)
 		? { kind: 'merge', join, inputs }
 		: undefined;
 }
