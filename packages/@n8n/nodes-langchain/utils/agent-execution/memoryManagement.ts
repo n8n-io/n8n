@@ -258,8 +258,16 @@ export async function loadMemory(
 			if (typeof msg.content === 'string') {
 				return msg.content.trim() !== '';
 			}
-			if (Array.isArray(msg.content) && msg.content.length === 0) {
-				return false;
+			if (Array.isArray(msg.content)) {
+				if (msg.content.length === 0) return false;
+				// An array is only valid if it contains at least one non-empty text block
+				// or any non-text block (like image_url).
+				return msg.content.some((block) => {
+					if (block && typeof block === 'object' && 'type' in block && block.type === 'text') {
+						return typeof block.text === 'string' && block.text.trim() !== '';
+					}
+					return true;
+				});
 			}
 			if (msg.content === null || msg.content === undefined) {
 				return false;
