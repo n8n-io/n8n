@@ -1,6 +1,6 @@
 import { spawn } from 'child_process';
 import { EventEmitter } from 'events';
-import { mkdtempSync, readFileSync, rmSync, statSync } from 'fs';
+import { mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
 
@@ -9,6 +9,7 @@ import {
 	buildPromptFromConversation,
 	buildWorkflowViaMcp,
 	MCP_BUILD_KEY_SUPPORT,
+	readExtraMcpServers,
 	sanitizeServerName,
 	stageLaneMcpConfig,
 	tailWorkflowId,
@@ -98,6 +99,60 @@ describe('sanitizeServerName / buildAllowedTools', () => {
 	it('builds the mcp__ tool allowlist prefix', () => {
 		expect(buildAllowedTools('n8n-local')).toEqual(['mcp__n8n-local']);
 		expect(buildAllowedTools('n8n-mcp (instance)')).toEqual(['mcp__n8n-mcp__instance_']);
+	});
+
+	it('allowlists extra server names alongside n8n', () => {
+		expect(buildAllowedTools('n8n-local', ['cognee'])).toEqual(['mcp__n8n-local', 'mcp__cognee']);
+	});
+});
+
+describe('readExtraMcpServers / stageLaneMcpConfig extra servers', () => {
+	let dir: string;
+	beforeEach(() => {
+		dir = mkdtempSync(join(tmpdir(), 'extra-mcp-'));
+	});
+	afterEach(() => {
+		rmSync(dir, { recursive: true, force: true });
+	});
+
+	it('reads servers from a Claude-shaped { mcpServers } file', () => {
+		const path = join(dir, 'extra.json');
+		writeFileSync(
+			path,
+			JSON.stringify({
+				mcpServers: { cognee: { type: 'http', url: 'http://127.0.0.1:8000/mcp' } },
+			}),
+		);
+		expect(readExtraMcpServers(path)).toEqual({
+			cognee: { type: 'http', url: 'http://127.0.0.1:8000/mcp' },
+		});
+	});
+
+	it('reads servers from a bare name→block map', () => {
+		const path = join(dir, 'bare.json');
+		writeFileSync(path, JSON.stringify({ cognee: { type: 'http', url: 'http://x/mcp' } }));
+		expect(readExtraMcpServers(path)).toEqual({ cognee: { type: 'http', url: 'http://x/mcp' } });
+	});
+
+	it('throws when the file declares no servers', () => {
+		const path = join(dir, 'empty.json');
+		writeFileSync(path, JSON.stringify({ mcpServers: {} }));
+		expect(() => readExtraMcpServers(path)).toThrow(/No MCP servers/);
+	});
+
+	it('stages extra servers next to the n8n block without shadowing it', () => {
+		const configPath = stageLaneMcpConfig({
+			serverName: 'n8n-local',
+			url: 'http://lane/mcp-server/http',
+			apiKey: 'key-123',
+			extraServers: { cognee: { type: 'http', url: 'http://127.0.0.1:8000/mcp' } },
+		});
+		const staged = JSON.parse(readFileSync(configPath, 'utf-8')) as {
+			mcpServers: Record<string, { url: string }>;
+		};
+		expect(Object.keys(staged.mcpServers).sort()).toEqual(['cognee', 'n8n-local']);
+		expect(staged.mcpServers['n8n-local'].url).toBe('http://lane/mcp-server/http');
+		expect(staged.mcpServers.cognee.url).toBe('http://127.0.0.1:8000/mcp');
 	});
 });
 
