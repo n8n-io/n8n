@@ -1,4 +1,4 @@
-import { CacheService, EventService } from '@n8n/backend-services';
+import { EventService } from '@n8n/backend-services';
 import { PrometheusMetricsConfig } from '@n8n/config';
 import { ScheduledJobOwnerType, Time } from '@n8n/constants';
 import { ScheduledJobRepository } from '@n8n/db';
@@ -11,7 +11,7 @@ import {
 } from '@/events/maps/system-task-metrics.event-map';
 
 import type { PrometheusMetricsCollector } from './base';
-import { CachedMetricQuery } from './cached-metric-query';
+import { CachedMetricQueryFactory, type CachedMetricQuery } from './cached-metric-query';
 import { DURATION_BUCKETS_SECONDS, LAG_BUCKETS_SECONDS } from './constant';
 
 const DURABLE_JOBS_CACHE_KEY = 'metrics:system-tasks:durable-jobs:v1';
@@ -52,7 +52,7 @@ export class PrometheusSystemTaskMetricsService implements PrometheusMetricsColl
 	constructor(
 		private readonly config: PrometheusMetricsConfig,
 		private readonly eventService: EventService,
-		private readonly cacheService: CacheService,
+		private readonly cachedMetricQueries: CachedMetricQueryFactory,
 		private readonly scheduledJobRepository: ScheduledJobRepository,
 	) {}
 
@@ -101,8 +101,7 @@ export class PrometheusSystemTaskMetricsService implements PrometheusMetricsColl
 		});
 
 		const durableTasks = new Set<string>();
-		const durableJobs = new CachedMetricQuery<DurableJobState[]>({
-			cacheService: this.cacheService,
+		const durableJobs = this.cachedMetricQueries.create<DurableJobState[]>({
 			cacheKey: DURABLE_JOBS_CACHE_KEY,
 			ttlMs: this.config.schedulerMetricsInterval * Time.seconds.toMilliseconds,
 			query: async () => await this.findDurableJobStates(),
@@ -267,10 +266,13 @@ export class PrometheusSystemTaskMetricsService implements PrometheusMetricsColl
 		scheduled: promClient.Gauge<'task' | 'mode'>,
 		nextRun: promClient.Gauge<'task'>,
 	): Promise<void> {
-		let states: DurableJobState[];
+		let states: DurableJobState[] | undefined;
 		try {
 			states = await durableJobs.get();
 		} catch {
+			return;
+		}
+		if (states === undefined) {
 			return;
 		}
 		const stateByTask = new Map(states.map((state) => [state.task, state]));

@@ -4,10 +4,12 @@ import { LicenseMetricsRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import promClient from 'prom-client';
 
-import { CacheService } from '@n8n/backend-services';
-
 import type { PrometheusMetricsCollector } from './base';
-import { CachedMetricQuery } from './cached-metric-query';
+import {
+	type CachedMetricQuery,
+	CachedMetricQueryFactory,
+	toGaugeValue,
+} from './cached-metric-query';
 
 type LicenseMetrics = Awaited<ReturnType<LicenseMetricsRepository['getLicenseRenewalMetrics']>>;
 
@@ -21,7 +23,7 @@ type LicenseMetrics = Awaited<ReturnType<LicenseMetricsRepository['getLicenseRen
 export class PrometheusWorkflowStatisticsMetricsService implements PrometheusMetricsCollector {
 	constructor(
 		private readonly config: PrometheusMetricsConfig,
-		private readonly cacheService: CacheService,
+		private readonly cachedMetricQueries: CachedMetricQueryFactory,
 		private readonly licenseMetricsRepository: LicenseMetricsRepository,
 	) {}
 
@@ -31,8 +33,7 @@ export class PrometheusWorkflowStatisticsMetricsService implements PrometheusMet
 
 	init() {
 		const cacheTtl = this.config.workflowStatisticsInterval * Time.seconds.toMilliseconds;
-		const query = new CachedMetricQuery<LicenseMetrics>({
-			cacheService: this.cacheService,
+		const query = this.cachedMetricQueries.create<LicenseMetrics>({
 			cacheKey: 'metrics:workflow-statistics:shared:v2',
 			ttlMs: cacheTtl,
 			query: async () => await this.licenseMetricsRepository.getLicenseRenewalMetrics(),
@@ -91,7 +92,7 @@ export class PrometheusWorkflowStatisticsMetricsService implements PrometheusMet
 			name: `${this.config.prefix}${metricName}`,
 			help,
 			async collect() {
-				this.set(getMetricValue(await query.get()));
+				this.set(toGaugeValue(await query.get(), getMetricValue));
 			},
 		});
 	}
