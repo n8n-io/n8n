@@ -1,5 +1,5 @@
 import { Logger } from '@n8n/backend-common';
-import { N8N_NODES_API_VERSION } from 'n8n-workflow';
+import { N8N_NODES_API_VERSION, parseNodesApiLevel } from 'n8n-workflow';
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -25,6 +25,11 @@ describe('scanDirectoryForPackages (real filesystem)', () => {
 	afterEach(() => {
 		rmSync(nodeModulesDir, { recursive: true, force: true });
 	});
+
+	// One minor above whatever this runtime supports, so the test states the
+	// boundary instead of pinning the constant.
+	const [major, minor] = parseNodesApiLevel(N8N_NODES_API_VERSION)!;
+	const unsupportedLevel = `${major}.${minor + 1}`;
 
 	const writePackage = (name: string, n8n?: object) => {
 		const dir = path.join(nodeModulesDir, name);
@@ -93,7 +98,7 @@ describe('scanDirectoryForPackages (real filesystem)', () => {
 	it('registers no loader for a package requiring an unsupported node API version', async () => {
 		writePackage('n8n-nodes-future', {
 			nodes: ['dist/nodes/Future.node.js'],
-			n8nNodesApiVersion: N8N_NODES_API_VERSION + 1,
+			n8nNodesApiVersion: unsupportedLevel,
 		});
 		writePackage('n8n-nodes-good');
 
@@ -102,7 +107,7 @@ describe('scanDirectoryForPackages (real filesystem)', () => {
 		expect(loaders.map((loader) => loader.packageName)).toEqual(['n8n-nodes-good']);
 		expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining('n8n-nodes-future'));
 		const [message] = vi.mocked(logger.warn).mock.calls[0];
-		expect(message).toContain(`node API version ${N8N_NODES_API_VERSION + 1}`);
+		expect(message).toContain(`node API version ${unsupportedLevel}`);
 		expect(message).toContain(`supports up to ${N8N_NODES_API_VERSION}`);
 		expect(message).toContain('Upgrade n8n');
 	});

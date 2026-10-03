@@ -3,6 +3,7 @@ import type { HttpRequestClient, OutboundHttp } from '@n8n/backend-network';
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { InstanceSettings, PackageDirectoryLoader } from 'n8n-core';
 import { N8N_NODES_API_VERSION } from '@n8n/constants';
+import { parseNodesApiLevel } from 'n8n-workflow';
 import { execFile } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { mkdir, mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises';
@@ -33,6 +34,11 @@ vi.mock('../npm-utils', async () => ({
 
 const PACKAGE_NAME = 'n8n-nodes-test';
 const TARBALL_NAME = `${PACKAGE_NAME}-2.0.0.tgz`;
+
+// One minor above whatever this runtime supports, so the guard tests state the
+// boundary instead of pinning the constant.
+const [supportedMajor, supportedMinor] = parseNodesApiLevel(N8N_NODES_API_VERSION)!;
+const oneMinorAboveSupported = `${supportedMajor}.${supportedMinor + 1}`;
 
 /**
  * Exercises the install rollback against a real filesystem rather than mocked `fs`
@@ -264,7 +270,7 @@ describe('CommunityPackagesService install rollback (real filesystem)', () => {
 		};
 
 		test('rejects an update and leaves directory, ledger, and database unchanged', async () => {
-			await expect(updateToIncompatible(N8N_NODES_API_VERSION + 1)).rejects.toThrow(
+			await expect(updateToIncompatible(oneMinorAboveSupported)).rejects.toThrow(
 				"isn't compatible with your version of n8n",
 			);
 
@@ -284,7 +290,8 @@ describe('CommunityPackagesService install rollback (real filesystem)', () => {
 		});
 
 		test('rejects an update with a malformed declared version', async () => {
-			await expect(updateToIncompatible('3')).rejects.toThrow('invalid n8n node API version');
+			// A minor level must be a string: `3.10` as a number parses as `3.1`.
+			await expect(updateToIncompatible(3.1)).rejects.toThrow('invalid n8n node API version');
 
 			expect(existsSync(markerPath())).toBe(true);
 			expect(loadNodesAndCredentials.loadPackage).not.toHaveBeenCalled();
@@ -314,7 +321,7 @@ describe('CommunityPackagesService install rollback (real filesystem)', () => {
 				downloadedPackageJson = {
 					name: PACKAGE_NAME,
 					version: '2.0.0',
-					n8n: { n8nNodesApiVersion: N8N_NODES_API_VERSION + 1 },
+					n8n: { n8nNodesApiVersion: oneMinorAboveSupported },
 				};
 
 				await expect(communityPackagesService.installPackage(PACKAGE_NAME)).rejects.toThrow(
@@ -334,7 +341,7 @@ describe('CommunityPackagesService install rollback (real filesystem)', () => {
 				downloadedPackageJson = {
 					name: PACKAGE_NAME,
 					version: '2.0.0',
-					n8n: { n8nNodesApiVersion: N8N_NODES_API_VERSION + 1 },
+					n8n: { n8nNodesApiVersion: oneMinorAboveSupported },
 				};
 				// The follower resolves the version to install from the leader's database record.
 				installedPackageRepository.findOne.mockResolvedValue(
@@ -359,7 +366,7 @@ describe('CommunityPackagesService install rollback (real filesystem)', () => {
 						packageName: PACKAGE_NAME,
 						reason: expect.stringContaining("isn't compatible with your version of n8n"),
 						// The operator log names both versions, unlike the user-facing message.
-						requiredNodesApiVersion: N8N_NODES_API_VERSION + 1,
+						requiredNodesApiVersion: oneMinorAboveSupported,
 						supportedNodesApiVersion: N8N_NODES_API_VERSION,
 					}),
 				);

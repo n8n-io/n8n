@@ -43,9 +43,12 @@ export function isCommunityPackageUpdateAvailable({
 interface IncompatibleNodesApiVersionErrorResponse {
 	httpStatusCode: number;
 	meta: {
-		/** API version the package requires, or `null` if the declared value is malformed. */
-		requiredNodesApiVersion: number | null;
-		supportedNodesApiVersion: number;
+		/**
+		 * API version the package requires, as declared (`"3"` or `"3.1"`), or
+		 * `null` if the declared value is malformed.
+		 */
+		requiredNodesApiVersion: string | null;
+		supportedNodesApiVersion: string;
 	};
 }
 
