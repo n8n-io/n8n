@@ -58,7 +58,7 @@ Use the first `auth` that fits:
 | `a.oauth2.clientCredentials(...)` | RFC 6749 §4.4 | |
 | `a.oauth2.deviceCode`, `jwtBearer`, `tokenExchange`, `a.oidc({ issuer })` | RFC 8628, RFC 7523, RFC 8693, OIDC. Data only: n8n core does not run them yet, so `toCredentialType` refuses them | |
 | `a.exchange({ post, json, token, headers })` | a token request first, e.g. a login for a session token. `{$token}` is the token | Metabase (parity file) |
-| `a.none()` | nothing. The built-in node that uses the type reads its fields | WhatsApp and Facebook trigger apps |
+| `a.none()` | nothing. The legacy node that uses the type reads its fields | WhatsApp and Facebook trigger apps |
 | `a.custom({ reason, sign })` | code signs each request and sees every secret. `reason` is required | the last resort |
 
 - Fields: `field.secret(title)` (masked, only n8n and `custom` read it), `field.text(title)`, `field.url(title)`,
@@ -182,7 +182,7 @@ sequenceDiagram
 
 n8n treats some trigger node types in a special way: test URLs, form pages, schedules, manual
 runs, verification pin data, and the eval harness read them by type. A native trigger types such a
-built-in node. n8n runs the built-in node; the SDK runs nothing.
+legacy node. n8n runs the legacy node; the SDK runs nothing.
 
 ```ts
 export const webhookTrigger = webhook.trigger('trigger', {
@@ -204,18 +204,18 @@ export const webhookTrigger = webhook.trigger('trigger', {
 
 | Part | Meaning |
 |---|---|
-| `input` | The parameters of the built-in node at `native.version`, as strict as the node allows. The flow emits them as they are. |
+| `input` | The parameters of the legacy node at `native.version`, as strict as the node allows. The flow emits them as they are. |
 | `native.on` | What starts it: `manual`, `schedule`, `webhook`, `form`, or `poll`. The contract document has it in `trigger`. |
 | `t.declared()` | An output field whose JSON Schema the workflow declares in `schema`, e.g. `schema: { body: { … } }`. It types the field, and without a `sample` it makes the trigger sample. It is not a node parameter, and n8n does not check the value at run time. Without a schema, the field is open JSON. |
 | `x-n8n-entry-fields` | One output field per entry of an input list, e.g. one per form field. The module types it from the config with `EntryFields`, and `Exact` names a misspelt key. |
 | `reply` | The step that answers the caller. The module has it beside the trigger (`webhook.respond`). The flow build fails when the trigger waits (`awaits`) and no reply follows, or when a reply follows a trigger that does not wait and no node between them waits (`awaits.field` is `awaits.value`, e.g. a Wait node). |
 
 - `generatedTriggersOf(trigger, nodeType)` gives the factories of a trigger. A native trigger
-  emits its built-in node type and version, and its reply.
+  emits its legacy node type and version, and its reply.
 - A native trigger is not frozen and has no node class. `triggerMethodsOf` throws for it.
 - An action can be native too: `native: { type, version }` instead of `run` or `request`, e.g.
   `loop.batches` for Loop Over Items. It has the same rules: no bundle, no node class
-  (`toNodeType` and `executorOf` throw), and the flow emits the built-in node.
+  (`toNodeType` and `executorOf` throw), and the flow emits the legacy node.
 
 ## Bindings
 
@@ -225,7 +225,7 @@ export const webhookTrigger = webhook.trigger('trigger', {
 | `request` | `request: { method, path: '/users/{user}', query, body }` | The host executor sends one request per item. |
 | `list` | `list: { path, query, response, items(page), pages }` | The host executor pages through the list. |
 | `mcp` | Nothing: `liftMcpTool(node, tool, client)` | The host's MCP client calls the tool. |
-| `native` | `native: { type: 'n8n-nodes-base.splitInBatches', version: 3 }` | n8n runs the built-in node. |
+| `native` | `native: { type: 'n8n-nodes-base.splitInBatches', version: 3 }` | n8n runs the legacy node. |
 
 - `request.path` is type checked: `{field}` must name a required input field. An optional field
   could leave the segment empty and send the request to another URL. At run time, an empty

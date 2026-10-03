@@ -83,7 +83,7 @@ const incident = `webhook.trigger({
 
 // Each case runs a real tsc.
 describe('native trigger modules', { timeout: 30_000 }, () => {
-	it('emit the built-in nodes, so n8n runs them', () => {
+	it('emit the legacy nodes, so n8n runs them', () => {
 		expect(nodeModuleText('webhook')).toContain(
 			'contractTrigger("n8n-nodes-base.webhook", config, 2.2,',
 		);
@@ -95,7 +95,7 @@ describe('native trigger modules', { timeout: 30_000 }, () => {
 		);
 	});
 
-	it('resolve from the built-in node types', () => {
+	it('resolve from the legacy node types', () => {
 		expect(nextNodeModule('n8n-nodes-base.webhook')?.node).toBe('webhook');
 		expect(nextNodeModule('n8n-nodes-base.respondToWebhook')?.node).toBe('webhook');
 		expect(nextNodeModule('n8n-nodes-base.scheduleTrigger')?.node).toBe('schedule');

@@ -47,11 +47,11 @@ describe('native triggers', () => {
 			credentials: [],
 		});
 		expect(() => toTriggerNodeType(call)).toThrow(
-			'hooks.trigger runs as the built-in node n8n-nodes-base.hook',
+			'hooks.trigger runs as the legacy node n8n-nodes-base.hook',
 		);
 	});
 
-	it('let an action run as a built-in node, as a native trigger does', () => {
+	it('let an action run as a legacy node, as a native trigger does', () => {
 		const batches = hooks.action('batches', {
 			action: 'Loop in batches',
 			summary: 'Emits batches.',
@@ -67,7 +67,7 @@ describe('native triggers', () => {
 			output: t.passedItem().json,
 		});
 		expect(() => toNodeType(batches)).toThrow(
-			'hooks.batches runs as the built-in node n8n-nodes-base.splitInBatches',
+			'hooks.batches runs as the legacy node n8n-nodes-base.splitInBatches',
 		);
 	});
 
@@ -108,7 +108,7 @@ describe('native triggers', () => {
 		);
 	});
 
-	it('generate the built-in nodes with their pairing', () => {
+	it('generate the legacy nodes with their pairing', () => {
 		const pairing = {
 			trigger: 'n8n-nodes-base.hook',
 			reply: 'n8n-nodes-base.reply',

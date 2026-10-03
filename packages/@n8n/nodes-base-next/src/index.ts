@@ -233,8 +233,8 @@ export const actions: readonly Action[] = [
 export const triggers: readonly Trigger[] = [pageAdded, repositoryEvent];
 
 /**
- * Triggers that a built-in n8n node runs. They have no bundle and no node type of this package:
- * the typed flow emits the built-in node with the typed parameters.
+ * Triggers that a legacy node runs. They have no bundle and no node type of this package:
+ * the typed flow emits the legacy node with the typed parameters.
  */
 export const nativeTriggers: readonly Trigger[] = [
 	webhookTrigger,
@@ -248,7 +248,7 @@ export const nativeTriggers: readonly Trigger[] = [
 /**
  * The credential types of the shipped nodes that this package defines, one n8n class each. With
  * the node contracts flag on, each replaces the legacy class of the same name, also for the
- * built-in node of a native trigger. A compat type stays the legacy class.
+ * legacy node of a native trigger. A compat type stays the legacy class.
  */
 export const credentialTypes: readonly AnyCredentialType[] = [
 	...new Set(

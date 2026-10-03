@@ -1,7 +1,7 @@
 import { defineNode } from '@n8n/node-sdk';
 import { credential, defineCredential, field } from '@n8n/node-sdk/credentials';
 
-/** The Meta app. The built-in trigger reads the secret to verify each delivery. */
+/** The Meta app. The legacy trigger node reads the secret to verify each delivery. */
 export const whatsAppApp = defineCredential({
 	id: 'whatsApp.app',
 	legacyName: 'whatsAppTriggerApi',
@@ -21,8 +21,8 @@ export const whatsAppApp = defineCredential({
 });
 
 /**
- * The built-in WhatsApp Trigger node. It answers the Meta verification request and registers
- * the app subscription, so n8n runs the built-in node. Its credential is the Meta app, not the
+ * The legacy WhatsApp Trigger node. It answers the Meta verification request and registers
+ * the app subscription, so n8n runs the legacy node. Its credential is the Meta app, not the
  * WhatsApp sender of the WhatsApp actions.
  */
 export const whatsAppTrigger = defineNode({

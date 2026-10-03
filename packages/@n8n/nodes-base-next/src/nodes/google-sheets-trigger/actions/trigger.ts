@@ -2,7 +2,7 @@ import { t } from '@n8n/node-sdk';
 
 import { googleSheetsTrigger } from '../google-sheets-trigger.node';
 
-/** A resource locator of the built-in node: n8n reads `__rl` to show and resolve it. */
+/** A resource locator of the legacy node: n8n reads `__rl` to show and resolve it. */
 const locator = (hint: string) =>
 	t.obj({ __rl: t.lit(true), mode: t.oneOf('url', 'id'), value: t.str().hint(hint) });
 

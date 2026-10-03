@@ -477,7 +477,7 @@ function settingsOf(node: NodeJSON): NodeSettings {
 
 const hasSettings = (node: NodeJSON) => Object.keys(settingsOf(node)).length > 0;
 
-/** A region or built-in step takes no node settings, so a node with settings keeps its call. */
+/** A region or core-node step takes no node settings, so a node with settings keeps its call. */
 const isNodeType = (node: NodeJSON | undefined, type: { type: string; version: number }) =>
 	node?.type === type.type &&
 	node.typeVersion === type.version &&

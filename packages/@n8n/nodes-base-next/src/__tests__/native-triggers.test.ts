@@ -3,7 +3,7 @@ import { checkAction, lintContract, replyContractOf } from '@n8n/node-sdk/regist
 import { actions, flowNatives, nativeTriggers, triggers } from '../index';
 
 describe('native triggers', () => {
-	it('run as built-in nodes, so nothing freezes or registers them', () => {
+	it('run as legacy nodes, so nothing freezes or registers them', () => {
 		expect(nativeTriggers.map((trigger) => [trigger.id, trigger.kind])).toEqual([
 			['webhook.trigger', 'native'],
 			['schedule.trigger', 'native'],
@@ -25,7 +25,7 @@ describe('native triggers', () => {
 		expect([...nativeTriggers.flatMap(checkAction), ...replies.flatMap(lintContract)]).toEqual([]);
 	});
 
-	it('include the flow natives, which run as built-in nodes too', () => {
+	it('include the flow natives, which run as legacy nodes too', () => {
 		expect(flowNatives.map(({ id, native }) => [id, native?.type])).toEqual([
 			['manual.trigger', 'n8n-nodes-base.manualTrigger'],
 			['loop.batches', 'n8n-nodes-base.splitInBatches'],

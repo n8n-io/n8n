@@ -901,6 +901,10 @@ function fileNameOf(headers: Readonly<Record<string, string>>, url: string): str
 	return name ? decoded(name) : undefined;
 }
 
+/** A native action or trigger has no SDK runtime: n8n runs its legacy node, so nothing freezes or loads it. */
+export const nativeRunError = ({ id, native }: Pick<Action | Trigger, 'id' | 'native'>) =>
+	new UnexpectedError(`${id} runs as the legacy node ${native?.type ?? ''}`);
+
 /**
  * The executor of the action interface. Per-item and 1:N actions run once per input item with the
  * parameters of that item; a batch action runs once with all items and the parameters of the
@@ -911,10 +915,6 @@ function fileNameOf(headers: Readonly<Record<string, string>>, url: string): str
  * Continue-on-fail gives an error item on the last output, which n8n routes to the error
  * output when the node has one.
  */
-/** A native action or trigger has no SDK runtime: n8n runs its built-in node, so nothing freezes or loads it. */
-export const nativeRunError = ({ id, native }: Pick<Action | Trigger, 'id' | 'native'>) =>
-	new UnexpectedError(`${id} runs as the built-in node ${native?.type ?? ''}`);
-
 export function executorOf<S extends Shape, O extends AnySchema>(
 	action: Action<S, O>,
 ): (host: ExecutorHost) => Promise<INodeExecutionData[][]> {

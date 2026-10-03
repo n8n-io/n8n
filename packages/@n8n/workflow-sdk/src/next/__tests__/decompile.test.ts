@@ -118,7 +118,7 @@ const pairing = {
 	value: 'responseNode',
 };
 
-// A stand-in for `@n8n/nodes/webhook`: native contracts emit the built-in nodes.
+// A stand-in for `@n8n/nodes/webhook`: native contracts emit the legacy nodes.
 const webhook = {
 	trigger: <const N extends string>(config: {
 		name: N;
@@ -1223,7 +1223,7 @@ describe('decompileWorkflow', () => {
 		expect(source).toContain('  onError(set({');
 	});
 
-	it('keeps a built-in step with node settings out of its region form', () => {
+	it('keeps a core-node step with node settings out of its region form', () => {
 		const json = workflow('Fields', manual(), set({ name: 'Fields', fields: { a: 1 } })).toJSON();
 		const withNotes = {
 			...json,

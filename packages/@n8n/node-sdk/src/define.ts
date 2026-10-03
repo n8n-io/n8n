@@ -1078,7 +1078,7 @@ type Only<Cardinality, C> = Cardinality extends C ? unknown : never;
 
 /**
  * How the action runs: code (`run`), one request per item that the host sends (`request`), a
- * list the host pages through (`list`), or a built-in n8n node (`native`), as a native trigger
+ * list the host pages through (`list`), or a legacy node (`native`), as a native trigger
  * does.
  */
 export type ActionBinding<
@@ -1147,7 +1147,7 @@ export type ActionBinding<
 			readonly inputs?: never;
 	  }
 	| {
-			/** The built-in n8n node that runs the action. The contract types its parameters. */
+			/** The legacy node that runs the action. The contract types its parameters. */
 			readonly native: NativeNode;
 			readonly run?: never;
 			readonly request?: never;
@@ -1342,7 +1342,7 @@ type PollSource<I, T, Out, P = unknown> = {
 	readonly native?: never;
 };
 
-/** A built-in n8n node that runs a contract. The contract types its parameters and its items. */
+/** A legacy node that runs a contract. The contract types its parameters and its items. */
 export interface NativeNode {
 	/** The n8n node type, e.g. `n8n-nodes-base.webhook`. */
 	readonly type: string;
@@ -1350,7 +1350,7 @@ export interface NativeNode {
 	readonly version: number;
 }
 
-/** What starts a native trigger. `poll`: n8n polls with the built-in node on its Poll Times. */
+/** What starts a native trigger. `poll`: n8n polls with the legacy node on its Poll Times. */
 export type NativeEvent = 'manual' | 'schedule' | 'webhook' | 'form' | 'poll';
 
 /**
@@ -1371,7 +1371,7 @@ export interface TriggerReply<Field extends string = string> {
 	 * tag, e.g. `respondWith`. The node keeps the tag and the fields flat, as a variant does.
 	 */
 	readonly input: Shape | AnySchema;
-	/** The built-in n8n node of the reply, e.g. `n8n-nodes-base.respondToWebhook`. */
+	/** The legacy node of the reply, e.g. `n8n-nodes-base.respondToWebhook`. */
 	readonly native: NativeNode;
 	/** The trigger field value that makes the caller wait for the reply. */
 	readonly awaits?: {
@@ -1385,11 +1385,11 @@ export interface TriggerReply<Field extends string = string> {
 }
 
 /**
- * A trigger that a built-in n8n node runs, because n8n treats the node type in a special way
+ * A trigger that a legacy node runs, because n8n treats the node type in a special way
  * (test URLs, form pages, schedules, manual runs). The input is the node's parameters.
  */
 type NativeSource<Field extends string> = {
-	/** The built-in n8n node that runs the trigger, and what starts it. */
+	/** The legacy node that runs the trigger, and what starts it. */
 	readonly native: NativeNode & {
 		/** What starts the trigger. */
 		readonly on: NativeEvent;
@@ -1433,16 +1433,16 @@ export type Trigger<S extends Shape = Shape, O extends AnySchema = AnySchema> = 
 				readonly kind: 'poll';
 		  } & PollSource<RunInput<S>, unknown, Infer<O>>)
 		| ({
-				/** A built-in n8n node runs the trigger. */
+				/** A legacy node runs the trigger. */
 				readonly kind: 'native';
 		  } & NativeSource<string>)
 	);
 
-/** A trigger that a built-in n8n node runs. */
+/** A trigger that a legacy node runs. */
 export type NativeTrigger = Extract<
 	Trigger,
 	{
-		/** A built-in n8n node runs the trigger. */
+		/** A legacy node runs the trigger. */
 		readonly kind: 'native';
 	}
 >;
@@ -1636,7 +1636,7 @@ export type NodeBuilder<N extends NodeDefinition> = N & {
 	 */
 	readonly provider: NodeProvider<N, Record<never, never>, ActionPath>;
 	/**
-	 * A trigger of the node itself: a webhook, a poll, or a built-in n8n node.
+	 * A trigger of the node itself: a webhook, a poll, or a legacy node.
 	 *
 	 * @see `docs/credentials-triggers.md`
 	 */

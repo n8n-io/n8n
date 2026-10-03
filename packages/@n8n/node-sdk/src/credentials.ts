@@ -311,7 +311,7 @@ export interface Exchange {
 	readonly apply: Placement;
 }
 
-/** n8n puts nothing into requests. The built-in node that uses the type reads its fields. */
+/** n8n puts nothing into requests. The legacy node that uses the type reads its fields. */
 export interface NoAuth {
 	/** Marks a type that puts nothing into requests. */
 	readonly kind: 'none';

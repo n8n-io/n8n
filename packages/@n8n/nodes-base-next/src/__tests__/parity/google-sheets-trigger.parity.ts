@@ -66,8 +66,8 @@ const document = {
 	value: 'https://docs.google.com/spreadsheets/d/abc/edit',
 };
 
-describe('Google Sheets Trigger contract against the built-in node', () => {
-	it('names the built-in node type and version', () => {
+describe('Google Sheets Trigger contract against the legacy node', () => {
+	it('names the legacy node type and version', () => {
 		expect(sheetRowsChanged.kind === 'native' && sheetRowsChanged.native).toEqual({
 			type: 'n8n-nodes-base.googleSheetsTrigger',
 			version: 1,
@@ -127,7 +127,7 @@ describe('Google Sheets Trigger contract against the built-in node', () => {
 		expect(keptBy(parameters)).toMatchObject(parameters);
 	});
 
-	it('offers only option values the built-in node has', () => {
+	it('offers only option values the legacy node has', () => {
 		const properties = input.properties ?? {};
 		const optionsOf = properties.options?.properties ?? {};
 		const pairs: Array<[readonly unknown[], unknown[]]> = [
@@ -151,7 +151,7 @@ describe('Google Sheets Trigger contract against the built-in node', () => {
 		expect(legacyOptions('includeInOutput')).toContain('both');
 	});
 
-	it('types the rows the built-in node emits for each event', () => {
+	it('types the rows the legacy node emits for each event', () => {
 		const header = ['Name', 'Seats', 'Active'];
 		const added = arrayOfArraysToJson([['Ada', 3, 'yes']], header);
 		const previous = [header, ['Ada', 3, 'yes'], ['Bob', 1, 'no']];

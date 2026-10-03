@@ -37,8 +37,8 @@ function loopRunner(parameters: IDataObject) {
 		} as never);
 }
 
-describe('flow native contracts against the built-in nodes', () => {
-	it('name the built-in node types, versions and outputs', () => {
+describe('flow native contracts against the legacy nodes', () => {
+	it('name the legacy node types, versions and outputs', () => {
 		expect([loopBatches.native, manualTrigger.native]).toEqual([
 			{ type: 'n8n-nodes-base.splitInBatches', version: 3 },
 			{ type: 'n8n-nodes-base.manualTrigger', version: 1, on: 'manual' },
@@ -61,7 +61,7 @@ describe('flow native contracts against the built-in nodes', () => {
 		expect(keptByLoop(parameters)).toMatchObject(parameters);
 	});
 
-	it('reject a batch size the built-in node does not take', () => {
+	it('reject a batch size the legacy node does not take', () => {
 		expect(validate({ batchSize: 0 }, loopBatches.inputSchema)).not.toEqual([]);
 		expect(validate({}, loopBatches.inputSchema)).not.toEqual([]);
 	});

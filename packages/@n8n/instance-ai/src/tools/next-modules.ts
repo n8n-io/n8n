@@ -85,7 +85,7 @@ export function nodeModuleText(nodeId: string): string | undefined {
 	return own.length || triggersOfNode(nodeId).length ? moduleOf(nodeId, own) : undefined;
 }
 
-/** The built-in node types that a native trigger and its reply step emit. */
+/** The legacy node types that a native trigger and its reply step emit. */
 const nativeTypesOf = (trigger: (typeof allTriggers)[number]) =>
 	trigger.kind === 'native'
 		? [trigger.native.type, ...(trigger.reply ? [trigger.reply.native.type] : [])]
@@ -93,7 +93,7 @@ const nativeTypesOf = (trigger: (typeof allTriggers)[number]) =>
 
 /**
  * The node id for a node id, an action id, an executable node type of this package, or a
- * built-in node type that a native trigger types.
+ * legacy node type that a native trigger types.
  */
 function nextNodeIdOf(ref: string): string | undefined {
 	return (
@@ -153,7 +153,7 @@ export function nextNodeView(
 	return { ...full, module };
 }
 
-/** The module node of a native trigger that types the built-in node type, e.g. `webhook`. */
+/** The module node of a native trigger that types the legacy node type, e.g. `webhook`. */
 const nativeNodeIdOf = (nodeType: string) =>
 	allTriggers.find((trigger) => nativeTypesOf(trigger).includes(nodeType))?.node.id;
 

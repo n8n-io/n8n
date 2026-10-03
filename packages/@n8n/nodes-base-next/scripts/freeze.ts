@@ -17,7 +17,7 @@ export const NODES_DIR = path.resolve(__dirname, '..', 'src', 'nodes');
 
 const contracts: ReadonlyArray<Action | Trigger> = [...actions, ...triggers];
 
-/** Built-in n8n nodes run these, so they register but do not freeze. */
+/** Legacy nodes run these, so they register but do not freeze. */
 const natives: ReadonlyArray<Action | Trigger> = [...nativeTriggers, ...flowNatives];
 
 const isRegistered = (value: unknown) =>

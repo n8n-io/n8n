@@ -750,7 +750,7 @@ interface Selector {
 
 const isProviderKind = (kind: string): kind is ProviderKind =>
 	Object.hasOwn(PROVIDER_KIND_SLOTS, kind);
-/** The built-in Manual Trigger, which the native contract `manual.trigger` types. */
+/** The legacy Manual Trigger node, which the native contract `manual.trigger` types. */
 export const MANUAL_NODE = { type: 'n8n-nodes-base.manualTrigger', version: 1 };
 /** The IF and Edit Fields contracts of `@n8n/nodes-base-next` (`condition.if`, `items.set`). */
 export const BRANCH_NODE = { type: '@n8n/nodes-base-next.conditionIf', version: 1 };

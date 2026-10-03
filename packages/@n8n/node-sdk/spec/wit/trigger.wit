@@ -2,7 +2,7 @@ package n8n:node-contract@2.5.0;
 
 /// What a trigger bundle exports. The host keeps the state of each trigger node, runs the
 /// polls on the Poll Times of the node, and checks the webhook signature that the manifest
-/// declares before it calls `webhook`. A native trigger (a built-in n8n node) has no bundle:
+/// declares before it calls `webhook`. A native trigger (a legacy node) has no bundle:
 /// its manifest is data only.
 @since(version = 2.5.0)
 interface trigger {

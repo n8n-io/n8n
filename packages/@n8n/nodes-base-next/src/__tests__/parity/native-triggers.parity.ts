@@ -25,7 +25,7 @@ import { scheduleTrigger } from '../../nodes/schedule/actions/trigger';
 import { webhookTrigger } from '../../nodes/webhook/actions/trigger';
 import { whatsAppEvent } from '../../nodes/whats-app-trigger/actions/trigger';
 
-/** The description n8n uses for `version` of a built-in node. */
+/** The description n8n uses for `version` of a legacy node. */
 const descriptionAt = (
 	type: { description: INodeTypeDescription } | { getNodeType(version: number): INodeType },
 	version: number,
@@ -62,13 +62,13 @@ const replyInput =
 	(webhookTrigger.kind === 'native' && replyContractOf(webhookTrigger)?.input) || {};
 const pageContract = formTrigger.kind === 'native' ? replyContractOf(formTrigger) : undefined;
 
-describe('native trigger contracts against the built-in nodes', () => {
+describe('native trigger contracts against the legacy nodes', () => {
 	const webhook = descriptionAt(new Webhook(), 2.2);
 	const respond = descriptionAt(new RespondToWebhook(), 1.5);
 	const schedule = descriptionAt(new ScheduleTrigger(), 1.4);
 	const form = descriptionAt(new FormTrigger(), 2.6);
 
-	it('name the built-in node types and versions', () => {
+	it('name the legacy node types and versions', () => {
 		const targets = [webhookTrigger, scheduleTrigger, formTrigger].map((trigger: Trigger) =>
 			trigger.kind === 'native' ? [trigger.native.type, trigger.native.version] : [],
 		);
@@ -216,7 +216,7 @@ describe('native trigger contracts against the built-in nodes', () => {
 		},
 	);
 
-	it('offer only option values the built-in nodes have', () => {
+	it('offer only option values the legacy nodes have', () => {
 		const reply = replyContractOf(
 			webhookTrigger.kind === 'native' ? webhookTrigger : (undefined as never),
 		);
@@ -440,7 +440,7 @@ describe('native trigger contracts against the built-in nodes', () => {
 		expect(issues).toEqual([]);
 	});
 
-	it('emit a form page as the built-in Form node: next page, fields typed as the trigger types them', () => {
+	it('emit a form page as the legacy Form node: next page, fields typed as the trigger types them', () => {
 		const description = new Form().description;
 		expect([description.name, description.version]).toEqual([
 			'form',

@@ -407,7 +407,7 @@ export interface Pairing {
 
 /**
  * The factories of a trigger: the trigger, and the reply step of a native trigger. A native
- * trigger emits its built-in node; another trigger emits `nodeType`.
+ * trigger emits its legacy node; another trigger emits `nodeType`.
  */
 export function generatedTriggersOf(trigger: Trigger, nodeType: string): GeneratedAction[] {
 	const { resource } = trigger;

@@ -1,7 +1,7 @@
 import { defineNode } from '@n8n/node-sdk';
 import { credential, defineCredential, field } from '@n8n/node-sdk/credentials';
 
-/** The Facebook app. The built-in trigger reads its fields and signs nothing through n8n. */
+/** The Facebook app. The legacy trigger node reads its fields and signs nothing through n8n. */
 export const facebookApp = defineCredential({
 	id: 'facebook.app',
 	legacyName: 'facebookGraphAppApi',
@@ -54,8 +54,8 @@ export const facebookAppOAuth2 = defineCredential({
 });
 
 /**
- * The built-in Facebook Trigger node. It answers the Meta verification request and registers
- * the app subscription, so n8n runs the built-in node.
+ * The legacy Facebook Trigger node. It answers the Meta verification request and registers
+ * the app subscription, so n8n runs the legacy node.
  */
 export const facebookTrigger = defineNode({
 	id: 'facebookTrigger',
