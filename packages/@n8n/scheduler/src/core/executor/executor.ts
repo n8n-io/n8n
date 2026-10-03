@@ -1,17 +1,28 @@
-import { Time } from '@n8n/constants';
+import { MAX_INTEGER_32BITS_SIGNED, Time } from '@n8n/constants';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 
 import { backoff } from './backoff';
+import { LeaseLostError } from '../errors';
+import { LONG_RUN_THRESHOLD_IN_LEASES } from './lease-constants';
+import { LeaseHeartbeat } from './lease-heartbeat';
+import type { LeaseRenewalResult } from './lease-heartbeat';
 import { DEFAULT_EXECUTOR_OPTIONS, type ExecutorOptions } from './options';
 import type { PrecisionTimer } from './precision-timer';
 import type { ClaimedTaskRef, ClaimDueTasksBatch, ExecutorTaskStore } from './store';
 import { createDispatchReporter } from './task-handler';
-import type { TaskHandlerRegistry } from './task-handler';
+import type { DispatchReporter, TaskHandler, TaskHandlerRegistry } from './task-handler';
 import { noopExecutorTracing } from './tracing';
 import type { ExecutorTracing, FireResult } from './tracing';
 import type { ClaimedTask } from '../types';
 
 type ClaimedEntry = { host: string; task: ClaimedTask };
+
+type HeartbeatRun = {
+	claim: ClaimedTaskRef;
+	/** `performance.now()` just before the write that last set the lease. */
+	leaseSetAt: number;
+	isDispatchStored: () => boolean;
+};
 
 /**
  * Observability callbacks for the executor's non-fatal incidents. Every one is
@@ -41,6 +52,12 @@ export interface ExecutorHooks {
 	/** A best-effort claim release failed; the reaper still recovers the row. */
 	onReleaseError?: (taskId: string, error: unknown) => void;
 
+	/** A lease renewal write failed; the next renewal tries again. */
+	onLeaseRenewalError?: (task: ClaimedTask, error: unknown) => void;
+
+	/** A handler is still running after many leases, so it may be stuck. Fires once a run. */
+	onLongRunningTask?: (task: ClaimedTask, runningSeconds: number) => void;
+
 	// Fire-path metrics hooks (the normal path), distinct from the incident hooks above.
 
 	/** A claimed task was dispatched to its handler; `lagSeconds` is fire time minus its effective `runAt` (clamped >= 0). */
@@ -56,6 +73,12 @@ export interface ExecutorHooks {
 	 * overlap, surfaced so it can be counted.
 	 */
 	onLeaseLost?: (taskType: string) => void;
+	/**
+	 * A running handler's lease was renewed, a renewal found its claim gone
+	 * ('lost'), or no renewal succeeded for a whole lease ('expired').
+	 * Both of the latter abort the handler's signal before dispatch.
+	 */
+	onLeaseRenewal?: (task: ClaimedTask, result: LeaseRenewalResult) => void;
 }
 
 /**
@@ -65,7 +88,8 @@ export interface ExecutorHooks {
  * handler the executor takes a pre-dispatch mutex ({@link ExecutorTaskStore.beginDispatch}):
  * an atomic compare-and-set that stamps `startedAt` and returns 1 for a single
  * winner, so the handler runs at most once per lease. That same write refreshes the
- * lease, giving the handler a full lease for its execution window.
+ * lease, and a heartbeat renews it while the handler runs, so a long handler keeps
+ * its claim for as long as its instance is alive.
  *
  * The contract is at-least-once. Ownership only lasts as long as the lease: if an
  * owner is lost past it (crash or partition), the reaper reclaims the row, clears
@@ -235,6 +259,8 @@ export class Executor {
 		// => the row is gone, was reclaimed (epoch bumped), or was already dispatched on
 		// this lease; in every case don't run the handler. This compare-and-set, not the
 		// later marker, is what keeps the executor from calling a handler twice per lease.
+		// Response time includes database latency and would overestimate the remaining lease.
+		const leaseSetAt = performance.now();
 		const won = await this.store.beginDispatch(claim, this.leaseMs);
 		if (won === 0) {
 			return { outcome: 'skipped-not-owned' };
@@ -259,9 +285,12 @@ export class Executor {
 		// no-op, so an explicit `dispatched()` and the post-return fallback below collapse to
 		// one write.
 		let dispatchMark: Promise<void> | undefined;
+		let isDispatchStored = false;
 		const markDispatched = (): void => {
 			dispatchMark ??= this.store.markDispatched(claim).then(
-				() => undefined,
+				(rowsAffected) => {
+					isDispatchStored = rowsAffected > 0;
+				},
 				(error: unknown) => this.hooks.onFireError?.(task, error),
 			);
 		};
@@ -271,39 +300,36 @@ export class Executor {
 		// handler failure. Such a failure propagates out (caught by the detached `.catch`
 		// in claimAndSchedule) and leaves the row `running` for the reaper.
 		try {
-			await handler.execute(task, report);
+			await this.executeWithHeartbeat(handler, task, report, {
+				claim,
+				leaseSetAt,
+				isDispatchStored: () => isDispatchStored,
+			});
 		} catch (error) {
 			await dispatchMark;
-			const errorMessage = ensureError(error).message;
-			const nextAttempts = task.attempts + 1;
-			if (nextAttempts >= task.maxAttempts) {
-				// If the handler had already handed off its effect (`dispatched()` ran, so
-				// `dispatchMark` is set) before throwing, the occurrence's work is done.
-				// On this last attempt, recording it failed would blame the scheduler for
-				// work that happened; complete it as succeeded instead, mirroring the
-				// reaper's post-dispatch branch. Only pre-dispatch failures are dead-lettered.
-				if (dispatchMark !== undefined) {
-					const rowsAffected = await this.store.completeTask(claim);
-					if (rowsAffected > 0) {
-						this.hooks.onFire?.(task.taskType, 'success');
-						return { outcome: 'completed' };
-					}
-					this.hooks.onLeaseLost?.(task.taskType);
-					return { outcome: 'skipped-not-owned', errorMessage };
-				}
-				// A terminal write resolves 0 (it does not reject) when the row was
-				// reclaimed by the reaper after a lease overrun. The result is then no
-				// longer ours to record: report the fire as skipped, not as a state
-				// transition we did not make, and count only the lease-lost metric,
-				// not a fire outcome. Same on every terminal write below.
-				const rowsAffected = await this.store.failTaskTerminal(claim, errorMessage);
-				if (rowsAffected > 0) {
-					this.hooks.onFire?.(task.taskType, 'failure');
-					return { outcome: 'dead-lettered', errorMessage };
-				}
-				this.hooks.onLeaseLost?.(task.taskType);
-				return { outcome: 'skipped-not-owned', errorMessage };
-			}
+			return await this.recordHandlerFailure(task, claim, error, dispatchMark !== undefined);
+		}
+
+		markDispatched(); // A handler that returned without throwing is considered as dispatched
+		await dispatchMark;
+		const rowsAffected = await this.store.completeTask(claim);
+		if (rowsAffected > 0) {
+			this.hooks.onFire?.(task.taskType, 'success');
+			return { outcome: 'completed' };
+		}
+		this.hooks.onLeaseLost?.(task.taskType);
+		return { outcome: 'skipped-not-owned' };
+	}
+
+	private async recordHandlerFailure(
+		task: ClaimedTask,
+		claim: ClaimedTaskRef,
+		error: unknown,
+		dispatchWasReported: boolean,
+	): Promise<FireResult> {
+		const errorMessage = ensureError(error).message;
+		const nextAttempts = task.attempts + 1;
+		if (nextAttempts < task.maxAttempts) {
 			const rowsAffected = await this.store.rescheduleTask(
 				claim,
 				backoff(nextAttempts),
@@ -317,15 +343,71 @@ export class Executor {
 			return { outcome: 'skipped-not-owned', errorMessage };
 		}
 
-		markDispatched(); // A handler that returned without throwing is considered as dispatched
-		await dispatchMark;
-		const rowsAffected = await this.store.completeTask(claim);
+		// On the last attempt, complete work whose effect was handed off before the error.
+		// The report counts even if its marker write failed.
+		if (dispatchWasReported) {
+			const rowsAffected = await this.store.completeTask(claim);
+			if (rowsAffected > 0) {
+				this.hooks.onFire?.(task.taskType, 'success');
+				return { outcome: 'completed' };
+			}
+			this.hooks.onLeaseLost?.(task.taskType);
+			return { outcome: 'skipped-not-owned', errorMessage };
+		}
+
+		// Zero rows means the claim is gone. Report no transition that we did not make.
+		const rowsAffected = await this.store.failTaskTerminal(claim, errorMessage);
 		if (rowsAffected > 0) {
-			this.hooks.onFire?.(task.taskType, 'success');
-			return { outcome: 'completed' };
+			this.hooks.onFire?.(task.taskType, 'failure');
+			return { outcome: 'dead-lettered', errorMessage };
 		}
 		this.hooks.onLeaseLost?.(task.taskType);
-		return { outcome: 'skipped-not-owned' };
+		return { outcome: 'skipped-not-owned', errorMessage };
+	}
+
+	/**
+	 * Run the handler while a heartbeat renews the claim's lease, until it settles.
+	 * A lost claim aborts the handler's signal unless the dispatch marker is stored.
+	 */
+	private async executeWithHeartbeat(
+		handler: TaskHandler,
+		task: ClaimedTask,
+		report: DispatchReporter,
+		{ claim, leaseSetAt, isDispatchStored }: HeartbeatRun,
+	): Promise<void> {
+		const lease = new AbortController();
+		const heartbeat = new LeaseHeartbeat(
+			async () => await this.store.renewLease(claim, this.leaseMs),
+			{ leaseDurationMs: this.leaseMs, leaseSetAt },
+			{
+				onRenewal: (result) => {
+					this.hooks.onLeaseRenewal?.(task, result);
+					// The reaper completes an occurrence whose marker is stored and never runs
+					// it again, so stopping its run would only leave the work half done. A
+					// marker write still in flight counts as not stored: the reaper may
+					// already redeliver the row, and that write may never finish.
+					if (result !== 'renewed' && !isDispatchStored()) {
+						lease.abort(new LeaseLostError());
+					}
+				},
+				onRenewalError: (error) => this.hooks.onLeaseRenewalError?.(task, error),
+			},
+		);
+		// `setTimeout` fires a longer delay at once.
+		const longRunMs = Math.min(
+			LONG_RUN_THRESHOLD_IN_LEASES * this.leaseMs,
+			MAX_INTEGER_32BITS_SIGNED,
+		);
+		const longRunTimer = setTimeout(
+			() => this.hooks.onLongRunningTask?.(task, longRunMs / Time.seconds.toMilliseconds),
+			longRunMs,
+		);
+		try {
+			await handler.execute(task, report, lease.signal);
+		} finally {
+			clearTimeout(longRunTimer);
+			heartbeat.stop();
+		}
 	}
 
 	/** Release a claim, reporting but swallowing failures: the reaper still recovers the row. */

@@ -47,7 +47,7 @@ export type {
 	ProvisionSummary,
 	StoredJobs,
 } from './provisioning';
-export { createDispatchReporter, backoff } from './executor';
+export { createDispatchReporter, backoff, MIN_RENEWAL_INTERVAL_MS } from './executor';
 export type {
 	ExecutorOptions,
 	TaskHandler,
@@ -97,6 +97,7 @@ export {
 	UnregisteredOwnerTypeError,
 	InvalidOwnerIdError,
 	InvalidOwnerMemberIdError,
+	LeaseLostError,
 } from './errors';
 export type { RetentionOptions, RetentionSummary } from './retention';
 

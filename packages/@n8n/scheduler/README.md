@@ -401,7 +401,17 @@ The design leans on a few ideas working together.
 - **Lease.** A claim comes with an expiry (a *lease*). While the lease is valid the
   run belongs to that server. If the server dies, the lease lapses and the recovery
   pass can safely take the run back. Without leases a crashed server would strand
-  its runs forever.
+  its runs forever. While a handler runs, a heartbeat renews its lease every third
+  of the lease, but never more often than every five seconds, so a long run keeps
+  its claim while its renewals succeed. A lease of five seconds or less
+  expires before its first renewal, and n8n warns about it at startup.
+  If a renewal finds the claim gone, or no renewal succeeds for a whole lease, the
+  handler's signal aborts, unless the run is already recorded as dispatched.
+  A handler that abandons work on this abort must reject. If its claim still
+  matches, the executor counts the failed attempt. It retries only while
+  attempts remain. If the claim no longer matches, the write changes nothing.
+  A clean return completes an occurrence that the executor still owns.
+  A run still running after sixty leases logs a warning, since it may be stuck.
 - **Fencing.** Each claim carries a version number (an *epoch*) that increases every
   time a run is claimed. Every final write ("mark succeeded", "mark failed") is
   guarded by that number. So if a slow server comes back from the dead after its
@@ -578,10 +588,6 @@ A few things that are not obvious from the code but save a lot of confusion.
   `@n8n/scheduler-features`, would keep the integration concerns together on their
   own, and mirror the clean split this package already draws between algorithm and
   host.
-- **Lease renewal for long handlers.** A claim's lease is fixed for now, so a
-  handler that runs longer than its lease risks being recovered and re-run. A
-  heartbeat that extends the lease while a handler is genuinely still working would
-  lift that constraint.
 
 ### Exploring the idea: a standalone `@n8n/scheduler-worker`
 

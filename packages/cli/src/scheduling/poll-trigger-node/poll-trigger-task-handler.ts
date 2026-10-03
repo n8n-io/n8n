@@ -2,6 +2,7 @@ import { Logger } from '@n8n/backend-common';
 import { EventService } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
+import type { PollerFailureState } from '@n8n/db';
 import { WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { ClaimedTask, DispatchDecision, DispatchReporter, TaskHandler } from '@n8n/scheduler';
@@ -47,6 +48,16 @@ function timeoutAfter(ms: number): { timedOut: Promise<typeof TIMED_OUT>; cancel
 	return { timedOut, cancel: () => clearTimeout(timer) };
 }
 
+/** A cancellable promise that rejects with the reason of `signal` when it aborts. */
+function rejectOnAbort(signal: AbortSignal): { aborted: Promise<never>; cancel: () => void } {
+	let onAbort = () => {};
+	const aborted = new Promise<never>((_resolve, reject) => {
+		onAbort = () => reject(signal.reason);
+	});
+	signal.addEventListener('abort', onAbort, { once: true });
+	return { aborted, cancel: () => signal.removeEventListener('abort', onAbort) };
+}
+
 /**
  * Runs a due poll occurrence's `poll()` once and dispatches only when it returns new data.
  * Carries no `deduplicationKey`: under the at-least-once scheduler contract an occurrence
@@ -72,19 +83,21 @@ export class PollTriggerTaskHandler implements TaskHandler {
 		this.pollTimeoutMs = globalConfig.scheduler.pollTimeoutSeconds * Time.seconds.toMilliseconds;
 	}
 
-	async execute(task: ClaimedTask, report: DispatchReporter): Promise<DispatchDecision> {
+	async execute(
+		task: ClaimedTask,
+		report: DispatchReporter,
+		leaseSignal: AbortSignal,
+	): Promise<DispatchDecision> {
 		// A setup failure here retries to N8N_SCHEDULER_MAX_ATTEMPTS then dead-letters,
 		// unlike a `poll()` runtime failure below, which routes to the error workflow instead.
 		const { workflowId, nodeId } = this.parsePayload(task);
+		const logContext = { taskId: task.id, jobId: task.jobId, workflowId, nodeId };
 
 		const now = new Date();
 		const state = await this.pollBackoffService.getState(workflowId, nodeId).catch(() => null);
 		if (this.pollBackoffService.isBackingOff(state, now)) {
 			this.logger.debug('Poll is backing off; skipping this occurrence', {
-				taskId: task.id,
-				jobId: task.jobId,
-				workflowId,
-				nodeId,
+				...logContext,
 				backoffUntil: state?.backoffUntil,
 			});
 			return report.notDispatched();
@@ -96,12 +109,7 @@ export class PollTriggerTaskHandler implements TaskHandler {
 		);
 
 		if (workflowData === null) {
-			this.logger.debug('Workflow has no published version. Skipping the occurrence.', {
-				taskId: task.id,
-				jobId: task.jobId,
-				workflowId,
-				nodeId,
-			});
+			this.logger.debug('Workflow has no published version. Skipping the occurrence.', logContext);
 			return report.notDispatched();
 		}
 
@@ -113,7 +121,7 @@ export class PollTriggerTaskHandler implements TaskHandler {
 		if (!this.hasHealthyNodeIds(workflowData)) {
 			this.logger.debug(
 				'Published version has duplicate or missing node ids; skipping the occurrence until it is healed',
-				{ taskId: task.id, jobId: task.jobId, workflowId, nodeId },
+				logContext,
 			);
 			return report.notDispatched();
 		}
@@ -148,74 +156,66 @@ export class PollTriggerTaskHandler implements TaskHandler {
 			// poll() does count: it repeats every tick just like a failing source.
 			let polled = false;
 			try {
+				leaseSignal.throwIfAborted();
 				// `poll()` takes no abort signal, so the deadline abandons it rather than
 				// cancelling it: the call keeps running until it settles on its own, and its
 				// outcome is discarded. The cursor never moves on that path (it only moves
 				// through the staged commit or __emit below), so an abandoned tick leaves
 				// the poll window untouched for the next occurrence to cover.
 				const deadline = timeoutAfter(this.pollTimeoutMs);
+				const leaseLoss = rejectOnAbort(leaseSignal);
 				const poll = this.triggersAndPollers.runPollFunction(workflow, node, pollFunctions);
-				// Deliberately not chained: keeps an abandoned poll's eventual rejection from
-				// surfacing as an unhandled rejection once the race has moved on.
-				poll.catch(() => {});
 
 				let pollResponse: Awaited<typeof poll>;
 				try {
-					const outcome = await Promise.race([poll, deadline.timedOut]);
+					const outcome = await Promise.race([poll, deadline.timedOut, leaseLoss.aborted]);
+					leaseSignal.throwIfAborted();
 					if (outcome === TIMED_OUT) {
 						this.eventService.emit('poll-tick-timed-out', { nodeType: node.type });
 						this.logger.warn('Poll exceeded its timeout and was abandoned', {
-							taskId: task.id,
-							jobId: task.jobId,
-							workflowId,
-							nodeId,
+							...logContext,
 							pollTimeoutMs: this.pollTimeoutMs,
 						});
 						// Not routed to the error workflow: an abandoned poll produces no run, and
 						// an error run is one. It does count as a poll failure, so a source that
 						// keeps hanging is re-polled at a widening interval like any failing source.
-						const isActive = await this.workflowRepository.isActive(workflowId).catch(() => true);
-						if (isActive) {
-							await this.pollBackoffService.recordFailure({
-								workflowId,
-								nodeId,
-								error: new PollTimeoutError(),
-								state,
-								now: new Date(), // Fresh clock, not the tick's
-							});
-						}
+						await this.recordFailureIfActive(
+							workflowId,
+							nodeId,
+							new PollTimeoutError(),
+							state,
+							leaseSignal,
+						);
+						leaseSignal.throwIfAborted();
 						return report.notDispatched();
 					}
 					pollResponse = outcome;
 				} finally {
 					deadline.cancel();
+					leaseLoss.cancel();
 				}
 				polled = true;
 
 				await this.pollBackoffService.recordSuccess({ workflowId, nodeId, state });
+				leaseSignal.throwIfAborted();
 
 				if (pollResponse !== null) {
 					// poll() can run for a while (network I/O against the polled source), so
 					// the workflow may have been deactivated while it was in flight. There is
 					// no in-memory registration to check here, so re-read the stored active state.
-					if (!(await this.workflowRepository.isActive(workflowId))) {
-						this.logger.debug('Workflow deactivated during poll; discarding the result', {
-							taskId: task.id,
-							jobId: task.jobId,
-							workflowId,
-							nodeId,
-						});
+					const isActive = await this.workflowRepository.isActive(workflowId);
+					leaseSignal.throwIfAborted();
+					if (!isActive) {
+						this.logger.debug(
+							'Workflow deactivated during poll; discarding the result',
+							logContext,
+						);
 						return report.notDispatched();
 					}
 
 					// __emit saves the cursor and starts the run without waiting on it.
 					pollFunctions.__emit(pollResponse);
-					this.logger.debug('Poll returned new data; handed off to a new execution', {
-						taskId: task.id,
-						jobId: task.jobId,
-						workflowId,
-						nodeId,
-					});
+					this.logger.debug('Poll returned new data; handed off to a new execution', logContext);
 					return report.dispatched();
 				}
 
@@ -223,56 +223,65 @@ export class PollTriggerTaskHandler implements TaskHandler {
 				// its own. Active state is re-read first so a workflow deactivated mid-poll
 				// doesn't get its cursor moved.
 				try {
-					if (await this.workflowRepository.isActive(workflowId))
+					const isActive = await this.workflowRepository.isActive(workflowId);
+					leaseSignal.throwIfAborted();
+					if (isActive) {
 						await commitStagedCursor(pollFunctions);
+					}
 				} catch (error) {
+					leaseSignal.throwIfAborted();
 					// The poll itself succeeded, so a failed cursor write is logged rather
 					// than routed to the error workflow.
 					this.errorReporter.error(error, {
-						extra: { taskId: task.id, jobId: task.jobId, workflowId, nodeId },
+						extra: logContext,
 					});
 					this.logger.error(
 						'Failed to commit the poll cursor; the next poll repeats the same window',
-						{ taskId: task.id, jobId: task.jobId, workflowId, nodeId, error },
+						{ ...logContext, error },
 					);
 				}
 
-				this.logger.debug('Poll returned no new data; nothing to hand off', {
-					taskId: task.id,
-					jobId: task.jobId,
-					workflowId,
-					nodeId,
-				});
+				leaseSignal.throwIfAborted();
+				this.logger.debug('Poll returned no new data; nothing to hand off', logContext);
 				return report.notDispatched();
 			} catch (error) {
+				// A clean return completes the occurrence, so cancellation must reject.
+				leaseSignal.throwIfAborted();
 				// Routed to the error workflow instead of rethrown, which would retry and
 				// dead-letter without ever running it. __emitError commits no cursor, so
 				// the cursor holds and the next tick retries the same window.
 				if (!polled) {
-					const isActive = await this.workflowRepository.isActive(workflowId).catch(() => true);
-					if (isActive) {
-						await this.pollBackoffService.recordFailure({
-							workflowId,
-							nodeId,
-							error,
-							state,
-							now: new Date(), // Fresh clock, not the tick's
-						});
-					}
+					await this.recordFailureIfActive(workflowId, nodeId, error, state, leaseSignal);
 				}
+				leaseSignal.throwIfAborted();
 				pollFunctions.__emitError(ensureError(error));
-				this.logger.debug('Poll failed at runtime; routed to the error workflow', {
-					taskId: task.id,
-					jobId: task.jobId,
-					workflowId,
-					nodeId,
-				});
+				this.logger.debug('Poll failed at runtime; routed to the error workflow', logContext);
 				// The error was handed off, so this occurrence is handled and must not retry.
 				return report.dispatched();
 			} finally {
 				await workflow.expression.releaseIsolate();
 			}
 		});
+	}
+
+	private async recordFailureIfActive(
+		workflowId: string,
+		nodeId: string,
+		error: unknown,
+		state: PollerFailureState | null,
+		leaseSignal: AbortSignal,
+	): Promise<void> {
+		const isActive = await this.workflowRepository.isActive(workflowId).catch(() => true);
+		leaseSignal.throwIfAborted();
+		if (isActive) {
+			await this.pollBackoffService.recordFailure({
+				workflowId,
+				nodeId,
+				error,
+				state,
+				now: new Date(), // Use the failure time, not the tick start.
+			});
+		}
 	}
 
 	/** The invariant the activation-time healer guarantees: every node id unique and non-empty. */
