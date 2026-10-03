@@ -53,12 +53,12 @@ export default {
 	'sticky.markdownHint':
 		'You can style with <a href="https://docs.n8n.io/workflows/components/sticky-notes/" target="_blank">Markdown</a>',
 	'tags.showMore': (count: number) => `+${count} more`,
-	'datatable.pageSize': 'Page size',
 	'pagination.previousPage': 'Previous page',
 	'pagination.nextPage': 'Next page',
 	'pagination.total': 'Total {total}',
 	'pagination.pageSize': 'Page size',
 	'pagination.pageSizeOption': '{size}/page',
+	'pagination.all': 'All',
 	'pagination.goTo': 'Go to',
 	'pagination.goToPage': 'Go to page',
 	'selectedItemsInfo.selectedOne': '{count} row selected',
