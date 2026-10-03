@@ -1,6 +1,6 @@
 import { loadRuntimeSkillSourceFromDirectory, type RuntimeSkillSource } from '@n8n/agents';
 import type { InstanceAiBuildMode } from '@n8n/api-types';
-import { GROUPING_GUIDANCE } from '@n8n/workflow-sdk/prompts/sdk-reference';
+import { GROUPING_GUIDANCE, SDK_FUNCTIONS_SENTENCE } from '@n8n/workflow-sdk/prompts/sdk-reference';
 import { TOP_LEVEL_ITEM_CEILING } from 'n8n-workflow';
 import { resolve } from 'node:path';
 
@@ -21,6 +21,7 @@ const cachedProfiles = new Map<string, ReturnType<typeof composeSkillVariants>>(
 
 const SKILL_PLACEHOLDER_TEXT: Record<string, string> = {
 	GROUPING_GUIDANCE_PLACEHOLDER: GROUPING_GUIDANCE,
+	SDK_FUNCTIONS_PLACEHOLDER: SDK_FUNCTIONS_SENTENCE,
 	TOP_LEVEL_ITEM_CEILING_PLACEHOLDER: String(TOP_LEVEL_ITEM_CEILING),
 };
 

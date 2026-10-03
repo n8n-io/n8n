@@ -16,6 +16,8 @@ export {
 	type ValidateWorkflowBuilderOptions,
 	type ValidateWorkflowBuilderResult,
 	type CollectedValidationIssue,
+	resolveMainOutputCount,
+	explainUnknownSdkFunction,
 } from './validation/index';
 
 export {

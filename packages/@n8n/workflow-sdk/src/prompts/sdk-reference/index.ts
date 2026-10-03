@@ -6,6 +6,7 @@ export { WORKFLOW_PATTERNS_DETAILED } from './workflow-patterns-detailed';
 export {
 	GROUPING_GUIDANCE,
 	NODE_GROUPS_REFERENCE,
+	SDK_FUNCTIONS_SENTENCE,
 	SDK_LANGUAGE_REFERENCE,
 	buildSdkLanguageReference,
 } from './sdk-language';

@@ -357,6 +357,29 @@ describe('compileWorkflowSource', () => {
 		});
 	});
 
+	it('names the SDK exports when the source calls a function the SDK does not export', async () => {
+		vi.mocked(runInSandbox).mockResolvedValue({
+			exitCode: 1,
+			stdout: JSON.stringify({
+				success: false,
+				errors: ['(0 , import_workflow_sdk.code) is not a function'],
+			}),
+			stderr: '',
+		});
+
+		const result = await compileWorkflowSource(
+			makeContext(),
+			'src/workflows/main.workflow.ts',
+			'workflow source',
+		);
+
+		expect(result).toMatchObject({ success: false, reason: 'workflow_source_build_failed' });
+		expect(result.success ? [] : result.errors).toEqual([
+			'(0 , import_workflow_sdk.code) is not a function',
+			expect.stringContaining('`code` is not exported by @n8n/workflow-sdk'),
+		]);
+	});
+
 	it('returns non-editable failure when no sandbox workspace is available', async () => {
 		const result = await compileWorkflowSource(
 			makeContext({ workspace: undefined }),

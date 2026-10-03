@@ -235,6 +235,32 @@ function computeCatalogChatModelIssues(
 }
 
 /**
+ * Removes `options.temperature` from a chat-model node whose model rejects it
+ * according to models.dev. The value can never reach the provider, so removing
+ * it saves a rebuild. Returns the model id when the option was removed.
+ */
+export async function removeUnsupportedTemperature(node: NodeJSON): Promise<string | undefined> {
+	if (!isChatModelNode(node.type)) return undefined;
+
+	const parameters = node.parameters;
+	if (!parameters) return undefined;
+	const options = parameters.options;
+	if (typeof options !== 'object' || options === null || Array.isArray(options)) return undefined;
+	if (typeof Reflect.get(options, 'temperature') !== 'number') return undefined;
+
+	const entry = resolveChatModelCatalogEntry(node.type);
+	const extracted = extractChatModelParameter(parameters);
+	if (!entry || !extracted) return undefined;
+
+	const catalog = await loadCatalogWithTimeout();
+	const catalogModel = lookupCatalogModel(catalog?.[entry.modelsDevProviderId], extracted.modelId);
+	if (catalogModel?.temperature !== false) return undefined;
+
+	Reflect.deleteProperty(options, 'temperature');
+	return extracted.modelId;
+}
+
+/**
  * Locator values and credential names are user-controlled; keep them
  * single-line and short before embedding them in agent-facing guidance.
  */
