@@ -42,7 +42,7 @@ import {
 } from './runtime';
 import { parameterValue, toProperty } from './properties';
 import type { Binary, Schema, Shape } from './schema';
-import { applyDefaults, parsePage, validate } from './validate';
+import { applyDefaults, readAs, validate } from './validate';
 
 /**
  * What starts a trigger: a service webhook, a poll, the event of a native trigger, or an `event`
@@ -199,7 +199,10 @@ export interface PollConfig<I, T, Out, P = unknown> {
 		/** The most items the host uses, e.g. 1 in a manual run. */
 		readonly limit: number | undefined;
 	}): HttpRequest;
-	/** The schema of one response body. A page in another shape fails with its path. */
+	/**
+	 * The schema of one response body. A page fails with its path when a field that `items`,
+	 * `next` or `cursor` reads does not match. The n8n log gets the other issues.
+	 */
 	readonly response: Schema<P, boolean, boolean, unknown>;
 	/** The API items of one page, e.g. `(page) => page.results`. */
 	items(page: P): readonly T[];
@@ -512,7 +515,26 @@ async function runPoll(
 	context: IPollFunctions,
 ): Promise<INodeExecutionData[][] | null> {
 	const { response } = poll;
-	const pageOf = (body: unknown) => (response ? parsePage(response, body) : body);
+	const pageOf = (body: unknown) => {
+		if (!response) return body;
+		// The cursor reads each item, so its fields must match too.
+		const { cursor } = poll;
+		const read = (page: unknown) => [
+			poll.next?.(page),
+			poll
+				.items(page)
+				.map((item) =>
+					'id' in cursor ? cursor.id(item) : [cursor.timestamp(item), cursor.key(item)],
+				),
+		];
+		const { value, drift } = readAs(response, body, { path: 'page', read });
+		if (drift.length > 0) {
+			context.logger.warn(
+				`The response of ${trigger.id} does not match its contract, so check the fields: ${drift.join('; ')}`,
+			);
+		}
+		return value;
+	};
 	const input = inputOf(trigger, context);
 	const http = await httpOf(trigger, context);
 	const data = context.getWorkflowStaticData('node');

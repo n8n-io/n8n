@@ -8,6 +8,7 @@ import {
 	pageValueOf,
 	paging,
 	parse,
+	readAs,
 	t,
 	validate,
 	type Action,
@@ -340,6 +341,44 @@ describe('parse', () => {
 	});
 });
 
+describe('readAs', () => {
+	const page = t.obj({
+		results: t.arr(t.obj({ id: t.str(), title: t.str() })),
+		meta: t.obj({ cursor: t.str() }),
+		total: t.int(),
+	});
+	const value = { results: [{ id: 'a' }], meta: { cursor: 'c2', extra: 1 } };
+	const read = (body: Infer<typeof page>) => [body.results.map(({ id }) => id), body.meta.cursor];
+
+	it('gives the fields that the code does not read as drift', () => {
+		expect(readAs(page, value, { path: 'page', read })).toEqual({
+			value,
+			drift: [
+				'page.total: is required',
+				'page.results[0].title: is required',
+				'page.meta: unknown field(s) extra. Allowed: cursor',
+			],
+		});
+		expect(readAs(page, { results: [], meta: { cursor: 'c' }, total: 1 }).drift).toEqual([]);
+	});
+
+	it('fails on a field that the code reads, and on a value of another kind', () => {
+		expect(() => readAs(page, { ...value, results: [{}] }, { path: 'page', read })).toThrow(
+			'page.results[0].id: is required',
+		);
+		expect(() => readAs(page, { ...value, meta: { cursor: 2 } }, { read })).toThrow(
+			'value.meta.cursor: must be string, got 2',
+		);
+		expect(() => readAs(page, 'x', { read })).toThrow('value: must be object, got "x"');
+	});
+
+	it('fails with every issue when the code cannot read the value', () => {
+		expect(() => readAs(page, { results: [] }, { read })).toThrow(
+			'value.meta: is required; value.total: is required',
+		);
+	});
+});
+
 describe('loose', () => {
 	const issue = t.loose(
 		t.obj({ id: t.int(), locked: t.bool(), pull_request: t.obj({ url: t.str() }) }),
@@ -491,6 +530,12 @@ describe('pages', () => {
 			'page.items: must be array, got "x"',
 		);
 	});
+
+	it('passes a page whose unread fields drift', async () => {
+		const { host } = hostOf([{ items: [{ id: 'a' }], next: 'c2', extra: 1 }, { items: [] }]);
+		const items = (await executorOf(pagedAction())(host))[0] ?? [];
+		expect(items.map(({ json }) => json.id)).toEqual(['a']);
+	});
 });
 
 describe('pageValueOf', () => {
@@ -608,6 +653,49 @@ describe('list binding', () => {
 		const input = { channel: 'C1', paging: { mode: 'all' } };
 		expect(ids(await runAction(history, { input, fetch }))).toEqual(['a', 'a']);
 		expect(fetch.calls).toHaveLength(2);
+	});
+
+	describe('page drift', () => {
+		const counted = echoItem.action('counted', {
+			action: 'Get counted history',
+			summary: 'List the messages of a channel with a total.',
+			flow: read,
+			input: {},
+			output: message,
+			list: {
+				path: '/history',
+				response: t.obj({ messages: t.arr(t.obj({ id: t.str(), ts: t.str() })), total: t.int() }),
+				items: (page) => page.messages.map(({ id }) => ({ id })),
+			},
+		});
+		const warningHost = (reply: unknown, warnings: string[] = []) =>
+			hostOf([reply], { warn: (text) => warnings.push(text) }).host;
+
+		it('passes a page whose unread fields drift, with one warning on an n8n host', async () => {
+			const warnings: string[] = [];
+			const host = warningHost({ messages: [{ id: 'a' }] }, warnings);
+			const items = (await executorOf(counted)(host))[0] ?? [];
+			expect(items.map(({ json }) => json)).toEqual([{ id: 'a' }]);
+			expect(warnings).toEqual([
+				'The response of echo.item.counted does not match its contract, so check the fields: page.total: is required; page.messages[0].ts: is required',
+			]);
+		});
+
+		it('fails a page whose items drift on an n8n host', async () => {
+			const host = warningHost({ messages: 'x', total: 1 });
+			await expect(executorOf(counted)(host)).rejects.toThrow(
+				'page.messages: must be array, got "x"',
+			);
+			const missingId = warningHost({ messages: [{ ts: '1' }], total: 1 });
+			await expect(executorOf(counted)(missingId)).rejects.toThrow(
+				'page.messages[0].id: is required',
+			);
+		});
+
+		it('fails a page whose unread fields drift on a strict host', async () => {
+			const { host } = hostOf([{ messages: [{ id: 'a', ts: '1' }] }]);
+			await expect(executorOf(counted)(host)).rejects.toThrow('page.total: is required');
+		});
 	});
 
 	it('fails a page in another shape with the path of the field', async () => {

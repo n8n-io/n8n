@@ -295,10 +295,17 @@ async function* valuesOf(
 ): AsyncGenerator<unknown> {
 	const context = { input, http, log, limits: witLimits(), binary, ...importsOf(items) };
 	const batch = action.flow.cardinality === 'batch';
+	// The WIT has no warning, so the drift of a page goes to the log, once per run.
+	const warned = new Set<string>();
+	const drift = (issues: readonly string[]) => {
+		const message = `The response of ${action.id} does not match its contract, so check the fields: ${issues.join('; ')}`;
+		if (!warned.has(message)) log('warn', message);
+		warned.add(message);
+	};
 	const result = action.request
 		? http.request(requestOf(action.request, input))
 		: action.list
-			? listItems(http, action.list, input)
+			? listItems(http, action.list, input, drift)
 			: inputs
 				? action.run?.(withCredential({ ...context, inputs }))
 				: batch

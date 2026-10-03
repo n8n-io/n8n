@@ -123,4 +123,4 @@ export type {
 	WebhookConfig,
 	WebhookRequest,
 } from './triggers';
-export { list, matches, parse, validate } from './validate';
+export { list, matches, parse, readAs, validate } from './validate';

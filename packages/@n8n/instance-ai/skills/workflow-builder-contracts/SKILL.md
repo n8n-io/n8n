@@ -18,7 +18,7 @@ recommended_tools:
 
 # Workflow Builder
 
-You write one typed TypeScript file. Show no output until the final step,
+You write one typed TypeScript file. Show no output until the end,
 unless blocked. This skill and `nodes(action="type-definition")`
 are the full API: do not read SDK files. Only `build-workflow` has
 `@n8n/nodes/*` and runs `tsc`: do not run it.
@@ -81,16 +81,14 @@ export default workflow(
 - `switchOn({ name, on }, { value: part, fallback: part })`,
   `merge({ name, join }, [part, part])`, `forEach({ name, batchSize }, body)`,
   `loop({ name, maxIterations, until, next }, body)`: Switch, Merge, loops.
-- `set({ name, fields, keep: 'all' })` makes fields; `keep: 'all'` keeps
-  input fields.
-- `sample` items type the output and feed verification, e.g.
+- `set({ name, fields })` makes fields; `keep: 'all'` keeps input fields.
+- `sample` items type the output and feed verification:
   `manual({ sample: [{ id: 1 }] })`.
 - Typed steps and `node()` take `settings: { retryOnFail: true, notes: '…' }`.
 
 ## AI nodes
 
-A derived AI node takes its providers in `providers`. A provider module
-gives one, and `tsc` checks its slot:
+A derived AI node takes providers from provider modules in `providers`:
 
 ```ts
 agent.execute({ name: 'Agent', promptType: 'define', text: (item) => item.question,
@@ -98,7 +96,7 @@ agent.execute({ name: 'Agent', promptType: 'define', text: (item) => item.questi
 ```
 
 A typed action is also an agent tool: put `<action>Tool` in `tools`. The model
-fills each `fromModel()` field, and the workflow fixes the others, e.g.
+fills each `fromModel()` field; the workflow fixes the others, e.g.
 `httpRequest.getTool({ name: 'Fetch', url: fromModel('The page URL') })`.
 
 ## Lambdas
@@ -108,13 +106,14 @@ fills each `fromModel()` field, and the workflow fixes the others, e.g.
 - `item` and `$('Node')` are JSON: `$('Hook').body`, not `.json` or `.item`.
 - `$.now` and `$.today` are Luxon dates. `$.date(iso)` parses a string.
 - `expr('{{ … }}')` fits any lambda field. The build checks it.
-- Fix a type error at its cause. Do not add casts, `any`, or fallbacks.
+- Fix a type error at its cause: no casts, `any`, or fallbacks.
 
 ## Values and credentials
 
 - Keep real values you got. Never invent IDs, emails, or URLs:
   write `placeholder('Database')` and tell the user.
-- Do not write credentials: the build binds or asks for them. Never ask for secrets.
+- A value you tell the user to type never starts with `=`: the editor adds it.
+- Never write credentials or ask for secrets: the build binds or asks for them.
 
 ## Workflow rules
 

@@ -32,10 +32,12 @@ function run(
 	respond: (options: Options) => unknown,
 ) {
 	const calls: Call[] = [];
+	const hints: Array<{ message: string }> = [];
 	const credentials = Object.fromEntries(
 		action.credentialTypes.map((type) => [type, { id: '1', name: type }]),
 	);
 	const context = {
+		addExecutionHints: (...added: Array<{ message: string }>) => hints.push(...added),
 		getInputData: () => [{ json: {} }],
 		getNode: () => ({ name: 'Node', credentials }),
 		getNodeParameter: (name: string) => parameters[name],
@@ -54,7 +56,7 @@ function run(
 	const items = result?.then((output) =>
 		(Array.isArray(output) ? (output[0] ?? []) : []).map((item) => item.json),
 	);
-	return { items, calls };
+	return { items, calls, hints };
 }
 
 const SPREADSHEET = '1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms';
@@ -417,14 +419,17 @@ describe('gmail.message.get', () => {
 		expect(await items).toEqual(await legacySimplified(['m9']));
 	});
 
-	it('names the fields a message in another shape misses', async () => {
+	it('emits a message with missing fields and names them in a warning', async () => {
 		const { historyId: _historyId, sizeEstimate: _size, ...partial } = metadata('m9');
-		const { items } = run(getGmailMessage, { messageId: 'm9' }, (options) =>
+		const { items, hints } = run(getGmailMessage, { messageId: 'm9' }, (options) =>
 			options.url === `${GMAIL}/labels` ? LABELS : partial,
 		);
-		await expect(items).rejects.toThrow(
-			'Gmail returned message m9 in another shape: message.historyId: is required; message.sizeEstimate: is required',
-		);
+		expect((await items)?.map((item) => item.id)).toEqual(['m9']);
+		expect(hints.map(({ message }) => message)).toEqual([
+			expect.stringContaining(
+				'output[0].historyId: is required; output[0].sizeEstimate: is required',
+			),
+		]);
 	});
 });
 

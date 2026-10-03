@@ -252,8 +252,10 @@ function pollContext(
 	replies: unknown[],
 	sent: IHttpRequestOptions[],
 	mode = 'trigger',
+	warnings: string[] = [],
 ) {
 	return {
+		logger: { warn: (message: string) => warnings.push(message) },
 		getNode: () => ({ name: 'Tasks', credentials: { tasksApi: { id: '1' } } }),
 		getNodeParameter: (name: string) => (name === 'project' ? 'p1' : undefined),
 		getWorkflowStaticData: () => staticData,
@@ -305,6 +307,18 @@ describe('triggers', () => {
 			['https://tasks.test/v1/projects/p1/tasks', {}],
 			['https://tasks.test/v1/projects/p1/tasks', { after: '1' }],
 		]);
+	});
+
+	it('poll a page whose unread fields drift with a log warning, and fail on a cursor field', async () => {
+		const warnings: string[] = [];
+		const replies = [[{ id: '1' }], [{ id: '2' }, { title: 'no id' }]];
+		const type: INodeType = new (toTriggerNodeType(created))();
+		const context = pollContext({}, replies, [], 'trigger', warnings);
+		expect(await type.poll?.call(context as never)).toBeNull();
+		expect(warnings).toEqual([
+			'The response of tasks.task.created does not match its contract, so check the fields: page[0].title: is required',
+		]);
+		await expect(type.poll?.call(context as never)).rejects.toThrow('page[1].id: is required');
 	});
 
 	it('poll by time: the first poll skips, pages follow `next`, and a key is not emitted twice', async () => {

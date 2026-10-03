@@ -357,14 +357,98 @@ export function parse(schema: AnySchema, value: unknown): unknown {
 	return value;
 }
 
+const isObject = (value: unknown): value is object => typeof value === 'object' && value !== null;
+
+/** `value` behind proxies that add the path of each field read to `paths`. */
+function tracked(value: object, at: string, paths: Set<string>): object {
+	const pathOf = (target: object, key: string) => {
+		if (Array.isArray(target)) return /^\d+$/.test(key) ? `${at}[${key}]` : undefined;
+		return Object.hasOwn(target, key) || !(key in Object.prototype) ? `${at}.${key}` : undefined;
+	};
+	return new Proxy(value, {
+		get(target, key, receiver) {
+			const child: unknown = Reflect.get(target, key, receiver);
+			const path = typeof key === 'string' ? pathOf(target, key) : undefined;
+			if (path === undefined) return child;
+			paths.add(path);
+			const fixed = Object.getOwnPropertyDescriptor(target, key);
+			// A proxy must give the same value for a frozen field.
+			if (!isObject(child) || (fixed?.configurable === false && !fixed.writable)) return child;
+			return tracked(child, path, paths);
+		},
+		has(target, key) {
+			const path = typeof key === 'string' ? pathOf(target, key) : undefined;
+			if (path !== undefined) paths.add(path);
+			return Reflect.has(target, key);
+		},
+	});
+}
+
+/** The paths that `read` reads in `value`, with their parents, or `undefined` when it throws. */
+function readPathsOf(value: unknown, at: string, read: (value: unknown) => unknown) {
+	const paths = new Set<string>();
+	try {
+		read(isObject(value) ? tracked(value, at, paths) : value);
+	} catch {
+		return undefined;
+	}
+	const parents = [...paths].flatMap((path) =>
+		[...path.matchAll(/[.[]/g)].map((match) => path.slice(0, match.index)),
+	);
+	return new Set([at, ...paths, ...parents]);
+}
+
 /**
- * A page of a list, typed by `schema`. Throws with each failing path, e.g. `page.results: must
- * be array`. The list engine reads its items and cursor from the page, so a page in another shape
- * stops the list.
+ * `value` typed by `schema`, for code that reads some fields of an API response. It throws with
+ * each failing path, e.g. `page.results: must be array`, only when a field that `read` reads
+ * does not match. The other issues come back as `drift`, so a change of a field that the code
+ * does not read does not stop it. A value that becomes an output needs no `read`: the host
+ * checks the output and warns about the drift. `parse` gives a type with each field optional.
+ *
+ * @example
+ * ```ts
+ * const { value: page, drift } = readAs(resultsPage, body, {
+ *   path: 'page',
+ *   read: (page) => [page.results, page.next_cursor],
+ * });
+ * ```
  */
-export function parsePage<S extends AnySchema>(schema: S, value: unknown): Infer<S> {
-	if (matches(schema, value)) return value;
-	throw new Error(validate(value, schema.json, { path: 'page' }).join('; '));
+export function readAs<S extends AnySchema>(
+	schema: S,
+	value: unknown,
+	options?: {
+		/**
+		 * The path of `value` in the messages.
+		 *
+		 * @defaultValue `'value'`
+		 */
+		readonly path?: string;
+		/** Reads the fields that must match. Only a value with issues runs it, through a proxy that records the reads. */
+		readonly read?: (value: Infer<S>) => unknown;
+	},
+): {
+	/** The value as it came, not a copy. */
+	readonly value: Infer<S>;
+	/** The issues of the fields that `read` does not read, e.g. `page.total: is required`. */
+	readonly drift: readonly string[];
+};
+export function readAs(
+	schema: AnySchema,
+	value: unknown,
+	options: { readonly path?: string; readonly read?: (value: unknown) => unknown } = {},
+): { readonly value: unknown; readonly drift: readonly string[] } {
+	const at = options.path ?? 'value';
+	const issues = validate(value, schema.json, { path: at });
+	if (issues.length === 0) return { value, drift: [] };
+	const read = readPathsOf(value, at, options.read ?? (() => undefined));
+	const failing = issues.filter(
+		(issue) =>
+			!read ||
+			(!issue.includes(': unknown field(s) ') &&
+				[...read].some((path) => issue.startsWith(`${path}: `))),
+	);
+	if (failing.length > 0) throw new Error(failing.join('; '));
+	return { value, drift: issues };
 }
 
 const branchOf = (value: Record<string, unknown>, schema: JsonSchema) => {

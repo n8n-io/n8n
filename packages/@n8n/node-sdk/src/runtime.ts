@@ -90,7 +90,7 @@ import {
 	binaryKeyIssue,
 	list,
 	matches,
-	parsePage,
+	readAs,
 	testPattern,
 	validate,
 } from './validate';
@@ -412,7 +412,8 @@ export interface ExecutorHost {
 	log?(level: LogLevel, message: string): void;
 	/**
 	 * Shows a warning on the node run. With it, an output that does not match the contract
-	 * passes on and the run warns once. Without it, the output fails the item, as in tests.
+	 * passes on and the run warns once, and so does a list page field that the list does not
+	 * read. Without it, the output or page fails the item, as in tests.
 	 */
 	warn?(message: string): void;
 	/** Limits that replace the defaults of `RunLimits`. */
@@ -579,12 +580,15 @@ const withParam = (request: HttpRequest, param: PageParam, value: string | numbe
 
 /**
  * The outputs of a `list` binding, page by page. The host checks each page against `response`,
- * applies the `paging` input, and stops at the end of the list or at a repeated cursor.
+ * applies the `paging` input, and stops at the end of the list or at a repeated cursor. A page
+ * fails when a field that `items` or the cursor reads does not match. `drift` gets the other
+ * issues of a page; without it, they fail the page too.
  */
 export function listItems<I>(
 	http: Http,
 	binding: ListBinding<I, string, AnySchema, unknown>,
 	input: I,
+	drift?: (issues: readonly string[]) => void,
 ) {
 	const style = binding.pages;
 	const first = requestOf(binding, input);
@@ -592,10 +596,16 @@ export function listItems<I>(
 	// The `Link` header is in the full response, so a linked list reads it.
 	const pageOf = (response: unknown) => {
 		const full = linked && isRecord(response) ? response : {};
-		return {
-			body: parsePage(binding.response, linked ? full.body : response),
-			link: isRecord(full.headers) ? headerText(full.headers.link) : undefined,
-		};
+		const { value: body, drift: issues } = readAs(binding.response, linked ? full.body : response, {
+			path: 'page',
+			read: (value) => [
+				binding.items(value, input),
+				style?.style === 'cursor' ? style.next(value) : undefined,
+			],
+		});
+		if (issues.length > 0 && !drift) throw new Error(issues.join('; '));
+		if (issues.length > 0) drift?.(issues);
+		return { body, link: isRecord(full.headers) ? headerText(full.headers.link) : undefined };
 	};
 	const byPage = style?.style === 'offset' && style.unit === 'page';
 	/** Page numbers count pages of one size, so a numbered list asks for the same size each time. */
@@ -1079,6 +1089,7 @@ export function executorOf<S extends Shape, O extends AnySchema>(
 			new NodeOperationError(host.node, message, { itemIndex });
 		// The run warns once. Each item of a per-item run starts at output[0], so issues repeat.
 		const drift = new Set<string>();
+		const addDrift = (issues: readonly string[]) => issues.forEach((issue) => drift.add(issue));
 
 		const openTables = new Map<string, Promise<DataTable>>();
 		const refuse = (name: HostImport) => {
@@ -1148,7 +1159,7 @@ export function executorOf<S extends Shape, O extends AnySchema>(
 			const checked = (json: unknown, at: number) => {
 				const issues = validate(json, outputSchema, { path: `output[${at}]` });
 				if (issues.length > 0 && host.warn && isRecord(json)) {
-					issues.forEach((issue) => drift.add(issue));
+					addDrift(issues);
 					return json;
 				}
 				if (issues.length > 0 || !isRecord(json)) {
@@ -1247,7 +1258,7 @@ export function executorOf<S extends Shape, O extends AnySchema>(
 				binding
 					? http.request(requestOf(binding, input))
 					: listBinding
-						? listItems(http, listBinding, input)
+						? listItems(http, listBinding, input, host.warn ? addDrift : undefined)
 						: action.run?.({
 								input,
 								http,

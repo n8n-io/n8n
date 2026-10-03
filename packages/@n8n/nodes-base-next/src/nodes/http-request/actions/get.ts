@@ -89,6 +89,21 @@ const responsePageOf = (response: unknown): ResponsePage => {
 	};
 };
 
+/** Where the lists of a body are, one level deep, so an `items` that misses names the fix. */
+const listFieldsOf = (body: unknown) => {
+	if (Array.isArray(body)) return 'the body is a list, so omit items';
+	const fields = Object.entries(isRecord(body) ? body : {}).flatMap(([key, value]) =>
+		Array.isArray(value)
+			? [key]
+			: Object.entries(isRecord(value) ? value : {}).flatMap(([inner, entry]) =>
+					Array.isArray(entry) ? [`${key}.${inner}`] : [],
+				),
+	);
+	return fields.length > 0
+		? `body has list fields: ${fields.join(', ')}`
+		: 'body has no list field';
+};
+
 export const getRequest = httpRequest.action('get', {
 	// Major 2: the action declares that it reaches the host of `url`.
 	// Major 3: cursor, link and offset pages, with page values read from each response.
@@ -101,7 +116,7 @@ export const getRequest = httpRequest.action('get', {
 		...common,
 		items: t
 			.pageValue(t.arr(t.jsonValue()))
-			.hint('The items of a page, e.g. (page) => page.body.data; else the body')
+			.hint('The documented array field: (page) => page.body.<field>; omit for a list body')
 			.optional(),
 		pages: pagesInput.optional(),
 	},
@@ -136,7 +151,9 @@ export const getRequest = httpRequest.action('get', {
 		const itemsOf = (page: ResponsePage) => {
 			if (!itemsAt) return toItems(page.body);
 			const found = pageValueOf(itemsAt, page);
-			if (!Array.isArray(found)) throw new Error(`input.items gives no list: ${itemsAt}`);
+			if (!Array.isArray(found)) {
+				throw new Error(`input.items gives no list: ${itemsAt}; ${listFieldsOf(page.body)}`);
+			}
 			return toItems(found);
 		};
 		const withCursor = (cursor: string): HttpRequest => {

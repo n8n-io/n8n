@@ -9,6 +9,7 @@ import {
 	paging,
 	parse,
 	provider,
+	readAs,
 	ref,
 	t,
 	type ChatModel,
@@ -222,6 +223,19 @@ const grokModel = async (http: Http, model: string): Promise<ChatModel> =>
 			return { text: body.text ?? '', toolCalls: [], finishReason: 'stop' };
 		},
 	});
+
+const resultsPage = t.obj({
+	results: t.arr(t.obj({ id: t.str() })),
+	next_cursor: t.nullable(t.str()),
+});
+
+export const resultIdsOf = (body: unknown) => {
+	const { value: page, drift } = readAs(resultsPage, body, {
+		path: 'page',
+		read: (page) => [page.results, page.next_cursor],
+	});
+	return { ids: page.results.map(({ id }) => id), drift };
+};
 
 export const chatModel = xAi.provider('chatModel', {
 	action: 'xAI Grok Chat Model',

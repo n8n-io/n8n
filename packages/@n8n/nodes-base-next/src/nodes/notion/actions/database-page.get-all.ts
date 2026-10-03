@@ -1,9 +1,8 @@
 import {
-	matches,
 	pages,
+	readAs,
 	Schema,
 	t,
-	validate,
 	type Infer,
 	type JsonSchema,
 	type ObjectOf,
@@ -254,13 +253,7 @@ export const getManyDatabasePages = databasePage.action('getAll', {
 			next: (response) => (response.has_more === false ? undefined : response.next_cursor),
 			limit,
 		});
-		for await (const result of results) {
-			const simplified = simplifyPage(result);
-			if (!matches(page, simplified)) {
-				const issues = validate(simplified, page.json, { path: 'page' });
-				throw new Error(`Notion returned a page in another shape: ${issues.join('; ')}`);
-			}
-			yield simplified;
-		}
+		// Each page is an output, so the host warns about a field in another shape.
+		for await (const result of results) yield readAs(page, simplifyPage(result)).value;
 	},
 });

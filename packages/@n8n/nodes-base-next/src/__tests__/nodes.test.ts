@@ -43,7 +43,9 @@ function run(
 	respond: (call: Call) => unknown,
 ) {
 	const calls: Call[] = [];
+	const hints: Array<{ message: string }> = [];
 	const context = {
+		addExecutionHints: (...added: Array<{ message: string }>) => hints.push(...added),
 		getInputData: () => [{ json: {} }],
 		getNode: () => ({ name: 'Node', credentials: { notionApi: { id: '1', name: 'Notion' } } }),
 		getNodeParameter: (name: string) => parameters[name],
@@ -66,7 +68,7 @@ function run(
 	// The runtime reads only these members.
 	const result = new NodeType().execute?.call(context as unknown as IExecuteFunctions);
 	const execute = result?.then((output) => (Array.isArray(output) ? output : []));
-	return { execute, calls };
+	return { execute, calls, hints };
 }
 
 describe('contracts', () => {
@@ -141,9 +143,9 @@ describe('notion.databasePage.getAll', () => {
 		expect(items[0]?.json).toEqual(simplifyObjects([page('p1')], false, 3)[0]);
 	});
 
-	it('names the fields a page in another shape misses', async () => {
+	it('emits a page with a missing field and names it in a warning', async () => {
 		const { url: _url, ...withoutUrl } = page('p1');
-		const { execute } = run(
+		const { execute, hints } = run(
 			getManyDatabasePages,
 			{ database: '5b9e2c1d0a7f4c3e9d217f6a8b9c0d1e' },
 			({ options }) =>
@@ -151,9 +153,10 @@ describe('notion.databasePage.getAll', () => {
 					? { data_sources: [{ id: 'ds-1' }] }
 					: { results: [withoutUrl], next_cursor: null },
 		);
-		await expect(execute).rejects.toThrow(
-			'Notion returned a page in another shape: page.url: is required',
-		);
+		expect((await execute)?.[0]?.map((item) => item.json.id)).toEqual(['p1']);
+		expect(hints.map(({ message }) => message)).toEqual([
+			expect.stringContaining('output[0].url: is required'),
+		]);
 	});
 
 	it('derives the fields an AND filter guarantees', () => {
@@ -413,6 +416,20 @@ describe('httpRequest.get', () => {
 			customers([1, 2]),
 		);
 		expect(fetch.calls).toHaveLength(1);
+	});
+
+	it('names the list fields of the body when items gives no list', async () => {
+		const failure = async (json: unknown) => {
+			const fetch = mockHttp([{ path: '/v1/customers', reply: { json } }]);
+			const input = { url, items: '={{ $response.body.data }}' };
+			const result = await runAction(getRequest, { input, fetch });
+			return result.ok ? undefined : result.error.message;
+		};
+		expect(await failure({ orders: [], meta: { links: [] }, total: 2 })).toContain(
+			'input.items gives no list: ={{ $response.body.data }}; body has list fields: orders, meta.links',
+		);
+		expect(await failure([{ id: 1 }])).toContain('the body is a list, so omit items');
+		expect(await failure({ total: 2 })).toContain('body has no list field');
 	});
 
 	it('refuses a page value that is more than a read of $response', async () => {

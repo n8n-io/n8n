@@ -35,6 +35,7 @@ describe('the root of @n8n/node-sdk', () => {
 			'paging',
 			'parse',
 			'provider',
+			'readAs',
 			'ref',
 			't',
 			'validate',

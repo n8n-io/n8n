@@ -1,4 +1,4 @@
-import { isRecord, list, matches, t, validate, type Http, type Infer } from '@n8n/node-sdk';
+import { isRecord, list, readAs, t, type Http, type Infer } from '@n8n/node-sdk';
 
 const label = t.obj({ id: t.str(), name: t.str() });
 
@@ -62,8 +62,6 @@ export async function getMessage(
 		path: `/messages/${encodeURIComponent(id)}`,
 		query: METADATA,
 	});
-	const simplified = simplifyMessage(message, labels);
-	if (matches(simplifiedMessage, simplified)) return simplified;
-	const issues = validate(simplified, simplifiedMessage.json, { path: 'message' });
-	throw new Error(`Gmail returned message ${id} in another shape: ${issues.join('; ')}`);
+	// The message is the output, so the host warns about a field in another shape.
+	return readAs(simplifiedMessage, simplifyMessage(message, labels), { path: 'message' }).value;
 }

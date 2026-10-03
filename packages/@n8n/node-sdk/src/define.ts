@@ -21,7 +21,7 @@ import {
 	type ProviderKind,
 } from './providers';
 import type { PollConfig, TriggerKind, WebhookConfig, WebhookRequest } from './triggers';
-import { parsePage } from './validate';
+import { readAs } from './validate';
 
 /**
  * The integration identity: name, credential, and base URL shared by its actions.
@@ -342,8 +342,9 @@ export interface PagesOptions<P, T> {
 }
 
 /**
- * Yields the items of each page in order. It reads each response once, as `page` gives it, so
- * a page in another shape fails with its path, e.g. `page.results: must be array`. It stops at
+ * Yields the items of each page in order. It reads each response once, as `page` gives it. A
+ * schema page fails only when a field that `items` or `next` reads does not match, with its path,
+ * e.g. `page.results: must be array`; the other fields of the page can change. It stops at
  * `limit` items, after `maxPages` pages, at a page without a next cursor, and at a cursor it
  * already sent, so an API that repeats a cursor cannot loop. The host request limit also
  * applies. It is a helper, not a host method: it inlines into each bundle. A `list` binding
@@ -364,14 +365,19 @@ export async function* pages<P, T>(
 	http: Http,
 	{ page: reader, request, items, next, limit, maxPages = Infinity }: PagesOptions<P, T>,
 ): AsyncGenerator<T, void, undefined> {
-	// Not `instanceof Schema`: a frozen bundle has its own copy of the SDK.
-	const read = (response: unknown): P =>
-		typeof reader === 'function' ? reader(response) : parsePage(reader, response);
 	// `for...of` also visits the pages the loop appends: one request per page.
 	const queue: Array<{ readonly cursor?: string; readonly emitted: number }> = [{ emitted: 0 }];
 	for (const { cursor, emitted } of queue) {
 		const room = limit === undefined ? undefined : limit - emitted;
-		const page = read(await http.request(request(cursor, room)));
+		const response = await http.request(request(cursor, room));
+		// Not `instanceof Schema`: a frozen bundle has its own copy of the SDK.
+		const page =
+			typeof reader === 'function'
+				? reader(response)
+				: readAs(reader, response, {
+						path: 'page',
+						read: (value) => next(value, { items: items(value), cursor, room }),
+					}).value;
 		const all = items(page);
 		const kept = all.slice(0, room);
 		yield* kept;
@@ -993,7 +999,10 @@ export type Pages<Page> =
  */
 export interface ListBinding<Input, P extends string, R extends AnySchema, Out>
 	extends RequestBinding<Input, P> {
-	/** The schema of one response body. A page in another shape fails with its path. */
+	/**
+	 * The schema of one response body. A page fails with its path when a field that `items` or
+	 * the cursor reads does not match. The host warns about the other fields.
+	 */
 	readonly response: R;
 	/** The outputs of one page, e.g. `(page) => page.results`. */
 	items(page: Infer<R>, input: Input): readonly Out[];

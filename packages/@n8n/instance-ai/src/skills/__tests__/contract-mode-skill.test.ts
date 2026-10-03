@@ -67,6 +67,12 @@ describe('contract-mode skill', () => {
 		expect(skill).not.toContain('WorkflowJSON');
 	});
 
+	it('tells the user to type a field value without the leading =', () => {
+		expect(skill).toContain(
+			'- A value you tell the user to type never starts with `=`: the editor adds it.',
+		);
+	});
+
 	it('stays small', () => {
 		expect(Buffer.byteLength(skill)).toBeLessThan(5_200);
 	});
