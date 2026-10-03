@@ -172,8 +172,12 @@ describe('contract-mode skill', () => {
 	it('teaches group() and the grouping opt-out over the box ceiling', () => {
 		const text = substituteSkillPlaceholders(skill);
 		expect(text).toContain(
-			`3. Over ${TOP_LEVEL_ITEM_CEILING} boxes, wrap stages in \`group({ name }, part)\`\n   or pass \`groupingDecision: 'not_warranted'\` and a \`groupingReason\`.`,
+			`3. Over ${TOP_LEVEL_ITEM_CEILING} boxes, wrap stages (not a lone \`forEach\`) in \`group({ name }, part)\`\n   or pass \`groupingDecision: 'not_warranted'\` and a \`groupingReason\`.`,
 		);
+	});
+
+	it('makes the loop state with a set before the loop', () => {
+		expect(skill).toContain('The state is the item before `loop`: `set` it first.');
 	});
 
 	it('stays small', () => {

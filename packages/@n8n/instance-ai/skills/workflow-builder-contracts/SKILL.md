@@ -18,7 +18,7 @@ recommended_tools:
 
 # Workflow Builder
 
-You write one typed TypeScript file. Show no output until the end,
+Write one typed TypeScript file. Show no output until the end,
 unless blocked. This skill and `nodes(action="type-definition")`
 are the full API: do not read SDK files. Only `build-workflow` has
 `@n8n/nodes/*` and runs `tsc`: do not run it.
@@ -34,10 +34,9 @@ are the full API: do not read SDK files. Only `build-workflow` has
    `sourceCode`.
 4. Fix every `file:line` error: pass the full source, or edit the file with
    `workspace_str_replace_file` and build with `filePath` only.
-5. If `postBuildFlow.required` is true, follow
-   `postBuildFlow.instructions`.
+5. Follow `postBuildFlow.instructions` if `postBuildFlow.required` is true.
 
-For an existing workflow, call `workflows(action="get-as-code", workflowId)`,
+To edit a workflow, call `workflows(action="get-as-code", workflowId)`,
 make the smallest change and build with its `filePath`. Keep its
 `node()` and `expr()` calls.
 
@@ -58,10 +57,7 @@ export default workflow(
   notion.databasePage.getAll({
     name: 'Overdue',
     database: '5b9e2c1d0a7f4c3e9d217f6a8b9c0d1e',
-    where: {
-      match: 'all',
-      conditions: [{ property: 'Due', type: 'date', condition: { op: 'before', value: (_item, $) => $.today.toISODate() } }],
-    },
+    where: { match: 'all', conditions: [{ property: 'Due', type: 'date', condition: { op: 'before', value: (_item, $) => $.today.toISODate() } }] },
   }),
   onError(set({ name: 'Log', fields: { reason: (e) => e.error.message } })),
   set({ name: 'Row', fields: { name: (page) => page.name } }),
@@ -72,7 +68,7 @@ export default workflow(
   items of the part before. A later trigger starts another flow.
 - `onError(part)` takes the errors of the part before; its branch ends.
   `recover(part)` joins it back.
-- A macro takes one part per branch or body: a step, a macro, or
+- A branch or body is one part: a step, a macro, or
   `steps(a, b, …)` for several.
 - `when({ name, if: (item) => … }, { then: part, else: part })` adds an IF
   node. Without `else`, false items stop.
@@ -81,7 +77,8 @@ export default workflow(
 - `switchOn({ name, on }, { value: part, fallback: part })`,
   `merge({ name, join }, [part, part, …])`, `forEach({ name, batchSize }, body)`,
   `loop({ name, maxIterations, until, next?, onLimit? }, body)`: Switch, Merge,
-  loops. `onLimit: 'continue'` ends at maxIterations: 'at most 10 levels'.
+  loops. `onLimit: 'continue'` ends at maxIterations: 'at most N'.
+  The state is the item before `loop`: `set` it first.
 - `set({ name, fields })` makes fields; `keep: 'all'` keeps input fields.
 - `sample` items type the output and feed verification:
   `manual({ sample: [{ id: 1 }] })`.
@@ -97,7 +94,7 @@ agent.execute({ name: 'Agent', promptType: 'define', text: (item) => item.questi
 ```
 
 A typed action is also an agent tool: put `<action>Tool` in `tools`. The model
-fills each `fromModel()` field, e.g.
+fills each `fromModel()` field:
 `httpRequest.getTool({ name: 'Fetch', url: fromModel('The page URL') })`.
 
 ## Lambdas
@@ -111,16 +108,16 @@ fills each `fromModel()` field, e.g.
 
 ## Values
 
-- Keep real values you got. Never invent IDs, emails or URLs:
+- Keep real values. Never invent IDs, emails or URLs:
   write `placeholder('Database')` and tell the user.
 - A value you tell the user to type never starts with `=`: the editor adds it.
-- Never write credentials or ask for secrets: the build binds or asks for them.
+- Never write credentials or ask for secrets: the build binds them or asks.
 
 ## Workflow rules
 
 1. Zero items end a path. Do not add empty-check gates.
 2. A write action outputs its API response, not its input: read earlier
-   data with `$('Node Name')`.
-3. Over {{TOP_LEVEL_ITEM_CEILING_PLACEHOLDER}} boxes, wrap stages in `group({ name }, part)`
+   data with `$('Node')`.
+3. Over {{TOP_LEVEL_ITEM_CEILING_PLACEHOLDER}} boxes, wrap stages (not a lone `forEach`) in `group({ name }, part)`
    or pass `groupingDecision: 'not_warranted'` and a `groupingReason`.
 4. Build success is not proof. Do not publish automatically.

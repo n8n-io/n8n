@@ -709,22 +709,67 @@ const unionTypeMessage = {
 	},
 };
 
+/** A typed module that the source imports from the flow API, e.g. `noOp`. */
+function moduleImportHint(error: string): string | undefined {
+	const name = /has no exported member '(\w+)'/.exec(error)?.[1];
+	if (name === undefined || !nextNodeIds.includes(name)) return undefined;
+	const step = actions.find((action) => action.node.id === name && !action.inputs);
+	const call = step ? ` Call its steps as members, e.g. \`${step.id}({ name })\`.` : '';
+	return `\`${name}\` is a typed module, not part of the flow API: \`import { ${name} } from '@n8n/nodes/${name}'\`.${call}`;
+}
+
+/** A module or resource object of a typed module, e.g. `'{ pass: <In, Ctx, …'`. */
+const MODULE_OBJECT = /[Tt]ype '\{ (?:(\w+): \{ )?(\w+): <In, Ctx\b/;
+
+const moduleStepHint = (lead: string) => (_macros: string, error: string) => {
+	const [, resource, step] = MODULE_OBJECT.exec(error) ?? [];
+	const path = [resource, step].filter((part) => part !== undefined).join('.');
+	return `${lead} Call a step that its type lists, e.g. \`.${path}({ name })\`. \`nodes(action="type-definition")\` shows them all.`;
+};
+
+const LOOP_STATE_HINT =
+	'The loop state has the type of the item before `loop`, and `next` returns it. Put a `set` of only the state fields before `loop`. Then end the body with a `set` of the same fields, or return them from `next`.';
+
 /**
  * A fix in the flow SDK for a frequent `tsc` error of a workflow source, by code and by the first
  * line of the message. `detail` must also match the full error text, when given. `macros` are
- * the macros of the flow SDK. The first rule that matches wins.
+ * the macros of the flow SDK. The first rule that matches and gives a hint wins.
  */
 const TSC_HINTS: ReadonlyArray<{
 	readonly codes: readonly number[];
 	readonly message: Pick<RegExp, 'test'>;
 	readonly detail?: RegExp;
-	readonly hint: (macros: string) => string;
+	readonly hint: (macros: string, error: string) => string | undefined;
 }> = [
 	{
 		codes: [2339, 2551],
 		message: /on type '(?:Routed)?Step<|on type 'Trigger<|on type 'Region</,
 		hint: (macros) =>
 			`A step has no methods. A workflow is a flat list: \`workflow(name, trigger, stepA, stepB)\`. Macros: ${macros}.`,
+	},
+	{
+		codes: [2339],
+		message: MODULE_OBJECT,
+		hint: moduleStepHint('This typed module or resource has no step of this name.'),
+	},
+	{
+		codes: [2349],
+		message: /^This expression is not callable/,
+		detail: MODULE_OBJECT,
+		hint: moduleStepHint('A typed module is an object of steps, not a function.'),
+	},
+	{
+		codes: [2345],
+		message: /to parameter of type 'LoopConfig</,
+		detail: /Property 'next' is missing/,
+		hint: () => LOOP_STATE_HINT,
+	},
+	{
+		codes: [2322],
+		message: /^Type '\(.*' is not assignable to type '\(out: /,
+		// `until` also reads `out`, but returns a boolean.
+		detail: /^(?![\s\S]*to type 'boolean')/,
+		hint: () => LOOP_STATE_HINT,
 	},
 	{
 		codes: [2339],
@@ -800,7 +845,7 @@ const TSC_HINTS: ReadonlyArray<{
 		codes: [7006],
 		message: /implicitly has an 'any' type/,
 		hint: () =>
-			"This lambda gets no parameter types. Fix the first error before it first (a method or field that does not exist). Do not annotate the parameters. If no error comes before it, write the value as `expr('{{ … }}')`.",
+			'This lambda gets no parameter types: the field it fills or the value it maps has the type `any`. Give the step that outputs the value `sample` items. For a field, use a typed step, e.g. the flow `set({ name, fields })`. Do not annotate the parameters.',
 	},
 	{
 		codes: [2322, 2345],
@@ -820,10 +865,11 @@ const TSC_HINTS: ReadonlyArray<{
 			"`$('Node')` reads only a node that runs before this one on the same path, by its exact `name`. If an earlier error breaks the list, fix it first.",
 	},
 	{
-		codes: [2739, 2740, 2741],
-		message: /missing the following propert|is missing in type/,
+		codes: [2322, 2345, 2739, 2740, 2741],
+		message: /^/,
+		detail: /missing the following propert|is missing in type/,
 		hint: () =>
-			'Add the fields that the message names. `nodes(action="type-definition")` shows the full type.',
+			'Add the fields that the message names. A `sample` item needs every output field, also the ones you do not read, e.g. `headers: {}`. `nodes(action="type-definition")` shows the full type.',
 	},
 	{
 		codes: [2353],
@@ -842,6 +888,11 @@ const TSC_HINTS: ReadonlyArray<{
 		message: /^Module '"@n8n\/nodes\//,
 		hint: () =>
 			"A typed module exports one object named after its id, e.g. `import { slack } from '@n8n/nodes/slack'`. Its steps are members: `slack.message.send({ … })`.",
+	},
+	{
+		codes: [2305],
+		message: /^Module '"@n8n\/workflow-sdk\/next"'/,
+		hint: (_macros, error) => moduleImportHint(error),
 	},
 	{
 		codes: [2305],
@@ -868,13 +919,13 @@ export function tscHintOf(
 ): string | undefined {
 	const [, code, message] = TSC_ERROR.exec(error) ?? [];
 	if (code === undefined || message === undefined) return undefined;
-	const rule = TSC_HINTS.find(
+	const hints = TSC_HINTS.filter(
 		(each) =>
 			each.codes.includes(Number(code)) &&
 			each.message.test(message) &&
 			(each.detail?.test(error) ?? true),
 	);
-	return rule?.hint(macros.join(', '));
+	return hints.map((each) => each.hint(macros.join(', '), error)).find(Boolean);
 }
 
 /**

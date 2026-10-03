@@ -898,6 +898,10 @@ describe('tsc hints', () => {
 	const macros = ['steps', 'when', 'onError'];
 	const methodHint =
 		'A step has no methods. A workflow is a flat list: `workflow(name, trigger, stepA, stepB)`. Macros: steps, when, onError.';
+	const missingFieldsHint =
+		'Add the fields that the message names. A `sample` item needs every output field, also the ones you do not read, e.g. `headers: {}`. `nodes(action="type-definition")` shows the full type.';
+	const loopStateHint =
+		'The loop state has the type of the item before `loop`, and `next` returns it. Put a `set` of only the state fields before `loop`. Then end the body with a `set` of the same fields, or return them from `next`.';
 
 	it.each([
 		[
@@ -946,7 +950,7 @@ describe('tsc hints', () => {
 		],
 		[
 			"TS7006: Parameter 'failed' implicitly has an 'any' type.",
-			"This lambda gets no parameter types. Fix the first error before it first (a method or field that does not exist). Do not annotate the parameters. If no error comes before it, write the value as `expr('{{ … }}')`.",
+			'This lambda gets no parameter types: the field it fills or the value it maps has the type `any`. Give the step that outputs the value `sample` items. For a field, use a typed step, e.g. the flow `set({ name, fields })`. Do not annotate the parameters.',
 		],
 		[
 			"TS2322: Type '(item: { body: { severity?: string; }; }) => string | undefined' is not assignable to type 'string | ((item: { body: { severity?: string; }; }) => string)'.",
@@ -958,7 +962,35 @@ describe('tsc hints', () => {
 		],
 		[
 			"TS2740: Type '{ body: { id: string; }; }' is missing the following properties from type '{ headers: { [key: string]: string; }; body: Loose; }': headers, params, query, webhookUrl, and 2 more.",
-			'Add the fields that the message names. `nodes(action="type-definition")` shows the full type.',
+			missingFieldsHint,
+		],
+		[
+			"TS2322: Type '{ statusCode: number; body: { metrics: { employees: number; }; }; }' is not assignable to type '{ body: any; headers: { [key: string]: string; }; statusCode: number; } & { body: any; headers: { [x: string]: string; }; statusCode: number; }'.\n  Property 'headers' is missing in type '{ statusCode: number; body: { metrics: { employees: number; }; }; }' but required in type '{ body: any; headers: { [key: string]: string; }; statusCode: number; }'.",
+			missingFieldsHint,
+		],
+		[
+			"TS2305: Module '\"@n8n/workflow-sdk/next\"' has no exported member 'noOp'.",
+			"`noOp` is a typed module, not part of the flow API: `import { noOp } from '@n8n/nodes/noOp'`. Call its steps as members, e.g. `noOp.pass({ name })`.",
+		],
+		[
+			"TS2339: Property 'execute' does not exist on type '{ pass: <In, Ctx, const N extends string>(config: { name: N; sample?: In[] | undefined; settings?: NodeSettings | undefined; } & NoOpPassInput<In, Ctx>) => Step<In, Ctx, In, N>; }'.",
+			'This typed module or resource has no step of this name. Call a step that its type lists, e.g. `.pass({ name })`. `nodes(action="type-definition")` shows them all.',
+		],
+		[
+			"TS2349: This expression is not callable.\n  Type '{ pass: <In, Ctx, const N extends string>(config: { name: N; sample?: In[] | undefined; settings?: NodeSettings | undefined; } & NoOpPassInput<In, Ctx>) => Step<In, Ctx, In, N>; }' has no call signatures.",
+			'A typed module is an object of steps, not a function. Call a step that its type lists, e.g. `.pass({ name })`. `nodes(action="type-definition")` shows them all.',
+		],
+		[
+			"TS2339: Property 'post' does not exist on type '{ message: { send: <In, Ctx, const N extends string, S extends OutputOf<N, SlackMessageSendOutput> = OutputOf<N, SlackMessageSendOutput>>(config: { ...; }) => Step<...>; }; }'.",
+			'This typed module or resource has no step of this name. Call a step that its type lists, e.g. `.message.send({ name })`. `nodes(action="type-definition")` shows them all.',
+		],
+		[
+			'TS2345: Argument of type \'{ name: "Walk Org Chart"; maxIterations: number; until: (item: LoopStateSetOutput) => boolean; onLimit: "continue"; }\' is not assignable to parameter of type \'LoopConfig<"Walk Org Chart", LoopStateSetOutput, NoInfer<Record<"New Employee", { body: { ...; }; }>>>\'.\n  Property \'next\' is missing in type \'{ name: "Walk Org Chart"; maxIterations: number; until: (item: LoopStateSetOutput) => boolean; onLimit: "continue"; }\' but required in type \'{ next: (out: LoopStateSetOutput, $: Dollar<NoInfer<Record<"New Employee", { body: { ...; }; }>>>) => NoInfer<{ ...; }>; }\'.',
+			loopStateHint,
+		],
+		[
+			"TS2322: Type '(out: { ok: boolean; error: string; }) => { ok: boolean; error: string; }' is not assignable to type '(out: { ok: boolean; error: string; }, $: Dollar<NoInfer<Record<\"Event Received\", { headers: { [key: string]: string; }; body: { ...; }; }>>>) => ...'.\n  Type '{ ok: boolean; error: string; }' is missing the following properties from type '{ headers: { [key: string]: string; }; params: { [key: string]: string; }; body: { ...; }; }': headers, params, query, webhookUrl, and 3 more.",
+			loopStateHint,
 		],
 		[
 			"TS2353: Object literal may only specify known properties, and 'alwaysOutputData' does not exist in type '{ name: \"Get rows\"; type: string; }'.",
@@ -1019,6 +1051,7 @@ describe('tsc hints', () => {
 		"TS2322: Type 'string' is not assignable to type 'number'.",
 		'TS2345: Argument of type \'"Strat"\' is not assignable to parameter of type \'"Get" | "Start"\'.',
 		"TS2304: Cannot find name '$pageCount'.",
+		"TS2322: Type '(item: { ok: boolean; }) => string' is not assignable to type '(out: { ok: boolean; }, $: Dollar<Record<\"Start\", {}>>) => boolean'.\n  Type 'string' is not assignable to type 'boolean'.",
 		'n8n: Code cannot read process.',
 	])('gives no hint for %s', (message) => {
 		expect(tscHintOf(`${at}${message}`, macros)).toBeUndefined();
