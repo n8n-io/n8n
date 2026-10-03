@@ -274,6 +274,45 @@ export function getPropertyName(operation: string) {
 	return operation.replace('send', '').toLowerCase();
 }
 
+const FENCE_MARKER_REGEX = /^\s*(```|~~~)/;
+const TABLE_ROW_REGEX = /^\s*\|.*\|\s*$/;
+const HTML_VERBATIM_TAG_REGEX = /<\/?(pre|code)\b[^>]*>/gi;
+
+export function materializeRichMessageLineBreaks(
+	content: string,
+	format: 'markdown' | 'html',
+): string {
+	const lines = content.split('\n');
+	let inFence = false;
+	let inVerbatimHtml = false;
+
+	return lines
+		.map((line, i) => {
+			const isFenceMarker = format === 'markdown' && FENCE_MARKER_REGEX.test(line);
+			if (isFenceMarker) inFence = !inFence;
+
+			if (format === 'html') {
+				for (const tag of line.matchAll(HTML_VERBATIM_TAG_REGEX)) {
+					inVerbatimHtml = !tag[0].startsWith('</');
+				}
+			}
+
+			const isLastLine = i === lines.length - 1;
+			if (isLastLine) return line;
+
+			const nextLine = lines[i + 1];
+			const verbatim = isFenceMarker || (format === 'markdown' ? inFence : inVerbatimHtml);
+			const isSoftBreak =
+				!verbatim &&
+				line.trim() !== '' &&
+				nextLine.trim() !== '' &&
+				!(format === 'markdown' && (TABLE_ROW_REGEX.test(line) || TABLE_ROW_REGEX.test(nextLine)));
+
+			return isSoftBreak ? `${line}<br>` : line;
+		})
+		.join('\n');
+}
+
 export function getSecretToken(this: IHookFunctions | IWebhookFunctions) {
 	// Only characters A-Z, a-z, 0-9, _ and - are allowed.
 	const secret_token = `${this.getWorkflow().id}_${this.getNode().id}`;
