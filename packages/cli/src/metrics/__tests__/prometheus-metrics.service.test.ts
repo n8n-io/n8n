@@ -16,6 +16,7 @@ import type { PrometheusExecutionDataMetricsService } from '../prometheus/execut
 import type { PrometheusInstanceAiMetricsService } from '../prometheus/instance-ai-metrics.service';
 import type { PrometheusInstanceRoleMetricsService } from '../prometheus/instance-role-metrics.service';
 import type { PrometheusMcpPostSaveMetricsService } from '../prometheus/mcp-post-save-metrics.service';
+import type { PrometheusNodeContractMetricsService } from '../prometheus/node-contract-metrics.service';
 import type { PrometheusPollTriggerMetricsService } from '../prometheus/poll-trigger-metrics.service';
 import { PrometheusMetricsService } from '../prometheus/prometheus.service';
 import type { PrometheusPssMetricsService } from '../prometheus/pss-metrics.service';
@@ -63,6 +64,7 @@ describe('PrometheusMetricsService', () => {
 	let scheduler: Mocked<PrometheusSchedulerMetricsService>;
 	let pollTrigger: Mocked<PrometheusPollTriggerMetricsService>;
 	let systemTask: Mocked<PrometheusSystemTaskMetricsService>;
+	let nodeContract: Mocked<PrometheusNodeContractMetricsService>;
 
 	let service: PrometheusMetricsService;
 
@@ -94,6 +96,7 @@ describe('PrometheusMetricsService', () => {
 			pollTrigger,
 			encryption,
 			systemTask,
+			nodeContract,
 		);
 
 	beforeEach(() => {
@@ -132,6 +135,7 @@ describe('PrometheusMetricsService', () => {
 		pollTrigger = mock<PrometheusPollTriggerMetricsService>({ enabled: true });
 		encryption = mock<PrometheusEncryptionMetricsService>({ enabled: true });
 		systemTask = mock<PrometheusSystemTaskMetricsService>({ enabled: true });
+		nodeContract = mock<PrometheusNodeContractMetricsService>({ enabled: true });
 
 		service = buildService();
 	});
@@ -169,6 +173,7 @@ describe('PrometheusMetricsService', () => {
 			expect(pollTrigger.init).toHaveBeenCalledWith(app);
 			expect(encryption.init).toHaveBeenCalledWith(app);
 			expect(systemTask.init).toHaveBeenCalledWith(app);
+			expect(nodeContract.init).toHaveBeenCalledWith(app);
 		});
 
 		it('should NOT call init on disabled collectors', () => {

@@ -15,6 +15,7 @@ import { PrometheusExecutionDataMetricsService } from './execution-data-metrics.
 import { PrometheusInstanceAiMetricsService } from './instance-ai-metrics.service';
 import { PrometheusInstanceRoleMetricsService } from './instance-role-metrics.service';
 import { PrometheusMcpPostSaveMetricsService } from './mcp-post-save-metrics.service';
+import { PrometheusNodeContractMetricsService } from './node-contract-metrics.service';
 import { PrometheusPollTriggerMetricsService } from './poll-trigger-metrics.service';
 import { PrometheusPssMetricsService } from './pss-metrics.service';
 import { PrometheusQueueMetricsService } from './queue-metrics.service';
@@ -63,6 +64,7 @@ export class PrometheusMetricsService {
 		pollTrigger: PrometheusPollTriggerMetricsService,
 		encryption: PrometheusEncryptionMetricsService,
 		systemTask: PrometheusSystemTaskMetricsService,
+		nodeContract: PrometheusNodeContractMetricsService,
 	) {
 		this.logger = logger.scoped('metrics');
 		this.collectors = [
@@ -91,6 +93,7 @@ export class PrometheusMetricsService {
 			pollTrigger,
 			encryption,
 			systemTask,
+			nodeContract,
 		];
 	}
 

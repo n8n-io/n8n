@@ -274,6 +274,7 @@ describe('GlobalConfig', () => {
 				schedulerMetricsInterval: 20,
 				includePollTriggerMetrics: false,
 				includeSystemTaskMetrics: false,
+				includeNodeContractMetrics: false,
 				activeWorkflowCountInterval: 60,
 				includeWorkflowStatistics: false,
 				workflowStatisticsInterval: 300,
@@ -775,6 +776,15 @@ describe('GlobalConfig', () => {
 		const config = Container.get(GlobalConfig);
 
 		expect(config.scheduler.durableCursorsEnabled).toBe(true);
+	});
+
+	it('should parse N8N_METRICS_INCLUDE_NODE_CONTRACT_METRICS from env variables', () => {
+		process.env = {
+			N8N_METRICS_INCLUDE_NODE_CONTRACT_METRICS: 'true',
+		};
+		const config = Container.get(GlobalConfig);
+
+		expect(config.endpoints.metrics.includeNodeContractMetrics).toBe(true);
 	});
 
 	it('should parse N8N_AGENTS_TRACING_RECORD_INPUTS from env variables', () => {

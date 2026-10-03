@@ -76,6 +76,13 @@ export class PrometheusMetricsConfig {
 	@Env('N8N_METRICS_INCLUDE_SYSTEM_TASK_METRICS')
 	includeSystemTaskMetrics: boolean = false;
 
+	/**
+	 * Whether to include metrics for contract node runs: run duration, HTTP requests and sandbox start.
+	 * The action id is a label on the run and HTTP metrics.
+	 */
+	@Env('N8N_METRICS_INCLUDE_NODE_CONTRACT_METRICS')
+	includeNodeContractMetrics: boolean = false;
+
 	/** How often (in seconds) to update active workflow metric */
 	@Env('N8N_METRICS_ACTIVE_WORKFLOW_METRIC_INTERVAL')
 	activeWorkflowCountInterval: number = 60;
