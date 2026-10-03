@@ -390,15 +390,17 @@ export type RunningMode = 'dry' | 'live';
 
 export type SyncStatus = 'success' | 'error';
 
+export type RepositoryListOptions = {
+	filter?: Record<string, unknown>;
+	select?: Record<string, true>;
+	skip?: number;
+	take?: number;
+	sortBy?: string;
+};
+
 /** @deprecated This is tech debt. Do not rely on request-level types in repositories. */
 export namespace ListQuery {
-	export type Options = {
-		filter?: Record<string, unknown>;
-		select?: Record<string, true>;
-		skip?: number;
-		take?: number;
-		sortBy?: string;
-	};
+	export type Options = RepositoryListOptions;
 }
 
 export interface IGetExecutionsQueryFilter {
