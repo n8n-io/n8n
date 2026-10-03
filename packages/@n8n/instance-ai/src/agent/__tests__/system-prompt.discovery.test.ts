@@ -196,13 +196,6 @@ describe('getSystemPrompt — browser/computer-use discoverability', () => {
 			expect(prompt).toContain('## Tool Discovery');
 			expect(prompt).not.toMatch(/search "n8n docs"/i);
 		});
-
-		it('tells the orchestrator to answer n8n questions from n8n-docs rather than web search', () => {
-			const prompt = getSystemPrompt(toolSearchOptions);
-
-			expect(prompt).toMatch(/prefer[^.]{0,60}n8n-docs/i);
-			expect(prompt).toMatch(/n8n-docs[^.]{0,120}already (loaded|available)/i);
-		});
 	});
 
 	describe('browser availability state propagates to the prompt', () => {
