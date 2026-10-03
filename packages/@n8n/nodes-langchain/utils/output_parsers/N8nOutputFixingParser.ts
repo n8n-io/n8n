@@ -64,7 +64,10 @@ export class N8nOutputFixingParser extends BaseOutputParser {
 					instructions: this.getFormatInstructions(),
 				})) as AIMessage;
 
-				const resultText = result.content.toString();
+				// Use `.text` rather than `result.content.toString()`: models that emit
+				// provider content blocks (e.g. the OpenAI Responses API) return `content`
+				// as an array, which `.toString()` would coerce to "[object Object]".
+				const resultText = result.text;
 				const parsed = await this.outputParser.parse(resultText, callbacks);
 
 				// Add the successfully parsed output to the context
