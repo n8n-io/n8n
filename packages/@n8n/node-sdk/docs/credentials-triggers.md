@@ -106,6 +106,12 @@ fields, `when`) becomes a function that the SDK generates, never author code. OA
 `oAuth2Api` child. The parity suite (`nodes-base-next/src/__tests__/parity/credentials.parity.ts`)
 compares each type with its legacy class and lists each difference.
 
+Stored credential data is not migrated in the database. Each read fills the declared defaults
+before it validates, so a field that a newer version adds gets its default. In n8n, core first
+fills the projected default of each field, as for a legacy credential: the first option, `false`,
+`0` or `''`. So a required field without a declared default does not fail there. The editor saves
+only the values that differ from these defaults, so a strict check would break saved credentials.
+
 The freeze step writes a credential manifest for each type that is not `compat`
 (`dist/versions/credentials/notion.token/manifest.json`). The n8n loader reads the manifest and
 projects the type with `credentialTypeOfManifest`, so no class file and no `package.json` list
