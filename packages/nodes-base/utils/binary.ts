@@ -118,8 +118,30 @@ export async function createBinaryFromJson(
 		buffer = iconv.encode(valueAsString, options.encoding || 'utf8', {
 			addBOM: options.addBOM,
 		});
+	} else if (Buffer.isBuffer(value)) {
+		buffer = value;
 	} else {
-		buffer = Buffer.from(value as unknown as string, BINARY_ENCODING);
+		let base64String = typeof value === 'string' ? value : String(value ?? '');
+		const trimmed = base64String.trim();
+		const dataUriMatch = /^data:(.*?);base64,(.*)$/s.exec(trimmed);
+		if (dataUriMatch) {
+			const mediaType = dataUriMatch[1].split(';')[0].trim();
+			if (!options.mimeType && mediaType) {
+				options.mimeType = mediaType;
+			}
+			base64String = dataUriMatch[2];
+		}
+
+		const cleaned = base64String.replace(/\s+/g, '');
+		if (cleaned.length > 0 && !/^[A-Za-z0-9+/=_-]+$/.test(cleaned)) {
+			throw new NodeOperationError(
+				this.getNode(),
+				'The provided string is not valid base64 data. If you are trying to write plain text to a file, use the "Convert to Text File" operation instead.',
+				{ itemIndex: options.itemIndex || 0 },
+			);
+		}
+
+		buffer = Buffer.from(base64String, BINARY_ENCODING);
 	}
 
 	const binaryData = await this.helpers.prepareBinaryData(
