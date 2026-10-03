@@ -600,20 +600,23 @@ function boundDescription(description: string, context: SanitizeContext, path: s
 }
 
 /**
- * Carry the source node's description onto its sanitized replacement, bounded
- * and stripped. Only for non-strict (MCP-sourced) schemas: strict mode is our
- * own tool schemas, whose descriptions are trusted and can legitimately be
- * longer than the MCP cap.
+ * Carry the source node's description onto its sanitized replacement. Rebuilt
+ * nodes (objects, arrays, optional wrappers) do not inherit it, so without this
+ * every nested description is lost. Strict mode is our own tool schemas, whose
+ * descriptions are trusted and copied verbatim; MCP-sourced descriptions are
+ * bounded and stripped.
  */
 function withSanitizedDescription(
 	source: z.ZodTypeAny,
 	sanitized: z.ZodTypeAny,
 	context: SanitizeContext,
 ): z.ZodTypeAny {
-	if (context.strict) return sanitized;
-
 	const description = source.description;
 	if (description === undefined) return sanitized;
+
+	if (context.strict) {
+		return sanitized.description === description ? sanitized : sanitized.describe(description);
+	}
 
 	const safeDescription = sanitizeMcpDescription(description, MCP_SCHEMA_DESCRIPTION_MAX_LENGTH, {
 		toolName: context.toolName,

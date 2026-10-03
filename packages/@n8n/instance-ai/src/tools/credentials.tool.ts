@@ -54,7 +54,7 @@ export const setupHintField = z
 				body: z.record(z.unknown()).optional(),
 			})
 			.describe(
-				'The authentication parts of the request exactly as the service documents them, with `{{placeholder}}` markers where the user\'s values go — e.g. headers: { "Authorization": "Key {{api_key}}" }. Statics (header names, version literals) are written verbatim. NEVER include a real secret value.',
+				'Auth request parts as documented, with {{placeholder}} markers for user values, e.g. headers: { "Authorization": "Key {{api_key}}" }. Never a real secret.',
 			),
 		placeholders: z
 			.array(
@@ -65,7 +65,7 @@ export const setupHintField = z
 						.string()
 						.optional()
 						.describe(
-							'Optional one-line clarification of the value itself — its format or which of the provider\'s tokens it is (e.g. "Starts with tvly-"). NEVER where to obtain it: the user asks the n8n Assistant for that. No URLs or domains.',
+							'Format of the value (e.g. "Starts with tvly-"). Never where to get it, no URLs.',
 						),
 					type: z
 						.enum(['password', 'plain'])
@@ -74,37 +74,31 @@ export const setupHintField = z
 					optional: z
 						.boolean()
 						.optional()
-						.describe(
-							'Set true only when the service documents the value as optional (e.g. an org/region qualifier) — the user may leave it empty, and template entries referencing an empty optional placeholder are omitted from the request. Omit for anything required to authenticate.',
-						),
+						.describe('Only when the provider documents the value as optional.'),
 				}),
 			)
 			.min(1)
-			.describe('One entry per {{marker}} in the template — every marker must be described here.'),
+			.describe('One entry per {{marker}} in the template.'),
 		docsUrl: z
 			.string()
 			.optional()
-			.describe(
-				'Direct URL of the provider page where the user creates/copies the secret (e.g. https://replicate.com/account/api-tokens). Not shown in the form — the AI help thread uses it to send the user to the exact page, so it must come from a fetched page, never constructed. NOT the API reference documentation.',
-			),
+			.describe('Fetched provider page where the user creates the secret. Not the API reference.'),
 		suggestedName: z
 			.string()
 			.optional()
-			.describe(
-				'Display name for the created credential, also used as the setup card title ("Set up {suggestedName}"). Name it after the service, user-facing — e.g. "fal.ai API Key", not the generic type name.',
-			),
+			.describe('User-facing credential name, e.g. "fal.ai API Key".'),
 		testUrl: z
 			.string()
 			.optional()
 			.describe(
-				"Side-effect-free endpoint that answers an authenticated GET, used to verify the credential on save and on later retests. Prefer a documented account/profile/me-style endpoint; when the provider has none, use another documented read-only GET that rejects invalid keys (usage, quota, list/discovery). Never a resource or action URL, never anything that can trigger billable work, never one of the workflow's own endpoints. Omit only when the provider documents no such endpoint.",
+				"Documented read-only GET that rejects invalid keys. Never billable, never the workflow's own endpoints.",
 			),
 		// acceptedStatusCodes is deliberately NOT model-facing: models pad it
 		// regardless of instructions, and a padded [401] blinds the probe to real
 		// rejections. The credential's own field stays user-editable.
 	})
 	.describe(
-		`Recipe for creating a "${TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE}" credential so the user only has to paste their secret(s) — the rest is pre-filled. Provide it whenever the service has no dedicated credential type and its auth is expressible as header/query/body values; ground it in the provider's documentation, never guess the format.`,
+		`Recipe that pre-fills a "${TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE}" credential, for a service with no dedicated credential type. Ground it in the provider's docs.`,
 	);
 
 /**
@@ -389,7 +383,7 @@ const setupAction = z.object({
 	action: z
 		.literal('setup')
 		.describe(
-			'Open the credential setup card for the user to create or select credentials. The card is only visible while this call is pending — any returned result means the interaction already finished, so never tell the user a card is open or that they must authorize. A `success` result carries a `credentials` map plus a `selections` array reporting what each selection actually is (`connection`, `hasNoValues`) and a `verified` flag: only report credentials as ready when `verified` is true, and otherwise relay the unresolved selections named in `message`. A sole service-scoped credential may have been auto-selected with no user action, unless the entry set `preferNew`; generic auth types always need an explicit Continue.',
+			'Open the credential setup card for the user to create or select credentials. Any returned result means the card already closed: never tell the user a card is open or that they must authorize. Report credentials as ready only when `verified` is true; otherwise relay the unresolved selections in `message`. A sole service-scoped credential may be auto-selected unless `preferNew` is set.',
 		),
 	credentials: z
 		.array(
@@ -410,7 +404,7 @@ const setupAction = z.object({
 					.boolean()
 					.optional()
 					.describe(
-						'Set when the user explicitly asked to create a new credential of this type ("create a new Slack credential"), or needs to enter a replacement for one whose secret is invalid or rotated (e.g. pasted a new token in chat, which you cannot store). The card then opens with nothing preselected instead of offering the most recent existing credential — existing ones stay listed in case the user changes their mind.',
+						'Set only when the user asked for a new credential of this type or must replace an invalid or rotated secret. The card then opens with nothing preselected.',
 					),
 				setupHint: standaloneSetupHintField.optional(),
 			}),
@@ -426,7 +420,7 @@ const setupAction = z.object({
 		.boolean()
 		.optional()
 		.describe(
-			'Set true only for standalone setup when the user explicitly asks to create a new, separate, or different credential, or explicitly asks to see the setup card or choose a credential even if one already exists. Keeps the card open for an explicit user choice instead of automatically accepting a sole existing credential. Omit otherwise.',
+			'Standalone setup only: set true when the user explicitly asks for a new or different credential, or to see the card or choose one, even if one exists. Keeps the card open instead of accepting a sole existing credential.',
 		),
 	credentialFlow: z
 		.object({
