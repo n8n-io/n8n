@@ -78,11 +78,17 @@ export const GUEST_LACKS = [
 	'setImmediate',
 ] as const;
 
+/**
+ * The globals that freeze refuses. The guest has `fetch` only as a stub that throws, and in the
+ * n8n process `fetch` sends a request past the egress check of the host.
+ */
+const REFUSED_GLOBALS = [...GUEST_LACKS, 'fetch'];
+
 const LACKS_MARKER = '__n8n_guest_lacks_';
 
 /**
- * What a bundle uses that the sandbox does not have: a module other than `n8n-workflow`, a global
- * of `GUEST_LACKS`, or a Unicode property escape (`\p{…}`). esbuild replaces only a global that
+ * What a bundle may not use: a module other than `n8n-workflow`, a global
+ * of `REFUSED_GLOBALS`, or a Unicode property escape (`\p{…}`). esbuild replaces only a global that
  * no scope binds. A global that the bundle also tests with `typeof` counts as guarded. A name
  * built at run time is not found: the sandbox still stops it.
  */
@@ -92,7 +98,7 @@ async function sandboxGapsOf(bundle: string, modules: readonly string[]): Promis
 		loader: 'js',
 		legalComments: 'none',
 		define: Object.fromEntries(
-			GUEST_LACKS.flatMap((name) => [
+			REFUSED_GLOBALS.flatMap((name) => [
 				[name, `${LACKS_MARKER}${name}`],
 				[`globalThis.${name}`, `${LACKS_MARKER}${name}`],
 			]),
@@ -176,7 +182,7 @@ export async function freezeAction(entryFile: string, exportName: string): Promi
 	const gaps = await sandboxGapsOf(bundle, [...new Set(modules)]);
 	if (gaps.length > 0) {
 		throw new UserError(
-			`${exportName} in ${entryFile} uses what the sandbox does not have: ${gaps.join(', ')}. Use web APIs and no Unicode property escapes.`,
+			`${exportName} in ${entryFile} uses what a bundle may not use: ${gaps.join(', ')}. Use web APIs, http.request for requests, and no Unicode property escapes.`,
 		);
 	}
 	const action = evaluateBundle(bundle, NODE_CONTRACT_VERSION);

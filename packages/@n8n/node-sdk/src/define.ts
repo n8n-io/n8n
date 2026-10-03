@@ -475,6 +475,9 @@ export interface RunLimits {
 	readonly maxItems: number;
 }
 
+/** The `RunLimits` of a host that sets none. */
+export const DEFAULT_RUN_LIMITS: RunLimits = { maxRequests: 10_000, maxItems: 1_000_000 };
+
 /** Creates files in the n8n binary data store. */
 export interface Binaries {
 	/** The chunks go to the store as the action yields them, so a large file never sits in memory. */

@@ -1,4 +1,10 @@
-export { credentialHostsOf, egressIssuesOf, type EgressIssues } from '../egress';
+export {
+	credentialHostsOf,
+	egressIssuesOf,
+	permissionsOf,
+	type ContractPermissions,
+	type EgressIssues,
+} from '../egress';
 export { isToolContract } from '../define';
 export { credentialTypeOfManifest, toCredentialType } from '../credentials';
 export { setCodeLanguages } from '../host-imports';

@@ -14,7 +14,7 @@ See `packages/@n8n/nodes-base-next/src/nodes/**` for real nodes.
 | `@n8n/node-sdk` | node authors | `defineNode`, `t` (schema builders), `provider` (`input`, `is`), `defineResource`, `ref`, `parse`, `matches`, `validate`, `list`, `isRecord`, `isHttpError`, paging helpers, author types |
 | `@n8n/node-sdk/credentials` | node authors | `defineCredential`, `credential`, `compat`, `field` (credential fields). Auth schemes only in the `auth: (a) => …` callback |
 | `@n8n/node-sdk/testing` | node authors | `runAction`, `mockHttp` |
-| `@n8n/node-sdk/host` | n8n core and cli | node and credential types (`toNodeType`, `toVersionedNodeType`, `toCredentialType`, …), loaders, Node Contract range, egress checks, `exampleOf` |
+| `@n8n/node-sdk/host` | n8n core and cli | node and credential types (`toNodeType`, `toVersionedNodeType`, `toCredentialType`, …), loaders, Node Contract range, egress checks, `permissionsOf` (the permissions of a contract), `exampleOf` |
 | `@n8n/node-sdk/registry` | registry, freeze, store | manifests (`toContract`, `lintContract`, `parseManifest`), hashes, semver, `diffContracts`, packages and integrity, fixtures |
 | `@n8n/node-sdk/codegen` | instance-ai, compat | `generateNodeModule`, `toTs`, model catalog, provider connections and fields |
 | `@n8n/node-sdk/mcp` | tooling | `liftMcpTool`: an MCP tool as a derived manifest |

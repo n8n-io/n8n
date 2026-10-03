@@ -36,6 +36,7 @@ import { codeRunnerOf, dataTableHostOf, dataTablesOf } from './host-imports';
 import { actionHostsOf, credentialHostsOf, egressOf } from './egress';
 import { parameterValue, toProperty } from './properties';
 import {
+	DEFAULT_RUN_LIMITS,
 	isHttpError,
 	isToolContract,
 	usesBinary,
@@ -359,8 +360,6 @@ export function credentialDescriptionOf(user: CredentialUser) {
 	}));
 	return { selector, credentials };
 }
-
-const DEFAULT_LIMITS: RunLimits = { maxRequests: 10_000, maxItems: 1_000_000 };
 
 // An action that logs in a loop must not fill the n8n log.
 const MAX_LOG_LENGTH = 2_000;
@@ -845,7 +844,7 @@ export function executorOf<S extends Shape, O extends AnySchema>(
 		};
 
 		// Frozen: `run()` gets the object that the host enforces.
-		const limits: RunLimits = Object.freeze({ ...DEFAULT_LIMITS, ...host.limits });
+		const limits: RunLimits = Object.freeze({ ...DEFAULT_RUN_LIMITS, ...host.limits });
 		const wait = host.wait ?? (async (ms: number) => await sleep(ms));
 		const selected = hasSelector(action) ? host.parameter(AUTHENTICATION, 0) : undefined;
 		const credentialType = credentialTypeOf(action, host.node, selected);

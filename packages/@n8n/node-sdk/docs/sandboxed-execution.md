@@ -161,8 +161,10 @@ A bundle must use web APIs only. `freezeAction` refuses a bundle that uses what 
 have:
 
 - a module other than `n8n-workflow` (from the esbuild metafile);
-- a global of `GUEST_LACKS` (`Buffer`, `process`, `setImmediate`, `Intl`, `__dirname`, …) that
-  no scope binds and that the bundle does not test with `typeof`;
+- a global of `GUEST_LACKS` (`Buffer`, `process`, `setImmediate`, `Intl`, `__dirname`, …) or
+  `fetch` that no scope binds and that the bundle does not test with `typeof`. The guest has
+  `fetch` only as a stub that throws. In the n8n process, `fetch` would send a request past the
+  egress check;
 - a Unicode property escape (`\p{…}`) in a regex or a string.
 
 The check is static. A name built at run time passes it, and the sandbox then stops the bundle.
@@ -237,6 +239,11 @@ logic is in `src/egress.ts`.
   it to the base URL path and refuses a result with another origin.
 - `egress` is in the contract document and in the contract hash. A new host is a major change.
   A removed host is a minor change. The publish gate refuses `*` and a value that is not a host.
+- `permissionsOf(contract, credentialTypes, limits)` (`@n8n/node-sdk/host`) is the one view of
+  the permissions of a contract: egress hosts, host templates, `fromInput`, credential types
+  whose host the user enters, credential types, scopes, imports, binary data, provider
+  capabilities and run limits. `diffContracts`, the generated node modules and the sandbox
+  grants read it.
 - The AI builder runs the same rules when it builds a workflow (node contracts on): a static
   host outside the hosts of the bound credential is a build error that names the host and the
   credential. An expression is a warning, because the host checks it at run time.

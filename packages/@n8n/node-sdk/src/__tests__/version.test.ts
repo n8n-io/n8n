@@ -28,7 +28,7 @@ import {
 	type NodeContractVersion,
 	type VersionManifest,
 } from '../entry/registry';
-import { defineNode, t, type ActionFlow, type Shape } from '../index';
+import { defineNode, provider, t, type ActionFlow, type Shape } from '../index';
 import {
 	checkPublish,
 	packContractPackage,
@@ -182,6 +182,28 @@ describe('diffContracts', () => {
 
 	it('classifies a changed flow as a major', () => {
 		expect(kindOf({ input: baseInput, flow: { ...FLOW, cardinality: '1:N' } })).toBe('major');
+	});
+
+	it('classifies an added or a removed credential type as a major', () => {
+		const one = { ...base, credentials: ['demoApi'] };
+		const two = { ...base, credentials: ['demoApi', 'demoOAuth2Api'] };
+		expect(diffContracts(one, two).changes).toEqual([
+			{ kind: 'major', text: 'credential demoOAuth2Api added' },
+		]);
+		expect(diffContracts(two, one).kind).toBe('major');
+	});
+
+	it('classifies an added provider call or binary data access as a major', () => {
+		const added = (input: Shape) =>
+			diffContracts(base, contractOf({ input: { ...baseInput, ...input } })).changes;
+		expect(added({ tools: t.arr(provider.input('tool')).optional() })).toContainEqual({
+			kind: 'major',
+			text: 'provider tool added',
+		});
+		expect(added({ file: t.binary().optional() })).toContainEqual({
+			kind: 'major',
+			text: 'binary data access added',
+		});
 	});
 
 	it('compares nested fields', () => {

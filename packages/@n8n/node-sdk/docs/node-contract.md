@@ -89,6 +89,9 @@ packument field `n8nContract` of a published version also states `nodeContract`.
   and `credentials` are outside it.
 - A credential major changes when stored data or a saved workflow can break: a new required
   field, a new host, a new scheme. A compat credential type has no manifest and no pin.
+- An action major changes when it adds a permission: a scope, an egress host, an import, a
+  provider call, binary data access or a credential type. An auto-update then never widens what an action may do. `diffContracts`
+  reads the permissions from `permissionsOf`.
 - WIT describes only code that runs. A native trigger and a declarative credential scheme have
   a manifest and no bundle.
 

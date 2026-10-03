@@ -8,9 +8,21 @@ import {
 
 import { generateNodeModule } from '../entry/codegen';
 import { compat, credential, defineCredential } from '../entry/credentials';
-import { toCredentialType, toTriggerNodeType } from '../entry/host';
-import { contractHash, diffContracts, lintContract, toContract } from '../entry/registry';
-import { defineNode, pages, t, type HttpRequest } from '../index';
+import {
+	permissionsOf,
+	toCredentialType,
+	toTriggerNodeType,
+	type ContractPermissions,
+} from '../entry/host';
+import {
+	contractHash,
+	diffContracts,
+	lintContract,
+	toContract,
+	type ContractDocument,
+} from '../entry/registry';
+import { defineNode, pages, provider, t, type HttpRequest } from '../index';
+import type { AnyCredentialType } from '../credentials';
 import { allowsHost, credentialHostsOf, egressIssuesOf, narrowHosts } from '../egress';
 import { executorOf, toRequestOptions, withCredentialHostsOf, type ExecutorHost } from '../runtime';
 
@@ -520,6 +532,88 @@ describe('egress in the contract', () => {
 			{ contract, nodeType: 'echoFetch', operation: 'fetch' },
 		]);
 		expect(text).toContain('read, per-item; hosts: the host of url');
+	});
+});
+
+describe('permissionsOf', () => {
+	const none: ContractDocument = { ...toContract(sender([])), credentials: [] };
+	const nothing: ContractPermissions = {
+		egress: { hosts: [], templates: [], fromCredential: [] },
+		credentials: [],
+		imports: [],
+		binary: false,
+		supplied: [],
+		limits: { maxRequests: 10_000, maxItems: 1_000_000 },
+	};
+	const supplies = t.obj({
+		model: provider.input('chatModel'),
+		tools: t.arr(provider.input('tool')),
+		prompt: t.str(),
+	}).json;
+	const slackApi = compat('slackApi', { hosts: ['slack.com'] });
+
+	it.each<[string, ContractDocument, readonly AnyCredentialType[], Partial<ContractPermissions>]>([
+		['no permission', none, [], {}],
+		[
+			'data tables',
+			{ ...none, imports: ['inputOf', 'dataTables'] },
+			[],
+			{ imports: ['dataTables', 'inputOf'] },
+		],
+		['wait', { ...none, imports: ['wait'] }, [], { imports: ['wait'] }],
+		['code', { ...none, imports: ['code'] }, [], { imports: ['code'] }],
+		['supplies only', { ...none, input: supplies }, [], { supplied: ['chatModel', 'tool'] }],
+		[
+			'credential and base URL hosts',
+			{
+				...none,
+				credentials: ['slackApi', 'serverApi'],
+				scopes: ['files:write', 'chat:write'],
+				egress: { hosts: ['{region}.region.echo.test', 'files.slack.com'] },
+			},
+			[slackApi, serverApi, echoApi],
+			{
+				egress: {
+					hosts: ['files.slack.com', 'slack.com'],
+					templates: ['{region}.region.echo.test'],
+					fromCredential: ['serverApi'],
+				},
+				credentials: ['serverApi', 'slackApi'],
+				scopes: ['chat:write', 'files:write'],
+			},
+		],
+		[
+			'each host from input',
+			{ ...none, credentials: ['httpHeaderAuth'], egress: { fromInput: 'url' } },
+			[headerAuth],
+			{
+				egress: { hosts: [], templates: [], fromInput: 'url', fromCredential: [] },
+				credentials: ['httpHeaderAuth'],
+			},
+		],
+	])('reads the permissions of an action with %s', (_class, contract, types, expected) => {
+		expect(permissionsOf(contract, types)).toEqual({ ...nothing, ...expected });
+	});
+
+	it('reads binary fields and the limits of the host', () => {
+		const binary = { ...none, input: t.obj({ file: t.binary() }).json };
+		expect(permissionsOf(binary, [], { maxRequests: 5 })).toEqual({
+			...nothing,
+			binary: true,
+			limits: { maxRequests: 5, maxItems: 1_000_000 },
+		});
+	});
+
+	it('reads the hosts of a credential base URL for each option value', () => {
+		const regional = compat('regionalApi', {
+			fields: { region: t.oneOf('eu', 'us') },
+			baseUrl: { on: 'region', values: { eu: 'https://eu.api.test', us: 'https://us.api.test' } },
+		});
+		expect(permissionsOf({ ...none, credentials: ['regionalApi'] }, [regional]).egress).toEqual({
+			hosts: ['eu.api.test', 'us.api.test'],
+			templates: [],
+			fromCredential: [],
+		});
 	});
 });
 

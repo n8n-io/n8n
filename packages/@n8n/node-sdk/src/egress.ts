@@ -8,7 +8,15 @@ import {
 } from 'n8n-workflow';
 
 import type { AnyCredentialType } from './credentials';
-import type { ContractEgress } from './define';
+import {
+	DEFAULT_RUN_LIMITS,
+	usesBinary,
+	type ContractDocument,
+	type ContractEgress,
+	type HostImport,
+	type RunLimits,
+} from './define';
+import { providerInputOf, type ProviderKind } from './providers';
 
 /**
  * Host lists use the `isDomainAllowed` syntax: `api.example.com`, or `*.example.com` for its
@@ -224,5 +232,86 @@ export function egressIssuesOf(
 		warnings: unique([...(fromInput && isExpression(url) ? [fromInput] : []), ...dynamic]).map(
 			runTime,
 		),
+	};
+}
+
+/**
+ * What one action, trigger or provider may do, as `permissionsOf` reads it from the contract
+ * document and the credential types. The host also lets the action reach the hosts of the node
+ * base URL.
+ */
+export interface ContractPermissions {
+	/** Where the action may send requests, besides the hosts of the node base URL. */
+	readonly egress: {
+		/** Host patterns, sorted: the declared hosts and the hosts of the credential types. */
+		readonly hosts: readonly string[];
+		/** Declared host templates over enum inputs, sorted, e.g. `{region}.api.example.com`. */
+		readonly templates: readonly string[];
+		/** The input field with a URL. The action may reach each host that the user enters there. */
+		readonly fromInput?: string;
+		/** Credential types whose host the user enters in the credential, e.g. `{url}`, sorted. */
+		readonly fromCredential: readonly string[];
+	};
+	/** The credential types that the action may use, sorted. */
+	readonly credentials: readonly string[];
+	/** The scopes of the node credential, sorted. Absent when the contract declares none. */
+	readonly scopes?: readonly string[];
+	/** The optional host imports, sorted, e.g. `dataTables`. */
+	readonly imports: readonly HostImport[];
+	/** True when the action reads or writes files of the n8n binary data store. */
+	readonly binary: boolean;
+	/** The provider capabilities that the action calls, sorted, e.g. `chatModel`. */
+	readonly supplied: readonly ProviderKind[];
+	/** The limits of one run. */
+	readonly limits: RunLimits;
+}
+
+const sorted = <T extends string>(values: readonly T[]) => [...new Set(values)].sort();
+
+const credentialBaseUrls = ({ baseUrl }: AnyCredentialType) =>
+	typeof baseUrl === 'string' ? [baseUrl] : Object.values(baseUrl?.values ?? {});
+
+/**
+ * The permissions of one contract: one normalized view for the host, the diff and the
+ * generated catalog. `credentialTypes` adds the hosts of the types that the contract names.
+ * `limits` are the limits of the host, as `ExecutorHost.limits`.
+ */
+export function permissionsOf(
+	contract: ContractDocument,
+	credentialTypes: readonly AnyCredentialType[] = [],
+	limits: Partial<RunLimits> = {},
+): ContractPermissions {
+	const { egress, scopes } = contract;
+	const isTemplate = (host: string) => host.includes('{');
+	const declared = egress?.hosts ?? [];
+	const types = credentialTypes.filter(({ name }) => contract.credentials.includes(name));
+	// A base URL host from a credential field, e.g. `{url}`, is each host that the user enters.
+	const baseHosts = types.flatMap((type) =>
+		credentialBaseUrls(type).map((url) => {
+			const host = toHostname(url);
+			return { name: type.name, host: host === undefined || isTemplate(host) ? undefined : host };
+		}),
+	);
+	return {
+		egress: {
+			hosts: sorted([
+				...declared.filter((host) => !isTemplate(host)),
+				...types.flatMap(({ hosts }) => hosts ?? []),
+				...baseHosts.flatMap(({ host }) => host ?? []),
+			]),
+			templates: sorted(declared.filter(isTemplate)),
+			...(egress?.fromInput === undefined ? {} : { fromInput: egress.fromInput }),
+			fromCredential: sorted(baseHosts.flatMap(({ name, host }) => (host ? [] : [name]))),
+		},
+		credentials: sorted(contract.credentials),
+		...(scopes ? { scopes: sorted(scopes) } : {}),
+		imports: sorted(contract.imports ?? []),
+		binary: usesBinary(contract),
+		supplied: sorted(
+			Object.values(contract.input.properties ?? {}).flatMap(
+				(field) => providerInputOf(field)?.kind ?? [],
+			),
+		),
+		limits: { ...DEFAULT_RUN_LIMITS, ...limits },
 	};
 }

@@ -7,6 +7,7 @@ import {
 	type ContractDocument,
 	type Trigger,
 } from './define';
+import { permissionsOf } from './egress';
 import { hasBinary, type EntryFields as EntryFieldsSpec, type JsonSchema } from './schema';
 import { providedOf } from './providers';
 import { exampleOf } from './validate';
@@ -483,14 +484,18 @@ const declaredFieldsOf = (output: JsonSchema) =>
 		field['x-n8n-declared'] ? [name] : [],
 	);
 
-const scopesNote = ({ scopes }: ContractDocument) =>
-	scopes?.length ? `; scopes: ${scopes.join(', ')}` : '';
+const scopesNote = (contract: ContractDocument) => {
+	const { scopes } = permissionsOf(contract);
+	return scopes?.length ? `; scopes: ${scopes.join(', ')}` : '';
+};
 
 /** The hosts the action may reach besides its base URL; the credential hosts also apply. */
-const egressNote = ({ egress }: ContractDocument) => {
+const egressNote = (contract: ContractDocument) => {
+	const { egress } = permissionsOf(contract);
 	const hosts = [
-		...(egress?.hosts ?? []),
-		...(egress?.fromInput === undefined ? [] : [`the host of ${egress.fromInput}`]),
+		...egress.hosts,
+		...egress.templates,
+		...(egress.fromInput === undefined ? [] : [`the host of ${egress.fromInput}`]),
 	];
 	return hosts.length ? `; hosts: ${hosts.join(', ')}` : '';
 };

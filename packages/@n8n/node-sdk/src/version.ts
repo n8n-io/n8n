@@ -8,6 +8,7 @@ import {
 } from 'n8n-workflow';
 
 import { usesBinary, usesHostImports, usesProviders, type ContractDocument } from './define';
+import { permissionsOf, type ContractPermissions } from './egress';
 import { versionManifestSchema } from './manifest';
 import { hasPageValue, type JsonSchema } from './schema';
 import { providedOf } from './providers';
@@ -473,23 +474,47 @@ function outputChanges(prev: ContractDocument, next: ContractDocument): Contract
 	return [major(`outputs ${outputText(prev.outputs)} → ${outputText(next.outputs)}`)];
 }
 
-const egressSources = ({ egress }: ContractDocument) => [
-	...(egress?.hosts ?? []),
-	...(egress?.fromInput === undefined ? [] : [`the host of input.${egress.fromInput}`]),
+const egressSources = ({ egress }: ContractPermissions) => [
+	...egress.hosts,
+	...egress.templates,
+	...(egress.fromInput === undefined ? [] : [`the host of input.${egress.fromInput}`]),
 ];
 
 /**
- * A new host is a new permission, as a new scope is, so a user must accept it: a major. A
- * removed host only narrows what the action reaches: a minor. A removed `egress` removes its
- * hosts, because an action without `egress` reaches only its base URL hosts.
+ * An added permission is a major: a user must accept it, and an auto-update never widens what
+ * an action may do. A removed one only narrows it: a minor, unless `removed` says otherwise.
  */
-function egressChanges(prev: ContractDocument, next: ContractDocument): ContractChange[] {
-	const [before, after] = [egressSources(prev), egressSources(next)];
+const setChanges = (
+	name: string,
+	before: readonly string[],
+	after: readonly string[],
+	removed: ContractChange['kind'] = 'minor',
+): ContractChange[] => [
+	...after
+		.filter((entry) => !before.includes(entry))
+		.map((entry) => major(`${name} ${entry} added`)),
+	...before
+		.filter((entry) => !after.includes(entry))
+		.map((entry): ContractChange => ({ kind: removed, text: `${name} ${entry} removed` })),
+];
+
+/**
+ * The changes of the permissions, from `permissionsOf`. A first scope declaration only names
+ * what the action already needed: a minor. A saved workflow can use a removed credential type: a major.
+ */
+function permissionChanges(prev: ContractDocument, next: ContractDocument): ContractChange[] {
+	const [before, after] = [permissionsOf(prev), permissionsOf(next)];
 	return [
-		...after.filter((host) => !before.includes(host)).map((host) => major(`egress ${host} added`)),
-		...before
-			.filter((host) => !after.includes(host))
-			.map((host): ContractChange => ({ kind: 'minor', text: `egress ${host} removed` })),
+		...(before.scopes
+			? setChanges('scope', before.scopes, after.scopes ?? [])
+			: (after.scopes ?? []).map(
+					(scope): ContractChange => ({ kind: 'minor', text: `scope ${scope} declared` }),
+				)),
+		...setChanges('egress', egressSources(before), egressSources(after)),
+		...setChanges('import', before.imports, after.imports),
+		...setChanges('provider', before.supplied, after.supplied),
+		...setChanges('binary data', before.binary ? ['access'] : [], after.binary ? ['access'] : []),
+		...setChanges('credential', before.credentials, after.credentials, 'major'),
 	];
 }
 
@@ -500,22 +525,12 @@ function inputChanges(prev: ContractDocument, next: ContractDocument): ContractC
 	return [major(`inputs ${text(prev.inputs)} → ${text(next.inputs)}`)];
 }
 
-/** A new host import is a new permission, as a new egress host is: a major. A removed one is a minor. */
-function importChanges(prev: ContractDocument, next: ContractDocument): ContractChange[] {
-	const [before, after] = [prev.imports ?? [], next.imports ?? []];
-	return [
-		...after.filter((name) => !before.includes(name)).map((name) => major(`import ${name} added`)),
-		...before
-			.filter((name) => !after.includes(name))
-			.map((name): ContractChange => ({ kind: 'minor', text: `import ${name} removed` })),
-	];
-}
-
 /**
  * Classifies the change between two versions of one action: additive optional input (or a
- * new required input with a default), a removed scope or a removed egress host is minor; a
- * new required input, a removed or narrowed output, a changed output list, a changed flow, a
- * new scope or a new egress host is major; no normative change is a patch.
+ * new required input with a default), a removed scope, egress host or import is minor; a new
+ * required input, a removed or narrowed output, a changed output list, a changed flow, an added
+ * permission (scope, egress host, import, credential type) or a removed credential type is
+ * major; no normative change is a patch.
  */
 export function diffContracts(prev: ContractDocument, next: ContractDocument): ContractDiff {
 	const input = schemaChanges('input', 'input', prev.input, next.input);
@@ -523,29 +538,9 @@ export function diffContracts(prev: ContractDocument, next: ContractDocument): C
 		...(prev.id !== next.id || prev.node !== next.node ? [major('id or node changed')] : []),
 		...(canonicalJson(prev.flow) !== canonicalJson(next.flow) ? [major('flow changed')] : []),
 		...(prev.trigger !== next.trigger ? [major('trigger kind changed')] : []),
-		// A saved credential may lack a new scope, so the workflow can fail: a major. A first
-		// declaration only names what the action already needed: a minor.
-		...(next.scopes ?? [])
-			.filter((scope) => !(prev.scopes ?? []).includes(scope))
-			.map(
-				(scope): ContractChange =>
-					prev.scopes
-						? major(`scope ${scope} added`)
-						: { kind: 'minor', text: `scope ${scope} declared` },
-			),
-		...(prev.scopes ?? [])
-			.filter((scope) => !(next.scopes ?? []).includes(scope))
-			.map((scope): ContractChange => ({ kind: 'minor', text: `scope ${scope} removed` })),
+		...permissionChanges(prev, next),
 		...outputChanges(prev, next),
 		...inputChanges(prev, next),
-		...egressChanges(prev, next),
-		...importChanges(prev, next),
-		...prev.credentials
-			.filter((type) => !next.credentials.includes(type))
-			.map((type) => major(`credential ${type} removed`)),
-		...next.credentials
-			.filter((type) => !prev.credentials.includes(type))
-			.map((type): ContractChange => ({ kind: 'minor', text: `credential ${type} added` })),
 		...input,
 		...schemaChanges('output', 'output', prev.output, next.output),
 	];

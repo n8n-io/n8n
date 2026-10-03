@@ -10,8 +10,6 @@ import { toHostname, UnexpectedError, UserError } from 'n8n-workflow';
 import type { AnyCredentialType } from './credentials';
 import {
 	isHttpError,
-	usesBinary,
-	usesProviders,
 	type Action,
 	type Binaries,
 	type DataTable,
@@ -29,7 +27,7 @@ import {
 	type NodeDefinition,
 	type RunLimits,
 } from './define';
-import { allowsHost } from './egress';
+import { allowsHost, permissionsOf } from './egress';
 import {
 	executorOf,
 	loadExecutor,
@@ -44,7 +42,6 @@ import {
 	provider,
 	providedKindOf,
 	providerInputsOf,
-	providerInputOf,
 	type ChatMessage,
 	type ChatReply,
 	type ChatRequest,
@@ -172,20 +169,22 @@ const IMPORT_INTERFACES: Readonly<Record<HostImport, string>> = {
 };
 
 /** The imports of the world that the manifest grants. A provider gets only the base imports. */
-const grantsOf = ({ kind, contract }: VersionManifest) => [
-	'http',
-	'log',
-	'limits',
-	'run-credential',
-	...(kind === 'provider'
-		? []
-		: [
-				...(contract.imports ?? []).map((name) => IMPORT_INTERFACES[name]),
-				...(usesBinary(contract) ? ['binary'] : []),
-				// An action is no provider, so it uses capabilities only through its input fields.
-				...(usesProviders(contract) ? ['supplied', 'capabilities'] : []),
-			]),
-];
+const grantsOf = ({ kind, contract }: VersionManifest) => {
+	const { imports, binary, supplied } = permissionsOf(contract);
+	return [
+		'http',
+		'log',
+		'limits',
+		'run-credential',
+		...(kind === 'provider'
+			? []
+			: [
+					...imports.map((name) => IMPORT_INTERFACES[name]),
+					...(binary ? ['binary'] : []),
+					...(supplied.length ? ['supplied', 'capabilities'] : []),
+				]),
+	];
+};
 
 /** One sidecar process: one component instance, so one node execution shares no state with another. */
 function connect(config: SessionConfig): Connection {
@@ -1332,17 +1331,6 @@ async function only(id: string, outputs: AsyncGenerator<unknown>): Promise<unkno
 	return values[0];
 }
 
-/** The hosts that the manifest and the host allow: the egress hosts and the credential hosts. */
-const trustedHostsOf = (manifest: VersionManifest, types: readonly AnyCredentialType[]) => [
-	...(manifest.contract.egress?.hosts ?? []).filter((host) => !host.includes('{')),
-	...types.flatMap(({ hosts, baseUrl }) => [
-		...(hosts ?? []),
-		...(typeof baseUrl === 'string' ? [baseUrl] : Object.values(baseUrl?.values ?? {})).flatMap(
-			(url) => toHostname(url) ?? [],
-		),
-	]),
-];
-
 /**
  * The node of a bundle. The credential types come from the host by the names of the manifest.
  * The name, the base URL and the scopes text come from `describe()`. The bundle can name only a
@@ -1379,7 +1367,7 @@ function nodeOf(
 	const baseHost = typeof node.baseUrl === 'string' ? toHostname(node.baseUrl) : undefined;
 	if (
 		typeof node.baseUrl === 'string' &&
-		!(baseHost && allowsHost(trustedHostsOf(manifest, types), baseHost))
+		!(baseHost && allowsHost(permissionsOf(contract, types).egress.hosts, baseHost))
 	) {
 		throw new UserError(
 			`The bundle of ${id}@${semver} names the base URL ${node.baseUrl}. Its host is not an egress host or a credential host`,
@@ -1629,10 +1617,8 @@ function unsupported({ id, kind, contract }: VersionManifest): string | undefine
 	if (kind === 'action') return undefined;
 	if (!providedKindOf(contract.output))
 		return `${id} is a derived provider; n8n runs its legacy node`;
-	const takesSupplies = Object.values(contract.input.properties ?? {}).some(
-		(field) => providerInputOf(field) !== undefined,
-	);
-	if (usesBinary(contract) || contract.imports?.length || takesSupplies) {
+	const { imports, binary, supplied } = permissionsOf(contract);
+	if (binary || imports.length || supplied.length) {
 		return `${id} uses more than http, log and limits, which the provider interface does not give`;
 	}
 	return undefined;
