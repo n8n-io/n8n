@@ -72,17 +72,17 @@ export class ERPNext implements INodeType {
 				return processNames(docTypes);
 			},
 			async getDocFilters(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const docType = this.getCurrentNodeParameter('docType') as string;
-				const { data } = await erpNextApiRequest.call(
-					this,
-					'GET',
-					`/api/resource/DocType/${docType}`,
-					{},
-				);
+				const docType = decodeURIComponent(this.getCurrentNodeParameter('docType') as string);
+				const qs = {
+					filters: JSON.stringify([['parent', '=', docType]]),
+					fields: JSON.stringify(['fieldname', 'label']),
+					limit_page_length: 1000,
+				};
+				const { data } = await erpNextApiRequest.call(this, 'GET', '/api/resource/DocField', {}, qs);
 
-				const docFields = data.fields.map(
+				const docFields = data.map(
 					({ label, fieldname }: { label: string; fieldname: string }) => {
-						return { name: label, value: fieldname };
+						return { name: label || fieldname, value: fieldname };
 					},
 				);
 
@@ -91,17 +91,17 @@ export class ERPNext implements INodeType {
 				return processNames(docFields);
 			},
 			async getDocFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const docType = this.getCurrentNodeParameter('docType') as string;
-				const { data } = await erpNextApiRequest.call(
-					this,
-					'GET',
-					`/api/resource/DocType/${docType}`,
-					{},
-				);
+				const docType = decodeURIComponent(this.getCurrentNodeParameter('docType') as string);
+				const qs = {
+					filters: JSON.stringify([['parent', '=', docType]]),
+					fields: JSON.stringify(['fieldname', 'label']),
+					limit_page_length: 1000,
+				};
+				const { data } = await erpNextApiRequest.call(this, 'GET', '/api/resource/DocField', {}, qs);
 
-				const docFields = data.fields.map(
+				const docFields = data.map(
 					({ label, fieldname }: { label: string; fieldname: string }) => {
-						return { name: label, value: fieldname };
+						return { name: label || fieldname, value: fieldname };
 					},
 				);
 
@@ -176,7 +176,7 @@ export class ERPNext implements INodeType {
 					}
 					// filters=[["Person","first_name","=","Jane"]]
 					// TODO: filters not working
-					if (filters) {
+					if (filters?.customProperty) {
 						qs.filters = JSON.stringify(
 							filters.customProperty.map((filter) => {
 								return [docType, filter.field, toSQL(filter.operator), filter.value];
@@ -211,7 +211,7 @@ export class ERPNext implements INodeType {
 
 					const properties = this.getNodeParameter('properties', i) as DocumentProperties;
 
-					if (!properties.customProperty.length) {
+					if (!properties?.customProperty?.length) {
 						throw new NodeOperationError(
 							this.getNode(),
 							'Please enter at least one property for the document to create.',
@@ -256,7 +256,7 @@ export class ERPNext implements INodeType {
 
 					const properties = this.getNodeParameter('properties', i) as DocumentProperties;
 
-					if (!properties.customProperty.length) {
+					if (!properties?.customProperty?.length) {
 						throw new NodeOperationError(
 							this.getNode(),
 							'Please enter at least one property for the document to update.',
