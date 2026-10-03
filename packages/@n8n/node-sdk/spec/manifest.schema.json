@@ -887,6 +887,15 @@
 						"text"
 					],
 					"additionalProperties": false
+				},
+				"legacyParent": {
+					"type": "string"
+				},
+				"renamed": {
+					"type": "object",
+					"additionalProperties": {
+						"type": "string"
+					}
 				}
 			},
 			"required": [

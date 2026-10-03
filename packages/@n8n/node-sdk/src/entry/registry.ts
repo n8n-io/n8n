@@ -35,3 +35,4 @@ export {
 	type Semver,
 	type VersionManifest,
 } from '../version';
+export { parseCredentialManifest, type CredentialManifest } from '../manifest';

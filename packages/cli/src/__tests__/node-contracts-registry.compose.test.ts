@@ -7,7 +7,7 @@ import { mock } from 'vitest-mock-extended';
 
 import { LoadNodesAndCredentials } from '../load-nodes-and-credentials';
 import { NodeTypes } from '../node-types';
-import { composeContractNodes } from '../node-contracts-registry';
+import { ContractNodeLoader } from '../node-contracts-registry';
 
 const PACKAGES = path.resolve(__dirname, '../../..');
 const NOTION = 'n8n-nodes-base.notion';
@@ -26,7 +26,7 @@ async function postProcessed(nodeContractsEnabled: boolean) {
 		mock(),
 	);
 	const nodesBase = new LazyPackageDirectoryLoader(path.join(PACKAGES, 'nodes-base'));
-	const next = new LazyPackageDirectoryLoader(path.join(PACKAGES, '@n8n/nodes-base-next'));
+	const next = new ContractNodeLoader([], [], async () => new Map());
 	await Promise.all([nodesBase.loadAll(), next.loadAll()]);
 	instance.loaders = { 'n8n-nodes-base': nodesBase, '@n8n/nodes-base-next': next };
 	await instance.postProcessLoaders();
@@ -87,35 +87,6 @@ describe('composeContractNodes', () => {
 		expect(next.length).toBeGreaterThan(0);
 		expect(next.every(({ hidden }) => hidden === true)).toBe(true);
 		expect(instance.getNode('@n8n/nodes-base-next.notionDatabasePageGetAll').type).toBeDefined();
-	});
-
-	it('adds a stored trigger major beside the bundled HEAD', async () => {
-		const instance = await postProcessed(true);
-		const id = 'notion.dataSource.pageAdded';
-		const nodeType = '@n8n/nodes-base-next.notionDataSourcePageAdded';
-		const [head] = versionsOf(id);
-		if (!head) throw new Error(`${id} has no bundled HEAD`);
-		const { manifest } = head;
-		const stored = {
-			...head,
-			manifest: {
-				...manifest,
-				contract: { ...manifest.contract, version: 2 },
-				description: { ...manifest.description, version: 2 },
-			},
-		};
-
-		const { nodes, types } = composeContractNodes(
-			instance.loaders,
-			instance.types.nodes,
-			new Map([[id, [stored]]]),
-		);
-
-		const loaded = nodes.get(nodeType)?.type;
-		expect(Object.keys(loaded?.nodeVersions ?? {})).toEqual(['1', '2']);
-		expect(loaded?.description.defaultVersion).toBe(1);
-		expect(loaded?.getNodeType(2).webhook ?? loaded?.getNodeType(2).poll).toBeDefined();
-		expect(types.filter(({ name }) => name === nodeType).map(versionOf)).toEqual(['1', '2']);
 	});
 
 	it('adds an agent tool node type for each tool action, which supplies its tool', async () => {

@@ -1,6 +1,6 @@
 export { credentialHostsOf, egressIssuesOf, type EgressIssues } from '../egress';
 export { isToolContract } from '../define';
-export { toCredentialType } from '../credentials';
+export { credentialTypeOfManifest, toCredentialType } from '../credentials';
 export { setCodeLanguages } from '../host-imports';
 export {
 	AUTHENTICATION,

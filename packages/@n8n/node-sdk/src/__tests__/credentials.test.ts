@@ -1,7 +1,8 @@
 import type { ICredentialType, IHttpRequestHelper, IHttpRequestOptions } from 'n8n-workflow';
 
 import { compat, defineCredential, field, type AnyCredentialType } from '../entry/credentials';
-import { toCredentialType } from '../entry/host';
+import { credentialTypeOfManifest, toCredentialType } from '../entry/host';
+import { parseCredentialManifest } from '../entry/registry';
 import { t } from '../index';
 import {
 	credentialBaseUrlOf,
@@ -9,6 +10,7 @@ import {
 	discoverOidc,
 	secretRedactorOf,
 } from '../credentials';
+import { credentialManifestOf } from '../manifest';
 
 const projected = (type: AnyCredentialType): ICredentialType => {
 	const result = toCredentialType(type);
@@ -1083,6 +1085,87 @@ describe('secretRedactorOf', () => {
 		});
 		expect(redact('client-secret-1 at https://api.github.com with header 1234')).toBe(
 			'[REDACTED] at https://api.github.com with header 1234',
+		);
+	});
+});
+
+describe('credentialTypeOfManifest', () => {
+	const fromManifest = (type: AnyCredentialType) => {
+		const manifest = credentialManifestOf(type, '0.0.0');
+		if (!manifest) throw new Error('no manifest');
+		return credentialTypeOfManifest(parseCredentialManifest(JSON.stringify(manifest)));
+	};
+	// A generated function is a new value each time.
+	const comparable = ({ authenticate, preAuthentication, ...rest }: ICredentialType) => ({
+		...rest,
+		authenticate: typeof authenticate === 'function' ? 'function' : authenticate,
+		preAuthentication: typeof preAuthentication,
+	});
+
+	const types: AnyCredentialType[] = [
+		defineCredential({
+			id: 'acme.oauth2',
+			legacyName: 'acmeOAuth2Api',
+			displayName: 'Acme OAuth2 API',
+			legacyParent: 'acmeBaseOAuth2Api',
+			fields: { server: field.url('Server').default('https://acme.test') },
+			auth: (a) =>
+				a.oauth2.authorizationCode({
+					authorizationEndpoint: '{server}/oauth/authorize',
+					tokenEndpoint: '{server}/oauth/token',
+					scope: ['read'],
+					pkce: true,
+				}),
+		}),
+		defineCredential({
+			id: 'acme.token',
+			displayName: 'Acme',
+			fields: { accessToken: field.secret('Access Token') },
+			auth: (a) => a.bearer('accessToken'),
+			renamed: { token: 'accessToken' },
+		}),
+		defineCredential({
+			id: 'zendesk.token',
+			legacyName: 'zendeskApi',
+			displayName: 'Zendesk API',
+			docs: 'zendesk',
+			fields: {
+				subdomain: field.text('Subdomain'),
+				email: field.text('Email').optional(),
+				apiToken: field.secret('API Token'),
+			},
+			baseUrl: 'https://{subdomain}.zendesk.com/api/v2',
+			auth: (a) => a.basic('{email}/token', '{apiToken}'),
+			test: { get: '/users/me.json' },
+			notice: { text: 'Use an API token.' },
+		}),
+	];
+
+	it('projects the same n8n type as the source type, also with a legacy parent and renamed fields', () => {
+		expect(types.map(fromManifest).map(comparable)).toEqual(types.map(projected).map(comparable));
+		expect(fromManifest(types[0]).extends).toEqual(['acmeBaseOAuth2Api']);
+	});
+
+	it('signs as the source type', async () => {
+		const [, renamed] = types;
+		const { authenticate } = fromManifest(renamed);
+		if (typeof authenticate !== 'function') throw new Error('not a function');
+		const request = { url: 'https://x.test' };
+		expect(await authenticate({ token: 'old-1', accessToken: '' }, request)).toEqual(
+			await sign(renamed, { token: 'old-1', accessToken: '' }, request),
+		);
+	});
+
+	it('refuses a custom scheme, which needs a credential bundle', () => {
+		const custom = defineCredential({
+			id: 'acme.signed',
+			displayName: 'Acme Signed',
+			fields: { key: field.secret('Key') },
+			hosts: ['api.acme.test'],
+			auth: (a) => a.custom({ reason: 'HMAC', sign: async (_data, request) => request }),
+		});
+		expect(() => fromManifest(custom)).toThrow(
+			'Credential acme.signed: a custom scheme needs a credential bundle',
 		);
 	});
 });

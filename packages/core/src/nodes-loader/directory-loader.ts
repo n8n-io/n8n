@@ -34,7 +34,8 @@ import {
 import { loadClassInIsolation } from './load-class-in-isolation';
 import { validateNodeDescription } from './validate-node-description';
 
-function toJSON(this: ICredentialType) {
+/** Sends `authenticate: {}` for a function, so the editor offers the type in the HTTP Request node. */
+export function credentialTypeToJSON(this: ICredentialType) {
 	return {
 		...this,
 		authenticate: typeof this.authenticate === 'function' ? {} : this.authenticate,
@@ -187,7 +188,7 @@ export abstract class DirectoryLoader implements NodeLoader {
 			for (const version of Object.values(tempNode.nodeVersions)) {
 				version.description.communityNodePackageVersion = packageVersion;
 				this.addLoadOptionsMethods(version);
-				this.applySpecialNodeParameters(version);
+				DirectoryLoader.applySpecialNodeParameters(version);
 			}
 
 			const currentVersionNode = tempNode.nodeVersions[tempNode.currentVersion];
@@ -203,7 +204,7 @@ export abstract class DirectoryLoader implements NodeLoader {
 		} else {
 			tempNode.description.communityNodePackageVersion = packageVersion;
 			this.addLoadOptionsMethods(tempNode);
-			this.applySpecialNodeParameters(tempNode);
+			DirectoryLoader.applySpecialNodeParameters(tempNode);
 
 			// Short renaming to avoid type issues
 			nodeVersion = Array.isArray(tempNode.description.version)
@@ -263,7 +264,7 @@ export abstract class DirectoryLoader implements NodeLoader {
 		// gets mapped to the authenticate attribute before it is sent to the client.
 		// The authenticate property is used by the client to decide whether or not to
 		// include the credential type in the predefined credentials (HTTP node)
-		Object.assign(tempCredential, { toJSON });
+		Object.assign(tempCredential, { toJSON: credentialTypeToJSON });
 
 		this.fixIconPaths(tempCredential, filePath);
 
@@ -403,7 +404,8 @@ export abstract class DirectoryLoader implements NodeLoader {
 		}
 	}
 
-	private applySpecialNodeParameters(nodeType: INodeType): void {
+	/** Adds the parameters that n8n gives every polling, CORS or declarative node. */
+	static applySpecialNodeParameters(nodeType: INodeType): void {
 		const { properties, polling, supportsCORS } = nodeType.description;
 		if (polling) {
 			properties.unshift(...commonPollingParameters);

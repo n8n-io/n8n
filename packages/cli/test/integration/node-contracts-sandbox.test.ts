@@ -2,7 +2,6 @@ import { createWorkflow, mockInstance, testDb } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import { ExecutionRepository, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { LazyPackageDirectoryLoader } from 'n8n-core';
 import { createRunExecutionData, type INode } from 'n8n-workflow';
 import { existsSync } from 'node:fs';
 import { mkdtemp, readdir, readFile, rm } from 'node:fs/promises';
@@ -12,7 +11,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
-import { useNodeContractsRegistry } from '@/node-contracts-registry';
+import { ContractNodeLoader, useNodeContractsRegistry } from '@/node-contracts-registry';
 import { Push } from '@/push';
 import { WorkflowRunner } from '@/workflow-runner';
 
@@ -65,7 +64,7 @@ describe.skipIf(!built)('node contracts in the sandbox', () => {
 			nodeContractSandboxCacheDir: cacheDir(),
 		});
 		await utils.initBinaryDataService();
-		const next = new LazyPackageDirectoryLoader(NEXT);
+		const next = new ContractNodeLoader();
 		await next.loadAll();
 		const loadNodesAndCredentials = Container.get(LoadNodesAndCredentials);
 		loadNodesAndCredentials.loaders = { '@n8n/nodes-base-next': next };

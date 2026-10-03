@@ -99,7 +99,7 @@ import { getManySupabaseRows } from './nodes/supabase/actions/row.get-all';
 import { updateSupabaseRows } from './nodes/supabase/actions/row.update';
 import { migratedSlotOf, type WorkflowNodeRef } from './migrated';
 
-export { versionsOf } from './registry';
+export { bundledCredentialsOf, bundledIdsOf, versionsOf, VERSIONS_DIR } from './registry';
 export {
 	MIGRATED_NODES,
 	migratedSlotOf,
@@ -122,11 +122,13 @@ export {
 	type ContractSyncResult,
 	type LockedNode,
 } from './contract-registry';
-// The cli builds node types from stored versions and checks eval mock values with the
+// The cli builds node and credential types from manifests and checks eval mock values with the
 // node-sdk instance of this package.
 export { matches } from '@n8n/node-sdk';
 export {
+	credentialTypeOfManifest,
 	exampleOf,
+	nodeNameOf,
 	runsNodeContract,
 	setCodeLanguages,
 	toVersionedNodeType,

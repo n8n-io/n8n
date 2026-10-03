@@ -1,0 +1,1960 @@
+{
+	"nodes": [
+		{
+			"name": "@n8n/nodes-base-next.aiAgent",
+			"version": 1,
+			"hidden": true,
+			"credentials": [],
+			"properties": ["prompt", "system", "schema", "maxIterations"]
+		},
+		{
+			"name": "@n8n/nodes-base-next.aiClassify",
+			"version": 1,
+			"hidden": true,
+			"credentials": [],
+			"properties": ["text", "categories", "multiple", "system"]
+		},
+		{
+			"name": "@n8n/nodes-base-next.aiPrompt",
+			"version": 1,
+			"hidden": true,
+			"credentials": [],
+			"properties": ["prompt", "system", "schema"]
+		},
+		{
+			"name": "@n8n/nodes-base-next.anthropicChatModel",
+			"version": 1,
+			"hidden": true,
+			"credentials": ["anthropicApi"],
+			"properties": ["model", "maxTokens", "temperature", "topP", "topK"]
+		},
+		{
+			"name": "@n8n/nodes-base-next.codeJavaScript",
+			"version": 1,
+			"hidden": true,
+			"credentials": [],
+			"properties": ["code", "mode", "returns"]
+		},
+		{
+			"name": "@n8n/nodes-base-next.codePython",
+			"version": 1,
+			"hidden": true,
+			"credentials": [],
+			"properties": ["code", "mode", "returns"]
+		},
+		{
+			"name": "@n8n/nodes-base-next.coreAggregate",
+			"version": 1,
+			"hidden": true,
+			"credentials": [],
+			"properties": ["aggregate"]
+		},
+		{
+			"name": "@n8n/nodes-base-next.coreDateTime",
+			"version": 1,
+			"hidden": true,
+			"credentials": [],
+			"properties": ["date", "operation", "outputField", "keepInput"]
+		},
+		{
+			"name": "@n8n/nodes-base-next.coreFilter",
+			"version": 1,
+			"hidden": true,
+			"credentials": [],
+			"properties": ["where"]
+		},
+		{
+			"name": "@n8n/nodes-base-next.coreIf",
+			"version": 1,
+			"hidden": true,
+			"credentials": [],
+			"properties": ["where"]
+		},
+		{
+			"name": "@n8n/nodes-base-next.coreLimit",
+			"version": 1,
+			"hidden": true,
+			"credentials": [],
+			"properties": ["maxItems", "keep"]
+		},
+		{
+			"name": "@n8n/nodes-base-next.coreRemoveDuplicates",
+			"version": 1,
+			"hidden": true,
+			"credentials": [],
+			"properties": ["compare"]
+		},
+		{
+			"name": "@n8n/nodes-base-next.coreRenameKeys",
+			"version": 1,
+			"hidden": true,
+			"credentials": [],
+			"properties": ["keys"]
+		},
+		{
+			"name": "@n8n/nodes-base-next.coreSet",
+			"version": 1,
+			"hidden": true,
+			"credentials": [],
+			"properties": ["fields", "include"]
+		},
+		{
+			"name": "@n8n/nodes-base-next.coreSort",
+			"version": 1,
+			"hidden": true,
+			"credentials": [],
+			"properties": ["by"]
+		},
+		{
+			"name": "@n8n/nodes-base-next.coreSplitOut",
+			"version": 1,
+			"hidden": true,
+			"credentials": [],
+			"properties": ["field", "into", "include"]
+		},
+		{
+			"name": "@n8n/nodes-base-next.coreSummarize",
+			"version": 1,
+			"hidden": true,
+			"credentials": [],
+			"properties": ["fields", "groupBy", "output", "skipEmptyGroups"]
+		},
+		{
+			"name": "@n8n/nodes-base-next.coreSwitch",
+			"version": 1,
+			"hidden": true,
+			"credentials": [],
+			"properties": ["cases", "allMatches"]
+		},
+		{
+			"name": "@n8n/nodes-base-next.dataTableRowDelete",
+			"version": 1,
+			"hidden": true,
+			"credentials": [],
+			"properties": ["table", "where"]
+		},
+		{
+			"name": "@n8n/nodes-base-next.dataTableRowExists",
+			"version": 1,
+			"hidden": true,
+			"credentials": [],
+			"properties": ["table", "where"]
+		},
+		{
+			"name": "@n8n/nodes-base-next.dataTableRowGet",
+			"version": 1,
+			"hidden": true,
+			"credentials": [],
+			"properties": ["table", "where", "sort", "limit"]
+		},
+		{
+			"name": "@n8n/nodes-base-next.dataTableRowInsert",
+			"version": 1,
+			"hidden": true,
+			"credentials": [],
+			"properties": ["table", "values"]
+		},
+		{
+			"name": "@n8n/nodes-base-next.dataTableRowUpdate",
+			"version": 1,
+			"hidden": true,
+			"credentials": [],
+			"properties": ["table", "where", "values"]
+		},
+		{
+			"name": "@n8n/nodes-base-next.dataTableRowUpsert",
+			"version": 1,
+			"hidden": true,
+			"credentials": [],
+			"properties": ["table", "where", "values"]
+		},
+		{
+			"name": "@n8n/nodes-base-next.dataTableTableClear",
+			"version": 1,
+			"hidden": true,
+			"credentials": [],
+			"properties": ["table"]
+		},
+		{
+			"name": "@n8n/nodes-base-next.dataTableTableCreate",
+			"version": 1,
+			"hidden": true,
+			"credentials": [],
+			"properties": ["name", "columns", "reuse"]
+		},
+		{
+			"name": "@n8n/nodes-base-next.dataTableTableDelete",
+			"version": 1,
+			"hidden": true,
+			"credentials": [],
+			"properties": ["table"]
+		},
+		{
+			"name": "@n8n/nodes-base-next.dataTableTableList",
+			"version": 1,
+			"hidden": true,
+			"credentials": [],
+			"properties": ["name", "sort", "limit"]
+		},
+		{
+			"name": "@n8n/nodes-base-next.dataTableTableRename",
+			"version": 1,
+			"hidden": true,
+			"credentials": [],
+			"properties": ["table", "name"]
+		},
+		{
+			"name": "@n8n/nodes-base-next.githubIssueCreate",
+			"version": 1,
+			"hidden": true,
+			"usableAsTool": true,
+			"credentials": ["githubApi", "githubOAuth2Api"],
+			"properties": [
+				"authentication",
+				"owner",
+				"repository",
+				"title",
+				"body",
+				"labels",
+				"assignees"
+			]
+		},
+		{
+			"name": "@n8n/nodes-base-next.githubIssueCreateComment",
+			"version": 1,
+			"hidden": true,
+			"usableAsTool": true,
+			"credentials": ["githubApi", "githubOAuth2Api"],
+			"properties": ["authentication", "owner", "repository", "issueNumber", "body"]
+		},
+		{
+			"name": "@n8n/nodes-base-next.githubIssueCreateCommentTool",
+			"version": 1,
+			"hidden": true,
+			"credentials": ["githubApi", "githubOAuth2Api"],
+			"properties": [
+				"toolDescription",
+				"authentication",
+				"owner",
+				"repository",
+				"issueNumber",
+				"body"
+			]
+		},
+		{
+			"name": "@n8n/nodes-base-next.githubIssueCreateTool",
+			"version": 1,
+			"hidden": true,
+			"credentials": ["githubApi", "githubOAuth2Api"],
+			"properties": [
+				"toolDescription",
+				"authentication",
+				"owner",
+				"repository",
+				"title",
+				"body",
+				"labels",
+				"assignees"
+			]
+		},
+		{
+			"name": "@n8n/nodes-base-next.githubIssueGet",
+			"version": 1,
+			"hidden": true,
+			"usableAsTool": true,
+			"credentials": ["githubApi", "githubOAuth2Api"],
+			"properties": ["authentication", "owner", "repository", "issueNumber"]
+		},
+		{
+			"name": "@n8n/nodes-base-next.githubIssueGetAll",
+			"version": 1,
+			"hidden": true,
+			"usableAsTool": true,
+			"credentials": ["githubApi", "githubOAuth2Api"],
+			"properties": [
+				"authentication",
+				"owner",
+				"repository",
+				"filters",
+				"includePullRequests",
+				"paging"
+			]
+		},
+		{
+			"name": "@n8n/nodes-base-next.githubIssueGetAllTool",
+			"version": 1,
+			"hidden": true,
+			"credentials": ["githubApi", "githubOAuth2Api"],
+			"properties": [
+				"toolDescription",
+				"authentication",
+				"owner",
+				"repository",
+				"filters",
+				"includePullRequests",
+				"paging"
+			]
+		},
+		{
+			"name": "@n8n/nodes-base-next.githubIssueGetTool",
+			"version": 1,
+			"hidden": true,
+			"credentials": ["githubApi", "githubOAuth2Api"],
+			"properties": ["toolDescription", "authentication", "owner", "repository", "issueNumber"]
+		},
+		{
+			"name": "@n8n/nodes-base-next.githubIssueUpdate",
+			"version": 1,
+			"hidden": true,
+			"usableAsTool": true,
+			"credentials": ["githubApi", "githubOAuth2Api"],
+			"properties": [
+				"authentication",
+				"owner",
+				"repository",
+				"issueNumber",
+				"title",
+				"body",
+				"state",
+				"stateReason",
+				"labels",
+				"assignees"
+			]
+		},
+		{
+			"name": "@n8n/nodes-base-next.githubIssueUpdateTool",
+			"version": 1,
+			"hidden": true,
+			"credentials": ["githubApi", "githubOAuth2Api"],
+			"properties": [
+				"toolDescription",
+				"authentication",
+				"owner",
+				"repository",
+				"issueNumber",
+				"title",
+				"body",
+				"state",
+				"stateReason",
+				"labels",
+				"assignees"
+			]
+		},
+		{
+			"name": "@n8n/nodes-base-next.githubRepositoryEvent",
+			"version": 1,
+			"hidden": true,
+			"credentials": ["githubApi", "githubOAuth2Api"],
+			"properties": ["authentication", "owner", "repository", "events", "insecureSSL"]
+		},
+		{
+			"name": "@n8n/nodes-base-next.gmailMessageGet",
+			"version": 1,
+			"hidden": true,
+			"usableAsTool": true,
+			"credentials": ["gmailOAuth2"],
+			"properties": ["messageId"]
+		},
+		{
+			"name": "@n8n/nodes-base-next.gmailMessageGetAll",
+			"version": 1,
+			"hidden": true,
+			"usableAsTool": true,
+			"credentials": ["gmailOAuth2"],
+			"properties": ["filters", "paging"]
+		},
+		{
+			"name": "@n8n/nodes-base-next.gmailMessageGetAllTool",
+			"version": 1,
+			"hidden": true,
+			"credentials": ["gmailOAuth2"],
+			"properties": ["toolDescription", "filters", "paging"]
+		},
+		{
+			"name": "@n8n/nodes-base-next.gmailMessageGetTool",
+			"version": 1,
+			"hidden": true,
+			"credentials": ["gmailOAuth2"],
+			"properties": ["toolDescription", "messageId"]
+		},
+		{
+			"name": "@n8n/nodes-base-next.gmailMessageSend",
+			"version": 1,
+			"hidden": true,
+			"usableAsTool": true,
+			"credentials": ["gmailOAuth2"],
+			"properties": [
+				"to",
+				"subject",
+				"body",
+				"cc",
+				"bcc",
+				"senderName",
+				"replyTo",
+				"appendAttribution",
+				"attachments"
+			]
+		},
+		{
+			"name": "@n8n/nodes-base-next.gmailMessageSendTool",
+			"version": 1,
+			"hidden": true,
+			"credentials": ["gmailOAuth2"],
+			"properties": [
+				"toolDescription",
+				"to",
+				"subject",
+				"body",
+				"cc",
+				"bcc",
+				"senderName",
+				"replyTo",
+				"appendAttribution",
+				"attachments"
+			]
+		},
+		{
+			"name": "@n8n/nodes-base-next.googleDocsDocumentCreate",
+			"version": 1,
+			"hidden": true,
+			"usableAsTool": true,
+			"credentials": ["googleDocsOAuth2Api"],
+			"properties": ["title", "folderId", "content"]
+		},
+		{
+			"name": "@n8n/nodes-base-next.googleDocsDocumentCreateTool",
+			"version": 1,
+			"hidden": true,
+			"credentials": ["googleDocsOAuth2Api"],
+			"properties": ["toolDescription", "title", "folderId", "content"]
+		},
+		{
+			"name": "@n8n/nodes-base-next.googleDocsDocumentGet",
+			"version": 1,
+			"hidden": true,
+			"usableAsTool": true,
+			"credentials": ["googleDocsOAuth2Api"],
+			"properties": ["document"]
+		},
+		{
+			"name": "@n8n/nodes-base-next.googleDocsDocumentGetTool",
+			"version": 1,
+			"hidden": true,
+			"credentials": ["googleDocsOAuth2Api"],
+			"properties": ["toolDescription", "document"]
+		},
+		{
+			"name": "@n8n/nodes-base-next.googleDocsDocumentUpdate",
+			"version": 1,
+			"hidden": true,
+			"usableAsTool": true,
+			"credentials": ["googleDocsOAuth2Api"],
+			"properties": ["document", "content"]
+		},
+		{
+			"name": "@n8n/nodes-base-next.googleDocsDocumentUpdateTool",
+			"version": 1,
+			"hidden": true,
+			"credentials": ["googleDocsOAuth2Api"],
+			"properties": ["toolDescription", "document", "content"]
+		},
+		{
+			"name": "@n8n/nodes-base-next.googleDriveFileDelete",
+			"version": 1,
+			"hidden": true,
+			"usableAsTool": true,
+			"credentials": ["googleDriveOAuth2Api"],
+			"properties": ["fileId", "permanently"]
+		},
+		{
+			"name": "@n8n/nodes-base-next.googleDriveFileDeleteTool",
+			"version": 1,
+			"hidden": true,
+			"credentials": ["googleDriveOAuth2Api"],
+			"properties": ["toolDescription", "fileId", "permanently"]
+		},
+		{
+			"name": "@n8n/nodes-base-next.googleDriveFileSearch",
+			"version": 1,
+			"hidden": true,
+			"usableAsTool": true,
+			"credentials": ["googleDriveOAuth2Api"],
+			"properties": ["nameContains", "query", "folderId", "type", "includeTrashed", "paging"]
+		},
+		{
+			"name": "@n8n/nodes-base-next.googleDriveFileSearchTool",
+			"version": 1,
+			"hidden": true,
+			"credentials": ["googleDriveOAuth2Api"],
+			"properties": [
+				"toolDescription",
+				"nameContains",
+				"query",
+				"folderId",
+				"type",
+				"includeTrashed",
+				"paging"
+			]
+		},
+		{
+			"name": "@n8n/nodes-base-next.googleDriveFileUpload",
+			"version": 1,
+			"hidden": true,
+			"credentials": ["googleDriveOAuth2Api"],
+			"properties": ["file", "name", "folderId"]
+		},
+		{
+			"name": "@n8n/nodes-base-next.googleDriveFolderCreate",
+			"version": 1,
+			"hidden": true,
+			"usableAsTool": true,
+			"credentials": ["googleDriveOAuth2Api"],
+			"properties": ["name", "parentId"]
+		},
+		{
+			"name": "@n8n/nodes-base-next.googleDriveFolderCreateTool",
+			"version": 1,
+			"hidden": true,
+			"credentials": ["googleDriveOAuth2Api"],
+			"properties": ["toolDescription", "name", "parentId"]
+		},
+		{
+			"name": "@n8n/nodes-base-next.googleGeminiChatModel",
+			"version": 1,
+			"hidden": true,
+			"credentials": ["googlePalmApi"],
+			"properties": ["model", "temperature", "maxOutputTokens", "topP", "topK"]
+		},
+		{
+			"name": "@n8n/nodes-base-next.googleGeminiTextMessage",
+			"version": 1,
+			"hidden": true,
+			"usableAsTool": true,
+			"credentials": ["googlePalmApi"],
+			"properties": [
+				"model",
+				"messages",
+				"systemMessage",
+				"jsonOutput",
+				"temperature",
+				"maxOutputTokens"
+			]
+		},
+		{
+			"name": "@n8n/nodes-base-next.googleGeminiTextMessageTool",
+			"version": 1,
+			"hidden": true,
+			"credentials": ["googlePalmApi"],
+			"properties": [
+				"toolDescription",
+				"model",
+				"messages",
+				"systemMessage",
+				"jsonOutput",
+				"temperature",
+				"maxOutputTokens"
+			]
+		},
+		{
+			"name": "@n8n/nodes-base-next.googleSheetsSheetAppend",
+			"version": 1,
+			"hidden": true,
+			"usableAsTool": true,
+			"credentials": ["googleSheetsOAuth2Api"],
+			"properties": ["spreadsheet", "sheet", "values", "headerRow", "cellFormat"]
+		},
+		{
+			"name": "@n8n/nodes-base-next.googleSheetsSheetAppendOrUpdate",
+			"version": 1,
+			"hidden": true,
+			"usableAsTool": true,
+			"credentials": ["googleSheetsOAuth2Api"],
+			"properties": ["spreadsheet", "sheet", "values", "matchOn", "header", "cellFormat"]
+		},
+		{
+			"name": "@n8n/nodes-base-next.googleSheetsSheetAppendOrUpdateTool",
+			"version": 1,
+			"hidden": true,
+			"credentials": ["googleSheetsOAuth2Api"],
+			"properties": [
+				"toolDescription",
+				"spreadsheet",
+				"sheet",
+				"values",
+				"matchOn",
+				"header",
+				"cellFormat"
+			]
+		},
+		{
+			"name": "@n8n/nodes-base-next.googleSheetsSheetAppendTool",
+			"version": 1,
+			"hidden": true,
+			"credentials": ["googleSheetsOAuth2Api"],
+			"properties": ["toolDescription", "spreadsheet", "sheet", "values", "headerRow", "cellFormat"]
+		},
+		{
+			"name": "@n8n/nodes-base-next.googleSheetsSheetRead",
+			"version": 1,
+			"hidden": true,
+			"usableAsTool": true,
+			"credentials": ["googleSheetsOAuth2Api"],
+			"properties": ["spreadsheet", "sheet", "filters", "combine", "allMatches", "header"]
+		},
+		{
+			"name": "@n8n/nodes-base-next.googleSheetsSheetReadTool",
+			"version": 1,
+			"hidden": true,
+			"credentials": ["googleSheetsOAuth2Api"],
+			"properties": [
+				"toolDescription",
+				"spreadsheet",
+				"sheet",
+				"filters",
+				"combine",
+				"allMatches",
+				"header"
+			]
+		},
+		{
+			"name": "@n8n/nodes-base-next.httpRequestDownload",
+			"version": 2,
+			"hidden": true,
+			"credentials": [
+				"httpHeaderAuth",
+				"httpBearerAuth",
+				"httpBasicAuth",
+				"httpQueryAuth",
+				"oAuth2Api"
+			],
+			"properties": ["authentication", "url", "query", "headers"]
+		},
+		{
+			"name": "@n8n/nodes-base-next.httpRequestGet",
+			"version": 3,
+			"hidden": true,
+			"usableAsTool": true,
+			"credentials": [
+				"httpHeaderAuth",
+				"httpBearerAuth",
+				"httpBasicAuth",
+				"httpQueryAuth",
+				"oAuth2Api"
+			],
+			"properties": ["authentication", "url", "query", "headers", "items", "pages"]
+		},
+		{
+			"name": "@n8n/nodes-base-next.httpRequestGetTool",
+			"version": 3,
+			"hidden": true,
+			"credentials": [
+				"httpHeaderAuth",
+				"httpBearerAuth",
+				"httpBasicAuth",
+				"httpQueryAuth",
+				"oAuth2Api"
+			],
+			"properties": [
+				"toolDescription",
+				"authentication",
+				"url",
+				"query",
+				"headers",
+				"items",
+				"pages"
+			]
+		},
+		{
+			"name": "@n8n/nodes-base-next.httpRequestSend",
+			"version": 3,
+			"hidden": true,
+			"usableAsTool": true,
+			"credentials": [
+				"httpHeaderAuth",
+				"httpBearerAuth",
+				"httpBasicAuth",
+				"httpQueryAuth",
+				"oAuth2Api"
+			],
+			"properties": ["authentication", "method", "url", "query", "headers", "body"]
+		},
+		{
+			"name": "@n8n/nodes-base-next.httpRequestSendTool",
+			"version": 3,
+			"hidden": true,
+			"credentials": [
+				"httpHeaderAuth",
+				"httpBearerAuth",
+				"httpBasicAuth",
+				"httpQueryAuth",
+				"oAuth2Api"
+			],
+			"properties": [
+				"toolDescription",
+				"authentication",
+				"method",
+				"url",
+				"query",
+				"headers",
+				"body"
+			]
+		},
+		{
+			"name": "@n8n/nodes-base-next.loopStateSet",
+			"version": 1,
+			"hidden": true,
+			"credentials": [],
+			"properties": ["state"]
+		},
+		{
+			"name": "@n8n/nodes-base-next.mergeAppend",
+			"version": 1,
+			"hidden": true,
+			"credentials": [],
+			"properties": []
+		},
+		{
+			"name": "@n8n/nodes-base-next.mergeCombine",
+			"version": 1,
+			"hidden": true,
+			"credentials": [],
+			"properties": ["by", "prefer"]
+		},
+		{
+			"name": "@n8n/nodes-base-next.minimaxChatModel",
+			"version": 1,
+			"hidden": true,
+			"credentials": ["minimaxApi"],
+			"properties": ["model", "temperature", "maxTokens", "topP"]
+		},
+		{
+			"name": "@n8n/nodes-base-next.noOpPass",
+			"version": 1,
+			"hidden": true,
+			"credentials": [],
+			"properties": []
+		},
+		{
+			"name": "@n8n/nodes-base-next.notionDatabasePageGetAll",
+			"version": 1,
+			"hidden": true,
+			"usableAsTool": true,
+			"credentials": ["notionApi", "notionOAuth2Api"],
+			"properties": ["authentication", "database", "where", "limit", "sort"]
+		},
+		{
+			"name": "@n8n/nodes-base-next.notionDatabasePageGetAllTool",
+			"version": 1,
+			"hidden": true,
+			"credentials": ["notionApi", "notionOAuth2Api"],
+			"properties": ["toolDescription", "authentication", "database", "where", "limit", "sort"]
+		},
+		{
+			"name": "@n8n/nodes-base-next.notionDataSourcePageAdded",
+			"version": 1,
+			"hidden": true,
+			"credentials": ["notionApi", "notionOAuth2Api"],
+			"properties": ["pollTimes", "authentication", "dataSource"]
+		},
+		{
+			"name": "@n8n/nodes-base-next.notionUserGet",
+			"version": 1,
+			"hidden": true,
+			"usableAsTool": true,
+			"credentials": ["notionApi", "notionOAuth2Api"],
+			"properties": ["authentication", "user"]
+		},
+		{
+			"name": "@n8n/nodes-base-next.notionUserGetTool",
+			"version": 1,
+			"hidden": true,
+			"credentials": ["notionApi", "notionOAuth2Api"],
+			"properties": ["toolDescription", "authentication", "user"]
+		},
+		{
+			"name": "@n8n/nodes-base-next.openAiChatModel",
+			"version": 1,
+			"hidden": true,
+			"credentials": ["openAiApi"],
+			"properties": [
+				"model",
+				"temperature",
+				"maxTokens",
+				"topP",
+				"frequencyPenalty",
+				"presencePenalty",
+				"reasoningEffort"
+			]
+		},
+		{
+			"name": "@n8n/nodes-base-next.openAiImageGenerate",
+			"version": 1,
+			"hidden": true,
+			"credentials": ["openAiApi"],
+			"properties": ["model", "prompt", "count", "size", "quality", "style"]
+		},
+		{
+			"name": "@n8n/nodes-base-next.openAiTextMessage",
+			"version": 1,
+			"hidden": true,
+			"credentials": ["openAiApi"],
+			"properties": [
+				"model",
+				"prompt",
+				"system",
+				"schema",
+				"temperature",
+				"maxTokens",
+				"reasoningEffort"
+			]
+		},
+		{
+			"name": "@n8n/nodes-base-next.slackChannelCreate",
+			"version": 1,
+			"hidden": true,
+			"usableAsTool": true,
+			"credentials": ["slackApi"],
+			"properties": ["name", "isPrivate"]
+		},
+		{
+			"name": "@n8n/nodes-base-next.slackChannelCreateTool",
+			"version": 1,
+			"hidden": true,
+			"credentials": ["slackApi"],
+			"properties": ["toolDescription", "name", "isPrivate"]
+		},
+		{
+			"name": "@n8n/nodes-base-next.slackChannelGet",
+			"version": 1,
+			"hidden": true,
+			"usableAsTool": true,
+			"credentials": ["slackApi"],
+			"properties": ["channel"]
+		},
+		{
+			"name": "@n8n/nodes-base-next.slackChannelGetAll",
+			"version": 1,
+			"hidden": true,
+			"usableAsTool": true,
+			"credentials": ["slackApi"],
+			"properties": ["types", "excludeArchived", "paging"]
+		},
+		{
+			"name": "@n8n/nodes-base-next.slackChannelGetAllTool",
+			"version": 1,
+			"hidden": true,
+			"credentials": ["slackApi"],
+			"properties": ["toolDescription", "types", "excludeArchived", "paging"]
+		},
+		{
+			"name": "@n8n/nodes-base-next.slackChannelGetTool",
+			"version": 1,
+			"hidden": true,
+			"credentials": ["slackApi"],
+			"properties": ["toolDescription", "channel"]
+		},
+		{
+			"name": "@n8n/nodes-base-next.slackChannelHistory",
+			"version": 1,
+			"hidden": true,
+			"usableAsTool": true,
+			"credentials": ["slackApi"],
+			"properties": ["channel", "filters", "paging"]
+		},
+		{
+			"name": "@n8n/nodes-base-next.slackChannelHistoryTool",
+			"version": 1,
+			"hidden": true,
+			"credentials": ["slackApi"],
+			"properties": ["toolDescription", "channel", "filters", "paging"]
+		},
+		{
+			"name": "@n8n/nodes-base-next.slackFileUpload",
+			"version": 1,
+			"hidden": true,
+			"credentials": ["slackApi"],
+			"properties": ["file", "channel", "initialComment", "threadTs", "title", "fileName"]
+		},
+		{
+			"name": "@n8n/nodes-base-next.slackMessageDelete",
+			"version": 1,
+			"hidden": true,
+			"usableAsTool": true,
+			"credentials": ["slackApi"],
+			"properties": ["channel", "ts"]
+		},
+		{
+			"name": "@n8n/nodes-base-next.slackMessageDeleteTool",
+			"version": 1,
+			"hidden": true,
+			"credentials": ["slackApi"],
+			"properties": ["toolDescription", "channel", "ts"]
+		},
+		{
+			"name": "@n8n/nodes-base-next.slackMessageGetPermalink",
+			"version": 1,
+			"hidden": true,
+			"usableAsTool": true,
+			"credentials": ["slackApi"],
+			"properties": ["channel", "ts"]
+		},
+		{
+			"name": "@n8n/nodes-base-next.slackMessageGetPermalinkTool",
+			"version": 1,
+			"hidden": true,
+			"credentials": ["slackApi"],
+			"properties": ["toolDescription", "channel", "ts"]
+		},
+		{
+			"name": "@n8n/nodes-base-next.slackMessageSend",
+			"version": 1,
+			"hidden": true,
+			"usableAsTool": true,
+			"credentials": ["slackApi"],
+			"properties": ["channel", "text", "blocks", "appendAttribution", "threadTs", "replyBroadcast"]
+		},
+		{
+			"name": "@n8n/nodes-base-next.slackMessageSendTool",
+			"version": 1,
+			"hidden": true,
+			"credentials": ["slackApi"],
+			"properties": [
+				"toolDescription",
+				"channel",
+				"text",
+				"blocks",
+				"appendAttribution",
+				"threadTs",
+				"replyBroadcast"
+			]
+		},
+		{
+			"name": "@n8n/nodes-base-next.slackMessageUpdate",
+			"version": 1,
+			"hidden": true,
+			"usableAsTool": true,
+			"credentials": ["slackApi"],
+			"properties": ["channel", "ts", "text", "blocks", "appendAttribution"]
+		},
+		{
+			"name": "@n8n/nodes-base-next.slackMessageUpdateTool",
+			"version": 1,
+			"hidden": true,
+			"credentials": ["slackApi"],
+			"properties": ["toolDescription", "channel", "ts", "text", "blocks", "appendAttribution"]
+		},
+		{
+			"name": "@n8n/nodes-base-next.slackReactionAdd",
+			"version": 1,
+			"hidden": true,
+			"usableAsTool": true,
+			"credentials": ["slackApi"],
+			"properties": ["channel", "ts", "name"]
+		},
+		{
+			"name": "@n8n/nodes-base-next.slackReactionAddTool",
+			"version": 1,
+			"hidden": true,
+			"credentials": ["slackApi"],
+			"properties": ["toolDescription", "channel", "ts", "name"]
+		},
+		{
+			"name": "@n8n/nodes-base-next.slackUserGet",
+			"version": 1,
+			"hidden": true,
+			"usableAsTool": true,
+			"credentials": ["slackApi"],
+			"properties": ["user"]
+		},
+		{
+			"name": "@n8n/nodes-base-next.slackUserGetTool",
+			"version": 1,
+			"hidden": true,
+			"credentials": ["slackApi"],
+			"properties": ["toolDescription", "user"]
+		},
+		{
+			"name": "@n8n/nodes-base-next.stopAndErrorStop",
+			"version": 1,
+			"hidden": true,
+			"credentials": [],
+			"properties": ["message", "description"]
+		},
+		{
+			"name": "@n8n/nodes-base-next.supabaseRowCreate",
+			"version": 1,
+			"hidden": true,
+			"usableAsTool": true,
+			"credentials": ["supabaseApi"],
+			"properties": ["table", "schema", "columns"]
+		},
+		{
+			"name": "@n8n/nodes-base-next.supabaseRowCreateTool",
+			"version": 1,
+			"hidden": true,
+			"credentials": ["supabaseApi"],
+			"properties": ["toolDescription", "table", "schema", "columns"]
+		},
+		{
+			"name": "@n8n/nodes-base-next.supabaseRowDelete",
+			"version": 1,
+			"hidden": true,
+			"usableAsTool": true,
+			"credentials": ["supabaseApi"],
+			"properties": ["table", "schema", "filter"]
+		},
+		{
+			"name": "@n8n/nodes-base-next.supabaseRowDeleteTool",
+			"version": 1,
+			"hidden": true,
+			"credentials": ["supabaseApi"],
+			"properties": ["toolDescription", "table", "schema", "filter"]
+		},
+		{
+			"name": "@n8n/nodes-base-next.supabaseRowGet",
+			"version": 1,
+			"hidden": true,
+			"usableAsTool": true,
+			"credentials": ["supabaseApi"],
+			"properties": ["table", "schema", "where"]
+		},
+		{
+			"name": "@n8n/nodes-base-next.supabaseRowGetAll",
+			"version": 1,
+			"hidden": true,
+			"usableAsTool": true,
+			"credentials": ["supabaseApi"],
+			"properties": ["table", "schema", "filter", "order", "paging"]
+		},
+		{
+			"name": "@n8n/nodes-base-next.supabaseRowGetAllTool",
+			"version": 1,
+			"hidden": true,
+			"credentials": ["supabaseApi"],
+			"properties": ["toolDescription", "table", "schema", "filter", "order", "paging"]
+		},
+		{
+			"name": "@n8n/nodes-base-next.supabaseRowGetTool",
+			"version": 1,
+			"hidden": true,
+			"credentials": ["supabaseApi"],
+			"properties": ["toolDescription", "table", "schema", "where"]
+		},
+		{
+			"name": "@n8n/nodes-base-next.supabaseRowUpdate",
+			"version": 1,
+			"hidden": true,
+			"usableAsTool": true,
+			"credentials": ["supabaseApi"],
+			"properties": ["table", "schema", "filter", "columns"]
+		},
+		{
+			"name": "@n8n/nodes-base-next.supabaseRowUpdateTool",
+			"version": 1,
+			"hidden": true,
+			"credentials": ["supabaseApi"],
+			"properties": ["toolDescription", "table", "schema", "filter", "columns"]
+		},
+		{
+			"name": "@n8n/nodes-base-next.waitInterval",
+			"version": 1,
+			"hidden": true,
+			"credentials": [],
+			"properties": ["amount", "unit"]
+		},
+		{
+			"name": "@n8n/nodes-base-next.waitUntil",
+			"version": 1,
+			"hidden": true,
+			"credentials": [],
+			"properties": ["time"]
+		},
+		{
+			"name": "@n8n/nodes-base-next.whatsAppMessageSend",
+			"version": 1,
+			"hidden": true,
+			"usableAsTool": true,
+			"credentials": ["whatsAppApi"],
+			"properties": ["phoneNumberId", "to", "message"]
+		},
+		{
+			"name": "@n8n/nodes-base-next.whatsAppMessageSendTemplate",
+			"version": 1,
+			"hidden": true,
+			"usableAsTool": true,
+			"credentials": ["whatsAppApi"],
+			"properties": ["phoneNumberId", "to", "template", "language", "components"]
+		},
+		{
+			"name": "@n8n/nodes-base-next.whatsAppMessageSendTemplateTool",
+			"version": 1,
+			"hidden": true,
+			"credentials": ["whatsAppApi"],
+			"properties": ["toolDescription", "phoneNumberId", "to", "template", "language", "components"]
+		},
+		{
+			"name": "@n8n/nodes-base-next.whatsAppMessageSendTool",
+			"version": 1,
+			"hidden": true,
+			"credentials": ["whatsAppApi"],
+			"properties": ["toolDescription", "phoneNumberId", "to", "message"]
+		},
+		{
+			"name": "@n8n/nodes-base-next.xAiChatModel",
+			"version": 1,
+			"hidden": true,
+			"credentials": ["xAiApi"],
+			"properties": ["model", "temperature", "maxTokens", "topP"]
+		}
+	],
+	"credentials": [
+		{
+			"name": "anthropicApi",
+			"authenticate": {},
+			"supportedNodes": ["@n8n/nodes-base-next.anthropicChatModel"],
+			"properties": [
+				"apiKey",
+				"url",
+				"header",
+				"headerName",
+				"headerValue",
+				"allowedHttpRequestDomains",
+				"allowedDomains"
+			],
+			"test": {
+				"request": {
+					"baseURL": "={{$credentials.url}}",
+					"url": "/v1/models",
+					"headers": {
+						"anthropic-version": "2023-06-01"
+					}
+				}
+			},
+			"documentationUrl": "anthropic"
+		},
+		{
+			"name": "facebookGraphAppApi",
+			"supportedNodes": ["n8n-nodes-base.facebookTrigger"],
+			"properties": ["accessToken", "appSecret"],
+			"iconUrl": "icons/n8n-nodes-base/dist/nodes/Facebook/facebook.svg",
+			"documentationUrl": "facebookapp"
+		},
+		{
+			"name": "facebookGraphAppOAuth2Api",
+			"extends": ["facebookGraphApiOAuth2Api"],
+			"supportedNodes": ["n8n-nodes-base.facebookTrigger"],
+			"properties": [
+				"grantType",
+				"authUrl",
+				"accessTokenUrl",
+				"customScopes",
+				"customScopesNotice",
+				"enabledScopes",
+				"scope",
+				"authQueryParameters",
+				"authentication",
+				"appSecret"
+			],
+			"iconUrl": "icons/n8n-nodes-base/dist/nodes/Facebook/facebook.svg",
+			"documentationUrl": "facebookapp"
+		},
+		{
+			"name": "githubApi",
+			"authenticate": {
+				"type": "generic",
+				"properties": {
+					"headers": {
+						"Authorization": "=token {{$credentials.accessToken}}"
+					}
+				}
+			},
+			"supportedNodes": [
+				"@n8n/nodes-base-next.githubIssueCreate",
+				"@n8n/nodes-base-next.githubIssueCreateComment",
+				"@n8n/nodes-base-next.githubIssueGet",
+				"@n8n/nodes-base-next.githubIssueGetAll",
+				"@n8n/nodes-base-next.githubIssueUpdate",
+				"@n8n/nodes-base-next.githubRepositoryEvent",
+				"n8n-nodes-base.github",
+				"n8n-nodes-base.githubTrigger"
+			],
+			"properties": [
+				"server",
+				"user",
+				"accessToken",
+				"allowedHttpRequestDomains",
+				"allowedDomains"
+			],
+			"test": {
+				"request": {
+					"baseURL": "={{$credentials.server}}",
+					"url": "/user"
+				}
+			},
+			"iconUrl": {
+				"light": "icons/n8n-nodes-base/dist/nodes/Github/github.svg",
+				"dark": "icons/n8n-nodes-base/dist/nodes/Github/github.dark.svg"
+			},
+			"documentationUrl": "github"
+		},
+		{
+			"name": "gmailOAuth2",
+			"extends": ["googleOAuth2Api"],
+			"supportedNodes": [
+				"@n8n/nodes-base-next.gmailMessageGet",
+				"@n8n/nodes-base-next.gmailMessageGetAll",
+				"@n8n/nodes-base-next.gmailMessageSend",
+				"n8n-nodes-base.gmail",
+				"n8n-nodes-base.gmailTrigger"
+			],
+			"properties": [
+				"grantType",
+				"authUrl",
+				"accessTokenUrl",
+				"customScopes",
+				"customScopesNotice",
+				"enabledScopes",
+				"scope",
+				"authQueryParameters",
+				"authentication",
+				"allowedHttpRequestDomains",
+				"allowedDomains"
+			],
+			"iconUrl": "icons/n8n-nodes-base/dist/nodes/Google/Gmail/gmail.svg",
+			"documentationUrl": "google/oauth-single-service"
+		},
+		{
+			"name": "googleDocsOAuth2Api",
+			"extends": ["googleOAuth2Api"],
+			"supportedNodes": [
+				"@n8n/nodes-base-next.googleDocsDocumentCreate",
+				"@n8n/nodes-base-next.googleDocsDocumentGet",
+				"@n8n/nodes-base-next.googleDocsDocumentUpdate",
+				"n8n-nodes-base.googleDocs"
+			],
+			"properties": [
+				"grantType",
+				"authUrl",
+				"accessTokenUrl",
+				"customScopes",
+				"customScopesNotice",
+				"enabledScopes",
+				"scope",
+				"authQueryParameters",
+				"authentication",
+				"allowedHttpRequestDomains",
+				"allowedDomains"
+			],
+			"iconUrl": "icons/n8n-nodes-base/dist/nodes/Google/Docs/googleDocs.svg",
+			"documentationUrl": "google/oauth-single-service"
+		},
+		{
+			"name": "googleDriveOAuth2Api",
+			"extends": ["googleOAuth2Api"],
+			"supportedNodes": [
+				"@n8n/nodes-base-next.googleDriveFileDelete",
+				"@n8n/nodes-base-next.googleDriveFileSearch",
+				"@n8n/nodes-base-next.googleDriveFileUpload",
+				"@n8n/nodes-base-next.googleDriveFolderCreate",
+				"n8n-nodes-base.googleDrive",
+				"n8n-nodes-base.googleDriveTrigger"
+			],
+			"properties": [
+				"grantType",
+				"authUrl",
+				"accessTokenUrl",
+				"customScopes",
+				"customScopesNotice",
+				"enabledScopes",
+				"scope",
+				"authQueryParameters",
+				"authentication",
+				"notice",
+				"allowedHttpRequestDomains",
+				"allowedDomains"
+			],
+			"iconUrl": "icons/n8n-nodes-base/dist/nodes/Google/Drive/googleDrive.svg",
+			"documentationUrl": "google/oauth-single-service"
+		},
+		{
+			"name": "googlePalmApi",
+			"authenticate": {
+				"type": "generic",
+				"properties": {
+					"qs": {
+						"key": "={{$credentials.apiKey}}"
+					}
+				}
+			},
+			"supportedNodes": [
+				"@n8n/nodes-base-next.googleGeminiChatModel",
+				"@n8n/nodes-base-next.googleGeminiTextMessage"
+			],
+			"properties": ["host", "apiKey", "allowedHttpRequestDomains", "allowedDomains"],
+			"test": {
+				"request": {
+					"baseURL": "={{$credentials.host}}/v1beta",
+					"url": "/models"
+				}
+			},
+			"documentationUrl": "google"
+		},
+		{
+			"name": "googleSheetsOAuth2Api",
+			"extends": ["googleOAuth2Api"],
+			"supportedNodes": [
+				"@n8n/nodes-base-next.googleSheetsSheetAppend",
+				"@n8n/nodes-base-next.googleSheetsSheetAppendOrUpdate",
+				"@n8n/nodes-base-next.googleSheetsSheetRead",
+				"n8n-nodes-base.evaluation",
+				"n8n-nodes-base.evaluationTrigger",
+				"n8n-nodes-base.googleSheets"
+			],
+			"properties": [
+				"grantType",
+				"authUrl",
+				"accessTokenUrl",
+				"customScopes",
+				"customScopesNotice",
+				"enabledScopes",
+				"scope",
+				"authQueryParameters",
+				"authentication",
+				"notice",
+				"allowedHttpRequestDomains",
+				"allowedDomains"
+			],
+			"icon": "node:n8n-nodes-base.googleSheets",
+			"documentationUrl": "google/oauth-single-service"
+		},
+		{
+			"name": "googleSheetsTriggerOAuth2Api",
+			"extends": ["googleOAuth2Api"],
+			"supportedNodes": ["n8n-nodes-base.googleSheetsTrigger"],
+			"properties": [
+				"grantType",
+				"authUrl",
+				"accessTokenUrl",
+				"customScopes",
+				"customScopesNotice",
+				"enabledScopes",
+				"scope",
+				"authQueryParameters",
+				"authentication",
+				"notice",
+				"allowedHttpRequestDomains",
+				"allowedDomains"
+			],
+			"iconUrl": "icons/n8n-nodes-base/dist/nodes/Google/Sheet/googleSheets.svg",
+			"documentationUrl": "google/oauth-single-service"
+		},
+		{
+			"name": "minimaxApi",
+			"authenticate": {
+				"type": "generic",
+				"properties": {
+					"headers": {
+						"Authorization": "=Bearer {{$credentials.apiKey}}"
+					}
+				}
+			},
+			"supportedNodes": ["@n8n/nodes-base-next.minimaxChatModel"],
+			"properties": ["apiKey", "region", "url", "allowedHttpRequestDomains", "allowedDomains"],
+			"test": {
+				"request": {
+					"baseURL": "={{ {\"international\":\"https://api.minimax.io/v1\",\"china\":\"https://api.minimaxi.com/v1\"}[$credentials.region] }}",
+					"url": "/files/list?purpose=voice_clone"
+				},
+				"rules": [
+					{
+						"type": "responseSuccessBody",
+						"properties": {
+							"key": "base_resp.status_code",
+							"value": 1004,
+							"message": "Authentication failed. Please check your API key."
+						}
+					},
+					{
+						"type": "responseSuccessBody",
+						"properties": {
+							"key": "base_resp.status_code",
+							"value": 2049,
+							"message": "Invalid API key. Please verify your key matches the selected region."
+						}
+					}
+				]
+			},
+			"documentationUrl": "minimax"
+		},
+		{
+			"name": "notionApi",
+			"authenticate": {},
+			"supportedNodes": [
+				"@n8n/nodes-base-next.notionDataSourcePageAdded",
+				"@n8n/nodes-base-next.notionDatabasePageGetAll",
+				"@n8n/nodes-base-next.notionUserGet",
+				"n8n-nodes-base.notion",
+				"n8n-nodes-base.notionTrigger"
+			],
+			"properties": ["apiKey", "allowedHttpRequestDomains", "allowedDomains"],
+			"test": {
+				"request": {
+					"baseURL": "https://api.notion.com/v1",
+					"url": "/users/me"
+				}
+			},
+			"iconUrl": {
+				"light": "icons/n8n-nodes-base/dist/nodes/Notion/notion.svg",
+				"dark": "icons/n8n-nodes-base/dist/nodes/Notion/notion.dark.svg"
+			},
+			"documentationUrl": "notion"
+		},
+		{
+			"name": "notionOAuth2Api",
+			"extends": ["oAuth2Api"],
+			"supportedNodes": [
+				"@n8n/nodes-base-next.notionDataSourcePageAdded",
+				"@n8n/nodes-base-next.notionDatabasePageGetAll",
+				"@n8n/nodes-base-next.notionUserGet",
+				"n8n-nodes-base.notion",
+				"n8n-nodes-base.notionTrigger"
+			],
+			"properties": [
+				"grantType",
+				"authUrl",
+				"accessTokenUrl",
+				"scope",
+				"authQueryParameters",
+				"authentication",
+				"allowedHttpRequestDomains",
+				"allowedDomains"
+			],
+			"iconUrl": {
+				"light": "icons/n8n-nodes-base/dist/nodes/Notion/notion.svg",
+				"dark": "icons/n8n-nodes-base/dist/nodes/Notion/notion.dark.svg"
+			},
+			"documentationUrl": "notion"
+		},
+		{
+			"name": "openAiApi",
+			"authenticate": {},
+			"supportedNodes": [
+				"@n8n/nodes-base-next.openAiChatModel",
+				"@n8n/nodes-base-next.openAiImageGenerate",
+				"@n8n/nodes-base-next.openAiTextMessage",
+				"n8n-nodes-base.openAi"
+			],
+			"properties": [
+				"apiKey",
+				"organizationId",
+				"url",
+				"header",
+				"headerName",
+				"headerValue",
+				"allowedHttpRequestDomains",
+				"allowedDomains"
+			],
+			"test": {
+				"request": {
+					"baseURL": "={{$credentials.url}}",
+					"url": "/models"
+				}
+			},
+			"iconUrl": {
+				"light": "icons/n8n-nodes-base/dist/nodes/OpenAi/openAi.svg",
+				"dark": "icons/n8n-nodes-base/dist/nodes/OpenAi/openAi.dark.svg"
+			},
+			"documentationUrl": "openai"
+		},
+		{
+			"name": "slackApi",
+			"authenticate": {
+				"type": "generic",
+				"properties": {
+					"headers": {
+						"Authorization": "=Bearer {{$credentials.accessToken}}"
+					}
+				}
+			},
+			"supportedNodes": [
+				"@n8n/nodes-base-next.slackChannelCreate",
+				"@n8n/nodes-base-next.slackChannelGet",
+				"@n8n/nodes-base-next.slackChannelGetAll",
+				"@n8n/nodes-base-next.slackChannelHistory",
+				"@n8n/nodes-base-next.slackFileUpload",
+				"@n8n/nodes-base-next.slackMessageDelete",
+				"@n8n/nodes-base-next.slackMessageGetPermalink",
+				"@n8n/nodes-base-next.slackMessageSend",
+				"@n8n/nodes-base-next.slackMessageUpdate",
+				"@n8n/nodes-base-next.slackReactionAdd",
+				"@n8n/nodes-base-next.slackUserGet",
+				"n8n-nodes-base.slack",
+				"n8n-nodes-base.slackTrigger"
+			],
+			"properties": [
+				"accessToken",
+				"signatureSecret",
+				"managedAppId",
+				"teamId",
+				"managerCredentialId",
+				"agentId",
+				"notice",
+				"allowedHttpRequestDomains",
+				"allowedDomains"
+			],
+			"test": {
+				"request": {
+					"baseURL": "https://slack.com/api",
+					"url": "/users.profile.get"
+				},
+				"rules": [
+					{
+						"type": "responseSuccessBody",
+						"properties": {
+							"key": "error",
+							"value": "invalid_auth",
+							"message": "Invalid access token"
+						}
+					}
+				]
+			},
+			"iconUrl": "icons/n8n-nodes-base/dist/nodes/Slack/slack.svg",
+			"documentationUrl": "slack"
+		},
+		{
+			"name": "supabaseApi",
+			"authenticate": {
+				"type": "generic",
+				"properties": {
+					"headers": {
+						"apikey": "={{$credentials.serviceRole}}",
+						"Authorization": "=Bearer {{$credentials.serviceRole}}"
+					}
+				}
+			},
+			"supportedNodes": [
+				"@n8n/nodes-base-next.supabaseRowCreate",
+				"@n8n/nodes-base-next.supabaseRowDelete",
+				"@n8n/nodes-base-next.supabaseRowGet",
+				"@n8n/nodes-base-next.supabaseRowGetAll",
+				"@n8n/nodes-base-next.supabaseRowUpdate",
+				"n8n-nodes-base.supabase"
+			],
+			"properties": ["host", "serviceRole", "allowedHttpRequestDomains", "allowedDomains"],
+			"test": {
+				"request": {
+					"baseURL": "={{$credentials.host}}/rest/v1",
+					"url": "/"
+				}
+			},
+			"iconUrl": "icons/n8n-nodes-base/dist/nodes/Supabase/supabase.svg",
+			"documentationUrl": "supabase"
+		},
+		{
+			"name": "whatsAppApi",
+			"authenticate": {
+				"type": "generic",
+				"properties": {
+					"headers": {
+						"Authorization": "=Bearer {{$credentials.accessToken}}"
+					}
+				}
+			},
+			"supportedNodes": [
+				"@n8n/nodes-base-next.whatsAppMessageSend",
+				"@n8n/nodes-base-next.whatsAppMessageSendTemplate",
+				"n8n-nodes-base.whatsApp"
+			],
+			"properties": [
+				"accessToken",
+				"businessAccountId",
+				"allowedHttpRequestDomains",
+				"allowedDomains"
+			],
+			"test": {
+				"request": {
+					"baseURL": "https://graph.facebook.com/v13.0",
+					"url": "/",
+					"ignoreHttpStatusErrors": true
+				},
+				"rules": [
+					{
+						"type": "responseSuccessBody",
+						"properties": {
+							"key": "error.type",
+							"value": "OAuthException",
+							"message": "Invalid access token"
+						}
+					}
+				]
+			},
+			"iconUrl": "icons/n8n-nodes-base/dist/nodes/WhatsApp/whatsapp.svg",
+			"documentationUrl": "whatsapp"
+		},
+		{
+			"name": "whatsAppTriggerApi",
+			"supportedNodes": ["n8n-nodes-base.whatsAppTrigger"],
+			"properties": ["clientId", "clientSecret"],
+			"test": {
+				"request": {
+					"baseURL": "https://graph.facebook.com/v19.0",
+					"url": "/oauth/access_token",
+					"method": "POST",
+					"body": {
+						"client_id": "={{$credentials.clientId}}",
+						"client_secret": "={{$credentials.clientSecret}}",
+						"grant_type": "client_credentials"
+					}
+				}
+			},
+			"iconUrl": "icons/n8n-nodes-base/dist/nodes/WhatsApp/whatsapp.svg",
+			"documentationUrl": "whatsapp"
+		},
+		{
+			"name": "xAiApi",
+			"authenticate": {
+				"type": "generic",
+				"properties": {
+					"headers": {
+						"Authorization": "=Bearer {{$credentials.apiKey}}"
+					}
+				}
+			},
+			"supportedNodes": ["@n8n/nodes-base-next.xAiChatModel"],
+			"properties": ["apiKey", "url", "allowedHttpRequestDomains", "allowedDomains"],
+			"test": {
+				"request": {
+					"baseURL": "https://api.x.ai/v1",
+					"url": "/models"
+				}
+			},
+			"documentationUrl": "xai"
+		}
+	],
+	"knownNodes": [
+		"@n8n/nodes-base-next.aiAgent",
+		"@n8n/nodes-base-next.aiClassify",
+		"@n8n/nodes-base-next.aiPrompt",
+		"@n8n/nodes-base-next.anthropicChatModel",
+		"@n8n/nodes-base-next.codeJavaScript",
+		"@n8n/nodes-base-next.codePython",
+		"@n8n/nodes-base-next.coreAggregate",
+		"@n8n/nodes-base-next.coreDateTime",
+		"@n8n/nodes-base-next.coreFilter",
+		"@n8n/nodes-base-next.coreIf",
+		"@n8n/nodes-base-next.coreLimit",
+		"@n8n/nodes-base-next.coreRemoveDuplicates",
+		"@n8n/nodes-base-next.coreRenameKeys",
+		"@n8n/nodes-base-next.coreSet",
+		"@n8n/nodes-base-next.coreSort",
+		"@n8n/nodes-base-next.coreSplitOut",
+		"@n8n/nodes-base-next.coreSummarize",
+		"@n8n/nodes-base-next.coreSwitch",
+		"@n8n/nodes-base-next.dataTableRowDelete",
+		"@n8n/nodes-base-next.dataTableRowExists",
+		"@n8n/nodes-base-next.dataTableRowGet",
+		"@n8n/nodes-base-next.dataTableRowInsert",
+		"@n8n/nodes-base-next.dataTableRowUpdate",
+		"@n8n/nodes-base-next.dataTableRowUpsert",
+		"@n8n/nodes-base-next.dataTableTableClear",
+		"@n8n/nodes-base-next.dataTableTableCreate",
+		"@n8n/nodes-base-next.dataTableTableDelete",
+		"@n8n/nodes-base-next.dataTableTableList",
+		"@n8n/nodes-base-next.dataTableTableRename",
+		"@n8n/nodes-base-next.githubIssueCreate",
+		"@n8n/nodes-base-next.githubIssueCreateComment",
+		"@n8n/nodes-base-next.githubIssueCreateCommentTool",
+		"@n8n/nodes-base-next.githubIssueCreateTool",
+		"@n8n/nodes-base-next.githubIssueGet",
+		"@n8n/nodes-base-next.githubIssueGetAll",
+		"@n8n/nodes-base-next.githubIssueGetAllTool",
+		"@n8n/nodes-base-next.githubIssueGetTool",
+		"@n8n/nodes-base-next.githubIssueUpdate",
+		"@n8n/nodes-base-next.githubIssueUpdateTool",
+		"@n8n/nodes-base-next.githubRepositoryEvent",
+		"@n8n/nodes-base-next.gmailMessageGet",
+		"@n8n/nodes-base-next.gmailMessageGetAll",
+		"@n8n/nodes-base-next.gmailMessageGetAllTool",
+		"@n8n/nodes-base-next.gmailMessageGetTool",
+		"@n8n/nodes-base-next.gmailMessageSend",
+		"@n8n/nodes-base-next.gmailMessageSendTool",
+		"@n8n/nodes-base-next.googleDocsDocumentCreate",
+		"@n8n/nodes-base-next.googleDocsDocumentCreateTool",
+		"@n8n/nodes-base-next.googleDocsDocumentGet",
+		"@n8n/nodes-base-next.googleDocsDocumentGetTool",
+		"@n8n/nodes-base-next.googleDocsDocumentUpdate",
+		"@n8n/nodes-base-next.googleDocsDocumentUpdateTool",
+		"@n8n/nodes-base-next.googleDriveFileDelete",
+		"@n8n/nodes-base-next.googleDriveFileDeleteTool",
+		"@n8n/nodes-base-next.googleDriveFileSearch",
+		"@n8n/nodes-base-next.googleDriveFileSearchTool",
+		"@n8n/nodes-base-next.googleDriveFileUpload",
+		"@n8n/nodes-base-next.googleDriveFolderCreate",
+		"@n8n/nodes-base-next.googleDriveFolderCreateTool",
+		"@n8n/nodes-base-next.googleGeminiChatModel",
+		"@n8n/nodes-base-next.googleGeminiTextMessage",
+		"@n8n/nodes-base-next.googleGeminiTextMessageTool",
+		"@n8n/nodes-base-next.googleSheetsSheetAppend",
+		"@n8n/nodes-base-next.googleSheetsSheetAppendOrUpdate",
+		"@n8n/nodes-base-next.googleSheetsSheetAppendOrUpdateTool",
+		"@n8n/nodes-base-next.googleSheetsSheetAppendTool",
+		"@n8n/nodes-base-next.googleSheetsSheetRead",
+		"@n8n/nodes-base-next.googleSheetsSheetReadTool",
+		"@n8n/nodes-base-next.httpRequestDownload",
+		"@n8n/nodes-base-next.httpRequestGet",
+		"@n8n/nodes-base-next.httpRequestGetTool",
+		"@n8n/nodes-base-next.httpRequestSend",
+		"@n8n/nodes-base-next.httpRequestSendTool",
+		"@n8n/nodes-base-next.loopStateSet",
+		"@n8n/nodes-base-next.mergeAppend",
+		"@n8n/nodes-base-next.mergeCombine",
+		"@n8n/nodes-base-next.minimaxChatModel",
+		"@n8n/nodes-base-next.noOpPass",
+		"@n8n/nodes-base-next.notionDataSourcePageAdded",
+		"@n8n/nodes-base-next.notionDatabasePageGetAll",
+		"@n8n/nodes-base-next.notionDatabasePageGetAllTool",
+		"@n8n/nodes-base-next.notionUserGet",
+		"@n8n/nodes-base-next.notionUserGetTool",
+		"@n8n/nodes-base-next.openAiChatModel",
+		"@n8n/nodes-base-next.openAiImageGenerate",
+		"@n8n/nodes-base-next.openAiTextMessage",
+		"@n8n/nodes-base-next.slackChannelCreate",
+		"@n8n/nodes-base-next.slackChannelCreateTool",
+		"@n8n/nodes-base-next.slackChannelGet",
+		"@n8n/nodes-base-next.slackChannelGetAll",
+		"@n8n/nodes-base-next.slackChannelGetAllTool",
+		"@n8n/nodes-base-next.slackChannelGetTool",
+		"@n8n/nodes-base-next.slackChannelHistory",
+		"@n8n/nodes-base-next.slackChannelHistoryTool",
+		"@n8n/nodes-base-next.slackFileUpload",
+		"@n8n/nodes-base-next.slackMessageDelete",
+		"@n8n/nodes-base-next.slackMessageDeleteTool",
+		"@n8n/nodes-base-next.slackMessageGetPermalink",
+		"@n8n/nodes-base-next.slackMessageGetPermalinkTool",
+		"@n8n/nodes-base-next.slackMessageSend",
+		"@n8n/nodes-base-next.slackMessageSendTool",
+		"@n8n/nodes-base-next.slackMessageUpdate",
+		"@n8n/nodes-base-next.slackMessageUpdateTool",
+		"@n8n/nodes-base-next.slackReactionAdd",
+		"@n8n/nodes-base-next.slackReactionAddTool",
+		"@n8n/nodes-base-next.slackUserGet",
+		"@n8n/nodes-base-next.slackUserGetTool",
+		"@n8n/nodes-base-next.stopAndErrorStop",
+		"@n8n/nodes-base-next.supabaseRowCreate",
+		"@n8n/nodes-base-next.supabaseRowCreateTool",
+		"@n8n/nodes-base-next.supabaseRowDelete",
+		"@n8n/nodes-base-next.supabaseRowDeleteTool",
+		"@n8n/nodes-base-next.supabaseRowGet",
+		"@n8n/nodes-base-next.supabaseRowGetAll",
+		"@n8n/nodes-base-next.supabaseRowGetAllTool",
+		"@n8n/nodes-base-next.supabaseRowGetTool",
+		"@n8n/nodes-base-next.supabaseRowUpdate",
+		"@n8n/nodes-base-next.supabaseRowUpdateTool",
+		"@n8n/nodes-base-next.waitInterval",
+		"@n8n/nodes-base-next.waitUntil",
+		"@n8n/nodes-base-next.whatsAppMessageSend",
+		"@n8n/nodes-base-next.whatsAppMessageSendTemplate",
+		"@n8n/nodes-base-next.whatsAppMessageSendTemplateTool",
+		"@n8n/nodes-base-next.whatsAppMessageSendTool",
+		"@n8n/nodes-base-next.xAiChatModel"
+	],
+	"knownCredentials": {
+		"anthropicApi": {
+			"supportedNodes": ["@n8n/nodes-base-next.anthropicChatModel"]
+		},
+		"facebookGraphAppApi": {
+			"supportedNodes": ["n8n-nodes-base.facebookTrigger"]
+		},
+		"facebookGraphAppOAuth2Api": {
+			"extends": ["facebookGraphApiOAuth2Api"],
+			"supportedNodes": ["n8n-nodes-base.facebookTrigger"]
+		},
+		"githubApi": {
+			"supportedNodes": [
+				"@n8n/nodes-base-next.githubIssueCreate",
+				"@n8n/nodes-base-next.githubIssueCreateComment",
+				"@n8n/nodes-base-next.githubIssueCreateCommentTool",
+				"@n8n/nodes-base-next.githubIssueCreateTool",
+				"@n8n/nodes-base-next.githubIssueGet",
+				"@n8n/nodes-base-next.githubIssueGetAll",
+				"@n8n/nodes-base-next.githubIssueGetAllTool",
+				"@n8n/nodes-base-next.githubIssueGetTool",
+				"@n8n/nodes-base-next.githubIssueUpdate",
+				"@n8n/nodes-base-next.githubIssueUpdateTool",
+				"@n8n/nodes-base-next.githubRepositoryEvent",
+				"n8n-nodes-base.github",
+				"n8n-nodes-base.githubTool",
+				"n8n-nodes-base.githubTrigger"
+			]
+		},
+		"gmailOAuth2": {
+			"extends": ["googleOAuth2Api"],
+			"supportedNodes": [
+				"@n8n/nodes-base-next.gmailMessageGet",
+				"@n8n/nodes-base-next.gmailMessageGetAll",
+				"@n8n/nodes-base-next.gmailMessageGetAllTool",
+				"@n8n/nodes-base-next.gmailMessageGetTool",
+				"@n8n/nodes-base-next.gmailMessageSend",
+				"@n8n/nodes-base-next.gmailMessageSendTool",
+				"n8n-nodes-base.gmail",
+				"n8n-nodes-base.gmailHitlTool",
+				"n8n-nodes-base.gmailTool",
+				"n8n-nodes-base.gmailTrigger"
+			]
+		},
+		"googleDocsOAuth2Api": {
+			"extends": ["googleOAuth2Api"],
+			"supportedNodes": [
+				"@n8n/nodes-base-next.googleDocsDocumentCreate",
+				"@n8n/nodes-base-next.googleDocsDocumentCreateTool",
+				"@n8n/nodes-base-next.googleDocsDocumentGet",
+				"@n8n/nodes-base-next.googleDocsDocumentGetTool",
+				"@n8n/nodes-base-next.googleDocsDocumentUpdate",
+				"@n8n/nodes-base-next.googleDocsDocumentUpdateTool",
+				"n8n-nodes-base.googleDocs",
+				"n8n-nodes-base.googleDocsTool"
+			]
+		},
+		"googleDriveOAuth2Api": {
+			"extends": ["googleOAuth2Api"],
+			"supportedNodes": [
+				"@n8n/nodes-base-next.googleDriveFileDelete",
+				"@n8n/nodes-base-next.googleDriveFileDeleteTool",
+				"@n8n/nodes-base-next.googleDriveFileSearch",
+				"@n8n/nodes-base-next.googleDriveFileSearchTool",
+				"@n8n/nodes-base-next.googleDriveFileUpload",
+				"@n8n/nodes-base-next.googleDriveFolderCreate",
+				"@n8n/nodes-base-next.googleDriveFolderCreateTool",
+				"n8n-nodes-base.googleDrive",
+				"n8n-nodes-base.googleDriveTool",
+				"n8n-nodes-base.googleDriveTrigger"
+			]
+		},
+		"googlePalmApi": {
+			"supportedNodes": [
+				"@n8n/nodes-base-next.googleGeminiChatModel",
+				"@n8n/nodes-base-next.googleGeminiTextMessage",
+				"@n8n/nodes-base-next.googleGeminiTextMessageTool"
+			]
+		},
+		"googleSheetsOAuth2Api": {
+			"extends": ["googleOAuth2Api"],
+			"supportedNodes": [
+				"@n8n/nodes-base-next.googleSheetsSheetAppend",
+				"@n8n/nodes-base-next.googleSheetsSheetAppendOrUpdate",
+				"@n8n/nodes-base-next.googleSheetsSheetAppendOrUpdateTool",
+				"@n8n/nodes-base-next.googleSheetsSheetAppendTool",
+				"@n8n/nodes-base-next.googleSheetsSheetRead",
+				"@n8n/nodes-base-next.googleSheetsSheetReadTool",
+				"n8n-nodes-base.evaluation",
+				"n8n-nodes-base.evaluationTrigger",
+				"n8n-nodes-base.googleSheets",
+				"n8n-nodes-base.googleSheetsTool"
+			]
+		},
+		"googleSheetsTriggerOAuth2Api": {
+			"extends": ["googleOAuth2Api"],
+			"supportedNodes": ["n8n-nodes-base.googleSheetsTrigger"]
+		},
+		"minimaxApi": {
+			"supportedNodes": ["@n8n/nodes-base-next.minimaxChatModel"]
+		},
+		"notionApi": {
+			"supportedNodes": [
+				"@n8n/nodes-base-next.notionDataSourcePageAdded",
+				"@n8n/nodes-base-next.notionDatabasePageGetAll",
+				"@n8n/nodes-base-next.notionDatabasePageGetAllTool",
+				"@n8n/nodes-base-next.notionUserGet",
+				"@n8n/nodes-base-next.notionUserGetTool",
+				"n8n-nodes-base.notion",
+				"n8n-nodes-base.notionTool",
+				"n8n-nodes-base.notionTool",
+				"n8n-nodes-base.notionTrigger"
+			]
+		},
+		"notionOAuth2Api": {
+			"extends": ["oAuth2Api"],
+			"supportedNodes": [
+				"@n8n/nodes-base-next.notionDataSourcePageAdded",
+				"@n8n/nodes-base-next.notionDatabasePageGetAll",
+				"@n8n/nodes-base-next.notionDatabasePageGetAllTool",
+				"@n8n/nodes-base-next.notionUserGet",
+				"@n8n/nodes-base-next.notionUserGetTool",
+				"n8n-nodes-base.notion",
+				"n8n-nodes-base.notionTool",
+				"n8n-nodes-base.notionTool",
+				"n8n-nodes-base.notionTrigger"
+			]
+		},
+		"openAiApi": {
+			"supportedNodes": [
+				"@n8n/nodes-base-next.openAiChatModel",
+				"@n8n/nodes-base-next.openAiImageGenerate",
+				"@n8n/nodes-base-next.openAiTextMessage",
+				"n8n-nodes-base.openAi"
+			]
+		},
+		"slackApi": {
+			"supportedNodes": [
+				"@n8n/nodes-base-next.slackChannelCreate",
+				"@n8n/nodes-base-next.slackChannelCreateTool",
+				"@n8n/nodes-base-next.slackChannelGet",
+				"@n8n/nodes-base-next.slackChannelGetAll",
+				"@n8n/nodes-base-next.slackChannelGetAllTool",
+				"@n8n/nodes-base-next.slackChannelGetTool",
+				"@n8n/nodes-base-next.slackChannelHistory",
+				"@n8n/nodes-base-next.slackChannelHistoryTool",
+				"@n8n/nodes-base-next.slackFileUpload",
+				"@n8n/nodes-base-next.slackMessageDelete",
+				"@n8n/nodes-base-next.slackMessageDeleteTool",
+				"@n8n/nodes-base-next.slackMessageGetPermalink",
+				"@n8n/nodes-base-next.slackMessageGetPermalinkTool",
+				"@n8n/nodes-base-next.slackMessageSend",
+				"@n8n/nodes-base-next.slackMessageSendTool",
+				"@n8n/nodes-base-next.slackMessageUpdate",
+				"@n8n/nodes-base-next.slackMessageUpdateTool",
+				"@n8n/nodes-base-next.slackReactionAdd",
+				"@n8n/nodes-base-next.slackReactionAddTool",
+				"@n8n/nodes-base-next.slackUserGet",
+				"@n8n/nodes-base-next.slackUserGetTool",
+				"n8n-nodes-base.slack",
+				"n8n-nodes-base.slackHitlTool",
+				"n8n-nodes-base.slackTool",
+				"n8n-nodes-base.slackTrigger"
+			]
+		},
+		"supabaseApi": {
+			"supportedNodes": [
+				"@n8n/nodes-base-next.supabaseRowCreate",
+				"@n8n/nodes-base-next.supabaseRowCreateTool",
+				"@n8n/nodes-base-next.supabaseRowDelete",
+				"@n8n/nodes-base-next.supabaseRowDeleteTool",
+				"@n8n/nodes-base-next.supabaseRowGet",
+				"@n8n/nodes-base-next.supabaseRowGetAll",
+				"@n8n/nodes-base-next.supabaseRowGetAllTool",
+				"@n8n/nodes-base-next.supabaseRowGetTool",
+				"@n8n/nodes-base-next.supabaseRowUpdate",
+				"@n8n/nodes-base-next.supabaseRowUpdateTool",
+				"n8n-nodes-base.supabase",
+				"n8n-nodes-base.supabaseTool"
+			]
+		},
+		"whatsAppApi": {
+			"supportedNodes": [
+				"@n8n/nodes-base-next.whatsAppMessageSend",
+				"@n8n/nodes-base-next.whatsAppMessageSendTemplate",
+				"@n8n/nodes-base-next.whatsAppMessageSendTemplateTool",
+				"@n8n/nodes-base-next.whatsAppMessageSendTool",
+				"n8n-nodes-base.whatsApp",
+				"n8n-nodes-base.whatsAppHitlTool",
+				"n8n-nodes-base.whatsAppTool"
+			]
+		},
+		"whatsAppTriggerApi": {
+			"supportedNodes": ["n8n-nodes-base.whatsAppTrigger"]
+		},
+		"xAiApi": {
+			"supportedNodes": ["@n8n/nodes-base-next.xAiChatModel"]
+		}
+	}
+}

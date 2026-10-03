@@ -15,44 +15,23 @@ import { sandboxedVersionOf } from '@n8n/node-sdk/sandbox';
 import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { compileFunction } from 'node:vm';
-import type { ICredentialType, IExecuteFunctions, VersionedNodeType } from 'n8n-workflow';
+import type { ICredentialType, IExecuteFunctions } from 'n8n-workflow';
 
-import {
-	actionEntries,
-	credentialClassFile,
-	freezeAll,
-	freezeCredentials,
-	NODES_DIR,
-	nodeClassFile,
-} from '../../scripts/freeze';
+import { actionEntries, freezeAll, freezeCredentials, NODES_DIR } from '../../scripts/freeze';
 import { FIXTURES_DIR } from '../../scripts/publish';
 import { actions, credentialTypes, nativeTriggers, triggers } from '../index';
-import { versionsOf, VERSIONS_DIR } from '../registry';
-
-/**
- * Runs a generated class file as the n8n loader does: `require` the file, then construct the
- * export that the file name names. `dir` holds the frozen versions that the file reads.
- */
-function loadNodeClass(contract: Parameters<typeof nodeClassFile>[0], dir: string) {
-	const { file, source } = nodeClassFile(contract);
-	const [className = ''] = path.parse(file).name.split('.');
-	const modules: Record<string, unknown> = {
-		'@n8n/node-sdk/host': host,
-		'../registry': { versionsOf: (id: string) => versionsOf(id, dir) },
-	};
-	const module: { exports: Record<string, unknown> } = { exports: {} };
-	compileFunction(source, ['exports', 'require'])(module.exports, (id: string) => modules[id]);
-	return module.exports[className] as new () => VersionedNodeType;
-}
+import { bundledCredentialsOf, bundledIdsOf, versionsOf, VERSIONS_DIR } from '../registry';
 
 const contracts = [...actions, ...triggers];
 
-const n8nManifest = () => {
-	const manifest: unknown = JSON.parse(
-		readFileSync(path.resolve(__dirname, '../../package.json'), 'utf8'),
-	);
-	return isRecord(manifest) && isRecord(manifest.n8n) ? manifest.n8n : {};
+/** The node type that n8n projects from the frozen versions of an action or a trigger. */
+const nodeTypeOf = (id: string, dir: string) => {
+	const versions = versionsOf(id, dir);
+	const typeOf =
+		versions[0]?.manifest.kind === 'trigger'
+			? host.toVersionedTriggerType
+			: host.toVersionedNodeType;
+	return new (typeOf(versions))();
 };
 
 const fixturesOf = (actionId: string) =>
@@ -92,15 +71,17 @@ describe('bundled versions', () => {
 		expect(manifests.map(({ id }) => versionsOf(id)[0]?.manifest)).toEqual(manifests);
 	});
 
-	it('match the n8n.nodes list of package.json with one generated class file each', () => {
-		expect(n8nManifest().nodes).toEqual(
-			contracts.map((contract) => `dist/${nodeClassFile(contract).file}`),
+	it('are the only node list: package.json has no n8n key', () => {
+		const manifest: unknown = JSON.parse(
+			readFileSync(path.resolve(__dirname, '../../package.json'), 'utf8'),
 		);
+		expect(isRecord(manifest) && 'n8n' in manifest).toBe(false);
+		expect(bundledIdsOf(copy).sort()).toEqual(contracts.map(({ id }) => id).sort());
 	});
 
-	it('load from the generated class files with the class name of each file', () => {
-		const loaded = contracts.map((contract) => {
-			const { description } = new (loadNodeClass(contract, copy))();
+	it('project one node type each, named after its id', () => {
+		const loaded = contracts.map(({ id }) => {
+			const { description } = nodeTypeOf(id, copy);
 			return [description.name, description.defaultVersion];
 		});
 		expect(loaded).toEqual(contracts.map(({ id, version }) => [host.nodeNameOf(id), version]));
@@ -223,7 +204,7 @@ describe('bundled versions', () => {
 		expect(issues.flat()).toEqual([]);
 	});
 
-	it('run from the bundle in the node class', async () => {
+	it('run from the bundle in the node type', async () => {
 		const parameters: Record<string, unknown> = {
 			authentication: 'none',
 			url: 'https://api.test/items',
@@ -238,8 +219,9 @@ describe('bundled versions', () => {
 			helpers: { httpRequest: async () => [{ id: 1 }, { id: 2 }] },
 		} as unknown as IExecuteFunctions;
 
-		const HttpRequestGet = loadNodeClass({ id: 'httpRequest.get' }, VERSIONS_DIR);
-		const result = await new HttpRequestGet().getNodeType(3).execute?.call(context);
+		const result = await nodeTypeOf('httpRequest.get', VERSIONS_DIR)
+			.getNodeType(3)
+			.execute?.call(context);
 
 		expect(result).toEqual([
 			[
@@ -309,7 +291,7 @@ describe.skipIf(!sandboxBuilt)('bundled versions in the sandbox', () => {
 	}, 120_000);
 });
 
-describe('credential classes', () => {
+describe('credential manifests', () => {
 	const ownTypes = [
 		...new Map(
 			[...contracts, ...nativeTriggers]
@@ -319,45 +301,38 @@ describe('credential classes', () => {
 		).values(),
 	];
 
-	it('match the n8n.credentials list of package.json with every non-compat type of a shipped node', () => {
+	it('exist for every non-compat type of a shipped node', () => {
 		expect(ownTypes.map(({ name }) => name)).toEqual(
 			expect.arrayContaining(['notionApi', 'slackApi', 'whatsAppTriggerApi']),
 		);
 		expect(credentialTypes).toEqual(ownTypes);
-		expect(n8nManifest().credentials).toEqual(
-			ownTypes.map((type) => `dist/${credentialClassFile(type).file}`),
-		);
+		expect(
+			bundledCredentialsOf()
+				.map(({ manifest }) => manifest.id)
+				.sort(),
+		).toEqual(ownTypes.map(({ id }) => id).sort());
 	});
 
-	it('load from the generated class files as the projected type with the legacy name', () => {
-		const loaded = credentialTypes.map((type) => {
-			const { file, source } = credentialClassFile(type);
-			const [className = ''] = path.parse(file).name.split('.');
-			const modules: Record<string, unknown> = {
-				'@n8n/node-sdk/host': host,
-				'../index': { credentialTypes },
-			};
-			const module: { exports: Record<string, unknown> } = { exports: {} };
-			compileFunction(source, ['exports', 'require'])(module.exports, (id: string) => modules[id]);
-			const Class = module.exports[className] as new () => ICredentialType;
-			const instance = new Class();
-			// A generated `authenticate` is a new function each time.
-			const { authenticate } = instance;
-			return {
-				className: instance.constructor.name,
-				...instance,
-				authenticate: typeof authenticate,
-			};
+	it('project the same n8n type as the source type', () => {
+		// A generated function is a new value each time.
+		const comparable = ({ authenticate, preAuthentication, ...rest }: ICredentialType) => ({
+			...rest,
+			authenticate: typeof authenticate === 'function' ? 'function' : authenticate,
+			preAuthentication: typeof preAuthentication,
 		});
-		expect(loaded).toEqual(
-			credentialTypes.map((type) => {
-				const projected = host.toCredentialType(type);
-				return {
-					className: `${type.name.charAt(0).toUpperCase()}${type.name.slice(1)}`,
-					...projected,
-					authenticate: typeof projected?.authenticate,
-				};
-			}),
+		const projected = new Map(
+			bundledCredentialsOf().map(({ manifest }) => [
+				manifest.id,
+				comparable(host.credentialTypeOfManifest(manifest)),
+			]),
+		);
+		expect(Object.fromEntries(projected)).toEqual(
+			Object.fromEntries(
+				credentialTypes.flatMap((type) => {
+					const source = host.toCredentialType(type);
+					return source ? [[type.id, comparable(source)]] : [];
+				}),
+			),
 		);
 	});
 });

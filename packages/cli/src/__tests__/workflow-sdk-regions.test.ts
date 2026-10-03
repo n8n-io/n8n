@@ -34,10 +34,10 @@ import { createRunExecutionData, NodeHelpers, Workflow } from 'n8n-workflow';
 import path from 'node:path';
 import { mock } from 'vitest-mock-extended';
 
+import { ContractNodeLoader } from '../node-contracts-registry';
+
 const nodesBase = new LazyPackageDirectoryLoader(path.resolve(__dirname, '../../../nodes-base'));
-const nodesBaseNext = new LazyPackageDirectoryLoader(
-	path.resolve(__dirname, '../../../@n8n/nodes-base-next'),
-);
+const nodesBaseNext = new ContractNodeLoader([], [], async () => new Map());
 
 const NEXT_PREFIX = '@n8n/nodes-base-next.';
 

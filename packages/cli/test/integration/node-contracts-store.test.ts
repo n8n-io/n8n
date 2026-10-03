@@ -2,7 +2,7 @@ import { createWorkflow, mockInstance, testDb } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import { ExecutionRepository, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { InstanceSettings, LazyPackageDirectoryLoader } from 'n8n-core';
+import { InstanceSettings } from 'n8n-core';
 import {
 	createRunExecutionData,
 	type INode,
@@ -18,7 +18,11 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
-import { NodeContractsStore, useNodeContractsRegistry } from '@/node-contracts-registry';
+import {
+	ContractNodeLoader,
+	NodeContractsStore,
+	useNodeContractsRegistry,
+} from '@/node-contracts-registry';
 import { NodeContractsSync } from '@/node-contracts-sync';
 import { Push } from '@/push';
 import { WorkflowRunner } from '@/workflow-runner';
@@ -147,7 +151,7 @@ beforeAll(async () => {
 	await (await Container.get(NodeContractsStore).open()).add(v2.data);
 	await useNodeContractsRegistry();
 	await utils.initBinaryDataService();
-	const next = new LazyPackageDirectoryLoader(NEXT);
+	const next = new ContractNodeLoader();
 	await next.loadAll();
 	const loadNodesAndCredentials = Container.get(LoadNodesAndCredentials);
 	loadNodesAndCredentials.loaders = { '@n8n/nodes-base-next': next };
@@ -251,7 +255,7 @@ describe('node contracts store', () => {
 		const { bundleHash } = registry.versions.get('1.0.2')?.manifest ?? { bundleHash: '' };
 		await rm(path.join(state.storeDir, `${bundleHash}.tgz`));
 		// As after a restart: the node types come from the store.
-		await Container.get(LoadNodesAndCredentials).postProcessLoaders();
+		await Container.get(LoadNodesAndCredentials).refreshNodeTypes();
 		expect(majorsOfSend()).toEqual(['3']);
 
 		expect(await runToEnd(workflow)).toMatchObject({
@@ -270,7 +274,7 @@ describe('node contracts store', () => {
 		if (!v1) throw new Error('1.0.2 is not published');
 		registry.versions.delete('1.0.2');
 		await rm(path.join(state.storeDir, `${v1.manifest.bundleHash}.tgz`));
-		await Container.get(LoadNodesAndCredentials).postProcessLoaders();
+		await Container.get(LoadNodesAndCredentials).refreshNodeTypes();
 		try {
 			await expect(runToEnd(workflow)).rejects.toThrow(
 				`Cannot get httpRequest.send@1.0.2 (bundle ${v1.manifest.bundleHash}) from the registry ${registry.url}`,
@@ -285,7 +289,7 @@ describe('node contracts store', () => {
 		const { bundleHash } = registry.versions.get('1.0.2')?.manifest ?? { bundleHash: '' };
 		await rm(path.join(state.storeDir, `${bundleHash}.tgz`), { force: true });
 		const loadNodesAndCredentials = Container.get(LoadNodesAndCredentials);
-		await loadNodesAndCredentials.postProcessLoaders();
+		await loadNodesAndCredentials.refreshNodeTypes();
 		const rebuild = vi.spyOn(loadNodesAndCredentials, 'postProcessLoaders');
 		try {
 			const sync = Container.get(NodeContractsSync);
@@ -303,7 +307,7 @@ describe('node contracts store', () => {
 		const loadNodesAndCredentials = Container.get(LoadNodesAndCredentials);
 		instanceAi.nodeContractRange = '>=2.0.0 <3.0.0';
 		await useNodeContractsRegistry();
-		await loadNodesAndCredentials.postProcessLoaders();
+		await loadNodesAndCredentials.refreshNodeTypes();
 		const refresh = vi.spyOn(loadNodesAndCredentials, 'refreshNodeTypes');
 		try {
 			expect(majorsOfSend()).toEqual(['3']);
@@ -318,7 +322,7 @@ describe('node contracts store', () => {
 			refresh.mockRestore();
 			instanceAi.nodeContractRange = '>=1.0.0 <3.0.0';
 			await useNodeContractsRegistry();
-			await loadNodesAndCredentials.postProcessLoaders();
+			await loadNodesAndCredentials.refreshNodeTypes();
 		}
 	});
 

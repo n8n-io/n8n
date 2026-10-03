@@ -1,4 +1,5 @@
-export { DirectoryLoader, type Types } from './directory-loader';
+export { credentialTypeToJSON, DirectoryLoader, type Types } from './directory-loader';
+export { validateNodeDescription } from './validate-node-description';
 export { CustomDirectoryLoader } from './custom-directory-loader';
 export { PackageDirectoryLoader } from './package-directory-loader';
 export { LazyPackageDirectoryLoader } from './lazy-package-directory-loader';

@@ -106,11 +106,12 @@ fields, `when`) becomes a function that the SDK generates, never author code. OA
 `oAuth2Api` child. The parity suite (`nodes-base-next/src/__tests__/parity/credentials.parity.ts`)
 compares each type with its legacy class and lists each difference.
 
-The freeze step writes one n8n class file for each type that is not `compat`
-(`dist/credentials/NotionApi.credentials.js`), and `package.json` `n8n.credentials` lists it. With
-node contracts on, the n8n loader puts the contract package last, so the projected type replaces
-the legacy class of the same name, also for legacy nodes. The replacement keeps the supported
-nodes of both packages and the icon of the legacy class.
+The freeze step writes a credential manifest for each type that is not `compat`
+(`dist/versions/credentials/notion.token/manifest.json`). The n8n loader reads the manifest and
+projects the type with `credentialTypeOfManifest`, so no class file and no `package.json` list
+exist. With node contracts on, the loader of the contract package goes last, so the projected
+type replaces the legacy class of the same name, also for legacy nodes. The replacement keeps
+the supported nodes of both packages and the icon of the legacy class.
 
 ## Scope check
 

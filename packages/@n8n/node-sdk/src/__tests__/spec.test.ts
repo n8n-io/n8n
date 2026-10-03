@@ -534,6 +534,8 @@ describe('spec/manifest.schema.json', () => {
 					'hosts',
 					'test',
 					'notice',
+					'legacyParent',
+					'renamed',
 				]),
 			),
 		);

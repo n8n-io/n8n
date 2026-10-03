@@ -12,6 +12,7 @@ import { mock } from 'vitest-mock-extended';
 import { CredentialTypes } from '../credential-types';
 import { CredentialsHelper } from '../credentials-helper';
 import { LoadNodesAndCredentials } from '../load-nodes-and-credentials';
+import { ContractNodeLoader } from '../node-contracts-registry';
 
 const PACKAGES = path.resolve(__dirname, '../../..');
 const NEXT = '@n8n/nodes-base-next';
@@ -30,7 +31,7 @@ async function loaded(nodeContractsEnabled: boolean) {
 		mock(),
 		mock(),
 	);
-	const next = new LazyPackageDirectoryLoader(path.join(PACKAGES, NEXT));
+	const next = new ContractNodeLoader([], [], async () => new Map());
 	const nodesBase = new LazyPackageDirectoryLoader(path.join(PACKAGES, 'nodes-base'));
 	await Promise.all([next.loadAll(), nodesBase.loadAll()]);
 	instance.loaders = { [NEXT]: next, 'n8n-nodes-base': nodesBase };
@@ -98,10 +99,9 @@ describe('credential types of the node contracts package', () => {
 		const { instance, credentialTypes } = await loaded(true);
 
 		const token = credentialTypes.getByName('notionApi');
-		expect(token.constructor.name).toBe('NotionApi');
 		expect(typeof token.authenticate).toBe('function');
 		expect(instance.knownCredentials.notionApi.sourcePath).toBe(
-			path.join(PACKAGES, NEXT, 'dist/credentials/NotionApi.credentials.js'),
+			path.join(PACKAGES, NEXT, 'dist/versions/credentials/notion.token/manifest.json'),
 		);
 		expect(credentialTypes.getSupportedNodes('notionApi')).toEqual(
 			expect.arrayContaining([
@@ -205,7 +205,7 @@ describe('credential types of the node contracts package', () => {
 			'X-Proxy': 'p-1',
 		};
 		expect(signed).toEqual([
-			{ source: `${NEXT}/dist/credentials/OpenAiApi.credentials.js`, headers },
+			{ source: `${NEXT}/dist/versions/credentials/openAi.apiKey/manifest.json`, headers },
 			{ source: 'nodes-base/dist/credentials/OpenAiApi.credentials.js', headers },
 		]);
 	});

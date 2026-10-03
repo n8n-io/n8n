@@ -3,7 +3,7 @@
  * trigger, provider or credential. `scripts/spec.ts` writes these schemas to
  * `spec/manifest.schema.json`, and `parseManifest` reads with them.
  */
-import type { INodeTypeDescription } from 'n8n-workflow';
+import { UnexpectedError, type INodeTypeDescription } from 'n8n-workflow';
 
 import type {
 	AnyCredentialType,
@@ -16,6 +16,7 @@ import type {
 } from './credentials';
 import type { ContractDocument } from './define';
 import { Schema, t, type AnySchema, type Infer, type JsonSchema } from './schema';
+import { matches } from './validate';
 import type { NodeContractVersion, VersionManifest } from './version';
 
 const constant = <const V extends string | number | boolean>(value: V) =>
@@ -286,6 +287,10 @@ export interface CredentialManifest {
 	readonly test?: CredentialTest;
 	/** A text the form shows after the fields. */
 	readonly notice?: Notice;
+	/** The legacy n8n type this type extends, e.g. `googleOAuth2Api`. */
+	readonly legacyParent?: string;
+	/** Stored fields with an old name, by old name. */
+	readonly renamed?: Readonly<Record<string, string>>;
 }
 
 export const credentialManifestSchema = typed<CredentialManifest>()(
@@ -305,6 +310,8 @@ export const credentialManifestSchema = typed<CredentialManifest>()(
 			hosts: names().optional(),
 			test: test.optional(),
 			notice: notice.optional(),
+			legacyParent: t.str().optional(),
+			renamed: values().optional(),
 		})
 		.with({ title: 'Credential manifest', ...SINCE_2_5, ...OPEN }),
 );
@@ -342,5 +349,16 @@ export function credentialManifestOf(
 		...(type.hosts ? { hosts: type.hosts } : {}),
 		...(type.test ? { test: type.test } : {}),
 		...(type.notice ? { notice: type.notice } : {}),
+		...(type.legacyParent ? { legacyParent: type.legacyParent } : {}),
+		...(type.renamed ? { renamed: type.renamed } : {}),
 	};
+}
+
+/** Reads a credential manifest that freeze wrote. */
+export function parseCredentialManifest(text: string): CredentialManifest {
+	const value: unknown = JSON.parse(text);
+	if (!matches(credentialManifestSchema, value)) {
+		throw new UnexpectedError('The credential manifest is not valid');
+	}
+	return value;
 }

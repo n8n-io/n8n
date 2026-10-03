@@ -16,6 +16,7 @@ import {
 } from 'n8n-workflow';
 
 import { isHostPattern, type RunInput } from './define';
+import type { CredentialManifest } from './manifest';
 import { allowsHost, credentialHostsOf } from './egress';
 import {
 	Schema,
@@ -1841,6 +1842,28 @@ export function toCredentialType(type: AnyCredentialType): ICredentialType | und
 			: { ...signed, allowedDomains: request.allowedDomains };
 	};
 	return { ...base, properties, ...exchange, authenticate, ...test };
+}
+
+/** The n8n credential type of a credential manifest: the host reads only data, never author code. */
+export function credentialTypeOfManifest(manifest: CredentialManifest): ICredentialType {
+	const { scheme, fields } = manifest;
+	if (scheme.kind === 'custom') {
+		throw new UserError(`Credential ${manifest.id}: a custom scheme needs a credential bundle`);
+	}
+	const required = fields.required ?? [];
+	const type: AnyCredentialType = {
+		...manifest,
+		fields: Object.fromEntries(
+			Object.entries(fields.properties ?? {}).map(([name, json]) => [
+				name,
+				new Schema(json, !required.includes(name)),
+			]),
+		),
+		scheme,
+	};
+	const projected = toCredentialType(type);
+	if (!projected) throw new UserError(`Credential ${manifest.id} has no n8n credential type`);
+	return projected;
 }
 
 /** The endpoints of an OpenID provider, from its discovery document. */

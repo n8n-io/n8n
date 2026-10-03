@@ -47,6 +47,9 @@ import picocolors from 'picocolors';
 import { CUSTOM_API_CALL_KEY, CUSTOM_API_CALL_NAME, CLI_DIR, inE2ETests } from '@/constants';
 import { createAiTools, createHitlTools } from '@/tool-generation';
 
+/** The loader of node contracts keeps this package name as the prefix of its type names. */
+const NODE_CONTRACTS_PACKAGE = '@n8n/nodes-base-next';
+
 @Service()
 export class LoadNodesAndCredentials {
 	private known: KnownNodesAndCredentials = { nodes: {}, credentials: {} };
@@ -115,27 +118,16 @@ export class LoadNodesAndCredentials {
 		for (const nodeModulesDir of basePathsToScan) {
 			await this.loadNodesFromNodeModules(nodeModulesDir, 'n8n-nodes-base');
 			await this.loadNodesFromNodeModules(nodeModulesDir, '@n8n/n8n-nodes-langchain');
-			// Action-contract nodes exist only while the node contracts spike is enabled.
-			// In the monorepo the package also matches from CLI_DIR/.., so load one copy only.
-			if (
-				this.globalConfig.instanceAi.nodeContractsEnabled &&
-				!('@n8n/nodes-base-next' in this.loaders)
-			) {
-				await this.loadNodesFromNodeModules(nodeModulesDir, '@n8n/nodes-base-next');
-			}
-		}
-
-		if (
-			this.globalConfig.instanceAi.nodeContractsEnabled &&
-			'@n8n/nodes-base-next' in this.loaders
-		) {
-			const { useNodeContractsRegistry } = await import('@/node-contracts-registry.js');
-			await useNodeContractsRegistry();
 		}
 
 		await this.loadNodesFromCustomDirectories();
 
-		for (const loader of this.moduleRegistry.nodeLoaders) {
+		// Node contracts exist only while the node contracts spike is enabled.
+		const contractLoaders = this.globalConfig.instanceAi.nodeContractsEnabled
+			? [await this.contractNodeLoader()]
+			: [];
+
+		for (const loader of [...contractLoaders, ...this.moduleRegistry.nodeLoaders]) {
 			if (loader.packageName in this.loaders) {
 				throw new UnexpectedError(
 					picocolors.red(`Node loader ${loader.packageName} is already registered.`),
@@ -153,6 +145,15 @@ export class LoadNodesAndCredentials {
 		}
 
 		await this.postProcessLoaders();
+	}
+
+	/** Sets the runtime of the node contracts before their loader projects node types. */
+	private async contractNodeLoader() {
+		const { ContractNodeLoader, useNodeContractsRegistry } = await import(
+			'@/node-contracts-registry.js'
+		);
+		await useNodeContractsRegistry();
+		return new ContractNodeLoader(this.excludeNodes, this.includeNodes);
 	}
 
 	addPostProcessor(fn: () => Promise<void>) {
@@ -597,13 +598,15 @@ export class LoadNodesAndCredentials {
 				})),
 			);
 
+			// The loaders that list the supported nodes of a credential by node name.
+			const listsSupportedNodes =
+				loader instanceof PackageDirectoryLoader || packageName === NODE_CONTRACTS_PACKAGE;
 			const processedCredentials = loaderTypes.credentials.map((credential) => ({
 				...credential,
 				properties: injectDomainRestrictionFields(credential),
-				supportedNodes:
-					loader instanceof PackageDirectoryLoader
-						? credential.supportedNodes?.map((nodeName) => `${loader.packageName}.${nodeName}`)
-						: undefined,
+				supportedNodes: listsSupportedNodes
+					? credential.supportedNodes?.map((nodeName) => `${packageName}.${nodeName}`)
+					: undefined,
 			}));
 
 			types.credentials = types.credentials.concat(processedCredentials);
@@ -632,23 +635,18 @@ export class LoadNodesAndCredentials {
 				known.credentials[type] = {
 					className,
 					sourcePath: loader.resolveSourcePath(sourcePath),
-					supportedNodes:
-						loader instanceof PackageDirectoryLoader
-							? supportedNodes?.map((nodeName) => `${loader.packageName}.${nodeName}`)
-							: undefined,
+					supportedNodes: listsSupportedNodes
+						? supportedNodes?.map((nodeName) => `${packageName}.${nodeName}`)
+						: undefined,
 					extends: extendsArr,
 				};
 			}
 		}
 
 		const contracts =
-			this.globalConfig.instanceAi.nodeContractsEnabled && '@n8n/nodes-base-next' in this.loaders
+			this.globalConfig.instanceAi.nodeContractsEnabled && NODE_CONTRACTS_PACKAGE in this.loaders
 				? await import('@/node-contracts-registry.js')
 				: undefined;
-		const storedContractVersions = await contracts?.storedContractVersions().catch((error) => {
-			this.logger.error('Cannot read the node contracts store', { error: ensureError(error) });
-			return undefined;
-		});
 		if (contracts) {
 			// Before the AI tools, so the tool variants of legacy nodes keep their credentials.
 			const preferred = contracts.preferContractCredentials(
@@ -671,11 +669,7 @@ export class LoadNodesAndCredentials {
 
 		// After the AI tools, so the tool variants keep their legacy versions.
 		if (contracts) {
-			const composed = contracts.composeContractNodes(
-				this.loaders,
-				this.types.nodes,
-				storedContractVersions,
-			);
+			const composed = contracts.composeContractNodes(this.loaders, this.types.nodes);
 			this.composedNodes = composed.nodes;
 			this.types = { ...this.types, nodes: composed.types };
 		}
@@ -752,7 +746,7 @@ export class LoadNodesAndCredentials {
 	private loadersByPrecedence(): NodeLoader[] {
 		const loaders = Object.values(this.loaders);
 		if (!this.globalConfig.instanceAi.nodeContractsEnabled) return loaders;
-		const isContracts = (loader: NodeLoader) => loader.packageName === '@n8n/nodes-base-next';
+		const isContracts = (loader: NodeLoader) => loader.packageName === NODE_CONTRACTS_PACKAGE;
 		return [...loaders.filter((loader) => !isContracts(loader)), ...loaders.filter(isContracts)];
 	}
 
@@ -805,7 +799,7 @@ export class LoadNodesAndCredentials {
 	}
 
 	/**
-	 * Rebuilds the node types from the loaded packages, for example after the node contracts
+	 * Reloads the node contracts and rebuilds the node types, for example after the node contracts
 	 * store got a new major, and pushes them to open editors. `isNeeded` runs in the queue, so
 	 * parallel callers that need the same change rebuild once.
 	 */
@@ -813,6 +807,7 @@ export class LoadNodesAndCredentials {
 		const run = this.reloadQueue.then(async () => {
 			if (!isNeeded()) return;
 			const released = this.types.nodes.length === 0 && this.types.credentials.length === 0;
+			await this.loaders[NODE_CONTRACTS_PACKAGE]?.loadAll();
 			await this.postProcessLoaders();
 			if (released) this.releaseTypes();
 			if (this.instanceSettings.instanceType !== 'main') return;
