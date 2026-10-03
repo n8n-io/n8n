@@ -28,9 +28,23 @@ export class CreateNodeContractVersionTable1791043488290 implements ReversibleMi
 					.comment('Who vouches for the version, from the signing key at admission'),
 			)
 			.withCreatedAt.withIndexOn(['contractId', 'version'], true);
+		await createTable('node_contract_status')
+			.withColumns(
+				column('digest')
+					.varchar(71)
+					.primary.comment('sha256:<hex> of the line. It identifies the status line'),
+				column('contractId')
+					.varchar(255)
+					.notNull.comment('Contract or credential id, e.g. notion.databasePage.getAll'),
+				column('line').text.notNull.comment(
+					'The JSON status line: a yank, a revoke or a deprecation of versions',
+				),
+			)
+			.withCreatedAt.withIndexOn('contractId');
 	}
 
 	async down({ schemaBuilder: { dropTable } }: MigrationContext) {
+		await dropTable('node_contract_status');
 		await dropTable('node_contract_version');
 	}
 }

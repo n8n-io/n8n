@@ -36,6 +36,7 @@ import { FolderTagMapping } from './folder-tag-mapping';
 import { InstanceCredentialAssignment } from './instance-credential-assignment';
 import { InvalidAuthToken } from './invalid-auth-token';
 import {
+	NodeContractStatus,
 	NodeContractVersion,
 	nodeContractVersionKinds,
 	type NodeContractSignature,
@@ -129,6 +130,7 @@ export {
 	InvalidAuthToken,
 	InstanceCredentialAssignment,
 	AiBuilderTemporaryWorkflow,
+	NodeContractStatus,
 	NodeContractVersion,
 	nodeContractVersionKinds,
 	type NodeContractSignature,
@@ -227,6 +229,7 @@ export const entities = {
 	InvalidAuthToken,
 	InstanceCredentialAssignment,
 	AiBuilderTemporaryWorkflow,
+	NodeContractStatus,
 	NodeContractVersion,
 	PollerState,
 	ProcessedData,

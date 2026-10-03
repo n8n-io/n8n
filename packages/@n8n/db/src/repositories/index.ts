@@ -83,6 +83,7 @@ export type {
 	ScheduledTaskMetricSnapshot,
 } from './scheduled-task.repository';
 export {
+	NodeContractStatusRepository,
 	NodeContractVersionRepository,
 	type NodeContractManifestRow,
 } from './node-contract-version.repository';

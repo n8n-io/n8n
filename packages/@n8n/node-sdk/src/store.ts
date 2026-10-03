@@ -1,8 +1,10 @@
 /**
  * The store layout of contract versions. The embedded store of a release, the store of an
  * instance and a registry use the same layout:
- * - `catalog.json`: the index line of the newest version of each id.
- * - `index/<id>.ndjson`: one line for each version, append only.
+ * - `catalog.json`: the index line of the newest version of each id that is not yanked or
+ *   revoked.
+ * - `index/<id>.ndjson`: one line for each version and one line for each status (yank, revoke or
+ *   deprecation), append only.
  * - `blobs/sha256/<hex>`: manifest, bundle and fixtures bytes, by their SHA-256.
  */
 import { createHash, createPublicKey, randomUUID, sign, verify } from 'node:crypto';
@@ -24,6 +26,7 @@ import { UnexpectedError, UserError } from 'n8n-workflow';
 import {
 	parseCredentialManifest,
 	storeRecordSchema,
+	storeStatusRecordSchema,
 	type CredentialManifest,
 	type NativeManifest,
 } from './manifest';
@@ -89,6 +92,70 @@ export interface StoreSignature {
 	readonly sig: string;
 }
 
+/**
+ * A status line of `index/<id>.ndjson` that yanks a version. A host pins no node to it and runs
+ * it as no newer patch, but a node that has a pin of it still runs it.
+ */
+export interface StoreYank {
+	/** The contract or credential id. */
+	readonly id: string;
+	/** `major.minor.patch` of the yanked version. */
+	readonly yank: string;
+	/** Why the publisher yanked the version. */
+	readonly reason: string;
+	/** When the publisher yanked the version, as an ISO date. */
+	readonly at: string;
+	/** Publisher signatures of `storeStatusTextOf` of the line. */
+	readonly signatures?: readonly StoreSignature[];
+}
+
+/**
+ * A status line of `index/<id>.ndjson` that revokes a version, e.g. for a security issue. It is a
+ * yank, and a host also refuses to run the version unless an admin allows it.
+ */
+export interface StoreRevoke {
+	/** The contract or credential id. */
+	readonly id: string;
+	/** `major.minor.patch` of the revoked version. */
+	readonly revoke: string;
+	/** Why the publisher revoked the version. */
+	readonly reason: string;
+	/** When the publisher revoked the version, as an ISO date. */
+	readonly at: string;
+	/** Publisher signatures of `storeStatusTextOf` of the line. */
+	readonly signatures?: readonly StoreSignature[];
+}
+
+/**
+ * A status line of `index/<id>.ndjson` that deprecates versions. The versions still get pins
+ * and run. A host can show the message.
+ */
+export interface StoreDeprecation {
+	/** The contract or credential id. */
+	readonly id: string;
+	/** `major`, `major.minor` or `major.minor.patch` of the deprecated versions, e.g. `1`. */
+	readonly deprecate: string;
+	/** What the user must know, e.g. `Use major 2`. */
+	readonly message: string;
+	/** The replacement, e.g. `gmail.message.get@2`. */
+	readonly use?: string;
+	/** When the publisher deprecated the versions, as an ISO date. */
+	readonly at: string;
+	/** Publisher signatures of `storeStatusTextOf` of the line. */
+	readonly signatures?: readonly StoreSignature[];
+}
+
+/** A status line of `index/<id>.ndjson`. It never changes a version line: it is a new line. */
+export type StoreStatusRecord = StoreYank | StoreRevoke | StoreDeprecation;
+
+/** The lines of one index file. */
+export interface StoreIndex {
+	/** The version lines, in the order of the index. */
+	readonly versions: StoreRecord[];
+	/** The status lines, in the order of the index. */
+	readonly statuses: StoreStatusRecord[];
+}
+
 /** One version that `addToStore` adds. */
 export interface StoreVersion {
 	/** The exact manifest bytes, see `manifestTextOf`. */
@@ -110,8 +177,15 @@ export type StoreFiles = (file: string) => Promise<Uint8Array | undefined>;
 export interface StoreReader {
 	/** The index line of the newest version of each id. Empty when the store has no catalog. */
 	catalog(): Promise<StoreRecord[]>;
+	/**
+	 * Each id that the store has versions of: the ids of the catalog, and the ids whose every
+	 * version is yanked or revoked. Empty when the store has no catalog.
+	 */
+	ids(): Promise<string[]>;
 	/** The version lines of one id, in the order of the index. */
 	records(id: string): Promise<StoreRecord[]>;
+	/** The version lines and the status lines of one id, from one read of its index. */
+	index(id: string): Promise<StoreIndex>;
 	/**
 	 * The manifest of a version line and its exact bytes, or `undefined` when the blob is
 	 * missing. It throws when the bytes do not match the digest or the line.
@@ -252,6 +326,42 @@ export function parseStoreIndex(text: string, id: string): StoreRecord[] {
 	);
 }
 
+/** True for a valid status line. */
+export const isStoreStatusRecord = (value: unknown): value is StoreStatusRecord =>
+	isRecord(value) && matches(storeStatusRecordSchema, value);
+
+/** The status lines of one id in an index file. It skips each other line. */
+function parseStoreStatuses(text: string, id: string): StoreStatusRecord[] {
+	return text
+		.split('\n')
+		.map(parseLine)
+		.filter(isStoreStatusRecord)
+		.filter((status) => status.id === id);
+}
+
+/**
+ * The yank or revoke line of a version among status lines, or `undefined`. A revoke comes
+ * before a yank.
+ */
+export function withdrawalOf(
+	statuses: readonly StoreStatusRecord[],
+	version: string,
+): StoreYank | StoreRevoke | undefined {
+	return (
+		statuses.find(
+			(status): status is StoreRevoke => 'revoke' in status && status.revoke === version,
+		) ?? statuses.find((status): status is StoreYank => 'yank' in status && status.yank === version)
+	);
+}
+
+/**
+ * The bytes that the signatures of a status line cover: its canonical JSON without
+ * `signatures`. A manifest has other bytes (tabs and a final newline), so a signature of one
+ * never verifies as the other.
+ */
+export const storeStatusTextOf = ({ signatures: _, ...status }: StoreStatusRecord) =>
+	canonicalJson(status);
+
 /** The index lines of `catalog.json`. */
 export function parseStoreCatalog(text: string): StoreRecord[] {
 	const value: unknown = JSON.parse(text);
@@ -297,15 +407,29 @@ export function storeReader(files: StoreFiles): StoreReader {
 		const bytes = await files(file);
 		return bytes && Buffer.from(bytes).toString('utf8');
 	};
+	const index = async (id: string): Promise<StoreIndex> => {
+		const lines = (await text(storeIndexFileOf(id))) ?? '';
+		return { versions: parseStoreIndex(lines, id), statuses: parseStoreStatuses(lines, id) };
+	};
 	return {
 		async catalog() {
 			const catalog = await text(STORE_CATALOG_FILE);
 			return catalog === undefined ? [] : parseStoreCatalog(catalog);
 		},
-		async records(id) {
-			const index = await text(storeIndexFileOf(id));
-			return index === undefined ? [] : parseStoreIndex(index, id);
+		async ids() {
+			const catalog = await text(STORE_CATALOG_FILE);
+			if (catalog === undefined) return [];
+			const value: unknown = JSON.parse(catalog);
+			const withdrawn =
+				isRecord(value) && Array.isArray(value.withdrawn)
+					? value.withdrawn.filter((id): id is string => typeof id === 'string')
+					: [];
+			return [...new Set([...parseStoreCatalog(catalog).map(({ id }) => id), ...withdrawn])];
 		},
+		async records(id) {
+			return (await index(id)).versions;
+		},
+		index,
 		async readManifest(record) {
 			const bytes = await files(storeBlobFileOf(record.manifest));
 			return bytes && storeManifestOf(bytes, record);
@@ -394,17 +518,27 @@ const newest = (records: readonly StoreRecord[]) =>
 
 const INDEX_FILE = /^(.+)\.ndjson$/;
 
+/** The catalog line of an id: its newest version that is not yanked or revoked. */
+const catalogLineOf = (index: string, id: string) => {
+	const statuses = parseStoreStatuses(index, id);
+	return newest(
+		parseStoreIndex(index, id).filter(({ version }) => !withdrawalOf(statuses, version)),
+	);
+};
+
 async function writeCatalog(dir: string) {
 	const files = await readdir(path.join(dir, 'index')).catch(() => []);
 	const ids = files.flatMap((file) => INDEX_FILE.exec(file)?.[1] ?? []).sort();
-	const versions = await Promise.all(
-		ids.map(async (id) =>
-			newest(parseStoreIndex(await readText(path.join(dir, storeIndexFileOf(id))), id)),
-		),
+	const lines = await Promise.all(
+		ids.map(async (id) => catalogLineOf(await readText(path.join(dir, storeIndexFileOf(id))), id)),
 	);
+	const versions = lines.flatMap((line) => (line ? [line] : []));
+	// An id whose every version is withdrawn has no line, but an import still needs its index.
+	const withdrawn = ids.filter((_, index) => lines[index] === undefined);
+	const catalog = { versions, ...(withdrawn.length > 0 ? { withdrawn } : {}) };
 	const file = path.join(dir, STORE_CATALOG_FILE);
 	const part = partOf(file);
-	await writeFile(part, `${JSON.stringify({ versions: versions.filter(Boolean) })}\n`);
+	await writeFile(part, `${JSON.stringify(catalog)}\n`);
 	await rename(part, file);
 }
 
@@ -412,20 +546,20 @@ async function writeCatalog(dir: string) {
 const writes = new Map<string, Promise<unknown>>();
 
 /**
- * Adds versions to the store in `dir`: their blobs, one index line for each, and a new
- * catalog. A stored version keeps its line, and other bytes for it are refused. The calls for
- * one directory run one at a time, so that each catalog lists each id.
+ * Adds lines with `add` to the store in `dir`, then writes a new catalog. The writes of one
+ * directory run one at a time, so that each catalog lists each id.
  */
-export async function addToStore(
+async function writeToStore<T, R>(
 	dir: string,
-	versions: readonly StoreVersion[],
-): Promise<StoreRecord[]> {
+	lines: readonly T[],
+	add: (dir: string, line: T) => Promise<R>,
+): Promise<R[]> {
 	const key = path.resolve(dir);
 	const added = (writes.get(key) ?? Promise.resolve())
 		.catch(() => undefined)
 		.then(async () => {
-			const records = await versions.reduce<Promise<StoreRecord[]>>(
-				async (done, version) => [...(await done), await addVersion(key, version)],
+			const records = await lines.reduce<Promise<R[]>>(
+				async (done, line) => [...(await done), await add(key, line)],
 				Promise.resolve([]),
 			);
 			await writeCatalog(key);
@@ -439,6 +573,49 @@ export async function addToStore(
 	return await added;
 }
 
+/**
+ * Adds versions to the store in `dir`: their blobs, one index line for each, and a new
+ * catalog. A stored version keeps its line, and other bytes for it are refused.
+ */
+export async function addToStore(
+	dir: string,
+	versions: readonly StoreVersion[],
+): Promise<StoreRecord[]> {
+	return await writeToStore(dir, versions, addVersion);
+}
+
+async function addStatus(dir: string, status: StoreStatusRecord): Promise<StoreStatusRecord> {
+	if (!isStoreStatusRecord(status)) {
+		throw new UserError(`${JSON.stringify(status)} is not a status line`);
+	}
+	const index = path.join(dir, storeIndexFileOf(status.id));
+	const text = await readText(index);
+	const versions = parseStoreIndex(text, status.id);
+	const target = 'yank' in status ? status.yank : 'revoke' in status ? status.revoke : undefined;
+	if (versions.length === 0) throw new UserError(`The store has no version of ${status.id}`);
+	if (target && !versions.some(({ version }) => version === target)) {
+		throw new UserError(`The store has no version ${status.id}@${target}`);
+	}
+	const line = canonicalJson(status);
+	if (parseStoreStatuses(text, status.id).some((stored) => canonicalJson(stored) === line)) {
+		return status;
+	}
+	await appendFile(index, `${JSON.stringify(status)}\n`);
+	return status;
+}
+
+/**
+ * Appends status lines to the store in `dir` and writes a new catalog. A yank or revoke needs
+ * the version line of its version, and a deprecation needs a version line of its id. A line
+ * that the store has is not added again.
+ */
+export async function addStatusToStore(
+	dir: string,
+	statuses: readonly StoreStatusRecord[],
+): Promise<StoreStatusRecord[]> {
+	return await writeToStore(dir, statuses, addStatus);
+}
+
 /** The key id of an ed25519 key, private or public: the digest of its public SPKI DER. */
 const keyIdOf = (key: string) =>
 	digestOf(createPublicKey(key).export({ type: 'spki', format: 'der' }));
@@ -449,7 +626,14 @@ export const signStoreManifest = (manifestText: string, privateKey: string): Sto
 	sig: sign(null, Buffer.from(manifestText), privateKey).toString('base64'),
 });
 
-/** True when a signature of the line by `publicKey` (PEM) covers the manifest bytes. */
+/** Signs a status line with the publisher key (PEM). Add the result to its `signatures`. */
+export const signStoreStatus = (status: StoreStatusRecord, privateKey: string) =>
+	signStoreManifest(storeStatusTextOf(status), privateKey);
+
+/**
+ * True when a signature of the line by `publicKey` (PEM) covers `text`: the manifest bytes of a
+ * version line, or `storeStatusTextOf` of a status line.
+ */
 export function verifyStoreSignature(
 	{ signatures = [] }: Pick<StoreRecord, 'signatures'>,
 	manifestText: string,

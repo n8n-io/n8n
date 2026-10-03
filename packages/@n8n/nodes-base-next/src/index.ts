@@ -146,12 +146,14 @@ export {
 	type RunProfile,
 } from '@n8n/node-sdk/host';
 export {
+	isStoreStatusRecord,
 	STORE_CATALOG_FILE,
 	storeFilesOfDir,
 	storeIndexFileOf,
 	storeReader,
 	type CredentialManifest,
 	type NodeContractLock,
+	type StoreStatusRecord,
 	type VersionManifest,
 } from '@n8n/node-sdk/registry';
 

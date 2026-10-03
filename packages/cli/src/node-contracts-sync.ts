@@ -66,8 +66,9 @@ export class NodeContractsSync {
 	/** Syncs one page of workflows at a time: published workflows first, then the rest. */
 	async run(options: NodeContractsSyncOptions): Promise<ContractSyncResult> {
 		const store = await this.nodeContractsStore.open(options.registryUrl);
-		const published = await this.syncPages(store, options, true, undefined);
-		const result = merge(published, await this.syncPages(store, options, false, undefined));
+		const since = Date.now();
+		const published = await this.syncPages(store, options, since, true, undefined);
+		const result = merge(published, await this.syncPages(store, options, since, false, undefined));
 		if (result.added.length > 0) await this.nodeContractsStore.reloadOtherMains();
 		return result;
 	}
@@ -75,18 +76,19 @@ export class NodeContractsSync {
 	private async syncPages(
 		store: ContractStore,
 		options: NodeContractsSyncOptions,
+		since: number,
 		published: boolean,
 		afterId: string | undefined,
 	): Promise<ContractSyncResult> {
 		const { nodes, next } = await this.lockedPage(published, afterId);
-		const result = nodes.length > 0 ? await syncContractStore(store, nodes) : NO_RESULT;
+		const result = nodes.length > 0 ? await syncContractStore(store, nodes, since) : NO_RESULT;
 		this.report(result);
 		const newMajor = () => !this.listsAll(result.added);
 		if (options.refreshNodeTypes && newMajor()) {
 			await this.loadNodesAndCredentials.refreshNodeTypes(newMajor);
 		}
 		if (next === undefined) return result;
-		return merge(result, await this.syncPages(store, options, published, next));
+		return merge(result, await this.syncPages(store, options, since, published, next));
 	}
 
 	/** The locked nodes of one page of workflows, and the id that the next page starts after. */

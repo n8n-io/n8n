@@ -1,6 +1,11 @@
 import type { Action, Trigger } from '@n8n/node-sdk';
-import { parseFixtures } from '@n8n/node-sdk/registry';
-import { publishAction, publishCredential, publishNative } from '@n8n/node-sdk/publish';
+import { parseFixtures, type StoreStatusRecord } from '@n8n/node-sdk/registry';
+import {
+	publishAction,
+	publishCredential,
+	publishNative,
+	publishStatus,
+} from '@n8n/node-sdk/publish';
 import { existsSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
@@ -19,13 +24,8 @@ async function fixturesOf(action: Action | Trigger) {
 	return parseFixtures(await readFile(file, 'utf8'));
 }
 
-/**
- * Publishes the HEAD of each action and trigger, each credential type that is not a compat type,
- * and each native contract into the registry store. The registry serves these files as they are,
- * so the URL is a `file://` folder that a static upload copies. The gate of each kind refuses a
- * wrong bump; a version already published with the same content is a no-op.
- */
-async function publishAll() {
+/** The registry folder and the signing key, from the environment. */
+async function publishTarget() {
 	const url = process.env.N8N_NODE_CONTRACTS_REGISTRY_URL;
 	const keyFile = process.env.N8N_NODE_CONTRACTS_SIGNING_KEY_FILE;
 	if (!url?.startsWith('file:') || !keyFile) {
@@ -33,7 +33,38 @@ async function publishAll() {
 			'Set N8N_NODE_CONTRACTS_REGISTRY_URL to a file:// folder and N8N_NODE_CONTRACTS_SIGNING_KEY_FILE',
 		);
 	}
-	const target = { registryDir: fileURLToPath(url), privateKey: await readFile(keyFile, 'utf8') };
+	return { registryDir: fileURLToPath(url), privateKey: await readFile(keyFile, 'utf8') };
+}
+
+const STATUS_USAGE = [
+	'pnpm publish:contracts yank <id>@<version> <reason>',
+	'pnpm publish:contracts revoke <id>@<version> <reason>',
+	'pnpm publish:contracts deprecate <id>@<major[.minor[.patch]]> <message> [<use>]',
+].join('\n');
+
+/** The status line of the command line arguments `<yank|revoke|deprecate> <id>@<version> <text> [<use>]`. */
+function statusOfArgs(args: readonly string[], at: string): StoreStatusRecord {
+	const [command, target = '', text, use] = args;
+	const separator = target.lastIndexOf('@');
+	const id = target.slice(0, separator);
+	const version = target.slice(separator + 1);
+	if (separator <= 0 || !version || !text) throw new UserError(`Usage:\n${STATUS_USAGE}`);
+	if (command === 'yank') return { id, yank: version, reason: text, at };
+	if (command === 'revoke') return { id, revoke: version, reason: text, at };
+	if (command === 'deprecate') {
+		return { id, deprecate: version, message: text, ...(use ? { use } : {}), at };
+	}
+	throw new UserError(`Usage:\n${STATUS_USAGE}`);
+}
+
+/**
+ * Publishes the HEAD of each action and trigger, each credential type that is not a compat type,
+ * and each native contract into the registry store. The registry serves these files as they are,
+ * so the URL is a `file://` folder that a static upload copies. The gate of each kind refuses a
+ * wrong bump; a version already published with the same content is a no-op.
+ */
+async function publishAll() {
+	const target = await publishTarget();
 	const log = ({ id, semver }: { readonly id: string; readonly semver: string }) =>
 		console.log(`${id}@${semver}`);
 	// One at a time: each version appends to the registry index, and the log stays readable.
@@ -45,8 +76,15 @@ async function publishAll() {
 	for (const native of natives) log(await publishNative({ ...target, native }));
 }
 
+/** With arguments, signs and appends one status line. Without arguments, publishes all versions. */
+async function main(args: readonly string[]) {
+	if (args.length === 0) return await publishAll();
+	const status = statusOfArgs(args, new Date().toISOString());
+	console.log(JSON.stringify(await publishStatus(await publishTarget(), status)));
+}
+
 if (require.main === module) {
-	void publishAll().catch((error: unknown) => {
+	void main(process.argv.slice(2)).catch((error: unknown) => {
 		console.error(error);
 		process.exitCode = 1;
 	});

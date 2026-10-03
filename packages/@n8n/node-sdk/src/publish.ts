@@ -28,15 +28,18 @@ import {
 import { providedKindOf, providerInputsOf, replayCapability, type ProviderKind } from './providers';
 import type { CredentialManifest, NativeManifest } from './manifest';
 import {
+	addStatusToStore,
 	addToStore,
 	isVersionManifest,
 	manifestTextOf,
 	signStoreManifest,
+	signStoreStatus,
 	storeFilesOfDir,
 	storeReader,
 	type StoreManifest,
 	type StoreReader,
 	type StoreRecord,
+	type StoreStatusRecord,
 } from './store';
 import { validate } from './validate';
 import {
@@ -585,4 +588,21 @@ export async function publishNative(
 		(read): read is NativeManifest => 'native' in read,
 		(previous) => checkNativePublish(previous, manifest),
 	);
+}
+
+/**
+ * Signs a status line (a yank, a revoke or a deprecation) and appends it to the registry store.
+ * The registry must have the version of a yank or revoke. The catalog then lists the newest
+ * version that is not yanked or revoked.
+ */
+export async function publishStatus(
+	{ registryDir, privateKey }: PublishTarget,
+	status: StoreStatusRecord,
+): Promise<StoreStatusRecord> {
+	const signed = {
+		...status,
+		signatures: [...(status.signatures ?? []), signStoreStatus(status, privateKey)],
+	};
+	const [added] = await addStatusToStore(registryDir, [signed]);
+	return added ?? signed;
 }

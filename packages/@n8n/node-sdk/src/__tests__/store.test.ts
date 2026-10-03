@@ -12,11 +12,15 @@ import {
 	publishAction,
 	publishCredential,
 	publishNative,
+	publishStatus,
 } from '../publish';
 import {
+	addStatusToStore,
 	addToStore,
 	manifestTextOf,
 	signStoreManifest,
+	signStoreStatus,
+	storeStatusTextOf,
 	storeBlobFileOf,
 	storeFilesOfDir,
 	storeFilesOfUrl,
@@ -24,6 +28,7 @@ import {
 	storeReader,
 	verifyStoreSignature,
 	type StoreRecord,
+	type StoreStatusRecord,
 } from '../store';
 
 const echoSource = (minor: number, text: string) => `
@@ -225,6 +230,95 @@ describe('the store layout', () => {
 		expect(await reader.records('demo.echo')).toEqual([record]);
 		expect(await reader.records('demo.other')).toEqual([]);
 		expect(fetch).not.toHaveBeenCalled();
+	});
+});
+
+describe('store status lines', () => {
+	const at = '2026-10-02T12:00:00.000Z';
+	const yank: StoreStatusRecord = { id: 'demo.echo', yank: '1.1.0', reason: 'wrong output', at };
+	const revoke: StoreStatusRecord = { id: 'demo.echo', revoke: '1.0.1', reason: 'leaks', at };
+	const deprecate: StoreStatusRecord = {
+		id: 'demo.echo',
+		deprecate: '1',
+		message: 'Use major 2',
+		use: 'demo.echo@2',
+		at,
+	};
+
+	const threeVersions = async () => {
+		const dir = await newDir('statuses');
+		const lastOf = lastPublishedIn(storeReader(storeFilesOfDir(dir)));
+		for (const [minor, text] of [
+			[0, 'input.text'],
+			[0, "input.text + '!'"],
+			[1, "input.text + '?'"],
+		] as const) {
+			await writeFile(dirs.entry, echoSource(minor, text));
+			await addToStore(dir, [storeVersionOf(await freezeAction(dirs.entry, 'echo', lastOf))]);
+		}
+		return dir;
+	};
+
+	it('lists the newest version that is not yanked or revoked in the catalog', async () => {
+		const dir = await threeVersions();
+		const reader = storeReader(storeFilesOfDir(dir));
+		const catalogVersions = async () => (await reader.catalog()).map(({ version }) => version);
+		expect(await catalogVersions()).toEqual(['1.1.0']);
+		await addStatusToStore(dir, [yank]);
+		expect(await catalogVersions()).toEqual(['1.0.1']);
+		await addStatusToStore(dir, [revoke, deprecate]);
+		expect(await catalogVersions()).toEqual(['1.0.0']);
+		expect((await reader.records('demo.echo')).map(({ version }) => version)).toEqual([
+			'1.0.0',
+			'1.0.1',
+			'1.1.0',
+		]);
+		expect((await reader.index('demo.echo')).statuses).toEqual([yank, revoke, deprecate]);
+		expect(await reader.ids()).toEqual(['demo.echo']);
+		await addStatusToStore(dir, [{ ...yank, yank: '1.0.0' }]);
+		expect(await catalogVersions()).toEqual([]);
+		expect(await reader.ids()).toEqual(['demo.echo']);
+	});
+
+	it('appends a status line once', async () => {
+		const dir = await threeVersions();
+		await addStatusToStore(dir, [yank]);
+		const index = await readFile(path.join(dir, storeIndexFileOf('demo.echo')), 'utf8');
+		await addStatusToStore(dir, [{ ...yank }]);
+		expect(await readFile(path.join(dir, storeIndexFileOf('demo.echo')), 'utf8')).toBe(index);
+	});
+
+	it('refuses a status line of a version that the store does not have', async () => {
+		const dir = await threeVersions();
+		await expect(addStatusToStore(dir, [{ ...yank, yank: '1.0.9' }])).rejects.toThrow(
+			'The store has no version demo.echo@1.0.9',
+		);
+		await expect(addStatusToStore(dir, [{ ...deprecate, id: 'demo.other' }])).rejects.toThrow(
+			'The store has no version of demo.other',
+		);
+		const { reason: _, ...noReason } = { ...revoke, reason: '' };
+		await expect(addStatusToStore(dir, [noReason as unknown as StoreStatusRecord])).rejects.toThrow(
+			'is not a status line',
+		);
+	});
+
+	it('signs the canonical form of a status line', () => {
+		const signed = { ...yank, signatures: [signStoreStatus(yank, privateKey)] };
+		const reordered = { at, reason: yank.reason, yank: '1.1.0', id: 'demo.echo' };
+		expect(storeStatusTextOf(signed)).toBe(storeStatusTextOf(reordered));
+		expect(verifyStoreSignature(signed, storeStatusTextOf(signed), publicKey)).toBe(true);
+		const changed = { ...signed, reason: 'other' };
+		expect(verifyStoreSignature(changed, storeStatusTextOf(changed), publicKey)).toBe(false);
+	});
+
+	it('publishes a signed status line', async () => {
+		const dir = await threeVersions();
+		await publishStatus({ registryDir: dir, privateKey }, revoke);
+		const [line] = (await storeReader(storeFilesOfDir(dir)).index('demo.echo')).statuses;
+		expect(line).toEqual({ ...revoke, signatures: [expect.any(Object)] });
+		expect(verifyStoreSignature(line ?? {}, storeStatusTextOf(line ?? revoke), publicKey)).toBe(
+			true,
+		);
 	});
 });
 

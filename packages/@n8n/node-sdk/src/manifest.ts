@@ -17,7 +17,7 @@ import type {
 import type { ContractDocument, NativeNode } from './define';
 import { Schema, t, type AnySchema, type Infer, type JsonSchema } from './schema';
 import { matches } from './validate';
-import type { StoreRecord } from './store';
+import type { StoreDeprecation, StoreRecord, StoreRevoke, StoreYank } from './store';
 import type { WebhookEndpoint } from './triggers';
 import type { NodeContractVersion, VersionManifest } from './version';
 
@@ -390,6 +390,8 @@ export const nativeManifestSchema = typed<NativeManifest>()(
 
 const digest = () => t.str().with({ pattern: '^sha256:[0-9a-f]{64}$' });
 
+const signatures = () => t.arr(t.obj({ key: digest(), sig: t.str() })).optional();
+
 /** One version line of a store index, `index/<id>.ndjson`. It is not part of the Node Contract. */
 export const storeRecordSchema = typed<StoreRecord>()(
 	t
@@ -406,10 +408,42 @@ export const storeRecordSchema = typed<StoreRecord>()(
 			native: t.str().optional(),
 			name: t.str().optional(),
 			fixtures: digest().optional(),
-			signatures: t.arr(t.obj({ key: digest(), sig: t.str() })).optional(),
+			signatures: signatures(),
 			published: t.str().optional(),
 		})
 		.with(OPEN),
+);
+
+/** One status line of a store index: a yank, a revoke or a deprecation. */
+export const storeStatusRecordSchema = t.union(
+	typed<StoreYank>()(
+		t
+			.obj({ id: t.str(), yank: semver(), reason: t.str(), at: t.str(), signatures: signatures() })
+			.with(OPEN),
+	),
+	typed<StoreRevoke>()(
+		t
+			.obj({
+				id: t.str(),
+				revoke: semver(),
+				reason: t.str(),
+				at: t.str(),
+				signatures: signatures(),
+			})
+			.with(OPEN),
+	),
+	typed<StoreDeprecation>()(
+		t
+			.obj({
+				id: t.str(),
+				deprecate: t.str().with({ pattern: '^\\d+(\\.\\d+){0,2}$' }),
+				message: t.str(),
+				use: t.str().optional(),
+				at: t.str(),
+				signatures: signatures(),
+			})
+			.with(OPEN),
+	),
 );
 
 /** `spec/manifest.schema.json`: every manifest that a host reads. */

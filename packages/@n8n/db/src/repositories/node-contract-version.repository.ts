@@ -1,7 +1,7 @@
 import { Service } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 
-import { NodeContractVersion } from '../entities';
+import { NodeContractStatus, NodeContractVersion } from '../entities';
 import { BaseRepository } from './base-repository';
 import { TransactionRunner } from '../services/transaction';
 
@@ -61,6 +61,40 @@ export class NodeContractVersionRepository extends BaseRepository<NodeContractVe
 					.insert()
 					.into(NodeContractVersion)
 					.values(version)
+					.orIgnore()
+					.execute();
+			}
+		});
+	}
+}
+
+@Service()
+export class NodeContractStatusRepository extends BaseRepository<NodeContractStatus> {
+	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
+		super(NodeContractStatus, dataSource.manager, transactionRunner);
+	}
+
+	/** The status lines of one contract id, or of every id. */
+	async findLines(contractId?: string): Promise<string[]> {
+		const rows = await this.find({
+			select: ['digest', 'line'],
+			where: contractId === undefined ? {} : { contractId },
+			order: { createdAt: 'ASC', digest: 'ASC' },
+		});
+		return rows.map(({ line }) => line);
+	}
+
+	/** Inserts the status lines in one transaction. It skips each digest that it has. */
+	async insertNew(
+		statuses: ReadonlyArray<Pick<NodeContractStatus, 'digest' | 'contractId' | 'line'>>,
+	) {
+		await this.runInTransaction({}, async (tx) => {
+			for (const status of statuses) {
+				await tx
+					.createQueryBuilder()
+					.insert()
+					.into(NodeContractStatus)
+					.values(status)
 					.orIgnore()
 					.execute();
 			}

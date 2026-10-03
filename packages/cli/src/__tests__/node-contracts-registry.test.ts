@@ -4,6 +4,7 @@ import { EventService } from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig, NodesConfig } from '@n8n/config';
 import {
+	NodeContractStatusRepository,
 	NodeContractVersionRepository,
 	WorkflowRepository,
 	type NodeContractVersion,
@@ -36,6 +37,8 @@ vi.mock('@n8n/nodes-base-next', () => ({
 	sandboxCredentialTypeOf: (known: (name: string) => boolean) => (name: string) =>
 		known(name) ? { name } : undefined,
 	useContractRegistry: (options: ContractRegistryOptions) => registered.push(options),
+	isStoreStatusRecord: (value: unknown) =>
+		typeof value === 'object' && value !== null && 'yank' in value,
 	setCodeLanguages: (allowed: string[]) => languages.push(allowed),
 	contractStore: (options: ContractStoreOptions) => options,
 	locksOf: () => [['Echo', { action: 'demo.echo', version: '1.0.0' }]],
@@ -47,6 +50,7 @@ vi.mock('@n8n/nodes-base-next', () => ({
 }));
 
 const repository = mockInstance(NodeContractVersionRepository);
+const statusRepository = mockInstance(NodeContractStatusRepository);
 const publisher = mockInstance(Publisher);
 
 describe('useNodeContractsRegistry', () => {
@@ -56,6 +60,7 @@ describe('useNodeContractsRegistry', () => {
 			nodeContractsRegistryUrl: 'http://registry.test',
 			nodeContractsFirstPartyKeyFile: '',
 			nodeContractsVettingKeyFile: '',
+			nodeContractsRevokedAllow: ['demo.echo@1.0.0'],
 			nodeContractRange: '>=2.0.0 <3.0.0',
 			nodeContractSandbox: 'off',
 			nodeContractTracePayloads: 'off',
@@ -98,6 +103,7 @@ describe('useNodeContractsRegistry', () => {
 			},
 		});
 		expect([...(options?.egressInputHosts ?? [])]).toEqual(['*.acme.test']);
+		expect([...(options?.revokedAllowed ?? [])]).toEqual(['demo.echo@1.0.0']);
 		expect(options?.maxResponseBytes).toBe(2 * 1024 * 1024);
 		expect(await options?.metaOf(contextOf('1'))).toBe(meta);
 		expect(await options?.metaOf(contextOf('1'))).toBe(meta);
@@ -296,6 +302,24 @@ describe('NodeContractsStore', () => {
 			{ ...inserted, version: '1.0.1', published: null },
 		]);
 		expect(publisher.publishCommand).not.toHaveBeenCalled();
+	});
+
+	it('maps the status lines of the table and skips a line that does not parse', async () => {
+		const yank = { id: 'demo.echo', yank: '1.0.0', reason: 'wrong output', at: '2026-10-02' };
+		statusRepository.findLines.mockResolvedValue([JSON.stringify(yank), 'not json']);
+		const { rows } = Container.get(NodeContractsStore);
+
+		expect(await rows.statuses('demo.echo')).toEqual([yank]);
+		expect(statusRepository.findLines).toHaveBeenCalledWith('demo.echo');
+
+		await rows.insertStatuses([yank]);
+		expect(statusRepository.insertNew).toHaveBeenCalledWith([
+			{
+				digest: expect.stringMatching(/^sha256:[0-9a-f]{64}$/),
+				contractId: 'demo.echo',
+				line: JSON.stringify(yank),
+			},
+		]);
 	});
 
 	it('tells the other mains to reload once for a sync that adds versions', async () => {

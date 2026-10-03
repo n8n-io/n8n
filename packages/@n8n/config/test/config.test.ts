@@ -394,6 +394,7 @@ describe('GlobalConfig', () => {
 			nodeContractsRegistryUrl: '',
 			nodeContractsFirstPartyKeyFile: '',
 			nodeContractsVettingKeyFile: '',
+			nodeContractsRevokedAllow: [],
 			nodeContractRange: '>=2.0.0 <3.0.0',
 			nodeContractSandbox: 'off',
 			nodeContractSandboxSidecar: '',

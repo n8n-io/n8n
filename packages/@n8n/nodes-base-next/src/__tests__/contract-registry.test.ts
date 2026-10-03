@@ -6,14 +6,18 @@ import {
 	type FrozenVersion,
 } from '@n8n/node-sdk/host';
 import {
+	addStatusToStore,
 	addToStore,
+	canonicalJson,
 	manifestTextOf,
 	signStoreManifest,
+	signStoreStatus,
 	storeBlobFileOf,
 	storeFilesOfDir,
 	storeIndexFileOf,
 	storeReader,
 	type NodeContractLock,
+	type StoreStatusRecord,
 } from '@n8n/node-sdk/registry';
 import { defineNode, t } from '@n8n/node-sdk';
 import { credential, defineCredential, field } from '@n8n/node-sdk/credentials';
@@ -147,7 +151,13 @@ interface Published {
 /** An instance store in memory, as the database table of the cli keeps it. */
 const memoryStore = () => {
 	const rows = new Map<string, StoredVersion>();
+	const statuses = new Map<string, StoreStatusRecord>();
 	const store: InstanceStore = {
+		statuses: async (id) =>
+			[...statuses.values()].filter((status) => id === undefined || status.id === id),
+		insertStatuses: async (lines) => {
+			lines.forEach((line) => statuses.set(canonicalJson(line), line));
+		},
 		manifests: async (id) => [...rows.values()].filter((row) => id === undefined || row.id === id),
 		credentialManifests: async () => [...rows.values()].filter(({ kind }) => kind === 'credential'),
 		has: async (manifest) => rows.has(manifest),
@@ -159,7 +169,7 @@ const memoryStore = () => {
 			);
 		},
 	};
-	return { rows, store };
+	return { rows, statuses, store };
 };
 
 /** The versions in the fake registry, by version. A test may replace one. */
@@ -168,6 +178,8 @@ const dirs = { root: '', registry: '' };
 const instance = { current: memoryStore() };
 const registry = { url: '', server: createServer() };
 const versions = new Map<string, FrozenAction>();
+/** The status lines of `demo.echo` in the fake registry. */
+const registryStatuses: StoreStatusRecord[] = [];
 
 /** Writes the registry store again from `published`. */
 const writeRegistry = async () => {
@@ -184,7 +196,7 @@ const writeRegistry = async () => {
 	const lines = records.map((record, index) => ({ ...record, ...entries[index]?.line }));
 	await writeFile(
 		path.join(dirs.registry, storeIndexFileOf('demo.echo')),
-		lines.map((line) => `${JSON.stringify(line)}\n`).join(''),
+		[...lines, ...registryStatuses].map((line) => `${JSON.stringify(line)}\n`).join(''),
 	);
 };
 
@@ -244,6 +256,7 @@ beforeAll(async () => {
 beforeEach(async () => {
 	instance.current = memoryStore();
 	published.clear();
+	registryStatuses.length = 0;
 	['1.0.0', '1.0.1', '1.1.0'].forEach((version) =>
 		published.set(version, { frozen: frozenOf(version), key: privateKey }),
 	);
@@ -613,6 +626,121 @@ describe('origin', () => {
 	});
 });
 
+describe('status lines', () => {
+	const at = '2026-10-02T12:00:00.000Z';
+	const signed = (status: StoreStatusRecord, key = privateKey): StoreStatusRecord => ({
+		...status,
+		signatures: [signStoreStatus(status, key)],
+	});
+	const yankOf = (version: string, key?: string) =>
+		signed({ id: 'demo.echo', yank: version, reason: 'wrong output', at }, key);
+	const revokeOf = (version: string, key?: string) =>
+		signed({ id: 'demo.echo', revoke: version, reason: 'leaks the token', at }, key);
+	const inRegistry = async (...statuses: StoreStatusRecord[]) => {
+		registryStatuses.push(...statuses);
+		await writeRegistry();
+	};
+
+	it('runs a locked yanked version and takes no yanked version as a newer patch', async () => {
+		await inRegistry(yankOf('1.0.1'));
+		expect(await run(locked('1.0.0'))).toEqual(['HELLO']);
+		expect(await run(locked('1.0.1'))).toEqual(['hello?']);
+		expect(await run(locked('1.0.1'), { policy: 'strict' })).toEqual(['hello?']);
+	});
+
+	it('lists no yanked version as the newest of its major while another one is there', async () => {
+		const store = storeOf();
+		await store.locked(lockOf('1.0.0'));
+		await store.locked(lockOf('1.0.1'));
+		const newest = async () =>
+			(await storeOf().versions()).get('demo.echo')?.map(({ manifest }) => manifest.semver);
+		expect(await newest()).toEqual(['1.0.1']);
+		await inRegistry(yankOf('1.0.1'));
+		await syncContractStore(store, [
+			{ workflowId: 'wf', workflowName: 'wf', node: 'Echo', lock: lockOf('1.0.0') },
+		]);
+		expect(await newest()).toEqual(['1.0.0']);
+		await inRegistry(yankOf('1.0.0'));
+		await storeOf().syncStatuses(['demo.echo'], Date.now());
+		expect(await newest()).toEqual(['1.0.1']);
+	});
+
+	it('refuses a locked revoked version unless the admin allows it', async () => {
+		await inRegistry(revokeOf('1.0.0'));
+		await expect(run(locked('1.0.0'), { policy: 'strict' })).rejects.toThrow(
+			'demo.echo@1.0.0 is revoked: leaks the token. An admin can allow it in N8N_NODE_CONTRACTS_REVOKED_ALLOW',
+		);
+		expect(
+			await run(locked('1.0.0'), { policy: 'strict', revokedAllowed: ['demo.echo@1.0.0'] }),
+		).toEqual(['HELLO']);
+		expect(await run(locked('1.0.0'))).toEqual(['hello?']);
+	});
+
+	it('ignores a status line that no trusted key signs', async () => {
+		await inRegistry(yankOf('1.0.1', strangerKey), {
+			id: 'demo.echo',
+			revoke: '1.0.1',
+			reason: 'unsigned',
+			at,
+		});
+		expect(await run(locked('1.0.0'))).toEqual(['hello?']);
+		expect(await run(locked('1.0.1'), { policy: 'strict' })).toEqual(['hello?']);
+		expect(instance.current.statuses.size).toBe(0);
+	});
+
+	it('takes a status line of a first-party version only from the first-party key', async () => {
+		const store = storeOf({ keys: bothKeys });
+		await instance.current.store.insertStatuses([revokeOf('1.1.0')]);
+		expect(await run({}, { keys: bothKeys })).toEqual(['hello#']);
+		await instance.current.store.insertStatuses([revokeOf('1.1.0', firstParty.privateKey)]);
+		await expect(run({}, { keys: bothKeys })).rejects.toThrow('demo.echo@1.1.0 is revoked');
+		expect((await store.withdrawal(bundled('1.1.0')))?.signatures).toEqual(
+			revokeOf('1.1.0', firstParty.privateKey).signatures,
+		);
+	});
+
+	it('takes unsigned status lines only of private versions without a key', async () => {
+		const unsigned: StoreStatusRecord = { id: 'demo.echo', revoke: '1.0.0', reason: 'r', at };
+		await inRegistry(unsigned, { ...unsigned, revoke: '1.1.0' });
+		await expect(run(locked('1.0.0'), { policy: 'strict', keys: noKeys })).rejects.toThrow(
+			'demo.echo@1.0.0 is revoked',
+		);
+		await storeOf({ keys: noKeys }).syncStatuses(['demo.echo'], Date.now());
+		expect(await run({}, { keys: noKeys })).toEqual(['hello#']);
+	});
+
+	it('keeps the status lines through import and export', async () => {
+		const dir = await mkdtemp(path.join(dirs.root, 'statuses-'));
+		await addToStore(
+			dir,
+			['1.0.0', '1.0.1'].map((version) => {
+				const { manifest, bundle } = frozenOf(version);
+				const manifestText = manifestTextOf(manifest);
+				return { manifestText, bundle, signatures: [signStoreManifest(manifestText, privateKey)] };
+			}),
+		);
+		const deprecation = signed({ id: 'demo.echo', deprecate: '1', message: 'Use major 2', at });
+		await addStatusToStore(dir, [yankOf('1.0.1'), deprecation, revokeOf('1.0.0', strangerKey)]);
+		await importContractStore(
+			storeReader(storeFilesOfDir(dir)),
+			instance.current.store,
+			vettingKeys,
+		);
+		expect([...instance.current.statuses.values()]).toEqual([yankOf('1.0.1'), deprecation]);
+		const out = await mkdtemp(path.join(dirs.root, 'export-'));
+		await exportContractStore(instance.current.store, out);
+		expect((await storeReader(storeFilesOfDir(out)).index('demo.echo')).statuses).toEqual([
+			deprecation,
+			yankOf('1.0.1'),
+		]);
+		const pinned = await mkdtemp(path.join(dirs.root, 'export-'));
+		await exportContractStore(instance.current.store, pinned, ({ version }) => version === '1.0.0');
+		expect((await storeReader(storeFilesOfDir(pinned)).index('demo.echo')).statuses).toEqual([
+			deprecation,
+		]);
+	});
+});
+
 describe('importContractStore and exportContractStore', () => {
 	/** Every file of a directory and its bytes. */
 	const treeOf = async (dir: string) => {
@@ -846,6 +974,20 @@ describe('syncContractStore', () => {
 			['wf', expect.stringContaining('Cannot get demo.echo@1.1.0 (bundle')],
 		]);
 		expect(result.unsupported).toEqual([]);
+	});
+
+	it('reads each registry index once in the pages of one sync', async () => {
+		const fetchRegistry = vi.fn<ContractStoreOptions['fetch']>(
+			async (url, init) => await fetch(url, init),
+		);
+		const store = storeOf({ fetch: fetchRegistry });
+		const since = Date.now();
+		await syncContractStore(store, [nodeOf('1.0.1')], since);
+		await syncContractStore(store, [nodeOf('1.0.0')], since);
+		const indexReads = fetchRegistry.mock.calls.filter(([url]) =>
+			url.endsWith(storeIndexFileOf('demo.echo')),
+		);
+		expect(indexReads).toHaveLength(1);
 	});
 
 	it('reports nodes whose locked bundle needs a Node Contract version the host does not run', async () => {

@@ -57,3 +57,23 @@ export class NodeContractVersion extends WithCreatedAt {
 	@Column({ type: 'varchar', length: 16 })
 	origin: NodeContractOrigin;
 }
+
+/**
+ * One status line of the node contracts store: a yank, a revoke or a deprecation of a version.
+ * It can be of a version that n8n ships, so it has no relation to `node_contract_version`. A row
+ * is never changed.
+ */
+@Entity({ name: 'node_contract_status' })
+@Index(['contractId'])
+export class NodeContractStatus extends WithCreatedAt {
+	/** `sha256:<hex>` of `line`. */
+	@PrimaryColumn({ type: 'varchar', length: 71 })
+	digest: string;
+
+	@Column({ type: 'varchar', length: 255 })
+	contractId: string;
+
+	/** The exact JSON line. Its signatures cover the canonical form of the other fields. */
+	@Column('text')
+	line: string;
+}

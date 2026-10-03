@@ -14,7 +14,9 @@ import {
 	type RunProfileListener,
 } from '@n8n/node-sdk/host';
 import {
+	addStatusToStore,
 	addToStore,
+	canonicalJson,
 	compareSemver,
 	isVersionManifest,
 	parseCredentialManifest,
@@ -24,14 +26,20 @@ import {
 	resolveContractVersion,
 	storeFilesOfUrl,
 	storeReader,
+	storeStatusTextOf,
 	verifyStoreSignature,
+	withdrawalOf,
 	type CredentialManifest,
 	type NodeContractLock,
 	type NodeContractsPolicy,
 	type NodeContractVersion,
+	type StoreIndex,
 	type StoreReader,
 	type StoreRecord,
+	type StoreRevoke,
+	type StoreStatusRecord,
 	type StoreVersion,
+	type StoreYank,
 	type VersionManifest,
 } from '@n8n/node-sdk/registry';
 import { sandboxExecutorLoader, warmSandbox, type SandboxOptions } from '@n8n/node-sdk/sandbox';
@@ -100,6 +108,11 @@ export interface ContractRegistryOptions {
 	 * type signs, so a stored credential manifest of the name does not apply.
 	 */
 	readonly hasOtherCredentialType?: (name: string) => boolean;
+	/**
+	 * `<id>@<version>` of each revoked version that may still run, e.g. `gmail.message.get@1.0.4`.
+	 * An admin sets it. Without it, a revoked version does not run.
+	 */
+	readonly revokedAllowed?: readonly string[];
 }
 
 /** PEM of the public keys that prove the origin of a version. */
@@ -127,6 +140,40 @@ export function originOf(
 	return 'private';
 }
 
+const ORIGIN_RANK: Record<ContractOrigin, number> = { private: 0, community: 1, 'first-party': 2 };
+
+/**
+ * Whether a status line applies to a version of `origin`: its signer must prove at least that
+ * origin. So only the first-party key withdraws a first-party version, and an unsigned line
+ * applies only to a private version.
+ */
+const appliesTo = (status: StoreStatusRecord, origin: ContractOrigin, keys: ContractKeys) =>
+	ORIGIN_RANK[originOf(status, storeStatusTextOf(status), keys)] >= ORIGIN_RANK[origin];
+
+/**
+ * Inserts the status lines that the store may take and does not have, and returns them. With a
+ * key, a line needs the signature of a key of them. Without a key, every line goes in.
+ */
+async function admitStatuses(
+	store: InstanceStore,
+	statuses: readonly StoreStatusRecord[],
+	keys: ContractKeys,
+): Promise<StoreStatusRecord[]> {
+	const ids = [...new Set(statuses.map(({ id }) => id))];
+	const stored = new Set(
+		(await Promise.all(ids.map(async (id) => await store.statuses(id)))).flat().map(canonicalJson),
+	);
+	const lines = statuses.map(canonicalJson);
+	const added = statuses.filter(
+		(status, index) =>
+			!stored.has(lines[index] ?? '') &&
+			lines.indexOf(lines[index] ?? '') === index &&
+			(!hasKey(keys) || originOf(status, storeStatusTextOf(status), keys) !== 'private'),
+	);
+	if (added.length > 0) await store.insertStatuses(added);
+	return added;
+}
+
 /**
  * The store of action versions that n8n does not bundle. Each version is checked before the
  * store takes it: the digests of its blobs, the manifest against the lock, and the publisher
@@ -148,6 +195,18 @@ export interface ContractStore {
 	 * bundles that name.
 	 */
 	credentials(): Promise<ReadonlyMap<string, CredentialManifest>>;
+	/**
+	 * The stored yank or revoke line of a version that a trusted key signs, or `undefined`. A
+	 * line applies only when its signer proves at least the origin of the version.
+	 */
+	withdrawal(
+		version: Pick<FrozenVersion, 'manifest' | 'origin'>,
+	): Promise<StoreYank | StoreRevoke | undefined>;
+	/**
+	 * Puts the trusted status lines of the registry index of each id into the store. It reads an
+	 * index again only when it read it before `since` (ms since the epoch).
+	 */
+	syncStatuses(ids: readonly string[], since: number): Promise<void>;
 }
 
 /**
@@ -183,6 +242,10 @@ export interface InstanceStore {
 	versions(): Promise<readonly StoredVersion[]>;
 	/** Inserts versions. It skips each manifest digest that it has. */
 	insert(versions: readonly StoredVersion[]): Promise<void>;
+	/** The stored status lines of one id, or of every id. */
+	statuses(id?: string): Promise<readonly StoreStatusRecord[]>;
+	/** Inserts status lines. It skips each line that it has. */
+	insertStatuses(statuses: readonly StoreStatusRecord[]): Promise<void>;
 }
 
 /**
@@ -308,9 +371,14 @@ export function contractStore(options: ContractStoreOptions): ContractStore {
 				),
 			)
 		: undefined;
-	const indexes = new Map<string, { at: number; records: Promise<StoreRecord[]> }>();
+	const indexes = new Map<string, { at: number; records: Promise<StoreIndex> }>();
 	/** Stored versions by id, so a tolerant run does not read the store each time. */
 	const storedById = new Map<string, { at: number; records: Promise<CheckedVersion[]> }>();
+	/** Stored status lines by id, so a run does not read the store each time. */
+	const statusesById = new Map<
+		string,
+		{ at: number; records: Promise<readonly StoreStatusRecord[]> }
+	>();
 	/** Loads in flight, so parallel executions download a version once. */
 	const loading = new Map<string, Promise<LoadedVersion>>();
 	/** Checked stored versions and their digests by bundle hash. A stored version never changes. */
@@ -327,9 +395,9 @@ export function contractStore(options: ContractStoreOptions): ContractStore {
 	};
 
 	const cachedFor = async <T>(
-		cache: Map<string, { at: number; records: Promise<T[]> }>,
+		cache: Map<string, { at: number; records: Promise<T> }>,
 		id: string,
-		read: () => Promise<T[]>,
+		read: () => Promise<T>,
 	) => {
 		const cached = cache.get(id);
 		if (cached && Date.now() - cached.at < INDEX_TTL_MS) return await cached.records;
@@ -341,8 +409,16 @@ export function contractStore(options: ContractStoreOptions): ContractStore {
 		});
 	};
 
-	const registryRecordsOf = async (id: string) =>
-		await cachedFor(indexes, id, async () => await registryOf().records(id));
+	/** The registry index of an id. Each new read puts its trusted status lines into the store. */
+	const registryIndexOf = async (id: string) =>
+		await cachedFor(indexes, id, async () => {
+			const index = await registryOf().index(id);
+			const added = await admitStatuses(store, index.statuses, keys);
+			if (added.length > 0) statusesById.delete(id);
+			return index;
+		});
+
+	const registryRecordsOf = async (id: string) => (await registryIndexOf(id)).versions;
 
 	/** The origin of a version. Throws when a key is set and no key of them signs the manifest bytes. */
 	const signedOriginOf = (
@@ -511,6 +587,18 @@ export function contractStore(options: ContractStoreOptions): ContractStore {
 		return await loaded;
 	};
 
+	const withdrawal = async ({ manifest, origin }: CheckedVersion) => {
+		const statuses = await cachedFor(
+			statusesById,
+			manifest.id,
+			async () => await store.statuses(manifest.id),
+		);
+		return withdrawalOf(
+			statuses.filter((status) => appliesTo(status, origin, keys)),
+			manifest.semver,
+		);
+	};
+
 	/** The bundle loads on the first execution. */
 	const storedVersion = ({ manifest, origin }: CheckedVersion): FrozenVersion => ({
 		manifest,
@@ -561,13 +649,26 @@ export function contractStore(options: ContractStoreOptions): ContractStore {
 		},
 
 		async versions() {
-			const newest = (await storedManifests()).reduce((byMajor, checked) => {
-				const { id, contract, semver } = checked.manifest;
+			const [checked, statuses] = await Promise.all([storedManifests(), store.statuses()]);
+			const withdrawn = new Set(
+				checked.flatMap((version) => {
+					const applying = statuses.filter(
+						(status) =>
+							status.id === version.manifest.id && appliesTo(status, version.origin, keys),
+					);
+					return withdrawalOf(applying, version.manifest.semver) ? [version] : [];
+				}),
+			);
+			// A major keeps its newest withdrawn version when it has no other, so pinned nodes still load.
+			const isBetter = (best: CheckedVersion, version: CheckedVersion) =>
+				withdrawn.has(best) === withdrawn.has(version)
+					? compareSemver(best.manifest.semver, version.manifest.semver) >= 0
+					: withdrawn.has(version);
+			const newest = checked.reduce((byMajor, version) => {
+				const { id, contract } = version.manifest;
 				const key = `${id}@${contract.version}`;
 				const best = byMajor.get(key);
-				return best && compareSemver(best.manifest.semver, semver) >= 0
-					? byMajor
-					: new Map(byMajor).set(key, checked);
+				return best && isBetter(best, version) ? byMajor : new Map(byMajor).set(key, version);
 			}, new Map<string, CheckedVersion>());
 			return [...newest.values()].reduce(
 				(byAction, checked) =>
@@ -609,6 +710,21 @@ export function contractStore(options: ContractStoreOptions): ContractStore {
 					: new Map(byName).set(manifest.name, manifest);
 			}, new Map<string, CredentialManifest>());
 		},
+
+		withdrawal,
+
+		async syncStatuses(ids, since) {
+			if (!registryReader || !mayFetch()) return;
+			for (const id of ids) {
+				// A sync reads the newest index, also when a run read it a short time before the sync.
+				if ((indexes.get(id)?.at ?? 0) < since) indexes.delete(id);
+				await registryIndexOf(id).catch((error: unknown) =>
+					LoggerProxy.warn(
+						`Cannot read the status lines of ${id} from the registry: ${errorMessage(error)}`,
+					),
+				);
+			}
+		},
 	};
 }
 
@@ -616,10 +732,28 @@ export function contractStore(options: ContractStoreOptions): ContractStore {
  * Resolves the version a contract node runs from its lock in `meta.nodeContracts`. A locked
  * bundle hash is the trust anchor for the locked version. The publisher signature is the
  * trust anchor for a newer patch. A node without a lock runs `head`: the bundled HEAD, or the
- * newest stored version of an older major.
+ * newest stored version of an older major. A yanked version runs only as the locked version or
+ * `head`. A revoked version does not run unless `revokedAllowed` lists it.
  */
 export function contractVersionLoader(options: ContractRegistryOptions): ContractVersionLoader {
 	const { store } = options;
+	const allowed = new Set(options.revokedAllowed ?? []);
+	const runnable = async (version: FrozenVersion) => {
+		const withdrawn = await store.withdrawal(version);
+		const at = `${version.manifest.id}@${version.manifest.semver}`;
+		if (withdrawn && 'revoke' in withdrawn && !allowed.has(at)) {
+			throw new UserError(
+				`${at} is revoked: ${withdrawn.reason}. An admin can allow it in N8N_NODE_CONTRACTS_REVOKED_ALLOW.`,
+			);
+		}
+		return version;
+	};
+	const notWithdrawn = async (versions: readonly FrozenVersion[]) => {
+		const withdrawn = await Promise.all(
+			versions.map(async (version) => await store.withdrawal(version)),
+		);
+		return versions.filter((_, index) => withdrawn[index] === undefined);
+	};
 	return async (context, head) => {
 		const meta = await options.metaOf(context);
 		const lock = locksOf(meta).find(([node]) => node === context.getNode().name)?.[1];
@@ -628,7 +762,7 @@ export function contractVersionLoader(options: ContractRegistryOptions): Contrac
 			lock?.action !== head.manifest.id ||
 			parseSemver(lock.version).major !== head.manifest.contract.version
 		) {
-			return head;
+			return await runnable(head);
 		}
 		const override = isRecord(meta) ? meta.nodeContractsPolicy : undefined;
 		const policy = isPolicy(override) ? override : options.policy;
@@ -647,9 +781,11 @@ export function contractVersionLoader(options: ContractRegistryOptions): Contrac
 		// locked version does not load, its origin is not known, so only a first-party patch applies.
 		const origin = locked instanceof Error ? 'first-party' : locked.origin;
 		const trusted = [
-			...(head.origin === 'first-party' ? [head] : []),
 			...(locked instanceof Error ? [] : [locked]),
-			...newer.filter((version) => version.origin === origin),
+			...(await notWithdrawn([
+				...(head.origin === 'first-party' ? [head] : []),
+				...newer.filter((version) => version.origin === origin),
+			])),
 		];
 		const manifests = trusted.map((version) => version.manifest);
 		const manifest = (() => {
@@ -660,7 +796,7 @@ export function contractVersionLoader(options: ContractRegistryOptions): Contrac
 				throw locked instanceof Error ? locked : error;
 			}
 		})();
-		return trusted.find((version) => version.manifest === manifest) ?? head;
+		return await runnable(trusted.find((version) => version.manifest === manifest) ?? head);
 	};
 }
 
@@ -735,11 +871,14 @@ export interface ContractSyncResult {
 
 /**
  * Puts the locked bundle of each node into the store, one bundle at a time, and checks its
- * Node Contract version. It never throws for one bundle: it reports the failure.
+ * Node Contract version. Then it puts the trusted status lines of each locked id into the
+ * store. A sync of many pages gives the same `since` to each page, so that it reads each
+ * registry index once. It never throws for one bundle: it reports the failure.
  */
 export async function syncContractStore(
 	store: ContractStore,
 	nodes: readonly LockedNode[],
+	since = Date.now(),
 ): Promise<ContractSyncResult> {
 	const before = await store.bundleHashes();
 	const byBundle = nodes.reduce(
@@ -766,6 +905,7 @@ export async function syncContractStore(
 		const [first] = group;
 		return first ? [...done, await syncBundle(first.lock, group)] : done;
 	}, Promise.resolve([]));
+	await store.syncStatuses([...heads.keys()], since);
 	return {
 		added: results.flatMap(({ manifest }) =>
 			typeof manifest === 'string' ||
@@ -817,19 +957,27 @@ async function verifiedVersionOf(
  * Puts each version of a store, e.g. an export or a registry folder, into the instance store
  * with its origin. It first checks every version: the digest of each blob, the index line
  * against its manifest, and the signature when a key is set. When one check fails, it adds
- * nothing.
+ * nothing. Then it puts the status lines that a trusted key signs into the store.
  */
 export async function importContractStore(
 	source: StoreReader,
 	store: InstanceStore,
 	keys: ContractKeys,
 ): Promise<StoredVersion[]> {
-	const ids = [...new Set((await source.catalog()).map(({ id }) => id))];
-	const records = (await Promise.all(ids.map(async (id) => await source.records(id)))).flat();
+	const ids = await source.ids();
+	const indexes = await Promise.all(ids.map(async (id) => await source.index(id)));
 	const versions = await Promise.all(
-		records.map(async (record) => await verifiedVersionOf(source, record, keys)),
+		indexes
+			.flatMap(({ versions: records }) => records)
+			.map(async (record) => await verifiedVersionOf(source, record, keys)),
 	);
-	return await admitVersions(store, versions);
+	const added = await admitVersions(store, versions);
+	await admitStatuses(
+		store,
+		indexes.flatMap(({ statuses }) => statuses),
+		keys,
+	);
+	return added;
 }
 
 /** The `<name>@<major>` pins of the credentials that a stored version uses. */
@@ -847,8 +995,9 @@ const credentialPinOf = ({ manifestText }: StoredVersion) => {
 
 /**
  * Writes the stored versions that `include` accepts to `dir`, in the store layout, with the
- * stored credential manifests that they pin. The index of each id lists its versions in semver
- * order, so the same rows give the same bytes.
+ * stored credential manifests that they pin, and the status lines of the written versions. The
+ * index of each id lists its versions in semver order, then its status lines in the order of
+ * their canonical JSON, so the same rows give the same bytes.
  */
 export async function exportContractStore(
 	store: InstanceStore,
@@ -867,5 +1016,17 @@ export async function exportContractStore(
 	const versions = [...included, ...pinned].sort(
 		(a, b) => a.id.localeCompare(b.id) || compareSemver(a.version, b.version),
 	);
-	return await addToStore(dir, versions);
+	const records = await addToStore(dir, versions);
+	const written = new Set(versions.map(({ id, version }) => `${id}@${version}`));
+	const ids = new Set(versions.map(({ id }) => id));
+	const statuses = (await store.statuses()).filter((status) => {
+		const target = 'yank' in status ? status.yank : 'revoke' in status ? status.revoke : undefined;
+		return target === undefined ? ids.has(status.id) : written.has(`${status.id}@${target}`);
+	});
+	const ordered = statuses
+		.map((status) => [canonicalJson(status), status] as const)
+		.sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+		.map(([, status]) => status);
+	if (ordered.length > 0) await addStatusToStore(dir, ordered);
+	return records;
 }

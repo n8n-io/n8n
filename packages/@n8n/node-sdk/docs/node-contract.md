@@ -84,8 +84,8 @@ table, and `n8n contracts:export --output=<dir> [--pinned]` writes the table in 
 
 | File | Content |
 |---|---|
-| `catalog.json` | `{ "versions": [...] }`: the index line of the newest version of each id |
-| `index/<id>.ndjson` | One line for each version. A writer only appends. A reader skips a line that is not a version line |
+| `catalog.json` | `{ "versions": [...] }`: the index line of the newest version of each id that is not yanked or revoked. `withdrawn` lists each id whose every version is yanked or revoked, so an import still finds it |
+| `index/<id>.ndjson` | One line for each version and one line for each status. A writer only appends. A reader skips a line that it does not know |
 | `blobs/sha256/<hex>` | The manifest, bundle and fixtures bytes. The name is the SHA-256 of the bytes |
 
 The digest of a version is `sha256:` of its manifest bytes. The manifest holds `bundleHash` and
@@ -95,6 +95,39 @@ of a native version has its legacy node type in `native`, so a reader finds them
 against its digest, and the fields of each index line against the manifest. Publish adds
 `fixtures`, `signatures` (ed25519 over the manifest bytes, `key` is `sha256:` of the public key)
 and `published`. Freeze adds none of them, so it writes the same bytes for the same source.
+
+### Status lines
+
+A publisher never changes a version line. To withdraw or deprecate a version, it appends a
+status line (`addStatusToStore`, or `pnpm publish:contracts yank|revoke|deprecate …` in
+nodes-base-next):
+
+```json
+{"id":"gmail.message.get","yank":"1.0.4","reason":"sends Bcc as Cc","at":"2026-10-02T12:00:00.000Z","signatures":[…]}
+{"id":"gmail.message.get","revoke":"1.0.4","reason":"leaks the token","at":"…","signatures":[…]}
+{"id":"gmail.message.get","deprecate":"1","message":"Use major 2","use":"gmail.message.get@2","at":"…","signatures":[…]}
+```
+
+- **Yank**: the host runs the version as no newer patch. A node that has a pin of it still runs
+  it. For a major that only the store has, the node type lists the newest version that is not
+  withdrawn, so a new node does not get the version. The embedded HEAD stays the version of its
+  major: a node without a pin and the AI builder still use a yanked HEAD.
+- **Revoke**: a yank, and the host also refuses to run the version. An admin can allow it with
+  `N8N_NODE_CONTRACTS_REVOKED_ALLOW=<id>@<version>,…`.
+- **Deprecate**: `major`, `major.minor` or `major.minor.patch`. The reader gives the line
+  (`StoreReader.index`). The host does not act on it yet.
+
+The signatures of a status line cover its canonical JSON without `signatures`
+(`storeStatusTextOf`), with the same key id and ed25519 form as a version. The instance keeps
+the lines in the `node_contract_status` table. It takes a line only when a configured key signs
+it, or every line when no key is set. A line applies to a version only when its key proves at
+least the origin of the version: only the first-party key withdraws a first-party version, and
+an unsigned line applies only to a private version. The lines arrive with
+`n8n contracts:import`, with `contracts:export`, and from the registry index of each id that
+the leader main reads (a sync of the locked ids, a download, a newer-patch check).
+`contracts:export` writes only the yank and revoke lines of the versions that it writes. An
+embedded HEAD is not a stored version, so the export drops its lines. To move such a line to a
+host without a registry, import a copy of the registry folder.
 
 ## Rules
 

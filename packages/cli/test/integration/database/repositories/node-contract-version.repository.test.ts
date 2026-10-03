@@ -1,5 +1,5 @@
 import { testDb } from '@n8n/backend-test-utils';
-import { NodeContractVersionRepository } from '@n8n/db';
+import { NodeContractStatusRepository, NodeContractVersionRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import {
 	exportContractStore,
@@ -98,7 +98,7 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
-	await testDb.truncate(['NodeContractVersion']);
+	await testDb.truncate(['NodeContractVersion', 'NodeContractStatus']);
 });
 
 afterAll(async () => {
@@ -131,6 +131,24 @@ describe('NodeContractVersionRepository', () => {
 		expect(await rows.bundle(stored.manifest)).toBe(older.bundle);
 		expect(await rows.versions()).toEqual([stored]);
 		expect(await Container.get(NodeContractVersionRepository).count()).toBe(1);
+	});
+
+	it('round trips status lines and keeps one row for each line', async () => {
+		const yank = {
+			id: 'httpRequest.get',
+			yank: '2.0.0',
+			reason: 'wrong output',
+			at: '2026-10-02T12:00:00.000Z',
+		};
+		const { rows } = Container.get(NodeContractsStore);
+
+		await rows.insertStatuses([yank]);
+		await rows.insertStatuses([yank]);
+
+		expect(await rows.statuses('httpRequest.get')).toEqual([yank]);
+		expect(await rows.statuses()).toEqual([yank]);
+		expect(await rows.statuses('other.id')).toEqual([]);
+		expect(await Container.get(NodeContractStatusRepository).count()).toBe(1);
 	});
 
 	it('keeps credential and native rows without a bundle', async () => {

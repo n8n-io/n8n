@@ -1,6 +1,7 @@
 import { Time } from '@n8n/constants';
 import { z } from 'zod';
 
+import { CommaSeparatedStringArray } from '../custom-types';
 import { Config, Env } from '../decorators';
 import { concurrencyLimitSchema } from '../schemas';
 
@@ -291,6 +292,16 @@ export class InstanceAiConfig {
 	 */
 	@Env('N8N_NODE_CONTRACTS_VETTING_KEY_FILE')
 	nodeContractsVettingKeyFile: string = '';
+
+	/**
+	 * The revoked contract versions that may still run, as `<id>@<version>`. A publisher revokes
+	 * a version, e.g. for a security issue, and n8n then refuses to run it. Set this only when you
+	 * accept the risk, e.g. until you update the workflows that pin the version.
+	 *
+	 * @example 'gmail.message.get@1.0.4,slack.message.send@1.2.0'
+	 */
+	@Env('N8N_NODE_CONTRACTS_REVOKED_ALLOW')
+	nodeContractsRevokedAllow: CommaSeparatedStringArray<string> = [];
 
 	/**
 	 * The Node Contract versions a manifest or bundle may declare, as a semver range. Raise the

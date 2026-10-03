@@ -3,18 +3,21 @@ import { OutboundHttp } from '@n8n/backend-network';
 import { EventService } from '@n8n/backend-services';
 import { GlobalConfig, NodesConfig, type NodePermissionClass } from '@n8n/config';
 import {
+	NodeContractStatusRepository,
 	NodeContractVersionRepository,
 	WorkflowRepository,
 	type NodeContractManifestRow,
 } from '@n8n/db';
 import { OnPubSubEvent } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
+import { createHash } from 'crypto';
 import { readFile } from 'fs/promises';
 import {
 	bundledCredentialsOf,
 	bundledIdsOf,
 	credentialTypeOfManifest,
 	EMBEDDED_STORE_DIR,
+	isStoreStatusRecord,
 	MIGRATED_NODES,
 	NODE_PACKAGE,
 	nodeNameOf,
@@ -34,6 +37,7 @@ import {
 	type CredentialManifest,
 	type FrozenVersion,
 	type InstanceStore,
+	type StoreStatusRecord,
 } from '@n8n/nodes-base-next';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { existsSync } from 'fs';
@@ -48,6 +52,7 @@ import {
 } from 'n8n-core';
 import {
 	deepCopy,
+	jsonParse,
 	UserError,
 	type VersionedNodeType,
 	type ICredentialType,
@@ -82,6 +87,7 @@ export class NodeContractsStore {
 		private readonly globalConfig: GlobalConfig,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly repository: NodeContractVersionRepository,
+		private readonly statusRepository: NodeContractStatusRepository,
 	) {}
 
 	/** The folder of files that belong to the store, e.g. the sandbox cache. */
@@ -124,6 +130,10 @@ export class NodeContractsStore {
 					origin: version.origin,
 				})),
 			);
+		},
+		statuses: async (id) => (await this.statusRepository.findLines(id)).flatMap(statusOfLine),
+		insertStatuses: async (statuses) => {
+			await this.statusRepository.insertNew(statuses.map(statusRowOf));
 		},
 	};
 
@@ -190,6 +200,18 @@ const storedManifestOf = (row: NodeContractManifestRow) => ({
 	signatures: row.signatures,
 	origin: row.origin,
 });
+
+// A row holds a line that the store took, so a line that does not parse is only skipped.
+function statusOfLine(line: string): StoreStatusRecord[] {
+	const value = jsonParse<unknown>(line, { fallbackValue: null });
+	return isStoreStatusRecord(value) ? [value] : [];
+}
+
+function statusRowOf(status: StoreStatusRecord) {
+	const line = JSON.stringify(status);
+	const digest = `sha256:${createHash('sha256').update(line).digest('hex')}`;
+	return { digest, contractId: status.id, line };
+}
 
 // The signature does not cover `published`, so a value that is not a date is dropped.
 function publishedDateOf(published: string | undefined) {
@@ -489,6 +511,7 @@ export async function useNodeContractsRegistry() {
 
 	useContractRegistry({
 		policy: instanceAi.nodeContractsUpdatePolicy,
+		revokedAllowed: instanceAi.nodeContractsRevokedAllow,
 		nodeContractRange: instanceAi.nodeContractRange,
 		sandbox,
 		egressInputHosts: nodes.egressInputHosts,
