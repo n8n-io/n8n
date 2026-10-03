@@ -274,9 +274,16 @@ export function getPropertyName(operation: string) {
 	return operation.replace('send', '').toLowerCase();
 }
 
-const FENCE_MARKER_REGEX = /^\s*(```|~~~)/;
+const FENCE_MARKER_REGEX = /^\s*(`{3,}|~{3,})/;
 const TABLE_ROW_REGEX = /^\s*\|.*\|\s*$/;
 const HTML_VERBATIM_TAG_REGEX = /<\/?(pre|code)\b[^>]*>/gi;
+
+// An odd number of trailing backslashes is Markdown's own hard-break syntax;
+// an even number is an escaped backslash with no line-break meaning.
+function hasMarkdownHardBreak(line: string): boolean {
+	const trailingBackslashes = /\\+$/.exec(line);
+	return trailingBackslashes !== null && trailingBackslashes[0].length % 2 === 1;
+}
 
 export function materializeRichMessageLineBreaks(
 	content: string,
@@ -284,12 +291,30 @@ export function materializeRichMessageLineBreaks(
 ): string {
 	const lines = content.split('\n');
 	let inFence = false;
+	let fenceToken = '';
 	let inVerbatimHtml = false;
 
 	return lines
 		.map((line, i) => {
-			const isFenceMarker = format === 'markdown' && FENCE_MARKER_REGEX.test(line);
-			if (isFenceMarker) inFence = !inFence;
+			let isFenceMarker = false;
+			if (format === 'markdown') {
+				const fenceMatch = FENCE_MARKER_REGEX.exec(line);
+				if (fenceMatch) {
+					const token = fenceMatch[1];
+					if (!inFence) {
+						inFence = true;
+						fenceToken = token;
+						isFenceMarker = true;
+					} else if (token[0] === fenceToken[0] && token.length >= fenceToken.length) {
+						// Only a delimiter using the same character, at least as long as the
+						// opening one, actually closes the fence (same rule CommonMark uses) -
+						// a shorter or differently-charactered run is just fence content.
+						inFence = false;
+						fenceToken = '';
+						isFenceMarker = true;
+					}
+				}
+			}
 
 			if (format === 'html') {
 				for (const tag of line.matchAll(HTML_VERBATIM_TAG_REGEX)) {
@@ -302,8 +327,10 @@ export function materializeRichMessageLineBreaks(
 
 			const nextLine = lines[i + 1];
 			const verbatim = isFenceMarker || (format === 'markdown' ? inFence : inVerbatimHtml);
+			const hasHardBreak = format === 'markdown' && hasMarkdownHardBreak(line);
 			const isSoftBreak =
 				!verbatim &&
+				!hasHardBreak &&
 				line.trim() !== '' &&
 				nextLine.trim() !== '' &&
 				!(format === 'markdown' && (TABLE_ROW_REGEX.test(line) || TABLE_ROW_REGEX.test(nextLine)));
