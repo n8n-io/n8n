@@ -140,6 +140,14 @@ export const properties: INodeProperties[] = [
 					'Controls diversity via nucleus sampling: 0.5 means half of all likelihood-weighted options are considered. We generally recommend altering this or temperature but not both.',
 				type: 'number',
 			},
+			{
+				displayName: 'Extra Body',
+				name: 'extraBody',
+				type: 'json',
+				default: '{}',
+				description:
+					'Optional additional JSON properties to include in the request body. Use this for parameters a deployment supports that the options above do not cover.',
+			},
 		],
 	},
 ];
