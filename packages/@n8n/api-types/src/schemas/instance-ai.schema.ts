@@ -1721,7 +1721,10 @@ export const instanceAiThreadTabsStateSchema = z.object({
 export type InstanceAiThreadTabsState = z.infer<typeof instanceAiThreadTabsStateSchema>;
 
 export interface InstanceAiThreadTabsResponse {
-	/** `null` when the user has not changed the tabs of this thread yet. */
+	/**
+	 * `null` when no tabs are stored for this thread yet. The server stores them
+	 * when the agent changes an artifact, and the client when the user changes a tab.
+	 */
 	state: InstanceAiThreadTabsState | null;
 }
 
