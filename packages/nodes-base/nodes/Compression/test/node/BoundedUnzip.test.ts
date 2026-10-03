@@ -296,6 +296,15 @@ describe('boundedUnzip', () => {
 		);
 	});
 
+	it('should allow a ZIP64 entry whose real size equals the limit', async () => {
+		const realSize = 25 * 1024;
+		const compressed = createZip64Archive(realSize, { omitZip64Eocd: true });
+
+		const result = await boundedUnzip(compressed, realSize, 100);
+
+		expect(result['file.txt'].length).toBe(realSize);
+	});
+
 	it('should extract an entry in full when the central directory understates its size', async () => {
 		const realSize = 64 * 1024;
 		const compressed = createZipWithUnderstatedSize(realSize, 100);
