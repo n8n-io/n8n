@@ -296,6 +296,7 @@ import {
 	renderAiPreferencesBlock,
 } from '@/services/ai-preference.service';
 
+import { EvalDesignTimeMockService } from '../eval/design-time-mock.service';
 import { EvalThreadCredentialAllowlistService } from '../eval/thread-credential-allowlist.service';
 import {
 	InstanceAiTerminalOutcomeService,
@@ -917,6 +918,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			domainAccessTrackersByThread: Map<string, unknown>;
 			threadGrantRepo: { findKeys: Mock };
 			evalCredentialAllowlists: EvalThreadCredentialAllowlistService;
+			evalDesignTimeMocks: EvalDesignTimeMockService;
 			instanceAiErrorReporter: ReturnType<typeof createInstanceAiErrorReporterMock>;
 			creditService: { claimRunUsage: Mock; ensureQuotaLockApplied: Mock };
 			aiUsageService: { isParameterValueSharingAllowed: Mock };
@@ -1014,6 +1016,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			aiService: { isProxyEnabled: vi.fn(() => false), getClient: vi.fn() },
 		});
 		service.evalCredentialAllowlists = new EvalThreadCredentialAllowlistService();
+		service.evalDesignTimeMocks = new EvalDesignTimeMockService(service.evalCredentialAllowlists);
 		service.instanceAiErrorReporter = createInstanceAiErrorReporterMock();
 		service.aiUsageService = { isParameterValueSharingAllowed: vi.fn(async () => true) };
 		service.creditService = {
@@ -1288,6 +1291,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			domainAccessTrackersByThread: Map<string, unknown>;
 			threadGrantRepo: { findKeys: Mock };
 			evalCredentialAllowlists: EvalThreadCredentialAllowlistService;
+			evalDesignTimeMocks: EvalDesignTimeMockService;
 			instanceAiErrorReporter: ReturnType<typeof createInstanceAiErrorReporterMock>;
 			creditService: { claimRunUsage: Mock; ensureQuotaLockApplied: Mock };
 			aiUsageService: { isParameterValueSharingAllowed: Mock };
@@ -1379,6 +1383,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			aiService: { isProxyEnabled: vi.fn(() => false), getClient: vi.fn() },
 		});
 		service.evalCredentialAllowlists = new EvalThreadCredentialAllowlistService();
+		service.evalDesignTimeMocks = new EvalDesignTimeMockService(service.evalCredentialAllowlists);
 		service.instanceAiErrorReporter = createInstanceAiErrorReporterMock();
 		// Vary the sharing setting across rows. It does not depend on the build mode.
 		const allowSendingParameterValues = !enabled;
@@ -6269,6 +6274,7 @@ describe('InstanceAiService — clearThreadState agent-builder cleanup', () => {
 		liveness: { clearThreadState: Mock };
 		domainAccessTrackersByThread: Map<string, unknown>;
 		evalCredentialAllowlists: EvalThreadCredentialAllowlistService;
+		evalDesignTimeMocks: EvalDesignTimeMockService;
 		eventBus: { clearThread: Mock };
 		tracing: {
 			finalizeRunTracing: Mock;
@@ -6298,6 +6304,7 @@ describe('InstanceAiService — clearThreadState agent-builder cleanup', () => {
 		service.liveness = { clearThreadState: vi.fn() };
 		service.domainAccessTrackersByThread = new Map();
 		service.evalCredentialAllowlists = new EvalThreadCredentialAllowlistService();
+		service.evalDesignTimeMocks = new EvalDesignTimeMockService(service.evalCredentialAllowlists);
 		service.eventBus = { clearThread: vi.fn() };
 		service.tracing = {
 			finalizeRunTracing: vi.fn(async () => {}),
@@ -7709,4 +7716,25 @@ describe('InstanceAiService — instance-context turn event', () => {
 			);
 		},
 	);
+});
+
+describe('InstanceAiService userRequestsOf', () => {
+	it('joins the user turns of the thread, without the assistant turns', async () => {
+		const service = Object.create(InstanceAiService.prototype) as unknown as {
+			agentMemory: { getMessages: Mock };
+			userRequestsOf(threadId: string): Promise<string>;
+		};
+		service.agentMemory = {
+			getMessages: vi.fn(async () => [
+				{ role: 'user', content: [{ type: 'text', text: 'Sync Deals (Deal ID) to a sheet' }] },
+				{ role: 'assistant', content: [{ type: 'text', text: 'Built it' }] },
+				{ role: 'user', content: 'Add a filter on Stage' },
+			]),
+		};
+
+		expect(await service.userRequestsOf('thread-1')).toBe(
+			'Sync Deals (Deal ID) to a sheet\nAdd a filter on Stage',
+		);
+		expect(service.agentMemory.getMessages).toHaveBeenCalledWith('thread-1');
+	});
 });

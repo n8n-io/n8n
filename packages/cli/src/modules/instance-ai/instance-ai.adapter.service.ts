@@ -116,7 +116,7 @@ import {
 import { hasGlobalScope, type Scope } from '@n8n/permissions';
 import { LessThan } from '@n8n/typeorm';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
-import { InstanceSettings } from 'n8n-core';
+import { type EvalLlmMockHandler, InstanceSettings } from 'n8n-core';
 import {
 	type ICredentialsDecrypted,
 	type IDataObject,
@@ -171,6 +171,7 @@ import {
 	scopeCredentialProvider,
 	type AgentCredentialProvider,
 } from './eval/scoped-credential-provider';
+import { configureEvalMockRun } from './eval/design-time-mock.service';
 import { InstanceAiBuilderDelegateAdapterService } from '@/modules/agents/instance-ai-builder-delegate.adapter';
 import { DataTableRepository } from '@/modules/data-table/data-table.repository';
 import { DataTableService } from '@/modules/data-table/data-table.service';
@@ -483,6 +484,9 @@ export class InstanceAiAdapterService {
 			 *  contacting the provider. A predicate rather than a list because the
 			 *  harness registers bypasses mid-run, after this context is built. */
 			shouldBypassCredentialTest?: (credentialId: string) => boolean;
+			/** Eval-only: the LLM mock that answers resource lookups and verification runs of the
+			 *  thread. Resolves to `undefined` outside an eval thread. */
+			getEvalMockHandler?: () => Promise<EvalLlmMockHandler | undefined>;
 			/** Pre-bound agent for the build-existing-agent flow. When omitted, the
 			 *  assistant can create one via the build-agent tool. */
 			agentId?: string;
@@ -525,6 +529,7 @@ export class InstanceAiAdapterService {
 			getCredentialIdAllowlist,
 			resumeAgentBuild = false,
 			shouldBypassCredentialTest,
+			getEvalMockHandler,
 			agentId,
 			configEvalsEnabled,
 			setupPanelVariant,
@@ -570,9 +575,10 @@ export class InstanceAiAdapterService {
 				allowSendingParameterValues,
 				pushRef,
 				threadId,
+				getEvalMockHandler,
 			),
 			credentialService,
-			nodeService: this.createNodeAdapter(user),
+			nodeService: this.createNodeAdapter(user, getEvalMockHandler),
 			dataTableService: this.createDataTableAdapter(user, projectId),
 			...(configEvalsEnabled && this.evaluationConfigService
 				? {
@@ -2019,6 +2025,7 @@ export class InstanceAiAdapterService {
 		allowSendingParameterValues: boolean,
 		pushRef?: string,
 		threadId?: string,
+		getEvalMockHandler?: () => Promise<EvalLlmMockHandler | undefined>,
 	): InstanceAiExecutionService {
 		const {
 			workflowFinderService,
@@ -2243,6 +2250,11 @@ export class InstanceAiAdapterService {
 						},
 						executionData: null,
 					});
+				}
+
+				const evalMockHandler = await getEvalMockHandler?.();
+				if (evalMockHandler) {
+					runData.configureAdditionalData = configureEvalMockRun(evalMockHandler, logger);
 				}
 
 				const trackBuilderExecutedWorkflow = (
@@ -2555,6 +2567,11 @@ export class InstanceAiAdapterService {
 						},
 						executionData: null,
 					});
+				}
+
+				const evalMockHandler = await getEvalMockHandler?.();
+				if (evalMockHandler) {
+					runData.configureAdditionalData = configureEvalMockRun(evalMockHandler, logger);
 				}
 
 				const trackStepRun = (status: ExecutionResult['status'], error?: string) => {
@@ -3748,7 +3765,10 @@ export class InstanceAiAdapterService {
 		return this.nodeCatalogService ?? Container.get(NodeCatalogService);
 	}
 
-	private createNodeAdapter(user: User): InstanceAiNodeService {
+	private createNodeAdapter(
+		user: User,
+		getEvalMockHandler?: () => Promise<EvalLlmMockHandler | undefined>,
+	): InstanceAiNodeService {
 		// Use the service-level cache instead of a per-adapter closure.
 		// This avoids each run retaining its own ~31 MB copy of node descriptions.
 		const getNodes = async () => await this.getNodesFromCache();
@@ -4122,8 +4142,15 @@ export class InstanceAiAdapterService {
 				}
 			},
 
-			exploreResources: async (params: ExploreResourcesParams): Promise<ExploreResourcesResult> =>
-				await this.nodeResourceExplorerService.exploreResources(user, params),
+			exploreResources: async (params: ExploreResourcesParams): Promise<ExploreResourcesResult> => {
+				const evalMockHandler = await getEvalMockHandler?.();
+				const result = await this.nodeResourceExplorerService.exploreResources(
+					user,
+					params,
+					evalMockHandler,
+				);
+				return evalMockHandler ? { ...result, mocked: true } : result;
+			},
 
 			findUnavailableLocatorValues: async (params): Promise<UnavailableLocatorValue[]> =>
 				await this.nodeResourceExplorerService.findUnavailableResourceLocatorValues(user, params),

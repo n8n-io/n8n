@@ -187,6 +187,7 @@ import { composeLocalMcpServers } from './browser/composite-local-mcp-server';
 import { InstanceAiBrowserSessionService } from './browser/instance-ai-browser-session.service';
 import { enabledToolCategories, resolveComputerUseState } from './computer-use-availability';
 import { dropRejectedAttachmentsFromHistory } from './drop-rejected-attachments';
+import { EvalDesignTimeMockService } from './eval/design-time-mock.service';
 import { EvalThreadCredentialAllowlistService } from './eval/thread-credential-allowlist.service';
 import { DurableEventLog } from './event-bus/durable-event-log';
 import { InProcessEventBus } from './event-bus/in-process-event-bus';
@@ -838,6 +839,7 @@ export class InstanceAiService {
 		private readonly instanceContext: InstanceContextService,
 		private readonly aiPreferenceService: AiPreferenceService,
 		private readonly aiUsageService: AiUsageService,
+		private readonly evalDesignTimeMocks: EvalDesignTimeMockService,
 	) {
 		this.logger = logger.scoped('instance-ai');
 		runProbe.registerActiveRunCountProvider(() => this.runState.activeRunCount());
@@ -1961,6 +1963,7 @@ export class InstanceAiService {
 		this.failedInternalFollowUpStreaks.delete(threadId);
 		this.domainAccessTrackersByThread.delete(threadId);
 		this.evalCredentialAllowlists.clearThread(threadId);
+		this.evalDesignTimeMocks.clearThread(threadId);
 		this.threadPushRef.delete(threadId);
 		this.planRequestsByThread.delete(threadId);
 		this.memoryTaskRegistry.clearThread(threadId);
@@ -2576,6 +2579,11 @@ export class InstanceAiService {
 			getCredentialIdAllowlist: () => this.evalCredentialAllowlists.get(threadId),
 			shouldBypassCredentialTest: (credentialId: string) =>
 				this.evalCredentialAllowlists.shouldBypassTest(threadId, credentialId),
+			getEvalMockHandler: async () =>
+				await this.evalDesignTimeMocks.handlerFor(
+					threadId,
+					async () => await this.userRequestsOf(threadId),
+				),
 			configEvalsEnabled,
 			setupPanelVariant,
 			mcpConnectionsAvailable,
@@ -7311,6 +7319,20 @@ export class InstanceAiService {
 			});
 			// Non-fatal — heuristic title remains
 		}
+	}
+
+	/** The opening user turns of the thread, without the blocks the service adds. */
+	private async userRequestsOf(threadId: string): Promise<string> {
+		const history = await this.agentMemory.getMessages(threadId);
+		return history
+			.flatMap((message) =>
+				'role' in message && message.role === 'user'
+					? [cleanStoredUserMessage(this.extractStoredMessageText(message.content))]
+					: [],
+			)
+			.filter((text): text is string => Boolean(text))
+			.slice(0, 5)
+			.join('\n');
 	}
 
 	private extractStoredMessageText(content: unknown): string {

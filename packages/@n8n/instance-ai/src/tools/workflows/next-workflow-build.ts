@@ -235,17 +235,28 @@ async function withTimeout<T>(work: Promise<T>, fallback: T): Promise<T> {
 	});
 }
 
+/** How a lookup ended. `mocked`: the eval mock answered it. */
+type LookupOutcome = 'ok' | 'mocked' | 'failed' | 'timeout' | 'no-credential';
+
+interface Lookup {
+	fields: ResourceField[];
+	outcome: LookupOutcome;
+}
+
 async function firstFields(
 	explore: NonNullable<InstanceAiContext['nodeService']['exploreResources']>,
 	[call, ...rest]: LookupCall[],
 	credential: { credentialType: string; credentialId: string },
-): Promise<ResourceField[]> {
-	if (!call) return [];
+): Promise<Lookup> {
+	if (!call) return { fields: [], outcome: 'failed' };
 	const result = await explore({ ...call, ...credential, methodType: 'loadOptions' }).catch(
 		() => undefined,
 	);
 	return result?.results.length
-		? result.results.map(({ name, value }) => ({ name, value }))
+		? {
+				fields: result.results.map(({ name, value }) => ({ name, value })),
+				outcome: result.mocked ? 'mocked' : 'ok',
+			}
 		: await firstFields(explore, rest, credential);
 }
 
@@ -285,8 +296,18 @@ export async function fetchResourceFields(
 					: accepted.length === 1
 						? accepted.map(({ id, type }) => ({ credentialType: type, credentialId: id }))
 						: [];
-			if (!credential) return [];
-			const fields = await withTimeout(firstFields(explore, calls, credential), []);
+			const { fields, outcome }: Lookup = credential
+				? await withTimeout(firstFields(explore, calls, credential), {
+						fields: [],
+						outcome: 'timeout',
+					})
+				: { fields: [], outcome: 'no-credential' };
+			context.logger.debug('Resource lookup for a node contract', {
+				nodeName: name,
+				method: action.resourceOutput?.method,
+				outcome,
+				fields: fields.length,
+			});
 			return fields.length > 0 ? [[name, fields] as const] : [];
 		}),
 	);

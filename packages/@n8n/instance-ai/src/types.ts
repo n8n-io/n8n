@@ -930,6 +930,8 @@ export interface ExploreResourcesResult {
 	 *  Surfaced alongside results so agents that skip the `type-definition` step
 	 *  still receive selection guidance at the point of decision. */
 	builderHint?: string;
+	/** Eval threads only: the eval mock answered the lookup. The agent never sees it. */
+	mocked?: boolean;
 }
 
 /**

@@ -770,6 +770,30 @@ describe('prompt construction', () => {
 		const prompt = mockGenerate.mock.calls[0][0];
 		expect(prompt).toContain('GET');
 	});
+
+	it('should give a contract node the fields its output needs from the raw body', async () => {
+		llmSubmits({ type: 'json', body: {} });
+		const handler = createLlmMockHandler();
+
+		await handler(
+			{ url: 'https://gmail.googleapis.com/gmail/v1/users/me/messages/m1', method: 'GET' },
+			{ name: 'Get Message', type: '@n8n/nodes-base-next.gmailMessageGet' } as INode,
+		);
+
+		const prompt = mockGenerate.mock.calls[0][0];
+		expect(prompt).toContain('## Node contract');
+		expect(prompt).toContain('Never return items of this schema');
+		expect(prompt).toContain('"historyId"');
+	});
+
+	it('should leave the contract section out for a legacy node', async () => {
+		llmSubmits({ type: 'json', body: {} });
+		const handler = createLlmMockHandler();
+
+		await handler(baseRequest, baseNode);
+
+		expect(mockGenerate.mock.calls[0][0]).not.toContain('## Node contract');
+	});
 });
 
 // ---------------------------------------------------------------------------

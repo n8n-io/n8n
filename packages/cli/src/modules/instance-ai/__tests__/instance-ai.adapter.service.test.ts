@@ -51,8 +51,10 @@ import { Container } from '@n8n/di';
 import { generateWorkflowCode, parseWorkflowCode } from '@n8n/workflow-sdk';
 import { mock } from 'vitest-mock-extended';
 import { Expression, NodeConnectionTypes } from 'n8n-workflow';
+import type { EvalLlmMockHandler } from 'n8n-core';
 import type {
 	ExecutionError,
+	ICredentialsHelper,
 	IConnections,
 	IDataObject,
 	INode,
@@ -1836,6 +1838,7 @@ import { ModuleRegistry } from '@n8n/backend-common';
 import type { InstanceAiBuilderDelegate, OrchestrationContext } from '@n8n/instance-ai';
 
 import { InstanceAiAdapterService } from '../instance-ai.adapter.service';
+import { EvalMockedCredentialsHelper } from '../eval/eval-mocked-credentials-helper';
 import { InstanceAiBuilderDelegateAdapterService } from '@/modules/agents/instance-ai-builder-delegate.adapter';
 import { AgentsCredentialProvider } from '@/modules/agents/adapters/agents-credential-provider';
 import { userHasScopes } from '@/permissions.ee/check-access';
@@ -4984,6 +4987,7 @@ function createRunAdapterForTests(
 		queueMode?: boolean;
 		allowSendingParameterValues?: boolean;
 		nodeTypes?: NodeTypes;
+		getEvalMockHandler?: () => Promise<EvalLlmMockHandler | undefined>;
 	},
 ) {
 	const mockWorkflowFinderService = {
@@ -5076,7 +5080,10 @@ function createRunAdapterForTests(
 		>[35],
 	);
 
-	const adapter = service.createContext(mockUser, { threadId: options?.threadId }).executionService;
+	const adapter = service.createContext(mockUser, {
+		threadId: options?.threadId,
+		getEvalMockHandler: options?.getEvalMockHandler,
+	}).executionService;
 
 	return {
 		adapter,
@@ -5189,6 +5196,33 @@ describe('createExecutionAdapter run()', () => {
 			saveDataSuccessExecution: 'all',
 			saveDataErrorExecution: 'all',
 		});
+	});
+
+	it('sends the HTTP of a verification run in an eval thread to the eval mock', async () => {
+		const handler: EvalLlmMockHandler = vi.fn();
+		const { adapter, mockWorkflowRunner } = createRunAdapterForTests(
+			{ id: 'wf-1', nodes: [] },
+			{ getEvalMockHandler: async () => handler },
+		);
+
+		await adapter.run('wf-1');
+
+		const runData = mockWorkflowRunner.run.mock.calls[0][0];
+		const additionalData = { credentialsHelper: mock<ICredentialsHelper>() };
+		await runData.configureAdditionalData(additionalData);
+		expect(additionalData).toMatchObject({ evalLlmMockHandler: handler });
+		expect(additionalData.credentialsHelper).toBeInstanceOf(EvalMockedCredentialsHelper);
+	});
+
+	it('runs without the eval mock outside an eval thread', async () => {
+		const { adapter, mockWorkflowRunner } = createRunAdapterForTests(
+			{ id: 'wf-1', nodes: [] },
+			{ getEvalMockHandler: async () => undefined },
+		);
+
+		await adapter.run('wf-1');
+
+		expect(mockWorkflowRunner.run.mock.calls[0][0].configureAdditionalData).toBeUndefined();
 	});
 
 	it('still applies overrides when the workflow has no settings', async () => {

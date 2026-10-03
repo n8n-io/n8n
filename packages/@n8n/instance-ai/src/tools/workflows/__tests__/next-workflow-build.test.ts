@@ -379,19 +379,30 @@ import { googleGemini } from '@n8n/nodes/googleGemini';`;
 		const makeContext = (
 			exploreResources: ReturnType<typeof vi.fn>,
 			credentials = [{ id: 'c1', name: 'Notion account', type: 'notionApi' }],
+			logger = { debug: vi.fn() },
 		) =>
 			({
 				nodeService: { exploreResources },
 				credentialService: { list: vi.fn().mockResolvedValue(credentials) },
+				logger,
 			}) as unknown as InstanceAiContext;
+		const outcomeLogged = (logger: { debug: ReturnType<typeof vi.fn> }) =>
+			logger.debug.mock.calls.find(
+				([message]) => message === 'Resource lookup for a node contract',
+			)?.[1];
 
 		it('lists properties with the sole accepted credential, data source first, then database', async () => {
 			const exploreResources = vi
 				.fn()
 				.mockRejectedValueOnce(new Error('Could not find data source'))
 				.mockResolvedValueOnce({ results: fields });
-			const result = await fetchResourceFields(makeContext(exploreResources), tasks);
+			const logger = { debug: vi.fn() };
+			const result = await fetchResourceFields(
+				makeContext(exploreResources, undefined, logger),
+				tasks,
+			);
 			expect(result.get('Tasks')).toEqual(fields);
+			expect(outcomeLogged(logger)).toMatchObject({ nodeName: 'Tasks', outcome: 'ok', fields: 2 });
 			expect(exploreResources).toHaveBeenNthCalledWith(1, {
 				nodeType: 'n8n-nodes-base.notion',
 				version: 3,
@@ -413,23 +424,57 @@ import { googleGemini } from '@n8n/nodes/googleGemini';`;
 
 		it('skips the lookup when more than one credential could be bound', async () => {
 			const exploreResources = vi.fn();
-			const context = makeContext(exploreResources, [
-				{ id: 'c1', name: 'Notion A', type: 'notionApi' },
-				{ id: 'c2', name: 'Notion B', type: 'notionOAuth2Api' },
-			]);
+			const logger = { debug: vi.fn() };
+			const context = makeContext(
+				exploreResources,
+				[
+					{ id: 'c1', name: 'Notion A', type: 'notionApi' },
+					{ id: 'c2', name: 'Notion B', type: 'notionOAuth2Api' },
+				],
+				logger,
+			);
 			expect((await fetchResourceFields(context, tasks)).size).toBe(0);
 			expect(exploreResources).not.toHaveBeenCalled();
+			expect(outcomeLogged(logger)).toMatchObject({ outcome: 'no-credential' });
+		});
+
+		it('logs a lookup that the eval mock answered as mocked', async () => {
+			const logger = { debug: vi.fn() };
+			const exploreResources = vi.fn().mockResolvedValue({ results: fields, mocked: true });
+			const result = await fetchResourceFields(
+				makeContext(exploreResources, undefined, logger),
+				tasks,
+			);
+			expect(result.get('Tasks')).toEqual(fields);
+			expect(outcomeLogged(logger)).toMatchObject({ outcome: 'mocked' });
+		});
+
+		it('logs a lookup that every call failed as failed', async () => {
+			const logger = { debug: vi.fn() };
+			const exploreResources = vi.fn().mockRejectedValue(new Error('Authorization failed'));
+			const result = await fetchResourceFields(
+				makeContext(exploreResources, undefined, logger),
+				tasks,
+			);
+			expect(result.size).toBe(0);
+			expect(outcomeLogged(logger)).toMatchObject({ outcome: 'failed', fields: 0 });
 		});
 
 		it('gives up on a slow lookup after 5 seconds', async () => {
 			vi.useFakeTimers();
 			try {
+				const logger = { debug: vi.fn() };
 				const pending = fetchResourceFields(
-					makeContext(vi.fn(async () => await new Promise(() => {}))),
+					makeContext(
+						vi.fn(async () => await new Promise(() => {})),
+						undefined,
+						logger,
+					),
 					tasks,
 				);
 				await vi.advanceTimersByTimeAsync(5_000);
 				expect((await pending).size).toBe(0);
+				expect(outcomeLogged(logger)).toMatchObject({ outcome: 'timeout' });
 			} finally {
 				vi.useRealTimers();
 			}

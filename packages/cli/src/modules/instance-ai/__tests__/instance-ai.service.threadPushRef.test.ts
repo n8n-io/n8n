@@ -33,6 +33,7 @@ vi.mock('@n8n/instance-ai', async () => {
 	};
 });
 
+import { EvalDesignTimeMockService } from '../eval/design-time-mock.service';
 import { EvalThreadCredentialAllowlistService } from '../eval/thread-credential-allowlist.service';
 import { InstanceAiService } from '../instance-ai.service';
 
@@ -83,6 +84,7 @@ describe('InstanceAiService — threadPushRef lifetime', () => {
 			liveness: { clearThreadState: Mock };
 			domainAccessTrackersByThread: Map<string, unknown>;
 			evalCredentialAllowlists: EvalThreadCredentialAllowlistService;
+			evalDesignTimeMocks: EvalDesignTimeMockService;
 			eventBus: { clearThread: Mock };
 			tracing: {
 				finalizeRunTracing: Mock;
@@ -111,6 +113,7 @@ describe('InstanceAiService — threadPushRef lifetime', () => {
 		service.liveness = { clearThreadState: vi.fn() };
 		service.domainAccessTrackersByThread = new Map();
 		service.evalCredentialAllowlists = new EvalThreadCredentialAllowlistService();
+		service.evalDesignTimeMocks = new EvalDesignTimeMockService(service.evalCredentialAllowlists);
 		service.evalCredentialAllowlists.set('thread-a', ['cred-1']);
 		service.eventBus = { clearThread: vi.fn() };
 		service.tracing = {

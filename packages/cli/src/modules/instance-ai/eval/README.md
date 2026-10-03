@@ -10,7 +10,24 @@ executes for real: its routing, pagination, response parsing, and
 post-processing (e.g. `simplify` options) all run against the mocked body.
 
 - Shape source: fetched API documentation (`api-docs.ts`) + endpoint quirks.
+  A node contract adds what it declares (`contract-response.ts`): the raw body
+  schema of a `request` or `list` action, or, for a `run()` action that
+  reshapes the body in code, its output schema labelled as the shape the mock
+  must NOT return. The output tells the mock which raw fields the node needs.
 - Used when a node executes against intercepted HTTP.
+
+## Design time — `design-time-mock.service.ts`
+
+An eval build thread also sends HTTP before any scenario runs: resource
+lookups (`explore-resources`, the node-contract lookups of a build) and
+verification runs (`executions run`/`run-step`, the verification inside
+`build-workflow`). Eval credentials carry placeholder tokens and cases name
+hosts that do not exist, so these calls fail for real. In a thread the harness
+pinned with `POST /eval/thread-credential-allowlist`, they go to the wire-level
+mock instead. The mock is one per thread, so a repeated request gets the same
+answer. Its context is the user's request, so a looked-up resource has the
+fields the case names. Other threads get no mock. The same layer serves both
+build arms, so the change is arm-neutral.
 
 ## Node-output level — pin data / simulation fixtures
 
@@ -68,7 +85,8 @@ Production sessions continue to use live model catalogs.
 nodes reshape responses (simplify, field mapping, envelope unwrapping) before
 emitting items. Therefore:
 
-- Never feed `__schema__` into wire-level mock generation.
+- Never feed `__schema__` into wire-level mock generation. A contract output
+  goes in only as the shape that the body must not have (see above).
 - Never let API docs override an available `__schema__` for node-output mocks.
 - Never reach for a credential bypass to make a *node execution* succeed — that
   is the wire level's job. The bypass only answers the credential's own test.

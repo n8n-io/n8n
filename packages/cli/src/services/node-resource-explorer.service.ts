@@ -4,6 +4,7 @@ import { AI_GATEWAY_MANAGED_TAG } from '@n8n/api-types';
 import { ProjectRepository, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { ExploreResourcesParams, ExploreResourcesResult } from '@n8n/instance-ai';
+import type { EvalLlmMockHandler } from 'n8n-core';
 import type {
 	INodeCredentials,
 	INodeParameters,
@@ -48,9 +49,11 @@ export class NodeResourceExplorerService {
 		private readonly nodeTypes: NodeTypes,
 	) {}
 
+	/** `evalLlmMockHandler` answers the lookup's HTTP in an eval thread, as in a scenario run. */
 	async exploreResources(
 		user: User,
 		params: ExploreResourcesParams,
+		evalLlmMockHandler?: EvalLlmMockHandler,
 	): Promise<ExploreResourcesResult> {
 		const credentials = await this.resolveExploreCredentials(user, params);
 		const personalProject = await this.projectRepository.getPersonalProjectForUserOrFail(user.id);
@@ -74,6 +77,7 @@ export class NodeResourceExplorerService {
 			projectId: personalProject.id,
 			currentNodeParameters,
 		});
+		if (evalLlmMockHandler) additionalData.evalLlmMockHandler = evalLlmMockHandler;
 
 		// Look up the property's builderHint so the agent sees selection guidance
 		// alongside the raw list. This makes the hint reachable even when the

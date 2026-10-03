@@ -17,6 +17,7 @@ import { buildPdfWithText, synthesizeBinaryFixture } from 'n8n-core';
 import { z } from 'zod';
 
 import { fetchApiDocs } from './api-docs';
+import { contractResponseNotes } from './contract-response';
 import { buildDateAnchors } from './date-anchors';
 import { findMockQuirks } from './mock-quirks';
 import { extractNodeConfig } from './node-config';
@@ -55,7 +56,7 @@ Response SHAPE comes from the API docs; DATA VALUES come from the node config. U
 
 **Honor request filters.** When the request narrows results — a date-range constraint (\`gte\`/\`lte\`/\`since\`/\`after\`/\`before\` params, or filter variables inside a GraphQL query), a status/type filter, a search query, or a \`limit\` — EVERY record in your response MUST satisfy it. Never include records outside the requested window "for realism": workflows re-filter and count your records against the real clock, and one out-of-window item changes the counts the test asserts. For date filters, resolve the requested window against the Date anchors and double-check every returned timestamp falls inside it. When the scenario says records exist "in the last N days", place them safely inside that window (e.g. 2–5 days ago), never on the boundary and never on training-data dates. When the scenario ALSO describes records outside the window (e.g. "two issues from 3 weeks ago"), those records exist in storage but the API filters them out server-side — EXCLUDE them from this response entirely; never shift their dates into the window to keep them visible (their age is part of the test's setup, and the excluded records are how the test verifies the filter works).
 
-**Node response-handling options are not part of the body.** The node config may include options that control how n8n post-processes the response — \`fullResponse\`, \`responseFormat\`, \`outputPropertyName\`, pagination. These are applied AFTER you return and must NOT change the body you produce: always return the raw body the real API sends over the wire. Never reshape the body to mimic them — a body shaped like \`{ statusCode, headers, body }\` (mimicking \`fullResponse\`) or \`{ <outputPropertyName>: ... }\` is wrong.
+**Node response-handling options are not part of the body.** The node config may include options that control how n8n post-processes the response — \`fullResponse\`, \`responseFormat\`, \`outputPropertyName\`, pagination, and simplification (\`simple\`, \`simplify\`, \`simplifyOutput\`). These are applied AFTER you return and must NOT change the body you produce: always return the raw body the real API sends over the wire. Never reshape the body to mimic them — a body shaped like \`{ statusCode, headers, body }\` (mimicking \`fullResponse\`) or \`{ <outputPropertyName>: ... }\` is wrong. The scenario, hints and pinned outputs often describe records as the node EMITS them after simplification (flattened or renamed keys such as \`property_status\`). Put those values where the raw API carries them, and never copy simplified keys into the body.
 
 **Response envelope.** Return the body exactly as the real service sends it over the wire, including any top-level wrapper the API puts around results — e.g. \`{ "data": [...], "nextCursor": null }\`, \`{ "results": [...] }\`, \`{ "items": [...], "has_more": false }\`, \`{ "ok": true, "result": ... }\`. Match the real API's top-level shape exactly: many list endpoints wrap their items, but plenty return a bare top-level array (e.g. an endpoint that returns an array of IDs). Follow what the real API actually returns per the docs — don't default to wrapping a bare-array response, and don't strip a wrapper the API really uses.
 
@@ -300,7 +301,12 @@ async function generateMockResponse(
 		qs?: Record<string, unknown>;
 		headers?: Record<string, unknown>;
 	},
-	node: { name: string; type: string; parameters?: Record<string, unknown> },
+	node: {
+		name: string;
+		type: string;
+		typeVersion?: number;
+		parameters?: Record<string, unknown>;
+	},
 	context: MockResponseContext,
 ): Promise<EvalMockHttpResponse> {
 	// A request without a URL is un-mockable and never comes from a correctly
@@ -363,6 +369,9 @@ async function generateMockResponse(
 	if (context.nodeConfig) {
 		sections.push('', '## Node Configuration', context.nodeConfig);
 	}
+
+	const contractNotes = contractResponseNotes(node);
+	if (contractNotes) sections.push('', '## Node contract', contractNotes);
 
 	if (context.globalContext || context.nodeHint || context.scenarioHints) {
 		sections.push('', '## Context');
