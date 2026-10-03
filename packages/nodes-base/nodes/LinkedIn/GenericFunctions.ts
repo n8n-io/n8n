@@ -8,6 +8,11 @@ import type {
 	IHttpRequestMethods,
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
+
+// LinkedIn versions use YYYYMM and stay active for about one year.
+// Latest: https://learn.microsoft.com/en-us/linkedin/marketing/versioning
+export const LINKEDIN_API_VERSION = '202609';
+
 function resolveHeaderData(fullResponse: any) {
 	if (fullResponse.statusCode === 201) {
 		return { urn: fullResponse.headers['x-restli-id'] };
@@ -37,7 +42,7 @@ export async function linkedInApiRequest(
 		headers: {
 			Accept: 'application/json',
 			'X-Restli-Protocol-Version': '2.0.0',
-			'LinkedIn-Version': '202604',
+			'LinkedIn-Version': LINKEDIN_API_VERSION,
 		},
 		method,
 		body,
