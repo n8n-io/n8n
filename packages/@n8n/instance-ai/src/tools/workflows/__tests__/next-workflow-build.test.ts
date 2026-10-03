@@ -380,9 +380,10 @@ import { googleGemini } from '@n8n/nodes/googleGemini';`;
 			exploreResources: ReturnType<typeof vi.fn>,
 			credentials = [{ id: 'c1', name: 'Notion account', type: 'notionApi' }],
 			logger = { debug: vi.fn() },
+			resourceLookupTimeoutMs?: () => Promise<number | undefined>,
 		) =>
 			({
-				nodeService: { exploreResources },
+				nodeService: { exploreResources, resourceLookupTimeoutMs },
 				credentialService: { list: vi.fn().mockResolvedValue(credentials) },
 				logger,
 			}) as unknown as InstanceAiContext;
@@ -475,6 +476,39 @@ import { googleGemini } from '@n8n/nodes/googleGemini';`;
 				await vi.advanceTimersByTimeAsync(5_000);
 				expect((await pending).size).toBe(0);
 				expect(outcomeLogged(logger)).toMatchObject({ outcome: 'timeout' });
+			} finally {
+				vi.useRealTimers();
+			}
+		});
+
+		it('waits as long as the node service asks for, and 5 seconds when it asks for no time', async () => {
+			vi.useFakeTimers();
+			try {
+				const slowLookup = () =>
+					vi.fn(
+						async () =>
+							await new Promise((resolve) =>
+								setTimeout(() => resolve({ results: fields, mocked: true }), 30_000),
+							),
+					);
+				const mocked = { debug: vi.fn() };
+				const real = { debug: vi.fn() };
+				const pending = Promise.all([
+					fetchResourceFields(
+						makeContext(slowLookup(), undefined, mocked, async () => 60_000),
+						tasks,
+					),
+					fetchResourceFields(
+						makeContext(slowLookup(), undefined, real, async () => undefined),
+						tasks,
+					),
+				]);
+				await vi.advanceTimersByTimeAsync(30_000);
+				const [mockedFields, realFields] = await pending;
+				expect(mockedFields.get('Tasks')).toEqual(fields);
+				expect(outcomeLogged(mocked)).toMatchObject({ outcome: 'mocked' });
+				expect(realFields.size).toBe(0);
+				expect(outcomeLogged(real)).toMatchObject({ outcome: 'timeout' });
 			} finally {
 				vi.useRealTimers();
 			}

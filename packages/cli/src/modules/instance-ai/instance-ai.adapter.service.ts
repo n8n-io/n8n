@@ -171,7 +171,7 @@ import {
 	scopeCredentialProvider,
 	type AgentCredentialProvider,
 } from './eval/scoped-credential-provider';
-import { configureEvalMockRun } from './eval/design-time-mock.service';
+import { configureEvalMockRun, EVAL_MOCK_LOOKUP_TIMEOUT_MS } from './eval/design-time-mock.service';
 import { InstanceAiBuilderDelegateAdapterService } from '@/modules/agents/instance-ai-builder-delegate.adapter';
 import { DataTableRepository } from '@/modules/data-table/data-table.repository';
 import { DataTableService } from '@/modules/data-table/data-table.service';
@@ -4151,6 +4151,9 @@ export class InstanceAiAdapterService {
 				);
 				return evalMockHandler ? { ...result, mocked: true } : result;
 			},
+
+			resourceLookupTimeoutMs: async () =>
+				(await getEvalMockHandler?.()) ? EVAL_MOCK_LOOKUP_TIMEOUT_MS : undefined,
 
 			findUnavailableLocatorValues: async (params): Promise<UnavailableLocatorValue[]> =>
 				await this.nodeResourceExplorerService.findUnavailableResourceLocatorValues(user, params),

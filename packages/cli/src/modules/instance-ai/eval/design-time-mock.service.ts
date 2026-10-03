@@ -19,6 +19,12 @@ export function designTimeMockContext(userRequests: string): string {
 		: '';
 }
 
+/**
+ * How long a build waits for a mocked resource lookup. One LLM mock call takes 10-30 s and a
+ * lookup can make two. The default budget of a real API cuts the lookup off every time.
+ */
+export const EVAL_MOCK_LOOKUP_TIMEOUT_MS = 60_000;
+
 /** Sends the HTTP of a run to `handler`, with the credential handling of a scenario run. */
 export function configureEvalMockRun(
 	handler: EvalLlmMockHandler,

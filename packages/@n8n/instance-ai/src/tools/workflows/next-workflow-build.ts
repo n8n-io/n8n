@@ -228,9 +228,9 @@ const RESOURCE_LOOKUPS: Record<string, (parameters: Record<string, unknown>) => 
 
 const RESOURCE_LOOKUP_TIMEOUT_MS = 5_000;
 
-async function withTimeout<T>(work: Promise<T>, fallback: T): Promise<T> {
+async function withTimeout<T>(work: Promise<T>, fallback: T, timeoutMs: number): Promise<T> {
 	return await new Promise((resolve) => {
-		const timer = setTimeout(() => resolve(fallback), RESOURCE_LOOKUP_TIMEOUT_MS);
+		const timer = setTimeout(() => resolve(fallback), timeoutMs);
 		work.then(resolve, () => resolve(fallback)).finally(() => clearTimeout(timer));
 	});
 }
@@ -282,6 +282,9 @@ export async function fetchResourceFields(
 	});
 	if (targets.length === 0) return new Map();
 	const stored = await context.credentialService.list().catch(() => []);
+	const timeoutMs =
+		(await context.nodeService.resourceLookupTimeoutMs?.().catch(() => undefined)) ??
+		RESOURCE_LOOKUP_TIMEOUT_MS;
 	const fetched = await Promise.all(
 		targets.map(async ({ name, node, action, calls }) => {
 			const bound = Object.entries(node.credentials ?? {}).flatMap(([type, value]) =>
@@ -297,10 +300,11 @@ export async function fetchResourceFields(
 						? accepted.map(({ id, type }) => ({ credentialType: type, credentialId: id }))
 						: [];
 			const { fields, outcome }: Lookup = credential
-				? await withTimeout(firstFields(explore, calls, credential), {
-						fields: [],
-						outcome: 'timeout',
-					})
+				? await withTimeout(
+						firstFields(explore, calls, credential),
+						{ fields: [], outcome: 'timeout' },
+						timeoutMs,
+					)
 				: { fields: [], outcome: 'no-credential' };
 			context.logger.debug('Resource lookup for a node contract', {
 				nodeName: name,

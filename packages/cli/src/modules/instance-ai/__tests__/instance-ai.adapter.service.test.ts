@@ -1839,6 +1839,7 @@ import type { InstanceAiBuilderDelegate, OrchestrationContext } from '@n8n/insta
 
 import { InstanceAiAdapterService } from '../instance-ai.adapter.service';
 import { EvalMockedCredentialsHelper } from '../eval/eval-mocked-credentials-helper';
+import { EVAL_MOCK_LOOKUP_TIMEOUT_MS } from '../eval/design-time-mock.service';
 import { InstanceAiBuilderDelegateAdapterService } from '@/modules/agents/instance-ai-builder-delegate.adapter';
 import { AgentsCredentialProvider } from '@/modules/agents/adapters/agents-credential-provider';
 import { userHasScopes } from '@/permissions.ee/check-access';
@@ -1996,6 +1997,21 @@ describe('executeNodeService adapter', () => {
 			'required permissions',
 		);
 		expect(executeNodeService.run).not.toHaveBeenCalled();
+	});
+});
+
+describe('nodeService.resourceLookupTimeoutMs', () => {
+	it('gives a lookup that the eval mock answers the eval budget, and other lookups none', async () => {
+		const { service, mockUser } = createNodeAdapterServiceForTests([]);
+		const handler: EvalLlmMockHandler = vi.fn();
+		const budgetOf = async (getEvalMockHandler?: () => Promise<EvalLlmMockHandler | undefined>) =>
+			await service
+				.createContext(mockUser, { getEvalMockHandler })
+				.nodeService.resourceLookupTimeoutMs?.();
+
+		expect(await budgetOf(async () => handler)).toBe(EVAL_MOCK_LOOKUP_TIMEOUT_MS);
+		expect(await budgetOf(async () => undefined)).toBeUndefined();
+		expect(await budgetOf()).toBeUndefined();
 	});
 });
 

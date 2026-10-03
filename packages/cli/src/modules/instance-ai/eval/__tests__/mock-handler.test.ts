@@ -521,6 +521,16 @@ describe('createLlmMockHandler', () => {
 		expect(second.body).not.toBe(first.body);
 	});
 
+	it('shares one generation between concurrent identical requests', async () => {
+		llmSubmits({ type: 'json', body: { results: [] } });
+		const handler = createLlmMockHandler();
+
+		const [first, second] = await Promise.all([callHandler(handler), callHandler(handler)]);
+
+		expect(mockGenerate).toHaveBeenCalledTimes(1);
+		expect(second.body).toEqual(first.body);
+	});
+
 	it('evicts a soft-fallback response so the next identical request regenerates', async () => {
 		// json + textBody soft-captures the spec and rejects it; the agent never
 		// resubmits, so the first response is served as a soft fallback.
