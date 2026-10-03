@@ -180,6 +180,7 @@ const AI_CONNECTION_TYPES = [
 	'ai_document',
 	'ai_textSplitter',
 	'ai_reranker',
+	'ai_decisionModel',
 ];
 
 /**
@@ -196,6 +197,7 @@ const AI_CONNECTION_TO_SUBNODE_FIELD: Record<string, string> = {
 	ai_document: 'documentLoader',
 	ai_textSplitter: 'textSplitter',
 	ai_reranker: 'reranker',
+	ai_decisionModel: 'decisionModel',
 };
 
 /**
@@ -844,6 +846,7 @@ const AI_CONNECTION_TO_SDK_FUNCTION: Record<string, string> = {
 	ai_document: 'documentLoader()',
 	ai_textSplitter: 'textSplitter()',
 	ai_reranker: 'reranker()',
+	ai_decisionModel: 'decisionModel()',
 };
 
 /**

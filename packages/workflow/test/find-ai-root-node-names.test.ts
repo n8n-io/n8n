@@ -63,6 +63,7 @@ describe('findAiRootNodeNames', () => {
 		test.each([
 			NodeConnectionTypes.AiAgent,
 			NodeConnectionTypes.AiChain,
+			NodeConnectionTypes.AiDecisionModel,
 			NodeConnectionTypes.AiDocument,
 			NodeConnectionTypes.AiEmbedding,
 			NodeConnectionTypes.AiLanguageModel,

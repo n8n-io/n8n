@@ -25,7 +25,12 @@ import type {
 	INodeTypes,
 	NodeConnectionType,
 } from 'n8n-workflow';
-import { ERROR_TRIGGER_NODE_TYPE, NodeConnectionTypes, NodeHelpers } from 'n8n-workflow';
+import {
+	ERROR_TRIGGER_NODE_TYPE,
+	NodeConnectionTypes,
+	nodeConnectionTypes,
+	NodeHelpers,
+} from 'n8n-workflow';
 import { defineStore } from 'pinia';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -250,18 +255,11 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 					});
 				} else {
 					// If outputs is not an array, it must be a string expression
-					// in which case we'll try to match all possible non-main output types that are supported
-					const connectorTypes: NodeConnectionType[] = [
-						NodeConnectionTypes.AiVectorStore,
-						NodeConnectionTypes.AiChain,
-						NodeConnectionTypes.AiDocument,
-						NodeConnectionTypes.AiEmbedding,
-						NodeConnectionTypes.AiLanguageModel,
-						NodeConnectionTypes.AiMemory,
-						NodeConnectionTypes.AiOutputParser,
-						NodeConnectionTypes.AiTextSplitter,
-						NodeConnectionTypes.AiTool,
-					];
+					// in which case we'll try to match all possible non-main output types.
+					// Derived from the enum so a new connection type is never missed here.
+					const connectorTypes: NodeConnectionType[] = nodeConnectionTypes.filter(
+						(type) => type !== NodeConnectionTypes.Main,
+					);
 					connectorTypes.forEach((outputType: NodeConnectionType) => {
 						if (outputTypes.includes(outputType)) {
 							acc[outputType] = acc[outputType] || [];

@@ -216,6 +216,7 @@ Common AI connection types for sub-node search:
 - NodeConnectionTypes.AiVectorStore (finds vector store sub-nodes)
 - NodeConnectionTypes.AiDocument (finds document loader sub-nodes)
 - NodeConnectionTypes.AiTextSplitter (finds text splitter sub-nodes)
+- NodeConnectionTypes.AiDecisionModel (finds decision model sub-nodes like "TypeSafe Jev Decision Model")
 
 You can search for multiple different criteria at once by providing an array of queries.`,
 			schema: nodeSearchSchema,

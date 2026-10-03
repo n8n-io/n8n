@@ -196,6 +196,7 @@ export const NON_CANVAS_SDK_FUNCTIONS = new Set([
 	'documentLoader',
 	'textSplitter',
 	'reranker',
+	'decisionModel',
 	'fromAi',
 	'nodeJson',
 ]);
