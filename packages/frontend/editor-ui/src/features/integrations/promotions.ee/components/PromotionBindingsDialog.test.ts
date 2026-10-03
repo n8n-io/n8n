@@ -4,7 +4,7 @@ import { fireEvent, waitFor, within } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import type { ApplyPackageResultDto } from '@n8n/api-types';
 import PromotionBindingsDialog from './PromotionBindingsDialog.vue';
-import { continueApplyPromotion } from '../promotionsSettings.api';
+import { continueApplyProjectSelection, continueApplyPromotion } from '../promotionsSettings.api';
 import {
 	applied,
 	blocked,
@@ -90,6 +90,30 @@ it('creates the original binding, restores focus, and emits the full applied res
 	expect(emitted('applied')).toEqual([[applied]]);
 	expect(emitted('update:open')).toEqual([[false]]);
 	expect(emitted('close-requested')).toBeUndefined();
+});
+
+it('forwards continueWith so Continue resumes the selection', async () => {
+	vi.mocked(continueApplyProjectSelection).mockResolvedValue(applied);
+	const initial = blocked({ missingBindings: [] });
+	const { getByRole, emitted } = await renderDialog({
+		props: {
+			open: true,
+			blockedResult: initial,
+			createBinding: vi.fn(),
+			continueWith: { projectId: 'team-a', workflowIds: ['wf-a', 'wf-b'] },
+		},
+	});
+	await userEvent.click(getByRole('button', { name: 'Continue' }));
+	expect(continueApplyProjectSelection).toHaveBeenCalledWith(
+		{ baseUrl: '/custom/api/v1' },
+		'team-a',
+		{
+			workflowIds: ['wf-a', 'wf-b'],
+			expectedSource: { configId: initial.configId, ...initial.git },
+		},
+	);
+	expect(continueApplyPromotion).not.toHaveBeenCalled();
+	expect(emitted('applied')).toEqual([[applied]]);
 });
 
 it.each(['Close', 'Close dialog', 'Back', 'Escape'] as const)(
