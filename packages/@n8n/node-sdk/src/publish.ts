@@ -10,7 +10,7 @@ import { UnexpectedError, UserError, type INode, type INodeExecutionData } from 
 
 import { isSecretField } from './credentials';
 import type { Action, DataTable, DataTables } from './define';
-import { freezeAction, type FrozenAction } from './freeze';
+import { freezeAction, type FrozenAction, type LastVersionOf } from './freeze';
 import {
 	isDataTableColumns,
 	isDataTableInfo,
@@ -430,6 +430,8 @@ export interface ContractRegistry {
 		/** The npm integrity, e.g. `sha512-…`. */
 		integrity: string;
 	}>;
+	/** The bundle hash of one version, from the packument, so no tarball download. */
+	bundleHash(name: string, version: string): Promise<string>;
 	/** Publishes one version. */
 	publish(name: string, version: string, tarball: Buffer): Promise<void>;
 }
@@ -467,6 +469,12 @@ export function npmRegistry(url: string): ContractRegistry {
 				await rm(dir, { recursive: true, force: true });
 			}
 		},
+		async bundleHash(name, version) {
+			const hash = (await npm('view', `${name}@${version}`, 'n8nContract.bundleHash')).trim();
+			if (!/^[a-f0-9]{64}$/.test(hash))
+				throw new UserError(`The registry has no valid bundle hash for ${name}@${version}`);
+			return hash;
+		},
 		async publish(name, version, tarball) {
 			const newest = (await versions(name)).every((other) => compareSemver(other, version) < 0);
 			const dir = await mkdtemp(path.join(tmpdir(), 'n8n-contract-'));
@@ -481,6 +489,23 @@ export function npmRegistry(url: string): ContractRegistry {
 		},
 	};
 }
+
+/** The newest version that `registry` has of an action in one major and minor. */
+export const lastPublishedIn =
+	(registry: ContractRegistry): LastVersionOf =>
+	async (id, major, minor) => {
+		const name = packageNameOf(id);
+		const last = (await registry.versions(name))
+			.filter((version) => {
+				const semver = parseSemver(version);
+				return semver.major === major && semver.minor === minor;
+			})
+			.sort(compareSemver)
+			.at(-1);
+		return last === undefined
+			? undefined
+			: { id, semver: last, bundleHash: await registry.bundleHash(name, last) };
+	};
 
 /** What `publishAction` publishes, and where. */
 export interface PublishOptions {
@@ -497,13 +522,17 @@ export interface PublishOptions {
 }
 
 /**
- * Freezes HEAD, gates it against the newest published version below it, signs it, and
- * publishes it. A version already published with the same bundle is a no-op; with another
- * bundle it is refused.
+ * Freezes HEAD with the patch after the newest published one, gates it against the newest
+ * published version below it, signs it, and publishes it. A version already published with
+ * the same bundle is a no-op; with another bundle it is refused.
  */
 export async function publishAction(options: PublishOptions): Promise<VersionManifest> {
 	const { registry, fixtures, privateKey } = options;
-	const frozen = await freezeAction(options.entryFile, options.exportName);
+	const frozen = await freezeAction(
+		options.entryFile,
+		options.exportName,
+		lastPublishedIn(registry),
+	);
 	const { id, semver, bundleHash } = frozen.manifest;
 	const name = packageNameOf(id);
 	const published = await registry.versions(name);
@@ -514,7 +543,8 @@ export async function publishAction(options: PublishOptions): Promise<VersionMan
 	if (published.includes(semver)) {
 		const existing = await open(semver);
 		if (existing.bundleHash === bundleHash) return existing;
-		throw new UserError(`${id}@${semver} is published with other bytes; bump the version`);
+		// Freeze took the patch from the registry, so the registry changed since then.
+		throw new UserError(`${id}@${semver} is published with other bytes; run publish again`);
 	}
 	const previous = published
 		.filter((version) => compareSemver(version, semver) < 0)

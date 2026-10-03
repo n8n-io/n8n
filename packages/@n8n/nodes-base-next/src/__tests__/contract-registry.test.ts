@@ -41,14 +41,13 @@ vi.mock('@n8n/node-sdk/sandbox', async (importOriginal) => ({
 	sandboxExecutorLoader: vi.fn(),
 }));
 
-const echoSource = (minor: number, patch: number, text: string) => `
+const echoSource = (minor: number, text: string) => `
 import { defineNode, t } from '@n8n/node-sdk';
 const { obj, str } = t;
 
 export const echo = defineNode({ id: 'demo', displayName: 'Demo', credentials: [] }).action('echo', {
 	version: 1,
 	minor: ${minor},
-	patch: ${patch},
 	action: 'Echo',
 	summary: 'Echo the text.',
 	flow: { effect: 'transform', cardinality: 'per-item' },
@@ -112,14 +111,16 @@ const listen = async (server: Server) =>
 beforeAll(async () => {
 	dirs.root = await mkdtemp(path.join(tmpdir(), 'contract-registry-'));
 	const entry = path.join(dirs.root, 'echo.ts');
-	const freeze = async (minor: number, patch: number, text: string) => {
-		await writeFile(entry, echoSource(minor, patch, text));
-		const frozen = await freezeAction(entry, 'echo');
+	const freeze = async (minor: number, text: string, last?: string) => {
+		await writeFile(entry, echoSource(minor, text));
+		const frozen = await freezeAction(entry, 'echo', async () =>
+			last === undefined ? undefined : frozenOf(last).manifest,
+		);
 		versions.set(frozen.manifest.semver, frozen);
 	};
-	await freeze(0, 0, 'input.text.toUpperCase()');
-	await freeze(0, 1, "input.text + '?'");
-	await freeze(1, 0, "input.text + (input.suffix ?? '#')");
+	await freeze(0, 'input.text.toUpperCase()');
+	await freeze(0, "input.text + '?'", '1.0.0');
+	await freeze(1, "input.text + (input.suffix ?? '#')");
 	registry.server.on('request', (request, response) => {
 		const tarball = /^\/tarballs\/(.+)\.tgz$/.exec(request.url ?? '')?.[1];
 		const found = tarball ? tarballs.get(tarball) : undefined;

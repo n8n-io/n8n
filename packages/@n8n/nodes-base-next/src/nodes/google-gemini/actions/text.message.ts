@@ -19,7 +19,6 @@ const candidate = t.loose(
 );
 
 export const messageGemini = text.action('message', {
-	patch: 6,
 	action: 'Message a model',
 	summary: 'Send messages to a Gemini model and get its reply as text.',
 	flow: { effect: 'read', cardinality: 'per-item', idempotent: false },

@@ -25,7 +25,6 @@ const addedPage = t.obj({ id: t.str() }).with({
 });
 
 export const pageAdded = dataSource.trigger('pageAdded', {
-	patch: 3,
 	trigger: 'On page added to data source',
 	summary: 'Starts when a page is added to a Notion data source.',
 	scopes: ['content:read'],

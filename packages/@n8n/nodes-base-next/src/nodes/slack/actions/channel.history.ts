@@ -13,7 +13,6 @@ function seconds(value: string, label: string) {
 const page = slackResponse({ messages: t.arr(slackMessage) });
 
 export const getSlackChannelHistory = channel.action('history', {
-	patch: 1,
 	action: 'Get message history',
 	summary: 'List the messages of a Slack channel, newest first. Thread replies are not included.',
 	flow: { effect: 'read', cardinality: '1:N', idempotent: true },

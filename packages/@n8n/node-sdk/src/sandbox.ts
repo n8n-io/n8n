@@ -1555,7 +1555,6 @@ function sandboxedAction(
 	const shell = {
 		id: manifest.id,
 		version: contract.version,
-		semver: manifest.semver,
 		operation: manifest.id.split('.').pop() ?? manifest.id,
 		node,
 		action: contract.action,

@@ -1164,17 +1164,11 @@ interface ContractSpec<Own extends Shape, O extends AnySchema, Sc extends string
 	 */
 	readonly version?: number;
 	/**
-	 * Bump for an additive contract change.
+	 * Bump for an additive contract change. Freeze computes the patch from the bundle.
 	 *
 	 * @defaultValue `0`
 	 */
 	readonly minor?: number;
-	/**
-	 * Bump for a code change that keeps the contract hash.
-	 *
-	 * @defaultValue `0`
-	 */
-	readonly patch?: number;
 	/** One sentence for agents and search, at most 120 characters. */
 	readonly summary: string;
 	/** The scopes of the node's credential that this contract needs. */
@@ -1274,8 +1268,6 @@ interface Built {
 	readonly operation: string;
 	/** The major: `version` of the spec, or 1. */
 	readonly version: number;
-	/** `major.minor.patch`. */
-	readonly semver: string;
 	/** The JSON Schema of the full input, the resource input included. */
 	readonly inputSchema: JsonSchema;
 	/** The names of the credential types of the node. */
@@ -1285,7 +1277,7 @@ interface Built {
 }
 
 /**
- * A built action: its spec and what its node adds (`id`, `semver`, `inputSchema`, …). Use it to
+ * A built action: its spec and what its node adds (`id`, `inputSchema`, …). Use it to
  * type any action, e.g. in a list of actions.
  */
 export type Action<
@@ -1466,17 +1458,13 @@ export interface ResourcePath {
 function built(
 	node: NodeDefinition,
 	path: ActionPath,
-	spec: Pick<
-		ContractSpec<Shape, AnySchema, string>,
-		'version' | 'minor' | 'patch' | 'input' | 'scopes'
-	>,
+	spec: Pick<ContractSpec<Shape, AnySchema, string>, 'version' | 'input' | 'scopes'>,
 ) {
 	const version = spec.version ?? 1;
 	return {
 		node,
 		id: [node.id, path.resource, path.operation].filter((part) => part !== undefined).join('.'),
 		version,
-		semver: `${version}.${spec.minor ?? 0}.${spec.patch ?? 0}`,
 		inputSchema: t.obj(spec.input).json,
 		credentialTypes: node.credential?.types.map(({ name }) => name) ?? [],
 		scopes: spec.scopes ?? [],

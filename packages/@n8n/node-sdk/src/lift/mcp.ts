@@ -168,7 +168,7 @@ export function liftMcpTool(
 		contract: {
 			...toContract(action),
 			derived: true,
-			semver: action.semver,
+			semver: `${action.version}.0.0`,
 			outputClaim: tool.outputSchema ? 'inferred' : 'unknown',
 		},
 		issues: [

@@ -133,10 +133,43 @@ export interface FrozenAction {
 }
 
 /**
- * Bundles one exported action or trigger with its helpers and dependencies. The same source gives the
- * same bytes, so a release build reproduces the HEAD bundle the registry holds.
+ * The newest frozen version of an action in one major and minor, e.g. the newest published one.
+ * Freeze computes the patch from it.
  */
-export async function freezeAction(entryFile: string, exportName: string): Promise<FrozenAction> {
+export type LastVersionOf = (
+	id: string,
+	major: number,
+	minor: number,
+) => Promise<Pick<VersionManifest, 'id' | 'semver' | 'bundleHash'> | undefined>;
+
+/**
+ * The source holds the major and the minor, because they are decisions. The patch follows the
+ * last version: the same bundle keeps its version, other bytes take the next patch. A contract
+ * change without a new minor also takes the next patch, and `checkPublish` refuses it.
+ */
+function semverOf(
+	{ id, version, minor = 0 }: Action | Trigger,
+	bundleHash: string,
+	last: Awaited<ReturnType<LastVersionOf>>,
+) {
+	const previous = last?.id === id ? parseSemver(last.semver) : undefined;
+	const patch =
+		previous?.major !== version || previous.minor !== minor
+			? 0
+			: previous.patch + (last?.bundleHash === bundleHash ? 0 : 1);
+	return `${version}.${minor}.${patch}`;
+}
+
+/**
+ * Bundles one exported action or trigger with its helpers and dependencies. The same source gives the
+ * same bytes, so a release build reproduces the HEAD bundle the registry holds. Without `lastOf`,
+ * no version is frozen before, so the patch is 0.
+ */
+export async function freezeAction(
+	entryFile: string,
+	exportName: string,
+	lastOf?: LastVersionOf,
+): Promise<FrozenAction> {
 	const { build } = await import('esbuild');
 	const result = await build({
 		stdin: {
@@ -189,15 +222,17 @@ export async function freezeAction(entryFile: string, exportName: string): Promi
 	const action = evaluateBundle(bundle, NODE_CONTRACT_VERSION);
 	const contract = toContract(action);
 	const credentials = credentialPinsOf(action);
+	const bundleHash = sha256(bundle);
+	const last = await lastOf?.(action.id, action.version, action.minor ?? 0);
 	const manifest: VersionManifest = {
 		kind: manifestKindOf(contract),
 		id: action.id,
-		semver: action.semver,
+		semver: semverOf(action, bundleHash, last),
 		nodeContract: requiredNodeContractOf(contract, 'list' in action && action.list !== undefined),
 		sdk: sdkVersion(),
 		...(credentials.length ? { credentials } : {}),
 		contractHash: contractHash(contract),
-		bundleHash: sha256(bundle),
+		bundleHash,
 		contract,
 		description:
 			'kind' in action ? triggerDescriptionOf(action) : new (toNodeType(action))().description,

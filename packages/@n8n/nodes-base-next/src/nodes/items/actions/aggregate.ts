@@ -4,7 +4,6 @@ import { itemsNode } from '../items.node';
 import { getPath, pathOf, setPath } from '../path';
 
 export const aggregateItems = itemsNode.action('aggregate', {
-	patch: 1,
 	action: 'Aggregate items',
 	summary: 'Combine all items into one item: lists of field values, or the list of all items.',
 	flow: { effect: 'transform', cardinality: 'batch' },

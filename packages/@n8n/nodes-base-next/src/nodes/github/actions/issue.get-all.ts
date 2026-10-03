@@ -15,7 +15,6 @@ const filters = t.obj({
 });
 
 export const getManyIssues = issueResource.action('getAll', {
-	patch: 1,
 	action: 'Get many issues',
 	summary: 'List the issues of a repository that match the filters, newest first by default.',
 	// A private repository needs it; a public one does not.

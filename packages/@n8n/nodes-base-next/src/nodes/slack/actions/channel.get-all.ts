@@ -5,7 +5,6 @@ import { channel, slackChannel, slackList, slackResponse } from '../slack.node';
 const page = slackResponse({ channels: t.arr(slackChannel) });
 
 export const getManySlackChannels = channel.action('getAll', {
-	patch: 1,
 	action: 'Get many channels',
 	summary: 'List Slack channels with their IDs, e.g. to find the ID of a #name.',
 	flow: { effect: 'read', cardinality: '1:N', idempotent: true },

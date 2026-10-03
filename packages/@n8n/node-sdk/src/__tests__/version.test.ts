@@ -31,6 +31,7 @@ import {
 import { defineNode, provider, t, type ActionFlow, type Shape } from '../index';
 import {
 	checkPublish,
+	lastPublishedIn,
 	packContractPackage,
 	publishAction,
 	replayFixtures,
@@ -226,7 +227,6 @@ describe('generateNodeModule', () => {
 interface EchoOptions {
 	version?: number;
 	minor?: number;
-	patch?: number;
 	input?: string;
 	text?: string;
 	migrate?: string;
@@ -235,7 +235,6 @@ interface EchoOptions {
 const echoSource = ({
 	version = 1,
 	minor = 0,
-	patch = 0,
 	input = '{ text: str() }',
 	text = 'input.text',
 	migrate = '',
@@ -249,7 +248,6 @@ const demo = defineNode({ id: 'demo', displayName: 'Demo', baseUrl: 'https://dem
 export const echo = demo.action('echo', {
 	version: ${version},
 	minor: ${minor},
-	patch: ${patch},
 	action: 'Echo',
 	summary: 'Echo the text.',
 	flow: { effect: 'transform', cardinality: 'per-item' },
@@ -288,6 +286,10 @@ const directoryRegistry = (dir: string): ContractRegistry => ({
 		const data = await readFile(path.join(dir, name, `${version}.tgz`));
 		return { data, integrity: integrityOf(data) };
 	},
+	bundleHash: async (name, version) => {
+		const data = await readFile(path.join(dir, name, `${version}.tgz`));
+		return openContractPackage(data, integrityOf(data)).manifest.bundleHash;
+	},
 	publish: async (name, version, tarball) => {
 		await mkdir(path.join(dir, name), { recursive: true });
 		// `wx` refuses a republish, as npm does.
@@ -307,10 +309,17 @@ const contextOf = (metadata: ITaskMetadata[] = []) =>
 
 const dirs = { root: '', registry: '', entry: '', shout: '' };
 
-const freeze = async (options: EchoOptions = {}) => {
+const freeze = async (options: EchoOptions = {}, last?: VersionManifest) => {
 	await writeFile(dirs.entry, echoSource(options));
-	return await freezeAction(dirs.entry, 'echo');
+	return await freezeAction(dirs.entry, 'echo', async () => last);
 };
+
+/** A frozen version of the same contract with other bytes. */
+const olderBundleOf = (manifest: VersionManifest, semver = manifest.semver): VersionManifest => ({
+	...manifest,
+	semver,
+	bundleHash: sha256('older bytes'),
+});
 
 const writeShout = async (body: string) =>
 	await writeFile(dirs.shout, `export const shout = (text: string) => ${body};\n`);
@@ -324,6 +333,45 @@ beforeAll(async () => {
 
 afterAll(async () => {
 	await rm(dirs.root, { recursive: true, force: true });
+});
+
+describe('freezeAction', () => {
+	it('computes the patch from the last version of the same major and minor', async () => {
+		await writeShout('text.toUpperCase()');
+		const { manifest } = await freeze();
+		const semverAfter = async (last: VersionManifest, options: EchoOptions = {}) =>
+			(await freeze(options, last)).manifest.semver;
+
+		expect(manifest.semver).toBe('1.0.0');
+		expect(await semverAfter(manifest)).toBe('1.0.0');
+		expect(await semverAfter(olderBundleOf(manifest))).toBe('1.0.1');
+		expect(await semverAfter(olderBundleOf(manifest, '1.0.4'))).toBe('1.0.5');
+		expect(await semverAfter(olderBundleOf(manifest, '1.0.4'), { minor: 1 })).toBe('1.1.0');
+	});
+
+	it('asks for the last version of the major and minor of the source', async () => {
+		await writeShout('text.toUpperCase()');
+		const asked: unknown[] = [];
+		await writeFile(dirs.entry, echoSource({ version: 2, minor: 3 }));
+		await freezeAction(dirs.entry, 'echo', async (...head) => {
+			asked.push(head);
+			return undefined;
+		});
+		expect(asked).toEqual([['demo.echo', 2, 3]]);
+	});
+
+	it('takes no patch in the source', () => {
+		demo.action('echo', {
+			// @ts-expect-error freeze computes the patch
+			patch: 1,
+			action: 'Echo',
+			summary: 'Echo the text.',
+			flow: FLOW,
+			input: {},
+			output: t.obj({}),
+			async *run() {},
+		});
+	});
 });
 
 describe('checkPublish', () => {
@@ -342,7 +390,7 @@ describe('checkPublish', () => {
 
 	it('refuses a patch whose contract hash moved', async () => {
 		const prev = await v1();
-		const next = await freeze({ patch: 1 });
+		const next = await freeze({}, olderBundleOf(prev));
 		const moved: FrozenAction = {
 			...next,
 			manifest: { ...next.manifest, contractHash: sha256('other contract') },
@@ -360,7 +408,7 @@ describe('checkPublish', () => {
 		await expect(checkPublish(prev, await freeze(), fixturesOf('HELLO!'))).rejects.toThrow(
 			'must be newer',
 		);
-		const patch = await freeze({ patch: 1 });
+		const patch = await freeze({}, olderBundleOf(prev));
 		await expect(checkPublish(prev, patch, fixturesOf('hello!'))).rejects.toThrow(
 			'demo.echo@1.0.1 fails its fixtures: demo.echo@1.0.1 fixture "echo": output [{"text":"HELLO!"}]',
 		);
@@ -617,13 +665,20 @@ describe('published versions', () => {
 		// The same bytes again: a no-op.
 		await expect(publish(fixturesOf('HELLO!'))).resolves.toEqual(v100);
 
-		// The helper changes: 1.0.0 cannot take other bytes, so the change ships as 1.0.1.
+		// The helper changes: the same contract with other bytes ships as the next patch.
 		await writeShout("text + '?'");
-		await expect(publish(fixturesOf('hello!?'))).rejects.toThrow('other bytes');
-		await writeFile(dirs.entry, echoSource({ patch: 1 }));
 		const v101 = await publish(fixturesOf('hello!?'));
+		expect(v101.semver).toBe('1.0.1');
 		expect(v101.contractHash).toBe(v100.contractHash);
 		expect(v101.bundleHash).not.toBe(v100.bundleHash);
+		await expect(publish(fixturesOf('hello!?'))).resolves.toEqual(v101);
+
+		// A contract change needs a minor or a major in the source.
+		await writeFile(dirs.entry, echoSource({ input: '{ text: str(), prefix: str().optional() }' }));
+		await expect(publish(fixturesOf('hello!?'))).rejects.toThrow(
+			'demo.echo@1.0.2 is a patch bump from 1.0.1, but the change is minor',
+		);
+		await writeFile(dirs.entry, echoSource());
 
 		const name = packageNameOf('demo.echo');
 		const opened = await Promise.all(
@@ -639,7 +694,12 @@ describe('published versions', () => {
 		expect(issues.flat()).toEqual([]);
 
 		const old = opened.find(({ manifest }) => manifest.semver === '1.0.0');
-		const head = await freezeAction(dirs.entry, 'echo');
+		const noDownload = {
+			...registry,
+			tarball: async () => await Promise.reject(new Error('lastPublishedIn downloads no tarball')),
+		};
+		const head = await freezeAction(dirs.entry, 'echo', lastPublishedIn(noDownload));
+		expect(head.manifest).toEqual(v101);
 		if (!old) throw new Error('1.0.0 is not published');
 		setContractVersionLoader(async () => frozenOf(old.manifest, old.bundle));
 		const metadata: ITaskMetadata[] = [];
@@ -660,7 +720,7 @@ describe('published versions', () => {
 
 	it('refuse a bundle that does not match its hash', async () => {
 		await writeShout('text');
-		const { manifest, bundle } = await freeze({ patch: 7 });
+		const { manifest, bundle } = await freeze();
 		const tampered = { ...manifest, bundleHash: sha256('other bytes') };
 
 		await expect(run(frozenOf(tampered, bundle))).rejects.toThrow('does not match');
@@ -668,7 +728,7 @@ describe('published versions', () => {
 
 	it('read the bundle again after a failed read', async () => {
 		await writeShout('text');
-		const { manifest, bundle } = await freeze({ patch: 8 });
+		const { manifest, bundle } = await freeze();
 		const reads = { count: 0 };
 		const flaky: FrozenVersion = {
 			manifest,
@@ -689,7 +749,7 @@ describe('published versions', () => {
 
 		it('is the version freezeAction writes: 2.1.0 without binary data', async () => {
 			await writeShout('text');
-			const { manifest } = await freeze({ patch: 8 });
+			const { manifest } = await freeze();
 			expect(manifest).toMatchObject({ kind: 'action', nodeContract: '2.1.0' });
 			expect(manifest.sdk).toMatch(/^\d+\.\d+\.\d+$/);
 		});
@@ -704,12 +764,12 @@ describe('published versions', () => {
 
 		it('refuse a bundle outside the range, or of a minor this host lacks', async () => {
 			await writeShout('text');
-			const { manifest, bundle } = await freeze({ patch: 9 });
+			const { manifest, bundle } = await freeze();
 			const typeOf = (nodeContract: NodeContractVersion) =>
 				toVersionedNodeType([frozenOf({ ...manifest, nodeContract }, bundle)]);
 
 			expect(() => typeOf('3.0.0')).toThrow(
-				'demo.echo@1.0.9 needs Node Contract 3.0.0. This host runs >=2.0.0 <3.0.0 and implements 2.5.0.',
+				'demo.echo@1.0.0 needs Node Contract 3.0.0. This host runs >=2.0.0 <3.0.0 and implements 2.5.0.',
 			);
 			expect(() => typeOf('2.6.0')).toThrow('needs Node Contract 2.6.0');
 			expect(() => typeOf('2.5.0')).not.toThrow();
@@ -734,12 +794,12 @@ describe('published versions', () => {
 
 		it('refuses a manifest without nodeContract and names its version', async () => {
 			await writeShout('text');
-			const { manifest } = await freeze({ patch: 10 });
+			const { manifest } = await freeze();
 			const { nodeContract: _, ...fields } = manifest;
 			const unversioned = (extra: Record<string, unknown>) =>
 				JSON.stringify({ ...fields, ...extra });
 			const refusal =
-				'The manifest of demo.echo@1.0.10 has no nodeContract. This host reads only manifests with nodeContract (the format from Node Contract 2.5.0): freeze the version again.';
+				'The manifest of demo.echo@1.0.0 has no nodeContract. This host reads only manifests with nodeContract (the format from Node Contract 2.5.0): freeze the version again.';
 
 			expect(() => parseManifest(unversioned({ abi: 1 }))).toThrow(refusal);
 			expect(() => parseManifest(unversioned({ apiVersion: 'n8n:action@2.4.0' }))).toThrow(refusal);
@@ -750,13 +810,13 @@ describe('published versions', () => {
 
 		it('ignores a manifest field that this host does not know', async () => {
 			await writeShout('text');
-			const { manifest } = await freeze({ patch: 10 });
+			const { manifest } = await freeze();
 			expect(parseManifest(JSON.stringify({ ...manifest, later: { x: 1 } }))).toEqual(manifest);
 		});
 
 		it('is refused by evaluateBundle for a major or minor this host lacks', async () => {
 			await writeShout('text');
-			const { bundle } = await freeze({ patch: 11 });
+			const { bundle } = await freeze();
 			expect(() => evaluateBundle(bundle, '3.0.0')).toThrow(
 				'This host cannot run Node Contract 3.0.0',
 			);

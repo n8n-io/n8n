@@ -12,7 +12,6 @@ const filePage = t
 	});
 
 export const searchFiles = file.action('search', {
-	patch: 1,
 	action: 'Search files and folders',
 	summary: 'Find files and folders by name, folder, and type.',
 	flow: { effect: 'read', cardinality: '1:N', idempotent: true },

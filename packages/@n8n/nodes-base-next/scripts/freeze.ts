@@ -5,6 +5,8 @@ import {
 	writeCredentialManifest,
 	writeFrozenAction,
 } from '@n8n/node-sdk/freeze';
+import { lastPublishedIn, npmRegistry } from '@n8n/node-sdk/publish';
+import type { VersionManifest } from '@n8n/node-sdk/registry';
 import { readdirSync, rmSync } from 'node:fs';
 import path from 'node:path';
 import { UserError } from 'n8n-workflow';
@@ -63,14 +65,23 @@ export async function actionEntries() {
 	);
 }
 
+// The registry is the one record of published patches. A build without one freezes each HEAD as patch 0.
+const REGISTRY_URL = process.env.N8N_NODE_CONTRACTS_REGISTRY_URL;
+const lastOf = REGISTRY_URL ? lastPublishedIn(npmRegistry(REGISTRY_URL)) : undefined;
+
 /** Freezes the HEAD of each action and trigger into `outDir`, so the package runs without a registry. */
 export async function freezeAll(outDir: string) {
-	return await Promise.all(
-		(await actionEntries()).map(async ({ entryFile, exportName }) => {
-			const frozen = await freezeAction(entryFile, exportName);
-			await writeFrozenAction(outDir, frozen);
-			return frozen.manifest;
-		}),
+	const entries = await actionEntries();
+	const freeze = async ({ entryFile, exportName }: (typeof entries)[number]) => {
+		const frozen = await freezeAction(entryFile, exportName, lastOf);
+		await writeFrozenAction(outDir, frozen);
+		return frozen.manifest;
+	};
+	if (!lastOf) return await Promise.all(entries.map(freeze));
+	// Each registry lookup starts npm processes, so freeze one action at a time.
+	return await entries.reduce<Promise<VersionManifest[]>>(
+		async (done, entry) => [...(await done), await freeze(entry)],
+		Promise.resolve([]),
 	);
 }
 

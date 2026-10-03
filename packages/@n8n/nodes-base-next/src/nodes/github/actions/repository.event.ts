@@ -13,7 +13,6 @@ const delivery = t.obj({
 const createdHook = t.obj({ id: t.int(), active: t.bool() }).with({ additionalProperties: true });
 
 export const repositoryEvent = repository.trigger('event', {
-	patch: 2,
 	trigger: 'On repository event',
 	summary: 'Starts on each GitHub event of a repository, e.g. a push or an opened issue.',
 	scopes: ['admin:repo_hook'],

@@ -5,7 +5,6 @@ import { row as rowResource, schemaHeaders } from '../supabase.node';
 import { tableRow } from '../table-row';
 
 export const getManySupabaseRows = rowResource.action('getAll', {
-	patch: 1,
 	action: 'Get many rows',
 	summary: 'List the rows of a table that match an optional filter.',
 	flow: { effect: 'read', cardinality: '1:N', idempotent: true },

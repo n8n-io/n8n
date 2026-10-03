@@ -4,7 +4,6 @@ import { message } from '../gmail.node';
 import { getMessage, labelsOf, simplifiedMessage } from '../message';
 
 export const getGmailMessage = message.action('get', {
-	patch: 5,
 	action: 'Get a message',
 	summary: 'Get one message by ID.',
 	flow: { effect: 'read', cardinality: 'per-item', idempotent: true },
