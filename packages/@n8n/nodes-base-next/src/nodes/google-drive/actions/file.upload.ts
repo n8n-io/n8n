@@ -1,4 +1,4 @@
-import { parse, t } from '@n8n/node-sdk';
+import { parse, path, t } from '@n8n/node-sdk';
 
 import { driveFile, driveIdOf, file, FILE_FIELDS } from '../google-drive.node';
 
@@ -30,7 +30,7 @@ export const uploadFile = file.action('upload', {
 		// A resumable upload streams the file as the body; it never goes into a multipart buffer.
 		const session = await http.request({
 			method: 'POST',
-			path: '/upload/drive/v3/files',
+			path: path`/upload/drive/v3/files`,
 			query: {
 				uploadType: 'resumable',
 				supportsAllDrives: true,

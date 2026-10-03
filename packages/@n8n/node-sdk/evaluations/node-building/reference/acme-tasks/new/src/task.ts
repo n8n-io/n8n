@@ -1,4 +1,4 @@
-import { matches, Schema, t, type Http, type Infer, type JsonSchema } from '@n8n/node-sdk';
+import { matches, path, Schema, t, type Http, type Infer, type JsonSchema } from '@n8n/node-sdk';
 
 const NULLABLE_STRING: JsonSchema = { anyOf: [{ type: 'string' }, { type: 'null' }] };
 
@@ -24,7 +24,7 @@ export async function listTasks(
 	cursor?: string,
 ): Promise<readonly Task[]> {
 	const response = await http.request({
-		path: '/tasks',
+		path: path`/tasks`,
 		query: { status, cursor, pageSize: Math.min(50, limit) },
 	});
 	if (!matches(page, response)) throw new Error('Acme Tasks returned an unexpected page');

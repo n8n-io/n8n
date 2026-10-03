@@ -1,7 +1,7 @@
 import { generatedTriggersOf, generateNodeModule } from '../entry/codegen';
 import { toNodeType, toTriggerNodeType } from '../entry/host';
 import { replyContractOf, toContract } from '../entry/registry';
-import { defineNode, parse, t, type NativeTrigger, type Trigger } from '../index';
+import { defineNode, parse, path, t, type NativeTrigger, type Trigger } from '../index';
 
 const hooks = defineNode({ id: 'hooks', displayName: 'Hooks' });
 
@@ -157,7 +157,7 @@ describe('native triggers', () => {
 			input: {},
 			output: t.obj({ id: t.str() }),
 			poll: {
-				request: () => ({ path: '/items' }),
+				request: () => ({ path: path`/items` }),
 				response: t.arr(t.obj({ id: t.int() })),
 				items: (page) => page,
 				cursor: { id: () => 1 },

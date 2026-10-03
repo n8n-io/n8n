@@ -1,4 +1,4 @@
-import { ref, t } from '@n8n/node-sdk';
+import { path, ref, t } from '@n8n/node-sdk';
 
 import {
 	content,
@@ -39,6 +39,6 @@ export const sendSlackMessage = message.action('send', {
 			...(input.threadTs ? { thread_ts: input.threadTs } : {}),
 			...(input.threadTs && input.replyBroadcast ? { reply_broadcast: true } : {}),
 		};
-		return await slackPost(http, '/chat.postMessage', body, sent);
+		return await slackPost(http, path`/chat.postMessage`, body, sent);
 	},
 });

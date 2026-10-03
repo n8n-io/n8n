@@ -55,6 +55,7 @@ import {
 	type Http,
 	type HttpMethod,
 	type HttpRequest,
+	isRequestPath,
 	limitOf,
 	type ListBinding,
 	type LogLevel,
@@ -64,6 +65,7 @@ import {
 	type PageParam,
 	pages,
 	paging,
+	pathSegmentOf,
 	type RequestBinding,
 	type RequestValue,
 	type RunInput,
@@ -630,21 +632,23 @@ const queryValue = (value: unknown) =>
 /** The request of a declarative binding for one item's input. */
 export function requestOf<I>(binding: RequestBinding<I>, input: I): HttpRequest {
 	const values: Readonly<Record<string, unknown>> = isRecord(input) ? input : {};
-	const path = binding.path.replace(/\{([^}]+)\}/g, (_, field: string) => {
+	const filled = binding.path.replace(/\{([^}]+)\}/g, (_, field: string) => {
 		const value = values[field];
 		// An empty segment sends the request to another URL, e.g. a collection.
 		if (value === undefined || value === '') {
 			throw new UserError(`The path field "${field}" has no value`);
 		}
-		return encodeURIComponent(String(queryValue(value)));
+		return pathSegmentOf(String(queryValue(value)));
 	});
+	const path = `/${filled.replace(/^\//, '')}`;
+	if (!isRequestPath(path)) throw new UserError(`The path ${path} must start with one "/"`);
 	const query =
 		typeof binding.query === 'function' ? binding.query(input) : inputValues(binding.query, values);
 	const headers = typeof binding.headers === 'function' ? binding.headers(input) : binding.headers;
 	const body = inputValues(binding.body, values);
 	return {
 		method: binding.method ?? 'GET',
-		path: `/${path.replace(/^\//, '')}`,
+		path,
 		...(query
 			? {
 					query: Object.fromEntries(

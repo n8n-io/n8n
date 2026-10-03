@@ -1,4 +1,4 @@
-import { isRecord, matches, t, type Http } from '@n8n/node-sdk';
+import { isRecord, matches, path, t, type Http } from '@n8n/node-sdk';
 
 import { message } from '../gmail.node';
 import {
@@ -25,7 +25,7 @@ const sent = t.obj({ id: t.str(), threadId: t.str(), labelIds: t.arr(t.str()).op
 });
 
 async function senderAddress(http: Http) {
-	const profile = await http.request({ path: '/profile' });
+	const profile = await http.request({ path: path`/profile` });
 	if (!isRecord(profile) || typeof profile.emailAddress !== 'string') {
 		throw new Error('Gmail returned no profile address');
 	}
@@ -94,7 +94,7 @@ export const sendGmailMessage = message.action('send', {
 		].join('\r\n');
 		const response = await http.request({
 			method: 'POST',
-			path: '/messages/send',
+			path: path`/messages/send`,
 			// base64url without padding, as Gmail reads `raw`.
 			body: {
 				raw: base64Of(utf8(mime)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''),

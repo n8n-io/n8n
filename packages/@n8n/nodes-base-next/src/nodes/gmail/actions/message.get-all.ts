@@ -1,4 +1,4 @@
-import { limitOf, pages, paging, t, type Infer } from '@n8n/node-sdk';
+import { limitOf, pages, paging, path, t, type Infer } from '@n8n/node-sdk';
 
 import { message } from '../gmail.node';
 import { getMessage, labelsOf, simplifiedMessage } from '../message';
@@ -61,7 +61,7 @@ export const getManyGmailMessages = message.action('getAll', {
 			page: idPage,
 			// Gmail gives at most 500 IDs in one page.
 			request: (pageToken, room) => ({
-				path: '/messages',
+				path: path`/messages`,
 				query: { ...query, maxResults: Math.min(room ?? 100, 500), pageToken },
 			}),
 			items: (page) => (page.messages ?? []).map(({ id }) => id),

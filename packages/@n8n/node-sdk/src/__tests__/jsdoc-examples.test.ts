@@ -8,6 +8,7 @@ import {
 	pages,
 	paging,
 	parse,
+	path,
 	provider,
 	readAs,
 	ref,
@@ -120,11 +121,23 @@ export const findPage = notion.action('findPage', {
 	output: t.jsonValue(),
 	async run({ input, http }) {
 		try {
-			return await http.request({ path: `/pages/${input.page}` });
+			return await http.request({ path: path`/pages/${input.page}` });
 		} catch (error) {
 			if (isHttpError(error) && error.status === 404) return { found: false };
 			throw error;
 		}
+	},
+});
+
+export const listIssues = notion.action('listIssues', {
+	action: 'List issues',
+	summary: 'Get the issues of a repository.',
+	flow: { effect: 'read', cardinality: 'per-item', idempotent: true },
+	input: { owner: t.str(), repo: t.str() },
+	output: t.jsonValue(),
+	async run({ input, http }) {
+		const issues = await http.request({ path: path`/repos/${input.owner}/${input.repo}/issues` });
+		return issues;
 	},
 });
 
@@ -136,7 +149,7 @@ export const download = notion.action('download', {
 	output: t.obj({ page: t.jsonValue(), file: t.binary() }),
 	egress: { fromInput: 'fileUrl' },
 	async run({ input: { fileUrl }, http }) {
-		const page = await http.request({ path: '/pages/abc' });
+		const page = await http.request({ path: path`/pages/abc` });
 		const file = await http.request({ url: fileUrl, response: 'binary' });
 		return { page, file };
 	},
@@ -151,7 +164,7 @@ export const search = notion.action('search', {
 	async *run({ input, http }) {
 		yield* pages(http, {
 			page: t.obj({ results: t.arr(t.obj({ id: t.str() })), next_cursor: t.nullable(t.str()) }),
-			request: (cursor) => ({ path: '/search', query: { start_cursor: cursor } }),
+			request: (cursor) => ({ path: path`/search`, query: { start_cursor: cursor } }),
 			items: (page) => page.results,
 			next: (page) => page.next_cursor,
 			limit: limitOf(input.paging),
@@ -161,7 +174,7 @@ export const search = notion.action('search', {
 
 const page = t.obj({ results: t.arr(t.obj({ id: t.str() })), next: t.nullable(t.str()) });
 const request = (cursor: string | undefined): HttpRequest => ({
-	path: '/search',
+	path: path`/search`,
 	query: { cursor },
 });
 const items = (body: Infer<typeof page>) => body.results;
@@ -218,7 +231,7 @@ const grokModel = async (http: Http, model: string): Promise<ChatModel> =>
 		async chat({ messages }) {
 			const body = parse(
 				t.obj({ text: t.str() }),
-				await http.request({ method: 'POST', path: '/chat', body: { model, messages } }),
+				await http.request({ method: 'POST', path: path`/chat`, body: { model, messages } }),
 			);
 			return { text: body.text ?? '', toolCalls: [], finishReason: 'stop' };
 		},
@@ -283,12 +296,12 @@ export const upload = notion.action('upload', {
 const hook = t.obj({ id: t.str() });
 const create = ({ url, secret }: { readonly url: string; readonly secret?: string }) => ({
 	method: 'POST' as const,
-	path: '/hooks' as const,
+	path: path`/hooks`,
 	body: { url, secret },
 });
 const remove = ({ id }: { readonly id: string }) => ({
 	method: 'DELETE' as const,
-	path: `/hooks/${id}` as const,
+	path: path`/hooks/${id}`,
 });
 
 export const onEvent = notion.trigger('event', {
@@ -316,7 +329,7 @@ export const onPoll = notion.trigger('polled', {
 	input: {},
 	output: event,
 	poll: {
-		request: ({ since }) => ({ path: '/events', query: { since } }),
+		request: ({ since }) => ({ path: path`/events`, query: { since } }),
 		response: t.obj({ events: t.arr(event) }),
 		items: (body) => body.events,
 		cursor: { timestamp: (item) => item.created, key: (item) => item.id },

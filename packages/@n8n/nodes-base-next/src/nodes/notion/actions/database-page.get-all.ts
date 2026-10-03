@@ -1,5 +1,6 @@
 import {
 	pages,
+	path,
 	readAs,
 	Schema,
 	t,
@@ -240,7 +241,7 @@ export const getManyDatabasePages = databasePage.action('getAll', {
 			page: queryPage,
 			request: (cursor, room) => ({
 				method: 'POST',
-				path: `/data_sources/${dataSourceId}/query`,
+				path: path`/data_sources/${dataSourceId}/query`,
 				headers: NOTION_VERSION,
 				body: {
 					...body,

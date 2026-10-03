@@ -1,4 +1,4 @@
-import { parse, t } from '@n8n/node-sdk';
+import { parse, path, t } from '@n8n/node-sdk';
 
 import { repository } from '../github.node';
 
@@ -8,12 +8,6 @@ const delivery = t.obj({
 	headers: t.json().hint('Lower-case names, e.g. x-github-event'),
 	query: t.json(),
 });
-
-const hookPath = ({
-	owner,
-	repository: name,
-}: { owner: string; repository: string }): `/${string}` =>
-	`/repos/${encodeURIComponent(owner)}/${encodeURIComponent(name)}/hooks`;
 
 /** The fields of a create response that registration reads. */
 const createdHook = t.obj({ id: t.int(), active: t.bool() }).with({ additionalProperties: true });
@@ -38,7 +32,7 @@ export const repositoryEvent = repository.trigger('event', {
 		register: {
 			create: ({ input, url, secret }) => ({
 				method: 'POST',
-				path: hookPath(input),
+				path: path`/repos/${input.owner}/${input.repository}/hooks`,
 				body: {
 					name: 'web',
 					config: {
@@ -56,10 +50,12 @@ export const repositoryEvent = repository.trigger('event', {
 				const { id, active } = parse(createdHook, body);
 				return active ? String(id) : undefined;
 			},
-			check: ({ input, id }) => ({ path: `${hookPath(input)}/${encodeURIComponent(id)}` }),
+			check: ({ input, id }) => ({
+				path: path`/repos/${input.owner}/${input.repository}/hooks/${id}`,
+			}),
 			delete: ({ input, id }) => ({
 				method: 'DELETE',
-				path: `${hookPath(input)}/${encodeURIComponent(id)}`,
+				path: path`/repos/${input.owner}/${input.repository}/hooks/${id}`,
 			}),
 		},
 		// GitHub pings a new webhook: a hook ID without an action. It starts no execution.

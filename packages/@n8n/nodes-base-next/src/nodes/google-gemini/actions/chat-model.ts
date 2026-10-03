@@ -1,4 +1,4 @@
-import { isRecord, parse, t, type ChatMessage, type ChatRequest } from '@n8n/node-sdk';
+import { isRecord, parse, path, t, type ChatMessage, type ChatRequest } from '@n8n/node-sdk';
 
 import { generateContentSchema, replyTextOf } from '../content';
 import { googleGemini } from '../google-gemini.node';
@@ -73,7 +73,7 @@ export const geminiChatModel = googleGemini.provider('chatModel', {
 				);
 				const body = await http.request({
 					method: 'POST',
-					path: `/models/${encodeURIComponent(model)}:generateContent`,
+					path: path`/models/${model}:generateContent`,
 					retry: true,
 					body: {
 						contents: contentsOf(messages),

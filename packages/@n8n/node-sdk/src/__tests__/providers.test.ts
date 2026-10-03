@@ -6,6 +6,7 @@ import { isToolContract, toNodeType } from '../entry/host';
 import { lintContract, toContract } from '../entry/registry';
 import {
 	defineNode,
+	path,
 	provider,
 	t,
 	type ActionFlow,
@@ -35,7 +36,7 @@ const chatModel = llm.provider('chatModel', {
 		return {
 			model: input.model,
 			async chat(request: ChatRequest) {
-				const body = await http.request({ method: 'POST', path: '/chat', body: request });
+				const body = await http.request({ method: 'POST', path: path`/chat`, body: request });
 				const text = typeof body === 'object' && body !== null && 'text' in body ? body.text : '';
 				return { text: String(text), toolCalls: [], finishReason: 'stop' };
 			},

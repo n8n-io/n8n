@@ -1,4 +1,4 @@
-import { t } from '@n8n/node-sdk';
+import { path, t } from '@n8n/node-sdk';
 
 import { NOTION_VERSION } from '../data-source';
 import { dataSource } from '../notion.node';
@@ -34,7 +34,7 @@ export const pageAdded = dataSource.trigger('pageAdded', {
 	poll: {
 		request: ({ input, since, page, limit }) => ({
 			method: 'POST',
-			path: `/data_sources/${encodeURIComponent(input.dataSource)}/query`,
+			path: path`/data_sources/${input.dataSource}/query`,
 			headers: NOTION_VERSION,
 			body: {
 				page_size: limit ?? 100,

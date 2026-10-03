@@ -1,4 +1,4 @@
-import { paging, t } from '@n8n/node-sdk';
+import { paging, path, t } from '@n8n/node-sdk';
 
 import { channel, slackChannel, slackList, slackResponse } from '../slack.node';
 
@@ -21,7 +21,7 @@ export const getManySlackChannels = channel.action('getAll', {
 	output: slackChannel,
 	async *run({ input, http }) {
 		yield* slackList(http, {
-			path: '/conversations.list',
+			path: path`/conversations.list`,
 			query: {
 				types: input.types.join(','),
 				exclude_archived: input.excludeArchived ? true : undefined,

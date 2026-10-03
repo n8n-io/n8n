@@ -1,4 +1,4 @@
-import { isHttpError, matches, t } from '@n8n/node-sdk';
+import { isHttpError, matches, path, t } from '@n8n/node-sdk';
 
 import { items } from '../inventory.node';
 
@@ -52,7 +52,7 @@ export const createItem = items.action('create', {
 					}
 				: { ...base, downloadUrl: input.downloadUrl };
 		const created = await http
-			.request({ method: 'POST', path: '/items', body })
+			.request({ method: 'POST', path: path`/items`, body })
 			.catch((error: unknown) => {
 				if (isHttpError(error) && error.status === 422 && matches(validationErrors, error.body)) {
 					const fields = error.body.errors.map(({ field, message }) => `${field}: ${message}`);

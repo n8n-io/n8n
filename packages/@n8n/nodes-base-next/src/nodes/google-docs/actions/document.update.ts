@@ -1,10 +1,9 @@
-import { parse, ref, t } from '@n8n/node-sdk';
+import { parse, path, ref, t } from '@n8n/node-sdk';
 
 import {
 	content,
 	document,
 	documentIdOf,
-	documentPath,
 	documentResponse,
 	documentUrlOf,
 	googleDocument,
@@ -26,11 +25,11 @@ export const updateDocument = document.action('update', {
 	output: t.obj({ documentId: t.str(), url: t.str() }),
 	async run({ input, http }) {
 		const documentId = documentIdOf(input.document);
-		const path = documentPath(documentId, ':batchUpdate');
+		const batchUpdate = path`/documents/${documentId}:batchUpdate`;
 		if (input.content.format === 'text') {
 			await http.request({
 				method: 'POST',
-				path,
+				path: batchUpdate,
 				body: {
 					requests: [
 						{ insertText: { text: input.content.text, endOfSegmentLocation: { segmentId: '' } } },
@@ -39,11 +38,13 @@ export const updateDocument = document.action('update', {
 			});
 			return { documentId, url: documentUrlOf(documentId) };
 		}
-		const end = lastNewline(await http.request({ path: documentPath(documentId) }));
+		const end = lastNewline(await http.request({ path: path`/documents/${documentId}` }));
 		// An empty body has only its last newline, at index 1.
 		if (end <= 1) {
 			const requests = markdownRequests(input.content.markdown, 1);
-			if (requests.length > 0) await http.request({ method: 'POST', path, body: { requests } });
+			if (requests.length > 0) {
+				await http.request({ method: 'POST', path: batchUpdate, body: { requests } });
+			}
 			return { documentId, url: documentUrlOf(documentId) };
 		}
 		const requests = markdownRequests(input.content.markdown, end + 1);
@@ -61,7 +62,11 @@ export const updateDocument = document.action('update', {
 					},
 				},
 			];
-			await http.request({ method: 'POST', path, body: { requests: [...reset, ...requests] } });
+			await http.request({
+				method: 'POST',
+				path: batchUpdate,
+				body: { requests: [...reset, ...requests] },
+			});
 		}
 		return { documentId, url: documentUrlOf(documentId) };
 	},

@@ -1,4 +1,4 @@
-import { isRecord, list, readAs, t, type Http, type Infer } from '@n8n/node-sdk';
+import { isRecord, list, path, readAs, t, type Http, type Infer } from '@n8n/node-sdk';
 
 const label = t.obj({ id: t.str(), name: t.str() });
 
@@ -26,7 +26,7 @@ type Label = Infer<typeof label>;
 const METADATA = { format: 'metadata', metadataHeaders: ['From', 'To', 'Cc', 'Bcc', 'Subject'] };
 
 export async function labelsOf(http: Http): Promise<Label[]> {
-	const response = await http.request({ path: '/labels' });
+	const response = await http.request({ path: path`/labels` });
 	return list(isRecord(response) ? response.labels : undefined).flatMap((entry) =>
 		isRecord(entry) && typeof entry.id === 'string' && typeof entry.name === 'string'
 			? [{ id: entry.id, name: entry.name }]
@@ -59,7 +59,7 @@ export async function getMessage(
 	labels: readonly Label[],
 ): Promise<Infer<typeof simplifiedMessage>> {
 	const message = await http.request({
-		path: `/messages/${encodeURIComponent(id)}`,
+		path: path`/messages/${id}`,
 		query: METADATA,
 	});
 	// The message is the output, so the host warns about a field in another shape.

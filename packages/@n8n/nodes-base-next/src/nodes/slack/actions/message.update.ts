@@ -1,4 +1,4 @@
-import { ref, t } from '@n8n/node-sdk';
+import { path, ref, t } from '@n8n/node-sdk';
 
 import {
 	content,
@@ -28,6 +28,6 @@ export const updateSlackMessage = message.action('update', {
 	output: updated,
 	async run({ input, http }) {
 		const body = { channel: input.channel, ts: input.ts, ...contentOf(input) };
-		return await slackPost(http, '/chat.update', body, updated);
+		return await slackPost(http, path`/chat.update`, body, updated);
 	},
 });

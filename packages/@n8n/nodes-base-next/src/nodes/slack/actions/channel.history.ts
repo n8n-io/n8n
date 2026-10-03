@@ -1,4 +1,4 @@
-import { paging, ref, t } from '@n8n/node-sdk';
+import { paging, path, ref, t } from '@n8n/node-sdk';
 
 import { channel, slackChannelId, slackMessage, slackList, slackResponse } from '../slack.node';
 
@@ -33,7 +33,7 @@ export const getSlackChannelHistory = channel.action('history', {
 	async *run({ input, http }) {
 		const { filters } = input;
 		const pages = slackList(http, {
-			path: '/conversations.history',
+			path: path`/conversations.history`,
 			query: {
 				channel: input.channel,
 				oldest: filters?.oldest ? seconds(filters.oldest, 'Oldest') : undefined,

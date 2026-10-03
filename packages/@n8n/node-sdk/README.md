@@ -11,7 +11,7 @@ See `packages/@n8n/nodes-base-next/src/nodes/**` for real nodes.
 
 | Import | For | Contents |
 |---|---|---|
-| `@n8n/node-sdk` | node authors | `defineNode`, `t` (schema builders), `provider` (`input`, `is`), `defineResource`, `ref`, `parse`, `matches`, `validate`, `list`, `isRecord`, `isHttpError`, `UserError`, `OperationalError`, paging helpers, author types |
+| `@n8n/node-sdk` | node authors | `defineNode`, `t` (schema builders), `provider` (`input`, `is`), `defineResource`, `ref`, `parse`, `matches`, `validate`, `list`, `isRecord`, `isHttpError`, `UserError`, `OperationalError`, `path`, paging helpers, author types |
 | `@n8n/node-sdk/credentials` | node authors | `defineCredential`, `credential`, `compat`, `field` (credential fields). Auth schemes only in the `auth: (a) => …` callback |
 | `@n8n/node-sdk/testing` | node authors | `runAction`, `mockHttp` |
 | `@n8n/node-sdk/host` | n8n core and cli | node and credential types (`toNodeType`, `toVersionedNodeType`, `toCredentialType`, …), loaders, Node Contract range, egress checks, `permissionsOf` (the permissions of a contract), `exampleOf` |
@@ -136,3 +136,20 @@ answers at most n calls. More than 1000 calls fail the run, because the code und
 
 `t.nullable(schema)` accepts the value or `null`. In `run()`, a field with `.default(v)` is always
 set (`RunInput`), because n8n and `runAction` fill in the default. Callers can still omit it.
+
+`t.date()`, `t.dateTime()`, `t.uri()`, `t.email()` and `t.uuid()` are strings with a JSON Schema
+`format`. `validate` checks these five formats; it ignores other formats.
+
+## Requests
+
+A request `path` is an `EncodedPath`. Only the `path` tag makes one, so `tsc` rejects a plain string
+or a template literal. The tag encodes each value as one segment and throws for an empty, `.` or
+`..` value:
+
+```ts
+await http.request({ path: path`/repos/${input.owner}/${input.repo}/issues` });
+// input.repo 'a/../b' sends /repos/<owner>/a%2F..%2Fb/issues
+```
+
+Use `url` for an absolute URL, e.g. a `next` link. A declarative `request` or `list` binding encodes
+its `{field}` values in the same way.

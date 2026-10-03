@@ -1,4 +1,4 @@
-import { ref, t } from '@n8n/node-sdk';
+import { path, ref, t } from '@n8n/node-sdk';
 
 import { message, slackChannelId, slackGet, slackResponse, slackTs } from '../slack.node';
 
@@ -12,6 +12,6 @@ export const getSlackPermalink = message.action('getPermalink', {
 	output: link,
 	async run({ input, http }) {
 		const query = { channel: input.channel, message_ts: input.ts };
-		return await slackGet(http, '/chat.getPermalink', query, link);
+		return await slackGet(http, path`/chat.getPermalink`, query, link);
 	},
 });

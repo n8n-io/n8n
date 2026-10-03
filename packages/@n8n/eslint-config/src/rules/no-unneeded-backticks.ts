@@ -1,4 +1,4 @@
-import { ESLintUtils } from '@typescript-eslint/utils';
+import { AST_NODE_TYPES, ESLintUtils } from '@typescript-eslint/utils';
 
 export const NoUnneededBackticksRule = ESLintUtils.RuleCreator.withoutDocs({
 	meta: {
@@ -18,6 +18,8 @@ export const NoUnneededBackticksRule = ESLintUtils.RuleCreator.withoutDocs({
 		return {
 			TemplateLiteral(node) {
 				if (node.expressions.length > 0) return;
+				// A tag needs backticks: path`/items` is a call, path'/items' is a syntax error.
+				if (node.parent.type === AST_NODE_TYPES.TaggedTemplateExpression) return;
 				if (node.quasis.every((q) => q.loc.start.line !== q.loc.end.line)) return;
 
 				node.quasis.forEach((q) => {

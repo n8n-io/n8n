@@ -99,12 +99,3 @@ export function issueFrom(raw: Infer<typeof issueResponse>): Issue {
 		pull_request: raw.pull_request && { html_url: raw.pull_request.html_url },
 	};
 }
-
-/** The issues path of a repository. Each name is one encoded path segment. */
-export const issuesPath = ({
-	owner,
-	repository,
-}: {
-	readonly owner: string;
-	readonly repository: string;
-}): `/${string}` => `/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repository)}/issues`;

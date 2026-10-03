@@ -1,5 +1,6 @@
 import {
 	parse,
+	path,
 	t,
 	type ChatMessage,
 	type ChatModel,
@@ -104,7 +105,7 @@ export function chatCompletionsModel(
 		async chat({ messages, tools, output }: ChatRequest) {
 			const body = await http.request({
 				method: 'POST',
-				path: '/chat/completions',
+				path: path`/chat/completions`,
 				// A completion has no effect besides its cost, so a rate limit may retry.
 				retry: true,
 				body: {

@@ -1,4 +1,4 @@
-import { parse, t, type ChatMessage, type ChatRequest, type JsonSchema } from '@n8n/node-sdk';
+import { parse, path, t, type ChatMessage, type ChatRequest, type JsonSchema } from '@n8n/node-sdk';
 
 import { anthropic } from '../anthropic.node';
 
@@ -118,7 +118,7 @@ export const anthropicChatModel = anthropic.provider('chatModel', {
 				];
 				const body = await http.request({
 					method: 'POST',
-					path: '/v1/messages',
+					path: path`/v1/messages`,
 					headers: { 'anthropic-version': '2023-06-01' },
 					retry: true,
 					body: {

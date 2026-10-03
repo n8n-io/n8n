@@ -1,6 +1,7 @@
 import {
 	NodeApiError,
 	safeRegex,
+	UserError,
 	type IExecuteFunctions,
 	type INode,
 	type JsonObject,
@@ -13,10 +14,13 @@ import { actionFileOf, lintContract, toContract } from '../entry/registry';
 import {
 	defineNode,
 	isHttpError,
+	path,
 	t,
 	validate,
 	type Action,
 	type AnySchema,
+	type Http,
+	type HttpRequest,
 	type Infer,
 	type JsonSchema,
 	type RunInput,
@@ -45,7 +49,10 @@ const listTasks = task.action('getAll', {
 	output: t.obj({ id: t.str(), title: t.str(), tags: t.arr(t.str()) }),
 	async *run({ input, http }) {
 		const max = input.paging.mode === 'limit' ? input.paging.max : undefined;
-		const body = await http.request({ path: `/projects/${input.project}/tasks`, query: { max } });
+		const body = await http.request({
+			path: path`/projects/${input.project}/tasks`,
+			query: { max },
+		});
 		yield* Array.isArray(body) ? body : [];
 	},
 });
@@ -179,6 +186,68 @@ describe('schema builders', () => {
 				await Promise.resolve({ row: header.headerRow + project.length }),
 		});
 		expect(read.id).toBe('todo.task.read');
+	});
+
+	it.each([
+		[
+			'date',
+			t.date(),
+			['2026-09-15', '2024-02-29'],
+			['2026-02-30', '2026-9-15', '2026-09-15T09:30:00Z'],
+		],
+		[
+			'date-time',
+			t.dateTime(),
+			['2026-09-15T09:30:00.000Z', '2026-09-15T09:30:00+02:00', '2026-09-15t09:30:00z'],
+			['last tuesday', '2026-09-15', '2026-09-15T09:30:00', '2026-09-15T25:00:00Z'],
+		],
+		[
+			'uri',
+			t.uri(),
+			['https://example.com/a?b=1', 'mailto:ada@example.com'],
+			['/item/1', 'example.com', 'https://a b'],
+		],
+		[
+			'email',
+			t.email(),
+			['ada@example.com', 'a.b+c@mail.example.org'],
+			['ada', 'ada@', '@example.com', 'a@b@example.com', 'ada lovelace@example.com'],
+		],
+		[
+			'uuid',
+			t.uuid(),
+			['8f14e45f-ceea-467a-9575-2a3b4c5d6e7f', '8F14E45F-CEEA-467A-9575-2A3B4C5D6E7F'],
+			['8f14e45fceea467a95752a3b4c5d6e7f', '8f14e45f-ceea-467a-9575-2a3b4c5d6e7'],
+		],
+	])('builds a %s string that validate checks', (format, schema, valid, invalid) => {
+		expect(schema.json).toEqual({ type: 'string', format });
+		expect(valid.flatMap((value) => validate(value, schema.json))).toEqual([]);
+		expect(invalid.map((value) => validate(value, schema.json))).toEqual(
+			invalid.map((value) => [
+				expect.stringMatching(`^input: "${value}" is not a ${format}, e.g. `),
+			]),
+		);
+		expect(validate(exampleOf(schema.json), schema.json)).toEqual([]);
+	});
+
+	it('checks a format at run time only: an expression passes at build time', () => {
+		const schema = t.dateTime().json;
+		expect(validate('={{ $now }}', schema, { allowExpressions: true })).toEqual([]);
+		expect(validate('x'.repeat(10_000), schema)).toHaveLength(1);
+		expect(validate('anything', t.str().with({ format: 'hostname' }).json)).toEqual([]);
+	});
+
+	it('puts the format into the manifest input schema', () => {
+		const due = task.action('due', {
+			action: 'Set a due date',
+			summary: 'Set the due date of a task.',
+			flow: { effect: 'write', cardinality: 'per-item' },
+			input: { due: t.dateTime() },
+			output: t.obj({ due: t.dateTime() }),
+			run: async ({ input }) => await Promise.resolve({ due: input.due }),
+		});
+		expect(toContract(due).input.properties?.due).toEqual({ type: 'string', format: 'date-time' });
+		expect(lintContract(toContract(due))).toEqual([]);
 	});
 
 	it('builds a nullable schema', () => {
@@ -446,6 +515,37 @@ describe('toNodeType', () => {
 			failure: { cause: 'rate-limited' },
 			context: { itemIndex: 0 },
 		});
+	});
+});
+
+describe('path', () => {
+	it('encodes each value as one path segment', () => {
+		expect(path`/repos/${'a/../b'}/issues/${7}`).toBe('/repos/a%2F..%2Fb/issues/7');
+		expect(path`/search`).toBe('/search');
+	});
+
+	it.each(['', '.', '..'])('refuses the value %j, which changes the path', (value) => {
+		expect(() => path`/repos/${value}/issues`).toThrow(UserError);
+	});
+
+	it('refuses a path that does not start with one "/"', () => {
+		expect(() => path`${'api'}/issues`).toThrow(UserError);
+		expect(() => path`//${'evil.test'}/issues`).toThrow(UserError);
+	});
+
+	it('types a request path as a path value only', () => {
+		const send = async (http: Http, id: string, count: number) => [
+			await http.request({ path: path`/pages/${id}/${count}` }),
+			await http.request({ url: `https://api.test/pages/${id}` }),
+			// @ts-expect-error a value in a raw template is not encoded
+			await http.request({ path: `/pages/${id}` }),
+			// @ts-expect-error a value in a raw template is not encoded
+			await http.request({ path: `/pages/${count}`, response: 'binary' }),
+			// @ts-expect-error a literal path is a path value too, so one rule covers each request
+			await http.request({ path: '/search' }),
+		];
+		const request: HttpRequest = { path: path`/search` };
+		expect([send, request]).toHaveLength(2);
 	});
 });
 

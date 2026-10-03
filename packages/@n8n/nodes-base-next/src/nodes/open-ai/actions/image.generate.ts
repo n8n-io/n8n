@@ -1,4 +1,4 @@
-import { parse, t, type JsonSchema } from '@n8n/node-sdk';
+import { parse, path, t, type JsonSchema } from '@n8n/node-sdk';
 
 import { image } from '../open-ai.node';
 
@@ -53,7 +53,7 @@ export const generateImage = image.action('generate', {
 		const isGptImage = input.model.startsWith('gpt-image');
 		const body = await http.request({
 			method: 'POST',
-			path: '/images/generations',
+			path: path`/images/generations`,
 			body: {
 				model: input.model,
 				prompt: input.prompt,

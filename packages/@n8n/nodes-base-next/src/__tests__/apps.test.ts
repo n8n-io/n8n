@@ -4,8 +4,8 @@ import type { IExecuteFunctions } from 'n8n-workflow';
 
 import { getIssue } from '../nodes/github/actions/issue.get';
 
-import { issueOf, issuesPath } from '../nodes/github/issue';
-import { documentIdOf, documentPath } from '../nodes/google-docs/google-docs.node';
+import { issueOf } from '../nodes/github/issue';
+import { documentIdOf } from '../nodes/google-docs/google-docs.node';
 import { markdownRequests } from '../nodes/google-docs/markdown';
 import { driveIdOf } from '../nodes/google-drive/google-drive.node';
 import { filterQuery, rowFilter } from '../nodes/supabase/filter';
@@ -100,11 +100,8 @@ describe('supabase filterQuery', () => {
 });
 
 describe('path segments and responses', () => {
-	it('encodes each interpolated segment and refuses an ID that is not one', () => {
-		expect(issuesPath({ owner: 'a b', repository: 'x/y' })).toBe('/repos/a%20b/x%2Fy/issues');
-		expect(documentPath(documentIdOf('https://docs.google.com/document/d/1Ab-_c/edit'), ':x')).toBe(
-			'/documents/1Ab-_c:x',
-		);
+	it('refuses an ID that is not one', () => {
+		expect(documentIdOf('https://docs.google.com/document/d/1Ab-_c/edit')).toBe('1Ab-_c');
 		expect(() => documentIdOf('../x')).toThrow('Not a Google Docs ID or URL');
 		expect(() => driveIdOf('a/b')).toThrow('Not a Google Drive ID or URL');
 	});

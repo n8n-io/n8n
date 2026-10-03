@@ -1,6 +1,6 @@
 import { compat, credential, defineCredential, field } from '../entry/credentials';
 import { toCredentialType } from '../entry/host';
-import { defineNode, isHttpError, isRecord, t } from '../index';
+import { defineNode, isHttpError, isRecord, path, t } from '../index';
 import { mockHttp, runAction } from '../testing';
 
 const todoApi = defineCredential({
@@ -43,7 +43,7 @@ const listTasks = task.action('getAll', {
 	...listSpec,
 	flow: { effect: 'read', cardinality: '1:N', idempotent: true },
 	async *run({ input, http }) {
-		const response = await http.request({ path: '/tasks', query: { limit: input.limit } });
+		const response = await http.request({ path: path`/tasks`, query: { limit: input.limit } });
 		yield* Array.isArray(response) ? response : [];
 	},
 });
@@ -146,7 +146,7 @@ describe('runAction', () => {
 			flow: { effect: 'read', cardinality: 'per-item' },
 			output: t.obj({ status: t.int(), retryAfter: t.str(), body: t.str() }),
 			async run({ http }) {
-				const error = await http.request({ path: '/tasks', retry: false }).then(
+				const error = await http.request({ path: path`/tasks`, retry: false }).then(
 					() => undefined,
 					(caught: unknown) => caught,
 				);
@@ -173,7 +173,7 @@ describe('runAction', () => {
 			...listSpec,
 			flow: { effect: 'read', cardinality: 'per-item' },
 			async run({ http }) {
-				await http.request({ path: '/tasks', retry: false });
+				await http.request({ path: path`/tasks`, retry: false });
 				return { id: 'a', tags: [] };
 			},
 		});
@@ -225,7 +225,7 @@ describe('runAction', () => {
 			flow: listTasks.flow,
 			async *run({ http }) {
 				for (;;) {
-					const page = await http.request({ path: '/tasks' });
+					const page = await http.request({ path: path`/tasks` });
 					yield* Array.isArray(page) ? page : [];
 				}
 			},
@@ -287,8 +287,8 @@ describe('runAction with an exchange credential', () => {
 		output: t.obj({ id: t.str() }),
 		async run({ http, credential: used }) {
 			seen.push(used);
-			await http.request({ path: '/api/user' });
-			const user = await http.request({ path: '/api/user' });
+			await http.request({ path: path`/api/user` });
+			const user = await http.request({ path: path`/api/user` });
 			return isRecord(user) && typeof user.id === 'string' ? { id: user.id } : { id: '' };
 		},
 	});

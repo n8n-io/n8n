@@ -216,7 +216,8 @@ export type RunFieldsOf<S extends Shape> = {
 type RunObjectOf<S extends Shape> = Simplify<RunFieldsOf<S>>;
 
 /**
- * A string. Add keywords with `.with()`, e.g. `t.str().with({ format: 'uri' })`.
+ * A string. Add keywords with `.with()`, e.g. `t.str().with({ minLength: 1 })`. For a date, a
+ * URI, an email or a UUID, use `t.date()`, `t.dateTime()`, `t.uri()`, `t.email()` or `t.uuid()`.
  *
  * @example
  * ```ts
@@ -224,6 +225,16 @@ type RunObjectOf<S extends Shape> = Simplify<RunFieldsOf<S>>;
  * ```
  */
 const str = () => new Schema<string>({ type: 'string' }, false);
+/** A calendar date, e.g. `2026-09-15` (`format: 'date'`). */
+const date = () => str().with({ format: 'date' });
+/** A date and time with an offset, e.g. `2026-09-15T09:30:00.000Z` (`format: 'date-time'`). */
+const dateTime = () => str().with({ format: 'date-time' });
+/** An absolute URI with a scheme, e.g. `https://example.com/item/1` (`format: 'uri'`). */
+const uri = () => str().with({ format: 'uri' });
+/** An email address, e.g. `ada@example.com` (`format: 'email'`). */
+const email = () => str().with({ format: 'email' });
+/** A UUID with hyphens, e.g. `8f14e45f-ceea-467a-9575-2a3b4c5d6e7f` (`format: 'uuid'`). */
+const uuid = () => str().with({ format: 'uuid' });
 /** A number, e.g. `t.num().with({ minimum: 0, maximum: 2 })`. */
 const num = () => new Schema<number>({ type: 'number' }, false);
 /** An integer, e.g. `t.int().with({ minimum: 1 })`. */
@@ -620,6 +631,11 @@ const modelId = (provider: string) =>
  */
 export const t = {
 	str,
+	date,
+	dateTime,
+	uri,
+	email,
+	uuid,
 	num,
 	int,
 	bool,

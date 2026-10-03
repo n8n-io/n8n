@@ -1,7 +1,6 @@
-import { parse, t } from '@n8n/node-sdk';
+import { parse, path, t } from '@n8n/node-sdk';
 
 import { issueResource } from '../github.node';
-import { issuesPath } from '../issue';
 
 const comment = t.loose(
 	t.obj({
@@ -27,7 +26,7 @@ export const commentOnIssue = issueResource.action('createComment', {
 	async run({ input, http }) {
 		const response = await http.request({
 			method: 'POST',
-			path: `${issuesPath(input)}/${encodeURIComponent(input.issueNumber)}/comments`,
+			path: path`/repos/${input.owner}/${input.repository}/issues/${input.issueNumber}/comments`,
 			body: { body: input.body },
 		});
 		const { id, html_url, body, user, created_at, updated_at } = parse(comment, response);

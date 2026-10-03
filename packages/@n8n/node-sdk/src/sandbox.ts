@@ -23,6 +23,7 @@ import {
 	type HttpMethod,
 	type HttpRequest,
 	type InputItem,
+	isRequestPath,
 	type LogLevel,
 	type NodeDefinition,
 	type RunLimits,
@@ -417,8 +418,6 @@ const headerPairsOf = (headers: unknown): Array<[string, string]> =>
 		},
 	);
 
-const isPath = (value: string): value is `/${string}` => value.startsWith('/');
-
 const isFullResponse = (
 	value: unknown,
 ): value is { body: unknown; headers: unknown; statusCode: number } =>
@@ -789,7 +788,8 @@ function callsOf(
 		}
 		const { val } = request.target;
 		const target =
-			request.target.tag === 'url' ? { url: val } : isPath(val) ? { path: val } : undefined;
+			// The guest built its path with `path`; the wire drops the brand.
+			request.target.tag === 'url' ? { url: val } : isRequestPath(val) ? { path: val } : undefined;
 		if (!target) {
 			throw resultError('transport', {
 				tag: 'transport',

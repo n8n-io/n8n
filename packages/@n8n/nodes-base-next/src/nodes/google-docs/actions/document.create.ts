@@ -1,10 +1,9 @@
-import { parse, t } from '@n8n/node-sdk';
+import { parse, path, t } from '@n8n/node-sdk';
 
 import {
 	content as contentSchema,
 	document,
 	documentIdOf,
-	documentPath,
 	documentUrlOf,
 } from '../google-docs.node';
 import { markdownRequests } from '../markdown';
@@ -54,7 +53,7 @@ export const createDocument = document.action('create', {
 		if (requests.length > 0) {
 			await http.request({
 				method: 'POST',
-				path: documentPath(id, ':batchUpdate'),
+				path: path`/documents/${id}:batchUpdate`,
 				body: { requests },
 			});
 		}

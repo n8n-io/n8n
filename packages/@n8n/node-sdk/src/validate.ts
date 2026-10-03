@@ -228,6 +228,45 @@ export function testPattern(pattern: string, input: string, flags?: string): boo
 		: safeRegex.test(pattern, input, flags);
 }
 
+const FORMAT_EXAMPLES: Record<string, string> = {
+	date: '2026-09-15',
+	'date-time': '2026-09-15T09:30:00.000Z',
+	email: 'ada@example.com',
+	uri: 'https://example.com/item/1',
+	uuid: '8f14e45f-ceea-467a-9575-2a3b4c5d6e7f',
+};
+
+const DATE = /^\d{4}-\d{2}-\d{2}$/;
+const DATE_TIME =
+	/^(\d{4}-\d{2}-\d{2})[Tt]\d{2}:\d{2}:\d{2}(?:\.\d{1,9})?(?:[Zz]|[+-]\d{2}:\d{2})$/;
+const EMAIL = /^[^\s@]{1,64}@[^\s@.]{1,63}(?:\.[^\s@.]{1,63})+$/;
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** `Date.parse` takes `2026-02-30` as March 2, so the date must stay the same. */
+function isDate(value: string): boolean {
+	const time = DATE.test(value) ? Date.parse(value) : Number.NaN;
+	return !Number.isNaN(time) && new Date(time).toISOString().startsWith(value);
+}
+
+/**
+ * A check for each `format` that the `t` builders make. Other formats are only annotations. Each
+ * check takes linear time.
+ */
+const FORMAT_CHECKS = new Map<string, (value: string) => boolean>([
+	['date', isDate],
+	[
+		'date-time',
+		(value) => {
+			const date = DATE_TIME.exec(value)?.[1];
+			return date !== undefined && isDate(date) && !Number.isNaN(Date.parse(value));
+		},
+	],
+	// `URL` drops spaces at the ends and takes some inside, a URI has none.
+	['uri', (value) => !/\s/.test(value) && URL.canParse(value)],
+	['email', (value) => value.length <= 254 && EMAIL.test(value)],
+	['uuid', (value) => UUID.test(value)],
+]);
+
 /**
  * Validate a value against the JSON Schema subset contracts use. With `allowExpressions`,
  * any field except a discriminator, an `x-n8n-literal` field, or a binary field may hold a
@@ -297,6 +336,13 @@ export function validate(
 			if (node.pattern && !testPattern(node.pattern, current)) {
 				issues.push(
 					`${at}: ${shown(current, at, node)} is not ${node['x-n8n-hint'] ?? node.pattern}`,
+				);
+			}
+			const format = node.format ?? '';
+			// n8n stores an empty optional field as '', so only a value has a format.
+			if (current !== '' && FORMAT_CHECKS.get(format)?.(current) === false) {
+				issues.push(
+					`${at}: ${shown(current, at, node)} is not a ${format}, e.g. ${FORMAT_EXAMPLES[format]}`,
 				);
 			}
 		}
@@ -481,14 +527,6 @@ export function applyDefaults(value: unknown, schema: JsonSchema): unknown {
 		),
 	};
 }
-
-const FORMAT_EXAMPLES: Record<string, string> = {
-	date: '2026-09-15',
-	'date-time': '2026-09-15T09:30:00.000Z',
-	email: 'ada@example.com',
-	uri: 'https://example.com/item/1',
-	uuid: '8f14e45f-ceea-467a-9575-2a3b4c5d6e7f',
-};
 
 const CLASS_EXAMPLES: Record<string, string> = { d: '0', w: 'a', s: ' ', D: 'a', W: '-', S: 'a' };
 

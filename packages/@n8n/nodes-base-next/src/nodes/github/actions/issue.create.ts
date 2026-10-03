@@ -1,7 +1,7 @@
-import { t } from '@n8n/node-sdk';
+import { path, t } from '@n8n/node-sdk';
 
 import { issueResource } from '../github.node';
-import { issue, issueOf, issuesPath } from '../issue';
+import { issue, issueOf } from '../issue';
 
 export const createIssue = issueResource.action('create', {
 	action: 'Create an issue',
@@ -18,7 +18,7 @@ export const createIssue = issueResource.action('create', {
 	async run({ input, http }) {
 		const response = await http.request({
 			method: 'POST',
-			path: issuesPath(input),
+			path: path`/repos/${input.owner}/${input.repository}/issues`,
 			body: {
 				title: input.title,
 				body: input.body,

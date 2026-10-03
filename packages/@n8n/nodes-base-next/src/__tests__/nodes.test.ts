@@ -12,10 +12,12 @@ import { getRequest } from '../nodes/http-request/actions/get';
 import { sendRequest } from '../nodes/http-request/actions/send';
 import { getManyDatabasePages } from '../nodes/notion/actions/database-page.get-all';
 
-const page = (id: string) => ({
+const pageId = (name: string) => `2a3b4c5d-6e7f-4081-8293-${name.padStart(12, '0')}`;
+
+const page = (name: string) => ({
 	object: 'page',
-	id,
-	url: `https://www.notion.so/${id}`,
+	id: pageId(name),
+	url: `https://www.notion.so/${name}`,
 	parent: { type: 'data_source_id', data_source_id: 'ds' },
 	properties: {
 		Name: { id: 'title', type: 'title', title: [{ type: 'text', plain_text: 'Launch v2' }] },
@@ -117,8 +119,8 @@ describe('notion.databasePage.getAll', () => {
 			({ options }) => {
 				if (options.url.includes('/databases/')) return { data_sources: [{ id: 'ds-1' }] };
 				return options.body?.start_cursor
-					? { results: [page('p3'), page('p4')], next_cursor: null }
-					: { results: [page('p1'), page('p2')], next_cursor: 'c2' };
+					? { results: [page('3'), page('4')], next_cursor: null }
+					: { results: [page('1'), page('2')], next_cursor: 'c2' };
 			},
 		);
 		const [items = []] = (await execute) ?? [];
@@ -139,12 +141,12 @@ describe('notion.databasePage.getAll', () => {
 			},
 			page_size: 3,
 		});
-		expect(items.map((item) => item.json.id)).toEqual(['p1', 'p2', 'p3']);
-		expect(items[0]?.json).toEqual(simplifyObjects([page('p1')], false, 3)[0]);
+		expect(items.map((item) => item.json.id)).toEqual(['1', '2', '3'].map(pageId));
+		expect(items[0]?.json).toEqual(simplifyObjects([page('1')], false, 3)[0]);
 	});
 
 	it('emits a page with a missing field and names it in a warning', async () => {
-		const { url: _url, ...withoutUrl } = page('p1');
+		const { url: _url, ...withoutUrl } = page('1');
 		const { execute, hints } = run(
 			getManyDatabasePages,
 			{ database: '5b9e2c1d0a7f4c3e9d217f6a8b9c0d1e' },
@@ -153,7 +155,7 @@ describe('notion.databasePage.getAll', () => {
 					? { data_sources: [{ id: 'ds-1' }] }
 					: { results: [withoutUrl], next_cursor: null },
 		);
-		expect((await execute)?.[0]?.map((item) => item.json.id)).toEqual(['p1']);
+		expect((await execute)?.[0]?.map((item) => item.json.id)).toEqual([pageId('1')]);
 		expect(hints.map(({ message }) => message)).toEqual([
 			expect.stringContaining('output[0].url: is required'),
 		]);
@@ -237,8 +239,8 @@ describe('notion.databasePage.getAll', () => {
 			({ options }) => {
 				if (options.url.includes('/databases/')) return { data_sources: [{ id: 'ds-1' }] };
 				return options.body?.start_cursor
-					? { results: [page('p3')], next_cursor: 'c3', has_more: false }
-					: { results: [page('p1'), page('p2')], next_cursor: 'c2', has_more: true };
+					? { results: [page('3')], next_cursor: 'c3', has_more: false }
+					: { results: [page('1'), page('2')], next_cursor: 'c2', has_more: true };
 			},
 		);
 		const [items = []] = (await execute) ?? [];
@@ -282,7 +284,7 @@ describe('notion.databasePage.getAll', () => {
 				],
 			},
 		};
-		const result = { ...page('p1'), properties: { ...page('p1').properties, ...properties } };
+		const result = { ...page('1'), properties: { ...page('1').properties, ...properties } };
 		const { execute } = run(getManyDatabasePages, { database: DATA_SOURCE }, ({ options }) =>
 			options.url.includes('/databases/')
 				? { data_sources: [{ id: 'ds-1' }] }

@@ -1,4 +1,4 @@
-import { t } from '@n8n/node-sdk';
+import { path, t } from '@n8n/node-sdk';
 
 import { driveIdOf, file } from '../google-drive.node';
 
@@ -15,10 +15,10 @@ export const deleteFile = file.action('delete', {
 		const id = driveIdOf(input.fileId);
 		const query = { supportsAllDrives: true };
 		await (input.permanently
-			? http.request({ method: 'DELETE', path: `/drive/v3/files/${encodeURIComponent(id)}`, query })
+			? http.request({ method: 'DELETE', path: path`/drive/v3/files/${id}`, query })
 			: http.request({
 					method: 'PATCH',
-					path: `/drive/v3/files/${encodeURIComponent(id)}`,
+					path: path`/drive/v3/files/${id}`,
 					query,
 					body: { trashed: true },
 				}));

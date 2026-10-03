@@ -1,4 +1,4 @@
-import { matches, t, type Http, type Infer } from '@n8n/node-sdk';
+import { matches, path, t, type Http, type Infer } from '@n8n/node-sdk';
 
 import { events } from '../event-log.node';
 
@@ -66,7 +66,7 @@ async function readEvents(
 	wanted: number,
 	kept: readonly Event[],
 ): Promise<readonly Event[]> {
-	const response = await http.request({ path: '/events', ...request, fullResponse: true });
+	const response = await http.request({ path: path`/events`, ...request, fullResponse: true });
 	if (!matches(page, response)) throw new Error('Events returned an unexpected page');
 	const all = [...kept, ...response.body.data.filter(keep)];
 	const next = nextLink(response.headers.link);

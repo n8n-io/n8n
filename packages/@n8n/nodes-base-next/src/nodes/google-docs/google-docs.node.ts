@@ -36,10 +36,6 @@ export function documentIdOf(value: string) {
 	return id;
 }
 
-/** The path of a document, or of one of its methods, e.g. `:batchUpdate`. */
-export const documentPath = (id: string, method = ''): `/${string}` =>
-	`/documents/${encodeURIComponent(id)}${method}`;
-
 const open = { additionalProperties: true } as const;
 
 /** The parts of a Docs API document that the actions read. */

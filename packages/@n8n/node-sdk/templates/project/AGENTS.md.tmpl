@@ -55,7 +55,7 @@ export const createItem = item.action('create', {
 	output: itemOutput,
 	async run({ input, http }) {
 		const body = { name: input.name, ...(input.ownerId ? { ownerId: input.ownerId } : {}) };
-		const response = await http.request({ method: 'POST', path: `/${input.workspace}/items`, body });
+		const response = await http.request({ method: 'POST', path: path`/${input.workspace}/items`, body });
 		return parse(itemOutput, response); // passes the body on; n8n checks it against `output`
 	},
 });
@@ -83,6 +83,7 @@ export const createItem = item.action('create', {
 | Builder | TypeScript type | Notes |
 |---|---|---|
 | `t.str()` `t.num()` `t.int()` `t.bool()` | `string` `number` `number` `boolean` | `t.int` allows integers only |
+| `t.date()` `t.dateTime()` `t.uri()` `t.email()` `t.uuid()` | `string` | n8n checks the format, e.g. `2026-09-15T09:30:00Z` |
 | `t.oneOf('a', 'b')` | `'a' \| 'b'` | a fixed list of options |
 | `t.lit('a')` | `'a'` | one fixed value |
 | `t.nullable(s)` | `T \| null` | for output fields the API sets to `null` |
@@ -107,10 +108,9 @@ export const createItem = item.action('create', {
 
 ## HTTP
 
-- `http.request({ method, path, url, query, headers, body, fullResponse, timeoutMs, retry })`. Give `path`
-  (starts with `/`, goes after `baseUrl`) or `url` (absolute, e.g. a `next` link), not both.
-  A `query` value that is `undefined` is not sent; an array repeats the key (`id=a&id=b`). `body` is sent as JSON. It returns the parsed JSON body
-  as `unknown`: narrow it with `parse`. `timeoutMs` is 300000 when omitted.
+- `http.request({ method, path, url, query, headers, body, fullResponse, timeoutMs, retry })`. Give `path` (starts with `/`, goes after `baseUrl`) or `url` (absolute, e.g. a `next` link), not both.
+  Build each `path` with the `path` tag, also a fixed one: ``path`/items/${input.id}` `` encodes each value as one segment. `tsc` rejects a plain string or template.
+  A `query` value that is `undefined` is not sent; an array repeats the key (`id=a&id=b`). `body` is sent as JSON. It returns the parsed JSON body as `unknown`: narrow it with `parse`. `timeoutMs` is 300000 when omitted.
 - `fullResponse: true` returns `{ body, headers, statusCode }` as `unknown`. Header names are lower case:
   `const full = t.obj({ body: t.arr(item), headers: t.json() }).with({ additionalProperties: true });`
   `if (!matches(full, response)) throw ...;` then `response.body` is typed; check `typeof response.headers.link`.

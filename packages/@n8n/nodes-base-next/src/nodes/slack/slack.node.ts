@@ -6,6 +6,7 @@ import {
 	parse,
 	t,
 	type AnySchema,
+	type EncodedPath,
 	type Http,
 	type HttpRequest,
 	type Infer,
@@ -249,7 +250,7 @@ const JSON_UTF8 = { 'content-type': 'application/json; charset=utf-8' };
 
 export async function slackPost<S extends AnySchema>(
 	http: Http,
-	path: `/${string}`,
+	path: EncodedPath,
 	body: unknown,
 	response: S,
 ) {
@@ -259,7 +260,7 @@ export async function slackPost<S extends AnySchema>(
 
 export async function slackGet<S extends AnySchema>(
 	http: Http,
-	path: `/${string}`,
+	path: EncodedPath,
 	query: HttpRequest['query'],
 	response: S,
 ) {
@@ -284,7 +285,7 @@ const PAGE_SIZE = 200;
 export function slackList<S extends AnySchema, T>(
 	http: Http,
 	list: {
-		readonly path: `/${string}`;
+		readonly path: EncodedPath;
 		readonly query: HttpRequest['query'];
 		readonly page: S;
 		readonly items: (page: Loose<Infer<S>>) => readonly T[];

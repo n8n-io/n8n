@@ -1,4 +1,4 @@
-import { defineNode, t } from '@n8n/node-sdk';
+import { defineNode, path, t } from '@n8n/node-sdk';
 import { credential, defineCredential, field } from '@n8n/node-sdk/credentials';
 
 export const supabaseKey = defineCredential({
@@ -42,7 +42,7 @@ export const row = supabase.resource('row', {
 	},
 });
 
-export const tablePath = (table: string): `/${string}` => `/${encodeURIComponent(table)}`;
+export const tablePath = (table: string) => path`/${table}`;
 
 /** The schema headers of PostgREST: one for reads, one for writes. */
 export const schemaHeaders = (schema: string | undefined, write: boolean) =>

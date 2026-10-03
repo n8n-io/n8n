@@ -1,3 +1,5 @@
+import { UserError } from 'n8n-workflow';
+
 import type { AnyCredentialType, Credential, CredentialKey, RunCredential } from './credentials';
 import {
 	hasBinary,
@@ -237,6 +239,51 @@ interface HttpRequestOptions {
 	readonly retry?: boolean;
 }
 
+declare const encodedPath: unique symbol;
+
+/** A request path whose values `path` encoded. Write `path` to make one. */
+export type EncodedPath = `/${string}` & {
+	/** The brand. It has no value at run time. */
+	readonly [encodedPath]: true;
+};
+
+/** The path starts with one `/`: two slashes make a URL of another host. */
+export const isRequestPath = (value: string): value is EncodedPath => /^\/(?![/\\])/.test(value);
+
+/**
+ * The value as one encoded path segment. Encoding keeps `.` and `..`, and a URL resolves them,
+ * so these values and an empty value throw: each one changes the path.
+ */
+export function pathSegmentOf(value: string | number): string {
+	const text = String(value);
+	if (text === '' || text === '.' || text === '..') {
+		throw new UserError(`The path value ${JSON.stringify(text)} changes the path`);
+	}
+	return encodeURIComponent(text);
+}
+
+/**
+ * A request path with each value encoded as one segment, e.g. `a/../b` becomes `a%2F..%2Fb`. It
+ * throws for an empty, `.` or `..` value, and when the path does not start with one `/`.
+ *
+ * @example
+ * ```ts
+ * const issues = await http.request({ path: path`/repos/${input.owner}/${input.repo}/issues` });
+ * ```
+ */
+export function path(
+	strings: readonly string[],
+	...values: ReadonlyArray<string | number>
+): EncodedPath {
+	const built = strings.reduce(
+		(text, part, index) =>
+			index === 0 ? part : `${text}${pathSegmentOf(values[index - 1] ?? '')}${part}`,
+		'',
+	);
+	if (!isRequestPath(built)) throw new UserError(`The path ${built} must start with one "/"`);
+	return built;
+}
+
 /**
  * `url` is an absolute http or https URL. `path` starts with one `/` and goes after the base
  * URL. The host must be in the egress of the action and in the hosts of the credential.
@@ -249,8 +296,8 @@ export type HttpRequest = HttpRequestOptions &
 				readonly path?: never;
 		  }
 		| {
-				/** The path after the base URL, e.g. `/pages/abc`. */
-				readonly path: `/${string}`;
+				/** The path after the base URL, e.g. path`/pages/${id}`. Only `path` makes one. */
+				readonly path: EncodedPath;
 				readonly url?: never;
 		  }
 	);
@@ -263,7 +310,7 @@ export interface Http {
 	 *
 	 * @example
 	 * ```ts
-	 * const page = await http.request({ path: '/pages/abc' });
+	 * const page = await http.request({ path: path`/pages/abc` });
 	 * const file = await http.request({ url: fileUrl, response: 'binary' });
 	 * ```
 	 */
@@ -300,7 +347,7 @@ export interface HttpError extends Error {
  * @example
  * ```ts
  * try {
- *   return await http.request({ path: `/pages/${input.page}` });
+ *   return await http.request({ path: path`/pages/${input.page}` });
  * } catch (error) {
  *   if (isHttpError(error) && error.status === 404) return { found: false };
  *   throw error;
@@ -366,7 +413,7 @@ export interface PagesOptions<P, T> {
  * ```ts
  * yield* pages(http, {
  *   page: t.obj({ results: t.arr(t.obj({ id: t.str() })), next_cursor: t.nullable(t.str()) }),
- *   request: (cursor) => ({ path: '/search', query: { start_cursor: cursor } }),
+ *   request: (cursor) => ({ path: path`/search`, query: { start_cursor: cursor } }),
  *   items: (page) => page.results,
  *   next: (page) => page.next_cursor,
  *   limit: limitOf(input.paging),

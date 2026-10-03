@@ -1,4 +1,4 @@
-import { isRecord, t, type Http, type Infer, type JsonSchema } from '@n8n/node-sdk';
+import { isRecord, path, t, type Http, type Infer, type JsonSchema } from '@n8n/node-sdk';
 
 import type { sheetInput } from './google-sheets.node';
 
@@ -48,9 +48,6 @@ export interface SheetTab {
 const a1 = (title: string, cells?: string) =>
 	`'${title.replace(/'/g, "''")}'${cells ? `!${cells}` : ''}`;
 
-const valuesPath = (spreadsheetId: string, range: string): `/${string}` =>
-	`/${spreadsheetId}/values/${encodeURIComponent(range)}`;
-
 /** 0 → A, 25 → Z, 26 → AA. */
 export const columnLetter = (index: number): string =>
 	(index < 26 ? '' : columnLetter(Math.floor(index / 26) - 1)) +
@@ -74,7 +71,7 @@ export async function sheetOf(
 	sheet: Infer<typeof sheetInput>,
 ): Promise<SheetTab> {
 	const response = await http.request({
-		path: `/${spreadsheetId}`,
+		path: path`/${spreadsheetId}`,
 		query: { fields: 'sheets.properties' },
 	});
 	const sheets = isRecord(response) && Array.isArray(response.sheets) ? response.sheets : [];
@@ -100,7 +97,7 @@ export async function readValues(
 	valueRenderOption: 'FORMATTED_VALUE' | 'UNFORMATTED_VALUE',
 ): Promise<unknown[][]> {
 	const response = await http.request({
-		path: valuesPath(spreadsheetId, a1(sheet.title)),
+		path: path`/${spreadsheetId}/values/${a1(sheet.title)}`,
 		query: { valueRenderOption, dateTimeRenderOption: 'FORMATTED_STRING' },
 	});
 	const rows = isRecord(response) && Array.isArray(response.values) ? response.values : [];
@@ -118,7 +115,7 @@ export async function writeRow(
 	const range = a1(sheet.title, `${rowNumber}:${rowNumber}`);
 	await http.request({
 		method: 'PUT',
-		path: valuesPath(spreadsheetId, range),
+		path: path`/${spreadsheetId}/values/${range}`,
 		query: { valueInputOption },
 		body: { range, values: [cells] },
 	});
@@ -133,7 +130,7 @@ export async function updateCells(
 ) {
 	await http.request({
 		method: 'POST',
-		path: `/${spreadsheetId}/values:batchUpdate`,
+		path: path`/${spreadsheetId}/values:batchUpdate`,
 		body: {
 			data: cells.map(({ column, row, value }) => ({
 				range: a1(sheet.title, `${columnLetter(column)}${row}`),
@@ -159,7 +156,7 @@ export async function appendRow(
 	const range = a1(sheet.title, `${lastRow}:${lastRow}`);
 	await http.request({
 		method: 'POST',
-		path: `${valuesPath(spreadsheetId, range)}:append`,
+		path: path`/${spreadsheetId}/values/${range}:append`,
 		query: { valueInputOption, insertDataOption: 'INSERT_ROWS' },
 		body: { range, values: [cells] },
 	});

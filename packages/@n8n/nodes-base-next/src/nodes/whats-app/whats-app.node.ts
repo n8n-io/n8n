@@ -4,8 +4,10 @@ import {
 	isHttpError,
 	matches,
 	parse,
+	path,
 	ref,
 	t,
+	type EncodedPath,
 	type Http,
 } from '@n8n/node-sdk';
 import { credential, defineCredential, field } from '@n8n/node-sdk/credentials';
@@ -93,9 +95,9 @@ const graphError = t
 	.with({ additionalProperties: true });
 
 /** Meta puts the reason in `error.message`, with a `(#code)` prefix that the legacy node drops. */
-async function post(http: Http, path: `/${string}`, body: unknown) {
+async function post(http: Http, requestPath: EncodedPath, body: unknown) {
 	try {
-		return await http.request({ method: 'POST', path, body });
+		return await http.request({ method: 'POST', path: requestPath, body });
 	} catch (error) {
 		if (!isHttpError(error) || !matches(graphError, error.body)) throw error;
 		const reason = error.body.error.message.replace(/^\(#\d+\) /, '');
@@ -110,7 +112,7 @@ export async function sendMessage(
 	type: string,
 	payload: Readonly<Record<string, unknown>>,
 ) {
-	const response = await post(http, `/${encodeURIComponent(input.phoneNumberId)}/messages`, {
+	const response = await post(http, path`/${input.phoneNumberId}/messages`, {
 		messaging_product: 'whatsapp',
 		// WhatsApp wants digits only; the legacy node keeps spaces.
 		to: input.to.replace(/[^0-9]/g, ''),

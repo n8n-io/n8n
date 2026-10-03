@@ -5,7 +5,7 @@ import { generateNodeModule } from '../entry/codegen';
 import { compat, credential, defineCredential, field } from '../entry/credentials';
 import { toTriggerNodeType } from '../entry/host';
 import { contractHash, diffContracts, toContract } from '../entry/registry';
-import { defineNode, isRecord, parse, t } from '../index';
+import { defineNode, isRecord, parse, path, t } from '../index';
 import { requestOf } from '../runtime';
 import { mockHttp, runAction } from '../testing';
 
@@ -135,6 +135,7 @@ describe('declarative request binding', () => {
 		expect(requestOf(binding, { 'task id': 'a/b' }).path).toBe('/tasks/a%2Fb');
 		expect(() => requestOf(binding, {})).toThrow('The path field "task id" has no value');
 		expect(() => requestOf(binding, { 'task id': '' })).toThrow('has no value');
+		expect(() => requestOf(binding, { 'task id': '..' })).toThrow('changes the path');
 	});
 });
 
@@ -174,7 +175,7 @@ const created = task.trigger('created', {
 	output: taskEvent,
 	poll: {
 		request: ({ input, since }) => ({
-			path: `/projects/${input.project}/tasks`,
+			path: path`/projects/${input.project}/tasks`,
 			query: { after: since },
 		}),
 		response: t.arr(taskOutput),
@@ -203,7 +204,7 @@ const edited = task.trigger('edited', {
 	output: taskEvent,
 	poll: {
 		request: ({ input, since, page, limit }) => ({
-			path: `/projects/${input.project}/tasks`,
+			path: path`/projects/${input.project}/tasks`,
 			query: { after: since, page, size: limit },
 		}),
 		response: t.obj({
@@ -227,17 +228,17 @@ const hooked = task.trigger('commented', {
 		register: {
 			create: ({ input, url, secret }) => ({
 				method: 'POST',
-				path: `/projects/${input.project}/hooks`,
+				path: path`/projects/${input.project}/hooks`,
 				body: { url, secret },
 			}),
 			id: (body) =>
 				typeof body === 'object' && body !== null && 'id' in body && typeof body.id === 'string'
 					? body.id
 					: undefined,
-			check: ({ input, id }) => ({ path: `/projects/${input.project}/hooks/${id}` }),
+			check: ({ input, id }) => ({ path: path`/projects/${input.project}/hooks/${id}` }),
 			delete: ({ input, id }) => ({
 				method: 'DELETE',
-				path: `/projects/${input.project}/hooks/${id}`,
+				path: path`/projects/${input.project}/hooks/${id}`,
 			}),
 		},
 		emit: ({ body }) => [parse(taskEvent, body)],
@@ -289,7 +290,7 @@ describe('triggers', () => {
 			input: {},
 			output: taskEvent,
 			poll: {
-				request: () => ({ path: '/events' }),
+				request: () => ({ path: path`/events` }),
 				response: t.arr(taskEvent),
 				items: (page) => page,
 				cursor: { id: (item) => Number(item.id) },

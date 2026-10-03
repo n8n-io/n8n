@@ -9,6 +9,7 @@ import {
 	pageValueOf,
 	paging,
 	parse,
+	path,
 	readAs,
 	t,
 	UserError,
@@ -155,7 +156,7 @@ describe('executorOf', () => {
 				reset,
 				[{ id: 'a' }],
 			]);
-			const items = (await executorOf(fetchAction({ path: '/items' }))(host))[0] ?? [];
+			const items = (await executorOf(fetchAction({ path: path`/items` }))(host))[0] ?? [];
 			expect(items.map(({ json: value }) => value)).toEqual([{ id: 'a' }]);
 			expect(requests).toHaveLength(3);
 			expect(waits[0]).toBe(2000);
@@ -164,17 +165,17 @@ describe('executorOf', () => {
 
 		it('stops after three retries', async () => {
 			const { host, requests } = hostOf([1, 2, 3, 4, 5].map(() => httpError(429)));
-			await expect(executorOf(fetchAction({ path: '/items' }))(host)).rejects.toThrow('429');
+			await expect(executorOf(fetchAction({ path: path`/items` }))(host)).rejects.toThrow('429');
 			expect(requests).toHaveLength(4);
 		});
 
 		it('does not retry a POST unless the action is idempotent or the request opts in', async () => {
 			const cases: Array<[HttpRequest, ListFlow, number]> = [
-				[{ method: 'POST', path: '/items' }, read, 1],
-				[{ method: 'POST', path: '/items' }, { ...read, idempotent: true }, 2],
-				[{ method: 'POST', path: '/items', retry: true }, read, 2],
-				[{ path: '/items', retry: false }, read, 1],
-				[{ path: '/items' }, read, 1],
+				[{ method: 'POST', path: path`/items` }, read, 1],
+				[{ method: 'POST', path: path`/items` }, { ...read, idempotent: true }, 2],
+				[{ method: 'POST', path: path`/items`, retry: true }, read, 2],
+				[{ path: path`/items`, retry: false }, read, 1],
+				[{ path: path`/items` }, read, 1],
 			];
 			const counts = await Promise.all(
 				cases.map(async ([request, flow], index) => {
@@ -192,9 +193,9 @@ describe('executorOf', () => {
 	describe('limits', () => {
 		it('sends a 300 s timeout unless the request sets timeoutMs', async () => {
 			const first = hostOf([[]]);
-			await executorOf(fetchAction({ path: '/items' }))(first.host);
+			await executorOf(fetchAction({ path: path`/items` }))(first.host);
 			const second = hostOf([[]]);
-			await executorOf(fetchAction({ path: '/items', timeoutMs: 5000 }))(second.host);
+			await executorOf(fetchAction({ path: path`/items`, timeoutMs: 5000 }))(second.host);
 			expect([first.requests[0]?.timeout, second.requests[0]?.timeout]).toEqual([300_000, 5000]);
 		});
 
@@ -204,7 +205,7 @@ describe('executorOf', () => {
 				flow: read,
 				async *run({ http }) {
 					for (const page of [1, 2, 3]) {
-						await http.request({ path: '/items', query: { page } });
+						await http.request({ path: path`/items`, query: { page } });
 						yield { id: String(page) };
 					}
 				},
@@ -225,7 +226,7 @@ describe('executorOf', () => {
 				flow: read,
 				async *run({ http, limits }) {
 					Object.assign(limits, { maxRequests: 10 });
-					await http.request({ path: '/items' });
+					await http.request({ path: path`/items` });
 					yield { id: 'a' };
 				},
 			});
@@ -263,7 +264,7 @@ describe('executorOf', () => {
 				// @ts-expect-error the output needs a string id
 				async *run({ http }) {
 					for (const page of [1, 2]) {
-						await http.request({ path: '/items', query: { page } });
+						await http.request({ path: path`/items`, query: { page } });
 						yield { id: page };
 					}
 				},
@@ -280,7 +281,7 @@ describe('executorOf', () => {
 		it('fails a 1:N run that returns instead of yielding', async () => {
 			// A bundle has no types, so the executor checks what run() gives back.
 			const returning = {
-				...fetchAction({ path: '/items' }),
+				...fetchAction({ path: path`/items` }),
 				run: async () => await Promise.resolve({ id: 'a' }),
 			} as unknown as Action;
 			await expect(executorOf(returning)(hostOf([]).host)).rejects.toThrow(
@@ -296,7 +297,7 @@ describe('executorOf', () => {
 				items: [{ json: {} }, { json: {} }],
 				continueOnFail: () => true,
 			});
-			const items = (await executorOf(fetchAction({ path: '/items' }))(host))[0] ?? [];
+			const items = (await executorOf(fetchAction({ path: path`/items` }))(host))[0] ?? [];
 			expect(items).toEqual([
 				{ json: { id: 'a' }, pairedItem: { item: 0 } },
 				{ json: { id: 'b' }, pairedItem: { item: 0 } },
@@ -311,7 +312,7 @@ describe('types', () => {
 	it('rejects a request without a URL, a relative path, a foreign credential', () => {
 		const requests: HttpRequest[] = [
 			{ url: 'https://echo.test/items' },
-			{ path: '/items' },
+			{ path: path`/items` },
 			// @ts-expect-error a request needs `url` or `path`
 			{},
 			// @ts-expect-error `path` starts with a slash
@@ -416,7 +417,7 @@ describe('output drift', () => {
 		output: strictIssue,
 		// @ts-expect-error the body passes on without a check, as in a bundle without types
 		async *run({ http }) {
-			yield* parse(t.arr(strictIssue), await http.request({ path: '/issues' }));
+			yield* parse(t.arr(strictIssue), await http.request({ path: path`/issues` }));
 		},
 	});
 
@@ -459,10 +460,13 @@ describe('runAction', () => {
 					reject(reason instanceof Error ? reason : new Error('aborted'));
 				});
 			});
-		const result = await runAction(fetchAction({ path: '/items', timeoutMs: 10, retry: false }), {
-			input: {},
-			fetch: hang,
-		});
+		const result = await runAction(
+			fetchAction({ path: path`/items`, timeoutMs: 10, retry: false }),
+			{
+				input: {},
+				fetch: hang,
+			},
+		);
 		expect(result).toEqual({ ok: false, error: { message: expect.stringMatching(/timeout/i) } });
 	});
 
@@ -471,7 +475,7 @@ describe('runAction', () => {
 			{ path: '/items', times: 1, reply: { status: 429, headers: { 'retry-after': '0' } } },
 			{ path: '/items', reply: { json: [{ id: 'a' }] } },
 		]);
-		const result = await runAction(fetchAction({ path: '/items' }), { input: {}, fetch });
+		const result = await runAction(fetchAction({ path: path`/items` }), { input: {}, fetch });
 		expect(result).toEqual({ ok: true, items: [{ id: 'a' }] });
 		expect(fetch.calls).toHaveLength(2);
 	});
@@ -490,7 +494,7 @@ describe('pages', () => {
 			async *run({ http }) {
 				yield* pages(http, {
 					page: itemPage,
-					request: (cursor, room) => ({ path: '/items', query: { cursor, size: room } }),
+					request: (cursor, room) => ({ path: path`/items`, query: { cursor, size: room } }),
 					items: (body) => body.items,
 					next: (body) => body.next,
 					limit,
@@ -885,13 +889,13 @@ describe('list binding', () => {
 describe('query', () => {
 	it('repeats the key of an array value', async () => {
 		const { host, requests } = hostOf([[]]);
-		await executorOf(fetchAction({ path: '/items', query: { id: ['a', 'b'], q: 'x' } }))(host);
+		await executorOf(fetchAction({ path: path`/items`, query: { id: ['a', 'b'], q: 'x' } }))(host);
 		expect(requests[0]).toMatchObject({ qs: { id: ['a', 'b'], q: 'x' }, arrayFormat: 'repeat' });
 	});
 
 	it('keeps the default array format when no value is an array', async () => {
 		const { host, requests } = hostOf([[]]);
-		await executorOf(fetchAction({ path: '/items', query: { q: 'x' } }))(host);
+		await executorOf(fetchAction({ path: path`/items`, query: { q: 'x' } }))(host);
 		expect(requests[0]).not.toHaveProperty('arrayFormat');
 	});
 
@@ -900,7 +904,7 @@ describe('query', () => {
 			{ path: '/items', query: { id: ['a', 'b'] }, reply: { json: [{ id: 'a' }] } },
 		]);
 		const result = await runAction(
-			fetchAction({ path: '/items', query: { id: ['a', 'b'], q: 'x' } }),
+			fetchAction({ path: path`/items`, query: { id: ['a', 'b'], q: 'x' } }),
 			{ input: {}, fetch },
 		);
 		expect(result).toEqual({ ok: true, items: [{ id: 'a' }] });
@@ -1224,7 +1228,7 @@ describe('credentials in a run', () => {
 			async run({ http, log }) {
 				log('info', 'using key-secret-1');
 				try {
-					await http.request({ path: '/me', retry: false });
+					await http.request({ path: path`/me`, retry: false });
 					return {};
 				} catch (error) {
 					caught.push(error);
@@ -1272,7 +1276,7 @@ describe('run errors', () => {
 			flow: perItem,
 			async run({ http, item: current }) {
 				if (current.json.n === 2) throw thrown();
-				await http.request({ path: '/items', retry: false });
+				await http.request({ path: path`/items`, retry: false });
 				return { id: 'a' };
 			},
 		});
@@ -1372,14 +1376,14 @@ describe('node errorOf', () => {
 	} as const;
 	const declarative = message.action('send', {
 		...spec,
-		request: { method: 'POST', path: '/chat.postMessage', body: { text: { input: 'text' } } },
+		request: { method: 'POST', path: path`/chat.postMessage`, body: { text: { input: 'text' } } },
 	});
 	const coded = message.action('post', {
 		...spec,
 		async run({ http, input }) {
 			return parse(
 				sent,
-				await http.request({ method: 'POST', path: '/chat.postMessage', body: input }),
+				await http.request({ method: 'POST', path: path`/chat.postMessage`, body: input }),
 			);
 		},
 	});
@@ -1388,7 +1392,7 @@ describe('node errorOf', () => {
 		async run({ http, input }) {
 			const response = await http.request({
 				method: 'POST',
-				path: '/chat.postMessage',
+				path: path`/chat.postMessage`,
 				body: input,
 				fullResponse: true,
 			});
@@ -1440,7 +1444,7 @@ describe('node errorOf', () => {
 			...spec,
 			async run({ http, input }) {
 				try {
-					return parse(sent, await http.request({ method: 'POST', path: '/x', body: input }));
+					return parse(sent, await http.request({ method: 'POST', path: path`/x`, body: input }));
 				} catch (error) {
 					caught.push(error);
 					return { ok: false };

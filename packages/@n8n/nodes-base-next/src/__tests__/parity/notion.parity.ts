@@ -13,10 +13,10 @@ import {
 const DATA_SOURCE = '2a3b4c5d6e7f40818293a4b5c6d7e8f9';
 const QUERY = `https://api.notion.com/v1/data_sources/${DATA_SOURCE}/query`;
 
-const page = (id: string, title: string) => ({
+const page = (name: string, title: string) => ({
 	object: 'page',
-	id,
-	url: `https://www.notion.so/${id}`,
+	id: `2a3b4c5d-6e7f-4081-8293-${name.padStart(12, '0')}`,
+	url: `https://www.notion.so/${name}`,
 	parent: { type: 'data_source_id', data_source_id: DATA_SOURCE },
 	properties: {
 		Name: { id: 'title', type: 'title', title: [{ type: 'text', plain_text: title }] },
@@ -66,7 +66,7 @@ const parityCase: ParityCase = {
 			url: QUERY,
 			times: 1,
 			json: {
-				results: [page('page-1', 'One'), page('page-2', 'Two')],
+				results: [page('1', 'One'), page('2', 'Two')],
 				next_cursor: 'cursor-2',
 				has_more: true,
 			},
@@ -76,7 +76,7 @@ const parityCase: ParityCase = {
 			url: QUERY,
 			times: 1,
 			json: {
-				results: [page('page-3', 'Three'), page('page-4', 'Four')],
+				results: [page('3', 'Three'), page('4', 'Four')],
 				next_cursor: null,
 				has_more: false,
 			},

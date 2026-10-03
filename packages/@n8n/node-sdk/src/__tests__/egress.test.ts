@@ -21,7 +21,15 @@ import {
 	toContract,
 	type ContractDocument,
 } from '../entry/registry';
-import { defineNode, pages, provider, t, type HttpRequest } from '../index';
+import {
+	defineNode,
+	pages,
+	path,
+	provider,
+	t,
+	type EncodedPath,
+	type HttpRequest,
+} from '../index';
 import type { AnyCredentialType } from '../credentials';
 import { allowsHost, credentialHostsOf, egressIssuesOf, narrowHosts } from '../egress';
 import { executorOf, toRequestOptions, withCredentialHostsOf, type ExecutorHost } from '../runtime';
@@ -135,7 +143,7 @@ describe('host egress', () => {
 
 	it('sets allowedDomains on each allowed request, so the request layer checks redirects', async () => {
 		const { host, sent } = hostOf({ credentialType: 'echoApi' });
-		await executorOf(sender([{ path: '/a' }, { url: 'https://api.echo.test/b' }]))(host);
+		await executorOf(sender([{ path: path`/a` }, { url: 'https://api.echo.test/b' }]))(host);
 		expect(sent.map(({ url, allowedDomains }) => [url, allowedDomains])).toEqual([
 			['https://api.echo.test/v1/a', 'api.echo.test'],
 			['https://api.echo.test/b', 'api.echo.test'],
@@ -144,7 +152,7 @@ describe('host egress', () => {
 
 	it('refuses a redirect hop to a host outside the allowed hosts', async () => {
 		const { host, sent } = hostOf({ credentialType: 'echoApi' });
-		await executorOf(sender([{ path: '/a' }]))(host);
+		await executorOf(sender([{ path: path`/a` }]))(host);
 		const [options] = sent;
 		expect(() =>
 			assertUrlAllowed({ url: 'https://other.test/x', allowedDomains: options?.allowedDomains }),
@@ -154,10 +162,10 @@ describe('host egress', () => {
 	it('refuses a path that would leave the base URL', () => {
 		const base = 'https://api.echo.test';
 		const paths = ['//other.test/x', '/\\other.test/x', '/\t/other.test/x', 'x', '@other.test/x'];
-		paths.forEach((path) => {
-			expect(() => toRequestOptions({ path: path as `/${string}` }, base)).toThrow();
+		paths.forEach((unsafe) => {
+			expect(() => toRequestOptions({ path: unsafe as EncodedPath }, base)).toThrow();
 		});
-		expect(toRequestOptions({ path: '/users' }, 'https://api.echo.test/v1/').url).toBe(
+		expect(toRequestOptions({ path: path`/users` }, 'https://api.echo.test/v1/').url).toBe(
 			'https://api.echo.test/v1/users',
 		);
 	});
@@ -180,7 +188,7 @@ describe('host egress', () => {
 			async *run({ http }) {
 				yield* pages(http, {
 					page: t.obj({ next: t.str() }),
-					request: (cursor) => (cursor ? { url: cursor } : { path: '/items' }),
+					request: (cursor) => (cursor ? { url: cursor } : { path: path`/items` }),
 					items: () => [{ ok: 'page' }],
 					next: (body) => body.next,
 				});
@@ -232,7 +240,7 @@ describe('host egress', () => {
 			credentialType: 'echoApi',
 			data: { allowedHttpRequestDomains: 'none' },
 		});
-		await executorOf(sender([{ path: '/a' }]))(host);
+		await executorOf(sender([{ path: path`/a` }]))(host);
 		expect(sent).toHaveLength(1);
 	});
 
@@ -241,7 +249,7 @@ describe('host egress', () => {
 			credentialType: 'httpHeaderAuth',
 			data: { allowedHttpRequestDomains: 'none' },
 		});
-		await expect(executorOf(sender([{ path: '/a' }]))(host)).rejects.toThrow(
+		await expect(executorOf(sender([{ path: path`/a` }]))(host)).rejects.toThrow(
 			'This credential is configured to prevent use within an Echo node',
 		);
 		expect(sent).toEqual([]);
@@ -261,7 +269,7 @@ describe('host egress', () => {
 			input: {},
 			output,
 			async run({ http }) {
-				await http.request({ path: '/ping' });
+				await http.request({ path: path`/ping` });
 				return { ok: 'yes' };
 			},
 		});
@@ -302,7 +310,7 @@ describe('host egress', () => {
 			credentialType: 'serverApi',
 			data: { server: 'https://git.example.test/api/v3' },
 		});
-		await executorOf(sender([{ path: '/repos' }]))(host);
+		await executorOf(sender([{ path: path`/repos` }]))(host);
 		expect(sent.map(({ url, allowedDomains }) => [url, allowedDomains])).toEqual([
 			['https://git.example.test/api/v3/repos', 'git.example.test'],
 		]);
@@ -461,7 +469,7 @@ describe('credential hosts of a frozen version', () => {
 		input: {},
 		output,
 		async run({ http }) {
-			await http.request({ path: '/x' });
+			await http.request({ path: path`/x` });
 			return { ok: 'yes' };
 		},
 	});

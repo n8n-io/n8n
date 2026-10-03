@@ -240,7 +240,7 @@ const echoSource = ({
 	text = 'input.text',
 	migrate = '',
 }: EchoOptions = {}) => `
-import { defineNode, t } from '@n8n/node-sdk';
+import { defineNode, path, t } from '@n8n/node-sdk';
 const { obj, str } = t;
 import { shout } from './shout';
 
@@ -256,7 +256,7 @@ export const echo = demo.action('echo', {
 	input: ${input},
 	output: obj({ text: str() }),
 	async run({ input, http }) {
-		const suffix = await http.request({ path: '/suffix' });
+		const suffix = await http.request({ path: path\`/suffix\` });
 		return { text: shout(${text} + String(suffix)) };
 	},
 	${migrate}
@@ -446,7 +446,7 @@ export const ping = demo.trigger('ping', {
 		const entry = path.join(dirs.root, 'server.ts');
 		await writeFile(
 			entry,
-			`import { defineNode, t } from '@n8n/node-sdk';
+			`import { defineNode, path, t } from '@n8n/node-sdk';
 import { credential, defineCredential, field } from '@n8n/node-sdk/credentials';
 const { obj, str } = t;
 const demo = defineNode({
@@ -463,7 +463,7 @@ export const read = demo.action('read', {
 	input: {},
 	output: obj({ text: str() }),
 	async run({ http }) {
-		return { text: String(await http.request({ path: '/text' })) };
+		return { text: String(await http.request({ path: path\`/text\` })) };
 	},
 });
 `,

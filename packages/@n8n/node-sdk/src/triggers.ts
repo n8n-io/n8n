@@ -177,7 +177,7 @@ export type PollCursor<T> =
  * @example
  * ```ts
  * poll: {
- *   request: ({ since }) => ({ path: '/events', query: { since } }),
+ *   request: ({ since }) => ({ path: path`/events`, query: { since } }),
  *   response: t.obj({ events: t.arr(event) }),
  *   items: (page) => page.events,
  *   cursor: { timestamp: (item) => item.created, key: (item) => item.id },

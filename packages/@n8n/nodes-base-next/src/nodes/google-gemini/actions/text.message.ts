@@ -1,4 +1,4 @@
-import { parse, t } from '@n8n/node-sdk';
+import { parse, path, t } from '@n8n/node-sdk';
 
 import { generateContentSchema, replyTextOf } from '../content';
 import { text } from '../google-gemini.node';
@@ -45,7 +45,7 @@ export const messageGemini = text.action('message', {
 		const id = input.model.replace(/^models\//, '');
 		const response = await http.request({
 			method: 'POST',
-			path: `/models/${encodeURIComponent(id)}:generateContent`,
+			path: path`/models/${id}:generateContent`,
 			body: {
 				contents,
 				generationConfig: {

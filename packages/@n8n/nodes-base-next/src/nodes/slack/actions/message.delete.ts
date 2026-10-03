@@ -1,4 +1,4 @@
-import { ref, t } from '@n8n/node-sdk';
+import { path, ref, t } from '@n8n/node-sdk';
 
 import { message, slackChannelId, slackPost, slackResponse, slackTs } from '../slack.node';
 
@@ -13,6 +13,6 @@ export const deleteSlackMessage = message.action('delete', {
 	output: deleted,
 	async run({ input, http }) {
 		const body = { channel: input.channel, ts: input.ts };
-		return await slackPost(http, '/chat.delete', body, deleted);
+		return await slackPost(http, path`/chat.delete`, body, deleted);
 	},
 });

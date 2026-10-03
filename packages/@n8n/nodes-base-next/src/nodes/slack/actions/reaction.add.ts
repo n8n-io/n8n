@@ -1,4 +1,4 @@
-import { ref, t } from '@n8n/node-sdk';
+import { path, ref, t } from '@n8n/node-sdk';
 
 import { reaction, slackChannelId, slackPost, slackResponse, slackTs } from '../slack.node';
 
@@ -20,7 +20,12 @@ export const addSlackReaction = reaction.action('add', {
 	output: added,
 	async run({ input, http }) {
 		const body = { channel: input.channel, name: input.name, timestamp: input.ts };
-		const { ok } = await slackPost(http, '/reactions.add', body, slackResponse({ ok: t.bool() }));
+		const { ok } = await slackPost(
+			http,
+			path`/reactions.add`,
+			body,
+			slackResponse({ ok: t.bool() }),
+		);
 		return { ok };
 	},
 });

@@ -6,7 +6,7 @@ import type {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
-import { defineNode, t } from '@n8n/node-sdk';
+import { defineNode, path, t } from '@n8n/node-sdk';
 import { compat, credential } from '@n8n/node-sdk/credentials';
 import { toNodeType } from '@n8n/node-sdk/host';
 
@@ -26,7 +26,7 @@ const listTasks = tasks.resource('task').action('getAll', {
 	input: { project: t.str(), limit: t.int().optional() },
 	output: t.obj({ id: t.str() }),
 	async *run({ input, http }) {
-		const body = await http.request({ path: `/projects/${input.project}/tasks` });
+		const body = await http.request({ path: path`/projects/${input.project}/tasks` });
 		yield* Array.isArray(body) ? body : [];
 	},
 });
