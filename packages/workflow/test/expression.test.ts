@@ -1420,8 +1420,8 @@ describe('Expression', () => {
 			await workflow.expression.releaseIsolate();
 		});
 
-		const evaluate = (expr: string, data: INodeExecutionData[]) =>
-			workflow.expression.getParameterValue(expr, null, 0, 0, 'node', data, 'manual', {});
+		const evaluate = (expr: string, data: INodeExecutionData[], itemIndex = 0) =>
+			workflow.expression.getParameterValue(expr, null, 0, itemIndex, 'node', data, 'manual', {});
 
 		// The inner expression must be wrapped in `{{ ... }}` for the host to
 		// evaluate it (without those, the host strips `=` and the rest is
@@ -1445,6 +1445,16 @@ describe('Expression', () => {
 					{ json: { value: 'second' } },
 				]),
 			).toBe('second');
+		});
+
+		it('resolves itemIndex 0 against the first item while on a later item (parity)', () => {
+			expect(
+				evaluate(
+					`={{ $evaluateExpression(${buildInnerTemplate('$json.value')}, 0) }}`,
+					[{ json: { value: 'first' } }, { json: { value: 'second' } }],
+					1,
+				),
+			).toBe('first');
 		});
 	});
 
