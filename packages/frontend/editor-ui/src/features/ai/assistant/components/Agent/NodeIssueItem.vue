@@ -39,8 +39,11 @@ function handleEditClick() {
 	<li
 		:class="$style.nodeIssue"
 		role="listitem"
+		tabindex="0"
 		:aria-label="`Edit ${issue.node} node`"
 		@click="handleEditClick"
+		@keydown.enter.prevent="handleEditClick"
+		@keydown.space.prevent="handleEditClick"
 	>
 		<!-- Node icon with tooltip -->
 		<NodeIcon
@@ -65,12 +68,16 @@ function handleEditClick() {
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/focus';
+
 .nodeIssue {
 	list-style: none;
 	display: flex;
 	align-items: center;
 	padding: var(--spacing--2xs) 0;
 	cursor: pointer;
+
+	@include focus.focus-visible-ring;
 
 	&:hover {
 		color: var(--color--primary);
