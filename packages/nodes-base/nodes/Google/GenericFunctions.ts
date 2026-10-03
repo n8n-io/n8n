@@ -80,11 +80,17 @@ export async function getGoogleAccessToken(
 		| ICredentialTestFunctions
 		| IPollFunctions,
 	credentials: IDataObject,
-	service: GoogleServiceAccount,
+	/** Omit when passing `scopeOverride` instead, e.g. to test user-configured HTTP Request node scopes. */
+	service: GoogleServiceAccount | undefined,
+	scopeOverride?: string[],
 ): Promise<IDataObject> {
 	//https://developers.google.com/identity/protocols/oauth2/service-account#httprest
 
-	const scopes = googleServiceAccountScopes[service];
+	const scopes = scopeOverride ?? (service ? googleServiceAccountScopes[service] : []);
+
+	if (scopes.length === 0) {
+		throw new Error('At least one scope is required to generate a Google access token.');
+	}
 
 	const privateKey = formatPemBlock(credentials.privateKey as string);
 	credentials.email = ((credentials.email as string) || '').trim();
