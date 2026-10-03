@@ -37,6 +37,7 @@ CREATE TABLE "instance_ai_events" ("threadId" varchar NOT NULL, "seq" integer NO
 | Name | Definition |
 | ---- | ---------- |
 | IDX_32cdd799675715fb1d2a8683e9 | CREATE INDEX "IDX_32cdd799675715fb1d2a8683e9" ON "instance_ai_events" ("threadId", "runId")  |
+| IDX_instance_ai_events_threadId_createdAt | CREATE INDEX "IDX_instance_ai_events_threadId_createdAt" ON "instance_ai_events" ("threadId", "createdAt")  |
 | sqlite_autoindex_instance_ai_events_1 | PRIMARY KEY (threadId, seq) |
 
 ## Relations
