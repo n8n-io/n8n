@@ -1,0 +1,12 @@
+{
+	"extends": "./tsconfig.build.json",
+	"compilerOptions": {
+		"composite": false,
+		"incremental": false,
+		"removeComments": false,
+		"emitDeclarationOnly": true,
+		"outDir": "node_modules/.cache/next-types"
+	},
+	"include": ["src/next/**/*.ts"],
+	"exclude": ["src/**/__tests__/**", "src/**/*.test.ts"]
+}
