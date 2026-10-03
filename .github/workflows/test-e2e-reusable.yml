@@ -62,6 +62,34 @@ on:
         required: false
         default: 'standard'
         type: string
+      cache-sha:
+        description: 'SHA for the image cache key in docker-artifact mode. Empty = github.sha. Must match the build.'
+        required: false
+        default: ''
+        type: string
+
+    # Declared so callers can pass them explicitly; `secrets: inherit` still works.
+    secrets:
+      QA_METRICS_WEBHOOK_URL:
+        required: false
+      QA_METRICS_WEBHOOK_USER:
+        required: false
+      QA_METRICS_WEBHOOK_PASSWORD:
+        required: false
+      CURRENTS_RECORD_KEY:
+        required: false
+      CURRENTS_API_KEY:
+        required: false
+      N8N_LICENSE_ACTIVATION_KEY:
+        required: false
+      N8N_LICENSE_CERT:
+        required: false
+      N8N_ENCRYPTION_KEY:
+        required: false
+      N8N_SANDBOX_SERVICE_URL:
+        required: false
+      N8N_SANDBOX_SERVICE_API_KEY:
+        required: false
 
 env:
   NODE_OPTIONS: ${{ contains(inputs.runner, '2vcpu') && '--max-old-space-size=6144' || '' }}
@@ -110,6 +138,7 @@ jobs:
         uses: ./.github/actions/load-n8n-docker
         with:
           build-variant: ${{ inputs.build-variant }}
+          cache-sha: ${{ inputs.cache-sha }}
 
       - name: Pre-pull Test Container Images
         if: ${{ !contains(inputs.test-command, 'test:local') }}
