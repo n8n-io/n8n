@@ -1,4 +1,4 @@
-import type { Component } from 'vue';
+import { markRaw, type Component } from 'vue';
 
 import ClaudeIcon from './assets/client-icons/claude.svg?component';
 import CodexIcon from './assets/client-icons/codex.svg?component';
@@ -7,6 +7,20 @@ import GeminiIcon from './assets/client-icons/gemini.svg?component';
 import MistralIcon from './assets/client-icons/mistral.svg?component';
 import OpenAiIcon from './assets/client-icons/openai.svg?component';
 import VsCodeIcon from './assets/client-icons/vscode.svg?component';
+
+/**
+ * Brand marks the decorative empty-state cards cycle through, interleaved so consecutive
+ * marks read clearly different (coral wordmark, blue ribbon, purple blossom, near-black
+ * cube, gradient spark, black blossom).
+ */
+export const MCP_CLIENT_LOGO_CYCLE: Component[] = [
+	ClaudeIcon,
+	VsCodeIcon,
+	CodexIcon,
+	CursorIcon,
+	GeminiIcon,
+	OpenAiIcon,
+].map((icon) => markRaw(icon));
 
 export type McpSetupCategory = 'cli' | 'web' | 'ide';
 
