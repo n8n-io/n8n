@@ -1,7 +1,9 @@
 import { InviteUsersRequestDto } from '@n8n/api-types';
+import type { LicenseState } from '@n8n/backend-common';
 import { type EventService, UrlService, type RoleService } from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
+import { UNLIMITED_LICENSE_QUOTA } from '@n8n/constants';
 import {
 	Project,
 	GLOBAL_ADMIN_ROLE,
@@ -22,7 +24,6 @@ import { mock } from 'vitest-mock-extended';
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { BadRequestError, ForbiddenError, NotFoundError } from '@n8n/errors';
 import type { ExternalHooks } from '@/external-hooks';
-import type { License } from '@/license';
 import type { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
 import { UserService } from '@/services/user.service';
 import * as ssoHelpers from '@/sso.ee/sso-helpers';
@@ -57,7 +58,7 @@ describe('UserService', () => {
 	const publicApiKeyService = mock<PublicApiKeyService>();
 	const projectService = mock<ProjectService>();
 	const eventService = mock<EventService>();
-	const license = mock<License>();
+	const license = mock<LicenseState>();
 	const externalHooks = mock<ExternalHooks>();
 	const jwtService = mockInstance(JwtService, {
 		sign: vi.fn().mockReturnValue('mock-jwt-token'),
@@ -819,7 +820,7 @@ describe('UserService', () => {
 
 		beforeEach(() => {
 			vi.spyOn(ssoHelpers, 'isSsoCurrentAuthenticationMethod').mockReturnValue(false);
-			license.isWithinUsersLimit.mockReturnValue(true);
+			license.getMaxUsers.mockReturnValue(UNLIMITED_LICENSE_QUOTA);
 			license.isAdvancedPermissionsLicensed.mockReturnValue(true);
 			ownershipService.hasInstanceOwner.mockResolvedValue(true);
 		});
@@ -834,7 +835,7 @@ describe('UserService', () => {
 		});
 
 		it('throws a ForbiddenError if the user limit quota has been reached', async () => {
-			license.isWithinUsersLimit.mockReturnValue(false);
+			license.getMaxUsers.mockReturnValue(5);
 
 			await expect(userService.inviteUser(inviter, payload)).rejects.toThrow(ForbiddenError);
 			await expect(userService.inviteUser(inviter, payload)).rejects.toThrow(

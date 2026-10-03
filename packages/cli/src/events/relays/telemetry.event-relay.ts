@@ -1768,8 +1768,7 @@ export class TelemetryEventRelay extends EventRelay {
 
 		const isS3Selected = this.binaryDataConfig.mode === 's3';
 		const isS3Available = this.binaryDataConfig.availableModes.includes('s3');
-		// oxlint-disable-next-line typescript/no-deprecated
-		const isS3Licensed = this.license.isBinaryDataS3Licensed();
+		const isS3Licensed = this.licenseState.isBinaryDataS3Licensed();
 		const authenticationMethod = config.getEnv('userManagement.authenticationMethod');
 		const dbVersion = await this.dbConnection.getDbVersion();
 

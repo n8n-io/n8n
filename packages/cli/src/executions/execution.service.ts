@@ -1,6 +1,6 @@
 import type { DeleteExecutionsDto } from '@n8n/api-types';
 import { ExecutionRedactionQueryDtoSchema } from '@n8n/api-types';
-import { Logger } from '@n8n/backend-common';
+import { LicenseState, Logger } from '@n8n/backend-common';
 import { EventService } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import type {
@@ -48,7 +48,6 @@ import { MissingExecutionStopError } from '@/errors/missing-execution-stop.error
 import { QueuedExecutionRetryError } from '@/errors/queued-execution-retry.error';
 import { BadRequestError, ConflictError, InternalServerError, NotFoundError } from '@n8n/errors';
 import type { IExecutionFlattedResponse } from '@/interfaces';
-import { License } from '@/license';
 import { NodeTypes } from '@/node-types';
 import { ExecutionStopService } from '@/scaling/execution-stop.service';
 import { EngineDataPlaneProxyService } from '@/services/engine-data-plane-proxy.service';
@@ -120,7 +119,7 @@ export class ExecutionService {
 		private readonly waitTracker: WaitTracker,
 		private readonly workflowRunner: WorkflowRunner,
 		private readonly concurrencyControl: ConcurrencyControlService,
-		private readonly license: License,
+		private readonly license: LicenseState,
 		private readonly eventService: EventService,
 		private readonly executionRedactionServiceProxy: ExecutionRedactionServiceProxy,
 		private readonly executionStopService: ExecutionStopService,
@@ -419,8 +418,7 @@ export class ExecutionService {
 			}
 		}
 
-		// oxlint-disable-next-line typescript/no-deprecated
-		if (requestFilters?.metadata && !this.license.isAdvancedExecutionFiltersEnabled()) {
+		if (requestFilters?.metadata && !this.license.isAdvancedExecutionFiltersLicensed()) {
 			delete requestFilters.metadata;
 		}
 

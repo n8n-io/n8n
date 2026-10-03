@@ -1,12 +1,12 @@
+import type { LicenseState } from '@n8n/backend-common';
 import type { AuthenticatedRequest } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
 import { OrchestrationController } from '@/controllers/orchestration.controller';
-import type { License } from '@/license';
 import type { WorkerStatusService } from '@/scaling/worker-status.service.ee';
 
 describe('OrchestrationController', () => {
-	const license = mock<License>();
+	const license = mock<LicenseState>();
 	const workerStatusService = mock<WorkerStatusService>();
 	const controller = new OrchestrationController(license, workerStatusService);
 

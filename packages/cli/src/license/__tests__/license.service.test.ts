@@ -31,7 +31,7 @@ describe('LicenseService', () => {
 	);
 
 	license.getMainPlan.mockReturnValue(entitlement);
-	license.getTriggerLimit.mockReturnValue(400);
+	licenseState.getMaxActiveWorkflows.mockReturnValue(400);
 	license.getPlanName.mockReturnValue('Test Plan');
 	licenseState.getMaxWorkflowsWithEvaluations.mockReturnValue(2);
 	workflowRepository.getActiveTriggerCount.mockResolvedValue(7);

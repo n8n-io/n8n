@@ -2675,7 +2675,6 @@ function createWorkflowAdapterForTests(overrides?: {
 				if (feat === 'feat:folders') return overrides?.foldersLicensed ?? false;
 				return false;
 			}),
-			isSharingEnabled: vi.fn().mockReturnValue(overrides?.sharingEnabled ?? false),
 		} as unknown as License,
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[26],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[27],
@@ -2707,6 +2706,7 @@ function createWorkflowAdapterForTests(overrides?: {
 		undefined,
 		{
 			isTeamProjectsLicensed: vi.fn().mockReturnValue(overrides?.teamProjectsLicensed ?? true),
+			isSharingLicensed: vi.fn().mockReturnValue(overrides?.sharingEnabled ?? false),
 		} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[44],
 	);
 
@@ -4712,8 +4712,11 @@ function createExecutionAdapterForTests(overrides?: { sharingEnabled?: boolean }
 	};
 
 	const mockLicense = {
-		isLicensed: vi.fn().mockReturnValue(false),
-		isSharingEnabled: vi.fn().mockReturnValue(overrides?.sharingEnabled ?? false),
+		isLicensed: vi
+			.fn()
+			.mockImplementation((feature: string) =>
+				feature === 'feat:sharing' ? (overrides?.sharingEnabled ?? false) : false,
+			),
 	};
 
 	const mockUser = { id: 'user-1', role: { slug: 'global:member' } } as unknown as User;
