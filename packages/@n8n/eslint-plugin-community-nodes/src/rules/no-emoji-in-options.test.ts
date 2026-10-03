@@ -97,6 +97,25 @@ ruleTester.run('no-emoji-in-options', NoEmojiInOptionsRule, {
 	],
 	invalid: [
 		{
+			// CE-2873: The node imports this object into its description properties.
+			name: 'emoji in option name from an imported node resource file',
+			filename: '/tmp/nodes/GithubIssues/resources/issueComment/getAll.ts',
+			code: `
+				import type { INodeProperties } from 'n8n-workflow';
+
+				export const issueCommentOperations: INodeProperties = {
+					displayName: 'Operation',
+					name: 'operation',
+					type: 'options',
+					options: [
+						{ name: '✅ Get Many', value: 'getAll' },
+					],
+					default: 'getAll',
+				};
+			`,
+			errors: [{ messageId: 'emojiInOption', data: { key: 'name', emoji: '✅' } }],
+		},
+		{
 			name: 'emoji in option name of a versioned node assigning description in its constructor',
 			filename: '/tmp/v1/TestNodeV1.node.ts',
 			code: createVersionedNodeCode(`
