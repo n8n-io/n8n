@@ -633,6 +633,38 @@ describe('AgentJsonConfigSchema — model/credential coupling', () => {
 	});
 });
 
+describe('AgentJsonConfigSchema — MCP permissions', () => {
+	it('accepts category defaults and exact tool overrides', () => {
+		const result = AgentJsonConfigSchema.safeParse({
+			...minimalConfig,
+			mcpServers: [
+				{
+					name: 'github',
+					url: 'https://mcp.example.com',
+					toolPermissions: {
+						categories: { read: 'always_allow', write: 'require_approval' },
+						tools: { delete_repository: 'blocked' },
+					},
+				},
+			],
+		});
+
+		expect(result.success).toBe(true);
+	});
+
+	it.each([
+		{ toolFilter: { mode: 'exclude', tools: ['delete_repository'] } },
+		{ approval: { mode: 'global' } },
+	])('rejects migrated legacy MCP settings: %o', (legacySettings) => {
+		const result = AgentJsonConfigSchema.safeParse({
+			...minimalConfig,
+			mcpServers: [{ name: 'github', url: 'https://mcp.example.com', ...legacySettings }],
+		});
+
+		expect(result.success).toBe(false);
+	});
+});
+
 describe('formatAgentConfigZodError', () => {
 	it('formats an invalid MCP server name as path: message without a Zod JSON dump', () => {
 		const result = AgentJsonConfigSchema.safeParse({

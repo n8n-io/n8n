@@ -218,15 +218,14 @@ describe('sanitizeAgentJsonConfig', () => {
 						nodeTypeName: '@n8n/mcp-registry.github',
 						legacyMetadataField: true,
 					},
-					toolFilter: {
-						mode: 'allow',
-						tools: ['create_issue'],
-						legacyToolFilterField: true,
-					},
-					approval: {
-						mode: 'selected',
-						tools: ['create_issue'],
-						legacyApprovalField: true,
+					toolPermissions: {
+						categories: {
+							read: 'always_allow',
+							write: 'require_approval',
+							legacyCategory: 'blocked',
+						},
+						tools: { create_issue: 'require_approval' },
+						legacyPermissionsField: true,
 					},
 					connectionTimeoutMs: 10_000,
 					legacyServerField: true,
@@ -247,13 +246,12 @@ describe('sanitizeAgentJsonConfig', () => {
 					metadata: {
 						nodeTypeName: '@n8n/mcp-registry.github',
 					},
-					toolFilter: {
-						mode: 'allow',
-						tools: ['create_issue'],
-					},
-					approval: {
-						mode: 'selected',
-						tools: ['create_issue'],
+					toolPermissions: {
+						categories: {
+							read: 'always_allow',
+							write: 'require_approval',
+						},
+						tools: { create_issue: 'require_approval' },
 					},
 					connectionTimeoutMs: 10_000,
 				},

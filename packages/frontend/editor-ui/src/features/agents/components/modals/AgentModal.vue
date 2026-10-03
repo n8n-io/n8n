@@ -95,7 +95,11 @@ function onOpenAutoFocus(event: Event) {
 	const autofocusTarget =
 		body.value?.querySelector<HTMLElement>(
 			'[data-agent-modal-autofocus], input:not([type="hidden"]):not([disabled]):not([tabindex="-1"]), textarea:not([disabled]), select:not([disabled]), [contenteditable="true"]',
-		) ?? body.value?.querySelector<HTMLElement>('button:not([disabled])');
+		) ??
+		body.value?.querySelector<HTMLElement>('button:not([disabled])') ??
+		body.value?.parentElement?.querySelector<HTMLElement>(
+			'[data-testid="dialog-close-button"]:not([disabled])',
+		);
 	if (!autofocusTarget) return;
 
 	event.preventDefault();
@@ -129,6 +133,10 @@ function onOpenAutoFocus(event: Event) {
 					data-testid="agent-modal-back"
 					@click="onBack"
 				/>
+
+				<div v-if="$slots.titlePrefix" :class="$style.titlePrefix">
+					<slot name="titlePrefix" />
+				</div>
 
 				<N8nDialogTitle as-child>
 					<div :class="$style.titleGroup">
@@ -232,7 +240,6 @@ function onOpenAutoFocus(event: Event) {
 	flex-direction: column;
 	margin: calc(var(--spacing--lg) * -1) calc(var(--spacing--lg) * -1) 0;
 	padding: var(--spacing--md) var(--spacing--lg);
-	border-bottom: var(--border);
 }
 
 .titleError {
@@ -253,6 +260,12 @@ function onOpenAutoFocus(event: Event) {
 .backButton,
 .closeButton {
 	flex-shrink: 0;
+}
+
+.titlePrefix {
+	display: flex;
+	flex-shrink: 0;
+	align-items: center;
 }
 
 .titleGroup {
@@ -306,9 +319,11 @@ function onOpenAutoFocus(event: Event) {
 
 .body {
 	box-sizing: border-box;
+	height: min(60dvh, calc(var(--height--5xl) * 5));
 	min-height: 0;
 	max-height: min(70dvh, calc(var(--height--5xl) * 6));
 	overflow-y: auto;
+	scrollbar-gutter: stable;
 	margin-inline: calc(var(--spacing--5xs) * -1);
 	padding: var(--spacing--md) var(--spacing--5xs) var(--spacing--5xs);
 
@@ -326,6 +341,12 @@ function onOpenAutoFocus(event: Event) {
 .bodyFlush {
 	margin-inline: calc(var(--spacing--lg) * -1);
 	padding: 0;
+}
+
+.footer {
+	margin: var(--spacing--md) calc(var(--spacing--lg) * -1) calc(var(--spacing--lg) * -1);
+	padding: var(--spacing--md) var(--spacing--lg);
+	border-top: var(--border);
 }
 
 .footerLayout {
@@ -348,7 +369,8 @@ function onOpenAutoFocus(event: Event) {
 }
 
 @media (max-width: 480px) {
-	.header {
+	.header,
+	.footer {
 		padding-inline: var(--spacing--md);
 	}
 

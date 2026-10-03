@@ -205,10 +205,10 @@ Before writing an entry into mcpServers, call verify_agent_mcp_server with the s
 transport, authentication, and credential. The server does not need to be attached to the Agent
 first: verification opens a temporary connection and returns the server's live tools. validate_agent
 never performs this handshake, so an unverified entry can pass validation and still fail at runtime.
-Confirm the returned tools cover the requested capability and use the list to populate toolFilter
-instead of guessing tool names. If verification fails, report the error and resolve it with the user
-instead of persisting a broken server. Only when the user cannot supply the URL or credential yet,
-persist the known fields without inventing values and skip verification.
+Confirm the returned tools cover the requested capability and use the verified list instead of
+guessing tool names. If verification fails, report the error and resolve it with the user instead of
+persisting a broken server. Only when the user cannot supply the URL or credential yet, persist the
+known fields without inventing values and skip verification.
 `;
 
 export const AGENT_BUILDER_REFERENCE = `${AGENT_BUILDER_GUIDE}

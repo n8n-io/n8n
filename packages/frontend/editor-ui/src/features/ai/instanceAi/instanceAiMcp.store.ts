@@ -14,13 +14,13 @@ import {
 	listenForCredentialChanges,
 	useCredentialsStore,
 } from '@/features/credentials/credentials.store';
+import { fetchMcpRegistryCatalog } from '@/features/shared/toolsConnection/mcpRegistry.api';
 import {
 	createMcpConnection,
 	deleteMcpConnection,
 	fetchAllMcpConnectionTools,
 	fetchMcpConnectionTools,
 	fetchMcpConnections,
-	fetchMcpRegistryServers,
 	updateMcpConnection,
 	type CreateMcpConnectionBody,
 	type UpdateMcpConnectionBody,
@@ -93,7 +93,8 @@ export const useInstanceAiMcpStore = defineStore('instanceAiMcp', () => {
 	async function loadCatalog(): Promise<void> {
 		isLoadingCatalog.value = true;
 		try {
-			catalog.value = await fetchMcpRegistryServers(rootStore.restApiContext);
+			const servers = await fetchMcpRegistryCatalog(rootStore.restApiContext);
+			catalog.value = servers.filter((server) => !server.isTemplated);
 		} catch (error) {
 			catalogLoad = null;
 			toast.showError(error, i18n.baseText('instanceAi.mcp.error.fetchCatalog'));

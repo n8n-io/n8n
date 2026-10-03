@@ -3,6 +3,7 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { createTestingPinia } from '@pinia/testing';
 import type { AgentConfigValidationIssue } from '@n8n/api-types';
 import { mockedStore } from '@/__tests__/utils';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { fireEvent, waitFor } from '@testing-library/vue';
 import { defineComponent, onMounted, nextTick } from 'vue';
@@ -242,6 +243,19 @@ describe('AgentToolConfigModal', () => {
 		expect(getByTestId('node-tool-settings-content')).toBeTruthy();
 	});
 
+	it('shows the tool icon beside the modal title', () => {
+		const { container } = renderModal({
+			ref: {
+				type: 'workflow',
+				workflowId: 'workflow-1',
+				workflow: 'Workflow',
+				name: 'Workflow tool',
+			},
+		});
+
+		expect(container.querySelector('[data-icon="workflow"]')).toBeVisible();
+	});
+
 	it('does not open for a persisted node tool without node data', () => {
 		const invalidRef = {
 			type: 'node',
@@ -297,6 +311,134 @@ describe('AgentToolConfigModal', () => {
 
 		expect(onConfirm).not.toHaveBeenCalled();
 		expect(getNativeTestId(container, 'agent-tool-config-validation-error')).toBeInTheDocument();
+	});
+
+	it('uses the registry metadata icon and forwards the content save state', () => {
+		const nodeTypesStore = mockedStore(useNodeTypesStore);
+		nodeTypesStore.getNodeType = vi.fn().mockReturnValue({
+			displayName: 'GitHub MCP',
+			name: '@n8n/mcp-registry.github',
+		});
+		const AgentToolConfigContent = defineComponent({
+			setup(_, { expose }) {
+				expose({
+					headerItem: null,
+					saveDisabled: true,
+					titleError: '',
+				});
+				return {};
+			},
+			template: '<div />',
+		});
+		const renderRegistryModal = createComponentRenderer(AgentToolConfigModal, {
+			global: {
+				stubs: {
+					AgentModal: AgentModalTestStub,
+					AgentToolConfigContent,
+				},
+			},
+		});
+		const { container } = renderRegistryModal({
+			props: {
+				modalName: MODAL_NAME,
+				data: {
+					kind: 'registryMcpServer',
+					projectId: 'project-1',
+					mcpServer: {
+						name: 'github',
+						authentication: 'githubMcpOAuth2Api',
+						credential: 'credential-1',
+						metadata: { nodeTypeName: '@n8n/mcp-registry.github' },
+					},
+					onConfirm: vi.fn(),
+				},
+			},
+		});
+
+		expect(nodeTypesStore.getNodeType).toHaveBeenCalledWith('@n8n/mcp-registry.github');
+		expect(getNativeTestId(container, 'agent-tool-config-save')).toBeDisabled();
+	});
+
+	it('delegates registry credential events and closes after deletion or removal', async () => {
+		const selectCredential = vi.fn();
+		const openCredentialPicker = vi.fn();
+		const remove = vi.fn().mockResolvedValue(true);
+		const AgentToolConfigContent = defineComponent({
+			emits: ['credential-deleted', 'request-credential-picker'],
+			setup(_, { expose }) {
+				expose({
+					headerItem: {
+						id: 'registry-config:github',
+						kind: 'mcp-server',
+						title: 'GitHub',
+						status: 'connected',
+						availableTools: [],
+						credentials: [{ authType: 'githubOAuth2Api', credentialId: 'credential-1' }],
+					},
+					credentialAdapter: {},
+					saveDisabled: false,
+					titleError: '',
+					selectCredential,
+					remove,
+				});
+				return {};
+			},
+			template: `
+				<button data-testid="request-credential-picker" @click="$emit('request-credential-picker')" />
+				<button data-testid="credential-deleted" @click="$emit('credential-deleted')" />
+			`,
+		});
+		const AgentToolConfigCredentialPicker = defineComponent({
+			emits: ['select-credential'],
+			setup(_, { expose }) {
+				expose({ open: openCredentialPicker });
+				return {};
+			},
+			template:
+				"<button data-testid=\"select-credential\" @click=\"$emit('select-credential', 'githubOAuth2Api', 'credential-2')\" />",
+		});
+		const renderRegistryModal = createComponentRenderer(AgentToolConfigModal, {
+			global: {
+				stubs: {
+					AgentModal: AgentModalTestStub,
+					AgentToolConfigContent,
+					AgentToolConfigCredentialPicker,
+					AgentToolConfigTitleIcon: true,
+				},
+			},
+		});
+		const { container } = renderRegistryModal({
+			props: {
+				modalName: MODAL_NAME,
+				data: {
+					kind: 'registryMcpServer',
+					projectId: 'project-1',
+					mcpServer: {
+						name: 'github',
+						authentication: 'githubOAuth2Api',
+						credential: 'credential-1',
+						metadata: { nodeTypeName: '@n8n/mcp-registry.github' },
+					},
+					onConfirm: vi.fn(),
+					onRemove: vi.fn(),
+				},
+			},
+		});
+		await nextTick();
+
+		await fireEvent.click(getNativeTestId(container, 'request-credential-picker'));
+		expect(openCredentialPicker).toHaveBeenCalledOnce();
+
+		await fireEvent.click(getNativeTestId(container, 'select-credential'));
+		expect(selectCredential).toHaveBeenCalledWith('githubOAuth2Api', 'credential-2');
+
+		await fireEvent.click(getNativeTestId(container, 'credential-deleted'));
+		expect(uiStore.closeModal).toHaveBeenCalledWith(MODAL_NAME);
+		uiStore.closeModal.mockClear();
+
+		await fireEvent.click(getNativeTestId(container, 'agent-tool-config-remove'));
+		await waitFor(() => expect(remove).toHaveBeenCalledOnce());
+		expect(uiStore.closeModal).toHaveBeenCalledWith(MODAL_NAME);
 	});
 
 	it('enables Save once valid and round-trips the node back into the toolRef on confirm', async () => {
@@ -474,7 +616,7 @@ describe('AgentToolConfigModal', () => {
 		);
 	});
 
-	it('uses an explicit Remove workflow action', async () => {
+	it('uses the shared Remove action', async () => {
 		const onRemove = vi.fn();
 		const { container, getByText } = renderModal({
 			onRemove,
@@ -487,7 +629,7 @@ describe('AgentToolConfigModal', () => {
 			},
 		});
 
-		expect(getByText('agents.builder.tools.workflow.remove')).toBeInTheDocument();
+		expect(getByText('agents.builder.tools.remove')).toBeInTheDocument();
 		await fireEvent.click(getNativeTestId(container, 'agent-tool-config-remove'));
 
 		expect(onRemove).toHaveBeenCalledOnce();

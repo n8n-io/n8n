@@ -87,10 +87,10 @@ design work.
 | Area       | Rule                                                                                                                         |
 | ---------- | ---------------------------------------------------------------------------------------------------------------------------- |
 | Width      | Use `2xlarge` by default. Keep one width for all steps.                                                                      |
-| Header     | Keep the header's bottom divider. Put Back on the left and Close on the right.                                               |
-| Title      | Use an editable local name when the asset supports one. Do not add an asset icon.                                            |
+| Header     | Do not add a bottom divider. Put Back on the left and Close on the right.                                                     |
+| Title      | Use an editable local name when the asset supports one. Show the asset icon beside the name in tool configuration modals.    |
 | Body       | Let `AgentModal` own the outer body inset. Do not repeat it on the first content wrapper. Focus the first body field. If there is no body control, use the dialog's default focus. Keep the title out of the initial focus order. Scroll the body only. Keep its scrollbar visible. |
-| Footer     | Do not add a divider. Put ghost Remove on the left. Put Cancel before the primary action on the right.                       |
+| Footer     | Keep the footer's top divider. Put ghost Remove on the left. Put Cancel before the primary action on the right.               |
 | Responsive | Support 375 by 667 pixels. Stack footer actions when necessary.                                                              |
 
 Use CSS variables for all sizes, spacing, colors, and motion. Do not add a new
@@ -102,8 +102,9 @@ Use `full` only when the user explicitly asks for the extra workspace.
 Keep the header and footer fixed. Let the body scroll. Keep scrollbars visible
 when the body or nested content can scroll. The Agent shell is the only scroll
 owner for normal configuration forms. Do not put fixed heights or nested
-scrollbars on MCP, node, or workflow configuration content. A picker can use a
-stable minimum height. A configuration step must use its natural height.
+scrollbars on MCP, node, or workflow configuration content. Keep the Agent modal
+body at a stable height so expanding content scrolls without shifting the
+dialog.
 
 Do not add top padding or a top margin to a modal's first content wrapper. The
 shell supplies that space. Use the flush body only for a full-bleed workspace.
@@ -117,6 +118,9 @@ block parent dismissal. The nested dialog owns Escape until it closes.
 Use the configured local name for schedules, skills, node tools, MCP servers,
 workflow tools, and vector stores. Give new items a valid default name. Show the
 pencil on hover. Keep the title clickable.
+
+Show the asset icon beside the configured local name in tool configuration
+modals. Use the same icon for direct edits and multi-step add flows.
 
 Do not show a second Name field in the body. Show title validation next to the
 title after the user selects Save.
@@ -144,9 +148,8 @@ Successful Save, Add, and Remove actions close silently. Use a toast for a
 server error. Keep a warning toast when the warning contains information that
 the user must act on.
 
-Existing removable items use a ghost bottom-left button with `trash-2`. Use an
-explicit label for the asset. Examples include `Remove schedule`, `Remove MCP`,
-and `Remove workflow`. New items and picker rows do not show Remove.
+Existing removable items use a ghost bottom-left button with `trash-2`. Use
+`Remove` for the label. New items and picker rows do not show Remove.
 
 ### Status contract
 
@@ -159,10 +162,19 @@ text and `3xs` spacing. Keep warning and failure indicators distinct.
 Use the multi-step component for Channels, Sub-agents, Tools, MCP servers,
 Workflows, and Vector stores.
 
+For tools, keep selection and configuration separate. The picker owns search,
+categories, rows, and connection entry points. After selection, route every
+tool type through the same Agent configuration facade. The facade can delegate
+to type-specific forms, but it must expose one title, credential, save, and
+remove contract to the modal shell. Do not render a type-specific settings body
+inside the picker.
+
 Keep the picker mounted. Preserve its search query, selected category, and
 scroll position. Always show the search input. Put a create row first when the
 user can create the asset. Workflows use `Create workflow`. Sub-agents use
 `Create agent`. Give the create row a short subtitle that describes the action.
+While searching for tools, show matches from all categories and group them
+under category headings. Hide the category tabs until the search is cleared.
 Keep the outer modal body fixed on picker steps. Show a list scrollbar only
 when the list content overflows. Do not show a scrollbar for an empty state.
 
@@ -199,7 +211,7 @@ skill, What the skill does, and Allowed tools. Use `Save skill` to confirm.
 ### Review checklist
 
 - Confirm the modal uses `AgentModal` or `AgentModalMultiStep`.
-- Confirm the title has no asset icon.
+- Confirm tool configuration titles show the asset icon.
 - Confirm an editable title replaces a duplicate Name field, including Skills.
 - Confirm Back appears only when a previous step exists.
 - Confirm Close is top-right and disabled during a request.

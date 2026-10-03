@@ -167,10 +167,16 @@ describe('AgentModal', () => {
 	});
 
 	it('uses the dialog fallback focus when the body has no interactive control', async () => {
-		const wrapper = mountModal({}, { default: '<span>Delete this agent?</span>' });
+		const wrapper = mountModal(
+			{ editableTitle: true },
+			{ default: '<span>Delete this agent?</span>' },
+		);
 		await flushPromises();
 
 		expect(document.activeElement).toBe(wrapper.get('[data-testid="dialog-close-button"]').element);
+		expect(document.activeElement).not.toBe(
+			wrapper.get('[data-test-id="agent-modal-title-input"]').element,
+		);
 	});
 
 	it('blocks parent dismissal while a nested credential dialog is open', async () => {

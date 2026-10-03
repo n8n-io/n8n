@@ -72,8 +72,8 @@ describe('McpToolSettingsContent', () => {
 		expect(getByText('Can look things up')).toHaveTextContent(/^Can look things up$/);
 	});
 
-	it('renders both permission groups when one has no tools', () => {
-		const { getByTestId } = renderComponent({
+	it('disables a permission group that has no tools', () => {
+		const { getByLabelText, getByTestId } = renderComponent({
 			props: {
 				item: item({
 					availableTools: [{ id: 'search', name: 'Search issues', category: 'read' }],
@@ -83,6 +83,8 @@ describe('McpToolSettingsContent', () => {
 
 		expect(getByTestId('tools-connection-count-read')).toBeVisible();
 		expect(getByTestId('tools-connection-count-write')).toHaveTextContent('0');
+		expect(getByTestId('tools-connection-permission-write')).toBeDisabled();
+		expect(getByLabelText('Write and delete tools')).toBeDisabled();
 	});
 
 	it('uses actor-specific permission and confirmation copy', async () => {
@@ -115,6 +117,31 @@ describe('McpToolSettingsContent', () => {
 
 		expect(emitted().save).toEqual([
 			[{ categories: { read: 'blocked', write: 'require_approval' } }],
+		]);
+	});
+
+	it('preserves timeout settings when permissions change', async () => {
+		const { emitted, getByTestId } = renderComponent({
+			props: {
+				item: item({
+					settings: {
+						categories: { read: 'always_allow', write: 'require_approval' },
+						connectionTimeoutMs: 45_000,
+					},
+				}),
+			},
+		});
+
+		await selectPermission(getByTestId('tools-connection-permission-read'), 'Block');
+		await fireEvent.click(getByTestId('tools-connection-settings-save'));
+
+		expect(emitted().save).toEqual([
+			[
+				{
+					categories: { read: 'blocked', write: 'require_approval' },
+					connectionTimeoutMs: 45_000,
+				},
+			],
 		]);
 	});
 
@@ -163,6 +190,23 @@ describe('McpToolSettingsContent', () => {
 		]);
 	});
 
+	it('hides approval choices when the host cannot suspend tool calls', async () => {
+		const { getByRole, getByTestId, queryByRole } = renderComponent({
+			props: {
+				item: item({
+					settings: { categories: { read: 'always_allow', write: 'always_allow' } },
+				}),
+				supportsApproval: false,
+			},
+		});
+
+		await fireEvent.click(getByTestId('tools-connection-permission-read'));
+
+		expect(queryByRole('menuitem', { name: 'Ask first' })).not.toBeInTheDocument();
+		expect(getByRole('menuitem', { name: 'Allow' })).toBeInTheDocument();
+		expect(getByRole('menuitem', { name: 'Block' })).toBeInTheDocument();
+	});
+
 	it('disables permission changes and offers reconnect for authentication failures', async () => {
 		const disconnected = item({
 			status: 'disconnected',
@@ -198,6 +242,23 @@ describe('McpToolSettingsContent', () => {
 		});
 
 		expect(getByText(/server isn't responding/i)).toBeVisible();
+		await fireEvent.click(getByTestId('tools-connection-recovery'));
+
+		expect(emitted().retry).toEqual([[]]);
+		expect(emitted().reconnect).toBeUndefined();
+	});
+
+	it('offers retry for unclassified failures', async () => {
+		const { emitted, getByTestId, getByText } = renderComponent({
+			props: {
+				item: item({
+					status: 'disconnected',
+					connectionFailureReason: 'unknown',
+				}),
+			},
+		});
+
+		expect(getByText('Connection failed. Check the server settings and try again.')).toBeVisible();
 		await fireEvent.click(getByTestId('tools-connection-recovery'));
 
 		expect(emitted().retry).toEqual([[]]);

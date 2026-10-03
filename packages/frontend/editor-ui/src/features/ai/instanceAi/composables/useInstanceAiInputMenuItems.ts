@@ -7,6 +7,7 @@ import { VIEWS } from '@/app/constants';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useContextStore } from '@/features/settings/context/context.store';
 import { isContextPreferencesEnabled } from '@/features/settings/context/context.utils';
+import { iconForMcpRegistryServer } from '@/features/shared/toolsConnection/mcpRegistryIcon';
 import type { ToolConnectionStatus, ToolIconSource } from '@/features/shared/toolsConnection/types';
 import {
 	INSTANCE_AI_COMPUTER_USE_SETUP_MODAL_KEY,
@@ -19,7 +20,6 @@ import { useInstanceAiComputerUseTelemetry } from '../instanceAiComputerUse.tele
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
 import { useBrowserUseConnection } from './useBrowserUseConnection';
 import { useMcpServerConnect } from './useMcpServerConnect';
-import { iconForTool } from '../toolIcons';
 
 type InputMenuItemData = {
 	status?: ToolConnectionStatus;
@@ -311,7 +311,7 @@ export function useInstanceAiInputMenuItems(
 				label: connection.serverTitle,
 				data: {
 					status: connection.status,
-					toolIcon: iconForTool(connection.serverIcons, uiStore.appliedTheme),
+					toolIcon: iconForMcpRegistryServer(connection.serverIcons, uiStore.appliedTheme),
 				},
 				children: [
 					{

@@ -348,6 +348,9 @@ describe('useNdvAgentConfig', () => {
 				url: 'https://mcp.example.com',
 				transport: 'streamableHttp' as const,
 				authentication: 'none' as const,
+				toolPermissions: {
+					categories: { read: 'always_allow' as const, write: 'always_allow' as const },
+				},
 			};
 			api.inline.scheduleConfigUpdate({ tools: [], mcpServers: [mcpServer] });
 

@@ -36,6 +36,7 @@ export const AgentModalTestStub = defineComponent({
 					:disabled="busy"
 					@click="$emit('back')"
 				/>
+				<slot name="titlePrefix" />
 				<input
 					v-if="editableTitle"
 					:value="title"
@@ -108,6 +109,7 @@ export const AgentModalMultiStepTestStub = defineComponent({
 			@update:title="$emit('update:title', $event)"
 			@back="$emit('back')"
 		>
+			<template #titlePrefix><slot name="titlePrefix" /></template>
 			<template #headerActions><slot name="headerActions" /></template>
 			<slot />
 			<template #footerLeft><slot name="footerLeft" /></template>
