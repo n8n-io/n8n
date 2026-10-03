@@ -26,6 +26,11 @@ export interface LoadingProps {
 	 */
 	loading?: boolean;
 	/**
+	 * Time in milliseconds before the skeleton becomes visible. Use zero for immediate feedback.
+	 * @default 300
+	 */
+	delay?: number;
+	/**
 	 * Number of skeleton rows to display.
 	 * @default 1
 	 */

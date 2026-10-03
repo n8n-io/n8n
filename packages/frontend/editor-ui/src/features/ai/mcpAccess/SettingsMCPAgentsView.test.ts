@@ -1,3 +1,6 @@
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
+import { flushPromises } from '@vue/test-utils';
+import { fireEvent } from '@testing-library/vue';
 import { nextTick } from 'vue';
 import { createTestingPinia } from '@pinia/testing';
 import { waitFor } from '@testing-library/vue';
@@ -94,6 +97,52 @@ describe('SettingsMCPAgentsView', () => {
 	afterEach(() => {
 		vi.clearAllMocks();
 	});
+
+	it.each([true, false])(
+		'keeps the latest page when the older response finishes first: %s',
+		async (olderFirst) => {
+			const older = createDeferredPromise<{ data: McpAgent[]; count: number; page: number }>();
+			const latest = createDeferredPromise<{ data: McpAgent[]; count: number; page: number }>();
+			mcpStore.fetchAgentsAvailableForMCPPage
+				.mockResolvedValueOnce({ data: [], count: 30, page: 1 })
+				.mockReturnValueOnce(older.promise)
+				.mockReturnValueOnce(latest.promise);
+			const { getByTestId } = createComponent({
+				pinia,
+				global: {
+					stubs: {
+						AgentsTable: {
+							props: ['agents', 'tableOptions', 'loading'],
+							template: `<div>
+					<button data-test-id="page-2" @click="$emit('update:options', { page: 1, itemsPerPage: 10, sortBy: [] })">2</button>
+					<button data-test-id="page-3" @click="$emit('update:options', { page: 2, itemsPerPage: 10, sortBy: [] })">3</button>
+					<span data-test-id="state">{{ tableOptions.page }}|{{ loading }}|{{ agents[0]?.name }}</span>
+				</div>`,
+						},
+					},
+				},
+			});
+			await flushPromises();
+			await fireEvent.click(getByTestId('page-2'));
+			await fireEvent.click(getByTestId('page-3'));
+			const resolveOlder = () =>
+				older.resolve({ data: [createAgent({ name: 'Older' })], count: 30, page: 2 });
+			const resolveLatest = () =>
+				latest.resolve({ data: [createAgent({ name: 'Latest' })], count: 30, page: 3 });
+			if (olderFirst) {
+				resolveOlder();
+				await flushPromises();
+				expect(getByTestId('state')).toHaveTextContent('2|true|');
+				resolveLatest();
+			} else {
+				resolveLatest();
+				await flushPromises();
+				resolveOlder();
+			}
+			await flushPromises();
+			expect(getByTestId('state')).toHaveTextContent('2|false|Latest');
+		},
+	);
 
 	it('should redirect to the MCP settings view when MCP is disabled', async () => {
 		settingsStore.moduleSettings = {

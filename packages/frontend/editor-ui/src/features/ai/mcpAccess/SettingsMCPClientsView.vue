@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useLatestFetch } from '@/app/composables/useLatestFetch';
 import { onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
@@ -10,11 +11,7 @@ import { useToast } from '@n8n/composables/useToast';
 import type { OAuthClientFilters } from '@/features/ai/mcpAccess/clients.utils';
 import OAuthClientsTable from '@/features/ai/mcpAccess/components/tabs/OAuthClientsTable.vue';
 import RevokeOAuthClientConfirmModal from '@/features/ai/mcpAccess/components/RevokeOAuthClientConfirmModal.vue';
-import {
-	LOADING_INDICATOR_TIMEOUT,
-	MCP_DOCS_PAGE_URL,
-	MCP_SETTINGS_VIEW,
-} from '@/features/ai/mcpAccess/mcp.constants';
+import { MCP_DOCS_PAGE_URL, MCP_SETTINGS_VIEW } from '@/features/ai/mcpAccess/mcp.constants';
 import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
 import { useMcp } from '@/features/ai/mcpAccess/composables/useMcp';
 import { useOAuthClientRevoke } from '@/features/ai/mcpAccess/composables/useOAuthClientRevoke';
@@ -31,24 +28,25 @@ const documentTitle = useDocumentTitle({
 const mcpStore = useMCPStore();
 const rbacStore = useRBACStore();
 
-const oAuthClientsLoading = ref(false);
+const oAuthClientsLoading = ref(true);
+const { next: nextFetch } = useLatestFetch();
 const { revokeClient, revoking, isRevokingForOther, requestRevoke, cancelRevoke, confirmRevoke } =
 	useOAuthClientRevoke();
 
 const fetchoAuthCLients = async () => {
+	const isCurrent = nextFetch();
 	try {
 		oAuthClientsLoading.value = true;
 		await mcpStore.getAllOAuthClients();
 	} catch (error) {
 		toast.showError(error, i18n.baseText('settings.mcp.error.fetching.oAuthClients'));
 	} finally {
-		setTimeout(() => {
-			oAuthClientsLoading.value = false;
-		}, LOADING_INDICATOR_TIMEOUT);
+		if (isCurrent()) oAuthClientsLoading.value = false;
 	}
 };
 
 const onOwnershipChange = async (ownership: 'mine' | 'all') => {
+	const isCurrent = nextFetch();
 	// Reflect the tab in the URL right away (replace keeps history clean /
 	// back-button safe). Written before the fetch: the tab is the user's choice,
 	// not the fetch result, so a slow earlier fetch can't stamp a stale tab later.
@@ -64,9 +62,7 @@ const onOwnershipChange = async (ownership: 'mine' | 'all') => {
 	} catch (error) {
 		toast.showError(error, i18n.baseText('settings.mcp.error.fetching.oAuthClients'));
 	} finally {
-		setTimeout(() => {
-			oAuthClientsLoading.value = false;
-		}, LOADING_INDICATOR_TIMEOUT);
+		if (isCurrent()) oAuthClientsLoading.value = false;
 	}
 };
 

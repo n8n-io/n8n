@@ -1,3 +1,4 @@
+import { useLatestFetch } from '@/app/composables/useLatestFetch';
 import { DEFAULT_WORKFLOW_PAGE_SIZE } from '@/app/constants';
 import { STORES } from '@n8n/stores';
 import type { IWorkflowDb, IWorkflowsMap, WorkflowListResource } from '@/Interface';
@@ -26,6 +27,7 @@ const ALL_PROJECTS_KEY = '__all_projects__';
 
 export const useWorkflowsListStore = defineStore(STORES.WORKFLOWS_LIST, () => {
 	const rootStore = useRootStore();
+	const { next: nextListFetch } = useLatestFetch();
 
 	// State
 	const totalWorkflowCount = ref(0);
@@ -132,6 +134,7 @@ export const useWorkflowsListStore = defineStore(STORES.WORKFLOWS_LIST, () => {
 		includeFolders = false,
 		onlySharedWithMe = false,
 	): Promise<{ data: WorkflowListResource[]; count: number }> {
+		const isCurrent = nextListFetch();
 		const filter = { ...filters, projectId };
 		const options = {
 			skip: (page - 1) * pageSize,
@@ -146,6 +149,7 @@ export const useWorkflowsListStore = defineStore(STORES.WORKFLOWS_LIST, () => {
 			includeFolders ? includeFolders : undefined,
 			onlySharedWithMe ? onlySharedWithMe : undefined,
 		);
+		if (!isCurrent()) return { data, count };
 		totalWorkflowCount.value = count;
 		// Also set fetched workflows to store
 		// When fetching workflows from overview page, they don't have resource property

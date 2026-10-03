@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useLatestFetch } from '@/app/composables/useLatestFetch';
 import ProjectHeader from '@/features/collaboration/projects/components/ProjectHeader.vue';
 import { useProjectPages } from '@/features/collaboration/projects/composables/useProjectPages';
 import { InsightsSummary, useInsightsStore } from '@n8n/frontend-module-insights';
@@ -11,7 +12,6 @@ import {
 	PROJECT_DATA_TABLES,
 } from '@/features/core/dataTable/constants';
 import { getDebounceTime, useDebounce } from '@n8n/composables/useDebounce';
-import debounce from 'lodash/debounce';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useToast } from '@n8n/composables/useToast';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -45,6 +45,7 @@ const uiStore = useUIStore();
 const { fetchDependencyCounts } = useDependencies();
 
 const loading = ref(true);
+const hasLoaded = ref(false);
 
 const currentPage = ref(1);
 const pageSize = ref(DEFAULT_DATA_TABLE_PAGE_SIZE);
@@ -103,14 +104,13 @@ type SORT_TYPE = typeof DATA_TABLE_SORT_MAP;
 
 const currentSort = ref<SORT_TYPE[keyof SORT_TYPE]>('updatedAt:desc');
 
-const delayedLoading = debounce(() => {
-	loading.value = true;
-}, 300);
+const { next: nextFetch } = useLatestFetch();
 
 const fetchDataTables = async () => {
+	const isCurrent = nextFetch();
 	const projectIdFilter = projectPages.isOverviewSubPage ? '' : projectsStore.currentProjectId;
 	try {
-		delayedLoading();
+		loading.value = true;
 		await dataTableStore.fetchDataTables(
 			projectIdFilter ?? '',
 			currentPage.value,
@@ -122,10 +122,12 @@ const fetchDataTables = async () => {
 			currentSort.value,
 		);
 	} catch (error) {
-		toast.showError(error, 'Error loading data tables');
+		if (isCurrent()) toast.showError(error, 'Error loading data tables');
 	} finally {
-		delayedLoading.cancel();
-		loading.value = false;
+		if (isCurrent()) {
+			loading.value = false;
+			hasLoaded.value = true;
+		}
 
 		const dataTableIds = dataTableStore.dataTables.map((dt) => dt.id);
 		void fetchDependencyCounts(dataTableIds, 'dataTable');
@@ -144,7 +146,7 @@ const onPaginationUpdate = async (payload: SortingAndPaginationUpdates) => {
 			DATA_TABLE_SORT_MAP[payload.sort as keyof typeof DATA_TABLE_SORT_MAP] ?? 'updatedAt:desc';
 	}
 
-	if (!loading.value) {
+	if (hasLoaded.value) {
 		await callDebounced(fetchDataTables, { debounceTime: 200, trailing: true });
 	}
 };

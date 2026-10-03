@@ -35,6 +35,28 @@ describe('WorkflowsTable', () => {
 			expect(getByTestId('mcp-workflow-table-empty-state')).toBeVisible();
 		});
 
+		it('keeps a completed empty result during a short refresh', async () => {
+			vi.useFakeTimers();
+			try {
+				const { getByTestId, rerender, container } = createComponent({
+					props: { workflows: [], loading: true },
+				});
+				expect(container.querySelector('.n8n-loading')).not.toBeVisible();
+				await rerender({ loading: false });
+				const button = getByTestId('mcp-workflow-table-empty-state-button');
+				await rerender({ loading: true });
+				await vi.advanceTimersByTimeAsync(100);
+				expect(button).toBeVisible();
+				await rerender({ loading: false });
+				expect(getByTestId('mcp-workflow-table-empty-state-button')).toBe(button);
+				await rerender({ loading: true });
+				await vi.advanceTimersByTimeAsync(300);
+				expect(container.querySelector('.n8n-loading')).toBeVisible();
+			} finally {
+				vi.useRealTimers();
+			}
+		});
+
 		it('should emit connectWorkflows event when button is clicked', async () => {
 			const { getByTestId, emitted } = createComponent({
 				props: {
@@ -51,6 +73,26 @@ describe('WorkflowsTable', () => {
 	});
 
 	describe('Loading state', () => {
+		it('keeps existing rows until the refresh skeleton is revealed', async () => {
+			vi.useFakeTimers();
+			try {
+				const { getByTestId, queryByTestId, container, rerender } = createComponent({
+					props: { workflows: [createWorkflow()], loading: false },
+				});
+				await rerender({ loading: true });
+				await vi.advanceTimersByTimeAsync(299);
+				expect(getByTestId('mcp-workflow-table')).toBeVisible();
+				expect(container.querySelector('.n8n-loading')).not.toBeInTheDocument();
+				await vi.advanceTimersByTimeAsync(1);
+				expect(queryByTestId('mcp-workflow-table')).not.toBeInTheDocument();
+				expect(container.querySelector('.n8n-loading')).toBeVisible();
+				await rerender({ loading: false });
+				expect(getByTestId('mcp-workflow-table')).toBeVisible();
+			} finally {
+				vi.useRealTimers();
+			}
+		});
+
 		it('should render loading skeleton when loading is true', () => {
 			const { container, queryByTestId } = createComponent({
 				props: {

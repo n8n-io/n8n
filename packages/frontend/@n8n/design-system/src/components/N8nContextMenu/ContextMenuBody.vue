@@ -32,6 +32,7 @@ const { t } = useI18n();
 			<slot name="loading">
 				<div :class="$style.items">
 					<N8nLoading
+						:delay="0"
 						v-for="i in loadingItemCount"
 						:key="i"
 						:rows="1"

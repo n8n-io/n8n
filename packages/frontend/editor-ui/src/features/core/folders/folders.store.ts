@@ -18,8 +18,6 @@ import { ref } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import type { PathItem } from '@n8n/design-system';
 
-const BREADCRUMBS_MIN_LOADING_TIME = 300;
-
 export const useFoldersStore = defineStore(STORES.FOLDERS, () => {
 	const rootStore = useRootStore();
 	const i18n = useI18n();
@@ -266,7 +264,6 @@ export const useFoldersStore = defineStore(STORES.FOLDERS, () => {
 			addLinks?: boolean;
 		},
 	) {
-		const startTime = Date.now();
 		const path = await getFolderPath(project.id, folderId);
 
 		// Process a folder and all its nested children recursively
@@ -331,15 +328,6 @@ export const useFoldersStore = defineStore(STORES.FOLDERS, () => {
 				},
 				...path.flatMap(processFolderWithChildren),
 			];
-		}
-
-		// Calculate how much time has elapsed
-		const elapsedTime = Date.now() - startTime;
-		const remainingTime = Math.max(0, BREADCRUMBS_MIN_LOADING_TIME - elapsedTime);
-
-		// Add a delay if needed to ensure minimum loading time
-		if (remainingTime > 0) {
-			await new Promise((resolve) => setTimeout(resolve, remainingTime));
 		}
 
 		return result;

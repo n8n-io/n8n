@@ -15,7 +15,6 @@ export class TemplatesComposer {
 	 */
 	async importFirstTemplate(): Promise<void> {
 		await this.n8n.navigate.toTemplates();
-		await expect(this.n8n.templates.getSkeletonLoader()).toBeHidden();
 		await expect(this.n8n.templates.getFirstTemplateCard()).toBeVisible();
 		await expect(this.n8n.templates.getTemplatesLoadingContainer()).toBeHidden();
 

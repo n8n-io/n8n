@@ -133,6 +133,68 @@ describe('ResourcesListLayout', () => {
 		expect(getByTestId('resources-list-search')).toBeInTheDocument();
 	});
 
+	describe('refresh feedback', () => {
+		beforeEach(() => vi.useFakeTimers());
+		afterEach(() => vi.useRealTimers());
+
+		it('keeps existing rows visible during a fast refresh', async () => {
+			const { getByTestId, container, rerender } = renderComponent({
+				props: { resources: TEST_WORKFLOWS, type: 'list-paginated' },
+			});
+			const list = getByTestId('resources-list-wrapper');
+			await rerender({ resourcesRefreshing: true });
+			await vi.advanceTimersByTimeAsync(100);
+			expect(list).toBeVisible();
+			expect(container.querySelector('.n8n-loading')).not.toBeInTheDocument();
+			await rerender({ resourcesRefreshing: false, resources: [TEST_WORKFLOWS[0]] });
+			await vi.advanceTimersByTimeAsync(300);
+			expect(getByTestId('resources-list-wrapper')).toBe(list);
+			expect(container.querySelector('.n8n-loading')).not.toBeInTheDocument();
+		});
+
+		it('replaces rows after 300 ms without a second skeleton delay', async () => {
+			const { getByTestId, queryByTestId, container, rerender } = renderComponent({
+				props: { resources: TEST_WORKFLOWS, type: 'list-paginated' },
+			});
+			await rerender({ resourcesRefreshing: true });
+			await vi.advanceTimersByTimeAsync(299);
+			expect(getByTestId('resources-list-wrapper')).toBeVisible();
+			await vi.advanceTimersByTimeAsync(1);
+			expect(queryByTestId('resources-list-wrapper')).not.toBeInTheDocument();
+			expect(container.querySelector('.n8n-loading')).toBeVisible();
+			await rerender({ resourcesRefreshing: false });
+			expect(getByTestId('resources-list-wrapper')).toBeVisible();
+		});
+
+		it('keeps search mounted when clearing a search with no results', async () => {
+			const { getByTestId, rerender } = renderComponent({
+				props: { filters: { search: 'missing', homeProject: '' } },
+			});
+			const search = getByTestId('resources-list-search');
+			const input = search;
+			input.focus();
+			await rerender({
+				filters: { search: '', homeProject: '' },
+				resourcesRefreshing: true,
+			});
+			await vi.advanceTimersByTimeAsync(300);
+			expect(getByTestId('resources-list-search')).toBe(search);
+			expect(input).toHaveFocus();
+			await rerender({ resourcesRefreshing: false, resources: TEST_WORKFLOWS });
+			expect(getByTestId('resources-list-search')).toBe(search);
+			expect(input).toHaveFocus();
+		});
+
+		it('does not show no results while a filtered request is pending', async () => {
+			const { queryByTestId, getByTestId, rerender } = renderComponent({
+				props: { filters: { search: 'missing', homeProject: '' }, resourcesRefreshing: true },
+			});
+			expect(queryByTestId('resources-list-empty')).not.toBeInTheDocument();
+			await rerender({ resourcesRefreshing: false });
+			expect(getByTestId('resources-list-empty')).toBeVisible();
+		});
+	});
+
 	it('should render scrollable list based on `type` prop', () => {
 		const { getByTestId } = renderComponent({
 			props: {

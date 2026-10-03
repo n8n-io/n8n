@@ -1,12 +1,12 @@
 <script setup lang="ts">
-import debounce from 'lodash/debounce';
+import { useLatestFetch } from '@/app/composables/useLatestFetch';
 import { ref, computed, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useToast } from '@n8n/composables/useToast';
 import { DEBOUNCE_TIME, DEFAULT_WORKFLOW_PAGE_SIZE } from '@/app/constants';
-import { getDebounceTime, useDebounce } from '@n8n/composables/useDebounce';
+import { useDebounce } from '@n8n/composables/useDebounce';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import ProjectHeader from '@/features/collaboration/projects/components/ProjectHeader.vue';
@@ -69,6 +69,7 @@ const pageSize = ref(DEFAULT_WORKFLOW_PAGE_SIZE);
 const currentSort = ref<ListAgentsSortBy>('updatedAt:desc');
 const totalAgents = ref(0);
 const loading = ref(true);
+const hasLoaded = ref(false);
 
 const projectId = computed(() => route.params.projectId as string | undefined);
 
@@ -81,17 +82,11 @@ const sortFns = {
 	nameDesc: (a: AgentResource, b: AgentResource) => b.name.localeCompare(a.name),
 };
 
-async function fetchAgents() {
-	const shouldDelayLoading = allAgents.value.length > 0;
-	const delayedLoading = debounce(() => {
-		loading.value = true;
-	}, getDebounceTime(DEBOUNCE_TIME.INPUT.SEARCH));
+const { next: nextFetch } = useLatestFetch();
 
-	if (shouldDelayLoading) {
-		delayedLoading();
-	} else {
-		loading.value = true;
-	}
+async function fetchAgents() {
+	const isCurrent = nextFetch();
+	loading.value = true;
 
 	try {
 		const fetchOptions = {
@@ -103,11 +98,14 @@ async function fetchAgents() {
 		const { count, data } = projectId.value
 			? await listAgentsPage(rootStore.restApiContext, projectId.value, fetchOptions)
 			: await listAgentsPageGlobal(rootStore.restApiContext, fetchOptions);
+		if (!isCurrent()) return;
 		allAgents.value = data;
 		totalAgents.value = count;
 	} finally {
-		delayedLoading.cancel();
-		loading.value = false;
+		if (isCurrent()) {
+			loading.value = false;
+			hasLoaded.value = true;
+		}
 	}
 }
 
@@ -199,6 +197,8 @@ function onAgentDeleted(agentId: string) {
 }
 
 async function onSearchUpdated(search: string) {
+	// Ignore the current response while the next request waits for the debounce.
+	nextFetch();
 	filters.value = { ...filters.value, search };
 	currentPage.value = 1;
 	if (search) {
@@ -222,7 +222,8 @@ async function setPaginationAndSort(payload: SortingAndPaginationUpdates) {
 		currentSort.value =
 			AGENTS_SORT_MAP[payload.sort as keyof typeof AGENTS_SORT_MAP] ?? 'updatedAt:desc';
 	}
-	if (!loading.value) {
+	if (hasLoaded.value) {
+		nextFetch();
 		await callDebounced(fetchAgents, {
 			debounceTime: DEBOUNCE_TIME.API.RESOURCE_SEARCH,
 			trailing: true,

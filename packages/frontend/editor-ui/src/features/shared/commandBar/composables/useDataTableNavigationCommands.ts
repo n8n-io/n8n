@@ -1,3 +1,6 @@
+import { useLatestFetch } from '@/app/composables/useLatestFetch';
+import { fetchDataTablesApi } from '@/features/core/dataTable/dataTable.api';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import { computed, ref, type Ref } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
@@ -25,6 +28,7 @@ export function useDataTableNavigationCommands(options: {
 	const i18n = useI18n();
 	const { lastQuery, activeNodeId, currentProjectName } = options;
 	const dataTableStore = useDataTableStore();
+	const rootStore = useRootStore();
 	const projectsStore = useProjectsStore();
 	const sourceControlStore = useSourceControlStore();
 
@@ -32,8 +36,11 @@ export function useDataTableNavigationCommands(options: {
 	const route = useRoute();
 
 	const dataTableResults = ref<DataTable[]>([]);
+	// Command search must not replace the page shown in the data table list.
+	const availableDataTables = ref<DataTable[]>([]);
 	const isLoading = ref(false);
 	const hasDataFetched = ref(false);
+	const { next: nextFetch } = useLatestFetch();
 
 	const currentProjectId = computed(() => {
 		return typeof route.params.projectId === 'string'
@@ -55,26 +62,31 @@ export function useDataTableNavigationCommands(options: {
 		});
 	}
 
-	const fetchDataTablesImpl = async (query: string) => {
+	const fetchDataTablesImpl = async (query: string, isCurrent: () => boolean) => {
 		try {
 			const trimmed = (query || '').trim();
 
 			// Only fetch data from API on the first call
 			if (!hasDataFetched.value) {
-				await dataTableStore.fetchDataTables('', 1, 1000);
+				const { data } = await fetchDataTablesApi(rootStore.restApiContext, '', {
+					skip: 0,
+					take: 1000,
+				});
+				if (!isCurrent()) return;
+				availableDataTables.value = data;
 				hasDataFetched.value = true;
 			}
 
 			const trimmedLower = trimmed.toLowerCase();
-			const filtered = dataTableStore.dataTables.filter((dataTable) =>
+			const filtered = availableDataTables.value.filter((dataTable) =>
 				dataTable.name.toLowerCase().includes(trimmedLower),
 			);
 
 			dataTableResults.value = orderResultByCurrentProjectFirst(filtered);
 		} catch {
-			dataTableResults.value = [];
+			if (isCurrent()) dataTableResults.value = [];
 		} finally {
-			isLoading.value = false;
+			if (isCurrent()) isLoading.value = false;
 		}
 	};
 
@@ -184,6 +196,9 @@ export function useDataTableNavigationCommands(options: {
 	});
 
 	function onCommandBarChange(query: string) {
+		// Invalidate the previous query before the debounce starts.
+		const isCurrent = nextFetch();
+		fetchDataTablesDebounced.cancel();
 		if (!dataTableStore.canViewDataTables) {
 			return;
 		}
@@ -194,17 +209,22 @@ export function useDataTableNavigationCommands(options: {
 
 		if (isInDataTableParent || isRootWithQuery) {
 			isLoading.value = true;
-			void fetchDataTablesDebounced(trimmed);
+			void fetchDataTablesDebounced(trimmed, isCurrent);
+		} else {
+			isLoading.value = false;
+			dataTableResults.value = [];
 		}
 	}
 
 	function onCommandBarNavigateTo(to: string | null) {
+		const isCurrent = nextFetch();
+		fetchDataTablesDebounced.cancel();
 		activeNodeId.value = to;
 
 		if (to === ITEM_ID.OPEN_DATA_TABLE) {
 			isLoading.value = true;
-			void fetchDataTablesImpl('');
-		} else if (to === null) {
+			void fetchDataTablesImpl('', isCurrent);
+		} else {
 			isLoading.value = false;
 			dataTableResults.value = [];
 			hasDataFetched.value = false;
