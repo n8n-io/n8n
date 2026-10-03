@@ -27,6 +27,7 @@ import { createRequire } from 'node:module';
 import { dirname, join, parse } from 'node:path';
 
 import { createToolRegistry } from '../tool-registry';
+import { createOtlpSpanProcessor } from './otlp-sink';
 import type {
 	InstanceAiToolTraceOptions,
 	InstanceAiTelemetryOptions,
@@ -62,8 +63,10 @@ import { PURE_REPLAY_TOOLS } from './trace-replay';
 export {
 	buildAgentTraceInputs,
 	redactLangSmithTelemetrySpan,
+	redactOtlpTelemetrySpan,
 	serializeModelIdForTrace,
 } from './trace-payloads';
+export type { OtlpSpanContent } from './trace-payloads';
 
 const DEFAULT_PROJECT_NAME = 'instance-ai';
 const DEFAULT_TAGS = ['instance-ai'];
@@ -611,6 +614,23 @@ function getActiveOtelContextWithSpan(expectedTraceId?: string): OtelContext | u
 	return activeContext;
 }
 
+/**
+ * W3C trace context of the innermost build span (an AI SDK tool span or the
+ * current product run), so a workflow run started from a tool nests under it.
+ */
+export function currentBuildTracingContext(): { traceparent: string } | undefined {
+	const current = getCurrentProductTrace();
+	if (!current || current.runtime.shutdown) return undefined;
+
+	const activeContext = getActiveOtelContextWithSpan(current.currentRun.otelTraceId);
+	const activeSpanContext = activeContext ? otelTrace.getSpanContext(activeContext) : undefined;
+	const traceId = activeSpanContext?.traceId ?? current.currentRun.otelTraceId;
+	const spanId = activeSpanContext?.spanId ?? current.currentRun.otelSpanId;
+	if (!traceId || !spanId) return undefined;
+
+	return { traceparent: `00-${traceId}-${spanId}-01` };
+}
+
 function spanMetadataAttributes(
 	metadata: Record<string, unknown> | undefined,
 ): Record<string, AttributeValue> {
@@ -777,6 +797,19 @@ function isLangSmithTracingEnabled(proxyAvailable = false): boolean {
 			process.env.LANGCHAIN_ENDPOINT ??
 			tracingFlag === true,
 	);
+}
+
+/** Where a product trace exports: LangSmith, the OTLP endpoint, or both. */
+interface ProductTraceSinks {
+	langsmith: boolean;
+	otlpSpanProcessor?: unknown;
+}
+
+function resolveProductTraceSinks(proxyAvailable: boolean): ProductTraceSinks | undefined {
+	const langsmith = isLangSmithTracingEnabled(proxyAvailable);
+	const otlpSpanProcessor = createOtlpSpanProcessor();
+	if (!langsmith && otlpSpanProcessor === undefined) return undefined;
+	return { langsmith, ...(otlpSpanProcessor !== undefined ? { otlpSpanProcessor } : {}) };
 }
 
 function isInternalOperationTracingEnabled(): boolean {
@@ -1753,9 +1786,16 @@ function createLangSmithTelemetryBuilder(
 
 async function createProductOtelRuntime(
 	projectName: string,
-	proxyConfig?: ServiceProxyConfig,
+	proxyConfig: ServiceProxyConfig | undefined,
+	sinks: ProductTraceSinks,
 ): Promise<ProductOtelTraceRuntime> {
-	const telemetry = await createLangSmithTelemetryBuilder(projectName, proxyConfig)
+	const builder = sinks.langsmith
+		? createLangSmithTelemetryBuilder(projectName, proxyConfig)
+		: new Telemetry();
+	if (sinks.otlpSpanProcessor !== undefined) {
+		builder.spanProcessor(sinks.otlpSpanProcessor);
+	}
+	const telemetry = await builder
 		.functionId('instance-ai.product')
 		.metadata({})
 		.recordInputs(true)
@@ -1805,7 +1845,8 @@ function createProductTraceContext(options: {
 export async function createInstanceAiTraceContext(
 	options: CreateInstanceAiTraceContextOptions,
 ): Promise<InstanceAiTraceContext | undefined> {
-	if (!isLangSmithTracingEnabled(!!options.proxyConfig)) {
+	const sinks = resolveProductTraceSinks(!!options.proxyConfig);
+	if (!sinks) {
 		return undefined;
 	}
 
@@ -1813,7 +1854,7 @@ export async function createInstanceAiTraceContext(
 	const baseMetadata = await buildBaseMetadata(options);
 
 	const createTraceRuns = async () => {
-		const otelRuntime = await createProductOtelRuntime(projectName, options.proxyConfig);
+		const otelRuntime = await createProductOtelRuntime(projectName, options.proxyConfig, sinks);
 		const traceContextRef: { current?: InstanceAiTraceContext } = {};
 		const messageRun = startProductSpan(otelRuntime, {
 			projectName,
@@ -1863,11 +1904,9 @@ export async function continueInstanceAiTraceContext(
 	options: CreateInstanceAiTraceContextOptions,
 ): Promise<InstanceAiTraceContext | undefined> {
 	const proxyConfig = options.proxyConfig ?? existingContext?.proxyConfig;
-	if (!existingContext && !isLangSmithTracingEnabled(!!proxyConfig)) {
-		return undefined;
-	}
-	if (existingContext?.rootRun.traceId === 'stub' && !isLangSmithTracingEnabled(!!proxyConfig)) {
-		return existingContext;
+	const sinks = resolveProductTraceSinks(!!proxyConfig);
+	if (!sinks) {
+		return existingContext?.rootRun.traceId === 'stub' ? existingContext : undefined;
 	}
 
 	const promptVersion = existingContext?.rootRun.metadata?.prompt_version;
@@ -1896,7 +1935,7 @@ export async function continueInstanceAiTraceContext(
 			: {};
 
 	const createContinuation = async () => {
-		const otelRuntime = await createProductOtelRuntime(projectName, proxyConfig);
+		const otelRuntime = await createProductOtelRuntime(projectName, proxyConfig, sinks);
 		const rootRun = startProductSpan(otelRuntime, {
 			projectName,
 			name: `resume: ${formatResumeReasonLabel(options.metadata?.resume_reason)}`,
@@ -1988,7 +2027,7 @@ export async function withSandboxLifecycleTrace<T>(
 
 	let tracing: InstanceAiTraceContext | undefined;
 	try {
-		if (isLangSmithTracingEnabled(true)) {
+		if (isLangSmithTracingEnabled(true) || createOtlpSpanProcessor() !== undefined) {
 			const controller = new AbortController();
 			const timer = setTimeout(() => controller.abort(), SANDBOX_TRACE_TIMEOUT_MS);
 			timer.unref();
@@ -2059,7 +2098,8 @@ export async function withSandboxLifecycleTrace<T>(
 async function createOperationTraceContext(
 	options: CreateInternalOperationTraceContextOptions,
 ): Promise<InstanceAiTraceContext | undefined> {
-	if (!isLangSmithTracingEnabled(!!options.proxyConfig)) {
+	const sinks = resolveProductTraceSinks(!!options.proxyConfig);
+	if (!sinks) {
 		return undefined;
 	}
 
@@ -2073,7 +2113,7 @@ async function createOperationTraceContext(
 	});
 
 	const createInternalRuns = async () => {
-		const otelRuntime = await createProductOtelRuntime(projectName, options.proxyConfig);
+		const otelRuntime = await createProductOtelRuntime(projectName, options.proxyConfig, sinks);
 		const internalMetadata = buildInternalOperationMetadata(options.operationName);
 		const rootRun = startProductSpan(otelRuntime, {
 			projectName,

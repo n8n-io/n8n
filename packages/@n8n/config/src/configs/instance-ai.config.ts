@@ -202,6 +202,14 @@ export class InstanceAiConfig {
 	@Env('N8N_INSTANCE_AI_RUN_DEBUG_ENABLED')
 	runDebugEnabled: boolean = false;
 
+	/**
+	 * Send prompts, completions and tool data (after redaction) on the assistant's
+	 * OTLP build traces. For development only: without it, those traces carry
+	 * identifiers, models, token counts and timings only.
+	 */
+	@Env('N8N_INSTANCE_AI_TRACE_CONTENT')
+	traceContent: boolean = false;
+
 	/** Enable extended thinking / reasoning for the orchestrator agent. */
 	@Env('N8N_INSTANCE_AI_THINKING_ENABLED')
 	thinkingEnabled: boolean = true;

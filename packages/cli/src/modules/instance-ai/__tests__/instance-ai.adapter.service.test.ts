@@ -23,6 +23,9 @@ vi.mock('@n8n/instance-ai', async () => {
 			return `<untrusted_data source="${esc(source)}"${safeLabel}>\n${safeContent}\n</untrusted_data>`;
 		},
 		builderTemplatesOptionsFromEnv: () => ({}),
+		currentBuildTracingContext: () => ({
+			traceparent: '00-0af7651916cd43dd8448eb211c80319c-b7ad6b7169203331-01',
+		}),
 		deriveCredentialHosts: vi.fn().mockReturnValue([]),
 		BuilderTemplatesService: class {
 			async getBundle() {
@@ -5556,6 +5559,19 @@ describe('createExecutionAdapter run()', () => {
 		expect(firstStackItem?.data.main[0]?.[0]?.json).toEqual({});
 	});
 
+	it('passes the build trace context to the run', async () => {
+		const { adapter, mockWorkflowRunner } = createRunAdapterForTests({
+			id: 'wf-1',
+			nodes: [makeNode('Schedule Trigger', 'n8n-nodes-base.scheduleTrigger')],
+		});
+
+		await adapter.run('wf-1');
+
+		expect(mockWorkflowRunner.run.mock.calls[0][0].tracingContext).toEqual({
+			traceparent: '00-0af7651916cd43dd8448eb211c80319c-b7ad6b7169203331-01',
+		});
+	});
+
 	describe('trigger selection', () => {
 		const triggerNode = (
 			name: string,
@@ -5897,6 +5913,14 @@ describe('createExecutionAdapter runStep()', () => {
 		expect(runData.runData).toBeUndefined();
 		expect(result.inputMode).toBe('chain');
 		expect(result.mockedNodeNames).toEqual([]);
+	});
+
+	it('passes the build trace context to the step run', async () => {
+		const { runData } = await runStepOn(chainWorkflow, 'Send');
+
+		expect(runData.tracingContext).toEqual({
+			traceparent: '00-0af7651916cd43dd8448eb211c80319c-b7ad6b7169203331-01',
+		});
 	});
 
 	it('always runs in manual mode, because pin data is dropped in any other mode', async () => {

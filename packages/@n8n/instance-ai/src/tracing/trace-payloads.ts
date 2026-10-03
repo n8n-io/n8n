@@ -8,6 +8,12 @@ import type { InstanceAiPromptConfiguration } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
 import { SUPPORTED_PII_CATEGORIES } from '@n8n/utils/redaction/pii-patterns';
 import { isSensitiveKey } from '@n8n/utils/redaction/sensitive-key';
+import type {
+	Attributes,
+	AttributeValue as OtelAttributeValue,
+	HrTime,
+	SpanStatus,
+} from '@opentelemetry/api';
 import { createHash } from 'node:crypto';
 
 import {
@@ -1046,6 +1052,163 @@ export function redactLangSmithTelemetrySpan(span: unknown): unknown {
 		);
 	}
 	return span;
+}
+
+/** The parts of a span that the OTLP export can change. */
+export interface OtlpSpanContent {
+	name: string;
+	attributes: Attributes;
+	status: SpanStatus;
+	events: Array<{
+		name: string;
+		time: HrTime;
+		attributes?: Attributes;
+		droppedAttributesCount?: number;
+	}>;
+}
+
+/** Attributes the OTLP export keeps without the content opt-in. */
+const OTLP_ATTRIBUTE_KEYS = new Set([
+	'gen_ai.operation.name',
+	'gen_ai.system',
+	'gen_ai.provider.name',
+	'gen_ai.request.model',
+	'gen_ai.response.model',
+	'gen_ai.response.id',
+	'gen_ai.response.finish_reasons',
+	'gen_ai.conversation.id',
+	'gen_ai.agent.name',
+	'gen_ai.tool.name',
+	'gen_ai.tool.call.id',
+	AI_OPERATION_ID,
+	'ai.model.id',
+	'ai.model.provider',
+	'ai.response.id',
+	'ai.response.model',
+	'ai.response.finishReason',
+	'ai.toolCall.name',
+	'ai.toolCall.id',
+	'ai.telemetry.functionId',
+	'exception.type',
+	'error.type',
+]);
+
+/** Product trace metadata kept without the content opt-in: identifiers and labels only. */
+const OTLP_METADATA_KEYS = new Set([
+	'thread_id',
+	'conversation_id',
+	'message_group_id',
+	'message_id',
+	'run_id',
+	'agent_id',
+	'agent_role',
+	'subagent_role',
+	'execution_mode',
+	'trace_kind',
+	'operation_name',
+	'sandbox_operation',
+	'resume_reason',
+	'tool_name',
+	'model_id',
+	'prompt_version',
+	'final_status',
+	'n8n_version',
+	'agents_version',
+	'workflow_sdk_version',
+	'instance_ai.trace_version',
+	'instance_ai.canonical_name',
+]);
+
+const OTLP_METADATA_PREFIXES = ['', 'langsmith.metadata.', 'ai.telemetry.metadata.'];
+
+/** Token counts and timings: kept when the value is a number. */
+const OTLP_NUMBER_ATTRIBUTE_PREFIXES = [
+	'gen_ai.usage.',
+	'gen_ai.request.',
+	'ai.usage.',
+	'ai.response.',
+	'instance_ai.usage.',
+];
+
+function isOtelAttributeValue(value: unknown): value is OtelAttributeValue {
+	const isPrimitive = (item: unknown) =>
+		typeof item === 'string' || typeof item === 'number' || typeof item === 'boolean';
+	return (
+		isPrimitive(value) ||
+		(Array.isArray(value) && value.every((item) => item === null || isPrimitive(item)))
+	);
+}
+
+function isOtlpAllowlistedAttribute(key: string, value: OtelAttributeValue): boolean {
+	if (OTLP_ATTRIBUTE_KEYS.has(key) || key.startsWith('n8n.')) return true;
+	if (
+		OTLP_METADATA_PREFIXES.some(
+			(prefix) => key.startsWith(prefix) && OTLP_METADATA_KEYS.has(key.slice(prefix.length)),
+		)
+	) {
+		return true;
+	}
+	return (
+		typeof value === 'number' &&
+		OTLP_NUMBER_ATTRIBUTE_PREFIXES.some((prefix) => key.startsWith(prefix))
+	);
+}
+
+function toOtlpAttributes(attributes: unknown, includeContent: boolean): Attributes {
+	if (!isRecord(attributes)) return {};
+	return Object.fromEntries(
+		Object.entries(attributes).filter(
+			(entry): entry is [string, OtelAttributeValue] =>
+				isOtelAttributeValue(entry[1]) &&
+				(includeContent || isOtlpAllowlistedAttribute(entry[0], entry[1])),
+		),
+	);
+}
+
+/**
+ * Prepare a span copy for the instance's OTLP endpoint. The LangSmith
+ * redaction always runs. Without `includeContent`, only allowlisted
+ * attributes stay (identifiers, model, token counts, timings), and status
+ * messages and event details go, because the redaction finds only known
+ * secret and PII patterns.
+ */
+export function redactOtlpTelemetrySpan(
+	content: OtlpSpanContent,
+	options: { includeContent: boolean },
+): OtlpSpanContent {
+	const { includeContent } = options;
+	const redacted: Record<string, unknown> = {
+		name: content.name,
+		attributes: content.attributes,
+		status: content.status,
+	};
+	redactLangSmithTelemetrySpan(redacted);
+	const statusMessage =
+		includeContent && isRecord(redacted.status) && typeof redacted.status.message === 'string'
+			? redacted.status.message
+			: undefined;
+
+	return {
+		// The LangSmith display name can hold a tool argument (`tool[action]`).
+		name: includeContent && typeof redacted.name === 'string' ? redacted.name : content.name,
+		attributes: toOtlpAttributes(redacted.attributes, includeContent),
+		status: {
+			code: content.status.code,
+			...(statusMessage !== undefined ? { message: statusMessage } : {}),
+		},
+		events: content.events.map((event) => ({
+			...event,
+			attributes: toOtlpAttributes(
+				Object.fromEntries(
+					Object.entries(event.attributes ?? {}).map(([key, value]) => [
+						key,
+						redactTelemetryAttribute(key, value),
+					]),
+				),
+				includeContent,
+			),
+		})),
+	};
 }
 
 function splitTraceText(value: string): string[] {

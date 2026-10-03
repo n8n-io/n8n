@@ -64,11 +64,19 @@ export class OtelLifecycleHandler {
 		await this.otelService.restart();
 	}
 
-	private shouldTrace(ctx: { type: string; mode: WorkflowExecuteMode }): boolean {
+	/**
+	 * `hasParentTrace`: a manual run that continues a trace (for example a run
+	 * that the AI assistant starts during a build) is traced even with
+	 * production-only tracing, because the parent trace asked for it.
+	 */
+	private shouldTrace(
+		ctx: { type: string; mode: WorkflowExecuteMode },
+		hasParentTrace: boolean,
+	): boolean {
 		const { enabled, productionExecutionsOnly, includeNodeSpans } =
 			this.otelSettingsService.getSettings();
 		if (!enabled) return false;
-		if (productionExecutionsOnly && ctx.mode === 'manual') return false;
+		if (productionExecutionsOnly && ctx.mode === 'manual' && !hasParentTrace) return false;
 		if ((ctx.type === 'nodeExecuteBefore' || ctx.type === 'nodeExecuteAfter') && !includeNodeSpans)
 			return false;
 		return true;
@@ -76,7 +84,7 @@ export class OtelLifecycleHandler {
 
 	@OnLifecycleEvent('workflowExecuteBefore')
 	async onWorkflowStart(ctx: WorkflowExecuteBeforeContext): Promise<void> {
-		if (!this.shouldTrace(ctx)) return;
+		if (!this.otelSettingsService.getSettings().enabled) return;
 
 		const parentExecutionId = ctx.executionData?.parentExecution?.executionId;
 		const tracingContext = parentExecutionId
@@ -84,6 +92,7 @@ export class OtelLifecycleHandler {
 				await this.traceContextService.get(parentExecutionId)
 			: // This will return "null" if there is no traceparent header in the trigger node. (e.g. webhook)
 				await this.traceContextService.get(ctx.executionId);
+		if (!this.shouldTrace(ctx, tracingContext !== undefined)) return;
 
 		const project = await this.ownershipService
 			.getWorkflowProjectCached(ctx.workflow.id)
@@ -123,9 +132,10 @@ export class OtelLifecycleHandler {
 
 	@OnLifecycleEvent('workflowExecuteResume')
 	async onWorkflowResume(ctx: WorkflowExecuteResumeContext): Promise<void> {
-		if (!this.shouldTrace(ctx)) return;
+		if (!this.otelSettingsService.getSettings().enabled) return;
 
 		const previousWorkflowExecution = await this.traceContextService.get(ctx.executionId);
+		if (!this.shouldTrace(ctx, previousWorkflowExecution !== undefined)) return;
 
 		const project = await this.ownershipService
 			.getWorkflowProjectCached(ctx.workflow.id)
@@ -178,7 +188,13 @@ export class OtelLifecycleHandler {
 	}
 
 	async onExecutionCrashed(event: RelayEventMap['execution-crashed']): Promise<void> {
-		if (!this.shouldTrace({ type: 'executionCrashed', mode: event.mode })) return;
+		if (
+			!this.shouldTrace(
+				{ type: 'executionCrashed', mode: event.mode },
+				event.tracingContext !== undefined,
+			)
+		)
+			return;
 		this.tracer.endCrashedWorkflow({
 			executionId: event.executionId,
 			workflowId: event.workflowId,
@@ -204,7 +220,7 @@ export class OtelLifecycleHandler {
 
 	@OnLifecycleEvent('nodeExecuteBefore')
 	onNodeStart(ctx: NodeExecuteBeforeContext): void {
-		if (!this.shouldTrace(ctx)) return;
+		if (!this.shouldTrace(ctx, this.tracer.hasWorkflowSpan(ctx.executionId))) return;
 
 		const node = ctx.workflow.nodes.find((n) => n.name === ctx.nodeName);
 		if (!node) return;
@@ -217,7 +233,7 @@ export class OtelLifecycleHandler {
 
 	@OnLifecycleEvent('nodeExecuteAfter')
 	onNodeEnd(ctx: NodeExecuteAfterContext): void {
-		if (!this.shouldTrace(ctx)) return;
+		if (!this.shouldTrace(ctx, this.tracer.hasWorkflowSpan(ctx.executionId))) return;
 
 		const node = ctx.workflow.nodes.find((n) => n.name === ctx.nodeName);
 		if (!node) return;

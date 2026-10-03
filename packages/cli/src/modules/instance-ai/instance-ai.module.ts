@@ -48,6 +48,25 @@ export class InstanceAiModule implements ModuleInterface {
 			sweepLogger.error('Interrupted-run sweep failed on startup', { error });
 		});
 
+		// Build traces also go to the instance's OTLP endpoint while the otel module traces.
+		const { InstanceAiConfig } = await import('@n8n/config');
+		const { setOtlpSpanProcessorFactory, redactOtlpTelemetrySpan } = await import(
+			'@n8n/instance-ai'
+		);
+		const { OtelService } = await import('@/modules/otel/otel.service.js');
+		const otelService = Container.get(OtelService);
+		const includeContent = Container.get(InstanceAiConfig).traceContent;
+		if (includeContent) {
+			Container.get(Logger).warn(
+				'N8N_INSTANCE_AI_TRACE_CONTENT is on: assistant prompts, completions and tool data go to the OTLP endpoint after redaction. Use it only in development.',
+			);
+		}
+		setOtlpSpanProcessorFactory(() =>
+			otelService.createSpanProcessor((content) =>
+				redactOtlpTelemetrySpan(content, { includeContent }),
+			),
+		);
+
 		if (process.env.E2E_TESTS === 'true' && process.env.NODE_ENV !== 'production') {
 			await import('./instance-ai-test.controller.js');
 		}

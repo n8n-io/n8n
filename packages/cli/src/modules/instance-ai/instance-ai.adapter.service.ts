@@ -105,6 +105,7 @@ import type {
 import {
 	BuilderTemplatesService,
 	builderTemplatesOptionsFromEnv,
+	currentBuildTracingContext,
 	wrapUntrustedData,
 	deriveCredentialHosts,
 	WorkflowSaveConflictError,
@@ -2172,6 +2173,7 @@ export class InstanceAiAdapterService {
 					// had broken — the one side effect node simulation cannot pin, since
 					// it is dispatched by the execution lifecycle, not by a node.
 					...(options?.isVerificationRun ? { suppressErrorWorkflow: true } : {}),
+					tracingContext: currentBuildTracingContext(),
 				};
 
 				const pinDataPlan = buildInstanceAiRunPinDataPlan({
@@ -2520,6 +2522,7 @@ export class InstanceAiAdapterService {
 					dirtyNodeNames: plan.dirtyNodeNames,
 					agentRequest,
 					source: 'instance_ai',
+					tracingContext: currentBuildTracingContext(),
 				};
 
 				// A trigger has no upstream to run, so the chain and the partial paths

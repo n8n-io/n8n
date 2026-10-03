@@ -380,6 +380,7 @@ describe('GlobalConfig', () => {
 			checkpointGcRetention: 604_800_000,
 			confirmationTimeout: 86_400_000,
 			runDebugEnabled: false,
+			traceContent: false,
 			thinkingEnabled: true,
 			canvasNodeContextEnabled: false,
 			promptVersion: '',

@@ -183,6 +183,7 @@ export type {
 export type {
 	BuiltTelemetry,
 	AttributeValue,
+	OpaqueSpanProcessor,
 	OpaqueTracer,
 	OpaqueTracerProvider,
 } from './telemetry';

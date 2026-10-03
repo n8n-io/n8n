@@ -6,6 +6,7 @@ import { createMetadataEnrichedTracer } from './metadata-enriched-tracer';
 import type {
 	AttributeValue,
 	BuiltTelemetry,
+	OpaqueSpanProcessor,
 	OpaqueTracer,
 	OpaqueTracerProvider,
 } from '../types/telemetry';
@@ -142,11 +143,10 @@ async function createAiSdkOpenTelemetryIntegrationFactory(
 }
 
 /**
- * Create an OTel tracer + provider by dynamically importing OTel packages.
- * This keeps OTel as a true optional peer dependency — the packages are only
- * loaded when .otlpEndpoint() is actually called.
+ * Create an OTel tracer + provider with the given span processors. The
+ * provider is not registered globally: callers use the tracer directly.
  */
-async function createOtlpTracer(endpoint: string): Promise<{
+async function createProviderTracer(spanProcessors: OpaqueSpanProcessor[]): Promise<{
 	tracer: OpaqueTracer;
 	provider: OpaqueTracerProvider;
 }> {
@@ -157,6 +157,22 @@ async function createOtlpTracer(endpoint: string): Promise<{
 			getTracer(name: string): OpaqueTracer;
 		};
 	};
+	const provider = new NodeTracerProvider({ spanProcessors });
+	return { tracer: provider.getTracer('@n8n/agents'), provider };
+}
+
+/**
+ * Create an OTel tracer + provider by dynamically importing OTel packages.
+ * This keeps OTel as a true optional peer dependency — the packages are only
+ * loaded when .otlpEndpoint() is actually called.
+ */
+async function createOtlpTracer(
+	endpoint: string,
+	extraSpanProcessors: OpaqueSpanProcessor[],
+): Promise<{
+	tracer: OpaqueTracer;
+	provider: OpaqueTracerProvider;
+}> {
 	const { OTLPTraceExporter } = (await import('@opentelemetry/exporter-trace-otlp-http')) as {
 		OTLPTraceExporter: new (config: { url: string }) => unknown;
 	};
@@ -165,15 +181,7 @@ async function createOtlpTracer(endpoint: string): Promise<{
 	};
 
 	const exporter = new OTLPTraceExporter({ url: endpoint });
-	const provider = new NodeTracerProvider({
-		spanProcessors: [new SimpleSpanProcessor(exporter)],
-	});
-	// Intentionally NOT calling provider.register() — we only use
-	// the tracer directly, without replacing the global tracer provider.
-
-	const tracer = provider.getTracer('@n8n/agents');
-
-	return { tracer, provider };
+	return await createProviderTracer([new SimpleSpanProcessor(exporter), ...extraSpanProcessors]);
 }
 
 /**
@@ -217,6 +225,8 @@ export class Telemetry {
 	protected otlpEndpointValue?: string;
 
 	protected credentialNameValue?: string;
+
+	protected spanProcessorsList: OpaqueSpanProcessor[] = [];
 
 	/**
 	 * Declare a credential this telemetry config requires. The execution
@@ -323,6 +333,17 @@ export class Telemetry {
 		return this;
 	}
 
+	/**
+	 * Add an OTel span processor, for example a second export sink. Every
+	 * provider this builder creates gets it: the LangSmith provider, the
+	 * `.otlpEndpoint()` provider, or a bare provider when neither is set.
+	 * Not used with `.tracer()`, because that provider belongs to the caller.
+	 */
+	spanProcessor(value: OpaqueSpanProcessor): this {
+		this.spanProcessorsList.push(value);
+		return this;
+	}
+
 	/** Build the telemetry configuration. */
 	async build(): Promise<BuiltTelemetry> {
 		if (this.tracerValue !== undefined && this.otlpEndpointValue !== undefined) {
@@ -333,9 +354,13 @@ export class Telemetry {
 		let provider: OpaqueTracerProvider | undefined;
 
 		if (this.otlpEndpointValue !== undefined) {
-			const otlp = await createOtlpTracer(this.otlpEndpointValue);
+			const otlp = await createOtlpTracer(this.otlpEndpointValue, this.spanProcessorsList);
 			tracer = otlp.tracer;
 			provider = otlp.provider;
+		} else if (tracer === undefined && this.spanProcessorsList.length > 0) {
+			const created = await createProviderTracer(this.spanProcessorsList);
+			tracer = created.tracer;
+			provider = created.provider;
 		}
 
 		const redactFn = this.redactFn;

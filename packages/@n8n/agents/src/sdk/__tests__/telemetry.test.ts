@@ -84,6 +84,24 @@ describe('Telemetry builder', () => {
 		).rejects.toThrow('Cannot set both .tracer() and .otlpEndpoint()');
 	});
 
+	it('creates a provider for span processors when no tracer is set', async () => {
+		const ended: string[] = [];
+		const processor = {
+			onStart: vi.fn(),
+			onEnd: (span: { name: string }) => ended.push(span.name),
+			forceFlush: vi.fn(async () => {}),
+			shutdown: vi.fn(async () => {}),
+		};
+		const built = await new Telemetry().spanProcessor(processor).build();
+		const tracer = built.tracer as { startSpan(name: string): { end(): void } };
+
+		tracer.startSpan('build').end();
+		await Telemetry.shutdown(built);
+
+		expect(ended).toEqual(['build']);
+		expect(processor.shutdown).toHaveBeenCalled();
+	});
+
 	it('collects multiple integrations', async () => {
 		const int1: AiSdkTelemetry = { onStart: vi.fn() };
 		const int2: AiSdkTelemetry = { onEnd: vi.fn() };

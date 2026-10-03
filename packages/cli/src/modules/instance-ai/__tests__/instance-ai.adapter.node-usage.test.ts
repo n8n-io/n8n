@@ -9,6 +9,7 @@ vi.mock('@n8n/instance-ai', async () => {
 		WorkflowEditorLockedError,
 		wrapUntrustedData: (content: string) => content,
 		builderTemplatesOptionsFromEnv: () => ({}),
+		currentBuildTracingContext: () => undefined,
 		deriveCredentialHosts: vi.fn().mockReturnValue([]),
 		BuilderTemplatesService: class {
 			async getBundle() {

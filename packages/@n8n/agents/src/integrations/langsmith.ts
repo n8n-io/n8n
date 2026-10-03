@@ -1,5 +1,10 @@
 import { Telemetry } from '../sdk/telemetry';
-import type { BuiltTelemetry, OpaqueTracer, OpaqueTracerProvider } from '../types/telemetry';
+import type {
+	BuiltTelemetry,
+	OpaqueSpanProcessor,
+	OpaqueTracer,
+	OpaqueTracerProvider,
+} from '../types/telemetry';
 
 let registeredOtelContext = false;
 
@@ -263,8 +268,9 @@ export interface LangSmithTelemetryConfig {
  * optional peer dependencies.
  */
 async function createLangSmithTracer(
-	config?: LangSmithTelemetryConfig,
-	resolvedApiKey?: string,
+	config: LangSmithTelemetryConfig | undefined,
+	resolvedApiKey: string | undefined,
+	extraSpanProcessors: OpaqueSpanProcessor[],
 ): Promise<{ tracer: OpaqueTracer; provider: OpaqueTracerProvider }> {
 	const { NodeTracerProvider } = (await import('@opentelemetry/sdk-trace-node')) as {
 		NodeTracerProvider: new (cfg?: {
@@ -324,7 +330,7 @@ async function createLangSmithTracer(
 	});
 
 	const provider = new NodeTracerProvider({
-		spanProcessors: [processor],
+		spanProcessors: [processor, ...extraSpanProcessors],
 	});
 	if (!registeredOtelContext) {
 		// AI SDK creates nested operation/provider/tool spans through the active
@@ -383,6 +389,7 @@ export class LangSmithTelemetry extends Telemetry {
 		const { tracer, provider } = await createLangSmithTracer(
 			this.langsmithConfig,
 			this.resolvedKey,
+			this.spanProcessorsList,
 		);
 		this.tracerValue = tracer;
 

@@ -5,6 +5,7 @@ vi.mock('@n8n/instance-ai', () => ({
 	builderTemplatesOptionsFromEnv: () => ({}),
 	deriveCredentialHosts: () => [],
 	BuilderTemplatesService: class {},
+	currentBuildTracingContext: () => undefined,
 }));
 
 vi.mock('@n8n/ai-utilities', () => ({

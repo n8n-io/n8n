@@ -18,6 +18,12 @@ export type OpaqueTracer = unknown;
 export type OpaqueSpanLink = unknown;
 
 /**
+ * Opaque handle for an OTel `SpanProcessor`. Same opaque-type rationale as
+ * OpaqueTracer.
+ */
+export type OpaqueSpanProcessor = unknown;
+
+/**
  * Opaque handle for an OTel tracer provider (for flush/shutdown).
  * Only populated when .otlpEndpoint() is used.
  */

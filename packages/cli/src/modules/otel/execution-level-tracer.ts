@@ -265,6 +265,10 @@ export class ExecutionLevelTracer {
 		return span ? trace.setSpan(context.active(), span) : undefined;
 	}
 
+	hasWorkflowSpan(executionId: string): boolean {
+		return this.activeWorkflowSpans.has(executionId);
+	}
+
 	injectTraceHeaders(
 		executionId: string,
 		nodeName: string | undefined,

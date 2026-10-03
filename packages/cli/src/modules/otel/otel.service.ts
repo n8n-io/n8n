@@ -2,8 +2,15 @@ import type { Metadata } from '@grpc/grpc-js';
 import { Logger } from '@n8n/backend-common';
 import { OutboundHttp } from '@n8n/backend-network';
 import { Service } from '@n8n/di';
-import type { DiagLogger, Tracer, TracerProvider } from '@opentelemetry/api';
-import { DiagLogLevel, ProxyTracerProvider, diag, trace } from '@opentelemetry/api';
+import type {
+	Attributes,
+	DiagLogger,
+	SpanStatus,
+	Tracer,
+	TracerProvider,
+} from '@opentelemetry/api';
+import { DiagLogLevel, ProxyTracerProvider, ROOT_CONTEXT, diag, trace } from '@opentelemetry/api';
+import { ExportResultCode } from '@opentelemetry/core';
 import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-proto';
 import {
 	detectResources,
@@ -11,13 +18,17 @@ import {
 	hostDetector,
 	processDetector,
 	resourceFromAttributes,
+	type Resource,
 } from '@opentelemetry/resources';
 import {
 	BasicTracerProvider,
 	BatchSpanProcessor,
+	SamplingDecision,
 	type ReadableSpan,
+	type Sampler,
 	type SpanExporter,
 	type SpanProcessor,
+	type TimedEvent,
 } from '@opentelemetry/sdk-trace-base';
 import { NodeTracerProvider, TraceIdRatioBasedSampler } from '@opentelemetry/sdk-trace-node';
 import { InstanceSettings } from 'n8n-core';
@@ -31,6 +42,16 @@ import { ATTR, OTEL_TEST_SPAN_NAME } from './otel.constants';
 import { N8N_VERSION } from '@/constants';
 
 export type OtelTestTraceResult = { success: true } | { success: false; error: string };
+
+/** The parts of a span that a redaction step can change before export. */
+export interface ExportedSpanContent {
+	name: string;
+	attributes: Attributes;
+	status: SpanStatus;
+	events: TimedEvent[];
+}
+
+type ExportTarget = { exporter: SpanExporter; resource: Resource; sampler: Sampler };
 
 const stripEmptyResolutionNote = (message: string) =>
 	message.replace(/\s*Resolution note:\s*$/, '');
@@ -51,6 +72,7 @@ function registeredGlobalTracerProvider(): TracerProvider | undefined {
 export class OtelService {
 	private static isDiagnosticsLoggerConfigured = false;
 	private provider?: NodeTracerProvider;
+	private exportTarget?: ExportTarget;
 	private ownsGlobalApi = false;
 	private hasLoggedForeignGlobalApiOwner = false;
 
@@ -74,6 +96,55 @@ export class OtelService {
 
 	getTracer(name: string): Tracer {
 		return (this.provider ?? noopTracerProvider).getTracer(name);
+	}
+
+	/**
+	 * A span processor for spans that another tracer provider records, for
+	 * example the AI assistant's build traces. It exports a redacted copy of each
+	 * span to the configured endpoint with n8n's resource and sample rate, so
+	 * other processors on that provider still see the original span. Undefined
+	 * when tracing is off.
+	 */
+	createSpanProcessor(
+		redact: (content: ExportedSpanContent) => ExportedSpanContent,
+	): SpanProcessor | undefined {
+		if (!this.provider) return undefined;
+
+		const exporter: SpanExporter = {
+			export: (spans, resultCallback) => {
+				// Read at export time: a restart replaces the target, a shutdown removes it.
+				const target = this.exportTarget;
+				if (!target) {
+					resultCallback({ code: ExportResultCode.SUCCESS });
+					return;
+				}
+				const sampled = spans.filter(
+					(span) =>
+						target.sampler.shouldSample(
+							ROOT_CONTEXT,
+							span.spanContext().traceId,
+							span.name,
+							span.kind,
+							span.attributes,
+							span.links,
+						).decision === SamplingDecision.RECORD_AND_SAMPLED,
+				);
+				try {
+					target.exporter.export(
+						sampled.map((span) => toExportedCopy(span, target.resource, redact)),
+						resultCallback,
+					);
+				} catch (error) {
+					resultCallback({
+						code: ExportResultCode.FAILED,
+						error: error instanceof Error ? error : new Error(String(error)),
+					});
+				}
+			},
+			// The target exporter belongs to this service's own provider.
+			shutdown: async () => {},
+		};
+		return new BatchSpanProcessor(exporter);
 	}
 
 	/**
@@ -153,6 +224,7 @@ export class OtelService {
 		// Cleared before the flush, so a probe that fails meanwhile sees that its provider is gone.
 		const provider = this.provider;
 		this.provider = undefined;
+		this.exportTarget = undefined;
 		try {
 			await provider?.shutdown();
 		} catch (error) {
@@ -165,12 +237,15 @@ export class OtelService {
 
 	private async startProvider(settings: OtelConfig): Promise<NodeTracerProvider> {
 		const traceExporter = await this.createTraceExporter(settings);
+		const resource = this.buildResource(settings.exporterServiceName);
+		const sampler = new TraceIdRatioBasedSampler(settings.tracesSampleRate);
 
 		this.provider = new NodeTracerProvider({
-			resource: this.buildResource(settings.exporterServiceName),
-			sampler: new TraceIdRatioBasedSampler(settings.tracesSampleRate),
+			resource,
+			sampler,
 			spanProcessors: [new BatchSpanProcessor(traceExporter)],
 		});
+		this.exportTarget = { exporter: traceExporter, resource, sampler };
 		this.registerGlobalApi(this.provider);
 		return this.provider;
 	}
@@ -392,4 +467,39 @@ export class OtelService {
 			client.close();
 		}
 	}
+}
+
+function toExportedCopy(
+	span: ReadableSpan,
+	resource: Resource,
+	redact: (content: ExportedSpanContent) => ExportedSpanContent,
+): ReadableSpan {
+	const content = redact({
+		name: span.name,
+		attributes: { ...span.attributes },
+		status: { ...span.status },
+		events: span.events.map((event) => ({
+			...event,
+			...(event.attributes ? { attributes: { ...event.attributes } } : {}),
+		})),
+	});
+	return {
+		name: content.name,
+		kind: span.kind,
+		spanContext: () => span.spanContext(),
+		parentSpanContext: span.parentSpanContext,
+		startTime: span.startTime,
+		endTime: span.endTime,
+		status: content.status,
+		attributes: content.attributes,
+		links: span.links,
+		events: content.events,
+		duration: span.duration,
+		ended: span.ended,
+		resource,
+		instrumentationScope: span.instrumentationScope,
+		droppedAttributesCount: span.droppedAttributesCount,
+		droppedEventsCount: span.droppedEventsCount,
+		droppedLinksCount: span.droppedLinksCount,
+	};
 }

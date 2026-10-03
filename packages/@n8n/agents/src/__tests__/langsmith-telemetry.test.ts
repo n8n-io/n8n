@@ -132,6 +132,15 @@ describe('LangSmithTelemetry', () => {
 		expect(process.env.LANGCHAIN_TRACING_V2).toBe('true');
 	});
 
+	it('adds extra span processors next to the LangSmith processor', async () => {
+		const extraProcessor = { onStart: vi.fn(), onEnd: vi.fn() };
+		await new LangSmithTelemetry({ apiKey: '-' }).spanProcessor(extraProcessor).build();
+
+		const providerConfig = mockProviderConfigs[0] as { spanProcessors: unknown[] };
+		expect(providerConfig.spanProcessors).toHaveLength(2);
+		expect(providerConfig.spanProcessors[1]).toBe(extraProcessor);
+	});
+
 	it('resolves function headers for every export request', async () => {
 		const getHeaders = vi
 			.fn<(...args: []) => Promise<Record<string, string>>>()

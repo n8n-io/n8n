@@ -30,6 +30,9 @@ import type { WorkflowStaticDataService } from '@/workflows/workflow-static-data
 
 vi.mock('@n8n/instance-ai', () => ({
 	createEvalAgent: vi.fn(),
+	currentBuildTracingContext: () => ({
+		traceparent: '00-0af7651916cd43dd8448eb211c80319c-b7ad6b7169203331-01',
+	}),
 	extractText: vi.fn(),
 }));
 vi.mock('../pin-data-generator', () => ({
@@ -419,6 +422,14 @@ describe('EvalExecutionService', () => {
 			const result = await service.executeWithLlmMock('wf-1', makeUser());
 
 			expect(result.executionId).toBe(DB_EXECUTION_ID);
+		});
+
+		it('passes the build trace context to the run', async () => {
+			await service.executeWithLlmMock('wf-1', makeUser());
+
+			expect(workflowRunner.run.mock.calls[0][0].tracingContext).toEqual({
+				traceparent: '00-0af7651916cd43dd8448eb211c80319c-b7ad6b7169203331-01',
+			});
 		});
 
 		it('pins the trigger to zero items when the scenario says it emits nothing', async () => {

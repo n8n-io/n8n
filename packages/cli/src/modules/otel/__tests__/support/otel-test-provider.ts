@@ -89,6 +89,17 @@ export class OtelTestProvider {
 		return mock<OtelService>({ getTracer: (name: string) => this.provider.getTracer(name) });
 	}
 
+	/**
+	 * A processor that records spans of another tracer provider into this
+	 * exporter. Its shutdown leaves the exporter open, as `OtelService` does.
+	 */
+	spanProcessor() {
+		return new SimpleSpanProcessor({
+			export: (spans, resultCallback) => this.exporter.export(spans, resultCallback),
+			shutdown: async () => {},
+		});
+	}
+
 	getFinishedSpans() {
 		return this.exporter.getFinishedSpans();
 	}

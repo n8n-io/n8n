@@ -299,6 +299,17 @@ export const modelIdTraceMetadata: typeof LangsmithTracingMod.modelIdTraceMetada
 export const continueInstanceAiTraceContext: typeof LangsmithTracingMod.continueInstanceAiTraceContext =
 	lazyFunction(() => loadLangsmithTracing().continueInstanceAiTraceContext);
 
+export const currentBuildTracingContext: typeof LangsmithTracingMod.currentBuildTracingContext =
+	lazyFunction(() => loadLangsmithTracing().currentBuildTracingContext);
+
+export const redactOtlpTelemetrySpan: typeof LangsmithTracingMod.redactOtlpTelemetrySpan =
+	lazyFunction(() => loadLangsmithTracing().redactOtlpTelemetrySpan);
+export type { OtlpSpanContent } from './tracing/langsmith-tracing';
+
+// Plain re-export: the host registers the sink at startup without loading the LangSmith client.
+export { setOtlpSpanProcessorFactory } from './tracing/otlp-sink';
+export type { OtlpSpanProcessorFactory } from './tracing/otlp-sink';
+
 export const releaseTraceClient: typeof LangsmithTracingMod.releaseTraceClient = lazyFunction(
 	() => loadLangsmithTracing().releaseTraceClient,
 );

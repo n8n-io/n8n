@@ -9,6 +9,7 @@ import { ensureHostsBypassProxy } from '@n8n/backend-network/proxy';
 import { ExecutionsConfig, InstanceAiConfig } from '@n8n/config';
 import { ProcessedDataRepository, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { currentBuildTracingContext } from '@n8n/instance-ai';
 import { actionOfNode, exampleOf, matches } from '@n8n/nodes-base-next';
 import { sleep } from '@n8n/utils/sleep';
 import type { DataTableColumnInfo, WorkflowJSON } from '@n8n/workflow-sdk';
@@ -666,6 +667,7 @@ export class EvalExecutionService {
 				userId: user.id,
 				executionData,
 				pinData,
+				tracingContext: currentBuildTracingContext(),
 				configureAdditionalData: (additionalData: IWorkflowExecuteAdditionalData) => {
 					credentialsHelper = new EvalMockedCredentialsHelper(
 						additionalData.credentialsHelper,

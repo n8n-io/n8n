@@ -1087,6 +1087,41 @@ describe('productionExecutionsOnly filter', () => {
 		expect(tracer.endWorkflow).toHaveBeenCalled();
 	});
 
+	it('should trace start, resume, node and crash events of a manual execution with a parent trace', async () => {
+		const parent: TracingContext = {
+			traceparent: '00-0af7651916cd43dd8448eb211c80319c-b7ad6b7169203331-01',
+		};
+		traceContextService.get.mockResolvedValue(parent);
+		tracer.startWorkflow.mockReturnValue(parent);
+		tracer.hasWorkflowSpan.mockReturnValue(true);
+
+		await handler.onWorkflowStart(makeWorkflowStartCtx(publishedWorkflow, 'manual'));
+		await handler.onWorkflowResume({
+			...makeWorkflowStartCtx(publishedWorkflow, 'manual'),
+			type: 'workflowExecuteResume',
+			workflowInstance: createWorkflowInstance(),
+			executionData: emptyExecutionData,
+		});
+		handler.onNodeStart(makeNodeStartCtx(publishedWorkflow, 'manual'));
+		handler.onNodeEnd(makeNodeEndCtx(publishedWorkflow, 'manual'));
+		await handler.onExecutionCrashed({
+			executionId: 'exec-1',
+			workflowId: 'wf-1',
+			workflowName: 'Test',
+			mode: 'manual',
+			startedAt: new Date(),
+			stoppedAt: new Date(),
+			detector: 'queue-recovery',
+			hostId: 'main-1',
+			tracingContext: parent,
+		});
+
+		expect(tracer.startWorkflow).toHaveBeenCalledTimes(2);
+		expect(tracer.startNode).toHaveBeenCalled();
+		expect(tracer.endNode).toHaveBeenCalled();
+		expect(tracer.endCrashedWorkflow).toHaveBeenCalled();
+	});
+
 	it('should close a span even when settings change to exclude the execution mid-run', async () => {
 		otelSettingsService._settings.productionExecutionsOnly = false;
 		tracer.startWorkflow.mockReturnValue({ traceparent: '00-abc-def-01' });
