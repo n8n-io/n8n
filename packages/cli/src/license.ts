@@ -13,6 +13,7 @@ import {
 import { SettingsRepository } from '@n8n/db';
 import { OnPubSubEvent, OnShutdown } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
 import type { TEntitlement, TLicenseBlock } from '@n8n_io/license-sdk';
 import { LicenseManager } from '@n8n_io/license-sdk';
 import { InstanceSettings } from 'n8n-core';
@@ -172,7 +173,9 @@ export class License implements LicenseProvider {
 	}
 
 	private async onFeatureChange() {
-		void this.broadcastReloadLicenseCommand();
+		if (this.instanceSettings.isLeader) {
+			void this.broadcastReloadLicenseCommand();
+		}
 		await this.notifyRefreshCallbacks();
 	}
 
@@ -182,7 +185,7 @@ export class License implements LicenseProvider {
 	}
 
 	private async broadcastReloadLicenseCommand() {
-		if (this.globalConfig.executions.mode === 'queue' && this.instanceSettings.isLeader) {
+		if (this.globalConfig.executions.mode === 'queue') {
 			const { Publisher } = await import('@/scaling/pubsub/publisher.service.js');
 			await Container.get(Publisher).publishCommand({ command: 'reload-license' });
 		}
@@ -237,17 +240,25 @@ export class License implements LicenseProvider {
 		this.logger.debug('License activated');
 	}
 
+	/** Loads the cert another instance stored. Never renews. */
 	@OnPubSubEvent('reload-license')
 	async reload(): Promise<void> {
 		if (!this.manager) {
 			return;
 		}
-		await this.manager.reload();
+		try {
+			await this.manager.reloadStoredCert();
+		} catch (error: unknown) {
+			this.logger.warn('Failed to reload the stored license cert', {
+				error: ensureError(error).message,
+			});
+			return;
+		}
 		await this.notifyRefreshCallbacks();
 		this.logger.debug('License reloaded');
 	}
 
-	/** Runs one auto-renewal pass, gated by the SDK on its auto-renewal flag. */
+	/** Runs one auto-renewal pass. */
 	async renewIfDue(): Promise<void> {
 		await this.manager?.renewIfDue();
 	}
