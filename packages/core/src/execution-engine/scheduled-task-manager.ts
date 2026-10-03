@@ -69,15 +69,10 @@ export class ScheduledTaskManager {
 		const { group, targetId, timezone, expression, recurrence } = ctx;
 
 		if (!this.instanceSettings.isLeader) {
-			this.logger.debug('Skipped cron registration on follower instance', {
-				groupType: group.type,
-				groupId: group.id,
-				targetId,
-				timezone,
-				expression,
-				recurrence,
-				instanceRole: this.instanceSettings.instanceRole,
-			});
+			this.logger.debug(
+				'Skipped cron registration on follower instance',
+				this.getRegistrationLogFields(ctx),
+			);
 			return false;
 		}
 
@@ -89,15 +84,10 @@ export class ScheduledTaskManager {
 		const key = this.toCronKey(ctx);
 
 		if (groupCrons?.has(key)) {
-			this.logger.warn('Skipped registration for already registered cron', {
-				groupType: group.type,
-				groupId: group.id,
-				targetId,
-				timezone,
-				expression,
-				recurrence,
-				instanceRole: this.instanceSettings.instanceRole,
-			});
+			this.logger.warn(
+				'Skipped registration for already registered cron',
+				this.getRegistrationLogFields(ctx),
+			);
 			return false;
 		}
 
@@ -266,6 +256,18 @@ export class ScheduledTaskManager {
 		} else {
 			groupCrons.set(key, cron);
 		}
+	}
+
+	private getRegistrationLogFields(ctx: ScheduledTaskContext) {
+		return {
+			groupType: ctx.group.type,
+			groupId: ctx.group.id,
+			targetId: ctx.targetId,
+			timezone: ctx.timezone,
+			expression: ctx.expression,
+			recurrence: ctx.recurrence,
+			instanceRole: this.instanceSettings.instanceRole,
+		};
 	}
 
 	private toCronKey(ctx: ScheduledTaskContext): CronKey {
