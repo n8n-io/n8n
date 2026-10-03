@@ -145,7 +145,7 @@ describe('VectorStoreDatabricks', () => {
 	});
 
 	describe('supplyData in retrieve mode', () => {
-		it('creates the store from the credential host and the shared fields', async () => {
+		it('creates the store from the credential host, the shared fields and the search options', async () => {
 			const store = {};
 			mockedFromExistingIndex.mockResolvedValue(store as DatabricksVectorStore);
 			mockedDescribeIndex.mockResolvedValue(indexInfo);
@@ -154,7 +154,8 @@ describe('VectorStoreDatabricks', () => {
 				mode: 'retrieve',
 				options: {
 					metadataColumns: ['source'],
-					metadata: { metadataValues: [{ name: 'source', value: 'hr' }] },
+					searchMode: 'HYBRID',
+					searchFilterJson: { source: 'hr' },
 				},
 			});
 
@@ -166,7 +167,7 @@ describe('VectorStoreDatabricks', () => {
 				indexName: 'cat.sch.idx',
 				contentColumn: 'text',
 				metadataColumns: ['source'],
-				queryType: 'ANN',
+				queryType: 'HYBRID',
 				filter: { source: 'hr' },
 				index: indexInfo,
 			});
