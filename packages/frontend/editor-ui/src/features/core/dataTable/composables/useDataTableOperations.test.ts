@@ -890,6 +890,33 @@ describe('useDataTableOperations', () => {
 	});
 
 	describe('onRenameColumn', () => {
+		it('should retain each column rename when applied from left to right', async () => {
+			const colDefs = ref([
+				{ colId: 'col1', field: 'field2', headerName: 'field2', cellDataType: 'text' },
+				{ colId: 'col2', field: 'field3', headerName: 'field3', cellDataType: 'text' },
+				{ colId: 'col3', field: 'field4', headerName: 'field4', cellDataType: 'text' },
+			]);
+			const rowData = ref([{ id: 1, field2: 'a', field3: 'b', field4: 'c' }]);
+			const { onRenameColumn } = useDataTableOperations({ ...params, colDefs, rowData });
+
+			await onRenameColumn('col1', 'first');
+			const gridUpdates = vi.mocked(params.setGridData).mock.calls;
+			const firstGridUpdate = gridUpdates.at(-1)?.[0].colDefs;
+			await onRenameColumn('col2', 'second');
+			const secondGridUpdate = gridUpdates.at(-1)?.[0].colDefs;
+			await onRenameColumn('col3', 'third');
+
+			expect(vi.mocked(dataTableStore.renameDataTableColumn).mock.calls).toEqual([
+				['test', 'test', 'col1', 'first'],
+				['test', 'test', 'col2', 'second'],
+				['test', 'test', 'col3', 'third'],
+			]);
+			expect(firstGridUpdate?.map(({ field }) => field)).toEqual(['first', 'field3', 'field4']);
+			expect(secondGridUpdate?.map(({ field }) => field)).toEqual(['first', 'second', 'field4']);
+			expect(colDefs.value.map(({ field }) => field)).toEqual(['first', 'second', 'third']);
+			expect(rowData.value).toEqual([{ id: 1, first: 'a', second: 'b', third: 'c' }]);
+		});
+
 		it('should return early when column is not found', async () => {
 			const colDefs = ref([]);
 			const { onRenameColumn } = useDataTableOperations({ ...params, colDefs });
