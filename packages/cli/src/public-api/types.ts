@@ -125,8 +125,6 @@ export declare namespace CommunityPackageRequest {
 }
 
 export declare namespace LogStreamingRequest {
-	type GetDestinations = AuthenticatedRequest;
-	type GetDestination = AuthenticatedRequest<{ id: string }>;
 	type CreateDestination = AuthenticatedRequest<{}, {}, PublicCreateDestination>;
 	type UpdateDestination = AuthenticatedRequest<{ id: string }, {}, PublicCreateDestination>;
 	type TestDestination = AuthenticatedRequest<{ id: string }>;
