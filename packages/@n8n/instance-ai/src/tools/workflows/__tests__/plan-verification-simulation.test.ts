@@ -12,6 +12,7 @@ vi.mock('../generate-simulation-fixtures.service', async (importOriginal) => ({
 import type { NodeSimulationVerdict } from '../../../workflow-loop/workflow-loop-state';
 import { classifyNodesForSimulation } from '../classify-node-destructiveness.service';
 import { generateSimulationFixtures } from '../generate-simulation-fixtures.service';
+import { synthesizedFixtures } from '../next-workflow-build';
 import { planVerificationSimulation } from '../plan-verification-simulation';
 
 const mockClassify = classifyNodesForSimulation as MockedFunction<
@@ -568,6 +569,45 @@ describe('planVerificationSimulation — fixture floor', () => {
 		});
 
 		expect(simulationFixtures).toEqual({ 'Send Slack': [{ ts: 'real' }] });
+	});
+});
+
+describe('planVerificationSimulation — contract nodes', () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+		mockGenerateFixtures.mockResolvedValue({});
+	});
+
+	it('runs a contract Set node between a simulated read and a simulated write', async () => {
+		const actual = await vi.importActual<typeof import('../classify-node-destructiveness.service')>(
+			'../classify-node-destructiveness.service',
+		);
+		mockClassify.mockImplementation(actual.classifyNodesForSimulation);
+		const workflow = wf(
+			[
+				{ name: 'Get Deals', type: '@n8n/nodes-base-next.notionDatabasePageGetAll' },
+				{ name: 'Build Rows', type: '@n8n/nodes-base-next.coreSet' },
+				{ name: 'Upsert', type: '@n8n/nodes-base-next.googleSheetsSheetAppendOrUpdate' },
+			],
+			{
+				'Get Deals': { main: [[{ node: 'Build Rows', type: 'main', index: 0 }]] },
+				'Build Rows': { main: [[{ node: 'Upsert', type: 'main', index: 0 }]] },
+			},
+		);
+
+		const { nodeSimulationPlan, simulationFixtures } = await planVerificationSimulation({
+			workflow,
+			declaredOutputFixtures: synthesizedFixtures(workflow),
+			workflowId: 'wf-1',
+		});
+
+		expect(
+			Object.fromEntries(
+				(nodeSimulationPlan ?? []).map(({ nodeName, verdict }) => [nodeName, verdict]),
+			),
+		).toEqual({ 'Get Deals': 'simulate', 'Build Rows': 'execute', Upsert: 'simulate' });
+		expect(Object.keys(simulationFixtures ?? {}).sort()).toEqual(['Get Deals', 'Upsert']);
+		expect(mockGenerateFixtures).not.toHaveBeenCalled();
 	});
 });
 

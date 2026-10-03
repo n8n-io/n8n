@@ -446,6 +446,53 @@ import { googleGemini } from '@n8n/nodes/googleGemini';`;
 		});
 	});
 
+	describe('synthesizedFixtures local nodes', () => {
+		const chain = (...names: string[]) =>
+			Object.fromEntries(
+				names
+					.slice(0, -1)
+					.map((name, index) => [
+						name,
+						{ main: [[{ node: names[index + 1], type: 'main', index: 0 }]] },
+					]),
+			);
+		const pages: WorkflowJSON = {
+			name: 'Pages',
+			connections: chain('Get Pages', 'Keep Open', 'Build Rows', 'Shape', 'Summarize', 'Upsert'),
+			nodes: [
+				node('Get Pages', '@n8n/nodes-base-next.notionDatabasePageGetAll', { database: 'x' }),
+				node('Keep Open', '@n8n/nodes-base-next.coreFilter', {}),
+				node('Build Rows', '@n8n/nodes-base-next.coreSet', {
+					fields: { Region: '={{ $json.property_region }}' },
+				}),
+				node('Shape', '@n8n/nodes-base-next.codeJavaScript', { code: 'return $input.all();' }),
+				node('Summarize', '@n8n/nodes-base-next.openAiTextMessage', {
+					model: 'gpt-5',
+					prompt: 'Sum up',
+				}),
+				node('Upsert', '@n8n/nodes-base-next.googleSheetsSheetAppendOrUpdate', {
+					values: { Summary: '={{ $json.text }}' },
+				}),
+			],
+		};
+
+		it('gives a fixture only to the nodes that call a service', () => {
+			expect(Object.keys(synthesizedFixtures(pages))).toEqual(['Get Pages', 'Summarize', 'Upsert']);
+		});
+
+		it('keeps the sample of a local node', () => {
+			const fixtures = synthesizedFixtures(pages, { 'Build Rows': [{ Region: 'EU' }] });
+			expect(fixtures['Build Rows']).toEqual([{ Region: 'EU' }]);
+			expect(fixtures).not.toHaveProperty('Keep Open');
+		});
+
+		it('adds the keys read behind a node that passes items on', () => {
+			expect(synthesizedFixtures(pages)['Get Pages']?.[0]).toMatchObject({
+				property_region: 'example property_region',
+			});
+		});
+	});
+
 	describe('synthesizedFixtures read keys', () => {
 		const getAll = '@n8n/nodes-base-next.notionDatabasePageGetAll';
 		const deals: WorkflowJSON = {
@@ -453,6 +500,7 @@ import { googleGemini } from '@n8n/nodes/googleGemini';`;
 			connections: {
 				'Get Deals': { main: [[{ node: 'Build Rows', type: 'main', index: 0 }]] },
 				'Build Rows': { main: [[{ node: 'Upsert', type: 'main', index: 0 }]] },
+				Upsert: { main: [[{ node: 'Report', type: 'main', index: 0 }]] },
 			},
 			nodes: [
 				node('Get Deals', getAll, { database: 'x' }),
@@ -471,6 +519,9 @@ import { googleGemini } from '@n8n/nodes/googleGemini';`;
 						Amount: '={{ $("Get Deals").item.json["property_amount"] }}',
 					},
 				}),
+				node('Report', '@n8n/nodes-base-next.coreSet', {
+					fields: { Row: '={{ $json.row_number }}' },
+				}),
 			],
 		};
 
@@ -484,10 +535,8 @@ import { googleGemini } from '@n8n/nodes/googleGemini';`;
 			});
 			expect(fixtures['Get Deals']?.[0]).not.toHaveProperty('not_a_property');
 			expect(fixtures['Get Deals']?.[0]).not.toHaveProperty('property_grandchild');
-			expect(fixtures['Build Rows']?.[0]).toEqual({
-				'Deal ID': 'example Deal ID',
-				property_grandchild: 'example property_grandchild',
-			});
+			expect(fixtures['Upsert']?.[0]).toMatchObject({ row_number: 'example row_number' });
+			expect(fixtures).not.toHaveProperty('Build Rows');
 		});
 
 		it('keeps the closed key space of a resource lookup', () => {

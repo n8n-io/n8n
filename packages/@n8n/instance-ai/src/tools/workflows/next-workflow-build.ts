@@ -314,18 +314,47 @@ const scriptsOf = (node: WorkflowJSON['nodes'][number]) => [
 ];
 
 /**
- * The top-level output keys of `nodeName` that the workflow reads: `$json` reads in its direct
- * children, and reads by node name anywhere.
+ * n8n runs the action on its input without a credential or a request of its own, e.g. Set,
+ * Filter or Code. Verification runs such a node, so it gets no synthesized fixture.
+ */
+const runsLocally = ({ flow, output, credentialTypes, egress }: (typeof actions)[number]) =>
+	credentialTypes.length === 0 &&
+	egress === undefined &&
+	(flow.effect === 'transform' || output.json['x-n8n-passed'] === true);
+
+/**
+ * The nodes whose `$json` is an output item of `nodeName`: its main children, and the children
+ * of each local node that passes its items on unchanged.
+ */
+function itemReadersOf(workflow: WorkflowJSON, nodeName: string): Set<string> {
+	const connections = toEngineConnections(workflow.connections);
+	const passesOn = (name: string) => {
+		const node = workflow.nodes.find((candidate) => candidate.name === name);
+		const action = node && actionOfNode(node);
+		return (
+			action !== undefined && runsLocally(action) && action.output.json['x-n8n-passed'] === true
+		);
+	};
+	const walk = (name: string, seen: ReadonlySet<string>): string[] =>
+		getChildNodes(connections, name, NodeConnectionTypes.Main, 1)
+			.filter((child) => !seen.has(child))
+			.flatMap((child) =>
+				passesOn(child) ? [child, ...walk(child, new Set([...seen, child]))] : [child],
+			);
+	return new Set(walk(nodeName, new Set([nodeName])));
+}
+
+/**
+ * The top-level output keys of `nodeName` that the workflow reads: `$json` reads in the nodes
+ * that read its items, and reads by node name anywhere.
  */
 function readKeysOf(workflow: WorkflowJSON, nodeName: string): Set<string> {
-	const children = new Set(
-		getChildNodes(toEngineConnections(workflow.connections), nodeName, NodeConnectionTypes.Main, 1),
-	);
+	const readers = itemReadersOf(workflow, nodeName);
 	return new Set(
 		workflow.nodes
 			.flatMap((node) =>
 				scriptsOf(node).flatMap((text) => [
-					...(node.name && children.has(node.name)
+					...(node.name && readers.has(node.name)
 						? [...text.matchAll(ITEM_JSON)].map((match) =>
 								keyAfter(text, match.index + match[0].length),
 							)
@@ -363,9 +392,9 @@ function readKeyExamples(
 }
 
 /**
- * One example item for each contract node without declared output. Verification then
- * simulates read nodes instead of calling the service, and needs no LLM to invent the output
- * of simulated write nodes.
+ * One example item for each contract node that calls a service and has no declared output.
+ * Verification then simulates read nodes instead of calling the service, and needs no LLM to
+ * invent the output of simulated write nodes. Local nodes run on their real input.
  */
 export function synthesizedFixtures(
 	workflow: WorkflowJSON,
@@ -374,7 +403,7 @@ export function synthesizedFixtures(
 ): Fixtures {
 	const synthesized = workflow.nodes.flatMap((node): Array<[string, Fixtures[string]]> => {
 		const action = actionOfNode(node);
-		if (!action || !node.name || declared[node.name]) return [];
+		if (!action || !node.name || declared[node.name] || runsLocally(action)) return [];
 		const schema = outputOf(action, node.parameters ?? {}, resourceFields.get(node.name));
 		const example = exampleOf(schema);
 		if (!isRecord(example)) return [];
