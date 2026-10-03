@@ -3,7 +3,7 @@ import { WorkflowTechnique } from '../types';
 
 export class DataPersistenceBestPractices implements BestPracticesDocument {
 	readonly technique = WorkflowTechnique.DATA_PERSISTENCE;
-	readonly version = '1.0.0';
+	readonly version = '1.0.1';
 
 	private readonly documentation = `# Best Practices: Data Persistence
 
@@ -163,8 +163,10 @@ Best for: Enrichment, validation, conditional logic based on stored data
 
 ## Referencing Documents, Sheets, or Tables
 
-When configuring storage nodes, use ResourceLocator mode "list". This will allow users to select from existing documents, sheets, or tables rather than passing IDs dynamically.
-Use modes "id", "url" or "name" only when user specifically mentions it in their prompt.
+When configuring storage nodes, pick the ResourceLocator mode by what you actually have:
+- A "list" mode value is the opaque internal ID the picker returns (e.g. the numeric gid of a Google Sheets sheet) — a human-readable name placed there can never resolve. Use mode "list" with a real ID from explored resources, or with an empty value ("") so users can pick from existing documents, sheets, or tables at setup.
+- If you only know the resource by its human-readable name (e.g. a sheet title like "Sheet1"), use mode "name" with that name. If the node offers no "name" mode, leave mode "list" empty instead of guessing an ID.
+- Use modes "id" or "url" only when a concrete ID or URL was provided.
 
 ## Important Distinctions
 
