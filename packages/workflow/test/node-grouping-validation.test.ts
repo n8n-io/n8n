@@ -1452,6 +1452,65 @@ describe('validateWorkflowGroups', () => {
 			{ groupId: 'g2', code: 'invalid-subgraph' },
 		]);
 	});
+
+	describe('a member that sends items out and feeds a member', () => {
+		// Post sends its items on to After, and its failed items on output 1 to Log.
+		const nodes = ['Before', 'Post', 'Log', 'After'].map((name) =>
+			makeNode({ id: name.toLowerCase(), name }),
+		);
+		const connections: IConnections = {
+			Before: { main: [mainTo('Post')] },
+			Post: { main: [mainTo('After'), mainTo('Log')] },
+		};
+		const validate = (repeat?: { output: number }) =>
+			validateWorkflowGroups({
+				nodes,
+				connectionsBySourceNode: connections,
+				nodeGroups: [
+					{
+						id: 'g1',
+						name: 'Each',
+						nodeIds: ['post', 'log'],
+						...(repeat
+							? {
+									repeat: {
+										kind: 'forEach' as const,
+										entry: 'post',
+										exits: [{ node: 'post', output: repeat.output }],
+										batchSize: 1,
+									},
+								}
+							: {}),
+					},
+				],
+				getNodeType,
+				allowMultipleBoundaryNodes: true,
+			});
+
+		it('is valid in a forEach region whose exit is that output', () => {
+			expect(validate({ output: 0 })).toEqual({ valid: true });
+		});
+
+		it('breaks the region rules when that output is not an exit', () => {
+			expectViolations(validate({ output: 1 }), [
+				{
+					groupId: 'g1',
+					code: 'invalid-region',
+					message: expect.stringContaining('output 0 of "Post" leaves the region'),
+				},
+			]);
+		});
+
+		it('is still invalid in a plain group', () => {
+			expectViolations(validate(), [
+				{
+					groupId: 'g1',
+					code: 'invalid-subgraph',
+					message: expect.stringContaining('output edge from non-leaf node: "Post"'),
+				},
+			]);
+		});
+	});
 });
 
 describe('makeGetNodeTypeForGrouping', () => {

@@ -20,6 +20,7 @@ import {
 	node,
 	onError,
 	paginate,
+	recover,
 	pollUntil,
 	provider,
 	set,
@@ -247,6 +248,19 @@ const forEachBranchesWorkflow = () =>
 		set({ name: 'Report', fields: { text: (row) => `${row.name}: ${row.count}` } }),
 	);
 
+/** A forEach whose last node has an error branch that ends, or that continues. */
+const guardedEachWorkflow = (rejoins: boolean) =>
+	workflow(
+		'Guarded each',
+		manual(),
+		customers('Customers'),
+		forEach({ name: 'Each', batchSize: 2 }, set({ name: 'Post', fields: { id: (c) => c.id } })),
+		rejoins
+			? recover(set({ name: 'Log', fields: { failed: (e) => e.error.message } }))
+			: onError(set({ name: 'Log', fields: { failed: (e) => e.error.message } })),
+		set({ name: 'Report', fields: { done: true } }),
+	);
+
 /** Canvas groups: one with a description, one around a forEach, one in it, one with an AI node. */
 const groupWorkflow = () =>
 	workflow(
@@ -393,6 +407,8 @@ describe('regions compile to node contracts', () => {
 		['loop without next to its limit', cappedLoopWorkflow],
 		['merge of three', () => mergeThreeWorkflow('position')],
 		['forEach of branches', forEachBranchesWorkflow],
+		['forEach with onError', () => guardedEachWorkflow(false)],
+		['forEach with recover', () => guardedEachWorkflow(true)],
 	])('%s: workflow validation finds no issues', (_kind, make) => {
 		const { errors, warnings } = make().validate();
 		expect([...errors, ...warnings]).toEqual([]);
@@ -552,6 +568,56 @@ describe('regions compile to node contracts', () => {
 			'Counts',
 			'Tags',
 			'Parts',
+		]);
+	});
+
+	it.each([
+		['onError', false, ['Post#0']],
+		['recover', true, ['Post#0', 'Log#0']],
+	])('keeps a forEach before %s, and runs the error branch in it', (_kind, rejoins, exits) => {
+		const json = guardedEachWorkflow(rejoins).toJSON();
+		const nameOf = new Map(json.nodes.map((n) => [n.id, n.name]));
+		const named = (id: string) => nameOf.get(id) ?? id;
+		expect(
+			json.nodeGroups?.map(({ name, nodeIds, repeat }) => ({
+				name,
+				members: nodeIds.map(named),
+				entry: repeat && named(repeat.entry),
+				exits: repeat?.exits.map(({ node, output }) => `${named(node)}#${output}`),
+			})),
+		).toEqual([{ name: 'Each', members: ['Post', 'Log'], entry: 'Post', exits }]);
+		expect(connections(json, 'Post')).toEqual([['Report#0'], ['Log#0']]);
+		expect(connections(json, 'Log')).toEqual(rejoins ? [['Report#0']] : undefined);
+		expect(json.settings).toEqual({ executionOrder: 'v1' });
+	});
+
+	it('runs an error branch after a nested forEach in both regions', () => {
+		const json = workflow(
+			'Guarded nested',
+			manual(),
+			customers('Customers'),
+			forEach(
+				{ name: 'Outer', batchSize: 2 },
+				steps(
+					set({ name: 'Prepare', fields: { id: (c) => c.id } }),
+					forEach(
+						{ name: 'Inner', batchSize: 1 },
+						set({ name: 'Post', fields: { id: (c) => c.id } }),
+					),
+				),
+			),
+			recover(set({ name: 'Log', fields: { failed: true } })),
+		).toJSON();
+		const nameOf = new Map(json.nodes.map((n) => [n.id, n.name]));
+		expect(
+			json.nodeGroups?.map(({ name, nodeIds, repeat }) => [
+				name,
+				nodeIds.map((id) => nameOf.get(id)),
+				repeat?.exits.map(({ node, output }) => `${nameOf.get(node)}#${output}`),
+			]),
+		).toEqual([
+			['Inner', ['Post', 'Log'], ['Post#0', 'Log#0']],
+			['Outer', ['Prepare', 'Post', 'Log'], ['Post#0', 'Log#0']],
 		]);
 	});
 
@@ -821,6 +887,8 @@ describe('regions round-trip through decompile', () => {
 		['merge of three by position', () => mergeThreeWorkflow('position'), 'join: "position"'],
 		['forEach of branches', forEachBranchesWorkflow, 'name: "Each start"'],
 		['groups and settings', groupWorkflow, '  group({'],
+		['forEach with onError', () => guardedEachWorkflow(false), '  forEach({'],
+		['forEach with recover', () => guardedEachWorkflow(true), '  forEach({'],
 	])('%s: compile, decompile, compile is stable', (_kind, make, call) => {
 		const json = make().toJSON();
 		const source = decompileWorkflow(json, new Map());
@@ -829,6 +897,15 @@ describe('regions round-trip through decompile', () => {
 		const rebuilt = build(source);
 		expect(withoutIds(rebuilt)).toEqual(withoutIds(json));
 		expect(decompileWorkflow(rebuilt, new Map())).toBe(source);
+	});
+
+	it.each([
+		['onError', false],
+		['recover', true],
+	])('reads a forEach before %s back with the error branch in its body', (kind, rejoins) => {
+		const source = decompileWorkflow(guardedEachWorkflow(rejoins).toJSON(), new Map()) ?? '';
+		expect(source).toContain('  forEach({\n    name: "Each",\n    batchSize: 2,\n  }, steps(');
+		expect(source).toContain(`\n    ${kind}(set({\n      name: "Log",`);
 	});
 
 	it('reads a nested forEach back as nested regions', () => {

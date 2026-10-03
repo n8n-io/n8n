@@ -1625,7 +1625,7 @@ export function onError<In, Ctx>(
 	handle: Part<ErrorItem, NoInfer<Ctx>, unknown, unknown>,
 ): Region<In, Ctx, In, Ctx>;
 export function onError(handle: AnyPart): AnyRegion {
-	return region((from) => ({ graph: errorFragment(from, run(handle)).graph, tails: from.tails }));
+	return region((from) => errorFragment(from, run(handle), false));
 }
 
 /**
@@ -1642,10 +1642,7 @@ export function recover<In, Ctx, A>(
 	handle: Part<ErrorItem, NoInfer<Ctx>, A, unknown>,
 ): Region<In, Ctx, In | A, Ctx>;
 export function recover(handle: AnyPart): AnyRegion {
-	return region((from) => {
-		const handled = errorFragment(from, run(handle));
-		return { graph: handled.graph, tails: [...from.tails, ...handled.tails] };
-	});
+	return region((from) => errorFragment(from, run(handle), true));
 }
 
 declare const none: unique symbol;
@@ -1790,8 +1787,16 @@ export function steps(...parts: ReadonlyArray<AnyPart | undefined>): AnyRegion {
 	return region((from) => given(parts).reduce(partFragment, from));
 }
 
-/** @internal The last nodes of `from` emit failed items on their error output into `handle`. */
-export function errorFragment(from: Fragment, handle: (flow: Fragment) => Fragment): Fragment {
+/**
+ * @internal The last nodes of `from` emit failed items on their error output into `handle`.
+ * `rejoins`: the open ends of `handle` join the open ends of `from` (`recover`), else the
+ * error branch ends there (`onError`).
+ */
+export function errorFragment(
+	from: Fragment,
+	handle: (flow: Fragment) => Fragment,
+	rejoins: boolean,
+): Fragment {
 	const failing = new Set(from.tails.map((each) => each.node));
 	const nodes = from.graph.nodes.map((spec) =>
 		failing.has(spec.name) ? { ...spec, onError: 'continueErrorOutput' as const } : spec,
@@ -1800,16 +1805,23 @@ export function errorFragment(from: Fragment, handle: (flow: Fragment) => Fragme
 		.filter((spec) => failing.has(spec.name))
 		.map((spec) => ({ node: spec.name, output: spec.outputs ?? 1 }));
 	// A failing node stays in its group.
-	const marked: Graph = {
-		nodes,
-		edges: from.graph.edges,
-		...(from.graph.groups ? { groups: from.graph.groups } : {}),
-	};
+	const marked: Graph = { ...from.graph, nodes };
 	const handled = handle({ graph: marked, tails: errorTails });
-	return {
-		graph: unionGraphs([marked, handled.graph]),
-		tails: handled.tails,
-	};
+	const before = new Set(nodes.map((spec) => spec.name));
+	const added = handled.graph.nodes.map((spec) => spec.name).filter((name) => !before.has(name));
+	const tails = rejoins ? [...from.tails, ...handled.tails] : from.tails;
+	const graph = unionGraphs([marked, handled.graph]);
+	// A region emits only on its exits, so the error branch of a failing member runs in the
+	// region, and a branch that rejoins leaves it on new exits.
+	const inRegion = (region: RegionSpec): RegionSpec =>
+		region.members.some((member) => failing.has(member))
+			? {
+					...region,
+					members: [...region.members, ...added],
+					exits: rejoins ? [...region.exits, ...handled.tails] : region.exits,
+				}
+			: region;
+	return { graph: { ...graph, regions: (graph.regions ?? []).map(inRegion) }, tails };
 }
 
 /**

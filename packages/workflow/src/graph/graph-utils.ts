@@ -232,6 +232,7 @@ function collectNonLeafOutputErrors(
  *
  * @param [options={}] `relaxBoundaryRules` When TRUE, accepts several entry or exit
  *          nodes. An edge into or out of the middle stays an error either way.
+ *          `exitFromAnyMember` When TRUE, accepts an edge out of the middle.
  * @returns An object containing optional start and end nodeIds
  *            indicating which nodes have outside connections, OR
  *          An array of errors if the selection is not valid.
@@ -239,7 +240,7 @@ function collectNonLeafOutputErrors(
 export function parseExtractableSubgraphSelection(
 	graphIds: Set<string>,
 	adjacencyList: IConnectionAdjacencyList,
-	options: { relaxBoundaryRules?: boolean } = {},
+	options: { relaxBoundaryRules?: boolean; exitFromAnyMember?: boolean } = {},
 ): ExtractableSubgraphData | ExtractableErrorResult[] {
 	const errors: ExtractableErrorResult[] = [];
 
@@ -270,7 +271,8 @@ export function parseExtractableSubgraphSelection(
 
 	const leafOutputNodes = intersection(leafNodes, outputNodes);
 
-	errors.push(...collectNonLeafOutputErrors(outputNodes, leafNodes));
+	if (!options.exitFromAnyMember)
+		errors.push(...collectNonLeafOutputErrors(outputNodes, leafNodes));
 
 	if (!options.relaxBoundaryRules && leafOutputNodes.size > 1) {
 		errors.push({ errorCode: 'Multiple Output Nodes', nodes: leafOutputNodes });

@@ -160,6 +160,11 @@ export type NodeGroupingValidationInput<TNode extends INode = INode> = {
 		node: TNode,
 		nodeType: INodeTypeDescription,
 	) => Array<NodeConnectionType | INodeOutputConfiguration>;
+	/**
+	 * Accept an edge out of a member that also feeds a member. A forEach region sets it,
+	 * because the region rules (`regionTreeOf`) check each edge that leaves the region.
+	 */
+	exitFromAnyMember?: boolean;
 } & NodeGroupRuleOptions;
 
 export type NodeSelectionValidationResult<TNode extends INode = INode> =
@@ -233,6 +238,7 @@ export function validateNodeSelectionForExtraction<TNode extends INode>(
 		...input,
 		allowTriggerInGroup: false,
 		allowMultipleBoundaryNodes: false,
+		exitFromAnyMember: false,
 	});
 
 	if (!subgraphResult.valid) {
@@ -491,7 +497,7 @@ function validateWorkflowGroupsWithGroupIdentity<TNode extends INode>({
 				existingNodeGroups: nodeGroups.filter((other) => other.id !== group.id),
 				...rules,
 				// The region rules check the entry and the exits of a region.
-				...(group.repeat ? { allowMultipleBoundaryNodes: true } : {}),
+				...(group.repeat ? { allowMultipleBoundaryNodes: true, exitFromAnyMember: true } : {}),
 			});
 			if (!result.valid) {
 				addViolation(group, result.reason, groupRuleViolationMessage(group, result, nodeLabel));
@@ -620,6 +626,7 @@ function validateNodeSelectionSubgraph<TNode extends INode>({
 	getNodeType,
 	allowTriggerInGroup,
 	allowMultipleBoundaryNodes,
+	exitFromAnyMember,
 }: NodeGroupingValidationInput<TNode>): NodeSelectionValidationResult<TNode> {
 	// A relaxed group may hold its own trigger, together with the nodes that follow it.
 	const triggers = allowTriggerInGroup
@@ -641,6 +648,7 @@ function validateNodeSelectionSubgraph<TNode extends INode>({
 	// A relaxed group may have several entry and exit nodes
 	const selection = parseExtractableSubgraphSelection(selectedNodeNames, adjacencyList, {
 		relaxBoundaryRules: allowMultipleBoundaryNodes,
+		exitFromAnyMember,
 	});
 
 	if (Array.isArray(selection)) {

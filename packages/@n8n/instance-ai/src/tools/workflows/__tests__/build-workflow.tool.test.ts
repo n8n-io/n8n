@@ -13,7 +13,9 @@ import {
 	manual,
 	merge,
 	node,
+	onError,
 	provider,
+	recover,
 	set,
 	steps,
 	workflow,
@@ -1191,6 +1193,67 @@ describe('createBuildWorkflowTool', () => {
 						batchSize: 1,
 						entry: savedId('Each Workflow start'),
 						exits: [{ node: savedId('Parts'), output: 0 }],
+					},
+				}),
+			]);
+		});
+
+		it.each([
+			['onError', false],
+			['recover', true],
+		])('keeps a forEach region before %s over a rebuild', async (_kind, rejoins) => {
+			const nodeTypesProvider = {
+				getByNameAndVersion: () => ({
+					description: { inputs: ['main'], outputs: ['main'], group: ['transform'] },
+				}),
+			} as unknown as InstanceAiContext['nodeTypesProvider'];
+			const { context, filePath } = makeContext({
+				source: 'src',
+				overrides: { ...contracts, nodeTypesProvider },
+			});
+			const guarded = () =>
+				workflow(
+					'Guarded mailing',
+					manual({ sample: [{ n: 1 }] }),
+					field('Get Recipients'),
+					forEach({ name: 'Batches of 10', batchSize: 10 }, field('Send Email')),
+					rejoins ? recover(field('Log Failure')) : onError(field('Log Failure')),
+					field('Post Summary'),
+				).toJSON();
+			compileTo(guarded());
+			const first = await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
+				filePath,
+			});
+			expect(first.success).toBe(true);
+			const [created] = vi.mocked(context.workflowService.createFromWorkflowJSON).mock.calls[0];
+			vi.mocked(context.workflowService.getAsWorkflowJSON).mockResolvedValue(
+				structuredClone(created),
+			);
+			const savedId = (name: string) => created.nodes.find((each) => each.name === name)?.id;
+
+			compileTo(guarded());
+			const result = await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
+				filePath,
+				workflowId: 'wf-1',
+			});
+
+			expect(result.success).toBe(true);
+			const messages = [...(result.errors ?? []), ...(result.warnings ?? [])].join('\n');
+			expect(messages).not.toContain('REGION_DROPPED');
+			expect(messages).not.toContain('NODE_GROUP_DROPPED');
+			const [[, saved]] = vi.mocked(context.workflowService.updateFromWorkflowJSON).mock.calls;
+			expect(saved.nodeGroups).toEqual([
+				expect.objectContaining({
+					name: 'Batches of 10',
+					nodeIds: [savedId('Send Email'), savedId('Log Failure')],
+					repeat: {
+						kind: 'forEach',
+						batchSize: 10,
+						entry: savedId('Send Email'),
+						exits: [
+							{ node: savedId('Send Email'), output: 0 },
+							...(rejoins ? [{ node: savedId('Log Failure'), output: 0 }] : []),
+						],
 					},
 				}),
 			]);

@@ -10,8 +10,10 @@ import {
 	manual,
 	merge,
 	node,
+	onError,
 	paginate,
 	pollUntil,
+	recover,
 	set,
 	splitOut,
 	steps,
@@ -388,6 +390,52 @@ describe('workflow-sdk forEach regions on the legacy engine', () => {
 		expect(runs(result, 'Y')).toEqual([[{ n: 1 }], [{ n: 2 }]]);
 		expect(runs(result, 'After')).toEqual([[{ n: 1 }, { n: 1 }, { n: 2 }, { n: 2 }]]);
 	});
+
+	it.each([
+		['onError', false, [{ second: 2 }, { second: 6 }]],
+		['recover', true, [{ second: 2 }, { failed: 'c2' }, { second: 6 }]],
+	])(
+		'forEach before %s handles the failed items in their batch and emits once',
+		async (_kind, rejoins, report) => {
+			const json = workflow(
+				'Second orders',
+				manual(),
+				source<Customer>()('Customers'),
+				forEach(
+					{ name: 'Each', batchSize: 1 },
+					// A text that is not a number fails the item of a customer with one order.
+					node({
+						name: 'Post',
+						type: 'n8n-nodes-base.set',
+						version: 3.4,
+						parameters: {
+							assignments: {
+								assignments: [
+									{
+										id: 'second',
+										name: 'second',
+										type: 'number',
+										value: '={{ $json.orders.length > 1 ? $json.orders[1].total : "none" }}',
+									},
+								],
+							},
+						},
+					}),
+				),
+				rejoins
+					? recover(set({ name: 'Log', fields: { failed: (_e, $) => $('Each').id } }))
+					: onError(set({ name: 'Log', fields: { failed: (_e, $) => $('Each').id } })),
+				source<object>()('Report'),
+			).toJSON();
+
+			const result = await execute('v1', json, CUSTOMERS);
+
+			expect(result.status).toBe('success');
+			expect(runs(result, 'Post')).toHaveLength(3);
+			expect(runs(result, 'Log')).toEqual([[{ failed: 'c2' }]]);
+			expect(runs(result, 'Report')).toEqual([report]);
+		},
+	);
 });
 
 describe.each<ExecutionOrder>(['v0', 'v1'])(
