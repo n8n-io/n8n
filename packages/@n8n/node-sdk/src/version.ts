@@ -562,23 +562,56 @@ const setChanges = (
 ];
 
 /**
+ * The permission sets that the diff compares, by name, with the kind of a removal. Scopes have
+ * their own rule. A saved workflow can use a removed credential type: a major.
+ */
+const permissionSets = (permissions: ContractPermissions) =>
+	[
+		['egress', egressSources(permissions), 'minor'],
+		['import', permissions.imports, 'minor'],
+		['provider', permissions.supplied, 'minor'],
+		['binary data', permissions.binary ? ['access'] : [], 'minor'],
+		['credential', permissions.credentials, 'major'],
+	] as const;
+
+/**
  * The changes of the permissions, from `permissionsOf`. A first scope declaration only names
- * what the action already needed: a minor. A saved workflow can use a removed credential type: a major.
+ * what the action already needed: a minor.
  */
 function permissionChanges(prev: ContractDocument, next: ContractDocument): ContractChange[] {
 	const [before, after] = [permissionsOf(prev), permissionsOf(next)];
+	const afterSets = permissionSets(after);
 	return [
 		...(before.scopes
 			? setChanges('scope', before.scopes, after.scopes ?? [])
 			: (after.scopes ?? []).map(
 					(scope): ContractChange => ({ kind: 'minor', text: `scope ${scope} declared` }),
 				)),
-		...setChanges('egress', egressSources(before), egressSources(after)),
-		...setChanges('import', before.imports, after.imports),
-		...setChanges('provider', before.supplied, after.supplied),
-		...setChanges('binary data', before.binary ? ['access'] : [], after.binary ? ['access'] : []),
-		...setChanges('credential', before.credentials, after.credentials, 'major'),
+		...permissionSets(before).flatMap(([name, entries, removed], index) =>
+			setChanges(name, entries, afterSets[index]?.[1] ?? [], removed),
+		),
 	];
+}
+
+/**
+ * The permissions that `next` has and `prev` does not, as `diffContracts` names them, e.g.
+ * `egress api.example.com` or `import code`. Without `prev`, every permission of `next`.
+ */
+export function addedPermissionsOf(
+	prev: ContractDocument | undefined,
+	next: ContractDocument,
+): string[] {
+	const entriesOf = (contract: ContractDocument) => {
+		const permissions = permissionsOf(contract);
+		return [
+			...permissionSets(permissions).flatMap(([name, entries]) =>
+				entries.map((entry) => `${name} ${entry}`),
+			),
+			...(permissions.scopes ?? []).map((scope) => `scope ${scope}`),
+		];
+	};
+	const before = new Set(prev ? entriesOf(prev) : []);
+	return entriesOf(next).filter((entry) => !before.has(entry));
 }
 
 /** n8n saves a connection by input index, as by output index. */

@@ -2,6 +2,7 @@ import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
+import { setPermissionRefusalListener, type PermissionRefusal } from '../egress';
 import { freezeAction, GUEST_LACKS, type FrozenAction } from '../freeze';
 import {
 	executorOf,
@@ -202,5 +203,15 @@ describe('the manifest as the permission source', () => {
 		await expect(loadExecutor(versionOf(contract))).rejects.toThrow(
 			`The bundle of api.get@1.0.0 grants other permissions than its manifest. ${difference}`,
 		);
+	});
+
+	it('reports a refused bundle with its version', async () => {
+		const refusals: PermissionRefusal[] = [];
+		setPermissionRefusalListener((refusal) => refusals.push(refusal));
+		await expect(loadExecutor(versionOf({ imports: ['dataTables'] }))).rejects.toThrow();
+		setPermissionRefusalListener(undefined);
+		expect(refusals).toEqual([
+			expect.objectContaining({ action: 'api.get', version: '1.0.0', permission: 'manifest' }),
+		]);
 	});
 });

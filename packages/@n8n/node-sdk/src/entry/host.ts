@@ -2,8 +2,12 @@ export {
 	credentialHostsOf,
 	egressIssuesOf,
 	permissionsOf,
+	setPermissionRefusalListener,
 	type ContractPermissions,
 	type EgressIssues,
+	type PermissionRefusal,
+	type PermissionRefusalListener,
+	type RefusedPermission,
 } from '../egress';
 export { isToolContract, resourceLookupsOf, type ResourceLookupCall } from '../define';
 export { credentialTypeOfManifest, toCredentialType } from '../credentials';

@@ -10,9 +10,11 @@ import { generateNodeModule } from '../entry/codegen';
 import { compat, credential, defineCredential } from '../entry/credentials';
 import {
 	permissionsOf,
+	setPermissionRefusalListener,
 	toCredentialType,
 	toTriggerNodeType,
 	type ContractPermissions,
+	type PermissionRefusal,
 } from '../entry/host';
 import {
 	contractHash,
@@ -384,6 +386,75 @@ describe('host egress', () => {
 		const type: INodeType = new (toTriggerNodeType(polled))();
 		await expect(type.poll?.call(context as never)).rejects.toThrow('not to other.test');
 		expect(sent).toEqual([]);
+	});
+});
+
+describe('permission refusals', () => {
+	const refusals: PermissionRefusal[] = [];
+
+	beforeEach(() => {
+		refusals.length = 0;
+		setPermissionRefusalListener((refusal) => refusals.push(refusal));
+	});
+
+	afterEach(() => setPermissionRefusalListener(undefined));
+
+	it('reports one refused request with the node, the action, the permission and the host', async () => {
+		const { host } = hostOf({ credentialType: 'echoApi' });
+		await expect(executorOf(sender([{ url: 'https://other.test/x' }]))(host)).rejects.toThrow();
+		expect(refusals).toEqual([
+			{
+				node,
+				action: 'echo.send',
+				permission: 'egress',
+				host: 'other.test',
+				message:
+					'Host not allowed: echo.send may send requests to api.echo.test, not to other.test',
+			},
+		]);
+	});
+
+	it('reports a host from input outside the input hosts of the host', async () => {
+		const { host } = hostOf({ parameters: { url: 'https://other.test/x' } });
+		await expect(
+			executorOf(fetchUrl)({ ...host, egressInputHosts: ['allowed.test'] }),
+		).rejects.toThrow();
+		expect(refusals).toEqual([
+			expect.objectContaining({
+				node,
+				action: 'echo.fetch',
+				permission: 'egress-input',
+				host: 'other.test',
+			}),
+		]);
+	});
+
+	it('reports a host outside the hosts of the credential', async () => {
+		const { host } = hostOf({
+			credentialType: 'httpHeaderAuth',
+			data: DOMAINS,
+			parameters: { url: 'https://other.test/x' },
+		});
+		await expect(executorOf(fetchUrl)(host)).rejects.toThrow('Domain not allowed');
+		expect(refusals).toEqual([
+			expect.objectContaining({ permission: 'credential-hosts', host: 'other.test' }),
+		]);
+	});
+
+	it('reports nothing for an allowed request', async () => {
+		const { host } = hostOf({ credentialType: 'echoApi' });
+		await executorOf(sender([{ path: path`/a` }]))(host);
+		expect(refusals).toEqual([]);
+	});
+
+	it('refuses the request with its own error when the listener throws', async () => {
+		setPermissionRefusalListener(() => {
+			throw new Error('listener failed');
+		});
+		const { host } = hostOf({ credentialType: 'echoApi' });
+		await expect(executorOf(sender([{ url: 'https://other.test/x' }]))(host)).rejects.toThrow(
+			'Host not allowed',
+		);
 	});
 });
 

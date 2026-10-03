@@ -13,6 +13,7 @@ import {
 	type FrozenVersion,
 } from '../entry/host';
 import {
+	addedPermissionsOf,
 	contractHash,
 	diffContracts,
 	parseFixtures,
@@ -227,6 +228,21 @@ describe('diffContracts', () => {
 			{ kind: 'major', text: 'credential demoOAuth2Api added' },
 		]);
 		expect(diffContracts(two, one).kind).toBe('major');
+	});
+
+	it('lists the permissions that a version adds, or all of them without a previous version', () => {
+		const one = { ...base, credentials: ['demoApi'], egress: { hosts: ['api.demo.test'] } };
+		const two = {
+			...one,
+			egress: { hosts: ['api.demo.test', 'files.demo.test'] },
+			imports: ['code' as const],
+		};
+		expect(addedPermissionsOf(one, two)).toEqual(['egress files.demo.test', 'import code']);
+		expect(addedPermissionsOf(two, one)).toEqual([]);
+		expect(addedPermissionsOf(undefined, one)).toEqual([
+			'egress api.demo.test',
+			'credential demoApi',
+		]);
 	});
 
 	it('classifies an added provider call or binary data access as a major', () => {

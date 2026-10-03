@@ -1,0 +1,59 @@
+import { Logger } from '@n8n/backend-common';
+import { mockInstance } from '@n8n/backend-test-utils';
+import { NODE_PACKAGE, nodeNameOf, versionsOf } from '@n8n/nodes-base-next';
+import type { INode, IWorkflowBase } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
+
+import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import { ContractNodeLoader } from '@/node-contracts-registry';
+import { NODES_REPORT } from '@/security-audit/constants';
+import { NodesRiskReporter } from '@/security-audit/risk-reporters/nodes-risk-reporter';
+import type { PackagesRepository } from '@/security-audit/security-audit.repository';
+import type { Risk } from '@/security-audit/types';
+
+const nodeOf = (name: string, id: string, type = `${NODE_PACKAGE}.${nodeNameOf(id)}`): INode => ({
+	id: name,
+	name,
+	type,
+	typeVersion: versionsOf(id)[0]?.manifest.contract.version ?? 0,
+	position: [0, 0],
+	parameters: {},
+});
+
+test('lists the contract nodes with a URL from input or code, and not the ones with fixed hosts', async () => {
+	mockInstance(Logger);
+	const loader = new ContractNodeLoader([], [], async () => ({
+		versions: async () => new Map(),
+		credentials: async () => new Map(),
+	}));
+	await loader.loadAll();
+	const loadNodesAndCredentials = Object.assign(mock<LoadNodesAndCredentials>(), {
+		loaders: { [NODE_PACKAGE]: loader },
+	});
+	loadNodesAndCredentials.getCustomDirectories.mockReturnValue([]);
+	const packagesRepository = mock<PackagesRepository>();
+	packagesRepository.find.mockResolvedValue([]);
+	const workflow = mock<IWorkflowBase>({
+		id: 'wf',
+		name: 'Audit',
+		nodes: [
+			nodeOf('GET', 'httpRequest.get'),
+			nodeOf('GET tool', 'httpRequest.get', `${NODE_PACKAGE}.${nodeNameOf('httpRequest.get')}Tool`),
+			nodeOf('Code', 'code.javaScript'),
+			nodeOf('Notion', 'notion.databasePage.getAll'),
+		],
+	});
+
+	const report = await new NodesRiskReporter(loadNodesAndCredentials, packagesRepository).report([
+		workflow,
+	]);
+
+	const section = (report as Risk.StandardReport | null)?.sections.find(
+		({ title }) => title === NODES_REPORT.SECTIONS.BROAD_PERMISSION_NODES,
+	);
+	expect(section?.location.map((location) => 'nodeName' in location && location.nodeName)).toEqual([
+		'GET',
+		'GET tool',
+		'Code',
+	]);
+});

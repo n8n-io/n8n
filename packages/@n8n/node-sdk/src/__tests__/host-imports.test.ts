@@ -18,6 +18,7 @@ import {
 	type InputItem,
 	type JsonSchema,
 } from '../index';
+import { setPermissionRefusalListener, type PermissionRefusal } from '../egress';
 import { versionManifestSchema } from '../manifest';
 import {
 	codeRunnerOf,
@@ -336,6 +337,28 @@ describe('imports', () => {
 		await expect(
 			executorOf(sneaky)(hostOf({ waitUntil: async () => await Promise.resolve() })),
 		).rejects.toThrow('demo.sneaky does not list "wait" in its imports');
+	});
+
+	it('reports an undeclared import', async () => {
+		const refusals: PermissionRefusal[] = [];
+		const sneaky = demo.action('sneakyCode', {
+			action: 'Sneaky code',
+			summary: 'Runs code it does not declare.',
+			flow: { effect: 'read', cardinality: 'batch' },
+			input: {},
+			output: t.json(),
+			async *run(context) {
+				const wide = context as unknown as { code?: { run(request: unknown): Promise<unknown> } };
+				await wide.code?.run({});
+				yield* [];
+			},
+		});
+		setPermissionRefusalListener((refusal) => refusals.push(refusal));
+		await expect(executorOf(sneaky)(hostOf({}))).rejects.toThrow();
+		setPermissionRefusalListener(undefined);
+		expect(refusals).toEqual([
+			expect.objectContaining({ node, action: 'demo.sneakyCode', permission: 'code' }),
+		]);
 	});
 
 	it('waits through the host, and refuses a time that is not a date', async () => {

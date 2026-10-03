@@ -119,6 +119,7 @@ export {
 	locksOf,
 	syncContractStore,
 	useContractRegistry,
+	type ContractInstall,
 	type ContractKeys,
 	type ContractRegistryOptions,
 	type ContractStore,
@@ -143,6 +144,7 @@ export {
 	toVersionedToolType,
 	toVersionedTriggerType,
 	type FrozenVersion,
+	type RefusedPermission,
 	type RunProfile,
 } from '@n8n/node-sdk/host';
 export {

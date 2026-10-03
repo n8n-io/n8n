@@ -85,6 +85,7 @@ export const NODES_REPORT = {
 	RISK: 'nodes',
 	SECTIONS: {
 		OFFICIAL_RISKY_NODES: 'Official risky nodes',
+		BROAD_PERMISSION_NODES: 'Contract nodes with broad permissions',
 		COMMUNITY_NODES: 'Community nodes',
 		CUSTOM_NODES: 'Custom nodes',
 	},

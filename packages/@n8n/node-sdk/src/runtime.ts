@@ -37,7 +37,7 @@ import {
 
 import { credentialBaseUrlOf, plainFieldsOf, redactedValue, secretRedactorOf } from './credentials';
 import { codeRunnerOf, dataTableHostOf, dataTablesOf } from './host-imports';
-import { actionHostsOf, credentialHostsOf, egressOf, permissionsOf } from './egress';
+import { actionHostsOf, credentialHostsOf, egressOf, permissionsOf, reportRefusal } from './egress';
 import type { CredentialManifest } from './manifest';
 import { parameterValue, toProperty } from './properties';
 import {
@@ -1155,12 +1155,11 @@ export function executorOf<S extends Shape, O extends AnySchema>(
 			try {
 				return {
 					// No egress and no base URL is no host, as in the sandbox.
-					...actionHostsOf(
-						action.egress ?? { hosts: [] },
-						input,
-						[action.node.baseUrl, baseUrl],
-						host.egressInputHosts,
-					),
+					...actionHostsOf(action.egress ?? { hosts: [] }, input, [action.node.baseUrl, baseUrl], {
+						inputHosts: host.egressInputHosts ?? [],
+						node: host.node,
+						actionId: action.id,
+					}),
 					credential: credentialType
 						? credentialHostsOf(credentialValue, data, {
 								surface: action.node.displayName,
@@ -1433,7 +1432,9 @@ export function executorOf<S extends Shape, O extends AnySchema>(
 
 		const openTables = new Map<string, Promise<DataTable>>();
 		const refuse = (name: HostImport) => {
-			throw new UnexpectedError(`${action.id} does not list "${name}" in its imports`);
+			const message = `${action.id} does not list "${name}" in its imports`;
+			reportRefusal({ action: action.id, node: host.node, permission: name, message });
+			throw new UnexpectedError(message);
 		};
 		const hostService = <T>(name: HostImport, service: T | undefined): T => {
 			if (!declared.has(name)) return refuse(name);
@@ -2141,9 +2142,9 @@ function assertManifestPermissions({ id, semver, contract }: VersionManifest, ac
 			: [`${key}: the bundle grants ${bundle}, the manifest ${manifest}`];
 	});
 	if (differences.length > 0) {
-		throw new UserError(
-			`The bundle of ${id}@${semver} grants other permissions than its manifest. ${differences.join('; ')}`,
-		);
+		const message = `The bundle of ${id}@${semver} grants other permissions than its manifest. ${differences.join('; ')}`;
+		reportRefusal({ action: id, version: semver, permission: 'manifest', message });
+		throw new UserError(message);
 	}
 }
 

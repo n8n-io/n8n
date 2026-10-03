@@ -19,7 +19,7 @@ import type {
 } from '@n8n/nodes-base-next';
 import { mock } from 'vitest-mock-extended';
 import { InstanceSettings } from 'n8n-core';
-import type { IExecuteFunctions } from 'n8n-workflow';
+import type { IExecuteFunctions, INode } from 'n8n-workflow';
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -128,6 +128,39 @@ describe('useNodeContractsRegistry', () => {
 			nodeName: 'Query',
 			profile,
 		});
+	});
+
+	it('relays each permission refusal and each install on the event service', async () => {
+		const eventService = mockInstance(EventService);
+		registered.length = 0;
+		await useNodeContractsRegistry();
+		const node = mock<INode>({ name: 'GET', type: '@n8n/nodes-base-next.httpRequestGet' });
+		const install = {
+			id: 'demo.echo',
+			version: '2.0.0',
+			previousVersion: '1.1.0',
+			origin: 'community' as const,
+			addedPermissions: ['egress api.echo.test'],
+		};
+
+		registered[0]?.onPermissionRefused?.({
+			action: 'httpRequest.get',
+			node,
+			permission: 'egress-input',
+			host: 'other.test',
+			message: 'Host not allowed',
+		});
+		Container.get(NodeContractsStore).rows.installed?.([install]);
+
+		expect(eventService.emit).toHaveBeenCalledWith('node-permission-refused', {
+			action: 'httpRequest.get',
+			nodeName: 'GET',
+			nodeType: '@n8n/nodes-base-next.httpRequestGet',
+			permission: 'egress-input',
+			host: 'other.test',
+			message: 'Host not allowed',
+		});
+		expect(eventService.emit).toHaveBeenCalledWith('node-contract-installed', install);
 	});
 
 	it('records no payload and logs no warning by default', async () => {

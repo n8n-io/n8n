@@ -9,6 +9,7 @@ export {
 	type DerivedManifest,
 } from '../define';
 export {
+	addedPermissionsOf,
 	canonicalJson,
 	compareSemver,
 	contractHash,

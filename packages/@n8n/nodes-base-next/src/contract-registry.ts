@@ -6,15 +6,18 @@ import {
 	setExecutorLoader,
 	setMaxResponseBytes,
 	setNodeContractRange,
+	setPermissionRefusalListener,
 	setRunProfileListener,
 	type ContractOrigin,
 	type ContractVersionLoader,
 	type FrozenVersion,
 	type PayloadCapture,
+	type PermissionRefusalListener,
 	type RunProfileListener,
 } from '@n8n/node-sdk/host';
 import {
 	addStatusToStore,
+	addedPermissionsOf,
 	addToStore,
 	canonicalJson,
 	compareSemver,
@@ -91,6 +94,8 @@ export interface ContractRegistryOptions {
 	readonly sandbox?: { readonly options: SandboxOptions; readonly scope: 'stored' | 'all' };
 	/** Gets the run profile of each node execution, e.g. for traces. Without it, nothing is recorded. */
 	readonly onRunProfile?: RunProfileListener;
+	/** Gets each request or bundle that a permission refuses, e.g. for the audit log. */
+	readonly onPermissionRefused?: PermissionRefusalListener;
 	/**
 	 * Also records the input, the output and the HTTP bodies of each run in the profile. For
 	 * development only. Without it, the profile has no payload.
@@ -246,6 +251,76 @@ export interface InstanceStore {
 	statuses(id?: string): Promise<readonly StoreStatusRecord[]>;
 	/** Inserts status lines. It skips each line that it has. */
 	insertStatuses(statuses: readonly StoreStatusRecord[]): Promise<void>;
+	/** Gets the versions of each insert that bring a new major, e.g. for the audit log. */
+	installed?(installs: readonly ContractInstall[]): void;
+}
+
+/** A version that brings a major that n8n did not have, and the permissions that the major adds. */
+export interface ContractInstall {
+	/** The action, trigger or provider id, e.g. `httpRequest.get`. */
+	readonly id: string;
+	/** The first version of the new major in the insert, e.g. `2.0.0`. */
+	readonly version: string;
+	/** The newest version of a lower major, e.g. `1.4.0`. Absent when no lower major is known. */
+	readonly previousVersion?: string;
+	/** Who vouches for the version. */
+	readonly origin: ContractOrigin;
+	/**
+	 * The permissions that the version has and the previous version does not, as
+	 * `addedPermissionsOf` names them, e.g. `egress api.example.com`. Without a previous version,
+	 * every permission.
+	 */
+	readonly addedPermissions: readonly string[];
+}
+
+/** The manifest of a stored version with a bundle. A native or a bad version gives none. */
+const versionManifestOf = ({ kind, manifestText }: StoredManifest) => {
+	if (kind === 'credential') return [];
+	try {
+		return [parseManifest(manifestText)];
+	} catch {
+		return [];
+	}
+};
+
+/**
+ * The versions of `added` that bring a new major: no version of `stored` and no bundled version
+ * has it. Each one with the permissions that it adds to the newest version of a lower major.
+ */
+function installsOf(
+	stored: readonly StoredManifest[],
+	added: readonly StoredVersion[],
+): ContractInstall[] {
+	const fresh = added
+		.flatMap((version) => versionManifestOf(version).map((manifest) => ({ ...version, manifest })))
+		.sort((a, b) => compareSemver(a.manifest.semver, b.manifest.semver));
+	const known = [
+		...stored.flatMap(versionManifestOf),
+		...[...new Set(fresh.map(({ id }) => id))].flatMap((id) =>
+			bundledVersionsOf(id).map(({ manifest }) => manifest),
+		),
+	];
+	const all = [...known, ...fresh.map(({ manifest }) => manifest)];
+	const majorOf = (manifest: VersionManifest) => manifest.contract.version;
+	return fresh.flatMap(({ id, manifest, origin }, index) => {
+		const sameMajor = (other: VersionManifest) =>
+			other.id === id && majorOf(other) === majorOf(manifest);
+		const isFirst = fresh.findIndex((other) => sameMajor(other.manifest)) === index;
+		if (!isFirst || known.some(sameMajor)) return [];
+		const previous = all
+			.filter((other) => other.id === id && majorOf(other) < majorOf(manifest))
+			.sort((a, b) => compareSemver(a.semver, b.semver))
+			.at(-1);
+		return [
+			{
+				id,
+				version: manifest.semver,
+				...(previous ? { previousVersion: previous.semver } : {}),
+				origin,
+				addedPermissions: addedPermissionsOf(previous?.contract, manifest.contract),
+			},
+		];
+	});
 }
 
 /**
@@ -272,7 +347,15 @@ export async function admitVersions(
 			!stored.some(({ manifest }) => manifest === version.manifest) &&
 			versions.findIndex(({ manifest }) => manifest === version.manifest) === index,
 	);
-	if (added.length > 0) await store.insert(added);
+	if (added.length === 0) return added;
+	await store.insert(added);
+	const installs = installsOf(stored, added);
+	try {
+		if (installs.length > 0) store.installed?.(installs);
+	} catch (error) {
+		// The rows are in the store: a failed report must not fail the admission.
+		LoggerProxy.warn(`The contract installs were not reported: ${errorMessage(error)}`);
+	}
 	return added;
 }
 
@@ -830,15 +913,16 @@ export function credentialManifestsOf(
 
 /**
  * Sets the Node Contract range, the version loader, the credential manifests, the sandbox, the
- * run profile listener, the input hosts and the response limit of this package's node-sdk, which
- * its nodes run with. With a sandbox, it also starts to compile the sandbox guests and does not
- * wait for the result.
+ * run profile listener, the permission refusal listener, the input hosts and the response limit
+ * of this package's node-sdk, which its nodes run with. With a sandbox, it also starts to compile
+ * the sandbox guests and does not wait for the result.
  */
 export const useContractRegistry = (options: ContractRegistryOptions) => {
 	setNodeContractRange(options.nodeContractRange);
 	setContractVersionLoader(contractVersionLoader(options));
 	setCredentialManifests(credentialManifestsOf(options.store, options.hasOtherCredentialType));
 	setRunProfileListener(options.onRunProfile, options.tracePayloads);
+	setPermissionRefusalListener(options.onPermissionRefused);
 	setEgressInputHosts(options.egressInputHosts ?? []);
 	setMaxResponseBytes(options.maxResponseBytes);
 	if (options.sandbox) {

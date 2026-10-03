@@ -1,7 +1,12 @@
 import { Logger } from '@n8n/backend-common';
 import { OutboundHttp } from '@n8n/backend-network';
 import { EventService } from '@n8n/backend-services';
-import { GlobalConfig, NodesConfig, type NodePermissionClass } from '@n8n/config';
+import {
+	GlobalConfig,
+	NODE_PERMISSION_CLASSES,
+	NodesConfig,
+	type NodePermissionClass,
+} from '@n8n/config';
 import {
 	NodeContractStatusRepository,
 	NodeContractVersionRepository,
@@ -25,6 +30,7 @@ import {
 	permissionsOf,
 	runsNodeContract,
 	storeIndexFileOf,
+	toolActionOfNode,
 	toolActions,
 	toolTypeOf,
 	toVersionedNodeType,
@@ -135,6 +141,16 @@ export class NodeContractsStore {
 		insertStatuses: async (statuses) => {
 			await this.statusRepository.insertNew(statuses.map(statusRowOf));
 		},
+		installed: (installs) => {
+			const events = Container.get(EventService);
+			installs.forEach((install) => {
+				Container.get(Logger).info(
+					`Installed node contract ${install.id}@${install.version}${install.previousVersion ? ` (from ${install.previousVersion})` : ''}`,
+					{ origin: install.origin, addedPermissions: install.addedPermissions },
+				);
+				events.emit('node-contract-installed', install);
+			});
+		},
 	};
 
 	/** Only the leader main and the `contracts:*` commands fetch from the registry and add rows. */
@@ -233,9 +249,11 @@ const hasOtherCredentialTypeInN8n = (name: string) =>
 
 const majorOf = ({ manifest }: FrozenVersion) => manifest.contract.version;
 
-/** The first class of `deny` that the contract of a version has. */
-function deniedClassOf({ manifest }: FrozenVersion, deny: readonly NodePermissionClass[]) {
-	const { egress, imports } = permissionsOf(manifest.contract);
+/** The `N8N_NODE_PERMISSIONS_DENY` classes of the permissions of a contract, e.g. for the security audit. */
+export function permissionClassesOf({
+	egress,
+	imports,
+}: Pick<ReturnType<typeof permissionsOf>, 'egress' | 'imports'>) {
 	// No contract has a files capability yet, and a contract node is never a legacy community node.
 	const has: Record<NodePermissionClass, boolean> = {
 		'egress-input': egress.fromInput !== undefined,
@@ -243,7 +261,13 @@ function deniedClassOf({ manifest }: FrozenVersion, deny: readonly NodePermissio
 		files: false,
 		'full-community': false,
 	};
-	return deny.find((name) => has[name]);
+	return NODE_PERMISSION_CLASSES.filter((name) => has[name]);
+}
+
+/** The first class of `deny` that the contract of a version has. */
+function deniedClassOf({ manifest }: FrozenVersion, deny: readonly NodePermissionClass[]) {
+	const classes = permissionClassesOf(permissionsOf(manifest.contract));
+	return deny.find((name) => classes.includes(name));
 }
 
 /** One node type of the contract loader and the frozen versions it projects. */
@@ -433,9 +457,14 @@ export class ContractNodeLoader implements NodeLoader {
 		const denied = deniedClassOf(version, this.deny);
 		if (denied === undefined) return true;
 		const { id, semver } = version.manifest;
-		Container.get(Logger).warn(
-			`${id}@${semver} does not load: N8N_NODE_PERMISSIONS_DENY denies its permission class "${denied}"`,
-		);
+		const message = `${id}@${semver} does not load: N8N_NODE_PERMISSIONS_DENY denies its permission class "${denied}"`;
+		Container.get(Logger).warn(message);
+		Container.get(EventService).emit('node-permission-refused', {
+			action: id,
+			version: semver,
+			permission: denied,
+			message,
+		});
 		return false;
 	};
 
@@ -526,6 +555,11 @@ export async function useNodeContractsRegistry() {
 				nodeName,
 				profile,
 			}),
+		onPermissionRefused: ({ node, ...refusal }) =>
+			Container.get(EventService).emit('node-permission-refused', {
+				...refusal,
+				...(node ? { nodeName: node.name, nodeType: node.type } : {}),
+			}),
 		metaOf: async (context) => {
 			const { id } = context.getWorkflow();
 			const key = `${context.getExecutionId()}/${id ?? ''}`;
@@ -560,20 +594,33 @@ function sandboxFilesOf(instanceAi: GlobalConfig['instanceAi']) {
 }
 
 /**
+ * The permissions of the contract version that a node type, or its agent tool type, projects for
+ * the major of a node. `undefined` for a node that is not a contract node.
+ */
+export function contractPermissionsOf(
+	loaders: Readonly<Record<string, NodeLoader>>,
+	{ type, typeVersion }: Pick<INode, 'type' | 'typeVersion'>,
+) {
+	const contracts = loaders[NODE_PACKAGE];
+	if (!(contracts instanceof ContractNodeLoader) || !type.startsWith(`${NODE_PACKAGE}.`)) {
+		return undefined;
+	}
+	const tool = toolActionOfNode({ type });
+	const name = tool ? nodeNameOf(tool.id) : type.slice(NODE_PACKAGE.length + 1);
+	const version = contracts
+		.frozenVersionsOf(name)
+		.find(({ manifest }) => manifest.contract.version === typeVersion);
+	return version && permissionsOf(version.manifest.contract);
+}
+
+/**
  * The host imports of the contract version that a node type projects for the major of a node,
  * e.g. `dataTables`. Empty for a node that is not a contract node.
  */
-export function contractImportsOf(
+export const contractImportsOf = (
 	loaders: Readonly<Record<string, NodeLoader>>,
-	{ type, typeVersion }: Pick<INode, 'type' | 'typeVersion'>,
-): readonly string[] {
-	const contracts = loaders[NODE_PACKAGE];
-	if (!(contracts instanceof ContractNodeLoader) || !type.startsWith(`${NODE_PACKAGE}.`)) return [];
-	const version = contracts
-		.frozenVersionsOf(type.slice(NODE_PACKAGE.length + 1))
-		.find(({ manifest }) => manifest.contract.version === typeVersion);
-	return version ? permissionsOf(version.manifest.contract).imports : [];
-}
+	node: Pick<INode, 'type' | 'typeVersion'>,
+): readonly string[] => contractPermissionsOf(loaders, node)?.imports ?? [];
 
 /** The legacy node of a full node type, when its loader has it and it has versions. */
 function versionedNodeOf(loaders: Readonly<Record<string, NodeLoader>>, nodeType: string) {

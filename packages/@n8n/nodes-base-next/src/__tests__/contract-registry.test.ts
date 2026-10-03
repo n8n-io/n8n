@@ -51,6 +51,7 @@ import {
 	syncContractStore,
 	useContractRegistry,
 	originOf,
+	type ContractInstall,
 	type ContractKeys,
 	type ContractRegistryOptions,
 	type ContractStoreOptions,
@@ -816,6 +817,67 @@ describe('importContractStore and exportContractStore', () => {
 		).rejects.toThrow('demo.echo@1.0.0 is in the store with other bytes');
 	});
 
+	it('reports each new major with the permissions that it adds to the major below it', async () => {
+		const entry = path.join(dirs.root, 'echo-two.ts');
+		await writeFile(
+			entry,
+			echoSource(0, 'input.text')
+				.replace('version: 1', 'version: 2')
+				.replace('flow:', "egress: { hosts: ['api.echo.test'] },\n\tflow:"),
+		);
+		const two = await freezeAction(entry, 'echo');
+		const storedOf = ({ manifest, bundle }: FrozenAction): StoredVersion => ({
+			id: manifest.id,
+			version: manifest.semver,
+			kind: manifest.kind,
+			manifest: `sha256:${manifest.semver}`,
+			manifestText: manifestTextOf(manifest),
+			bundle,
+			origin: 'community',
+		});
+		const installs: ContractInstall[] = [];
+		const store: InstanceStore = {
+			...instance.current.store,
+			installed: (added) => installs.push(...added),
+		};
+		await admitVersions(store, [storedOf(frozenOf('1.0.0')), storedOf(frozenOf('1.1.0'))]);
+		await admitVersions(store, [storedOf(frozenOf('1.0.1'))]);
+		await admitVersions(store, [storedOf(two)]);
+		expect(installs).toEqual([
+			{ id: 'demo.echo', version: '1.0.0', origin: 'community', addedPermissions: [] },
+			{
+				id: 'demo.echo',
+				version: '2.0.0',
+				previousVersion: '1.1.0',
+				origin: 'community',
+				addedPermissions: ['egress api.echo.test'],
+			},
+		]);
+	});
+
+	it('admits the versions when the install report throws', async () => {
+		const store: InstanceStore = {
+			...instance.current.store,
+			installed: () => {
+				throw new Error('listener failed');
+			},
+		};
+		const { manifest, bundle } = frozenOf('1.0.0');
+		const admitted = await admitVersions(store, [
+			{
+				id: manifest.id,
+				version: manifest.semver,
+				kind: manifest.kind,
+				manifest: 'sha256:1.0.0',
+				manifestText: manifestTextOf(manifest),
+				bundle,
+				origin: 'community',
+			},
+		]);
+		expect(admitted.map(({ version }) => version)).toEqual(['1.0.0']);
+		expect(await store.has('sha256:1.0.0')).toBe(true);
+	});
+
 	it('exports blobs by rename when the file system has no hard links', async () => {
 		await storeOf().locked(lockOf('1.0.0'));
 		vi.mocked(link).mockRejectedValueOnce(Object.assign(new Error('no links'), { code: 'EPERM' }));
@@ -1064,12 +1126,14 @@ describe('useContractRegistry', () => {
 	});
 
 	it('refuses a URL from input outside the input hosts in a node run', async () => {
+		const onPermissionRefused = vi.fn();
 		useContractRegistry({
 			policy: 'tolerant',
 			store: storeOf(),
 			metaOf: async () => undefined,
 			nodeContractRange: '>=2.0.0 <3.0.0',
 			egressInputHosts: [' Allowed.test'],
+			onPermissionRefused,
 		});
 		const httpRequest = vi.fn();
 		const context = {
@@ -1085,6 +1149,13 @@ describe('useContractRegistry', () => {
 			'this n8n instance lets a URL from input reach only allowed.test, not other.test',
 		);
 		expect(httpRequest).not.toHaveBeenCalled();
+		expect(onPermissionRefused).toHaveBeenCalledWith(
+			expect.objectContaining({
+				action: 'httpRequest.get',
+				permission: 'egress-input',
+				host: 'other.test',
+			}),
+		);
 		use();
 	});
 

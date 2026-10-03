@@ -1,4 +1,5 @@
 import { Logger } from '@n8n/backend-common';
+import { EventService } from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { GlobalConfig } from '@n8n/config';
 import {
@@ -217,8 +218,9 @@ describe('ContractNodeLoader', () => {
 		expect(otherPackage.known.nodes).toEqual({});
 	});
 
-	it('does not load a version with a denied permission class, and warns once for each', async () => {
+	it('does not load a version with a denied permission class, and warns and reports once for each', async () => {
 		const logger = mockInstance(Logger);
+		const events = mockInstance(EventService);
 		const all = new ContractNodeLoader([], [], noStore);
 		const egressInput = new ContractNodeLoader([], [], noStore, ['egress-input']);
 		const code = new ContractNodeLoader([], [], noStore, ['code']);
@@ -240,6 +242,13 @@ describe('ContractNodeLoader', () => {
 				/^code\.python@\S+ does not load: N8N_NODE_PERMISSIONS_DENY denies its permission class "code"$/,
 			),
 		);
+		expect(events.emit).toHaveBeenCalledTimes(5);
+		expect(events.emit).toHaveBeenCalledWith('node-permission-refused', {
+			action: 'httpRequest.get',
+			version: versionsOf('httpRequest.get')[0]?.manifest.semver,
+			permission: 'egress-input',
+			message: expect.stringContaining('does not load'),
+		});
 	});
 
 	it('does not load a stored version with a denied permission class', async () => {

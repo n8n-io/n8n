@@ -1,6 +1,8 @@
+import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
 import { isRecord } from '@n8n/utils/is-record';
 import {
 	assertUrlAllowed,
+	LoggerProxy,
 	NodeOperationError,
 	toHostname,
 	UserError,
@@ -27,6 +29,60 @@ type Hosts = readonly string[] | undefined;
 const unique = (hosts: ReadonlyArray<string | undefined>) => [
 	...new Set(hosts.flatMap((host) => (host ? [host] : []))),
 ];
+
+/**
+ * The permission that refused a request or a version:
+ * - `egress`: the host is not a host of the action, from its manifest and its node base URL.
+ * - `egress-input`: `N8N_NODE_EGRESS_INPUT_HOSTS` does not list the host of a URL from input.
+ * - `credential-hosts`: the host is not a host of the credential.
+ * - `manifest`: the bundle grants other permissions than its signed manifest.
+ * - an import, e.g. `code`: the action does not declare it.
+ */
+export type RefusedPermission =
+	| 'egress'
+	| 'egress-input'
+	| 'credential-hosts'
+	| 'manifest'
+	| HostImport;
+
+/** A request or a version that a permission refused, for the audit log. */
+export interface PermissionRefusal {
+	/** The id of the action or trigger, e.g. `httpRequest.get`. */
+	readonly action: string;
+	/** The semver of the version. Only a refusal at load has it. */
+	readonly version?: string;
+	/** The workflow node that ran the action. Only a refusal at run time has it. */
+	readonly node?: INode;
+	/** The permission that refused it. */
+	readonly permission: RefusedPermission;
+	/** The host of the refused request. Only an egress refusal has it. */
+	readonly host?: string;
+	/** The error text that n8n shows. */
+	readonly message: string;
+}
+
+/** Gets each permission refusal. It must not throw. */
+export type PermissionRefusalListener = (refusal: PermissionRefusal) => void;
+
+// One slot: the host sets it once at start, as the run profile listener.
+const refusalListeners = new Map<'listener', PermissionRefusalListener>();
+
+/** Sets the listener of permission refusals, in-process and in the sandbox. `undefined` removes it. */
+export const setPermissionRefusalListener = (listener: PermissionRefusalListener | undefined) => {
+	if (listener) refusalListeners.set('listener', listener);
+	else refusalListeners.delete('listener');
+};
+
+/** Tells the listener about a refusal. The caller still throws its error, also when the listener fails. */
+export const reportRefusal = (refusal: PermissionRefusal) => {
+	try {
+		refusalListeners.get('listener')?.(refusal);
+	} catch (error) {
+		LoggerProxy.warn(
+			`The permission refusal of ${refusal.action} was not reported: ${getErrorMessage(error)}`,
+		);
+	}
+};
 
 /** A host with a comma would split into two entries of the `allowedDomains` text. */
 const urlHostOf = (url: unknown) => {
@@ -128,15 +184,21 @@ export interface EgressPolicy {
  * The action hosts for one item: the base URL hosts, the declared hosts with their input fields
  * filled, and the host of the `fromInput` field. No `egress` and no base URL is no action limit,
  * which only a trigger uses: an action without `egress` gives `{ hosts: [] }` and reaches only
- * its base URL hosts. The credential hosts still apply. `inputHosts` limits the `fromInput` host
- * and its redirect hops; empty is no limit. Throws a `UserError` for a host outside it.
+ * its base URL hosts. The credential hosts still apply. `limit.inputHosts` limits the `fromInput`
+ * host and its redirect hops; empty is no limit. Throws a `UserError` for a host outside it.
  */
 export function actionHostsOf(
 	egress: ContractEgress | undefined,
 	input: Readonly<Record<string, unknown>>,
 	baseUrls: ReadonlyArray<string | undefined>,
-	inputHosts: readonly string[] = [],
+	limit?: {
+		readonly inputHosts: readonly string[];
+		/** For the refusal report. */
+		readonly node: INode;
+		readonly actionId: string;
+	},
 ): Pick<EgressPolicy, 'action' | 'redirect'> {
+	const inputHosts = limit?.inputHosts ?? [];
 	const base = unique(baseUrls.map(urlHostOf));
 	if (!egress && base.length === 0) return { action: undefined, redirect: undefined };
 	const declared = unique([
@@ -146,10 +208,16 @@ export function actionHostsOf(
 	if (egress?.fromInput === undefined) return { action: declared, redirect: declared };
 	const fromInput = urlHostOf(input[egress.fromInput]);
 	const limited = inputHosts.length > 0;
-	if (limited && fromInput && !allowsHost(inputHosts, fromInput)) {
-		throw new UserError(
-			`Host not allowed: this n8n instance lets a URL from input reach only ${inputHosts.join(', ')}, not ${fromInput}`,
-		);
+	if (limit && limited && fromInput && !allowsHost(inputHosts, fromInput)) {
+		const message = `Host not allowed: this n8n instance lets a URL from input reach only ${inputHosts.join(', ')}, not ${fromInput}`;
+		reportRefusal({
+			action: limit.actionId,
+			node: limit.node,
+			permission: 'egress-input',
+			host: fromInput,
+			message,
+		});
+		throw new UserError(message);
 	}
 	return {
 		action: unique([...declared, fromInput]),
@@ -170,27 +238,41 @@ export function egressOf(
 		itemIndex,
 	}: { readonly node: INode; readonly actionId: string; readonly itemIndex?: number },
 ): string | undefined {
-	const refuse = (message: string) => new NodeOperationError(node, message, { itemIndex });
+	const fail = (message: string) => new NodeOperationError(node, message, { itemIndex });
 	const host = urlHostOf(url);
-	if (!host) throw refuse(`${actionId} cannot send a request to a URL without a host`);
+	if (!host) throw fail(`${actionId} cannot send a request to a URL without a host`);
+	const refuse = (permission: RefusedPermission, message: string) => {
+		reportRefusal({ action: actionId, node, permission, host, message });
+		return fail(message);
+	};
 	if (policy.action && !allowsHost(policy.action, host)) {
 		throw refuse(
+			'egress',
 			`Host not allowed: ${actionId} may send requests to ${policy.action.join(', ') || 'no host'}, not to ${host}`,
 		);
 	}
 	// An empty `allowedDomains` allows every host, so an empty list never reaches the request layer.
 	if (policy.credential?.length === 0) {
-		throw refuse(`Host not allowed: the credential of ${actionId} may not go to ${host}`);
+		throw refuse(
+			'credential-hosts',
+			`Host not allowed: the credential of ${actionId} may not go to ${host}`,
+		);
 	}
 	if (policy.credential) {
-		assertUrlAllowed({ url, allowedDomains: policy.credential.join(', '), node });
+		try {
+			assertUrlAllowed({ url, allowedDomains: policy.credential.join(', '), node });
+		} catch (error) {
+			const message = error instanceof Error ? error.message : String(error);
+			reportRefusal({ action: actionId, node, permission: 'credential-hosts', host, message });
+			throw error;
+		}
 	}
 	const hops =
 		policy.redirect && policy.credential
 			? narrowHosts(policy.redirect, policy.credential)
 			: (policy.redirect ?? policy.credential);
 	if (hops?.length === 0) {
-		throw refuse(`Host not allowed: ${actionId} may not send a request to ${host}`);
+		throw refuse('egress', `Host not allowed: ${actionId} may not send a request to ${host}`);
 	}
 	return hops?.join(', ');
 }

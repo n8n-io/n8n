@@ -28,13 +28,21 @@ export class NodesRiskReporter implements RiskReporter {
 		const officialRiskyNodes = getNodeTypes(workflows, (node) =>
 			OFFICIAL_RISKY_NODE_TYPES.has(node.type),
 		);
+		const { contractPermissionsOf, permissionClassesOf } = await import(
+			'@/node-contracts-registry.js'
+		);
+		// A contract node is risky only through what its manifest grants, whatever its origin.
+		const broadPermissionNodes = getNodeTypes(workflows, (node) => {
+			const permissions = contractPermissionsOf(this.loadNodesAndCredentials.loaders, node);
+			return permissions !== undefined && permissionClassesOf(permissions).length > 0;
+		});
 
 		const [communityNodes, customNodes] = await Promise.all([
 			this.getCommunityNodeDetails(),
 			this.getCustomNodeDetails(),
 		]);
 
-		const issues = [officialRiskyNodes, communityNodes, customNodes];
+		const issues = [officialRiskyNodes, broadPermissionNodes, communityNodes, customNodes];
 
 		if (issues.every((i) => i.length === 0)) return null;
 
@@ -54,6 +62,18 @@ export class NodesRiskReporter implements RiskReporter {
 				].join(' '),
 				recommendation: `Consider reviewing the parameters in these nodes, replacing them with app nodes where possible, and not loading unneeded node types with the NODES_EXCLUDE environment variable. See: ${ENV_VARS_DOCS_URL}`,
 				location: officialRiskyNodes,
+			});
+		}
+
+		if (broadPermissionNodes.length > 0) {
+			report.sections.push({
+				title: NODES_REPORT.SECTIONS.BROAD_PERMISSION_NODES,
+				description: [
+					sentenceStart(broadPermissionNodes.length),
+					'contract nodes with a broad permission: they may send requests to any address in their input, or run code.',
+				].join(' '),
+				recommendation: `Consider reviewing the parameters in these nodes, and limiting the permissions with the N8N_NODE_PERMISSIONS_DENY and N8N_NODE_EGRESS_INPUT_HOSTS environment variables. See: ${ENV_VARS_DOCS_URL}`,
+				location: broadPermissionNodes,
 			});
 		}
 
