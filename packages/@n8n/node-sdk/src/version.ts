@@ -432,6 +432,18 @@ function propertyChanges(side: Side, at: string, prev: JsonSchema, next: JsonSch
 	});
 }
 
+/** A key pattern adds optional keys, as `t.indexedBinaries()` does. A removed one removes keys. */
+function patternChanges(side: Side, at: string, prev: JsonSchema, next: JsonSchema) {
+	const [before, after] = [prev.patternProperties ?? {}, next.patternProperties ?? {}];
+	const patterns = [...new Set([...Object.keys(before), ...Object.keys(after)])];
+	return patterns.flatMap((pattern): ContractChange[] => {
+		const [old, now, path] = [before[pattern], after[pattern], `${at}[${pattern}]`];
+		if (!now) return [major(`${path} removed`)];
+		if (!old) return [{ kind: 'minor', text: `${path} added` }];
+		return schemaChanges(side, path, old, now);
+	});
+}
+
 function variantChanges(side: Side, at: string, prev: JsonSchema, next: JsonSchema) {
 	return (['oneOf', 'anyOf'] as const).flatMap((keyword) => {
 		const [old, now] = [prev[keyword] ?? [], next[keyword] ?? []];
@@ -489,6 +501,7 @@ function schemaChanges(
 		...boundChanges(side, at, prev, next),
 		...resourceChanges(at, prev, next),
 		...propertyChanges(side, at, prev, next),
+		...patternChanges(side, at, prev, next),
 		...itemChanges,
 		...variantChanges(side, at, prev, next),
 	];

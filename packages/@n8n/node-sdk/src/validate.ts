@@ -237,6 +237,19 @@ export function firstMatchOf(pattern: string, input: string): string | undefined
 	}
 }
 
+/**
+ * The keys of an output item that hold binaries: each top-level `t.binary()` field, and each key
+ * that a `t.indexedBinaries()` pattern matches, of the object or of a `t.union()` branch.
+ */
+export function outputBinaryKeys(output: JsonSchema): (key: string) => boolean {
+	const objects = [output, ...(output.anyOf ?? [])];
+	const binaryEntries = (map: Record<string, JsonSchema> | undefined) =>
+		Object.entries(map ?? {}).flatMap(([key, field]) => (field['x-n8n-binary'] ? [key] : []));
+	const fixed = new Set(objects.flatMap(({ properties }) => binaryEntries(properties)));
+	const patterns = objects.flatMap(({ patternProperties }) => binaryEntries(patternProperties));
+	return (key) => fixed.has(key) || patterns.some((pattern) => testPattern(pattern, key));
+}
+
 const FORMAT_EXAMPLES: Record<string, string> = {
 	date: '2026-09-15',
 	'date-time': '2026-09-15T09:30:00.000Z',

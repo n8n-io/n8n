@@ -6,6 +6,7 @@ import {
 	readAs,
 	t,
 	type AnySchema,
+	type Binaries,
 	type Http,
 	type Infer,
 	type JsonSchema,
@@ -87,24 +88,49 @@ export const fullMessage = t
 			.optional(),
 	})
 	// mailparser gives these fields only, so the object is closed and a typo fails the build.
-	.with({ 'x-n8n-hint': 'The parsed mail with its body; attachments are not included' });
+	.with({
+		'x-n8n-hint': 'The parsed mail with its body; files are binaries with downloadAttachments',
+	});
+
+/** The full message and its files as `parseRawEmail` stores them: `<prefix>0`, `<prefix>1`, … */
+const withAttachments = (prefix?: string) => t.indexedBinaries(fullMessage, prefix);
 
 export const simplify = t
 	.bool()
 	.default(true)
 	.hint('false: the full mail with from.value[0].address, text, html and headers');
 
+export const downloadAttachments = t
+	.bool()
+	.default(false)
+	.hint('Needs simplify: false; puts each file in binary.attachment_0, attachment_1, …');
+
+export const attachmentPrefix = t
+	.str()
+	.default('attachment_')
+	.hint('The binary key of each file is this prefix and its index from 0');
+
 /** The full message for `simplify: false`, the simplified one otherwise. */
-export const messageOutput = t.union(simplifiedMessage, fullMessage);
+export const messageOutput = t.union(simplifiedMessage, withAttachments());
+
+/** Like the legacy node, an empty prefix is the default. */
+const prefixOf = (prefix: string | undefined) => prefix || 'attachment_';
 
 export const messageOutputOf = ({
 	simplify: value,
-}: { readonly simplify?: unknown }): JsonSchema =>
-	value === false
-		? fullMessage.json
-		: value === true || value === undefined
-			? simplifiedMessage.json
-			: messageOutput.json;
+	downloadAttachments: download,
+	attachmentPrefix: prefix,
+}: {
+	readonly simplify?: unknown;
+	readonly downloadAttachments?: unknown;
+	readonly attachmentPrefix?: unknown;
+}): JsonSchema => {
+	if (value === true || value === undefined) return simplifiedMessage.json;
+	if (value !== false) return messageOutput.json;
+	if (download === false || download === undefined) return fullMessage.json;
+	const known = prefix === undefined || (typeof prefix === 'string' && !prefix.startsWith('='));
+	return withAttachments(known ? prefixOf(prefix) : undefined).json;
+};
 
 type Label = Infer<typeof label>;
 
@@ -151,8 +177,19 @@ export async function getMessage(
 	return readAs(simplifiedMessage, simplifyMessage(message, labels), { path: 'message' }).value;
 }
 
-/** Mirrors `parseRawEmail` in nodes-base Gmail/GenericFunctions.ts, without attachments. */
-export async function getFullMessage(http: Http, id: string): Promise<Infer<typeof fullMessage>> {
+/** What `run()` needs to store the files of a mail. */
+export interface AttachmentOptions {
+	readonly downloadAttachments: boolean;
+	readonly attachmentPrefix: string;
+	readonly binary: Binaries;
+}
+
+/** Mirrors `parseRawEmail` in nodes-base Gmail/GenericFunctions.ts. */
+export async function getFullMessage(
+	http: Http,
+	id: string,
+	{ downloadAttachments: download, attachmentPrefix: prefix, binary }: AttachmentOptions,
+): Promise<Infer<ReturnType<typeof withAttachments>>> {
 	const message = await http.request({
 		path: path`/messages/${id}`,
 		query: { format: 'raw' },
@@ -161,6 +198,18 @@ export async function getFullMessage(http: Http, id: string): Promise<Infer<type
 		throw new OperationalError(`Gmail returned message ${id} without its raw content`);
 	}
 	const { threadId, labelIds, sizeEstimate } = message;
-	const parsed = { id: message.id, threadId, labelIds, sizeEstimate, ...parseMail(message.raw) };
-	return readAs(fullMessage, parsed, { path: 'message' }).value;
+	const { mail, attachments } = parseMail(message.raw);
+	const parsed = readAs(
+		fullMessage,
+		{ id: message.id, threadId, labelIds, sizeEstimate, ...mail },
+		{ path: 'message' },
+	).value;
+	if (!download) return parsed;
+	const files = await Promise.all(
+		attachments().map(
+			async ({ bytes, ...meta }, index) =>
+				[`${prefixOf(prefix)}${index}`, await binary.create(meta, [bytes])] as const,
+		),
+	);
+	return { ...parsed, ...Object.fromEntries(files) };
 }

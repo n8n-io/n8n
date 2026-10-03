@@ -252,6 +252,24 @@ describe('diffContracts', () => {
 		});
 	});
 
+	it('classifies an added binary key pattern as a minor, and a removed one as a major', () => {
+		const fixed = contractOf({ output: t.obj({ id: t.str(), data: t.binary() }) });
+		const indexed = contractOf({
+			output: t.indexedBinaries(t.obj({ id: t.str(), data: t.binary() }), 'attachment_'),
+		});
+		expect(diffContracts(fixed, indexed).changes).toEqual([
+			{ kind: 'minor', text: 'output[^attachment_\\d+$] added' },
+		]);
+		expect(diffContracts(indexed, fixed).changes).toEqual([
+			{ kind: 'major', text: 'output[^attachment_\\d+$] removed' },
+		]);
+		const first = contractOf({ output: t.indexedBinaries(t.obj({ text: t.str() })) });
+		expect(diffContracts(base, first).changes).toContainEqual({
+			kind: 'major',
+			text: 'binary data access added',
+		});
+	});
+
 	it('compares nested fields', () => {
 		const prev = contractOf({ input: { where: t.obj({ field: t.str(), op: t.str() }) } });
 		const next = contractOf({ input: { where: t.obj({ field: t.str() }) } });

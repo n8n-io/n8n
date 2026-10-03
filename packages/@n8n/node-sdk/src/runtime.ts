@@ -105,6 +105,7 @@ import {
 	binaryKeyIssue,
 	list,
 	matches,
+	outputBinaryKeys,
 	readAs,
 	testPattern,
 	validate,
@@ -940,9 +941,7 @@ export function executorOf<S extends Shape, O extends AnySchema>(
 	const isBatch = action.flow.cardinality === 'batch';
 	const scope = isBatch ? 'one run' : 'one input item';
 	const binaryApi = usesBinary({ input: action.inputSchema, output: outputSchema });
-	const binaryKeys = Object.entries(outputSchema.properties ?? {})
-		.filter(([, field]) => field['x-n8n-binary'])
-		.map(([key]) => key);
+	const isBinaryKey = outputBinaryKeys(outputSchema);
 	const declared: ReadonlySet<HostImport> = new Set(action.imports ?? []);
 
 	return async (host) => {
@@ -1380,20 +1379,27 @@ export function executorOf<S extends Shape, O extends AnySchema>(
 			/** A made item. A binary field leaves the JSON and becomes `item.binary.<field>`. */
 			const made = (value: unknown, at: number): Pick<INodeExecutionData, 'json' | 'binary'> => {
 				const json = checked(value, at);
-				if (binaryKeys.length === 0) return { json };
+				if (!binaryApi) return { json };
 				const binary = Object.fromEntries(
-					binaryKeys.flatMap((key) => {
-						if (json[key] === undefined) return [];
-						const entry = entries.get(json[key]);
+					Object.entries(json).flatMap(([key, field]) => {
+						if (!isBinaryKey(key)) {
+							// A drift warning lets an undeclared field through, but never a file.
+							if (entries.has(field))
+								throw fail(
+									`output[${at}].${key}: holds a binary, and the contract declares no binary under this key`,
+									current ?? 0,
+								);
+							return [];
+						}
+						if (field === undefined) return [];
+						const entry = entries.get(field);
 						if (!entry)
 							throw fail(`output[${at}].${key}: must be a binary of this run`, current ?? 0);
 						return [[key, entry] as const];
 					}),
 				);
 				return {
-					json: Object.fromEntries(
-						Object.entries(json).filter(([key]) => !binaryKeys.includes(key)),
-					),
+					json: Object.fromEntries(Object.entries(json).filter(([key]) => !isBinaryKey(key))),
 					...(Object.keys(binary).length > 0 ? { binary } : {}),
 				};
 			};

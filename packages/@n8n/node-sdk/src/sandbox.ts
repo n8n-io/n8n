@@ -38,7 +38,7 @@ import {
 	type ExecutorLoader,
 	type FrozenVersion,
 } from './runtime';
-import { Schema, type Binary, type JsonSchema, type Shape } from './schema';
+import { hasBinary, Schema, type Binary, type JsonSchema, type Shape } from './schema';
 import {
 	provider,
 	providedKindOf,
@@ -52,6 +52,7 @@ import {
 	type ToolCall,
 	type ToolDefinition,
 } from './providers';
+import { outputBinaryKeys } from './validate';
 import { NODE_CONTRACT_VERSION, type VersionManifest } from './version';
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -827,9 +828,8 @@ function callsOf(
 	};
 	const shape = shapeOf(contract.input);
 	const providerFields = providerInputsOf(shape);
-	const binaryKeys = Object.entries(contract.output.properties ?? {})
-		.filter(([, field]) => field['x-n8n-binary'] === true)
-		.map(([key]) => key);
+	const outputBinaries = hasBinary(contract.output);
+	const isBinaryKey = outputBinaryKeys(contract.output);
 	const guestInput = async (input: unknown) => {
 		const withFiles = await withBinaries(input, contract.input, async (file) => {
 			if (!isBinary(file)) throw new UnexpectedError(`${String(file)} is not a binary`);
@@ -850,11 +850,11 @@ function callsOf(
 	};
 	// A field that names no binary of this run stays as it is, so the executor refuses it.
 	const hostJson = (json: unknown) =>
-		binaryKeys.length === 0 || !isRecord(json)
+		!outputBinaries || !isRecord(json)
 			? json
 			: Object.fromEntries(
 					Object.entries(json).map(([key, value]) => {
-						const id = binaryKeys.includes(key) && isRecord(value) ? value.$binary : undefined;
+						const id = isBinaryKey(key) && isRecord(value) ? value.$binary : undefined;
 						const file = typeof id === 'number' ? files.get(id) : undefined;
 						return [key, file ?? value];
 					}),

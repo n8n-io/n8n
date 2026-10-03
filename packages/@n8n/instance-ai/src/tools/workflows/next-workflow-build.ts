@@ -1,6 +1,6 @@
 import { getWorkspaceRoot } from '@n8n/agents/sandbox';
 import { validate, type JsonSchema, type ResourceField } from '@n8n/node-sdk';
-import { modelCatalogDeclaration, toTs } from '@n8n/node-sdk/codegen';
+import { modelCatalogDeclaration, outputItemSchema, toTs } from '@n8n/node-sdk/codegen';
 import {
 	credentialHostsOf,
 	egressIssuesOf,
@@ -458,7 +458,9 @@ export function nodeOutputsDeclaration(
 			return [];
 		}
 		const schema = outputOf(action, node.parameters ?? {}, fields);
-		return [`\t\t${JSON.stringify(node.name)}: ${toTs(schema, { input: false, indent: '\t\t' })};`];
+		// A binary leaves the JSON, as in the generated `<Name>Output` type.
+		const item = toTs(outputItemSchema(schema), { input: false, indent: '\t\t' });
+		return [`\t\t${JSON.stringify(node.name)}: ${item};`];
 	});
 	if (members.length === 0) return EMPTY_OUTPUTS;
 	return [

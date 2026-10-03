@@ -3,7 +3,7 @@ import type { IBinaryData, IHttpRequestOptions, INode } from 'n8n-workflow';
 
 import { generateNodeModule } from '../entry/codegen';
 import { lintContract, toContract } from '../entry/registry';
-import { defineNode, t, validate, type Binary } from '../index';
+import { defineNode, t, validate, type AnySchema, type Binary } from '../index';
 import { executorOf, type BinaryStore, type ExecutorHost } from '../runtime';
 
 const files = defineNode({ id: 'files', displayName: 'Files' });
@@ -261,6 +261,88 @@ describe('binary data', () => {
 		).toEqual([]);
 	});
 
+	it('moves the binaries of an indexed key pattern to item.binary, also in a union branch', async () => {
+		const unpack = files.action('unpack', {
+			action: 'Unpack',
+			summary: 'Unpack.',
+			flow: once,
+			input: { count: t.int() },
+			output: t.union(
+				t.obj({ empty: t.lit(true) }),
+				t.indexedBinaries(t.obj({ name: t.str() }), 'attachment_'),
+			),
+			async run({ input, binary: binaries }) {
+				if (input.count === 0) return { empty: true as const };
+				const created = await Promise.all(
+					Array.from({ length: input.count }, async (_, index) => [
+						`attachment_${index}` as const,
+						await binaries.create({ mimeType: 'text/plain', fileName: `${index}.txt` }, [
+							`part ${index}`,
+						]),
+					]),
+				);
+				return { name: 'mail', ...Object.fromEntries(created) };
+			},
+		});
+		const { store } = memoryStore();
+		const run = async (count: number) =>
+			await executorOf(unpack)(hostOf({ count }, [], { binary: store }).host);
+
+		const [[item] = []] = await run(2);
+
+		expect(item?.json).toEqual({ name: 'mail' });
+		expect(item?.binary).toEqual({
+			attachment_0: expect.objectContaining({ fileName: '0.txt', mimeType: 'text/plain' }),
+			attachment_1: expect.objectContaining({ fileName: '1.txt', mimeType: 'text/plain' }),
+		});
+		expect(await run(0)).toEqual([[{ json: { empty: true }, pairedItem: { item: 0 } }]]);
+		expect(lintContract(toContract(unpack))).toEqual([]);
+	});
+
+	it('refuses a binary under a key that the pattern does not match', async () => {
+		const unpack = files.action('unpack', {
+			action: 'Unpack',
+			summary: 'Unpack.',
+			flow: once,
+			input: {},
+			output: t.indexedBinaries(t.obj({ name: t.str() }), 'attachment_'),
+			async run({ binary: binaries }) {
+				const file = await binaries.create({ mimeType: 'text/plain' }, ['x']);
+				return { name: 'mail', ...Object.fromEntries([['file_0', file]]) };
+			},
+		});
+		const { store } = memoryStore();
+		await expect(executorOf(unpack)(hostOf({}, [], { binary: store }).host)).rejects.toThrow(
+			'output[0]: unknown field(s) file_0. Allowed: name',
+		);
+		const warned = hostOf({}, [], { binary: store, warn: () => {} }).host;
+		await expect(executorOf(unpack)(warned)).rejects.toThrow(
+			'output[0].file_0: holds a binary, and the contract declares no binary under this key',
+		);
+	});
+
+	it('refuses an undeclared binary key of an action with fixed binary fields', async () => {
+		const extra = files.action('extra', {
+			action: 'Extra',
+			summary: 'Extra.',
+			flow: once,
+			input: {},
+			output: t.obj({ data: t.binary() }),
+			async run({ binary: binaries }) {
+				const data = await binaries.create({ mimeType: 'text/plain' }, ['x']);
+				return { data, attachment_0: data };
+			},
+		});
+		const { store } = memoryStore();
+		await expect(executorOf(extra)(hostOf({}, [], { binary: store }).host)).rejects.toThrow(
+			'output[0]: unknown field(s) attachment_0. Allowed: data',
+		);
+		const warned = hostOf({}, [], { binary: store, warn: () => {} }).host;
+		await expect(executorOf(extra)(warned)).rejects.toThrow(
+			'output[0].attachment_0: holds a binary, and the contract declares no binary under this key',
+		);
+	});
+
 	it('gives no binary data to an action without a binary field', async () => {
 		const sneaky = files.action('sneaky', {
 			action: 'Sneaky',
@@ -312,6 +394,43 @@ describe('binary contracts', () => {
 		]);
 	});
 
+	it('lint an indexed binary key pattern in the input, below the top level, or over a field', () => {
+		const lintOf = (output: AnySchema) =>
+			lintContract(
+				toContract(
+					files.action('odd', {
+						action: 'Odd',
+						summary: 'Odd.',
+						flow: once,
+						input: {},
+						output,
+						async run() {
+							throw new Error('not run');
+						},
+					}),
+				),
+			);
+		expect(
+			lintOf(t.obj({ mail: t.indexedBinaries(t.obj({ id: t.str() }), 'attachment_') })),
+		).toEqual(['files.odd: output.mail holds a binary below the top level']);
+		expect(lintOf(t.indexedBinaries(t.obj({ line1: t.str() })))).toEqual([
+			'files.odd: output.line1 is no binary, but the output takes its key as a binary',
+		]);
+		const inputPattern = files.action('inputPattern', {
+			action: 'Input pattern',
+			summary: 'Input pattern.',
+			flow: once,
+			input: { files: t.indexedBinaries(t.obj({}), 'file_') },
+			output: t.obj({ id: t.str() }),
+			async run() {
+				throw new Error('not run');
+			},
+		});
+		expect(lintContract(toContract(inputPattern))).toEqual([
+			'files.inputPattern: an input binary must be a field, a list item, or in a variant branch',
+		]);
+	});
+
 	it('generate Binary fields: a lambda input and item.binary in the output', () => {
 		const download = files.action('download', {
 			action: 'Download',
@@ -336,6 +455,32 @@ describe('binary contracts', () => {
 		expect(text).toContain(
 			'export type FilesDownloadOutput = { status: string; binary: { data: Binary } };',
 		);
+	});
+
+	it('generate indexed binary keys as a template literal under item.binary', () => {
+		const unpack = (prefix?: string) =>
+			files.action('unpack', {
+				action: 'Unpack',
+				summary: 'Unpack.',
+				flow: once,
+				input: {},
+				output: t.union(
+					t.obj({ empty: t.bool() }),
+					t.indexedBinaries(t.obj({ name: t.str(), data: t.binary() }), prefix),
+				),
+				async run() {
+					throw new Error('not run');
+				},
+			});
+		const slot = (type: string) => `\${${type}}`;
+		const outputOf = (prefix?: string) =>
+			generateNodeModule('files', [
+				{ contract: toContract(unpack(prefix)), operation: 'unpack', nodeType: 'files.unpack' },
+			]);
+		expect(outputOf('attachment_')).toContain(
+			`binary: { data: Binary; [key: \`attachment_${slot('number')}\`]: Binary };`,
+		);
+		expect(outputOf()).toContain(`[key: \`${slot('string')}${slot('number')}\`]: Binary`);
 	});
 });
 

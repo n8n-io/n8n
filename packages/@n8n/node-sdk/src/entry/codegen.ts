@@ -2,6 +2,7 @@ export {
 	generatedTriggersOf,
 	generateNodeModule,
 	modelCatalogDeclaration,
+	outputItemSchema,
 	toTs,
 	type GeneratedAction,
 	type Pairing,

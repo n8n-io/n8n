@@ -99,6 +99,10 @@ packument field `n8nContract` of a published version also states `nodeContract`.
   sandbox reads only the manifest, and refuses a bundle whose `baseUrl` host is not in it.
 - WIT describes only code that runs. A native trigger and a declarative credential scheme have
   a manifest and no bundle.
+- Binary key patterns (`t.indexedBinaries()`, an output `patternProperties` entry with
+  `x-n8n-binary`) use the `binary` import of 2.2.0, so freeze writes 2.2.0. A host from before
+  this keyword keeps such a binary in the JSON. No such host is released; the next Node Contract
+  minor takes the keyword.
 - An output keyword that a host ignores does not raise the Node Contract minor:
   `x-n8n-claim` and `x-n8n-resource` are for builders, and a host runs a bundle that has them
   as before.
@@ -116,8 +120,9 @@ The publish gate (`checkPublish`) refuses a smaller bump. A patch must keep the 
 | An optional or typical output field becomes typical or required | minor |
 | A removed scope, egress host, host import, provider call or binary data access; a first scope declaration | minor |
 | Other `loadOptions` calls in `x-n8n-resource`, with the same `method` and `input` | minor |
+| An added key pattern (`patternProperties`, e.g. `t.indexedBinaries()`); its first binary is binary data access, a major | minor |
 | A new required input, or a narrower input | major |
-| A removed output field, or a field that becomes optional (from required or typical) | major |
+| A removed output field, a removed key pattern, or an output field that becomes optional (from required or typical) | major |
 | An added or removed `x-n8n-resource`, or another `method` or `input` in it | major |
 | A changed flow, output list, input list or trigger kind; a new scope, egress host, host import, provider call, binary data access or credential type; a removed credential type | major |
 

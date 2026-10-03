@@ -521,6 +521,40 @@ export interface Binary {
  */
 const binary = () => new Schema<Binary>({ 'x-n8n-binary': true }, false);
 
+/** The binaries of `t.indexedBinaries`: `prefix0`, `prefix1`, … */
+type IndexedBinaries<P extends string> = { readonly [K in `${P}${number}`]?: Binary };
+
+/** The key pattern of `t.indexedBinaries`. Without a prefix, any prefix matches. */
+const indexedBinaryPattern = (prefix?: string) =>
+	`^${prefix === undefined ? '.*' : prefix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\d+$`;
+
+/**
+ * The output object and binaries of the output item under the keys `prefix` + index, e.g.
+ * `attachment_0`, `attachment_1`. Use it only when the run decides how many files there are,
+ * such as the attachments of a mail. A file that is always there is a `t.binary()` field. A key
+ * that does not match fails the run. Without `prefix`, the keys may have any prefix, so give the
+ * exact one in `deriveOutput`.
+ *
+ * @example
+ * ```ts
+ * output: t.indexedBinaries(t.obj({ id: t.str() }), 'attachment_'),
+ * ```
+ */
+const indexedBinaries = <T extends Record<string, unknown>, P extends string = string>(
+	object: Schema<T, false, boolean, unknown>,
+	prefix?: P,
+) =>
+	new Schema<T & IndexedBinaries<P>>(
+		{
+			...object.json,
+			patternProperties: {
+				...object.json.patternProperties,
+				[indexedBinaryPattern(prefix)]: binary().json,
+			},
+		},
+		false,
+	);
+
 /** The schema or one of its sub-schemas is a `t.binary()`. */
 export const hasBinary = (schema: JsonSchema): boolean =>
 	schema['x-n8n-binary'] === true ||
@@ -690,6 +724,7 @@ export const t = {
 	passedItem,
 	declared,
 	binary,
+	indexedBinaries,
 	pageValue,
 	modelId,
 };

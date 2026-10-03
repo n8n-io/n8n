@@ -25,7 +25,7 @@ import {
 	type ProviderKind,
 } from './providers';
 import type { PollConfig, TriggerKind, WebhookConfig, WebhookRequest } from './triggers';
-import { exampleOf, firstMatchOf, readAs, validate } from './validate';
+import { exampleOf, firstMatchOf, outputBinaryKeys, readAs, validate } from './validate';
 
 /**
  * The integration identity: name, credential, and base URL shared by its actions.
@@ -1929,6 +1929,12 @@ export const usesProviders = (contract: Pick<ContractDocument, 'input' | 'output
 		(field) => providerInputOf(field) !== undefined,
 	);
 
+const withoutIndexedBinaries = (output: JsonSchema): JsonSchema => ({
+	...output,
+	patternProperties: {},
+	...(output.anyOf ? { anyOf: output.anyOf.map(withoutIndexedBinaries) } : {}),
+});
+
 /**
  * The host makes an agent tool of the action: a model calls it with JSON and reads its JSON
  * result. It reads or writes, one run for each call, with one data input and one data output.
@@ -1947,8 +1953,9 @@ export function isToolContract(contract: ContractDocument): boolean {
 		contract.outputs === undefined &&
 		contract.output['x-n8n-passed'] !== true &&
 		!usesProviders(contract) &&
-		// The result goes to the model as JSON, and a model cannot give a file.
-		!hasBinary(contract.output) &&
+		// The result goes to the model as JSON, and a model cannot give a file. Indexed binaries
+		// are optional, so the JSON result is complete without them.
+		!hasBinary(withoutIndexedBinaries(contract.output)) &&
 		!Object.entries(contract.input.properties ?? {}).some(
 			([name, field]) => required.has(name) && hasBinary(field),
 		)
@@ -1967,20 +1974,41 @@ export const isHostImport = (value: unknown): value is HostImport =>
 	typeof value === 'string' && HOST_IMPORTS.has(value);
 
 /**
- * A binary output field becomes `item.binary.<field>`, so it must be a top-level field, and
- * `binary` is not a JSON field name.
+ * A binary output field becomes `item.binary.<field>`, so it must be a top-level field or a
+ * `t.indexedBinaries()` key, of the object or of a `t.union()` branch, and `binary` is not a JSON
+ * field name.
  */
 function binaryOutputIssues({ id, output }: ContractDocument): string[] {
-	const reserved = output.properties?.binary
+	const objects = [output, ...(output.anyOf ?? [])];
+	const reserved = objects.some((object) => object.properties?.binary)
 		? [`${id}: output field "binary" is reserved for binaries`]
 		: [];
 	if (!hasBinary(output)) return reserved;
-	const fields = Object.entries(output.properties ?? {});
-	const nested = fields.filter(([, field]) => !field['x-n8n-binary'] && hasBinary(field));
-	const outside = hasBinary({ ...output, properties: {} });
+	const isBinaryKey = outputBinaryKeys(output);
+	const issuesOf = (object: JsonSchema, at: string) => {
+		const fields = Object.entries(object.properties ?? {});
+		const nested = fields.filter(([, field]) => !field['x-n8n-binary'] && hasBinary(field));
+		const patterns = Object.values(object.patternProperties ?? {});
+		const outside =
+			patterns.some((field) => !field['x-n8n-binary'] && hasBinary(field)) ||
+			hasBinary({
+				...object,
+				properties: {},
+				patternProperties: {},
+				...(object === output ? { anyOf: [] } : {}),
+			});
+		const shadowed = fields.filter(([name, field]) => !field['x-n8n-binary'] && isBinaryKey(name));
+		return [
+			...nested.map(([name]) => `${id}: ${at}.${name} holds a binary below the top level`),
+			...shadowed.map(
+				([name]) => `${id}: ${at}.${name} is no binary, but the output takes its key as a binary`,
+			),
+			...(outside ? [`${id}: a binary output must be a top-level field of an object`] : []),
+		];
+	};
 	return [
-		...nested.map(([name]) => `${id}: output.${name} holds a binary below the top level`),
-		...(outside ? [`${id}: a binary output must be a top-level field of an object`] : []),
+		...issuesOf(output, 'output'),
+		...(output.anyOf ?? []).flatMap((branch, index) => issuesOf(branch, `output.anyOf[${index}]`)),
 		...reserved,
 	];
 }

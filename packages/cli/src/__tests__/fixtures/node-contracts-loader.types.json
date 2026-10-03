@@ -290,7 +290,7 @@
 			"hidden": true,
 			"usableAsTool": true,
 			"credentials": ["gmailOAuth2"],
-			"properties": ["messageId", "simplify"]
+			"properties": ["messageId", "simplify", "downloadAttachments", "attachmentPrefix"]
 		},
 		{
 			"name": "@n8n/nodes-base-next.gmailMessageGetAll",
@@ -298,21 +298,34 @@
 			"hidden": true,
 			"usableAsTool": true,
 			"credentials": ["gmailOAuth2"],
-			"properties": ["filters", "paging", "simplify"]
+			"properties": ["filters", "paging", "simplify", "downloadAttachments", "attachmentPrefix"]
 		},
 		{
 			"name": "@n8n/nodes-base-next.gmailMessageGetAllTool",
 			"version": 2,
 			"hidden": true,
 			"credentials": ["gmailOAuth2"],
-			"properties": ["toolDescription", "filters", "paging", "simplify"]
+			"properties": [
+				"toolDescription",
+				"filters",
+				"paging",
+				"simplify",
+				"downloadAttachments",
+				"attachmentPrefix"
+			]
 		},
 		{
 			"name": "@n8n/nodes-base-next.gmailMessageGetTool",
 			"version": 2,
 			"hidden": true,
 			"credentials": ["gmailOAuth2"],
-			"properties": ["toolDescription", "messageId", "simplify"]
+			"properties": [
+				"toolDescription",
+				"messageId",
+				"simplify",
+				"downloadAttachments",
+				"attachmentPrefix"
+			]
 		},
 		{
 			"name": "@n8n/nodes-base-next.gmailMessageSend",

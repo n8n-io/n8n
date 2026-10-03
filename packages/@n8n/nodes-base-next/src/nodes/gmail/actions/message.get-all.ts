@@ -2,6 +2,8 @@ import { limitOf, pages, paging, path, t, UserError, type Infer } from '@n8n/nod
 
 import { message } from '../gmail.node';
 import {
+	attachmentPrefix,
+	downloadAttachments,
 	getFullMessage,
 	getMessage,
 	labelsOf,
@@ -62,10 +64,12 @@ export const getManyGmailMessages = message.action('getAll', {
 		filters: filters.optional(),
 		paging,
 		simplify,
+		downloadAttachments,
+		attachmentPrefix,
 	},
 	output: messageOutput,
 	deriveOutput: messageOutputOf,
-	async *run({ input, http }) {
+	async *run({ input, http, binary }) {
 		const query = queryOf(input.filters);
 		const listed = pages(http, {
 			page: idPage,
@@ -82,7 +86,7 @@ export const getManyGmailMessages = message.action('getAll', {
 		for await (const id of listed) ids.push(id);
 		if (ids.length === 0) return;
 		if (!input.simplify) {
-			for (const id of ids) yield await getFullMessage(http, id);
+			for (const id of ids) yield await getFullMessage(http, id, { ...input, binary });
 			return;
 		}
 		const labels = await labelsOf(http);

@@ -547,3 +547,125 @@ describe('gmail.message.getAll with simplify off, parity with Gmail v2.2 simple 
 		expect(compareRuns(legacy, next, ALLOWED)).toEqual({ unexplained: [], stale: [] });
 	});
 });
+
+const RAW_ATTACHMENTS = Buffer.from(
+	[
+		'From: billing@example.com',
+		'To: Ada <ada@example.com>',
+		'Subject: Two files',
+		'Date: Sat, 03 Jan 2026 12:00:00 +0100',
+		'Content-Type: multipart/mixed; boundary="outer"',
+		'',
+		'--outer',
+		'Content-Type: text/plain; charset=UTF-8',
+		'',
+		'The invoice and the usage report.',
+		'--outer',
+		'Content-Type: application/pdf; name="invoice.pdf"',
+		'Content-Disposition: attachment; filename="invoice.pdf"',
+		'Content-Transfer-Encoding: base64',
+		'',
+		Buffer.from('%PDF-1.4 invoice').toString('base64'),
+		'--outer',
+		'Content-Type: text/csv; name="=?UTF-8?Q?Nutzung_M=C3=A4rz.csv?="',
+		'Content-Disposition: attachment',
+		'Content-Transfer-Encoding: quoted-printable',
+		'',
+		'day,calls=0D',
+		'1,42',
+		'--outer--',
+		'',
+	].join('\r\n'),
+).toString('base64url');
+
+const attachmentMessage = (id: string): Route => {
+	const route = rawMessage(id);
+	return { ...route, json: { ...(route.json as object), raw: RAW_ATTACHMENTS } };
+};
+
+describe('gmail.message.get and getAll with downloadAttachments, parity with Gmail v2.2', () => {
+	it('stores two attachments under attachment_0 and attachment_1', async () => {
+		const parityCase: ParityCase = {
+			credential,
+			input: [{ id: 'm1' }],
+			routes: [attachmentMessage('m1')],
+		};
+		const legacy = await runNode(
+			legacyNode({
+				operation: 'get',
+				messageId: '={{ $json.id }}',
+				simple: false,
+				options: { downloadAttachments: true },
+			}),
+			parityCase,
+		);
+		const next = await runNode(
+			actionNode(
+				getGmailMessage,
+				{ messageId: '={{ $json.id }}', simplify: false, downloadAttachments: true },
+				'gmailOAuth2',
+			),
+			parityCase,
+		);
+		expect(legacy.error, legacy.unmatched.join('; ')).toBeUndefined();
+		expect(legacy.items[0]?.binary).toMatchObject({
+			attachment_0: { fileName: 'invoice.pdf', mimeType: 'application/pdf' },
+			attachment_1: { fileName: 'Nutzung März.csv', mimeType: 'text/csv' },
+		});
+		expect(compareRuns(legacy, next, [])).toEqual({ unexplained: [], stale: [] });
+	});
+
+	it('names the binaries with the prefix', async () => {
+		const parityCase: ParityCase = {
+			credential,
+			input: [{}],
+			routes: [
+				{
+					method: 'GET',
+					url: `${API}/messages`,
+					json: { messages: [{ id: 'm1' }, { id: 'm2' }], resultSizeEstimate: 2 },
+				},
+				attachmentMessage('m1'),
+				attachmentMessage('m2'),
+			],
+		};
+		const legacy = await runNode(
+			legacyNode({
+				operation: 'getAll',
+				returnAll: false,
+				limit: 2,
+				simple: false,
+				filters: {},
+				options: { downloadAttachments: true, dataPropertyAttachmentsPrefixName: 'file_' },
+			}),
+			parityCase,
+		);
+		const next = await runNode(
+			actionNode(
+				getManyGmailMessages,
+				{
+					paging: { mode: 'limit', max: 2 },
+					simplify: false,
+					downloadAttachments: true,
+					attachmentPrefix: 'file_',
+				},
+				'gmailOAuth2',
+			),
+			parityCase,
+		);
+		expect(legacy.error, legacy.unmatched.join('; ')).toBeUndefined();
+		expect(legacy.items.map((item) => Object.keys(item.binary ?? {}))).toEqual([
+			['file_0', 'file_1'],
+			['file_0', 'file_1'],
+		]);
+		const ALLOWED: readonly AllowedDifference[] = ['m1', 'm2'].map(
+			(id): AllowedDifference => ({
+				path: `requests.GET ${API}/messages/${id} #0.query.maxResults`,
+				kind: 'intended',
+				reason:
+					'The legacy node reuses the list query on each message request; the message endpoint ignores it.',
+			}),
+		);
+		expect(compareRuns(legacy, next, ALLOWED)).toEqual({ unexplained: [], stale: [] });
+	});
+});

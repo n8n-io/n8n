@@ -121,6 +121,78 @@
 					"messageId": "<m1@mail.example.com>"
 				}
 			]
+		},
+		{
+			"name": "full message with two attachments",
+			"params": {
+				"messageId": "m3",
+				"simplify": false,
+				"downloadAttachments": true
+			},
+			"responses": [
+				{
+					"id": "m3",
+					"threadId": "t-m3",
+					"labelIds": ["INBOX"],
+					"sizeEstimate": 640,
+					"snippet": "ignored",
+					"raw": "RnJvbTogYmlsbGluZ0BleGFtcGxlLmNvbQ0KVG86IEFkYSA8YWRhQGV4YW1wbGUuY29tPg0KU3ViamVjdDogVHdvIGZpbGVzDQpEYXRlOiBTYXQsIDAzIEphbiAyMDI2IDEyOjAwOjAwICswMTAwDQpDb250ZW50LVR5cGU6IG11bHRpcGFydC9taXhlZDsgYm91bmRhcnk9Im91dGVyIg0KDQotLW91dGVyDQpDb250ZW50LVR5cGU6IHRleHQvcGxhaW47IGNoYXJzZXQ9VVRGLTgNCg0KVGhlIGludm9pY2UgYW5kIHRoZSB1c2FnZSByZXBvcnQuDQotLW91dGVyDQpDb250ZW50LVR5cGU6IGFwcGxpY2F0aW9uL3BkZjsgbmFtZT0iaW52b2ljZS5wZGYiDQpDb250ZW50LURpc3Bvc2l0aW9uOiBhdHRhY2htZW50OyBmaWxlbmFtZT0iaW52b2ljZS5wZGYiDQpDb250ZW50LVRyYW5zZmVyLUVuY29kaW5nOiBiYXNlNjQNCg0KSlZCRVJpMHhMalFnYVc1MmIybGpaUT09DQotLW91dGVyDQpDb250ZW50LVR5cGU6IHRleHQvY3N2OyBuYW1lPSI9P1VURi04P1E_TnV0enVuZ19NPUMzPUE0cnouY3N2Pz0iDQpDb250ZW50LURpc3Bvc2l0aW9uOiBhdHRhY2htZW50DQpDb250ZW50LVRyYW5zZmVyLUVuY29kaW5nOiBxdW90ZWQtcHJpbnRhYmxlDQoNCmRheSxjYWxscz0wRA0KMSw0Mg0KLS1vdXRlci0tDQo"
+				}
+			],
+			"output": [
+				{
+					"id": "m3",
+					"threadId": "t-m3",
+					"labelIds": ["INBOX"],
+					"sizeEstimate": 640,
+					"headers": {
+						"from": "From: billing@example.com",
+						"to": "To: Ada <ada@example.com>",
+						"subject": "Subject: Two files",
+						"date": "Date: Sat, 03 Jan 2026 12:00:00 +0100",
+						"content-type": "Content-Type: multipart/mixed; boundary=\"outer\""
+					},
+					"text": "The invoice and the usage report.",
+					"textAsHtml": "<p>The invoice and the usage report.</p>",
+					"subject": "Two files",
+					"date": "2026-01-03T11:00:00.000Z",
+					"to": {
+						"value": [
+							{
+								"address": "ada@example.com",
+								"name": "Ada"
+							}
+						],
+						"html": "<span class=\"mp_address_group\"><span class=\"mp_address_name\">Ada</span> &lt;<a href=\"mailto:ada@example.com\" class=\"mp_address_email\">ada@example.com</a>&gt;</span>",
+						"text": "\"Ada\" <ada@example.com>"
+					},
+					"from": {
+						"value": [
+							{
+								"address": "billing@example.com",
+								"name": ""
+							}
+						],
+						"html": "<span class=\"mp_address_group\"><a href=\"mailto:billing@example.com\" class=\"mp_address_email\">billing@example.com</a></span>",
+						"text": "billing@example.com"
+					},
+					"html": false
+				}
+			],
+			"outputBinary": [
+				{
+					"attachment_0": {
+						"data": "JVBERi0xLjQgaW52b2ljZQ==",
+						"mimeType": "application/pdf",
+						"fileName": "invoice.pdf"
+					},
+					"attachment_1": {
+						"data": "ZGF5LGNhbGxzDQ0KMSw0Mg==",
+						"mimeType": "text/csv",
+						"fileName": "Nutzung März.csv"
+					}
+				}
+			]
 		}
 	]
 }

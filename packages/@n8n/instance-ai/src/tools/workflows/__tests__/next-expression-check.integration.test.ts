@@ -444,6 +444,34 @@ export default workflow(
 		expect(upload?.parameters?.body).toEqual({ kind: 'binary', file: 'data' });
 	}, 120_000);
 
+	it('types the Gmail attachments as binary keys with the prefix', async () => {
+		const source = (key: string) => `import { workflow, manual } from '@n8n/workflow-sdk/next';
+import { gmail } from '@n8n/nodes/gmail';
+
+export default workflow(
+	'Forward files',
+	manual({ sample: [{ id: 'm1' }] }),
+	gmail.message.get({ name: 'Get', messageId: '={{ $json.id }}', simplify: false, downloadAttachments: true }),
+	gmail.message.send({
+				name: 'Forward',
+				to: 'archive@example.com',
+				subject: 'Files',
+				body: { format: 'text', text: 'Files' },
+				attachments: [(item) => item.binary.${key}],
+			}),
+);
+`;
+		const result = await build(source('attachment_0'));
+		expect(result.success ? [] : result.errors).toEqual([]);
+		if (!result.success) return;
+		const forward = result.workflow.nodes.find((node) => node.name === 'Forward');
+		expect(forward?.parameters?.attachments).toEqual(['attachment_0']);
+		const wrong = await build(source('file_0'));
+		expect(wrong.success ? [] : wrong.errors).toEqual([
+			expect.stringContaining("Property 'file_0' does not exist"),
+		]);
+	}, 120_000);
+
 	it('fails the build of a source that imports both SDKs', async () => {
 		const result = await build(`import { workflow, trigger } from '@n8n/workflow-sdk';
 import { manual } from '@n8n/workflow-sdk/next';

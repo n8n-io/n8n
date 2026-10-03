@@ -246,6 +246,8 @@ describe('provider contracts', () => {
 		expect(tool(read, { file: t.binary() })).toBe(false);
 		expect(tool(read, { file: t.binary().optional(), id: t.str() })).toBe(true);
 		expect(tool(read, { id: t.str() }, t.obj({ file: t.binary() }))).toBe(false);
+		const indexed = t.indexedBinaries(t.obj({ ok: t.str() }), 'attachment_');
+		expect(tool(read, { id: t.str() }, t.union(t.obj({ id: t.str() }), indexed))).toBe(true);
 		expect(isToolContract(toContract(chatModel))).toBe(false);
 		expect(isToolContract(toContract(ask))).toBe(false);
 	});

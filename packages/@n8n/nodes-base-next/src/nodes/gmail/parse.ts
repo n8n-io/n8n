@@ -580,6 +580,7 @@ interface Part {
 	readonly charset?: string;
 	readonly encoding: string;
 	readonly disposition: 'inline' | 'attachment';
+	readonly filename?: string;
 	readonly flowed: boolean;
 	readonly delSp: boolean;
 	readonly body: string;
@@ -672,6 +673,8 @@ function partOf(source: string, root: boolean): Part {
 				: given === 'attachment'
 					? 'attachment'
 					: 'inline',
+		// mailsplit: the disposition filename, else the type name, with encoded words decoded.
+		filename: decodeWords(disposition.params.filename || type.params.name || '') || undefined,
 		flowed,
 		delSp: flowed && type.params.delsp?.toLowerCase().trim() === 'yes',
 		body,
@@ -925,14 +928,38 @@ function withImages(html: string, root: Part): string {
 	});
 }
 
-/** The mail as mailparser `simpleParser` gives it, with `headers` as `parseRawEmail` writes them. */
-export function parseMail(raw: string): Record<string, unknown> {
+/** A file of the mail, as mailparser lists it in `attachments`. */
+export interface MailAttachment {
+	readonly fileName?: string;
+	readonly mimeType: string;
+	readonly bytes: Uint8Array;
+}
+
+/**
+ * The mail as mailparser `simpleParser` gives it, with `headers` as `parseRawEmail` writes them,
+ * and its attachments: each part that is not inline text, as mailparser takes it.
+ */
+export function parseMail(raw: string): {
+	mail: Record<string, unknown>;
+	attachments: () => MailAttachment[];
+} {
 	const root = partOf(UTF8.decode(bytesOfBase64(raw)), true);
 	const content = textContentOf(root);
 	return {
-		headers: Object.fromEntries(root.lines.map(({ key, line }) => [key, line])),
-		...content,
-		...fieldsOf(root.lines),
-		html: content.html ? withImages(content.html, root) : false,
+		mail: {
+			headers: Object.fromEntries(root.lines.map(({ key, line }) => [key, line])),
+			...content,
+			...fieldsOf(root.lines),
+			html: content.html ? withImages(content.html, root) : false,
+		},
+		// Decoded only on request: the default output has no attachments.
+		attachments: () =>
+			partsOf(root)
+				.filter((part) => !isMultipart(part) && !isInlineText(part))
+				.map((part) => ({
+					...(part.filename === undefined ? {} : { fileName: part.filename }),
+					mimeType: part.contentType,
+					bytes: bytesOf(part),
+				})),
 	};
 }

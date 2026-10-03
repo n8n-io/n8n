@@ -140,6 +140,8 @@ describe('bundled versions', () => {
 			'xAi.chatModel',
 		]);
 		expect(withVersion('2.2.0')).toEqual([
+			'gmail.message.get',
+			'gmail.message.getAll',
 			'gmail.message.send',
 			'googleDrive.file.upload',
 			'httpRequest.download',

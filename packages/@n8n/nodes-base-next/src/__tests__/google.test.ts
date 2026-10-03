@@ -1,3 +1,5 @@
+import { Readable } from 'node:stream';
+
 import { validate, type Action } from '@n8n/node-sdk';
 import { toNodeType } from '@n8n/node-sdk/host';
 import type { IDataObject, IExecuteFunctions } from 'n8n-workflow';
@@ -52,14 +54,26 @@ function run(
 				calls.push({ credentialType, options });
 				return respond(options);
 			},
+			prepareBinaryData,
 		},
 	};
 	const NodeType = toNodeType(action);
 	const result = new NodeType().execute?.call(context as unknown as IExecuteFunctions);
-	const items = result?.then((output) =>
-		(Array.isArray(output) ? (output[0] ?? []) : []).map((item) => item.json),
-	);
-	return { items, calls, hints };
+	const output = result?.then((runs) => (Array.isArray(runs) ? (runs[0] ?? []) : []));
+	const items = output?.then((emitted) => emitted.map((item) => item.json));
+	const binaries = async () => (await output)?.map((item) => item.binary);
+	return { items, binaries, calls, hints };
+}
+
+/** A binary data store in memory, for the legacy node and the runtime alike. */
+async function prepareBinaryData(data: Buffer | Readable, fileName?: string, mimeType?: string) {
+	const chunks: Buffer[] = [];
+	for await (const chunk of Readable.from(data)) chunks.push(Buffer.from(chunk as Uint8Array));
+	return {
+		data: Buffer.concat(chunks).toString('base64'),
+		mimeType: mimeType ?? 'application/octet-stream',
+		...(fileName === undefined ? {} : { fileName }),
+	};
 }
 
 const SPREADSHEET = '1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms';
@@ -525,14 +539,9 @@ wrapped.
 };
 
 /** The item that the v2 node emits with `simple: false`. */
-async function legacyFull(message: IDataObject) {
-	const legacy = { getNodeParameter: () => false };
-	const { json } = await parseRawEmail.call(
-		legacy as unknown as IExecuteFunctions,
-		message,
-		'attachment_',
-	);
-	return json;
+async function legacyFull(message: IDataObject, download = false, prefix = 'attachment_') {
+	const legacy = { getNodeParameter: () => download, helpers: { prepareBinaryData } };
+	return await parseRawEmail.call(legacy as unknown as IExecuteFunctions, message, prefix);
 }
 
 const rawMessage = (id: string, source: string) => ({
@@ -554,13 +563,49 @@ describe('gmail.message.get with simplify off', () => {
 				{ messageId: id, simplify: false },
 				() => message,
 			);
-			expect(await items).toEqual([await legacyFull(message)]);
+			expect(await items).toEqual([(await legacyFull(message)).json]);
 			expect(calls.map(({ options }) => [options.url, options.qs])).toEqual([
 				[`${GMAIL}/messages/${id}`, { format: 'raw' }],
 			]);
 			expect(hints).toEqual([]);
 		},
 	);
+
+	it('stores the attachments as binaries like the v2 node with downloadAttachments', async () => {
+		const message = rawMessage('mixed', RAW_MESSAGES.mixed);
+		const parameters = { messageId: 'mixed', simplify: false, downloadAttachments: true };
+		const { items, binaries } = run(getGmailMessage, parameters, () => message);
+		const legacy = await legacyFull(message, true);
+
+		expect(await items).toEqual([legacy.json]);
+		expect(await binaries()).toEqual([legacy.binary]);
+		expect(Object.keys(legacy.binary ?? {})).toEqual(['attachment_0', 'attachment_1']);
+		expect(legacy.binary?.attachment_1).toMatchObject({
+			fileName: 'résumé.pdf',
+			mimeType: 'application/pdf',
+		});
+		const prefixed = run(
+			getGmailMessage,
+			{ ...parameters, attachmentPrefix: 'file_' },
+			() => message,
+		);
+		expect(await prefixed.binaries()).toEqual([(await legacyFull(message, true, 'file_')).binary]);
+		const off = run(getGmailMessage, { ...parameters, downloadAttachments: false }, () => message);
+		expect(await off.binaries()).toEqual([undefined]);
+	});
+
+	it('derives the attachment keys from the prefix', () => {
+		const derive = (parameters: Record<string, unknown>) =>
+			Object.keys(getGmailMessage.deriveOutput?.(parameters as never)?.patternProperties ?? {});
+		expect(derive({ simplify: false })).toEqual([]);
+		expect(derive({ simplify: false, downloadAttachments: true })).toEqual(['^attachment_\\d+$']);
+		expect(derive({ simplify: false, downloadAttachments: true, attachmentPrefix: 'f.' })).toEqual([
+			'^f\\.\\d+$',
+		]);
+		expect(
+			derive({ simplify: false, downloadAttachments: true, attachmentPrefix: '={{ $json.p }}' }),
+		).toEqual(['^.*\\d+$']);
+	});
 
 	it('names the message that has no raw content', async () => {
 		const { items } = run(getGmailMessage, { messageId: 'm9', simplify: false }, () =>
@@ -583,7 +628,9 @@ describe('gmail.message.getAll with simplify off', () => {
 		);
 		expect(await items).toEqual(
 			await Promise.all(
-				sources.slice(0, 2).map(async ([id, source]) => await legacyFull(rawMessage(id, source))),
+				sources
+					.slice(0, 2)
+					.map(async ([id, source]) => (await legacyFull(rawMessage(id, source))).json),
 			),
 		);
 		expect(calls.map(({ options }) => options.url)).toEqual([

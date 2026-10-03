@@ -49,8 +49,16 @@ interface Mode {
 /** Objects at most this long print on one line in compact mode. */
 const ONE_LINE_MAX = 80;
 
+/** `${type}` in a template literal type. */
+const typeSlot = (type: string) => `\${${type}}`;
+
 /** `^property_[a-z0-9_]+$` → `property_${Lowercase<string>}`; `^x_` → `x_${string}`. */
 function patternKey(pattern: string): string {
+	// The keys of `t.indexedBinaries()`, with or without a fixed prefix.
+	const indexed = /^\^([\w-]*|\.\*)\\d\+\$$/.exec(pattern)?.[1];
+	if (indexed !== undefined) {
+		return `\`${indexed === '.*' ? typeSlot('string') : indexed}${typeSlot('number')}\``;
+	}
 	const lower = /^\^([\w-]+)\[a-z0-9_\]\+\$$/.exec(pattern)?.[1];
 	if (lower) return `\`${lower}\${Lowercase<string>}\``;
 	const prefix = /^\^([\w-]+)$/.exec(pattern.replace(/\.\*$/, ''))?.[1];
@@ -339,25 +347,38 @@ function binaryPathsOf(schema: JsonSchema): string[][] {
 	return [...new Map(paths.map((path) => [JSON.stringify(path), path])).values()];
 }
 
-/** The output as a workflow item: a binary field moves from the JSON to `binary.<field>`. */
-function itemSchema(output: JsonSchema): JsonSchema {
+/**
+ * The output as a workflow item: a binary field or binary key pattern moves from the JSON to
+ * `binary`, also in each `t.union()` branch.
+ */
+export function outputItemSchema(output: JsonSchema): JsonSchema {
 	const fields = Object.entries(output.properties ?? {});
-	const binaries = new Set(
-		fields.filter(([, field]) => field['x-n8n-binary']).map(([name]) => name),
-	);
-	if (binaries.size === 0) return output;
+	const patterns = Object.entries(output.patternProperties ?? {});
+	const isBinary = ([, field]: [string, JsonSchema]) => field['x-n8n-binary'] === true;
+	const binaries = new Set(fields.filter(isBinary).map(([name]) => name));
+	const binaryPatterns = patterns.filter(isBinary);
+	const branches = output.anyOf?.map(outputItemSchema);
+	const withBranches = branches ? { ...output, anyOf: branches } : output;
+	if (binaries.size === 0 && binaryPatterns.length === 0) return withBranches;
 	const required = output.required ?? [];
+	const otherPatterns = patterns.filter((entry) => !isBinary(entry));
+	const { patternProperties: _patterns, ...rest } = withBranches;
 	return {
-		...output,
+		...rest,
+		...(otherPatterns.length > 0 ? { patternProperties: Object.fromEntries(otherPatterns) } : {}),
 		properties: {
 			...Object.fromEntries(fields.filter(([name]) => !binaries.has(name))),
 			binary: {
 				type: 'object',
 				properties: Object.fromEntries(fields.filter(([name]) => binaries.has(name))),
+				...(binaryPatterns.length > 0
+					? { patternProperties: Object.fromEntries(binaryPatterns) }
+					: {}),
 				required: required.filter((name) => binaries.has(name)),
 				additionalProperties: false,
 			},
 		},
+		// Required, so a lambda can name an indexed key: the build compiles it to the key.
 		required: [...required.filter((name) => !binaries.has(name)), 'binary'],
 	};
 }
@@ -664,7 +685,7 @@ export function generateNodeModule(nodeId: string, contracts: readonly Generated
 	const triggers = contracts.filter(({ contract }) => contract.trigger);
 	const named = actions.map((action) => ({
 		...action,
-		contract: { ...action.contract, output: itemSchema(action.contract.output) },
+		contract: { ...action.contract, output: outputItemSchema(action.contract.output) },
 		name: typeName(action.contract.id),
 	}));
 	const roots = named.flatMap(({ name }) => [`${name}Input`, `${name}Output`]);
@@ -849,7 +870,7 @@ export function generateNodeModule(nodeId: string, contracts: readonly Generated
 		const entries = contract.output['x-n8n-entry-fields'];
 		return [
 			`export type ${name}Input = ${renderTs(contract.input, plain)};`,
-			`export type ${name}Output = ${renderTs(itemSchema(contract.output), triggerOutput)};`,
+			`export type ${name}Output = ${renderTs(outputItemSchema(contract.output), triggerOutput)};`,
 			...(entries ? [`export type ${name}Fields<C> = ${entryFieldsTs(entries)};`] : []),
 		].join('\n');
 	});

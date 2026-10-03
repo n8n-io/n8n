@@ -121,6 +121,27 @@ import { googleGemini } from '@n8n/nodes/googleGemini';`;
 		});
 	});
 
+	it('declares the Gmail attachments under binary with the prefix as the key type', () => {
+		const workflow: WorkflowJSON = {
+			name: 'Files',
+			connections: {},
+			nodes: [
+				{
+					id: '1',
+					name: 'Get',
+					type: '@n8n/nodes-base-next.gmailMessageGet',
+					typeVersion: 2,
+					position: [0, 0],
+					parameters: { messageId: 'm1', simplify: false, downloadAttachments: true },
+				},
+			],
+		};
+		const text = nodeOutputsDeclaration(workflow);
+		const key = `\`attachment_${'$'}{number}\``;
+		expect(text).toContain(`binary: {\n\t\t\t\t[key: ${key}]: Binary;\n\t\t\t};`);
+		expect(text).not.toMatch(/^\t{3}\[key: `attachment_/m);
+	});
+
 	const node = (name: string, type: string, parameters: IDataObject) => ({
 		id: name,
 		name,

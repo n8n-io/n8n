@@ -91,7 +91,7 @@ flowchart LR
 
 - The executor keeps the handle table of the node execution, as in this process. The host gives
   the guest `{ "$binary": id }` at each `t.binary()` field of the run input, and puts the handle of
-  the id back at each binary output field.
+  the id back at each binary output field and at each key of a `t.indexedBinaries()` pattern.
 - `binary.binary-reader.read` gives at most 4 MiB and the guest asks for 1 MiB, so one chunk is a
   small JSON-RPC message. A writer streams each chunk to the store when it arrives, with back
   pressure. `binary.send` and `binary.fetch` keep the bytes in the host: the guest never sees
@@ -270,7 +270,11 @@ bytes stay in the n8n binary data store (filesystem, S3, or database mode). Only
 a `t.binary()` field targets 2.2.0. Every other bundle targets 2.1.0.
 
 - Contract: `t.binary()` in `input` names a binary of the input item. In `output`, a top-level
-  `t.binary()` field becomes `item.binary.<field>`. The flow SDK types it as `Binary`, and a
+  `t.binary()` field becomes `item.binary.<field>`. When the run decides how many files there
+  are (mail attachments), `t.indexedBinaries(object, 'attachment_')` adds binaries under the keys
+  `attachment_0`, `attachment_1`, … (`patternProperties`). Only an output takes it, and a fixed
+  binary keeps its exact key. The executor refuses a binary under any other key, also when it
+  only warns about drift. The flow SDK types it as `Binary`, and a
   lambda `(item) => item.binary.data` compiles to the key `data`, as n8n stores it. The input
   check rejects an expression in a binary field, at build and at run time.
 - Inline JS (now): the executor keeps a handle table for each execution. `run()` gets frozen
