@@ -1,12 +1,12 @@
 {
     "type": "object",
     "properties": {
-        "name": {
+        "id": {
             "type": "string"
         },
         "success": {
             "type": "boolean"
         }
     },
-    "version": 2
+    "version": 1
 }
