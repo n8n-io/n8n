@@ -228,6 +228,58 @@ describe('GraphQL Node', () => {
 
 			await expect(node.execute.call(mockExecuteFunctions)).rejects.toBe(executionError);
 		});
+
+		it('should return only the error item when continuing on fail', async () => {
+			const mockExecuteFunctions = createMockExecuteFunctions({
+				query: 'query { foo }',
+			});
+			mockExecuteFunctions.continueOnFail.mockReturnValue(true);
+			mockExecuteFunctions.helpers.request.mockResolvedValue({
+				data: { foo: null },
+				errors: [{ message: 'Bad format' }],
+			});
+			const node = new GraphQL();
+
+			const [items] = await node.execute.call(mockExecuteFunctions);
+
+			expect(items).toEqual([
+				expect.objectContaining({ json: { error: 'Bad format' }, pairedItem: { item: 0 } }),
+			]);
+		});
+
+		it('should return only the error item for a string response format', async () => {
+			const mockExecuteFunctions = createMockExecuteFunctions({
+				query: 'query { foo }',
+				responseFormat: 'string',
+				dataPropertyName: 'data',
+			});
+			mockExecuteFunctions.continueOnFail.mockReturnValue(true);
+			mockExecuteFunctions.helpers.request.mockResolvedValue(
+				'{"errors":[{"message":"Bad format"}]}',
+			);
+			const node = new GraphQL();
+
+			const [items] = await node.execute.call(mockExecuteFunctions);
+
+			expect(items).toEqual([
+				expect.objectContaining({ json: { error: 'Bad format' }, pairedItem: { item: 0 } }),
+			]);
+		});
+
+		it('should still return the response when it holds no errors', async () => {
+			const mockExecuteFunctions = createMockExecuteFunctions({
+				query: 'query { foo }',
+			});
+			mockExecuteFunctions.continueOnFail.mockReturnValue(true);
+			mockExecuteFunctions.helpers.request.mockResolvedValue({ data: { foo: 'bar' } });
+			const node = new GraphQL();
+
+			const [items] = await node.execute.call(mockExecuteFunctions);
+
+			expect(items).toEqual([
+				expect.objectContaining({ json: { data: { foo: 'bar' } }, pairedItem: { item: 0 } }),
+			]);
+		});
 	});
 
 	describe('credential allowed domains', () => {
