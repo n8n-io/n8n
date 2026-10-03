@@ -20,7 +20,7 @@ import type {
 	InputItem,
 } from '../src/define';
 import { isDataTableRows } from '../src/host-imports';
-import { listItems, requestOf, withBinaries } from '../src/runtime';
+import { checkedResponse, listItems, requestOf, withBinaries } from '../src/runtime';
 import type { Binary } from '../src/schema';
 import { providerInputsOf, type ChatMessage, type ChatRequest } from '../src/providers';
 import {
@@ -110,9 +110,14 @@ async function request(options: HttpRequest): Promise<unknown> {
 		);
 		return responseOf(response, handleOf(response.body), options.fullResponse);
 	}
-	if (body === undefined) return jsonRequest(options);
+	const { node } = actionOf();
+	if (body === undefined) return checkedResponse(node, options, jsonRequest(options));
 	const response = httpCall(() => witBinary.send(witRequestOf(options), body));
-	return responseOf(response, parsed(response.body), options.fullResponse);
+	return checkedResponse(
+		node,
+		options,
+		responseOf(response, parsed(response.body), options.fullResponse),
+	);
 }
 
 const http: Http = { request };

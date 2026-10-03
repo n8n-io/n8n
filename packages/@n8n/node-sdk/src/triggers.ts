@@ -29,6 +29,7 @@ import {
 import {
 	AUTHENTICATION,
 	baseUrlOf,
+	checkedResponse,
 	credentialDescriptionOf,
 	credentialTypeOf,
 	hasSelector,
@@ -280,7 +281,7 @@ async function httpOf(trigger: Trigger, context: TriggerContext): Promise<Http> 
 			const response: unknown = type
 				? await context.helpers.httpRequestWithAuthentication.call(context, type, requestOptions)
 				: await context.helpers.httpRequest(requestOptions);
-			return response;
+			return checkedResponse(trigger.node, options, response);
 		} catch (error) {
 			throw withResponse(error);
 		}

@@ -49,6 +49,18 @@ export interface NodeDefinition {
 	 * legacy node with operations this node lacks must not be in the list.
 	 */
 	readonly replaces?: readonly string[];
+	/**
+	 * The error message in the JSON body of a successful response, or `undefined` when the body
+	 * has no error. It runs for every request of the node's actions and triggers, so a service
+	 * that answers an error with status 200 fails the item. The request throws a `UserError`
+	 * with the message, which `run()` may catch.
+	 *
+	 * @example
+	 * ```ts
+	 * errorOf: (body) => (isRecord(body) && body.ok === false ? String(body.error) : undefined),
+	 * ```
+	 */
+	readonly errorOf?: (body: unknown) => string | undefined;
 }
 
 /** The scopes an action of node `N` may list. */

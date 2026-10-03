@@ -1,5 +1,6 @@
 // The authoring API. Hosts, registries and tools import a subpath, see package.json `exports`.
 export { isRecord } from '@n8n/utils/is-record';
+export { OperationalError, UserError } from './errors';
 export {
 	defineNode,
 	isHttpError,

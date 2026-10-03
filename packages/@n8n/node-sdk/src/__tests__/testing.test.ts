@@ -168,6 +168,27 @@ describe('runAction', () => {
 		});
 	});
 
+	it('reports the reason of a network failure', async () => {
+		const once = task.action('getAll', {
+			...listSpec,
+			flow: { effect: 'read', cardinality: 'per-item' },
+			async run({ http }) {
+				await http.request({ path: '/tasks', retry: false });
+				return { id: 'a', tags: [] };
+			},
+		});
+		const refused = Object.assign(new Error('connect ECONNREFUSED 127.0.0.1:443'), {
+			code: 'ECONNREFUSED',
+		});
+		const fetch = async () =>
+			await Promise.reject(new TypeError('fetch failed', { cause: refused }));
+		const result = await runAction(once, { input: {}, credential: todoCredential, fetch });
+		expect(result).toEqual({
+			ok: false,
+			error: { message: 'fetch failed: connect ECONNREFUSED 127.0.0.1:443' },
+		});
+	});
+
 	it('fails a request that no mock route matches', async () => {
 		const fetch = mockHttp([{ method: 'POST', path: '/tasks', reply: { json: [] } }]);
 		const result = await runAction(listTasks, { input: {}, credential: todoCredential, fetch });

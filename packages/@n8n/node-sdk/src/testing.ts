@@ -1,3 +1,4 @@
+import { errorChain } from '@n8n/utils/errors/error-chain';
 import { isRecord } from '@n8n/utils/is-record';
 import { scrubSecretsInText } from '@n8n/utils/scrub-secrets';
 import type {
@@ -320,16 +321,12 @@ export async function runAction(
 		);
 		return { ok: true, items: outputs.flat(), ...(action.outputs ? { outputs } : {}) };
 	} catch (error) {
-		// fetch reports network failures as "fetch failed" and puts the reason in `cause`.
-		const cause =
-			error instanceof Error &&
-			error.cause instanceof Error &&
-			!error.message.includes(error.cause.message)
-				? `: ${error.cause.message}`
-				: '';
-		const message = scrubSecretsInText(
-			error instanceof Error ? `${error.message}${cause}` : String(error),
-		);
+		// fetch reports network failures as "fetch failed" and puts the reason in a `cause`.
+		const text = error instanceof Error ? error.message : String(error);
+		const reason = errorChain(error)
+			.map((link) => link.message)
+			.find((linked): linked is string => typeof linked === 'string' && !text.includes(linked));
+		const message = scrubSecretsInText(reason ? `${text}: ${reason}` : text);
 		const path = pathOf(message);
 		return {
 			ok: false,

@@ -11,7 +11,7 @@ See `packages/@n8n/nodes-base-next/src/nodes/**` for real nodes.
 
 | Import | For | Contents |
 |---|---|---|
-| `@n8n/node-sdk` | node authors | `defineNode`, `t` (schema builders), `provider` (`input`, `is`), `defineResource`, `ref`, `parse`, `matches`, `validate`, `list`, `isRecord`, `isHttpError`, paging helpers, author types |
+| `@n8n/node-sdk` | node authors | `defineNode`, `t` (schema builders), `provider` (`input`, `is`), `defineResource`, `ref`, `parse`, `matches`, `validate`, `list`, `isRecord`, `isHttpError`, `UserError`, `OperationalError`, paging helpers, author types |
 | `@n8n/node-sdk/credentials` | node authors | `defineCredential`, `credential`, `compat`, `field` (credential fields). Auth schemes only in the `auth: (a) => …` callback |
 | `@n8n/node-sdk/testing` | node authors | `runAction`, `mockHttp` |
 | `@n8n/node-sdk/host` | n8n core and cli | node and credential types (`toNodeType`, `toVersionedNodeType`, `toCredentialType`, …), loaders, Node Contract range, egress checks, `permissionsOf` (the permissions of a contract), `exampleOf` |
@@ -81,6 +81,42 @@ may list. Credential types are values (`defineCredential`, `compat`) with a decl
 [docs/credentials-triggers.md](docs/credentials-triggers.md) for scopes, triggers and bindings.
 See [docs/node-contract.md](docs/node-contract.md) for the manifest format, the runtime interface
 of each kind, and their one version.
+
+## Errors
+
+The host owns the errors of a run. Node code throws only to stop a run with a reason.
+
+- Any error that `run()` or a request throws fails the run as an n8n node error with the
+  index of its item. A batch run has no item index.
+- The host gives each error a `failure` cause (`Failure` of `n8n-workflow`), which n8n reads
+  without `instanceof`:
+
+  | Error | `failure.cause` |
+  |---|---|
+  | `HttpError` 429 | `rate-limited`, with `retryAfterMs` from `Retry-After` |
+  | `HttpError` 408 or 5xx, a transport failure (`ECONNRESET`, …), `OperationalError` | `temporarily-unavailable` |
+  | `HttpError` 401 | `credential-invalid` |
+  | `HttpError` other 4xx, `UserError` | `configuration-invalid` |
+  | any other error | none |
+
+- Throw `UserError` when the user can fix the cause, and `OperationalError` when a later retry
+  can pass. Import both from `@n8n/node-sdk`. Do not throw `Error`: it gets no cause.
+- A service that answers an error with status 200 (Slack `{ ok: false }`) declares it once on
+  the node. `errorOf` runs for each JSON response of the node's actions and triggers, also for
+  declarative `request` and `list` bindings. A message fails the request with a `UserError`,
+  which `run()` may catch:
+
+  ```ts
+  const slack = defineNode({
+    id: 'slack',
+    displayName: 'Slack',
+    baseUrl: 'https://slack.com/api',
+    errorOf: (body) => (isRecord(body) && body.ok === false ? String(body.error) : undefined),
+  });
+  ```
+
+In the sandbox, the guest runs `errorOf`. Only the message and the failed response of an error
+cross the boundary, so the host sees each other guest error as a `UserError`.
 
 ## Testing: `@n8n/node-sdk/testing`
 

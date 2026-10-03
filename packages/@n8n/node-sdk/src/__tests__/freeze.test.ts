@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 
 import { freezeAction, GUEST_LACKS } from '../freeze';
+import { executorOf, type ExecutorHost } from '../runtime';
 
 it('GUEST_LACKS are globals of Node, besides the CommonJS names', () => {
 	expect(GUEST_LACKS.filter((name) => !(name in globalThis))).toEqual(['__dirname', '__filename']);
@@ -73,5 +74,35 @@ describe('freezeAction', () => {
 		['a regex without \\p{}', "/[a-zé]+/u.test('é')"],
 	])('freezes a bundle with %s', async (_what, value) => {
 		await expect(freeze(value)).resolves.toMatchObject({ manifest: { id: 'probe.probe' } });
+	});
+
+	it.each([
+		['UserError', 'configuration-invalid'],
+		['OperationalError', 'temporarily-unavailable'],
+	])('runs a bundle that throws the %s of the SDK root', async (kind, cause) => {
+		const { action } = await freeze(
+			`(() => { throw new ${kind}('failed'); })()`,
+			`import { ${kind} } from '@n8n/node-sdk';`,
+		);
+		const host: ExecutorHost = {
+			items: [{ json: {} }],
+			node: {
+				id: '1',
+				name: 'Probe',
+				type: 'probe',
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: {},
+			},
+			parameter: () => undefined,
+			request: async () => await Promise.resolve(undefined),
+			continueOnFail: () => false,
+		};
+		if ('kind' in action) throw new Error('The probe is an action');
+		await expect(executorOf(action)(host)).rejects.toMatchObject({
+			message: 'failed',
+			context: { itemIndex: 0 },
+			failure: { cause },
+		});
 	});
 });

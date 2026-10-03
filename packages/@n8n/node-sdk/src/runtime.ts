@@ -9,12 +9,15 @@ import {
 	isFromAIOnlyExpression,
 	jsonParse,
 	nodeNameToToolName,
+	NodeError,
 	NodeOperationError,
+	OperationalError,
 	safeRegex,
 	traverseNodeParameters,
 	UnexpectedError,
 	UserError,
 	VersionedNodeType,
+	type Failure,
 	type FromAIArgument,
 	type IBinaryData,
 	type IDataObject,
@@ -198,17 +201,82 @@ function retryAfterMs(value: string | undefined): number | undefined {
 	return Number.isNaN(date) ? undefined : Math.max(0, date - Date.now());
 }
 
+/** True when the request got no response: a connection, DNS or time-out failure. */
+const transportFailed = (error: unknown) =>
+	errorChain(error).some(({ code }) => typeof code === 'string' && RETRY_CODES.has(code));
+
 // A local classifier: `retryabilityFromError` in @n8n/backend-network needs DI and undici.
 /** The wait before retry number `retry`, or `undefined` when a retry cannot help. */
 function retryDelay(error: unknown, retry: number): number | undefined {
-	const transient = isHttpError(error)
-		? RETRY_STATUSES.has(error.status)
-		: errorChain(error).some(({ code }) => typeof code === 'string' && RETRY_CODES.has(code));
+	const transient = isHttpError(error) ? RETRY_STATUSES.has(error.status) : transportFailed(error);
 	if (!transient || retry >= MAX_RETRIES) return undefined;
 	const asked = isHttpError(error) ? retryAfterMs(error.headers['retry-after']) : undefined;
 	// Full jitter: executions that failed together do not retry together.
 	const delay = asked ?? Math.random() * RETRY_BASE_MS * 2 ** retry;
 	return delay <= RETRY_MAX_MS ? delay : undefined;
+}
+
+/**
+ * Why a run failed, as n8n reads it from `failure`: a timed cause can pass with a wait, an
+ * actionable cause needs the user. A 4xx response or a `UserError` is the user's to fix; a 5xx,
+ * 408 or 429 response, a transport failure or an `OperationalError` is transient.
+ */
+function failureOf(error: unknown): Failure | undefined {
+	const status = isHttpError(error) ? error.status : undefined;
+	const asked = isHttpError(error) ? retryAfterMs(error.headers['retry-after']) : undefined;
+	const wait = asked === undefined ? {} : { retryAfterMs: asked };
+	if (status === 429) return { cause: 'rate-limited', ...wait };
+	if (
+		status === 408 ||
+		(status !== undefined && status >= 500) ||
+		(status === undefined && (transportFailed(error) || error instanceof OperationalError))
+	) {
+		return { cause: 'temporarily-unavailable', ...wait };
+	}
+	if (status === 401) return { cause: 'credential-invalid' };
+	if ((status !== undefined && status >= 400) || error instanceof UserError) {
+		return { cause: 'configuration-invalid' };
+	}
+	return undefined;
+}
+
+/**
+ * The n8n node error of a failed run, with the item index and the failure cause. An n8n node
+ * error stays, so n8n keeps its message; other errors become its `cause`. An `HttpError` keeps
+ * its status, headers and body, as `withResponse` gives them.
+ */
+function nodeErrorOf(node: INode, error: unknown, itemIndex: number | undefined): NodeError {
+	const failure = failureOf(error);
+	if (error instanceof NodeError) {
+		// Changed in place, as `withResponse` does, so the class and the message stay.
+		error.failure ??= failure;
+		if (itemIndex !== undefined) error.context.itemIndex = itemIndex;
+		return error;
+	}
+	const wrapped = new NodeOperationError(node, error instanceof Error ? error : String(error), {
+		itemIndex,
+		...(failure ? { failure } : {}),
+	});
+	return isHttpError(error)
+		? Object.assign(wrapped, { status: error.status, headers: error.headers, body: error.body })
+		: wrapped;
+}
+
+/**
+ * The response of a request, after the node's `errorOf` checked a JSON body. An in-band error
+ * throws a `UserError`. The in-process executor, the sandbox guest and triggers call it.
+ */
+export function checkedResponse(
+	node: Pick<NodeDefinition, 'errorOf'>,
+	request: HttpRequest,
+	response: unknown,
+): unknown {
+	if (!node.errorOf || request.response === 'binary') return response;
+	const message = node.errorOf(
+		request.fullResponse && isRecord(response) ? response.body : response,
+	);
+	if (message !== undefined) throw new UserError(message);
+	return response;
 }
 
 /** The HTTP response on a failed request: on the transport error, or on its `cause` in a NodeApiError. */
@@ -254,6 +322,27 @@ type RunCredentialValue =
 /** Error members that n8n shows or stores, and the `HttpError` members that `run()` reads. */
 const REDACTED_MEMBERS = ['description', 'messages', 'body', 'headers', 'context', 'errorResponse'];
 
+const MAX_CAUSE_DEPTH = 3;
+
+/**
+ * A copy of an error and its causes with only the name, the redacted message and the system error
+ * code. The code stays because `failureOf` reads it, and the causes stay because they hold the
+ * reason of a network failure. The depth limit stops a cause cycle.
+ */
+const plainError = (error: Error, redact: (text: string) => string, depth = 0): Error =>
+	Object.assign(
+		new Error(
+			redact(error.message),
+			depth < MAX_CAUSE_DEPTH && error.cause instanceof Error
+				? { cause: plainError(error.cause, redact, depth + 1) }
+				: undefined,
+		),
+		{
+			name: error.name,
+			...('code' in error && typeof error.code === 'string' ? { code: redact(error.code) } : {}),
+		},
+	);
+
 /**
  * Removes the secrets of the credential from an error. It changes the error in place, as
  * `withResponse` does, so n8n keeps its class and message.
@@ -285,7 +374,7 @@ function redactedError(error: unknown, redact: (text: string) => string): unknow
 	}
 	if (cause instanceof Error) {
 		// The cause of a NodeApiError is the HTTP client error, which holds the signed request.
-		set('cause', Object.assign(new Error(redact(cause.message)), { name: cause.name }));
+		set('cause', plainError(cause, redact));
 	}
 	return error;
 }
@@ -1011,9 +1100,11 @@ export function executorOf<S extends Shape, O extends AnySchema>(
 					itemIndex,
 				});
 				const requestOptions = allowedDomains === undefined ? built : { ...built, allowedDomains };
-				return options.response === 'binary' || entries.has(options.body)
-					? await sendBinary(options, requestOptions, retryable)
-					: await send(async () => requestOptions, retryable, 0);
+				const response =
+					options.response === 'binary' || entries.has(options.body)
+						? await sendBinary(options, requestOptions, retryable)
+						: await send(async () => requestOptions, retryable, 0);
+				return checkedResponse(action.node, options, response);
 			}
 			return { request };
 		};
@@ -1333,7 +1424,8 @@ export function executorOf<S extends Shape, O extends AnySchema>(
 							});
 					return { names, routed: await collect(result, routeOf(names, undefined)) };
 				} catch (error) {
-					if (!host.continueOnFail()) throw error;
+					// A batch fails as a whole, so no item index fits.
+					if (!host.continueOnFail()) throw nodeErrorOf(host.node, error, undefined);
 					const all = [...sources.values()].map(({ pair }) => pair);
 					return { names, routed: [errorItem(error, all, names)] };
 				}
@@ -1345,7 +1437,7 @@ export function executorOf<S extends Shape, O extends AnySchema>(
 				try {
 					for (const entry of await runItem(itemIndex, names)) routed.push(entry);
 				} catch (error) {
-					if (!host.continueOnFail()) throw error;
+					if (!host.continueOnFail()) throw nodeErrorOf(host.node, error, itemIndex);
 					routed.push(errorItem(error, { item: itemIndex }, names));
 				}
 			}, Promise.resolve());
@@ -1576,7 +1668,8 @@ export interface FrozenVersion {
  * so `test` is `testPattern`: the same result, without a `vm` call for a pattern that it allows.
  */
 const HOST_MODULES: Readonly<Record<string, unknown>> = {
-	'n8n-workflow': { safeRegex: { ...safeRegex, test: testPattern } },
+	// The host classes, so the host classifies the errors that a frozen bundle throws.
+	'n8n-workflow': { safeRegex: { ...safeRegex, test: testPattern }, OperationalError, UserError },
 };
 
 const isContract = (value: unknown): value is Action | Trigger =>

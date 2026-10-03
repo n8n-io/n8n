@@ -12,7 +12,7 @@ import {
 } from 'n8n:node-contract/http@2.5.0';
 import { log as witLog } from 'n8n:node-contract/log@2.5.0';
 import { get as witCredential } from 'n8n:node-contract/run-credential@2.5.0';
-import { safeRegex } from 'n8n-workflow';
+import { OperationalError, safeRegex, UserError } from 'n8n-workflow';
 
 import { isHttpError, type Action, type HttpRequest } from '../src/define';
 import type { JsonSchema } from '../src/schema';
@@ -47,7 +47,9 @@ if (typeof URL.canParse !== 'function') {
 }
 
 /** Host modules a bundle may import, as in the host process. */
-const HOST_MODULES: Readonly<Record<string, unknown>> = { 'n8n-workflow': { safeRegex } };
+const HOST_MODULES: Readonly<Record<string, unknown>> = {
+	'n8n-workflow': { safeRegex, OperationalError, UserError },
+};
 
 /** The bundle loads at the first call, not at build time: its source is an import. */
 const loaded = new Map<'action', Action>();

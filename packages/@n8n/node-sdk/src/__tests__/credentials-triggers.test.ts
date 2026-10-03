@@ -5,7 +5,7 @@ import { generateNodeModule } from '../entry/codegen';
 import { compat, credential, defineCredential, field } from '../entry/credentials';
 import { toTriggerNodeType } from '../entry/host';
 import { contractHash, diffContracts, toContract } from '../entry/registry';
-import { defineNode, parse, t } from '../index';
+import { defineNode, isRecord, parse, t } from '../index';
 import { requestOf } from '../runtime';
 import { mockHttp, runAction } from '../testing';
 
@@ -274,6 +274,32 @@ function pollContext(
 }
 
 describe('triggers', () => {
+	it('fail a poll whose body has the in-band error of the node errorOf', async () => {
+		const inBand = defineNode({
+			id: 'inband',
+			displayName: 'In-band',
+			credential: credential({ types: [tasksApi], scopes: {} }),
+			baseUrl: 'https://inband.test',
+			errorOf: (body) =>
+				isRecord(body) && body.ok === false ? `In-band: ${String(body.error)}` : undefined,
+		});
+		const polled = inBand.resource('event').trigger('created', {
+			trigger: 'On event',
+			summary: 'Starts when an event is created.',
+			input: {},
+			output: taskEvent,
+			poll: {
+				request: () => ({ path: '/events' }),
+				response: t.arr(taskEvent),
+				items: (page) => page,
+				cursor: { id: (item) => Number(item.id) },
+			},
+		});
+		const type: INodeType = new (toTriggerNodeType(polled))();
+		const context = pollContext({}, [{ ok: false, error: 'invalid_auth' }], []);
+		await expect(type.poll?.call(context as never)).rejects.toThrow('In-band: invalid_auth');
+	});
+
 	it('are contracts of their resource, with a trigger kind and the trigger flow', () => {
 		expect(created.id).toBe('tasks.task.created');
 		expect(toContract(created)).toMatchObject({

@@ -443,6 +443,8 @@ describe('toNodeType', () => {
 			status: 429,
 			headers: { 'retry-after': '120' },
 			body: { error: 'slow down' },
+			failure: { cause: 'rate-limited' },
+			context: { itemIndex: 0 },
 		});
 	});
 });

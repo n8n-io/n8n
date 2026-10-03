@@ -20,7 +20,9 @@ const exportedTypes = (file: string) =>
 describe('the root of @n8n/node-sdk', () => {
 	it('exports only the authoring values', () => {
 		expect(Object.keys(root).sort()).toEqual([
+			'OperationalError',
 			'Schema',
+			'UserError',
 			'defineNode',
 			'defineResource',
 			'isHttpError',

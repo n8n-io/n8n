@@ -1,15 +1,17 @@
-import type { IHttpRequestOptions, INode } from 'n8n-workflow';
+import { NodeOperationError, type IHttpRequestOptions, type INode } from 'n8n-workflow';
 
 import { compat, credential, defineCredential, field } from '../entry/credentials';
 import {
 	defineNode,
 	isRecord,
+	OperationalError,
 	pages,
 	pageValueOf,
 	paging,
 	parse,
 	readAs,
 	t,
+	UserError,
 	validate,
 	type Action,
 	type ActionFlow,
@@ -228,7 +230,7 @@ describe('executorOf', () => {
 				},
 			});
 			const { host, requests } = hostOf([[]], { limits: { maxRequests: 0 } });
-			await expect(executorOf(raise)(host)).rejects.toThrow(TypeError);
+			await expect(executorOf(raise)(host)).rejects.toMatchObject({ cause: { name: 'TypeError' } });
 			expect(requests).toHaveLength(0);
 		});
 
@@ -1258,5 +1260,199 @@ describe('credentials in a run', () => {
 		expect(items.map(({ json: value }) => value)).toEqual([
 			{ error: 'Request failed: [REDACTED]' },
 		]);
+	});
+});
+
+describe('run errors', () => {
+	const items = [0, 1, 2].map((n) => ({ json: { n } }));
+	const perItem = { effect: 'read', cardinality: 'per-item' } as const;
+	const failOnThird = (thrown: () => unknown) =>
+		echoItem.action('fail', {
+			...fetchSpec,
+			flow: perItem,
+			async run({ http, item: current }) {
+				if (current.json.n === 2) throw thrown();
+				await http.request({ path: '/items', retry: false });
+				return { id: 'a' };
+			},
+		});
+	const errorOf = async (thrown: () => unknown, replies: unknown[] = [[], [], []]) =>
+		await executorOf(failOnThird(thrown))(hostOf(replies, { items }).host).catch(
+			(error: unknown) => error,
+		);
+
+	it('fails with a node error that names the item of a raw error', async () => {
+		const error = await errorOf(() => new TypeError('boom'));
+		expect(error).toBeInstanceOf(NodeOperationError);
+		expect(error).toMatchObject({ message: 'boom', context: { itemIndex: 2 } });
+	});
+
+	it.each([
+		['a UserError', () => new UserError('bad input'), { cause: 'configuration-invalid' }],
+		[
+			'an OperationalError',
+			() => new OperationalError('down'),
+			{ cause: 'temporarily-unavailable' },
+		],
+		[
+			'a network error',
+			() => Object.assign(new Error('socket hang up'), { code: 'ECONNRESET' }),
+			{ cause: 'temporarily-unavailable' },
+		],
+		['an unknown error', () => new Error('plain'), undefined],
+	])('classifies %s that run() throws', async (_name, thrown, failure) => {
+		const error = await errorOf(thrown);
+		expect(error).toBeInstanceOf(NodeOperationError);
+		expect(error).toMatchObject({ context: { itemIndex: 2 } });
+		expect(isRecord(error) ? error.failure : 'no error').toEqual(failure);
+	});
+
+	it.each([
+		[400, {}, { cause: 'configuration-invalid' }],
+		[401, {}, { cause: 'credential-invalid' }],
+		[404, {}, { cause: 'configuration-invalid' }],
+		[408, {}, { cause: 'temporarily-unavailable' }],
+		[429, { 'Retry-After': '2' }, { cause: 'rate-limited', retryAfterMs: 2000 }],
+		[500, {}, { cause: 'temporarily-unavailable' }],
+		[503, {}, { cause: 'temporarily-unavailable' }],
+	])('classifies an HttpError with status %i', async (status, headers, failure) => {
+		const error = await errorOf(() => new Error('not reached'), [[], httpError(status, headers)]);
+		expect(error).toBeInstanceOf(NodeOperationError);
+		expect(error).toMatchObject({ status, context: { itemIndex: 1 }, failure });
+	});
+
+	it('classifies a request that fails with a transport code in its cause', async () => {
+		const refused = Object.assign(new Error('Request failed'), {
+			cause: Object.assign(new Error('connect ECONNREFUSED'), { code: 'ECONNREFUSED' }),
+		});
+		const error = await errorOf(() => new Error('not reached'), [[], refused]);
+		expect(error).toMatchObject({
+			context: { itemIndex: 1 },
+			failure: { cause: 'temporarily-unavailable' },
+		});
+	});
+
+	it('keeps the item index of a batch run unset', async () => {
+		const batch = echoItem.action('all', {
+			...fetchSpec,
+			flow: { effect: 'read', cardinality: 'batch' },
+			async *run() {
+				yield* [];
+				throw new UserError('bad batch');
+			},
+		});
+		const error = await executorOf(batch)(hostOf([], { items }).host).catch(
+			(caught: unknown) => caught,
+		);
+		expect(error).toBeInstanceOf(NodeOperationError);
+		expect(error).toMatchObject({
+			message: 'bad batch',
+			context: { itemIndex: undefined },
+			failure: { cause: 'configuration-invalid' },
+		});
+	});
+});
+
+describe('node errorOf', () => {
+	const slack = defineNode({
+		id: 'slack',
+		displayName: 'Slack',
+		baseUrl: 'https://slack.test',
+		errorOf: (body) =>
+			isRecord(body) && body.ok === false ? `Slack: ${String(body.error)}` : undefined,
+	});
+	const message = slack.resource('message');
+	const sent = t.obj({ ok: t.bool(), ts: t.str().optional() });
+	const spec = {
+		action: 'Send a message',
+		summary: 'Send a message.',
+		flow: { effect: 'write', cardinality: 'per-item' },
+		input: { text: t.str() },
+		output: t.loose(sent),
+	} as const;
+	const declarative = message.action('send', {
+		...spec,
+		request: { method: 'POST', path: '/chat.postMessage', body: { text: { input: 'text' } } },
+	});
+	const coded = message.action('post', {
+		...spec,
+		async run({ http, input }) {
+			return parse(
+				sent,
+				await http.request({ method: 'POST', path: '/chat.postMessage', body: input }),
+			);
+		},
+	});
+	const full = message.action('postFull', {
+		...spec,
+		async run({ http, input }) {
+			const response = await http.request({
+				method: 'POST',
+				path: '/chat.postMessage',
+				body: input,
+				fullResponse: true,
+			});
+			return parse(sent, isRecord(response) ? response.body : undefined);
+		},
+	});
+	const replies = [
+		{ ok: true, ts: '1' },
+		{ ok: true, ts: '2' },
+		{ ok: false, error: 'not_in_channel' },
+	];
+	const hostFor = (answers: unknown[]) =>
+		hostOf(answers, {
+			items: answers.map(() => ({ json: {} })),
+			parameter: (name, itemIndex) => (name === 'text' ? `hi ${itemIndex}` : undefined),
+		});
+
+	it.each([
+		['a declarative request', declarative, replies],
+		['a run() request', coded, replies],
+		[
+			'a run() request with the full response',
+			full,
+			replies.map((body) => ({ body, headers: {}, statusCode: 200 })),
+		],
+	])('fails the item of an in-band error in %s', async (_name, action, answers) => {
+		const error = await executorOf(action)(hostFor(answers).host).catch(
+			(caught: unknown) => caught,
+		);
+		expect(error).toBeInstanceOf(NodeOperationError);
+		expect(error).toMatchObject({
+			message: 'Slack: not_in_channel',
+			context: { itemIndex: 2 },
+			failure: { cause: 'configuration-invalid' },
+		});
+	});
+
+	it('passes a body without an in-band error', async () => {
+		const outputs = await executorOf(declarative)(hostFor(replies.slice(0, 2)).host);
+		expect(outputs[0]?.map(({ json: value }) => value)).toEqual([
+			{ ok: true, ts: '1' },
+			{ ok: true, ts: '2' },
+		]);
+	});
+
+	it('gives the in-band error to run() as a UserError it can catch', async () => {
+		const caught: unknown[] = [];
+		const tolerant = message.action('tolerant', {
+			...spec,
+			async run({ http, input }) {
+				try {
+					return parse(sent, await http.request({ method: 'POST', path: '/x', body: input }));
+				} catch (error) {
+					caught.push(error);
+					return { ok: false };
+				}
+			},
+		});
+		const { host } = hostOf([{ ok: false, error: 'not_in_channel' }], {
+			parameter: (name) => (name === 'text' ? 'hi' : undefined),
+		});
+		const outputs = await executorOf(tolerant)(host);
+		expect(outputs[0]?.map(({ json: value }) => value)).toEqual([{ ok: false }]);
+		expect(caught[0]).toBeInstanceOf(UserError);
+		expect(caught[0]).toMatchObject({ message: 'Slack: not_in_channel' });
 	});
 });
