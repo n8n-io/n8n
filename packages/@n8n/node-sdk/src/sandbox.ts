@@ -1872,18 +1872,18 @@ function sandboxedExecutor(
 }
 
 /**
- * The executor loader of a host with a sandbox: a bundle that `inProcess` trusts runs in this
- * process, every other bundle in the sandbox. Both paths use the same host imports, so the
+ * The executor loader of a host with a sandbox: a version that `inProcess` trusts, e.g. by its
+ * origin, runs in this process, every other version in the sandbox. Both paths use the same host imports, so the
  * egress, credential and limit checks are the same. A sandboxed version gets its credential
  * types from the credential manifests of the host, else from `options.credentialType`, so it
  * needs no HEAD bundle for them.
  */
 export function sandboxExecutorLoader(
 	options: SandboxOptions,
-	inProcess: (manifest: VersionManifest) => boolean = () => false,
+	inProcess: (frozen: FrozenVersion) => boolean = () => false,
 ): ExecutorLoader {
 	return async (frozen) =>
-		inProcess(frozen.manifest)
+		inProcess(frozen)
 			? await loadExecutor(frozen)
 			: (await sandboxedVersionOf(frozen, options)).executor;
 }

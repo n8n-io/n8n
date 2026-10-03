@@ -249,7 +249,7 @@ describe.skipIf(!existsSync(SIDECAR) || !existsSync(GUEST))('the sandbox', () =>
 	const outputOf = async (name: ProbeName, host = hostOf(), sandbox = options()) => {
 		const frozen = await freezeAction(path.join(dirs.root, 'probes.ts'), name);
 		const { executor } = await sandboxedVersionOf(
-			{ manifest: frozen.manifest, readBundle: async () => frozen.bundle },
+			{ manifest: frozen.manifest, origin: 'community', readBundle: async () => frozen.bundle },
 			sandbox,
 		);
 		const [[output] = []] = await executor(host);
@@ -405,7 +405,11 @@ describe.skipIf(!existsSync(SIDECAR) || !existsSync(GUEST))('the sandbox', () =>
 		const { egress: _, ...contract } = manifest.contract;
 		await expect(
 			sandboxedVersionOf(
-				{ manifest: { ...manifest, contract }, readBundle: async () => bundle },
+				{
+					manifest: { ...manifest, contract },
+					origin: 'community',
+					readBundle: async () => bundle,
+				},
 				options(),
 			),
 		).rejects.toThrow(

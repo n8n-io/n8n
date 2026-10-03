@@ -46,6 +46,8 @@ import {
 	importContractStore,
 	syncContractStore,
 	useContractRegistry,
+	originOf,
+	type ContractKeys,
 	type ContractRegistryOptions,
 	type ContractStoreOptions,
 	type InstanceStore,
@@ -130,6 +132,10 @@ const keyPair = () =>
 	});
 const { privateKey, publicKey } = keyPair();
 const strangerKey = keyPair().privateKey;
+const firstParty = keyPair();
+const vettingKeys = { firstParty: undefined, vetting: publicKey };
+const noKeys = { firstParty: undefined, vetting: undefined };
+const bothKeys = { firstParty: firstParty.publicKey, vetting: publicKey };
 
 interface Published {
 	readonly frozen: FrozenAction;
@@ -258,6 +264,7 @@ function frozenOf(version: string): FrozenAction {
 
 const bundled = (version: string): FrozenVersion => ({
 	manifest: frozenOf(version).manifest,
+	origin: 'first-party',
 	readBundle: async () => frozenOf(version).bundle,
 });
 
@@ -279,7 +286,7 @@ const contextOf = (metadata: ITaskMetadata[] = []) =>
 const storeOf = (options: Partial<ContractStoreOptions> = {}) =>
 	contractStore({
 		registryUrl: registry.url,
-		publicKey,
+		keys: vettingKeys,
 		store: instance.current.store,
 		fetch: async (url, init) => await fetch(url, init),
 		...options,
@@ -332,7 +339,7 @@ describe('contractVersionLoader', () => {
 	});
 
 	it('applies no newer patch without a trusted key or with a wrong signature', async () => {
-		expect(await run(locked('1.0.0'), { publicKey: undefined })).toEqual(['HELLO']);
+		expect(await run(locked('1.0.0'), { keys: noKeys })).toEqual(['HELLO']);
 		await publish(frozenOf('1.0.1'), strangerKey);
 		expect(await run(locked('1.0.0'))).toEqual(['HELLO']);
 	});
@@ -419,11 +426,9 @@ describe('contractStore', () => {
 			'demo.echo@1.0.0 (bundle',
 		);
 		await expect(run(locked('1.0.0'), { policy: 'strict' })).rejects.toThrow(
-			'is not signed by the trusted key',
+			'is not signed by a trusted key',
 		);
-		expect(await run(locked('1.0.0'), { policy: 'strict', publicKey: undefined })).toEqual([
-			'HELLO',
-		]);
+		expect(await run(locked('1.0.0'), { policy: 'strict', keys: noKeys })).toEqual(['HELLO']);
 	});
 
 	it('adds a version once and never replaces it', async () => {
@@ -492,18 +497,119 @@ describe('contractStore', () => {
 
 	it('serves only signed versions when a key is set', async () => {
 		await publish(frozenOf('1.0.0'), strangerKey);
-		await storeOf({ publicKey: undefined }).locked(lockOf('1.0.0'));
-		expect((await storeOf({ publicKey: undefined }).versions()).has('demo.echo')).toBe(true);
+		await storeOf({ keys: noKeys }).locked(lockOf('1.0.0'));
+		expect((await storeOf({ keys: noKeys }).versions()).has('demo.echo')).toBe(true);
 		expect((await storeOf().versions()).has('demo.echo')).toBe(false);
 		await expect(storeOf().locked(lockOf('1.0.0'))).rejects.toThrow(
-			'is not signed by the trusted key',
+			'is not signed by a trusted key',
 		);
 	});
 
 	it('runs a stored version as a newer patch only when its lock or signature allows it', async () => {
 		const store = storeOf();
 		const stored = await store.locked(lockOf('1.0.1'));
-		expect(await run(locked('1.0.0'), { publicKey: undefined }, [], stored)).toEqual(['HELLO']);
+		expect(await run(locked('1.0.0'), { keys: noKeys }, [], stored)).toEqual(['HELLO']);
+	});
+});
+
+describe('origin', () => {
+	const originsOfRows = () =>
+		[...instance.current.rows.values()].map(({ version, origin }) => [version, origin]);
+
+	it('takes the origin of a version from the key that signs it', () => {
+		const text = manifestTextOf(frozenOf('1.0.0').manifest);
+		const signedBy = (key: string) => ({ signatures: [signStoreManifest(text, key)] });
+		expect(originOf(signedBy(firstParty.privateKey), text, bothKeys)).toBe('first-party');
+		expect(originOf(signedBy(privateKey), text, bothKeys)).toBe('community');
+		expect(originOf(signedBy(strangerKey), text, bothKeys)).toBe('private');
+		expect(originOf({}, text, noKeys)).toBe('private');
+		expect(originOf(signedBy(firstParty.privateKey), text, vettingKeys)).toBe('private');
+	});
+
+	it('does not take the n8n namespace from an id', () => {
+		const text = manifestTextOf(frozenOf('1.0.0').manifest);
+		const line = { id: 'n8n.echo', signatures: [signStoreManifest(text, privateKey)] };
+		expect(originOf(line, text, bothKeys)).toBe('community');
+	});
+
+	it('records the origin at admission and serves it from the store', async () => {
+		await publish(frozenOf('1.0.0'), firstParty.privateKey);
+		const store = storeOf({ keys: bothKeys });
+		expect((await store.locked(lockOf('1.0.0'))).origin).toBe('first-party');
+		expect((await store.locked(lockOf('1.0.1'))).origin).toBe('community');
+		expect(originsOfRows()).toEqual([
+			['1.0.0', 'first-party'],
+			['1.0.1', 'community'],
+		]);
+		const reread = storeOf({ keys: bothKeys });
+		expect((await reread.versions()).get('demo.echo')?.map(({ origin }) => origin)).toEqual([
+			'community',
+		]);
+		expect((await reread.locked(lockOf('1.0.0'))).origin).toBe('first-party');
+	});
+
+	it('serves a first-party version with the origin that the keys prove now', async () => {
+		await publish(frozenOf('1.0.0'), firstParty.privateKey);
+		await storeOf({ keys: bothKeys }).locked(lockOf('1.0.0'));
+		const [[digest, row] = []] = [...instance.current.rows];
+		if (!digest || !row) throw new Error('no stored row');
+		const vettingSignature = signStoreManifest(row.manifestText, privateKey);
+		instance.current.rows.set(digest, {
+			...row,
+			signatures: [...(row.signatures ?? []), vettingSignature],
+		});
+		expect((await storeOf({ keys: bothKeys }).locked(lockOf('1.0.0'))).origin).toBe('first-party');
+		expect((await storeOf({ keys: vettingKeys }).locked(lockOf('1.0.0'))).origin).toBe('community');
+		expect((await storeOf({ keys: noKeys }).locked(lockOf('1.0.0'))).origin).toBe('private');
+	});
+
+	it('takes an unsigned version as private only without a key', async () => {
+		await publish(frozenOf('1.0.0'), strangerKey);
+		expect((await storeOf({ keys: noKeys }).locked(lockOf('1.0.0'))).origin).toBe('private');
+		instance.current = memoryStore();
+		await expect(storeOf({ keys: bothKeys }).locked(lockOf('1.0.0'))).rejects.toThrow(
+			'is not signed by a trusted key',
+		);
+	});
+
+	it('records the origin of each imported version', async () => {
+		const dir = await mkdtemp(path.join(dirs.root, 'origin-'));
+		await addToStore(
+			dir,
+			[
+				['1.0.0', firstParty.privateKey],
+				['1.0.1', privateKey],
+			].map(([version = '', key = '']) => {
+				const { manifest, bundle } = frozenOf(version);
+				const manifestText = manifestTextOf(manifest);
+				return { manifestText, bundle, signatures: [signStoreManifest(manifestText, key)] };
+			}),
+		);
+		await importContractStore(storeReader(storeFilesOfDir(dir)), instance.current.store, bothKeys);
+		expect(originsOfRows()).toEqual([
+			['1.0.0', 'first-party'],
+			['1.0.1', 'community'],
+		]);
+	});
+
+	it('applies a newer patch only from the origin of the locked version', async () => {
+		await publish(frozenOf('1.0.0'), firstParty.privateKey);
+		expect(await run(locked('1.0.0'), { keys: bothKeys })).toEqual(['HELLO']);
+		instance.current = memoryStore();
+		await publish(frozenOf('1.0.1'), firstParty.privateKey);
+		expect(await run(locked('1.0.0'), { keys: bothKeys })).toEqual(['hello?']);
+	});
+
+	it('applies only a first-party patch when the locked version does not load', async () => {
+		published.delete('1.0.0');
+		await writeRegistry();
+		const head: FrozenVersion = { ...bundled('1.0.1'), origin: 'community' };
+		await expect(run(locked('1.0.0'), { keys: bothKeys }, [], head)).rejects.toThrow(
+			'Cannot get demo.echo@1.0.0',
+		);
+		instance.current = memoryStore();
+		await publish(frozenOf('1.0.1'), firstParty.privateKey);
+		expect(await run(locked('1.0.0'), { keys: bothKeys }, [], head)).toEqual(['hello?']);
 	});
 });
 
@@ -542,8 +648,8 @@ describe('importContractStore and exportContractStore', () => {
 		return dir;
 	};
 
-	const importDir = async (dir: string) =>
-		await importContractStore(storeReader(storeFilesOfDir(dir)), instance.current.store, publicKey);
+	const importDir = async (dir: string, keys: ContractKeys = vettingKeys) =>
+		await importContractStore(storeReader(storeFilesOfDir(dir)), instance.current.store, keys);
 
 	it('exports the same layout bytes that it imported', async () => {
 		const dir = await sourceDir();
@@ -568,7 +674,7 @@ describe('importContractStore and exportContractStore', () => {
 
 	it('adds nothing without the trusted signature', async () => {
 		await expect(importDir(await sourceDir(strangerKey))).rejects.toThrow(
-			'is not signed by the trusted key',
+			'is not signed by a trusted key',
 		);
 		expect(instance.current.rows.size).toBe(0);
 	});
@@ -704,7 +810,7 @@ describe('contractStore with triggers and credentials', () => {
 
 	it('takes no credential manifest from the registry without a key', async () => {
 		const { trigger, lock } = await publishPing();
-		const store = storeOf({ publicKey: undefined });
+		const store = storeOf({ keys: noKeys });
 		expect((await store.locked(lock)).manifest).toEqual(trigger.manifest);
 		expect((await store.credentials()).has('pingApi')).toBe(false);
 	});
@@ -712,7 +818,7 @@ describe('contractStore with triggers and credentials', () => {
 	it('refuses a pinned credential manifest without the trusted signature', async () => {
 		const { lock } = await publishPing(strangerKey);
 		await expect(storeOf().locked(lock)).rejects.toThrow('ping.token@1.0.0 (sha256:');
-		expect((await storeOf({ publicKey: undefined }).credentials()).has('pingApi')).toBe(false);
+		expect((await storeOf({ keys: noKeys }).credentials()).has('pingApi')).toBe(false);
 	});
 });
 
@@ -793,16 +899,26 @@ describe('useContractRegistry', () => {
 		);
 		debug.mockRestore();
 	});
-	const [{ manifest }] = versionsOf('httpRequest.send');
+	const [embedded] = versionsOf('httpRequest.send');
 
-	it('runs only the versions that this package bundles in this process with the stored scope', () => {
+	it('runs only first-party versions in this process with the stored scope', () => {
 		const inProcess = inProcessOf('stored');
-		expect(inProcess?.(manifest)).toBe(true);
-		expect(inProcess?.({ ...manifest, bundleHash: 'sha256-stored' })).toBe(false);
+		if (!embedded) throw new Error('httpRequest.send is not bundled');
+		expect(embedded.origin).toBe('first-party');
+		expect(inProcess?.(embedded)).toBe(true);
+		expect(inProcess?.({ ...embedded, origin: 'community' })).toBe(false);
+		expect(inProcess?.({ ...embedded, origin: 'private' })).toBe(false);
 	});
 
 	it('runs every version in the sandbox with the all scope', () => {
-		expect(inProcessOf('all')?.(manifest)).toBe(false);
+		if (!embedded) throw new Error('httpRequest.send is not bundled');
+		expect(inProcessOf('all')?.(embedded)).toBe(false);
+	});
+
+	it('runs a first-party version from the registry in this process with the stored scope', async () => {
+		await publish(frozenOf('1.0.0'), firstParty.privateKey);
+		const version = await storeOf({ keys: bothKeys }).locked(lockOf('1.0.0'));
+		expect(inProcessOf('stored')?.(version)).toBe(true);
 	});
 
 	it('refuses a URL from input outside the input hosts in a node run', async () => {

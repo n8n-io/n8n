@@ -6,6 +6,7 @@ import {
 	setExecutorLoader,
 	setNodeContractRange,
 	setRunProfileListener,
+	type ContractOrigin,
 	type ContractVersionLoader,
 	type FrozenVersion,
 	type PayloadCapture,
@@ -49,10 +50,11 @@ export interface ContractStoreOptions {
 	 */
 	readonly registryUrl: string;
 	/**
-	 * PEM of the trusted publisher key. With it, the store takes and serves only signed versions.
-	 * Without it, no patch newer than the lock applies.
+	 * The keys that prove the origin of a version. With one of them, the store takes and serves
+	 * only versions that a key of them signs. Without both, the store takes unsigned versions as
+	 * `private`, and no patch newer than the lock applies.
 	 */
-	readonly publicKey: string | undefined;
+	readonly keys: ContractKeys;
 	/** The store of the instance. Each version that the registry gives goes into it. */
 	readonly store: InstanceStore;
 	/**
@@ -74,8 +76,8 @@ export interface ContractRegistryOptions {
 	/** The Node Contract versions a bundle may declare, e.g. `>=2.0.0 <3.0.0`. */
 	readonly nodeContractRange: string;
 	/**
-	 * Runs bundles in the WASM sandbox. `stored`: the versions that this package does not bundle.
-	 * `all`: every version. Without it, every bundle runs in this process.
+	 * Runs bundles in the WASM sandbox. `stored`: every version that is not first-party. `all`:
+	 * every version. Without it, every bundle runs in this process.
 	 */
 	readonly sandbox?: { readonly options: SandboxOptions; readonly scope: 'stored' | 'all' };
 	/** Gets the run profile of each node execution, e.g. for traces. Without it, nothing is recorded. */
@@ -94,10 +96,35 @@ export interface ContractRegistryOptions {
 	readonly hasOtherCredentialType?: (name: string) => boolean;
 }
 
+/** PEM of the public keys that prove the origin of a version. */
+export interface ContractKeys {
+	/** The first-party key of n8n. A version that it signs is `first-party`. */
+	readonly firstParty: string | undefined;
+	/** The vetting key of n8n. A version that it signs, and the first-party key does not, is `community`. */
+	readonly vetting: string | undefined;
+}
+
+const hasKey = ({ firstParty, vetting }: ContractKeys) => Boolean(firstParty) || Boolean(vetting);
+
+/**
+ * The origin of a version from the keys that sign its manifest bytes. An id has no namespace
+ * part, so only the first-party key puts a version in the `n8n` namespace. An id such as
+ * `n8n.echo` proves nothing.
+ */
+export function originOf(
+	line: Pick<StoreRecord, 'signatures'>,
+	manifestText: string,
+	{ firstParty, vetting }: ContractKeys,
+): ContractOrigin {
+	if (firstParty && verifyStoreSignature(line, manifestText, firstParty)) return 'first-party';
+	if (vetting && verifyStoreSignature(line, manifestText, vetting)) return 'community';
+	return 'private';
+}
+
 /**
  * The store of action versions that n8n does not bundle. Each version is checked before the
  * store takes it: the digests of its blobs, the manifest against the lock, and the publisher
- * signature when a key is set.
+ * signature when a key is set. The store records the origin of each version when it takes it.
  */
 export interface ContractStore {
 	readonly registryUrl: string;
@@ -117,14 +144,19 @@ export interface ContractStore {
 	credentials(): Promise<ReadonlyMap<string, CredentialManifest>>;
 }
 
-/** A version in the store of an instance: its bytes and the index line fields that identify it. */
+/**
+ * A version in the store of an instance: its bytes, the index line fields that identify it, and
+ * the origin that the store recorded when it took the version.
+ */
 export type StoredVersion = StoreVersion &
-	Pick<StoreRecord, 'id' | 'version' | 'kind' | 'manifest'>;
+	Pick<StoreRecord, 'id' | 'version' | 'kind' | 'manifest'> & {
+		readonly origin: ContractOrigin;
+	};
 
 /** A stored version without its bundle and fixtures. */
 export type StoredManifest = Pick<
 	StoredVersion,
-	'id' | 'version' | 'kind' | 'manifest' | 'manifestText' | 'signatures'
+	'id' | 'version' | 'kind' | 'manifest' | 'manifestText' | 'signatures' | 'origin'
 >;
 
 /**
@@ -175,10 +207,11 @@ export async function admitVersions(
 	return added;
 }
 
-/** A version of a store line and its bytes. */
+/** A version of a store line, its bytes and its origin. */
 const storedVersionOf = (
 	{ id, version, kind, manifest, signatures, published }: StoreRecord,
 	manifestText: string,
+	origin: ContractOrigin,
 	blobs: Pick<StoredVersion, 'bundle' | 'fixtures'> = {},
 ): StoredVersion => ({
 	id,
@@ -189,6 +222,7 @@ const storedVersionOf = (
 	...blobs,
 	signatures,
 	published,
+	origin,
 });
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -248,17 +282,16 @@ const INDEX_TTL_MS = 60_000;
 // An execution waits for a missing bundle, so a dead registry must fail it soon.
 const DEFAULT_FETCH_TIMEOUT_MS = 10_000;
 
-/** Versions that came from the store and not from the n8n release. */
-const storedVersions = new WeakSet<FrozenVersion>();
+/** A checked version and its origin. */
+type CheckedVersion = Pick<FrozenVersion, 'manifest' | 'origin'>;
 
 /** A version with its bundle, read and checked. */
-interface LoadedVersion {
-	readonly manifest: VersionManifest;
+interface LoadedVersion extends CheckedVersion {
 	readonly bundle: string;
 }
 
 export function contractStore(options: ContractStoreOptions): ContractStore {
-	const { registryUrl, publicKey, store } = options;
+	const { registryUrl, keys, store } = options;
 	const mayFetch = options.mayFetch ?? (() => true);
 	const timeoutMs = options.fetchTimeoutMs ?? DEFAULT_FETCH_TIMEOUT_MS;
 	const registryReader = registryUrl
@@ -271,11 +304,11 @@ export function contractStore(options: ContractStoreOptions): ContractStore {
 		: undefined;
 	const indexes = new Map<string, { at: number; records: Promise<StoreRecord[]> }>();
 	/** Stored versions by id, so a tolerant run does not read the store each time. */
-	const storedById = new Map<string, { at: number; records: Promise<VersionManifest[]> }>();
+	const storedById = new Map<string, { at: number; records: Promise<CheckedVersion[]> }>();
 	/** Loads in flight, so parallel executions download a version once. */
 	const loading = new Map<string, Promise<LoadedVersion>>();
-	/** Checked stored manifests and their digests by bundle hash. A stored version never changes. */
-	const stored = new Map<string, { manifest: VersionManifest; digest: string }>();
+	/** Checked stored versions and their digests by bundle hash. A stored version never changes. */
+	const stored = new Map<string, CheckedVersion & { digest: string }>();
 
 	const registryOf = () => {
 		if (!registryReader) throw new UserError('No registry is set');
@@ -305,37 +338,45 @@ export function contractStore(options: ContractStoreOptions): ContractStore {
 	const registryRecordsOf = async (id: string) =>
 		await cachedFor(indexes, id, async () => await registryOf().records(id));
 
-	/** Throws when a key is set and no signature of it covers the manifest bytes. */
-	const assertSigned = (
+	/** The origin of a version. Throws when a key is set and no key of them signs the manifest bytes. */
+	const signedOriginOf = (
 		line: Pick<StoreRecord, 'id' | 'version' | 'manifest' | 'bundle' | 'signatures'>,
 		text: string,
 	) => {
-		if (publicKey && !verifyStoreSignature(line, text, publicKey)) {
+		const origin = originOf(line, text, keys);
+		if (origin === 'private' && hasKey(keys)) {
 			const content = line.bundle ? `bundle ${line.bundle.slice('sha256:'.length)}` : line.manifest;
-			throw new UserError(
-				`${line.id}@${line.version} (${content}) is not signed by the trusted key`,
-			);
+			throw new UserError(`${line.id}@${line.version} (${content}) is not signed by a trusted key`);
 		}
+		return origin;
 	};
 
-	/** The manifest of a registry version with a bundle, signed by the trusted key when one is set. */
+	/** A registry version with a bundle, signed by a trusted key when one is set, and its origin. */
 	const registryManifest = async (record: StoreRecord) => {
 		const read = await registryOf().readManifest(record);
 		if (!read) throw new UserError(`The registry has no manifest ${record.manifest}`);
-		assertSigned(record, read.text);
+		const origin = signedOriginOf(record, read.text);
 		const { text, manifest } = read;
 		if (!isVersionManifest(manifest)) {
 			throw new UserError(`${record.id}@${record.version} has no bundle`);
 		}
-		return { text, manifest };
+		return { text, manifest, origin };
 	};
 
-	/** The manifest of a stored version, signed by the trusted key when one is set. */
-	const storedManifestOf = (entry: StoredManifest) => {
+	/**
+	 * A stored version, signed by a trusted key when one is set. The origin is the one that the
+	 * store recorded when it took the version. A key change never raises it, but a `first-party`
+	 * version that the first-party key no longer proves gets the origin that the keys prove now.
+	 */
+	const storedManifestOf = (entry: StoredManifest): CheckedVersion => {
 		const manifest = parseManifest(entry.manifestText);
-		assertSigned({ ...entry, bundle: bundleDigestOf(manifest.bundleHash) }, entry.manifestText);
-		stored.set(manifest.bundleHash, { manifest, digest: entry.manifest });
-		return manifest;
+		const origin = signedOriginOf(
+			{ ...entry, bundle: bundleDigestOf(manifest.bundleHash) },
+			entry.manifestText,
+		);
+		const checked = { manifest, origin: entry.origin === 'first-party' ? origin : entry.origin };
+		stored.set(manifest.bundleHash, { ...checked, digest: entry.manifest });
+		return checked;
 	};
 
 	/**
@@ -352,11 +393,11 @@ export function contractStore(options: ContractStoreOptions): ContractStore {
 			}
 		});
 
-	/** The stored credential manifests, signed by the trusted key when one is set. A bad one is skipped. */
+	/** The stored credential manifests, signed by a trusted key when one is set. A bad one is skipped. */
 	const storedCredentials = async () =>
 		(await store.credentialManifests()).flatMap((entry) => {
 			try {
-				assertSigned(entry, entry.manifestText);
+				signedOriginOf(entry, entry.manifestText);
 				return [parseCredentialManifest(entry.manifestText)];
 			} catch {
 				return [];
@@ -370,7 +411,7 @@ export function contractStore(options: ContractStoreOptions): ContractStore {
 	 * nothing comes: the lock anchors the bundle only, not a credential manifest.
 	 */
 	const pinnedCredentials = async (manifest: VersionManifest): Promise<StoredVersion[]> => {
-		if (!publicKey) return [];
+		if (!hasKey(keys)) return [];
 		const bundled = new Set(bundledCredentialsOf().map((entry) => entry.manifest.name));
 		const have = await storedCredentials();
 		const missing = (manifest.credentials ?? []).flatMap((pin) => {
@@ -396,11 +437,11 @@ export function contractStore(options: ContractStoreOptions): ContractStore {
 					.at(-1);
 				const read = record && (await registry.readManifest(record));
 				if (!record || !read) return [];
-				assertSigned(record, read.text);
+				const origin = signedOriginOf(record, read.text);
 				if (read.manifest.kind !== 'credential') {
 					throw new UserError(`${record.id}@${record.version} is not a credential type`);
 				}
-				return [storedVersionOf(record, read.text)];
+				return [storedVersionOf(record, read.text, origin)];
 			}),
 		);
 		return found.flat();
@@ -411,10 +452,10 @@ export function contractStore(options: ContractStoreOptions): ContractStore {
 		const entry = (await store.manifests(lock.action)).find(
 			({ version }) => version === lock.version,
 		);
-		const manifest = entry && storedManifestOf(entry);
-		if (!entry || manifest?.bundleHash !== lock.bundleHash) return undefined;
+		const checked = entry && storedManifestOf(entry);
+		if (!entry || checked?.manifest.bundleHash !== lock.bundleHash) return undefined;
 		const bundle = await store.bundle(entry.manifest);
-		return bundle === undefined ? undefined : { manifest, bundle };
+		return bundle === undefined ? undefined : { ...checked, bundle };
 	};
 
 	/** Copies a registry version into the store when its manifest matches `expected`. */
@@ -424,16 +465,14 @@ export function contractStore(options: ContractStoreOptions): ContractStore {
 		const bundle = await registryOf().blob(bundleDigestOf(expected.bundleHash));
 		if (!bundle) throw new UserError(`The registry has no bundle ${expected.bundleHash}`);
 		const code = bundle.toString('utf8');
+		const { manifest, origin } = checked;
 		await admitVersions(store, [
-			...(await pinnedCredentials(checked.manifest)),
-			storedVersionOf(record, checked.text, { bundle: code }),
+			...(await pinnedCredentials(manifest)),
+			storedVersionOf(record, checked.text, origin, { bundle: code }),
 		]);
 		storedById.delete(record.id);
-		stored.set(checked.manifest.bundleHash, {
-			manifest: checked.manifest,
-			digest: record.manifest,
-		});
-		return { manifest: checked.manifest, bundle: code };
+		stored.set(manifest.bundleHash, { manifest, origin, digest: record.manifest });
+		return { manifest, origin, bundle: code };
 	};
 
 	const fromRegistry = async (lock: NodeContractLock) => {
@@ -467,14 +506,11 @@ export function contractStore(options: ContractStoreOptions): ContractStore {
 	};
 
 	/** The bundle loads on the first execution. */
-	const storedVersion = (manifest: VersionManifest): FrozenVersion => {
-		const version = {
-			manifest,
-			readBundle: async () => (await load(lockOf(manifest))).bundle,
-		};
-		storedVersions.add(version);
-		return version;
-	};
+	const storedVersion = ({ manifest, origin }: CheckedVersion): FrozenVersion => ({
+		manifest,
+		origin,
+		readBundle: async () => (await load(lockOf(manifest))).bundle,
+	});
 
 	const isNewerPatch = (
 		lock: NodeContractLock,
@@ -499,7 +535,7 @@ export function contractStore(options: ContractStoreOptions): ContractStore {
 			async () => await storedManifests(lock.action),
 		).catch(() => []);
 		return stored
-			.filter((manifest) => isNewerPatch(lock, { ...manifest, version: manifest.semver }))
+			.filter(({ manifest }) => isNewerPatch(lock, { ...manifest, version: manifest.semver }))
 			.map(storedVersion);
 	};
 
@@ -507,37 +543,38 @@ export function contractStore(options: ContractStoreOptions): ContractStore {
 		registryUrl,
 
 		async bundleHashes() {
-			return new Set((await storedManifests()).map(({ bundleHash }) => bundleHash));
+			return new Set((await storedManifests()).map(({ manifest }) => manifest.bundleHash));
 		},
 
 		async locked(lock) {
 			const known = stored.get(lock.bundleHash);
 			if (known && !mismatchOf(known.manifest, lock) && (await store.has(known.digest))) {
-				return storedVersion(known.manifest);
+				return storedVersion(known);
 			}
-			return storedVersion((await load(lock)).manifest);
+			return storedVersion(await load(lock));
 		},
 
 		async versions() {
-			const newest = (await storedManifests()).reduce((byMajor, manifest) => {
-				const key = `${manifest.id}@${manifest.contract.version}`;
+			const newest = (await storedManifests()).reduce((byMajor, checked) => {
+				const { id, contract, semver } = checked.manifest;
+				const key = `${id}@${contract.version}`;
 				const best = byMajor.get(key);
-				return best && compareSemver(best.semver, manifest.semver) >= 0
+				return best && compareSemver(best.manifest.semver, semver) >= 0
 					? byMajor
-					: new Map(byMajor).set(key, manifest);
-			}, new Map<string, VersionManifest>());
+					: new Map(byMajor).set(key, checked);
+			}, new Map<string, CheckedVersion>());
 			return [...newest.values()].reduce(
-				(byAction, manifest) =>
-					byAction.set(manifest.id, [
-						...(byAction.get(manifest.id) ?? []),
-						storedVersion(manifest),
+				(byAction, checked) =>
+					byAction.set(checked.manifest.id, [
+						...(byAction.get(checked.manifest.id) ?? []),
+						storedVersion(checked),
 					]),
 				new Map<string, FrozenVersion[]>(),
 			);
 		},
 
 		async newerPatches(lock) {
-			if (!publicKey) return [];
+			if (!hasKey(keys)) return [];
 			if (!registryReader || !mayFetch()) return await storedPatches(lock);
 			const records = await registryRecordsOf(lock.action).catch(() => []);
 			const candidates = records.filter((record) => isNewerPatch(lock, record));
@@ -546,15 +583,13 @@ export function contractStore(options: ContractStoreOptions): ContractStore {
 					if (!record.bundle) return [];
 					const bundleHash = record.bundle.slice('sha256:'.length);
 					const expected = { ...lock, version: record.version, bundleHash };
-					const known = stored.get(bundleHash)?.manifest;
-					if (known && !mismatchOf(known, expected)) return [storedVersion(known)];
+					const known = stored.get(bundleHash);
+					if (known && !mismatchOf(known.manifest, expected)) return [storedVersion(known)];
 					// A tampered or unsigned patch never runs; the locked version runs instead.
 					const version =
 						(await fromStore(expected).catch(() => undefined)) ??
 						(await download(record, expected).catch(() => undefined));
-					return version && !mismatchOf(version.manifest, expected)
-						? [storedVersion(version.manifest)]
-						: [];
+					return version && !mismatchOf(version.manifest, expected) ? [storedVersion(version)] : [];
 				}),
 			);
 			return patches.flat();
@@ -600,12 +635,15 @@ export function contractVersionLoader(options: ContractRegistryOptions): Contrac
 						.catch((error: unknown) =>
 							error instanceof Error ? error : new UserError(String(error)),
 						);
-		// The bundled HEAD may be a newer patch of the locked contract. A stored version may
-		// not: without a signature check, only its lock makes it trusted.
+		// A first-party HEAD may be a newer patch of the locked contract, as a release ships it.
+		// Another HEAD may not: only its lock makes it trusted. A signed patch must have the origin
+		// of the locked version, so that a vetting key cannot patch a first-party version. When the
+		// locked version does not load, its origin is not known, so only a first-party patch applies.
+		const origin = locked instanceof Error ? 'first-party' : locked.origin;
 		const trusted = [
-			...(storedVersions.has(head) ? [] : [head]),
+			...(head.origin === 'first-party' ? [head] : []),
 			...(locked instanceof Error ? [] : [locked]),
-			...newer,
+			...newer.filter((version) => version.origin === origin),
 		];
 		const manifests = trusted.map((version) => version.manifest);
 		const manifest = (() => {
@@ -631,11 +669,8 @@ const bundledVersionsOf = (actionId: string) => {
 
 const bundledHead = (actionId: string) => bundledVersionsOf(actionId)[0];
 
-/** n8n builds and ships a bundled version with this package, so it may run in this process. */
-const isBundled = (manifest: VersionManifest) =>
-	bundledVersionsOf(manifest.id).some(
-		(version) => version.manifest.bundleHash === manifest.bundleHash,
-	);
+/** Only n8n vouches for a first-party version, so only it may run in this process. */
+const isFirstParty = ({ origin }: FrozenVersion) => origin === 'first-party';
 
 /**
  * The credential manifest of a name: the bundled one, which n8n registers and signs with, else
@@ -665,7 +700,7 @@ export const useContractRegistry = (options: ContractRegistryOptions) => {
 	if (options.sandbox) {
 		const { scope } = options.sandbox;
 		setExecutorLoader(
-			sandboxExecutorLoader(options.sandbox.options, scope === 'all' ? () => false : isBundled),
+			sandboxExecutorLoader(options.sandbox.options, scope === 'all' ? () => false : isFirstParty),
 		);
 		// Without the warm-up, the first sandboxed run compiles the guest, so a failure only costs time.
 		void warmSandbox(options.sandbox.options).catch((error: unknown) =>
@@ -742,17 +777,21 @@ export async function syncContractStore(
 	};
 }
 
-/** A version of a store, after its blobs, its index line and, with a key, its signature are checked. */
+/**
+ * A version of a store and its origin, after its blobs, its index line and, with a key, its
+ * signature are checked.
+ */
 async function verifiedVersionOf(
 	source: StoreReader,
 	record: StoreRecord,
-	publicKey: string | undefined,
+	keys: ContractKeys,
 ): Promise<StoredVersion> {
 	const at = `${record.id}@${record.version}`;
 	const read = await source.readManifest(record);
 	if (!read) throw new UserError(`The store has no manifest of ${at}`);
-	if (publicKey && !verifyStoreSignature(record, read.text, publicKey)) {
-		throw new UserError(`${at} is not signed by the trusted key`);
+	const origin = originOf(record, read.text, keys);
+	if (origin === 'private' && hasKey(keys)) {
+		throw new UserError(`${at} is not signed by a trusted key`);
 	}
 	const textOf = async (digest: string | undefined) => {
 		if (digest === undefined) return undefined;
@@ -760,26 +799,27 @@ async function verifiedVersionOf(
 		if (!bytes) throw new UserError(`The store has no blob ${digest} of ${at}`);
 		return bytes.toString('utf8');
 	};
-	return storedVersionOf(record, read.text, {
+	return storedVersionOf(record, read.text, origin, {
 		bundle: await textOf(record.bundle),
 		fixtures: await textOf(record.fixtures),
 	});
 }
 
 /**
- * Puts each version of a store, e.g. an export or a registry folder, into the instance store.
- * It first checks every version: the digest of each blob, the index line against its manifest,
- * and the signature when a key is set. When one check fails, it adds nothing.
+ * Puts each version of a store, e.g. an export or a registry folder, into the instance store
+ * with its origin. It first checks every version: the digest of each blob, the index line
+ * against its manifest, and the signature when a key is set. When one check fails, it adds
+ * nothing.
  */
 export async function importContractStore(
 	source: StoreReader,
 	store: InstanceStore,
-	publicKey: string | undefined,
+	keys: ContractKeys,
 ): Promise<StoredVersion[]> {
 	const ids = [...new Set((await source.catalog()).map(({ id }) => id))];
 	const records = (await Promise.all(ids.map(async (id) => await source.records(id)))).flat();
 	const versions = await Promise.all(
-		records.map(async (record) => await verifiedVersionOf(source, record, publicKey)),
+		records.map(async (record) => await verifiedVersionOf(source, record, keys)),
 	);
 	return await admitVersions(store, versions);
 }

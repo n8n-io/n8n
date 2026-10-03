@@ -119,6 +119,7 @@ export {
 	locksOf,
 	syncContractStore,
 	useContractRegistry,
+	type ContractKeys,
 	type ContractRegistryOptions,
 	type ContractStore,
 	type ContractStoreOptions,

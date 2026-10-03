@@ -275,9 +275,22 @@ export class InstanceAiConfig {
 	@Env('N8N_NODE_CONTRACTS_REGISTRY_URL')
 	nodeContractsRegistryUrl: string = '';
 
-	/** PEM file of the trusted ed25519 publisher key. Empty: no newer patch applies. */
-	@Env('N8N_NODE_CONTRACTS_PUBLIC_KEY_FILE')
-	nodeContractsPublicKeyFile: string = '';
+	/**
+	 * PEM file of the ed25519 first-party key of n8n. A version that it signs is first-party and
+	 * runs in the n8n process when `N8N_NODE_CONTRACT_SANDBOX` is `stored`. When one of the key
+	 * files is set, the store takes only versions that one of the keys signs. When both are empty,
+	 * the store takes unsigned versions as private, and no newer patch applies.
+	 */
+	@Env('N8N_NODE_CONTRACTS_FIRST_PARTY_KEY_FILE')
+	nodeContractsFirstPartyKeyFile: string = '';
+
+	/**
+	 * PEM file of the ed25519 vetting key of n8n. A version that it signs, and the first-party key
+	 * does not, is a community version and runs in the sandbox when `N8N_NODE_CONTRACT_SANDBOX` is
+	 * `stored`.
+	 */
+	@Env('N8N_NODE_CONTRACTS_VETTING_KEY_FILE')
+	nodeContractsVettingKeyFile: string = '';
 
 	/**
 	 * The Node Contract versions a manifest or bundle may declare, as a semver range. Raise the
@@ -287,9 +300,10 @@ export class InstanceAiConfig {
 	nodeContractRange: string = '>=2.0.0 <3.0.0';
 
 	/**
-	 * Where contract bundles run. `off`: in the n8n process. `stored`: a version that n8n does
-	 * not bundle runs in the WASM sandbox, the bundled versions in the n8n process. `all`: every
-	 * version runs in the sandbox.
+	 * Where contract bundles run. `off`: in the n8n process. `stored`: a version that is not
+	 * first-party runs in the WASM sandbox. A first-party version runs in the n8n process: a
+	 * version of the release, or a version that the first-party key signs. `all`: every version
+	 * runs in the sandbox.
 	 */
 	@Env('N8N_NODE_CONTRACT_SANDBOX', nodeContractSandboxSchema)
 	nodeContractSandbox: z.infer<typeof nodeContractSandboxSchema> = 'off';

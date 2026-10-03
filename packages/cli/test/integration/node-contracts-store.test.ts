@@ -158,7 +158,7 @@ beforeAll(async () => {
 	Object.assign(Container.get(GlobalConfig).instanceAi, {
 		nodeContractsEnabled: true,
 		nodeContractsRegistryUrl: registry.url,
-		nodeContractsPublicKeyFile: publicKeyFile,
+		nodeContractsVettingKeyFile: publicKeyFile,
 		nodeContractsUpdatePolicy: 'strict',
 		nodeContractRange: '>=2.0.0 <3.0.0',
 	});
@@ -171,6 +171,7 @@ beforeAll(async () => {
 			kind: 'action',
 			manifest: `sha256:${createHash('sha256').update(head.version.manifestText).digest('hex')}`,
 			...head.version,
+			origin: 'community',
 		},
 	]);
 	await useNodeContractsRegistry();

@@ -56,7 +56,8 @@ describe.skipIf(!built)('node contracts in the sandbox', () => {
 		Object.assign(Container.get(GlobalConfig).instanceAi, {
 			nodeContractsEnabled: true,
 			nodeContractsRegistryUrl: '',
-			nodeContractsPublicKeyFile: '',
+			nodeContractsFirstPartyKeyFile: '',
+			nodeContractsVettingKeyFile: '',
 			nodeContractsUpdatePolicy: 'strict',
 			nodeContractRange: '>=2.0.0 <3.0.0',
 			nodeContractSandboxSidecar: sidecar,
@@ -130,7 +131,7 @@ describe.skipIf(!built)('node contracts in the sandbox', () => {
 		expect(existsSync(cacheDir())).toBe(false);
 	});
 
-	it('runs a bundled version in the n8n process when the sandbox takes stored versions only', async () => {
+	it('runs a first-party version in the n8n process when the sandbox is stored', async () => {
 		expect(await runSend('stored')).toEqual({
 			status: 'success',
 			items: [{ received: { name: 'Ada' } }],

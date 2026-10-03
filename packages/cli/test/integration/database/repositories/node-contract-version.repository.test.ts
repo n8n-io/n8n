@@ -73,6 +73,7 @@ const storedOf = (version: StoreVersion, semver: string): StoredVersion => ({
 	fixtures: version.fixtures,
 	signatures: [],
 	published: version.published,
+	origin: 'community',
 });
 
 /** Every file of a directory and its bytes. */
@@ -123,6 +124,7 @@ describe('NodeContractVersionRepository', () => {
 				manifest: stored.manifest,
 				manifestText: older.manifestText,
 				signatures: [],
+				origin: 'community',
 			},
 		]);
 		expect(await rows.manifests('other.id')).toEqual([]);
@@ -141,6 +143,7 @@ describe('NodeContractVersionRepository', () => {
 			manifest: digestOf(manifestText),
 			manifestText,
 			signatures: [],
+			origin: 'private' as const,
 		});
 		const credential = rowOf('ping.token', 'credential', '{"kind":"credential"}\n');
 		const native = rowOf('ping.called', 'trigger', '{"native":{}}\n');
@@ -163,12 +166,19 @@ describe('NodeContractVersionRepository', () => {
 		await sdk.addToStore(source, await versions());
 		const { rows } = Container.get(NodeContractsStore);
 
-		const added = await importContractStore(
-			storeReader(storeFilesOfDir(source)),
-			rows,
-			keys.publicKey,
+		const added = await importContractStore(storeReader(storeFilesOfDir(source)), rows, {
+			firstParty: keys.publicKey,
+			vetting: undefined,
+		});
+		expect(added.map(({ origin }) => origin)).toEqual(['first-party', 'first-party']);
+		expect(
+			(await rows.manifests('httpRequest.get')).map(({ version, origin }) => [version, origin]),
+		).toEqual(
+			expect.arrayContaining([
+				['2.0.0', 'first-party'],
+				[expect.any(String), 'first-party'],
+			]),
 		);
-		expect(added).toHaveLength(2);
 		const out = path.join(state.dir, 'export');
 		await exportContractStore(rows, out);
 

@@ -1946,10 +1946,21 @@ export function toNodeType<S extends Shape, O extends AnySchema>(
 	};
 }
 
-/** A frozen action version: its manifest and a reader for its bundle. */
+/**
+ * Who vouches for a version. The host records it when the version enters its store. It
+ * decides only where the bundle runs, not what the bundle may do:
+ * - `first-party`: n8n ships it in the release, or signs it with the first-party key.
+ * - `community`: n8n reviewed it and signs it with the vetting key.
+ * - `private`: no trusted key signs it, e.g. a version that the lock alone anchors.
+ */
+export type ContractOrigin = 'first-party' | 'community' | 'private';
+
+/** A frozen action version: its manifest, its origin and a reader for its bundle. */
 export interface FrozenVersion {
 	/** The version manifest. */
 	readonly manifest: VersionManifest;
+	/** Who vouches for the version. The host runs only `first-party` bundles out of the sandbox. */
+	readonly origin: ContractOrigin;
 	/** Reads the bundle code. The host checks it against `manifest.bundleHash`. */
 	readBundle(): Promise<string>;
 }

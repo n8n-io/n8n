@@ -26,6 +26,7 @@ import {
 } from 'n8n-workflow';
 
 import { ForbiddenError } from '@n8n/errors';
+import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import { InstanceWriteAccessService } from '@/services/instance-write-access.service';
 import { OwnershipService } from '@/services/ownership.service';
@@ -47,12 +48,6 @@ export function isAllowedNode(s: string): s is AllowedNode {
 	return ALLOWED_NODES.includes(s as AllowedNode);
 }
 
-/**
- * Node contracts run in the node-sdk runtime. It gives data tables only to an action whose
- * contract imports `dataTables`, so the nodes of the package can have the proxy.
- */
-const CONTRACT_NODES_PREFIX = '@n8n/nodes-base-next.';
-
 @Service()
 export class DataTableProxyService implements DataTableProxyProvider {
 	constructor(
@@ -61,6 +56,7 @@ export class DataTableProxyService implements DataTableProxyProvider {
 		private readonly ownershipService: OwnershipService,
 		private readonly logger: Logger,
 		private readonly instanceWriteAccess: InstanceWriteAccessService,
+		private readonly loadNodesAndCredentials: LoadNodesAndCredentials,
 	) {
 		this.logger = this.logger.scoped('data-table');
 	}
@@ -73,10 +69,13 @@ export class DataTableProxyService implements DataTableProxyProvider {
 		}
 	}
 
-	private validateRequest(node: INode) {
-		if (!isAllowedNode(node.type) && !node.type.startsWith(CONTRACT_NODES_PREFIX)) {
-			throw new Error('This proxy is only available for Data table nodes');
-		}
+	/** A contract node gets the proxy only when the manifest of its version imports `dataTables`. */
+	private async validateRequest(node: INode) {
+		if (isAllowedNode(node.type)) return;
+		const { contractImportsOf } = await import('@/node-contracts-registry.js');
+		if (contractImportsOf(this.loadNodesAndCredentials.loaders, node).includes('dataTables'))
+			return;
+		throw new Error('This proxy is only available for Data table nodes');
 	}
 
 	private async getProjectId(workflow: Workflow) {
@@ -89,7 +88,7 @@ export class DataTableProxyService implements DataTableProxyProvider {
 		node: INode,
 		projectId?: string,
 	): Promise<IDataTableProjectAggregateService> {
-		this.validateRequest(node);
+		await this.validateRequest(node);
 		projectId = projectId ?? (await this.getProjectId(workflow));
 
 		return this.makeAggregateOperations(projectId);
@@ -101,7 +100,7 @@ export class DataTableProxyService implements DataTableProxyProvider {
 		dataTableId: string,
 		projectId?: string,
 	): Promise<IDataTableProjectService> {
-		this.validateRequest(node);
+		await this.validateRequest(node);
 		projectId = projectId ?? (await this.getProjectId(workflow));
 
 		try {

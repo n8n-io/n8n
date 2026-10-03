@@ -648,6 +648,7 @@ describe('published versions', () => {
 	};
 	const frozenOf = (manifest: VersionManifest, bundle: string): FrozenVersion => ({
 		manifest,
+		origin: 'first-party',
 		readBundle: async () => bundle,
 	});
 
@@ -744,6 +745,7 @@ describe('published versions', () => {
 		const reads = { count: 0 };
 		const flaky: FrozenVersion = {
 			manifest,
+			origin: 'first-party',
 			readBundle: async () => {
 				reads.count += 1;
 				if (reads.count === 1) throw new Error('offline');

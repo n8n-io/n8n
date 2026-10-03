@@ -19,6 +19,7 @@ export {
 	toNodeType,
 	toVersionedNodeType,
 	toVersionedToolType,
+	type ContractOrigin,
 	type ContractVersionLoader,
 	type CredentialManifestOf,
 	type Executor,

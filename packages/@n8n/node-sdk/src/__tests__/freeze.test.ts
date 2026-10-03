@@ -154,6 +154,7 @@ describe('the manifest as the permission source', () => {
 		const { manifest, bundle } = state.frozen;
 		return {
 			manifest: { ...manifest, contract: { ...manifest.contract, ...contract } },
+			origin: 'first-party',
 			readBundle: async () => bundle,
 		};
 	};

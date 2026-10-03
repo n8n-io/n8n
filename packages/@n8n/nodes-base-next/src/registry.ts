@@ -29,11 +29,14 @@ const manifestOf = (dir: string, record: StoreRecord) =>
 
 const catalogOf = (dir: string) => parseStoreCatalog(textOf(dir, STORE_CATALOG_FILE));
 
-/** The bundled versions of an action, newest first. Other versions come from the registry. */
+/**
+ * The bundled versions of an action, newest first. Other versions come from the registry. They
+ * ship in the release, so they are first-party without a key check.
+ */
 export function versionsOf(actionId: string, dir = EMBEDDED_STORE_DIR): FrozenVersion[] {
 	const blobs = storeReader(storeFilesOfDir(dir));
 	return parseStoreIndex(textOf(dir, storeIndexFileOf(actionId)), actionId)
-		.flatMap((record) => {
+		.flatMap((record): FrozenVersion[] => {
 			const manifest = manifestOf(dir, record);
 			if (!isVersionManifest(manifest)) return [];
 			const readBundle = async () => {
@@ -41,7 +44,7 @@ export function versionsOf(actionId: string, dir = EMBEDDED_STORE_DIR): FrozenVe
 				if (!bundle) throw new UnexpectedError(`The embedded store has no bundle of ${actionId}`);
 				return bundle.toString('utf8');
 			};
-			return [{ manifest, readBundle }];
+			return [{ manifest, origin: 'first-party', readBundle }];
 		})
 		.sort((a, b) => compareSemver(b.manifest.semver, a.manifest.semver));
 }

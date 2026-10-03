@@ -59,6 +59,7 @@ const frozen: FrozenVersion = {
 		bundleHash: sha256(bundle),
 		contract: toContract(query),
 	},
+	origin: 'first-party',
 	readBundle: async () => bundle,
 };
 

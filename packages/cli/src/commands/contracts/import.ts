@@ -18,7 +18,7 @@ const flagsSchema = z.object({
 @Command({
 	name: 'contracts:import',
 	description:
-		'Puts each version of a store folder into the node contracts store. It checks every digest, and every signature when N8N_NODE_CONTRACTS_PUBLIC_KEY_FILE is set. When one check fails, it adds nothing.',
+		'Puts each version of a store folder into the node contracts store, with the origin of its signing key. It checks every digest, and every signature when N8N_NODE_CONTRACTS_FIRST_PARTY_KEY_FILE or N8N_NODE_CONTRACTS_VETTING_KEY_FILE is set. When one check fails, it adds nothing.',
 	examples: ['--input=/mnt/node-contracts', '--input=file:///mnt/node-contracts'],
 	flagsSchema,
 })
@@ -39,11 +39,7 @@ export class ContractsImportCommand extends BaseCommand<z.infer<typeof flagsSche
 			throw new UserError(`${dir} is not a store folder: it has no ${STORE_CATALOG_FILE}`);
 		}
 		const store = Container.get(NodeContractsStore);
-		const added = await importContractStore(
-			storeReader(files),
-			store.rows,
-			await store.publicKey(),
-		);
+		const added = await importContractStore(storeReader(files), store.rows, await store.keys());
 		if (added.length > 0) await store.reloadOtherMains();
 		this.logger.info(`Added ${added.length} versions to the node contracts store`);
 	}

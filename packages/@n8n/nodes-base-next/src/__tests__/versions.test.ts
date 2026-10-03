@@ -417,7 +417,8 @@ describe('credential manifests', () => {
 });
 
 const REGISTRY_URL = process.env.N8N_NODE_CONTRACTS_REGISTRY_URL;
-const PUBLIC_KEY_FILE = process.env.N8N_NODE_CONTRACTS_PUBLIC_KEY_FILE;
+// This package publishes first-party versions.
+const FIRST_PARTY_KEY_FILE = process.env.N8N_NODE_CONTRACTS_FIRST_PARTY_KEY_FILE;
 
 // Old versions live only in the registry, so this check runs where one is configured.
 describe.skipIf(!REGISTRY_URL)('published versions', () => {
@@ -425,7 +426,7 @@ describe.skipIf(!REGISTRY_URL)('published versions', () => {
 		const registry = storeReader(
 			storeFilesOfUrl(REGISTRY_URL ?? '', async (url) => await fetch(url)),
 		);
-		const publicKey = PUBLIC_KEY_FILE ? readFileSync(PUBLIC_KEY_FILE, 'utf8') : undefined;
+		const publicKey = FIRST_PARTY_KEY_FILE ? readFileSync(FIRST_PARTY_KEY_FILE, 'utf8') : undefined;
 		const issues = await Promise.all(
 			actions.map(async ({ id }) => {
 				const replayed = await Promise.all(

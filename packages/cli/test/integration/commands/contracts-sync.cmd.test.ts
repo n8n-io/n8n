@@ -94,7 +94,7 @@ beforeAll(async () => {
 	);
 	Object.assign(Container.get(GlobalConfig).instanceAi, {
 		nodeContractsRegistryUrl: `http://127.0.0.1:${port}`,
-		nodeContractsPublicKeyFile: publicKeyFile,
+		nodeContractsVettingKeyFile: publicKeyFile,
 	});
 });
 

@@ -54,7 +54,8 @@ describe('useNodeContractsRegistry', () => {
 		instanceAi: {
 			nodeContractsUpdatePolicy: 'strict',
 			nodeContractsRegistryUrl: 'http://registry.test',
-			nodeContractsPublicKeyFile: '',
+			nodeContractsFirstPartyKeyFile: '',
+			nodeContractsVettingKeyFile: '',
 			nodeContractRange: '>=2.0.0 <3.0.0',
 			nodeContractSandbox: 'off',
 			nodeContractTracePayloads: 'off',
@@ -88,7 +89,7 @@ describe('useNodeContractsRegistry', () => {
 			nodeContractRange: '>=2.0.0 <3.0.0',
 			store: {
 				registryUrl: 'http://registry.test',
-				publicKey: undefined,
+				keys: { firstParty: undefined, vetting: undefined },
 				store: Container.get(NodeContractsStore).rows,
 			},
 		});
@@ -192,6 +193,24 @@ describe('useNodeContractsRegistry', () => {
 		expect(mayFetch?.()).toBe(false);
 		Object.assign(instanceSettings, { instanceType: 'main' });
 	});
+
+	it('reads the first-party key and the vetting key from their files', async () => {
+		const dir = await mkdtemp(path.join(tmpdir(), 'node-contract-keys-'));
+		const { instanceAi } = globalConfig;
+		try {
+			await writeFile(path.join(dir, 'first-party.pem'), 'FIRST');
+			await writeFile(path.join(dir, 'vetting.pem'), 'VETTING');
+			instanceAi.nodeContractsFirstPartyKeyFile = path.join(dir, 'first-party.pem');
+			const store = Container.get(NodeContractsStore);
+			expect(await store.keys()).toEqual({ firstParty: 'FIRST', vetting: undefined });
+			instanceAi.nodeContractsVettingKeyFile = path.join(dir, 'vetting.pem');
+			expect(await store.keys()).toEqual({ firstParty: 'FIRST', vetting: 'VETTING' });
+		} finally {
+			instanceAi.nodeContractsFirstPartyKeyFile = '';
+			instanceAi.nodeContractsVettingKeyFile = '';
+			await rm(dir, { recursive: true, force: true });
+		}
+	});
 });
 
 describe('NodeContractsStore', () => {
@@ -205,6 +224,7 @@ describe('NodeContractsStore', () => {
 		fixtures: null,
 		signatures: [{ key: `sha256:${'b'.repeat(64)}`, sig: 'c2ln' }],
 		published: new Date('2026-10-02T12:00:00.000Z'),
+		origin: 'community',
 		createdAt: new Date(),
 	};
 	const version = {
@@ -216,6 +236,7 @@ describe('NodeContractsStore', () => {
 		bundle: 'module.exports = {}',
 		signatures: row.signatures,
 		published: '2026-10-02T12:00:00.000Z',
+		origin: 'community' as const,
 	};
 
 	it('maps the rows of the table to versions of the instance store', async () => {
@@ -242,6 +263,7 @@ describe('NodeContractsStore', () => {
 				manifest: row.digest,
 				manifestText: row.manifest,
 				signatures: row.signatures,
+				origin: 'community',
 			},
 		]);
 	});
@@ -262,6 +284,7 @@ describe('NodeContractsStore', () => {
 			fixtures: null,
 			signatures: row.signatures,
 			published: row.published,
+			origin: 'community',
 		};
 		expect(repository.insertNew).toHaveBeenCalledWith([
 			inserted,

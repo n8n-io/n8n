@@ -6,6 +6,9 @@ export const nodeContractVersionKinds = ['action', 'trigger', 'provider', 'crede
 
 export type NodeContractVersionKind = (typeof nodeContractVersionKinds)[number];
 
+/** Who vouches for a version. It decides only whether the bundle runs in the sandbox. */
+export type NodeContractOrigin = 'first-party' | 'community' | 'private';
+
 /** A publisher signature of the manifest bytes. */
 export interface NodeContractSignature {
 	/** `sha256:<hex>` of the SPKI DER of the publisher key. */
@@ -49,4 +52,8 @@ export class NodeContractVersion extends WithCreatedAt {
 
 	@DateTimeColumn({ nullable: true })
 	published: Date | null;
+
+	/** The origin that the store took from the signing key when it added the version. */
+	@Column({ type: 'varchar', length: 16 })
+	origin: NodeContractOrigin;
 }

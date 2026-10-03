@@ -68,9 +68,9 @@ flowchart LR
   capability and the host never answers it. The bundle runs in the same JS realm as the guest, so
   the guest is not a trust boundary: the sidecar and the host are.
 - `src/sandbox.ts`: `sandboxExecutorLoader(options, inProcess)` gives the `ExecutorLoader` of
-  `setExecutorLoader` (`src/runtime.ts`). A bundle that `inProcess` accepts (for example one
-  signed with the first-party key) runs through `loadExecutor` in this process. Every other bundle
-  runs in the sandbox. The sandboxed action takes its contract from the signed manifest; the
+  `setExecutorLoader` (`src/runtime.ts`). A version that `inProcess` accepts (for example a
+  version with the origin `first-party`) runs through `loadExecutor` in this process. Every other
+  version runs in the sandbox. The sandboxed action takes its contract from the signed manifest; the
   host runs no bundle code. `replayFixtures` takes the same action and executor, so publish can
   replay the fixtures in the sandbox.
 - The credential types of a sandboxed action come from the host (`options.credentialType`) by
@@ -118,13 +118,28 @@ flowchart LR
 
 | Variable | Default | Meaning |
 |---|---|---|
-| `N8N_NODE_CONTRACT_SANDBOX` | `off` | `off`: every bundle runs in the n8n process. `stored`: a version that n8n does not bundle runs in the sandbox. `all`: every version runs in the sandbox. n8n logs a warning for another value and uses `off`, as for each n8n setting. |
+| `N8N_NODE_CONTRACT_SANDBOX` | `off` | `off`: every bundle runs in the n8n process. `stored`: a version that is not first-party runs in the sandbox. `all`: every version runs in the sandbox. n8n logs a warning for another value and uses `off`, as for each n8n setting. |
 | `N8N_NODE_CONTRACT_SANDBOX_SIDECAR` | — | The `n8n-sandbox` binary. |
 | `N8N_NODE_CONTRACT_SANDBOX_GUESTS` | — | The directory with `action.wasm` and `provider.wasm`. |
 | `N8N_NODE_CONTRACT_SANDBOX_CACHE_DIR` | `<n8n folder>/node-contracts/sandbox` | Compiled guests and verified bundles. Only n8n may write it. |
+| `N8N_NODE_CONTRACTS_FIRST_PARTY_KEY_FILE` | — | PEM of the first-party key. A version that it signs is first-party. |
+| `N8N_NODE_CONTRACTS_VETTING_KEY_FILE` | — | PEM of the vetting key. A version that it signs, and the first-party key does not, is community. |
 
-- A version is first-party when its bundle hash is the hash of a version that `@n8n/nodes-base-next`
-  bundles. With `stored`, only first-party versions run in the n8n process.
+- The origin of a version (`FrozenVersion.origin`) is `first-party`, `community` or `private`.
+  The store records it once, when it takes the version: from the registry, from
+  `n8n contracts:import`, or as a credential manifest that a version pins. The key that signs the
+  manifest bytes gives it. A version of the embedded store is first-party without a key check,
+  because it ships in the release. With no key file, the store takes unsigned versions as
+  `private`. With a key file, it refuses a version that no configured key signs.
+- A key change never raises a stored origin. When the first-party key no longer signs a stored
+  first-party version, n8n serves it with the origin that the keys give now.
+- An id has no namespace part, so only the first-party key puts a version in the `n8n` namespace.
+  An id such as `n8n.echo` from another key stays community.
+- With `stored`, only first-party versions run in the n8n process. The origin decides only the
+  isolation: the permissions and the host checks are the same for all origins.
+- A newer patch of a locked version applies only when it has the origin of the locked version.
+  So the vetting key cannot patch a first-party version. When the locked version does not load,
+  only a first-party patch applies.
 - n8n stops at start when the sandbox is on and a file is missing, so no bundle runs outside it.
 - The credential types come from the shipped nodes, else a `compat` type for a name that n8n has.
 

@@ -163,7 +163,6 @@ describe('ContractNodeLoader', () => {
 		const { name } = nodeDescriptionOf(manifest);
 		const [bundled, other] = loader.frozenVersionsOf(name);
 		expect(bundled?.manifest.semver).toBe(manifest.semver);
-		// The run trusts a stored version by its identity.
 		expect(other).toBe(stored);
 		expect(loader.getNode(name).type.getNodeType(major).poll).toBeDefined();
 		const served = loader.types.nodes.filter((description) => description.name === name);

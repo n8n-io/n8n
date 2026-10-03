@@ -29,6 +29,7 @@ import {
 	toVersionedTriggerType,
 	versionsOf,
 	withMigratedVersions,
+	type ContractKeys,
 	type ContractStore,
 	type CredentialManifest,
 	type FrozenVersion,
@@ -51,6 +52,7 @@ import {
 	type VersionedNodeType,
 	type ICredentialType,
 	type ICredentialTypeData,
+	type INode,
 	type INodeTypeDescription,
 	type KnownNodesAndCredentials,
 	type IVersionedNodeType,
@@ -105,6 +107,7 @@ export class NodeContractsStore {
 				fixtures: row.fixtures ?? undefined,
 				signatures: row.signatures,
 				published: row.published?.toISOString(),
+				origin: row.origin,
 			})),
 		insert: async (versions) => {
 			await this.repository.insertNew(
@@ -118,6 +121,7 @@ export class NodeContractsStore {
 					fixtures: version.fixtures ?? null,
 					signatures: [...(version.signatures ?? [])],
 					published: publishedDateOf(version.published),
+					origin: version.origin,
 				})),
 			);
 		},
@@ -140,10 +144,15 @@ export class NodeContractsStore {
 		await Container.get(LoadNodesAndCredentials).refreshNodeTypes();
 	}
 
-	/** PEM of the trusted publisher key, or `undefined` when none is set. */
-	async publicKey() {
-		const file = this.globalConfig.instanceAi.nodeContractsPublicKeyFile;
-		return file ? await readFile(file, 'utf8') : undefined;
+	/** PEM of the keys that prove the origin of a version. A key without a file is `undefined`. */
+	async keys(): Promise<ContractKeys> {
+		const { nodeContractsFirstPartyKeyFile, nodeContractsVettingKeyFile } =
+			this.globalConfig.instanceAi;
+		const pemOf = async (file: string) => (file ? await readFile(file, 'utf8') : undefined);
+		return {
+			firstParty: await pemOf(nodeContractsFirstPartyKeyFile),
+			vetting: await pemOf(nodeContractsVettingKeyFile),
+		};
 	}
 
 	/** The store with the configured registry, or with `registryUrl`. */
@@ -159,7 +168,7 @@ export class NodeContractsStore {
 		const { contractStore } = await import('@n8n/nodes-base-next');
 		return contractStore({
 			registryUrl,
-			publicKey: await this.publicKey(),
+			keys: await this.keys(),
 			store: this.rows,
 			// A worker and a follower main read the rows that the leader main fetched.
 			mayFetch: () => this.mayFetch(),
@@ -179,6 +188,7 @@ const storedManifestOf = (row: NodeContractManifestRow) => ({
 	manifest: row.digest,
 	manifestText: row.manifest,
 	signatures: row.signatures,
+	origin: row.origin,
 });
 
 // The signature does not cover `published`, so a value that is not a date is dropped.
@@ -522,6 +532,22 @@ function sandboxFilesOf(instanceAi: GlobalConfig['instanceAi']) {
 		);
 	}
 	return { sidecar, guests };
+}
+
+/**
+ * The host imports of the contract version that a node type projects for the major of a node,
+ * e.g. `dataTables`. Empty for a node that is not a contract node.
+ */
+export function contractImportsOf(
+	loaders: Readonly<Record<string, NodeLoader>>,
+	{ type, typeVersion }: Pick<INode, 'type' | 'typeVersion'>,
+): readonly string[] {
+	const contracts = loaders[NODE_PACKAGE];
+	if (!(contracts instanceof ContractNodeLoader) || !type.startsWith(`${NODE_PACKAGE}.`)) return [];
+	const version = contracts
+		.frozenVersionsOf(type.slice(NODE_PACKAGE.length + 1))
+		.find(({ manifest }) => manifest.contract.version === typeVersion);
+	return version ? permissionsOf(version.manifest.contract).imports : [];
 }
 
 /** The legacy node of a full node type, when its loader has it and it has versions. */

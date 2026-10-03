@@ -8,7 +8,7 @@ import { TransactionRunner } from '../services/transaction';
 /** A stored version without its bundle and fixtures. */
 export type NodeContractManifestRow = Pick<
 	NodeContractVersion,
-	'digest' | 'contractId' | 'version' | 'kind' | 'manifest' | 'signatures'
+	'digest' | 'contractId' | 'version' | 'kind' | 'manifest' | 'signatures' | 'origin'
 >;
 
 /** A new version. The database sets `createdAt`. */
@@ -23,7 +23,7 @@ export class NodeContractVersionRepository extends BaseRepository<NodeContractVe
 	/** The stored versions of one contract id, or of every id, without the large columns. */
 	async findManifests(contractId?: string): Promise<NodeContractManifestRow[]> {
 		return await this.find({
-			select: ['digest', 'contractId', 'version', 'kind', 'manifest', 'signatures'],
+			select: ['digest', 'contractId', 'version', 'kind', 'manifest', 'signatures', 'origin'],
 			where: contractId === undefined ? {} : { contractId },
 		});
 	}
@@ -31,7 +31,7 @@ export class NodeContractVersionRepository extends BaseRepository<NodeContractVe
 	/** The stored credential manifests, without the large columns. */
 	async findCredentialManifests(): Promise<NodeContractManifestRow[]> {
 		return await this.find({
-			select: ['digest', 'contractId', 'version', 'kind', 'manifest', 'signatures'],
+			select: ['digest', 'contractId', 'version', 'kind', 'manifest', 'signatures', 'origin'],
 			where: { kind: 'credential' },
 		});
 	}

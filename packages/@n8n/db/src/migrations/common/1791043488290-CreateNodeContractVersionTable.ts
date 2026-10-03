@@ -22,6 +22,10 @@ export class CreateNodeContractVersionTable1791043488290 implements ReversibleMi
 					'Publisher signatures of the manifest bytes: [{ key, sig }]',
 				),
 				column('published').timestampTimezone().comment('When publish added the version'),
+				column('origin')
+					.varchar(16)
+					.notNull.withEnumCheck(['first-party', 'community', 'private'])
+					.comment('Who vouches for the version, from the signing key at admission'),
 			)
 			.withCreatedAt.withIndexOn(['contractId', 'version'], true);
 	}

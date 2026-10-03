@@ -47,6 +47,7 @@ const store = async (manifestText: string, bundle: string) => {
 			manifest: `sha256:${createHash('sha256').update(manifestText).digest('hex')}`,
 			manifestText,
 			bundle,
+			origin: 'private',
 		},
 	]);
 	return manifest;
