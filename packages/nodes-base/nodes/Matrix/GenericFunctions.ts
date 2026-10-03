@@ -98,6 +98,22 @@ export async function handleMatrixCall(
 				reason,
 			};
 			return await matrixApiRequest.call(this, 'POST', `/rooms/${roomId}/kick`, body);
+		} else if (operation === 'ban') {
+			const roomId = this.getNodeParameter('roomId', index) as string;
+			const userId = this.getNodeParameter('userId', index) as string;
+			const reason = this.getNodeParameter('reason', index) as string;
+			const body: IDataObject = {
+				user_id: userId,
+				reason,
+			};
+			return await matrixApiRequest.call(this, 'POST', `/rooms/${roomId}/ban`, body);
+		} else if (operation === 'unban') {
+			const roomId = this.getNodeParameter('roomId', index) as string;
+			const userId = this.getNodeParameter('userId', index) as string;
+			const body: IDataObject = {
+				user_id: userId,
+			};
+			return await matrixApiRequest.call(this, 'POST', `/rooms/${roomId}/unban`, body);
 		}
 	} else if (resource === 'message') {
 		if (operation === 'create') {

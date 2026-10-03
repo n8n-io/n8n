@@ -37,6 +37,18 @@ export const roomOperations: INodeProperties[] = [
 				action: 'Kick a user from a room',
 			},
 			{
+				name: 'Ban',
+				value: 'ban',
+				description: 'Ban a user from a room',
+				action: 'Ban a user from a room',
+			},
+			{
+				name: 'Unban',
+				value: 'unban',
+				description: 'Unban a user from a room',
+				action: 'Unban a user from a room',
+			},
+			{
 				name: 'Leave',
 				value: 'leave',
 				description: 'Leave a room',
@@ -230,5 +242,93 @@ export const roomFields: INodeProperties[] = [
 		default: '',
 		description: 'Reason for kick',
 		placeholder: 'Telling unfunny jokes',
+	},
+
+	/* -------------------------------------------------------------------------- */
+	/*                                  room:ban                                  */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Room Name or ID',
+		name: 'roomId',
+		type: 'options',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
+		typeOptions: {
+			loadOptionsMethod: 'getChannels',
+		},
+		displayOptions: {
+			show: {
+				resource: ['room'],
+				operation: ['ban'],
+			},
+		},
+		default: '',
+		required: true,
+	},
+	{
+		displayName: 'User ID',
+		name: 'userId',
+		type: 'string',
+		displayOptions: {
+			show: {
+				resource: ['room'],
+				operation: ['ban'],
+			},
+		},
+		default: '',
+		description: 'The fully qualified user ID',
+		placeholder: '@cheeky_monkey:matrix.org',
+		required: true,
+	},
+	{
+		displayName: 'Reason',
+		name: 'reason',
+		type: 'string',
+		displayOptions: {
+			show: {
+				resource: ['room'],
+				operation: ['ban'],
+			},
+		},
+		default: '',
+		description: 'Reason for ban',
+		placeholder: 'Telling unfunny jokes',
+	},
+
+	/* -------------------------------------------------------------------------- */
+	/*                                 room:unban                                 */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Room Name or ID',
+		name: 'roomId',
+		type: 'options',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
+		typeOptions: {
+			loadOptionsMethod: 'getChannels',
+		},
+		displayOptions: {
+			show: {
+				resource: ['room'],
+				operation: ['unban'],
+			},
+		},
+		default: '',
+		required: true,
+	},
+	{
+		displayName: 'User ID',
+		name: 'userId',
+		type: 'string',
+		displayOptions: {
+			show: {
+				resource: ['room'],
+				operation: ['unban'],
+			},
+		},
+		default: '',
+		description: 'The fully qualified user ID',
+		placeholder: '@cheeky_monkey:matrix.org',
+		required: true,
 	},
 ];
