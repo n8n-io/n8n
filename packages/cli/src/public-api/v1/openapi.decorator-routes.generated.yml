@@ -160,6 +160,9 @@ paths:
       $ref: ./handlers/settings/spec/paths/getLdapConfiguration.generated.yml
     put:
       $ref: ./handlers/settings/spec/paths/updateLdapConfiguration.generated.yml
+  /settings/log-streaming/event-types:
+    get:
+      $ref: ./handlers/settings/spec/paths/getLogStreamingEventTypes.generated.yml
   /node-type-policies/instance:
     get:
       $ref: ./handlers/node-type-policies/spec/paths/getNodeTypeInstancePolicy.generated.yml
