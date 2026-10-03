@@ -55,7 +55,12 @@ import {
 import { registerDefaultPlugins } from '../workflow-builder/plugins/defaults';
 import { PluginRegistry } from '../workflow-builder/plugins/registry';
 import { loopWiringValidator } from '../workflow-builder/plugins/validators/loop-wiring-validator';
-import { NodeConnectionTypes, regionTreeOf, type IConnections } from 'n8n-workflow';
+import {
+	NodeConnectionTypes,
+	regionTreeOf,
+	type IConnections,
+	type IWorkflowSettings,
+} from 'n8n-workflow';
 
 // ── Types the model reads ───────────────────────────────────────────────────
 
@@ -523,6 +528,16 @@ export interface RegionSpec {
 	readonly problems: readonly string[];
 }
 
+/** A `group` by node names: a frame on the canvas. It does not change the run. */
+export interface GroupSpec {
+	/** The group name, unique among groups and regions. */
+	readonly name: string;
+	/** The text the canvas shows when the group is collapsed. */
+	readonly description?: string;
+	/** The member node names. The build adds the providers of each member. */
+	readonly members: readonly string[];
+}
+
 /** The nodes and connections that the build makes. */
 export interface Graph {
 	/** The nodes. */
@@ -531,6 +546,8 @@ export interface Graph {
 	readonly edges: readonly Edge[];
 	/** The `forEach` regions. */
 	readonly regions?: readonly RegionSpec[];
+	/** The canvas groups. */
+	readonly groups?: readonly GroupSpec[];
 }
 
 /** @internal A graph and its open ends. Region builders take and return fragments. */
@@ -794,7 +811,13 @@ function unionGraphs(graphs: readonly Graph[]): Graph {
 	}
 	// Fragments share their region objects. Two regions with one name stay, so the build reports them.
 	const regions = new Set(graphs.flatMap((graph) => graph.regions ?? []));
-	return { nodes: [...nodes.values()], edges: [...edges.values()], regions: [...regions] };
+	const groups = new Set(graphs.flatMap((graph) => graph.groups ?? []));
+	return {
+		nodes: [...nodes.values()],
+		edges: [...edges.values()],
+		regions: [...regions],
+		...(groups.size > 0 ? { groups: [...groups] } : {}),
+	};
 }
 
 const wire = (tails: readonly Tail[], to: string, input = 0): Edge[] =>
@@ -860,6 +883,23 @@ export function forEachFragment(
 	};
 	return {
 		graph: { ...inner.graph, regions: [...(inner.graph.regions ?? []), region] },
+		tails: inner.tails,
+	};
+}
+
+/** @internal A canvas group of the nodes that `body` adds. The run is the run of `body`. */
+export function groupFragment(
+	from: Fragment,
+	name: string,
+	description: string | undefined,
+	body: (flow: Fragment) => Fragment,
+): Fragment {
+	const before = new Set(from.graph.nodes.map((spec) => spec.name));
+	const inner = body(from);
+	const members = inner.graph.nodes.map((spec) => spec.name).filter((node) => !before.has(node));
+	const group: GroupSpec = { name, ...(description ? { description } : {}), members };
+	return {
+		graph: { ...inner.graph, groups: [...(inner.graph.groups ?? []), group] },
 		tails: inner.tails,
 	};
 }
@@ -1550,6 +1590,33 @@ export function merge(
 }
 
 /**
+ * Frame the nodes of `body` as one group on the canvas, for example one stage of the
+ * workflow. The run does not change: the flow after the group continues from `body`, and
+ * `$()` reads each node in it. With every group collapsed, aim for 7 boxes or fewer.
+ *
+ * @example
+ * ```ts
+ * group(
+ *   { name: 'Enrich', description: 'Looks up each lead and scores it' },
+ *   steps(lookUp, score),
+ * ),
+ * ```
+ */
+export function group<In, Ctx, B, CB>(
+	config: {
+		/** The group name, unique among groups and `forEach` regions. */
+		name: string;
+		/** The text the canvas shows when the group is collapsed, up to 145 characters. */
+		description?: string;
+	},
+	body: Part<NoInfer<In>, NoInfer<Ctx>, B, CB>,
+): Region<In, Ctx, B, CB>;
+export function group(config: { name: string; description?: string }, body: AnyPart): AnyRegion {
+	const { name, description } = config;
+	return region((from) => groupFragment(from, name, description, run(body)));
+}
+
+/**
  * Handle items the step before fails on (its error output). The error branch ends with
  * `handle`: only the items the step could process continue. Use `recover` to continue with
  * the items of `handle` too.
@@ -1732,9 +1799,15 @@ export function errorFragment(from: Fragment, handle: (flow: Fragment) => Fragme
 	const errorTails = nodes
 		.filter((spec) => failing.has(spec.name))
 		.map((spec) => ({ node: spec.name, output: spec.outputs ?? 1 }));
-	const handled = handle({ graph: { nodes, edges: from.graph.edges }, tails: errorTails });
+	// A failing node stays in its group.
+	const marked: Graph = {
+		nodes,
+		edges: from.graph.edges,
+		...(from.graph.groups ? { groups: from.graph.groups } : {}),
+	};
+	const handled = handle({ graph: marked, tails: errorTails });
 	return {
-		graph: unionGraphs([{ nodes, edges: from.graph.edges }, handled.graph]),
+		graph: unionGraphs([marked, handled.graph]),
 		tails: handled.tails,
 	};
 }
@@ -2197,6 +2270,29 @@ function createCompiler(nodeName: string, nodeNames: ReadonlySet<string>, issues
 	return compiler;
 }
 
+/** The problems of the groups of `graph` that the save would drop the group for. */
+function groupIssues(graph: Graph): string[] {
+	const regions = graph.regions ?? [];
+	const frames = [...regions, ...(graph.groups ?? [])];
+	const sameNodes = (one: readonly string[], other: readonly string[]) =>
+		one.length === other.length && one.every((member) => other.includes(member));
+	const issues = (graph.groups ?? []).flatMap((group) => {
+		const { name, members } = group;
+		if (members.length === 0) return [`${name}: group needs a body that runs a node`];
+		const others = frames.filter((frame) => frame !== group);
+		if (others.some((other) => other.name === name)) {
+			return [`Two groups or forEach regions are named "${name}"`];
+		}
+		const same = others.find((other) => sameNodes(other.members, members));
+		return same
+			? [
+					`${name}: group has the same nodes as "${same.name}". Remove one, or give the group more nodes`,
+				]
+			: [];
+	});
+	return [...new Set(issues)];
+}
+
 /**
  * The problems of the regions of `graph`: their own, then the region rules of n8n, which the
  * engine checks again before a run.
@@ -2291,10 +2387,23 @@ function scopesOf(nodes: readonly NodeSpec[]) {
 	);
 }
 
-/** The name of a workflow and the scopes its credentials grant. */
+/**
+ * The settings n8n saves with a workflow, e.g. `errorWorkflow` and `timezone`. Leave a key out
+ * to keep its default: the editor's `'DEFAULT'` value means the same.
+ */
+export type WorkflowSettings = {
+	[K in keyof IWorkflowSettings]: Exclude<IWorkflowSettings[K], 'DEFAULT'>;
+};
+
+/** The name of a workflow, its settings, and the scopes its credentials grant. */
 export interface WorkflowOptions {
 	/** The workflow name. */
 	readonly name: string;
+	/**
+	 * The workflow settings, e.g. `{ errorWorkflow: '<workflow id>' }`. The id is of a published
+	 * workflow that starts with an Error Trigger.
+	 */
+	readonly settings?: WorkflowSettings;
 	/**
 	 * The scopes each credential grants, by node id, e.g. `{ notion: ['content:read'] }`. The
 	 * build fails on a scope that a node needs and the credential does not grant. A credential
@@ -2570,7 +2679,11 @@ export function workflow(
 	options: string | WorkflowOptions,
 	...positions: ReadonlyArray<AnyPart | undefined>
 ): Workflow {
-	const { name, grants = {} } = typeof options === 'string' ? { name: options } : options;
+	const {
+		name,
+		grants = {},
+		settings,
+	}: WorkflowOptions = typeof options === 'string' ? { name: options } : options;
 	const parts = given(positions);
 	const [first] = parts;
 	const { graph } = parts.reduce(partFragment, EMPTY_FRAGMENT);
@@ -2619,6 +2732,10 @@ export function workflow(
 			? []
 			: ['A workflow starts with a trigger, e.g. manual()']),
 		...regionIssues(graph),
+		...groupIssues(graph),
+		...(regions.length > 0 && settings?.executionOrder === 'v0'
+			? ['forEach runs in execution order v1 only. Remove settings.executionOrder']
+			: []),
 	];
 
 	const providerInput = (spec: ProviderSpec): NodeInput => ({
@@ -2663,7 +2780,9 @@ export function workflow(
 		rootWorkflow(name, name, {
 			registry: nextRegistry,
 			// The engine runs regions in execution order v1 only.
-			...(regions.length > 0 ? { settings: { executionOrder: 'v1' } } : {}),
+			...(regions.length > 0 || settings
+				? { settings: { ...settings, ...(regions.length > 0 ? { executionOrder: 'v1' } : {}) } }
+				: {}),
 		}),
 	);
 	const connected = graph.edges.reduce((builder, edge) => {
@@ -2676,7 +2795,7 @@ export function workflow(
 		if (!instance) throw new Error(`Region node "${node}" is not in the workflow`);
 		return instance;
 	};
-	const built = regions.reduce(
+	const withRegions = regions.reduce(
 		(builder, region) =>
 			builder.group(region.name, region.members.map(instanceOf), {
 				repeat: {
@@ -2687,6 +2806,20 @@ export function workflow(
 				},
 			}),
 		connected,
+	);
+	// A provider rides with its node on the canvas, so the group holds it too.
+	const byName = new Map(graph.nodes.map((spec) => [spec.name, spec]));
+	const groupMembers = (members: readonly string[]) =>
+		members.flatMap((member) => [
+			instanceOf(member),
+			...allProviders(byName.get(member)?.providers).flatMap(
+				(spec) => withRegions.getNode(spec.name) ?? [],
+			),
+		]);
+	const built = (graph.groups ?? []).reduce(
+		(builder, { name: group, description, members }) =>
+			builder.group(group, groupMembers(members), description ? { description } : undefined),
+		withRegions,
 	);
 	const verified = withTriggerSamples(built, graph.nodes);
 	return {

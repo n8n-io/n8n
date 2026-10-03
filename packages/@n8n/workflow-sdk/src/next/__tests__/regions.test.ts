@@ -2,6 +2,10 @@ import vm from 'node:vm';
 
 import type { WorkflowJSON } from '../../types/base';
 import { workflow as legacyWorkflow } from '../../workflow-builder';
+import {
+	node as legacyNode,
+	trigger as legacyTrigger,
+} from '../../workflow-builder/node-builders/node-builder';
 import { loopWiringIssues } from '../../workflow-builder/plugins/validators/loop-wiring-validator';
 import { decompileWorkflow } from '../decompile';
 import * as next from '../index';
@@ -9,12 +13,15 @@ import {
 	contractStep,
 	filter,
 	forEach,
+	group,
 	loop,
 	manual,
 	merge,
 	node,
+	onError,
 	paginate,
 	pollUntil,
+	provider,
 	set,
 	splitOut,
 	steps,
@@ -238,6 +245,46 @@ const forEachBranchesWorkflow = () =>
 			]),
 		),
 		set({ name: 'Report', fields: { text: (row) => `${row.name}: ${row.count}` } }),
+	);
+
+/** Canvas groups: one with a description, one around a forEach, one in it, one with an AI node. */
+const groupWorkflow = () =>
+	workflow(
+		{ name: 'Grouped orders', settings: { errorWorkflow: 'wf-errors', timezone: 'Europe/Berlin' } },
+		manual(),
+		customers('Customers'),
+		group(
+			{ name: 'Prepare', description: 'Splits each customer into orders' },
+			steps(
+				splitOut({ name: 'Orders', field: 'orders' }),
+				set({ name: 'Line', fields: { order: (o) => o.id, total: (o) => o.total } }),
+			),
+		),
+		group(
+			{ name: 'Send' },
+			steps(
+				forEach(
+					{ name: 'Each line', batchSize: 5 },
+					steps(
+						group({ name: 'Post' }, set({ name: 'Post line', fields: { order: (l) => l.order } })),
+						set({ name: 'Mark line', fields: { sent: true } }),
+					),
+				),
+				node({
+					name: 'Summarize',
+					type: '@n8n/n8n-nodes-langchain.agent',
+					version: 3,
+					providers: {
+						model: provider({
+							name: 'Model',
+							type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+							version: 1.2,
+						}),
+					},
+				}),
+			),
+		),
+		set({ name: 'Report', fields: { done: true } }),
 	);
 
 const connections = (json: WorkflowJSON, name: string) =>
@@ -773,6 +820,7 @@ describe('regions round-trip through decompile', () => {
 		['merge of three appended', () => mergeThreeWorkflow('append'), 'join: "append"'],
 		['merge of three by position', () => mergeThreeWorkflow('position'), 'join: "position"'],
 		['forEach of branches', forEachBranchesWorkflow, 'name: "Each start"'],
+		['groups and settings', groupWorkflow, '  group({'],
 	])('%s: compile, decompile, compile is stable', (_kind, make, call) => {
 		const json = make().toJSON();
 		const source = decompileWorkflow(json, new Map());
@@ -993,5 +1041,212 @@ describe('loopWiringIssues', () => {
 		expect(codesOf(handWired.validate().errors)).toEqual(['LOOP_BODY_MISSING']);
 		const legacy = legacyWorkflow.fromJSON(handWired.toJSON()).validate();
 		expect(codesOf([...legacy.errors, ...legacy.warnings])).not.toContain('LOOP_BODY_MISSING');
+	});
+});
+
+describe('group', () => {
+	const named = (json: WorkflowJSON) => {
+		const nameOf = new Map(json.nodes.map((n) => [n.id, n.name]));
+		return json.nodeGroups?.map(({ nodeIds, ...rest }) => ({
+			...rest,
+			nodeIds: nodeIds.map((id) => nameOf.get(id)),
+		}));
+	};
+
+	it('emits the node group JSON of the legacy group()', () => {
+		const noOp = (name: string) => node({ name, type: 'n8n-nodes-base.noOp', version: 1 });
+		const grouped = workflow(
+			'Grouped',
+			manual(),
+			group({ name: 'Stage', description: 'Two steps' }, steps(noOp('A'), noOp('B'))),
+			noOp('C'),
+		).toJSON();
+		const legacyNoOp = (name: string) =>
+			legacyNode({ type: 'n8n-nodes-base.noOp', version: 1, config: { name } });
+		const [a, b, c] = [legacyNoOp('A'), legacyNoOp('B'), legacyNoOp('C')];
+		const legacy = legacyWorkflow('Grouped', 'Grouped')
+			.add(
+				legacyTrigger({
+					type: 'n8n-nodes-base.manualTrigger',
+					version: 1,
+					config: { name: 'Start' },
+				}),
+			)
+			.to(a)
+			.to(b)
+			.to(c)
+			.group('Stage', [a, b], { description: 'Two steps' })
+			.toJSON();
+
+		expect(named(grouped)).toEqual(named(legacy));
+		expect(named(grouped)).toEqual([
+			{ id: expect.any(String), name: 'Stage', nodeIds: ['A', 'B'], description: 'Two steps' },
+		]);
+		expect(grouped.settings).toEqual({});
+	});
+
+	it('changes no node or connection, holds the providers of its members, and nests', () => {
+		const json = groupWorkflow().toJSON();
+		expect(named(json)).toEqual([
+			expect.objectContaining({ name: 'Each line', nodeIds: ['Post line', 'Mark line'] }),
+			{
+				id: expect.any(String),
+				name: 'Prepare',
+				nodeIds: ['Orders', 'Line'],
+				description: 'Splits each customer into orders',
+			},
+			{ id: expect.any(String), name: 'Post', nodeIds: ['Post line'] },
+			{
+				id: expect.any(String),
+				name: 'Send',
+				nodeIds: ['Post line', 'Mark line', 'Summarize', 'Model'],
+			},
+		]);
+		expect(connections(json, 'Line')).toEqual([['Post line#0']]);
+		expect(connections(json, 'Mark line')).toEqual([['Summarize#0']]);
+		expect(connections(json, 'Summarize')).toEqual([['Report#0']]);
+	});
+
+	it('keeps a group before an error branch', () => {
+		const json = workflow(
+			'Guarded',
+			manual(),
+			customers('Customers'),
+			group({ name: 'Fetch' }, steps(customers('A'), customers('B'))),
+			onError(set({ name: 'Log', fields: { failed: true } })),
+		).toJSON();
+		expect(named(json)?.map(({ name, nodeIds }) => [name, nodeIds])).toEqual([
+			['Fetch', ['A', 'B']],
+		]);
+		expect(connections(json, 'B')).toEqual([[], ['Log#0']]);
+	});
+
+	it('reads back no group that group() cannot build', () => {
+		const json = groupWorkflow().toJSON();
+		const idOf = new Map(json.nodes.map((n) => [n.name, n.id]));
+		const regroup = (name: string, members: string[]): WorkflowJSON => ({
+			...json,
+			nodeGroups: json.nodeGroups?.map((each) =>
+				each.name === name
+					? { ...each, nodeIds: members.map((member) => idOf.get(member) ?? '') }
+					: each,
+			),
+		});
+		expect(decompileWorkflow(json, new Map())).toBeDefined();
+		expect(decompileWorkflow(regroup('Prepare', ['Customers', 'Line']), new Map())).toBeUndefined();
+		expect(
+			decompileWorkflow(regroup('Send', ['Post line', 'Mark line', 'Summarize']), new Map()),
+		).toBeUndefined();
+	});
+
+	it.each([
+		[
+			'an empty body',
+			() => group({ name: 'Empty' }, steps()),
+			'Empty: group needs a body that runs a node',
+		],
+		[
+			'the nodes of the forEach it wraps',
+			() => group({ name: 'Batch' }, forEach({ name: 'Each', batchSize: 1 }, customers('A'))),
+			'Batch: group has the same nodes as "Each". Remove one, or give the group more nodes',
+		],
+		[
+			'the name of another group',
+			() =>
+				steps(group({ name: 'Stage' }, customers('A')), group({ name: 'Stage' }, customers('B'))),
+			'Two groups or forEach regions are named "Stage"',
+		],
+	])('fails the build on a group with %s', (_case, part, issue) => {
+		expect(() => workflow('Bad', manual(), customers('Customers'), part()).toJSON()).toThrow(issue);
+	});
+});
+
+describe('workflow settings', () => {
+	it('emits the settings JSON of the legacy settings()', () => {
+		const settings = {
+			errorWorkflow: 'wf-errors',
+			timezone: 'Europe/Berlin',
+			saveManualExecutions: true,
+			callerPolicy: 'workflowsFromSameOwner',
+		} as const;
+		const legacy = legacyWorkflow('Settled', 'Settled')
+			.settings(settings)
+			.add(
+				legacyTrigger({
+					type: 'n8n-nodes-base.manualTrigger',
+					version: 1,
+					config: { name: 'Start' },
+				}),
+			)
+			.toJSON();
+		expect(workflow({ name: 'Settled', settings }, manual()).toJSON().settings).toEqual(
+			legacy.settings,
+		);
+	});
+
+	it('adds execution order v1 for a forEach, and fails the build on v0', () => {
+		const each = forEach({ name: 'Each', batchSize: 1 }, customers('A'));
+		const settled = (settings: next.WorkflowSettings) =>
+			workflow({ name: 'Paced', settings }, manual(), customers('Customers'), each);
+		expect(settled({ timezone: 'UTC' }).toJSON().settings).toEqual({
+			timezone: 'UTC',
+			executionOrder: 'v1',
+		});
+		expect(() => settled({ executionOrder: 'v0' }).toJSON()).toThrow(
+			'forEach runs in execution order v1 only. Remove settings.executionOrder',
+		);
+	});
+
+	it('reads saved settings back, without a DEFAULT value or execution order v1', () => {
+		const saved = (settings: WorkflowJSON['settings']): WorkflowJSON => ({
+			...workflow('Saved', manual()).toJSON(),
+			settings,
+		});
+		const source = decompileWorkflow(
+			saved({ errorWorkflow: 'wf-errors', timezone: 'DEFAULT', executionOrder: 'v1' }),
+			new Map(),
+		);
+		expect(source).toContain(
+			'workflow(\n  {\n    name: "Saved",\n    settings: {\n      errorWorkflow: "wf-errors",\n    },\n  },\n',
+		);
+		expect(build(source ?? '').settings).toEqual({ errorWorkflow: 'wf-errors' });
+
+		const v0 = decompileWorkflow(saved({ executionOrder: 'v0' }), new Map()) ?? '';
+		expect(v0).toContain('settings: {\n      executionOrder: "v0",\n    },');
+		expect(build(v0).settings).toEqual({ executionOrder: 'v0' });
+	});
+
+	it('reads a workflow with only default settings back without settings', () => {
+		const json: WorkflowJSON = {
+			...workflow('Saved', manual()).toJSON(),
+			settings: { executionOrder: 'v1' },
+		};
+		const source = decompileWorkflow(json, new Map()) ?? '';
+		expect(source).toContain('export default workflow(\n  "Saved",\n  manual(');
+		expect(source).not.toContain('settings');
+		// The save merges these settings into the saved ones, so execution order v1 stays.
+		expect(build(source).settings).toEqual({});
+	});
+
+	it('types the settings by the n8n workflow settings', () => {
+		const typed = () => [
+			workflow(
+				{
+					name: 'Typo',
+					// @ts-expect-error A key that n8n does not save.
+					settings: { errorWorkflowId: 'wf-errors' },
+				},
+				manual(),
+			),
+			workflow(
+				{
+					name: 'Default',
+					// @ts-expect-error Leave the key out for the default.
+					settings: { timezone: 'UTC', saveManualExecutions: 'DEFAULT' },
+				},
+				manual(),
+			),
+		];
+		expect(typed).toBeInstanceOf(Function);
 	});
 });

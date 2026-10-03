@@ -22,6 +22,9 @@ export const GROUP_DROPPED_OVER_CEILING_CODE = 'GROUP_DROPPED_OVER_CEILING';
 /** Refusal, node contracts: the save dropped a region, so its nodes would not repeat. */
 export const REGION_DROPPED_CODE = 'REGION_DROPPED';
 
+/** How a `@n8n/workflow-sdk/next` source frames a stage as a node group. */
+const NEXT_GROUP_CALL = '`group({ name, description }, steps(…))`';
+
 /**
  * What the agent tells build-workflow about groups.
  * `grouped`: the source declares groups.
@@ -172,7 +175,7 @@ export function summarizeWorkflowTopLevelItems(
 export function topLevelItemsWarning(
 	json: WorkflowJSON,
 	summary: TopLevelItemsSummary = summarizeWorkflowTopLevelItems(json),
-	sourceHasGroupApi = true,
+	nextSource = false,
 ): ValidationWarning | undefined {
 	if (!summary.overCeiling) {
 		return;
@@ -181,11 +184,9 @@ export function topLevelItemsWarning(
 	return {
 		code: TOP_LEVEL_ITEMS_OVER_CEILING_CODE,
 		severity: 'informational',
-		message: sourceHasGroupApi
-			? formatTopLevelItemsMessage(summary)
-			: `The canvas top level has ${summary.total} boxes, over the ${summary.ceiling} you should aim for. ` +
-				'Each forEach region and each loop counts as one box. ' +
-				'`@n8n/workflow-sdk/next` has no group API, so this is a note only: do not search for one.',
+		message: nextSource
+			? `${formatTopLevelItemsMessage(summary)} Frame a stage with ${NEXT_GROUP_CALL}. Each loop counts as one box.`
+			: formatTopLevelItemsMessage(summary),
 	};
 }
 
@@ -218,8 +219,10 @@ export function groupingDecisionBlocker(input: {
 	declaredGroupCount: number;
 	droppedGroupWarnings: ValidationWarning[];
 	groupingDecision?: GroupingDecision;
+	/** The source imports `@n8n/workflow-sdk/next`, which frames a stage with `group()`. */
+	nextSource?: boolean;
 }): ValidationWarning | undefined {
-	const { summary, declaredGroupCount, droppedGroupWarnings, groupingDecision } = input;
+	const { summary, declaredGroupCount, droppedGroupWarnings, groupingDecision, nextSource } = input;
 
 	if (!summary.overCeiling) {
 		return;
@@ -252,7 +255,9 @@ export function groupingDecisionBlocker(input: {
 		message:
 			`The canvas would have ${summary.total} boxes with every group collapsed and no node group. ` +
 			`Ungrouped: ${summary.groupableNodeNames.join(', ')}. ` +
-			'Wrap each stage in `.group(name, members, { description })` and build again. ' +
+			(nextSource
+				? `Wrap each stage in ${NEXT_GROUP_CALL} and build again. Each loop counts as one box. `
+				: 'Wrap each stage in `.group(name, members, { description })` and build again. ') +
 			"If no valid group can hold these nodes, call build-workflow again with `groupingDecision: 'not_warranted'` " +
 			'and a `groupingReason` that says why.',
 	};

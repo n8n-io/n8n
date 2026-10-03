@@ -2,11 +2,11 @@
  * Typed workflow SDK. A workflow is a flat list: a trigger, then the parts that run in order.
  * A part is a step (one node) or a macro: `route` (each named output of a step), `when`,
  * `switchOn`, `forEach`, `loop`, `paginate`, `pollUntil`, `merge`, `onError` (the error branch
- * ends) and `recover` (it joins again). A macro takes one part per branch or body; `steps(…)`
- * puts several parts in one. Lambdas compile to n8n expressions, and `tsc` checks every read
- * against the item type of the part before it. `expr('{{ … }}')` writes an n8n expression where
- * a lambda has no form; the build checks it too. AI nodes take their chat model, memory, tools,
- * and output parser as `providers`.
+ * ends), `recover` (it joins again) and `group` (a frame on the canvas only). A macro takes one
+ * part per branch or body; `steps(…)` puts several parts in one. Lambdas compile to n8n
+ * expressions, and `tsc` checks every read against the item type of the part before it.
+ * `expr('{{ … }}')` writes an n8n expression where a lambda has no form; the build checks it
+ * too. AI nodes take their chat model, memory, tools, and output parser as `providers`.
  *
  * @example
  * ```typescript
@@ -47,6 +47,7 @@ export {
 	when,
 	switchOn,
 	forEach,
+	group,
 	loop,
 	paginate,
 	pollUntil,
@@ -120,6 +121,7 @@ export type {
 	ValueSchema,
 	Workflow,
 	WorkflowOptions,
+	WorkflowSettings,
 } from './flow';
 
 /** A JSON value. */

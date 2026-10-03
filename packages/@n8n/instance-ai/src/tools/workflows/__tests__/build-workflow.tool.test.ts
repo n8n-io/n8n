@@ -8,6 +8,7 @@ import {
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import {
 	forEach,
+	group,
 	loop,
 	manual,
 	merge,
@@ -1343,19 +1344,79 @@ describe('createBuildWorkflowTool', () => {
 			],
 		];
 
-		it.each(shapes)('builds the %s canvas without a group API', async (_, shape, boxes) => {
+		it.each(shapes)(
+			'counts each loop of the %s canvas as one box, and refuses over the ceiling with no group()',
+			async (_, shape, boxes) => {
+				const { context, filePath } = makeContext({ source: 'src', overrides: contracts });
+				compileTo(shape());
+
+				const result = await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
+					filePath,
+				});
+
+				expect(result.grouping?.topLevelItemCount).toBe(boxes);
+				expect(result.success).toBe(boxes <= 7);
+				const messages = [...(result.errors ?? []), ...(result.warnings ?? [])].join('\n');
+				expect(messages).not.toContain('.group(');
+				if (boxes > 7) {
+					expect(result.errors?.join('\n')).toContain('[GROUPING_DECISION_MISSING]');
+					expect(messages).toContain(
+						'Wrap each stage in `group({ name, description }, steps(…))` and build again. Each loop counts as one box.',
+					);
+				}
+			},
+		);
+
+		it('builds an over-ceiling canvas whose stages group() frames', async () => {
 			const { context, filePath } = makeContext({ source: 'src', overrides: contracts });
-			compileTo(shape());
+			compileTo(
+				workflow(
+					'Invoices',
+					manual({ sample: [{ n: 1 }] }),
+					group(
+						{ name: 'Read invoice', description: 'Downloads the file and reads its fields' },
+						steps(field('Download'), field('Extract Text'), field('Extract Fields')),
+					),
+					field('Row'),
+					field('Append'),
+					field('Total?'),
+					field('Alert'),
+				).toJSON(),
+			);
 
 			const result = await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
 				filePath,
 			});
 
 			expect(result.success).toBe(true);
-			expect(result.grouping?.topLevelItemCount).toBe(boxes);
-			const warnings = result.warnings?.join('\n') ?? '';
-			expect(warnings).not.toContain('.group(');
-			if (boxes > 7) expect(warnings).toContain('`@n8n/workflow-sdk/next` has no group API');
+			expect(result.grouping).toMatchObject({ topLevelItemCount: 6, decision: 'grouped' });
+			const [[created]] = vi.mocked(context.workflowService.createFromWorkflowJSON).mock.calls;
+			expect(created.nodeGroups).toEqual([
+				expect.objectContaining({
+					name: 'Read invoice',
+					description: 'Downloads the file and reads its fields',
+					nodeIds: ['Download', 'Extract Text', 'Extract Fields'].map(
+						(name) => created.nodes.find((each) => each.name === name)?.id,
+					),
+				}),
+			]);
+		});
+
+		it('notes an over-ceiling edit of a user canvas with the group() form', async () => {
+			const { context, filePath } = makeContext({ source: 'src', overrides: contracts });
+			const [, invoices] = shapes[2];
+			vi.mocked(context.workflowService.getAsWorkflowJSON).mockResolvedValue(invoices());
+			compileTo(invoices());
+
+			const result = await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
+				filePath,
+				workflowId: 'wf-user',
+			});
+
+			expect(result.success).toBe(true);
+			expect(result.warnings?.join('\n')).toContain(
+				'Frame a stage with `group({ name, description }, steps(…))`. Each loop counts as one box.',
+			);
 		});
 
 		it('still refuses a legacy source over the ceiling with no group', async () => {

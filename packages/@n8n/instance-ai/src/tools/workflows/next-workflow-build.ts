@@ -689,6 +689,7 @@ export const FLOW_MACROS = [
 	'merge',
 	'onError',
 	'recover',
+	'group',
 ] as const;
 
 /** A message on a type that is a union at the top level, e.g. `on type '{ a: 1; } | Out'`. */
@@ -724,6 +725,18 @@ const TSC_HINTS: ReadonlyArray<{
 		message: /on type '(?:Routed)?Step<|on type 'Trigger<|on type 'Region</,
 		hint: (macros) =>
 			`A step has no methods. A workflow is a flat list: \`workflow(name, trigger, stepA, stepB)\`. Macros: ${macros}.`,
+	},
+	{
+		codes: [2339],
+		message: /^Property 'group' does not exist on type 'Workflow'/,
+		hint: () =>
+			'A group is a part of the list: `group({ name, description }, steps(stepA, stepB))`. It frames its nodes on the canvas.',
+	},
+	{
+		codes: [2339],
+		message: /^Property 'settings' does not exist on type 'Workflow'/,
+		hint: () =>
+			"Workflow settings go in the first argument: `workflow({ name, settings: { errorWorkflow: '<id>' } }, trigger, …)`.",
 	},
 	{
 		codes: [2322, 2559],

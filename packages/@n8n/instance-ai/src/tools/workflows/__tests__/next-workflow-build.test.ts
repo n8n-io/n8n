@@ -1000,6 +1000,14 @@ describe('tsc hints', () => {
 			'TS2322: Type \'Expr<"{{ $json.metrics?.employees != null }}">\' is not assignable to type \'(item: NoInfer<HttpRequestGetOutput>, $: Dollar<NoInfer<Record<"Lead Webhook", { executionMode: "production" | "test"; }>>>) =>...\'.',
 			"`expr('{{ \u2026 }}')` fits a value field, not `if`, `until`, `next` or a binary field. Write a lambda here: `(item, $) => \u2026`.",
 		],
+		[
+			"TS2339: Property 'group' does not exist on type 'Workflow'.",
+			'A group is a part of the list: `group({ name, description }, steps(stepA, stepB))`. It frames its nodes on the canvas.',
+		],
+		[
+			"TS2339: Property 'settings' does not exist on type 'Workflow'.",
+			"Workflow settings go in the first argument: `workflow({ name, settings: { errorWorkflow: '<id>' } }, trigger, \u2026)`.",
+		],
 	])('hints %s', (message, hint) => {
 		expect(tscHintOf(`${at}${message}`, macros)).toBe(hint);
 	});
@@ -1021,7 +1029,7 @@ describe('tsc hints', () => {
 		const onStep = `${at}TS2339: Property 'orElse' does not exist on type 'Step<unknown, unknown, Loose, "Post">'.`;
 		const [step, first, second] = withTscHints([onStep, unknownItem, unknownItem]);
 		expect(step).toMatch(
-			/^.+\nHint: A step has no methods\. .+ Macros: steps, route, when, .*onError, recover\.$/,
+			/^.+\nHint: A step has no methods\. .+ Macros: steps, route, when, .*onError, recover, group\.$/,
 		);
 		expect(first).toBe(`${unknownItem}\nHint: ${tscHintOf(unknownItem, [])}`);
 		expect(second).toBe(unknownItem);

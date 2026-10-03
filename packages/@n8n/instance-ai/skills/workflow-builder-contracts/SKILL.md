@@ -27,14 +27,14 @@ are the full API: do not read SDK files. Only `build-workflow` has
 
 1. Call `nodes(action="search")` ONCE with `queries`: one short query per
    service, e.g. `["notion get many pages", "http request"]`. Use the
-   `nodeModules` and `builtIns`. Get `results` nodes in step 2. Ask the
-   user before you use `notInstalled` nodes.
-2. Get other definitions in ONE `nodes(action="type-definition")` call.
-3. Call `build-workflow` with a stable `filePath` and the full source
-   as `sourceCode`.
+   `nodeModules` and `builtIns`. Ask the user before you use
+   `notInstalled` nodes.
+2. Get `results` definitions in ONE `nodes(action="type-definition")` call.
+3. Call `build-workflow` with a stable `filePath` and the source as
+   `sourceCode`.
 4. Fix every `file:line` error: pass the full source, or edit the file with
    `workspace_str_replace_file` and build with `filePath` only.
-5. If the result has `postBuildFlow.required: true`, follow
+5. If `postBuildFlow.required` is true, follow
    `postBuildFlow.instructions`.
 
 For an existing workflow, call `workflows(action="get-as-code", workflowId)`,
@@ -45,7 +45,7 @@ make the smallest change and build with its `filePath`. Keep its
 
 Import the flow API from `@n8n/workflow-sdk/next`. The typed modules are
 {{NODE_CONTRACT_MODULES_PLACEHOLDER}}: import them from `@n8n/nodes/<id>`.
-Every other node, also a trigger or an AI node, has a derived module at
+Every other node, even a trigger or AI node, has a derived module at
 `@n8n/nodes/<package>/<name>`. Use `node()` only for a type without one.
 
 ```ts
@@ -81,8 +81,7 @@ export default workflow(
 - `switchOn({ name, on }, { value: part, fallback: part })`,
   `merge({ name, join }, [part, part, …])`, `forEach({ name, batchSize }, body)`,
   `loop({ name, maxIterations, until, next?, onLimit? }, body)`: Switch, Merge,
-  loops. `onLimit: 'continue'` ends a loop at maxIterations, e.g. 'at most 10
-  levels'.
+  loops. `onLimit: 'continue'` ends at maxIterations: 'at most 10 levels'.
 - `set({ name, fields })` makes fields; `keep: 'all'` keeps input fields.
 - `sample` items type the output and feed verification:
   `manual({ sample: [{ id: 1 }] })`.
@@ -90,7 +89,7 @@ export default workflow(
 
 ## AI nodes
 
-A derived AI node takes providers from provider modules in `providers`:
+A derived AI node takes provider modules in `providers`:
 
 ```ts
 agent.execute({ name: 'Agent', promptType: 'define', text: (item) => item.question,
@@ -98,7 +97,7 @@ agent.execute({ name: 'Agent', promptType: 'define', text: (item) => item.questi
 ```
 
 A typed action is also an agent tool: put `<action>Tool` in `tools`. The model
-fills each `fromModel()` field; the workflow fixes the others, e.g.
+fills each `fromModel()` field, e.g.
 `httpRequest.getTool({ name: 'Fetch', url: fromModel('The page URL') })`.
 
 ## Lambdas
@@ -110,7 +109,7 @@ fills each `fromModel()` field; the workflow fixes the others, e.g.
 - `expr('{{ … }}')` fits a value field, not `if`, `until` or a binary field.
 - Fix a type error at its cause: no casts, `any` or fallbacks.
 
-## Values and credentials
+## Values
 
 - Keep real values you got. Never invent IDs, emails or URLs:
   write `placeholder('Database')` and tell the user.
@@ -122,4 +121,6 @@ fills each `fromModel()` field; the workflow fixes the others, e.g.
 1. Zero items end a path. Do not add empty-check gates.
 2. A write action outputs its API response, not its input: read earlier
    data with `$('Node Name')`.
-3. Build success is not proof. Do not publish automatically.
+3. Over {{TOP_LEVEL_ITEM_CEILING_PLACEHOLDER}} boxes, wrap stages in `group({ name }, part)`
+   or pass `groupingDecision: 'not_warranted'` and a `groupingReason`.
+4. Build success is not proof. Do not publish automatically.

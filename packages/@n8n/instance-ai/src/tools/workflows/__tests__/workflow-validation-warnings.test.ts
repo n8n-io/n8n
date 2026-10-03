@@ -192,6 +192,28 @@ describe('groupingDecisionBlocker', () => {
 		expect(blocker?.message).toContain("groupingDecision: 'not_warranted'");
 	});
 
+	it('names group() for a next source, and .group() for a legacy one', () => {
+		const summary = summarizeWorkflowTopLevelItems(workflow(8));
+		const messageOf = (nextSource: boolean) =>
+			groupingDecisionBlocker({
+				summary,
+				declaredGroupCount: 0,
+				droppedGroupWarnings: [],
+				nextSource,
+			})?.message ?? '';
+
+		expect(messageOf(true)).toContain(
+			'Wrap each stage in `group({ name, description }, steps(…))` and build again. Each loop counts as one box.',
+		);
+		expect(messageOf(true)).not.toContain('.group(');
+		expect(messageOf(false)).toContain(
+			'Wrap each stage in `.group(name, members, { description })` and build again. If no valid',
+		);
+		expect(topLevelItemsWarning(workflow(8), summary, true)?.message).toMatch(
+			/cannot join one\. Frame a stage with `group\(\{ name, description \}, steps\(…\)\)`\. Each loop counts as one box\.$/,
+		);
+	});
+
 	it('lets the explicit opt-out through', () => {
 		const summary = summarizeWorkflowTopLevelItems(workflow(8));
 

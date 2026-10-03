@@ -1,14 +1,50 @@
-import { readFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import path from 'node:path';
+
+import { TOP_LEVEL_ITEM_CEILING } from 'n8n-workflow';
 
 import { resolvePromptProfile } from '../../prompts/prompt-profiles';
 import { nextNodeIds } from '../../tools/next-modules';
 import { loadInstanceAiPromptSkills, substituteSkillPlaceholders } from '../runtime-skills';
 
-const skill = readFileSync(
-	path.join(__dirname, '../../../skills/workflow-builder-contracts/SKILL.md'),
-	'utf8',
-);
+const skillDir = path.join(__dirname, '../../../skills/workflow-builder-contracts');
+const skill = readFileSync(path.join(skillDir, 'SKILL.md'), 'utf8');
+
+const TSC = path.join(path.dirname(require.resolve('typescript/package.json')), 'bin', 'tsc');
+
+/** The `tsc` errors of `source` against `@n8n/workflow-sdk/next`, as the sandbox build checks it. */
+function typeErrors(source: string): string[] {
+	const root = mkdtempSync(path.join(tmpdir(), 'contract-skill-'));
+	try {
+		writeFileSync(path.join(root, 'workflow.ts'), source);
+		const sdk = require.resolve('@n8n/workflow-sdk/next').replace(/\.js$/, '.d.ts');
+		const compilerOptions = {
+			strict: true,
+			noEmit: true,
+			skipLibCheck: true,
+			target: 'ES2022',
+			module: 'ES2022',
+			moduleResolution: 'bundler',
+			types: [],
+			paths: { '@n8n/workflow-sdk/next': [sdk] },
+		};
+		writeFileSync(
+			path.join(root, 'tsconfig.json'),
+			JSON.stringify({ compilerOptions, files: ['workflow.ts'] }),
+		);
+		try {
+			execFileSync(process.execPath, [TSC, '-p', root, '--pretty', 'false'], { encoding: 'utf8' });
+			return [];
+		} catch (error) {
+			const output = (error as { stdout?: string }).stdout ?? String(error);
+			return output.split('\n').filter((line) => line.includes('error TS'));
+		}
+	} finally {
+		rmSync(root, { recursive: true, force: true });
+	}
+}
 
 describe('contract-mode skill', () => {
 	it('imports the flow API and the node modules of the new SDK', () => {
@@ -99,6 +135,45 @@ describe('contract-mode skill', () => {
 				.find(({ id }) => id === 'workflow-builder')
 				?.linkedFiles.references.map(({ path }) => path),
 		).toEqual([reference, 'references/error-workflows.md']);
+	});
+
+	it('serves an error-workflows reference in the new SDK shape only when node contracts are enabled', async () => {
+		const { profile } = resolvePromptProfile({});
+		const reference = 'references/error-workflows.md';
+		const off = await loadInstanceAiPromptSkills(profile);
+		const on = await loadInstanceAiPromptSkills(profile, { nodeContractsEnabled: true });
+
+		const legacy = (await off.source.loadFile?.('workflow-builder', reference))?.content ?? '';
+		const next = (await on.source.loadFile?.('workflow-builder', reference))?.content ?? '';
+
+		expect(legacy).toContain(".settings({ errorWorkflow: 'published-error-workflow-id' })");
+		expect(next).not.toContain('.settings(');
+		expect(next).toContain(
+			"{ name: 'Target Workflow', settings: { errorWorkflow: 'published-error-workflow-id' } },",
+		);
+	});
+
+	// Each case runs a real tsc.
+	it(
+		'has error-workflows examples that type-check against the new SDK',
+		{ timeout: 30_000 },
+		() => {
+			const reference = readFileSync(path.join(skillDir, 'references/error-workflows.md'), 'utf8');
+			const blocks = [...reference.matchAll(/```ts\n([\s\S]*?)```/g)].map(([, code]) => code);
+
+			expect(blocks).toHaveLength(1);
+			expect(blocks.flatMap(typeErrors)).toEqual([]);
+			expect(
+				typeErrors(blocks[0].replace("{ errorWorkflow: '", "{ errorWorkflowId: '")).join('\n'),
+			).toContain("'errorWorkflowId' does not exist");
+		},
+	);
+
+	it('teaches group() and the grouping opt-out over the box ceiling', () => {
+		const text = substituteSkillPlaceholders(skill);
+		expect(text).toContain(
+			`3. Over ${TOP_LEVEL_ITEM_CEILING} boxes, wrap stages in \`group({ name }, part)\`\n   or pass \`groupingDecision: 'not_warranted'\` and a \`groupingReason\`.`,
+		);
 	});
 
 	it('stays small', () => {

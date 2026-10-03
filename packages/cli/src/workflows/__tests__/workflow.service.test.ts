@@ -977,6 +977,23 @@ describe('WorkflowService', () => {
 			);
 		});
 
+		test('keeps the saved execution order when a save leaves it out of the settings', async () => {
+			// The AI builder saves `json.settings ?? {}`; typed source leaves out execution order v1.
+			setupExistingWorkflow({ executionOrder: 'v1', errorWorkflow: 'wf-errors' });
+
+			await workflowService.update(mock<User>(), createUpdateData({}), 'workflow-1', {
+				forceSave: true,
+			});
+
+			expect(workflowRepositoryMock.updateContent).toHaveBeenCalledWith(
+				'workflow-1',
+				expect.objectContaining({
+					settings: expect.objectContaining({ executionOrder: 'v1', errorWorkflow: 'wf-errors' }),
+				}),
+				expect.anything(),
+			);
+		});
+
 		test('allows a save that re-sends the unchanged below-floor redactionPolicy verbatim (ENT-35)', async () => {
 			// Mirrors the editor sending the user's own stored value for a floor-locked channel:
 			// incoming === current, so enforcement allows it and the stored value is preserved.

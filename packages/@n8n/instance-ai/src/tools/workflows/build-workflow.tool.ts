@@ -532,7 +532,7 @@ interface ValidationFailureArgs {
  *   groups are not needed.
  * - `missing`: the canvas has more than `TOP_LEVEL_ITEM_CEILING` boxes, and the
  *   agent made no groups and gave no reason. It skipped the decision. The build
- *   is refused, except for a `@n8n/workflow-sdk/next` source, which has no group API.
+ *   is refused.
  */
 function resolveGroupingDecision(input: {
 	groupCount: number;
@@ -1511,16 +1511,15 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 						declaredGroupCount: groupCountBeforeDrop,
 						droppedGroupWarnings,
 						groupingDecision,
+						nextSource: sourceSdk === 'next',
 					});
 
 				// The one reason to refuse this build because of grouping, or undefined when the canvas is fine.
 				// A dropped group is the agent's own declaration, so it is refused on any canvas. "No groups"
 				// is refused only when the agent made the canvas exceed the ceiling; on the user's
-				// pre-existing layout it stays a warning. `@n8n/workflow-sdk/next` has no group API,
-				// so for its sources "no groups" is a warning too.
+				// pre-existing layout it stays a warning.
 				const blocker =
-					refusalReason?.code === GROUPING_DECISION_MISSING_CODE &&
-					(!agentExceededCeiling || sourceSdk === 'next')
+					refusalReason?.code === GROUPING_DECISION_MISSING_CODE && !agentExceededCeiling
 						? undefined
 						: refusalReason;
 
@@ -1575,7 +1574,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 					});
 				}
 
-				const overCeiling = topLevelItemsWarning(json, topLevel, sourceSdk !== 'next');
+				const overCeiling = topLevelItemsWarning(json, topLevel, sourceSdk === 'next');
 				if (overCeiling) {
 					const accepted = groupingDecision === 'not_warranted' && groupingReason;
 					informational.push(

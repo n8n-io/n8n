@@ -16,6 +16,7 @@ import {
 	filter,
 	fromAiDescriptionOf,
 	forEachFragment,
+	groupFragment,
 	loopFragment,
 	MANUAL_NODE,
 	mergeFragment,
@@ -207,6 +208,7 @@ type Segment =
 	/** `rejoins`: the open ends of the handler continue (`recover`), else the branch ends. */
 	| { readonly kind: 'onError'; readonly handler: readonly Segment[]; readonly rejoins: boolean }
 	| { readonly kind: 'forEach'; readonly region: RegionRead; readonly body: readonly Segment[] }
+	| { readonly kind: 'group'; readonly group: GroupRead; readonly body: readonly Segment[] }
 	| { readonly kind: 'loop'; readonly node: NamedNode; readonly body: readonly Segment[] }
 	| {
 			readonly kind: 'switch';
@@ -244,6 +246,15 @@ interface RegionRead {
 	readonly exits: readonly Tail[];
 }
 
+/** A saved canvas group, by the names of its main nodes. Its providers ride with them. */
+interface GroupRead {
+	readonly name: string;
+	readonly description?: string;
+	readonly members: ReadonlySet<string>;
+	/** The one member that takes main input from outside the group. */
+	readonly entry: string;
+}
+
 /** A provider and the slot of its parent that it fills. */
 interface Child {
 	readonly slot: ProviderSlot;
@@ -261,6 +272,7 @@ interface Graph {
 	readonly providerShapes: ReadonlyMap<string, ContractShape>;
 	readonly names: ReadonlySet<string>;
 	readonly regions: readonly RegionRead[];
+	readonly groups: readonly GroupRead[];
 }
 
 interface FlowPlan {
@@ -1140,12 +1152,49 @@ const regionAt = (graph: Graph, node: string, tails: readonly Tail[], seen: Read
 		)
 		.sort((a, b) => b.members.size - a.members.size)[0];
 
+/** Marks in `seen` a group the chain is in. A group name can also be a node name. */
+const groupKey = (name: string) => `group\u0000${name}`;
+
+/** The outermost group that the chain enters at `node` from `tails`. */
+const groupAt = (graph: Graph, node: string, tails: readonly Tail[], seen: ReadonlySet<string>) =>
+	graph.groups
+		.filter(
+			(group) =>
+				group.entry === node &&
+				!seen.has(node) &&
+				!seen.has(groupKey(group.name)) &&
+				tails.every((tail) => !group.members.has(tail.node)),
+		)
+		.sort((a, b) => b.members.size - a.members.size)[0];
+
+/** A group from `tails` on: its body inside the group border, then the flow after it. */
+function groupChain(
+	graph: Graph,
+	group: GroupRead,
+	tails: readonly Tail[],
+	seen: ReadonlySet<string>,
+): Chain {
+	const outside = [...graph.nodes.keys()].filter((name) => !group.members.has(name));
+	const inside = [...seen, groupKey(group.name)];
+	const body = chain(graph, tails, new Set([...inside, ...outside]));
+	const rest = chain(graph, body.tails, new Set([...inside, ...group.members]));
+	return {
+		segments: [{ kind: 'group', group, body: body.segments }, ...rest.segments],
+		tails: rest.tails,
+	};
+}
+
 /** The flow from `tails` on. It stops at a node that another path also leads into. */
 function chain(graph: Graph, tails: readonly Tail[], seen: ReadonlySet<string>): Chain {
 	const next = edgesFrom(graph, tails, seen);
 	const targets = [...new Set(next.map((edge) => edge.to))];
-	const region =
-		targets.length === 1 && targets[0] ? regionAt(graph, targets[0], tails, seen) : undefined;
+	const target = targets.length === 1 ? targets[0] : undefined;
+	const region = target ? regionAt(graph, target, tails, seen) : undefined;
+	const group = target ? groupAt(graph, target, tails, seen) : undefined;
+	// A group around a region holds more nodes than the region.
+	if (group && (!region || group.members.size > region.members.size)) {
+		return groupChain(graph, group, tails, seen);
+	}
 	const entered = region && regionChain(graph, region, tails, seen);
 	if (entered) return entered;
 	const node = targets.length === 1 && targets[0] ? graph.nodes.get(targets[0]) : undefined;
@@ -1175,7 +1224,9 @@ function replay(graph: Graph, from: Fragment, segments: readonly Segment[]): Fra
 	});
 	return segments.reduce<Fragment>((current, segment) => {
 		const shape = graph.shapes.get(
-			segment.kind === 'onError' || segment.kind === 'forEach' ? '' : segment.node.name,
+			segment.kind === 'onError' || segment.kind === 'forEach' || segment.kind === 'group'
+				? ''
+				: segment.node.name,
 		);
 		switch (segment.kind) {
 			case 'step':
@@ -1205,6 +1256,13 @@ function replay(graph: Graph, from: Fragment, segments: readonly Segment[]): Fra
 					current,
 					segment.region.name,
 					segment.region.batchSize,
+					again(segment.body),
+				);
+			case 'group':
+				return groupFragment(
+					current,
+					segment.group.name,
+					segment.group.description,
 					again(segment.body),
 				);
 			case 'loop':
@@ -1269,12 +1327,17 @@ const regionKey = (region: {
 		region.exits.map(({ node, output }) => `${node}#${output}`).sort(),
 	]);
 
+/** A group as a comparable value. */
+const groupKeyOf = (group: { name: string; description?: string; members: Iterable<string> }) =>
+	JSON.stringify([group.name, group.description ?? '', [...group.members].sort()]);
+
 /** The flows build the saved graph: the same nodes, edges, error outputs, and regions. */
 function replaysGraph(graph: Graph, flows: readonly FlowPlan[]): boolean {
 	const {
 		nodes: specs,
 		edges,
 		regions = [],
+		groups = [],
 	} = flows.reduce<Fragment>(
 		(built, { root, segments }) =>
 			replay(
@@ -1302,7 +1365,8 @@ function replaysGraph(graph: Graph, flows: readonly FlowPlan[]): boolean {
 			),
 		) &&
 		isEqual(new Set(edges.map(edgeKey)), new Set(graph.edges.map(edgeKey))) &&
-		isEqual(new Set(regions.map(regionKey)), new Set(graph.regions.map(regionKey)))
+		isEqual(new Set(regions.map(regionKey)), new Set(graph.regions.map(regionKey))) &&
+		isEqual(new Set(groups.map(groupKeyOf)), new Set(graph.groups.map(groupKeyOf)))
 	);
 }
 
@@ -1496,6 +1560,14 @@ function renderRegion(
 		const { name, batchSize } = segment.region;
 		return call('forEach', { name, batchSize }, partCode(graph, segment.body, indent));
 	}
+	if (segment.kind === 'group') {
+		const { name, description } = segment.group;
+		return call(
+			'group',
+			{ name, ...(description ? { description } : {}) },
+			partCode(graph, segment.body, indent),
+		);
+	}
 	const shape = graph.shapes.get(segment.node.name);
 	const name = segment.node.name;
 	if (segment.kind === 'branch' && shape?.kind === 'branch') {
@@ -1593,6 +1665,7 @@ const HELPERS = [
 	'when',
 	'switchOn',
 	'forEach',
+	'group',
 	'loop',
 	'paginate',
 	'pollUntil',
@@ -1619,6 +1692,8 @@ function macrosOf(graph: Graph, segments: readonly Segment[]): string[] {
 				return ['when', ...one(segment.then), ...(segment.else ? one(segment.else) : [])];
 			case 'forEach':
 				return ['forEach', ...one(segment.body)];
+			case 'group':
+				return ['group', ...one(segment.body)];
 			case 'loop': {
 				const shape = graph.shapes.get(segment.node.name);
 				return [shape?.kind === 'loop' ? shape.variant : 'loop', ...one(segment.body)];
@@ -1647,6 +1722,7 @@ function segmentNodes(segments: readonly Segment[]): NamedNode[] {
 			case 'branch':
 				return [segment.node, ...segmentNodes(segment.then), ...segmentNodes(segment.else ?? [])];
 			case 'forEach':
+			case 'group':
 				return segmentNodes(segment.body);
 			case 'loop':
 				return [segment.node, ...segmentNodes(segment.body)];
@@ -1667,7 +1743,44 @@ function segmentNodes(segments: readonly Segment[]): NamedNode[] {
 	});
 }
 
-function render(name: string, graph: Graph, flows: readonly FlowPlan[]): string {
+/** A JSON value as a tree, with no expression read. */
+function jsonTree(value: unknown): Tree {
+	if (Array.isArray(value)) return value.map(jsonTree);
+	if (isRecord(value)) {
+		return Object.fromEntries(
+			Object.entries(value)
+				.filter(([, entry]) => entry !== undefined)
+				.map(([key, entry]) => [key, jsonTree(entry)]),
+		);
+	}
+	return typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean'
+		? value
+		: null;
+}
+
+/**
+ * Settings that a save keeps when the source leaves them out. An update merges the saved
+ * settings, and a new workflow gets execution order v1. `forEach` adds v1 in the build too.
+ */
+const SAVED_DEFAULTS: Readonly<Record<string, unknown>> = { executionOrder: 'v1' };
+
+/**
+ * The `name`, or the `{ name, settings }` that `workflow()` takes. A `'DEFAULT'` value and a
+ * value in `SAVED_DEFAULTS` stay out of the source.
+ */
+function workflowOptions(name: string, settings: WorkflowJSON['settings']): Tree {
+	const set = Object.entries(settings ?? {}).filter(
+		([key, value]) => value !== undefined && value !== 'DEFAULT' && SAVED_DEFAULTS[key] !== value,
+	);
+	return set.length > 0 ? { name, settings: jsonTree(Object.fromEntries(set)) } : name;
+}
+
+function render(
+	name: string,
+	settings: WorkflowJSON['settings'],
+	graph: Graph,
+	flows: readonly FlowPlan[],
+): string {
 	const placed = flows
 		.flatMap(({ root, segments }) => [root, ...segmentNodes(segments)])
 		.flatMap((node) => {
@@ -1706,7 +1819,7 @@ function render(name: string, graph: Graph, flows: readonly FlowPlan[]): string 
 		...imports,
 		'',
 		'export default workflow(',
-		`${INDENT}${JSON.stringify(name)},`,
+		`${INDENT}${renderTree(workflowOptions(name, settings), INDENT)},`,
 		...(first ? [`${INDENT}${first(INDENT)},`] : []),
 		...positionLines(rest, INDENT, WORKFLOW_POSITIONS),
 		');',
@@ -1719,6 +1832,7 @@ function render(name: string, graph: Graph, flows: readonly FlowPlan[]): string 
  * cannot express it (for example a sticky note, or a disabled node). Node settings such as
  * `retryOnFail` read back as `settings`. IF, Loop Over Items, Switch, Filter, and Merge nodes
  * read back as macros when their wiring and parameters are what the macro builds.
+ * A node group reads back as `group()`, and workflow settings as `workflow({ name, settings })`.
  * An expression without a lambda form reads back as `expr()`; in `node()` and `provider()` every
  * expression does, as their items are untyped. An error output reads back as `onError`, or as
  * `recover` when the handler continues. `factories` maps
@@ -1742,6 +1856,8 @@ export function decompileWorkflow(
 	const forEachRegions = regionsOf(json);
 	if (!edges || !children || !forEachRegions) return undefined;
 	const providerNames = new Set(edges.providers.map(({ from }) => from));
+	const groups = groupsOf(json, edges.main, children, providerNames);
+	if (!groups) return undefined;
 	const mainNodes = plain.filter((node) => !providerNames.has(node.name));
 	const nodes = new Map(mainNodes.map((node) => [node.name, node]));
 	// `$()` reads a region as it reads a node.
@@ -1803,6 +1919,7 @@ export function decompileWorkflow(
 		providerShapes,
 		names,
 		regions: forEachRegions,
+		groups,
 	};
 	const flows = mainNodes
 		.filter((node) => !targets.has(node.name))
@@ -1811,13 +1928,14 @@ export function decompileWorkflow(
 			segments: chain(graph, [{ node: root.name, output: 0 }], new Set([root.name])).segments,
 		}));
 	if (flows.length === 0 || !replaysGraph(graph, flows)) return undefined;
-	return render(json.name, graph, flows);
+	return render(json.name, json.settings, graph, flows);
 }
 
-/** The `forEach` regions of `json`, or `undefined` when it has another node group. */
+/** The `forEach` regions of `json`, or `undefined` when it has a region of another kind. */
 function regionsOf(json: WorkflowJSON): RegionRead[] | undefined {
 	const nameOf = new Map(json.nodes.map((node) => [node.id, node.name]));
-	const regions = (json.nodeGroups ?? []).map((group) => {
+	const repeating = (json.nodeGroups ?? []).filter((group) => group.repeat !== undefined);
+	const regions = repeating.map((group) => {
 		const { repeat } = group;
 		if (repeat?.kind !== 'forEach') return undefined;
 		const members = group.nodeIds.map((id) => nameOf.get(id));
@@ -1834,6 +1952,40 @@ function regionsOf(json: WorkflowJSON): RegionRead[] | undefined {
 		};
 	});
 	return regions.every((region) => region !== undefined) ? regions : undefined;
+}
+
+/**
+ * The canvas groups of `json`, or `undefined` when `group()` cannot build one: it needs one
+ * entry member, and the providers of its members, and no other provider.
+ */
+function groupsOf(
+	json: WorkflowJSON,
+	main: readonly Edge[],
+	children: ReadonlyMap<string, readonly Child[]>,
+	providerNames: ReadonlySet<string>,
+): GroupRead[] | undefined {
+	const nameOf = new Map(json.nodes.map((node) => [node.id, node.name]));
+	const providersOf = (name: string): string[] =>
+		(children.get(name) ?? []).flatMap(({ node }) => [node.name, ...providersOf(node.name)]);
+	const groups = (json.nodeGroups ?? [])
+		.filter((group) => group.repeat === undefined)
+		.map((group): GroupRead | undefined => {
+			const saved = group.nodeIds.map((id) => nameOf.get(id));
+			const all = new Set(saved.flatMap((name) => name ?? []));
+			if (all.size !== saved.length) return undefined;
+			const members = new Set([...all].filter((name) => !providerNames.has(name)));
+			const withProviders = new Set([...members].flatMap((name) => [name, ...providersOf(name)]));
+			const entries = [...members].filter((name) =>
+				main.some((edge) => edge.to === name && !members.has(edge.from)),
+			);
+			const [entry] = entries;
+			if (entry === undefined || entries.length > 1 || !isEqual(withProviders, all)) {
+				return undefined;
+			}
+			const { name, description } = group;
+			return { name, ...(description ? { description } : {}), members, entry };
+		});
+	return groups.every((group) => group !== undefined) ? groups : undefined;
 }
 
 const NODE_TYPE_CALLS = new Set(['node', 'provider', 'trigger']);

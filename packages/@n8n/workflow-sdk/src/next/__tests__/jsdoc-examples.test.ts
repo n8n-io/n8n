@@ -2,6 +2,7 @@
 import {
 	contractTool,
 	fromModel,
+	group,
 	loop,
 	manual,
 	merge,
@@ -11,6 +12,7 @@ import {
 	recover,
 	route,
 	set,
+	steps,
 	switchOn,
 	when,
 	workflow,
@@ -145,6 +147,18 @@ describe('next JSDoc examples', () => {
 				recover(set({ name: 'Log', fields: { failed: (item) => item.error.message } })),
 			),
 			workflow(
+				'Group',
+				manual(),
+				customers,
+				group(
+					{ name: 'Enrich', description: 'Looks up each lead and scores it' },
+					steps(
+						set({ name: 'Look up', fields: { id: (c) => c.id } }),
+						set({ name: 'Score', fields: { score: 1 } }),
+					),
+				),
+			),
+			workflow(
 				'Tool',
 				manual(),
 				node({
@@ -166,6 +180,7 @@ describe('next JSDoc examples', () => {
 			'Poll',
 			'Merge',
 			'Recover',
+			'Group',
 			'Tool',
 		]);
 	});
