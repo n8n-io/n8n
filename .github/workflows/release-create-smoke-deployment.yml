@@ -1,0 +1,13 @@
+name: 'Release: Crete smoke deployment'
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [release-smokes]  # swap in your branch, or remove this trigger
+
+jobs:
+  hello:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Say hello
+        run: echo "Hello, world! 👋"
