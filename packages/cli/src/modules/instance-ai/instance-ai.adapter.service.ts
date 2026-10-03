@@ -12,6 +12,7 @@ import {
 	INSTANCE_AI_FOLDER_EXPLORATION_FLAG,
 	INSTANCE_AI_NODE_USAGE_FLAG,
 	INSTANCE_ACTIVITY_CONTEXT_FLAG,
+	INSTANCE_ACTIVITY_CONTEXT_ENABLED_VARIANT,
 	TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE,
 	upsertEvaluationConfigSchema,
 	INSTANCE_AI_CONVERSATION_HISTORY_FLAG,
@@ -730,7 +731,9 @@ export class InstanceAiAdapterService {
 				postHog.getFeatureFlagForInstance(INSTANCE_ACTIVITY_CONTEXT_FLAG),
 			]);
 			if (userFlags.status === 'fulfilled') flags = userFlags.value;
-			instanceContextEnabled = instanceFlag.status === 'fulfilled' && instanceFlag.value === true;
+			instanceContextEnabled =
+				instanceFlag.status === 'fulfilled' &&
+				instanceFlag.value === INSTANCE_ACTIVITY_CONTEXT_ENABLED_VARIANT;
 		} catch {
 			// Leave unreadable flags unassigned.
 		}

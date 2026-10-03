@@ -67,6 +67,7 @@ import {
 	INSTANCE_AI_CONVERSATION_HISTORY_FLAG,
 	INSTANCE_AI_NODE_USAGE_FLAG,
 	INSTANCE_ACTIVITY_CONTEXT_FLAG,
+	INSTANCE_ACTIVITY_CONTEXT_ENABLED_VARIANT,
 	INSTANCE_AI_CONVERSATION_HISTORY_ENABLED_VARIANT,
 	INSTANCE_AI_PROGRESSIVE_BUILDING_FLAG,
 	INSTANCE_AI_SETUP_PANEL_FLAG,
@@ -7057,7 +7058,7 @@ describe('resolveExperimentGates', () => {
 	const secondUser = mock<User>({ id: 'user-2', createdAt: new Date() });
 	const getFeatureFlagForInstance = vi.fn();
 
-	function stubContainer(flags: Record<string, string | boolean>, instanceFlag = false) {
+	function stubContainer(flags: Record<string, string | boolean>, instanceFlag?: string | boolean) {
 		const getFeatureFlags = vi.fn().mockResolvedValue(flags);
 		getFeatureFlagForInstance.mockReset().mockResolvedValue(instanceFlag);
 		vi.spyOn(Container, 'get').mockReturnValue({ getFeatureFlags, getFeatureFlagForInstance });
@@ -7101,17 +7102,24 @@ describe('resolveExperimentGates', () => {
 		expect(getFeatureFlags).toHaveBeenCalledWith(user);
 	});
 
-	it.each([true, false])(
+	it.each([
+		['variant', true],
+		['control', false],
+		[true, false],
+		[false, false],
+		[undefined, false],
+		['unexpected', false],
+	])(
 		'returns instance activity %s for users with different user flags',
-		async (instanceFlag) => {
+		async (instanceFlag, enabled) => {
 			const getFeatureFlags = stubContainer({}, instanceFlag);
 			getFeatureFlags
 				.mockResolvedValueOnce({
-					[INSTANCE_ACTIVITY_CONTEXT_FLAG]: true,
+					[INSTANCE_ACTIVITY_CONTEXT_FLAG]: INSTANCE_ACTIVITY_CONTEXT_ENABLED_VARIANT,
 					[INSTANCE_AI_NODE_USAGE_FLAG]: true,
 				})
 				.mockResolvedValueOnce({
-					[INSTANCE_ACTIVITY_CONTEXT_FLAG]: false,
+					[INSTANCE_ACTIVITY_CONTEXT_FLAG]: 'control',
 					[INSTANCE_AI_NODE_USAGE_FLAG]: false,
 				});
 			const adapter = createAdapter();
@@ -7121,8 +7129,8 @@ describe('resolveExperimentGates', () => {
 				adapter.resolveExperimentGates(secondUser),
 			]);
 
-			expect(first.instanceContextEnabled).toBe(instanceFlag);
-			expect(second.instanceContextEnabled).toBe(instanceFlag);
+			expect(first.instanceContextEnabled).toBe(enabled);
+			expect(second.instanceContextEnabled).toBe(enabled);
 			expect(first.nodeUsageEnabled).toBe(true);
 			expect(second.nodeUsageEnabled).toBe(false);
 			expect(getFeatureFlagForInstance.mock.calls).toEqual([
@@ -7133,7 +7141,7 @@ describe('resolveExperimentGates', () => {
 	);
 
 	it('keeps instance activity off when its evaluation fails', async () => {
-		stubContainer(allEnabled, true);
+		stubContainer(allEnabled, INSTANCE_ACTIVITY_CONTEXT_ENABLED_VARIANT);
 		getFeatureFlagForInstance.mockRejectedValue(new Error('PostHog failed'));
 
 		await expect(createAdapter().resolveExperimentGates(user)).resolves.toMatchObject({
@@ -7143,7 +7151,7 @@ describe('resolveExperimentGates', () => {
 	});
 
 	it('keeps the instance answer when user flag evaluation fails', async () => {
-		const getFeatureFlags = stubContainer(allEnabled, true);
+		const getFeatureFlags = stubContainer(allEnabled, INSTANCE_ACTIVITY_CONTEXT_ENABLED_VARIANT);
 		getFeatureFlags.mockRejectedValue(new Error('PostHog failed'));
 
 		await expect(createAdapter().resolveExperimentGates(user)).resolves.toMatchObject({

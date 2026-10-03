@@ -2857,6 +2857,7 @@ export const INSTANCE_AI_FOLDER_EXPLORATION_FLAG = '110_instance_ai_folder_explo
 
 /** Instance rollout gate for shared activity recording and retrieval. */
 export const INSTANCE_ACTIVITY_CONTEXT_FLAG = '114_instance_activity_context';
+export const INSTANCE_ACTIVITY_CONTEXT_ENABLED_VARIANT = 'variant';
 
 /**
  * `110_instance_ai_folder_exploration` is multivariate — the enabled arm is a

@@ -1,4 +1,7 @@
-import { INSTANCE_ACTIVITY_CONTEXT_FLAG } from '@n8n/api-types';
+import {
+	INSTANCE_ACTIVITY_CONTEXT_ENABLED_VARIANT,
+	INSTANCE_ACTIVITY_CONTEXT_FLAG,
+} from '@n8n/api-types';
 import { LicenseState, ModuleRegistry } from '@n8n/backend-common';
 import { EventService, UrlService, RoleService, FolderFinderService } from '@n8n/backend-services';
 import { mockInstance, mockLogger } from '@n8n/backend-test-utils';
@@ -252,14 +255,22 @@ describe('McpService scope enforcement', () => {
 		expect(unregistered).toEqual([]);
 	});
 
-	it.each([true, false])(
-		'sets all context tools and the resource from the shared flag override: %s',
-		async (enabled) => {
+	it.each([
+		{ override: INSTANCE_ACTIVITY_CONTEXT_ENABLED_VARIANT, enabled: true },
+		{ override: { value: INSTANCE_ACTIVITY_CONTEXT_ENABLED_VARIANT }, enabled: true },
+		{ override: 'control', enabled: false },
+		{ override: { value: 'control' }, enabled: false },
+		{ override: true, enabled: false },
+		{ override: false, enabled: false },
+		{ override: 'unexpected', enabled: false },
+	])(
+		'sets all context tools and the resource from the shared flag override: $override',
+		async ({ override, enabled }) => {
 			mockInstance(InstanceContextService);
 			mockInstance(WorkflowDependencyQueryService);
 			const config = mockInstance(GlobalConfig, {
 				diagnostics: { enabled: false },
-				featureFlags: { override: { [INSTANCE_ACTIVITY_CONTEXT_FLAG]: enabled } },
+				featureFlags: { override: { [INSTANCE_ACTIVITY_CONTEXT_FLAG]: override } },
 			});
 			const service = buildService({
 				instanceAiActive: true,

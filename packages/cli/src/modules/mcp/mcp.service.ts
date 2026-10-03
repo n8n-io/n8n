@@ -5,6 +5,7 @@ import {
 	MCP_APPS_VARIANT_CONTROL,
 	MCP_APPS_VARIANT_ENABLED,
 	INSTANCE_ACTIVITY_CONTEXT_FLAG,
+	INSTANCE_ACTIVITY_CONTEXT_ENABLED_VARIANT,
 } from '@n8n/api-types';
 import { LicenseState, Logger, ModuleRegistry } from '@n8n/backend-common';
 import { EventService, UrlService, RoleService, FolderFinderService } from '@n8n/backend-services';
@@ -286,7 +287,9 @@ export class McpService {
 		return {
 			credentialDescriptionsEnabled: flags[CREDENTIAL_DESCRIPTIONS_FLAG] === true,
 			mcpApps: this.resolveMcpApps(mcpAppsEnabled, flags),
-			instanceContextEnabled: instanceFlag.status === 'fulfilled' && instanceFlag.value === true,
+			instanceContextEnabled:
+				instanceFlag.status === 'fulfilled' &&
+				instanceFlag.value === INSTANCE_ACTIVITY_CONTEXT_ENABLED_VARIANT,
 			aiPreferencesEnabled: arePreferenceToolsEnabled(flags),
 		};
 	}

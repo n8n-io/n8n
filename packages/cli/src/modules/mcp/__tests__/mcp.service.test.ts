@@ -7,6 +7,7 @@ import {
 	CONTEXT_PREFERENCES_ENABLED_VARIANT,
 	CONTEXT_PREFERENCES_FLAG,
 	INSTANCE_ACTIVITY_CONTEXT_FLAG,
+	INSTANCE_ACTIVITY_CONTEXT_ENABLED_VARIANT,
 } from '@n8n/api-types';
 import { LicenseState, ModuleRegistry, type Logger } from '@n8n/backend-common';
 import { EventService, UrlService, RoleService, FolderFinderService } from '@n8n/backend-services';
@@ -432,29 +433,31 @@ describe('McpService', () => {
 			expect(postHogClient.getFeatureFlags).toHaveBeenCalledTimes(1);
 		});
 
-		it.each([true, false])(
-			'uses the same instance context answer for two users: %s',
-			async (enabled) => {
-				const postHogClient = mockInstance(PostHogClient);
-				postHogClient.getFeatureFlags
-					.mockResolvedValueOnce({ [INSTANCE_ACTIVITY_CONTEXT_FLAG]: true })
-					.mockResolvedValueOnce({ [INSTANCE_ACTIVITY_CONTEXT_FLAG]: false });
-				postHogClient.getFeatureFlagForInstance.mockResolvedValue(enabled);
-				const service = buildResolutionService({ postHogClient });
-				const secondUser = Object.assign(new User(), { id: 'user-2', role: GLOBAL_MEMBER_ROLE });
+		it.each([
+			['variant', true],
+			['control', false],
+		])('uses the same instance context answer for two users: %s', async (instanceFlag, enabled) => {
+			const postHogClient = mockInstance(PostHogClient);
+			postHogClient.getFeatureFlags
+				.mockResolvedValueOnce({
+					[INSTANCE_ACTIVITY_CONTEXT_FLAG]: INSTANCE_ACTIVITY_CONTEXT_ENABLED_VARIANT,
+				})
+				.mockResolvedValueOnce({ [INSTANCE_ACTIVITY_CONTEXT_FLAG]: 'control' });
+			postHogClient.getFeatureFlagForInstance.mockResolvedValue(instanceFlag);
+			const service = buildResolutionService({ postHogClient });
+			const secondUser = Object.assign(new User(), { id: 'user-2', role: GLOBAL_MEMBER_ROLE });
 
-				const results = await Promise.all([
-					service.resolveFeatureFlags(user),
-					service.resolveFeatureFlags(secondUser),
-				]);
+			const results = await Promise.all([
+				service.resolveFeatureFlags(user),
+				service.resolveFeatureFlags(secondUser),
+			]);
 
-				expect(results.map((result) => result.instanceContextEnabled)).toEqual([enabled, enabled]);
-				expect(postHogClient.getFeatureFlagForInstance.mock.calls).toEqual([
-					[INSTANCE_ACTIVITY_CONTEXT_FLAG],
-					[INSTANCE_ACTIVITY_CONTEXT_FLAG],
-				]);
-			},
-		);
+			expect(results.map((result) => result.instanceContextEnabled)).toEqual([enabled, enabled]);
+			expect(postHogClient.getFeatureFlagForInstance.mock.calls).toEqual([
+				[INSTANCE_ACTIVITY_CONTEXT_FLAG],
+				[INSTANCE_ACTIVITY_CONTEXT_FLAG],
+			]);
+		});
 
 		it('keeps context off when its flag fails without disabling user features', async () => {
 			const postHogClient = mockInstance(PostHogClient);
@@ -521,7 +524,9 @@ describe('McpService', () => {
 			it('enables the surface from the shared instance flag alone', async () => {
 				const postHogClient = mockInstance(PostHogClient);
 				postHogClient.getFeatureFlags.mockResolvedValue({});
-				postHogClient.getFeatureFlagForInstance.mockResolvedValue(true);
+				postHogClient.getFeatureFlagForInstance.mockResolvedValue(
+					INSTANCE_ACTIVITY_CONTEXT_ENABLED_VARIANT,
+				);
 				const service = buildResolutionService({ postHogClient });
 
 				await expect(service.resolveFeatureFlags(user)).resolves.toMatchObject({
@@ -529,12 +534,12 @@ describe('McpService', () => {
 				});
 			});
 
-			it.each([false, undefined, 'variant'])(
+			it.each(['control', true, false, undefined, 'unexpected'])(
 				'keeps the surface off when the instance flag is %s',
 				async (value) => {
 					const postHogClient = mockInstance(PostHogClient);
 					postHogClient.getFeatureFlags.mockResolvedValue({
-						[INSTANCE_ACTIVITY_CONTEXT_FLAG]: true,
+						[INSTANCE_ACTIVITY_CONTEXT_FLAG]: INSTANCE_ACTIVITY_CONTEXT_ENABLED_VARIANT,
 					});
 					postHogClient.getFeatureFlagForInstance.mockResolvedValue(value);
 					const service = buildResolutionService({ postHogClient });
@@ -613,7 +618,9 @@ describe('McpService', () => {
 			postHogClient.getFeatureFlags.mockResolvedValue({
 				[CONTEXT_PREFERENCES_FLAG]: CONTEXT_PREFERENCES_ENABLED_VARIANT,
 			});
-			postHogClient.getFeatureFlagForInstance.mockResolvedValue(true);
+			postHogClient.getFeatureFlagForInstance.mockResolvedValue(
+				INSTANCE_ACTIVITY_CONTEXT_ENABLED_VARIANT,
+			);
 			const service = buildResolutionService({
 				postHogClient,
 				mcpAppsEnabled: true,

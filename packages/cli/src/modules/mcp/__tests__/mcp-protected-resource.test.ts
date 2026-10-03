@@ -3,6 +3,7 @@ import {
 	CONTEXT_PREFERENCES_ENABLED_VARIANT,
 	CONTEXT_PREFERENCES_FLAG,
 	INSTANCE_ACTIVITY_CONTEXT_FLAG,
+	INSTANCE_ACTIVITY_CONTEXT_ENABLED_VARIANT,
 } from '@n8n/api-types';
 import type { PostHogClient } from '@/posthog';
 import type { LicenseState, ModuleRegistry } from '@n8n/backend-common';
@@ -59,7 +60,9 @@ describe('McpProtectedResource', () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
-		postHogClient.getFeatureFlagForInstance.mockResolvedValue(true);
+		postHogClient.getFeatureFlagForInstance.mockResolvedValue(
+			INSTANCE_ACTIVITY_CONTEXT_ENABLED_VARIANT,
+		);
 		postHogClient.getFeatureFlags.mockResolvedValue({
 			[CONTEXT_PREFERENCES_FLAG]: CONTEXT_PREFERENCES_ENABLED_VARIANT,
 		});
@@ -117,16 +120,19 @@ describe('McpProtectedResource', () => {
 			expect(scopeTools['workflow:read']).toContain('search_workflows');
 		});
 
-		it('withholds all context tools from consent when the instance flag is off', async () => {
-			moduleRegistry.isActive.mockReturnValue(true);
-			postHogClient.getFeatureFlagForInstance.mockResolvedValue(false);
+		it.each(['control', true, false, undefined, 'unexpected'])(
+			'withholds all context tools from consent when the instance flag is %s',
+			async (value) => {
+				moduleRegistry.isActive.mockReturnValue(true);
+				postHogClient.getFeatureFlagForInstance.mockResolvedValue(value);
 
-			const scopeTools = await resource.getScopeTools();
+				const scopeTools = await resource.getScopeTools();
 
-			for (const tool of INSTANCE_CONTEXT_TOOLS) {
-				expect(scopeTools['workflow:read']).not.toContain(tool);
-			}
-		});
+				for (const tool of INSTANCE_CONTEXT_TOOLS) {
+					expect(scopeTools['workflow:read']).not.toContain(tool);
+				}
+			},
+		);
 
 		it('withholds all context tools when the instance flag cannot be read', async () => {
 			postHogClient.getFeatureFlagForInstance.mockRejectedValue(new Error('Flag unavailable'));
