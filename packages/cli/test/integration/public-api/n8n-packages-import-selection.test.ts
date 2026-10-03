@@ -119,7 +119,7 @@ describe('POST /n8n-packages/import-selection', () => {
 		expect(await workflowRepository.findOneBy({ id: 'WFB' })).toBeNull();
 	});
 
-	it('archives a target workflow named in deletedWorkflowIds and returns 200', async () => {
+	it('archives a target workflow named in deletedWorkflowIds by default and returns 200', async () => {
 		const project = await createTeamProject('Target', owner);
 		const victim = await createWorkflow({ name: 'Victim' }, project);
 		const tarBuffer = await buildProjectPackage(project.id);
@@ -143,6 +143,29 @@ describe('POST /n8n-packages/import-selection', () => {
 
 		const workflowRepository = Container.get(WorkflowRepository);
 		expect((await workflowRepository.findOneBy({ id: victim.id }))?.isArchived).toBe(true);
+		expect(await workflowRepository.findOneBy({ id: 'WFA' })).not.toBeNull();
+	});
+
+	it('hard-deletes a target workflow when overwriteDeletionPolicy is hard-delete and returns 200', async () => {
+		const project = await createTeamProject('Target', owner);
+		const victim = await createWorkflow({ name: 'Victim' }, project);
+		const tarBuffer = await buildProjectPackage(project.id);
+
+		const response = await authOwnerAgent
+			.post('/n8n-packages/import-selection')
+			.field('selectedProjectId', project.id)
+			.field('selectedWorkflowIds', JSON.stringify(['WFA']))
+			.field('deletedWorkflowIds', JSON.stringify([victim.id]))
+			.field('overwriteDeletionPolicy', 'hard-delete')
+			.attach('package', tarBuffer, 'import.n8np');
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.removedWorkflows).toEqual([
+			expect.objectContaining({ workflowId: victim.id, deletion: 'deleted' }),
+		]);
+
+		const workflowRepository = Container.get(WorkflowRepository);
+		expect(await workflowRepository.findOneBy({ id: victim.id })).toBeNull();
 		expect(await workflowRepository.findOneBy({ id: 'WFA' })).not.toBeNull();
 	});
 

@@ -168,6 +168,24 @@ describe('SharedWorkflowRepository', () => {
 			]);
 		});
 
+		it('includes archived workflows when asked to', async () => {
+			entityManager.find.mockResolvedValue([rootRow]);
+
+			const result = await sharedWorkflowRepository.findOwnedWorkflowRemovalCandidates(
+				'project',
+				['root'],
+				{ includeArchived: true },
+			);
+
+			expect(entityManager.find).toHaveBeenCalledExactlyOnceWith(
+				SharedWorkflow,
+				expect.objectContaining({
+					where: { projectId: 'project', workflowId: In(['root']), role: 'workflow:owner' },
+				}),
+			);
+			expect(result).toEqual([{ id: 'root', name: 'Root workflow', parentFolderId: null }]);
+		});
+
 		it('combines candidates from bounded queries for a large list', async () => {
 			const middleIds = Array.from({ length: 9_999 }, (_, index) => `workflow-${index}`);
 			entityManager.find.mockResolvedValueOnce([rootRow]).mockResolvedValueOnce([folderRow]);
