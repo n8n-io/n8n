@@ -14,11 +14,14 @@ interface EmptyStateIconCardsProps {
 defineOptions({ name: 'N8nEmptyStateIconCards' });
 const props = withDefaults(defineProps<EmptyStateIconCardsProps>(), { animated: true });
 
-// The right card swaps half a cycle after the left one and starts halfway around the icon
-// list, so the two sides never show the same icon at once.
+// Swaps alternate between the two side cards, one per beat, so each card holds its icon for
+// two beats. The right card starts halfway around the icon list, so the two sides never show
+// the same icon at once.
 const FADE_MS = 300;
-const STAGGER_MS = 1500;
-const CYCLE_MS = 3000;
+const BEAT_MS = 1500;
+// The first swap lands half a beat after mount: long enough to register the opening trio,
+// short enough that the cards read as already cycling instead of sitting still for two beats.
+const LEAD_IN_MS = BEAT_MS / 2;
 
 const count = computed(() => props.sideIcons.length);
 const leftIndex = ref(0);
@@ -43,10 +46,11 @@ const prefersReducedMotion = () =>
 	typeof window.matchMedia === 'function' &&
 	window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-let cycleTimer = 0;
-let staggerTimer = 0;
+let leadInTimer = 0;
+let beatTimer = 0;
 let leftSwapTimer = 0;
 let rightSwapTimer = 0;
+let nextSide: 'left' | 'right' = 'left';
 
 const swapLeft = () => {
 	leftFading.value = true;
@@ -62,10 +66,19 @@ const swapRight = () => {
 		rightFading.value = false;
 	}, FADE_MS);
 };
+const beat = () => {
+	if (nextSide === 'left') {
+		swapLeft();
+		nextSide = 'right';
+	} else {
+		swapRight();
+		nextSide = 'left';
+	}
+};
 
 const stopCycling = () => {
-	window.clearInterval(cycleTimer);
-	window.clearTimeout(staggerTimer);
+	window.clearTimeout(leadInTimer);
+	window.clearInterval(beatTimer);
 	window.clearTimeout(leftSwapTimer);
 	window.clearTimeout(rightSwapTimer);
 };
@@ -80,11 +93,12 @@ const startCycling = () => {
 	rightIndex.value = shouldCycle.value ? Math.floor(count.value / 2) : count.value > 1 ? 1 : 0;
 	leftFading.value = false;
 	rightFading.value = false;
+	nextSide = 'left';
 	if (!shouldCycle.value || prefersReducedMotion()) return;
-	cycleTimer = window.setInterval(() => {
-		swapLeft();
-		staggerTimer = window.setTimeout(swapRight, STAGGER_MS);
-	}, CYCLE_MS);
+	leadInTimer = window.setTimeout(() => {
+		beat();
+		beatTimer = window.setInterval(beat, BEAT_MS);
+	}, LEAD_IN_MS);
 };
 
 onMounted(startCycling);
@@ -139,12 +153,14 @@ onBeforeUnmount(stopCycling);
 	height: calc(var(--spacing--md) * 2);
 	border: 1px solid var(--border-color--subtle);
 	border-radius: var(--radius--xs);
-	background: var(--background--surface);
+	// Consumers whose side icons are fixed-colour brand marks can pin the tiles to a light
+	// surface (and a matching dark icon colour) so the marks stay legible on the dark theme.
+	background: var(--empty-state-icon-cards--tile-background, var(--background--surface));
 	box-shadow: var(--shadow--xs);
 	overflow: hidden;
 	// The font-size sizes both 1em-SVG custom marks and the (sizeless) N8nIcons.
 	font-size: var(--font-size--xl);
-	color: var(--text-color--subtle);
+	color: var(--empty-state-icon-cards--tile-color, var(--text-color--subtle));
 
 	&:first-child {
 		transform: rotate(-8deg);
@@ -167,6 +183,18 @@ onBeforeUnmount(stopCycling);
 	transition:
 		opacity var(--empty-state-icon-cards--fade-duration) var(--easing--ease-in-out),
 		filter var(--empty-state-icon-cards--fade-duration) var(--easing--ease-in-out);
+
+	// Custom marks are meant to be 1em SVGs; sizing bare `<svg>` and `<img>` roots here lets
+	// plain imported `.svg?component` assets and raster logos track the card's font-size too.
+	> svg,
+	> img {
+		width: 1em;
+		height: 1em;
+	}
+
+	> img {
+		object-fit: contain;
+	}
 
 	@media (prefers-reduced-motion: reduce) {
 		transition: none;

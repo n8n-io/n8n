@@ -73,7 +73,7 @@ describe('N8nEmptyState', () => {
 			expect(wrapper.container.querySelector('[data-icon="code"]')).toBeInTheDocument();
 		});
 
-		it('should cycle the side icons when animated', async () => {
+		it('should start cycling shortly after mount, alternating sides', async () => {
 			const wrapper = render(N8nEmptyState, {
 				props: {
 					icon: {
@@ -87,12 +87,24 @@ describe('N8nEmptyState', () => {
 				},
 			});
 
-			expect(wrapper.container.querySelector('[data-icon="code"]')).toBeInTheDocument();
+			const hasIcon = (name: string) =>
+				wrapper.container.querySelector(`[data-icon="${name}"]`) !== null;
 
-			// One full cycle (3s) plus the fade (300ms) swaps the left card to the next icon.
-			await vi.advanceTimersByTimeAsync(3400);
-			expect(wrapper.container.querySelector('[data-icon="code"]')).not.toBeInTheDocument();
-			expect(wrapper.container.querySelector('[data-icon="terminal"]')).toBeInTheDocument();
+			// Left card starts at the first icon, right card halfway around the list.
+			expect(hasIcon('code')).toBe(true);
+			expect(hasIcon('bot')).toBe(true);
+
+			// Half a beat (750ms) plus the fade (300ms): the left card has swapped, the right has not.
+			await vi.advanceTimersByTimeAsync(1100);
+			expect(hasIcon('code')).toBe(false);
+			expect(hasIcon('terminal')).toBe(true);
+			expect(hasIcon('bot')).toBe(true);
+
+			// One beat (1.5s) later the right card follows while the left one holds.
+			await vi.advanceTimersByTimeAsync(1500);
+			expect(hasIcon('bot')).toBe(false);
+			expect(hasIcon('globe')).toBe(true);
+			expect(hasIcon('terminal')).toBe(true);
 		});
 
 		it('should not cycle when animated is false', async () => {
