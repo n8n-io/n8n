@@ -18,6 +18,8 @@ const lastNewline = (response: unknown) =>
 	) - 1;
 
 export const updateDocument = document.action('update', {
+	// Minor 1: an ID of any length, and the ID after /d/ in a URL.
+	minor: 1,
 	action: 'Append to a document',
 	summary: 'Add text or Markdown at the end of a Google Doc.',
 	flow: { effect: 'write', cardinality: 'per-item', idempotent: false },

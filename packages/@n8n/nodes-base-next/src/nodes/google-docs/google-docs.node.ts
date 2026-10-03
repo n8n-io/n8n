@@ -1,6 +1,7 @@
-import { defineNode, defineResource, t, UserError } from '@n8n/node-sdk';
+import { defineNode, defineResource, t } from '@n8n/node-sdk';
 import { credential } from '@n8n/node-sdk/credentials';
 
+import { GOOGLE_FILE_ID, googleFileIdOf } from '../google-file';
 import { googleOAuth2 } from '../google-oauth2';
 
 // The legacy node creates a document through the Drive API, with the same credential.
@@ -26,15 +27,10 @@ export const googleDocs = defineNode({
 export const googleDocument = defineResource({
 	id: 'googleDocs.document',
 	label: 'Document',
-	shape: { pattern: '[-_a-zA-Z0-9]{25,}', 'x-n8n-hint': 'Document ID or Google Docs URL' },
+	shape: { pattern: GOOGLE_FILE_ID, 'x-n8n-hint': 'Document ID or Google Docs URL' },
 });
 
-/** The ID in a Google Docs URL, else the value itself. It goes into a path, so it is checked. */
-export function documentIdOf(value: string) {
-	const id = /\/document\/d\/([-_a-zA-Z0-9]+)/.exec(value)?.[1] ?? value;
-	if (!/^[-_a-zA-Z0-9]+$/.test(id)) throw new UserError(`Not a Google Docs ID or URL: ${value}`);
-	return id;
-}
+export const documentIdOf = (value: string) => googleFileIdOf(value, 'Google Docs');
 
 const open = { additionalProperties: true } as const;
 

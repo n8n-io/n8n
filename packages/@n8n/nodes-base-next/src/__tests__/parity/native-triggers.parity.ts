@@ -1,4 +1,5 @@
 import { t, validate, type JsonSchema, type Trigger } from '@n8n/node-sdk';
+import { outputItemSchema } from '@n8n/node-sdk/codegen';
 import { replyContractOf } from '@n8n/node-sdk/registry';
 import { FacebookTrigger } from 'n8n-nodes-base/dist/nodes/Facebook/FacebookTrigger.node';
 import { Form } from 'n8n-nodes-base/dist/nodes/Form/Form.node';
@@ -285,6 +286,49 @@ describe('native trigger contracts against the legacy nodes', () => {
 			executionMode: 'production',
 		});
 		expect(validate(item?.json, webhookTrigger.output.json)).toEqual([]);
+	});
+
+	it('type the files of a multipart Webhook request under their form field names', async () => {
+		const parameters: IDataObject = { httpMethod: 'POST', path: 'upload', options: {} };
+		const file = (name: string) => ({
+			filepath: `/nonexistent/n8n-parity-${name}`,
+			originalFilename: `${name}.png`,
+			mimetype: 'image/png',
+		});
+		const request = {
+			method: 'POST',
+			body: { data: { caption: 'cat' }, files: { image: file('image'), 'scan[]': [file('a')] } },
+			headers: { 'content-type': 'multipart/form-data; boundary=x' },
+			params: {},
+			query: {},
+			ips: [],
+			ip: '10.0.0.1',
+			contentType: 'multipart/form-data',
+		};
+		const context = {
+			getNode: () => ({
+				name: 'Webhook',
+				type: 'n8n-nodes-base.webhook',
+				typeVersion: 2.2,
+				parameters,
+			}),
+			getNodeParameter: (name: string, fallback?: unknown) => parameters[name] ?? fallback,
+			getRequestObject: () => request,
+			getResponseObject: () => ({}),
+			getChildNodes: () => [],
+			getNodeWebhookUrl: () => 'https://n8n.example.com/webhook/upload',
+			getMode: () => 'trigger',
+			getCredentials: async () => await Promise.resolve({}),
+			nodeHelpers: {
+				copyBinaryFile: async (_path: string, fileName: string, mimeType: string) =>
+					await Promise.resolve({ data: '', fileName, mimeType }),
+			},
+		};
+		const result = await new Webhook().webhook(context as never);
+		const [[item]] = result.workflowData ?? [[]];
+		expect(Object.keys(item?.binary ?? {})).toEqual(['image', 'scan0']);
+		const workflowItem = { ...item?.json, binary: item?.binary };
+		expect(validate(workflowItem, outputItemSchema(webhookTrigger.output.json))).toEqual([]);
 	});
 
 	it('type the item the Schedule Trigger node emits', async () => {

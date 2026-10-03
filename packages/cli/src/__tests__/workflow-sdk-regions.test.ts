@@ -259,6 +259,32 @@ describe('workflow-sdk forEach regions on the legacy engine', () => {
 		expect(runs(result, 'Each order')).toHaveLength(4);
 	});
 
+	it('forEach runs a body that starts with branches once per batch', async () => {
+		const json = workflow(
+			'Parts',
+			manual(),
+			source<Customer>()('Customers'),
+			forEach(
+				{ name: 'Each', batchSize: 1 },
+				merge({ name: 'Parts', join: 'position' }, [
+					set({ name: 'Names', fields: { name: (c) => c.name } }),
+					set({ name: 'Counts', fields: { count: (c) => c.orders.length } }),
+					set({ name: 'Ids', fields: { id: (c) => c.id } }),
+				]),
+			),
+		).toJSON();
+
+		const result = await execute('v1', json, CUSTOMERS);
+
+		expect(result.status).toBe('success');
+		expect(runs(result, 'Each start')).toHaveLength(3);
+		expect(runs(result, 'Each').at(-1)).toEqual([
+			{ name: 'Ada', count: 3, id: 'c1' },
+			{ name: 'Bo', count: 1, id: 'c2' },
+			{ name: 'Cy', count: 2, id: 'c3' },
+		]);
+	});
+
 	it('forEach refuses execution order v0', async () => {
 		await expect(execute('v0', nestedForEach(), CUSTOMERS)).rejects.toThrow(
 			'Region "Each order" needs execution order v1',
@@ -429,6 +455,25 @@ describe.each<ExecutionOrder>(['v0', 'v1'])(
 			);
 			expect(runs(result, 'Add')).toHaveLength(2);
 			expect(runs(result, 'Result')).toEqual([]);
+		});
+
+		it('loop without next carries the body output and ends at its limit with onLimit continue', async () => {
+			const json = workflow(
+				'Walk',
+				manual(),
+				set({ name: 'Init', fields: { level: 0 } }),
+				loop(
+					{ name: 'Walk', maxIterations: 3, onLimit: 'continue', until: (out) => out.level >= 10 },
+					set({ name: 'Up', fields: { level: (s) => s.level + 1 } }),
+				),
+				set({ name: 'Depth', fields: { level: (out) => out.level } }),
+			).toJSON();
+
+			const result = await run(json, [{}]);
+
+			expect(result.status).toBe('success');
+			expect(runs(result, 'Up')).toEqual([[{ level: 1 }], [{ level: 2 }], [{ level: 3 }]]);
+			expect(runs(result, 'Depth')).toEqual([[{ level: 3 }]]);
 		});
 
 		it('paginate emits each page and stops when next is null', async () => {
@@ -624,6 +669,36 @@ describe.each<ExecutionOrder>(['v0', 'v1'])(
 
 			expect(result.status).toBe('success');
 			expect(runs(result, 'Both')).toEqual([expected]);
+		});
+
+		it.each([
+			[
+				'append' as const,
+				[{ name: 'Ada' }, { name: 'Bo' }, { count: 3 }, { count: 1 }, { id: 'c1' }, { id: 'c2' }],
+			],
+			[
+				'position' as const,
+				[
+					{ name: 'Ada', count: 3, id: 'c1' },
+					{ name: 'Bo', count: 1, id: 'c2' },
+				],
+			],
+		])('merge %s joins three branches of the same items', async (join, expected) => {
+			const json = workflow(
+				'Three',
+				manual(),
+				source<Customer>()('Customers'),
+				merge({ name: 'All', join }, [
+					set({ name: 'Names', fields: { name: (c) => c.name } }),
+					set({ name: 'Counts', fields: { count: (c) => c.orders.length } }),
+					set({ name: 'Ids', fields: { id: (c) => c.id } }),
+				]),
+			).toJSON();
+
+			const result = await run(json, CUSTOMERS.slice(0, 2));
+
+			expect(result.status).toBe('success');
+			expect(runs(result, 'All')).toEqual([expected]);
 		});
 	},
 );

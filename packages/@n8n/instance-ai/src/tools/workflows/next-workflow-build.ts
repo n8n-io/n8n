@@ -458,6 +458,8 @@ export function nodeOutputsDeclaration(
 			return [];
 		}
 		const schema = outputOf(action, node.parameters ?? {}, fields);
+		// The default output types the node already.
+		if (schema === action.output.json) return [];
 		// A binary leaves the JSON, as in the generated `<Name>Output` type.
 		const item = toTs(outputItemSchema(schema), { input: false, indent: '\t\t' });
 		return [`\t\t${JSON.stringify(node.name)}: ${item};`];
@@ -689,13 +691,32 @@ export const FLOW_MACROS = [
 	'recover',
 ] as const;
 
+/** A message on a type that is a union at the top level, e.g. `on type '{ a: 1; } | Out'`. */
+const unionTypeMessage = {
+	test: (message: string) => {
+		const type = /on type '(.*)'\.?$/.exec(message)?.[1] ?? '';
+		// The `>` of an arrow `=>` closes no bracket.
+		const closes = (index: number) =>
+			'}])>'.includes(type.charAt(index)) && type.charAt(index - 1) !== '=';
+		return [...type].reduce<{ depth: number; union: boolean }>(
+			({ depth, union }, char, index) => ({
+				depth: depth + ('{[(<'.includes(char) ? 1 : 0) - (closes(index) ? 1 : 0),
+				union: union || (depth === 0 && type.startsWith(' | ', index)),
+			}),
+			{ depth: 0, union: false },
+		).union;
+	},
+};
+
 /**
  * A fix in the flow SDK for a frequent `tsc` error of a workflow source, by code and by the first
- * line of the message. `macros` are the macros of the flow SDK. The first rule that matches wins.
+ * line of the message. `detail` must also match the full error text, when given. `macros` are
+ * the macros of the flow SDK. The first rule that matches wins.
  */
 const TSC_HINTS: ReadonlyArray<{
 	readonly codes: readonly number[];
-	readonly message: RegExp;
+	readonly message: Pick<RegExp, 'test'>;
+	readonly detail?: RegExp;
 	readonly hint: (macros: string) => string;
 }> = [
 	{
@@ -727,6 +748,32 @@ const TSC_HINTS: ReadonlyArray<{
 		message: /on type 'never'/,
 		hint: () =>
 			'This value has no fields. Items are plain JSON: write `item.field`, not `item.json.field`. Give the trigger `sample` items to type its fields.',
+	},
+	{
+		codes: [2339],
+		message: /on type '\{\}'/,
+		hint: () =>
+			"This field has no declared type, so a check such as `x ? x.f : …` leaves `{}`, which has no fields. Give the node that outputs it `sample` items, a webhook `schema`, or `returns` on a code step. Else narrow each level: `typeof x === 'object' && x !== null && 'f' in x`.",
+	},
+	{
+		codes: [2339],
+		message: unionTypeMessage,
+		hint: () =>
+			"The value has one of several shapes, e.g. after `recover` or `merge`, and only some have this field. Narrow it first: `'f' in item ? item.f : …`. Or give every branch the field.",
+	},
+	{
+		codes: [2769],
+		message: /^No overload matches this call/,
+		detail: /does not exist in type 'NodeConfig</,
+		hint: () =>
+			'`node()` takes one flat object: `node({ name, type, version, parameters, settings })`. Put the node parameters in `parameters`, not in `config`. Write `version`, not `typeVersion`.',
+	},
+	{
+		codes: [2322, 2345],
+		message:
+			/(?:^|: )(?:Type|Argument of type) 'Expr<.*' is not assignable to (?:parameter of )?type '\(/,
+		hint: () =>
+			"`expr('{{ … }}')` fits a value field, not `if`, `until`, `next` or a binary field. Write a lambda here: `(item, $) => …`.",
 	},
 	{ codes: [18046], message: /^'[\w$]+' is of type 'unknown'/, hint: () => UNTYPED_HINT },
 	{
@@ -799,7 +846,9 @@ const TSC_HINTS: ReadonlyArray<{
 
 const TSC_ERROR = /error TS(\d+): ([^\n]*)/;
 
-/** The hint for one `tsc` error line of a workflow source, if a rule matches. */
+const IMPLICIT_ANY_CODE = '7006';
+
+/** The hint for one `tsc` error of a workflow source, if a rule matches. */
 export function tscHintOf(
 	error: string,
 	macros: readonly string[] = FLOW_MACROS,
@@ -807,18 +856,27 @@ export function tscHintOf(
 	const [, code, message] = TSC_ERROR.exec(error) ?? [];
 	if (code === undefined || message === undefined) return undefined;
 	const rule = TSC_HINTS.find(
-		(each) => each.codes.includes(Number(code)) && each.message.test(message),
+		(each) =>
+			each.codes.includes(Number(code)) &&
+			each.message.test(message) &&
+			(each.detail?.test(error) ?? true),
 	);
 	return rule?.hint(macros.join(', '));
 }
 
 /**
  * Each `tsc` error with a hint line after it. A hint comes once, after the first error it fits:
- * the later errors with the same cause need no copy.
+ * the later errors with the same cause need no copy. Implicit `any` parameters (TS7006) are
+ * left out when another `tsc` error is present: most follow from it.
  */
 export function withTscHints(errors: readonly string[]): string[] {
-	const hints = errors.map((error) => tscHintOf(error));
-	return errors.map((error, index) => {
+	const codes = errors.map((error) => TSC_ERROR.exec(error)?.[1]);
+	const cascade = codes.some((code) => code !== undefined && code !== IMPLICIT_ANY_CODE);
+	const shown = cascade
+		? errors.filter((_error, index) => codes[index] !== IMPLICIT_ANY_CODE)
+		: errors;
+	const hints = shown.map((error) => tscHintOf(error));
+	return shown.map((error, index) => {
 		const hint = hints[index];
 		return hint === undefined || hints.indexOf(hint) < index ? error : `${error}\nHint: ${hint}`;
 	});

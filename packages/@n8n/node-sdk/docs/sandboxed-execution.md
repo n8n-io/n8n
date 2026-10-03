@@ -278,8 +278,10 @@ a `t.binary()` field targets 2.2.0. Every other bundle targets 2.1.0.
 - Contract: `t.binary()` in `input` names a binary of the input item. In `output`, a top-level
   `t.binary()` field becomes `item.binary.<field>`. When the run decides how many files there
   are (mail attachments), `t.indexedBinaries(object, 'attachment_')` adds binaries under the keys
-  `attachment_0`, `attachment_1`, … (`patternProperties`). Only an output takes it, and a fixed
-  binary keeps its exact key. The executor refuses a binary under any other key, also when it
+  `attachment_0`, `attachment_1`, … (`patternProperties`). When the caller names the files
+  (the form fields of an upload), `t.openBinaries(object)` adds binaries under any key that is
+  not a field of the object. Only an output takes a pattern, and a fixed binary keeps its exact
+  key. The executor refuses a binary under any other key, also when it
   only warns about drift. The flow SDK types it as `Binary`, and a
   lambda `(item) => item.binary.data` compiles to the key `data`, as n8n stores it. The input
   check rejects an expression in a binary field, at build and at run time.

@@ -1,6 +1,7 @@
 import { defineNode, defineResource, ref, t } from '@n8n/node-sdk';
 import { credential } from '@n8n/node-sdk/credentials';
 
+import { GOOGLE_FILE_ID, googleFileIdOf } from '../google-file';
 import { googleOAuth2 } from '../google-oauth2';
 
 export const googleSheetsOAuth2 = googleOAuth2({
@@ -24,17 +25,13 @@ export const googleSheets = defineNode({
 	baseUrl: 'https://sheets.googleapis.com/v4/spreadsheets',
 });
 
-const SPREADSHEET_ID = '[-_a-zA-Z0-9]{25,}';
-
 export const googleSpreadsheet = defineResource({
 	id: 'googleSheets.spreadsheet',
 	label: 'Spreadsheet',
-	shape: { pattern: SPREADSHEET_ID, 'x-n8n-hint': 'Spreadsheet ID or Google Sheets URL' },
+	shape: { pattern: GOOGLE_FILE_ID, 'x-n8n-hint': 'Spreadsheet ID or Google Sheets URL' },
 });
 
-/** Mirrors `getSpreadsheetId` in nodes-base: a URL holds the ID as its first long token. */
-export const spreadsheetIdOf = (value: string) =>
-	new RegExp(SPREADSHEET_ID).exec(value)?.[0] ?? value;
+export const spreadsheetIdOf = (value: string) => googleFileIdOf(value, 'Google Sheets');
 
 export const sheetInput = t
 	.variant('mode', {

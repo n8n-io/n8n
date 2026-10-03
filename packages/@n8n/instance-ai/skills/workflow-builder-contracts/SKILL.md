@@ -30,7 +30,7 @@ are the full API: do not read SDK files. Only `build-workflow` has
    `nodeModules` and `builtIns`. Get `results` nodes in step 2. Ask the
    user before you use `notInstalled` nodes.
 2. Get other definitions in ONE `nodes(action="type-definition")` call.
-3. Call `build-workflow` with a stable `filePath` and the complete source
+3. Call `build-workflow` with a stable `filePath` and the full source
    as `sourceCode`.
 4. Fix every `file:line` error: pass the full source, or edit the file with
    `workspace_str_replace_file` and build with `filePath` only.
@@ -38,7 +38,7 @@ are the full API: do not read SDK files. Only `build-workflow` has
    `postBuildFlow.instructions`.
 
 For an existing workflow, call `workflows(action="get-as-code", workflowId)`,
-make the smallest change, and build with its `filePath`. Keep its
+make the smallest change and build with its `filePath`. Keep its
 `node()` and `expr()` calls.
 
 ## Imports
@@ -79,8 +79,10 @@ export default workflow(
 - `route(step, { a: part, b: part })` follows each named output; the next
   part only the first.
 - `switchOn({ name, on }, { value: part, fallback: part })`,
-  `merge({ name, join }, [part, part])`, `forEach({ name, batchSize }, body)`,
-  `loop({ name, maxIterations, until, next }, body)`: Switch, Merge, loops.
+  `merge({ name, join }, [part, part, …])`, `forEach({ name, batchSize }, body)`,
+  `loop({ name, maxIterations, until, next?, onLimit? }, body)`: Switch, Merge,
+  loops. `onLimit: 'continue'` ends a loop at maxIterations, e.g. 'at most 10
+  levels'.
 - `set({ name, fields })` makes fields; `keep: 'all'` keeps input fields.
 - `sample` items type the output and feed verification:
   `manual({ sample: [{ id: 1 }] })`.
@@ -102,15 +104,15 @@ fills each `fromModel()` field; the workflow fixes the others, e.g.
 ## Lambdas
 
 - Write `(item, $) => <one expression>`. A template literal becomes text.
-- Read only `item`, `$`, and JavaScript globals, never file constants.
+- Read only `item`, `$` and JavaScript globals, never file constants.
 - `item` and `$('Node')` are JSON: `$('Hook').body`, not `.json` or `.item`.
 - `$.now` and `$.today` are Luxon dates. `$.date(iso)` parses a string.
-- `expr('{{ … }}')` fits any lambda field. The build checks it.
-- Fix a type error at its cause: no casts, `any`, or fallbacks.
+- `expr('{{ … }}')` fits a value field, not `if`, `until` or a binary field.
+- Fix a type error at its cause: no casts, `any` or fallbacks.
 
 ## Values and credentials
 
-- Keep real values you got. Never invent IDs, emails, or URLs:
+- Keep real values you got. Never invent IDs, emails or URLs:
   write `placeholder('Database')` and tell the user.
 - A value you tell the user to type never starts with `=`: the editor adds it.
 - Never write credentials or ask for secrets: the build binds or asks for them.
@@ -120,6 +122,4 @@ fills each `fromModel()` field; the workflow fixes the others, e.g.
 1. Zero items end a path. Do not add empty-check gates.
 2. A write action outputs its API response, not its input: read earlier
    data with `$('Node Name')`.
-3. With more than {{TOP_LEVEL_ITEM_CEILING_PLACEHOLDER}} top-level items,
-   pass `groupingDecision: 'not_warranted'` with a `groupingReason`.
-4. Build success is not proof. Do not publish automatically.
+3. Build success is not proof. Do not publish automatically.

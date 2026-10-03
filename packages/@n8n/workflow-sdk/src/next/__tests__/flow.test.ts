@@ -20,8 +20,12 @@ import {
 	type Declared,
 	type Dollar,
 	type EntryFields,
+	type Exact,
 	type FromSchema,
+	type Loose,
 	type OutputNames,
+	type OutputOf,
+	type Sampled,
 	type PageValue,
 	type ModelOf,
 	type Pairing,
@@ -822,6 +826,116 @@ describe('workflow', () => {
 			// @ts-expect-error the sample has no such field
 			set({ name: 'Typo', fields: { table: (item) => item.table } }),
 		);
+	});
+
+	it('types a contract step by its sample: an open output gets the sample fields', () => {
+		type Open = Record<string, unknown>;
+		type Closed = { id: string; note?: string | null };
+		// The signature that `generateNodeModule` emits for a step.
+		const fetch = <
+			In,
+			Ctx,
+			const N extends string,
+			S extends OutputOf<N, Open> = OutputOf<N, Open>,
+		>(
+			config: { name: N; sample?: Array<S & Exact<S, OutputOf<N, Open>>> } & { url: string },
+		): Step<In, Ctx, Sampled<OutputOf<N, Open>, S>, N> => contractStep('httpRequest.get', config);
+		const read = <
+			In,
+			Ctx,
+			const N extends string,
+			S extends OutputOf<N, Closed> = OutputOf<N, Closed>,
+		>(config: {
+			name: N;
+			sample?: Array<S & Exact<S, OutputOf<N, Closed>>>;
+		}): Step<In, Ctx, Sampled<OutputOf<N, Closed>, S>, N> => contractStep('notes.get', config);
+		workflow(
+			'Sampled',
+			manual(),
+			fetch({ name: 'Fetch', url: 'https://x', sample: [{ metrics: { employees: 120 } }] }),
+			recover(set({ name: 'Failed', fields: { failed: true } })),
+			set({
+				name: 'Size',
+				fields: {
+					employees: (item) => ('metrics' in item ? item.metrics.employees + 1 : 0),
+					// @ts-expect-error the sample has no field revenue
+					revenue: (item) => ('metrics' in item ? item.metrics.revenue : 0),
+				},
+			}),
+		);
+		workflow(
+			'Unsampled',
+			manual(),
+			fetch({ name: 'Fetch', url: 'https://x' }),
+			set({ name: 'Open', fields: { open: (item) => item.whatever } }),
+		);
+		workflow(
+			'Closed',
+			manual(),
+			read({ name: 'Read', sample: [{ id: 'n1' }] }),
+			set({ name: 'Note', fields: { note: (item) => item.note ?? item.id } }),
+		);
+		// @ts-expect-error a closed output has no field other
+		read({ name: 'Read', sample: [{ id: 'n1', other: 1 }] });
+		// @ts-expect-error the sample of a closed output needs its required fields
+		read({ name: 'Read', sample: [{ note: 'x' }] });
+	});
+
+	it('types a contract step by its sample inside the derived output, never wider', () => {
+		// The build declares a derived output, e.g. of a full response, in NodeOutputs[N].
+		// A body of any JSON reads as `any`, as `Loose` fields do.
+		type Full = { body: Loose[string]; headers: Record<string, string>; statusCode: number };
+		const fetch = <In, Ctx, const N extends string, S extends Full = Full>(
+			config: { name: N; sample?: Array<S & Exact<S, Full>> } & { url: string },
+		): Step<In, Ctx, Sampled<Full, S>, N> => contractStep('httpRequest.get', config);
+		workflow(
+			'Sampled body',
+			manual(),
+			fetch({
+				name: 'Fetch',
+				url: 'https://x',
+				sample: [{ body: { items: [{ id: 1 }] }, headers: {}, statusCode: 200 }],
+			}),
+			set({
+				name: 'Ids',
+				fields: {
+					first: (item) => item.body.items[0].id + item.statusCode,
+					type: (item) => item.headers['content-type'],
+					// @ts-expect-error the sample body has no field next
+					next: (item) => item.body.next,
+				},
+			}),
+		);
+		workflow(
+			'Unsampled body',
+			manual(),
+			fetch({ name: 'Fetch', url: 'https://x' }),
+			set({
+				name: 'Ids',
+				fields: { first: (item) => item.body.items, code: (item) => item.statusCode },
+			}),
+		);
+		fetch({
+			name: 'Fetch',
+			url: 'https://x',
+			// @ts-expect-error a sample does not widen the derived output
+			sample: [{ body: {}, headers: {}, statusCode: 200, extra: 1 }],
+		});
+		// @ts-expect-error a sample has the required fields of the derived output
+		fetch({ name: 'Fetch', url: 'https://x', sample: [{ body: {} }] });
+	});
+
+	it('reports a node without a name instead of failing on it', () => {
+		const wf = workflow(
+			'Unnamed',
+			manual(),
+			// @ts-expect-error node() takes name and parameters at the top level
+			node({ type: 'n8n-nodes-base.noOp', version: 1, config: { name: 'Pass', parameters: {} } }),
+		);
+		expect(() => wf.toJSON()).toThrow(
+			'A node of type "n8n-nodes-base.noOp" has no name. Give each step its own `name`',
+		);
+		expect(() => wf.validate()).toThrow('has no name');
 	});
 
 	it('returns build problems instead of throwing while composing', () => {

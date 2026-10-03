@@ -9,8 +9,14 @@ export const FILTER_NODE = { type: '@n8n/nodes-base-next.conditionFilter', versi
 export const WAIT_NODE = { type: '@n8n/nodes-base-next.waitInterval', version: 1 };
 export const STOP_NODE = { type: '@n8n/nodes-base-next.stopAndErrorStop', version: 1 };
 export const SPLIT_OUT_NODE = { type: '@n8n/nodes-base-next.itemsSplitOut', version: 1 };
+export const NO_OP_NODE = { type: '@n8n/nodes-base-next.noOpPass', version: 1 };
 /** The item of a loop pass is a whole object, which the Edit Fields contract cannot emit. */
-export const LOOP_STATE_NODE = { type: '@n8n/nodes-base-next.loopStateSet', version: 1 };
+export const LOOP_STATE_NODE = {
+	/** The type of a loop head and of its `<head> next` node. */
+	type: '@n8n/nodes-base-next.loopStateSet',
+	/** The type version of both nodes. */
+	version: 1,
+};
 
 /** The `where` of a condition contract that holds when the compiled JavaScript is true. */
 export const trueWhere = (js: string) => ({
@@ -41,20 +47,41 @@ export const loopHeadParameters = (head: string, back: string) => ({
 	state: `={{ ({ ...$json, ${JSON.stringify(passKey(head))}: $prevNode.name === ${JSON.stringify(back)} ? $json[${JSON.stringify(passKey(head))}] : 0 }) }}`,
 });
 
-/** Switch outputs of a loop check: the cases `done` and `limit`, then the fallback. */
+/** What a loop does after its last pass: fail the run, or end and emit that pass. */
+export type LoopLimit = 'fail' | 'continue';
+
+/**
+ * Switch outputs of a loop check: the cases `done` and `limit`, then the fallback. With
+ * `continue`, `done` also holds at the limit, so the check has no `limit` case.
+ */
 export const CHECK_DONE = 0;
 export const CHECK_LIMIT = 1;
-export const CHECK_AGAIN = 2;
+export const checkAgain = (onLimit: LoopLimit) => (onLimit === 'fail' ? 2 : 1);
 
 export const loopLimitTest = (head: string, maxIterations: number) =>
 	`${passOf(head)} + 1 >= ${maxIterations}`;
 
-export const loopCheckParameters = (head: string, until: string, maxIterations: number) => ({
-	cases: [
-		{ output: 'done', where: trueWhere(until) },
-		{ output: 'limit', where: trueWhere(loopLimitTest(head, maxIterations)) },
-	],
+/** The `done` condition of a loop that ends at its limit. */
+const doneOrLimit = (head: string, until: string, maxIterations: number) =>
+	`(${until}) || ${loopLimitTest(head, maxIterations)}`;
+
+export const loopCheckParameters = (
+	head: string,
+	until: string,
+	maxIterations: number,
+	onLimit: LoopLimit = 'fail',
+) => ({
+	cases:
+		onLimit === 'fail'
+			? [
+					{ output: 'done', where: trueWhere(until) },
+					{ output: 'limit', where: trueWhere(loopLimitTest(head, maxIterations)) },
+				]
+			: [{ output: 'done', where: trueWhere(doneOrLimit(head, until, maxIterations)) }],
 });
+
+/** `loop` without `next` carries the body output to the next pass. */
+export const BODY_OUTPUT = '$json';
 
 export const loopNextSuffix = (head: string) =>
 	`), ${JSON.stringify(passKey(head))}: ${passOf(head)} + 1 }) }}`;
@@ -142,11 +169,28 @@ export type MergeJoin = 'append' | 'position' | { readonly left: string; readonl
 /** `merge` builds the Merge node contracts, whose inputs are named left and right. */
 export const MERGE_APPEND_NODE = { type: '@n8n/nodes-base-next.mergeAppend', version: 1 };
 export const MERGE_COMBINE_NODE = { type: '@n8n/nodes-base-next.mergeCombine', version: 1 };
+/** The contracts take 2 inputs. For more branches `merge` builds the legacy Merge node. */
+export const MERGE_NODE = { type: 'n8n-nodes-base.merge', version: 3.2 };
+/** The most inputs of the legacy Merge node. */
+export const MERGE_MAX_INPUTS = 10;
 
-export const mergeNodeOf = (join: MergeJoin) =>
-	join === 'append' ? MERGE_APPEND_NODE : MERGE_COMBINE_NODE;
+export const mergeNodeOf = (join: MergeJoin, inputs = 2) =>
+	inputs > 2 ? MERGE_NODE : join === 'append' ? MERGE_APPEND_NODE : MERGE_COMBINE_NODE;
 
-export function mergeParameters(join: MergeJoin) {
+export function mergeParameters(join: MergeJoin, inputs = 2) {
+	if (inputs > 2) {
+		return join === 'append'
+			? { mode: 'append', numberInputs: inputs }
+			: {
+					mode: 'combine',
+					combineBy: 'combineByPosition',
+					numberInputs: inputs,
+					// As the contract joins: deep, and the last input wins a clash.
+					options: {
+						clashHandling: { values: { resolveClash: 'preferLast', mergeMode: 'deepMerge' } },
+					},
+				};
+	}
 	if (join === 'append') return {};
 	if (join === 'position') return { by: { by: 'position' } };
 	return { by: { by: 'fields', left: join.left, right: join.right, join: 'inner' } };

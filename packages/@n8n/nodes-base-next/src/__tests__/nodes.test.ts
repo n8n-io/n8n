@@ -421,6 +421,58 @@ describe('httpRequest.get', () => {
 		expect(fetch.calls).toHaveLength(1);
 	});
 
+	it('emits the full response, and a non-2xx response with neverError, as the legacy node does', async () => {
+		const fetch = mockHttp([
+			{
+				path: '/v1/customers',
+				reply: { status: 404, json: { error: 'not found' }, headers: { 'x-trace': 't1' } },
+			},
+		]);
+		const full = await runAction(getRequest, {
+			input: { url, fullResponse: true, neverError: true },
+			fetch,
+		});
+		expect(items(full)).toEqual([
+			{
+				body: { error: 'not found' },
+				headers: expect.objectContaining({ 'x-trace': 't1' }),
+				statusCode: 404,
+			},
+		]);
+		const bodyOnly = await runAction(getRequest, { input: { url, neverError: true }, fetch });
+		expect(items(bodyOnly)).toEqual([{ error: 'not found' }]);
+		const failed = await runAction(getRequest, { input: { url, fullResponse: true }, fetch });
+		expect(failed.ok).toBe(false);
+	});
+
+	it('gives one full response item for a 2xx list body', async () => {
+		const fetch = mockHttp([{ path: '/v1/customers', reply: { json: customers([1, 2]) } }]);
+		const result = await runAction(getRequest, { input: { url, fullResponse: true }, fetch });
+		expect(items(result)).toEqual([
+			{ body: customers([1, 2]), headers: expect.any(Object), statusCode: 200 },
+		]);
+	});
+
+	it('types the output of fullResponse and refuses it with pages', async () => {
+		expect(getRequest.deriveOutput?.({ url, fullResponse: true })?.required).toEqual([
+			'body',
+			'headers',
+			'statusCode',
+		]);
+		expect(getRequest.deriveOutput?.({ url })).toEqual(getRequest.output.json);
+		expect(
+			validate({ url, fullResponse: '={{ true }}' }, getRequest.inputSchema, {
+				allowExpressions: true,
+			}),
+		).toEqual(['input.fullResponse: must be a plain value, not an expression']);
+		const fetch = mockHttp([{ path: '/v1/customers', reply: { json: { data: [] } } }]);
+		const input = { url, fullResponse: true, items: '={{ $response.body.data }}' };
+		expect(await runAction(getRequest, { input, fetch })).toMatchObject({
+			ok: false,
+			error: { message: expect.stringContaining('fullResponse and neverError take one request') },
+		});
+	});
+
 	it('names the list fields of the body when items gives no list', async () => {
 		const failure = async (json: unknown) => {
 			const fetch = mockHttp([{ path: '/v1/customers', reply: { json } }]);
@@ -487,5 +539,21 @@ describe('httpRequest.send', () => {
 			body: { name: 'Launch v2' },
 		});
 		expect(items.map((item) => item.json)).toEqual([{ ok: true }]);
+	});
+
+	it('emits the status code of a failed request with fullResponse and neverError', async () => {
+		const fetch = mockHttp([
+			{ method: 'POST', path: '/done', reply: { status: 409, json: { error: 'exists' } } },
+		]);
+		const input = {
+			method: 'POST',
+			url: 'https://reports.test/done',
+			fullResponse: true,
+			neverError: true,
+		};
+		const result = await runAction(sendRequest, { input, fetch });
+		expect(result.ok ? result.items : result).toEqual([
+			{ body: { error: 'exists' }, headers: expect.any(Object), statusCode: 409 },
+		]);
 	});
 });

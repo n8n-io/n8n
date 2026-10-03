@@ -218,7 +218,8 @@ export function ensureUniqueNodeIds(json: WorkflowJSON): void {
 
 	for (const group of json.nodeGroups ?? []) {
 		const seenCounts = new Map<string, number>();
-		group.nodeIds = group.nodeIds.map((nodeId) => {
+		const originalIds = group.nodeIds;
+		group.nodeIds = originalIds.map((nodeId) => {
 			const outcomes = finalIdsByOriginalId.get(nodeId);
 			if (!outcomes) return nodeId;
 
@@ -226,7 +227,23 @@ export function ensureUniqueNodeIds(json: WorkflowJSON): void {
 			seenCounts.set(nodeId, occurrence + 1);
 			return outcomes[occurrence] ?? nodeId;
 		});
+		// A region's entry and exits are members, so they take the ID of their member position.
+		const memberIds = group.nodeIds;
+		remapRegionNodeIds(group, (nodeId) => memberIds[originalIds.indexOf(nodeId)] ?? nodeId);
 	}
+}
+
+type WorkflowNodeGroup = NonNullable<WorkflowJSON['nodeGroups']>[number];
+
+/** Points the entry and exits of a region group at the new IDs of its nodes. */
+function remapRegionNodeIds(group: WorkflowNodeGroup, newIdOf: (nodeId: string) => string): void {
+	const { repeat } = group;
+	if (!repeat) return;
+	group.repeat = {
+		...repeat,
+		entry: newIdOf(repeat.entry),
+		exits: repeat.exits.map((exit) => ({ ...exit, node: newIdOf(exit.node) })),
+	};
 }
 
 /**
@@ -313,8 +330,10 @@ export async function preserveExistingNodeIds(
 
 	if (recoveredIds.size === 0) return;
 
+	const recoveredIdOf = (nodeId: string) => recoveredIds.get(nodeId) ?? nodeId;
 	for (const group of json.nodeGroups ?? []) {
-		group.nodeIds = group.nodeIds.map((nodeId) => recoveredIds.get(nodeId) ?? nodeId);
+		group.nodeIds = group.nodeIds.map(recoveredIdOf);
+		remapRegionNodeIds(group, recoveredIdOf);
 	}
 }
 

@@ -1,12 +1,16 @@
 import { t } from '@n8n/node-sdk';
 
 import { httpRequest } from '../http-request.node';
-import { common, toItems } from '../request';
+import { common, responseOf, responseOptions, responseOutputOf, toItems } from '../request';
+
+const output = t.json().hint('The parsed response body; an array body emits one item per element');
 
 export const sendRequest = httpRequest.action('send', {
 	// Major 2: an array response gives one item per element, so the action is 1:N, not per-item.
 	// Major 3: the action declares that it reaches the host of `url`.
 	version: 3,
+	// Minor 1: fullResponse and neverError, as the legacy node has them.
+	minor: 1,
 	action: 'Send a request',
 	summary: 'POST, PUT, PATCH, or DELETE to any HTTP API.',
 	flow: { effect: 'write', cardinality: '1:N', idempotent: false },
@@ -26,8 +30,10 @@ export const sendRequest = httpRequest.action('send', {
 				},
 			})
 			.optional(),
+		...responseOptions,
 	},
-	output: t.json().hint('The parsed response body; an array body emits one item per element'),
+	output,
+	deriveOutput: responseOutputOf(output.json),
 	async *run({ input, http }) {
 		const { body } = input;
 		const headers =
@@ -44,13 +50,13 @@ export const sendRequest = httpRequest.action('send', {
 					: body?.kind === 'binary'
 						? body.file
 						: body?.text;
-		const response = await http.request({
+		const request = {
 			method: input.method,
 			url: input.url,
 			query: input.query,
 			headers,
 			body: payload,
-		});
-		yield* toItems(response ?? {});
+		};
+		yield* toItems((await responseOf(http, request, input)) ?? {});
 	},
 });

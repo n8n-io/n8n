@@ -152,6 +152,23 @@ export default workflow(
 		expect(typeErrors(source)).toEqual([]);
 	});
 
+	it('type the files of a webhook and a form submission by their field names', () => {
+		const source = `${header}
+export default workflow(
+	'Uploads',
+	webhook.trigger({ name: 'Webhook', httpMethod: 'POST', path: 'upload' }),
+	set({ name: 'Name', fields: { file: (item) => item.binary.image.fileName, type: (item) => item.binary.data.mimeType } }),
+	form.trigger({
+		name: 'Apply',
+		formTitle: 'Apply',
+		formFields: { values: [{ fieldType: 'file', fieldLabel: 'CV', multipleFiles: false }] },
+	}),
+	set({ name: 'Type', fields: { type: (item) => item.binary.CV.mimeType } }),
+);
+`;
+		expect(typeErrors(source)).toEqual([]);
+	});
+
 	it('type a form submission by the form fields', () => {
 		const source = `${header}
 export default workflow(

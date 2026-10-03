@@ -1,9 +1,21 @@
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
+import {
+	forEach,
+	loop,
+	manual,
+	merge,
+	paginate,
+	pollUntil,
+	set,
+	workflow,
+} from '@n8n/workflow-sdk/next';
 import type { IConnections } from 'n8n-workflow';
 
 import {
+	contractLoopsOf,
 	groupingDecisionBlocker,
 	partitionWarnings,
+	regionDroppedBlocker,
 	summarizeWorkflowTopLevelItems,
 	topLevelItemsWarning,
 	type ValidationWarning,
@@ -229,5 +241,138 @@ describe('groupingDecisionBlocker', () => {
 		expect(
 			groupingDecisionBlocker({ summary, declaredGroupCount: 1, droppedGroupWarnings: dropped }),
 		).toBeUndefined();
+	});
+});
+
+describe('contractLoopsOf', () => {
+	const field = (name: string) => set({ name, fields: { n: 1 } });
+	const boxesOf = async (json: WorkflowJSON) =>
+		summarizeWorkflowTopLevelItems(json, await contractLoopsOf(json)).total;
+	const nameOf = (json: WorkflowJSON) => (id: string) =>
+		json.nodes.find((node) => node.id === id)?.name;
+
+	it('holds the head, the body and the nodes the loop adds', async () => {
+		const json = workflow(
+			'Walk',
+			manual({ sample: [{ n: 1 }] }),
+			loop(
+				{ name: 'Walk', maxIterations: 5, until: (out) => out.n > 1, next: (out) => out },
+				field('Fetch'),
+			),
+			field('After'),
+		).toJSON();
+
+		const loops = await contractLoopsOf(json);
+
+		expect(loops.map(({ nodeIds }) => nodeIds.map(nameOf(json)))).toEqual([
+			['Walk', 'Fetch', 'Walk until', 'Walk next', 'Walk limit'],
+		]);
+		expect(summarizeWorkflowTopLevelItems(json).total).toBe(7);
+		expect(await boxesOf(json)).toBe(3);
+	});
+
+	it('counts paginate, pollUntil with its wait, and a loop in a loop as one box each', async () => {
+		const json = workflow(
+			'Many',
+			manual({ sample: [{ n: 1 }] }),
+			paginate(
+				{ name: 'Pages', maxPages: 3, next: (page) => (page.n > 1 ? null : page) },
+				field('Page'),
+			),
+			pollUntil(
+				{
+					name: 'Poll',
+					maxAttempts: 3,
+					every: { amount: 1, unit: 'seconds' },
+					until: (out) => out.n > 1,
+				},
+				field('Status'),
+			),
+			loop(
+				{ name: 'Outer', maxIterations: 3, until: (out) => out.n > 1, next: (out) => out },
+				loop(
+					{ name: 'Inner', maxIterations: 3, until: (out) => out.n > 1, next: (out) => out },
+					field('Step'),
+				),
+			),
+		).toJSON();
+
+		expect(await boxesOf(json)).toBe(4);
+		expect(summarizeWorkflowTopLevelItems(json, await contractLoopsOf(json)).groupCount).toBe(0);
+	});
+
+	it('adds no box for a forEach region inside a loop', async () => {
+		const json = workflow(
+			'Batched',
+			manual({ sample: [{ n: 1 }] }),
+			loop(
+				{ name: 'Retry', maxIterations: 3, until: (out) => out.n > 1, next: (out) => out },
+				forEach({ name: 'Batches', batchSize: 10 }, field('Send')),
+			),
+		).toJSON();
+
+		expect(await boxesOf(json)).toBe(2);
+		expect(summarizeWorkflowTopLevelItems(json, await contractLoopsOf(json)).groupCount).toBe(1);
+	});
+
+	it('holds a loop that ends at its limit, with no next and no limit node', async () => {
+		const json = workflow(
+			'Walk',
+			manual({ sample: [{ n: 1 }] }),
+			loop(
+				{ name: 'Walk', maxIterations: 5, onLimit: 'continue', until: (out) => out.n > 1 },
+				field('Fetch'),
+			),
+			field('After'),
+		).toJSON();
+
+		const loops = await contractLoopsOf(json);
+
+		expect(loops.map(({ nodeIds }) => nodeIds.map(nameOf(json)))).toEqual([
+			['Walk', 'Fetch', 'Walk until', 'Walk next'],
+		]);
+		expect(await boxesOf(json)).toBe(3);
+	});
+
+	it('counts a forEach whose body starts with branches as one box, also in a loop', async () => {
+		const each = () =>
+			forEach(
+				{ name: 'Each', batchSize: 1 },
+				merge({ name: 'Parts', join: 'position' }, [field('A'), field('B'), field('C')]),
+			);
+		const flat = workflow('Flat', manual({ sample: [{ n: 1 }] }), each(), field('After')).toJSON();
+		const looped = workflow(
+			'Looped',
+			manual({ sample: [{ n: 1 }] }),
+			loop(
+				{ name: 'Walk', maxIterations: 5, onLimit: 'continue', until: (out) => out.n > 1 },
+				each(),
+			),
+		).toJSON();
+
+		expect(flat.nodeGroups?.[0]?.nodeIds.map(nameOf(flat))).toContain('Each start');
+		expect(await boxesOf(flat)).toBe(3);
+		expect((await contractLoopsOf(looped))[0]?.nodeIds.map(nameOf(looped))).toEqual(
+			expect.arrayContaining(['Each start', 'A', 'B', 'C', 'Parts', 'Walk next']),
+		);
+		expect(await boxesOf(looped)).toBe(2);
+	});
+});
+
+describe('regionDroppedBlocker', () => {
+	it('refuses with each drop reason, and passes when no region was dropped', () => {
+		const violation = {
+			groupId: 'g1',
+			groupName: 'Batches',
+			code: 'unknown-node-id' as const,
+			message: 'Group "Batches" references node ID "stale" that does not exist in the workflow.',
+		};
+
+		expect(regionDroppedBlocker([violation])).toEqual({
+			code: 'REGION_DROPPED',
+			severity: 'error',
+			message: expect.stringContaining('references node ID "stale"'),
+		});
+		expect(regionDroppedBlocker([])).toBeUndefined();
 	});
 });

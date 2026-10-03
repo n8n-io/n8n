@@ -102,6 +102,7 @@ describe('supabase filterQuery', () => {
 describe('path segments and responses', () => {
 	it('refuses an ID that is not one', () => {
 		expect(documentIdOf('https://docs.google.com/document/d/1Ab-_c/edit')).toBe('1Ab-_c');
+		expect(documentIdOf('1Ab-_c')).toBe('1Ab-_c');
 		expect(() => documentIdOf('../x')).toThrow('Not a Google Docs ID or URL');
 		expect(() => driveIdOf('a/b')).toThrow('Not a Google Drive ID or URL');
 	});

@@ -142,6 +142,32 @@ import { googleGemini } from '@n8n/nodes/googleGemini';`;
 		expect(text).not.toMatch(/^\t{3}\[key: `attachment_/m);
 	});
 
+	it('declares the status code of an HTTP request with fullResponse', () => {
+		const workflow: WorkflowJSON = {
+			name: 'Status',
+			connections: {},
+			nodes: [
+				{
+					id: '1',
+					name: 'Lookup',
+					type: '@n8n/nodes-base-next.httpRequestGet',
+					typeVersion: 3,
+					position: [0, 0],
+					parameters: { url: 'https://api.example.com/x', fullResponse: true, neverError: true },
+				},
+			],
+		};
+		const text = nodeOutputsDeclaration(workflow);
+		expect(text).toContain('"Lookup": {');
+		expect(text).toContain('statusCode: number;');
+		const [lookup] = workflow.nodes;
+		const plain = {
+			...workflow,
+			nodes: [{ ...lookup, parameters: { url: 'https://api.example.com/x' } }],
+		};
+		expect(nodeOutputsDeclaration(plain)).not.toContain('"Lookup"');
+	});
+
 	const node = (name: string, type: string, parameters: IDataObject) => ({
 		id: name,
 		name,
@@ -954,12 +980,34 @@ describe('tsc hints', () => {
 			"TS2592: Cannot find name '$'. Do you need to install type definitions for jQuery?",
 			"In a lambda, `$` is the second parameter: `(item, $) => $('Node').field`.",
 		],
+		[
+			"TS2339: Property 'employees' does not exist on type '{}'.",
+			"This field has no declared type, so a check such as `x ? x.f : \u2026` leaves `{}`, which has no fields. Give the node that outputs it `sample` items, a webhook `schema`, or `returns` on a code step. Else narrow each level: `typeof x === 'object' && x !== null && 'f' in x`.",
+		],
+		[
+			"TS2339: Property 'organization' does not exist on type '{ enrichmentFailed: true; } | NoInfer<HttpRequestGetOutput>'.\n      Property 'organization' does not exist on type '{ enrichmentFailed: true; }'.",
+			"The value has one of several shapes, e.g. after `recover` or `merge`, and only some have this field. Narrow it first: `'f' in item ? item.f : \u2026`. Or give every branch the field.",
+		],
+		[
+			"TS2769: No overload matches this call.\n      The last overload gave the following error.\n        Object literal may only specify known properties, and 'config' does not exist in type 'NodeConfig<NoInfer<{ ...; }>, NoInfer<Record<...>>, string, Loose> & { ...; }'.",
+			'`node()` takes one flat object: `node({ name, type, version, parameters, settings })`. Put the node parameters in `parameters`, not in `config`. Write `version`, not `typeVersion`.',
+		],
+		[
+			"TS2322: Type 'Expr<\"{{ $binary.image }}\">' is not assignable to type '(item: NoInfer<{ binary: { ...; }; body: { ...; }; }>, $: Dollar<...>) => Binary'.",
+			"`expr('{{ \u2026 }}')` fits a value field, not `if`, `until`, `next` or a binary field. Write a lambda here: `(item, $) => \u2026`.",
+		],
+		[
+			'TS2322: Type \'Expr<"{{ $json.metrics?.employees != null }}">\' is not assignable to type \'(item: NoInfer<HttpRequestGetOutput>, $: Dollar<NoInfer<Record<"Lead Webhook", { executionMode: "production" | "test"; }>>>) =>...\'.',
+			"`expr('{{ \u2026 }}')` fits a value field, not `if`, `until`, `next` or a binary field. Write a lambda here: `(item, $) => \u2026`.",
+		],
 	])('hints %s', (message, hint) => {
 		expect(tscHintOf(`${at}${message}`, macros)).toBe(hint);
 	});
 
 	it.each([
 		"TS2339: Property 'idd' does not exist on type '{ id: string; }'.",
+		"TS2339: Property 'idd' does not exist on type '{ id: string | undefined; tags: (string | number)[]; }'.",
+		"TS2769: No overload matches this call.\n  The last overload gave the following error.\n    Argument of type 'number' is not assignable to parameter of type 'string'.",
 		"TS2322: Type 'string' is not assignable to type 'number'.",
 		'TS2345: Argument of type \'"Strat"\' is not assignable to parameter of type \'"Get" | "Start"\'.',
 		"TS2304: Cannot find name '$pageCount'.",
@@ -982,6 +1030,20 @@ describe('tsc hints', () => {
 			typeof value === 'function' ? [name] : [],
 		);
 		expect(exported).toEqual(expect.arrayContaining([...FLOW_MACROS]));
+	});
+
+	it('leaves out implicit any parameters when another tsc error is present', () => {
+		const overload = `${at}TS2769: No overload matches this call.\n  Object literal may only specify known properties, and 'config' does not exist in type 'NodeConfig<Loose>'.`;
+		const implicitAny = `${at}TS7006: Parameter 'item' implicitly has an 'any' type.`;
+		const expression = `${at.replace('error ', '')}n8n: Code cannot read process.`;
+
+		expect(withTscHints([implicitAny, overload, implicitAny])).toEqual([
+			`${overload}\nHint: ${tscHintOf(overload)}`,
+		]);
+		expect(withTscHints([implicitAny, expression])).toEqual([
+			`${implicitAny}\nHint: ${tscHintOf(implicitAny)}`,
+			expression,
+		]);
 	});
 
 	it('adds the hints to the type check errors', async () => {

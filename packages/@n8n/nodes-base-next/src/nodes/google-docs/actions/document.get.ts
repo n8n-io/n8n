@@ -10,6 +10,8 @@ const textOf = ({ body }: Loose<Infer<typeof documentResponse>>) =>
 		.join('');
 
 export const getDocument = document.action('get', {
+	// Minor 1: an ID of any length, and the ID after /d/ in a URL.
+	minor: 1,
 	action: 'Get a document',
 	summary: 'Read the text of a Google Doc.',
 	flow: { effect: 'read', cardinality: 'per-item', idempotent: true },

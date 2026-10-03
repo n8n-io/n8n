@@ -1,8 +1,9 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 
+import { resolvePromptProfile } from '../../prompts/prompt-profiles';
 import { nextNodeIds } from '../../tools/next-modules';
-import { substituteSkillPlaceholders } from '../runtime-skills';
+import { loadInstanceAiPromptSkills, substituteSkillPlaceholders } from '../runtime-skills';
 
 const skill = readFileSync(
 	path.join(__dirname, '../../../skills/workflow-builder-contracts/SKILL.md'),
@@ -53,7 +54,9 @@ describe('contract-mode skill', () => {
 
 	it('ends an error branch with onError, joins it with recover, and writes expressions with expr()', () => {
 		expect(skill).toContain('its branch ends.\n  `recover(part)` joins it back.');
-		expect(skill).toContain("`expr('{{ … }}')` fits any lambda field.");
+		expect(skill).toContain(
+			"`expr('{{ … }}')` fits a value field, not `if`, `until` or a binary field.",
+		);
 		expect(skill).not.toContain("'={{");
 	});
 
@@ -61,7 +64,8 @@ describe('contract-mode skill', () => {
 		expect(skill).toContain('A workflow is a flat list: a trigger, then parts.');
 		expect(skill).toContain('`steps(a, b, …)` for several');
 		expect(skill).toContain('`switchOn({ name, on }, { value: part, fallback: part })`');
-		expect(skill).toContain('`merge({ name, join }, [part, part])`');
+		expect(skill).toContain('`merge({ name, join }, [part, part, …])`');
+		expect(skill).toContain('`loop({ name, maxIterations, until, next?, onLimit? }, body)`');
 		expect(skill).toContain('`route(step, { a: part, b: part })`');
 		expect(skill).not.toMatch(/\.andThen|\.orElse|\.branch\(/);
 		expect(skill).not.toContain('WorkflowJSON');
@@ -71,6 +75,30 @@ describe('contract-mode skill', () => {
 		expect(skill).toContain(
 			'- A value you tell the user to type never starts with `=`: the editor adds it.',
 		);
+	});
+
+	it('serves a compositional-workflows reference in the new SDK shape only when node contracts are enabled', async () => {
+		const { profile } = resolvePromptProfile({});
+		const reference = 'references/compositional-workflows.md';
+		const off = await loadInstanceAiPromptSkills(profile);
+		const on = await loadInstanceAiPromptSkills(profile, { nodeContractsEnabled: true });
+
+		const legacy = (await off.source.loadFile?.('workflow-builder', reference))?.content ?? '';
+		const next = (await on.source.loadFile?.('workflow-builder', reference))?.content ?? '';
+
+		expect(legacy).toContain('config: {');
+		expect(next).not.toMatch(/config: \{|typeVersion:|trigger\(\{\n {2}type/);
+		expect(next).toContain(
+			"import { executeWorkflowTrigger } from '@n8n/nodes/n8n-nodes-base/executeWorkflowTrigger';",
+		);
+		expect(next).toContain(
+			"node({\n  name: 'Get Weather Data',\n  type: 'n8n-nodes-base.executeWorkflow',\n  version: 1.2,\n  parameters: {",
+		);
+		expect(
+			on.source.registry.skills
+				.find(({ id }) => id === 'workflow-builder')
+				?.linkedFiles.references.map(({ path }) => path),
+		).toEqual([reference, 'references/error-workflows.md']);
 	});
 
 	it('stays small', () => {

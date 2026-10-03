@@ -198,6 +198,48 @@ const mergeJoinWorkflow = (join: 'append' | 'position') =>
 		]),
 	);
 
+/** A loop that walks up to 3 levels: the body output is the next state, the limit ends it. */
+const cappedLoopWorkflow = () =>
+	workflow(
+		'Walk',
+		manual(),
+		set({ name: 'Init', fields: { level: 0 } }),
+		loop(
+			{ name: 'Walk', maxIterations: 3, onLimit: 'continue', until: (out) => out.level >= 10 },
+			set({ name: 'Up', fields: { level: (s) => s.level + 1 } }),
+		),
+		set({ name: 'Depth', fields: { level: (out) => out.level } }),
+	);
+
+const mergeThreeWorkflow = (join: 'append' | 'position') =>
+	workflow(
+		'Three',
+		manual(),
+		customers('Customers'),
+		merge({ name: 'All', join }, [
+			set({ name: 'Names', fields: { name: (c) => c.name } }),
+			set({ name: 'Counts', fields: { count: (c) => c.orders.length } }),
+			set({ name: 'Tags', fields: { tags: (c) => c.tags.join(',') } }),
+		]),
+	);
+
+/** A forEach body that starts with the branches of a merge. */
+const forEachBranchesWorkflow = () =>
+	workflow(
+		'Each in parts',
+		manual(),
+		customers('Customers'),
+		forEach(
+			{ name: 'Each', batchSize: 1 },
+			merge({ name: 'Parts', join: 'position' }, [
+				set({ name: 'Names', fields: { name: (c) => c.name } }),
+				set({ name: 'Counts', fields: { count: (c) => c.orders.length } }),
+				set({ name: 'Tags', fields: { tags: (c) => c.tags.length } }),
+			]),
+		),
+		set({ name: 'Report', fields: { text: (row) => `${row.name}: ${row.count}` } }),
+	);
+
 const connections = (json: WorkflowJSON, name: string) =>
 	json.connections[name]?.main.map((targets) =>
 		(targets ?? []).map((target) => `${target.node}#${target.index}`),
@@ -301,6 +343,9 @@ describe('regions compile to node contracts', () => {
 		['merge by fields', mergeWorkflow],
 		['merge append', () => mergeJoinWorkflow('append')],
 		['merge position', () => mergeJoinWorkflow('position')],
+		['loop without next to its limit', cappedLoopWorkflow],
+		['merge of three', () => mergeThreeWorkflow('position')],
+		['forEach of branches', forEachBranchesWorkflow],
 	])('%s: workflow validation finds no issues', (_kind, make) => {
 		const { errors, warnings } = make().validate();
 		expect([...errors, ...warnings]).toEqual([]);
@@ -376,6 +421,87 @@ describe('regions compile to node contracts', () => {
 			set({ name: 'C', fields: { id: (c) => c.id } }),
 		);
 		expect(() => twice.toJSON()).toThrow(/Two regions have the name "Each"/);
+	});
+
+	it('loop without next carries the body output, and onLimit continue ends at the limit', () => {
+		const json = cappedLoopWorkflow().toJSON();
+		const names = json.nodes.map((n) => n.name);
+		expect(names).toEqual(['Start', 'Init', 'Walk', 'Up', 'Walk until', 'Walk next', 'Depth']);
+		expect(connections(json, 'Walk until')).toEqual([['Depth#0'], ['Walk next#0']]);
+		const check = json.nodes.find((n) => n.name === 'Walk until');
+		expect(check?.parameters).toEqual({
+			cases: [
+				{
+					output: 'done',
+					where: {
+						conditions: [
+							{
+								type: 'boolean',
+								left: '={{ ($json.level >= 10) || $("Walk").item.json["Walk pass"] + 1 >= 3 }}',
+								test: { op: 'true' },
+							},
+						],
+					},
+				},
+			],
+		});
+		expect(json.nodes.find((n) => n.name === 'Walk next')?.parameters).toEqual({
+			state: '={{ ({ ...($json), "Walk pass": $("Walk").item.json["Walk pass"] + 1 }) }}',
+		});
+	});
+
+	it('merges more than two branches in one legacy Merge node, input by branch', () => {
+		const appended = mergeThreeWorkflow('append').toJSON();
+		const all = appended.nodes.find((n) => n.name === 'All');
+		expect(all).toMatchObject({
+			type: 'n8n-nodes-base.merge',
+			typeVersion: 3.2,
+			parameters: { mode: 'append', numberInputs: 3 },
+		});
+		expect(connections(appended, 'Tags')).toEqual([['All#2']]);
+		const joined = mergeThreeWorkflow('position').toJSON();
+		expect(joined.nodes.find((n) => n.name === 'All')?.parameters).toEqual({
+			mode: 'combine',
+			combineBy: 'combineByPosition',
+			numberInputs: 3,
+			options: {
+				clashHandling: { values: { resolveClash: 'preferLast', mergeMode: 'deepMerge' } },
+			},
+		});
+		// Two branches keep the Merge contract.
+		expect(
+			mergeJoinWorkflow('append')
+				.toJSON()
+				.nodes.find((n) => n.name === 'Both')?.type,
+		).toBe('@n8n/nodes-base-next.mergeAppend');
+	});
+
+	it('reports a merge by fields of more than two branches as a build problem', () => {
+		const three = workflow(
+			'Three',
+			manual(),
+			customers('Customers'),
+			merge({ name: 'J', join: { left: 'id', right: 'id' } } as never, [steps(), steps(), steps()]),
+		);
+		expect(() => three.toJSON()).toThrow(/J: merge by matching fields takes 2 branches, not 3/);
+	});
+
+	it('starts a forEach body that splits into branches with a No Operation node', () => {
+		const json = forEachBranchesWorkflow().toJSON();
+		const nameOf = new Map(json.nodes.map((n) => [n.id, n.name]));
+		const start = json.nodes.find((n) => n.name === 'Each start');
+		expect(start?.type).toBe('@n8n/nodes-base-next.noOpPass');
+		expect(connections(json, 'Customers')).toEqual([['Each start#0']]);
+		expect(connections(json, 'Each start')).toEqual([['Names#0', 'Counts#0', 'Tags#0']]);
+		const [group] = json.nodeGroups ?? [];
+		expect(group?.repeat && nameOf.get(group.repeat.entry)).toBe('Each start');
+		expect(group?.nodeIds.map((id) => nameOf.get(id))).toEqual([
+			'Each start',
+			'Names',
+			'Counts',
+			'Tags',
+			'Parts',
+		]);
 	});
 
 	it('reports a bad batch size and an empty body as build problems', () => {
@@ -506,6 +632,36 @@ describe('regions compile to node contracts', () => {
 				set({ name: 'Inc', fields: { m: (s) => s.n + 1 } }),
 			),
 		);
+		workflow(
+			'Loop without next',
+			manual(),
+			set({ name: 'Init', fields: { n: 0 } }),
+			loop(
+				{ name: 'L', maxIterations: 3, onLimit: 'continue', until: (out) => out.n > 2 },
+				set({ name: 'Inc', fields: { n: (s) => s.n + 1 } }),
+			),
+			set({ name: 'Out', fields: { n: (out) => out.n } }),
+		);
+		workflow(
+			'Loop needs next',
+			manual(),
+			set({ name: 'Init', fields: { n: 0 } }),
+			loop(
+				// @ts-expect-error the body output has no n, so the next pass needs next
+				{ name: 'L', maxIterations: 3, until: (out) => out.m > 2 },
+				set({ name: 'Inc', fields: { m: (s) => s.n + 1 } }),
+			),
+		);
+		workflow(
+			'Loop limit',
+			manual(),
+			set({ name: 'Init', fields: { n: 0 } }),
+			loop(
+				// @ts-expect-error onLimit takes fail or continue
+				{ name: 'L', maxIterations: 3, onLimit: 'stop', until: (out) => out.n > 2 },
+				set({ name: 'Inc', fields: { n: (s) => s.n + 1 } }),
+			),
+		);
 
 		workflow(
 			'Joined',
@@ -525,6 +681,39 @@ describe('regions compile to node contracts', () => {
 				// @ts-expect-error B has no field id
 				{ name: 'J', join: { left: 'id', right: 'id' } },
 				[steps(), set({ name: 'B', fields: { b: 1 } })],
+			),
+		);
+		workflow(
+			'Three by position',
+			manual(),
+			customers('Customers'),
+			merge({ name: 'J', join: 'position' }, [
+				set({ name: 'A', fields: { a: 1 } }),
+				set({ name: 'B', fields: { b: 'x' } }),
+				set({ name: 'C', fields: { c: (cu) => cu.name } }),
+			]),
+			set({ name: 'ABC', fields: { abc: (row) => `${row.a}${row.b}${row.c}` } }),
+		);
+		workflow(
+			'Three appended',
+			manual(),
+			customers('Customers'),
+			merge({ name: 'J', join: 'append' }, [
+				set({ name: 'A', fields: { a: 1 } }),
+				set({ name: 'B', fields: { b: 'x' } }),
+				set({ name: 'C', fields: { c: (cu) => cu.name } }),
+			]),
+			// @ts-expect-error an appended item is from one branch, so it may have no a
+			set({ name: 'A only', fields: { a: (row) => row.a } }),
+		);
+		workflow(
+			'Three by fields',
+			manual(),
+			customers('Customers'),
+			merge(
+				// @ts-expect-error matching fields join 2 branches only
+				{ name: 'J', join: { left: 'id', right: 'id' } },
+				[steps(), steps(), steps()],
 			),
 		);
 	});
@@ -576,6 +765,10 @@ describe('regions round-trip through decompile', () => {
 		['merge', mergeWorkflow, '  merge({'],
 		['merge append', () => mergeJoinWorkflow('append'), 'join: "append"'],
 		['merge position', () => mergeJoinWorkflow('position'), 'join: "position"'],
+		['loop without next to its limit', cappedLoopWorkflow, 'onLimit: "continue",'],
+		['merge of three appended', () => mergeThreeWorkflow('append'), 'join: "append"'],
+		['merge of three by position', () => mergeThreeWorkflow('position'), 'join: "position"'],
+		['forEach of branches', forEachBranchesWorkflow, 'name: "Each start"'],
 	])('%s: compile, decompile, compile is stable', (_kind, make, call) => {
 		const json = make().toJSON();
 		const source = decompileWorkflow(json, new Map());

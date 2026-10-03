@@ -184,6 +184,31 @@ describe('ensureUniqueNodeIds', () => {
 		expect(new Set(workflow.nodeGroups?.[0]?.nodeIds)).toHaveProperty('size', 2);
 	});
 
+	it('points a region entry at the new id of its member', () => {
+		const workflow: WorkflowJSON = {
+			name: 'Blank region entry',
+			nodes: [node('', 'A'), node('b', 'B')],
+			connections: {},
+			nodeGroups: [
+				{
+					id: 'g1',
+					name: 'Batches',
+					nodeIds: ['', 'b'],
+					repeat: { kind: 'forEach', batchSize: 2, entry: '', exits: [{ node: 'b', output: 0 }] },
+				},
+			],
+		};
+
+		ensureUniqueNodeIds(workflow);
+
+		expect(workflow.nodeGroups?.[0]?.repeat).toEqual({
+			kind: 'forEach',
+			batchSize: 2,
+			entry: workflow.nodes[0].id,
+			exits: [{ node: 'b', output: 0 }],
+		});
+	});
+
 	it('leaves group membership alone when nothing was reassigned', () => {
 		const workflow: WorkflowJSON = {
 			name: 'Unique in group',
@@ -374,6 +399,39 @@ describe('preserveExistingNodeIds', () => {
 		await preserveExistingNodeIds(rebuilt, 'wf-1', contextWithExisting(saved));
 
 		expect(rebuilt.nodeGroups?.[0]?.nodeIds).toEqual(['saved-added']);
+	});
+
+	it('points a region entry and exits at the recovered ids', async () => {
+		const saved: WorkflowJSON = {
+			name: 'Saved',
+			nodes: [node('saved-send', 'Send'), node('saved-pause', 'Pause')],
+			connections: {},
+		};
+		const rebuilt: WorkflowJSON = {
+			name: 'Rebuilt',
+			nodes: [node('fresh-send', 'Send'), node('fresh-pause', 'Pause')],
+			connections: {},
+			nodeGroups: [
+				{
+					id: 'g1',
+					name: 'Batches',
+					nodeIds: ['fresh-send', 'fresh-pause'],
+					repeat: {
+						kind: 'forEach',
+						batchSize: 10,
+						entry: 'fresh-send',
+						exits: [{ node: 'fresh-pause', output: 0 }],
+					},
+				},
+			],
+		};
+
+		await preserveExistingNodeIds(rebuilt, 'wf-1', contextWithExisting(saved));
+
+		expect(rebuilt.nodeGroups?.[0]).toMatchObject({
+			nodeIds: ['saved-send', 'saved-pause'],
+			repeat: { entry: 'saved-send', exits: [{ node: 'saved-pause', output: 0 }] },
+		});
 	});
 
 	it('keeps every id unique after recovery', async () => {

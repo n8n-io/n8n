@@ -254,12 +254,12 @@ export const BUILT_IN_STEPS: ReadonlyArray<{
 	{
 		nodeType: 'n8n-nodes-base.merge',
 		steps: ['merge'],
-		row: "merge({ name, join: 'append' | 'position' | { left, right } }, [part, part]): Runs two branches on the same items and joins them.",
+		row: "merge({ name, join: 'append' | 'position' | { left, right } }, [part, part, …]): Runs 2 to 10 branches on the same items and joins them; { left, right } joins 2.",
 	},
 	{
 		nodeType: 'n8n-nodes-base.splitInBatches',
 		steps: ['forEach', 'loop'],
-		row: 'forEach({ name, batchSize }, body) runs batches; loop({ name, maxIterations, until, next }, body) repeats a body until a condition holds.',
+		row: "forEach({ name, batchSize }, body) runs batches; loop({ name, maxIterations, until, next?, onLimit? }, body) repeats a body until a condition holds; onLimit: 'continue' ends it at maxIterations.",
 	},
 	{
 		nodeType: 'n8n-nodes-base.splitOut',

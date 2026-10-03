@@ -591,7 +591,16 @@
 				"httpQueryAuth",
 				"oAuth2Api"
 			],
-			"properties": ["authentication", "url", "query", "headers", "items", "pages"]
+			"properties": [
+				"authentication",
+				"url",
+				"query",
+				"headers",
+				"items",
+				"pages",
+				"fullResponse",
+				"neverError"
+			]
 		},
 		{
 			"name": "@n8n/nodes-base-next.httpRequestGetTool",
@@ -611,7 +620,9 @@
 				"query",
 				"headers",
 				"items",
-				"pages"
+				"pages",
+				"fullResponse",
+				"neverError"
 			]
 		},
 		{
@@ -626,7 +637,16 @@
 				"httpQueryAuth",
 				"oAuth2Api"
 			],
-			"properties": ["authentication", "method", "url", "query", "headers", "body"]
+			"properties": [
+				"authentication",
+				"method",
+				"url",
+				"query",
+				"headers",
+				"body",
+				"fullResponse",
+				"neverError"
+			]
 		},
 		{
 			"name": "@n8n/nodes-base-next.httpRequestSendTool",
@@ -646,7 +666,9 @@
 				"url",
 				"query",
 				"headers",
-				"body"
+				"body",
+				"fullResponse",
+				"neverError"
 			]
 		},
 		{

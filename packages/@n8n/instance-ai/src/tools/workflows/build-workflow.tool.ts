@@ -91,11 +91,15 @@ import {
 } from './workflow-source-compiler';
 import { appendWorkflowSourceDiagnostics } from './workflow-source-diagnostics';
 import {
+	contractLoopsOf,
 	GROUP_DROPPED_OVER_CEILING_CODE,
+	GROUPING_DECISION_MISSING_CODE,
 	groupingDecisionBlocker,
 	NODE_GROUP_DROPPED_CODE,
 	nodeGroupDroppedWarnings,
 	partitionWarnings,
+	REGION_DROPPED_CODE,
+	regionDroppedBlocker,
 	summarizeWorkflowTopLevelItems,
 	topLevelItemsWarning,
 	type ValidationWarning,
@@ -528,7 +532,7 @@ interface ValidationFailureArgs {
  *   groups are not needed.
  * - `missing`: the canvas has more than `TOP_LEVEL_ITEM_CEILING` boxes, and the
  *   agent made no groups and gave no reason. It skipped the decision. The build
- *   is refused.
+ *   is refused, except for a `@n8n/workflow-sdk/next` source, which has no group API.
  */
 function resolveGroupingDecision(input: {
 	groupCount: number;
@@ -1448,18 +1452,24 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 				await preserveExistingNodeGroupIds(json, targetWorkflowId, context);
 				await preserveExistingNodePositions(json, targetWorkflowId, context);
 				const groupCountBeforeDrop = json.nodeGroups?.length ?? 0;
-				const droppedGroupWarnings = nodeGroupDroppedWarnings(
-					dropInvalidWorkflowJsonGroups(
-						json,
-						context.nodeTypesProvider
-							? makeGetNodeTypeForGrouping(context.nodeTypesProvider)
-							: null,
-					),
+				const regionIds = new Set(
+					(json.nodeGroups ?? []).filter((group) => group.repeat).map((group) => group.id),
 				);
+				const groupViolations = dropInvalidWorkflowJsonGroups(
+					json,
+					context.nodeTypesProvider ? makeGetNodeTypeForGrouping(context.nodeTypesProvider) : null,
+				);
+				const droppedGroupWarnings = nodeGroupDroppedWarnings(groupViolations);
 				droppedGroupCount = groupCountBeforeDrop - (json.nodeGroups?.length ?? 0);
 				informational.push(...droppedGroupWarnings);
 
-				const topLevel = summarizeWorkflowTopLevelItems(json);
+				// Node contracts: a loop counts as one box, as the author wrote it.
+				const topLevelOf = async (workflowJson: WorkflowJSON) =>
+					summarizeWorkflowTopLevelItems(
+						workflowJson,
+						context.nodeContractsEnabled ? await contractLoopsOf(workflowJson) : [],
+					);
+				const topLevel = await topLevelOf(json);
 				const grouping: GroupingOutcome = {
 					topLevelItemCount: topLevel.total,
 					ceiling: topLevel.ceiling,
@@ -1478,7 +1488,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 				// workflow over the ceiling. A small edit to a wide user workflow only warns.
 				const snapshotWasUnderCeiling =
 					savedWorkflowSnapshot !== undefined &&
-					!summarizeWorkflowTopLevelItems(savedWorkflowSnapshot).overCeiling;
+					!(await topLevelOf(savedWorkflowSnapshot)).overCeiling;
 
 				// agentExceededCeiling is true when the agent's build made the canvas exceed TOP_LEVEL_ITEM_CEILING boxes;
 				// false when the user's workflow already exceeded it. It gates only the "no groups" refusal.
@@ -1487,34 +1497,50 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 					context.aiCreatedWorkflowIds?.has(targetWorkflowId) === true ||
 					snapshotWasUnderCeiling;
 
-				const refusalReason = groupingDecisionBlocker({
-					summary: topLevel,
-					declaredGroupCount: groupCountBeforeDrop,
-					droppedGroupWarnings,
-					groupingDecision,
-				});
+				// Node contracts: a dropped region loses its batches, so it is refused on any canvas.
+				const regionDropped = context.nodeContractsEnabled
+					? regionDroppedBlocker(
+							groupViolations.filter((violation) => regionIds.has(violation.groupId)),
+						)
+					: undefined;
+
+				const refusalReason =
+					regionDropped ??
+					groupingDecisionBlocker({
+						summary: topLevel,
+						declaredGroupCount: groupCountBeforeDrop,
+						droppedGroupWarnings,
+						groupingDecision,
+					});
 
 				// The one reason to refuse this build because of grouping, or undefined when the canvas is fine.
 				// A dropped group is the agent's own declaration, so it is refused on any canvas. "No groups"
 				// is refused only when the agent made the canvas exceed the ceiling; on the user's
-				// pre-existing layout it stays a warning.
+				// pre-existing layout it stays a warning. `@n8n/workflow-sdk/next` has no group API,
+				// so for its sources "no groups" is a warning too.
 				const blocker =
-					agentExceededCeiling || refusalReason?.code === GROUP_DROPPED_OVER_CEILING_CODE
-						? refusalReason
-						: undefined;
+					refusalReason?.code === GROUPING_DECISION_MISSING_CODE &&
+					(!agentExceededCeiling || sourceSdk === 'next')
+						? undefined
+						: refusalReason;
 
 				if (blocker) {
-					const groupWasDropped = blocker.code === GROUP_DROPPED_OVER_CEILING_CODE;
+					const regionWasDropped = blocker.code === REGION_DROPPED_CODE;
+					const groupWasDropped =
+						regionWasDropped || blocker.code === GROUP_DROPPED_OVER_CEILING_CODE;
 
-					const reason = groupWasDropped
-						? 'workflow_group_dropped_over_ceiling'
-						: 'workflow_grouping_decision_missing';
+					const reason = regionWasDropped
+						? 'workflow_region_dropped'
+						: groupWasDropped
+							? 'workflow_group_dropped_over_ceiling'
+							: 'workflow_grouping_decision_missing';
 
-					const guidance =
-						'Edit the workspace source file so the stages form valid node groups, then call build-workflow again with the same filePath. ' +
-						(groupWasDropped
-							? 'Fix the boundary each dropped-group message names; the opt-out does not apply here.'
-							: "If no valid group can hold the remaining nodes, call it again with groupingDecision: 'not_warranted' and a groupingReason.");
+					const guidance = regionWasDropped
+						? 'Edit the workspace source file so each forEach region is valid, then call build-workflow again with the same filePath.'
+						: 'Edit the workspace source file so the stages form valid node groups, then call build-workflow again with the same filePath. ' +
+							(groupWasDropped
+								? 'Fix the boundary each dropped-group message names; the opt-out does not apply here.'
+								: "If no valid group can hold the remaining nodes, call it again with groupingDecision: 'not_warranted' and a groupingReason.");
 
 					// The dropped-group error already carries each drop reason, so the matching
 					// warnings would only repeat it.
@@ -1529,8 +1555,9 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 						informational: informationalWithoutDrops,
 						reason,
 						guidance,
-						summary:
-							'Workflow build stopped: the canvas is over the top-level ceiling and the node groups do not cover it.',
+						summary: regionWasDropped
+							? 'Workflow build stopped: the save would remove a forEach region.'
+							: 'Workflow build stopped: the canvas is over the top-level ceiling and the node groups do not cover it.',
 						binding,
 						sourceHash,
 						targetWorkflowId,
@@ -1548,7 +1575,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 					});
 				}
 
-				const overCeiling = topLevelItemsWarning(json, topLevel);
+				const overCeiling = topLevelItemsWarning(json, topLevel, sourceSdk !== 'next');
 				if (overCeiling) {
 					const accepted = groupingDecision === 'not_warranted' && groupingReason;
 					informational.push(

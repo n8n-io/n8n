@@ -18,6 +18,7 @@ import { messageGemini } from '../nodes/google-gemini/actions/text.message';
 import { appendSheetRow } from '../nodes/google-sheets/actions/sheet.append';
 import { appendOrUpdateSheetRow } from '../nodes/google-sheets/actions/sheet.append-or-update';
 import { readSheetRows } from '../nodes/google-sheets/actions/sheet.read';
+import { spreadsheetIdOf } from '../nodes/google-sheets/google-sheets.node';
 
 interface Options {
 	method: string;
@@ -205,6 +206,32 @@ describe('googleSheets.sheet.read', () => {
 		expect(validate({ ...location, sheet: 'Sheet1' }, readSheetRows.inputSchema).join()).toContain(
 			'input.sheet: needs "mode"',
 		);
+	});
+
+	it.each([
+		['1mcv2NewsletterSheetId', '1mcv2NewsletterSheetId'],
+		[
+			'https://docs.google.com/spreadsheets/d/1mcv2NewsletterSheetId/edit#gid=0',
+			'1mcv2NewsletterSheetId',
+		],
+		['docs.google.com/spreadsheets/u/0/d/1mcv2Dead-_Letters', '1mcv2Dead-_Letters'],
+		[
+			'https://drive.google.com/file/d/1mcv2FinchInvoicesSheetId/view?usp=sharing',
+			'1mcv2FinchInvoicesSheetId',
+		],
+	])('takes the spreadsheet %s as the ID %s', (spreadsheet, id) => {
+		expect(validate({ ...location, spreadsheet }, readSheetRows.inputSchema)).toEqual([]);
+		expect(spreadsheetIdOf(spreadsheet)).toBe(id);
+	});
+
+	it.each([
+		'Invoice Tracker 2026',
+		'https://example.com/spreadsheets/d/1mcv2NewsletterSheetId',
+		'1mcv2NewsletterSheetId/edit',
+	])('refuses %s as a spreadsheet', (spreadsheet) => {
+		expect(validate({ ...location, spreadsheet }, readSheetRows.inputSchema)).toEqual([
+			expect.stringContaining('is not Spreadsheet ID or Google Sheets URL'),
+		]);
 	});
 });
 

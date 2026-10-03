@@ -44,7 +44,7 @@ export const webhookTrigger = webhook.trigger('trigger', {
 				binaryPropertyName: t
 					.str()
 					.optional()
-					.hint('Field for a received file; output binary.data needs data'),
+					.hint('Key of a binary body; multipart files get <name>0, <name>1, …'),
 				ignoreBots: t.bool().optional(),
 				ipWhitelist: t.str().optional().hint('Comma-separated IPs or CIDR ranges'),
 				noResponseBody: t.bool().optional(),
@@ -59,17 +59,19 @@ export const webhookTrigger = webhook.trigger('trigger', {
 			})
 			.optional(),
 	},
-	output: t.obj({
-		headers: t.record(t.str()).hint('Lower-case names'),
-		params: t.record(t.str()).hint('Path parameters, e.g. id for :id'),
-		query: t.record(t.union(t.str(), t.arr(t.str()))).hint('A repeated key gives a list'),
-		body: t
-			.declared()
-			.hint('Declare its JSON Schema in schema.body to type it; n8n does not check the body'),
-		webhookUrl: t.str(),
-		executionMode: t.oneOf('test', 'production'),
-		data: t.binary().optional().hint('A received file, with options.binaryPropertyName data'),
-	}),
+	output: t.openBinaries(
+		t.obj({
+			headers: t.record(t.str()).hint('Lower-case names'),
+			params: t.record(t.str()).hint('Path parameters, e.g. id for :id'),
+			query: t.record(t.union(t.str(), t.arr(t.str()))).hint('A repeated key gives a list'),
+			body: t
+				.declared()
+				.hint('Declare its JSON Schema in schema.body to type it; n8n does not check the body'),
+			webhookUrl: t.str(),
+			executionMode: t.oneOf('test', 'production'),
+		}),
+		'A multipart file is under its form field name; a binary or raw body under data',
+	),
 	native: { type: 'n8n-nodes-base.webhook', version: 2.2, on: 'webhook' },
 	reply: {
 		operation: 'respond',

@@ -117,6 +117,56 @@ describe('httpRequest.get parity with HTTP Request v4.5 GET', () => {
 	});
 });
 
+describe('httpRequest.get parity with HTTP Request v4.5 full response, never error', () => {
+	const parityCase: ParityCase = {
+		credential,
+		headers: HEADERS,
+		input: [{}],
+		routes: [{ method: 'GET', url: URL, status: 404, json: { error: 'no such task' } }],
+	};
+
+	const ALLOWED: readonly AllowedDifference[] = [
+		...jsonOnly('GET', 1),
+		{
+			path: 'items[0].json.statusMessage',
+			kind: 'intended',
+			reason: 'The status code tells the outcome; the reason phrase is not in the contract.',
+		},
+	];
+
+	it.each([
+		['with', true],
+		['without', false],
+	])('emits the 404 response %s fullResponse', async (_, fullResponse) => {
+		const legacy = await runNode(
+			legacyNode({
+				method: 'GET',
+				options: { response: { response: { fullResponse, neverError: true } } },
+			}),
+			parityCase,
+		);
+		const next = await runNode(
+			actionNode(
+				getRequest,
+				{
+					authentication: 'httpHeaderAuth',
+					url: URL,
+					query: { status: 'open' },
+					headers: { 'X-Trace': 'parity' },
+					fullResponse,
+					neverError: true,
+				},
+				'httpHeaderAuth',
+			),
+			parityCase,
+		);
+		expect(legacy.error).toBeUndefined();
+		expect(legacy.items).toHaveLength(1);
+		const allowed = fullResponse ? ALLOWED : jsonOnly('GET', 1);
+		expect(compareRuns(legacy, next, allowed)).toEqual({ unexplained: [], stale: [] });
+	});
+});
+
 describe('httpRequest.send parity with HTTP Request v4.5 POST', () => {
 	const parityCase: ParityCase = {
 		credential,

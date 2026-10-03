@@ -537,7 +537,7 @@ describe('generateNodeModule', () => {
 			'contractTrigger("n8n-nodes-tasks.tasks.task.created", config, 1, {"credential":"tasks","scopes":["tasks:read"]}, {"example":',
 		);
 		expect(module).toContain(
-			"import { contractStep, contractTool, contractTrigger, type DeepPartial, type NodeSettings, type OutputOf, type Provider, type Step, type ToolConfig, type Trigger, type Value } from '@n8n/workflow-sdk/next';",
+			"import { contractStep, contractTool, contractTrigger, type DeepPartial, type Exact, type NodeSettings, type OutputOf, type Provider, type Sampled, type Step, type ToolConfig, type Trigger, type Value } from '@n8n/workflow-sdk/next';",
 		);
 	});
 
@@ -563,7 +563,7 @@ describe('generateNodeModule', () => {
 		expect(text).toContain(
 			'contractStep("n8n-nodes-tasks.search", config, 1, undefined, undefined, undefined, [["pages","next"]])',
 		);
-		expect(text).toContain('type OutputOf, type PageValue, type Provider, type Step');
+		expect(text).toContain('type OutputOf, type PageValue, type Provider, type Sampled, type Step');
 		expect(text).toContain(
 			'contractTool("n8n-nodes-tasks.searchTool", config, 1, [["pages","next"]])',
 		);

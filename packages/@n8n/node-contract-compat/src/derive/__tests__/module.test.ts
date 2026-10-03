@@ -261,7 +261,7 @@ describe('derived modules by node kind', () => {
 			flat({ name: 'check', outputs: ['main', 'main'], outputNames: ['valid', 'invalid'] }),
 		);
 		expect(module).toContain(
-			'): RoutedStep<In, Ctx, OutputOf<N, CheckExecuteOutput>, N, "valid" | "invalid"> =>',
+			'): RoutedStep<In, Ctx, Sampled<OutputOf<N, CheckExecuteOutput>, S>, N, "valid" | "invalid"> =>',
 		);
 		expect(module).toContain('routedStep("n8n-nodes-base.check", config, ["valid","invalid"])');
 	});

@@ -116,10 +116,10 @@ and `published`. Freeze adds none of them, so it writes the same bytes for the s
   sandbox reads only the manifest, and refuses a bundle whose `baseUrl` host is not in it.
 - WIT describes only code that runs. A native trigger and a declarative credential scheme have
   a manifest and no bundle.
-- Binary key patterns (`t.indexedBinaries()`, an output `patternProperties` entry with
-  `x-n8n-binary`) use the `binary` import of 2.2.0, so freeze writes 2.2.0. A host from before
-  this keyword keeps such a binary in the JSON. No such host is released; the next Node Contract
-  minor takes the keyword.
+- Binary key patterns (`t.indexedBinaries()`, `t.openBinaries()`, an output `patternProperties`
+  entry with `x-n8n-binary`) use the `binary` import of 2.2.0, so freeze writes 2.2.0. A host
+  from before this keyword keeps such a binary in the JSON. No such host is released; the next
+  Node Contract minor takes the keyword.
 - An output keyword that a host ignores does not raise the Node Contract minor:
   `x-n8n-claim` and `x-n8n-resource` are for builders, and a host runs a bundle that has them
   as before.

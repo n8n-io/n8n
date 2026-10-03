@@ -922,7 +922,7 @@ describe('generateNodeModule', () => {
 		});
 		const text = moduleOf(route, check);
 		expect(text).toContain(
-			"import { contractStep, routedStep, type NodeSettings, type OutputOf, type RoutedStep, type Step, type Value } from '@n8n/workflow-sdk/next';",
+			"import { contractStep, routedStep, type Exact, type NodeSettings, type OutputOf, type RoutedStep, type Sampled, type Step, type Value } from '@n8n/workflow-sdk/next';",
 		);
 		expect(text).toContain(
 			'(transform, per-item; outputs: one per cases entry, named by its output, then fallback; hosts: todo.test)',
@@ -931,13 +931,13 @@ describe('generateNodeModule', () => {
 			' cases: ReadonlyArray<TodoTaskRouteInput<In, Ctx>["cases"][number] & { output: E }>;',
 		);
 		expect(text).toContain(
-			'RoutedStep<In, Ctx, OutputOf<N, TodoTaskRouteOutput>, N, E | "fallback">',
+			'RoutedStep<In, Ctx, Sampled<OutputOf<N, TodoTaskRouteOutput>, S>, N, E | "fallback">',
 		);
 		expect(text).toContain(
 			'routedStep("@n8n/nodes-base-next.todo.task.route", config, {"each":"cases","then":["fallback"]})',
 		);
 		expect(text).toContain(
-			'RoutedStep<In, Ctx, OutputOf<N, TodoTaskCheckOutput>, N, "open" | "done">',
+			'RoutedStep<In, Ctx, Sampled<OutputOf<N, TodoTaskCheckOutput>, S>, N, "open" | "done">',
 		);
 		expect(text).toContain('(transform, batch; outputs: open | done; hosts: todo.test)');
 	});
@@ -981,9 +981,28 @@ describe('generateNodeModule', () => {
 		expect(text).toContain('{ values: Value<I, C, { [key: string]: Value<I, C, OpenValue> }> }');
 		expect(text).toContain('export type TodoRowAppendOutput = Record<string, unknown>;');
 		expect(text).toContain(
-			'import { contractStep, contractTool, type OpenValue, type NodeSettings, type OutputOf,',
+			'import { contractStep, contractTool, type Exact, type OpenValue, type NodeSettings, type OutputOf,',
 		);
 		expect(moduleOf(listTasks)).not.toContain('OpenValue');
+	});
+
+	it('types the output of a step by its sample, within the declared output', () => {
+		const append = todo.resource('row').action('append', {
+			action: 'Append row',
+			summary: 'Append a row.',
+			flow: { effect: 'write', cardinality: 'per-item' },
+			input: { values: t.json() },
+			output: t.json(),
+			run: async () => await Promise.resolve({}),
+		});
+		const text = moduleOf(append);
+		expect(text).toContain(
+			'append: <In, Ctx, const N extends string, S extends OutputOf<N, TodoRowAppendOutput> = OutputOf<N, TodoRowAppendOutput>>(',
+		);
+		expect(text).toContain(
+			'config: { name: N; sample?: Array<S & Exact<S, OutputOf<N, TodoRowAppendOutput>>>; settings?: NodeSettings }',
+		);
+		expect(text).toContain('): Step<In, Ctx, Sampled<OutputOf<N, TodoRowAppendOutput>, S>, N> =>');
 	});
 
 	it('prints short objects without docs on one line', () => {

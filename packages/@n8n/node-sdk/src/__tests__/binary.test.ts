@@ -299,6 +299,37 @@ describe('binary data', () => {
 		expect(lintContract(toContract(unpack))).toEqual([]);
 	});
 
+	it('moves the binaries of open keys to item.binary, and keeps each field in the JSON', async () => {
+		const upload = files.action('upload', {
+			action: 'Upload',
+			summary: 'Upload.',
+			flow: once,
+			input: { fields: t.arr(t.str()) },
+			output: t.openBinaries(t.obj({ name: t.str(), 'name.x': t.str().optional() })),
+			async run({ input, binary: binaries }) {
+				const created = await Promise.all(
+					input.fields.map(async (field) => [
+						field,
+						await binaries.create({ mimeType: 'text/plain' }, [field]),
+					]),
+				);
+				return { name: 'form', 'name.x': 'x', ...Object.fromEntries(created) };
+			},
+		});
+		const { store } = memoryStore();
+		const [[item] = []] = await executorOf(upload)(
+			hostOf({ fields: ['image', 'my file'] }, [], { binary: store }).host,
+		);
+
+		expect(item?.json).toEqual({ name: 'form', 'name.x': 'x' });
+		expect(Object.keys(item?.binary ?? {})).toEqual(['image', 'my file']);
+		expect(lintContract(toContract(upload))).toEqual([]);
+		const text = generateNodeModule('files', [
+			{ contract: toContract(upload), operation: 'upload', nodeType: 'files.upload' },
+		]);
+		expect(text).toContain('binary: { [key: string]: Binary } };');
+	});
+
 	it('refuses a binary under a key that the pattern does not match', async () => {
 		const unpack = files.action('unpack', {
 			action: 'Unpack',
@@ -446,7 +477,7 @@ describe('binary contracts', () => {
 			{ contract: toContract(download), operation: 'download', nodeType: 'files.download' },
 		]);
 		expect(text).toContain(
-			"import { binaryKeys, contractStep, type Binary, type Dollar, type NodeSettings, type OutputOf, type Step, type Value } from '@n8n/workflow-sdk/next';",
+			"import { binaryKeys, contractStep, type Binary, type Dollar, type Exact, type NodeSettings, type OutputOf, type Sampled, type Step, type Value } from '@n8n/workflow-sdk/next';",
 		);
 		expect(text).toContain('contractStep("files.download", binaryKeys(config, [["file"]]))');
 		expect(text).toContain(

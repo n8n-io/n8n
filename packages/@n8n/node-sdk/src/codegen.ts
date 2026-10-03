@@ -797,9 +797,15 @@ export function generateNodeModule(nodeId: string, contracts: readonly Generated
 			const configArg = binaryPaths.length
 				? `binaryKeys(config, ${JSON.stringify(binaryPaths)})`
 				: 'config';
-			// A passed item keeps the type of the item before.
-			const item = contract.output['x-n8n-passed'] ? 'In' : `OutputOf<N, ${name}Output>`;
-			const config = `{ name: N; sample?: ${contract.output['x-n8n-passed'] ? 'In' : `${name}Output`}[]; settings?: NodeSettings }`;
+			// A passed item keeps the type of the item before. Else a sample refines the output, also
+			// the derived one, e.g. types an open JSON body, as a sample types the output of node().
+			const passed = contract.output['x-n8n-passed'];
+			const output = `OutputOf<N, ${name}Output>`;
+			const generics = (more = '') =>
+				`<In, Ctx, const N extends string${more}${passed ? '' : `, S extends ${output} = ${output}`}>(`;
+			const item = passed ? 'In' : `Sampled<${output}, S>`;
+			const samples = passed ? 'In[]' : `Array<S & Exact<S, ${output}>>`;
+			const config = `{ name: N; sample?: ${samples}; settings?: NodeSettings }`;
 			// The entries type the output, so the config is generic and checked key by key.
 			const entryItem = `OutputOf<N, ${name}Output & ${name}Fields<C>>`;
 			const text =
@@ -812,14 +818,14 @@ export function generateNodeModule(nodeId: string, contracts: readonly Generated
 						]
 					: !outputs
 						? [
-								'<In, Ctx, const N extends string>(',
+								generics(),
 								`\tconfig: ${config} & ${input},`,
 								`): Step<In, Ctx, ${item}, N> =>`,
 								`\tcontractStep(${JSON.stringify(nodeType)}, ${configArg}${args(false)})`,
 							]
 						: 'each' in outputs
 							? [
-									'<In, Ctx, const N extends string, const E extends string>(',
+									generics(', const E extends string'),
 									`\tconfig: ${config} & Omit<${input}, ${JSON.stringify(outputs.each)}> & {`,
 									`\t\t${key(outputs.each)}: ReadonlyArray<${input}[${JSON.stringify(outputs.each)}][number] & { output: E }>;`,
 									'\t},',
@@ -827,7 +833,7 @@ export function generateNodeModule(nodeId: string, contracts: readonly Generated
 									`\troutedStep(${JSON.stringify(nodeType)}, ${configArg}, ${JSON.stringify(outputs)}${args(true)})`,
 								]
 							: [
-									'<In, Ctx, const N extends string>(',
+									generics(),
 									`\tconfig: ${config} & ${input},`,
 									`): RoutedStep<In, Ctx, ${item}, N, ${outputs.map((output) => JSON.stringify(output)).join(' | ')}> =>`,
 									`\troutedStep(${JSON.stringify(nodeType)}, ${configArg}, ${JSON.stringify(outputs)}${args(true)})`,
@@ -937,7 +943,8 @@ export function generateNodeModule(nodeId: string, contracts: readonly Generated
 		...(declares ? ['type Declared'] : []),
 		...(triggers.length > 0 ? ['type DeepPartial'] : []),
 		...(named.some(({ contract }) => hasBinary(contract.input)) ? ['type Dollar'] : []),
-		...(hasEntries ? ['type EntryFields', 'type Exact'] : []),
+		...(hasEntries ? ['type EntryFields'] : []),
+		...(hasEntries || derived ? ['type Exact'] : []),
 		...(body.includes(`Value<I, C, ${OPEN_VALUE}>`) ? [`type ${OPEN_VALUE}`] : []),
 		...(body.includes('ModelOf<') ? ['type ModelOf'] : []),
 		'type NodeSettings',
@@ -947,6 +954,7 @@ export function generateNodeModule(nodeId: string, contracts: readonly Generated
 			? ['type Provider']
 			: []),
 		...(routed ? ['type RoutedStep'] : []),
+		...(factories.some(({ text }) => text.includes('Sampled<')) ? ['type Sampled'] : []),
 		...(steps.length > 0 ? ['type Step'] : []),
 		...(tools.length > 0 ? ['type ToolConfig'] : []),
 		...(triggers.length > 0 ? ['type Trigger'] : []),

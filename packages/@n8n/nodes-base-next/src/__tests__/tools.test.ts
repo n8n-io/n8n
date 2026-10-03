@@ -111,7 +111,7 @@ describe('contract actions as agent tools', () => {
 		]);
 		expect(requests.map(({ url }) => url)).toEqual(['https://acme.dev/a']);
 		expect(metadata).toEqual([
-			{ nodeContract: expect.objectContaining({ action: 'httpRequest.get', version: '3.0.0' }) },
+			{ nodeContract: expect.objectContaining({ action: 'httpRequest.get', version: '3.1.0' }) },
 		]);
 	});
 

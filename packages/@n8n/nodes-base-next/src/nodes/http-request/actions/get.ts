@@ -11,7 +11,14 @@ import {
 } from '@n8n/node-sdk';
 
 import { httpRequest } from '../http-request.node';
-import { common, toItems } from '../request';
+import {
+	common,
+	responseOf,
+	responseOptions,
+	responseOutputOf,
+	responsePageOf,
+	toItems,
+} from '../request';
 
 /** A parameter name: a fixed value, as the request needs it before any page. */
 const name = t.str().with({ minLength: 1, 'x-n8n-literal': true });
@@ -74,22 +81,6 @@ const bodyPathOf = (path: string) =>
 		.map((key) => (/^[A-Za-z_$][\w$]*$/.test(key) ? `.${key}` : `[${JSON.stringify(key)}]`))
 		.join('');
 
-/** The page of a full response. A header with more values joins them, as `fetch` does. */
-const responsePageOf = (response: unknown): ResponsePage => {
-	const full = isRecord(response) ? response : {};
-	const headers = isRecord(full.headers) ? full.headers : {};
-	return {
-		body: full.body,
-		headers: Object.fromEntries(
-			Object.entries(headers).map(([key, value]) => [
-				key.toLowerCase(),
-				Array.isArray(value) ? value.join(', ') : String(value),
-			]),
-		),
-		statusCode: typeof full.statusCode === 'number' ? full.statusCode : 0,
-	};
-};
-
 /** Where the lists of a body are, one level deep, so an `items` that misses names the fix. */
 const listFieldsOf = (body: unknown) => {
 	if (Array.isArray(body)) return 'the body is a list, so omit items';
@@ -105,10 +96,14 @@ const listFieldsOf = (body: unknown) => {
 		: 'body has no list field';
 };
 
+const output = t.json().hint('One item per page item; an array body emits one item per element');
+
 export const getRequest = httpRequest.action('get', {
 	// Major 2: the action declares that it reaches the host of `url`.
 	// Major 3: cursor, link and offset pages, with page values read from each response.
 	version: 3,
+	// Minor 1: fullResponse and neverError, as the legacy node has them.
+	minor: 1,
 	action: 'GET a URL',
 	summary: 'Read from any HTTP API. Use a dedicated action when one exists for the service.',
 	flow: { effect: 'read', cardinality: '1:N', idempotent: true },
@@ -120,8 +115,10 @@ export const getRequest = httpRequest.action('get', {
 			.hint('The documented array field: (page) => page.body.<field>; omit for a list body')
 			.optional(),
 		pages: pagesInput.optional(),
+		...responseOptions,
 	},
-	output: t.json().hint('One item per page item; an array body emits one item per element'),
+	output,
+	deriveOutput: responseOutputOf(output.json),
 	migrate: (fromMajor, params) => {
 		const { pagination, ...rest } = params;
 		if (fromMajor !== 2 || !isRecord(pagination)) return rest;
@@ -146,8 +143,11 @@ export const getRequest = httpRequest.action('get', {
 		};
 		// One request, as before pages existed: its body is the page.
 		if (!paged && !itemsAt) {
-			yield* toItems(await http.request(first));
+			yield* toItems(await responseOf(http, first, input));
 			return;
+		}
+		if (input.fullResponse || input.neverError) {
+			throw new UserError('fullResponse and neverError take one request: remove pages and items');
 		}
 		const itemsOf = (page: ResponsePage) => {
 			if (!itemsAt) return toItems(page.body);

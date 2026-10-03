@@ -472,6 +472,127 @@ export default workflow(
 		]);
 	}, 120_000);
 
+	it('types a multipart webhook file by its field name, and the status code of a full response', async () => {
+		const source = (full: boolean) => `import { workflow, set } from '@n8n/workflow-sdk/next';
+import { httpRequest } from '@n8n/nodes/httpRequest';
+import { webhook } from '@n8n/nodes/webhook';
+
+export default workflow(
+	'Upload a photo',
+	webhook.trigger({ name: 'Webhook', httpMethod: 'POST', path: 'photos' }),
+	httpRequest.send({
+				name: 'Store',
+				method: 'POST',
+				url: 'https://archive.example.com/api/upload',
+				body: { kind: 'binary', file: (item) => item.binary.image },
+				fullResponse: ${full},
+				neverError: true,
+			}),
+	set({ name: 'Outcome', fields: { next: (item) => item.statusCode + 1 } }),
+);
+`;
+		const result = await build(source(true));
+		expect(result.success ? [] : result.errors).toEqual([]);
+		if (!result.success) return;
+		const store = result.workflow.nodes.find((node) => node.name === 'Store');
+		expect(store?.parameters?.body).toEqual({ kind: 'binary', file: 'image' });
+		const bodyOnly = await build(source(false));
+		expect(bodyOnly.success ? [] : bodyOnly.errors).toEqual([
+			expect.stringContaining("'item.statusCode' is of type 'unknown'"),
+		]);
+	}, 120_000);
+
+	it('types an open output by its sample, also after recover', async () => {
+		const source = (field: string) => `import { workflow, manual, set, recover, expr } from '@n8n/workflow-sdk/next';
+import { httpRequest } from '@n8n/nodes/httpRequest';
+
+export default workflow(
+	'Enrich',
+	manual({ sample: [{ domain: 'acme.com' }] }),
+	httpRequest.get({ name: 'Company', url: 'https://api.example.com/company', sample: [{ metrics: { employees: 120 } }] }),
+	recover(set({ name: 'Failed', fields: { enrichmentFailed: true } })),
+	set({ name: 'Size', fields: {
+		employees: (item) => ('metrics' in item ? item.metrics.${field} : 0),
+		fromCompany: expr("{{ $('Company').item.json.metrics.employees + 1 }}"),
+	} }),
+);
+`;
+		const right = await build(source('employees'));
+		expect(right.success ? [] : right.errors).toEqual([]);
+		const wrong = await build(source('revenue'));
+		expect(wrong.success ? [] : wrong.errors).toEqual([
+			expect.stringContaining("Property 'revenue' does not exist on type '{ employees: number; }'"),
+		]);
+	}, 120_000);
+
+	it('types the body of a full response by its sample', async () => {
+		const source = (field: string) => `import { workflow, manual, set } from '@n8n/workflow-sdk/next';
+import { httpRequest } from '@n8n/nodes/httpRequest';
+
+export default workflow(
+	'Full response',
+	manual(),
+	httpRequest.get({
+		name: 'Fetch',
+		url: 'https://api.example.com/x',
+		fullResponse: true,
+		sample: [{ body: { items: [{ id: 1 }] }, headers: {}, statusCode: 200 }],
+	}),
+	set({ name: 'First', fields: { first: (item) => item.body.${field}[0].id + item.statusCode } }),
+);
+`;
+		const right = await build(source('items'));
+		expect(right.success ? [] : right.errors).toEqual([]);
+		const wrong = await build(source('next'));
+		expect(wrong.success ? [] : wrong.errors).toEqual([
+			expect.stringContaining("Property 'next' does not exist"),
+		]);
+	}, 120_000);
+
+	it('builds a merge of three branches in a forEach body and a loop that ends at its limit', async () => {
+		const result = await build(`import { workflow, manual, set, merge, forEach, loop } from '@n8n/workflow-sdk/next';
+
+export default workflow(
+	'Regions',
+	manual({ sample: [{ id: 'w1', nodes: 3, level: 0 }] }),
+	forEach({ name: 'Each workflow', batchSize: 1 }, merge({ name: 'Parts', join: 'position' }, [
+		set({ name: 'Nodes', fields: { nodes: (w) => w.nodes } }),
+		set({ name: 'Id', fields: { id: (w) => w.id } }),
+		set({ name: 'Level', fields: { level: (w) => w.level } }),
+	])),
+	loop({ name: 'Walk', maxIterations: 10, onLimit: 'continue', until: (out) => out.level >= 3 },
+		set({ name: 'Up', fields: { level: (s) => s.level + 1 }, keep: 'all' }),
+	),
+	set({ name: 'Depth', fields: { depth: (out) => out.level, id: (out) => out.id } }),
+);
+`);
+		expect(result.success ? [] : result.errors).toEqual([]);
+		if (!result.success) return;
+		const parts = result.workflow.nodes.find((node) => node.name === 'Parts');
+		expect(parts?.type).toBe('n8n-nodes-base.merge');
+		expect(result.workflow.nodes.map((node) => node.name)).toContain('Each workflow start');
+		expect(result.workflow.nodes.map((node) => node.name)).not.toContain('Walk limit');
+	}, 120_000);
+
+	it('reports a node() without a top-level name as a build error, not a crash', async () => {
+		const result = await build(`import { workflow, manual, node } from '@n8n/workflow-sdk/next';
+
+export default workflow(
+	'Legacy shape',
+	manual(),
+	node({ type: 'n8n-nodes-base.noOp', version: 1, config: { name: 'Pass', parameters: {} } }),
+);
+`);
+		expect(result.success).toBe(false);
+		if (result.success) return;
+		expect(result.errors).toEqual(
+			expect.arrayContaining([
+				expect.stringContaining('A node of type "n8n-nodes-base.noOp" has no name'),
+				expect.stringContaining("'config' does not exist"),
+			]),
+		);
+	}, 120_000);
+
 	it('fails the build of a source that imports both SDKs', async () => {
 		const result = await build(`import { workflow, trigger } from '@n8n/workflow-sdk';
 import { manual } from '@n8n/workflow-sdk/next';

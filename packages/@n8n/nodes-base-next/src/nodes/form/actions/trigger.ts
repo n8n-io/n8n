@@ -107,13 +107,16 @@ export const formTrigger = form.trigger('trigger', {
 			.optional(),
 	},
 	output: t
-		.obj({
-			...submitted,
-			formQueryParameters: t
-				.record(t.union(t.str(), t.arr(t.str())))
-				.optional()
-				.hint('The query of the form URL, when it has one'),
-		})
+		.openBinaries(
+			t.obj({
+				...submitted,
+				formQueryParameters: t
+					.record(t.union(t.str(), t.arr(t.str())))
+					.optional()
+					.hint('The query of the form URL, when it has one'),
+			}),
+			'A file under its field name, \\W as _; with multipleFiles also _0, _1, …',
+		)
 		.with({ 'x-n8n-entry-fields': entryFields }),
 	native: { type: 'n8n-nodes-base.formTrigger', version: 2.6, on: 'form' },
 	reply: {

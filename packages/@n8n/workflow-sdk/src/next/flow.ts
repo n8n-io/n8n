@@ -1,13 +1,16 @@
 import { compileBinaryKey, compileLambda, type LambdaRoot } from './lambda';
 import {
-	CHECK_AGAIN,
+	BODY_OUTPUT,
 	CHECK_DONE,
 	CHECK_LIMIT,
+	checkAgain,
 	FALLBACK_OUTPUT,
 	FILTER_NODE,
 	filterParameters,
 	LOOP_STATE_NODE,
+	MERGE_MAX_INPUTS,
 	mergeNodeOf,
+	NO_OP_NODE,
 	STOP_NODE,
 	SWITCH_NODE,
 	WAIT_NODE,
@@ -22,6 +25,7 @@ import {
 	samePass,
 	waitParameters,
 	type Interval,
+	type LoopLimit,
 	type MergeJoin,
 } from './regions';
 import type {
@@ -806,9 +810,14 @@ const fromTail = (edge: Edge, open: Tail) => edge.from === open.node && edge.out
 // ── Regions ─────────────────────────────────────────────────────────────────
 // Untyped builders, so decompile can replay a region without its item types.
 
+/** The name of the node that `forEach` adds when its body starts with several nodes. */
+const forEachStart = (region: string) => `${region} start`;
+
 /**
  * @internal A `forEach` region: the engine runs `body` on each batch of the items at the open
- * ends, then emits the body output of all batches once, on the open ends of the body.
+ * ends, then emits the body output of all batches once, on the open ends of the body. A region
+ * takes its items at one node, so a body that starts with branches gets a No Operation node
+ * before them.
  */
 export function forEachFragment(
 	from: Fragment,
@@ -816,16 +825,22 @@ export function forEachFragment(
 	batchSize: number,
 	body: (each: Fragment) => Fragment,
 ): Fragment {
-	const inner = body(from);
 	const before = new Set(from.graph.nodes.map((spec) => spec.name));
-	const members = inner.graph.nodes.map((spec) => spec.name).filter((node) => !before.has(node));
-	const entries = [
+	const entriesOf = (built: Fragment) => [
 		...new Set(
-			inner.graph.edges
+			built.graph.edges
 				.filter((edge) => !before.has(edge.to) && from.tails.some((open) => fromTail(edge, open)))
 				.map((edge) => edge.to),
 		),
 	];
+	const direct = body(from);
+	const start: NodeSpec = { name: forEachStart(name), ...NO_OP_NODE, parameters: () => ({}) };
+	const inner =
+		entriesOf(direct).length > 1
+			? body({ graph: attach(from.graph, from.tails, start), tails: tail(start.name, 0) })
+			: direct;
+	const members = inner.graph.nodes.map((spec) => spec.name).filter((node) => !before.has(node));
+	const entries = entriesOf(inner);
 	const problems = [
 		...(Number.isInteger(batchSize) && batchSize >= 1
 			? []
@@ -858,19 +873,22 @@ export interface LoopOptions {
 	/** `each` emits every pass (pages); `last` emits the pass that met `until`. */
 	readonly emit: 'each' | 'last';
 	readonly wait?: Interval;
+	/** At `maxIterations`: fail the run (default), or end as if `until` held. */
+	readonly onLimit?: LoopLimit;
 }
 
 /**
  * @internal A while loop in node contracts: head (loop state) → body → check (Switch) → next
- * (loop state) → [wait] → head. The check also fails the run at `maxIterations` (Stop and
- * Error).
+ * (loop state) → [wait] → head. At `maxIterations` the check fails the run (Stop and Error),
+ * or with `onLimit: 'continue'` ends the loop as `until` does.
  */
 export function loopFragment(
 	from: Fragment,
 	options: LoopOptions,
 	body: (pass: Fragment) => Fragment,
 ): Fragment {
-	const { name, maxIterations, wait } = options;
+	const { name, maxIterations, wait, onLimit = 'fail' } = options;
+	const again = checkAgain(onLimit);
 	const names = loopNodeNames(name);
 	const back = wait ? names.wait : names.next;
 	const head: NodeSpec = {
@@ -882,7 +900,7 @@ export function loopFragment(
 	const check: NodeSpec = {
 		name: names.check,
 		...SWITCH_NODE,
-		outputs: 3,
+		outputs: again + 1,
 		parameters: (compiler) => {
 			if (!Number.isInteger(maxIterations) || maxIterations < 1) {
 				compiler.issue(`The pass limit must be a whole number of at least 1, not ${maxIterations}`);
@@ -890,18 +908,20 @@ export function loopFragment(
 			if (inner.tails.some(({ node }) => node === name)) {
 				compiler.issue(`${name} needs a body that runs a node`);
 			}
-			return loopCheckParameters(name, options.until(compiler), maxIterations);
+			return loopCheckParameters(name, options.until(compiler), maxIterations, onLimit);
 		},
 	};
+	const limit: NodeSpec = {
+		name: names.limit,
+		...STOP_NODE,
+		parameters: () => loopLimitParameters(name, maxIterations),
+	};
+	const fails = onLimit === 'fail';
 	const parts: Graph[] = [
 		attach(inner.graph, inner.tails, check),
 		{
 			nodes: [
-				{
-					name: names.limit,
-					...STOP_NODE,
-					parameters: () => loopLimitParameters(name, maxIterations),
-				},
+				...(fails ? [limit] : []),
 				{
 					name: names.next,
 					...LOOP_STATE_NODE,
@@ -912,8 +932,8 @@ export function loopFragment(
 					: []),
 			],
 			edges: [
-				...wire(tail(names.check, CHECK_LIMIT), names.limit),
-				...wire(tail(names.check, CHECK_AGAIN), names.next),
+				...(fails ? wire(tail(names.check, CHECK_LIMIT), names.limit) : []),
+				...wire(tail(names.check, again), names.next),
 				...(wait ? wire(tail(names.next, 0), names.wait) : []),
 				...wire(tail(back, 0), name),
 			],
@@ -976,7 +996,21 @@ export function mergeFragment(
 	branches: ReadonlyArray<(flow: Fragment) => Fragment>,
 ): Fragment {
 	const joined = branches.map((branch) => branch(from));
-	const spec: NodeSpec = { name, ...mergeNodeOf(join), parameters: () => mergeParameters(join) };
+	const inputs = branches.length;
+	const spec: NodeSpec = {
+		name,
+		...mergeNodeOf(join, inputs),
+		parameters: (compiler) => {
+			if (inputs < 2 || inputs > MERGE_MAX_INPUTS) {
+				compiler.issue(`merge takes 2 to ${MERGE_MAX_INPUTS} branches, not ${inputs}`);
+			} else if (typeof join === 'object' && inputs > 2) {
+				compiler.issue(
+					`merge by matching fields takes 2 branches, not ${inputs}. Use join "append" or "position", or merge twice`,
+				);
+			}
+			return mergeParameters(join, inputs);
+		},
+	};
 	const edges = joined.flatMap((flow, input) => wire(flow.tails, name, input));
 	return {
 		graph: unionGraphs([from.graph, ...joined.map((flow) => flow.graph), { nodes: [spec], edges }]),
@@ -1287,8 +1321,37 @@ export function forEach(config: { name: string; batchSize: number }, body: AnyPa
 }
 
 /**
+ * Without `next`, the next pass reads the body output, so `next` is needed when the body output
+ * does not fit the loop input.
+ */
+type NextNeeded<In, B, CB, S> = [S] extends [never]
+	? [B] extends [In]
+		? unknown
+		: {
+				/** The state of the next pass, from the body output. */
+				next: (out: B, $: Dollar<CB>) => In;
+			}
+	: unknown;
+
+/** The config of `loop` besides `next`. */
+interface LoopConfig<N extends string, B, CB> {
+	/** The node name, unique in the workflow. */
+	name: N;
+	/** The most passes. After them the run fails, or the loop ends with `onLimit: 'continue'`. */
+	maxIterations: number;
+	/**
+	 * After `maxIterations` passes: `fail` fails the run (default); `continue` ends the loop and
+	 * emits the last pass, as if `until` held, e.g. for "at most 10 levels deep".
+	 */
+	onLimit?: LoopLimit;
+	/** True when the loop ends, from the body output. */
+	until: (out: B, $: Dollar<CB>) => boolean;
+}
+
+/**
  * Run `body` again until `until` holds. Each item is the loop state: `next` makes the state
- * of the next pass from the body output. The run fails after `maxIterations` passes.
+ * of the next pass from the body output; without `next` the body output is the next state.
+ * After `maxIterations` passes the run fails, or with `onLimit: 'continue'` the loop ends.
  * The flow continues with the output of the pass that met `until`.
  *
  * @example
@@ -1299,30 +1362,31 @@ export function forEach(config: { name: string; batchSize: number }, body: AnyPa
  * ),
  * ```
  */
-export function loop<In, Ctx, const N extends string, B, CB, S extends In>(
-	config: {
-		/** The node name, unique in the workflow. */
-		name: N;
-		/** The most passes. The run fails after them. */
-		maxIterations: number;
-		/** True when the loop ends, from the body output. */
-		until: (out: B, $: Dollar<CB>) => boolean;
-		/** The state of the next pass, from the body output. */
-		next: (out: B, $: Dollar<CB>) => S;
-	},
+export function loop<In, Ctx, const N extends string, B, CB, S extends In = never>(
+	config: LoopConfig<N, B, CB> & {
+		/** The state of the next pass, from the body output. Default: the body output. */
+		next?: (out: B, $: Dollar<CB>) => S;
+	} & NextNeeded<NoInfer<In>, B, CB, S>,
 	body: Part<NoInfer<In>, NoInfer<Ctx & Record<N, In>>, B, CB>,
 ): Region<In, Ctx, B, Ctx & Record<N, In>>;
 export function loop(
-	config: { name: string; maxIterations: number; until: unknown; next: unknown },
+	config: {
+		name: string;
+		maxIterations: number;
+		onLimit?: LoopLimit;
+		until: unknown;
+		next?: unknown;
+	},
 	body: AnyPart,
 ): AnyRegion {
-	const { name, maxIterations, until, next } = config;
+	const { name, maxIterations, onLimit, until, next } = config;
 	const options: LoopOptions = {
 		name,
 		maxIterations,
 		emit: 'last',
+		onLimit,
 		until: (compiler) => compiler.js(until),
-		next: (compiler) => compiler.js(next),
+		next: (compiler) => (next === undefined ? BODY_OUTPUT : compiler.js(next)),
 	};
 	return region((from) => loopFragment(from, options, run(body)));
 }
@@ -1431,12 +1495,18 @@ export function filter(config: {
 	return { name, spec: filterSpec(name, (compiler) => compiler.js(condition)) };
 }
 
-/** The item after `merge`: both branch items for `append`, else the joined item. */
-type Joined<J, A, B> = J extends 'append' ? A | B : A & B;
+/** The items of all branches as one intersection. */
+type AllOf<T extends readonly unknown[]> = T extends readonly [infer H, ...infer R]
+	? H & AllOf<R>
+	: unknown;
+
+/** The item after `merge`: any branch item for `append`, else the joined item. */
+type Joined<J, T extends readonly unknown[]> = J extends 'append' ? T[number] : AllOf<T>;
 
 /**
- * Run two branches on the same items and join them (a Merge node). `append` emits the items
- * of both; `position` joins item i of each; `{ left, right }` joins items whose fields match.
+ * Run 2 to 10 branches on the same items and join them (a Merge node). `append` emits the
+ * items of all; `position` joins item i of each; `{ left, right }` joins the items of two
+ * branches whose fields match.
  *
  * @example
  * ```ts
@@ -1450,29 +1520,27 @@ export function merge<
 	In,
 	Ctx,
 	const N extends string,
-	A,
-	B,
+	T extends readonly [unknown, unknown, ...unknown[]],
 	const J extends
 		| 'append'
 		| 'position'
-		| {
-				/** The field of the first branch item. */
-				left: keyof A & string;
-				/** The field of the second branch item that must match `left`. */
-				right: keyof B & string;
-		  },
+		| (T extends readonly [infer A, infer B]
+				? {
+						/** The field of the first branch item. */
+						left: keyof A & string;
+						/** The field of the second branch item that must match `left`. */
+						right: keyof B & string;
+					}
+				: never),
 >(
 	config: {
 		/** The node name, unique in the workflow. */
 		name: N;
-		/** How the branches join: `append`, `position`, or matching fields. */
+		/** How the branches join: `append`, `position`, or matching fields of 2 branches. */
 		join: J;
 	},
-	branches: readonly [
-		Part<NoInfer<In>, NoInfer<Ctx>, A, unknown>,
-		Part<NoInfer<In>, NoInfer<Ctx>, B, unknown>,
-	],
-): Region<In, Ctx, Joined<J, A, B>, Ctx & Record<N, Joined<J, A, B>>>;
+	branches: { readonly [K in keyof T]: Part<NoInfer<In>, NoInfer<Ctx>, T[K], unknown> },
+): Region<In, Ctx, Joined<J, T>, Ctx & Record<N, Joined<J, T>>>;
 export function merge(
 	config: { name: string; join: MergeJoin },
 	branches: readonly AnyPart[],
@@ -1681,6 +1749,20 @@ export interface NodeOutputs {}
 export type OutputOf<N extends string, Default> = N extends keyof NodeOutputs
 	? NodeOutputs[N]
 	: Default;
+
+type AnyKeys<O> = { [K in keyof O]-?: 0 extends 1 & O[K] ? K : never }[keyof O];
+
+/**
+ * Output `O` with the fields of a sample `S` that fits it: `O & S`. A field of `O` typed `any`
+ * takes the type of the sample, because `any & S` stays `any`.
+ */
+export type Sampled<O, S> = (<T>() => T extends O ? 1 : 2) extends <T>() => T extends S ? 1 : 2
+	? O
+	: O extends unknown
+		? [AnyKeys<O> & keyof S] extends [never]
+			? O & S
+			: Omit<O, AnyKeys<O> & keyof S> & S
+		: never;
 
 /** The lambda of a binary field. It compiles to the key of a binary of the input item. */
 class BinaryKey {
@@ -2255,6 +2337,9 @@ function withTriggerSamples(
 	};
 }
 
+/** A source that tsc rejects can leave the name out. */
+const hasName = (spec: { readonly name: unknown }) => typeof spec.name === 'string';
+
 /** Every provider under `specs`, at any depth. */
 const allProviders = (specs: ProviderSpecs | undefined): ProviderSpec[] =>
 	Object.values(specs ?? {}).flatMap((list) =>
@@ -2495,6 +2580,20 @@ export function workflow(
 	const readable = new Set([...nodeNames, ...regions.map((region) => region.name)]);
 	const required = scopesOf(graph.nodes);
 	const scopes = () => required;
+	// A source that tsc rejects still runs, e.g. `node({ type, version, config: { name } })`.
+	const unnamed = [
+		...graph.nodes,
+		...graph.nodes.flatMap((spec) => allProviders(spec.providers)),
+	].filter((spec) => !hasName(spec));
+	if (unnamed.length > 0) {
+		return failedWorkflow(
+			unnamed.map(
+				({ type }) =>
+					`A node of type "${type}" has no name. Give each step its own \`name\` next to \`type\`, e.g. node({ name: 'Fetch', type, version, parameters }). node() takes no \`config\``,
+			),
+			scopes,
+		);
+	}
 	const missing = Object.entries(required).flatMap(([credential, byScope]) =>
 		Object.entries(byScope)
 			.filter(([scope]) => grants[credential] !== undefined && !grants[credential].includes(scope))

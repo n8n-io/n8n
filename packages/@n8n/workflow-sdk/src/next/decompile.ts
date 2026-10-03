@@ -41,6 +41,7 @@ import {
 } from './flow';
 import { BUILTINS, childNodes, compileLambdaSource } from './lambda';
 import {
+	BODY_OUTPUT,
 	caseRouter,
 	CHECK_DONE,
 	FALLBACK_OUTPUT,
@@ -50,6 +51,7 @@ import {
 	loopCheckParameters,
 	loopHeadParameters,
 	loopLimitParameters,
+	loopLimitTest,
 	loopNextParameters,
 	loopNextSuffix,
 	loopNodeNames,
@@ -63,6 +65,7 @@ import {
 	waitParameters,
 	type Interval,
 	type CaseRouter,
+	type LoopLimit,
 	type MergeJoin,
 	type WaitUnit,
 } from './regions';
@@ -160,8 +163,14 @@ type LoopShape = {
 	/** The node that returns to the head. */
 	readonly back: string;
 	readonly check: string;
+	readonly onLimit: LoopLimit;
 } & (
-	| { readonly variant: 'loop'; readonly until: string; readonly next: string }
+	| {
+			readonly variant: 'loop';
+			readonly until: string;
+			/** Undefined when the body output is the next state. */
+			readonly next: string | undefined;
+	  }
 	| { readonly variant: 'paginate'; readonly next: string }
 	| { readonly variant: 'pollUntil'; readonly until: string; readonly every: Interval }
 );
@@ -183,7 +192,7 @@ type Shape =
 			readonly keys: readonly string[];
 			readonly router: CaseRouter;
 	  }
-	| { readonly kind: 'merge'; readonly join: MergeJoin };
+	| { readonly kind: 'merge'; readonly join: MergeJoin; readonly inputs: number };
 
 type Segment =
 	| { readonly kind: 'step'; readonly node: NamedNode }
@@ -553,14 +562,21 @@ function loopShape(
 	const check = nodes.get(parts.check);
 	const cases: unknown = check?.parameters?.cases;
 	const [done, limitCase] = Array.isArray(cases) ? cases : [];
-	const until = trueWhereJs(isRecord(done) ? done.where : undefined);
-	const limitJs = trueWhereJs(isRecord(limitCase) ? limitCase.where : undefined);
+	const doneJs = trueWhereJs(isRecord(done) ? done.where : undefined);
+	// A loop that ends at its limit has the limit test in `done` and no `limit` case.
+	const onLimit: LoopLimit = Array.isArray(cases) && cases.length === 1 ? 'continue' : 'fail';
+	const limitJs =
+		onLimit === 'fail' ? trueWhereJs(isRecord(limitCase) ? limitCase.where : undefined) : doneJs;
 	const max = limitJs === undefined ? undefined : / >= (\d+)$/.exec(limitJs)?.[1];
 	const maxIterations = Number(max);
+	const until =
+		onLimit === 'fail'
+			? doneJs
+			: between(doneJs, '(', `) || ${loopLimitTest(head, maxIterations)}`);
 	if (!isNodeType(check, SWITCH_NODE) || until === undefined || max === undefined) {
 		return undefined;
 	}
-	if (!isEqual(loopCheckParameters(head, until, maxIterations), check?.parameters))
+	if (!isEqual(loopCheckParameters(head, until, maxIterations, onLimit), check?.parameters))
 		return undefined;
 
 	const nextNode = nodes.get(parts.next);
@@ -569,22 +585,32 @@ function loopShape(
 	if (!isEqual(loopNextParameters(head, next), nextNode?.parameters)) return undefined;
 
 	const limit = nodes.get(parts.limit);
-	if (!isNodeType(limit, STOP_NODE)) return undefined;
-	if (!isEqual(loopLimitParameters(head, maxIterations), limit?.parameters)) return undefined;
+	if (onLimit === 'fail') {
+		if (!isNodeType(limit, STOP_NODE)) return undefined;
+		if (!isEqual(loopLimitParameters(head, maxIterations), limit?.parameters)) return undefined;
+	}
 
 	const kind = 'loop';
-	const base = { maxIterations, back, check: parts.check };
+	const base = { maxIterations, back, check: parts.check, onLimit };
 	const untilLambda = lambdaForJs(until, names);
+	// Only `loop` takes `onLimit`.
 	if (every) {
-		return next === samePass(head) && untilLambda
+		return next === samePass(head) && untilLambda && onLimit === 'fail'
 			? { kind, ...base, variant: 'pollUntil', until: untilLambda, every }
+			: undefined;
+	}
+	const emitsLast = edges.some((edge) => edge.from === parts.check && edge.output === CHECK_DONE);
+	if (next === BODY_OUTPUT) {
+		return emitsLast && untilLambda
+			? { kind, ...base, variant: 'loop', until: untilLambda, next: undefined }
 			: undefined;
 	}
 	const nextLambda = lambdaForJs(next, names);
 	if (!nextLambda) return undefined;
-	const emitsLast = edges.some((edge) => edge.from === parts.check && edge.output === CHECK_DONE);
 	if (!emitsLast && until === noNextPage(next)) {
-		return { kind, ...base, variant: 'paginate', next: nextLambda };
+		return onLimit === 'fail'
+			? { kind, ...base, variant: 'paginate', next: nextLambda }
+			: undefined;
 	}
 	return untilLambda
 		? { kind, ...base, variant: 'loop', until: untilLambda, next: nextLambda }
@@ -597,7 +623,7 @@ const loopParts = (head: string, shape: LoopShape) => {
 	return [
 		parts.check,
 		parts.next,
-		parts.limit,
+		...(shape.onLimit === 'fail' ? [parts.limit] : []),
 		...(shape.variant === 'pollUntil' ? [parts.wait] : []),
 	];
 };
@@ -632,18 +658,25 @@ function switchShape(node: NamedNode, edges: readonly Edge[]): Shape | undefined
 }
 
 function mergeShape(node: NamedNode): Shape | undefined {
-	const { by } = node.parameters ?? {};
-	const join: MergeJoin | undefined = !isRecord(by)
-		? 'append'
-		: by.by === 'position'
-			? 'position'
-			: typeof by.left === 'string' && typeof by.right === 'string'
-				? { left: by.left, right: by.right }
-				: undefined;
+	const { by, mode, numberInputs } = node.parameters ?? {};
+	// More than 2 branches join in the legacy Merge node, which counts its inputs.
+	const inputs = typeof numberInputs === 'number' && numberInputs > 2 ? numberInputs : 2;
+	const join: MergeJoin | undefined =
+		inputs > 2
+			? mode === 'append'
+				? 'append'
+				: 'position'
+			: !isRecord(by)
+				? 'append'
+				: by.by === 'position'
+					? 'position'
+					: typeof by.left === 'string' && typeof by.right === 'string'
+						? { left: by.left, right: by.right }
+						: undefined;
 	return join &&
-		isNodeType(node, mergeNodeOf(join)) &&
-		isEqual(mergeParameters(join), node.parameters)
-		? { kind: 'merge', join }
+		isNodeType(node, mergeNodeOf(join, inputs)) &&
+		isEqual(mergeParameters(join, inputs), node.parameters)
+		? { kind: 'merge', join, inputs }
 		: undefined;
 }
 
@@ -1055,7 +1088,9 @@ function mergeChain(graph: Graph, tails: readonly Tail[], seen: ReadonlySet<stri
 		.flatMap((branch) => (branch ? [branch] : []))
 		.sort((a, b) => a.input - b.input);
 	const complete = inputs.every((branch, index) => branch.input === index);
-	if (!node || seen.has(node.name) || inputs.length !== 2 || !complete) return none;
+	const shape = graph.shapes.get(first.merge);
+	const arity = shape?.kind === 'merge' ? shape.inputs : 2;
+	if (!node || seen.has(node.name) || inputs.length !== arity || !complete) return none;
 	if (
 		forwardInto(graph, node.name).length !== inputs.reduce((n, b) => n + b.chain.tails.length, 0)
 	) {
@@ -1183,6 +1218,7 @@ function replay(graph: Graph, from: Fragment, segments: readonly Segment[]): Fra
 								name: segment.node.name,
 								maxIterations: shape.maxIterations,
 								emit: shape.variant === 'paginate' ? 'each' : 'last',
+								onLimit: shape.onLimit,
 								...(shape.variant === 'pollUntil' ? { wait: shape.every } : {}),
 								until: () => '',
 								next: () => '',
@@ -1482,7 +1518,13 @@ function renderRegion(
 			case 'loop':
 				return call(
 					'loop',
-					{ name, maxIterations: max, until: new Code(shape.until), next: new Code(shape.next) },
+					{
+						name,
+						maxIterations: max,
+						...(shape.onLimit === 'continue' ? { onLimit: shape.onLimit } : {}),
+						until: new Code(shape.until),
+						...(shape.next === undefined ? {} : { next: new Code(shape.next) }),
+					},
 					body,
 				);
 			case 'paginate':

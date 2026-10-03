@@ -5,7 +5,18 @@ import {
 	type InstanceAiSetupCredentialSelection,
 } from '@n8n/api-types';
 
-import { manual, node, provider, workflow } from '@n8n/workflow-sdk/next';
+import type { WorkflowJSON } from '@n8n/workflow-sdk';
+import {
+	forEach,
+	loop,
+	manual,
+	merge,
+	node,
+	provider,
+	set,
+	steps,
+	workflow,
+} from '@n8n/workflow-sdk/next';
 
 import { executeTool } from '../../../__tests__/tool-test-utils';
 import { FolderResolutionError } from '../../../errors/folder-resolution.error';
@@ -1060,6 +1071,306 @@ describe('createBuildWorkflowTool', () => {
 				expect(result.errors?.join('\n')).toContain('[GROUPING_DECISION_MISSING]');
 				expect(context.workflowService.updateFromWorkflowJSON).not.toHaveBeenCalled();
 			});
+		});
+	});
+
+	describe('node contracts: regions and loops', () => {
+		const contracts = { nodeContractsEnabled: true };
+		const compileTo = (json: WorkflowJSON) =>
+			vi.mocked(compileWorkflowSource).mockResolvedValueOnce({
+				success: true,
+				workflow: json,
+				warnings: [],
+				compiler: 'sandbox-tsx',
+			});
+		const field = (name: string) => set({ name, fields: { n: 1 } });
+		const batched = () =>
+			workflow(
+				'Batched mailing',
+				manual({ sample: [{ n: 1 }] }),
+				field('Get Recipients'),
+				forEach(
+					{ name: 'Batches of 10', batchSize: 10 },
+					steps(field('Send Email'), field('Pause')),
+				),
+				field('Post Summary'),
+			).toJSON();
+
+		it('keeps a forEach region with the saved node IDs over two rebuilds', async () => {
+			const { context, filePath } = makeContext({ source: 'src', overrides: contracts });
+			compileTo(batched());
+			await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), { filePath });
+			const [created] = vi.mocked(context.workflowService.createFromWorkflowJSON).mock.calls[0];
+			vi.mocked(context.workflowService.getAsWorkflowJSON).mockResolvedValue(
+				structuredClone(created),
+			);
+			const savedId = (name: string) => created.nodes.find((each) => each.name === name)?.id;
+
+			for (const rebuilt of [batched(), batched()]) {
+				expect(rebuilt.nodes.map(({ id }) => id)).not.toContain(savedId('Send Email'));
+				compileTo(rebuilt);
+				const result = await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
+					filePath,
+					workflowId: 'wf-1',
+				});
+				expect(result.success).toBe(true);
+				expect(result.warnings?.join('\n') ?? '').not.toContain('NODE_GROUP_DROPPED');
+			}
+
+			const updates = vi.mocked(context.workflowService.updateFromWorkflowJSON).mock.calls;
+			expect(updates).toHaveLength(2);
+			for (const [, saved] of updates) {
+				expect(saved.nodeGroups).toEqual([
+					expect.objectContaining({
+						name: 'Batches of 10',
+						nodeIds: [savedId('Send Email'), savedId('Pause')],
+						repeat: {
+							kind: 'forEach',
+							batchSize: 10,
+							entry: savedId('Send Email'),
+							exits: [{ node: savedId('Pause'), output: 0 }],
+						},
+					}),
+				]);
+			}
+		});
+
+		it('keeps a forEach region whose body starts with branches over a rebuild', async () => {
+			// Every node has one main input and one main output, so the region rules run.
+			const nodeTypesProvider = {
+				getByNameAndVersion: () => ({
+					description: { inputs: ['main'], outputs: ['main'], group: ['transform'] },
+				}),
+			} as unknown as InstanceAiContext['nodeTypesProvider'];
+			const { context, filePath } = makeContext({
+				source: 'src',
+				overrides: { ...contracts, nodeTypesProvider },
+			});
+			const branching = () =>
+				workflow(
+					'Workflow report',
+					manual({ sample: [{ n: 1 }] }),
+					field('Get Workflows'),
+					forEach(
+						{ name: 'Each Workflow', batchSize: 1 },
+						merge({ name: 'Parts', join: 'position' }, [
+							field('Extract Nodes'),
+							field('Extract Connections'),
+							field('Extract Metadata'),
+						]),
+					),
+					field('Post Report'),
+				).toJSON();
+			compileTo(branching());
+			const first = await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
+				filePath,
+			});
+			expect(first.success).toBe(true);
+			expect(first.grouping?.topLevelItemCount).toBe(4);
+			const [created] = vi.mocked(context.workflowService.createFromWorkflowJSON).mock.calls[0];
+			vi.mocked(context.workflowService.getAsWorkflowJSON).mockResolvedValue(
+				structuredClone(created),
+			);
+			const savedId = (name: string) => created.nodes.find((each) => each.name === name)?.id;
+
+			compileTo(branching());
+			const result = await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
+				filePath,
+				workflowId: 'wf-1',
+			});
+
+			expect(result.success).toBe(true);
+			expect(result.warnings?.join('\n') ?? '').not.toContain('NODE_GROUP_DROPPED');
+			const [[, saved]] = vi.mocked(context.workflowService.updateFromWorkflowJSON).mock.calls;
+			expect(saved.nodeGroups).toEqual([
+				expect.objectContaining({
+					name: 'Each Workflow',
+					repeat: {
+						kind: 'forEach',
+						batchSize: 1,
+						entry: savedId('Each Workflow start'),
+						exits: [{ node: savedId('Parts'), output: 0 }],
+					},
+				}),
+			]);
+		});
+
+		it('refuses a build that drops a forEach region, on a small canvas', async () => {
+			const { context, filePath } = makeContext({ source: 'src', overrides: contracts });
+			const json = batched();
+			const region = json.nodeGroups?.[0];
+			if (!region?.repeat) throw new Error('Expected a forEach region');
+			region.nodeIds[0] = 'stale-id';
+			region.repeat.entry = 'stale-id';
+			compileTo(json);
+
+			const result = await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
+				filePath,
+			});
+
+			expect(result.success).toBe(false);
+			expect(result.errors?.join('\n')).toContain('[REGION_DROPPED]');
+			expect(result.errors?.join('\n')).toContain('Batches of 10');
+			expect(result.errors?.join('\n')).toContain('stale-id');
+			expect(result.remediation?.reason).toBe('workflow_region_dropped');
+			expect(result.grouping?.topLevelItemCount).toBeLessThanOrEqual(7);
+			expect(context.workflowService.createFromWorkflowJSON).not.toHaveBeenCalled();
+		});
+
+		it('with node contracts off, saves the same build and only warns about the dropped group', async () => {
+			const { context, filePath } = makeContext({ source: 'src' });
+			const json = batched();
+			const region = json.nodeGroups?.[0];
+			if (!region?.repeat) throw new Error('Expected a forEach region');
+			region.nodeIds[0] = 'stale-id';
+			region.repeat.entry = 'stale-id';
+			compileTo(json);
+
+			const result = await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
+				filePath,
+			});
+
+			expect(result.success).toBe(true);
+			expect(result.warnings?.join('\n')).toContain('[NODE_GROUP_DROPPED]');
+		});
+
+		// The canvases of the adv1 eval cases that the grouping check refused.
+		const loopOf = (name: string, first: string, second: string) =>
+			loop(
+				{ name, maxIterations: 10, until: (out) => out.n > 1, next: (out) => ({ n: out.n }) },
+				steps(field(first), field(second)),
+			);
+		const plain = (name: string, names: string[]) => () =>
+			workflow(
+				name,
+				manual({ sample: [{ n: 1 }] }),
+				field(names[0]),
+				field(names[1]),
+				field(names[2]),
+				field(names[3]),
+				field(names[4]),
+				field(names[5]),
+				field(names[6]),
+			).toJSON();
+		const shapes: Array<[string, () => WorkflowJSON, number]> = [
+			[
+				'org chart',
+				() =>
+					workflow(
+						'Org chart',
+						manual({ sample: [{ n: 1 }] }),
+						field('Init Walk'),
+						loopOf('Walk Org Chart', 'Fetch Manager', 'Append Manager'),
+						field('Post Org Chain'),
+					).toJSON(),
+				4,
+			],
+			[
+				'pre-publish approval',
+				() =>
+					workflow(
+						'Approval',
+						manual({ sample: [{ n: 1 }] }),
+						field('Write Post'),
+						field('Initial Draft'),
+						loopOf('Approval Loop', 'Email Draft', 'Interpret Reply'),
+						field('Publish'),
+					).toJSON(),
+				5,
+			],
+			[
+				'drive invoice',
+				plain('Invoices', [
+					'Download',
+					'Extract Text',
+					'Extract Fields',
+					'Row',
+					'Append',
+					'Total?',
+					'Alert',
+				]),
+				8,
+			],
+			[
+				'lead enrichment',
+				plain('Leads', [
+					'Clearbit',
+					'Answered?',
+					'From Clearbit',
+					'Apollo',
+					'From Apollo',
+					'Tier',
+					'HubSpot',
+				]),
+				8,
+			],
+			[
+				'retry then dead letter',
+				() =>
+					workflow(
+						'Retry',
+						manual({ sample: [{ n: 1 }] }),
+						field('Attempt State'),
+						loopOf('Forward with Retries', 'Forward to ERP', 'ERP Outcome'),
+						field('Forwarded?'),
+						field('Respond 200'),
+						field('Parked Event'),
+						field('Log Dead Letter'),
+						field('Notify Ops'),
+					).toJSON(),
+				8,
+			],
+			['hard batched mailing', batched, 4],
+			[
+				'org chart with a depth cap',
+				() =>
+					workflow(
+						'Org chart',
+						manual({ sample: [{ n: 1 }] }),
+						field('Init Walk'),
+						loop(
+							{
+								name: 'Walk Org Chart',
+								maxIterations: 10,
+								onLimit: 'continue',
+								until: (out) => out.n > 1,
+							},
+							steps(field('Fetch Manager'), field('Append Manager')),
+						),
+						field('Post Org Chain'),
+					).toJSON(),
+				4,
+			],
+		];
+
+		it.each(shapes)('builds the %s canvas without a group API', async (_, shape, boxes) => {
+			const { context, filePath } = makeContext({ source: 'src', overrides: contracts });
+			compileTo(shape());
+
+			const result = await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
+				filePath,
+			});
+
+			expect(result.success).toBe(true);
+			expect(result.grouping?.topLevelItemCount).toBe(boxes);
+			const warnings = result.warnings?.join('\n') ?? '';
+			expect(warnings).not.toContain('.group(');
+			if (boxes > 7) expect(warnings).toContain('`@n8n/workflow-sdk/next` has no group API');
+		});
+
+		it('still refuses a legacy source over the ceiling with no group', async () => {
+			const { context, filePath } = makeContext({
+				source: "import { workflow } from '@n8n/workflow-sdk';",
+				overrides: contracts,
+			});
+			compileTo(shapes[2][1]());
+
+			const result = await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
+				filePath,
+			});
+
+			expect(result.success).toBe(false);
+			expect(result.errors?.join('\n')).toContain('[GROUPING_DECISION_MISSING]');
 		});
 	});
 

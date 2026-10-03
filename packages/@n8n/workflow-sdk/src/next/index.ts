@@ -73,6 +73,8 @@ export {
 } from './decompile';
 export { validateLoopWiring } from '../workflow-builder/plugins/validators/loop-wiring-validator';
 export type { Interval, WaitUnit } from './regions';
+/** For hosts that read a saved workflow: the nodes that `loop`, `paginate` and `pollUntil` emit. */
+export { LOOP_STATE_NODE, loopNodeNames } from './regions';
 export type {
 	Binary,
 	CaseField,
@@ -105,6 +107,7 @@ export type {
 	ResponsePage,
 	RouteParts,
 	RoutedStep,
+	Sampled,
 	Step,
 	Provider,
 	Providers,

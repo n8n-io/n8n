@@ -524,9 +524,15 @@ const binary = () => new Schema<Binary>({ 'x-n8n-binary': true }, false);
 /** The binaries of `t.indexedBinaries`: `prefix0`, `prefix1`, … */
 type IndexedBinaries<P extends string> = { readonly [K in `${P}${number}`]?: Binary };
 
+const escapeRegex = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
 /** The key pattern of `t.indexedBinaries`. Without a prefix, any prefix matches. */
 const indexedBinaryPattern = (prefix?: string) =>
-	`^${prefix === undefined ? '.*' : prefix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\d+$`;
+	`^${prefix === undefined ? '.*' : escapeRegex(prefix)}\\d+$`;
+
+/** Any key but a field name, so a field is never taken for a binary. */
+const openBinaryPattern = (fields: readonly string[]) =>
+	fields.length === 0 ? '^.+$' : `^(?!(?:${fields.map(escapeRegex).join('|')})$).+$`;
 
 /**
  * The output object and binaries of the output item under the keys `prefix` + index, e.g.
@@ -550,6 +556,36 @@ const indexedBinaries = <T extends Record<string, unknown>, P extends string = s
 			patternProperties: {
 				...object.json.patternProperties,
 				[indexedBinaryPattern(prefix)]: binary().json,
+			},
+		},
+		false,
+	);
+
+/**
+ * The output object and binaries of the output item under any key that is not a field of the
+ * object. Use it only when the caller names the files, such as the form fields of a multipart
+ * upload. Any other output keeps exact keys: `t.binary()` or `t.indexedBinaries()`. The flow SDK
+ * types the binaries as `{ [key: string]: Binary }`, so the object has no `t.binary()` field:
+ * `hint` tells the usual keys.
+ *
+ * @example
+ * ```ts
+ * output: t.openBinaries(t.obj({ body: t.json() }), 'A file under its form field name'),
+ * ```
+ */
+const openBinaries = <T extends Record<string, unknown>>(
+	object: Schema<T, false, boolean, unknown>,
+	hint?: string,
+) =>
+	new Schema<T & Readonly<Record<string, unknown>>>(
+		{
+			...object.json,
+			patternProperties: {
+				...object.json.patternProperties,
+				[openBinaryPattern(Object.keys(object.json.properties ?? {}))]: (hint === undefined
+					? binary()
+					: binary().hint(hint)
+				).json,
 			},
 		},
 		false,
@@ -725,6 +761,7 @@ export const t = {
 	declared,
 	binary,
 	indexedBinaries,
+	openBinaries,
 	pageValue,
 	modelId,
 };
