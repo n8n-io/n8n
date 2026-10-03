@@ -21,6 +21,7 @@ Sections:
 - [Regression detection](#regression-detection)
 - [Running evals against pre-built workflows](#running-evals-against-pre-built-workflows)
 - [Running discovery evals](#discovery-evals)
+- [Running routing evals](#routing-evals)
 - [Running pairwise evals](#pairwise-evals)
 - [How the e2e harness works](#how-the-e2e-harness-works)
 - [How the workflow-build harness works](#how-the-workflow-build-harness-works)
@@ -563,6 +564,117 @@ Verbose output lists each trial's completed tool calls with argument previews.
 For data-table routing, look for `load_skill(skillId="data-table-manager")`
 and `data-tables(action="list")`, and verify there are no planning,
 workflow-builder, or spawned-agent entries in the spawned-agent section.
+
+## Routing evals
+
+Routing evals measure how often the Assistant takes an acceptable path for a
+prompt: build an Agent, build a workflow, do the task once, ask a question, and
+so on. They use the discovery harness in routing mode. With `--stop-on-route`,
+a trial stops at the first call that commits to a route, so each trial costs
+one routing decision, not a full build. The grader then gives each trial a
+route and checks it against the case's accept tokens.
+
+Each case has a `bucket` (its main expected route) and one or more `accepts`
+tokens. A trial passes when its route matches one of the tokens. A case passes
+when at least 2 of 3 trials pass. `routing/grade-resolve.ts` has the exact
+rules and their order.
+
+| Route | The trial | Accept tokens |
+|-------|-----------|---------------|
+| `agent` | calls `build-agent` | `agent` |
+| `workflow` | calls `build-workflow` | `workflow` |
+| `one-off` | calls `build-workflow` with `executionIntent: "one-off"`, executes a node, runs or stops an execution, writes rows, or changes a workflow | `one-off` |
+| `multi` | calls `create-tasks` | `multi` |
+| `debug` | reads executions (`get`, `list`, or `debug`) | `debug` |
+| `clarify` | calls `ask-user`, or replies with a question | `clarify` (any direction), `clarify:agent` (points to an Agent, or to both), `clarify:open` (does not push a workflow only) |
+| `answer` | replies and commits to nothing | `answer` |
+| `decline` | refuses the request | `decline` |
+
+An LLM judge reads `ask-user` cards and text-only replies to tell `clarify`,
+`answer`, and `decline` apart, and to find the direction of a question. An
+`agent` or `workflow` case also passes when the Assistant asks a question that
+points the same way. The report shows this score next to the older "strict"
+score, which does not count those questions.
+
+### Cases in LangTracer
+
+The cases live in the LangTracer suite `intent-routing`, not in this
+repository. A LangTracer case has no routing fields, so the routing labels are
+tags in `evalTags`: `routing`, `bucket:<bucket>`, one `accepts:<token>` for each
+token, `policy-dependent`, `agent-shaped`, `source:<source>`, and `lang:<code>`.
+The case name is the case id. The prompt is the single conversation turn.
+
+Each case also has one process expectation, `Routes to one of: <tokens>`.
+LangTracer uses this text to match a run's result to the case. The runner
+ignores it and reads the accept tokens from the tags. `setKind` is
+`regression` when the case passes on the baseline model, else
+`capability_gap`.
+
+### Run locally
+
+```bash
+# From packages/@n8n/instance-ai/
+ANTHROPIC_API_KEY=... N8N_ENABLED_MODULES=agents,instance-ai \
+  pnpm eval:discovery --source langtracer --suite intent-routing --stop-on-route \
+  --trials 3 --model anthropic/claude-opus-5-5 --scenario-concurrency 4 \
+  --output-dir .data/routing/baseline --save-cases-dir .data/routing/cases
+```
+
+- `--source langtracer --suite intent-routing` pulls the cases from
+  LangTracer. Set `LANGTRACER_URL` and `LANGTRACER_API_KEY`. If they are not
+  set, the `lang-tracer` MCP entry in `~/.claude.json` supplies them.
+- `--cases-dir <dir>` reads the cases from a local directory instead. It reads
+  routing case files (`route-*.json`) and LangTracer suite-export bodies.
+- `--output-dir <dir>` grades each case when it finishes. It writes
+  `routing-results.json` (every trial), `routing-summary.md` (a short summary),
+  and `eval-results.json` (the format LangTracer reads).
+- `--save-cases-dir <dir>` writes the loaded cases, one `<id>.json` file for
+  each case. The grader needs them.
+- `--skill-file <skillId>=<path>` runs the orchestrator with a different
+  `SKILL.md` for one runtime skill, for example
+  `--skill-file intent-recognition=./SKILL.md`. Repeat the flag for more
+  skills. Sub-agents still use the bundled skills.
+- `--filter <csv>` runs only the case ids that contain one of the tokens.
+
+### Grade and compare
+
+```bash
+pnpm tsx evaluations/routing/grade.ts --results .data/routing/baseline/routing-results.json \
+  --cases-dir .data/routing/cases --out .data/routing/baseline/report.md \
+  --compare .data/routing/previous/routing-results.json
+```
+
+The grader writes a markdown report and a JSON summary next to it. The report
+shows the macro accuracy (the mean of the case pass rates of all buckets), the
+score of each bucket, the skill-load rate, a confusion table, and the failing
+cases. `--compare` is optional. It adds the change for each bucket and the
+cases that flipped. The judge needs `ANTHROPIC_API_KEY` unless its cache
+already has every verdict.
+
+### Push cases
+
+```bash
+pnpm tsx evaluations/routing/langtracer-push.ts --suite intent-routing \
+  --cases-dir <dir> --passing-ids <file> --dry-run
+```
+
+The push creates or updates each case by name and leaves unchanged cases as
+they are. `--passing-ids` is a JSON list of the case ids that pass on the
+baseline. Those cases get `setKind: regression`, all others
+`capability_gap`. Remove `--dry-run` to write. After a write, the script reads
+the suite back and fails when a case does not match the local file.
+
+### CI
+
+Dispatch **Test: Instance AI Routing Evals**
+(`.github/workflows/test-evals-routing.yml`) to run a suite on a branch. It has
+no pull-request or schedule trigger. The job writes the summary to the run page
+and uploads the output directory as an artifact.
+
+LangTracer's dispatcher runs every case with `eval:instance-ai`, which builds
+and verifies a workflow. Routing cases need `eval:discovery`. Do not schedule
+the `intent-routing` suite in LangTracer until the dispatcher can run
+`eval:discovery`.
 
 ## Pairwise evals
 

@@ -14,8 +14,19 @@
 // timeout bounds the trial, not the run: at the budget the trial stops and fails,
 // and the abandoned stream is left to unwind on its own. Scenarios or --max-steps
 // can additionally opt into an iteration cap.
+//
+// Routing mode (`stopOnRoute`) aborts the run at the orchestrator's first
+// committing call (evaluations/routing/route-rules.ts). Routing scenarios have
+// no tool expectations, so no check runs; the routing grader reads the events.
+//
+// A routing scenario can carry a `seed` and an `attach`. The stub instance then
+// serves the seeded workflows, Agents, data tables, and failed prior runs; the
+// seeded messages become thread history; and the attached resource reaches the
+// orchestrator in the same `<thread-context>` block production sends. A case
+// that seeds Agents also gets a read-only `agent-context` tool over them.
 // ---------------------------------------------------------------------------
 
+import type { RuntimeSkillSource } from '@n8n/agents';
 import type { InstanceAiEvent, TaskList } from '@n8n/api-types';
 import { nanoid } from 'nanoid';
 
@@ -28,6 +39,7 @@ import {
 import { credentialAutoSetupResponder } from './credential-approval';
 import { evaluateDiscoveryTrial } from './expected-tools-invoked';
 import { resolveStreamStatus } from './stream-status';
+import { createStubAgentContextReader } from './stub-agent-context';
 import { createStubLocalMcpServer } from './stub-local-mcp';
 import {
 	createMcpConnectResponder,
@@ -37,15 +49,30 @@ import {
 	stubMcpServerConfigs,
 	type StubMcpRegistry,
 } from './stub-mcp-registry';
-import type { DiscoveryCheckResult, DiscoveryStreamStatus, DiscoveryTestCase } from './types';
+import {
+	buildRoutingTurnMessage,
+	createSeededMemory,
+	STUB_PROJECT_ID,
+	toResourceAttachment,
+} from './routing-context';
+import { ORCHESTRATOR_AGENT_ID, type RouteStop } from './routing-trial';
+import type {
+	DiscoveryCheckResult,
+	DiscoveryScenario,
+	DiscoveryStreamStatus,
+	RoutingSeed,
+} from './types';
 import { createInstanceAgent } from '../../src/agent/instance-agent';
 import type { InstanceAiEventBus } from '../../src/event-bus';
 import type { Logger } from '../../src/logger';
 import {
 	executeResumableStream,
 	normalizeStreamSource,
+	type ExecuteResumableStreamResult,
 } from '../../src/runtime/resumable-stream-executor';
 import { loadInstanceAiRuntimeSkillSource } from '../../src/skills/runtime-skills';
+import { ASK_USER_TOOL_ID } from '../../src/tools/tool-ids';
+import type { RunTokenUsage } from '../../src/stream/usage-accumulator';
 import type {
 	BuilderTurnStream,
 	InstanceAiContext,
@@ -61,14 +88,21 @@ import { createInMemoryEventBus, wrapEventBusWithObserver } from '../harness/in-
 import { createStubServices, defaultNodesJsonPath } from '../harness/stub-services';
 import { createStubWorkspace, stubWorkspaceRoot } from '../harness/stub-workspace';
 import { extractOutcomeFromEvents } from '../outcome/event-parser';
+import { isCommittingCall } from '../routing/route-rules';
 import type { CapturedEvent, EventOutcome } from '../types';
+
+/** How long a run stopped on its route may take to wind down and report usage. */
+const STOP_SETTLE_MS = 10_000;
+
+/** How long a stop at `ask-user` waits for the card to suspend before it aborts anyway. */
+const STOP_SUSPENSION_WAIT_MS = 5_000;
 
 // ---------------------------------------------------------------------------
 // Public API
 // ---------------------------------------------------------------------------
 
 export interface DiscoveryRunOptions {
-	scenario: DiscoveryTestCase;
+	scenario: DiscoveryScenario;
 	modelId: ModelConfig;
 	/** Defaults to `defaultNodesJsonPath()`. */
 	nodesJsonPath?: string;
@@ -76,16 +110,32 @@ export interface DiscoveryRunOptions {
 	maxSteps?: number;
 	/** Per-trial timeout in ms. */
 	timeoutMs?: number;
+	/** Abort the run at the orchestrator's first committing call. */
+	stopOnRoute?: boolean;
+	/** After a timeout, wait up to this long for the stream to wind down so its token
+	 *  usage is reported. Unset abandons a timed-out stream at once. */
+	settleGraceMs?: number;
+	/** Orchestrator skill catalog. Defaults to the bundled skills (see `--skill-file`). */
+	runtimeSkills?: RuntimeSkillSource;
 }
 
 export interface DiscoveryRunResult {
-	scenario: DiscoveryTestCase;
-	check: DiscoveryCheckResult;
+	scenario: DiscoveryScenario;
+	/** Absent when the scenario declares no tool expectations (routing cases). */
+	check?: DiscoveryCheckResult;
 	events: CapturedEvent[];
+	/** The same events with their schema types. */
+	instanceEvents: InstanceAiEvent[];
 	outcome: EventOutcome;
 	durationMs: number;
+	/** The in-process thread the trial ran on. */
+	threadId: string;
 	/** Final agent status — useful for diagnosing why noop / unexpected loops happened. */
 	streamStatus: DiscoveryStreamStatus;
+	/** The committing call that ended the run under `stopOnRoute`. */
+	stop?: RouteStop;
+	/** Orchestrator token usage, when the stream settled and reported it. */
+	usage?: RunTokenUsage;
 	/** Populated when the run errored before reaching the check. */
 	runError?: string;
 }
@@ -102,14 +152,20 @@ export async function runDiscoveryScenario(
 	const nodesJsonPath = options.nodesJsonPath ?? defaultNodesJsonPath();
 
 	const events: CapturedEvent[] = [];
+	const instanceEvents: InstanceAiEvent[] = [];
+	// Held in an object: the event observer sets it, and a plain `let` would stay
+	// narrowed to `undefined` for the reads below.
+	const route: { stop?: RouteStop; abortOnSuspensionOf?: string } = {};
 
 	let streamStatus: DiscoveryRunResult['streamStatus'] = 'completed';
 	let runError: string | undefined;
+	let usage: RunTokenUsage | undefined;
 
 	const confirmationPolicy = buildConfirmationPolicy(options.scenario);
 	const suspensions = new Map<string, SuspensionInfo>();
 
 	const abortController = new AbortController();
+	const threadId = 'discovery-thread-' + nanoid(6);
 	let mcpManager: StubMcpClientManager | undefined;
 	let timeoutHandle: NodeJS.Timeout | undefined;
 	const budgetExpired = new Promise<'timed-out'>((resolve) => {
@@ -118,21 +174,45 @@ export async function runDiscoveryScenario(
 			resolve('timed-out');
 		}, timeoutMs);
 	});
+	let stopSettleHandle: NodeJS.Timeout | undefined;
+	let stopSuspensionHandle: NodeJS.Timeout | undefined;
+	let abortForStop: () => void = () => {};
+	// Bounds the wind-down after a route stop, in case the aborted stream hangs.
+	const stopSettleExpired = new Promise<'timed-out'>((resolve) => {
+		abortForStop = () => {
+			if (abortController.signal.aborted) return;
+			abortController.abort();
+			stopSettleHandle = setTimeout(() => resolve('timed-out'), STOP_SETTLE_MS);
+		};
+	});
 
 	try {
-		const services = await createStubServices({ nodesJsonPath });
+		const seed = options.scenario.seed;
+		const services = await createStubServices({ nodesJsonPath, ...(seed ? { seed } : {}) });
 		const mcpState = options.scenario.instanceState?.mcp;
 		const mcpRegistry = mcpState ? createStubMcpRegistry(mcpState) : undefined;
+		const agentsEnabled = isAgentFeatureEnabled();
 		const context: InstanceAiContext = {
 			...applyInstanceState(services.context, options.scenario, mcpRegistry),
-			...(isAgentFeatureEnabled() ? { builderDelegate: createStubBuilderDelegate() } : {}),
+			...(agentsEnabled ? { builderDelegate: createStubBuilderDelegate(seed) } : {}),
+			// Only a case that seeds Agents gets `agent-context`, so every other case keeps its tool set.
+			...(agentsEnabled && seed?.agents.length
+				? { agentContextService: createStubAgentContextReader(seed.agents) }
+				: {}),
 			workspace: createStubWorkspace(),
 			workspaceRoot: stubWorkspaceRoot,
 		};
 
 		mcpManager = new StubMcpClientManager(createStubMcpToolRegistry(mcpState ?? {}));
-		const threadId = 'discovery-thread-' + nanoid(6);
 		const runId = 'discovery-run-' + nanoid(6);
+		// Only a seed with messages gets memory, so an unseeded run keeps its stateless path.
+		const memory = seed?.messages.length
+			? await createSeededMemory(threadId, context.userId, seed.messages)
+			: undefined;
+		const turnMessage = buildRoutingTurnMessage(
+			options.scenario.userMessage,
+			options.scenario.attach ? toResourceAttachment(options.scenario.attach, seed) : undefined,
+		);
 
 		const approvalResponders: ApprovalResponder[] = [
 			credentialAutoSetupResponder,
@@ -140,7 +220,30 @@ export async function runDiscoveryScenario(
 		];
 
 		const eventBus = wrapEventBusWithObserver(createInMemoryEventBus(), (event) => {
+			instanceEvents.push(event);
 			events.push(toCapturedEvent(event));
+			if (
+				options.stopOnRoute &&
+				!route.stop &&
+				event.type === 'tool-call' &&
+				event.agentId === ORCHESTRATOR_AGENT_ID &&
+				isCommittingCall(event.payload.toolName, event.payload.args)
+			) {
+				route.stop = {
+					eventIndex: instanceEvents.length,
+					toolName: event.payload.toolName,
+					args: event.payload.args,
+				};
+				if (event.payload.toolName === ASK_USER_TOOL_ID) {
+					// Abort once the card suspends: the suspension's finish chunk carries the
+					// turn's token usage, and an earlier abort drops it.
+					route.abortOnSuspensionOf = event.payload.toolCallId;
+					stopSuspensionHandle = setTimeout(abortForStop, STOP_SUSPENSION_WAIT_MS);
+				} else {
+					// Abort outside the publisher's call stack.
+					queueMicrotask(abortForStop);
+				}
+			}
 		});
 
 		// `OrchestrationContext` is required for the orchestrator to receive tools like
@@ -153,6 +256,7 @@ export async function runDiscoveryScenario(
 			threadId,
 			runId,
 			abortSignal: abortController.signal,
+			...(options.runtimeSkills ? { runtimeSkills: options.runtimeSkills } : {}),
 		});
 
 		const { agent } = await createInstanceAgent({
@@ -161,15 +265,18 @@ export async function runDiscoveryScenario(
 			orchestrationContext,
 			mcpServers: stubMcpServerConfigs(mcpState ?? {}),
 			mcpManager,
-			// No memory: discovery measures stateless first-step tool dispatch.
+			// No memory unless the case seeds prior messages: discovery measures
+			// first-step tool dispatch.
 			memoryConfig: {},
+			...(memory ? { memory } : {}),
 			thinkingEnabled: false,
 		});
 
 		const streamSource = normalizeStreamSource(
-			await agent.stream(options.scenario.userMessage, {
+			await agent.stream(turnMessage, {
 				maxIterations: maxSteps,
 				abortSignal: abortController.signal,
+				...(memory ? { persistence: { threadId, resourceId: context.userId } } : {}),
 				providerOptions: {
 					anthropic: { cacheControl: { type: 'ephemeral' as const } },
 				},
@@ -182,14 +289,17 @@ export async function runDiscoveryScenario(
 			context: {
 				threadId,
 				runId,
-				agentId: 'n8n-instance-agent',
+				agentId: ORCHESTRATOR_AGENT_ID,
 				eventBus,
 				signal: abortController.signal,
 				logger: silentLogger(),
 			},
 			control: {
 				mode: 'auto',
-				onSuspension: (suspension) => suspensions.set(suspension.requestId, suspension),
+				onSuspension: (suspension) => {
+					suspensions.set(suspension.requestId, suspension);
+					if (suspension.toolCallId === route.abortOnSuspensionOf) queueMicrotask(abortForStop);
+				},
 				waitForConfirmation: async (requestId: string): Promise<Record<string, unknown>> =>
 					await Promise.resolve(
 						resolveConfirmation(suspensions.get(requestId), confirmationPolicy, approvalResponders),
@@ -197,36 +307,75 @@ export async function runDiscoveryScenario(
 			},
 		});
 		void run.catch(() => {});
-		const result = await Promise.race([run, budgetExpired]);
+		const result = await Promise.race([run, budgetExpired, stopSettleExpired]);
 
-		streamStatus = resolveStreamStatus(result, abortController.signal.aborted);
+		const settled =
+			result === 'timed-out' && options.settleGraceMs
+				? await settleWithin(run, options.settleGraceMs)
+				: result;
+		if (settled !== 'timed-out') usage = settled.usage;
+
+		streamStatus = resolveStreamStatus(
+			result,
+			abortController.signal.aborted,
+			route.stop !== undefined,
+		);
 	} catch (error) {
-		runError = error instanceof Error ? error.message : String(error);
-		streamStatus = abortController.signal.aborted ? 'timed-out' : 'errored';
+		// A stopped run can reject as it unwinds; that is the stop, not a failure.
+		if (!route.stop) runError = error instanceof Error ? error.message : String(error);
+		streamStatus = route.stop
+			? 'stopped-on-route'
+			: abortController.signal.aborted
+				? 'timed-out'
+				: 'errored';
 	} finally {
 		clearTimeout(timeoutHandle);
+		clearTimeout(stopSettleHandle);
+		clearTimeout(stopSuspensionHandle);
 		await mcpManager?.disconnect();
 	}
 
 	const observedEvents = [...events];
 	const outcome = extractOutcomeFromEvents(observedEvents);
-	const check = evaluateDiscoveryTrial(options.scenario, outcome, {
-		streamStatus,
-		timeoutMs,
-		...(runError ? { runError } : {}),
-		unmatchedConfirmations: unmatchedConfirmations(confirmationPolicy, suspensions.values()),
-	});
+	const expectedToolInvocations = options.scenario.expectedToolInvocations;
+	const check = expectedToolInvocations
+		? evaluateDiscoveryTrial({ ...options.scenario, expectedToolInvocations }, outcome, {
+				streamStatus,
+				timeoutMs,
+				...(runError ? { runError } : {}),
+				unmatchedConfirmations: unmatchedConfirmations(confirmationPolicy, suspensions.values()),
+			})
+		: undefined;
 
 	return {
 		scenario: options.scenario,
-		check,
+		...(check ? { check } : {}),
 		// An abandoned stream can still publish, so hand back what the verdict saw.
-		events: [...events],
+		events: observedEvents,
+		instanceEvents: instanceEvents.slice(0, observedEvents.length),
 		outcome,
 		durationMs: Date.now() - started,
+		threadId,
 		streamStatus,
+		...(route.stop ? { stop: route.stop } : {}),
+		...(usage ? { usage } : {}),
 		...(runError ? { runError } : {}),
 	};
+}
+
+async function settleWithin(
+	run: Promise<ExecuteResumableStreamResult>,
+	graceMs: number,
+): Promise<ExecuteResumableStreamResult | 'timed-out'> {
+	let handle: NodeJS.Timeout | undefined;
+	const expired = new Promise<'timed-out'>((resolve) => {
+		handle = setTimeout(() => resolve('timed-out'), graceMs);
+	});
+	try {
+		return await Promise.race([run.catch((): 'timed-out' => 'timed-out'), expired]);
+	} finally {
+		clearTimeout(handle);
+	}
 }
 
 // ---------------------------------------------------------------------------
@@ -235,7 +384,7 @@ export async function runDiscoveryScenario(
 
 function applyInstanceState(
 	base: InstanceAiContext,
-	scenario: DiscoveryTestCase,
+	scenario: DiscoveryScenario,
 	mcpRegistry: StubMcpRegistry | undefined,
 ): InstanceAiContext {
 	const state = scenario.instanceState;
@@ -290,19 +439,28 @@ function completedBuilderTurn(): BuilderTurnStream {
 	};
 }
 
-function createStubBuilderDelegate(): InstanceAiBuilderDelegate {
+/** The builder's reads return the seeded Agents; a new Agent is "created" at once. */
+function createStubBuilderDelegate(seed?: RoutingSeed): InstanceAiBuilderDelegate {
+	const seededAgents = new Map((seed?.agents ?? []).map((agent) => [agent.id, agent]));
 	return {
 		createAgent: async (name) =>
 			await Promise.resolve({
 				agentId: 'discovery-agent',
-				projectId: 'discovery-project',
+				projectId: STUB_PROJECT_ID,
 				name,
 			}),
 		streamBuild: async () => await Promise.resolve(completedBuilderTurn()),
 		resumeBuild: async () => await Promise.resolve(completedBuilderTurn()),
 		findOpenSuspensions: async () => await Promise.resolve([]),
 		cancelOpenSuspension: async () => await Promise.resolve(),
-		resolveAgentName: async () => await Promise.resolve(undefined),
+		resolveAgentName: async (agentId) =>
+			await Promise.resolve(seededAgents.get(agentId)?.config.name),
+		readAgentArtifact: async (agentId) => {
+			const agent = seededAgents.get(agentId);
+			return await Promise.resolve(
+				agent ? { config: agent.config, skills: agent.skills ?? {}, configHash: null } : null,
+			);
+		},
 	};
 }
 
@@ -313,6 +471,7 @@ interface StubOrchestrationContextOptions {
 	threadId: string;
 	runId: string;
 	abortSignal: AbortSignal;
+	runtimeSkills?: RuntimeSkillSource;
 }
 
 function createStubOrchestrationContext(
@@ -329,11 +488,11 @@ function createStubOrchestrationContext(
 		threadId: opts.threadId,
 		runId: opts.runId,
 		userId: opts.context.userId,
-		orchestratorAgentId: 'n8n-instance-agent',
+		orchestratorAgentId: ORCHESTRATOR_AGENT_ID,
 		modelId: opts.modelId,
 		eventBus: opts.eventBus,
 		logger: silentLogger(),
-		runtimeSkills: loadInstanceAiRuntimeSkillSource(),
+		runtimeSkills: opts.runtimeSkills ?? loadInstanceAiRuntimeSkillSource(),
 		abortSignal: opts.abortSignal,
 		taskStorage,
 		// Surface the localMcpServer so Computer Use browser tools are available to the
