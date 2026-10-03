@@ -416,7 +416,7 @@ function onBackButton() {
 }
 .header {
 	font-size: var(--font-size--lg);
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 	line-height: var(--line-height--sm);
 
 	padding: var(--spacing--sm) var(--spacing--sm);
@@ -428,7 +428,7 @@ function onBackButton() {
 }
 .title {
 	line-height: 24px;
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 	font-size: var(--font-size--lg);
 	margin: 0;
 

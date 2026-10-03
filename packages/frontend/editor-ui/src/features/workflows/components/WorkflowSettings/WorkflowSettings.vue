@@ -1978,7 +1978,7 @@ onBeforeUnmount(() => {
 }
 
 .no-nodes-title {
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 	color: var(--color--text);
 }
 
@@ -2013,7 +2013,7 @@ onBeforeUnmount(() => {
 }
 
 .nodes-active-title {
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 	color: var(--color--text);
 }
 
@@ -2079,7 +2079,7 @@ onBeforeUnmount(() => {
 	width: 100%;
 	gap: var(--spacing--3xs);
 	align-items: center;
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 	padding: var(--spacing--xs) var(--spacing--md);
 	background-color: var(--color--background--light-2);
 	color: var(--color--text--shade-1);

@@ -36,7 +36,7 @@ defineProps<{
 	border-radius: 50%;
 	border: 1px solid var(--color--text--tint-1);
 	color: var(--color--text--tint-1);
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 	font-size: var(--font-size--2xs);
 	flex-shrink: 0;
 	transition: all 0.2s ease;

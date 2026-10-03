@@ -165,7 +165,7 @@ const fileIcon = computed(() => {
 .filename {
 	font-size: var(--font-size--2xs);
 	color: var(--color--text--shade-1);
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 	overflow: hidden;
 	max-width: 300px;
 	text-overflow: ellipsis;
