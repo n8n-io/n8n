@@ -1,0 +1,102 @@
+{
+	"name": "My workflow with a sub-workflow",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [-80, 0],
+			"id": "184f7793-5296-4543-b849-a500f01d0fe6",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {
+				"url": "https://test-endpoint.com/test",
+				"options": {}
+			},
+			"type": "n8n-nodes-base.httpRequest",
+			"typeVersion": 4.4,
+			"position": [176, 0],
+			"id": "48591eb0-7e94-4ffa-a04a-ba126008c59a",
+			"name": "Http request"
+		},
+		{
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "f18b054f-257d-4666-bd61-6e009bfebad4",
+							"name": "test-output",
+							"value": "={{ $json.data }}",
+							"type": "string"
+						}
+					]
+				},
+				"options": {}
+			},
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [400, 0],
+			"id": "2d32c443-b9af-421d-834b-0ea13648d84d",
+			"name": "Edit Fields"
+		},
+		{
+			"parameters": {
+				"workflowId": {
+					"__rl": true,
+					"value": "SUBWF123",
+					"mode": "list",
+					"cachedResultName": "My sub-workflow"
+				},
+				"options": {}
+			},
+			"type": "n8n-nodes-base.executeWorkflow",
+			"typeVersion": 1.3,
+			"position": [624, 0],
+			"id": "9c41f0aa-2f68-4a0e-8f56-6d21c7a4e0b1",
+			"name": "Execute sub-workflow"
+		}
+	],
+	"pinData": {},
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "Http request",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Http request": {
+			"main": [
+				[
+					{
+						"node": "Edit Fields",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Edit Fields": {
+			"main": [
+				[
+					{
+						"node": "Execute sub-workflow",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"id": "SUBWFDEMO1",
+	"tags": []
+}
