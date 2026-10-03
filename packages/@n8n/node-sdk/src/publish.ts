@@ -20,6 +20,7 @@ import {
 import {
 	evaluateBundle,
 	executorOf,
+	nodeDescriptionOf,
 	type BinaryStore,
 	type Executor,
 	type ExecutorHost,
@@ -242,11 +243,12 @@ export async function replayFixtures(
 	const providerFields = providerInputsOf(contract.input);
 	const isProvider = providedKindOf(contract.output.json) !== undefined;
 	// n8n fills each property default into the parameters it runs with.
-	const defaults = new Map(manifest.description.properties.map((p) => [p.name, p.default]));
+	const description = nodeDescriptionOf(manifest);
+	const defaults = new Map(description.properties.map((p) => [p.name, p.default]));
 	const node: INode = {
 		id: 'fixture',
 		name: manifest.id,
-		type: manifest.description.name,
+		type: description.name,
 		typeVersion: manifest.contract.version,
 		position: [0, 0],
 		parameters: {},

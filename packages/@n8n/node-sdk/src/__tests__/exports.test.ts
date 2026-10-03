@@ -159,6 +159,7 @@ describe('the root of @n8n/node-sdk', () => {
 			'TriggerSpec',
 			'Wait',
 			'WebhookConfig',
+			'WebhookEndpoint',
 			'WebhookRequest',
 		]);
 	});

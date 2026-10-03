@@ -718,6 +718,7 @@ function deriveAction(
 			id,
 			version: Math.floor(context.node.typeVersion),
 			node: name,
+			nodeDisplayName: context.description.displayName,
 			action: key.operation ?? name,
 			summary: key.summary,
 			flow: UNKNOWN_FLOW,

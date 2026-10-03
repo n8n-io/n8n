@@ -3,7 +3,14 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 
 import { freezeAction, GUEST_LACKS, type FrozenAction } from '../freeze';
-import { executorOf, loadExecutor, type ExecutorHost, type FrozenVersion } from '../runtime';
+import {
+	executorOf,
+	loadExecutor,
+	nodeDescriptionOf,
+	toNodeType,
+	type ExecutorHost,
+	type FrozenVersion,
+} from '../runtime';
 
 it('GUEST_LACKS are globals of Node, besides the CommonJS names', () => {
 	expect(GUEST_LACKS.filter((name) => !(name in globalThis))).toEqual(['__dirname', '__filename']);
@@ -81,6 +88,19 @@ describe('freezeAction', () => {
 		['a regex without \\p{}', "/[a-zé]+/u.test('é')"],
 	])('freezes a bundle with %s', async (_what, value) => {
 		await expect(freeze(value)).resolves.toMatchObject({ manifest: { id: 'probe.probe' } });
+	});
+
+	it('writes no node description: the host projects it from the contract', async () => {
+		const { manifest, action } = await freeze('1');
+		expect(manifest).not.toHaveProperty('description');
+		if ('kind' in action) throw new Error('The probe is an action');
+		expect(nodeDescriptionOf(manifest)).toEqual(new (toNodeType(action))().description);
+		expect(nodeDescriptionOf(manifest)).toMatchObject({
+			displayName: 'Probe: Probe',
+			name: 'probeProbe',
+			version: 1,
+			defaults: { name: 'Probe' },
+		});
 	});
 
 	it.each([

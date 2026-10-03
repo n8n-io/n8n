@@ -5,6 +5,7 @@ import {
 	bundledCredentialsOf,
 	bundledIdsOf,
 	NODE_PACKAGE as NEXT,
+	nodeDescriptionOf,
 	versionsOf,
 	type CredentialManifest,
 	type FrozenVersion,
@@ -132,7 +133,7 @@ describe('ContractNodeLoader', () => {
 		for (const id of ids) {
 			const [head] = versionsOf(id);
 			if (!head) throw new Error(`${id} has no bundled HEAD`);
-			const { description } = head.manifest;
+			const description = nodeDescriptionOf(head.manifest);
 			const { type } = loader.getNode(description.name);
 			expect(type.description.defaultVersion).toBe(head.manifest.contract.version);
 			const served = loader.types.nodes.find(({ name }) => name === description.name);
@@ -152,17 +153,14 @@ describe('ContractNodeLoader', () => {
 		const major = manifest.contract.version + 1;
 		const stored: FrozenVersion = {
 			...head,
-			manifest: {
-				...manifest,
-				contract: { ...manifest.contract, version: major },
-				description: { ...manifest.description, version: major },
-			},
+			manifest: { ...manifest, contract: { ...manifest.contract, version: major } },
 		};
+		const storedManifest = deepCopy(stored.manifest);
 		const sameMajor: FrozenVersion = { ...head, manifest: { ...manifest, semver: '9.9.9' } };
 		const loader = new ContractNodeLoader([], [], storeOf(new Map([[id, [stored, sameMajor]]])));
 		await loader.loadAll();
 
-		const { name } = manifest.description;
+		const { name } = nodeDescriptionOf(manifest);
 		const [bundled, other] = loader.frozenVersionsOf(name);
 		expect(bundled?.manifest.semver).toBe(manifest.semver);
 		// The run trusts a stored version by its identity.
@@ -171,9 +169,7 @@ describe('ContractNodeLoader', () => {
 		const served = loader.types.nodes.filter((description) => description.name === name);
 		expect(served.map(({ version }) => version)).toEqual([major, manifest.contract.version]);
 		expect(served.every(({ properties }) => properties[0]?.name === 'pollTimes')).toBe(true);
-		expect(stored.manifest.description.properties.map(({ name }) => name)).not.toContain(
-			'pollTimes',
-		);
+		expect(stored.manifest).toEqual(storedManifest);
 	});
 
 	it('registers a stored credential type of a name that no other package has', async () => {
@@ -259,7 +255,6 @@ describe('ContractNodeLoader', () => {
 			manifest: {
 				...manifest,
 				contract: { ...manifest.contract, version: major, egress: { fromInput: 'url' } },
-				description: { ...manifest.description, version: major },
 			},
 		};
 		const loader = new ContractNodeLoader([], [], storeOf(new Map([[id, [stored]]])), [
@@ -269,7 +264,7 @@ describe('ContractNodeLoader', () => {
 
 		const majors = (versions: readonly FrozenVersion[]) =>
 			versions.map((version) => version.manifest.contract.version);
-		expect(majors(loader.frozenVersionsOf(manifest.description.name))).toEqual(
+		expect(majors(loader.frozenVersionsOf(nodeDescriptionOf(manifest).name))).toEqual(
 			majors(versionsOf(id)),
 		);
 	});

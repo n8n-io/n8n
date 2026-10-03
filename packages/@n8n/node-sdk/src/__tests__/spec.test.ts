@@ -497,7 +497,6 @@ describe('spec/manifest.schema.json', () => {
 					'contractHash',
 					'bundleHash',
 					'contract',
-					'description',
 				]),
 			),
 		);

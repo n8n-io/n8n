@@ -76,6 +76,7 @@ describe('native triggers', () => {
 			id: 'hooks.respond',
 			version: 1,
 			node: 'hooks',
+			nodeDisplayName: 'Hooks',
 			action: 'Respond',
 			summary: 'Sends the reply.',
 			flow: { effect: 'write', cardinality: 'per-item', passthrough: 'replace' },

@@ -111,6 +111,36 @@ describe('bundled versions', () => {
 		expect(bundledIdsOf(copy).sort()).toEqual(contracts.map(({ id }) => id).sort());
 	});
 
+	it('project the node description of each version from its contract fields only', () => {
+		const describe = (id: string) => {
+			const source = contracts.find((contract) => contract.id === id);
+			if (!source) throw new Error(`${id} has no source`);
+			return new ('kind' in source ? host.toTriggerNodeType(source) : host.toNodeType(source))()
+				.description;
+		};
+		const { manifests } = frozen;
+		expect(manifests.filter((manifest) => 'description' in manifest)).toEqual([]);
+		expect(manifests.map((manifest) => host.nodeDescriptionOf(manifest))).toEqual(
+			manifests.map(({ id }) => describe(id)),
+		);
+		const outsideContract = manifests.flatMap((manifest) => {
+			const { id, contract } = manifest;
+			const { properties, credentials } = host.nodeDescriptionOf(manifest);
+			return [
+				...properties
+					.filter(
+						({ name }) =>
+							name !== host.AUTHENTICATION && !(name in (contract.input.properties ?? {})),
+					)
+					.map(({ name }) => `${id}: field ${name}`),
+				...(credentials ?? [])
+					.filter(({ name }) => !contract.credentials.includes(name))
+					.map(({ name }) => `${id}: credential ${name}`),
+			];
+		});
+		expect(outsideContract).toEqual([]);
+	});
+
 	it('project one node type each, named after its id', () => {
 		const loaded = contracts.map(({ id }) => {
 			const { description } = nodeTypeOf(id, copy);

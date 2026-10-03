@@ -1,10 +1,5 @@
 import { createHash } from 'node:crypto';
-import {
-	UnexpectedError,
-	UserError,
-	type IDataObject,
-	type INodeTypeDescription,
-} from 'n8n-workflow';
+import { UnexpectedError, UserError, type IDataObject } from 'n8n-workflow';
 
 import {
 	inputCountOf,
@@ -140,10 +135,8 @@ export interface VersionManifest {
 	readonly contractHash: string;
 	/** The hex SHA-256 of the bundle bytes. */
 	readonly bundleHash: string;
-	/** The contract document of the version. */
+	/** The contract document of the version. The host projects the node description from it. */
 	readonly contract: ContractDocument;
-	/** The node description at freeze time, so the UI of a version never changes. */
-	readonly description: INodeTypeDescription;
 }
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -202,8 +195,10 @@ export const contractHash = (contract: ContractDocument) =>
 			flow: contract.flow,
 			credentials: contract.credentials,
 			// Optional keys keep the hash of each contract that has neither. Scopes are a set.
+			...(contract.credentialOptional ? { credentialOptional: true } : {}),
 			...(contract.scopes?.length ? { scopes: [...contract.scopes].sort() } : {}),
 			...(contract.trigger ? { trigger: contract.trigger } : {}),
+			...(contract.endpoint ? { endpoint: contract.endpoint } : {}),
 			input: normativeSchema(contract.input),
 			output: normativeSchema(contract.output),
 			// Only when set, so the hash of an action with one output stays the same.
@@ -289,8 +284,7 @@ export function parseManifest(text: string): VersionManifest {
 	) {
 		throw new UnexpectedError('The version manifest is not valid or its contract changed');
 	}
-	const { kind, id, semver, nodeContract, sdk, credentials, bundleHash, contract, description } =
-		value;
+	const { kind, id, semver, nodeContract, sdk, credentials, bundleHash, contract } = value;
 	// Fields that this host does not know stay out.
 	return {
 		kind,
@@ -302,7 +296,6 @@ export function parseManifest(text: string): VersionManifest {
 		contractHash: value.contractHash,
 		bundleHash,
 		contract,
-		description,
 	};
 }
 
@@ -349,6 +342,7 @@ const narrowed = (side: Side, narrower: boolean, text: string): ContractChange =
 });
 
 const major = (text: string): ContractChange => ({ kind: 'major', text });
+const minor = (text: string): ContractChange => ({ kind: 'minor', text });
 
 const LOWER_BOUNDS = ['minLength', 'minimum', 'minItems'] as const;
 const EXACT_KEYWORDS = [
@@ -601,11 +595,13 @@ function inputChanges(prev: ContractDocument, next: ContractDocument): ContractC
 
 /**
  * Classifies the change between two versions of one action: additive optional input (or a
- * new required input with a default), a removed scope, egress host or import, or a required
- * output field that becomes typical is minor; a new required input, a removed or narrowed
- * output, an output field that becomes optional, an added or removed `x-n8n-resource`, a
- * changed output list, a changed flow, an added permission (scope, egress host, import,
- * credential type) or a removed credential type is major; no normative change is a patch.
+ * new required input with a default), a removed scope, egress host or import, a required
+ * output field that becomes typical, or a credential that becomes optional is minor; a new
+ * required input, a removed or narrowed output, an output field that becomes optional, an added
+ * or removed `x-n8n-resource`, a changed output list, a changed flow, a changed webhook
+ * endpoint, a credential that becomes required, an added permission (scope, egress host,
+ * import, credential type) or a removed credential type is major; no normative change is a
+ * patch.
  */
 export function diffContracts(prev: ContractDocument, next: ContractDocument): ContractDiff {
 	const input = schemaChanges('input', 'input', prev.input, next.input);
@@ -613,6 +609,14 @@ export function diffContracts(prev: ContractDocument, next: ContractDocument): C
 		...(prev.id !== next.id || prev.node !== next.node ? [major('id or node changed')] : []),
 		...(canonicalJson(prev.flow) !== canonicalJson(next.flow) ? [major('flow changed')] : []),
 		...(prev.trigger !== next.trigger ? [major('trigger kind changed')] : []),
+		...(canonicalJson(prev.endpoint) !== canonicalJson(next.endpoint)
+			? [major('webhook endpoint changed')]
+			: []),
+		...(prev.credentialOptional === next.credentialOptional
+			? []
+			: next.credentialOptional
+				? [minor('credential became optional')]
+				: [major('credential became required')]),
 		...permissionChanges(prev, next),
 		...outputChanges(prev, next),
 		...inputChanges(prev, next),

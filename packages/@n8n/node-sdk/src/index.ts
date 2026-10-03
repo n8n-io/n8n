@@ -136,6 +136,7 @@ export type {
 	Signature,
 	TriggerKind,
 	WebhookConfig,
+	WebhookEndpoint,
 	WebhookRequest,
 } from './triggers';
 export { list, matches, parse, readAs, validate } from './validate';

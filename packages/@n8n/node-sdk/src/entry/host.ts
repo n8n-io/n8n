@@ -10,6 +10,7 @@ export { credentialTypeOfManifest, toCredentialType } from '../credentials';
 export { setCodeLanguages } from '../host-imports';
 export {
 	AUTHENTICATION,
+	nodeDescriptionOf,
 	nodeNameOf,
 	setContractVersionLoader,
 	setCredentialManifests,

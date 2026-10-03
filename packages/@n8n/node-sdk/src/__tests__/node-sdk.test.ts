@@ -9,8 +9,14 @@ import {
 
 import { generateNodeModule } from '../entry/codegen';
 import { compat, credential } from '../entry/credentials';
-import { exampleOf, resourceLookupsOf, toNodeType } from '../entry/host';
-import { actionFileOf, lintContract, toContract } from '../entry/registry';
+import { exampleOf, nodeDescriptionOf, resourceLookupsOf, toNodeType } from '../entry/host';
+import {
+	actionFileOf,
+	contractHash,
+	diffContracts,
+	lintContract,
+	toContract,
+} from '../entry/registry';
 import {
 	defineNode,
 	isHttpError,
@@ -541,11 +547,16 @@ describe('toNodeType', () => {
 			displayName: 'Web',
 			credential: credential({ types: [compat('a'), compat('b')], optional: true }),
 		});
-		const { description } = new (toNodeType({
-			...listTasks,
-			node: open,
-			credentialTypes: ['a', 'b'],
-		}))();
+		const action = { ...listTasks, node: open, credentialTypes: ['a', 'b'] };
+		const { description } = new (toNodeType(action))();
+		const contract = toContract(action);
+		const { credentialOptional, ...required } = contract;
+		expect(credentialOptional).toBe(true);
+		expect(contractHash(contract)).not.toBe(contractHash(required));
+		expect(diffContracts(required, contract).kind).toBe('minor');
+		expect(diffContracts(contract, required).kind).toBe('major');
+		expect(toContract(listTasks)).not.toHaveProperty('credentialOptional');
+		expect(nodeDescriptionOf({ contract, nodeContract: '2.1.0' })).toEqual(description);
 		expect(description.properties[0]).toMatchObject({ name: 'authentication', default: 'none' });
 		expect(description.credentials).toEqual([
 			{ name: 'a', required: false, displayOptions: { show: { authentication: ['a'] } } },

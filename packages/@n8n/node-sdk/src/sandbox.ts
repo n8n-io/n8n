@@ -40,7 +40,7 @@ import {
 	type ExecutorLoader,
 	type FrozenVersion,
 } from './runtime';
-import { hasBinary, Schema, type Binary, type JsonSchema, type Shape } from './schema';
+import { hasBinary, Schema, shapeOf, type Binary, type JsonSchema } from './schema';
 import {
 	provider,
 	providedKindOf,
@@ -1656,16 +1656,6 @@ async function providerCapabilityOf(
 	})();
 	return providerValue(id, provider.is(kind, capability) ? capability : undefined, `a ${kind}`);
 }
-
-const shapeOf = (schema: JsonSchema): Shape => {
-	const required = new Set(schema.required ?? []);
-	return Object.fromEntries(
-		Object.entries(schema.properties ?? {}).map(([name, json]) => [
-			name,
-			new Schema<unknown, boolean>(json, !required.has(name)),
-		]),
-	);
-};
 
 /**
  * The action of a frozen version that runs in the sandbox. Its contract comes from the

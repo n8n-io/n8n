@@ -225,8 +225,6 @@ function contractNodeTypeOf(versions: readonly FrozenVersion[]) {
 		versions[0]?.manifest.kind === 'trigger' ? toVersionedTriggerType : toVersionedNodeType;
 	const type = new (typeOf(versions))();
 	for (const version of Object.values(type.nodeVersions)) {
-		// A copy: the store caches its manifests, and the next step adds parameters.
-		version.description = deepCopy(version.description);
 		DirectoryLoader.applySpecialNodeParameters(version);
 		validateNodeDescription(version.description);
 	}

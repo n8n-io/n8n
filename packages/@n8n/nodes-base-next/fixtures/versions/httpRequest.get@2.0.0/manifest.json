@@ -4,12 +4,13 @@
 	"semver": "2.0.0",
 	"nodeContract": "2.1.0",
 	"sdk": "0.1.0",
-	"contractHash": "5ae606b376c24af8f78e267055f0d437364695efda7c9d177fba971585f86d9d",
+	"contractHash": "f42a44ade732564d61cea8a3b93d6add847720839221e2207b37f6762bb8b470",
 	"bundleHash": "719736b31b4969e2a174f913e5d212c9c768f73984ac897d39ccc1894d9547a5",
 	"contract": {
 		"id": "httpRequest.get",
 		"version": 2,
 		"node": "httpRequest",
+		"nodeDisplayName": "HTTP Request",
 		"action": "GET a URL",
 		"summary": "Read from any HTTP API. Use a dedicated action when one exists for the service.",
 		"flow": {
@@ -25,6 +26,7 @@
 			"httpQueryAuth",
 			"oAuth2Api"
 		],
+		"credentialOptional": true,
 		"input": {
 			"type": "object",
 			"properties": {
@@ -84,146 +86,5 @@
 		"egress": {
 			"fromInput": "url"
 		}
-	},
-	"description": {
-		"displayName": "HTTP Request: GET a URL",
-		"name": "httpRequestGet",
-		"group": [
-			"input"
-		],
-		"version": 2,
-		"description": "Read from any HTTP API. Use a dedicated action when one exists for the service.",
-		"defaults": {
-			"name": "GET a URL"
-		},
-		"inputs": [
-			"main"
-		],
-		"outputs": [
-			"main"
-		],
-		"credentials": [
-			{
-				"name": "httpHeaderAuth",
-				"required": false,
-				"displayOptions": {
-					"show": {
-						"authentication": [
-							"httpHeaderAuth"
-						]
-					}
-				}
-			},
-			{
-				"name": "httpBearerAuth",
-				"required": false,
-				"displayOptions": {
-					"show": {
-						"authentication": [
-							"httpBearerAuth"
-						]
-					}
-				}
-			},
-			{
-				"name": "httpBasicAuth",
-				"required": false,
-				"displayOptions": {
-					"show": {
-						"authentication": [
-							"httpBasicAuth"
-						]
-					}
-				}
-			},
-			{
-				"name": "httpQueryAuth",
-				"required": false,
-				"displayOptions": {
-					"show": {
-						"authentication": [
-							"httpQueryAuth"
-						]
-					}
-				}
-			},
-			{
-				"name": "oAuth2Api",
-				"required": false,
-				"displayOptions": {
-					"show": {
-						"authentication": [
-							"oAuth2Api"
-						]
-					}
-				}
-			}
-		],
-		"properties": [
-			{
-				"displayName": "Authentication",
-				"name": "authentication",
-				"type": "options",
-				"options": [
-					{
-						"name": "none",
-						"value": "none"
-					},
-					{
-						"name": "httpHeaderAuth",
-						"value": "httpHeaderAuth"
-					},
-					{
-						"name": "httpBearerAuth",
-						"value": "httpBearerAuth"
-					},
-					{
-						"name": "httpBasicAuth",
-						"value": "httpBasicAuth"
-					},
-					{
-						"name": "httpQueryAuth",
-						"value": "httpQueryAuth"
-					},
-					{
-						"name": "oAuth2Api",
-						"value": "oAuth2Api"
-					}
-				],
-				"default": "none"
-			},
-			{
-				"displayName": "url",
-				"name": "url",
-				"required": true,
-				"description": "Full URL; never URL-encode an expression",
-				"type": "string",
-				"default": ""
-			},
-			{
-				"displayName": "query",
-				"name": "query",
-				"required": false,
-				"description": "Never put secrets here; attach a credential",
-				"type": "json",
-				"default": ""
-			},
-			{
-				"displayName": "headers",
-				"name": "headers",
-				"required": false,
-				"description": "Never put secrets here; attach a credential",
-				"type": "json",
-				"default": ""
-			},
-			{
-				"displayName": "pagination",
-				"name": "pagination",
-				"required": false,
-				"description": "Cursor pagination; each page emits items; stops on a null or empty cursor",
-				"type": "json",
-				"default": ""
-			}
-		]
 	}
 }

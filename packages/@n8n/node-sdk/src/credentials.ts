@@ -21,6 +21,7 @@ import type { CredentialManifest } from './manifest';
 import { allowsHost, credentialHostsOf } from './egress';
 import {
 	Schema,
+	shapeOf,
 	t,
 	type AnySchema,
 	type Infer,
@@ -1883,24 +1884,13 @@ export function checkCredentialType(type: AnyCredentialType): string[] {
 	].map((issue) => `${type.id}: ${issue}`);
 }
 
-/** The fields of a credential manifest as SDK schemas. */
-function fieldsOfManifest({ fields }: CredentialManifest): Shape {
-	const required = fields.required ?? [];
-	return Object.fromEntries(
-		Object.entries(fields.properties ?? {}).map(([name, json]) => [
-			name,
-			new Schema(json, !required.includes(name)),
-		]),
-	);
-}
-
 /**
  * The credential type of a manifest with the `compat` scheme: n8n signs with its own type of this
  * name, so the type is data only, e.g. for a sandboxed bundle.
  */
 export const compatTypeOfManifest = (manifest: CredentialManifest): AnyCredentialType => ({
 	...manifest,
-	fields: fieldsOfManifest(manifest),
+	fields: shapeOf(manifest.fields),
 	scheme: { kind: 'compat' },
 });
 
@@ -1910,7 +1900,7 @@ export function credentialTypeOfManifest(manifest: CredentialManifest): ICredent
 	if (scheme.kind === 'custom') {
 		throw new UserError(`Credential ${manifest.id}: a custom scheme needs a credential bundle`);
 	}
-	const type: AnyCredentialType = { ...manifest, fields: fieldsOfManifest(manifest), scheme };
+	const type: AnyCredentialType = { ...manifest, fields: shapeOf(manifest.fields), scheme };
 	const projected = toCredentialType(type);
 	if (!projected) throw new UserError(`Credential ${manifest.id} has no n8n credential type`);
 	return projected;

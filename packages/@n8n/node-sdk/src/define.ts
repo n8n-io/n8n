@@ -24,7 +24,13 @@ import {
 	type ProviderCapabilities,
 	type ProviderKind,
 } from './providers';
-import type { PollConfig, TriggerKind, WebhookConfig, WebhookRequest } from './triggers';
+import type {
+	PollConfig,
+	TriggerKind,
+	WebhookConfig,
+	WebhookEndpoint,
+	WebhookRequest,
+} from './triggers';
 import { exampleOf, firstMatchOf, outputBinaryKeys, readAs, validate } from './validate';
 
 /**
@@ -1787,6 +1793,8 @@ export interface ContractDocument {
 	readonly version: number;
 	/** The node id, e.g. `notion`. */
 	readonly node: string;
+	/** The node name in the n8n UI, e.g. `Notion`. */
+	readonly nodeDisplayName: string;
 	/** The label: the action, or the trigger event. */
 	readonly action: string;
 	/** One sentence for agents and search. */
@@ -1798,10 +1806,14 @@ export interface ContractDocument {
 	};
 	/** The names of the credential types that the contract takes. */
 	readonly credentials: readonly string[];
+	/** Set when the node also runs without a credential. A user can then pick none. */
+	readonly credentialOptional?: true;
 	/** The scopes of the node's credential it needs. Absent when it needs none. */
 	readonly scopes?: readonly string[];
 	/** Set on a trigger: it starts a workflow and reads no items. */
 	readonly trigger?: TriggerKind;
+	/** The n8n endpoint of a webhook trigger, when the author sets one. See `WebhookConfig.endpoint`. */
+	readonly endpoint?: WebhookEndpoint;
 	/** The JSON Schema of the parameters. */
 	readonly input: JsonSchema;
 	/** The JSON Schema of each output item. */
@@ -1856,6 +1868,11 @@ type ContractSource = Pick<
 					| {
 							/** The trigger source. */
 							readonly kind: 'webhook' | 'poll';
+							/** The webhook of a webhook trigger. */
+							readonly webhook?: {
+								/** The n8n endpoint that the service calls. */
+								readonly endpoint?: WebhookEndpoint;
+							};
 					  }
 					| Pick<NativeTrigger, 'kind' | 'native'>
 				))
@@ -1880,6 +1897,18 @@ function contractEgressOf(
 // A trigger emits the items of one event: it reads the service, and one event gives N items.
 const TRIGGER_FLOW: ActionFlow = { effect: 'read', cardinality: '1:N' };
 
+/** The n8n webhook of a webhook trigger for each `WebhookEndpoint` field that the author leaves out. */
+export const DEFAULT_WEBHOOK_ENDPOINT: Required<WebhookEndpoint> = {
+	method: 'POST',
+	path: 'webhook',
+};
+
+// The contract keeps only non-default values, so the same n8n webhook has one contract hash.
+const customEndpointOf = ({ method, path }: WebhookEndpoint = {}): WebhookEndpoint => ({
+	...(method === undefined || method === DEFAULT_WEBHOOK_ENDPOINT.method ? {} : { method }),
+	...(path === undefined || path === DEFAULT_WEBHOOK_ENDPOINT.path ? {} : { path }),
+});
+
 /**
  * The contract document of a built action or trigger: what agents, the registry and the
  * contract hash read. It drops execution details (`run`, bindings, hatches).
@@ -1890,20 +1919,26 @@ export const toContract = (source: ContractSource): ContractDocument => {
 	const imports = 'kind' in source ? [] : [...new Set(source.imports ?? [])].sort();
 	const inputs = 'kind' in source ? undefined : source.inputs;
 	const resource = 'kind' in source ? undefined : source.resourceOutput;
+	const endpoint = customEndpointOf(
+		'kind' in source && source.kind !== 'native' ? source.webhook?.endpoint : undefined,
+	);
 	return {
 		id: source.id,
 		version: source.version,
 		node: source.node.id,
+		nodeDisplayName: source.node.displayName,
 		action: 'kind' in source ? source.trigger : source.action,
 		summary: source.summary,
 		// Each contract hash includes passthrough. Remove it at the next major of each action.
 		flow: { ...('kind' in source ? TRIGGER_FLOW : source.flow), passthrough: 'replace' },
 		credentials: source.credentialTypes,
 		// Optional keys keep the hash of each contract that has neither.
+		...(source.node.credential?.optional ? { credentialOptional: true } : {}),
 		...(source.scopes?.length ? { scopes: source.scopes } : {}),
 		...('kind' in source
 			? { trigger: source.kind === 'native' ? source.native.on : source.kind }
 			: {}),
+		...(Object.keys(endpoint).length ? { endpoint } : {}),
 		input: source.inputSchema,
 		output: resource
 			? {
@@ -1932,6 +1967,7 @@ export function replyContractOf(trigger: NativeTrigger): ContractDocument | unde
 			.join('.'),
 		version: trigger.version,
 		node: trigger.node.id,
+		nodeDisplayName: trigger.node.displayName,
 		action: reply.action,
 		summary: reply.summary,
 		flow: { effect: 'write', cardinality: 'per-item', passthrough: 'replace' },

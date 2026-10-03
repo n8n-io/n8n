@@ -7,7 +7,6 @@ import {
 	type INode,
 	type INodeExecutionData,
 	type INodeType,
-	type INodeTypeDescription,
 	type IPollFunctions,
 	type IWebhookFunctions,
 	type IWebhookResponseData,
@@ -24,17 +23,17 @@ import {
 	type HttpMethod,
 	type HttpRequest,
 	type RunInput,
+	toContract,
 	type Trigger,
 } from './define';
 import {
 	AUTHENTICATION,
 	baseUrlOf,
 	checkedResponse,
-	credentialDescriptionOf,
 	credentialTypeOf,
 	hasSelector,
 	nativeRunError,
-	nodeNameOf,
+	nodeDescriptionOf,
 	toRequestOptions,
 	verifiedBundleOf,
 	withCredentialHostsOf,
@@ -45,6 +44,7 @@ import {
 import { parameterValue, toProperty } from './properties';
 import type { Binary, Schema, Shape } from './schema';
 import { applyDefaults, readAs, validate } from './validate';
+import { NODE_CONTRACT_VERSION } from './version';
 
 /**
  * What starts a trigger: a service webhook, a poll, the event of a native trigger, or an `event`
@@ -115,6 +115,22 @@ interface RegisteredHook<I> {
 	readonly id: string;
 }
 
+/** The n8n endpoint that the service of a webhook trigger calls. */
+export interface WebhookEndpoint {
+	/**
+	 * The HTTP method that the endpoint takes.
+	 *
+	 * @defaultValue `'POST'`
+	 */
+	readonly method?: HttpMethod;
+	/**
+	 * The path after the webhook URL of the workflow.
+	 *
+	 * @defaultValue `'webhook'`
+	 */
+	readonly path?: string;
+}
+
 /**
  * A webhook trigger: the n8n endpoint, how n8n checks a request, and how n8n creates the
  * remote webhook.
@@ -131,20 +147,7 @@ interface RegisteredHook<I> {
  */
 export interface WebhookConfig<I, Out, K extends string> {
 	/** The n8n endpoint that the service calls. */
-	readonly endpoint?: {
-		/**
-		 * The HTTP method that the endpoint takes.
-		 *
-		 * @defaultValue `'POST'`
-		 */
-		readonly method?: HttpMethod;
-		/**
-		 * The path after the webhook URL of the workflow.
-		 *
-		 * @defaultValue `'webhook'`
-		 */
-		readonly path?: string;
-	};
+	readonly endpoint?: WebhookEndpoint;
 	/** The HMAC signature that each request must have. n8n refuses a request without it. */
 	readonly verify?: Signature<K>;
 	/** How n8n creates the remote webhook on activation and deletes it after. */
@@ -561,39 +564,6 @@ async function runPoll(
 	return emitted(isFirst && poll.firstRun !== 'emit' ? [] : next.fresh.map(toOutput));
 }
 
-/** The n8n description of a trigger. `polling` makes n8n add Poll Times and schedule polls. */
-export function triggerDescriptionOf(trigger: Trigger): INodeTypeDescription {
-	if (trigger.kind === 'native') throw nativeRunError(trigger);
-	const { selector, credentials } = credentialDescriptionOf(trigger);
-	const base: INodeTypeDescription = {
-		displayName: `${trigger.node.displayName}: ${trigger.trigger}`,
-		name: nodeNameOf(trigger.id),
-		group: ['trigger'],
-		version: trigger.version,
-		description: trigger.summary,
-		defaults: { name: trigger.trigger },
-		inputs: [],
-		outputs: ['main'],
-		credentials,
-		properties: [
-			...selector,
-			...Object.entries(trigger.input).map(([name, schema]) => toProperty(name, schema)),
-		],
-	};
-	if (trigger.poll) return { ...base, polling: true };
-	return {
-		...base,
-		webhooks: [
-			{
-				name: 'default',
-				httpMethod: trigger.webhook.endpoint?.method ?? 'POST',
-				responseMode: 'onReceived',
-				path: trigger.webhook.endpoint?.path ?? 'webhook',
-			},
-		],
-	};
-}
-
 /** The n8n entry points of a trigger: `poll()`, or `webhook()` with its webhook methods. */
 export function triggerMethodsOf(
 	trigger: Trigger,
@@ -631,8 +601,11 @@ export function triggerMethodsOf(
 
 /** An n8n node type for one trigger. */
 export function toTriggerNodeType(trigger: Trigger): new () => INodeType {
-	const description = triggerDescriptionOf(trigger);
 	const methods = triggerMethodsOf(trigger);
+	const description = nodeDescriptionOf({
+		contract: toContract(trigger),
+		nodeContract: NODE_CONTRACT_VERSION,
+	});
 	return class implements INodeType {
 		description = description;
 
@@ -670,7 +643,7 @@ async function methodsOf(frozen: FrozenVersion) {
 
 /** One frozen trigger version. Each entry point loads the bundle, then calls the trigger's own. */
 function frozenTriggerType(frozen: FrozenVersion): INodeType {
-	const { description } = frozen.manifest;
+	const description = nodeDescriptionOf(frozen.manifest);
 	if (description.polling) {
 		return {
 			description,

@@ -61,6 +61,9 @@
 						"node": {
 							"type": "string"
 						},
+						"nodeDisplayName": {
+							"type": "string"
+						},
 						"action": {
 							"type": "string"
 						},
@@ -104,6 +107,9 @@
 								"type": "string"
 							}
 						},
+						"credentialOptional": {
+							"const": true
+						},
 						"scopes": {
 							"type": "array",
 							"items": {
@@ -119,6 +125,25 @@
 								"schedule",
 								"form"
 							]
+						},
+						"endpoint": {
+							"type": "object",
+							"properties": {
+								"method": {
+									"enum": [
+										"GET",
+										"POST",
+										"PUT",
+										"PATCH",
+										"DELETE",
+										"HEAD"
+									]
+								},
+								"path": {
+									"type": "string"
+								}
+							},
+							"additionalProperties": false
 						},
 						"input": {
 							"type": "object",
@@ -213,6 +238,7 @@
 						"id",
 						"version",
 						"node",
+						"nodeDisplayName",
 						"action",
 						"summary",
 						"flow",
@@ -221,10 +247,6 @@
 						"output"
 					],
 					"additionalProperties": false
-				},
-				"description": {
-					"type": "object",
-					"description": "The n8n node description at freeze time."
 				}
 			},
 			"required": [
@@ -234,8 +256,7 @@
 				"semver",
 				"contractHash",
 				"bundleHash",
-				"contract",
-				"description"
+				"contract"
 			],
 			"additionalProperties": true,
 			"title": "Action, trigger or provider manifest"
@@ -978,6 +999,9 @@
 						"node": {
 							"type": "string"
 						},
+						"nodeDisplayName": {
+							"type": "string"
+						},
 						"action": {
 							"type": "string"
 						},
@@ -1021,6 +1045,9 @@
 								"type": "string"
 							}
 						},
+						"credentialOptional": {
+							"const": true
+						},
 						"scopes": {
 							"type": "array",
 							"items": {
@@ -1036,6 +1063,25 @@
 								"schedule",
 								"form"
 							]
+						},
+						"endpoint": {
+							"type": "object",
+							"properties": {
+								"method": {
+									"enum": [
+										"GET",
+										"POST",
+										"PUT",
+										"PATCH",
+										"DELETE",
+										"HEAD"
+									]
+								},
+								"path": {
+									"type": "string"
+								}
+							},
+							"additionalProperties": false
 						},
 						"input": {
 							"type": "object",
@@ -1130,6 +1176,7 @@
 						"id",
 						"version",
 						"node",
+						"nodeDisplayName",
 						"action",
 						"summary",
 						"flow",
@@ -1169,6 +1216,9 @@
 									"minimum": 1
 								},
 								"node": {
+									"type": "string"
+								},
+								"nodeDisplayName": {
 									"type": "string"
 								},
 								"action": {
@@ -1214,6 +1264,9 @@
 										"type": "string"
 									}
 								},
+								"credentialOptional": {
+									"const": true
+								},
 								"scopes": {
 									"type": "array",
 									"items": {
@@ -1229,6 +1282,25 @@
 										"schedule",
 										"form"
 									]
+								},
+								"endpoint": {
+									"type": "object",
+									"properties": {
+										"method": {
+											"enum": [
+												"GET",
+												"POST",
+												"PUT",
+												"PATCH",
+												"DELETE",
+												"HEAD"
+											]
+										},
+										"path": {
+											"type": "string"
+										}
+									},
+									"additionalProperties": false
 								},
 								"input": {
 									"type": "object",
@@ -1323,6 +1395,7 @@
 								"id",
 								"version",
 								"node",
+								"nodeDisplayName",
 								"action",
 								"summary",
 								"flow",

@@ -12,7 +12,6 @@ import {
 import {
 	loadExecutor,
 	setExecutorLoader,
-	toNodeType,
 	toVersionedNodeType,
 	type FrozenVersion,
 } from '../runtime';
@@ -56,7 +55,6 @@ const frozen: FrozenVersion = {
 		contractHash: 'contract-hash',
 		bundleHash: sha256(bundle),
 		contract: toContract(query),
-		description: new (toNodeType(query))().description,
 	},
 	readBundle: async () => bundle,
 };

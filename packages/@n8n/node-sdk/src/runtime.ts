@@ -31,6 +31,7 @@ import {
 	type INodeType,
 	type INodeTypeDescription,
 	type ISupplyDataFunctions,
+	type IWebhookDescription,
 	type SupplyData,
 } from 'n8n-workflow';
 
@@ -49,6 +50,7 @@ import {
 } from './profile';
 import {
 	DEFAULT_RUN_LIMITS,
+	DEFAULT_WEBHOOK_ENDPOINT,
 	isHttpError,
 	inputCountOf,
 	isToolContract,
@@ -80,11 +82,13 @@ import {
 	type RunInput,
 	type RunLimits,
 	toContract,
+	type ContractDocument,
 	type Trigger,
 } from './define';
 import {
 	hasBinary,
 	hasPageValue,
+	shapeOf,
 	type AnySchema,
 	type Binary,
 	type JsonSchema,
@@ -111,10 +115,12 @@ import {
 	testPattern,
 	validate,
 } from './validate';
+import type { WebhookEndpoint } from './triggers';
 import {
 	assertNodeContract,
 	implementsNodeContract,
 	IMPLEMENTED_NODE_CONTRACTS,
+	NODE_CONTRACT_VERSION,
 	sha256,
 	type NodeContractVersion,
 	type VersionManifest,
@@ -485,24 +491,27 @@ export async function baseUrlOf(
 }
 
 /** The node description parts for the credential: the selector and the credential slots. */
-export function credentialDescriptionOf(user: CredentialUser) {
+function credentialDescriptionOf({
+	credentials: credentialTypes,
+	credentialOptional,
+}: Pick<ContractDocument, 'credentials' | 'credentialOptional'>) {
 	// A selector lets setup see one credential slot; each credential shows for its own value.
-	const { credentialTypes } = user;
-	const optional = user.node.credential?.optional === true;
-	const selector: INodeProperties[] = hasSelector(user)
-		? [
-				{
-					displayName: 'Authentication',
-					name: AUTHENTICATION,
-					type: 'options',
-					options: [...(optional ? ['none'] : []), ...credentialTypes].map((value) => ({
-						name: value,
-						value,
-					})),
-					default: optional ? 'none' : (credentialTypes[0] ?? 'none'),
-				},
-			]
-		: [];
+	const optional = credentialOptional === true;
+	const selector: INodeProperties[] =
+		credentialTypes.length > 1 || optional
+			? [
+					{
+						displayName: 'Authentication',
+						name: AUTHENTICATION,
+						type: 'options',
+						options: [...(optional ? ['none'] : []), ...credentialTypes].map((value) => ({
+							name: value,
+							value,
+						})),
+						default: optional ? 'none' : (credentialTypes[0] ?? 'none'),
+					},
+				]
+			: [];
 	const credentials = credentialTypes.map((name) => ({
 		name,
 		required: !optional,
@@ -1706,10 +1715,10 @@ export const countedInputsOf = countedInputs;
 
 /** Inputs run when one of them has items, as the Merge node does. */
 function mainInputsOf(
-	action: Action,
+	contract: ContractDocument,
 	supplyInputs: INodeInputConfiguration[],
 ): Pick<INodeTypeDescription, 'inputs' | 'requiredInputs'> {
-	const counted = inputCountOf({ input: action.inputSchema, inputs: action.inputs });
+	const counted = inputCountOf(contract);
 	if (counted) {
 		const { field, ...bounds } = counted;
 		const args = [field, bounds, supplyInputs].map((value) => JSON.stringify(value)).join(', ');
@@ -1718,7 +1727,7 @@ function mainInputsOf(
 			requiredInputs: 1,
 		};
 	}
-	const { inputs } = action;
+	const { inputs } = contract;
 	return inputs && !('count' in inputs)
 		? {
 				inputs: [
@@ -1755,10 +1764,11 @@ const supplyInputOf = ({
  * node reads it.
  */
 function connectionsOf(
-	action: Action,
+	contract: ContractDocument,
+	input: Shape,
 ): Pick<INodeTypeDescription, 'inputs' | 'requiredInputs' | 'outputs' | 'outputNames'> {
-	const supplyInputs = providerInputsOf(action.input).map(supplyInputOf);
-	const kind = providedKindOf(action.output.json);
+	const supplyInputs = providerInputsOf(input).map(supplyInputOf);
+	const kind = providedKindOf(contract.output);
 	if (kind) {
 		return {
 			inputs: supplyInputs,
@@ -1766,7 +1776,7 @@ function connectionsOf(
 			outputNames: [SUPPLY_LABELS[kind]],
 		};
 	}
-	return { ...mainInputsOf(action, supplyInputs), ...outputsOf(action.outputs) };
+	return { ...mainInputsOf(contract, supplyInputs), ...outputsOf(contract.outputs) };
 }
 
 /**
@@ -1822,28 +1832,66 @@ function supplyDataOf(
 	return { response: recordedSupply(value, kind, context) };
 }
 
+/** The n8n webhook of a webhook trigger. */
+function webhookOf({
+	method = DEFAULT_WEBHOOK_ENDPOINT.method,
+	path = DEFAULT_WEBHOOK_ENDPOINT.path,
+}: WebhookEndpoint = {}): IWebhookDescription {
+	return { name: 'default', httpMethod: method, responseMode: 'onReceived', path };
+}
+
+/**
+ * The n8n node description of one version of an action, trigger or provider. The host projects it
+ * from the contract, so the editor shows only what the contract types. Every Node Contract version
+ * up to this host's has the same projection. A later version that changes the description adds a
+ * branch on `nodeContract`.
+ *
+ * @throws an `UnexpectedError` for a trigger that a legacy node runs.
+ */
+export function nodeDescriptionOf({
+	contract,
+}: Pick<VersionManifest, 'contract' | 'nodeContract'>): INodeTypeDescription {
+	const input = shapeOf(contract.input);
+	const { selector, credentials } = credentialDescriptionOf(contract);
+	const base = {
+		displayName: `${contract.nodeDisplayName}: ${contract.action}`,
+		name: nodeNameOf(contract.id),
+		version: contract.version,
+		description: contract.summary,
+		defaults: { name: contract.action },
+		credentials,
+		properties: [
+			...selector,
+			...Object.entries(input)
+				.filter(([, schema]) => providerInputOf(schema.json) === undefined)
+				.map(([name, schema]) => toProperty(name, schema)),
+		],
+	};
+	const { trigger } = contract;
+	if (trigger === undefined) {
+		return { ...base, group: [GROUPS[contract.flow.effect]], ...connectionsOf(contract, input) };
+	}
+	const triggerBase: INodeTypeDescription = {
+		...base,
+		group: ['trigger'],
+		inputs: [],
+		outputs: ['main'],
+	};
+	// n8n adds Poll Times to a polling node and schedules its polls.
+	if (trigger === 'poll') return { ...triggerBase, polling: true };
+	if (trigger === 'webhook') return { ...triggerBase, webhooks: [webhookOf(contract.endpoint)] };
+	throw new UnexpectedError(`${contract.id} starts on ${trigger}: a legacy node runs it`);
+}
+
 /** An n8n node type for one action; the platform part is `executorOf`. */
 export function toNodeType<S extends Shape, O extends AnySchema>(
 	action: Action<S, O>,
 ): new () => INodeType {
 	if (action.native) throw nativeRunError(action);
-	const { selector, credentials } = credentialDescriptionOf(action);
-	const description: INodeTypeDescription = {
-		displayName: `${action.node.displayName}: ${action.action}`,
-		name: nodeNameOf(action.id),
-		group: [GROUPS[action.flow.effect]],
-		version: action.version,
-		description: action.summary,
-		defaults: { name: action.action },
-		...connectionsOf(action),
-		credentials,
-		properties: [
-			...selector,
-			...Object.entries(action.input)
-				.filter(([, schema]) => providerInputOf(schema.json) === undefined)
-				.map(([name, schema]) => toProperty(name, schema)),
-		],
-	};
+	const description = nodeDescriptionOf({
+		contract: toContract(action),
+		nodeContract: NODE_CONTRACT_VERSION,
+	});
 
 	const run = executorOf(action);
 	const kind = providedKindOf(action.output.json);
@@ -2125,7 +2173,7 @@ async function supplyVersion(
 
 /**
  * An n8n node type with one version per major. `typeOf` makes the node type of one version; its
- * description comes from the manifest.
+ * description comes from the contract, see `nodeDescriptionOf`.
  */
 export function versionedTypeOf(
 	versions: readonly FrozenVersion[],
@@ -2141,7 +2189,7 @@ export function versionedTypeOf(
 	const nodeVersions = Object.fromEntries(
 		versions.map((frozen): [number, INodeType] => [majorOf(frozen), typeOf(frozen)]),
 	);
-	const { displayName, name, group, description } = latest.manifest.description;
+	const { displayName, name, group, description } = nodeVersions[majorOf(latest)].description;
 	const base = { displayName, name, group, description, defaultVersion: majorOf(latest) };
 	return class extends VersionedNodeType {
 		constructor() {
@@ -2156,7 +2204,8 @@ export function versionedTypeOf(
  */
 export const toVersionedNodeType = (versions: readonly FrozenVersion[]) =>
 	versionedTypeOf(versions, (frozen): INodeType => {
-		const { description, contract } = frozen.manifest;
+		const { contract } = frozen.manifest;
+		const description = nodeDescriptionOf(frozen.manifest);
 		const kind = providedKindOf(contract.output);
 		if (kind) {
 			return {
@@ -2278,12 +2327,9 @@ export const toVersionedToolType = (
 	describe: (description: INodeTypeDescription) => INodeTypeDescription,
 ) =>
 	versionedTypeOf(
-		versions.map((frozen) => ({
-			...frozen,
-			manifest: { ...frozen.manifest, description: describe(frozen.manifest.description) },
-		})),
+		versions,
 		(frozen): INodeType => ({
-			description: frozen.manifest.description,
+			description: describe(nodeDescriptionOf(frozen.manifest)),
 			async supplyData(this: ISupplyDataFunctions, itemIndex: number) {
 				return { response: recordedSupply(toolOf(this, frozen, itemIndex), 'tool', this) };
 			},

@@ -3,9 +3,9 @@ import type { IDataObject, IHttpRequestOptions, INodeType } from 'n8n-workflow';
 
 import { generateNodeModule } from '../entry/codegen';
 import { compat, credential, defineCredential, field } from '../entry/credentials';
-import { toTriggerNodeType } from '../entry/host';
-import { contractHash, diffContracts, toContract } from '../entry/registry';
-import { defineNode, isRecord, parse, path, t } from '../index';
+import { nodeDescriptionOf, toTriggerNodeType } from '../entry/host';
+import { contractHash, diffContracts, toContract, type ContractDocument } from '../entry/registry';
+import { defineNode, isRecord, parse, path, t, type WebhookEndpoint } from '../index';
 import { requestOf } from '../runtime';
 import { mockHttp, runAction } from '../testing';
 
@@ -312,6 +312,52 @@ describe('triggers', () => {
 		});
 		const { description } = new (toTriggerNodeType(created))();
 		expect(description).toMatchObject({ group: ['trigger'], inputs: [], polling: true });
+		expect(nodeDescriptionOf({ contract: toContract(created), nodeContract: '2.5.0' })).toEqual(
+			description,
+		);
+	});
+
+	it('keep the webhook endpoint in the contract, so the host registers it', () => {
+		const pinged = task.trigger('pinged', {
+			trigger: 'On ping',
+			summary: 'Starts when the service pings.',
+			input: {},
+			output: taskEvent,
+			webhook: {
+				endpoint: { method: 'GET', path: 'ping' },
+				emit: () => [{ id: '1', title: 'Ping' }],
+			},
+		});
+		const contract = toContract(pinged);
+		const { endpoint, ...plain } = contract;
+		expect(endpoint).toEqual({ method: 'GET', path: 'ping' });
+		expect(contractHash(contract)).not.toBe(contractHash(plain));
+		expect(diffContracts(plain, contract).kind).toBe('major');
+		expect(toContract(signed)).not.toHaveProperty('endpoint');
+		const webhooksOf = (source: ContractDocument) =>
+			nodeDescriptionOf({ contract: source, nodeContract: '2.5.0' }).webhooks;
+		expect(webhooksOf(contract)).toEqual([
+			{ name: 'default', httpMethod: 'GET', responseMode: 'onReceived', path: 'ping' },
+		]);
+		expect(webhooksOf(toContract(signed))).toEqual([
+			{ name: 'default', httpMethod: 'POST', responseMode: 'onReceived', path: 'webhook' },
+		]);
+		expect(webhooksOf(contract)).toEqual(new (toTriggerNodeType(pinged))().description.webhooks);
+	});
+
+	it('drop webhook endpoint values that equal the defaults, so the same webhook has one hash', () => {
+		const withEndpoint = (endpoint: WebhookEndpoint) =>
+			toContract(
+				task.trigger('pinged', {
+					trigger: 'On ping',
+					summary: 'Starts when the service pings.',
+					input: {},
+					output: taskEvent,
+					webhook: { endpoint, emit: () => [] },
+				}),
+			);
+		expect(withEndpoint({ method: 'POST', path: 'webhook' })).not.toHaveProperty('endpoint');
+		expect(withEndpoint({ method: 'POST', path: 'ping' }).endpoint).toEqual({ path: 'ping' });
 	});
 
 	it('poll by item ID: the first poll sets the cursor, the next emits the newer items', async () => {

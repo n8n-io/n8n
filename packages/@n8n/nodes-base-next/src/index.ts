@@ -133,6 +133,7 @@ export { matches } from '@n8n/node-sdk';
 export {
 	credentialTypeOfManifest,
 	exampleOf,
+	nodeDescriptionOf,
 	nodeNameOf,
 	permissionsOf,
 	runsNodeContract,

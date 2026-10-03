@@ -217,6 +217,16 @@ export class Schema<T, Opt extends boolean = false, Def extends boolean = boolea
 export type AnySchema = Schema<any, boolean>;
 /** The fields of an object: one schema per field name, e.g. the `input` of an action. */
 export type Shape = Record<string, AnySchema>;
+
+/** The fields of an object JSON Schema as SDK schemas. A field not in `required` is optional. */
+export function shapeOf({ properties = {}, required = [] }: JsonSchema): Shape {
+	return Object.fromEntries(
+		Object.entries(properties).map(([name, json]) => [
+			name,
+			new Schema(json, !required.includes(name)),
+		]),
+	);
+}
 /**
  * The TypeScript type of the values of a schema.
  *

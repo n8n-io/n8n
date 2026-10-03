@@ -3,7 +3,7 @@
  * trigger, provider or credential. `scripts/spec.ts` writes these schemas to
  * `spec/manifest.schema.json`, and `parseManifest` reads with them.
  */
-import { UnexpectedError, type INodeTypeDescription } from 'n8n-workflow';
+import { UnexpectedError } from 'n8n-workflow';
 
 import type {
 	AnyCredentialType,
@@ -18,6 +18,7 @@ import type { ContractDocument, NativeNode } from './define';
 import { Schema, t, type AnySchema, type Infer, type JsonSchema } from './schema';
 import { matches } from './validate';
 import type { StoreRecord } from './store';
+import type { WebhookEndpoint } from './triggers';
 import type { NodeContractVersion, VersionManifest } from './version';
 
 const constant = <const V extends string | number | boolean>(value: V) =>
@@ -75,17 +76,27 @@ const flow = typed<ContractDocument['flow']>()(
 	}),
 );
 
+const endpoint = typed<WebhookEndpoint>()(
+	t.obj({
+		method: t.oneOf('GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD').optional(),
+		path: t.str().optional(),
+	}),
+);
+
 const contract = typed<ContractDocument>()(
 	t.obj({
 		id: t.str(),
 		version: t.int().with({ minimum: 1 }),
 		node: t.str(),
+		nodeDisplayName: t.str(),
 		action: t.str(),
 		summary: t.str(),
 		flow,
 		credentials: names(),
+		credentialOptional: constant(true).optional(),
 		scopes: names().optional(),
 		trigger: t.oneOf('webhook', 'poll', 'event', 'manual', 'schedule', 'form').optional(),
+		endpoint: endpoint.optional(),
 		input: jsonSchema(),
 		output: jsonSchema(),
 		outputs: t
@@ -111,10 +122,6 @@ const versionFields = {
 	contractHash: hex(),
 	bundleHash: hex(),
 	contract,
-	description: new Schema<INodeTypeDescription>(
-		{ type: 'object', description: 'The n8n node description at freeze time.' },
-		false,
-	),
 };
 
 /** The manifest of one version of an action, trigger or provider. */

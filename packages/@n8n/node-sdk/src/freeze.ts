@@ -5,9 +5,8 @@ import { UnexpectedError, UserError } from 'n8n-workflow';
 import type { AnyCredentialType } from './credentials';
 import { replyContractOf, toContract, type Action, type Trigger } from './define';
 import { credentialManifestOf, type CredentialManifest, type NativeManifest } from './manifest';
-import { evaluateBundle, toNodeType } from './runtime';
+import { evaluateBundle } from './runtime';
 import { manifestTextOf, type StoreRecord } from './store';
-import { triggerDescriptionOf } from './triggers';
 import {
 	contractHash,
 	manifestKindOf,
@@ -260,8 +259,6 @@ export async function freezeAction(
 		contractHash: contractHash(contract),
 		bundleHash,
 		contract,
-		description:
-			'kind' in action ? triggerDescriptionOf(action) : new (toNodeType(action))().description,
 	};
 	return { manifest, bundle, action };
 }

@@ -193,6 +193,7 @@ describe('deriveManifests', () => {
 		const create = actionOf(todo, 2, 'todo.task.create');
 		expect(create.contract).toMatchObject({
 			version: 2,
+			nodeDisplayName: 'Todo',
 			semver: '2.0.0',
 			summary: 'Create a task',
 			credentials: ['todoApi'],
