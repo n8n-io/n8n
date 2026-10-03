@@ -10,18 +10,21 @@ explicitly (via `.instructions(text, { providerOptions })`, call-level
 ```typescript
 // Defaults tuned for agent workloads: Anthropic gets a 1h instruction
 // breakpoint, OpenAI gets 24h retention plus an auto-generated cache key.
-new Agent('assistant').model('anthropic/claude-sonnet-4-5').promptCaching().instructions(LONG_SYSTEM_PROMPT);
+new Agent('assistant')
+	.model('anthropic/claude-sonnet-4-5')
+	.promptCaching()
+	.instructions(LONG_SYSTEM_PROMPT);
 
 // Override a field, or disable a provider entirely.
 new Agent('assistant')
-  .model('anthropic/claude-sonnet-4-5')
-  .promptCaching({ anthropic: { ttl: '5m' } })
-  .instructions(LONG_SYSTEM_PROMPT);
+	.model('anthropic/claude-sonnet-4-5')
+	.promptCaching({ anthropic: { ttl: '5m' } })
+	.instructions(LONG_SYSTEM_PROMPT);
 
 new Agent('assistant')
-  .model('openai/gpt-5.1')
-  .promptCaching({ openai: { promptCacheKey: 'assistant-v1' } })
-  .instructions(LONG_SYSTEM_PROMPT);
+	.model('openai/gpt-5.1')
+	.promptCaching({ openai: { promptCacheKey: 'assistant-v1' } })
+	.instructions(LONG_SYSTEM_PROMPT);
 ```
 
 ## The n8n Agent JSON config is a mandatory, simplified surface
@@ -158,6 +161,23 @@ breakpoint is added. When exactly one slot remains, the conversation-history
 breakpoint takes priority over the tool breakpoint — it recurs every turn,
 while a static tool block is already covered as part of the history
 breakpoint's prefix.
+
+**Active-skill message.** When skills fall back into `<active_skills>`, they go
+after the base instructions and before the volatile sections. Providers that
+support split system messages get them as a separate system message, so a skill
+change does not change the base message. Other providers get one merged message
+in the same order. Both shapes keep the base instructions as a stable prefix for
+automatic prefix caches such as OpenAI's.
+
+The skill message never gets the caller's `instructionProviderOptions`. A copied
+cache marker is an extra breakpoint. OpenRouter reads `anthropic.cacheControl` and
+`openrouter.cacheControl` from a system message, and the runtime does not count
+breakpoints for OpenRouter, so a copy can exceed Anthropic's limit there. The
+skill message gets only the runtime's own Anthropic marker, and only for
+Anthropic and Vertex Anthropic models with `.promptCaching()` enabled. That marker
+has the lowest priority in the budget. It stays only if a slot is left after the
+caller markers and both runtime breakpoints. For every other provider, the
+request has the same markers as when skills were part of the base message.
 
 ## OpenAI: cache key + retention
 

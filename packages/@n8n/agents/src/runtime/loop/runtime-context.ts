@@ -166,16 +166,20 @@ export class RuntimeContextBuilder {
 			.filter((value): value is string => Boolean(value))
 			.join('\n\n');
 		const { system, messages } = list.forLlm(
-			// Skill content changes only on activation. Keep it cached when memory compacts.
-			[tools.effectiveInstructions, activeSkills?.instructions()]
-				.filter(Boolean)
-				.join('\n\n'),
+			tools.effectiveInstructions,
 			instructionProviderOptions,
 			combinedVolatileInstructions || undefined,
 			supportsSplitSystemMessages(this.config.model),
+			{
+				instructions: activeSkills?.instructions(),
+				providerOptions: buildInstructionPromptCacheOptions(
+					this.config.promptCaching,
+					this.modelId,
+				),
+			},
 		);
 		// Cache breakpoints apply to this call only. Do not change stored messages or tools.
-		const cached = applyRuntimeCacheBreakpoints({
+		return applyRuntimeCacheBreakpoints({
 			system,
 			messages: activeSkills?.modelMessages(messages, list) ?? messages,
 			aiTools: tools.aiTools,
@@ -183,7 +187,6 @@ export class RuntimeContextBuilder {
 			modelId: this.modelId,
 			staticToolCacheName: tools.staticToolCacheName,
 		});
-		return { system, ...cached };
 	}
 
 	/**

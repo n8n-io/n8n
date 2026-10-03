@@ -303,6 +303,66 @@ describe('buildSystemMessages — volatile tool-instruction fragments', () => {
 		});
 	});
 
+	it('places skill instructions in their own message between base and volatile', () => {
+		const runtimeMarker = {
+			anthropic: { cacheControl: { type: 'ephemeral' as const, ttl: '1h' as const } },
+		};
+		const system = buildSystemMessages(
+			'Base instructions',
+			'<observations>\n* Some memory.\n</observations>',
+			runtimeMarker,
+			undefined,
+			undefined,
+			true,
+			{ instructions: '<active_skill>Skill body</active_skill>', providerOptions: runtimeMarker },
+		);
+
+		expect(system).toEqual([
+			{ role: 'system', content: 'Base instructions', providerOptions: runtimeMarker },
+			{
+				role: 'system',
+				content: '\n\n<active_skill>Skill body</active_skill>',
+				providerOptions: runtimeMarker,
+			},
+			{ role: 'system', content: '\n\n<observations>\n* Some memory.\n</observations>' },
+		]);
+	});
+
+	it('never copies the caller instruction options onto the skill message', () => {
+		const callerOptions = {
+			openrouter: { cacheControl: { type: 'ephemeral' } },
+			bedrock: { cachePoint: { type: 'default' } },
+		};
+		const system = buildSystemMessages(
+			'Base instructions',
+			undefined,
+			callerOptions,
+			undefined,
+			undefined,
+			true,
+			{ instructions: 'Skill body' },
+		);
+
+		expect(system).toEqual([
+			{ role: 'system', content: 'Base instructions', providerOptions: callerOptions },
+			{ role: 'system', content: '\n\nSkill body' },
+		]);
+	});
+
+	it('merges skill instructions after the base when split messages are unsupported', () => {
+		const system = buildSystemMessages(
+			'Base instructions',
+			undefined,
+			undefined,
+			undefined,
+			undefined,
+			false,
+			{ instructions: 'Skill body' },
+		);
+
+		expect(system).toEqual({ role: 'system', content: 'Base instructions\n\nSkill body' });
+	});
+
 	it('keeps the single-message shape when neither observation memory nor volatile instructions are present', () => {
 		const system = buildSystemMessages('Base instructions', undefined, undefined, undefined);
 

@@ -237,7 +237,30 @@ describe('materializeRuntimeSkillsIntoWorkspace', () => {
 		const text = skillLoadText(result);
 		expect(text).toContain('[Skill: "data-table-manager"]');
 		expect(text).toContain(`${root}/${SANDBOX_RUNTIME_SKILLS_DIR}/data-table-manager`);
-		expect(text).toContain('references/data-table-playbook.md');
+		expect(text).toContain('- "data-table-playbook": ');
+	});
+
+	it('serves references from their owner directory with sandbox placeholders resolved', async () => {
+		const source = loadInstanceAiRuntimeSkillSource();
+		const { workspace } = createMockWorkspace();
+		const root = '/home/daytona/workspace';
+
+		const materialized = await materializeRuntimeSkillsIntoWorkspace({
+			logger: mockLogger,
+			source,
+			workspace,
+			root,
+		});
+		if (!materialized) throw new Error('Expected runtime skills to materialize');
+
+		const referencePath = `${root}/${SANDBOX_RUNTIME_SKILLS_DIR}/workflow-builder/references/post-build-flow.md`;
+		const text = skillLoadText(
+			await createSkillLoadTool(materialized.source).handler?.({ skillId: 'post-build-flow' }, {}),
+		);
+		expect(text).toContain(`[Skill path: "${referencePath}"]`);
+		expect(text).toContain(`${root}/knowledge-base/reference/trigger-input-data-shapes.md`);
+		expect(text).not.toContain('{N8N_WORKSPACE_DIR}');
+		expect(materialized.skills.map(({ id }) => id)).not.toContain('post-build-flow');
 	});
 
 	it('materializes skills into the workspace before load_skill reads them', async () => {
