@@ -86,6 +86,16 @@ sources in a digest/report path. Its done branch does not accumulate loop-body
 outputs. Prefer parallel source branches plus explicit fan-in, or emit one
 success/empty/failure record per source before aggregation.
 
+## Period Summaries
+
+When the ask is a summary, digest, or report over a period ("weekly summary of
+what was recorded", "digest of this week's rows"), the summary branch must
+read that period's rows back from where the workflow logs them (Data Table,
+sheet, store) and build its content from those rows — reusing only the current
+run's in-memory data produces a single-run report mislabeled as a period
+summary. Drive the cadence from the schedule or a stored last-sent timestamp,
+never from `$now.weekday == N`, which silently no-ops on other days.
+
 ## HTTP Request Output Field Names
 
 The HTTP Request node's output field depends on Response Format. With `json`
