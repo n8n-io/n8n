@@ -26,6 +26,7 @@ export type ModelOptions = {
 	reasoningEffort?: 'low' | 'medium' | 'high';
 	timeout?: number;
 	maxRetries?: number;
+	streaming?: boolean;
 	topP?: number;
 	extraBody?: string;
 	conversationId?: string;

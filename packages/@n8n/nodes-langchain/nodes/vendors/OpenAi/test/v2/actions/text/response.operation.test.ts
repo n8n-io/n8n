@@ -1,12 +1,15 @@
 import type { Tool } from '@langchain/classic/tools';
 import type { IExecuteFunctions, INode } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
+import type { Readable } from 'node:stream';
 import type { Mocked, MockedFunction } from 'vitest';
 import { mock, mockDeep } from 'vitest-mock-extended';
 
 import { getConnectedTools } from '@utils/helpers';
 
+import type { ChatResponse } from '../../../../helpers/interfaces';
 import { pollUntilAvailable } from '../../../../helpers/polling';
+import { collectStreamedResponse } from '../../../../helpers/streaming';
 import { formatToOpenAIResponsesTool } from '../../../../helpers/utils';
 import * as transport from '../../../../transport';
 import * as helpers from '../../../../v2/actions/text/helpers/responses';
@@ -16,12 +19,19 @@ vi.mock('../../../../transport');
 vi.mock('../../../../v2/actions/text/helpers/responses');
 vi.mock('@utils/helpers');
 vi.mock('../../../../helpers/polling');
+vi.mock('../../../../helpers/streaming');
 vi.mock('../../../../helpers/utils');
 
 const mockFormatToOpenAIResponsesTool = formatToOpenAIResponsesTool as MockedFunction<
 	typeof formatToOpenAIResponsesTool
 >;
 const mockApiRequest = transport.apiRequest as MockedFunction<typeof transport.apiRequest>;
+const mockApiRequestStream = transport.apiRequestStream as MockedFunction<
+	typeof transport.apiRequestStream
+>;
+const mockCollectStreamedResponse = collectStreamedResponse as MockedFunction<
+	typeof collectStreamedResponse
+>;
 const mockCreateRequest = helpers.createRequest as MockedFunction<typeof helpers.createRequest>;
 const mockGetConnectedTools = getConnectedTools as MockedFunction<typeof getConnectedTools>;
 const mockPollUntilAvailable = pollUntilAvailable as MockedFunction<typeof pollUntilAvailable>;
@@ -178,6 +188,91 @@ describe('OpenAI Response Operation', () => {
 					pairedItem: { item: 0 },
 				},
 			]);
+		});
+	});
+
+	describe('Streaming', () => {
+		const streamedResponse = {
+			id: 'resp_123',
+			status: 'completed',
+			output: [
+				{
+					type: 'message',
+					role: 'assistant',
+					content: [{ type: 'output_text', text: 'Streamed answer' }],
+				},
+			],
+		};
+
+		beforeEach(() => {
+			mockCreateRequest.mockResolvedValue({
+				model: 'gpt-4o',
+				input: [{ role: 'user', content: [{ type: 'input_text', text: 'Hello, how are you?' }] }],
+			});
+			mockGetConnectedTools.mockResolvedValue([]);
+			mockApiRequestStream.mockResolvedValue(mock<Readable>());
+			mockCollectStreamedResponse.mockResolvedValue(streamedResponse as unknown as ChatResponse);
+		});
+
+		it('should stream the request by default on v2.4', async () => {
+			mockNode.typeVersion = 2.4;
+
+			const result = await execute.call(mockExecuteFunctions, 0);
+
+			expect(mockApiRequestStream).toHaveBeenCalledWith(
+				'POST',
+				'/responses',
+				expect.objectContaining({ body: expect.objectContaining({ stream: true }) }),
+			);
+			expect(mockApiRequest).not.toHaveBeenCalled();
+			expect(result).toEqual([{ json: streamedResponse, pairedItem: { item: 0 } }]);
+		});
+
+		it('should not stream when the option is turned off', async () => {
+			mockNode.typeVersion = 2.4;
+			mockExecuteFunctions.getNodeParameter.mockImplementation(
+				(param: string, _itemIndex: number, defaultValue?: unknown) => {
+					if (param === 'options') return { streaming: false };
+					if (param === 'responses.values') return [{ role: 'user', type: 'text', content: 'Hi' }];
+					if (param === 'simplify') return false;
+					if (param === 'hideTools') return 'show';
+					return (defaultValue ?? {}) as any;
+				},
+			);
+			mockApiRequest.mockResolvedValueOnce(streamedResponse);
+
+			await execute.call(mockExecuteFunctions, 0);
+
+			expect(mockApiRequestStream).not.toHaveBeenCalled();
+			expect(mockApiRequest).toHaveBeenCalledWith('POST', '/responses', {
+				body: expect.any(Object),
+			});
+		});
+
+		it('should not stream on node versions below 2.4', async () => {
+			mockNode.typeVersion = 2.3;
+			mockApiRequest.mockResolvedValueOnce(streamedResponse);
+
+			await execute.call(mockExecuteFunctions, 0);
+
+			expect(mockApiRequestStream).not.toHaveBeenCalled();
+			expect(mockApiRequest).toHaveBeenCalled();
+		});
+
+		it('should not stream in background mode, which polls instead', async () => {
+			mockNode.typeVersion = 2.4;
+			mockCreateRequest.mockResolvedValue({
+				model: 'gpt-4o',
+				input: [],
+				background: true,
+			});
+			mockApiRequest.mockResolvedValueOnce({ id: 'resp_123', status: 'in_progress', output: [] });
+			mockPollUntilAvailable.mockResolvedValueOnce(streamedResponse);
+
+			await execute.call(mockExecuteFunctions, 0);
+
+			expect(mockApiRequestStream).not.toHaveBeenCalled();
+			expect(mockApiRequest).toHaveBeenCalled();
 		});
 	});
 
