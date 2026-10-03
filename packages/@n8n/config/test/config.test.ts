@@ -213,6 +213,8 @@ describe('GlobalConfig', () => {
 			exclude: ['n8n-nodes-base.executeCommand', 'n8n-nodes-base.localFileTrigger'],
 			pythonEnabled: true,
 			mergeSqlSandboxMemoryLimitMb: 64,
+			permissionsDeny: [],
+			egressInputHosts: [],
 		},
 		publicApi: {
 			disabled: false,
@@ -785,6 +787,25 @@ describe('GlobalConfig', () => {
 		const config = Container.get(GlobalConfig);
 
 		expect(config.endpoints.metrics.includeNodeContractMetrics).toBe(true);
+	});
+
+	it('should parse N8N_NODE_PERMISSIONS_DENY and N8N_NODE_EGRESS_INPUT_HOSTS from env variables', () => {
+		process.env = {
+			N8N_NODE_PERMISSIONS_DENY: 'egress-input,code,files,full-community',
+			N8N_NODE_EGRESS_INPUT_HOSTS: 'api.acme.test,*.acme.test',
+		};
+		const { nodes } = Container.get(GlobalConfig);
+
+		expect([...nodes.permissionsDeny]).toEqual(['egress-input', 'code', 'files', 'full-community']);
+		expect([...nodes.egressInputHosts]).toEqual(['api.acme.test', '*.acme.test']);
+	});
+
+	it('should fail on an unknown class in N8N_NODE_PERMISSIONS_DENY', () => {
+		process.env = { N8N_NODE_PERMISSIONS_DENY: 'code,network' };
+
+		expect(() => Container.get(GlobalConfig)).toThrow(
+			'Unknown node permission class in N8N_NODE_PERMISSIONS_DENY: "network". Valid classes: egress-input, code, files, full-community.',
+		);
 	});
 
 	it('should parse N8N_AGENTS_TRACING_RECORD_INPUTS from env variables', () => {

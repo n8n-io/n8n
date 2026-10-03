@@ -566,6 +566,12 @@ export interface ExecutorHost {
 	warn?(message: string): void;
 	/** Limits that replace the defaults of `RunLimits`. */
 	readonly limits?: Partial<RunLimits>;
+	/**
+	 * The host patterns that a URL from input (`egress.fromInput`) may reach, and its redirect
+	 * hops with the action hosts. Absent or empty is no limit. n8n sets it from
+	 * `N8N_NODE_EGRESS_INPUT_HOSTS`.
+	 */
+	readonly egressInputHosts?: readonly string[];
 	/** Needed by an action with a `t.binary()` field only. */
 	readonly binary?: BinaryStore;
 	/** The items of input `index`, for an action with named inputs. Input 0 is `items`. */
@@ -613,9 +619,22 @@ const binaryStoreOf = (context: NodeContext): BinaryStore => ({
 		await context.helpers.prepareBinaryData(bytes, fileName, mimeType),
 });
 
+// One slot: the host sets the admin list once at start, as the executor loader.
+const egressInputHosts = new Map<'hosts', readonly string[]>();
+
+/** Sets the hosts that a URL from input may reach in every node run. Empty is no limit. */
+export const setEgressInputHosts = (hosts: readonly string[]) => {
+	// The matcher compares lowercase hosts, and an admin list can have spaces after the commas.
+	egressInputHosts.set(
+		'hosts',
+		hosts.map((host) => host.trim().toLowerCase()).filter((host) => host.length > 0),
+	);
+};
+
 /** The host parts that do not depend on the items of the run. */
 const hostBaseOf = (context: NodeContext) => ({
 	node: context.getNode(),
+	egressInputHosts: egressInputHosts.get('hosts'),
 	request: async (options: IHttpRequestOptions, credentialType: string | undefined) => {
 		const response: unknown = credentialType
 			? await context.helpers.httpRequestWithAuthentication.call(context, credentialType, options)
@@ -1072,7 +1091,12 @@ export function executorOf<S extends Shape, O extends AnySchema>(
 			try {
 				return {
 					// No egress and no base URL is no host, as in the sandbox.
-					...actionHostsOf(action.egress ?? { hosts: [] }, input, [action.node.baseUrl, baseUrl]),
+					...actionHostsOf(
+						action.egress ?? { hosts: [] },
+						input,
+						[action.node.baseUrl, baseUrl],
+						host.egressInputHosts,
+					),
 					credential: credentialType
 						? credentialHostsOf(credentialValue, data, {
 								surface: action.node.displayName,

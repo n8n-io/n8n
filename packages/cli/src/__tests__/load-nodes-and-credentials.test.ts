@@ -2,6 +2,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { Module } from 'node:module';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import type { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import watcher from '@parcel/watcher';
 import fs from 'fs/promises';
@@ -755,6 +756,30 @@ describe('LoadNodesAndCredentials', () => {
 			await expect(
 				onFileUpdate(null, [{ type: 'update', path: '/some/custom/path/X.node.js' }]),
 			).resolves.not.toThrow();
+		});
+	});
+
+	describe('loadPackage', () => {
+		it('refuses a community package when N8N_NODE_PERMISSIONS_DENY has full-community', async () => {
+			const globalConfig = mock<GlobalConfig>({
+				nodes: { exclude: [], include: [], permissionsDeny: ['full-community'] },
+			});
+			const instance = new LoadNodesAndCredentials(
+				mock(),
+				mock(),
+				mock(),
+				globalConfig,
+				mock(),
+				mock(),
+			);
+
+			const loading = instance.loadPackage('n8n-nodes-acme');
+
+			await expect(loading).rejects.toThrow(UserError);
+			await expect(loading).rejects.toThrow(
+				'Community package n8n-nodes-acme does not load: N8N_NODE_PERMISSIONS_DENY denies its permission class "full-community"',
+			);
+			expect(instance.loaders).toEqual({});
 		});
 	});
 

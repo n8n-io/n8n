@@ -1,6 +1,7 @@
 import {
 	runsNodeContract,
 	setContractVersionLoader,
+	setEgressInputHosts,
 	setExecutorLoader,
 	setNodeContractRange,
 	setRunProfileListener,
@@ -70,6 +71,8 @@ export interface ContractRegistryOptions {
 	readonly sandbox?: { readonly options: SandboxOptions; readonly scope: 'stored' | 'all' };
 	/** Gets the run profile of each node execution, e.g. for traces. Without it, nothing is recorded. */
 	readonly onRunProfile?: RunProfileListener;
+	/** The host patterns that a URL from input may reach, in-process and in the sandbox. Empty: no limit. */
+	readonly egressInputHosts?: readonly string[];
 }
 
 /**
@@ -423,14 +426,15 @@ const isBundled = (manifest: VersionManifest) =>
 	);
 
 /**
- * Sets the Node Contract range, the version loader, the sandbox and the run profile listener of
- * this package's node-sdk, which its nodes run with. With a sandbox, it also starts to compile
- * the sandbox guests and does not wait for the result.
+ * Sets the Node Contract range, the version loader, the sandbox, the run profile listener and the
+ * input hosts of this package's node-sdk, which its nodes run with. With a sandbox, it also
+ * starts to compile the sandbox guests and does not wait for the result.
  */
 export const useContractRegistry = (options: ContractRegistryOptions) => {
 	setNodeContractRange(options.nodeContractRange);
 	setContractVersionLoader(contractVersionLoader(options));
 	setRunProfileListener(options.onRunProfile);
+	setEgressInputHosts(options.egressInputHosts ?? []);
 	if (options.sandbox) {
 		const { scope } = options.sandbox;
 		setExecutorLoader(

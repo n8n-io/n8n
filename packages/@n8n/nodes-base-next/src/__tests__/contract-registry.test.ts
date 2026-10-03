@@ -1,6 +1,7 @@
 import {
 	setContractVersionLoader,
 	setNodeContractRange,
+	toNodeType,
 	toVersionedNodeType,
 	type FrozenVersion,
 } from '@n8n/node-sdk/host';
@@ -35,6 +36,7 @@ import {
 	type ContractRegistryOptions,
 	type ContractStoreOptions,
 } from '../contract-registry';
+import { getRequest } from '../nodes/http-request/actions/get';
 import { versionsOf } from '../registry';
 
 vi.mock('node:fs/promises', async (importOriginal) => {
@@ -508,5 +510,30 @@ describe('useContractRegistry', () => {
 
 	it('runs every version in the sandbox with the all scope', () => {
 		expect(inProcessOf('all')?.(manifest)).toBe(false);
+	});
+
+	it('refuses a URL from input outside the input hosts in a node run', async () => {
+		useContractRegistry({
+			policy: 'tolerant',
+			store: storeOf(),
+			metaOf: async () => undefined,
+			nodeContractRange: '>=2.0.0 <3.0.0',
+			egressInputHosts: [' Allowed.test'],
+		});
+		const httpRequest = vi.fn();
+		const context = {
+			getInputData: () => [{ json: {} }],
+			getNode: () => ({ name: 'GET', credentials: {} }),
+			getNodeParameter: (name: string) => (name === 'url' ? 'https://other.test/x' : undefined),
+			continueOnFail: () => false,
+			helpers: { httpRequest },
+		} as unknown as IExecuteFunctions;
+		const NodeType = toNodeType(getRequest);
+
+		await expect(new NodeType().execute?.call(context)).rejects.toThrow(
+			'this n8n instance lets a URL from input reach only allowed.test, not other.test',
+		);
+		expect(httpRequest).not.toHaveBeenCalled();
+		use();
 	});
 });

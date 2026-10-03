@@ -153,7 +153,12 @@ export class LoadNodesAndCredentials {
 			'@/node-contracts-registry.js'
 		);
 		await useNodeContractsRegistry();
-		return new ContractNodeLoader(this.excludeNodes, this.includeNodes);
+		return new ContractNodeLoader(
+			this.excludeNodes,
+			this.includeNodes,
+			undefined,
+			this.globalConfig.nodes.permissionsDeny,
+		);
 	}
 
 	addPostProcessor(fn: () => Promise<void>) {
@@ -345,6 +350,11 @@ export class LoadNodesAndCredentials {
 	}
 
 	async loadPackage(packageName: string) {
+		if (this.globalConfig.nodes.permissionsDeny.includes('full-community')) {
+			throw new UserError(
+				`Community package ${packageName} does not load: N8N_NODE_PERMISSIONS_DENY denies its permission class "full-community"`,
+			);
+		}
 		const finalNodeUnpackedPath = path.join(
 			this.instanceSettings.nodesDownloadDir,
 			'node_modules',

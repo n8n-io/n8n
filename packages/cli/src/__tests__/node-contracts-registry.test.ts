@@ -40,7 +40,7 @@ describe('useNodeContractsRegistry', () => {
 		},
 	} as unknown as GlobalConfig);
 	mockInstance(InstanceSettings, { n8nFolder: '/n8n' });
-	mockInstance(NodesConfig, { pythonEnabled: false });
+	mockInstance(NodesConfig, { pythonEnabled: false, egressInputHosts: ['*.acme.test'] });
 	mockInstance(OutboundHttp).transport.mockReturnValue(
 		mock<ReturnType<OutboundHttp['transport']>>(),
 	);
@@ -67,6 +67,7 @@ describe('useNodeContractsRegistry', () => {
 				storeDir: '/n8n/node-contracts',
 			},
 		});
+		expect([...(options?.egressInputHosts ?? [])]).toEqual(['*.acme.test']);
 		expect(await options?.metaOf(contextOf('1'))).toBe(meta);
 		expect(await options?.metaOf(contextOf('1'))).toBe(meta);
 		expect(await options?.metaOf(contextOf('2'))).toBe(meta);

@@ -101,7 +101,11 @@ export {
 } from './configs/canvas-only.config';
 export { HttpRequestConfig } from './configs/http-request.config';
 export { PersonalizationConfig } from './configs/personalization.config';
-export { NodesConfig } from './configs/nodes.config';
+export {
+	NodesConfig,
+	NODE_PERMISSION_CLASSES,
+	type NodePermissionClass,
+} from './configs/nodes.config';
 export { CronLoggingConfig } from './configs/logging.config';
 export { WorkflowHistoryCompactionConfig } from './configs/workflow-history-compaction.config';
 export { ChatHubConfig } from './configs/chat-hub.config';

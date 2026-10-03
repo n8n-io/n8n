@@ -116,6 +116,7 @@ describe('Start system task metrics', () => {
 		config.executions.mode = 'regular';
 		config.workflows.useWorkflowPublicationService = false;
 		config.credentials.overwrite.endpoint = '';
+		config.instanceAi.nodeContractsEnabled = false;
 
 		Container.get(InstanceSettings).markAsLeader();
 		Container.set(SystemTaskMetadata, new SystemTaskMetadata());

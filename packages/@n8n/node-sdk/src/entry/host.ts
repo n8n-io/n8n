@@ -12,6 +12,7 @@ export {
 	AUTHENTICATION,
 	nodeNameOf,
 	setContractVersionLoader,
+	setEgressInputHosts,
 	setExecutorLoader,
 	toNodeType,
 	toVersionedNodeType,

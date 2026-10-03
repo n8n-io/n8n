@@ -227,6 +227,24 @@ describe('host egress', () => {
 		expect(sent[0]?.allowedDomains).toBeUndefined();
 	});
 
+	it('refuses a host from input outside the input hosts of the host and sends no request', async () => {
+		const { host, sent } = hostOf({ parameters: { url: 'https://other.test/x' } });
+		await expect(
+			executorOf(fetchUrl)({ ...host, egressInputHosts: ['allowed.test', '*.allowed.test'] }),
+		).rejects.toThrow(
+			'Host not allowed: this n8n instance lets a URL from input reach only allowed.test, *.allowed.test, not other.test',
+		);
+		expect(sent).toEqual([]);
+	});
+
+	it('limits the redirect hops of a host from input to the node hosts and the input hosts', async () => {
+		const { host, sent } = hostOf({ parameters: { url: 'https://api.allowed.test/x' } });
+		await executorOf(fetchUrl)({ ...host, egressInputHosts: ['*.allowed.test'] });
+		expect(sent.map(({ allowedDomains }) => allowedDomains)).toEqual([
+			'api.echo.test, *.allowed.test',
+		]);
+	});
+
 	it('keeps a typed credential on its own hosts when its setting is none', async () => {
 		const { host, sent } = hostOf({
 			credentialType: 'echoApi',

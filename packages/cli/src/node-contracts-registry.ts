@@ -1,7 +1,7 @@
 import { Logger } from '@n8n/backend-common';
 import { OutboundHttp } from '@n8n/backend-network';
 import { EventService } from '@n8n/backend-services';
-import { GlobalConfig, NodesConfig } from '@n8n/config';
+import { GlobalConfig, NodesConfig, type NodePermissionClass } from '@n8n/config';
 import { WorkflowRepository } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import { readFile } from 'fs/promises';
@@ -14,6 +14,7 @@ import {
 	NODE_PACKAGE,
 	nodeNameOf,
 	nodeTypeOf,
+	permissionsOf,
 	runsNodeContract,
 	storeIndexFileOf,
 	toolActions,
@@ -104,6 +105,19 @@ async function storedContractVersions(): Promise<ReadonlyMap<string, readonly Fr
 
 const majorOf = ({ manifest }: FrozenVersion) => manifest.contract.version;
 
+/** The first class of `deny` that the contract of a version has. */
+function deniedClassOf({ manifest }: FrozenVersion, deny: readonly NodePermissionClass[]) {
+	const { egress, imports } = permissionsOf(manifest.contract);
+	// No contract has a files capability yet, and a contract node is never a legacy community node.
+	const has: Record<NodePermissionClass, boolean> = {
+		'egress-input': egress.fromInput !== undefined,
+		code: imports.includes('code'),
+		files: false,
+		'full-community': false,
+	};
+	return deny.find((name) => has[name]);
+}
+
 /** One node type of the contract loader and the frozen versions it projects. */
 interface ContractNode extends LoadedClass<VersionedNodeType> {
 	readonly versions: readonly FrozenVersion[];
@@ -146,11 +160,15 @@ export class ContractNodeLoader implements NodeLoader {
 
 	private typesReleased = false;
 
-	/** `excludeNodes` and `includeNodes` hold full node type names, as `N8N_NODES_EXCLUDE` does. */
+	/**
+	 * `excludeNodes` and `includeNodes` hold full node type names, as `N8N_NODES_EXCLUDE` does.
+	 * `deny` holds the permission classes of `N8N_NODE_PERMISSIONS_DENY`.
+	 */
 	constructor(
 		private readonly excludeNodes: readonly string[] = [],
 		private readonly includeNodes: readonly string[] = [],
 		private readonly storedVersions = storedContractVersions,
+		private readonly deny: readonly NodePermissionClass[] = [],
 	) {}
 
 	async loadAll() {
@@ -171,7 +189,7 @@ export class ContractNodeLoader implements NodeLoader {
 						(version) =>
 							!majors.has(majorOf(version)) && runsNodeContract(version.manifest.nodeContract),
 					),
-				];
+				].filter(this.permits);
 				if (versions.length === 0) return [];
 				const sourcePath = bundled.has(id)
 					? path.join(EMBEDDED_STORE_DIR, storeIndexFileOf(id))
@@ -252,6 +270,17 @@ export class ContractNodeLoader implements NodeLoader {
 		return sourcePath;
 	}
 
+	/** Whether `N8N_NODE_PERMISSIONS_DENY` lets a version load, for bundled and stored versions alike. */
+	private readonly permits = (version: FrozenVersion) => {
+		const denied = deniedClassOf(version, this.deny);
+		if (denied === undefined) return true;
+		const { id, semver } = version.manifest;
+		Container.get(Logger).warn(
+			`${id}@${semver} does not load: N8N_NODE_PERMISSIONS_DENY denies its permission class "${denied}"`,
+		);
+		return false;
+	};
+
 	/** Whether the settings load the node type of an id. An include list without it loads nothing. */
 	private readonly loads = (id: string) => {
 		const nodeType = `${NODE_PACKAGE}.${nodeNameOf(id)}`;
@@ -284,10 +313,9 @@ export async function useNodeContractsRegistry() {
 	const { sandboxCredentialTypeOf, setCodeLanguages, useContractRegistry } = await import(
 		'@n8n/nodes-base-next'
 	);
+	const nodes = Container.get(NodesConfig);
 	// The Code contracts follow the same switch as the Code node.
-	setCodeLanguages(
-		Container.get(NodesConfig).pythonEnabled ? ['javascript', 'python'] : ['javascript'],
-	);
+	setCodeLanguages(nodes.pythonEnabled ? ['javascript', 'python'] : ['javascript']);
 	const metaByExecution = new Map<string, Promise<unknown>>();
 
 	const metaOf = async (workflowId: string | undefined) => {
@@ -320,6 +348,7 @@ export async function useNodeContractsRegistry() {
 		policy: instanceAi.nodeContractsUpdatePolicy,
 		nodeContractRange: instanceAi.nodeContractRange,
 		sandbox,
+		egressInputHosts: nodes.egressInputHosts,
 		store: await Container.get(NodeContractsStore).open(),
 		onRunProfile: ({ executionId, nodeName }, profile) =>
 			Container.get(EventService).emit('node-contract-run-profiled', {

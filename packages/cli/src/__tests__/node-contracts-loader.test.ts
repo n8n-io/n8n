@@ -1,3 +1,5 @@
+import { Logger } from '@n8n/backend-common';
+import { mockInstance } from '@n8n/backend-test-utils';
 import type { GlobalConfig } from '@n8n/config';
 import {
 	bundledCredentialsOf,
@@ -177,5 +179,57 @@ describe('ContractNodeLoader', () => {
 		expect(excluded.known.nodes).toHaveProperty('httpRequestSend');
 		expect(Object.keys(included.known.nodes)).toEqual(['httpRequestGet']);
 		expect(otherPackage.known.nodes).toEqual({});
+	});
+
+	it('does not load a version with a denied permission class, and warns once for each', async () => {
+		const logger = mockInstance(Logger);
+		const all = new ContractNodeLoader([], [], noStore);
+		const egressInput = new ContractNodeLoader([], [], noStore, ['egress-input']);
+		const code = new ContractNodeLoader([], [], noStore, ['code']);
+		const others = new ContractNodeLoader([], [], noStore, ['files', 'full-community']);
+		await Promise.all([all.loadAll(), egressInput.loadAll(), code.loadAll(), others.loadAll()]);
+		const refused = ({ known }: ContractNodeLoader) =>
+			Object.keys(all.known.nodes).filter((name) => !(name in known.nodes));
+
+		expect(refused(egressInput)).toEqual([
+			'httpRequestDownload',
+			'httpRequestGet',
+			'httpRequestSend',
+		]);
+		expect(refused(code)).toEqual(['codeJavaScript', 'codePython']);
+		expect(refused(others)).toEqual([]);
+		expect(logger.warn).toHaveBeenCalledTimes(5);
+		expect(logger.warn).toHaveBeenCalledWith(
+			expect.stringMatching(
+				/^code\.python@\S+ does not load: N8N_NODE_PERMISSIONS_DENY denies its permission class "code"$/,
+			),
+		);
+	});
+
+	it('does not load a stored version with a denied permission class', async () => {
+		mockInstance(Logger);
+		const id = 'notion.dataSource.pageAdded';
+		const [head] = versionsOf(id);
+		if (!head) throw new Error(`${id} has no bundled HEAD`);
+		const { manifest } = head;
+		const major = manifest.contract.version + 1;
+		const stored: FrozenVersion = {
+			...head,
+			manifest: {
+				...manifest,
+				contract: { ...manifest.contract, version: major, egress: { fromInput: 'url' } },
+				description: { ...manifest.description, version: major },
+			},
+		};
+		const loader = new ContractNodeLoader([], [], async () => new Map([[id, [stored]]]), [
+			'egress-input',
+		]);
+		await loader.loadAll();
+
+		const majors = (versions: readonly FrozenVersion[]) =>
+			versions.map((version) => version.manifest.contract.version);
+		expect(majors(loader.frozenVersionsOf(manifest.description.name))).toEqual(
+			majors(versionsOf(id)),
+		);
 	});
 });

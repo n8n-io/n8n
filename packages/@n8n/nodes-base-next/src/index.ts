@@ -129,6 +129,7 @@ export {
 	credentialTypeOfManifest,
 	exampleOf,
 	nodeNameOf,
+	permissionsOf,
 	runsNodeContract,
 	setCodeLanguages,
 	toVersionedNodeType,

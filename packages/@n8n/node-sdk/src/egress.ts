@@ -116,7 +116,8 @@ export interface EgressPolicy {
 	readonly action: Hosts;
 	/**
 	 * The action hosts that also bind each redirect hop. A host from input does not: the user
-	 * picked the server, and the server picks where it redirects.
+	 * picked the server, and the server picks where it redirects. When `N8N_NODE_EGRESS_INPUT_HOSTS`
+	 * limits the host from input, the action hosts and that list bind each hop.
 	 */
 	readonly redirect: Hosts;
 	/** The hosts of the applied credential. */
@@ -127,20 +128,33 @@ export interface EgressPolicy {
  * The action hosts for one item: the base URL hosts, the declared hosts with their input fields
  * filled, and the host of the `fromInput` field. No `egress` and no base URL is no action limit,
  * which only a trigger uses: an action without `egress` gives `{ hosts: [] }` and reaches only
- * its base URL hosts. The credential hosts still apply.
+ * its base URL hosts. The credential hosts still apply. `inputHosts` limits the `fromInput` host
+ * and its redirect hops; empty is no limit. Throws a `UserError` for a host outside it.
  */
 export function actionHostsOf(
 	egress: ContractEgress | undefined,
 	input: Readonly<Record<string, unknown>>,
 	baseUrls: ReadonlyArray<string | undefined>,
+	inputHosts: readonly string[] = [],
 ): Pick<EgressPolicy, 'action' | 'redirect'> {
 	const base = unique(baseUrls.map(urlHostOf));
 	if (!egress && base.length === 0) return { action: undefined, redirect: undefined };
-	const declared = (egress?.hosts ?? []).map((host) => filledHost(host, input));
-	const fromInput =
-		egress?.fromInput === undefined ? undefined : urlHostOf(input[egress.fromInput]);
-	const action = unique([...base, ...declared, fromInput]);
-	return { action, redirect: egress?.fromInput === undefined ? action : undefined };
+	const declared = unique([
+		...base,
+		...(egress?.hosts ?? []).map((host) => filledHost(host, input)),
+	]);
+	if (egress?.fromInput === undefined) return { action: declared, redirect: declared };
+	const fromInput = urlHostOf(input[egress.fromInput]);
+	const limited = inputHosts.length > 0;
+	if (limited && fromInput && !allowsHost(inputHosts, fromInput)) {
+		throw new UserError(
+			`Host not allowed: this n8n instance lets a URL from input reach only ${inputHosts.join(', ')}, not ${fromInput}`,
+		);
+	}
+	return {
+		action: unique([...declared, fromInput]),
+		redirect: limited ? unique([...declared, ...inputHosts]) : undefined,
+	};
 }
 
 /**
