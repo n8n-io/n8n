@@ -45,6 +45,7 @@ vi.mock('@n8n/i18n', async (importOriginal) => ({
 				'instanceAi.tools.data-tables.add-column.imperative': 'add column',
 				'instanceAi.tools.data-tables.add-column.imperativeWithResource': 'add a column to',
 				'instanceAi.tools.nodes.execute.imperativeWithResource': 'execute the',
+				'instanceAi.tools.executions.listen.imperativeWithResource': 'listen for a test request to',
 			};
 			if (key === 'agents.chat.approval.description') {
 				return `The agent wants to run the ${opts?.interpolate?.toolName ?? ''} tool.`;
@@ -334,6 +335,22 @@ describe('InstanceAiConfirmationPanel telemetry', () => {
 			);
 			const { getByText } = renderComponent({ props: { kind: 'floating' } });
 			expect(getByText(`Assistant wants to ${phrase} Orders`)).toBeVisible();
+		});
+
+		it('names the workflow for listen approvals', () => {
+			injectPendingConfirmation(
+				thread,
+				{
+					requestId: 'listen',
+					severity: 'warning',
+					message: 'Listen for a test request to this workflow',
+					resourceName: 'Orders',
+				},
+				{ action: 'listen', workflowId: 'wf-1' },
+				'executions',
+			);
+			const { getByText } = renderComponent({ props: { kind: 'floating' } });
+			expect(getByText('Assistant wants to listen for a test request to Orders')).toBeVisible();
 		});
 
 		it('falls back to the tool label for an unknown approval action', () => {

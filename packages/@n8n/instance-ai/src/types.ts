@@ -615,6 +615,28 @@ export interface ExecutionSummary {
 	workflowVersionId?: string | null;
 }
 
+export interface TestListenerTrigger {
+	nodeName: string;
+	url: string;
+	method: string;
+}
+
+export interface TestListenerArmed {
+	state: 'armed';
+	workflowId: string;
+	triggers: TestListenerTrigger[];
+	/** ISO timestamp. Executions started at or after it belong to this listener. */
+	armedAt: string;
+	/** ISO timestamp at which the listener deregisters itself. */
+	deadlineAt: string;
+}
+
+export type TestListenerOutcome =
+	| { state: 'armed' }
+	| { state: 'received'; result: ExecutionResult }
+	| { state: 'timed_out' }
+	| { state: 'cancelled' };
+
 export interface InstanceAiExecutionService {
 	list(options?: {
 		workflowId?: string;
@@ -714,6 +736,23 @@ export interface InstanceAiExecutionService {
 		nodeName: string,
 		options?: { itemIndex?: number; runIndex?: number },
 	): Promise<ResolvedNodeParametersResult>;
+	/**
+	 * Arm the test URL of a Webhook or Form Trigger so one real request starts a
+	 * manual execution. Returns the URL and method of every armed trigger.
+	 * Optional: absent on hosts without test webhook support.
+	 */
+	armTestListener?(
+		workflowId: string,
+		options?: { triggerNodeName?: string },
+	): Promise<TestListenerArmed>;
+	/**
+	 * Settle a listener armed at `armedAt`: cancel it, or report whether a request
+	 * arrived. `executionId` is the execution the push event named, when known.
+	 */
+	resolveTestListener?(
+		workflowId: string,
+		options: { armedAt: string; executionId?: string; cancel?: boolean },
+	): Promise<TestListenerOutcome>;
 }
 
 export type ExecuteNodeResult =
