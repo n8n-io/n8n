@@ -4,17 +4,24 @@ import {
 	type INodeTypeDescription,
 	type IPollFunctions,
 	NodeConnectionTypes,
+	NodeOperationError,
 } from 'n8n-workflow';
 
-import { getDrives } from './drive';
-import { getSites, SITE_ID_REGEX } from './site';
-import { SERVICE_PRINCIPAL_AUTH } from './transport';
-
-const GUID = '[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}';
-// Rejects a bare GUID, which is a list ID: the one value likely to land in this
-// field by mistake. Nothing further is asserted about a drive ID, because
-// rejecting a legitimate one is the worse failure.
-const DRIVE_ID_REGEX = `^(?!${GUID}$)\\S+$`;
+import { DRIVE_ID_HINT, DRIVE_ID_REGEX, getDrives, resolveDriveId } from './drive';
+import { getSites, resolveSiteId, SITE_ID_REGEX } from './site';
+import { getSharePointCredentialType, SERVICE_PRINCIPAL_AUTH } from './transport';
+import { isTargetMissing, microsoftApiRequestDelta } from './transport/delta';
+import { selectChanges, TRIGGER_EVENTS, type SharePointEvent } from './trigger/changes';
+import {
+	clearError,
+	cursorFor,
+	errorKeyOf,
+	noteError,
+	rearm,
+	saveCursor,
+	scopeOf,
+	type PollState,
+} from './trigger/state';
 
 export class MicrosoftSharePointTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -155,8 +162,7 @@ export class MicrosoftSharePointTrigger implements INodeType {
 								type: 'regex',
 								properties: {
 									regex: DRIVE_ID_REGEX,
-									errorMessage:
-										"That looks like a list ID. This field needs the library's drive ID, which the picker supplies.",
+									errorMessage: DRIVE_ID_HINT,
 								},
 							},
 						],
@@ -193,6 +199,69 @@ export class MicrosoftSharePointTrigger implements INodeType {
 	};
 
 	async poll(this: IPollFunctions): Promise<INodeExecutionData[][] | null> {
-		return null;
+		const state = this.getWorkflowStaticData('node') as PollState;
+		// A manual run must not consume real events, so it neither reads nor writes
+		// the cursor. It enumerates from the start instead, to produce sample data.
+		const manual = this.getMode() === 'manual';
+		let siteId = '';
+		let driveId = '';
+
+		try {
+			siteId = await resolveSiteId.call(this, 0);
+			driveId = await resolveDriveId.call(this, 0);
+			const events = this.getNodeParameter('events', [...TRIGGER_EVENTS]) as SharePointEvent[];
+			const scope = scopeOf(getSharePointCredentialType.call(this), siteId, driveId);
+
+			const page = await microsoftApiRequestDelta.call(this, {
+				feed: 'driveItem',
+				driveId,
+				excludeParents: true,
+				cursor: manual ? undefined : cursorFor(state, scope),
+				deadlineEpochMs: manual ? undefined : Date.now() + this.getPollBudgetMs(),
+				maxPages: manual ? 1 : undefined,
+			});
+
+			if (page.resync) {
+				// The 410 carries a Location that restarts a full enumeration. This
+				// trigger reports changes rather than mirroring a library, so it
+				// re-arms from now and accepts the gap instead of replaying everything.
+				if (!manual) rearm(state, scope);
+				clearError(state);
+				this.logger.warn(
+					`Microsoft SharePoint Trigger: the change cursor expired (${page.resync.code}). Watching from now on.`,
+				);
+				return null;
+			}
+
+			// A long drain returns a nextLink rather than a deltaLink. Saving it
+			// resumes mid-enumeration instead of restarting the backlog.
+			const cursor = page.deltaLink ?? page.nextLink;
+			if (!manual && cursor !== undefined) saveCursor(state, scope, cursor);
+			clearError(state);
+
+			const items = selectChanges(page.items, events);
+			return items.length > 0 ? [this.helpers.returnJsonArray(items)] : null;
+		} catch (error) {
+			const reported = isTargetMissing(error)
+				? new NodeOperationError(
+						this.getNode(),
+						'The document library being watched is no longer reachable',
+						{
+							description: `Microsoft Graph returned 404 for library ${driveId} on site ${siteId}. It may have been deleted or renamed, or the credential may have lost access to it. The saved position is kept, so polling resumes if it comes back.`,
+						},
+					)
+				: error;
+
+			// A manual run is the user watching, so it always reports.
+			if (manual) throw reported;
+
+			const key = errorKeyOf(reported);
+			if (noteError(state, key, Date.now())) throw reported;
+
+			this.logger.warn(
+				`Microsoft SharePoint Trigger: still failing with "${key}". The next report is up to an hour away.`,
+			);
+			return null;
+		}
 	}
 }
