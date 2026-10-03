@@ -11,7 +11,11 @@ import type {
 import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
 import { documentFields, documentOperations } from './DocumentDescription';
-import { erpNextApiRequest, erpNextApiRequestAllItems } from './GenericFunctions';
+import {
+	erpNextApiDocTypeFields,
+	erpNextApiRequest,
+	erpNextApiRequestAllItems,
+} from './GenericFunctions';
 import type { DocumentProperties } from './utils';
 import { processNames, toSQL } from './utils';
 
@@ -73,18 +77,11 @@ export class ERPNext implements INodeType {
 			},
 			async getDocFilters(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const docType = this.getCurrentNodeParameter('docType') as string;
-				const { data } = await erpNextApiRequest.call(
-					this,
-					'GET',
-					`/api/resource/DocType/${docType}`,
-					{},
-				);
+				const fields = await erpNextApiDocTypeFields.call(this, docType);
 
-				const docFields = data.fields.map(
-					({ label, fieldname }: { label: string; fieldname: string }) => {
-						return { name: label, value: fieldname };
-					},
-				);
+				const docFields = fields.map(({ label, fieldname }) => {
+					return { name: label, value: fieldname };
+				});
 
 				docFields.unshift({ name: '*', value: '*' });
 
@@ -92,18 +89,11 @@ export class ERPNext implements INodeType {
 			},
 			async getDocFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const docType = this.getCurrentNodeParameter('docType') as string;
-				const { data } = await erpNextApiRequest.call(
-					this,
-					'GET',
-					`/api/resource/DocType/${docType}`,
-					{},
-				);
+				const fields = await erpNextApiDocTypeFields.call(this, docType);
 
-				const docFields = data.fields.map(
-					({ label, fieldname }: { label: string; fieldname: string }) => {
-						return { name: label, value: fieldname };
-					},
-				);
+				const docFields = fields.map(({ label, fieldname }) => {
+					return { name: label, value: fieldname };
+				});
 
 				return processNames(docFields);
 			},
