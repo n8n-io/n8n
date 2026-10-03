@@ -29,7 +29,10 @@ import {
 	WAIT_NODE_TYPE,
 } from '@/app/constants';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import { useNodeSettingsParameters } from '@/features/ndv/settings/composables/useNodeSettingsParameters';
+import {
+	getParameterValueShape,
+	useNodeSettingsParameters,
+} from '@/features/ndv/settings/composables/useNodeSettingsParameters';
 import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useI18n } from '@n8n/i18n';
 import AssignmentCollection from './AssignmentCollection/AssignmentCollection.vue';
@@ -1024,8 +1027,9 @@ watch(
 					@click="deleteOption(item.parameter.name)"
 				></N8nIconButton>
 
+				<!-- A new shape gets a fresh input, so no local state of the previous one leaks in -->
 				<ParameterInputFull
-					:key="node?.name"
+					:key="`${node?.name}:${getParameterValueShape(item.parameter)}`"
 					:parameter="item.parameter"
 					:hide-issues="hiddenIssuesInputs.includes(item.parameter.name)"
 					:external-issues="parameterIssues?.[item.parameter.name]"

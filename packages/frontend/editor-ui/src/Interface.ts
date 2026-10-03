@@ -182,6 +182,8 @@ export interface IUpdateInformation<T extends NodeParameterValueType = NodeParam
 	node?: string;
 	oldValue?: string | number;
 	type?: 'optionsOrderChanged';
+	/** Value shape of the emitting parameter, see `getParameterValueShape`. */
+	valueShape?: string;
 }
 
 export interface INodeUpdatePropertiesInformation {

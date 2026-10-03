@@ -22,7 +22,7 @@ import type {
 } from 'n8n-workflow';
 import type { MockedStore } from '@/__tests__/utils';
 import { mockedStore } from '@/__tests__/utils';
-import type { INodeUi } from '@/Interface';
+import type { INodeUi, IUpdateInformation } from '@/Interface';
 import { CHAT_TRIGGER_NODE_TYPE, HTTP_REQUEST_NODE_TYPE, WEBHOOK_NODE_TYPE } from '@/app/constants';
 
 vi.mock('@/app/composables/useWorkflowId', async () => {
@@ -222,6 +222,286 @@ describe('useNodeSettingsParameters', () => {
 			const rows = persistedFieldValues();
 			expect(rows[0].fieldValue).toContain("$fromAI('Field_Value'");
 			expect(rows[1].fieldValue).toContain("$fromAI('Field_Value'");
+		});
+	});
+
+	describe('updateNodeParameter value shapes', () => {
+		const channelModes: INodeProperties['modes'] = [
+			{
+				displayName: 'From List',
+				name: 'list',
+				type: 'list',
+				typeOptions: { searchListMethod: 'getChannels' },
+			},
+			{ displayName: 'ID', name: 'id', type: 'string' },
+		];
+		const show = (operation: string) => ({ show: { operation: [operation] } });
+		const channelLocator = (operation: string): INodeProperties => ({
+			displayName: 'Channel',
+			name: 'channelId',
+			type: 'resourceLocator',
+			default: { mode: 'list', value: '' },
+			modes: channelModes,
+			displayOptions: show(operation),
+		});
+
+		const nodeType: INodeTypeDescription = {
+			version: 1,
+			name: 'testChat',
+			displayName: 'Test Chat',
+			description: '',
+			group: ['output'],
+			defaults: { name: 'Test Chat' },
+			inputs: [],
+			outputs: [],
+			properties: [
+				{
+					displayName: 'Operation',
+					name: 'operation',
+					type: 'options',
+					noDataExpression: true,
+					options: [
+						{ name: 'Archive', value: 'archive' },
+						{ name: 'Create', value: 'create' },
+						{ name: 'Get', value: 'get' },
+						{ name: 'List', value: 'list' },
+					],
+					default: 'create',
+				},
+				channelLocator('get'),
+				channelLocator('archive'),
+				{
+					displayName: 'Channel',
+					name: 'channelId',
+					type: 'string',
+					default: '',
+					displayOptions: show('create'),
+				},
+				{
+					displayName: 'User',
+					name: 'userId',
+					type: 'options',
+					options: [{ name: 'Ann', value: 'U1' }],
+					default: '',
+					displayOptions: show('get'),
+				},
+				{
+					displayName: 'User',
+					name: 'userId',
+					type: 'string',
+					default: '',
+					displayOptions: show('create'),
+				},
+				{
+					displayName: 'Team',
+					name: 'teamId',
+					type: 'options',
+					options: [{ name: 'Sales', value: 'T1' }],
+					default: '',
+					displayOptions: show('get'),
+				},
+				{ ...channelLocator('create'), displayName: 'Team', name: 'teamId' },
+				{ displayName: 'Many', name: 'many', type: 'boolean', default: false },
+				{
+					displayName: 'Method',
+					name: 'method',
+					type: 'options',
+					options: [
+						{ name: 'GET', value: 'GET' },
+						{ name: 'PUT', value: 'PUT' },
+					],
+					default: 'GET',
+					displayOptions: { show: { many: [false] } },
+				},
+				{
+					displayName: 'Methods',
+					name: 'method',
+					type: 'multiOptions',
+					options: [
+						{ name: 'GET', value: 'GET' },
+						{ name: 'PUT', value: 'PUT' },
+					],
+					default: ['GET'],
+					displayOptions: { show: { many: [true] } },
+				},
+				{
+					displayName: 'Team',
+					name: 'teamId',
+					type: 'options',
+					options: [{ name: 'Support', value: 'T2' }],
+					default: '',
+					displayOptions: show('archive'),
+				},
+			],
+		};
+
+		const picked = { __rl: true, mode: 'list', value: 'C0123' };
+		const emptyLocator = { __rl: true, mode: 'list', value: '' };
+
+		let docStore: MockedStore<typeof useWorkflowDocumentStore>;
+		let node: INodeUi;
+
+		const change = (
+			name: string,
+			value: unknown,
+			extra: Pick<IUpdateInformation, 'valueShape'> = {},
+		) => {
+			const { updateNodeParameter } = useNodeSettingsParameters();
+			const callsBefore = vi.mocked(docStore.setNodeParameters).mock.calls.length;
+			updateNodeParameter(
+				ref<INodeParameters>({}),
+				{ name: `parameters.${name}`, value: value as NodeParameterValue, ...extra },
+				value as NodeParameterValue,
+				node,
+				false,
+			);
+			const calls = vi.mocked(docStore.setNodeParameters).mock.calls;
+			if (calls.length > callsBefore) {
+				node = { ...node, parameters: calls[calls.length - 1][0].value as INodeParameters };
+			}
+		};
+
+		beforeEach(() => {
+			setActivePinia(createTestingPinia());
+
+			const nodeTypesStore = mockedStore(useNodeTypesStore);
+			nodeTypesStore.getNodeType = vi.fn().mockReturnValue(nodeType);
+
+			docStore = mockedStore(useWorkflowDocumentStore, createWorkflowDocumentId(''));
+
+			vi.spyOn(nodeSettingsUtils, 'updateDynamicConnections').mockReturnValue(null);
+			vi.spyOn(nodeHelpers, 'useNodeHelpers').mockReturnValue({
+				...nodeHelpers.useNodeHelpers(),
+				updateNodeParameterIssuesByName: vi.fn(),
+				updateNodeCredentialIssuesByName: vi.fn(),
+			});
+
+			node = {
+				id: crypto.randomUUID(),
+				name: 'Post to team',
+				type: 'testChat',
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: { operation: 'get' },
+			};
+		});
+
+		afterEach(() => {
+			vi.resetAllMocks();
+		});
+
+		it('does not carry a resource locator into a same-named string parameter', () => {
+			change('channelId', picked);
+			change('operation', 'create');
+
+			expect(node.parameters.channelId).toBe('');
+		});
+
+		it('restores the value of each shape when switching back', () => {
+			change('channelId', picked);
+			change('operation', 'create');
+			change('channelId', 'general');
+
+			change('operation', 'get');
+			expect(node.parameters.channelId).toEqual(picked);
+
+			change('operation', 'create');
+			expect(node.parameters.channelId).toBe('general');
+		});
+
+		it('restores the value of each shape after the parameter was hidden in between', () => {
+			change('channelId', picked);
+			change('operation', 'list');
+			change('operation', 'create');
+			change('channelId', 'general');
+			change('operation', 'list');
+
+			change('operation', 'get');
+			expect(node.parameters.channelId).toEqual(picked);
+
+			change('operation', 'list');
+			change('operation', 'create');
+			expect(node.parameters.channelId).toBe('general');
+		});
+
+		it('keeps a late write that lands while the parameter is hidden', () => {
+			const latePick = { __rl: true, mode: 'list', value: 'C0999' };
+			change('operation', 'list');
+
+			change('channelId', latePick, { valueShape: 'resourceLocator' });
+			change('operation', 'get');
+
+			expect(node.parameters.channelId).toEqual(latePick);
+		});
+
+		it('resolves defaults of the previous parameters before comparing shapes', () => {
+			node = { ...node, parameters: { channelId: 'general' } };
+
+			change('operation', 'get');
+
+			expect(node.parameters.channelId).toEqual(emptyLocator);
+		});
+
+		it('does not restore a value that did not fit its parameter', () => {
+			node = { ...node, parameters: { operation: 'create', channelId: picked } };
+
+			change('operation', 'get');
+			change('operation', 'create');
+
+			expect(node.parameters.channelId).toBe('');
+		});
+
+		it('carries values between declarations of the same shape', () => {
+			change('channelId', picked);
+			change('operation', 'archive');
+
+			expect(node.parameters.channelId).toEqual(picked);
+		});
+
+		it('carries values between string and options parameters', () => {
+			change('userId', 'U1');
+			change('operation', 'create');
+
+			expect(node.parameters.userId).toBe('U1');
+		});
+
+		it('does not restore an option value the visible parameter does not offer', () => {
+			change('teamId', 'T1');
+			change('operation', 'create');
+			change('operation', 'archive');
+
+			expect(node.parameters.teamId).toBe('');
+		});
+
+		it('restores a list of options', () => {
+			change('method', 'PUT');
+			change('many', true);
+			change('method', ['GET', 'PUT']);
+
+			change('many', false);
+			expect(node.parameters.method).toBe('PUT');
+
+			change('many', true);
+			expect(node.parameters.method).toEqual(['GET', 'PUT']);
+		});
+
+		it('keeps a late write of another shape out of the visible parameter', () => {
+			const latePick = { __rl: true, mode: 'list', value: 'C0999' };
+			change('channelId', picked);
+			change('operation', 'create');
+
+			change('channelId', latePick, { valueShape: 'resourceLocator' });
+			expect(node.parameters.channelId).toBe('');
+
+			change('operation', 'get');
+			expect(node.parameters.channelId).toEqual(latePick);
+		});
+
+		it('writes a value of the visible shape as usual', () => {
+			change('operation', 'create');
+			change('channelId', 'general', { valueShape: 'string' });
+
+			expect(node.parameters.channelId).toBe('general');
 		});
 	});
 

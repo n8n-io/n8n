@@ -213,6 +213,61 @@ describe('ParameterInputList', () => {
 		expect(getByTestId('parameter-input')).not.toBe(beforeInput);
 	});
 
+	describe('same-named parameters of different value shapes', () => {
+		const channel = (type: 'resourceLocator' | 'string', operation: string): INodeProperties => ({
+			displayName: `Channel for ${operation}`,
+			name: 'channelId',
+			type,
+			default: type === 'string' ? '' : { mode: 'list', value: '' },
+			displayOptions: { show: { operation: [operation] } },
+		});
+
+		const propsFor = (parameter: INodeProperties) => ({
+			parameters: [parameter],
+			nodeValues: { parameters: { operation: parameter.displayOptions?.show?.operation?.[0] } },
+			path: 'parameters',
+		});
+
+		const stubs = {
+			ParameterInputFull: {
+				props: ['parameter'],
+				template: '<div data-test-id="parameter-input">{{ parameter.displayName }}</div>',
+			},
+		};
+
+		const switchChannel = async (from: INodeProperties, to: INodeProperties) => {
+			ndvStore.activeNode = TEST_NODE_NO_ISSUES;
+			const { findByText, rerender } = renderComponent({
+				props: propsFor(from),
+				global: { stubs },
+			});
+			const before = await findByText(from.displayName);
+
+			await rerender(propsFor(to));
+			const after = await findByText(to.displayName);
+
+			return { before, after };
+		};
+
+		it('remounts the input when the value shape changes', async () => {
+			const { before, after } = await switchChannel(
+				channel('resourceLocator', 'get'),
+				channel('string', 'create'),
+			);
+
+			expect(after).not.toBe(before);
+		});
+
+		it('keeps the input when the value shape stays the same', async () => {
+			const { before, after } = await switchChannel(
+				channel('resourceLocator', 'get'),
+				channel('resourceLocator', 'archive'),
+			);
+
+			expect(after).toBe(before);
+		});
+	});
+
 	it('renders fixed collection inputs correctly', async () => {
 		ndvStore.activeNode = TEST_NODE_NO_ISSUES;
 		const { getAllByTestId, findByText } = renderComponent({
