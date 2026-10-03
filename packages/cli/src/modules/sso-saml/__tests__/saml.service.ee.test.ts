@@ -258,6 +258,22 @@ describe('SamlService', () => {
 		}
 	});
 
+	it('passes a custom relay state with each login request', async () => {
+		const idp = mock<IdentityProviderInstance>();
+		const sp = mock<ServiceProviderInstance>({
+			entitySetting: mock<ServiceProviderInstance['entitySetting']>({ relayState: 'saved' }),
+		});
+		vi.spyOn(samlService, 'getIdentityProviderInstance').mockReturnValue(idp);
+		vi.spyOn(samlService, 'getServiceProviderInstance').mockReturnValue(sp);
+
+		await samlService.getLoginRequestUrl('https://n8n.example/workflow/1', 'redirect');
+
+		expect(sp.createLoginRequest.mock.calls[0]?.slice(1)).toEqual([
+			'redirect',
+			{ relayState: 'https://n8n.example/workflow/1' },
+		]);
+	});
+
 	describe('isSignedSamlRequestsEnabled', () => {
 		it.each([
 			['not set', undefined],
