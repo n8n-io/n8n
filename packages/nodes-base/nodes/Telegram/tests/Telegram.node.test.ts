@@ -935,6 +935,45 @@ describe('Telegram node', () => {
 			);
 		});
 
+		it('should materialize single line breaks as <br> without touching paragraph breaks', async () => {
+			// https://github.com/n8n-io/n8n/issues/37361
+			executeFunctionsMock.getNodeParameter.mockImplementation((p) => {
+				switch (p) {
+					case 'resource':
+						return 'message';
+					case 'operation':
+						return 'sendRichMessage';
+					case 'binaryData':
+						return false;
+					case 'chatId':
+						return '@channel';
+					case 'richFormat':
+						return 'markdown';
+					case 'richMessageText':
+						return 'string1\nstring2\n\nstring3';
+					case 'additionalFields':
+						return {};
+					case 'replyMarkup':
+						return 'none';
+					default:
+						return undefined;
+				}
+			});
+			apiRequestSpy.mockResolvedValue([{ ok: true, result: { message_id: 101 } }]);
+
+			await node.execute.call(executeFunctionsMock);
+
+			expect(apiRequestSpy).toHaveBeenCalledWith(
+				'POST',
+				'sendRichMessage',
+				{
+					chat_id: '@channel',
+					rich_message: { markdown: 'string1<br>\nstring2\n\nstring3' },
+				},
+				{},
+			);
+		});
+
 		it('should attach reply_markup with an inline keyboard', async () => {
 			executeFunctionsMock.getNodeParameter.mockImplementation((p) => {
 				switch (p) {
