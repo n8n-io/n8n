@@ -1,6 +1,6 @@
 import { t, type Infer, type InputItem } from '@n8n/node-sdk';
 
-import { core } from '../core.node';
+import { itemsNode } from '../items.node';
 import { getPath, pathOf } from '../path';
 
 const field = t.str().with({ minLength: 1 });
@@ -106,7 +106,7 @@ function groupsOf(items: readonly InputItem[], by: readonly string[], skipEmpty:
 	);
 }
 
-export const summarizeItems = core.action('summarize', {
+export const summarizeItems = itemsNode.action('summarize', {
 	action: 'Summarize items',
 	summary:
 		'Count, sum, or list field values of all items, like a pivot table, optionally by group.',

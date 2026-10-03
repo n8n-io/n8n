@@ -43,84 +43,21 @@
 			"properties": ["code", "mode", "returns"]
 		},
 		{
-			"name": "@n8n/nodes-base-next.coreAggregate",
-			"version": 1,
-			"hidden": true,
-			"credentials": [],
-			"properties": ["aggregate"]
-		},
-		{
-			"name": "@n8n/nodes-base-next.coreDateTime",
-			"version": 1,
-			"hidden": true,
-			"credentials": [],
-			"properties": ["date", "operation", "outputField", "keepInput"]
-		},
-		{
-			"name": "@n8n/nodes-base-next.coreFilter",
+			"name": "@n8n/nodes-base-next.conditionFilter",
 			"version": 1,
 			"hidden": true,
 			"credentials": [],
 			"properties": ["where"]
 		},
 		{
-			"name": "@n8n/nodes-base-next.coreIf",
+			"name": "@n8n/nodes-base-next.conditionIf",
 			"version": 1,
 			"hidden": true,
 			"credentials": [],
 			"properties": ["where"]
 		},
 		{
-			"name": "@n8n/nodes-base-next.coreLimit",
-			"version": 1,
-			"hidden": true,
-			"credentials": [],
-			"properties": ["maxItems", "keep"]
-		},
-		{
-			"name": "@n8n/nodes-base-next.coreRemoveDuplicates",
-			"version": 1,
-			"hidden": true,
-			"credentials": [],
-			"properties": ["compare"]
-		},
-		{
-			"name": "@n8n/nodes-base-next.coreRenameKeys",
-			"version": 1,
-			"hidden": true,
-			"credentials": [],
-			"properties": ["keys"]
-		},
-		{
-			"name": "@n8n/nodes-base-next.coreSet",
-			"version": 1,
-			"hidden": true,
-			"credentials": [],
-			"properties": ["fields", "include"]
-		},
-		{
-			"name": "@n8n/nodes-base-next.coreSort",
-			"version": 1,
-			"hidden": true,
-			"credentials": [],
-			"properties": ["by"]
-		},
-		{
-			"name": "@n8n/nodes-base-next.coreSplitOut",
-			"version": 1,
-			"hidden": true,
-			"credentials": [],
-			"properties": ["field", "into", "include"]
-		},
-		{
-			"name": "@n8n/nodes-base-next.coreSummarize",
-			"version": 1,
-			"hidden": true,
-			"credentials": [],
-			"properties": ["fields", "groupBy", "output", "skipEmptyGroups"]
-		},
-		{
-			"name": "@n8n/nodes-base-next.coreSwitch",
+			"name": "@n8n/nodes-base-next.conditionSwitch",
 			"version": 1,
 			"hidden": true,
 			"credentials": [],
@@ -698,6 +635,69 @@
 				"headers",
 				"body"
 			]
+		},
+		{
+			"name": "@n8n/nodes-base-next.itemsAggregate",
+			"version": 1,
+			"hidden": true,
+			"credentials": [],
+			"properties": ["aggregate"]
+		},
+		{
+			"name": "@n8n/nodes-base-next.itemsDateTime",
+			"version": 1,
+			"hidden": true,
+			"credentials": [],
+			"properties": ["date", "operation", "outputField", "keepInput"]
+		},
+		{
+			"name": "@n8n/nodes-base-next.itemsLimit",
+			"version": 1,
+			"hidden": true,
+			"credentials": [],
+			"properties": ["maxItems", "keep"]
+		},
+		{
+			"name": "@n8n/nodes-base-next.itemsRemoveDuplicates",
+			"version": 1,
+			"hidden": true,
+			"credentials": [],
+			"properties": ["compare"]
+		},
+		{
+			"name": "@n8n/nodes-base-next.itemsRenameKeys",
+			"version": 1,
+			"hidden": true,
+			"credentials": [],
+			"properties": ["keys"]
+		},
+		{
+			"name": "@n8n/nodes-base-next.itemsSet",
+			"version": 1,
+			"hidden": true,
+			"credentials": [],
+			"properties": ["fields", "include"]
+		},
+		{
+			"name": "@n8n/nodes-base-next.itemsSort",
+			"version": 1,
+			"hidden": true,
+			"credentials": [],
+			"properties": ["by"]
+		},
+		{
+			"name": "@n8n/nodes-base-next.itemsSplitOut",
+			"version": 1,
+			"hidden": true,
+			"credentials": [],
+			"properties": ["field", "into", "include"]
+		},
+		{
+			"name": "@n8n/nodes-base-next.itemsSummarize",
+			"version": 1,
+			"hidden": true,
+			"credentials": [],
+			"properties": ["fields", "groupBy", "output", "skipEmptyGroups"]
 		},
 		{
 			"name": "@n8n/nodes-base-next.loopStateSet",
@@ -1638,18 +1638,9 @@
 		"@n8n/nodes-base-next.anthropicChatModel",
 		"@n8n/nodes-base-next.codeJavaScript",
 		"@n8n/nodes-base-next.codePython",
-		"@n8n/nodes-base-next.coreAggregate",
-		"@n8n/nodes-base-next.coreDateTime",
-		"@n8n/nodes-base-next.coreFilter",
-		"@n8n/nodes-base-next.coreIf",
-		"@n8n/nodes-base-next.coreLimit",
-		"@n8n/nodes-base-next.coreRemoveDuplicates",
-		"@n8n/nodes-base-next.coreRenameKeys",
-		"@n8n/nodes-base-next.coreSet",
-		"@n8n/nodes-base-next.coreSort",
-		"@n8n/nodes-base-next.coreSplitOut",
-		"@n8n/nodes-base-next.coreSummarize",
-		"@n8n/nodes-base-next.coreSwitch",
+		"@n8n/nodes-base-next.conditionFilter",
+		"@n8n/nodes-base-next.conditionIf",
+		"@n8n/nodes-base-next.conditionSwitch",
 		"@n8n/nodes-base-next.dataTableRowDelete",
 		"@n8n/nodes-base-next.dataTableRowExists",
 		"@n8n/nodes-base-next.dataTableRowGet",
@@ -1705,6 +1696,15 @@
 		"@n8n/nodes-base-next.httpRequestGetTool",
 		"@n8n/nodes-base-next.httpRequestSend",
 		"@n8n/nodes-base-next.httpRequestSendTool",
+		"@n8n/nodes-base-next.itemsAggregate",
+		"@n8n/nodes-base-next.itemsDateTime",
+		"@n8n/nodes-base-next.itemsLimit",
+		"@n8n/nodes-base-next.itemsRemoveDuplicates",
+		"@n8n/nodes-base-next.itemsRenameKeys",
+		"@n8n/nodes-base-next.itemsSet",
+		"@n8n/nodes-base-next.itemsSort",
+		"@n8n/nodes-base-next.itemsSplitOut",
+		"@n8n/nodes-base-next.itemsSummarize",
 		"@n8n/nodes-base-next.loopStateSet",
 		"@n8n/nodes-base-next.mergeAppend",
 		"@n8n/nodes-base-next.mergeCombine",

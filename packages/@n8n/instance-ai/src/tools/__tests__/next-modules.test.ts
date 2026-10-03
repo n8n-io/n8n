@@ -7,6 +7,7 @@ import {
 	BUILT_IN_STEPS,
 	builtInRowOf,
 	catalogRowsBesideModules,
+	contractReplacementOf,
 	findNextActions,
 	namesDisplayName,
 	nearestNextActions,
@@ -64,6 +65,17 @@ describe('next-modules', () => {
 		expect(nextNodeModule('github.repository.event')?.module).toContain(
 			'): Trigger<OutputOf<N, GithubRepositoryEventOutput>, N> =>',
 		);
+	});
+
+	it.each([
+		['n8n-nodes-base.set', 'items', 'items.set'],
+		['n8n-nodes-base.if', 'condition', 'condition.if'],
+	])('replaces %s with the action of the same name', (type, nodeId, actionId) => {
+		const replacement = contractReplacementOf({ type });
+
+		expect(replacement?.nodeId).toBe(nodeId);
+		expect(replacement?.actions.map(({ id }) => id)).toEqual([actionId]);
+		expect(replacement?.exact).toBe(true);
 	});
 
 	it('has no module for a node without actions', () => {
@@ -205,6 +217,13 @@ describe('next-modules', () => {
 		expect(searchNextActions('google sheets').nodes).toEqual(['googleSheets']);
 		expect(searchNextActions('google sheets trigger').nodes).toEqual(['googleSheetsTrigger']);
 	});
+
+	it.each(['split out items', 'limit item', 'if condition', 'check conditions'])(
+		'names no node by the generic words of "%s"',
+		(query) => {
+			expect(searchNextActions(query).nodes).toEqual([]);
+		},
+	);
 
 	it('matches an inflected query word to the action word it extends', () => {
 		expect(searchNextActions('slack sending message').actions).toEqual(['slack.message.send']);

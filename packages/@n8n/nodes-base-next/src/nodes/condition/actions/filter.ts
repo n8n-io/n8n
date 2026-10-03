@@ -1,9 +1,9 @@
 import { t } from '@n8n/node-sdk';
 
 import { where, whereMatches } from '../condition';
-import { core } from '../core.node';
+import { conditionNode } from '../condition.node';
 
-export const filterItems = core.action('filter', {
+export const filterItems = conditionNode.action('filter', {
 	action: 'Filter items',
 	summary: 'Keep the items that match the conditions. Other items go to discarded, unchanged.',
 	flow: { effect: 'transform', cardinality: 'per-item' },

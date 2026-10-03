@@ -254,7 +254,7 @@ describe('regions compile to node contracts', () => {
 			conditions: [{ type: 'boolean', left, test: { op: 'true' } }],
 		});
 		const check = json.nodes.find((n) => n.name === 'Count until');
-		expect(check?.type).toBe('@n8n/nodes-base-next.coreSwitch');
+		expect(check?.type).toBe('@n8n/nodes-base-next.conditionSwitch');
 		expect(check?.parameters).toEqual({
 			cases: [
 				{ output: 'done', where: until('={{ $json.n >= 3 }}') },
@@ -692,7 +692,7 @@ describe('loopWiringIssues', () => {
 		const cases = { cases: [{ output: 'a' }, { output: 'b' }] };
 		expect(
 			codes(
-				[plain('Start'), sib('Loop'), contract('Route', 'coreSwitch', cases), plain('Work')],
+				[plain('Start'), sib('Loop'), contract('Route', 'conditionSwitch', cases), plain('Work')],
 				[
 					...all,
 					edge('Loop', 1, 'Route'),
@@ -704,13 +704,13 @@ describe('loopWiringIssues', () => {
 		).toEqual([]);
 		expect(
 			codes(
-				[plain('Start'), sib('Loop'), contract('Keep', 'coreFilter'), plain('Work')],
+				[plain('Start'), sib('Loop'), contract('Keep', 'conditionFilter'), plain('Work')],
 				[...all, edge('Loop', 1, 'Keep'), edge('Keep', 0, 'Work'), edge('Work', 0, 'Loop')],
 			),
 		).toEqual(['LOOP_BRANCH_DROPS_ITEMS@Keep']);
 		expect(
 			codes(
-				[plain('Start'), sib('Loop'), contract('Check', 'coreIf'), plain('Work')],
+				[plain('Start'), sib('Loop'), contract('Check', 'conditionIf'), plain('Work')],
 				[...all, edge('Loop', 1, 'Check'), edge('Check', 0, 'Work'), edge('Work', 0, 'Loop')],
 			),
 		).toEqual(['LOOP_BRANCH_DROPS_ITEMS@Check']);

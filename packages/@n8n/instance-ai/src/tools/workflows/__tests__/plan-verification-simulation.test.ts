@@ -586,7 +586,7 @@ describe('planVerificationSimulation — contract nodes', () => {
 		const workflow = wf(
 			[
 				{ name: 'Get Deals', type: '@n8n/nodes-base-next.notionDatabasePageGetAll' },
-				{ name: 'Build Rows', type: '@n8n/nodes-base-next.coreSet' },
+				{ name: 'Build Rows', type: '@n8n/nodes-base-next.itemsSet' },
 				{ name: 'Upsert', type: '@n8n/nodes-base-next.googleSheetsSheetAppendOrUpdate' },
 			],
 			{

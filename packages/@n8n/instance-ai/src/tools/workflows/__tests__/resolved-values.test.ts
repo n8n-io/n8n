@@ -66,14 +66,14 @@ const deals: WorkflowJSON = {
 	nodes: [
 		node('Start', 'n8n-nodes-base.manualTrigger', {}),
 		node('Get Deals', GET_ALL, { database: 'x' }),
-		node('Build Rows', '@n8n/nodes-base-next.coreSet', {
+		node('Build Rows', '@n8n/nodes-base-next.itemsSet', {
 			fields: {
 				'Deal ID': '={{ $json.id }}',
 				Stage: '={{ $json.property_stage }}',
 				Region: 'EU',
 			},
 		}),
-		node('Is Open', '@n8n/nodes-base-next.coreIf', {
+		node('Is Open', '@n8n/nodes-base-next.conditionIf', {
 			where: {
 				match: 'all',
 				conditions: [

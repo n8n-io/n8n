@@ -34,7 +34,11 @@ const MAX_HINT_CHARS = 60;
 // A chain of local nodes longer than this is not traced further.
 const MAX_HOPS = 10;
 
-const CONDITION_ACTIONS: ReadonlySet<string> = new Set(['core.if', 'core.filter', 'core.switch']);
+const CONDITION_ACTIONS: ReadonlySet<string> = new Set([
+	'condition.if',
+	'condition.filter',
+	'condition.switch',
+]);
 const LEGACY_CONDITION_TYPES: ReadonlySet<string> = new Set([
 	'n8n-nodes-base.if',
 	'n8n-nodes-base.filter',
@@ -186,7 +190,7 @@ function sourceOf(
 	if (action.output.json['x-n8n-passed'] === true) {
 		return sourceOf(view, nodeName, { key: read.key }, hops + 1);
 	}
-	if (action.id !== 'core.set') return here;
+	if (action.id !== 'items.set') return here;
 	const fields = isRecord(node.parameters?.fields) ? node.parameters.fields : {};
 	const value = fields[read.key];
 	if (value === undefined) {

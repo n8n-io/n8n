@@ -1,6 +1,6 @@
 import { isRecord, t } from '@n8n/node-sdk';
 
-import { core } from '../core.node';
+import { itemsNode } from '../items.node';
 import { getPath, pathOf, setPath, unsetPath } from '../path';
 
 /** A list stays a list, an object gives its values, and another value is a list of one. */
@@ -13,7 +13,7 @@ const entriesOf = (value: unknown): readonly unknown[] =>
 				? Object.values(value)
 				: [value];
 
-export const splitOut = core.action('splitOut', {
+export const splitOut = itemsNode.action('splitOut', {
 	action: 'Split out a list',
 	summary: 'Emit one item for each entry of a list field of each item.',
 	flow: { effect: 'transform', cardinality: '1:N' },

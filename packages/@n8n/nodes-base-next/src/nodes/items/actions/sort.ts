@@ -1,6 +1,6 @@
 import { t, type InputItem } from '@n8n/node-sdk';
 
-import { core } from '../core.node';
+import { itemsNode } from '../items.node';
 import { canonical, getPath, pathOf } from '../path';
 
 /** Strings compare without case; other values compare as numbers, as lodash `lt` does. */
@@ -23,7 +23,7 @@ interface Row {
 	readonly values: readonly unknown[];
 }
 
-export const sortItems = core.action('sort', {
+export const sortItems = itemsNode.action('sort', {
 	action: 'Sort items',
 	summary: 'Sort all items by fields, in order. Text sorts without case. Items pass on unchanged.',
 	flow: { effect: 'transform', cardinality: 'batch' },

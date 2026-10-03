@@ -1109,7 +1109,7 @@ describe('decompileWorkflow', () => {
 		const setNode = (name: string, index: number) => ({
 			id: name,
 			name,
-			type: '@n8n/nodes-base-next.coreSet',
+			type: '@n8n/nodes-base-next.itemsSet',
 			typeVersion: 1,
 			position: [index * 100, 0] as [number, number],
 			parameters: { fields: { n: index }, include: { mode: 'none' } },

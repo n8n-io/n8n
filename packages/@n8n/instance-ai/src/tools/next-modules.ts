@@ -189,10 +189,14 @@ export const factoryPathOf = (action: Pick<Action, 'resource' | 'operation'>) =>
 
 const LEGACY_TYPE = /^(?:n8n-nodes-base|@n8n\/n8n-nodes-langchain)\.(\w+)$/;
 
+/** The nodes whose actions each replace the legacy node of the action name, e.g. `items.set`. */
+const LEGACY_NAMED_NODE_IDS: readonly string[] = ['condition', 'items'];
+
 /**
  * The contract actions that replace a legacy node. The legacy node of a service shares the node
- * id (`n8n-nodes-base.gmail` and `gmail`), a core node shares the action name (`n8n-nodes-base.set`
- * and `core.set`), and the resource and operation must match where the actions have them.
+ * id (`n8n-nodes-base.gmail` and `gmail`), a condition or items action shares the legacy node name
+ * (`n8n-nodes-base.set` and `items.set`), and the resource and operation must match where the
+ * actions have them.
  */
 export function contractReplacementOf(node: {
 	readonly type: string;
@@ -200,8 +204,10 @@ export function contractReplacementOf(node: {
 }): ContractReplacement | undefined {
 	const [, name] = LEGACY_TYPE.exec(node.type) ?? [];
 	if (name === undefined) return undefined;
-	const core = nextActions.find((action) => action.node.id === 'core' && action.operation === name);
-	if (core) return { nodeId: 'core', actions: [core], exact: true };
+	const named = nextActions.find(
+		(action) => LEGACY_NAMED_NODE_IDS.includes(action.node.id) && action.operation === name,
+	);
+	if (named) return { nodeId: named.node.id, actions: [named], exact: true };
 	const own = actionsOfNode(name);
 	if (own.length === 0) return undefined;
 	const { resource, operation } = isRecord(node.parameters) ? node.parameters : {};
@@ -300,8 +306,12 @@ const actionWords = (step: Action | Trigger) =>
 
 const stepsOfNode = (nodeId: string) => [...actionsOfNode(nodeId), ...triggersOfNode(nodeId)];
 
-/** "trigger" names a kind of step, not a node: "webhook trigger" names only `webhook`. */
-const KIND_WORDS = new Set(['trigger']);
+/**
+ * Words that alone name no node: "trigger" names a kind of step ("webhook trigger" names only
+ * `webhook`), and "items" and "condition" name what most steps handle ("split out items" names
+ * the `splitOut` step, not the `items` node). Their word forms also name no node.
+ */
+const GENERIC_WORDS = ['trigger', 'items', 'condition'];
 
 const scoreOf = (action: Action, terms: readonly string[]) =>
 	terms.reduce(
@@ -364,7 +374,7 @@ export function searchNextActions(
 			nodeId,
 			terms: terms.filter((term) => stepsOfNode(nodeId).some((s) => hits(term, nodeWords(s)))),
 		}))
-		.filter(({ terms: own }) => own.some((term) => !KIND_WORDS.has(term)));
+		.filter(({ terms: own }) => own.some((term) => !hits(term, GENERIC_WORDS)));
 	// "google sheets" names googleSheets, not also googleGemini through "google" alone.
 	// A node with only triggers yields to a node with actions that the query names by the same
 	// words: "google sheets" names googleSheets, "google sheets trigger" names googleSheetsTrigger.

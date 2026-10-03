@@ -17,13 +17,13 @@ const MERGE_TYPES = new Set([
 	'@n8n/nodes-base-next.mergeAppend',
 	'@n8n/nodes-base-next.mergeCombine',
 ]);
-const IF_TYPES = new Set(['n8n-nodes-base.if', '@n8n/nodes-base-next.coreIf']);
+const IF_TYPES = new Set(['n8n-nodes-base.if', '@n8n/nodes-base-next.conditionIf']);
 const SWITCH_TYPE = 'n8n-nodes-base.switch';
 const FILTER_TYPE = 'n8n-nodes-base.filter';
 /** The Switch contract: one output per case, then `fallback`. */
-const CONTRACT_SWITCH_TYPE = '@n8n/nodes-base-next.coreSwitch';
+const CONTRACT_SWITCH_TYPE = '@n8n/nodes-base-next.conditionSwitch';
 /** The Filter contract: `kept`, then `discarded`. */
-const CONTRACT_FILTER_TYPE = '@n8n/nodes-base-next.coreFilter';
+const CONTRACT_FILTER_TYPE = '@n8n/nodes-base-next.conditionFilter';
 const STOP_TYPES = new Set([
 	'n8n-nodes-base.stopAndError',
 	'@n8n/nodes-base-next.stopAndErrorStop',

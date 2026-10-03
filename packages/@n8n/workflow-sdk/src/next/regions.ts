@@ -4,15 +4,15 @@
  * reads back only when its parameters match exactly.
  */
 
-export const SWITCH_NODE = { type: '@n8n/nodes-base-next.coreSwitch', version: 1 };
-export const FILTER_NODE = { type: '@n8n/nodes-base-next.coreFilter', version: 1 };
+export const SWITCH_NODE = { type: '@n8n/nodes-base-next.conditionSwitch', version: 1 };
+export const FILTER_NODE = { type: '@n8n/nodes-base-next.conditionFilter', version: 1 };
 export const WAIT_NODE = { type: '@n8n/nodes-base-next.waitInterval', version: 1 };
 export const STOP_NODE = { type: '@n8n/nodes-base-next.stopAndErrorStop', version: 1 };
-export const SPLIT_OUT_NODE = { type: '@n8n/nodes-base-next.coreSplitOut', version: 1 };
+export const SPLIT_OUT_NODE = { type: '@n8n/nodes-base-next.itemsSplitOut', version: 1 };
 /** The item of a loop pass is a whole object, which the Edit Fields contract cannot emit. */
 export const LOOP_STATE_NODE = { type: '@n8n/nodes-base-next.loopStateSet', version: 1 };
 
-/** The `where` of a core routing contract that holds when the compiled JavaScript is true. */
+/** The `where` of a condition contract that holds when the compiled JavaScript is true. */
 export const trueWhere = (js: string) => ({
 	conditions: [{ type: 'boolean', left: `={{ ${js} }}`, test: { op: 'true' } }],
 });

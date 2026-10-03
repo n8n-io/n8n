@@ -134,7 +134,7 @@ describe('contract actions as agent tools', () => {
 		expect(ids).toEqual(expect.arrayContaining(['httpRequest.get', 'slack.message.send']));
 		expect(ids).not.toContain('dataTable.row.get');
 		expect(ids).not.toContain('httpRequest.download');
-		expect(ids).not.toContain('core.set');
+		expect(ids).not.toContain('items.set');
 		expect(ids).not.toContain('openAi.chatModel');
 		expect(ids).not.toContain('dataTable.row.insert');
 		expect(toolTypeOf({ id: 'httpRequest.get' })).toBe('@n8n/nodes-base-next.httpRequestGetTool');

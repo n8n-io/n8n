@@ -1,11 +1,11 @@
 import { t, type InputItem } from '@n8n/node-sdk';
 
-import { core } from '../core.node';
+import { itemsNode } from '../items.node';
 import { canonical, getPath, pathOf, unsetPath } from '../path';
 
 const fields = { fields: t.arr(t.str().with({ minLength: 1 })).with({ minItems: 1 }) };
 
-export const removeDuplicates = core.action('removeDuplicates', {
+export const removeDuplicates = itemsNode.action('removeDuplicates', {
 	action: 'Remove duplicate items',
 	summary: 'Keep the first item of each set of equal items. Items pass on unchanged.',
 	flow: { effect: 'transform', cardinality: 'batch' },

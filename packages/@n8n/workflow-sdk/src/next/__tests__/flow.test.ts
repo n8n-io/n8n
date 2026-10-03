@@ -186,10 +186,10 @@ describe('workflow', () => {
 		expect(json.nodes.map((n) => [n.name, n.type])).toEqual([
 			['Start', 'n8n-nodes-base.manualTrigger'],
 			['Tasks', 'notion.databasePage.getAll'],
-			['Has owner?', '@n8n/nodes-base-next.coreIf'],
+			['Has owner?', '@n8n/nodes-base-next.conditionIf'],
 			['Report', 'httpRequest.post'],
-			['Unowned', '@n8n/nodes-base-next.coreSet'],
-			['Log', '@n8n/nodes-base-next.coreSet'],
+			['Unowned', '@n8n/nodes-base-next.itemsSet'],
+			['Log', '@n8n/nodes-base-next.itemsSet'],
 		]);
 		expect(json.connections['Has owner?']?.main.map((out) => out?.map((c) => c.node))).toEqual([
 			['Report'],
@@ -334,12 +334,12 @@ describe('workflow', () => {
 
 	it('routes a contract step with named outputs, and continues from the first output', () => {
 		const owned = routedStep<Page, unknown, Page, 'Owned', 'kept' | 'discarded'>(
-			'@n8n/nodes-base-next.coreFilter',
+			'@n8n/nodes-base-next.conditionFilter',
 			{ name: 'Owned' },
 			['kept', 'discarded'],
 		);
 		const switchConfig = { name: 'Route', cases: [{ output: 'a' }, { output: 'b' }] };
-		const cases = routedStep('@n8n/nodes-base-next.coreSwitch', switchConfig, {
+		const cases = routedStep('@n8n/nodes-base-next.conditionSwitch', switchConfig, {
 			each: 'cases',
 			then: ['fallback'],
 		});
@@ -381,7 +381,10 @@ describe('workflow', () => {
 			name: N;
 			cases: ReadonlyArray<{ output: E }>;
 		}): RoutedStep<In, Ctx, In, N, E | 'fallback'> =>
-			routedStep('@n8n/nodes-base-next.coreSwitch', config, { each: 'cases', then: ['fallback'] });
+			routedStep('@n8n/nodes-base-next.conditionSwitch', config, {
+				each: 'cases',
+				then: ['fallback'],
+			});
 		const step = byCase({ name: 'Route', cases: [{ output: 'young' }, { output: 'old' }] });
 		const names: Array<OutputNames<typeof step>> = ['young', 'old', 'fallback'];
 		// @ts-expect-error -- "middle" is not an output of this step
@@ -536,7 +539,7 @@ describe('workflow', () => {
 		const limit = <In, Ctx, const N extends string>(config: {
 			name: N;
 			max: Value<In, Ctx, number>;
-		}): Step<In, Ctx, unknown, N> => contractStep('core.limit', config);
+		}): Step<In, Ctx, unknown, N> => contractStep('items.limit', config);
 
 		const json = workflow(
 			'Limit',
@@ -554,7 +557,7 @@ describe('workflow', () => {
 		const limit = <In, Ctx, const N extends string>(config: {
 			name: N;
 			max: Value<In, Ctx, number>;
-		}): Step<In, Ctx, unknown, N> => contractStep('core.limit', config);
+		}): Step<In, Ctx, unknown, N> => contractStep('items.limit', config);
 
 		const json = workflow(
 			'Expr',

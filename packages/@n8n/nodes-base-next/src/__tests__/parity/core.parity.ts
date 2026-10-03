@@ -13,18 +13,18 @@ import { Filter } from 'n8n-nodes-base/dist/nodes/Filter/Filter.node';
 import type { Action } from '@n8n/node-sdk';
 import type { IDataObject, INodeParameters, INodeType, IVersionedNodeType } from 'n8n-workflow';
 
-import { aggregateItems } from '../../nodes/core/actions/aggregate';
-import { dateTime } from '../../nodes/core/actions/date-time';
-import { filterItems } from '../../nodes/core/actions/filter';
-import { ifCondition } from '../../nodes/core/actions/if';
-import { limitItems } from '../../nodes/core/actions/limit';
-import { removeDuplicates } from '../../nodes/core/actions/remove-duplicates';
-import { renameKeys } from '../../nodes/core/actions/rename-keys';
-import { editFields } from '../../nodes/core/actions/set';
-import { sortItems } from '../../nodes/core/actions/sort';
-import { splitOut } from '../../nodes/core/actions/split-out';
-import { summarizeItems } from '../../nodes/core/actions/summarize';
-import { switchCases } from '../../nodes/core/actions/switch';
+import { filterItems } from '../../nodes/condition/actions/filter';
+import { ifCondition } from '../../nodes/condition/actions/if';
+import { switchCases } from '../../nodes/condition/actions/switch';
+import { aggregateItems } from '../../nodes/items/actions/aggregate';
+import { dateTime } from '../../nodes/items/actions/date-time';
+import { limitItems } from '../../nodes/items/actions/limit';
+import { removeDuplicates } from '../../nodes/items/actions/remove-duplicates';
+import { renameKeys } from '../../nodes/items/actions/rename-keys';
+import { editFields } from '../../nodes/items/actions/set';
+import { sortItems } from '../../nodes/items/actions/sort';
+import { splitOut } from '../../nodes/items/actions/split-out';
+import { summarizeItems } from '../../nodes/items/actions/summarize';
 import {
 	actionNode,
 	compareRuns,
@@ -83,7 +83,7 @@ const legacyConditions = (
 	combinator,
 });
 
-describe('core.set parity with Edit Fields (Set) v3.4', () => {
+describe('items.set parity with Edit Fields (Set) v3.4', () => {
 	it('sets nested and computed fields and keeps the input fields', async () => {
 		await expectParity(
 			legacy(new SetNode(), 'set', 3.4, {
@@ -127,7 +127,7 @@ describe('core.set parity with Edit Fields (Set) v3.4', () => {
 	});
 });
 
-describe('core.renameKeys parity with Rename Keys v1', () => {
+describe('items.renameKeys parity with Rename Keys v1', () => {
 	it('renames top-level and nested keys from the input item', async () => {
 		await expectParity(
 			legacy(new RenameKeys(), 'renameKeys', 1, {
@@ -149,7 +149,7 @@ describe('core.renameKeys parity with Rename Keys v1', () => {
 	});
 });
 
-describe('core.dateTime parity with Date & Time v2', () => {
+describe('items.dateTime parity with Date & Time v2', () => {
 	const input = [{ when: '2026-01-31T10:30:00.000Z' }, { when: '2024-02-29T23:59:00.000Z' }];
 	const utc = { input, timezone: 'UTC' };
 
@@ -206,7 +206,7 @@ describe('core.dateTime parity with Date & Time v2', () => {
 	});
 });
 
-describe('core.sort parity with Sort v1', () => {
+describe('items.sort parity with Sort v1', () => {
 	it('sorts by several fields, text without case, with the same tie order', async () => {
 		await expectParity(
 			legacy(new Sort(), 'sort', 1, {
@@ -225,7 +225,7 @@ describe('core.sort parity with Sort v1', () => {
 	});
 });
 
-describe('core.limit parity with Limit v1', () => {
+describe('items.limit parity with Limit v1', () => {
 	it('keeps the last items', async () => {
 		await expectParity(
 			legacy(new Limit(), 'limit', 1, { maxItems: 2, keep: 'lastItems' }),
@@ -235,7 +235,7 @@ describe('core.limit parity with Limit v1', () => {
 	});
 });
 
-describe('core.removeDuplicates parity with Remove Duplicates v2', () => {
+describe('items.removeDuplicates parity with Remove Duplicates v2', () => {
 	it('keeps the first item of each set of equal selected fields', async () => {
 		await expectParity(
 			legacy(new RemoveDuplicates(), 'removeDuplicates', 2, {
@@ -273,7 +273,7 @@ describe('core.removeDuplicates parity with Remove Duplicates v2', () => {
 	});
 });
 
-describe('core.aggregate parity with Aggregate v1', () => {
+describe('items.aggregate parity with Aggregate v1', () => {
 	it('lists field values and merges lists', async () => {
 		await expectParity(
 			legacy(new Aggregate(), 'aggregate', 1, {
@@ -310,7 +310,7 @@ describe('core.aggregate parity with Aggregate v1', () => {
 	});
 });
 
-describe('core.splitOut parity with Split Out v1.1', () => {
+describe('items.splitOut parity with Split Out v1.1', () => {
 	it('splits a list into a field and keeps the other fields', async () => {
 		await expectParity(
 			legacy(new SplitOut(), 'splitOut', 1.1, {
@@ -346,7 +346,7 @@ describe('core.splitOut parity with Split Out v1.1', () => {
 	});
 });
 
-describe('core.summarize parity with Summarize v1.1', () => {
+describe('items.summarize parity with Summarize v1.1', () => {
 	const fieldsToSummarize = {
 		values: [
 			{ aggregation: 'count', field: 'name' },
@@ -390,7 +390,7 @@ describe('core.summarize parity with Summarize v1.1', () => {
 const adultWhere =
 	'={{ { match: "all", conditions: [{ type: "number", left: $json.age, test: { op: "gte", right: 18 } }] } }}';
 
-describe('core.if parity with If v2.2', () => {
+describe('condition.if parity with If v2.2', () => {
 	it('routes items to true and false', async () => {
 		await expectParity(
 			legacy(new If(), 'if', 2.2, {
@@ -426,7 +426,7 @@ describe('core.if parity with If v2.2', () => {
 	});
 });
 
-describe('core.if parity in the form the flow SDK saves', () => {
+describe('condition.if parity in the form the flow SDK saves', () => {
 	it('resolves nested expressions in an object parameter for each item', async () => {
 		const { nodeType, type, typeVersion } = actionNode(ifCondition, {});
 		// `branch({ if: (item) => item.age >= 18 })` saves this object, not JSON text.
@@ -449,7 +449,7 @@ describe('core.if parity in the form the flow SDK saves', () => {
 	});
 });
 
-describe('core.filter parity with Filter v2.2', () => {
+describe('condition.filter parity with Filter v2.2', () => {
 	it('keeps matching items and discards the others', async () => {
 		await expectParity(
 			legacy(new Filter(), 'filter', 2.2, {
@@ -464,7 +464,7 @@ describe('core.filter parity with Filter v2.2', () => {
 	});
 });
 
-describe('core.switch parity with Switch v3.2', () => {
+describe('condition.switch parity with Switch v3.2', () => {
 	const rule = (outputKey: string, operation: string, right: number) => ({
 		outputKey,
 		renameOutput: true,

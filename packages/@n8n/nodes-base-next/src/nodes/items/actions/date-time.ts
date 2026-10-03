@@ -1,6 +1,6 @@
 import { t } from '@n8n/node-sdk';
 
-import { core } from '../core.node';
+import { itemsNode } from '../items.node';
 import { setPath, pathOf } from '../path';
 
 const CALENDAR = ['years', 'quarters', 'months'] as const;
@@ -107,7 +107,7 @@ function partOf(millis: number, part: (typeof PARTS)[number]): number {
 	return parts[part]();
 }
 
-export const dateTime = core.action('dateTime', {
+export const dateTime = itemsNode.action('dateTime', {
 	action: 'Calculate a date',
 	summary: 'Add to, subtract from, round, compare, or read a part of a date, in UTC.',
 	flow: { effect: 'transform', cardinality: 'per-item' },

@@ -1,7 +1,7 @@
 import { t, type InputItem } from '@n8n/node-sdk';
 
-// Field paths and value keys are the ones of the core actions. An SDK path helper would serve both.
-import { canonical, getPath, pathOf } from '../../core/path';
+// Field paths and value keys are the ones of the items actions. An SDK path helper would serve both.
+import { canonical, getPath, pathOf } from '../../items/path';
 import { INPUTS, merge, mergeJson } from '../merge.node';
 
 const field = t.str().with({ minLength: 1 }).hint('Field path, e.g. id or customer.id');

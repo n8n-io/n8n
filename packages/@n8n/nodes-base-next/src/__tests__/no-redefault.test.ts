@@ -45,7 +45,7 @@ describe('nodes-base-next/no-redefault', () => {
 				'json',
 				'--stdin',
 				'--stdin-filename',
-				'src/nodes/core/actions/aggregate.ts',
+				'src/nodes/items/actions/aggregate.ts',
 			],
 			{ cwd: root, input: source, encoding: 'utf8' },
 		);

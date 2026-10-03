@@ -136,7 +136,7 @@ import { googleGemini } from '@n8n/nodes/googleGemini';`;
 			connections: {},
 			nodes: [
 				node('Get', '@n8n/nodes-base-next.gmailMessageGet', { messageId: '={{ $json.id }}' }),
-				node('Set', '@n8n/nodes-base-next.coreSet', {
+				node('Set', '@n8n/nodes-base-next.itemsSet', {
 					fields: { quoted: '={{ "={{ $json.id }}" }}', plain: 'text' },
 				}),
 				node('Code', 'n8n-nodes-base.code', { jsCode: 'return $input.all();' }),
@@ -216,7 +216,7 @@ import { googleGemini } from '@n8n/nodes/googleGemini';`;
 			expect.objectContaining({
 				nodeName: 'Keep',
 				severity: 'informational',
-				message: expect.stringContaining('Use the typed step core.filter'),
+				message: expect.stringContaining('Use the typed step condition.filter'),
 			}),
 			expect.objectContaining({
 				nodeName: 'Fetch',
@@ -541,8 +541,8 @@ import { googleGemini } from '@n8n/nodes/googleGemini';`;
 			connections: chain('Get Pages', 'Keep Open', 'Build Rows', 'Shape', 'Summarize', 'Upsert'),
 			nodes: [
 				node('Get Pages', '@n8n/nodes-base-next.notionDatabasePageGetAll', { database: 'x' }),
-				node('Keep Open', '@n8n/nodes-base-next.coreFilter', {}),
-				node('Build Rows', '@n8n/nodes-base-next.coreSet', {
+				node('Keep Open', '@n8n/nodes-base-next.conditionFilter', {}),
+				node('Build Rows', '@n8n/nodes-base-next.itemsSet', {
 					fields: { Region: '={{ $json.property_region }}' },
 				}),
 				node('Shape', '@n8n/nodes-base-next.codeJavaScript', { code: 'return $input.all();' }),
@@ -596,7 +596,7 @@ import { googleGemini } from '@n8n/nodes/googleGemini';`;
 			},
 			nodes: [
 				node('Get Deals', getAll, { database: 'x' }),
-				node('Build Rows', '@n8n/nodes-base-next.coreSet', {
+				node('Build Rows', '@n8n/nodes-base-next.itemsSet', {
 					fields: {
 						'Deal ID': '={{ $json.property_deal_id }}',
 						Stage: '={{ $json["property_stage"] }}',
@@ -611,7 +611,7 @@ import { googleGemini } from '@n8n/nodes/googleGemini';`;
 						Amount: '={{ $("Get Deals").item.json["property_amount"] }}',
 					},
 				}),
-				node('Report', '@n8n/nodes-base-next.coreSet', {
+				node('Report', '@n8n/nodes-base-next.itemsSet', {
 					fields: { Row: '={{ $json.row_number }}' },
 				}),
 			],

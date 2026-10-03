@@ -1,11 +1,11 @@
 import { t } from '@n8n/node-sdk';
 
-import { core } from '../core.node';
+import { itemsNode } from '../items.node';
 import { getPath, pathOf, setPath, unsetPath } from '../path';
 
 const names = { fields: t.arr(t.str()) };
 
-export const editFields = core.action('set', {
+export const editFields = itemsNode.action('set', {
 	action: 'Edit fields',
 	summary: 'Set fields on each item. A field name is a dot path; a value keeps its JSON type.',
 	flow: { effect: 'transform', cardinality: 'per-item' },

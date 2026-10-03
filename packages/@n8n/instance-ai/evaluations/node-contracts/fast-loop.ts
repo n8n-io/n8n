@@ -105,9 +105,9 @@ const NEXT_SHEETS_UPSERT = `${NEXT_PREFIX}googleSheetsSheetAppendOrUpdate`;
 const NEXT_GMAIL_SEND = `${NEXT_PREFIX}gmailMessageSend`;
 const NEXT_GMAIL_GET_ALL = `${NEXT_PREFIX}gmailMessageGetAll`;
 const NEXT_GEMINI_MESSAGE = `${NEXT_PREFIX}googleGeminiTextMessage`;
-const NEXT_SET = `${NEXT_PREFIX}coreSet`;
-const NEXT_IF = `${NEXT_PREFIX}coreIf`;
-const NEXT_FILTER = `${NEXT_PREFIX}coreFilter`;
+const NEXT_SET = `${NEXT_PREFIX}itemsSet`;
+const NEXT_IF = `${NEXT_PREFIX}conditionIf`;
+const NEXT_FILTER = `${NEXT_PREFIX}conditionFilter`;
 
 const isHttpRequest = (node: WorkflowNodeResponse) =>
 	['n8n-nodes-base.httpRequest', NEXT_HTTP_GET, NEXT_HTTP_SEND].includes(node.type);
@@ -507,15 +507,15 @@ const RUNNABLE_NODE_TYPES = new Set([
 		'itemLists',
 	].map((name) => `n8n-nodes-base.${name}`),
 	...[
-		'coreSet',
-		'coreIf',
-		'coreFilter',
-		'coreLimit',
-		'coreSplitOut',
-		'coreAggregate',
-		'coreSummarize',
-		'coreSort',
-		'coreRemoveDuplicates',
+		'itemsSet',
+		'conditionIf',
+		'conditionFilter',
+		'itemsLimit',
+		'itemsSplitOut',
+		'itemsAggregate',
+		'itemsSummarize',
+		'itemsSort',
+		'itemsRemoveDuplicates',
 		'codeJavaScript',
 	].map((name) => `${NEXT_PREFIX}${name}`),
 ]);

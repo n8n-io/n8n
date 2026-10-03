@@ -170,7 +170,7 @@ The check is static. A name built at run time passes it, and the sandbox then st
 ranges in place of `\p{…}`.
 
 Measured on macOS arm64 (load 9 to 12), medians, for `slack.message.send`,
-`gmail.message.getAll`, `notion.user.get` and `core.set`:
+`gmail.message.getAll`, `notion.user.get` and `items.set`:
 
 | | in-process | sandbox |
 |---|---|---|

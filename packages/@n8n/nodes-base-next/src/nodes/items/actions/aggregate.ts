@@ -1,9 +1,9 @@
 import { t } from '@n8n/node-sdk';
 
-import { core } from '../core.node';
+import { itemsNode } from '../items.node';
 import { getPath, pathOf, setPath } from '../path';
 
-export const aggregateItems = core.action('aggregate', {
+export const aggregateItems = itemsNode.action('aggregate', {
 	patch: 1,
 	action: 'Aggregate items',
 	summary: 'Combine all items into one item: lists of field values, or the list of all items.',

@@ -1,11 +1,11 @@
 import { t } from '@n8n/node-sdk';
 
-import { core } from '../core.node';
+import { itemsNode } from '../items.node';
 import { getPath, pathOf, setPath, unsetPath } from '../path';
 
 const field = () => t.str().with({ minLength: 1 });
 
-export const renameKeys = core.action('renameKeys', {
+export const renameKeys = itemsNode.action('renameKeys', {
 	action: 'Rename keys',
 	summary:
 		'Move fields of each item to new names. A name is a dot path; a missing field is skipped.',

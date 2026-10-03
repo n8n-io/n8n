@@ -1,9 +1,9 @@
 import { t } from '@n8n/node-sdk';
 
 import { where, whereMatches } from '../condition';
-import { core } from '../core.node';
+import { conditionNode } from '../condition.node';
 
-export const switchCases = core.action('switch', {
+export const switchCases = conditionNode.action('switch', {
 	action: 'Route items by cases',
 	summary: 'Send each item to the output of the first case it matches, else to fallback.',
 	flow: { effect: 'transform', cardinality: '1:N' },

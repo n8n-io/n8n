@@ -7,7 +7,7 @@ import type { IExecuteFunctions } from 'n8n-workflow';
 import { simplifyObjects } from 'n8n-nodes-base/dist/nodes/Notion/shared/GenericFunctions';
 
 import { actions, nodeTypeOf } from '../index';
-import { dateTime } from '../nodes/core/actions/date-time';
+import { dateTime } from '../nodes/items/actions/date-time';
 import { getRequest } from '../nodes/http-request/actions/get';
 import { sendRequest } from '../nodes/http-request/actions/send';
 import { getManyDatabasePages } from '../nodes/notion/actions/database-page.get-all';
@@ -78,7 +78,7 @@ describe('contracts', () => {
 	});
 });
 
-describe('core.dateTime', () => {
+describe('items.dateTime', () => {
 	it('refuses a fraction of a calendar unit and adds a fraction of a fixed unit', async () => {
 		const add = async (amount: number, unit: string) =>
 			await runAction(dateTime, {
