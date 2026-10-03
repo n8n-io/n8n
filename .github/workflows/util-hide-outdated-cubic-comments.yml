@@ -1,29 +1,34 @@
 name: Hide outdated cubic review comments
 
-# Every time cubic re-reviews a PR (e.g. after a new commit) it posts a brand new
-# "left a comment" review summary instead of updating the previous one, which
-# clutters the PR timeline. This workflow minimizes (hides) all but the most
-# recent cubic-dev-ai review comment on a PR, so only the latest summary is
-# visible by default. Hidden comments are collapsed, not deleted -- anyone can
-# still expand them.
+# cubic posts a new review summary on every re-review. This workflow collapses
+# every older cubic-dev-ai summary on the PR so only the newest stays visible.
+# Collapsed summaries can still be expanded. Issue comments and inline threads
+# are not touched.
 
-# Runs on `pull_request` (not `pull_request_target`) so it never executes with
-# elevated permissions against untrusted fork code. The tradeoff: GitHub only
-# grants a write-capable token to `pull_request` runs when the PR's head repo
-# is this same repo, so the job below is skipped for PRs from forks -- outdated
-# cubic comments on external-contributor PRs won't be minimized.
+# Runs on the review, not the push: cubic reviews 2-11 minutes after a push, so
+# a push-triggered run finishes before the summary it should hide exists.
+# `pull_request_review` has a write token on fork PRs too. No code is checked out.
 
 on:
-  pull_request:
-    types: [synchronize]
+  pull_request_review:
+    types: [submitted]
 
 permissions:
-  pull-requests: write
+  contents: read
 
 jobs:
   hide-old-cubic-reviews:
-    if: github.event.pull_request.head.repo.full_name == github.repository
+    if: >-
+      github.event.review.user.login == 'cubic-dev-ai[bot]' &&
+      github.repository == 'n8n-io/n8n'
     runs-on: ubuntu-latest
+    # Job-level, not workflow-level: a human review starts a run whose job is
+    # skipped, and that run must not cancel an in-flight cubic run.
+    concurrency:
+      group: hide-cubic-reviews-${{ github.event.pull_request.number }}
+      cancel-in-progress: true
+    permissions:
+      pull-requests: write
     steps:
       - name: Minimize previous cubic-dev-ai review comments
         uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
@@ -31,6 +36,7 @@ jobs:
           script: |
             const { owner, repo } = context.repo;
             const pull_number = context.payload.pull_request.number;
+            const keepId = context.payload.review.id;
 
             const reviews = await github.paginate(github.rest.pulls.listReviews, {
               owner,
@@ -39,19 +45,29 @@ jobs:
               per_page: 100,
             });
 
-            // Only touch cubic's own reviews that actually have a comment body.
-            const cubicReviews = reviews
-              .filter(
-                (r) =>
-                  r.user &&
-                  r.user.login === 'cubic-dev-ai[bot]' &&
-                  r.body &&
-                  r.body.trim().length > 0
-              )
-              .sort((a, b) => new Date(a.submitted_at) - new Date(b.submitted_at));
+            // Only hide reviews older than the one that triggered this run. If two
+            // runs overlap, the older run must not hide the newer review.
+            // If the list does not include the triggering review yet, treat every
+            // listed review as older.
+            const keep = reviews.find((r) => r.id === keepId);
+            const keepAt = keep ? new Date(keep.submitted_at).getTime() : Infinity;
 
-            // Keep the newest review visible, hide everything older.
-            const toHide = cubicReviews.slice(0, -1);
+            // `submitted_at` is in whole seconds, so reviews can tie. Ids increase
+            // with submission order and break the tie.
+            const precedesKeep = (r) => {
+              const at = new Date(r.submitted_at).getTime();
+              return at < keepAt || (at === keepAt && r.id < keepId);
+            };
+
+            const toHide = reviews.filter(
+              (r) =>
+                r.id !== keepId &&
+                r.user &&
+                r.user.login === 'cubic-dev-ai[bot]' &&
+                r.body &&
+                r.body.trim().length > 0 &&
+                precedesKeep(r)
+            );
 
             for (const review of toHide) {
               try {
