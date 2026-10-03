@@ -1197,6 +1197,25 @@ describe('WaitTracker', () => {
 	});
 
 	describe('multi-main setup', () => {
+		it('should re-arm waiting executions after leader takeover', async () => {
+			const startExecutionSpy = vi.spyOn(waitTracker, 'startExecution').mockResolvedValue();
+			executionRepository.getWaitingExecutions.mockResolvedValue([execution]);
+
+			waitTracker.init();
+			await waitTracker.getWaitingExecutions();
+			expect(waitTracker.has(execution.id)).toBe(true);
+
+			waitTracker.stopTracking();
+			expect(waitTracker.has(execution.id)).toBe(false);
+
+			waitTracker.init();
+			await waitTracker.getWaitingExecutions();
+			await vi.advanceTimersByTimeAsync(2_000);
+
+			expect(startExecutionSpy).toHaveBeenCalledWith(execution.id);
+			waitTracker.stopTracking();
+		});
+
 		it('should start tracking if leader', () => {
 			executionRepository.getWaitingExecutions.mockResolvedValue([]);
 

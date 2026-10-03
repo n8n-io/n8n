@@ -428,6 +428,7 @@ export class WaitTracker {
 		clearInterval(this.mainTimer);
 		Object.keys(this.waitingExecutions).forEach((executionId) => {
 			clearTimeout(this.waitingExecutions[executionId].timer);
+			delete this.waitingExecutions[executionId];
 		});
 
 		this.logger.debug('Stopped tracking waiting executions');
