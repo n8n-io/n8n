@@ -80,6 +80,11 @@ export const slack = defineNode({
 		},
 	}),
 	baseUrl: 'https://slack.com/api',
+	// Slack answers 200 with `ok: false` for most errors.
+	errorOf: (body) => {
+		const status = parse(slackStatus, body);
+		return status.ok === false ? slackErrorOf(status) : undefined;
+	},
 });
 
 /** chat.postMessage takes a conversation ID, a user ID for a DM, or a channel name. */
@@ -238,13 +243,6 @@ function slackErrorOf({ error, needed }: Loose<Infer<typeof slackStatus>>) {
 export const slackResponse = <S extends Shape>(shape: S) =>
 	t.loose(t.obj(shape).with({ additionalProperties: true }));
 
-/** Slack answers 200 with `ok: false` for most errors, so each body needs this check first. */
-export function okBody<S extends AnySchema>(body: unknown, response: S): Loose<Infer<S>> {
-	const status = parse(slackStatus, body);
-	if (!status.ok) throw new Error(slackErrorOf(status));
-	return parse(response, body);
-}
-
 // Without the charset, Slack adds a `missing_charset` warning to each response.
 const JSON_UTF8 = { 'content-type': 'application/json; charset=utf-8' };
 
@@ -255,16 +253,7 @@ export async function slackPost<S extends AnySchema>(
 	response: S,
 ) {
 	const request: HttpRequest = { method: 'POST', path, headers: JSON_UTF8, body };
-	return okBody(await http.request(request), response);
-}
-
-export async function slackGet<S extends AnySchema>(
-	http: Http,
-	path: EncodedPath,
-	query: HttpRequest['query'],
-	response: S,
-) {
-	return okBody(await http.request({ path, query }), response);
+	return parse(response, await http.request(request));
 }
 
 /** One page of a cursor list method; Slack sends an empty cursor on the last page. */
@@ -278,10 +267,7 @@ const cursorPage = slackResponse({
 // Slack recommends at most 200 entries per page.
 const PAGE_SIZE = 200;
 
-/**
- * The entries of a cursor list method, page by page, up to the paging limit. Each page needs
- * the `ok` check first, so a declarative list cannot read it yet.
- */
+/** The entries of a cursor list method, page by page, up to the paging limit. */
 export function slackList<S extends AnySchema, T>(
 	http: Http,
 	list: {
@@ -293,7 +279,7 @@ export function slackList<S extends AnySchema, T>(
 	},
 ) {
 	return pages(http, {
-		page: (body) => ({ entries: okBody(body, list.page), cursor: parse(cursorPage, body) }),
+		page: (body) => ({ entries: parse(list.page, body), cursor: parse(cursorPage, body) }),
 		request: (cursor, room) => ({
 			path: list.path,
 			query: { ...list.query, limit: Math.min(room ?? PAGE_SIZE, PAGE_SIZE), cursor },

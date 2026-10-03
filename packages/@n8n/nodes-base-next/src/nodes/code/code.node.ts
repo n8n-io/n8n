@@ -2,6 +2,7 @@ import {
 	defineNode,
 	isRecord,
 	t,
+	UserError,
 	validate,
 	type BatchContext,
 	type CodeRequest,
@@ -55,9 +56,7 @@ const article = (word: string) => (/^[aeiou]/.test(word) ? `an ${word}` : `a ${w
 
 /** An error with the description n8n shows under the message. */
 export const failure = (message: string, description: string, at?: number) =>
-	Object.assign(new Error(at === undefined ? message : `${message} [item ${at}]`), {
-		description,
-	});
+	new UserError(at === undefined ? message : `${message} [item ${at}]`, { description });
 
 interface Returned {
 	readonly json: Record<string, unknown>;
@@ -108,7 +107,7 @@ function returnedItems(value: unknown, words: Words, each: boolean): readonly Re
 		return entry;
 	});
 	const wrapped = entries.filter((entry) => 'json' in entry).length;
-	if (wrapped > 0 && wrapped < entries.length) throw new Error('Inconsistent item format');
+	if (wrapped > 0 && wrapped < entries.length) throw new UserError('Inconsistent item format');
 	// All items: one item key means every key must be one. Each item: only a wrapped item.
 	const anyItemKey = entries.some((entry) => Object.keys(entry).some((key) => ITEM_KEYS.has(key)));
 	entries.forEach((entry, at) => {

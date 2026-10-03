@@ -1,4 +1,4 @@
-import type { Binary } from '@n8n/node-sdk';
+import { UserError, type Binary } from '@n8n/node-sdk';
 
 const encoder = new TextEncoder();
 
@@ -55,7 +55,7 @@ export function addressList(value: string, field: string) {
 		.filter((entry) => entry !== '');
 	const invalid = entries.find((entry) => !entry.includes('@'));
 	if (invalid !== undefined || entries.length === 0) {
-		throw new Error(
+		throw new UserError(
 			`Invalid email address: '${invalid ?? value}' in the '${field}' field isn't valid`,
 		);
 	}

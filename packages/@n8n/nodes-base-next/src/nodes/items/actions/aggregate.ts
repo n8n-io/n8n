@@ -1,4 +1,4 @@
-import { t } from '@n8n/node-sdk';
+import { t, UserError } from '@n8n/node-sdk';
 
 import { itemsNode } from '../items.node';
 import { getPath, pathOf, setPath } from '../path';
@@ -44,7 +44,8 @@ export const aggregateItems = itemsNode.action('aggregate', {
 		const repeated = outputs.find(
 			({ target }, index) => outputs.findIndex((other) => other.target === target) !== index,
 		);
-		if (repeated) throw new Error(`The '${repeated.target}' output field is used more than once`);
+		if (repeated)
+			throw new UserError(`The '${repeated.target}' output field is used more than once`);
 		const values = (path: readonly string[]) =>
 			items.flatMap((item) => {
 				const value = getPath(item.json, path);

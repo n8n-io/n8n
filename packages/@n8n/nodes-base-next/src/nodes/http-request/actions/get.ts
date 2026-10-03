@@ -5,6 +5,7 @@ import {
 	pages,
 	pageValueOf,
 	t,
+	UserError,
 	type HttpRequest,
 	type ResponsePage,
 } from '@n8n/node-sdk';
@@ -152,7 +153,7 @@ export const getRequest = httpRequest.action('get', {
 			if (!itemsAt) return toItems(page.body);
 			const found = pageValueOf(itemsAt, page);
 			if (!Array.isArray(found)) {
-				throw new Error(`input.items gives no list: ${itemsAt}; ${listFieldsOf(page.body)}`);
+				throw new UserError(`input.items gives no list: ${itemsAt}; ${listFieldsOf(page.body)}`);
 			}
 			return toItems(found);
 		};

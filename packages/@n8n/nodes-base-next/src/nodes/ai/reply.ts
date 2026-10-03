@@ -1,6 +1,8 @@
 import {
 	isRecord,
+	OperationalError,
 	t,
+	UserError,
 	validate,
 	type ChatMessage,
 	type ChatModel,
@@ -59,12 +61,12 @@ export function parseReply(reply: ChatReply, schema: JsonSchema): unknown {
 		try {
 			return JSON.parse(text);
 		} catch {
-			throw new Error(`The model reply is not JSON: ${text.slice(0, 200)}`);
+			throw new OperationalError(`The model reply is not JSON: ${text.slice(0, 200)}`);
 		}
 	})();
 	const issues = validate(parsed, schema, { path: 'output' });
 	if (issues.length > 0) {
-		throw new Error(`The model reply does not match the schema: ${issues.join('; ')}`);
+		throw new OperationalError(`The model reply does not match the schema: ${issues.join('; ')}`);
 	}
 	return parsed;
 }
@@ -72,10 +74,10 @@ export function parseReply(reply: ChatReply, schema: JsonSchema): unknown {
 /** A reply cut off by the token limit or a filter has no usable text. */
 export function assertFinished(reply: ChatReply, model: string) {
 	if (reply.finishReason === 'length' && reply.toolCalls.length === 0) {
-		throw new Error(`${model} reached its token limit before it finished the reply`);
+		throw new UserError(`${model} reached its token limit before it finished the reply`);
 	}
 	if (reply.finishReason === 'content_filter') {
-		throw new Error(`${model} stopped the reply: content filter`);
+		throw new UserError(`${model} stopped the reply: content filter`);
 	}
 }
 

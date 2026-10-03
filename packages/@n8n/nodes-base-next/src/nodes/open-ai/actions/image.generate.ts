@@ -1,4 +1,4 @@
-import { parse, path, t, type JsonSchema } from '@n8n/node-sdk';
+import { OperationalError, parse, path, t, type JsonSchema } from '@n8n/node-sdk';
 
 import { image } from '../open-ai.node';
 
@@ -66,7 +66,7 @@ export const generateImage = image.action('generate', {
 		});
 		for (const { b64_json: base64, revised_prompt: revised } of parse(imagesSchema, body).data ??
 			[]) {
-			if (!base64) throw new Error('OpenAI gave an image without data');
+			if (!base64) throw new OperationalError('OpenAI gave an image without data');
 			const data = await files.create({ mimeType: 'image/png', fileName: 'data' }, [
 				bytesOf(base64),
 			]);

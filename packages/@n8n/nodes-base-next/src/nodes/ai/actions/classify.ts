@@ -1,4 +1,4 @@
-import { parse, provider, t, type JsonSchema } from '@n8n/node-sdk';
+import { parse, provider, t, UserError, type JsonSchema } from '@n8n/node-sdk';
 
 import { ai } from '../ai.node';
 import { assertFinished, parseReply, promptMessages } from '../reply';
@@ -58,7 +58,7 @@ export const classifyText = ai.action('classify', {
 		const names = input.categories.map(({ output }) => output);
 		// Before the model call: n8n checks output names only after the run.
 		if (names.includes(OTHER)) {
-			throw new Error(
+			throw new UserError(
 				`No category can be named "${OTHER}": that output takes the items that fit none`,
 			);
 		}

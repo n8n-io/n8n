@@ -1,6 +1,6 @@
-import { path, ref, t } from '@n8n/node-sdk';
+import { OperationalError, parse, path, ref, t, UserError } from '@n8n/node-sdk';
 
-import { file, slackChannelId, slackGet, slackPost, slackResponse, slackTs } from '../slack.node';
+import { file, slackChannelId, slackPost, slackResponse, slackTs } from '../slack.node';
 
 const slackFile = t.loose(
 	t
@@ -36,11 +36,14 @@ export const uploadSlackFile = file.action('upload', {
 	async run({ input, http }) {
 		const { meta } = input.file;
 		const fileName = input.fileName ?? meta.fileName;
-		if (!fileName) throw new Error('The file has no name. Set fileName.');
-		if (meta.bytes === undefined) throw new Error('The size of the file is not known');
+		if (!fileName) throw new UserError('The file has no name. Set fileName.');
+		if (meta.bytes === undefined) throw new UserError('The size of the file is not known');
 		const query = { filename: fileName, length: meta.bytes };
-		const target = await slackGet(http, path`/files.getUploadURLExternal`, query, uploadTarget);
-		if (!target.upload_url) throw new Error('Slack gave no upload URL for the file');
+		const target = parse(
+			uploadTarget,
+			await http.request({ path: path`/files.getUploadURLExternal`, query }),
+		);
+		if (!target.upload_url) throw new OperationalError('Slack gave no upload URL for the file');
 		await http.request({ method: 'POST', url: target.upload_url, body: input.file });
 		const body = {
 			files: [{ id: target.file_id, title: input.title ?? fileName }],

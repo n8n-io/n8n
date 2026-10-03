@@ -1,6 +1,6 @@
-import { path, t } from '@n8n/node-sdk';
+import { parse, path, t } from '@n8n/node-sdk';
 
-import { slackGet, slackResponse, slackUser, user } from '../slack.node';
+import { slackResponse, slackUser, user } from '../slack.node';
 
 const found = slackResponse({ user: slackUser });
 
@@ -18,10 +18,10 @@ export const getSlackUser = user.action('get', {
 	output: slackUser,
 	async run({ input, http }) {
 		const { user: target } = input;
-		const body =
+		const request =
 			target.by === 'id'
-				? await slackGet(http, path`/users.info`, { user: target.id }, found)
-				: await slackGet(http, path`/users.lookupByEmail`, { email: target.email }, found);
-		return body.user ?? {};
+				? { path: path`/users.info`, query: { user: target.id } }
+				: { path: path`/users.lookupByEmail`, query: { email: target.email } };
+		return parse(found, await http.request(request)).user ?? {};
 	},
 });

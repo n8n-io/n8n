@@ -1,4 +1,4 @@
-import { t } from '@n8n/node-sdk';
+import { t, UserError } from '@n8n/node-sdk';
 
 import { itemsNode } from '../items.node';
 import { setPath, pathOf } from '../path';
@@ -35,7 +35,7 @@ type RoundUnit = (typeof ROUND_UNITS)[number];
 
 function millisOf(date: string): number {
 	const millis = Date.parse(date);
-	if (Number.isNaN(millis)) throw new Error(`"${date}" is not an ISO 8601 date`);
+	if (Number.isNaN(millis)) throw new UserError(`"${date}" is not an ISO 8601 date`);
 	return millis;
 }
 
@@ -45,7 +45,7 @@ const daysIn = (year: number, month: number) => new Date(Date.UTC(year, month + 
 function plus(millis: number, amount: number, unit: Unit): number {
 	if (unit === 'years' || unit === 'quarters' || unit === 'months') {
 		if (!Number.isInteger(amount))
-			throw new Error(`The amount of ${unit} must be a whole number, not ${amount}`);
+			throw new UserError(`The amount of ${unit} must be a whole number, not ${amount}`);
 		const months = amount * (unit === 'years' ? 12 : unit === 'quarters' ? 3 : 1);
 		const date = new Date(millis);
 		const total = date.getUTCFullYear() * 12 + date.getUTCMonth() + months;

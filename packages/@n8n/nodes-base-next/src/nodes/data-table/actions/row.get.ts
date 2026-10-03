@@ -1,3 +1,4 @@
+import { UserError } from '@n8n/node-sdk';
 import {
 	limit,
 	pagesOf,
@@ -29,7 +30,7 @@ export const getRows = row.action('get', {
 		if (order && !SYSTEM_COLUMNS.includes(order.column)) {
 			const known = await table.columns();
 			if (!known.some(({ name }) => name === order.column)) {
-				throw new Error(`The data table has no column "${order.column}" to sort by`);
+				throw new UserError(`The data table has no column "${order.column}" to sort by`);
 			}
 		}
 		const filter = input.where && toFilter(input.where);

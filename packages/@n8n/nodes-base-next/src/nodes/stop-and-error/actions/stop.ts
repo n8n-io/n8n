@@ -1,4 +1,4 @@
-import { t } from '@n8n/node-sdk';
+import { t, UserError } from '@n8n/node-sdk';
 
 import { stopAndError } from '../stop-and-error.node';
 
@@ -13,8 +13,6 @@ export const stopWithError = stopAndError.action('stop', {
 	output: t.passedItem(),
 	// eslint-disable-next-line require-yield -- the action ends every run with its error
 	*run({ input }) {
-		throw Object.assign(new Error(input.message), {
-			...(input.description ? { description: input.description } : {}),
-		});
+		throw new UserError(input.message, { description: input.description });
 	},
 });

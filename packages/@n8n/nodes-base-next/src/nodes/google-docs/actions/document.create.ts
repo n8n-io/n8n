@@ -1,4 +1,4 @@
-import { parse, path, t } from '@n8n/node-sdk';
+import { OperationalError, parse, path, t } from '@n8n/node-sdk';
 
 import {
 	content as contentSchema,
@@ -42,7 +42,7 @@ export const createDocument = document.action('create', {
 			},
 		});
 		const created = parse(t.obj({ id: t.str() }), file).id;
-		if (!created) throw new Error('Google Drive gave no ID for the new document');
+		if (!created) throw new OperationalError('Google Drive gave no ID for the new document');
 		const id = documentIdOf(created);
 		const { content } = input;
 		const requests = !content

@@ -1,4 +1,9 @@
-import type { DataTableRef, DataTableValues, InputItem } from '@n8n/node-sdk';
+import {
+	OperationalError,
+	type DataTableRef,
+	type DataTableValues,
+	type InputItem,
+} from '@n8n/node-sdk';
 
 import { cellsOf, row, ROW_COLUMNS, rowFromColumns, storedRow, values } from '../data-table.node';
 
@@ -31,7 +36,9 @@ export const insertRows = row.action('insert', {
 			const table = await dataTables.open(write.table);
 			const stored = await table.insert(write.rows.map(({ cells }) => cells));
 			if (stored.length !== write.rows.length) {
-				throw new Error(`The data table stored ${stored.length} of ${write.rows.length} rows`);
+				throw new OperationalError(
+					`The data table stored ${stored.length} of ${write.rows.length} rows`,
+				);
 			}
 			yield* stored.map((json, index) => ({ json, from: write.rows[index]?.item ?? items }));
 		}

@@ -1,6 +1,6 @@
-import { path, ref } from '@n8n/node-sdk';
+import { parse, path, ref } from '@n8n/node-sdk';
 
-import { channel, slackChannel, slackChannelId, slackGet, slackResponse } from '../slack.node';
+import { channel, slackChannel, slackChannelId, slackResponse } from '../slack.node';
 
 const info = slackResponse({ channel: slackChannel });
 
@@ -12,9 +12,9 @@ export const getSlackChannel = channel.action('get', {
 	input: { channel: ref(slackChannelId) },
 	output: slackChannel,
 	async run({ input, http }) {
+		const query = { channel: input.channel };
 		return (
-			(await slackGet(http, path`/conversations.info`, { channel: input.channel }, info)).channel ??
-			{}
+			parse(info, await http.request({ path: path`/conversations.info`, query })).channel ?? {}
 		);
 	},
 });

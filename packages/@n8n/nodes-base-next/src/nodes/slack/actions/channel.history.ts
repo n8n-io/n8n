@@ -1,4 +1,4 @@
-import { paging, path, ref, t } from '@n8n/node-sdk';
+import { paging, path, ref, t, UserError } from '@n8n/node-sdk';
 
 import { channel, slackChannelId, slackMessage, slackList, slackResponse } from '../slack.node';
 
@@ -6,7 +6,7 @@ const date = t.str().hint('ISO 8601 date or date-time');
 
 function seconds(value: string, label: string) {
 	const time = Date.parse(value);
-	if (Number.isNaN(time)) throw new Error(`Invalid date/time in '${label}': ${value}`);
+	if (Number.isNaN(time)) throw new UserError(`Invalid date/time in '${label}': ${value}`);
 	return time / 1000;
 }
 

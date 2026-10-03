@@ -1,6 +1,6 @@
-import { path, ref, t } from '@n8n/node-sdk';
+import { parse, path, ref, t } from '@n8n/node-sdk';
 
-import { message, slackChannelId, slackGet, slackResponse, slackTs } from '../slack.node';
+import { message, slackChannelId, slackResponse, slackTs } from '../slack.node';
 
 const link = slackResponse({ ok: t.bool(), channel: t.str(), permalink: t.str() });
 
@@ -12,6 +12,6 @@ export const getSlackPermalink = message.action('getPermalink', {
 	output: link,
 	async run({ input, http }) {
 		const query = { channel: input.channel, message_ts: input.ts };
-		return await slackGet(http, path`/chat.getPermalink`, query, link);
+		return parse(link, await http.request({ path: path`/chat.getPermalink`, query }));
 	},
 });

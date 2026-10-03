@@ -1,6 +1,7 @@
 import {
 	defineNode,
 	t,
+	UserError,
 	type DataTableColumnType,
 	type DataTableFilter,
 	type DataTableValue,
@@ -78,7 +79,7 @@ export function cellsOf(item: InputItem): DataTableValues {
 		entries.map(([key, value]) => {
 			if (value === undefined) return [key, null];
 			if (isCell(value)) return [key, value];
-			throw new Error(
+			throw new UserError(
 				`The field "${key}" of the item is not text, a number, a boolean or null. Set values to pick the cells.`,
 			);
 		}),

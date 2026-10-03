@@ -1,4 +1,12 @@
-import { isRecord, path, t, type Http, type Infer, type JsonSchema } from '@n8n/node-sdk';
+import {
+	isRecord,
+	path,
+	t,
+	UserError,
+	type Http,
+	type Infer,
+	type JsonSchema,
+} from '@n8n/node-sdk';
 
 import type { sheetInput } from './google-sheets.node';
 
@@ -85,7 +93,7 @@ export async function sheetOf(
 		);
 	if (typeof found?.title !== 'string' || typeof found.sheetId !== 'number') {
 		const label = sheet.mode === 'name' ? `name ${sheet.name}` : `ID ${sheet.id}`;
-		throw new Error(`Sheet with ${label} not found`);
+		throw new UserError(`Sheet with ${label} not found`);
 	}
 	return { id: found.sheetId, title: found.title };
 }
@@ -179,7 +187,7 @@ export async function headerOf(
 ): Promise<string[]> {
 	const existing = rows[headerRow - 1] ?? [];
 	if (rows.length > 0 && !existing.some(filled)) {
-		throw new Error(
+		throw new UserError(
 			`Header row ${headerRow} is empty. Write the column names in it, or set headerRow`,
 		);
 	}

@@ -1,4 +1,4 @@
-import { parse, path, t } from '@n8n/node-sdk';
+import { parse, path, t, UserError } from '@n8n/node-sdk';
 
 import { generateContentSchema, replyTextOf } from '../content';
 import { text } from '../google-gemini.node';
@@ -41,7 +41,7 @@ export const messageGemini = text.action('message', {
 		const contents = input.messages
 			.filter((message) => message.content.trim() !== '')
 			.map((message) => ({ parts: [{ text: message.content }], role: message.role }));
-		if (contents.length === 0) throw new Error('A non-empty prompt is required.');
+		if (contents.length === 0) throw new UserError('A non-empty prompt is required.');
 		const id = input.model.replace(/^models\//, '');
 		const response = await http.request({
 			method: 'POST',
@@ -62,7 +62,7 @@ export const messageGemini = text.action('message', {
 		const candidates = found ?? [];
 		if (candidates.length === 0) {
 			const reason = promptFeedback?.blockReason;
-			throw new Error(`Gemini returned no reply${reason ? `: ${reason}` : ''}`);
+			throw new UserError(`Gemini returned no reply${reason ? `: ${reason}` : ''}`);
 		}
 		// Mirrors `includeMergedResponse` of the legacy node, without thought summaries.
 		const merged = candidates.map((entry) => replyTextOf(entry.content?.parts ?? []));
@@ -71,7 +71,7 @@ export const messageGemini = text.action('message', {
 			finishReason && finishReason !== 'STOP' && merged[index] === '' ? [finishReason] : [],
 		);
 		if (stopped.length === candidates.length) {
-			throw new Error(`Gemini returned no text: ${[...new Set(stopped)].join(', ')}`);
+			throw new UserError(`Gemini returned no text: ${[...new Set(stopped)].join(', ')}`);
 		}
 		// The input cannot ask for more than one candidate, so the first one is the reply.
 		const [first] = candidates;

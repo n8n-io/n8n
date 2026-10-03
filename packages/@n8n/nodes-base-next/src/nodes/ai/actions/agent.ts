@@ -1,6 +1,7 @@
 import {
 	provider,
 	t,
+	UserError,
 	type ChatMessage,
 	type ChatReply,
 	type ChatRequest,
@@ -59,7 +60,8 @@ export const runAgent = ai.action('agent', {
 		const schema = isJsonSchema(input.schema) ? input.schema : undefined;
 		const names = tools.map(({ name }) => name);
 		const repeated = names.find((name, index) => names.indexOf(name) !== index);
-		if (repeated) throw new Error(`Two tools are named ${repeated}. Give each tool its own name.`);
+		if (repeated)
+			throw new UserError(`Two tools are named ${repeated}. Give each tool its own name.`);
 		const history = memory ? await memory.load() : [];
 		// The history goes between the instructions and the new prompt.
 		const start: ChatMessage[] = [
@@ -86,7 +88,9 @@ export const runAgent = ai.action('agent', {
 			assertFinished(reply, model.model);
 			if (reply.toolCalls.length === 0) return { messages, reply };
 			if (left <= 1) {
-				throw new Error(`The agent made ${input.maxIterations} model calls and has no answer yet`);
+				throw new UserError(
+					`The agent made ${input.maxIterations} model calls and has no answer yet`,
+				);
 			}
 			const results = await reply.toolCalls.reduce<Promise<ChatMessage[]>>(
 				async (done, call) => [...(await done), await resultOf(call, tools)],

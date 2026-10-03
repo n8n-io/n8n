@@ -1,4 +1,4 @@
-import { t } from '@n8n/node-sdk';
+import { t, UserError } from '@n8n/node-sdk';
 
 import { sheet, spreadsheetIdOf } from '../google-sheets.node';
 import {
@@ -39,7 +39,7 @@ export const appendOrUpdateSheetRow = sheet.action('appendOrUpdate', {
 		const { matchOn } = input;
 		const key = input.values[matchOn];
 		if (key === undefined || key === null || key === '') {
-			throw new Error(`values needs a value for the matchOn column "${matchOn}"`);
+			throw new UserError(`values needs a value for the matchOn column "${matchOn}"`);
 		}
 		const spreadsheetId = spreadsheetIdOf(input.spreadsheet);
 		const tab = await sheetOf(http, spreadsheetId, input.sheet);
@@ -50,7 +50,7 @@ export const appendOrUpdateSheetRow = sheet.action('appendOrUpdate', {
 		// Check before `headerOf` adds columns: a new key column matches no row.
 		const known = (rows[headerRow - 1] ?? []).map(columnKey);
 		if (known.some(Boolean) && !known.includes(matchOn)) {
-			throw new Error(`Column "${matchOn}" is not in header row ${headerRow}`);
+			throw new UserError(`Column "${matchOn}" is not in header row ${headerRow}`);
 		}
 		const header = await headerOf(http, spreadsheetId, tab, rows, headerRow, input.values);
 		const keyColumn = header.indexOf(matchOn);

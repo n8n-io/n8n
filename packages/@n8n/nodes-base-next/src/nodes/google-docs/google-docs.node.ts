@@ -1,4 +1,4 @@
-import { defineNode, defineResource, t } from '@n8n/node-sdk';
+import { defineNode, defineResource, t, UserError } from '@n8n/node-sdk';
 import { credential } from '@n8n/node-sdk/credentials';
 
 import { googleOAuth2 } from '../google-oauth2';
@@ -32,7 +32,7 @@ export const googleDocument = defineResource({
 /** The ID in a Google Docs URL, else the value itself. It goes into a path, so it is checked. */
 export function documentIdOf(value: string) {
 	const id = /\/document\/d\/([-_a-zA-Z0-9]+)/.exec(value)?.[1] ?? value;
-	if (!/^[-_a-zA-Z0-9]+$/.test(id)) throw new Error(`Not a Google Docs ID or URL: ${value}`);
+	if (!/^[-_a-zA-Z0-9]+$/.test(id)) throw new UserError(`Not a Google Docs ID or URL: ${value}`);
 	return id;
 }
 

@@ -1,4 +1,5 @@
 import {
+	OperationalError,
 	parse,
 	path,
 	t,
@@ -138,7 +139,7 @@ export function chatCompletionsModel(
 			});
 			const { choices, usage } = parse(completionSchema, body);
 			const [choice] = choices ?? [];
-			if (!choice) throw new Error(`${model} gave no reply`);
+			if (!choice) throw new OperationalError(`${model} gave no reply`);
 			const { content, tool_calls: calls } = choice.message ?? {};
 			return {
 				text:

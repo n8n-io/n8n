@@ -1,4 +1,4 @@
-import { matches, t } from '@n8n/node-sdk';
+import { readAs, t, UserError } from '@n8n/node-sdk';
 
 import { sheet, spreadsheetIdOf } from '../google-sheets.node';
 import { cellText, readValues, ROW_NUMBER, sheetOf, sheetRow, USER_ROW_NUMBER } from '../table';
@@ -69,14 +69,14 @@ function lookup(
 	allMatches: boolean,
 ) {
 	const header = rows[keyRow];
-	if (!header || dataStart < keyRow) throw new Error('The key row does not exist');
+	if (!header || dataStart < keyRow) throw new UserError('The key row does not exist');
 	const keys = header.map((cell, column) => cell || `col_${column}`);
 	const padded = rows.map((row) =>
 		row.length >= keys.length ? row : [...row, ...range(keys.length - row.length).map(() => '')],
 	);
 	const tests = filters.map(({ column, value }) => {
 		const index = keys.findIndex((key) => cellText(key) === column);
-		if (index === -1) throw new Error(`The column "${column}" could not be found`);
+		if (index === -1) throw new UserError(`The column "${column}" could not be found`);
 		return (row: Row) => row[index] !== undefined && cellText(row[index]) === value;
 	});
 	const candidates = padded.slice(dataStart);
@@ -144,9 +144,6 @@ export const readSheetRows = sheet.action('read', {
 		const found = filters.length
 			? lookup(rows, keyRow, dataStart, filters, parameters.combine, parameters.allMatches)
 			: structure(rows, keyRow, dataStart);
-		for (const row of found) {
-			if (!matches(sheetRow, row)) throw new Error('Google Sheets returned a row without a number');
-			yield row;
-		}
+		for (const row of found) yield readAs(sheetRow, row).value;
 	},
 });

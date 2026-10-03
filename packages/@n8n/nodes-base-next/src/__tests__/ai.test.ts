@@ -15,6 +15,7 @@ import { classifyText } from '../nodes/ai/actions/classify';
 import { promptModel } from '../nodes/ai/actions/prompt';
 import { anthropicChatModel } from '../nodes/anthropic/actions/chat-model';
 import { geminiChatModel } from '../nodes/google-gemini/actions/chat-model';
+import { minimaxChatModel } from '../nodes/minimax/actions/chat-model';
 import { openAiChatModel } from '../nodes/open-ai/actions/chat-model';
 
 const reply = (text: string, toolCalls: ChatReply['toolCalls'] = []): ChatReply => ({
@@ -436,5 +437,16 @@ describe('chat model sub-nodes', () => {
 			{ candidates: [{ content: { parts: [{ text: 'Hel' }] }, finishReason: reason }] },
 		);
 		expect(answer.finishReason).toBe(finishReason);
+	});
+
+	it('fail with the MiniMax error of a 200 response', async () => {
+		const failed = chatThrough(
+			minimaxChatModel,
+			{ model: 'MiniMax-M2' },
+			{ type: 'minimaxApi', data: { apiKey: 'k', region: 'international' } },
+			{ messages: [{ role: 'user', content: 'Hi' }] },
+			{ base_resp: { status_code: 1008, status_msg: 'insufficient balance' } },
+		);
+		await expect(failed).rejects.toThrow('MiniMax error 1008: insufficient balance');
 	});
 });

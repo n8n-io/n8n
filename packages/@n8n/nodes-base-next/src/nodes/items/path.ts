@@ -1,4 +1,4 @@
-import { isRecord } from '@n8n/node-sdk';
+import { isRecord, UserError } from '@n8n/node-sdk';
 
 /** Keys that would change an object prototype. */
 const RESERVED = new Set(['__proto__', 'constructor', 'prototype']);
@@ -8,7 +8,7 @@ export function pathOf(field: string): string[] {
 	const keys = field.replace(/\[(\d+)\]/g, '.$1').split('.');
 	const reserved = keys.find((key) => RESERVED.has(key));
 	if (reserved !== undefined)
-		throw new Error(`The field "${field}" uses the reserved name "${reserved}"`);
+		throw new UserError(`The field "${field}" uses the reserved name "${reserved}"`);
 	return keys;
 }
 

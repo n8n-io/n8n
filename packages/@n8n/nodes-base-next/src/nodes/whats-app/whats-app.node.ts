@@ -94,14 +94,18 @@ const graphError = t
 	})
 	.with({ additionalProperties: true });
 
-/** Meta puts the reason in `error.message`, with a `(#code)` prefix that the legacy node drops. */
+/**
+ * Meta puts the reason in `error.message`, with a `(#code)` prefix that the legacy node drops.
+ * The `HttpError` stays, so the host can classify the failure by its status.
+ */
 async function post(http: Http, requestPath: EncodedPath, body: unknown) {
 	try {
 		return await http.request({ method: 'POST', path: requestPath, body });
 	} catch (error) {
 		if (!isHttpError(error) || !matches(graphError, error.body)) throw error;
 		const reason = error.body.error.message.replace(/^\(#\d+\) /, '');
-		throw new Error(`WhatsApp refused the message: ${reason}`);
+		error.message = `WhatsApp refused the message: ${reason}`;
+		throw error;
 	}
 }
 

@@ -1,4 +1,4 @@
-import { parse, t } from '@n8n/node-sdk';
+import { parse, t, UserError } from '@n8n/node-sdk';
 
 import { quoted, scalar } from '../filter';
 import { row as rowResource, schemaHeaders, tablePath } from '../supabase.node';
@@ -13,7 +13,8 @@ export const getSupabaseRows = rowResource.action('get', {
 	},
 	output: tableRow,
 	async *run({ input, http }) {
-		if (Object.keys(input.where).length === 0) throw new Error('Set at least one column in where');
+		if (Object.keys(input.where).length === 0)
+			throw new UserError('Set at least one column in where');
 		const rows = await http.request({
 			path: tablePath(input.table),
 			query: Object.fromEntries(

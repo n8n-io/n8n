@@ -1,4 +1,4 @@
-import { limitOf, pages, paging, path, t, type Infer } from '@n8n/node-sdk';
+import { limitOf, pages, paging, path, t, UserError, type Infer } from '@n8n/node-sdk';
 
 import { message } from '../gmail.node';
 import { getMessage, labelsOf, simplifiedMessage } from '../message';
@@ -15,7 +15,7 @@ const filters = t.obj({
 
 function seconds(value: string, label: 'After' | 'Before') {
 	const time = Date.parse(value);
-	if (Number.isNaN(time)) throw new Error(`Invalid date/time in 'Received ${label}': ${value}`);
+	if (Number.isNaN(time)) throw new UserError(`Invalid date/time in 'Received ${label}': ${value}`);
 	return Math.round(time / 1000);
 }
 

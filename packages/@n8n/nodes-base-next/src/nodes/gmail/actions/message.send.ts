@@ -1,4 +1,4 @@
-import { isRecord, matches, path, t, type Http } from '@n8n/node-sdk';
+import { isRecord, OperationalError, path, readAs, t, type Http } from '@n8n/node-sdk';
 
 import { message } from '../gmail.node';
 import {
@@ -27,7 +27,7 @@ const sent = t.obj({ id: t.str(), threadId: t.str(), labelIds: t.arr(t.str()).op
 async function senderAddress(http: Http) {
 	const profile = await http.request({ path: path`/profile` });
 	if (!isRecord(profile) || typeof profile.emailAddress !== 'string') {
-		throw new Error('Gmail returned no profile address');
+		throw new OperationalError('Gmail returned no profile address');
 	}
 	return profile.emailAddress;
 }
@@ -82,8 +82,7 @@ export const sendGmailMessage = message.action('send', {
 				query: { uploadType: 'media' },
 				body: raw,
 			});
-			if (!matches(sent, uploaded)) throw new Error('Gmail returned no message ID');
-			return uploaded;
+			return readAs(sent, uploaded).value;
 		}
 		const mime = [
 			...[...headers, ['Content-Type', textType], ['Content-Transfer-Encoding', 'base64']].flatMap(
@@ -100,7 +99,6 @@ export const sendGmailMessage = message.action('send', {
 				raw: base64Of(utf8(mime)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''),
 			},
 		});
-		if (!matches(sent, response)) throw new Error('Gmail returned no message ID');
-		return response;
+		return readAs(sent, response).value;
 	},
 });

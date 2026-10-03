@@ -1,4 +1,4 @@
-import { t, type InputItem } from '@n8n/node-sdk';
+import { t, UserError, type InputItem } from '@n8n/node-sdk';
 
 import { itemsNode } from '../items.node';
 import { canonical, getPath, pathOf } from '../path';
@@ -47,7 +47,8 @@ export const sortItems = itemsNode.action('sort', {
 		const missing = keys.find(({ path }) =>
 			items.every((item) => getPath(item.json, path) === undefined),
 		);
-		if (missing) throw new Error(`Couldn't find the field '${missing.field}' in the input data`);
+		if (missing)
+			throw new UserError(`Couldn't find the field '${missing.field}' in the input data`);
 		// Each item reads its sort values once, not once per comparison.
 		const rows = items.map((item) => ({
 			item,

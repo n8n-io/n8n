@@ -1,4 +1,12 @@
-import { isRecord, parse, path, t, type ChatMessage, type ChatRequest } from '@n8n/node-sdk';
+import {
+	isRecord,
+	parse,
+	path,
+	t,
+	UserError,
+	type ChatMessage,
+	type ChatRequest,
+} from '@n8n/node-sdk';
 
 import { generateContentSchema, replyTextOf } from '../content';
 import { googleGemini } from '../google-gemini.node';
@@ -108,7 +116,7 @@ export const geminiChatModel = googleGemini.provider('chatModel', {
 				const [candidate] = candidates ?? [];
 				if (!candidate) {
 					const reason = promptFeedback?.blockReason;
-					throw new Error(`Gemini gave no reply${reason ? `: ${reason}` : ''}`);
+					throw new UserError(`Gemini gave no reply${reason ? `: ${reason}` : ''}`);
 				}
 				const parts = candidate.content?.parts ?? [];
 				// Gemini gives no call IDs before its newer models, so the position names a call.

@@ -144,4 +144,32 @@ describe('whatsApp.message.send', () => {
 		});
 		expect(result).toMatchObject({ ok: true, items: [{ messages: [{ id: 'wamid.DOC' }] }] });
 	});
+
+	it('keeps the HTTP status of a Graph API error', async () => {
+		const fetch = mockHttp([
+			{
+				method: 'POST',
+				path: '/v13.0/106540352242922/messages',
+				reply: {
+					status: 401,
+					json: { error: { message: '(#190) Access token has expired', code: 190 } },
+				},
+			},
+		]);
+		const result = await runAction(sendWhatsAppMessage, {
+			credential: { type: 'whatsAppApi', data: { accessToken: 't', businessAccountId: 'b' } },
+			credentials: [new WhatsAppApi()],
+			input: {
+				phoneNumberId: '106540352242922',
+				to: '+4915112345678',
+				message: { type: 'text', body: 'Hi' },
+			},
+			fetch,
+		});
+
+		expect(result).toEqual({
+			ok: false,
+			error: { message: 'WhatsApp refused the message: Access token has expired', httpStatus: 401 },
+		});
+	});
 });

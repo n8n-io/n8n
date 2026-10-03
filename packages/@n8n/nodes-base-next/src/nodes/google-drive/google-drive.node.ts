@@ -1,4 +1,4 @@
-import { defineNode, t } from '@n8n/node-sdk';
+import { defineNode, t, UserError } from '@n8n/node-sdk';
 import { credential } from '@n8n/node-sdk/credentials';
 
 import { googleOAuth2 } from '../google-oauth2';
@@ -27,7 +27,7 @@ export const googleDrive = defineNode({
 /** A file or folder ID, from an ID or a Drive URL. It goes into a request path, so it is checked. */
 export function driveIdOf(value: string) {
 	const id = /\/(?:folders|d)\/([-_a-zA-Z0-9]+)/.exec(value)?.[1] ?? value;
-	if (!/^[-_a-zA-Z0-9]+$/.test(id)) throw new Error(`Not a Google Drive ID or URL: ${value}`);
+	if (!/^[-_a-zA-Z0-9]+$/.test(id)) throw new UserError(`Not a Google Drive ID or URL: ${value}`);
 	return id;
 }
 

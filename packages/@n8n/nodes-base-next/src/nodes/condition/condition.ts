@@ -1,4 +1,4 @@
-import { t, type Infer } from '@n8n/node-sdk';
+import { t, UserError, type Infer } from '@n8n/node-sdk';
 import { safeRegex } from 'n8n-workflow';
 
 /** Tests on a value that may be absent. `empty` also holds for an empty string or list. */
@@ -96,7 +96,7 @@ function regexOf(text: string): { source: string; flags: string } {
 
 function millisOf(value: string): number {
 	const millis = Date.parse(value);
-	if (Number.isNaN(millis)) throw new Error(`"${value}" is not an ISO 8601 date`);
+	if (Number.isNaN(millis)) throw new UserError(`"${value}" is not an ISO 8601 date`);
 	return millis;
 }
 
