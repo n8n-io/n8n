@@ -445,6 +445,80 @@ describe('AgentEvalChecksPanel', () => {
 		await vi.waitFor(() => expect(run2Loaded.value).toBe(run2All.length));
 	});
 
+	// cubic flagged: a newer run's pagination call can arrive while the old
+	// run's loop still holds the lock, see nothing to join, and return — with
+	// nothing left to retry it, that run's extra pages never load at all.
+	it('retries pagination for the new run once the old run releases the lock, instead of skipping it forever', async () => {
+		const pinia = createTestingPinia({ stubActions: true });
+		const store = useAgentEvalsStore();
+
+		const run1All = [result('a1', 'success'), result('a2', 'success')];
+		const run2All = [result('b1', 'success'), result('b2', 'success')];
+		const run1Loaded = ref(1);
+		const run2Loaded = ref(1);
+		const baseReview = {
+			run: null,
+			ratingsByResultId: {},
+			pendingByResultId: {},
+			draftsByResultId: {},
+			counts: null,
+			loading: false,
+			loadingMore: false,
+		};
+		vi.mocked(store.getReview).mockImplementation((runId: string) =>
+			runId === 'run-1'
+				? {
+						...baseReview,
+						results: run1All.slice(0, run1Loaded.value),
+						resultsCount: run1All.length,
+					}
+				: {
+						...baseReview,
+						results: run2All.slice(0, run2Loaded.value),
+						resultsCount: run2All.length,
+					},
+		);
+		vi.mocked(store.isRunInFlight).mockReturnValue(false);
+		vi.mocked(store.isStartingRun).mockReturnValue(false);
+		// run-2's openRun resolves right away — unlike the other race test, it's
+		// the lock release (not openRun) that's slow to arrive here.
+		vi.mocked(store.openRun).mockResolvedValue(undefined);
+
+		let releaseRun1!: () => void;
+		const run1Gate = new Promise<void>((resolve) => {
+			releaseRun1 = resolve;
+		});
+		vi.mocked(store.loadMoreResults).mockImplementation(async (_projectId, _agentId, runId) => {
+			if (runId === 'run-1') {
+				await run1Gate;
+				run1Loaded.value = 2;
+				return;
+			}
+			run2Loaded.value = Math.min(run2Loaded.value + 1, run2All.length);
+		});
+
+		const { rerender } = renderComponent({ pinia });
+		await vi.waitFor(() =>
+			expect(store.loadMoreResults).toHaveBeenCalledWith('project-1', 'agent-1', 'run-1'),
+		);
+
+		// Switch runs while run-1's loop is still stuck awaiting its pending call.
+		await rerender({ runId: 'run-2' });
+		await vi.waitFor(() =>
+			expect(store.openRun).toHaveBeenCalledWith('project-1', 'agent-1', 'run-2'),
+		);
+		// run-2's own attempt finds the lock held and must bail out rather than
+		// join in — give it a tick to (wrongly, pre-fix) call in anyway.
+		await new Promise((resolve) => setTimeout(resolve, 10));
+		expect(store.loadMoreResults).not.toHaveBeenCalledWith('project-1', 'agent-1', 'run-2');
+
+		// Releasing the old run's lock is the only thing left that can still
+		// pick run-2 back up.
+		releaseRun1();
+
+		await vi.waitFor(() => expect(run2Loaded.value).toBe(run2All.length));
+	});
+
 	// Marking the last needs-work row "actually fine" makes `filteredRows` fall
 	// back to unfiltered already (guarded by the live count), but without also
 	// resetting `statusFilter` itself, no pill would read as selected even

@@ -178,6 +178,11 @@ function onActuallyFine(resultId: string) {
 // pagination loop for the old run stops instead of racing `openRun`'s own
 // wholesale replace of `results` for the new one.
 let loadGeneration = 0;
+// The generation whose `openRun` has actually resolved — `getReview` can
+// still be returning a *previous* visit's retained cache for the new runId
+// before that happens, so this is what a retry gates on, not just "is this
+// generation current."
+let openedGeneration = 0;
 
 const load = async () => {
 	const generation = ++loadGeneration;
@@ -185,6 +190,7 @@ const load = async () => {
 	try {
 		await store.openRun(props.projectId, props.agentId, props.runId);
 		if (generation !== loadGeneration) return;
+		openedGeneration = generation;
 		if (store.isRunInFlight(props.runId)) {
 			store.startPollingRun(props.projectId, props.agentId, props.runId);
 		} else {
@@ -209,20 +215,24 @@ const onLoadMore = async () => {
 // bigger than one page would under-count every pill and hide matching rows
 // until the reviewer paged them all in by hand. Pulls in the rest on its own
 // once the run has settled, so counts and filtering always reflect the whole
-// run. Only ever called with the `load()` call that opened the run it's
-// paging — never reactively — so it can't start before that `openRun` has
-// resolved, or page a run that isn't the one on screen anymore.
-let loadingRemaining = false;
+// run.
+//
+// Only one loop runs at a time, tracked by which generation currently holds
+// it (not a plain boolean): a call for a newer generation arriving while an
+// older one's loop is still draining its last `loadMoreResults` await can't
+// just join in, but it must not be silently dropped either — the active
+// loop's `finally` is what retries for whichever generation is actually
+// current once it lets go, so the newest run is never permanently skipped
+// just because it showed up while someone else held the lock.
+let activeGeneration: number | null = null;
 const loadRemainingResults = async (generation: number) => {
-	// A flaky in-flight read flipping twice in quick succession could otherwise
-	// invoke this a second time before the first loop notices anything.
-	if (loadingRemaining) return;
-	loadingRemaining = true;
+	if (activeGeneration !== null) return;
+	activeGeneration = generation;
 	try {
 		let loadedCount = results.value.length;
 		while (generation === loadGeneration && !inFlight.value && hasMore.value) {
 			await store.loadMoreResults(props.projectId, props.agentId, props.runId);
-			if (generation !== loadGeneration) return;
+			if (generation !== loadGeneration) break;
 			// A call that doesn't grow the page can't ever satisfy `hasMore` —
 			// stop rather than spin forever against a backend (or test double)
 			// that keeps reporting more without actually returning any.
@@ -230,10 +240,25 @@ const loadRemainingResults = async (generation: number) => {
 			loadedCount = results.value.length;
 		}
 	} catch (error) {
-		if (generation !== loadGeneration) return;
-		toast.showError(error, i18n.baseText('agents.builder.agentEvals.review.loadError'));
+		if (generation === loadGeneration) {
+			toast.showError(error, i18n.baseText('agents.builder.agentEvals.review.loadError'));
+		}
 	} finally {
-		loadingRemaining = false;
+		activeGeneration = null;
+		// Whoever's current now didn't get a turn while this loop held the lock —
+		// give it one before letting go, rather than leaving it to wait for a
+		// reactive trigger that may never come again. Gated on `openedGeneration`,
+		// not just "is this generation current": if the current generation's own
+		// `openRun` hasn't resolved yet, `load()`'s own sequential call picks it
+		// up once it does — retrying here instead would race that same `openRun`.
+		if (
+			generation !== loadGeneration &&
+			openedGeneration === loadGeneration &&
+			!inFlight.value &&
+			hasMore.value
+		) {
+			void loadRemainingResults(loadGeneration);
+		}
 	}
 };
 
@@ -241,9 +266,14 @@ onMounted(load);
 watch(() => props.runId, load);
 // Only the in-flight → settled transition — a run that was already settled
 // when `load()` opened it is paginated there directly; this covers the other
-// case, where polling is what first learns the run has finished.
+// case, where polling is what first learns the run has finished. Gated on
+// `openedGeneration` for the same reason as the retry above: `inFlight` reads
+// through `props.runId` immediately on a switch, so it can reflect a previous
+// visit's retained cache before the new run's own `openRun` has resolved.
 watch(inFlight, (isInFlight, wasInFlight) => {
-	if (wasInFlight && !isInFlight) void loadRemainingResults(loadGeneration);
+	if (wasInFlight && !isInFlight && openedGeneration === loadGeneration) {
+		void loadRemainingResults(loadGeneration);
+	}
 });
 onBeforeUnmount(store.stopPollingRun);
 </script>
