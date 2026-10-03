@@ -208,4 +208,50 @@ describe('ExecutionCrashService', () => {
 		expect(workflowStatisticsService.emit).not.toHaveBeenCalled();
 		expect(eventService.emit).not.toHaveBeenCalled();
 	});
+
+	describe('announceStalledExecution', () => {
+		test('announces an execution already transitioned to crashed', async () => {
+			const tracingContext = {
+				traceparent: '00-0af7651916cd43dd8448eb211c80319c-b7ad6b7169203331-01',
+			};
+			executionRepository.findSingleExecution.mockResolvedValue({
+				id: '1',
+				workflowId: 'workflow-1',
+				mode: 'trigger',
+				status: 'crashed',
+				startedAt,
+				stoppedAt,
+				retryOf: '9',
+				workflowVersionId: 'version-1',
+				tracingContext,
+			} as never);
+
+			await crashService.announceStalledExecution('1');
+
+			expect(announced()).toEqual([
+				announcementOf(
+					crashedExecution('1', {
+						workflowName: undefined,
+						retryOf: '9',
+						workflowVersionId: 'version-1',
+						tracingContext,
+					}),
+					'stall',
+				),
+			]);
+			expect(workflowStatisticsService.emit).not.toHaveBeenCalled();
+		});
+
+		test.each([
+			['is missing', undefined],
+			['is not crashed', { id: '1', status: 'error', stoppedAt }],
+			['has no stop time', { id: '1', status: 'crashed', stoppedAt: null }],
+		])('does not announce when the execution %s', async (_name, row) => {
+			executionRepository.findSingleExecution.mockResolvedValue(row as never);
+
+			await crashService.announceStalledExecution('1');
+
+			expect(announced()).toEqual([]);
+		});
+	});
 });

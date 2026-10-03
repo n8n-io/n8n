@@ -29,6 +29,7 @@ import type {
 	IWorkflowExecutionDataProcess,
 } from 'n8n-workflow';
 import {
+	CRASHABLE_EXECUTION_STATUSES,
 	createRunExecutionData,
 	ExecutionCancelledError,
 	isTerminalExecutionStatus,
@@ -283,17 +284,6 @@ export class WorkflowRunner {
 		this.logger.error(`Problem with execution ${executionId}: ${error.message}. Aborting.`);
 		this.errorReporter.error(error, { executionId });
 
-		if (error instanceof MaxStalledCountError) {
-			const claimed = await this.executionCrashService.markAsCrashedWithoutCounting(
-				executionId,
-				'stall',
-			);
-			if (claimed.length === 0) {
-				this.activeExecutions.finalizeExecution(executionId);
-				return;
-			}
-		}
-
 		const fullRunData: IRun = {
 			data: createRunExecutionData({
 				resultData: {
@@ -313,6 +303,51 @@ export class WorkflowRunner {
 			status: error instanceof MaxStalledCountError ? 'crashed' : 'error',
 			storedAt: this.storageConfig.modeTag,
 		};
+
+		if (error instanceof MaxStalledCountError) {
+			// Save-as-claim: transition to `crashed` and persist the error payload in one
+			// guarded write. If crash recovery (or another writer) transitioned the
+			// execution first, keep its data and run no hooks.
+			let claimed: boolean;
+			try {
+				claimed = await this.executionPersistence.updateExistingExecution(
+					executionId,
+					{
+						stoppedAt: fullRunData.stoppedAt,
+						status: fullRunData.status,
+						data: fullRunData.data,
+					},
+					{ requireStatuses: CRASHABLE_EXECUTION_STATUSES },
+				);
+			} catch (claimError) {
+				// A failed claim rolls back, so the row stays claimable for crash
+				// recovery. It must not abort finalization.
+				this.logger.warn('Could not persist the stalled execution as crashed', {
+					executionId,
+					error: ensureError(claimError),
+				});
+				this.errorReporter.error(ensureError(claimError), { executionId });
+				this.activeExecutions.finalizeExecution(executionId);
+				return;
+			}
+
+			if (!claimed) {
+				this.activeExecutions.finalizeExecution(executionId);
+				return;
+			}
+
+			try {
+				await this.executionCrashService.announceStalledExecution(executionId);
+			} catch (announceError) {
+				// The announce is telemetry; its failure must not abort finalization
+				// for an execution already persisted as crashed.
+				this.logger.warn('Could not announce the stalled execution as crashed', {
+					executionId,
+					error: ensureError(announceError),
+				});
+				this.errorReporter.error(ensureError(announceError), { executionId });
+			}
+		}
 
 		// Remove from active execution with empty data. That will
 		// set the execution to failed.

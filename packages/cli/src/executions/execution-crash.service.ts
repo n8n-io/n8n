@@ -44,6 +44,33 @@ export class ExecutionCrashService {
 		);
 	}
 
+	/**
+	 * Announce an execution the caller already transitioned to `crashed` itself.
+	 * Performs no transition and no counting; the caller's lifecycle hooks count it.
+	 */
+	async announceStalledExecution(executionId: string): Promise<void> {
+		const execution = await this.executionRepository.findSingleExecution(executionId, {
+			includeData: false,
+		});
+		if (!execution || execution.status !== 'crashed' || !execution.stoppedAt) return;
+
+		this.announce(
+			[
+				{
+					id: execution.id,
+					workflowId: execution.workflowId,
+					mode: execution.mode,
+					startedAt: execution.startedAt ?? null,
+					stoppedAt: execution.stoppedAt,
+					retryOf: execution.retryOf ?? undefined,
+					workflowVersionId: execution.workflowVersionId ?? undefined,
+					tracingContext: execution.tracingContext ?? undefined,
+				},
+			],
+			'stall',
+		);
+	}
+
 	async markWorkflowExecutionsAsCrashed(workflowId: string): Promise<CrashedExecution[]> {
 		const crashed = await this.executionRepository.markWorkflowExecutionsAsCrashed(workflowId);
 

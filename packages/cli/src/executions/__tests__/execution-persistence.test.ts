@@ -551,18 +551,40 @@ describe('ExecutionPersistence', () => {
 		};
 
 		describe('condition guards', () => {
-			it('throws when requireStatus and requireNotCanceled are combined (both constrain status)', async () => {
+			it.each([
+				{ requireStatus: 'waiting' as const, requireNotCanceled: true },
+				{ requireStatus: 'waiting' as const, requireStatuses: ['new'] as const },
+				{ requireStatuses: ['new'] as const, requireNotCanceled: true },
+			])('throws when status constraints are combined: %o', async (conditions) => {
 				const executionPersistence = createPersistenceService('db');
 
 				await expect(
 					executionPersistence.updateExistingExecution(
 						executionId,
 						{ status: 'running' },
-						{ requireStatus: 'waiting', requireNotCanceled: true },
+						conditions,
 					),
 				).rejects.toThrow(UnexpectedError);
 
 				expect(executionRepository.update).not.toHaveBeenCalled();
+			});
+
+			it('ignores requireNotCanceled: false when counting status constraints', async () => {
+				const executionPersistence = createPersistenceService('db');
+				executionRepository.update.mockResolvedValue({ affected: 0, generatedMaps: [], raw: {} });
+
+				await expect(
+					executionPersistence.updateExistingExecution(
+						executionId,
+						{ status: 'running' },
+						{ requireStatus: 'waiting', requireNotCanceled: false },
+					),
+				).resolves.toBe(false);
+
+				expect(executionRepository.update).toHaveBeenCalledWith(
+					{ id: executionId, status: 'waiting' },
+					expect.anything(),
+				);
 			});
 		});
 
