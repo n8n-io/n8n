@@ -50,6 +50,22 @@ describe('OutboundHttp.requests requestLegacy', () => {
 			expect(response).toMatchObject({ body: 'hello', statusCode: 200 });
 		});
 
+		it('returns binary response bytes with the legacy full-response shape', async () => {
+			const bytes = Buffer.from([0, 255, 42]);
+			nock(baseUrl)
+				.get('/binary')
+				.reply(200, bytes, { 'content-type': 'application/octet-stream' });
+			const client = makeFacade().requests({ useDefaultSsrfPolicy: 'unsafe' });
+
+			const response = await client.requestLegacy({
+				url: `${baseUrl}/binary`,
+				encoding: null,
+				resolveWithFullResponse: true,
+			});
+
+			expect(response).toMatchObject({ body: bytes, statusCode: 200 });
+		});
+
 		it('rethrows an enriched error carrying the status, without firing onFetched', async () => {
 			nock(baseUrl).get('/bad').reply(403, 'Forbidden', { 'content-type': 'text/plain' });
 			const onFetched = vi.fn();

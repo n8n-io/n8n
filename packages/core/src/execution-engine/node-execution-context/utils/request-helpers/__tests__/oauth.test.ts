@@ -13,7 +13,39 @@ import nock from 'nock';
 import { Readable } from 'stream';
 import { mockDeep } from 'vitest-mock-extended';
 
-import { refreshOAuth2Token, requestOAuth2 } from '../oauth';
+import { refreshOAuth2Token, requestOAuth1, requestOAuth2 } from '../oauth';
+
+describe('requestOAuth1', () => {
+	const credentials = {
+		consumerKey: 'consumer-key',
+		consumerSecret: 'consumer-secret',
+		signatureMethod: 'HMAC-SHA1',
+		oauthTokenData: { oauth_token: 'access-token', oauth_token_secret: 'token-secret' },
+	};
+
+	it.each([true, false])('signs a request for the %s HTTP path', async (isN8nRequest) => {
+		const context = mockDeep<IAllExecuteFunctions>();
+		context.getCredentials.mockResolvedValue(credentials);
+		context.helpers.httpRequest.mockResolvedValue({ ok: true });
+		context.helpers.request.mockResolvedValue({ ok: true });
+
+		const result = await requestOAuth1.call(
+			context,
+			'oAuth1Api',
+			{ url: 'https://example.test/data', method: 'GET', qs: { page: 2 } },
+			isN8nRequest,
+		);
+
+		expect(result).toEqual({ ok: true });
+		const request = isN8nRequest ? context.helpers.httpRequest : context.helpers.request;
+		expect(request).toHaveBeenCalledWith(
+			expect.objectContaining({
+				url: 'https://example.test/data',
+				headers: { Authorization: expect.stringContaining('OAuth ') as string },
+			}),
+		);
+	});
+});
 
 describe('refreshOAuth2Token', () => {
 	const baseUrl = 'https://example.com';

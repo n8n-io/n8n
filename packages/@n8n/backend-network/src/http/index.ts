@@ -16,7 +16,6 @@ export { OutboundHttp, type HttpRequestClient, type HttpTransport } from './outb
 export { markNonRetryable, retryabilityFromError } from './retryability';
 export {
 	httpStatusFromError,
-	isAxiosError,
 	isConnectionRefusedError,
 	isDnsFailure,
 	isHttpRequestError,
