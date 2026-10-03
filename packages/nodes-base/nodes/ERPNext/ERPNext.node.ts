@@ -210,8 +210,9 @@ export class ERPNext implements INodeType {
 					// https://docs.frappe.io/framework/user/en/api/rest#create
 
 					const properties = this.getNodeParameter('properties', i) as DocumentProperties;
+					const customProperties = properties.customProperty ?? [];
 
-					if (!properties.customProperty.length) {
+					if (!customProperties.length) {
 						throw new NodeOperationError(
 							this.getNode(),
 							'Please enter at least one property for the document to create.',
@@ -219,7 +220,7 @@ export class ERPNext implements INodeType {
 						);
 					}
 
-					properties.customProperty.forEach((property) => {
+					customProperties.forEach((property) => {
 						body[property.field] = property.value;
 					});
 
@@ -255,8 +256,9 @@ export class ERPNext implements INodeType {
 					// https://docs.frappe.io/framework/user/en/api/rest#update
 
 					const properties = this.getNodeParameter('properties', i) as DocumentProperties;
+					const customProperties = properties.customProperty ?? [];
 
-					if (!properties.customProperty.length) {
+					if (!customProperties.length) {
 						throw new NodeOperationError(
 							this.getNode(),
 							'Please enter at least one property for the document to update.',
@@ -264,7 +266,7 @@ export class ERPNext implements INodeType {
 						);
 					}
 
-					properties.customProperty.forEach((property) => {
+					customProperties.forEach((property) => {
 						body[property.field] = property.value;
 					});
 
