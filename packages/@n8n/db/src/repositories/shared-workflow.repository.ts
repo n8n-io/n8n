@@ -14,6 +14,7 @@ import type {
 } from '@n8n/typeorm';
 
 import { BaseRepository } from './base-repository';
+import { WorkflowPublishHistoryRepository } from './workflow-publish-history.repository';
 import type { User } from '../entities';
 import { Project, ProjectRelation, SharedWorkflow } from '../entities';
 import { type OperationContext, TransactionRunner } from '../services/transaction';
@@ -21,7 +22,11 @@ import { chunkIds } from '../utils/chunk-ids';
 
 @Service()
 export class SharedWorkflowRepository extends BaseRepository<SharedWorkflow> {
-	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
+	constructor(
+		dataSource: DataSource,
+		transactionRunner: TransactionRunner,
+		private readonly workflowPublishHistoryRepository: WorkflowPublishHistoryRepository,
+	) {
 		super(SharedWorkflow, dataSource.manager, transactionRunner);
 	}
 
@@ -331,7 +336,7 @@ export class SharedWorkflowRepository extends BaseRepository<SharedWorkflow> {
 			em = this.manager,
 		} = options;
 
-		return await em.findOne(SharedWorkflow, {
+		const sharedWorkflow = await em.findOne(SharedWorkflow, {
 			where: {
 				workflowId,
 				...where,
@@ -341,10 +346,22 @@ export class SharedWorkflowRepository extends BaseRepository<SharedWorkflow> {
 					shared: { project: true },
 					tags: includeTags,
 					parentFolder: includeParentFolder,
-					activeVersion: includeActiveVersion ? { workflowPublishHistory: true } : false,
+					activeVersion: includeActiveVersion,
 				},
 			},
 		});
+
+		const activeVersion = sharedWorkflow?.workflow.activeVersion;
+		if (activeVersion) {
+			activeVersion.workflowPublishHistory =
+				await this.workflowPublishHistoryRepository.findByVersion(
+					workflowId,
+					activeVersion.versionId,
+					em,
+				);
+		}
+
+		return sharedWorkflow;
 	}
 
 	/**

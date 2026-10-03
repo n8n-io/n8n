@@ -1242,15 +1242,19 @@ export class WorkflowService {
 		// Fetch workflow again with workflowPublishHistory after activation to include the new entry
 		const updatedWorkflow = await this.workflowRepository.findOne({
 			where: { id: workflowId },
-			relations: {
-				activeVersion: {
-					workflowPublishHistory: true,
-				},
-			},
+			relations: { activeVersion: true },
 		});
 
 		if (!updatedWorkflow) {
 			throw new NotFoundError(`Workflow with ID "${workflowId}" could not be found.`);
+		}
+
+		if (updatedWorkflow.activeVersion) {
+			updatedWorkflow.activeVersion.workflowPublishHistory =
+				await this.workflowPublishHistoryRepository.findByVersion(
+					workflowId,
+					updatedWorkflow.activeVersion.versionId,
+				);
 		}
 
 		return updatedWorkflow;
