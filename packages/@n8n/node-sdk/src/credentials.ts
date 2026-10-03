@@ -567,8 +567,8 @@ export interface CredentialType<Name extends string = string, F extends Shape = 
 	/** The n8n type name. Saved credentials and workflows refer to it, so it never changes. */
 	readonly name: Name;
 	/**
-	 * `major.minor.patch` of the credential manifest. Actions pin the major. A compat type has
-	 * none: its legacy class defines it.
+	 * `major.minor.0` from the source. Freeze computes the patch of the credential manifest. Actions
+	 * pin the major. A compat type has none: its legacy class defines it.
 	 */
 	readonly semver?: string;
 	/** The type name in the n8n UI, e.g. `Notion API`. */
@@ -1072,17 +1072,12 @@ export function defineCredential<
 	 */
 	readonly version?: number;
 	/**
-	 * Bump for an additive change, e.g. a new optional field.
+	 * Bump for an additive change, e.g. a new optional field. A change of text only needs no
+	 * bump: freeze takes the next patch.
 	 *
 	 * @defaultValue `0`
 	 */
 	readonly minor?: number;
-	/**
-	 * Bump for a change of text only.
-	 *
-	 * @defaultValue `0`
-	 */
-	readonly patch?: number;
 	/** The type name in the n8n UI, e.g. `Notion API`. */
 	readonly displayName: string;
 	/** The n8n docs page, e.g. `notion`. */
@@ -1144,7 +1139,7 @@ export function defineCredential<
 	return checked({
 		id: spec.id,
 		name,
-		semver: `${spec.version ?? 1}.${spec.minor ?? 0}.${spec.patch ?? 0}`,
+		semver: `${spec.version ?? 1}.${spec.minor ?? 0}.0`,
 		displayName: spec.displayName,
 		...(spec.docs ? { documentationUrl: spec.docs } : {}),
 		...(spec.fields ? { fields: spec.fields } : {}),
@@ -1888,23 +1883,34 @@ export function checkCredentialType(type: AnyCredentialType): string[] {
 	].map((issue) => `${type.id}: ${issue}`);
 }
 
+/** The fields of a credential manifest as SDK schemas. */
+function fieldsOfManifest({ fields }: CredentialManifest): Shape {
+	const required = fields.required ?? [];
+	return Object.fromEntries(
+		Object.entries(fields.properties ?? {}).map(([name, json]) => [
+			name,
+			new Schema(json, !required.includes(name)),
+		]),
+	);
+}
+
+/**
+ * The credential type of a manifest with the `compat` scheme: n8n signs with its own type of this
+ * name, so the type is data only, e.g. for a sandboxed bundle.
+ */
+export const compatTypeOfManifest = (manifest: CredentialManifest): AnyCredentialType => ({
+	...manifest,
+	fields: fieldsOfManifest(manifest),
+	scheme: { kind: 'compat' },
+});
+
 /** The n8n credential type of a credential manifest: the host reads only data, never author code. */
 export function credentialTypeOfManifest(manifest: CredentialManifest): ICredentialType {
-	const { scheme, fields } = manifest;
+	const { scheme } = manifest;
 	if (scheme.kind === 'custom') {
 		throw new UserError(`Credential ${manifest.id}: a custom scheme needs a credential bundle`);
 	}
-	const required = fields.required ?? [];
-	const type: AnyCredentialType = {
-		...manifest,
-		fields: Object.fromEntries(
-			Object.entries(fields.properties ?? {}).map(([name, json]) => [
-				name,
-				new Schema(json, !required.includes(name)),
-			]),
-		),
-		scheme,
-	};
+	const type: AnyCredentialType = { ...manifest, fields: fieldsOfManifest(manifest), scheme };
 	const projected = toCredentialType(type);
 	if (!projected) throw new UserError(`Credential ${manifest.id} has no n8n credential type`);
 	return projected;

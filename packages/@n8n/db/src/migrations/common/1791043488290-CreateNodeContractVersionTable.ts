@@ -16,7 +16,7 @@ export class CreateNodeContractVersionTable1791043488290 implements ReversibleMi
 					.notNull.withEnumCheck(['action', 'trigger', 'provider', 'credential'])
 					.comment('What the manifest describes'),
 				column('manifest').text.notNull.comment('The exact manifest bytes that the digest covers'),
-				column('bundle').text.comment('The bundle code. A credential has none'),
+				column('bundle').text.comment('The bundle code. A credential or native version has none'),
 				column('fixtures').text.comment('The fixtures that publish replayed, as JSON'),
 				column('signatures').json.notNull.comment(
 					'Publisher signatures of the manifest bytes: [{ key, sig }]',

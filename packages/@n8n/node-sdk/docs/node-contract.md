@@ -77,8 +77,8 @@ index line of a version in a store also states `nodeContract`.
 
 The embedded store of a release, an instance export and a registry use one layout
 (`src/store.ts`). A registry is the same files, served at `https://…` or `file://…`. An
-instance keeps its versions in the `node_contract_version` table: one row for each manifest
-digest. `n8n contracts:import --input=<dir>` adds the verified versions of a folder to the
+instance keeps its versions of all kinds, also credential and native manifests, in the
+`node_contract_version` table: one row for each manifest digest. `n8n contracts:import --input=<dir>` adds the verified versions of a folder to the
 table, and `n8n contracts:export --output=<dir> [--pinned]` writes the table in this layout.
 
 | File | Content |
@@ -88,7 +88,9 @@ table, and `n8n contracts:export --output=<dir> [--pinned]` writes the table in 
 | `blobs/sha256/<hex>` | The manifest, bundle and fixtures bytes. The name is the SHA-256 of the bytes |
 
 The digest of a version is `sha256:` of its manifest bytes. The manifest holds `bundleHash` and
-`contractHash`, so the digest covers the code and the contract. A reader checks each blob
+`contractHash`, so the digest covers the code and the contract. A credential manifest and a
+native manifest have no bundle. The line of a credential has its n8n type `name`, and the line
+of a native version has its legacy node type in `native`, so a reader finds them from the index. A reader checks each blob
 against its digest, and the fields of each index line against the manifest. Publish adds
 `fixtures`, `signatures` (ed25519 over the manifest bytes, `key` is `sha256:` of the public key)
 and `published`. Freeze adds none of them, so it writes the same bytes for the same source.
@@ -119,7 +121,8 @@ and `published`. Freeze adds none of them, so it writes the same bytes for the s
   permissions than its manifest, and it takes `egress` from the manifest. The
   sandbox reads only the manifest, and refuses a bundle whose `baseUrl` host is not in it.
 - WIT describes only code that runs. A native trigger and a declarative credential scheme have
-  a manifest and no bundle.
+  a manifest and no bundle. Publish adds actions, triggers, providers, credential types and
+  native contracts to the same store, each with the gate of its kind.
 - Binary key patterns (`t.indexedBinaries()`, `t.openBinaries()`, an output `patternProperties`
   entry with `x-n8n-binary`) use the `binary` import of 2.2.0, but a host before 2.6.0 keeps
   such a binary in the JSON. So freeze writes 2.6.0.

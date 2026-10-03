@@ -7,7 +7,7 @@ import path from 'node:path';
 import { PassThrough } from 'node:stream';
 import { toHostname, UnexpectedError, UserError } from 'n8n-workflow';
 
-import type { AnyCredentialType } from './credentials';
+import { compatTypeOfManifest, type AnyCredentialType } from './credentials';
 import {
 	isHttpError,
 	type Action,
@@ -31,6 +31,7 @@ import {
 import { allowsHost, permissionsOf } from './egress';
 import type { RunRecorder, RunRequest, RunRpc } from './profile';
 import {
+	credentialManifestOf,
 	executorOf,
 	loadExecutor,
 	verifiedCodeOf,
@@ -103,8 +104,9 @@ export interface SandboxOptions {
 	 */
 	readonly cacheDir: string;
 	/**
-	 * The credential type of a name from the registry of the host. The hosts and the base URL of a
-	 * credential come from here, never from the bundle.
+	 * The credential type of a name that has no credential manifest in the store of the host, e.g. a
+	 * compat type that n8n has. A credential manifest comes first (`setCredentialManifests`). The
+	 * hosts and the base URL of a credential never come from the bundle.
 	 */
 	readonly credentialType: (name: string) => AnyCredentialType | undefined;
 	/** Limits that replace the defaults of `SandboxLimits`. */
@@ -1483,15 +1485,16 @@ async function only(id: string, outputs: AsyncGenerator<unknown>): Promise<unkno
 }
 
 /**
- * The node of a bundle. The credential types come from the host by the names of the manifest.
- * The name, the base URL and the scopes text come from `describe()`. The bundle can name only a
- * base URL on an egress host of its manifest: freeze writes the base URL host there.
+ * The node of a bundle. The credential types come from the host by the names of the manifest:
+ * from the credential manifest, else from `credentialType`. The name, the base URL and the scopes
+ * text come from `describe()`. The bundle can name only a base URL on an egress host of its
+ * manifest: freeze writes the base URL host there.
  */
-function nodeOf(
+async function nodeOf(
 	manifest: VersionManifest,
 	described: unknown,
 	credentialType: SandboxOptions['credentialType'],
-): NodeDefinition {
+): Promise<NodeDefinition> {
 	const { id, semver, contract } = manifest;
 	const node = isRecord(described) ? described.node : undefined;
 	if (
@@ -1506,15 +1509,18 @@ function nodeOf(
 	}
 	// The host never runs the credential code of a sandboxed bundle: n8n applies the credential
 	// type of this name, so its scheme here is `compat`.
-	const types = contract.credentials.map((name): AnyCredentialType => {
-		const type = credentialType(name);
-		if (!type) {
-			throw new UserError(
-				`${id}@${semver} uses the credential type ${name}, which n8n does not have`,
-			);
-		}
-		return { ...type, scheme: { kind: 'compat' } };
-	});
+	const types = await Promise.all(
+		contract.credentials.map(async (name): Promise<AnyCredentialType> => {
+			const stored = await credentialManifestOf(name);
+			const type = stored ? compatTypeOfManifest(stored) : credentialType(name);
+			if (!type) {
+				throw new UserError(
+					`${id}@${semver} uses the credential type ${name}, which n8n does not have`,
+				);
+			}
+			return { ...type, scheme: { kind: 'compat' } };
+		}),
+	);
 	const baseHost = typeof node.baseUrl === 'string' ? toHostname(node.baseUrl) : undefined;
 	if (
 		typeof node.baseUrl === 'string' &&
@@ -1805,7 +1811,7 @@ export async function sandboxedVersionOf(frozen: FrozenVersion, options: Sandbox
 		.finally(() => describing.close());
 	const action = sandboxedAction(
 		manifest,
-		nodeOf(manifest, described, options.credentialType),
+		await nodeOf(manifest, described, options.credentialType),
 		start,
 	);
 	return { action, start, executor: sandboxedExecutor(executorOf(action), start) };
@@ -1879,14 +1885,15 @@ function sandboxedExecutor(
  * The executor loader of a host with a sandbox: a bundle that `inProcess` trusts runs in this
  * process, every other bundle in the sandbox. Both paths use the same host imports, so the
  * egress, credential and limit checks are the same. A sandboxed version gets its credential
- * types from `options.credentialType`, so it needs no HEAD bundle for them.
+ * types from the credential manifests of the host, else from `options.credentialType`, so it
+ * needs no HEAD bundle for them.
  */
 export function sandboxExecutorLoader(
 	options: SandboxOptions,
 	inProcess: (manifest: VersionManifest) => boolean = () => false,
 ): ExecutorLoader {
-	return async (frozen, head) =>
+	return async (frozen) =>
 		inProcess(frozen.manifest)
-			? await loadExecutor(frozen, head)
+			? await loadExecutor(frozen)
 			: (await sandboxedVersionOf(frozen, options)).executor;
 }

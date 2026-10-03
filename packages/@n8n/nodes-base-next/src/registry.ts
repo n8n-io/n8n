@@ -1,6 +1,7 @@
 import type { FrozenVersion } from '@n8n/node-sdk/host';
 import {
 	compareSemver,
+	isVersionManifest,
 	parseStoreCatalog,
 	parseStoreIndex,
 	STORE_CATALOG_FILE,
@@ -15,7 +16,10 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { UnexpectedError } from 'n8n-workflow';
 
-/** The embedded store: the HEAD of each action, trigger and credential type. `pnpm freeze` writes it. */
+/**
+ * The embedded store: the HEAD of each action, trigger, credential type and native contract.
+ * `pnpm freeze` writes it.
+ */
 export const EMBEDDED_STORE_DIR = path.resolve(__dirname, '..', 'dist', 'store');
 
 const textOf = (dir: string, file: string) => readFileSync(path.join(dir, file), 'utf8');
@@ -31,7 +35,7 @@ export function versionsOf(actionId: string, dir = EMBEDDED_STORE_DIR): FrozenVe
 	return parseStoreIndex(textOf(dir, storeIndexFileOf(actionId)), actionId)
 		.flatMap((record) => {
 			const manifest = manifestOf(dir, record);
-			if (manifest.kind === 'credential') return [];
+			if (!isVersionManifest(manifest)) return [];
 			const readBundle = async () => {
 				const bundle = await blobs.blob(`sha256:${manifest.bundleHash}`);
 				if (!bundle) throw new UnexpectedError(`The embedded store has no bundle of ${actionId}`);
@@ -42,9 +46,9 @@ export function versionsOf(actionId: string, dir = EMBEDDED_STORE_DIR): FrozenVe
 		.sort((a, b) => compareSemver(b.manifest.semver, a.manifest.semver));
 }
 
-/** The ids of the bundled actions, triggers and providers. */
+/** The ids of the bundled actions, triggers and providers: the versions with a bundle. */
 export const bundledIdsOf = (dir = EMBEDDED_STORE_DIR) =>
-	catalogOf(dir).flatMap(({ id, kind }) => (kind === 'credential' ? [] : [id]));
+	catalogOf(dir).flatMap(({ id, bundle }) => (bundle === undefined ? [] : [id]));
 
 /** The bundled credential manifests, with the blob file each one comes from. */
 export const bundledCredentialsOf = (dir = EMBEDDED_STORE_DIR) =>

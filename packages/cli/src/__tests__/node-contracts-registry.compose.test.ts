@@ -26,7 +26,10 @@ async function postProcessed(nodeContractsEnabled: boolean) {
 		mock(),
 	);
 	const nodesBase = new LazyPackageDirectoryLoader(path.join(PACKAGES, 'nodes-base'));
-	const next = new ContractNodeLoader([], [], async () => new Map());
+	const next = new ContractNodeLoader([], [], async () => ({
+		versions: async () => new Map(),
+		credentials: async () => new Map(),
+	}));
 	await Promise.all([nodesBase.loadAll(), next.loadAll()]);
 	instance.loaders = { 'n8n-nodes-base': nodesBase, '@n8n/nodes-base-next': next };
 	await instance.postProcessLoaders();

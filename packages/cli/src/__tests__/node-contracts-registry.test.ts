@@ -200,6 +200,22 @@ describe('NodeContractsStore', () => {
 		expect(await rows.bundle(row.digest)).toBeUndefined();
 	});
 
+	it('reads the credential manifests of the table', async () => {
+		const credential = { ...row, contractId: 'ping.token', kind: 'credential' as const };
+		repository.findCredentialManifests.mockResolvedValue([credential]);
+
+		expect(await Container.get(NodeContractsStore).rows.credentialManifests()).toEqual([
+			{
+				id: 'ping.token',
+				version: '1.0.0',
+				kind: 'credential',
+				manifest: row.digest,
+				manifestText: row.manifest,
+				signatures: row.signatures,
+			},
+		]);
+	});
+
 	it('inserts versions, and drops a published value that is not a date', async () => {
 		await Container.get(NodeContractsStore).rows.insert([
 			version,

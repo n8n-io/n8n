@@ -6,6 +6,7 @@ import {
 	bundledIdsOf,
 	NODE_PACKAGE as NEXT,
 	versionsOf,
+	type CredentialManifest,
 	type FrozenVersion,
 } from '@n8n/nodes-base-next';
 import { LazyPackageDirectoryLoader } from 'n8n-core';
@@ -20,10 +21,16 @@ import path from 'node:path';
 import { mock } from 'vitest-mock-extended';
 
 import { LoadNodesAndCredentials } from '../load-nodes-and-credentials';
-import { ContractNodeLoader } from '../node-contracts-registry';
+import { ContractNodeLoader, NodeContractsStore } from '../node-contracts-registry';
 
 const PACKAGES = path.resolve(__dirname, '../../..');
-const noStore = async () => new Map<string, readonly FrozenVersion[]>();
+const storeOf =
+	(
+		versions: ReadonlyMap<string, readonly FrozenVersion[]> = new Map(),
+		credentials: ReadonlyMap<string, CredentialManifest> = new Map(),
+	) =>
+	async () => ({ versions: async () => versions, credentials: async () => credentials });
+const noStore = storeOf();
 
 interface Served {
 	readonly nodes: INodeTypeDescription[];
@@ -152,7 +159,7 @@ describe('ContractNodeLoader', () => {
 			},
 		};
 		const sameMajor: FrozenVersion = { ...head, manifest: { ...manifest, semver: '9.9.9' } };
-		const loader = new ContractNodeLoader([], [], async () => new Map([[id, [stored, sameMajor]]]));
+		const loader = new ContractNodeLoader([], [], storeOf(new Map([[id, [stored, sameMajor]]])));
 		await loader.loadAll();
 
 		const { name } = manifest.description;
@@ -166,6 +173,40 @@ describe('ContractNodeLoader', () => {
 		expect(served.every(({ properties }) => properties[0]?.name === 'pollTimes')).toBe(true);
 		expect(stored.manifest.description.properties.map(({ name }) => name)).not.toContain(
 			'pollTimes',
+		);
+	});
+
+	it('registers a stored credential type of a name that no other package has', async () => {
+		const logger = mockInstance(Logger);
+		mockInstance(NodeContractsStore, { dir: '/store' });
+		const notion = bundledCredentialsOf().find(({ manifest }) => manifest.name === 'notionApi');
+		if (!notion) throw new Error('notionApi is not bundled');
+		const ping = { ...notion.manifest, id: 'ping.token', name: 'pingApi' };
+		const custom = { ...ping, id: 'other.token', name: 'otherApi' };
+		const stored = new Map<string, CredentialManifest>([
+			['pingApi', ping],
+			['notionApi', { ...notion.manifest, displayName: 'Stored Notion' }],
+			['otherApi', { ...custom, scheme: { kind: 'custom', reason: 'signs a body' } }],
+			['legacyApi', { ...ping, id: 'legacy.token', name: 'legacyApi' }],
+		]);
+		const loader = new ContractNodeLoader(
+			[],
+			[],
+			storeOf(new Map(), stored),
+			[],
+			(name) => name === 'legacyApi',
+		);
+		await loader.loadAll();
+
+		expect(loader.known.credentials.pingApi).toMatchObject({
+			className: 'ping.token',
+			sourcePath: '/store',
+		});
+		expect(loader.getCredential('notionApi').type.displayName).toBe(notion.manifest.displayName);
+		expect(loader.known.credentials).not.toHaveProperty('otherApi');
+		expect(loader.known.credentials).not.toHaveProperty('legacyApi');
+		expect(logger.warn).toHaveBeenCalledWith(
+			expect.stringContaining('other.token@1.0.0 does not load: a custom scheme'),
 		);
 	});
 
@@ -221,7 +262,7 @@ describe('ContractNodeLoader', () => {
 				description: { ...manifest.description, version: major },
 			},
 		};
-		const loader = new ContractNodeLoader([], [], async () => new Map([[id, [stored]]]), [
+		const loader = new ContractNodeLoader([], [], storeOf(new Map([[id, [stored]]])), [
 			'egress-input',
 		]);
 		await loader.loadAll();

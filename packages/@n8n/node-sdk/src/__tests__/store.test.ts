@@ -5,7 +5,14 @@ import path from 'node:path';
 
 import { freezeAction, freezeCredential, type FrozenAction } from '../freeze';
 import { defineCredential, field } from '../entry/credentials';
-import { lastPublishedIn, publishAction } from '../publish';
+import { defineNode, t } from '../index';
+import {
+	credentialChangeOf,
+	lastPublishedIn,
+	publishAction,
+	publishCredential,
+	publishNative,
+} from '../publish';
 import {
 	addToStore,
 	manifestTextOf,
@@ -45,6 +52,27 @@ const token = defineCredential({
 	auth: (a) => a.bearer('token'),
 	baseUrl: 'https://a.example.com',
 });
+
+const tokenWith = (spec: { displayName?: string; hosts?: string[]; version?: number }) =>
+	defineCredential({
+		id: 'demo.token',
+		legacyName: 'demoApi',
+		displayName: spec.displayName ?? 'Demo API',
+		version: spec.version,
+		fields: { token: field.secret('Token') },
+		auth: (a) => a.bearer('token'),
+		baseUrl: 'https://a.example.com',
+		hosts: spec.hosts,
+	});
+
+const hookWith = (summary: string, version = 2.2) =>
+	defineNode({ id: 'demo', displayName: 'Demo' }).trigger('hook', {
+		trigger: 'On call',
+		summary,
+		input: { path: t.str() },
+		output: t.obj({ body: t.str() }),
+		native: { type: 'n8n-nodes-base.webhook', version, on: 'webhook' },
+	});
 
 const keys = generateKeyPairSync('ed25519');
 const privateKey = keys.privateKey.export({ type: 'pkcs8', format: 'pem' }).toString();
@@ -92,7 +120,7 @@ afterAll(async () => {
 describe('the store layout', () => {
 	it('gives back the frozen manifest and bundle bytes', async () => {
 		const frozen = await freeze();
-		const credential = freezeCredential(token);
+		const credential = await freezeCredential(token);
 		if (!credential) throw new Error('demo.token has no manifest');
 		const dir = await newDir('round-trip');
 		const [record] = await addToStore(dir, [
@@ -248,11 +276,129 @@ describe('publishAction', () => {
 		const text = (await reader.readManifest(records[1] as StoreRecord))?.text ?? '';
 		expect(verifyStoreSignature(records[1] as StoreRecord, text, publicKey)).toBe(true);
 		expect((await reader.catalog()).map(({ version }) => version)).toEqual(['1.0.1']);
-		expect(await lastPublishedIn(reader)('demo.echo', 1, 0)).toEqual({
-			id: 'demo.echo',
-			semver: '1.0.1',
-			bundleHash: v101.bundleHash,
-		});
+		expect(await lastPublishedIn(reader)('demo.echo', 1, 0)).toEqual(records[1]);
+		expect(records[1]?.bundle).toBe(`sha256:${v101.bundleHash}`);
 		expect(await lastPublishedIn(reader)('demo.echo', 1, 1)).toBeUndefined();
+	});
+});
+
+describe('publishCredential', () => {
+	it('appends a signed line and a manifest blob for each version', async () => {
+		const registry = await newDir('credential-registry');
+		const publish = async (type = tokenWith({})) =>
+			await publishCredential({ type, registryDir: registry, privateKey });
+		const index = path.join(registry, storeIndexFileOf('demo.token'));
+
+		const v100 = await publish();
+		const first = await readFile(index, 'utf8');
+		await expect(publish()).resolves.toEqual(v100);
+		expect(await readFile(index, 'utf8')).toBe(first);
+
+		const v101 = await publish(tokenWith({ displayName: 'Demo' }));
+		expect([v100.semver, v101.semver]).toEqual(['1.0.0', '1.0.1']);
+		const lines = (await readFile(index, 'utf8')).split('\n').filter(Boolean);
+		expect(`${lines[0]}\n`).toBe(first);
+
+		const reader = storeReader(storeFilesOfDir(registry));
+		const records = await reader.records('demo.token');
+		expect(records).toEqual([
+			expect.objectContaining({ version: '1.0.0', kind: 'credential', name: 'demoApi' }),
+			expect.objectContaining({ version: '1.0.1', kind: 'credential', name: 'demoApi' }),
+		]);
+		expect(records.every(({ bundle, published }) => bundle === undefined && published)).toBe(true);
+		const read = await reader.readManifest(records[1] as StoreRecord);
+		expect(read?.manifest).toEqual(v101);
+		expect(verifyStoreSignature(records[1] as StoreRecord, read?.text ?? '', publicKey)).toBe(true);
+	});
+
+	it('refuses a new host without a new major', async () => {
+		const registry = await newDir('credential-hosts');
+		await publishCredential({ type: tokenWith({}), registryDir: registry, privateKey });
+		await expect(
+			publishCredential({
+				type: tokenWith({ hosts: ['b.example.com'] }),
+				registryDir: registry,
+				privateKey,
+			}),
+		).rejects.toThrow('demo.token@1.0.1 is a patch bump from 1.0.0, but the change is major');
+		const v200 = await publishCredential({
+			type: tokenWith({ hosts: ['b.example.com'], version: 2 }),
+			registryDir: registry,
+			privateKey,
+		});
+		expect(v200).toMatchObject({ semver: '2.0.0', hosts: ['b.example.com'] });
+	});
+});
+
+describe('credentialChangeOf', () => {
+	const manifestOf = async (fields: Parameters<typeof defineCredential>[0]['fields'], doc = '') =>
+		await freezeCredential(
+			defineCredential({
+				id: 'demo.token',
+				displayName: 'Demo API',
+				...(doc ? { docs: doc } : {}),
+				fields,
+				auth: (a) => a.none(),
+			}),
+		);
+
+	it.each([
+		['a text change', { a: t.str() }, { a: t.str() }, 'patch', 'other-docs'],
+		['a new optional field', { a: t.str() }, { a: t.str(), b: t.str().optional() }, 'minor', ''],
+		['a new required field', { a: t.str() }, { a: t.str(), b: t.str() }, 'major', ''],
+		['a removed field', { a: t.str(), b: t.str() }, { a: t.str() }, 'major', ''],
+	])('rates %s', async (_what, before, after, change, doc) => {
+		const [previous, next] = [await manifestOf(before), await manifestOf(after, doc)];
+		if (!previous || !next) throw new Error('no manifest');
+		expect(credentialChangeOf(previous, next)).toBe(change);
+	});
+});
+
+describe('publishNative', () => {
+	it('appends a line without a bundle and reads the manifest back', async () => {
+		const registry = await newDir('native-registry');
+		const publish = async (summary = 'Starts on a call.') =>
+			await publishNative({ native: hookWith(summary), registryDir: registry, privateKey });
+
+		const v100 = await publish();
+		expect(v100).toMatchObject({
+			kind: 'trigger',
+			id: 'demo.hook',
+			semver: '1.0.0',
+			native: { type: 'n8n-nodes-base.webhook', version: 2.2 },
+			contract: { trigger: 'webhook' },
+		});
+		expect(v100).not.toHaveProperty('bundleHash');
+		await expect(publish()).resolves.toEqual(v100);
+		const v101 = await publish('Starts when a caller calls.');
+		expect(v101.semver).toBe('1.0.1');
+
+		const reader = storeReader(storeFilesOfDir(registry));
+		const records = await reader.records('demo.hook');
+		expect(records).toEqual([
+			expect.objectContaining({ version: '1.0.0', native: 'n8n-nodes-base.webhook' }),
+			expect.objectContaining({ version: '1.0.1', native: 'n8n-nodes-base.webhook' }),
+		]);
+		expect(records.every(({ bundle }) => bundle === undefined)).toBe(true);
+		expect((await reader.readManifest(records[0] as StoreRecord))?.manifest).toEqual(v100);
+		expect((await reader.catalog()).map(({ id, version }) => `${id}@${version}`)).toEqual([
+			'demo.hook@1.0.1',
+		]);
+	});
+
+	it('refuses a patch with another legacy node version', async () => {
+		const registry = await newDir('native-binding');
+		await publishNative({
+			native: hookWith('Starts on a call.'),
+			registryDir: registry,
+			privateKey,
+		});
+		await expect(
+			publishNative({
+				native: hookWith('Starts on a call.', 2.1),
+				registryDir: registry,
+				privateKey,
+			}),
+		).rejects.toThrow('demo.hook@1.0.1 is a patch, so it must keep the legacy node');
 	});
 });

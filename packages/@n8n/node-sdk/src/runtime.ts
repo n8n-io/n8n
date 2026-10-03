@@ -37,6 +37,7 @@ import {
 import { credentialBaseUrlOf, plainFieldsOf, redactedValue, secretRedactorOf } from './credentials';
 import { codeRunnerOf, dataTableHostOf, dataTablesOf } from './host-imports';
 import { actionHostsOf, credentialHostsOf, egressOf, permissionsOf } from './egress';
+import type { CredentialManifest } from './manifest';
 import { parameterValue, toProperty } from './properties';
 import {
 	bytesOf,
@@ -1930,22 +1931,47 @@ export async function verifiedBundleOf(frozen: FrozenVersion) {
 /** The executor of the action interface for one node execution. */
 export type Executor = (host: ExecutorHost) => Promise<INodeExecutionData[][]>;
 
-/** Executors by bundle hash and HEAD bundle hash. A bundle loads on its first execution only. */
+/** Executors by bundle hash. A bundle loads on its first execution only. */
 const executors = new Map<string, Promise<Executor>>();
 
+/** The credential manifest that the host has for an n8n credential type name, if any. */
+export type CredentialManifestOf = (name: string) => Promise<CredentialManifest | undefined>;
+
+// One slot: the host sets its credential manifests once at start.
+const credentialManifests = new Map<'lookup', CredentialManifestOf>();
+
 /**
- * n8n has one credential type for each name and signs with it, so the hosts of a credential
- * type come from the bundled version. A type that it does not list keeps the hosts of `action`.
+ * Sets where the host finds the credential manifest of a name, e.g. its store. The host calls it
+ * once at start. Without it, each bundle keeps the hosts of its own credential types.
  */
-export function withCredentialHostsOf(head: Action | Trigger, action: Action): Action {
-	const credential = action.node.credential;
-	if (!credential) return action;
-	const current = head.node.credential?.types ?? [];
-	const types = credential.types.map((type) => {
-		const hosts = current.find(({ name }) => name === type.name)?.hosts;
-		return hosts === undefined ? type : { ...type, hosts };
-	});
-	return { ...action, node: { ...action.node, credential: { ...credential, types } } };
+export const setCredentialManifests = (lookup: CredentialManifestOf) => {
+	credentialManifests.set('lookup', lookup);
+	// An executor with the old hosts must not run on.
+	executors.clear();
+};
+
+/** The credential manifest of a name from the lookup of the host. */
+export const credentialManifestOf: CredentialManifestOf = async (name) =>
+	await credentialManifests.get('lookup')?.(name);
+
+/**
+ * n8n has one credential type for each name and signs with it, so the hosts and the base URL of
+ * a credential type come from its credential manifest in the store, never from a bundle. A type
+ * without a manifest, e.g. a compat type, keeps the ones of `contract`.
+ */
+export async function withCredentialHostsOf<C extends Pick<Action, 'node'>>(
+	contract: C,
+	manifestOf: CredentialManifestOf = credentialManifestOf,
+): Promise<C> {
+	const credential = contract.node.credential;
+	if (!credential) return contract;
+	const types = await Promise.all(
+		credential.types.map(async (type) => {
+			const manifest = await manifestOf(type.name);
+			return manifest ? { ...type, hosts: manifest.hosts, baseUrl: manifest.baseUrl } : type;
+		}),
+	);
+	return { ...contract, node: { ...contract.node, credential: { ...credential, types } } };
 }
 
 /**
@@ -1973,18 +1999,14 @@ function assertManifestPermissions({ id, semver, contract }: VersionManifest, ac
 
 /**
  * The executor of a frozen version with its bundle in this process. The egress comes from the
- * manifest, as in the sandbox. `head` gives the credential hosts.
+ * manifest, as in the sandbox. The credential hosts come from the credential manifests.
  */
-export async function loadExecutor(frozen: FrozenVersion, head: FrozenVersion): Promise<Executor> {
+export async function loadExecutor(frozen: FrozenVersion): Promise<Executor> {
 	const exported = await verifiedBundleOf(frozen);
 	if ('kind' in exported) throw new UnexpectedError(`${exported.id} is a trigger, not an action`);
 	assertManifestPermissions(frozen.manifest, exported);
 	const action: Action = { ...exported, egress: frozen.manifest.contract.egress ?? { hosts: [] } };
-	const executor = executorOf(
-		frozen.manifest.bundleHash === head.manifest.bundleHash
-			? action
-			: withCredentialHostsOf(await verifiedBundleOf(head), action),
-	);
+	const executor = executorOf(await withCredentialHostsOf(action));
 	return async (host) => {
 		host.recorder?.path('in_process');
 		return await executor(host);
@@ -1992,7 +2014,7 @@ export async function loadExecutor(frozen: FrozenVersion, head: FrozenVersion): 
 }
 
 /** Makes the executor of a frozen version, e.g. in a sandbox. The default is `loadExecutor`. */
-export type ExecutorLoader = (frozen: FrozenVersion, head: FrozenVersion) => Promise<Executor>;
+export type ExecutorLoader = (frozen: FrozenVersion) => Promise<Executor>;
 
 // One slot: the host sets it once at start, as the version loader.
 const executorLoader = new Map<'loader', ExecutorLoader>();
@@ -2033,16 +2055,14 @@ async function versionExecutorOf(context: NodeContext, head: FrozenVersion) {
 	}
 	assertNodeContract(frozen.manifest);
 	// A failed read, for example a registry outage, must not stay in the cache.
-	// The credential hosts come from `head`, so the executor depends on both bundles.
-	const key = `${bundleHash}:${head.manifest.bundleHash}`;
-	const cached = executors.has(key);
+	const cached = executors.has(bundleHash);
 	const executor =
-		executors.get(key) ??
-		(executorLoader.get('loader') ?? loadExecutor)(frozen, head).catch((error: unknown) => {
-			executors.delete(key);
+		executors.get(bundleHash) ??
+		(executorLoader.get('loader') ?? loadExecutor)(frozen).catch((error: unknown) => {
+			executors.delete(bundleHash);
 			throw error;
 		});
-	executors.set(key, executor);
+	executors.set(bundleHash, executor);
 	return { executor: await executor, manifest: frozen.manifest, cached };
 }
 

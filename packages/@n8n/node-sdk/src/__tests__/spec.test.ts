@@ -41,8 +41,10 @@ import type {
 } from '../define';
 import {
 	credentialManifestSchema,
+	nativeManifestSchema,
 	versionManifestSchema,
 	type CredentialManifest,
+	type NativeManifest,
 } from '../manifest';
 import type { AnySchema, BinaryMeta, Shape } from '../schema';
 import {
@@ -521,9 +523,25 @@ describe('spec/manifest.schema.json', () => {
 				]),
 			),
 		);
+		expect(keys(nativeManifestSchema.json)).toEqual(
+			sorted(
+				keysOf<NativeManifest>()([
+					'kind',
+					'id',
+					'semver',
+					'nodeContract',
+					'sdk',
+					'credentials',
+					'contractHash',
+					'contract',
+					'native',
+					'reply',
+				]),
+			),
+		);
 		expect(schema).toMatchObject({
 			$schema: 'https://json-schema.org/draft/2020-12/schema',
-			oneOf: [versionManifestSchema.json, credentialManifestSchema.json],
+			oneOf: [versionManifestSchema.json, credentialManifestSchema.json, nativeManifestSchema.json],
 		});
 	});
 

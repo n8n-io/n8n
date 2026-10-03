@@ -23,8 +23,15 @@ import {
 } from '../entry/registry';
 import { defineNode, pages, path, provider, t, type EncodedPath, type HttpRequest } from '../index';
 import type { AnyCredentialType } from '../credentials';
+import type { CredentialManifest } from '../manifest';
 import { allowsHost, credentialHostsOf, egressIssuesOf, narrowHosts } from '../egress';
-import { executorOf, toRequestOptions, withCredentialHostsOf, type ExecutorHost } from '../runtime';
+import {
+	executorOf,
+	setCredentialManifests,
+	toRequestOptions,
+	withCredentialHostsOf,
+	type ExecutorHost,
+} from '../runtime';
 
 const node: INode = {
 	id: '1',
@@ -485,31 +492,55 @@ describe('credential hosts of a frozen version', () => {
 	});
 	const none = { allowedHttpRequestDomains: 'none' };
 
-	it('come from the bundled version of the credential type', async () => {
+	const manifestWith = (hosts: string[]): CredentialManifest => ({
+		kind: 'credential',
+		id: 'echo.token',
+		name: 'echoApi',
+		semver: '1.0.0',
+		nodeContract: '2.5.0',
+		sdk: '0.0.0',
+		displayName: 'Echo',
+		fields: t.obj({}).json,
+		scheme: { kind: 'none' },
+		hosts,
+	});
+
+	it('come from the credential manifest of the type', async () => {
 		const before = hostOf({ credentialType: 'echoApi', data: none });
 		await expect(executorOf(frozenGet)(before.host)).rejects.toThrow(
 			'This credential is configured to prevent use within an Echo node',
 		);
 
+		const allowed = await withCredentialHostsOf(frozenGet, async () =>
+			manifestWith(['api.echo.test']),
+		);
 		const { host, sent } = hostOf({ credentialType: 'echoApi', data: none });
-		await executorOf(withCredentialHostsOf(sender([]), frozenGet))(host);
+		await executorOf(allowed)(host);
 		expect(sent.map(({ url }) => url)).toEqual(['https://api.echo.test/v1/x']);
+
+		const moved = await withCredentialHostsOf(frozenGet, async () =>
+			manifestWith(['api.moved.test']),
+		);
+		const after = hostOf({ credentialType: 'echoApi', data: none });
+		await expect(executorOf(moved)(after.host)).rejects.toThrow('api.echo.test');
+		expect(after.sent).toEqual([]);
 	});
 
-	it('stay the frozen ones for a type the bundled version does not list', () => {
-		const other = defineNode({ id: 'other', displayName: 'Other' }).action('get', {
-			action: 'Get',
-			summary: 'Get.',
-			flow: { effect: 'read', cardinality: 'per-item' },
-			input: {},
-			output,
-			async run() {
-				return { ok: 'yes' };
-			},
-		});
-		expect(
-			withCredentialHostsOf(other, frozenGet).node.credential?.types[0]?.hosts,
-		).toBeUndefined();
+	it('come from the credential manifests that the host sets', async () => {
+		setCredentialManifests(async (name) =>
+			name === 'echoApi' ? manifestWith(['api.host.test']) : undefined,
+		);
+		try {
+			const types = (await withCredentialHostsOf(frozenGet)).node.credential?.types;
+			expect(types?.[0]?.hosts).toEqual(['api.host.test']);
+		} finally {
+			setCredentialManifests(async () => undefined);
+		}
+	});
+
+	it('stay the frozen ones for a type without a credential manifest', async () => {
+		const kept = await withCredentialHostsOf(sender([]), async () => undefined);
+		expect(kept.node.credential?.types[0]?.hosts).toEqual(['api.echo.test']);
 	});
 });
 

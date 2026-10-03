@@ -3,9 +3,10 @@ import path from 'node:path';
 import { UnexpectedError, UserError } from 'n8n-workflow';
 
 import type { AnyCredentialType } from './credentials';
-import { toContract, type Action, type Trigger } from './define';
-import { credentialManifestOf } from './manifest';
+import { replyContractOf, toContract, type Action, type Trigger } from './define';
+import { credentialManifestOf, type CredentialManifest, type NativeManifest } from './manifest';
 import { evaluateBundle, toNodeType } from './runtime';
+import { manifestTextOf, type StoreRecord } from './store';
 import { triggerDescriptionOf } from './triggers';
 import {
 	contractHash,
@@ -132,31 +133,53 @@ export interface FrozenAction {
 }
 
 /**
- * The newest frozen version of an action in one major and minor, e.g. the newest published one.
- * Freeze computes the patch from it.
+ * The index line of the newest frozen version of an id in one major and minor, e.g. the newest
+ * published one. Freeze computes the patch from it.
  */
 export type LastVersionOf = (
 	id: string,
 	major: number,
 	minor: number,
-) => Promise<Pick<VersionManifest, 'id' | 'semver' | 'bundleHash'> | undefined>;
+) => Promise<Pick<StoreRecord, 'version' | 'manifest' | 'bundle'> | undefined>;
 
 /**
  * The source holds the major and the minor, because they are decisions. The patch follows the
- * last version: the same bundle keeps its version, other bytes take the next patch. A contract
- * change without a new minor also takes the next patch, and `checkPublish` refuses it.
+ * last version: the same content keeps its version, other content takes the next patch. The
+ * content of a version with a bundle is the bundle; of any other version, the manifest. A change
+ * without a new minor also takes the next patch, and the publish gate refuses it.
  */
-function semverOf(
-	{ id, version, minor = 0 }: Action | Trigger,
-	bundleHash: string,
-	last: Awaited<ReturnType<LastVersionOf>>,
+async function semverOf(
+	{ id, major, minor }: { readonly id: string; readonly major: number; readonly minor: number },
+	lastOf: LastVersionOf | undefined,
+	isSame: (last: Pick<StoreRecord, 'manifest' | 'bundle'>, version: string) => boolean,
 ) {
-	const previous = last?.id === id ? parseSemver(last.semver) : undefined;
+	const last = await lastOf?.(id, major, minor);
+	if (!last) return `${major}.${minor}.0`;
+	const previous = parseSemver(last.version);
 	const patch =
-		previous?.major !== version || previous.minor !== minor
+		previous.major !== major || previous.minor !== minor
 			? 0
-			: previous.patch + (last?.bundleHash === bundleHash ? 0 : 1);
-	return `${version}.${minor}.${patch}`;
+			: previous.patch + (isSame(last, last.version) ? 0 : 1);
+	return `${major}.${minor}.${patch}`;
+}
+
+const manifestDigestOf = (manifest: CredentialManifest | NativeManifest) =>
+	`sha256:${sha256(manifestTextOf(manifest))}`;
+
+/** The version of a manifest without a bundle: the same manifest bytes keep the last version. */
+async function bundleLessSemverOf<M extends CredentialManifest | NativeManifest>(
+	manifestAt: (semver: string) => M,
+	major: number,
+	minor: number,
+	lastOf: LastVersionOf | undefined,
+): Promise<M> {
+	const { id } = manifestAt(`${major}.${minor}.0`);
+	const semver = await semverOf(
+		{ id, major, minor },
+		lastOf,
+		(last, version) => last.manifest === manifestDigestOf(manifestAt(version)),
+	);
+	return manifestAt(semver);
 }
 
 /**
@@ -222,11 +245,15 @@ export async function freezeAction(
 	const contract = toContract(action);
 	const credentials = credentialPinsOf(action);
 	const bundleHash = sha256(bundle);
-	const last = await lastOf?.(action.id, action.version, action.minor ?? 0);
+	const semver = await semverOf(
+		{ id: action.id, major: action.version, minor: action.minor ?? 0 },
+		lastOf,
+		(last) => last.bundle === `sha256:${bundleHash}`,
+	);
 	const manifest: VersionManifest = {
 		kind: manifestKindOf(contract),
 		id: action.id,
-		semver: semverOf(action, bundleHash, last),
+		semver,
 		nodeContract: requiredNodeContractOf(contract, 'list' in action && action.list !== undefined),
 		sdk: sdkVersion(),
 		...(credentials.length ? { credentials } : {}),
@@ -239,6 +266,61 @@ export async function freezeAction(
 	return { manifest, bundle, action };
 }
 
-/** The credential manifest of a type, or none for a compat type. */
-export const freezeCredential = (type: AnyCredentialType) =>
-	credentialManifestOf(type, sdkVersion());
+/**
+ * The credential manifest of a type, or none for a compat type. The type gives the major and the
+ * minor; the patch follows `lastOf`, as for an action.
+ */
+export async function freezeCredential(
+	type: AnyCredentialType,
+	lastOf?: LastVersionOf,
+): Promise<CredentialManifest | undefined> {
+	const sdk = sdkVersion();
+	const head = credentialManifestOf(type, sdk);
+	if (!head) return undefined;
+	const { major, minor } = parseSemver(head.semver);
+	return await bundleLessSemverOf((semver) => ({ ...head, semver }), major, minor, lastOf);
+}
+
+/**
+ * The manifest of a native action or trigger: its contract and the legacy node that runs it. It
+ * has no bundle. The patch follows `lastOf`, as for an action.
+ *
+ * @throws a `UserError` for a contract that is not native.
+ */
+export async function freezeNative(
+	source: Action | Trigger,
+	lastOf?: LastVersionOf,
+): Promise<NativeManifest> {
+	const binding = source.native;
+	const contract = toContract(source);
+	const kind = manifestKindOf(contract);
+	if (!binding || kind === 'provider') {
+		throw new UserError(`${source.id} is not a native action or trigger`);
+	}
+	const credentials = credentialPinsOf(source);
+	const trigger = 'kind' in source && source.kind === 'native' ? source : undefined;
+	const reply = trigger?.reply;
+	const replyContract = trigger && replyContractOf(trigger);
+	const sdk = sdkVersion();
+	const manifestAt = (semver: string): NativeManifest => ({
+		kind,
+		id: source.id,
+		semver,
+		nodeContract: '2.5.0',
+		sdk,
+		...(credentials.length ? { credentials } : {}),
+		contractHash: contractHash(contract),
+		contract,
+		native: { type: binding.type, version: binding.version },
+		...(reply && replyContract
+			? {
+					reply: {
+						contract: replyContract,
+						native: { type: reply.native.type, version: reply.native.version },
+						...(reply.awaits ? { awaits: reply.awaits } : {}),
+					},
+				}
+			: {}),
+	});
+	return await bundleLessSemverOf(manifestAt, source.version, source.minor ?? 0, lastOf);
+}

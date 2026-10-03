@@ -28,6 +28,14 @@ export class NodeContractVersionRepository extends BaseRepository<NodeContractVe
 		});
 	}
 
+	/** The stored credential manifests, without the large columns. */
+	async findCredentialManifests(): Promise<NodeContractManifestRow[]> {
+		return await this.find({
+			select: ['digest', 'contractId', 'version', 'kind', 'manifest', 'signatures'],
+			where: { kind: 'credential' },
+		});
+	}
+
 	/** Whether a version with this manifest digest is stored. */
 	async existsByDigest(digest: string): Promise<boolean> {
 		return await this.existsBy({ digest });

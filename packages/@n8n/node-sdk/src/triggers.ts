@@ -37,6 +37,7 @@ import {
 	nodeNameOf,
 	toRequestOptions,
 	verifiedBundleOf,
+	withCredentialHostsOf,
 	versionedTypeOf,
 	withResponse,
 	type FrozenVersion,
@@ -651,12 +652,18 @@ const loaded = new Map<string, Promise<TriggerMethods>>();
 async function loadTrigger(frozen: FrozenVersion): Promise<TriggerMethods> {
 	const trigger = await verifiedBundleOf(frozen);
 	if (!('kind' in trigger)) throw new UnexpectedError(`${trigger.id} is an action, not a trigger`);
-	return triggerMethodsOf(trigger);
+	return triggerMethodsOf(await withCredentialHostsOf(trigger));
 }
 
 async function methodsOf(frozen: FrozenVersion) {
 	const { bundleHash } = frozen.manifest;
-	const methods = loaded.get(bundleHash) ?? loadTrigger(frozen);
+	// A failed load, for example a failed store read, must not stay in the cache.
+	const methods =
+		loaded.get(bundleHash) ??
+		loadTrigger(frozen).catch((error: unknown) => {
+			loaded.delete(bundleHash);
+			throw error;
+		});
 	loaded.set(bundleHash, methods);
 	return await methods;
 }

@@ -1,5 +1,5 @@
 import { isRecord, type Action, type Trigger } from '@n8n/node-sdk';
-import { freezeAction, freezeCredential } from '@n8n/node-sdk/freeze';
+import { freezeAction, freezeCredential, freezeNative } from '@n8n/node-sdk/freeze';
 import { lastPublishedIn } from '@n8n/node-sdk/publish';
 import { addToStore, manifestTextOf, storeFilesOfUrl, storeReader } from '@n8n/node-sdk/registry';
 import { readdirSync, rmSync } from 'node:fs';
@@ -14,8 +14,8 @@ export const NODES_DIR = path.resolve(__dirname, '..', 'src', 'nodes');
 
 const contracts: ReadonlyArray<Action | Trigger> = [...actions, ...triggers];
 
-/** Legacy nodes run these, so they register but do not freeze. */
-const natives: ReadonlyArray<Action | Trigger> = [...nativeTriggers, ...flowNatives];
+/** Legacy nodes run these, so they have a manifest and no bundle. */
+export const natives: ReadonlyArray<Action | Trigger> = [...nativeTriggers, ...flowNatives];
 
 const isRegistered = (value: unknown) =>
 	[...contracts, ...natives].some((known) => known === value);
@@ -82,7 +82,22 @@ export async function freezeAll(outDir: string) {
 
 /** Writes the manifest of each credential type that is not a compat type into the store in `outDir`. */
 export async function freezeCredentials(outDir: string) {
-	const manifests = credentialTypes.flatMap((type) => freezeCredential(type) ?? []);
+	const frozen = await Promise.all(
+		credentialTypes.map(async (type) => await freezeCredential(type, lastOf)),
+	);
+	const manifests = frozen.flatMap((manifest) => manifest ?? []);
+	await addToStore(
+		outDir,
+		manifests.map((manifest) => ({ manifestText: manifestTextOf(manifest) })),
+	);
+	return manifests;
+}
+
+/** Writes the manifest of each native action and trigger into the store in `outDir`. */
+export async function freezeNatives(outDir: string) {
+	const manifests = await Promise.all(
+		natives.map(async (native) => await freezeNative(native, lastOf)),
+	);
 	await addToStore(
 		outDir,
 		manifests.map((manifest) => ({ manifestText: manifestTextOf(manifest) })),
@@ -93,5 +108,9 @@ export async function freezeCredentials(outDir: string) {
 if (require.main === module) {
 	// n8n loads every version here, so a removed action must not stay from an older build.
 	rmSync(EMBEDDED_STORE_DIR, { recursive: true, force: true });
-	void Promise.all([freezeAll(EMBEDDED_STORE_DIR), freezeCredentials(EMBEDDED_STORE_DIR)]);
+	void Promise.all([
+		freezeAll(EMBEDDED_STORE_DIR),
+		freezeCredentials(EMBEDDED_STORE_DIR),
+		freezeNatives(EMBEDDED_STORE_DIR),
+	]);
 }

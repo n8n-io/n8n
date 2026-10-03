@@ -156,7 +156,7 @@ describe('the manifest as the permission source', () => {
 	});
 
 	it('loads a bundle that grants what its manifest grants', async () => {
-		await expect(loadExecutor(versionOf(), versionOf())).resolves.toBeTypeOf('function');
+		await expect(loadExecutor(versionOf())).resolves.toBeTypeOf('function');
 	});
 
 	it.each([
@@ -178,7 +178,7 @@ describe('the manifest as the permission source', () => {
 		],
 		['a scope', { scopes: ['x'] }, 'scopes: the bundle grants undefined, the manifest ["x"]'],
 	])('refuses a bundle whose manifest grants %s', async (_what, contract, difference) => {
-		await expect(loadExecutor(versionOf(contract), versionOf())).rejects.toThrow(
+		await expect(loadExecutor(versionOf(contract))).rejects.toThrow(
 			`The bundle of api.get@1.0.0 grants other permissions than its manifest. ${difference}`,
 		);
 	});

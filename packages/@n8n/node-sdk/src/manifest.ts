@@ -14,7 +14,7 @@ import type {
 	CustomAuth,
 	Notice,
 } from './credentials';
-import type { ContractDocument } from './define';
+import type { ContractDocument, NativeNode } from './define';
 import { Schema, t, type AnySchema, type Infer, type JsonSchema } from './schema';
 import { matches } from './validate';
 import type { StoreRecord } from './store';
@@ -315,6 +315,72 @@ export const credentialManifestSchema = typed<CredentialManifest>()(
 		.with({ title: 'Credential manifest', ...SINCE_2_5, ...OPEN }),
 );
 
+/**
+ * The data of one version of a native action or trigger. A legacy node runs it, so it has no
+ * bundle and no description of its own: the contract types the parameters and the items of the
+ * legacy node.
+ */
+export interface NativeManifest {
+	/** What the version is: an action or a trigger. */
+	readonly kind: 'action' | 'trigger';
+	/** The contract id, e.g. `webhook.trigger`. */
+	readonly id: string;
+	/** `major.minor.patch`; the major is `contract.version`. */
+	readonly semver: string;
+	/** The lowest Node Contract version that has native manifests. */
+	readonly nodeContract: NodeContractVersion;
+	/** The `@n8n/node-sdk` version that froze it, for traceability only. */
+	readonly sdk: string;
+	/** `<name>@<major>` of each credential type with a credential manifest. Absent when none has one. */
+	readonly credentials?: readonly string[];
+	/** The normative hash of `contract`, see `contractHash`. */
+	readonly contractHash: string;
+	/** The contract document of the version. */
+	readonly contract: ContractDocument;
+	/** The legacy node that runs the version. */
+	readonly native: NativeNode;
+	/** The step that answers the caller of a native trigger, e.g. Respond to Webhook. */
+	readonly reply?: {
+		/** The reply step as an action contract. */
+		readonly contract: ContractDocument;
+		/** The legacy node of the reply step. */
+		readonly native: NativeNode;
+		/** The trigger field value that makes the caller wait for the reply. */
+		readonly awaits?: {
+			/** The trigger field, e.g. `responseMode`. */
+			readonly field: string;
+			/** The value of the field, e.g. `responseNode`. */
+			readonly value: string;
+		};
+	};
+}
+
+const nativeNode = typed<NativeNode>()(t.obj({ type: t.str(), version: t.num() }));
+
+/** The manifest of one version of a native action or trigger. */
+export const nativeManifestSchema = typed<NativeManifest>()(
+	t
+		.obj({
+			kind: t.oneOf('action', 'trigger'),
+			id: t.str(),
+			semver: semver(),
+			nodeContract: nodeContractVersion(),
+			sdk: t.str(),
+			credentials: t.arr(t.str().with({ pattern: '^[^@]+@\\d+$' })).optional(),
+			contractHash: hex(),
+			contract,
+			native: nativeNode,
+			reply: t
+				.obj({
+					contract,
+					native: nativeNode,
+					awaits: t.obj({ field: t.str(), value: t.str() }).optional(),
+				})
+				.optional(),
+		})
+		.with({ title: 'Native action or trigger manifest', ...SINCE_2_5, ...OPEN }),
+);
+
 const digest = () => t.str().with({ pattern: '^sha256:[0-9a-f]{64}$' });
 
 /** One version line of a store index, `index/<id>.ndjson`. It is not part of the Node Contract. */
@@ -330,6 +396,8 @@ export const storeRecordSchema = typed<StoreRecord>()(
 			contractHash: hex().optional(),
 			credentials: names().optional(),
 			permissions: t.obj({ egress: names(), imports: names() }).optional(),
+			native: t.str().optional(),
+			name: t.str().optional(),
 			fixtures: digest().optional(),
 			signatures: t.arr(t.obj({ key: digest(), sig: t.str() })).optional(),
 			published: t.str().optional(),
@@ -344,7 +412,7 @@ export const manifestJsonSchema = (version: string) => ({
 	title: 'n8n Node Contract manifest',
 	description:
 		'Generated from src/manifest.ts by scripts/spec.ts. Do not edit. `x-n8n-since` is the Node Contract version that added a field. The `contract.input` and `contract.output` schemas follow the contract format of the SDK.',
-	oneOf: [versionManifestSchema.json, credentialManifestSchema.json],
+	oneOf: [versionManifestSchema.json, credentialManifestSchema.json, nativeManifestSchema.json],
 });
 
 /** The credential manifest that freeze writes. A compat type has none. */

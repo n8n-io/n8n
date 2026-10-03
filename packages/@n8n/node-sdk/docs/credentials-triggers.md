@@ -11,7 +11,7 @@ each contract runs. It is the design of the NODE-6071 spike, lane C2.
 | Credential types | `defineCredential({ id, legacyName, fields, baseUrl, auth, test })`. `auth` is data first: `a.bearer`, `a.header`, `a.query`, `a.basic`, `a.apply`, `a.when`, `a.oauth2.*`. `a.custom` is the last resort. | n8n owns the secrets and the mechanics. `tsc` rejects a typo in a field, a template or an id. |
 | Ids | `service.scheme`, e.g. `notion.token`, `notion.oauth2`. `legacyName` is the n8n type name. | One spelling per concept. Stored credentials and workflows refer to `legacyName`, so they resolve unchanged. |
 | Compat | `compat('githubApi', { id, fields, baseUrl })` reuses a legacy class by name. | Saved credentials keep working. `defineCredential` is the primary form. |
-| Versions | `defineCredential({ version, minor, patch })`, 1.0.0 when omitted. Freeze writes a credential manifest (`spec/manifest.schema.json`), and each action manifest pins `<name>@<major>`. | A new required field, a new host or a new scheme is a major. A compat type has no manifest and no pin. See [node-contract.md](node-contract.md). |
+| Versions | `defineCredential({ version, minor })`, 1.0 when omitted. Freeze computes the patch: the same manifest bytes keep the last version, other bytes take the next patch. Freeze writes a credential manifest (`spec/manifest.schema.json`), and each action manifest pins `<name>@<major>`. | A new required field, a new host or a new scheme is a major. A compat type has no manifest and no pin. See [node-contract.md](node-contract.md). |
 | Scopes | Each action and trigger lists `scopes`. `tsc` rejects a scope that the node's credential does not declare. | The scope need is per contract, so a workflow can compute its union. |
 | Scope check | The flow build unions the scopes of all nodes. With `grants`, a missing scope fails the build and names the scope and the nodes. | A missing scope is found before the workflow runs. |
 | Triggers | `resource.trigger(event, spec)` next to `resource.action(...)`. Kinds: `poll`, `webhook`. | Same id, version, freeze, and contract hash path as an action. |
@@ -119,6 +119,26 @@ exist. With node contracts on, the loader of the contract package goes last, so 
 type replaces the legacy class of the same name, also for legacy nodes. The replacement keeps
 the supported nodes of both packages and the icon of the legacy class.
 
+`publishCredential` adds a credential manifest to the registry with the same store path as
+`publishAction`: a signature, and the gate `checkCredentialPublish`. The gate rates the change
+with `credentialChangeOf` and refuses a smaller bump:
+
+| Change | Kind |
+|---|---|
+| Text only: `displayName`, `documentationUrl`, `notice`, the prose of a field | patch |
+| A new optional field, another test request, another field type | minor |
+| Another name, scheme or base URL, a new host, a removed field, a new required field | major |
+
+The hosts and the base URL of a credential type come from its credential manifest, never from a
+bundle: `setCredentialManifests` gives the host lookup, and `loadExecutor`, the trigger loader
+and the sandbox read it. n8n registers one type for each name, so the lookup gives the bundled
+manifest first, and then the newest one in the instance store. A compat type has no manifest:
+it keeps the hosts of the bundle that runs.
+
+When the instance store takes a version from the registry, it also takes each credential
+manifest that the version pins, unless n8n bundles that name or the store has that major. The
+loader registers a stored credential type of a name that n8n does not bundle.
+
 ## Scope check
 
 ```mermaid
@@ -212,7 +232,11 @@ export const webhookTrigger = webhook.trigger('trigger', {
 
 - `generatedTriggersOf(trigger, nodeType)` gives the factories of a trigger. A native trigger
   emits its legacy node type and version, and its reply.
-- A native trigger is not frozen and has no node class. `triggerMethodsOf` throws for it.
+- A native trigger has no bundle and no node class. `triggerMethodsOf` throws for it. Freeze
+  writes its manifest (`freezeNative`, `NativeManifest`): the contract, the legacy node in
+  `native`, and the reply step in `reply`. `publishNative` publishes it with a signature. Its gate
+  (`checkNativePublish`) rates the contract as for an action, and a patch must keep the legacy
+  node. It has no fixtures: the legacy node runs it.
 - An action can be native too: `native: { type, version }` instead of `run` or `request`, e.g.
   `loop.batches` for Loop Over Items. It has the same rules: no bundle, no node class
   (`toNodeType` and `executorOf` throw), and the flow emits the legacy node.
@@ -260,7 +284,7 @@ The port does not have these legacy behaviours (`GithubTrigger.node.ts`):
 - n8n core does not run the device code, JWT bearer, token exchange and OIDC grants. They need a
   host implementation before a type can use them. Token placement quirks come next.
 - Trigger execution fixtures do not replay at publish. A poll fixture could replay pages and
-  states.
+  states. A trigger without a fixtures file publishes without fixtures.
 - A declarative request runs from the bundle today. The manifest could carry the request, so a
   host runs it without a bundle.
 - MCP tools are not frozen: a lifted tool has no bundle and no semver beyond `1.0.0`.

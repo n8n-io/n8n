@@ -26,7 +26,7 @@ import {
 } from '../entry/registry';
 import { defineNode, provider, t, type ActionFlow, type Shape } from '../index';
 import { checkPublish, lastPublishedIn, publishAction, replayFixtures } from '../publish';
-import { storeFilesOfDir, storeReader } from '../store';
+import { isVersionManifest, storeFilesOfDir, storeReader } from '../store';
 import { evaluateBundle } from '../runtime';
 import type { AnySchema } from '../schema';
 import {
@@ -338,7 +338,10 @@ const dirs = { root: '', registry: '', entry: '', shout: '' };
 
 const freeze = async (options: EchoOptions = {}, last?: VersionManifest) => {
 	await writeFile(dirs.entry, echoSource(options));
-	return await freezeAction(dirs.entry, 'echo', async () => last);
+	const line = last && { version: last.semver, manifest: `sha256:${sha256(last.semver)}` };
+	return await freezeAction(dirs.entry, 'echo', async () =>
+		line ? { ...line, bundle: `sha256:${last.bundleHash}` } : undefined,
+	);
 };
 
 /** A frozen version of the same contract with other bytes. */
@@ -689,7 +692,7 @@ describe('published versions', () => {
 						(await registry.blob(digest ?? ''))?.toString('utf8'),
 					),
 				);
-				if (read?.manifest.kind === 'credential' || !read || !bundle || !fixtures) {
+				if (!read || !isVersionManifest(read.manifest) || !bundle || !fixtures) {
 					throw new Error(`${record.version} is not complete`);
 				}
 				return { manifest: read.manifest, bundle, fixtures: parseFixtures(fixtures) };

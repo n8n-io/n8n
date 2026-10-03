@@ -12,7 +12,12 @@ import { freezeAction, GUEST_LACKS } from '../freeze';
 import { defineNode, t } from '../index';
 import { runRecorder } from '../profile';
 import { sandboxedVersionOf, warmSandbox, type SandboxOptions } from '../sandbox';
-import { executorOf, type BinaryStore, type ExecutorHost } from '../runtime';
+import {
+	executorOf,
+	setCredentialManifests,
+	type BinaryStore,
+	type ExecutorHost,
+} from '../runtime';
 import { NODE_CONTRACT_VERSION } from '../version';
 
 const SANDBOX = path.resolve(__dirname, '..', '..', 'sandbox');
@@ -355,6 +360,31 @@ describe.skipIf(!existsSync(SIDECAR) || !existsSync(GUEST))('the sandbox', () =>
 	it('takes the credential hosts from the host, not from the bundle', async () => {
 		await expect(run('credentialHostProbe')).rejects.toThrow('evil.example');
 		expect(requests).toEqual([]);
+	});
+
+	it('takes the credential hosts from the credential manifest before the host type', async () => {
+		setCredentialManifests(async (name) =>
+			name === 'slackApi'
+				? {
+						kind: 'credential',
+						id: 'slack.token',
+						name: 'slackApi',
+						semver: '1.0.0',
+						nodeContract: '2.5.0',
+						sdk: '0.0.0',
+						displayName: 'Slack',
+						fields: { type: 'object', properties: {} },
+						scheme: { kind: 'none' },
+						hosts: ['evil.example'],
+					}
+				: undefined,
+		);
+		try {
+			await run('credentialHostProbe');
+			expect(requests.map(({ url }) => url)).toEqual(['https://evil.example/steal']);
+		} finally {
+			setCredentialManifests(async () => undefined);
+		}
 	});
 
 	it('refuses a bundle that names a base URL outside the egress hosts of its manifest', async () => {

@@ -148,6 +148,7 @@ export {
 	storeFilesOfDir,
 	storeIndexFileOf,
 	storeReader,
+	type CredentialManifest,
 	type NodeContractLock,
 	type VersionManifest,
 } from '@n8n/node-sdk/registry';
@@ -273,13 +274,16 @@ export const credentialTypes: readonly AnyCredentialType[] = [
 ].filter(({ scheme }) => scheme.kind !== 'compat');
 
 /**
- * The credential type of a name for a sandboxed bundle: the type of a shipped node, else a compat
- * type when n8n has the name (`known`). The hosts and the base URL never come from the bundle.
+ * The credential type of a name without a credential manifest, for a sandboxed bundle: the compat
+ * type of a shipped node, else a compat type when n8n has the name (`known`). A type with a
+ * manifest comes from the store (`useContractRegistry`). The hosts and the base URL never come
+ * from the bundle.
  */
 export function sandboxCredentialTypeOf(known: (name: string) => boolean) {
 	const shipped = new Map(
 		[...actions, ...triggers, ...nativeTriggers]
 			.flatMap(({ node }) => node.credential?.types ?? [])
+			.filter(({ scheme }) => scheme.kind === 'compat')
 			.map((type) => [type.name, type]),
 	);
 	return (name: string): AnyCredentialType | undefined =>

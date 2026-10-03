@@ -15,7 +15,7 @@ import {
 	type ContractDocument,
 } from './define';
 import { permissionsOf, type ContractPermissions } from './egress';
-import { versionManifestSchema } from './manifest';
+import { nativeManifestSchema, versionManifestSchema, type NativeManifest } from './manifest';
 import { hasPageValue, type JsonSchema } from './schema';
 import { providedOf } from './providers';
 import { matches } from './validate';
@@ -169,7 +169,7 @@ const PROSE_KEYWORDS = new Set(['title', 'description', 'x-n8n-hint', 'examples'
 const SCHEMA_MAPS = new Set(['properties', 'patternProperties', 'x-n8n-value-types']);
 
 /** A schema without its prose keywords. Property names stay, also `description`. */
-const normativeSchema = (schema: unknown): unknown =>
+export const normativeSchema = (schema: unknown): unknown =>
 	isRecord(schema)
 		? Object.fromEntries(
 				Object.entries(schema)
@@ -304,6 +304,19 @@ export function parseManifest(text: string): VersionManifest {
 		contract,
 		description,
 	};
+}
+
+/** Reads a native manifest that freeze wrote. It checks the contract hash and the major. */
+export function parseNativeManifest(text: string): NativeManifest {
+	const value: unknown = JSON.parse(text);
+	if (
+		!matches(nativeManifestSchema, value) ||
+		contractHash(value.contract) !== value.contractHash ||
+		parseSemver(value.semver).major !== value.contract.version
+	) {
+		throw new UnexpectedError('The native manifest is not valid or its contract changed');
+	}
+	return value;
 }
 
 /** The version part that a change bumps. */

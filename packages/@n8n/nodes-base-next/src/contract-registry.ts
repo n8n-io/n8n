@@ -1,6 +1,7 @@
 import {
 	runsNodeContract,
 	setContractVersionLoader,
+	setCredentialManifests,
 	setEgressInputHosts,
 	setExecutorLoader,
 	setNodeContractRange,
@@ -12,18 +13,21 @@ import {
 import {
 	addToStore,
 	compareSemver,
+	isVersionManifest,
+	parseCredentialManifest,
 	parseManifest,
+	parseNativeManifest,
 	parseSemver,
 	resolveContractVersion,
 	storeFilesOfUrl,
 	storeReader,
 	verifyStoreSignature,
+	type CredentialManifest,
 	type NodeContractLock,
 	type NodeContractsPolicy,
 	type NodeContractVersion,
 	type StoreReader,
 	type StoreRecord,
-	type StoreSignature,
 	type StoreVersion,
 	type VersionManifest,
 } from '@n8n/node-sdk/registry';
@@ -35,7 +39,7 @@ import {
 	type ISupplyDataFunctions,
 } from 'n8n-workflow';
 
-import { versionsOf } from './registry';
+import { bundledCredentialsOf, versionsOf } from './registry';
 
 export interface ContractStoreOptions {
 	/**
@@ -77,6 +81,11 @@ export interface ContractRegistryOptions {
 	readonly onRunProfile?: RunProfileListener;
 	/** The host patterns that a URL from input may reach, in-process and in the sandbox. Empty: no limit. */
 	readonly egressInputHosts?: readonly string[];
+	/**
+	 * Whether another package of n8n has a credential type of this name, e.g. a legacy class. That
+	 * type signs, so a stored credential manifest of the name does not apply.
+	 */
+	readonly hasOtherCredentialType?: (name: string) => boolean;
 }
 
 /**
@@ -94,6 +103,12 @@ export interface ContractStore {
 	versions(): Promise<ReadonlyMap<string, readonly FrozenVersion[]>>;
 	/** Signed patches of the locked major.minor with the locked contract hash. */
 	newerPatches(lock: NodeContractLock): Promise<FrozenVersion[]>;
+	/**
+	 * The newest stored credential manifest of each n8n type name. A version that the store takes
+	 * from the registry brings the credential manifests it pins when a key is set, unless n8n
+	 * bundles that name.
+	 */
+	credentials(): Promise<ReadonlyMap<string, CredentialManifest>>;
 }
 
 /** A version in the store of an instance: its bytes and the index line fields that identify it. */
@@ -108,12 +123,14 @@ export type StoredManifest = Pick<
 
 /**
  * The store of an instance, e.g. a database table that every main and worker reads. It keeps
- * whole versions: each version that it lists has its bundle. It does not check the versions:
- * `admitVersions` checks them before they go in.
+ * whole versions: each version that it lists has its bundle when its manifest has one. It does
+ * not check the versions: `admitVersions` checks them before they go in.
  */
 export interface InstanceStore {
 	/** The stored versions of one id, or of every id. */
 	manifests(id?: string): Promise<readonly StoredManifest[]>;
+	/** The stored credential manifests. */
+	credentialManifests(): Promise<readonly StoredManifest[]>;
 	/** Whether the store has the version of a manifest digest. */
 	has(manifest: string): Promise<boolean>;
 	/** The bundle of a stored version by its manifest digest, or `undefined`. */
@@ -151,6 +168,22 @@ export async function admitVersions(
 	if (added.length > 0) await store.insert(added);
 	return added;
 }
+
+/** A version of a store line and its bytes. */
+const storedVersionOf = (
+	{ id, version, kind, manifest, signatures, published }: StoreRecord,
+	manifestText: string,
+	blobs: Pick<StoredVersion, 'bundle' | 'fixtures'> = {},
+): StoredVersion => ({
+	id,
+	version,
+	kind,
+	manifest,
+	manifestText,
+	...blobs,
+	signatures,
+	published,
+});
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
 	typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -266,38 +299,43 @@ export function contractStore(options: ContractStoreOptions): ContractStore {
 	const registryRecordsOf = async (id: string) =>
 		await cachedFor(indexes, id, async () => await registryOf().records(id));
 
+	/** Throws when a key is set and no signature of it covers the manifest bytes. */
 	const assertSigned = (
-		manifest: VersionManifest,
+		line: Pick<StoreRecord, 'id' | 'version' | 'manifest' | 'bundle' | 'signatures'>,
 		text: string,
-		signatures: readonly StoreSignature[] | undefined,
 	) => {
-		if (publicKey && !verifyStoreSignature({ signatures }, text, publicKey)) {
+		if (publicKey && !verifyStoreSignature(line, text, publicKey)) {
+			const content = line.bundle ? `bundle ${line.bundle.slice('sha256:'.length)}` : line.manifest;
 			throw new UserError(
-				`${manifest.id}@${manifest.semver} (bundle ${manifest.bundleHash}) is not signed by the trusted key`,
+				`${line.id}@${line.version} (${content}) is not signed by the trusted key`,
 			);
 		}
-		return manifest;
 	};
 
-	/** The manifest of a registry line, signed by the trusted key when one is set. */
+	/** The manifest of a registry version with a bundle, signed by the trusted key when one is set. */
 	const registryManifest = async (record: StoreRecord) => {
 		const read = await registryOf().readManifest(record);
 		if (!read) throw new UserError(`The registry has no manifest ${record.manifest}`);
+		assertSigned(record, read.text);
 		const { text, manifest } = read;
-		if (manifest.kind === 'credential') {
-			throw new UserError(`${manifest.id}@${manifest.semver} is a credential type`);
+		if (!isVersionManifest(manifest)) {
+			throw new UserError(`${record.id}@${record.version} has no bundle`);
 		}
-		return { text, manifest: assertSigned(manifest, text, record.signatures) };
+		return { text, manifest };
 	};
 
 	/** The manifest of a stored version, signed by the trusted key when one is set. */
-	const storedManifestOf = ({ manifest: digest, manifestText, signatures }: StoredManifest) => {
-		const manifest = assertSigned(parseManifest(manifestText), manifestText, signatures);
-		stored.set(manifest.bundleHash, { manifest, digest });
+	const storedManifestOf = (entry: StoredManifest) => {
+		const manifest = parseManifest(entry.manifestText);
+		assertSigned({ ...entry, bundle: bundleDigestOf(manifest.bundleHash) }, entry.manifestText);
+		stored.set(manifest.bundleHash, { manifest, digest: entry.manifest });
 		return manifest;
 	};
 
-	/** The checked stored versions of one id or of all ids. A bad version is skipped. */
+	/**
+	 * The checked stored versions with a bundle, of one id or of all ids. A credential, a native
+	 * or a bad version is skipped.
+	 */
 	const storedManifests = async (id?: string) =>
 		(await store.manifests(id)).flatMap((entry) => {
 			if (entry.kind === 'credential') return [];
@@ -307,6 +345,60 @@ export function contractStore(options: ContractStoreOptions): ContractStore {
 				return [];
 			}
 		});
+
+	/** The stored credential manifests, signed by the trusted key when one is set. A bad one is skipped. */
+	const storedCredentials = async () =>
+		(await store.credentialManifests()).flatMap((entry) => {
+			try {
+				assertSigned(entry, entry.manifestText);
+				return [parseCredentialManifest(entry.manifestText)];
+			} catch {
+				return [];
+			}
+		});
+
+	/**
+	 * The credential manifests that a version pins, from the registry, unless n8n bundles the
+	 * name or the store has the major. A pin that the registry lacks stays: n8n may have a legacy
+	 * type of that name. A manifest with a bad signature fails the download. Without a key,
+	 * nothing comes: the lock anchors the bundle only, not a credential manifest.
+	 */
+	const pinnedCredentials = async (manifest: VersionManifest): Promise<StoredVersion[]> => {
+		if (!publicKey) return [];
+		const bundled = new Set(bundledCredentialsOf().map((entry) => entry.manifest.name));
+		const have = await storedCredentials();
+		const missing = (manifest.credentials ?? []).flatMap((pin) => {
+			const [name = '', major = ''] = pin.split('@');
+			const has = have.some(
+				(credential) =>
+					credential.name === name && parseSemver(credential.semver).major === Number(major),
+			);
+			return bundled.has(name) || has ? [] : [{ name, major: Number(major) }];
+		});
+		if (missing.length === 0) return [];
+		const registry = registryOf();
+		const catalog = await registry.catalog();
+		const found = await Promise.all(
+			missing.map(async ({ name, major }) => {
+				const ids = catalog.flatMap((line) =>
+					line.kind === 'credential' && line.name === name ? [line.id] : [],
+				);
+				const record = (await Promise.all(ids.map(async (id) => await registry.records(id))))
+					.flat()
+					.filter(({ version }) => parseSemver(version).major === major)
+					.sort((a, b) => compareSemver(a.version, b.version))
+					.at(-1);
+				const read = record && (await registry.readManifest(record));
+				if (!record || !read) return [];
+				assertSigned(record, read.text);
+				if (read.manifest.kind !== 'credential') {
+					throw new UserError(`${record.id}@${record.version} is not a credential type`);
+				}
+				return [storedVersionOf(record, read.text)];
+			}),
+		);
+		return found.flat();
+	};
 
 	/** The stored version of the lock, or `undefined` when the store does not have it. */
 	const fromStore = async (lock: NodeContractLock): Promise<LoadedVersion | undefined> => {
@@ -325,22 +417,16 @@ export function contractStore(options: ContractStoreOptions): ContractStore {
 		assertLocked(checked.manifest, expected);
 		const bundle = await registryOf().blob(bundleDigestOf(expected.bundleHash));
 		if (!bundle) throw new UserError(`The registry has no bundle ${expected.bundleHash}`);
-		const { id, version, kind, manifest, signatures, published } = record;
 		const code = bundle.toString('utf8');
 		await admitVersions(store, [
-			{
-				id,
-				version,
-				kind,
-				manifest,
-				manifestText: checked.text,
-				bundle: code,
-				signatures,
-				published,
-			},
+			...(await pinnedCredentials(checked.manifest)),
+			storedVersionOf(record, checked.text, { bundle: code }),
 		]);
-		storedById.delete(id);
-		stored.set(checked.manifest.bundleHash, { manifest: checked.manifest, digest: manifest });
+		storedById.delete(record.id);
+		stored.set(checked.manifest.bundleHash, {
+			manifest: checked.manifest,
+			digest: record.manifest,
+		});
 		return { manifest: checked.manifest, bundle: code };
 	};
 
@@ -467,6 +553,15 @@ export function contractStore(options: ContractStoreOptions): ContractStore {
 			);
 			return patches.flat();
 		},
+
+		async credentials() {
+			return (await storedCredentials()).reduce((byName, manifest) => {
+				const best = byName.get(manifest.name);
+				return best && compareSemver(best.semver, manifest.semver) >= 0
+					? byName
+					: new Map(byName).set(manifest.name, manifest);
+			}, new Map<string, CredentialManifest>());
+		},
 	};
 }
 
@@ -537,13 +632,28 @@ const isBundled = (manifest: VersionManifest) =>
 	);
 
 /**
- * Sets the Node Contract range, the version loader, the sandbox, the run profile listener and the
- * input hosts of this package's node-sdk, which its nodes run with. With a sandbox, it also
+ * The credential manifest of a name: the bundled one, which n8n registers and signs with, else
+ * the newest one in the store, unless another package has a type of that name.
+ */
+export function credentialManifestsOf(
+	store: Pick<ContractStore, 'credentials'>,
+	hasOtherCredentialType: (name: string) => boolean = () => false,
+) {
+	const bundled = new Map(bundledCredentialsOf().map(({ manifest }) => [manifest.name, manifest]));
+	return async (name: string) =>
+		bundled.get(name) ??
+		(hasOtherCredentialType(name) ? undefined : (await store.credentials()).get(name));
+}
+
+/**
+ * Sets the Node Contract range, the version loader, the credential manifests, the sandbox, the
+ * run profile listener and the input hosts of this package's node-sdk, which its nodes run with. With a sandbox, it also
  * starts to compile the sandbox guests and does not wait for the result.
  */
 export const useContractRegistry = (options: ContractRegistryOptions) => {
 	setNodeContractRange(options.nodeContractRange);
 	setContractVersionLoader(contractVersionLoader(options));
+	setCredentialManifests(credentialManifestsOf(options.store, options.hasOtherCredentialType));
 	setRunProfileListener(options.onRunProfile);
 	setEgressInputHosts(options.egressInputHosts ?? []);
 	if (options.sandbox) {
@@ -632,8 +742,7 @@ async function verifiedVersionOf(
 	record: StoreRecord,
 	publicKey: string | undefined,
 ): Promise<StoredVersion> {
-	const { id, version, kind, manifest, signatures, published } = record;
-	const at = `${id}@${version}`;
+	const at = `${record.id}@${record.version}`;
 	const read = await source.readManifest(record);
 	if (!read) throw new UserError(`The store has no manifest of ${at}`);
 	if (publicKey && !verifyStoreSignature(record, read.text, publicKey)) {
@@ -645,17 +754,10 @@ async function verifiedVersionOf(
 		if (!bytes) throw new UserError(`The store has no blob ${digest} of ${at}`);
 		return bytes.toString('utf8');
 	};
-	return {
-		id,
-		version,
-		kind,
-		manifest,
-		manifestText: read.text,
+	return storedVersionOf(record, read.text, {
 		bundle: await textOf(record.bundle),
 		fixtures: await textOf(record.fixtures),
-		signatures,
-		published,
-	};
+	});
 }
 
 /**
@@ -676,17 +778,40 @@ export async function importContractStore(
 	return await admitVersions(store, versions);
 }
 
+/** The `<name>@<major>` pins of the credentials that a stored version uses. */
+const credentialPinsOf = ({ kind, bundle, manifestText }: StoredVersion) => {
+	if (kind === 'credential') return [];
+	const manifest =
+		bundle === undefined ? parseNativeManifest(manifestText) : parseManifest(manifestText);
+	return manifest.credentials ?? [];
+};
+
+const credentialPinOf = ({ manifestText }: StoredVersion) => {
+	const { name, semver } = parseCredentialManifest(manifestText);
+	return `${name}@${parseSemver(semver).major}`;
+};
+
 /**
- * Writes the stored versions that `include` accepts to `dir`, in the store layout. The index of
- * each id lists its versions in semver order, so the same rows give the same bytes.
+ * Writes the stored versions that `include` accepts to `dir`, in the store layout, with the
+ * stored credential manifests that they pin. The index of each id lists its versions in semver
+ * order, so the same rows give the same bytes.
  */
 export async function exportContractStore(
 	store: InstanceStore,
 	dir: string,
 	include: (version: StoredVersion) => boolean = () => true,
 ): Promise<StoreRecord[]> {
-	const versions = (await store.versions())
-		.filter(include)
-		.sort((a, b) => a.id.localeCompare(b.id) || compareSemver(a.version, b.version));
+	const all = await store.versions();
+	const included = all.filter(include);
+	const pins = new Set(included.flatMap(credentialPinsOf));
+	const pinned = all.filter(
+		(version) =>
+			version.kind === 'credential' &&
+			!included.includes(version) &&
+			pins.has(credentialPinOf(version)),
+	);
+	const versions = [...included, ...pinned].sort(
+		(a, b) => a.id.localeCompare(b.id) || compareSemver(a.version, b.version),
+	);
 	return await addToStore(dir, versions);
 }

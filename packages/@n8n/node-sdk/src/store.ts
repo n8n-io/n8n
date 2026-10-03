@@ -21,17 +21,30 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { UnexpectedError, UserError } from 'n8n-workflow';
 
-import { parseCredentialManifest, storeRecordSchema, type CredentialManifest } from './manifest';
+import {
+	parseCredentialManifest,
+	storeRecordSchema,
+	type CredentialManifest,
+	type NativeManifest,
+} from './manifest';
 import { matches } from './validate';
 import {
 	canonicalJson,
 	compareSemver,
 	parseManifest,
+	parseNativeManifest,
 	type NodeContractVersion,
 	type VersionManifest,
 } from './version';
 
-/** One version line of `index/<id>.ndjson`. Freeze writes the fields up to `permissions`. */
+/** A manifest that a store holds: a bundled version, a credential type, or a native version. */
+export type StoreManifest = VersionManifest | CredentialManifest | NativeManifest;
+
+/** True for the manifest of a version with a bundle: an action, trigger or provider that the SDK runs. */
+export const isVersionManifest = (manifest: StoreManifest): manifest is VersionManifest =>
+	manifest.kind !== 'credential' && !('native' in manifest);
+
+/** One version line of `index/<id>.ndjson`. Freeze writes the fields up to `name`. */
 export interface StoreRecord {
 	/** The contract or credential id, e.g. `notion.databasePage.getAll`. */
 	readonly id: string;
@@ -43,7 +56,7 @@ export interface StoreRecord {
 	readonly nodeContract: NodeContractVersion;
 	/** `sha256:<hex>` of the manifest bytes. It identifies the version. */
 	readonly manifest: string;
-	/** `sha256:<hex>` of the bundle bytes. A credential has no bundle. */
+	/** `sha256:<hex>` of the bundle bytes. A credential and a native version have no bundle. */
 	readonly bundle?: string;
 	/** The contract hash of the manifest. A credential has none. */
 	readonly contractHash?: string;
@@ -56,6 +69,10 @@ export interface StoreRecord {
 		/** The host imports of the contract. */
 		readonly imports: readonly string[];
 	};
+	/** The legacy node type that runs a native version, e.g. `n8n-nodes-base.webhook`. */
+	readonly native?: string;
+	/** The n8n type name of a credential, e.g. `notionApi`. Versions pin credentials by it. */
+	readonly name?: string;
 	/** `sha256:<hex>` of the fixtures that publish replayed. */
 	readonly fixtures?: string;
 	/** Publisher signatures of the manifest bytes. */
@@ -104,7 +121,7 @@ export interface StoreReader {
 				/** The manifest bytes, which signatures cover. */
 				readonly text: string;
 				/** The parsed manifest. */
-				readonly manifest: VersionManifest | CredentialManifest;
+				readonly manifest: StoreManifest;
 		  }
 		| undefined
 	>;
@@ -138,32 +155,33 @@ const digestOf = (bytes: string | Uint8Array) =>
 	`sha256:${createHash('sha256').update(bytes).digest('hex')}`;
 
 /** The manifest bytes that a store holds. The manifest digest covers exactly these bytes. */
-export const manifestTextOf = (manifest: VersionManifest | CredentialManifest) =>
+export const manifestTextOf = (manifest: StoreManifest) =>
 	`${JSON.stringify(manifest, null, '\t')}\n`;
 
-const parseAnyManifest = (text: string): VersionManifest | CredentialManifest => {
+const parseAnyManifest = (text: string): StoreManifest => {
 	const value: unknown = JSON.parse(text);
-	return isRecord(value) && value.kind === 'credential'
-		? parseCredentialManifest(text)
-		: parseManifest(text);
+	if (isRecord(value) && value.kind === 'credential') return parseCredentialManifest(text);
+	return isRecord(value) && 'native' in value ? parseNativeManifest(text) : parseManifest(text);
 };
 
 const sorted = (values: readonly string[] = []) => [...values].sort();
 
 /** The index line fields that follow from a manifest. */
-function recordOf(manifest: VersionManifest | CredentialManifest, digest: string): StoreRecord {
+function recordOf(manifest: StoreManifest, digest: string): StoreRecord {
 	const { id, semver: version, kind, nodeContract } = manifest;
-	if (manifest.kind === 'credential') return { id, version, kind, nodeContract, manifest: digest };
-	const { contract, credentials } = manifest;
+	const head = { id, version, kind, nodeContract, manifest: digest };
+	if (manifest.kind === 'credential') return { ...head, name: manifest.name };
+	const { contract, contractHash, credentials } = manifest;
+	const pins = credentials ? { credentials } : {};
+	// A legacy node runs a native version, so its line has no bundle and no permissions.
+	if ('native' in manifest) {
+		return { ...head, contractHash, ...pins, native: manifest.native.type };
+	}
 	return {
-		id,
-		version,
-		kind,
-		nodeContract,
-		manifest: digest,
+		...head,
 		bundle: `sha256:${manifest.bundleHash}`,
-		contractHash: manifest.contractHash,
-		...(credentials ? { credentials } : {}),
+		contractHash,
+		...pins,
 		permissions: { egress: sorted(contract.egress?.hosts), imports: sorted(contract.imports) },
 	};
 }
@@ -178,6 +196,8 @@ const DERIVED = [
 	'contractHash',
 	'credentials',
 	'permissions',
+	'native',
+	'name',
 ] as const;
 
 const checkedBlob = (bytes: Uint8Array, digest: string) => {

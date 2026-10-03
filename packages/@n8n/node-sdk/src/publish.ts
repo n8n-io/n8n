@@ -1,9 +1,15 @@
 import { Readable } from 'node:stream';
 import { UnexpectedError, UserError, type INode, type INodeExecutionData } from 'n8n-workflow';
 
-import { isSecretField } from './credentials';
-import type { Action, DataTable, DataTables } from './define';
-import { freezeAction, type FrozenAction, type LastVersionOf } from './freeze';
+import { isSecretField, type AnyCredentialType } from './credentials';
+import type { Action, DataTable, DataTables, Trigger } from './define';
+import {
+	freezeAction,
+	freezeCredential,
+	freezeNative,
+	type FrozenAction,
+	type LastVersionOf,
+} from './freeze';
 import {
 	isDataTableColumns,
 	isDataTableInfo,
@@ -19,12 +25,15 @@ import {
 	type ExecutorHost,
 } from './runtime';
 import { providedKindOf, providerInputsOf, replayCapability, type ProviderKind } from './providers';
+import type { CredentialManifest, NativeManifest } from './manifest';
 import {
 	addToStore,
+	isVersionManifest,
 	manifestTextOf,
 	signStoreManifest,
 	storeFilesOfDir,
 	storeReader,
+	type StoreManifest,
 	type StoreReader,
 	type StoreRecord,
 } from './store';
@@ -34,7 +43,9 @@ import {
 	compareSemver,
 	diffContracts,
 	isFixtureBinary,
+	normativeSchema,
 	parseSemver,
+	sha256,
 	type ChangeKind,
 	type ContractDiff,
 	type ContractFixtures,
@@ -316,6 +327,30 @@ function bumpOf(previous: string, next: string): ChangeKind {
 	return a.major !== b.major ? 'major' : a.minor !== b.minor ? 'minor' : 'patch';
 }
 
+/** Refuses a bump lower than `change`. */
+function checkBump(at: string, previous: string, bump: ChangeKind, change: ChangeKind, why = '') {
+	if (RANK[bump] < RANK[change]) {
+		throw new UserError(
+			`${at} is a ${bump} bump from ${previous}, but the change is ${change}${why && ` (${why})`}`,
+		);
+	}
+}
+
+type ContractVersion = Pick<VersionManifest, 'id' | 'semver' | 'contract' | 'contractHash'>;
+
+/** Refuses a bump lower than the contract change, and a patch whose contract hash moved. */
+function checkContractBump(previous: ContractVersion, manifest: ContractVersion) {
+	const at = `${manifest.id}@${manifest.semver}`;
+	const diff = diffContracts(previous.contract, manifest.contract);
+	const bump = bumpOf(previous.semver, manifest.semver);
+	const changes = diff.changes.map(({ kind, text }) => `${kind}: ${text}`).join('; ');
+	checkBump(at, previous.semver, bump, diff.kind, changes);
+	if (bump === 'patch' && previous.contractHash !== manifest.contractHash) {
+		throw new UserError(`${at} is a patch, so it must keep the contract hash`);
+	}
+	return { diff, bump };
+}
+
 /**
  * The publish gate. It refuses a bump lower than the computed change, a patch whose contract
  * hash moved, a major that breaks old input without `migrate` and a fixture pair, and
@@ -332,61 +367,158 @@ export async function checkPublish(
 	if (fixtures.executions.length === 0 && !isTrigger) {
 		throw new UserError(`${at} needs an execution fixture`);
 	}
-	const diff = previous ? diffContracts(previous.contract, manifest.contract) : undefined;
-	if (previous && diff) {
-		const bump = bumpOf(previous.semver, manifest.semver);
-		if (RANK[bump] < RANK[diff.kind]) {
-			const changes = diff.changes.map(({ kind, text }) => `${kind}: ${text}`).join('; ');
-			throw new UserError(
-				`${at} is a ${bump} bump from ${previous.semver}, but the change is ${diff.kind} (${changes})`,
-			);
-		}
-		if (bump === 'patch' && previous.contractHash !== manifest.contractHash) {
-			throw new UserError(`${at} is a patch, so it must keep the contract hash`);
-		}
+	const checked = previous && checkContractBump(previous, manifest);
+	if (previous && checked?.bump === 'major' && checked.diff.breaksInput) {
 		const fromMajor = previous.contract.version;
-		if (bump === 'major' && diff.breaksInput) {
-			if (!action.migrate) {
-				throw new UserError(`${at} breaks old input, so it needs migrate`);
-			}
-			if (!fixtures.migrations?.some((pair) => pair.fromMajor === fromMajor)) {
-				throw new UserError(`${at} needs a migration fixture from major ${fromMajor}`);
-			}
+		if (!action.migrate) {
+			throw new UserError(`${at} breaks old input, so it needs migrate`);
+		}
+		if (!fixtures.migrations?.some((pair) => pair.fromMajor === fromMajor)) {
+			throw new UserError(`${at} needs a migration fixture from major ${fromMajor}`);
 		}
 	}
 	const issues = await replayFixtures(frozen, fixtures);
 	if (issues.length > 0) throw new UserError(`${at} fails its fixtures: ${issues.join('; ')}`);
-	return diff;
+	return checked?.diff;
 }
 
-/** The newest version of an action in one major and minor in a store. It reads the index only. */
+/**
+ * The publish gate of a native version. A legacy node runs it, so it has no fixtures, and the
+ * legacy node migrates old parameters. A patch keeps the contract hash and the legacy node.
+ */
+export function checkNativePublish(previous: NativeManifest | undefined, manifest: NativeManifest) {
+	if (!previous) return;
+	const { bump } = checkContractBump(previous, manifest);
+	const bindingOf = ({ native, reply }: NativeManifest) => canonicalJson({ native, reply });
+	if (bump === 'patch' && bindingOf(previous) !== bindingOf(manifest)) {
+		throw new UserError(
+			`${manifest.id}@${manifest.semver} is a patch, so it must keep the legacy node`,
+		);
+	}
+}
+
+/** The keys of a credential manifest that are text only. A change of them is a patch. */
+const CREDENTIAL_TEXT = new Set(['semver', 'sdk', 'displayName', 'documentationUrl', 'notice']);
+
+/**
+ * The change from one credential manifest to the next, by the rules of `defineCredential`: a
+ * change that can break stored data or a saved workflow is major (another name, scheme or base
+ * URL, a new host, a removed field, a new required field), any other change of what n8n does is
+ * minor, and a change of text only is a patch.
+ */
+export function credentialChangeOf(
+	previous: CredentialManifest,
+	next: CredentialManifest,
+): ChangeKind {
+	const fieldsOf = ({ fields }: CredentialManifest) => Object.keys(fields.properties ?? {});
+	const requiredOf = ({ fields }: CredentialManifest) => fields.required ?? [];
+	const breaks =
+		previous.name !== next.name ||
+		canonicalJson(previous.scheme) !== canonicalJson(next.scheme) ||
+		canonicalJson(previous.baseUrl) !== canonicalJson(next.baseUrl) ||
+		(next.hosts ?? []).some((host) => !(previous.hosts ?? []).includes(host)) ||
+		fieldsOf(previous).some((name) => !fieldsOf(next).includes(name)) ||
+		requiredOf(next).some((name) => !requiredOf(previous).includes(name));
+	if (breaks) return 'major';
+	const normative = (manifest: CredentialManifest) =>
+		canonicalJson({
+			...Object.fromEntries(Object.entries(manifest).filter(([key]) => !CREDENTIAL_TEXT.has(key))),
+			fields: normativeSchema(manifest.fields),
+		});
+	return normative(previous) === normative(next) ? 'patch' : 'minor';
+}
+
+/** The publish gate of a credential manifest: it refuses a bump lower than the change. */
+export function checkCredentialPublish(
+	previous: CredentialManifest | undefined,
+	manifest: CredentialManifest,
+) {
+	if (!previous) return;
+	const bump = bumpOf(previous.semver, manifest.semver);
+	const at = `${manifest.id}@${manifest.semver}`;
+	checkBump(at, previous.semver, bump, credentialChangeOf(previous, manifest));
+}
+
+/** The index line of the newest version of an id in one major and minor in a store. It reads the index only. */
 export const lastPublishedIn =
 	(store: StoreReader): LastVersionOf =>
-	async (id, major, minor) => {
-		const last = (await store.records(id))
-			.filter(({ kind, version }) => {
+	async (id, major, minor) =>
+		(await store.records(id))
+			.filter(({ version }) => {
 				const semver = parseSemver(version);
-				return kind !== 'credential' && semver.major === major && semver.minor === minor;
+				return semver.major === major && semver.minor === minor;
 			})
 			.sort((a, b) => compareSemver(a.version, b.version))
 			.at(-1);
-		return last?.bundle === undefined
-			? undefined
-			: { id, semver: last.version, bundleHash: last.bundle.slice('sha256:'.length) };
-	};
 
-/** What `publishAction` publishes, and where. */
-export interface PublishOptions {
-	/** The source file that exports the action, e.g. `src/nodes/notion/actions/user.get.ts`. */
-	readonly entryFile: string;
-	/** The export name of the action in `entryFile`, e.g. `getUser`. */
-	readonly exportName: string;
-	/** The fixtures that publish replays before it publishes. */
-	readonly fixtures: ContractFixtures;
+/** Where publish adds a version, and the key that signs it. */
+export interface PublishTarget {
 	/** The store directory of the registry: the static files that the registry serves. */
 	readonly registryDir: string;
 	/** PEM of the ed25519 publisher key. It lives outside the repo. */
 	readonly privateKey: string;
+}
+
+/** What `publishAction` publishes, and where. */
+export interface PublishOptions extends PublishTarget {
+	/** The source file that exports the action, e.g. `src/nodes/notion/actions/user.get.ts`. */
+	readonly entryFile: string;
+	/** The export name of the action in `entryFile`, e.g. `getUser`. */
+	readonly exportName: string;
+	/** The fixtures that publish replays before it publishes. A trigger may have none. */
+	readonly fixtures?: ContractFixtures;
+}
+
+const digestOf = (text: string) => `sha256:${sha256(text)}`;
+
+/**
+ * Gates, signs and adds one frozen version to the registry store. A version already published
+ * with the same content is a no-op: the same bundle, or for a version without a bundle the same
+ * manifest bytes. Other content for a published version is refused.
+ */
+async function publishVersion<M extends StoreManifest>(
+	{ registryDir, privateKey }: PublishTarget,
+	frozen: { readonly manifest: M; readonly bundle?: string; readonly fixtures?: ContractFixtures },
+	isKind: (manifest: StoreManifest) => manifest is M,
+	gate: (previous: M | undefined) => unknown,
+): Promise<M> {
+	const registry = storeReader(storeFilesOfDir(registryDir));
+	const { manifest, bundle, fixtures } = frozen;
+	const { id, semver } = manifest;
+	const manifestText = manifestTextOf(manifest);
+	const published = await registry.records(id);
+	const manifestOf = async (record: StoreRecord) => {
+		const read = await registry.readManifest(record);
+		if (!read || !isKind(read.manifest)) {
+			throw new UserError(`The registry has no manifest of ${id}@${record.version}`);
+		}
+		return read.manifest;
+	};
+	const existing = published.find(({ version }) => version === semver);
+	if (existing) {
+		const same =
+			bundle === undefined
+				? existing.manifest === digestOf(manifestText)
+				: existing.bundle === digestOf(bundle);
+		if (same) return await manifestOf(existing);
+		// Freeze took the patch from the registry, so the registry changed since then.
+		throw new UserError(`${id}@${semver} is published with other bytes; run publish again`);
+	}
+	const previous = published
+		.filter(({ version }) => compareSemver(version, semver) < 0)
+		.sort((a, b) => compareSemver(a.version, b.version))
+		.at(-1);
+	await gate(previous ? await manifestOf(previous) : undefined);
+	await addToStore(registryDir, [
+		{
+			manifestText,
+			bundle,
+			...(fixtures ? { fixtures: `${JSON.stringify(fixtures, null, '\t')}\n` } : {}),
+			signatures: [signStoreManifest(manifestText, privateKey)],
+			published: new Date().toISOString(),
+		},
+	]);
+	return manifest;
 }
 
 /**
@@ -395,42 +527,60 @@ export interface PublishOptions {
  * published with the same bundle is a no-op; with another bundle it is refused.
  */
 export async function publishAction(options: PublishOptions): Promise<VersionManifest> {
-	const { registryDir, fixtures, privateKey } = options;
-	const registry = storeReader(storeFilesOfDir(registryDir));
+	const registry = storeReader(storeFilesOfDir(options.registryDir));
 	const frozen = await freezeAction(
 		options.entryFile,
 		options.exportName,
 		lastPublishedIn(registry),
 	);
-	const { id, semver, bundleHash } = frozen.manifest;
-	const published = (await registry.records(id)).filter(({ kind }) => kind !== 'credential');
-	const manifestOf = async (record: StoreRecord) => {
-		const read = await registry.readManifest(record);
-		if (!read || read.manifest.kind === 'credential') {
-			throw new UserError(`The registry has no manifest of ${id}@${record.version}`);
-		}
-		return read.manifest;
-	};
-	const existing = published.find(({ version }) => version === semver);
-	if (existing) {
-		if (existing.bundle === `sha256:${bundleHash}`) return await manifestOf(existing);
-		// Freeze took the patch from the registry, so the registry changed since then.
-		throw new UserError(`${id}@${semver} is published with other bytes; run publish again`);
-	}
-	const previous = published
-		.filter(({ version }) => compareSemver(version, semver) < 0)
-		.sort((a, b) => compareSemver(a.version, b.version))
-		.at(-1);
-	await checkPublish(previous ? await manifestOf(previous) : undefined, frozen, fixtures);
-	const manifestText = manifestTextOf(frozen.manifest);
-	await addToStore(registryDir, [
-		{
-			manifestText,
-			bundle: frozen.bundle,
-			fixtures: `${JSON.stringify(fixtures, null, '\t')}\n`,
-			signatures: [signStoreManifest(manifestText, privateKey)],
-			published: new Date().toISOString(),
-		},
-	]);
-	return frozen.manifest;
+	const fixtures = options.fixtures ?? { executions: [] };
+	return await publishVersion(
+		options,
+		{ ...frozen, fixtures: options.fixtures },
+		isVersionManifest,
+		async (previous) => await checkPublish(previous, frozen, fixtures),
+	);
+}
+
+/**
+ * Publishes the credential manifest of a type, as `publishAction` publishes an action: the patch
+ * after the newest published one, the gate of `checkCredentialPublish`, and a signature.
+ *
+ * @throws a `UserError` for a compat type: its legacy class defines it, so it has no manifest.
+ */
+export async function publishCredential(
+	options: PublishTarget & {
+		/** The credential type to publish. */
+		readonly type: AnyCredentialType;
+	},
+): Promise<CredentialManifest> {
+	const registry = storeReader(storeFilesOfDir(options.registryDir));
+	const manifest = await freezeCredential(options.type, lastPublishedIn(registry));
+	if (!manifest) throw new UserError(`${options.type.name} is a compat type and has no manifest`);
+	return await publishVersion(
+		options,
+		{ manifest },
+		(read): read is CredentialManifest => read.kind === 'credential',
+		(previous) => checkCredentialPublish(previous, manifest),
+	);
+}
+
+/**
+ * Publishes the manifest of a native action or trigger, as `publishAction` publishes an action:
+ * the patch after the newest published one, the gate of `checkNativePublish`, and a signature.
+ */
+export async function publishNative(
+	options: PublishTarget & {
+		/** The native action or trigger to publish. */
+		readonly native: Action | Trigger;
+	},
+): Promise<NativeManifest> {
+	const registry = storeReader(storeFilesOfDir(options.registryDir));
+	const manifest = await freezeNative(options.native, lastPublishedIn(registry));
+	return await publishVersion(
+		options,
+		{ manifest },
+		(read): read is NativeManifest => 'native' in read,
+		(previous) => checkNativePublish(previous, manifest),
+	);
 }

@@ -2,7 +2,11 @@ import { Logger } from '@n8n/backend-common';
 import { OutboundHttp } from '@n8n/backend-network';
 import { EventService } from '@n8n/backend-services';
 import { GlobalConfig, NodesConfig, type NodePermissionClass } from '@n8n/config';
-import { NodeContractVersionRepository, WorkflowRepository } from '@n8n/db';
+import {
+	NodeContractVersionRepository,
+	WorkflowRepository,
+	type NodeContractManifestRow,
+} from '@n8n/db';
 import { OnPubSubEvent } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import { readFile } from 'fs/promises';
@@ -26,6 +30,7 @@ import {
 	versionsOf,
 	withMigratedVersions,
 	type ContractStore,
+	type CredentialManifest,
 	type FrozenVersion,
 	type InstanceStore,
 } from '@n8n/nodes-base-next';
@@ -55,6 +60,7 @@ import {
 import path from 'path';
 
 import { CredentialTypes } from '@/credential-types';
+import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { convertNodeToAiTool } from '@/tool-generation';
 
@@ -83,15 +89,9 @@ export class NodeContractsStore {
 
 	/** The rows of the table. */
 	readonly rows: InstanceStore = {
-		manifests: async (id) =>
-			(await this.repository.findManifests(id)).map((row) => ({
-				id: row.contractId,
-				version: row.version,
-				kind: row.kind,
-				manifest: row.digest,
-				manifestText: row.manifest,
-				signatures: row.signatures,
-			})),
+		manifests: async (id) => (await this.repository.findManifests(id)).map(storedManifestOf),
+		credentialManifests: async () =>
+			(await this.repository.findCredentialManifests()).map(storedManifestOf),
 		has: async (digest) => await this.repository.existsByDigest(digest),
 		bundle: async (digest) => (await this.repository.findBundle(digest)) ?? undefined,
 		versions: async () =>
@@ -137,7 +137,6 @@ export class NodeContractsStore {
 	/** Another main added versions: the node types list them now. */
 	@OnPubSubEvent('reload-node-contracts', { instanceType: 'main' })
 	async reloadNodeTypes() {
-		const { LoadNodesAndCredentials } = await import('@/load-nodes-and-credentials.js');
 		await Container.get(LoadNodesAndCredentials).refreshNodeTypes();
 	}
 
@@ -173,17 +172,32 @@ export class NodeContractsStore {
 	}
 }
 
+const storedManifestOf = (row: NodeContractManifestRow) => ({
+	id: row.contractId,
+	version: row.version,
+	kind: row.kind,
+	manifest: row.digest,
+	manifestText: row.manifest,
+	signatures: row.signatures,
+});
+
 // The signature does not cover `published`, so a value that is not a date is dropped.
 function publishedDateOf(published: string | undefined) {
 	const date = published === undefined ? undefined : new Date(published);
 	return date && !Number.isNaN(date.getTime()) ? date : null;
 }
 
-/** The newest stored version of each major, by action id. */
-async function storedContractVersions(): Promise<ReadonlyMap<string, readonly FrozenVersion[]>> {
-	const store = await Container.get(NodeContractsStore).open();
-	return await store.versions();
-}
+/** What the loader reads of the instance store. */
+type StoredContracts = Pick<ContractStore, 'versions' | 'credentials'>;
+
+const openContractStore = async (): Promise<StoredContracts> =>
+	await Container.get(NodeContractsStore).open();
+
+/** Whether a package other than the node contracts has a credential type of this name. */
+const hasOtherCredentialTypeInN8n = (name: string) =>
+	Object.values(Container.get(LoadNodesAndCredentials).loaders).some(
+		(loader) => loader.packageName !== NODE_PACKAGE && name in loader.known.credentials,
+	);
 
 const majorOf = ({ manifest }: FrozenVersion) => manifest.contract.version;
 
@@ -227,7 +241,8 @@ const credentialNamesOf = ({ nodeVersions }: VersionedNodeType) =>
 /**
  * The node and credential types of node contracts, from manifests only: one versioned node type
  * for each id with the bundled HEAD and the stored versions of its other majors, and the bundled
- * credential manifests. The type names keep the package name as prefix.
+ * credential manifests with the stored ones of other names. The type names keep the package name
+ * as prefix.
  */
 export class ContractNodeLoader implements NodeLoader {
 	readonly packageName = NODE_PACKAGE;
@@ -249,17 +264,16 @@ export class ContractNodeLoader implements NodeLoader {
 	constructor(
 		private readonly excludeNodes: readonly string[] = [],
 		private readonly includeNodes: readonly string[] = [],
-		private readonly storedVersions = storedContractVersions,
+		private readonly openStore: () => Promise<StoredContracts> = openContractStore,
 		private readonly deny: readonly NodePermissionClass[] = [],
+		private readonly hasOtherCredentialType = hasOtherCredentialTypeInN8n,
 	) {}
 
 	async loadAll() {
-		const stored = await this.storedVersions().catch((error: unknown) => {
-			Container.get(Logger).error('Cannot read the node contracts store', {
-				error: ensureError(error),
-			});
-			return new Map<string, readonly FrozenVersion[]>();
-		});
+		const [stored, storedCredentials] = await Promise.all([
+			this.fromStore(async (store) => await store.versions(), new Map()),
+			this.fromStore(async (store) => await store.credentials(), new Map()),
+		]);
 		const bundled = new Set(bundledIdsOf());
 		this.nodes = new Map(
 			[...new Set([...bundled, ...stored.keys()])].filter(this.loads).flatMap((id) => {
@@ -280,7 +294,7 @@ export class ContractNodeLoader implements NodeLoader {
 				return [[nodeNameOf(id), node] as const];
 			}),
 		);
-		const credentials = bundledCredentialsOf().map(({ file, manifest }) => {
+		const credentials = this.credentialManifestsOf(storedCredentials).map(({ file, manifest }) => {
 			const supportedNodes = [...this.nodes]
 				.filter(([, { type }]) => credentialNamesOf(type).includes(manifest.name))
 				.map(([name]) => name);
@@ -352,6 +366,38 @@ export class ContractNodeLoader implements NodeLoader {
 		return sourcePath;
 	}
 
+	/** A read of the instance store. A failed read is logged, and the loader goes on without it. */
+	private async fromStore<T>(read: (store: StoredContracts) => Promise<T>, empty: T): Promise<T> {
+		try {
+			return await read(await this.openStore());
+		} catch (error) {
+			Container.get(Logger).error('Cannot read the node contracts store', {
+				error: ensureError(error),
+			});
+			return empty;
+		}
+	}
+
+	/**
+	 * The bundled credential manifests, and the stored ones of names that n8n does not bundle,
+	 * e.g. a type that a stored version pins. A stored type never replaces the type of another
+	 * package, e.g. a legacy class. A stored type that n8n cannot project is skipped.
+	 */
+	private credentialManifestsOf(stored: ReadonlyMap<string, CredentialManifest>) {
+		const bundled = bundledCredentialsOf();
+		const names = new Set(bundled.map(({ manifest }) => manifest.name));
+		const others = [...stored.values()].filter((manifest) => {
+			if (names.has(manifest.name) || this.hasOtherCredentialType(manifest.name)) return false;
+			if (manifest.scheme.kind !== 'custom') return true;
+			Container.get(Logger).warn(
+				`${manifest.id}@${manifest.semver} does not load: a custom scheme needs a credential bundle`,
+			);
+			return false;
+		});
+		const file = others.length > 0 ? Container.get(NodeContractsStore).dir : '';
+		return [...bundled, ...others.map((manifest) => ({ file, manifest }))];
+	}
+
 	/** Whether `N8N_NODE_PERMISSIONS_DENY` lets a version load, for bundled and stored versions alike. */
 	private readonly permits = (version: FrozenVersion) => {
 		const denied = deniedClassOf(version, this.deny);
@@ -419,7 +465,7 @@ export async function useNodeContractsRegistry() {
 						cacheDir:
 							instanceAi.nodeContractSandboxCacheDir ||
 							path.join(Container.get(NodeContractsStore).dir, 'sandbox'),
-						// The credential hosts and base URLs come from n8n, never from a bundle.
+						// The credential hosts and base URLs never come from a bundle.
 						credentialType: sandboxCredentialTypeOf((name) =>
 							Container.get(CredentialTypes).recognizes(name),
 						),
@@ -431,6 +477,7 @@ export async function useNodeContractsRegistry() {
 		nodeContractRange: instanceAi.nodeContractRange,
 		sandbox,
 		egressInputHosts: nodes.egressInputHosts,
+		hasOtherCredentialType: hasOtherCredentialTypeInN8n,
 		store: await Container.get(NodeContractsStore).open(),
 		onRunProfile: ({ executionId, nodeName }, profile) =>
 			Container.get(EventService).emit('node-contract-run-profiled', {

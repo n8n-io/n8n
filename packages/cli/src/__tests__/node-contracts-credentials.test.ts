@@ -34,7 +34,10 @@ async function loaded(nodeContractsEnabled: boolean) {
 		mock(),
 		mock(),
 	);
-	const next = new ContractNodeLoader([], [], async () => new Map());
+	const next = new ContractNodeLoader([], [], async () => ({
+		versions: async () => new Map(),
+		credentials: async () => new Map(),
+	}));
 	const nodesBase = new LazyPackageDirectoryLoader(path.join(PACKAGES, 'nodes-base'));
 	await Promise.all([next.loadAll(), nodesBase.loadAll()]);
 	instance.loaders = { [NEXT]: next, 'n8n-nodes-base': nodesBase };

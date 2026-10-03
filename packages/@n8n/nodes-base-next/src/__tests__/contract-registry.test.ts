@@ -15,7 +15,14 @@ import {
 	storeReader,
 	type NodeContractLock,
 } from '@n8n/node-sdk/registry';
-import { freezeAction, type FrozenAction } from '@n8n/node-sdk/freeze';
+import { defineNode, t } from '@n8n/node-sdk';
+import { credential, defineCredential, field } from '@n8n/node-sdk/credentials';
+import {
+	freezeAction,
+	freezeCredential,
+	freezeNative,
+	type FrozenAction,
+} from '@n8n/node-sdk/freeze';
 import { sandboxExecutorLoader, warmSandbox } from '@n8n/node-sdk/sandbox';
 import { generateKeyPairSync } from 'node:crypto';
 import { link, mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises';
@@ -34,6 +41,7 @@ import {
 	admitVersions,
 	contractStore,
 	contractVersionLoader,
+	credentialManifestsOf,
 	exportContractStore,
 	importContractStore,
 	syncContractStore,
@@ -80,6 +88,41 @@ export const echo = defineNode({ id: 'demo', displayName: 'Demo', credentials: [
 });
 `;
 
+const pingToken = defineCredential({
+	id: 'ping.token',
+	legacyName: 'pingApi',
+	displayName: 'Ping API',
+	fields: { token: field.secret('Token') },
+	auth: (a) => a.bearer('token'),
+	baseUrl: 'https://api.ping.test',
+});
+
+const pingSource = `
+import { defineNode, t } from '@n8n/node-sdk';
+import { credential, defineCredential, field } from '@n8n/node-sdk/credentials';
+
+const pingToken = defineCredential({
+	id: 'ping.token',
+	legacyName: 'pingApi',
+	displayName: 'Ping API',
+	fields: { token: field.secret('Token') },
+	auth: (a) => a.bearer('token'),
+	baseUrl: 'https://api.ping.test',
+});
+
+export const pinged = defineNode({
+	id: 'ping',
+	displayName: 'Ping',
+	credential: credential({ types: [pingToken] }),
+}).trigger('pinged', {
+	trigger: 'On ping',
+	summary: 'Starts when the service posts a ping.',
+	input: {},
+	output: t.obj({ id: t.str() }),
+	webhook: { emit: ({ body }) => [{ id: String(body.id) }] },
+});
+`;
+
 const keyPair = () =>
 	generateKeyPairSync('ed25519', {
 		publicKeyEncoding: { type: 'spki', format: 'pem' },
@@ -100,6 +143,7 @@ const memoryStore = () => {
 	const rows = new Map<string, StoredVersion>();
 	const store: InstanceStore = {
 		manifests: async (id) => [...rows.values()].filter((row) => id === undefined || row.id === id),
+		credentialManifests: async () => [...rows.values()].filter(({ kind }) => kind === 'credential'),
 		has: async (manifest) => rows.has(manifest),
 		bundle: async (manifest) => rows.get(manifest)?.bundle,
 		versions: async () => [...rows.values()],
@@ -161,9 +205,16 @@ beforeAll(async () => {
 	const entry = path.join(dirs.root, 'echo.ts');
 	const freeze = async (minor: number, text: string, last?: string) => {
 		await writeFile(entry, echoSource(minor, text));
-		const frozen = await freezeAction(entry, 'echo', async () =>
-			last === undefined ? undefined : frozenOf(last).manifest,
-		);
+		const frozen = await freezeAction(entry, 'echo', async () => {
+			const manifest = last === undefined ? undefined : frozenOf(last).manifest;
+			return (
+				manifest && {
+					version: manifest.semver,
+					manifest: '',
+					bundle: `sha256:${manifest.bundleHash}`,
+				}
+			);
+		});
 		versions.set(frozen.manifest.semver, frozen);
 	};
 	await freeze(0, 'input.text.toUpperCase()');
@@ -540,6 +591,60 @@ describe('importContractStore and exportContractStore', () => {
 		expect((await importDir(out)).map(({ version }) => version)).toEqual(['1.0.0']);
 	});
 
+	/** A store folder with a credential manifest and a native version that pins it. */
+	const credentialAndNativeDir = async () => {
+		const dir = await sourceDir();
+		const pingCredential = await freezeCredential(pingToken);
+		if (!pingCredential) throw new Error('ping.token has no manifest');
+		const called = defineNode({
+			id: 'ping',
+			displayName: 'Ping',
+			credential: credential({ types: [pingToken] }),
+		}).trigger('called', {
+			trigger: 'On call',
+			summary: 'Starts on a call.',
+			input: { path: t.str() },
+			output: t.obj({ body: t.str() }),
+			native: { type: 'n8n-nodes-base.webhook', version: 2.2, on: 'webhook' },
+		});
+		await addToStore(
+			dir,
+			[pingCredential, await freezeNative(called)].map((manifest) => {
+				const manifestText = manifestTextOf(manifest);
+				return { manifestText, signatures: [signStoreManifest(manifestText, privateKey)] };
+			}),
+		);
+		return dir;
+	};
+
+	it('exports the same credential and native lines that it imported', async () => {
+		const dir = await credentialAndNativeDir();
+		const added = await importDir(dir);
+		expect(added.map(({ id, kind, bundle }) => [id, kind, bundle])).toEqual(
+			expect.arrayContaining([
+				['ping.token', 'credential', undefined],
+				['ping.called', 'trigger', undefined],
+			]),
+		);
+		const out = await mkdtemp(path.join(dirs.root, 'export-'));
+		await exportContractStore(instance.current.store, out);
+		expect(await treeOf(out)).toEqual(await treeOf(dir));
+	});
+
+	it('exports the credential manifests that the exported versions pin', async () => {
+		await importDir(await credentialAndNativeDir());
+		const exported = async (id: string) =>
+			(
+				await exportContractStore(
+					instance.current.store,
+					await mkdtemp(path.join(dirs.root, 'export-')),
+					(version) => version.id === id,
+				)
+			).map((record) => record.id);
+		expect(await exported('ping.called')).toEqual(['ping.called', 'ping.token']);
+		expect(await exported('demo.echo')).toEqual(['demo.echo', 'demo.echo', 'demo.echo']);
+	});
+
 	it('exports only the versions that the filter takes', async () => {
 		await importDir(await sourceDir());
 		const out = await mkdtemp(path.join(dirs.root, 'export-'));
@@ -549,6 +654,65 @@ describe('importContractStore and exportContractStore', () => {
 			({ version }) => version === '1.0.1',
 		);
 		expect(records.map(({ version }) => version)).toEqual(['1.0.1']);
+	});
+});
+
+describe('contractStore with triggers and credentials', () => {
+	const ping = async () => {
+		const entry = path.join(dirs.root, 'ping.ts');
+		await writeFile(entry, pingSource);
+		const credential = await freezeCredential(pingToken);
+		if (!credential) throw new Error('ping.token has no manifest');
+		return { trigger: await freezeAction(entry, 'pinged'), credential };
+	};
+
+	const publishPing = async (credentialKey = privateKey) => {
+		const { trigger, credential } = await ping();
+		const triggerText = manifestTextOf(trigger.manifest);
+		const credentialText = manifestTextOf(credential);
+		await addToStore(dirs.registry, [
+			{
+				manifestText: credentialText,
+				signatures: [signStoreManifest(credentialText, credentialKey)],
+			},
+			{
+				manifestText: triggerText,
+				bundle: trigger.bundle,
+				signatures: [signStoreManifest(triggerText, privateKey)],
+			},
+		]);
+		const { id, semver, bundleHash, contractHash } = trigger.manifest;
+		return { trigger, credential, lock: { action: id, version: semver, bundleHash, contractHash } };
+	};
+
+	it('takes a trigger version and the credential manifest it pins from the registry', async () => {
+		const { trigger, credential, lock } = await publishPing();
+		expect(trigger.manifest).toMatchObject({ kind: 'trigger', credentials: ['pingApi@1'] });
+		const store = storeOf();
+		expect((await store.locked(lock)).manifest).toEqual(trigger.manifest);
+
+		const reread = storeOf();
+		expect((await reread.versions()).get('ping.pinged')?.[0]?.manifest).toEqual(trigger.manifest);
+		expect((await reread.credentials()).get('pingApi')).toEqual(credential);
+		const manifestOf = credentialManifestsOf(reread);
+		expect(await manifestOf('pingApi')).toEqual(credential);
+		expect((await manifestOf('notionApi'))?.id).toBe('notion.token');
+		expect(await manifestOf('unknownApi')).toBeUndefined();
+		const legacy = credentialManifestsOf(reread, (name) => name === 'pingApi');
+		expect(await legacy('pingApi')).toBeUndefined();
+	});
+
+	it('takes no credential manifest from the registry without a key', async () => {
+		const { trigger, lock } = await publishPing();
+		const store = storeOf({ publicKey: undefined });
+		expect((await store.locked(lock)).manifest).toEqual(trigger.manifest);
+		expect((await store.credentials()).has('pingApi')).toBe(false);
+	});
+
+	it('refuses a pinned credential manifest without the trusted signature', async () => {
+		const { lock } = await publishPing(strangerKey);
+		await expect(storeOf().locked(lock)).rejects.toThrow('ping.token@1.0.0 (sha256:');
+		expect((await storeOf({ publicKey: undefined }).credentials()).has('pingApi')).toBe(false);
 	});
 });
 

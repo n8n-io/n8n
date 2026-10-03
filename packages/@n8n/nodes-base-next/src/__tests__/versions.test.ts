@@ -2,6 +2,7 @@ import { isRecord, validate, type JsonSchema } from '@n8n/node-sdk';
 import * as host from '@n8n/node-sdk/host';
 import {
 	actionFileOf,
+	isVersionManifest,
 	parseFixtures,
 	parseStoreCatalog,
 	requiredNodeContractOf,
@@ -20,7 +21,14 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import type { ICredentialType, IExecuteFunctions } from 'n8n-workflow';
 
-import { actionEntries, freezeAll, freezeCredentials, NODES_DIR } from '../../scripts/freeze';
+import {
+	actionEntries,
+	freezeAll,
+	freezeCredentials,
+	freezeNatives,
+	natives,
+	NODES_DIR,
+} from '../../scripts/freeze';
 import { FIXTURES_DIR } from '../../scripts/publish';
 import { actions, credentialTypes, nativeTriggers, triggers } from '../index';
 import { bundledCredentialsOf, bundledIdsOf, EMBEDDED_STORE_DIR, versionsOf } from '../registry';
@@ -63,7 +71,11 @@ describe('bundled versions', () => {
 	const frozen = { manifests: Array.of<VersionManifest>() };
 
 	beforeAll(async () => {
-		[frozen.manifests] = await Promise.all([freezeAll(copy), freezeCredentials(copy)]);
+		[frozen.manifests] = await Promise.all([
+			freezeAll(copy),
+			freezeCredentials(copy),
+			freezeNatives(copy),
+		]);
 	});
 
 	afterAll(() => rmSync(copy, { recursive: true, force: true }));
@@ -81,6 +93,14 @@ describe('bundled versions', () => {
 				.sort()
 				.map((file) => [file, readFileSync(path.join(dir, file), 'base64')]);
 		expect(filesOf(copy)).toEqual(filesOf(EMBEDDED_STORE_DIR));
+	});
+
+	it('hold a manifest without a bundle for each native contract', () => {
+		const catalog = parseStoreCatalog(readFileSync(path.join(copy, STORE_CATALOG_FILE), 'utf8'));
+		const lineOf = (id: string) => catalog.find((line) => line.id === id);
+		expect(natives.map(({ id }) => [id, lineOf(id)?.native, lineOf(id)?.bundle])).toEqual(
+			natives.map(({ id, native }) => [id, native?.type, undefined]),
+		);
 	});
 
 	it('are the only node list: package.json has no n8n key', () => {
@@ -180,15 +200,20 @@ describe('bundled versions', () => {
 				validate(readJson(path.join(dir, id, 'manifest.json')), schema, { path: id }),
 			);
 
-		it('with every frozen action, trigger and credential manifest', () => {
+		it('with every frozen action, trigger, credential and native manifest', () => {
 			const catalog = parseStoreCatalog(readFileSync(path.join(copy, STORE_CATALOG_FILE), 'utf8'));
-			const idsOf = (credential: boolean) =>
+			const groupOf = ({ kind, native }: (typeof catalog)[number]) =>
+				kind === 'credential' ? 'credential' : native === undefined ? 'bundled' : 'native';
+			const idsOf = (group: ReturnType<typeof groupOf>) =>
 				catalog
-					.filter(({ kind }) => (kind === 'credential') === credential)
+					.filter((line) => groupOf(line) === group)
 					.map(({ id }) => id)
 					.sort();
-			expect(idsOf(false)).toEqual(contracts.map(({ id }) => id).sort());
-			expect(idsOf(true)).toEqual(credentialTypes.map(({ id }) => id).sort());
+			const sortedIds = (list: ReadonlyArray<{ readonly id: string }>) =>
+				list.map(({ id }) => id).sort();
+			expect(idsOf('bundled')).toEqual(sortedIds(contracts));
+			expect(idsOf('credential')).toEqual(sortedIds(credentialTypes));
+			expect(idsOf('native')).toEqual(sortedIds(natives));
 			const issues = catalog.flatMap(({ id, manifest }) =>
 				validate(readJson(path.join(copy, storeBlobFileOf(manifest))), schema, { path: id }),
 			);
@@ -382,7 +407,7 @@ describe.skipIf(!REGISTRY_URL)('published versions', () => {
 								digest ? (await registry.blob(digest))?.toString('utf8') : undefined,
 							),
 						);
-						if (!read || read.manifest.kind === 'credential' || !bundle || !fixtures) {
+						if (!read || !isVersionManifest(read.manifest) || !bundle || !fixtures) {
 							return [`${at} has no manifest, bundle or fixtures`];
 						}
 						const signed = !publicKey || verifyStoreSignature(record, read.text, publicKey);

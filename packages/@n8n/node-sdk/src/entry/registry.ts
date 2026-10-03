@@ -15,6 +15,7 @@ export {
 	diffContracts,
 	parseFixtures,
 	parseManifest,
+	parseNativeManifest,
 	parseSemver,
 	requiredNodeContractOf,
 	resolveContractVersion,
@@ -31,9 +32,14 @@ export {
 	type VersionManifest,
 } from '../version';
 export { checkCredentialType } from '../credentials';
-export { parseCredentialManifest, type CredentialManifest } from '../manifest';
+export {
+	parseCredentialManifest,
+	type CredentialManifest,
+	type NativeManifest,
+} from '../manifest';
 export {
 	addToStore,
+	isVersionManifest,
 	manifestTextOf,
 	parseStoreCatalog,
 	parseStoreIndex,
@@ -47,6 +53,7 @@ export {
 	storeReader,
 	verifyStoreSignature,
 	type StoreFiles,
+	type StoreManifest,
 	type StoreReader,
 	type StoreRecord,
 	type StoreSignature,

@@ -131,6 +131,33 @@ describe('NodeContractVersionRepository', () => {
 		expect(await Container.get(NodeContractVersionRepository).count()).toBe(1);
 	});
 
+	it('keeps credential and native rows without a bundle', async () => {
+		const [older] = await versions();
+		if (!older) throw new Error('no version');
+		const rowOf = (id: string, kind: StoredVersion['kind'], manifestText: string) => ({
+			id,
+			version: '1.0.0',
+			kind,
+			manifest: digestOf(manifestText),
+			manifestText,
+			signatures: [],
+		});
+		const credential = rowOf('ping.token', 'credential', '{"kind":"credential"}\n');
+		const native = rowOf('ping.called', 'trigger', '{"native":{}}\n');
+		const { rows } = Container.get(NodeContractsStore);
+
+		await rows.insert([storedOf(older, '2.0.0'), credential, native]);
+
+		expect(await rows.credentialManifests()).toEqual([credential]);
+		expect(await rows.bundle(native.manifest)).toBeUndefined();
+		expect(await rows.versions()).toEqual(
+			expect.arrayContaining([
+				{ ...credential, bundle: undefined, fixtures: undefined, published: undefined },
+				{ ...native, bundle: undefined, fixtures: undefined, published: undefined },
+			]),
+		);
+	});
+
 	it('exports the same layout bytes that it imported', async () => {
 		const source = path.join(state.dir, 'source');
 		await sdk.addToStore(source, await versions());
