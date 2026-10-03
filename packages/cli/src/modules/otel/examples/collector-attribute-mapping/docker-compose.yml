@@ -1,0 +1,18 @@
+# Collector on the host OTLP ports, forwarding to Jaeger (UI on :16686).
+services:
+  collector:
+    # Must be `-contrib`: groupbyattrs is not in the core distribution.
+    image: otel/opentelemetry-collector-contrib:0.160.0
+    command: ['--config', '/etc/otelcol/config.yaml']
+    volumes:
+      - ./collector-config.yaml:/etc/otelcol/config.yaml:ro
+    ports:
+      - '4317:4317' # OTLP gRPC
+      - '4318:4318' # OTLP HTTP
+    depends_on:
+      - jaeger
+
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    ports:
+      - '16686:16686'

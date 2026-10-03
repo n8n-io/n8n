@@ -1,0 +1,83 @@
+# Example: reshape n8n's trace attributes with an OpenTelemetry Collector.
+#
+# n8n sends spans here (N8N_OTEL_EXPORTER_OTLP_ENDPOINT=http://<host>:4318).
+# The pipeline does three things, in order:
+#   1. attributes     rename n8n's prefixed custom tags to exact keys, so a tag
+#                     typed as `project.id` in the n8n UI arrives as `project.id`
+#   2. groupbyattrs   move the named span attributes up to the resource
+#   (optional) resource  add instance-wide constants at the resource level
+#
+# Microsoft Foundry reads `gen_ai.agent.id` from the span, not the resource.
+# For Foundry, remove `groupbyattrs` from the pipeline and export with
+# `azuremonitor` (connection_string: ${env:APPLICATIONINSIGHTS_CONNECTION_STRING}).
+
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+
+processors:
+  # `from_attribute` + `upsert` copies the value to the exact key (overwriting
+  # a clashing destination), then `delete` drops the prefixed original.
+  attributes/rename:
+    actions:
+      - key: project.id
+        from_attribute: n8n.project.custom.project.id
+        action: upsert
+
+      - key: gen_ai.agent.id
+        from_attribute: n8n.project.custom.gen_ai.agent.id
+        action: upsert
+
+      - key: gen_ai_request.model
+        from_attribute: n8n.node.custom.gen_ai_request.model
+        action: upsert
+
+  # Alternative: strip every n8n prefix by pattern instead of listing keys.
+  # Swap `attributes/rename` for `transform/strip-prefixes` in the pipeline.
+  # transform/strip-prefixes:
+  #   error_mode: ignore
+  #   trace_statements:
+  #     - context: span
+  #       statements:
+  #         - replace_all_patterns(attributes, "key", "^n8n\\.project\\.custom\\.", "")
+  #         - replace_all_patterns(attributes, "key", "^n8n\\.workflow\\.custom\\.", "")
+  #         - replace_all_patterns(attributes, "key", "^n8n\\.node\\.custom\\.", "")
+
+  # batch before groupbyattrs, so more spans of one project land in one resource
+  batch: {}
+
+  groupbyattrs:
+    keys:
+      - project.id
+      - gen_ai.agent.id
+
+  # Optional: add instance-wide constants at the collector instead of via
+  # OTEL_RESOURCE_ATTRIBUTES on the n8n process. Add `resource/static` to the
+  # pipeline to enable.
+  # resource/static:
+  #   attributes:
+  #     - key: tenant.id
+  #       value: acme-tenant-001
+  #       action: upsert
+  #     - key: appd
+  #       value: APPD-0403962
+  #       action: upsert
+
+exporters:
+  debug:
+    verbosity: detailed
+  otlp/jaeger:
+    endpoint: jaeger:4317
+    tls:
+      insecure: true
+
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [attributes/rename, batch, groupbyattrs]
+      exporters: [debug, otlp/jaeger]
