@@ -335,6 +335,7 @@ export {
 	type PublicCreateDestination,
 	type PublicDestinationType,
 } from './log-streaming/public-destination.dto';
+export { LogStreamingEventTypesPublicDto } from './log-streaming/log-streaming-public.dto';
 
 export { PaginationDto, MAX_ITEMS_PER_PAGE } from './pagination/pagination.dto';
 
