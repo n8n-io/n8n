@@ -1,11 +1,12 @@
 import { WebSocketState, type WebSocketStateType } from '@/app/push-connection/useWebSocketClient';
 
 /** Mocked WebSocket class to help testing */
-export class MockWebSocket extends WebSocket {
+export class MockWebSocket extends EventTarget {
 	readyState: WebSocketStateType = WebSocketState.CONNECTING;
+	binaryType: BinaryType = 'blob';
 
 	constructor(url: string) {
-		super(url);
+		super();
 
 		MockWebSocket._instance = this;
 		MockWebSocket.init(url);

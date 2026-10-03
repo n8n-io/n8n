@@ -33,7 +33,8 @@ function getAnswers(): DisplayAnswer[] {
 		}
 		const parts: string[] = [];
 		if (Array.isArray(a.selectedOptions) && a.selectedOptions.length > 0) {
-			parts.push((a.selectedOptions as string[]).join(', '));
+			// The first line of an option is its title; a description line stays in the card.
+			parts.push((a.selectedOptions as string[]).map((o) => o.split('\n')[0]).join(', '));
 		}
 		if (typeof a.customText === 'string' && a.customText.trim()) {
 			parts.push(a.customText.trim());

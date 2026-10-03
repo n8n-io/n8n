@@ -12,6 +12,7 @@ import { mock } from 'vitest-mock-extended';
 import { z } from 'zod/v4';
 
 import type { License } from '@/license';
+import { USER_CALLED_MCP_TOOL_EVENT } from '@/modules/mcp/mcp.constants';
 import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
 import { PostHogClient } from '@/posthog';
 import { Telemetry } from '@/telemetry';
@@ -33,6 +34,7 @@ describe('Telemetry', () => {
 	const mockRudderStack = mock<RudderStack>();
 
 	let telemetry: Telemetry;
+	let postHog: PostHogClient;
 	const instanceId = 'Telemetry unit test';
 	const testDateTime = new Date('2022-01-01 00:00:00');
 	const instanceSettings = mockInstance(InstanceSettings, { instanceId });
@@ -56,7 +58,7 @@ describe('Telemetry', () => {
 	beforeEach(async () => {
 		spyTrack = vi.spyOn(Telemetry.prototype, 'track').mockName('track');
 
-		const postHog = new PostHogClient(instanceSettings, mock());
+		postHog = new PostHogClient(instanceSettings, mock());
 		await postHog.init();
 
 		telemetry = new Telemetry(
@@ -1017,6 +1019,7 @@ describe('Telemetry', () => {
 				traits,
 				context: { ip: '0.0.0.0' },
 			});
+			expect(postHog.groupIdentify).not.toHaveBeenCalled();
 		});
 
 		test('should call rudderStack.group() with composite userId when userId is provided', () => {
@@ -1029,6 +1032,11 @@ describe('Telemetry', () => {
 				userId: `${instanceId}#user-123`,
 				traits,
 				context: { ip: '0.0.0.0' },
+			});
+			expect(postHog.groupIdentify).toHaveBeenCalledWith({
+				distinctId: `${instanceId}#user-123`,
+				instanceId,
+				properties: traits,
 			});
 		});
 
@@ -1082,6 +1090,28 @@ describe('Telemetry', () => {
 			);
 		});
 
+		test('redacts MCP tool call properties before sending the event', () => {
+			const agentId = 'sk-proj-example0123456789abcdef0123456789';
+			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, {
+				user_id: 'user-1',
+				tool_name: 'validate_agent',
+				parameters: { agentId, settings: { apiKey: 'example-value' } },
+				results: { success: false, error: `Agent "${agentId}" not found` },
+			});
+
+			expect(mockRudderStack.track).toHaveBeenCalledWith(
+				expect.objectContaining({
+					event: USER_CALLED_MCP_TOOL_EVENT,
+					properties: expect.objectContaining({
+						user_id: 'user-1',
+						tool_name: 'validate_agent',
+						parameters: { agentId: '[REDACTED]', settings: { apiKey: '[REDACTED]' } },
+						results: { success: false, error: 'Agent "[REDACTED]" not found' },
+					}),
+				}),
+			);
+		});
+
 		test('should format userId with user_id when provided', () => {
 			const eventName = 'Test Event';
 			const properties = { user_id: '5678' };
@@ -1119,6 +1149,42 @@ describe('Telemetry', () => {
 					}),
 				}),
 			);
+		});
+	});
+
+	describe('groupIdentify', () => {
+		const traits = { version: '1.0' } as Record<string, string | number>;
+
+		test('should send the PostHog override to PostHog only', () => {
+			telemetry.groupIdentify({ traits, postHog: { userId: 'owner-1', traits } });
+
+			expect(postHog.groupIdentify).toHaveBeenLastCalledWith({
+				distinctId: `${instanceId}#owner-1`,
+				instanceId,
+				properties: traits,
+			});
+			expect(mockRudderStack.group).toHaveBeenLastCalledWith({
+				groupId: instanceId,
+				userId: instanceId,
+				traits,
+				context: { ip: '0.0.0.0' },
+			});
+		});
+
+		test('should keep RudderStack traits unchanged when only PostHog gets them', () => {
+			telemetry.groupIdentify({ userId: 'owner-1', postHog: { userId: 'owner-1', traits } });
+
+			expect(postHog.groupIdentify).toHaveBeenLastCalledWith({
+				distinctId: `${instanceId}#owner-1`,
+				instanceId,
+				properties: traits,
+			});
+			expect(mockRudderStack.group).toHaveBeenLastCalledWith({
+				groupId: instanceId,
+				userId: `${instanceId}#owner-1`,
+				traits: undefined,
+				context: { ip: '0.0.0.0' },
+			});
 		});
 	});
 
@@ -1193,6 +1259,65 @@ describe('Telemetry', () => {
 			});
 
 			expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining('failed schema validation'));
+		});
+
+		describe('missing user_id', () => {
+			const USER_SCOPED_TELEMETRY = defineTelemetryEvents({
+				USER_TESTED_USER_SCOPED_ENTRY: {
+					name: 'User tested user scoped entry',
+					description: 'Fires when a registry entry that names its user is exercised in tests.',
+					properties: z.object({ user_id: z.string() }),
+				},
+			});
+
+			const buildTelemetry = () => {
+				const logger = mock<Logger>();
+				const instance = new Telemetry(
+					logger,
+					new PostHogClient(instanceSettings, mock()),
+					mock(),
+					instanceSettings,
+					mock(),
+					globalConfig,
+					mock(),
+					mock(),
+				);
+				// @ts-expect-error Assigning to private property
+				instance.rudderStack = mockRudderStack;
+				return { logger, instance };
+			};
+
+			const missingUserIdWarnings = (logger: Logger) =>
+				vi
+					.mocked(logger.warn)
+					.mock.calls.filter(([message]) => message.includes('carries no user_id'));
+
+			test('should warn once per event name', () => {
+				const { logger, instance } = buildTelemetry();
+
+				instance.track(TEST_TELEMETRY.USER_TESTED_REGISTRY_ENTRY, { workflow_id: 'wf-1' });
+				instance.track(TEST_TELEMETRY.USER_TESTED_REGISTRY_ENTRY, { workflow_id: 'wf-2' });
+
+				const warnings = missingUserIdWarnings(logger);
+				expect(warnings).toHaveLength(1);
+				expect(warnings[0][0]).toContain('"User tested registry entry"');
+			});
+
+			test('should stay quiet when the event carries a user_id', () => {
+				const { logger, instance } = buildTelemetry();
+
+				instance.track(USER_SCOPED_TELEMETRY.USER_TESTED_USER_SCOPED_ENTRY, { user_id: 'u-1' });
+
+				expect(missingUserIdWarnings(logger)).toHaveLength(0);
+			});
+
+			test('should stay quiet for an unregistered event, which declares no schema', () => {
+				const { logger, instance } = buildTelemetry();
+
+				instance.track('pulse', {});
+
+				expect(missingUserIdWarnings(logger)).toHaveLength(0);
+			});
 		});
 	});
 

@@ -178,7 +178,7 @@ These only run if specific files changed:
 | `docker/images/n8n-base/Dockerfile`                                    | `build-base-image.yml`      | any        |
 | `**/package.json`, `**/turbo.json`                                     | `build-windows.yml`         | master     |
 | `packages/@n8n/ai-workflow-builder.ee/evaluations/programmatic/python/**` | `test-evals-python.yml`  | any        |
-| `packages/@n8n/benchmark/**`                                           | `build-benchmark-image.yml` | master     |
+| `packages/quality/efficiency/scale/benchmark/**`                       | `build-benchmark-image.yml` | master     |
 | `packages/cli/src/public-api/**/*.yml`, `packages/cli/src/public-api/**/*.yaml`, `packages/cli/src/public-api/**/*.css`, `packages/cli/src/public-api/v1/openapi-gen/**/*.ts`, `packages/cli/scripts/build.mjs`, `packages/cli/package.json` | `util-publish-api-schema.yml` | master   |
 | `packages/@n8n/instance-ai/src/**`, `packages/@n8n/instance-ai/skills/**`, `packages/@n8n/instance-ai/knowledge-base/**`, `packages/@n8n/instance-ai/evaluations/**`, `packages/cli/src/modules/instance-ai/**`, `packages/core/src/execution-engine/eval-mock-helpers.ts`, `packages/@n8n/agents/src/**` | `ci-instance-ai-evals.yml` | on PR `opened` / `reopened` / `ready_for_review` |
 | `docker/get-n8n.sh`, `docker/get-n8n-compose.yml`, `docker/test-get-n8n.sh` | `test-get-n8n.yml`          | any        |
@@ -583,7 +583,7 @@ Push to master
 ├─ unit-test (matrix: Node 24.18.1, 26.5.1)
 │   └─ Coverage only on 24.18.1
 ├─ lint
-├─ performance (CodSpeed benchmarks)
+├─ (performance: CodSpeed benchmarks, paused until the plugin supports Vitest 5)
 ├─ verify-single-instance-npm (advisory; packages changed by this push)
 └─ notify-on-failure (Slack #alerts-build)
 ```
@@ -683,24 +683,6 @@ that start after the save use the cached executable. Windows keeps the standard
 `pnpm/setup` path because its runner cannot activate the cached POSIX home path.
 The existing `actions/setup-node` cache continues to store the pnpm package
 store.
-
-### CI toolchain image
-
-`build-ci-toolchain-image.yml` publishes one Node, pnpm, SafeChain and Chromium
-image to GHCR on `master`. The build does not install n8n dependencies. A
-Blacksmith job pulls the image to seed the shared container cache. A job in
-the image then checks its tools, browser, Docker access, SafeChain and a
-lockfile-driven root install. Manual dispatch runs the smoke job without
-republishing the image, so it can check a warm pull. Update the image tag in
-the publish workflow when a tool pin changes. No PR test job uses this image.
-
-Build and check the image locally with:
-
-```bash
-docker buildx build --load -t n8n-ci-toolchain:local -f .github/ci-toolchain/Dockerfile .
-docker run --rm -v /var/run/docker.sock:/var/run/docker.sock n8n-ci-toolchain:local \
-  bash -lc 'node --version && pnpm --version && /opt/ci-toolchain/safe-chain -v && docker info && docker buildx version && node /opt/ci-playwright/node_modules/playwright/cli.js install --dry-run chromium'
-```
 
 The Blacksmith layer cache lives on a sticky disk identified by
 `docker-cache-key`, and commits are last-writer-wins. Splitting the key per
@@ -902,8 +884,10 @@ The file drives four workflows:
 ### Required reviews
 
 An entry with the `required` option makes team approval mandatory: when a PR
-changes a file whose winning entry carries `required`, a member of each listed
-team must approve the PR. `ci-owners-required-reviews.yml` evaluates this on
+changes a non-test file whose winning entry carries `required`, a member of each
+listed team must approve the PR. Test files match the shared patterns in
+`test-files.mjs` and do not trigger required reviews.
+`ci-owners-required-reviews.yml` evaluates this on
 PR changes and review events, and reports a commit status
 named **Required Reviews** on the head SHA. A missing approval reports
 `pending` ("Waiting for approval from: …"), not `failure`, so an unreviewed PR
@@ -932,6 +916,14 @@ only, never from the base branch or the PR: any writable branch can be a base,
 so only `master` is trusted input. A PR cannot lift its own review
 requirement. A retarget re-evaluates the PR, so a verdict computed against the
 old base does not carry over.
+
+Members of the `large-scale-changes` GitHub team can make the **Required
+Reviews** status succeed without required OWNERS team approvals. A team member
+must apply the `large-scale-change` label. The gate checks the actor from the
+label event and verifies their current team membership. The label alone is not
+sufficient. Label changes re-evaluate the status. Removing the label removes
+the exemption. During the CODEOWNERS trial, GitHub still enforces its separate
+code-owner review requirement.
 
 Every path that writes the status runs in the base repository context, because
 a fork-context run has no secrets and a read-only token. PR changes arrive
@@ -978,7 +970,7 @@ from the master ruleset, and delete this section (tracked in DEVP-887).
 
 **`blacksmith-4vcpu-ubuntu-2204`** - Unit tests (parallelized), linting (parallel file processing), typechecking (CPU-intensive), E2E test shards
 
-**`blacksmith-8vcpu-ubuntu-2204`** - Heavy parallel workloads
+**`blacksmith-8vcpu-ubuntu-2204`** - Heavy parallel workloads. The PR `install-and-build` job uses it with the default runner provider. Most PR jobs wait for that job, and a cold build keeps all 4 vCPUs of a smaller runner busy.
 
 ### Runner Provider Toggle
 
@@ -1171,31 +1163,19 @@ open the PR there. That PR **must stay a single-parent squash** — the publish 
 posts to `#alerts-build` when that gate fails on a PR opened *from* `bundle/2.x` or
 `bundle/1.x` (link only, no PR title, since the branch is embargoed).
 
-`sec-sync-bundle-branches.yml` keeps those branches current, daily plus whenever a PR is
-merged into one (and on `workflow_dispatch`). It **merges the base into** the bundle branch
-via [`scripts/sync-bundle-branch.mjs`](scripts/sync-bundle-branch.mjs) and pushes without
-forcing. Every push is verified to carry exactly the tree a merge of the two sides would
-produce (`git merge-tree`); a mismatch, or a conflict marker, fails the run instead of pushing.
+`sec-sync-bundle-branches.yml` keeps those branches current after every public-to-private sync,
+daily, whenever a PR is merged into one, and on `workflow_dispatch`. It **merges the public
+base into** the bundle branch via
+[`scripts/sync-bundle-branch.mjs`](scripts/sync-bundle-branch.mjs) and pushes without forcing.
+Every push is verified to carry exactly the tree a merge of the two sides would produce (`git
+merge-tree`); a mismatch, or a conflict marker, fails the run instead of pushing.
 
-**A bundle branch is only ever built on published history.** Before it creates or merges
-anything, the sync fetches the same-named branch from `https://github.com/n8n-io/n8n.git`
-(anonymously — its token is scoped to the private repo) and checks that the private base tip is
-contained in it. This matters because the `chore: Bundle/*` squash on private `master` is
-*private-only*: the mirror above discards it in favour of the public cherry-pick of the same
-changes. A sync in that window would root the branch on a commit that is about to disappear,
-leaving it carrying two commits for one set of fixes — and every fix PR cut from it inherits the
-dead one. The window is real: this workflow's daily cron and the mirror's hourly cron both fire
-at `:00` with nothing ordering them, which is why the check lives in the script rather than in
-step ordering.
-
-An unpublished cut is a **skip**, not a failure: the mirror discards that commit every hour
-regardless, so the run exits green with the reason in the log and the next one proceeds. A
-missing branch also self-heals, because the mirror re-dispatches this workflow while one is
-absent. A base ahead of public for **any other reason** fails the run — the mirror is stuck and
-will not clear it on its own, so fix that first (remove the commit, or dispatch **Security: Sync
-from Public** with `force`) and re-run. To sync a bundle branch immediately, dispatch the mirror
-and then this workflow. The blocking commits are listed in the run log; the failure annotation
-carries only a count, since a subject hints at the fix.
+**A bundle branch is only ever built on published history.** The sync fetches `master` or `1.x`
+directly from `https://github.com/n8n-io/n8n.git`. It creates a missing bundle branch at that
+exact public SHA and merges that public SHA into an existing bundle branch. It never reads the
+private base branch. This matters because the `chore: Bundle/*` squash on private `master` is
+private-only until publication. The mirror can replace that commit with the public copy after
+the bundle branch is deleted. The next bundle branch must not inherit the replaced commit.
 
 Deleting a bundle branch takes its open PRs with it: GitHub moves each one onto the deleted
 branch's own base, and re-creating the branch does not move them back. So the sync then calls
@@ -1203,8 +1183,7 @@ branch's own base, and re-creating the branch does not move them back. So the sy
 on `master` onto `bundle/2.x` and every one on `1.x` onto `bundle/1.x`. It skips a bundle
 branch that does not exist, and skips PRs whose *head* is `bundle/*` — those are the
 `chore: Bundle/*` cut PRs, which target the base on purpose. It is also dispatchable on its
-own. `sec-sync-public-to-private.yml` only *dispatches* the bundle sync when it finds a branch
-missing; the retarget runs inside that dispatched run, once the branch exists.
+own. The retarget runs inside the bundle sync after a missing branch is recreated.
 
 **`bundle/*` is append-only — never rebase it, never force-push it.** These branches receive
 PRs, and rewriting a branch that receives PRs orphans the copies of its commits that the open
@@ -1217,21 +1196,19 @@ itself. To refresh a fix branch, use GitHub's **Update branch** button or
 sibling PR's merge base untouched, which is why only a rewrite breaks this.
 
 The costs of merging are deliberate and paid for: a merge commit per run, and fixes that have
-already been published staying in the branch's log (the old rebase dropped them as empty
-commits). Neither reaches anything downstream, because a bundle publishes as one squashed
-commit taken from the tree rather than the history — the `chore: Bundle/*` PR's **diff** stays
+already been published staying in the branch's log. Neither reaches anything downstream,
+because a bundle publishes as one squashed commit taken from the tree rather than the history —
+the `chore: Bundle/*` PR's **diff** stays
 exactly the pending fixes even when its commit list does not. For a list of what a bundle
-actually carries, read the fix PRs merged into the branch since the last cut, not
-`base..bundle`. A lower cadence than the base's is fine too: a base push never re-triggered
-CI on the fix PRs, so syncing more often bought them nothing.
+actually carries, read the fix PRs merged into the branch since the last cut, not `base..bundle`.
 
 There is **one job per bundle branch**. A conflict is detected from the merge tree before the
 working tree is touched, so the branch is left exactly as it was, that job **fails** (no
 green runs hiding a stalled branch) and `#alerts-security` gets a run link — while the other
-branch still syncs. Recovery is deliberate: merge the base into the branch locally, resolve,
-push, then re-run the workflow — and that resolution then lives in the merge commit instead of
-being re-litigated on every later run. The sync never resolves a conflict itself, unlike
-`util-sync-master-to-3x.yml`.
+branch still syncs. Recovery is deliberate: merge the public base into the branch locally,
+resolve, push, then re-run the workflow — and that resolution then lives in the merge commit
+instead of being re-litigated on every later run. The sync never resolves a conflict itself,
+unlike `util-sync-master-to-3x.yml`.
 
 See **[`../AGENTS.md`](../AGENTS.md)** ("Security Fix Hygiene") for the naming rules that
 keep the vulnerability out of public branch names, commits, and test descriptions.

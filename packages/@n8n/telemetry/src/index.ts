@@ -8,6 +8,7 @@ export type {
 	TelemetryEventInput,
 	TelemetryEventRegistry,
 } from './define';
+export { ASSISTANT_MENTION_QUERY_TEXT_MAX_LENGTH } from './events/instance-ai';
 export { POLICY_KINDS } from './events/type-availability-policies';
 export type { PolicyKind } from './events/type-availability-policies';
 export { redactTelemetryProperties, redactTelemetryText } from './redaction';

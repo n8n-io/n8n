@@ -210,9 +210,8 @@ export class AgentValidationService {
 	/**
 	 * Same as {@link validateAgentConfiguration}, but against a specific
 	 * published history snapshot instead of the live draft. Used before
-	 * re-publishing a previously published version. Integrations are not
-	 * versioned, so the agent's *current* integrations are always validated,
-	 * regardless of which historical schema is checked.
+	 * re-publishing a previously published version. Credential-backed
+	 * integrations use the current draft; n8n Chat needs no credential check.
 	 */
 	async validateAgentHistoryConfiguration(
 		agentId: string,
@@ -284,6 +283,7 @@ export class AgentValidationService {
 		this.collectSkillIssues(config, ctx.skills, issues);
 		if (scope === 'publish') {
 			for (const violation of findHttpRequestToolUrlFromAiViolations(config.tools)) {
+				if (config.tools?.[violation.toolIndex].enabled === false) continue;
 				issues.push(
 					issue('invalid_value', violation.path, {
 						kind: 'tool',
@@ -307,9 +307,12 @@ export class AgentValidationService {
 		workflowsByReference: Map<string, WorkflowEntity>;
 	}> {
 		const subAgentIds = new Set<string>();
-		const workflowRefs = extractAgentWorkflowRefs(ctx.config).filter((ref) => ref.workflow);
+		const workflowRefs = extractAgentWorkflowRefs(ctx.config).filter(
+			(ref) => ref.enabled !== false && ref.workflow,
+		);
 
 		for (const ref of ctx.config.subAgents?.agents ?? []) {
+			if (ref.enabled === false) continue;
 			if (ref.agentId && ref.agentId !== ctx.agentId) {
 				subAgentIds.add(ref.agentId);
 			}
@@ -405,6 +408,7 @@ export class AgentValidationService {
 		const refs = ctx.config.subAgents?.agents ?? [];
 		for (let index = 0; index < refs.length; index++) {
 			const ref = refs[index];
+			if (ref.enabled === false) continue;
 			const path = `subAgents.agents.${index}.agentId`;
 			const capability: AgentConfigValidationIssue['capability'] = {
 				kind: 'subAgent',
@@ -486,6 +490,7 @@ export class AgentValidationService {
 	) {
 		for (let index = 0; index < integrations.length; index++) {
 			const integration = integrations[index];
+			if (integration.type === 'n8n_chat') continue;
 			const path = `integrations.${index}.credentialId`;
 			const capability: AgentConfigValidationIssue['capability'] = {
 				kind: 'channel',
@@ -521,6 +526,7 @@ export class AgentValidationService {
 		const tools = ctx.config.tools ?? [];
 		for (let index = 0; index < tools.length; index++) {
 			const tool = tools[index];
+			if (tool.enabled === false) continue;
 
 			if (tool.type === 'custom') {
 				this.collectCustomToolIssues(tool.id, index, ctx.customTools, issues);

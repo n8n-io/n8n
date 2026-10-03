@@ -2,7 +2,7 @@ import { Service } from '@n8n/di';
 import { PROJECT_OWNER_ROLE_SLUG, type ProjectRole } from '@n8n/permissions';
 import { DataSource, In, Repository } from '@n8n/typeorm';
 
-import { ProjectRelation } from '../entities';
+import { ProjectRelation, Role } from '../entities';
 import { chunkIds } from '../utils/chunk-ids';
 
 @Service()
@@ -92,13 +92,42 @@ export class ProjectRelationRepository extends Repository<ProjectRelation> {
 		return [...new Set(rows.map((r) => r.userId))];
 	}
 
-	async findAllByUser(userId: string) {
-		return await this.find({
-			where: {
-				userId,
-			},
-			relations: { role: true },
+	/**
+	 * Every relation of a user, with its role and the role's scopes, and with the
+	 * project when `withProject` is set.
+	 *
+	 * `Role.scopes` is eager, so a plain `find` with `role` joins every scope of every
+	 * role: the database returns (relations x scopes of the role) rows, about 70 per
+	 * project for `project:admin`. A user in hundreds of projects pays tens of
+	 * thousands of rows to transfer and hydrate on every call. Load the relations
+	 * without the eager join and attach the scopes from one query over the distinct
+	 * roles instead, so the row count follows the number of relations.
+	 */
+	async findAllByUser(
+		userId: string,
+		{ withProject = false }: { withProject?: boolean } = {},
+	): Promise<ProjectRelation[]> {
+		const relations = await this.find({
+			where: { userId },
+			relations: { role: true, project: withProject },
+			loadEagerRelations: false,
 		});
+		await this.attachRoleScopes(relations);
+		return relations;
+	}
+
+	private async attachRoleScopes(relations: ProjectRelation[]): Promise<void> {
+		const slugs = [...new Set(relations.map((relation) => relation.role.slug))];
+		if (slugs.length === 0) return;
+
+		const roles = await this.manager.find(Role, {
+			where: { slug: In(slugs) },
+			relations: ['scopes'],
+		});
+		const scopesBySlug = new Map(roles.map((role) => [role.slug, role.scopes]));
+		for (const relation of relations) {
+			relation.role.scopes = scopesBySlug.get(relation.role.slug) ?? [];
+		}
 	}
 
 	/**

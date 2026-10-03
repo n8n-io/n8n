@@ -1,8 +1,8 @@
+import type { EventService } from '@n8n/backend-services';
 import type { SystemTask } from '@n8n/decorators';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { SpanStatus, type Span, type Tracing } from 'n8n-core';
 
-import type { EventService } from '@/events/event.service';
 import type { SystemTaskMode } from '@/events/maps/system-task-metrics.event-map';
 
 import { emitSystemTaskMetric } from './emit-system-task-metric';

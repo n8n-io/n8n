@@ -20,11 +20,10 @@ import { jsonParse, jsonStringify } from 'n8n-workflow';
 import pLimit from 'p-limit';
 
 import { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { BadRequestError, ForbiddenError, NotFoundError } from '@n8n/errors';
 import { resolveEvaluationConcurrencyLimit } from '@/evaluation.ee/evaluation-concurrency.helper';
 import { License } from '@/license';
+import { AgentsSettingsService } from '@/modules/agents/agents-settings.service';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 import { DataTableService } from '@/modules/data-table/data-table.service';
 import { EvalAgentExecutionService } from '@/modules/instance-ai/eval/agent-execution.service';
@@ -90,6 +89,7 @@ export class AgentEvalRunnerService {
 		private readonly concurrencyControl: ConcurrencyControlService,
 		private readonly license: License,
 		private readonly flagGate: AgentEvalsFlagGate,
+		private readonly agentsSettingsService: AgentsSettingsService,
 	) {}
 
 	/**
@@ -113,6 +113,7 @@ export class AgentEvalRunnerService {
 
 		// Backstop for direct callers; the REST path asserts before its own lookups.
 		assertRequiredModulesActive(this.moduleRegistry);
+		await this.agentsSettingsService.assertEnabled();
 
 		// Authorize up front. `executeWithLlmMock` also checks `agent:execute`, but
 		// it returns an error result rather than throwing — without this a caller

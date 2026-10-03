@@ -1,6 +1,6 @@
 import { jsonParse } from 'n8n-workflow';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { BadRequestError } from '@n8n/errors';
 
 import type {
 	CursorPagination,

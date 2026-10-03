@@ -235,7 +235,8 @@ defineExpose({
 @use '../../css/mixins/motion' as motion;
 
 .dropdownButton {
-	flex: 1;
+	// Keep the trigger height when a parent uses a column flex layout.
+	flex: 1 1 auto;
 	display: flex;
 	flex-direction: row;
 	align-items: center;

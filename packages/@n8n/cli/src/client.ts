@@ -32,6 +32,17 @@ export interface ImportPackageFields {
 	tagConflictPolicy?: string;
 }
 
+export interface ImportPackageSelectionFields {
+	/** Source project ID from the package. */
+	selectedProjectId: string;
+	/** Source workflow IDs from the selected project. */
+	selectedWorkflowIds: string[];
+	/** Destination workflow IDs to remove. */
+	deletedWorkflowIds?: string[];
+	workflowConflictPolicy?: string;
+	workflowIdPolicy?: string;
+}
+
 export interface ExportPackageFields {
 	workflowIds?: string[];
 	folderIds?: string[];
@@ -108,13 +119,43 @@ export type PromotePackageResult = {
 	git: PromotionGitResult;
 };
 
-/** Outcome of applying a package to the instance. */
-export type ApplyPackageResult = {
+/** The reviewed source that Apply must still match. Any mismatch reports `source-changed`. */
+export interface PromotionExpectedSource {
+	configId: string;
+	branchName: string;
+	commitSha: string;
+}
+
+/** References in a package that must be set up on this instance before Apply can import it. */
+export interface PromotionBindingPreflight {
+	missingProjects: Array<Record<string, unknown>>;
+	missingBindings: Array<Record<string, unknown>>;
+	accessRequirements: Array<Record<string, unknown>>;
+	conflicts: Array<Record<string, unknown>>;
+	warnings: Array<Record<string, unknown>>;
+}
+
+type ApplyPackageIdentity = {
 	connectionId: string;
 	configId: string;
-	counts: ImportPackageCounts;
 	git: PromotionGitResult;
 };
+
+/** Outcome of applying a package to the instance. Only `applied` imported anything. */
+export type ApplyPackageResult =
+	| (ApplyPackageIdentity & {
+			status: 'applied';
+			counts: ImportPackageCounts;
+			warnings: Array<Record<string, unknown>>;
+	  })
+	| (ApplyPackageIdentity & { status: 'blocked'; preflight: PromotionBindingPreflight })
+	| (ApplyPackageIdentity & { status: 'source-changed' });
+
+export interface PromotionChangesQuery {
+	search?: string;
+	sort?: 'name' | 'updatedAt' | 'status';
+	order?: 'asc' | 'desc';
+}
 
 /** One workflow that differs between a project and its configured branch. */
 export interface PromotableResourceSummary {
@@ -391,13 +432,27 @@ export class N8nClient {
 		return await this.post<PromotePackageResult>(`/promotions/connections/${id}/promote`, body);
 	}
 
-	async applyPackage(id: string) {
-		return await this.post<ApplyPackageResult>(`/promotions/connections/${id}/apply`);
+	async applyPackage(id: string, expectedSource?: PromotionExpectedSource) {
+		return await this.post<ApplyPackageResult>(
+			`/promotions/connections/${id}/apply`,
+			expectedSource ? { expectedSource } : undefined,
+		);
 	}
 
-	async listProjectPromotionChanges(projectId: string, direction: PromotionDirection) {
+	async continueApplyPackage(id: string, expectedSource: PromotionExpectedSource) {
+		return await this.post<ApplyPackageResult>(`/promotions/connections/${id}/apply/continue`, {
+			expectedSource,
+		});
+	}
+
+	async listProjectPromotionChanges(
+		projectId: string,
+		direction: PromotionDirection,
+		query: PromotionChangesQuery = {},
+	) {
 		return await this.get<ProjectPromotionChanges>(
 			`/promotions/projects/${projectId}/changes/${direction}`,
+			{ ...query },
 		);
 	}
 
@@ -717,6 +772,30 @@ export class N8nClient {
 			if (typeof value === 'string' && value !== '') form.append(key, value);
 		}
 		return await this.request<Record<string, unknown>>('POST', '/n8n-packages/import', {
+			formData: form,
+		});
+	}
+
+	async importPackageSelection(
+		file: { buffer: Buffer; filename: string },
+		fields: ImportPackageSelectionFields,
+	): Promise<Record<string, unknown>> {
+		const form = new FormData();
+		form.append('package', new Blob([new Uint8Array(file.buffer)]), file.filename);
+		const stringFields: Record<string, string | undefined> = {
+			selectedProjectId: fields.selectedProjectId,
+			workflowConflictPolicy: fields.workflowConflictPolicy,
+			workflowIdPolicy: fields.workflowIdPolicy,
+		};
+		for (const [key, value] of Object.entries(stringFields)) {
+			if (typeof value === 'string' && value !== '') form.append(key, value);
+		}
+		// The endpoint expects ID arrays encoded as JSON in multipart text fields.
+		form.append('selectedWorkflowIds', JSON.stringify(fields.selectedWorkflowIds));
+		if (fields.deletedWorkflowIds !== undefined) {
+			form.append('deletedWorkflowIds', JSON.stringify(fields.deletedWorkflowIds));
+		}
+		return await this.request<Record<string, unknown>>('POST', '/n8n-packages/import-selection', {
 			formData: form,
 		});
 	}

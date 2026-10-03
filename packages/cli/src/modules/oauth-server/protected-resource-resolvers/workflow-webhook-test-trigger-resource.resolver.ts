@@ -9,7 +9,7 @@ import type {
 } from '@/services/protected-resource.registry';
 
 import { triggerResourceGate } from '../resource-gate';
-import { UrlService } from '@/services/url.service';
+import { UrlService } from '@n8n/backend-services';
 import { TestWebhooks } from '@/webhooks/test-webhooks';
 import type { TestWebhookRegistration } from '@/webhooks/test-webhook-registrations.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';

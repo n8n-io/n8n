@@ -4,6 +4,45 @@ import { ApiError } from '../client';
 import { toPackagesError } from '../commands/package/package-error';
 
 describe('toPackagesError', () => {
+	it('explains a conflict between import and deletion', () => {
+		const result = toPackagesError(
+			new ApiError(409, 'Import blocked', undefined, {
+				issues: [
+					{
+						type: 'workflow-removal-conflict',
+						sourceWorkflowId: 'source',
+						workflowId: 'target',
+						projectId: 'P1',
+					},
+				],
+			}),
+		);
+
+		expect(result).toBeInstanceOf(ApiError);
+		expect((result as ApiError).hint).toContain(
+			'Workflow target (source source) in project P1 is selected for both import and deletion. Remove it from one selection.',
+		);
+	});
+
+	it('explains a forbidden workflow removal', () => {
+		const result = toPackagesError(
+			new ApiError(422, 'Import blocked', undefined, {
+				issues: [
+					{
+						type: 'workflow-removal-forbidden',
+						workflowId: 'w1',
+						name: 'Flow',
+						projectId: 'P1',
+					},
+				],
+			}),
+		);
+
+		expect((result as ApiError).hint ?? '').toContain(
+			'workflow "Flow" (w1) in project P1 could not be removed — not in the package or selected for deletion, and you lack permission',
+		);
+	});
+
 	it('returns non-ApiError values unchanged', () => {
 		const error = new Error('boom');
 		expect(toPackagesError(error)).toBe(error);

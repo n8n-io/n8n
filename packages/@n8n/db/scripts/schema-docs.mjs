@@ -33,7 +33,7 @@ const TBLS_IMAGE =
 
 const POSTGRES_VERSIONS_PATH = resolve(
 	REPO_ROOT,
-	'packages/testing/containers/postgres-versions.json',
+	'packages/quality/environments/containers/postgres-versions.json',
 );
 
 function primaryPostgresImage() {

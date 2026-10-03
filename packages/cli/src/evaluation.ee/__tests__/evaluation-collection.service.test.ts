@@ -20,8 +20,7 @@ import { OperationalError } from 'n8n-workflow';
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { BadRequestError, NotFoundError } from '@n8n/errors';
 import type { Telemetry } from '@/telemetry';
 import type { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 

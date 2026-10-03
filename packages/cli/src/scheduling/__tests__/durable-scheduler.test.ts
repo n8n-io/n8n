@@ -1,3 +1,4 @@
+import type { EventService } from '@n8n/backend-services';
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { GlobalConfig } from '@n8n/config';
 import { ScheduledJobOwnerType } from '@n8n/constants';
@@ -56,6 +57,7 @@ describe('DurableScheduler', () => {
 		const workflowOwner = mock<WorkflowScheduledJobOwner>();
 		const agentOwner = mock<AgentScheduledJobOwner>();
 		const systemTaskOwner = new SystemTaskScheduledJobOwner(mock<ScheduledJobRepository>());
+		const eventService = mock<EventService>();
 		const scheduler = new DurableScheduler(
 			logger,
 			mock<DataSource>(),
@@ -92,8 +94,19 @@ describe('DurableScheduler', () => {
 			workflowOwner,
 			agentOwner,
 			systemTaskOwner,
+			eventService,
 		);
-		return { scheduler, inner, logger, tracing, tasks, workflowOwner, agentOwner, systemTaskOwner };
+		return {
+			scheduler,
+			inner,
+			logger,
+			tracing,
+			tasks,
+			workflowOwner,
+			agentOwner,
+			systemTaskOwner,
+			eventService,
+		};
 	}
 
 	describe('composition', () => {

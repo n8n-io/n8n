@@ -14,7 +14,7 @@ import { z } from 'zod';
 import type { ChannelSetupDeps } from './setup-tool.types';
 
 const configureChannelInputSchema = z.object({
-	integrationType: z.string().describe('Chat platform type from list_integration_types'),
+	integrationType: z.string().describe('Chat platform type from agent-context integrations'),
 });
 
 type ConfigureChannelInput = z.infer<typeof configureChannelInputSchema>;
@@ -23,7 +23,7 @@ export function buildConfigureChannelTool(deps: ChannelSetupDeps): BuiltTool {
 	return new Tool(CONFIGURE_CHANNEL_TOOL_NAME)
 		.description(
 			'Configure one available chat channel for the target agent. First call ' +
-				'list_integration_types and pass a returned `type` as `integrationType`; do not infer ' +
+				'agent-context with type "integrations" and pass a returned `type` as `integrationType`; do not infer ' +
 				'channel names. Shows setup UI in chat where the user creates a new channel credential ' +
 				'or skips. The setup UI persists the channel configuration and does not publish the agent, ' +
 				'so use this for channel credentials instead of the credentials tool or config writes. ' +
@@ -62,7 +62,7 @@ export function buildConfigureChannelTool(deps: ChannelSetupDeps): BuiltTool {
 						errors: [
 							{
 								message:
-									`Unsupported chat channel "${integrationType}". Call list_integration_types ` +
+									`Unsupported chat channel "${integrationType}". Call agent-context with type "integrations" ` +
 									'and choose a returned type.' +
 									availableMessage,
 							},

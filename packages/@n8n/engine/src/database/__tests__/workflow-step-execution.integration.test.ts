@@ -53,6 +53,7 @@ describe('workflow_step_execution table (integration)', () => {
 			workflow: {},
 			triggerOutputs: null,
 			callerContext: { hostMode: 'trigger' },
+			responseExpectation: { kind: 'none' },
 			finishedAt: null,
 		});
 		await repo.save(execution);
@@ -774,6 +775,23 @@ describe('workflow_step_execution table (integration)', () => {
 		expect((await store.loadStep(id)).status).toBe('cancelled');
 	});
 
+	it('TypeOrmStepStore.cancelStep settles a running step and nothing else', async () => {
+		const executionId = await createExecution();
+		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+		const running = await seedStep({ executionId, nodeId: 'a', iteration: 0, status: 'running' });
+		const queued = await createStep(store, executionId, {
+			nodeId: 'b',
+			iteration: 0,
+			status: 'queued',
+		});
+
+		expect(await store.cancelStep(running.id)).toBe(true);
+		expect(await store.cancelStep(queued.id)).toBe(false);
+
+		expect((await store.loadStep(running.id)).status).toBe('cancelled');
+		expect((await store.loadStep(queued.id)).status).toBe('queued');
+	});
+
 	it('TypeOrmStepStore.failStep persists the error and marks the step failed', async () => {
 		const executionId = await createExecution();
 		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
@@ -1096,6 +1114,8 @@ describe('workflow_step_execution table (integration)', () => {
 		expect(byName.idx_workflow_step_execution_wait_till).toContain(
 			"WHERE ((status)::text = 'waiting'",
 		);
+		expect(byName.idx_workflow_step_execution_unsettled).toContain('(execution_id, status)');
+		expect(byName.idx_workflow_step_execution_unsettled).toContain('WHERE ((status)::text = ANY');
 
 		const [column]: Array<{ is_nullable: string; column_default: string }> = await dataSource.query(
 			`SELECT is_nullable, column_default FROM information_schema.columns
