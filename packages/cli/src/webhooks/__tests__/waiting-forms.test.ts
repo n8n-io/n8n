@@ -45,6 +45,25 @@ describe('WaitingForms', () => {
 		vi.restoreAllMocks();
 	});
 
+	it.each(['error', 'crashed', 'canceled'] as const)(
+		'does not show a completion page for a %s execution',
+		async (status) => {
+			executionPersistence.findSingleExecution.mockResolvedValue(
+				mock<IExecutionResponse>({
+					status,
+					data: { resultData: { runData: {}, error: undefined }, resumeToken: undefined },
+				}),
+			);
+
+			await expect(
+				waitingForms.executeWebhook(
+					mock<WaitingWebhookRequest>({ params: { path: '123' } }),
+					mock<express.Response>(),
+				),
+			).rejects.toThrow('Start a new execution.');
+		},
+	);
+
 	describe('findCompletionPage', () => {
 		it('should return lastNodeExecuted if it is a non-disabled form completion node', () => {
 			const workflow = mock<Workflow>({

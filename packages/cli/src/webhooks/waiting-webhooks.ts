@@ -11,6 +11,7 @@ import {
 	type INode,
 	type INodes,
 	type IWorkflowBase,
+	isTerminalExecutionStatus,
 	NodeConnectionTypes,
 	SEND_AND_WAIT_OPERATION,
 	WAIT_NODE_TYPE,
@@ -310,8 +311,10 @@ export class WaitingWebhooks implements IWebhookManager {
 			throw new ConflictError(message);
 		}
 
-		// oxlint-disable-next-line typescript/no-deprecated
-		if (execution.finished) {
+		if (isTerminalExecutionStatus(execution.status)) {
+			if (execution.status !== 'success') {
+				throw new ConflictError(`The execution "${executionId}" has ended. Start a new execution.`);
+			}
 			const { workflowData } = execution;
 			const { nodes } = this.createWorkflow(workflowData);
 			if (this.isSendAndWaitRequest(nodes, suffix)) {

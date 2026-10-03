@@ -1212,6 +1212,32 @@ describe('publishAsSystem()', () => {
 		workflowPublicationNotifier.requestDrain.mockClear();
 	});
 
+	it('uses the active version for execution snapshots during publication transitions', async () => {
+		const owner = await createOwner();
+		const workflow = await createActiveWorkflow({}, owner);
+		await workflowPublishedVersionRepository.setPublishedVersion(
+			workflow.id,
+			workflow.activeVersionId as string,
+		);
+
+		await workflowRepository.update({ id: workflow.id }, { active: false });
+		const published = await workflowPublishedVersionRepository.getPublishedVersionForExecution(
+			workflow.id,
+		);
+		expect(published?.active).toBe(true);
+
+		// The mapping can remain while asynchronous unpublishing removes its triggers.
+		await workflowRepository.update({ id: workflow.id }, { activeVersionId: null, active: true });
+		const pendingUnpublish =
+			await workflowPublishedVersionRepository.getPublishedVersionForExecution(workflow.id);
+		expect(pendingUnpublish?.active).toBe(false);
+
+		await workflowPublishedVersionRepository.removePublishedVersion(workflow.id);
+		expect(
+			await workflowPublishedVersionRepository.getPublishedVersionForExecution(workflow.id),
+		).toBeNull();
+	});
+
 	it('publishes a system-authored version without a user', async () => {
 		const owner = await createOwner();
 		const workflow = await createActiveWorkflow({}, owner);
@@ -1221,6 +1247,8 @@ describe('publishAsSystem()', () => {
 		// a wrong-field bug would be invisible.
 		const draftVersionId = uuid();
 		await workflowRepository.update({ id: workflow.id }, { versionId: draftVersionId });
+		// The active-version relation is the publication source of truth.
+		await workflowRepository.update({ id: workflow.id }, { active: false });
 		// Compare against the stored row: the helper's in-memory updatedAt carries
 		// sub-second precision that the insert already dropped.
 		const storedBefore = await workflowRepository.findOneOrFail({ where: { id: workflow.id } });
@@ -1283,6 +1311,7 @@ describe('publishAsSystem()', () => {
 	it('returns superseded for a workflow without an active version and writes nothing', async () => {
 		const owner = await createOwner();
 		const workflow = await createWorkflowWithHistory({}, owner);
+		await workflowRepository.update({ id: workflow.id }, { active: true });
 
 		const result = await workflowService.publishAsSystem(
 			workflow.id,

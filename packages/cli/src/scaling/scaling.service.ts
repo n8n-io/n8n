@@ -664,8 +664,7 @@ export class ScalingService {
 
 				// Convert to IRun format
 				const runData: IRun = {
-					// oxlint-disable-next-line typescript/no-deprecated
-					finished: executionData.finished,
+					finished: executionData.status === 'success',
 					mode: executionData.mode,
 					startedAt: executionData.startedAt,
 					stoppedAt: executionData.stoppedAt,

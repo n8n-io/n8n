@@ -107,8 +107,8 @@ export class AgentWorkflowToolResumeService {
 	private async settleBackgroundJob(ctx: WorkflowExecuteAfterContext): Promise<void> {
 		const { status, data } = ctx.runData;
 		if (!isTerminalExecutionStatus(status)) return;
-		// A success callback for a run that has not actually finished must not
-		// seal the job with partial output; reconciliation settles it later.
+		// A partial success hook must not settle the job before the run ends.
+		// The hook still uses the legacy marker for this interim callback.
 		// oxlint-disable-next-line typescript/no-deprecated
 		if (status === 'success' && !ctx.runData.finished) return;
 

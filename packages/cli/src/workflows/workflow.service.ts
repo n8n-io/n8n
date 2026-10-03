@@ -818,8 +818,9 @@ export class WorkflowService {
 				versionId: versionIdToPublish,
 				source,
 			});
+			// Keep the response's legacy field in sync with the active version.
 			// oxlint-disable-next-line typescript/no-deprecated
-			updatedWorkflow.active = publishedWorkflow.active;
+			updatedWorkflow.active = publishedWorkflow.activeVersionId !== null;
 			updatedWorkflow.activeVersionId = publishedWorkflow.activeVersionId;
 			updatedWorkflow.activeVersion = publishedWorkflow.activeVersion;
 		} else if (settingsChanged && workflow.activeVersionId) {
@@ -907,8 +908,9 @@ export class WorkflowService {
 			await this.workflowRepository.update(workflowId, rollbackPayload);
 
 			// Also set it in the returned data
+			// Keep the hook response's legacy field in sync with the rollback.
 			// oxlint-disable-next-line typescript/no-deprecated
-			workflow.active = rollbackPayload.active;
+			workflow.active = false;
 			workflow.activeVersionId = rollbackPayload.activeVersionId;
 			workflow.activeVersion = rollbackPayload.activeVersion;
 
@@ -1428,8 +1430,7 @@ export class WorkflowService {
 		// guard re-checks the same condition atomically; this early return just
 		// skips the doomed version-row insert.
 		if (
-			// oxlint-disable-next-line typescript/no-deprecated
-			!workflow?.active ||
+			!workflow ||
 			workflow.activeVersionId === null ||
 			workflow.activeVersionId !== expectedActiveVersionId
 		) {
@@ -1580,8 +1581,7 @@ export class WorkflowService {
 		// to cascade away, so `afterWorkflowsDeleted` can still explain what happened.
 		await this.workflowMutationHooks.beforeWorkflowDeleted(workflowId, user.id);
 
-		// oxlint-disable-next-line typescript/no-deprecated
-		if (workflow.active) {
+		if (workflow.activeVersionId !== null) {
 			// deactivate before deleting
 			await this.activeWorkflowManager.remove(workflowId);
 		}

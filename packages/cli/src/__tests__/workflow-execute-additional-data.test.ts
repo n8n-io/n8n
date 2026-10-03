@@ -86,7 +86,7 @@ const getMockRun = ({ lastNodeOutput }: { lastNodeOutput: Array<INodeExecutionDa
 		finished: true,
 		mode: 'manual',
 		startedAt: new Date(),
-		status: 'new',
+		status: 'success',
 		waitTill: undefined,
 	});
 
@@ -300,7 +300,8 @@ describe('WorkflowExecuteAdditionalData', () => {
 
 		it('should return waitTill property when workflow execution is waiting', async () => {
 			const waitTill = new Date();
-			runWithData.waitTill = waitTill;
+			const waitingRun: IRun = { ...runWithData, waitTill, status: 'waiting' };
+			processRunExecutionData.mockReturnValue(getCancelablePromise(waitingRun));
 
 			const response = await executeWorkflow(
 				mock<IExecuteWorkflowInfo>(),
@@ -309,7 +310,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 			);
 
 			expect(response).toEqual({
-				data: runWithData.data.resultData.runData[LAST_NODE_EXECUTED][0].data!.main,
+				data: waitingRun.data.resultData.runData[LAST_NODE_EXECUTED][0].data!.main,
 				executionId: EXECUTION_ID,
 				waitTill,
 			});
@@ -616,7 +617,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 					finished: true,
 					mode: 'manual',
 					startedAt: new Date(),
-					status: 'new',
+					status: 'success',
 					waitTill: undefined,
 				});
 

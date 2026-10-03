@@ -254,24 +254,27 @@ describe('UserRepository', () => {
 			expect(result).toBe(true);
 		});
 
-		test('requireNotFinished: should not update when finished is true', async () => {
-			const workflow = await createWorkflow({}, owner);
-			const executionData = createEmptyRunExecutionData();
-			const execution = await createExecution(
-				{ status: 'success', finished: true, data: stringify(executionData) },
-				workflow,
-			);
+		test.each(['success', 'error', 'crashed', 'canceled'] as const)(
+			'requireNotFinished: does not update a %s execution even if finished is false',
+			async (status) => {
+				const workflow = await createWorkflow({}, owner);
+				const executionData = createEmptyRunExecutionData();
+				const execution = await createExecution(
+					{ status, finished: false, data: stringify(executionData) },
+					workflow,
+				);
 
-			const result = await executionRepository.updateExistingExecution(
-				execution.id,
-				{ status: 'running' },
-				{ requireNotFinished: true },
-			);
+				const result = await executionRepository.updateExistingExecution(
+					execution.id,
+					{ status: 'running' },
+					{ requireNotFinished: true },
+				);
 
-			expect(result).toBe(false);
-			const row = await executionRepository.findOne({ where: { id: execution.id } });
-			expect(row?.status).toBe('success');
-		});
+				expect(result).toBe(false);
+				const row = await executionRepository.findOne({ where: { id: execution.id } });
+				expect(row?.status).toBe(status);
+			},
+		);
 
 		test('requireNotCanceled: should update when status is not canceled', async () => {
 			const workflow = await createWorkflow({}, owner);
@@ -353,6 +356,25 @@ describe('UserRepository', () => {
 			expect(result).toBe(false);
 			const row = await executionRepository.findOne({ where: { id: execution.id } });
 			expect(row?.status).toBe('canceled');
+		});
+
+		test('requireNotFinished + requireNotCanceled: does not overwrite an error', async () => {
+			const workflow = await createWorkflow({}, owner);
+			const execution = await createExecution(
+				{ status: 'error', finished: false, data: stringify(createEmptyRunExecutionData()) },
+				workflow,
+			);
+
+			const result = await executionRepository.updateExistingExecution(
+				execution.id,
+				{ status: 'running' },
+				{ requireNotFinished: true, requireNotCanceled: true },
+			);
+
+			expect(result).toBe(false);
+			expect((await executionRepository.findOneByOrFail({ id: execution.id })).status).toBe(
+				'error',
+			);
 		});
 	});
 });

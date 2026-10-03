@@ -2,7 +2,12 @@ import type { IExecutionResponse } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type express from 'express';
 import type { IRunData } from 'n8n-workflow';
-import { FORM_NODE_TYPE, WAITING_FORMS_EXECUTION_STATUS, Workflow } from 'n8n-workflow';
+import {
+	FORM_NODE_TYPE,
+	isTerminalExecutionStatus,
+	WAITING_FORMS_EXECUTION_STATUS,
+	Workflow,
+} from 'n8n-workflow';
 
 import { ConflictError, NotFoundError } from '@n8n/errors';
 import { applyCors } from '@/utils/cors.util';
@@ -109,8 +114,10 @@ export class WaitingForms extends WaitingWebhooks {
 
 		let lastNodeExecuted = execution.data.resultData.lastNodeExecuted as string;
 
-		// oxlint-disable-next-line typescript/no-deprecated
-		if (execution.finished) {
+		if (isTerminalExecutionStatus(execution.status)) {
+			if (execution.status !== 'success') {
+				throw new ConflictError(`The execution "${executionId}" has ended. Start a new execution.`);
+			}
 			const workflow = this.createWorkflow(execution.workflowData);
 			const completionPage = this.findCompletionPage(
 				workflow,

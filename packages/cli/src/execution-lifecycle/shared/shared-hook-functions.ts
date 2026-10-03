@@ -54,8 +54,8 @@ export function prepareExecutionDataForDbUpdate(parameters: {
 	const fullExecutionData: UpdateExecutionPayload = {
 		data: runData.data,
 		mode: runData.mode,
-		// oxlint-disable-next-line typescript/no-deprecated
-		finished: runData.finished ? runData.finished : false,
+		// Keep the persisted compatibility column in sync with the canonical status.
+		finished: workflowStatusFinal === 'success',
 		startedAt: runData.startedAt,
 		stoppedAt: runData.stoppedAt,
 		workflowData: pristineWorkflowData,
@@ -104,8 +104,7 @@ export async function updateExistingExecution(parameters: {
 	logger.debug(`Save execution data to database for execution ID ${executionId}`, {
 		executionId,
 		workflowId,
-		// oxlint-disable-next-line typescript/no-deprecated
-		finished: executionData.finished,
+		status: executionData.status,
 		stoppedAt: executionData.stoppedAt,
 	});
 
@@ -124,8 +123,7 @@ export async function updateExistingExecution(parameters: {
 		return updated;
 	}
 
-	// oxlint-disable-next-line typescript/no-deprecated
-	if (executionData.finished === true && executionData.retryOf !== undefined) {
+	if (executionData.status === 'success' && executionData.retryOf !== undefined) {
 		await executionPersistence.updateExistingExecution(executionData.retryOf, {
 			retrySuccessId: executionId,
 		});

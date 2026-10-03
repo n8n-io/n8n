@@ -11,10 +11,14 @@ import {
 	type OperationContext,
 	type Transaction,
 } from '@n8n/db';
-import { QueryFailedError } from '@n8n/typeorm';
+import { In, Not, QueryFailedError } from '@n8n/typeorm';
 import type { BinaryDataService, ErrorReporter, StorageConfig } from 'n8n-core';
 import type { IBinaryData, IRunExecutionData, IWorkflowBase } from 'n8n-workflow';
-import { createEmptyRunExecutionData, UnexpectedError } from 'n8n-workflow';
+import {
+	createEmptyRunExecutionData,
+	TERMINAL_EXECUTION_STATUSES,
+	UnexpectedError,
+} from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import { DuplicateExecutionError } from '@/errors/duplicate-execution.error';
@@ -1081,7 +1085,7 @@ describe('ExecutionPersistence', () => {
 				);
 
 				expect(mockTx.findOne).toHaveBeenCalledWith(ExecutionEntity, {
-					where: { id: executionId, finished: false },
+					where: { id: executionId, status: Not(In(TERMINAL_EXECUTION_STATUSES)) },
 					select: ['id'],
 					lock: { mode: 'pessimistic_write' },
 				});
@@ -1103,7 +1107,7 @@ describe('ExecutionPersistence', () => {
 				);
 
 				expect(mockTx.findOne).toHaveBeenCalledWith(ExecutionEntity, {
-					where: { id: executionId, finished: false },
+					where: { id: executionId, status: Not(In(TERMINAL_EXECUTION_STATUSES)) },
 					select: ['id'],
 				});
 			});
@@ -1178,7 +1182,7 @@ describe('ExecutionPersistence', () => {
 
 				expect(mockTx.update).toHaveBeenCalledWith(
 					ExecutionEntity,
-					{ id: executionId, finished: false },
+					{ id: executionId, status: Not(In(TERMINAL_EXECUTION_STATUSES)) },
 					{ status: 'success' },
 				);
 			});

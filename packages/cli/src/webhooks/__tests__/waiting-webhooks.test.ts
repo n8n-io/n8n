@@ -106,7 +106,8 @@ describe('WaitingWebhooks', () => {
 		 */
 		executionPersistence.findSingleExecution.mockResolvedValue(
 			mock<IExecutionResponse>({
-				finished: true,
+				finished: false,
+				status: 'success',
 				// Provide real values for the fields the Workflow constructor reads so
 				// vitest-mock-extended keeps them as plain data rather than auto-mocking
 				// them into functions (whose read-only `.mock` breaks ObservableObject).
@@ -127,6 +128,23 @@ describe('WaitingWebhooks', () => {
 		 */
 		await expect(promise).rejects.toThrowError(ConflictError);
 	});
+
+	it.each(['error', 'crashed', 'canceled'] as const)(
+		'rejects a %s execution before rendering a completion response',
+		async (status) => {
+			executionPersistence.findSingleExecution.mockResolvedValue(
+				mock<IExecutionResponse>({
+					status,
+					data: { resultData: { runData: {} }, resumeToken: undefined },
+					workflowData: { nodes: [], connections: {}, staticData: {} },
+				}),
+			);
+
+			await expect(
+				waitingWebhooks.executeWebhook(mock<WaitingWebhookRequest>(), mock<express.Response>()),
+			).rejects.toThrowError(ConflictError);
+		},
+	);
 
 	describe('findAccessControlOptions', () => {
 		it('should return * as allowed origins', async () => {

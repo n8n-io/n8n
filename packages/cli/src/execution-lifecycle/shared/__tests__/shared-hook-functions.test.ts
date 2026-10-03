@@ -1,11 +1,15 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import { mock } from 'vitest-mock-extended';
-import type { IRun } from 'n8n-workflow';
+import type { IRun, IWorkflowBase } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 
-import { determineFinalExecutionStatus, updateExistingExecution } from '../shared-hook-functions';
+import {
+	determineFinalExecutionStatus,
+	prepareExecutionDataForDbUpdate,
+	updateExistingExecution,
+} from '../shared-hook-functions';
 
 describe('determineFinalExecutionStatus', () => {
 	describe('When waitTill is not set', () => {
@@ -81,11 +85,38 @@ describe('updateExistingExecution', () => {
 		await updateExistingExecution({
 			executionId: 'exec-2',
 			workflowId: 'wf-1',
-			executionData: { finished: true, retryOf: 'original-2' },
+			executionData: { finished: false, status: 'success', retryOf: 'original-2' },
 		});
 
 		expect(executionPersistence.updateExistingExecution).toHaveBeenCalledWith('original-2', {
 			retrySuccessId: 'exec-2',
 		});
 	});
+
+	it('does not mark an unsuccessful retry as successful when finished is true', async () => {
+		executionPersistence.updateExistingExecution.mockResolvedValue(true);
+
+		await updateExistingExecution({
+			executionId: 'exec-3',
+			workflowId: 'wf-1',
+			executionData: { finished: true, status: 'error', retryOf: 'original-3' },
+		});
+
+		expect(executionPersistence.updateExistingExecution).toHaveBeenCalledTimes(1);
+	});
+});
+
+describe('prepareExecutionDataForDbUpdate', () => {
+	it.each(['success', 'error', 'crashed', 'canceled', 'waiting'] as const)(
+		'derives the legacy finished column from %s status',
+		(workflowStatusFinal) => {
+			const result = prepareExecutionDataForDbUpdate({
+				runData: mock<IRun>({ finished: workflowStatusFinal !== 'success' }),
+				workflowData: mock<IWorkflowBase>({ id: 'wf-1' }),
+				workflowStatusFinal,
+			});
+
+			expect(result.finished).toBe(workflowStatusFinal === 'success');
+		},
+	);
 });

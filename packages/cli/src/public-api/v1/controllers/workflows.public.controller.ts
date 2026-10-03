@@ -276,8 +276,8 @@ export class WorkflowsPublicController {
 			data: workflows.map((workflow) => ({
 				id: workflow.id,
 				name: workflow.name,
-				// oxlint-disable-next-line typescript/no-deprecated
-				active: workflow.active,
+				// Keep the public compatibility field based on the active version.
+				active: workflow.activeVersionId !== null,
 				activeVersionId: workflow.activeVersionId,
 				createdAt: workflow.createdAt.toISOString(),
 				updatedAt: workflow.updatedAt.toISOString(),
@@ -538,8 +538,7 @@ export class WorkflowsPublicController {
 			id: workflow.id,
 			name: workflow.name,
 			description: workflow.description,
-			// oxlint-disable-next-line typescript/no-deprecated
-			active: workflow.active,
+			active: workflow.activeVersionId !== null,
 			activeVersionId: workflow.activeVersionId,
 			createdAt: workflow.createdAt.toISOString(),
 			updatedAt: workflow.updatedAt.toISOString(),

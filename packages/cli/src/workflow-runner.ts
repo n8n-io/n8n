@@ -183,8 +183,7 @@ export class WorkflowRunner {
 
 						if (fullExecutionData?.data) {
 							storedRunData = {
-								// oxlint-disable-next-line typescript/no-deprecated
-								finished: fullExecutionData.finished,
+								finished: fullExecutionData.status === 'success',
 								mode: fullExecutionData.mode,
 								startedAt: fullExecutionData.startedAt,
 								stoppedAt: fullExecutionData.stoppedAt,
@@ -696,6 +695,8 @@ export class WorkflowRunner {
 				.then((fullRunData) => {
 					clearTimeout(executionTimeout);
 					if (workflowExecution.isCanceled) {
+						fullRunData.status = 'canceled';
+						// Keep the legacy run payload in sync for mixed-version consumers.
 						// oxlint-disable-next-line typescript/no-deprecated
 						fullRunData.finished = false;
 					}
@@ -898,8 +899,7 @@ export class WorkflowRunner {
 					}
 
 					runData = {
-						// oxlint-disable-next-line typescript/no-deprecated
-						finished: fullExecutionData.finished,
+						finished: fullExecutionData.status === 'success',
 						mode: fullExecutionData.mode,
 						startedAt: fullExecutionData.startedAt,
 						stoppedAt: fullExecutionData.stoppedAt,

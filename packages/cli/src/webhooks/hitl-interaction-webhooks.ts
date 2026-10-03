@@ -2,6 +2,7 @@ import type { IExecutionResponse } from '@n8n/db';
 import type express from 'express';
 import type { ParsedHitlCallbackReference } from 'n8n-core';
 import { verifyHitlCallbackReference } from 'n8n-core';
+import { isTerminalExecutionStatus } from 'n8n-workflow';
 
 import { WaitingWebhooks } from './waiting-webhooks';
 import { sanitizeWebhookRequest } from './webhook-request-sanitizer';
@@ -58,8 +59,11 @@ export abstract class HitlInteractionWebhooks extends WaitingWebhooks {
 		const execution = await this.getExecution(parsed.executionId);
 		if (!execution) return { ok: false, status: 404 };
 
-		// oxlint-disable-next-line typescript/no-deprecated
-		if (execution.status === 'running' || execution.finished || execution.data?.resultData?.error) {
+		if (
+			execution.status === 'running' ||
+			isTerminalExecutionStatus(execution.status) ||
+			execution.data?.resultData?.error
+		) {
 			// Replayed or late interaction: nothing left to resume.
 			return { ok: false, status: 409 };
 		}

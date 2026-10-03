@@ -155,9 +155,8 @@ export class WaitTracker {
 		if (!fullExecutionData) {
 			throw new UnexpectedError('Execution does not exist.', { extra: { executionId } });
 		}
-		// oxlint-disable-next-line typescript/no-deprecated
-		if (fullExecutionData.finished) {
-			throw new UnexpectedError('The execution did succeed and can so not be started again.');
+		if (isTerminalExecutionStatus(fullExecutionData.status)) {
+			throw new UnexpectedError('A completed execution cannot be started again.');
 		}
 
 		if (!fullExecutionData.workflowData.id) {

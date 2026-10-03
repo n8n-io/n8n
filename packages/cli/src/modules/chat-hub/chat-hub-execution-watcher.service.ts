@@ -144,10 +144,8 @@ export class ChatHubExecutionWatcherService {
 			return;
 		}
 
-		// NOTE: This check is required because on multi-main/queue mode, the resumed execution's
-		// 'workflowExecuteAfter' hook fires one more time after it should have stopped in 'waiting'
-		// state on a Chat response node. On this final hook call the runData.status is 'success' even though
-		// the execution isn't finished. On single-main mode this does not happen.
+		// In queue mode, a resumed Chat response can report `success` before the run ends.
+		// Keep the legacy hook marker until that callback reports the correct status.
 		// oxlint-disable-next-line typescript/no-deprecated
 		if (runData.finished) {
 			await this.pushFinalResults(context, message);
