@@ -152,28 +152,39 @@ describe('SettingsOpenTelemetryView', () => {
 		});
 	});
 
-	// ── status control (instant enable/disable) ───────────────────────────────
+	// ── status control ────────────────────────────────────────────────────────
 
-	it('enables OpenTelemetry immediately when clicking Enable, without the save bar', async () => {
+	it('shows the save bar instead of saving when clicking Enable', async () => {
 		getOtelSettingsMock.mockResolvedValue(makeSettings({ enabled: false }));
-		updateOtelSettingsMock.mockResolvedValue(makeSettings({ enabled: true }));
 
-		const { getByTestId, queryByTestId } = render();
+		const { getByTestId, getByText, store } = render();
 		await waitFor(() => expect(getByTestId('otel-enabled-toggle')).toBeInTheDocument());
 
 		await userEvent.click(getByTestId('otel-enabled-toggle'));
 
-		await waitFor(() => {
-			expect(updateOtelSettingsMock).toHaveBeenCalledWith(
-				expect.anything(),
-				expect.objectContaining({ enabled: true }),
-			);
-			expect(showMessage).toHaveBeenCalledWith(expect.objectContaining({ type: 'success' }));
-		});
-		expect(queryByTestId('settings-save-bar')).not.toBeInTheDocument();
+		await waitFor(() => expect(getByTestId('settings-save-bar')).toBeInTheDocument());
+		expect(store.settings.enabled).toBe(true);
+		expect(getByText(/Tracing is on/)).toBeInTheDocument();
+		expect(updateOtelSettingsMock).not.toHaveBeenCalled();
 	});
 
-	it('commits pending form edits when enabling', async () => {
+	it('shows the save bar instead of saving when clicking Disable', async () => {
+		getOtelSettingsMock.mockResolvedValue(makeSettings({ enabled: true }));
+
+		const { getByTestId, getByText, store } = render();
+		await waitFor(() => expect(getByTestId('otel-enabled-toggle')).toBeInTheDocument());
+
+		await userEvent.click(getByTestId('otel-enabled-toggle'));
+		await waitFor(() => expect(getByText('Disable')).toBeInTheDocument());
+		await userEvent.click(getByText('Disable'));
+
+		await waitFor(() => expect(getByTestId('settings-save-bar')).toBeInTheDocument());
+		expect(store.settings.enabled).toBe(false);
+		expect(getByText(/Tracing is off/)).toBeInTheDocument();
+		expect(updateOtelSettingsMock).not.toHaveBeenCalled();
+	});
+
+	it('saves the status with pending form edits when clicking Save in the save bar', async () => {
 		getOtelSettingsMock.mockResolvedValue(makeSettings({ enabled: false }));
 		updateOtelSettingsMock.mockResolvedValue(
 			makeSettings({ enabled: true, exporterEndpoint: 'http://localhost:4318x' }),
@@ -183,32 +194,33 @@ describe('SettingsOpenTelemetryView', () => {
 		await waitFor(() => expect(getByTestId('otel-exporter-endpoint')).toBeInTheDocument());
 
 		await dirtyEndpoint(getByTestId);
-		await waitFor(() => expect(getByTestId('settings-save-bar')).toBeInTheDocument());
-
 		await userEvent.click(getByTestId('otel-enabled-toggle'));
+		await waitFor(() => expect(getByTestId('settings-save-bar-save')).toBeInTheDocument());
+		await userEvent.click(getByTestId('settings-save-bar-save'));
 
 		await waitFor(() => {
 			expect(updateOtelSettingsMock).toHaveBeenCalledWith(
 				expect.anything(),
 				expect.objectContaining({ enabled: true, exporterEndpoint: 'http://localhost:4318x' }),
 			);
+			expect(showMessage).toHaveBeenCalledWith(expect.objectContaining({ type: 'success' }));
 			expect(queryByTestId('settings-save-bar')).not.toBeInTheDocument();
 		});
 	});
 
-	it('rolls the status back when enabling fails', async () => {
+	it('reverts the status when clicking Discard in the save bar', async () => {
 		getOtelSettingsMock.mockResolvedValue(makeSettings({ enabled: false }));
-		updateOtelSettingsMock.mockRejectedValue(new Error('network error'));
 
-		const { getByTestId, store } = render();
+		const { getByTestId, queryByTestId, store } = render();
 		await waitFor(() => expect(getByTestId('otel-enabled-toggle')).toBeInTheDocument());
 
 		await userEvent.click(getByTestId('otel-enabled-toggle'));
+		await waitFor(() => expect(getByTestId('settings-save-bar-discard')).toBeInTheDocument());
+		await userEvent.click(getByTestId('settings-save-bar-discard'));
 
-		await waitFor(() => {
-			expect(showError).toHaveBeenCalledWith(expect.any(Error), expect.any(String));
-			expect(store.settings.enabled).toBe(false);
-		});
+		await waitFor(() => expect(queryByTestId('settings-save-bar')).not.toBeInTheDocument());
+		expect(store.settings.enabled).toBe(false);
+		expect(updateOtelSettingsMock).not.toHaveBeenCalled();
 	});
 
 	it('shows save button after toggling includeNodeSpans checkbox', async () => {
@@ -266,6 +278,8 @@ describe('SettingsOpenTelemetryView', () => {
 		await waitFor(() => expect(getByTestId('otel-enabled-toggle')).toBeInTheDocument());
 
 		await userEvent.click(getByTestId('otel-enabled-toggle'));
+		await waitFor(() => expect(getByTestId('settings-save-bar-save')).toBeInTheDocument());
+		await userEvent.click(getByTestId('settings-save-bar-save'));
 
 		await waitFor(() => {
 			expect(telemetryTrack).toHaveBeenCalledWith(
@@ -285,6 +299,8 @@ describe('SettingsOpenTelemetryView', () => {
 		await userEvent.click(getByTestId('otel-enabled-toggle'));
 		await waitFor(() => expect(getByText('Disable')).toBeInTheDocument());
 		await userEvent.click(getByText('Disable'));
+		await waitFor(() => expect(getByTestId('settings-save-bar-save')).toBeInTheDocument());
+		await userEvent.click(getByTestId('settings-save-bar-save'));
 
 		await waitFor(() => {
 			expect(telemetryTrack).toHaveBeenCalledWith('Disabled otel via UI');
