@@ -406,11 +406,6 @@ export class License implements LicenseProvider {
 		return this.isLicensed(LICENSE_FEATURES.COMMUNITY_NODES_CUSTOM_REGISTRY);
 	}
 
-	/** @deprecated Use `LicenseState.isFoldersLicensed` instead. */
-	isFoldersEnabled() {
-		return this.isLicensed(LICENSE_FEATURES.FOLDERS);
-	}
-
 	getCurrentEntitlements() {
 		return this.manager?.getCurrentEntitlements() ?? [];
 	}
