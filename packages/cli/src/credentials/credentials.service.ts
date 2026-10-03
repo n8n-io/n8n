@@ -967,6 +967,35 @@ export class CredentialsService {
 	}
 
 	/**
+	 * Decrypts a stored credential whose secret is about to leave n8n, such as a test call to its
+	 * provider. Refuses what the credential policy blocks; `decrypt` stays for display and rewrite.
+	 * `projectId` defaults to the owning project. Pass `null` to judge on instance policy only.
+	 */
+	async decryptForUse(
+		credential: CredentialsEntity,
+		actor: PolicyActor,
+		projectId?: string | null,
+	): Promise<ICredentialDataDecryptedObject> {
+		const judgedProjectId =
+			projectId === undefined
+				? ((await this.findCredentialOwningProject(credential.id))?.id ?? null)
+				: projectId;
+		await this.enforceCredentialUse(credential, actor, judgedProjectId);
+		return await this.decrypt(credential, true);
+	}
+
+	private async enforceCredentialUse(
+		credential: Pick<ICredentialsDecrypted, 'id' | 'type'>,
+		actor: PolicyActor,
+		projectId: string | null,
+	) {
+		await this.policyEnforcementService.enforceCredentialDecrypt(
+			{ credentialType: credential.type, credentialId: credential.id, consumer: null, projectId },
+			actor,
+		);
+	}
+
+	/**
 	 * Decrypts the credentials data and redacts the content by default.
 	 *
 	 * If `includeRawData` is set to true it will not redact the data.
@@ -1426,7 +1455,7 @@ export class CredentialsService {
 			throw new CredentialNotFoundError(credentialId);
 		}
 
-		const credentials = await this.prepareCredentialsForTest({ storedCredential });
+		const credentials = await this.prepareCredentialsForTest({ storedCredential, user });
 		return await this.test(user.id, credentials);
 	}
 
@@ -1441,6 +1470,8 @@ export class CredentialsService {
 		if (!storedCredential) {
 			if (credentials.id === '' && hasGlobalScope(user, 'credential:manageInstance')) {
 				this.validateInstanceCredentialData(credentials.data ?? {});
+				// Nothing stored is decrypted, but the test still calls the blocked type's provider.
+				await this.enforceCredentialUse(credentials, { kind: 'user', user }, null);
 				return await this.test(user.id, credentials);
 			}
 			throw new CredentialNotFoundError(credentials.id);
@@ -1472,7 +1503,7 @@ export class CredentialsService {
 			throw new CredentialNotFoundError(credentialId);
 		}
 
-		const data = await this.decrypt(storedCredential, true);
+		const data = await this.decryptForUse(storedCredential, { kind: 'user', user });
 
 		// Expressions and non-HTTP values are refused, not resolved.
 		const testTarget = parseHttpUrl(data.testUrl);
@@ -2337,10 +2368,18 @@ export class CredentialsService {
 		credentialsToTest,
 	}: {
 		storedCredential: CredentialsEntity;
-		user?: User;
+		user: User;
 		credentialsToTest?: ICredentialsDecrypted;
 	}): Promise<ICredentialsDecrypted> {
-		const decryptedData = await this.decrypt(storedCredential, true);
+		// Find the owning project to prevent leakage of other project data.
+		const owningProject = await this.findCredentialOwningProject(storedCredential.id);
+		const actor: PolicyActor = { kind: 'user', user };
+		const projectId = owningProject?.id ?? null;
+		// The tester picks the provider test from the posted type, so that type must clear too.
+		if (credentialsToTest && credentialsToTest.type !== storedCredential.type) {
+			await this.enforceCredentialUse(credentialsToTest, actor, projectId);
+		}
+		const decryptedData = await this.decryptForUse(storedCredential, actor, projectId);
 		const mergedCredentials: ICredentialsDecrypted = credentialsToTest
 			? deepCopy(credentialsToTest)
 			: {
@@ -2350,8 +2389,6 @@ export class CredentialsService {
 					data: decryptedData,
 				};
 
-		// Find the owning project to prevent leakage of other project data.
-		const owningProject = await this.findCredentialOwningProject(storedCredential.id);
 		if (!owningProject) {
 			mergedCredentials.homeProject = undefined;
 		} else {
@@ -2365,7 +2402,7 @@ export class CredentialsService {
 			};
 		}
 
-		if (user && credentialsToTest) {
+		if (credentialsToTest) {
 			await this.replaceCredentialContentsForSharee(
 				user,
 				storedCredential,
