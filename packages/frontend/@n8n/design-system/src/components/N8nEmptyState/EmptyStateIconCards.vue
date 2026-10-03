@@ -15,8 +15,9 @@ defineOptions({ name: 'N8nEmptyStateIconCards' });
 const props = withDefaults(defineProps<EmptyStateIconCardsProps>(), { animated: true });
 
 // Swaps alternate between the two side cards, one per beat, so each card holds its icon for
-// two beats. The right card starts halfway around the icon list, so the two sides never show
-// the same icon at once.
+// two beats. The right card starts halfway around the icon list (rounding up: the gap between
+// the sides shrinks by one after every left swap, so with three icons rounding down would make
+// them coincide), which keeps the two sides from ever showing the same icon at once.
 const FADE_MS = 300;
 const BEAT_MS = 1500;
 // The first swap lands half a beat after mount: long enough to register the opening trio,
@@ -25,7 +26,7 @@ const LEAD_IN_MS = BEAT_MS / 2;
 
 const count = computed(() => props.sideIcons.length);
 const leftIndex = ref(0);
-const rightIndex = ref(Math.floor(props.sideIcons.length / 2));
+const rightIndex = ref(Math.ceil(props.sideIcons.length / 2));
 const leftFading = ref(false);
 const rightFading = ref(false);
 
@@ -90,7 +91,7 @@ const shouldCycle = computed(() => props.animated && count.value >= 3);
 const startCycling = () => {
 	stopCycling();
 	leftIndex.value = 0;
-	rightIndex.value = shouldCycle.value ? Math.floor(count.value / 2) : count.value > 1 ? 1 : 0;
+	rightIndex.value = shouldCycle.value ? Math.ceil(count.value / 2) : count.value > 1 ? 1 : 0;
 	leftFading.value = false;
 	rightFading.value = false;
 	nextSide = 'left';

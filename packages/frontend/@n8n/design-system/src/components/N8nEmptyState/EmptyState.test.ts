@@ -70,7 +70,9 @@ describe('N8nEmptyState', () => {
 			await nextTick();
 			expect(wrapper.container.querySelector('[data-icon="tree-pine"]')).toBeInTheDocument();
 			expect(wrapper.getByTestId('stub-mark')).toBeInTheDocument();
-			expect(wrapper.container.querySelector('[data-icon="code"]')).toBeInTheDocument();
+			// The right card starts halfway around the list, rounding up.
+			expect(wrapper.container.querySelector('[data-icon="terminal"]')).toBeInTheDocument();
+			expect(wrapper.container.querySelector('[data-icon="code"]')).not.toBeInTheDocument();
 		});
 
 		it('should start cycling shortly after mount, alternating sides', async () => {
@@ -105,6 +107,40 @@ describe('N8nEmptyState', () => {
 			expect(hasIcon('bot')).toBe(false);
 			expect(hasIcon('globe')).toBe(true);
 			expect(hasIcon('terminal')).toBe(true);
+		});
+
+		it('should never show the same icon on both side cards, even with three icons', async () => {
+			const wrapper = render(N8nEmptyState, {
+				props: {
+					icon: {
+						type: 'cards',
+						center: 'tree-pine',
+						sides: ['code', 'terminal', 'bot'],
+					},
+				},
+				global: {
+					stubs: ['N8nHeading', 'N8nText', 'N8nButton', 'N8nCallout', 'N8nTooltip'],
+				},
+			});
+
+			const sideIcons = () =>
+				Array.from(wrapper.container.querySelectorAll('[data-icon]'))
+					.map((el) => el.getAttribute('data-icon'))
+					.filter((name) => name !== 'tree-pine');
+
+			await nextTick();
+			expect(sideIcons()).toEqual(['code', 'bot']);
+
+			// Lead-in plus fade lands the first swap; then step through a whole cycle (six
+			// alternating swaps bring both cards back to their opening icons).
+			await vi.advanceTimersByTimeAsync(1100);
+			for (let swap = 1; swap <= 6; swap++) {
+				const icons = sideIcons();
+				expect(icons).toHaveLength(2);
+				expect(new Set(icons).size).toBe(2);
+				if (swap < 6) await vi.advanceTimersByTimeAsync(1500);
+			}
+			expect(sideIcons()).toEqual(['code', 'bot']);
 		});
 
 		it('should not cycle when animated is false', async () => {
