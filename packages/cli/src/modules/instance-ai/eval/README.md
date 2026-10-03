@@ -9,7 +9,7 @@ Mocks the **raw HTTP response a service sends over the wire**. The node then
 executes for real: its routing, pagination, response parsing, and
 post-processing (e.g. `simplify` options) all run against the mocked body.
 
-- Shape source: fetched API documentation (`api-docs.ts`) + endpoint quirks.
+- Shape source: the LLM's own knowledge of the API + endpoint quirks.
 - Used when a node executes against intercepted HTTP.
 
 ## Node-output level — pin data / simulation fixtures

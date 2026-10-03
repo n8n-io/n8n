@@ -16,7 +16,6 @@ import type { EvalLlmMockHandler, EvalMockHttpResponse, FixtureSizeHint } from '
 import { buildPdfWithText, synthesizeBinaryFixture } from 'n8n-core';
 import { z } from 'zod';
 
-import { fetchApiDocs } from './api-docs';
 import { buildDateAnchors } from './date-anchors';
 import { findMockQuirks } from './mock-quirks';
 import { extractNodeConfig } from './node-config';
@@ -37,19 +36,19 @@ export { buildDateAnchors } from './date-anchors';
 
 const MOCK_SYSTEM_PROMPT = `You generate realistic HTTP responses for one specific request, mocking an API in n8n workflow evaluation.
 
-You get everything you need in the user message: the request (service, method, URL, body, query), API docs for the endpoint, the n8n node's parameters, and optional context (globalContext, nodeHint, scenarioHints).
+You get everything you need in the user message: the request (service, method, URL, body, query), the n8n node's parameters, and optional context (globalContext, nodeHint, scenarioHints).
 
 **Procedure — follow in order:**
 1. Call \`get_endpoint_quirks\` first, always. It returns any known guidance specific to this endpoint, or confirms there are none. Treat its output as authoritative.
-2. Generate the response that satisfies the API docs, node config, scenario context, and any quirk guidance from step 1.
+2. Generate the response that matches the real API, the node config, scenario context, and any quirk guidance from step 1.
 3. Call \`submit_response\` to deliver the response. If it returns a message starting with "Invalid:", fix the input and call it again — your response only counts once it is accepted. Do not write the response as text.
 
 **Write operations (POST / PUT / PATCH that create or modify a resource):**
-Return the FULL resource object the API produces on success — not a minimal acknowledgement-only response. When the docs show multiple response variants for one endpoint, default to the FULL/complete one. Use a partial/minimal variant only if the request body contains the explicit field that triggers it (e.g. \`template\`, \`async: true\`).
+Return the FULL resource object the API produces on success — not a minimal acknowledgement-only response. When the API has multiple response variants for one endpoint, default to the FULL/complete one. Use a partial/minimal variant only if the request body contains the explicit field that triggers it (e.g. \`template\`, \`async: true\`).
 
 Each request is mocked independently. Even when the same node makes multiple similar calls in a workflow, every call must produce a fully-shaped response on its own — never shortcut later calls. (Byte-identical repeats of a request you already answered are served from a cache and never reach you — any request you DO see is distinct and needs its own full response.)
 
-Response SHAPE comes from the API docs; DATA VALUES come from the node config. Use names/IDs from the config exactly (case-sensitive).
+Response SHAPE comes from your knowledge of the real API; DATA VALUES come from the node config. Use names/IDs from the config exactly (case-sensitive).
 
 **Honor explicit values from the scenario and hints.** When the scenarioHints, nodeHint, or globalContext state a specific value — a quantity with a unit, a percentage, a monetary amount ("$1,200"), a count ("3 rows"), a threshold, an ID, or a name — reproduce that EXACT value in the response. Do NOT round it, soften it toward a "more typical" reading, or substitute your own estimate: the stated value is the test's intent, and downstream nodes (IF/Switch gates, filters, sums) compare against it. Emit the exact number of enumerated items the context describes. This extends to per-item constraints: when the scenario says EVERY/ALL items share a property (a literal substring every title must contain, a minimum every row must exceed), EVERY item you generate must satisfy it — check each item against the constraint character-by-character before responding (near-miss variants of a required literal fail the test). Only invent a value when the context gives none for that field. If a nodeHint and the scenario disagree, the scenario wins. When the context assigns an error or missing-data condition to a specific entity (one channel, one user, one record), compare THIS request's parameters (URL, query, body) against that entity: return the error response ONLY when this request targets it, and a normal success response for every other entity — an error scenario is only tested if the matching request actually fails.
 
@@ -57,14 +56,14 @@ Response SHAPE comes from the API docs; DATA VALUES come from the node config. U
 
 **Node response-handling options are not part of the body.** The node config may include options that control how n8n post-processes the response — \`fullResponse\`, \`responseFormat\`, \`outputPropertyName\`, pagination. These are applied AFTER you return and must NOT change the body you produce: always return the raw body the real API sends over the wire. Never reshape the body to mimic them — a body shaped like \`{ statusCode, headers, body }\` (mimicking \`fullResponse\`) or \`{ <outputPropertyName>: ... }\` is wrong.
 
-**Response envelope.** Return the body exactly as the real service sends it over the wire, including any top-level wrapper the API puts around results — e.g. \`{ "data": [...], "nextCursor": null }\`, \`{ "results": [...] }\`, \`{ "items": [...], "has_more": false }\`, \`{ "ok": true, "result": ... }\`. Match the real API's top-level shape exactly: many list endpoints wrap their items, but plenty return a bare top-level array (e.g. an endpoint that returns an array of IDs). Follow what the real API actually returns per the docs — don't default to wrapping a bare-array response, and don't strip a wrapper the API really uses.
+**Response envelope.** Return the body exactly as the real service sends it over the wire, including any top-level wrapper the API puts around results — e.g. \`{ "data": [...], "nextCursor": null }\`, \`{ "results": [...] }\`, \`{ "items": [...], "has_more": false }\`, \`{ "ok": true, "result": ... }\`. Match the real API's top-level shape exactly: many list endpoints wrap their items, but plenty return a bare top-level array (e.g. an endpoint that returns an array of IDs). Follow what the real API actually returns — don't default to wrapping a bare-array response, and don't strip a wrapper the API really uses.
 
 Node-config patterns to know:
   - "__rl" object: "value" is the selected resource id
   - "schema" array: each entry's "id" is the response field name (NOT "displayName"). e.g. {id:"timestamp",displayName:"Timestamp"} → response uses "timestamp"
   - Strings starting with "=" are expressions (ignore)
 
-**Time-relative fields.** The user prompt ends with a "## Date anchors" block listing today's date plus a handful of relative anchors (yesterday, 7 days ago, etc.). EVERY timestamp, date, hourly/daily entry, and time-relative field in your response MUST be derived from those anchors — never from training data or from the example dates in the API documentation. Workflows commonly filter mock responses by today's date; values outside the current window are silently discarded and the scenario fails.
+**Time-relative fields.** The user prompt ends with a "## Date anchors" block listing today's date plus a handful of relative anchors (yesterday, 7 days ago, etc.). EVERY timestamp, date, hourly/daily entry, and time-relative field in your response MUST be derived from those anchors — never from training data or from example dates you remember for this API. Workflows commonly filter mock responses by today's date; values outside the current window are silently discarded and the scenario fails.
 
 Match THIS request only (URL + method): a node may make multiple sequential calls; reply to the specific one shown. Echo identifiers, placeholders, and reference values from the request back into the response. Return a single page (don't expect multi-page cursor follow-up), but keep the API's real envelope and mark it as the final page (e.g. \`nextCursor: null\`, \`has_more: false\`).
 
@@ -88,6 +87,10 @@ For APIs that return empty responses on success (204/202), call submit_response 
 const DEFAULT_MAX_RETRIES = 2;
 const ERROR_PREVIEW_MAX = 400;
 const ERROR_DETAIL_MAX = 300;
+
+// No docs are fetched: the LLM's own knowledge of the API is the source, the same on every run.
+const API_DOCS_NOTE =
+	'No API documentation is attached. Generate the response based on your knowledge of this API. Follow standard REST conventions for the HTTP method: GET returns resource data, POST returns the created resource, PUT/PATCH returns the updated resource, DELETE returns 204 or confirmation.';
 
 /**
  * Hang guard for a single mock-generation LLM call (including tool turns).
@@ -354,11 +357,7 @@ async function generateMockResponse(
 		);
 	}
 
-	const apiDocs = await fetchApiDocs(
-		serviceName,
-		`${request.method ?? 'GET'} ${endpoint} response format`,
-	);
-	sections.push('', '## API documentation', apiDocs);
+	sections.push('', '## API documentation', API_DOCS_NOTE);
 
 	if (context.nodeConfig) {
 		sections.push('', '## Node Configuration', context.nodeConfig);
@@ -386,7 +385,7 @@ async function generateMockResponse(
 		sections.push(context.pinnedOutputs);
 	}
 
-	// Anchors go last — the API docs above carry training-era dates, so these
+	// Anchors go last — the model's API knowledge carries training-era dates, so these
 	// need to be the freshest context before generation.
 	sections.push('', '## Date anchors', dateAnchors);
 
@@ -764,7 +763,7 @@ function createQuirksLookupTool(
 		.handler(async () => {
 			const guidance = findMockQuirks(serviceName, method, pathname, hostname);
 			if (guidance.length === 0) {
-				return 'No specific quirks for this endpoint. Follow the API docs and the system rules.';
+				return 'No specific quirks for this endpoint. Follow the real API and the system rules.';
 			}
 			return guidance.join('\n\n');
 		})
