@@ -73,6 +73,7 @@ describe('memoryManagement', () => {
 				new HumanMessage('   '), // Blank string after trimming
 				new AIMessage({ content: [] }), // Empty array
 				new AIMessage({ content: [{ type: 'text', text: '   ' }] }), // Array with empty text block
+				new AIMessage({ content: ['   '] }), // Array with raw empty string
 				new AIMessage({ content: null as unknown as string }), // Null content
 				validArrayContentMessage, // Should be kept because it has non-empty array content
 				new HumanMessage('Trigger'), // Add a valid human message before tool_calls to prevent cleanup

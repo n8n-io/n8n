@@ -263,6 +263,9 @@ export async function loadMemory(
 				// An array is only valid if it contains at least one non-empty text block
 				// or any non-text block (like image_url).
 				return msg.content.some((block) => {
+					if (typeof block === 'string') {
+						return block.trim() !== '';
+					}
 					if (block && typeof block === 'object' && 'type' in block && block.type === 'text') {
 						return typeof block.text === 'string' && block.text.trim() !== '';
 					}
