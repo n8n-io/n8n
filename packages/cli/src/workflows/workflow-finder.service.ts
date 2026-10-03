@@ -1,4 +1,5 @@
-import type { SharedWorkflow, User, WorkflowEntity, ListQuery } from '@n8n/db';
+import { RoleService } from '@n8n/backend-services';
+import type { SharedWorkflow, User, WorkflowEntity, ListQuery, OperationContext } from '@n8n/db';
 import {
 	SharedWorkflowRepository,
 	FolderRepository,
@@ -12,7 +13,6 @@ import type { EntityManager, FindOptionsWhere } from '@n8n/typeorm';
 import { In, IsNull } from '@n8n/typeorm';
 
 import { userHasScopes } from '@/permissions.ee/check-access';
-import { RoleService } from '@n8n/backend-services';
 
 export type FindWorkflowsForUserOptions = {
 	filters?: {
@@ -48,17 +48,16 @@ export class WorkflowFinderService {
 			includeTags?: boolean;
 			includeParentFolder?: boolean;
 			includeActiveVersion?: boolean;
-			em?: EntityManager;
-		} = {},
+		} & ({ em?: EntityManager; ctx?: never } | { ctx?: OperationContext; em?: never }) = {},
 	) {
-		const where = await this.buildSingleWorkflowReadWhere(user, scopes, options.em);
+		const where = await this.buildSingleWorkflowReadWhere(user, scopes, options.em ?? options.ctx);
 
 		const sharedWorkflow = await this.sharedWorkflowRepository.findWorkflowWithOptions(workflowId, {
 			where,
 			includeTags: options.includeTags,
 			includeParentFolder: options.includeParentFolder,
 			includeActiveVersion: options.includeActiveVersion,
-			em: options.em,
+			...(options.em ? { em: options.em } : { ctx: options.ctx }),
 		});
 
 		if (!sharedWorkflow) {
@@ -99,10 +98,10 @@ export class WorkflowFinderService {
 	private async buildSingleWorkflowReadWhere(
 		user: User,
 		scopes: Scope[],
-		em?: EntityManager,
+		context?: EntityManager | OperationContext,
 	): Promise<FindOptionsWhere<SharedWorkflow>> {
 		if (hasGlobalScope(user, scopes, { mode: 'allOf' })) return {};
-		const loadRoles = em ? async () => await this.roleRepository.findAll(em) : undefined;
+		const loadRoles = context ? async () => await this.roleRepository.findAll(context) : undefined;
 		const rolesWithScope = async (namespace: 'project' | 'workflow') =>
 			loadRoles
 				? await this.roleService.rolesWithScope(namespace, scopes, loadRoles)

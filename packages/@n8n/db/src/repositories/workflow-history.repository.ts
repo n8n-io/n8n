@@ -20,6 +20,16 @@ export class WorkflowHistoryRepository extends BaseRepository<WorkflowHistory> {
 		super(WorkflowHistory, dataSource.manager, transactionRunner);
 	}
 
+	async insertVersion(
+		version: Pick<
+			WorkflowHistory,
+			'authors' | 'connections' | 'nodes' | 'versionId' | 'workflowId' | 'autosaved'
+		> & { name?: string; description?: string; nodeGroups?: WorkflowHistory['nodeGroups'] },
+		ctx: OperationContext,
+	) {
+		await this.managerFor(ctx).insert(WorkflowHistory, version);
+	}
+
 	async deleteEarlierThan(date: Date) {
 		return await this.delete({ createdAt: LessThan(date) });
 	}

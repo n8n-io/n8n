@@ -3,8 +3,16 @@ import type { WorkflowListPublicationStatus } from '@n8n/api-types';
 import { LicenseState, Logger } from '@n8n/backend-common';
 import { EventService, RoleService } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
-import type { User, ListQueryDb, Project, WorkflowFolderUnionFull, WorkflowHistory } from '@n8n/db';
+import type {
+	User,
+	ListQueryDb,
+	Project,
+	WorkflowFolderUnionFull,
+	WorkflowHistory,
+	OperationContext,
+} from '@n8n/db';
 import {
+	TransactionRunner,
 	SharedWorkflow,
 	WorkflowEntity,
 	FolderRepository,
@@ -134,6 +142,7 @@ export class WorkflowService {
 		private readonly policyEnforcementService: PolicyEnforcementService,
 		private readonly workflowPublicationStatusService: WorkflowPublicationStatusService,
 		private readonly nodeGroupRulesFlagGate: NodeGroupRulesFlagGate,
+		private readonly transactionRunner: TransactionRunner,
 		private readonly errorWorkflowValidationService: ErrorWorkflowValidationService,
 	) {}
 
@@ -475,6 +484,13 @@ export class WorkflowService {
 			versionDescription?: string;
 			/** Allows a package import to update archived content. */
 			allowArchivedUpdate?: boolean;
+			/** Both callbacks run inside the save transaction. A callback failure rolls back all writes. */
+			guardedUpdate?: {
+				/** Validate the prepared workflow before any writes. */
+				beforeSave: (ctx: OperationContext, prepared: WorkflowEntity) => Promise<void>;
+				/** Save related state after the workflow and history writes, before commit. */
+				afterSave: (ctx: OperationContext, saved: WorkflowEntity) => Promise<void>;
+			};
 			/**
 			 * Skips the `settings.errorWorkflow` write-time check for a package import.
 			 * See {@link assertErrorWorkflowChangeAllowed}.
@@ -496,6 +512,7 @@ export class WorkflowService {
 			versionName,
 			versionDescription,
 			allowArchivedUpdate = false,
+			guardedUpdate,
 			allowUnresolvedErrorWorkflow = false,
 		} = options;
 		const workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
@@ -510,6 +527,10 @@ export class WorkflowService {
 			throw new NotFoundError(
 				'You do not have permission to update this workflow. Ask the owner to share it with you.',
 			);
+		}
+
+		if (guardedUpdate && tagIds) {
+			throw new BadRequestError('A guarded workflow save cannot change tags.');
 		}
 
 		if (workflow.isArchived && !allowArchivedUpdate) {
@@ -723,21 +744,6 @@ export class WorkflowService {
 			fieldsToUpdate,
 		) as QueryDeepPartialEntity<WorkflowEntity>;
 
-		// Save the workflow to history first, so we can retrieve the complete version object for the update
-		if (saveNewVersion) {
-			await this.workflowHistoryService.saveVersion(
-				user,
-				workflowUpdateData,
-				workflowId,
-				autosaved,
-				source,
-				undefined,
-				versionName || versionDescription
-					? { name: versionName, description: versionDescription }
-					: undefined,
-			);
-		}
-
 		const versionIdToPublish =
 			workflow.activeVersionId && publishIfActive ? workflowUpdateData.versionId : null;
 
@@ -755,29 +761,61 @@ export class WorkflowService {
 			}
 			updatePayload.parentFolder = parentFolderId === PROJECT_ROOT ? null : { id: parentFolderId };
 		}
-		await this.workflowRepository.updateContent(workflowId, updatePayload, {
-			policyCleared: cleared,
-		});
 		const tagsDisabled = this.globalConfig.tags.disabled;
-
-		if (tagIds && !tagsDisabled) {
-			await this.workflowTagMappingRepository.overwriteTaggings(workflowId, tagIds);
-		}
-
-		const relations = tagsDisabled ? ['activeVersion'] : ['tags', 'activeVersion'];
-
-		// We sadly get nothing back from "update". Neither if it updated a record
-		// nor the new value. So query now the hopefully updated entry.
-		const updatedWorkflow = await this.workflowRepository.findOne({
-			where: { id: workflowId },
-			relations,
-		});
-
-		if (updatedWorkflow === null) {
-			throw new BadRequestError(
-				`Workflow with ID "${workflowId}" could not be found to be updated.`,
+		const persist = async (ctx: OperationContext) => {
+			if (guardedUpdate) {
+				await guardedUpdate.beforeSave(
+					ctx,
+					Object.assign(new WorkflowEntity(), workflow, updatePayload),
+				);
+			}
+			if (saveNewVersion) {
+				const versionMetadata =
+					versionName || versionDescription
+						? { name: versionName, description: versionDescription }
+						: undefined;
+				if (guardedUpdate) {
+					await this.workflowHistoryService.saveVersionRequired(
+						{ user, workflow: workflowUpdateData, workflowId, autosaved, source, versionMetadata },
+						ctx,
+					);
+				} else {
+					await this.workflowHistoryService.saveVersion(
+						user,
+						workflowUpdateData,
+						workflowId,
+						autosaved,
+						source,
+						undefined,
+						versionMetadata,
+					);
+				}
+			}
+			await this.workflowRepository.updateContent(workflowId, updatePayload, {
+				...ctx,
+				policyCleared: cleared,
+			});
+			if (tagIds && !tagsDisabled) {
+				await this.workflowTagMappingRepository.overwriteTaggings(workflowId, tagIds);
+			}
+			const savedWorkflow = await this.workflowRepository.findSavedWorkflow(
+				workflowId,
+				!tagsDisabled,
+				ctx,
 			);
-		}
+			if (!savedWorkflow) {
+				throw new BadRequestError(
+					`Workflow with ID "${workflowId}" could not be found to be updated.`,
+				);
+			}
+			if (guardedUpdate) {
+				await guardedUpdate.afterSave(ctx, savedWorkflow);
+			}
+			return savedWorkflow;
+		};
+		const updatedWorkflow = guardedUpdate
+			? await this.transactionRunner.run({}, persist)
+			: await persist({});
 
 		if (updatedWorkflow.tags?.length && tagIds?.length) {
 			updatedWorkflow.tags = this.tagService.sortByRequestOrder(updatedWorkflow.tags, {

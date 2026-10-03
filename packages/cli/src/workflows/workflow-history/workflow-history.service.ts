@@ -1,7 +1,7 @@
 import { UpdateWorkflowHistoryVersionDto } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { EventService } from '@n8n/backend-services';
-import type { User } from '@n8n/db';
+import type { OperationContext, User } from '@n8n/db';
 import {
 	WorkflowHistory,
 	WorkflowHistoryRepository,
@@ -20,6 +20,20 @@ import { WorkflowHistoryVersionNotFoundError } from '@/errors/workflow-history-v
 import type { WorkflowActionSource } from '@/events/maps/relay.event-map';
 
 import { WorkflowFinderService } from '../workflow-finder.service';
+
+type WorkflowHistoryVersionInput = {
+	user: User | string;
+	workflow: {
+		versionId: string;
+		nodes: IWorkflowBase['nodes'];
+		connections: IWorkflowBase['connections'];
+		nodeGroups?: IWorkflowBase['nodeGroups'];
+	};
+	workflowId: string;
+	autosaved?: boolean;
+	source?: WorkflowActionSource;
+	versionMetadata?: { name?: string; description?: string };
+};
 
 @Service()
 export class WorkflowHistoryService {
@@ -167,18 +181,48 @@ export class WorkflowHistoryService {
 
 	async saveVersion(
 		user: User | string,
-		workflow: {
-			versionId: string;
-			nodes: IWorkflowBase['nodes'];
-			connections: IWorkflowBase['connections'];
-			nodeGroups?: IWorkflowBase['nodeGroups'];
-		},
+		workflow: WorkflowHistoryVersionInput['workflow'],
 		workflowId: string,
 		autosaved = false,
 		source?: WorkflowActionSource,
 		transactionManager?: EntityManager,
-		versionMetadata?: { name?: string; description?: string },
+		versionMetadata?: WorkflowHistoryVersionInput['versionMetadata'],
 	) {
+		const version = this.createVersionRecord({
+			user,
+			workflow,
+			workflowId,
+			autosaved,
+			source,
+			versionMetadata,
+		});
+		const repository = transactionManager
+			? transactionManager.getRepository(WorkflowHistory)
+			: this.workflowHistoryRepository;
+
+		try {
+			await repository.insert(version);
+		} catch (e) {
+			const error = ensureError(e);
+			this.logger.error(`Failed to save workflow history version for workflow ${workflowId}`, {
+				error,
+			});
+		}
+	}
+
+	/** Propagate write failures so the caller can roll back the related changes. */
+	async saveVersionRequired(input: WorkflowHistoryVersionInput, ctx: OperationContext) {
+		await this.workflowHistoryRepository.insertVersion(this.createVersionRecord(input), ctx);
+	}
+
+	private createVersionRecord({
+		user,
+		workflow,
+		workflowId,
+		autosaved = false,
+		source,
+		versionMetadata,
+	}: WorkflowHistoryVersionInput) {
 		if (!workflow.nodes || !workflow.connections) {
 			throw new UnexpectedError(
 				`Cannot save workflow history: nodes and connections are required for workflow ${workflowId}`,
@@ -186,30 +230,24 @@ export class WorkflowHistoryService {
 		}
 
 		const name = typeof user === 'string' ? user : `${user.firstName} ${user.lastName}`;
-		const authors = source === 'n8n-mcp' ? `${name} (via MCP)` : name;
+		const authors =
+			source === 'n8n-mcp'
+				? `${name} (via MCP)`
+				: source === 'n8n-ai'
+					? `${name} (with n8n Assistant)`
+					: name;
 
-		const repository = transactionManager
-			? transactionManager.getRepository(WorkflowHistory)
-			: this.workflowHistoryRepository;
-
-		try {
-			await repository.insert({
-				authors,
-				connections: workflow.connections,
-				nodes: workflow.nodes,
-				nodeGroups: workflow.nodeGroups,
-				versionId: workflow.versionId,
-				workflowId,
-				autosaved,
-				...(versionMetadata?.name ? { name: versionMetadata.name } : {}),
-				...(versionMetadata?.description ? { description: versionMetadata.description } : {}),
-			});
-		} catch (e) {
-			const error = ensureError(e);
-			this.logger.error(`Failed to save workflow history version for workflow ${workflowId}`, {
-				error,
-			});
-		}
+		return {
+			authors,
+			connections: workflow.connections,
+			nodes: workflow.nodes,
+			nodeGroups: workflow.nodeGroups,
+			versionId: workflow.versionId,
+			workflowId,
+			autosaved,
+			...(versionMetadata?.name ? { name: versionMetadata.name } : {}),
+			...(versionMetadata?.description ? { description: versionMetadata.description } : {}),
+		};
 	}
 
 	async updateVersionForUser(

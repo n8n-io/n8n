@@ -10,6 +10,7 @@ import {
 	type User,
 	type UserRepository,
 	type WorkflowRepository,
+	type WorkflowPublishHistoryRepository,
 } from '@n8n/db';
 import { calculateWorkflowChecksum } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
@@ -27,6 +28,7 @@ const publication = mock<WorkflowPublicationStatusService>();
 const finder = mock<WorkflowFinderService>();
 const workflowRepository = mock<WorkflowRepository>();
 const sharedWorkflowRepository = mock<SharedWorkflowRepository>();
+const workflowPublishHistoryRepository = mock<WorkflowPublishHistoryRepository>();
 const tx = mock<TransactionRunner>();
 const ctx: OperationContext = { trx: mock<Transaction>() };
 const service = new WorkflowSuggestionService(
@@ -37,6 +39,7 @@ const service = new WorkflowSuggestionService(
 	finder,
 	workflowRepository,
 	sharedWorkflowRepository,
+	workflowPublishHistoryRepository,
 );
 const user = mock<User>({ id: 'c22db9f1-8fc0-4a46-96e2-c3a0a592a851', disabled: false });
 const versionId = '2d97d917-00ae-4fce-98c0-9b4d708a6c94';
@@ -60,6 +63,7 @@ let suggestion: WorkflowSuggestion;
 beforeEach(async () => {
 	vi.resetAllMocks();
 	users.findByIdWithRole.mockResolvedValue(user);
+	workflowPublishHistoryRepository.getLatestPublicationId.mockResolvedValue(null);
 	tx.run.mockImplementation(async (_ctx, fn) => await fn(ctx));
 	workflow = Object.assign(new WorkflowEntity(), {
 		id: 'wf',
@@ -67,6 +71,8 @@ beforeEach(async () => {
 		nodes: [],
 		connections: {},
 		versionId,
+		versionCounter: 1,
+		updatedAt: new Date('2026-09-30T00:00:00.000Z'),
 		activeVersionId: versionId,
 		isArchived: false,
 		settings: { executionTimeout: 30 },
@@ -81,6 +87,9 @@ beforeEach(async () => {
 			savedVersionId: versionId,
 			publishedVersionId: versionId,
 			checksum: await calculateWorkflowChecksum(workflow),
+			versionCounter: workflow.versionCounter,
+			savedAt: workflow.updatedAt.toISOString(),
+			publicationId: null,
 		},
 		original: {
 			name: workflow.name,
@@ -99,6 +108,7 @@ beforeEach(async () => {
 		backgroundUserId: baseline.backgroundUserId,
 		expectedBaseline: baseline.expectedBaseline,
 		state: 'pending',
+		resultKind: 'fix_ready',
 		closedReason: null,
 		payload: {
 			original: structuredClone(baseline.original),
@@ -156,6 +166,7 @@ it.each(['unpublished', 'saved changes', 'archived', 'publishing'] as const)(
 it('stores the exact final graph and activity in the caller transaction', async () => {
 	const errorContext = { summary: 'A node failed', evidenceReference: 'evidence-1' };
 	const prepared = await service.prepareSuggestion(baseline, {
+		resultKind: 'fix_ready',
 		graph,
 		explanation: '  Prepared fix  ',
 		errorContext,
@@ -173,6 +184,7 @@ it('stores the exact final graph and activity in the caller transaction', async 
 			errorContext,
 		},
 		ctx,
+		'fix_ready',
 	);
 	expect(tx.run).toHaveBeenCalledWith(ctx, expect.any(Function));
 	expect(workflowRepository.findByIdInContext).toHaveBeenCalledWith(workflow.id, ctx);
@@ -181,10 +193,25 @@ it('stores the exact final graph and activity in the caller transaction', async 
 	expect(suggestions.appendSubmittedActivity).toHaveBeenCalledWith(suggestion.id, ctx);
 });
 
+it.each([undefined, null, 'invalid'])(
+	'rejects outcome %s before preparing a suggestion',
+	async (resultKind) => {
+		await expect(
+			service.prepareSuggestion(baseline, {
+				graph,
+				explanation: 'Fix',
+				resultKind: resultKind as never,
+			}),
+		).rejects.toMatchObject({ issues: [expect.objectContaining({ path: ['resultKind'] })] });
+		expect(suggestions.createPending).not.toHaveBeenCalled();
+	},
+);
+
 it('keeps prepared content separate from later changes to the input', async () => {
 	const candidate = structuredClone(graph);
 	const original = structuredClone(baseline.original);
 	const prepared = await service.prepareSuggestion(baseline, {
+		resultKind: 'fix_ready',
 		graph: candidate,
 		explanation: 'Fix',
 	});
@@ -239,7 +266,11 @@ it.each<{ problem: string; candidate: WorkflowSuggestionGraph }>([
 	},
 ])('rejects a $problem', async ({ candidate }) => {
 	await expect(
-		service.prepareSuggestion(baseline, { graph: candidate, explanation: 'Fix' }),
+		service.prepareSuggestion(baseline, {
+			resultKind: 'fix_ready',
+			graph: candidate,
+			explanation: 'Fix',
+		}),
 	).rejects.toThrow('structure');
 	expect(suggestions.createPending).not.toHaveBeenCalled();
 });
@@ -250,6 +281,7 @@ it('does not assign node IDs or webhook IDs during preparation', async () => {
 		nodes: [{ ...graph.nodes[0], id: '', type: 'n8n-nodes-base.webhook' }],
 	};
 	const prepared = await service.prepareSuggestion(baseline, {
+		resultKind: 'fix_ready',
 		graph: candidate,
 		explanation: 'Fix',
 	});
@@ -259,7 +291,7 @@ it('does not assign node IDs or webhook IDs during preparation', async () => {
 it.each([
 	{ state: 'missing', credentials: undefined },
 	{ state: 'unresolved', credentials: { httpBasicAuth: { id: 'unavailable', name: 'Service' } } },
-])('stores $state credentials for review without a readiness result', async ({ credentials }) => {
+])('stores $state credentials for Needs attention', async ({ credentials }) => {
 	const candidate = {
 		...graph,
 		nodes: [
@@ -272,6 +304,7 @@ it.each([
 		],
 	};
 	const prepared = await service.prepareSuggestion(baseline, {
+		resultKind: 'needs_you',
 		graph: candidate,
 		explanation: 'Fix',
 	});
@@ -280,6 +313,7 @@ it.each([
 		baseline,
 		expect.objectContaining({ candidate }),
 		ctx,
+		'needs_you',
 	);
 	expect(prepared.payload).not.toHaveProperty('validation');
 });
@@ -287,6 +321,7 @@ it.each([
 it('rejects unsupported graph fields', async () => {
 	await expect(
 		service.prepareSuggestion(baseline, {
+			resultKind: 'fix_ready',
 			graph: { ...graph, settings: {} } as WorkflowSuggestionGraph,
 			explanation: 'Fix',
 		}),
@@ -295,13 +330,16 @@ it('rejects unsupported graph fields', async () => {
 });
 
 it.each([' ', 'x'.repeat(20_001)])('rejects an invalid explanation', async (explanation) => {
-	await expect(service.prepareSuggestion(baseline, { graph, explanation })).rejects.toThrow();
+	await expect(
+		service.prepareSuggestion(baseline, { resultKind: 'fix_ready', graph, explanation }),
+	).rejects.toThrow();
 	expect(suggestions.createPending).not.toHaveBeenCalled();
 });
 
 it('rejects a graph with no changes', async () => {
 	await expect(
 		service.prepareSuggestion(baseline, {
+			resultKind: 'fix_ready',
 			graph: { nodes: [], connections: {} },
 			explanation: 'Fix',
 		}),
@@ -311,9 +349,9 @@ it('rejects a graph with no changes', async () => {
 
 it('rejects changes to the captured original snapshot', async () => {
 	baseline.original.settings!.executionTimeout = 60;
-	await expect(service.prepareSuggestion(baseline, { graph, explanation: 'Fix' })).rejects.toThrow(
-		'captured workflow baseline',
-	);
+	await expect(
+		service.prepareSuggestion(baseline, { resultKind: 'fix_ready', graph, explanation: 'Fix' }),
+	).rejects.toThrow('captured workflow baseline');
 	expect(suggestions.createPending).not.toHaveBeenCalled();
 });
 
@@ -328,7 +366,11 @@ it.each([
 ] as const)(
 	'rejects a %s change after final preparation without saving a suggestion',
 	async (change) => {
-		const prepared = await service.prepareSuggestion(baseline, { graph, explanation: 'Fix' });
+		const prepared = await service.prepareSuggestion(baseline, {
+			resultKind: 'fix_ready',
+			graph,
+			explanation: 'Fix',
+		});
 		if (change === 'settings') workflow.settings = { executionTimeout: 60 };
 		if (change === 'version') workflow.versionId = 'new';
 		if (change === 'published') workflow.activeVersionId = 'new';
@@ -355,7 +397,7 @@ it.each(['missing', 'disabled', 'no edit access'] as const)(
 		else finder.findWorkflowForUser.mockResolvedValue(null);
 		await expect(service.captureBaseline(workflow.id, user.id)).rejects.toThrow('edit access');
 		await expect(
-			service.prepareSuggestion(baseline, { graph, explanation: 'Fix' }),
+			service.prepareSuggestion(baseline, { resultKind: 'fix_ready', graph, explanation: 'Fix' }),
 		).rejects.toThrow('edit access');
 		await expect(service.getProposal(user, 'project', workflow.id, suggestion.id)).rejects.toThrow(
 			'edit access',
@@ -371,14 +413,20 @@ it('lets another current editor review without publish permission', async () => 
 	const detail = await service.getProposal(viewer, 'project', workflow.id, suggestion.id);
 	expect(detail.payload.proposed).toEqual({ ...baseline.original, ...graph });
 	expect(detail.backgroundUserId).toBe(user.id);
-	expect(suggestions.getSuggestion).toHaveBeenCalledWith(suggestion.id, {
-		workflowId: workflow.id,
-		projectId: 'project',
-	});
-	expect(finder.findWorkflowForUser).toHaveBeenCalledWith(workflow.id, viewer, [
-		'workflow:read',
-		'workflow:update',
-	]);
+	expect(suggestions.getSuggestion).toHaveBeenCalledWith(
+		suggestion.id,
+		{
+			workflowId: workflow.id,
+			projectId: 'project',
+		},
+		ctx,
+	);
+	expect(finder.findWorkflowForUser).toHaveBeenCalledWith(
+		workflow.id,
+		viewer,
+		['workflow:read', 'workflow:update'],
+		{ ctx: {} },
+	);
 });
 
 it('rejects review after ownership changes', async () => {

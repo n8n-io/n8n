@@ -1,4 +1,8 @@
-import type { WorkflowSuggestionContent, WorkflowSuggestionBaseline } from '@n8n/api-types';
+import type {
+	WorkflowSuggestionContent,
+	WorkflowSuggestionBaseline,
+	WorkflowSuggestionAppliedVersion,
+} from '@n8n/api-types';
 import {
 	DateTimeColumn,
 	JsonColumn,
@@ -47,6 +51,12 @@ export class WorkflowSuggestion extends WithTimestampsAndStringId {
 
 	@DateTimeColumn({ nullable: true })
 	closedAt: Date | null;
+
+	@Column({ type: 'varchar', length: 16 })
+	resultKind: 'fix_ready' | 'needs_you';
+
+	@JsonColumn({ nullable: true })
+	appliedVersion: WorkflowSuggestionAppliedVersion | null;
 
 	@JsonColumn()
 	payload: WorkflowSuggestionContent;

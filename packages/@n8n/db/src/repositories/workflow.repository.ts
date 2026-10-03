@@ -314,6 +314,13 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 		);
 	}
 
+	async findSavedWorkflow(id: string, includeTags: boolean, ctx: OperationContext) {
+		return await this.managerFor(ctx).findOne(WorkflowEntity, {
+			where: { id },
+			relations: includeTags ? ['tags', 'activeVersion'] : ['activeVersion'],
+		});
+	}
+
 	/**
 	 * Creates the workflow together with its `workflow:owner` share in one transaction.
 	 *
@@ -459,6 +466,16 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 	async findByIdInContext(workflowId: string, ctx: OperationContext) {
 		return await this.managerFor(ctx).findOne(WorkflowEntity, {
 			where: { id: workflowId },
+		});
+	}
+
+	async findForContentUpdate(workflowId: string, ctx: OperationContext) {
+		const manager = this.managerFor(ctx);
+		const lockRows = manager.connection.options.type === 'postgres' && !!ctx.trx;
+		return await manager.findOne(WorkflowEntity, {
+			where: { id: workflowId },
+			// Allow transfer FK checks while the transfer holds the owner row.
+			lock: lockRows ? { mode: 'for_no_key_update' } : undefined,
 		});
 	}
 

@@ -275,6 +275,7 @@ erDiagram
   varchar updatedById FK
 }
 "workflow_suggestion" {
+  TEXT appliedVersion
   varchar backgroundUserId FK
   datetime_3_ closedAt
   varchar_16_ closedReason
@@ -283,6 +284,7 @@ erDiagram
   varchar_36_ id PK
   TEXT payload
   varchar_36_ projectId FK
+  varchar_16_ resultKind
   varchar_16_ state
   datetime_3_ updatedAt
   varchar_36_ workflowId FK

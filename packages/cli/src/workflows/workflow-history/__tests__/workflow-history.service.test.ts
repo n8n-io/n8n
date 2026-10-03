@@ -47,11 +47,42 @@ const mockUpdateResult: UpdateResult = {
 describe('WorkflowHistoryService', () => {
 	beforeEach(() => {
 		mockClear(workflowHistoryRepository.insert);
+		mockClear(workflowHistoryRepository.insertVersion);
 		mockClear(workflowHistoryRepository.update);
 		mockClear(workflowHistoryRepository.find);
 		mockClear(workflowHistoryRepository.findOne);
 		mockClear(workflowPublishHistoryRepository.find);
 		mockClear(workflowFinderService.findWorkflowForUser);
+	});
+
+	describe('saveVersionRequired', () => {
+		it('keeps the human and Assistant authors on a guarded save', async () => {
+			const workflow = getWorkflow({ addNodeWithoutCreds: true });
+			workflow.connections = {};
+			const ctx = {};
+			await workflowHistoryService.saveVersionRequired(
+				{ user: testUser, workflow, workflowId: 'workflow-1', source: 'n8n-ai' },
+				ctx,
+			);
+			expect(workflowHistoryRepository.insertVersion).toHaveBeenCalledWith(
+				expect.objectContaining({ authors: 'John Doe (with n8n Assistant)' }),
+				ctx,
+			);
+		});
+
+		it('propagates a history failure to the guarded save transaction', async () => {
+			const workflow = getWorkflow({ addNodeWithoutCreds: true });
+			workflow.connections = {};
+			workflowHistoryRepository.insertVersion.mockRejectedValueOnce(
+				new Error('History unavailable'),
+			);
+			await expect(
+				workflowHistoryService.saveVersionRequired(
+					{ user: testUser, workflow, workflowId: 'workflow-1', source: 'n8n-ai' },
+					{},
+				),
+			).rejects.toThrow('History unavailable');
+		});
 	});
 
 	describe('saveVersion', () => {

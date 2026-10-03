@@ -1,4 +1,9 @@
-import type { WorkflowSuggestionContent, WorkflowSuggestionBaseline } from '@n8n/api-types';
+import type {
+	WorkflowSuggestionContent,
+	WorkflowSuggestionBaseline,
+	WorkflowSuggestionActivity as WorkflowSuggestionActivityDto,
+	WorkflowSuggestionAppliedVersion,
+} from '@n8n/api-types';
 import {
 	BaseRepository,
 	TransactionRunner,
@@ -8,6 +13,7 @@ import {
 import { Service } from '@n8n/di';
 import { ConflictError, NotFoundError } from '@n8n/errors';
 import { DataSource } from '@n8n/typeorm';
+import { generateNanoId } from '@n8n/utils/generate-nano-id';
 
 import { WorkflowSuggestionActivity } from './workflow-suggestion-activity.entity';
 import { WorkflowSuggestion } from './workflow-suggestion.entity';
@@ -36,6 +42,7 @@ export class WorkflowSuggestionRepository extends BaseRepository<WorkflowSuggest
 		baseline: WorkflowSuggestionBaseline,
 		payload: WorkflowSuggestionContent,
 		ctx: OperationContext,
+		resultKind: WorkflowSuggestion['resultKind'],
 	) {
 		const manager = this.managerFor(ctx);
 		const suggestion = manager.create(WorkflowSuggestion, {
@@ -46,6 +53,8 @@ export class WorkflowSuggestionRepository extends BaseRepository<WorkflowSuggest
 			state: 'pending',
 			closedReason: null,
 			closedAt: null,
+			resultKind,
+			appliedVersion: null,
 			payload,
 		});
 		try {
@@ -64,8 +73,55 @@ export class WorkflowSuggestionRepository extends BaseRepository<WorkflowSuggest
 				suggestionId,
 				action: 'submitted',
 				author: 'assistant',
+				actorId: null,
 			}),
 		);
+	}
+
+	async appendActivity(
+		suggestionId: string,
+		action: WorkflowSuggestionActivityDto['action'],
+		actorId: string | null,
+		ctx: OperationContext,
+	) {
+		const manager = this.managerFor(ctx);
+		await manager
+			.createQueryBuilder()
+			.insert()
+			.into(WorkflowSuggestionActivity)
+			.values({
+				id: generateNanoId(),
+				suggestionId,
+				action,
+				actorId,
+				author: action === 'submitted' ? 'assistant' : actorId ? 'human' : 'system',
+			})
+			.orIgnore()
+			.execute();
+	}
+
+	async closePending(
+		suggestion: WorkflowSuggestion,
+		reason: NonNullable<WorkflowSuggestion['closedReason']>,
+		actorId: string | null,
+		ctx: OperationContext,
+		appliedVersion: WorkflowSuggestionAppliedVersion | null = null,
+	) {
+		const result = await this.managerFor(ctx).update(
+			WorkflowSuggestion,
+			{ id: suggestion.id, state: 'pending' },
+			{ state: 'closed', closedReason: reason, closedAt: new Date(), appliedVersion },
+		);
+		if (result.affected !== 1) return false;
+		await this.appendActivity(suggestion.id, reason, actorId, ctx);
+		return true;
+	}
+
+	async getPendingForWorkflow(workflowId: string, ctx: OperationContext = {}) {
+		return await this.managerFor(ctx).findOneBy(WorkflowSuggestion, {
+			workflowId,
+			state: 'pending',
+		});
 	}
 
 	async getActivity(suggestionId: string) {

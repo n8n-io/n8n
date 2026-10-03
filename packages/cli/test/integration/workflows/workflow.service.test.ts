@@ -10,6 +10,7 @@ import {
 } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import {
+	TransactionRunner,
 	SharedWorkflowRepository,
 	type WorkflowEntity,
 	WorkflowHistoryRepository,
@@ -21,6 +22,7 @@ import {
 	ProjectRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type { INode, INodeType } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 import { mock } from 'vitest-mock-extended';
@@ -130,6 +132,7 @@ beforeAll(async () => {
 		Container.get(PolicyEnforcementService), // policyEnforcementService
 		Container.get(WorkflowPublicationStatusService), // workflowPublicationStatusService
 		Container.get(NodeGroupRulesFlagGate), // nodeGroupRulesFlagGate
+		Container.get(TransactionRunner), // transactionRunner
 		Container.get(ErrorWorkflowValidationService), // errorWorkflowValidationService
 	);
 });
@@ -171,6 +174,96 @@ afterEach(async () => {
 });
 
 describe('update()', () => {
+	function candidateNode(name: string): INode {
+		return {
+			id: name,
+			name,
+			type: 'n8n-nodes-base.manualTrigger',
+			typeVersion: 1,
+			position: [0, 0],
+			parameters: {},
+		};
+	}
+
+	test('rolls back the workflow and history when the related guarded state fails', async () => {
+		const owner = await createOwner();
+		const workflow = await createWorkflowWithHistory({ nodes: [], connections: {} }, owner);
+		const history = Container.get(WorkflowHistoryRepository);
+		const original = await workflowRepository.findOneByOrFail({ id: workflow.id });
+		const previousVersions = await history.findBy({ workflowId: workflow.id });
+		await expect(
+			workflowService.update(
+				owner,
+				Object.assign(workflowRepository.create(), {
+					nodes: [candidateNode('Suggested')],
+					connections: {},
+				}),
+				workflow.id,
+				{
+					source: 'n8n-ai',
+					guardedUpdate: {
+						beforeSave: async () => {},
+						afterSave: async () => {
+							throw new Error('Related state failed');
+						},
+					},
+				},
+			),
+		).rejects.toThrow('Related state failed');
+		expect(await workflowRepository.findOneByOrFail({ id: workflow.id })).toEqual(original);
+		expect(await history.findBy({ workflowId: workflow.id })).toEqual(previousVersions);
+	});
+
+	test('completes an ordinary save that resumes after a guarded save', async () => {
+		const owner = await createOwner();
+		const workflow = await createWorkflowWithHistory({ nodes: [], connections: {} }, owner);
+		const prepared = createDeferredPromise();
+		const resume = createDeferredPromise();
+		const updateContent = workflowRepository.updateContent.bind(workflowRepository);
+		vi.spyOn(workflowRepository, 'updateContent').mockImplementation(async (...args) => {
+			if (args[1].name === 'Ordinary edit') {
+				prepared.resolve();
+				await resume.promise;
+			}
+			return await updateContent(...args);
+		});
+		const ordinarySave = workflowService.update(
+			owner,
+			Object.assign(workflowRepository.create(), { name: 'Ordinary edit' }),
+			workflow.id,
+		);
+		try {
+			await Promise.race([
+				prepared.promise,
+				ordinarySave.then(() => {
+					throw new Error('The ordinary save did not pause before the write.');
+				}),
+			]);
+			const saved = await workflowService.update(
+				owner,
+				Object.assign(workflowRepository.create(), {
+					nodes: [candidateNode('Suggested')],
+					connections: {},
+				}),
+				workflow.id,
+				{
+					source: 'n8n-ai',
+					guardedUpdate: { beforeSave: async () => {}, afterSave: async () => {} },
+				},
+			);
+			resume.resolve();
+			await ordinarySave;
+			const current = await workflowRepository.findOneByOrFail({ id: workflow.id });
+			expect(saved.nodes).toEqual([candidateNode('Suggested')]);
+			expect(current.versionId).toBe(workflow.versionId);
+			expect(current.nodes).toEqual([candidateNode('Suggested')]);
+			expect(current.name).toBe('Ordinary edit');
+		} finally {
+			resume.resolve();
+			await Promise.allSettled([ordinarySave]);
+		}
+	});
+
 	test('publishes the newly saved version when an active workflow is updated through the API', async () => {
 		const owner = await createOwner();
 		const workflow = await createActiveWorkflow({}, owner);
