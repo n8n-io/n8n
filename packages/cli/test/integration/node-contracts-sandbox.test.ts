@@ -1,10 +1,11 @@
 import { createWorkflow, mockInstance, testDb } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import { ExecutionRepository, type User } from '@n8n/db';
+import { versionsOf } from '@n8n/nodes-base-next';
 import { Container } from '@n8n/di';
 import { createRunExecutionData, type INode } from 'n8n-workflow';
 import { existsSync } from 'node:fs';
-import { mkdtemp, readdir, readFile, rm } from 'node:fs/promises';
+import { mkdtemp, readdir, rm } from 'node:fs/promises';
 import { createServer } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { tmpdir } from 'node:os';
@@ -18,7 +19,6 @@ import { WorkflowRunner } from '@/workflow-runner';
 import { createOwner } from './shared/db/users';
 import * as utils from './shared/utils';
 
-const NEXT = path.resolve(__dirname, '../../../@n8n/nodes-base-next');
 const SANDBOX = path.resolve(__dirname, '../../../@n8n/node-sdk/sandbox');
 const sidecar = path.join(SANDBOX, 'sidecar/target/release/n8n-sandbox');
 const guests = path.join(SANDBOX, 'dist');
@@ -139,9 +139,7 @@ describe.skipIf(!built)('node contracts in the sandbox', () => {
 	});
 
 	it('runs the same action in the sandbox when N8N_NODE_CONTRACT_SANDBOX is all', async () => {
-		const manifest = JSON.parse(
-			await readFile(path.join(NEXT, 'dist/versions/httpRequest.send/manifest.json'), 'utf8'),
-		) as { bundleHash: string };
+		const [{ manifest }] = versionsOf('httpRequest.send');
 
 		expect(await runSend('all')).toEqual({
 			status: 'success',

@@ -17,6 +17,7 @@ import type {
 import type { ContractDocument } from './define';
 import { Schema, t, type AnySchema, type Infer, type JsonSchema } from './schema';
 import { matches } from './validate';
+import type { StoreRecord } from './store';
 import type { NodeContractVersion, VersionManifest } from './version';
 
 const constant = <const V extends string | number | boolean>(value: V) =>
@@ -303,6 +304,28 @@ export const credentialManifestSchema = typed<CredentialManifest>()(
 			renamed: values().optional(),
 		})
 		.with({ title: 'Credential manifest', ...SINCE_2_5, ...OPEN }),
+);
+
+const digest = () => t.str().with({ pattern: '^sha256:[0-9a-f]{64}$' });
+
+/** One version line of a store index, `index/<id>.ndjson`. It is not part of the Node Contract. */
+export const storeRecordSchema = typed<StoreRecord>()(
+	t
+		.obj({
+			id: t.str(),
+			version: semver(),
+			kind: t.oneOf('action', 'trigger', 'provider', 'credential'),
+			nodeContract: nodeContractVersion(),
+			manifest: digest(),
+			bundle: digest().optional(),
+			contractHash: hex().optional(),
+			credentials: names().optional(),
+			permissions: t.obj({ egress: names(), imports: names() }).optional(),
+			fixtures: digest().optional(),
+			signatures: t.arr(t.obj({ key: digest(), sig: t.str() })).optional(),
+			published: t.str().optional(),
+		})
+		.with(OPEN),
 );
 
 /** `spec/manifest.schema.json`: every manifest that a host reads. */

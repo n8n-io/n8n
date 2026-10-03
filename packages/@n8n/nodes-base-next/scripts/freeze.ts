@@ -1,18 +1,13 @@
 import { isRecord, type Action, type Trigger } from '@n8n/node-sdk';
-import {
-	freezeAction,
-	freezeCredential,
-	writeCredentialManifest,
-	writeFrozenAction,
-} from '@n8n/node-sdk/freeze';
-import { lastPublishedIn, npmRegistry } from '@n8n/node-sdk/publish';
-import type { VersionManifest } from '@n8n/node-sdk/registry';
+import { freezeAction, freezeCredential } from '@n8n/node-sdk/freeze';
+import { lastPublishedIn } from '@n8n/node-sdk/publish';
+import { addToStore, manifestTextOf, storeFilesOfUrl, storeReader } from '@n8n/node-sdk/registry';
 import { readdirSync, rmSync } from 'node:fs';
 import path from 'node:path';
 import { UserError } from 'n8n-workflow';
 
 import { actions, credentialTypes, flowNatives, nativeTriggers, triggers } from '../src/index';
-import { VERSIONS_DIR } from '../src/registry';
+import { EMBEDDED_STORE_DIR } from '../src/registry';
 
 /** One folder per service, e.g. `google-sheets/` with `actions/sheet.append.ts`. */
 export const NODES_DIR = path.resolve(__dirname, '..', 'src', 'nodes');
@@ -67,35 +62,36 @@ export async function actionEntries() {
 
 // The registry is the one record of published patches. A build without one freezes each HEAD as patch 0.
 const REGISTRY_URL = process.env.N8N_NODE_CONTRACTS_REGISTRY_URL;
-const lastOf = REGISTRY_URL ? lastPublishedIn(npmRegistry(REGISTRY_URL)) : undefined;
+const lastOf = REGISTRY_URL
+	? lastPublishedIn(storeReader(storeFilesOfUrl(REGISTRY_URL, async (url) => await fetch(url))))
+	: undefined;
 
-/** Freezes the HEAD of each action and trigger into `outDir`, so the package runs without a registry. */
+/** Freezes the HEAD of each action and trigger into the store in `outDir`, so the package runs without a registry. */
 export async function freezeAll(outDir: string) {
-	const entries = await actionEntries();
-	const freeze = async ({ entryFile, exportName }: (typeof entries)[number]) => {
-		const frozen = await freezeAction(entryFile, exportName, lastOf);
-		await writeFrozenAction(outDir, frozen);
-		return frozen.manifest;
-	};
-	if (!lastOf) return await Promise.all(entries.map(freeze));
-	// Each registry lookup starts npm processes, so freeze one action at a time.
-	return await entries.reduce<Promise<VersionManifest[]>>(
-		async (done, entry) => [...(await done), await freeze(entry)],
-		Promise.resolve([]),
+	const frozen = await Promise.all(
+		(await actionEntries()).map(
+			async ({ entryFile, exportName }) => await freezeAction(entryFile, exportName, lastOf),
+		),
 	);
+	await addToStore(
+		outDir,
+		frozen.map(({ manifest, bundle }) => ({ manifestText: manifestTextOf(manifest), bundle })),
+	);
+	return frozen.map(({ manifest }) => manifest);
 }
 
-/** Writes the manifest of each credential type that is not a compat type into `outDir`. */
+/** Writes the manifest of each credential type that is not a compat type into the store in `outDir`. */
 export async function freezeCredentials(outDir: string) {
 	const manifests = credentialTypes.flatMap((type) => freezeCredential(type) ?? []);
-	await Promise.all(
-		manifests.map(async (manifest) => await writeCredentialManifest(outDir, manifest)),
+	await addToStore(
+		outDir,
+		manifests.map((manifest) => ({ manifestText: manifestTextOf(manifest) })),
 	);
 	return manifests;
 }
 
 if (require.main === module) {
-	// n8n loads every folder here, so a removed action must not stay from an older build.
-	rmSync(VERSIONS_DIR, { recursive: true, force: true });
-	void Promise.all([freezeAll(VERSIONS_DIR), freezeCredentials(VERSIONS_DIR)]);
+	// n8n loads every version here, so a removed action must not stay from an older build.
+	rmSync(EMBEDDED_STORE_DIR, { recursive: true, force: true });
+	void Promise.all([freezeAll(EMBEDDED_STORE_DIR), freezeCredentials(EMBEDDED_STORE_DIR)]);
 }

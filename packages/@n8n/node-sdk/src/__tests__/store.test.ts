@@ -1,0 +1,258 @@
+import { generateKeyPairSync } from 'node:crypto';
+import { appendFile, mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
+
+import { freezeAction, freezeCredential, type FrozenAction } from '../freeze';
+import { defineCredential, field } from '../entry/credentials';
+import { lastPublishedIn, publishAction } from '../publish';
+import {
+	addToStore,
+	manifestTextOf,
+	signStoreManifest,
+	storeBlobFileOf,
+	storeFilesOfDir,
+	storeFilesOfUrl,
+	storeIndexFileOf,
+	storeReader,
+	verifyStoreSignature,
+	type StoreRecord,
+} from '../store';
+
+const echoSource = (minor: number, text: string) => `
+import { defineNode, t } from '@n8n/node-sdk';
+
+export const echo = defineNode({ id: 'demo', displayName: 'Demo' }).action('echo', {
+	version: 1,
+	minor: ${minor},
+	action: 'Echo',
+	summary: 'Echo the text.',
+	flow: { effect: 'transform', cardinality: 'per-item' },
+	input: { text: t.str()${minor > 0 ? ', suffix: t.str().optional()' : ''} },
+	output: t.obj({ text: t.str() }),
+	egress: { hosts: ['b.example.com', 'a.example.com'] },
+	async run({ input }) {
+		return { text: ${text} };
+	},
+});
+`;
+
+const token = defineCredential({
+	id: 'demo.token',
+	legacyName: 'demoApi',
+	displayName: 'Demo API',
+	fields: { token: field.secret('Token') },
+	auth: (a) => a.bearer('token'),
+	baseUrl: 'https://a.example.com',
+});
+
+const keys = generateKeyPairSync('ed25519');
+const privateKey = keys.privateKey.export({ type: 'pkcs8', format: 'pem' }).toString();
+const publicKey = keys.publicKey.export({ type: 'spki', format: 'pem' }).toString();
+const otherKey = generateKeyPairSync('ed25519')
+	.publicKey.export({ type: 'spki', format: 'pem' })
+	.toString();
+
+const dirs = { root: '', entry: '' };
+
+const freeze = async (minor = 0, text = 'input.text') => {
+	await writeFile(dirs.entry, echoSource(minor, text));
+	return await freezeAction(dirs.entry, 'echo');
+};
+
+const storeVersionOf = ({ manifest, bundle }: FrozenAction) => ({
+	manifestText: manifestTextOf(manifest),
+	bundle,
+});
+
+const newDir = async (name: string) => await mkdtemp(path.join(dirs.root, `${name}-`));
+
+/** Each file of a directory tree with its bytes, by relative path. */
+const treeOf = async (dir: string) =>
+	Object.fromEntries(
+		await Promise.all(
+			(await readdir(dir, { recursive: true, withFileTypes: true }))
+				.filter((entry) => entry.isFile())
+				.map(async (entry) => {
+					const file = path.join(entry.parentPath, entry.name);
+					return [path.relative(dir, file), (await readFile(file)).toString('base64')] as const;
+				}),
+		),
+	);
+
+beforeAll(async () => {
+	dirs.root = await mkdtemp(path.join(tmpdir(), 'node-sdk-store-'));
+	dirs.entry = path.join(dirs.root, 'echo.ts');
+});
+
+afterAll(async () => {
+	await rm(dirs.root, { recursive: true, force: true });
+});
+
+describe('the store layout', () => {
+	it('gives back the frozen manifest and bundle bytes', async () => {
+		const frozen = await freeze();
+		const credential = freezeCredential(token);
+		if (!credential) throw new Error('demo.token has no manifest');
+		const dir = await newDir('round-trip');
+		const [record] = await addToStore(dir, [
+			storeVersionOf(frozen),
+			{ manifestText: manifestTextOf(credential) },
+		]);
+		const reader = storeReader(storeFilesOfDir(dir));
+
+		expect(record).toEqual({
+			id: 'demo.echo',
+			version: '1.0.0',
+			kind: 'action',
+			nodeContract: frozen.manifest.nodeContract,
+			manifest: expect.stringMatching(/^sha256:[0-9a-f]{64}$/),
+			bundle: `sha256:${frozen.manifest.bundleHash}`,
+			contractHash: frozen.manifest.contractHash,
+			permissions: { egress: ['a.example.com', 'b.example.com'], imports: [] },
+		});
+		expect(await reader.records('demo.echo')).toEqual([record]);
+		expect((await reader.catalog()).map(({ id }) => id)).toEqual(['demo.echo', 'demo.token']);
+		const read = await reader.readManifest(record as StoreRecord);
+		expect(read?.manifest).toEqual(frozen.manifest);
+		expect(read?.text).toBe(manifestTextOf(frozen.manifest));
+		expect((await reader.blob(`sha256:${frozen.manifest.bundleHash}`))?.toString('utf8')).toBe(
+			frozen.bundle,
+		);
+		const [credentialRecord] = await reader.records('demo.token');
+		expect((await reader.readManifest(credentialRecord as StoreRecord))?.manifest).toEqual(
+			credential,
+		);
+	});
+
+	it('writes the same bytes for the same source', async () => {
+		const [first, second] = [await newDir('first'), await newDir('second')];
+		await addToStore(first, [storeVersionOf(await freeze())]);
+		await addToStore(second, [storeVersionOf(await freeze())]);
+		expect(await treeOf(second)).toEqual(await treeOf(first));
+		expect(Object.keys(await treeOf(first)).sort()).toEqual(
+			expect.arrayContaining(['catalog.json', 'index/demo.echo.ndjson']),
+		);
+	});
+
+	it('refuses a blob that does not match its digest', async () => {
+		const frozen = await freeze();
+		const dir = await newDir('tampered');
+		const [record] = await addToStore(dir, [storeVersionOf(frozen)]);
+		if (!record) throw new Error('nothing stored');
+		const reader = storeReader(storeFilesOfDir(dir));
+		const bundle = `sha256:${frozen.manifest.bundleHash}`;
+		await writeFile(path.join(dir, storeBlobFileOf(bundle)), `${frozen.bundle} `);
+		await expect(reader.blob(bundle)).rejects.toThrow('does not match its digest');
+		await writeFile(path.join(dir, storeBlobFileOf(record.manifest)), '{}');
+		await expect(reader.readManifest(record)).rejects.toThrow('does not match its digest');
+	});
+
+	it('refuses an index line that does not match its manifest', async () => {
+		const dir = await newDir('lying-line');
+		const [record] = await addToStore(dir, [storeVersionOf(await freeze())]);
+		if (!record) throw new Error('nothing stored');
+		await expect(
+			storeReader(storeFilesOfDir(dir)).readManifest({ ...record, version: '1.0.7' }),
+		).rejects.toThrow('The index line of demo.echo@1.0.7 does not match its manifest (version)');
+	});
+
+	it('skips index lines that are not version records', async () => {
+		const dir = await newDir('records');
+		const [record] = await addToStore(dir, [storeVersionOf(await freeze())]);
+		await appendFile(
+			path.join(dir, storeIndexFileOf('demo.echo')),
+			[
+				JSON.stringify({ id: 'demo.echo', yank: '1.0.0', reason: 'wrong output' }),
+				'not json',
+				JSON.stringify({ ...record, contractHash: 'b'.repeat(64) }),
+				'',
+			].join('\n'),
+		);
+		expect(await storeReader(storeFilesOfDir(dir)).records('demo.echo')).toEqual([record]);
+	});
+
+	it('keeps a stored version and refuses other bytes for it', async () => {
+		const dir = await newDir('immutable');
+		const frozen = await freeze();
+		await addToStore(dir, [storeVersionOf(frozen)]);
+		const index = await readFile(path.join(dir, storeIndexFileOf('demo.echo')), 'utf8');
+		await addToStore(dir, [storeVersionOf(frozen)]);
+		expect(await readFile(path.join(dir, storeIndexFileOf('demo.echo')), 'utf8')).toBe(index);
+		await expect(
+			addToStore(dir, [storeVersionOf(await freeze(0, "input.text + '!'"))]),
+		).rejects.toThrow('demo.echo@1.0.0 is in the store with other bytes');
+	});
+
+	it('refuses an id that is not a store file name', () => {
+		expect(() => storeIndexFileOf('../demo')).toThrow('is not a contract id');
+		expect(() => storeBlobFileOf('sha256:../x')).toThrow('is not a sha256 digest');
+	});
+
+	it('reads a file:// store as a directory', async () => {
+		const dir = await newDir('file-url');
+		const [record] = await addToStore(dir, [storeVersionOf(await freeze())]);
+		const fetch = vi.fn();
+		const reader = storeReader(storeFilesOfUrl(`file://${dir}`, fetch));
+		expect(await reader.records('demo.echo')).toEqual([record]);
+		expect(await reader.records('demo.other')).toEqual([]);
+		expect(fetch).not.toHaveBeenCalled();
+	});
+});
+
+describe('store signatures', () => {
+	it('verify the manifest bytes with the trusted key', async () => {
+		const { manifest } = await freeze();
+		const text = manifestTextOf(manifest);
+		const signatures = [signStoreManifest(text, privateKey)];
+		expect(verifyStoreSignature({ signatures }, text, publicKey)).toBe(true);
+		expect(verifyStoreSignature({ signatures }, text, otherKey)).toBe(false);
+		expect(verifyStoreSignature({ signatures }, `${text} `, publicKey)).toBe(false);
+		expect(verifyStoreSignature({}, text, publicKey)).toBe(false);
+	});
+});
+
+describe('publishAction', () => {
+	it('appends one line for each version and keeps the old lines', async () => {
+		const registry = await newDir('registry');
+		const publish = async () =>
+			await publishAction({
+				entryFile: dirs.entry,
+				exportName: 'echo',
+				fixtures: {
+					executions: [
+						{ name: 'echo', params: { text: 'hi' }, responses: [], output: [{ text: 'hi' }] },
+					],
+				},
+				registryDir: registry,
+				privateKey,
+			});
+		const index = path.join(registry, storeIndexFileOf('demo.echo'));
+		await writeFile(dirs.entry, echoSource(0, 'input.text'));
+		const v100 = await publish();
+		const first = await readFile(index, 'utf8');
+		await expect(publish()).resolves.toEqual(v100);
+		expect(await readFile(index, 'utf8')).toBe(first);
+
+		await writeFile(dirs.entry, echoSource(0, 'String(input.text)'));
+		const v101 = await publish();
+		expect(v101.semver).toBe('1.0.1');
+		const lines = (await readFile(index, 'utf8')).split('\n').filter(Boolean);
+		expect(lines).toHaveLength(2);
+		expect(`${lines[0]}\n`).toBe(first);
+
+		const reader = storeReader(storeFilesOfDir(registry));
+		const records = await reader.records('demo.echo');
+		expect(records.map(({ version }) => version)).toEqual(['1.0.0', '1.0.1']);
+		expect(records.every(({ published, fixtures }) => published && fixtures)).toBe(true);
+		const text = (await reader.readManifest(records[1] as StoreRecord))?.text ?? '';
+		expect(verifyStoreSignature(records[1] as StoreRecord, text, publicKey)).toBe(true);
+		expect((await reader.catalog()).map(({ version }) => version)).toEqual(['1.0.1']);
+		expect(await lastPublishedIn(reader)('demo.echo', 1, 0)).toEqual({
+			id: 'demo.echo',
+			semver: '1.0.1',
+			bundleHash: v101.bundleHash,
+		});
+		expect(await lastPublishedIn(reader)('demo.echo', 1, 1)).toBeUndefined();
+	});
+});

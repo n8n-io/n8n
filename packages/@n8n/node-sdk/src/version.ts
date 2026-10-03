@@ -1,5 +1,4 @@
-import { createHash, verify } from 'node:crypto';
-import { gunzipSync } from 'node:zlib';
+import { createHash } from 'node:crypto';
 import {
 	UnexpectedError,
 	UserError,
@@ -38,10 +37,6 @@ export const IMPLEMENTED_NODE_CONTRACTS: readonly NodeContractVersion[] = [NODE_
 
 /** The versions a host accepts when its config sets no range. */
 export const DEFAULT_NODE_CONTRACT_RANGE = '>=2.0.0 <3.0.0';
-
-/** True for a `major.minor.patch` text, e.g. the `nodeContract` of a packument entry. */
-export const isNodeContractVersion = (value: unknown): value is NodeContractVersion =>
-	typeof value === 'string' && /^\d+\.\d+\.\d+$/.test(value);
 
 /** The kind of a contract: a trigger starts executions, a provider supplies a capability. */
 export const manifestKindOf = (
@@ -763,97 +758,6 @@ export function parseFixtures(text: string): ContractFixtures {
 	if (!isFixtures(value)) throw new UserError('The fixtures file is not valid');
 	return value;
 }
-
-export const CONTRACT_PACKAGE_SCOPE = '@n8n-contracts';
-
-/** `notion.databasePage.getAll` → `@n8n-contracts/notion-database-page-get-all`. npm names are lower case. */
-export const packageNameOf = (actionId: string) =>
-	`${CONTRACT_PACKAGE_SCOPE}/${actionId
-		.replace(/\./g, '-')
-		.replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`)}`;
-
-/** The files of a published action version, read from its npm tarball. */
-export interface ContractPackage {
-	/** The version manifest, parsed from `manifestText`. */
-	readonly manifest: VersionManifest;
-	/** The exact bytes `signature` covers. */
-	readonly manifestText: string;
-	/** Base64 ed25519 signature of `manifestText`. */
-	readonly signature: string;
-	/** The frozen bundle code. Its SHA-256 is `manifest.bundleHash`. */
-	readonly bundle: string;
-	/** The fixtures that publish replayed. */
-	readonly fixtures: ContractFixtures;
-}
-
-const BLOCK = 512;
-
-/** Regular files of a ustar archive, by path. */
-function untar(tar: Buffer, offset = 0): ReadonlyArray<readonly [string, Buffer]> {
-	const header = tar.subarray(offset, offset + BLOCK);
-	if (header.length < BLOCK || header.every((byte) => byte === 0)) return [];
-	const field = (start: number, length: number) =>
-		header
-			.subarray(start, start + length)
-			.toString('utf8')
-			.split('\0')[0] ?? '';
-	const size = parseInt(field(124, 12).trim() || '0', 8);
-	const name = [field(345, 155), field(0, 100)].filter(Boolean).join('/');
-	const type = field(156, 1);
-	const data = tar.subarray(offset + BLOCK, offset + BLOCK + size);
-	const rest = untar(tar, offset + BLOCK + Math.ceil(size / BLOCK) * BLOCK);
-	return type === '' || type === '0' ? [[name, data], ...rest] : rest;
-}
-
-/** The npm `dist.integrity` of a tarball. */
-export const integrityOf = (tarball: Uint8Array) =>
-	`sha512-${createHash('sha512').update(tarball).digest('base64')}`;
-
-/**
- * Opens a published tarball. It checks the npm `integrity`, the manifest and its contract
- * hash, the bundle hash, and the package name and version. The signature is a separate
- * check (`verifyManifestSignature`), because a locked bundle hash is enough for a strict run.
- */
-export function openContractPackage(tarball: Uint8Array, integrity: string): ContractPackage {
-	if (!integrity.split(/\s+/).includes(integrityOf(tarball))) {
-		throw new UnexpectedError('The contract package does not match its integrity');
-	}
-	const files = new Map(untar(gunzipSync(tarball)));
-	const text = (name: string) => {
-		const data = files.get(`package/${name}`);
-		if (!data) throw new UnexpectedError(`The contract package has no ${name}`);
-		return data.toString('utf8');
-	};
-	const manifestText = text('manifest.json');
-	const manifest = parseManifest(manifestText);
-	const bundle = text('bundle.cjs');
-	const packageJson: unknown = JSON.parse(text('package.json'));
-	if (sha256(bundle) !== manifest.bundleHash) {
-		throw new UnexpectedError(
-			`The bundle of ${manifest.id}@${manifest.semver} does not match ${manifest.bundleHash}`,
-		);
-	}
-	if (
-		!isRecord(packageJson) ||
-		packageJson.name !== packageNameOf(manifest.id) ||
-		packageJson.version !== manifest.semver
-	) {
-		throw new UnexpectedError(`The package does not hold ${manifest.id}@${manifest.semver}`);
-	}
-	return {
-		manifest,
-		manifestText,
-		signature: text('manifest.sig').trim(),
-		bundle,
-		fixtures: parseFixtures(text('fixtures.json')),
-	};
-}
-
-/** `publicKey` is the PEM of the trusted ed25519 publisher key. */
-export const verifyManifestSignature = (
-	{ manifestText, signature }: Pick<ContractPackage, 'manifestText' | 'signature'>,
-	publicKey: string,
-) => verify(null, Buffer.from(manifestText), publicKey, Buffer.from(signature, 'base64'));
 
 /** What a workflow pins per contract node, in `meta.nodeContracts[nodeName]`. */
 export interface NodeContractLock {

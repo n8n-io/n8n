@@ -267,7 +267,10 @@ export class InstanceAiConfig {
 	@Env('N8N_NODE_CONTRACTS_UPDATE_POLICY', nodeContractsUpdatePolicySchema)
 	nodeContractsUpdatePolicy: z.infer<typeof nodeContractsUpdatePolicySchema> = 'tolerant';
 
-	/** The npm registry of published contract versions. Empty: only bundled versions run. */
+	/**
+	 * The registry of published contract versions: a static store at `https://…` or `file://…`.
+	 * Empty: only bundled and stored versions run.
+	 */
 	@Env('N8N_NODE_CONTRACTS_REGISTRY_URL')
 	nodeContractsRegistryUrl: string = '';
 

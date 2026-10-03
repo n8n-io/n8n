@@ -1,5 +1,5 @@
 import { generateKeyPairSync } from 'node:crypto';
-import { mkdir, mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import type { IExecuteFunctions, INodeExecutionData, ITaskMetadata } from 'n8n-workflow';
@@ -15,28 +15,18 @@ import {
 import {
 	contractHash,
 	diffContracts,
-	integrityOf,
-	openContractPackage,
-	packageNameOf,
 	parseFixtures,
 	parseManifest,
 	resolveContractVersion,
 	toContract,
-	verifyManifestSignature,
 	type ContractDocument,
 	type ContractFixtures,
 	type NodeContractVersion,
 	type VersionManifest,
 } from '../entry/registry';
 import { defineNode, provider, t, type ActionFlow, type Shape } from '../index';
-import {
-	checkPublish,
-	lastPublishedIn,
-	packContractPackage,
-	publishAction,
-	replayFixtures,
-	type ContractRegistry,
-} from '../publish';
+import { checkPublish, lastPublishedIn, publishAction, replayFixtures } from '../publish';
+import { storeFilesOfDir, storeReader } from '../store';
 import { evaluateBundle } from '../runtime';
 import type { AnySchema } from '../schema';
 import {
@@ -333,32 +323,6 @@ const fixturesOf = (output: string, extra: Partial<ContractFixtures> = {}): Cont
 
 const keys = generateKeyPairSync('ed25519');
 const privateKey = keys.privateKey.export({ type: 'pkcs8', format: 'pem' }).toString();
-const publicKey = keys.publicKey.export({ type: 'spki', format: 'pem' }).toString();
-const otherKey = generateKeyPairSync('ed25519')
-	.publicKey.export({ type: 'spki', format: 'pem' })
-	.toString();
-
-/** A directory as a fake npm registry: `<dir>/<name>/<version>.tgz`. */
-const directoryRegistry = (dir: string): ContractRegistry => ({
-	versions: async (name) =>
-		await readdir(path.join(dir, name)).then(
-			(files) => files.map((file) => file.replace(/\.tgz$/, '')),
-			() => [],
-		),
-	tarball: async (name, version) => {
-		const data = await readFile(path.join(dir, name, `${version}.tgz`));
-		return { data, integrity: integrityOf(data) };
-	},
-	bundleHash: async (name, version) => {
-		const data = await readFile(path.join(dir, name, `${version}.tgz`));
-		return openContractPackage(data, integrityOf(data)).manifest.bundleHash;
-	},
-	publish: async (name, version, tarball) => {
-		await mkdir(path.join(dir, name), { recursive: true });
-		// `wx` refuses a republish, as npm does.
-		await writeFile(path.join(dir, name, `${version}.tgz`), tarball, { flag: 'wx' });
-	},
-});
 
 const contextOf = (metadata: ITaskMetadata[] = []) =>
 	({
@@ -638,32 +602,6 @@ export const read = demo.action('read', {
 	});
 });
 
-describe('contract packages', () => {
-	it('verify integrity, bundle hash, and the manifest signature', async () => {
-		await writeShout('text.toUpperCase()');
-		const frozen = await freeze();
-		const tarball = packContractPackage(frozen, fixturesOf('HELLO!'), privateKey);
-		const opened = openContractPackage(tarball, integrityOf(tarball));
-
-		expect(opened.manifest).toEqual(frozen.manifest);
-		expect(opened.bundle).toBe(frozen.bundle);
-		expect(opened.fixtures).toEqual(fixturesOf('HELLO!'));
-		expect(verifyManifestSignature(opened, publicKey)).toBe(true);
-		expect(verifyManifestSignature(opened, otherKey)).toBe(false);
-		expect(
-			verifyManifestSignature({ ...opened, manifestText: `${opened.manifestText} ` }, publicKey),
-		).toBe(false);
-		expect(() => openContractPackage(tarball, integrityOf(Buffer.from('other')))).toThrow(
-			'integrity',
-		);
-		// Same input, same bytes: a release build reproduces the published tarball.
-		expect(packContractPackage(frozen, fixturesOf('HELLO!'), privateKey)).toEqual(tarball);
-		expect(packageNameOf('notion.databasePage.getAll')).toBe(
-			'@n8n-contracts/notion-database-page-get-all',
-		);
-	});
-});
-
 describe('resolveContractVersion', () => {
 	const manifest = (semver: string, contract = 'c1'): VersionManifest =>
 		({
@@ -713,13 +651,12 @@ describe('published versions', () => {
 	afterEach(() => setContractVersionLoader(async (_context, head) => head));
 
 	it('keep their behaviour when a shared helper changes', async () => {
-		const registry = directoryRegistry(dirs.registry);
 		const publish = async (fixtures: ContractFixtures) =>
 			await publishAction({
 				entryFile: dirs.entry,
 				exportName: 'echo',
 				fixtures,
-				registry,
+				registryDir: dirs.registry,
 				privateKey,
 			});
 		await writeShout('text.toUpperCase()');
@@ -743,25 +680,34 @@ describe('published versions', () => {
 		);
 		await writeFile(dirs.entry, echoSource());
 
-		const name = packageNameOf('demo.echo');
+		const registry = storeReader(storeFilesOfDir(dirs.registry));
 		const opened = await Promise.all(
-			(await registry.versions(name)).map(async (version) => {
-				const { data, integrity } = await registry.tarball(name, version);
-				return openContractPackage(data, integrity);
+			(await registry.records('demo.echo')).map(async (record) => {
+				const read = await registry.readManifest(record);
+				const [bundle, fixtures] = await Promise.all(
+					[record.bundle, record.fixtures].map(async (digest) =>
+						(await registry.blob(digest ?? ''))?.toString('utf8'),
+					),
+				);
+				if (read?.manifest.kind === 'credential' || !read || !bundle || !fixtures) {
+					throw new Error(`${record.version} is not complete`);
+				}
+				return { manifest: read.manifest, bundle, fixtures: parseFixtures(fixtures) };
 			}),
 		);
 		// Every published version replays its own fixtures through the current executor.
 		const issues = await Promise.all(
-			opened.map(async (pkg) => await replayFixtures(pkg, pkg.fixtures)),
+			opened.map(async (version) => await replayFixtures(version, version.fixtures)),
 		);
 		expect(issues.flat()).toEqual([]);
 
 		const old = opened.find(({ manifest }) => manifest.semver === '1.0.0');
-		const noDownload = {
+		const indexOnly = {
 			...registry,
-			tarball: async () => await Promise.reject(new Error('lastPublishedIn downloads no tarball')),
+			blob: async () => await Promise.reject(new Error('no blob')),
+			readManifest: async () => await Promise.reject(new Error('no manifest')),
 		};
-		const head = await freezeAction(dirs.entry, 'echo', lastPublishedIn(noDownload));
+		const head = await freezeAction(dirs.entry, 'echo', lastPublishedIn(indexOnly));
 		expect(head.manifest).toEqual(v101);
 		if (!old) throw new Error('1.0.0 is not published');
 		setContractVersionLoader(async () => frozenOf(old.manifest, old.bundle));

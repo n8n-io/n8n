@@ -70,7 +70,24 @@ What each minor added (`@since` in the WIT, `x-n8n-since` in the schema):
 
 The host reads only manifests with `nodeContract`. It refuses a manifest without it, such as
 one frozen before 2.5.0, and a bundle of Node Contract 1.x. Freeze such a version again. The
-packument field `n8nContract` of a published version also states `nodeContract`.
+index line of a version in a store also states `nodeContract`.
+
+## Store layout
+
+The embedded store of a release, the store of an instance and a registry use one layout
+(`src/store.ts`). A registry is the same files, served at `https://…` or `file://…`.
+
+| File | Content |
+|---|---|
+| `catalog.json` | `{ "versions": [...] }`: the index line of the newest version of each id |
+| `index/<id>.ndjson` | One line for each version. A writer only appends. A reader skips a line that is not a version line |
+| `blobs/sha256/<hex>` | The manifest, bundle and fixtures bytes. The name is the SHA-256 of the bytes |
+
+The digest of a version is `sha256:` of its manifest bytes. The manifest holds `bundleHash` and
+`contractHash`, so the digest covers the code and the contract. A reader checks each blob
+against its digest, and the fields of each index line against the manifest. Publish adds
+`fixtures`, `signatures` (ed25519 over the manifest bytes, `key` is `sha256:` of the public key)
+and `published`. Freeze adds none of them, so it writes the same bytes for the same source.
 
 ## Rules
 

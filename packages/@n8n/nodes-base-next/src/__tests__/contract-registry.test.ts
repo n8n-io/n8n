@@ -4,12 +4,18 @@ import {
 	toVersionedNodeType,
 	type FrozenVersion,
 } from '@n8n/node-sdk/host';
-import { integrityOf, packageNameOf, type NodeContractLock } from '@n8n/node-sdk/registry';
+import {
+	addToStore,
+	manifestTextOf,
+	signStoreManifest,
+	storeBlobFileOf,
+	storeIndexFileOf,
+	type NodeContractLock,
+} from '@n8n/node-sdk/registry';
 import { freezeAction, type FrozenAction } from '@n8n/node-sdk/freeze';
-import { packContractPackage } from '@n8n/node-sdk/publish';
 import { sandboxExecutorLoader, warmSandbox } from '@n8n/node-sdk/sandbox';
 import { generateKeyPairSync } from 'node:crypto';
-import { link, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { link, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { createServer, type Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { tmpdir } from 'node:os';
@@ -73,39 +79,48 @@ const keyPair = () =>
 const { privateKey, publicKey } = keyPair();
 const strangerKey = keyPair().privateKey;
 
-const FIXTURES = { executions: [] };
-const NAME = packageNameOf('demo.echo');
-
 interface Published {
-	readonly data: Buffer;
-	readonly integrity: string;
 	readonly frozen: FrozenAction;
-	/** Replaces fields of `n8nContract` in the packument. */
-	readonly contract?: Record<string, unknown>;
+	readonly key: string;
+	/** Replaces fields of the index line. */
+	readonly line?: Readonly<Record<string, unknown>>;
 }
 
-/** Tarballs the fake registry serves, by version. A test may replace one. */
-const tarballs = new Map<string, Published>();
-const dirs = { root: '', store: '' };
+/** The versions in the fake registry, by version. A test may replace one. */
+const published = new Map<string, Published>();
+const dirs = { root: '', store: '', registry: '' };
 const registry = { url: '', server: createServer() };
 const versions = new Map<string, FrozenAction>();
 
-const publish = (frozen: FrozenAction, key = privateKey, contract?: Record<string, unknown>) => {
-	const data = packContractPackage(frozen, FIXTURES, key);
-	tarballs.set(frozen.manifest.semver, { data, integrity: integrityOf(data), frozen, contract });
+/** Writes the registry store again from `published`. */
+const writeRegistry = async () => {
+	await rm(dirs.registry, { recursive: true, force: true });
+	const entries = [...published.values()];
+	const records = await addToStore(
+		dirs.registry,
+		entries.map(({ frozen, key }) => {
+			const manifestText = manifestTextOf(frozen.manifest);
+			const signatures = [signStoreManifest(manifestText, key)];
+			return { manifestText, bundle: frozen.bundle, signatures };
+		}),
+	);
+	const lines = records.map((record, index) => ({ ...record, ...entries[index]?.line }));
+	await writeFile(
+		path.join(dirs.registry, storeIndexFileOf('demo.echo')),
+		lines.map((line) => `${JSON.stringify(line)}\n`).join(''),
+	);
 };
 
-const packument = () => ({
-	name: NAME,
-	versions: Object.fromEntries(
-		[...tarballs].map(([version, { integrity, frozen, contract }]) => {
-			const { id, nodeContract, contractHash, bundleHash } = frozen.manifest;
-			const tarball = `${registry.url}/tarballs/${version}.tgz`;
-			const n8nContract = { id, nodeContract, contractHash, bundleHash, ...contract };
-			return [version, { n8nContract, dist: { tarball, integrity } }];
-		}),
-	),
-});
+const publish = async (frozen: FrozenAction, key = privateKey, line?: Published['line']) => {
+	published.set(frozen.manifest.semver, { frozen, key, line });
+	await writeRegistry();
+};
+
+/** Replaces the bytes of a blob in the registry. */
+const tamper = async (digest: string) => {
+	const file = path.join(dirs.registry, storeBlobFileOf(digest));
+	await writeFile(file, Buffer.concat([await readFile(file), Buffer.from([0])]));
+};
 
 const listen = async (server: Server) =>
 	await new Promise<string>((resolve) =>
@@ -127,26 +142,28 @@ beforeAll(async () => {
 	await freeze(0, 'input.text.toUpperCase()');
 	await freeze(0, "input.text + '?'", '1.0.0');
 	await freeze(1, "input.text + (input.suffix ?? '#')");
+	dirs.registry = path.join(dirs.root, 'registry');
+	// The registry is static files.
 	registry.server.on('request', (request, response) => {
-		const tarball = /^\/tarballs\/(.+)\.tgz$/.exec(request.url ?? '')?.[1];
-		const found = tarball ? tarballs.get(tarball) : undefined;
-		if (request.url === `/${NAME.replace('/', '%2f')}`) {
-			response.setHeader('content-type', 'application/json');
-			response.end(JSON.stringify(packument()));
-		} else if (found) {
-			response.end(found.data);
-		} else {
-			response.statusCode = 404;
-			response.end();
-		}
+		const file = path.join(dirs.registry, decodeURIComponent(request.url ?? ''));
+		void readFile(file).then(
+			(data) => response.end(data),
+			() => {
+				response.statusCode = 404;
+				response.end();
+			},
+		);
 	});
 	registry.url = await listen(registry.server);
 });
 
 beforeEach(async () => {
 	dirs.store = await mkdtemp(path.join(dirs.root, 'store-'));
-	tarballs.clear();
-	['1.0.0', '1.0.1', '1.1.0'].forEach((version) => publish(frozenOf(version)));
+	published.clear();
+	['1.0.0', '1.0.1', '1.1.0'].forEach((version) =>
+		published.set(version, { frozen: frozenOf(version), key: privateKey }),
+	);
+	await writeRegistry();
 });
 
 afterAll(async () => {
@@ -236,34 +253,49 @@ describe('contractVersionLoader', () => {
 
 	it('applies no newer patch without a trusted key or with a wrong signature', async () => {
 		expect(await run(locked('1.0.0'), { publicKey: undefined })).toEqual(['HELLO']);
-		publish(frozenOf('1.0.1'), strangerKey);
+		await publish(frozenOf('1.0.1'), strangerKey);
 		expect(await run(locked('1.0.0'))).toEqual(['HELLO']);
 	});
 
-	it('applies no newer patch from a packument entry without nodeContract', async () => {
-		publish(frozenOf('1.0.1'), privateKey, { nodeContract: undefined, abi: 2 });
+	it('applies no newer patch from an index line without nodeContract', async () => {
+		await publish(frozenOf('1.0.1'), privateKey, { nodeContract: undefined, abi: 2 });
 		expect(await run(locked('1.0.0'))).toEqual(['HELLO']);
 	});
 
 	it('applies no newer patch outside the Node Contract range of the host', async () => {
-		publish(frozenOf('1.0.1'), privateKey, { nodeContract: '3.0.0' });
+		await publish(frozenOf('1.0.1'), privateKey, { nodeContract: '3.0.0' });
 		expect(await run(locked('1.0.0'))).toEqual(['HELLO']);
 	});
 
-	it('refuses a tampered tarball', async () => {
-		const tarball = tarballs.get('1.0.0');
-		if (!tarball) throw new Error('1.0.0 is not published');
-		tarballs.set('1.0.0', { ...tarball, data: Buffer.concat([tarball.data, Buffer.from([0])]) });
+	it('refuses a tampered bundle', async () => {
+		await tamper(`sha256:${lockOf('1.0.0').bundleHash}`);
 		await expect(run(locked('1.0.0'), { policy: 'strict' })).rejects.toThrow(
-			'does not match its integrity',
+			'does not match its digest',
+		);
+	});
+
+	it('refuses an index line that does not match its manifest', async () => {
+		await publish(frozenOf('1.0.0'), privateKey, { contractHash: 'a'.repeat(64) });
+		await expect(run(locked('1.0.0'), { policy: 'strict' })).rejects.toThrow(
+			'does not match its manifest (contractHash)',
 		);
 	});
 
 	it('skips a tampered patch and runs the locked version', async () => {
-		const tarball = tarballs.get('1.0.1');
-		if (!tarball) throw new Error('1.0.1 is not published');
-		tarballs.set('1.0.1', { ...tarball, data: Buffer.concat([tarball.data, Buffer.from([0])]) });
+		await tamper(`sha256:${frozenOf('1.0.1').manifest.bundleHash}`);
 		expect(await run(locked('1.0.0'))).toEqual(['HELLO']);
+	});
+
+	it('reads a file:// registry', async () => {
+		const fetch = vi.fn();
+		expect(
+			await run(locked('1.0.0'), {
+				policy: 'strict',
+				registryUrl: `file://${dirs.registry}`,
+				fetch,
+			}),
+		).toEqual(['HELLO']);
+		expect(fetch).not.toHaveBeenCalled();
 	});
 
 	it('runs a cached version without a registry', async () => {
@@ -276,7 +308,8 @@ describe('contractVersionLoader', () => {
 		await expect(run(locked('1.0.0'), { registryUrl: '' })).rejects.toThrow(
 			`Cannot get demo.echo@1.0.0 (bundle ${bundleHash}) from the registry (none set)`,
 		);
-		tarballs.delete('1.0.0');
+		published.delete('1.0.0');
+		await writeRegistry();
 		await expect(run(locked('1.0.0'), { policy: 'strict' })).rejects.toThrow(
 			`Cannot get demo.echo@1.0.0 (bundle ${bundleHash}) from the registry ${registry.url}: The registry does not have this bundle`,
 		);
@@ -301,7 +334,7 @@ describe('contractVersionLoader', () => {
 
 describe('contractStore', () => {
 	it('takes only bundles with the trusted signature when a key is set', async () => {
-		publish(frozenOf('1.0.0'), strangerKey);
+		await publish(frozenOf('1.0.0'), strangerKey);
 		await expect(run(locked('1.0.0'), { policy: 'strict' })).rejects.toThrow(
 			'demo.echo@1.0.0 (bundle',
 		);
@@ -313,12 +346,13 @@ describe('contractStore', () => {
 		]);
 	});
 
-	it('adds a file once and never replaces it', async () => {
+	it('adds a version once and never replaces it', async () => {
 		const store = storeOf();
-		const { data } = tarballs.get('1.0.0') ?? { data: Buffer.alloc(0) };
-		const manifest = await store.add(data);
-		await store.add(data);
-		expect(manifest.semver).toBe('1.0.0');
+		const { manifest } = await store.locked(lockOf('1.0.0'));
+		const index = path.join(dirs.store, storeIndexFileOf('demo.echo'));
+		const lines = await readFile(index, 'utf8');
+		await storeOf().locked(lockOf('1.0.0'));
+		expect(await readFile(index, 'utf8')).toBe(lines);
 		expect([...(await store.bundleHashes())]).toEqual([manifest.bundleHash]);
 	});
 
@@ -334,7 +368,7 @@ describe('contractStore', () => {
 	it('loads a bundle from the registry again when its file is gone', async () => {
 		const store = storeOf();
 		const version = await store.locked(lockOf('1.0.0'));
-		await rm(path.join(dirs.store, `${lockOf('1.0.0').bundleHash}.tgz`));
+		await rm(path.join(dirs.store, storeBlobFileOf(`sha256:${lockOf('1.0.0').bundleHash}`)));
 		expect(await version.readBundle()).toBe(frozenOf('1.0.0').bundle);
 		expect(await store.bundleHashes()).toContain(lockOf('1.0.0').bundleHash);
 	});
@@ -352,11 +386,13 @@ describe('contractStore', () => {
 		);
 	});
 
-	it('stores a file by rename when the file system has no hard links', async () => {
+	it('stores a blob by rename when the file system has no hard links', async () => {
 		vi.mocked(link).mockRejectedValueOnce(Object.assign(new Error('no links'), { code: 'EPERM' }));
-		const { data } = tarballs.get('1.0.0') ?? { data: Buffer.alloc(0) };
-		const manifest = await storeOf().add(data);
+		const { manifest } = await storeOf().locked(lockOf('1.0.0'));
 		expect([...(await storeOf().bundleHashes())]).toEqual([manifest.bundleHash]);
+		expect(await (await storeOf({ registryUrl: '' }).locked(lockOf('1.0.0'))).readBundle()).toBe(
+			frozenOf('1.0.0').bundle,
+		);
 	});
 
 	it('refuses a bundle whose manifest does not match the lock', async () => {
@@ -368,10 +404,9 @@ describe('contractStore', () => {
 		await expect(store.locked(lock)).rejects.toThrow('but the lock has');
 	});
 
-	it('serves only signed files when a key is set', async () => {
-		publish(frozenOf('1.0.0'), strangerKey);
-		const { data } = tarballs.get('1.0.0') ?? { data: Buffer.alloc(0) };
-		await storeOf({ publicKey: undefined }).add(data);
+	it('serves only signed versions when a key is set', async () => {
+		await publish(frozenOf('1.0.0'), strangerKey);
+		await storeOf({ publicKey: undefined }).locked(lockOf('1.0.0'));
 		expect((await storeOf({ publicKey: undefined }).versions()).has('demo.echo')).toBe(true);
 		expect((await storeOf().versions()).has('demo.echo')).toBe(false);
 		await expect(storeOf().locked(lockOf('1.0.0'))).rejects.toThrow(
@@ -397,7 +432,8 @@ describe('syncContractStore', () => {
 	it('adds each missing locked bundle once and reports what it cannot get', async () => {
 		const store = storeOf();
 		await store.locked(lockOf('1.0.0'));
-		tarballs.delete('1.1.0');
+		published.delete('1.1.0');
+		await writeRegistry();
 		const result = await syncContractStore(store, [
 			nodeOf('1.0.0'),
 			nodeOf('1.0.1', 'a'),
@@ -409,21 +445,6 @@ describe('syncContractStore', () => {
 			['wf', expect.stringContaining('Cannot get demo.echo@1.1.0 (bundle')],
 		]);
 		expect(result.unsupported).toEqual([]);
-	});
-
-	it('reports a locked bundle whose manifest has no nodeContract', async () => {
-		const frozen = frozenOf('1.0.0');
-		const { nodeContract: _, ...unversioned } = frozen.manifest;
-		publish({
-			...frozen,
-			manifest: { ...unversioned, abi: 2 } as unknown as typeof frozen.manifest,
-		});
-		const result = await syncContractStore(storeOf(), [nodeOf('1.0.0')]);
-		expect(result.failed.map(({ error }) => error)).toEqual([
-			expect.stringContaining(
-				'The manifest of demo.echo@1.0.0 has no nodeContract. This host reads only manifests with nodeContract (the format from Node Contract 2.5.0)',
-			),
-		]);
 	});
 
 	it('reports nodes whose locked bundle needs a Node Contract version the host does not run', async () => {

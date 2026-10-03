@@ -1,33 +1,56 @@
 import type { FrozenVersion } from '@n8n/node-sdk/host';
-import { parseCredentialManifest, parseManifest } from '@n8n/node-sdk/registry';
-import { readdirSync, readFileSync } from 'node:fs';
-import { readFile } from 'node:fs/promises';
+import {
+	compareSemver,
+	parseStoreCatalog,
+	parseStoreIndex,
+	STORE_CATALOG_FILE,
+	storeBlobFileOf,
+	storeFilesOfDir,
+	storeIndexFileOf,
+	storeManifestOf,
+	storeReader,
+	type StoreRecord,
+} from '@n8n/node-sdk/registry';
+import { readFileSync } from 'node:fs';
 import path from 'node:path';
+import { UnexpectedError } from 'n8n-workflow';
 
-/** The bundled HEAD of each action, `<id>/`. The release build writes it (`pnpm freeze`). */
-export const VERSIONS_DIR = path.resolve(__dirname, '..', 'dist', 'versions');
+/** The embedded store: the HEAD of each action, trigger and credential type. `pnpm freeze` writes it. */
+export const EMBEDDED_STORE_DIR = path.resolve(__dirname, '..', 'dist', 'store');
 
-/** The folder of the credential manifests. Action ids have dots, so no action has this id. */
-const CREDENTIALS = 'credentials';
+const textOf = (dir: string, file: string) => readFileSync(path.join(dir, file), 'utf8');
 
-/** The bundled versions of an action: its HEAD. Other versions come from the registry. */
-export function versionsOf(actionId: string, dir = VERSIONS_DIR): FrozenVersion[] {
-	const files = path.join(dir, actionId);
-	return [
-		{
-			manifest: parseManifest(readFileSync(path.join(files, 'manifest.json'), 'utf8')),
-			readBundle: async () => await readFile(path.join(files, 'bundle.cjs'), 'utf8'),
-		},
-	];
+const manifestOf = (dir: string, record: StoreRecord) =>
+	storeManifestOf(readFileSync(path.join(dir, storeBlobFileOf(record.manifest))), record).manifest;
+
+const catalogOf = (dir: string) => parseStoreCatalog(textOf(dir, STORE_CATALOG_FILE));
+
+/** The bundled versions of an action, newest first. Other versions come from the registry. */
+export function versionsOf(actionId: string, dir = EMBEDDED_STORE_DIR): FrozenVersion[] {
+	const blobs = storeReader(storeFilesOfDir(dir));
+	return parseStoreIndex(textOf(dir, storeIndexFileOf(actionId)), actionId)
+		.flatMap((record) => {
+			const manifest = manifestOf(dir, record);
+			if (manifest.kind === 'credential') return [];
+			const readBundle = async () => {
+				const bundle = await blobs.blob(`sha256:${manifest.bundleHash}`);
+				if (!bundle) throw new UnexpectedError(`The embedded store has no bundle of ${actionId}`);
+				return bundle.toString('utf8');
+			};
+			return [{ manifest, readBundle }];
+		})
+		.sort((a, b) => compareSemver(b.manifest.semver, a.manifest.semver));
 }
 
 /** The ids of the bundled actions, triggers and providers. */
-export const bundledIdsOf = (dir = VERSIONS_DIR) =>
-	readdirSync(dir).filter((name) => name !== CREDENTIALS);
+export const bundledIdsOf = (dir = EMBEDDED_STORE_DIR) =>
+	catalogOf(dir).flatMap(({ id, kind }) => (kind === 'credential' ? [] : [id]));
 
-/** The bundled credential manifests, with the file each one comes from. */
-export const bundledCredentialsOf = (dir = VERSIONS_DIR) =>
-	readdirSync(path.join(dir, CREDENTIALS)).map((id) => {
-		const file = path.join(dir, CREDENTIALS, id, 'manifest.json');
-		return { file, manifest: parseCredentialManifest(readFileSync(file, 'utf8')) };
+/** The bundled credential manifests, with the blob file each one comes from. */
+export const bundledCredentialsOf = (dir = EMBEDDED_STORE_DIR) =>
+	catalogOf(dir).flatMap((record) => {
+		const manifest = record.kind === 'credential' ? manifestOf(dir, record) : undefined;
+		return manifest?.kind === 'credential'
+			? [{ file: path.join(dir, storeBlobFileOf(record.manifest)), manifest }]
+			: [];
 	});

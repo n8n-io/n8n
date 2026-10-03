@@ -1,5 +1,11 @@
 import type { GlobalConfig } from '@n8n/config';
-import { NODE_PACKAGE as NEXT, versionsOf, type FrozenVersion } from '@n8n/nodes-base-next';
+import {
+	bundledCredentialsOf,
+	bundledIdsOf,
+	NODE_PACKAGE as NEXT,
+	versionsOf,
+	type FrozenVersion,
+} from '@n8n/nodes-base-next';
 import { LazyPackageDirectoryLoader } from 'n8n-core';
 import {
 	deepCopy,
@@ -7,7 +13,7 @@ import {
 	type INodeTypeDescription,
 	type KnownNodesAndCredentials,
 } from 'n8n-workflow';
-import { readdirSync, readFileSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { mock } from 'vitest-mock-extended';
 
@@ -15,7 +21,6 @@ import { LoadNodesAndCredentials } from '../load-nodes-and-credentials';
 import { ContractNodeLoader } from '../node-contracts-registry';
 
 const PACKAGES = path.resolve(__dirname, '../../..');
-const VERSIONS = path.join(PACKAGES, '@n8n/nodes-base-next/dist/versions');
 const noStore = async () => new Map<string, readonly FrozenVersion[]>();
 
 interface Served {
@@ -111,12 +116,10 @@ describe('ContractNodeLoader', () => {
 	it('projects one node type for each bundled manifest, with Poll Times for a polling trigger', async () => {
 		const loader = new ContractNodeLoader([], [], noStore);
 		await loader.loadAll();
-		const ids = readdirSync(VERSIONS).filter((name) => name !== 'credentials');
+		const ids = bundledIdsOf();
 
 		expect(Object.keys(loader.known.nodes)).toHaveLength(ids.length);
-		expect(Object.keys(loader.known.credentials)).toHaveLength(
-			readdirSync(path.join(VERSIONS, 'credentials')).length,
-		);
+		expect(Object.keys(loader.known.credentials)).toHaveLength(bundledCredentialsOf().length);
 		for (const id of ids) {
 			const [head] = versionsOf(id);
 			if (!head) throw new Error(`${id} has no bundled HEAD`);

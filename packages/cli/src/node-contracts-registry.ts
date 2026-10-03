@@ -9,18 +9,19 @@ import {
 	bundledCredentialsOf,
 	bundledIdsOf,
 	credentialTypeOfManifest,
+	EMBEDDED_STORE_DIR,
 	MIGRATED_NODES,
 	NODE_PACKAGE,
 	nodeNameOf,
 	nodeTypeOf,
 	runsNodeContract,
+	storeIndexFileOf,
 	toolActions,
 	toolTypeOf,
 	toVersionedNodeType,
 	toVersionedToolType,
 	toVersionedTriggerType,
 	versionsOf,
-	VERSIONS_DIR,
 	withMigratedVersions,
 	type ContractStore,
 	type FrozenVersion,
@@ -173,7 +174,7 @@ export class ContractNodeLoader implements NodeLoader {
 				];
 				if (versions.length === 0) return [];
 				const sourcePath = bundled.has(id)
-					? path.join(VERSIONS_DIR, id, 'manifest.json')
+					? path.join(EMBEDDED_STORE_DIR, storeIndexFileOf(id))
 					: Container.get(NodeContractsStore).dir;
 				const node: ContractNode = { type: contractNodeTypeOf(versions), sourcePath, versions };
 				return [[nodeNameOf(id), node] as const];

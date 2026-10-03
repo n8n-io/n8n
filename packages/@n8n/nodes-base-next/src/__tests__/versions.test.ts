@@ -2,17 +2,20 @@ import { isRecord, validate, type JsonSchema } from '@n8n/node-sdk';
 import * as host from '@n8n/node-sdk/host';
 import {
 	actionFileOf,
-	openContractPackage,
-	packageNameOf,
 	parseFixtures,
+	parseStoreCatalog,
 	requiredNodeContractOf,
+	STORE_CATALOG_FILE,
+	storeBlobFileOf,
+	storeFilesOfUrl,
+	storeReader,
 	toContract,
-	verifyManifestSignature,
+	verifyStoreSignature,
 	type VersionManifest,
 } from '@n8n/node-sdk/registry';
-import { npmRegistry, replayFixtures } from '@n8n/node-sdk/publish';
+import { replayFixtures } from '@n8n/node-sdk/publish';
 import { sandboxedVersionOf } from '@n8n/node-sdk/sandbox';
-import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import type { ICredentialType, IExecuteFunctions } from 'n8n-workflow';
@@ -20,7 +23,7 @@ import type { ICredentialType, IExecuteFunctions } from 'n8n-workflow';
 import { actionEntries, freezeAll, freezeCredentials, NODES_DIR } from '../../scripts/freeze';
 import { FIXTURES_DIR } from '../../scripts/publish';
 import { actions, credentialTypes, nativeTriggers, triggers } from '../index';
-import { bundledCredentialsOf, bundledIdsOf, versionsOf, VERSIONS_DIR } from '../registry';
+import { bundledCredentialsOf, bundledIdsOf, EMBEDDED_STORE_DIR, versionsOf } from '../registry';
 
 const contracts = [...actions, ...triggers];
 
@@ -69,6 +72,15 @@ describe('bundled versions', () => {
 		const { manifests } = frozen;
 		expect(manifests.map(({ id }) => id).sort()).toEqual(contracts.map(({ id }) => id).sort());
 		expect(manifests.map(({ id }) => versionsOf(id)[0]?.manifest)).toEqual(manifests);
+	});
+
+	it('are the same bytes as the embedded store of the build', () => {
+		const filesOf = (dir: string) =>
+			readdirSync(dir, { recursive: true, encoding: 'utf8' })
+				.filter((file) => statSync(path.join(dir, file)).isFile())
+				.sort()
+				.map((file) => [file, readFileSync(path.join(dir, file), 'base64')]);
+		expect(filesOf(copy)).toEqual(filesOf(EMBEDDED_STORE_DIR));
 	});
 
 	it('are the only node list: package.json has no n8n key', () => {
@@ -165,12 +177,18 @@ describe('bundled versions', () => {
 			);
 
 		it('with every frozen action, trigger and credential manifest', () => {
-			const actionDirs = readdirSync(copy).filter((name) => name !== 'credentials');
-			const credentialDirs = readdirSync(path.join(copy, 'credentials'));
-			expect(actionDirs.sort()).toEqual(contracts.map(({ id }) => id).sort());
-			expect(credentialDirs.sort()).toEqual(credentialTypes.map(({ id }) => id).sort());
-			expect(issuesOf(copy, actionDirs)).toEqual([]);
-			expect(issuesOf(path.join(copy, 'credentials'), credentialDirs)).toEqual([]);
+			const catalog = parseStoreCatalog(readFileSync(path.join(copy, STORE_CATALOG_FILE), 'utf8'));
+			const idsOf = (credential: boolean) =>
+				catalog
+					.filter(({ kind }) => (kind === 'credential') === credential)
+					.map(({ id }) => id)
+					.sort();
+			expect(idsOf(false)).toEqual(contracts.map(({ id }) => id).sort());
+			expect(idsOf(true)).toEqual(credentialTypes.map(({ id }) => id).sort());
+			const issues = catalog.flatMap(({ id, manifest }) =>
+				validate(readJson(path.join(copy, storeBlobFileOf(manifest))), schema, { path: id }),
+			);
+			expect(issues).toEqual([]);
 		});
 
 		it('with the older majors in fixtures/versions', () => {
@@ -221,7 +239,7 @@ describe('bundled versions', () => {
 			helpers: { httpRequest: async () => [{ id: 1 }, { id: 2 }] },
 		} as unknown as IExecuteFunctions;
 
-		const result = await nodeTypeOf('httpRequest.get', VERSIONS_DIR)
+		const result = await nodeTypeOf('httpRequest.get', EMBEDDED_STORE_DIR)
 			.getNodeType(3)
 			.execute?.call(context);
 
@@ -345,20 +363,31 @@ const PUBLIC_KEY_FILE = process.env.N8N_NODE_CONTRACTS_PUBLIC_KEY_FILE;
 // Old versions live only in the registry, so this check runs where one is configured.
 describe.skipIf(!REGISTRY_URL)('published versions', () => {
 	it('replay their own fixtures through the current executor', async () => {
-		const registry = npmRegistry(REGISTRY_URL ?? '');
+		const registry = storeReader(
+			storeFilesOfUrl(REGISTRY_URL ?? '', async (url) => await fetch(url)),
+		);
 		const publicKey = PUBLIC_KEY_FILE ? readFileSync(PUBLIC_KEY_FILE, 'utf8') : undefined;
 		const issues = await Promise.all(
 			actions.map(async ({ id }) => {
-				const name = packageNameOf(id);
-				const versions = await registry.versions(name);
 				const replayed = await Promise.all(
-					versions.map(async (version) => {
-						const { data, integrity } = await registry.tarball(name, version);
-						const pkg = openContractPackage(data, integrity);
-						const signed = !publicKey || verifyManifestSignature(pkg, publicKey);
+					(await registry.records(id)).map(async (record) => {
+						const at = `${id}@${record.version}`;
+						const read = await registry.readManifest(record);
+						const [bundle, fixtures] = await Promise.all(
+							[record.bundle, record.fixtures].map(async (digest) =>
+								digest ? (await registry.blob(digest))?.toString('utf8') : undefined,
+							),
+						);
+						if (!read || read.manifest.kind === 'credential' || !bundle || !fixtures) {
+							return [`${at} has no manifest, bundle or fixtures`];
+						}
+						const signed = !publicKey || verifyStoreSignature(record, read.text, publicKey);
 						return [
-							...(signed ? [] : [`${id}@${version} has no valid signature`]),
-							...(await replayFixtures(pkg, pkg.fixtures)),
+							...(signed ? [] : [`${at} has no valid signature`]),
+							...(await replayFixtures(
+								{ manifest: read.manifest, bundle },
+								parseFixtures(fixtures),
+							)),
 						];
 					}),
 				);

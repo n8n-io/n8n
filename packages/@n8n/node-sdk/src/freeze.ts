@@ -1,11 +1,10 @@
 import { readFileSync } from 'node:fs';
-import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { UnexpectedError, UserError } from 'n8n-workflow';
 
 import type { AnyCredentialType } from './credentials';
 import { toContract, type Action, type Trigger } from './define';
-import { credentialManifestOf, type CredentialManifest } from './manifest';
+import { credentialManifestOf } from './manifest';
 import { evaluateBundle, toNodeType } from './runtime';
 import { triggerDescriptionOf } from './triggers';
 import {
@@ -240,21 +239,6 @@ export async function freezeAction(
 	return { manifest, bundle, action };
 }
 
-/** Writes `<dir>/<id>/manifest.json` and `bundle.cjs`: the bundled HEAD a package ships. */
-export async function writeFrozenAction(dir: string, { manifest, bundle }: FrozenAction) {
-	const target = path.join(dir, manifest.id);
-	await mkdir(target, { recursive: true });
-	await writeFile(path.join(target, 'bundle.cjs'), bundle);
-	await writeFile(path.join(target, 'manifest.json'), `${JSON.stringify(manifest, null, '\t')}\n`);
-}
-
 /** The credential manifest of a type, or none for a compat type. */
 export const freezeCredential = (type: AnyCredentialType) =>
 	credentialManifestOf(type, sdkVersion());
-
-/** Writes `<dir>/credentials/<id>/manifest.json`. Action ids have dots, so no action folder has that name. */
-export async function writeCredentialManifest(dir: string, manifest: CredentialManifest) {
-	const target = path.join(dir, 'credentials', manifest.id);
-	await mkdir(target, { recursive: true });
-	await writeFile(path.join(target, 'manifest.json'), `${JSON.stringify(manifest, null, '\t')}\n`);
-}

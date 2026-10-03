@@ -15,7 +15,7 @@ See `packages/@n8n/nodes-base-next/src/nodes/**` for real nodes.
 | `@n8n/node-sdk/credentials` | node authors | `defineCredential`, `credential`, `compat`, `field` (credential fields). Auth schemes only in the `auth: (a) => …` callback |
 | `@n8n/node-sdk/testing` | node authors | `runAction`, `mockHttp` |
 | `@n8n/node-sdk/host` | n8n core and cli | node and credential types (`toNodeType`, `toVersionedNodeType`, `toCredentialType`, …), loaders, Node Contract range, egress checks, `permissionsOf` (the permissions of a contract), `exampleOf` |
-| `@n8n/node-sdk/registry` | registry, freeze, store | manifests (`toContract`, `lintContract`, `parseManifest`), hashes, semver, `diffContracts`, packages and integrity, fixtures |
+| `@n8n/node-sdk/registry` | registry, freeze, store | manifests (`toContract`, `lintContract`, `parseManifest`), hashes, semver, `diffContracts`, the store layout (`storeReader`, `addToStore`, signatures), fixtures |
 | `@n8n/node-sdk/codegen` | instance-ai, compat | `generateNodeModule`, `toTs`, model catalog, provider connections and fields |
 | `@n8n/node-sdk/mcp` | tooling | `liftMcpTool`: an MCP tool as a derived manifest |
 | `@n8n/node-sdk/freeze`, `/publish`, `/sandbox` | tooling | freeze, publish and sandboxed run of bundles |

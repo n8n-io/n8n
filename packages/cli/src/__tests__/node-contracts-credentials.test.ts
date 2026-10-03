@@ -1,4 +1,5 @@
 import type { GlobalConfig } from '@n8n/config';
+import { bundledCredentialsOf } from '@n8n/nodes-base-next';
 import { LazyPackageDirectoryLoader } from 'n8n-core';
 import type {
 	ICredentialDataDecryptedObject,
@@ -105,7 +106,7 @@ describe('credential types of the node contracts package', () => {
 		const token = credentialTypes.getByName('notionApi');
 		expect(typeof token.authenticate).toBe('function');
 		expect(instance.knownCredentials.notionApi.sourcePath).toBe(
-			path.join(PACKAGES, NEXT, 'dist/versions/credentials/notion.token/manifest.json'),
+			bundledCredentialsOf().find(({ manifest }) => manifest.id === 'notion.token')?.file,
 		);
 		expect(credentialTypes.getSupportedNodes('notionApi')).toEqual(
 			expect.arrayContaining([
@@ -209,7 +210,14 @@ describe('credential types of the node contracts package', () => {
 			'X-Proxy': 'p-1',
 		};
 		expect(signed).toEqual([
-			{ source: `${NEXT}/dist/versions/credentials/openAi.apiKey/manifest.json`, headers },
+			{
+				source: path.relative(
+					PACKAGES,
+					bundledCredentialsOf().find(({ manifest }) => manifest.id === 'openAi.apiKey')?.file ??
+						'',
+				),
+				headers,
+			},
 			{ source: 'nodes-base/dist/credentials/OpenAiApi.credentials.js', headers },
 		]);
 	});

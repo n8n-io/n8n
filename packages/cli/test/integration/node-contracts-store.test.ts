@@ -2,6 +2,7 @@ import { createWorkflow, mockInstance, testDb } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import { ExecutionRepository, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { versionsOf } from '@n8n/nodes-base-next';
 import { InstanceSettings } from 'n8n-core';
 import {
 	createRunExecutionData,
@@ -38,19 +39,20 @@ interface Manifest {
 	readonly contractHash: string;
 }
 
+interface StoreVersion {
+	readonly manifestText: string;
+	readonly bundle: string;
+	readonly signatures?: unknown[];
+}
+
 // The cli does not depend on the node-sdk, so load it through the package that does.
 const sdkRequire = createRequire(createRequire(__filename).resolve('@n8n/nodes-base-next'));
 const sdk = sdkRequire('@n8n/node-sdk/registry') as {
 	parseManifest(text: string): Manifest;
-	integrityOf(tarball: Uint8Array): string;
-	packageNameOf(actionId: string): string;
-};
-const { packContractPackage } = sdkRequire('@n8n/node-sdk/publish') as {
-	packContractPackage(
-		frozen: { manifest: Manifest; bundle: string },
-		fixtures: { executions: unknown[] },
-		privateKey: string,
-	): Buffer;
+	addToStore(dir: string, versions: StoreVersion[]): Promise<unknown>;
+	manifestTextOf(manifest: Manifest): string;
+	signStoreManifest(manifestText: string, privateKey: string): unknown;
+	storeBlobFileOf(digest: string): string;
 };
 
 const NEXT = path.resolve(__dirname, '../../../@n8n/nodes-base-next');
@@ -62,17 +64,37 @@ const keys = generateKeyPairSync('ed25519', {
 	privateKeyEncoding: { type: 'pkcs8', format: 'pem' },
 });
 
-async function pack(dir: string) {
-	const manifest = sdk.parseManifest(await readFile(path.join(dir, 'manifest.json'), 'utf8'));
-	const bundle = await readFile(path.join(dir, 'bundle.cjs'), 'utf8');
-	const data = packContractPackage({ manifest, bundle }, { executions: [] }, keys.privateKey);
-	return { manifest, data, integrity: sdk.integrityOf(data) };
-}
+/** A frozen version, signed by the publisher key. */
+const signed = (manifestText: string, bundle: string) => ({
+	manifest: sdk.parseManifest(manifestText),
+	version: {
+		manifestText,
+		bundle,
+		signatures: [sdk.signStoreManifest(manifestText, keys.privateKey)],
+	},
+});
 
-type Published = Awaited<ReturnType<typeof pack>>;
+type Published = ReturnType<typeof signed>;
 
-const registry = { url: '', server: createServer(), versions: new Map<string, Published>() };
+const registry = {
+	url: '',
+	dir: '',
+	server: createServer(),
+	versions: new Map<string, Published>(),
+};
 const state = { dir: '', storeDir: '', owner: undefined as unknown as User };
+
+/** Writes the registry store again from `registry.versions`. */
+const writeRegistry = async () => {
+	await rm(registry.dir, { recursive: true, force: true });
+	await sdk.addToStore(
+		registry.dir,
+		[...registry.versions.values()].map(({ version }) => version),
+	);
+};
+
+const bundleFileOf = ({ bundleHash }: Manifest) =>
+	path.join(state.storeDir, sdk.storeBlobFileOf(`sha256:${bundleHash}`));
 
 const lockOf = ({ id, semver, bundleHash, contractHash }: Manifest) => ({
 	action: id,
@@ -95,39 +117,33 @@ beforeAll(async () => {
 	state.storeDir = path.join(Container.get(InstanceSettings).n8nFolder, 'node-contracts');
 	await rm(state.storeDir, { recursive: true, force: true });
 
-	const older = await pack(path.join(NEXT, `fixtures/versions/httpRequest.get@${OLDER}`));
-	const head = await pack(path.join(NEXT, 'dist/versions/httpRequest.get'));
+	const olderDir = path.join(NEXT, `fixtures/versions/httpRequest.get@${OLDER}`);
+	const older = signed(
+		await readFile(path.join(olderDir, 'manifest.json'), 'utf8'),
+		await readFile(path.join(olderDir, 'bundle.cjs'), 'utf8'),
+	);
+	const [headVersion] = versionsOf('httpRequest.get');
+	if (!headVersion) throw new Error('httpRequest.get is not bundled');
+	const head = signed(sdk.manifestTextOf(headVersion.manifest), await headVersion.readBundle());
 	registry.versions.set(OLDER, older);
 	registry.versions.set(head.manifest.semver, head);
-	const name = sdk.packageNameOf('httpRequest.get');
+	registry.dir = path.join(state.dir, 'registry');
+	await writeRegistry();
+	// The registry is static files.
 	registry.server.on('request', (request, response) => {
-		const tarball = /^\/tarballs\/(.+)\.tgz$/.exec(request.url ?? '')?.[1];
-		const found = tarball ? registry.versions.get(tarball) : undefined;
-		if (request.url === `/${name.replace('/', '%2f')}`) {
-			const versions = [...registry.versions].map(([version, { manifest, integrity }]) => [
-				version,
-				{
-					n8nContract: {
-						id: manifest.id,
-						nodeContract: manifest.nodeContract,
-						contractHash: manifest.contractHash,
-						bundleHash: manifest.bundleHash,
-					},
-					dist: { tarball: `${registry.url}/tarballs/${version}.tgz`, integrity },
-				},
-			]);
-			response.setHeader('content-type', 'application/json');
-			response.end(JSON.stringify({ name, versions: Object.fromEntries(versions) }));
-		} else if (found) {
-			response.end(found.data);
-		} else if (request.url?.startsWith('/echo?')) {
+		if (request.url?.startsWith('/echo?')) {
 			const { searchParams } = new URL(request.url, registry.url);
 			response.setHeader('content-type', 'application/json');
 			response.end(JSON.stringify({ received: Object.fromEntries(searchParams) }));
-		} else {
-			response.statusCode = 404;
-			response.end();
+			return;
 		}
+		void readFile(path.join(registry.dir, decodeURIComponent(request.url ?? ''))).then(
+			(data) => response.end(data),
+			() => {
+				response.statusCode = 404;
+				response.end();
+			},
+		);
 	});
 	registry.url = await new Promise<string>((resolve) =>
 		registry.server.listen(0, '127.0.0.1', () =>
@@ -146,7 +162,7 @@ beforeAll(async () => {
 	});
 
 	// The store holds only the HEAD.
-	await (await Container.get(NodeContractsStore).open()).add(head.data);
+	await sdk.addToStore(state.storeDir, [head.version]);
 	await useNodeContractsRegistry();
 	await utils.initBinaryDataService();
 	const next = new ContractNodeLoader();
@@ -251,7 +267,7 @@ describe('node contracts store', () => {
 	it('fetches a bundle that is not in the store before the run', async () => {
 		const workflow = await createOlderWorkflow();
 		const { bundleHash } = publishedOlder().manifest;
-		await rm(path.join(state.storeDir, `${bundleHash}.tgz`));
+		await rm(bundleFileOf(publishedOlder().manifest));
 		// As after a restart: the node types come from the store.
 		await Container.get(LoadNodesAndCredentials).refreshNodeTypes();
 		expect(majorsOfGet()).toEqual(['3']);
@@ -270,7 +286,8 @@ describe('node contracts store', () => {
 		const workflow = await createOlderWorkflow();
 		const older = publishedOlder();
 		registry.versions.delete(OLDER);
-		await rm(path.join(state.storeDir, `${older.manifest.bundleHash}.tgz`));
+		await writeRegistry();
+		await rm(bundleFileOf(older.manifest));
 		await Container.get(LoadNodesAndCredentials).refreshNodeTypes();
 		try {
 			await expect(runToEnd(workflow)).rejects.toThrow(
@@ -278,13 +295,13 @@ describe('node contracts store', () => {
 			);
 		} finally {
 			registry.versions.set(OLDER, older);
+			await writeRegistry();
 		}
 	});
 
 	it('fetches a missing bundle once and rebuilds the node types once for parallel runs', async () => {
 		const workflow = await createOlderWorkflow();
-		const { bundleHash } = publishedOlder().manifest;
-		await rm(path.join(state.storeDir, `${bundleHash}.tgz`), { force: true });
+		await rm(bundleFileOf(publishedOlder().manifest), { force: true });
 		const loadNodesAndCredentials = Container.get(LoadNodesAndCredentials);
 		await loadNodesAndCredentials.refreshNodeTypes();
 		const rebuild = vi.spyOn(loadNodesAndCredentials, 'postProcessLoaders');
@@ -303,9 +320,7 @@ describe('node contracts store', () => {
 		const workflow = await createOlderWorkflow();
 		const { instanceAi } = Container.get(GlobalConfig);
 		const loadNodesAndCredentials = Container.get(LoadNodesAndCredentials);
-		await rm(path.join(state.storeDir, `${publishedOlder().manifest.bundleHash}.tgz`), {
-			force: true,
-		});
+		await rm(bundleFileOf(publishedOlder().manifest), { force: true });
 		await loadNodesAndCredentials.refreshNodeTypes();
 		instanceAi.nodeContractRange = '>=2.2.0 <3.0.0';
 		await useNodeContractsRegistry();

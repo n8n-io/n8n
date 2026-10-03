@@ -1,11 +1,4 @@
-import { execFile } from 'node:child_process';
-import { sign } from 'node:crypto';
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
-import path from 'node:path';
 import { Readable } from 'node:stream';
-import { promisify } from 'node:util';
-import { gzipSync } from 'node:zlib';
 import { UnexpectedError, UserError, type INode, type INodeExecutionData } from 'n8n-workflow';
 
 import { isSecretField } from './credentials';
@@ -26,14 +19,21 @@ import {
 	type ExecutorHost,
 } from './runtime';
 import { providedKindOf, providerInputsOf, replayCapability, type ProviderKind } from './providers';
+import {
+	addToStore,
+	manifestTextOf,
+	signStoreManifest,
+	storeFilesOfDir,
+	storeReader,
+	type StoreReader,
+	type StoreRecord,
+} from './store';
 import { validate } from './validate';
 import {
 	canonicalJson,
 	compareSemver,
 	diffContracts,
 	isFixtureBinary,
-	openContractPackage,
-	packageNameOf,
 	parseSemver,
 	type ChangeKind,
 	type ContractDiff,
@@ -359,152 +359,20 @@ export async function checkPublish(
 	return diff;
 }
 
-const BLOCK = 512;
-// npm packs every file with this time, so equal files give equal tarballs.
-const NPM_MTIME = 499162500;
-
-function tarEntry(name: string, data: Buffer): Buffer {
-	const header = Buffer.alloc(BLOCK);
-	const octal = (value: number, length: number) =>
-		`${value.toString(8).padStart(length - 1, '0')}\0`;
-	const fields: ReadonlyArray<readonly [string, number]> = [
-		[name, 0],
-		['0000644\0', 100],
-		['0000000\0', 108],
-		['0000000\0', 116],
-		[octal(data.length, 12), 124],
-		[octal(NPM_MTIME, 12), 136],
-		['        ', 148],
-		['0', 156],
-		['ustar\0', 257],
-		['00', 263],
-	];
-	fields.forEach(([text, offset]) => header.write(text, offset, 'utf8'));
-	const checksum = header.reduce((sum, byte) => sum + byte, 0);
-	header.write(`${checksum.toString(8).padStart(6, '0')}\0 `, 148, 'utf8');
-	return Buffer.concat([header, data, Buffer.alloc((BLOCK - (data.length % BLOCK)) % BLOCK)]);
-}
-
-/** The npm tarball of a version: package.json, the signed manifest, the bundle, the fixtures. */
-export function packContractPackage(
-	{ manifest, bundle }: Pick<FrozenAction, 'manifest' | 'bundle'>,
-	fixtures: ContractFixtures,
-	privateKey: string,
-): Buffer {
-	const manifestText = `${JSON.stringify(manifest, null, '\t')}\n`;
-	const { id, semver, nodeContract, contractHash, bundleHash } = manifest;
-	const packageJson = {
-		name: packageNameOf(id),
-		version: semver,
-		description: manifest.contract.summary,
-		license: 'SEE LICENSE IN manifest.json',
-		// The registry copies these into the packument, so a resolver can filter before download.
-		n8nContract: { id, nodeContract, contractHash, bundleHash },
-	};
-	const files: ReadonlyArray<readonly [string, string]> = [
-		['package.json', `${JSON.stringify(packageJson, null, '\t')}\n`],
-		['manifest.json', manifestText],
-		['manifest.sig', `${sign(null, Buffer.from(manifestText), privateKey).toString('base64')}\n`],
-		['bundle.cjs', bundle],
-		['fixtures.json', `${JSON.stringify(fixtures, null, '\t')}\n`],
-	];
-	return gzipSync(
-		Buffer.concat([
-			...files.map(([name, text]) => tarEntry(`package/${name}`, Buffer.from(text))),
-			Buffer.alloc(BLOCK * 2),
-		]),
-	);
-}
-
-/** The registry operations the publish tool needs. */
-export interface ContractRegistry {
-	/** The published versions of a package. Empty when the package does not exist. */
-	versions(name: string): Promise<readonly string[]>;
-	/** The tarball of one version and its npm integrity. */
-	tarball(
-		name: string,
-		version: string,
-	): Promise<{
-		/** The tarball bytes. */
-		data: Buffer;
-		/** The npm integrity, e.g. `sha512-…`. */
-		integrity: string;
-	}>;
-	/** The bundle hash of one version, from the packument, so no tarball download. */
-	bundleHash(name: string, version: string): Promise<string>;
-	/** Publishes one version. */
-	publish(name: string, version: string, tarball: Buffer): Promise<void>;
-}
-
-const run = promisify(execFile);
-
-/** An npm registry through the npm CLI, which also holds the publish auth. */
-export function npmRegistry(url: string): ContractRegistry {
-	const npm = async (...args: string[]) =>
-		(await run('npm', [...args, '--registry', url], { maxBuffer: 64 * 1024 * 1024 })).stdout;
-	const versions = async (name: string): Promise<readonly string[]> => {
-		try {
-			const value: unknown = JSON.parse(await npm('view', name, 'versions', '--json'));
-			return [value].flat().filter((version) => typeof version === 'string');
-		} catch (error) {
-			if (errorMessage(error).includes('E404')) return [];
-			throw error;
-		}
-	};
-	return {
-		versions,
-		async tarball(name, version) {
-			const integrity = (await npm('view', `${name}@${version}`, 'dist.integrity')).trim();
-			const dir = await mkdtemp(path.join(tmpdir(), 'n8n-contract-'));
-			try {
-				const packed: unknown = JSON.parse(
-					await npm('pack', `${name}@${version}`, '--pack-destination', dir, '--json'),
-				);
-				const [entry] = Array.isArray(packed) ? packed : [];
-				const filename: unknown = isRecord(entry) ? entry.filename : undefined;
-				if (typeof filename !== 'string')
-					throw new UserError(`npm did not pack ${name}@${version}`);
-				return { data: await readFile(path.join(dir, filename)), integrity };
-			} finally {
-				await rm(dir, { recursive: true, force: true });
-			}
-		},
-		async bundleHash(name, version) {
-			const hash = (await npm('view', `${name}@${version}`, 'n8nContract.bundleHash')).trim();
-			if (!/^[a-f0-9]{64}$/.test(hash))
-				throw new UserError(`The registry has no valid bundle hash for ${name}@${version}`);
-			return hash;
-		},
-		async publish(name, version, tarball) {
-			const newest = (await versions(name)).every((other) => compareSemver(other, version) < 0);
-			const dir = await mkdtemp(path.join(tmpdir(), 'n8n-contract-'));
-			try {
-				const file = path.join(dir, 'package.tgz');
-				await writeFile(file, tarball);
-				// npm moves `latest` only to the newest version; a backport patch gets its own tag.
-				await npm('publish', file, '--access', 'public', ...(newest ? [] : ['--tag', 'backport']));
-			} finally {
-				await rm(dir, { recursive: true, force: true });
-			}
-		},
-	};
-}
-
-/** The newest version that `registry` has of an action in one major and minor. */
+/** The newest version of an action in one major and minor in a store. It reads the index only. */
 export const lastPublishedIn =
-	(registry: ContractRegistry): LastVersionOf =>
+	(store: StoreReader): LastVersionOf =>
 	async (id, major, minor) => {
-		const name = packageNameOf(id);
-		const last = (await registry.versions(name))
-			.filter((version) => {
+		const last = (await store.records(id))
+			.filter(({ kind, version }) => {
 				const semver = parseSemver(version);
-				return semver.major === major && semver.minor === minor;
+				return kind !== 'credential' && semver.major === major && semver.minor === minor;
 			})
-			.sort(compareSemver)
+			.sort((a, b) => compareSemver(a.version, b.version))
 			.at(-1);
-		return last === undefined
+		return last?.bundle === undefined
 			? undefined
-			: { id, semver: last, bundleHash: await registry.bundleHash(name, last) };
+			: { id, semver: last.version, bundleHash: last.bundle.slice('sha256:'.length) };
 	};
 
 /** What `publishAction` publishes, and where. */
@@ -515,42 +383,54 @@ export interface PublishOptions {
 	readonly exportName: string;
 	/** The fixtures that publish replays before it publishes. */
 	readonly fixtures: ContractFixtures;
-	/** The registry to publish to, e.g. `npmRegistry(url)`. */
-	readonly registry: ContractRegistry;
+	/** The store directory of the registry: the static files that the registry serves. */
+	readonly registryDir: string;
 	/** PEM of the ed25519 publisher key. It lives outside the repo. */
 	readonly privateKey: string;
 }
 
 /**
  * Freezes HEAD with the patch after the newest published one, gates it against the newest
- * published version below it, signs it, and publishes it. A version already published with
- * the same bundle is a no-op; with another bundle it is refused.
+ * published version below it, signs it, and adds it to the registry store. A version already
+ * published with the same bundle is a no-op; with another bundle it is refused.
  */
 export async function publishAction(options: PublishOptions): Promise<VersionManifest> {
-	const { registry, fixtures, privateKey } = options;
+	const { registryDir, fixtures, privateKey } = options;
+	const registry = storeReader(storeFilesOfDir(registryDir));
 	const frozen = await freezeAction(
 		options.entryFile,
 		options.exportName,
 		lastPublishedIn(registry),
 	);
 	const { id, semver, bundleHash } = frozen.manifest;
-	const name = packageNameOf(id);
-	const published = await registry.versions(name);
-	const open = async (version: string) => {
-		const { data, integrity } = await registry.tarball(name, version);
-		return openContractPackage(data, integrity).manifest;
+	const published = (await registry.records(id)).filter(({ kind }) => kind !== 'credential');
+	const manifestOf = async (record: StoreRecord) => {
+		const read = await registry.readManifest(record);
+		if (!read || read.manifest.kind === 'credential') {
+			throw new UserError(`The registry has no manifest of ${id}@${record.version}`);
+		}
+		return read.manifest;
 	};
-	if (published.includes(semver)) {
-		const existing = await open(semver);
-		if (existing.bundleHash === bundleHash) return existing;
+	const existing = published.find(({ version }) => version === semver);
+	if (existing) {
+		if (existing.bundle === `sha256:${bundleHash}`) return await manifestOf(existing);
 		// Freeze took the patch from the registry, so the registry changed since then.
 		throw new UserError(`${id}@${semver} is published with other bytes; run publish again`);
 	}
 	const previous = published
-		.filter((version) => compareSemver(version, semver) < 0)
-		.sort(compareSemver)
+		.filter(({ version }) => compareSemver(version, semver) < 0)
+		.sort((a, b) => compareSemver(a.version, b.version))
 		.at(-1);
-	await checkPublish(previous ? await open(previous) : undefined, frozen, fixtures);
-	await registry.publish(name, semver, packContractPackage(frozen, fixtures, privateKey));
+	await checkPublish(previous ? await manifestOf(previous) : undefined, frozen, fixtures);
+	const manifestText = manifestTextOf(frozen.manifest);
+	await addToStore(registryDir, [
+		{
+			manifestText,
+			bundle: frozen.bundle,
+			fixtures: `${JSON.stringify(fixtures, null, '\t')}\n`,
+			signatures: [signStoreManifest(manifestText, privateKey)],
+			published: new Date().toISOString(),
+		},
+	]);
 	return frozen.manifest;
 }

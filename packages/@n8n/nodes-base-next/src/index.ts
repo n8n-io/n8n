@@ -99,7 +99,7 @@ import { getManySupabaseRows } from './nodes/supabase/actions/row.get-all';
 import { updateSupabaseRows } from './nodes/supabase/actions/row.update';
 import { migratedSlotOf, type WorkflowNodeRef } from './migrated';
 
-export { bundledCredentialsOf, bundledIdsOf, versionsOf, VERSIONS_DIR } from './registry';
+export { bundledCredentialsOf, bundledIdsOf, EMBEDDED_STORE_DIR, versionsOf } from './registry';
 export {
 	MIGRATED_NODES,
 	migratedSlotOf,
@@ -137,7 +137,11 @@ export {
 	type FrozenVersion,
 	type RunProfile,
 } from '@n8n/node-sdk/host';
-export type { NodeContractLock, VersionManifest } from '@n8n/node-sdk/registry';
+export {
+	storeIndexFileOf,
+	type NodeContractLock,
+	type VersionManifest,
+} from '@n8n/node-sdk/registry';
 
 export const NODE_PACKAGE = '@n8n/nodes-base-next';
 
