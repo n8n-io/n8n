@@ -971,6 +971,12 @@ export interface InstanceAiNodeService {
 		/** The node type is retired. It still works, but it shouldn't be used anymore at anything new. */
 		deprecated?: boolean;
 	} | null>;
+	/** Verified community nodes that the query names and that the instance has not installed. */
+	searchUninstalledNodes?(
+		query: string,
+	): Promise<
+		Array<{ name: string; displayName: string; description: string; packageName: string }>
+	>;
 	/** List available resource/operation discriminators for a node. Null for flat nodes. */
 	listDiscriminators?(
 		nodeType: string,

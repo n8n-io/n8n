@@ -657,6 +657,38 @@ describe('NodeCatalogService', () => {
 			}
 		});
 
+		describe('searchUninstalledNodes', () => {
+			test('returns a vetted uninstalled node that the query names, with its package', async () => {
+				await service.initialize();
+
+				expect(await service.searchUninstalledNodes('firecrawl')).toEqual([
+					expect.objectContaining({
+						name: 'n8n-nodes-firecrawl.firecrawl',
+						displayName: 'Firecrawl',
+						packageName: 'n8n-nodes-firecrawl',
+					}),
+				]);
+			});
+
+			test('falls back to the service word of an operation phrase', async () => {
+				await service.initialize();
+
+				expect(await service.searchUninstalledNodes('firecrawl scrape page')).toEqual([
+					expect.objectContaining({ name: 'n8n-nodes-firecrawl.firecrawl' }),
+				]);
+			});
+
+			test('returns nothing when community packages are disabled', async () => {
+				Container.set(
+					CommunityPackagesConfig,
+					mock<CommunityPackagesConfig>({ enabled: false, verifiedEnabled: true }),
+				);
+				await service.initialize();
+
+				expect(await service.searchUninstalledNodes('firecrawl')).toEqual([]);
+			});
+		});
+
 		describe('findUninstalledNodeTypes', () => {
 			test('names the package that ships an uninstalled node type', async () => {
 				await service.initialize();

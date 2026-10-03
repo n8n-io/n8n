@@ -3956,6 +3956,12 @@ export class InstanceAiAdapterService {
 				return await getDefinition(`${MCP_REGISTRY_PACKAGE_NAME}.${nodeType}`);
 			},
 
+			searchUninstalledNodes: async (query) => {
+				const nodeCatalogService = this.getNodeCatalogService();
+				await nodeCatalogService.initialize();
+				return await nodeCatalogService.searchUninstalledNodes(query);
+			},
+
 			listDiscriminators: async (nodeType) => {
 				const nodeCatalogService = this.getNodeCatalogService();
 				await nodeCatalogService.initialize();

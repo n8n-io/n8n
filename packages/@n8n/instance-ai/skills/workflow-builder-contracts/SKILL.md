@@ -26,8 +26,9 @@ are the full API: do not read SDK files. Only `build-workflow` has
 ## Process
 
 1. Call `nodes(action="search")` ONCE with `queries`: one short query per
-   service, e.g. `["notion get many pages", "http request", "slack"]`. Use the
-   returned `nodeModules` and `builtIns`. Get `results` nodes in step 2.
+   service, e.g. `["notion get many pages", "http request"]`. Use the
+   `nodeModules` and `builtIns`. Get `results` nodes in step 2. Ask the
+   user before you use `notInstalled` nodes.
 2. Get other definitions in ONE `nodes(action="type-definition")` call.
 3. Call `build-workflow` with a stable `filePath` and the complete source
    as `sourceCode`.

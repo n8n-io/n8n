@@ -14,7 +14,7 @@ import * as path from 'path';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { synthesizeNodeTypeDef } from '@/modules/mcp-registry/synthesize-type-def';
 
-import { findRegistryMatches, type RegistryCandidate } from './registry-lookup';
+import { findRegistryMatches, registryQueryTerms, type RegistryCandidate } from './registry-lookup';
 
 export type NodeFilter = (nodeId: string) => boolean;
 
@@ -47,10 +47,9 @@ const versionLabel = (description: INodeTypeDescription): string | undefined => 
  * Opt-in access to the second catalog tier: verified community nodes published
  * to the n8n registry but *not installed* on this instance.
  *
- * Off by default, so every existing caller (Instance AI, the agents builder)
- * keeps seeing installed nodes only. The MCP workflow-builder tools are the
- * sole opt-in today — they can offer the agent an `install_community_node`
- * step, which the other surfaces have no equivalent for.
+ * Off by default, so the agents builder sees installed nodes only. The MCP
+ * workflow-builder tools opt in here. Instance AI reads the tier through
+ * {@link NodeCatalogService.searchUninstalledNodes}.
  */
 export interface CatalogScopeOptions {
 	includeUninstalled?: boolean;
@@ -63,6 +62,14 @@ export interface CatalogScopeOptions {
 export interface CatalogSearchResult extends CodeBuilderSearchResult {
 	/** Verified-but-uninstalled node types offered alongside the installed hits. */
 	uninstalledOffered?: string[];
+}
+
+/** A verified community node that this instance has not installed. */
+export interface UninstalledNode {
+	name: string;
+	displayName: string;
+	description: string;
+	packageName: string;
 }
 
 export interface SearchNodesOptions extends CatalogScopeOptions {
@@ -575,6 +582,40 @@ export class NodeCatalogService {
 			this.getDefinitionCache.set(cacheKey, result);
 		}
 		return result;
+	}
+
+	/**
+	 * Verified community nodes not installed here that the query names, best
+	 * first, as data rather than the rendered text of {@link searchNodes}.
+	 * Empty when the second tier is off.
+	 *
+	 * The assistant writes queries as "<service> <operation>" phrases, and the
+	 * registry match needs every term in the node name. So when the phrase
+	 * matches nothing, the first term (the service) is tried alone.
+	 */
+	async searchUninstalledNodes(query: string): Promise<UninstalledNode[]> {
+		if (!(await this.getUninstalledParser())) return [];
+
+		const phraseMatches = findRegistryMatches(query, this.uninstalledCandidates);
+		const [serviceTerm] = registryQueryTerms(query);
+		const matches =
+			phraseMatches.length || !serviceTerm
+				? phraseMatches
+				: findRegistryMatches(serviceTerm, this.uninstalledCandidates);
+
+		return matches.flatMap(({ name, packageName }) => {
+			const description = this.uninstalledDescriptionsById.get(name);
+			return description
+				? [
+						{
+							name,
+							displayName: description.displayName,
+							description: description.description,
+							packageName,
+						},
+					]
+				: [];
+		});
 	}
 
 	/**

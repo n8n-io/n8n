@@ -21,6 +21,21 @@ vi.mock('@n8n/workflow-sdk', async (importOriginal) => ({
 	validateNodeConfig: vi.fn(() => ({ valid: true, errors: [] })),
 }));
 
+const firecrawlPackage = {
+	name: 'n8n-nodes-firecrawl.firecrawl',
+	displayName: 'Firecrawl',
+	description: 'Scrape websites',
+	packageName: 'n8n-nodes-firecrawl',
+};
+
+const firecrawlRow = {
+	name: 'n8n-nodes-firecrawl.firecrawl',
+	displayName: 'Firecrawl',
+	description: 'Scrape websites',
+	install:
+		"Not installed. Ask the user before you use it: an instance owner or admin must install the package 'n8n-nodes-firecrawl' in Settings > Community nodes.",
+};
+
 function createMockContext(overrides: Partial<InstanceAiContext> = {}): InstanceAiContext {
 	return {
 		userId: 'user-1',
@@ -365,6 +380,53 @@ describe('nodes tool', () => {
 			expect(node.subnodeRequirements).toEqual([
 				expect.not.objectContaining({ suggestedNode: expect.anything() }),
 			]);
+		});
+
+		it('lists a vetted community node that is not installed as install-first', async () => {
+			const context = createMockContext();
+			vi.mocked(context.nodeService.listSearchable).mockResolvedValue([]);
+			context.nodeService.searchUninstalledNodes = vi.fn().mockResolvedValue([firecrawlPackage]);
+
+			const result = await executeTool(createNodesTool(context, 'full'), {
+				action: 'search',
+				query: 'firecrawl',
+				limit: 5,
+			});
+
+			expect(context.nodeService.searchUninstalledNodes).toHaveBeenCalledWith('firecrawl');
+			expect(result).toEqual({ results: [], totalResults: 0, notInstalled: [firecrawlRow] });
+		});
+
+		it('lists no uninstalled node when the instance offers none', async () => {
+			const context = createMockContext();
+			vi.mocked(context.nodeService.listSearchable).mockResolvedValue([]);
+			context.nodeService.searchUninstalledNodes = vi.fn().mockResolvedValue([]);
+
+			const result = await executeTool(createNodesTool(context, 'full'), {
+				action: 'search',
+				query: 'firecrawl',
+				limit: 5,
+			});
+
+			expect(result).toEqual({ results: [], totalResults: 0 });
+		});
+
+		it('still returns installed results when the uninstalled list fails', async () => {
+			const logger = { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() };
+			const context = createMockContext({ logger });
+			vi.mocked(context.nodeService.listSearchable).mockResolvedValue([]);
+			context.nodeService.searchUninstalledNodes = vi
+				.fn()
+				.mockRejectedValue(new Error('registry down'));
+
+			const result = await executeTool(createNodesTool(context, 'full'), {
+				action: 'search',
+				query: 'firecrawl',
+				limit: 5,
+			});
+
+			expect(result).toEqual({ results: [], totalResults: 0 });
+			expect(logger.warn).toHaveBeenCalled();
 		});
 
 		it('should return no search results when neither query nor connection type is provided', async () => {
@@ -1307,6 +1369,24 @@ describe('nodes tool', () => {
 			expect(result.otherNodes?.[0]).toBe('n8n-nodes-base.notionTrigger: Notion Trigger');
 			expect(result.otherNodes?.join('\n')).not.toMatch(/notionTool|mcp-registry/);
 			expect(await search('notion get many database pages')).not.toHaveProperty('otherNodes');
+		});
+
+		it('lists a vetted community node that is not installed as install-first', async () => {
+			const context = createContractContext();
+			context.nodeService.searchUninstalledNodes = vi.fn().mockResolvedValue([firecrawlPackage]);
+
+			const result = await executeTool(createNodesTool(context, 'full'), {
+				action: 'search',
+				queries: ['firecrawl scrape page'],
+				limit: 5,
+			});
+
+			expect(context.nodeService.searchUninstalledNodes).toHaveBeenCalledWith(
+				'firecrawl scrape page',
+			);
+			expect(result).toMatchObject({
+				searches: [{ query: 'firecrawl scrape page', notInstalled: [firecrawlRow] }],
+			});
 		});
 
 		it('gives the tool factories of a module instead of the tool variant of its legacy node', async () => {

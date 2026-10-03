@@ -107,9 +107,6 @@ export const createSearchWorkflowNodesTool = (
 		};
 
 		try {
-			// MCP is the only surface that opts into the verified-but-uninstalled
-			// tier: it can follow up with an install step, which Instance AI and
-			// the agents builder have no equivalent for.
 			const options: SearchNodesOptions = { includeUninstalled };
 			if (usage === 'agentTool') {
 				options.nodeFilter = (

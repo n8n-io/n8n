@@ -339,12 +339,40 @@ async function handleList(
 
 type SearchInput = Extract<FullInput, { action: 'search' }>;
 
+/**
+ * Verified community nodes that the query names and that the instance has not installed. The
+ * build refuses them until the package is installed, so the agent must ask the user first.
+ */
+async function notInstalledPartOf(
+	context: InstanceAiContext,
+	input: SearchInput,
+): Promise<{
+	notInstalled?: Array<{ name: string; displayName: string; description: string; install: string }>;
+}> {
+	if (!input.query || input.connectionType || !context.nodeService.searchUninstalledNodes)
+		return {};
+	const nodes = await context.nodeService.searchUninstalledNodes(input.query);
+	if (!nodes.length) return {};
+	return {
+		notInstalled: nodes.map(({ packageName, ...node }) => ({
+			...node,
+			install: `Not installed. Ask the user before you use it: an instance owner or admin must install the package '${packageName}' in Settings > Community nodes.`,
+		})),
+	};
+}
+
 async function handleSearch(
 	context: InstanceAiContext,
 	input: SearchInput,
 	cache: SearchEngineCache,
 ) {
-	const nodeTypes = await context.nodeService.listSearchable();
+	const [nodeTypes, notInstalledPart] = await Promise.all([
+		context.nodeService.listSearchable(),
+		notInstalledPartOf(context, input).catch((error: unknown) => {
+			context.logger.warn('Failed to list uninstalled community nodes for the search', { error });
+			return {};
+		}),
+	]);
 	let engine = cache.engine;
 	if (!engine || cache.nodeTypes !== nodeTypes || cache.nodeCount !== nodeTypes.length) {
 		cache.nodeTypes = nodeTypes;
@@ -381,13 +409,13 @@ async function handleSearch(
 		r.subnodeRequirements?.some((req) => req.connectionType === 'ai_languageModel'),
 	);
 	if (!hasLanguageModelRequirement) {
-		return { results: enriched, totalResults: enriched.length };
+		return { results: enriched, totalResults: enriched.length, ...notInstalledPart };
 	}
 
 	const credentialMap = await buildCredentialMap(context.credentialService);
 	const suggestedModelNode = pickPreferredChatModelNode(credentialMap.keys());
 	if (!suggestedModelNode) {
-		return { results: enriched, totalResults: enriched.length };
+		return { results: enriched, totalResults: enriched.length, ...notInstalledPart };
 	}
 
 	const withSuggestions = enriched.map((r) =>
@@ -406,6 +434,7 @@ async function handleSearch(
 	return {
 		results: withSuggestions,
 		totalResults: withSuggestions.length,
+		...notInstalledPart,
 	};
 }
 
@@ -426,6 +455,7 @@ async function searchOneWithModules(
 ) {
 	const query = input.query ?? '';
 	const catalog = await handleSearch(context, input, cache);
+	const notInstalledPart = catalog.notInstalled ? { notInstalled: catalog.notInstalled } : {};
 	const namesHit = (hit: { displayName: string }) => namesDisplayName(query, hit.displayName);
 	const builtInHits = catalog.results.filter((hit) => builtInRowOf(hit.name) !== undefined);
 	const builtIns = [...new Set(builtInHits.flatMap((hit) => builtInRowOf(hit.name) ?? []))];
@@ -476,6 +506,7 @@ async function searchOneWithModules(
 			...builtInsPart,
 			...otherActionsPart,
 			...(otherNodes.length ? { otherNodes } : {}),
+			...notInstalledPart,
 		};
 	}
 	return {
@@ -485,6 +516,7 @@ async function searchOneWithModules(
 		...otherActionsPart,
 		results,
 		totalResults: results.length,
+		...notInstalledPart,
 	};
 }
 
