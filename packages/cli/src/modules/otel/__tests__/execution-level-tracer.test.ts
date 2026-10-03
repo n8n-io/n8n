@@ -1059,6 +1059,8 @@ describe('ExecutionLevelTracer', () => {
 				},
 			],
 			requestCount: 2,
+			rpcs: [],
+			rpcCount: 0,
 			retryCount: 0,
 			pageCount: 0,
 			inputItems: 1,
@@ -1176,6 +1178,76 @@ describe('ExecutionLevelTracer', () => {
 				'http.response.status_code': 503,
 				'error.type': '503',
 			});
+		});
+
+		it('adds sandbox.start and rpc spans, with each guest request under its rpc span', () => {
+			const rpc = { startMs: t0 + 3, endMs: t0 + 40, requestBytes: 88 };
+			const sandboxed: RunProfile = {
+				...notionProfile,
+				path: 'sandbox',
+				phases: [
+					{ name: 'load', startMs: t0, endMs: t0 + 1, cached: true },
+					{ name: 'sandboxStart', startMs: t0 + 1, endMs: t0 + 2, compileCached: false },
+				],
+				rpcs: [
+					{
+						...rpc,
+						id: 3,
+						method: 'action.item-run.[take]',
+						direction: 'host_to_guest',
+						responseBytes: 66_100,
+						encodeMs: 0.01,
+						decodeMs: 0.3,
+					},
+					{
+						...rpc,
+						id: 4,
+						method: 'http.request',
+						direction: 'guest_to_host',
+						responseBytes: 66_000,
+						encodeMs: 0.2,
+						decodeMs: 0.01,
+					},
+					{ ...rpc, id: 5, method: 'log.log', direction: 'guest_to_host', errorType: '-32601' },
+					{ ...rpc, id: 6, method: '[stop]', direction: 'host_to_guest', errorType: 'UserError' },
+				],
+				rpcCount: 10,
+				requests: [
+					{ ...notionRequest, startMs: t0 + 4, endMs: t0 + 20, rpc: 4 },
+					{ ...notionRequest, startMs: t0 + 21, endMs: t0 + 39, rpc: 8 },
+				],
+			};
+			startNode('exec-sandbox');
+			tracer.recordContractRun('exec-sandbox', 'Notion', sandboxed);
+			endNode('exec-sandbox');
+
+			const [run] = named('contract.run');
+			const [start] = named('sandbox.start');
+			const [take] = named('rpc action.item-run.[take]');
+			const [call] = named('rpc http.request');
+			const [log] = named('rpc log.log');
+			const [stop] = named('rpc [stop]');
+			const runId = run.spanContext().spanId;
+			[start, take, call, log, stop].forEach((span) => expect(parentOf(span)).toBe(runId));
+			expect(named('POST').map(parentOf)).toEqual([call.spanContext().spanId, runId]);
+			expect(start.attributes).toEqual({ 'n8n.sandbox.compile_cached': false });
+			expect(take.kind).toBe(SpanKind.CLIENT);
+			expect(call.kind).toBe(SpanKind.SERVER);
+			expect(call.attributes).toEqual({
+				'rpc.system.name': 'jsonrpc',
+				'rpc.method': 'http.request',
+				'n8n.rpc.direction': 'guest_to_host',
+				'n8n.rpc.request.bytes': 88,
+				'n8n.rpc.response.bytes': 66_000,
+				'n8n.rpc.encode_ms': 0.2,
+				'n8n.rpc.decode_ms': 0.01,
+			});
+			expect(log.status.code).toBe(SpanStatusCode.ERROR);
+			expect(log.attributes['error.type']).toBe('-32601');
+			expect(log.attributes['rpc.response.status_code']).toBe('-32601');
+			expect(stop.attributes['error.type']).toBe('UserError');
+			expect(stop.attributes).not.toHaveProperty('rpc.response.status_code');
+			expect(run.attributes['n8n.contract.spans_dropped']).toBe(6);
 		});
 
 		it('adds no span without an active node span', () => {

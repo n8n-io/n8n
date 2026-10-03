@@ -10,8 +10,10 @@ import type { IHttpRequestOptions, INode } from 'n8n-workflow';
 import { compat, defineCredential, field } from '../credentials';
 import { freezeAction, GUEST_LACKS } from '../freeze';
 import { defineNode, t } from '../index';
+import { runRecorder } from '../profile';
 import { sandboxedVersionOf, warmSandbox, type SandboxOptions } from '../sandbox';
 import { executorOf, type BinaryStore, type ExecutorHost } from '../runtime';
+import { NODE_CONTRACT_VERSION } from '../version';
 
 const SANDBOX = path.resolve(__dirname, '..', '..', 'sandbox');
 const SIDECAR = path.join(SANDBOX, 'sidecar', 'target', 'release', 'n8n-sandbox');
@@ -381,6 +383,62 @@ describe.skipIf(!existsSync(SIDECAR) || !existsSync(GUEST))('the sandbox', () =>
 		expect(requests).toEqual([
 			expect.objectContaining({ method: 'GET', url: 'https://api.example.com/echo' }),
 		]);
+	});
+
+	it('records the sandbox start, each JSON-RPC message, and the guest request under its call', async () => {
+		const { recorder, profile } = runRecorder(1);
+
+		await run('echoProbe', { ...hostOf(), recorder });
+
+		const recorded = profile(
+			{
+				action: 'probe',
+				version: '1.0.0',
+				bundleHash: 'hash',
+				nodeContract: NODE_CONTRACT_VERSION,
+			},
+			{ outputItems: 1 },
+		);
+		expect(recorded).toMatchObject({
+			path: 'sandbox',
+			phases: [{ name: 'sandboxStart', compileCached: true }],
+			rpcCount: recorded.rpcs.length,
+		});
+		expect(recorded.rpcs.map(({ method, direction }) => `${direction} ${method}`)).toEqual(
+			expect.arrayContaining([
+				'host_to_guest [initialize]',
+				'host_to_guest action.item-run.[new]',
+				'host_to_guest action.item-run.[take]',
+				'guest_to_host http.request',
+				'host_to_guest action.item-run.[drop]',
+			]),
+		);
+		const callOf = (method: string) => recorded.rpcs.find((rpc) => rpc.method === method);
+		const sizes = {
+			requestBytes: expect.any(Number),
+			responseBytes: expect.any(Number),
+			encodeMs: expect.any(Number),
+			decodeMs: expect.any(Number),
+		};
+		expect(callOf('action.item-run.[take]')).toMatchObject(sizes);
+		expect(callOf('http.request')).toMatchObject(sizes);
+		expect(callOf('action.item-run.[drop]')).not.toHaveProperty('responseBytes');
+		const [take, call] = [callOf('action.item-run.[take]'), callOf('http.request')];
+		expect(recorded.requests).toEqual([
+			expect.objectContaining({ method: 'GET', host: 'api.example.com', rpc: call?.id }),
+		]);
+		const [request] = recorded.requests;
+		const times = [take?.startMs, call?.startMs, request?.startMs, request?.endMs, call?.endMs];
+		expect(times).toEqual([...times].sort((a = 0, b = 0) => a - b));
+		expect(call?.endMs).toBeLessThanOrEqual(take?.endMs ?? 0);
+	});
+
+	it('gives the guest an error answer when the host answer cannot be encoded', async () => {
+		const body: Record<string, unknown> = {};
+		body.self = body;
+		const request = async () => ({ body, headers: {}, statusCode: 200 });
+
+		await expect(run('echoProbe', { ...hostOf(), request })).rejects.toThrow(/circular/);
 	});
 
 	it('gives the bundle only the allowed response headers, while the same action in-process gets all', async () => {

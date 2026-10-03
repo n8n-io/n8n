@@ -2,7 +2,7 @@ import { spawn } from 'node:child_process';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { createHash, randomUUID } from 'node:crypto';
 import { once } from 'node:events';
-import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
+import { mkdir, readdir, readFile, rename, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { PassThrough } from 'node:stream';
 import { toHostname, UnexpectedError, UserError } from 'n8n-workflow';
@@ -29,6 +29,7 @@ import {
 	type RunLimits,
 } from './define';
 import { allowsHost, permissionsOf } from './egress';
+import type { RunRecorder, RunRequest, RunRpc } from './profile';
 import {
 	executorOf,
 	loadExecutor,
@@ -139,6 +140,15 @@ class RpcError extends Error {
 const resultError = (message: string, data: unknown = message) =>
 	new RpcError(-32000, message, data);
 
+/** The JSON-RPC error answer for an error of a guest call; an unknown error is −32603. */
+const errorAnswer = (error: unknown) => {
+	const rpc =
+		error instanceof RpcError
+			? error
+			: new RpcError(-32603, error instanceof Error ? error.message : String(error));
+	return { error: { code: rpc.code, message: rpc.message, data: rpc.data } };
+};
+
 type GuestCalls = (method: string, params: Record<string, unknown>) => Promise<unknown>;
 
 interface Connection {
@@ -191,8 +201,28 @@ const grantsOf = ({ kind, contract }: VersionManifest) => {
 	];
 };
 
-/** One sidecar process: one component instance, so one node execution shares no state with another. */
-function connect(config: SessionConfig): Connection {
+/** A message line that the host wrote or read, for the profile. */
+interface Line {
+	readonly startMs: number;
+	readonly bytes: number;
+	/** The time to encode or decode the line. */
+	readonly ms: number;
+}
+
+/** An answer of the guest to a host call. */
+interface Answer {
+	readonly message: Record<string, unknown>;
+	readonly line?: Line;
+}
+
+/** The guest call that the host answers now, so an HTTP attempt names the call that sent it. */
+const guestCalls = new AsyncLocalStorage<number>();
+
+/**
+ * One sidecar process: one component instance, so one node execution shares no state with another.
+ * With a recorder, each message goes into the run profile.
+ */
+function connect(config: SessionConfig, recorder?: RunRecorder): Connection {
 	const { options, limits, label, bundle, grants } = config;
 	const child = spawn(
 		options.sidecar,
@@ -206,8 +236,8 @@ function connect(config: SessionConfig): Connection {
 		],
 		{ stdio: ['pipe', 'pipe', 'pipe'], env: {}, windowsHide: true },
 	);
-	const pending = new Map<number, { resolve(value: unknown): void; reject(error: Error): void }>();
-	const state = { next: 1, partialLength: 0, stderr: '' };
+	const pending = new Map<number, { resolve(answer: Answer): void; reject(error: Error): void }>();
+	const state = { next: 1, rpc: 1, partialLength: 0, stderr: '' };
 	// The chunks of an incomplete line, so a long line is joined once.
 	const partial: string[] = [];
 	const served = new Map<'calls', GuestCalls>();
@@ -222,45 +252,79 @@ function connect(config: SessionConfig): Connection {
 		() => fail(new UserError(`${label} ran longer than ${limits.wallMs} ms and was stopped`)),
 		limits.wallMs,
 	);
-	const send = (message: Record<string, unknown>) => {
+	/** Writes a message. With a recorder, it gives the line for the profile. */
+	const send = (message: Record<string, unknown>): Line | undefined => {
 		// An answer can come after the sidecar stopped, e.g. at the wall clock limit.
-		if (failure.has('error')) return;
-		child.stdin.write(`${JSON.stringify({ jsonrpc: '2.0', ...message })}\n`);
-	};
-	const answer = async (id: unknown, method: string, params: Record<string, unknown>) => {
-		const calls = served.get('calls');
-		try {
-			if (!calls) throw new RpcError(-32601, `${method} has no run`);
-			const result = await calls(method, params);
-			if (id !== undefined) send({ id, result: result ?? null });
-		} catch (error) {
-			if (id === undefined) return;
-			const rpc =
-				error instanceof RpcError
-					? error
-					: new RpcError(-32603, error instanceof Error ? error.message : String(error));
-			send({ id, error: { code: rpc.code, message: rpc.message, data: rpc.data } });
+		if (failure.has('error')) return undefined;
+		if (!recorder) {
+			child.stdin.write(`${JSON.stringify({ jsonrpc: '2.0', ...message })}\n`);
+			return undefined;
 		}
+		const startMs = recorder.now();
+		const text = JSON.stringify({ jsonrpc: '2.0', ...message });
+		const ms = recorder.now() - startMs;
+		child.stdin.write(`${text}\n`);
+		return { startMs, bytes: Buffer.byteLength(text), ms };
 	};
-	const receive = (line: string) => {
-		const message: unknown = JSON.parse(line);
+	const answer = async (
+		id: unknown,
+		method: string,
+		params: Record<string, unknown>,
+		line: Line | undefined,
+	) => {
+		const calls = served.get('calls');
+		const rpcId = state.rpc++;
+		const result = await (async () => {
+			try {
+				if (!calls) throw new RpcError(-32601, `${method} has no run`);
+				const value = await (line
+					? guestCalls.run(rpcId, async () => await calls(method, params))
+					: calls(method, params));
+				return { result: value ?? null };
+			} catch (error) {
+				return errorAnswer(error);
+			}
+		})();
+		// A result that JSON cannot encode, e.g. a circular value, must still answer the guest.
+		const { reply, sent } = (() => {
+			if (id === undefined) return { reply: result, sent: undefined };
+			try {
+				return { reply: result, sent: send({ id, ...result }) };
+			} catch (error) {
+				const fallback = errorAnswer(error);
+				return { reply: fallback, sent: send({ id, ...fallback }) };
+			}
+		})();
+		if (!recorder || !line) return;
+		recorder.rpc({
+			id: rpcId,
+			method,
+			direction: 'guest_to_host',
+			startMs: line.startMs,
+			endMs: recorder.now(),
+			requestBytes: line.bytes,
+			decodeMs: line.ms,
+			...(sent ? { responseBytes: sent.bytes, encodeMs: sent.ms } : {}),
+			...('error' in reply ? { errorType: String(reply.error.code) } : {}),
+		});
+	};
+	const receive = (text: string) => {
+		const startMs = recorder?.now();
+		const message: unknown = JSON.parse(text);
+		const line =
+			recorder && startMs !== undefined
+				? { startMs, bytes: Buffer.byteLength(text), ms: recorder.now() - startMs }
+				: undefined;
 		if (!isRecord(message))
 			throw new UnexpectedError('The sandbox sent a message that is not an object');
 		if (typeof message.method === 'string') {
-			void answer(message.id, message.method, isRecord(message.params) ? message.params : {});
+			void answer(message.id, message.method, isRecord(message.params) ? message.params : {}, line);
 			return;
 		}
 		const waiting = typeof message.id === 'number' ? pending.get(message.id) : undefined;
 		if (!waiting || typeof message.id !== 'number') return;
 		pending.delete(message.id);
-		if (isRecord(message.error)) {
-			const text = typeof message.error.message === 'string' ? message.error.message : 'error';
-			waiting.reject(
-				Object.assign(new UserError(text), { code: message.error.code, data: message.error.data }),
-			);
-		} else {
-			waiting.resolve(message.result);
-		}
+		waiting.resolve({ message, line });
 	};
 	child.stdout.setEncoding('utf8');
 	child.stdout.on('data', (chunk: string) => {
@@ -307,14 +371,49 @@ function connect(config: SessionConfig): Connection {
 			const known = failure.get('error');
 			if (known) throw known;
 			const id = state.next++;
-			const result = new Promise<unknown>((resolve, reject) =>
+			const rpcId = state.rpc++;
+			const answered = new Promise<Answer>((resolve, reject) =>
 				pending.set(id, { resolve, reject }),
 			);
-			send({ id, method, params });
-			return await result;
+			const sent = send({ id, method, params });
+			const recordCall = (answer: Pick<RunRpc, 'responseBytes' | 'decodeMs' | 'errorType'>) => {
+				if (!recorder || !sent) return;
+				recorder.rpc({
+					id: rpcId,
+					method,
+					direction: 'host_to_guest',
+					startMs: sent.startMs,
+					endMs: recorder.now(),
+					requestBytes: sent.bytes,
+					encodeMs: sent.ms,
+					...answer,
+				});
+			};
+			const { message, line } = await answered.catch((error: unknown) => {
+				recordCall({ errorType: error instanceof Error ? error.name : typeof error });
+				throw error;
+			});
+			const error = isRecord(message.error) ? message.error : undefined;
+			recordCall({
+				...(line ? { responseBytes: line.bytes, decodeMs: line.ms } : {}),
+				...(error ? { errorType: String(error.code) } : {}),
+			});
+			if (!error) return message.result;
+			const text = typeof error.message === 'string' ? error.message : 'error';
+			throw Object.assign(new UserError(text), { code: error.code, data: error.data });
 		},
 		notify(method, params) {
-			send({ method, params });
+			const sent = send({ method, params });
+			if (!recorder || !sent) return;
+			recorder.rpc({
+				id: state.rpc++,
+				method,
+				direction: 'host_to_guest',
+				startMs: sent.startMs,
+				endMs: recorder.now(),
+				requestBytes: sent.bytes,
+				encodeMs: sent.ms,
+			});
 		},
 		serve(calls) {
 			// The guest calls carry no run, so one connection runs one run at a time.
@@ -331,14 +430,33 @@ function connect(config: SessionConfig): Connection {
 	};
 }
 
-async function openSession(config: SessionConfig): Promise<Connection> {
-	const connection = connect(config);
+/** The compiled guests of the session in the cache. The sidecar names them `<digest>-<engine>.cwasm`. */
+const compiledGuestsOf = async ({ options, guestSha256 }: SessionConfig) =>
+	(await readdir(options.cacheDir).catch((): string[] => [])).filter(
+		(name) => name.startsWith(`${guestSha256}-`) && name.endsWith('.cwasm'),
+	);
+
+async function openSession(config: SessionConfig, recorder?: RunRecorder): Promise<Connection> {
+	const before = recorder ? await compiledGuestsOf(config) : [];
+	const startMs = recorder?.now();
+	const connection = connect(config, recorder);
 	try {
 		const started = await connection.request('[initialize]', {
 			nodeContract: NODE_CONTRACT_VERSION,
 		});
 		if (!isRecord(started) || started.kind !== config.kind) {
 			throw new UnexpectedError(`${config.label} is not a bundle of the ${config.kind} interface`);
+		}
+		if (recorder && startMs !== undefined) {
+			const endMs = recorder.now();
+			// A compile writes a new file, also when the file of an older engine is there.
+			const after = await compiledGuestsOf(config);
+			recorder.phase({
+				name: 'sandboxStart',
+				startMs,
+				endMs,
+				compileCached: after.length > 0 && after.every((name) => before.includes(name)),
+			});
 		}
 		return connection;
 	} catch (error) {
@@ -1670,7 +1788,7 @@ export async function sandboxedVersionOf(frozen: FrozenVersion, options: Sandbox
 		bundle: { file: await bundleFileOf(options, manifest, code), sha256: manifest.bundleHash },
 		grants: grantsOf(manifest),
 	};
-	const start = async () => await openSession(config);
+	const start = async (recorder?: RunRecorder) => await openSession(config, recorder);
 	const describing = await start();
 	const described = await describing
 		.request(`${kind}.describe`, {})
@@ -1713,17 +1831,31 @@ export async function warmSandbox(options: SandboxOptions): Promise<void> {
 }
 
 /** One connection for all runs of one node execution, opened at the first run. */
-function sandboxedExecutor(executor: Executor, start: () => Promise<Connection>): Executor {
+function sandboxedExecutor(
+	executor: Executor,
+	start: (recorder?: RunRecorder) => Promise<Connection>,
+): Executor {
 	return async (host) => {
-		host.recorder?.path('sandbox');
+		const { recorder } = host;
+		recorder?.path('sandbox');
 		const opened = new Map<'connection', Promise<Connection>>();
 		const shared = async () => {
-			const connection = opened.get('connection') ?? start();
+			const connection = opened.get('connection') ?? start(recorder);
 			opened.set('connection', connection);
 			return await connection;
 		};
+		const traced = recorder && {
+			...recorder,
+			request: (request: RunRequest) => {
+				const rpc = guestCalls.getStore();
+				recorder.request(rpc === undefined ? request : { ...request, rpc });
+			},
+		};
 		try {
-			return await sessions.run(shared, async () => await executor(host));
+			return await sessions.run(
+				shared,
+				async () => await executor(traced ? { ...host, recorder: traced } : host),
+			);
 		} finally {
 			void opened.get('connection')?.then(
 				(connection) => connection.close(),

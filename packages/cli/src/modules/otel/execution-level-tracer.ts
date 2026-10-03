@@ -268,8 +268,9 @@ export class ExecutionLevelTracer {
 	}
 
 	/**
-	 * Adds a `contract.run` span under the node span, with a span for each phase and each HTTP
-	 * attempt of the profile. Without an active node span (tracing off, node spans off, or a
+	 * Adds a `contract.run` span under the node span, with a span for each phase, each JSON-RPC
+	 * message and each HTTP attempt of the profile. A guest request goes under the span of the
+	 * guest call that sent it. Without an active node span (tracing off, node spans off, or a
 	 * run that is not traced) it adds nothing: a workflow span is not a parent for these spans.
 	 */
 	recordContractRun(executionId: string, nodeName: string, profile: RunProfile): void {
@@ -286,12 +287,28 @@ export class ExecutionLevelTracer {
 			profile.phases.forEach((phase) => {
 				this.tracer
 					.startSpan(
-						`contract.${phase.name}`,
+						PHASE_SPAN_NAMES[phase.name],
 						{ startTime: phase.startMs, attributes: phaseAttributes(phase) },
 						parent,
 					)
 					.end(phase.endMs);
 			});
+			const rpcContexts = new Map(
+				profile.rpcs.map((rpc): [number, Context] => {
+					const span = this.tracer.startSpan(
+						`rpc ${rpc.method}`,
+						{
+							kind: rpc.direction === 'host_to_guest' ? SpanKind.CLIENT : SpanKind.SERVER,
+							startTime: rpc.startMs,
+							attributes: rpcAttributes(rpc),
+						},
+						parent,
+					);
+					if (rpc.errorType !== undefined) span.setStatus({ code: SpanStatusCode.ERROR });
+					span.end(rpc.endMs);
+					return [rpc.id, trace.setSpan(context.active(), span)];
+				}),
+			);
 			profile.requests.forEach((request) => {
 				const span = this.tracer.startSpan(
 					request.template ? `${request.method} ${request.template}` : request.method,
@@ -300,7 +317,8 @@ export class ExecutionLevelTracer {
 						startTime: request.startMs,
 						attributes: requestAttributes(request),
 					},
-					parent,
+					// A guest call past the cap has no span, so its request goes under `contract.run`.
+					(request.rpc === undefined ? undefined : rpcContexts.get(request.rpc)) ?? parent,
 				);
 				if (request.errorType !== undefined) span.setStatus({ code: SpanStatusCode.ERROR });
 				span.end(request.endMs);
@@ -410,8 +428,15 @@ function buildNodeEndAttributes(params: EndNodeParams): Record<string, string | 
 	return attrs;
 }
 
+const PHASE_SPAN_NAMES: Record<RunProfile['phases'][number]['name'], string> = {
+	load: 'contract.load',
+	credential: 'contract.credential',
+	sandboxStart: 'sandbox.start',
+};
+
 function contractRunAttributes(profile: RunProfile): Attributes {
-	const dropped = profile.requestCount - profile.requests.length;
+	const dropped =
+		profile.requestCount - profile.requests.length + (profile.rpcCount - profile.rpcs.length);
 	// The SDK drops an attribute that is undefined.
 	return {
 		[ATTR.CONTRACT_ACTION]: profile.action,
@@ -433,9 +458,33 @@ function contractRunAttributes(profile: RunProfile): Attributes {
 }
 
 function phaseAttributes(phase: RunProfile['phases'][number]): Attributes {
-	return phase.name === 'load'
-		? { [ATTR.CONTRACT_LOAD_CACHED]: phase.cached }
-		: { [ATTR.CREDENTIAL_TYPE]: phase.credentialType, [ATTR.CREDENTIAL_SCHEME]: phase.scheme };
+	switch (phase.name) {
+		case 'load':
+			return { [ATTR.CONTRACT_LOAD_CACHED]: phase.cached };
+		case 'credential':
+			return {
+				[ATTR.CREDENTIAL_TYPE]: phase.credentialType,
+				[ATTR.CREDENTIAL_SCHEME]: phase.scheme,
+			};
+		case 'sandboxStart':
+			return { [ATTR.SANDBOX_COMPILE_CACHED]: phase.compileCached };
+	}
+}
+
+function rpcAttributes(rpc: RunProfile['rpcs'][number]): Attributes {
+	return {
+		[ATTR.RPC_SYSTEM_NAME]: 'jsonrpc',
+		[ATTR.RPC_METHOD]: rpc.method,
+		[ATTR.RPC_DIRECTION]: rpc.direction,
+		[ATTR.RPC_REQUEST_BYTES]: rpc.requestBytes,
+		[ATTR.RPC_RESPONSE_BYTES]: rpc.responseBytes,
+		[ATTR.RPC_ENCODE_MS]: rpc.encodeMs,
+		[ATTR.RPC_DECODE_MS]: rpc.decodeMs,
+		// `errorType` is the JSON-RPC error code, or an error name when no answer came.
+		[ATTR.RPC_RESPONSE_STATUS_CODE]:
+			rpc.errorType !== undefined && /^-?\d+$/.test(rpc.errorType) ? rpc.errorType : undefined,
+		[ATTR.ERROR_TYPE]: rpc.errorType,
+	};
 }
 
 function requestAttributes(request: RunProfile['requests'][number]): Attributes {

@@ -138,6 +138,8 @@ describe('run profile', () => {
 				{ name: 'credential', credentialType: 'echoApi', scheme: 'compat' },
 			],
 			requestCount: 3,
+			rpcs: [],
+			rpcCount: 0,
 			retryCount: 1,
 			pageCount: 2,
 			inputItems: 1,
@@ -207,12 +209,20 @@ describe('run profile', () => {
 		expect(profile.requests[0]).toMatchObject({ status: 404, errorType: '404', resendCount: 0 });
 	});
 
-	it('keeps the first 200 attempts and counts all of them', () => {
+	it('keeps the first 200 attempts and JSON-RPC messages and counts all of them', () => {
 		const { recorder, profile } = runRecorder(1);
 		const attempt = { startMs: 0, endMs: 1, itemIndex: 0, method: 'GET', scheme: 'https' };
-		Array.from({ length: 201 }, () =>
-			recorder.request({ ...attempt, host: 'echo.test', port: 443, resendCount: 0 }),
-		);
+		Array.from({ length: 201 }, (_, index) => {
+			recorder.request({ ...attempt, host: 'echo.test', port: 443, resendCount: 0 });
+			recorder.rpc({
+				id: index + 1,
+				method: 'log.log',
+				direction: 'guest_to_host',
+				startMs: 0,
+				endMs: 1,
+				requestBytes: 2,
+			});
+		});
 		const identity = {
 			action: 'a',
 			version: '1.0.0',
@@ -220,9 +230,14 @@ describe('run profile', () => {
 			nodeContract: NODE_CONTRACT_VERSION,
 		};
 
-		const { requests, requestCount } = profile(identity, { outputItems: 0 });
+		const { requests, requestCount, rpcs, rpcCount } = profile(identity, { outputItems: 0 });
 
-		expect({ kept: requests.length, requestCount }).toEqual({ kept: 200, requestCount: 201 });
+		expect({ requests: requests.length, requestCount, rpcs: rpcs.length, rpcCount }).toEqual({
+			requests: 200,
+			requestCount: 201,
+			rpcs: 200,
+			rpcCount: 201,
+		});
 	});
 
 	it('logs a listener failure and keeps the outputs', async () => {
