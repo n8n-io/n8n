@@ -32,7 +32,8 @@ import type {
 } from '../../types/sdk/tool';
 import type { BuiltTelemetry } from '../../types/telemetry';
 import { Workspace, getToolResultRunDirectory } from '../../workspace';
-import { createBudgetGuardrail, InMemorySpendLedger } from '../guardrails/budget-guardrail';
+import { createBudgetGuardrail } from '../guardrails/budget-guardrail';
+import { spendLedger } from '../guardrails/__tests__/spend-ledger';
 import { AgentRuntime } from '../loop/agent-runtime';
 import { InMemoryMemory } from '../memory/memory-store';
 import { OBSERVATION_CONTINUATION_REMINDER } from '../model/message-list';
@@ -1629,7 +1630,7 @@ describe('AgentRuntime — guardrails', () => {
 		});
 		const runtime = createRuntimeWithEchoTool(async () => ({ ok: true }));
 		const hook = createBudgetGuardrail({
-			ledger: new InMemorySpendLedger(),
+			ledger: spendLedger(),
 			sessionId: 'session-1',
 			sessionCostCapUsd: 1,
 		});
