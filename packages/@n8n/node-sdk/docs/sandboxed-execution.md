@@ -75,9 +75,14 @@ flowchart LR
   replay the fixtures in the sandbox.
 - The credential types of a sandboxed action come from the host (`options.credentialType`) by
   the names in the manifest. Their hosts and base URLs never come from the bundle. The bundle
-  gives only the node name, the scopes text and the node `baseUrl`. The host refuses a bundle
-  whose `baseUrl` host is not an `egress` host or a credential host. An action without `egress`
-  reaches only the hosts of its base URLs; with no base URL, it reaches no host.
+  gives only the node name, the scopes text and the node `baseUrl`. Freeze writes the `baseUrl`
+  host into the manifest `egress`, so the host refuses a bundle whose `baseUrl` host is not an
+  `egress` host of its manifest. An action without `egress` reaches only the hosts of its
+  credential base URL; with no base URL, it reaches no host.
+- In this process, `loadExecutor` reads the same manifest. It refuses a bundle whose export
+  grants other permissions than its manifest (`permissionsOf` of both: egress, credential
+  types, scopes, imports, binary data, provider capabilities), and it takes `egress` from the
+  manifest.
 - The host verifies the bundle hash and writes the bundle to the cache, named by its hash. The
   sidecar checks the hash again when it reads it. The compiled guest (`.cwasm`) is cached by the
   guest digest and the engine config.
@@ -151,7 +156,7 @@ A trap stops the component: every later call of the execution gets the same erro
 | `fullResponse` with `set-cookie` and `www-authenticate` | the bundle gets `content-type`, `link` and `x-ratelimit-*`; the same action in-process gets all headers |
 | a request with no `egress` and no base URL | the host refuses it (`… may send requests to no host …`); no request is sent |
 | a credential type that claims other hosts | the host uses its own credential type and refuses the request; no request is sent |
-| a node `baseUrl` outside `egress` and the credential hosts | the host refuses the bundle at load |
+| a node `baseUrl` outside the manifest `egress` | the host refuses the bundle at load |
 | `Object.prototype` pollution | stays in the guest realm |
 | `Math.random`, `crypto` | different values in each run |
 | reading `credential` | the plain fields only; the secret field is absent |
@@ -197,8 +202,8 @@ A real API call takes 50 to 500 ms, so the sandbox adds little to an HTTP-bound 
 - Triggers (the trigger world), credentials (the credential world) and lookups in the sandbox.
   The sidecar is generic: each needs host answers in `src/sandbox.ts` and a guest entry.
 - `migrate` has no export in the action world, so a sandboxed replay replays executions only.
-- The node `baseUrl` of a sandboxed bundle comes from its `describe()`. Its host must be an
-  `egress` host or a credential host (backlog E7).
+- The node `baseUrl` of a sandboxed bundle comes from its `describe()`, because the request
+  path goes after its path. Its host must be an `egress` host of the manifest (backlog E7).
 - `effect: read` does not limit the HTTP methods (E4): some reads send `POST`, for example a
   Notion query.
 - Release: build `n8n-sandbox` per platform in CI and sign it with the guest components. Precompile the
@@ -246,7 +251,8 @@ logic is in `src/egress.ts`.
   `fromInput` does not bind redirect hops; the credential hosts still do.
 - A `url` must be an absolute http or https URL. A `path` must start with one `/`. The host adds
   it to the base URL path and refuses a result with another origin.
-- `egress` is in the contract document and in the contract hash. A new host is a major change.
+- `egress` is in the contract document and in the contract hash, with the host of the node
+  `baseUrl` that freeze adds. A new host is a major change.
   A removed host is a minor change. The publish gate refuses `*` and a value that is not a host.
 - `permissionsOf(contract, credentialTypes, limits)` (`@n8n/node-sdk/host`) is the one view of
   the permissions of a contract: egress hosts, host templates, `fromInput`, credential types

@@ -237,13 +237,15 @@ export function egressIssuesOf(
 
 /**
  * What one action, trigger or provider may do, as `permissionsOf` reads it from the contract
- * document and the credential types. The host also lets the action reach the hosts of the node
- * base URL.
+ * document and the credential types.
  */
 export interface ContractPermissions {
-	/** Where the action may send requests, besides the hosts of the node base URL. */
+	/** Where the action may send requests. */
 	readonly egress: {
-		/** Host patterns, sorted: the declared hosts and the hosts of the credential types. */
+		/**
+		 * Host patterns, sorted: the contract hosts, which include the node base URL host, and the
+		 * hosts of the credential types.
+		 */
 		readonly hosts: readonly string[];
 		/** Declared host templates over enum inputs, sorted, e.g. `{region}.api.example.com`. */
 		readonly templates: readonly string[];

@@ -531,7 +531,7 @@ describe('generateNodeModule', () => {
 		expect(module).toContain(
 			'contractStep("n8n-nodes-tasks.tasks.task.get", config, 1, undefined, {"credential":"tasks","scopes":["tasks:read"]})',
 		);
-		expect(module).toContain('(read, per-item; scopes: tasks:read)');
+		expect(module).toContain('(read, per-item; scopes: tasks:read; hosts: tasks.test)');
 		expect(module).toContain('export type TasksTaskCreatedInput = { project: string };');
 		expect(module).toContain(
 			'contractTrigger("n8n-nodes-tasks.tasks.task.created", config, 1, {"credential":"tasks","scopes":["tasks:read"]}, {"example":',

@@ -1,5 +1,5 @@
 import { isRecord } from '@n8n/utils/is-record';
-import { UserError } from 'n8n-workflow';
+import { toHostname, UserError } from 'n8n-workflow';
 
 import type { AnyCredentialType, Credential, CredentialKey, RunCredential } from './credentials';
 import {
@@ -1768,7 +1768,10 @@ export interface ContractDocument {
 	readonly output: JsonSchema;
 	/** Named outputs in n8n output order. Absent for one unnamed output. */
 	readonly outputs?: ActionOutputs;
-	/** The declared egress, hosts sorted. Absent when the action reaches its base URL hosts only. */
+	/**
+	 * Every static host the action may reach: the declared egress and the host of the node base
+	 * URL, hosts sorted. Absent when the action reaches no static host and no host from input.
+	 */
 	readonly egress?: ContractEgress;
 	/** The optional host imports, sorted. Absent when it uses none. */
 	readonly imports?: readonly HostImport[];
@@ -1815,9 +1818,17 @@ type ContractSource = Pick<
 				))
 	);
 
-/** Hosts are a set, so their order is not part of the contract. */
-function contractEgressOf(egress: ContractEgress | undefined): ContractEgress | undefined {
-	const hosts = [...new Set(egress?.hosts ?? [])].sort();
+/**
+ * Hosts are a set, so their order is not part of the contract. The node base URL host joins
+ * them, so the manifest holds every static host and the host reads none from the bundle.
+ */
+function contractEgressOf(
+	egress: ContractEgress | undefined,
+	baseUrl: string | undefined,
+): ContractEgress | undefined {
+	const hosts = [...new Set([toHostname(baseUrl), ...(egress?.hosts ?? [])])]
+		.filter((host) => host !== undefined)
+		.sort();
 	const fromInput = egress?.fromInput;
 	if (hosts.length === 0 && fromInput === undefined) return undefined;
 	return { ...(hosts.length ? { hosts } : {}), ...(fromInput === undefined ? {} : { fromInput }) };
@@ -1831,7 +1842,8 @@ const TRIGGER_FLOW: ActionFlow = { effect: 'read', cardinality: '1:N' };
  * contract hash read. It drops execution details (`run`, bindings, hatches).
  */
 export const toContract = (source: ContractSource): ContractDocument => {
-	const egress = 'kind' in source ? undefined : contractEgressOf(source.egress);
+	const egress =
+		'kind' in source ? undefined : contractEgressOf(source.egress, source.node.baseUrl);
 	const imports = 'kind' in source ? [] : [...new Set(source.imports ?? [])].sort();
 	const inputs = 'kind' in source ? undefined : source.inputs;
 	return {

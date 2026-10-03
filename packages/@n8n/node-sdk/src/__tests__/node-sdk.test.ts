@@ -774,7 +774,7 @@ describe('generateNodeModule', () => {
 			"import { contractStep, routedStep, type NodeSettings, type OutputOf, type RoutedStep, type Step, type Value } from '@n8n/workflow-sdk/next';",
 		);
 		expect(text).toContain(
-			'(transform, per-item; outputs: one per cases entry, named by its output, then fallback)',
+			'(transform, per-item; outputs: one per cases entry, named by its output, then fallback; hosts: todo.test)',
 		);
 		expect(text).toContain(
 			' cases: ReadonlyArray<TodoTaskRouteInput<In, Ctx>["cases"][number] & { output: E }>;',
@@ -788,7 +788,7 @@ describe('generateNodeModule', () => {
 		expect(text).toContain(
 			'RoutedStep<In, Ctx, OutputOf<N, TodoTaskCheckOutput>, N, "open" | "done">',
 		);
-		expect(text).toContain('(transform, batch; outputs: open | done)');
+		expect(text).toContain('(transform, batch; outputs: open | done; hosts: todo.test)');
 	});
 
 	it('shows the key hint and the value types of an open key space', () => {
@@ -844,7 +844,7 @@ describe('generateNodeModule', () => {
 	it('shows the action flow once, on the factory', () => {
 		const text = moduleOf(listTasks);
 		expect(text).toContain(
-			'/** Get many tasks. List tasks in a project. (read, 1:N) */\n  getAll:',
+			'/** Get many tasks. List tasks in a project. (read, 1:N; hosts: todo.test) */\n  getAll:',
 		);
 		expect(text.match(/List tasks in a project/g)).toHaveLength(1);
 	});

@@ -36,7 +36,7 @@ import {
 
 import { credentialBaseUrlOf, plainFieldsOf, redactedValue, secretRedactorOf } from './credentials';
 import { codeRunnerOf, dataTableHostOf, dataTablesOf } from './host-imports';
-import { actionHostsOf, credentialHostsOf, egressOf } from './egress';
+import { actionHostsOf, credentialHostsOf, egressOf, permissionsOf } from './egress';
 import { parameterValue, toProperty } from './properties';
 import {
 	bytesOf,
@@ -78,6 +78,7 @@ import {
 	type RequestValue,
 	type RunInput,
 	type RunLimits,
+	toContract,
 	type Trigger,
 } from './define';
 import {
@@ -1860,10 +1861,38 @@ export function withCredentialHostsOf(head: Action | Trigger, action: Action): A
 	return { ...action, node: { ...action.node, credential: { ...credential, types } } };
 }
 
-/** The executor of a frozen version with its bundle in this process. `head` gives the credential hosts. */
+/**
+ * Refuses a bundle whose export grants other permissions than its manifest. The signed manifest
+ * is what a reviewer reads, so the bundle may not add to it or take from it.
+ */
+function assertManifestPermissions({ id, semver, contract }: VersionManifest, action: Action) {
+	const signed = new Map(Object.entries(permissionsOf(contract)));
+	const granted = new Map(Object.entries(permissionsOf(toContract(action))));
+	const keys = [...new Set([...granted.keys(), ...signed.keys()])];
+	const differences = keys.flatMap((key) => {
+		const [bundle, manifest] = [granted.get(key), signed.get(key)].map((value) =>
+			JSON.stringify(value),
+		);
+		return bundle === manifest
+			? []
+			: [`${key}: the bundle grants ${bundle}, the manifest ${manifest}`];
+	});
+	if (differences.length > 0) {
+		throw new UserError(
+			`The bundle of ${id}@${semver} grants other permissions than its manifest. ${differences.join('; ')}`,
+		);
+	}
+}
+
+/**
+ * The executor of a frozen version with its bundle in this process. The egress comes from the
+ * manifest, as in the sandbox. `head` gives the credential hosts.
+ */
 export async function loadExecutor(frozen: FrozenVersion, head: FrozenVersion): Promise<Executor> {
-	const action = await verifiedBundleOf(frozen);
-	if ('kind' in action) throw new UnexpectedError(`${action.id} is a trigger, not an action`);
+	const exported = await verifiedBundleOf(frozen);
+	if ('kind' in exported) throw new UnexpectedError(`${exported.id} is a trigger, not an action`);
+	assertManifestPermissions(frozen.manifest, exported);
+	const action: Action = { ...exported, egress: frozen.manifest.contract.egress ?? { hosts: [] } };
 	const executor = executorOf(
 		frozen.manifest.bundleHash === head.manifest.bundleHash
 			? action

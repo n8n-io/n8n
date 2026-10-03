@@ -489,7 +489,7 @@ const scopesNote = (contract: ContractDocument) => {
 	return scopes?.length ? `; scopes: ${scopes.join(', ')}` : '';
 };
 
-/** The hosts the action may reach besides its base URL; the credential hosts also apply. */
+/** The hosts the action may reach; the credential hosts also apply. */
 const egressNote = (contract: ContractDocument) => {
 	const { egress } = permissionsOf(contract);
 	const hosts = [

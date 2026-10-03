@@ -21,15 +21,7 @@ import {
 	toContract,
 	type ContractDocument,
 } from '../entry/registry';
-import {
-	defineNode,
-	pages,
-	path,
-	provider,
-	t,
-	type EncodedPath,
-	type HttpRequest,
-} from '../index';
+import { defineNode, pages, path, provider, t, type EncodedPath, type HttpRequest } from '../index';
 import type { AnyCredentialType } from '../credentials';
 import { allowsHost, credentialHostsOf, egressIssuesOf, narrowHosts } from '../egress';
 import { executorOf, toRequestOptions, withCredentialHostsOf, type ExecutorHost } from '../runtime';
@@ -505,11 +497,14 @@ describe('credential hosts of a frozen version', () => {
 
 describe('egress in the contract', () => {
 	const contract = toContract(fetchUrl);
-	const withHosts = (hosts: string[]) => ({ ...contract, egress: { ...contract.egress, hosts } });
+	const withHosts = (hosts: string[]) => ({
+		...contract,
+		egress: { ...contract.egress, hosts: [...(contract.egress?.hosts ?? []), ...hosts] },
+	});
 
-	it('is part of the contract document and of the hash', () => {
-		expect(contract.egress).toEqual({ fromInput: 'url' });
-		expect(toContract(sender([])).egress).toBeUndefined();
+	it('is part of the contract document and of the hash, with the node base URL host', () => {
+		expect(contract.egress).toEqual({ hosts: ['api.echo.test'], fromInput: 'url' });
+		expect(toContract(sender([])).egress).toEqual({ hosts: ['api.echo.test'] });
 		expect(contractHash(withHosts(['b.test', 'a.test']))).toBe(
 			contractHash(withHosts(['a.test', 'b.test'])),
 		);
@@ -522,6 +517,7 @@ describe('egress in the contract', () => {
 		const { egress: _, ...undeclared } = contract;
 		expect(diffContracts(undeclared, contract).kind).toBe('major');
 		expect(diffContracts(contract, undeclared).changes).toEqual([
+			{ kind: 'minor', text: 'egress api.echo.test removed' },
 			{ kind: 'minor', text: 'egress the host of input.url removed' },
 		]);
 	});
@@ -539,12 +535,12 @@ describe('egress in the contract', () => {
 		const text = generateNodeModule('echo', [
 			{ contract, nodeType: 'echoFetch', operation: 'fetch' },
 		]);
-		expect(text).toContain('read, per-item; hosts: the host of url');
+		expect(text).toContain('read, per-item; hosts: api.echo.test, the host of url');
 	});
 });
 
 describe('permissionsOf', () => {
-	const none: ContractDocument = { ...toContract(sender([])), credentials: [] };
+	const none: ContractDocument = { ...toContract(sender([])), credentials: [], egress: undefined };
 	const nothing: ContractPermissions = {
 		egress: { hosts: [], templates: [], fromCredential: [] },
 		credentials: [],

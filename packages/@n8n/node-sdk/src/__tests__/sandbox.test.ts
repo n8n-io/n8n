@@ -321,9 +321,20 @@ describe.skipIf(!existsSync(SIDECAR) || !existsSync(GUEST))('the sandbox', () =>
 		expect(requests).toEqual([]);
 	});
 
-	it('refuses a bundle that names a base URL outside its egress and credential hosts', async () => {
-		await expect(run('baseUrlProbe')).rejects.toThrow(
-			'names the base URL https://evil.example. Its host is not an egress host or a credential host',
+	it('refuses a bundle that names a base URL outside the egress hosts of its manifest', async () => {
+		const { manifest, bundle } = await freezeAction(
+			path.join(dirs.root, 'probes.ts'),
+			'baseUrlProbe',
+		);
+		expect(manifest.contract.egress).toEqual({ hosts: ['evil.example'] });
+		const { egress: _, ...contract } = manifest.contract;
+		await expect(
+			sandboxedVersionOf(
+				{ manifest: { ...manifest, contract }, readBundle: async () => bundle },
+				options(),
+			),
+		).rejects.toThrow(
+			'names the base URL https://evil.example. Its host is not an egress host of its manifest',
 		);
 		expect(requests).toEqual([]);
 	});

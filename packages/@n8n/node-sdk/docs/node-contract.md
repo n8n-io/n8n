@@ -92,6 +92,11 @@ packument field `n8nContract` of a published version also states `nodeContract`.
 - An action major changes when it adds a permission: a scope, an egress host, an import, a
   provider call, binary data access or a credential type. An auto-update then never widens what an action may do. `diffContracts`
   reads the permissions from `permissionsOf`.
+- The manifest is the permission source on both run paths. Freeze writes every static host
+  into `contract.egress.hosts`, also the host of the node `baseUrl`, so that host is in the
+  contract hash. `loadExecutor` (in this process) refuses a bundle whose export grants other
+  permissions than its manifest, and it takes `egress` from the manifest. The
+  sandbox reads only the manifest, and refuses a bundle whose `baseUrl` host is not in it.
 - WIT describes only code that runs. A native trigger and a declarative credential scheme have
   a manifest and no bundle.
 

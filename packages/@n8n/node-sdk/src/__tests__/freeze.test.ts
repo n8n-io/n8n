@@ -2,8 +2,8 @@ import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
-import { freezeAction, GUEST_LACKS } from '../freeze';
-import { executorOf, type ExecutorHost } from '../runtime';
+import { freezeAction, GUEST_LACKS, type FrozenAction } from '../freeze';
+import { executorOf, loadExecutor, type ExecutorHost, type FrozenVersion } from '../runtime';
 
 it('GUEST_LACKS are globals of Node, besides the CommonJS names', () => {
 	expect(GUEST_LACKS.filter((name) => !(name in globalThis))).toEqual(['__dirname', '__filename']);
@@ -111,5 +111,75 @@ describe('freezeAction', () => {
 			context: { itemIndex: 0 },
 			failure: { cause },
 		});
+	});
+});
+
+const baseUrlSource = `import { defineNode, t } from '@n8n/node-sdk';
+const api = defineNode({ id: 'api', displayName: 'API', baseUrl: 'https://api.probe.test/v1' });
+export const getAction = api.action('get', {
+	action: 'Get',
+	summary: 'Get one record.',
+	flow: { effect: 'read', cardinality: 'per-item' },
+	egress: { hosts: ['files.probe.test'] },
+	input: {},
+	output: t.obj({ value: t.str() }),
+	run: async () => ({ value: 'ok' }),
+});
+`;
+
+describe('the manifest as the permission source', () => {
+	const state: { root: string; frozen?: FrozenAction } = { root: '' };
+	const versionOf = (contract: Record<string, unknown> = {}): FrozenVersion => {
+		if (!state.frozen) throw new Error('Not frozen');
+		const { manifest, bundle } = state.frozen;
+		return {
+			manifest: { ...manifest, contract: { ...manifest.contract, ...contract } },
+			readBundle: async () => bundle,
+		};
+	};
+
+	beforeAll(async () => {
+		state.root = await mkdtemp(path.join(tmpdir(), 'node-sdk-manifest-'));
+		const entry = path.join(state.root, 'api.ts');
+		await writeFile(entry, baseUrlSource);
+		state.frozen = await freezeAction(entry, 'getAction');
+	});
+
+	afterAll(async () => {
+		await rm(state.root, { recursive: true, force: true });
+	});
+
+	it('holds the host of the node base URL with the declared hosts', () => {
+		expect(state.frozen?.manifest.contract.egress).toEqual({
+			hosts: ['api.probe.test', 'files.probe.test'],
+		});
+	});
+
+	it('loads a bundle that grants what its manifest grants', async () => {
+		await expect(loadExecutor(versionOf(), versionOf())).resolves.toBeTypeOf('function');
+	});
+
+	it.each([
+		[
+			'another host',
+			{ egress: { hosts: ['files.probe.test'] } },
+			'egress: the bundle grants {"hosts":["api.probe.test","files.probe.test"],"templates":[],"fromCredential":[]}, the manifest {"hosts":["files.probe.test"],"templates":[],"fromCredential":[]}',
+		],
+		['no egress', { egress: undefined }, 'egress: the bundle grants'],
+		[
+			'an import',
+			{ imports: ['dataTables'] },
+			'imports: the bundle grants [], the manifest ["dataTables"]',
+		],
+		[
+			'a credential type',
+			{ credentials: ['apiToken'] },
+			'credentials: the bundle grants [], the manifest ["apiToken"]',
+		],
+		['a scope', { scopes: ['x'] }, 'scopes: the bundle grants undefined, the manifest ["x"]'],
+	])('refuses a bundle whose manifest grants %s', async (_what, contract, difference) => {
+		await expect(loadExecutor(versionOf(contract), versionOf())).rejects.toThrow(
+			`The bundle of api.get@1.0.0 grants other permissions than its manifest. ${difference}`,
+		);
 	});
 });

@@ -1363,7 +1363,7 @@ async function only(id: string, outputs: AsyncGenerator<unknown>): Promise<unkno
 /**
  * The node of a bundle. The credential types come from the host by the names of the manifest.
  * The name, the base URL and the scopes text come from `describe()`. The bundle can name only a
- * base URL on a host that the manifest or a credential type allows (backlog E7).
+ * base URL on an egress host of its manifest: freeze writes the base URL host there.
  */
 function nodeOf(
 	manifest: VersionManifest,
@@ -1396,10 +1396,10 @@ function nodeOf(
 	const baseHost = typeof node.baseUrl === 'string' ? toHostname(node.baseUrl) : undefined;
 	if (
 		typeof node.baseUrl === 'string' &&
-		!(baseHost && allowsHost(permissionsOf(contract, types).egress.hosts, baseHost))
+		!(baseHost && allowsHost(permissionsOf(contract).egress.hosts, baseHost))
 	) {
 		throw new UserError(
-			`The bundle of ${id}@${semver} names the base URL ${node.baseUrl}. Its host is not an egress host or a credential host`,
+			`The bundle of ${id}@${semver} names the base URL ${node.baseUrl}. Its host is not an egress host of its manifest`,
 		);
 	}
 	const credential: Record<string, unknown> = isRecord(node.credential) ? node.credential : {};
