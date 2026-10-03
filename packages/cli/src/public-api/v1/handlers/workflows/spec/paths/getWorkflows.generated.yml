@@ -362,6 +362,11 @@ responses:
                         - name
                         - createdAt
                         - updatedAt
+                  parentFolderId:
+                    type: string
+                    nullable: true
+                    description: ID of the folder that contains the workflow, or null at the project root.
+                    example: X8ovzm8lTQjcXRZQ
                   shared:
                     type: array
                     items:
@@ -557,6 +562,7 @@ responses:
                   - settings
                   - staticData
                   - meta
+                  - parentFolderId
                   - shared
                   - activeVersion
             nextCursor:
