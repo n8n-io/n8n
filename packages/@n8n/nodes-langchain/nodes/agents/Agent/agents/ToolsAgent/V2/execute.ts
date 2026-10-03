@@ -44,6 +44,19 @@ import {
 import { SYSTEM_MESSAGE } from '../prompt';
 
 /**
+ * Lets a vendor node observe an agent run without copying the executor.
+ *
+ * `createCallbacks` runs once for each item, because one handler instance per
+ * item is what keeps per-run observability separate. `onItemFinished` runs after
+ * the item's output is recorded, successfully or not, which is the point at which
+ * a handler's collected data is complete.
+ */
+export interface AgentExecutionHooks {
+	createCallbacks?: (itemIndex: number) => BaseCallbackHandler[];
+	onItemFinished?: (itemIndex: number) => Promise<void>;
+}
+
+/**
  * Creates an agent executor with the given configuration
  */
 export function createAgentExecutor(
@@ -250,6 +263,7 @@ function checkIsResponsesApi(model: BaseChatModel | null | undefined): boolean {
  */
 export async function toolsAgentExecute(
 	this: IExecuteFunctions | ISupplyDataFunctions,
+	hooks: AgentExecutionHooks = {},
 ): Promise<INodeExecutionData[][]> {
 	let toolCalls = 0;
 	let failedItems = 0;
@@ -369,7 +383,7 @@ export async function toolsAgentExecute(
 				const toolCounter = new ToolCallCounterCallback();
 				const executeOptions = {
 					signal: this.getExecutionCancelSignal(),
-					callbacks: [toolCounter],
+					callbacks: [toolCounter, ...(hooks.createCallbacks?.(itemIndex) ?? [])],
 				};
 
 				// Check if streaming is actually available
@@ -415,21 +429,28 @@ export async function toolsAgentExecute(
 			// This is only used to check if the output parser is connected
 			// so we can parse the output if needed. Actual output parsing is done in the loop above
 			const outputParser = await getOptionalOutputParser(this, 0);
-			batchResults.forEach((result, index) => {
+			// Deferred until every settled result in the batch has run onItemFinished,
+			// so a rejection early in the batch does not skip the observer callback
+			// for items that follow it.
+			let batchError: NodeOperationError | undefined;
+			for (const [index, result] of batchResults.entries()) {
 				const itemIndex = i + index;
 				if (result.status === 'rejected') {
 					const error = wrapLangChainParserError(result.reason, this.getNode(), itemIndex, {
 						enrichNonParserErrors: true,
 					});
 					failedItems++;
+					// A failed run is still worth reporting to an observer.
+					await hooks.onItemFinished?.(itemIndex);
 					if (this.continueOnFail()) {
 						returnData.push({
 							json: { error: error.message },
 							pairedItem: { item: itemIndex },
 						});
-						return;
+						continue;
 					} else {
-						throw new NodeOperationError(this.getNode(), error);
+						batchError ??= new NodeOperationError(this.getNode(), error);
+						continue;
 					}
 				}
 				const { response, toolCallsCounted } = result.value;
@@ -456,7 +477,9 @@ export async function toolsAgentExecute(
 				};
 
 				returnData.push(itemResult);
-			});
+				await hooks.onItemFinished?.(itemIndex);
+			}
+			if (batchError) throw batchError;
 
 			if (i + batchSize < items.length && delayBetweenBatches > 0) {
 				await sleep(delayBetweenBatches);

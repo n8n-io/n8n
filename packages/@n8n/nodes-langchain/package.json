@@ -93,6 +93,7 @@
       "dist/nodes/vendors/Ollama/Ollama.node.js",
       "dist/nodes/vendors/OpenAi/OpenAi.node.js",
       "dist/nodes/vendors/Microsoft/MicrosoftAgent365Trigger.node.js",
+      "dist/nodes/vendors/Databricks/DatabricksAiAgent.node.js",
       "dist/nodes/agents/Agent/Agent.node.js",
       "dist/nodes/agents/Agent/AgentTool.node.js",
       "dist/nodes/agents/OpenAiAssistant/OpenAiAssistant.node.js",
