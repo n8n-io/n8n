@@ -32,9 +32,6 @@ export class McpRegistryServerRepository extends Repository<McpRegistryServerEnt
 	async upsertFetchedServers(rows: McpRegistryServerUpsertRow[], fetchedAt: Date): Promise<void> {
 		if (rows.length > 0) {
 			const escape = (column: string) => this.manager.connection.driver.escape(column);
-			const overwrite = OVERWRITTEN_COLUMNS.map(
-				(column) => `${escape(column)} = EXCLUDED.${escape(column)}`,
-			).join(', ');
 			// A fixed row order makes overlapping writes lock rows in the same order.
 			const values = [...rows]
 				.sort((a, b) => (a.slug < b.slug ? -1 : 1))
@@ -42,17 +39,16 @@ export class McpRegistryServerRepository extends Repository<McpRegistryServerEnt
 
 			const storedUpdatedAt = `${escape(this.metadata.tableName)}.${escape('updatedAt')}`;
 
-			// An alias equal to the table path stops the Postgres `AS` alias,
-			// so the WHERE can refer to the stored row by its table name.
-			await this.createQueryBuilder(this.metadata.tablePath)
+			// An alias equal to the table path stops the Postgres `AS` alias.
+			const [query, parameters] = this.createQueryBuilder(this.metadata.tablePath)
 				.insert()
 				.values(values)
-				// Deprecated, but `orUpdate` cannot express the conditional WHERE.
-				// oxlint-disable-next-line typescript/no-deprecated
-				.onConflict(
-					`(${escape('slug')}) DO UPDATE SET ${overwrite} WHERE ${storedUpdatedAt} < EXCLUDED.${escape('updatedAt')}`,
-				)
-				.execute();
+				.orUpdate(OVERWRITTEN_COLUMNS, ['slug'])
+				.getQueryAndParameters();
+			await this.query(
+				`${query} WHERE ${storedUpdatedAt} < EXCLUDED.${escape('updatedAt')}`,
+				parameters,
+			);
 		}
 	}
 }

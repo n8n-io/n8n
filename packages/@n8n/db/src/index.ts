@@ -53,6 +53,7 @@ export { AuthRolesService } from './services/auth.roles.service';
 export { DbLock, DbLockService } from './services/db-lock.service';
 
 export { TransactionRunner } from './services/transaction';
+export { contextFromEntityManager, runWithEntityManager } from './services/typeorm-transaction';
 export type {
 	Transaction,
 	OperationContext,

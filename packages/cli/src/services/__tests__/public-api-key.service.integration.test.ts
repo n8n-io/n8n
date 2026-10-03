@@ -88,6 +88,24 @@ describe('PublicApiKeyService', () => {
 		});
 	});
 
+	describe('deleteAllApiKeysForUser', () => {
+		it('joins a caller transaction and rolls back with it', async () => {
+			const owner = await createOwnerWithApiKey();
+			const keyId = owner.apiKeys[0].id;
+
+			await expect(
+				apiKeyRepository.manager.transaction(async (manager) => {
+					await publicApiKeyService.deleteAllApiKeysForUser(owner, manager);
+					throw new Error('abort deletion');
+				}),
+			).rejects.toThrow('abort deletion');
+
+			expect(await apiKeyRepository.findOneBy({ id: keyId })).not.toBeNull();
+			await publicApiKeyService.deleteAllApiKeysForUser(owner);
+			expect(await apiKeyRepository.findOneBy({ id: keyId })).toBeNull();
+		});
+	});
+
 	describe('apiKeyHasValidScopes', () => {
 		it('should return true if API key has the required scope', async () => {
 			// Arrange

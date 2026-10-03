@@ -1,5 +1,5 @@
 import { DataTableFilter, ListDataTableContentQueryDto } from '@n8n/api-types';
-import { withTransaction } from '@n8n/db';
+import { TransactionRunner, runWithEntityManager } from '@n8n/db';
 import { Service } from '@n8n/di';
 import {
 	DataSource,
@@ -144,7 +144,10 @@ function getConditionAndParams(
 
 @Service()
 export class DataTableRowsRepository {
-	constructor(private dataSource: DataSource) {}
+	constructor(
+		private dataSource: DataSource,
+		private readonly transactionRunner: TransactionRunner,
+	) {}
 
 	async insertRowsBulk(
 		table: DataTableUserTableName,
@@ -152,8 +155,7 @@ export class DataTableRowsRepository {
 		columns: DataTableColumn[],
 		trx?: EntityManager,
 	) {
-		// oxlint-disable-next-line typescript/no-deprecated
-		return await withTransaction(this.dataSource.manager, trx, async (em) => {
+		return await runWithEntityManager(this.transactionRunner, trx, async (em) => {
 			let insertedRows = 0;
 
 			// Special case: no columns, insert each row individually
@@ -222,8 +224,7 @@ export class DataTableRowsRepository {
 		returnType: T,
 		trx?: EntityManager,
 	): Promise<DataTableInsertRowsResult> {
-		// oxlint-disable-next-line typescript/no-deprecated
-		return await withTransaction(this.dataSource.manager, trx, async (em) => {
+		return await runWithEntityManager(this.transactionRunner, trx, async (em) => {
 			const inserted: Array<Pick<DataTableRowReturn, 'id'>> = [];
 			const dbType = this.dataSource.options.type;
 			const useReturning = dbType === 'postgres';
@@ -310,8 +311,7 @@ export class DataTableRowsRepository {
 		returnData: boolean = false,
 		trx?: EntityManager,
 	) {
-		// oxlint-disable-next-line typescript/no-deprecated
-		return await withTransaction(this.dataSource.manager, trx, async (em) => {
+		return await runWithEntityManager(this.transactionRunner, trx, async (em) => {
 			const dbType = this.dataSource.options.type;
 			const useReturning = dbType === 'postgres';
 
@@ -426,8 +426,7 @@ export class DataTableRowsRepository {
 		dryRun: boolean = false,
 		trx?: EntityManager,
 	) {
-		// oxlint-disable-next-line typescript/no-deprecated
-		return await withTransaction(this.dataSource.manager, trx, async (em) => {
+		return await runWithEntityManager(this.transactionRunner, trx, async (em) => {
 			const dbType = this.dataSource.options.type;
 			const useReturning = !dryRun && dbType === 'postgres';
 			const shouldReturnData = returnData || dryRun;
@@ -488,8 +487,7 @@ export class DataTableRowsRepository {
 	}
 
 	async clearRows(dataTableId: string, trx?: EntityManager): Promise<{ deletedCount: number }> {
-		// oxlint-disable-next-line typescript/no-deprecated
-		return await withTransaction(this.dataSource.manager, trx, async (em) => {
+		return await runWithEntityManager(this.transactionRunner, trx, async (em) => {
 			const table = toTableName(dataTableId);
 			const result = await em.createQueryBuilder().delete().from(table).execute();
 			return { deletedCount: result.affected ?? 0 };
@@ -503,8 +501,7 @@ export class DataTableRowsRepository {
 		idsOnly: T,
 		trx?: EntityManager,
 	): Promise<T extends true ? Array<Pick<DataTableRowReturn, 'id'>> : DataTableRowReturn[]> {
-		// oxlint-disable-next-line typescript/no-deprecated
-		return await withTransaction(this.dataSource.manager, trx, async (em) => {
+		return await runWithEntityManager(this.transactionRunner, trx, async (em) => {
 			const table = toTableName(dataTableId);
 			const selectColumns = idsOnly ? 'id' : '*';
 			const selectQuery = em.createQueryBuilder().select(selectColumns).from(table, 'dataTable');

@@ -4,7 +4,7 @@ import type {
 	ChatHubToolDto,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { EntityManager, withTransaction, type User } from '@n8n/db';
+import { EntityManager, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { INode } from 'n8n-workflow';
 import { collectExpressionDefaults, findDisallowedChatToolExpressions } from 'n8n-workflow';
@@ -106,43 +106,30 @@ export class ChatHubToolService {
 		updates: ChatHubUpdateToolRequest,
 		trx?: EntityManager,
 	): Promise<ChatHubTool> {
-		// oxlint-disable-next-line typescript/no-deprecated
-		const tool = await withTransaction(this.chatToolRepository.manager, trx, async (em) => {
-			const existingTool = await this.chatToolRepository.getOneById(id, user.id, em);
-			if (!existingTool) {
+		const updateData: Partial<ChatHubTool> = {};
+
+		if (updates.definition !== undefined) {
+			if (!(await this.chatToolRepository.getOneById(id, user.id, trx))) {
 				throw new NotFoundError('Chat hub tool not found');
 			}
+			this.validateToolExpressions(updates.definition);
+			updateData.definition = updates.definition;
+			updateData.name = updates.definition.name;
+			updateData.type = updates.definition.type;
+			updateData.typeVersion = updates.definition.typeVersion ?? 1;
+		}
+		if (updates.enabled !== undefined) {
+			updateData.enabled = updates.enabled;
+		}
 
-			const updateData: Partial<ChatHubTool> = {};
-
-			if (updates.definition !== undefined) {
-				this.validateToolExpressions(updates.definition);
-				updateData.definition = updates.definition;
-				updateData.name = updates.definition.name;
-				updateData.type = updates.definition.type;
-				updateData.typeVersion = updates.definition.typeVersion ?? 1;
-			}
-			if (updates.enabled !== undefined) {
-				updateData.enabled = updates.enabled;
-			}
-
-			return await this.chatToolRepository.updateTool(id, updateData, em);
-		});
+		const tool = await this.chatToolRepository.updateOwnedTool(id, user.id, updateData, trx);
 
 		this.logger.debug(`Chat hub tool updated: ${id} by user ${user.id}`);
 		return tool;
 	}
 
 	async deleteTool(id: string, userId: string, trx?: EntityManager): Promise<void> {
-		// oxlint-disable-next-line typescript/no-deprecated
-		await withTransaction(this.chatToolRepository.manager, trx, async (em) => {
-			const existingTool = await this.chatToolRepository.getOneById(id, userId, em);
-			if (!existingTool) {
-				throw new NotFoundError('Chat hub tool not found');
-			}
-
-			await this.chatToolRepository.deleteTool(id, em);
-		});
+		await this.chatToolRepository.deleteOwnedTool(id, userId, trx);
 
 		this.logger.debug(`Chat hub tool deleted: ${id} by user ${userId}`);
 	}
