@@ -1387,6 +1387,27 @@ describe('Execution Lifecycle Hooks', () => {
 		});
 
 		describe('workflowExecuteAfter', () => {
+			it.each(['success', 'error', 'crashed', 'canceled'] as const)(
+				'should soft-delete an unsaved manual %s execution regardless of finished',
+				async (status) => {
+					workflowData.settings = { saveManualExecutions: false };
+					const hooks = getLifecycleHooksForScalingMain(
+						{ executionMode: 'manual', workflowData },
+						executionId,
+					);
+					const run = mock<IRun>({
+						status,
+						finished: false,
+						waitTill: undefined,
+						data: successfulRun.data,
+					});
+
+					await hooks.runHook('workflowExecuteAfter', [run, {}]);
+
+					expect(executionRepository.softDelete).toHaveBeenCalledWith(executionId);
+				},
+			);
+
 			it('should delete unsaved successful executions when success saving is disabled', async () => {
 				workflowData.settings = {
 					saveDataSuccessExecution: 'none',
