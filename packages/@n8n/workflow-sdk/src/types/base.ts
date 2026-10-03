@@ -4,7 +4,7 @@
  * Core types for building n8n workflows programmatically.
  */
 
-import type { IWorkflowGroup } from 'n8n-workflow';
+import type { IWorkflowGroup, WorkflowGroupRepeat } from 'n8n-workflow';
 
 import type { ValidationOptions, ValidationResult } from '../validation/index';
 import type { PluginRegistry } from '../workflow-builder/plugins/registry';
@@ -1084,6 +1084,14 @@ export type GroupOptions = {
 	 * treated as no description.
 	 */
 	description?: string;
+	/** Makes the group a region that the engine runs again for each pass. */
+	repeat?: GroupRepeat;
+};
+
+/** The `repeat` of a group as authored: its entry and exits are member node handles. */
+export type GroupRepeat = Omit<WorkflowGroupRepeat, 'entry' | 'exits'> & {
+	entry: GroupMember;
+	exits: Array<{ node: GroupMember; output: number }>;
 };
 
 /**

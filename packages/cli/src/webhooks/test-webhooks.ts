@@ -700,6 +700,7 @@ export class TestWebhooks implements IWebhookManager {
 			nodeTypes: this.nodeTypes,
 			staticData: {},
 			settings: workflowEntity.settings,
+			nodeGroups: workflowEntity.nodeGroups,
 		});
 	}
 }

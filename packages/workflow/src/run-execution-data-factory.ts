@@ -13,6 +13,7 @@ import type {
 	RelatedExecution,
 	INode,
 } from './interfaces';
+import type { RegionInstance } from './regions';
 import type { IRunExecutionData } from './run-execution-data/run-execution-data';
 import type {
 	IRunExecutionDataV1,
@@ -43,6 +44,7 @@ export interface CreateFullRunExecutionDataOptions {
 		waitingExecution?: IWaitingForExecution;
 		waitingExecutionSource?: IWaitingForExecutionSource | null;
 		runtimeData?: IExecutionContext;
+		regions?: Record<string, RegionInstance>;
 	} | null;
 	parentExecution?: RelatedExecution;
 	subWorkflowOutput?: IRunExecutionData['subWorkflowOutput'];
@@ -78,6 +80,7 @@ function buildExecutionData(
 		waitingExecution: executionData?.waitingExecution ?? {},
 		waitingExecutionSource: executionData?.waitingExecutionSource ?? {},
 		runtimeData: executionData?.runtimeData,
+		...(executionData?.regions ? { regions: executionData.regions } : {}),
 	};
 }
 

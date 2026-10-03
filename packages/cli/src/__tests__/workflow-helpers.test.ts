@@ -615,19 +615,19 @@ describe('validateWorkflowNodeGroups', () => {
 		).toThrow('Group "My Group" has no members.');
 	});
 
-	it('should throw when a node belongs to multiple groups', () => {
+	it('should throw when two groups share some nodes', () => {
 		expect(() =>
 			validateWorkflowNodeGroups(
 				{
-					nodes: [makeNode('n1'), makeNode('n2')],
+					nodes: [makeNode('n1'), makeNode('n2'), makeNode('n3')],
 					nodeGroups: [
-						{ id: 'g1', name: 'Group A', nodeIds: ['n1'] },
-						{ id: 'g2', name: 'Group B', nodeIds: ['n1', 'n2'] },
+						{ id: 'g1', name: 'Group A', nodeIds: ['n1', 'n2'] },
+						{ id: 'g2', name: 'Group B', nodeIds: ['n2', 'n3'] },
 					],
 				},
 				null,
 			),
-		).toThrow('Node "Node n1" belongs to multiple groups: "Group A" and "Group B".');
+		).toThrow('Node "Node n2" belongs to groups "Group A" and "Group B", which do not nest.');
 	});
 
 	it('should throw when group names are not unique', () => {

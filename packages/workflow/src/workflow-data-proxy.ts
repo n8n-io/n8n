@@ -479,7 +479,7 @@ export class WorkflowDataProxy {
 				);
 			}
 
-			if (!that.workflow.getNode(nodeName)) {
+			if (!that.workflow.getNode(nodeName) && !that.workflow.getRegion(nodeName)) {
 				throw new ExpressionError("Referenced node doesn't exist", {
 					runIndex: that.runIndex,
 					itemIndex: that.itemIndex,
@@ -1244,7 +1244,8 @@ export class WorkflowDataProxy {
 				}
 
 				const referencedNode = that.workflow.getNode(nodeName);
-				if (referencedNode === null) {
+				const region = that.workflow.getRegion(nodeName);
+				if (referencedNode === null && region === undefined) {
 					throw createExpressionError("Referenced node doesn't exist", {
 						runIndex: that.runIndex,
 						itemIndex: that.itemIndex,
@@ -1252,6 +1253,12 @@ export class WorkflowDataProxy {
 						descriptionKey: 'nodeNotFound',
 					});
 				}
+
+				// A region comes before a node when it holds the node or one of its parents.
+				const comesBefore = (parents: string[], names: string[]) =>
+					parents.includes(nodeName) ||
+					(region !== undefined &&
+						names.some((name) => region.nodeIds.includes(that.workflow.getNode(name)?.id ?? '')));
 
 				const ensureNodeExecutionData = () => {
 					if (
@@ -1318,7 +1325,7 @@ export class WorkflowDataProxy {
 								if (children.length === 0) {
 									// Node has no children, check parent of context node
 									const parents = that.workflow.getParentNodes(contextNode);
-									if (!parents.includes(nodeName)) {
+									if (!comesBefore(parents, [contextNode, ...parents])) {
 										throw createNoConnectionError(nodeName);
 									}
 								} else {
@@ -1326,7 +1333,7 @@ export class WorkflowDataProxy {
 									const parents = children.flatMap((child) =>
 										that.workflow.getParentNodes(child, 'ALL'),
 									);
-									if (!parents.includes(nodeName)) {
+									if (!comesBefore(parents, [...children, ...parents])) {
 										throw createNoConnectionError(nodeName);
 									}
 								}

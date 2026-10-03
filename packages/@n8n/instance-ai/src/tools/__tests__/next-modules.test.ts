@@ -300,7 +300,7 @@ describe('next-modules', () => {
 		).toEqual(ids);
 	});
 
-	it('emits the flow native contracts from manual() and forEach', () => {
+	it('emits the manual() native contract and a forEach region instead of Loop Over Items', () => {
 		const json = workflow(
 			'Each',
 			manual({ sample: [{ n: 1 }, { n: 2 }] }),
@@ -317,9 +317,10 @@ describe('next-modules', () => {
 				validate(emitted?.parameters ?? {}, contract.inputSchema, { allowExpressions: true }),
 			];
 		});
-		expect(issues).toEqual([
-			['manual.trigger', true, []],
-			['loop.batches', true, []],
+		expect(issues[0]).toEqual(['manual.trigger', true, []]);
+		expect(json.nodes.some(({ type }) => type === flowNatives[1].native?.type)).toBe(false);
+		expect(json.nodeGroups).toEqual([
+			expect.objectContaining({ name: 'Each', repeat: expect.objectContaining({ batchSize: 1 }) }),
 		]);
 		expect(flowNatives.map(({ node }) => nodeModuleText(node.id))).toEqual([undefined, undefined]);
 	});

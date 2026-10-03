@@ -588,19 +588,47 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 	 * Resolve each group's members to the IDs the emitted nodes will carry. Each member
 	 * handle resolves to its current map key (stable across regenerateNodeIds() via
 	 * _staleIdToKeyMap, exactly as connection targets do); the live instance under that
-	 * key holds the ID the serializer emits. Unresolvable members are dropped.
+	 * key holds the ID the serializer emits. Unresolvable members are dropped. An unresolvable
+	 * repeat entry or exit throws, because without it the region would run once as a plain group.
 	 */
 	private resolveNodeGroups(): ResolvedNodeGroup[] {
-		return this._nodeGroups.map(({ members, ...group }) => {
+		const idOf = (member: GroupMember) => {
+			const key = this.resolveTargetNodeName(member, this._staleIdToKeyMap);
+			return key ? this._nodes.get(key)?.instance.id : undefined;
+		};
+		const required = (groupName: string, member: GroupMember) => {
+			const id = idOf(member);
+			if (!id) {
+				throw new Error(
+					`Group "${groupName}" has a repeat entry or exit that is not a node of the workflow`,
+				);
+			}
+			return id;
+		};
+		return this._nodeGroups.map(({ members, repeat, ...group }) => {
 			const memberIds: string[] = [];
 			for (const member of members) {
-				const key = this.resolveTargetNodeName(member, this._staleIdToKeyMap);
-				const id = key ? this._nodes.get(key)?.instance.id : undefined;
+				const id = idOf(member);
 				if (id && !memberIds.includes(id)) {
 					memberIds.push(id);
 				}
 			}
-			return { ...group, memberIds };
+			return {
+				...group,
+				memberIds,
+				...(repeat
+					? {
+							repeat: {
+								...repeat,
+								entry: required(group.name, repeat.entry),
+								exits: repeat.exits.map(({ node, output }) => ({
+									node: required(group.name, node),
+									output,
+								})),
+							},
+						}
+					: {}),
+			};
 		});
 	}
 

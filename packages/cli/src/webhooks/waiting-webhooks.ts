@@ -147,6 +147,7 @@ export class WaitingWebhooks implements IWebhookManager {
 			nodeTypes: this.nodeTypes,
 			staticData: workflowData.staticData,
 			settings: workflowData.settings,
+			nodeGroups: workflowData.nodeGroups,
 		});
 	}
 

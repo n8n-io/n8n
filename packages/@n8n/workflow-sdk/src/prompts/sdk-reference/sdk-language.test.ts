@@ -195,11 +195,8 @@ describe('NODE_GROUPS_REFERENCE', () => {
 			expect(NODE_GROUPS_REFERENCE).toMatch(/all (inside|in).*all (outside|out)/is);
 		});
 
-		it('states the one-group-per-node rule', () => {
-			// A node belongs to at most one group.
-			expect(NODE_GROUPS_REFERENCE).toMatch(
-				/only one group|at most one group|one group at a time/i,
-			);
+		it('states that groups nest or stay apart', () => {
+			expect(NODE_GROUPS_REFERENCE).toMatch(/groups nest or stay apart/i);
 		});
 
 		it('states the unique-name-and-id rule', () => {

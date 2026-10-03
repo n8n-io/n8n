@@ -661,7 +661,7 @@ describe('update-workflow MCP tool', () => {
 					{
 						opIndex: 0,
 						type: 'addNodeGroup',
-						reason: expect.stringContaining('belongs to multiple groups') as string,
+						reason: expect.stringContaining('do not nest') as string,
 					},
 				]);
 				expect(response.removedGroups).toBeUndefined();
@@ -708,7 +708,7 @@ describe('update-workflow MCP tool', () => {
 								type: 'setNodeGroups',
 								nodeGroups: [
 									{ id: 'g1', name: 'First', nodeNames: ['A', 'B'] },
-									{ id: 'g2', name: 'Second', nodeNames: ['A'] },
+									{ id: 'g2', name: 'Second', nodeNames: ['Trigger', 'A'] },
 								],
 							},
 						],

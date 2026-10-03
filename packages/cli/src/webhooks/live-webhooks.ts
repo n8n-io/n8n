@@ -117,10 +117,16 @@ export class LiveWebhooks implements IWebhookManager {
 		const { workflow: workflowData, publishedVersion } = await this.loadWebhookExecutionData(
 			webhook.workflowId,
 		);
-		const { nodes, connections, versionId } = publishedVersion;
+		const { nodes, connections, nodeGroups, versionId } = publishedVersion;
 
 		// Use the published revision for both execution content and metadata.
-		const activeWorkflowData: IWorkflowBase = { ...workflowData, nodes, connections, versionId };
+		const activeWorkflowData: IWorkflowBase = {
+			...workflowData,
+			nodes,
+			connections,
+			nodeGroups,
+			versionId,
+		};
 
 		const workflow = new Workflow({
 			id: webhook.workflowId,
@@ -131,6 +137,7 @@ export class LiveWebhooks implements IWebhookManager {
 			nodeTypes: this.nodeTypes,
 			staticData: workflowData.staticData,
 			settings: workflowData.settings,
+			nodeGroups,
 		});
 
 		const ownerProjectId = workflowData.shared?.find(

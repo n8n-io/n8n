@@ -284,8 +284,7 @@ export class WorkflowPublicationApplier {
 			}
 		}
 		// The version itself when everything resolves, so callers see the same object.
-		const runnable =
-			unresolvable.length === 0 ? version : { nodes: resolvable, connections: version.connections };
+		const runnable = unresolvable.length === 0 ? version : { ...version, nodes: resolvable };
 		return { runnable, unresolvable };
 	}
 

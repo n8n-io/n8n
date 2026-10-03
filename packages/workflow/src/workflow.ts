@@ -27,6 +27,7 @@ import type {
 	INodeType,
 	INodeTypes,
 	IPinData,
+	IWorkflowGroup,
 	IWorkflowSettings,
 	IConnection,
 	IConnectedNode,
@@ -53,6 +54,8 @@ export interface WorkflowParameters {
 	staticData?: IDataObject;
 	settings?: IWorkflowSettings;
 	pinData?: IPinData;
+	/** Pass them to run the workflow: a group with `repeat` changes how its nodes run. */
+	nodeGroups?: IWorkflowGroup[];
 }
 
 export class Workflow {
@@ -83,6 +86,8 @@ export class Workflow {
 	testStaticData: IDataObject | undefined;
 
 	pinData?: IPinData;
+
+	nodeGroups: IWorkflowGroup[];
 
 	constructor(parameters: WorkflowParameters) {
 		this.id = parameters.id as string; // @tech_debt Ensure this is not optional
@@ -121,6 +126,7 @@ export class Workflow {
 		this.setConnections(parameters.connections);
 		this.setPinData(parameters.pinData);
 		this.setSettings(parameters.settings ?? {});
+		this.nodeGroups = parameters.nodeGroups ?? [];
 
 		this.active = parameters.active || false;
 
@@ -405,6 +411,19 @@ export class Workflow {
 				description: `Node names cannot be any of the following: ${restrictedKeys.join(', ')}`,
 			});
 		}
+		// A region name is a run name, so it must not be the name of a node.
+		const region = this.getRegion(currentName);
+		if (
+			currentName !== newName &&
+			(this.getRegion(newName) !== undefined || (region !== undefined && newName in this.nodes))
+		) {
+			throw new UserError(`The name "${newName}" is in use by a node or a region.`);
+		}
+		if (region) {
+			this.nodeGroups = this.nodeGroups.map((group) =>
+				group === region ? { ...group, name: newName } : group,
+			);
+		}
 		// Rename the node itself
 		if (this.nodes[currentName] !== undefined) {
 			this.nodes[newName] = this.nodes[currentName];
@@ -475,6 +494,11 @@ export class Workflow {
 				}
 			}
 		}
+	}
+
+	/** The node group with `repeat` named `name`. Its passes are runs under its name in the run data. */
+	getRegion(name: string): IWorkflowGroup | undefined {
+		return this.nodeGroups.find((group) => group.repeat !== undefined && group.name === name);
 	}
 
 	/**

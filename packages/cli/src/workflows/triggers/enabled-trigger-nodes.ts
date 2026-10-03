@@ -1,7 +1,11 @@
-import type { IConnections, INode, INodeType, INodeTypes } from 'n8n-workflow';
+import type { IConnections, INode, INodeType, INodeTypes, IWorkflowGroup } from 'n8n-workflow';
 import { Workflow } from 'n8n-workflow';
 
-export type WorkflowTriggerVersion = { nodes: INode[]; connections: IConnections };
+export type WorkflowTriggerVersion = {
+	nodes: INode[];
+	connections: IConnections;
+	nodeGroups?: IWorkflowGroup[];
+};
 
 /**
  * Whether a node type drives trigger registration: active, poll, schedule or

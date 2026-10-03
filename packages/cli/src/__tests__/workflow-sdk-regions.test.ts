@@ -58,20 +58,36 @@ type Built = ReturnType<ReturnType<typeof workflow>['toJSON']>;
 
 type ExecutionOrder = NonNullable<IWorkflowSettings['executionOrder']>;
 
-/** Run `json` with `items` as the trigger output. */
-async function execute(
-	executionOrder: ExecutionOrder,
-	json: Built,
-	items: readonly object[],
-): Promise<IRun> {
-	const instance = new Workflow({
+const toWorkflow = (executionOrder: ExecutionOrder, json: Built) =>
+	new Workflow({
 		id: 'regions',
 		nodes: json.nodes as INode[],
 		connections: json.connections as IConnections,
+		nodeGroups: json.nodeGroups,
 		nodeTypes,
 		active: false,
 		settings: { executionOrder },
 	});
+
+/** `Workflow.renameNode` on the saved workflow, then the workflow as n8n loads it again. */
+function renamed(executionOrder: ExecutionOrder, json: Built, from: string, to: string) {
+	const instance = toWorkflow(executionOrder, json);
+	instance.renameNode(from, to);
+	return new Workflow({
+		id: 'regions',
+		nodes: Object.values(instance.nodes),
+		connections: instance.connectionsBySourceNode,
+		nodeGroups: instance.nodeGroups,
+		nodeTypes,
+		active: false,
+		settings: { executionOrder },
+	});
+}
+
+const MAX_NODE_RUNS = 200;
+
+/** Run `instance` with `items` as the trigger output. An endless loop stops at `MAX_NODE_RUNS`. */
+async function runWorkflow(instance: Workflow, items: readonly object[]): Promise<IRun> {
 	const hooks = new ExecutionLifecycleHooks('trigger', '1', mock());
 	const done = createDeferredPromise<IRun>();
 	hooks.addHandler('workflowExecuteAfter', (result) => done.resolve(result));
@@ -100,9 +116,21 @@ async function execute(
 		},
 	});
 	// In any mode but `manual` a trigger passes its input on.
-	await new WorkflowExecute(additionalData, 'trigger', data).processRunExecutionData(instance);
+	const running = new WorkflowExecute(additionalData, 'trigger', data).processRunExecutionData(
+		instance,
+	);
+	const counted = { nodeRuns: 0 };
+	hooks.addHandler('nodeExecuteBefore', () => {
+		counted.nodeRuns += 1;
+		if (counted.nodeRuns > MAX_NODE_RUNS) running.cancel();
+	});
+	await running;
 	return await done.promise;
 }
+
+/** Run `json` with `items` as the trigger output. */
+const execute = async (executionOrder: ExecutionOrder, json: Built, items: readonly object[]) =>
+	await runWorkflow(toWorkflow(executionOrder, json), items);
 
 /** Output 0 of each run of `name`. */
 const runs = (result: IRun, name: string) =>
@@ -152,79 +180,197 @@ const CUSTOMERS: Customer[] = [
 	},
 ];
 
+const nestedForEach = () =>
+	workflow(
+		'Orders',
+		manual(),
+		source<Customer>()('Customers'),
+		forEach(
+			{ name: 'Each customer', batchSize: 1 },
+			steps(
+				splitOut({ name: 'Orders', field: 'orders' }),
+				forEach(
+					{ name: 'Each order', batchSize: 2 },
+					set({
+						name: 'Line',
+						fields: {
+							order: (o) => o.id,
+							total: (o) => o.total * 2,
+							customer: (_o, $) => $('Each customer').name,
+						},
+					}),
+				),
+			),
+		),
+	).toJSON();
+
+const LINES = [
+	{ order: 'o1', total: 2, customer: 'Ada' },
+	{ order: 'o2', total: 4, customer: 'Ada' },
+	{ order: 'o3', total: 6, customer: 'Ada' },
+	{ order: 'o4', total: 8, customer: 'Bo' },
+	{ order: 'o5', total: 10, customer: 'Cy' },
+	{ order: 'o6', total: 12, customer: 'Cy' },
+];
+
+/** Two Loop Over Items nodes wired by hand around the nodes of a flat workflow, with no reset. */
+function handWiredLoops(): Built {
+	const flat = workflow(
+		'Orders',
+		manual(),
+		source<Customer>()('Customers'),
+		splitOut({ name: 'Orders', field: 'orders' }),
+		set({ name: 'Line', fields: { order: (o) => o.id } }),
+	).toJSON();
+	const loop = (name: string, batchSize: number) => ({
+		id: name,
+		name,
+		type: 'n8n-nodes-base.splitInBatches',
+		typeVersion: 3,
+		position: [0, 0] as [number, number],
+		parameters: { batchSize, options: {} },
+	});
+	const to = (node: string) => [{ node, type: 'main' as const, index: 0 }];
+	return {
+		...flat,
+		nodes: [...flat.nodes, loop('Each customer', 1), loop('Each order', 2)],
+		connections: {
+			...flat.connections,
+			Customers: { main: [to('Each customer')] },
+			'Each customer': { main: [[], to('Orders')] },
+			Orders: { main: [to('Each order')] },
+			'Each order': { main: [to('Each customer'), to('Line')] },
+			Line: { main: [to('Each order')] },
+		},
+	};
+}
+
+describe('workflow-sdk forEach regions on the legacy engine', () => {
+	it('forEach nested in forEach processes every order once, per customer', async () => {
+		const json = nestedForEach();
+		expect(validateLoopWiring(json)).toEqual([]);
+
+		const result = await execute('v1', json, CUSTOMERS);
+
+		expect(result.status).toBe('success');
+		expect(runs(result, 'Each customer').at(-1)).toEqual(LINES);
+		// One run per batch of 2: Ada 2, Bo 1, Cy 1.
+		expect(runs(result, 'Line')).toHaveLength(4);
+		expect(runs(result, 'Each order')).toHaveLength(4);
+	});
+
+	it('forEach refuses execution order v0', async () => {
+		await expect(execute('v0', nestedForEach(), CUSTOMERS)).rejects.toThrow(
+			'Region "Each order" needs execution order v1',
+		);
+	});
+
+	it('forEach goes on after a batch that the body drops, and emits once', async () => {
+		const json = workflow(
+			'Many orders',
+			manual(),
+			source<Customer>()('Customers'),
+			forEach(
+				{ name: 'Each', batchSize: 1 },
+				filter({ name: 'Many orders', if: (c) => c.orders.length > 1 }),
+			),
+			set({ name: 'Report', fields: { id: (_c, $) => $('Customers').id } }),
+		).toJSON();
+
+		const result = await execute('v1', json, CUSTOMERS);
+
+		expect(result.status).toBe('success');
+		expect(runs(result, 'Many orders')).toHaveLength(3);
+		expect(runs(result, 'Report')).toEqual([[{ id: 'c1' }, { id: 'c3' }]]);
+	});
+
+	it('forEach nested in forEach keeps working after a body node is renamed', async () => {
+		const result = await runWorkflow(
+			renamed('v1', nestedForEach(), 'Line', 'Make line'),
+			CUSTOMERS,
+		);
+
+		expect(result.status).toBe('success');
+		expect(runs(result, 'Each customer').at(-1)).toEqual(LINES);
+		expect(runs(result, 'Make line')).toHaveLength(4);
+	});
+
+	it('forEach keeps working after its region is renamed', async () => {
+		const result = await runWorkflow(
+			renamed('v1', nestedForEach(), 'Each customer', 'Per customer'),
+			CUSTOMERS,
+		);
+
+		expect(result.status).toBe('success');
+		expect(runs(result, 'Per customer').at(-1)).toEqual(LINES);
+	});
+
+	it('an inner region emits to a member of the outer region on an exit output they share', async () => {
+		const noOp = (name: string) => ({
+			id: name,
+			name,
+			type: 'n8n-nodes-base.noOp',
+			typeVersion: 1,
+			position: [0, 0] as [number, number],
+			parameters: {},
+		});
+		const to = (...nodes: string[]) => [
+			nodes.map((node) => ({ node, type: 'main' as const, index: 0 })),
+		];
+		const json: Built = {
+			name: 'Shared exit',
+			nodes: [
+				{ ...noOp('Start'), type: 'n8n-nodes-base.manualTrigger' },
+				...['E', 'X', 'Y', 'After'].map(noOp),
+			],
+			connections: {
+				Start: { main: to('E') },
+				E: { main: to('X') },
+				X: { main: to('Y', 'After') },
+				Y: { main: to('After') },
+			},
+			nodeGroups: [
+				{
+					id: 'Outer',
+					name: 'Outer',
+					nodeIds: ['E', 'X', 'Y'],
+					repeat: {
+						kind: 'forEach',
+						batchSize: 1,
+						entry: 'E',
+						exits: [
+							{ node: 'X', output: 0 },
+							{ node: 'Y', output: 0 },
+						],
+					},
+				},
+				{
+					id: 'Inner',
+					name: 'Inner',
+					nodeIds: ['X'],
+					repeat: { kind: 'forEach', batchSize: 1, entry: 'X', exits: [{ node: 'X', output: 0 }] },
+				},
+			],
+		};
+
+		const result = await execute('v1', json, [{ n: 1 }, { n: 2 }]);
+
+		expect(result.status).toBe('success');
+		expect(runs(result, 'Y')).toEqual([[{ n: 1 }], [{ n: 2 }]]);
+		expect(runs(result, 'After')).toEqual([[{ n: 1 }, { n: 1 }, { n: 2 }, { n: 2 }]]);
+	});
+});
+
 describe.each<ExecutionOrder>(['v0', 'v1'])(
 	'workflow-sdk regions on the legacy engine (%s)',
 	(order) => {
 		const run = async (json: Built, items: readonly object[]) => await execute(order, json, items);
 
-		it('forEach nested in forEach processes every order once, per customer', async () => {
-			const json = workflow(
-				'Orders',
-				manual(),
-				source<Customer>()('Customers'),
-				forEach(
-					{ name: 'Each customer', batchSize: 1 },
-					steps(
-						splitOut({ name: 'Orders', field: 'orders' }),
-						forEach(
-							{ name: 'Each order', batchSize: 2 },
-							set({
-								name: 'Line',
-								fields: {
-									order: (o) => o.id,
-									total: (o) => o.total * 2,
-									customer: (_o, $) => $('Each customer').name,
-								},
-							}),
-						),
-					),
-				),
-			).toJSON();
-			expect(validateLoopWiring(json)).toEqual([]);
+		it('nested Loop Over Items without the reset skips later customers (the legacy failure)', async () => {
+			const json = handWiredLoops();
+			expect(validateLoopWiring(json).map(({ code }) => code)).toEqual(['LOOP_NESTED_NO_RESET']);
 
 			const result = await run(json, CUSTOMERS);
-
-			expect(result.status).toBe('success');
-			const done = runs(result, 'Each customer').at(-1);
-			expect(done).toEqual([
-				{ order: 'o1', total: 2, customer: 'Ada' },
-				{ order: 'o2', total: 4, customer: 'Ada' },
-				{ order: 'o3', total: 6, customer: 'Ada' },
-				{ order: 'o4', total: 8, customer: 'Bo' },
-				{ order: 'o5', total: 10, customer: 'Cy' },
-				{ order: 'o6', total: 12, customer: 'Cy' },
-			]);
-			// One run per batch of 2: Ada 2, Bo 1, Cy 1.
-			expect(runs(result, 'Line')).toHaveLength(4);
-		});
-
-		it('nested Loop Over Items without the reset skips later customers (the legacy failure)', async () => {
-			const json = workflow(
-				'Orders',
-				manual(),
-				source<Customer>()('Customers'),
-				forEach(
-					{ name: 'Each customer', batchSize: 1 },
-					steps(
-						splitOut({ name: 'Orders', field: 'orders' }),
-						forEach(
-							{ name: 'Each order', batchSize: 2 },
-							set({ name: 'Line', fields: { order: (o) => o.id } }),
-						),
-					),
-				),
-			).toJSON();
-			const handWired = {
-				...json,
-				nodes: json.nodes.map((n) =>
-					n.name === 'Each order' ? { ...n, parameters: { batchSize: 2, options: {} } } : n,
-				),
-			};
-			expect(validateLoopWiring(handWired).map(({ code }) => code)).toEqual([
-				'LOOP_NESTED_NO_RESET',
-			]);
-
-			const result = await run(handWired, CUSTOMERS);
 			const orders = (runs(result, 'Each customer').at(-1) ?? []).map((line) => line.order ?? null);
 			// The inner loop re-reads its old items: Ada's orders repeat, later ones never run.
 			expect(orders).toEqual([

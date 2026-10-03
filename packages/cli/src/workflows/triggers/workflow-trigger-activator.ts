@@ -582,6 +582,8 @@ export class WorkflowTriggerActivator {
 		// TODO: Remove this mutation once trigger registration accepts immutable version data.
 		dbWorkflow.nodes = version.nodes;
 		dbWorkflow.connections = version.connections;
+		// The engine runs the regions of the version, so its groups go with its nodes.
+		if (version.nodeGroups) dbWorkflow.nodeGroups = version.nodeGroups;
 	}
 
 	private createWorkflow(dbWorkflow: WorkflowEntity) {

@@ -4,11 +4,6 @@
  * reads back only when its parameters match exactly.
  */
 
-/**
- * The native contract `loop.batches` types Loop Over Items. The engine and the editor treat
- * this node type in a special way, so `forEach` emits the built-in node.
- */
-export const LOOP_NODE = { type: 'n8n-nodes-base.splitInBatches', version: 3 };
 export const SWITCH_NODE = { type: '@n8n/nodes-base-next.coreSwitch', version: 1 };
 export const FILTER_NODE = { type: '@n8n/nodes-base-next.coreFilter', version: 1 };
 export const WAIT_NODE = { type: '@n8n/nodes-base-next.waitInterval', version: 1 };
@@ -20,19 +15,6 @@ export const LOOP_STATE_NODE = { type: '@n8n/nodes-base-next.loopStateSet', vers
 /** The `where` of a core routing contract that holds when the compiled JavaScript is true. */
 export const trueWhere = (js: string) => ({
 	conditions: [{ type: 'boolean', left: `={{ ${js} }}`, test: { op: 'true' } }],
-});
-
-/** Loop Over Items output slots (v3). */
-export const LOOP_DONE = 0;
-export const LOOP_EACH = 1;
-
-/**
- * Loop Over Items keeps its state per node, so an inner loop must start again on each outer
- * pass. It resets when the items come from anywhere but its own return edges.
- */
-export const forEachParameters = (batchSize: number, returns: readonly string[]) => ({
-	batchSize,
-	options: { reset: `={{ !${JSON.stringify([...returns].sort())}.includes($prevNode.name) }}` },
 });
 
 // ── loop, paginate, pollUntil ───────────────────────────────────────────────

@@ -228,7 +228,11 @@ const getVersionDataForExecution = async (
 	workflowPublishedDataService: WorkflowPublishedDataService,
 ) => {
 	if (executionMode !== 'production') {
-		return { nodes: workflow.nodes ?? [], connections: workflow.connections ?? {} };
+		return {
+			nodes: workflow.nodes ?? [],
+			connections: workflow.connections ?? {},
+			nodeGroups: workflow.nodeGroups,
+		};
 	}
 
 	// Behind the flag, the workflow_published_version mapping is the source of
@@ -247,6 +251,7 @@ const getVersionDataForExecution = async (
 		return {
 			nodes: publishedData.publishedVersion.nodes,
 			connections: publishedData.publishedVersion.connections,
+			nodeGroups: publishedData.publishedVersion.nodeGroups,
 		};
 	}
 
@@ -260,6 +265,7 @@ const getVersionDataForExecution = async (
 	return {
 		nodes: workflow.activeVersion?.nodes ?? [],
 		connections: workflow.activeVersion?.connections ?? {},
+		nodeGroups: workflow.activeVersion?.nodeGroups,
 	};
 };
 
@@ -274,7 +280,7 @@ const buildRunData = async (
 	workflowPublishedDataService: WorkflowPublishedDataService,
 	triggerNodeName?: string,
 ): Promise<IWorkflowExecutionDataProcess> => {
-	const { nodes, connections } = await getVersionDataForExecution(
+	const { nodes, connections, nodeGroups } = await getVersionDataForExecution(
 		workflow,
 		workflowId,
 		executionMode,
@@ -289,7 +295,7 @@ const buildRunData = async (
 	const isManualExecution = executionMode === 'manual';
 	const runData: IWorkflowExecutionDataProcess = {
 		executionMode: isManualExecution ? 'manual' : getExecutionModeForTrigger(triggerNode),
-		workflowData: { ...workflow, nodes, connections },
+		workflowData: { ...workflow, nodes, connections, nodeGroups },
 		userId,
 		// MCP metadata for queue mode support
 		isMcpExecution: mcpService.isQueueMode,

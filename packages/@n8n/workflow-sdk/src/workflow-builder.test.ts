@@ -1260,6 +1260,50 @@ describe('Workflow Builder', () => {
 			]);
 		});
 
+		it('throws when the entry or an exit of a group repeat is not a node of the workflow', () => {
+			const t = trigger({
+				type: 'n8n-nodes-base.manualTrigger',
+				version: 1,
+				config: { name: 'Start' },
+			});
+			const fetch = node({
+				type: 'n8n-nodes-base.httpRequest',
+				version: 4.2,
+				config: { name: 'Fetch' },
+			});
+			const missing = node({
+				type: 'n8n-nodes-base.set',
+				version: 3,
+				config: { name: 'Missing' },
+			});
+			const build = (repeat: { entry: typeof fetch; exit: typeof fetch }) =>
+				workflow('wf-1', 'Test')
+					.add(t)
+					.to(fetch)
+					.group('Each', [fetch], {
+						repeat: {
+							kind: 'forEach',
+							batchSize: 1,
+							entry: repeat.entry,
+							exits: [{ node: repeat.exit, output: 0 }],
+						},
+					})
+					.toJSON();
+
+			expect(() => build({ entry: missing, exit: fetch })).toThrow(
+				'Group "Each" has a repeat entry or exit that is not a node of the workflow',
+			);
+			expect(() => build({ entry: fetch, exit: missing })).toThrow(
+				'Group "Each" has a repeat entry or exit that is not a node of the workflow',
+			);
+			expect(build({ entry: fetch, exit: fetch }).nodeGroups?.[0]?.repeat).toEqual({
+				kind: 'forEach',
+				batchSize: 1,
+				entry: fetch.id,
+				exits: [{ node: fetch.id, output: 0 }],
+			});
+		});
+
 		it('omits nodeGroups when no group was declared', () => {
 			const t = trigger({
 				type: 'n8n-nodes-base.manualTrigger',

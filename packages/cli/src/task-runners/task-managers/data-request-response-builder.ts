@@ -64,6 +64,7 @@ export class DataRequestResponseBuilder {
 			pinData: workflow.pinData,
 			settings: workflow.settings,
 			staticData: workflow.staticData,
+			nodeGroups: workflow.nodeGroups,
 		};
 	}
 

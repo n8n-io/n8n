@@ -198,16 +198,31 @@ export function parseWorkflowJSON(json: WorkflowJSON): ParsedWorkflow {
 		lastNode = name;
 	}
 
+	const instancesOf = (id: string) => {
+		const instance = idToInstance.get(id);
+		return instance !== undefined ? [instance] : [];
+	};
 	const nodeGroups = json.nodeGroups?.length
-		? json.nodeGroups.map((group) => ({
-				id: group.id,
-				name: group.name,
-				description: group.description,
-				members: group.nodeIds.flatMap((id) => {
-					const instance = idToInstance.get(id);
-					return instance !== undefined ? [instance] : [];
-				}),
-			}))
+		? json.nodeGroups.map(({ repeat, ...group }) => {
+				const [entry] = repeat ? instancesOf(repeat.entry) : [];
+				return {
+					id: group.id,
+					name: group.name,
+					description: group.description,
+					members: group.nodeIds.flatMap(instancesOf),
+					...(repeat && entry
+						? {
+								repeat: {
+									...repeat,
+									entry,
+									exits: repeat.exits.flatMap(({ node, output }) =>
+										instancesOf(node).map((instance) => ({ node: instance, output })),
+									),
+								},
+							}
+						: {}),
+				};
+			})
 		: undefined;
 
 	return {

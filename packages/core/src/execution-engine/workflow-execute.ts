@@ -89,6 +89,7 @@ import {
 	rewireGraph,
 	getNextExecutionIndex,
 } from './partial-execution-utils';
+import { RegionScheduler } from './regions';
 import { handleRequest, isEngineRequest, makeEngineResponse } from './requests-response';
 import { RoutingNode } from './routing-node';
 import { TriggersAndPollers } from './triggers-and-pollers';
@@ -121,6 +122,8 @@ export class WorkflowExecute {
 
 	private readonly abortController = new AbortController();
 	timedOut: boolean = false;
+
+	private regions: RegionScheduler | undefined;
 
 	constructor(
 		private readonly additionalData: IWorkflowExecuteAdditionalData,
@@ -611,20 +614,10 @@ export class WorkflowExecute {
 
 			if (!nodeWasWaiting) {
 				// Get a list of all the output nodes that we can check for siblings easier
-				const checkOutputNodes = [];
-				// eslint-disable-next-line @typescript-eslint/no-for-in-array
-				for (const outputIndexParent in workflow.connectionsBySourceNode[parentNodeName].main) {
-					if (
-						!Object.hasOwn(workflow.connectionsBySourceNode[parentNodeName].main, outputIndexParent)
-					) {
-						continue;
-					}
-					for (const connectionDataCheck of workflow.connectionsBySourceNode[parentNodeName].main[
-						outputIndexParent
-					] ?? []) {
-						checkOutputNodes.push(connectionDataCheck.node);
-					}
-				}
+				// A region parent has no connections of its own.
+				const checkOutputNodes = (workflow.connectionsBySourceNode[parentNodeName]?.main ?? [])
+					.flatMap((connections) => connections ?? [])
+					.map((connection) => connection.node);
 
 				// Node was not on "waitingExecution" so it is the first time it gets
 				// checked. So we have to go through all the inputs and check if they
@@ -2170,6 +2163,35 @@ export class WorkflowExecute {
 		};
 	}
 
+	/** Let the regions start their next pass first, as that can add a node to the stack. */
+	private hasNodeToExecute(): boolean {
+		this.regions?.settle();
+		return this.isExecutionStackNotEmpty();
+	}
+
+	/** Add the node of `connection` to the stack, unless a region takes the items. */
+	private routeOutput(
+		workflow: Workflow,
+		connection: IConnection,
+		outputIndex: number,
+		parentNodeName: string,
+		nodeSuccessData: INodeExecutionData[][],
+		runIndex: number,
+	): void {
+		if (this.regions) {
+			this.regions.routeEdge(parentNodeName, connection, outputIndex, nodeSuccessData, runIndex);
+			return;
+		}
+		this.addNodeToBeExecuted(
+			workflow,
+			connection,
+			outputIndex,
+			parentNodeName,
+			nodeSuccessData,
+			runIndex,
+		);
+	}
+
 	/** True while there are nodes queued for execution. */
 	private isExecutionStackNotEmpty(): boolean {
 		return this.runExecutionData.executionData!.nodeExecutionStack.length !== 0;
@@ -2229,6 +2251,20 @@ export class WorkflowExecute {
 		Logger.debug('Workflow execution started', { workflowId: workflow.id });
 		const { startedAt, hooks } = this.setupExecution();
 		this.checkForWorkflowIssues(workflow);
+		this.regions = RegionScheduler.of(
+			workflow,
+			this.runExecutionData,
+			(connection, outputIndex, parentNodeName, nodeSuccessData, runIndex) =>
+				this.addNodeToBeExecuted(
+					workflow,
+					connection,
+					outputIndex,
+					parentNodeName,
+					nodeSuccessData,
+					runIndex,
+				),
+			() => this.additionalData.currentNodeExecutionIndex++,
+		);
 		this.handleWaitingState(workflow);
 
 		// Variables which hold temporary data for each node-execution
@@ -2248,7 +2284,7 @@ export class WorkflowExecute {
 			const returnPromise = (async () => {
 				await this.initializeExecution(workflow, hooks);
 
-				executionLoop: while (this.isExecutionStackNotEmpty()) {
+				executionLoop: while (this.hasNodeToExecute()) {
 					if (this.shouldStopExecuting()) {
 						return;
 					}
@@ -2562,7 +2598,7 @@ export class WorkflowExecute {
 								});
 
 								for (const nodeData of nodesToAdd) {
-									this.addNodeToBeExecuted(
+									this.routeOutput(
 										workflow,
 										nodeData.connection,
 										nodeData.outputIndex,
@@ -2574,6 +2610,8 @@ export class WorkflowExecute {
 							}
 						}
 					}
+
+					this.regions?.holdExits(executionNode.name, runIndex, nodeSuccessData!);
 
 					// If we got here, it means that we did not stop executing from manual executions / destination.
 					// Execute hooks now to make sure that all hooks are executed properly

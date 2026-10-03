@@ -360,6 +360,56 @@ describe('JobProcessor', () => {
 		);
 	});
 
+	it('passes the node groups of the execution to the run, so regions repeat', async () => {
+		const nodeGroups = [
+			{
+				id: 'g1',
+				name: 'Each',
+				nodeIds: ['n1'],
+				repeat: {
+					kind: 'forEach' as const,
+					entry: 'n1',
+					exits: [{ node: 'n1', output: 0 }],
+					batchSize: 1,
+				},
+			},
+		];
+		const executionPersistence = mock<ExecutionPersistence>();
+		executionPersistence.findSingleExecution.mockResolvedValue(
+			mock<IExecutionResponse>({
+				mode: 'manual',
+				workflowData: { id: 'workflow-id', nodes: [], staticData: {}, nodeGroups },
+				data: mock<IRunExecutionData>({
+					resultData: { runData: {} },
+					executionData: undefined,
+				}),
+			}),
+		);
+		vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(
+			mock<IWorkflowExecuteAdditionalData>(),
+		);
+		const manualExecutionService = createManualExecutionServiceMock();
+		const jobProcessor = new JobProcessor(
+			logger,
+			mock<ExecutionRepository>(),
+			executionPersistence,
+			mock(),
+			mock(),
+			mock(),
+			manualExecutionService,
+			executionsConfig,
+			mock(),
+			mock(),
+		);
+
+		await jobProcessor.processJob(
+			mock<Job>({ data: { executionId: 'execution-id', loadStaticData: false } }),
+		);
+
+		const workflow = vi.mocked(manualExecutionService.runManually).mock.calls[0]?.[1];
+		expect(workflow?.nodeGroups).toEqual(nodeGroups);
+	});
+
 	it('should set restartExecutionId on additionalData when provided in job data', async () => {
 		const executionRepository = mock<ExecutionRepository>();
 		const execution = mock<IExecutionResponse>({

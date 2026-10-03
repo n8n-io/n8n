@@ -589,6 +589,7 @@ export class WorkflowExecutionService {
 			const workflowData = publishedData.workflow;
 			workflowData.nodes = publishedData.publishedVersion.nodes;
 			workflowData.connections = publishedData.publishedVersion.connections;
+			workflowData.nodeGroups = publishedData.publishedVersion.nodeGroups;
 			return workflowData;
 		}
 
@@ -609,6 +610,7 @@ export class WorkflowExecutionService {
 		}
 		loaded.nodes = loaded.activeVersion.nodes;
 		loaded.connections = loaded.activeVersion.connections;
+		loaded.nodeGroups = loaded.activeVersion.nodeGroups;
 		return loaded;
 	}
 

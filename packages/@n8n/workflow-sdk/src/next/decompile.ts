@@ -46,10 +46,6 @@ import {
 	FALLBACK_OUTPUT,
 	FILTER_NODE,
 	filterParameters,
-	forEachParameters,
-	LOOP_DONE,
-	LOOP_EACH,
-	LOOP_NODE,
 	LOOP_STATE_NODE,
 	loopCheckParameters,
 	loopHeadParameters,
@@ -178,13 +174,6 @@ type Shape =
 	| { readonly kind: 'set'; readonly fields: Tree; readonly keepAll: boolean }
 	| { readonly kind: 'contract'; readonly factory: ContractFactory; readonly parameters: Tree }
 	| { readonly kind: 'node'; readonly parameters: Tree }
-	| {
-			readonly kind: 'forEach';
-			readonly batchSize: number;
-			readonly returns: readonly string[];
-			/** The saved node options, when the build would not make the same `reset`. */
-			readonly options?: Tree;
-	  }
 	| LoopShape
 	/** A node that a loop region owns: its check, next, wait, or limit node. */
 	| { readonly kind: 'loopPart' }
@@ -206,11 +195,8 @@ type Segment =
 	  }
 	/** `rejoins`: the open ends of the handler continue (`recover`), else the branch ends. */
 	| { readonly kind: 'onError'; readonly handler: readonly Segment[]; readonly rejoins: boolean }
-	| {
-			readonly kind: 'forEach' | 'loop';
-			readonly node: NamedNode;
-			readonly body: readonly Segment[];
-	  }
+	| { readonly kind: 'forEach'; readonly region: RegionRead; readonly body: readonly Segment[] }
+	| { readonly kind: 'loop'; readonly node: NamedNode; readonly body: readonly Segment[] }
 	| {
 			readonly kind: 'switch';
 			readonly node: NamedNode;
@@ -238,6 +224,15 @@ interface Chain {
 	readonly tails: readonly Tail[];
 }
 
+/** A saved `forEach` region, by node names. */
+interface RegionRead {
+	readonly name: string;
+	readonly batchSize: number;
+	readonly members: ReadonlySet<string>;
+	readonly entry: string;
+	readonly exits: readonly Tail[];
+}
+
 /** A provider and the slot of its parent that it fills. */
 interface Child {
 	readonly slot: ProviderSlot;
@@ -254,6 +249,7 @@ interface Graph {
 	/** The contract shape of each provider that a contract node takes. */
 	readonly providerShapes: ReadonlyMap<string, ContractShape>;
 	readonly names: ReadonlySet<string>;
+	readonly regions: readonly RegionRead[];
 }
 
 interface FlowPlan {
@@ -520,52 +516,6 @@ function filterShape(node: NamedNode, names: ReadonlySet<string>): Shape | undef
 	return condition ? { kind: 'filter', condition } : undefined;
 }
 
-/**
- * Loop Over Items as `forEach`. A node that `forEach` did not build, e.g. one from the editor,
- * reads back through the parameters of the `loop.batches` contract and keeps its options. Its
- * returns are the nodes after its loop output that lead back into it.
- */
-function forEachShape(node: NamedNode, edges: readonly Edge[]): Shape | undefined {
-	if (!isNodeType(node, LOOP_NODE)) return undefined;
-	const { batchSize, options = {}, ...rest } = node.parameters ?? {};
-	const reset = isRecord(options) ? options.reset : undefined;
-	const list =
-		typeof reset === 'string'
-			? /^=\{\{ !(\[.*\])\.includes\(\$prevNode\.name\) \}\}$/.exec(reset)?.[1]
-			: undefined;
-	const saved = parseJson(list);
-	if (typeof batchSize !== 'number') return undefined;
-	const built = Array.isArray(saved)
-		? saved.filter((name): name is string => typeof name === 'string')
-		: undefined;
-	if (built && isEqual(forEachParameters(batchSize, built), node.parameters)) {
-		return { kind: 'forEach', batchSize, returns: built };
-	}
-	const fits =
-		Number.isInteger(batchSize) &&
-		batchSize >= 1 &&
-		Object.keys(rest).length === 0 &&
-		isRecord(options) &&
-		Object.keys(options).every((key) => key === 'reset') &&
-		(reset === undefined || typeof reset === 'boolean' || typeof reset === 'string');
-	if (!fits) return undefined;
-	const body = new Set<string>();
-	const queue = edges
-		.filter((edge) => edge.from === node.name && edge.output === LOOP_EACH)
-		.map((edge) => edge.to);
-	for (const name of queue) {
-		if (name === node.name || body.has(name)) continue;
-		body.add(name);
-		queue.push(...edges.filter((edge) => edge.from === name).map((edge) => edge.to));
-	}
-	const returns = [
-		...new Set(
-			edges.filter((edge) => edge.to === node.name && body.has(edge.from)).map((edge) => edge.from),
-		),
-	];
-	return { kind: 'forEach', batchSize, returns, options: plainTree(options) };
-}
-
 /** The text between `prefix` and `suffix`, or `undefined` if `text` does not fit them. */
 const between = (text: unknown, prefix: string, suffix: string) =>
 	typeof text === 'string' &&
@@ -798,7 +748,6 @@ function shapeOf(
 	return (
 		branchShape(node, names) ??
 		filterShape(node, names) ??
-		forEachShape(node, edges) ??
 		switchShape(node, edges) ??
 		mergeShape(node) ??
 		setShape(node, names) ??
@@ -933,10 +882,9 @@ const fromTail = (edge: Edge, tail: Tail) => edge.from === tail.node && edge.out
 
 const shapeKind = (graph: Graph, name: string) => graph.shapes.get(name)?.kind;
 
-/** A return edge of a region: from the body back to its Loop Over Items or loop head. */
+/** A return edge of a loop region: from the body back to its loop head. */
 function isBackEdge(graph: Graph, edge: Edge): boolean {
 	const shape = graph.shapes.get(edge.to);
-	if (shape?.kind === 'forEach') return shape.returns.includes(edge.from);
 	return shape?.kind === 'loop' && shape.back === edge.from;
 }
 
@@ -988,13 +936,6 @@ function stepChain(graph: Graph, node: NamedNode, seen: ReadonlySet<string>): Ch
 				},
 			],
 			tails: [...cases, ...(fallback ? [fallback] : [])].flatMap(({ tails }) => tails),
-		};
-	}
-	if (shape?.kind === 'forEach') {
-		const body = from(LOOP_EACH);
-		return {
-			segments: [{ kind: 'forEach', node, body: body.segments }],
-			tails: [{ node: node.name, output: LOOP_DONE }],
 		};
 	}
 	if (shape?.kind === 'loop') {
@@ -1131,10 +1072,50 @@ function mergeChain(graph: Graph, tails: readonly Tail[], seen: ReadonlySet<stri
 	};
 }
 
+const sameTails = (one: readonly Tail[], other: readonly Tail[]) =>
+	one.length === other.length &&
+	one.every((tail) => other.some((each) => each.node === tail.node && each.output === tail.output));
+
+/**
+ * A region from `tails` on: its body, then the flow after its exits. A region name in `seen`
+ * marks a region the chain is in. Nodes outside the region count as seen, so the body stops at
+ * the region border.
+ */
+function regionChain(
+	graph: Graph,
+	region: RegionRead,
+	tails: readonly Tail[],
+	seen: ReadonlySet<string>,
+): Chain | undefined {
+	const outside = [...graph.nodes.keys()].filter((name) => !region.members.has(name));
+	const body = chain(graph, tails, new Set([...seen, region.name, ...outside]));
+	if (!sameTails(body.tails, region.exits)) return undefined;
+	const rest = chain(graph, body.tails, new Set([...seen, region.name, ...region.members]));
+	return {
+		segments: [{ kind: 'forEach', region, body: body.segments }, ...rest.segments],
+		tails: rest.tails,
+	};
+}
+
+/** The outermost region that the chain enters at `node` from `tails`. */
+const regionAt = (graph: Graph, node: string, tails: readonly Tail[], seen: ReadonlySet<string>) =>
+	graph.regions
+		.filter(
+			(region) =>
+				region.entry === node &&
+				!seen.has(region.name) &&
+				tails.every((tail) => !region.members.has(tail.node)),
+		)
+		.sort((a, b) => b.members.size - a.members.size)[0];
+
 /** The flow from `tails` on. It stops at a node that another path also leads into. */
 function chain(graph: Graph, tails: readonly Tail[], seen: ReadonlySet<string>): Chain {
 	const next = edgesFrom(graph, tails, seen);
 	const targets = [...new Set(next.map((edge) => edge.to))];
+	const region =
+		targets.length === 1 && targets[0] ? regionAt(graph, targets[0], tails, seen) : undefined;
+	const entered = region && regionChain(graph, region, tails, seen);
+	if (entered) return entered;
 	const node = targets.length === 1 && targets[0] ? graph.nodes.get(targets[0]) : undefined;
 	const ready =
 		node !== undefined &&
@@ -1161,7 +1142,9 @@ function replay(graph: Graph, from: Fragment, segments: readonly Segment[]): Fra
 		region: again(body),
 	});
 	return segments.reduce<Fragment>((current, segment) => {
-		const shape = graph.shapes.get(segment.kind === 'onError' ? '' : segment.node.name);
+		const shape = graph.shapes.get(
+			segment.kind === 'onError' || segment.kind === 'forEach' ? '' : segment.node.name,
+		);
 		switch (segment.kind) {
 			case 'step':
 				return stepFragment(
@@ -1186,9 +1169,12 @@ function replay(graph: Graph, from: Fragment, segments: readonly Segment[]): Fra
 				);
 			}
 			case 'forEach':
-				return shape?.kind === 'forEach'
-					? forEachFragment(current, segment.node.name, shape.batchSize, again(segment.body))
-					: current;
+				return forEachFragment(
+					current,
+					segment.region.name,
+					segment.region.batchSize,
+					again(segment.body),
+				);
 			case 'loop':
 				return shape?.kind === 'loop'
 					? loopFragment(
@@ -1234,9 +1220,29 @@ function replay(graph: Graph, from: Fragment, segments: readonly Segment[]): Fra
 	}, from);
 }
 
-/** The flows build the saved graph: the same nodes, edges, and error outputs. */
+/** A region as a comparable value. */
+const regionKey = (region: {
+	name: string;
+	batchSize: number;
+	members: Iterable<string>;
+	entry: string;
+	exits: readonly Tail[];
+}) =>
+	JSON.stringify([
+		region.name,
+		region.batchSize,
+		[...region.members].sort(),
+		region.entry,
+		region.exits.map(({ node, output }) => `${node}#${output}`).sort(),
+	]);
+
+/** The flows build the saved graph: the same nodes, edges, error outputs, and regions. */
 function replaysGraph(graph: Graph, flows: readonly FlowPlan[]): boolean {
-	const { nodes: specs, edges } = flows.reduce<Fragment>(
+	const {
+		nodes: specs,
+		edges,
+		regions = [],
+	} = flows.reduce<Fragment>(
 		(built, { root, segments }) =>
 			replay(
 				graph,
@@ -1262,7 +1268,8 @@ function replaysGraph(graph: Graph, flows: readonly FlowPlan[]): boolean {
 				saved.filter(({ onError }) => onError === 'continueErrorOutput').map(({ name }) => name),
 			),
 		) &&
-		isEqual(new Set(edges.map(edgeKey)), new Set(graph.edges.map(edgeKey)))
+		isEqual(new Set(edges.map(edgeKey)), new Set(graph.edges.map(edgeKey))) &&
+		isEqual(new Set(regions.map(regionKey)), new Set(graph.regions.map(regionKey)))
 	);
 }
 
@@ -1449,10 +1456,14 @@ function renderRegion(
 	segment: Exclude<Segment, { kind: 'step' | 'onError' }>,
 	indent: string,
 ): string {
-	const shape = graph.shapes.get(segment.node.name);
 	const value = indent + INDENT;
 	const call = (macro: string, config: Tree, parts: Tree) =>
 		`${macro}(${renderTree(config, indent)}, ${renderTree(parts, indent)})`;
+	if (segment.kind === 'forEach') {
+		const { name, batchSize } = segment.region;
+		return call('forEach', { name, batchSize }, partCode(graph, segment.body, indent));
+	}
+	const shape = graph.shapes.get(segment.node.name);
 	const name = segment.node.name;
 	if (segment.kind === 'branch' && shape?.kind === 'branch') {
 		return call(
@@ -1463,14 +1474,6 @@ function renderRegion(
 				...(segment.else ? { else: partCode(graph, segment.else, value) } : {}),
 			},
 		);
-	}
-	if (segment.kind === 'forEach' && shape?.kind === 'forEach') {
-		const config = {
-			name,
-			batchSize: shape.batchSize,
-			...(shape.options === undefined ? {} : { options: shape.options }),
-		};
-		return call('forEach', config, partCode(graph, segment.body, indent));
 	}
 	if (segment.kind === 'loop' && shape?.kind === 'loop') {
 		const max = shape.maxIterations;
@@ -1605,6 +1608,7 @@ function segmentNodes(segments: readonly Segment[]): NamedNode[] {
 			case 'branch':
 				return [segment.node, ...segmentNodes(segment.then), ...segmentNodes(segment.else ?? [])];
 			case 'forEach':
+				return segmentNodes(segment.body);
 			case 'loop':
 				return [segment.node, ...segmentNodes(segment.body)];
 			case 'switch':
@@ -1632,10 +1636,7 @@ function render(name: string, graph: Graph, flows: readonly FlowPlan[]): string 
 			return shape ? [{ node, shape }] : [];
 		});
 	const shapes = placed.map(({ shape }) => shape);
-	const trees = placed.flatMap(({ node, shape }) => [
-		callTree(graph, node, shape) ?? null,
-		shape.kind === 'forEach' ? (shape.options ?? null) : null,
-	]);
+	const trees = placed.flatMap(({ node, shape }) => [callTree(graph, node, shape) ?? null]);
 	const [first, ...rest] = flows.flatMap(({ root, segments }) => [
 		(indent: string) =>
 			renderCall(graph, root, graph.shapes.get(root.name) ?? { kind: 'trigger' }, indent),
@@ -1697,14 +1698,15 @@ export function decompileWorkflow(
 		edges !== undefined &&
 		plain.length === json.nodes.length &&
 		all.size === plain.length &&
-		(json.nodeGroups?.length ?? 0) === 0 &&
 		[...edges.main, ...edges.providers].every((edge) => all.has(edge.from) && all.has(edge.to));
 	const children = fits ? childrenOf(all, edges.main, edges.providers) : undefined;
-	if (!edges || !children) return undefined;
+	const forEachRegions = regionsOf(json);
+	if (!edges || !children || !forEachRegions) return undefined;
 	const providerNames = new Set(edges.providers.map(({ from }) => from));
 	const mainNodes = plain.filter((node) => !providerNames.has(node.name));
 	const nodes = new Map(mainNodes.map((node) => [node.name, node]));
-	const names = new Set(nodes.keys());
+	// `$()` reads a region as it reads a node.
+	const names = new Set([...nodes.keys(), ...forEachRegions.map(({ name }) => name)]);
 	const targets = new Set(edges.main.map(({ to }) => to));
 	const loops = mainNodes.flatMap((node) => {
 		const shape = loopShape(node, nodes, edges.main, names);
@@ -1754,7 +1756,15 @@ export function decompileWorkflow(
 				list.every(({ node }) => !providerShapes.has(node.name)),
 	);
 	if (!hosted) return undefined;
-	const graph: Graph = { nodes, edges: edges.main, shapes, children, providerShapes, names };
+	const graph: Graph = {
+		nodes,
+		edges: edges.main,
+		shapes,
+		children,
+		providerShapes,
+		names,
+		regions: forEachRegions,
+	};
 	const flows = mainNodes
 		.filter((node) => !targets.has(node.name))
 		.map((root) => ({
@@ -1763,6 +1773,28 @@ export function decompileWorkflow(
 		}));
 	if (flows.length === 0 || !replaysGraph(graph, flows)) return undefined;
 	return render(json.name, graph, flows);
+}
+
+/** The `forEach` regions of `json`, or `undefined` when it has another node group. */
+function regionsOf(json: WorkflowJSON): RegionRead[] | undefined {
+	const nameOf = new Map(json.nodes.map((node) => [node.id, node.name]));
+	const regions = (json.nodeGroups ?? []).map((group) => {
+		const { repeat } = group;
+		if (repeat?.kind !== 'forEach') return undefined;
+		const members = group.nodeIds.map((id) => nameOf.get(id));
+		const entry = nameOf.get(repeat.entry);
+		const exits = repeat.exits.map(({ node, output }) => ({ node: nameOf.get(node), output }));
+		if (entry === undefined || members.some((name) => name === undefined)) return undefined;
+		if (exits.some(({ node }) => node === undefined)) return undefined;
+		return {
+			name: group.name,
+			batchSize: repeat.batchSize,
+			members: new Set(members.flatMap((name) => name ?? [])),
+			entry,
+			exits: exits.flatMap(({ node, output }) => (node === undefined ? [] : [{ node, output }])),
+		};
+	});
+	return regions.every((region) => region !== undefined) ? regions : undefined;
 }
 
 const NODE_TYPE_CALLS = new Set(['node', 'provider', 'trigger']);

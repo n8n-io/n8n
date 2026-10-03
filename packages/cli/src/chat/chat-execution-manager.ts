@@ -91,6 +91,7 @@ export class ChatExecutionManager {
 			nodeTypes: this.nodeTypes,
 			staticData: workflowData.staticData,
 			settings: workflowData.settings,
+			nodeGroups: workflowData.nodeGroups,
 		});
 	}
 

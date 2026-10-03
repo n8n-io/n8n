@@ -204,15 +204,39 @@ const connections = (json: WorkflowJSON, name: string) =>
 	);
 
 describe('regions compile to node contracts', () => {
-	it('wires forEach to Loop Over Items with a reset for the inner loop', () => {
+	it('emits nested forEach as regions, with no loop node', () => {
 		const json = forEachWorkflow().toJSON();
-		expect(connections(json, 'Each customer')).toEqual([['Report#0'], ['Orders#0']]);
-		expect(connections(json, 'Each order')).toEqual([['Each customer#0'], ['Line#0']]);
-		expect(connections(json, 'Line')).toEqual([['Each order#0']]);
-		expect(json.nodes.find((n) => n.name === 'Each order')?.parameters).toEqual({
-			batchSize: 2,
-			options: { reset: '={{ !["Line"].includes($prevNode.name) }}' },
-		});
+		const nameOf = new Map(json.nodes.map((n) => [n.id, n.name]));
+		const named = (id: string) => nameOf.get(id) ?? id;
+		expect(json.nodes.map((n) => n.name)).toEqual([
+			'Start',
+			'Customers',
+			'Orders',
+			'Line',
+			'Report',
+		]);
+		expect(connections(json, 'Customers')).toEqual([['Orders#0']]);
+		expect(connections(json, 'Orders')).toEqual([['Line#0']]);
+		expect(connections(json, 'Line')).toEqual([['Report#0']]);
+		expect(
+			json.nodeGroups?.map(({ name, nodeIds, repeat }) => ({
+				name,
+				members: nodeIds.map(named),
+				entry: repeat && named(repeat.entry),
+				exits: repeat?.exits.map(({ node, output }) => `${named(node)}#${output}`),
+				batchSize: repeat?.batchSize,
+			})),
+		).toEqual([
+			{ name: 'Each order', members: ['Line'], entry: 'Line', exits: ['Line#0'], batchSize: 2 },
+			{
+				name: 'Each customer',
+				members: ['Orders', 'Line'],
+				entry: 'Orders',
+				exits: ['Line#0'],
+				batchSize: 1,
+			},
+		]);
+		expect(json.settings).toEqual({ executionOrder: 'v1' });
 		expect(validateLoopWiring(json)).toEqual([]);
 	});
 
@@ -282,8 +306,8 @@ describe('regions compile to node contracts', () => {
 		expect([...errors, ...warnings]).toEqual([]);
 	});
 
-	it('accepts a loop region inside forEach', () => {
-		const json = workflow(
+	it('reports a loop region inside forEach as a build problem', () => {
+		const looped = workflow(
 			'Retry each',
 			manual(),
 			customers('Customers'),
@@ -299,16 +323,8 @@ describe('regions compile to node contracts', () => {
 					set({ name: 'Add', fields: { id: (c) => c.id } }),
 				),
 			),
-		).toJSON();
-		expect(connections(json, 'Count until')).toEqual([
-			['Each#0'],
-			['Count limit#0'],
-			['Count next#0'],
-		]);
-		expect(validateLoopWiring(json)).toEqual([]);
-	});
-
-	it('reports forEach bodies that do not return each batch once as build problems', () => {
+		);
+		expect(() => looped.toJSON()).toThrow(/Region "Each": its nodes connect in a loop/);
 		const paged = workflow(
 			'Pages per customer',
 			manual(),
@@ -321,7 +337,10 @@ describe('regions compile to node contracts', () => {
 				),
 			),
 		);
-		expect(() => paged.toJSON()).toThrow(/Fetch returns to Each on every pass of an inner loop/);
+		expect(() => paged.toJSON()).toThrow(/Region "Each": its nodes connect in a loop/);
+	});
+
+	it('accepts a forEach body that drops items', () => {
 		const filtered = workflow(
 			'Filtered',
 			manual(),
@@ -331,7 +350,7 @@ describe('regions compile to node contracts', () => {
 				filter({ name: 'Has orders', if: (c) => c.orders.length > 0 }),
 			),
 		);
-		expect(() => filtered.toJSON()).toThrow(/Has orders can drop a whole batch/);
+		expect(() => filtered.toJSON()).not.toThrow();
 		const branched = workflow(
 			'Branched',
 			manual(),
@@ -344,7 +363,19 @@ describe('regions compile to node contracts', () => {
 				),
 			),
 		);
-		expect(() => branched.toJSON()).toThrow(/output 1 of Has orders\? never return to Each/);
+		expect(() => branched.toJSON()).not.toThrow();
+	});
+
+	it('reports two regions with the same name as a build problem, also with a later step', () => {
+		const twice = workflow(
+			'Twice',
+			manual(),
+			customers('Customers'),
+			forEach({ name: 'Each', batchSize: 1 }, set({ name: 'A', fields: { id: (c) => c.id } })),
+			forEach({ name: 'Each', batchSize: 1 }, set({ name: 'B', fields: { id: (c) => c.id } })),
+			set({ name: 'C', fields: { id: (c) => c.id } }),
+		);
+		expect(() => twice.toJSON()).toThrow(/Two regions have the name "Each"/);
 	});
 
 	it('reports a bad batch size and an empty body as build problems', () => {
@@ -510,10 +541,28 @@ function build(source: string): WorkflowJSON {
 	return (module.exports.default as next.Workflow).toJSON();
 }
 
-const withoutIds = (json: WorkflowJSON) => ({
-	...json,
-	nodes: json.nodes.map(({ id: _id, ...rest }) => rest),
-});
+/** The workflow with node names in place of node IDs, which each build makes again. */
+const withoutIds = (json: WorkflowJSON) => {
+	const nameOf = new Map(json.nodes.map((n) => [n.id, n.name ?? '']));
+	const named = (id: string) => nameOf.get(id) ?? id;
+	return {
+		...json,
+		nodes: json.nodes.map(({ id: _id, ...rest }) => rest),
+		nodeGroups: json.nodeGroups?.map(({ id: _id, nodeIds, repeat, ...group }) => ({
+			...group,
+			nodeIds: nodeIds.map(named),
+			...(repeat
+				? {
+						repeat: {
+							...repeat,
+							entry: named(repeat.entry),
+							exits: repeat.exits.map(({ node, output }) => ({ node: named(node), output })),
+						},
+					}
+				: {}),
+		})),
+	};
+};
 
 describe('regions round-trip through decompile', () => {
 	it.each([
@@ -542,33 +591,6 @@ describe('regions round-trip through decompile', () => {
 		expect(source).toMatch(/ forEach\(\{\s+name: "Each customer",\s+batchSize: 1,/);
 		expect(source).toContain('}, steps(');
 		expect(source.match(/ forEach\(/g)).toHaveLength(2);
-	});
-
-	it('reads a hand-wired loop as forEach with the loop.batches options it has', () => {
-		const json = forEachWorkflow().toJSON();
-		const unwired = {
-			...json,
-			nodes: json.nodes.map((n) =>
-				n.name === 'Each order' ? { ...n, parameters: { batchSize: 2, options: {} } } : n,
-			),
-		};
-		const source = decompileWorkflow(unwired, new Map());
-		expect(source).toMatch(/name: "Each order",\s+batchSize: 2,\s+options: \{\},/);
-		expect(withoutIds(build(source ?? ''))).toEqual(withoutIds(unwired));
-		const noOptions = {
-			...unwired,
-			nodes: unwired.nodes.map((n) =>
-				n.name === 'Each order' ? { ...n, parameters: { batchSize: 2 } } : n,
-			),
-		};
-		expect(decompileWorkflow(noOptions, new Map())).toBe(source);
-		const unknown = {
-			...unwired,
-			nodes: unwired.nodes.map((n) =>
-				n.name === 'Each order' ? { ...n, parameters: { batchSize: 2, other: 1 } } : n,
-			),
-		};
-		expect(decompileWorkflow(unknown, new Map())).toBeUndefined();
 	});
 });
 

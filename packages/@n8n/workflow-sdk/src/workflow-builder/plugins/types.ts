@@ -5,10 +5,15 @@
  * WorkflowBuilder with custom validators, composite handlers, and serializers.
  */
 
+import type { WorkflowGroupRepeat } from 'n8n-workflow';
+
 import type { AuthoredNodeGroup, GraphNode, NodeInstance, IDataObject } from '../../types/base';
 
 /** An authored group with its members resolved to the node IDs the serializer emits. */
-export type ResolvedNodeGroup = Omit<AuthoredNodeGroup, 'members'> & { memberIds: string[] };
+export type ResolvedNodeGroup = Omit<AuthoredNodeGroup, 'members' | 'repeat'> & {
+	memberIds: string[];
+	repeat?: WorkflowGroupRepeat;
+};
 
 // =============================================================================
 // Utility Functions for Validators

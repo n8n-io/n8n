@@ -215,6 +215,7 @@ export async function getPublishedWorkflowData(
 			...publishedData.workflow,
 			nodes: publishedData.publishedVersion.nodes,
 			connections: publishedData.publishedVersion.connections,
+			nodeGroups: publishedData.publishedVersion.nodeGroups,
 		};
 	}
 
@@ -235,6 +236,7 @@ export async function getPublishedWorkflowData(
 			...workflowData,
 			nodes: workflowData.activeVersion.nodes,
 			connections: workflowData.activeVersion.connections,
+			nodeGroups: workflowData.activeVersion.nodeGroups,
 		};
 	}
 
@@ -570,6 +572,7 @@ async function startExecution(
 		nodeTypes,
 		staticData: workflowData.staticData,
 		settings: workflowData.settings,
+		nodeGroups: workflowData.nodeGroups,
 	});
 
 	/**

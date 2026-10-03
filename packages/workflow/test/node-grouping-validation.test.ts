@@ -877,7 +877,7 @@ describe('node grouping validation', () => {
 				nodes: [graph.nodes[0], graph.nodes[1], sticky],
 				connectionsBySourceNode: graph.connections,
 				getNodeType: (node) => stickyNodeTypes[node.type],
-				existingNodeGroups: [{ id: 'g1', name: 'Group', nodeIds: ['sticky'] }],
+				existingNodeGroups: [{ id: 'g1', name: 'Group', nodeIds: ['sticky', 'c'] }],
 			});
 
 			expect(result).toEqual({
@@ -1150,15 +1150,15 @@ describe('validateWorkflowGroups', () => {
 		]);
 	});
 
-	it('reports a node that belongs to multiple groups', () => {
+	it('reports two groups that share some nodes', () => {
 		const graph = makeLinearGraph();
 
 		const result = validateWorkflowGroups({
 			nodes: graph.nodes,
 			connectionsBySourceNode: graph.connections,
 			nodeGroups: [
-				{ id: 'g1', name: 'First', nodeIds: ['a'] },
-				{ id: 'g2', name: 'Second', nodeIds: ['a'] },
+				{ id: 'g1', name: 'First', nodeIds: ['a', 'b'] },
+				{ id: 'g2', name: 'Second', nodeIds: ['b', 'c'] },
 			],
 			getNodeType,
 		});
@@ -1167,13 +1167,49 @@ describe('validateWorkflowGroups', () => {
 			{
 				groupId: 'g2',
 				code: 'node-in-multiple-groups',
-				message: 'Node "A" belongs to multiple groups: "First" and "Second".',
+				message:
+					'Node "B" belongs to groups "First" and "Second", which do not nest. Put one group inside the other, or keep them apart.',
 			},
 			// The clean first group still fails its graph rules against the second.
 			{
 				groupId: 'g1',
 				code: 'node-already-grouped',
-				message: 'Node group "First" contains nodes that already belong to another group: A.',
+				message: 'Node group "First" does not nest with another group: B.',
+			},
+		]);
+	});
+
+	it('accepts a group inside another group', () => {
+		const graph = makeLinearGraph();
+
+		const result = validateWorkflowGroups({
+			nodes: graph.nodes,
+			connectionsBySourceNode: graph.connections,
+			nodeGroups: [
+				{ id: 'g1', name: 'Outer', nodeIds: ['a', 'b', 'c'] },
+				{ id: 'g2', name: 'Inner', nodeIds: ['b'] },
+			],
+			getNodeType,
+		});
+
+		expect(result).toEqual({ valid: true });
+	});
+
+	it('reports two groups with the same nodes', () => {
+		const result = validateWorkflowGroups({
+			nodes: makeLinearGraph().nodes,
+			nodeGroups: [
+				{ id: 'g1', name: 'First', nodeIds: ['a', 'b'] },
+				{ id: 'g2', name: 'Second', nodeIds: ['b', 'a'] },
+			],
+			getNodeType: null,
+		});
+
+		expectViolations(result, [
+			{
+				code: 'node-in-multiple-groups',
+				message:
+					'Node "B" belongs to groups "First" and "Second", which do not nest. Put one group inside the other, or keep them apart.',
 			},
 		]);
 	});
@@ -1182,11 +1218,11 @@ describe('validateWorkflowGroups', () => {
 		const unnamed = makeNode({ id: 'node-id-1', name: '' });
 
 		const result = validateWorkflowGroups({
-			nodes: [unnamed],
+			nodes: [unnamed, makeNode({ id: 'x', name: 'X' }), makeNode({ id: 'y', name: 'Y' })],
 			connectionsBySourceNode: {},
 			nodeGroups: [
-				{ id: 'g1', name: 'First', nodeIds: ['node-id-1'] },
-				{ id: 'g2', name: 'Second', nodeIds: ['node-id-1'] },
+				{ id: 'g1', name: 'First', nodeIds: ['node-id-1', 'x'] },
+				{ id: 'g2', name: 'Second', nodeIds: ['node-id-1', 'y'] },
 			],
 			getNodeType: null,
 		});
@@ -1194,7 +1230,8 @@ describe('validateWorkflowGroups', () => {
 		expectViolations(result, [
 			{
 				code: 'node-in-multiple-groups',
-				message: 'Node "node-id-1" belongs to multiple groups: "First" and "Second".',
+				message:
+					'Node "node-id-1" belongs to groups "First" and "Second", which do not nest. Put one group inside the other, or keep them apart.',
 			},
 		]);
 	});
@@ -1517,9 +1554,9 @@ describe('dropInvalidWorkflowGroups', () => {
 	});
 
 	describe('with a shouldDrop predicate', () => {
-		// Two groups sharing A: the second is flagged for the overlap, and the
-		// first for holding a node that now belongs elsewhere. A caller that can
-		// only blame one of them must be able to drop just that one.
+		// Two groups sharing only B: the second is flagged for the overlap, and the
+		// first for sharing a node with it. A caller that can only blame one of
+		// them must be able to drop just that one.
 		const buildOverlapping = () => {
 			const graph = makeLinearGraph();
 			return {
@@ -1527,7 +1564,7 @@ describe('dropInvalidWorkflowGroups', () => {
 				connections: graph.connections,
 				nodeGroups: [
 					{ id: 'g1', name: 'First', nodeIds: ['a', 'b'] },
-					{ id: 'g2', name: 'Second', nodeIds: ['a'] },
+					{ id: 'g2', name: 'Second', nodeIds: ['b', 'c'] },
 				],
 			};
 		};

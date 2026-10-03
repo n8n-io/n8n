@@ -39,6 +39,7 @@ import type {
 	WorkflowExecuteModeValues as WorkflowExecuteMode,
 } from './execution-context';
 import type { ExecutionStatus } from './execution-status';
+import type { WorkflowGroupRepeat } from './regions';
 import type { IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type { Result } from '@n8n/utils/result';
 import type { Workflow } from './workflow';
@@ -3679,6 +3680,8 @@ export interface IWorkflowGroup {
 	name: string;
 	nodeIds: string[];
 	description?: string;
+	/** Makes the group a region: the engine runs its nodes again for each pass. */
+	repeat?: WorkflowGroupRepeat;
 }
 
 export interface IWorkflowBase {
@@ -3701,7 +3704,8 @@ export interface IWorkflowBase {
 	versionCounter?: number;
 	meta?: WorkflowFEMeta;
 	/** Optional here because IWorkflowBase is used in contexts where node groups
-	 * are irrelevant (executions, telemetry, tests). The DB column is NOT NULL
+	 * are irrelevant (telemetry, tests). An execution needs them: a group with
+	 * `repeat` changes how the engine runs its nodes. The DB column is NOT NULL
 	 * with default `[]` and `WorkflowEntity` has this as required. */
 	nodeGroups?: IWorkflowGroup[];
 }

@@ -313,6 +313,7 @@ export const jsonSerializer: SerializerPlugin<WorkflowJSON> = {
 					name: group.name,
 					nodeIds: group.memberIds.filter((memberId) => emittedIds.has(memberId)),
 					...(description ? { description } : {}),
+					...(group.repeat ? { repeat: group.repeat } : {}),
 				};
 			});
 		}

@@ -600,10 +600,11 @@ export class ActiveWorkflowManager {
 				});
 			}
 
-			const { nodes, connections } = dbWorkflow.activeVersion;
+			const { nodes, connections, nodeGroups } = dbWorkflow.activeVersion;
 
 			dbWorkflow.nodes = nodes;
 			dbWorkflow.connections = connections;
+			dbWorkflow.nodeGroups = nodeGroups;
 
 			// Trigger and poller nodes run code at registration, so this gates startup
 			// and leadership change too, not just the activate button.

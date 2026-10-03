@@ -18,6 +18,7 @@ import {
 	type NodeConnectionType,
 } from './interfaces';
 import { isTriggerNode, isTriggerNodeType } from './node-helpers';
+import { regionTreeOf } from './regions';
 
 type NodeIo = NodeConnectionType | INodeInputConfiguration | INodeOutputConfiguration;
 type IODirection = 'inputs' | 'outputs';
@@ -215,8 +216,10 @@ export const NODE_GROUPING_RULES = {
 		violation: 'cannot cross the',
 	},
 	nodeAlreadyGrouped: {
-		sdkReference: '**One group per node.** A node can belong to at most one group at a time.',
-		violation: 'contains nodes that already belong to another group',
+		sdkReference:
+			'**Groups nest or stay apart.** A group can hold another group with all its nodes, or ' +
+			'be inside one. Two groups must not share some nodes, or have the same nodes.',
+		violation: 'does not nest with another group',
 	},
 } as const;
 
@@ -308,6 +311,7 @@ export type WorkflowGroupViolationCode =
 	| 'empty-group'
 	| 'unknown-node-id'
 	| 'node-in-multiple-groups'
+	| 'invalid-region'
 	| Extract<NodeGroupValidationResult, { valid: false }>['reason'];
 
 export type WorkflowGroupViolation = {
@@ -360,13 +364,14 @@ export function makeGetNodeTypeForGrouping(nodeTypes: INodeTypes): GetNodeTypeFo
  * `validate_workflow` tool) report all of them as errors.
  *
  * Basic checks (always run): unique group IDs, unique group names, at least one
- * member, all referenced node IDs exist, and each node belongs to at most one group.
+ * member, all referenced node IDs exist, and two groups nest or stay apart.
  *
  * Full checks (run only when `getNodeType` is non-null, and skipped for groups that
  * already have a basic violation): each group must satisfy the same grouping rules
  * the canvas enforces — no triggers, a single connected subgraph, and no non-main
  * connection crossing the group boundary — validated against the other groups as
- * existing groups. Pass the `getNodeType` callback to run the full checks (on
+ * existing groups. A group with `repeat` must also satisfy the region rules
+ * (`regionTreeOf`). Pass the `getNodeType` callback to run the full checks (on
  * create, and on an update that changed the graph or the groups); pass `null` to
  * run basic checks only (e.g. a git import, so legacy-invalid groups don't block
  * the import).
@@ -425,7 +430,6 @@ function validateWorkflowGroupsWithGroupIdentity<TNode extends INode>({
 	const nodeLabel = (nodeId: string) => nodeById.get(nodeId)?.name || nodeId;
 	const seenGroupIds = new Set<string>();
 	const seenGroupNames = new Set<string>();
-	const nodeToGroup = new Map<string, string>();
 
 	for (const group of nodeGroups) {
 		const addBasicViolation = (code: WorkflowGroupViolationCode, message: string) => {
@@ -456,18 +460,18 @@ function validateWorkflowGroupsWithGroupIdentity<TNode extends INode>({
 					'unknown-node-id',
 					`Group "${group.name}" references node ID "${nodeId}" that does not exist in the workflow.`,
 				);
-				continue;
 			}
-			// A node can only belong to one group
-			const existingGroup = nodeToGroup.get(nodeId);
-			if (existingGroup) {
-				addBasicViolation(
-					'node-in-multiple-groups',
-					`Node "${nodeLabel(nodeId)}" belongs to multiple groups: "${existingGroup}" and "${group.name}".`,
-				);
-			} else {
-				nodeToGroup.set(nodeId, group.name);
-			}
+		}
+
+		// Two groups nest or stay apart, so each group is one box inside the other.
+		const earlier = nodeGroups.slice(0, nodeGroups.indexOf(group));
+		const overlapping = earlier.find((other) => doNotNest(group.nodeIds, other.nodeIds));
+		if (overlapping) {
+			const shared = group.nodeIds.find((nodeId) => overlapping.nodeIds.includes(nodeId)) ?? '';
+			addBasicViolation(
+				'node-in-multiple-groups',
+				`Node "${nodeLabel(shared)}" belongs to groups "${overlapping.name}" and "${group.name}", which do not nest. Put one group inside the other, or keep them apart.`,
+			);
 		}
 	}
 
@@ -486,10 +490,22 @@ function validateWorkflowGroupsWithGroupIdentity<TNode extends INode>({
 				getNodeType,
 				existingNodeGroups: nodeGroups.filter((other) => other.id !== group.id),
 				...rules,
+				// The region rules check the entry and the exits of a region.
+				...(group.repeat ? { allowMultipleBoundaryNodes: true } : {}),
 			});
 			if (!result.valid) {
 				addViolation(group, result.reason, groupRuleViolationMessage(group, result, nodeLabel));
 			}
+		}
+
+		const { problems } = regionTreeOf({
+			nodes: [...nodeById.values()],
+			connections,
+			nodeGroups: nodeGroups.filter((group) => !groupsWithBasicViolations.has(group)),
+		});
+		for (const problem of problems) {
+			const group = nodeGroups.find((each) => each.id === problem.groupId);
+			if (group) addViolation(group, 'invalid-region', `${problem.message}.`);
 		}
 	}
 
@@ -642,11 +658,23 @@ function validateNodeSelectionSubgraph<TNode extends INode>({
 	return { valid: true, subGraph: nodes, subGraphData: selection };
 }
 
+/** True when the two groups share nodes, but neither is strictly inside the other. */
+function doNotNest(one: readonly string[], other: readonly string[]): boolean {
+	const shared = one.filter((nodeId) => other.includes(nodeId)).length;
+	const strictlyInside =
+		one.length !== other.length && shared === Math.min(one.length, other.length);
+	return shared > 0 && !strictlyInside;
+}
+
+/** The selected nodes that are in a group that the selection neither holds whole nor is inside. */
 function findAlreadyGroupedNodeIds(
 	selectionNodeIds: string[],
 	existingNodeGroups: IWorkflowGroup[],
 ): string[] {
-	const groupedNodeIds = new Set(existingNodeGroups.flatMap((group) => group.nodeIds));
+	const overlapping = existingNodeGroups.filter((group) =>
+		doNotNest(selectionNodeIds, group.nodeIds),
+	);
+	const groupedNodeIds = new Set(overlapping.flatMap((group) => group.nodeIds));
 	return selectionNodeIds.filter((nodeId) => groupedNodeIds.has(nodeId));
 }
 

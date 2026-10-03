@@ -16,6 +16,7 @@ import type {
 	StartNodeData,
 } from '..';
 import type { IRunExecutionDataV0 } from './run-execution-data.v0';
+import type { RegionInstance } from '../regions';
 import type { SubWorkflowOutputPolicy } from '../sub-workflow-output';
 
 export interface RedactionInfo {
@@ -61,6 +62,8 @@ export interface IRunExecutionDataV1 {
 		};
 		waitingExecution: IWaitingForExecution;
 		waitingExecutionSource: IWaitingForExecutionSource | null;
+		/** The regions that run now, by region name. */
+		regions?: Record<string, RegionInstance>;
 	};
 	parentExecution?: RelatedExecution;
 	/** Keep the caller's output policy when a child execution resumes. */

@@ -202,6 +202,7 @@ export class JobProcessor {
 			nodeTypes: this.nodeTypes,
 			staticData,
 			settings: execution.workflowData.settings,
+			nodeGroups: execution.workflowData.nodeGroups,
 		});
 
 		const additionalData = await WorkflowExecuteAdditionalData.getBase({

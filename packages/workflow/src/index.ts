@@ -39,6 +39,7 @@ export * from './from-ai-parse-utils';
 export * from './node-helpers';
 export * from './node-validation';
 export * from './node-grouping-validation';
+export * from './regions';
 export * from './empty-group-anchor';
 export * from './mcp-helpers';
 export * from './tool-helpers';

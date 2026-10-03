@@ -975,7 +975,7 @@ describe('decompileWorkflow', () => {
 		expect(ended.connections.Slack).toBeUndefined();
 	});
 
-	it('reads an editor-built loop with IF branches that return to it, per node', () => {
+	it('keeps an editor-built Loop Over Items as JSON', () => {
 		const at = (name: string, output = 0) => ({ [name]: output });
 		const nodes: WorkflowJSON['nodes'] = [
 			{
@@ -1069,22 +1069,7 @@ describe('decompileWorkflow', () => {
 				'Email Ops': main([at('Loop Over Orders')]),
 			},
 		};
-		const { source, rebuilt, again } = roundTrip(json);
-		const placed = (saved: WorkflowJSON) => ({
-			connections: saved.connections,
-			nodes: saved.nodes.map(({ id: _id, position: _position, ...rest }) => rest),
-		});
-
-		expect(placed(rebuilt)).toEqual(placed(json));
-		expect(again).toBe(source);
-		expect(source).toMatch(
-			/ forEach\(\{\s+name: "Loop Over Orders",\s+batchSize: 1,\s+options: \{\},/,
-		);
-		expect(source).toContain('    route(node({');
-		expect(source).toContain('outputs: [\n');
-		expect(source).toContain('output1: steps(');
-		expect(source).toContain('alwaysOutputData: true,');
-		expect(source).toContain('subject: expr("New order {{ $json.id }}"),');
+		expect(decompileWorkflow(json, factories)).toBeUndefined();
 	});
 
 	it('reads the binary key of a binary field as the lambda that reads it', () => {

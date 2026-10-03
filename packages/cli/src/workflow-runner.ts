@@ -599,6 +599,7 @@ export class WorkflowRunner {
 				staticData: data.workflowData.staticData,
 				settings: workflowSettings,
 				pinData,
+				nodeGroups: data.workflowData.nodeGroups,
 			});
 
 		const additionalData = await WorkflowExecuteAdditionalData.getBase({

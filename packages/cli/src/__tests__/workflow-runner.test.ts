@@ -963,6 +963,43 @@ describe('run', () => {
 		);
 	});
 
+	it('passes the node groups of the workflow to the run, so regions repeat', async () => {
+		const activeExecutions = Container.get(ActiveExecutions);
+		vi.spyOn(activeExecutions, 'add').mockResolvedValue('1');
+		vi.spyOn(activeExecutions, 'attachWorkflowExecution').mockReturnValueOnce();
+		vi.spyOn(Container.get(CredentialsPermissionChecker), 'check').mockResolvedValueOnce();
+		vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(
+			mock<IWorkflowExecuteAdditionalData>(),
+		);
+		const runManually = vi
+			.spyOn(ManualExecutionService.prototype, 'runManually')
+			.mockReturnValueOnce(new PCancelable(() => mock<IRun>()));
+		const nodeGroups = [
+			{
+				id: 'g1',
+				name: 'Each',
+				nodeIds: ['n1'],
+				repeat: {
+					kind: 'forEach' as const,
+					entry: 'n1',
+					exits: [{ node: 'n1', output: 0 }],
+					batchSize: 1,
+				},
+			},
+		];
+		const data = mock<IWorkflowExecutionDataProcess>({
+			executionMode: 'manual',
+			workflowData: { nodes: [], id: 'workflow-id', staticData: {}, nodeGroups },
+			executionData: undefined,
+			triggerToStartFrom: undefined,
+			userId: 'mock-user-id',
+		});
+
+		await runner.run(data);
+
+		expect(runManually.mock.calls[0]?.[1].nodeGroups).toEqual(nodeGroups);
+	});
+
 	describe('configureAdditionalData hook', () => {
 		function arrangeRunDeps(executionData?: IRunExecutionData) {
 			const activeExecutions = Container.get(ActiveExecutions);

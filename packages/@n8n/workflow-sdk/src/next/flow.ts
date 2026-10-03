@@ -6,16 +6,12 @@ import {
 	FALLBACK_OUTPUT,
 	FILTER_NODE,
 	filterParameters,
-	LOOP_DONE,
-	LOOP_EACH,
-	LOOP_NODE,
 	LOOP_STATE_NODE,
 	mergeNodeOf,
 	STOP_NODE,
 	SWITCH_NODE,
 	WAIT_NODE,
 	caseRouter,
-	forEachParameters,
 	loopCheckParameters,
 	loopHeadParameters,
 	loopLimitParameters,
@@ -55,6 +51,7 @@ import {
 import { registerDefaultPlugins } from '../workflow-builder/plugins/defaults';
 import { PluginRegistry } from '../workflow-builder/plugins/registry';
 import { loopWiringValidator } from '../workflow-builder/plugins/validators/loop-wiring-validator';
+import { NodeConnectionTypes, regionTreeOf, type IConnections } from 'n8n-workflow';
 
 // ── Types the model reads ───────────────────────────────────────────────────
 
@@ -506,12 +503,30 @@ export interface Tail {
 	readonly output: number;
 }
 
+/** A `forEach` region by node names: the engine runs its members once for each batch. */
+export interface RegionSpec {
+	/** The region name, unique among nodes and regions. */
+	readonly name: string;
+	/** The items of one batch. */
+	readonly batchSize: number;
+	/** The member node names. */
+	readonly members: readonly string[];
+	/** The member node that takes each batch. */
+	readonly entry: string;
+	/** The member outputs that leave the region. */
+	readonly exits: readonly Tail[];
+	/** The problems of the region, as build issues. */
+	readonly problems: readonly string[];
+}
+
 /** The nodes and connections that the build makes. */
 export interface Graph {
 	/** The nodes. */
 	readonly nodes: readonly NodeSpec[];
 	/** The connections. */
 	readonly edges: readonly Edge[];
+	/** The `forEach` regions. */
+	readonly regions?: readonly RegionSpec[];
 }
 
 /** @internal A graph and its open ends. Region builders take and return fragments. */
@@ -773,7 +788,9 @@ function unionGraphs(graphs: readonly Graph[]): Graph {
 		}
 		for (const edge of graph.edges) edges.set(edgeKey(edge), edge);
 	}
-	return { nodes: [...nodes.values()], edges: [...edges.values()] };
+	// Fragments share their region objects. Two regions with one name stay, so the build reports them.
+	const regions = new Set(graphs.flatMap((graph) => graph.regions ?? []));
+	return { nodes: [...nodes.values()], edges: [...edges.values()], regions: [...regions] };
 }
 
 const wire = (tails: readonly Tail[], to: string, input = 0): Edge[] =>
@@ -784,90 +801,51 @@ const attach = (graph: Graph, tails: readonly Tail[], spec: NodeSpec): Graph =>
 
 const tail = (node: string, output: number): Tail[] => [{ node, output }];
 
+const fromTail = (edge: Edge, open: Tail) => edge.from === open.node && edge.output === open.output;
+
 // ── Regions ─────────────────────────────────────────────────────────────────
 // Untyped builders, so decompile can replay a region without its item types.
 
 /**
- * Loop Over Items takes the next batch each time items return to it. So each batch must return
- * exactly once: no body end may emit on every pass of an inner loop, and no item may stop.
+ * @internal A `forEach` region: the engine runs `body` on each batch of the items at the open
+ * ends, then emits the body output of all batches once, on the open ends of the body.
  */
-function forEachBodyProblems(name: string, entered: Graph, inner: Fragment): string[] {
-	const { edges } = inner.graph;
-	const targetsOf = (node: string, output?: number) =>
-		edges
-			.filter((edge) => edge.from === node && (output === undefined || edge.output === output))
-			.map((edge) => edge.to);
-	const reaches = (start: readonly string[], goal: string) => {
-		const seen = new Set<string>();
-		const queue = [...start];
-		while (queue.length > 0) {
-			const node = queue.shift();
-			if (node === goal) return true;
-			if (node === undefined || node === name || seen.has(node)) continue;
-			seen.add(node);
-			queue.push(...targetsOf(node));
-		}
-		return false;
-	};
-	const isTail = (node: string, output: number) =>
-		inner.tails.some((each) => each.node === node && each.output === output);
-	const before = new Set(entered.nodes.map((spec) => spec.name));
-	const bodySpecs = inner.graph.nodes.filter((spec) => !before.has(spec.name));
-
-	const perPass = inner.tails
-		.filter((each) => reaches(targetsOf(each.node, each.output), each.node))
-		.map(
-			({ node }) =>
-				`${node} returns to ${name} on every pass of an inner loop, so ${name} takes a new batch for each pass. paginate takes all items at once: move it out of forEach`,
-		);
-	const filters = bodySpecs
-		.filter((spec) => spec.type === FILTER_NODE.type)
-		.map(
-			(spec) =>
-				`${spec.name} can drop a whole batch, and then ${name} stops without an error. Filter before forEach, or use branch with else`,
-		);
-	const openBranches = bodySpecs
-		.filter((spec) => spec.type === BRANCH_NODE.type)
-		.flatMap((spec) =>
-			Array.from({ length: spec.outputs ?? 1 }, (_, output) => output)
-				.filter((output) => targetsOf(spec.name, output).length === 0 && !isTail(spec.name, output))
-				.map(
-					(output) =>
-						`Items on output ${output} of ${spec.name} never return to ${name}. When a whole batch goes there, ${name} stops without an error. Give the branch an else`,
-				),
-		);
-	return [...perPass, ...filters, ...openBranches];
-}
-
-/** @internal Loop Over Items: the body runs on each batch, then `done` emits all body output. */
 export function forEachFragment(
 	from: Fragment,
 	name: string,
 	batchSize: number,
 	body: (each: Fragment) => Fragment,
-	options?: unknown,
 ): Fragment {
-	const loop: NodeSpec = { name, ...LOOP_NODE, outputs: 2, parameters: () => ({}) };
-	const entered = attach(from.graph, from.tails, loop);
-	const inner = body({ graph: entered, tails: tail(name, LOOP_EACH) });
-	const returns = [...new Set(inner.tails.map(({ node }) => node))];
-	const problems = forEachBodyProblems(name, entered, inner);
-	const spec: NodeSpec = {
-		...loop,
-		parameters: (compiler) => {
-			if (!Number.isInteger(batchSize) || batchSize < 1) {
-				compiler.issue(`batchSize must be a whole number of at least 1, not ${batchSize}`);
-			}
-			if (returns.includes(name)) compiler.issue('forEach needs a body that runs a node');
-			problems.forEach((problem) => compiler.issue(problem));
-			return options === undefined
-				? forEachParameters(batchSize, returns)
-				: { batchSize, options: compiler.value(options) };
-		},
+	const inner = body(from);
+	const before = new Set(from.graph.nodes.map((spec) => spec.name));
+	const members = inner.graph.nodes.map((spec) => spec.name).filter((node) => !before.has(node));
+	const entries = [
+		...new Set(
+			inner.graph.edges
+				.filter((edge) => !before.has(edge.to) && from.tails.some((open) => fromTail(edge, open)))
+				.map((edge) => edge.to),
+		),
+	];
+	const problems = [
+		...(Number.isInteger(batchSize) && batchSize >= 1
+			? []
+			: [`batchSize must be a whole number of at least 1, not ${batchSize}`]),
+		...(members.length === 0 ? ['forEach needs a body that runs a node'] : []),
+		...(entries.length > 1
+			? [`forEach needs a body that starts with one node, not ${quoted(entries)}`]
+			: []),
+	];
+	const region: RegionSpec = {
+		name,
+		batchSize,
+		members,
+		entry: entries[0] ?? '',
+		exits: inner.tails,
+		problems,
 	};
 	return {
-		graph: unionGraphs([inner.graph, { nodes: [spec], edges: wire(inner.tails, name) }]),
-		tails: tail(name, LOOP_DONE),
+		graph: { ...inner.graph, regions: [...(inner.graph.regions ?? []), region] },
+		tails: inner.tails,
 	};
 }
 
@@ -1288,34 +1266,24 @@ export function switchOn(
 }
 
 /**
- * Run `body` on batches of `batchSize` items, one batch after the other (Loop Over Items).
- * Afterwards the flow continues once with all body output. Use it only to pace work, for
- * example for a rate limit: every node already runs once for each item. Each batch must
- * return once: a `loop` or `pollUntil` in the body must meet `until` for all items of a batch
- * on the same pass, and `paginate`, `filter`, and a `when` without `else` are build errors.
- * `options` are the node options of the `loop.batches` contract. Without them, the build sets
- * `reset` so that a forEach in another loop starts again on each outer pass.
+ * Run `body` on batches of `batchSize` items, one batch after the other. The engine repeats
+ * the body: `name` is a region, not a node, and `$(name)` reads the batch item in the body
+ * and the emitted item after it. Afterwards the flow continues once with all body output.
+ * Items that the body drops, e.g. with `filter`, do not stop the next batch. Use it only to
+ * pace work, for example for a rate limit: every node already runs once for each item.
  */
 export function forEach<In, Ctx, const N extends string, B>(
 	config: {
-		/** The node name, unique in the workflow. */
+		/** The region name, unique among nodes and regions. */
 		name: N;
 		/** The items of one batch. */
 		batchSize: number;
-		/** The node options of the `loop.batches` contract. */
-		options?: {
-			/** Start again with the input items, e.g. in an outer loop. */
-			readonly reset?: Value<In, Ctx, boolean>;
-		};
 	},
 	body: Part<NoInfer<In>, NoInfer<Ctx & Record<N, In>>, B, unknown>,
 ): Region<In, Ctx, B, Ctx & Record<N, B>>;
-export function forEach(
-	config: { name: string; batchSize: number; options?: unknown },
-	body: AnyPart,
-): AnyRegion {
-	const { name, batchSize, options } = config;
-	return region((from) => forEachFragment(from, name, batchSize, run(body), options));
+export function forEach(config: { name: string; batchSize: number }, body: AnyPart): AnyRegion {
+	const { name, batchSize } = config;
+	return region((from) => forEachFragment(from, name, batchSize, run(body)));
 }
 
 /**
@@ -2147,6 +2115,45 @@ function createCompiler(nodeName: string, nodeNames: ReadonlySet<string>, issues
 	return compiler;
 }
 
+/**
+ * The problems of the regions of `graph`: their own, then the region rules of n8n, which the
+ * engine checks again before a run.
+ */
+function regionIssues(graph: Graph): string[] {
+	const regions = graph.regions ?? [];
+	const own = regions.flatMap(({ name, problems }) =>
+		problems.map((problem) => `${name}: ${problem}`),
+	);
+	if (regions.length === 0 || own.length > 0) return own;
+	const connections: IConnections = {};
+	for (const edge of graph.edges) {
+		const outputs = (connections[edge.from] ??= { main: [] }).main;
+		while (outputs.length <= edge.output) outputs.push([]);
+		outputs[edge.output]?.push({
+			node: edge.to,
+			type: NodeConnectionTypes.Main,
+			index: edge.input,
+		});
+	}
+	const { problems } = regionTreeOf({
+		nodes: graph.nodes.map((spec) => ({ id: spec.name, name: spec.name })),
+		connections,
+		nodeGroups: regions.map((region) => ({
+			id: region.name,
+			name: region.name,
+			nodeIds: [...region.members],
+			repeat: {
+				kind: 'forEach',
+				batchSize: region.batchSize,
+				entry: region.entry,
+				exits: region.exits.map(({ node, output }) => ({ node, output })),
+			},
+		})),
+		executionOrder: 'v1',
+	});
+	return problems.map(({ message }) => message);
+}
+
 /** The value `export default` gives the build: validate, serialize, and generate pin data. */
 export interface Workflow {
 	/** The scopes each credential needs, sorted, with the nodes that need each one. */
@@ -2482,7 +2489,10 @@ export function workflow(
 	const parts = given(positions);
 	const [first] = parts;
 	const { graph } = parts.reduce(partFragment, EMPTY_FRAGMENT);
+	const regions = graph.regions ?? [];
 	const nodeNames = new Set(graph.nodes.map((spec) => spec.name));
+	// `$()` reads a region as it reads a node.
+	const readable = new Set([...nodeNames, ...regions.map((region) => region.name)]);
 	const required = scopesOf(graph.nodes);
 	const scopes = () => required;
 	const missing = Object.entries(required).flatMap(([credential, byScope]) =>
@@ -2509,6 +2519,7 @@ export function workflow(
 		...(first && isStep(first) && first.spec.trigger
 			? []
 			: ['A workflow starts with a trigger, e.g. manual()']),
+		...regionIssues(graph),
 	];
 
 	const providerInput = (spec: ProviderSpec): NodeInput => ({
@@ -2516,7 +2527,7 @@ export function workflow(
 		version: spec.version,
 		config: {
 			name: spec.name,
-			parameters: spec.parameters(createCompiler(spec.name, nodeNames, issues)),
+			parameters: spec.parameters(createCompiler(spec.name, readable, issues)),
 			...spec.settings,
 			...(spec.providers ? { subnodes: providerConfig(spec.providers, providerInput) } : {}),
 		},
@@ -2524,7 +2535,7 @@ export function workflow(
 	const parametersOf = new Map(
 		graph.nodes.map((spec) => [
 			spec.name,
-			spec.parameters(createCompiler(spec.name, nodeNames, issues)),
+			spec.parameters(createCompiler(spec.name, readable, issues)),
 		]),
 	);
 	issues.push(...pairingIssues(graph, parametersOf));
@@ -2550,13 +2561,34 @@ export function workflow(
 
 	const withNodes = [...instances.values()].reduce(
 		(builder, instance) => builder.add(instance),
-		rootWorkflow(name, name, { registry: nextRegistry }),
+		rootWorkflow(name, name, {
+			registry: nextRegistry,
+			// The engine runs regions in execution order v1 only.
+			...(regions.length > 0 ? { settings: { executionOrder: 'v1' } } : {}),
+		}),
 	);
-	const built = graph.edges.reduce((builder, edge) => {
+	const connected = graph.edges.reduce((builder, edge) => {
 		const from = instances.get(edge.from);
 		const to = instances.get(edge.to);
 		return from && to ? builder.connect(from, edge.output, to, edge.input) : builder;
 	}, withNodes);
+	const instanceOf = (node: string) => {
+		const instance = instances.get(node);
+		if (!instance) throw new Error(`Region node "${node}" is not in the workflow`);
+		return instance;
+	};
+	const built = regions.reduce(
+		(builder, region) =>
+			builder.group(region.name, region.members.map(instanceOf), {
+				repeat: {
+					kind: 'forEach',
+					batchSize: region.batchSize,
+					entry: instanceOf(region.entry),
+					exits: region.exits.map(({ node, output }) => ({ node: instanceOf(node), output })),
+				},
+			}),
+		connected,
+	);
 	const verified = withTriggerSamples(built, graph.nodes);
 	return {
 		scopes,
