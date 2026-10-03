@@ -1,3 +1,4 @@
+// Keep this export for existing consumers of the compatibility error class.
 // oxlint-disable-next-line typescript/no-deprecated
 export { ApplicationError } from './application.error';
 export { BaseError, type BaseErrorOptions } from './base.error';

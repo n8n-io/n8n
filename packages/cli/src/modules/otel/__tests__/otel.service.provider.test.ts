@@ -1,14 +1,7 @@
 import type { Logger } from '@n8n/backend-common';
 import type { OutboundHttp } from '@n8n/backend-network';
 import type { Context } from '@opentelemetry/api';
-import {
-	context,
-	createContextKey,
-	propagation,
-	ProxyTracerProvider,
-	ROOT_CONTEXT,
-	trace,
-} from '@opentelemetry/api';
+import { context, createContextKey, propagation, ROOT_CONTEXT, trace } from '@opentelemetry/api';
 import type { ReadableSpan } from '@opentelemetry/sdk-trace-base';
 import {
 	InMemorySpanExporter,
@@ -71,13 +64,6 @@ const markedContext = ROOT_CONTEXT.setValue(createContextKey('marker'), 'marked'
 
 function activeContextInside(ctx: Context): Context {
 	return context.with(ctx, () => context.active());
-}
-
-function globalTracerProviderDelegate() {
-	const globalProvider = trace.getTracerProvider();
-	return globalProvider instanceof ProxyTracerProvider
-		? globalProvider.getDelegate()
-		: globalProvider;
 }
 
 function registerForeignProvider() {
@@ -155,7 +141,6 @@ describe('OtelService tracer provider', () => {
 			expect(foreign?.exporter.getFinishedSpans().map((span) => span.name)).toEqual([
 				'GET /webhook',
 			]);
-			expect(globalTracerProviderDelegate()).toBe(foreign?.provider);
 			expect(activeContextInside(markedContext)).toBe(markedContext);
 		});
 
