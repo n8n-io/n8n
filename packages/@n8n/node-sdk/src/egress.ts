@@ -61,7 +61,15 @@ function restrictionOf(data: unknown) {
 export function credentialHostsOf(
 	type: AnyCredentialType | undefined,
 	data: unknown,
-	{ surface, baseUrl }: { readonly surface: string; readonly baseUrl?: string },
+	{
+		surface,
+		baseUrl,
+	}: {
+		/** What sends the request, for the error message, e.g. the node name. */
+		readonly surface: string;
+		/** The resolved base URL of the credential. */
+		readonly baseUrl?: string;
+	},
 ): Hosts {
 	const { mode, hosts: listed } = restrictionOf(data);
 	if (type?.hosts !== undefined || type?.baseUrl !== undefined) {
@@ -167,7 +175,9 @@ export function egressOf(
 
 /** Problems of one workflow node that the builder finds before a run. */
 export interface EgressIssues {
+	/** Hosts that the credential may not go to. The build fails. */
 	readonly errors: readonly string[];
+	/** Hosts that only the run can check, e.g. from an expression. */
 	readonly warnings: readonly string[];
 }
 
@@ -182,7 +192,12 @@ const isExpression = (value: unknown) => typeof value === 'string' && value.star
 export function egressIssuesOf(
 	egress: ContractEgress | undefined,
 	parameters: Readonly<Record<string, unknown>>,
-	credential: { readonly name: string; readonly hosts: readonly string[] },
+	credential: {
+		/** The credential name, for the messages. */
+		readonly name: string;
+		/** The hosts of the credential, from `credentialHostsOf`. */
+		readonly hosts: readonly string[];
+	},
 ): EgressIssues {
 	const outside = (host: string) =>
 		`${host} is not an allowed host of the credential "${credential.name}". Its hosts are: ${credential.hosts.join(', ') || 'none'}`;

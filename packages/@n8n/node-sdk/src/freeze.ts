@@ -117,8 +117,11 @@ async function sandboxGapsOf(bundle: string, modules: readonly string[]): Promis
 
 /** A frozen action or trigger in memory: its manifest, its bundle, and what the bundle exports. */
 export interface FrozenAction {
+	/** The version manifest of the bundle. */
 	readonly manifest: VersionManifest;
+	/** The bundle code. */
 	readonly bundle: string;
+	/** The action or trigger that the bundle exports. */
 	readonly action: Action | Trigger;
 }
 

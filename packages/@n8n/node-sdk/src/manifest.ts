@@ -149,7 +149,14 @@ const placement = typed<Extract<CredentialScheme, { kind: 'apply' }>>()(
 
 /** A `custom` scheme without its code: the code is a bundle for the credential interface. */
 export type CredentialSchemeData =
-	| Exclude<CredentialScheme, CustomAuth | { readonly kind: 'compat' }>
+	| Exclude<
+			CredentialScheme,
+			| CustomAuth
+			| {
+					/** A compat type has no manifest. */
+					readonly kind: 'compat';
+			  }
+	  >
 	| Pick<CustomAuth, 'kind' | 'reason'>;
 
 const scheme = fits<CredentialSchemeData>()(
@@ -251,22 +258,33 @@ const notice = fits<Notice>()(
 
 /** The data of one version of a credential type. Only a `custom` scheme has code. */
 export interface CredentialManifest {
+	/** Marks a credential manifest. */
 	readonly kind: 'credential';
 	/** `service.scheme`, e.g. `notion.token`. */
 	readonly id: string;
 	/** The n8n type name. Saved credentials and workflows refer to it. */
 	readonly name: string;
+	/** `major.minor.patch` of the credential type. Actions pin the major. */
 	readonly semver: string;
+	/** The lowest Node Contract version that has what the type uses. */
 	readonly nodeContract: NodeContractVersion;
+	/** The `@n8n/node-sdk` version that froze it, for traceability only. */
 	readonly sdk: string;
+	/** The type name in the n8n UI. */
 	readonly displayName: string;
+	/** The n8n docs page of the type. */
 	readonly documentationUrl?: string;
 	/** The stored fields: secrets are `writeOnly`, hidden fields `readOnly`. */
 	readonly fields: JsonSchema;
+	/** How n8n signs a request. A `custom` scheme keeps only its `reason`. */
 	readonly scheme: CredentialSchemeData;
+	/** The API base URL, or one per value of an options field. */
 	readonly baseUrl?: string | BaseUrlMap;
+	/** More hosts that n8n may send the credential to. */
 	readonly hosts?: readonly string[];
+	/** The request that tests a credential. */
 	readonly test?: CredentialTest;
+	/** A text the form shows after the fields. */
 	readonly notice?: Notice;
 }
 

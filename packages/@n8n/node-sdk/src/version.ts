@@ -134,7 +134,9 @@ export function assertNodeContract({
 
 /** One frozen version of an action, trigger or provider. A published `id` and `semver` never change their bytes. */
 export interface VersionManifest {
+	/** What the version is: an action, a trigger, or a provider. */
 	readonly kind: 'action' | 'trigger' | 'provider';
+	/** The contract id, e.g. `notion.databasePage.getAll`. */
 	readonly id: string;
 	/** `major.minor.patch`; the major is `contract.version` and the n8n `typeVersion`. */
 	readonly semver: string;
@@ -149,7 +151,9 @@ export interface VersionManifest {
 	readonly credentials?: readonly string[];
 	/** The normative hash, see `contractHash`. */
 	readonly contractHash: string;
+	/** The hex SHA-256 of the bundle bytes. */
 	readonly bundleHash: string;
+	/** The contract document of the version. */
 	readonly contract: ContractDocument;
 	/** The node description at freeze time, so the UI of a version never changes. */
 	readonly description: INodeTypeDescription;
@@ -227,12 +231,17 @@ export const contractHash = (contract: ContractDocument) =>
 		}),
 	);
 
+/** A `major.minor.patch` version. */
 export interface Semver {
+	/** Bumps for a breaking change. */
 	readonly major: number;
+	/** Bumps for an additive change. */
 	readonly minor: number;
+	/** Bumps for a change that keeps the contract. */
 	readonly patch: number;
 }
 
+/** Reads `major.minor.patch`. It throws a `UserError` for any other text, e.g. a prerelease. */
 export function parseSemver(text: string): Semver {
 	const match = /^(\d+)\.(\d+)\.(\d+)$/.exec(text);
 	if (!match) throw new UserError(`${text} is not a major.minor.patch version`);
@@ -308,18 +317,24 @@ export function parseManifest(text: string): VersionManifest {
 	};
 }
 
+/** The version part that a change bumps. */
 export type ChangeKind = 'patch' | 'minor' | 'major';
 
+/** One normative change between two contract documents. */
 export interface ContractChange {
+	/** The version part that the change bumps. */
 	readonly kind: Exclude<ChangeKind, 'patch'>;
+	/** What changed, for a reviewer. */
 	readonly text: string;
 }
 
+/** What `diffContracts` finds between two contract documents. */
 export interface ContractDiff {
 	/** `patch` when nothing normative changed. */
 	readonly kind: ChangeKind;
 	/** True when some parameters valid for the old input fail the new one. */
 	readonly breaksInput: boolean;
+	/** Each normative change. */
 	readonly changes: readonly ContractChange[];
 }
 
@@ -566,8 +581,11 @@ export function diffContracts(prev: ContractDocument, next: ContractDocument): C
 
 /** A file as n8n keeps it in memory: the bytes in base64 `data`. */
 export interface FixtureBinary {
+	/** The bytes, in base64. */
 	readonly data: string;
+	/** The MIME type, e.g. `application/pdf`. */
 	readonly mimeType: string;
+	/** The file name, e.g. `report.pdf`. */
 	readonly fileName?: string;
 }
 
@@ -576,18 +594,23 @@ export interface FixtureBinary {
  * `name` of a tool), and the results of its method calls in call order.
  */
 export interface FixtureSupply {
+	/** The data members of the capability, e.g. `{ model: 'gpt-5-mini' }`. */
 	readonly data?: Readonly<Record<string, unknown>>;
+	/** The results of its method calls, in call order. */
 	readonly results: readonly unknown[];
 }
 
 /** One call of the capability a sub-node action supplies. */
 export interface FixtureCall {
+	/** The method name, e.g. `chat`. */
 	readonly method: string;
+	/** The arguments of the call. */
 	readonly args: readonly unknown[];
 }
 
 /** One recorded run. */
 export type ExecutionFixture = {
+	/** What the run shows, e.g. `gets one page`. */
 	readonly name: string;
 	/** Parameters as n8n stores them; the replay fills the description defaults. */
 	readonly params: Readonly<Record<string, unknown>>;
@@ -631,13 +654,19 @@ export type ExecutionFixture = {
 
 /** One `migrate` pair: parameters of `fromMajor` in, parameters of this major out. */
 export interface MigrationFixture {
+	/** The major of `params`. */
 	readonly fromMajor: number;
+	/** The parameters of the older major, as n8n stores them. */
 	readonly params: Readonly<Record<string, unknown>>;
+	/** The parameters that `migrate` must give for this major. */
 	readonly expected: Readonly<Record<string, unknown>>;
 }
 
+/** The fixtures of an action version: recorded runs and `migrate` pairs. Publish replays them. */
 export interface ContractFixtures {
+	/** The recorded runs. */
 	readonly executions: readonly ExecutionFixture[];
+	/** The `migrate` pairs, for a version after major 1. */
 	readonly migrations?: readonly MigrationFixture[];
 }
 
@@ -701,6 +730,7 @@ const isFixtures = (value: unknown): value is ContractFixtures =>
 	(value.migrations === undefined ||
 		(Array.isArray(value.migrations) && value.migrations.every(isMigrationFixture)));
 
+/** Reads a fixtures file. It throws a `UserError` when the JSON is not `ContractFixtures`. */
 export function parseFixtures(text: string): ContractFixtures {
 	const value: unknown = JSON.parse(text);
 	if (!isFixtures(value)) throw new UserError('The fixtures file is not valid');
@@ -717,12 +747,15 @@ export const packageNameOf = (actionId: string) =>
 
 /** The files of a published action version, read from its npm tarball. */
 export interface ContractPackage {
+	/** The version manifest, parsed from `manifestText`. */
 	readonly manifest: VersionManifest;
 	/** The exact bytes `signature` covers. */
 	readonly manifestText: string;
 	/** Base64 ed25519 signature of `manifestText`. */
 	readonly signature: string;
+	/** The frozen bundle code. Its SHA-256 is `manifest.bundleHash`. */
 	readonly bundle: string;
+	/** The fixtures that publish replayed. */
 	readonly fixtures: ContractFixtures;
 }
 
@@ -797,10 +830,13 @@ export const verifyManifestSignature = (
 
 /** What a workflow pins per contract node, in `meta.nodeContracts[nodeName]`. */
 export interface NodeContractLock {
+	/** The contract id, e.g. `notion.databasePage.getAll`. */
 	readonly action: string;
 	/** The resolved `major.minor.patch`. */
 	readonly version: string;
+	/** The bundle hash of the locked version. `strict` runs only these bytes. */
 	readonly bundleHash: string;
+	/** The contract hash of the locked version. `tolerant` takes a patch with the same hash. */
 	readonly contractHash: string;
 }
 

@@ -19,11 +19,19 @@ import {
 import { AUTHENTICATION, executorOf, nodeNameOf, type ExecutorHost } from './runtime';
 import type { ProviderCapabilities, ProviderKind } from './providers';
 
+/** What `runAction` runs an action with: the parameters, items, credential and host stubs. */
 export interface RunActionOptions {
+	/** The parameters, as a user sets them. The host fills in defaults and validates them. */
 	readonly input: unknown;
 	/** The input items. One empty item when omitted. */
 	readonly items?: readonly IDataObject[];
-	readonly credential?: { readonly type: string; readonly data: Record<string, unknown> };
+	/** The credential of the run: its n8n type name and its decrypted data. */
+	readonly credential?: {
+		/** The n8n type name, e.g. `notionApi`. */
+		readonly type: string;
+		/** The credential data, e.g. `{ apiKey: 'k-1' }`. Do not use a real secret in a test. */
+		readonly data: Record<string, unknown>;
+	};
 	/** Legacy credential types, for a `compat` type. Other types project their own. */
 	readonly credentials?: readonly ICredentialType[];
 	/** Defaults to the global `fetch`. Pass `mockHttp(...)` in unit tests. */
@@ -42,22 +50,32 @@ export interface RunActionOptions {
 	};
 }
 
+/** Why `runAction` failed. Secrets are scrubbed from the message. */
 export interface RunActionError {
+	/** The error message, e.g. `input.limit: must be at least 1`. */
 	readonly message: string;
 	/** The first failing field, e.g. `input.limit` or `output[0].id`. */
 	readonly path?: string;
+	/** The HTTP status code, when a request failed. */
 	readonly httpStatus?: number;
 }
 
+/** The result of `runAction`: the output items, or the error. It never throws. */
 export type RunActionResult =
 	| {
+			/** The run succeeded. */
 			readonly ok: true;
 			/** The items of every output, in output order. */
 			readonly items: unknown[];
 			/** The items of each output, for an action with named outputs. */
 			readonly outputs?: unknown[][];
 	  }
-	| { readonly ok: false; readonly error: RunActionError };
+	| {
+			/** The run failed. */
+			readonly ok: false;
+			/** Why the run failed. */
+			readonly error: RunActionError;
+	  };
 
 class ResponseError extends Error implements HttpError {
 	constructor(
@@ -206,6 +224,14 @@ function credentialFor(
 /**
  * Run one action outside n8n, through the executor n8n runs, with a fetch-based HTTP client
  * that applies the credential.
+ *
+ * @example
+ * ```ts
+ * const fetch = mockHttp([{ path: '/users/u-1', reply: { json: { id: 'u-1', name: 'Ada' } } }]);
+ * const credential = { type: 'notionApi', data: { apiKey: 'k-1' } };
+ * const result = await runAction(getUser, { input: { user: 'u-1' }, credential, fetch });
+ * expect(result).toEqual({ ok: true, items: [{ id: 'u-1', name: 'Ada' }] });
+ * ```
  */
 export async function runAction(
 	action: Action,
@@ -318,7 +344,13 @@ export async function runAction(
 
 type MockQueryValue = string | number | boolean;
 
+/** One route of `mockHttp`: the request it matches and its reply. */
 export interface MockRoute {
+	/**
+	 * The HTTP method, any case.
+	 *
+	 * @defaultValue `'GET'`
+	 */
 	readonly method?: string;
 	/** The URL path, or its end after the node's base path: `/tasks`. */
 	readonly path: string;
@@ -330,16 +362,28 @@ export interface MockRoute {
 	readonly query?: Readonly<Record<string, MockQueryValue | readonly MockQueryValue[]>>;
 	/** The route answers at most this many calls, then the next matching route answers. */
 	readonly times?: number;
+	/** The reply of the route. */
 	readonly reply: {
+		/**
+		 * The HTTP status code.
+		 *
+		 * @defaultValue `200`
+		 */
 		readonly status?: number;
+		/** The JSON body. No body when omitted. */
 		readonly json?: unknown;
+		/** More response headers. `content-type` is `application/json` unless set. */
 		readonly headers?: Readonly<Record<string, string>>;
 	};
 }
 
+/** One request that a `mockHttp` stub got. */
 export interface MockCall {
+	/** The HTTP method, upper case. */
 	readonly method: string;
+	/** The full URL, query included. */
 	readonly url: string;
+	/** The URL path, e.g. `/v1/tasks`. */
 	readonly path: string;
 	/** A repeated parameter is an array, in order. */
 	readonly query: Record<string, string | string[]>;
@@ -349,7 +393,11 @@ export interface MockCall {
 	readonly body: unknown;
 }
 
-export type MockFetch = typeof fetch & { readonly calls: MockCall[] };
+/** A `fetch` stub of `mockHttp`. */
+export type MockFetch = typeof fetch & {
+	/** Each call, in order. */
+	readonly calls: MockCall[];
+};
 
 /** More calls than any test needs: the code under test loops. */
 const MAX_MOCK_CALLS = 1000;
@@ -365,7 +413,16 @@ const queryOf = (params: URLSearchParams): Record<string, string | string[]> =>
 const routeName = (route: MockRoute) =>
 	`${route.method ?? 'GET'} ${route.path}${route.query ? ` ${JSON.stringify(route.query)}` : ''}`;
 
-/** A `fetch` stub that answers from `routes` and records each call. An unmatched call throws. */
+/**
+ * A `fetch` stub that answers from `routes` and records each call. An unmatched call throws.
+ *
+ * @example
+ * ```ts
+ * const fetch = mockHttp([{ method: 'GET', path: '/users', reply: { json: { users: [] } } }]);
+ * await runAction(listUsers, { input: {}, credential, fetch });
+ * expect(fetch.calls[0]?.headers.authorization).toBe('Bearer k-1');
+ * ```
+ */
 export function mockHttp(routes: readonly MockRoute[]): MockFetch {
 	const calls: MockCall[] = [];
 	const answered = new Map<MockRoute, number>();

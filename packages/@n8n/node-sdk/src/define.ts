@@ -23,14 +23,25 @@ import {
 import type { PollConfig, TriggerKind, WebhookConfig, WebhookRequest } from './triggers';
 import { parsePage } from './validate';
 
-/** The integration identity: name, credential, and base URL shared by its actions. */
+/**
+ * The integration identity: name, credential, and base URL shared by its actions.
+ *
+ * @see {@link defineNode}
+ * @see `docs/node-contract.md`
+ */
 export interface NodeDefinition {
 	/** Short id, the first segment of every action id: `notion`. */
 	readonly id: string;
+	/** The node name in the n8n UI, e.g. `Notion`. */
 	readonly displayName: string;
 	/** The one credential of the node: its credential types and its scopes. */
 	readonly credential?: Credential;
+	/**
+	 * The URL that a request `path` goes after, e.g. `https://api.notion.com/v1`. Its host is in
+	 * the egress of every action. The base URL of a credential type with `baseUrl` replaces it.
+	 */
 	readonly baseUrl?: string;
+	/** The icon in the n8n UI, an n8n icon value such as `file:notion.svg`. `toNodeType` does not read it. */
 	readonly icon?: string;
 	/**
 	 * Legacy node types that this node does the whole job of, e.g.
@@ -60,6 +71,11 @@ export type RunCredentialOf<N extends NodeDefinition> =
 
 /** What the action does to the item stream. */
 export interface ActionFlow {
+	/**
+	 * `read` gets data from a service, `write` changes data in a service, and `transform` changes
+	 * items with no service call. A `transform` is never an agent tool. It does not limit the HTTP
+	 * methods: some reads send `POST`.
+	 */
 	readonly effect: 'read' | 'write' | 'transform';
 	/**
 	 * `per-item`: `run()` returns one output for each input item. `1:N`: `run()` yields the
@@ -73,6 +89,7 @@ export interface ActionFlow {
 
 /** An input item as `run()` reads it. Emit it as `{ item }` to pass it on unchanged, binary data too. */
 export interface InputItem {
+	/** The JSON data of the item. */
 	readonly json: Readonly<Record<string, unknown>>;
 }
 
@@ -81,7 +98,9 @@ export interface InputItem {
  * then the outputs in `then`. Switch cases use it.
  */
 export interface OutputsPerEntry {
+	/** The input list whose entries each have an `output` name, e.g. `rules`. */
 	readonly each: string;
+	/** Fixed outputs after the entry outputs, e.g. `['fallback']`. */
 	readonly then?: readonly string[];
 }
 
@@ -106,45 +125,82 @@ type EntryListKey<S extends Shape> = {
 
 /** Outputs per entry must name an input list whose entries each have an `output` name. */
 type OutputsCheck<Outs, Full extends Shape> = Outs extends OutputsPerEntry
-	? { readonly outputs: { readonly each: EntryListKey<Full> } }
+	? {
+			/** Outputs per entry of an input list. */
+			readonly outputs: {
+				/** An input list whose entries each have an `output` name. */
+				readonly each: EntryListKey<Full>;
+			};
+		}
 	: unknown;
 
 /** Named inputs read all items of each input at once, so only a `batch` action has them. */
 type InputsCheck<Ins, F extends ActionFlow> = Ins extends ActionInputs
 	? F['cardinality'] extends 'batch'
 		? unknown
-		: { readonly flow: { readonly cardinality: 'batch' } }
+		: {
+				/** An action with named inputs runs as a batch. */
+				readonly flow: {
+					/** Named inputs need `batch`. */
+					readonly cardinality: 'batch';
+				};
+			}
 	: unknown;
 
 /** The input item or items that an output item comes from. */
 export type Lineage = InputItem | readonly InputItem[];
 
 type Routed<Outs> = Outs extends ActionOutputs
-	? { readonly to: OutputName<Outs> }
+	? {
+			/** The named output that the item goes to, e.g. `'true'`. */
+			readonly to: OutputName<Outs>;
+		}
 	: { readonly to?: never };
 
 /** An input item passed on unchanged, or a new output item. */
-type Passed = { readonly item: InputItem; readonly json?: never; readonly from?: never };
-type Made<Output, From> = { readonly json: Output; readonly item?: never } & From;
+type Passed = {
+	/** The input item to pass on unchanged, binary data too. */
+	readonly item: InputItem;
+	readonly json?: never;
+	readonly from?: never;
+};
+type Made<Output, From> = {
+	/** The new output item. The host checks it against `output`. */
+	readonly json: Output;
+	readonly item?: never;
+} & From;
+
+/** The lineage of a batch output. */
+type BatchFrom = {
+	/** The input item or items that the output comes from. */
+	readonly from: Lineage;
+};
 
 /**
  * One output of `run()`. A batch output names its lineage in `from`; a per-item output comes
  * from the current item. An action with named outputs routes each output with `to`.
  */
 export type Emit<C, Output, Outs> = C extends 'batch'
-	? Routed<Outs> & (Passed | Made<Output, { readonly from: Lineage }>)
+	? Routed<Outs> & (Passed | Made<Output, BatchFrom>)
 	: Outs extends ActionOutputs
 		? Routed<Outs> & (Passed | Made<Output, { readonly from?: never }>)
 		: Output;
 
+/** The HTTP methods that `http.request` sends. */
 export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE' | 'HEAD';
 
 type QueryValue = string | number | boolean;
 
 interface HttpRequestOptions {
+	/**
+	 * The HTTP method.
+	 *
+	 * @defaultValue `'GET'`
+	 */
 	readonly method?: HttpMethod;
 	/** An array value repeats its key: `{ id: ['a', 'b'] }` sends `id=a&id=b`. */
 	readonly query?: Readonly<Record<string, QueryValue | readonly QueryValue[] | undefined>>;
+	/** Request headers. The host adds the credential, so do not set it here. */
 	readonly headers?: Readonly<Record<string, string>>;
 	/**
 	 * Sent as JSON. A `Binary` streams from the n8n binary data store, with its MIME type as
@@ -155,7 +211,11 @@ interface HttpRequestOptions {
 	readonly response?: 'binary';
 	/** Return `{ body, headers, statusCode }` instead of the body. */
 	readonly fullResponse?: boolean;
-	/** 300000 (5 minutes) when omitted, the default of the legacy HTTP Request node. */
+	/**
+	 * The request timeout in milliseconds.
+	 *
+	 * @defaultValue `300000` (5 minutes), as in the legacy HTTP Request node
+	 */
 	readonly timeoutMs?: number;
 	/**
 	 * The host retries a 429, 502, 503, 504, or a dropped connection when the request is
@@ -171,26 +231,70 @@ interface HttpRequestOptions {
  */
 export type HttpRequest = HttpRequestOptions &
 	(
-		| { readonly url: string; readonly path?: never }
-		| { readonly path: `/${string}`; readonly url?: never }
+		| {
+				/** An absolute http or https URL, e.g. a `next` link of the API. */
+				readonly url: string;
+				readonly path?: never;
+		  }
+		| {
+				/** The path after the base URL, e.g. `/pages/abc`. */
+				readonly path: `/${string}`;
+				readonly url?: never;
+		  }
 	);
 
 /** An HTTP client with the node's credential already applied. A non-2xx response throws an `HttpError`. */
 export interface Http {
-	request(
-		request: HttpRequest & { readonly response: 'binary'; readonly fullResponse?: false },
-	): Promise<Binary>;
+	/**
+	 * Sends the request with the credential. With `response: 'binary'` the body goes to the n8n
+	 * binary data store, and the result is its `Binary`.
+	 *
+	 * @example
+	 * ```ts
+	 * const page = await http.request({ path: '/pages/abc' });
+	 * const file = await http.request({ url: fileUrl, response: 'binary' });
+	 * ```
+	 */
+	request(request: HttpRequest & BinaryResponse): Promise<Binary>;
+	/**
+	 * Sends the request with the credential, and gives the parsed JSON body. The host retries
+	 * a 429, 502, 503, 504, or a dropped connection when the request is idempotent.
+	 */
 	request(request: HttpRequest): Promise<unknown>;
+}
+
+/** A request whose response body goes to the n8n binary data store. */
+interface BinaryResponse {
+	/** `binary`: the result is the `Binary` of the stored body. */
+	readonly response: 'binary';
+	/** A binary response gives the `Binary`, not the full response. */
+	readonly fullResponse?: false;
 }
 
 /** The error `http.request` throws for a non-2xx response. */
 export interface HttpError extends Error {
+	/** The HTTP status code, e.g. `404`. */
 	readonly status: number;
 	/** Header names are lower case, e.g. `retry-after`. */
 	readonly headers: Readonly<Record<string, string>>;
+	/** The response body, e.g. the JSON error of the API. */
 	readonly body: unknown;
 }
 
+/**
+ * True when `error` is the `HttpError` of a non-2xx response, e.g. to map a 404 to an empty
+ * result.
+ *
+ * @example
+ * ```ts
+ * try {
+ *   return await http.request({ path: `/pages/${input.page}` });
+ * } catch (error) {
+ *   if (isHttpError(error) && error.status === 404) return { found: false };
+ *   throw error;
+ * }
+ * ```
+ */
 // A property check, not `instanceof`: a frozen bundle has its own copy of the SDK.
 export const isHttpError = (error: unknown): error is HttpError =>
 	error instanceof Error &&
@@ -211,6 +315,7 @@ export interface PageState<T> {
 	readonly room?: number;
 }
 
+/** How `pages` reads a paged API in code: the request of a page, its items, and its next cursor. */
 export interface PagesOptions<P, T> {
 	/**
 	 * The schema of one response, or a function that checks a response and gives the page, e.g.
@@ -222,10 +327,17 @@ export interface PagesOptions<P, T> {
 	 * minus the items so far, e.g. for a page size parameter.
 	 */
 	request(cursor: string | undefined, room: number | undefined): HttpRequest;
+	/** The items of one page, e.g. `(page) => page.results`. */
 	items(page: P): readonly T[];
 	/** The cursor of the next page. A missing, null or empty cursor ends the list. */
 	next(page: P, state: PageState<T>): string | number | null | undefined;
+	/** The most items to yield, e.g. `limitOf(input.paging)`. No limit when omitted. */
 	readonly limit?: number;
+	/**
+	 * The most pages to request.
+	 *
+	 * @defaultValue `Infinity`
+	 */
 	readonly maxPages?: number;
 }
 
@@ -234,7 +346,19 @@ export interface PagesOptions<P, T> {
  * a page in another shape fails with its path, e.g. `page.results: must be array`. It stops at
  * `limit` items, after `maxPages` pages, at a page without a next cursor, and at a cursor it
  * already sent, so an API that repeats a cursor cannot loop. The host request limit also
- * applies. It is a helper, not a host method: it inlines into each bundle.
+ * applies. It is a helper, not a host method: it inlines into each bundle. A `list` binding
+ * with `pages` does the same with no code.
+ *
+ * @example
+ * ```ts
+ * yield* pages(http, {
+ *   page: t.obj({ results: t.arr(t.obj({ id: t.str() })), next_cursor: t.nullable(t.str()) }),
+ *   request: (cursor) => ({ path: '/search', query: { start_cursor: cursor } }),
+ *   items: (page) => page.results,
+ *   next: (page) => page.next_cursor,
+ *   limit: limitOf(input.paging),
+ * });
+ * ```
  */
 export async function* pages<P, T>(
 	http: Http,
@@ -264,6 +388,16 @@ export async function* pages<P, T>(
 /**
  * The list input of every action that lists: all items, or at most `max`. A `list` binding with
  * `pages` gets it, and the host applies it. A `run()` action declares it and reads `limitOf`.
+ *
+ * @defaultValue `{ mode: 'limit', max: 50 }`
+ * @example
+ * ```ts
+ * input: { query: t.str(), paging },
+ * async *run({ input, http }) {
+ *   const limit = limitOf(input.paging); // undefined for all items
+ *   yield* pages(http, { page, request, items, next, limit });
+ * },
+ * ```
  */
 export const paging = t
 	.variant('mode', {
@@ -272,7 +406,7 @@ export const paging = t
 	})
 	.default({ mode: 'limit', max: 50 });
 
-/** The item limit of `paging` for `pages`: undefined for all items. */
+/** The item limit of `paging` for `pages`: undefined for all items. @see {@link paging} */
 export const limitOf = (value: Infer<typeof paging>) =>
 	value.mode === 'limit' ? value.max : undefined;
 
@@ -284,9 +418,17 @@ export const limitOf = (value: Infer<typeof paging>) =>
 export function nextOffsetOf(
 	unit: 'item' | 'page',
 	page: {
+		/** The count of items on this page. */
 		readonly count: number;
+		/** The page size that the request asked for. */
 		readonly size?: number;
+		/** The offset or page number that the request of this page sent. */
 		readonly cursor?: string;
+		/**
+		 * The number of the first page, for `page`.
+		 *
+		 * @defaultValue `1`
+		 */
 		readonly start?: number;
 	},
 ): number | undefined {
@@ -308,12 +450,22 @@ export const nextLinkOf = (link: string | undefined, base?: string): string | un
 /** The input `run()` gets. Each default is filled in at any depth, so a defaulted field is set. */
 export type RunInput<S extends Shape> = RunFieldsOf<S>;
 
+/** The level of a `log` message. */
 export type LogLevel = 'debug' | 'info' | 'warn' | 'error';
 
 /** Safety limits for one `run()` call. The defaults are far above normal use. */
 export interface RunLimits {
-	/** A page is one request. */
+	/**
+	 * The most HTTP requests of one run. A page is one request. The run fails at the limit.
+	 *
+	 * @defaultValue `10000`
+	 */
 	readonly maxRequests: number;
+	/**
+	 * The most output items of one run. The run fails at the limit.
+	 *
+	 * @defaultValue `1000000`
+	 */
 	readonly maxItems: number;
 }
 
@@ -326,8 +478,13 @@ export interface Binaries {
 	): Promise<Binary>;
 }
 
-/** One field per host import of the action interface in `spec/wit/action.wit`. */
+/**
+ * One field per host import of the action interface in `spec/wit/action.wit`.
+ *
+ * @see `spec/wit/action.wit`
+ */
 export interface RunHost {
+	/** The HTTP client, with the credential and the egress of the action applied. */
 	readonly http: Http;
 	/** Writes to the n8n log with the node name. Do not log credentials or personal data. */
 	log(level: LogLevel, message: string): void;
@@ -356,6 +513,7 @@ export interface BatchContext<Input> extends RunHost {
 	readonly items: readonly InputItem[];
 }
 
+/** The run context of a cardinality: `BatchContext` for `batch`, else `RunContext`. */
 export type ContextOf<C extends ActionFlow['cardinality'], Input> = C extends 'batch'
 	? BatchContext<Input>
 	: RunContext<Input>;
@@ -383,21 +541,34 @@ export type RunContextOf<
 
 // ── Host imports of Node Contract 2.3.0 ──────────────────────────────────────────
 
+/** The type of a data table column. */
 export type DataTableColumnType = 'string' | 'number' | 'boolean' | 'date';
 
 /** A cell value. A date cell is an ISO 8601 string. */
 export type DataTableValue = string | number | boolean | null;
 
+/** A column of a data table. */
 export interface DataTableColumn {
+	/** The column name, unique in its table. */
 	readonly name: string;
+	/** The type of each cell of the column. */
 	readonly type: DataTableColumnType;
 }
 
 /** A table by its ID, or by its name in the project of the workflow. */
 export type DataTableRef =
-	| { readonly id: string; readonly name?: never }
-	| { readonly name: string; readonly id?: never };
+	| {
+			/** The table ID. */
+			readonly id: string;
+			readonly name?: never;
+	  }
+	| {
+			/** The table name in the project of the workflow. */
+			readonly name: string;
+			readonly id?: never;
+	  };
 
+/** A comparison of a data table filter. `ilike` is `like` without case. */
 export type DataTableOperator =
 	| 'eq'
 	| 'neq'
@@ -413,29 +584,64 @@ export type DataTableOperator =
 /** `isEmpty` and `isNotEmpty` take no value; every other operator takes one. */
 export type DataTableCondition =
 	| {
+			/** The column to compare. */
 			readonly column: string;
+			/** The comparison. */
 			readonly op: Exclude<DataTableOperator, 'isEmpty' | 'isNotEmpty'>;
+			/** The value to compare the cell with. */
 			readonly value: DataTableValue;
 	  }
-	| { readonly column: string; readonly op: 'isEmpty' | 'isNotEmpty' };
+	| {
+			/** The column to check. */
+			readonly column: string;
+			/** The check for an empty or a set cell. */
+			readonly op: 'isEmpty' | 'isNotEmpty';
+	  };
 
+/**
+ * The rows that a data table call reads or changes.
+ *
+ * @example
+ * ```ts
+ * const filter: DataTableFilter = { match: 'all', conditions: [{ column: 'email', op: 'eq', value: email }] };
+ * ```
+ */
 export interface DataTableFilter {
+	/** `all`: a row matches every condition. `any`: a row matches one condition or more. */
 	readonly match: 'all' | 'any';
+	/** The conditions on the columns. */
 	readonly conditions: readonly DataTableCondition[];
 }
 
 /** A stored row: the system columns `id`, `createdAt` and `updatedAt`, and one value per column. */
 export type DataTableRow = {
+	/** The row ID that the table gives. */
 	readonly id: number;
+	/** When the row was made, as ISO 8601 text. */
 	readonly createdAt: string;
+	/** When the row last changed, as ISO 8601 text. */
 	readonly updatedAt: string;
 } & Readonly<Record<string, DataTableValue>>;
 
+/** The cell values of a row by column name, without the system columns. */
 export type DataTableValues = Readonly<Record<string, DataTableValue>>;
 
+/** One page of rows of a data table. */
 export interface DataTableQuery {
+	/** The rows to read. All rows when omitted. */
 	readonly filter?: DataTableFilter;
-	readonly sort?: { readonly column: string; readonly direction: 'asc' | 'desc' };
+	/** The order of the rows. */
+	readonly sort?: {
+		/** The column to sort by. */
+		readonly column: string;
+		/** `asc` for ascending, `desc` for descending. */
+		readonly direction: 'asc' | 'desc';
+	};
+	/**
+	 * The count of rows to skip.
+	 *
+	 * @defaultValue `0`
+	 */
 	readonly offset?: number;
 	/** The most rows of one page. */
 	readonly limit: number;
@@ -443,11 +649,15 @@ export interface DataTableQuery {
 
 /** One table. The host converts a date cell to and from ISO 8601 text. */
 export interface DataTable {
+	/** The table ID. */
 	readonly id: string;
+	/** The columns in table order. */
 	columns(): Promise<readonly DataTableColumn[]>;
 	/** One page of rows, and the count of all rows that the filter matches. */
 	rows(query: DataTableQuery): Promise<{
+		/** The count of all rows that the filter matches. */
 		readonly count: number;
+		/** The rows of this page. */
 		readonly rows: readonly DataTableRow[];
 	}>;
 	/** Inserts the rows in one write and gives them back with their system columns. */
@@ -468,20 +678,34 @@ export interface DataTable {
 
 /** A table of the project, without its rows. Dates are ISO 8601 text. */
 export interface DataTableInfo {
+	/** The table ID. */
 	readonly id: string;
+	/** The table name, unique in the project. */
 	readonly name: string;
+	/** The columns in table order. */
 	readonly columns: readonly DataTableColumn[];
+	/** When the table was made. */
 	readonly createdAt: string;
+	/** When the table last changed. */
 	readonly updatedAt: string;
 }
 
+/** One page of the data tables of the project. */
 export interface DataTableListQuery {
 	/** Tables whose name matches, without case. */
 	readonly name?: string;
+	/** The order of the tables. */
 	readonly sort?: {
+		/** The field to sort by. */
 		readonly by: 'name' | 'createdAt' | 'updatedAt';
+		/** `asc` for ascending, `desc` for descending. */
 		readonly direction: 'asc' | 'desc';
 	};
+	/**
+	 * The count of tables to skip.
+	 *
+	 * @defaultValue `0`
+	 */
 	readonly offset?: number;
 	/** The most tables of one page. */
 	readonly limit: number;
@@ -489,21 +713,37 @@ export interface DataTableListQuery {
 
 /** The n8n data tables of the project that owns the workflow. */
 export interface DataTables {
+	/**
+	 * The table by ID or by name. It fails when the project has no such table.
+	 *
+	 * @example
+	 * ```ts
+	 * const table = await dataTables.open({ name: 'Leads' });
+	 * const { rows } = await table.rows({ limit: 10 });
+	 * ```
+	 */
 	open(table: DataTableRef): Promise<DataTable>;
 	/** One page of tables, and the count of all tables that the query matches. */
 	list(query: DataTableListQuery): Promise<{
+		/** The count of all tables that the query matches. */
 		readonly count: number;
+		/** The tables of this page. */
 		readonly tables: readonly DataTableInfo[];
 	}>;
 	/** A new table with the columns in this order. */
 	create(table: {
+		/** The table name, unique in the project. */
 		readonly name: string;
+		/** The columns in table order. */
 		readonly columns: readonly DataTableColumn[];
 	}): Promise<DataTableInfo>;
 }
 
+/** User code for the n8n task runner. */
 export interface CodeRequest {
+	/** The language of `code`. The host refuses a language that the instance does not run. */
 	readonly language: 'javascript' | 'python';
+	/** The code, as a user writes it in the Code node. */
 	readonly code: string;
 	/** `all`: one run that reads every input item. `each`: one run for each input item. */
 	readonly mode: 'all' | 'each';
@@ -521,6 +761,7 @@ export interface CodeRunner {
 	run(request: CodeRequest): Promise<unknown>;
 }
 
+/** Lets a run wait until a time. The host can suspend the execution in the meantime. */
 export interface Wait {
 	/**
 	 * The outputs of this run continue at `at`, not before. The host can suspend the execution
@@ -534,13 +775,17 @@ export interface Wait {
  * `imports`, its run context gets only those, and its bundle targets 2.3.0.
  */
 export interface HostImports<Input> {
+	/** The n8n data tables of the project. Import name: `dataTables`. */
 	readonly dataTables: DataTables;
+	/** User code in the n8n task runner. Import name: `code`. */
 	readonly code: CodeRunner;
+	/** A wait until a time. Import name: `wait`. */
 	readonly wait: Wait;
 	/** The parameters of an input item of a `batch` run, resolved and validated for that item. */
 	inputOf(item: InputItem): Promise<Input>;
 }
 
+/** The name of an optional host import, for the `imports` list of an action. */
 export type HostImport = keyof HostImports<unknown>;
 
 /**
@@ -560,7 +805,9 @@ export type RunResult<C extends ActionFlow['cardinality'], E> = C extends '1:N'
 
 /** A field of the resource an action reads (a Notion property, a sheet column), as a host lookup lists it. */
 export interface ResourceField {
+	/** The field name, e.g. the Notion property name. */
 	readonly name: string;
+	/** What the lookup tells about the field, e.g. its type. The lookup sets the format. */
 	readonly value: string | number | boolean;
 }
 
@@ -569,7 +816,10 @@ export type RequestValue<Input> =
 	| string
 	| number
 	| boolean
-	| { readonly input: keyof Input & string };
+	| {
+			/** The input field whose value the host sends. */
+			readonly input: keyof Input & string;
+	  };
 
 type PathFields<P extends string> = P extends `${string}{${infer Field}}${infer Rest}`
 	? Field | PathFields<Rest>
@@ -637,10 +887,18 @@ export interface Egress<Input, H extends string = string> {
  * A function of the item input. Method syntax keeps its parameter bivariant, so an action with
  * its own input still fits the wide `Action` type.
  */
-type FromInput<Input, T> = { of(input: Input): T }['of'];
+type FromInput<Input, T> = {
+	/** Computes the value from the item input. */
+	of(input: Input): T;
+}['of'];
 
 /** The declarative binding: data that says which request the host sends for each item. */
 export interface RequestBinding<Input, P extends string = string> {
+	/**
+	 * The HTTP method.
+	 *
+	 * @defaultValue `'GET'`
+	 */
 	readonly method?: HttpMethod;
 	/** After the node's `baseUrl`. `{field}` is the URL-encoded input field, e.g. `/pages/{page}`. */
 	readonly path: P & `/${string}` & RequestPath<P, Input>;
@@ -648,19 +906,35 @@ export interface RequestBinding<Input, P extends string = string> {
 	readonly query?:
 		| Readonly<Record<string, RequestValue<Input>>>
 		| FromInput<Input, HttpRequest['query']>;
+	/** Request headers, or a function of the input. The host adds the credential. */
 	readonly headers?:
 		| Readonly<Record<string, string>>
 		| FromInput<Input, Readonly<Record<string, string>>>;
+	/** The JSON body fields, e.g. `{ archived: true, parent: { input: 'parent' } }`. */
 	readonly body?: Readonly<Record<string, RequestValue<Input>>>;
 }
 
 /** Where the host sends a page value: a query parameter or a field of the JSON body. */
 export type PageParam =
-	| { readonly query: string; readonly body?: never }
-	| { readonly body: string; readonly query?: never };
+	| {
+			/** The query parameter name, e.g. `start_cursor`. */
+			readonly query: string;
+			readonly body?: never;
+	  }
+	| {
+			/** The JSON body field name, e.g. `start_cursor`. */
+			readonly body: string;
+			readonly query?: never;
+	  };
 
 /** The page size parameter, and the most items the API gives in one page. */
-export type PageSize = PageParam & { readonly max: number };
+export type PageSize = PageParam & {
+	/**
+	 * The largest page size that the API takes. The host sends it, or less near the `paging`
+	 * limit unless the list counts pages.
+	 */
+	readonly max: number;
+};
 
 /**
  * How the host gets the next page of a `list` binding.
@@ -672,15 +946,44 @@ export type PageSize = PageParam & { readonly max: number };
  */
 export type Pages<Page> =
 	| {
+			/** The page gives the cursor of the next page. */
 			readonly style: 'cursor';
+			/** The cursor of the next page. A missing, null or empty cursor ends the list. */
 			next(page: Page): string | number | null | undefined;
+			/** Where the host sends the cursor. */
 			readonly send: PageParam;
+			/** Where the host sends the page size. */
 			readonly size?: PageSize;
 	  }
-	| { readonly style: 'link'; readonly size?: PageSize }
-	| ({ readonly style: 'offset'; readonly send: PageParam; readonly size?: PageSize } & (
-			| { readonly unit: 'item'; readonly start?: never }
-			| { readonly unit: 'page'; readonly start?: number }
+	| {
+			/** The `rel="next"` URL of the `Link` header gives the next page. */
+			readonly style: 'link';
+			/** Where the host sends the page size. */
+			readonly size?: PageSize;
+	  }
+	| ({
+			/** The host counts items or pages and sends the next offset. */
+			readonly style: 'offset';
+			/** Where the host sends the offset. */
+			readonly send: PageParam;
+			/** Where the host sends the page size. A short page ends the list. */
+			readonly size?: PageSize;
+	  } & (
+			| {
+					/** The offset is the count of items so far. */
+					readonly unit: 'item';
+					readonly start?: never;
+			  }
+			| {
+					/** The offset is the page number. */
+					readonly unit: 'page';
+					/**
+					 * The number of the first page.
+					 *
+					 * @defaultValue `1`
+					 */
+					readonly start?: number;
+			  }
 	  ));
 
 /**
@@ -731,6 +1034,15 @@ export type ActionBinding<
 			readonly native?: never;
 	  }
 	| {
+			/**
+			 * One request per item, which the host sends. The response body is the output item.
+			 * Only a `per-item` action has it.
+			 *
+			 * @example
+			 * ```ts
+			 * request: { method: 'GET', path: '/pages/{page}' },
+			 * ```
+			 */
 			readonly request: RequestBinding<RunInput<Full>, P> & Only<F['cardinality'], 'per-item'>;
 			readonly run?: never;
 			readonly list?: never;
@@ -741,6 +1053,19 @@ export type ActionBinding<
 			readonly inputs?: never;
 	  }
 	| {
+			/**
+			 * A list that the host requests and pages through. Only a `1:N` action has it.
+			 *
+			 * @example
+			 * ```ts
+			 * list: {
+			 *   path: '/users',
+			 *   response: t.obj({ users: t.arr(user) }),
+			 *   items: (page) => page.users,
+			 *   pages: { style: 'link' },
+			 * },
+			 * ```
+			 */
 			readonly list: ListBinding<RunInput<Full>, P, R, Infer<O>> & Only<F['cardinality'], '1:N'>;
 			readonly run?: never;
 			readonly request?: never;
@@ -750,6 +1075,7 @@ export type ActionBinding<
 			readonly inputs?: never;
 	  }
 	| {
+			/** The built-in n8n node that runs the action. The contract types its parameters. */
 			readonly native: NativeNode;
 			readonly run?: never;
 			readonly request?: never;
@@ -759,16 +1085,32 @@ export type ActionBinding<
 	  };
 
 interface ContractSpec<Own extends Shape, O extends AnySchema, Sc extends string> {
-	/** Integer major, 1 when omitted. It is the n8n `typeVersion`. */
+	/**
+	 * Integer major. It is the n8n `typeVersion`. Bump it for a breaking contract change.
+	 *
+	 * @defaultValue `1`
+	 */
 	readonly version?: number;
-	/** Bump for an additive contract change. 0 when omitted. */
+	/**
+	 * Bump for an additive contract change.
+	 *
+	 * @defaultValue `0`
+	 */
 	readonly minor?: number;
-	/** Bump for a code change that keeps the contract hash. 0 when omitted. */
+	/**
+	 * Bump for a code change that keeps the contract hash.
+	 *
+	 * @defaultValue `0`
+	 */
 	readonly patch?: number;
-	/** At most 120 characters. */
+	/** One sentence for agents and search, at most 120 characters. */
 	readonly summary: string;
 	/** The scopes of the node's credential that this contract needs. */
 	readonly scopes?: readonly Sc[];
+	/**
+	 * The parameters, one schema per field, e.g. `{ page: t.str(), archived: t.bool().default(false) }`.
+	 * A resource adds its own input to it.
+	 */
 	readonly input: Own;
 	/** The schema of each output item, on every output. */
 	readonly output: O;
@@ -792,7 +1134,20 @@ interface ActionSpecBase<
 > extends ContractSpec<Own, O, Sc> {
 	/** The label users pick, e.g. "Get many database pages". */
 	readonly action: string;
+	/**
+	 * What the action does to the item stream.
+	 *
+	 * @example
+	 * ```ts
+	 * flow: { effect: 'read', cardinality: 'per-item', idempotent: true },
+	 * ```
+	 */
 	readonly flow: F;
+	/**
+	 * More hosts the action may send requests to. Without it, only the base URL hosts.
+	 *
+	 * @see `docs/sandboxed-execution.md`
+	 */
 	readonly egress?: Egress<RunInput<Full>, H>;
 	/** Named outputs. An input list can name them, e.g. one output per Switch case. */
 	readonly outputs?: Outs;
@@ -811,7 +1166,9 @@ interface ActionSpecBase<
 	 * keeps `deriveOutput`.
 	 */
 	readonly resourceOutput?: {
+		/** The lookup that lists the fields, e.g. `notion.dataSourceProperties`. */
 		readonly method: string;
+		/** The output schema from the fields and the parameters. No I/O. */
 		toOutput(fields: readonly ResourceField[], input: ObjectOf<Full>): JsonSchema;
 	};
 }
@@ -835,19 +1192,30 @@ export type ActionSpec<
 
 /** What every contract has after its node built it. */
 interface Built {
+	/** The node definition that built the contract. */
 	readonly node: NodeDefinition;
 	/** `<node>.<resource>.<operation>` or `<node>.<operation>`, e.g. `notion.databasePage.getAll`. */
 	readonly id: string;
+	/** The resource name, when a resource built the contract. */
 	readonly resource?: string;
+	/** The operation, or the trigger event. */
 	readonly operation: string;
+	/** The major: `version` of the spec, or 1. */
 	readonly version: number;
 	/** `major.minor.patch`. */
 	readonly semver: string;
+	/** The JSON Schema of the full input, the resource input included. */
 	readonly inputSchema: JsonSchema;
+	/** The names of the credential types of the node. */
 	readonly credentialTypes: readonly string[];
+	/** The scopes that the contract needs. Empty when it needs none. */
 	readonly scopes: readonly string[];
 }
 
+/**
+ * A built action: its spec and what its node adds (`id`, `semver`, `inputSchema`, …). Use it to
+ * type any action, e.g. in a list of actions.
+ */
 export type Action<
 	S extends Shape = Shape,
 	O extends AnySchema = AnySchema,
@@ -867,6 +1235,11 @@ type TriggerHead<Own extends Shape, O extends AnySchema, Sc extends string> = Co
 };
 
 type WebhookSource<I, Out, K extends string> = {
+	/**
+	 * The service calls a webhook URL of n8n.
+	 *
+	 * @see {@link WebhookConfig}
+	 */
 	readonly webhook: WebhookConfig<I, Out, K>;
 	readonly poll?: never;
 	readonly native?: never;
@@ -878,9 +1251,20 @@ type WebhookSource<I, Out, K extends string> = {
  */
 type EmitRule<I, Out> = WebhookRequest extends Out
 	? unknown
-	: { readonly webhook: { emit(request: WebhookRequest, input: I): readonly Out[] } };
+	: {
+			/** A webhook whose items are not the request. */
+			readonly webhook: {
+				/** Maps the request to the output items. */
+				emit(request: WebhookRequest, input: I): readonly Out[];
+			};
+		};
 
 type PollSource<I, T, Out, P = unknown> = {
+	/**
+	 * n8n polls the service on the Poll Times of the node.
+	 *
+	 * @see {@link PollConfig}
+	 */
 	readonly poll: PollConfig<I, T, Out, P>;
 	readonly webhook?: never;
 	readonly native?: never;
@@ -906,16 +1290,24 @@ export type NativeEvent = 'manual' | 'schedule' | 'webhook' | 'form' | 'poll';
 export interface TriggerReply<Field extends string = string> {
 	/** The factory name next to the trigger, e.g. `respond`. */
 	readonly operation: string;
+	/** The label users pick, e.g. "Respond to Webhook". */
 	readonly action: string;
-	/** At most 120 characters. */
+	/** One sentence for agents and search, at most 120 characters. */
 	readonly summary: string;
 	/**
 	 * The parameters of the reply node: fields, or one `variant` when the fields depend on a
 	 * tag, e.g. `respondWith`. The node keeps the tag and the fields flat, as a variant does.
 	 */
 	readonly input: Shape | AnySchema;
+	/** The built-in n8n node of the reply, e.g. `n8n-nodes-base.respondToWebhook`. */
 	readonly native: NativeNode;
-	readonly awaits?: { readonly field: Field; readonly value: string };
+	/** The trigger field value that makes the caller wait for the reply. */
+	readonly awaits?: {
+		/** The trigger field, e.g. `responseMode`. */
+		readonly field: Field;
+		/** The value of the field, e.g. `responseNode`. */
+		readonly value: string;
+	};
 	/** Each output item. Without it the step passes its items on. */
 	readonly output?: AnySchema;
 }
@@ -925,7 +1317,12 @@ export interface TriggerReply<Field extends string = string> {
  * (test URLs, form pages, schedules, manual runs). The input is the node's parameters.
  */
 type NativeSource<Field extends string> = {
-	readonly native: NativeNode & { readonly on: NativeEvent };
+	/** The built-in n8n node that runs the trigger, and what starts it. */
+	readonly native: NativeNode & {
+		/** What starts the trigger. */
+		readonly on: NativeEvent;
+	};
+	/** The step that answers the caller, e.g. Respond to Webhook. */
 	readonly reply?: TriggerReply<Field>;
 	readonly webhook?: never;
 	readonly poll?: never;
@@ -955,22 +1352,42 @@ export type Trigger<S extends Shape = Shape, O extends AnySchema = AnySchema> = 
 > &
 	Built &
 	(
-		| ({ readonly kind: 'webhook' } & WebhookSource<RunInput<S>, Infer<O>, string>)
-		| ({ readonly kind: 'poll' } & PollSource<RunInput<S>, unknown, Infer<O>>)
-		| ({ readonly kind: 'native' } & NativeSource<string>)
+		| ({
+				/** The service calls a webhook. */
+				readonly kind: 'webhook';
+		  } & WebhookSource<RunInput<S>, Infer<O>, string>)
+		| ({
+				/** n8n polls the service. */
+				readonly kind: 'poll';
+		  } & PollSource<RunInput<S>, unknown, Infer<O>>)
+		| ({
+				/** A built-in n8n node runs the trigger. */
+				readonly kind: 'native';
+		  } & NativeSource<string>)
 	);
 
 /** A trigger that a built-in n8n node runs. */
-export type NativeTrigger = Extract<Trigger, { readonly kind: 'native' }>;
+export type NativeTrigger = Extract<
+	Trigger,
+	{
+		/** A built-in n8n node runs the trigger. */
+		readonly kind: 'native';
+	}
+>;
 
 /** Where a contract sits in its node: the resource, if any, and the operation or event. */
 export interface ActionPath {
+	/** The resource name, e.g. `databasePage`. Absent for an action of the node itself. */
 	readonly resource?: string;
+	/** The operation, or the trigger event, e.g. `getAll`. */
 	readonly operation: string;
 }
 
+/** Where a contract of a resource sits: the resource and the operation or event. */
 export interface ResourcePath {
+	/** The resource name, e.g. `databasePage`. */
 	readonly resource: string;
+	/** The operation, or the trigger event, e.g. `getAll`. */
 	readonly operation: string;
 }
 
@@ -1065,7 +1482,9 @@ export type ProviderSpec<
 > = Omit<ContractSpec<Own, AnySchema, Sc>, 'output'> & {
 	/** The label users pick, e.g. "OpenAI Chat Model". */
 	readonly action: string;
+	/** The capability kind that the provider gives, e.g. `chatModel`. */
 	readonly provides: K;
+	/** More hosts that the capability may send requests to. Without it, only the base URL hosts. */
 	readonly egress?: Egress<RunInput<Full>, H>;
 	/** Requests of the capability use the credential and the egress of the provider. */
 	provide(context: RunContext<RunInput<Full>>): Promise<ProviderCapabilities[K]>;
@@ -1082,7 +1501,23 @@ type NodeProvider<N extends NodeDefinition, RS extends Shape, Path extends Actio
 
 /** A resource of a node. Its `input` goes into the input of each of its actions and triggers. */
 export interface NodeResource<N extends NodeDefinition, RS extends Shape> {
+	/** The resource name, the middle segment of each action id, e.g. `databasePage`. */
 	readonly name: string;
+	/**
+	 * An action on this resource. Its input gets the resource input.
+	 *
+	 * @example
+	 * ```ts
+	 * export const getUser = user.action('get', {
+	 *   action: 'Get a user',
+	 *   summary: 'Get one user by ID.',
+	 *   flow: { effect: 'read', cardinality: 'per-item', idempotent: true },
+	 *   input: {},
+	 *   output: t.obj({ id: t.str(), name: t.str() }),
+	 *   request: { path: '/users/{user}' },
+	 * });
+	 * ```
+	 */
 	readonly action: NodeAction<N, RS, ResourcePath>;
 	/** A provider on this resource, e.g. `chat.provider('model', …)`. */
 	readonly provider: NodeProvider<N, RS, ResourcePath>;
@@ -1092,13 +1527,47 @@ export interface NodeResource<N extends NodeDefinition, RS extends Shape> {
 
 /** A node and its builders. Each child comes from its parent, so a node never imports its actions. */
 export type NodeBuilder<N extends NodeDefinition> = N & {
+	/**
+	 * A resource: a group of actions and triggers that share `input`, e.g. the ID of a user.
+	 *
+	 * @example
+	 * ```ts
+	 * export const user = notion.resource('user', { input: { user: ref(notionUserId) } });
+	 * ```
+	 */
 	resource<RS extends Shape = Record<never, never>>(
 		name: string,
-		options?: { readonly input: RS },
+		options?: {
+			/** The input fields that every action and trigger of the resource gets. */
+			readonly input: RS;
+		},
 	): NodeResource<N, RS>;
+	/**
+	 * An action of the node itself, with no resource. Its id is `<node>.<operation>`.
+	 *
+	 * @see {@link NodeResource.action}
+	 */
 	readonly action: NodeAction<N, Record<never, never>, ActionPath>;
-	/** A provider that gives a capability to root nodes, e.g. `openAi.provider('chatModel', …)`. */
+	/**
+	 * A provider that gives a capability to root nodes, e.g. a chat model.
+	 *
+	 * @example
+	 * ```ts
+	 * export const chatModel = xAi.provider('chatModel', {
+	 *   action: 'xAI Grok Chat Model',
+	 *   summary: 'An xAI Grok chat model for an AI node.',
+	 *   provides: 'chatModel',
+	 *   input: { model: t.modelId('xai') },
+	 *   provide: async ({ input, http }) => grokModel(http, input.model),
+	 * });
+	 * ```
+	 */
 	readonly provider: NodeProvider<N, Record<never, never>, ActionPath>;
+	/**
+	 * A trigger of the node itself: a webhook, a poll, or a built-in n8n node.
+	 *
+	 * @see `docs/credentials-triggers.md`
+	 */
 	readonly trigger: NodeTrigger<N, Record<never, never>, ActionPath>;
 };
 
@@ -1156,7 +1625,22 @@ function buildersOf<N extends NodeDefinition, RS extends Shape, Path extends Act
 	};
 }
 
-/** The action id is the node id, the resource name, and the operation, joined with dots. */
+/**
+ * Defines a node: its identity, credential and base URL. The builder makes its resources,
+ * actions, providers and triggers. The action id is the node id, the resource name, and the
+ * operation, joined with dots.
+ *
+ * @example
+ * ```ts
+ * export const notion = defineNode({
+ *   id: 'notion',
+ *   displayName: 'Notion',
+ *   credential: credential({ types: [notionToken] }),
+ *   baseUrl: 'https://api.notion.com/v1',
+ * });
+ * ```
+ * @see `docs/node-contract.md`
+ */
 export function defineNode<const N extends NodeDefinition>(
 	// A key that `NodeDefinition` does not have is an error, e.g. a misspelt `credential`.
 	node: N & Record<Exclude<keyof N, keyof NodeDefinition>, never>,
@@ -1185,20 +1669,30 @@ export const actionFileOf = ({ resource, operation }: Pick<Action, 'resource' | 
 
 /** The JSON document agents and tools read. Execution details are never part of it. */
 export interface ContractDocument {
+	/** The contract id, e.g. `notion.databasePage.getAll`. */
 	readonly id: string;
 	/** The major. Minor and patch live in the version manifest. */
 	readonly version: number;
+	/** The node id, e.g. `notion`. */
 	readonly node: string;
 	/** The label: the action, or the trigger event. */
 	readonly action: string;
+	/** One sentence for agents and search. */
 	readonly summary: string;
-	readonly flow: ActionFlow & { readonly passthrough: 'replace' };
+	/** The flow of the action. A trigger has `read` and `1:N`. */
+	readonly flow: ActionFlow & {
+		/** How an output item relates to its input item. Always `replace`: the output replaces it. */
+		readonly passthrough: 'replace';
+	};
+	/** The names of the credential types that the contract takes. */
 	readonly credentials: readonly string[];
 	/** The scopes of the node's credential it needs. Absent when it needs none. */
 	readonly scopes?: readonly string[];
 	/** Set on a trigger: it starts a workflow and reads no items. */
 	readonly trigger?: TriggerKind;
+	/** The JSON Schema of the parameters. */
 	readonly input: JsonSchema;
+	/** The JSON Schema of each output item. */
 	readonly output: JsonSchema;
 	/** Named outputs in n8n output order. Absent for one unnamed output. */
 	readonly outputs?: ActionOutputs;
@@ -1215,24 +1709,38 @@ export interface ContractDocument {
  * consumers that need guarantees check `derived`.
  */
 export interface DerivedManifest extends ContractDocument {
+	/** Marks a manifest that no author wrote. */
 	readonly derived: true;
 	/** typeVersion `x.y` maps to `x.y.0`. A derived manifest makes no semver claim beyond that. */
 	readonly semver: string;
+	/** `inferred`: the source declares an output schema. `unknown`: the output can be anything. */
 	readonly outputClaim: 'inferred' | 'unknown';
 }
 
+/** The egress of a contract document. */
 export interface ContractEgress {
+	/** The host patterns, sorted, e.g. `*.example.com`. */
 	readonly hosts?: readonly string[];
+	/** The input field with an absolute URL whose host the action may reach. */
 	readonly fromInput?: string;
 }
 
 type ContractSource = Pick<
 	Action,
 	'id' | 'version' | 'node' | 'summary' | 'credentialTypes' | 'inputSchema' | 'output'
-> & { readonly scopes?: readonly string[] } & (
+> & {
+	/** The scopes that the contract needs. */
+	readonly scopes?: readonly string[];
+} & (
 		| Pick<Action, 'action' | 'flow' | 'outputs' | 'egress' | 'imports' | 'inputs'>
 		| (Pick<Trigger, 'trigger'> &
-				({ readonly kind: 'webhook' | 'poll' } | Pick<NativeTrigger, 'kind' | 'native'>))
+				(
+					| {
+							/** The trigger source. */
+							readonly kind: 'webhook' | 'poll';
+					  }
+					| Pick<NativeTrigger, 'kind' | 'native'>
+				))
 	);
 
 /** Hosts are a set, so their order is not part of the contract. */
@@ -1246,6 +1754,10 @@ function contractEgressOf(egress: ContractEgress | undefined): ContractEgress | 
 // A trigger emits the items of one event: it reads the service, and one event gives N items.
 const TRIGGER_FLOW: ActionFlow = { effect: 'read', cardinality: '1:N' };
 
+/**
+ * The contract document of a built action or trigger: what agents, the registry and the
+ * contract hash read. It drops execution details (`run`, bindings, hatches).
+ */
 export const toContract = (source: ContractSource): ContractDocument => {
 	const egress = 'kind' in source ? undefined : contractEgressOf(source.egress);
 	const imports = 'kind' in source ? [] : [...new Set(source.imports ?? [])].sort();

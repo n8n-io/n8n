@@ -16,21 +16,34 @@ import { Schema, type AnySchema, type JsonSchema, type Shape } from './schema';
 export interface ToolCall {
 	/** The provider's call ID. A tool result names it. */
 	readonly id: string;
+	/** The name of the tool to call. */
 	readonly name: string;
+	/** The arguments of the call. */
 	readonly args: Readonly<Record<string, unknown>>;
 }
 
 /** One message of a chat, oldest first. */
 export type ChatMessage =
-	| { readonly role: 'system' | 'user'; readonly content: string }
 	| {
-			readonly role: 'assistant';
+			/** `system`: instructions. `user`: what the user says. */
+			readonly role: 'system' | 'user';
+			/** The message text. */
 			readonly content: string;
+	  }
+	| {
+			/** A reply of the model. */
+			readonly role: 'assistant';
+			/** The reply text. Empty when the model only calls tools. */
+			readonly content: string;
+			/** The tool calls that the model asked for. */
 			readonly toolCalls?: readonly ToolCall[];
 	  }
 	| {
+			/** The result of a tool call. */
 			readonly role: 'tool';
+			/** The `id` of the tool call. */
 			readonly toolCallId: string;
+			/** The name of the tool. */
 			readonly name: string;
 			/** The tool result as text, usually JSON. */
 			readonly content: string;
@@ -40,12 +53,15 @@ export type ChatMessage =
 export interface ToolDefinition {
 	/** Letters, digits, `_` and `-` only: providers reject other names. */
 	readonly name: string;
+	/** What the tool does and when to call it. The model reads it. */
 	readonly description: string;
 	/** A JSON Schema object for `args`. */
 	readonly input: JsonSchema;
 }
 
+/** One call of a chat model. */
 export interface ChatRequest {
+	/** The chat so far, oldest first. */
 	readonly messages: readonly ChatMessage[];
 	/** Tools the model may call. A reply with tool calls has no final text. */
 	readonly tools?: readonly ToolDefinition[];
@@ -53,16 +69,23 @@ export interface ChatRequest {
 	readonly output?: JsonSchema;
 }
 
+/** The tokens of one chat call. */
 export interface ChatUsage {
+	/** The tokens of the request. */
 	readonly inputTokens: number;
+	/** The tokens of the reply. */
 	readonly outputTokens: number;
 }
 
+/** The reply of a chat model. */
 export interface ChatReply {
+	/** The reply text. Empty when the model only calls tools. */
 	readonly text: string;
+	/** The tool calls that the model asks for. Empty for a final reply. */
 	readonly toolCalls: readonly ToolCall[];
 	/** A provider maps its own reasons to these names when they mean the same. */
 	readonly finishReason: 'stop' | 'length' | 'tool_calls' | 'content_filter' | (string & {});
+	/** The tokens of the call, when the provider reports them. */
 	readonly usage?: ChatUsage;
 }
 
@@ -70,6 +93,7 @@ export interface ChatReply {
 export interface ChatModel {
 	/** The provider model ID, e.g. `gpt-5-mini`. */
 	readonly model: string;
+	/** Sends one chat request. The requests use the credential and the egress of the provider. */
 	chat(request: ChatRequest): Promise<ChatReply>;
 }
 
@@ -87,6 +111,7 @@ export interface Tool extends ToolDefinition {
 	call(args: Readonly<Record<string, unknown>>): Promise<unknown>;
 }
 
+/** An embedding model with its settings applied. */
 export interface Embeddings {
 	/** One vector per text, in order. */
 	embed(texts: readonly string[]): Promise<ReadonlyArray<readonly number[]>>;
@@ -94,12 +119,17 @@ export interface Embeddings {
 
 /** The capabilities a provider can give, by kind. */
 export interface ProviderCapabilities {
+	/** A chat model. n8n connection: `ai_languageModel`. */
 	chatModel: ChatModel;
+	/** The chat history of a session. n8n connection: `ai_memory`. */
 	memory: Memory;
+	/** A tool that a model may call. n8n connection: `ai_tool`. */
 	tool: Tool;
+	/** An embedding model. n8n connection: `ai_embedding`. */
 	embeddings: Embeddings;
 }
 
+/** A capability kind: `chatModel`, `memory`, `tool` or `embeddings`. */
 export type ProviderKind = keyof ProviderCapabilities;
 
 /** The n8n connection type of each kind, so legacy root and sub-nodes keep their wiring rules. */
@@ -138,8 +168,10 @@ export const PROVIDER_FIELDS = {
 	ai_reranker: 'reranker',
 } as const satisfies Partial<Record<AINodeConnectionType, string>>;
 
+/** An n8n `ai_*` connection type that a provider can use, e.g. `ai_languageModel`. */
 export type ProviderConnection = keyof typeof PROVIDER_FIELDS;
 
+/** True when `value` is an n8n `ai_*` connection type of `PROVIDER_FIELDS`. */
 export const isProviderConnection = (value: unknown): value is ProviderConnection =>
 	typeof value === 'string' && Object.hasOwn(PROVIDER_FIELDS, value);
 
@@ -157,6 +189,11 @@ export const isProviderKind = (value: unknown): value is ProviderKind =>
  * A capability from a provider. In `input`, the root node takes it from the provider on the
  * matching connection; `t.arr(input(kind))` takes all of them. As `output`, the action is a
  * provider, and `run()` returns the capability.
+ *
+ * @example
+ * ```ts
+ * input: { model: provider.input('chatModel'), tools: t.arr(provider.input('tool')) },
+ * ```
  */
 const input = <const K extends ProviderKind>(kind: K) =>
 	new Schema<ProviderCapabilities[K]>({ 'x-n8n-supply': kind }, false);
@@ -207,7 +244,10 @@ export const providedOf = (output: JsonSchema): ProviderKind | ProviderConnectio
 
 const TOOL_NAME = /^[A-Za-z0-9_-]{1,64}$/;
 
-/** `value` has the members of a capability of `kind`. */
+/**
+ * True when `value` has the members of a capability of `kind`, e.g. to check a value that
+ * came from a legacy sub-node.
+ */
 function isCapability<K extends ProviderKind>(
 	kind: K,
 	value: unknown,
@@ -227,7 +267,11 @@ function isCapability<K extends ProviderKind>(
 	return methods;
 }
 
-/** The provider builders: `provider.input(kind)` for a root input, `provider.is` to check one. */
+/**
+ * The provider builders: `provider.input(kind)` for a root input, `provider.is` to check one.
+ *
+ * @see `docs/providers.md`
+ */
 export const provider = { input, is: isCapability };
 
 /**

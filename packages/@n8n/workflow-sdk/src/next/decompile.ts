@@ -78,6 +78,7 @@ import type { IConnections, NodeJSON, WorkflowJSON } from '../types/base';
 export interface ContractFactory {
 	/** The module export and its import path, e.g. `notion` from `@n8n/nodes/notion`. */
 	readonly module: string;
+	/** The import path of the module, e.g. `@n8n/nodes/notion`. */
 	readonly from: string;
 	/** The factory in the module, e.g. `databasePage.getAll`. */
 	readonly path: string;
@@ -107,10 +108,13 @@ export interface ContractFactory {
  * factory and the parameters it takes. The reader returns nothing when the read is not lossless.
  */
 export interface ContractRead {
+	/** The factory that the node reads as. */
 	readonly factory: ContractFactory;
+	/** The parameters that the factory takes. */
 	readonly parameters: NonNullable<NodeJSON['parameters']>;
 }
 
+/** Reads a saved legacy node as a typed factory call, or gives nothing. */
 export type LegacyReader = (node: NodeJSON) => ContractRead | undefined;
 
 /**
@@ -1768,9 +1772,14 @@ const NODE_TYPE_CALLS = new Set(['node', 'provider', 'trigger']);
  * `type` that a `node()`, `provider()` or `trigger()` call names. A typed step can have an
  * input field named `type`, which is not a node type.
  */
-export function locateNextNodes(
-	source: string,
-): Array<{ name: string; line: number; type?: string }> {
+export function locateNextNodes(source: string): Array<{
+	/** The node name. */
+	name: string;
+	/** The 1-based line of the call. */
+	line: number;
+	/** The node type that a `node()`, `provider()` or `trigger()` call names. */
+	type?: string;
+}> {
 	const program = (() => {
 		try {
 			return acorn.parse(prepareSourceForLint(source).code, {

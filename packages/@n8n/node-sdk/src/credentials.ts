@@ -34,12 +34,26 @@ type Values = Readonly<Record<string, string>>;
 declare const secretBrand: unique symbol;
 
 /** A secret value. Only n8n and `custom` code read it. */
-export type Secret = string & { readonly [secretBrand]: true };
+export type Secret = string & {
+	/** Marks the string as a secret for the types. It has no value at run time. */
+	readonly [secretBrand]: true;
+};
 
-/** The fields of a credential type. Any `t` schema also works, e.g. `t.oneOf(...)` for `when`. */
+/**
+ * The fields of a credential type. Any `t` schema also works, e.g. `t.oneOf(...)` for `when`.
+ *
+ * @example
+ * ```ts
+ * fields: {
+ *   apiKey: field.secret('API Key'),
+ *   region: field.options('Region', { eu: { name: 'Europe' }, us: { name: 'United States' } }),
+ * },
+ * ```
+ */
 export const field = {
 	/** A value only n8n reads when it signs a request, e.g. an API key. The UI masks it. */
 	secret: (title: string) => new Schema<Secret>({ type: 'string', title, writeOnly: true }, false),
+	/** A plain text value that the UI shows, e.g. a user name or an account ID. */
 	text: (title: string) => t.str().with({ title }),
 	/** A server URL, e.g. of a self-hosted instance. */
 	url: (title: string) => t.str().with({ title, format: 'uri' }),
@@ -113,13 +127,17 @@ type ClaimTemplates<F extends Shape, R extends Values> = {
 
 /** One https base URL per value of an options field, e.g. a region. */
 export interface BaseUrlMap {
+	/** The options field, e.g. `region`. */
 	readonly on: string;
+	/** The base URL for each value of the field. */
 	readonly values: Values;
 }
 
 type TypedBaseUrlMap<F extends Shape> = {
 	[K in OptionName<F>]: {
+		/** The options field, e.g. `region`. */
 		readonly on: K;
+		/** One https base URL for each value of the field, e.g. `{ eu: 'https://api.eu.example.com' }`. */
 		readonly values: { readonly [V in Infer<F[K]> & string]: `https://${string}` };
 	};
 }[OptionName<F>];
@@ -129,20 +147,32 @@ export type BaseUrl<F extends Shape, T extends string> = UrlTemplate<F, T> | Typ
 
 /** Where n8n puts the credential values in a request. Data, so n8n core applies it. */
 export interface Placement {
+	/** Marks a placement. */
 	readonly kind: 'apply';
+	/** Header templates by header name, e.g. `{ Authorization: 'Bearer {apiKey}' }`. */
 	readonly headers: Values;
+	/** Query parameter templates by parameter name. */
 	readonly query: Values;
 	/** Headers n8n sets only when the request has no header of that name. */
 	readonly defaults: Values;
-	readonly basic?: { readonly username: string; readonly password: string };
+	/** HTTP basic authentication (RFC 7617). */
+	readonly basic?: {
+		/** The user name template, e.g. `{email}/token`. */
+		readonly username: string;
+		/** The password template, e.g. `{apiToken}`. */
+		readonly password: string;
+	};
 	/** The user may add one header of their own, e.g. for a proxy in front of the API. */
 	readonly userHeader?: true;
 }
 
 /** One placement per value of an options field. */
 export interface When {
+	/** Marks a placement per option. */
 	readonly kind: 'when';
+	/** The options field, e.g. `authType`. */
 	readonly field: string;
+	/** The placement for each value of the field. */
 	readonly cases: Readonly<Record<string, Placement>>;
 }
 
@@ -151,14 +181,21 @@ export type ClientAuth = 'client_secret_basic' | 'client_secret_post';
 
 /** An OAuth2 grant that n8n core runs: connect button, token request, refresh. */
 export interface OAuth2Grant {
+	/** Marks an OAuth2 grant. */
 	readonly kind: 'oauth2';
+	/** The grant type: RFC 6749 §4.1 or §4.4. */
 	readonly grant: 'authorizationCode' | 'clientCredentials';
 	/** An https URL, or a template over fields, e.g. `{server}/login/oauth/authorize`. */
 	readonly authorizationEndpoint?: string;
+	/** The token endpoint: an https URL or a template over fields. */
 	readonly tokenEndpoint: string;
+	/** The provider scopes that the app asks for. */
 	readonly scope: readonly string[];
+	/** How the token request sends the client ID and secret. */
 	readonly clientAuth: ClientAuth;
+	/** True when the authorization request uses PKCE with S256 (RFC 7636). */
 	readonly pkce: boolean;
+	/** Extra query parameters of the authorization request. */
 	readonly authorizationQuery: Values;
 	/** The user may replace `scope` in the form. */
 	readonly editableScopes?: true;
@@ -166,10 +203,15 @@ export interface OAuth2Grant {
 
 /** RFC 8628: the user approves the app on a second device. n8n core does not run it yet. */
 export interface DeviceCodeGrant {
+	/** Marks an OAuth2 grant. */
 	readonly kind: 'oauth2';
+	/** The device authorization grant (RFC 8628). */
 	readonly grant: 'deviceCode';
+	/** The device authorization endpoint (RFC 8628 §3.1). */
 	readonly deviceAuthorizationEndpoint: string;
+	/** The token endpoint. */
 	readonly tokenEndpoint: string;
+	/** The provider scopes that the app asks for. */
 	readonly scope: readonly string[];
 }
 
@@ -178,30 +220,41 @@ export interface DeviceCodeGrant {
  * service account. n8n core does not run it yet.
  */
 export interface JwtBearerGrant {
+	/** Marks an OAuth2 grant. */
 	readonly kind: 'oauth2';
+	/** The JWT bearer grant (RFC 7523 §2.1). */
 	readonly grant: 'jwtBearer';
+	/** The token endpoint. */
 	readonly tokenEndpoint: string;
 	/** The secret field with the PEM private key. */
 	readonly key: string;
+	/** The JWS algorithm of the signature (RFC 7518). */
 	readonly algorithm: 'RS256';
 	/** Claim templates, e.g. `{ iss: '{email}', scope: '{$scopes}' }`. */
 	readonly claims: Values;
+	/** The provider scopes that the app asks for. */
 	readonly scope: readonly string[];
 }
 
 /** RFC 8693: n8n trades the token of a field for an access token. n8n core does not run it yet. */
 export interface TokenExchangeGrant {
+	/** Marks an OAuth2 grant. */
 	readonly kind: 'oauth2';
+	/** The token exchange grant (RFC 8693). */
 	readonly grant: 'tokenExchange';
+	/** The token endpoint. */
 	readonly tokenEndpoint: string;
 	/** The secret field with the subject token. */
 	readonly subjectToken: string;
 	/** A token type URI of RFC 8693 §3, e.g. `urn:ietf:params:oauth:token-type:jwt`. */
 	readonly subjectTokenType: string;
+	/** The logical name of the target service (RFC 8693 §2.1). */
 	readonly audience?: string;
 	/** RFC 8707: the API the token is for. */
 	readonly resource?: string;
+	/** The provider scopes that the app asks for. */
 	readonly scope: readonly string[];
+	/** How the token request sends the client ID and secret. */
 	readonly clientAuth: ClientAuth;
 }
 
@@ -210,11 +263,19 @@ export interface TokenExchangeGrant {
  * document of `issuer`, see `discoverOidc`. n8n core does not run it yet.
  */
 export interface OidcGrant {
+	/** Marks an OpenID Connect grant. */
 	readonly kind: 'oidc';
+	/**
+	 * The issuer URL. The discovery document is at `<issuer>/.well-known/openid-configuration`.
+	 *
+	 * @see https://openid.net/specs/openid-connect-discovery-1_0.html
+	 */
 	readonly issuer: string;
 	/** Always holds `openid`. */
 	readonly scope: readonly string[];
+	/** How the token request sends the client ID and secret. */
 	readonly clientAuth: ClientAuth;
+	/** True when the authorization request uses PKCE with S256 (RFC 7636). */
 	readonly pkce: boolean;
 }
 
@@ -224,14 +285,18 @@ export interface OidcGrant {
  * and then sends the token request again.
  */
 export interface Exchange {
+	/** Marks a token request. */
 	readonly kind: 'exchange';
+	/** The token request. */
 	readonly request: {
+		/** The method of the token request. */
 		readonly method: 'POST';
 		/** A URL template, as `baseUrl`. */
 		readonly url: string;
 		/** A JSON body. The values are templates and may hold secrets. */
 		readonly json: Values;
 	};
+	/** Where the token is in the response, and where n8n stores it. */
 	readonly token: {
 		/** The dot path of the token in the JSON response, e.g. `data.token`. */
 		readonly path: string;
@@ -246,14 +311,17 @@ export interface Exchange {
 
 /** n8n puts nothing into requests. The built-in node that uses the type reads its fields. */
 export interface NoAuth {
+	/** Marks a type that puts nothing into requests. */
 	readonly kind: 'none';
 }
 
 /** The escape hatch: code signs each request. It sees every secret. */
 export interface CustomAuth<F extends Shape = Shape> {
+	/** Marks code that signs requests. */
 	readonly kind: 'custom';
 	/** Why no declarative placement fits. A reviewer reads it. */
 	readonly reason: string;
+	/** Gives the request with the credential applied. It sees every secret. */
 	sign(data: CredentialData<F>, request: IHttpRequestOptions): Promise<IHttpRequestOptions>;
 }
 
@@ -269,17 +337,29 @@ export type CredentialScheme<F extends Shape = Shape> =
 	| Exchange
 	| NoAuth
 	| CustomAuth<F>
-	/** The type stays a legacy class in nodes-base. Only its name is shared. */
-	| { readonly kind: 'compat' };
+	| {
+			/** The type stays a legacy class in nodes-base. Only its name is shared. */
+			readonly kind: 'compat';
+	  };
 
 interface AuthorizationCodeSpec<F extends Shape, A extends string, T extends string> {
+	/** The authorization endpoint (RFC 6749 §3.1), e.g. `https://example.com/oauth/authorize`. */
 	readonly authorizationEndpoint: UrlTemplate<F, A>;
+	/** The token endpoint (RFC 6749 §3.2), e.g. `https://example.com/oauth/token`. */
 	readonly tokenEndpoint: UrlTemplate<F, T>;
 	/** The provider scopes the app asks for at consent. */
 	readonly scope?: readonly string[];
-	/** Default `client_secret_basic`. */
+	/**
+	 * How the token request sends the client ID and secret.
+	 *
+	 * @defaultValue `'client_secret_basic'`
+	 */
 	readonly clientAuth?: ClientAuth;
-	/** PKCE with S256 (RFC 7636). Default `true`. */
+	/**
+	 * PKCE with S256 (RFC 7636).
+	 *
+	 * @defaultValue `true`
+	 */
 	readonly pkce?: boolean;
 	/** Extra query parameters of the authorization request, e.g. `{ access_type: 'offline' }`. */
 	readonly authorizationQuery?: Values;
@@ -288,21 +368,49 @@ interface AuthorizationCodeSpec<F extends Shape, A extends string, T extends str
 }
 
 interface ClientCredentialsSpec<F extends Shape, T extends string> {
+	/** The token endpoint (RFC 6749 §3.2). */
 	readonly tokenEndpoint: UrlTemplate<F, T>;
+	/** The provider scopes that the app asks for. */
 	readonly scope?: readonly string[];
-	/** Default `client_secret_basic`. */
+	/**
+	 * How the token request sends the client ID and secret.
+	 *
+	 * @defaultValue `'client_secret_basic'`
+	 */
 	readonly clientAuth?: ClientAuth;
+	/** The form lets the user replace `scope`. */
 	readonly editableScopes?: true;
 }
 
-/** The auth builders, typed by the fields of the credential type. A typo in a field fails `tsc`. */
+/**
+ * The auth builders, typed by the fields of the credential type. A typo in a field fails `tsc`.
+ * `defineCredential` passes them to `auth` as `a`.
+ *
+ * @example
+ * ```ts
+ * auth: (a) => a.header('X-Api-Key', '{apiKey}'),
+ * ```
+ * @see `docs/credentials-triggers.md`
+ */
 export interface AuthBuilders<F extends Shape> {
-	/** `Authorization: Bearer <field>`. */
+	/**
+	 * `Authorization: Bearer <field>` (RFC 6750).
+	 *
+	 * @example
+	 * ```ts
+	 * auth: (a) => a.bearer('apiKey'),
+	 * ```
+	 */
 	bearer<const D extends Values = NoFields>(
 		field: FieldName<F>,
-		options?: { readonly defaults?: Templates<F, D> },
+		options?: {
+			/** Headers n8n sets only when the request has none of that name, e.g. an API version. */
+			readonly defaults?: Templates<F, D>;
+		},
 	): Placement;
+	/** One header with a template value, e.g. `a.header('X-Api-Key', '{apiKey}')`. */
 	header<const T extends string>(name: string, value: Template<F, T>): Placement;
+	/** One query parameter with a template value, e.g. `a.query('key', '{apiKey}')`. */
 	query<const T extends string>(name: string, value: Template<F, T>): Placement;
 	/** HTTP basic authentication, e.g. `a.basic('{email}/token', '{apiToken}')`. */
 	basic<const U extends string, const P extends string>(
@@ -318,8 +426,11 @@ export interface AuthBuilders<F extends Shape> {
 		const Q extends Values = NoFields,
 		const D extends Values = NoFields,
 	>(spec: {
+		/** Header templates by header name. */
 		readonly headers?: Templates<F, H>;
+		/** Query parameter templates by parameter name. */
 		readonly query?: Templates<F, Q>;
+		/** Headers n8n sets only when the request has none of that name. */
 		readonly defaults?: Templates<F, D>;
 		/**
 		 * Adds the fields `header`, `headerName` and `headerValue`: one header the user names. It
@@ -342,34 +453,63 @@ export interface AuthBuilders<F extends Shape> {
 		clientCredentials<const T extends string>(spec: ClientCredentialsSpec<F, T>): OAuth2Grant;
 		/** RFC 8628. */
 		deviceCode<const D extends string, const T extends string>(spec: {
+			/** The device authorization endpoint (RFC 8628 §3.1). */
 			readonly deviceAuthorizationEndpoint: UrlTemplate<F, D>;
+			/** The token endpoint. */
 			readonly tokenEndpoint: UrlTemplate<F, T>;
+			/** The provider scopes that the app asks for. */
 			readonly scope?: readonly string[];
 		}): DeviceCodeGrant;
 		/** RFC 7523 §2.1, signed with RS256. */
 		jwtBearer<const T extends string, const C extends Values>(spec: {
+			/** The token endpoint. */
 			readonly tokenEndpoint: UrlTemplate<F, T>;
+			/** The secret field with the PEM private key. */
 			readonly key: SecretName<F>;
+			/** Claim templates, e.g. `{ iss: '{email}', scope: '{$scopes}' }`. No secret. */
 			readonly claims: ClaimTemplates<F, C>;
+			/** The provider scopes that the app asks for. */
 			readonly scope?: readonly string[];
 		}): JwtBearerGrant;
 		/** RFC 8693. */
 		tokenExchange<const T extends string>(spec: {
+			/** The token endpoint. */
 			readonly tokenEndpoint: UrlTemplate<F, T>;
+			/** The secret field with the subject token. */
 			readonly subjectToken: SecretName<F>;
+			/** A token type URI of RFC 8693 §3, e.g. `urn:ietf:params:oauth:token-type:jwt`. */
 			readonly subjectTokenType: `urn:${string}`;
+			/** The logical name of the target service (RFC 8693 §2.1). */
 			readonly audience?: string;
+			/** RFC 8707: the API the token is for. */
 			readonly resource?: `https://${string}`;
+			/** The provider scopes that the app asks for. */
 			readonly scope?: readonly string[];
+			/**
+			 * How the token request sends the client ID and secret.
+			 *
+			 * @defaultValue `'client_secret_basic'`
+			 */
 			readonly clientAuth?: ClientAuth;
 		}): TokenExchangeGrant;
 	};
 	/** OpenID Connect: the endpoints come from the discovery document of `issuer`. */
 	oidc<const I extends string>(spec: {
+		/** The issuer URL, e.g. `https://accounts.example.com`. */
 		readonly issuer: UrlTemplate<F, I>;
 		/** `openid` is always added. */
 		readonly scope?: readonly string[];
+		/**
+		 * How the token request sends the client ID and secret.
+		 *
+		 * @defaultValue `'client_secret_basic'`
+		 */
 		readonly clientAuth?: ClientAuth;
+		/**
+		 * PKCE with S256 (RFC 7636).
+		 *
+		 * @defaultValue `true`
+		 */
 		readonly pkce?: boolean;
 	}): OidcGrant;
 	/**
@@ -382,22 +522,35 @@ export interface AuthBuilders<F extends Shape> {
 		const H extends Values = NoFields,
 		const Q extends Values = NoFields,
 	>(spec: {
+		/** The URL of the token request, as `baseUrl`, e.g. `{url}/api/login`. */
 		readonly post: UrlTemplate<F, U>;
+		/** The JSON body. The values are templates and may hold secrets. */
 		readonly json?: Templates<F, J>;
+		/** Where the token is in the response, and where n8n stores it. */
 		readonly token: {
+			/** The dot path of the token in the JSON response, e.g. `data.token`. */
 			readonly path: string;
-			/** Default `token`. Keep the legacy name, so a stored token stays valid. */
+			/**
+			 * The hidden field that stores the token. Keep the legacy name, so a stored token stays valid.
+			 *
+			 * @defaultValue `'token'`
+			 */
 			readonly field?: string;
+			/** The dot path of the lifetime in seconds, e.g. `expires_in`. */
 			readonly expiresIn?: string;
 		};
+		/** Header templates. `{$token}` is the token, e.g. `Bearer {$token}`. */
 		readonly headers?: TokenTemplates<F, H>;
+		/** Query parameter templates. `{$token}` is the token. */
 		readonly query?: TokenTemplates<F, Q>;
 	}): Exchange;
 	/** Fields only: n8n puts nothing into requests, e.g. an app secret that verifies webhooks. */
 	none(): NoAuth;
 	/** The last resort, when no placement fits. `reason` says why. */
 	custom(spec: {
+		/** Why no declarative placement fits. A reviewer reads it. */
 		readonly reason: string;
+		/** Gives the request with the credential applied. It sees every secret. */
 		sign(data: CredentialData<F>, request: IHttpRequestOptions): Promise<IHttpRequestOptions>;
 	}): CustomAuth<F>;
 }
@@ -416,10 +569,13 @@ export interface CredentialType<Name extends string = string, F extends Shape = 
 	 * none: its legacy class defines it.
 	 */
 	readonly semver?: string;
+	/** The type name in the n8n UI, e.g. `Notion API`. */
 	readonly displayName: string;
+	/** The n8n docs page of the type. */
 	readonly documentationUrl?: string;
 	/** The stored fields. `field.secret` fields go only to n8n and to `custom` code. */
 	readonly fields?: F;
+	/** How n8n signs a request: what `auth` gave. */
 	readonly scheme: CredentialScheme<F>;
 	/**
 	 * The API base URL, e.g. `https://{subdomain}.zendesk.com/api/v2`. It replaces the node's, and
@@ -452,7 +608,9 @@ export interface BodyMatch {
 
 /** The test fails with `message` when the response body matches `body`. */
 export interface TestRule {
+	/** The pattern that the response body must match for the rule to fail the test. */
 	readonly body: BodyMatch;
+	/** The message the form shows when the rule fails the test. */
 	readonly message: string;
 }
 
@@ -467,10 +625,22 @@ interface TestOptions {
 
 /** A GET of a path, or a POST of a path with a body. */
 export type CredentialTest = TestOptions &
-	({ readonly get: string } | { readonly post: string; readonly body?: Values });
+	(
+		| {
+				/** The path to GET, e.g. `/users/me`. */
+				readonly get: string;
+		  }
+		| {
+				/** The path to POST. */
+				readonly post: string;
+				/** The JSON body templates. They may hold secrets. */
+				readonly body?: Values;
+		  }
+	);
 
 /** A text the form shows, e.g. a security tip. */
 export interface Notice {
+	/** The text. */
 	readonly text: string;
 	/** The form shows it only while each named field has this value. */
 	readonly when?: Readonly<Partial<Record<string, string | number | boolean>>>;
@@ -478,6 +648,7 @@ export interface Notice {
 	readonly deployment?: 'cloud' | 'hosted';
 }
 
+/** Any credential type, e.g. for a list of types. */
 export type AnyCredentialType = CredentialType<string, Shape>;
 
 type PlainShape<F extends Shape> = {
@@ -486,7 +657,12 @@ type PlainShape<F extends Shape> = {
 
 /** The credential that `run()` reads: the type name, and its fields without the secrets. */
 export type RunCredential<T> = T extends CredentialType<infer Name, infer F>
-	? { readonly type: Name; readonly fields: CredentialData<PlainShape<F>> }
+	? {
+			/** The n8n type name of the credential that the user picked. */
+			readonly type: Name;
+			/** The fields of the credential, without the secrets. */
+			readonly fields: CredentialData<PlainShape<F>>;
+		}
 	: never;
 
 /** The data keys every type in `T` has, e.g. for a webhook signing secret. */
@@ -503,6 +679,7 @@ export interface Credential<
 	T extends AnyCredentialType = AnyCredentialType,
 	Scope extends string = string,
 > {
+	/** The credential types that a user may pick. */
 	readonly types: readonly T[];
 	/** Each scope with what it allows, e.g. `{ 'content:read': 'Read pages and databases' }`. */
 	readonly scopes: Readonly<Record<Scope, string>>;
@@ -510,13 +687,45 @@ export interface Credential<
 	readonly optional: boolean;
 }
 
+/**
+ * The credential of a node: the types a user may pick. An action can need no scope.
+ *
+ * @example
+ * ```ts
+ * credential: credential({ types: [notionToken, notionOAuth2] }),
+ * ```
+ */
 export function credential<const T extends AnyCredentialType>(spec: {
+	/** The credential types that a user may pick. */
 	readonly types: readonly T[];
+	/**
+	 * The node also runs without a credential (a public HTTP API).
+	 *
+	 * @defaultValue `false`
+	 */
 	readonly optional?: boolean;
 }): Credential<T, never>;
+/**
+ * The credential of a node, with the scopes its actions may list.
+ *
+ * @example
+ * ```ts
+ * credential: credential({
+ *   types: [notionToken],
+ *   scopes: { 'content:read': 'Read pages, databases and data sources' },
+ * }),
+ * ```
+ */
 export function credential<const T extends AnyCredentialType, const Scope extends string>(spec: {
+	/** The credential types that a user may pick. */
 	readonly types: readonly T[];
+	/** Each scope with what it allows. An action lists the scopes it needs in `scopes`. */
 	readonly scopes: Readonly<Record<Scope, string>>;
+	/**
+	 * The node also runs without a credential (a public HTTP API).
+	 *
+	 * @defaultValue `false`
+	 */
 	readonly optional?: boolean;
 }): Credential<T, Scope>;
 export function credential(spec: {
@@ -829,6 +1038,7 @@ const checked = <T extends AnyCredentialType>(type: T): T => {
  * last resort.
  *
  * @example
+ * ```ts
  * export const notionToken = defineCredential({
  *   id: 'notion.token',
  *   legacyName: 'notionApi',
@@ -838,6 +1048,8 @@ const checked = <T extends AnyCredentialType>(type: T): T => {
  *   auth: (a) => a.bearer('apiKey'),
  *   test: { get: '/users/me' },
  * });
+ * ```
+ * @see `docs/credentials-triggers.md`
  */
 export function defineCredential<
 	const Id extends `${string}.${string}`,
@@ -851,21 +1063,43 @@ export function defineCredential<
 	/** The name of the legacy n8n type this replaces, e.g. `notionApi`, so stored data resolves. */
 	readonly legacyName?: Name;
 	/**
-	 * The major, 1 when omitted. Bump it when stored data or a saved workflow can break: a new
-	 * required field, a new host, a new scheme.
+	 * The major. Bump it when stored data or a saved workflow can break: a new required field, a
+	 * new host, a new scheme.
+	 *
+	 * @defaultValue `1`
 	 */
 	readonly version?: number;
-	/** Bump for an additive change, e.g. a new optional field. 0 when omitted. */
+	/**
+	 * Bump for an additive change, e.g. a new optional field.
+	 *
+	 * @defaultValue `0`
+	 */
 	readonly minor?: number;
-	/** Bump for a change of text only. 0 when omitted. */
+	/**
+	 * Bump for a change of text only.
+	 *
+	 * @defaultValue `0`
+	 */
 	readonly patch?: number;
+	/** The type name in the n8n UI, e.g. `Notion API`. */
 	readonly displayName: string;
 	/** The n8n docs page, e.g. `notion`. */
 	readonly docs?: string;
+	/** The stored fields, e.g. `{ apiKey: field.secret('API Key') }`. */
 	readonly fields?: F;
+	/**
+	 * The API base URL: `https://…`, a template that starts with a URL field, or one URL per
+	 * value of an options field. It replaces the base URL of the node, and its host is a
+	 * credential host.
+	 */
 	readonly baseUrl?: BaseUrl<F, B>;
 	/** Hosts besides the host of `baseUrl`. */
 	readonly hosts?: readonly string[];
+	/**
+	 * How n8n signs a request, from the scheme builders `a`, e.g. `(a) => a.bearer('apiKey')`.
+	 *
+	 * @see {@link AuthBuilders}
+	 */
 	readonly auth: (a: AuthBuilders<F>) => CredentialScheme<F>;
 	/**
 	 * A GET of this path, or a POST with a body, after `baseUrl` with the credential applied. The
@@ -873,12 +1107,24 @@ export function defineCredential<
 	 */
 	readonly test?: TestOptions &
 		(
-			| { readonly get: `/${string}` }
-			| { readonly post: `/${string}`; readonly body?: Templates<F, TB> }
+			| {
+					/** The path to GET, e.g. `/users/me`. */
+					readonly get: `/${string}`;
+			  }
+			| {
+					/** The path to POST. */
+					readonly post: `/${string}`;
+					/** The JSON body templates. They may hold secrets. */
+					readonly body?: Templates<F, TB>;
+			  }
 		);
+	/** A text the form shows after the fields, e.g. a security tip. */
 	readonly notice?: {
+		/** The text. */
 		readonly text: string;
+		/** The form shows it only while each named field has this value. */
 		readonly when?: { readonly [K in FieldName<F>]?: string | number | boolean };
+		/** The form shows it only on this kind of n8n deployment. */
 		readonly deployment?: 'cloud' | 'hosted';
 	};
 	/**
@@ -914,6 +1160,11 @@ export function defineCredential<
  * An existing n8n credential type, by name, e.g. `gmailOAuth2`. Saved credentials keep working
  * because the legacy class still defines the type. `fields` declares what code reads; the
  * runtime checks them when it reads the credential.
+ *
+ * @example
+ * ```ts
+ * export const gmailOAuth2 = compat('gmailOAuth2', { hosts: ['gmail.googleapis.com'] });
+ * ```
  */
 export function compat<
 	const Name extends string,
@@ -924,8 +1175,11 @@ export function compat<
 	spec: {
 		/** `service.scheme`. The legacy name when not set. */
 		readonly id?: string;
+		/** The fields that node code reads. The runtime checks them when it reads the credential. */
 		readonly fields?: F;
+		/** The hosts that n8n may send the credential to. */
 		readonly hosts?: readonly string[];
+		/** The API base URL, as in `defineCredential`. Its host is a credential host. */
 		readonly baseUrl?: BaseUrl<F, B>;
 	} = {},
 ): CredentialType<Name, F> {

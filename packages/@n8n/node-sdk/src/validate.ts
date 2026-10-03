@@ -81,7 +81,16 @@ const branchFor = (branches: readonly JsonSchema[], name: string, value: unknown
 export function validate(
 	value: unknown,
 	schema: JsonSchema,
-	options: { path?: string; allowExpressions?: boolean } = {},
+	options: {
+		/**
+		 * The path of `value` in the messages.
+		 *
+		 * @defaultValue `'input'`
+		 */
+		path?: string;
+		/** Accept `={{ }}` expression strings, as at build time. */
+		allowExpressions?: boolean;
+	} = {},
 ): string[] {
 	const issues: string[] = [];
 	const visit = (current: unknown, node: JsonSchema, at: string): void => {

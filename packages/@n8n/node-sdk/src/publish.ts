@@ -202,7 +202,12 @@ export async function replayFixtures(
 	{ manifest, bundle }: Pick<FrozenAction, 'manifest' | 'bundle'>,
 	fixtures: ContractFixtures,
 	/** The action and its executor, e.g. in the sandbox. The default runs the bundle here. */
-	loaded?: { readonly contract: Action; readonly executor: Executor },
+	loaded?: {
+		/** The action that the bundle exports. */
+		readonly contract: Action;
+		/** The executor that runs it. */
+		readonly executor: Executor;
+	},
 ): Promise<string[]> {
 	const contract = loaded?.contract ?? evaluateBundle(bundle, manifest.nodeContract);
 	const migrations = (fixtures.migrations ?? []).flatMap(({ fromMajor, params, expected }) => {
@@ -405,8 +410,19 @@ export function packContractPackage(
 
 /** The registry operations the publish tool needs. */
 export interface ContractRegistry {
+	/** The published versions of a package. Empty when the package does not exist. */
 	versions(name: string): Promise<readonly string[]>;
-	tarball(name: string, version: string): Promise<{ data: Buffer; integrity: string }>;
+	/** The tarball of one version and its npm integrity. */
+	tarball(
+		name: string,
+		version: string,
+	): Promise<{
+		/** The tarball bytes. */
+		data: Buffer;
+		/** The npm integrity, e.g. `sha512-…`. */
+		integrity: string;
+	}>;
+	/** Publishes one version. */
 	publish(name: string, version: string, tarball: Buffer): Promise<void>;
 }
 
@@ -458,10 +474,15 @@ export function npmRegistry(url: string): ContractRegistry {
 	};
 }
 
+/** What `publishAction` publishes, and where. */
 export interface PublishOptions {
+	/** The source file that exports the action, e.g. `src/nodes/notion/actions/user.get.ts`. */
 	readonly entryFile: string;
+	/** The export name of the action in `entryFile`, e.g. `getUser`. */
 	readonly exportName: string;
+	/** The fixtures that publish replays before it publishes. */
 	readonly fixtures: ContractFixtures;
+	/** The registry to publish to, e.g. `npmRegistry(url)`. */
 	readonly registry: ContractRegistry;
 	/** PEM of the ed25519 publisher key. It lives outside the repo. */
 	readonly privateKey: string;

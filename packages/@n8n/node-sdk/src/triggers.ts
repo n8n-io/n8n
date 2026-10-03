@@ -52,48 +52,100 @@ export type TriggerKind = 'webhook' | 'poll' | 'event' | NativeEvent;
 
 /** The HTTP request a webhook trigger gets. Header names are lower case. */
 export interface WebhookRequest {
+	/** The parsed request body. */
 	readonly body: IDataObject;
+	/** The request headers, by lower-case name. */
 	readonly headers: Readonly<Record<string, string | string[] | undefined>>;
+	/** The query parameters of the request URL. */
 	readonly query: Readonly<Record<string, unknown>>;
 }
 
 /** An HMAC of the raw body in a request header. */
 export interface Signature<K extends string = string> {
+	/** The HMAC hash function (RFC 2104). */
 	readonly algorithm: 'sha1' | 'sha256' | 'sha512';
 	/** The request header with the signature, e.g. `x-hub-signature-256`. */
 	readonly header: string;
 	/** The text before the digest, e.g. `sha256=`. */
 	readonly prefix?: string;
+	/**
+	 * The text encoding of the digest.
+	 *
+	 * @defaultValue `'hex'`
+	 */
 	readonly encoding?: 'hex' | 'base64';
 	/**
 	 * `generated`: n8n makes a random secret at registration, sends it in the create request, and
 	 * stores it. `{ credential }`: a field of the node's credential, e.g. a signing secret.
 	 */
-	readonly secret: 'generated' | { readonly credential: K };
+	readonly secret:
+		| 'generated'
+		| {
+				/** The credential field with the signing secret. */
+				readonly credential: K;
+		  };
 }
 
 /** Declarative registration: n8n creates the remote webhook on activation and deletes it after. */
 export interface Registration<I> {
 	/** `secret` is set when the signature secret is `generated`. */
 	create(context: {
+		/** The trigger input. */
 		readonly input: I;
+		/** The webhook URL of n8n that the service must call. */
 		readonly url: string;
+		/** The generated signing secret, or `undefined`. */
 		readonly secret: string | undefined;
 	}): HttpRequest;
 	/** The remote webhook ID in the create response. */
 	id(body: unknown): string | undefined;
-	delete(context: { readonly input: I; readonly id: string }): HttpRequest;
+	/** The request that deletes the remote webhook when the workflow stops. */
+	delete(context: RegisteredHook<I>): HttpRequest;
 	/** A request that answers 404 when the remote webhook is gone. Without it, a stored ID counts. */
-	check?(context: { readonly input: I; readonly id: string }): HttpRequest;
+	check?(context: RegisteredHook<I>): HttpRequest;
 }
 
+/** A remote webhook that n8n created. */
+interface RegisteredHook<I> {
+	/** The trigger input. */
+	readonly input: I;
+	/** The remote webhook ID that `id` gave. */
+	readonly id: string;
+}
+
+/**
+ * A webhook trigger: the n8n endpoint, how n8n checks a request, and how n8n creates the
+ * remote webhook.
+ *
+ * @example
+ * ```ts
+ * webhook: {
+ *   verify: { algorithm: 'sha256', header: 'x-hub-signature-256', prefix: 'sha256=', secret: 'generated' },
+ *   register: { create, id: (body) => parse(hook, body).id ?? undefined, delete: remove },
+ *   emit: (request) => [request.body],
+ * },
+ * ```
+ * @see `docs/credentials-triggers.md`
+ */
 export interface WebhookConfig<I, Out, K extends string> {
+	/** The n8n endpoint that the service calls. */
 	readonly endpoint?: {
+		/**
+		 * The HTTP method that the endpoint takes.
+		 *
+		 * @defaultValue `'POST'`
+		 */
 		readonly method?: HttpMethod;
-		/** The path after the webhook URL of the workflow. 'webhook' when not set. */
+		/**
+		 * The path after the webhook URL of the workflow.
+		 *
+		 * @defaultValue `'webhook'`
+		 */
 		readonly path?: string;
 	};
+	/** The HMAC signature that each request must have. n8n refuses a request without it. */
 	readonly verify?: Signature<K>;
+	/** How n8n creates the remote webhook on activation and deletes it after. */
 	readonly register?: Registration<I>;
 	/**
 	 * The items of one request. An empty list answers 200 and starts no execution, e.g. for a
@@ -105,32 +157,61 @@ export interface WebhookConfig<I, Out, K extends string> {
 /** Where a poll continues: an item time, or an item ID. */
 export type PollCursor<T> =
 	| {
+			/** The ISO 8601 time of an item, e.g. its creation time. */
 			timestamp(item: T): string;
 			/** Items with the latest time are kept by key, so the next poll skips them. */
 			key(item: T): string;
 			/** The first poll starts at the current time, cut to this unit for a coarse API clock. */
 			readonly precision?: 'minute' | 'second';
 	  }
-	| { id(item: T): number };
+	| {
+			/** The increasing numeric ID of an item. */
+			id(item: T): number;
+	  };
 
+/**
+ * A poll trigger: n8n polls on the Poll Times of the node, keeps a cursor, and emits each new
+ * item once.
+ *
+ * @example
+ * ```ts
+ * poll: {
+ *   request: ({ since }) => ({ path: '/events', query: { since } }),
+ *   response: t.obj({ events: t.arr(event) }),
+ *   items: (page) => page.events,
+ *   cursor: { timestamp: (item) => item.created, key: (item) => item.id },
+ * },
+ * ```
+ * @see `docs/credentials-triggers.md`
+ */
 export interface PollConfig<I, T, Out, P = unknown> {
 	/**
 	 * `since` is the cursor (a time or an ID). It is not set in a manual run. `limit` is the most
 	 * items the host uses, e.g. 1 in a manual run, so the request can ask for a small page.
 	 */
 	request(context: {
+		/** The trigger input. */
 		readonly input: I;
+		/** The cursor of the last poll. Not set in a manual run and in the first poll. */
 		readonly since: string | undefined;
+		/** The page cursor that `next` gave. Not set for the first page. */
 		readonly page: string | undefined;
+		/** The most items the host uses, e.g. 1 in a manual run. */
 		readonly limit: number | undefined;
 	}): HttpRequest;
 	/** The schema of one response body. A page in another shape fails with its path. */
 	readonly response: Schema<P, boolean, boolean, unknown>;
+	/** The API items of one page, e.g. `(page) => page.results`. */
 	items(page: P): readonly T[];
 	/** The cursor of the next page of one poll. A missing, null or empty cursor ends the poll. */
 	next?(page: P): string | null | undefined;
+	/** How the next poll knows where to continue: an item time or an item ID. */
 	readonly cursor: PollCursor<T>;
-	/** 'skip' (the default): the first poll only sets the cursor. 'emit': it also emits. */
+	/**
+	 * `skip`: the first poll only sets the cursor. `emit`: it also emits.
+	 *
+	 * @defaultValue `'skip'`
+	 */
 	readonly firstRun?: 'skip' | 'emit';
 	/** The output item of an API item. The API item itself when not set. */
 	map?(item: T, input: I): Out;

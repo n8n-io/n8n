@@ -20,7 +20,9 @@ const docOf = (schema: JsonSchema) => schema['x-n8n-hint'] ?? schema.description
 
 /** A local type that replaces a type text used more than once in a module. */
 interface Alias {
+	/** The local type name. */
 	readonly name: string;
+	/** True when the type takes the item and context parameters. */
 	readonly generic: boolean;
 }
 
@@ -33,6 +35,7 @@ interface Mode {
 	optionalOutputs?: boolean;
 	/** An optional output field also takes `null`: the host passes response drift on. */
 	nullableOutputs?: boolean;
+	/** The indent of the current line. */
 	indent: string;
 	/** Print short objects without docs on one line. The agent reads every byte of a module. */
 	compact?: boolean;
@@ -358,10 +361,13 @@ function itemSchema(output: JsonSchema): JsonSchema {
 	};
 }
 
+/** One factory of a generated node module: the contract it types and the node it emits. */
 export interface GeneratedAction {
+	/** The contract document that types the factory. */
 	readonly contract: ContractDocument;
 	/** The factory path in the module: `notion.databasePage.getAll(...)`. */
 	readonly resource?: string;
+	/** The factory name, e.g. `getAll`. */
 	readonly operation: string;
 	/** The n8n node type, e.g. `@n8n/nodes-base-next.notionDatabasePageGetAll` or `n8n-nodes-base.notion`. */
 	readonly nodeType: string;
@@ -370,8 +376,11 @@ export interface GeneratedAction {
 	 * `databasePage.getAll`. A derived node can select its action by an operation alone.
 	 */
 	readonly slot?: {
+		/** The node version of the slot, e.g. `4`. */
 		readonly typeVersion: number;
+		/** The `resource` parameter value of the slot. */
 		readonly resource?: string;
+		/** The `operation` parameter value of the slot. */
 		readonly operation?: string;
 	};
 	/** The node version the factory emits when it is not the contract major: a native node. */
@@ -389,7 +398,9 @@ export interface Pairing {
 	readonly trigger: string;
 	/** The node type of the reply step, e.g. `n8n-nodes-base.respondToWebhook`. */
 	readonly reply: string;
+	/** The trigger field that makes the caller wait, e.g. `responseMode`. */
 	readonly field?: string;
+	/** The value of `field` that makes the caller wait, e.g. `responseNode`. */
 	readonly value?: string;
 }
 

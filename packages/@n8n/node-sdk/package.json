@@ -67,6 +67,7 @@
     "lint:fix": "eslint . --fix",
     "spec:generate": "tsx scripts/spec.ts",
     "spec:check": "tsx scripts/spec.ts --check",
+    "jsdoc:check": "tsx scripts/jsdoc-coverage.ts --list",
     "sandbox:build": "tsx scripts/sandbox.ts",
     "watch": "tsc -p tsconfig.build.json --watch",
     "test": "vitest run",

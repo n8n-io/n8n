@@ -67,15 +67,21 @@ type Duration = Partial<Record<`${TimeUnit}s`, number>>;
 
 /** A Luxon DateTime, as n8n expressions expose it. */
 export interface DateTime {
+	/** ISO 8601 text, e.g. `2026-09-01T10:00:00.000+02:00`. */
 	toISO(): string;
 	/** `2026-09-01` */
 	toISODate(): string;
 	/** Luxon tokens, e.g. `yyyy-MM-dd` */
 	toFormat(format: string): string;
+	/** Milliseconds since the Unix epoch. */
 	toMillis(): number;
+	/** A later time, e.g. `.plus({ days: 1 })`. */
 	plus(duration: Duration): DateTime;
+	/** An earlier time, e.g. `.minus({ hours: 2 })`. */
 	minus(duration: Duration): DateTime;
+	/** The start of the unit, e.g. `.startOf('day')`. */
 	startOf(unit: TimeUnit): DateTime;
+	/** The end of the unit, e.g. `.endOf('month')`. */
 	endOf(unit: TimeUnit): DateTime;
 }
 
@@ -83,12 +89,25 @@ export interface DateTime {
 export interface Dollar<Ctx> {
 	/** The paired item of an earlier node on this path. */
 	<K extends keyof Ctx & string>(name: K): Ctx[K];
+	/** The current time (`$now`). */
 	readonly now: DateTime;
+	/** The start of today (`$today`). */
 	readonly today: DateTime;
 	/** Parse an ISO 8601 string. */
 	date(iso: string): DateTime;
-	readonly execution: { readonly id: string };
-	readonly workflow: { readonly id: string; readonly name: string };
+	/** The current execution (`$execution`). */
+	readonly execution: {
+		/** The execution ID. */
+		readonly id: string;
+	};
+	/** The current workflow (`$workflow`). */
+	readonly workflow: {
+		/** The workflow ID. */
+		readonly id: string;
+		/** The workflow name. */
+		readonly name: string;
+	};
+	/** The variables of the instance (`$vars`). */
 	readonly vars: Readonly<Record<string, string>>;
 }
 
@@ -97,8 +116,11 @@ export interface Dollar<Ctx> {
  * store. Pass it to a binary field of a node: `file: (item) => item.binary.data`.
  */
 export interface Binary {
+	/** The MIME type, e.g. `image/png`. */
 	readonly mimeType: string;
+	/** The file name, e.g. `photo.png`. */
 	readonly fileName?: string;
+	/** The file extension, e.g. `png`. */
 	readonly fileExtension?: string;
 	/** For people, e.g. `1.2 MB`. */
 	readonly fileSize?: string;
@@ -108,6 +130,7 @@ export interface Binary {
 
 /** The brand of an expression from `expr()`. It keeps the text, as `@n8n/expression-types` does. */
 interface ExpressionMark<E extends string> {
+	/** The expression text. */
 	readonly text: E;
 }
 
@@ -116,10 +139,14 @@ interface ExpressionMark<E extends string> {
  * brand is optional, so a saved `'={{ … }}'` string still fits. The build checks the expression
  * as it checks a lambda: against the item of the node before, earlier nodes, and the field type.
  */
-export type Expression = `=${string}` & { readonly __n8n?: ExpressionMark<string> };
+export type Expression = `=${string}` & {
+	/** The brand of `expr()`. It has no value at run time. */
+	readonly __n8n?: ExpressionMark<string>;
+};
 
 /** What `expr(text)` returns: the expression text with its `=`. */
 export type Expr<E extends string> = (E extends `=${string}` ? E : `=${E}`) & {
+	/** The brand of `expr()`. It has no value at run time. */
 	readonly __n8n: ExpressionMark<E>;
 };
 
@@ -136,6 +163,7 @@ export interface ResponsePage {
 	readonly body: Loose;
 	/** Lower-case names, e.g. `link`. */
 	readonly headers: Readonly<Record<string, string>>;
+	/** The HTTP status code. */
 	readonly statusCode: number;
 }
 
@@ -153,7 +181,15 @@ export type PageValue<V> = ((page: ResponsePage) => V) | Expression;
 export type OpenValue = {} | null | undefined;
 
 /** An item on an error output: the failed item's fields plus `error`. */
-export type ErrorItem = Loose & { error: { message: string; description?: string | null } };
+export type ErrorItem = Loose & {
+	/** Why the node failed. */
+	error: {
+		/** The error message. */
+		message: string;
+		/** More detail, when the node gives it. */
+		description?: string | null;
+	};
+};
 
 type Primitive = string | number | boolean | null;
 
@@ -163,15 +199,25 @@ type Primitive = string | number | boolean | null;
  * unless `additionalProperties` is `true`.
  */
 export interface ValueSchema {
+	/** The JSON type. */
 	readonly type?: 'string' | 'number' | 'integer' | 'boolean' | 'null' | 'array' | 'object';
+	/** The allowed values. */
 	readonly enum?: readonly Primitive[];
+	/** The one allowed value. */
 	readonly const?: Primitive;
+	/** The schema of each named field. */
 	readonly properties?: { readonly [key: string]: ValueSchema };
+	/** The fields that must be present. */
 	readonly required?: readonly string[];
+	/** `true` allows fields that `properties` does not name. */
 	readonly additionalProperties?: boolean;
+	/** The schema of each array item. */
 	readonly items?: ValueSchema;
+	/** What the value is. */
 	readonly description?: string;
+	/** A string format, e.g. `date-time`. */
 	readonly format?: string;
+	/** Sample values. The first one seeds the trigger sample. */
 	readonly examples?: readonly unknown[];
 }
 
@@ -318,6 +364,7 @@ export interface Compiler {
 	value(value: unknown, root?: LambdaRoot): unknown;
 	/** Compile one lambda to its JavaScript body, for embedding in a larger expression. */
 	js(fn: unknown, root?: LambdaRoot): string;
+	/** Records a build problem of the node. */
 	issue(message: string): void;
 }
 
@@ -352,7 +399,9 @@ export const SLOT_OF_CONNECTION: ReadonlyMap<string, ProviderSlot> = new Map(
 export interface NodeSettings {
 	/** Run the node again when it fails: `maxTries` runs, `waitBetweenTries` ms apart. */
 	readonly retryOnFail?: boolean;
+	/** The most runs with `retryOnFail`. */
 	readonly maxTries?: number;
+	/** The wait between runs with `retryOnFail`, in milliseconds. */
 	readonly waitBetweenTries?: number;
 	/** Emit one empty item when the node emits none. */
 	readonly alwaysOutputData?: boolean;
@@ -360,6 +409,7 @@ export interface NodeSettings {
 	readonly executeOnce?: boolean;
 	/** When the node fails: stop the workflow (default), or emit the error as an item. */
 	readonly onError?: 'stopWorkflow' | 'continueRegularOutput';
+	/** A note on the node. */
 	readonly notes?: string;
 	/** Show `notes` below the node on the canvas. */
 	readonly notesInFlow?: boolean;
@@ -367,25 +417,40 @@ export interface NodeSettings {
 
 /** A node that an AI node uses through an `ai_*` input. It never receives items. */
 export interface ProviderSpec {
+	/** The node name. */
 	readonly name: string;
+	/** The n8n node type. */
 	readonly type: string;
+	/** The node type version. */
 	readonly version: number;
+	/** Compiles the node parameters. */
 	readonly parameters: (compiler: Compiler) => Record<string, unknown>;
+	/** Node settings. */
 	readonly settings?: NodeSettings;
+	/** The providers of this provider, by slot. */
 	readonly providers?: ProviderSpecs;
 }
 
 /** Providers by slot, in input order. */
 export type ProviderSpecs = Partial<Record<ProviderSlot, readonly ProviderSpec[]>>;
 
+/** One node as the build compiles it. */
 export interface NodeSpec {
+	/** The node name. */
 	readonly name: string;
+	/** The n8n node type. */
 	readonly type: string;
+	/** The node type version. */
 	readonly version: number;
+	/** True for a trigger node. */
 	readonly trigger?: boolean;
+	/** Compiles the node parameters. */
 	readonly parameters: (compiler: Compiler) => Record<string, unknown>;
+	/** Sample output items, for verification. */
 	readonly sample?: readonly unknown[];
+	/** Node settings. */
 	readonly settings?: NodeSettings;
+	/** Set by `onError` and `recover`: the node has an error output. */
 	readonly onError?: 'continueErrorOutput';
 	/** Main outputs before the error output. */
 	readonly outputs?: number;
@@ -393,6 +458,7 @@ export interface NodeSpec {
 	readonly requires?: Requires;
 	/** A native trigger or its reply step. The build checks that the two go together. */
 	readonly pairing?: Pairing;
+	/** The providers of an AI node, by slot. */
 	readonly providers?: ProviderSpecs;
 }
 
@@ -406,7 +472,9 @@ export interface Pairing {
 	readonly trigger: string;
 	/** The node type of the reply step. */
 	readonly reply: string;
+	/** The trigger parameter that makes the caller wait. */
 	readonly field?: string;
+	/** The value of `field` that makes the caller wait. */
 	readonly value?: string;
 }
 
@@ -414,29 +482,43 @@ export interface Pairing {
 export interface Requires {
 	/** The node id that owns the credential. */
 	readonly credential: string;
+	/** The scopes that the node needs. */
 	readonly scopes: readonly string[];
 }
 
+/** A connection from an output of one node to an input of another. */
 interface Edge {
+	/** The source node name. */
 	readonly from: string;
+	/** The output index of the source node. */
 	readonly output: number;
+	/** The target node name. */
 	readonly to: string;
+	/** The input index of the target node. */
 	readonly input: number;
 }
 
+/** An open end: an output that the next part connects to. */
 export interface Tail {
+	/** The node name. */
 	readonly node: string;
+	/** The output index. */
 	readonly output: number;
 }
 
+/** The nodes and connections that the build makes. */
 export interface Graph {
+	/** The nodes. */
 	readonly nodes: readonly NodeSpec[];
+	/** The connections. */
 	readonly edges: readonly Edge[];
 }
 
 /** @internal A graph and its open ends. Region builders take and return fragments. */
 export interface Fragment {
+	/** The nodes and connections so far. */
 	readonly graph: Graph;
+	/** The open ends. */
 	readonly tails: readonly Tail[];
 }
 
@@ -448,9 +530,13 @@ declare const routes: unique symbol;
  * It emits `Out` items, and the position after it reads the nodes `Next`.
  */
 export interface Part<In, Ctx, Out, Next> {
+	/** Holds the types of the part. It has no value at run time. */
 	readonly [phantom]?: {
+		/** What the part reads. */
 		readonly read: (item: In, ctx: Ctx) => void;
+		/** The items the part emits. */
 		readonly emit: Out;
+		/** The nodes that the next part reads with `$()`. */
 		readonly next: Next;
 	};
 }
@@ -458,18 +544,28 @@ export interface Part<In, Ctx, Out, Next> {
 /** One node that reads `In` items and emits `Out` items. */
 export interface Step<In, Ctx, Out, N extends string>
 	extends Part<In, Ctx, Out, Ctx & Record<N, Out>> {
+	/** The node name. */
 	readonly name: N;
+	/** The node as the build compiles it. */
 	readonly spec: NodeSpec;
 }
 
 /** A trigger node. It starts a flow: the positions after it read its items. */
 export interface Trigger<Out, N extends string> extends Step<unknown, unknown, Out, N> {
-	readonly spec: NodeSpec & { readonly trigger: true };
+	/** The trigger node as the build compiles it. */
+	readonly spec: NodeSpec & {
+		/** Marks a trigger node. */
+		readonly trigger: true;
+	};
 }
 
 /** A macro, e.g. `when` or `steps(…)`: it builds its nodes from the open ends before it. */
 export interface Region<In, Ctx, Out, Next> extends Part<In, Ctx, Out, Next> {
-	/** @internal */
+	/**
+	 * Builds the nodes of the macro from the open ends before it.
+	 *
+	 * @internal
+	 */
 	readonly region: (from: Fragment) => Fragment;
 }
 
@@ -481,6 +577,7 @@ export interface RoutedStep<In, Ctx, Out, N extends string, Names extends string
 	extends Step<In, Ctx, Out, N> {
 	/** The output names the config makes, in n8n output order. */
 	readonly outputs: readonly string[];
+	/** Holds the output names for the types. It has no value at run time. */
 	readonly [routes]?: Names;
 }
 
@@ -513,10 +610,17 @@ export const PROVIDER_KIND_SLOTS = {
  * the connection type of the slot, and `node()` takes `provider()` or a derived provider.
  */
 export interface Provider<In, Ctx, K extends ProviderKind | ProviderConnection | 'node' = 'node'> {
+	/** The provider node as the build compiles it. */
 	readonly spec: ProviderSpec;
 	/** The slot of a contract provider in its root node. */
 	readonly slot?: ProviderSlot;
-	readonly [phantom]?: { readonly read: (item: In, ctx: Ctx) => void; readonly provides: K };
+	/** Holds the types of the provider. It has no value at run time. */
+	readonly [phantom]?: {
+		/** What the lambdas of the provider read. */
+		readonly read: (item: In, ctx: Ctx) => void;
+		/** What the provider gives. */
+		readonly provides: K;
+	};
 }
 
 /** A `provider()`, or a derived provider of connection type `C`. */
@@ -526,15 +630,23 @@ type SlotProvider<In, Ctx, C extends ProviderConnection> = Provider<In, Ctx, 'no
 export interface Providers<In, Ctx> {
 	/** A chat model. */
 	model?: SlotProvider<In, Ctx, 'ai_languageModel'>;
+	/** The chat memory. */
 	memory?: SlotProvider<In, Ctx, 'ai_memory'>;
 	/** The host gives a contract tool to a LangChain root node as a LangChain tool. */
 	tools?: ReadonlyArray<Provider<In, Ctx, 'node' | 'ai_tool' | 'tool'>>;
+	/** An output parser. */
 	outputParser?: SlotProvider<In, Ctx, 'ai_outputParser'>;
+	/** An embedding model. */
 	embedding?: SlotProvider<In, Ctx, 'ai_embedding'>;
+	/** A vector store. */
 	vectorStore?: SlotProvider<In, Ctx, 'ai_vectorStore'>;
+	/** A retriever. */
 	retriever?: SlotProvider<In, Ctx, 'ai_retriever'>;
+	/** A document loader. */
 	documentLoader?: SlotProvider<In, Ctx, 'ai_document'>;
+	/** A text splitter. */
 	textSplitter?: SlotProvider<In, Ctx, 'ai_textSplitter'>;
+	/** A reranker. */
 	reranker?: SlotProvider<In, Ctx, 'ai_reranker'>;
 }
 
@@ -543,7 +655,14 @@ type ProvidersBySlot = Readonly<
 	Partial<
 		Record<
 			ProviderSlot,
-			{ readonly spec: ProviderSpec } | ReadonlyArray<{ readonly spec: ProviderSpec }>
+			| {
+					/** The provider node as the build compiles it. */
+					readonly spec: ProviderSpec;
+			  }
+			| ReadonlyArray<{
+					/** The provider node as the build compiles it. */
+					readonly spec: ProviderSpec;
+			  }>
 		>
 	>
 >;
@@ -608,7 +727,9 @@ function splitConfig(fields: Readonly<Record<string, unknown>>, grouped?: Provid
 
 /** The resource and operation that select the action of a composed or derived node version. */
 interface Selector {
+	/** The `resource` parameter value. */
 	readonly resource?: string;
+	/** The `operation` parameter value. */
 	readonly operation?: string;
 }
 
@@ -1020,11 +1141,26 @@ export function branchFragment(
 /**
  * Route each item by a condition (an IF node). Items where `if` is true go to `then`, the rest
  * to `else`. Without `else`, false items stop. The open ends of both branches continue.
+ *
+ * @example
+ * ```ts
+ * when({ name: 'Paid?', if: (order) => order.total > 0 }, {
+ *   then: set({ name: 'Paid', fields: { paid: true } }),
+ *   else: set({ name: 'Free', fields: { paid: false } }),
+ * }),
+ * ```
  */
 export function when<In, Ctx, const N extends string, A, B = never>(
-	config: { name: N; if: (item: In, $: Dollar<Ctx>) => boolean },
+	config: {
+		/** The node name, unique in the workflow. */
+		name: N;
+		/** The condition for each item. */
+		if: (item: In, $: Dollar<Ctx>) => boolean;
+	},
 	branches: {
+		/** The part for the items where `if` is true. */
 		then: Part<NoInfer<In>, NoInfer<Ctx & Record<N, In>>, A, unknown>;
+		/** The part for the other items. Without it, they stop. */
 		else?: Part<NoInfer<In>, NoInfer<Ctx & Record<N, In>>, B, unknown>;
 	},
 ): Region<In, Ctx, A | B, Ctx & Record<N, In>>;
@@ -1059,6 +1195,13 @@ export type RouteParts<R, Names extends string, Out, Ctx> = {
  * Run a step with named outputs, e.g. `dataTable.row.exists`, `ai.classify` or a Switch, and
  * continue from each output with its own part. Every output but the last needs a part. The
  * last output is the "no" path (false, missing, other): without a part its items stop.
+ *
+ * @example
+ * ```ts
+ * route(node({ name: 'Big?', type: 'n8n-nodes-base.if', version: 2.2, outputs: ['true', 'false'] }), {
+ *   true: set({ name: 'Big', fields: { big: true } }),
+ * }),
+ * ```
  */
 export function route<In, Ctx, Out, const N extends string, Names extends string, R>(
 	step: RoutedStep<In, Ctx, Out, N, Names>,
@@ -1109,9 +1252,22 @@ type NeededCases<In, F extends keyof In> = string extends In[F]
  * Route each item by the string field `on` (a Switch node). Each case gets the items of its
  * value, with the item type narrowed; `fallback` gets the items of no case. The open ends of
  * all cases continue.
+ *
+ * @example
+ * ```ts
+ * switchOn({ name: 'By kind', on: 'kind' }, {
+ *   bug: set({ name: 'Bug', fields: { urgent: true } }),
+ *   fallback: set({ name: 'Other', fields: { urgent: false } }),
+ * }),
+ * ```
  */
 export function switchOn<In, Ctx, const N extends string, const F extends CaseField<In>, R>(
-	config: { name: N; on: F },
+	config: {
+		/** The node name, unique in the workflow. */
+		name: N;
+		/** The string field whose value picks the case. */
+		on: F;
+	},
 	cases: SwitchParts<In, Ctx & Record<N, In>, F, R>,
 ): Region<In, Ctx, R[keyof R], Ctx & Record<N, In>>;
 export function switchOn(
@@ -1142,9 +1298,15 @@ export function switchOn(
  */
 export function forEach<In, Ctx, const N extends string, B>(
 	config: {
+		/** The node name, unique in the workflow. */
 		name: N;
+		/** The items of one batch. */
 		batchSize: number;
-		options?: { readonly reset?: Value<In, Ctx, boolean> };
+		/** The node options of the `loop.batches` contract. */
+		options?: {
+			/** Start again with the input items, e.g. in an outer loop. */
+			readonly reset?: Value<In, Ctx, boolean>;
+		};
 	},
 	body: Part<NoInfer<In>, NoInfer<Ctx & Record<N, In>>, B, unknown>,
 ): Region<In, Ctx, B, Ctx & Record<N, B>>;
@@ -1160,12 +1322,24 @@ export function forEach(
  * Run `body` again until `until` holds. Each item is the loop state: `next` makes the state
  * of the next pass from the body output. The run fails after `maxIterations` passes.
  * The flow continues with the output of the pass that met `until`.
+ *
+ * @example
+ * ```ts
+ * loop(
+ *   { name: 'Count', maxIterations: 10, until: (out) => out.n >= 3, next: (out) => ({ n: out.n }) },
+ *   set({ name: 'Add', fields: { n: (s) => s.n + 1 } }),
+ * ),
+ * ```
  */
 export function loop<In, Ctx, const N extends string, B, CB, S extends In>(
 	config: {
+		/** The node name, unique in the workflow. */
 		name: N;
+		/** The most passes. The run fails after them. */
 		maxIterations: number;
+		/** True when the loop ends, from the body output. */
 		until: (out: B, $: Dollar<CB>) => boolean;
+		/** The state of the next pass, from the body output. */
 		next: (out: B, $: Dollar<CB>) => S;
 	},
 	body: Part<NoInfer<In>, NoInfer<Ctx & Record<N, In>>, B, CB>,
@@ -1190,11 +1364,22 @@ export function loop(
  * page continues as it arrives. Prefer the pagination of the node when it has one. In
  * execution order v1 the pages can continue last page first: v1 runs the node more to the
  * top left first.
+ *
+ * @example
+ * ```ts
+ * paginate(
+ *   { name: 'Pages', maxPages: 10, next: (page) => (page.next === null ? null : { cursor: page.next }) },
+ *   fetchPage,
+ * ),
+ * ```
  */
 export function paginate<In, Ctx, const N extends string, B, CB, S extends In>(
 	config: {
+		/** The node name, unique in the workflow. */
 		name: N;
+		/** The most pages. The run fails after them. */
 		maxPages: number;
+		/** The cursor state of the next page, or `null` after the last page. */
 		next: (response: B, $: Dollar<CB>) => S | null;
 	},
 	request: Part<NoInfer<In>, NoInfer<Ctx & Record<N, In>>, B, CB>,
@@ -1217,12 +1402,24 @@ export function paginate(
 /**
  * Run `attempt` until `until` holds, with a wait of `every` between attempts. The run fails
  * after `maxAttempts`. The flow continues with the output of the attempt that met `until`.
+ *
+ * @example
+ * ```ts
+ * pollUntil(
+ *   { name: 'Poll', maxAttempts: 5, every: { amount: 30, unit: 'seconds' }, until: (job) => job.done },
+ *   getStatus,
+ * ),
+ * ```
  */
 export function pollUntil<In, Ctx, const N extends string, B, CB>(
 	config: {
+		/** The node name, unique in the workflow. */
 		name: N;
+		/** The most attempts. The run fails after them. */
 		maxAttempts: number;
+		/** The wait between attempts. */
 		every: Interval;
+		/** True when the attempt output is the result. */
 		until: (out: B, $: Dollar<CB>) => boolean;
 	},
 	attempt: Part<NoInfer<In>, NoInfer<Ctx & Record<N, In>>, B, CB>,
@@ -1245,11 +1442,16 @@ export function pollUntil(
 
 /** Keep the items `if` holds for (a Filter node). A type guard narrows the item type. */
 export function filter<In, Ctx, const N extends string, T extends In>(config: {
+	/** The node name, unique in the workflow. */
 	name: N;
+	/** A type guard: the items it holds for continue, with the narrowed type. */
 	if: (item: In, $: Dollar<Ctx>) => item is T;
 }): Step<In, Ctx, T, N>;
+/** Keep the items `if` holds for (a Filter node). */
 export function filter<In, Ctx, const N extends string>(config: {
+	/** The node name, unique in the workflow. */
 	name: N;
+	/** The condition for each item. */
 	if: (item: In, $: Dollar<Ctx>) => boolean;
 }): Step<In, Ctx, In, N>;
 export function filter(config: {
@@ -1267,6 +1469,14 @@ type Joined<J, A, B> = J extends 'append' ? A | B : A & B;
 /**
  * Run two branches on the same items and join them (a Merge node). `append` emits the items
  * of both; `position` joins item i of each; `{ left, right }` joins items whose fields match.
+ *
+ * @example
+ * ```ts
+ * merge({ name: 'Join', join: { left: 'id', right: 'id' } }, [
+ *   set({ name: 'Names', fields: { id: (c) => c.id, name: (c) => c.name } }),
+ *   set({ name: 'Counts', fields: { id: (c) => c.id, count: (c) => c.orders.length } }),
+ * ]),
+ * ```
  */
 export function merge<
 	In,
@@ -1274,9 +1484,22 @@ export function merge<
 	const N extends string,
 	A,
 	B,
-	const J extends 'append' | 'position' | { left: keyof A & string; right: keyof B & string },
+	const J extends
+		| 'append'
+		| 'position'
+		| {
+				/** The field of the first branch item. */
+				left: keyof A & string;
+				/** The field of the second branch item that must match `left`. */
+				right: keyof B & string;
+		  },
 >(
-	config: { name: N; join: J },
+	config: {
+		/** The node name, unique in the workflow. */
+		name: N;
+		/** How the branches join: `append`, `position`, or matching fields. */
+		join: J;
+	},
 	branches: readonly [
 		Part<NoInfer<In>, NoInfer<Ctx>, A, unknown>,
 		Part<NoInfer<In>, NoInfer<Ctx>, B, unknown>,
@@ -1305,6 +1528,12 @@ export function onError(handle: AnyPart): AnyRegion {
 /**
  * Handle items the step before fails on (its error output), and continue with them: the open
  * ends of `handle` join the items the step could process.
+ *
+ * @example
+ * ```ts
+ * fetchOrders,
+ * recover(set({ name: 'Log', fields: { failed: (item) => item.error.message } })),
+ * ```
  */
 export function recover<In, Ctx, A>(
 	handle: Part<ErrorItem, NoInfer<Ctx>, A, unknown>,
@@ -1525,9 +1754,13 @@ export function contractStep<In, Ctx, Out, N extends string>(
 	id: string,
 	// The generated module types `sample`; `Out` comes from its declared return type.
 	config: {
+		/** The node name, unique in the workflow. */
 		readonly name: N;
+		/** Sample output items, for verification. */
 		readonly sample?: readonly unknown[];
+		/** Node settings. */
 		readonly settings?: NodeSettings;
+		/** The providers of a derived root node, by slot. */
 		readonly providers?: ProvidersBySlot;
 	},
 	/** The node version: the action major, or the version of a composed or derived node. */
@@ -1593,8 +1826,11 @@ export function contractProvider<In, Ctx, const K extends ProviderKind | Provide
 	id: string,
 	kind: K,
 	config: {
+		/** The node name, unique in the workflow. */
 		readonly name: string;
+		/** Node settings. */
 		readonly settings?: NodeSettings;
+		/** The providers of this provider, by slot. */
 		readonly providers?: ProvidersBySlot;
 	},
 	version = 1,
@@ -1626,6 +1862,7 @@ const FROM_MODEL: unique symbol = Symbol('fromModel');
 
 /** A tool field that the model fills, see `fromModel()`. */
 export interface FromModel {
+	/** The description for the model. */
 	readonly [FROM_MODEL]: string;
 }
 
@@ -1633,6 +1870,11 @@ export interface FromModel {
  * A field of an agent tool that the model fills when it calls the tool. The workflow fixes the
  * other fields, so the model cannot change them. `description` tells the model what to give;
  * without it, the model reads the description of the field.
+ *
+ * @example
+ * ```ts
+ * providers: { tools: [httpRequest.getTool({ name: 'Fetch', url: fromModel('The page URL') })] },
+ * ```
  */
 export const fromModel = (description = ''): FromModel => ({ [FROM_MODEL]: description });
 
@@ -1684,8 +1926,11 @@ export function fromAiDescriptionOf(value: unknown): string | undefined {
  * model fill it. `toolDescription` is what the model reads; the action summary when not set.
  */
 export type ToolConfig<I> = {
+	/** The node name, unique in the workflow. */
 	readonly name: string;
+	/** Node settings. */
 	readonly settings?: NodeSettings;
+	/** What the tool does, for the model. The action summary when not set. */
 	readonly toolDescription?: string;
 } & { [K in keyof I]: I[K] | FromModel };
 
@@ -1733,6 +1978,7 @@ export type ModelOf<P extends string> = P extends keyof ModelCatalog ? ModelCata
 
 /** What a generated module adds for a native trigger. */
 export interface TriggerOptions {
+	/** The reply step that the trigger goes with. */
 	readonly pairing?: Pairing;
 	/**
 	 * An output item. It fills the fields that a sample item leaves out, and a declared schema
@@ -1764,10 +2010,15 @@ const filledSample = (example: unknown, sample: unknown): unknown =>
 export function contractTrigger<Out, const N extends string>(
 	id: string,
 	config: {
+		/** The node name, unique in the workflow. */
 		readonly name: N;
+		/** Sample output items. They type the output, and verification uses them. */
 		readonly sample?: readonly unknown[];
+		/** The JSON Schema of each declared output field, e.g. the body of a webhook. */
 		readonly schema?: Readonly<Record<string, ValueSchema | undefined>>;
+		/** Node settings. */
 		readonly settings?: NodeSettings;
+		/** The providers of the trigger, by slot. */
 		readonly providers?: ProvidersBySlot;
 	},
 	version = 1,
@@ -1808,7 +2059,12 @@ export function contractTrigger<Out, const N extends string>(
 /** Output names: a fixed list, or one per entry of an input list, then the fixed ones. */
 export type OutputList =
 	| readonly string[]
-	| { readonly each: string; readonly then?: readonly string[] };
+	| {
+			/** The input list whose entries each name an output. */
+			readonly each: string;
+			/** Fixed outputs after the entry outputs. */
+			readonly then?: readonly string[];
+	  };
 
 export const outputNamesOf = (outputs: OutputList, config: Readonly<Record<string, unknown>>) => {
 	if (!('each' in outputs)) return outputs;
@@ -1825,13 +2081,21 @@ export const outputNamesOf = (outputs: OutputList, config: Readonly<Record<strin
 export function routedStep<In, Ctx, Out, N extends string, Names extends string>(
 	id: string,
 	config: {
+		/** The node name, unique in the workflow. */
 		readonly name: N;
+		/** Sample output items, for verification. */
 		readonly sample?: readonly unknown[];
+		/** Node settings. */
 		readonly settings?: NodeSettings;
 	},
 	outputs: OutputList,
 	version = 1,
-	slot?: { readonly resource?: string; readonly operation?: string },
+	slot?: {
+		/** The `resource` parameter value. */
+		readonly resource?: string;
+		/** The `operation` parameter value. */
+		readonly operation?: string;
+	},
 	requires?: Requires,
 ): RoutedStep<In, Ctx, Out, N, Names> {
 	const step = contractStep<In, Ctx, Out, N>(id, config, version, slot, requires);
@@ -1887,9 +2151,21 @@ function createCompiler(nodeName: string, nodeNames: ReadonlySet<string>, issues
 export interface Workflow {
 	/** The scopes each credential needs, sorted, with the nodes that need each one. */
 	scopes(): Readonly<Record<string, Readonly<Record<string, readonly string[]>>>>;
+	/** Validates the workflow. It throws when the build found problems. */
 	validate(): ReturnType<WorkflowBuilder['validate']>;
-	toJSON(options?: { tidyUp?: boolean }): WorkflowJSON;
-	generatePinData(): { toJSON(options?: { tidyUp?: boolean }): WorkflowJSON };
+	/** The workflow JSON to save. It throws when the build found problems. */
+	toJSON(options?: {
+		/** Lay out the nodes on the canvas. */
+		tidyUp?: boolean;
+	}): WorkflowJSON;
+	/** The workflow with pin data from the samples. */
+	generatePinData(): {
+		/** The workflow JSON with pin data. */
+		toJSON(options?: {
+			/** Lay out the nodes on the canvas. */
+			tidyUp?: boolean;
+		}): WorkflowJSON;
+	};
 }
 
 function failedWorkflow(issues: readonly string[], scopes: Workflow['scopes']): Workflow {
@@ -1926,7 +2202,9 @@ function scopesOf(nodes: readonly NodeSpec[]) {
 	);
 }
 
+/** The name of a workflow and the scopes its credentials grant. */
 export interface WorkflowOptions {
+	/** The workflow name. */
 	readonly name: string;
 	/**
 	 * The scopes each credential grants, by node id, e.g. `{ notion: ['content:read'] }`. The

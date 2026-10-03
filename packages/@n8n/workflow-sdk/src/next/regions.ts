@@ -91,10 +91,14 @@ export const samePass = (head: string) => `$(${JSON.stringify(head)}).item.json`
 /** `paginate` ends when its next cursor is null. */
 export const noNextPage = (next: string) => `(${next}) == null`;
 
+/** The time unit of an `Interval`. */
 export type WaitUnit = 'seconds' | 'minutes' | 'hours' | 'days';
 
+/** A time span, e.g. `{ amount: 30, unit: 'seconds' }`. */
 export interface Interval {
+	/** The count of units. */
 	readonly amount: number;
+	/** The time unit. */
 	readonly unit: WaitUnit;
 }
 

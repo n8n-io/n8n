@@ -282,6 +282,7 @@ function redactedError(error: unknown, redact: (text: string) => string): unknow
 	return error;
 }
 
+/** The name of the node parameter that picks the credential type. */
 export const AUTHENTICATION = 'authentication';
 
 const errorMessage = (error: unknown) => (error instanceof Error ? error.message : String(error));
@@ -362,7 +363,9 @@ const MAX_DRIFT_ISSUES = 10;
 
 /** File details for the store, from the action or from the response headers. */
 export interface BinaryWriteMeta {
+	/** The MIME type, e.g. `application/pdf`. */
 	readonly mimeType?: string;
+	/** The file name, e.g. `report.pdf`. */
 	readonly fileName?: string;
 }
 
@@ -380,27 +383,32 @@ export interface BinaryStore {
 export interface ExecutorHost {
 	/** The input items. A passed item keeps its binary data. */
 	readonly items: readonly INodeExecutionData[];
+	/** The workflow node that runs the action. */
 	readonly node: INode;
 	/**
 	 * The parameter value, as `getNodeParameter` returns it. `raw` keeps its expressions
 	 * unresolved, for a field with a `t.pageValue()` that `run()` reads for each page.
 	 */
 	parameter(name: string, itemIndex: number, raw?: boolean): unknown;
+	/** Sends a request with the credential of `credentialType` applied, as n8n does. */
 	request(options: IHttpRequestOptions, credentialType: string | undefined): Promise<unknown>;
 	/**
 	 * The stored data of a credential: the fields `baseUrl` reads and the user's "Allowed HTTP
 	 * Request Domains" setting. Without it, only the declared credential hosts limit a request.
 	 */
 	credentialData?(credentialType: string): Promise<unknown>;
+	/** True when the node setting "On Error" continues: a failed item goes to the output. */
 	continueOnFail(): boolean;
 	/** Waits before a retry. */
 	wait?(ms: number): Promise<void>;
+	/** Writes to the n8n log. */
 	log?(level: LogLevel, message: string): void;
 	/**
 	 * Shows a warning on the node run. With it, an output that does not match the contract
 	 * passes on and the run warns once. Without it, the output fails the item, as in tests.
 	 */
 	warn?(message: string): void;
+	/** Limits that replace the defaults of `RunLimits`. */
 	readonly limits?: Partial<RunLimits>;
 	/** Needed by an action with a `t.binary()` field only. */
 	readonly binary?: BinaryStore;
@@ -1538,7 +1546,9 @@ export function toNodeType<S extends Shape, O extends AnySchema>(
 
 /** A frozen action version: its manifest and a reader for its bundle. */
 export interface FrozenVersion {
+	/** The version manifest. */
 	readonly manifest: VersionManifest;
+	/** Reads the bundle code. The host checks it against `manifest.bundleHash`. */
 	readBundle(): Promise<string>;
 }
 
@@ -1629,6 +1639,7 @@ export type ExecutorLoader = (frozen: FrozenVersion, head: FrozenVersion) => Pro
 // One slot: the host sets it once at start, as the version loader.
 const executorLoader = new Map<'loader', ExecutorLoader>();
 
+/** Sets the executor loader, e.g. the sandbox. The host calls it once at start. */
 export const setExecutorLoader = (loader: ExecutorLoader) => {
 	executorLoader.set('loader', loader);
 	// An executor of the old loader must not run on.
@@ -1647,6 +1658,7 @@ export type ContractVersionLoader = (
 // One slot: the host replaces the default, which runs the bundled HEAD.
 const versionLoader = new Map<'loader', ContractVersionLoader>();
 
+/** Sets the loader that picks the version a node runs. The host calls it once at start. */
 export const setContractVersionLoader = (loader: ContractVersionLoader) => {
 	versionLoader.set('loader', loader);
 };

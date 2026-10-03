@@ -1,18 +1,11 @@
 {
-	"extends": [
-		"./tsconfig.json",
-		"@n8n/typescript-config/tsconfig.build.go.json"
-	],
+	"extends": ["./tsconfig.json", "@n8n/typescript-config/tsconfig.build.go.json"],
 	"compilerOptions": {
 		"composite": true,
+		"removeComments": false,
 		"rootDir": "src",
 		"outDir": "dist"
 	},
-	"include": [
-		"src/**/*.ts"
-	],
-	"exclude": [
-		"src/**/__tests__/**",
-		"src/**/*.test.ts"
-	]
+	"include": ["src/**/*.ts"],
+	"exclude": ["src/**/__tests__/**", "src/**/*.test.ts"]
 }

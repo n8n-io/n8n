@@ -61,15 +61,37 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
 
 /** The limits of one node execution in the sandbox. The executor enforces requests and items. */
 export interface SandboxLimits {
+	/**
+	 * Guest memory in MiB.
+	 *
+	 * @defaultValue `256`
+	 */
 	readonly memoryMb: number;
-	/** Guest CPU time. Time in host calls, e.g. HTTP requests, does not count. */
+	/**
+	 * Guest CPU time in milliseconds. Time in host calls, e.g. HTTP requests, does not count.
+	 *
+	 * @defaultValue `30000`
+	 */
 	readonly cpuMs: number;
-	/** Wall clock, host calls included. Then the host stops the sidecar. */
+	/**
+	 * Wall clock in milliseconds, host calls included. Then the host stops the sidecar.
+	 *
+	 * @defaultValue `600000`
+	 */
 	readonly wallMs: number;
-	/** The largest message from the sidecar, e.g. one batch of output items. */
+	/**
+	 * The largest message from the sidecar in bytes, e.g. one batch of output items.
+	 *
+	 * @defaultValue `67108864` (64 MiB)
+	 */
 	readonly maxMessageBytes: number;
 }
 
+/**
+ * Where the sandbox finds its sidecar, guests and cache, and its limits.
+ *
+ * @see `docs/sandboxed-execution.md`
+ */
 export interface SandboxOptions {
 	/** The `n8n-sandbox` binary. */
 	readonly sidecar: string;
@@ -85,6 +107,7 @@ export interface SandboxOptions {
 	 * credential come from here, never from the bundle.
 	 */
 	readonly credentialType: (name: string) => AnyCredentialType | undefined;
+	/** Limits that replace the defaults of `SandboxLimits`. */
 	readonly limits?: Partial<SandboxLimits>;
 }
 

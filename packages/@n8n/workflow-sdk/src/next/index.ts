@@ -119,6 +119,7 @@ export type {
 	WorkflowOptions,
 } from './flow';
 
+/** A JSON value. */
 export type Json = string | number | boolean | null | Json[] | { [key: string]: Json };
 
 /** A parameter tree whose leaves may be lambdas. */
@@ -160,7 +161,9 @@ type Fields<F> = {
  * when a run gets input data: they type the output, and verification uses them as the output.
  */
 export function manual<const N extends string = 'Start', Out = Record<string, never>>(config?: {
+	/** The node name. Default `Start`. */
 	name?: N;
+	/** Sample output items. They type the output. */
 	sample?: readonly Out[];
 }): Trigger<Out, N>;
 export function manual(config?: {
@@ -186,8 +189,11 @@ export function set<
 	F extends Record<string, Json | Lambda<In, Ctx>>,
 	const K extends 'none' | 'all' = 'none',
 >(config: {
+	/** The node name. */
 	name: N;
+	/** The new fields: a JSON value or a lambda each. A key holds no `.` or `[`. */
 	fields: F;
+	/** `all` also keeps every input field. Default `none`. */
 	keep?: K;
 }): Step<In, Ctx, K extends 'all' ? Simplify<Omit<In, keyof F> & Fields<F>> : Fields<F>, N> {
 	const { name, fields, keep } = config;
@@ -224,12 +230,19 @@ const compiledParameters = (compiler: Compiler, parameters: unknown) => {
 };
 
 interface NodeConfig<In, Ctx, N extends string, Out> {
+	/** The node name, unique in the workflow. */
 	name: N;
+	/** The n8n node type, e.g. `n8n-nodes-base.httpRequest`. */
 	type: string;
+	/** The node type version. */
 	version: number;
+	/** The node parameters. A leaf may be a lambda. */
 	parameters?: Params<In, Ctx>;
+	/** Node settings, e.g. `{ retryOnFail: true }`. */
 	settings?: NodeSettings;
+	/** The providers of an AI node, by slot. */
 	providers?: Providers<In, Ctx>;
+	/** Sample output items. They type the output. */
 	sample?: readonly Out[];
 }
 
@@ -238,12 +251,20 @@ interface NodeConfig<In, Ctx, N extends string, Out> {
  * unless you pass `sample` items. An AI node takes its providers in `providers`. Name the main
  * outputs in n8n order in `outputs`, e.g. `['true', 'false']` for IF, to wire each with
  * `route`. Node settings go in `settings`, e.g. `{ retryOnFail: true }`, as on a typed step.
+ *
+ * @example
+ * ```ts
+ * node({ name: 'Fetch', type: 'n8n-nodes-base.httpRequest', version: 4.2, parameters: { url: 'https://example.com' } }),
+ * ```
  */
 export function node<In, Ctx, const N extends string, Out = Loose>(
 	config: NodeConfig<In, Ctx, N, Out>,
 ): Step<In, Ctx, Out, N>;
 export function node<In, Ctx, const N extends string, const O extends string, Out = Loose>(
-	config: NodeConfig<In, Ctx, N, Out> & { outputs: readonly [O, O, ...O[]] },
+	config: NodeConfig<In, Ctx, N, Out> & {
+		/** The main output names in n8n order, e.g. `['true', 'false']`. */
+		outputs: readonly [O, O, ...O[]];
+	},
 ): RoutedStep<In, Ctx, Out, N, O>;
 export function node<In, Ctx, const N extends string, Out = Loose>(
 	config: NodeConfig<In, Ctx, N, Out> & { outputs?: readonly string[] },
@@ -268,11 +289,17 @@ export function node<In, Ctx, const N extends string, Out = Loose>(
  * Its lambdas read the item of the AI node that uses it.
  */
 export function provider<In, Ctx>(config: {
+	/** The node name, unique in the workflow. */
 	name: string;
+	/** The n8n node type, e.g. `@n8n/n8n-nodes-langchain.lmChatOpenAi`. */
 	type: string;
+	/** The node type version. */
 	version: number;
+	/** The node parameters. A leaf may be a lambda. */
 	parameters?: Params<In, Ctx>;
+	/** Node settings. */
 	settings?: NodeSettings;
+	/** The providers of this provider, e.g. the model of a tool agent. */
 	providers?: Providers<In, Ctx>;
 }): Provider<In, Ctx> {
 	const { name, type, version, parameters, settings, providers } = config;
@@ -290,11 +317,17 @@ export function provider<In, Ctx>(config: {
 
 /** Any n8n trigger node by type and version. */
 export function trigger<const N extends string, Out = Loose>(config: {
+	/** The node name, unique in the workflow. */
 	name: N;
+	/** The n8n trigger node type, e.g. `n8n-nodes-base.scheduleTrigger`. */
 	type: string;
+	/** The node type version. */
 	version: number;
+	/** The node parameters, as JSON. */
 	parameters?: Record<string, Json>;
+	/** Node settings. */
 	settings?: NodeSettings;
+	/** Sample output items. They type the output. */
 	sample?: readonly Out[];
 }): Trigger<Out, N> {
 	const { name, type, version, parameters, settings, sample } = config;
@@ -323,7 +356,9 @@ export type ElementOf<In, F extends keyof In> = NonNullable<In[F]> extends Reado
 
 /** Emit one item per element of the list field `field` (a Split Out node). */
 export function splitOut<In, Ctx, const N extends string, const F extends ListField<In>>(config: {
+	/** The node name. */
 	name: N;
+	/** The list field of the input item. */
 	field: F;
 }): Step<In, Ctx, ElementOf<In, F>, N> {
 	const { name, field } = config;

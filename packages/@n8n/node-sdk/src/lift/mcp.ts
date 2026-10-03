@@ -15,37 +15,68 @@ import {
 } from '../define';
 import { Schema, t, type JsonSchema, type Shape } from '../schema';
 
-/** A tool as the MCP `tools/list` result lists it. */
+/**
+ * A tool as the MCP `tools/list` result lists it.
+ *
+ * @see https://modelcontextprotocol.io/specification/2025-06-18/server/tools
+ */
 export interface McpTool {
+	/** The tool name. The operation of the action comes from it. */
 	readonly name: string;
+	/** The display name. The action label when set. */
 	readonly title?: string;
+	/** What the tool does. The summary comes from it. */
 	readonly description?: string;
+	/** The JSON Schema of the tool arguments. */
 	readonly inputSchema: JsonSchema;
+	/** The JSON Schema of `structuredContent`. Without it, the output is any JSON object. */
 	readonly outputSchema?: JsonSchema;
+	/** Hints about the behavior of the tool. `readOnlyHint` and `idempotentHint` set the flow. */
 	readonly annotations?: {
+		/** The tool does not change its environment. */
 		readonly readOnlyHint?: boolean;
+		/** A repeated call with the same arguments has no extra effect. */
 		readonly idempotentHint?: boolean;
+		/** The tool may delete or overwrite data. The lift does not read it. */
 		readonly destructiveHint?: boolean;
 	};
 }
 
-/** The `tools/call` result. */
+/**
+ * The `tools/call` result.
+ *
+ * @see https://modelcontextprotocol.io/specification/2025-06-18/server/tools
+ */
 export interface McpCallResult {
-	readonly content?: ReadonlyArray<{ readonly type: string; readonly text?: string }>;
+	/** The unstructured result, e.g. text blocks. */
+	readonly content?: ReadonlyArray<{
+		/** The block type, e.g. `text`. */
+		readonly type: string;
+		/** The text of a `text` block. */
+		readonly text?: string;
+	}>;
+	/** The structured result. It is the output item when set. */
 	readonly structuredContent?: Readonly<Record<string, unknown>>;
+	/** True when the tool call failed. */
 	readonly isError?: boolean;
 }
 
 /** What the lift needs of an MCP client, e.g. the `Client` of `@modelcontextprotocol/sdk`. */
 export interface McpClient {
+	/** Sends `tools/call`. */
 	callTool(request: {
+		/** The tool name. */
 		readonly name: string;
+		/** The tool arguments: the input of the item. */
 		readonly arguments: Record<string, unknown>;
 	}): Promise<McpCallResult>;
 }
 
+/** What `liftMcpTool` gives: the action, its derived manifest, and what it could not check. */
 export interface LiftedMcpTool {
+	/** The action that calls the tool for each item. */
 	readonly action: Action;
+	/** The derived manifest of the action. */
 	readonly contract: DerivedManifest;
 	/** Schema keywords the validator does not check, e.g. `input.$ref`. */
 	readonly issues: readonly string[];
@@ -108,7 +139,12 @@ export function liftMcpTool(
 	node: NodeDefinition,
 	tool: McpTool,
 	client: McpClient,
-	options: { readonly resource?: string; readonly scopes?: readonly string[] } = {},
+	options: {
+		/** The resource of the node that the action goes on. */
+		readonly resource?: string;
+		/** The scopes of the node credential that the action needs. */
+		readonly scopes?: readonly string[];
+	} = {},
 ): LiftedMcpTool {
 	const builder = defineNode(node);
 	const target = options.resource === undefined ? builder : builder.resource(options.resource);
