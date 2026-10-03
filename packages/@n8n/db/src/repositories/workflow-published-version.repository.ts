@@ -103,7 +103,6 @@ export class WorkflowPublishedVersionRepository extends BaseRepository<WorkflowP
 				'workflow.id',
 				'workflow.name',
 				'workflow.description',
-				'workflow.active',
 				'workflow.isArchived',
 				'workflow.createdAt',
 				'workflow.updatedAt',
@@ -129,8 +128,7 @@ export class WorkflowPublishedVersionRepository extends BaseRepository<WorkflowP
 			id: workflow.id,
 			name: workflow.name,
 			description: workflow.description,
-			// oxlint-disable-next-line typescript/no-deprecated
-			active: workflow.active,
+			active: workflow.activeVersionId !== null,
 			isArchived: workflow.isArchived,
 			createdAt: workflow.createdAt,
 			updatedAt: workflow.updatedAt,

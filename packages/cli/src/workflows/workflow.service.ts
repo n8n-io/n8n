@@ -1428,8 +1428,7 @@ export class WorkflowService {
 		// guard re-checks the same condition atomically; this early return just
 		// skips the doomed version-row insert.
 		if (
-			// oxlint-disable-next-line typescript/no-deprecated
-			!workflow?.active ||
+			!workflow ||
 			workflow.activeVersionId === null ||
 			workflow.activeVersionId !== expectedActiveVersionId
 		) {

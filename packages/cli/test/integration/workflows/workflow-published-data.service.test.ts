@@ -1,5 +1,5 @@
 import { createWorkflowWithHistory, setActiveVersion, testDb } from '@n8n/backend-test-utils';
-import { WorkflowPublishedVersionRepository } from '@n8n/db';
+import { WorkflowPublishedVersionRepository, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { INode } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
@@ -102,6 +102,30 @@ describe('WorkflowPublishedDataService', () => {
 
 		expect(result).not.toBeNull();
 		expect(result!.nodeGroups).toEqual(nodeGroups);
+	});
+
+	test('uses the active version for the execution projection despite the legacy flag', async () => {
+		const owner = await createOwner();
+		const workflow = await createWorkflowWithHistory({}, owner);
+		await setActiveVersion(workflow.id, workflow.versionId);
+		await workflowPublishedVersionRepository.setPublishedVersion(workflow.id, workflow.versionId);
+		await Container.get(WorkflowRepository).update(workflow.id, { active: false });
+
+		const result = await workflowPublishedDataService.getPublishedWorkflowDataForExecution(
+			workflow.id,
+		);
+		expect(result?.activeVersionId).toBe(workflow.versionId);
+		expect(result?.active).toBe(true);
+
+		await Container.get(WorkflowRepository).update(workflow.id, {
+			activeVersionId: null,
+			active: true,
+		});
+		const unpublished = await workflowPublishedDataService.getPublishedWorkflowDataForExecution(
+			workflow.id,
+		);
+		expect(unpublished?.activeVersionId).toBeNull();
+		expect(unpublished?.active).toBe(false);
 	});
 
 	test('should return null when published_version table has no record', async () => {

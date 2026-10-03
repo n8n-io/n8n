@@ -396,6 +396,32 @@ describe('ExecutionService', () => {
 		const erroredRun = (error: boolean) =>
 			[{ error: error ? new Error('boom') : undefined }] as unknown as ITaskData[];
 
+		it('does not retry a successful execution when the legacy flag is false', async () => {
+			const { service, workflowRunner } = buildRetryService();
+			const execution = buildCrashedExecution({ lastNodeExecuted: 'Node', runData: {} });
+			execution.status = 'success';
+			executionPersistence.findWithUnflattenedData.mockResolvedValue(execution);
+
+			await expect(service.retry(retryArgs())).rejects.toThrow(
+				'The execution succeeded, so it cannot be retried.',
+			);
+			expect(workflowRunner.run).not.toHaveBeenCalled();
+		});
+
+		it.each(['error', 'crashed', 'canceled'] as const)(
+			'retries a %s execution when the legacy flag is true',
+			async (status) => {
+				const { service, workflowRunner } = buildRetryService();
+				const execution = buildCrashedExecution({ lastNodeExecuted: 'Node', runData: {} });
+				execution.status = status;
+				execution.finished = true;
+				executionPersistence.findWithUnflattenedData.mockResolvedValue(execution);
+
+				await expect(service.retry(retryArgs())).resolves.toBeDefined();
+				expect(workflowRunner.run).toHaveBeenCalledOnce();
+			},
+		);
+
 		it('should not throw when retrying a crashed execution whose runData is undefined', async () => {
 			const { service, workflowRunner } = buildRetryService();
 			executionPersistence.findWithUnflattenedData.mockResolvedValue(

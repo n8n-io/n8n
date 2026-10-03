@@ -262,8 +262,7 @@ export class ExecutionService {
 
 		if (!execution.data.executionData) throw new AbortedExecutionRetryError();
 
-		// oxlint-disable-next-line typescript/no-deprecated
-		if (execution.finished) {
+		if (execution.status === 'success') {
 			throw new ConflictError('The execution succeeded, so it cannot be retried.');
 		}
 
