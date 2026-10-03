@@ -29,11 +29,19 @@ in-process. Community and AI-generated bundles run in the sandbox.
   undeclared field never cross.
 - All network I/O goes through the host `http` import: egress hosts, credential hosts, SSRF
   policy, redirects, retries and `maxRequests` (see "Egress and credential hosts").
+- A sandboxed bundle reads only the allowed response headers, in a response and in an HTTP
+  failure (`GUEST_RESPONSE_HEADERS` in `src/sandbox.ts`): `content-type`, `content-length`,
+  `content-disposition`, `etag`, `last-modified`, `location`, `link`, `retry-after`, `ratelimit`,
+  `ratelimit-*`, `x-ratelimit-*`, `request-id` and `x-request-id`. The host keeps all other
+  headers, for example `set-cookie` and `www-authenticate`, because they can carry session or
+  account data. A manifest cannot add a header: the bundle author writes the manifest, so the
+  bundle could give itself the header. An in-process bundle and the legacy HTTP Request node read
+  all headers.
 - The host checks every output item against the manifest output, and every index and route.
 - The runtime enforces CPU time, memory, wall clock and message size. The executor enforces
   requests and items.
 - The same contract and the same host checks apply to first-party and community bundles. An
-  in-process bundle gets the same `RunContext`, so its host checks are the same; only the
+  in-process bundle gets the same `RunContext`, so its host checks are the same. Only the
   isolation is weaker.
 
 ## Runtime
@@ -140,6 +148,7 @@ A trap stops the component: every later call of the execution gets the same erro
 | memory blow-up | stopped at the memory limit |
 | a data table without `imports: ['dataTables']` | `The bundle called data-tables.open, which its manifest does not grant` |
 | a request outside `egress` | the host refuses it (`Host not allowed: …`); no request is sent |
+| `fullResponse` with `set-cookie` and `www-authenticate` | the bundle gets `content-type`, `link` and `x-ratelimit-*`; the same action in-process gets all headers |
 | a request with no `egress` and no base URL | the host refuses it (`… may send requests to no host …`); no request is sent |
 | a credential type that claims other hosts | the host uses its own credential type and refuses the request; no request is sent |
 | a node `baseUrl` outside `egress` and the credential hosts | the host refuses the bundle at load |
@@ -191,7 +200,7 @@ A real API call takes 50 to 500 ms, so the sandbox adds little to an HTTP-bound 
 - The node `baseUrl` of a sandboxed bundle comes from its `describe()`. Its host must be an
   `egress` host or a credential host (backlog E7).
 - `effect: read` does not limit the HTTP methods (E4): some reads send `POST`, for example a
-  Notion query. All response headers reach the bundle (E5).
+  Notion query.
 - Release: build `n8n-sandbox` per platform in CI and sign it with the guest components. Precompile the
   guest at install. `pnpm sandbox:build` is the dev step; nothing downloads at run time.
 - A pool of started sidecars would remove most of the 12 to 15 ms per node execution.

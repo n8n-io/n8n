@@ -378,14 +378,43 @@ const queryOf = (pairs: Array<[string, string]>) =>
 		}),
 	);
 
+/**
+ * The response headers that a guest can read: body format, file data, caching, redirects and
+ * created URLs, pages, rate limits and request IDs. Other headers, for example `set-cookie` and
+ * `www-authenticate`, can carry session or account data, so the host keeps them. A manifest cannot
+ * add a header: the bundle author writes the manifest.
+ */
+const GUEST_RESPONSE_HEADERS: ReadonlySet<string> = new Set([
+	'content-type',
+	'content-length',
+	'content-disposition',
+	'etag',
+	'last-modified',
+	'location',
+	'link',
+	'retry-after',
+	'ratelimit',
+	'request-id',
+	'x-request-id',
+]);
+
+const isGuestResponseHeader = (name: string) =>
+	GUEST_RESPONSE_HEADERS.has(name) ||
+	name.startsWith('x-ratelimit-') ||
+	name.startsWith('ratelimit-');
+
+/** The response headers for the guest: lower-case names, allowed names only, one value each. */
 const headerPairsOf = (headers: unknown): Array<[string, string]> =>
 	Object.entries(isRecord(headers) ? headers : {}).flatMap(
-		([name, value]): Array<[string, string]> =>
-			typeof value === 'string' || typeof value === 'number'
-				? [[name.toLowerCase(), String(value)]]
+		([key, value]): Array<[string, string]> => {
+			const name = key.toLowerCase();
+			if (!isGuestResponseHeader(name)) return [];
+			return typeof value === 'string' || typeof value === 'number'
+				? [[name, String(value)]]
 				: Array.isArray(value)
-					? [[name.toLowerCase(), value.map(String).join(', ')]]
-					: [],
+					? [[name, value.map(String).join(', ')]]
+					: [];
+		},
 	);
 
 const isPath = (value: string): value is `/${string}` => value.startsWith('/');

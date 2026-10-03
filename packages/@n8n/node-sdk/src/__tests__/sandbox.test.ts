@@ -9,8 +9,9 @@ import type { IHttpRequestOptions, INode } from 'n8n-workflow';
 
 import { compat, defineCredential, field } from '../credentials';
 import { freezeAction, GUEST_LACKS } from '../freeze';
+import { defineNode, t } from '../index';
 import { sandboxedVersionOf, type SandboxOptions } from '../sandbox';
-import type { BinaryStore, ExecutorHost } from '../runtime';
+import { executorOf, type BinaryStore, type ExecutorHost } from '../runtime';
 
 const SANDBOX = path.resolve(__dirname, '..', '..', 'sandbox');
 const SIDECAR = path.join(SANDBOX, 'sidecar', 'target', 'release', 'n8n-sandbox');
@@ -116,6 +117,13 @@ export const randomProbe = spec(async () => ({
 export const echoProbe = spec(async ({ http }) => ({
 	value: JSON.stringify(await http.request({ url: 'https://api.example.com/echo', fullResponse: true })),
 }), { egress: { hosts: ['api.example.com'] } });
+export const failureProbe = spec(async ({ http }) => {
+	try {
+		return { value: String(await http.request({ url: 'https://api.example.com/missing' })) };
+	} catch (error) {
+		return { value: JSON.stringify(error.headers) };
+	}
+}, { egress: { hosts: ['api.example.com'] } });
 export const credentialProbe = spec(async ({ credential }) => ({ value: JSON.stringify(credential) }), {}, acme);
 export const credentialErrorProbe = spec(async (context) => {
 	try {
@@ -170,6 +178,7 @@ const PROBE_NAMES = [
 	'pollutionProbe',
 	'randomProbe',
 	'echoProbe',
+	'failureProbe',
 	'credentialProbe',
 	'credentialErrorProbe',
 	'binaryProbe',
@@ -178,6 +187,15 @@ const PROBE_NAMES = [
 ] as const;
 
 type ProbeName = (typeof PROBE_NAMES)[number];
+
+const RESPONSE_HEADERS = {
+	'Content-Type': 'application/json',
+	'Set-Cookie': ['session=secret; HttpOnly', 'csrf=secret'],
+	'WWW-Authenticate': 'Bearer realm="acme"',
+	Link: '<https://api.example.com/echo?page=2>; rel="next"',
+	'X-RateLimit-Remaining': 9,
+	'X-Secret': 'internal',
+};
 
 describe.skipIf(!existsSync(SIDECAR) || !existsSync(GUEST))('the sandbox', () => {
 	const dirs = { root: '' };
@@ -202,7 +220,7 @@ describe.skipIf(!existsSync(SIDECAR) || !existsSync(GUEST))('the sandbox', () =>
 		parameter: () => undefined,
 		request: async (request) => {
 			requests.push(request);
-			return { body: { z: 1, a: 2 }, headers: { 'X-Echo': '1' }, statusCode: 200 };
+			return { body: { z: 1, a: 2 }, headers: RESPONSE_HEADERS, statusCode: 200 };
 		},
 		continueOnFail: () => false,
 	});
@@ -322,11 +340,69 @@ describe.skipIf(!existsSync(SIDECAR) || !existsSync(GUEST))('the sandbox', () =>
 
 	it('sends a request through the host and gives the full response in its key order', async () => {
 		await expect(run('echoProbe')).resolves.toBe(
-			JSON.stringify({ body: { z: 1, a: 2 }, headers: { 'x-echo': '1' }, statusCode: 200 }),
+			JSON.stringify({
+				body: { z: 1, a: 2 },
+				headers: {
+					'content-type': 'application/json',
+					link: '<https://api.example.com/echo?page=2>; rel="next"',
+					'x-ratelimit-remaining': '9',
+				},
+				statusCode: 200,
+			}),
 		);
 		expect(requests).toEqual([
 			expect.objectContaining({ method: 'GET', url: 'https://api.example.com/echo' }),
 		]);
+	});
+
+	it('gives the bundle only the allowed response headers, while the same action in-process gets all', async () => {
+		const echo = defineNode({ id: 'probe', displayName: 'Probe' }).action('probe', {
+			action: 'Probe',
+			summary: 'Probe the sandbox.',
+			flow: { effect: 'read', cardinality: 'per-item' },
+			egress: { hosts: ['api.example.com'] },
+			input: {},
+			output: t.obj({ value: t.str() }),
+			run: async ({ http }) => ({
+				value: JSON.stringify(
+					await http.request({ url: 'https://api.example.com/echo', fullResponse: true }),
+				),
+			}),
+		});
+		const [[inProcess] = []] = await executorOf(echo)(hostOf());
+		const headersOf = (value: unknown) =>
+			Object.keys(JSON.parse(String(value)).headers).map((name) => name.toLowerCase());
+
+		expect(headersOf(inProcess?.json.value)).toEqual(
+			expect.arrayContaining(['content-type', 'set-cookie', 'www-authenticate', 'x-secret']),
+		);
+		const sandboxed = headersOf(await run('echoProbe'));
+		expect(sandboxed).toContain('content-type');
+		expect(sandboxed).not.toContain('set-cookie');
+		expect(sandboxed).not.toContain('www-authenticate');
+		expect(sandboxed).not.toContain('x-secret');
+	});
+
+	it('gives the bundle only the allowed response headers of an HTTP failure', async () => {
+		const value = await run('failureProbe', {
+			...hostOf(),
+			request: async () => {
+				throw Object.assign(new Error('Not found'), {
+					response: {
+						status: 404,
+						headers: { ...RESPONSE_HEADERS, 'Retry-After': '30' },
+						data: {},
+					},
+				});
+			},
+		});
+
+		expect(JSON.parse(value as string)).toEqual({
+			'content-type': 'application/json',
+			link: '<https://api.example.com/echo?page=2>; rel="next"',
+			'x-ratelimit-remaining': '9',
+			'retry-after': '30',
+		});
 	});
 
 	it('gives run() the plain fields of the credential, and no secret', async () => {
