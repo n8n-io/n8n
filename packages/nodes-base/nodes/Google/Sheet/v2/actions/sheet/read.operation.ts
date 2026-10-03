@@ -171,23 +171,24 @@ export async function execute(
 	this: IExecuteFunctions,
 	sheet: GoogleSheet,
 	sheetName: string,
+	_sheetId = '',
+	selectedItemIndexes?: number[],
 ): Promise<INodeExecutionData[]> {
 	const items = this.getInputData();
 	const nodeVersion = this.getNode().typeVersion;
-	let length = 1;
-
-	if (nodeVersion > 4.1) {
-		length = items.length;
-	}
+	const itemIndexes =
+		selectedItemIndexes === undefined
+			? Array.from({ length: nodeVersion > 4.1 ? items.length : 1 }, (_, index) => index)
+			: selectedItemIndexes;
 
 	let returnData: INodeExecutionData[] = [];
 
-	for (let itemIndex = 0; itemIndex < length; itemIndex++) {
+	for (const currentItemIndex of itemIndexes) {
 		returnData = await readSheet.call(
 			this,
 			sheet,
 			sheetName,
-			itemIndex,
+			currentItemIndex,
 			returnData,
 			nodeVersion,
 			items,

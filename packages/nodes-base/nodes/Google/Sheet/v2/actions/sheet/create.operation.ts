@@ -78,14 +78,17 @@ export async function execute(
 	this: IExecuteFunctions,
 	sheet: GoogleSheet,
 	sheetName: string,
+	_sheetId = '',
+	selectedItemIndexes?: number[],
 ): Promise<INodeExecutionData[]> {
 	let responseData;
 	const returnData: INodeExecutionData[] = [];
 	const items = this.getInputData();
+	const itemIndexes = selectedItemIndexes ?? items.map((_, index) => index);
 
 	const existingSheetNames = await getExistingSheetNames(sheet);
 
-	for (let i = 0; i < items.length; i++) {
+	for (const i of itemIndexes) {
 		const sheetTitle = this.getNodeParameter('title', i, {}) as string;
 
 		if (existingSheetNames.includes(sheetTitle)) {
