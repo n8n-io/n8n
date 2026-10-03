@@ -1672,6 +1672,22 @@ describe('nodes tool', () => {
 			);
 		});
 
+		it('points a module action that a flow step emits to the step', async () => {
+			const context = createContractContext();
+			const result = await executeTool<{
+				definitions: Array<{ content: string; error?: string }>;
+			}>(createNodesTool(context, 'full'), {
+				action: 'type-definition',
+				nodeTypes: ['items.set', 'loopState', 'items'],
+			});
+
+			const [set, loopState, items] = result.definitions;
+			expect(set.error).toMatch(/^The flow SDK builds items\.set\. Use its step instead: set\(\{/);
+			expect(loopState.error).toContain('loop({');
+			expect(items.content).toContain('export const items = {');
+			expect(items.content).not.toContain('itemsSet');
+		});
+
 		it('keeps search and type-definition unchanged with node contracts disabled', async () => {
 			const context = createContractContext();
 			context.nodeContractsEnabled = false;

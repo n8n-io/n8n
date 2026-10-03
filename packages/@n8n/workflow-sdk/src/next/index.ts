@@ -21,6 +21,7 @@
  */
 import { SPLIT_OUT_NODE, splitOutParameters } from './regions';
 import {
+	isFieldPath,
 	MANUAL_NODE,
 	SET_NODE,
 	setParameters,
@@ -183,35 +184,124 @@ export function manual(config?: {
 	});
 }
 
+type Head<P extends string> = P extends `${infer H}.${string}` ? H : P;
+
+/** The rest of path `P` after the key `H`, e.g. `name` of `user.name`. */
+type Rest<P extends string, H> = P extends `${H & string}.${infer R}` ? R : never;
+
+/** The dotted paths into the fields of `T`, three keys deep at most. A list ends a path. */
+type FieldPath<T, Depth extends unknown[] = []> = Depth['length'] extends 3
+	? never
+	: T extends readonly unknown[]
+		? never
+		: T extends object
+			? {
+					[K in keyof T & string]-?:
+						| K
+						| `${K}.${FieldPath<NonNullable<T[K]>, [...Depth, unknown]>}`;
+				}[keyof T & string]
+			: never;
+
+/** `T` with only the paths `P`, as the Edit Fields node keeps the `selected` fields. */
+type PickPaths<T, P extends string> = T extends readonly unknown[]
+	? T
+	: T extends object
+		? Simplify<{
+				[K in keyof T as K extends Head<P> ? K : never]: K extends P
+					? T[K]
+					: PickPaths<T[K], Rest<P, K>>;
+			}>
+		: T;
+
+/** `T` without the paths `P`, as the Edit Fields node drops the `except` fields. */
+type OmitPaths<T, P extends string> = T extends readonly unknown[]
+	? T
+	: T extends object
+		? Simplify<{
+				[K in keyof T as K extends P ? never : K]: K extends Head<P>
+					? OmitPaths<T[K], Rest<P, K>>
+					: T[K];
+			}>
+		: T;
+
+/** The fields `F` set on `Base`. A dotted key sets a field in an object, as the node does. */
+type SetPaths<Base, F> = Base extends unknown
+	? Simplify<
+			Omit<Base, Head<keyof F & string>> & {
+				-readonly [H in Head<keyof F & string>]: H extends keyof F
+					? F[H]
+					: SetPaths<
+							H extends keyof Base ? (Base[H] extends object ? Base[H] : {}) : {},
+							{ [K in keyof F as K extends `${H}.${infer R}` ? R : never]: F[K] }
+						>;
+			}
+		>
+	: never;
+
+/** Which input fields `set` keeps: none, all, the `selected` paths, or all `except` the paths. */
+type SetKeepOf<In> =
+	| 'none'
+	| 'all'
+	| {
+			/** Keep only these input field paths, e.g. `['id', 'user.email']`. */
+			readonly selected: ReadonlyArray<FieldPath<In>>;
+	  }
+	| {
+			/** Keep every input field but these paths, e.g. `['password']`. */
+			readonly except: ReadonlyArray<FieldPath<In>>;
+	  };
+
+type Kept<In, K> = K extends 'all'
+	? In
+	: K extends { readonly selected: ReadonlyArray<infer P extends string> }
+		? PickPaths<In, P>
+		: K extends { readonly except: ReadonlyArray<infer P extends string> }
+			? OmitPaths<In, P>
+			: {};
+
 /**
  * Emit new fields for each item (the Edit Fields contract). A lambda field keeps its runtime
- * type (a number stays a number). `keep: 'all'` also keeps every input field.
+ * type (a number stays a number). A dotted key such as `user.name` sets a field in an object.
+ * `keep` also keeps input fields: `'all'`, `{ selected: ['id', 'user.email'] }`, or
+ * `{ except: ['password'] }`.
+ *
+ * @example
+ * ```ts
+ * set({ name: 'Contact', fields: { 'contact.email': (item) => item.email }, keep: { selected: ['id'] } }),
+ * ```
  */
 export function set<
 	In,
 	Ctx,
 	const N extends string,
 	F extends Record<string, Json | Lambda<In, Ctx>>,
-	const K extends 'none' | 'all' = 'none',
+	const K extends SetKeepOf<In> = 'none',
 >(config: {
 	/** The node name. */
 	name: N;
-	/** The new fields: a JSON value or a lambda each. A key holds no `.` or `[`. */
+	/** The new fields: a JSON value or a lambda each. A key is a field name or a dotted path. */
 	fields: F;
-	/** `all` also keeps every input field. Default `none`. */
+	/** The input fields to keep beside the new fields. Default `none`. */
 	keep?: K;
-}): Step<In, Ctx, K extends 'all' ? Simplify<Omit<In, keyof F> & Fields<F>> : Fields<F>, N> {
-	const { name, fields, keep } = config;
+	/** Node settings, e.g. `{ notes }`. */
+	settings?: NodeSettings;
+}): Step<In, Ctx, SetPaths<Kept<In, K>, Fields<F>>, N> {
+	const { name, fields, keep, settings } = config;
 	return {
 		name,
 		spec: {
 			name,
 			...SET_NODE,
+			...(settings ? { settings } : {}),
 			parameters: (compiler) => {
-				// The node reads a field name as a path, so a literal key keeps the type true.
+				// The node reads `a[0]` as a list index, which the output type does not follow.
 				Object.keys(fields)
-					.filter((key) => /[.[\]]/.test(key))
-					.forEach((key) => compiler.issue(`set field "${key}" cannot hold "." or "["`));
+					.filter((key) => !isFieldPath(key))
+					.forEach((key) =>
+						compiler.issue(
+							`set field "${key}" must be a field name or a dotted path such as "user.name", without "[" or empty parts`,
+						),
+					);
 				// A string that starts with "=" is an n8n expression here too, e.g. from expr().
 				return setParameters(
 					Object.fromEntries(
@@ -220,7 +310,7 @@ export function set<
 							typeof value === 'function' ? `={{ ${compiler.js(value)} }}` : value,
 						]),
 					),
-					keep === 'all',
+					keep ?? 'none',
 				);
 			},
 		},

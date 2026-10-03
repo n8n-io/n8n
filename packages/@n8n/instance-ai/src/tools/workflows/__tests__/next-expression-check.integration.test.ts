@@ -549,6 +549,31 @@ export default workflow(
 		]);
 	}, 120_000);
 
+	it('types set fields at dotted paths with kept paths, and the lambdas of items.set fields', async () => {
+		const source = (field: string) => `import { workflow, manual, set } from '@n8n/workflow-sdk/next';
+import { items } from '@n8n/nodes/items';
+
+export default workflow(
+	'Fields',
+	manual({ sample: [{ id: 'u1', password: 'x', profile: { email: 'a@b.c', city: 'Berlin' } }] }),
+	set({ name: 'Contact', fields: { 'contact.city': (user) => user.profile.city }, keep: { selected: ['id'] } }),
+	items.set({ name: 'Legacy', fields: { label: (item) => item.id + item.contact.${field} } }),
+);
+`;
+		const right = await build(source('city'));
+		expect(right.success ? [] : right.errors).toEqual([]);
+		if (right.success) {
+			expect(right.workflow.nodes.find((node) => node.name === 'Contact')?.parameters).toEqual({
+				fields: { 'contact.city': '={{ $json.profile.city }}' },
+				include: { mode: 'selected', fields: ['id'] },
+			});
+		}
+		const wrong = await build(source('town'));
+		expect(wrong.success ? [] : wrong.errors).toEqual([
+			expect.stringContaining("Property 'town' does not exist on type '{ city: string; }'"),
+		]);
+	}, 120_000);
+
 	it('builds a merge of three branches in a forEach body and a loop that ends at its limit', async () => {
 		const result = await build(`import { workflow, manual, set, merge, forEach, loop } from '@n8n/workflow-sdk/next';
 

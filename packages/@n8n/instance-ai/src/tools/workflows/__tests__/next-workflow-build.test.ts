@@ -232,13 +232,14 @@ import { googleGemini } from '@n8n/nodes/googleGemini';`;
 		});
 	});
 
-	it('notes a node() that a typed step replaces, and names the step or the module', async () => {
+	it('notes a node() that a typed step or a flow step replaces, and names the step or the module', async () => {
 		const source = `export default workflow('Legacy', manual(),
 	node({ name: 'Mail', type: 'n8n-nodes-base.gmail', version: 2.1, parameters: {} }),
 	node({ name: 'Labels', type: 'n8n-nodes-base.gmail', version: 2.1 }),
 	node({ name: 'Keep', type: 'n8n-nodes-base.filter', version: 2.2 }),
 	node({ name: 'Fetch', type: 'n8n-nodes-base.httpRequest', version: 4.2 }),
 	node({ name: 'Ping', type: 'n8n-nodes-base.mattermost', version: 2.3 }),
+	node({ name: 'Fields', type: 'n8n-nodes-base.set', version: 3.4 }),
 	filter({ name: 'Region filter', if: (item) => item.ok }));`;
 		const workflow: WorkflowJSON = {
 			name: 'Legacy',
@@ -249,6 +250,7 @@ import { googleGemini } from '@n8n/nodes/googleGemini';`;
 				node('Keep', 'n8n-nodes-base.filter', {}),
 				node('Fetch', 'n8n-nodes-base.httpRequest', { method: 'GET' }),
 				node('Ping', 'n8n-nodes-base.mattermost', {}),
+				node('Fields', 'n8n-nodes-base.set', {}),
 				node('Region filter', 'n8n-nodes-base.filter', {}),
 			],
 		};
@@ -271,6 +273,11 @@ import { googleGemini } from '@n8n/nodes/googleGemini';`;
 				message: expect.stringContaining(
 					'has httpRequest.get, httpRequest.send, httpRequest.download',
 				),
+			}),
+			expect.objectContaining({
+				nodeName: 'Fields',
+				severity: 'informational',
+				message: expect.stringContaining('Use the flow step instead of node({ type }),'),
 			}),
 		]);
 	});

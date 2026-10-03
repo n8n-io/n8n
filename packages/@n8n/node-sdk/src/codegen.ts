@@ -275,7 +275,7 @@ function renderTs(schema: JsonSchema, mode: Mode): string {
 		case 'null':
 			return 'null';
 		case 'array':
-			return `Array<${schema.items ? toTs(schema.items, mode) : 'any'}>`;
+			return `Array<${toTs(schema.items ?? {}, mode)}>`;
 		case 'object':
 			// Until the workflow declares it, a declared field reads like an open shape, so a
 			// decompiled flow without its schema still compiles.
@@ -288,7 +288,11 @@ function renderTs(schema: JsonSchema, mode: Mode): string {
 			}
 			return objectTs(schema, mode);
 		default:
-			return schema.properties ? objectTs(schema, mode) : 'any';
+			if (schema.properties) return objectTs(schema, mode);
+			// Any JSON value. An input lambda gets typed parameters; an output read compiles.
+			return mode.input && !mode.plain && !schema['x-n8n-literal']
+				? `Value<I, C, ${OPEN_VALUE}>`
+				: 'any';
 	}
 }
 

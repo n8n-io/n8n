@@ -7,6 +7,7 @@ import {
 	INSTANCE_AI_SKILLS_DIR,
 	loadInstanceAiRuntimeSkillSource,
 	loadInstanceAiRuntimeSkillSourceForBuildMode,
+	substituteSkillPlaceholders,
 } from '../runtime-skills';
 import { CONFIG_EVALS_SKILL_ID, disabledInstanceAiSkillIds } from '../skill-gates';
 
@@ -53,6 +54,13 @@ describe('Instance AI runtime skills', () => {
 		}
 
 		expect(offenders).toEqual([]);
+	});
+
+	it('lists the typed modules without those whose actions a flow step builds', () => {
+		const modules = substituteSkillPlaceholders('{{NODE_CONTRACT_MODULES_PLACEHOLDER}}');
+		expect(modules).toContain('`items`');
+		expect(modules).not.toContain('`merge`');
+		expect(modules).not.toContain('`loopState`');
 	});
 
 	it('points the workflow-builder skill at the SDK language reference', () => {

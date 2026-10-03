@@ -782,10 +782,31 @@ export const branchParameters = (condition: string) => ({
 	where: { conditions: [{ type: 'boolean', left: `={{ ${condition} }}`, test: { op: 'true' } }] },
 });
 
+/** The input fields that `set` keeps beside its own: none, all, or the given field paths only or all but. */
+export type SetKeep =
+	| 'none'
+	| 'all'
+	| {
+			/** Keep only these input field paths. */
+			readonly selected: readonly string[];
+	  }
+	| {
+			/** Keep every input field but these paths. */
+			readonly except: readonly string[];
+	  };
+
+/** A `set` field key: a field name or a dotted path. The node also reads `a[0]`, which `set` does not type. */
+export const isFieldPath = (key: string) => key.split('.').every((part) => /^[^[\]]+$/.test(part));
+
 /** The Edit Fields contract parameters of `set`: a lambda field holds `={{ js }}`. */
-export const setParameters = (fields: Readonly<Record<string, unknown>>, keepAll: boolean) => ({
+export const setParameters = (fields: Readonly<Record<string, unknown>>, keep: SetKeep) => ({
 	fields,
-	include: { mode: keepAll ? 'all' : 'none' },
+	include:
+		typeof keep === 'string'
+			? { mode: keep }
+			: 'selected' in keep
+				? { mode: 'selected', fields: [...keep.selected] }
+				: { mode: 'except', fields: [...keep.except] },
 });
 
 const isDataObject = (value: unknown): value is IDataObject =>
@@ -1218,16 +1239,24 @@ export function when<In, Ctx, const N extends string, A, B = never>(
 ): Region<In, Ctx, A | B, Ctx & Record<N, In>>;
 export function when(
 	config: { name: string; if: (...args: never[]) => boolean },
-	branches: { then: AnyPart; else?: AnyPart },
+	// A plain JavaScript caller can leave out `then`.
+	branches: { then?: AnyPart; else?: AnyPart },
 ): AnyRegion {
-	const condition = config.if;
-	const otherwise = branches.else;
+	const { name, if: condition } = config;
+	const { then, else: otherwise } = branches;
 	return region((from) =>
 		branchFragment(
 			from,
-			config.name,
-			(compiler) => compiler.js(condition),
-			run(branches.then),
+			name,
+			(compiler) => {
+				if (!then) {
+					compiler.issue(
+						`when "${name}" needs a then part. To act on the false items only, negate the condition and pass that part as then`,
+					);
+				}
+				return compiler.js(condition);
+			},
+			then ? run(then) : (flow) => flow,
 			otherwise ? run(otherwise) : undefined,
 		),
 	);

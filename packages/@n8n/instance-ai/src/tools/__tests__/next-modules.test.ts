@@ -9,10 +9,12 @@ import {
 	catalogRowsBesideModules,
 	contractReplacementOf,
 	findNextActions,
+	flowStepRowOf,
 	namesDisplayName,
 	nearestNextActions,
 	nextActions,
 	nextNodeIdOfNodeType,
+	nextNodeIds,
 	supplierActionsOf,
 	nextNodeModule,
 	nextNodeView,
@@ -77,7 +79,7 @@ describe('next-modules', () => {
 	});
 
 	it.each([
-		['n8n-nodes-base.set', 'items', 'items.set'],
+		['n8n-nodes-base.sort', 'items', 'items.sort'],
 		['n8n-nodes-base.if', 'condition', 'condition.if'],
 	])('replaces %s with the action of the same name', (type, nodeId, actionId) => {
 		const replacement = contractReplacementOf({ type });
@@ -85,6 +87,50 @@ describe('next-modules', () => {
 		expect(replacement?.nodeId).toBe(nodeId);
 		expect(replacement?.actions.map(({ id }) => id)).toEqual([actionId]);
 		expect(replacement?.exact).toBe(true);
+	});
+
+	it('offers the flow step, not the module action that the step emits', () => {
+		const hidden = ['items.set', 'merge.append', 'merge.combine', 'merge.combineByPosition'];
+		expect(nextNodeIds).toContain('items');
+		expect(nextNodeIds).not.toContain('merge');
+		expect(nextNodeIds).not.toContain('loopState');
+		for (const query of ['loop until condition state', 'split in batches loop', 'loop']) {
+			expect(searchNextActions(query).nodes).not.toContain('loopState');
+		}
+		expect(searchNextActions('merge branches').nodes).toEqual([]);
+		expect(searchNextActions('merge branches', [], ['merge']).nodes).toEqual([]);
+		const found = ['edit fields', 'set fields', 'merge', 'loop state'].flatMap((query) =>
+			findNextActions(query).map(({ id }) => id),
+		);
+		expect(found.filter((id) => [...hidden, 'loopState.set'].includes(id))).toEqual([]);
+		expect(nearestNextActions('items.set').map(({ id }) => id)).not.toContain('items.set');
+		expect(contractReplacementOf({ type: 'n8n-nodes-base.set' })).toBeUndefined();
+	});
+
+	it('types a module without the hidden actions, and keeps them in the sandbox module', () => {
+		expect(nextNodeModule('items')?.module).not.toContain('"@n8n/nodes-base-next.itemsSet"');
+		expect(nextNodeModule('items')?.module).toContain('"@n8n/nodes-base-next.itemsSort"');
+		expect(nodeModuleText('items')).toContain('contractStep("@n8n/nodes-base-next.itemsSet"');
+		expect(nodeModuleText('loopState')).toContain(
+			'contractStep("@n8n/nodes-base-next.loopStateSet"',
+		);
+		expect(nodeModuleText('merge')).toContain('// merge.append: Append items.');
+	});
+
+	it.each([
+		['items.set', 'set({'],
+		['@n8n/nodes-base-next.itemsSet', 'set({'],
+		['merge', 'merge({'],
+		['merge.combineByPosition', 'merge({'],
+		['loopState', 'loop({'],
+		['loopState.set', 'loop({'],
+	])('points %s to its flow step', (ref, step) => {
+		expect(nextNodeModule(ref)).toBeUndefined();
+		expect(flowStepRowOf(ref)).toContain(step);
+	});
+
+	it.each(['items', 'items.sort', 'notion'])('has no flow step for %s', (ref) => {
+		expect(flowStepRowOf(ref)).toBeUndefined();
 	});
 
 	it('has no module for a node without actions', () => {

@@ -25,6 +25,7 @@ import {
 	partFragment,
 	recover,
 	routeFragment,
+	isFieldPath,
 	SET_NODE,
 	setParameters,
 	PROVIDER_SLOTS,
@@ -37,6 +38,7 @@ import {
 	type NodeSettings,
 	type OutputList,
 	type Region,
+	type SetKeep,
 	type Step,
 	type ProviderSlot,
 } from './flow';
@@ -183,7 +185,7 @@ type Shape =
 	| { readonly kind: 'trigger' }
 	| { readonly kind: 'branch'; readonly condition: string }
 	| { readonly kind: 'filter'; readonly condition: string }
-	| { readonly kind: 'set'; readonly fields: Tree; readonly keepAll: boolean }
+	| { readonly kind: 'set'; readonly fields: Tree; readonly keep: SetKeep }
 	| { readonly kind: 'contract'; readonly factory: ContractFactory; readonly parameters: Tree }
 	| { readonly kind: 'node'; readonly parameters: Tree }
 	| LoopShape
@@ -699,20 +701,31 @@ function fieldOf(value: unknown, names: ReadonlySet<string>): Tree {
 	return lambda ? new Code(lambda) : plainTree(value);
 }
 
+/** The `include` of an Edit Fields node as the `keep` of `set`. */
+function keepOf(include: Record<string, unknown>): SetKeep | undefined {
+	const { mode, fields } = include;
+	if (mode === 'none' || mode === 'all') return mode;
+	const paths: unknown[] = Array.isArray(fields) ? fields : [];
+	if (!paths.every((field): field is string => typeof field === 'string')) return undefined;
+	return mode === 'selected'
+		? { selected: paths }
+		: mode === 'except'
+			? { except: paths }
+			: undefined;
+}
+
 function setShape(node: NamedNode, names: ReadonlySet<string>): Shape | undefined {
-	if (node.type !== SET_NODE.type || node.typeVersion !== SET_NODE.version || hasSettings(node)) {
-		return undefined;
-	}
+	if (node.type !== SET_NODE.type || node.typeVersion !== SET_NODE.version) return undefined;
 	const parameters = node.parameters ?? {};
 	const { fields, include } = parameters;
 	if (!isRecord(fields) || !isRecord(include)) return undefined;
-	const keepAll = include.mode === 'all';
+	const keep = keepOf(include);
 	const converted = Object.entries(fields).flatMap(([key, value]) =>
-		/[.[\]]/.test(key) ? [] : [[key, fieldOf(value, names)] as const],
+		isFieldPath(key) ? [[key, fieldOf(value, names)] as const] : [],
 	);
-	if (converted.length !== Object.keys(fields).length) return undefined;
-	if (!isEqual(setParameters(fields, keepAll), parameters)) return undefined;
-	return { kind: 'set', fields: Object.fromEntries(converted), keepAll };
+	if (keep === undefined || converted.length !== Object.keys(fields).length) return undefined;
+	if (!isEqual(setParameters(fields, keep), parameters)) return undefined;
+	return { kind: 'set', fields: Object.fromEntries(converted), keep };
 }
 
 type ContractShape = Extract<Shape, { kind: 'contract' }>;
@@ -1484,7 +1497,8 @@ function callTree(
 			return new Call('set', {
 				name: node.name,
 				fields: shape.fields,
-				...(shape.keepAll ? { keep: 'all' } : {}),
+				...(shape.keep === 'none' ? {} : { keep: plainTree(shape.keep) }),
+				...settingsField(node),
 			});
 		case 'contract':
 			return contractCall(graph, node, shape);

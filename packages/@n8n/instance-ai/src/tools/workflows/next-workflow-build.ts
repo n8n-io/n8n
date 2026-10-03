@@ -31,6 +31,7 @@ import type { ValidationWarning } from './workflow-validation-warnings';
 import type { InstanceAiContext } from '../../types';
 import type { FixtureOrigin } from '../../workflow-loop/workflow-loop-state';
 import {
+	builtInRowOf,
 	contractReplacementOf,
 	derivedNodeModuleText,
 	factoryPathOf,
@@ -619,6 +620,7 @@ export function staticInputIssues(workflow: WorkflowJSON): string[] {
 /**
  * A note for each `node({ type })` that a typed contract step can replace: the step of the same
  * resource and operation, or the module (e.g. HTTP Request, whose action follows the method).
+ * Without a contract step, a flow step such as `set` or `merge` can replace it.
  * It does not block: no action declares a lossless map from the legacy parameters, so the step
  * can lack an option that the node uses. Nodes that the flow SDK makes itself (filter, switch,
  * loops) are not `node()` calls.
@@ -634,6 +636,17 @@ export async function legacyNodeIssues(
 	return workflow.nodes.flatMap((node): ValidationWarning[] => {
 		if (!node.name || !written.has(node.name) || actionOfNode(node)) return [];
 		const replacement = contractReplacementOf(node);
+		const flowStep = replacement ? undefined : builtInRowOf(node.type);
+		if (flowStep) {
+			return [
+				{
+					code: 'CONTRACT_NODE_AVAILABLE',
+					nodeName: node.name,
+					severity: 'informational',
+					message: `"${node.name}" is a legacy ${node.type} node. Use the flow step instead of node({ type }), unless it lacks an option that this node needs: ${flowStep}`,
+				},
+			];
+		}
 		if (!replacement) return [];
 		const { nodeId, actions: own, exact } = replacement;
 		const steps = own.map((action) => `${action.node.id}.${factoryPathOf(action)}`).join(', ');

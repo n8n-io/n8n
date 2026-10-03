@@ -32,6 +32,7 @@ import {
 	derivedActionsNamedBy,
 	derivedModulePath,
 	derivedNodeView,
+	flowStepRowOf,
 	hasDerivedModule,
 	namesDisplayName,
 	nearestNextActions,
@@ -709,6 +710,14 @@ async function resolveNodeTypeDefinitions(
 	const definitions = await Promise.all(
 		nodeTypes.map(async (req) => {
 			const nodeType = typeof req === 'string' ? req : req.nodeType;
+			const flowStepRow = context.nodeContractsEnabled ? flowStepRowOf(nodeType) : undefined;
+			if (flowStepRow) {
+				return {
+					nodeType,
+					content: '',
+					error: `The flow SDK builds ${nodeType}. Use its step instead: ${flowStepRow}`,
+				};
+			}
 			const moduleDefinition = context.nodeContractsEnabled
 				? resolveModuleDefinition(req, context)
 				: undefined;

@@ -1163,6 +1163,36 @@ describe('decompileWorkflow', () => {
 		expect(source).toContain('first: expr("{{ $input.first().json.id }}"),');
 	});
 
+	it('reads an Edit Fields node with dotted keys and kept field paths as set', () => {
+		const json = workflow(
+			'Fields',
+			manual(),
+			set({ name: 'Picked', fields: { 'user.name': 'Ada' }, keep: { selected: ['id', 'a.b'] } }),
+			set({ name: 'Dropped', fields: { n: 1 }, keep: { except: ['user.name'] } }),
+		).toJSON();
+		const { source, rebuilt, again } = roundTrip(json);
+		expect(withoutIds(rebuilt)).toEqual(withoutIds(json));
+		expect(again).toBe(source);
+		expect(source).not.toContain('items.set(');
+		expect(source).toContain('"user.name": "Ada",');
+		expect(source).toMatch(/keep: \{\s*selected: \[\s*"id",\s*"a\.b",\s*\],\s*\}/);
+		expect(source).toMatch(/keep: \{\s*except: \[\s*"user\.name",\s*\],\s*\}/);
+	});
+
+	it('keeps an Edit Fields node with an index key out of set', () => {
+		const json = workflow('Fields', manual(), set({ name: 'Fields', fields: { a: 1 } })).toJSON();
+		const indexed = {
+			...json,
+			nodes: json.nodes.map((n) =>
+				n.name === 'Fields' ? { ...n, parameters: { ...n.parameters, fields: { 'a[0]': 1 } } } : n,
+			),
+		};
+		const { source, rebuilt } = roundTrip(indexed);
+		expect(source).not.toContain(' set({');
+		expect(source).toContain('"a[0]": 1');
+		expect(withoutIds(rebuilt)).toEqual(withoutIds(indexed));
+	});
+
 	it('round-trips node settings on a trigger, a typed step, node(), and a provider', () => {
 		const json = workflow(
 			'Settings',
@@ -1223,7 +1253,7 @@ describe('decompileWorkflow', () => {
 		expect(source).toContain('  onError(set({');
 	});
 
-	it('keeps a core-node step with node settings out of its region form', () => {
+	it('keeps a manual trigger with node settings out of its step form, and gives set its settings', () => {
 		const json = workflow('Fields', manual(), set({ name: 'Fields', fields: { a: 1 } })).toJSON();
 		const withNotes = {
 			...json,
@@ -1231,7 +1261,7 @@ describe('decompileWorkflow', () => {
 		};
 		const { source, rebuilt } = roundTrip(withNotes);
 		expect(source).not.toContain('manual(');
-		expect(source).not.toContain('set(');
+		expect(source).toContain('set({');
 		expect(source).toContain('notes: "About Fields",');
 		expect(withoutIds(rebuilt)).toEqual(withoutIds(withNotes));
 	});

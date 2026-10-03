@@ -318,7 +318,7 @@ describe('workflow', () => {
 		expect(() => noTrigger.toJSON()).toThrow('A workflow starts with a trigger, e.g. manual()');
 	});
 
-	it('passes set fields that start with "=" on as expressions, and refuses path keys', () => {
+	it('passes set fields that start with "=" on as expressions, and refuses index keys', () => {
 		const json = workflow(
 			'Fields',
 			manual(),
@@ -332,8 +332,114 @@ describe('workflow', () => {
 			fields: { text: '=Hi {{ $json.name }}', raw: '={{ $json.id }}', count: 2 },
 			include: { mode: 'all' },
 		});
-		const nested = workflow('Path', manual(), set({ name: 'Path', fields: { 'a.b': 1 } }));
-		expect(() => nested.toJSON()).toThrow('Path: set field "a.b" cannot hold "." or "["');
+		const indexed = workflow('Path', manual(), set({ name: 'Path', fields: { 'a[0]': 1 } }));
+		expect(() => indexed.toJSON()).toThrow(
+			'Path: set field "a[0]" must be a field name or a dotted path',
+		);
+		const empty = workflow('Path', manual(), set({ name: 'Path', fields: { 'a..b': 1 } }));
+		expect(() => empty.toJSON()).toThrow('Path: set field "a..b" must be');
+	});
+
+	it('types set fields at dotted paths and the kept input fields', () => {
+		interface User {
+			id: string;
+			password: string;
+			profile: { email: string; phone?: string; city: string };
+		}
+		const users = <In, Ctx, const N extends string>(config: {
+			name: N;
+		}): Step<In, Ctx, User, N> => contractStep('users.getAll', config);
+		// `see` only types the item; the build never compiles it.
+		const read = <In, Ctx, const N extends string>({
+			name,
+		}: {
+			name: N;
+			see: (item: In) => void;
+		}): Step<In, Ctx, In, N> => contractStep('items.read', { name });
+
+		const json = workflow(
+			'Users',
+			manual(),
+			users({ name: 'Users' }),
+			set({
+				name: 'Picked',
+				fields: { 'contact.email': (user) => user.profile.email, 'contact.id': (user) => user.id },
+				keep: { selected: ['id', 'profile.city'] },
+			}),
+			read({
+				name: 'Read picked',
+				see: (item) => {
+					expectTypeOf(item).toEqualTypeOf<{
+						id: string;
+						profile: { city: string };
+						contact: { email: string; id: string };
+					}>();
+				},
+			}),
+			users({ name: 'Again' }),
+			set({
+				name: 'Safe',
+				fields: { 'profile.verified': true },
+				keep: { except: ['password', 'profile.phone'] },
+			}),
+			read({
+				name: 'Read safe',
+				see: (item) => {
+					expectTypeOf(item).toEqualTypeOf<{
+						id: string;
+						profile: { email: string; city: string; verified: true };
+					}>();
+				},
+			}),
+			users({ name: 'Third' }),
+			set({ name: 'All', fields: { 'profile.city': 'Berlin', tag: 1 }, keep: 'all' }),
+			read({
+				name: 'Read all',
+				see: (item) => {
+					expectTypeOf(item.profile).toEqualTypeOf<{
+						email: string;
+						phone?: string;
+						city: string;
+					}>();
+					expectTypeOf(item.tag).toEqualTypeOf<number>();
+				},
+			}),
+			users({ name: 'Fourth' }),
+			// @ts-expect-error the input has no field mail
+			set({ name: 'Typo', fields: { a: 1 }, keep: { selected: ['mail'] } }),
+		).toJSON();
+
+		const parameters = (name: string) => json.nodes.find((n) => n.name === name)?.parameters;
+		expect(parameters('Picked')).toEqual({
+			fields: { 'contact.email': '={{ $json.profile.email }}', 'contact.id': '={{ $json.id }}' },
+			include: { mode: 'selected', fields: ['id', 'profile.city'] },
+		});
+		expect(parameters('Safe')).toEqual({
+			fields: { 'profile.verified': true },
+			include: { mode: 'except', fields: ['password', 'profile.phone'] },
+		});
+	});
+
+	it('passes set settings on to the node', () => {
+		const json = workflow(
+			'Notes',
+			manual(),
+			set({ name: 'Parked', fields: { parked: true }, settings: { notes: 'Dead letter' } }),
+		).toJSON();
+		expect(json.nodes.find((n) => n.name === 'Parked')).toMatchObject({ notes: 'Dead letter' });
+	});
+
+	it('reports a when without then as an issue', () => {
+		const elseOnly = workflow(
+			'Else only',
+			manual(),
+			when(
+				{ name: 'Failed?', if: () => true },
+				// @ts-expect-error when needs then
+				{ else: set({ name: 'Ok', fields: { ok: true } }) },
+			),
+		);
+		expect(() => elseOnly.toJSON()).toThrow('when "Failed?" needs a then part');
 	});
 
 	it('routes a contract step with named outputs, and continues from the first output', () => {

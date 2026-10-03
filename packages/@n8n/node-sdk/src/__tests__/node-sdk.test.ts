@@ -1005,6 +1005,23 @@ describe('generateNodeModule', () => {
 		expect(moduleOf(listTasks)).not.toContain('OpenValue');
 	});
 
+	it('gives an input JSON value a lambda type and keeps an output JSON value open', () => {
+		const put = todo.resource('row').action('put', {
+			action: 'Put row',
+			summary: 'Put a row.',
+			flow: { effect: 'write', cardinality: 'per-item' },
+			input: { fields: t.record(t.jsonValue()), list: t.arr(t.jsonValue()), raw: t.jsonValue() },
+			output: t.obj({ body: t.jsonValue() }),
+			run: async () => await Promise.resolve({ body: null }),
+		});
+		const text = moduleOf(put);
+		expect(text).toContain('fields: { [key: string]: Value<I, C, OpenValue> }');
+		expect(text).toContain('list: Array<Value<I, C, OpenValue>>');
+		expect(text).toContain('raw: Value<I, C, OpenValue>');
+		expect(text).toContain('body: any');
+		expect(text).toContain('type OpenValue');
+	});
+
 	it('types the output of a step by its sample, within the declared output', () => {
 		const append = todo.resource('row').action('append', {
 			action: 'Append row',

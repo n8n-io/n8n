@@ -35,7 +35,24 @@ import {
 	triggers,
 } from '@n8n/nodes-base-next';
 
+/** Every action, as the sandbox modules and get-as-code read them. */
 export const nextActions: readonly Action[] = actions;
+
+/**
+ * Module actions that a flow step emits with better types, with the catalog node type of that
+ * step in `BUILT_IN_STEPS`. Discovery does not offer them. The sandbox module keeps them, so a
+ * source that get-as-code reads back still builds.
+ */
+const FLOW_STEP_OF_ACTION: ReadonlyMap<string, string> = new Map([
+	['items.set', 'n8n-nodes-base.set'],
+	['merge.append', 'n8n-nodes-base.merge'],
+	['merge.combine', 'n8n-nodes-base.merge'],
+	['merge.combineByPosition', 'n8n-nodes-base.merge'],
+	['loopState.set', 'n8n-nodes-base.splitInBatches'],
+]);
+
+/** The actions that discovery offers. */
+const offeredActions = nextActions.filter(({ id }) => !FLOW_STEP_OF_ACTION.has(id));
 
 export interface NextNodeModule {
 	readonly node: string;
@@ -45,12 +62,13 @@ export interface NextNodeModule {
 
 const allTriggers = [...triggers, ...nativeTriggers];
 
-/** The ids of the typed node modules, as the agent imports them: `@n8n/nodes/<id>`. */
+/** The ids of the typed node modules that discovery offers: `@n8n/nodes/<id>`. */
 export const nextNodeIds: readonly string[] = [
-	...new Set([...nextActions, ...allTriggers].map(({ node }) => node.id)),
+	...new Set([...offeredActions, ...allTriggers].map(({ node }) => node.id)),
 ];
 
-const actionsOfNode = (nodeId: string) => nextActions.filter((action) => action.node.id === nodeId);
+const actionsOfNode = (nodeId: string) =>
+	offeredActions.filter((action) => action.node.id === nodeId);
 
 const triggersOfNode = (nodeId: string) =>
 	allTriggers.filter((trigger) => trigger.node.id === nodeId);
@@ -79,9 +97,9 @@ const moduleOf = (nodeId: string, own: readonly Action[]) =>
 		),
 	]);
 
-/** The generated TypeScript module for every action and trigger of one node. */
+/** The sandbox module: every action and trigger of one node, also the actions discovery hides. */
 export function nodeModuleText(nodeId: string): string | undefined {
-	const own = actionsOfNode(nodeId);
+	const own = nextActions.filter((action) => action.node.id === nodeId);
 	return own.length || triggersOfNode(nodeId).length ? moduleOf(nodeId, own) : undefined;
 }
 
@@ -107,12 +125,33 @@ function nextNodeIdOf(ref: string): string | undefined {
 	);
 }
 
-/** The module for a node id (`notion`), an action id, or a node type of this package. */
+/**
+ * The module that discovery offers for a node id (`notion`), an action id, or a node type of
+ * this package. A ref to an action that a flow step replaces has none.
+ */
 export function nextNodeModule(ref: string): NextNodeModule | undefined {
 	const nodeId = nextNodeIdOf(ref);
-	const module = nodeId === undefined ? undefined : nodeModuleText(nodeId);
-	if (nodeId === undefined || module === undefined) return undefined;
+	if (nodeId === undefined || flowStepRowOf(ref) !== undefined) return undefined;
+	const own = actionsOfNode(nodeId);
+	if (!own.length && !triggersOfNode(nodeId).length) return undefined;
+	const module = moduleOf(nodeId, own);
 	return { node: nodeId, import: `import { ${nodeId} } from '@n8n/nodes/${nodeId}';`, module };
+}
+
+/**
+ * The SDK step row for a ref to a module action that a flow step replaces: its action id, its
+ * node type, or a node id without other actions, e.g. `loopState`.
+ */
+export function flowStepRowOf(ref: string): string | undefined {
+	const replaced = nextActions.find(
+		(action) =>
+			FLOW_STEP_OF_ACTION.has(action.id) &&
+			(action.id === ref ||
+				nodeTypeOf(action) === ref ||
+				(action.node.id === ref && !stepsOfNode(ref).length)),
+	);
+	const nodeType = replaced && FLOW_STEP_OF_ACTION.get(replaced.id);
+	return nodeType === undefined ? undefined : builtInRowOf(nodeType);
 }
 
 interface ActionLine {
@@ -189,13 +228,13 @@ export const factoryPathOf = (action: Pick<Action, 'resource' | 'operation'>) =>
 
 const LEGACY_TYPE = /^(?:n8n-nodes-base|@n8n\/n8n-nodes-langchain)\.(\w+)$/;
 
-/** The nodes whose actions each replace the legacy node of the action name, e.g. `items.set`. */
+/** The nodes whose actions each replace the legacy node of the action name, e.g. `items.sort`. */
 const LEGACY_NAMED_NODE_IDS: readonly string[] = ['condition', 'items'];
 
 /**
  * The contract actions that replace a legacy node. The legacy node of a service shares the node
  * id (`n8n-nodes-base.gmail` and `gmail`), a condition or items action shares the legacy node name
- * (`n8n-nodes-base.set` and `items.set`), and the resource and operation must match where the
+ * (`n8n-nodes-base.sort` and `items.sort`), and the resource and operation must match where the
  * actions have them.
  */
 export function contractReplacementOf(node: {
@@ -204,7 +243,7 @@ export function contractReplacementOf(node: {
 }): ContractReplacement | undefined {
 	const [, name] = LEGACY_TYPE.exec(node.type) ?? [];
 	if (name === undefined) return undefined;
-	const named = nextActions.find(
+	const named = offeredActions.find(
 		(action) => LEGACY_NAMED_NODE_IDS.includes(action.node.id) && action.operation === name,
 	);
 	if (named) return { nodeId: named.node.id, actions: [named], exact: true };
@@ -235,6 +274,11 @@ export const BUILT_IN_STEPS: ReadonlyArray<{
 		nodeType: 'n8n-nodes-base.manualTrigger',
 		steps: ['manual'],
 		row: "manual({ name, sample }): Starts the flow when the user clicks Execute. Import it from '@n8n/workflow-sdk/next'.",
+	},
+	{
+		nodeType: 'n8n-nodes-base.set',
+		steps: ['set'],
+		row: "set({ name, fields, keep?, settings? }): Sets fields on each item; a key 'a.b' sets a nested field. keep: 'all' | { selected: ['id', 'a.b'] } | { except: [...] } keeps input fields. Import it from '@n8n/workflow-sdk/next'.",
 	},
 	{
 		nodeType: 'n8n-nodes-base.if',
@@ -344,7 +388,7 @@ function actionsNamedBy(nodeId: string, terms: readonly string[]): Action[] {
 /** Actions that share words with the query. Node words weigh more than action words. */
 export function findNextActions(query: string): Action[] {
 	const terms = termsOf(query);
-	return nextActions
+	return offeredActions
 		.map((action) => ({ action, score: scoreOf(action, terms) }))
 		.filter(({ score }) => score > 0)
 		.sort((a, b) => b.score - a.score)
@@ -387,7 +431,7 @@ export function searchNextActions(
 			...named
 				.filter((own) => !named.some((other) => yieldsTo(own, other)))
 				.map(({ nodeId }) => nodeId),
-			...namedNodes,
+			...namedNodes.filter((nodeId) => stepsOfNode(nodeId).length > 0),
 		]),
 	];
 	const others = nodes.length
@@ -473,7 +517,7 @@ export function nearestNextActions(id: string, limit = 3): Action[] {
 	const operation = rest.at(-1);
 	const score = (action: Action) =>
 		(action.node.id === node ? 2 : 0) + (operation && action.id.endsWith(`.${operation}`) ? 1 : 0);
-	return nextActions
+	return offeredActions
 		.filter((action) => score(action) > 0)
 		.sort((a, b) => score(b) - score(a))
 		.slice(0, limit);
