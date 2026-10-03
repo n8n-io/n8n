@@ -1,10 +1,15 @@
 import type { WorkflowResponse } from '../clients/n8n-client';
 
+// Judges read a group as a canvas frame unless told otherwise. The note shows only
+// with a `repeat` group, so the context of other workflows does not change.
+const REPEAT_GROUP_NOTE =
+	'A group with `repeat` is a loop, not only a visual frame. With `kind: "forEach"`, the engine runs the nodes of the group once for each batch of at most `batchSize` items that arrive at `entry`. The batches run one after the other, so a Wait node in the group pauses once for each batch. The items of all batches leave the group one time, on `exits`, after the last batch.';
+
 /**
  * Renders node groups for the judge. Groups persist member node *ids*, but the
- * judge context is name-keyed and never exposes ids — so members are mapped to
- * node names and stale ids are dropped, mirroring the MCP read path
- * (`toNodeGroupSummary` in packages/cli/src/modules/mcp/tools/schemas.ts).
+ * judge context is name-keyed and never exposes ids — so members and the `repeat`
+ * entry and exits are mapped to node names and stale ids are dropped, mirroring the
+ * MCP read path (`toNodeGroupSummary` in packages/cli/src/modules/mcp/tools/schemas.ts).
  */
 function renderNodeGroupLines(wf: WorkflowResponse): string[] {
 	const groups = wf.nodeGroups ?? [];
@@ -24,11 +29,25 @@ function renderNodeGroupLines(wf: WorkflowResponse): string[] {
 				name: group.name,
 				nodes: group.nodeIds.flatMap((nodeId) => nameById.get(nodeId) ?? []),
 				...(group.description !== undefined ? { description: group.description } : {}),
+				...(group.repeat !== undefined
+					? {
+							repeat: {
+								kind: group.repeat.kind,
+								batchSize: group.repeat.batchSize,
+								entry: nameById.get(group.repeat.entry),
+								exits: group.repeat.exits.flatMap(({ node, output }) => {
+									const name = nameById.get(node);
+									return name === undefined ? [] : [{ node: name, output }];
+								}),
+							},
+						}
+					: {}),
 			})),
 			null,
 			2,
 		),
 		'```',
+		...(groups.some((group) => group.repeat !== undefined) ? ['', REPEAT_GROUP_NOTE] : []),
 	];
 }
 

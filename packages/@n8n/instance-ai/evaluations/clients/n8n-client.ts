@@ -28,7 +28,7 @@ import type {
 	AgentSkill,
 	EvaluationConfigDto,
 } from '@n8n/api-types';
-import type { ExecutionStatus } from 'n8n-workflow';
+import type { ExecutionStatus, WorkflowGroupRepeat } from 'n8n-workflow';
 import { Agent, setGlobalDispatcher } from 'undici';
 import { z } from 'zod';
 
@@ -163,6 +163,7 @@ export interface WorkflowNodeGroupResponse {
 	name: string;
 	nodeIds: string[];
 	description?: string;
+	repeat?: WorkflowGroupRepeat;
 }
 
 /** A workflow as returned by GET /rest/workflows/:id. */

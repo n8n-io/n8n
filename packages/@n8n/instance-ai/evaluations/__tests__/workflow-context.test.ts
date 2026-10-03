@@ -69,6 +69,59 @@ describe('buildWorkflowContextBlock', () => {
 		);
 	});
 
+	it('renders a forEach group with its repeat settings by node name and explains them', () => {
+		const wf = workflow('wf-1', {
+			nodes: [node('id-a', 'Send Email'), node('id-b', 'Pause'), node('id-c', 'Summary')],
+			nodeGroups: [
+				{
+					id: 'g-1',
+					name: 'Batches Of 10',
+					nodeIds: ['id-a', 'id-b'],
+					repeat: {
+						kind: 'forEach',
+						batchSize: 10,
+						entry: 'id-a',
+						exits: [
+							{ node: 'id-b', output: 0 },
+							{ node: 'id-ghost', output: 0 },
+						],
+					},
+				},
+				{ id: 'g-2', name: 'Report', nodeIds: ['id-c'] },
+			],
+		});
+
+		const block = buildWorkflowContextBlock(wf);
+
+		expect(block).toContain(
+			groupsJson([
+				{
+					name: 'Batches Of 10',
+					nodes: ['Send Email', 'Pause'],
+					repeat: {
+						kind: 'forEach',
+						batchSize: 10,
+						entry: 'Send Email',
+						exits: [{ node: 'Pause', output: 0 }],
+					},
+				},
+				{ name: 'Report', nodes: ['Summary'] },
+			]),
+		);
+		expect(block).toContain('A group with `repeat` is a loop, not only a visual frame.');
+		expect(block).not.toContain('id-a');
+	});
+
+	it('adds no repeat note when no group repeats', () => {
+		const wf = workflow('wf-1', {
+			nodes: [node('id-a', 'Fetch Data')],
+			nodeGroups: [{ id: 'g-1', name: 'Ingestion', nodeIds: ['id-a'] }],
+		});
+
+		expect(buildWorkflowContextBlock(wf)).toMatch(/```$/);
+		expect(buildWorkflowContextBlock(wf)).not.toContain('repeat');
+	});
+
 	it('states "(none)" when the workflow has no groups', () => {
 		// Absent field (REST omits it) and empty array must both read as "no groups".
 		const withoutField = workflow('wf-1', { nodes: [node('id-a', 'Fetch Data')] });
