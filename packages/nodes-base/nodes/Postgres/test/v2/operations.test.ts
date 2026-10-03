@@ -1739,6 +1739,54 @@ describe('When matching on all columns', () => {
 				},
 			],
 			nodeOptions,
+			expect.any(Map),
+		);
+	});
+
+	it('should allow falsy match-column values (e.g. 0)', async () => {
+		const runQueries = jest.fn().mockResolvedValue([]);
+
+		const nodeParameters = {
+			resource: 'database',
+			operation: 'upsert',
+			schema: 'public',
+			table: 'my_table',
+			columns: {
+				mappingMode: 'autoMapInputData',
+				matchingColumns: ['id'],
+			},
+			options: {},
+		};
+
+		const inputItems = [
+			{
+				json: {
+					id: 0,
+					foo: 'data 0',
+				},
+			},
+		];
+
+		const nodeOptions = nodeParameters.options as IDataObject;
+
+		await upsert.execute.call(
+			createMockExecuteFunction(nodeParameters),
+			runQueries,
+			inputItems,
+			nodeOptions,
+			createMockDb(columnsInfo),
+		);
+
+		expect(runQueries).toHaveBeenCalledWith(
+			[
+				{
+					query:
+						'INSERT INTO $1:name.$2:name($4:name) VALUES($4:csv) ON CONFLICT ($3:name) DO UPDATE  SET $5:name = $6 RETURNING *',
+					values: ['public', 'my_table', 'id', { id: 0, foo: 'data 0' }, 'foo', 'data 0'],
+				},
+			],
+			nodeOptions,
+			expect.any(Map),
 		);
 	});
 });
