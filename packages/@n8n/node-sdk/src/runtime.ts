@@ -39,6 +39,14 @@ import { codeRunnerOf, dataTableHostOf, dataTablesOf } from './host-imports';
 import { actionHostsOf, credentialHostsOf, egressOf } from './egress';
 import { parameterValue, toProperty } from './properties';
 import {
+	bytesOf,
+	runProfileListener,
+	runRecorder,
+	type RunProfile,
+	type RunRecorder,
+	type RunRequest,
+} from './profile';
+import {
 	DEFAULT_RUN_LIMITS,
 	isHttpError,
 	isToolContract,
@@ -316,6 +324,54 @@ export function withResponse(error: unknown): unknown {
 	});
 }
 
+/** The parts of an HTTP attempt that its request gives. */
+type RequestLabel = Omit<
+	RunRequest,
+	'startMs' | 'endMs' | 'resendCount' | 'status' | 'errorType' | 'responseBytes'
+>;
+
+type AttemptOutcome = Pick<RunRequest, 'status' | 'errorType' | 'responseBytes'>;
+
+const DEFAULT_PORTS: Readonly<Record<string, number>> = { 'http:': 80, 'https:': 443 };
+
+function requestLabelOf(
+	options: IHttpRequestOptions,
+	fields: Pick<RequestLabel, 'itemIndex' | 'template' | 'page' | 'requestBytes'>,
+): RequestLabel {
+	const url = new URL(options.url);
+	return {
+		...fields,
+		method: options.method ?? 'GET',
+		scheme: url.protocol.replace(/:$/, ''),
+		host: url.hostname,
+		port: url.port ? Number(url.port) : (DEFAULT_PORTS[url.protocol] ?? 0),
+	};
+}
+
+/** The size of a text or byte body. A parsed body is not serialized again to measure it. */
+const rawBytesOf = (body: unknown) =>
+	typeof body === 'string' || body instanceof Uint8Array ? bytesOf(body) : undefined;
+
+/** A full response gives its status and length. */
+function responseOutcomeOf(response: unknown, full: boolean): AttemptOutcome {
+	if (!full || !isRecord(response)) return { responseBytes: rawBytesOf(response) };
+	const { statusCode, headers, body } = response;
+	const length = headersOf(headers)['content-length'];
+	return {
+		...(typeof statusCode === 'number' ? { status: statusCode } : {}),
+		responseBytes: length && /^\d+$/.test(length) ? Number(length) : rawBytesOf(body),
+	};
+}
+
+/** The status of an HTTP error, else the transport error code or the error name. */
+function attemptOutcomeOf(error: unknown): AttemptOutcome {
+	if (isHttpError(error)) return { status: error.status, errorType: String(error.status) };
+	const code = errorChain(error)
+		.map((entry) => entry.code)
+		.find((entry): entry is string => typeof entry === 'string');
+	return { errorType: code ?? (error instanceof Error ? error.name : 'Error') };
+}
+
 /** The credential `run()` gets: the type name and the fields without secrets. */
 type RunCredentialValue =
 	| { readonly type: string; readonly fields: Record<string, unknown> }
@@ -523,6 +579,8 @@ export interface ExecutorHost {
 	 * action with a `provider.input()` field only.
 	 */
 	supplied?(kind: ProviderKind): Promise<unknown>;
+	/** Records the run profile. Set only when the host has a run profile listener. */
+	readonly recorder?: RunRecorder;
 }
 
 /** The n8n context of a node run: `execute()` of a root node, `supplyData()` of a sub-node. */
@@ -887,7 +945,7 @@ export function executorOf<S extends Shape, O extends AnySchema>(
 	const declared: ReadonlySet<HostImport> = new Set(action.imports ?? []);
 
 	return async (host) => {
-		const { items } = host;
+		const { items, recorder } = host;
 		const inputNames = action.inputs;
 		const inputLists: ReadonlyArray<readonly INodeExecutionData[]> = inputNames
 			? inputNames.map((_name, index) => (index === 0 ? items : (host.inputItems?.(index) ?? [])))
@@ -949,6 +1007,7 @@ export function executorOf<S extends Shape, O extends AnySchema>(
 			stored.set(type, read);
 			return await read;
 		};
+		const credentialStart = credentialType === undefined ? undefined : recorder?.now();
 		const baseUrl = await baseUrlOf(action.node, credentialType, credentialData);
 		const credentialValue = action.node.credential?.types.find(
 			({ name }) => name === credentialType,
@@ -958,6 +1017,15 @@ export function executorOf<S extends Shape, O extends AnySchema>(
 			credentialType && host.credentialData
 				? await credentialData(credentialType).catch(() => undefined)
 				: undefined;
+		if (recorder && credentialType !== undefined && credentialStart !== undefined) {
+			recorder.phase({
+				name: 'credential',
+				startMs: credentialStart,
+				endMs: recorder.now(),
+				credentialType,
+				scheme: credentialValue?.scheme.kind ?? 'compat',
+			});
+		}
 		const redact = secretRedactorOf(credentialValue, storedCredential);
 		// n8n stores a token it requested or refreshed during the run, so an error reads the data
 		// again. A static scheme stores no token, and each read is a database read.
@@ -1012,22 +1080,41 @@ export function executorOf<S extends Shape, O extends AnySchema>(
 				throw new NodeOperationError(host.node, error.message, { itemIndex });
 			}
 		};
+		/** Adds an attempt to the profile. `label` is set only when the host records. */
+		const recordAttempt = (
+			label: RequestLabel | undefined,
+			startMs: number | undefined,
+			resendCount: number,
+			outcome: () => AttemptOutcome,
+		) => {
+			if (!recorder || !label || startMs === undefined) return;
+			recorder.request({ ...label, startMs, endMs: recorder.now(), resendCount, ...outcome() });
+		};
+
 		/** `build` gives the options of each attempt, so a stream body opens again for a retry. */
 		const send = async (
 			build: () => Promise<IHttpRequestOptions>,
 			retryable: boolean,
 			retry: number,
+			label: RequestLabel | undefined,
 		): Promise<unknown> => {
+			const startMs = label && recorder?.now();
 			try {
-				return await host.request(await build(), credentialType);
+				const options = await build();
+				const response = await host.request(options, credentialType);
+				recordAttempt(label, startMs, retry, () =>
+					responseOutcomeOf(response, options.returnFullResponse === true),
+				);
+				return response;
 			} catch (caught) {
 				const error = withResponse(caught);
+				recordAttempt(label, startMs, retry, () => attemptOutcomeOf(error));
 				const delay = retryable ? retryDelay(error, retry) : undefined;
 				if (delay === undefined) throw redactedError(error, await redactNow());
 				// The failed attempt is not read, so free its connection.
 				if (isHttpError(error) && error.body instanceof Readable) error.body.destroy();
 				await wait(delay);
-				return await send(build, retryable, retry + 1);
+				return await send(build, retryable, retry + 1, label);
 			}
 		};
 
@@ -1036,6 +1123,7 @@ export function executorOf<S extends Shape, O extends AnySchema>(
 			request: HttpRequest,
 			options: IHttpRequestOptions,
 			retryable: boolean,
+			label: RequestLabel | undefined,
 		): Promise<unknown> => {
 			const store = binaryStore();
 			const body = entries.get(request.body);
@@ -1055,8 +1143,8 @@ export function executorOf<S extends Shape, O extends AnySchema>(
 				// To follow a redirect, the client keeps the whole body in memory to send it again.
 				...(body ? { disableFollowRedirect: true } : {}),
 			});
-			if (!keep) return await send(build, retryable, 0);
-			const response = await send(build, retryable, 0).catch((error: unknown) => {
+			if (!keep) return await send(build, retryable, 0, label);
+			const response = await send(build, retryable, 0, label).catch((error: unknown) => {
 				// An error response is not read, so free its connection.
 				if (isHttpError(error) && error.body instanceof Readable) error.body.destroy();
 				throw error;
@@ -1075,7 +1163,12 @@ export function executorOf<S extends Shape, O extends AnySchema>(
 			return request.fullResponse ? { body: file, headers, statusCode } : file;
 		};
 
-		const httpFor = (itemIndex: number, input: Readonly<Record<string, unknown>>): Http => {
+		/** `binding` is the declarative binding that sends the requests, for the profile. */
+		const httpFor = (
+			itemIndex: number,
+			input: Readonly<Record<string, unknown>>,
+			binding?: { readonly path: string; readonly paged: boolean },
+		): Http => {
 			const sent = { requests: 0 };
 			const policy = new Map<'policy', ReturnType<typeof egressPolicyOf>>();
 			function request(
@@ -1104,10 +1197,20 @@ export function executorOf<S extends Shape, O extends AnySchema>(
 					itemIndex,
 				});
 				const requestOptions = allowedDomains === undefined ? built : { ...built, allowedDomains };
+				const label =
+					recorder &&
+					requestLabelOf(requestOptions, {
+						itemIndex,
+						template: binding?.path,
+						page: binding?.paged ? sent.requests : undefined,
+						requestBytes: entries.has(options.body)
+							? entries.get(options.body)?.bytes
+							: bytesOf(requestOptions.body),
+					});
 				const response =
 					options.response === 'binary' || entries.has(options.body)
-						? await sendBinary(options, requestOptions, retryable)
-						: await send(async () => requestOptions, retryable, 0);
+						? await sendBinary(options, requestOptions, retryable, label)
+						: await send(async () => requestOptions, retryable, 0, label);
 				return checkedResponse(action.node, options, response);
 			}
 			return { request };
@@ -1122,7 +1225,7 @@ export function executorOf<S extends Shape, O extends AnySchema>(
 			return await read;
 		};
 
-		const inputOf = async (itemIndex: number): Promise<RunInput<S>> => {
+		const readInput = async (itemIndex: number): Promise<RunInput<S>> => {
 			const parameters = Object.fromEntries(
 				inputKeys
 					.map(
@@ -1165,6 +1268,13 @@ export function executorOf<S extends Shape, O extends AnySchema>(
 				const issues = validate(input, action.inputSchema);
 				throw new NodeOperationError(host.node, issues.join('; '), { itemIndex });
 			}
+			return input;
+		};
+
+		const inputOf = async (itemIndex: number): Promise<RunInput<S>> => {
+			const startMs = recorder?.now();
+			const input = await readInput(itemIndex);
+			if (recorder && startMs !== undefined) recorder.input(recorder.now() - startMs);
 			return input;
 		};
 
@@ -1251,7 +1361,9 @@ export function executorOf<S extends Shape, O extends AnySchema>(
 				return from.map((source) => pairOf(source, at));
 			};
 			const checked = (json: unknown, at: number) => {
+				const startMs = recorder?.now();
 				const issues = validate(json, outputSchema, { path: `output[${at}]` });
+				if (recorder && startMs !== undefined) recorder.output(recorder.now() - startMs);
 				if (issues.length > 0 && host.warn && isRecord(json)) {
 					addDrift(issues);
 					return json;
@@ -1346,7 +1458,12 @@ export function executorOf<S extends Shape, O extends AnySchema>(
 			if (!item) return [];
 			const input = await inputOf(itemIndex);
 			const route = routeOf(names, itemIndex);
-			const http = httpFor(itemIndex, input);
+			const bound = binding ?? listBinding;
+			const http = httpFor(
+				itemIndex,
+				input,
+				bound && { path: bound.path, paged: bound === listBinding },
+			);
 			// The host sends a declarative request or list itself.
 			const result: Promise<unknown> | AsyncIterable<unknown> | Iterable<unknown> | undefined =
 				binding
@@ -1451,6 +1568,7 @@ export function executorOf<S extends Shape, O extends AnySchema>(
 		const { names, routed } = await run().catch(async (error: unknown) => {
 			throw redactedError(error, await redactNow());
 		});
+		recorder?.drift(drift.size);
 		if (drift.size > 0) {
 			const shown = [...drift].slice(0, MAX_DRIFT_ISSUES).join('; ');
 			const more = drift.size > MAX_DRIFT_ISSUES ? ` (${drift.size - MAX_DRIFT_ISSUES} more)` : '';
@@ -1746,8 +1864,15 @@ export function withCredentialHostsOf(head: Action | Trigger, action: Action): A
 export async function loadExecutor(frozen: FrozenVersion, head: FrozenVersion): Promise<Executor> {
 	const action = await verifiedBundleOf(frozen);
 	if ('kind' in action) throw new UnexpectedError(`${action.id} is a trigger, not an action`);
-	if (frozen.manifest.bundleHash === head.manifest.bundleHash) return executorOf(action);
-	return executorOf(withCredentialHostsOf(await verifiedBundleOf(head), action));
+	const executor = executorOf(
+		frozen.manifest.bundleHash === head.manifest.bundleHash
+			? action
+			: withCredentialHostsOf(await verifiedBundleOf(head), action),
+	);
+	return async (host) => {
+		host.recorder?.path('in_process');
+		return await executor(host);
+	};
 }
 
 /** Makes the executor of a frozen version, e.g. in a sandbox. The default is `loadExecutor`. */
@@ -1794,6 +1919,7 @@ async function versionExecutorOf(context: NodeContext, head: FrozenVersion) {
 	// A failed read, for example a registry outage, must not stay in the cache.
 	// The credential hosts come from `head`, so the executor depends on both bundles.
 	const key = `${bundleHash}:${head.manifest.bundleHash}`;
+	const cached = executors.has(key);
 	const executor =
 		executors.get(key) ??
 		(executorLoader.get('loader') ?? loadExecutor)(frozen, head).catch((error: unknown) => {
@@ -1801,14 +1927,45 @@ async function versionExecutorOf(context: NodeContext, head: FrozenVersion) {
 			throw error;
 		});
 	executors.set(key, executor);
-	return { executor: await executor, manifest: frozen.manifest };
+	return { executor: await executor, manifest: frozen.manifest, cached };
 }
 
 async function executeVersion(context: IExecuteFunctions, head: FrozenVersion) {
-	const { executor, manifest } = await versionExecutorOf(context, head);
-	const outputs = await executor(hostOf(context));
-	recordVersion(context, manifest);
-	return outputs;
+	const listener = runProfileListener();
+	if (!listener) {
+		const { executor, manifest } = await versionExecutorOf(context, head);
+		const outputs = await executor(hostOf(context));
+		recordVersion(context, manifest);
+		return outputs;
+	}
+	const host = hostOf(context);
+	const { recorder, profile } = runRecorder(host.items.length);
+	const loadStart = recorder.now();
+	const { executor, manifest, cached } = await versionExecutorOf(context, head);
+	recorder.phase({ name: 'load', startMs: loadStart, endMs: recorder.now(), cached });
+	const { id, semver, bundleHash, nodeContract } = manifest;
+	const identity = { action: id, version: semver, bundleHash, nodeContract };
+	// A listener failure is logged: tracing must not fail the run.
+	const emit = (result: RunProfile) => {
+		try {
+			listener({ executionId: context.getExecutionId(), nodeName: context.getNode().name }, result);
+		} catch (error) {
+			context.logger.warn(`The run profile of ${id} was not recorded: ${errorMessage(error)}`);
+		}
+	};
+	try {
+		const outputs = await executor({ ...host, recorder });
+		recordVersion(context, manifest);
+		const outputItems = outputs.reduce((sum, output) => sum + output.length, 0);
+		emit(profile(identity, { outputItems }));
+		return outputs;
+	} catch (error) {
+		// The executor wraps a plain error in a NodeOperationError; its cause names what failed.
+		const failed =
+			error instanceof NodeOperationError && error.cause instanceof Error ? error.cause : error;
+		emit(profile(identity, { errorType: failed instanceof Error ? failed.name : typeof failed }));
+		throw error;
+	}
 }
 
 /** The run data tells which version of the action ran. */

@@ -3,8 +3,10 @@ import {
 	setContractVersionLoader,
 	setExecutorLoader,
 	setNodeContractRange,
+	setRunProfileListener,
 	type ContractVersionLoader,
 	type FrozenVersion,
+	type RunProfileListener,
 } from '@n8n/node-sdk/host';
 import {
 	compareSemver,
@@ -56,6 +58,8 @@ export interface ContractRegistryOptions {
 	 * `all`: every version. Without it, every bundle runs in this process.
 	 */
 	readonly sandbox?: { readonly options: SandboxOptions; readonly scope: 'stored' | 'all' };
+	/** Gets the run profile of each node execution, e.g. for traces. Without it, nothing is recorded. */
+	readonly onRunProfile?: RunProfileListener;
 }
 
 /**
@@ -464,12 +468,13 @@ const isBundled = (manifest: VersionManifest) =>
 	);
 
 /**
- * Sets the Node Contract range, the version loader and the sandbox of this package's node-sdk,
- * which its nodes run with.
+ * Sets the Node Contract range, the version loader, the sandbox and the run profile listener of
+ * this package's node-sdk, which its nodes run with.
  */
 export const useContractRegistry = (options: ContractRegistryOptions) => {
 	setNodeContractRange(options.nodeContractRange);
 	setContractVersionLoader(contractVersionLoader(options));
+	setRunProfileListener(options.onRunProfile);
 	if (options.sandbox) {
 		const { scope } = options.sandbox;
 		setExecutorLoader(

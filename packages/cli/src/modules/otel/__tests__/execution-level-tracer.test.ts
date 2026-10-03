@@ -1,6 +1,7 @@
 import type { Logger } from '@n8n/backend-common';
 import type { TextMapPropagator } from '@opentelemetry/api';
-import { context, propagation, SpanStatusCode, trace } from '@opentelemetry/api';
+import type { RunProfile } from '@n8n/nodes-base-next';
+import { context, propagation, SpanKind, SpanStatusCode, trace } from '@opentelemetry/api';
 import { hrTimeToMilliseconds } from '@opentelemetry/core';
 import { mock } from 'vitest-mock-extended';
 
@@ -1014,6 +1015,181 @@ describe('ExecutionLevelTracer', () => {
 			} finally {
 				propagation.disable();
 			}
+		});
+	});
+
+	describe('recordContractRun', () => {
+		const t0 = Date.now();
+		const notionRequest = {
+			itemIndex: 0,
+			method: 'POST',
+			scheme: 'https',
+			host: 'api.notion.com',
+			port: 443,
+			resendCount: 0,
+			requestBytes: 42,
+		};
+		// A Notion getAll run: its `run()` sends one query per page.
+		const notionProfile: RunProfile = {
+			action: 'notion.databasePage.getAll',
+			version: '2.0.0',
+			bundleHash: 'bundle-hash',
+			nodeContract: '2.5.0',
+			path: 'in_process',
+			startMs: t0,
+			endMs: t0 + 50,
+			phases: [
+				{ name: 'load', startMs: t0, endMs: t0 + 1, cached: true },
+				{
+					name: 'credential',
+					startMs: t0 + 1,
+					endMs: t0 + 2,
+					credentialType: 'notionApi',
+					scheme: 'apply',
+				},
+			],
+			requests: [
+				{ ...notionRequest, startMs: t0 + 3, endMs: t0 + 20, responseBytes: 66_000 },
+				{
+					...notionRequest,
+					startMs: t0 + 21,
+					endMs: t0 + 40,
+					responseBytes: 20_000,
+					requestBytes: 64,
+				},
+			],
+			requestCount: 2,
+			retryCount: 0,
+			pageCount: 0,
+			inputItems: 1,
+			outputItems: 150,
+			inputMs: 0.5,
+			outputValidateMs: 9.5,
+			driftIssues: 0,
+		};
+
+		const startNode = (executionId: string) => {
+			tracer.startWorkflow({ executionId, workflow: defaultWorkflow });
+			tracer.startNode({
+				executionId,
+				node: { id: 'n1', name: 'Notion', type: '@n8n/nodes-base-next.notion', typeVersion: 2 },
+			});
+		};
+		const endNode = (executionId: string) => {
+			tracer.endNode({
+				executionId,
+				node: { id: 'n1', name: 'Notion', type: '@n8n/nodes-base-next.notion', typeVersion: 2 },
+				inputItemCount: 1,
+				outputItemCount: 150,
+			});
+			tracer.endWorkflow({ executionId, status: 'success', mode: 'trigger', isRetry: false });
+		};
+		const spansOf = () => otel.getFinishedSpans();
+		const named = (name: string) => spansOf().filter((span) => span.name === name);
+		const parentOf = (span: ReturnType<typeof spansOf>[number]) => span.parentSpanContext?.spanId;
+
+		it('adds node.execute → contract.run → phase and POST spans for a Notion-like run', () => {
+			startNode('exec-contract');
+			tracer.recordContractRun('exec-contract', 'Notion', notionProfile);
+			endNode('exec-contract');
+
+			const [nodeSpan] = named('node.execute');
+			const [run] = named('contract.run');
+			const posts = named('POST');
+			const load = named('contract.load')[0];
+			const credential = named('contract.credential')[0];
+			expect(parentOf(run)).toBe(nodeSpan.spanContext().spanId);
+			expect(posts).toHaveLength(2);
+			[...posts, load, credential].forEach((span) =>
+				expect(parentOf(span)).toBe(run.spanContext().spanId),
+			);
+			expect(new Set(spansOf().map((span) => span.spanContext().traceId)).size).toBe(1);
+
+			expect(run.attributes).toEqual({
+				'n8n.contract.action': 'notion.databasePage.getAll',
+				'n8n.contract.action.version': '2.0.0',
+				'n8n.contract.bundle_hash': 'bundle-hash',
+				'n8n.contract.node_contract': '2.5.0',
+				'n8n.contract.path': 'in_process',
+				'n8n.contract.items.input': 1,
+				'n8n.contract.output.items': 150,
+				'n8n.contract.requests': 2,
+				'n8n.contract.pages': 0,
+				'n8n.contract.retries': 0,
+				'n8n.contract.input.ms': 0.5,
+				'n8n.contract.output.validate_ms': 9.5,
+				'n8n.contract.drift_issues': 0,
+			});
+			expect(run.status.code).toBe(SpanStatusCode.OK);
+			expect(hrTimeToMilliseconds(run.startTime)).toBeCloseTo(t0, 0);
+			expect(hrTimeToMilliseconds(run.endTime)).toBeCloseTo(t0 + 50, 0);
+			expect(load.attributes).toEqual({ 'n8n.contract.load.cached': true });
+			expect(credential.attributes).toEqual({
+				'n8n.credential.type': 'notionApi',
+				'n8n.credential.scheme': 'apply',
+			});
+			expect(posts[0].kind).toBe(SpanKind.CLIENT);
+			expect(posts[0].attributes).toEqual({
+				'http.request.method': 'POST',
+				'server.address': 'api.notion.com',
+				'server.port': 443,
+				'url.scheme': 'https',
+				'http.request.body.size': 42,
+				'http.response.body.size': 66_000,
+			});
+			expect(hrTimeToMilliseconds(posts[1].startTime)).toBeCloseTo(t0 + 21, 0);
+			expect(hrTimeToMilliseconds(posts[1].endTime)).toBeCloseTo(t0 + 40, 0);
+		});
+
+		it('marks a failed attempt and a failed run, and names the page, template and retry', () => {
+			const failed: RunProfile = {
+				...notionProfile,
+				errorType: 'NodeApiError',
+				requests: [
+					{
+						...notionRequest,
+						startMs: t0 + 3,
+						endMs: t0 + 4,
+						template: '/v1/data_sources/{database}/query',
+						page: 2,
+						resendCount: 1,
+						status: 503,
+						errorType: '503',
+					},
+				],
+				requestCount: 205,
+			};
+			startNode('exec-failed');
+			tracer.recordContractRun('exec-failed', 'Notion', failed);
+			endNode('exec-failed');
+
+			const [run] = named('contract.run');
+			const [post] = named('POST /v1/data_sources/{database}/query');
+			expect(run.status.code).toBe(SpanStatusCode.ERROR);
+			expect(run.attributes['error.type']).toBe('NodeApiError');
+			expect(run.attributes['n8n.contract.spans_dropped']).toBe(204);
+			expect(post.status.code).toBe(SpanStatusCode.ERROR);
+			expect(post.attributes).toMatchObject({
+				'url.template': '/v1/data_sources/{database}/query',
+				'n8n.http.page': 2,
+				'http.request.resend_count': 1,
+				'http.response.status_code': 503,
+				'error.type': '503',
+			});
+		});
+
+		it('adds no span without an active node span', () => {
+			tracer.startWorkflow({ executionId: 'exec-no-node', workflow: defaultWorkflow });
+			tracer.recordContractRun('exec-no-node', 'Notion', notionProfile);
+			tracer.recordContractRun('exec-unknown', 'Notion', notionProfile);
+			tracer.endWorkflow({
+				executionId: 'exec-no-node',
+				status: 'success',
+				mode: 'trigger',
+				isRetry: false,
+			});
+
+			expect(spansOf().map((span) => span.name)).toEqual(['workflow.execute']);
 		});
 	});
 

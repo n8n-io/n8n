@@ -1,11 +1,13 @@
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
-import type { Context, Exception, Span } from '@opentelemetry/api';
+import type { RunProfile } from '@n8n/nodes-base-next';
+import type { Attributes, Context, Exception, Span } from '@opentelemetry/api';
 import {
 	context,
 	defaultTextMapGetter,
 	defaultTextMapSetter,
 	ROOT_CONTEXT,
+	SpanKind,
 	SpanStatusCode,
 	trace,
 } from '@opentelemetry/api';
@@ -265,6 +267,57 @@ export class ExecutionLevelTracer {
 		return span ? trace.setSpan(context.active(), span) : undefined;
 	}
 
+	/**
+	 * Adds a `contract.run` span under the node span, with a span for each phase and each HTTP
+	 * attempt of the profile. Without an active node span (tracing off, node spans off, or a
+	 * run that is not traced) it adds nothing: a workflow span is not a parent for these spans.
+	 */
+	recordContractRun(executionId: string, nodeName: string, profile: RunProfile): void {
+		try {
+			const nodeSpan = this.activeNodeSpansByExecutionId.get(executionId)?.get(nodeName)?.span;
+			if (!nodeSpan) return;
+
+			const run = this.tracer.startSpan(
+				'contract.run',
+				{ startTime: profile.startMs, attributes: contractRunAttributes(profile) },
+				trace.setSpan(context.active(), nodeSpan),
+			);
+			const parent = trace.setSpan(context.active(), run);
+			profile.phases.forEach((phase) => {
+				this.tracer
+					.startSpan(
+						`contract.${phase.name}`,
+						{ startTime: phase.startMs, attributes: phaseAttributes(phase) },
+						parent,
+					)
+					.end(phase.endMs);
+			});
+			profile.requests.forEach((request) => {
+				const span = this.tracer.startSpan(
+					request.template ? `${request.method} ${request.template}` : request.method,
+					{
+						kind: SpanKind.CLIENT,
+						startTime: request.startMs,
+						attributes: requestAttributes(request),
+					},
+					parent,
+				);
+				if (request.errorType !== undefined) span.setStatus({ code: SpanStatusCode.ERROR });
+				span.end(request.endMs);
+			});
+			run.setStatus({
+				code: profile.errorType === undefined ? SpanStatusCode.OK : SpanStatusCode.ERROR,
+			});
+			run.end(profile.endMs);
+		} catch (error) {
+			this.logger.warn('Failed to record contract run spans', {
+				executionId,
+				nodeName,
+				error: error instanceof Error ? error.message : String(error),
+			});
+		}
+	}
+
 	hasWorkflowSpan(executionId: string): boolean {
 		return this.activeWorkflowSpans.has(executionId);
 	}
@@ -355,6 +408,51 @@ function buildNodeEndAttributes(params: EndNodeParams): Record<string, string | 
 		...buildCustomAttributes(ATTR.NODE_CUSTOM_PREFIX, params.customAttributes),
 	};
 	return attrs;
+}
+
+function contractRunAttributes(profile: RunProfile): Attributes {
+	const dropped = profile.requestCount - profile.requests.length;
+	// The SDK drops an attribute that is undefined.
+	return {
+		[ATTR.CONTRACT_ACTION]: profile.action,
+		[ATTR.CONTRACT_ACTION_VERSION]: profile.version,
+		[ATTR.CONTRACT_BUNDLE_HASH]: profile.bundleHash,
+		[ATTR.CONTRACT_NODE_CONTRACT]: profile.nodeContract,
+		[ATTR.CONTRACT_PATH]: profile.path,
+		[ATTR.CONTRACT_ITEMS_INPUT]: profile.inputItems,
+		[ATTR.CONTRACT_OUTPUT_ITEMS]: profile.outputItems,
+		[ATTR.CONTRACT_REQUESTS]: profile.requestCount,
+		[ATTR.CONTRACT_PAGES]: profile.pageCount,
+		[ATTR.CONTRACT_RETRIES]: profile.retryCount,
+		[ATTR.CONTRACT_INPUT_MS]: profile.inputMs,
+		[ATTR.CONTRACT_OUTPUT_VALIDATE_MS]: profile.outputValidateMs,
+		[ATTR.CONTRACT_DRIFT_ISSUES]: profile.driftIssues,
+		[ATTR.CONTRACT_SPANS_DROPPED]: dropped > 0 ? dropped : undefined,
+		[ATTR.ERROR_TYPE]: profile.errorType,
+	};
+}
+
+function phaseAttributes(phase: RunProfile['phases'][number]): Attributes {
+	return phase.name === 'load'
+		? { [ATTR.CONTRACT_LOAD_CACHED]: phase.cached }
+		: { [ATTR.CREDENTIAL_TYPE]: phase.credentialType, [ATTR.CREDENTIAL_SCHEME]: phase.scheme };
+}
+
+function requestAttributes(request: RunProfile['requests'][number]): Attributes {
+	return {
+		[ATTR.HTTP_REQUEST_METHOD]: request.method,
+		[ATTR.SERVER_ADDRESS]: request.host,
+		[ATTR.SERVER_PORT]: request.port,
+		[ATTR.URL_SCHEME]: request.scheme,
+		[ATTR.URL_TEMPLATE]: request.template,
+		[ATTR.HTTP_PAGE]: request.page,
+		// Semconv sets the resend count on retries only.
+		[ATTR.HTTP_REQUEST_RESEND_COUNT]: request.resendCount > 0 ? request.resendCount : undefined,
+		[ATTR.HTTP_RESPONSE_STATUS_CODE]: request.status,
+		[ATTR.ERROR_TYPE]: request.errorType,
+		[ATTR.HTTP_REQUEST_BODY_SIZE]: request.requestBytes,
+		[ATTR.HTTP_RESPONSE_BODY_SIZE]: request.responseBytes,
+	};
 }
 
 function toTracingParentContext(span: Span): TracingContext {

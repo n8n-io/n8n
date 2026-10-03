@@ -1687,6 +1687,7 @@ export async function sandboxedVersionOf(frozen: FrozenVersion, options: Sandbox
 /** One connection for all runs of one node execution, opened at the first run. */
 function sandboxedExecutor(executor: Executor, start: () => Promise<Connection>): Executor {
 	return async (host) => {
+		host.recorder?.path('sandbox');
 		const opened = new Map<'connection', Promise<Connection>>();
 		const shared = async () => {
 			const connection = opened.get('connection') ?? start();

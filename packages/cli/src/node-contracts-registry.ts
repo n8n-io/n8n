@@ -1,5 +1,6 @@
 import { Logger } from '@n8n/backend-common';
 import { OutboundHttp } from '@n8n/backend-network';
+import { EventService } from '@n8n/backend-services';
 import { GlobalConfig, NodesConfig } from '@n8n/config';
 import { WorkflowRepository } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
@@ -319,6 +320,12 @@ export async function useNodeContractsRegistry() {
 		nodeContractRange: instanceAi.nodeContractRange,
 		sandbox,
 		store: await Container.get(NodeContractsStore).open(),
+		onRunProfile: ({ executionId, nodeName }, profile) =>
+			Container.get(EventService).emit('node-contract-run-profiled', {
+				executionId,
+				nodeName,
+				profile,
+			}),
 		metaOf: async (context) => {
 			const { id } = context.getWorkflow();
 			const key = `${context.getExecutionId()}/${id ?? ''}`;

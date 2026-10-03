@@ -1,5 +1,15 @@
 import { OTLP_PROTOCOLS, type OtlpProtocol } from '@n8n/api-types';
-import { ATTR_SERVICE_NAME, ATTR_SERVICE_VERSION } from '@opentelemetry/semantic-conventions';
+import {
+	ATTR_ERROR_TYPE,
+	ATTR_HTTP_REQUEST_METHOD,
+	ATTR_HTTP_REQUEST_RESEND_COUNT,
+	ATTR_HTTP_RESPONSE_STATUS_CODE,
+	ATTR_SERVER_ADDRESS,
+	ATTR_SERVER_PORT,
+	ATTR_SERVICE_NAME,
+	ATTR_SERVICE_VERSION,
+	ATTR_URL_SCHEME,
+} from '@opentelemetry/semantic-conventions';
 
 export { OTLP_PROTOCOLS, type OtlpProtocol };
 
@@ -56,4 +66,35 @@ export const ATTR = {
 	NODE_CUSTOM_PREFIX: 'n8n.node.custom.',
 
 	CONTINUATION_REASON: 'n8n.continuation.reason',
+
+	CONTRACT_ACTION: 'n8n.contract.action',
+	CONTRACT_ACTION_VERSION: 'n8n.contract.action.version',
+	CONTRACT_BUNDLE_HASH: 'n8n.contract.bundle_hash',
+	CONTRACT_NODE_CONTRACT: 'n8n.contract.node_contract',
+	CONTRACT_PATH: 'n8n.contract.path',
+	CONTRACT_ITEMS_INPUT: 'n8n.contract.items.input',
+	CONTRACT_OUTPUT_ITEMS: 'n8n.contract.output.items',
+	CONTRACT_REQUESTS: 'n8n.contract.requests',
+	CONTRACT_PAGES: 'n8n.contract.pages',
+	CONTRACT_RETRIES: 'n8n.contract.retries',
+	CONTRACT_INPUT_MS: 'n8n.contract.input.ms',
+	CONTRACT_OUTPUT_VALIDATE_MS: 'n8n.contract.output.validate_ms',
+	CONTRACT_DRIFT_ISSUES: 'n8n.contract.drift_issues',
+	CONTRACT_SPANS_DROPPED: 'n8n.contract.spans_dropped',
+	CONTRACT_LOAD_CACHED: 'n8n.contract.load.cached',
+	CREDENTIAL_TYPE: 'n8n.credential.type',
+	CREDENTIAL_SCHEME: 'n8n.credential.scheme',
+	HTTP_PAGE: 'n8n.http.page',
+
+	HTTP_REQUEST_METHOD: ATTR_HTTP_REQUEST_METHOD,
+	HTTP_REQUEST_RESEND_COUNT: ATTR_HTTP_REQUEST_RESEND_COUNT,
+	HTTP_RESPONSE_STATUS_CODE: ATTR_HTTP_RESPONSE_STATUS_CODE,
+	SERVER_ADDRESS: ATTR_SERVER_ADDRESS,
+	SERVER_PORT: ATTR_SERVER_PORT,
+	URL_SCHEME: ATTR_URL_SCHEME,
+	ERROR_TYPE: ATTR_ERROR_TYPE,
+	// Development semconv names, copied: `/incubating` may change them in a minor release.
+	URL_TEMPLATE: 'url.template',
+	HTTP_REQUEST_BODY_SIZE: 'http.request.body.size',
+	HTTP_RESPONSE_BODY_SIZE: 'http.response.body.size',
 } as const;

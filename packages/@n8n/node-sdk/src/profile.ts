@@ -1,0 +1,234 @@
+import { Readable } from 'node:stream';
+
+import type { NodeContractVersion } from './version';
+
+/** Where a bundle runs: in the n8n process, or in the wasm sandbox. */
+export type RunPath = 'in_process' | 'sandbox';
+
+/** A timed step of a contract run. Times are epoch milliseconds with a fraction. */
+export type RunPhase =
+	| {
+			/** The host picks the version and makes its executor. */
+			readonly name: 'load';
+			/** The start time. */
+			readonly startMs: number;
+			/** The end time. */
+			readonly endMs: number;
+			/** The executor of the version was in the cache, so no bundle loaded. */
+			readonly cached: boolean;
+	  }
+	| {
+			/** The executor reads the stored credential and the base URL. */
+			readonly name: 'credential';
+			/** The start time. */
+			readonly startMs: number;
+			/** The end time. */
+			readonly endMs: number;
+			/** The credential type name, e.g. `notionApi`. */
+			readonly credentialType: string;
+			/** The auth scheme kind of the credential, e.g. `apply`, or `compat` for a legacy type. */
+			readonly scheme: string;
+	  };
+
+/** One HTTP attempt of a contract run. A retry is a new attempt. */
+export interface RunRequest {
+	/** The start time, epoch milliseconds. */
+	readonly startMs: number;
+	/** The end time, epoch milliseconds. */
+	readonly endMs: number;
+	/** The input item the request is for. A batch run uses 0. */
+	readonly itemIndex: number;
+	/** The HTTP method. */
+	readonly method: string;
+	/** `http` or `https`. */
+	readonly scheme: string;
+	/** The host name. The path and the query are not kept: they can hold IDs and keys. */
+	readonly host: string;
+	/** The port, also when the URL has the default port. */
+	readonly port: number;
+	/** The path of a declarative binding, e.g. `/v1/pages/{page}`. A `run()` request has none. */
+	readonly template?: string;
+	/** The page number of a `list` binding, from 1. */
+	readonly page?: number;
+	/** 0 for the first attempt, then the number of the retry. */
+	readonly resendCount: number;
+	/** The HTTP status, when the response or the error has one. */
+	readonly status?: number;
+	/** The HTTP status as text, or the error code or name, when the attempt failed. */
+	readonly errorType?: string;
+	/**
+	 * The size of the request body: the bytes of a text or binary body, or the JSON size of an
+	 * object body. Absent for a stream body without a length.
+	 */
+	readonly requestBytes?: number;
+	/**
+	 * The size of the response body: the `content-length` of a full response, else the size of a
+	 * text or byte body. Absent for a parsed body: n8n does not give its wire size.
+	 */
+	readonly responseBytes?: number;
+}
+
+/** What one execution of a contract node did, as plain data. The host turns it into spans or metrics. */
+export interface RunProfile {
+	/** The action id, e.g. `notion.databasePage.getAll`. */
+	readonly action: string;
+	/** The semver of the version that ran. */
+	readonly version: string;
+	/** The hash of the bundle that ran. */
+	readonly bundleHash: string;
+	/** The Node Contract version of the bundle. */
+	readonly nodeContract: NodeContractVersion;
+	/** Where the bundle ran. Absent when the executor loader did not tell. */
+	readonly path?: RunPath;
+	/** The start time, epoch milliseconds. */
+	readonly startMs: number;
+	/** The end time, epoch milliseconds. */
+	readonly endMs: number;
+	/** The error name, when the run failed. */
+	readonly errorType?: string;
+	/** The load and credential steps, in order. */
+	readonly phases: readonly RunPhase[];
+	/** The first 200 attempts, in order. */
+	readonly requests: readonly RunRequest[];
+	/** All attempts, also the ones `requests` does not keep. */
+	readonly requestCount: number;
+	/** The attempts that are retries. */
+	readonly retryCount: number;
+	/** The first attempts of the pages of `list` bindings. */
+	readonly pageCount: number;
+	/** The input items of the run. */
+	readonly inputItems: number;
+	/** The output items of all outputs. */
+	readonly outputItems: number;
+	/** The sum of the time to read, default and validate the input of each item. */
+	readonly inputMs: number;
+	/** The sum of the time to validate each output item. */
+	readonly outputValidateMs: number;
+	/** The distinct output issues that passed on with a warning. */
+	readonly driftIssues: number;
+}
+
+/** The node run of a profile: the host finds its trace span from these. */
+export interface RunProfileMeta {
+	/** The n8n execution id. */
+	readonly executionId: string;
+	/** The name of the workflow node. */
+	readonly nodeName: string;
+}
+
+/** Gets the profile of each contract node execution. It runs before n8n ends the node run. */
+export type RunProfileListener = (meta: RunProfileMeta, profile: RunProfile) => void;
+
+// One slot: the host sets it once at start, as the executor loader.
+const listeners = new Map<'listener', RunProfileListener>();
+
+/** Sets the listener of run profiles. Without one, the runtime records nothing. */
+export const setRunProfileListener = (listener: RunProfileListener | undefined) => {
+	if (listener) listeners.set('listener', listener);
+	else listeners.delete('listener');
+};
+
+/** The listener of run profiles, if the host set one. */
+export const runProfileListener = () => listeners.get('listener');
+
+/** The profile keeps this many attempts, so a long list does not hold memory. */
+const MAX_PROFILED_REQUESTS = 200;
+
+/** Epoch milliseconds with a fraction, from the monotonic clock. */
+const now = () => performance.timeOrigin + performance.now();
+
+/** The JSON or byte size of a body. A failure gives no size: the request layer reports it. */
+export function bytesOf(value: unknown): number | undefined {
+	if (value === undefined || value === null || value instanceof Readable) return undefined;
+	if (typeof value === 'string') return Buffer.byteLength(value);
+	if (value instanceof Uint8Array) return value.byteLength;
+	try {
+		const text = JSON.stringify(value);
+		return text === undefined ? undefined : Buffer.byteLength(text);
+	} catch {
+		return undefined;
+	}
+}
+
+/** Collects the profile of one contract node execution. */
+export interface RunRecorder {
+	/** Epoch milliseconds with a fraction. */
+	now(): number;
+	/** Tells where the bundle runs. */
+	path(path: RunPath): void;
+	/** Adds a phase. */
+	phase(phase: RunPhase): void;
+	/** Adds an HTTP attempt. */
+	request(request: RunRequest): void;
+	/** Adds the time to make the input of one item. */
+	input(ms: number): void;
+	/** Adds the time to validate one output item. */
+	output(ms: number): void;
+	/** Sets the count of output issues that passed on. */
+	drift(issues: number): void;
+}
+
+type Identity = Pick<RunProfile, 'action' | 'version' | 'bundleHash' | 'nodeContract'>;
+
+/** The end of a run: its output items, or the name of the error it failed with. */
+type Outcome = { readonly outputItems: number } | { readonly errorType: string };
+
+/** A recorder of one run that starts now, and the function that ends it. */
+export function runRecorder(inputItems: number) {
+	const startMs = now();
+	const phases: RunPhase[] = [];
+	const requests: RunRequest[] = [];
+	const totals: { path?: RunProfile['path'] } & Record<
+		'requests' | 'retries' | 'pages' | 'inputMs' | 'outputMs' | 'drift',
+		number
+	> = {
+		requests: 0,
+		retries: 0,
+		pages: 0,
+		inputMs: 0,
+		outputMs: 0,
+		drift: 0,
+	};
+	const recorder: RunRecorder = {
+		now,
+		path: (path) => {
+			totals.path = path;
+		},
+		phase: (phase) => {
+			phases.push(phase);
+		},
+		request: (request) => {
+			totals.requests += 1;
+			if (request.resendCount > 0) totals.retries += 1;
+			else if (request.page !== undefined) totals.pages += 1;
+			if (requests.length < MAX_PROFILED_REQUESTS) requests.push(request);
+		},
+		input: (ms) => {
+			totals.inputMs += ms;
+		},
+		output: (ms) => {
+			totals.outputMs += ms;
+		},
+		drift: (issues) => {
+			totals.drift = issues;
+		},
+	};
+	const profile = (identity: Identity, outcome: Outcome): RunProfile => ({
+		...identity,
+		...(totals.path ? { path: totals.path } : {}),
+		startMs,
+		endMs: now(),
+		...('errorType' in outcome ? { errorType: outcome.errorType } : {}),
+		phases: [...phases],
+		requests: [...requests],
+		requestCount: totals.requests,
+		retryCount: totals.retries,
+		pageCount: totals.pages,
+		inputItems,
+		outputItems: 'outputItems' in outcome ? outcome.outputItems : 0,
+		inputMs: totals.inputMs,
+		outputValidateMs: totals.outputMs,
+		driftIssues: totals.drift,
+	});
+	return { recorder, profile };
+}

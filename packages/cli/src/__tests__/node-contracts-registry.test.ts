@@ -1,8 +1,13 @@
 import { OutboundHttp } from '@n8n/backend-network';
+import { EventService } from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig, NodesConfig } from '@n8n/config';
 import { WorkflowRepository, type WorkflowEntity } from '@n8n/db';
-import type { ContractRegistryOptions, ContractStoreOptions } from '@n8n/nodes-base-next';
+import type {
+	ContractRegistryOptions,
+	ContractStoreOptions,
+	RunProfile,
+} from '@n8n/nodes-base-next';
 import { mock } from 'vitest-mock-extended';
 import { InstanceSettings } from 'n8n-core';
 import type { IExecuteFunctions } from 'n8n-workflow';
@@ -70,6 +75,21 @@ describe('useNodeContractsRegistry', () => {
 		// N8N_PYTHON_ENABLED=false turns Python off for the Code contracts too.
 		expect(languages).toEqual([['javascript']]);
 		expect(options?.sandbox).toBeUndefined();
+	});
+
+	it('relays each run profile on the event service', async () => {
+		const eventService = mockInstance(EventService);
+		registered.length = 0;
+		await useNodeContractsRegistry();
+		const profile = mock<RunProfile>();
+
+		registered[0]?.onRunProfile?.({ executionId: '7', nodeName: 'Query' }, profile);
+
+		expect(eventService.emit).toHaveBeenCalledWith('node-contract-run-profiled', {
+			executionId: '7',
+			nodeName: 'Query',
+			profile,
+		});
 	});
 
 	it('passes the sandbox files, a cache dir in the n8n folder, and the n8n credential names', async () => {

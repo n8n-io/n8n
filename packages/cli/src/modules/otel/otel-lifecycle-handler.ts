@@ -57,6 +57,10 @@ export class OtelLifecycleHandler {
 			'execution-crashed',
 			async (event) => await this.onExecutionCrashed(event),
 		);
+		// The node span exists only when this execution and its node spans are traced.
+		this.eventService.on('node-contract-run-profiled', ({ executionId, nodeName, profile }) =>
+			this.tracer.recordContractRun(executionId, nodeName, profile),
+		);
 	}
 
 	@OnPubSubEvent('reload-otel-config')

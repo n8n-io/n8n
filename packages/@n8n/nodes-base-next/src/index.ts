@@ -135,6 +135,7 @@ export {
 	toVersionedToolType,
 	toVersionedTriggerType,
 	type FrozenVersion,
+	type RunProfile,
 } from '@n8n/node-sdk/host';
 export type { NodeContractLock, VersionManifest } from '@n8n/node-sdk/registry';
 

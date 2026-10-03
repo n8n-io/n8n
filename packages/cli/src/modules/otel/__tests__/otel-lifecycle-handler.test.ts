@@ -6,6 +6,7 @@ import type {
 	WorkflowExecuteAfterContext,
 	WorkflowExecuteBeforeContext,
 } from '@n8n/decorators';
+import type { RunProfile } from '@n8n/nodes-base-next';
 import { mock } from 'vitest-mock-extended';
 import { Workflow } from 'n8n-workflow';
 import type { INodeTypes, IRun, IRunExecutionData, WorkflowExecuteMode } from 'n8n-workflow';
@@ -709,6 +710,20 @@ describe('OtelLifecycleHandler', () => {
 			expect(tracer.endCrashedWorkflow).toHaveBeenCalledWith(
 				expect.objectContaining({ executionId: 'exec-1', detector: 'queue-recovery' }),
 			);
+		});
+
+		it('should record the contract run spans of a `node-contract-run-profiled` event once initialised', () => {
+			const eventService = new EventService();
+			makeHandler({}, eventService).init();
+			const profile = mock<RunProfile>();
+
+			eventService.emit('node-contract-run-profiled', {
+				executionId: 'exec-1',
+				nodeName: 'Notion',
+				profile,
+			});
+
+			expect(tracer.recordContractRun).toHaveBeenCalledWith('exec-1', 'Notion', profile);
 		});
 
 		it('should end the crashed workflow span when the event carries no trace context', async () => {

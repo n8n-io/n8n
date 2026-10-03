@@ -21,6 +21,14 @@ export {
 	type ExecutorLoader,
 	type FrozenVersion,
 } from '../runtime';
+export {
+	setRunProfileListener,
+	type RunPhase,
+	type RunProfile,
+	type RunProfileListener,
+	type RunProfileMeta,
+	type RunRequest,
+} from '../profile';
 export { toTriggerNodeType, toVersionedTriggerType } from '../triggers';
 export { exampleOf } from '../validate';
 export { runsNodeContract, setNodeContractRange } from '../version';
