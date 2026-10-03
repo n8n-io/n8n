@@ -80,13 +80,14 @@ export const description: INodeProperties[] = [
 
 export interface FromFileOptions {
 	failOnCsvBufferError?: boolean;
+	formatSpreadsheetValues?: boolean;
 }
 
 export async function execute(
 	this: IExecuteFunctions,
 	items: INodeExecutionData[],
 	fileFormatProperty = 'fileFormat',
-	{ failOnCsvBufferError = false }: FromFileOptions = {},
+	{ failOnCsvBufferError = false, formatSpreadsheetValues = false }: FromFileOptions = {},
 ) {
 	const returnData: INodeExecutionData[] = [];
 	let fileExtension;
@@ -208,7 +209,9 @@ export async function execute(
 				}
 
 				// Convert it to json
-				const sheetToJsonOptions: Sheet2JSONOpts = {};
+				const sheetToJsonOptions: Sheet2JSONOpts = formatSpreadsheetValues
+					? { raw: options.rawData ?? false }
+					: {};
 				if (options.range) {
 					if (isNaN(options.range as number)) {
 						sheetToJsonOptions.range = options.range;
