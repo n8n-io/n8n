@@ -4,6 +4,8 @@ import { join } from 'path';
 import { mock } from 'vitest-mock-extended';
 
 import { MicrosoftSharePointTrigger } from '../MicrosoftSharePointTrigger.node';
+import { getDrives } from '../drive';
+import { getSites } from '../site';
 import { microsoftApiRequest, SERVICE_PRINCIPAL_AUTH } from '../transport';
 
 describe('Microsoft SharePoint Trigger', () => {
@@ -78,6 +80,53 @@ describe('Microsoft SharePoint Trigger', () => {
 		) as { node: string };
 
 		expect(codex.node).toBe('n8n-nodes-base.microsoftSharePointTrigger');
+	});
+
+	describe('selection', () => {
+		const locator = (name: string) => description.properties.find((p) => p.name === name);
+		const modeNames = (name: string) => locator(name)?.modes?.map((m) => m.name);
+		const validationOf = (name: string, mode: string) => {
+			const found = locator(name)?.modes?.find((m) => m.name === mode);
+			const rule = found && 'validation' in found ? found.validation?.[0] : undefined;
+			return rule && 'properties' in rule
+				? (rule.properties as { regex: string }).regex
+				: undefined;
+		};
+
+		it.each([
+			['site', ['list', 'url', 'id'], 'getSites'],
+			['drive', ['list', 'id'], 'getDrives'],
+		])('offers %s with a picker and a typed fallback', (name, modes, method) => {
+			expect(modeNames(name)).toEqual(modes);
+			const list = locator(name)?.modes?.find((m) => m.name === 'list');
+			expect(list?.typeOptions?.searchListMethod).toBe(method);
+		});
+
+		it('registers both pickers on the node', () => {
+			const { methods } = new MicrosoftSharePointTrigger();
+
+			expect(methods.listSearch.getSites).toBe(getSites);
+			expect(methods.listSearch.getDrives).toBe(getDrives);
+		});
+
+		it('hides the library until a site is chosen', () => {
+			expect(locator('drive')?.displayOptions?.hide?.site).toEqual(['']);
+			expect(locator('drive')?.typeOptions?.loadOptionsDependsOn).toEqual(['site.value']);
+		});
+
+		it.each([
+			['b!zXyF9kabcdef-1234567890', true],
+			['01BYE5RZ6QN3ZWBTUFOFD3GSPGOHDJD36K', true],
+			// A bare GUID is a list ID in the wrong field
+			['58a279af-1f06-4392-a5ed-2b37fa1d6c1d', false],
+			['58A279AF-1F06-4392-A5ED-2B37FA1D6C1D', false],
+			// Only a bare one. A drive ID that merely starts GUID-shaped is fine.
+			['58a279af-1f06-4392-a5ed-2b37fa1d6c1dXYZ', true],
+		])('drive ID %s accepted: %s', (value, accepted) => {
+			const pattern = new RegExp(validationOf('drive', 'id') as string);
+
+			expect(pattern.test(value)).toBe(accepted);
+		});
 	});
 
 	describe('authenticating a poll', () => {
