@@ -7,14 +7,18 @@
  * run of the newest dataset itself rather than depending on a list view.
  */
 import { computed, onMounted, ref, watch } from 'vue';
+import type { AgentEvalDraftCase } from '@n8n/api-types';
 import { N8nButton, N8nCallout, N8nIcon, N8nLoading, N8nText } from '@n8n/design-system';
 import { useToast } from '@n8n/composables/useToast';
 import { useI18n } from '@n8n/i18n';
 
+import { useTestAgentPreviewExperiment } from '@/experiments/testAgentPreview/useTestAgentPreviewExperiment';
 import { useAgentEvalsStore } from '../agentEvals.store';
-import { isDataTableDataset } from '../utils/agentEvalCases.utils';
+import { isDataTableDataset, resolveCaseColumns } from '../utils/agentEvalCases.utils';
 import AgentEvalCasesCard from './AgentEvalCasesCard.vue';
+import AgentEvalChecksPanel from './AgentEvalChecksPanel.vue';
 import AgentEvalResultsPanel from './AgentEvalResultsPanel.vue';
+import AgentEvalsEmptyStatePreview from './AgentEvalsEmptyStatePreview.vue';
 
 const props = defineProps<{
 	projectId: string;
@@ -35,6 +39,7 @@ const emit = defineEmits<{
 const i18n = useI18n();
 const toast = useToast();
 const store = useAgentEvalsStore();
+const { isFeatureEnabled: showEmptyStatePreview } = useTestAgentPreviewExperiment();
 
 const datasets = computed(() => store.getDatasets(props.agentId));
 // Datasets come back newest-first, and generation makes exactly one; a picker is
@@ -56,7 +61,56 @@ const caseDataset = computed(() =>
 	dataset.value && isDataTableDataset(dataset.value) ? dataset.value : null,
 );
 
+// The experiment's empty-state preview generates a full batch of 10 up front
+// (same as the instanceAi test-agent-preview flow), but with `save: false` —
+// nothing is persisted, so refreshing the page before committing to any of
+// them leaves no half-finished dataset behind. Own-added examples are kept
+// the same way, purely in memory, until "Add checks" commits the lot.
+const previewCases = ref<AgentEvalDraftCase[]>([]);
+const previewOwnExamples = ref<string[]>([]);
+const hasPreview = computed(() => previewCases.value.length > 0);
+const addingChecks = ref(false);
+// True while the preview's LLM call is in flight — kept separate from
+// `hasSettled` so this surface doesn't have to blank the whole section behind
+// a skeleton for it; only the examples slider shows a loader meanwhile.
+const generatingPreview = ref(false);
+
+// Bumped by `load()` on every call, including agent switches: `loadPreview`
+// captures the current value and checks it again after its `await`, so a
+// generation started for the previous agent can't write its result (or error
+// toast) into the new agent's preview once it finally resolves.
+let previewRequestId = 0;
+
+const loadPreview = async () => {
+	if (hasPreview.value || generatingPreview.value) return;
+	const requestId = previewRequestId;
+	generatingPreview.value = true;
+	try {
+		const result = await store.generateDraftCases(props.projectId, props.agentId, {
+			count: 10,
+			save: false,
+		});
+		if (requestId !== previewRequestId) return;
+		previewCases.value = result.cases;
+	} catch (error) {
+		if (requestId !== previewRequestId) return;
+		// Degrades to the plain "Generate test cases" card — a failed preview
+		// generation shouldn't block the regular path forward.
+		toast.showError(error, i18n.baseText('agents.builder.agentEvals.generateError'));
+	} finally {
+		if (requestId === previewRequestId) generatingPreview.value = false;
+	}
+};
+
 const load = async () => {
+	// Invalidates any preview generation still in flight for whichever agent
+	// was showing before, and clears its result — switching agents must not
+	// display (or let "Add checks" commit) the previous agent's preview.
+	previewRequestId += 1;
+	previewCases.value = [];
+	previewOwnExamples.value = [];
+	generatingPreview.value = false;
+
 	if (!props.agentId || props.agentUnsaved) {
 		hasSettled.value = true;
 		return;
@@ -66,7 +120,14 @@ const load = async () => {
 	try {
 		const fetched = await store.fetchDatasets(props.projectId, props.agentId);
 		const newest = fetched[0];
-		if (!newest) return;
+		if (!newest) {
+			// Not awaited: the preview's own generation can take a few seconds, and
+			// nothing else in `load()` depends on it — settling here lets the
+			// section render immediately instead of sitting behind a blank skeleton
+			// for the whole generation.
+			if (showEmptyStatePreview.value) void loadPreview();
+			return;
+		}
 		await store.resolveLatestRunId(props.projectId, props.agentId, newest.id);
 	} catch (error) {
 		// Degrades to the first-run state rather than a permanent skeleton: with no
@@ -86,6 +147,64 @@ const onRerun = async () => {
 	}
 };
 
+/** "Add your own example" from the preview slider: kept in memory only —
+ *  nothing is persisted until "Add checks" commits the whole batch. */
+const onAddPreviewExample = (input: string) => {
+	previewOwnExamples.value = [...previewOwnExamples.value, input];
+};
+
+/**
+ * Commits the preview: creates a real (empty) dataset, inserts the slider's
+ * selected generated cases plus every self-written one as rows, runs the
+ * agent over them, then reloads — which switches the view from the preview
+ * straight to the run's results, same as the instanceAi flow's "Check your
+ * agent". Nothing from the preview is persisted before this point.
+ */
+const onAddChecks = async (count: number) => {
+	addingChecks.value = true;
+	// Tracked outside the try so the catch block can tell "nothing was created
+	// yet" apart from "created, but the commit failed partway through" — only
+	// the latter has anything to roll back.
+	let createdDatasetId: string | undefined;
+	// Once `startRun` has been sent, a failure is ambiguous: the request may
+	// have reached the server and seeded a real run before the response itself
+	// failed or timed out. Rolling back past this point would delete that run
+	// and its results along with the dataset — so rollback is only for
+	// failures strictly before submission, where nothing has been seeded yet.
+	let runSubmitted = false;
+	try {
+		const created = await store.createDraftDataset(props.projectId, props.agentId);
+		createdDatasetId = created.datasetId;
+		// Resolved straight from the create response — not a `getDatasets` refetch,
+		// which could itself fail transiently after the dataset already exists and
+		// send a retry into creating a second, duplicate empty dataset.
+		const columns = resolveCaseColumns(created.columnMapping);
+		if (!columns) throw new Error('The draft dataset has no writable case columns');
+		const source = { datasetId: created.datasetId, dataTableId: created.dataTableId, columns };
+
+		const toCreate = [
+			...previewCases.value
+				.slice(0, count)
+				.map((c) => ({ input: c.input, whatToCheck: c.whatToCheck })),
+			...previewOwnExamples.value.map((input) => ({ input, whatToCheck: '' })),
+		];
+		await Promise.all(toCreate.map((value) => store.createCase(props.projectId, source, value)));
+
+		runSubmitted = true;
+		await store.startRun(props.projectId, props.agentId, created.datasetId);
+		await load();
+	} catch (error) {
+		if (createdDatasetId && !runSubmitted) {
+			// A partial insert leaves a persisted-but-incomplete dataset behind —
+			// delete it rather than let a retry pile up another one alongside it.
+			await store.deleteDataset(props.projectId, props.agentId, createdDatasetId).catch(() => null);
+		}
+		toast.showError(error, i18n.baseText('agents.builder.agentEvals.run.startError'));
+	} finally {
+		addingChecks.value = false;
+	}
+};
+
 onMounted(load);
 watch(() => props.agentId, load);
 </script>
@@ -93,6 +212,16 @@ watch(() => props.agentId, load);
 <template>
 	<div :class="$style.section" data-testid="agent-evals-section">
 		<N8nLoading v-if="awaitingDatasets" :rows="4" data-testid="agent-evals-loading" />
+
+		<AgentEvalChecksPanel
+			v-else-if="dataset && runId && showEmptyStatePreview"
+			:project-id="projectId"
+			:agent-id="agentId"
+			:run-id="runId"
+			:disabled="disabled"
+			:rerunning="store.isStartingRun(dataset.id)"
+			@rerun="onRerun"
+		/>
 
 		<AgentEvalResultsPanel
 			v-else-if="dataset && runId"
@@ -124,6 +253,16 @@ watch(() => props.agentId, load);
 		<N8nCallout v-else-if="dataset" theme="info" data-testid="agent-evals-external-source">
 			{{ i18n.baseText('agents.builder.agentEvals.external.description') }}
 		</N8nCallout>
+
+		<AgentEvalsEmptyStatePreview
+			v-else-if="showEmptyStatePreview && (generatingPreview || hasPreview)"
+			:examples="previewCases"
+			:loading="generatingPreview"
+			:adding-checks="addingChecks"
+			:disabled="disabled"
+			@add-example="onAddPreviewExample"
+			@add-checks="onAddChecks"
+		/>
 
 		<div v-else :class="$style.emptyState" data-testid="agent-evals-empty-state">
 			<div :class="$style.iconBadge">

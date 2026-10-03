@@ -3,10 +3,15 @@ import { configure } from '@testing-library/vue';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
 import { flushPromises } from '@vue/test-utils';
+import { ref } from 'vue';
 
 import { createComponentRenderer } from '@/__tests__/render';
 import { useAgentEvalsStore } from '../agentEvals.store';
-import type { AgentEvalDatasetRecord } from '../agentEvals.types';
+import type {
+	AgentEvalColumnMapping,
+	AgentEvalDatasetRecord,
+	AgentEvalDraftCase,
+} from '../agentEvals.types';
 import AgentEvalsSection from '../components/AgentEvalsSection.vue';
 
 // Components use `data-testid`; the global setup configures `data-test-id`.
@@ -37,6 +42,39 @@ vi.mock('../components/AgentEvalResultsPanel.vue', () => ({
 	},
 }));
 
+vi.mock('../components/AgentEvalChecksPanel.vue', () => ({
+	default: {
+		name: 'AgentEvalChecksPanel',
+		props: ['runId'],
+		emits: ['rerun'],
+		template: `<div data-testid="agent-eval-checks-panel">{{ runId }}
+			<button data-testid="stub-checks-rerun" @click="$emit('rerun')" /></div>`,
+	},
+}));
+
+vi.mock('../components/AgentEvalsEmptyStatePreview.vue', () => ({
+	default: {
+		name: 'AgentEvalsEmptyStatePreview',
+		props: ['examples', 'loading', 'addingChecks', 'disabled'],
+		emits: ['add-example', 'add-checks'],
+		template: `<div
+			data-testid="agent-evals-empty-state-preview"
+			:data-loading="loading"
+			:data-disabled="disabled"
+		>{{ examples.length }}
+			<button data-testid="stub-add-example" @click="$emit('add-example', 'own example')" />
+			<button data-testid="stub-add-checks" @click="$emit('add-checks', 2)" /></div>`,
+	},
+}));
+
+// A real `ref`, not a plain `{ value }` object — the template reads it as a
+// bare identifier, which only auto-unwraps for genuine refs. A plain object
+// would read as itself (always truthy) instead of its `.value`.
+const isFeatureEnabled = ref(false);
+vi.mock('@/experiments/testAgentPreview/useTestAgentPreviewExperiment', () => ({
+	useTestAgentPreviewExperiment: () => ({ isFeatureEnabled }),
+}));
+
 const PROJECT_ID = 'project-1';
 const AGENT_ID = 'agent-1';
 
@@ -51,6 +89,23 @@ const dataset = (id: string): AgentEvalDatasetRecord => ({
 	updatedAt: '2026-01-01T00:00:00.000Z',
 	datasetSource: 'data_table',
 	datasetRef: { dataTableId: 'dt-1' },
+});
+
+const dataTableDataset = (
+	id: string,
+	dataTableId: string,
+	columnMapping: AgentEvalColumnMapping,
+): AgentEvalDatasetRecord => ({
+	id,
+	name: `dataset-${id}`,
+	description: null,
+	agentId: AGENT_ID,
+	columnMapping,
+	createdById: null,
+	createdAt: '2026-01-01T00:00:00.000Z',
+	updatedAt: '2026-01-01T00:00:00.000Z',
+	datasetSource: 'data_table',
+	datasetRef: { dataTableId },
 });
 
 const renderComponent = createComponentRenderer(AgentEvalsSection, {
@@ -91,6 +146,7 @@ const render = async (
 describe('AgentEvalsSection', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		isFeatureEnabled.value = false;
 	});
 
 	describe('the first-run state', () => {
@@ -232,5 +288,208 @@ describe('AgentEvalsSection', () => {
 		await userEvent.click(getByTestId('stub-rerun'));
 
 		expect(store.startRun).toHaveBeenCalledWith(PROJECT_ID, AGENT_ID, 'd1');
+	});
+
+	describe("the experiment's empty-state preview", () => {
+		beforeEach(() => {
+			isFeatureEnabled.value = true;
+		});
+
+		// `generateDraftCases` is called during the initial mount/flush, so its
+		// mock must be configured before rendering — too late to set afterwards,
+		// unlike the plain `render()` helper's fire-and-forget store actions.
+		const renderPreview = async (
+			generatedCases: AgentEvalDraftCase[],
+			configure?: (store: ReturnType<typeof useAgentEvalsStore>) => void,
+			props: Record<string, unknown> = {},
+		) => {
+			const pinia = createTestingPinia({ stubActions: true });
+			const store = useAgentEvalsStore();
+			vi.mocked(store.isLoaded).mockReturnValue(true);
+			vi.mocked(store.getDatasets).mockReturnValue([]);
+			vi.mocked(store.getLatestRunId).mockReturnValue(null);
+			vi.mocked(store.isStartingRun).mockReturnValue(false);
+			vi.mocked(store.fetchDatasets).mockResolvedValue([]);
+			vi.mocked(store.generateDraftCases).mockResolvedValue({ cases: generatedCases });
+			configure?.(store);
+
+			const rendered = renderComponent({ pinia, props });
+			await flushPromises();
+			return { ...rendered, store };
+		};
+
+		it('generates a save:false preview instead of the plain CTA when no dataset exists', async () => {
+			const { getByTestId, queryByTestId, store } = await renderPreview([
+				{ input: 'case 1', whatToCheck: 'check 1', scenario: 'A' },
+			]);
+
+			expect(store.generateDraftCases).toHaveBeenCalledWith(PROJECT_ID, AGENT_ID, {
+				count: 10,
+				save: false,
+			});
+			expect(getByTestId('agent-evals-empty-state-preview')).toBeInTheDocument();
+			expect(queryByTestId('agent-evals-empty-state')).not.toBeInTheDocument();
+		});
+
+		// AgentEvalsEmptyStatePreview is mocked above, so this only proves the
+		// prop reaches it — the component's own test covers what it does with it.
+		it('forwards disabled to the preview for a viewer without agent:update', async () => {
+			const { getByTestId } = await renderPreview(
+				[{ input: 'case 1', whatToCheck: 'check 1', scenario: 'A' }],
+				undefined,
+				{ disabled: true },
+			);
+
+			expect(getByTestId('agent-evals-empty-state-preview')).toHaveAttribute(
+				'data-disabled',
+				'true',
+			);
+		});
+
+		it('shows the empty-state preview with its slider loading right away, instead of blocking the whole section behind a skeleton', async () => {
+			const pinia = createTestingPinia({ stubActions: true });
+			const store = useAgentEvalsStore();
+			vi.mocked(store.isLoaded).mockReturnValue(true);
+			vi.mocked(store.getDatasets).mockReturnValue([]);
+			vi.mocked(store.getLatestRunId).mockReturnValue(null);
+			vi.mocked(store.isStartingRun).mockReturnValue(false);
+			vi.mocked(store.fetchDatasets).mockResolvedValue([]);
+			let resolveGenerate!: (value: { cases: AgentEvalDraftCase[] }) => void;
+			vi.mocked(store.generateDraftCases).mockImplementation(
+				async () =>
+					await new Promise((resolve) => {
+						resolveGenerate = resolve;
+					}),
+			);
+
+			const { getByTestId, queryByTestId } = renderComponent({ pinia });
+			// `fetchDatasets` settles (all `load()` needs to flip `hasSettled`) —
+			// the preview generation itself is deliberately left pending.
+			await flushPromises();
+
+			expect(queryByTestId('agent-evals-loading')).not.toBeInTheDocument();
+			expect(getByTestId('agent-evals-empty-state-preview')).toHaveAttribute(
+				'data-loading',
+				'true',
+			);
+
+			resolveGenerate({ cases: [{ input: 'case 1', whatToCheck: 'check 1', scenario: 'A' }] });
+			await flushPromises();
+
+			expect(getByTestId('agent-evals-empty-state-preview')).toHaveAttribute(
+				'data-loading',
+				'false',
+			);
+		});
+
+		it('falls back to the plain CTA when the preview generation fails', async () => {
+			const pinia = createTestingPinia({ stubActions: true });
+			const store = useAgentEvalsStore();
+			vi.mocked(store.isLoaded).mockReturnValue(true);
+			vi.mocked(store.getDatasets).mockReturnValue([]);
+			vi.mocked(store.getLatestRunId).mockReturnValue(null);
+			vi.mocked(store.isStartingRun).mockReturnValue(false);
+			vi.mocked(store.fetchDatasets).mockResolvedValue([]);
+			vi.mocked(store.generateDraftCases).mockRejectedValue(new Error('no model'));
+
+			const { getByTestId, queryByTestId } = renderComponent({ pinia });
+			await flushPromises();
+
+			expect(getByTestId('agent-evals-empty-state')).toBeInTheDocument();
+			expect(queryByTestId('agent-evals-empty-state-preview')).not.toBeInTheDocument();
+		});
+
+		it('commits the preview on "add checks": creates a draft dataset, inserts the picked and self-written cases, then runs', async () => {
+			const { getByTestId, store } = await renderPreview(
+				[
+					{ input: 'case 1', whatToCheck: 'check 1', scenario: 'A' },
+					{ input: 'case 2', whatToCheck: 'check 2', scenario: 'B' },
+					{ input: 'case 3', whatToCheck: 'check 3', scenario: 'C' },
+				],
+				(store) => {
+					vi.mocked(store.createDraftDataset).mockResolvedValue({
+						datasetId: 'committed-1',
+						dataTableId: 'dt-committed',
+						columnMapping: { input: 'input', criteria: 'criteria' },
+					});
+					vi.mocked(store.createCase).mockResolvedValue(null);
+				},
+			);
+			// Not read for the commit itself (the create response now carries its own
+			// columns), but `load()` re-renders off `getDatasets` afterward, so the
+			// just-created dataset has to be there for the post-commit view.
+			vi.mocked(store.getDatasets).mockReturnValue([
+				dataTableDataset('committed-1', 'dt-committed', { input: 'input', criteria: 'criteria' }),
+			]);
+
+			// A fresh "own example" before committing, same as the slider would emit.
+			await userEvent.click(getByTestId('stub-add-example'));
+			await userEvent.click(getByTestId('stub-add-checks'));
+			await flushPromises();
+
+			expect(store.createDraftDataset).toHaveBeenCalledWith(PROJECT_ID, AGENT_ID);
+			// Trimmed to the slider's count (2) plus the one self-written example.
+			expect(store.createCase).toHaveBeenCalledTimes(3);
+			expect(store.createCase).toHaveBeenCalledWith(
+				PROJECT_ID,
+				expect.objectContaining({ datasetId: 'committed-1' }),
+				{ input: 'case 1', whatToCheck: 'check 1' },
+			);
+			expect(store.createCase).toHaveBeenCalledWith(
+				PROJECT_ID,
+				expect.objectContaining({ datasetId: 'committed-1' }),
+				{ input: 'case 2', whatToCheck: 'check 2' },
+			);
+			expect(store.createCase).toHaveBeenCalledWith(
+				PROJECT_ID,
+				expect.objectContaining({ datasetId: 'committed-1' }),
+				{ input: 'own example', whatToCheck: '' },
+			);
+			expect(store.startRun).toHaveBeenCalledWith(PROJECT_ID, AGENT_ID, 'committed-1');
+		});
+
+		it('rolls back the draft dataset when a case fails to save, before the run is ever started', async () => {
+			const { getByTestId, store } = await renderPreview(
+				[{ input: 'case 1', whatToCheck: 'check 1', scenario: 'A' }],
+				(store) => {
+					vi.mocked(store.createDraftDataset).mockResolvedValue({
+						datasetId: 'committed-1',
+						dataTableId: 'dt-committed',
+						columnMapping: { input: 'input', criteria: 'criteria' },
+					});
+					vi.mocked(store.createCase).mockRejectedValue(new Error('row insert failed'));
+					vi.mocked(store.deleteDataset).mockResolvedValue(undefined as never);
+				},
+			);
+
+			await userEvent.click(getByTestId('stub-add-checks'));
+			await flushPromises();
+
+			expect(store.deleteDataset).toHaveBeenCalledWith(PROJECT_ID, AGENT_ID, 'committed-1');
+			expect(store.startRun).not.toHaveBeenCalled();
+		});
+
+		// Once `startRun` has been sent, a failure is ambiguous — the request may
+		// have reached the server and seeded a real run before the response itself
+		// failed. Rolling back here would delete that run along with the dataset.
+		it('does not roll back the dataset when only starting the run fails', async () => {
+			const { getByTestId, store } = await renderPreview(
+				[{ input: 'case 1', whatToCheck: 'check 1', scenario: 'A' }],
+				(store) => {
+					vi.mocked(store.createDraftDataset).mockResolvedValue({
+						datasetId: 'committed-1',
+						dataTableId: 'dt-committed',
+						columnMapping: { input: 'input', criteria: 'criteria' },
+					});
+					vi.mocked(store.createCase).mockResolvedValue(null);
+					vi.mocked(store.startRun).mockRejectedValue(new Error('timeout'));
+				},
+			);
+
+			await userEvent.click(getByTestId('stub-add-checks'));
+			await flushPromises();
+
+			expect(store.deleteDataset).not.toHaveBeenCalled();
+		});
 	});
 });

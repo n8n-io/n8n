@@ -1,5 +1,5 @@
 import { isRecord } from '@n8n/utils/is-record';
-import type { JsonObject } from 'n8n-workflow';
+import type { IDataObject, JsonObject } from 'n8n-workflow';
 
 import type { AgentEvalRatingRecord, AgentEvalVote } from '../agentEvals.types';
 
@@ -74,6 +74,26 @@ export function readCaseRequest(input: JsonObject | null | undefined): string {
 /** The agent's answer for the case. Null when the run recorded none. */
 export function readAgentAnswer(output: JsonObject | null | undefined): string | null {
 	return readText(output, 'finalText');
+}
+
+/**
+ * A short, human-readable reason a result errored. The shape of `errorDetails`
+ * depends on which failure path in `agent-eval-runner.service.ts` wrote it —
+ * most failures carry `{ message }`, a failed-but-ran execution carries
+ * `{ errors, finalText }` instead. Read as plain strings only; nothing nested
+ * deeper than that is ever persisted.
+ */
+export function readErrorMessage(errorDetails: IDataObject | null | undefined): string | null {
+	if (!isRecord(errorDetails)) return null;
+
+	const message = errorDetails.message;
+	if (typeof message === 'string' && message.length > 0) return message;
+
+	const errors = errorDetails.errors;
+	if (!Array.isArray(errors)) return null;
+
+	const joined = errors.filter((error): error is string => typeof error === 'string').join('; ');
+	return joined.length > 0 ? joined : null;
 }
 
 /** The reviewer's edited answer, stored on the rating — never on the dataset. */

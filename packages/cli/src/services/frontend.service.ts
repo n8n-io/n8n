@@ -439,6 +439,7 @@ export class FrontendService {
 				collectionsEnabled: this.globalConfig.evaluation.collectionsEnabled,
 				configEvalsEnabled: this.globalConfig.evaluation.configEvalsEnabled,
 				agentEvalsEnabled: this.globalConfig.evaluation.agentEvalsEnabled,
+				forceAgentWorthTesting: this.globalConfig.evaluation.forceAgentWorthTesting,
 			},
 			activeModules: this.moduleRegistry.getActiveModules(),
 			canvasOnly: this.globalConfig.canvasOnly.enabled,

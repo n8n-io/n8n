@@ -101,4 +101,66 @@ describe('buildCaseGenerationUserPrompt', () => {
 		expect(prompt).toMatch(/^2\. /m);
 		expect(prompt).toContain('searchWeb');
 	});
+
+	it('asks for a single replacement case when given revision feedback, instead of the tuple scenarios', () => {
+		const tuples: DimensionTuple[] = [
+			{ capability: 'general', difficulty: 'simple', flavor: 'happy_path' },
+		];
+		const prompt = buildCaseGenerationUserPrompt(buildAgentSummary(config()), tuples, {
+			suggestion: 'It should have included the ticket number.',
+			previousInput: 'Summarize the Acme outage thread',
+			previousOutput: 'SSO is down for some users.',
+		});
+		expect(prompt).toContain('Write exactly 1 replacement test case');
+		expect(prompt).toContain('Summarize the Acme outage thread');
+		expect(prompt).toContain('SSO is down for some users.');
+		expect(prompt).toContain('It should have included the ticket number.');
+		expect(prompt).not.toMatch(/^1\. /m);
+	});
+
+	it('says so when a revised case had no output, instead of leaving the line blank', () => {
+		const tuples: DimensionTuple[] = [
+			{ capability: 'general', difficulty: 'simple', flavor: 'happy_path' },
+		];
+		const prompt = buildCaseGenerationUserPrompt(buildAgentSummary(config()), tuples, {
+			suggestion: 'It should have included the ticket number.',
+			previousInput: 'Summarize the Acme outage thread',
+			previousOutput: '',
+		});
+		expect(prompt).toContain('(the agent did not produce an output)');
+	});
+
+	it('truncates overly long revision fields', () => {
+		const tuples: DimensionTuple[] = [
+			{ capability: 'general', difficulty: 'simple', flavor: 'happy_path' },
+		];
+		const prompt = buildCaseGenerationUserPrompt(buildAgentSummary(config()), tuples, {
+			suggestion: 'x'.repeat(3000),
+			previousInput: 'input',
+			previousOutput: 'output',
+		});
+		expect(prompt).toContain(`${'x'.repeat(2000)}…`);
+	});
+
+	it('includes an approved example pair alongside the scenario list', () => {
+		const tuples: DimensionTuple[] = [
+			{ capability: 'general', difficulty: 'simple', flavor: 'happy_path' },
+		];
+		const prompt = buildCaseGenerationUserPrompt(buildAgentSummary(config()), tuples, undefined, {
+			input: 'Summarize the Acme outage thread',
+			output: 'Ticket #48219 · SSO failing for 340 users.',
+		});
+		expect(prompt).toContain('Summarize the Acme outage thread');
+		expect(prompt).toContain('Ticket #48219 · SSO failing for 340 users.');
+		expect(prompt).toContain('Write exactly 1');
+		expect(prompt).toMatch(/^1\. /m);
+	});
+
+	it('omits the example section when none is given', () => {
+		const tuples: DimensionTuple[] = [
+			{ capability: 'general', difficulty: 'simple', flavor: 'happy_path' },
+		];
+		const prompt = buildCaseGenerationUserPrompt(buildAgentSummary(config()), tuples);
+		expect(prompt).not.toContain('already approved');
+	});
 });

@@ -12,6 +12,9 @@ import type {
 const {
 	getDatasets,
 	generateDraftCases,
+	createDraftDataset,
+	deleteDataset,
+	previewRun,
 	listRuns,
 	getRunDetail,
 	getRunSummary,
@@ -21,6 +24,9 @@ const {
 } = vi.hoisted(() => ({
 	getDatasets: vi.fn(),
 	generateDraftCases: vi.fn(),
+	createDraftDataset: vi.fn(),
+	deleteDataset: vi.fn(),
+	previewRun: vi.fn(),
 	listRuns: vi.fn(),
 	getRunDetail: vi.fn(),
 	getRunSummary: vi.fn(),
@@ -32,6 +38,9 @@ const {
 vi.mock('../agentEvals.api', () => ({
 	getDatasets,
 	generateDraftCases,
+	createDraftDataset,
+	deleteDataset,
+	previewRun,
 	listRuns,
 	getRunDetail,
 	getRunSummary,
@@ -205,6 +214,100 @@ describe('useAgentEvalsStore', () => {
 			await expect(store.generateDraftCases(PROJECT_ID, AGENT_ID)).rejects.toThrow('no model');
 
 			expect(store.isGeneratingCases(AGENT_ID)).toBe(false);
+		});
+
+		it('skips the dataset re-read for a save:false preview — nothing was persisted', async () => {
+			generateDraftCases.mockResolvedValue({
+				cases: [{ input: 'hi', whatToCheck: 'is polite' }],
+			});
+			const store = useAgentEvalsStore();
+
+			const result = await store.generateDraftCases(PROJECT_ID, AGENT_ID, {
+				count: 10,
+				save: false,
+			});
+
+			expect(result.cases).toHaveLength(1);
+			expect(getDatasets).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('createDraftDataset', () => {
+		it('creates the empty dataset and re-reads the dataset list', async () => {
+			createDraftDataset.mockResolvedValue({
+				datasetId: 'd1',
+				dataTableId: 'dt-1',
+				columnMapping: { input: 'input', criteria: 'criteria' },
+			});
+			getDatasets.mockResolvedValue([dataset('d1')]);
+			const store = useAgentEvalsStore();
+
+			const result = await store.createDraftDataset(PROJECT_ID, AGENT_ID, {
+				datasetName: 'My checks',
+			});
+
+			expect(createDraftDataset).toHaveBeenCalledWith(
+				{ instanceId: 'test-instance-id' },
+				PROJECT_ID,
+				AGENT_ID,
+				{ datasetName: 'My checks' },
+			);
+			expect(result).toEqual({
+				datasetId: 'd1',
+				dataTableId: 'dt-1',
+				columnMapping: { input: 'input', criteria: 'criteria' },
+			});
+			expect(store.getDatasets(AGENT_ID).map((d) => d.id)).toEqual(['d1']);
+		});
+	});
+
+	describe('deleteDataset', () => {
+		it('deletes via the API and evicts the dataset from an already-loaded cache', async () => {
+			deleteDataset.mockResolvedValue({ success: true });
+			getDatasets.mockResolvedValue([dataset('d1'), dataset('d2')]);
+			const store = useAgentEvalsStore();
+			await store.fetchDatasets(PROJECT_ID, AGENT_ID);
+
+			await store.deleteDataset(PROJECT_ID, AGENT_ID, 'd1');
+
+			expect(deleteDataset).toHaveBeenCalledWith(
+				{ instanceId: 'test-instance-id' },
+				PROJECT_ID,
+				AGENT_ID,
+				'd1',
+			);
+			expect(store.getDatasets(AGENT_ID).map((d) => d.id)).toEqual(['d2']);
+		});
+
+		// Writing `[]` here for an agent whose datasets were never successfully
+		// fetched (e.g. `createDraftDataset`'s own best-effort refresh failed)
+		// would make `isLoaded` report true for a read that never happened.
+		it('leaves an unloaded cache alone rather than writing an empty list into it', async () => {
+			deleteDataset.mockResolvedValue({ success: true });
+			const store = useAgentEvalsStore();
+
+			await store.deleteDataset(PROJECT_ID, AGENT_ID, 'd1');
+
+			expect(store.isLoaded(AGENT_ID)).toBe(false);
+		});
+	});
+
+	// The preview-panel tests mock this store action directly, so they can't
+	// catch a broken proxy to the API layer — this is the one place that does.
+	describe('previewRun', () => {
+		it('forwards the REST context, project id, agent id and options to the API', async () => {
+			previewRun.mockResolvedValue({ status: 'failed' });
+			const store = useAgentEvalsStore();
+
+			const result = await store.previewRun(PROJECT_ID, AGENT_ID, { suggestion: 'be nicer' });
+
+			expect(previewRun).toHaveBeenCalledWith(
+				{ instanceId: 'test-instance-id' },
+				PROJECT_ID,
+				AGENT_ID,
+				{ suggestion: 'be nicer' },
+			);
+			expect(result).toEqual({ status: 'failed' });
 		});
 	});
 

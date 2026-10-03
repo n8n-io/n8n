@@ -2,8 +2,10 @@ import {
 	AgentEvalRunDetailQueryDto,
 	CreateAgentEvalRatingDto,
 	CreateAgentEvalRunDto,
+	CreateDraftDatasetOptionsDto,
 	GenerateDraftCasesOptionsDto,
 	PaginationDto,
+	PreviewRunOptionsDto,
 	UpdateAgentEvalDatasetDto,
 	createAgentEvalDatasetSchema,
 	type AgentEvalDatasetRecord,
@@ -12,7 +14,9 @@ import {
 	type AgentEvalRunList,
 	type AgentEvalRunRecord,
 	type AgentEvalRunSummary,
+	type CreateDraftDatasetResult,
 	type GenerateDraftCasesResult,
+	type PreviewRunResult,
 } from '@n8n/api-types';
 import type { AuthenticatedRequest } from '@n8n/db';
 import {
@@ -69,6 +73,22 @@ export class AgentEvalsController {
 		await this.flagGate.assertEnabled(req.user);
 		const { agentId, projectId } = req.params;
 		return await this.service.listDatasets(agentId, projectId);
+	}
+
+	// A dataset with no rows and no run yet — the Data Table + columns
+	// `generateDraftCases` would create, with nothing drafted into it. Backs the
+	// "commit this preview" step: once previewed (`save: false`) or self-written
+	// cases are picked, they're inserted here via the existing case-creation route.
+	@Post('/:agentId/evals/datasets/draft')
+	@ProjectScope('agent:update')
+	async createDraftDataset(
+		req: AuthenticatedRequest<AgentParam>,
+		_res: unknown,
+		@Body payload: CreateDraftDatasetOptionsDto,
+	): Promise<CreateDraftDatasetResult> {
+		await this.flagGate.assertEnabled(req.user);
+		const { agentId, projectId } = req.params;
+		return await this.service.createDraftDataset(req.user, agentId, projectId, payload.datasetName);
 	}
 
 	@Post('/:agentId/evals/datasets')
@@ -128,6 +148,22 @@ export class AgentEvalsController {
 		await this.flagGate.assertEnabled(req.user);
 		const { agentId, projectId } = req.params;
 		return await this.service.generateDraftCases(req.user, agentId, projectId, payload);
+	}
+
+	// Drafts one case and runs it against the agent directly (Preview Chat's own
+	// execution path) — no Data Table, no dataset, no eval-run row. Backs "try it
+	// once" and its "needs work" retries, which would otherwise spend a model
+	// call AND leave a throwaway dataset behind on every attempt.
+	@Post('/:agentId/evals/preview-run')
+	@ProjectScope('agent:update')
+	async previewRun(
+		req: AuthenticatedRequest<AgentParam>,
+		_res: unknown,
+		@Body payload: PreviewRunOptionsDto,
+	): Promise<PreviewRunResult> {
+		await this.flagGate.assertEnabled(req.user);
+		const { agentId, projectId } = req.params;
+		return await this.service.previewRun(req.user, agentId, projectId, payload);
 	}
 
 	// ---- runs ----

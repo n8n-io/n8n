@@ -134,6 +134,11 @@ describe('AgentEvalService', () => {
 				'generateDraftCases',
 				async () => await service.generateDraftCases(user, AGENT_ID, PROJECT_ID, {}),
 			],
+			[
+				'createDraftDataset',
+				async () => await service.createDraftDataset(user, AGENT_ID, PROJECT_ID),
+			],
+			['previewRun', async () => await service.previewRun(user, AGENT_ID, PROJECT_ID, {})],
 			['startRun', async () => await service.startRun(user, AGENT_ID, PROJECT_ID, 'ds-1', {})],
 			['listRuns', async () => await service.listRuns(AGENT_ID, PROJECT_ID, 'ds-1', PAGE)],
 			['getRunDetail', async () => await service.getRunDetail(AGENT_ID, PROJECT_ID, 'run-1', PAGE)],
@@ -469,6 +474,43 @@ describe('AgentEvalService', () => {
 				AGENT_ID,
 				{ count: 3 },
 			);
+		});
+	});
+
+	describe('createDraftDataset', () => {
+		it('delegates with the project resolved from the URL', async () => {
+			caseGenerationService.createEmptyDataset.mockResolvedValue({
+				datasetId: 'ds-1',
+				dataTableId: 'dt-1',
+				columnMapping: { input: 'input', criteria: 'criteria' },
+			});
+
+			await service.createDraftDataset(user, AGENT_ID, PROJECT_ID, 'My checks');
+
+			expect(caseGenerationService.createEmptyDataset).toHaveBeenCalledWith(
+				user,
+				PROJECT_ID,
+				AGENT_ID,
+				'My checks',
+			);
+		});
+	});
+
+	describe('previewRun', () => {
+		it('delegates with the project resolved from the URL', async () => {
+			caseGenerationService.previewRun.mockResolvedValue({
+				status: 'completed',
+				input: 'hi',
+				whatToCheck: 'is polite',
+				scenario: 'Vague',
+				response: 'Hello!',
+			});
+
+			await service.previewRun(user, AGENT_ID, PROJECT_ID, { suggestion: 'be nicer' });
+
+			expect(caseGenerationService.previewRun).toHaveBeenCalledWith(user, PROJECT_ID, AGENT_ID, {
+				suggestion: 'be nicer',
+			});
 		});
 	});
 });
