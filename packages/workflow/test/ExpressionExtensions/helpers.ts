@@ -23,8 +23,7 @@ export const workflow = new Workflow({
 });
 export const expression = workflow.expression;
 
-// acquireIsolate/releaseIsolate are no-ops for the legacy engine, so these
-// hooks are safe to register unconditionally.
+// Acquire and release the isolate for both VM and QuickJS projects.
 beforeAll(async () => {
 	await expression.acquireIsolate();
 });

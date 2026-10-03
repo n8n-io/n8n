@@ -4,9 +4,7 @@ import * as Helpers from './helpers';
 import type { INodeExecutionData } from '../src/interfaces';
 import { Workflow } from '../src/workflow';
 
-// Engine-parity tests for `$json` arrays beyond plain indexed access. Return
-// values must match on both engines; mutation persistence intentionally
-// diverges (see the isVm branches below).
+// `$json` array behavior beyond plain indexed access on VM and QuickJS.
 
 describe('Expression — array proxy semantics (engine parity)', () => {
 	const workflow = new Workflow({
@@ -39,7 +37,7 @@ describe('Expression — array proxy semantics (engine parity)', () => {
 		return expression.getParameterValue(value, null, 0, 0, 'node', data, 'manual', {});
 	};
 
-	// Both engines reject property-descriptor access from inside an expression:
+	// Both projects reject property-descriptor access from inside an expression:
 	// `getOwnPropertyDescriptor` is on the sanitizer's blocklist, so the
 	// expression is rejected before evaluation. Documented so a future
 	// divergence is caught; neither engine intends to expose the data this way.
@@ -81,58 +79,51 @@ describe('Expression — array proxy semantics (engine parity)', () => {
 		]);
 	});
 
-	// Mutating array methods run natively on both engines. Return values are
-	// identical; persistence intentionally diverges: the vm engine mutates an
-	// evaluation-scoped copy (fixture untouched), the legacy engine writes
-	// through to the underlying workflow data.
+	// Mutating array methods change only an evaluation-scoped copy.
 	describe('mutating array methods follow native semantics', () => {
-		const isVm = process.env.N8N_EXPRESSION_ENGINE !== 'legacy';
-
 		it('sort() returns the sorted array', () => {
 			const json = { arr: ['Mango', 'Apple', 'Kiwi', 'Orange'] };
 			const sorted = ['Apple', 'Kiwi', 'Mango', 'Orange'];
 			expect(evaluate('={{ $json.arr.sort() }}', json)).toEqual(sorted);
-			expect(json.arr).toEqual(isVm ? ['Mango', 'Apple', 'Kiwi', 'Orange'] : sorted);
+			expect(json.arr).toEqual(['Mango', 'Apple', 'Kiwi', 'Orange']);
 		});
 
 		it('sort() forwards the comparator', () => {
 			const json = { arr: [3, 1, 10, 2] };
 			expect(evaluate('={{ $json.arr.sort((a, b) => b - a) }}', json)).toEqual([10, 3, 2, 1]);
-			expect(json.arr).toEqual(isVm ? [3, 1, 10, 2] : [10, 3, 2, 1]);
+			expect(json.arr).toEqual([3, 1, 10, 2]);
 		});
 
 		it('splice() returns the removed elements', () => {
 			const json = { arr: ['Mango', 'Apple', 'Kiwi', 'Orange'] };
 			expect(evaluate('={{ $json.arr.splice(0, 2) }}', json)).toEqual(['Mango', 'Apple']);
-			expect(json.arr).toEqual(isVm ? ['Mango', 'Apple', 'Kiwi', 'Orange'] : ['Kiwi', 'Orange']);
+			expect(json.arr).toEqual(['Mango', 'Apple', 'Kiwi', 'Orange']);
 		});
 
 		it('fill() returns the filled array', () => {
 			const json = { arr: ['Mango', 'Apple', 'Kiwi', 'Orange'] };
 			const filled = ['X', 'X', 'Kiwi', 'Orange'];
 			expect(evaluate('={{ $json.arr.fill("X", 0, 2) }}', json)).toEqual(filled);
-			expect(json.arr).toEqual(isVm ? ['Mango', 'Apple', 'Kiwi', 'Orange'] : filled);
+			expect(json.arr).toEqual(['Mango', 'Apple', 'Kiwi', 'Orange']);
 		});
 
 		it('shift() returns the removed first element', () => {
 			const json = { arr: ['Mango', 'Apple', 'Kiwi'] };
 			expect(evaluate('={{ $json.arr.shift() }}', json)).toBe('Mango');
-			expect(json.arr).toEqual(isVm ? ['Mango', 'Apple', 'Kiwi'] : ['Apple', 'Kiwi']);
+			expect(json.arr).toEqual(['Mango', 'Apple', 'Kiwi']);
 		});
 
 		it('unshift() returns the new length', () => {
 			const json = { arr: ['Mango', 'Apple', 'Kiwi'] };
 			expect(evaluate('={{ $json.arr.unshift("Peach", "Grape") }}', json)).toBe(5);
-			expect(json.arr).toEqual(
-				isVm ? ['Mango', 'Apple', 'Kiwi'] : ['Peach', 'Grape', 'Mango', 'Apple', 'Kiwi'],
-			);
+			expect(json.arr).toEqual(['Mango', 'Apple', 'Kiwi']);
 		});
 
 		it('copyWithin() returns the copied-within array', () => {
 			const json = { arr: ['Mango', 'Apple', 'Kiwi', 'Orange'] };
 			const copied = ['Kiwi', 'Orange', 'Kiwi', 'Orange'];
 			expect(evaluate('={{ $json.arr.copyWithin(0, 2, 4) }}', json)).toEqual(copied);
-			expect(json.arr).toEqual(isVm ? ['Mango', 'Apple', 'Kiwi', 'Orange'] : copied);
+			expect(json.arr).toEqual(['Mango', 'Apple', 'Kiwi', 'Orange']);
 		});
 
 		it('mutation is visible to a subsequent sibling read', () => {
@@ -186,20 +177,14 @@ describe('Expression — array proxy semantics (engine parity)', () => {
 		});
 	});
 
-	// Direct writes on $json data. Both engines apply the write within the
-	// evaluation; they intentionally diverge on persistence: the vm engine's
-	// proxies are copy-on-write scoped to a single evaluation, while the legacy
-	// engine writes through to the underlying workflow data (long-standing
-	// behaviour for non-scripting nodes, where data is not augmented).
+	// Direct writes on $json data stay within the current evaluation.
 	describe('direct writes on $json data', () => {
-		const isVm = process.env.N8N_EXPRESSION_ENGINE !== 'legacy';
-
 		it('index assignment is visible to a later read in the same evaluation', () => {
 			const json = { arr: ['a', 'b', 'c'] };
 			expect(evaluate('={{ (() => { $json.arr[0] = "X"; return $json.arr[0]; })() }}', json)).toBe(
 				'X',
 			);
-			expect(json.arr).toEqual(isVm ? ['a', 'b', 'c'] : ['X', 'b', 'c']);
+			expect(json.arr).toEqual(['a', 'b', 'c']);
 		});
 
 		it('existing object-key assignment is visible to a later read', () => {
@@ -207,7 +192,7 @@ describe('Expression — array proxy semantics (engine parity)', () => {
 			expect(
 				evaluate('={{ (() => { $json.user.name = "Zed"; return $json.user.name; })() }}', json),
 			).toBe('Zed');
-			expect(json.user.name).toBe(isVm ? 'Alice' : 'Zed');
+			expect(json.user.name).toBe('Alice');
 		});
 
 		it('delete removes the key for the rest of the evaluation', () => {
@@ -218,7 +203,7 @@ describe('Expression — array proxy semantics (engine parity)', () => {
 					json,
 				),
 			).toBe(true);
-			expect('email' in json.user).toBe(isVm);
+			expect('email' in json.user).toBe(true);
 		});
 
 		it('push() updates length within the evaluation', () => {
@@ -226,13 +211,13 @@ describe('Expression — array proxy semantics (engine parity)', () => {
 			expect(
 				evaluate('={{ (() => { $json.arr.push("d"); return $json.arr.length; })() }}', json),
 			).toBe(4);
-			expect(json.arr.length).toBe(isVm ? 3 : 4);
+			expect(json.arr.length).toBe(3);
 		});
 
-		it('writes do not leak into a subsequent evaluation on the vm engine', () => {
+		it('writes do not leak into a subsequent evaluation', () => {
 			const json = { arr: ['a', 'b', 'c'] };
 			evaluate('={{ (() => { $json.arr[0] = "X"; return $json.arr[0]; })() }}', json);
-			expect(evaluate('={{ $json.arr[0] }}', json)).toBe(isVm ? 'a' : 'X');
+			expect(evaluate('={{ $json.arr[0] }}', json)).toBe('a');
 		});
 	});
 });
