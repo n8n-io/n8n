@@ -1,4 +1,8 @@
-import { CREDENTIAL_DESCRIPTIONS_FLAG, INSTANCE_ACTIVITY_CONTEXT_FLAG } from '@n8n/api-types';
+import {
+	CREDENTIAL_DESCRIPTIONS_FLAG,
+	INSTANCE_ACTIVITY_CONTEXT_FLAG,
+	INSTANCE_AI_NODE_USAGE_FLAG,
+} from '@n8n/api-types';
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { GlobalConfig } from '@n8n/config';
 import type { Application, Request, RequestHandler, Response } from 'express';
@@ -347,6 +351,7 @@ describe('PostHog', () => {
 				globalConfig.evaluation.configEvalsEnabled = false;
 				globalConfig.evaluation.agentEvalsEnabled = false;
 				globalConfig.instanceAi.canvasNodeContextEnabled = false;
+				globalConfig.instanceAi.nodeUsageEnabled = false;
 				globalConfig.instanceAi.folderExplorationEnabled = false;
 				globalConfig.workflows.groupsWithTriggersEnabled = false;
 				globalConfig.workflows.groupsWithManyBoundariesEnabled = false;
@@ -375,6 +380,84 @@ describe('PostHog', () => {
 				const flags = await ph.getFeatureFlags({ id: userId, createdAt });
 
 				expect(flags).toMatchObject({ '088_config_evaluations': 'variant' });
+			});
+
+			describe.each([true, false])('node usage with diagnostics %s', (diagnosticsEnabled) => {
+				beforeEach(() => {
+					globalConfig.diagnostics.enabled = diagnosticsEnabled;
+				});
+
+				it.each(['control', { value: 'control' }])(
+					'lets the dedicated setting override generic %j',
+					async (override) => {
+						(PostHog.prototype.evaluateFlags as Mock).mockResolvedValue(
+							mockEvaluatedFlags({ [INSTANCE_AI_NODE_USAGE_FLAG]: 'control' }),
+						);
+						globalConfig.instanceAi.nodeUsageEnabled = true;
+						globalConfig.featureFlags.override = { [INSTANCE_AI_NODE_USAGE_FLAG]: override };
+
+						const ph = new PostHogClient(instanceSettings, globalConfig);
+						await ph.init();
+
+						const flags = await ph.getFeatureFlags({ id: userId, createdAt });
+
+						expect(flags[INSTANCE_AI_NODE_USAGE_FLAG]).toBe('variant');
+					},
+				);
+
+				it.each([
+					{ override: 'variant', expected: 'variant' },
+					{ override: 'control', expected: 'control' },
+					{ override: { value: 'variant' }, expected: 'variant' },
+					{ override: { value: 'control' }, expected: 'control' },
+				])(
+					'preserves generic $override when the dedicated setting is false',
+					async ({ override, expected }) => {
+						(PostHog.prototype.evaluateFlags as Mock).mockResolvedValue(
+							mockEvaluatedFlags({
+								[INSTANCE_AI_NODE_USAGE_FLAG]: expected === 'variant' ? 'control' : 'variant',
+							}),
+						);
+						globalConfig.instanceAi.nodeUsageEnabled = false;
+						globalConfig.featureFlags.override = { [INSTANCE_AI_NODE_USAGE_FLAG]: override };
+
+						const ph = new PostHogClient(instanceSettings, globalConfig);
+						await ph.init();
+
+						const flags = await ph.getFeatureFlags({ id: userId, createdAt });
+
+						expect(flags[INSTANCE_AI_NODE_USAGE_FLAG]).toBe(expected);
+					},
+				);
+			});
+
+			it.each(['variant', 'control'])(
+				'preserves PostHog node usage %s when the dedicated setting is false',
+				async (assignment) => {
+					(PostHog.prototype.evaluateFlags as Mock).mockResolvedValue(
+						mockEvaluatedFlags({ [INSTANCE_AI_NODE_USAGE_FLAG]: assignment }),
+					);
+					globalConfig.instanceAi.nodeUsageEnabled = false;
+
+					const ph = new PostHogClient(instanceSettings, globalConfig);
+					await ph.init();
+
+					const flags = await ph.getFeatureFlags({ id: userId, createdAt });
+
+					expect(flags[INSTANCE_AI_NODE_USAGE_FLAG]).toBe(assignment);
+				},
+			);
+
+			it('force-enables the node-usage variant when PostHog fails', async () => {
+				(PostHog.prototype.evaluateFlags as Mock).mockRejectedValue(new Error('PostHog failed'));
+				globalConfig.instanceAi.nodeUsageEnabled = true;
+
+				const ph = new PostHogClient(instanceSettings, globalConfig);
+				await ph.init();
+
+				const flags = await ph.getFeatureFlags({ id: userId, createdAt });
+
+				expect(flags[INSTANCE_AI_NODE_USAGE_FLAG]).toBe('variant');
 			});
 
 			it('leaves the instance activity flag unset when PostHog has no answer', async () => {
@@ -644,6 +727,7 @@ describe('PostHog', () => {
 				globalConfig.evaluation.configEvalsEnabled = true;
 				globalConfig.evaluation.agentEvalsEnabled = true;
 				globalConfig.instanceAi.canvasNodeContextEnabled = true;
+				globalConfig.instanceAi.nodeUsageEnabled = true;
 
 				const ph = new PostHogClient(instanceSettings, globalConfig);
 				await ph.init();
@@ -656,6 +740,7 @@ describe('PostHog', () => {
 					'088_config_evaluations': 'variant',
 					'101_agent_evals': true,
 					'104_canvas_aia_node_context': true,
+					[INSTANCE_AI_NODE_USAGE_FLAG]: 'variant',
 				});
 			});
 		});

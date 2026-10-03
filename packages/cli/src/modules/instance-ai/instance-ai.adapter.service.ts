@@ -11,6 +11,7 @@ import {
 	INSTANCE_AI_FOLDER_EXPLORATION_ENABLED_VARIANT,
 	INSTANCE_AI_FOLDER_EXPLORATION_FLAG,
 	INSTANCE_AI_NODE_USAGE_FLAG,
+	INSTANCE_AI_NODE_USAGE_ENABLED_VARIANT,
 	INSTANCE_ACTIVITY_CONTEXT_FLAG,
 	TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE,
 	upsertEvaluationConfigSchema,
@@ -750,7 +751,8 @@ export class InstanceAiAdapterService {
 			...(setupPanelVariant === 'control' || setupPanelVariant === 'variant'
 				? { setupPanelVariant }
 				: {}),
-			nodeUsageEnabled: flags[INSTANCE_AI_NODE_USAGE_FLAG] === true,
+			nodeUsageEnabled:
+				flags[INSTANCE_AI_NODE_USAGE_FLAG] === INSTANCE_AI_NODE_USAGE_ENABLED_VARIANT,
 			nodeContextEnabled:
 				flags[CANVAS_NODE_CONTEXT_FLAG] === true || flags[AI_ASSISTANT_AT_MENTIONS_FLAG] === true,
 			folderExplorationEnabled:

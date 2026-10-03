@@ -155,8 +155,8 @@ describe('InstanceAiAdapterService node usage', () => {
 			return gates.nodeUsageEnabled;
 		};
 
-		it('is on for a user in the rollout', async () => {
-			expect(await gateFor({ [INSTANCE_AI_NODE_USAGE_FLAG]: true })).toBe(true);
+		it('is on for the variant assignment', async () => {
+			expect(await gateFor({ [INSTANCE_AI_NODE_USAGE_FLAG]: 'variant' })).toBe(true);
 		});
 
 		// A flag-plane outage resolves to `{}`, so this case also covers fail-closed.
@@ -164,9 +164,12 @@ describe('InstanceAiAdapterService node usage', () => {
 			expect(await gateFor({})).toBe(false);
 		});
 
-		it('is off when the flag is explicitly false', async () => {
-			expect(await gateFor({ [INSTANCE_AI_NODE_USAGE_FLAG]: false })).toBe(false);
-		});
+		it.each(['control', 'unexpected', true, false, undefined])(
+			'is off for assignment %s',
+			async (assignment) => {
+				expect(await gateFor({ [INSTANCE_AI_NODE_USAGE_FLAG]: assignment })).toBe(false);
+			},
+		);
 	});
 
 	describe('capability gate', () => {

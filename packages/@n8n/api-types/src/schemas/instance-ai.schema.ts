@@ -2846,6 +2846,7 @@ export const INSTANCE_AI_SETUP_PANEL_ENABLED_VARIANT = 'variant';
 
  *  action and the `nodeTypes` filter on `workflows(action="list")`. */
 export const INSTANCE_AI_NODE_USAGE_FLAG = '109_instance_ai_node_usage';
+export const INSTANCE_AI_NODE_USAGE_ENABLED_VARIANT = 'variant';
 
 /**
  * Rollout flag for folder exploration in Instance AI: folder attribution on

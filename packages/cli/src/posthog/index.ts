@@ -3,6 +3,7 @@ import {
 	CANVAS_NODE_CONTEXT_FLAG,
 	CREDENTIAL_DESCRIPTIONS_FLAG,
 	INSTANCE_AI_NODE_USAGE_FLAG,
+	INSTANCE_AI_NODE_USAGE_ENABLED_VARIANT,
 	CONFIG_EVALUATIONS_ENABLED_VARIANT,
 	CONFIG_EVALUATIONS_FLAG,
 	EVAL_COLLECTIONS_FLAG,
@@ -277,7 +278,7 @@ export class PostHogClient {
 		}
 
 		if (this.globalConfig.instanceAi.nodeUsageEnabled) {
-			overrides[INSTANCE_AI_NODE_USAGE_FLAG] = true;
+			overrides[INSTANCE_AI_NODE_USAGE_FLAG] = INSTANCE_AI_NODE_USAGE_ENABLED_VARIANT;
 		}
 
 		if (this.globalConfig.instanceAi.folderExplorationEnabled) {
