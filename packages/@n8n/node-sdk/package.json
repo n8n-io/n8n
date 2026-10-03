@@ -49,6 +49,10 @@
       "types": "./dist/sandbox.d.ts",
       "default": "./dist/sandbox.js"
     },
+    "./lint": {
+      "types": "./dist/lint.d.ts",
+      "default": "./dist/lint.js"
+    },
     "./package.json": "./package.json"
   },
   "files": [
@@ -77,6 +81,7 @@
     "@n8n/utils": "workspace:*",
     "esbuild": "catalog:",
     "n8n-workflow": "workspace:*",
+    "oxlint": "catalog:",
     "tsx": "catalog:",
     "typescript": "catalog:typescript"
   },

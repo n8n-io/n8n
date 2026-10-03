@@ -13,7 +13,7 @@ import { checkContracts, loadProject, type Project } from './project';
 const USAGE = `Usage: n8n-node-next <command>
 
   new <service> [--dir <path>]    Scaffold a node project
-  check                           Type-check (tsc --strict) and check the contracts
+  check                           Type-check (tsc --strict), check the contracts and lint src
   test [--timeout <seconds>]      Run src/**/*.test.ts with node:test. Each test fails
                                   after --timeout (default 20 s); all tests stop after 3 times that
   describe [actionId]             Print the typed module the AI workflow builder reads
@@ -75,13 +75,53 @@ function typecheck(root: string): boolean {
 	return result.status === 0;
 }
 
+const positionOf = (labels: unknown) => {
+	const [first]: unknown[] = Array.isArray(labels) ? labels : [];
+	return isRecord(first) && isRecord(first.span)
+		? `:${String(first.span.line)}:${String(first.span.column)}`
+		: '';
+};
+
+/** Runs the AST rules of `@n8n/node-sdk/lint` on `src`, with the SDK's oxlint and config. */
+function lint(root: string): string[] {
+	const oxlint = join(dirname(require.resolve('oxlint/package.json')), 'bin', 'oxlint');
+	const config = join(__dirname, 'oxlintrc.json');
+	const args = [oxlint, '-c', config, '--disable-nested-config', '--format', 'json', 'src'];
+	// The default 1 MB buffer cuts the JSON report of a project with many findings.
+	const result = spawnSync(process.execPath, args, {
+		cwd: root,
+		encoding: 'utf8',
+		maxBuffer: 64 * 1024 * 1024,
+	});
+	const report: unknown = (() => {
+		try {
+			return JSON.parse(result.stdout);
+		} catch {
+			return undefined;
+		}
+	})();
+	if (!isRecord(report) || !Array.isArray(report.diagnostics)) {
+		throw new CliError(
+			`lint did not run: ${result.error?.message ?? (result.stderr || result.stdout)}`,
+		);
+	}
+	const diagnostics: unknown[] = report.diagnostics;
+	return diagnostics
+		.filter(isRecord)
+		.map(
+			({ filename, labels, message, code }) =>
+				`${String(filename)}${positionOf(labels)}: ${String(message)} (${String(code)})`,
+		);
+}
+
 async function check(root: string) {
 	const typed = typecheck(root);
 	const issues = checkContracts(await loadProject(root));
-	issues.forEach((issue) => console.error(issue));
-	if (!typed || issues.length > 0) {
+	const findings = lint(root);
+	[...issues, ...findings].forEach((issue) => console.error(issue));
+	if (!typed || issues.length > 0 || findings.length > 0) {
 		throw new CliError(
-			`check failed: ${typed ? 'types ok' : 'type errors'}, ${issues.length} contract issue(s)`,
+			`check failed: ${typed ? 'types ok' : 'type errors'}, ${issues.length} contract issue(s), ${findings.length} lint issue(s)`,
 		);
 	}
 	console.log('check passed. Next: n8n-node-next test');

@@ -299,8 +299,11 @@ const entryCoverage = (
 	const source = program.getSourceFile(file);
 	const module = source && checker.getSymbolAtLocation(source);
 	if (!module) throw new Error(`No module for ${entry} at ${file}`);
-	const exported = checker
-		.getExportsOfModule(module)
+	// `export = value` (a CommonJS default, e.g. a lint plugin) is the one export of its module.
+	const exportEquals = module.exports?.get(ts.InternalSymbolName.ExportEquals);
+	const exported = (
+		exportEquals ? [resolved(exportEquals, checker)] : checker.getExportsOfModule(module)
+	)
 		.map((symbol) => ({ name: symbol.name, symbol: resolved(symbol, checker) }))
 		.sort((a, b) => a.name.localeCompare(b.name));
 	return {

@@ -78,6 +78,13 @@ describe('jsdocCoverage', () => {
 		}
 	});
 
+	it('reads `export =` as the one export of its entry', () => {
+		const [lint] = jsdocCoverage([
+			packageEntries(path.resolve(__dirname, '../..'), 'src', ['./lint']),
+		]);
+		expect(lint?.exports.map(({ name }) => name)).toEqual(['contractLint']);
+	});
+
 	it('finds a JSDoc summary on every export and field of node-sdk and workflow-sdk/next', () => {
 		expect(undocumented(jsdocCoverage())).toEqual([]);
 	}, 60_000);

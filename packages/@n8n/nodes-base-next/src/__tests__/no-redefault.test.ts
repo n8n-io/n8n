@@ -33,7 +33,7 @@ interface LintResult {
 	messages: Array<{ ruleId: string | null; line: number; message: string }>;
 }
 
-describe('nodes-base-next/no-redefault', () => {
+describe('n8n-contract/no-redefault', () => {
 	it('reports a fallback for a field with a default, at any depth', () => {
 		// Type-aware lint needs a file of the project; stdin replaces its text.
 		const { stdout, stderr } = spawnSync(
@@ -51,9 +51,7 @@ describe('nodes-base-next/no-redefault', () => {
 		);
 		expect(stdout, stderr).toMatch(/^\[/);
 		const [result] = JSON.parse(stdout) as LintResult[];
-		const reported = result.messages.filter(
-			({ ruleId }) => ruleId === 'nodes-base-next/no-redefault',
-		);
+		const reported = result.messages.filter(({ ruleId }) => ruleId === 'n8n-contract/no-redefault');
 
 		expect(reported.map(({ line, message }) => `${line}: ${message}`)).toEqual([
 			'16: `input.paging` is always set. Remove the fallback.',

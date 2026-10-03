@@ -19,6 +19,7 @@ See `packages/@n8n/nodes-base-next/src/nodes/**` for real nodes.
 | `@n8n/node-sdk/codegen` | instance-ai, compat | `generateNodeModule`, `toTs`, model catalog, provider connections and fields |
 | `@n8n/node-sdk/mcp` | tooling | `liftMcpTool`: an MCP tool as a derived manifest |
 | `@n8n/node-sdk/freeze`, `/publish`, `/sandbox` | tooling | freeze, publish and sandboxed run of bundles |
+| `@n8n/node-sdk/lint` | lint configs | the `n8n-contract` plugin for oxlint (`jsPlugins`) and ESLint (`plugins`): `no-raw-error`, and `no-redefault` (ESLint only, it reads types) |
 
 ```ts
 import { defineNode, t } from '@n8n/node-sdk';
@@ -31,7 +32,7 @@ import { credential, defineCredential, field } from '@n8n/node-sdk/credentials';
 
 ```sh
 n8n-node-next new <service> [--dir <path>]  # scaffold a project
-n8n-node-next check                         # tsc --noEmit --strict plus contract checks
+n8n-node-next check                         # tsc --noEmit --strict, contract checks and lint
 n8n-node-next test                          # run src/**/*.test.ts with node:test (via tsx)
 n8n-node-next describe [actionId]           # print the typed module the AI builder reads
 n8n-node-next run <actionId> --input '<json>' [--credential-file f.json | --credential-env PREFIX]
@@ -51,6 +52,8 @@ credential types come from `node.credential`. `new` writes an `AGENTS.md` that e
 - that `deriveOutput` gives items that also match `output`
 - that each scope an action lists is a scope of the node's credential
 - that each `$credentials.<field>` template names a credential property
+- the AST rules of `@n8n/node-sdk/lint` on `src` (oxlint, test files excluded), one line per
+  finding: `<file>:<line>:<column>: <problem> (<rule>)`
 
 `run` calls the live API and prints the output items as JSON. On failure it prints
 `{ "error": { "message", "path"?, "httpStatus"? } }` to stderr and exits with 1.

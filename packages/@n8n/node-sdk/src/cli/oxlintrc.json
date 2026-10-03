@@ -1,0 +1,7 @@
+{
+	"plugins": [],
+	"categories": { "correctness": "off" },
+	"jsPlugins": ["@n8n/node-sdk/lint"],
+	"rules": { "n8n-contract/no-raw-error": "error" },
+	"overrides": [{ "files": ["**/*.test.ts"], "rules": { "n8n-contract/no-raw-error": "off" } }]
+}

@@ -3707,6 +3707,9 @@ importers:
       n8n-workflow:
         specifier: workspace:*
         version: link:../../workflow
+      oxlint:
+        specifier: 'catalog:'
+        version: 1.78.0(oxlint-tsgolint@0.21.1)
       tsx:
         specifier: 'catalog:'
         version: 4.19.3

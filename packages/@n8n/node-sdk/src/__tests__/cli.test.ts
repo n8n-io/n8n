@@ -118,6 +118,18 @@ describe('n8n-node-next', () => {
 		);
 	});
 
+	it('check reports a plain Error from the lint rules', async () => {
+		const file = join(project, 'src/fail.ts');
+		writeFileSync(file, "export const fail = () => {\n\tthrow new Error('No item');\n};\n");
+		const result = await cli(project, ['check']);
+		rmSync(file);
+		expect(result.code).toBe(1);
+		expect(result.stderr).toContain(
+			'src/fail.ts:2:12: Throw `UserError` when the user can fix the cause, or `OperationalError` when a retry can pass. Import both from `@n8n/node-sdk`. (n8n-contract(no-raw-error))',
+		);
+		expect(result.stderr).toContain('0 contract issue(s), 1 lint issue(s)');
+	});
+
 	it('test runs the node:test files', async () => {
 		const result = await cli(project, ['test']);
 		expect(result.code).toBe(0);

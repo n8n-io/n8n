@@ -18,7 +18,7 @@ This file is the complete API reference. You do not have to read the SDK source.
 ## Commands
 
 ```sh
-n8n-node-next check                      # tsc --strict plus contract checks
+n8n-node-next check                      # tsc --strict, contract checks and lint
 n8n-node-next test                       # run src/**/*.test.ts; a test fails after 20 s
 n8n-node-next describe [actionId]        # the typed module the AI builder sees
 n8n-node-next run __service__.item.getAll --input '{"paging":{"mode":"limit","max":5}}' --credential-env __ENV__
@@ -115,7 +115,7 @@ export const createItem = item.action('create', {
   `const full = t.obj({ body: t.arr(item), headers: t.json() }).with({ additionalProperties: true });`
   `if (!matches(full, response)) throw ...;` then `response.body` is typed; check `typeof response.headers.link`.
 - A non-2xx response throws. After `isHttpError(error)`, read `error.status`, `error.body` and
-  `error.headers` (lower case, e.g. `error.headers['retry-after']`).
+  `error.headers` (lower case, e.g. `error.headers['retry-after']`). Throw `UserError` (the user can fix the cause) or `OperationalError` (a retry can pass) from `@n8n/node-sdk`; `check` rejects `new Error(...)`.
 - Do not write retries. n8n retries a 429, 502, 503, 504 or a dropped connection up to 3 times, with
   backoff and `Retry-After`, for GET, HEAD, PUT, and every request of an action with `flow.idempotent: true`.
   `retry: true` also retries another method; `retry: false` never retries.
