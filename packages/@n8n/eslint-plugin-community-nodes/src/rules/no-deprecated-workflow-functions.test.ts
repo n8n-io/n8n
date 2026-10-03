@@ -51,6 +51,99 @@ function test(options: IRequestOptions) {
 		},
 	],
 	invalid: [
+		// CE-2165: Check deprecated helpers through execution context references too.
+		{
+			name: 'deprecated request function through context parameter',
+			code: `
+import type { IExecuteFunctions } from 'n8n-workflow';
+
+async function getData(context: IExecuteFunctions) {
+	return await context.helpers.requestOAuth2('google', options);
+}`,
+			errors: [
+				{
+					messageId: 'deprecatedRequestFunction',
+					data: { functionName: 'requestOAuth2', replacement: 'httpRequestWithAuthentication' },
+					suggestions: [
+						{
+							messageId: 'suggestReplaceFunction',
+							data: {
+								functionName: 'requestOAuth2',
+								replacement: 'httpRequestWithAuthentication',
+							},
+							output: `
+import type { IExecuteFunctions } from 'n8n-workflow';
+
+async function getData(context: IExecuteFunctions) {
+	return await context.helpers.httpRequestWithAuthentication('google', options);
+}`,
+						},
+					],
+				},
+			],
+		},
+		{
+			name: 'deprecated request function through aliased context parameter',
+			code: `
+import type { IExecuteFunctions } from 'n8n-workflow';
+
+async function getData(ctx: IExecuteFunctions) {
+	return await ctx.helpers.requestOAuth2('google', options);
+}`,
+			errors: [
+				{
+					messageId: 'deprecatedRequestFunction',
+					data: { functionName: 'requestOAuth2', replacement: 'httpRequestWithAuthentication' },
+					suggestions: [
+						{
+							messageId: 'suggestReplaceFunction',
+							data: {
+								functionName: 'requestOAuth2',
+								replacement: 'httpRequestWithAuthentication',
+							},
+							output: `
+import type { IExecuteFunctions } from 'n8n-workflow';
+
+async function getData(ctx: IExecuteFunctions) {
+	return await ctx.helpers.httpRequestWithAuthentication('google', options);
+}`,
+						},
+					],
+				},
+			],
+		},
+		{
+			name: 'deprecated request function through destructured helpers',
+			code: `
+import type { IExecuteFunctions } from 'n8n-workflow';
+
+async function getData(this: IExecuteFunctions) {
+	const { helpers } = this;
+	return await helpers.requestOAuth2('google', options);
+}`,
+			errors: [
+				{
+					messageId: 'deprecatedRequestFunction',
+					data: { functionName: 'requestOAuth2', replacement: 'httpRequestWithAuthentication' },
+					suggestions: [
+						{
+							messageId: 'suggestReplaceFunction',
+							data: {
+								functionName: 'requestOAuth2',
+								replacement: 'httpRequestWithAuthentication',
+							},
+							output: `
+import type { IExecuteFunctions } from 'n8n-workflow';
+
+async function getData(this: IExecuteFunctions) {
+	const { helpers } = this;
+	return await helpers.httpRequestWithAuthentication('google', options);
+}`,
+						},
+					],
+				},
+			],
+		},
 		{
 			name: 'deprecated request functions',
 			code: `
