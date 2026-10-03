@@ -92,6 +92,7 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 				agent: runnableAgent,
 				memory,
 				tools,
+				handleParsingErrors: true,
 				returnIntermediateSteps: options.returnIntermediateSteps === true,
 				maxIterations: options.maxIterations ?? 10,
 			});
