@@ -507,9 +507,11 @@ export class AgentRuntime {
 
 		const list = await this.restoreCheckpointMessages(state);
 
-		const tool = this.context
-			.getCurrentTools(state.persistence)
-			.find((t) => t.name === toolCall.toolName);
+		// A skill dependency loads a deferred tool without a `load_tool` record, and
+		// skills restore only when the loop starts. Accept any registered deferred tool.
+		const tool =
+			this.context.getCurrentTools(state.persistence).find((t) => t.name === toolCall.toolName) ??
+			this.deferredToolManager?.getTool(toolCall.toolName);
 		if (!tool) throw new Error(`Tool ${toolCall.toolName} not found`);
 
 		const resumeSchema = toolCall.suspended ? toolCall.resumeSchema : tool.resumeSchema;
@@ -863,6 +865,9 @@ export class AgentRuntime {
 		const { list, options } = ctx;
 		await this.activeSkills?.restore(list, options?.persistence);
 		this.context.hydrateDeferredToolsFromList(list);
+		// Hydration keeps only `load_tool` records. A resumed tool call runs before
+		// the next model call, so load the skill dependencies here too.
+		this.loadSkillToolDependencies();
 		// This note reaches the model but is not stored in conversation history.
 		list.mcpConnectionNote = formatMcpConnectionNote(this.config.mcpConnectionFailures ?? []);
 
@@ -1011,11 +1016,15 @@ export class AgentRuntime {
 		return settlement;
 	}
 
-	private async prepareModelCall(ctx: PreparedLoopContext) {
-		const { list, options, abortScope, staticContext } = ctx;
+	private loadSkillToolDependencies(): void {
 		for (const toolName of this.activeSkills?.toolDependencies() ?? []) {
 			this.deferredToolManager?.load(toolName);
 		}
+	}
+
+	private async prepareModelCall(ctx: PreparedLoopContext) {
+		const { list, options, abortScope, staticContext } = ctx;
+		this.loadSkillToolDependencies();
 		const tools = this.context.buildToolLoopContext(
 			staticContext.aiProviderTools,
 			options?.persistence,

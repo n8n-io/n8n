@@ -8710,6 +8710,55 @@ describe('AgentRuntime — mid-run observation', () => {
 		expect(JSON.stringify(capturedCall(2))).not.toContain('Old workflow policy.');
 	});
 
+	it('resumes a deferred tool that a skill dependency loaded', async () => {
+		const source = createRuntimeSkillSource([
+			{
+				id: 'planning',
+				name: 'planning',
+				description: 'Plan multi-step work.',
+				instructions: 'Ask the user to approve the plan.',
+				dependencies: { tools: ['approve'] },
+			},
+		]);
+		const checkpointStore = makeClaimingCheckpointStore();
+		const memory = new InMemoryMemory();
+		const options = {
+			skillSource: source,
+			tools: createRuntimeSkillTools(source),
+			deferredTools: [makeInterruptibleTool()],
+			checkpointStorage: checkpointStore,
+		};
+		const first = buildMidRunRuntime(memory, options);
+		generateText
+			.mockResolvedValueOnce(
+				makeGenerateWithToolCall('load-planning', 'load_skill', { skillId: 'planning' }),
+			)
+			.mockResolvedValueOnce(
+				makeGenerateWithToolCall('confirm', 'approve', { question: 'Run the plan?' }),
+			);
+		const result = await first.generate('Plan it', { persistence: PERSISTENCE });
+		await first.dispose();
+		const suspension = result.pendingSuspend?.[0];
+		if (!suspension) throw new Error('Expected a plan confirmation');
+
+		const resumed = buildMidRunRuntime(memory, options);
+		generateText.mockResolvedValueOnce(makeGenerateSuccess('Plan approved.'));
+		const resumeResult = await resumed.resume(
+			'generate',
+			{ approved: true },
+			{ runId: suspension.runId, toolCallId: suspension.toolCallId },
+		);
+		await resumed.dispose();
+
+		expect(resumeResult.error).toBeUndefined();
+		expect(resumeResult.toolCalls).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({ tool: 'approve', output: { approved: true } }),
+			]),
+		);
+		expect(capturedCall(2).tools).toHaveProperty('approve');
+	});
+
 	it('merges system messages after compaction for custom OpenAI-compatible endpoints', async () => {
 		const memory = new InMemoryMemory();
 		const runtime = buildMidRunRuntime(memory, {
