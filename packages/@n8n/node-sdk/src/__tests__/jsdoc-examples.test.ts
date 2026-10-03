@@ -9,9 +9,13 @@ import {
 	paging,
 	parse,
 	path,
+	promptReply,
 	provider,
 	readAs,
 	ref,
+	replyOutput,
+	replyOutputOf,
+	replySchema,
 	t,
 	type ChatModel,
 	type DataTableFilter,
@@ -221,6 +225,16 @@ export const reply = notion.action('reply', {
 		const { text } = await input.model.chat({ messages: [{ role: 'user', content: 'Hi' }] });
 		return { text };
 	},
+});
+
+export const prompt = notion.action('prompt', {
+	action: 'Prompt',
+	summary: 'Prompt a chat model.',
+	flow: { effect: 'read', cardinality: 'per-item' },
+	input: { model: provider.input('chatModel'), prompt: t.str(), schema: replySchema },
+	output: replyOutput,
+	deriveOutput: ({ schema }) => replyOutputOf(schema),
+	run: async ({ input }) => await promptReply(input.model, input),
 });
 
 const xAi = defineNode({ id: 'xAi', displayName: 'xAI', baseUrl: 'https://api.x.ai/v1' });

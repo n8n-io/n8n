@@ -100,6 +100,16 @@ export {
 	type ToolDefinition,
 } from './providers';
 export {
+	assertFinished,
+	isReplySchema,
+	parseReply,
+	promptMessages,
+	promptReply,
+	replyOutput,
+	replyOutputOf,
+	replySchema,
+} from './reply';
+export {
 	defineResource,
 	pageValueOf,
 	ref,

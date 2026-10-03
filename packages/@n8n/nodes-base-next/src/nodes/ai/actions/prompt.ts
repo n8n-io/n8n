@@ -1,7 +1,6 @@
-import { provider, t } from '@n8n/node-sdk';
+import { promptReply, provider, replyOutput, replyOutputOf, replySchema, t } from '@n8n/node-sdk';
 
 import { ai } from '../ai.node';
-import { promptReply, replyOutput, replyOutputOf, replySchema } from '../reply';
 
 export const promptModel = ai.action('prompt', {
 	action: 'Prompt a model',

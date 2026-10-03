@@ -1,5 +1,11 @@
 import {
+	assertFinished,
+	isReplySchema,
+	parseReply,
 	provider,
+	replyOutput,
+	replyOutputOf,
+	replySchema,
 	t,
 	UserError,
 	type ChatMessage,
@@ -10,14 +16,6 @@ import {
 } from '@n8n/node-sdk';
 
 import { ai } from '../ai.node';
-import {
-	assertFinished,
-	isJsonSchema,
-	parseReply,
-	replyOutput,
-	replyOutputOf,
-	replySchema,
-} from '../reply';
 
 /** The tool result as the model reads it. A failed tool tells the model why. */
 async function resultOf(call: ToolCall, tools: readonly Tool[]): Promise<ChatMessage> {
@@ -57,7 +55,7 @@ export const runAgent = ai.action('agent', {
 	async run({ input }) {
 		const { model, memory } = input;
 		const tools = input.tools ?? [];
-		const schema = isJsonSchema(input.schema) ? input.schema : undefined;
+		const schema = isReplySchema(input.schema) ? input.schema : undefined;
 		const names = tools.map(({ name }) => name);
 		const repeated = names.find((name, index) => names.indexOf(name) !== index);
 		if (repeated)

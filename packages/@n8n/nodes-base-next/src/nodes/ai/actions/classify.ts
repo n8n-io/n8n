@@ -1,7 +1,15 @@
-import { parse, provider, t, UserError, type JsonSchema } from '@n8n/node-sdk';
+import {
+	assertFinished,
+	parse,
+	parseReply,
+	promptMessages,
+	provider,
+	t,
+	UserError,
+	type JsonSchema,
+} from '@n8n/node-sdk';
 
 import { ai } from '../ai.node';
-import { assertFinished, parseReply, promptMessages } from '../reply';
 
 /** The output for an item that fits no category. Error items also go to the last output. */
 const OTHER = 'other';

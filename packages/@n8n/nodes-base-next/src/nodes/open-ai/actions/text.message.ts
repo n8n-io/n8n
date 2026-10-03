@@ -1,6 +1,5 @@
-import { t } from '@n8n/node-sdk';
+import { promptReply, replyOutput, replyOutputOf, replySchema, t } from '@n8n/node-sdk';
 
-import { promptReply, replyOutput, replyOutputOf, replySchema } from '../../ai/reply';
 import { chatCompletionsModel } from '../chat-completions';
 import { text } from '../open-ai.node';
 

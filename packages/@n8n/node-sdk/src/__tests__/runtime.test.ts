@@ -914,7 +914,7 @@ describe('query', () => {
 });
 
 describe('batch and named outputs', () => {
-	const core = defineNode({ id: 'core', displayName: 'Core' });
+	const itemsNode = defineNode({ id: 'items', displayName: 'Items' });
 	const row = (id: string) => ({
 		json: { id },
 		binary: { file: { data: id, mimeType: 'text/plain' } },
@@ -922,7 +922,7 @@ describe('batch and named outputs', () => {
 	const batchHost = (items: ExecutorHost['items'], parameters: Record<string, unknown> = {}) =>
 		hostOf([], { items, parameter: (name) => parameters[name] }).host;
 
-	const reverse = core.action('reverse', {
+	const reverse = itemsNode.action('reverse', {
 		action: 'Reverse items',
 		summary: 'Reverse the items.',
 		flow: { effect: 'transform', cardinality: 'batch' },
@@ -931,7 +931,7 @@ describe('batch and named outputs', () => {
 		run: ({ items }) => [...items].reverse().map((item) => ({ item })),
 	});
 
-	const count = core.action('count', {
+	const count = itemsNode.action('count', {
 		action: 'Count items',
 		summary: 'Count the items.',
 		flow: { effect: 'transform', cardinality: 'batch' },
@@ -940,7 +940,7 @@ describe('batch and named outputs', () => {
 		run: ({ items }) => [{ json: { count: items.length }, from: items }],
 	});
 
-	const check = core.action('check', {
+	const check = itemsNode.action('check', {
 		action: 'Check items',
 		summary: 'Route each item by a flag.',
 		flow: { effect: 'transform', cardinality: 'per-item' },
@@ -951,7 +951,7 @@ describe('batch and named outputs', () => {
 			await Promise.resolve({ to: input.pass ? 'true' : 'false', item }),
 	});
 
-	const route = core.action('route', {
+	const route = itemsNode.action('route', {
 		action: 'Route items',
 		summary: 'Route each item to the case it names.',
 		flow: { effect: 'transform', cardinality: '1:N' },
@@ -984,7 +984,7 @@ describe('batch and named outputs', () => {
 	});
 
 	it('refuses a batch output from an item that is not an input item, or from no item', async () => {
-		const forged = core.action('forge', {
+		const forged = itemsNode.action('forge', {
 			action: 'Forge',
 			summary: 'Forge lineage.',
 			flow: { effect: 'transform', cardinality: 'batch' },
@@ -1051,7 +1051,7 @@ describe('batch and named outputs', () => {
 	});
 
 	it('passes the current item on from a per-item action without named outputs', async () => {
-		const keep = core.action('keep', {
+		const keep = itemsNode.action('keep', {
 			action: 'Keep',
 			summary: 'Pass items on.',
 			flow: { effect: 'transform', cardinality: 'per-item' },
@@ -1090,7 +1090,7 @@ describe('batch and named outputs', () => {
 	});
 
 	it('refuses an output name that is not an output, at compile time and at run time', async () => {
-		core.action('typo', {
+		itemsNode.action('typo', {
 			action: 'Typo',
 			summary: 'Route to a typo.',
 			flow: { effect: 'transform', cardinality: 'per-item' },
@@ -1100,7 +1100,7 @@ describe('batch and named outputs', () => {
 			// @ts-expect-error -- "kep" is not an output name
 			run: async ({ item }) => await Promise.resolve({ to: 'kep', item }),
 		});
-		const loose = core.action('loose', {
+		const loose = itemsNode.action('loose', {
 			action: 'Loose',
 			summary: 'Route to a name from the input.',
 			flow: { effect: 'transform', cardinality: '1:N' },
@@ -1119,7 +1119,7 @@ describe('batch and named outputs', () => {
 	});
 
 	it('requires lineage on a new batch item and an entry list for outputs per entry', () => {
-		core.action('noLineage', {
+		itemsNode.action('noLineage', {
 			action: 'No lineage',
 			summary: 'Forget lineage.',
 			flow: { effect: 'transform', cardinality: 'batch' },
@@ -1128,7 +1128,7 @@ describe('batch and named outputs', () => {
 			// @ts-expect-error -- a new batch item must name its input items in `from`
 			run: ({ items }) => [{ json: { count: items.length } }],
 		});
-		core.action('noList', {
+		itemsNode.action('noList', {
 			action: 'No list',
 			summary: 'Name outputs after a field that is not a list.',
 			flow: { effect: 'transform', cardinality: 'per-item' },

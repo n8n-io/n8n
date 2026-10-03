@@ -58,6 +58,10 @@ input: {
   fails the run with a clear message.
 - `lintContract` checks: one field per kind, the field name of the table, top-level fields
   only.
+- A prompt action uses the reply helpers of the root export: `replySchema` as input,
+  `replyOutput` with `deriveOutput: ({ schema }) => replyOutputOf(schema)`, and
+  `promptReply(model, input)` in `run()`. A node that calls `chat()` itself uses
+  `promptMessages`, `assertFinished`, `isReplySchema` and `parseReply`.
 
 ## Typed flow SDK
 
