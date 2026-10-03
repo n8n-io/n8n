@@ -115,6 +115,75 @@ function parseGoogleVertexAuthOptions(
 }
 
 /**
+ * Azure OpenAI scope for Entra Bearer auth. Mirrors the LangChain Azure node's
+ * `AZURE_OPENAI_SCOPE` and the `resource` claim the reference impl sends in the
+ * client-credentials token request.
+ */
+const AZURE_OPENAI_ENTRA_RESOURCE = 'https://cognitiveservices.azure.com/';
+
+/**
+ * Builds a `() => Promise<string>` bearer-token provider for an Azure Entra
+ * OAuth2 credential. Ports `N8nOAuth2TokenCredential.getToken` from the
+ * LangChain Azure node: mints a fresh token on every call via
+ * `@n8n/client-oauth2`'s client-credentials flow, gated on a stored
+ * `oauthTokenData.access_token` (proof the credential was connected).
+ *
+ * `@ai-sdk/azure`'s `createAzure` accepts this shape directly as `tokenProvider`;
+ * it must not be paired with `apiKey`.
+ */
+function createEntraTokenProvider(creds: {
+	oauthClientId?: string;
+	oauthClientSecret?: string;
+	oauthAccessTokenUrl?: string;
+	oauthScope?: string;
+	oauthAuthentication?: 'body' | 'header';
+	oauthTokenData?: { access_token: string } & Record<string, unknown>;
+}): () => Promise<string> {
+	const {
+		oauthClientId,
+		oauthClientSecret,
+		oauthAccessTokenUrl,
+		oauthScope,
+		oauthAuthentication,
+		oauthTokenData,
+	} = creds;
+	return async () => {
+		if (!oauthTokenData?.access_token) {
+			throw new Error('Azure Entra OAuth2 credential is not connected');
+		}
+		if (!oauthClientId || !oauthAccessTokenUrl) {
+			throw new Error('Azure Entra OAuth2 credential is missing clientId or accessTokenUrl');
+		}
+		const { ClientOAuth2 } = require('@n8n/client-oauth2') as typeof import('@n8n/client-oauth2');
+		const client = new ClientOAuth2({
+			clientId: oauthClientId,
+			clientSecret: oauthClientSecret,
+			accessTokenUri: oauthAccessTokenUrl,
+			scopes: oauthScope?.split(' '),
+			authentication: oauthAuthentication,
+			additionalBodyProperties: { resource: AZURE_OPENAI_ENTRA_RESOURCE },
+		});
+		const token = await client.credentials.getToken();
+		return (token.data as { access_token: string }).access_token;
+	};
+}
+
+/**
+ * Wraps a `fetch` so each request carries an `Authorization: Bearer <token>`
+ * header resolved from a token provider. Used for Foundry Entra, where
+ * `buildOpenAiCompatible` has no `tokenProvider` slot.
+ */
+function withBearerAuth(fetch: FetchFn | undefined, tokenProvider: () => Promise<string>): FetchFn {
+	const base = fetch ?? globalFetch;
+	return async (input, init) => {
+		const token = await tokenProvider();
+		const headers = new Headers(init?.headers);
+		headers.set('Authorization', `Bearer ${token}`);
+		return await base(input, { ...init, headers });
+	};
+}
+
+/**
  * Shared builder for OpenAI-compatible HTTP providers. Prefer this over
  * `@ai-sdk/<provider>` packages that pull optional NAPI binaries or v4-only types.
  */
@@ -352,7 +421,16 @@ const LANGUAGE_PROVIDERS: ProviderRegistry = {
 	},
 	'azure-openai': {
 		build: (creds, model, fetch) => {
-			const { baseURL, resourceName, apiVersion, apiKey, endpointType, deploymentName } = creds;
+			const {
+				baseURL,
+				resourceName,
+				apiVersion,
+				apiKey,
+				endpointType,
+				deploymentName,
+				oauthTokenData,
+			} = creds;
+			const isEntra = !apiKey && !!oauthTokenData?.access_token;
 
 			// Azure AI Foundry exposes an OpenAI-compatible `/openai/v1` base on
 			// `*.services.ai.azure.com`. `@ai-sdk/azure`'s URL builder assumes the
@@ -361,6 +439,18 @@ const LANGUAGE_PROVIDERS: ProviderRegistry = {
 			// `…/openai/v1/openai`. Drive it as a plain OpenAI-compatible endpoint
 			// so the configured base is used verbatim.
 			if (endpointType === 'foundry') {
+				if (isEntra) {
+					// `buildOpenAiCompatible` has no `tokenProvider` slot, so wrap the
+					// transport to inject `Authorization: Bearer <token>` per request.
+					const tokenProvider = createEntraTokenProvider(creds);
+					return buildOpenAiCompatible(
+						'azure-openai',
+						undefined,
+						{ baseURL },
+						model,
+						withBearerAuth(fetch, tokenProvider),
+					);
+				}
 				return buildOpenAiCompatible('azure-openai', undefined, { apiKey, baseURL }, model, fetch);
 			}
 
@@ -385,13 +475,17 @@ const LANGUAGE_PROVIDERS: ProviderRegistry = {
 					normalizedBaseURL = url.toString();
 				}
 			}
+			// `@ai-sdk/azure` rejects `apiKey + tokenProvider` together, so pass
+			// exactly one. Entra mints a Bearer via the token provider; apiKey
+			// drives the `api-key` header path.
+			const auth = isEntra ? { tokenProvider: createEntraTokenProvider(creds) } : { apiKey };
 			return createAzure({
 				resourceName,
-				apiKey,
 				baseURL: normalizedBaseURL,
 				apiVersion,
 				useDeploymentBasedUrls: true,
 				fetch,
+				...auth,
 			}).chat(deploymentName ?? model);
 		},
 	},

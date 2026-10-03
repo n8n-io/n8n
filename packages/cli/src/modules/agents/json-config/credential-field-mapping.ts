@@ -45,17 +45,33 @@ const PROVIDER_CREDENTIAL_MAPPERS: Record<string, CredMapper> = {
 
 	// AzureOpenAiApi.credentials.ts            → apiKey, resourceName, apiVersion, endpoint, foundryEndpoint, endpointType
 	// AzureEntraCognitiveServicesOAuth2Api.credentials.ts → resourceName, apiVersion, endpoint, foundryEndpoint, endpointType
+	// Entra credentials carry no `apiKey`; the model factory mints a Bearer token
+	// from the OAuth2 fields below. Omit `apiKey` when empty so it does not shadow
+	// the Entra path or trip `@ai-sdk/azure`'s apiKey+tokenProvider rejection.
 	// eslint-disable-next-line @typescript-eslint/naming-convention
-	'azure-openai': (c) => ({
-		apiKey: c.apiKey,
-		resourceName: c.resourceName,
-		apiVersion: c.apiVersion,
-		// Foundry stores its full base URL in `foundryEndpoint`; classic uses the
-		// optional `endpoint` (or derives from `resourceName`). Distinct field names
-		// avoid duplicate-key render glitches in the credential modal.
-		baseURL: c.endpointType === 'foundry' ? c.foundryEndpoint : c.endpoint,
-		endpointType: c.endpointType,
-	}),
+	'azure-openai': (c) => {
+		const isEntra = !c.apiKey && !!c.oauthTokenData;
+		return {
+			...(c.apiKey ? { apiKey: c.apiKey } : {}),
+			resourceName: c.resourceName,
+			apiVersion: c.apiVersion,
+			// Foundry stores its full base URL in `foundryEndpoint`; classic uses the
+			// optional `endpoint` (or derives from `resourceName`). Distinct field names
+			// avoid duplicate-key render glitches in the credential modal.
+			baseURL: c.endpointType === 'foundry' ? c.foundryEndpoint : c.endpoint,
+			endpointType: c.endpointType,
+			...(isEntra
+				? {
+						oauthClientId: c.clientId,
+						oauthClientSecret: c.clientSecret,
+						oauthAccessTokenUrl: c.accessTokenUrl,
+						oauthScope: c.scope,
+						oauthAuthentication: c.authentication,
+						oauthTokenData: c.oauthTokenData,
+					}
+				: {}),
+		};
+	},
 
 	// Aws.credentials.ts → region, accessKeyId, secretAccessKey, sessionToken
 	// eslint-disable-next-line @typescript-eslint/naming-convention
