@@ -14,7 +14,15 @@ import {
 	type INodeTypeDescription,
 	type NodeParameterValueType,
 } from 'n8n-workflow';
-import { computed, toRaw, toValue, type MaybeRefOrGetter } from 'vue';
+import {
+	computed,
+	onScopeDispose,
+	ref,
+	toRaw,
+	toValue,
+	watch,
+	type MaybeRefOrGetter,
+} from 'vue';
 
 export interface CredentialDropdownOption extends ICredentialsResponse {
 	typeDisplayName: string;
@@ -41,6 +49,28 @@ export function useNodeCredentialOptions(
 		return typeof override === 'string' && override !== '';
 	});
 
+	// Host-supplied override lists are often a static suspend payload. If a
+	// credential is deleted while the panel is open, drop it locally so the
+	// dropdown / existence checks do not keep serving the deleted id.
+	const removedOverrideIds = ref(new Set<string>());
+	watch(
+		() => toValue(overrideCredentials),
+		() => {
+			removedOverrideIds.value = new Set();
+		},
+	);
+	const stopDeleteListener = credentialsStore.$onAction(({ name, after, args }) => {
+		if (name !== 'deleteCredential') return;
+		after(() => {
+			const id = args[0]?.id;
+			if (typeof id !== 'string') return;
+			const next = new Set(removedOverrideIds.value);
+			next.add(id);
+			removedOverrideIds.value = next;
+		});
+	});
+	onScopeDispose(stopDeleteListener);
+
 	const credentialTypesNodeDescriptions = computed(() =>
 		credentialsStore.getCredentialTypesNodeDescriptions(
 			toValue(overrideCredType),
@@ -59,6 +89,13 @@ export function useNodeCredentialOptions(
 		credentialTypesNodeDescriptionDisplayed.value.every(({ type }) => isCredentialExisting(type)),
 	);
 
+	function getActiveOverrideCredentials(): ICredentialsResponse[] | undefined {
+		const override = toValue(overrideCredentials);
+		if (!override) return undefined;
+		if (removedOverrideIds.value.size === 0) return override;
+		return override.filter((credential) => !removedOverrideIds.value.has(credential.id));
+	}
+
 	function isUsableProjectCredential(
 		option: ICredentialsResponse,
 		credentialTypeName?: string,
@@ -76,7 +113,7 @@ export function useNodeCredentialOptions(
 	}
 
 	function getCredentialOptions(types: string[]): CredentialDropdownOption[] {
-		const override = toValue(overrideCredentials);
+		const override = getActiveOverrideCredentials();
 		const options: CredentialDropdownOption[] = [];
 
 		for (const type of types) {
@@ -181,13 +218,13 @@ export function useNodeCredentialOptions(
 		if (!credential?.id) return false;
 		// Until the scoped fetch lands there is nothing to match against, and reporting
 		// a configured credential as missing raises a credential issue that isn't one.
-		if (!credentialsStore.hasFetchedUsableCredentials && !toValue(overrideCredentials)) {
+		const override = getActiveOverrideCredentials();
+		if (!credentialsStore.hasFetchedUsableCredentials && !override) {
 			return true;
 		}
 
 		// Host-supplied override list is usually small; check it directly so Instance AI
 		// credentials that are not in the shared usable slice still count as present.
-		const override = toValue(overrideCredentials);
 		if (override) {
 			return override.some(
 				(option) =>
