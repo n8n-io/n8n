@@ -76,6 +76,9 @@ make a run pass.
 - `resolvedParameterWarnings`: fix the input shape or the expression, then
   verify again. Never report that field as working while a warning stands.
 - `skippedParameterChecks`: say that these dynamic fields are not checked.
+- `resolvedValues` shows the source field of each mapped field. A
+  `synthesized`, `pattern key`, or `mock` value proves only the wiring. Check
+  that the source field and its hint fit the target field.
 - Simulated or pinned output is fixture data. Never quote it as real output.
   Do not state counts or written values that you did not read back.
 - A node that ran is not proof. Read the output of the node that the fix

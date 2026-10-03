@@ -369,6 +369,11 @@ export const groupingOutcomeSchema = z.object({
 
 export type GroupingOutcome = z.infer<typeof groupingOutcomeSchema>;
 
+/** The source of a node contract fixture: the output schema, a `sample`, or a resource lookup. */
+export const fixtureOriginSchema = z.enum(['synthesized', 'sample', 'lookup']);
+
+export type FixtureOrigin = z.infer<typeof fixtureOriginSchema>;
+
 export const workflowBuildOutcomeSchema = z.object({
 	workItemId: z.string(),
 	runId: z.string().optional(),
@@ -425,6 +430,11 @@ export const workflowBuildOutcomeSchema = z.object({
 	 * data during verification. Sidecar — never persisted to the workflow.
 	 */
 	simulationFixtures: z.record(z.array(z.record(z.unknown()))).optional(),
+	/**
+	 * Node contracts: the origin of each fixture that the compiler made or kept, by node name.
+	 * A simulated node with no entry has a generated fixture.
+	 */
+	fixtureOrigins: z.record(fixtureOriginSchema).optional(),
 	/** Draft sub-workflows created by the builder that must publish before the main workflow. */
 	supportingWorkflowIds: z.array(z.string()).optional(),
 	/** Whether any node parameters contain unresolved placeholder values. */

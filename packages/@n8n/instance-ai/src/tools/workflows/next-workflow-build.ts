@@ -23,6 +23,7 @@ import { z } from 'zod';
 
 import type { ValidationWarning } from './workflow-validation-warnings';
 import type { ExploreResourcesParams, InstanceAiContext } from '../../types';
+import type { FixtureOrigin } from '../../workflow-loop/workflow-loop-state';
 import {
 	contractReplacementOf,
 	derivedNodeModuleText,
@@ -169,7 +170,7 @@ export async function modelCatalogFile(
  * The action's output for this node's parameters and its resource fields. A hatch that cannot
  * read them keeps the default.
  */
-function outputOf(
+export function outputOf(
 	action: (typeof actions)[number],
 	parameters: Record<string, unknown>,
 	fields?: readonly ResourceField[],
@@ -308,6 +309,27 @@ const keyAfter = (text: string, at: number) => {
 	return match?.[1] ?? match?.[3];
 };
 
+/** A top-level key read of an output item. `nodeName` is absent for a read of the input item. */
+export interface FieldRead {
+	readonly nodeName?: string;
+	readonly key: string;
+}
+
+/** The top-level key reads of `.json` in an expression or script, in text order. */
+export const fieldReadsOf = (text: string): FieldRead[] =>
+	[
+		...[...text.matchAll(ITEM_JSON)].map((match) => ({ match, read: {} })),
+		...[...text.matchAll(NODE_JSON)].map((match) => ({
+			match,
+			read: { nodeName: match[2] ?? match[4] ?? '' },
+		})),
+	]
+		.sort((left, right) => left.match.index - right.match.index)
+		.flatMap(({ match, read }) => {
+			const key = keyAfter(text, match.index + match[0].length);
+			return key === undefined ? [] : [{ ...read, key }];
+		});
+
 const scriptsOf = (node: WorkflowJSON['nodes'][number]) => [
 	...expressionStrings(node.parameters),
 	...javaScriptOf(node),
@@ -317,7 +339,7 @@ const scriptsOf = (node: WorkflowJSON['nodes'][number]) => [
  * n8n runs the action on its input without a credential or a request of its own, e.g. Set,
  * Filter or Code. Verification runs such a node, so it gets no synthesized fixture.
  */
-const runsLocally = ({ flow, output, credentialTypes, egress }: (typeof actions)[number]) =>
+export const runsLocally = ({ flow, output, credentialTypes, egress }: (typeof actions)[number]) =>
 	credentialTypes.length === 0 &&
 	egress === undefined &&
 	(flow.effect === 'transform' || output.json['x-n8n-passed'] === true);
@@ -351,20 +373,17 @@ function itemReadersOf(workflow: WorkflowJSON, nodeName: string): Set<string> {
 function readKeysOf(workflow: WorkflowJSON, nodeName: string): Set<string> {
 	const readers = itemReadersOf(workflow, nodeName);
 	return new Set(
-		workflow.nodes
-			.flatMap((node) =>
-				scriptsOf(node).flatMap((text) => [
-					...(node.name && readers.has(node.name)
-						? [...text.matchAll(ITEM_JSON)].map((match) =>
-								keyAfter(text, match.index + match[0].length),
-							)
-						: []),
-					...[...text.matchAll(NODE_JSON)]
-						.filter((match) => (match[2] ?? match[4]) === nodeName)
-						.map((match) => keyAfter(text, match.index + match[0].length)),
-				]),
-			)
-			.filter((key): key is string => key !== undefined),
+		workflow.nodes.flatMap((node) =>
+			scriptsOf(node).flatMap((text) =>
+				fieldReadsOf(text)
+					.filter((read) =>
+						read.nodeName === undefined
+							? node.name !== undefined && readers.has(node.name)
+							: read.nodeName === nodeName,
+					)
+					.map(({ key }) => key),
+			),
+		),
 	);
 }
 
@@ -414,6 +433,20 @@ export function synthesizedFixtures(
 		return [[node.name, [Object.fromEntries(Object.entries(item))]]];
 	});
 	return { ...declared, ...Object.fromEntries(synthesized) };
+}
+
+/** The origin of each fixture of {@link synthesizedFixtures}. */
+export function fixtureOriginsOf(
+	fixtures: Fixtures,
+	declared: Fixtures = {},
+	resourceFields: ResourceFields = new Map(),
+): Record<string, FixtureOrigin> {
+	return Object.fromEntries(
+		Object.keys(fixtures).map((name): [string, FixtureOrigin] => [
+			name,
+			declared[name] ? 'sample' : resourceFields.has(name) ? 'lookup' : 'synthesized',
+		]),
+	);
 }
 
 /**

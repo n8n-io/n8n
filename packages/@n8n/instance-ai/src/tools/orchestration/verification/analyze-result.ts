@@ -70,7 +70,7 @@ function stringifyForToolOutput(value: unknown): string {
 	}
 }
 
-function unwrapUntrustedData(value: string): unknown {
+export function unwrapUntrustedData(value: string): unknown {
 	const match = /^<untrusted_data\b[^>]*>\n([\s\S]*)\n<\/untrusted_data>$/i.exec(value);
 	if (!match) return value;
 	const content = match[1];

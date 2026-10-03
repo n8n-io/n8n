@@ -203,6 +203,8 @@ export async function createInstanceAgent(
 					await domainContext.workflowService.getAsWorkflowJSON(workflowId),
 				getBuildOutcome: async (workItemId) =>
 					await orchestrationContext?.workflowTaskService?.getBuildOutcome(workItemId),
+				getResolvedNodeParameters: async (executionId, nodeName) =>
+					await domainContext.executionService.getResolvedNodeParameters(executionId, nodeName),
 			}),
 		);
 		if (verifyTool) {

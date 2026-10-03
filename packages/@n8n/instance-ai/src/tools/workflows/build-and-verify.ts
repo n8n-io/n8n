@@ -10,7 +10,9 @@ import {
 import { z } from 'zod';
 
 import { resolvedCredentialSchema } from './resolved-credential.schema';
+import { resolvedValuesBlock } from './resolved-values';
 import { REVERIFY_DESCRIPTION, reverifyInputSchema } from './reverify-description';
+import type { ResolvedNodeParametersResult } from '../../types';
 import type { WorkflowBuildOutcome } from '../../workflow-loop/workflow-loop-state';
 
 interface ReadyBuild {
@@ -54,6 +56,10 @@ const triggerNodesSchema = z.array(z.object({ nodeName: z.string(), nodeType: z.
 export interface BuildVerificationSources {
 	getWorkflow(workflowId: string): Promise<WorkflowJSON | undefined>;
 	getBuildOutcome(workItemId: string): Promise<WorkflowBuildOutcome | undefined>;
+	getResolvedNodeParameters?(
+		executionId: string,
+		nodeName: string,
+	): Promise<ResolvedNodeParametersResult>;
 }
 
 const allStrings = (value: unknown): string[] => {
@@ -90,18 +96,13 @@ interface TriggerRun {
 }
 
 /** One entry per trigger of the build. A trigger with a declared sample runs on that sample. */
-async function triggerRunsOf(
+function triggerRunsOf(
 	build: ReadyBuild & Record<string, unknown>,
-	sources: BuildVerificationSources | undefined,
-): Promise<TriggerRun[]> {
+	workflow: WorkflowJSON | undefined,
+	outcome: WorkflowBuildOutcome | undefined,
+): TriggerRun[] {
 	const parsed = triggerNodesSchema.safeParse(build.triggerNodes);
 	const triggers = parsed.success ? parsed.data : [];
-	const [workflow, outcome] = sources
-		? await Promise.all([
-				sources.getWorkflow(build.workflowId).catch(() => undefined),
-				sources.getBuildOutcome(build.workItemId).catch(() => undefined),
-			])
-		: [undefined, undefined];
 	return triggers.map(({ nodeName, nodeType }) => ({
 		triggerNodeName: nodeName,
 		needsInput:
@@ -117,6 +118,35 @@ const needsInputResult = (triggerNodeName: string) => ({
 	skipped: 'needs_input',
 	guidance: `Verification did not run: the workflow reads the output of trigger "${triggerNodeName}", and it has no sample. This is not a workflow error. Call verify-built-workflow with triggerNodeName "${triggerNodeName}" and inputData shaped like its output, or add a \`sample\` to the trigger and build again.`,
 });
+
+/**
+ * Adds `resolvedValues` to a verification that ran: the value of each mapped field of the write
+ * and condition nodes, with its source field and origin.
+ */
+async function withResolvedValues(
+	verification: unknown,
+	ids: { workItemId: string },
+	workflow: WorkflowJSON | undefined,
+	sources: BuildVerificationSources | undefined,
+): Promise<unknown> {
+	const resolve = sources?.getResolvedNodeParameters?.bind(sources);
+	if (!resolve || !workflow || !isRecord(verification)) return verification;
+	const { executionId } = verification;
+	if (typeof executionId !== 'string') return verification;
+	// Verification can update the plan, so read the outcome after the run.
+	const outcome = await sources?.getBuildOutcome(ids.workItemId).catch(() => undefined);
+	if (!outcome) return verification;
+	const { nodesExecuted } = verification;
+	const resolvedValues = await resolvedValuesBlock({
+		workflow,
+		outcome,
+		reached: Array.isArray(nodesExecuted)
+			? nodesExecuted.filter((name): name is string => typeof name === 'string')
+			: undefined,
+		resolve: async (nodeName) => await resolve(executionId, nodeName),
+	}).catch(() => undefined);
+	return resolvedValues ? { ...verification, resolvedValues } : verification;
+}
 
 /** Node contracts: the build already verifies, so the verify tool only describes a re-run. */
 export function asReverifyTool(verify: BuiltTool): BuiltTool {
@@ -290,12 +320,18 @@ export function withBuildVerification(
 			const result = await buildHandler(input, ctx);
 			if (!isReadyBuild(result)) return result;
 			const ids = { workItemId: result.workItemId, workflowId: result.workflowId };
-			const runs = await triggerRunsOf(result, sources);
+			const [workflow, outcome] = sources
+				? await Promise.all([
+						sources.getWorkflow(result.workflowId).catch(() => undefined),
+						sources.getBuildOutcome(result.workItemId).catch(() => undefined),
+					])
+				: [undefined, undefined];
+			const runs = triggerRunsOf(result, workflow, outcome);
 			if (runs.length <= 1) {
 				const [only] = runs;
 				const verification = only?.needsInput
 					? needsInputResult(only.triggerNodeName)
-					: await verifyHandler(ids, ctx);
+					: await withResolvedValues(await verifyHandler(ids, ctx), ids, workflow, sources);
 				return { ...result, verification, verificationNote: VERIFIED_NOTE };
 			}
 			// One run at a time: each run records its trigger in the same build outcome.
@@ -304,7 +340,12 @@ export function withBuildVerification(
 					...(await previous),
 					[triggerNodeName]: needsInput
 						? needsInputResult(triggerNodeName)
-						: await verifyHandler({ ...ids, triggerNodeName }, ctx),
+						: await withResolvedValues(
+								await verifyHandler({ ...ids, triggerNodeName }, ctx),
+								ids,
+								workflow,
+								sources,
+							),
 				}),
 				Promise.resolve({}),
 			);

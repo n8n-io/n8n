@@ -8,6 +8,7 @@ import { derivedNodeTypes } from '../../__tests__/derived-node-types';
 import {
 	contractEgressWarnings,
 	fetchResourceFields,
+	fixtureOriginsOf,
 	catalogProvidersOf,
 	legacyNodeIssues,
 	lockNodeContracts,
@@ -478,6 +479,18 @@ import { googleGemini } from '@n8n/nodes/googleGemini';`;
 
 		it('gives a fixture only to the nodes that call a service', () => {
 			expect(Object.keys(synthesizedFixtures(pages))).toEqual(['Get Pages', 'Summarize', 'Upsert']);
+		});
+
+		it('names the origin of each fixture', () => {
+			const declared = { 'Build Rows': [{ Region: 'EU' }] };
+			const resourceFields = new Map([['Get Pages', [{ name: 'Region', value: 'Region|select' }]]]);
+			const fixtures = synthesizedFixtures(pages, declared, resourceFields);
+			expect(fixtureOriginsOf(fixtures, declared, resourceFields)).toEqual({
+				'Build Rows': 'sample',
+				'Get Pages': 'lookup',
+				Summarize: 'synthesized',
+				Upsert: 'synthesized',
+			});
 		});
 
 		it('keeps the sample of a local node', () => {

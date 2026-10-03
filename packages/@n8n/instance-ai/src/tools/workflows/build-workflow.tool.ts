@@ -1736,6 +1736,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 						onlySkippedSetupRemains,
 						nodeSimulationPlan,
 						simulationFixtures,
+						...(compiled.fixtureOrigins ? { fixtureOrigins: compiled.fixtureOrigins } : {}),
 						waitGateScripts,
 						verificationProgress:
 							triggerNodes.length > 1 && executionIntent !== 'one-off' ? {} : undefined,

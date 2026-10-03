@@ -18,6 +18,7 @@ import { collectValidationIssues, type ValidationWarning } from './workflow-vali
 import { modelCatalog } from '../models/model-catalog.service';
 import { traceSandboxOperation, sandboxFileBytes } from '../../tracing/sandbox-tracing';
 import type { InstanceAiContext } from '../../types';
+import type { FixtureOrigin } from '../../workflow-loop/workflow-loop-state';
 import { escapeSingleQuotes, runInSandbox } from '../../workspace/sandbox-fs';
 import { writeWorkspaceFileMap } from '../../workspace/workspace-files';
 import { joinWorkspacePath } from '../../workspace/workspace-paths';
@@ -26,6 +27,7 @@ import {
 	EMPTY_OUTPUTS,
 	EXPRESSIONS_PATH,
 	fetchResourceFields,
+	fixtureOriginsOf,
 	lockNodeContracts,
 	missingNodeTypeErrors,
 	NEXT_TSCONFIG_FILENAME,
@@ -56,6 +58,7 @@ export type WorkflowSourceCompileResult =
 			success: true;
 			workflow: WorkflowJSON;
 			declaredOutputFixtures?: NonNullable<WorkflowJSON['pinData']>;
+			fixtureOrigins?: Record<string, FixtureOrigin>;
 			warnings: ValidationWarning[];
 			compiler: WorkflowSourceCompiler;
 	  }
@@ -533,17 +536,18 @@ async function compileNextWorkflowSource(
 			summary: 'Workflow source has type errors.',
 		};
 	}
-	return built.success
-		? {
-				...built,
-				workflow: lockNodeContracts(built.workflow),
-				declaredOutputFixtures: synthesizedFixtures(
-					built.workflow,
-					built.declaredOutputFixtures,
-					resourceFields,
-				),
-			}
-		: built;
+	if (!built.success) return built;
+	const fixtures = synthesizedFixtures(
+		built.workflow,
+		built.declaredOutputFixtures,
+		resourceFields,
+	);
+	return {
+		...built,
+		workflow: lockNodeContracts(built.workflow),
+		declaredOutputFixtures: fixtures,
+		fixtureOrigins: fixtureOriginsOf(fixtures, built.declaredOutputFixtures, resourceFields),
+	};
 }
 
 /**

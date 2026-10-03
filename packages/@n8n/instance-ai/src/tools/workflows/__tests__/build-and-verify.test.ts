@@ -1,4 +1,4 @@
-import type { BuiltTool } from '@n8n/agents';
+import { wrapUntrustedData, type BuiltTool } from '@n8n/agents';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import { z } from 'zod';
 
@@ -171,6 +171,80 @@ describe('withBuildVerification trigger input', () => {
 			verificationByTrigger: { Schedule: verified, Hook: { skipped: 'needs_input' } },
 			verificationNote: expect.stringContaining('union of those runs'),
 		});
+	});
+});
+
+describe('withBuildVerification resolved values', () => {
+	const json: WorkflowJSON = {
+		name: 'W',
+		nodes: [
+			{
+				id: 'Start',
+				name: 'Start',
+				type: 'n8n-nodes-base.scheduleTrigger',
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: {},
+			},
+			{
+				id: 'Keep',
+				name: 'Keep',
+				type: 'n8n-nodes-base.filter',
+				typeVersion: 2.2,
+				position: [0, 0],
+				parameters: { conditions: { conditions: [{ leftValue: '={{ $json.ok }}' }] } },
+			},
+		],
+		connections: { Start: { main: [[{ node: 'Keep', type: 'main', index: 0 }]] } },
+	};
+	const build = tool(
+		'build-workflow',
+		async () =>
+			await Promise.resolve({
+				...ready,
+				triggerNodes: [{ nodeName: 'Start', nodeType: 'n8n-nodes-base.scheduleTrigger' }],
+			}),
+	);
+	const sources: BuildVerificationSources = {
+		getWorkflow: async () => await Promise.resolve(json),
+		getBuildOutcome: async () => await Promise.resolve({} as WorkflowBuildOutcome),
+		getResolvedNodeParameters: async (_executionId, nodeName) =>
+			await Promise.resolve({
+				nodeName,
+				runIndex: 0,
+				itemIndex: 0,
+				parameters: json.nodes[1].parameters ?? {},
+				resolved: wrapUntrustedData(
+					JSON.stringify({ conditions: { conditions: [{ leftValue: true }] } }),
+					'execution-output',
+				),
+				failedExpressions: [],
+				emptyResolutions: [],
+			}),
+	};
+
+	it('adds the resolved values of a run that has an execution', async () => {
+		const verify = tool(
+			'verify-built-workflow',
+			async () => await Promise.resolve({ success: true, executionId: 'e1' }),
+		);
+		const result = await withBuildVerification(build, verify, sources).handler?.({}, {} as never);
+		expect(result).toMatchObject({
+			verification: {
+				resolvedValues: expect.stringContaining(
+					'Keep (ran)\n  conditions.conditions[0].leftValue <- $json.ok = true  [Start.ok; ran]',
+				),
+			},
+		});
+	});
+
+	it('adds nothing to a run without an execution', async () => {
+		const verify = tool(
+			'verify-built-workflow',
+			async () => await Promise.resolve({ success: false }),
+		);
+		const result = await withBuildVerification(build, verify, sources).handler?.({}, {} as never);
+		expect(result).not.toHaveProperty('verification.resolvedValues');
 	});
 });
 
