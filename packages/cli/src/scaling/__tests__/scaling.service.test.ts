@@ -11,6 +11,7 @@ import type { MockInstance } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import type { ActiveExecutions } from '@/active-executions';
+import { JobHandedBackError } from '@/errors/job-handed-back.error';
 import { ExecutionCrashService } from '@/executions/execution-crash.service';
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
 
@@ -127,6 +128,21 @@ describe('ScalingService', () => {
 
 	const defaultBullArgs = expectedBullArgs('jobs');
 
+	const startWorker = async () => {
+		Object.assign(instanceSettings, { instanceType: 'worker' });
+		await scalingService.setupQueue();
+		scalingService.setupWorker(5);
+		return queue.process.mock.calls[0][2] as unknown as (job: Job) => Promise<void>;
+	};
+
+	const lateJob = ({ attemptsMade = 0 }: { attemptsMade?: number } = {}) =>
+		mock<Job>({
+			id: '1',
+			attemptsMade,
+			opts: {},
+			data: { executionId: '123', loadStaticData: false },
+		});
+
 	beforeEach(() => {
 		vi.clearAllMocks();
 		// @ts-expect-error readonly property
@@ -136,6 +152,7 @@ describe('ScalingService', () => {
 		activeExecutions.cancelRunningExecutions.mockResolvedValue([]);
 		jobProcessor.getRunningJobsSummary.mockReturnValue([]);
 		jobProcessor.getJobsInPreflight.mockReturnValue([]);
+		queue.whenCurrentJobsFinished.mockResolvedValue(undefined);
 		globalConfig.generic.gracefulShutdownTimeout = 30;
 
 		scalingService = new ScalingService(
@@ -338,24 +355,38 @@ describe('ScalingService', () => {
 			expect(errorReporter.error).toHaveBeenCalledWith(originalError, { executionId: '123' });
 		});
 
-		it('should warn once when a job reaches the worker after shutdown began', async () => {
-			// @ts-expect-error readonly property
-			instanceSettings.instanceType = 'worker';
-			await scalingService.setupQueue();
-			scalingService.setupWorker(5);
-			const processFn = queue.process.mock.calls[0][2] as unknown as (job: Job) => Promise<void>;
-			jobProcessor.getRunningJobIds.mockReturnValue([]);
+		describe('when a job reaches the worker after stop began', () => {
+			it('should warn and hand the job back without running it', async () => {
+				const processFn = await startWorker();
+				jobProcessor.getRunningJobIds.mockReturnValue([]);
+				const eventService = scalingService['eventService'];
 
-			await scalingService.stop();
+				await scalingService.stop();
 
-			const job = mock<Job>({ id: '1', data: { executionId: '123', loadStaticData: false } });
-			await processFn(job);
+				const job = lateJob();
+				await expect(processFn(job)).rejects.toBeInstanceOf(JobHandedBackError);
 
-			expect(scopedLogger.warn).toHaveBeenCalledTimes(1);
-			expect(scopedLogger.warn).toHaveBeenCalledWith(
-				expect.stringContaining('123'),
-				expect.objectContaining({ executionId: '123', jobId: '1' }),
-			);
+				expect(scopedLogger.warn).toHaveBeenCalledTimes(1);
+				expect(scopedLogger.warn).toHaveBeenCalledWith(
+					expect.stringContaining('123'),
+					expect.objectContaining({ executionId: '123', jobId: '1' }),
+				);
+				expect(jobProcessor.processJob).not.toHaveBeenCalled();
+				expect(eventService.emit).not.toHaveBeenCalledWith('job-dequeued', expect.anything());
+			});
+
+			it('should hand the job back without reporting a failure', async () => {
+				const processFn = await startWorker();
+				jobProcessor.getRunningJobIds.mockReturnValue([]);
+
+				await scalingService.stop();
+
+				const job = lateJob({ attemptsMade: 1 });
+				await processFn(job).catch(() => {});
+
+				expect(job.progress).not.toHaveBeenCalled();
+				expect(errorReporter.error).not.toHaveBeenCalled();
+			});
 		});
 
 		it('should process a job that reaches the worker before shutdown without warning', async () => {
@@ -655,6 +686,118 @@ describe('ScalingService', () => {
 				expect(scopedLogger.warn).not.toHaveBeenCalled();
 			});
 
+			it('should not finish stopping until the current jobs of the queue have finished', async () => {
+				vi.useFakeTimers();
+				await startWorker();
+				jobProcessor.getRunningJobIds.mockReturnValue([]);
+
+				let finishCurrentJobs: () => void = () => {};
+				queue.whenCurrentJobsFinished.mockReturnValue(
+					new Promise<void>((resolve) => (finishCurrentJobs = resolve)),
+				);
+
+				let hasStopped = false;
+				const stopped = scalingService.stop().then(() => (hasStopped = true));
+
+				await vi.advanceTimersByTimeAsync(1_000);
+
+				expect(hasStopped).toBe(false);
+
+				finishCurrentJobs();
+				await vi.advanceTimersByTimeAsync(0);
+
+				expect(hasStopped).toBe(true);
+				await stopped;
+			});
+
+			it('should finish stopping after 5s when the current jobs of the queue never finish', async () => {
+				vi.useFakeTimers();
+				await startWorker();
+				jobProcessor.getRunningJobIds.mockReturnValue([]);
+				queue.whenCurrentJobsFinished.mockReturnValue(new Promise<void>(() => {}));
+
+				let hasStopped = false;
+				const stopped = scalingService.stop().then(() => (hasStopped = true));
+
+				await vi.advanceTimersByTimeAsync(4_999);
+
+				expect(hasStopped).toBe(false);
+
+				await vi.advanceTimersByTimeAsync(1);
+
+				expect(hasStopped).toBe(true);
+				await stopped;
+			});
+
+			it.each([
+				{
+					shutdownTimeout: 2,
+					drainMs: 0,
+					expectedStopMs: 1_000,
+					case: 'the shutdown window is short',
+				},
+				{
+					shutdownTimeout: 6,
+					drainMs: 3_000,
+					expectedStopMs: 4_500,
+					case: 'the drain used part of the shutdown window',
+				},
+				{
+					shutdownTimeout: 8,
+					drainMs: 0,
+					expectedStopMs: 4_000,
+					case: 'the shutdown window is long',
+				},
+			])(
+				'should finish stopping halfway through what is left of the shutdown window when $case',
+				async ({ shutdownTimeout, drainMs, expectedStopMs }) => {
+					vi.useFakeTimers();
+					globalConfig.generic.gracefulShutdownTimeout = shutdownTimeout;
+					await startWorker();
+					const drainStart = Date.now();
+					jobProcessor.getRunningJobIds.mockImplementation(() =>
+						Date.now() - drainStart < drainMs ? ['1'] : [],
+					);
+					queue.whenCurrentJobsFinished.mockReturnValue(new Promise<void>(() => {}));
+
+					let hasStopped = false;
+					const stopped = scalingService.stop().then(() => (hasStopped = true));
+
+					await vi.advanceTimersByTimeAsync(expectedStopMs - 1);
+
+					expect(hasStopped).toBe(false);
+
+					await vi.advanceTimersByTimeAsync(1);
+
+					expect(hasStopped).toBe(true);
+					await stopped;
+				},
+			);
+
+			it('should finish stopping and cancel the in-process executions when waiting for the current jobs of the queue fails', async () => {
+				vi.useFakeTimers();
+				globalConfig.generic.gracefulShutdownTimeout = 5;
+				await startWorker();
+				jobProcessor.getRunningJobIds.mockReturnValue([]);
+				activeExecutions.getRunningExecutionIds.mockReturnValue(['exec-1']);
+				activeExecutions.cancelRunningExecutions.mockResolvedValue(['exec-1']);
+				queue.whenCurrentJobsFinished.mockRejectedValue(new Error('Connection is closed.'));
+
+				const outcome = scalingService.stop().then(
+					() => 'resolved',
+					() => 'rejected',
+				);
+
+				await vi.advanceTimersByTimeAsync(5_000);
+
+				expect(await outcome).toBe('resolved');
+				expect(activeExecutions.cancelRunningExecutions).toHaveBeenCalled();
+				expect(scopedLogger.warn).toHaveBeenCalledWith(
+					'Cancelled 1 in-process executions that could not finish before shutdown (execution IDs: exec-1)',
+					{ executionIds: ['exec-1'] },
+				);
+			});
+
 			it.each([
 				{ shutdownTimeout: 30, expectedDeadlineMs: 3_000, case: 'the ceiling on a wide window' },
 				{
@@ -682,6 +825,29 @@ describe('ScalingService', () => {
 					expect(activeExecutions.cancelRunningExecutions).toHaveBeenCalledWith(expectedDeadlineMs);
 				},
 			);
+
+			it('should count the time spent pausing the queues against the shutdown window', async () => {
+				vi.useFakeTimers();
+				// @ts-expect-error readonly property
+				instanceSettings.instanceType = 'worker';
+				globalConfig.generic.gracefulShutdownTimeout = 4;
+				await scalingService.setupQueue();
+				jobProcessor.getRunningJobIds.mockReturnValue([]);
+				queue.pause.mockReturnValue(new Promise((resolve) => setTimeout(resolve, 1_000)));
+				queue.whenCurrentJobsFinished.mockReturnValue(new Promise<void>(() => {}));
+
+				let hasStopped = false;
+				const stopped = scalingService.stop().then(() => (hasStopped = true));
+
+				await vi.advanceTimersByTimeAsync(2_499);
+
+				expect(hasStopped).toBe(false);
+
+				await vi.advanceTimersByTimeAsync(1);
+
+				expect(hasStopped).toBe(true);
+				await stopped;
+			});
 		});
 	});
 
