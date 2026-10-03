@@ -49,8 +49,117 @@ function test(options: IRequestOptions) {
 	return options.url;
 }`,
 		},
+		{
+			name: 'other helpers and shadowed bindings should not trigger',
+			code: `
+import type { IExecuteFunctions as ExecutionContext } from 'n8n-workflow';
+import type { IExecuteFunctions as OtherContext } from 'other-package';
+
+function test(context: ExecutionContext, other: OtherContext) {
+	const { helpers } = { helpers: { request: () => null } };
+	helpers.request();
+	other.helpers.requestOAuth2();
+	let alias = context;
+	alias = other;
+	alias.helpers.requestOAuth2();
+	{
+		const context = { helpers: { request: () => null } };
+		context.helpers.request();
+	}
+}`,
+		},
 	],
 	invalid: [
+		// CE-2165: Report deprecated helpers on execution-context bindings.
+		{
+			name: 'deprecated OAuth2 request through a context parameter',
+			code: `
+import type { IExecuteFunctions } from 'n8n-workflow';
+
+async function fetchData(context: IExecuteFunctions) {
+	return await context.helpers.requestOAuth2.call(context, 'oAuth2Api', options);
+}`,
+			errors: [
+				{
+					messageId: 'deprecatedRequestFunction',
+					data: { functionName: 'requestOAuth2', replacement: 'httpRequestWithAuthentication' },
+					suggestions: [
+						{
+							messageId: 'suggestReplaceFunction',
+							data: { functionName: 'requestOAuth2', replacement: 'httpRequestWithAuthentication' },
+							output: `
+import type { IExecuteFunctions } from 'n8n-workflow';
+
+async function fetchData(context: IExecuteFunctions) {
+	return await context.helpers.httpRequestWithAuthentication.call(context, 'oAuth2Api', options);
+}`,
+						},
+					],
+				},
+			],
+		},
+		{
+			name: 'deprecated helper through a ctx parameter',
+			code: `
+import type { IExecuteFunctions } from 'n8n-workflow';
+
+async function fetchData(ctx: IExecuteFunctions) {
+	return await ctx.helpers.copyBinaryFile();
+}`,
+			errors: [
+				{
+					messageId: 'deprecatedWithoutReplacement',
+					data: { functionName: 'copyBinaryFile' },
+				},
+			],
+		},
+		{
+			name: 'deprecated helper through helpers destructured from this',
+			code: `
+import type { IExecuteFunctions } from 'n8n-workflow';
+
+function makeOutput(this: IExecuteFunctions) {
+	const { helpers } = this;
+	return helpers.prepareOutputData([{ json: { ok: true } }]);
+}`,
+			errors: [
+				{
+					messageId: 'deprecatedWithoutReplacement',
+					data: { functionName: 'prepareOutputData' },
+				},
+			],
+		},
+		{
+			name: 'deprecated helper through an aliased context and destructured helpers',
+			code: `
+import type { IExecuteFunctions as ExecutionContext } from 'n8n-workflow';
+
+function fetchData(ctx: ExecutionContext) {
+	const execution = ctx;
+	const { helpers: nodeHelpers } = execution;
+	return nodeHelpers.requestOAuth1();
+}`,
+			errors: [
+				{
+					messageId: 'deprecatedRequestFunction',
+					data: { functionName: 'requestOAuth1', replacement: 'httpRequestWithAuthentication' },
+					suggestions: [
+						{
+							messageId: 'suggestReplaceFunction',
+							data: { functionName: 'requestOAuth1', replacement: 'httpRequestWithAuthentication' },
+							output: `
+import type { IExecuteFunctions as ExecutionContext } from 'n8n-workflow';
+
+function fetchData(ctx: ExecutionContext) {
+	const execution = ctx;
+	const { helpers: nodeHelpers } = execution;
+	return nodeHelpers.httpRequestWithAuthentication();
+}`,
+						},
+					],
+				},
+			],
+		},
 		{
 			name: 'deprecated request functions',
 			code: `
