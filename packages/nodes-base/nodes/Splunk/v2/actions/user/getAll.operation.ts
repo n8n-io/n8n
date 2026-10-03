@@ -40,12 +40,12 @@ export const description = updateDisplayOptions(displayOptions, properties);
 
 export async function execute(
 	this: IExecuteFunctions,
-	_i: number,
+	i: number,
 ): Promise<IDataObject | IDataObject[]> {
 	// https://docs.splunk.com/Documentation/Splunk/8.2.2/RESTREF/RESTaccess#authentication.2Fusers
 
 	const qs = {} as IDataObject;
-	setReturnAllOrLimit.call(this, qs);
+	setReturnAllOrLimit.call(this, qs, i);
 
 	const endpoint = '/services/authentication/users';
 	const returnData = await splunkApiJsonRequest.call(this, 'GET', endpoint, {}, qs);

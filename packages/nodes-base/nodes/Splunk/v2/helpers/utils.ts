@@ -93,8 +93,14 @@ export function formatFeed(responseData: SplunkFeedResponse) {
 		: [formatEntry(entries)];
 }
 
-export function setReturnAllOrLimit(this: IExecuteFunctions, qs: IDataObject) {
-	qs.count = this.getNodeParameter('returnAll', 0) ? 0 : this.getNodeParameter('limit', 0);
+export function setReturnAllOrLimit(this: IExecuteFunctions, qs: IDataObject, itemIndex = 0) {
+	// The item index matters: `returnAll` and `limit` can be expressions, so
+	// reading them off item 0 gave every later item the first item's answer —
+	// and for a per-item `searchJobId` that produced an empty body rather than
+	// its rows (#38528).
+	qs.count = this.getNodeParameter('returnAll', itemIndex)
+		? 0
+		: this.getNodeParameter('limit', itemIndex);
 }
 
 export function populate(source: IDataObject, destination: IDataObject) {
