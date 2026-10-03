@@ -5,7 +5,12 @@ import { Time } from '@n8n/constants';
 import { TransactionRunner, type OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { LRUCache } from 'lru-cache';
-import { OperationalError, UserError } from 'n8n-workflow';
+import {
+	getCredentialOnlyNodeCredentialType,
+	isCredentialOnlyNodeType,
+	OperationalError,
+	UserError,
+} from 'n8n-workflow';
 
 import { ConflictError, NotFoundError } from '@n8n/errors';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
@@ -16,6 +21,7 @@ import { TypeAvailabilityPolicyScopeRepository } from './database/repositories/t
 import { TypeAvailabilityPolicyRepository } from './database/repositories/type-availability-policy.repository';
 import type { TypeAvailabilityPolicy } from './database/entities/type-availability-policy.entity';
 import type { TypeAvailabilityPolicyScope } from './database/entities/type-availability-policy-scope.entity';
+import { NODE_TYPES_KIND } from './constants';
 import { isPackageInstalled, packageResolverFor, policedTypeFor } from './package-resolver';
 import { evaluateComposedType, orderedAttachments, type ComposedVerdict } from './policy-evaluator';
 import type {
@@ -227,6 +233,25 @@ function assertPackagesInstalled(
 	}
 }
 
+/**
+ * A credential-only node (`n8n-creds-base.<type>`) exists only in the editor. It is stored and
+ * executed as `n8n-nodes-base.httpRequest`, so a node type rule on the generated name would
+ * never match anything and never reach the builder. The credential type rule on `<type>` is
+ * what hides that node and blocks it, so the write points there.
+ */
+function assertNoCredentialOnlyNodeRules(kind: string, rules: readonly PolicyRule[]): void {
+	if (kind !== NODE_TYPES_KIND) return;
+
+	for (const rule of rules) {
+		if (rule.selector.kind === 'name' && isCredentialOnlyNodeType(rule.selector.value)) {
+			const credentialType = getCredentialOnlyNodeCredentialType(rule.selector.value);
+			throw new UserError(
+				`Node type rule names the credential-only node "${rule.selector.value}", which is HTTP Request with a credential attached. Write a credential type rule on "${credentialType}" instead.`,
+			);
+		}
+	}
+}
+
 /** Mirrors the DTO-level check in `ReplaceAttachmentsDto`, as a defensive service-level guard. */
 function assertNoDuplicateAttachmentSlots(attachments: readonly AttachmentInput[]): void {
 	const seenPolicyIds = new Set<string>();
@@ -431,6 +456,7 @@ export class TypeAvailabilityPolicyService {
 		updatedBy: string,
 	): Promise<PolicyDocumentWrite> {
 		assertPackagesInstalled(rules, this.loadNodesAndCredentials);
+		assertNoCredentialOnlyNodeRules(kind, rules);
 		const warnings = lintRulesForShadowing(
 			rules,
 			packageResolverFor(kind, this.loadNodesAndCredentials),
@@ -469,6 +495,7 @@ export class TypeAvailabilityPolicyService {
 		updatedBy: string,
 	): Promise<PolicyDocumentWrite> {
 		assertPackagesInstalled(rules, this.loadNodesAndCredentials);
+		assertNoCredentialOnlyNodeRules(kind, rules);
 		const warnings = lintRulesForShadowing(
 			rules,
 			packageResolverFor(kind, this.loadNodesAndCredentials),
@@ -723,6 +750,7 @@ export class TypeAvailabilityPolicyService {
 	}> {
 		assertNoDelegateAtProjectScope(projectId, input.defaultAction, input.rules);
 		assertPackagesInstalled(input.rules, this.loadNodesAndCredentials);
+		assertNoCredentialOnlyNodeRules(kind, input.rules);
 
 		const warnings = lintRulesForShadowing(
 			input.rules,

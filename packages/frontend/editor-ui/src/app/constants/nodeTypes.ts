@@ -118,7 +118,7 @@ export const DATA_TABLE_TOOL_NODE_TYPE = 'n8n-nodes-base.dataTableTool';
 export const MESSAGE_AN_AGENT_NODE_TYPE = 'n8n-nodes-base.messageAnAgent';
 export const TIME_SAVED_NODE_TYPE = 'n8n-nodes-base.timeSaved';
 
-export const CREDENTIAL_ONLY_NODE_PREFIX = 'n8n-creds-base';
+export { CREDENTIAL_ONLY_NODE_PREFIX } from 'n8n-workflow';
 
 export const CREDENTIAL_ONLY_HTTP_NODE_VERSION = 4.1;
 
