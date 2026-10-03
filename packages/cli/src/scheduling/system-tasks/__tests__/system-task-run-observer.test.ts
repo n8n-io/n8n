@@ -36,6 +36,25 @@ describe('observeSystemTaskRun', () => {
 			throw error;
 		};
 
+	it.each([
+		{ mode: 'durable' as const, durable: true },
+		{ mode: 'leader_timer' as const, durable: false },
+		{ mode: 'instance_timer' as const, durable: false },
+	])('tells a $mode run whether it is durable', async ({ mode, durable }) => {
+		const run = vi.fn(resolves);
+		const signal = new AbortController().signal;
+
+		await observeSystemTaskRun(
+			mock<EventService>(),
+			setupTracing().tracing,
+			taskThat(run),
+			mode,
+			signal,
+		);
+
+		expect(run).toHaveBeenCalledExactlyOnceWith(signal, { durable });
+	});
+
 	it('settles a run that throws synchronously as a failure, rather than rejecting', async () => {
 		const eventService = mock<EventService>();
 		const error = new Error('failed');
