@@ -5,7 +5,12 @@ import type {
 	INodeProperties,
 } from 'n8n-workflow';
 
-import { recordRLC } from '../../helpers/utils';
+import {
+	formatOdooDateFields,
+	getModelSchema,
+	recordRLC,
+	type OdooFieldSchema,
+} from '../../helpers/utils';
 import { odooApiRequest } from '../../transport';
 import { updateDisplayOptions } from '../../../../../utils/utilities';
 
@@ -49,11 +54,21 @@ export async function execute(
 ): Promise<INodeExecutionData[]> {
 	const returnData: INodeExecutionData[] = [];
 
+	// Cache schemas per model so expressions that vary per item don't trigger
+	// redundant fields_get calls, while still resolving the correct model for each item.
+	const schemaCache = new Map<string, OdooFieldSchema>();
+
 	for (let i = 0; i < items.length; i++) {
 		try {
 			const model = this.getNodeParameter('customResource', i, undefined, {
 				extractValue: true,
 			}) as string;
+
+			if (!schemaCache.has(model)) {
+				schemaCache.set(model, await getModelSchema(this, model));
+			}
+			const schema = schemaCache.get(model)!;
+
 			const recordId = Number(
 				this.getNodeParameter('recordId', i, undefined, {
 					extractValue: true,
@@ -68,6 +83,8 @@ export async function execute(
 			} else {
 				vals = this.getNodeParameter('fieldsToSend.value', i, {}) as IDataObject;
 			}
+
+			vals = formatOdooDateFields(vals, schema);
 
 			await odooApiRequest.call(this, model, 'write', {
 				ids: [recordId],
