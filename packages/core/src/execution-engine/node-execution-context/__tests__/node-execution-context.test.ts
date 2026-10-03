@@ -63,6 +63,23 @@ describe('NodeExecutionContext', () => {
 		});
 	});
 
+	describe('getTraceId', () => {
+		it('should return the trace id of the execution from the otel module, if any', () => {
+			const traceId = vi.fn().mockReturnValue('abcdef1234567890abcdef1234567890');
+			const traced = mock<IWorkflowExecuteAdditionalData>({
+				executionId: 'exec-1',
+				otel: { injectTraceHeaders: vi.fn(), traceId },
+			});
+			const untraced = mock<IWorkflowExecuteAdditionalData>({ otel: undefined });
+
+			expect(new TestContext(workflow, node, traced, mode).getTraceId()).toBe(
+				'abcdef1234567890abcdef1234567890',
+			);
+			expect(traceId).toHaveBeenCalledWith('exec-1');
+			expect(new TestContext(workflow, node, untraced, mode).getTraceId()).toBeUndefined();
+		});
+	});
+
 	describe('getWorkflow', () => {
 		it('should return the id, name, and active properties of the workflow', () => {
 			const result = testContext.getWorkflow();

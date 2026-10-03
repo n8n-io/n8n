@@ -6,6 +6,7 @@ import {
 	context,
 	defaultTextMapGetter,
 	defaultTextMapSetter,
+	isSpanContextValid,
 	ROOT_CONTEXT,
 	SpanKind,
 	SpanStatusCode,
@@ -338,6 +339,12 @@ export class ExecutionLevelTracer {
 
 	hasWorkflowSpan(executionId: string): boolean {
 		return this.activeWorkflowSpans.has(executionId);
+	}
+
+	/** The trace id of the workflow span; outbound `traceparent` headers carry the same id. */
+	traceId(executionId: string): string | undefined {
+		const spanContext = this.activeWorkflowSpans.get(executionId)?.span.spanContext();
+		return spanContext && isSpanContextValid(spanContext) ? spanContext.traceId : undefined;
 	}
 
 	injectTraceHeaders(

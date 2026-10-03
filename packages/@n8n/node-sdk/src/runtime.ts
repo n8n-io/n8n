@@ -624,8 +624,13 @@ const hostBaseOf = (context: NodeContext) => ({
 	},
 	credentialData: async (type: string) => await context.getCredentials(type),
 	wait: async (ms: number) => await sleep(ms, context.getExecutionCancelSignal()),
-	log: (level: LogLevel, message: string) =>
-		context.logger[level](message, { node: context.getNode().name }),
+	log: (level: LogLevel, message: string) => {
+		const traceId = context.getTraceId();
+		context.logger[level](message, {
+			node: context.getNode().name,
+			...(traceId === undefined ? {} : { traceId }),
+		});
+	},
 	warn: (message: string) => context.addExecutionHints({ message, type: 'warning' }),
 	binary: binaryStoreOf(context),
 });

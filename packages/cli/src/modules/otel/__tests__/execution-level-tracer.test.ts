@@ -813,6 +813,27 @@ describe('ExecutionLevelTracer', () => {
 		});
 	});
 
+	describe('traceId', () => {
+		it('should return the trace id of the workflow span while it runs', () => {
+			tracer.startWorkflow({
+				executionId: 'exec-trace-id',
+				tracingContext: inboundTracingContext,
+				workflow: defaultWorkflow,
+			});
+
+			expect(tracer.traceId('exec-trace-id')).toBe('abcdef1234567890abcdef1234567890');
+
+			tracer.endWorkflow({
+				executionId: 'exec-trace-id',
+				status: 'success',
+				mode: 'manual',
+				isRetry: false,
+			});
+
+			expect(tracer.traceId('exec-trace-id')).toBeUndefined();
+		});
+	});
+
 	describe('injectTraceHeaders', () => {
 		// Parse `00-<traceId>-<spanId>-<flags>` into its fields.
 		const parseTraceparent = (tp: string) => {

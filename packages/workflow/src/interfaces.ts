@@ -1185,6 +1185,8 @@ export interface FunctionsBase {
 	): Promise<T>;
 	getCredentialsProperties(type: string): INodeProperties[];
 	getExecutionId(): string;
+	/** The OpenTelemetry trace id of the execution, when a trace is active. */
+	getTraceId(): string | undefined;
 	getNode(): INode;
 	getWorkflow(): IWorkflowMetadata;
 	getWorkflowSettings(): IWorkflowSettings;
@@ -4024,6 +4026,8 @@ export interface IWorkflowExecuteAdditionalData {
 			nodeName: string | undefined,
 			headers: Record<string, string>,
 		) => void;
+		/** The trace id of the execution, when a trace is active. */
+		traceId: (executionId: string) => string | undefined;
 	};
 }
 

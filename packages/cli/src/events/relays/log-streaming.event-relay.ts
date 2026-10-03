@@ -9,6 +9,7 @@ import { EventMessageGeneric } from '@/eventbus/event-message-classes/event-mess
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import type { RelayEventMap, UserLike } from '@/events/maps/relay.event-map';
 import { EventRelay } from '@/events/relays/event-relay';
+import { ExecutionLevelTracer } from '@/modules/otel/execution-level-tracer';
 import type {
 	PolicyAttachment,
 	PolicyRule,
@@ -70,6 +71,7 @@ export class LogStreamingEventRelay extends EventRelay {
 		private readonly eventBus: MessageEventBus,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly userRepository: UserRepository,
+		private readonly tracer: ExecutionLevelTracer,
 	) {
 		super(eventService);
 	}
@@ -505,6 +507,11 @@ export class LogStreamingEventRelay extends EventRelay {
 
 	// #region Node
 
+	private traceIdOf(executionId: string) {
+		const traceId = this.tracer.traceId(executionId);
+		return traceId === undefined ? {} : { traceId };
+	}
+
 	private nodePreExecute({
 		workflow,
 		executionId,
@@ -521,6 +528,7 @@ export class LogStreamingEventRelay extends EventRelay {
 				nodeType,
 				nodeName,
 				nodeId,
+				...this.traceIdOf(executionId),
 			},
 		});
 	}
@@ -541,6 +549,7 @@ export class LogStreamingEventRelay extends EventRelay {
 				nodeType,
 				nodeName,
 				nodeId,
+				...this.traceIdOf(executionId),
 			},
 		});
 	}

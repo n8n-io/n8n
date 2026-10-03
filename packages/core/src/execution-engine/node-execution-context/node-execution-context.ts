@@ -91,6 +91,11 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 		return this.additionalData.executionId!;
 	}
 
+	getTraceId() {
+		const { otel, executionId } = this.additionalData;
+		return executionId === undefined ? undefined : otel?.traceId(executionId);
+	}
+
 	getNode(): INode {
 		return deepCopy(this.node);
 	}

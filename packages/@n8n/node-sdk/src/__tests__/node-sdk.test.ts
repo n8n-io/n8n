@@ -611,6 +611,38 @@ describe('toNodeType', () => {
 		]);
 	});
 
+	it('adds the trace id to the log lines of an action only when a trace is active', async () => {
+		const note = todo.action('note', {
+			action: 'Write a note',
+			summary: 'Write a note to the log.',
+			flow: { effect: 'read', cardinality: 'per-item' },
+			input: {},
+			output: t.obj({ ok: t.bool() }),
+			async run({ log }) {
+				log('info', 'noted');
+				return { ok: true };
+			},
+		});
+		const run = async (traceId: string | undefined) => {
+			const info = vi.fn();
+			const context = {
+				getInputData: () => [{ json: {} }],
+				getNode: () => ({ name: 'Note', credentials: { todoApi: { id: '1', name: 'Todo' } } }),
+				getNodeParameter: () => undefined,
+				getCredentials: async () => ({}),
+				getTraceId: () => traceId,
+				continueOnFail: () => false,
+				logger: { info },
+			} as unknown as IExecuteFunctions;
+			await new (toNodeType(note))().execute?.call(context);
+			return info.mock.calls;
+		};
+		const traceId = 'abcdef1234567890abcdef1234567890';
+
+		expect(await run(traceId)).toEqual([['noted', { node: 'Note', traceId }]]);
+		expect(await run(undefined)).toEqual([['noted', { node: 'Note' }]]);
+	});
+
 	it('treats filled-in defaults of optional fields as unset', async () => {
 		const { context, requests } = fakeContext(
 			{ project: 'p1', paging: { mode: 'all' }, status: '' },

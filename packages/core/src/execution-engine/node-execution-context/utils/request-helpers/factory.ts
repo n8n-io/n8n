@@ -2,6 +2,7 @@ import { OutboundHttp } from '@n8n/backend-network';
 import { Container } from '@n8n/di';
 import type {
 	IAllExecuteFunctions,
+	IDataObject,
 	IExecuteData,
 	IExecuteFunctions,
 	IHttpRequestOptions,
@@ -24,6 +25,30 @@ import { httpRequestWithAuthentication, requestWithAuthentication } from './auth
 import { proxyRequestToAxios } from './legacy-request-adapter';
 import { refreshOAuth2Token, requestOAuth1, requestOAuth2 } from './oauth';
 import { requestWithAuthenticationPaginated } from './pagination';
+
+/**
+ * The options with the W3C trace headers of the active span. The options stay the same when no
+ * trace is active or when the node set its own `traceparent`.
+ */
+function withTraceHeaders<T extends { headers?: IDataObject }>(
+	options: T,
+	{ otel, executionId }: IWorkflowExecuteAdditionalData,
+	node: INode,
+): T {
+	const { headers = {} } = options;
+	if (
+		!otel?.injectTraceHeaders ||
+		executionId === undefined ||
+		Object.keys(headers).some((name) => name.toLowerCase() === 'traceparent')
+	) {
+		return options;
+	}
+	const traceHeaders: Record<string, string> = {};
+	otel.injectTraceHeaders(executionId, node.name, traceHeaders);
+	return Object.keys(traceHeaders).length === 0
+		? options
+		: { ...options, headers: { ...headers, ...traceHeaders } };
+}
 
 export const getRequestHelperFunctions = (
 	workflow: Workflow,
@@ -77,15 +102,9 @@ export const getRequestHelperFunctions = (
 				);
 				if (evalMockResponse !== undefined) return evalMockResponse;
 			}
-			if (additionalData.otel?.injectTraceHeaders) {
-				requestOptions.headers ??= {};
-				additionalData.otel.injectTraceHeaders(
-					additionalData.executionId!,
-					node.name,
-					requestOptions.headers as Record<string, string>,
-				);
-			}
-			return await Container.get(OutboundHttp).requests().request(requestOptions);
+			return await Container.get(OutboundHttp)
+				.requests()
+				.request(withTraceHeaders(requestOptions, additionalData, node));
 		},
 		getSecureEgressFilter: (useDefaultSsrfPolicy) =>
 			Container.get(OutboundHttp).egressFilter(useDefaultSsrfPolicy),
@@ -121,7 +140,7 @@ export const getRequestHelperFunctions = (
 			return await httpRequestWithAuthentication.call(
 				this,
 				credentialsType,
-				requestOptions,
+				withTraceHeaders(requestOptions, additionalData, node),
 				workflow,
 				node,
 				additionalData,
@@ -154,17 +173,12 @@ export const getRequestHelperFunctions = (
 				);
 				if (evalMockResponse !== undefined) return evalMockResponse;
 			}
-			if (additionalData.otel?.injectTraceHeaders) {
-				const target = typeof uriOrObject === 'string' ? (options ??= {}) : uriOrObject;
-				target.headers ??= {};
-				additionalData.otel.injectTraceHeaders(
-					additionalData.executionId!,
-					node.name,
-					target.headers as Record<string, string>,
-				);
-			}
+			const traced =
+				typeof uriOrObject === 'string'
+					? { uri: uriOrObject, options: withTraceHeaders(options ?? {}, additionalData, node) }
+					: { uri: withTraceHeaders(uriOrObject, additionalData, node), options };
 			// oxlint-disable-next-line typescript/no-deprecated
-			return await proxyRequestToAxios(workflow, additionalData, node, uriOrObject, options);
+			return await proxyRequestToAxios(workflow, additionalData, node, traced.uri, traced.options);
 		},
 
 		async requestWithAuthentication(
@@ -179,7 +193,7 @@ export const getRequestHelperFunctions = (
 			return await requestWithAuthentication.call(
 				this,
 				credentialsType,
-				requestOptions,
+				withTraceHeaders(requestOptions, additionalData, node),
 				workflow,
 				node,
 				additionalData,

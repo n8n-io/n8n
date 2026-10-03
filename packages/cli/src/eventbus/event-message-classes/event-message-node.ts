@@ -16,6 +16,8 @@ export interface EventPayloadNode extends AbstractEventPayload {
 	workflowId?: string;
 	workflowName: string;
 	nodeType?: string;
+	/** The OpenTelemetry trace id of the execution, when a trace is active. */
+	traceId?: string;
 }
 
 export interface EventMessageNodeOptions extends AbstractEventMessageOptions {

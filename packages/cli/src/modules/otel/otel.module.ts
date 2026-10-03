@@ -32,6 +32,7 @@ export class OtelModule implements ModuleInterface {
 
 		return {
 			injectTraceHeaders: tracer.injectTraceHeaders.bind(tracer),
+			traceId: tracer.traceId.bind(tracer),
 		};
 	}
 

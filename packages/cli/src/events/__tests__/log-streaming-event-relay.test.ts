@@ -7,6 +7,7 @@ import { mock } from 'vitest-mock-extended';
 import type { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import type { RelayEventMap } from '@/events/maps/relay.event-map';
 import { LogStreamingEventRelay } from '@/events/relays/log-streaming.event-relay';
+import type { ExecutionLevelTracer } from '@/modules/otel/execution-level-tracer';
 
 describe('LogStreamingEventRelay', () => {
 	const eventBus = mock<MessageEventBus>();
@@ -14,7 +15,14 @@ describe('LogStreamingEventRelay', () => {
 	const hostId = 'host-xyz';
 	const instanceSettings = mock<InstanceSettings>({ hostId });
 	const userRepository = mock<UserRepository>();
-	new LogStreamingEventRelay(eventService, eventBus, instanceSettings, userRepository).init();
+	const tracer = mock<ExecutionLevelTracer>();
+	new LogStreamingEventRelay(
+		eventService,
+		eventBus,
+		instanceSettings,
+		userRepository,
+		tracer,
+	).init();
 
 	afterEach(() => {
 		vi.clearAllMocks();
@@ -1240,6 +1248,45 @@ describe('LogStreamingEventRelay', () => {
 					nodeType: 'n8n-nodes-base.httpResponse',
 					nodeId: 'node2',
 				},
+			});
+		});
+	});
+
+	describe('node events with an active trace', () => {
+		afterEach(() => tracer.traceId.mockReset());
+
+		it('should add the trace id to node events', () => {
+			const traceId = 'abcdef1234567890abcdef1234567890';
+			tracer.traceId.mockReturnValue(traceId);
+			const workflow = mock<IWorkflowBase>({ id: 'wf505', name: 'Traced Workflow' });
+			const event: RelayEventMap['node-pre-execute'] = {
+				executionId: 'exec505',
+				nodeName: 'Notion',
+				workflow,
+				nodeId: 'node1',
+				nodeType: 'n8n-nodes-base.notion',
+			};
+
+			eventService.emit('node-pre-execute', event);
+			eventService.emit('node-post-execute', event);
+
+			expect(tracer.traceId).toHaveBeenCalledWith('exec505');
+			const payload = {
+				executionId: 'exec505',
+				nodeName: 'Notion',
+				workflowId: 'wf505',
+				workflowName: 'Traced Workflow',
+				nodeType: 'n8n-nodes-base.notion',
+				nodeId: 'node1',
+				traceId,
+			};
+			expect(eventBus.sendNodeEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.node.started',
+				payload,
+			});
+			expect(eventBus.sendNodeEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.node.finished',
+				payload,
 			});
 		});
 	});

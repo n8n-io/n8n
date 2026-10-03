@@ -40,6 +40,20 @@ Consequences:
 - The resource uses the env, process and host detectors. `OTEL_NODE_RESOURCE_DETECTORS` has
   no effect.
 
+### Outbound headers and log correlation
+
+When `injectOutbound` is on, the request helpers add the W3C `traceparent` of the node span
+(else of the workflow span) to each outbound request. They also add the `tracestate` if the
+span has one. This includes requests with credentials (`httpRequestWithAuthentication`,
+`requestWithAuthentication`, OAuth1 and OAuth2), so third-party APIs also get the header.
+The helpers add it before the credential signs the request. A `traceparent` that the node
+set itself stays as it is. OAuth1 is the exception: it replaces all node headers with its
+own, so the request gets the n8n `traceparent`.
+
+While a workflow span is active, log-streaming node events (`n8n.node.started`,
+`n8n.node.finished`) and node contract `log()` lines have a `traceId` field. This does not
+depend on `injectOutbound`.
+
 ### Module architecture
 ```mermaid
 graph TD
