@@ -1,5 +1,5 @@
 import { readFileSync } from 'fs';
-import type { INode, IPollFunctions } from 'n8n-workflow';
+import type { INode, INodePropertyOptions, IPollFunctions } from 'n8n-workflow';
 import { join } from 'path';
 import { mock } from 'vitest-mock-extended';
 
@@ -126,6 +126,57 @@ describe('Microsoft SharePoint Trigger', () => {
 			const pattern = new RegExp(validationOf('drive', 'id') as string);
 
 			expect(pattern.test(value)).toBe(accepted);
+		});
+	});
+
+	describe('events', () => {
+		const events = description.properties.find((p) => p.name === 'events');
+		const optionOf = (value: string) =>
+			(events?.options ?? []).find((o) => 'value' in o && o.value === value) as
+				| INodePropertyOptions
+				| undefined;
+
+		it('offers exactly Changed and Deleted, both on by default', () => {
+			expect(events?.type).toBe('multiOptions');
+			expect(events?.required).toBe(true);
+			expect(
+				(events?.options ?? []).map((o) => ('value' in o ? [o.name, o.value] : undefined)),
+			).toEqual([
+				['Changed', 'changed'],
+				['Deleted', 'deleted'],
+			]);
+			expect(events?.default).toEqual(['changed', 'deleted']);
+		});
+
+		it('warns that Changed cannot separate a new file from an edited one', () => {
+			expect(optionOf('changed')?.description).toMatch(/latest state/i);
+		});
+
+		it('warns that a deletion entry carries almost nothing', () => {
+			expect(optionOf('deleted')?.description).toMatch(/little beyond the ID/i);
+		});
+
+		it.each([
+			// The loader prepends pollTimes to every polling node, so declaring one
+			// here would show the user two copies of the same field.
+			'pollTimes',
+			// Entries are emitted as the feed sends them, so there is no shape to pick.
+			'simplify',
+			// Graph cannot narrow either delta feed below the library root.
+			'folder',
+		])('declares no %s property', (name) => {
+			expect(description.properties.map((p) => p.name)).not.toContain(name);
+		});
+
+		it('promises no path field, which the drive delta feed never sends', () => {
+			const texts = description.properties.flatMap((property) => [
+				property.description ?? '',
+				...(property.options ?? []).map((option) =>
+					'description' in option ? (option.description ?? '') : '',
+				),
+			]);
+
+			expect(texts.filter((text) => /\bpath\b/i.test(text))).toEqual([]);
 		});
 	});
 
