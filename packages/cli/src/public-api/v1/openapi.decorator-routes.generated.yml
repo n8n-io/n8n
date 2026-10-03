@@ -163,6 +163,12 @@ paths:
   /settings/log-streaming/event-types:
     get:
       $ref: ./handlers/settings/spec/paths/getLogStreamingEventTypes.generated.yml
+  /settings/log-streaming/destinations:
+    get:
+      $ref: ./handlers/settings/spec/paths/getLogStreamingDestinations.generated.yml
+  /settings/log-streaming/destinations/{id}:
+    get:
+      $ref: ./handlers/settings/spec/paths/getLogStreamingDestination.generated.yml
   /node-type-policies/instance:
     get:
       $ref: ./handlers/node-type-policies/spec/paths/getNodeTypeInstancePolicy.generated.yml
