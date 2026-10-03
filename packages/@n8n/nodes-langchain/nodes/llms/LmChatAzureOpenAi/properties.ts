@@ -37,20 +37,61 @@ export const properties: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Model (Deployment) Name',
-		name: 'model',
-		type: 'string',
-		description: 'The name of the model(deployment) to use (e.g., gpt-4, gpt-35-turbo)',
-		required: true,
-		default: '',
-	},
-	{
 		displayName: 'Project',
 		name: 'project',
 		type: 'string',
 		description:
 			'The Azure AI Foundry project that owns the deployment. Required for an Azure AI Foundry resource; leave empty for a classic Azure OpenAI resource.',
 		default: '',
+	},
+	{
+		displayName: 'Model (Deployment) Name',
+		name: 'model',
+		type: 'string',
+		description: 'The name of the model(deployment) to use (e.g., gpt-4, gpt-35-turbo)',
+		required: true,
+		default: '',
+		displayOptions: {
+			show: {
+				'@version': [1],
+			},
+		},
+	},
+	{
+		displayName: 'Model (Deployment)',
+		name: 'model',
+		type: 'resourceLocator',
+		default: { mode: 'list', value: '' },
+		required: true,
+		builderHint: {
+			propertyHint:
+				'Set the project parameter before you list deployments. The list needs an Azure AI Foundry credential. With a classic credential, use the id mode and enter the deployment name.',
+		},
+		modes: [
+			{
+				displayName: 'From List',
+				name: 'list',
+				type: 'list',
+				placeholder: 'Select a deployment...',
+				typeOptions: {
+					searchListMethod: 'searchModels',
+					searchable: true,
+				},
+			},
+			{
+				displayName: 'By ID',
+				name: 'id',
+				type: 'string',
+				placeholder: 'e.g. gpt-4o',
+			},
+		],
+		description:
+			'The deployment to use. Choose from the list (Azure AI Foundry credentials only), or enter the deployment name.',
+		displayOptions: {
+			show: {
+				'@version': [{ _cnd: { gte: 1.1 } }],
+			},
+		},
 	},
 	{
 		displayName: 'Options',
