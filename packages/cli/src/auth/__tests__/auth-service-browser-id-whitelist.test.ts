@@ -55,5 +55,11 @@ describe('AuthService Browser ID Whitelist', () => {
 
 			expect(skipEndpoints).toContain('/rest/credentials/:id/authorize');
 		});
+
+		it('should include OpenAI device auth page in the skip browser ID check endpoints', () => {
+			const skipEndpoints = (authService as any).skipBrowserIdCheckEndpoints;
+
+			expect(skipEndpoints).toContain('/rest/openai-oauth2-credential/device-auth');
+		});
 	});
 });
