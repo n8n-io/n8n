@@ -514,6 +514,68 @@ describe('MicrosoftOutlookV2 - microsoftApiRequest', () => {
 	});
 });
 
+describe('MicrosoftOutlookV2 - immutable id header', () => {
+	let mockExecuteFunctions: Mocked<IExecuteFunctions>;
+	let mockRequestWithAuthentication: Mock;
+
+	beforeEach(() => {
+		mockExecuteFunctions = mockDeep<IExecuteFunctions>();
+		mockRequestWithAuthentication = vi.fn().mockResolvedValue({ data: 'test' });
+		mockExecuteFunctions.helpers.requestWithAuthentication = mockRequestWithAuthentication;
+		mockExecuteFunctions.getCredentials.mockResolvedValue({
+			oauthTokenData: { access_token: 'test-access-token' },
+			graphApiBaseUrl: 'https://graph.microsoft.us',
+		});
+		mockExecuteFunctions.getNodeParameter.mockReturnValue(true);
+	});
+
+	it('should include immutable id header for load-options context when option is enabled', async () => {
+		const mockLoadOptionsFunctions = mockDeep<ILoadOptionsFunctions>();
+		const mockResponse = { data: 'test' };
+		const mockLoadOptionsHttpRequestWithAuthentication =
+			mockLoadOptionsFunctions.helpers.requestWithAuthentication;
+
+		mockLoadOptionsHttpRequestWithAuthentication.mockResolvedValue(mockResponse);
+		mockLoadOptionsFunctions.getCredentials.mockResolvedValue({
+			oauthTokenData: {
+				access_token: 'test-access-token',
+			},
+			graphApiBaseUrl: 'https://graph.microsoft.com',
+		});
+		mockLoadOptionsFunctions.getCurrentNodeParameter.mockReturnValue(true);
+
+		await microsoftApiRequest.call(mockLoadOptionsFunctions, 'GET', '/messages', 0);
+
+		expect(mockLoadOptionsHttpRequestWithAuthentication).toHaveBeenCalledWith(
+			'microsoftOutlookOAuth2Api',
+			expect.objectContaining({
+				headers: expect.objectContaining({
+					Prefer: 'IdType="ImmutableId"',
+				}),
+				method: 'GET',
+				uri: 'https://graph.microsoft.com/v1.0/me/messages',
+				json: true,
+			}),
+		);
+	});
+
+	it('should include immutable id header when option is enabled', async () => {
+		await microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/messages', 0);
+
+		expect(mockRequestWithAuthentication).toHaveBeenCalledWith(
+			'microsoftOutlookOAuth2Api',
+			expect.objectContaining({
+				headers: expect.objectContaining({
+					Prefer: 'IdType="ImmutableId"',
+				}),
+				method: 'GET',
+				uri: 'https://graph.microsoft.us/v1.0/me/messages',
+				json: true,
+			}),
+		);
+	});
+});
+
 describe('MicrosoftOutlookV2 - getSubfolders', () => {
 	let mockLoadOptionsFunctions: Mocked<ILoadOptionsFunctions>;
 
