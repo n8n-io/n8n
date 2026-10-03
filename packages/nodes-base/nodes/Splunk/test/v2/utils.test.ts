@@ -10,6 +10,7 @@ import {
 	formatFeed,
 	setReturnAllOrLimit,
 	parseXml,
+	toUnixEpoch,
 } from '../../v2/helpers/utils';
 
 describe('Splunk, formatEntry', () => {
@@ -264,5 +265,30 @@ describe('Splunk, parseXml', () => {
 		const xmlString = '<invalid-xml>';
 
 		await expect(parseXml(xmlString)).rejects.toThrow();
+	});
+});
+
+describe('Splunk, toUnixEpoch', () => {
+	test.each([
+		['2020-01-01T00:00:00.000Z', 1577836800],
+		['2020-01-01T00:05:00.000Z', 1577837100],
+	])('converts the absolute timestamp %s', (timestamp, expected) => {
+		expect(toUnixEpoch(timestamp)).toBe(expected);
+	});
+
+	// `Date.parse` cannot read these, and the old `Date.parse(t) / 1000` sent
+	// the literal string `NaN`. Splunk answers 201 and ignores the bound, so
+	// the search ran over a wider range than asked for, with no error (#38530).
+	test.each(['-15m', '-24h', '-1d@d', '@d', 'now', '-5m@m', '+1h'])(
+		'passes the relative specifier %s through for Splunk to read',
+		(specifier) => {
+			expect(toUnixEpoch(specifier)).toBe(specifier);
+		},
+	);
+
+	test('never produces NaN', () => {
+		for (const input of ['-15m', 'now', 'not a time at all', '']) {
+			expect(toUnixEpoch(input)).not.toBeNaN();
+		}
 	});
 });
