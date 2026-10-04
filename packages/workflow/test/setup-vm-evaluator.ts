@@ -1,23 +1,33 @@
 import { Expression } from '../src/expression';
 
 // The engine projects (vitest.config.ts) run the tests that evaluate
-// expressions once per engine. Only those projects set N8N_EXPRESSION_ENGINE;
-// the default project runs everything else once.
-const engine = process.env.N8N_EXPRESSION_ENGINE as 'vm' | 'legacy' | 'quickjs' | undefined;
+// expressions once per engine and set N8N_EXPRESSION_ENGINE; the default
+// project runs everything else once and sets it to ''.
+const engine = (process.env.N8N_EXPRESSION_ENGINE || undefined) as
+	| 'vm'
+	| 'legacy'
+	| 'quickjs'
+	| undefined;
 
-// A test that resolves an expression outside the engine projects would pass
+// A test that evaluates an expression outside the engine projects would pass
 // against one engine only, so it fails here until it is added to ENGINE_TESTS.
-if (engine === undefined) {
-	const resolve = Expression.prototype.resolveSimpleParameterValue;
-	Expression.prototype.resolveSimpleParameterValue = function (value, ...rest) {
-		if (typeof value === 'string' && value.startsWith('=')) {
+// With no engine initialised every entry point (resolveSimpleParameterValue,
+// resolveWithoutWorkflow) ends in the legacy evaluator, so that is the guard.
+// vi.mock is hoisted above every other statement, so the factory reads the
+// environment itself instead of the `engine` constant below.
+vi.mock('../src/expression-evaluator-proxy', async (importOriginal) => {
+	const original = await importOriginal<typeof import('../src/expression-evaluator-proxy')>();
+	if (process.env.N8N_EXPRESSION_ENGINE) return original;
+
+	return {
+		...original,
+		evaluateExpression: () => {
 			throw new Error(
 				`${expect.getState().testPath} evaluates an expression. Add it to ENGINE_TESTS in vitest.config.ts so it runs once per engine.`,
 			);
-		}
-		return resolve.call(this, value, ...rest);
+		},
 	};
-}
+});
 
 // Initializes the expression evaluator once per vitest worker before all tests,
 // and disposes it after.

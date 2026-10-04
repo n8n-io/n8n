@@ -3,7 +3,7 @@ import { createBaseInlineConfig } from '@n8n/vitest-config/node';
 
 // Tests that evaluate expressions, so their outcome depends on the engine.
 // Only these run once per engine project; everything else runs once in the
-// default project. A test outside this list that resolves an expression fails
+// default project. A test outside this list that evaluates an expression fails
 // there (see test/setup-vm-evaluator.ts), so the list cannot drift silently.
 const ENGINE_TESTS = [
 	'test/expression.test.ts',
@@ -48,6 +48,9 @@ export default defineConfig({
 					...sharedTestConfig,
 					exclude: [...(sharedTestConfig.exclude ?? []), ...ENGINE_TESTS],
 					name: 'default',
+					// Explicitly no engine, so a shell N8N_EXPRESSION_ENGINE cannot turn
+					// this project into a fourth engine run and disable the guard.
+					env: { N8N_EXPRESSION_ENGINE: '' },
 				},
 			},
 			engineProject('vm'),
