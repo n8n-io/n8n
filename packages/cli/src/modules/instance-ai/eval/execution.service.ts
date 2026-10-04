@@ -11,6 +11,7 @@ import { ProcessedDataRepository, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { currentBuildTracingContext } from '@n8n/instance-ai';
 import { actionOfNode, exampleOf, matches } from '@n8n/nodes-base-next';
+import { isRecord } from '@n8n/utils/is-record';
 import { sleep } from '@n8n/utils/sleep';
 import type { DataTableColumnInfo, WorkflowJSON } from '@n8n/workflow-sdk';
 import { normalizePinData } from '@n8n/workflow-sdk';
@@ -29,6 +30,7 @@ import {
 	type INode,
 	type INodeExecutionData,
 	type INodeParameters,
+	type INodeProperties,
 	type IPinData,
 	type IRun,
 	type IRunExecutionData,
@@ -892,14 +894,18 @@ export class EvalExecutionService {
 			if (node.disabled) continue;
 			if (pinDataNodeNames.includes(node.name)) continue;
 
+			const nodeType = this.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
 			if (node.parameters) {
 				node.parameters = scrubPlaceholderValues(node.parameters) as INodeParameters;
-				for (const change of patchSetupPendingResourceMappers(node.parameters)) {
+				const changes = patchSetupPendingResourceMappers(
+					node.parameters,
+					mappersWithoutAutoMap(nodeType?.description.properties ?? []),
+				);
+				for (const change of changes) {
 					this.logger.info(`[EvalMock] resourceMapper patch on "${node.name}": ${change}`);
 				}
 			}
 
-			const nodeType = this.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
 			if (!nodeType) continue;
 
 			const issues = NodeHelpers.getNodeParametersIssues(
@@ -1543,6 +1549,18 @@ function synthesizeMissingParamValue(current: unknown, paramName = ''): unknown 
 	return current;
 }
 
+/** The resource mapper parameters whose node offers no automatic mapping mode. */
+const mappersWithoutAutoMap = (properties: readonly INodeProperties[]): ReadonlySet<string> =>
+	new Set(
+		properties
+			.filter(
+				(property) =>
+					property.type === 'resourceMapper' &&
+					property.typeOptions?.resourceMapper?.supportAutoMap === false,
+			)
+			.map(({ name }) => name),
+	);
+
 /**
  * Resource-mapper params (e.g. Google Sheets `columns`) crash at runtime when
  * `mappingMode: 'defineBelow'` lacks `schema` — an artifact only the
@@ -1551,9 +1569,16 @@ function synthesizeMissingParamValue(current: unknown, paramName = ''): unknown 
  * keys, mirroring what the fetch would return. With no mappings at all, fall
  * back to automatic input mapping. The node raises this at runtime, so
  * pre-execution paramIssues never flags it — scan every node's params
- * directly.
+ * directly. A mapper in `withoutAutoMap` has no automatic mode: n8n reads its
+ * `value` in every mode, and a null value next to a schema fails the run. Its empty mapping gets the value that the
+ * editor stores (`{}`, e.g. a sub-workflow call that passes all data). Its
+ * schema entries get no type, as for an input of any type: a `string` type
+ * rejects numbers.
  */
-function patchSetupPendingResourceMappers(parameters: INodeParameters): string[] {
+function patchSetupPendingResourceMappers(
+	parameters: INodeParameters,
+	withoutAutoMap: ReadonlySet<string>,
+): string[] {
 	const changes: string[] = [];
 	for (const [key, raw] of Object.entries(parameters)) {
 		if (raw === null || typeof raw !== 'object' || Array.isArray(raw)) continue;
@@ -1565,6 +1590,18 @@ function patchSetupPendingResourceMappers(parameters: INodeParameters): string[]
 			value !== null && typeof value === 'object' && !Array.isArray(value)
 				? Object.keys(value)
 				: [];
+
+		const autoMap = !withoutAutoMap.has(key);
+		if (mappingKeys.length === 0 && !autoMap) {
+			if (isRecord(value) && Array.isArray(mapper.schema)) continue;
+			parameters[key] = {
+				...mapper,
+				value: {},
+				schema: Array.isArray(mapper.schema) ? mapper.schema : [],
+			};
+			changes.push(`${key}: defineBelow without mappings → empty mapping`);
+			continue;
+		}
 
 		if (mappingKeys.length === 0) {
 			// Keep a schema key even when empty: Google Sheets appendOrUpdate
@@ -1592,7 +1629,7 @@ function patchSetupPendingResourceMappers(parameters: INodeParameters): string[]
 				required: false,
 				defaultMatch: false,
 				display: true,
-				type: 'string',
+				...(autoMap ? { type: 'string' } : {}),
 				canBeUsedToMatch: true,
 			})),
 		};

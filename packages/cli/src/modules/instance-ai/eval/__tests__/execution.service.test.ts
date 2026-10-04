@@ -1471,6 +1471,131 @@ describe('EvalExecutionService', () => {
 			expect(databaseOf('Id Placeholder')).toBe('0'.repeat(32));
 			expect(databaseOf('Builder Value')).toBe('tasks');
 		});
+
+		describe('resource mappers', () => {
+			const mapperNode = (type: string, name: string, parameters: INode['parameters']): INode => ({
+				id: name,
+				name,
+				type,
+				typeVersion: 1,
+				position: [200, 0],
+				parameters,
+			});
+			const mapperProperty = (name: string, supportAutoMap?: boolean) => ({
+				displayName: name,
+				name,
+				type: 'resourceMapper',
+				default: { mappingMode: 'defineBelow', value: null },
+				typeOptions: {
+					resourceMapper: {
+						mode: 'map',
+						...(supportAutoMap === undefined ? {} : { supportAutoMap }),
+					},
+				},
+			});
+
+			async function patched(nodes: INode[]) {
+				nodeTypes.getByNameAndVersion.mockImplementation(
+					(nodeType) =>
+						({
+							description: {
+								properties:
+									nodeType === 'n8n-nodes-base.executeWorkflow'
+										? [mapperProperty('workflowInputs', false)]
+										: nodeType === 'n8n-nodes-base.googleSheets'
+											? [mapperProperty('columns')]
+											: [],
+							},
+						}) as never,
+				);
+				workflowFinderService.findWorkflowForUser.mockResolvedValue(
+					makeWorkflowEntity({ nodes: [makeStartNode(), ...nodes] }) as never,
+				);
+				await service.executeWithLlmMock('wf-1', makeUser());
+				const runArg = workflowRunner.run.mock.calls[0][0];
+				return (name: string) =>
+					runArg.workflowData.nodes.find((node) => node.name === name)?.parameters;
+			}
+
+			it('keeps patching a mapper that offers automatic mapping as before', async () => {
+				const parametersOf = await patched([
+					mapperNode('n8n-nodes-base.googleSheets', 'Empty', {
+						columns: { mappingMode: 'defineBelow', value: {} },
+					}),
+					mapperNode('n8n-nodes-base.googleSheets', 'Null', {
+						columns: { mappingMode: 'defineBelow', value: null },
+					}),
+					mapperNode('n8n-nodes-base.googleSheets', 'Mapped', {
+						columns: { mappingMode: 'defineBelow', value: { name: '={{ $json.name }}' } },
+					}),
+				]);
+
+				const autoMapped =
+					'{"columns":{"mappingMode":"autoMapInputData","value":null,"schema":[]}}';
+				expect(JSON.stringify(parametersOf('Empty'))).toBe(autoMapped);
+				expect(JSON.stringify(parametersOf('Null'))).toBe(autoMapped);
+				expect(JSON.stringify(parametersOf('Mapped'))).toBe(
+					'{"columns":{"mappingMode":"defineBelow","value":{"name":"={{ $json.name }}"},"schema":[{"id":"name","displayName":"name","required":false,"defaultMatch":false,"display":true,"type":"string","canBeUsedToMatch":true}]}}',
+				);
+			});
+
+			it('gives an empty mapping without automatic mapping the value the editor stores', async () => {
+				const parametersOf = await patched([
+					mapperNode('n8n-nodes-base.executeWorkflow', 'Default', {
+						workflowInputs: { mappingMode: 'defineBelow', value: null },
+					}),
+					mapperNode('n8n-nodes-base.executeWorkflow', 'Editor', {
+						workflowInputs: {
+							mappingMode: 'defineBelow',
+							value: {},
+							matchingColumns: [],
+							schema: [],
+							attemptToConvertTypes: false,
+							convertFieldsToString: true,
+						},
+					}),
+				]);
+
+				expect(parametersOf('Default')).toEqual({
+					workflowInputs: { mappingMode: 'defineBelow', value: {}, schema: [] },
+				});
+				expect(parametersOf('Editor')).toEqual({
+					workflowInputs: {
+						mappingMode: 'defineBelow',
+						value: {},
+						matchingColumns: [],
+						schema: [],
+						attemptToConvertTypes: false,
+						convertFieldsToString: true,
+					},
+				});
+			});
+
+			it('gives the mapped inputs of a mapper without automatic mapping untyped schema entries', async () => {
+				const parametersOf = await patched([
+					mapperNode('n8n-nodes-base.executeWorkflow', 'Mapped', {
+						workflowInputs: { mappingMode: 'defineBelow', value: { total: '={{ $json.total }}' } },
+					}),
+				]);
+
+				expect(parametersOf('Mapped')).toEqual({
+					workflowInputs: {
+						mappingMode: 'defineBelow',
+						value: { total: '={{ $json.total }}' },
+						schema: [
+							{
+								id: 'total',
+								displayName: 'total',
+								required: false,
+								defaultMatch: false,
+								display: true,
+								canBeUsedToMatch: true,
+							},
+						],
+					},
+				});
+			});
+		});
 	});
 
 	// ── buildResult behavior ─────────────────────────────────────────
