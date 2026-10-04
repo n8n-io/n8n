@@ -28,6 +28,7 @@ import {
 	applyRuntimeCacheBreakpoints,
 	buildCallPromptCacheOptions,
 	buildInstructionPromptCacheOptions,
+	buildSkillInstructionCacheOptions,
 	mergeProviderOptions,
 } from '../model/prompt-cache';
 import {
@@ -165,14 +166,21 @@ export class RuntimeContextBuilder {
 			.map((value) => value?.trim())
 			.filter((value): value is string => Boolean(value))
 			.join('\n\n');
+		const skillContent = activeSkills?.instructions();
 		const { system, messages } = list.forLlm(
-			// Skill content changes only on activation. Keep it cached when memory compacts.
-			[tools.effectiveInstructions, activeSkills?.instructions()]
-				.filter(Boolean)
-				.join('\n\n'),
+			tools.effectiveInstructions,
 			instructionProviderOptions,
 			combinedVolatileInstructions || undefined,
 			supportsSplitSystemMessages(this.config.model),
+			skillContent
+				? {
+						content: skillContent,
+						providerOptions: buildSkillInstructionCacheOptions(
+							instructionProviderOptions,
+							tools.aiTools,
+						),
+					}
+				: undefined,
 		);
 		// Cache breakpoints apply to this call only. Do not change stored messages or tools.
 		const cached = applyRuntimeCacheBreakpoints({
