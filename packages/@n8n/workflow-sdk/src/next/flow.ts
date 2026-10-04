@@ -556,6 +556,8 @@ export interface Graph {
 	readonly regions?: readonly RegionSpec[];
 	/** The canvas groups. */
 	readonly groups?: readonly GroupSpec[];
+	/** The problems of values at a part position that are no part, as build issues. */
+	readonly problems?: readonly string[];
 }
 
 /** @internal A graph and its open ends. Region builders take and return fragments. */
@@ -861,11 +863,13 @@ function unionGraphs(graphs: readonly Graph[]): Graph {
 	// Fragments share their region objects. Two regions with one name stay, so the build reports them.
 	const regions = new Set(graphs.flatMap((graph) => graph.regions ?? []));
 	const groups = new Set(graphs.flatMap((graph) => graph.groups ?? []));
+	const problems = new Set(graphs.flatMap((graph) => graph.problems ?? []));
 	return {
 		nodes: [...nodes.values()],
 		edges: [...edges.values()],
 		regions: [...regions],
 		...(groups.size > 0 ? { groups: [...groups] } : {}),
+		...(problems.size > 0 ? { problems: [...problems] } : {}),
 	};
 }
 
@@ -1198,9 +1202,22 @@ export function stepFragment(
 	return { graph: attach(from.graph, from.tails, spec), tails: tail(step.name, 0) };
 }
 
+// A plain JavaScript caller, or a source that tsc rejects, can pass an array or a lambda.
+const notAPart = (part: unknown) =>
+	Array.isArray(part)
+		? 'A branch or a body takes one part, not an array: put several parts in steps(a, b)'
+		: 'A branch or a body takes one part: a step, a macro, or steps(a, b)';
+
 /** @internal The fragment of one position after `from`. */
 export const partFragment = (from: Fragment, part: AnyPart): Fragment =>
-	isStep(part) ? stepFragment(from, part) : isRegion(part) ? part.region(from) : from;
+	isStep(part)
+		? stepFragment(from, part)
+		: isRegion(part)
+			? part.region(from)
+			: {
+					graph: unionGraphs([from.graph, { nodes: [], edges: [], problems: [notAPart(part)] }]),
+					tails: from.tails,
+				};
 
 /** @internal An empty graph: the build starts here. */
 export const EMPTY_FRAGMENT: Fragment = { graph: { nodes: [], edges: [] }, tails: [] };
@@ -2776,9 +2793,11 @@ export function workflow(
 	].filter((spec) => !hasName(spec));
 	if (unnamed.length > 0) {
 		return failedWorkflow(
-			unnamed.map(
-				({ type }) =>
-					`A node of type "${type}" has no name. Give each step its own \`name\` next to \`type\`, e.g. node({ name: 'Fetch', type, version, parameters }). node() takes no \`config\``,
+			unnamed.map(({ type }) =>
+				// `node('Fetch', { type })` passes a string as the config.
+				typeof type !== 'string'
+					? "A node() call has no name and no type. node() takes one object: node({ name: 'Fetch', type, version, parameters }), not node('Fetch', { … })"
+					: `A node of type "${type}" has no name. Give each step its own \`name\` next to \`type\`, e.g. node({ name: 'Fetch', type, version, parameters }). node() takes no \`config\``,
 			),
 			scopes,
 		);
@@ -2807,6 +2826,7 @@ export function workflow(
 		...(first && isStep(first) && first.spec.trigger
 			? []
 			: ['A workflow starts with a trigger, e.g. manual()']),
+		...(graph.problems ?? []),
 		...regionIssues(graph),
 		...groupIssues(graph),
 		...(regions.length > 0 && settings?.executionOrder === 'v0'

@@ -516,7 +516,7 @@ describe('workflow', () => {
 				see: (item) => {
 					expectTypeOf(item).toEqualTypeOf<{
 						id: string;
-						profile: { email: string; city: string; verified: true };
+						profile: { email: string; city: string; verified: boolean };
 					}>();
 				},
 			}),
@@ -569,6 +569,30 @@ describe('workflow', () => {
 			),
 		);
 		expect(() => elseOnly.toJSON()).toThrow('when "Failed?" needs a then part');
+	});
+
+	it('reports an array or a lambda as a branch as an issue', () => {
+		const listed = workflow(
+			'Listed',
+			manual(),
+			when(
+				{ name: 'Big?', if: () => true },
+				// @ts-expect-error a branch takes steps(a, b), not an array
+				{ then: [set({ name: 'A', fields: { a: 1 } }), set({ name: 'B', fields: { b: 1 } })] },
+			),
+		);
+		expect(() => listed.toJSON()).toThrow(
+			'A branch or a body takes one part, not an array: put several parts in steps(a, b)',
+		);
+		const called = workflow(
+			'Called',
+			manual(),
+			// @ts-expect-error a branch takes a part, not a lambda
+			when({ name: 'Big?', if: () => true }, { then: () => set({ name: 'A', fields: { a: 1 } }) }),
+		);
+		expect(() => called.toJSON()).toThrow(
+			'A branch or a body takes one part: a step, a macro, or steps(a, b)',
+		);
 	});
 
 	it('routes a contract step with named outputs, and continues from the first output', () => {
@@ -1197,6 +1221,15 @@ describe('workflow', () => {
 			'A node of type "n8n-nodes-base.noOp" has no name. Give each step its own `name`',
 		);
 		expect(() => wf.validate()).toThrow('has no name');
+		const positional = workflow(
+			'Positional',
+			manual(),
+			// @ts-expect-error node() takes one object
+			node('Pass', { type: 'n8n-nodes-base.noOp', typeVersion: 1, parameters: {} }),
+		);
+		expect(() => positional.toJSON()).toThrow(
+			"A node() call has no name and no type. node() takes one object: node({ name: 'Fetch', type, version, parameters }), not node('Fetch', { \u2026 })",
+		);
 	});
 
 	it('returns build problems instead of throwing while composing', () => {

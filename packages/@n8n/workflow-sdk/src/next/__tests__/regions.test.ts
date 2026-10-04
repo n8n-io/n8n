@@ -760,6 +760,15 @@ describe('regions compile to node contracts', () => {
 			set({ name: 'Out', fields: { n: (out) => out.n } }),
 		);
 		workflow(
+			'Loop with a boolean state',
+			manual(),
+			set({ name: 'Init', fields: { ok: false, error: '' } }),
+			loop(
+				{ name: 'L', maxIterations: 3, onLimit: 'continue', until: (out) => out.ok },
+				set({ name: 'Try', fields: { ok: (s) => s.error === '', error: 'none' } }),
+			),
+		);
+		workflow(
 			'Loop needs next',
 			manual(),
 			set({ name: 'Init', fields: { n: 0 } }),

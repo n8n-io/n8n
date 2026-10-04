@@ -382,6 +382,25 @@ import { googleGemini } from '@n8n/nodes/googleGemini';`;
 			]);
 		});
 
+		it('tells how to get the ID when a resource ID field gets a name', () => {
+			const workflow: WorkflowJSON = {
+				name: 'Names',
+				connections: {},
+				nodes: [
+					node('Add row', '@n8n/nodes-base-next.googleSheetsSheetAppend', {
+						spreadsheet: 'Invoice Tracker 2026',
+						sheet: { mode: 'id', id: 'Invoices' },
+					}),
+				],
+			};
+			expect(staticInputIssues(workflow)).toEqual([
+				'Node "Add row": input.spreadsheet: "Invoice Tracker 2026" is not Spreadsheet ID or Google Sheets URL. Write its ID or URL, not its name: ask the user for the URL, or write placeholder(\'\u2026\') so that setup asks for it',
+				expect.stringMatching(
+					/^Node "Add row": input\.sheet\.id: "Invoices" is not A numeric sheet gid$/,
+				),
+			]);
+		});
+
 		it('checks the fixed values of a tool node and leaves its model fields to the tool', () => {
 			const workflow: WorkflowJSON = {
 				name: 'Tools',
@@ -961,6 +980,22 @@ describe('tsc hints', () => {
 			'A branch or a body takes one part: a step, a macro, or `steps(a, b)` for several. It is not a function.',
 		],
 		[
+			"TS2559: Type '(Step<unknown, unknown, ExtractFromFilePdfOutput, \"Read PDF\"> | Step<...>)[]' has no properties in common with type 'Part<NoInfer<GmailTriggerTriggerOutput>, NoInfer<Record<...>>, unknown, unknown>'.",
+			'A branch or a body takes one part. Put several parts in `steps(a, b)`, not in an array `[a, b]`.',
+		],
+		[
+			'TS2554: Expected 1 arguments, but got 2.',
+			"A step takes one object with its `name` in it: `node({ name: 'Fetch', type, version, parameters })`, not `node('Fetch', { … })`.",
+		],
+		[
+			"TS2353: Object literal may only specify known properties, and 'caption' does not exist in type 'ValueSchema'.",
+			"A `schema` is JSON Schema: type, properties, required, items, enum, description. Name each field in `properties`, e.g. `body: { type: 'object', properties: { caption: { type: 'string' } }, required: ['caption'] }`.",
+		],
+		[
+			"TS2345: Argument of type '{ name: \"Until Approved\"; maxIterations: number; until: (out: unknown) => boolean; }' is not assignable to parameter of type 'LoopConfig<\"Until Approved\", unknown, unknown> & { next?: ((out: unknown, $: Dollar<unknown>) => never) | undefined; }'.\n  Property 'next' is missing in type '{ name: \"Until Approved\"; maxIterations: number; until: (out: unknown) => boolean; }' but required in type '{ next: (out: unknown, $: Dollar<unknown>) => NoInfer<{ approved: false; }>; }'.",
+			'The loop body has no type, so `out` is `unknown`. A body takes one part: a step, a macro, or `steps(a, b)` for several, not an array `[a, b]`.',
+		],
+		[
 			"TS2322: Type 'Step<unknown, unknown, { email: any; }, \"New\">' is not assignable to type 'never'.",
 			'This key is no output name of the step in `route`, or no value of the `switchOn` field. Use a name that the type lists.',
 		],
@@ -1056,7 +1091,7 @@ describe('tsc hints', () => {
 		],
 		[
 			"TS2339: Property 'employees' does not exist on type '{}'.",
-			"This field has no declared type, so a check such as `x ? x.f : \u2026` leaves `{}`, which has no fields. Give the node that outputs it `sample` items, a webhook `schema`, or `returns` on a code step. Else narrow each level: `typeof x === 'object' && x !== null && 'f' in x`.",
+			"This field has no declared type, so `x ?? []` or a check such as `x ? x.f : \u2026` leaves `{}`, which has no fields. Give the node that outputs it `sample` items, a webhook `schema`, or `returns` on a code step. Else narrow each level: `typeof x === 'object' && x !== null && 'f' in x`.",
 		],
 		[
 			"TS2551: Property 'statusCod' does not exist on type '(FailedItem & { readonly body?: undefined; readonly statusCode?: undefined; }) | ({ body: any; statusCode: number; } & { ...; })'. Did you mean 'statusCode'?\n      Property 'statusCod' does not exist on type 'FailedItem & { readonly body?: undefined; readonly statusCode?: undefined; }'.",

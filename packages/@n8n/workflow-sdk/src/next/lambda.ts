@@ -374,7 +374,13 @@ export function compileLambdaSource(
 	const params = readParams(parsed.params);
 	if (typeof params === 'string') return { ok: false, error: params };
 	const body = bodyExpression(parsed);
-	if (!body) return { ok: false, error: 'Give the lambda one expression body: (item) => …' };
+	if (!body) {
+		return {
+			ok: false,
+			error:
+				"Give the lambda one expression body: (item) => …, not a block with const and return. Repeat a read such as $('Node').field where you use it, or make the value in a set step before",
+		};
+	}
 
 	const compiler = new LambdaCompiler(params, root, nodeNames);
 	compiler.visit(body, new Set());

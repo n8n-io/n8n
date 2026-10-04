@@ -619,8 +619,19 @@ export function staticInputIssues(workflow: WorkflowJSON): string[] {
 		);
 		return validate(input, action.inputSchema, { allowExpressions: true })
 			.filter((issue) => !issue.endsWith(': is required'))
-			.map((issue) => `Node "${node.name}": ${issue}`);
+			.map((issue) => `Node "${node.name}": ${withRefHint(issue, fields)}`);
 	});
+}
+
+// A pattern miss of a top-level field, e.g. `input.spreadsheet: "Invoices" is not Spreadsheet ID`.
+const FIELD_PATTERN_MISS = /^input\.(\w+): ".*" is not /;
+
+/** A resource ID field (`x-n8n-ref`) that got another value, often the resource name. */
+function withRefHint(issue: string, fields: Readonly<Record<string, JsonSchema>>): string {
+	const key = FIELD_PATTERN_MISS.exec(issue)?.[1];
+	return key !== undefined && fields[key]?.['x-n8n-ref'] !== undefined
+		? `${issue}. Write its ID or URL, not its name: ask the user for the URL, or write placeholder('…') so that setup asks for it`
+		: issue;
 }
 
 /**
@@ -782,6 +793,13 @@ const TSC_HINTS: ReadonlyArray<{
 	},
 	{
 		codes: [2345],
+		// The body gave no output type, e.g. an array instead of one part.
+		message: /to parameter of type 'LoopConfig<"[^"]*", unknown, unknown>/,
+		hint: () =>
+			'The loop body has no type, so `out` is `unknown`. A body takes one part: a step, a macro, or `steps(a, b)` for several, not an array `[a, b]`.',
+	},
+	{
+		codes: [2345],
 		message: /to parameter of type 'LoopConfig</,
 		detail: /Property 'next' is missing/,
 		hint: () => LOOP_STATE_HINT,
@@ -807,6 +825,12 @@ const TSC_HINTS: ReadonlyArray<{
 	},
 	{
 		codes: [2322, 2559],
+		message: /^Type '.*\[\]' has no properties in common with type 'Part</,
+		hint: () =>
+			'A branch or a body takes one part. Put several parts in `steps(a, b)`, not in an array `[a, b]`.',
+	},
+	{
+		codes: [2322, 2559],
 		message: /has no properties in common with type 'Part</,
 		hint: () =>
 			'A branch or a body takes one part: a step, a macro, or `steps(a, b)` for several. It is not a function.',
@@ -816,6 +840,12 @@ const TSC_HINTS: ReadonlyArray<{
 		message: /^Type '(?:Routed)?(?:Step|Region)<.*' is not assignable to type 'never'/,
 		hint: () =>
 			'This key is no output name of the step in `route`, or no value of the `switchOn` field. Use a name that the type lists.',
+	},
+	{
+		codes: [2554],
+		message: /^Expected 1 arguments, but got 2\b/,
+		hint: () =>
+			"A step takes one object with its `name` in it: `node({ name: 'Fetch', type, version, parameters })`, not `node('Fetch', { … })`.",
 	},
 	{
 		codes: [2554],
@@ -833,7 +863,7 @@ const TSC_HINTS: ReadonlyArray<{
 		codes: [2339],
 		message: /on type '\{\}'/,
 		hint: () =>
-			"This field has no declared type, so a check such as `x ? x.f : …` leaves `{}`, which has no fields. Give the node that outputs it `sample` items, a webhook `schema`, or `returns` on a code step. Else narrow each level: `typeof x === 'object' && x !== null && 'f' in x`.",
+			"This field has no declared type, so `x ?? []` or a check such as `x ? x.f : …` leaves `{}`, which has no fields. Give the node that outputs it `sample` items, a webhook `schema`, or `returns` on a code step. Else narrow each level: `typeof x === 'object' && x !== null && 'f' in x`.",
 	},
 	{
 		// A failed item lists the output fields, so the field is in no shape.
@@ -905,6 +935,14 @@ const TSC_HINTS: ReadonlyArray<{
 		detail: /missing the following propert|is missing in type/,
 		hint: () =>
 			'Add the fields that the message names. `nodes(action="type-definition")` shows the full type.',
+	},
+	{
+		codes: [2353],
+		message: /does not exist in type 'ValueSchema'/,
+		hint: (_macros, error) => {
+			const field = /and '([^']+)' does not exist/.exec(error)?.[1] ?? 'field';
+			return `A \`schema\` is JSON Schema: type, properties, required, items, enum, description. Name each field in \`properties\`, e.g. \`body: { type: 'object', properties: { ${field}: { type: 'string' } }, required: ['${field}'] }\`.`;
+		},
 	},
 	{
 		codes: [2353],
