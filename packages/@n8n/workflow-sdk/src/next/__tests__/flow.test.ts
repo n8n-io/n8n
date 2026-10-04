@@ -20,9 +20,11 @@ import {
 	type Declared,
 	type Dollar,
 	type EntryFields,
+	type ErrorItem,
 	type Exact,
 	type FromSchema,
 	type Loose,
+	type NodeSettings,
 	type OutputNames,
 	type OutputOf,
 	type Sampled,
@@ -38,6 +40,13 @@ import {
 	type Workflow,
 } from '../index';
 import { compileBinaryKey, compileLambda } from '../lambda';
+
+// The build declares each node with `onError: 'continueRegularOutput'` like this.
+declare module '../flow' {
+	interface ContinuedNodes {
+		'Continued fetch': true;
+	}
+}
 
 interface Page {
 	id: string;
@@ -183,7 +192,7 @@ describe('workflow', () => {
 					else: set({ name: 'Unowned', fields: { id: (page) => page.id } }),
 				},
 			),
-			onError(set({ name: 'Log', fields: { reason: (e) => e.error.message } })),
+			onError(set({ name: 'Log', fields: { reason: (e) => e.error } })),
 		);
 		const json = wf.toJSON();
 
@@ -235,7 +244,7 @@ describe('workflow', () => {
 			'Sweep',
 			manual(),
 			fetch({ name: 'Fetch' }),
-			onError(set({ name: 'Slack', fields: { text: (e) => e.error.message } })),
+			onError(set({ name: 'Slack', fields: { text: (e) => e.error } })),
 			set({ name: 'Summarize', fields: { total: (item) => item.total } }),
 		).toJSON();
 		expect(targets(ended, 'Fetch')).toEqual([['Summarize'], ['Slack']]);
@@ -245,13 +254,62 @@ describe('workflow', () => {
 			'Sweep',
 			manual(),
 			fetch({ name: 'Fetch' }),
-			recover(set({ name: 'Slack', fields: { text: (e) => e.error.message } })),
+			recover(set({ name: 'Slack', fields: { text: (e) => e.error } })),
 			// @ts-expect-error after recover, an item can be the handler's item, which has no total
 			set({ name: 'Summarize', fields: { total: (item) => item.total } }),
 		).toJSON();
 		expect(targets(rejoined, 'Fetch')).toEqual([['Summarize'], ['Slack']]);
 		expect(targets(rejoined, 'Slack')).toEqual([['Summarize']]);
 		expect(rejoined.nodes.find((n) => n.name === 'Fetch')?.onError).toBe('continueErrorOutput');
+	});
+
+	it('types the error of an error output item as the message text', () => {
+		expectTypeOf<ErrorItem['error']>().toEqualTypeOf<string>();
+		const fetch = <In, Ctx, const N extends string>(config: {
+			name: N;
+		}): Step<In, Ctx, { total: number }, N> => contractStep('httpRequest.get', config);
+		const json = workflow(
+			'Sweep',
+			manual(),
+			fetch({ name: 'Fetch' }),
+			onError(
+				set({
+					name: 'Log',
+					fields: {
+						reason: (e) => e.error,
+						// @ts-expect-error the error is the message text, not an object
+						detail: (e) => e.error.message,
+					},
+				}),
+			),
+		).toJSON();
+		expect(json.nodes.find((n) => n.name === 'Log')?.parameters).toMatchObject({
+			fields: { reason: '={{ $json.error }}' },
+		});
+	});
+
+	it('types the items of a node that continues on error as its output or { error }', () => {
+		const fetch = <In, Ctx, const N extends string>(config: {
+			name: N;
+			settings?: NodeSettings;
+		}): Step<In, Ctx, { total: number }, N> => contractStep('httpRequest.get', config);
+		const json = workflow(
+			'Sweep',
+			manual(),
+			fetch({ name: 'Continued fetch', settings: { onError: 'continueRegularOutput' } }),
+			set({
+				name: 'Summarize',
+				fields: {
+					failed: (item) => item.error ?? '',
+					total: (item) => (item.error === undefined ? item.total : 0),
+				},
+			}),
+			// @ts-expect-error an item that failed has no total
+			set({ name: 'Unchecked', fields: { total: (_item, $) => $('Continued fetch').total } }),
+		).toJSON();
+		expect(json.nodes.find((n) => n.name === 'Continued fetch')?.onError).toBe(
+			'continueRegularOutput',
+		);
 	});
 
 	it('types a 12-step list with when, route, and onError without annotations', () => {
@@ -263,7 +321,7 @@ describe('workflow', () => {
 			'Twelve',
 			manual(),
 			getPages({ name: 'Tasks', database: 'abc' }),
-			onError(set({ name: 'Log', fields: { reason: (e) => e.error.message } })),
+			onError(set({ name: 'Log', fields: { reason: (e) => e.error } })),
 			set({ name: 'Owner', fields: { owner: (page) => page.property_owners[0] ?? '' } }),
 			when(
 				{ name: 'Owned?', if: (item) => item.owner !== '' },
@@ -463,7 +521,7 @@ describe('workflow', () => {
 			manual(),
 			getPages({ name: 'Tasks', database: 'abc' }),
 			owned,
-			onError(set({ name: 'Log', fields: { reason: (e) => e.error.message } })),
+			onError(set({ name: 'Log', fields: { reason: (e) => e.error } })),
 		).toJSON();
 		expect(json.connections.Owned?.main.map((out) => out?.map((c) => c.node))).toEqual([
 			[],

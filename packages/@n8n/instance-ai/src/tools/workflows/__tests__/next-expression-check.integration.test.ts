@@ -207,7 +207,7 @@ export default workflow(
 	'Twelve parts',
 	manual({ sample: ${SAMPLE} }),
 	gmail.message.get({ name: 'Get', messageId: (item) => item.id }),
-	onError(set({ name: 'Log', fields: { reason: (e) => e.error.message } })),
+	onError(set({ name: 'Log', fields: { reason: (e) => e.error } })),
 	set({ name: 'Subject', fields: { subject: (_item, $) => $('Start').subject } }),
 	when({ name: 'Has subject?', if: (item) => item.subject !== '' }, {
 		then: steps(
@@ -546,6 +546,42 @@ export default workflow(
 		const wrong = await build(source('next'));
 		expect(wrong.success ? [] : wrong.errors).toEqual([
 			expect.stringContaining("Property 'next' does not exist"),
+		]);
+	}, 120_000);
+
+	it('types the items of a step that continues on error as its output or { error }', async () => {
+		const source = (status: string) => `import { workflow, manual, set } from '@n8n/workflow-sdk/next';
+import { code } from '@n8n/nodes/code';
+import { httpRequest } from '@n8n/nodes/httpRequest';
+
+export default workflow(
+	'Post orders',
+	manual({ sample: [{ id: 'o1' }] }),
+	httpRequest.send({
+		name: 'Post',
+		method: 'POST',
+		url: 'https://api.example.com/orders',
+		body: { kind: 'json', json: (item) => ({ id: item.id }) },
+		fullResponse: true,
+		settings: { onError: 'continueRegularOutput' },
+	}),
+	set({ name: 'Outcome', fields: { failed: (item) => item.error ?? '', status: (item) => ${status} } }),
+	code.javaScript({
+		name: 'Dead letters',
+		code: "return $('Post').all().filter((i) => i.json.error !== undefined).map((i) => ({ json: { reason: i.json.error } }));",
+	}),
+);
+`;
+		const right = await build(source('(item.error === undefined ? item.statusCode : 0)'));
+		expect(right.success ? [] : right.errors).toEqual([]);
+		if (right.success) {
+			expect(right.workflow.nodes.find((node) => node.name === 'Post')?.onError).toBe(
+				'continueRegularOutput',
+			);
+		}
+		const wrong = await build(source('item.statusCode'));
+		expect(wrong.success ? [] : wrong.errors).toEqual([
+			expect.stringContaining("Property 'statusCode' does not exist on type 'FailedItem"),
 		]);
 	}, 120_000);
 

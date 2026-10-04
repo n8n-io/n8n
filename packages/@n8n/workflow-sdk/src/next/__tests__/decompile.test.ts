@@ -450,7 +450,7 @@ const branchWorkflow = () =>
 						url: 'https://x.example.com',
 						body: { kind: 'json', json: (page, $) => ({ id: page.id, first: $('Tasks').id }) },
 					}),
-					onError(set({ name: 'Log', fields: { reason: (e) => e.error.message } })),
+					onError(set({ name: 'Log', fields: { reason: (e) => e.error } })),
 				),
 				else: set({
 					name: 'Unowned',

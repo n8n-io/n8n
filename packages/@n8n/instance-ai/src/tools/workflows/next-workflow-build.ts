@@ -446,7 +446,8 @@ export function fixtureOriginsOf(
 /**
  * Output types for the nodes of a built workflow, from each action's `deriveOutput` or
  * `resourceOutput` pure hatch. Keyed by node name, they narrow `$('Node')` and the next node's
- * item in `tsc`.
+ * item in `tsc`. The nodes with `onError: 'continueRegularOutput'` go in `ContinuedNodes`, so
+ * `tsc` types their items as the output or `{ error }`.
  */
 export function nodeOutputsDeclaration(
 	workflow: WorkflowJSON,
@@ -465,13 +466,18 @@ export function nodeOutputsDeclaration(
 		const item = toTs(outputItemSchema(schema), { input: false, indent: '\t\t' });
 		return [`\t\t${JSON.stringify(node.name)}: ${item};`];
 	});
-	if (members.length === 0) return EMPTY_OUTPUTS;
+	// A routed contract step sends the error item to its last output, not to the one `Step` types.
+	const continued = workflow.nodes.flatMap((node) =>
+		node.name && node.onError === 'continueRegularOutput' && !actionOfNode(node)?.outputs
+			? [`\t\t${JSON.stringify(node.name)}: true;`]
+			: [],
+	);
+	if (members.length + continued.length === 0) return EMPTY_OUTPUTS;
 	return [
 		'export {};',
 		"declare module '@n8n/workflow-sdk/next' {",
-		'\tinterface NodeOutputs {',
-		...members,
-		'\t}',
+		...(members.length > 0 ? ['\tinterface NodeOutputs {', ...members, '\t}'] : []),
+		...(continued.length > 0 ? ['\tinterface ContinuedNodes {', ...continued, '\t}'] : []),
 		'}',
 		'',
 	].join('\n');
@@ -825,6 +831,18 @@ const TSC_HINTS: ReadonlyArray<{
 		message: /on type '\{\}'/,
 		hint: () =>
 			"This field has no declared type, so a check such as `x ? x.f : …` leaves `{}`, which has no fields. Give the node that outputs it `sample` items, a webhook `schema`, or `returns` on a code step. Else narrow each level: `typeof x === 'object' && x !== null && 'f' in x`.",
+	},
+	{
+		codes: [2339],
+		message: /on type '.*\bFailedItem\b/,
+		hint: () =>
+			"A step with `onError: 'continueRegularOutput'` emits only `{ error }` for an item it fails on. Check it first: `item.error === undefined ? item.f : …`, or `when` on `item.error !== undefined`.",
+	},
+	{
+		codes: [2339],
+		message: /^Property 'message' does not exist on type 'string'/,
+		hint: () =>
+			'The `error` of a failed item is the error message as text. Read `item.error`, not `item.error.message`.',
 	},
 	{
 		codes: [2339],

@@ -186,16 +186,20 @@ export type PageValue<V> = ((page: ResponsePage) => V) | Expression;
  */
 export type OpenValue = {} | null | undefined;
 
-/** An item on an error output: the failed item's fields plus `error`. */
-export type ErrorItem = Loose & {
-	/** Why the node failed. */
-	error: {
-		/** The error message. */
-		message: string;
-		/** More detail, when the node gives it. */
-		description?: string | null;
-	};
-};
+/**
+ * An item that a node emits for an input it fails on, with `onError: 'continueRegularOutput'`.
+ * A contract node and `set` give the error message as text.
+ */
+export interface FailedItem {
+	/** Why the node failed: the error message. */
+	readonly error: string;
+}
+
+/**
+ * An item on an error output: the fields of the input item that failed, plus `error`, the
+ * error message. A legacy `node()` can give `error` in another shape, or none.
+ */
+export type ErrorItem = Loose & FailedItem;
 
 type Primitive = string | number | boolean | null;
 
@@ -413,7 +417,10 @@ export interface NodeSettings {
 	readonly alwaysOutputData?: boolean;
 	/** Run the node one time, for the first item only. */
 	readonly executeOnce?: boolean;
-	/** When the node fails: stop the workflow (default), or emit the error as an item. */
+	/**
+	 * When the node fails: stop the workflow (default), or emit `{ error }` for each item it
+	 * fails on. Then check `item.error === undefined` before you read an output field.
+	 */
 	readonly onError?: 'stopWorkflow' | 'continueRegularOutput';
 	/** A note on the node. */
 	readonly notes?: string;
@@ -577,9 +584,28 @@ export interface Part<In, Ctx, Out, Next> {
 	};
 }
 
+/**
+ * The nodes with `settings: { onError: 'continueRegularOutput' }`. The build adds them by
+ * declaration merging, so their items are `Out` or a {@link FailedItem}.
+ */
+export interface ContinuedNodes {}
+
+/** The items of node `N`: `Out`, or also a {@link FailedItem} when it continues on error. */
+// The first check needs no `N`, so a workflow without such nodes skips the per-step type.
+type Continued<N extends string, Out> = [keyof ContinuedNodes] extends [never]
+	? Out
+	: N extends keyof ContinuedNodes
+		?
+				| (Out & {
+						/** Not set: the node did not fail on this item. */
+						readonly error?: undefined;
+				  })
+				| FailedItem
+		: Out;
+
 /** One node that reads `In` items and emits `Out` items. */
 export interface Step<In, Ctx, Out, N extends string>
-	extends Part<In, Ctx, Out, Ctx & Record<N, Out>> {
+	extends Part<In, Ctx, Continued<N, Out>, Ctx & Record<N, Continued<N, Out>>> {
 	/** The node name. */
 	readonly name: N;
 	/** The node as the build compiles it. */
@@ -1664,7 +1690,7 @@ export function onError(handle: AnyPart): AnyRegion {
  * @example
  * ```ts
  * fetchOrders,
- * recover(set({ name: 'Log', fields: { failed: (item) => item.error.message } })),
+ * recover(set({ name: 'Log', fields: { failed: (item) => item.error } })),
  * ```
  */
 export function recover<In, Ctx, A>(

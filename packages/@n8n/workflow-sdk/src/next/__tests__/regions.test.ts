@@ -256,8 +256,8 @@ const guardedEachWorkflow = (rejoins: boolean) =>
 		customers('Customers'),
 		forEach({ name: 'Each', batchSize: 2 }, set({ name: 'Post', fields: { id: (c) => c.id } })),
 		rejoins
-			? recover(set({ name: 'Log', fields: { failed: (e) => e.error.message } }))
-			: onError(set({ name: 'Log', fields: { failed: (e) => e.error.message } })),
+			? recover(set({ name: 'Log', fields: { failed: (e) => e.error } }))
+			: onError(set({ name: 'Log', fields: { failed: (e) => e.error } })),
 		set({ name: 'Report', fields: { done: true } }),
 	);
 

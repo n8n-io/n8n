@@ -20,6 +20,7 @@ import {
 	switchOn,
 	validateLoopWiring,
 	workflow,
+	type NodeSettings,
 	type Step,
 } from '@n8n/workflow-sdk/next';
 import { ExecutionLifecycleHooks, LazyPackageDirectoryLoader, WorkflowExecute } from 'n8n-core';
@@ -436,6 +437,73 @@ describe('workflow-sdk forEach regions on the legacy engine', () => {
 			expect(runs(result, 'Report')).toEqual([report]);
 		},
 	);
+});
+
+describe('workflow-sdk failed items on the legacy engine', () => {
+	const DATES = [{ date: '2026-03-04T00:00:00Z' }, { date: 'soon' }];
+	const NOT_A_DATE = '"soon" is not an ISO 8601 date';
+
+	const year = (settings: NodeSettings = {}) =>
+		node({
+			name: 'Year',
+			type: '@n8n/nodes-base-next.itemsDateTime',
+			version: 1,
+			parameters: { date: '={{ $json.date }}', operation: { op: 'extract', part: 'year' } },
+			settings,
+		});
+
+	it('a contract node that continues on error emits { error: string } on its output', async () => {
+		const json = workflow(
+			'Years',
+			manual(),
+			source<{ date: string }>()('Dates'),
+			year({ onError: 'continueRegularOutput' }),
+		).toJSON();
+
+		const result = await execute('v1', json, DATES);
+
+		expect(result.status).toBe('success');
+		expect(runs(result, 'Year')).toEqual([[{ newDate: 2026 }, { error: NOT_A_DATE }]]);
+	});
+
+	it('set that continues on error emits { error: string } on its output', async () => {
+		const json = workflow(
+			'Counts',
+			manual(),
+			source<{ count: string }>()('Counts'),
+			set({
+				name: 'Parse',
+				fields: { count: '={{ $json.count.toNumber() }}' },
+				settings: { onError: 'continueRegularOutput' },
+			}),
+		).toJSON();
+
+		const result = await execute('v1', json, [{ count: '2' }, { count: 'two' }]);
+
+		expect(result.status).toBe('success');
+		expect(runs(result, 'Parse')).toEqual([[{ count: 2 }, { error: 'cannot convert to number' }]]);
+	});
+
+	it.each([
+		['onError', false],
+		['recover', true],
+	])('%s gets the input fields and the error message as a string', async (_kind, rejoins) => {
+		const json = workflow(
+			'Years',
+			manual(),
+			source<{ date: string }>()('Dates'),
+			year(),
+			rejoins
+				? recover(set({ name: 'Log', fields: { date: (e) => e.date, error: (e) => e.error } }))
+				: onError(set({ name: 'Log', fields: { date: (e) => e.date, error: (e) => e.error } })),
+		).toJSON();
+
+		const result = await execute('v1', json, DATES);
+
+		expect(result.status).toBe('success');
+		expect(runs(result, 'Year')).toEqual([[{ newDate: 2026 }]]);
+		expect(runs(result, 'Log')).toEqual([[{ date: 'soon', error: NOT_A_DATE }]]);
+	});
 });
 
 describe.each<ExecutionOrder>(['v0', 'v1'])(

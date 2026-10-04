@@ -144,7 +144,7 @@ describe('next JSDoc examples', () => {
 				'Recover',
 				manual(),
 				fetchOrders,
-				recover(set({ name: 'Log', fields: { failed: (item) => item.error.message } })),
+				recover(set({ name: 'Log', fields: { failed: (item) => item.error } })),
 			),
 			workflow(
 				'Group',

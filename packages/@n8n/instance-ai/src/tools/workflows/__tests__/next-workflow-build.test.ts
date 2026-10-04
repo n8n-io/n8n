@@ -7,6 +7,7 @@ import type { InstanceAiContext } from '../../../types';
 import { derivedNodeTypes } from '../../__tests__/derived-node-types';
 import {
 	contractEgressWarnings,
+	EMPTY_OUTPUTS,
 	fetchResourceFields,
 	fixtureOriginsOf,
 	catalogProvidersOf,
@@ -166,6 +167,36 @@ import { googleGemini } from '@n8n/nodes/googleGemini';`;
 			nodes: [{ ...lookup, parameters: { url: 'https://api.example.com/x' } }],
 		};
 		expect(nodeOutputsDeclaration(plain)).not.toContain('"Lookup"');
+	});
+
+	it('declares the nodes that continue on error, but not a routed step', () => {
+		const step = (name: string, type: string, onError?: 'continueRegularOutput') => ({
+			id: name,
+			name,
+			type,
+			typeVersion: 1,
+			position: [0, 0] as [number, number],
+			parameters: {},
+			...(onError ? { onError } : {}),
+		});
+		const workflow: WorkflowJSON = {
+			name: 'Continue',
+			connections: {},
+			nodes: [
+				step('Post', '@n8n/nodes-base-next.httpRequestSend', 'continueRegularOutput'),
+				step('Fields', 'n8n-nodes-base.set', 'continueRegularOutput'),
+				step('Plain', '@n8n/nodes-base-next.httpRequestSend'),
+				step('Exists', '@n8n/nodes-base-next.dataTableRowExists', 'continueRegularOutput'),
+			],
+		};
+		const text = nodeOutputsDeclaration(workflow);
+		expect(text).toContain(
+			'\tinterface ContinuedNodes {\n\t\t"Post": true;\n\t\t"Fields": true;\n\t}',
+		);
+		expect(text).not.toContain('NodeOutputs');
+		expect(
+			nodeOutputsDeclaration({ ...workflow, nodes: [step('Plain', 'n8n-nodes-base.set')] }),
+		).toBe(EMPTY_OUTPUTS);
 	});
 
 	const node = (name: string, type: string, parameters: IDataObject) => ({
@@ -1022,6 +1053,14 @@ describe('tsc hints', () => {
 		[
 			"TS2339: Property 'employees' does not exist on type '{}'.",
 			"This field has no declared type, so a check such as `x ? x.f : \u2026` leaves `{}`, which has no fields. Give the node that outputs it `sample` items, a webhook `schema`, or `returns` on a code step. Else narrow each level: `typeof x === 'object' && x !== null && 'f' in x`.",
+		],
+		[
+			"TS2339: Property 'statusCode' does not exist on type 'FailedItem | ({ body: any; statusCode: number; } & { readonly error?: undefined; })'.\n      Property 'statusCode' does not exist on type 'FailedItem'.",
+			"A step with `onError: 'continueRegularOutput'` emits only `{ error }` for an item it fails on. Check it first: `item.error === undefined ? item.f : \u2026`, or `when` on `item.error !== undefined`.",
+		],
+		[
+			"TS2339: Property 'message' does not exist on type 'string'.",
+			'The `error` of a failed item is the error message as text. Read `item.error`, not `item.error.message`.',
 		],
 		[
 			"TS2339: Property 'organization' does not exist on type '{ enrichmentFailed: true; } | NoInfer<HttpRequestGetOutput>'.\n      Property 'organization' does not exist on type '{ enrichmentFailed: true; }'.",
