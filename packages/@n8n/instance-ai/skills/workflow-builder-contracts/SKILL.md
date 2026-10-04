@@ -40,9 +40,23 @@ To edit a workflow, call `workflows(action="get-as-code", workflowId)`,
 make the smallest change and build with its `filePath`. Keep its
 `node()` and `expr()` calls.
 
+## References
+
+Load each one that applies with `load_skill` and `filePath`, in the
+`nodes(action="search")` step:
+
+- `references/flow-control.md`: `when`, `route`, `switchOn`, `merge`,
+  `forEach`, `loop`, or over {{TOP_LEVEL_ITEM_CEILING_PLACEHOLDER}} boxes.
+- `references/ai-nodes.md`: an agent, chain or LLM node.
+- `references/binary.md`: a file or attachment.
+- `references/compositional-workflows.md`: sub-workflows the user asks
+  for. Not loops.
+- `references/error-workflows.md`: a separate Error Trigger workflow. Not
+  `onError`.
+
 ## Imports
 
-Import the flow API from `@n8n/workflow-sdk/next`. The typed modules are
+Import the flow API as below. The typed modules are
 {{NODE_CONTRACT_MODULES_PLACEHOLDER}}: import them from `@n8n/nodes/<id>`.
 Every other node, even a trigger or AI node, has a derived module at
 `@n8n/nodes/<package>/<name>`. Use `node()` only for a type without one.
@@ -52,50 +66,25 @@ import { workflow, manual, set, onError } from '@n8n/workflow-sdk/next';
 import { notion } from '@n8n/nodes/notion';
 
 export default workflow(
-  'Overdue report',
+  'Page report',
   manual(),
-  notion.databasePage.getAll({
-    name: 'Overdue',
-    database: '5b9e2c1d0a7f4c3e9d217f6a8b9c0d1e',
-    where: { match: 'all', conditions: [{ property: 'Due', type: 'date', condition: { op: 'before', value: (_item, $) => $.today.toISODate() } }] },
-  }),
-  onError(set({ name: 'Log', fields: { reason: (e) => e.error.message } })),
+  notion.databasePage.getAll({ name: 'Pages', database: '5b9e2c1d0a7f4c3e9d217f6a8b9c0d1e' }),
+  onError(set({ name: 'Log', fields: { reason: (e) => e.error } })),
   set({ name: 'Row', fields: { name: (page) => page.name } }),
 );
 ```
 
 - A workflow is a flat list: a trigger, then parts. Each part reads the
-  items of the part before. A later trigger starts another flow.
+  items of the part before.
 - `onError(part)` takes the errors of the part before; its branch ends.
   `recover(part)` joins it back.
-- A branch or body is one part: a step, a macro, or
-  `steps(a, b, …)` for several.
-- `when({ name, if: (item) => … }, { then: part, else: part })` adds an IF
-  node. Without `else`, false items stop.
-- `route(step, { a: part, b: part })` follows each named output; the next
-  part only the first.
-- `switchOn({ name, on }, { value: part, fallback: part })`,
-  `merge({ name, join }, [part, part, …])`, `forEach({ name, batchSize }, body)`,
-  `loop({ name, maxIterations, until, next?, onLimit? }, body)`: Switch, Merge,
-  loops. `onLimit: 'continue'` ends at maxIterations: 'at most N'.
-  The state is the item before `loop`: `set` it first.
-- `set({ name, fields })` makes fields; `keep: 'all'` keeps input fields.
+- `when`, `route`, `switchOn`, `merge`, `forEach` and `loop` branch, join
+  and repeat parts.
+- `set({ name, fields })` makes fields; a key `'a.b'` nests. `keep: 'all'`,
+  `{ selected }` or `{ except }` keeps input fields.
 - `sample` items type the output and feed verification:
   `manual({ sample: [{ id: 1 }] })`.
-- Typed steps and `node()` take `settings: { retryOnFail: true, notes: '…' }`.
-
-## AI nodes
-
-A derived AI node takes provider modules in `providers`:
-
-```ts
-agent.execute({ name: 'Agent', promptType: 'define', text: (item) => item.question,
-  providers: { model: lmChatOpenAi.execute({ name: 'Model', model: { mode: 'id', value: 'gpt-5-mini' } }) } })
-```
-
-A typed action is also an agent tool: put `<action>Tool` in `tools`. The model
-fills each `fromModel()` field:
-`httpRequest.getTool({ name: 'Fetch', url: fromModel('The page URL') })`.
+- Typed steps, `set` and `node()` take `settings: { retryOnFail: true, notes: '…' }`.
 
 ## Lambdas
 
@@ -118,6 +107,4 @@ fills each `fromModel()` field:
 1. Zero items end a path. Do not add empty-check gates.
 2. A write action outputs its API response, not its input: read earlier
    data with `$('Node')`.
-3. Over {{TOP_LEVEL_ITEM_CEILING_PLACEHOLDER}} boxes, wrap stages (not a lone `forEach`) in `group({ name }, part)`
-   or pass `groupingDecision: 'not_warranted'` and a `groupingReason`.
-4. Build success is not proof. Do not publish automatically.
+3. Build success is not proof. Do not publish automatically.

@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
@@ -11,6 +11,13 @@ import { loadInstanceAiPromptSkills, substituteSkillPlaceholders } from '../runt
 
 const skillDir = path.join(__dirname, '../../../skills/workflow-builder-contracts');
 const skill = readFileSync(path.join(skillDir, 'SKILL.md'), 'utf8');
+const readReference = (name: string) =>
+	readFileSync(path.join(skillDir, 'references', name), 'utf8');
+const flowControl = readReference('flow-control.md');
+const aiNodes = readReference('ai-nodes.md');
+const binary = readReference('binary.md');
+const tsBlocks = (text: string) =>
+	[...text.matchAll(/```ts\n([\s\S]*?)```/g)].map(([, code]) => code);
 
 const TSC = path.join(path.dirname(require.resolve('typescript/package.json')), 'bin', 'tsc');
 
@@ -70,14 +77,11 @@ describe('contract-mode skill', () => {
 		expect(text).not.toContain('{{NODE_CONTRACT_MODULES_PLACEHOLDER}}');
 	});
 
-	it('teaches AI providers, trigger samples, onError in the list, and setup placeholders', () => {
-		expect(skill).toContain('providers: { model: lmChatOpenAi.execute({');
-		expect(skill).toContain(
-			"httpRequest.getTool({ name: 'Fetch', url: fromModel('The page URL') })",
-		);
-		expect(skill).not.toContain('subnode');
+	it('teaches trigger samples, settings, onError in the list, and setup placeholders', () => {
 		expect(skill).toContain('manual({ sample:');
-		expect(skill).toContain('`settings: { retryOnFail: true');
+		expect(skill).toContain(
+			'- Typed steps, `set` and `node()` take `settings: { retryOnFail: true',
+		);
 		expect(skill).toContain('`nodeModules` and `builtIns`');
 		expect(skill).toMatch(/\}\),\n {2}onError\(set\(\{ name: 'Log'/);
 		expect(skill).toContain("placeholder('Database')");
@@ -85,6 +89,31 @@ describe('contract-mode skill', () => {
 		expect(skill).toContain('do not read SDK files');
 		expect(skill).toContain(
 			'Only `build-workflow` has\n`@n8n/nodes/*` and runs `tsc`: do not run it.',
+		);
+	});
+
+	it('sets nested fields and keeps input fields with set', () => {
+		expect(skill).toContain("a key `'a.b'` nests");
+		expect(skill).toContain("`keep: 'all'`,\n  `{ selected }` or `{ except }` keeps input fields.");
+	});
+
+	it('teaches AI providers and agent tools in the ai-nodes reference', () => {
+		expect(aiNodes).toContain('providers: { model: lmChatOpenAi.execute({');
+		expect(aiNodes).toContain(
+			"httpRequest.getTool({ name: 'Fetch', url: fromModel('The page URL') })",
+		);
+		expect(aiNodes).toContain('`model-selection` skill');
+		expect(`${skill}${aiNodes}`).not.toContain('subnode');
+		expect(skill).not.toContain('providers:');
+	});
+
+	it('teaches binary keys and which steps keep files in the binary reference', () => {
+		expect(binary).toContain('`file: (item) => item.binary.data`');
+		expect(binary).toContain('`httpRequest.download`: `data`');
+		expect(binary).toContain('a multipart file is under its form field name');
+		expect(binary).toContain('`attachment_0`');
+		expect(binary).toContain(
+			'`set` and an action that outputs an API response make new items without\n  the files.',
 		);
 	});
 
@@ -96,15 +125,38 @@ describe('contract-mode skill', () => {
 		expect(skill).not.toContain("'={{");
 	});
 
-	it('builds a flat list, and routes, joins and loops with macros, not WorkflowJSON', () => {
+	it('builds a flat list and names the macros in the skill', () => {
 		expect(skill).toContain('A workflow is a flat list: a trigger, then parts.');
-		expect(skill).toContain('`steps(a, b, …)` for several');
-		expect(skill).toContain('`switchOn({ name, on }, { value: part, fallback: part })`');
-		expect(skill).toContain('`merge({ name, join }, [part, part, …])`');
-		expect(skill).toContain('`loop({ name, maxIterations, until, next?, onLimit? }, body)`');
-		expect(skill).toContain('`route(step, { a: part, b: part })`');
+		expect(skill).toContain(
+			'`when`, `route`, `switchOn`, `merge`, `forEach` and `loop` branch, join\n  and repeat parts.',
+		);
 		expect(skill).not.toMatch(/\.andThen|\.orElse|\.branch\(/);
 		expect(skill).not.toContain('WorkflowJSON');
+	});
+
+	it('routes, joins and loops with macros in the flow-control reference', () => {
+		expect(flowControl).toContain('`steps(a, b, …)` for several');
+		expect(flowControl).toContain('`when({ name, if: (item) => … }, { then: part, else: part })`');
+		expect(flowControl).toContain('To act on\n  the false items only, negate the condition.');
+		expect(flowControl).toContain('`switchOn({ name, on }, { value: part, fallback: part })`');
+		expect(flowControl).toContain('`merge({ name, join }, [part, part, …])`');
+		expect(flowControl).toContain(
+			"`join` is `'append'`, `'position'` or `{ left, right }`. These are not the\n  Merge node action names.",
+		);
+		expect(flowControl).toContain('`loop({ name, maxIterations, until, next?, onLimit? }, body)`');
+		expect(flowControl).toContain('a failed item is only\n  `{ error: string }`');
+		expect(flowControl).toContain('`route(step, { a: part, b: part })`');
+		expect(flowControl).toContain('Use it only to pace work');
+	});
+
+	it('has a flow-control example that type-checks against the new SDK', { timeout: 30_000 }, () => {
+		const blocks = tsBlocks(flowControl);
+
+		expect(blocks).toHaveLength(1);
+		expect(blocks.flatMap(typeErrors)).toEqual([]);
+		expect(
+			typeErrors(blocks[0].replace('(out) => out.n >= 3', '(out) => out.count >= 3')).join('\n'),
+		).toContain("Property 'count' does not exist");
 	});
 
 	it('tells the user to type a field value without the leading =', () => {
@@ -134,7 +186,21 @@ describe('contract-mode skill', () => {
 			on.source.registry.skills
 				.find(({ id }) => id === 'workflow-builder')
 				?.linkedFiles.references.map(({ path }) => path),
+		).toEqual([
+			'references/ai-nodes.md',
+			'references/binary.md',
+			reference,
+			'references/error-workflows.md',
+			'references/flow-control.md',
+		]);
+		expect(
+			off.source.registry.skills
+				.find(({ id }) => id === 'workflow-builder')
+				?.linkedFiles.references.map(({ path }) => path),
 		).toEqual([reference, 'references/error-workflows.md']);
+		await expect(
+			off.source.loadFile?.('workflow-builder', 'references/flow-control.md'),
+		).resolves.toBeNull();
 	});
 
 	it('serves an error-workflows reference in the new SDK shape only when node contracts are enabled', async () => {
@@ -158,8 +224,7 @@ describe('contract-mode skill', () => {
 		'has error-workflows examples that type-check against the new SDK',
 		{ timeout: 30_000 },
 		() => {
-			const reference = readFileSync(path.join(skillDir, 'references/error-workflows.md'), 'utf8');
-			const blocks = [...reference.matchAll(/```ts\n([\s\S]*?)```/g)].map(([, code]) => code);
+			const blocks = tsBlocks(readReference('error-workflows.md'));
 
 			expect(blocks).toHaveLength(1);
 			expect(blocks.flatMap(typeErrors)).toEqual([]);
@@ -169,18 +234,51 @@ describe('contract-mode skill', () => {
 		},
 	);
 
-	it('teaches group() and the grouping opt-out over the box ceiling', () => {
+	it('points to flow-control over the box ceiling, which teaches group() and the opt-out', () => {
 		const text = substituteSkillPlaceholders(skill);
-		expect(text).toContain(
-			`3. Over ${TOP_LEVEL_ITEM_CEILING} boxes, wrap stages (not a lone \`forEach\`) in \`group({ name }, part)\`\n   or pass \`groupingDecision: 'not_warranted'\` and a \`groupingReason\`.`,
+		expect(text).toContain(`\`loop\`, or over ${TOP_LEVEL_ITEM_CEILING} boxes.`);
+		expect(flowControl).toContain(
+			"wrap stages (not a lone\n`forEach`) in `group({ name }, part)` or pass\n`groupingDecision: 'not_warranted'` and a `groupingReason`.",
 		);
 	});
 
 	it('makes the loop state with a set before the loop', () => {
-		expect(skill).toContain('The state is the item before `loop`: `set` it first.');
+		expect(flowControl).toContain('The state is the item before `loop`: `set` it first.');
+		expect(flowControl).toContain(
+			'A loop body ends with a `set` of the state fields; then `next` is\n  optional.',
+		);
+	});
+
+	it('names every reference file in the References block, and only existing files', () => {
+		const block = skill.slice(skill.indexOf('## References'), skill.indexOf('## Imports'));
+		const pointers = [...block.matchAll(/^- `(references\/[\w-]+\.md)`: /gm)].map(
+			([, file]) => file,
+		);
+		const files = readdirSync(path.join(skillDir, 'references')).map(
+			(file) => `references/${file}`,
+		);
+
+		expect(block).toContain('in the\n`nodes(action="search")` step');
+		expect(pointers.toSorted()).toEqual(files.toSorted());
 	});
 
 	it('stays small', () => {
-		expect(Buffer.byteLength(skill)).toBeLessThan(5_200);
+		expect(Buffer.byteLength(skill)).toBeLessThan(4_400);
+		const caps: Record<string, number> = {
+			'ai-nodes.md': 1_000,
+			'binary.md': 1_200,
+			'compositional-workflows.md': 2_400,
+			'error-workflows.md': 2_000,
+			'flow-control.md': 2_400,
+		};
+		const sizes = Object.fromEntries(
+			readdirSync(path.join(skillDir, 'references')).map((file) => [
+				file,
+				Buffer.byteLength(readReference(file)),
+			]),
+		);
+
+		expect(Object.keys(sizes).toSorted()).toEqual(Object.keys(caps).toSorted());
+		for (const [file, bytes] of Object.entries(sizes)) expect(bytes).toBeLessThan(caps[file]);
 	});
 });
