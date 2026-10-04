@@ -509,6 +509,47 @@ export default workflow(
 		]);
 	}, 120_000);
 
+	it('lets the lambda of an optional contract field give undefined, but not another type', async () => {
+		const source = (fileName: string) => `import { workflow, placeholder } from '@n8n/workflow-sdk/next';
+import { slack } from '@n8n/nodes/slack';
+import { webhook } from '@n8n/nodes/webhook';
+
+export default workflow(
+	'Upload to Slack',
+	webhook.trigger({ name: 'Webhook', httpMethod: 'POST', path: 'images' }),
+	slack.file.upload({
+		name: 'Upload',
+		file: (item) => item.binary.image,
+		channel: placeholder('Slack channel ID'),
+		fileName: ${fileName},
+	}),
+);
+`;
+		const result = await build(source('(item) => item.binary.image.fileName'));
+		expect(result.success ? [] : result.errors).toEqual([]);
+		const wrongType = await build(source('(item) => item.binary.image.bytes'));
+		expect(wrongType.success ? [] : wrongType.errors).toEqual([
+			expect.stringContaining("Type 'number' is not assignable to type 'string'"),
+		]);
+	}, 120_000);
+
+	it('splits out a list at a dot path of an open webhook body', async () => {
+		const result = await build(`import { workflow, splitOut, set } from '@n8n/workflow-sdk/next';
+import { webhook } from '@n8n/nodes/webhook';
+
+export default workflow(
+	'Orders',
+	webhook.trigger({ name: 'Webhook', httpMethod: 'POST', path: 'orders' }),
+	splitOut({ name: 'Split Orders', field: 'body.orders' }),
+	set({ name: 'Order', fields: { id: (order) => String(order.id) } }),
+);
+`);
+		expect(result.success ? [] : result.errors).toEqual([]);
+		if (!result.success) return;
+		const split = result.workflow.nodes.find((node) => node.name === 'Split Orders');
+		expect(split?.parameters).toEqual({ field: 'body.orders' });
+	}, 120_000);
+
 	it('types an open output by its sample, also after recover', async () => {
 		const source = (field: string) => `import { workflow, manual, set, recover, expr } from '@n8n/workflow-sdk/next';
 import { httpRequest } from '@n8n/nodes/httpRequest';

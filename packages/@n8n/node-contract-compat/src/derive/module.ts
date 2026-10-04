@@ -42,6 +42,7 @@ export function toGeneratedAction(action: DerivedAction): GeneratedAction {
 				? { ...contract, output: { type: 'object' } }
 				: contract,
 		nodeType: target.type,
+		native: true,
 		// The factory path follows the id: `<resource>.<operation>`, `<resource>`, `execute` or `trigger`.
 		...(operation !== undefined && resource !== undefined ? { resource } : {}),
 		operation: operation ?? resource ?? (contract.trigger ? 'trigger' : 'execute'),

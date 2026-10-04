@@ -884,6 +884,33 @@ describe('generateNodeModule', () => {
 		expect(text).toContain('contractStep("@n8n/nodes-base-next.todo.task.getAll", config)');
 	});
 
+	it('lets an optional leaf of a contract action take a lambda that gives undefined', () => {
+		const note = task.action('note', {
+			action: 'Add a note',
+			summary: 'Add a note to a task.',
+			flow: { effect: 'write', cardinality: 'per-item' },
+			input: { id: t.str(), note: t.str().optional(), tags: t.arr(t.str()).optional() },
+			output: t.obj({ id: t.str() }),
+			run: async ({ input }) => await Promise.resolve({ id: input.id }),
+		});
+		const text = moduleOf(note);
+		expect(text).toContain('id: Value<I, C, string>;');
+		expect(text).toContain('note?: Maybe<I, C, string>;');
+		expect(text).toContain('tags?: Array<Value<I, C, string>>;');
+		expect(text).toContain('type Maybe, ');
+		// A legacy node runs a native action: it can read `undefined` as a value.
+		const native = generateNodeModule('todo', [
+			{
+				contract: toContract(note),
+				nodeType: 'n8n-nodes-base.todo',
+				operation: 'note',
+				native: true,
+			},
+		]);
+		expect(native).toContain('note?: Value<I, C, string>;');
+		expect(native).not.toContain('Maybe');
+	});
+
 	it('emits the composed node version and its slot for an action that owns a slot', () => {
 		const slot = { typeVersion: 4, resource: 'task', operation: 'getAll' };
 		const text = generateNodeModule('todo', [
@@ -1060,7 +1087,7 @@ describe('generateNodeModule', () => {
 
 	it('prints short objects without docs on one line', () => {
 		expect(moduleOf(listTasks)).toContain(
-			'paging: { mode: "all" } | { mode: "limit"; max?: Value<I, C, number> };',
+			'paging: { mode: "all" } | { mode: "limit"; max?: Maybe<I, C, number> };',
 		);
 	});
 

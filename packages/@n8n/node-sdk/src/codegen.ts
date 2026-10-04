@@ -33,6 +33,14 @@ interface Mode {
 	input: boolean;
 	/** Input leaves take plain values: a trigger has no item to read. */
 	plain?: boolean;
+	/**
+	 * The contract runtime reads an `undefined` input value as no value, so the leaves of an
+	 * optional field are `Maybe<I, C, T>`: their lambdas can give `undefined`. A legacy node can
+	 * read `undefined` as a value, so the fields of a native action stay `Value<I, C, T>`.
+	 */
+	absentUndefined?: boolean;
+	/** The schema is the value of an optional field. */
+	optional?: boolean;
 	/** An optional output field prints as optional, so a read of it needs a check. */
 	optionalOutputs?: boolean;
 	/** An optional output field also takes `null`: the host passes response drift on. */
@@ -87,7 +95,8 @@ function patternDoc(schema: JsonSchema, child: JsonSchema, mode: Mode, indent: s
 const OPEN_VALUE = 'OpenValue';
 
 function leaf(text: string, schema: JsonSchema, mode: Mode): string {
-	return mode.input && !mode.plain && !schema['x-n8n-literal'] ? `Value<I, C, ${text}>` : text;
+	if (!mode.input || mode.plain || schema['x-n8n-literal']) return text;
+	return `${mode.optional ? 'Maybe' : 'Value'}<I, C, ${text}>`;
 }
 
 interface Tag {
@@ -105,7 +114,7 @@ function objectTs(
 	hiddenDocs: ReadonlySet<string> = new Set(),
 ): string {
 	const inner = `${mode.indent}\t`;
-	const childMode = { ...mode, indent: inner };
+	const childMode = { ...mode, indent: inner, optional: false };
 	const required = new Set(schema.required ?? []);
 	const properties = Object.entries(schema.properties ?? {}).filter(([name]) => name !== tag?.name);
 	const shownDoc = (name: string, child: JsonSchema) => {
@@ -114,7 +123,8 @@ function objectTs(
 		return text && !hiddenDocs.has(docKey) && !mode.hiddenDocs?.has(docKey) ? text : undefined;
 	};
 	const fieldTs = (name: string, child: JsonSchema) => {
-		const text = toTs(child, childMode);
+		const optional = mode.absentUndefined === true && !required.has(name);
+		const text = toTs(child, { ...childMode, optional });
 		if (required.has(name) || mode.input)
 			return `${key(name)}${required.has(name) ? '' : '?'}: ${text}`;
 		if (!mode.optionalOutputs) return `${key(name)}: ${text}`;
@@ -275,7 +285,7 @@ function renderTs(schema: JsonSchema, mode: Mode): string {
 		case 'null':
 			return 'null';
 		case 'array':
-			return `Array<${toTs(schema.items ?? {}, mode)}>`;
+			return `Array<${toTs(schema.items ?? {}, { ...mode, optional: false })}>`;
 		case 'object':
 			// Until the workflow declares it, a declared field reads like an open shape, so a
 			// decompiled flow without its schema still compiles.
@@ -412,6 +422,8 @@ export interface GeneratedAction {
 	};
 	/** The node version the factory emits when it is not the contract major: a native node. */
 	readonly typeVersion?: number;
+	/** A legacy node runs the action, e.g. a derived action, also when it has a `slot`. */
+	readonly native?: boolean;
 	/** The native trigger and reply step pair that the flow build checks. */
 	readonly pairing?: Pairing;
 }
@@ -626,7 +638,11 @@ function countShapes(
 
 // A provider field reads the item types too: `Provider<NoInfer<I>, NoInfer<C>, …>`.
 const isGeneric = ({ input, root, text }: Shape) =>
-	input && (root || text.includes('Value<I, C,') || text.includes('NoInfer<I>'));
+	input &&
+	(root ||
+		text.includes('Value<I, C,') ||
+		text.includes('Maybe<I, C,') ||
+		text.includes('NoInfer<I>'));
 
 /** A local type pays off when its references and definition are shorter than the copies. */
 function pays(shape: Shape) {
@@ -731,10 +747,11 @@ export function generateNodeModule(nodeId: string, contracts: readonly Generated
 			: toTs(schema, withAliases(mode));
 
 	// A field doc that an earlier action shows is not repeated.
-	const types = named.map(({ contract, name }, index) => {
+	const types = named.map(({ contract, name, native, typeVersion }, index) => {
 		const earlier = named.slice(0, index).map((action) => action.contract);
 		const actionInput = {
 			...input,
+			absentUndefined: !native && typeVersion === undefined,
 			hiddenDocs: new Set(earlier.flatMap((action) => allDocKeys(action.input))),
 		};
 		const actionOutput = {
@@ -967,6 +984,7 @@ export function generateNodeModule(nodeId: string, contracts: readonly Generated
 		...(hasEntries ? ['type EntryFields'] : []),
 		...(hasEntries || derived ? ['type Exact'] : []),
 		...(body.includes(`Value<I, C, ${OPEN_VALUE}>`) ? [`type ${OPEN_VALUE}`] : []),
+		...(body.includes('Maybe<') ? ['type Maybe'] : []),
 		...(body.includes('ModelOf<') ? ['type ModelOf'] : []),
 		'type NodeSettings',
 		...(derived || triggers.length > 0 ? ['type OutputOf'] : []),

@@ -30,6 +30,7 @@ import {
 	type OutputNames,
 	type OutputOf,
 	type Sampled,
+	type Maybe,
 	type PageValue,
 	type ModelOf,
 	type Pairing,
@@ -853,6 +854,46 @@ describe('workflow', () => {
 		});
 		// @ts-expect-error a plain string is not a number
 		workflow('Ten', manual(), limit({ name: 'Limit', max: 'ten' }));
+	});
+
+	it('lets a lambda of an optional field give undefined, and checks its type', () => {
+		const upload = <In, Ctx, const N extends string>(config: {
+			name: N;
+			title: Value<In, Ctx, string>;
+			fileName?: Maybe<In, Ctx, string>;
+		}): Step<In, Ctx, unknown, N> => contractStep('files.upload', config);
+		const files = <In, Ctx, const N extends string>(config: {
+			name: N;
+		}): Step<In, Ctx, { binary: { data: Binary } }, N> => contractStep('files.read', config);
+
+		const json = workflow(
+			'Upload',
+			manual(),
+			files({ name: 'Files' }),
+			upload({
+				name: 'Upload',
+				title: 'Report',
+				fileName: (item) => item.binary.data.fileName,
+			}),
+		).toJSON();
+		expect(json.nodes.find((n) => n.name === 'Upload')?.parameters).toEqual({
+			title: 'Report',
+			fileName: '={{ $binary.data.fileName }}',
+		});
+		workflow(
+			'Required',
+			manual(),
+			files({ name: 'Files' }),
+			// @ts-expect-error a required field takes no undefined
+			upload({ name: 'Upload', title: (item) => item.binary.data.fileName }),
+		);
+		workflow(
+			'Wrong type',
+			manual(),
+			files({ name: 'Files' }),
+			// @ts-expect-error a size is not a file name
+			upload({ name: 'Upload', title: 'Report', fileName: (item) => item.binary.data.bytes }),
+		);
 	});
 
 	it('writes an n8n expression with expr() in a typed field and in node()', () => {

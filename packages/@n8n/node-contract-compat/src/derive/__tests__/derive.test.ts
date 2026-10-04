@@ -273,6 +273,7 @@ describe('deriveManifests', () => {
 			{
 				contract: create.contract,
 				nodeType: create.compile.target.type,
+				native: true,
 				resource: 'task',
 				operation: 'create',
 			},

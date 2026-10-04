@@ -967,6 +967,8 @@ describe('tsc hints', () => {
 		'Add the fields that the message names. `nodes(action="type-definition")` shows the full type.';
 	const undefinedHint =
 		"The value can be undefined. After a step with `onError: 'continueRegularOutput'`, check `item.error === undefined` first: then its output fields are set. A `schema` field is optional until its `required` list names it: add it there if the data always has it. Else give a default, e.g. `item.f ?? ''`.";
+	const undefinedLambdaHint =
+		"The lambda can return undefined, but the field takes no undefined. Give the missing case a value, e.g. `item.f ?? ''`. A field of an item can be missing: a file name of a `binary`, a webhook `schema` field without `required`, an output field of a failed item (`onError: 'continueRegularOutput'`).";
 	const loopStateHint =
 		'The loop state has the type of the item before `loop`, and `next` returns it. Put a `set` of only the state fields before `loop`. Then end the body with a `set` of the same fields, or return them from `next`.';
 
@@ -1038,6 +1040,26 @@ describe('tsc hints', () => {
 		[
 			"TS2322: Type '(item: { body: { severity?: string; }; }) => string | undefined' is not assignable to type 'string | ((item: { body: { severity?: string; }; }) => string)'.",
 			undefinedHint,
+		],
+		[
+			"TS2322: Type '(item: NoInfer<{ headers: { [key: string]: string; }; binary: { ...; }; body: Loose; }>) => string | undefined' is not assignable to type 'Value<NoInfer<{ ...; }>, NoInfer<Record<...>>, string> | undefined'.\n  Type 'string | undefined' is not assignable to type 'string'.\n    Type 'undefined' is not assignable to type 'string'.",
+			undefinedLambdaHint,
+		],
+		[
+			"TS2345: Argument of type 'string | undefined' is not assignable to parameter of type 'string'.",
+			undefinedHint,
+		],
+		[
+			"TS2349: This expression is not callable.\n  Type 'Loose & FailedItem' has no call signatures.",
+			"This value is not a function. A lambda gets the item first and `$` second: `(item, $) => $('Node').field`, not `($) => …`.",
+		],
+		[
+			"TS2304: Cannot find name 'items_removeDuplicates'.",
+			"`items` is a typed module: `import { items } from '@n8n/nodes/items'`. Call its steps as members, e.g. `items.removeDuplicates({ name, … })`.",
+		],
+		[
+			"TS2304: Cannot find name 'slack'.",
+			"`slack` is a typed module: `import { slack } from '@n8n/nodes/slack'`. Call its steps as members, e.g. `slack.<step>({ name, … })`.",
 		],
 		["TS18048: 'item.statusCode' is possibly 'undefined'.", undefinedHint],
 		["TS2532: Object is possibly 'undefined'.", undefinedHint],
@@ -1144,6 +1166,7 @@ describe('tsc hints', () => {
 		"TS2322: Type 'string' is not assignable to type 'number'.",
 		'TS2345: Argument of type \'"Strat"\' is not assignable to parameter of type \'"Get" | "Start"\'.',
 		"TS2304: Cannot find name '$pageCount'.",
+		"TS2304: Cannot find name 'orderTotal'.",
 		"TS2322: Type '(item: { ok: boolean; }) => string' is not assignable to type '(out: { ok: boolean; }, $: Dollar<Record<\"Start\", {}>>) => boolean'.\n  Type 'string' is not assignable to type 'boolean'.",
 		'n8n: Code cannot read process.',
 	])('gives no hint for %s', (message) => {

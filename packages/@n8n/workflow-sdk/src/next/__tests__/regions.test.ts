@@ -57,6 +57,8 @@ const source =
 		contractStep('n8n-nodes-base.noOp', { name });
 
 const customers = source<Customer>();
+const requests = source<{ body: { orders: Order[]; tags: string[]; note: string } }>();
+const hooks = source<{ headers: Record<string, string>; body: next.Loose }>();
 const tickets = source<Ticket>();
 
 const forEachWorkflow = () =>
@@ -670,6 +672,48 @@ describe('regions compile to node contracts', () => {
 			customers('Customers'),
 			// @ts-expect-error name is not a list
 			splitOut({ name: 'Bad', field: 'name' }),
+		);
+		workflow(
+			'Nested',
+			manual(),
+			requests('Request'),
+			splitOut({ name: 'Orders', field: 'body.orders' }),
+			set({
+				name: 'Order',
+				fields: {
+					total: (o) => o.total,
+					// @ts-expect-error an order has no name
+					name: (o) => o.name,
+				},
+			}),
+		);
+		workflow(
+			'Nested tags',
+			manual(),
+			requests('Request'),
+			splitOut({ name: 'Tags', field: 'body.tags' }),
+			set({ name: 'Tag', fields: { tag: (t) => t['body.tags'].toUpperCase() } }),
+		);
+		workflow(
+			'Nested bad',
+			manual(),
+			requests('Request'),
+			// @ts-expect-error body.note is not a list
+			splitOut({ name: 'Bad', field: 'body.note' }),
+		);
+		workflow(
+			'Open',
+			manual(),
+			hooks('Hook'),
+			splitOut({ name: 'Orders', field: 'body.orders' }),
+			set({ name: 'Order', fields: { id: (o) => String(o.id) } }),
+		);
+		workflow(
+			'Open typo',
+			manual(),
+			hooks('Hook'),
+			// @ts-expect-error the item has no bdy
+			splitOut({ name: 'Bad', field: 'bdy.orders' }),
 		);
 
 		workflow(

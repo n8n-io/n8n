@@ -308,7 +308,7 @@ export const BUILT_IN_STEPS: ReadonlyArray<{
 	{
 		nodeType: 'n8n-nodes-base.splitOut',
 		steps: ['splitOut'],
-		row: "splitOut({ name, field }): Emits one item for each element of a list field. Import it from '@n8n/workflow-sdk/next'.",
+		row: "splitOut({ name, field }): Emits one item for each element of a list field; field is a dot path, e.g. 'body.orders'. Import it from '@n8n/workflow-sdk/next'.",
 	},
 ];
 

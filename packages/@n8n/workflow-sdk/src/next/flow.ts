@@ -164,6 +164,12 @@ export type Expr<E extends string> = (E extends `=${string}` ? E : `=${E}`) & {
  */
 export type Value<Item, Ctx, V> = V | ((item: Item, $: Dollar<Ctx>) => V) | Expression;
 
+/**
+ * The value of an optional field of a contract action. Its lambda can give `undefined`, e.g.
+ * `(item) => item.binary.data.fileName`: the field then has no value, as if it were left out.
+ */
+export type Maybe<Item, Ctx, V> = Value<Item, Ctx, V | undefined>;
+
 /** One response of a paged request, as `$response` of the legacy HTTP Request pagination. */
 export interface ResponsePage {
 	/** The parsed JSON body. Its shape is not known, so reads compile. */

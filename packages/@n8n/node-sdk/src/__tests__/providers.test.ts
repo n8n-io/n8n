@@ -311,7 +311,7 @@ describe('provider contracts', () => {
 			{ contract: toContract(chatModel), nodeType: 'pkg.llmChatModel', operation: 'chatModel' },
 		]);
 		expect(module).toContain(
-			"import { contractProvider, type ModelOf, type NodeSettings, type Provider, type Value } from '@n8n/workflow-sdk/next';",
+			"import { contractProvider, type Maybe, type ModelOf, type NodeSettings, type Provider, type Value } from '@n8n/workflow-sdk/next';",
 		);
 		expect(module).toContain('model: Value<I, C, ModelOf<"llm">>;');
 		expect(module).toContain('): Provider<In, Ctx, "chatModel"> =>');

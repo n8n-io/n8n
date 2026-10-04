@@ -95,6 +95,7 @@ export type {
 	FromModel,
 	FromSchema,
 	Loose,
+	Maybe,
 	ModelCatalog,
 	ModelOf,
 	NodeOutputs,
@@ -506,24 +507,50 @@ export function trigger<const N extends string, Out = Loose>(config: {
 	});
 }
 
-/** Keys of `In` whose value is an array. */
-export type ListField<In> = {
-	[K in keyof In]-?: NonNullable<In[K]> extends readonly unknown[] ? K : never;
-}[keyof In] &
-	string;
+/**
+ * Dot paths of `In` to an array, e.g. `body.orders`, at most 3 fields deep. Below a field typed
+ * `any`, such as an open webhook body, any path fits.
+ */
+export type ListField<In, Depth extends unknown[] = []> = Depth['length'] extends 3
+	? never
+	: {
+			[K in keyof In & string]-?: 0 extends 1 & In[K]
+				? K | `${K}.${string}`
+				: NonNullable<In[K]> extends readonly unknown[]
+					? K
+					: NonNullable<In[K]> extends object
+						? `${K}.${ListField<NonNullable<In[K]>, [...Depth, unknown]>}`
+						: never;
+		}[keyof In & string];
 
-/** One item per element of `In[F]`: the element itself, or `{ [F]: element }` for a primitive. */
-export type ElementOf<In, F extends keyof In> = NonNullable<In[F]> extends ReadonlyArray<infer E>
-	? E extends object
-		? E
-		: { [P in F]: E }
-	: never;
+/** The value at the dot path `P` of `T`. */
+type ValueAt<T, P extends string> = P extends keyof T
+	? T[P]
+	: P extends `${infer Head}.${infer Rest}`
+		? Head extends keyof T
+			? ValueAt<NonNullable<T[Head]>, Rest>
+			: never
+		: never;
 
-/** Emit one item per element of the list field `field` (a Split Out node). */
+/**
+ * One item per element of the list at `F`: the element itself, or `{ [F]: element }` for a
+ * primitive. An untyped list gives `Loose` items.
+ */
+export type ElementOf<In, F extends string> = 0 extends 1 & ValueAt<In, F>
+	? Loose
+	: NonNullable<ValueAt<In, F>> extends ReadonlyArray<infer E>
+		? 0 extends 1 & E
+			? Loose
+			: E extends object
+				? E
+				: { [P in F]: E }
+		: never;
+
+/** Emit one item per element of the list at the dot path `field` (a Split Out node). */
 export function splitOut<In, Ctx, const N extends string, const F extends ListField<In>>(config: {
 	/** The node name. */
 	name: N;
-	/** The list field of the input item. */
+	/** The dot path to a list of the input item, e.g. `body.orders`. */
 	field: F;
 }): Step<In, Ctx, ElementOf<In, F>, N> {
 	const { name, field } = config;

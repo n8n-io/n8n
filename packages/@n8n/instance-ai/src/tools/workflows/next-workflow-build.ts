@@ -800,6 +800,16 @@ function moduleImportHint(error: string): string | undefined {
 	return `\`${name}\` is a typed module, not part of the flow API: \`import { ${name} } from '@n8n/nodes/${name}'\`.${call}`;
 }
 
+/** A name of a typed module, alone or joined to a step, e.g. `items_removeDuplicates`. */
+function moduleNameHint(error: string): string | undefined {
+	const name = /Cannot find name '(\w+)'/.exec(error)?.[1];
+	const id = nextNodeIds.find((nodeId) => name === nodeId || name?.startsWith(`${nodeId}_`));
+	if (name === undefined || id === undefined) return undefined;
+	const path = name.split('_').join('.');
+	const step = actions.some((action) => action.id === path) ? path : `${id}.<step>`;
+	return `\`${id}\` is a typed module: \`import { ${id} } from '@n8n/nodes/${id}'\`. Call its steps as members, e.g. \`${step}({ name, … })\`.`;
+}
+
 /** A module or resource object of a typed module, e.g. `'{ pass: <In, Ctx, …'`. */
 const MODULE_OBJECT = /[Tt]ype '\{ (?:(\w+): \{ )?(\w+): <In, Ctx\b/;
 
@@ -808,6 +818,9 @@ const moduleStepHint = (lead: string) => (_macros: string, error: string) => {
 	const path = [resource, step].filter((part) => part !== undefined).join('.');
 	return `${lead} Call a step that its type lists, e.g. \`.${path}({ name })\`. \`nodes(action="type-definition")\` shows them all.`;
 };
+
+const UNDEFINED_LAMBDA_HINT =
+	"The lambda can return undefined, but the field takes no undefined. Give the missing case a value, e.g. `item.f ?? ''`. A field of an item can be missing: a file name of a `binary`, a webhook `schema` field without `required`, an output field of a failed item (`onError: 'continueRegularOutput'`).";
 
 const UNDEFINED_HINT =
 	"The value can be undefined. After a step with `onError: 'continueRegularOutput'`, check `item.error === undefined` first: then its output fields are set. A `schema` field is optional until its `required` list names it: add it there if the data always has it. Else give a default, e.g. `item.f ?? ''`.";
@@ -842,6 +855,12 @@ const TSC_HINTS: ReadonlyArray<{
 		message: /^This expression is not callable/,
 		detail: MODULE_OBJECT,
 		hint: moduleStepHint('A typed module is an object of steps, not a function.'),
+	},
+	{
+		codes: [2349],
+		message: /^This expression is not callable/,
+		hint: () =>
+			"This value is not a function. A lambda gets the item first and `$` second: `(item, $) => $('Node').field`, not `($) => …`.",
 	},
 	{
 		codes: [2345],
@@ -965,6 +984,13 @@ const TSC_HINTS: ReadonlyArray<{
 			'This lambda gets no parameter types: the field it fills or the value it maps has the type `any`. Give the step that outputs the value `sample` items. For a field, use a typed step, e.g. the flow `set({ name, fields })`. Do not annotate the parameters.',
 	},
 	{
+		codes: [2322],
+		message: /^Type '\(.*\) => [^']*\| undefined' is not assignable/,
+		// Only `undefined` misses the field type, not another type.
+		detail: /\n\s*Type 'undefined' is not assignable/,
+		hint: () => UNDEFINED_LAMBDA_HINT,
+	},
+	{
 		codes: [2322, 2345],
 		message: /(?:^|: )(?:Type|Argument of type) '.*\| undefined' is not assignable/,
 		hint: () => UNDEFINED_HINT,
@@ -1030,6 +1056,11 @@ const TSC_HINTS: ReadonlyArray<{
 		// Expressions and Code text always have `$`: only a lambda without the parameter lacks it.
 		message: /^Cannot find name '\$'/,
 		hint: () => "In a lambda, `$` is the second parameter: `(item, $) => $('Node').field`.",
+	},
+	{
+		codes: [2304],
+		message: /^Cannot find name '\w+'/,
+		hint: (_macros, error) => moduleNameHint(error),
 	},
 ];
 

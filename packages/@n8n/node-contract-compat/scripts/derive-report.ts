@@ -390,6 +390,7 @@ async function main() {
 				{
 					contract: { ...action.contract, output },
 					nodeType: action.compile.target.type,
+					native: true,
 					resource: path.length > 1 ? path[0] : undefined,
 					operation: path[path.length - 1] ?? '',
 				},
