@@ -66,7 +66,7 @@ export const webhookTrigger = webhook.trigger('trigger', {
 			query: t.record(t.union(t.str(), t.arr(t.str()))).hint('A repeated key gives a list'),
 			body: t
 				.declared()
-				.hint('Declare its JSON Schema in schema.body to type it; n8n does not check the body'),
+				.hint('Declare its JSON Schema, with required, in schema.body; n8n does not check it'),
 			webhookUrl: t.str(),
 			executionMode: t.oneOf('test', 'production'),
 		}),

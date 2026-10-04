@@ -166,14 +166,17 @@ type Fields<F> = {
 } & {};
 
 /**
- * A fixed value as a field type: `false` is `boolean`, as `''` is `string`. Else a loop state
- * that starts as `{ done: false }` does not take the `boolean` of a later pass.
+ * A fixed value as a field type: `false` is `boolean`, as `''` is `string`, and `[]` is
+ * `unknown[]`. Else a loop state that starts as `{ done: false, chain: [] }` does not take the
+ * `boolean` or the list of a later pass.
  */
 type Widened<V> = V extends boolean
 	? boolean
-	: V extends object
-		? { -readonly [K in keyof V]: Widened<V[K]> }
-		: V;
+	: [V] extends [readonly never[]]
+		? unknown[]
+		: V extends object
+			? { -readonly [K in keyof V]: Widened<V[K]> }
+			: V;
 
 /**
  * Start a workflow when the user clicks Execute. It emits one empty item. Pass `sample` items

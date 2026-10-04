@@ -113,6 +113,48 @@ describe('workflowSourceAfterWrite', () => {
 		expect(diagnostics).toEqual([]);
 	});
 
+	it('returns the grouping refusal of the build for a canvas over the ceiling without a group', async () => {
+		const names = ['Start', 'A', 'B', 'C', 'D', 'E', 'F', 'G'];
+		const nodes = names.map((name, index) => ({
+			id: `id-${name}`,
+			name,
+			type: index === 0 ? 'n8n-nodes-base.manualTrigger' : 'n8n-nodes-base.noOp',
+			typeVersion: 1,
+			position: [index * 200, 0] as [number, number],
+			parameters: {},
+		}));
+		const connections = Object.fromEntries(
+			names
+				.slice(1)
+				.map((name, index) => [
+					names[index],
+					{ main: [[{ node: name, type: 'main' as const, index: 0 }]] },
+				]),
+		);
+		compile.mockResolvedValue({
+			success: true,
+			workflow: { name: 'A', nodes, connections },
+			warnings: [],
+			compiler: 'sandbox-tsx',
+		});
+		const afterWrite = workflowSourceAfterWrite(contextWith());
+		const file = { path: 'src/a.workflow.ts', content: NEXT_SOURCE };
+
+		expect(await afterWrite?.(file, {})).toEqual([
+			expect.stringMatching(
+				/^\[GROUPING_DECISION_MISSING\]: The canvas would have 8 boxes .* Ungrouped: A, B, C, D, E, F, G\. Wrap each stage in `group\(/,
+			),
+		]);
+
+		compile.mockResolvedValue({
+			success: true,
+			workflow: { name: 'A', nodes: nodes.slice(0, 7), connections },
+			warnings: [],
+			compiler: 'sandbox-tsx',
+		});
+		expect(await afterWrite?.(file, {})).toEqual([]);
+	});
+
 	it('does not check other files', async () => {
 		const afterWrite = workflowSourceAfterWrite(contextWith());
 		const legacy = "import { workflow } from '@n8n/workflow-sdk';\n";

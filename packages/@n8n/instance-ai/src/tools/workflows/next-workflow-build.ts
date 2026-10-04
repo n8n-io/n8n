@@ -889,6 +889,18 @@ const TSC_HINTS: ReadonlyArray<{
 			'A group is a part of the list: `group({ name, description }, steps(stepA, stepB))`. It frames its nodes on the canvas.',
 	},
 	{
+		codes: [2558],
+		message: /^Expected \d+(?:-\d+)? type arguments/,
+		hint: () =>
+			'Remove the type arguments: a step infers its types. Give `node()` or `trigger()` `sample` items to type its output.',
+	},
+	{
+		codes: [2322],
+		message: /^Type '"continueErrorOutput"' is not assignable/,
+		hint: () =>
+			"Do not set `onError: 'continueErrorOutput'`. Put `onError(part)` after the step: it takes the errors of the step and sets its error output.",
+	},
+	{
 		codes: [2339],
 		message: /^Property 'settings' does not exist on type 'Workflow'/,
 		hint: () =>

@@ -101,6 +101,14 @@ function blockDeclarations(block: acorn.BlockStatement): string[] {
 	);
 }
 
+/** The bundle of a sandbox build reads a named import as `import_<module>.<name>`. */
+const BUNDLED_IMPORT = /^import_\w+$/;
+
+const freeNameError = (name: string) =>
+	`The lambda reads "${name}", which n8n cannot see at runtime. Inline the value or read it with $("Node")${
+		name === 'placeholder' ? '. Give placeholder(…) as the whole field value, not in a lambda' : ''
+	}`;
+
 function readParams(params: acorn.Pattern[]): Params | string {
 	const [item, dollar, ...rest] = params;
 	if (rest.length > 0) return 'A lambda takes at most two parameters: (item, $)';
@@ -252,10 +260,23 @@ class LambdaCompiler {
 		} else if (node.name === this.params.dollar) {
 			this.errors.push('Use $ as $("Node") or $.now; it is not a value');
 		} else if (!GLOBALS.has(node.name)) {
-			this.errors.push(
-				`The lambda reads "${node.name}", which n8n cannot see at runtime. Inline the value or read it with $("Node")`,
-			);
+			this.errors.push(freeNameError(node.name));
 		}
+	}
+
+	private bundledImport(node: acorn.MemberExpression, scope: ReadonlySet<string>): boolean {
+		const { object, property } = node;
+		if (
+			object.type !== 'Identifier' ||
+			!BUNDLED_IMPORT.test(object.name) ||
+			scope.has(object.name) ||
+			node.computed ||
+			property.type !== 'Identifier'
+		) {
+			return false;
+		}
+		this.errors.push(freeNameError(property.name));
+		return true;
 	}
 
 	visit(node: acorn.AnyNode, scope: ReadonlySet<string>): void {
@@ -269,7 +290,8 @@ class LambdaCompiler {
 				if (
 					this.binaryMember(node, scope) ||
 					this.wrapperRead(node, scope) ||
-					this.dollarMember(node)
+					this.dollarMember(node) ||
+					this.bundledImport(node, scope)
 				)
 					return;
 				this.visit(node.object, scope);
@@ -302,6 +324,17 @@ class LambdaCompiler {
 			case 'VariableDeclarator':
 				if (node.init) this.visit(node.init, scope);
 				return;
+			case 'ForStatement':
+			case 'ForInStatement':
+			case 'ForOfStatement': {
+				const head = node.type === 'ForStatement' ? node.init : node.left;
+				const inner =
+					head?.type === 'VariableDeclaration'
+						? new Set([...scope, ...head.declarations.flatMap(({ id }) => patternNames(id))])
+						: scope;
+				for (const child of childNodes(node)) this.visit(child, inner);
+				return;
+			}
 			case 'LabeledStatement':
 			case 'BreakStatement':
 			case 'ContinueStatement':
@@ -373,21 +406,20 @@ export function compileLambdaSource(
 	}
 	const params = readParams(parsed.params);
 	if (typeof params === 'string') return { ok: false, error: params };
-	const body = bodyExpression(parsed);
-	if (!body) {
-		return {
-			ok: false,
-			error:
-				"Give the lambda one expression body: (item) => …, not a block with const and return. Repeat a read such as $('Node').field where you use it, or make the value in a set step before",
-		};
-	}
+	// n8n evaluates an expression, so a block body runs as a function that the expression calls.
+	const body = bodyExpression(parsed) ?? parsed.body;
 
 	const compiler = new LambdaCompiler(params, root, nodeNames);
 	compiler.visit(body, new Set());
 	if (compiler.errors.length > 0) return { ok: false, error: compiler.errors.join('; ') };
 
 	const rewritten = compiler.rewrite(source, body);
-	const js = body.type === 'ObjectExpression' ? `(${rewritten})` : rewritten;
+	const js =
+		body.type === 'BlockStatement'
+			? `(() => ${rewritten})()`
+			: body.type === 'ObjectExpression'
+				? `(${rewritten})`
+				: rewritten;
 	if (body.type === 'TemplateLiteral') {
 		const text = body.quasis
 			.map((quasi, index) => {

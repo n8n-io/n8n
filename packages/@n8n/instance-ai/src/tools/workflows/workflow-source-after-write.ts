@@ -1,7 +1,13 @@
 import { isAbortError, raceWithAbort, type WorkspaceAfterWrite } from '@n8n/agents';
 import { getWorkspaceRoot } from '@n8n/agents/sandbox';
+import type { WorkflowJSON } from '@n8n/workflow-sdk';
 
 import { compileWorkflowSource, isTypeScriptWorkflowSource } from './workflow-source-compiler';
+import {
+	contractLoopsOf,
+	groupingDecisionBlocker,
+	summarizeWorkflowTopLevelItems,
+} from './workflow-validation-warnings';
 import type { InstanceAiContext } from '../../types';
 import { normalizeWorkspaceRelativePath } from '../../workspace/workspace-paths';
 
@@ -13,10 +19,25 @@ export const WRITE_CHECK_DEADLINE_MS = 15_000;
 export const WRITE_CHECK_TIMEOUT_NOTE = `The check of this file did not complete in ${WRITE_CHECK_DEADLINE_MS / 1_000} s. build-workflow checks it.`;
 
 /**
+ * The refusal of build-workflow for a canvas over the ceiling without a group. An edit that adds
+ * nodes gets it at the write, so the agent groups before the build.
+ */
+async function groupingDiagnostics(workflow: WorkflowJSON): Promise<string[]> {
+	const summary = summarizeWorkflowTopLevelItems(workflow, await contractLoopsOf(workflow));
+	const blocker = groupingDecisionBlocker({
+		summary,
+		declaredGroupCount: summary.groupCount,
+		droppedGroupWarnings: [],
+		nextSource: true,
+	});
+	return blocker ? [`[${blocker.code}]: ${blocker.message}`] : [];
+}
+
+/**
  * Node contracts: when a workspace tool writes a typed workflow source, run the check of
- * build-workflow on it (the sandbox build, tsc, n8n expressions, Code text, fixed inputs), so the
- * tool result has the errors that the build would return. It saves nothing. A check that fails
- * to run adds nothing: build-workflow still checks the source.
+ * build-workflow on it (the sandbox build, tsc, n8n expressions, Code text, fixed inputs, groups),
+ * so the tool result has the errors that the build would return. It saves nothing. A check that
+ * fails to run adds nothing: build-workflow still checks the source.
  */
 export function workflowSourceAfterWrite(
 	context: InstanceAiContext,
@@ -40,7 +61,7 @@ export function workflowSourceAfterWrite(
 					compileWorkflowSource(context, filePath, content, signal),
 					signal,
 				);
-				return result.success ? [] : result.errors;
+				return result.success ? await groupingDiagnostics(result.workflow) : result.errors;
 			} catch (error) {
 				if (abortSignal?.aborted) throw error;
 				if (deadline.signal.aborted && isAbortError(error)) return [WRITE_CHECK_TIMEOUT_NOTE];

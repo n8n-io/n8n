@@ -1152,6 +1152,14 @@ describe('tsc hints', () => {
 			'A group is a part of the list: `group({ name, description }, steps(stepA, stepB))`. It frames its nodes on the canvas.',
 		],
 		[
+			'TS2558: Expected 3 type arguments, but got 1.',
+			'Remove the type arguments: a step infers its types. Give `node()` or `trigger()` `sample` items to type its output.',
+		],
+		[
+			'TS2322: Type \'"continueErrorOutput"\' is not assignable to type \'"continueRegularOutput" | "stopWorkflow" | undefined\'.',
+			"Do not set `onError: 'continueErrorOutput'`. Put `onError(part)` after the step: it takes the errors of the step and sets its error output.",
+		],
+		[
 			"TS2339: Property 'settings' does not exist on type 'Workflow'.",
 			"Workflow settings go in the first argument: `workflow({ name, settings: { errorWorkflow: '<id>' } }, trigger, \u2026)`.",
 		],

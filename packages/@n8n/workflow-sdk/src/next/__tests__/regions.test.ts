@@ -813,6 +813,19 @@ describe('regions compile to node contracts', () => {
 			),
 		);
 		workflow(
+			'Loop with an empty list state',
+			manual(),
+			set({ name: 'Init', fields: { chain: [], id: 'e1' } }),
+			loop(
+				{ name: 'Walk', maxIterations: 3, onLimit: 'continue', until: (out) => out.id === '' },
+				set({
+					name: 'Step',
+					fields: { chain: (s, $) => [...$('Walk').chain, s.id], id: (s) => s.id.slice(1) },
+				}),
+			),
+			set({ name: 'Out', fields: { size: (out) => out.chain.length } }),
+		);
+		workflow(
 			'Loop needs next',
 			manual(),
 			set({ name: 'Init', fields: { n: 0 } }),

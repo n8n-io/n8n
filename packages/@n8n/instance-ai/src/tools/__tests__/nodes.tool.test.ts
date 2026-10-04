@@ -1768,7 +1768,7 @@ describe('nodes tool', () => {
 			);
 
 			expect(result.definitions[0].content).toBe(
-				"// No typed module. Use node({ name, type: 'n8n-nodes-base.mattermost', version: 2.3, parameters }) from '@n8n/workflow-sdk/next', or provider({ … }) for an AI provider.\nexport type MattermostV23Params = {}",
+				"// No typed module. Use node({ name, type: 'n8n-nodes-base.mattermost', version: 2.3, parameters, sample }) from '@n8n/workflow-sdk/next', or provider({ … }) for an AI provider. Its `sample` items type the output, not type arguments.\nexport type MattermostV23Params = {}",
 			);
 			expect(result.definitions[1].content).toContain('export const notion = {');
 			expect(result.definitions[2].content).toBe(
@@ -1797,6 +1797,27 @@ describe('nodes tool', () => {
 				'notion.databasePage.getAll: List pages of a Notion database, optionally filtered and sorted.',
 				'notion.user.get: Get one Notion user (a person or a bot) by ID.',
 			]);
+		});
+
+		it('starts the legacy definition of an operation without an action with how to use node()', async () => {
+			const context = createContractContext();
+			const legacy =
+				"export type GmailV22MessageSendAndWaitNode = {\n  type: 'n8n-nodes-base.gmail';\n  version: 2.2;\n};";
+			vi.mocked(context.nodeService.getNodeTypeDefinition!).mockResolvedValue({
+				version: 'v22',
+				content: legacy,
+			});
+			const result = await executeTool<{ definitions: Array<{ content: string }> }>(
+				createNodesTool(context, 'full'),
+				{
+					action: 'type-definition',
+					nodeTypes: [{ nodeType: 'n8n-nodes-base.notion', resource: 'page', operation: 'create' }],
+				},
+			);
+
+			expect(result.definitions[0].content).toBe(
+				`// The typed module has no action for this operation. Use node({ name, type: 'n8n-nodes-base.notion', version: 2.2, parameters, sample }) from '@n8n/workflow-sdk/next'. Its \`sample\` items type the output, not type arguments.\n${legacy}`,
+			);
 		});
 
 		it('returns the nearest actions for an unknown action id', async () => {

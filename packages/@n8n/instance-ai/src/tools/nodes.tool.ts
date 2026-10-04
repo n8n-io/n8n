@@ -690,6 +690,16 @@ function resolveModuleDefinition(request: NodeTypeRequest, source: DeriveSource)
 }
 
 /**
+ * The node type version of a legacy definition. The catalog names it by its file, e.g. `v22`
+ * for 2.2, so the version line of the definition is read first.
+ */
+function definitionVersion(result: { content: string; version?: string }): string {
+	const declared = /^\s*version: (\d+(?:\.\d+)?);$/m.exec(result.content)?.[1];
+	if (declared) return declared;
+	return result.version && /^\d+(?:\.\d+)?$/.test(result.version) ? result.version : '<version>';
+}
+
+/**
  * Resolve TypeScript type definitions for a validated list of node requests.
  * Used by the consolidated `nodes` tool's `type-definition` action.
  */
@@ -766,14 +776,19 @@ async function resolveNodeTypeDefinitions(
 
 			// The agent maps a classic definition to a guessed module unless told how to use it.
 			// A flow starts only from a trigger, so a trigger gets trigger(), not node().
-			const version = result.version ?? '<version>';
+			// Its `…Node` type reads like a type argument of node(), so the hint says what types the output.
+			const version = definitionVersion(result);
+			const nodeCall = `node({ name, type: '${nodeType}', version: ${version}, parameters, sample }) from '@n8n/workflow-sdk/next'`;
+			const sampleNote = 'Its `sample` items type the output, not type arguments.';
 			const noModuleHint = builtInRow
 				? `// Use the flow step instead of node(): ${builtInRow}\n`
-				: !context.nodeContractsEnabled || moduleNode
+				: !context.nodeContractsEnabled
 					? ''
-					: isTriggerNodeType(nodeType)
-						? `// No typed module. Start the flow with trigger({ name, type: '${nodeType}', version: ${version}, parameters, sample }) from '@n8n/workflow-sdk/next'.\n`
-						: `// No typed module. Use node({ name, type: '${nodeType}', version: ${version}, parameters }) from '@n8n/workflow-sdk/next', or provider({ … }) for an AI provider.\n`;
+					: moduleNode
+						? `// The typed module has no action for this operation. Use ${nodeCall}. ${sampleNote}\n`
+						: isTriggerNodeType(nodeType)
+							? `// No typed module. Start the flow with trigger({ name, type: '${nodeType}', version: ${version}, parameters, sample }) from '@n8n/workflow-sdk/next'.\n`
+							: `// No typed module. Use ${nodeCall}, or provider({ … }) for an AI provider. ${sampleNote}\n`;
 			return {
 				nodeType,
 				version: result.version,

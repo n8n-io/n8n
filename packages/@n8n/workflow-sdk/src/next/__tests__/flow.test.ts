@@ -47,7 +47,7 @@ import {
 	node as rootNode,
 	trigger as rootTrigger,
 } from '../../workflow-builder/node-builders/node-builder';
-import { compileBinaryKey, compileLambda } from '../lambda';
+import { compileBinaryKey, compileLambda, compileLambdaSource } from '../lambda';
 
 // The build declares each node with `onError: 'continueRegularOutput'` like this.
 declare module '../flow' {
@@ -172,6 +172,37 @@ describe('compileLambda', () => {
 		expect(expressionOf((item: Record<string, string>) => item['binary'])).toBe(
 			'={{ $json["binary"] }}',
 		);
+	});
+
+	it('compiles a block body to a function that n8n calls', () => {
+		const result = compileLambda((page: Page, $: { now: { year: number } }) => {
+			const others = page.property_owners.filter((owner) => owner !== page.name);
+			for (const tag of page.tags) if (tag === 'skip') return [];
+			return others.length === 0 ? [$.now.year] : others;
+		}, names);
+		expect(squash(result.ok && result.expression)).toBe(
+			'={{ (() => { const others = $json.property_owners.filter((owner) => owner !== $json.name); for (const tag of $json.tags) if (tag === "skip") return []; return others.length === 0 ? [$now.year] : others; })() }}',
+		);
+		const limit = 5;
+		expect(
+			compileLambda((page: Page) => {
+				const owners = page.property_owners;
+				return owners.length > limit;
+			}, names),
+		).toEqual({ ok: false, error: expect.stringContaining('reads "limit"') });
+	});
+
+	it('names the import that a lambda calls', () => {
+		expect(
+			compileLambdaSource("(item) => 'Hi ' + (0, import_next.placeholder)('Name')", names),
+		).toEqual({
+			ok: false,
+			error: expect.stringContaining('The lambda reads "placeholder"'),
+		});
+		expect(compileLambdaSource("(item) => 'Hi ' + placeholder('Name')", names)).toEqual({
+			ok: false,
+			error: expect.stringContaining('Give placeholder(…) as the whole field value'),
+		});
 	});
 
 	it('rejects local variables and unknown nodes', () => {

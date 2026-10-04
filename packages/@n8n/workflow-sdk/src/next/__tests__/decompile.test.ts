@@ -1163,6 +1163,26 @@ describe('decompileWorkflow', () => {
 		expect(source).toContain('first: expr("{{ $input.first().json.id }}"),');
 	});
 
+	it('round-trips a lambda with a block body', () => {
+		const json = workflow(
+			'Block',
+			manual({ sample: [{ tags: ['a', 'b'] }] }),
+			set({
+				name: 'Summary',
+				fields: {
+					text: (item) => {
+						const tags = item.tags.filter((tag) => tag !== 'a');
+						return tags.length === 0 ? 'none' : tags.join(', ');
+					},
+				},
+			}),
+		).toJSON();
+		const { source, rebuilt, again } = roundTrip(json);
+		expect(withoutIds(rebuilt)).toEqual(withoutIds(json));
+		expect(again).toBe(source);
+		expect(source).toContain('text: (item) => (() => {');
+	});
+
 	it('reads an Edit Fields node with dotted keys and kept field paths as set', () => {
 		const json = workflow(
 			'Fields',
