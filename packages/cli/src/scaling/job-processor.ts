@@ -369,6 +369,9 @@ export class JobProcessor {
 		if (workflowExecute && this.isJobSuspendable(job, execution)) {
 			const suspendable = workflowExecute;
 			runningJob.suspend = () => suspendable.suspend();
+			// A job that was still in its preflight reads when shutdown asked the
+			// running jobs to suspend would otherwise run to completion unasked.
+			if (this.suspensionRequested) runningJob.suspend();
 		}
 
 		this.runningJobs[job.id] = runningJob;
@@ -589,6 +592,9 @@ export class JobProcessor {
 	 * streaming responses cannot migrate mid-stream, and MCP executions are
 	 * pinned to their session.
 	 */
+	/** Set once at shutdown; jobs that register afterwards suspend right away. */
+	private suspensionRequested = false;
+
 	private isJobSuspendable(job: Job, execution: IExecutionResponse): boolean {
 		const isProductionMode = ['webhook', 'trigger', 'retry'].includes(execution.mode);
 
@@ -602,6 +608,7 @@ export class JobProcessor {
 
 	/** Ask every suspendable running job to stop at its next node boundary. */
 	suspendRunningJobs() {
+		this.suspensionRequested = true;
 		const executionIds: string[] = [];
 
 		for (const runningJob of Object.values(this.runningJobs)) {
