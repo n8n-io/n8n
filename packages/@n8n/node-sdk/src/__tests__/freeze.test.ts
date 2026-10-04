@@ -12,6 +12,7 @@ import {
 	type ExecutorHost,
 	type FrozenVersion,
 } from '../runtime';
+import { loadTriggerExecutor } from '../triggers';
 
 it('GUEST_LACKS are globals of Node, besides the CommonJS names', () => {
 	expect(GUEST_LACKS.filter((name) => !(name in globalThis))).toEqual(['__dirname', '__filename']);
@@ -212,6 +213,74 @@ describe('the manifest as the permission source', () => {
 		setPermissionRefusalListener(undefined);
 		expect(refusals).toEqual([
 			expect.objectContaining({ action: 'api.get', version: '1.0.0', permission: 'manifest' }),
+		]);
+	});
+});
+
+const triggerSource = `import { defineNode, t } from '@n8n/node-sdk';
+const api = defineNode({ id: 'api', displayName: 'API', baseUrl: 'https://api.probe.test/v1' });
+export const hookTrigger = api.trigger('hooked', {
+	trigger: 'On hook',
+	summary: 'Starts on a hook.',
+	input: {},
+	output: t.obj({ value: t.str() }),
+	webhook: {
+		verify: { algorithm: 'sha256', header: 'x-signature', secret: 'generated' },
+		emit: () => [{ value: 'ok' }],
+	},
+});
+`;
+
+describe('the manifest of a trigger as the permission source', () => {
+	const state: { root: string; frozen?: FrozenAction } = { root: '' };
+	const versionOf = (contract: Record<string, unknown> = {}): FrozenVersion => {
+		if (!state.frozen) throw new Error('Not frozen');
+		const { manifest, bundle } = state.frozen;
+		return {
+			manifest: { ...manifest, contract: { ...manifest.contract, ...contract } },
+			origin: 'first-party',
+			readBundle: async () => bundle,
+		};
+	};
+
+	beforeAll(async () => {
+		state.root = await mkdtemp(path.join(tmpdir(), 'node-sdk-trigger-manifest-'));
+		const entry = path.join(state.root, 'hook.ts');
+		await writeFile(entry, triggerSource);
+		state.frozen = await freezeAction(entry, 'hookTrigger');
+	});
+
+	afterAll(async () => {
+		await rm(state.root, { recursive: true, force: true });
+	});
+
+	it('holds the host of the node base URL and the webhook signature', () => {
+		expect(state.frozen?.manifest.contract).toMatchObject({
+			egress: { hosts: ['api.probe.test'] },
+			verify: { algorithm: 'sha256', header: 'x-signature', secret: 'generated' },
+		});
+	});
+
+	it('loads a trigger bundle that grants what its manifest grants', async () => {
+		await expect(loadTriggerExecutor(versionOf())).resolves.toBeTypeOf('function');
+	});
+
+	it.each([
+		[
+			'another host',
+			{ egress: { hosts: ['evil.test'] } },
+			'grants other permissions than its manifest. egress: the bundle grants {"hosts":["api.probe.test"]',
+		],
+		['no signature', { verify: undefined }, 'checks another webhook signature than its manifest'],
+	])('refuses a trigger bundle whose manifest has %s', async (_what, contract, message) => {
+		const refusals: PermissionRefusal[] = [];
+		setPermissionRefusalListener((refusal) => refusals.push(refusal));
+		await expect(loadTriggerExecutor(versionOf(contract))).rejects.toThrow(
+			`The bundle of api.hooked@1.0.0 ${message}`,
+		);
+		setPermissionRefusalListener(undefined);
+		expect(refusals).toEqual([
+			expect.objectContaining({ action: 'api.hooked', version: '1.0.0', permission: 'manifest' }),
 		]);
 	});
 });

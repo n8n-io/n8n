@@ -1,5 +1,5 @@
 // The core of the generic JS guests of the sandbox. Each kind interface has one WASM component
-// for every JS bundle of that kind: `action.ts` and `provider.ts`. The bundle runs in the same
+// for every JS bundle of that kind: `action.ts`, `provider.ts` and `trigger.ts`. The bundle runs in the same
 // JS realm, so this code is not a trust boundary: the sidecar links only the granted imports,
 // and the host checks every call and every output.
 import { source } from 'n8n:js-guest/bundle@1.0.0';
@@ -14,8 +14,8 @@ import { log as witLog } from 'n8n:node-contract/log@2.6.0';
 import { get as witCredential } from 'n8n:node-contract/run-credential@2.6.0';
 import { OperationalError, safeRegex, UserError } from 'n8n-workflow';
 
-import { isHttpError, type Action, type HttpRequest } from '../src/define';
-import type { JsonSchema } from '../src/schema';
+import { isHttpError, type Action, type Http, type HttpRequest, type Trigger } from '../src/define';
+import type { Binary, JsonSchema } from '../src/schema';
 import type { ChatMessage, ChatReply, ChatRequest, ToolCall } from '../src/providers';
 
 export const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -26,6 +26,11 @@ const isAction = (value: unknown): value is Action =>
 	typeof value.id === 'string' &&
 	isRecord(value.flow) &&
 	(typeof value.run === 'function' || isRecord(value.request) || isRecord(value.list));
+
+const isTrigger = (value: unknown): value is Trigger =>
+	isRecord(value) &&
+	typeof value.id === 'string' &&
+	(isRecord(value.poll) || isRecord(value.webhook));
 
 // The engine has no network and no timers. A clear error is better than a trap.
 const unavailable = (name: string, instead: string) => () => {
@@ -52,13 +57,12 @@ const HOST_MODULES: Readonly<Record<string, unknown>> = {
 };
 
 /** The bundle loads at the first call, not at build time: its source is an import. */
-const loaded = new Map<'action', Action>();
-export function actionOf(): Action {
-	const cached = loaded.get('action');
-	if (cached) return cached;
+const loaded = new Map<'bundle', unknown>();
+function exportOf(): unknown {
+	if (loaded.has('bundle')) return loaded.get('bundle');
 	const module: { exports: unknown } = { exports: {} };
 	const hostRequire = (id: string) => {
-		if (!(id in HOST_MODULES)) throw new Error(`A frozen action cannot import ${id}`);
+		if (!(id in HOST_MODULES)) throw new Error(`A frozen bundle cannot import ${id}`);
 		return HOST_MODULES[id];
 	};
 	// The engine has no `node:vm`. The bundle runs in this realm either way.
@@ -66,14 +70,27 @@ export function actionOf(): Action {
 	const evaluate = new Function('module', 'require', source());
 	Reflect.apply(evaluate, undefined, [module, hostRequire]);
 	const exported = isRecord(module.exports) ? module.exports.default : undefined;
+	loaded.set('bundle', exported);
+	return exported;
+}
+
+/** The action or provider that the bundle exports. */
+export function actionOf(): Action {
+	const exported = exportOf();
 	if (!isAction(exported)) throw new Error('The bundle does not export an action');
-	loaded.set('action', exported);
+	return exported;
+}
+
+/** The trigger that the bundle exports. */
+export function triggerOf(): Trigger {
+	const exported = exportOf();
+	if (!isTrigger(exported)) throw new Error('The bundle does not export a trigger');
 	return exported;
 }
 
 /** `describe` of a kind interface: the contract of the bundle as JSON. */
 export const describe = () =>
-	JSON.stringify(actionOf(), (_key, value: unknown) =>
+	JSON.stringify(exportOf(), (_key, value: unknown) =>
 		typeof value === 'function' ? undefined : value,
 	);
 
@@ -176,6 +193,19 @@ export function jsonRequest(request: HttpRequest): unknown {
 		}),
 	);
 	return responseOf(response, parsed(response.body), request.fullResponse);
+}
+
+/** The `http` of a kind without binary data: JSON requests only. */
+export function jsonHttp(kind: string): Http {
+	function request(
+		options: HttpRequest & { readonly response: 'binary'; readonly fullResponse?: false },
+	): Promise<Binary>;
+	function request(options: HttpRequest): Promise<unknown>;
+	async function request(options: HttpRequest): Promise<unknown> {
+		if (options.response === 'binary') throw new Error(`A ${kind} has no binary data`);
+		return jsonRequest(options);
+	}
+	return { request };
 }
 
 export const log = (level: 'debug' | 'info' | 'warn' | 'error', message: string) =>

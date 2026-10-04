@@ -645,6 +645,9 @@ export function diffContracts(prev: ContractDocument, next: ContractDocument): C
 		...(canonicalJson(prev.endpoint) !== canonicalJson(next.endpoint)
 			? [major('webhook endpoint changed')]
 			: []),
+		...(canonicalJson(prev.verify) !== canonicalJson(next.verify)
+			? [major('webhook signature changed')]
+			: []),
 		...(prev.credentialOptional === next.credentialOptional
 			? []
 			: next.credentialOptional

@@ -50,7 +50,7 @@ in-process. Community and AI-generated bundles run in the sandbox.
 flowchart LR
   E[executorOf: validation, egress, credentials, limits, pairing] -- run ctx --> S[src/sandbox.ts]
   S -- JSON-RPC on stdio --> W[n8n-sandbox: wasmtime]
-  W -- WIT calls --> G[action.wasm or provider.wasm: StarlingMonkey + bundle JS]
+  W -- WIT calls --> G[action.wasm, provider.wasm or trigger.wasm: StarlingMonkey + bundle JS]
   G -- imports --> W -- granted imports --> S -- ctx.http, ctx.dataTables, ... --> E
 ```
 
@@ -59,9 +59,9 @@ flowchart LR
   each import of the world with a dynamic host function, so one sidecar serves every world and
   version. The command line holds the component, the world, the grants and the limits; the
   JSON-RPC stream holds only the protocol. `wasi:random` is linked to the OS random source.
-- `sandbox/action.ts` and `sandbox/provider.ts`, on the core `sandbox/guest.ts`: one generic guest
-  component for each kind interface, `action.wasm` and `provider.wasm`, for every JS bundle of
-  that kind. A WIT world cannot import and export `capabilities`, so one component cannot serve
+- `sandbox/action.ts`, `sandbox/provider.ts` and `sandbox/trigger.ts`, on the core
+  `sandbox/guest.ts`: one generic guest component for each kind interface, `action.wasm`,
+  `provider.wasm` and `trigger.wasm`, for every JS bundle of that kind. A WIT world cannot import and export `capabilities`, so one component cannot serve
   both. n8n builds and signs them. A guest evaluates the bundle, maps `RunContext` to the imports,
   and runs the `request` and `list` bindings with the SDK code. It gets its bundle code from the
   sidecar through `n8n:js-guest/bundle` (`sandbox/wit/guest.wit`). That interface is not a
@@ -114,13 +114,31 @@ flowchart LR
   limit apply. The host checks each value that the provider gives (chat reply, messages, tool,
   vectors).
 
+### Triggers
+
+- A trigger entry point (`poll`, the webhook methods `checkExists`, `create` and `delete`, and
+  `webhook`) is one executor run of the action that `triggerRunOf` (in-process) or
+  `sandboxedVersionOf` (sandbox) makes. The call (`TriggerCall`) is its one item, and the call
+  result is its one output item. So a trigger request takes the egress, the input hosts, the
+  response limit, the refusal report, the retries and the redaction of an action request.
+- `toVersionedTriggerType` gets the executor from the executor loader of the host, as an action
+  does. `sandboxExecutorLoader` runs a first-party trigger in this process
+  (`loadTriggerExecutor`) and every other trigger in `trigger.wasm`.
+- The guest runs `runTriggerCall`, the same code as in this process. The host keeps the state in
+  the static data of the node, generates the webhook secret, and checks the webhook signature
+  of the manifest (`contract.verify`) before the guest gets the request. The trigger world has
+  no `run-credential` import: the host applies the credential to each request.
+- `poll` gets the poll time `at`, because the guest has no clock.
+- The host refuses a webhook bundle whose signature is not the signature of its manifest, in this
+  process and in the sandbox (from `describe()`).
+
 ### n8n configuration
 
 | Variable | Default | Meaning |
 |---|---|---|
 | `N8N_NODE_CONTRACT_SANDBOX` | `off` | `off`: every bundle runs in the n8n process. `stored`: a version that is not first-party runs in the sandbox. `all`: every version runs in the sandbox. n8n logs a warning for another value and uses `off`, as for each n8n setting. |
 | `N8N_NODE_CONTRACT_SANDBOX_SIDECAR` | — | The `n8n-sandbox` binary. |
-| `N8N_NODE_CONTRACT_SANDBOX_GUESTS` | — | The directory with `action.wasm` and `provider.wasm`. |
+| `N8N_NODE_CONTRACT_SANDBOX_GUESTS` | — | The directory with `action.wasm`, `provider.wasm` and `trigger.wasm`. |
 | `N8N_NODE_CONTRACT_SANDBOX_CACHE_DIR` | `<n8n folder>/node-contracts/sandbox` | Compiled guests and verified bundles. Only n8n may write it. |
 | `N8N_NODE_CONTRACTS_FIRST_PARTY_KEY_FILE` | — | PEM of the first-party key. A version that it signs is first-party. |
 | `N8N_NODE_CONTRACTS_VETTING_KEY_FILE` | — | PEM of the vetting key. A version that it signs, and the first-party key does not, is community. |
@@ -183,7 +201,7 @@ A trap stops the component: every later call of the execution gets the same erro
 
 `versions.test.ts` of nodes-base-next replays the fixtures of every frozen action in the sandbox.
 84 of 84 pass, the 6 binary-data actions, the 3 AI roots and the 5 providers included. The 2
-triggers have no sandbox world yet. The CI job `ci-node-contract-sandbox.yml` builds the sandbox
+triggers have no fixtures; `sandbox.test.ts` runs a poll and a webhook trigger in the sandbox. The CI job `ci-node-contract-sandbox.yml` builds the sandbox
 and runs these tests, so they do not skip there.
 
 A bundle must use web APIs only. `freezeAction` refuses a bundle that uses what the guest does not
@@ -213,15 +231,15 @@ Measured on macOS arm64 (load 9 to 12), medians, for `slack.message.send`,
 A real API call takes 50 to 500 ms, so the sandbox adds little to an HTTP-bound action.
 
 `useContractRegistry` of nodes-base-next calls `warmSandbox(options)` when the sandbox is on. It
-compiles `action.wasm` and `provider.wasm` into the cache directory, one after the other, and n8n
+compiles `action.wasm`, `provider.wasm` and `trigger.wasm` into the cache directory, one after the other, and n8n
 does not wait for it. A sidecar without `--bundle` compiles the guest at `[initialize]`. A run
 that starts before the compile ends, or after a failed warm-up, compiles the guest itself. Two
 compiles at the same time are safe: the sidecar writes the `.cwasm` atomically.
 
 ## Not built yet
 
-- Triggers (the trigger world), credentials (the credential world) and lookups in the sandbox.
-  The sidecar is generic: each needs host answers in `src/sandbox.ts` and a guest entry.
+- Credentials (the credential world) and lookups in the sandbox. The sidecar is generic: each
+  needs host answers in `src/sandbox.ts` and a guest entry.
 - `migrate` has no export in the action world, so a sandboxed replay replays executions only.
 - The node `baseUrl` of a sandboxed bundle comes from its `describe()`, because the request
   path goes after its path. Its host must be an `egress` host of the manifest (backlog E7).
@@ -251,9 +269,9 @@ runs any component of the world. The same fixtures prove parity across languages
 
 ## Egress and credential hosts
 
-Built. One check, in the host `http` import: `httpFor().request` in `src/runtime.ts`, the trigger
-`http` in `src/triggers.ts`, and the binary transfers, which go through the same `request`. The
-logic is in `src/egress.ts`.
+Built. One check, in the host `http` import: `httpFor().request` in `src/runtime.ts`. Trigger
+requests and the binary transfers go through the same `request`. The logic is in
+`src/egress.ts`.
 
 - A credential type declares `hosts` (`api.notion.com`, or `*.example.com` for subdomains only).
   The host of its `baseUrl(fields)` is added. The user's "Allowed HTTP Request Domains" list
@@ -263,8 +281,9 @@ logic is in `src/egress.ts`.
 - An action declares `egress`: static hosts, host templates over enum input fields
   (`{region}.api.example.com`), or `fromInput` for a URL field. Without it, the action reaches
   the hosts of the node and credential base URLs only. An action with no base URL and no
-  `egress` reaches no host, in-process and in the sandbox. A trigger with no base URL has no
-  host limit. The credential hosts apply.
+  `egress` reaches no host, in-process and in the sandbox. A trigger reaches the hosts of its
+  base URLs only: freeze writes the node base URL host into the trigger manifest `egress`. The
+  credential hosts apply.
 - The host refuses a request outside the action hosts or the credential hosts before it sends it.
   A refused request is not retried. Every page is a new request, so every page is checked.
 - The host sets `allowedDomains` on the request options, so the request layer checks every

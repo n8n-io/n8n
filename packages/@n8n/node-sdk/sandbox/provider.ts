@@ -3,8 +3,7 @@
 import type * as wit from 'n8n:node-contract/capabilities@2.6.0';
 import { get as witLimits } from 'n8n:node-contract/limits@2.6.0';
 
-import type { Binaries, Http, HttpRequest } from '../src/define';
-import type { Binary } from '../src/schema';
+import type { Binaries } from '../src/define';
 import {
 	providedKindOf,
 	provider as sdkProvider,
@@ -15,7 +14,7 @@ import {
 	chatRequestOf,
 	describe,
 	inputOf,
-	jsonRequest,
+	jsonHttp,
 	log,
 	messageOf,
 	recordOf,
@@ -97,16 +96,7 @@ const noBinary = () => {
 	throw new Error('A provider has no binary data');
 };
 
-function request(
-	options: HttpRequest & { readonly response: 'binary'; readonly fullResponse?: false },
-): Promise<Binary>;
-function request(options: HttpRequest): Promise<unknown>;
-async function request(options: HttpRequest): Promise<unknown> {
-	if (options.response === 'binary') noBinary();
-	return jsonRequest(options);
-}
-
-const http: Http = { request };
+const http = jsonHttp('provider');
 
 const binary: Binaries = { create: async () => noBinary() };
 

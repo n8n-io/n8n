@@ -17,3 +17,9 @@ world provider-js {
     include n8n:node-contract/provider-bundle@2.6.0;
     import bundle;
 }
+
+/// The trigger world of the Node Contract, for a JS bundle.
+world trigger-js {
+    include n8n:node-contract/trigger-bundle@2.6.0;
+    import bundle;
+}

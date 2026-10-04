@@ -88,7 +88,7 @@ jobs:
       # The sandbox tests skip when a file is missing, so a missing file must fail here.
       - name: Check the sandbox files
         working-directory: packages/@n8n/node-sdk/sandbox
-        run: test -x sidecar/target/release/n8n-sandbox && test -f dist/action.wasm && test -f dist/provider.wasm
+        run: test -x sidecar/target/release/n8n-sandbox && test -f dist/action.wasm && test -f dist/provider.wasm && test -f dist/trigger.wasm
 
       - name: Test the sandbox and the freeze check
         working-directory: packages/@n8n/node-sdk

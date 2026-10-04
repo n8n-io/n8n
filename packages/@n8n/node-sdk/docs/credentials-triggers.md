@@ -194,9 +194,14 @@ sequenceDiagram
 - A trigger has the same versioning as an action. A major that breaks old input needs
   `migrate` and a migration fixture pair. Publish replays the pair. Trigger execution
   fixtures do not replay.
-- A frozen trigger bundle loads on its first call. `toVersionedTriggerType` builds the n8n node
-  type from the frozen versions, as `toVersionedNodeType` does for actions.
-- The trigger contract has `trigger: 'poll' | 'webhook'` and the flow `read, 1:N`.
+- A frozen trigger bundle loads on its first call, with the executor loader of the host: in this
+  process or in the sandbox, by origin (see `sandboxed-execution.md`). `toVersionedTriggerType`
+  builds the n8n node type from the frozen versions, as `toVersionedNodeType` does for actions.
+- Each trigger request goes through the executor of an action run, so the egress, the response
+  limit and the refusal report of actions apply. A trigger reaches the hosts of its base URLs.
+- The trigger contract has `trigger: 'poll' | 'webhook'` and the flow `read, 1:N`. Its `egress`
+  holds the node base URL host, and `verify` holds the webhook signature. The host checks the
+  signature of the manifest, not the one of the bundle.
 
 ## Native triggers
 
@@ -232,7 +237,7 @@ export const webhookTrigger = webhook.trigger('trigger', {
 
 - `generatedTriggersOf(trigger, nodeType)` gives the factories of a trigger. A native trigger
   emits its legacy node type and version, and its reply.
-- A native trigger has no bundle and no node class. `triggerMethodsOf` throws for it. Freeze
+- A native trigger has no bundle and no node class. `triggerRunOf` throws for it. Freeze
   writes its manifest (`freezeNative`, `NativeManifest`): the contract, the legacy node in
   `native`, and the reply step in `reply`. `publishNative` publishes it with a signature. Its gate
   (`checkNativePublish`) rates the contract as for an action, and a patch must keep the legacy

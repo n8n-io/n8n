@@ -323,7 +323,7 @@ export class InstanceAiConfig {
 	@Env('N8N_NODE_CONTRACT_SANDBOX_SIDECAR')
 	nodeContractSandboxSidecar: string = '';
 
-	/** The directory of the guest components `action.wasm` and `provider.wasm`. Needed when the sandbox is on. */
+	/** The directory of the guest components `action.wasm`, `provider.wasm` and `trigger.wasm`. Needed when the sandbox is on. */
 	@Env('N8N_NODE_CONTRACT_SANDBOX_GUESTS')
 	nodeContractSandboxGuests: string = '';
 

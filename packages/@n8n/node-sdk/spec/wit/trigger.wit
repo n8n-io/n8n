@@ -9,6 +9,10 @@ interface trigger {
     use types.{json};
     use errors.{run-error};
 
+    /// The manifest contract, as `action.describe` gives it.
+    @since(version = 2.6.0)
+    describe: func() -> json;
+
     record poll-result {
         /// The new items, oldest first. An empty list starts no execution.
         items: list<json>,
@@ -17,8 +21,10 @@ interface trigger {
     }
 
     /// One poll. `state` is none at the first poll. `limit` is the most items the host uses,
-    /// for example 1 in a manual run. The host does not store the state of a manual run.
-    poll: func(input: json, state: option<json>, limit: option<u32>) -> result<poll-result, run-error>;
+    /// for example 1 in a manual run. The host does not store the state of a manual run. `at`
+    /// is the time of the poll in milliseconds since the Unix epoch, because a guest has no
+    /// clock.
+    poll: func(input: json, state: option<json>, limit: option<u32>, at: u64) -> result<poll-result, run-error>;
 
     /// The HTTP request that a webhook trigger gets.
     record webhook-request {
@@ -37,12 +43,17 @@ interface trigger {
     /// `deactivate` get, for example the remote webhook ID.
     activate: func(input: json, url: string, secret: option<string>) -> result<json, run-error>;
 
+    /// True when the remote webhook of `state` still exists. The host calls it when the workflow
+    /// is activated and it has a state. A trigger that cannot check gives true.
+    @since(version = 2.6.0)
+    check: func(input: json, state: json) -> result<bool, run-error>;
+
     /// Deletes the remote webhook when the workflow is deactivated.
     deactivate: func(input: json, state: json) -> result<_, run-error>;
 }
 
 /// A trigger: it starts executions. The host calls `poll` for a `poll` trigger, and `activate`,
-/// `webhook` and `deactivate` for a `webhook` trigger.
+/// `check`, `webhook` and `deactivate` for a `webhook` trigger.
 @since(version = 2.5.0)
 world trigger-bundle {
     import http;

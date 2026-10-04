@@ -1,4 +1,3 @@
-import { isRecord } from '@n8n/utils/is-record';
 import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
 import {
 	NodeOperationError,
@@ -7,44 +6,51 @@ import {
 	type INode,
 	type INodeExecutionData,
 	type INodeType,
+	type INodeTypeDescription,
 	type IPollFunctions,
 	type IWebhookFunctions,
 	type IWebhookResponseData,
 	UnexpectedError,
+	UserError,
 } from 'n8n-workflow';
 
-import { credentialDataOf } from './credentials';
-import { actionHostsOf, credentialHostsOf, egressOf } from './egress';
 import {
 	isHttpError,
 	pages,
+	type Action,
+	type ContractDocument,
+	type ContractEgress,
 	type Http,
-	type NativeEvent,
 	type HttpMethod,
 	type HttpRequest,
+	type LogLevel,
+	type NativeEvent,
 	type RunInput,
 	toContract,
 	type Trigger,
 } from './define';
+import { compatTypeOfManifest, credentialDataOf } from './credentials';
+import { reportRefusal } from './egress';
 import {
+	assertManifestPermissions,
 	AUTHENTICATION,
-	baseUrlOf,
-	checkedResponse,
+	cachedExecutorOf,
+	credentialManifestOf,
 	credentialTypeOf,
-	hasSelector,
+	executorOf,
+	hostLimitsOf,
 	nativeRunError,
 	nodeDescriptionOf,
-	toRequestOptions,
 	verifiedBundleOf,
-	withCredentialHostsOf,
 	versionedTypeOf,
-	withResponse,
+	withCredentialHostsOf,
+	type Executor,
+	type ExecutorHost,
 	type FrozenVersion,
 } from './runtime';
-import { parameterValue, toProperty } from './properties';
-import type { Binary, Schema, Shape } from './schema';
-import { applyDefaults, readAs, validate } from './validate';
-import { NODE_CONTRACT_VERSION } from './version';
+import { Schema, type Shape } from './schema';
+import { readAs, validate } from './validate';
+import { canonicalJson, NODE_CONTRACT_VERSION } from './version';
 
 /**
  * What starts a trigger: a service webhook, a poll, the event of a native trigger, or an `event`
@@ -54,7 +60,7 @@ export type TriggerKind = 'webhook' | 'poll' | 'event' | NativeEvent;
 
 /** The HTTP request a webhook trigger gets. Header names are lower case. */
 export interface WebhookRequest {
-	/** The parsed request body. */
+	/** The parsed request body. n8n fails a request whose body is not a JSON object. */
 	readonly body: IDataObject;
 	/** The request headers, by lower-case name. */
 	readonly headers: Readonly<Record<string, string | string[] | undefined>>;
@@ -225,220 +231,97 @@ export interface PollConfig<I, T, Out, P = unknown> {
 	map?(item: T, input: I): Out;
 }
 
-/** The context methods every trigger entry point has. */
-type TriggerContext = IHookFunctions | IPollFunctions | IWebhookFunctions;
+// ── The trigger run: the bundle code of one call, in this process or in the sandbox guest ─
 
-function inputOf(trigger: Trigger, context: TriggerContext): RunInput<Shape> {
-	const parameters = Object.fromEntries(
-		Object.entries(trigger.input)
-			.map(([key, schema]): [string, unknown] => {
-				const isJson = toProperty(key, schema).type === 'json';
-				return [key, parameterValue(context.getNodeParameter(key, undefined), isJson)];
-			})
-			.filter(([, value]) => value !== undefined && value !== ''),
-	);
-	const input = applyDefaults(parameters, trigger.inputSchema);
-	const issues = validate(input, trigger.inputSchema);
-	const isInput = (value: unknown): value is RunInput<Shape> =>
-		isRecord(value) && issues.length === 0;
-	if (!isInput(input)) throw new NodeOperationError(context.getNode(), issues.join('; '));
-	return input;
-}
-
-const credentialTypeIn = (trigger: Trigger, context: TriggerContext) =>
-	credentialTypeOf(
-		trigger,
-		context.getNode(),
-		hasSelector(trigger) ? context.getNodeParameter(AUTHENTICATION, undefined) : undefined,
-	);
-
-/** An HTTP client with the node's credential applied, as actions get it. */
-async function httpOf(trigger: Trigger, context: TriggerContext): Promise<Http> {
-	const type = credentialTypeIn(trigger, context);
-	const data = type ? await context.getCredentials(type) : {};
-	const baseUrl = await baseUrlOf(trigger.node, type, async () => await Promise.resolve(data));
-	const node = context.getNode();
-	// A trigger declares no egress: it reaches the base URL hosts, with the credential hosts.
-	const policy = {
-		...actionHostsOf(undefined, {}, [trigger.node.baseUrl, baseUrl]),
-		credential: type
-			? credentialHostsOf(
-					trigger.node.credential?.types.find(({ name }) => name === type),
-					data,
-					{ surface: trigger.node.displayName, baseUrl },
-				)
-			: undefined,
-	};
-	function request(
-		options: HttpRequest & { readonly response: 'binary'; readonly fullResponse?: false },
-	): Promise<Binary>;
-	function request(options: HttpRequest): Promise<unknown>;
-	async function request(options: HttpRequest): Promise<unknown> {
-		// The trigger runtime has no binary store.
-		if (options.response === 'binary') {
-			throw new UnexpectedError(`${trigger.id} is a trigger, and a trigger has no binary data`);
-		}
-		const built = toRequestOptions(options, baseUrl);
-		const allowedDomains = egressOf(policy, built.url, { node, actionId: trigger.id });
-		const requestOptions = allowedDomains === undefined ? built : { ...built, allowedDomains };
-		try {
-			const response: unknown = type
-				? await context.helpers.httpRequestWithAuthentication.call(context, type, requestOptions)
-				: await context.helpers.httpRequest(requestOptions);
-			return checkedResponse(trigger.node, options, response);
-		} catch (error) {
-			throw withResponse(error);
-		}
-	}
-	return { request };
-}
+/**
+ * One call of the trigger interface, as the host gives it to the trigger run: the WIT function
+ * and its parameters. `at` is the time of a poll in ms, because the sandbox engine has no clock.
+ * The state of a webhook is the remote webhook ID.
+ */
+export type TriggerCall =
+	| {
+			readonly call: 'poll';
+			readonly at: number;
+			readonly state?: IDataObject;
+			readonly limit?: number;
+	  }
+	| { readonly call: 'activate'; readonly url: string; readonly secret?: string }
+	| { readonly call: 'check' | 'deactivate'; readonly state: string }
+	| {
+			readonly call: 'webhook';
+			readonly state?: string;
+			readonly request: {
+				readonly body: IDataObject;
+				readonly headers: IDataObject;
+				readonly query: IDataObject;
+			};
+	  };
 
 // Validated JSON is n8n item data; `isRecord` from @n8n/utils types the values as unknown.
 const isDataObject = (value: unknown): value is IDataObject =>
 	typeof value === 'object' && value !== null && !Array.isArray(value);
 
-/** Each item checked against `output`, as n8n emits it. */
-function outputItems(trigger: Trigger, items: readonly unknown[], node: INode) {
-	return items.map((item, index): INodeExecutionData => {
-		const issues = validate(item, trigger.output.json, { path: `output[${index}]` });
-		if (issues.length > 0 || !isDataObject(item)) {
-			throw new NodeOperationError(
-				node,
-				`Output does not match the contract: ${issues.join('; ') || 'not an object'}`,
-			);
-		}
-		return { json: item };
-	});
-}
-
 const textOf = (value: unknown) =>
 	typeof value === 'string' && value.length > 0 ? value : undefined;
 
-async function secretOf(
-	trigger: Trigger,
-	signature: Signature,
-	context: IWebhookFunctions,
-): Promise<string | undefined> {
-	if (signature.secret === 'generated') {
-		return textOf(context.getWorkflowStaticData('node')[WEBHOOK_SECRET]);
+const objectOf = (value: unknown): IDataObject => (isDataObject(value) ? value : {});
+
+/** The trigger call in the item of a trigger run. */
+export function triggerCallOf(json: unknown): TriggerCall {
+	const value = objectOf(json);
+	const { call, state, url, secret, limit, at, request } = value;
+	const id = textOf(state);
+	if (call === 'poll' && typeof at === 'number') {
+		return {
+			call,
+			at,
+			...(isDataObject(state) ? { state } : {}),
+			...(typeof limit === 'number' ? { limit } : {}),
+		};
 	}
-	const type = credentialTypeIn(trigger, context);
-	const value = trigger.node.credential?.types.find(({ name }) => name === type);
-	if (!type || !value) return undefined;
-	const data = credentialDataOf(value, await context.getCredentials(type));
-	return textOf(data[signature.secret.credential]);
-}
-
-function signatureMatches(signature: Signature, secret: string, context: IWebhookFunctions) {
-	const { rawBody } = context.getRequestObject();
-	const header = context.getHeaderData()[signature.header.toLowerCase()];
-	const prefix = signature.prefix ?? '';
-	if (!Buffer.isBuffer(rawBody) || typeof header !== 'string' || !header.startsWith(prefix)) {
-		return false;
+	if (call === 'activate' && typeof url === 'string') {
+		const generated = textOf(secret);
+		return { call, url, ...(generated === undefined ? {} : { secret: generated }) };
 	}
-	const digest = createHmac(signature.algorithm, secret)
-		.update(rawBody)
-		.digest(signature.encoding ?? 'hex');
-	const expected = Buffer.from(digest);
-	const actual = Buffer.from(header.slice(prefix.length));
-	return expected.length === actual.length && timingSafeEqual(expected, actual);
-}
-
-async function handleWebhook(
-	trigger: Trigger,
-	config: WebhookConfig<RunInput<Shape>, unknown, string>,
-	context: IWebhookFunctions,
-): Promise<IWebhookResponseData> {
-	const { verify } = config;
-	if (verify) {
-		const secret = await secretOf(trigger, verify, context);
-		if (!secret || !signatureMatches(verify, secret, context)) {
-			// Like the legacy GitHub trigger: no execution, and the sender sees 401.
-			context.getResponseObject().status(401).send('Unauthorized').end();
-			return { noWebhookResponse: true };
-		}
+	if ((call === 'check' || call === 'deactivate') && id !== undefined) return { call, state: id };
+	if (call === 'webhook' && isDataObject(request)) {
+		return {
+			call,
+			...(id === undefined ? {} : { state: id }),
+			request: {
+				body: objectOf(request.body),
+				headers: objectOf(request.headers),
+				query: objectOf(request.query),
+			},
+		};
 	}
-	const query = context.getQueryData();
-	const request: WebhookRequest = {
-		body: context.getBodyData(),
-		headers: context.getHeaderData(),
-		query: isRecord(query) ? query : {},
-	};
-	const items = config.emit ? config.emit(request, inputOf(trigger, context)) : [request];
-	if (items.length === 0) return { webhookResponse: 'OK' };
-	return { workflowData: [outputItems(trigger, items, context.getNode())] };
+	const name = typeof call === 'string' ? call : 'without a name';
+	throw new UnexpectedError(`The trigger call ${name} has other parameters`);
 }
 
-// The static data keys of the legacy triggers, so a ported trigger reads what they stored.
-const WEBHOOK_ID = 'webhookId';
-const WEBHOOK_SECRET = 'webhookSecret';
-
-/** The n8n webhook methods of a trigger. Without `register`, n8n has nothing to set up. */
-function webhookHooks(
-	trigger: Trigger,
-	{ register, verify }: WebhookConfig<RunInput<Shape>, unknown, string>,
-) {
-	const generated = verify?.secret === 'generated';
-	const forget = (data: IDataObject) => {
-		delete data[WEBHOOK_ID];
-		delete data[WEBHOOK_SECRET];
-	};
-	const storedId = (context: IHookFunctions) => {
-		const id = context.getWorkflowStaticData('node')[WEBHOOK_ID];
-		return typeof id === 'string' || typeof id === 'number' ? String(id) : undefined;
-	};
-	return {
-		async checkExists(context: IHookFunctions) {
-			if (!register) return true;
-			const data = context.getWorkflowStaticData('node');
-			const id = storedId(context);
-			if (id === undefined || (generated && !textOf(data[WEBHOOK_SECRET]))) return false;
-			if (!register.check) return true;
-			const http = await httpOf(trigger, context);
-			try {
-				await http.request(register.check({ input: inputOf(trigger, context), id }));
-				return true;
-			} catch (error) {
-				if (!isHttpError(error) || error.status !== 404) throw error;
-				forget(data);
-				return false;
-			}
-		},
-		async create(context: IHookFunctions) {
-			if (!register) return true;
-			const url = context.getNodeWebhookUrl('default');
-			if (!url) throw new NodeOperationError(context.getNode(), 'The node has no webhook URL');
-			const secret = generated ? randomBytes(32).toString('hex') : undefined;
-			const http = await httpOf(trigger, context);
-			const body = await http.request(
-				register.create({ input: inputOf(trigger, context), url, secret }),
-			);
-			const id = register.id(body);
-			if (!id) {
-				throw new NodeOperationError(context.getNode(), 'The create response has no webhook ID');
-			}
-			Object.assign(context.getWorkflowStaticData('node'), {
-				[WEBHOOK_ID]: id,
-				...(secret ? { [WEBHOOK_SECRET]: secret } : {}),
-			});
-			return true;
-		},
-		async delete(context: IHookFunctions) {
-			if (!register) return true;
-			const id = storedId(context);
-			if (id === undefined) return true;
-			const http = await httpOf(trigger, context);
-			try {
-				await http.request(register.delete({ input: inputOf(trigger, context), id }));
-			} catch {
-				// Like the legacy triggers: keep the ID, so a later deactivation tries again.
-				return false;
-			}
-			forget(context.getWorkflowStaticData('node'));
-			return true;
-		},
-	};
+/** What a trigger call reads: the same in this process and in the sandbox guest. */
+export interface TriggerRunContext {
+	/** The validated trigger input. */
+	readonly input: RunInput<Shape>;
+	/** The HTTP client of the host, with the egress and the credential of the node. */
+	readonly http: Http;
+	/** Writes to the n8n log. */
+	log(level: LogLevel, message: string): void;
 }
+
+const isHeaderValue = (value: unknown): value is string | string[] =>
+	typeof value === 'string' ||
+	(Array.isArray(value) && value.every((entry) => typeof entry === 'string'));
+
+const webhookRequestOf = ({ body, headers, query }: IDataObject): WebhookRequest => ({
+	body: objectOf(body),
+	headers: Object.fromEntries(
+		Object.entries(objectOf(headers)).filter((entry): entry is [string, string | string[]] =>
+			isHeaderValue(entry[1]),
+		),
+	),
+	query: objectOf(query),
+});
 
 /** The poll state in static data. */
 interface PollState {
@@ -514,16 +397,16 @@ async function fetchPages(
 	return items;
 }
 
-async function runPoll(
-	trigger: Trigger,
+async function pollOnce(
+	id: string,
 	poll: FrozenPoll,
-	context: IPollFunctions,
-): Promise<INodeExecutionData[][] | null> {
-	const { response } = poll;
+	call: Extract<TriggerCall, { readonly call: 'poll' }>,
+	{ input, http, log }: TriggerRunContext,
+) {
+	const { response, cursor } = poll;
 	const pageOf = (body: unknown) => {
 		if (!response) return body;
 		// The cursor reads each item, so its fields must match too.
-		const { cursor } = poll;
 		const read = (page: unknown) => [
 			poll.next?.(page),
 			poll
@@ -534,142 +417,401 @@ async function runPoll(
 		];
 		const { value, drift } = readAs(response, body, { path: 'page', read });
 		if (drift.length > 0) {
-			context.logger.warn(
-				`The response of ${trigger.id} does not match its contract, so check the fields: ${drift.join('; ')}`,
+			log(
+				'warn',
+				`The response of ${id} does not match its contract, so check the fields: ${drift.join('; ')}`,
 			);
 		}
 		return value;
 	};
-	const input = inputOf(trigger, context);
-	const http = await httpOf(trigger, context);
-	const data = context.getWorkflowStaticData('node');
-	const node = context.getNode();
-	const emitted = (items: readonly unknown[]) =>
-		items.length > 0 ? [outputItems(trigger, items, node)] : null;
 	const toOutput = (item: unknown) => (poll.map ? poll.map(item, input) : item);
-	if (context.getMode() === 'manual') {
-		// Like the legacy triggers: a manual run shows the newest item and keeps the cursor.
+	const { limit } = call;
+	if (limit !== undefined) {
+		// A sample, e.g. of a manual run: the newest items of one small page. The state stays.
 		const body = await http.request(
-			poll.request({ input, since: undefined, page: undefined, limit: 1 }),
+			poll.request({ input, since: undefined, page: undefined, limit }),
 		);
-		return emitted(poll.items(pageOf(body)).slice(0, 1).map(toOutput));
-	}
-	const state = pollStateOf(data);
-	const since = sinceOf(poll.cursor, state, Date.now());
-	const items = await fetchPages(poll, pageOf, http, input, since);
-	const next = advance(poll.cursor, items, since, state);
-	const isFirst = state.cursor === undefined;
-	// n8n persists the static data object, so the new state goes into it.
-	Object.assign(data, { cursor: next.state.cursor, seen: next.state.seen ?? [] });
-	return emitted(isFirst && poll.firstRun !== 'emit' ? [] : next.fresh.map(toOutput));
-}
-
-/** The n8n entry points of a trigger: `poll()`, or `webhook()` with its webhook methods. */
-export function triggerMethodsOf(
-	trigger: Trigger,
-): Pick<INodeType, 'poll' | 'webhook' | 'webhookMethods'> {
-	if (trigger.kind === 'native') throw nativeRunError(trigger);
-	if (trigger.poll) {
-		const { poll } = trigger;
 		return {
-			async poll(this: IPollFunctions) {
-				return await runPoll(trigger, poll, this);
-			},
+			items: poll.items(pageOf(body)).slice(0, limit).map(toOutput),
+			state: call.state ?? {},
 		};
 	}
-	const config = trigger.webhook;
-	const hooks = webhookHooks(trigger, config);
+	const state = pollStateOf(call.state ?? {});
+	const since = sinceOf(cursor, state, call.at);
+	const items = await fetchPages(poll, pageOf, http, input, since);
+	const next = advance(cursor, items, since, state);
+	const isFirst = state.cursor === undefined;
 	return {
-		webhookMethods: {
-			default: {
-				async checkExists(this: IHookFunctions) {
-					return await hooks.checkExists(this);
-				},
-				async create(this: IHookFunctions) {
-					return await hooks.create(this);
-				},
-				async delete(this: IHookFunctions) {
-					return await hooks.delete(this);
-				},
-			},
-		},
-		async webhook(this: IWebhookFunctions) {
-			return await handleWebhook(trigger, config, this);
+		items: isFirst && poll.firstRun !== 'emit' ? [] : next.fresh.map(toOutput),
+		state: {
+			...(next.state.cursor === undefined ? {} : { cursor: next.state.cursor }),
+			seen: next.state.seen ?? [],
 		},
 	};
 }
 
-/** An n8n node type for one trigger. */
-export function toTriggerNodeType(trigger: Trigger): new () => INodeType {
-	const methods = triggerMethodsOf(trigger);
-	const description = nodeDescriptionOf({
-		contract: toContract(trigger),
-		nodeContract: NODE_CONTRACT_VERSION,
+/**
+ * Runs one trigger call with the run context of the host. A poll gives `{ items, state }`,
+ * `activate` gives `{ state }` (the remote webhook ID, or `null` without registration),
+ * `check` gives `{ exists }`, and `webhook` gives `{ items }`.
+ */
+export async function runTriggerCall(
+	trigger: Trigger,
+	call: TriggerCall,
+	context: TriggerRunContext,
+): Promise<Record<string, unknown>> {
+	const { input, http } = context;
+	const refuse = () =>
+		new UnexpectedError(`${trigger.id} is a ${trigger.kind} trigger, so it has no ${call.call}`);
+	if (trigger.poll) {
+		if (call.call !== 'poll') throw refuse();
+		return await pollOnce(trigger.id, trigger.poll, call, context);
+	}
+	if (!trigger.webhook) throw refuse();
+	const { register, emit } = trigger.webhook;
+	switch (call.call) {
+		case 'activate': {
+			if (!register) return { state: null };
+			const { url, secret } = call;
+			const body = await http.request(register.create({ input, url, secret }));
+			const id = register.id(body);
+			if (!id) throw new UserError('The create response has no webhook ID');
+			return { state: id };
+		}
+		case 'check':
+			if (!register?.check) return { exists: true };
+			try {
+				await http.request(register.check({ input, id: call.state }));
+				return { exists: true };
+			} catch (error) {
+				if (!isHttpError(error) || error.status !== 404) throw error;
+				return { exists: false };
+			}
+		case 'deactivate':
+			if (register) await http.request(register.delete({ input, id: call.state }));
+			return {};
+		case 'webhook': {
+			const request = webhookRequestOf(call.request);
+			return { items: emit ? emit(request, input) : [request] };
+		}
+		case 'poll':
+			throw refuse();
+	}
+}
+
+/**
+ * The flow and the output of the action that runs trigger calls: one call is its one item, and
+ * the call result is its one output item. The host checks the trigger items.
+ */
+export const TRIGGER_RUN: Pick<Action, 'flow' | 'output'> = {
+	flow: { effect: 'read', cardinality: 'per-item' },
+	output: new Schema<Record<string, unknown>>({ type: 'object' }, false),
+};
+
+/**
+ * The action that runs the calls of a trigger. Each trigger request gets what an action request
+ * gets: the egress, the admin input hosts, the response limit, the refusal report, the retries
+ * and the redaction. `egress` comes from the manifest: the hosts of the node base URL.
+ */
+export function triggerRunOf(trigger: Trigger, egress: ContractEgress | undefined): Action {
+	if (trigger.kind === 'native') throw nativeRunError(trigger);
+	const { id, version, operation, resource, node, summary, input, inputSchema } = trigger;
+	return {
+		id,
+		version,
+		operation,
+		...(resource === undefined ? {} : { resource }),
+		node,
+		action: trigger.trigger,
+		summary,
+		input,
+		inputSchema,
+		credentialTypes: trigger.credentialTypes,
+		scopes: trigger.scopes,
+		...TRIGGER_RUN,
+		egress: egress ?? { hosts: [] },
+		run: async (context) => {
+			if (!('item' in context)) throw new UnexpectedError(`${id} runs one trigger call at a time`);
+			return await runTriggerCall(trigger, triggerCallOf(context.item.json), context);
+		},
+	};
+}
+
+/**
+ * Refuses a webhook bundle that checks another signature than its manifest. The host checks the
+ * signature of the manifest, so a manifest without one must not hide the one of the bundle.
+ */
+export function assertWebhookSignature(
+	{ id, semver, contract }: Pick<FrozenVersion['manifest'], 'id' | 'semver' | 'contract'>,
+	verify: unknown,
+) {
+	if (canonicalJson(verify ?? null) === canonicalJson(contract.verify ?? null)) return;
+	const message = `The bundle of ${id}@${semver} checks another webhook signature than its manifest`;
+	reportRefusal({ action: id, version: semver, permission: 'manifest', message });
+	throw new UserError(message);
+}
+
+/**
+ * The executor of a frozen trigger version with its bundle in this process. The egress comes
+ * from the manifest, as for an action, and the bundle must grant what its manifest grants.
+ */
+export async function loadTriggerExecutor(frozen: FrozenVersion): Promise<Executor> {
+	const exported = await verifiedBundleOf(frozen);
+	if (!('kind' in exported))
+		throw new UnexpectedError(`${exported.id} is an action, not a trigger`);
+	assertManifestPermissions(frozen.manifest, exported);
+	if (exported.kind === 'webhook') assertWebhookSignature(frozen.manifest, exported.webhook.verify);
+	const trigger = await withCredentialHostsOf(exported);
+	return executorOf(triggerRunOf(trigger, frozen.manifest.contract.egress));
+}
+
+// ── The host: the n8n entry points of a trigger node ────────────────────────────────────
+
+/** The context methods every trigger entry point has. */
+type TriggerContext = IHookFunctions | IPollFunctions | IWebhookFunctions;
+
+/** The executor host of one trigger call: the call is its one item. */
+const triggerHostOf = (context: TriggerContext, call: TriggerCall): ExecutorHost => {
+	const node = context.getNode();
+	// A webhook call sends no request. Without a credential, n8n reads no credential per delivery.
+	const bare = call.call === 'webhook';
+	return {
+		...hostLimitsOf(),
+		items: [{ json: call }],
+		node: bare ? { ...node, credentials: {} } : node,
+		parameter: (name) =>
+			bare && name === AUTHENTICATION ? 'none' : context.getNodeParameter(name, undefined),
+		request: async (options, type) => {
+			const response: unknown = type
+				? await context.helpers.httpRequestWithAuthentication.call(context, type, options)
+				: await context.helpers.httpRequest(options);
+			return response;
+		},
+		...(bare ? {} : { credentialData: async (type: string) => await context.getCredentials(type) }),
+		continueOnFail: () => false,
+		log: (level, message) => context.logger[level](message, { node: node.name }),
+	};
+};
+
+/** Each item checked against the output of the contract, as n8n emits it. */
+function outputItems(contract: ContractDocument, items: unknown, node: INode) {
+	if (!Array.isArray(items)) throw new UnexpectedError(`${contract.id} gave no list of items`);
+	return items.map((item: unknown, index): INodeExecutionData => {
+		const issues = validate(item, contract.output, { path: `output[${index}]` });
+		if (issues.length > 0 || !isDataObject(item)) {
+			throw new NodeOperationError(
+				node,
+				`Output does not match the contract: ${issues.join('; ') || 'not an object'}`,
+			);
+		}
+		return { json: item };
 	});
-	return class implements INodeType {
-		description = description;
+}
 
-		poll = methods.poll;
+const credentialTypeIn = (contract: ContractDocument, context: TriggerContext) =>
+	credentialTypeOf(
+		{ credentialTypes: contract.credentials },
+		context.getNode(),
+		contract.credentials.length > 1 || contract.credentialOptional === true
+			? context.getNodeParameter(AUTHENTICATION, undefined)
+			: undefined,
+	);
 
-		webhook = methods.webhook;
+// The static data keys of the legacy triggers, so a ported trigger reads what they stored.
+const WEBHOOK_ID = 'webhookId';
+const WEBHOOK_SECRET = 'webhookSecret';
 
-		webhookMethods = methods.webhookMethods;
+const storedId = (data: IDataObject) => {
+	const id = data[WEBHOOK_ID];
+	return typeof id === 'string' || typeof id === 'number' ? String(id) : undefined;
+};
+
+/**
+ * The signing secret: the generated one in static data, or the stored credential field. The
+ * credential manifest of the host renames the fields and fills the defaults, as for a request.
+ */
+async function secretOf(
+	contract: ContractDocument,
+	signature: Signature,
+	data: IDataObject,
+	context: IWebhookFunctions,
+): Promise<string | undefined> {
+	if (signature.secret === 'generated') return textOf(data[WEBHOOK_SECRET]);
+	const type = credentialTypeIn(contract, context);
+	if (!type) return undefined;
+	const stored = await context.getCredentials(type);
+	const manifest = await credentialManifestOf(type);
+	const fields = manifest ? credentialDataOf(compatTypeOfManifest(manifest), stored) : stored;
+	return textOf(fields[signature.secret.credential]);
+}
+
+function signatureMatches(signature: Signature, secret: string, context: IWebhookFunctions) {
+	const { rawBody } = context.getRequestObject();
+	const header = context.getHeaderData()[signature.header.toLowerCase()];
+	const prefix = signature.prefix ?? '';
+	if (!Buffer.isBuffer(rawBody) || typeof header !== 'string' || !header.startsWith(prefix)) {
+		return false;
+	}
+	const digest = createHmac(signature.algorithm, secret)
+		.update(rawBody)
+		.digest(signature.encoding ?? 'hex');
+	const expected = Buffer.from(digest);
+	const actual = Buffer.from(header.slice(prefix.length));
+	return expected.length === actual.length && timingSafeEqual(expected, actual);
+}
+
+/**
+ * The n8n entry points of a trigger. Each one runs one call with the executor of the trigger, in
+ * this process or in the sandbox. The host keeps the state, generates the webhook secret and
+ * checks the webhook signature of the contract.
+ */
+function triggerTypeOf(
+	contract: ContractDocument,
+	description: INodeTypeDescription,
+	executor: () => Promise<Executor>,
+): INodeType {
+	const run = async (context: TriggerContext, call: TriggerCall) => {
+		const [[result] = []] = await (await executor())(triggerHostOf(context, call));
+		if (!result) throw new UnexpectedError(`${contract.id} gave no result for ${call.call}`);
+		return result.json;
 	};
-}
-
-type TriggerMethods = ReturnType<typeof triggerMethodsOf>;
-
-/** Trigger entry points by bundle hash. A bundle loads on its first call only. */
-const loaded = new Map<string, Promise<TriggerMethods>>();
-
-async function loadTrigger(frozen: FrozenVersion): Promise<TriggerMethods> {
-	const trigger = await verifiedBundleOf(frozen);
-	if (!('kind' in trigger)) throw new UnexpectedError(`${trigger.id} is an action, not a trigger`);
-	return triggerMethodsOf(await withCredentialHostsOf(trigger));
-}
-
-async function methodsOf(frozen: FrozenVersion) {
-	const { bundleHash } = frozen.manifest;
-	// A failed load, for example a failed store read, must not stay in the cache.
-	const methods =
-		loaded.get(bundleHash) ??
-		loadTrigger(frozen).catch((error: unknown) => {
-			loaded.delete(bundleHash);
-			throw error;
-		});
-	loaded.set(bundleHash, methods);
-	return await methods;
-}
-
-/** One frozen trigger version. Each entry point loads the bundle, then calls the trigger's own. */
-function frozenTriggerType(frozen: FrozenVersion): INodeType {
-	const description = nodeDescriptionOf(frozen.manifest);
-	if (description.polling) {
+	if (contract.trigger === 'poll') {
 		return {
 			description,
 			async poll(this: IPollFunctions) {
-				const { poll } = await methodsOf(frozen);
-				return (await poll?.call(this)) ?? null;
+				const data = this.getWorkflowStaticData('node');
+				// Like the legacy triggers: a manual run shows the newest item and keeps the cursor.
+				const manual = this.getMode() === 'manual';
+				const known = Object.keys(data).length > 0 ? { state: data } : {};
+				const { items, state } = await run(this, {
+					call: 'poll',
+					at: Date.now(),
+					...(manual ? { limit: 1 } : known),
+				});
+				// n8n persists the static data object, so the new state goes into it.
+				if (!manual && isDataObject(state)) Object.assign(data, state);
+				const emitted = outputItems(contract, items, this.getNode());
+				return emitted.length > 0 ? [emitted] : null;
 			},
 		};
 	}
-	const hook = (name: 'checkExists' | 'create' | 'delete') =>
-		async function (this: IHookFunctions) {
-			const { webhookMethods } = await methodsOf(frozen);
-			return (await webhookMethods?.default?.[name].call(this)) ?? true;
-		};
+	const generated = contract.verify?.secret === 'generated';
+	const forget = (data: IDataObject) => {
+		delete data[WEBHOOK_ID];
+		delete data[WEBHOOK_SECRET];
+	};
 	return {
 		description,
 		webhookMethods: {
-			default: { checkExists: hook('checkExists'), create: hook('create'), delete: hook('delete') },
+			default: {
+				async checkExists(this: IHookFunctions) {
+					const data = this.getWorkflowStaticData('node');
+					const id = storedId(data);
+					if (id === undefined || (generated && !textOf(data[WEBHOOK_SECRET]))) return false;
+					const { exists } = await run(this, { call: 'check', state: id });
+					if (exists === true) return true;
+					forget(data);
+					return false;
+				},
+				async create(this: IHookFunctions) {
+					const url = this.getNodeWebhookUrl('default');
+					if (!url) throw new NodeOperationError(this.getNode(), 'The node has no webhook URL');
+					const secret = generated ? randomBytes(32).toString('hex') : undefined;
+					const { state } = await run(this, {
+						call: 'activate',
+						url,
+						...(secret ? { secret } : {}),
+					});
+					if (typeof state === 'string') {
+						Object.assign(this.getWorkflowStaticData('node'), {
+							[WEBHOOK_ID]: state,
+							...(secret ? { [WEBHOOK_SECRET]: secret } : {}),
+						});
+					}
+					return true;
+				},
+				async delete(this: IHookFunctions) {
+					const data = this.getWorkflowStaticData('node');
+					const id = storedId(data);
+					if (id === undefined) return true;
+					try {
+						await run(this, { call: 'deactivate', state: id });
+					} catch {
+						// Like the legacy triggers: keep the ID, so a later deactivation tries again.
+						return false;
+					}
+					forget(data);
+					return true;
+				},
+			},
 		},
-		async webhook(this: IWebhookFunctions) {
-			const { webhook } = await methodsOf(frozen);
-			if (!webhook) throw new UnexpectedError(`${frozen.manifest.id} has no webhook`);
-			return await webhook.call(this);
+		async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
+			const data = this.getWorkflowStaticData('node');
+			const { verify } = contract;
+			if (verify) {
+				const secret = await secretOf(contract, verify, data, this);
+				if (!secret || !signatureMatches(verify, secret, this)) {
+					// Like the legacy GitHub trigger: no execution, and the sender sees 401.
+					this.getResponseObject().status(401).send('Unauthorized').end();
+					return { noWebhookResponse: true };
+				}
+			}
+			const body: unknown = this.getBodyData();
+			// `WebhookRequest.body` is an object, so a list or a text body fails here, not as `{}`.
+			if (!isDataObject(body)) {
+				throw new NodeOperationError(
+					this.getNode(),
+					'The webhook request body is not a JSON object',
+				);
+			}
+			const id = storedId(data);
+			const query = this.getQueryData();
+			const { items } = await run(this, {
+				call: 'webhook',
+				...(id === undefined ? {} : { state: id }),
+				request: {
+					body,
+					headers: this.getHeaderData(),
+					query: isDataObject(query) ? query : {},
+				},
+			});
+			const emitted = outputItems(contract, items, this.getNode());
+			if (emitted.length === 0) return { webhookResponse: 'OK' };
+			return { workflowData: [emitted] };
 		},
 	};
 }
+
+/** An n8n node type for one trigger, with its bundle in this process. */
+export function toTriggerNodeType(trigger: Trigger): new () => INodeType {
+	const contract = toContract(trigger);
+	const executor = executorOf(triggerRunOf(trigger, contract.egress));
+	const type = triggerTypeOf(
+		contract,
+		nodeDescriptionOf({ contract, nodeContract: NODE_CONTRACT_VERSION }),
+		async () => await Promise.resolve(executor),
+	);
+	return class implements INodeType {
+		description = type.description;
+
+		poll = type.poll;
+
+		webhook = type.webhook;
+
+		webhookMethods = type.webhookMethods;
+	};
+}
+
+/**
+ * One frozen trigger version. Its bundle loads at the first call, with the executor loader of
+ * the host: in this process or in the sandbox, by origin.
+ */
+const frozenTriggerType = (frozen: FrozenVersion): INodeType =>
+	triggerTypeOf(
+		frozen.manifest.contract,
+		nodeDescriptionOf(frozen.manifest),
+		async () => (await cachedExecutorOf(frozen, loadTriggerExecutor)).executor,
+	);
 
 /** The versioned node type of a trigger, from its frozen versions. */
 export const toVersionedTriggerType = (versions: readonly FrozenVersion[]) =>

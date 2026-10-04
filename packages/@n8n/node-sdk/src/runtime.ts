@@ -460,7 +460,7 @@ export const hasSelector = ({ credentialTypes, node }: CredentialUser) =>
 
 /** The credential type a node runs with: the selected one, else the one the node has. */
 export function credentialTypeOf(
-	user: CredentialUser,
+	user: Pick<CredentialUser, 'credentialTypes'>,
 	node: INode,
 	selected: unknown,
 ): string | undefined {
@@ -661,11 +661,16 @@ export const setEgressInputHosts = (hosts: readonly string[]) => {
 	);
 };
 
+/** The limits that the host sets once at start, for the `ExecutorHost` of every node run. */
+export const hostLimitsOf = (): Pick<ExecutorHost, 'egressInputHosts' | 'maxResponseBytes'> => ({
+	egressInputHosts: egressInputHosts.get('hosts'),
+	maxResponseBytes: maxResponseBytesSlot.get('bytes'),
+});
+
 /** The host parts that do not depend on the items of the run. */
 const hostBaseOf = (context: NodeContext) => ({
 	node: context.getNode(),
-	egressInputHosts: egressInputHosts.get('hosts'),
-	maxResponseBytes: maxResponseBytesSlot.get('bytes'),
+	...hostLimitsOf(),
 	request: async (options: IHttpRequestOptions, credentialType: string | undefined) => {
 		const response: unknown = credentialType
 			? await context.helpers.httpRequestWithAuthentication.call(context, credentialType, options)
@@ -2129,9 +2134,12 @@ export async function withCredentialHostsOf<C extends Pick<Action, 'node'>>(
  * Refuses a bundle whose export grants other permissions than its manifest. The signed manifest
  * is what a reviewer reads, so the bundle may not add to it or take from it.
  */
-function assertManifestPermissions({ id, semver, contract }: VersionManifest, action: Action) {
+export function assertManifestPermissions(
+	{ id, semver, contract }: VersionManifest,
+	exported: Action | Trigger,
+) {
 	const signed = new Map(Object.entries(permissionsOf(contract)));
-	const granted = new Map(Object.entries(permissionsOf(toContract(action))));
+	const granted = new Map(Object.entries(permissionsOf(toContract(exported))));
 	const keys = [...new Set([...granted.keys(), ...signed.keys()])];
 	const differences = keys.flatMap((key) => {
 		const [bundle, manifest] = [granted.get(key), signed.get(key)].map((value) =>
@@ -2149,8 +2157,9 @@ function assertManifestPermissions({ id, semver, contract }: VersionManifest, ac
 }
 
 /**
- * The executor of a frozen version with its bundle in this process. The egress comes from the
- * manifest, as in the sandbox. The credential hosts come from the credential manifests.
+ * The executor of a frozen action or provider version with its bundle in this process. The
+ * egress comes from the manifest, as in the sandbox. The credential hosts come from the
+ * credential manifests. `loadTriggerExecutor` loads a trigger version.
  */
 export async function loadExecutor(frozen: FrozenVersion): Promise<Executor> {
 	const exported = await verifiedBundleOf(frozen);
@@ -2164,7 +2173,10 @@ export async function loadExecutor(frozen: FrozenVersion): Promise<Executor> {
 	};
 }
 
-/** Makes the executor of a frozen version, e.g. in a sandbox. The default is `loadExecutor`. */
+/**
+ * Makes the executor of a frozen action, provider or trigger version, e.g. in a sandbox. The
+ * default is `loadExecutor`, and `loadTriggerExecutor` for a trigger.
+ */
 export type ExecutorLoader = (frozen: FrozenVersion) => Promise<Executor>;
 
 // One slot: the host sets it once at start, as the version loader.
@@ -2194,27 +2206,37 @@ export const setContractVersionLoader = (loader: ContractVersionLoader) => {
 	versionLoader.set('loader', loader);
 };
 
+/**
+ * The executor of a frozen version from the executor loader that the host set, else from
+ * `load`. A bundle loads once: the executor stays by bundle hash.
+ */
+export async function cachedExecutorOf(frozen: FrozenVersion, load: ExecutorLoader) {
+	const { bundleHash } = frozen.manifest;
+	// A failed read, for example a registry outage, must not stay in the cache.
+	const cached = executors.has(bundleHash);
+	const executor =
+		executors.get(bundleHash) ??
+		(executorLoader.get('loader') ?? load)(frozen).catch((error: unknown) => {
+			executors.delete(bundleHash);
+			throw error;
+		});
+	executors.set(bundleHash, executor);
+	return { executor: await executor, cached };
+}
+
 /** The executor of the version a node runs, and its manifest. */
 async function versionExecutorOf(context: NodeContext, head: FrozenVersion) {
 	const loader = versionLoader.get('loader');
 	const frozen = loader ? await loader(context, head) : head;
-	const { id, semver, bundleHash, contract } = frozen.manifest;
+	const { id, semver, contract } = frozen.manifest;
 	if (contract.version !== head.manifest.contract.version || id !== head.manifest.id) {
 		throw new UnexpectedError(
 			`${id}@${semver} cannot run as ${head.manifest.id}@${head.manifest.semver}`,
 		);
 	}
 	assertNodeContract(frozen.manifest);
-	// A failed read, for example a registry outage, must not stay in the cache.
-	const cached = executors.has(bundleHash);
-	const executor =
-		executors.get(bundleHash) ??
-		(executorLoader.get('loader') ?? loadExecutor)(frozen).catch((error: unknown) => {
-			executors.delete(bundleHash);
-			throw error;
-		});
-	executors.set(bundleHash, executor);
-	return { executor: await executor, manifest: frozen.manifest, cached };
+	const { executor, cached } = await cachedExecutorOf(frozen, loadExecutor);
+	return { executor, manifest: frozen.manifest, cached };
 }
 
 async function executeVersion(context: IExecuteFunctions, head: FrozenVersion) {

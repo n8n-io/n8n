@@ -145,6 +145,56 @@
 							},
 							"additionalProperties": false
 						},
+						"verify": {
+							"type": "object",
+							"properties": {
+								"algorithm": {
+									"enum": [
+										"sha1",
+										"sha256",
+										"sha512"
+									]
+								},
+								"header": {
+									"type": "string"
+								},
+								"prefix": {
+									"type": "string"
+								},
+								"encoding": {
+									"enum": [
+										"hex",
+										"base64"
+									]
+								},
+								"secret": {
+									"anyOf": [
+										{
+											"const": "generated"
+										},
+										{
+											"type": "object",
+											"properties": {
+												"credential": {
+													"type": "string"
+												}
+											},
+											"required": [
+												"credential"
+											],
+											"additionalProperties": false
+										}
+									]
+								}
+							},
+							"required": [
+								"algorithm",
+								"header",
+								"secret"
+							],
+							"additionalProperties": false,
+							"x-n8n-since": "2.6.0"
+						},
 						"input": {
 							"type": "object",
 							"description": "A JSON Schema."
@@ -1083,6 +1133,56 @@
 							},
 							"additionalProperties": false
 						},
+						"verify": {
+							"type": "object",
+							"properties": {
+								"algorithm": {
+									"enum": [
+										"sha1",
+										"sha256",
+										"sha512"
+									]
+								},
+								"header": {
+									"type": "string"
+								},
+								"prefix": {
+									"type": "string"
+								},
+								"encoding": {
+									"enum": [
+										"hex",
+										"base64"
+									]
+								},
+								"secret": {
+									"anyOf": [
+										{
+											"const": "generated"
+										},
+										{
+											"type": "object",
+											"properties": {
+												"credential": {
+													"type": "string"
+												}
+											},
+											"required": [
+												"credential"
+											],
+											"additionalProperties": false
+										}
+									]
+								}
+							},
+							"required": [
+								"algorithm",
+								"header",
+								"secret"
+							],
+							"additionalProperties": false,
+							"x-n8n-since": "2.6.0"
+						},
 						"input": {
 							"type": "object",
 							"description": "A JSON Schema."
@@ -1301,6 +1401,56 @@
 										}
 									},
 									"additionalProperties": false
+								},
+								"verify": {
+									"type": "object",
+									"properties": {
+										"algorithm": {
+											"enum": [
+												"sha1",
+												"sha256",
+												"sha512"
+											]
+										},
+										"header": {
+											"type": "string"
+										},
+										"prefix": {
+											"type": "string"
+										},
+										"encoding": {
+											"enum": [
+												"hex",
+												"base64"
+											]
+										},
+										"secret": {
+											"anyOf": [
+												{
+													"const": "generated"
+												},
+												{
+													"type": "object",
+													"properties": {
+														"credential": {
+															"type": "string"
+														}
+													},
+													"required": [
+														"credential"
+													],
+													"additionalProperties": false
+												}
+											]
+										}
+									},
+									"required": [
+										"algorithm",
+										"header",
+										"secret"
+									],
+									"additionalProperties": false,
+									"x-n8n-since": "2.6.0"
 								},
 								"input": {
 									"type": "object",

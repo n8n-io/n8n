@@ -3,7 +3,7 @@
 	"info": {
 		"title": "n8n Node Contract: the trigger interface",
 		"version": "2.6.0",
-		"description": "Generated from spec/wit (world trigger-bundle) by scripts/spec.ts. Do not edit.\n\nA trigger: it starts executions. The host calls `poll` for a `poll` trigger, and `activate`,\n`webhook` and `deactivate` for a `webhook` trigger.\n\nBoth sides send requests on one connection. `x-direction` tells which side answers a method. A method without `result` is a notification. Names in brackets are not WIT functions: the JSON-RPC mapping adds them."
+		"description": "Generated from spec/wit (world trigger-bundle) by scripts/spec.ts. Do not edit.\n\nA trigger: it starts executions. The host calls `poll` for a `poll` trigger, and `activate`,\n`check`, `webhook` and `deactivate` for a `webhook` trigger.\n\nBoth sides send requests on one connection. `x-direction` tells which side answers a method. A method without `result` is a notification. Names in brackets are not WIT functions: the JSON-RPC mapping adds them."
 	},
 	"x-world": "n8n:node-contract/trigger-bundle@2.6.0",
 	"x-since": "2.5.0",
@@ -44,8 +44,22 @@
 			"x-since": "2.5.0"
 		},
 		{
+			"name": "trigger.describe",
+			"description": "The manifest contract, as `action.describe` gives it.",
+			"paramStructure": "by-name",
+			"params": [],
+			"result": {
+				"name": "result",
+				"schema": {
+					"$ref": "#/components/schemas/types.json"
+				}
+			},
+			"x-direction": "host-to-guest",
+			"x-since": "2.6.0"
+		},
+		{
 			"name": "trigger.poll",
-			"description": "One poll. `state` is none at the first poll. `limit` is the most items the host uses,\nfor example 1 in a manual run. The host does not store the state of a manual run.",
+			"description": "One poll. `state` is none at the first poll. `limit` is the most items the host uses,\nfor example 1 in a manual run. The host does not store the state of a manual run. `at`\nis the time of the poll in milliseconds since the Unix epoch, because a guest has no\nclock.",
 			"paramStructure": "by-name",
 			"params": [
 				{
@@ -69,6 +83,15 @@
 						"type": "integer",
 						"minimum": 0,
 						"maximum": 4294967295
+					}
+				},
+				{
+					"name": "at",
+					"required": true,
+					"schema": {
+						"type": "integer",
+						"minimum": 0,
+						"maximum": 9007199254740991
 					}
 				}
 			],
@@ -182,6 +205,44 @@
 			},
 			"x-direction": "host-to-guest",
 			"x-since": "2.5.0"
+		},
+		{
+			"name": "trigger.check",
+			"description": "True when the remote webhook of `state` still exists. The host calls it when the workflow\nis activated and it has a state. A trigger that cannot check gives true.",
+			"paramStructure": "by-name",
+			"params": [
+				{
+					"name": "input",
+					"required": true,
+					"schema": {
+						"$ref": "#/components/schemas/types.json"
+					}
+				},
+				{
+					"name": "state",
+					"required": true,
+					"schema": {
+						"$ref": "#/components/schemas/types.json"
+					}
+				}
+			],
+			"result": {
+				"name": "result",
+				"schema": {
+					"type": "boolean"
+				}
+			},
+			"errors": [
+				{
+					"code": -32000,
+					"message": "The error of the WIT result."
+				}
+			],
+			"x-error": {
+				"$ref": "#/components/schemas/errors.run-error"
+			},
+			"x-direction": "host-to-guest",
+			"x-since": "2.6.0"
 		},
 		{
 			"name": "trigger.deactivate",

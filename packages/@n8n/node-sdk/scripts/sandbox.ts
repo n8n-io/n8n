@@ -1,5 +1,5 @@
 // Builds the sandbox: the generic JS guest component of each kind interface
-// (`sandbox/dist/action.wasm`, `sandbox/dist/provider.wasm`) and the wasmtime sidecar
+// (`sandbox/dist/action.wasm`, `provider.wasm` and `trigger.wasm`) and the wasmtime sidecar
 // (`sandbox/sidecar/target/release/n8n-sandbox`). A dev step: it needs cargo and fetches
 // ComponentizeJS with npx. Usage: `pnpm sandbox:build [guest|sidecar]`.
 import { execFileSync } from 'node:child_process';
@@ -13,7 +13,11 @@ const COMPONENTIZE = '@bytecodealliance/componentize-js@0.23.0';
 const UNAVAILABLE = 'n8n-guest-unavailable';
 
 /** The guest of each kind interface: its entry in `sandbox/` and its world in `wit/guest.wit`. */
-const GUESTS = { action: 'n8n:js-guest/action-js', provider: 'n8n:js-guest/provider-js' };
+const GUESTS = {
+	action: 'n8n:js-guest/action-js',
+	provider: 'n8n:js-guest/provider-js',
+	trigger: 'n8n:js-guest/trigger-js',
+};
 
 async function buildGuest(kind: keyof typeof GUESTS, wit: string) {
 	const { build } = await import('esbuild');
@@ -27,7 +31,7 @@ async function buildGuest(kind: keyof typeof GUESTS, wit: string) {
 		platform: 'neutral',
 		target: 'es2022',
 		charset: 'utf8',
-		external: ['n8n:*', 'node:*', 'n8n-workflow'],
+		external: ['node:*', 'n8n-workflow'],
 		plugins: [
 			{
 				// As in `freezeAction`: an SDK module that the guest does not use drops out.
@@ -37,6 +41,13 @@ async function buildGuest(kind: keyof typeof GUESTS, wit: string) {
 						const resolved = path.resolve(path.dirname(importer), `${file}.ts`);
 						return resolved.startsWith(source) ? { path: resolved, sideEffects: false } : undefined;
 					});
+					// A world import that no kept code reads drops out, so each guest imports only
+					// what its world has.
+					bundler.onResolve({ filter: /^n8n:/ }, ({ path: module }) => ({
+						path: module,
+						external: true,
+						sideEffects: false,
+					}));
 				},
 			},
 		],
@@ -129,7 +140,7 @@ async function buildGuests() {
 	cpSync(path.join(ROOT, 'spec', 'wit'), path.join(wit, 'deps', 'node-contract'), {
 		recursive: true,
 	});
-	for (const kind of ['action', 'provider'] as const) await buildGuest(kind, wit);
+	for (const kind of ['action', 'provider', 'trigger'] as const) await buildGuest(kind, wit);
 }
 
 function buildSidecar() {

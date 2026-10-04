@@ -6,7 +6,7 @@ import { compat, credential, defineCredential, field } from '../entry/credential
 import { nodeDescriptionOf, toTriggerNodeType } from '../entry/host';
 import { contractHash, diffContracts, toContract, type ContractDocument } from '../entry/registry';
 import { defineNode, isRecord, parse, path, t, type WebhookEndpoint } from '../index';
-import { requestOf } from '../runtime';
+import { requestOf, setCredentialManifests } from '../runtime';
 import { mockHttp, runAction } from '../testing';
 
 const tasksApi = defineCredential({
@@ -488,6 +488,7 @@ describe('triggers', () => {
 				getNode: () => ({ name: 'Tasks', credentials: { tasksApi: { id: '1' } } }),
 				getNodeParameter: (name: string) => (name === 'project' ? 'p1' : undefined),
 				getCredentials: async () => await Promise.resolve({ token: 't', signingSecret: 'shh' }),
+				getWorkflowStaticData: () => ({}),
 				getRequestObject: () => ({ rawBody }),
 				getHeaderData: () => ({ 'x-signature': signature }),
 				getBodyData: () => body,
@@ -500,6 +501,80 @@ describe('triggers', () => {
 			workflowData: [[{ json: { id: '7', title: 'Ship' } }]],
 		});
 		expect(await deliver('forged')).toEqual({ noWebhookResponse: true });
+	});
+
+	it('read a renamed signature secret field through the credential manifest', async () => {
+		setCredentialManifests(async (name) =>
+			name === 'tasksApi'
+				? {
+						kind: 'credential',
+						id: 'tasks.token',
+						name: 'tasksApi',
+						semver: '1.0.0',
+						nodeContract: '2.5.0',
+						sdk: '0.0.0',
+						displayName: 'Tasks API',
+						fields: t.obj({ token: t.str(), signingSecret: t.str().optional() }).json,
+						scheme: { kind: 'none' },
+						hosts: ['tasks.test'],
+						renamed: { secret: 'signingSecret' },
+					}
+				: undefined,
+		);
+		try {
+			const type: INodeType = new (toTriggerNodeType(signed))();
+			const body = { id: 7, title: 'Ship' };
+			const rawBody = Buffer.from(JSON.stringify(body));
+			const response = { status: () => response, send: () => response, end: () => response };
+			const result = await type.webhook?.call({
+				getNode: () => ({ name: 'Tasks', credentials: { tasksApi: { id: '1' } } }),
+				getNodeParameter: (name: string) => (name === 'project' ? 'p1' : undefined),
+				getCredentials: async () => await Promise.resolve({ token: 't', secret: 'shh' }),
+				getWorkflowStaticData: () => ({}),
+				getRequestObject: () => ({ rawBody }),
+				getHeaderData: () => ({
+					'x-signature': createHmac('sha256', 'shh').update(rawBody).digest('hex'),
+				}),
+				getBodyData: () => body,
+				getQueryData: () => ({}),
+				getResponseObject: () => response,
+			} as never);
+			expect(result).toEqual({ workflowData: [[{ json: { id: '7', title: 'Ship' } }]] });
+		} finally {
+			setCredentialManifests(async () => undefined);
+		}
+	});
+
+	it('deliver a webhook with no credential read, and fail a body that is not an object', async () => {
+		const type: INodeType = new (toTriggerNodeType(hooked))();
+		const deliver = async (body: unknown) => {
+			const rawBody = Buffer.from(JSON.stringify(body));
+			const reads: string[] = [];
+			const result = await type.webhook?.call({
+				logger: {},
+				getNode: () => ({ name: 'Tasks', credentials: { tasksApi: { id: '1' } } }),
+				getNodeParameter: (name: string) => (name === 'project' ? 'p1' : undefined),
+				getCredentials: async (name: string) => {
+					reads.push(name);
+					return await Promise.resolve({ token: 't' });
+				},
+				getWorkflowStaticData: () => ({ webhookId: 'h1', webhookSecret: 'key' }),
+				getRequestObject: () => ({ rawBody }),
+				getHeaderData: () => ({
+					'x-signature': createHmac('sha256', 'key').update(rawBody).digest('hex'),
+				}),
+				getBodyData: () => body,
+				getQueryData: () => ({}),
+			} as never);
+			return { result, reads };
+		};
+		expect(await deliver({ id: '7', title: 'Ship' })).toEqual({
+			result: { workflowData: [[{ json: { id: '7', title: 'Ship' } }]] },
+			reads: [],
+		});
+		await expect(deliver([{ id: '7', title: 'Ship' }])).rejects.toThrow(
+			'The webhook request body is not a JSON object',
+		);
 	});
 
 	it('type the signature secret against the credential fields', () => {

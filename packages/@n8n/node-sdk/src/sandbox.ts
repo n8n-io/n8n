@@ -55,6 +55,13 @@ import {
 	type ToolDefinition,
 } from './providers';
 import { outputBinaryKeys } from './validate';
+import {
+	assertWebhookSignature,
+	loadTriggerExecutor,
+	TRIGGER_RUN,
+	triggerCallOf,
+	type TriggerCall,
+} from './triggers';
 import { NODE_CONTRACT_VERSION, type VersionManifest } from './version';
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -96,7 +103,7 @@ export interface SandboxLimits {
 export interface SandboxOptions {
 	/** The `n8n-sandbox` binary. */
 	readonly sidecar: string;
-	/** The directory of the generic JS guest components: `action.wasm` and `provider.wasm`. */
+	/** The directory of the generic JS guest components: `action.wasm`, `provider.wasm` and `trigger.wasm`. */
 	readonly guests: string;
 	/**
 	 * A directory that only n8n can write. It holds the compiled guest and the verified bundles,
@@ -162,7 +169,9 @@ interface Connection {
 }
 
 /** The kinds whose interface the sandbox runs, each with its own guest component. */
-type SandboxKind = 'action' | 'provider';
+type SandboxKind = 'action' | 'provider' | 'trigger';
+
+const SANDBOX_KINDS: readonly SandboxKind[] = ['action', 'provider', 'trigger'];
 
 interface SessionConfig {
 	readonly options: SandboxOptions;
@@ -185,8 +194,12 @@ const IMPORT_INTERFACES: Readonly<Record<HostImport, string>> = {
 	inputOf: 'input-of',
 };
 
-/** The imports of the world that the manifest grants. A provider gets only the base imports. */
+/**
+ * The imports of the world that the manifest grants. A provider gets only the base imports. A
+ * trigger gets no credential data: the host applies the credential to each request.
+ */
 const grantsOf = ({ kind, contract }: VersionManifest) => {
+	if (kind === 'trigger') return ['http', 'log', 'limits'];
 	const { imports, binary, supplied } = permissionsOf(contract);
 	return [
 		'http',
@@ -1657,6 +1670,79 @@ async function providerCapabilityOf(
 	return providerValue(id, provider.is(kind, capability) ? capability : undefined, `a ${kind}`);
 }
 
+/** A value of a webhook request as WIT text: a list gives one pair per entry. */
+const pairsOf = (record: Readonly<Record<string, unknown>>): Array<[string, string]> =>
+	Object.entries(record).flatMap(([name, value]) =>
+		(Array.isArray(value) ? value : [value]).flatMap(
+			(entry): Array<[string, string]> =>
+				entry === undefined || entry === null
+					? []
+					: [[name, typeof entry === 'object' ? JSON.stringify(entry) : String(entry)]],
+		),
+	);
+
+/**
+ * One trigger call in the sandbox: the function of the trigger interface, with the host imports
+ * of the executor context. So a request of the guest takes the egress of the executor.
+ */
+async function sandboxedTriggerCall(
+	manifest: VersionManifest,
+	context: SandboxContext,
+	start: () => Promise<Connection>,
+): Promise<Record<string, unknown>> {
+	const call: TriggerCall = triggerCallOf(context.item?.json);
+	const shared = sessions.getStore();
+	const connection = await (shared ?? start)();
+	const calls = callsOf(context, [], manifest.contract);
+	const stop = connection.serve(calls.calls);
+	const { input } = context;
+	const request = async (name: string, params: Record<string, unknown>) =>
+		await connection.request(`trigger.${name}`, { input, ...params });
+	try {
+		switch (call.call) {
+			case 'poll': {
+				const { state, limit, at } = call;
+				const polled = await request('poll', {
+					...(state === undefined ? {} : { state }),
+					...(limit === undefined ? {} : { limit }),
+					at,
+				});
+				if (!isRecord(polled)) throw new UserError(`${manifest.id} gave no poll result`);
+				return { items: polled.items, state: polled.state };
+			}
+			case 'activate': {
+				const { url, secret } = call;
+				return { state: await request('activate', { url, ...(secret ? { secret } : {}) }) };
+			}
+			case 'check':
+				return { exists: (await request('check', { state: call.state })) === true };
+			case 'deactivate':
+				await request('deactivate', { state: call.state });
+				return {};
+			case 'webhook': {
+				const {
+					state,
+					request: { body, headers, query },
+				} = call;
+				const items = await request('webhook', {
+					...(state === undefined ? {} : { state }),
+					request: { headers: pairsOf(headers), query: pairsOf(query), body },
+				});
+				return { items };
+			}
+			// Without this branch, TypeScript reports TS2366 for this function.
+			default:
+				throw new UnexpectedError('The trigger call has no function');
+		}
+	} catch (error) {
+		throw isRecord(error) && isRecord(error.data) ? runErrorOf(error.data, calls) : error;
+	} finally {
+		stop();
+		calls.close();
+		if (!shared) connection.close();
+	}
+}
+
 /**
  * The action of a frozen version that runs in the sandbox. Its contract comes from the
  * signed manifest; the host runs no bundle code. An action without egress reaches only the
@@ -1688,6 +1774,11 @@ function sandboxedAction(
 		egress: contract.egress ?? { hosts: [] },
 		...(contract.imports ? { imports: contract.imports } : {}),
 	};
+	if (manifest.kind === 'trigger') {
+		const call = async (context: SandboxContext) =>
+			await sandboxedTriggerCall(manifest, context, start);
+		return { ...shell, ...TRIGGER_RUN, run: call };
+	}
 	const run = (context: SandboxContext): AsyncGenerator<unknown> | Promise<unknown> => {
 		if (manifest.kind === 'provider') return providerCapabilityOf(manifest, context, start);
 		if (contract.inputs) {
@@ -1762,8 +1853,10 @@ async function bundleFileOf(options: SandboxOptions, manifest: VersionManifest, 
 
 /** What the sandbox cannot run. The host runs such a bundle nowhere, not in this process. */
 function unsupported({ id, kind, contract }: VersionManifest): string | undefined {
-	if (kind !== 'action' && kind !== 'provider') {
-		return `${id} is a ${kind}; the sandbox runs actions and providers only`;
+	if (kind === 'trigger') {
+		return contract.trigger === 'poll' || contract.trigger === 'webhook'
+			? undefined
+			: `${id} is a native trigger; n8n runs its legacy node`;
 	}
 	if (kind === 'action') return undefined;
 	if (!providedKindOf(contract.output))
@@ -1780,7 +1873,7 @@ export async function sandboxedVersionOf(frozen: FrozenVersion, options: Sandbox
 	const { manifest } = frozen;
 	const missing = unsupported(manifest);
 	if (missing) throw new UserError(missing);
-	const kind: SandboxKind = manifest.kind === 'provider' ? 'provider' : 'action';
+	const kind: SandboxKind = manifest.kind;
 	const code = await verifiedCodeOf(frozen);
 	const guest = path.join(options.guests, `${kind}.wasm`);
 	const config: SessionConfig = {
@@ -1799,6 +1892,10 @@ export async function sandboxedVersionOf(frozen: FrozenVersion, options: Sandbox
 	const described = await describing
 		.request(`${kind}.describe`, {})
 		.finally(() => describing.close());
+	if (kind === 'trigger') {
+		const webhook = isRecord(described) ? described.webhook : undefined;
+		assertWebhookSignature(manifest, isRecord(webhook) ? webhook.verify : undefined);
+	}
 	const action = sandboxedAction(
 		manifest,
 		await nodeOf(manifest, described, options.credentialType),
@@ -1818,8 +1915,7 @@ export async function sandboxedVersionOf(frozen: FrozenVersion, options: Sandbox
 export async function warmSandbox(options: SandboxOptions): Promise<void> {
 	// The sidecar creates a missing cache directory with the umask mode, which others can read.
 	await mkdir(options.cacheDir, { recursive: true, mode: 0o700 });
-	const kinds: readonly SandboxKind[] = ['action', 'provider'];
-	await kinds.reduce(async (previous, kind) => {
+	await SANDBOX_KINDS.reduce(async (previous, kind) => {
 		await previous;
 		const guest = path.join(options.guests, `${kind}.wasm`);
 		const session = await openSession({
@@ -1883,7 +1979,9 @@ export function sandboxExecutorLoader(
 	inProcess: (frozen: FrozenVersion) => boolean = () => false,
 ): ExecutorLoader {
 	return async (frozen) =>
-		inProcess(frozen)
-			? await loadExecutor(frozen)
-			: (await sandboxedVersionOf(frozen, options)).executor;
+		!inProcess(frozen)
+			? (await sandboxedVersionOf(frozen, options)).executor
+			: frozen.manifest.kind === 'trigger'
+				? await loadTriggerExecutor(frozen)
+				: await loadExecutor(frozen);
 }

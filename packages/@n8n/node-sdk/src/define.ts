@@ -26,6 +26,7 @@ import {
 } from './providers';
 import type {
 	PollConfig,
+	Signature,
 	TriggerKind,
 	WebhookConfig,
 	WebhookEndpoint,
@@ -1814,6 +1815,11 @@ export interface ContractDocument {
 	readonly trigger?: TriggerKind;
 	/** The n8n endpoint of a webhook trigger, when the author sets one. See `WebhookConfig.endpoint`. */
 	readonly endpoint?: WebhookEndpoint;
+	/**
+	 * The signature that the host checks on each request of a webhook trigger, before the bundle
+	 * gets the request. See `WebhookConfig.verify`.
+	 */
+	readonly verify?: Signature;
 	/** The JSON Schema of the parameters. */
 	readonly input: JsonSchema;
 	/** The JSON Schema of each output item. */
@@ -1872,6 +1878,8 @@ type ContractSource = Pick<
 							readonly webhook?: {
 								/** The n8n endpoint that the service calls. */
 								readonly endpoint?: WebhookEndpoint;
+								/** The signature that each request must have. */
+								readonly verify?: Signature;
 							};
 					  }
 					| Pick<NativeTrigger, 'kind' | 'native'>
@@ -1914,8 +1922,14 @@ const customEndpointOf = ({ method, path }: WebhookEndpoint = {}): WebhookEndpoi
  * contract hash read. It drops execution details (`run`, bindings, hatches).
  */
 export const toContract = (source: ContractSource): ContractDocument => {
+	// A trigger reaches only the hosts of its base URLs. A legacy node runs a native trigger.
 	const egress =
-		'kind' in source ? undefined : contractEgressOf(source.egress, source.node.baseUrl);
+		'kind' in source
+			? source.kind === 'native'
+				? undefined
+				: contractEgressOf(undefined, source.node.baseUrl)
+			: contractEgressOf(source.egress, source.node.baseUrl);
+	const verify = 'kind' in source && source.kind !== 'native' ? source.webhook?.verify : undefined;
 	const imports = 'kind' in source ? [] : [...new Set(source.imports ?? [])].sort();
 	const inputs = 'kind' in source ? undefined : source.inputs;
 	const resource = 'kind' in source ? undefined : source.resourceOutput;
@@ -1939,6 +1953,7 @@ export const toContract = (source: ContractSource): ContractDocument => {
 			? { trigger: source.kind === 'native' ? source.native.on : source.kind }
 			: {}),
 		...(Object.keys(endpoint).length ? { endpoint } : {}),
+		...(verify ? { verify } : {}),
 		input: source.inputSchema,
 		output: resource
 			? {

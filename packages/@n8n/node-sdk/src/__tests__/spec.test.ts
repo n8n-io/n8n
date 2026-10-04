@@ -1,6 +1,6 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import type { WebhookSetupMethodNames } from 'n8n-workflow';
+import type { INodeType, WebhookSetupMethodNames } from 'n8n-workflow';
 
 import {
 	camelCase,
@@ -61,7 +61,6 @@ import {
 	type ToolCall,
 	type ToolDefinition,
 } from '../providers';
-import type { triggerMethodsOf } from '../triggers';
 import { validate } from '../validate';
 import { compareSemver, NODE_CONTRACT_VERSION, type VersionManifest } from '../version';
 
@@ -436,9 +435,7 @@ describe('the provider interface', () => {
 
 describe('the trigger interface', () => {
 	it('has one export per n8n entry point of a trigger node, and covers each entry point', () => {
-		type EntryPoint =
-			| Exclude<keyof ReturnType<typeof triggerMethodsOf>, 'webhookMethods'>
-			| WebhookSetupMethodNames;
+		type EntryPoint = keyof Pick<INodeType, 'poll' | 'webhook'> | WebhookSetupMethodNames;
 		const entryPoints = membersOf<EntryPoint>()([
 			'poll',
 			'webhook',
@@ -447,9 +444,11 @@ describe('the trigger interface', () => {
 			'delete',
 		]);
 		const exportsOf: Record<string, readonly EntryPoint[]> = {
+			describe: [],
 			poll: ['poll'],
 			webhook: ['webhook'],
-			activate: ['checkExists', 'create'],
+			activate: ['create'],
+			check: ['checkExists'],
 			deactivate: ['delete'],
 		};
 		expect(sorted(wit.funcs('trigger'))).toEqual(sorted(Object.keys(exportsOf)));

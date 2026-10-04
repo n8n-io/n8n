@@ -140,8 +140,9 @@ host without a registry, import a copy of the registry folder.
   that minor. Raise the lowest major of the range only in an n8n major release.
 - A reader ignores a top-level manifest field that it does not know. A field that changes what
   the host must do comes with a higher `nodeContract`, so an older host refuses the bundle.
-  Exception: the spike added `nodeDisplayName`, `credentialOptional` and `endpoint` to the
-  contract at 2.6.0 with no version bump. Freeze all spike versions again.
+  Exception: the spike added `nodeDisplayName`, `credentialOptional`, `endpoint` and `verify` to
+  the contract at 2.6.0 with no version bump, and the trigger `egress`. It also added `describe`,
+  `check` and the poll time `at` to the trigger interface. Freeze all spike versions again.
 - A new item in the host interfaces raises the one Node Contract minor. A bundle that does not
   use the new item keeps its lower `nodeContract`.
 - The contract hash covers only `contract`. The manifest fields `kind`, `nodeContract`, `sdk`
@@ -195,7 +196,7 @@ The publish gate (`checkPublish`) refuses a smaller bump. A patch must keep the 
 | A removed output field, a removed key pattern, or an output field that becomes optional (from required or typical) | major |
 | An added or removed `x-n8n-resource`, or another `method` or `input` in it | major |
 | A credential that becomes optional (`credentialOptional`) | minor |
-| A changed flow, output list, input list, trigger kind or webhook `endpoint`; a new scope, egress host, host import, provider call, binary data access or credential type; a removed credential type; a credential that becomes required | major |
+| A changed flow, output list, input list, trigger kind, webhook `endpoint` or webhook signature (`verify`); a new scope, egress host, host import, provider call, binary data access or credential type; a removed credential type; a credential that becomes required | major |
 
 Output claims:
 

@@ -18,7 +18,7 @@ import type { ContractDocument, NativeNode } from './define';
 import { Schema, t, type AnySchema, type Infer, type JsonSchema } from './schema';
 import { matches } from './validate';
 import type { StoreDeprecation, StoreRecord, StoreRevoke, StoreYank } from './store';
-import type { WebhookEndpoint } from './triggers';
+import type { Signature, WebhookEndpoint } from './triggers';
 import type { NodeContractVersion, VersionManifest } from './version';
 
 const constant = <const V extends string | number | boolean>(value: V) =>
@@ -83,6 +83,16 @@ const endpoint = typed<WebhookEndpoint>()(
 	}),
 );
 
+const signature = typed<Signature>()(
+	t.obj({
+		algorithm: t.oneOf('sha1', 'sha256', 'sha512'),
+		header: t.str(),
+		prefix: t.str().optional(),
+		encoding: t.oneOf('hex', 'base64').optional(),
+		secret: t.union(constant('generated'), t.obj({ credential: t.str() })),
+	}),
+);
+
 const contract = typed<ContractDocument>()(
 	t.obj({
 		id: t.str(),
@@ -97,6 +107,7 @@ const contract = typed<ContractDocument>()(
 		scopes: names().optional(),
 		trigger: t.oneOf('webhook', 'poll', 'event', 'manual', 'schedule', 'form').optional(),
 		endpoint: endpoint.optional(),
+		verify: signature.with(SINCE_2_6).optional(),
 		input: jsonSchema(),
 		output: jsonSchema(),
 		outputs: t

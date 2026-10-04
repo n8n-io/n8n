@@ -194,7 +194,7 @@ describe('useNodeContractsRegistry', () => {
 
 	it('passes the sandbox files, a cache dir in the n8n folder, and the n8n credential names', async () => {
 		const dir = await mkdtemp(path.join(tmpdir(), 'node-contracts-sandbox-'));
-		const files = ['n8n-sandbox', 'action.wasm', 'provider.wasm'].map((name) =>
+		const files = ['n8n-sandbox', 'action.wasm', 'provider.wasm', 'trigger.wasm'].map((name) =>
 			path.join(dir, name),
 		);
 		await Promise.all(files.map(async (file) => await writeFile(file, '')));

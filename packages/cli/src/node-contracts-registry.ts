@@ -583,7 +583,10 @@ export async function useNodeContractsRegistry() {
 function sandboxFilesOf(instanceAi: GlobalConfig['instanceAi']) {
 	const sidecar = instanceAi.nodeContractSandboxSidecar;
 	const guests = instanceAi.nodeContractSandboxGuests;
-	const files = [sidecar, path.join(guests, 'action.wasm'), path.join(guests, 'provider.wasm')];
+	const files = [
+		sidecar,
+		...['action.wasm', 'provider.wasm', 'trigger.wasm'].map((guest) => path.join(guests, guest)),
+	];
 	const missing = !sidecar || !guests ? files : files.filter((file) => !existsSync(file));
 	if (missing.length > 0) {
 		throw new UserError(
