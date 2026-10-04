@@ -34,7 +34,6 @@ are the full API: do not read SDK files. Only `build-workflow` has
    `sourceCode`.
 4. Fix every `file:line` error: pass the full source, or edit the file with
    `workspace_str_replace_file` and build with `filePath` only.
-5. Follow `postBuildFlow.instructions` if `postBuildFlow.required` is true.
 
 To edit a workflow, call `workflows(action="get-as-code", workflowId)`,
 make the smallest change and build with its `filePath`. Keep its
@@ -46,7 +45,7 @@ Load each one that applies with `load_skill` and `filePath`, in the
 `nodes(action="search")` step:
 
 - `references/flow-control.md`: `when`, `route`, `switchOn`, `merge`,
-  `forEach`, `loop`, or over {{TOP_LEVEL_ITEM_CEILING_PLACEHOLDER}} boxes.
+  `forEach`, `loop` or `group`.
 - `references/ai-nodes.md`: an agent, chain or LLM node.
 - `references/binary.md`: a file or attachment.
 - `references/compositional-workflows.md`: sub-workflows the user asks
@@ -108,3 +107,5 @@ export default workflow(
 2. A write action outputs its API response, not its input: read earlier
    data with `$('Node')`.
 3. Build success is not proof. Do not publish automatically.
+4. Over {{TOP_LEVEL_ITEM_CEILING_PLACEHOLDER}} boxes (a node, loop or group is one), also
+   after an edit, wrap each stage in `group()`.

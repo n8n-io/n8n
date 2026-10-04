@@ -234,12 +234,17 @@ describe('contract-mode skill', () => {
 		},
 	);
 
-	it('points to flow-control over the box ceiling, which teaches group() and the opt-out', () => {
+	it('names the box ceiling in a core rule, and flow-control teaches group(), its boundary and the opt-out', () => {
 		const text = substituteSkillPlaceholders(skill);
-		expect(text).toContain(`\`loop\`, or over ${TOP_LEVEL_ITEM_CEILING} boxes.`);
-		expect(flowControl).toContain(
-			"wrap stages (not a lone\n`forEach`) in `group({ name }, part)` or pass\n`groupingDecision: 'not_warranted'` and a `groupingReason`.",
+		expect(text).toContain(
+			`4. Over ${TOP_LEVEL_ITEM_CEILING} boxes (a node, loop or group is one), also\n   after an edit, wrap each stage in \`group()\`.`,
 		);
+		expect(skill).toContain('`forEach`, `loop` or `group`.');
+		expect(flowControl).toContain('`group({ name, description }, steps(…))`');
+		expect(flowControl).toContain(
+			'The paths of a `when` or `switchOn`\n  join at the next step: put that step in the same group',
+		);
+		expect(flowControl).toContain("`groupingDecision: 'not_warranted'` and a `groupingReason`.");
 	});
 
 	it('makes the loop state with a set before the loop', () => {

@@ -24,6 +24,9 @@ export const REGION_DROPPED_CODE = 'REGION_DROPPED';
 
 /** How a `@n8n/workflow-sdk/next` source frames a stage as a node group. */
 const NEXT_GROUP_CALL = '`group({ name, description }, steps(…))`';
+/** The usual invalid group ends on the open paths of a branch, so the hint names the join step. */
+const NEXT_GROUP_BOUNDARY =
+	'A group has one entry and one exit: the paths of a `when` or `switchOn` join at the next step, so put that step in the same group or end the group before the branch.';
 
 /**
  * What the agent tells build-workflow about groups.
@@ -237,7 +240,8 @@ export function groupingDecisionBlocker(input: {
 			message:
 				`${droppedGroupWarnings.length} of ${declaredGroupCount} declared node group(s) were removed, ` +
 				`so the canvas would have ${summary.total} boxes. ` +
-				`${reasons} Fix the boundary each message names and build again; do not remove the groups.`,
+				`${reasons} Fix the boundary each message names and build again; do not remove the groups.` +
+				(nextSource ? ` ${NEXT_GROUP_BOUNDARY}` : ''),
 		};
 	}
 
@@ -256,7 +260,7 @@ export function groupingDecisionBlocker(input: {
 			`The canvas would have ${summary.total} boxes with every group collapsed and no node group. ` +
 			`Ungrouped: ${summary.groupableNodeNames.join(', ')}. ` +
 			(nextSource
-				? `Wrap each stage in ${NEXT_GROUP_CALL} and build again. Each loop counts as one box. `
+				? `Wrap each stage in ${NEXT_GROUP_CALL} and build again. Each loop counts as one box. ${NEXT_GROUP_BOUNDARY} `
 				: 'Wrap each stage in `.group(name, members, { description })` and build again. ') +
 			"If no valid group can hold these nodes, call build-workflow again with `groupingDecision: 'not_warranted'` " +
 			'and a `groupingReason` that says why.',

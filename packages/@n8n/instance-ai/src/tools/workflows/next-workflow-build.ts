@@ -758,7 +758,7 @@ const moduleStepHint = (lead: string) => (_macros: string, error: string) => {
 };
 
 const UNDEFINED_HINT =
-	"The value can be undefined. After a step with `onError: 'continueRegularOutput'`, check `item.error === undefined` first: then its output fields are set. A `schema` field is optional until its `required` list names it. Else give a default, e.g. `item.f ?? ''`.";
+	"The value can be undefined. After a step with `onError: 'continueRegularOutput'`, check `item.error === undefined` first: then its output fields are set. A `schema` field is optional until its `required` list names it: add it there if the data always has it. Else give a default, e.g. `item.f ?? ''`.";
 
 const LOOP_STATE_HINT =
 	'The loop state has the type of the item before `loop`, and `next` returns it. Put a `set` of only the state fields before `loop`. Then end the body with a `set` of the same fields, or return them from `next`.';

@@ -257,6 +257,23 @@ describe('groupingDecisionBlocker', () => {
 		expect(blocker?.message).toContain('1 of 2 declared node group(s) were removed');
 	});
 
+	it('names the join step of a branch for a next source only', () => {
+		const summary = summarizeWorkflowTopLevelItems(workflow(8));
+		const boundary = 'the paths of a `when` or `switchOn` join at the next step';
+		const messageOf = (nextSource: boolean, droppedGroupWarnings: typeof dropped) =>
+			groupingDecisionBlocker({
+				summary,
+				declaredGroupCount: droppedGroupWarnings.length,
+				droppedGroupWarnings,
+				nextSource,
+			})?.message ?? '';
+
+		expect(messageOf(true, dropped)).toMatch(/do not remove the groups\. A group has one entry/);
+		expect(messageOf(true, [])).toContain(boundary);
+		expect(messageOf(false, dropped)).not.toContain(boundary);
+		expect(messageOf(false, [])).not.toContain(boundary);
+	});
+
 	it('does not block a dropped group when the canvas is within the ceiling', () => {
 		const summary = summarizeWorkflowTopLevelItems(workflow(6));
 

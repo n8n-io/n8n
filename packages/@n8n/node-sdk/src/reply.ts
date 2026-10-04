@@ -27,7 +27,9 @@ export const replySchema = t
 	})
 	.with({ additionalProperties: true, 'x-n8n-literal': true })
 	.optional()
-	.hint('JSON Schema of the reply object; the output field gets its type');
+	.hint(
+		'JSON Schema of the reply; leave a field the model may not find out of `required`',
+	);
 
 const replyText = t.str().hint('The reply text');
 
@@ -59,8 +61,32 @@ export function replyOutputOf(schema: unknown): JsonSchema {
 const FENCE = /^\s*```(?:json)?\s*([\s\S]*?)\s*```\s*$/;
 
 /**
- * The reply text parsed as JSON and checked against `schema`. Throws an `OperationalError` when
- * it does not match.
+ * `value` without the `null` fields that `schema` does not require and does not allow as `null`.
+ * A model often sends `null` for a field it did not find; the output type marks such a field as
+ * optional, so it becomes absent.
+ */
+function withoutOptionalNulls(value: unknown, schema: JsonSchema): unknown {
+	if (Array.isArray(value)) {
+		const items = schema.items;
+		return items ? value.map((item) => withoutOptionalNulls(item, items)) : value;
+	}
+	if (!isRecord(value) || !schema.properties) return value;
+	const properties = schema.properties;
+	const required = schema.required ?? [];
+	return Object.fromEntries(
+		Object.entries(value).flatMap(([key, child]) => {
+			const property = properties[key];
+			if (!property) return [[key, child]];
+			const dropped =
+				child === null && !required.includes(key) && validate(null, property).length > 0;
+			return dropped ? [] : [[key, withoutOptionalNulls(child, property)]];
+		}),
+	);
+}
+
+/**
+ * The reply text parsed as JSON and checked against `schema`, without the `null` fields that
+ * `schema` does not require. Throws an `OperationalError` when it does not match.
  */
 export function parseReply(reply: ChatReply, schema: JsonSchema): unknown {
 	const text = FENCE.exec(reply.text)?.[1] ?? reply.text;
@@ -71,11 +97,12 @@ export function parseReply(reply: ChatReply, schema: JsonSchema): unknown {
 			throw new OperationalError(`The model reply is not JSON: ${text.slice(0, 200)}`);
 		}
 	})();
-	const issues = validate(parsed, schema, { path: 'output' });
+	const output = withoutOptionalNulls(parsed, schema);
+	const issues = validate(output, schema, { path: 'output' });
 	if (issues.length > 0) {
 		throw new OperationalError(`The model reply does not match the schema: ${issues.join('; ')}`);
 	}
-	return parsed;
+	return output;
 }
 
 /** Throws a `UserError` when the token limit or a content filter cut the reply of `model`. */

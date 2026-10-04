@@ -47,11 +47,17 @@ export default workflow(
 );
 ```
 
-## Large workflows
+## Groups
 
-Over the box ceiling that the skill names, wrap stages (not a lone
-`forEach`) in `group({ name }, part)` or pass
-`groupingDecision: 'not_warranted'` and a `groupingReason`.
+Over the box ceiling, before the build:
+
+- Wrap each stage (not a lone `forEach`) in
+  `group({ name, description }, steps(…))`.
+- A group has one entry and one exit. The paths of a `when` or `switchOn`
+  join at the next step: put that step in the same group, or end the
+  group before the branch.
+- If no valid group can hold the rest, pass
+  `groupingDecision: 'not_warranted'` and a `groupingReason`.
 
 ## Errors
 
