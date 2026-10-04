@@ -98,6 +98,8 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [mcp_registry_server](mcp_registry_server.md) | 7 |  | table |
 | [migration_finding](migration_finding.md) | 10 |  | table |
 | [migration_finding_sync](migration_finding_sync.md) | 3 |  | table |
+| [node_contract_status](node_contract_status.md) | 4 |  | table |
+| [node_contract_version](node_contract_version.md) | 11 |  | table |
 | [oauth_access_tokens](oauth_access_tokens.md) | 3 |  | table |
 | [oauth_authorization_codes](oauth_authorization_codes.md) | 13 |  | table |
 | [oauth_clients](oauth_clients.md) | 10 |  | table |
@@ -1314,6 +1316,25 @@ erDiagram
   varchar_128_ ruleSetFingerprint
   datetime_3_ syncedAt
   varchar_16_ targetVersion PK
+}
+"node_contract_status" {
+  varchar_255_ contractId
+  datetime_3_ createdAt
+  varchar_71_ digest PK
+  TEXT line
+}
+"node_contract_version" {
+  TEXT bundle
+  varchar_255_ contractId
+  datetime_3_ createdAt
+  varchar_71_ digest PK
+  TEXT fixtures
+  varchar_16_ kind
+  TEXT manifest
+  varchar_16_ origin
+  datetime_3_ published
+  TEXT signatures
+  varchar_32_ version
 }
 "oauth_access_tokens" {
   varchar clientId FK
