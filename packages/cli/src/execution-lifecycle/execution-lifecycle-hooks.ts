@@ -730,6 +730,8 @@ function hookFunctionsSaveWorker(
 			workflowId: this.workflowData.id,
 		});
 
+		await restoreBinaryDataId(fullRunData, this.executionId, this.mode);
+
 		const { parentExecution } = fullRunData.data;
 		if (parentExecution) {
 			await duplicateBinaryDataToParent(fullRunData, parentExecution, binaryDataService);

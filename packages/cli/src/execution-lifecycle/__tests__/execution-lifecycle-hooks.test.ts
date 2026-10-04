@@ -1629,6 +1629,37 @@ describe('Execution Lifecycle Hooks', () => {
 			});
 		});
 
+		it('should restore webhook binary data IDs before saving the execution', async () => {
+			mockInstance(BinaryDataConfig, { mode: 'filesystem' });
+			lifecycleHooks = createHooks('webhook');
+			const binaryData = {
+				id: `filesystem-v2:workflows/${workflowId}/executions/temp/binary_data/123`,
+				data: '',
+				mimeType: 'text/plain',
+			};
+			successfulRun.data.resultData.runData = {
+				[nodeName]: [
+					{
+						startTime: 1,
+						executionIndex: 0,
+						executionTime: 1,
+						source: [],
+						data: { main: [[{ json: {}, binary: { data: binaryData } }]] },
+					},
+				],
+			};
+
+			await lifecycleHooks.runHook('workflowExecuteAfter', [successfulRun, {}]);
+
+			expect(binaryDataService.rename).toHaveBeenCalledWith(
+				`workflows/${workflowId}/executions/temp/binary_data/123`,
+				`workflows/${workflowId}/executions/${executionId}/binary_data/123`,
+			);
+			expect(binaryData.id).toBe(
+				`filesystem-v2:workflows/${workflowId}/executions/${executionId}/binary_data/123`,
+			);
+		});
+
 		describe('error workflow', () => {
 			it('should not execute error workflow for manual executions', async () => {
 				await lifecycleHooks.runHook('workflowExecuteAfter', [failedRun, {}]);
