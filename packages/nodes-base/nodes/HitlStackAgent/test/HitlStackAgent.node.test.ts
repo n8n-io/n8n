@@ -104,6 +104,24 @@ describe('HITLStackAgent Node — non-blocking (Cerebro)', () => {
 		expect(promptAttr.value.stringValue).toBe('what is 12 * 9?');
 	});
 
+	it('marks the review failed when the trace is not delivered', async () => {
+		const ctx = setupExecuteFunctions(baseParams);
+		ctx.getCredentials.mockResolvedValue({ baseUrl: 'https://cerebro.example', apiKey: 'k' });
+		ctx.helpers.httpRequest.mockImplementation(async (opts: { url: string }) => {
+			if (opts.url.endsWith('/config/v1/auth/api-keys/token'))
+				return { access_token: 'jwt-1', expires_in: 300 };
+			if (opts.url.endsWith('/config/v1/agents'))
+				return { items: [{ agent_id: 'ag_1', agent_name: 'Support' }] };
+			throw new Error('ingest unavailable');
+		});
+
+		const result = await new HitlStackAgent().execute.call(ctx);
+
+		// delivery failed → must not read as awaiting human input
+		expect(result[0][0].json.review).toMatchObject({ status: 'failed', delivered: false });
+		expect(ctx.putExecutionToWait).not.toHaveBeenCalled();
+	});
+
 	it('fails when no agent is selected', async () => {
 		const ctx = setupExecuteFunctions({ agentId: '', includeContext: false });
 

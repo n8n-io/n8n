@@ -22,9 +22,12 @@ export class CerebroApi implements ICredentialType {
 			name: 'baseUrl',
 			type: 'string',
 			required: true,
-			default: 'https://cerebro-stg-apim.azure-api.net',
-			placeholder: 'https://cerebro-stg-apim.azure-api.net',
-			description: 'Root of the Cerebro API gateway. The /config and /ingest paths hang off it.',
+			// No default on purpose: the endpoint must be chosen explicitly so review
+			// data and the API key are never sent to an unintended environment.
+			default: '',
+			placeholder: 'https://your-cerebro-gateway.example.com',
+			description:
+				'Root of the Cerebro API gateway for your environment. The /config and /ingest paths hang off it.',
 		},
 		{
 			displayName: 'API Key',

@@ -154,7 +154,9 @@ export class HitlStackAgent implements INodeType {
 						...items[0].json,
 						review: {
 							mode: 'cerebro',
-							status: 'pending',
+							// Only "pending" once Cerebro actually accepted the trace; a failed
+							// delivery must not read as awaiting human input downstream.
+							status: result.delivered && result.acceptedSpans !== 0 ? 'pending' : 'failed',
 							agentId,
 							traceId,
 							delivered: result.delivered,
@@ -202,12 +204,20 @@ function buildTrail(ctx: IExecuteFunctions, depth: number): IDataObject[] {
 	return parents.map(({ name, type, disabled }) => {
 		const entry: IDataObject = { node: name, type, executed: !disabled };
 		try {
-			// A node that never ran on this branch throws rather than returning []
-			const items = proxy.$items(name);
-			entry.output = items[0]?.json ?? null;
+			// Resolve the ancestor item paired with THIS item, so a Loop Over Items
+			// iteration carries its own question/context rather than the first item's.
+			const paired = (proxy.$(name) as { item?: INodeExecutionData }).item;
+			entry.output = paired?.json ?? null;
 		} catch {
-			entry.executed = false;
-			entry.output = null;
+			// No paired-item lineage (e.g. a node that never ran on this branch, or a
+			// node that doesn't propagate pairing) — fall back to the first item.
+			try {
+				const items = proxy.$items(name);
+				entry.output = items[0]?.json ?? null;
+			} catch {
+				entry.executed = false;
+				entry.output = null;
+			}
 		}
 		return entry;
 	});

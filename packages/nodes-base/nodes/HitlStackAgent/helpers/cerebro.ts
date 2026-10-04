@@ -39,11 +39,16 @@ interface CachedToken {
 const tokenCache = new Map<string, CachedToken>();
 
 const trimBase = (baseUrl: string) => baseUrl.replace(/\/+$/, '');
-const fingerprint = (apiKey: string) => createHash('sha256').update(apiKey).digest('hex');
+// Scope the cache entry to the gateway as well as the key: the same key pointed at
+// two gateways must not reuse a JWT minted by the other one.
+const fingerprint = (baseUrl: string, apiKey: string) =>
+	createHash('sha256')
+		.update(`${trimBase(baseUrl)}\n${apiKey}`)
+		.digest('hex');
 
 /** Exchanges the API key for a JWT, reusing a cached one until 30s before expiry. */
 async function cerebroToken(ctx: Ctx, credentials: CerebroCredentials): Promise<string> {
-	const key = fingerprint(credentials.apiKey);
+	const key = fingerprint(credentials.baseUrl, credentials.apiKey);
 	const cached = tokenCache.get(key);
 	if (cached && Date.now() < cached.expiresAt) return cached.token;
 
