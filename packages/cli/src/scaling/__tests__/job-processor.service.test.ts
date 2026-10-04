@@ -327,6 +327,50 @@ describe('JobProcessor', () => {
 			await processPromise;
 		});
 
+		it('should suspend a suspendable job that registers after suspension was requested', async () => {
+			const executionPersistence = mock<ExecutionPersistence>();
+			let resolveExecution!: (execution: IExecutionResponse) => void;
+			executionPersistence.findSingleExecution.mockReturnValue(
+				new Promise<IExecutionResponse>((r) => (resolveExecution = r)),
+			);
+			vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(
+				mock<IWorkflowExecuteAdditionalData>(),
+			);
+			const jobProcessor = createJobProcessor(executionPersistence);
+
+			let resolveRun!: (run: IRun) => void;
+			processRunExecutionDataMock.mockReturnValue(new Promise<IRun>((r) => (resolveRun = r)));
+
+			const job = mock<Job>({
+				id: 'job-1',
+				data: {
+					executionId: 'exec-1',
+					loadStaticData: false,
+					streamingEnabled: false,
+					isMcpExecution: false,
+				},
+			});
+
+			const processPromise = jobProcessor.processJob(job);
+
+			// Shutdown arrives while the job is still in its preflight reads.
+			jobProcessor.suspendRunningJobs();
+			expect(workflowExecuteSuspendMock).not.toHaveBeenCalled();
+
+			resolveExecution(
+				mock<IExecutionResponse>({
+					mode: 'webhook',
+					workflowData: { nodes: [], staticData: {} },
+					data: mock<IRunExecutionData>(),
+				}),
+			);
+			await vi.waitFor(() => expect(jobProcessor.getRunningJobIds()).toEqual(['job-1']));
+			expect(workflowExecuteSuspendMock).toHaveBeenCalledTimes(1);
+
+			resolveRun(successRun());
+			await processPromise;
+		});
+
 		it('should not attach a suspend handle to a non-suspendable job', async () => {
 			const executionPersistence = mock<ExecutionPersistence>();
 			executionPersistence.findSingleExecution.mockResolvedValue(
