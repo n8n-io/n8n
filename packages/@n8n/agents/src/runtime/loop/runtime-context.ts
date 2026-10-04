@@ -175,10 +175,12 @@ export class RuntimeContextBuilder {
 			skillContent
 				? {
 						content: skillContent,
-						providerOptions: buildSkillInstructionCacheOptions(
-							instructionProviderOptions,
-							tools.aiTools,
-						),
+						cacheOptions: (messages) =>
+							buildSkillInstructionCacheOptions(
+								instructionProviderOptions,
+								tools.aiTools,
+								messages,
+							),
 					}
 				: undefined,
 		);

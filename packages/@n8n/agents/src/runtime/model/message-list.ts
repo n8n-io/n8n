@@ -370,7 +370,11 @@ export class AgentMessageList {
 		instructionProviderOptions?: ProviderOptions,
 		volatileInstructions?: string,
 		splitSystemMessages = true,
-		skillInstructions?: { content: string; providerOptions?: ProviderOptions },
+		skillInstructions?: {
+			content: string;
+			/** Resolved from the conversation messages, which can hold caller breakpoints. */
+			cacheOptions?: (messages: ModelMessage[]) => ProviderOptions | undefined;
+		},
 	): LlmContext {
 		const messages = toAiMessages(
 			filterLlmMessages(stripOrphanedToolMessages(this.llmVisibleMessages())),
@@ -388,7 +392,10 @@ export class AgentMessageList {
 				volatileInstructions,
 				this.mcpConnectionNote,
 				splitSystemMessages,
-				skillInstructions,
+				skillInstructions && {
+					content: skillInstructions.content,
+					providerOptions: skillInstructions.cacheOptions?.(messages),
+				},
 			),
 			messages,
 		};
