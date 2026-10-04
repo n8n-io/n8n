@@ -14,6 +14,7 @@ import { setPermissionRefusalListener, type PermissionRefusal } from '../egress'
 import { freezeAction, GUEST_LACKS } from '../freeze';
 import { defineNode, t } from '../index';
 import { runRecorder } from '../profile';
+import { replayFixtures } from '../publish';
 import {
 	policyExecutorLoader,
 	sandboxedVersionOf,
@@ -181,6 +182,11 @@ export const binaryProbe = spec(
 		egress: { hosts: ['api.example.com'] },
 	},
 );
+export const migrateProbe = spec(async ({ input }) => ({ value: input.message }), {
+	version: 2,
+	input: { message: str() },
+	migrate: (fromMajor: number, params: any) => ({ message: String(params.text) }),
+});
 export const openStreamsProbe = spec(
 	async ({ input, binary: files }) => {
 		for await (const _chunk of input.file.read()) break;
@@ -218,6 +224,7 @@ const PROBE_NAMES = [
 	'binaryProbe',
 	'openStreamsProbe',
 	'globalsProbe',
+	'migrateProbe',
 ] as const;
 
 type ProbeName = (typeof PROBE_NAMES)[number];
@@ -780,6 +787,29 @@ describe.skipIf(!existsSync(SIDECAR) || !existsSync(GUEST))('the sandbox', () =>
 		expect(value).toBe('done');
 		expect(reads.map((stream) => stream.destroyed)).toEqual([true]);
 		expect(settled).toEqual(['rejected']);
+	});
+
+	it('replays the migration pairs with the migrate of the guest', async () => {
+		const replay = async (name: ProbeName, expected: Record<string, unknown>) => {
+			const frozen = await freezeAction(path.join(dirs.root, 'probes.ts'), name);
+			const loaded = await sandboxedVersionOf(
+				{ manifest: frozen.manifest, origin: 'community', readBundle: async () => frozen.bundle },
+				options(),
+			);
+			return await replayFixtures(
+				frozen,
+				{ executions: [], migrations: [{ fromMajor: 1, params: { text: 'hi' }, expected }] },
+				{ contract: loaded.action, executor: loaded.executor, migrate: loaded.migrate },
+			);
+		};
+
+		await expect(replay('migrateProbe', { message: 'hi' })).resolves.toEqual([]);
+		await expect(replay('migrateProbe', { message: 'ho' })).resolves.toEqual([
+			'probe.probe@2.0.0 migration from 1: got {"message":"hi"}',
+		]);
+		await expect(replay('pollutionProbe', { message: 'hi' })).resolves.toEqual([
+			'probe.probe@1.0.0 migration from 1: the contract has no migrate',
+		]);
 	});
 });
 

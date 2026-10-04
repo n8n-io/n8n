@@ -356,12 +356,11 @@ describe.skipIf(!sandboxBuilt)('bundled versions in the sandbox', () => {
 				},
 			);
 			if (!loaded) continue;
-			// `migrate` has no export in the action world, so only executions replay.
-			const fixtures = { ...fixturesOf(id), migrations: [] };
 			const bundle = await head.readBundle();
-			const replayed = await replayFixtures({ manifest: head.manifest, bundle }, fixtures, {
+			const replayed = await replayFixtures({ manifest: head.manifest, bundle }, fixturesOf(id), {
 				contract: loaded.action,
 				executor: loaded.executor,
+				migrate: loaded.migrate,
 			});
 			issues.push(...replayed);
 		}

@@ -162,8 +162,8 @@ async function replayAll({ runtime }: Runtime, budget: Budget) {
 			.within(
 				replayFixtures(
 					{ manifest: head.manifest, bundle: await head.readBundle() },
-					{ ...fixtures, migrations: [] },
-					loaded && { contract: loaded.action, executor: loaded.executor },
+					fixtures,
+					loaded && { contract: loaded.action, executor: loaded.executor, migrate: loaded.migrate },
 				),
 			)
 			.catch((error: unknown) => [`${id}: ${messageOf(error)}`]);

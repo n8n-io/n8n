@@ -280,6 +280,11 @@ export async function runGuest(transport: SyncTransport, args: GuestArgs): Promi
 				return inline(action.describe());
 			case 'provider.describe':
 				return inline(provider.describe());
+			case 'action.migrate': {
+				const fromMajor = Number(params.fromMajor);
+				const given = JSON.stringify(params.params ?? null);
+				return inline(await result(() => action.migrate(fromMajor, given)));
+			}
 			case 'action.item-run.[new]':
 				return created(new action.ItemRun(JSON.stringify(params.input), texts(params.items)));
 			case 'action.item-run.[take]':

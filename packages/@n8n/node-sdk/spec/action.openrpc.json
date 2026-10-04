@@ -58,6 +58,46 @@
 			"x-since": "2.0.0"
 		},
 		{
+			"name": "action.migrate",
+			"description": "The parameters of a workflow node of the older major `from-major`, changed to the input\nof this major. A bundle without `migrate` gives an error. The host answers no import\ncall during `migrate`. Publish replays the migration fixtures with it.",
+			"paramStructure": "by-name",
+			"params": [
+				{
+					"name": "fromMajor",
+					"required": true,
+					"schema": {
+						"type": "integer",
+						"minimum": 0,
+						"maximum": 4294967295
+					}
+				},
+				{
+					"name": "params",
+					"required": true,
+					"schema": {
+						"$ref": "#/components/schemas/types.json"
+					}
+				}
+			],
+			"result": {
+				"name": "result",
+				"schema": {
+					"$ref": "#/components/schemas/types.json"
+				}
+			},
+			"errors": [
+				{
+					"code": -32000,
+					"message": "The error of the WIT result."
+				}
+			],
+			"x-error": {
+				"$ref": "#/components/schemas/errors.run-error"
+			},
+			"x-direction": "host-to-guest",
+			"x-since": "2.7.0"
+		},
+		{
 			"name": "action.run.[new]",
 			"description": "The host resolved, defaulted and validated `input` against the manifest input.",
 			"paramStructure": "by-name",

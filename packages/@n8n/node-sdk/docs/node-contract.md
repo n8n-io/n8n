@@ -145,7 +145,8 @@ host without a registry, import a copy of the registry folder.
   the host must do comes with a higher `nodeContract`, so an older host refuses the bundle.
   Exception: the spike added `nodeDisplayName`, `credentialOptional`, `endpoint` and `verify` to
   the contract at 2.6.0 with no version bump, and the trigger `egress`. It also added `describe`,
-  `check` and the poll time `at` to the trigger interface. Freeze all spike versions again.
+  `check` and the poll time `at` to the trigger interface, and `migrate` to the action
+  interface at 2.7.0. Freeze all spike versions again.
 - A new item in the host interfaces raises the one Node Contract minor. A bundle that does not
   use the new item keeps its lower `nodeContract`.
 - The contract hash covers only `contract`. The manifest fields `kind`, `nodeContract`, `sdk`

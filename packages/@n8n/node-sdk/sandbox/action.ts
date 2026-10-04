@@ -35,6 +35,7 @@ import {
 	log,
 	messageOf,
 	parsed,
+	recordOf,
 	replyOf,
 	responseOf,
 	ResultError,
@@ -531,4 +532,15 @@ class Run {
 	}
 }
 
-export const action = { describe, Run, ItemRun, JoinRun, ChunkRun };
+/** `action.migrate`: the `migrate` of the bundle. */
+function migrate(fromMajor: number, params: string): string {
+	try {
+		const bundled = actionOf();
+		if (!bundled.migrate) throw new Error('the contract has no migrate');
+		return JSON.stringify(bundled.migrate(fromMajor, recordOf(params)));
+	} catch (error) {
+		throw new ResultError(runErrorOf(error));
+	}
+}
+
+export const action = { describe, migrate, Run, ItemRun, JoinRun, ChunkRun };

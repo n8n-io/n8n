@@ -2133,7 +2133,7 @@ function unsupported({ id, kind, contract }: VersionManifest): string | undefine
 	return undefined;
 }
 
-/** The action of a frozen version in the sandbox, and the executor that runs it. */
+/** The action of a frozen version in the sandbox, the executor that runs it, and its `migrate`. */
 export async function sandboxedVersionOf(frozen: FrozenVersion, options: SandboxOptions) {
 	const { manifest } = frozen;
 	const missing = unsupported(manifest);
@@ -2164,7 +2164,20 @@ export async function sandboxedVersionOf(frozen: FrozenVersion, options: Sandbox
 		start,
 		chunksItems(manifest, options),
 	);
-	return { action, start, executor: sandboxedExecutor(executorOf(action), start) };
+	// Only the action interface exports `migrate`: another kind gives a "method not found" error.
+	const migrate = async (fromMajor: number, params: Readonly<Record<string, unknown>>) => {
+		const connection = await start();
+		const migrated = await connection
+			.request(`${kind}.migrate`, { fromMajor, params })
+			.finally(() => connection.close());
+		if (!isRecord(migrated)) {
+			throw new UserError(
+				`${manifest.id}@${manifest.semver} migrated to a value that is not an object`,
+			);
+		}
+		return migrated;
+	};
+	return { action, start, executor: sandboxedExecutor(executorOf(action), start), migrate };
 }
 
 /**

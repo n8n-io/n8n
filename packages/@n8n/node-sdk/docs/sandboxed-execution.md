@@ -77,8 +77,8 @@ flowchart LR
   other runtime through `sandboxedVersionOf` with that `GuestRuntime`. `policy.log` gets one
   line for each version it loads, e.g. `items.set@1.0.0 (first-party) runs in worker`, for a
   debug log. The sandboxed action takes
-  its contract from the signed manifest; the host runs no bundle code. `replayFixtures` takes the same action and executor, so publish can
-  replay the fixtures in the sandbox.
+  its contract from the signed manifest; the host runs no bundle code. `replayFixtures` takes the same action, executor and `migrate`, so
+  publish can replay the fixtures and the migration pairs in the sandbox.
 - The credential types of a sandboxed action come from the host (`options.credentialType`) by
   the names in the manifest. Their hosts and base URLs never come from the bundle. The bundle
   gives only the node name, the scopes text and the node `baseUrl`. Freeze writes the `baseUrl`
@@ -348,7 +348,8 @@ compiles at the same time are safe: the sidecar writes the `.cwasm` atomically.
 
 - Credentials (the credential world) and lookups in the sandbox. The sidecar is generic: each
   needs host answers in `src/sandbox.ts` and a guest entry.
-- `migrate` has no export in the action world, so a sandboxed replay replays executions only.
+- The trigger and provider interfaces have no `migrate`, so a sandboxed replay of either fails
+  its migration pairs.
 - The node `baseUrl` of a sandboxed bundle comes from its `describe()`, because the request
   path goes after its path. Its host must be an `egress` host of the manifest (backlog E7).
 - `effect: read` does not limit the HTTP methods (E4): some reads send `POST`, for example a

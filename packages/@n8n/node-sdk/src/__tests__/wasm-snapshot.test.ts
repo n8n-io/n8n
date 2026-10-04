@@ -165,8 +165,8 @@ describe.skipIf(!existsSync(SIDECAR) || !existsSync(path.join(GUESTS, 'action-sn
 					expect(
 						await replayFixtures(
 							{ manifest: head.manifest, bundle: await head.readBundle() },
-							{ ...fixtures, migrations: [] },
-							{ contract: loaded.action, executor: loaded.executor },
+							fixtures,
+							{ contract: loaded.action, executor: loaded.executor, migrate: loaded.migrate },
 						),
 					).toEqual([]);
 					expect(snapshotDirs().some((dir) => dir.startsWith(head.manifest.bundleHash))).toBe(true);

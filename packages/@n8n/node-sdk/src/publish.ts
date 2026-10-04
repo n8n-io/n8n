@@ -216,26 +216,41 @@ async function callResults(capability: unknown, calls: ExecutionFixture['calls']
 export async function replayFixtures(
 	{ manifest, bundle }: Pick<FrozenAction, 'manifest' | 'bundle'>,
 	fixtures: ContractFixtures,
-	/** The action and its executor, e.g. in the sandbox. The default runs the bundle here. */
+	/** The action, its executor and its `migrate`, e.g. in the sandbox. The default runs the bundle here. */
 	loaded?: {
 		/** The action that the bundle exports. */
 		readonly contract: Action;
 		/** The executor that runs it. */
 		readonly executor: Executor;
+		/** The `migrate` of the bundle in the same runtime. It fails when the bundle has none. */
+		readonly migrate: (
+			fromMajor: number,
+			params: Readonly<Record<string, unknown>>,
+		) => Promise<Record<string, unknown>>;
 	},
 ): Promise<string[]> {
 	const contract = loaded?.contract ?? evaluateBundle(bundle, manifest.nodeContract);
-	const migrations = (fixtures.migrations ?? []).flatMap(({ fromMajor, params, expected }) => {
-		const at = `${manifest.id}@${manifest.semver} migration from ${fromMajor}`;
-		if (!contract.migrate) return [`${at}: the contract has no migrate`];
-		const migrated = contract.migrate(fromMajor, params);
-		return [
-			...(canonicalJson(migrated) === canonicalJson(expected)
-				? []
-				: [`${at}: got ${JSON.stringify(migrated)}`]),
-			...validate(migrated, contract.inputSchema).map((issue) => `${at}: ${issue}`),
-		];
-	});
+	const migrate =
+		loaded?.migrate ??
+		(async (fromMajor: number, params: Readonly<Record<string, unknown>>) => {
+			if (!contract.migrate) throw new UserError('the contract has no migrate');
+			return contract.migrate(fromMajor, params);
+		});
+	const migrations = await Promise.all(
+		(fixtures.migrations ?? []).map(async ({ fromMajor, params, expected }) => {
+			const at = `${manifest.id}@${manifest.semver} migration from ${fromMajor}`;
+			const migrated = await migrate(fromMajor, params).catch((error: unknown) =>
+				error instanceof Error ? error : new UnexpectedError(String(error)),
+			);
+			if (migrated instanceof Error) return [`${at}: ${migrated.message}`];
+			return [
+				...(canonicalJson(migrated) === canonicalJson(expected)
+					? []
+					: [`${at}: got ${JSON.stringify(migrated)}`]),
+				...validate(migrated, contract.inputSchema).map((issue) => `${at}: ${issue}`),
+			];
+		}),
+	).then((issues) => issues.flat());
 	if ('kind' in contract) {
 		const executions = fixtures.executions.length
 			? [`${manifest.id}@${manifest.semver}: trigger execution fixtures do not replay`]

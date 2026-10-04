@@ -15,6 +15,12 @@ interface action {
     /// The manifest contract: id, version, flow, credentials, input and output schema.
     describe: func() -> json;
 
+    /// The parameters of a workflow node of the older major `from-major`, changed to the input
+    /// of this major. A bundle without `migrate` gives an error. The host answers no import
+    /// call during `migrate`. Publish replays the migration fixtures with it.
+    @since(version = 2.7.0)
+    migrate: func(from-major: u32, params: json) -> result<json, run-error>;
+
     /// The run for one input item.
     resource run {
         /// The host resolved, defaulted and validated `input` against the manifest input.

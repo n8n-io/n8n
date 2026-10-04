@@ -543,6 +543,16 @@ describe('checkPublish', () => {
 		await expect(replayFixtures(migrating, pair({ message: 'ho' }))).resolves.toEqual([
 			'demo.echo@2.0.0 migration from 1: got {"message":"hi"}',
 		]);
+		await expect(replayFixtures(await freeze(v2), pair({ message: 'hi' }))).resolves.toEqual([
+			'demo.echo@2.0.0 migration from 1: the contract has no migrate',
+		]);
+		const throwing = await freeze({
+			...v2,
+			migrate: "migrate: () => { throw new Error('boom'); },",
+		});
+		await expect(replayFixtures(throwing, pair({ message: 'hi' }))).resolves.toEqual([
+			'demo.echo@2.0.0 migration from 1: boom',
+		]);
 	});
 
 	it('needs migrate and a fixture pair for a trigger major that breaks old input', async () => {

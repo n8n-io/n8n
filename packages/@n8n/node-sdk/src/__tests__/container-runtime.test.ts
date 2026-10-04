@@ -54,8 +54,8 @@ async function replay(id: string, sandbox: SandboxOptions): Promise<string[]> {
 	const fixtures = parseFixtures(readFileSync(path.join(FIXTURES, `${id}.json`), 'utf8'));
 	return await replayFixtures(
 		{ manifest: head.manifest, bundle: await head.readBundle() },
-		{ ...fixtures, migrations: [] },
-		{ contract: loaded.action, executor: loaded.executor },
+		fixtures,
+		{ contract: loaded.action, executor: loaded.executor, migrate: loaded.migrate },
 	);
 }
 
