@@ -250,6 +250,64 @@ type SetPaths<Base, F> = Base extends unknown
 		>
 	: never;
 
+/** The value at the dotted path `P` of `T`, `unknown` for a path that `T` does not have. */
+type PathValue<T, P extends string> = T extends unknown
+	? P extends `${infer H}.${infer R}`
+		? H extends keyof T
+			? PathValue<NonNullable<T[H]>, R>
+			: unknown
+		: P extends keyof T
+			? T[P]
+			: unknown
+	: never;
+
+type LastKey<P extends string> = P extends `${string}.${infer R}` ? LastKey<R> : P;
+
+/** An expression names its key at run time. */
+type KeyOf<K> = K extends `=${string}` ? string : K;
+
+/** Without `keepMissing`, the node drops missing values and the `null` entries of lists. */
+type AggregatedValue<V, A> = A extends { readonly keepMissing: true }
+	? V
+	: V extends ReadonlyArray<infer E>
+		? Array<NonNullable<E>>
+		: NonNullable<V>;
+
+type MergedValue<V, A> = A extends { readonly mergeLists: true }
+	? V extends ReadonlyArray<infer E>
+		? E
+		: V
+	: V;
+
+/** The output key of an aggregated field: `as`, else the last key of its path. */
+type AggregatedKey<X> = X extends { readonly as: infer S extends string }
+	? KeyOf<S>
+	: X extends { readonly field: infer P extends string }
+		? KeyOf<LastKey<P>>
+		: string;
+
+/** The list of an aggregated field `X` of the input items `In`. */
+type AggregatedList<In, X, A> = Array<
+	MergedValue<
+		AggregatedValue<
+			X extends { readonly field: infer P extends string } ? PathValue<In, P> : unknown,
+			A
+		>,
+		A
+	>
+>;
+
+/**
+ * The item of the Aggregate contract for its `aggregate` config `A` and input items `In`:
+ * `{ mode: 'items', into }` gives `{ [into]: In[] }`. `{ mode: 'fields', fields }` gives one list
+ * per field, under `as` or the last key of the path.
+ */
+export type Aggregated<In, A> = A extends { readonly mode: 'items' }
+	? { [K in A extends { readonly into: infer I extends string } ? KeyOf<I> : 'data']: In[] }
+	: A extends { readonly mode: 'fields'; readonly fields: ReadonlyArray<infer F> }
+		? SetPaths<{}, { [X in F as AggregatedKey<X>]: AggregatedList<In, X, A> }>
+		: Record<string, unknown>;
+
 /** Which input fields `set` keeps: none, all, the `selected` paths, or all `except` the paths. */
 type SetKeepOf<In> =
 	| 'none'

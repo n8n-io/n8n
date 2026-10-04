@@ -23,7 +23,7 @@ import { unwrapUntrustedData } from '../orchestration/verification/analyze-resul
 
 type Outcome = Pick<
 	WorkflowBuildOutcome,
-	'nodeSimulationPlan' | 'simulationFixtures' | 'fixtureOrigins'
+	'nodeSimulationPlan' | 'simulationFixtures' | 'fixtureOrigins' | 'sampledKeys'
 >;
 type WorkflowNode = WorkflowJSON['nodes'][number];
 
@@ -217,6 +217,7 @@ function originOf(view: WorkflowView, source: FieldSource): string {
 	if (!view.isSimulated(source.nodeName)) {
 		return action && runsLocally(action) ? 'local run' : 'ran';
 	}
+	if (view.outcome.sampledKeys?.[source.nodeName]?.includes(source.key)) return 'sample';
 	const fixture = view.outcome.fixtureOrigins?.[source.nodeName];
 	if (fixture === undefined) return 'mock';
 	if (fixture === 'sample') return 'sample';

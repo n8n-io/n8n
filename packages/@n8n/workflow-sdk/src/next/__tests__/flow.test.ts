@@ -16,6 +16,7 @@ import {
 	trigger,
 	when,
 	workflow,
+	type Aggregated,
 	type Binary,
 	type Declared,
 	type DeepPartial,
@@ -267,6 +268,44 @@ describe('workflow', () => {
 		expect(targets(rejoined, 'Fetch')).toEqual([['Summarize'], ['Slack']]);
 		expect(targets(rejoined, 'Slack')).toEqual([['Summarize']]);
 		expect(rejoined.nodes.find((n) => n.name === 'Fetch')?.onError).toBe('continueErrorOutput');
+	});
+
+	it('types an aggregated item from the input items and the config', () => {
+		interface Run {
+			id: string;
+			meta: { name: string; tags: Array<string | null> };
+			note?: string | null;
+		}
+		expectTypeOf<Aggregated<Run, { mode: 'items' }>>().toEqualTypeOf<{ data: Run[] }>();
+		expectTypeOf<Aggregated<Run, { mode: 'items'; into: 'runs' }>>().toEqualTypeOf<{
+			runs: Run[];
+		}>();
+		expectTypeOf<Aggregated<Run, { mode: 'items'; into: '={{ $json.key }}' }>>().toEqualTypeOf<{
+			[key: string]: Run[];
+		}>();
+		const fields = [
+			{ field: 'id' },
+			{ field: 'meta.name', as: 'out.names' },
+			{ field: 'note' },
+			{ field: 'meta.tags' },
+		] as const;
+		expectTypeOf<Aggregated<Run, { mode: 'fields'; fields: typeof fields }>>().toEqualTypeOf<{
+			id: string[];
+			out: { names: string[] };
+			note: string[];
+			tags: string[][];
+		}>();
+		expectTypeOf<
+			Aggregated<
+				Run,
+				{ mode: 'fields'; fields: typeof fields; keepMissing: true; mergeLists: true }
+			>
+		>().toEqualTypeOf<{
+			id: string[];
+			out: { names: string[] };
+			note: Array<string | null | undefined>;
+			tags: Array<string | null>;
+		}>();
 	});
 
 	it('types the error of an error output item as the message text', () => {
@@ -1353,6 +1392,30 @@ describe('native triggers', () => {
 			.toJSON();
 		expect(json.pinData).toEqual({
 			Hook: [{ headers: {}, body: { severity: 'critical', count: 5 } }],
+		});
+	});
+
+	it('declares the sample of a contract step as pin data, but not of node() or a derived node', () => {
+		const fetch = contractStep('@n8n/nodes-base-next.gmailMessageGet', {
+			name: 'Get',
+			sample: [{ id: 'm1' }],
+		});
+		const derived = contractStep(
+			'n8n-nodes-base.slack',
+			{ name: 'Post', sample: [{ ok: true }] },
+			2.3,
+			{ resource: 'message', operation: 'post' },
+		);
+		const legacy = node({
+			name: 'Format',
+			type: 'n8n-nodes-base.dateTime',
+			version: 2,
+			sample: [{ formatted: 'x' }],
+		});
+		const wf = workflow('Steps', manual({ sample: [{ a: 1 }] }), fetch, derived, legacy);
+		expect(wf.generatePinData().toJSON().pinData).toEqual({
+			Start: [{ a: 1 }],
+			Get: [{ id: 'm1' }],
 		});
 	});
 

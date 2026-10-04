@@ -578,11 +578,52 @@ export default workflow(
 `;
 		const right = await build(source('{ statusCode: 200, body: { metrics: { employees: 50 } } }'));
 		expect(pathWarnings(right)).toEqual([]);
+		expect(right.success && right.declaredOutputFixtures?.Fetch).toEqual([
+			{ statusCode: 200, body: { metrics: { employees: 50 } }, headers: expect.any(Object) },
+		]);
 		const wrong = await build(source("{ statusCode: '200' }"));
 		expect(wrong.success ? [] : wrong.errors).toEqual([
 			expect.stringContaining("Type 'string' is not assignable to type 'number'"),
 		]);
 	}, 120_000);
+
+	it('pins the same nodes with and without step samples, and fills a partial service sample', async () => {
+		const source = (samples: boolean) => `import { workflow, manual, node } from '@n8n/workflow-sdk/next';
+import { httpRequest } from '@n8n/nodes/httpRequest';
+import { items } from '@n8n/nodes/items';
+
+export default workflow(
+	'Mixed',
+	manual({ sample: [{ id: 'o1' }] }),
+	httpRequest.get({
+		name: 'Fetch',
+		url: 'https://api.example.com/x',
+		fullResponse: true,
+		${samples ? "sample: [{ statusCode: 200, body: { lines: [{ sku: 'a' }] } }]," : ''}
+	}),
+	items.splitOut({ name: 'Lines', field: 'body.lines'${samples ? ", sample: [{ sku: 'a' }]" : ''} }),
+	node({ name: 'Pass', type: 'n8n-nodes-base.noOp', version: 1${samples ? ", sample: [{ sku: 'b' }]" : ''} }),
+);
+`;
+		const plain = await build(source(false));
+		const sampled = await build(source(true));
+		if (!plain.success || !sampled.success) {
+			expect([plain, sampled].flatMap((result) => (result.success ? [] : result.errors))).toEqual(
+				[],
+			);
+			return;
+		}
+		const pinned = (result: typeof sampled) =>
+			Object.keys(result.declaredOutputFixtures ?? {}).sort();
+		expect(pinned(plain)).toEqual(['Fetch', 'Start']);
+		expect(pinned(sampled)).toEqual(pinned(plain));
+		expect(sampled.declaredOutputFixtures).toEqual({
+			Start: [{ id: 'o1' }],
+			Fetch: [{ statusCode: 200, body: { lines: [{ sku: 'a' }] }, headers: expect.any(Object) }],
+		});
+		expect(sampled.fixtureOrigins).toEqual({ Start: 'sample', Fetch: 'synthesized' });
+		expect(sampled.sampledKeys).toEqual({ Fetch: ['statusCode', 'body'] });
+	}, 180_000);
 
 	it('fails a read of a field that the step before does not output, on each surface', async () => {
 		const source = (read: string) => `import { workflow, manual, set, node, expr } from '@n8n/workflow-sdk/next';
@@ -725,6 +766,163 @@ export default workflow(
 		expect(result.workflow.nodes.map((node) => node.name)).toContain('Each workflow start');
 		expect(result.workflow.nodes.map((node) => node.name)).not.toContain('Walk limit');
 	}, 120_000);
+
+	it('types the output of items.aggregate from its input items', async () => {
+		const repro = await build(`import { workflow, set, merge, forEach, steps } from '@n8n/workflow-sdk/next';
+import { webhook } from '@n8n/nodes/webhook';
+import { items } from '@n8n/nodes/items';
+import { httpRequest } from '@n8n/nodes/httpRequest';
+
+export default workflow(
+  'Process workflow definitions and sign',
+  webhook.trigger({
+    name: 'Receive Workflows',
+    httpMethod: 'POST',
+    path: 'workflow-definitions',
+    responseMode: 'lastNode',
+    sample: [
+      {
+        body: {
+          workflows: [
+            {
+              id: 'wf_1',
+              name: 'Demo A',
+              active: true,
+              nodes: [{ name: 'Start', type: 'n8n-nodes-base.manualTrigger' }],
+              connections: { Start: {} },
+              settings: { timezone: 'UTC' },
+            },
+            {
+              id: 'wf_2',
+              name: 'Demo B',
+              active: false,
+              nodes: [{ name: 'Webhook', type: 'n8n-nodes-base.webhook' }],
+              connections: { Webhook: {} },
+              settings: { timezone: 'UTC' },
+            },
+          ],
+        },
+      },
+    ],
+  }),
+
+  items.splitOut({
+    name: 'Split Workflows',
+    field: 'body.workflows',
+    into: 'workflow',
+    sample: [
+      {
+        workflow: {
+          id: 'wf_1',
+          name: 'Demo A',
+          active: true,
+          nodes: [{ name: 'Start', type: 'n8n-nodes-base.manualTrigger' }],
+          connections: { Start: {} },
+          settings: { timezone: 'UTC' },
+        },
+      },
+    ],
+  }),
+
+  // One workflow definition at a time; inside, the three pieces are extracted in parallel.
+  forEach(
+    { name: 'Each Workflow', batchSize: 1 },
+    steps(
+      merge({ name: 'Combine Pieces', join: 'position' }, [
+        set({
+          name: 'Extract Nodes',
+          fields: {
+            workflowId: (i) => i.workflow.id,
+            nodes: (i) => i.workflow.nodes,
+            nodeCount: (i) => (i.workflow.nodes ?? []).length,
+          },
+        }),
+        set({
+          name: 'Extract Connections',
+          fields: {
+            connections: (i) => i.workflow.connections,
+            connectionSourceCount: (i) => Object.keys(i.workflow.connections ?? {}).length,
+          },
+        }),
+        set({
+          name: 'Extract Metadata',
+          fields: {
+            'metadata.id': (i) => i.workflow.id,
+            'metadata.name': (i) => i.workflow.name,
+            'metadata.active': (i) => i.workflow.active,
+            'metadata.settings': (i) => i.workflow.settings,
+          },
+        }),
+      ]),
+      set({
+        name: 'Assemble Workflow',
+        fields: {
+          workflowId: (i) => i.workflowId,
+          metadata: (i) => i.metadata,
+          nodes: (i) => i.nodes,
+          connections: (i) => i.connections,
+          nodeCount: (i) => i.nodeCount,
+          connectionSourceCount: (i) => i.connectionSourceCount,
+        },
+      }),
+    ),
+  ),
+
+  // All workflows processed: fold them into one payload.
+  items.aggregate({
+    name: 'Collect All',
+    aggregate: { mode: 'items', into: 'workflows' },
+  }),
+
+  set({
+    name: 'Build Payload',
+    fields: {
+      signedAt: (_i, $) => $.now.toISO(),
+      workflowCount: (i) => (i.workflows ?? []).length,
+      workflows: (i) => i.workflows,
+    },
+  }),
+
+  httpRequest.send({
+    name: 'Sign Payload',
+    method: 'POST',
+    url: 'https://api.example.com/sign',
+    body: {
+      kind: 'json',
+      json: (i) => ({
+        signedAt: i.signedAt,
+        workflowCount: i.workflowCount,
+        workflows: i.workflows,
+      }),
+    },
+  }),
+);
+`);
+		expect(repro.success ? [] : repro.errors).toEqual([]);
+		const fields = (read: string) => `import { workflow, manual, set } from '@n8n/workflow-sdk/next';
+import { items } from '@n8n/nodes/items';
+
+export default workflow(
+	'Fields',
+	manual({ sample: [{ id: 'w1', meta: { name: 'A', tags: ['x'] }, score: 3 }] }),
+	items.aggregate({
+		name: 'Collect',
+		aggregate: {
+			mode: 'fields',
+			fields: [{ field: 'id' }, { field: 'meta.name', as: 'names' }, { field: 'meta.tags' }],
+			mergeLists: true,
+		},
+	}),
+	set({ name: 'Read', fields: { value: (i) => ${read} } }),
+);
+`;
+		const right = await build(fields("i.id.length + i.names[0].length + i.tags.join(',').length"));
+		expect(right.success ? [] : right.errors).toEqual([]);
+		const wrong = await build(fields('i.score'));
+		expect(wrong.success ? [] : wrong.errors).toEqual([
+			expect.stringContaining("Property 'score' does not exist"),
+		]);
+	}, 180_000);
 
 	it('reports a node() without a top-level name as a build error, not a crash', async () => {
 		const result = await build(`import { workflow, manual, node } from '@n8n/workflow-sdk/next';

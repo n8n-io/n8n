@@ -961,6 +961,23 @@ describe('generateNodeModule', () => {
 		expect(text).toContain('(transform, batch; outputs: open | done; hosts: todo.test)');
 	});
 
+	it('types an aggregate output from the input item and the config', () => {
+		const collect = todo.resource('task').action('collect', {
+			action: 'Collect tasks',
+			summary: 'Combine all tasks into one item.',
+			flow: { effect: 'transform', cardinality: 'batch' },
+			input: { aggregate: t.variant('mode', { items: { into: t.str() } }) },
+			output: t.json().with({ 'x-n8n-aggregate': 'aggregate' }),
+			run: ({ items }) => [{ json: { data: items.map((item) => item.json) }, from: items }],
+		});
+		const text = moduleOf(collect);
+		expect(text).toContain('import { contractStep, type Aggregated, type DeepPartial');
+		expect(text).toContain(
+			'<In, Ctx, const N extends string, const C extends TodoTaskCollectInput<In, Ctx>>(',
+		);
+		expect(text).toContain('): Step<In, Ctx, OutputOf<N, Aggregated<In, C["aggregate"]>>, N> =>');
+	});
+
 	it('shows the key hint and the value types of an open key space', () => {
 		const record = todo.resource('record').action('getAll', {
 			action: 'Get many records',

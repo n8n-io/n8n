@@ -462,6 +462,12 @@ export interface NodeSpec {
 	readonly parameters: (compiler: Compiler) => Record<string, unknown>;
 	/** Sample output items, for verification. */
 	readonly sample?: readonly unknown[];
+	/**
+	 * A step of a node contract of `@n8n/nodes-base-next`. Verification pins its sample: the host
+	 * fills it from the output example for a service step, and runs a local step on its real input.
+	 * Other steps, e.g. `node()` or a derived legacy node, run in verification as before.
+	 */
+	readonly pinsSample?: true;
 	/** Node settings. */
 	readonly settings?: NodeSettings;
 	/** Set by `onError` and `recover`: the node has an error output. */
@@ -806,6 +812,8 @@ export const MANUAL_NODE = { type: 'n8n-nodes-base.manualTrigger', version: 1 };
 /** The IF and Edit Fields contracts of `@n8n/nodes-base-next` (`condition.if`, `items.set`). */
 export const BRANCH_NODE = { type: '@n8n/nodes-base-next.conditionIf', version: 1 };
 export const SET_NODE = { type: '@n8n/nodes-base-next.itemsSet', version: 1 };
+/** The node type prefix of the node contracts in `@n8n/nodes-base-next`. */
+const CONTRACT_NODE_PREFIX = '@n8n/nodes-base-next.';
 
 /** The IF contract parameters of `when` for the compiled JavaScript of its condition. */
 export const branchParameters = (condition: string) => ({
@@ -1991,6 +1999,7 @@ export function contractStep<In, Ctx, Out, N extends string>(
 			type: id,
 			version,
 			sample,
+			...(id.startsWith(CONTRACT_NODE_PREFIX) ? { pinsSample: true } : {}),
 			...(settings ? { settings } : {}),
 			...(requires ? { requires } : {}),
 			...(Object.keys(providers).length > 0 ? { providers } : {}),
@@ -2512,15 +2521,15 @@ nextRegistry.unregisterValidator(expressionPathValidator.id);
 
 /**
  * A trigger `sample` is the event the trigger delivers, so verification pins it as the trigger
- * output. The root builder declares pin data for some node types only.
+ * output. A contract step sample is pinned too, see `NodeSpec.pinsSample`. The root builder
+ * declares pin data for some node types only.
  */
-function withTriggerSamples(
-	built: WorkflowBuilder,
-	specs: readonly NodeSpec[],
-): Omit<Workflow, 'scopes'> {
+function withSamples(built: WorkflowBuilder, specs: readonly NodeSpec[]): Omit<Workflow, 'scopes'> {
 	const samples = Object.fromEntries(
 		specs.flatMap((spec) =>
-			spec.trigger && spec.sample?.length ? [[spec.name, spec.sample.filter(isDataObject)]] : [],
+			(spec.trigger || spec.pinsSample) && spec.sample?.length
+				? [[spec.name, spec.sample.filter(isDataObject)]]
+				: [],
 		),
 	);
 	if (Object.keys(samples).length === 0) return built;
@@ -2917,7 +2926,7 @@ export function workflow(
 			builder.group(group, groupMembers(members), description ? { description } : undefined),
 		withRegions,
 	);
-	const verified = withTriggerSamples(built, graph.nodes);
+	const verified = withSamples(built, graph.nodes);
 	return {
 		scopes,
 		validate: () => verified.validate(),

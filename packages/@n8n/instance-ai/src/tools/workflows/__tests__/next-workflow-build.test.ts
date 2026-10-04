@@ -10,6 +10,7 @@ import {
 	EMPTY_OUTPUTS,
 	fetchResourceFields,
 	fixtureOriginsOf,
+	sampledKeysOf,
 	catalogProvidersOf,
 	legacyNodeIssues,
 	lockNodeContracts,
@@ -117,8 +118,14 @@ import { googleGemini } from '@n8n/nodes/googleGemini';`;
 		expect(synthesizedFixtures(workflow)['Done tasks']?.[0]).toMatchObject({
 			property_completed: { start: '2026-09-15' },
 		});
-		expect(synthesizedFixtures(workflow, { 'Done tasks': [{ id: 'mine' }] })).toEqual({
-			'Done tasks': [{ id: 'mine' }],
+		const [sampled] =
+			synthesizedFixtures(workflow, {
+				'Done tasks': [{ id: 'mine', property_completed: { end: '2026-09-30' } }],
+			})['Done tasks'] ?? [];
+		expect(sampled).toMatchObject({
+			id: 'mine',
+			url: expect.any(String),
+			property_completed: { start: '2026-09-15', end: '2026-09-30' },
 		});
 	});
 
@@ -681,21 +688,22 @@ import { googleGemini } from '@n8n/nodes/googleGemini';`;
 			expect(Object.keys(synthesizedFixtures(pages))).toEqual(['Get Pages', 'Summarize', 'Upsert']);
 		});
 
-		it('names the origin of each fixture', () => {
-			const declared = { 'Build Rows': [{ Region: 'EU' }] };
+		it('names the origin of each fixture, and the keys that a filled sample gives', () => {
+			const declared = { Hook: [{ body: {} }], Summarize: [{ text: 'Sum' }] };
 			const resourceFields = new Map([['Get Pages', [{ name: 'Region', value: 'Region|select' }]]]);
 			const fixtures = synthesizedFixtures(pages, declared, resourceFields);
-			expect(fixtureOriginsOf(fixtures, declared, resourceFields)).toEqual({
-				'Build Rows': 'sample',
+			expect(fixtureOriginsOf(pages, fixtures, declared, resourceFields)).toEqual({
+				Hook: 'sample',
 				'Get Pages': 'lookup',
 				Summarize: 'synthesized',
 				Upsert: 'synthesized',
 			});
+			expect(sampledKeysOf(pages, declared)).toEqual({ Summarize: ['text'] });
 		});
 
-		it('keeps the sample of a local node', () => {
+		it('runs a local node on its real input, not on its sample', () => {
 			const fixtures = synthesizedFixtures(pages, { 'Build Rows': [{ Region: 'EU' }] });
-			expect(fixtures['Build Rows']).toEqual([{ Region: 'EU' }]);
+			expect(fixtures).not.toHaveProperty('Build Rows');
 			expect(fixtures).not.toHaveProperty('Keep Open');
 		});
 

@@ -3,7 +3,7 @@ import type { IDataObject, WorkflowJSON } from '@n8n/workflow-sdk';
 
 import type { ResolvedNodeParametersResult } from '../../../types';
 import type { WorkflowBuildOutcome } from '../../../workflow-loop/workflow-loop-state';
-import { fixtureOriginsOf, synthesizedFixtures } from '../next-workflow-build';
+import { fixtureOriginsOf, sampledKeysOf, synthesizedFixtures } from '../next-workflow-build';
 import { resolvedValueLines, resolvedValuesBlock } from '../resolved-values';
 
 const node = (name: string, type: string, parameters: IDataObject) => ({
@@ -92,12 +92,14 @@ const deals: WorkflowJSON = {
 function outcomeOf(
 	workflow: WorkflowJSON,
 	resourceFields: Map<string, Array<{ name: string; value: string }>> = new Map(),
+	declared: Record<string, IDataObject[]> = {},
 ): WorkflowBuildOutcome {
-	const fixtures = synthesizedFixtures(workflow, {}, resourceFields);
+	const fixtures = synthesizedFixtures(workflow, declared, resourceFields);
 	return {
 		nodeSimulationPlan: Object.keys(fixtures).map(simulate),
 		simulationFixtures: fixtures,
-		fixtureOrigins: fixtureOriginsOf(fixtures, {}, resourceFields),
+		fixtureOrigins: fixtureOriginsOf(workflow, fixtures, declared, resourceFields),
+		sampledKeys: sampledKeysOf(workflow, declared),
 	} as WorkflowBuildOutcome;
 }
 
@@ -156,6 +158,29 @@ describe('resolvedValueLines', () => {
 		const looked = resolvedValueLines(deals, outcomeOf(deals, resourceFields), resolutions);
 		expect(looked).toContainEqual(
 			expect.stringMatching(/^ {2}values\.Stage <- .*\[Get Deals\.property_stage; lookup\]$/),
+		);
+	});
+
+	it('tags a key that a sample gives as sample, and a key that the example fills by its schema', () => {
+		const sampled = outcomeOf(deals, new Map(), { 'Get Deals': [{ property_stage: 'Won' }] });
+		const fixture = sampled.simulationFixtures?.['Get Deals']?.[0] ?? {};
+		const filled = resolvedValueLines(
+			deals,
+			sampled,
+			new Map([
+				[
+					'Upsert',
+					resolution('Upsert', upsertParameters, {
+						values: { 'Deal ID': fixture.id, Stage: fixture.property_stage, Region: 'EU' },
+					}),
+				],
+			]),
+		);
+		expect(filled).toContain(
+			'  values.Stage <- $json.Stage = "Won"  [Get Deals.property_stage; sample]',
+		);
+		expect(filled).toContainEqual(
+			expect.stringMatching(/^ {2}values\["Deal ID"\] <- .*\[Get Deals\.id: .*; synthesized\]$/),
 		);
 	});
 

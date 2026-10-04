@@ -28,6 +28,7 @@ import {
 	EXPRESSIONS_PATH,
 	fetchResourceFields,
 	fixtureOriginsOf,
+	sampledKeysOf,
 	lockNodeContracts,
 	missingNodeTypeErrors,
 	NEXT_TSCONFIG_FILENAME,
@@ -59,6 +60,7 @@ export type WorkflowSourceCompileResult =
 			workflow: WorkflowJSON;
 			declaredOutputFixtures?: NonNullable<WorkflowJSON['pinData']>;
 			fixtureOrigins?: Record<string, FixtureOrigin>;
+			sampledKeys?: Record<string, string[]>;
 			warnings: ValidationWarning[];
 			compiler: WorkflowSourceCompiler;
 	  }
@@ -546,7 +548,13 @@ async function compileNextWorkflowSource(
 		...built,
 		workflow: lockNodeContracts(built.workflow),
 		declaredOutputFixtures: fixtures,
-		fixtureOrigins: fixtureOriginsOf(fixtures, built.declaredOutputFixtures, resourceFields),
+		fixtureOrigins: fixtureOriginsOf(
+			built.workflow,
+			fixtures,
+			built.declaredOutputFixtures,
+			resourceFields,
+		),
+		sampledKeys: sampledKeysOf(built.workflow, built.declaredOutputFixtures),
 	};
 }
 

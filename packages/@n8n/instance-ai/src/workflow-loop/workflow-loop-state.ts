@@ -435,6 +435,11 @@ export const workflowBuildOutcomeSchema = z.object({
 	 * A simulated node with no entry has a generated fixture.
 	 */
 	fixtureOrigins: z.record(fixtureOriginSchema).optional(),
+	/**
+	 * Node contracts: the top-level keys that a service node's sample gives, by node name. The
+	 * example fills the other keys of its fixture.
+	 */
+	sampledKeys: z.record(z.array(z.string())).optional(),
 	/** Draft sub-workflows created by the builder that must publish before the main workflow. */
 	supportingWorkflowIds: z.array(z.string()).optional(),
 	/** Whether any node parameters contain unresolved placeholder values. */

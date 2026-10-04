@@ -1763,6 +1763,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 						nodeSimulationPlan,
 						simulationFixtures,
 						...(compiled.fixtureOrigins ? { fixtureOrigins: compiled.fixtureOrigins } : {}),
+						...(compiled.sampledKeys ? { sampledKeys: compiled.sampledKeys } : {}),
 						waitGateScripts,
 						verificationProgress:
 							triggerNodes.length > 1 && executionIntent !== 'one-off' ? {} : undefined,

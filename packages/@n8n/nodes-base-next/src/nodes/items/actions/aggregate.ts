@@ -28,7 +28,7 @@ export const aggregateItems = itemsNode.action('aggregate', {
 			items: { into: t.str().with({ minLength: 1 }).default('data') },
 		}),
 	},
-	output: t.json(),
+	output: t.json().with({ 'x-n8n-aggregate': 'aggregate' }),
 	run({ input, items }) {
 		const { aggregate } = input;
 		if (aggregate.mode === 'items') {

@@ -404,42 +404,94 @@ function readKeyExamples(
 	);
 }
 
+/** `sample` with the fields it leaves out taken from `example`, at any depth. */
+const filledSample = (
+	example: Record<string, unknown>,
+	sample: object,
+): Record<string, unknown> => ({
+	...example,
+	...Object.fromEntries(
+		Object.entries(sample).map(([key, value]: [string, unknown]) => {
+			const fill = example[key];
+			return [key, isRecord(fill) && isRecord(value) ? filledSample(fill, value) : value];
+		}),
+	),
+});
+
+/** The names of the contract action nodes that run locally (`true`) or call a service (`false`). */
+const actionNodeNames = (workflow: WorkflowJSON, local: boolean) =>
+	new Set(
+		workflow.nodes.flatMap((node) => {
+			const action = actionOfNode(node);
+			return node.name && action && runsLocally(action) === local ? [node.name] : [];
+		}),
+	);
+
 /**
- * One example item for each contract node that calls a service and has no declared output.
- * Verification then simulates read nodes instead of calling the service, and needs no LLM to
- * invent the output of simulated write nodes. Local nodes run on their real input.
+ * One example item for each contract node that calls a service, and for a declared sample of
+ * such a node, the sample with the fields it leaves out taken from the example. Verification then
+ * simulates read nodes instead of calling the service, and needs no LLM to invent the output of
+ * simulated write nodes. Local nodes run on their real input, also with a sample. Other declared
+ * fixtures stay as they are.
  */
 export function synthesizedFixtures(
 	workflow: WorkflowJSON,
 	declared: Fixtures = {},
 	resourceFields: ResourceFields = new Map(),
 ): Fixtures {
+	const local = actionNodeNames(workflow, true);
 	const synthesized = workflow.nodes.flatMap((node): Array<[string, Fixtures[string]]> => {
 		const action = actionOfNode(node);
-		if (!action || !node.name || declared[node.name] || runsLocally(action)) return [];
+		if (!action || !node.name || local.has(node.name)) return [];
+		const given = declared[node.name];
 		const schema = outputOf(action, node.parameters ?? {}, resourceFields.get(node.name));
 		const example = exampleOf(schema);
-		if (!isRecord(example)) return [];
-		const item: object = {
+		if (!isRecord(example)) return given ? [[node.name, given]] : [];
+		const item = {
 			...example,
 			...readKeyExamples(schema, example, readKeysOf(workflow, node.name)),
 		};
-		return [[node.name, [Object.fromEntries(Object.entries(item))]]];
+		const items: object[] = given?.map((sample) => filledSample(item, sample)) ?? [item];
+		return [[node.name, items.map((filled) => Object.fromEntries(Object.entries(filled)))]];
 	});
-	return { ...declared, ...Object.fromEntries(synthesized) };
+	const kept = Object.entries(declared).filter(([name]) => !local.has(name));
+	return { ...Object.fromEntries(kept), ...Object.fromEntries(synthesized) };
 }
 
-/** The origin of each fixture of {@link synthesizedFixtures}. */
+/**
+ * The origin of each fixture of {@link synthesizedFixtures}. A service node's sample is filled
+ * from the example, so its fixture has the origin of the example, and {@link sampledKeysOf}
+ * names the keys that the sample gives.
+ */
 export function fixtureOriginsOf(
+	workflow: WorkflowJSON,
 	fixtures: Fixtures,
 	declared: Fixtures = {},
 	resourceFields: ResourceFields = new Map(),
 ): Record<string, FixtureOrigin> {
+	const filled = actionNodeNames(workflow, false);
 	return Object.fromEntries(
 		Object.keys(fixtures).map((name): [string, FixtureOrigin] => [
 			name,
-			declared[name] ? 'sample' : resourceFields.has(name) ? 'lookup' : 'synthesized',
+			declared[name] && !filled.has(name)
+				? 'sample'
+				: resourceFields.has(name)
+					? 'lookup'
+					: 'synthesized',
 		]),
+	);
+}
+
+/** The top-level keys that the sample of a service node gives, in any item, by node name. */
+export function sampledKeysOf(
+	workflow: WorkflowJSON,
+	declared: Fixtures = {},
+): Record<string, string[]> {
+	return Object.fromEntries(
+		[...actionNodeNames(workflow, false)].flatMap((name) => {
+			const given = declared[name];
+			return given ? [[name, [...new Set(given.flatMap((item) => Object.keys(item)))]]] : [];
+		}),
 	);
 }
 

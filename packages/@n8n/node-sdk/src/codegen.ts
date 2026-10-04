@@ -820,14 +820,20 @@ export function generateNodeModule(nodeId: string, contracts: readonly Generated
 			const item = passed ? 'In' : `Sampled<${output}, S>`;
 			const samples = passed ? 'In[]' : `Array<S & Exact<S, ${output}>>`;
 			const config = `{ name: N; sample?: ${samples}; settings?: NodeSettings }`;
-			// The entries type the output, so the config is generic and checked key by key.
-			const entryItem = `OutputOf<N, ${name}Output & ${name}Fields<C>>`;
+			// The entries or the aggregated input type the output, so the config is generic and
+			// checked key by key.
+			const aggregated = contract.output['x-n8n-aggregate'];
+			const configuredItem = contract.output['x-n8n-entry-fields']
+				? `OutputOf<N, ${name}Output & ${name}Fields<C>>`
+				: aggregated
+					? `OutputOf<N, Aggregated<In, C[${JSON.stringify(aggregated)}]>>`
+					: undefined;
 			const text =
-				contract.output['x-n8n-entry-fields'] && !outputs
+				configuredItem && !outputs
 					? [
 							`<In, Ctx, const N extends string, const C extends ${input}>(`,
-							`\tconfig: { name: N; sample?: Array<DeepPartial<${entryItem}>>; settings?: NodeSettings } & C & Exact<C, ${input} & { name: string; sample?: unknown; settings?: NodeSettings }>,`,
-							`): Step<In, Ctx, ${entryItem}, N> =>`,
+							`\tconfig: { name: N; sample?: Array<DeepPartial<${configuredItem}>>; settings?: NodeSettings } & C & Exact<C, ${input} & { name: string; sample?: unknown; settings?: NodeSettings }>,`,
+							`): Step<In, Ctx, ${configuredItem}, N> =>`,
 							`\tcontractStep(${JSON.stringify(nodeType)}, ${configArg}${args(false)})`,
 						]
 					: !outputs
@@ -951,6 +957,7 @@ export function generateNodeModule(nodeId: string, contracts: readonly Generated
 		...(tools.length > 0 ? ['contractTool'] : []),
 		...(triggers.length > 0 ? ['contractTrigger'] : []),
 		...(routed ? ['routedStep'] : []),
+		...(factories.some(({ text }) => text.includes('Aggregated<')) ? ['type Aggregated'] : []),
 		...([...named, ...triggers].some(({ contract }) => usesBinary(contract))
 			? ['type Binary']
 			: []),

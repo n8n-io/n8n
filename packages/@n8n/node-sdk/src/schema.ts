@@ -83,6 +83,11 @@ export interface JsonSchema {
 	/** On a trigger output: one more field per entry of an input list, e.g. per form field. */
 	'x-n8n-entry-fields'?: EntryFields;
 	/**
+	 * On an action output: one item that aggregates the input items, as the input field of this
+	 * name says. The typed flow types the item from the input item, see `Aggregated`.
+	 */
+	'x-n8n-aggregate'?: string;
+	/**
 	 * On an output field outside `required`: the service sends it as a rule, but a plan, a
 	 * permission or an API version can leave it out. Without it, absence is normal.
 	 */
