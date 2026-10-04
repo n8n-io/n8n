@@ -37,7 +37,14 @@ import {
 
 import { credentialBaseUrlOf, plainFieldsOf, redactedValue, secretRedactorOf } from './credentials';
 import { codeRunnerOf, dataTableHostOf, dataTablesOf } from './host-imports';
-import { actionHostsOf, credentialHostsOf, egressOf, permissionsOf, reportRefusal } from './egress';
+import {
+	actionHostsOf,
+	credentialHostsOf,
+	egressOf,
+	permissionsOf,
+	reportRedirectRefusal,
+	reportRefusal,
+} from './egress';
 import type { CredentialManifest } from './manifest';
 import { parameterValue, toProperty } from './properties';
 import {
@@ -1236,7 +1243,11 @@ export function executorOf<S extends Shape, O extends AnySchema>(
 				}));
 				if (stoppedAtLimit(error)) throw responseTooLarge();
 				const delay = retryable ? retryDelay(error, retry) : undefined;
-				if (delay === undefined) throw redactedError(error, refreshed ?? (await redactNow()));
+				if (delay === undefined) {
+					// Before the redaction, which replaces the causes with plain errors.
+					reportRedirectRefusal(error, { node: host.node, actionId: action.id });
+					throw redactedError(error, refreshed ?? (await redactNow()));
+				}
 				// The failed attempt is not read, so free its connection.
 				if (isHttpError(error) && error.body instanceof Readable) error.body.destroy();
 				await wait(delay);

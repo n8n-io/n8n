@@ -2,7 +2,13 @@ import { AiConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import FormData from 'form-data';
 import type { Agent as HttpsAgent } from 'https';
-import type { IHttpRequestMethods, IHttpRequestOptions, IRequestOptions } from 'n8n-workflow';
+import { errorChain } from '@n8n/utils/errors/error-chain';
+import {
+	DomainNotAllowedError,
+	type IHttpRequestMethods,
+	type IHttpRequestOptions,
+	type IRequestOptions,
+} from 'n8n-workflow';
 import nock from 'nock';
 import { mock } from 'vitest-mock-extended';
 
@@ -676,6 +682,20 @@ describe('SSRF protection', () => {
 						allowedDomains: 'example.com',
 					}),
 				).rejects.toThrow('Domain not allowed');
+			});
+
+			test('names the refused host of a redirect hop in the error chain', async () => {
+				nock(baseUrl).get('/redirect').reply(301, '', { Location: 'https://not-allowed.com/data' });
+
+				const error: unknown = await httpRequest({
+					method: 'GET',
+					url: `${baseUrl}/redirect`,
+					allowedDomains: 'example.com',
+				}).catch((caught: unknown) => caught);
+
+				expect(errorChain(error).filter((link) => link instanceof DomainNotAllowedError)).toEqual([
+					expect.objectContaining({ host: 'not-allowed.com' }),
+				]);
 			});
 
 			test.each([['example.com, allowed.com'], [undefined]])(

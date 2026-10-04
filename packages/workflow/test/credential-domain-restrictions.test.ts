@@ -2,6 +2,7 @@ import {
 	DOMAIN_RESTRICTION_FIELDS,
 	assertCredentialAllowsUrl,
 	assertUrlAllowed,
+	DomainNotAllowedError,
 	getCredentialAllowedDomains,
 	getCredentialOwnRequestAllowedDomains,
 	injectDomainRestrictionFields,
@@ -528,6 +529,18 @@ describe('assertUrlAllowed', () => {
 		).toThrow(
 			'Domain not allowed: This credential is restricted from accessing attacker.example. Only the following domains are allowed: example.com',
 		);
+	});
+
+	it('names the refused host on the error when no node is provided', () => {
+		expect(() =>
+			assertUrlAllowed({
+				url: 'https://user:pw@Attacker.example./x',
+				allowedDomains: 'example.com',
+			}),
+		).toThrow(expect.objectContaining({ host: 'attacker.example' }));
+		expect(() =>
+			assertUrlAllowed({ url: 'https://attacker.example', allowedDomains: 'example.com' }),
+		).toThrow(DomainNotAllowedError);
 	});
 
 	it('throws NodeOperationError on a non-matching URL when node is provided', () => {

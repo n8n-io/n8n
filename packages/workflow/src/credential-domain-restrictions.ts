@@ -151,7 +151,21 @@ export function toHostname(url: string | undefined): string | undefined {
 	}
 }
 
-/** Throws `UserError` when `node` is omitted, so callers without an `INode` (axios helper) get a wrappable error. */
+/** A request or a redirect hop to a host outside `allowedDomains`. */
+export class DomainNotAllowedError extends UserError {
+	constructor(
+		message: string,
+		/** The refused host, without user info, path or query. */
+		readonly host: string | undefined,
+	) {
+		super(message);
+	}
+}
+
+/**
+ * Throws a `DomainNotAllowedError` when `node` is omitted, so callers without an `INode` (axios
+ * helper) get a wrappable error that names the refused host.
+ */
 export function assertUrlAllowed(options: {
 	url: string;
 	allowedDomains?: string;
@@ -162,7 +176,9 @@ export function assertUrlAllowed(options: {
 	if (isDomainAllowed({ url, allowedDomains })) return;
 
 	const message = `Domain not allowed: This credential is restricted from accessing ${toDisplayHost(url)}. Only the following domains are allowed: ${allowedDomains}`;
-	throw node ? new NodeOperationError(node, message) : new UserError(message);
+	throw node
+		? new NodeOperationError(node, message)
+		: new DomainNotAllowedError(message, toHostname(url));
 }
 
 /**

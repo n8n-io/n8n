@@ -1,5 +1,6 @@
 import {
 	assertUrlAllowed,
+	DomainNotAllowedError,
 	type IDataObject,
 	type IHttpRequestOptions,
 	type INode,
@@ -438,6 +439,24 @@ describe('permission refusals', () => {
 		await expect(executorOf(fetchUrl)(host)).rejects.toThrow('Domain not allowed');
 		expect(refusals).toEqual([
 			expect.objectContaining({ permission: 'credential-hosts', host: 'other.test' }),
+		]);
+	});
+
+	it('reports a redirect hop that the request layer refused, once, with its host', async () => {
+		const hop = new DomainNotAllowedError('Domain not allowed: evil.test', 'evil.test');
+		const wrapped = new Error('The service refused the request', {
+			cause: new Error('Redirected request failed', { cause: hop }),
+		});
+		const { host } = hostOf({ credentialType: 'echoApi', replies: [wrapped] });
+		await expect(executorOf(sender([{ path: path`/a` }]))(host)).rejects.toThrow();
+		expect(refusals).toEqual([
+			{
+				node,
+				action: 'echo.send',
+				permission: 'egress',
+				host: 'evil.test',
+				message: 'Domain not allowed: evil.test',
+			},
 		]);
 	});
 

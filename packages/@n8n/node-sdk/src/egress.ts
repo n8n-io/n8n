@@ -1,7 +1,9 @@
+import { errorChain } from '@n8n/utils/errors/error-chain';
 import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
 import { isRecord } from '@n8n/utils/is-record';
 import {
 	assertUrlAllowed,
+	DomainNotAllowedError,
 	LoggerProxy,
 	NodeOperationError,
 	toHostname,
@@ -32,7 +34,8 @@ const unique = (hosts: ReadonlyArray<string | undefined>) => [
 
 /**
  * The permission that refused a request or a version:
- * - `egress`: the host is not a host of the action, from its manifest and its node base URL.
+ * - `egress`: the host is not a host of the action, from its manifest and its node base URL. Or
+ *   the request layer refused a redirect hop.
  * - `egress-input`: `N8N_NODE_EGRESS_INPUT_HOSTS` does not list the host of a URL from input.
  * - `credential-hosts`: the host is not a host of the credential.
  * - `manifest`: the bundle grants other permissions than its signed manifest.
@@ -275,6 +278,27 @@ export function egressOf(
 		throw refuse('egress', `Host not allowed: ${actionId} may not send a request to ${host}`);
 	}
 	return hops?.join(', ');
+}
+
+/**
+ * Reports the redirect hop that the request layer refused against the `allowedDomains` of
+ * `egressOf`. n8n and the HTTP client wrap that error, so a cause of `error` can hold it.
+ */
+export function reportRedirectRefusal(
+	error: unknown,
+	{ node, actionId }: { readonly node: INode; readonly actionId: string },
+) {
+	const [refused] = errorChain(error).flatMap((link) =>
+		link instanceof DomainNotAllowedError ? [link] : [],
+	);
+	if (!refused) return;
+	reportRefusal({
+		action: actionId,
+		node,
+		permission: 'egress',
+		host: refused.host,
+		message: refused.message,
+	});
 }
 
 /** Problems of one workflow node that the builder finds before a run. */

@@ -3444,6 +3444,43 @@ describe('LogStreamingEventRelay', () => {
 		});
 	});
 
+	describe('node contract events', () => {
+		it('should log on `node-permission-refused` event', () => {
+			const event: RelayEventMap['node-permission-refused'] = {
+				action: 'httpRequest.get',
+				nodeName: 'Fetch',
+				nodeType: 'n8n-nodes-base.httpRequest',
+				permission: 'egress',
+				host: 'evil.test',
+				message: 'Domain not allowed',
+			};
+
+			eventService.emit('node-permission-refused', event);
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.audit.node.permission.refused',
+				payload: event,
+			});
+		});
+
+		it('should log on `node-contract-installed` event', () => {
+			const event: RelayEventMap['node-contract-installed'] = {
+				id: 'acme.item.get',
+				version: '2.0.0',
+				previousVersion: '1.4.0',
+				origin: 'community',
+				addedPermissions: ['egress api.acme.test'],
+			};
+
+			eventService.emit('node-contract-installed', event);
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.audit.node-contract.installed',
+				payload: event,
+			});
+		});
+	});
+
 	describe('MCP server events', () => {
 		it('should log on `mcp-oauth-completed` event', () => {
 			const event: RelayEventMap['mcp-oauth-completed'] = {

@@ -144,6 +144,8 @@ export class LogStreamingEventRelay extends EventRelay {
 			'community-package-installed': (event) => this.communityPackageInstalled(event),
 			'community-package-updated': (event) => this.communityPackageUpdated(event),
 			'community-package-deleted': (event) => this.communityPackageDeleted(event),
+			'node-permission-refused': (event) => this.nodePermissionRefused(event),
+			'node-contract-installed': (event) => this.nodeContractInstalled(event),
 			'execution-throttled': (event) => this.executionThrottled(event),
 			'execution-started-during-bootup': (event) => this.executionStartedDuringBootup(event),
 			'execution-cancelled': (event) => this.executionCancelled(event),
@@ -1059,6 +1061,27 @@ export class LogStreamingEventRelay extends EventRelay {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.package.deleted',
 			payload: { ...user, ...rest },
+		});
+	}
+
+	// #endregion
+
+	// #region Node contracts
+
+	private nodePermissionRefused(event: RelayEventMap['node-permission-refused']) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.node.permission.refused',
+			payload: { ...event },
+		});
+	}
+
+	private nodeContractInstalled({
+		addedPermissions,
+		...rest
+	}: RelayEventMap['node-contract-installed']) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.node-contract.installed',
+			payload: { ...rest, addedPermissions: [...addedPermissions] },
 		});
 	}
 
