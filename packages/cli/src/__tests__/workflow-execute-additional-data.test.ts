@@ -22,6 +22,7 @@ import type {
 	ITaskData,
 	WorkflowExecuteMode,
 	ExecuteAgentWorkflowContext,
+	ICredentialsHelper,
 	IRunExecutionData,
 	IWorkflowExecutionDataProcess,
 } from 'n8n-workflow';
@@ -623,6 +624,71 @@ describe('WorkflowExecuteAdditionalData', () => {
 				);
 				const integratedAdditionalData = vi.mocked(WorkflowExecute).mock.calls[0][0];
 				expect(integratedAdditionalData.userId).toBe('user-1');
+			});
+		});
+
+		describe('eval mocks in the sub-workflow additional data', () => {
+			const subWorkflowData = () =>
+				mock<IWorkflowBase>({
+					id: 'sub-id',
+					name: 'Sub Workflow',
+					nodes: [
+						{
+							id: 'trigger',
+							name: 'Trigger',
+							type: 'n8n-nodes-base.executeWorkflowTrigger',
+							typeVersion: 1.1,
+							position: [0, 0],
+							parameters: {},
+						},
+					],
+					connections: {},
+					staticData: {},
+					settings: {},
+				});
+			const runSubWorkflow = async (
+				parentAdditionalData: Partial<IWorkflowExecuteAdditionalData>,
+			) => {
+				await executeWorkflow(
+					mock<IExecuteWorkflowInfo>({ id: 'sub-id', code: undefined }),
+					parentAdditionalData as IWorkflowExecuteAdditionalData,
+					mock<ExecuteWorkflowOptions>({
+						loadedWorkflowData: subWorkflowData(),
+						doNotWaitToFinish: false,
+					}),
+				);
+				return vi.mocked(WorkflowExecute).mock.calls[0][0];
+			};
+
+			beforeEach(() => {
+				vi.mocked(Container.get(NodeTypes).getByNameAndVersion).mockReturnValue(
+					mock<INodeType>({ description: { properties: [] } }),
+				);
+				vi.mocked(WorkflowExecute).mockClear();
+			});
+
+			it('gives a sub-workflow of a product run the default credentials helper and no eval mock', async () => {
+				const integrated = await runSubWorkflow({
+					userId: 'user-1',
+					credentialsHelper: mock<ICredentialsHelper>(),
+				});
+
+				expect(integrated.evalLlmMockHandler).toBeUndefined();
+				expect(integrated.credentialsHelper).toBe(Container.get(CredentialsHelper));
+			});
+
+			it('gives a sub-workflow of an eval run the eval mock handler and credentials helper', async () => {
+				const evalLlmMockHandler = vi.fn();
+				const evalCredentialsHelper = mock<ICredentialsHelper>();
+
+				const integrated = await runSubWorkflow({
+					userId: 'user-1',
+					credentialsHelper: evalCredentialsHelper,
+					evalLlmMockHandler,
+				});
+
+				expect(integrated.evalLlmMockHandler).toBe(evalLlmMockHandler);
+				expect(integrated.credentialsHelper).toBe(evalCredentialsHelper);
 			});
 		});
 

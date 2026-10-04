@@ -658,6 +658,11 @@ async function startExecution(
 			additionalData.rootExecutionMode ?? options.executionMode;
 		// Propagate the eval run id so sub-workflows of an eval run expose `$evaluation.runId`
 		additionalDataIntegrated.evaluationRunId = additionalData.evaluationRunId;
+		// An instance AI eval mocks HTTP and credentials, so its sub-workflows must use the same mocks.
+		if (additionalData.evalLlmMockHandler) {
+			additionalDataIntegrated.evalLlmMockHandler = additionalData.evalLlmMockHandler;
+			additionalDataIntegrated.credentialsHelper = additionalData.credentialsHelper;
+		}
 		if (additionalData.httpResponse) {
 			additionalDataIntegrated.httpResponse = additionalData.httpResponse;
 		}

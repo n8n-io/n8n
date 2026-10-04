@@ -845,6 +845,25 @@ describe('EvalExecutionService', () => {
 			expect(ad.evalLlmMockHandler).toEqual(expect.any(Function));
 		});
 
+		it('makes sub-workflow calls go through the draft loader', async () => {
+			await service.executeWithLlmMock('wf-1', makeUser());
+
+			const executeWorkflow = vi.fn();
+			const ad = { ...makeMockedAdditionalData(), executeWorkflow };
+			await lastConfigureAdditionalData!(ad as never);
+			const loadedWorkflowData = { id: 'sub-1' };
+			await ad.executeWorkflow({ id: 'sub-1' }, ad, {
+				parentWorkflowId: 'wf-1',
+				loadedWorkflowData,
+			});
+
+			expect(ad.executeWorkflow).not.toBe(executeWorkflow);
+			expect(executeWorkflow).toHaveBeenCalledWith({ id: 'sub-1' }, ad, {
+				parentWorkflowId: 'wf-1',
+				loadedWorkflowData,
+			});
+		});
+
 		it('returns a partial-failure result when the run resolves with undefined', async () => {
 			activeExecutions.getPostExecutePromise.mockResolvedValue(undefined);
 

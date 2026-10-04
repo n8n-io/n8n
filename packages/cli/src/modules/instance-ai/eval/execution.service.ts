@@ -53,6 +53,7 @@ import { DataTableService } from '@/modules/data-table/data-table.service';
 import { NodeTypes } from '@/node-types';
 import { PostHogClient } from '@/posthog';
 import { OwnershipService } from '@/services/ownership.service';
+import { getDraftWorkflowData } from '@/workflow-execute-additional-data';
 import { WorkflowRunner } from '@/workflow-runner';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
@@ -118,6 +119,26 @@ function dataTableLocator(
 	if (typeof value !== 'string' || value.length === 0) return undefined;
 	const byName = typeof locator !== 'string' && locator?.mode === 'name';
 	return { mode: byName ? 'name' : 'id', value };
+}
+
+/**
+ * The builder does not publish the sub-workflows it makes. An eval run calls
+ * their draft, as a manual test run does. Nested calls inherit this function.
+ */
+export function callSubWorkflowDrafts(
+	executeWorkflow: IWorkflowExecuteAdditionalData['executeWorkflow'],
+): IWorkflowExecuteAdditionalData['executeWorkflow'] {
+	return async (workflowInfo, additionalData, options) =>
+		await executeWorkflow(workflowInfo, additionalData, {
+			...options,
+			loadedWorkflowData:
+				options.loadedWorkflowData ??
+				(await getDraftWorkflowData(
+					workflowInfo,
+					options.parentWorkflowId,
+					options.parentWorkflowSettings,
+				)),
+		});
 }
 
 // ---------------------------------------------------------------------------
@@ -678,6 +699,7 @@ export class EvalExecutionService {
 						vendorLlmRouting?.subNodeToRoot,
 					);
 					additionalData.credentialsHelper = credentialsHelper;
+					additionalData.executeWorkflow = callSubWorkflowDrafts(additionalData.executeWorkflow);
 					additionalData.evalLlmMockHandler = this.createInterceptingHandler(
 						mockHandler,
 						nodeResults,
