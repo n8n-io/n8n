@@ -115,6 +115,13 @@ function at(source: string, needle: string, offset = 0): string {
 
 const SAMPLE = "[{ id: '182b676d244938bd', subject: 'Hi', count: 3 }]";
 
+const pathWarnings = (result: Awaited<ReturnType<typeof compileWorkflowSource>>) =>
+	result.success
+		? result.warnings
+				.filter((warning) => warning.code.endsWith('EXPRESSION_PATH'))
+				.map((warning) => warning.message)
+		: result.errors;
+
 describe('n8n expressions in the node contracts build', () => {
 	let root: string;
 	let context: InstanceAiContext;
@@ -549,6 +556,67 @@ export default workflow(
 		]);
 	}, 120_000);
 
+	it('types a full response by a sample that leaves fields out, never wider', async () => {
+		const source = (sample: string) => `import { workflow, manual, set } from '@n8n/workflow-sdk/next';
+import { httpRequest } from '@n8n/nodes/httpRequest';
+
+export default workflow(
+	'Partial sample',
+	manual(),
+	httpRequest.get({
+		name: 'Fetch',
+		url: 'https://api.example.com/x',
+		fullResponse: true,
+		neverError: true,
+		sample: [${sample}],
+	}),
+	set({ name: 'Size', fields: {
+		employees: (item) => (item.statusCode === 200 ? item.body.metrics.employees : 0),
+		type: (item) => item.headers['content-type'] ?? '',
+	} }),
+);
+`;
+		const right = await build(source('{ statusCode: 200, body: { metrics: { employees: 50 } } }'));
+		expect(pathWarnings(right)).toEqual([]);
+		const wrong = await build(source("{ statusCode: '200' }"));
+		expect(wrong.success ? [] : wrong.errors).toEqual([
+			expect.stringContaining("Type 'string' is not assignable to type 'number'"),
+		]);
+	}, 120_000);
+
+	it('fails a read of a field that the step before does not output, on each surface', async () => {
+		const source = (read: string) => `import { workflow, manual, set, node, expr } from '@n8n/workflow-sdk/next';
+import { code } from '@n8n/nodes/code';
+import { httpRequest } from '@n8n/nodes/httpRequest';
+
+export default workflow(
+	'Surfaces',
+	manual(),
+	httpRequest.get({
+		name: 'Fetch',
+		url: 'https://api.example.com/x',
+		fullResponse: true,
+		sample: [{ statusCode: 200, body: { id: 1 } }],
+	}),
+	${read},
+);
+`;
+		const reads = [
+			"set({ name: 'Read', fields: { a: (item) => item.total } })",
+			"set({ name: 'Read', fields: { a: expr('{{ $json.total }}') } })",
+			"httpRequest.get({ name: 'Read', url: '={{ $json.total }}' })",
+			"node({ name: 'Read', type: 'n8n-nodes-base.noOp', version: 1, parameters: { note: '={{ $json.total }}' } })",
+			"node({ name: 'Read', type: 'n8n-nodes-base.noOp', version: 1, parameters: { note: '={{ $(\"Fetch\").item.json.total }}' } })",
+			"code.javaScript({ name: 'Read', code: 'return $input.all().map((i) => ({ json: { a: i.json.total } }));' })",
+		];
+		for (const read of reads) {
+			const result = await build(source(read));
+			expect(result.success ? [] : result.errors, read).toEqual([
+				expect.stringContaining("Property 'total' does not exist"),
+			]);
+		}
+	}, 120_000);
+
 	it('types the items of a step that continues on error as its output or { error }', async () => {
 		const source = (status: string) => `import { workflow, manual, set } from '@n8n/workflow-sdk/next';
 import { code } from '@n8n/nodes/code';
@@ -563,9 +631,10 @@ export default workflow(
 		url: 'https://api.example.com/orders',
 		body: { kind: 'json', json: (item) => ({ id: item.id }) },
 		fullResponse: true,
+		sample: [{ statusCode: 201, body: { id: 'o1' } }],
 		settings: { onError: 'continueRegularOutput' },
 	}),
-	set({ name: 'Outcome', fields: { failed: (item) => item.error ?? '', status: (item) => ${status} } }),
+	set({ name: 'Outcome', fields: { failed: (item) => item.error ?? '', created: (item) => item.statusCode === 201, status: (item) => ${status} } }),
 	code.javaScript({
 		name: 'Dead letters',
 		code: "return $('Post').all().filter((i) => i.json.error !== undefined).map((i) => ({ json: { reason: i.json.error } }));",
@@ -573,15 +642,34 @@ export default workflow(
 );
 `;
 		const right = await build(source('(item.error === undefined ? item.statusCode : 0)'));
-		expect(right.success ? [] : right.errors).toEqual([]);
+		expect(pathWarnings(right)).toEqual([]);
 		if (right.success) {
 			expect(right.workflow.nodes.find((node) => node.name === 'Post')?.onError).toBe(
 				'continueRegularOutput',
 			);
 		}
-		const wrong = await build(source('item.statusCode'));
+		const wrong = await build(source('item.statusCode.toFixed()'));
 		expect(wrong.success ? [] : wrong.errors).toEqual([
-			expect.stringContaining("Property 'statusCode' does not exist on type 'FailedItem"),
+			expect.stringContaining("'item.statusCode' is possibly 'undefined'"),
+		]);
+	}, 120_000);
+
+	it('builds the error branch of a sampled step that reads the error text', async () => {
+		const source = (reason: string) => `import { workflow, manual, set, onError } from '@n8n/workflow-sdk/next';
+import { httpRequest } from '@n8n/nodes/httpRequest';
+
+export default workflow(
+	'Errors',
+	manual(),
+	httpRequest.get({ name: 'Fetch', url: 'https://api.example.com/x', sample: [{ id: 1 }] }),
+	onError(set({ name: 'Log', fields: { reason: (e) => ${reason} } })),
+);
+`;
+		const right = await build(source('e.error'));
+		expect(pathWarnings(right)).toEqual([]);
+		const wrong = await build(source('e.error.message'));
+		expect(wrong.success ? [] : wrong.errors).toEqual([
+			expect.stringContaining("Property 'message' does not exist on type 'string'"),
 		]);
 	}, 120_000);
 

@@ -941,7 +941,7 @@ describe('generateNodeModule', () => {
 		});
 		const text = moduleOf(route, check);
 		expect(text).toContain(
-			"import { contractStep, routedStep, type Exact, type NodeSettings, type OutputOf, type RoutedStep, type Sampled, type Step, type Value } from '@n8n/workflow-sdk/next';",
+			"import { contractStep, routedStep, type DeepPartial, type Exact, type NodeSettings, type OutputOf, type RoutedStep, type Sampled, type Step, type Value } from '@n8n/workflow-sdk/next';",
 		);
 		expect(text).toContain(
 			'(transform, per-item; outputs: one per cases entry, named by its output, then fallback; hosts: todo.test)',
@@ -1000,7 +1000,7 @@ describe('generateNodeModule', () => {
 		expect(text).toContain('{ values: Value<I, C, { [key: string]: Value<I, C, OpenValue> }> }');
 		expect(text).toContain('export type TodoRowAppendOutput = Record<string, unknown>;');
 		expect(text).toContain(
-			'import { contractStep, contractTool, type Exact, type OpenValue, type NodeSettings, type OutputOf,',
+			'import { contractStep, contractTool, type DeepPartial, type Exact, type OpenValue, type NodeSettings, type OutputOf,',
 		);
 		expect(moduleOf(listTasks)).not.toContain('OpenValue');
 	});
@@ -1033,7 +1033,7 @@ describe('generateNodeModule', () => {
 		});
 		const text = moduleOf(append);
 		expect(text).toContain(
-			'append: <In, Ctx, const N extends string, S extends OutputOf<N, TodoRowAppendOutput> = OutputOf<N, TodoRowAppendOutput>>(',
+			'append: <In, Ctx, const N extends string, S extends DeepPartial<OutputOf<N, TodoRowAppendOutput>> = never>(',
 		);
 		expect(text).toContain(
 			'config: { name: N; sample?: Array<S & Exact<S, OutputOf<N, TodoRowAppendOutput>>>; settings?: NodeSettings }',

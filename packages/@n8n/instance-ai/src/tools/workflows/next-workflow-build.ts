@@ -746,6 +746,9 @@ const moduleStepHint = (lead: string) => (_macros: string, error: string) => {
 	return `${lead} Call a step that its type lists, e.g. \`.${path}({ name })\`. \`nodes(action="type-definition")\` shows them all.`;
 };
 
+const UNDEFINED_HINT =
+	"The value can be undefined. After a step with `onError: 'continueRegularOutput'`, check `item.error === undefined` first: then its output fields are set. A `schema` field is optional until its `required` list names it. Else give a default, e.g. `item.f ?? ''`.";
+
 const LOOP_STATE_HINT =
 	'The loop state has the type of the item before `loop`, and `next` returns it. Put a `set` of only the state fields before `loop`. Then end the body with a `set` of the same fields, or return them from `next`.';
 
@@ -833,10 +836,11 @@ const TSC_HINTS: ReadonlyArray<{
 			"This field has no declared type, so a check such as `x ? x.f : …` leaves `{}`, which has no fields. Give the node that outputs it `sample` items, a webhook `schema`, or `returns` on a code step. Else narrow each level: `typeof x === 'object' && x !== null && 'f' in x`.",
 	},
 	{
-		codes: [2339],
+		// A failed item lists the output fields, so the field is in no shape.
+		codes: [2339, 2551],
 		message: /on type '.*\bFailedItem\b/,
 		hint: () =>
-			"A step with `onError: 'continueRegularOutput'` emits only `{ error }` for an item it fails on. Check it first: `item.error === undefined ? item.f : …`, or `when` on `item.error !== undefined`.",
+			'The step before has no output field of this name. With `onError: \'continueRegularOutput\'`, an item is its output, or only `{ error }` when it fails on the item. Use a field that the output type lists: `nodes(action="type-definition")` shows them.',
 	},
 	{
 		codes: [2339],
@@ -881,9 +885,9 @@ const TSC_HINTS: ReadonlyArray<{
 	{
 		codes: [2322, 2345],
 		message: /(?:^|: )(?:Type|Argument of type) '.*\| undefined' is not assignable/,
-		hint: () =>
-			'The value can be undefined. A `schema` field is optional until its `required` list names it: add it there, or read a field that is always set.',
+		hint: () => UNDEFINED_HINT,
 	},
+	{ codes: [18048, 2532], message: /is possibly 'undefined'/, hint: () => UNDEFINED_HINT },
 	{
 		codes: [2322, 2345],
 		message: /(?:^|: )(?:Type|Argument of type) 'unknown' is not assignable/,
@@ -900,7 +904,7 @@ const TSC_HINTS: ReadonlyArray<{
 		message: /^/,
 		detail: /missing the following propert|is missing in type/,
 		hint: () =>
-			'Add the fields that the message names. A `sample` item needs every output field, also the ones you do not read, e.g. `headers: {}`. `nodes(action="type-definition")` shows the full type.',
+			'Add the fields that the message names. `nodes(action="type-definition")` shows the full type.',
 	},
 	{
 		codes: [2353],

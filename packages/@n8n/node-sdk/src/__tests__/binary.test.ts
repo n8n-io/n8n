@@ -477,7 +477,7 @@ describe('binary contracts', () => {
 			{ contract: toContract(download), operation: 'download', nodeType: 'files.download' },
 		]);
 		expect(text).toContain(
-			"import { binaryKeys, contractStep, type Binary, type Dollar, type Exact, type NodeSettings, type OutputOf, type Sampled, type Step, type Value } from '@n8n/workflow-sdk/next';",
+			"import { binaryKeys, contractStep, type Binary, type DeepPartial, type Dollar, type Exact, type NodeSettings, type OutputOf, type Sampled, type Step, type Value } from '@n8n/workflow-sdk/next';",
 		);
 		expect(text).toContain('contractStep("files.download", binaryKeys(config, [["file"]]))');
 		expect(text).toContain(

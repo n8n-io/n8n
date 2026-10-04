@@ -18,6 +18,7 @@ import {
 	workflow,
 	type Binary,
 	type Declared,
+	type DeepPartial,
 	type Dollar,
 	type EntryFields,
 	type ErrorItem,
@@ -39,6 +40,11 @@ import {
 	type ValueSchema,
 	type Workflow,
 } from '../index';
+import { workflow as rootWorkflow } from '../../workflow-builder';
+import {
+	node as rootNode,
+	trigger as rootTrigger,
+} from '../../workflow-builder/node-builders/node-builder';
 import { compileBinaryKey, compileLambda } from '../lambda';
 
 // The build declares each node with `onError: 'continueRegularOutput'` like this.
@@ -293,6 +299,10 @@ describe('workflow', () => {
 			name: N;
 			settings?: NodeSettings;
 		}): Step<In, Ctx, { total: number }, N> => contractStep('httpRequest.get', config);
+		const see = <In, Ctx, const N extends string>(config: {
+			name: N;
+			see: (item: In, $: Dollar<Ctx>) => void;
+		}): Step<In, Ctx, In, N> => contractStep('items.read', config);
 		const json = workflow(
 			'Sweep',
 			manual(),
@@ -302,14 +312,75 @@ describe('workflow', () => {
 				fields: {
 					failed: (item) => item.error ?? '',
 					total: (item) => (item.error === undefined ? item.total : 0),
+					big: (item) => item.total === 3,
 				},
 			}),
-			// @ts-expect-error an item that failed has no total
 			set({ name: 'Unchecked', fields: { total: (_item, $) => $('Continued fetch').total } }),
 		).toJSON();
 		expect(json.nodes.find((n) => n.name === 'Continued fetch')?.onError).toBe(
 			'continueRegularOutput',
 		);
+		workflow(
+			'Sweep types',
+			manual(),
+			fetch({ name: 'Continued fetch', settings: { onError: 'continueRegularOutput' } }),
+			see({
+				name: 'See',
+				see: (item, $) => {
+					expectTypeOf(item.total).toEqualTypeOf<number | undefined>();
+					expectTypeOf($('Continued fetch').total).toEqualTypeOf<number | undefined>();
+					if (item.error === undefined) expectTypeOf(item.total).toEqualTypeOf<number>();
+					else expectTypeOf(item.error).toEqualTypeOf<string>();
+					// @ts-expect-error the output has no field totl
+					void item.totl;
+				},
+			}),
+		);
+	});
+
+	it('leaves expression paths to the type check, but the root builder checks them as before', () => {
+		const fetch = <In, Ctx, const N extends string>(config: {
+			name: N;
+			sample?: Array<{ total: number }>;
+			settings?: NodeSettings;
+		}): Step<In, Ctx, { total: number }, N> => contractStep('httpRequest.get', config);
+		const pathIssues = (wf: Pick<Workflow, 'validate'>) =>
+			wf
+				.validate()
+				.warnings.filter((issue) => issue.code.endsWith('EXPRESSION_PATH'))
+				.map((issue) => issue.message);
+		const continued = workflow(
+			'Continued',
+			manual(),
+			fetch({
+				name: 'Continued fetch',
+				sample: [{ total: 3 }],
+				settings: { onError: 'continueRegularOutput' },
+			}),
+			set({ name: 'Outcome', fields: { failed: (item) => item.error ?? '' } }),
+		);
+		expect(pathIssues(continued)).toEqual([]);
+		const json = continued.toJSON();
+		const root = rootWorkflow('id', 'Continued')
+			.add(rootTrigger({ type: 'n8n-nodes-base.manualTrigger', version: 1, config: {} }))
+			.to(
+				rootNode({
+					type: 'n8n-nodes-base.httpRequest',
+					version: 4.2,
+					config: { name: 'Fetch', onError: 'continueRegularOutput' },
+					output: [{ total: 3 }],
+				}),
+			)
+			.to(
+				rootNode({
+					type: 'n8n-nodes-base.set',
+					version: 3.4,
+					config: { name: 'Outcome', parameters: json.nodes[2].parameters },
+				}),
+			);
+		expect(pathIssues(root)).toEqual([
+			"'Outcome' parameter 'fields.failed' uses $json.error but no predecessor outputs this field.",
+		]);
 	});
 
 	it('types a 12-step list with when, route, and onError without annotations', () => {
@@ -1000,7 +1071,7 @@ describe('workflow', () => {
 			In,
 			Ctx,
 			const N extends string,
-			S extends OutputOf<N, Open> = OutputOf<N, Open>,
+			S extends DeepPartial<OutputOf<N, Open>> = never,
 		>(
 			config: { name: N; sample?: Array<S & Exact<S, OutputOf<N, Open>>> } & { url: string },
 		): Step<In, Ctx, Sampled<OutputOf<N, Open>, S>, N> => contractStep('httpRequest.get', config);
@@ -1008,7 +1079,7 @@ describe('workflow', () => {
 			In,
 			Ctx,
 			const N extends string,
-			S extends OutputOf<N, Closed> = OutputOf<N, Closed>,
+			S extends DeepPartial<OutputOf<N, Closed>> = never,
 		>(config: {
 			name: N;
 			sample?: Array<S & Exact<S, OutputOf<N, Closed>>>;
@@ -1041,15 +1112,21 @@ describe('workflow', () => {
 		);
 		// @ts-expect-error a closed output has no field other
 		read({ name: 'Read', sample: [{ id: 'n1', other: 1 }] });
-		// @ts-expect-error the sample of a closed output needs its required fields
-		read({ name: 'Read', sample: [{ note: 'x' }] });
+		// @ts-expect-error a sample field has the type of the output field
+		read({ name: 'Read', sample: [{ id: 1 }] });
+		workflow(
+			'Partial',
+			manual(),
+			read({ name: 'Read', sample: [{ note: 'x' }] }),
+			set({ name: 'Note', fields: { note: (item) => item.note.length + item.id.length } }),
+		);
 	});
 
 	it('types a contract step by its sample inside the derived output, never wider', () => {
 		// The build declares a derived output, e.g. of a full response, in NodeOutputs[N].
 		// A body of any JSON reads as `any`, as `Loose` fields do.
 		type Full = { body: Loose[string]; headers: Record<string, string>; statusCode: number };
-		const fetch = <In, Ctx, const N extends string, S extends Full = Full>(
+		const fetch = <In, Ctx, const N extends string, S extends DeepPartial<Full> = never>(
 			config: { name: N; sample?: Array<S & Exact<S, Full>> } & { url: string },
 		): Step<In, Ctx, Sampled<Full, S>, N> => contractStep('httpRequest.get', config);
 		workflow(
@@ -1085,8 +1162,28 @@ describe('workflow', () => {
 			// @ts-expect-error a sample does not widen the derived output
 			sample: [{ body: {}, headers: {}, statusCode: 200, extra: 1 }],
 		});
-		// @ts-expect-error a sample has the required fields of the derived output
-		fetch({ name: 'Fetch', url: 'https://x', sample: [{ body: {} }] });
+		workflow(
+			'Partial sample',
+			manual(),
+			fetch({
+				name: 'Fetch',
+				url: 'https://x',
+				sample: [{ statusCode: 200, body: { metrics: { employees: 50 } } }],
+			}),
+			set({
+				name: 'Size',
+				fields: {
+					employees: (item) => item.body.metrics.employees + item.statusCode,
+					type: (item) => item.headers['content-type'],
+				},
+			}),
+		);
+		fetch({
+			name: 'Fetch',
+			url: 'https://x',
+			// @ts-expect-error a sample does not change the type of a derived field
+			sample: [{ statusCode: '200' }],
+		});
 	});
 
 	it('reports a node without a name instead of failing on it', () => {

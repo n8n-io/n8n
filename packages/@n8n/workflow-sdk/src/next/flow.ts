@@ -54,6 +54,7 @@ import {
 } from '../workflow-builder/node-builders/subnode-builders';
 import { registerDefaultPlugins } from '../workflow-builder/plugins/defaults';
 import { PluginRegistry } from '../workflow-builder/plugins/registry';
+import { expressionPathValidator } from '../workflow-builder/plugins/validators/expression-path-validator';
 import { loopWiringValidator } from '../workflow-builder/plugins/validators/loop-wiring-validator';
 import {
 	NodeConnectionTypes,
@@ -592,6 +593,7 @@ export interface ContinuedNodes {}
 
 /** The items of node `N`: `Out`, or also a {@link FailedItem} when it continues on error. */
 // The first check needs no `N`, so a workflow without such nodes skips the per-step type.
+// The failed item lists the output fields as absent, so a read of one gives `T | undefined`.
 type Continued<N extends string, Out> = [keyof ContinuedNodes] extends [never]
 	? Out
 	: N extends keyof ContinuedNodes
@@ -600,7 +602,7 @@ type Continued<N extends string, Out> = [keyof ContinuedNodes] extends [never]
 						/** Not set: the node did not fail on this item. */
 						readonly error?: undefined;
 				  })
-				| FailedItem
+				| (FailedItem & { readonly [K in keyof Out as Exclude<K, 'error'>]?: never })
 		: Out;
 
 /** One node that reads `In` items and emits `Out` items. */
@@ -1894,9 +1896,10 @@ type AnyKeys<O> = { [K in keyof O]-?: 0 extends 1 & O[K] ? K : never }[keyof O];
 
 /**
  * Output `O` with the fields of a sample `S` that fits it: `O & S`. A field of `O` typed `any`
- * takes the type of the sample, because `any & S` stays `any`.
+ * takes the type of the sample, because `any & S` stays `any`. A field that the sample leaves
+ * out keeps its type in `O`. `S` is `never` when there is no sample.
  */
-export type Sampled<O, S> = (<T>() => T extends O ? 1 : 2) extends <T>() => T extends S ? 1 : 2
+export type Sampled<O, S> = [S] extends [never]
 	? O
 	: O extends unknown
 		? [AnyKeys<O> & keyof S] extends [never]
@@ -2479,10 +2482,16 @@ export interface WorkflowOptions {
 	readonly grants?: Readonly<Record<string, readonly string[]>>;
 }
 
-/** The default plugins plus loop wiring, which only `next` builds check for now. */
+/**
+ * The default plugins plus loop wiring, which only `next` builds check for now. The build
+ * type-checks each read in a lambda, an expression, and Code text, so `next` builds do not use
+ * the expression path check: it reads a sample as the full output, and it does not know the
+ * `error` of failed items.
+ */
 const nextRegistry = new PluginRegistry();
 registerDefaultPlugins(nextRegistry);
 nextRegistry.registerValidator(loopWiringValidator);
+nextRegistry.unregisterValidator(expressionPathValidator.id);
 
 /**
  * A trigger `sample` is the event the trigger delivers, so verification pins it as the trigger

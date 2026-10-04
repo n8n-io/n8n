@@ -937,7 +937,9 @@ describe('tsc hints', () => {
 	const methodHint =
 		'A step has no methods. A workflow is a flat list: `workflow(name, trigger, stepA, stepB)`. Macros: steps, when, onError.';
 	const missingFieldsHint =
-		'Add the fields that the message names. A `sample` item needs every output field, also the ones you do not read, e.g. `headers: {}`. `nodes(action="type-definition")` shows the full type.';
+		'Add the fields that the message names. `nodes(action="type-definition")` shows the full type.';
+	const undefinedHint =
+		"The value can be undefined. After a step with `onError: 'continueRegularOutput'`, check `item.error === undefined` first: then its output fields are set. A `schema` field is optional until its `required` list names it. Else give a default, e.g. `item.f ?? ''`.";
 	const loopStateHint =
 		'The loop state has the type of the item before `loop`, and `next` returns it. Put a `set` of only the state fields before `loop`. Then end the body with a `set` of the same fields, or return them from `next`.';
 
@@ -992,8 +994,10 @@ describe('tsc hints', () => {
 		],
 		[
 			"TS2322: Type '(item: { body: { severity?: string; }; }) => string | undefined' is not assignable to type 'string | ((item: { body: { severity?: string; }; }) => string)'.",
-			'The value can be undefined. A `schema` field is optional until its `required` list names it: add it there, or read a field that is always set.',
+			undefinedHint,
 		],
+		["TS18048: 'item.statusCode' is possibly 'undefined'.", undefinedHint],
+		["TS2532: Object is possibly 'undefined'.", undefinedHint],
 		[
 			"TS2345: Argument of type '\"Incident Webhook\"' is not assignable to parameter of type 'never'.",
 			"`$('Node')` reads only a node that runs before this one on the same path, by its exact `name`. If an earlier error breaks the list, fix it first.",
@@ -1055,8 +1059,8 @@ describe('tsc hints', () => {
 			"This field has no declared type, so a check such as `x ? x.f : \u2026` leaves `{}`, which has no fields. Give the node that outputs it `sample` items, a webhook `schema`, or `returns` on a code step. Else narrow each level: `typeof x === 'object' && x !== null && 'f' in x`.",
 		],
 		[
-			"TS2339: Property 'statusCode' does not exist on type 'FailedItem | ({ body: any; statusCode: number; } & { readonly error?: undefined; })'.\n      Property 'statusCode' does not exist on type 'FailedItem'.",
-			"A step with `onError: 'continueRegularOutput'` emits only `{ error }` for an item it fails on. Check it first: `item.error === undefined ? item.f : \u2026`, or `when` on `item.error !== undefined`.",
+			"TS2551: Property 'statusCod' does not exist on type '(FailedItem & { readonly body?: undefined; readonly statusCode?: undefined; }) | ({ body: any; statusCode: number; } & { ...; })'. Did you mean 'statusCode'?\n      Property 'statusCod' does not exist on type 'FailedItem & { readonly body?: undefined; readonly statusCode?: undefined; }'.",
+			'The step before has no output field of this name. With `onError: \'continueRegularOutput\'`, an item is its output, or only `{ error }` when it fails on the item. Use a field that the output type lists: `nodes(action="type-definition")` shows them.',
 		],
 		[
 			"TS2339: Property 'message' does not exist on type 'string'.",

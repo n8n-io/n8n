@@ -303,7 +303,7 @@ describe('next-modules', () => {
 		expect(view?.import).toBe("import { gmail } from '@n8n/nodes/gmail';");
 		expect(view?.module).toContain('export type GmailMessageSendInput<I, C> = {');
 		expect(view?.module).toContain(
-			'  send: <In, Ctx, const N extends string, S extends OutputOf<N, GmailMessageSendOutput> = OutputOf<N, GmailMessageSendOutput>>(',
+			'  send: <In, Ctx, const N extends string, S extends DeepPartial<OutputOf<N, GmailMessageSendOutput>> = never>(',
 		);
 		expect(view?.module).not.toContain('export type GmailMessageGetAllInput');
 		expect(view?.module).toContain(

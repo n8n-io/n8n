@@ -812,10 +812,11 @@ export function generateNodeModule(nodeId: string, contracts: readonly Generated
 				: 'config';
 			// A passed item keeps the type of the item before. Else a sample refines the output, also
 			// the derived one, e.g. types an open JSON body, as a sample types the output of node().
+			// A sample can leave fields out: they keep their output type. `S` is `never` without one.
 			const passed = contract.output['x-n8n-passed'];
 			const output = `OutputOf<N, ${name}Output>`;
 			const generics = (more = '') =>
-				`<In, Ctx, const N extends string${more}${passed ? '' : `, S extends ${output} = ${output}`}>(`;
+				`<In, Ctx, const N extends string${more}${passed ? '' : `, S extends DeepPartial<${output}> = never`}>(`;
 			const item = passed ? 'In' : `Sampled<${output}, S>`;
 			const samples = passed ? 'In[]' : `Array<S & Exact<S, ${output}>>`;
 			const config = `{ name: N; sample?: ${samples}; settings?: NodeSettings }`;
@@ -825,7 +826,7 @@ export function generateNodeModule(nodeId: string, contracts: readonly Generated
 				contract.output['x-n8n-entry-fields'] && !outputs
 					? [
 							`<In, Ctx, const N extends string, const C extends ${input}>(`,
-							`\tconfig: { name: N; sample?: Array<${entryItem}>; settings?: NodeSettings } & C & Exact<C, ${input} & { name: string; sample?: unknown; settings?: NodeSettings }>,`,
+							`\tconfig: { name: N; sample?: Array<DeepPartial<${entryItem}>>; settings?: NodeSettings } & C & Exact<C, ${input} & { name: string; sample?: unknown; settings?: NodeSettings }>,`,
 							`): Step<In, Ctx, ${entryItem}, N> =>`,
 							`\tcontractStep(${JSON.stringify(nodeType)}, ${configArg}${args(false)})`,
 						]
@@ -954,7 +955,7 @@ export function generateNodeModule(nodeId: string, contracts: readonly Generated
 			? ['type Binary']
 			: []),
 		...(declares ? ['type Declared'] : []),
-		...(triggers.length > 0 ? ['type DeepPartial'] : []),
+		...(triggers.length > 0 || derived || hasEntries ? ['type DeepPartial'] : []),
 		...(named.some(({ contract }) => hasBinary(contract.input)) ? ['type Dollar'] : []),
 		...(hasEntries ? ['type EntryFields'] : []),
 		...(hasEntries || derived ? ['type Exact'] : []),
