@@ -1,5 +1,7 @@
 # The Node Contract
 
+For how this part fits in n8n, see [architecture.md](architecture.md).
+
 The Node Contract is the spec between nodes and the n8n engine. It has one version,
 `n8n:node-contract@x.y.z` (now 2.7.0), and two parts:
 

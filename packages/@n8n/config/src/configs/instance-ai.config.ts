@@ -314,8 +314,8 @@ export class InstanceAiConfig {
 	nodeContractsRegistryUrl: string = '';
 
 	/**
-	 * PEM file of the ed25519 first-party key of n8n. A version that it signs is first-party and
-	 * runs in the n8n process when `N8N_NODE_CONTRACT_SANDBOX` is `stored`. When one of the key
+	 * PEM file of the ed25519 first-party key of n8n. A version that it signs is first-party, so it
+	 * runs in a runtime of `N8N_NODES_NEXT_RUNTIMES_FIRST_PARTY`. When one of the key
 	 * files is set, the store takes only versions that one of the keys signs. When both are empty,
 	 * the store takes unsigned versions as private, and no newer patch applies.
 	 */
@@ -324,8 +324,7 @@ export class InstanceAiConfig {
 
 	/**
 	 * PEM file of the ed25519 vetting key of n8n. A version that it signs, and the first-party key
-	 * does not, is a community version and runs in the sandbox when `N8N_NODE_CONTRACT_SANDBOX` is
-	 * `stored`.
+	 * does not, is a community version, so it runs in a runtime of `N8N_NODES_NEXT_RUNTIMES_COMMUNITY`.
 	 */
 	@Env('N8N_NODE_CONTRACTS_VETTING_KEY_FILE')
 	nodeContractsVettingKeyFile: string = '';

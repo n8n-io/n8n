@@ -1,6 +1,8 @@
 # Sandboxed execution of contract actions
 
-Status: built for action and provider bundles, binary data included. A version runs in one of
+For how this part fits in n8n, see [architecture.md](architecture.md).
+
+Status: built for action, provider and trigger bundles, binary data included. A version runs in one of
 four runtimes: `in-process`, `worker`, `wasm` and `container`. A runtime policy picks the runtime
 from the trust class and the needs of the version (see "Runtimes and the runtime policy"). Only
 the WASM component in a wasmtime sidecar stopped every escape with a clear error and enforced CPU,

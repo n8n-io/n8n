@@ -1,5 +1,7 @@
 # Credentials, triggers and bindings
 
+For how this part fits in n8n, see [architecture.md](architecture.md).
+
 This document describes how a node contract declares its credential, its triggers, and how
 each contract runs. It is the design of the NODE-6071 spike, lane C2.
 

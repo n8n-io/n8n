@@ -7,6 +7,9 @@ that the AI workflow builder reads (`generateNodeModule`).
 
 See `packages/@n8n/nodes-base-next/src/nodes/**` for real nodes.
 
+For how the packages fit together, and how a node is installed, versioned and run in n8n, see
+[docs/architecture.md](docs/architecture.md).
+
 ## Imports
 
 | Import | For | Contents |

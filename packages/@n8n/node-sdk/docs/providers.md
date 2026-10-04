@@ -1,5 +1,7 @@
 # Provider contracts
 
+For how this part fits in n8n, see [architecture.md](architecture.md).
+
 A provider gives one capability to a root node through an n8n `ai_*` connection. The UI calls
 it a sub-node. The manifest format has no separate provider kind: a provider is an action whose
 `output` is the capability (`x-n8n-supply`), and a root node is an action with a
