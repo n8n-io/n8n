@@ -74,6 +74,7 @@ describe('useNodeContractsRegistry', () => {
 	mockInstance(NodesConfig, {
 		pythonEnabled: false,
 		egressInputHosts: ['*.acme.test'],
+		permissionsDeny: ['code'],
 		responseSizeMaxMiB: 2,
 	});
 	mockInstance(OutboundHttp).transport.mockReturnValue(
@@ -103,6 +104,7 @@ describe('useNodeContractsRegistry', () => {
 			},
 		});
 		expect([...(options?.egressInputHosts ?? [])]).toEqual(['*.acme.test']);
+		expect([...(options?.permissionsDeny ?? [])]).toEqual(['code']);
 		expect([...(options?.revokedAllowed ?? [])]).toEqual(['demo.echo@1.0.0']);
 		expect(options?.maxResponseBytes).toBe(2 * 1024 * 1024);
 		expect(await options?.metaOf(contextOf('1'))).toBe(meta);

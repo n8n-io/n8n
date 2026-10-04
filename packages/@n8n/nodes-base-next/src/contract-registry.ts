@@ -1,4 +1,5 @@
 import {
+	permissionsOf,
 	runsNodeContract,
 	setContractVersionLoader,
 	setCredentialManifests,
@@ -9,6 +10,7 @@ import {
 	setPermissionRefusalListener,
 	setRunProfileListener,
 	type ContractOrigin,
+	type ContractPermissions,
 	type ContractVersionLoader,
 	type FrozenVersion,
 	type PayloadCapture,
@@ -50,6 +52,7 @@ import {
 	LoggerProxy,
 	UserError,
 	type IExecuteFunctions,
+	type INode,
 	type ISupplyDataFunctions,
 } from 'n8n-workflow';
 
@@ -118,7 +121,31 @@ export interface ContractRegistryOptions {
 	 * An admin sets it. Without it, a revoked version does not run.
 	 */
 	readonly revokedAllowed?: readonly string[];
+	/**
+	 * The permission classes of `N8N_NODE_PERMISSIONS_DENY`, e.g. `code`. A version that has one
+	 * of them does not run. Without it, no class is denied.
+	 */
+	readonly permissionsDeny?: readonly string[];
 }
+
+/**
+ * A class of `N8N_NODE_PERMISSIONS_DENY` that a contract version can have. `egress-input`: a
+ * host from input. `code`: the code import. No contract version has `files` or `full-community`.
+ */
+export type ContractPermissionClass = 'egress-input' | 'code';
+
+/** The `N8N_NODE_PERMISSIONS_DENY` classes of the permissions of a contract, e.g. for the security audit. */
+export const permissionClassesOf = ({
+	egress,
+	imports,
+}: Pick<ContractPermissions, 'egress' | 'imports'>): readonly ContractPermissionClass[] => [
+	...(egress.fromInput === undefined ? [] : ['egress-input' as const]),
+	...(imports.includes('code') ? ['code' as const] : []),
+];
+
+/** The first class of the contract of a version that `deny` has, e.g. to refuse it at load and at run time. */
+export const deniedPermissionClassOf = ({ manifest }: FrozenVersion, deny: readonly string[]) =>
+	permissionClassesOf(permissionsOf(manifest.contract)).find((name) => deny.includes(name));
 
 /** PEM of the public keys that prove the origin of a version. */
 export interface ContractKeys {
@@ -821,13 +848,28 @@ export function contractStore(options: ContractStoreOptions): ContractStore {
 export function contractVersionLoader(options: ContractRegistryOptions): ContractVersionLoader {
 	const { store } = options;
 	const allowed = new Set(options.revokedAllowed ?? []);
-	const runnable = async (version: FrozenVersion) => {
+	const deny = options.permissionsDeny ?? [];
+	const runnable = async (version: FrozenVersion, node: INode) => {
 		const withdrawn = await store.withdrawal(version);
-		const at = `${version.manifest.id}@${version.manifest.semver}`;
+		const { id, semver } = version.manifest;
+		const at = `${id}@${semver}`;
 		if (withdrawn && 'revoke' in withdrawn && !allowed.has(at)) {
 			throw new UserError(
 				`${at} is revoked: ${withdrawn.reason}. An admin can allow it in N8N_NODE_CONTRACTS_REVOKED_ALLOW.`,
 			);
+		}
+		// The loader refuses the versions that it projects. A lock or a patch can resolve to another version.
+		const denied = deniedPermissionClassOf(version, deny);
+		if (denied !== undefined) {
+			const message = `${at} does not run: N8N_NODE_PERMISSIONS_DENY denies its permission class "${denied}"`;
+			options.onPermissionRefused?.({
+				action: id,
+				version: semver,
+				node,
+				permission: denied,
+				message,
+			});
+			throw new UserError(message);
 		}
 		return version;
 	};
@@ -839,13 +881,14 @@ export function contractVersionLoader(options: ContractRegistryOptions): Contrac
 	};
 	return async (context, head) => {
 		const meta = await options.metaOf(context);
-		const lock = locksOf(meta).find(([node]) => node === context.getNode().name)?.[1];
+		const node = context.getNode();
+		const lock = locksOf(meta).find(([name]) => name === node.name)?.[1];
 		// A lock of another action or major is stale: the node changed after the build.
 		if (
 			lock?.action !== head.manifest.id ||
 			parseSemver(lock.version).major !== head.manifest.contract.version
 		) {
-			return await runnable(head);
+			return await runnable(head, node);
 		}
 		const override = isRecord(meta) ? meta.nodeContractsPolicy : undefined;
 		const policy = isPolicy(override) ? override : options.policy;
@@ -879,7 +922,7 @@ export function contractVersionLoader(options: ContractRegistryOptions): Contrac
 				throw locked instanceof Error ? locked : error;
 			}
 		})();
-		return await runnable(trusted.find((version) => version.manifest === manifest) ?? head);
+		return await runnable(trusted.find((version) => version.manifest === manifest) ?? head, node);
 	};
 }
 

@@ -20,7 +20,7 @@ const showsOnOwnedSlot = ({ displayOptions }: INodeProperties) =>
 
 describe('migrated nodes', () => {
 	const legacy = new Notion();
-	const migrated = withMigratedVersions(NOTION, legacy);
+	const migrated = withMigratedVersions(NOTION, legacy, versionsOf);
 	const v4 = migrated.getNodeType(4);
 
 	it('add Notion v4 as the default version and keep v1 to v3', () => {
@@ -28,6 +28,10 @@ describe('migrated nodes', () => {
 		expect(Object.keys(migrated.nodeVersions).map(Number).sort()).toEqual([1, 2, 2.1, 2.2, 3, 4]);
 		expect(migrated.getNodeType(3)).toBe(legacy.getNodeType(3));
 		expect(v4.description).toMatchObject({ name: 'notion', displayName: 'Notion', version: 4 });
+	});
+
+	it('keep only the legacy versions when the host does not load the action major of a slot', () => {
+		expect(withMigratedVersions(NOTION, legacy, () => [])).toBe(legacy);
 	});
 
 	it('show the action fields on the owned slot and the legacy fields elsewhere', () => {

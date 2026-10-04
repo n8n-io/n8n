@@ -1,12 +1,7 @@
 import { Logger } from '@n8n/backend-common';
 import { OutboundHttp } from '@n8n/backend-network';
 import { EventService } from '@n8n/backend-services';
-import {
-	GlobalConfig,
-	NODE_PERMISSION_CLASSES,
-	NodesConfig,
-	type NodePermissionClass,
-} from '@n8n/config';
+import { GlobalConfig, NodesConfig, type NodePermissionClass } from '@n8n/config';
 import {
 	NodeContractStatusRepository,
 	NodeContractVersionRepository,
@@ -21,6 +16,7 @@ import {
 	bundledCredentialsOf,
 	bundledIdsOf,
 	credentialTypeOfManifest,
+	deniedPermissionClassOf,
 	EMBEDDED_STORE_DIR,
 	isStoreStatusRecord,
 	MIGRATED_NODES,
@@ -249,27 +245,6 @@ const hasOtherCredentialTypeInN8n = (name: string) =>
 
 const majorOf = ({ manifest }: FrozenVersion) => manifest.contract.version;
 
-/** The `N8N_NODE_PERMISSIONS_DENY` classes of the permissions of a contract, e.g. for the security audit. */
-export function permissionClassesOf({
-	egress,
-	imports,
-}: Pick<ReturnType<typeof permissionsOf>, 'egress' | 'imports'>) {
-	// No contract has a files capability yet, and a contract node is never a legacy community node.
-	const has: Record<NodePermissionClass, boolean> = {
-		'egress-input': egress.fromInput !== undefined,
-		code: imports.includes('code'),
-		files: false,
-		'full-community': false,
-	};
-	return NODE_PERMISSION_CLASSES.filter((name) => has[name]);
-}
-
-/** The first class of `deny` that the contract of a version has. */
-function deniedClassOf({ manifest }: FrozenVersion, deny: readonly NodePermissionClass[]) {
-	const classes = permissionClassesOf(permissionsOf(manifest.contract));
-	return deny.find((name) => classes.includes(name));
-}
-
 /** One node type of the contract loader and the frozen versions it projects. */
 interface ContractNode extends LoadedClass<VersionedNodeType> {
 	readonly versions: readonly FrozenVersion[];
@@ -454,7 +429,7 @@ export class ContractNodeLoader implements NodeLoader {
 
 	/** Whether `N8N_NODE_PERMISSIONS_DENY` lets a version load, for bundled and stored versions alike. */
 	private readonly permits = (version: FrozenVersion) => {
-		const denied = deniedClassOf(version, this.deny);
+		const denied = deniedPermissionClassOf(version, this.deny);
 		if (denied === undefined) return true;
 		const { id, semver } = version.manifest;
 		const message = `${id}@${semver} does not load: N8N_NODE_PERMISSIONS_DENY denies its permission class "${denied}"`;
@@ -544,6 +519,7 @@ export async function useNodeContractsRegistry() {
 		nodeContractRange: instanceAi.nodeContractRange,
 		sandbox,
 		egressInputHosts: nodes.egressInputHosts,
+		permissionsDeny: nodes.permissionsDeny,
 		maxResponseBytes:
 			nodes.responseSizeMaxMiB === 0 ? Infinity : nodes.responseSizeMaxMiB * 1024 * 1024,
 		hasOtherCredentialType: hasOtherCredentialTypeInN8n,
@@ -667,6 +643,10 @@ export function composeContractNodes(
 	loaders: Readonly<Record<string, NodeLoader>>,
 	types: readonly INodeTypeDescription[],
 ) {
+	const contracts = loaders[NODE_PACKAGE];
+	// The slots run the versions that the contract loader loads, so its settings apply to them too.
+	const loadedVersionsOf = (actionId: string) =>
+		contracts instanceof ContractNodeLoader ? contracts.frozenVersionsOf(nodeNameOf(actionId)) : [];
 	const nodes = new Map<string, LoadedClass<IVersionedNodeType>>([
 		...toolNodesOf(loaders),
 		...Object.keys(MIGRATED_NODES).flatMap((nodeType) => {
@@ -674,19 +654,21 @@ export function composeContractNodes(
 			if (!legacy) return [];
 			const composed: LoadedClass<IVersionedNodeType> = {
 				...legacy,
-				type: withMigratedVersions(nodeType, legacy.type),
+				type: withMigratedVersions(nodeType, legacy.type, loadedVersionsOf),
 			};
 			return [[nodeType, composed] as const];
 		}),
 	]);
 	// A copy, because later steps add options to the properties of the newest version.
 	const added = [...nodes].flatMap(([name, { type }]) =>
-		Object.keys(MIGRATED_NODES[name] ?? {}).map(
-			(version): INodeTypeDescription => ({
-				...deepCopy(type.getNodeType(Number(version)).description),
-				name,
-			}),
-		),
+		Object.keys(MIGRATED_NODES[name] ?? {})
+			.filter((version) => version in type.nodeVersions)
+			.map(
+				(version): INodeTypeDescription => ({
+					...deepCopy(type.getNodeType(Number(version)).description),
+					name,
+				}),
+			),
 	);
 	const patched = types.map((description): INodeTypeDescription => {
 		const defaultVersion =

@@ -12,7 +12,7 @@ import { ContractNodeLoader } from '../node-contracts-registry';
 const PACKAGES = path.resolve(__dirname, '../../..');
 const NOTION = 'n8n-nodes-base.notion';
 
-async function postProcessed(nodeContractsEnabled: boolean) {
+async function postProcessed(nodeContractsEnabled: boolean, excludeContractNodes: string[] = []) {
 	const globalConfig = mock<GlobalConfig>({
 		instanceAi: { nodeContractsEnabled },
 		nodes: { exclude: [], include: [] },
@@ -26,7 +26,7 @@ async function postProcessed(nodeContractsEnabled: boolean) {
 		mock(),
 	);
 	const nodesBase = new LazyPackageDirectoryLoader(path.join(PACKAGES, 'nodes-base'));
-	const next = new ContractNodeLoader([], [], async () => ({
+	const next = new ContractNodeLoader(excludeContractNodes, [], async () => ({
 		versions: async () => new Map(),
 		credentials: async () => new Map(),
 	}));
@@ -122,6 +122,16 @@ describe('composeContractNodes', () => {
 		expect(
 			instance.types.nodes.some(({ hidden, name }) => hidden && name.startsWith('@n8n/')),
 		).toBe(false);
+		const loaded = instance.getNode(NOTION).type as IVersionedNodeType;
+		expect(Object.keys(loaded.nodeVersions)).not.toContain('4');
+	});
+
+	it('does not add Notion v4 when the contract loader does not load the action of its slot', async () => {
+		const instance = await postProcessed(true, ['@n8n/nodes-base-next.notionDatabasePageGetAll']);
+		const notion = instance.types.nodes.filter(({ name }) => name === NOTION);
+
+		expect(notion.map(versionOf)).toEqual(['2,2.1,2.2', '3', '1']);
+		expect(notion.map(({ defaultVersion }) => defaultVersion)).toEqual([3, 3, 3]);
 		const loaded = instance.getNode(NOTION).type as IVersionedNodeType;
 		expect(Object.keys(loaded.nodeVersions)).not.toContain('4');
 	});

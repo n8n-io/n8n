@@ -79,8 +79,9 @@ export class NodesConfig {
 
 	/**
 	 * Permission classes that no node may have. A contract node version with a denied class does
-	 * not load, for first-party and community nodes alike. `full-community` stops the load of
-	 * community packages. An unknown class stops the start. Legacy nodes, e.g.
+	 * not load or run, for first-party and community nodes alike. This includes a version from a
+	 * workflow lock. `full-community` stops the install and the load of community packages. An
+	 * unknown class stops the start. Legacy nodes, e.g.
 	 * `n8n-nodes-base.httpRequest` and `n8n-nodes-base.code`, are not affected. Use `NODES_EXCLUDE`
 	 * for them.
 	 *

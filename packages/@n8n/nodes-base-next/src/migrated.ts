@@ -1,10 +1,9 @@
 import { migrateVersion } from '@n8n/node-contract-compat';
 import { isRecord, type Action } from '@n8n/node-sdk';
-import { toVersionedNodeType } from '@n8n/node-sdk/host';
+import { toVersionedNodeType, type FrozenVersion } from '@n8n/node-sdk/host';
 import { VersionedNodeType, type IVersionedNodeType } from 'n8n-workflow';
 
 import { getManyDatabasePages } from './nodes/notion/actions/database-page.get-all';
-import { versionsOf } from './registry';
 
 /** A legacy node slot that a contract action runs: the resource and operation of the action. */
 export interface MigratedSlotSpec {
@@ -83,22 +82,36 @@ export function migratedSlotOf({
 /**
  * `legacy` plus its migrated versions. The newest version becomes the default: the nodes
  * panel shows the newest version and adds the default one, so the two must agree.
+ * `loadedVersionsOf` gives the versions of an action that the host loads. A migrated version
+ * that has a slot without its action major is not added, as the host does not load that action.
  */
-export function withMigratedVersions(nodeType: string, legacy: IVersionedNodeType) {
-	const migrated = Object.entries(MIGRATED_NODES[nodeType] ?? {}).map(
-		([version, { legacy: base, slots }]) =>
-			[
-				Number(version),
-				migrateVersion({
-					legacy: legacy.getNodeType(base),
-					version: Number(version),
-					slots: slots.map(({ action, major }) => ({
-						resource: action.resource,
-						operation: action.operation,
-						action: new (toVersionedNodeType(versionsOf(action.id)))().getNodeType(major),
-					})),
-				}),
-			] as const,
+export function withMigratedVersions(
+	nodeType: string,
+	legacy: IVersionedNodeType,
+	loadedVersionsOf: (actionId: string) => readonly FrozenVersion[],
+) {
+	const migrated = Object.entries(MIGRATED_NODES[nodeType] ?? {}).flatMap(
+		([version, { legacy: base, slots }]) => {
+			const loaded = slots.map((slot) => ({ ...slot, versions: loadedVersionsOf(slot.action.id) }));
+			const hasMajors = loaded.every(({ major, versions }) =>
+				versions.some(({ manifest }) => manifest.contract.version === major),
+			);
+			if (!hasMajors) return [];
+			return [
+				[
+					Number(version),
+					migrateVersion({
+						legacy: legacy.getNodeType(base),
+						version: Number(version),
+						slots: loaded.map(({ action, major, versions }) => ({
+							resource: action.resource,
+							operation: action.operation,
+							action: new (toVersionedNodeType(versions))().getNodeType(major),
+						})),
+					}),
+				] as const,
+			];
+		},
 	);
 	if (migrated.length === 0) return legacy;
 	const defaultVersion = Math.max(...migrated.map(([version]) => version));

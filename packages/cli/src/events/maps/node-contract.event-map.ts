@@ -14,18 +14,18 @@ export type NodeContractEventMap = {
 
 	/**
 	 * A permission refused a request or a bundle of a contract node at run time, or
-	 * `N8N_NODE_PERMISSIONS_DENY` refused a version at load.
+	 * `N8N_NODE_PERMISSIONS_DENY` refused a version at load or at run time.
 	 */
 	'node-permission-refused': {
 		/** The action or trigger id, e.g. `httpRequest.get`. */
 		action: string;
-		/** The semver of the refused version. Only a refusal at load has it. */
+		/** The semver of the refused version. Only the refusal of a version has it. */
 		version?: string;
 		/** The workflow node. Only a refusal at run time has it. */
 		nodeName?: string;
 		/** The node type of the workflow node. Only a refusal at run time has it. */
 		nodeType?: string;
-		/** The permission that refused, or the denied permission class at load. */
+		/** The permission that refused, or the denied permission class. */
 		permission: RefusedPermission | NodePermissionClass;
 		/** The host of the refused request. Only an egress refusal has it. */
 		host?: string;

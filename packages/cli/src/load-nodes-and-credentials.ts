@@ -349,12 +349,17 @@ export class LoadNodesAndCredentials {
 		}
 	}
 
-	async loadPackage(packageName: string) {
+	/** Throws when `N8N_NODE_PERMISSIONS_DENY` denies community packages, e.g. before their download. */
+	assertCommunityPackageAllowed(packageName: string) {
 		if (this.globalConfig.nodes.permissionsDeny.includes('full-community')) {
 			throw new UserError(
 				`Community package ${packageName} does not load: N8N_NODE_PERMISSIONS_DENY denies its permission class "full-community"`,
 			);
 		}
+	}
+
+	async loadPackage(packageName: string) {
+		this.assertCommunityPackageAllowed(packageName);
 		const finalNodeUnpackedPath = path.join(
 			this.instanceSettings.nodesDownloadDir,
 			'node_modules',

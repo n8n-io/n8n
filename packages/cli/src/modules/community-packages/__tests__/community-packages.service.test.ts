@@ -1058,6 +1058,22 @@ describe('CommunityPackagesService', () => {
 			);
 		});
 
+		test('refuses the package before the download when the loader refuses community packages', async () => {
+			const refusal = new Error('N8N_NODE_PERMISSIONS_DENY denies "full-community"');
+			loadNodesAndCredentials.assertCommunityPackageAllowed.mockImplementation(() => {
+				throw refusal;
+			});
+
+			await expect(communityPackagesService.installPackage('n8n-nodes-acme', '0.1.0')).rejects.toBe(
+				refusal,
+			);
+			expect(loadNodesAndCredentials.assertCommunityPackageAllowed).toHaveBeenCalledWith(
+				'n8n-nodes-acme',
+			);
+			expect(request).not.toHaveBeenCalled();
+			expect(executeNpmCommand).not.toHaveBeenCalled();
+		});
+
 		test('should throw when installation of not vetted packages is forbidden', async () => {
 			config.unverifiedEnabled = false;
 			config.registry = 'https://registry.npmjs.org';

@@ -1,13 +1,14 @@
 import { Logger } from '@n8n/backend-common';
 import { EventService } from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
-import type { GlobalConfig } from '@n8n/config';
+import type { GlobalConfig, NodePermissionClass } from '@n8n/config';
 import {
 	bundledCredentialsOf,
 	bundledIdsOf,
 	NODE_PACKAGE as NEXT,
 	nodeDescriptionOf,
 	versionsOf,
+	type ContractPermissionClass,
 	type CredentialManifest,
 	type FrozenVersion,
 } from '@n8n/nodes-base-next';
@@ -20,6 +21,7 @@ import {
 } from 'n8n-workflow';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
+import { expectTypeOf } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import { LoadNodesAndCredentials } from '../load-nodes-and-credentials';
@@ -249,6 +251,12 @@ describe('ContractNodeLoader', () => {
 			permission: 'egress-input',
 			message: expect.stringContaining('does not load'),
 		});
+	});
+
+	it('maps each config permission class that a contract version can have', () => {
+		expectTypeOf<ContractPermissionClass>().toEqualTypeOf<
+			Exclude<NodePermissionClass, 'files' | 'full-community'>
+		>();
 	});
 
 	it('does not load a stored version with a denied permission class', async () => {

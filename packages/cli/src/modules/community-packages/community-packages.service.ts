@@ -503,14 +503,15 @@ export class CommunityPackagesService {
 		return this.config.authToken || undefined;
 	}
 
-	private checkInstallPermissions(checksumProvided: boolean) {
+	private checkInstallPermissions(packageName: string, checksumProvided: boolean) {
+		this.loadNodesAndCredentials.assertCommunityPackageAllowed(packageName);
 		if (!this.config.unverifiedEnabled && !checksumProvided) {
 			throw new UnexpectedError('Installation of unverified community packages is forbidden!');
 		}
 	}
 
 	private async runRegistryChecks(packageName: string, packageVersion: string, checksum?: string) {
-		this.checkInstallPermissions(Boolean(checksum));
+		this.checkInstallPermissions(packageName, Boolean(checksum));
 
 		const packageStatus = await this.checkNpmPackageStatus(packageName);
 

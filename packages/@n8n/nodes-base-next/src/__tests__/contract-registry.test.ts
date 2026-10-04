@@ -77,7 +77,7 @@ vi.mock('@n8n/node-sdk/sandbox', async (importOriginal) => ({
 	warmSandbox: vi.fn(async () => undefined),
 }));
 
-const echoSource = (minor: number, text: string) => `
+const echoSource = (minor: number, text: string, imports = '') => `
 import { defineNode, t } from '@n8n/node-sdk';
 const { obj, str } = t;
 
@@ -89,6 +89,7 @@ export const echo = defineNode({ id: 'demo', displayName: 'Demo', credentials: [
 	flow: { effect: 'transform', cardinality: 'per-item' },
 	input: { text: str()${minor > 0 ? ', suffix: str().optional()' : ''} },
 	output: obj({ text: str() }),
+	${imports}
 	async run({ input }) {
 		return { text: ${text} };
 	},
@@ -222,8 +223,8 @@ const listen = async (server: Server) =>
 beforeAll(async () => {
 	dirs.root = await mkdtemp(path.join(tmpdir(), 'contract-registry-'));
 	const entry = path.join(dirs.root, 'echo.ts');
-	const freeze = async (minor: number, text: string, last?: string) => {
-		await writeFile(entry, echoSource(minor, text));
+	const freeze = async (minor: number, text: string, last?: string, imports?: string) => {
+		await writeFile(entry, echoSource(minor, text, imports));
 		const frozen = await freezeAction(entry, 'echo', async () => {
 			const manifest = last === undefined ? undefined : frozenOf(last).manifest;
 			return (
@@ -239,6 +240,8 @@ beforeAll(async () => {
 	await freeze(0, 'input.text.toUpperCase()');
 	await freeze(0, "input.text + '?'", '1.0.0');
 	await freeze(1, "input.text + (input.suffix ?? '#')");
+	await freeze(2, 'input.text', undefined, "imports: ['code'],");
+	await freeze(2, "input.text + '!'", '1.2.0', "imports: ['code'],");
 	dirs.registry = path.join(dirs.root, 'registry');
 	// The registry is static files.
 	registry.server.on('request', (request, response) => {
@@ -414,6 +417,32 @@ describe('contractVersionLoader', () => {
 		await expect(run(locked('1.0.0'), { policy: 'strict' })).rejects.toThrow(
 			`Cannot get demo.echo@1.0.0 (bundle ${bundleHash}) from the registry ${registry.url}: The registry does not have this bundle`,
 		);
+	});
+
+	it('refuses a locked version or its patch that a denied permission class has', async () => {
+		await publish(frozenOf('1.2.0'));
+		await publish(frozenOf('1.2.1'));
+		const onPermissionRefused = vi.fn();
+		const deny = { permissionsDeny: ['code'], onPermissionRefused };
+
+		expect(await run({}, deny)).toEqual(['hello#']);
+		await expect(run(locked('1.2.0'), { ...deny, policy: 'strict' })).rejects.toThrow(
+			'demo.echo@1.2.0 does not run: N8N_NODE_PERMISSIONS_DENY denies its permission class "code"',
+		);
+		await expect(run(locked('1.2.0'), deny)).rejects.toThrow(
+			'demo.echo@1.2.1 does not run: N8N_NODE_PERMISSIONS_DENY denies its permission class "code"',
+		);
+		expect(onPermissionRefused).toHaveBeenCalledWith({
+			action: 'demo.echo',
+			version: '1.2.0',
+			node: expect.objectContaining({ name: 'Echo' }),
+			permission: 'code',
+			message:
+				'demo.echo@1.2.0 does not run: N8N_NODE_PERMISSIONS_DENY denies its permission class "code"',
+		});
+		expect(await run(locked('1.2.0'), { policy: 'strict', permissionsDeny: ['files'] })).toEqual([
+			'hello',
+		]);
 	});
 
 	it('records the version that ran in the execution metadata', async () => {

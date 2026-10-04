@@ -28,9 +28,10 @@ export class NodesRiskReporter implements RiskReporter {
 		const officialRiskyNodes = getNodeTypes(workflows, (node) =>
 			OFFICIAL_RISKY_NODE_TYPES.has(node.type),
 		);
-		const { contractPermissionsOf, permissionClassesOf } = await import(
-			'@/node-contracts-registry.js'
-		);
+		const [{ contractPermissionsOf }, { permissionClassesOf }] = await Promise.all([
+			import('@/node-contracts-registry.js'),
+			import('@n8n/nodes-base-next'),
+		]);
 		// A contract node is risky only through what its manifest grants, whatever its origin.
 		const broadPermissionNodes = getNodeTypes(workflows, (node) => {
 			const permissions = contractPermissionsOf(this.loadNodesAndCredentials.loaders, node);

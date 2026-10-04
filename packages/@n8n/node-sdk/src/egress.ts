@@ -49,7 +49,7 @@ export type RefusedPermission =
 export interface PermissionRefusal {
 	/** The id of the action or trigger, e.g. `httpRequest.get`. */
 	readonly action: string;
-	/** The semver of the version. Only a refusal at load has it. */
+	/** The semver of the version. Only the refusal of a version has it. */
 	readonly version?: string;
 	/** The workflow node that ran the action. Only a refusal at run time has it. */
 	readonly node?: INode;
