@@ -94,8 +94,9 @@ they stay cached when a skill moves into the block. The block reuses the
 instruction cache options, so it gets its own breakpoint and stays cached when
 memory compacts again later. `buildSkillInstructionCacheOptions` drops that
 breakpoint when it would leave no slot for the conversation breakpoint next to
-caller breakpoints on tools and history messages. Providers without split system messages get the block
-merged after the base instructions, as before.
+caller breakpoints on tools, history messages, and their content parts.
+Providers without split system messages get the block merged after the base
+instructions, as before.
 
 Tools that a registered skill lists in `dependencies.tools` are active for the
 whole run. `AgentRuntime` moves them out of the deferred set at construction.
