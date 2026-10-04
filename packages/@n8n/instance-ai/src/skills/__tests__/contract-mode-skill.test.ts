@@ -182,6 +182,7 @@ describe('contract-mode skill', () => {
 		expect(next).toContain(
 			"node({\n  name: 'Get Weather Data',\n  type: 'n8n-nodes-base.executeWorkflow',\n  version: 1.2,\n  parameters: {",
 		);
+		expect(next).toContain('If the trigger accepts all data, omit `workflowInputs`');
 		expect(
 			on.source.registry.skills
 				.find(({ id }) => id === 'workflow-builder')

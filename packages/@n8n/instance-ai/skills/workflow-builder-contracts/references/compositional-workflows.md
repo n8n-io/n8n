@@ -37,9 +37,10 @@ executeWorkflowTrigger.trigger({
 }),
 ```
 
-Main-workflow call. The derived `executeWorkflow` module has no
-`workflowInputs`, so use `node()`. Its config is flat: no `config` and no
-`typeVersion`.
+Main-workflow call: `node()` with a flat config (no `config`, no
+`typeVersion`). Map each declared input in `workflowInputs.value`; a lambda
+reads the item. If the trigger accepts all data, omit `workflowInputs`: each
+item passes as is.
 
 ```ts
 import { node } from '@n8n/workflow-sdk/next';

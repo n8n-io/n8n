@@ -28,6 +28,7 @@ import type {
 	IConnections,
 	IDataObject,
 	INode,
+	INodeParameters,
 	INodeTypes,
 	IRun,
 	IWorkflowExecuteAdditionalData,
@@ -93,7 +94,11 @@ function renamed(executionOrder: ExecutionOrder, json: Built, from: string, to: 
 const MAX_NODE_RUNS = 200;
 
 /** Run `instance` with `items` as the trigger output. An endless loop stops at `MAX_NODE_RUNS`. */
-async function runWorkflow(instance: Workflow, items: readonly object[]): Promise<IRun> {
+async function runWorkflow(
+	instance: Workflow,
+	items: readonly object[],
+	executeWorkflow?: IWorkflowExecuteAdditionalData['executeWorkflow'],
+): Promise<IRun> {
 	const hooks = new ExecutionLifecycleHooks('trigger', '1', mock());
 	const done = createDeferredPromise<IRun>();
 	hooks.addHandler('workflowExecuteAfter', (result) => done.resolve(result));
@@ -106,6 +111,7 @@ async function runWorkflow(instance: Workflow, items: readonly object[]): Promis
 		parentCallbackManager: undefined,
 		ssrfBridge: undefined,
 		encryptedRunnerIdentity: undefined,
+		...(executeWorkflow ? { executeWorkflow } : {}),
 	});
 	const start = instance.getStartNode();
 	if (!start) throw new Error('no start node');
@@ -821,3 +827,155 @@ describe.each<ExecutionOrder>(['v0', 'v1'])(
 		});
 	},
 );
+
+describe('workflow-sdk sub-workflow calls on the legacy engine', () => {
+	const ORDERS: Order[] = [
+		{ id: 'o1', total: 1 },
+		{ id: 'o2', total: 2 },
+	];
+
+	const callOrders = (parameters: IDataObject) =>
+		workflow(
+			'Orders',
+			manual(),
+			source<Order>()('Orders'),
+			node({
+				name: 'Process Order',
+				type: 'n8n-nodes-base.executeWorkflow',
+				version: 1.4,
+				parameters: {
+					source: 'database',
+					workflowId: { __rl: true, mode: 'id', value: 'sub' },
+					mode: 'each',
+					...parameters,
+				},
+			}),
+		).toJSON();
+
+	/** Runs a sub-workflow that holds only an Execute Workflow Trigger with `parameters`. */
+	const subWorkflow = (parameters: INodeParameters) =>
+		vi.fn<IWorkflowExecuteAdditionalData['executeWorkflow']>(async (_info, _data, options) => {
+			const trigger: INode = {
+				id: 'trigger',
+				name: 'When Called',
+				type: 'n8n-nodes-base.executeWorkflowTrigger',
+				typeVersion: 1.1,
+				position: [0, 0],
+				parameters,
+			};
+			const instance = new Workflow({
+				id: 'sub',
+				nodes: [trigger],
+				connections: {},
+				nodeTypes,
+				active: false,
+				settings: { executionOrder: 'v1' },
+			});
+			const result = await runWorkflow(
+				instance,
+				(options?.inputData ?? []).map(({ json }) => json),
+			);
+			const output = runs(result, 'When Called')[0] ?? [];
+			return { executionId: 'sub-run', data: [output.map((json) => ({ json }))] };
+		});
+
+	const PASSTHROUGH = { inputSource: 'passthrough' };
+	const DECLARED = {
+		inputSource: 'workflowInputs',
+		workflowInputs: { values: [{ name: 'orderId' }, { name: 'total', type: 'number' }] },
+	};
+
+	const call = async (workflowInputs: IDataObject | undefined, trigger: INodeParameters) => {
+		const executeWorkflow = subWorkflow(trigger);
+		const json = callOrders(workflowInputs ? { workflowInputs } : {});
+		const result = await runWorkflow(toWorkflow('v1', json), ORDERS, executeWorkflow);
+		return { result, executeWorkflow };
+	};
+
+	it('n8n fills the workflowInputs default of a call saved without it', () => {
+		const instance = toWorkflow('v1', callOrders({}));
+
+		expect(instance.nodes['Process Order'].parameters.workflowInputs).toEqual({
+			mappingMode: 'defineBelow',
+			value: null,
+		});
+	});
+
+	it.each([
+		['no workflowInputs (the n8n default)', undefined],
+		[
+			'the empty mapping the editor stores',
+			{
+				mappingMode: 'defineBelow',
+				value: {},
+				matchingColumns: [],
+				schema: [],
+				attemptToConvertTypes: false,
+				convertFieldsToString: true,
+			},
+		],
+		[
+			'the empty mapping the eval harness writes',
+			{ mappingMode: 'defineBelow', value: {}, schema: [] },
+		],
+	])('a call with %s passes each item to a passthrough sub-workflow', async (_kind, inputs) => {
+		const { result, executeWorkflow } = await call(inputs, PASSTHROUGH);
+
+		expect(result.status).toBe('success');
+		expect(executeWorkflow).toHaveBeenCalledTimes(2);
+		expect(runs(result, 'Process Order')).toEqual([ORDERS]);
+	});
+
+	it('a null mapping value next to a schema fails before the sub-workflow runs', async () => {
+		const { result, executeWorkflow } = await call(
+			{ mappingMode: 'autoMapInputData', value: null, schema: [] },
+			PASSTHROUGH,
+		);
+
+		expect(result.data.resultData.error?.message).toBe(
+			'Cannot convert undefined or null to object',
+		);
+		expect(executeWorkflow).not.toHaveBeenCalled();
+	});
+
+	it.each([
+		['no schema', undefined],
+		['untyped schema entries', [{ id: 'orderId' }, { id: 'total' }]],
+	])(
+		'a call that maps the declared inputs with %s gives the sub-workflow those inputs',
+		async (_kind, schema) => {
+			const { result } = await call(
+				{
+					mappingMode: 'defineBelow',
+					value: { orderId: (o: Order) => o.id, total: (o: Order) => o.total },
+					...(schema ? { schema } : {}),
+				},
+				DECLARED,
+			);
+
+			expect(result.status).toBe('success');
+			expect(runs(result, 'Process Order')).toEqual([
+				[
+					{ orderId: 'o1', total: 1 },
+					{ orderId: 'o2', total: 2 },
+				],
+			]);
+		},
+	);
+
+	it('a string schema entry rejects a number input', async () => {
+		const { result, executeWorkflow } = await call(
+			{
+				mappingMode: 'defineBelow',
+				value: { total: (o: Order) => o.total },
+				schema: [{ id: 'total', type: 'string' }],
+			},
+			DECLARED,
+		);
+
+		expect(result.data.resultData.error?.description).toBe(
+			"'total' expects a string but we got '1'",
+		);
+		expect(executeWorkflow).not.toHaveBeenCalled();
+	});
+});
