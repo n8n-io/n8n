@@ -115,7 +115,20 @@ export const optionsCollection: INodeProperties = {
 			hint: 'Comma-separated list of values: reference them in your query as $1, $2, $3…',
 			placeholder: 'e.g. value1,value2,value3',
 			displayOptions: {
-				show: { '/operation': ['executeQuery'] },
+				show: { '/operation': ['executeQuery'], '@version': [{ _cnd: { lt: 2.8 } }] },
+			},
+		},
+		{
+			displayName: 'Query Parameters',
+			name: 'queryReplacement',
+			type: 'string',
+			default: '',
+			description:
+				'Comma-separated list of the values you want to use as query parameters. Each expression gives one value, also when the value contains commas. To give more than one value from an expression, return an array. <a href="https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.postgres/#use-query-parameters" target="_blank">More info</a>.',
+			hint: 'Comma-separated list of values: reference them in your query as $1, $2, $3… An expression always gives one value.',
+			placeholder: 'e.g. value1,value2,value3',
+			displayOptions: {
+				show: { '/operation': ['executeQuery'], '@version': [{ _cnd: { gte: 2.8 } }] },
 			},
 		},
 		{
