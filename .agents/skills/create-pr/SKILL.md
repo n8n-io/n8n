@@ -165,7 +165,7 @@ chore: Update dependencies to latest versions
 
 The PR title must match this pattern:
 ```
-^(feat|fix|perf|test|docs|refactor|build|ci|chore)(\((API|core|editor|benchmark|ai-builder|engine|[A-Za-z0-9 .]+ Node)(, (API|core|editor|benchmark|ai-builder|engine|[A-Za-z0-9 .]+ Node))*\))?!?: [A-Z].+[^.]$
+^(feat|fix|perf|test|docs|refactor|build|ci|chore|revert)(\((API|core|editor|benchmark|ai-builder|engine|[A-Za-z0-9 .]+ Node)(, (API|core|editor|benchmark|ai-builder|engine|[A-Za-z0-9 .]+ Node))*\))?!?: [A-Z].+[^.]$
 ```
 
 Key validation rules:

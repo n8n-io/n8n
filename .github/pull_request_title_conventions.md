@@ -11,7 +11,7 @@ A PR title consists of these elements:
   |       |                        Capitalized
   |       |                        No period at the end.
   │       │
-  │       └─⫸ Scope: API | benchmark | core | editor | engine | * Node
+  │       └─⫸ Scope: API | ai-builder | benchmark | core | editor | engine | * Node
   │
   └─⫸ Type: build | ci | chore | docs | feat | fix | perf | refactor | test
 ```
