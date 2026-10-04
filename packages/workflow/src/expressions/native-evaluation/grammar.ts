@@ -29,7 +29,8 @@ export type UnaryOp = (typeof UNARY_OPS)[number];
 // discriminant, so a raw AST node can never be mistaken for a SimpleNode.
 export type SimpleNode =
 	| { kind: 'literal'; value: string | number | boolean | null }
-	| { kind: 'root'; name: '$json' | '$parameter' }
+	| { kind: 'root'; name: DataRoot }
+	| { kind: 'nodeRef'; node: string | null; legacy: boolean }
 	| { kind: 'undefined' }
 	| { kind: 'member'; object: SimpleNode; key: string | number; optional: boolean }
 	| { kind: 'chain'; expression: SimpleNode }
@@ -39,8 +40,7 @@ export type SimpleNode =
 	| { kind: 'conditional'; test: SimpleNode; consequent: SimpleNode; alternate: SimpleNode }
 	| { kind: 'call'; receiver: SimpleNode; method: string; args: SimpleNode[]; optional: boolean };
 
-// Roots are `$json` and `$parameter` only (the literal comparisons in
-// parseIdentifier). More roots are CAT-4697. `$now`/`$today` are excluded on
+// Data roots: plain reads off the data proxy. `$now`/`$today` are excluded on
 // purpose: they are Luxon DateTimes whose methods would make every useful
 // expression on them a CallExpression anyway.
 //
@@ -48,6 +48,29 @@ export type SimpleNode =
 // re-entering resolveSimpleParameterValue - a nested non-simple value simply
 // takes the engine path there (under lazy acquisition, creating the bridge on
 // demand).
+//
+// Note on $binary: the proxy strips the `data` field from every entry, so a
+// whole-value read never carries a payload.
+export const DATA_ROOTS = [
+	'$json',
+	'$parameter',
+	'$vars',
+	'$binary',
+	'$itemIndex',
+	'$runIndex',
+] as const;
+export type DataRoot = (typeof DATA_ROOTS)[number];
+
+// Node references: `$('Name')` and `$input` resolve to the node proxy, the
+// legacy `$node['Name']` to the item-level proxy. A nodeRef is only ever
+// built as the object of an allowlisted member (NODE_REF_MEMBERS) or the
+// receiver of an allowlisted zero-argument call (NODE_REF_METHODS), so a bare
+// reference is unrepresentable. Evaluation goes through the same host proxy
+// the engines call, paired-item resolution included, which is what keeps the
+// two paths in parity; the proxy's ExpressionErrors propagate unchanged.
+export const NODE_REF_MEMBERS = new Set(['item']);
+export const LEGACY_NODE_REF_MEMBERS = new Set(['json', 'binary']);
+export const NODE_REF_METHODS = new Set(['first', 'last', 'all']);
 
 // Intrinsics are captured at import so a later patch to a prototype or a
 // global (a polyfill, a community package) does not change what the native

@@ -24,6 +24,18 @@ import { ALL_CORPORA } from './native-evaluation-corpus';
 // A generic AST walk over the same parse the native evaluator uses.
 
 const SKIP_KEYS = new Set(['loc', 'range', 'tokens', 'comments', 'start', 'end']);
+const GRAMMAR_IDENTIFIERS = new Set([
+	'$json',
+	'$parameter',
+	'$vars',
+	'$binary',
+	'$itemIndex',
+	'$runIndex',
+	'$input',
+	'$node',
+	'$',
+	'undefined',
+]);
 
 type AstRecord = Record<string, unknown>;
 
@@ -71,7 +83,7 @@ function walk(node: unknown, feats: Set<string>): void {
 	switch (o.type) {
 		case 'Identifier':
 			// Grammar-level identifiers only; member names are data, not shape.
-			if (o.name === '$json' || o.name === '$parameter' || o.name === 'undefined') {
+			if (GRAMMAR_IDENTIFIERS.has(String(o.name))) {
 				feats.add(`id:${String(o.name)}`);
 			}
 			break;
@@ -169,6 +181,23 @@ const CANDIDATES = [
 	// roots and member forms
 	'={{ $json.item.name }}',
 	'={{ $parameter.value1 }}',
+	'={{ $vars.region }}',
+	'={{ $binary.file.fileName }}',
+	'={{ $itemIndex }}',
+	'={{ $runIndex }}',
+	// node references
+	"={{ $('Source').item.json.item.name }}",
+	"={{ $('Source').first().json.item.name }}",
+	"={{ $('Source').last().json.item.name }}",
+	"={{ $('Source').all().length }}",
+	"={{ $('Source').first()?.json.item.name }}",
+	'={{ $input.item.json.item.name }}',
+	'={{ $input.first().json.item.name }}',
+	'={{ $input.last().json.item.name }}',
+	'={{ $input.all().length }}',
+	'={{ $node["Source"].json.item.name }}',
+	'={{ $node.Source.json.item.name }}',
+	'={{ $node["Source"].binary.file.mimeType }}',
 	'={{ $json.item?.name }}',
 	'={{ $json.item.my_object?.addresses }}',
 	"={{ $json.item['name'] }}",

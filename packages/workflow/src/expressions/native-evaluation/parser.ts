@@ -4,7 +4,11 @@ import type { ExpressionKind, SpreadElementKind } from 'ast-types/lib/gen/kinds'
 import {
 	BINARY_OPS,
 	CALLABLE_METHODS,
+	DATA_ROOTS,
+	LEGACY_NODE_REF_MEMBERS,
 	MAX_DEPTH,
+	NODE_REF_MEMBERS,
+	NODE_REF_METHODS,
 	UNARY_OPS,
 	isOneOf,
 	type SimpleNode,
@@ -45,12 +49,65 @@ function parseLiteral(node: namedTypes.Literal): SimpleNode | null {
 }
 
 function parseIdentifier(node: namedTypes.Identifier): SimpleNode | null {
-	if (node.name === '$json' || node.name === '$parameter') {
+	if (isOneOf(DATA_ROOTS, node.name)) {
 		return { kind: 'root', name: node.name };
 	}
 
 	if (node.name === 'undefined') {
 		return { kind: 'undefined' };
+	}
+
+	return null;
+}
+
+type NodeRef = Extract<SimpleNode, { kind: 'nodeRef' }>;
+
+// A node name is a string literal (`$('Name')`, `$node['Name']`), vetted like
+// an object key so a prototype name never reaches the node getters. Anything
+// else is a dynamic name and stays on the engine.
+function parseNodeName(node: AstNode | namedTypes.MemberExpression['property']): string | null {
+	if (node.type !== 'Literal') return null;
+
+	const { value } = node;
+	return typeof value === 'string' && isSafeObjectProperty(value) ? value : null;
+}
+
+// `$node['Name']` or `$node.Name`: the dot form names the node by identifier.
+function parseLegacyNodeName(node: namedTypes.MemberExpression): string | null {
+	if (node.computed === true) return parseNodeName(node.property);
+
+	const { property } = node;
+	if (property.type !== 'Identifier' || !isSafeObjectProperty(property.name)) return null;
+
+	return property.name;
+}
+
+// `$('Name')`, `$input` or `$node['Name']` in object/receiver position, or
+// null when the AST is not a node reference. Only the member and call parsers
+// ask, so a reference never stands alone in the grammar.
+function parseNodeRef(node: AstNode): NodeRef | null {
+	if (node.type === 'Identifier') {
+		return node.name === '$input' ? { kind: 'nodeRef', node: null, legacy: false } : null;
+	}
+
+	if (node.type === 'CallExpression') {
+		const { callee } = node;
+		if (callee.type !== 'Identifier' || callee.name !== '$' || node.arguments.length !== 1) {
+			return null;
+		}
+
+		const name = parseNodeName(node.arguments[0]);
+		return name === null ? null : { kind: 'nodeRef', node: name, legacy: false };
+	}
+
+	if (node.type === 'MemberExpression') {
+		const { object } = node;
+		if (object.type !== 'Identifier' || object.name !== '$node' || node.optional === true) {
+			return null;
+		}
+
+		const name = parseLegacyNodeName(node);
+		return name === null ? null : { kind: 'nodeRef', node: name, legacy: true };
 	}
 
 	return null;
@@ -63,12 +120,20 @@ function parseIdentifier(node: namedTypes.Identifier): SimpleNode | null {
 // unnecessary, but $json/$parameter are get-trap proxies for which
 // Object.hasOwn misreports every key, so the parse-time vet is the boundary.
 function parseMember(node: namedTypes.MemberExpression, parse: ParseChild): SimpleNode | null {
-	const object = parse(node.object);
-	if (object === null) return null;
-
 	const key =
 		node.computed === true ? parseComputedKey(node.property) : parseStaticKey(node.property);
 	if (key === null) return null;
+
+	const ref = parseNodeRef(node.object);
+	if (ref !== null) {
+		const allowed = ref.legacy ? LEGACY_NODE_REF_MEMBERS : NODE_REF_MEMBERS;
+		if (typeof key !== 'string' || !allowed.has(key)) return null;
+
+		return { kind: 'member', object: ref, key, optional: node.optional === true };
+	}
+
+	const object = parse(node.object);
+	if (object === null) return null;
 
 	return { kind: 'member', object, key, optional: node.optional === true };
 }
@@ -104,7 +169,21 @@ function parseCall(node: namedTypes.CallExpression, parse: ParseChild): SimpleNo
 	if (callee.type !== 'MemberExpression' || callee.computed === true) return null;
 
 	const property = callee.property;
-	if (property.type !== 'Identifier' || !CALLABLE_METHODS.has(property.name)) return null;
+	if (property.type !== 'Identifier') return null;
+
+	// `$('Name').first()` and friends: the proxy's own methods, no arguments.
+	// Branch and run indexes stay on the engine.
+	const ref = parseNodeRef(callee.object);
+	if (ref !== null) {
+		if (ref.legacy || !NODE_REF_METHODS.has(property.name) || node.arguments.length > 0) {
+			return null;
+		}
+
+		const optional = node.optional === true || callee.optional === true;
+		return { kind: 'call', receiver: ref, method: property.name, args: [], optional };
+	}
+
+	if (!CALLABLE_METHODS.has(property.name)) return null;
 
 	const receiver = parse(callee.object);
 	if (receiver === null) return null;

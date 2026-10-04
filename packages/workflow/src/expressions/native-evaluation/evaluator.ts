@@ -104,11 +104,12 @@ function evalMember(
 		throw new TypeError(`Cannot read properties of ${toStr(object)} (reading '${node.key}')`);
 	}
 
-	// Below the roots (get-trap proxies, where Object.hasOwn misreports every
-	// key) the data is plain JSON, so an inherited property is a host prototype
-	// the isolates never see. The engine decides what it yields.
+	// Below the roots and node references (get-trap proxies, where Object.hasOwn
+	// misreports every key) the data is plain JSON, so an inherited property is
+	// a host prototype the isolates never see. The engine decides what it yields.
 	const inherited =
 		node.object.kind !== 'root' &&
+		node.object.kind !== 'nodeRef' &&
 		typeof object === 'object' &&
 		node.key in object &&
 		!hasOwn(object, node.key);
@@ -304,6 +305,10 @@ function evalCall(
 		throw new TypeError(`Cannot read properties of ${toStr(receiver)} (reading '${node.method}')`);
 	}
 
+	if (node.receiver.kind === 'nodeRef') {
+		return evalNodeRefCall(receiver, node.method);
+	}
+
 	// An own property shadowing the method (an engine-resolved $parameter value
 	// can carry one) would take precedence in the engines.
 	if (hasOwn(receiver, node.method)) {
@@ -324,6 +329,28 @@ function evalCall(
 	assertPreflightSize(receiver, node.method, args);
 
 	return bounded(method.apply(receiver, args));
+}
+
+/**
+ * `first()`, `last()` and `all()` on a node proxy. The proxy hands back a
+ * host function that reads run data for the node the reference names, which
+ * is what the engines call too (the vm bridge routes it through typed RPC).
+ */
+function evalNodeRefCall(proxy: unknown, method: string): unknown {
+	const fn: unknown = Reflect.get(proxy as object, method);
+	if (typeof fn !== 'function') throw new EngineFallbackError();
+
+	return bounded(fn.call(proxy));
+}
+
+function evalNodeRef(
+	node: Extract<SimpleNode, { kind: 'nodeRef' }>,
+	data: IWorkflowDataProxyData,
+): unknown {
+	if (node.node === null) return data.$input;
+	if (node.legacy) return data.$node[node.node];
+
+	return data.$(node.node);
 }
 
 function evalChain(
@@ -391,7 +418,9 @@ function evalNode(node: SimpleNode, data: IWorkflowDataProxyData): unknown {
 		case 'literal':
 			return node.value;
 		case 'root':
-			return node.name === '$json' ? data.$json : data.$parameter;
+			return data[node.name];
+		case 'nodeRef':
+			return evalNodeRef(node, data);
 		case 'undefined':
 			return undefined;
 		case 'member':
