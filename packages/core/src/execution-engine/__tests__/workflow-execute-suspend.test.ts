@@ -144,6 +144,43 @@ describe('WorkflowExecute suspension', () => {
 		expect(run.data.waitReason).toBeUndefined();
 	});
 
+	test('a cancel after suspension reports the run without the resume markers', async () => {
+		const workflow = createWorkflow();
+		const additionalData = Helpers.WorkflowExecuteAdditionalData(createDeferredPromise<IRun>());
+		const workflowExecute = new WorkflowExecute(additionalData, executionMode);
+		let cancelable: ReturnType<typeof workflowExecute.run> | undefined;
+
+		// Simulate the race: suspension stamped the run data, then the cancel
+		// lands before processSuccessExecution. The cancel handler reports the
+		// run to the hooks by itself, so it must clear the markers first.
+		additionalData.hooks!.addHandler('nodeExecuteBefore', function (nodeName) {
+			if (nodeName !== 'node2') return;
+			workflowExecute.suspend();
+			// @ts-expect-error private property
+			const runExecutionData: IRunExecutionData = workflowExecute.runExecutionData;
+			runExecutionData.waitTill = new Date();
+			runExecutionData.waitReason = 'suspended';
+			cancelable!.cancel();
+		});
+
+		// The hooks get the run data by reference, so capture what they see at call time.
+		const reported: Array<{ status: string; waitTill?: Date; waitReason?: string }> = [];
+		additionalData.hooks!.addHandler('workflowExecuteAfter', function (run) {
+			reported.push({
+				status: run.status,
+				waitTill: run.data.waitTill,
+				waitReason: run.data.waitReason,
+			});
+		});
+
+		cancelable = workflowExecute.run({ workflow, startNode: trigger });
+		const run = await cancelable;
+
+		expect(reported[0]).toEqual({ status: 'canceled', waitTill: undefined, waitReason: undefined });
+		expect(run.status).toBe('canceled');
+		expect(run.data.waitReason).toBeUndefined();
+	});
+
 	test('an error after suspension clears the resume markers', async () => {
 		const workflow = createWorkflow();
 		const additionalData = Helpers.WorkflowExecuteAdditionalData(createDeferredPromise<IRun>());

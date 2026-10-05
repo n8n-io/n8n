@@ -135,6 +135,17 @@ export class WorkflowExecute {
 		this.suspensionRequested = true;
 	}
 
+	/**
+	 * A cancel or error can land after a suspension already stamped the run
+	 * data; clear the markers so the persisted state is not treated as
+	 * resumable. A genuine Wait-node waitTill is never cleared here.
+	 */
+	private clearSuspensionMarkers(): void {
+		if (!this.suspensionRequested) return;
+		this.runExecutionData.waitTill = undefined;
+		this.runExecutionData.waitReason = undefined;
+	}
+
 	constructor(
 		private readonly additionalData: IWorkflowExecuteAdditionalData,
 		private readonly mode: WorkflowExecuteMode,
@@ -1651,6 +1662,7 @@ export class WorkflowExecute {
 		onCancel.shouldReject = false;
 		onCancel(() => {
 			this.status = 'canceled';
+			this.clearSuspensionMarkers();
 			this.updateTaskStatusesToCancelled();
 			this.abortController.abort();
 			const fullRunData = this.getFullRunData(startedAt);
@@ -2920,13 +2932,7 @@ export class WorkflowExecute {
 	): Promise<IRun> {
 		// Set status before creating fullRunData
 		if (executionError !== undefined) {
-			// A cancel or error can land after a suspension already stamped the run
-			// data; clear the markers so the persisted state is not treated as
-			// resumable. A genuine Wait-node waitTill is never cleared here.
-			if (this.suspensionRequested) {
-				this.runExecutionData.waitTill = undefined;
-				this.runExecutionData.waitReason = undefined;
-			}
+			this.clearSuspensionMarkers();
 			Logger.debug('Workflow execution finished with error', {
 				error: executionError,
 				workflowId: workflow.id,
