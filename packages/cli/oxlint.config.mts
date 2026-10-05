@@ -345,7 +345,6 @@ export default defineConfig({
 				'./src/modules/dynamic-credentials.ee/services/credential-resolver.service.ts',
 				'./src/modules/external-secrets.ee/secrets-providers-connections.service.ee.ts',
 				'./src/modules/favorites/favorites.service.ts',
-				'./src/modules/insights/insights-collection.service.ts',
 				'./src/modules/instance-ai/instance-ai.adapter.service.ts',
 				'./src/modules/instance-ai/mcp/instance-ai-mcp-registry.service.ts',
 				'./src/modules/instance-ai/storage/typeorm-agent-checkpoint-store.ts',

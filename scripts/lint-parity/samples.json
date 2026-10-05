@@ -282,11 +282,6 @@
 		"src/binary-data/binary-data.config.ts",
 		"test/helpers/constants.ts"
 	],
-	"packages/extensions/insights": [
-		"src/backend/index.ts",
-		"src/frontend/InsightsDashboard.vue",
-		"src/frontend/index.ts"
-	],
 	"packages/frontend/@n8n/chat": [
 		"src/App.vue",
 		"src/__stories__/App.stories.ts",
@@ -354,6 +349,12 @@
 		"src/components/InsightsDashboard.test.ts",
 		"src/components/InsightsDashboard.vue"
 	],
+	"packages/modules/insights/backend": [
+		"src/database/entities/insights-metadata.ts",
+		"src/database/repositories/insights-by-period.repository.ts",
+		"src/insights-collection.service.ts",
+		"src/insights.controller.ts"
+	],
 	"packages/modules/instance-registry/frontend": [
 		"src/__tests__/setup.ts",
 		"src/index.ts",
@@ -374,7 +375,10 @@
 		"nodes/Aws/__tests__/AwsLambda.node.test.ts"
 	],
 	"packages/quality/policy/code-health": ["src/cli.ts", "src/cli/arg-parser.test.ts"],
-	"packages/quality/environments/containers": ["services/keycloak.ts", "tests/resource-tracker.test.ts"],
+	"packages/quality/environments/containers": [
+		"services/keycloak.ts",
+		"tests/resource-tracker.test.ts"
+	],
 	"packages/quality/testing/janitor": ["src/cli.test.ts", "src/cli.ts"],
 	"packages/quality/testing/playwright": ["coverage-options.test.ts", "fixtures/base.ts"],
 	"packages/quality/policy/rules-engine": ["src/ast/ast-rule.ts", "src/ast/imports.test.ts"],

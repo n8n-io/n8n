@@ -4786,6 +4786,9 @@ importers:
       '@n8n/backend-common':
         specifier: workspace:*
         version: link:../@n8n/backend-common
+      '@n8n/backend-module-insights':
+        specifier: workspace:*
+        version: link:../modules/insights/backend
       '@n8n/backend-network':
         specifier: workspace:*
         version: link:../@n8n/backend-network
@@ -5541,67 +5544,6 @@ importers:
       zod:
         specifier: 3.25.76
         version: 3.25.76
-
-  packages/extensions/insights:
-    dependencies:
-      '@n8n/extension-sdk':
-        specifier: workspace:*
-        version: link:../../@n8n/extension-sdk
-      '@vue/language-core':
-        specifier: catalog:frontend
-        version: 3.3.11
-      vue:
-        specifier: catalog:frontend
-        version: 3.5.26(typescript@6.0.2)
-      vue-router:
-        specifier: catalog:frontend
-        version: 4.5.0(vue@3.5.26(typescript@6.0.2))
-    devDependencies:
-      '@n8n/oxlint-config':
-        specifier: workspace:*
-        version: link:../../@n8n/oxlint-config
-      '@n8n/stylelint-config':
-        specifier: workspace:*
-        version: link:../../@n8n/stylelint-config
-      '@n8n/typescript-config':
-        specifier: workspace:*
-        version: link:../../@n8n/typescript-config
-      '@vitejs/plugin-vue':
-        specifier: catalog:frontend
-        version: 6.0.8(vite@8.0.2(@emnapi/core@1.11.2)(@emnapi/runtime@1.11.2)(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))(vue@3.5.26(typescript@6.0.2))
-      '@vue/tsconfig':
-        specifier: catalog:frontend
-        version: 0.7.0(typescript@6.0.2)(vue@3.5.26(typescript@6.0.2))
-      oxlint:
-        specifier: 'catalog:'
-        version: 1.78.0(oxlint-tsgolint@0.21.1)
-      oxlint-tsgolint:
-        specifier: 'catalog:'
-        version: 0.21.1
-      rimraf:
-        specifier: 'catalog:'
-        version: 6.0.1
-      stylelint:
-        specifier: 'catalog:'
-        version: 16.23.0(supports-color@8.1.1)(typescript@6.0.2)
-      tsdown:
-        specifier: 'catalog:'
-        version: 0.16.5(@emnapi/core@1.11.2)(@emnapi/runtime@1.11.2)(oxc-resolver@11.21.2)(typescript@6.0.2)(vue-tsc@2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@6.0.2))
-      typescript:
-        specifier: 'catalog:'
-        version: 6.0.2
-      unplugin-dts:
-        specifier: 'catalog:'
-        version: 1.1.0(@microsoft/api-extractor@7.52.1(@types/node@20.19.41))(@vue/language-core@3.3.11)(esbuild@0.28.1)(rolldown@1.1.5)(rollup@4.52.4)(supports-color@8.1.1)(typescript@6.0.2)(vite@8.0.2(@emnapi/core@1.11.2)(@emnapi/runtime@1.11.2)(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
-      vite:
-        specifier: 'catalog:'
-        version: 8.0.2(@emnapi/core@1.11.2)(@emnapi/runtime@1.11.2)(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
-      vitest:
-        specifier: 'catalog:'
-        version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10))(vite@8.0.2(@emnapi/core@1.11.2)(@emnapi/runtime@1.11.2)(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
-      vue-tsc:
-        specifier: ^2.2.8
-        version: 2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@6.0.2)
 
   packages/frontend/@n8n/chat:
     dependencies:
@@ -7039,6 +6981,91 @@ importers:
       z-vue-scan:
         specifier: ^0.0.35
         version: 0.0.35(patch_hash=bbd573be7e456224f369aafb4d66374523c4847964a4655a6a1654fd40e8b0f8)(vue@3.5.26(typescript@6.0.2))
+      zod:
+        specifier: 3.25.76
+        version: 3.25.76
+
+  packages/modules/insights/backend:
+    dependencies:
+      '@n8n/api-types':
+        specifier: workspace:*
+        version: link:../../../@n8n/api-types
+      '@n8n/backend-common':
+        specifier: workspace:*
+        version: link:../../../@n8n/backend-common
+      '@n8n/backend-services':
+        specifier: workspace:*
+        version: link:../../../@n8n/backend-services
+      '@n8n/config':
+        specifier: workspace:*
+        version: link:../../../@n8n/config
+      '@n8n/constants':
+        specifier: workspace:*
+        version: link:../../../@n8n/constants
+      '@n8n/db':
+        specifier: workspace:*
+        version: link:../../../@n8n/db
+      '@n8n/decorators':
+        specifier: workspace:*
+        version: link:../../../@n8n/decorators
+      '@n8n/di':
+        specifier: workspace:*
+        version: link:../../../@n8n/di
+      '@n8n/errors':
+        specifier: workspace:*
+        version: link:../../../@n8n/errors
+      '@n8n/typeorm':
+        specifier: workspace:*
+        version: link:../../../@n8n/typeorm
+      '@n8n/utils':
+        specifier: workspace:*
+        version: link:../../../@n8n/utils
+      luxon:
+        specifier: 'catalog:'
+        version: 3.7.2
+      n8n-core:
+        specifier: workspace:*
+        version: link:../../../core
+      n8n-workflow:
+        specifier: workspace:*
+        version: link:../../../workflow
+    devDependencies:
+      '@n8n/backend-test-utils':
+        specifier: workspace:*
+        version: link:../../../@n8n/backend-test-utils
+      '@n8n/oxlint-config':
+        specifier: workspace:*
+        version: link:../../../@n8n/oxlint-config
+      '@n8n/typescript-config':
+        specifier: workspace:*
+        version: link:../../../@n8n/typescript-config
+      '@n8n/vitest-config':
+        specifier: workspace:*
+        version: link:../../../@n8n/vitest-config
+      '@types/luxon':
+        specifier: 'catalog:'
+        version: 3.2.0
+      '@vitest/coverage-v8':
+        specifier: 'catalog:'
+        version: 5.0.1(@vitest/browser@5.0.1)(vitest@5.0.1)
+      oxlint:
+        specifier: 'catalog:'
+        version: 1.78.0(oxlint-tsgolint@0.21.1)
+      oxlint-tsgolint:
+        specifier: 'catalog:'
+        version: 0.21.1
+      typescript:
+        specifier: catalog:typescript
+        version: 7.0.2
+      vite:
+        specifier: 'catalog:'
+        version: 8.0.2(@emnapi/core@1.11.2)(@emnapi/runtime@1.11.2)(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
+      vitest:
+        specifier: 'catalog:'
+        version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10))(vite@8.0.2(@emnapi/core@1.11.2)(@emnapi/runtime@1.11.2)(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
+      vitest-mock-extended:
+        specifier: 'catalog:'
+        version: 3.1.0(typescript@7.0.2)(vitest@5.0.1)
       zod:
         specifier: 3.25.76
         version: 3.25.76
@@ -33878,11 +33905,6 @@ snapshots:
     optionalDependencies:
       typescript: '@typescript/typescript6@6.0.2'
       vue: 3.5.26(@typescript/typescript6@6.0.2)
-
-  '@vue/tsconfig@0.7.0(typescript@6.0.2)(vue@3.5.26(typescript@6.0.2))':
-    optionalDependencies:
-      typescript: 6.0.2
-      vue: 3.5.26(typescript@6.0.2)
 
   '@vueuse/components@10.11.0(vue@3.5.26(typescript@6.0.2))':
     dependencies:

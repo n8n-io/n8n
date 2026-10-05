@@ -17,7 +17,6 @@
 		"packages/@n8n/telemetry",
 		"packages/@n8n/tournament",
 		"packages/@n8n/utils",
-		"packages/extensions/insights",
 		"packages/workflow"
 	],
 	"backend": [
@@ -51,6 +50,7 @@
 		"packages/@n8n/workflow-sdk",
 		"packages/cli",
 		"packages/core",
+		"packages/modules/insights/backend",
 		"packages/node-dev",
 		"packages/quality/policy/code-health",
 		"packages/quality/environments/containers",
