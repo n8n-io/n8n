@@ -82,5 +82,17 @@
 		"spec": "worker-drain-fetched-on-complete.spec.ts",
 		"before": "n8nio/n8n:2.42.2",
 		"after": "n8nio/n8n:repro-cat4728-fix"
+	},
+	"ecs-style-stop": {
+		"issue": "CAT-4753",
+		"spec": "ecs-style-stop.spec.ts",
+		"before": "n8nio/n8n:2.39.0",
+		"after": "n8nio/n8n:repro-combined-d4e0ac68708"
+	},
+	"ecs-style-stop-runner-gone": {
+		"issue": "CAT-4753",
+		"spec": "ecs-style-stop-runner-gone.spec.ts",
+		"before": "n8nio/n8n:2.39.0",
+		"after": "n8nio/n8n:repro-combined-d4e0ac68708"
 	}
 }
