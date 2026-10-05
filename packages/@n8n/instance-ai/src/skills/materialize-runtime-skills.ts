@@ -106,23 +106,38 @@ function toFrontmatterSection<T>(
 	return isNonEmptyRecord(output) ? output : undefined;
 }
 
+function referenceHost(
+	entry: RuntimeSkillRegistryEntry,
+	ownSkillsById: Map<string, MaterializedRuntimeSkill>,
+): MaterializedRuntimeSkill | undefined {
+	if (!entry.reference) return undefined;
+	const owner = ownSkillsById.get(entry.reference.owner);
+	if (owner) return owner;
+	for (const parentId of entry.parents ?? []) {
+		const parent = ownSkillsById.get(parentId);
+		if (parent) return parent;
+	}
+	return undefined;
+}
+
 /**
  * Materialized locations keyed by skill id. A reference ships inside its
- * owner's directory as a linked file, so it resolves to that file.
+ * host's directory, so it resolves to that file.
  */
 function materializedSkillById(
 	materialized: MaterializedRuntimeSkill[],
 	registry: RuntimeSkillRegistry,
 ): Map<string, MaterializedRuntimeSkill> {
-	const byId = new Map(materialized.map((skill) => [skill.id, skill]));
+	const ownSkillsById = new Map(materialized.map((skill) => [skill.id, skill]));
+	const byId = new Map(ownSkillsById);
 	for (const entry of registry.skills) {
-		const owner = entry.reference ? byId.get(entry.reference.owner) : undefined;
-		if (!entry.reference || !owner) continue;
+		const host = referenceHost(entry, ownSkillsById);
+		if (!entry.reference || !host) continue;
 		byId.set(entry.id, {
 			id: entry.id,
 			name: entry.name,
-			path: posixJoin(owner.directory, entry.reference.path),
-			directory: owner.directory,
+			path: posixJoin(host.directory, entry.reference.path),
+			directory: host.directory,
 		});
 	}
 	return byId;
@@ -154,7 +169,7 @@ function materializedSkillDirectory(skillsRoot: string, entry: RuntimeSkillRegis
 function safeLinkedFilePath(
 	directory: string,
 	entry: RuntimeSkillRegistryEntry,
-	linkedFile: RuntimeSkillLinkedFile,
+	linkedFile: Pick<RuntimeSkillLinkedFile, 'path'>,
 ): { relativePath: string; materializedPath: string } {
 	const raw = linkedFile.path;
 	if (
@@ -467,22 +482,21 @@ export async function buildRuntimeSkillWorkspaceBundle({
 			warnIfExceedsLoadSkillLimit(logger, entry, path, skillMarkdown);
 			files.set(path, skillMarkdown);
 
-			const linkedFiles = linkedFilesFor(entry);
-			if (linkedFiles.length > 0 && !source.loadFile) {
+			const linkedFiles = linkedFilesFor(entry).map((linkedFile) => {
+				const paths = safeLinkedFilePath(directory, entry, linkedFile);
+				const referenceEntry = source.registry.skills.find(
+					(candidate) =>
+						candidate.reference?.owner === entry.id &&
+						candidate.reference.path === paths.relativePath,
+				);
+				return { linkedFile, referenceEntry, ...paths };
+			});
+			if (linkedFiles.some(({ referenceEntry }) => !referenceEntry) && !source.loadFile) {
 				throw new Error(`Runtime skill "${entry.name}" has linked files but no file loader`);
 			}
 
 			await Promise.all(
-				linkedFiles.map(async (linkedFile) => {
-					const { relativePath, materializedPath } = safeLinkedFilePath(
-						directory,
-						entry,
-						linkedFile,
-					);
-					const referenceEntry = source.registry.skills.find(
-						(candidate) =>
-							candidate.reference?.owner === entry.id && candidate.reference.path === relativePath,
-					);
+				linkedFiles.map(async ({ linkedFile, referenceEntry, relativePath, materializedPath }) => {
 					// Render references from skill content so prompt variants reach the file too.
 					const reference = referenceEntry ? await source.loadSkill(referenceEntry.id) : null;
 					const content = reference ? null : await source.loadFile?.(entry.id, relativePath);
@@ -513,6 +527,30 @@ export async function buildRuntimeSkillWorkspaceBundle({
 			);
 
 			return { id: entry.id, name: entry.name, path, directory };
+		}),
+	);
+
+	const ownSkillsById = new Map(materialized.map((skill) => [skill.id, skill]));
+	await Promise.all(
+		source.registry.skills.map(async (entry) => {
+			if (!entry.reference || ownSkillsById.has(entry.reference.owner)) return;
+			const host = referenceHost(entry, ownSkillsById);
+			if (!host) return;
+
+			const reference = await source.loadSkill(entry.id);
+			if (!reference) {
+				throw new Error(`Runtime skill "${entry.name}" is registered but cannot be loaded`);
+			}
+			const { materializedPath } = safeLinkedFilePath(host.directory, entry, entry.reference);
+			const content = renderRuntimeSkillMarkdown(
+				reference,
+				entry,
+				host.directory,
+				workspaceRoot,
+				skillsRoot,
+			);
+			warnIfExceedsLoadSkillLimit(logger, entry, materializedPath, content);
+			files.set(materializedPath, content);
 		}),
 	);
 

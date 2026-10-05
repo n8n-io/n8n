@@ -922,6 +922,20 @@ describe('reference skills', () => {
 		await expect(source.loadSkill('models')).resolves.toBeNull();
 	});
 
+	it('keeps a shared reference when the directory loader excludes its owner', async () => {
+		writeBuilderWithReferences();
+		const source = loadRuntimeSkillSourceFromDirectory(root, { exclude: ['builder'] });
+
+		expect(source.registry.skills.find((skill) => skill.id === 'models')?.parents).toEqual([
+			'agents',
+		]);
+		await expect(source.loadSkill('models')).resolves.toMatchObject({ parents: ['agents'] });
+
+		const loadTool = createSkillLoadTool(source);
+		const agents = skillLoadText(await loadTool.handler?.({ skillId: 'agents' }, {}));
+		expect(agents).toContain('- "models": "Load before choosing a model."');
+	});
+
 	it('rejects references with a name that does not match the file', () => {
 		writeSkill('builder', 'name: builder\ndescription: Build workflows.', 'Build steps.');
 		writeReference('builder', 'models.md', 'name: other\ndescription: Wrong name.', 'Body.');

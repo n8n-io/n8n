@@ -1,7 +1,9 @@
 import {
 	RUNTIME_SKILL_MAX_OUTPUT_BYTES,
 	RUNTIME_SKILL_REGISTRY_SCHEMA_VERSION,
+	createRuntimeSkillSource,
 	createSkillLoadTool,
+	filterRuntimeSkillSource,
 	type RuntimeSkillLinkedFiles,
 	type RuntimeSkillSource,
 	type Workspace,
@@ -377,6 +379,70 @@ describe('materializeRuntimeSkillsIntoWorkspace', () => {
 				root: '/home/daytona/workspace',
 			}),
 		).rejects.toThrow('Runtime skill linked file escapes skill directory');
+	});
+
+	describe('reference skills', () => {
+		const root = '/home/daytona/workspace';
+		const skillsRoot = `${root}/${SANDBOX_RUNTIME_SKILLS_DIR}`;
+
+		function createReferenceSource(): RuntimeSkillSource {
+			const ownerFiles = emptyLinkedFiles();
+			ownerFiles.references.push({ path: 'references/models.md', bytes: 6, sha256: 'sha' });
+			return createRuntimeSkillSource([
+				{
+					id: 'builder',
+					name: 'builder',
+					description: 'Build workflows.',
+					instructions: 'Build steps.',
+					sourceDirectory: 'builder',
+					linkedFiles: ownerFiles,
+				},
+				{
+					id: 'agents',
+					name: 'agents',
+					description: 'Build agents.',
+					instructions: 'Agent steps.',
+					sourceDirectory: 'agents',
+					sharedReferences: ['models'],
+				},
+				{
+					id: 'models',
+					name: 'models',
+					description: 'Load before choosing a model.',
+					instructions: 'Model rules in ' + '$' + '{N8N_WORKSPACE_DIR}.',
+					parents: ['builder'],
+					reference: { owner: 'builder', path: 'references/models.md' },
+				},
+			]);
+		}
+
+		it('materializes references without a file loader', async () => {
+			const bundle = await buildRuntimeSkillWorkspaceBundle({
+				source: createReferenceSource(),
+				root,
+				logger: mockLogger,
+			});
+
+			expect(bundle?.files.get(`${skillsRoot}/builder/references/models.md`)).toContain(
+				`Model rules in ${root}.`,
+			);
+		});
+
+		it('materializes a shared reference under a remaining parent when its owner is filtered out', async () => {
+			const source = filterRuntimeSkillSource(createReferenceSource(), ['builder']);
+
+			const bundle = await buildRuntimeSkillWorkspaceBundle({ source, root, logger: mockLogger });
+			if (!bundle) throw new Error('Expected a skill bundle');
+
+			const referencePath = `${skillsRoot}/agents/references/models.md`;
+			expect(bundle.files.get(referencePath)).toContain(`Model rules in ${root}.`);
+			expect(bundle.files.has(`${skillsRoot}/builder/SKILL.md`)).toBe(false);
+			const text = skillLoadText(
+				await createSkillLoadTool(bundle.source).handler?.({ skillId: 'models' }, {}),
+			);
+			expect(text).toContain(`[Skill path: "${referencePath}"]`);
+			expect(text).toContain(`Model rules in ${root}.`);
+		});
 	});
 
 	it('warns when materialized skill files exceed the load_skill output limit', async () => {

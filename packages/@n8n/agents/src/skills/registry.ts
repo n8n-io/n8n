@@ -104,7 +104,7 @@ export function loadRuntimeSkillSourceFromDirectory(
 
 	// Exclude before building the source, so hashes, parents, and linked files match the result.
 	const { skills } = excludeRuntimeSkills(
-		loadRuntimeSkillsFromDirectory(rootDir),
+		resolveReferenceParents(loadRuntimeSkillsFromDirectory(rootDir)),
 		options.exclude ?? [],
 	);
 	const transformedSkills = skills.map((skill) => ({
