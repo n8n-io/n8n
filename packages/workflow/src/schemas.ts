@@ -473,6 +473,7 @@ const iNodeSchemaObject = z.object({
 	id: z.string(),
 	name: z.string(),
 	typeVersion: z.number(),
+	contract: z.object({ version: z.string(), digest: z.string() }).optional(),
 	type: z.string(),
 	position: z.tuple([z.number(), z.number()]),
 	disabled: z.boolean().optional(),

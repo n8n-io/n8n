@@ -299,9 +299,10 @@ export class InstanceAiConfig {
 	nodeContractsEnabled: boolean = true;
 
 	/**
-	 * Which version a locked contract node runs. `strict` runs the locked bundle. `tolerant`
-	 * also runs a newer signed patch with the same contract. `meta.nodeContractsPolicy` of a
-	 * workflow overrides it.
+	 * Which version a pinned contract node runs. `strict` runs the pinned version. `tolerant`
+	 * also runs a newer signed patch with the same contract, and runs a first-party HEAD of the
+	 * major that is not older than the pin when no source has the pinned version.
+	 * `meta.nodeContractsPolicy` of a workflow overrides it.
 	 */
 	@Env('N8N_NODE_CONTRACTS_UPDATE_POLICY', nodeContractsUpdatePolicySchema)
 	nodeContractsUpdatePolicy: z.infer<typeof nodeContractsUpdatePolicySchema> = 'tolerant';
@@ -364,7 +365,7 @@ export class InstanceAiConfig {
 
 	/**
 	 * The runtimes of private node versions, the preferred one first: the versions that no trusted
-	 * key signs, e.g. a version that only its lock anchors. `in-process` and `worker` give no
+	 * key signs, e.g. a version that only its pin anchors. `in-process` and `worker` give no
 	 * security boundary, so n8n logs a warning at start when this list has them.
 	 */
 	@Env('N8N_NODES_NEXT_RUNTIMES_PRIVATE')

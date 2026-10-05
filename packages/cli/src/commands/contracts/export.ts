@@ -13,7 +13,9 @@ const flagsSchema = z.object({
 	output: z.string().describe('The folder to write the store layout to'),
 	pinned: z
 		.boolean()
-		.describe('Writes only the versions that the node locks of saved workflows name')
+		.describe(
+			'Writes only the versions that the node pins of saved workflows and their published versions name',
+		)
 		.optional(),
 });
 
@@ -29,25 +31,23 @@ export class ContractsExportCommand extends BaseCommand<z.infer<typeof flagsSche
 		assertNodeContractsEnabled('contracts:export');
 		const { exportContractStore } = await import('@n8n/nodes-base-next');
 		const { output, pinned } = this.flags;
-		const locks = pinned ? await Container.get(NodeContractsSync).locks() : undefined;
+		const nodes = pinned ? await Container.get(NodeContractsSync).pinnedNodes() : undefined;
+		const digests = nodes && new Set(nodes.map(({ pin }) => pin.digest));
 		const records = await exportContractStore(
 			Container.get(NodeContractsStore).rows,
 			path.resolve(output),
-			({ id, version }) =>
-				!locks || locks.some((lock) => lock.action === id && lock.version === version),
+			({ manifest }) => !digests || digests.has(manifest),
 		);
 		this.logger.info(`Wrote ${records.length} versions to ${output}`);
+		const written = new Set(records.map(({ manifest }) => manifest));
 		const missing = new Set(
-			(locks ?? [])
-				.filter(
-					(lock) =>
-						!records.some(({ id, version }) => id === lock.action && version === lock.version),
-				)
-				.map((lock) => `${lock.action}@${lock.version}`),
+			(nodes ?? [])
+				.filter(({ pin }) => !written.has(pin.digest))
+				.map(({ action, pin }) => `${action}@${pin.version}`),
 		);
 		if (missing.size > 0) {
 			this.logger.warn(
-				`The store does not have these locked versions, so the folder does not have them: ${[...missing].join(', ')}. A version that n8n bundles is not in the store.`,
+				`The store does not have these pinned versions, so the folder does not have them: ${[...missing].join(', ')}. A version that n8n bundles is not in the store.`,
 			);
 		}
 	}

@@ -29,6 +29,7 @@ import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 
 import {
+	ContractNodeLoader,
 	NodeContractsRuntimes,
 	NodeContractsStore,
 	useNodeContractsRegistry,
@@ -49,7 +50,9 @@ vi.mock('@n8n/nodes-base-next', () => ({
 	setCodeLanguages: (allowed: string[]) => languages.push(allowed),
 	setFileExtractor: (extractor: (typeof extractors)[number]) => extractors.push(extractor),
 	contractStore: (options: ContractStoreOptions) => options,
-	locksOf: () => [['Echo', { action: 'demo.echo', version: '1.0.0' }]],
+	isNodeContractPin: () => true,
+	migratedSlotOf: () => undefined,
+	toolActionOfNode: () => undefined,
 	syncContractStore: async () => ({
 		added: [{ id: 'demo.echo', semver: '1.0.0', bundleHash: 'a' }],
 		failed: [],
@@ -113,7 +116,7 @@ describe('useNodeContractsRegistry', () => {
 		mock<ReturnType<OutboundHttp['transport']>>(),
 	);
 	const workflowRepository = mockInstance(WorkflowRepository);
-	const meta = { nodeContracts: {} };
+	const meta = { nodeContractsPolicy: 'strict' };
 	workflowRepository.findByIds.mockResolvedValue([{ id: 'wf', meta } as unknown as WorkflowEntity]);
 
 	const contextOf = (executionId: string) =>
@@ -539,9 +542,26 @@ describe('NodeContractsStore', () => {
 
 	it('tells the other mains to reload once for a sync that adds versions', async () => {
 		mockInstance(Logger);
-		mockInstance(LoadNodesAndCredentials);
-		mockInstance(WorkflowRepository).findNodeContractMetaPage.mockResolvedValue([
-			{ id: 'wf', name: 'Flow', meta: {} } as unknown as WorkflowEntity,
+		const loader = Object.assign(
+			Object.create(ContractNodeLoader.prototype) as ContractNodeLoader,
+			{
+				frozenVersionsOf: () => [{ manifest: { id: 'demo.echo', kind: 'action' } }],
+			},
+		);
+		Container.set(
+			LoadNodesAndCredentials,
+			Object.assign(mock<LoadNodesAndCredentials>(), {
+				loaders: { '@n8n/nodes-base-next': loader },
+			}),
+		);
+		const echo = {
+			name: 'Echo',
+			type: '@n8n/nodes-base-next.demoEcho',
+			typeVersion: 1,
+			contract: { version: '1.0.0', digest: `sha256:${'a'.repeat(64)}` },
+		};
+		mockInstance(WorkflowRepository).findNodeContractNodesPage.mockResolvedValue([
+			{ id: 'wf', name: 'Flow', nodes: [echo], activeVersion: null } as unknown as WorkflowEntity,
 		]);
 
 		const { added } = await Container.get(NodeContractsSync).run({ refreshNodeTypes: false });

@@ -12,7 +12,7 @@ const flagsSchema = z.object({
 	registry: z
 		.string()
 		.describe(
-			'Fetches missing locked versions from this registry: a static store at https://… or file://… Default: N8N_NODE_CONTRACTS_REGISTRY_URL',
+			'Fetches missing pinned versions from this registry: a static store at https://… or file://… Default: N8N_NODE_CONTRACTS_REGISTRY_URL',
 		)
 		.optional(),
 });
@@ -20,7 +20,7 @@ const flagsSchema = z.object({
 @Command({
 	name: 'contracts:sync',
 	description:
-		'Puts the locked versions of all saved workflows into the node contracts store, from a registry or a folder',
+		'Puts the pinned versions of all saved workflows and their published versions into the node contracts store, from a registry or a folder',
 	examples: [
 		'',
 		'--registry=file:///mnt/node-contracts',
@@ -36,10 +36,10 @@ export class ContractsSyncCommand extends BaseCommand<z.infer<typeof flagsSchema
 			refreshNodeTypes: false,
 		});
 		this.logger.info(
-			`Added ${added.length} versions. ${failed.length} locked nodes have no version. ${unsupported.length} locked nodes need a Node Contract version that this host does not run.`,
+			`Added ${added.length} versions. ${failed.length} pinned nodes have no version. ${unsupported.length} pinned nodes need a Node Contract version that this host does not run.`,
 		);
 		if (failed.length > 0 || unsupported.length > 0) {
-			throw new UserError('Some saved workflows cannot run their locked node versions');
+			throw new UserError('Some saved workflows cannot run their pinned node versions');
 		}
 	}
 

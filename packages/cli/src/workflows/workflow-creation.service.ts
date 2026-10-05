@@ -23,6 +23,7 @@ import { validateEntity } from '@/generic-helpers';
 import { McpSettingsService } from '@/modules/mcp/mcp.settings.service';
 import { InstanceRedactionEnforcementService } from '@/modules/redaction/instance-redaction-enforcement.service';
 import { policyForFloor, policyMeetsFloor } from '@/modules/redaction/redaction-policy';
+import { pinNodeContracts } from '@/node-contracts-run';
 import { NodeTypes } from '@/node-types';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
@@ -212,6 +213,7 @@ export class WorkflowCreationService {
 		WorkflowHelpers.addNodeIds(newWorkflow);
 		WorkflowHelpers.resolveNodeWebhookIds(newWorkflow, this.nodeTypes);
 		WorkflowHelpers.validateWorkflowStructure(newWorkflow);
+		newWorkflow.nodes = await pinNodeContracts(newWorkflow.nodes);
 		// Only a workflow with groups needs the flags.
 		const rules = newWorkflow.nodeGroups?.length
 			? await this.nodeGroupRulesFlagGate.getEnabledRules(user)

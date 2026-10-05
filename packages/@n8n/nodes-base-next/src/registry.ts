@@ -51,6 +51,9 @@ const manifestOf = (dir: string, record: StoreRecord) =>
 
 const catalogOf = (dir: string) => parseStoreCatalog(textOf(dir, STORE_CATALOG_FILE));
 
+/** A frozen version and the digest of its manifest bytes, which a node pin names. */
+export type DigestedVersion = FrozenVersion & { readonly digest: string };
+
 /**
  * The bundled versions of an action in the embedded store of its package, newest first. Other
  * versions come from the registry. They ship in the release, so they are first-party without a
@@ -59,10 +62,10 @@ const catalogOf = (dir: string) => parseStoreCatalog(textOf(dir, STORE_CATALOG_F
 export function versionsOf(
 	actionId: string,
 	dir = embeddedStoreDirOf(packageOf(actionId)),
-): FrozenVersion[] {
+): DigestedVersion[] {
 	const blobs = storeReader(storeFilesOfDir(dir));
 	return parseStoreIndex(textOf(dir, storeIndexFileOf(actionId)), actionId)
-		.flatMap((record): FrozenVersion[] => {
+		.flatMap((record): DigestedVersion[] => {
 			const manifest = manifestOf(dir, record);
 			if (!isVersionManifest(manifest)) return [];
 			const readBundle = async () => {
@@ -70,7 +73,7 @@ export function versionsOf(
 				if (!bundle) throw new UnexpectedError(`The embedded store has no bundle of ${actionId}`);
 				return bundle.toString('utf8');
 			};
-			return [{ manifest, origin: 'first-party', readBundle }];
+			return [{ manifest, origin: 'first-party', readBundle, digest: record.manifest }];
 		})
 		.sort((a, b) => compareSemver(b.manifest.semver, a.manifest.semver));
 }

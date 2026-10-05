@@ -1,4 +1,4 @@
-import { INodeCredentialsDetailsSchema, normalizeNodeShape } from '../src/schemas';
+import { INodeCredentialsDetailsSchema, INodeSchema, normalizeNodeShape } from '../src/schemas';
 
 describe('INodeCredentialsDetailsSchema', () => {
 	it('accepts AI Gateway-managed credential entries', () => {
@@ -107,5 +107,26 @@ describe('normalizeNodeShape', () => {
 		expect(result).toEqual({ id: '1', parameters: {} });
 		expect(result).not.toHaveProperty('name');
 		expect(result).not.toHaveProperty('notInSchema');
+	});
+});
+
+describe('INodeSchema', () => {
+	const node = {
+		id: '1',
+		name: 'Get',
+		type: '@n8n/nodes-base-next.httpRequestGet',
+		typeVersion: 3,
+		position: [0, 0],
+		parameters: {},
+	};
+
+	it('keeps the contract pin of a node', () => {
+		const contract = { version: '3.2.0', digest: `sha256:${'a'.repeat(64)}` };
+		expect(INodeSchema.parse({ ...node, contract }).contract).toEqual(contract);
+		expect(INodeSchema.safeParse({ ...node, contract: { version: '3.2.0' } }).success).toBe(false);
+	});
+
+	it('drops a null contract pin when it normalizes a node', () => {
+		expect(normalizeNodeShape({ ...node, contract: null })).not.toHaveProperty('contract');
 	});
 });

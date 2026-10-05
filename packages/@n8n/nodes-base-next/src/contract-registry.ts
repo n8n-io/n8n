@@ -55,10 +55,11 @@ import {
 	UserError,
 	type IExecuteFunctions,
 	type INode,
+	type INodeContractPin,
 	type ISupplyDataFunctions,
 } from 'n8n-workflow';
 
-import { bundledCredentialsOf, versionsOf } from './registry';
+import { bundledCredentialsOf, versionsOf, type DigestedVersion } from './registry';
 
 export interface ContractStoreOptions {
 	/**
@@ -69,7 +70,7 @@ export interface ContractStoreOptions {
 	/**
 	 * The keys that prove the origin of a version. With one of them, the store takes and serves
 	 * only versions that a key of them signs. Without both, the store takes unsigned versions as
-	 * `private`, and no patch newer than the lock applies.
+	 * `private`, and no patch newer than the node pin applies.
 	 */
 	readonly keys: ContractKeys;
 	/** The store of the instance. Each version that the registry gives goes into it. */
@@ -218,11 +219,27 @@ export interface ContractStore {
 	readonly registryUrl: string;
 	/** The bundle hashes in the store. */
 	bundleHashes(): Promise<ReadonlySet<string>>;
-	/** The locked version, from the store or else from the registry into the store. */
-	locked(lock: NodeContractLock): Promise<FrozenVersion>;
+	/**
+	 * The version of an action that a node pin names: a bundled version, a stored one, or else
+	 * one from the registry into the store. It throws when no source has the pinned digest.
+	 */
+	locked(actionId: string, pin: INodeContractPin): Promise<FrozenVersion>;
+	/**
+	 * The pin that the host saves on a node of an action major. `current` stays when it pins
+	 * that major and a bundled or stored version has its digest and version. With `keepUnknown`,
+	 * it also stays when no bundled or stored version has its digest or its version, so that a
+	 * sync can fetch it. Else the newest bundled or stored version of the major that is not
+	 * yanked or revoked. `undefined` when the major has no such version.
+	 */
+	pinOf(
+		actionId: string,
+		major: number,
+		current?: INodeContractPin,
+		options?: { keepUnknown?: boolean },
+	): Promise<INodeContractPin | undefined>;
 	/** The newest stored version of each major, by action id. A bad version is skipped. */
 	versions(): Promise<ReadonlyMap<string, readonly FrozenVersion[]>>;
-	/** Signed patches of the locked major.minor with the locked contract hash. */
+	/** Signed patches of the pinned major.minor with the pinned contract hash. */
 	newerPatches(lock: NodeContractLock): Promise<FrozenVersion[]>;
 	/**
 	 * The newest stored credential manifest of each n8n type name. A version that the store takes
@@ -474,22 +491,13 @@ const isPolicy = (value: unknown): value is NodeContractsPolicy =>
 
 const errorMessage = (error: unknown) => (error instanceof Error ? error.message : String(error));
 
-const HASH = /^[a-f0-9]{64}$/;
-
-const isLock = (value: unknown): value is NodeContractLock =>
+/** Whether a value is a node pin with a `major.minor.patch` version and a sha256 digest. */
+export const isNodeContractPin = (value: unknown): value is INodeContractPin =>
 	isRecord(value) &&
-	typeof value.action === 'string' &&
 	typeof value.version === 'string' &&
 	/^\d+\.\d+\.\d+$/.test(value.version) &&
-	typeof value.bundleHash === 'string' &&
-	HASH.test(value.bundleHash) &&
-	typeof value.contractHash === 'string';
-
-/** The valid locks of a workflow `meta`, by node name. */
-export const locksOf = (meta: unknown): ReadonlyArray<readonly [string, NodeContractLock]> =>
-	Object.entries(isRecord(meta) && isRecord(meta.nodeContracts) ? meta.nodeContracts : {}).flatMap(
-		([node, lock]) => (isLock(lock) ? [[node, lock] as const] : []),
-	);
+	typeof value.digest === 'string' &&
+	/^sha256:[a-f0-9]{64}$/.test(value.digest);
 
 const lockOf = ({ id, semver, bundleHash, contractHash }: VersionManifest): NodeContractLock => ({
 	action: id,
@@ -498,22 +506,17 @@ const lockOf = ({ id, semver, bundleHash, contractHash }: VersionManifest): Node
 	contractHash,
 });
 
-// The bundle hash covers only the code. Without a key, the lock is the anchor of the manifest.
-const mismatchOf = (manifest: VersionManifest, lock: NodeContractLock) => {
-	const found = lockOf(manifest);
-	return (['action', 'version', 'bundleHash', 'contractHash'] as const).find(
-		(key) => found[key] !== lock[key],
-	);
-};
-
-const assertLocked = (manifest: VersionManifest, lock: NodeContractLock) => {
-	const field = mismatchOf(manifest, lock);
-	if (field) {
+// The digest covers the manifest bytes, and a store checks them, so only the id and version are left.
+const assertPinned = (manifest: VersionManifest, actionId: string, pin: INodeContractPin) => {
+	if (manifest.id !== actionId || manifest.semver !== pin.version) {
 		throw new UserError(
-			`The bundle ${lock.bundleHash} has ${field} ${lockOf(manifest)[field]}, but the lock has ${lock[field]}`,
+			`The version ${pin.digest} is ${manifest.id}@${manifest.semver}, but the pin names ${actionId}@${pin.version}`,
 		);
 	}
 };
+
+const isPatchOf = (manifest: VersionManifest, lock: NodeContractLock) =>
+	manifest.id === lock.action && manifest.contractHash === lock.contractHash;
 
 const bundleDigestOf = (bundleHash: string) => `sha256:${bundleHash}`;
 
@@ -526,8 +529,11 @@ const DEFAULT_FETCH_TIMEOUT_MS = 10_000;
 /** A checked version and its origin. */
 type CheckedVersion = Pick<FrozenVersion, 'manifest' | 'origin'>;
 
+/** A checked version and the digest of its manifest bytes. */
+type PinnableVersion = CheckedVersion & Pick<DigestedVersion, 'digest'>;
+
 /** A version with its bundle, read and checked. */
-interface LoadedVersion extends CheckedVersion {
+interface LoadedVersion extends PinnableVersion {
 	readonly bundle: string;
 }
 
@@ -545,16 +551,16 @@ export function contractStore(options: ContractStoreOptions): ContractStore {
 		: undefined;
 	const indexes = new Map<string, { at: number; records: Promise<StoreIndex> }>();
 	/** Stored versions by id, so a tolerant run does not read the store each time. */
-	const storedById = new Map<string, { at: number; records: Promise<CheckedVersion[]> }>();
+	const storedById = new Map<string, { at: number; records: Promise<PinnableVersion[]> }>();
 	/** Stored status lines by id, so a run does not read the store each time. */
 	const statusesById = new Map<
 		string,
 		{ at: number; records: Promise<readonly StoreStatusRecord[]> }
 	>();
-	/** Loads in flight, so parallel executions download a version once. */
+	/** Loads in flight by digest, so parallel executions download a version once. */
 	const loading = new Map<string, Promise<LoadedVersion>>();
-	/** Checked stored versions and their digests by bundle hash. A stored version never changes. */
-	const stored = new Map<string, CheckedVersion & { digest: string }>();
+	/** Checked stored versions by digest. A stored version never changes. */
+	const stored = new Map<string, PinnableVersion>();
 
 	const registryOf = () => {
 		if (!registryReader) throw new UserError('No registry is set');
@@ -622,14 +628,18 @@ export function contractStore(options: ContractStoreOptions): ContractStore {
 	 * store recorded when it took the version. A key change never raises it, but a `first-party`
 	 * version that the first-party key no longer proves gets the origin that the keys prove now.
 	 */
-	const storedManifestOf = (entry: StoredManifest): CheckedVersion => {
+	const storedManifestOf = (entry: StoredManifest): PinnableVersion => {
 		const manifest = parseManifest(entry.manifestText);
 		const origin = signedOriginOf(
 			{ ...entry, bundle: bundleDigestOf(manifest.bundleHash) },
 			entry.manifestText,
 		);
-		const checked = { manifest, origin: entry.origin === 'first-party' ? origin : entry.origin };
-		stored.set(manifest.bundleHash, { ...checked, digest: entry.manifest });
+		const checked = {
+			manifest,
+			origin: entry.origin === 'first-party' ? origin : entry.origin,
+			digest: entry.manifest,
+		};
+		stored.set(entry.manifest, checked);
 		return checked;
 	};
 
@@ -661,8 +671,8 @@ export function contractStore(options: ContractStoreOptions): ContractStore {
 	/**
 	 * The credential manifests that a version pins, from the registry, unless n8n bundles the id
 	 * and major or the store has them. A pin that the registry lacks fails the admission. A
-	 * manifest with a bad signature fails the download. Without a key, nothing comes: the lock
-	 * anchors the bundle only, not a credential manifest.
+	 * manifest with a bad signature fails the download. Without a key, nothing comes: the node
+	 * pin anchors the version only, not a credential manifest.
 	 */
 	const pinnedCredentials = async (manifest: VersionManifest): Promise<StoredVersion[]> => {
 		if (!hasKey(keys)) return [];
@@ -689,61 +699,58 @@ export function contractStore(options: ContractStoreOptions): ContractStore {
 		return found.flat();
 	};
 
-	/** The stored version of the lock, or `undefined` when the store does not have it. */
-	const fromStore = async (lock: NodeContractLock): Promise<LoadedVersion | undefined> => {
-		const entry = (await store.manifests(lock.action)).find(
-			({ version }) => version === lock.version,
-		);
-		const checked = entry && storedManifestOf(entry);
-		if (!entry || checked?.manifest.bundleHash !== lock.bundleHash) return undefined;
+	/** The stored version of a digest, or `undefined` when the store does not have it. */
+	const fromStore = async (
+		actionId: string,
+		digest: string,
+	): Promise<LoadedVersion | undefined> => {
+		const entry = (await store.manifests(actionId)).find(({ manifest }) => manifest === digest);
+		if (!entry) return undefined;
+		const checked = storedManifestOf(entry);
 		const bundle = await store.bundle(entry.manifest);
 		return bundle === undefined ? undefined : { ...checked, bundle };
 	};
 
-	/** Copies a registry version into the store when its manifest matches `expected`. */
-	const download = async (record: StoreRecord, expected: NodeContractLock) => {
+	/** Copies a registry version into the store. The reader checks the bytes against the line. */
+	const download = async (record: StoreRecord): Promise<LoadedVersion> => {
 		const checked = await registryManifest(record);
-		assertLocked(checked.manifest, expected);
-		const bundle = await registryOf().blob(bundleDigestOf(expected.bundleHash));
-		if (!bundle) throw new UserError(`The registry has no bundle ${expected.bundleHash}`);
-		const code = bundle.toString('utf8');
 		const { manifest, origin } = checked;
+		const bundle = await registryOf().blob(bundleDigestOf(manifest.bundleHash));
+		if (!bundle) throw new UserError(`The registry has no bundle ${manifest.bundleHash}`);
+		const code = bundle.toString('utf8');
 		await admitVersions(store, [
 			...(await pinnedCredentials(manifest)),
 			storedVersionOf(record, checked.text, origin, { bundle: code }),
 		]);
 		storedById.delete(record.id);
-		stored.set(manifest.bundleHash, { manifest, origin, digest: record.manifest });
-		return { manifest, origin, bundle: code };
+		stored.set(record.manifest, { manifest, origin, digest: record.manifest });
+		return { manifest, origin, digest: record.manifest, bundle: code };
 	};
 
-	const fromRegistry = async (lock: NodeContractLock) => {
-		const record = (await registryRecordsOf(lock.action)).find(
-			({ bundle }) => bundle === bundleDigestOf(lock.bundleHash),
-		);
-		if (!record) throw new UserError('The registry does not have this bundle');
-		return await download(record, lock);
+	const fromRegistry = async (actionId: string, digest: string) => {
+		const record = (await registryRecordsOf(actionId)).find(({ manifest }) => manifest === digest);
+		if (!record) throw new UserError('The registry does not have this version');
+		return await download(record);
 	};
 
 	/** A checked version from the store, or else from the registry. */
-	const load = async (lock: NodeContractLock) => {
-		const known = loading.get(lock.bundleHash);
+	const load = async (actionId: string, pin: INodeContractPin) => {
+		const known = loading.get(pin.digest);
 		if (known) return await known;
-		const loaded = fromStore(lock)
-			.then(async (stored) => stored ?? (await fromRegistry(lock)))
+		const loaded = fromStore(actionId, pin.digest)
+			.then(async (stored) => stored ?? (await fromRegistry(actionId, pin.digest)))
 			.then((version) => {
-				assertLocked(version.manifest, lock);
+				assertPinned(version.manifest, actionId, pin);
 				return version;
 			})
 			.catch((error: unknown) => {
-				const { action, version, bundleHash } = lock;
 				throw new UserError(
-					`Cannot get ${action}@${version} (bundle ${bundleHash}) from the registry ${registryUrl || '(none set)'}: ${errorMessage(error)}`,
+					`Cannot get ${actionId}@${pin.version} (${pin.digest}) from the registry ${registryUrl || '(none set)'}: ${errorMessage(error)}`,
 					{ cause: error },
 				);
 			})
-			.finally(() => loading.delete(lock.bundleHash));
-		loading.set(lock.bundleHash, loaded);
+			.finally(() => loading.delete(pin.digest));
+		loading.set(pin.digest, loaded);
 		return await loaded;
 	};
 
@@ -760,11 +767,20 @@ export function contractStore(options: ContractStoreOptions): ContractStore {
 	};
 
 	/** The bundle loads on the first execution. */
-	const storedVersion = ({ manifest, origin }: CheckedVersion): FrozenVersion => ({
+	const storedVersion = ({ manifest, origin, digest }: PinnableVersion): DigestedVersion => ({
 		manifest,
 		origin,
-		readBundle: async () => (await load(lockOf(manifest))).bundle,
+		digest,
+		readBundle: async () => (await load(manifest.id, { version: manifest.semver, digest })).bundle,
 	});
+
+	const notWithdrawn = async <T extends CheckedVersion>(versions: readonly T[]) => {
+		const withdrawn = await Promise.all(versions.map(async (version) => await withdrawal(version)));
+		return versions.filter((_, index) => withdrawn[index] === undefined);
+	};
+
+	const storedOf = async (actionId: string) =>
+		await cachedFor(storedById, actionId, async () => await storedManifests(actionId));
 
 	const isNewerPatch = (
 		lock: NodeContractLock,
@@ -783,11 +799,7 @@ export function contractStore(options: ContractStoreOptions): ContractStore {
 
 	/** On a host that does not fetch: the signed patches in the store. */
 	const storedPatches = async (lock: NodeContractLock) => {
-		const stored = await cachedFor(
-			storedById,
-			lock.action,
-			async () => await storedManifests(lock.action),
-		).catch(() => []);
+		const stored = await storedOf(lock.action).catch(() => []);
 		return stored
 			.filter(({ manifest }) => isNewerPatch(lock, { ...manifest, version: manifest.semver }))
 			.map(storedVersion);
@@ -800,12 +812,46 @@ export function contractStore(options: ContractStoreOptions): ContractStore {
 			return new Set((await storedManifests()).map(({ manifest }) => manifest.bundleHash));
 		},
 
-		async locked(lock) {
-			const known = stored.get(lock.bundleHash);
-			if (known && !mismatchOf(known.manifest, lock) && (await store.has(known.digest))) {
+		async locked(actionId, pin) {
+			const bundled = bundledVersionsOf(actionId).find(({ digest }) => digest === pin.digest);
+			if (bundled) {
+				assertPinned(bundled.manifest, actionId, pin);
+				return bundled;
+			}
+			const known = stored.get(pin.digest);
+			if (known && (await store.has(pin.digest))) {
+				assertPinned(known.manifest, actionId, pin);
 				return storedVersion(known);
 			}
-			return storedVersion(await load(lock));
+			return storedVersion(await load(actionId, pin));
+		},
+
+		async pinOf(actionId, major, current, { keepUnknown = false } = {}) {
+			const known = [...bundledVersionsOf(actionId), ...(await storedOf(actionId))].filter(
+				({ manifest }) =>
+					manifest.contract.version === major && runsNodeContract(manifest.nodeContract),
+			);
+			const isKnown = (pin: INodeContractPin) =>
+				known.some(
+					({ manifest, digest }) => manifest.semver === pin.version && digest === pin.digest,
+				);
+			const isUnknown = (pin: INodeContractPin) =>
+				!known.some(
+					({ manifest, digest }) => manifest.semver === pin.version || digest === pin.digest,
+				);
+			const keeps =
+				isNodeContractPin(current) &&
+				parseSemver(current.version).major === major &&
+				(isKnown(current) || (keepUnknown && isUnknown(current)));
+			if (keeps) return current;
+			const newest = (await notWithdrawn(known)).reduce<PinnableVersion | undefined>(
+				(best, version) =>
+					best && compareSemver(best.manifest.semver, version.manifest.semver) >= 0
+						? best
+						: version,
+				undefined,
+			);
+			return newest && { version: newest.manifest.semver, digest: newest.digest };
 		},
 
 		async versions() {
@@ -833,7 +879,7 @@ export function contractStore(options: ContractStoreOptions): ContractStore {
 				}),
 			);
 			// A major keeps its newest withdrawn version when it has no other, so pinned nodes still load.
-			const isBetter = (best: CheckedVersion, version: CheckedVersion) =>
+			const isBetter = (best: PinnableVersion, version: PinnableVersion) =>
 				withdrawn.has(best) === withdrawn.has(version)
 					? compareSemver(best.manifest.semver, version.manifest.semver) >= 0
 					: withdrawn.has(version);
@@ -842,7 +888,7 @@ export function contractStore(options: ContractStoreOptions): ContractStore {
 				const key = `${id}@${contract.version}`;
 				const best = byMajor.get(key);
 				return best && isBetter(best, version) ? byMajor : new Map(byMajor).set(key, version);
-			}, new Map<string, CheckedVersion>());
+			}, new Map<string, PinnableVersion>());
 			return [...newest.values()].reduce(
 				(byAction, checked) =>
 					byAction.set(checked.manifest.id, [
@@ -861,15 +907,15 @@ export function contractStore(options: ContractStoreOptions): ContractStore {
 			const patches = await Promise.all(
 				candidates.map(async (record) => {
 					if (!record.bundle) return [];
-					const bundleHash = record.bundle.slice('sha256:'.length);
-					const expected = { ...lock, version: record.version, bundleHash };
-					const known = stored.get(bundleHash);
-					if (known && !mismatchOf(known.manifest, expected)) return [storedVersion(known)];
-					// A tampered or unsigned patch never runs; the locked version runs instead.
+					const isCandidate = ({ manifest }: CheckedVersion) =>
+						isPatchOf(manifest, lock) && manifest.semver === record.version;
+					const known = stored.get(record.manifest);
+					if (known && isCandidate(known)) return [storedVersion(known)];
+					// A tampered or unsigned patch never runs; the pinned version runs instead.
 					const version =
-						(await fromStore(expected).catch(() => undefined)) ??
-						(await download(record, expected).catch(() => undefined));
-					return version && !mismatchOf(version.manifest, expected) ? [storedVersion(version)] : [];
+						(await fromStore(lock.action, record.manifest).catch(() => undefined)) ??
+						(await download(record).catch(() => undefined));
+					return version && isCandidate(version) ? [storedVersion(version)] : [];
 				}),
 			);
 			return patches.flat();
@@ -902,11 +948,13 @@ export function contractStore(options: ContractStoreOptions): ContractStore {
 }
 
 /**
- * Resolves the version a contract node runs from its lock in `meta.nodeContracts`. A locked
- * bundle hash is the trust anchor for the locked version. The publisher signature is the
- * trust anchor for a newer patch. A node without a lock runs `head`: the bundled HEAD, or the
- * newest stored version of an older major. A yanked version runs only as the locked version or
- * `head`. A revoked version does not run unless `revokedAllowed` lists it.
+ * Resolves the version a contract node runs from its pin (`INode.contract`). The pinned digest
+ * is the trust anchor for the pinned version. The publisher signature is the trust anchor for a
+ * newer patch. A node without a pin of its major runs `head`: the bundled HEAD, or the newest
+ * stored version of an older major. When no source has the pinned version, a `tolerant` node
+ * runs a first-party `head` that is not older than the pin, and n8n logs a warning; else the run
+ * fails. A yanked version runs only as the pinned version or `head`.
+ * A revoked version does not run unless `revokedAllowed` lists it.
  */
 export function contractVersionLoader(
 	options: Omit<ContractRegistryOptions, 'runtimes' | 'sandbox' | 'nodeContractRange'>,
@@ -923,7 +971,7 @@ export function contractVersionLoader(
 				`${at} is revoked: ${withdrawn.reason}. An admin can allow it in N8N_NODE_CONTRACTS_REVOKED_ALLOW.`,
 			);
 		}
-		// The loader refuses the versions that it projects. A lock or a patch can resolve to another version.
+		// The loader refuses the versions that it projects. A pin or a patch can resolve to another version.
 		const denied = deniedPermissionClassOf(version, deny);
 		if (denied !== undefined) {
 			const message = `${at} does not run: N8N_NODE_PERMISSIONS_DENY denies its permission class "${denied}"`;
@@ -945,49 +993,48 @@ export function contractVersionLoader(
 		return versions.filter((_, index) => withdrawn[index] === undefined);
 	};
 	return async (context, head) => {
-		const meta = await options.metaOf(context);
 		const node = context.getNode();
-		const lock = locksOf(meta).find(([name]) => name === node.name)?.[1];
-		// A lock of another action or major is stale: the node changed after the build.
-		if (
-			lock?.action !== head.manifest.id ||
-			parseSemver(lock.version).major !== head.manifest.contract.version
-		) {
+		const pin = isNodeContractPin(node.contract) ? node.contract : undefined;
+		// A pin of another major is stale: the node changed after its last save.
+		if (!pin || parseSemver(pin.version).major !== head.manifest.contract.version) {
 			return await runnable(head, node);
 		}
+		const meta = await options.metaOf(context);
 		const override = isRecord(meta) ? meta.nodeContractsPolicy : undefined;
 		const policy = isPolicy(override) ? override : options.policy;
+		// A release replaces the bundled HEAD. Without the pinned manifest, the contract hash that a
+		// patch must keep is not known. Only a first-party HEAD that is not older than the pin may run.
+		const pinned = await store.locked(head.manifest.id, pin).catch((error: unknown) => {
+			const runsHead =
+				policy === 'tolerant' &&
+				head.origin === 'first-party' &&
+				compareSemver(head.manifest.semver, pin.version) >= 0;
+			if (!runsHead) throw error;
+			LoggerProxy.warn(
+				`Node "${node.name}" runs ${head.manifest.id}@${head.manifest.semver}: ${errorMessage(error)}`,
+			);
+			return undefined;
+		});
+		if (!pinned) return await runnable(head, node);
+		const locked = pinned.manifest.bundleHash === head.manifest.bundleHash ? head : pinned;
+		const lock = lockOf(locked.manifest);
 		const newer = policy === 'tolerant' ? await store.newerPatches(lock) : [];
-		const locked =
-			head.manifest.bundleHash === lock.bundleHash
-				? head
-				: await store
-						.locked(lock)
-						.catch((error: unknown) =>
-							error instanceof Error ? error : new UserError(String(error)),
-						);
-		// A first-party HEAD may be a newer patch of the locked contract, as a release ships it.
-		// Another HEAD may not: only its lock makes it trusted. A signed patch must have the origin
-		// of the locked version, so that a vetting key cannot patch a first-party version. When the
-		// locked version does not load, its origin is not known, so only a first-party patch applies.
-		const origin = locked instanceof Error ? 'first-party' : locked.origin;
+		// A first-party HEAD may be a newer patch of the pinned contract, as a release ships it.
+		// Another HEAD may not: only its pin makes it trusted. A signed patch must have the origin
+		// of the pinned version, so that a vetting key cannot patch a first-party version.
 		const trusted = [
-			...(locked instanceof Error ? [] : [locked]),
+			locked,
 			...(await notWithdrawn([
-				...(head.origin === 'first-party' ? [head] : []),
-				...newer.filter((version) => version.origin === origin),
+				...(head.origin === 'first-party' && head !== locked ? [head] : []),
+				...newer.filter((version) => version.origin === locked.origin),
 			])),
 		];
-		const manifests = trusted.map((version) => version.manifest);
-		const manifest = (() => {
-			try {
-				return resolveContractVersion(lock, policy, manifests);
-			} catch (error) {
-				// The fetch error names the registry, so it explains more than "no match".
-				throw locked instanceof Error ? locked : error;
-			}
-		})();
-		return await runnable(trusted.find((version) => version.manifest === manifest) ?? head, node);
+		const manifest = resolveContractVersion(
+			lock,
+			policy,
+			trusted.map((version) => version.manifest),
+		);
+		return await runnable(trusted.find((version) => version.manifest === manifest) ?? locked, node);
 	};
 }
 
@@ -999,8 +1046,6 @@ const bundledVersionsOf = (actionId: string) => {
 		return [];
 	}
 };
-
-const bundledHead = (actionId: string) => bundledVersionsOf(actionId)[0];
 
 /**
  * The credential manifest of a name: the bundled one, which n8n registers and signs with, else
@@ -1032,64 +1077,63 @@ export const useContractRegistry = (options: ContractRegistryOptions) => {
 	setExecutorLoader(policyExecutorLoader(options.runtimes, options.sandbox));
 };
 
-/** A workflow node and its lock. */
-export interface LockedNode {
+/** A node of a saved workflow, the action that it runs and its pin. */
+export interface PinnedNode {
 	readonly workflowId: string;
 	readonly workflowName: string;
 	readonly node: string;
-	readonly lock: NodeContractLock;
+	readonly action: string;
+	readonly pin: INodeContractPin;
 }
 
 export interface ContractSyncResult {
 	/** Versions the store did not have before. */
 	readonly added: readonly VersionManifest[];
-	readonly failed: ReadonlyArray<LockedNode & { readonly error: string }>;
-	/** Nodes whose locked bundle declares a Node Contract version that this host does not run. */
-	readonly unsupported: ReadonlyArray<LockedNode & { readonly nodeContract: NodeContractVersion }>;
+	readonly failed: ReadonlyArray<PinnedNode & { readonly error: string }>;
+	/** Nodes whose pinned version declares a Node Contract version that this host does not run. */
+	readonly unsupported: ReadonlyArray<PinnedNode & { readonly nodeContract: NodeContractVersion }>;
 }
 
 /**
- * Puts the locked bundle of each node into the store, one bundle at a time, and checks its
- * Node Contract version. Then it puts the trusted status lines of each locked id into the
+ * Puts the pinned version of each node into the store, one version at a time, and checks its
+ * Node Contract version. Then it puts the trusted status lines of each pinned id into the
  * store. A sync of many pages gives the same `since` to each page, so that it reads each
- * registry index once. It never throws for one bundle: it reports the failure.
+ * registry index once. It never throws for one version: it reports the failure.
  */
 export async function syncContractStore(
 	store: ContractStore,
-	nodes: readonly LockedNode[],
+	nodes: readonly PinnedNode[],
 	since = Date.now(),
 ): Promise<ContractSyncResult> {
 	const before = await store.bundleHashes();
-	const byBundle = nodes.reduce(
-		(groups, node) =>
-			groups.set(node.lock.bundleHash, [...(groups.get(node.lock.bundleHash) ?? []), node]),
-		new Map<string, readonly LockedNode[]>(),
+	const byDigest = nodes.reduce(
+		(groups, node) => groups.set(node.pin.digest, [...(groups.get(node.pin.digest) ?? []), node]),
+		new Map<string, readonly PinnedNode[]>(),
 	);
-	const heads = new Map(
-		[...new Set(nodes.map(({ lock }) => lock.action))].map((id) => [id, bundledHead(id)] as const),
+	const ids = [...new Set(nodes.map(({ action }) => action))];
+	const bundled = new Set(
+		ids.flatMap((id) => bundledVersionsOf(id).map(({ manifest }) => manifest.bundleHash)),
 	);
-	const syncBundle = async (lock: NodeContractLock, group: readonly LockedNode[]) => {
-		const head = heads.get(lock.action);
-		if (head?.manifest.bundleHash === lock.bundleHash) return { manifest: head.manifest, group };
-		const manifest = await store.locked(lock).then(
+	const syncPin = async ({ action, pin }: PinnedNode, group: readonly PinnedNode[]) => {
+		const manifest = await store.locked(action, pin).then(
 			({ manifest: locked }) => locked,
 			(error: unknown) => errorMessage(error),
 		);
 		return { manifest, group };
 	};
-	const results = await [...byBundle.values()].reduce<
-		Promise<ReadonlyArray<Awaited<ReturnType<typeof syncBundle>>>>
+	const results = await [...byDigest.values()].reduce<
+		Promise<ReadonlyArray<Awaited<ReturnType<typeof syncPin>>>>
 	>(async (previous, group) => {
 		const done = await previous;
 		const [first] = group;
-		return first ? [...done, await syncBundle(first.lock, group)] : done;
+		return first ? [...done, await syncPin(first, group)] : done;
 	}, Promise.resolve([]));
-	await store.syncStatuses([...heads.keys()], since);
+	await store.syncStatuses(ids, since);
 	return {
 		added: results.flatMap(({ manifest }) =>
 			typeof manifest === 'string' ||
 			before.has(manifest.bundleHash) ||
-			heads.get(manifest.id)?.manifest.bundleHash === manifest.bundleHash
+			bundled.has(manifest.bundleHash)
 				? []
 				: [manifest],
 		),

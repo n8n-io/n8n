@@ -31,7 +31,6 @@ import {
 	liveReadNodeNames,
 	sampledKeysOf,
 	sampledReadIssues,
-	lockNodeContracts,
 	missingNodeTypeErrors,
 	NEXT_TSCONFIG_FILENAME,
 	MODEL_CATALOG_PATH,
@@ -552,7 +551,6 @@ async function compileNextWorkflowSource(
 	);
 	return {
 		...built,
-		workflow: lockNodeContracts(built.workflow),
 		declaredOutputFixtures: fixtures,
 		fixtureOrigins: fixtureOriginsOf(
 			built.workflow,
@@ -572,7 +570,7 @@ async function compileNextWorkflowSource(
 
 /**
  * Node contracts: a WorkflowJSON or legacy SDK source has no strict type check, so its
- * contract nodes get the input check and the version lock of a typed source.
+ * contract nodes get the input check of a typed source.
  */
 function checkContractWorkflow(
 	built: WorkflowSourceCompileResult,
@@ -588,7 +586,7 @@ function checkContractWorkflow(
 				errors,
 				summary: 'Workflow source has values that its node contracts reject.',
 			}
-		: { ...built, workflow: lockNodeContracts(built.workflow) };
+		: built;
 }
 
 async function compileContractTypeScriptSource(

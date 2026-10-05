@@ -1,10 +1,19 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
+import {
+	contractStore,
+	nodeTypeOf,
+	toolTypeOf,
+	versionsOf,
+	type InstanceStore,
+} from '@n8n/nodes-base-next';
 import type { INode } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
-import { nodeGroupsForRun, prepareNodeContractsRun } from '@/node-contracts-run';
+import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import { ContractNodeLoader, NodeContractsStore } from '@/node-contracts-registry';
+import { nodeGroupsForRun, pinNodeContracts, prepareNodeContractsRun } from '@/node-contracts-run';
 import { NodeContractsSync } from '@/node-contracts-sync';
 
 describe('nodeGroupsForRun', () => {
@@ -50,5 +59,129 @@ describe('prepareNodeContractsRun', () => {
 			'@n8n/nodes-core.noOpPass',
 			'@n8n/nodes-base-next.httpRequestGet',
 		]);
+	});
+});
+
+describe('pinNodeContracts', () => {
+	const { instanceAi } = Container.get(GlobalConfig);
+	const emptyStore: InstanceStore = {
+		manifests: async () => [],
+		credentialManifests: async () => [],
+		has: async () => false,
+		bundle: async () => undefined,
+		versions: async () => [],
+		insert: async () => {},
+		statuses: async () => [],
+		insertStatuses: async () => {},
+	};
+	const nodesStore = mockInstance(NodeContractsStore);
+	const headOf = (id: string) => {
+		const [head] = versionsOf(id);
+		if (!head) throw new Error(`${id} has no bundled version`);
+		return { version: head.manifest.semver, digest: head.digest };
+	};
+	const nodeOf = (name: string, type: string, typeVersion: number, extra: Partial<INode> = {}) => ({
+		id: name,
+		name,
+		type,
+		typeVersion,
+		position: [0, 0] as [number, number],
+		parameters: {},
+		...extra,
+	});
+	const get = nodeOf('Get', nodeTypeOf({ id: 'httpRequest.get' }), 3);
+	const tool = nodeOf('Tool', toolTypeOf({ id: 'httpRequest.get' }), 3);
+	const notion = nodeOf('Notion', 'n8n-nodes-base.notion', 4, {
+		parameters: { resource: 'databasePage', operation: 'getAll' },
+	});
+	const trigger = nodeOf('Trigger', nodeTypeOf({ id: 'github.repository.event' }), 1);
+	const legacy = nodeOf('Set', 'n8n-nodes-base.set', 3);
+
+	beforeAll(async () => {
+		const loader = new ContractNodeLoader([], [], async () => ({
+			versions: async () => new Map(),
+			credentials: async () => new Map(),
+		}));
+		await loader.loadAll();
+		Container.set(
+			LoadNodesAndCredentials,
+			Object.assign(mock<LoadNodesAndCredentials>(), { loaders: { [loader.packageName]: loader } }),
+		);
+		nodesStore.open.mockResolvedValue(
+			contractStore({
+				registryUrl: '',
+				keys: { firstParty: undefined, vetting: undefined },
+				store: emptyStore,
+				fetch: async () => new Response(null, { status: 404 }),
+			}),
+		);
+	});
+
+	afterEach(() => {
+		instanceAi.nodeContractsEnabled = true;
+		nodesStore.open.mockClear();
+	});
+
+	it('pins each contract node, tool node and migrated slot to the newest version of its major', async () => {
+		instanceAi.nodeContractsEnabled = true;
+		const pinned = await pinNodeContracts([get, tool, notion, trigger, legacy]);
+
+		expect(pinned.map((node) => node.contract)).toEqual([
+			headOf('httpRequest.get'),
+			headOf('httpRequest.get'),
+			headOf('notion.databasePage.getAll'),
+			undefined,
+			undefined,
+		]);
+		expect(pinned[3]).toBe(trigger);
+		expect(pinned[4]).toBe(legacy);
+	});
+
+	it('keeps a pin of the same major and re-pins a pin of another major or of other bytes', async () => {
+		const head = headOf('httpRequest.get');
+		const unknown = { version: '3.9.9', digest: `sha256:${'b'.repeat(64)}` };
+		const pinned = await pinNodeContracts([
+			{ ...get, contract: unknown },
+			{ ...get, name: 'Old', contract: { ...unknown, version: '2.0.0' } },
+			{ ...get, name: 'Bytes', contract: { ...head, digest: unknown.digest } },
+		]);
+
+		expect(pinned.map((node) => node.contract)).toEqual([unknown, head, head]);
+	});
+
+	it('keeps the stored pin of a node that the client sent without one, and drops the pin of a node that runs no contract', async () => {
+		const stored = headOf('httpRequest.get');
+		const pinned = await pinNodeContracts(
+			[get, { ...legacy, contract: stored }],
+			[{ ...get, contract: stored }],
+		);
+
+		expect(pinned[0]?.contract).toBe(stored);
+		expect(pinned[1]).not.toHaveProperty('contract');
+	});
+
+	it('re-pins a stored pin that no source has, and keeps such a pin when it is new to the save', async () => {
+		const head = headOf('httpRequest.get');
+		const unknown = { version: '3.0.1', digest: `sha256:${'c'.repeat(64)}` };
+		const other = { ...unknown, digest: `sha256:${'d'.repeat(64)}` };
+		const stored = [{ ...get, contract: unknown }];
+
+		const resaved = await pinNodeContracts([{ ...get, contract: unknown }], stored);
+		const dropped = await pinNodeContracts([get], stored);
+		const changed = await pinNodeContracts([{ ...get, contract: other }], stored);
+
+		expect([resaved, dropped, changed].map(([node]) => node?.contract)).toEqual([
+			head,
+			head,
+			other,
+		]);
+	});
+
+	it('writes no pin and opens no store with node contracts off', async () => {
+		instanceAi.nodeContractsEnabled = false;
+		const nodes = [get, { ...legacy, contract: headOf('httpRequest.get') }];
+
+		expect(await pinNodeContracts(nodes, [])).toBe(nodes);
+		expect(nodesStore.open).not.toHaveBeenCalled();
 	});
 });

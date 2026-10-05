@@ -1,9 +1,8 @@
-import { createWorkflow, mockInstance, testDb } from '@n8n/backend-test-utils';
+import { createWorkflow, testDb } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import { NodeContractVersionRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
-import type { IWorkflowBase } from 'n8n-workflow';
-import { generateKeyPairSync } from 'node:crypto';
+import { createHash, generateKeyPairSync } from 'node:crypto';
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { createServer } from 'node:http';
 import { createRequire } from 'node:module';
@@ -11,16 +10,16 @@ import type { AddressInfo } from 'node:net';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { mock } from 'vitest-mock-extended';
 
 import { ContractsSyncCommand } from '@/commands/contracts/sync';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import { ContractNodeLoader } from '@/node-contracts-registry';
 import { setupTestCommand } from '@test-integration/utils/test-command';
 
 interface Manifest {
 	readonly id: string;
 	readonly semver: string;
-	readonly bundleHash: string;
-	readonly contractHash: string;
 }
 
 // The cli does not depend on the node-sdk, so load it through the package that does.
@@ -46,13 +45,22 @@ const keyPair = () =>
 	});
 const keys = keyPair();
 
-mockInstance(LoadNodesAndCredentials);
+const contractLoader = new ContractNodeLoader([], [], async () => ({
+	versions: async () => new Map(),
+	credentials: async () => new Map(),
+}));
+Container.set(
+	LoadNodesAndCredentials,
+	Object.assign(mock<LoadNodesAndCredentials>(), {
+		loaders: { [contractLoader.packageName]: contractLoader },
+	}),
+);
 const command = setupTestCommand(ContractsSyncCommand);
 
-const state = { dir: '', manifest: undefined as unknown as Manifest };
+const state = { dir: '', manifest: undefined as unknown as Manifest, digest: '' };
 const registry = { requests: 0, server: createServer() };
 
-const lockedWorkflow = async ({ id, semver, bundleHash, contractHash }: Manifest) =>
+const pinnedWorkflow = async (digest = state.digest) =>
 	await createWorkflow({
 		nodes: [
 			{
@@ -60,13 +68,11 @@ const lockedWorkflow = async ({ id, semver, bundleHash, contractHash }: Manifest
 				name: 'Get',
 				type: '@n8n/nodes-base-next.httpRequestGet',
 				typeVersion: 2,
+				contract: { version: state.manifest.semver, digest },
 				position: [0, 0],
 				parameters: {},
 			},
 		],
-		meta: {
-			nodeContracts: { Get: { action: id, version: semver, bundleHash, contractHash } },
-		} as IWorkflowBase['meta'],
 	});
 
 beforeAll(async () => {
@@ -74,6 +80,8 @@ beforeAll(async () => {
 	const manifestText = await readFile(path.join(OLDER, 'manifest.json'), 'utf8');
 	const bundle = await readFile(path.join(OLDER, 'bundle.cjs'), 'utf8');
 	state.manifest = sdk.parseManifest(manifestText);
+	state.digest = `sha256:${createHash('sha256').update(manifestText).digest('hex')}`;
+	await contractLoader.loadAll();
 	const publish = async (dir: string, key: string) =>
 		await sdk.addToStore(path.join(state.dir, dir), [
 			{ manifestText, bundle, signatures: [sdk.signStoreManifest(manifestText, key)] },
@@ -114,8 +122,8 @@ const storedVersions = async () =>
 
 const folder = (name: string) => `--registry=${pathToFileURL(path.join(state.dir, name)).href}`;
 
-test('contracts:sync --registry=file://… adds each signed locked version to the store', async () => {
-	await lockedWorkflow(state.manifest);
+test('contracts:sync --registry=file://… adds each signed pinned version to the store', async () => {
+	await pinnedWorkflow();
 
 	await command.run([folder('signed')]);
 
@@ -123,30 +131,30 @@ test('contracts:sync --registry=file://… adds each signed locked version to th
 	expect(registry.requests).toBe(0);
 });
 
-test('contracts:sync fails when a saved workflow locks a version that the registry does not have', async () => {
-	await lockedWorkflow({ ...state.manifest, bundleHash: 'f'.repeat(64) });
+test('contracts:sync fails when a saved workflow pins a version that the registry does not have', async () => {
+	await pinnedWorkflow(`sha256:${'f'.repeat(64)}`);
 
 	await expect(command.run([folder('signed')])).rejects.toThrow(
-		'Some saved workflows cannot run their locked node versions',
+		'Some saved workflows cannot run their pinned node versions',
 	);
 	expect(registry.requests).toBe(0);
 });
 
-test('contracts:sync fetches a missing locked version from the configured registry', async () => {
-	await lockedWorkflow(state.manifest);
+test('contracts:sync fetches a missing pinned version from the configured registry', async () => {
+	await pinnedWorkflow();
 	const before = registry.requests;
 
 	await expect(command.run([])).rejects.toThrow(
-		'Some saved workflows cannot run their locked node versions',
+		'Some saved workflows cannot run their pinned node versions',
 	);
 	expect(registry.requests).toBeGreaterThan(before);
 });
 
 test('contracts:sync skips a version without the trusted signature', async () => {
-	await lockedWorkflow(state.manifest);
+	await pinnedWorkflow();
 
 	await expect(command.run([folder('untrusted')])).rejects.toThrow(
-		'Some saved workflows cannot run their locked node versions',
+		'Some saved workflows cannot run their pinned node versions',
 	);
 	expect(await storedVersions()).toEqual([]);
 });

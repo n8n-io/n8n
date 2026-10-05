@@ -30,7 +30,7 @@ export {
 	deniedPermissionClassOf,
 	exportContractStore,
 	importContractStore,
-	locksOf,
+	isNodeContractPin,
 	permissionClassesOf,
 	syncContractStore,
 	useContractRegistry,
@@ -42,7 +42,7 @@ export {
 	type ContractStoreOptions,
 	type ContractSyncResult,
 	type InstanceStore,
-	type LockedNode,
+	type PinnedNode,
 	type StoredVersion,
 } from './contract-registry';
 // The cli builds node and credential types from manifests and checks eval mock values with the

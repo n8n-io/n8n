@@ -31,6 +31,11 @@ const workflowNodeWritePublicSchema = z
 		notes: z.string().optional(),
 		type: z.string().optional().openapi(workflowNodeFieldDocs.type),
 		typeVersion: z.number().optional().openapi(workflowNodeFieldDocs.typeVersion),
+		contract: z
+			.object({ version: z.string(), digest: z.string() })
+			.strict()
+			.optional()
+			.openapi(workflowNodeFieldDocs.contract),
 		executeOnce: z.boolean().optional().openapi(workflowNodeFieldDocs.executeOnce),
 		alwaysOutputData: z.boolean().optional().openapi(workflowNodeFieldDocs.alwaysOutputData),
 		retryOnFail: z.boolean().optional().openapi(workflowNodeFieldDocs.retryOnFail),

@@ -100,11 +100,11 @@ const writeRegistry = async () => {
 const unstore = async ({ id, semver }: Manifest) =>
 	await Container.get(NodeContractVersionRepository).delete({ contractId: id, version: semver });
 
-const lockOf = ({ id, semver, bundleHash, contractHash }: Manifest) => ({
-	action: id,
-	version: semver,
-	bundleHash,
-	contractHash,
+const digestOf = (text: string) => `sha256:${createHash('sha256').update(text).digest('hex')}`;
+
+const pinOf = ({ manifest, version }: Published) => ({
+	version: manifest.semver,
+	digest: digestOf(version.manifestText),
 });
 
 const majorsOfGet = () =>
@@ -169,7 +169,7 @@ beforeAll(async () => {
 			id: head.manifest.id,
 			version: head.manifest.semver,
 			kind: 'action',
-			manifest: `sha256:${createHash('sha256').update(head.version.manifestText).digest('hex')}`,
+			manifest: digestOf(head.version.manifestText),
 			...head.version,
 			origin: 'community',
 		},
@@ -205,12 +205,12 @@ async function createOlderWorkflow() {
 					name: 'Get',
 					type: GET,
 					typeVersion: 2,
+					contract: pinOf(publishedOlder()),
 					position: [0, 0],
 					parameters: { url: `${registry.url}/echo?name=Ada` },
 				},
 			],
 			connections: {},
-			meta: { nodeContracts: { Get: lockOf(publishedOlder().manifest) } } as IWorkflowBase['meta'],
 		},
 		state.owner,
 	);
@@ -249,7 +249,7 @@ async function runToEnd(workflow: IWorkflowBase) {
 }
 
 describe('node contracts store', () => {
-	it('fetches the locked older major at sync, lists majors 2 and 3, and runs the workflow on it', async () => {
+	it('fetches the pinned older major at sync, lists majors 2 and 3, and runs the workflow on it', async () => {
 		const workflow = await createOlderWorkflow();
 		expect(majorsOfGet()).toEqual(['3']);
 
@@ -274,7 +274,7 @@ describe('node contracts store', () => {
 		});
 	});
 
-	it('fetches a bundle that is not in the store before the run', async () => {
+	it('fetches a version that is not in the store before the run', async () => {
 		const workflow = await createOlderWorkflow();
 		const { bundleHash } = publishedOlder().manifest;
 		await unstore(publishedOlder().manifest);
@@ -292,7 +292,7 @@ describe('node contracts store', () => {
 		);
 	});
 
-	it('names the action, version, bundle hash, and registry when the fetch before the run fails', async () => {
+	it('names the action, version, digest, and registry when the fetch before the run fails', async () => {
 		const workflow = await createOlderWorkflow();
 		const older = publishedOlder();
 		registry.versions.delete(OLDER);
@@ -301,7 +301,7 @@ describe('node contracts store', () => {
 		await Container.get(LoadNodesAndCredentials).refreshNodeTypes();
 		try {
 			await expect(runToEnd(workflow)).rejects.toThrow(
-				`Cannot get httpRequest.get@${OLDER} (bundle ${older.manifest.bundleHash}) from the registry ${registry.url}`,
+				`Cannot get httpRequest.get@${OLDER} (${pinOf(older).digest}) from the registry ${registry.url}`,
 			);
 		} finally {
 			registry.versions.set(OLDER, older);
@@ -309,7 +309,7 @@ describe('node contracts store', () => {
 		}
 	});
 
-	it('fetches a missing bundle once and rebuilds the node types once for parallel runs', async () => {
+	it('fetches a missing version once and rebuilds the node types once for parallel runs', async () => {
 		const workflow = await createOlderWorkflow();
 		await unstore(publishedOlder().manifest);
 		const loadNodesAndCredentials = Container.get(LoadNodesAndCredentials);
@@ -326,7 +326,7 @@ describe('node contracts store', () => {
 	});
 
 	// Narrow the range after the rebuild: some bundled HEADs also need 2.1.0.
-	it('refuses a run without a rebuild when the host does not run the Node Contract version of its lock', async () => {
+	it('refuses a run without a rebuild when the host does not run the Node Contract version of its pin', async () => {
 		const workflow = await createOlderWorkflow();
 		const { instanceAi } = Container.get(GlobalConfig);
 		const loadNodesAndCredentials = Container.get(LoadNodesAndCredentials);
@@ -338,7 +338,7 @@ describe('node contracts store', () => {
 		try {
 			expect(majorsOfGet()).toEqual(['3']);
 			await expect(runToEnd(workflow)).rejects.toThrow(
-				`its lock httpRequest.get@${OLDER} (bundle ${publishedOlder().manifest.bundleHash.slice(0, 12)}`,
+				`its pin httpRequest.get@${OLDER} (${pinOf(publishedOlder()).digest})`,
 			);
 			await expect(runToEnd(workflow)).rejects.toThrow(
 				'needs Node Contract 2.1.0, which this host does not run',
@@ -352,7 +352,7 @@ describe('node contracts store', () => {
 		}
 	});
 
-	it('reports the workflow when the host no longer runs the Node Contract version of its lock', async () => {
+	it('reports the workflow when the host no longer runs the Node Contract version of its pin', async () => {
 		const workflow = await createOlderWorkflow();
 		const { instanceAi } = Container.get(GlobalConfig);
 		instanceAi.nodeContractRange = '>=2.2.0 <3.0.0';

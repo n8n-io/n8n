@@ -208,27 +208,17 @@ describe('NodeContractVersionRepository', () => {
 		if (!older) throw new Error('no version');
 		const { rows } = Container.get(NodeContractsStore);
 		await rows.insert([storedOf(older, '2.0.0')]);
-		const manifest = JSON.parse(older.manifestText) as {
-			id: string;
-			semver: string;
-			bundleHash: string;
-			contractHash: string;
-		};
-		const lock = {
-			action: manifest.id,
-			version: manifest.semver,
-			bundleHash: manifest.bundleHash,
-			contractHash: manifest.contractHash,
-		};
+		const manifest = JSON.parse(older.manifestText) as { id: string; semver: string };
+		const pin = { version: manifest.semver, digest: digestOf(older.manifestText) };
 		const instanceSettings = Container.get(InstanceSettings);
 		instanceSettings.markAsFollower();
 		try {
 			// No server listens there: a fetch would fail.
 			const store = await Container.get(NodeContractsStore).open('http://127.0.0.1:9');
-			expect(await (await store.locked(lock)).readBundle()).toBe(older.bundle);
-			await expect(store.locked({ ...lock, version: '2.0.9' })).rejects.toThrow(
-				'only the leader main fetches from the registry',
-			);
+			expect(await (await store.locked(manifest.id, pin)).readBundle()).toBe(older.bundle);
+			await expect(
+				store.locked(manifest.id, { ...pin, digest: `sha256:${'f'.repeat(64)}` }),
+			).rejects.toThrow('only the leader main fetches from the registry');
 		} finally {
 			instanceSettings.instanceRole = 'unset';
 		}

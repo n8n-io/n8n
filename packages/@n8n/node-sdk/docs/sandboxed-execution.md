@@ -199,9 +199,10 @@ The policy (`src/runtime-policy.ts`):
   An id such as `n8n.echo` from another key stays community.
 - The origin picks the runtime list. It decides only the isolation: the permissions and the host
   checks are the same for all origins.
-- A newer patch of a locked version applies only when it has the origin of the locked version.
-  So the vetting key cannot patch a first-party version. When the locked version does not load,
-  only a first-party patch applies.
+- A newer patch of a pinned version applies only when it has the origin of the pinned version.
+  So the vetting key cannot patch a first-party version. When the pinned version does not load,
+  no patch applies: without its manifest, the contract hash that a patch must keep is not known.
+  Only a first-party HEAD that is not older than the pin runs, and only with `tolerant`.
 - An unknown runtime name, a name twice, or an empty list stops n8n at start.
 - n8n logs one warning at start when a listed runtime cannot start: the sandbox files are
   missing, or docker does not answer. n8n starts. Only the versions that need that runtime fail.

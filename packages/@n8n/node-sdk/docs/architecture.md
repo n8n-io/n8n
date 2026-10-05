@@ -47,12 +47,12 @@ flowchart BT
 | Package | Has | Read first |
 |---|---|---|
 | `@n8n/node-sdk` | `defineNode` and `t` for authors; the spec (`spec/`); the host side that makes n8n node types from frozen versions (`toVersionedNodeType`); freeze, publish and the store format; the guest runtimes and the sandbox | `src/runtime.ts`, `src/sandbox.ts`, `src/runtime-policy.ts` |
-| `@n8n/nodes-base-next` | First-party nodes (`src/nodes/<service>/actions/*.ts`); the list of first-party packages (`FIRST_PARTY_PACKAGES`); the instance logic that has no n8n dependency: origin, admission, lock resolution, sync, import and export | `src/index.ts`, `src/registry.ts`, `src/contract-registry.ts`, `src/migrated.ts` |
+| `@n8n/nodes-base-next` | First-party nodes (`src/nodes/<service>/actions/*.ts`); the list of first-party packages (`FIRST_PARTY_PACKAGES`); the instance logic that has no n8n dependency: origin, admission, pins, version resolution, sync, import and export | `src/index.ts`, `src/registry.ts`, `src/contract-registry.ts`, `src/migrated.ts` |
 | `@n8n/nodes-core` | Core nodes (`noOp` only, as the proof that n8n loads more than one first-party package) | `src/index.ts` |
 | `@n8n/node-contract-compat` | Derives manifests and typed modules from legacy node descriptions; composes a legacy node version where contract actions run some operations | `src/derive/`, `src/migrate/` |
 | `@n8n/workflow-sdk` (`/next`) | The typed workflow code that the AI builder writes. `@n8n/node-sdk/codegen` makes the module text of each node for it | `src/next/flow.ts` |
-| `@n8n/instance-ai` | Offers the typed node modules to the agent, builds the workflow, and locks each contract node to a version | `src/tools/next-modules.ts`, `src/tools/workflows/next-workflow-build.ts` |
-| `cli` | Loads the node types, keeps the store in the database, makes the runtimes, syncs from the registry, and has the `contracts:*` commands | `src/load-nodes-and-credentials.ts`, `src/node-contracts-*.ts`, `src/commands/contracts/` |
+| `@n8n/instance-ai` | Offers the typed node modules to the agent and builds the workflow | `src/tools/next-modules.ts`, `src/tools/workflows/next-workflow-build.ts` |
+| `cli` | Loads the node types, pins each contract node at save, keeps the store in the database, makes the runtimes, syncs from the registry, and has the `contracts:*` commands | `src/load-nodes-and-credentials.ts`, `src/node-contracts-*.ts`, `src/commands/contracts/` |
 | `@n8n/config`, `@n8n/db` | The settings (`instance-ai.config.ts`, `nodes.config.ts`) and the tables `node_contract_version` and `node_contract_status` | — |
 
 `@n8n/nodes-base-next` keeps n8n-specific code out: `cli` gives it the database rows, the keys,
@@ -98,7 +98,7 @@ flowchart LR
   E --> L
   R -- "4 Install<br/>sync, fetch, import" --> S["instance store<br/>node_contract_version"]
   S --> L["5 Load<br/>node types"]
-  L --> X["6 Run<br/>lock → version → runtime"]
+  L --> X["6 Run<br/>pin → version → runtime"]
 ```
 
 ### 1. Write
@@ -133,15 +133,15 @@ four ways:
 
 | How | When | Code |
 |---|---|---|
-| Sync of locked versions | At start and at leader takeover, on the leader main, in the background | `NodeContractsSync` |
-| Fetch when needed | A run needs a locked version or a newer patch that the table does not have | `contractStore` (`locked`, `newerPatches`) |
+| Sync of pinned versions | At start and at leader takeover, on the leader main, in the background | `NodeContractsSync` |
+| Fetch when needed | A run needs a pinned version or a newer patch that the table does not have | `contractStore` (`locked`, `newerPatches`) |
 | `n8n contracts:sync` | On demand, from a registry or a folder | `commands/contracts/sync.ts` |
 | `n8n contracts:import --input=<dir>` | A host without network, after `contracts:export` on another host | `commands/contracts/import.ts` |
 
 - Only the leader main and the `contracts:*` commands fetch from `N8N_NODE_CONTRACTS_REGISTRY_URL`.
   Workers and follower mains only read the table, so they need no registry egress.
 - Before the table takes a version, the store checks each blob digest, checks the manifest
-  against the lock, and records the **origin** from the key that signed it:
+  against the pin, and records the **origin** from the key that signed it:
   `first-party`, `community` (vetting key) or `private` (no trusted key). See
   [sandboxed-execution.md, n8n configuration](sandboxed-execution.md#n8n-configuration).
 - A version that brings a new major logs the permissions that it adds and emits
@@ -171,7 +171,7 @@ sequenceDiagram
   participant G as guest runtime
   E->>T: execute()
   T->>V: version for this node
-  V->>V: lock in meta.nodeContracts, update policy,<br/>yank, revoke, deny list
+  V->>V: pin on the node, update policy,<br/>yank, revoke, deny list
   V-->>T: frozen version + origin
   T->>P: executor of the version (cached by bundle hash)
   P->>P: origin → runtime list → first runtime that serves it
@@ -182,11 +182,25 @@ sequenceDiagram
   T-->>E: outputs, and the version that ran in the run metadata
 ```
 
-- **Which version.** The AI builder locks each contract node to the version that it built and
-  checked (`lockNodeContracts`, in `meta.nodeContracts` of the workflow). A node without a lock
-  runs the HEAD of its major. With `N8N_NODE_CONTRACTS_UPDATE_POLICY=tolerant` (default), a
-  locked node also takes a newer signed patch of the same origin and contract. With `strict`,
-  it runs the locked bundle. The lock comes from the saved workflow, not from the run.
+- **Which version.** Each saved contract node has a pin, `contract: { version, digest }` next to
+  `typeVersion` (`INode.contract`). The digest is the `sha256:` of the manifest bytes. The host
+  writes the pin at each save (editor, public API, `import:workflow`, source control pull, AI
+  builder), in `pinNodeContracts` (`cli/src/node-contracts-run.ts`), before the policy check:
+  - A node without a pin, or with a pin of another major, gets the newest bundled or stored
+    version of its major that is not yanked or revoked (`ContractStore.pinOf`).
+  - A pin of the same major stays when a bundled or stored version has its digest and version.
+    A pin that no source has stays only when the save brings it (a create, an import, or a
+    changed pin), so that `contracts:sync` can fetch it. A saved one is re-pinned, e.g. a pin of
+    a bundled HEAD that a release replaced.
+  - A node that the client sends without a pin keeps the pin of the stored node with its id.
+  - A trigger has no pin: it runs the version that its node type projects.
+  A node without a pin of its major runs the HEAD of its major. With
+  `N8N_NODE_CONTRACTS_UPDATE_POLICY=tolerant` (default), a pinned node also takes a newer
+  signed patch of the same origin and contract. With `strict`, it runs the pinned version. The
+  pin travels with the node: a history version, a copy and an export keep their pins. When no
+  source has the pinned version, a `tolerant` node runs a first-party HEAD of its major that is
+  not older than the pin, and n8n logs a warning. Else the run fails and names the version.
+  `meta.nodeContractsPolicy` of the saved workflow overrides the policy.
 - **Where it runs.** The origin picks a runtime list (`N8N_NODES_NEXT_RUNTIMES_*`). The first
   runtime in the list that serves the version and is available runs it: `in-process`,
   `worker`, `wasm` or `container`. See
@@ -206,7 +220,7 @@ The seams are two setters in `@n8n/node-sdk/src/runtime.ts`: `setContractVersion
 | Node Contract | `2.9.0` | The spec. Freeze writes the lowest that a bundle needs | Whether this n8n can run the bundle |
 | Action major | `notion.databasePage.getAll@1` | The author; a new permission forces a new major | The n8n `typeVersion`. A saved node keeps its major |
 | Action minor and patch | `1.2.3` | The author (minor), freeze (patch) | Which bundle a node runs inside its major |
-| Lock | `meta.nodeContracts.<node>` | The AI builder | The exact bundle that a saved workflow runs |
+| Pin | `INode.contract` (`{ version, digest }`) | The host, at each save | The exact version that a saved node runs |
 
 A new permission always needs a new major, so an update never widens what a node may do. Full
 rules: [node-contract.md, Versions](node-contract.md#versions).

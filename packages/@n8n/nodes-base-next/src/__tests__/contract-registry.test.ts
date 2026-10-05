@@ -28,13 +28,19 @@ import {
 	type FrozenAction,
 } from '@n8n/node-sdk/freeze';
 import { policyExecutorLoader } from '@n8n/node-sdk/sandbox';
-import { generateKeyPairSync } from 'node:crypto';
+import { createHash, generateKeyPairSync } from 'node:crypto';
 import { link, mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { createServer, type Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import type { IExecuteFunctions, INodeExecutionData, ITaskMetadata } from 'n8n-workflow';
+import {
+	LoggerProxy,
+	type IExecuteFunctions,
+	type INodeContractPin,
+	type INodeExecutionData,
+	type ITaskMetadata,
+} from 'n8n-workflow';
 
 import {
 	admitVersions,
@@ -298,10 +304,22 @@ const lockOf = (version: string): NodeContractLock => {
 	return { action: id, version: semver, bundleHash, contractHash };
 };
 
-const contextOf = (metadata: ITaskMetadata[] = []) =>
+const pinOf = (version: string): INodeContractPin => {
+	const { manifest } = frozenOf(version);
+	const digest = createHash('sha256').update(manifestTextOf(manifest)).digest('hex');
+	return { version: manifest.semver, digest: `sha256:${digest}` };
+};
+
+/** The pin on the node and the `meta` of its workflow. */
+interface Target {
+	readonly contract?: INodeContractPin;
+	readonly meta?: unknown;
+}
+
+const contextOf = (metadata: ITaskMetadata[] = [], contract?: INodeContractPin) =>
 	({
 		getInputData: () => [{ json: {} }],
-		getNode: () => ({ name: 'Echo', credentials: {} }),
+		getNode: () => ({ name: 'Echo', credentials: {}, contract }),
 		getNodeParameter: (name: string) => (name === 'text' ? 'hello' : ''),
 		continueOnFail: () => false,
 		setMetadata: (value: ITaskMetadata) => metadata.push(value),
@@ -318,7 +336,7 @@ const storeOf = (options: Partial<ContractStoreOptions> = {}) =>
 	});
 
 const run = async (
-	meta: unknown,
+	{ contract, meta }: Target,
 	options: Partial<
 		Omit<ContractRegistryOptions, 'store'> & Omit<ContractStoreOptions, 'store'>
 	> = {},
@@ -335,19 +353,28 @@ const run = async (
 		}),
 	);
 	const NodeType = toVersionedNodeType([head]);
-	const result = await new NodeType().getNodeType(1).execute?.call(contextOf(metadata));
+	const result = await new NodeType().getNodeType(1).execute?.call(contextOf(metadata, contract));
 	const [items = []]: INodeExecutionData[][] = Array.isArray(result) ? result : [];
 	return items.map((item) => item.json.text);
 };
 
-const locked = (version: string, policy?: string) => ({
-	nodeContracts: { Echo: lockOf(version) },
-	...(policy ? { nodeContractsPolicy: policy } : {}),
+const locked = (version: string, policy?: string): Target => ({
+	contract: pinOf(version),
+	meta: policy ? { nodeContractsPolicy: policy } : {},
 });
 
 describe('contractVersionLoader', () => {
-	it('runs the bundled HEAD for a node without a lock', async () => {
+	it('runs the bundled HEAD for a node without a pin or with a pin of another major', async () => {
 		expect(await run({})).toEqual(['hello#']);
+		expect(await run({ contract: { ...pinOf('1.0.0'), version: '2.0.0' } })).toEqual(['hello#']);
+	});
+
+	it('runs the pin of the node and reads the workflow meta only for the policy', async () => {
+		const metaOf = vi.fn(async () => ({ nodeContractsPolicy: 'strict' }));
+		expect(await run({}, { metaOf })).toEqual(['hello#']);
+		expect(metaOf).not.toHaveBeenCalled();
+		expect(await run({ contract: pinOf('1.0.0') }, { metaOf })).toEqual(['HELLO']);
+		expect(await run({ contract: pinOf('1.0.1') }, { metaOf })).toEqual(['hello?']);
 	});
 
 	it('runs the locked bundle from the registry when strict', async () => {
@@ -415,15 +442,15 @@ describe('contractVersionLoader', () => {
 		expect(await run(locked('1.0.0'), { policy: 'strict', registryUrl: '' })).toEqual(['HELLO']);
 	});
 
-	it('names the action, version and bundle hash when no version matches', async () => {
-		const { bundleHash } = lockOf('1.0.0');
-		await expect(run(locked('1.0.0'), { registryUrl: '' })).rejects.toThrow(
-			`Cannot get demo.echo@1.0.0 (bundle ${bundleHash}) from the registry (none set)`,
+	it('names the action, version and digest when the pinned version does not load', async () => {
+		const { digest } = pinOf('1.0.0');
+		await expect(run(locked('1.0.0'), { registryUrl: '', policy: 'strict' })).rejects.toThrow(
+			`Cannot get demo.echo@1.0.0 (${digest}) from the registry (none set)`,
 		);
 		published.delete('1.0.0');
 		await writeRegistry();
 		await expect(run(locked('1.0.0'), { policy: 'strict' })).rejects.toThrow(
-			`Cannot get demo.echo@1.0.0 (bundle ${bundleHash}) from the registry ${registry.url}: The registry does not have this bundle`,
+			`Cannot get demo.echo@1.0.0 (${digest}) from the registry ${registry.url}: The registry does not have this version`,
 		);
 	});
 
@@ -484,9 +511,9 @@ describe('contractStore', () => {
 
 	it('adds a version once and never replaces it', async () => {
 		const store = storeOf();
-		const { manifest } = await store.locked(lockOf('1.0.0'));
+		const { manifest } = await store.locked('demo.echo', pinOf('1.0.0'));
 		const [row] = instance.current.rows.values();
-		await storeOf().locked(lockOf('1.0.0'));
+		await storeOf().locked('demo.echo', pinOf('1.0.0'));
 		expect([...instance.current.rows.values()]).toEqual([row]);
 		expect([...(await store.bundleHashes())]).toEqual([manifest.bundleHash]);
 	});
@@ -494,31 +521,69 @@ describe('contractStore', () => {
 	it('lists the newest stored version of each major', async () => {
 		const store = storeOf();
 		await Promise.all(
-			['1.0.0', '1.0.1'].map(async (version) => await store.locked(lockOf(version))),
+			['1.0.0', '1.0.1'].map(async (version) => await store.locked('demo.echo', pinOf(version))),
 		);
 		const versions = await storeOf().versions();
 		expect(versions.get('demo.echo')?.map(({ manifest }) => manifest.semver)).toEqual(['1.0.1']);
 	});
 
+	it('pins the newest version of a major that is not yanked, and keeps a pin of that major', async () => {
+		const store = storeOf();
+		for (const version of ['1.0.0', '1.0.1', '1.1.0'])
+			await store.locked('demo.echo', pinOf(version));
+		expect(await storeOf().pinOf('demo.echo', 1)).toEqual(pinOf('1.1.0'));
+		expect(await storeOf().pinOf('demo.echo', 1, pinOf('1.0.0'))).toEqual(pinOf('1.0.0'));
+		const unknown = { version: '1.0.7', digest: `sha256:${'b'.repeat(64)}` };
+		const keepUnknown = { keepUnknown: true };
+		expect(await storeOf().pinOf('demo.echo', 1, unknown)).toEqual(pinOf('1.1.0'));
+		expect(await storeOf().pinOf('demo.echo', 1, unknown, keepUnknown)).toEqual(unknown);
+		const otherBytes = { ...pinOf('1.0.1'), version: '1.0.0' };
+		expect(await storeOf().pinOf('demo.echo', 1, otherBytes, keepUnknown)).toEqual(pinOf('1.1.0'));
+		const sameVersion = { ...unknown, version: '1.0.1' };
+		expect(await storeOf().pinOf('demo.echo', 1, sameVersion, keepUnknown)).toEqual(pinOf('1.1.0'));
+		expect(await storeOf().pinOf('demo.echo', 1, { version: '1.0', digest: 'x' })).toEqual(
+			pinOf('1.1.0'),
+		);
+		expect(await storeOf().pinOf('demo.echo', 2, pinOf('1.0.0'))).toBeUndefined();
+		const yank = { id: 'demo.echo', yank: '1.1.0', reason: 'wrong output', at: '2026-10-02' };
+		await instance.current.store.insertStatuses([
+			{ ...yank, signatures: [signStoreStatus(yank, privateKey)] },
+		]);
+		expect(await storeOf().pinOf('demo.echo', 1)).toEqual(pinOf('1.0.1'));
+	});
+
+	it('pins and resolves a bundled version without a registry', async () => {
+		const [head] = versionsOf('httpRequest.send');
+		if (!head) throw new Error('no bundled version');
+		const store = storeOf({ registryUrl: '' });
+		const pin = await store.pinOf('httpRequest.send', head.manifest.contract.version);
+		expect(pin).toEqual({ version: head.manifest.semver, digest: head.digest });
+		if (!pin) throw new Error('no pin');
+		expect((await store.locked('httpRequest.send', pin)).manifest).toEqual(head.manifest);
+		await expect(store.locked('httpRequest.send', { ...pin, version: '9.9.9' })).rejects.toThrow(
+			'but the pin names httpRequest.send@9.9.9',
+		);
+	});
+
 	it('fetches a version again when the store no longer has it', async () => {
 		const store = storeOf();
-		await store.locked(lockOf('1.0.0'));
+		await store.locked('demo.echo', pinOf('1.0.0'));
 		instance.current.rows.clear();
-		await store.locked(lockOf('1.0.0'));
+		await store.locked('demo.echo', pinOf('1.0.0'));
 		expect([...instance.current.rows.values()].map(({ version }) => version)).toEqual(['1.0.0']);
 	});
 
 	it('reads only the store on a host that may not fetch', async () => {
-		await storeOf().locked(lockOf('1.0.1'));
+		await storeOf().locked('demo.echo', pinOf('1.0.1'));
 		const fetchRegistry = vi.fn(async () => new Response(null, { status: 500 }));
 		const worker = storeOf({ mayFetch: () => false, fetch: fetchRegistry });
-		expect(await (await worker.locked(lockOf('1.0.1'))).readBundle()).toBe(
+		expect(await (await worker.locked('demo.echo', pinOf('1.0.1'))).readBundle()).toBe(
 			frozenOf('1.0.1').bundle,
 		);
 		expect(
 			(await worker.newerPatches(lockOf('1.0.0'))).map(({ manifest }) => manifest.semver),
 		).toEqual(['1.0.1']);
-		await expect(worker.locked(lockOf('1.0.0'))).rejects.toThrow(
+		await expect(worker.locked('demo.echo', pinOf('1.0.0'))).rejects.toThrow(
 			'only the leader main fetches from the registry',
 		);
 		expect(fetchRegistry).not.toHaveBeenCalled();
@@ -532,33 +597,39 @@ describe('contractStore', () => {
 					signal.addEventListener('abort', () => reject(new Error(String(signal.reason)))),
 				),
 		});
-		await expect(store.locked(lockOf('1.0.0'))).rejects.toThrow(
-			`Cannot get demo.echo@1.0.0 (bundle ${lockOf('1.0.0').bundleHash}) from the registry ${registry.url}`,
+		await expect(store.locked('demo.echo', pinOf('1.0.0'))).rejects.toThrow(
+			`Cannot get demo.echo@1.0.0 (${pinOf('1.0.0').digest}) from the registry ${registry.url}`,
 		);
 	});
 
-	it('refuses a bundle whose manifest does not match the lock', async () => {
+	it('refuses a version whose manifest does not match the pin', async () => {
 		const store = storeOf();
-		const lock = { ...lockOf('1.0.0'), contractHash: 'a'.repeat(64) };
-		await expect(store.locked(lock)).rejects.toThrow('has contractHash');
-		expect(await store.bundleHashes()).toEqual(new Set());
-		await store.locked(lockOf('1.0.0'));
-		await expect(store.locked(lock)).rejects.toThrow('but the lock has');
+		const pin = { ...pinOf('1.0.0'), version: '1.0.5' };
+		const message = `The version ${pin.digest} is demo.echo@1.0.0, but the pin names demo.echo@1.0.5`;
+		await expect(store.locked('demo.echo', pin)).rejects.toThrow(message);
+		await store.locked('demo.echo', pinOf('1.0.0'));
+		await expect(store.locked('demo.echo', pin)).rejects.toThrow(message);
+		await expect(store.locked('demo.other', pinOf('1.0.0'))).rejects.toThrow(
+			'but the pin names demo.other@1.0.0',
+		);
+		await expect(storeOf().locked('demo.other', pinOf('1.0.0'))).rejects.toThrow(
+			'The registry does not have this version',
+		);
 	});
 
 	it('serves only signed versions when a key is set', async () => {
 		await publish(frozenOf('1.0.0'), strangerKey);
-		await storeOf({ keys: noKeys }).locked(lockOf('1.0.0'));
+		await storeOf({ keys: noKeys }).locked('demo.echo', pinOf('1.0.0'));
 		expect((await storeOf({ keys: noKeys }).versions()).has('demo.echo')).toBe(true);
 		expect((await storeOf().versions()).has('demo.echo')).toBe(false);
-		await expect(storeOf().locked(lockOf('1.0.0'))).rejects.toThrow(
+		await expect(storeOf().locked('demo.echo', pinOf('1.0.0'))).rejects.toThrow(
 			'is not signed by a trusted key',
 		);
 	});
 
-	it('runs a stored version as a newer patch only when its lock or signature allows it', async () => {
+	it('runs a stored version as a newer patch only when its pin or signature allows it', async () => {
 		const store = storeOf();
-		const stored = await store.locked(lockOf('1.0.1'));
+		const stored = await store.locked('demo.echo', pinOf('1.0.1'));
 		expect(await run(locked('1.0.0'), { keys: noKeys }, [], stored)).toEqual(['HELLO']);
 	});
 });
@@ -586,8 +657,8 @@ describe('origin', () => {
 	it('records the origin at admission and serves it from the store', async () => {
 		await publish(frozenOf('1.0.0'), firstParty.privateKey);
 		const store = storeOf({ keys: bothKeys });
-		expect((await store.locked(lockOf('1.0.0'))).origin).toBe('first-party');
-		expect((await store.locked(lockOf('1.0.1'))).origin).toBe('community');
+		expect((await store.locked('demo.echo', pinOf('1.0.0'))).origin).toBe('first-party');
+		expect((await store.locked('demo.echo', pinOf('1.0.1'))).origin).toBe('community');
 		expect(originsOfRows()).toEqual([
 			['1.0.0', 'first-party'],
 			['1.0.1', 'community'],
@@ -596,12 +667,12 @@ describe('origin', () => {
 		expect((await reread.versions()).get('demo.echo')?.map(({ origin }) => origin)).toEqual([
 			'community',
 		]);
-		expect((await reread.locked(lockOf('1.0.0'))).origin).toBe('first-party');
+		expect((await reread.locked('demo.echo', pinOf('1.0.0'))).origin).toBe('first-party');
 	});
 
 	it('serves a first-party version with the origin that the keys prove now', async () => {
 		await publish(frozenOf('1.0.0'), firstParty.privateKey);
-		await storeOf({ keys: bothKeys }).locked(lockOf('1.0.0'));
+		await storeOf({ keys: bothKeys }).locked('demo.echo', pinOf('1.0.0'));
 		const [[digest, row] = []] = [...instance.current.rows];
 		if (!digest || !row) throw new Error('no stored row');
 		const vettingSignature = signStoreManifest(row.manifestText, privateKey);
@@ -609,16 +680,24 @@ describe('origin', () => {
 			...row,
 			signatures: [...(row.signatures ?? []), vettingSignature],
 		});
-		expect((await storeOf({ keys: bothKeys }).locked(lockOf('1.0.0'))).origin).toBe('first-party');
-		expect((await storeOf({ keys: vettingKeys }).locked(lockOf('1.0.0'))).origin).toBe('community');
-		expect((await storeOf({ keys: noKeys }).locked(lockOf('1.0.0'))).origin).toBe('private');
+		expect((await storeOf({ keys: bothKeys }).locked('demo.echo', pinOf('1.0.0'))).origin).toBe(
+			'first-party',
+		);
+		expect((await storeOf({ keys: vettingKeys }).locked('demo.echo', pinOf('1.0.0'))).origin).toBe(
+			'community',
+		);
+		expect((await storeOf({ keys: noKeys }).locked('demo.echo', pinOf('1.0.0'))).origin).toBe(
+			'private',
+		);
 	});
 
 	it('takes an unsigned version as private only without a key', async () => {
 		await publish(frozenOf('1.0.0'), strangerKey);
-		expect((await storeOf({ keys: noKeys }).locked(lockOf('1.0.0'))).origin).toBe('private');
+		expect((await storeOf({ keys: noKeys }).locked('demo.echo', pinOf('1.0.0'))).origin).toBe(
+			'private',
+		);
 		instance.current = memoryStore();
-		await expect(storeOf({ keys: bothKeys }).locked(lockOf('1.0.0'))).rejects.toThrow(
+		await expect(storeOf({ keys: bothKeys }).locked('demo.echo', pinOf('1.0.0'))).rejects.toThrow(
 			'is not signed by a trusted key',
 		);
 	});
@@ -643,7 +722,7 @@ describe('origin', () => {
 		]);
 	});
 
-	it('applies a newer patch only from the origin of the locked version', async () => {
+	it('applies a newer patch only from the origin of the pinned version', async () => {
 		await publish(frozenOf('1.0.0'), firstParty.privateKey);
 		expect(await run(locked('1.0.0'), { keys: bothKeys })).toEqual(['HELLO']);
 		instance.current = memoryStore();
@@ -651,16 +730,24 @@ describe('origin', () => {
 		expect(await run(locked('1.0.0'), { keys: bothKeys })).toEqual(['hello?']);
 	});
 
-	it('applies only a first-party patch when the locked version does not load', async () => {
-		published.delete('1.0.0');
-		await writeRegistry();
-		const head: FrozenVersion = { ...bundled('1.0.1'), origin: 'community' };
-		await expect(run(locked('1.0.0'), { keys: bothKeys }, [], head)).rejects.toThrow(
+	it('runs a first-party HEAD that is not older than the pin only when tolerant and the pinned version does not load', async () => {
+		const warn = vi.spyOn(LoggerProxy, 'warn');
+		const options = { keys: bothKeys, registryUrl: '' };
+		expect(await run(locked('1.0.0'), options, [], bundled('1.0.1'))).toEqual(['hello?']);
+		expect(warn).toHaveBeenCalledWith(
+			expect.stringContaining('Node "Echo" runs demo.echo@1.0.1: Cannot get demo.echo@1.0.0'),
+		);
+		await expect(
+			run(locked('1.0.0'), { ...options, policy: 'strict' }, [], bundled('1.0.1')),
+		).rejects.toThrow('Cannot get demo.echo@1.0.0');
+		await expect(run(locked('1.1.0'), options, [], bundled('1.0.1'))).rejects.toThrow(
+			'Cannot get demo.echo@1.1.0',
+		);
+		const community = { ...bundled('1.0.1'), origin: 'community' as const };
+		await expect(run(locked('1.0.0'), options, [], community)).rejects.toThrow(
 			'Cannot get demo.echo@1.0.0',
 		);
-		instance.current = memoryStore();
-		await publish(frozenOf('1.0.1'), firstParty.privateKey);
-		expect(await run(locked('1.0.0'), { keys: bothKeys }, [], head)).toEqual(['hello?']);
+		warn.mockRestore();
 	});
 });
 
@@ -679,7 +766,7 @@ describe('status lines', () => {
 		await writeRegistry();
 	};
 
-	it('runs a locked yanked version and takes no yanked version as a newer patch', async () => {
+	it('runs a pinned yanked version and takes no yanked version as a newer patch', async () => {
 		await inRegistry(yankOf('1.0.1'));
 		expect(await run(locked('1.0.0'))).toEqual(['HELLO']);
 		expect(await run(locked('1.0.1'))).toEqual(['hello?']);
@@ -688,14 +775,20 @@ describe('status lines', () => {
 
 	it('lists no yanked version as the newest of its major while another one is there', async () => {
 		const store = storeOf();
-		await store.locked(lockOf('1.0.0'));
-		await store.locked(lockOf('1.0.1'));
+		await store.locked('demo.echo', pinOf('1.0.0'));
+		await store.locked('demo.echo', pinOf('1.0.1'));
 		const newest = async () =>
 			(await storeOf().versions()).get('demo.echo')?.map(({ manifest }) => manifest.semver);
 		expect(await newest()).toEqual(['1.0.1']);
 		await inRegistry(yankOf('1.0.1'));
 		await syncContractStore(store, [
-			{ workflowId: 'wf', workflowName: 'wf', node: 'Echo', lock: lockOf('1.0.0') },
+			{
+				workflowId: 'wf',
+				workflowName: 'wf',
+				node: 'Echo',
+				action: 'demo.echo',
+				pin: pinOf('1.0.0'),
+			},
 		]);
 		expect(await newest()).toEqual(['1.0.0']);
 		await inRegistry(yankOf('1.0.0'));
@@ -703,7 +796,7 @@ describe('status lines', () => {
 		expect(await newest()).toEqual(['1.0.1']);
 	});
 
-	it('refuses a locked revoked version unless the admin allows it', async () => {
+	it('refuses a pinned revoked version unless the admin allows it', async () => {
 		await inRegistry(revokeOf('1.0.0'));
 		await expect(run(locked('1.0.0'), { policy: 'strict' })).rejects.toThrow(
 			'demo.echo@1.0.0 is revoked: leaks the token. An admin can allow it in N8N_NODE_CONTRACTS_REVOKED_ALLOW',
@@ -977,7 +1070,7 @@ describe('importContractStore and exportContractStore', () => {
 	});
 
 	it('exports blobs by rename when the file system has no hard links', async () => {
-		await storeOf().locked(lockOf('1.0.0'));
+		await storeOf().locked('demo.echo', pinOf('1.0.0'));
 		vi.mocked(link).mockRejectedValueOnce(Object.assign(new Error('no links'), { code: 'EPERM' }));
 		const out = await mkdtemp(path.join(dirs.root, 'export-'));
 		await exportContractStore(instance.current.store, out);
@@ -1064,15 +1157,16 @@ describe('contractStore with triggers and credentials', () => {
 				signatures: [signStoreManifest(triggerText, privateKey)],
 			},
 		]);
-		const { id, semver, bundleHash, contractHash } = trigger.manifest;
-		return { trigger, credential, lock: { action: id, version: semver, bundleHash, contractHash } };
+		const digest = createHash('sha256').update(triggerText).digest('hex');
+		const pin = { version: trigger.manifest.semver, digest: `sha256:${digest}` };
+		return { trigger, credential, pin };
 	};
 
 	it('takes a trigger version and the credential manifest it pins from the registry', async () => {
-		const { trigger, credential, lock } = await publishPing();
+		const { trigger, credential, pin } = await publishPing();
 		expect(trigger.manifest).toMatchObject({ kind: 'trigger', credentials: ['ping.token@1'] });
 		const store = storeOf();
-		expect((await store.locked(lock)).manifest).toEqual(trigger.manifest);
+		expect((await store.locked('ping.pinged', pin)).manifest).toEqual(trigger.manifest);
 
 		const reread = storeOf();
 		expect((await reread.versions()).get('ping.pinged')?.[0]?.manifest).toEqual(trigger.manifest);
@@ -1086,9 +1180,9 @@ describe('contractStore with triggers and credentials', () => {
 	});
 
 	it('takes no credential manifest from the registry without a key', async () => {
-		const { lock } = await publishPing();
+		const { pin } = await publishPing();
 		const store = storeOf({ keys: noKeys });
-		await expect(store.locked(lock)).rejects.toThrow(
+		await expect(store.locked('ping.pinged', pin)).rejects.toThrow(
 			'ping.pinged@1.0.0 pins the credential ping.token@1',
 		);
 		expect(instance.current.rows.size).toBe(0);
@@ -1096,7 +1190,7 @@ describe('contractStore with triggers and credentials', () => {
 	});
 
 	it('takes the version without a key when the store has its pinned credential manifest', async () => {
-		const { trigger, credential, lock } = await publishPing();
+		const { trigger, credential, pin } = await publishPing();
 		const manifestText = manifestTextOf(credential);
 		await admitVersions(instance.current.store, [
 			{
@@ -1108,7 +1202,9 @@ describe('contractStore with triggers and credentials', () => {
 				origin: 'private',
 			},
 		]);
-		expect((await storeOf({ keys: noKeys }).locked(lock)).manifest).toEqual(trigger.manifest);
+		expect((await storeOf({ keys: noKeys }).locked('ping.pinged', pin)).manifest).toEqual(
+			trigger.manifest,
+		);
 	});
 
 	it('does not list a stored version whose pinned credential manifest it does not have', async () => {
@@ -1126,8 +1222,8 @@ describe('contractStore with triggers and credentials', () => {
 	});
 
 	it('refuses a pinned credential manifest without the trusted signature', async () => {
-		const { lock } = await publishPing(strangerKey);
-		await expect(storeOf().locked(lock)).rejects.toThrow('ping.token@1.0.0 (sha256:');
+		const { pin } = await publishPing(strangerKey);
+		await expect(storeOf().locked('ping.pinged', pin)).rejects.toThrow('ping.token@1.0.0 (sha256:');
 		expect((await storeOf({ keys: noKeys }).credentials()).has('pingApi')).toBe(false);
 	});
 });
@@ -1137,12 +1233,13 @@ describe('syncContractStore', () => {
 		workflowId,
 		workflowName: workflowId,
 		node: 'Echo',
-		lock: lockOf(version),
+		action: 'demo.echo',
+		pin: pinOf(version),
 	});
 
-	it('adds each missing locked bundle once and reports what it cannot get', async () => {
+	it('adds each missing pinned version once and reports what it cannot get', async () => {
 		const store = storeOf();
-		await store.locked(lockOf('1.0.0'));
+		await store.locked('demo.echo', pinOf('1.0.0'));
 		published.delete('1.1.0');
 		await writeRegistry();
 		const result = await syncContractStore(store, [
@@ -1153,7 +1250,7 @@ describe('syncContractStore', () => {
 		]);
 		expect(result.added.map(({ semver }) => semver)).toEqual(['1.0.1']);
 		expect(result.failed.map(({ workflowId, error }) => [workflowId, error])).toEqual([
-			['wf', expect.stringContaining('Cannot get demo.echo@1.1.0 (bundle')],
+			['wf', expect.stringContaining('Cannot get demo.echo@1.1.0 (sha256:')],
 		]);
 		expect(result.unsupported).toEqual([]);
 	});
@@ -1172,7 +1269,7 @@ describe('syncContractStore', () => {
 		expect(indexReads).toHaveLength(1);
 	});
 
-	it('reports nodes whose locked bundle needs a Node Contract version the host does not run', async () => {
+	it('reports nodes whose pinned version needs a Node Contract version the host does not run', async () => {
 		setNodeContractRange('>=3.0.0 <4.0.0');
 		try {
 			const result = await syncContractStore(storeOf(), [nodeOf('1.0.0')]);
@@ -1214,7 +1311,7 @@ describe('useContractRegistry', () => {
 		const [embedded] = versionsOf('httpRequest.send');
 		expect(embedded?.origin).toBe('first-party');
 		await publish(frozenOf('1.0.0'), firstParty.privateKey);
-		const version = await storeOf({ keys: bothKeys }).locked(lockOf('1.0.0'));
+		const version = await storeOf({ keys: bothKeys }).locked('demo.echo', pinOf('1.0.0'));
 		expect(version.origin).toBe('first-party');
 	});
 

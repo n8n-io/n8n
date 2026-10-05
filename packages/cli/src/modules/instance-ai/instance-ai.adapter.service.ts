@@ -1074,19 +1074,6 @@ export class InstanceAiAdapterService {
 			workflowDependencyQueryService,
 		} = this;
 
-		// Node contracts: a build locks each contract node to its frozen bundle. Keep the
-		// other meta keys, because an update writes the meta column as a whole.
-		const nodeContractsMeta = async (
-			json: WorkflowJSON,
-			workflowId: string | undefined,
-		): Promise<Pick<WorkflowEntity, 'meta'> | Record<string, never>> => {
-			if (!json.meta || !('nodeContracts' in json.meta)) return {};
-			const existing = workflowId
-				? await workflowRepository.findOne({ where: { id: workflowId }, select: ['id', 'meta'] })
-				: null;
-			const meta = { ...existing?.meta, nodeContracts: json.meta.nodeContracts };
-			return { meta };
-		};
 		const logger = this.logger;
 		const assertNotReadOnly = () => this.assertInstanceNotReadOnly('workflows');
 		// Resolved once per context, upstream in `createContext`: the tool registers the action from
@@ -1774,7 +1761,6 @@ export class InstanceAiAdapterService {
 					settings,
 					pinData: sdkPinDataToRuntime(json.pinData),
 					nodeGroups: sdkNodeGroupsToRuntime(json.nodeGroups),
-					...(await nodeContractsMeta(json, undefined)),
 				} as Partial<WorkflowEntity>);
 
 				let updated: WorkflowEntity;
@@ -1875,7 +1861,6 @@ export class InstanceAiAdapterService {
 					settings,
 					pinData: sdkPinDataToRuntime(json.pinData),
 					nodeGroups: sdkNodeGroupsToRuntime(json.nodeGroups),
-					...(await nodeContractsMeta(json, workflowId)),
 				} as Partial<WorkflowEntity>);
 
 				let updated: WorkflowEntity;

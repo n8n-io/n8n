@@ -31,6 +31,7 @@ import {
 	toTableName,
 } from '@/modules/data-table/utils/sql-utils';
 import { WorkflowIndexService } from '@/modules/workflow-index/workflow-index.service';
+import { pinNodeContracts } from '@/node-contracts-run';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { PolicyViolationError } from '@/policy/policy-violation.error';
 import { decompressFolder } from '@/utils/compression.util';
@@ -161,6 +162,7 @@ export class ImportService {
 
 			if (hasInvalidCreds) await this.replaceInvalidCreds(workflow, projectId);
 			validateWorkflowStructure(workflow);
+			workflow.nodes = await pinNodeContracts(workflow.nodes);
 
 			for (const warning of sanitizeNodeGroupDescriptions(workflow)) {
 				this.logger.warn(`Workflow "${workflow.name}": ${warning}`);

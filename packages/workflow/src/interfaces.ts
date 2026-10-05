@@ -1745,10 +1745,23 @@ export type ICustomTelemetryTag = {
 };
 
 export type OnError = 'continueErrorOutput' | 'continueRegularOutput' | 'stopWorkflow';
+/**
+ * The exact version of the node contract that a contract node runs. The host writes it at each
+ * save when node contracts are enabled.
+ */
+export interface INodeContractPin {
+	/** `major.minor.patch` of the action version. The major is the `typeVersion` of the node. */
+	version: string;
+	/** `sha256:<hex>` of the manifest bytes of the version. It identifies the version in a store. */
+	digest: string;
+}
+
 export interface INode {
 	id: string;
 	name: string;
 	typeVersion: number;
+	/** The contract version that a contract node runs. Other nodes do not have it. */
+	contract?: INodeContractPin;
 	type: string;
 	position: [number, number];
 	disabled?: boolean;

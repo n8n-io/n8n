@@ -534,10 +534,11 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 	}
 
 	/**
-	 * Up to `take` workflows with an `id` greater than `afterId`, with their `meta`, for the node
-	 * contracts sync. `published` picks workflows with or without a published version.
+	 * Up to `take` workflows with an `id` greater than `afterId`, with their nodes and the nodes of
+	 * their published version, for the node contracts sync. `published` picks workflows with or
+	 * without a published version.
 	 */
-	async findNodeContractMetaPage({
+	async findNodeContractNodesPage({
 		published,
 		afterId,
 		take,
@@ -545,9 +546,15 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 		published: boolean;
 		afterId: string | undefined;
 		take: number;
-	}): Promise<Array<Pick<WorkflowEntity, 'id' | 'name' | 'meta'>>> {
+	}): Promise<Array<Pick<WorkflowEntity, 'id' | 'name' | 'nodes' | 'activeVersion'>>> {
 		return await this.find({
-			select: ['id', 'name', 'meta'],
+			select: {
+				id: true,
+				name: true,
+				nodes: true,
+				activeVersion: { versionId: true, nodes: true },
+			},
+			relations: { activeVersion: true },
 			where: {
 				activeVersionId: published ? Not(IsNull()) : IsNull(),
 				...(afterId === undefined ? {} : { id: MoreThan(afterId) }),

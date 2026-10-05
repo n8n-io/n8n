@@ -1,4 +1,3 @@
-import { versionsOf } from '@n8n/nodes-base-next';
 import type { IDataObject, WorkflowJSON } from '@n8n/workflow-sdk';
 import * as flowSdk from '@n8n/workflow-sdk/next';
 import {
@@ -25,7 +24,6 @@ import {
 	sampledKeysOf,
 	catalogProvidersOf,
 	legacyNodeIssues,
-	lockNodeContracts,
 	modelCatalogFile,
 	nextWorkspaceFiles,
 	nodeOutputsDeclaration,
@@ -813,65 +811,8 @@ import { googleGemini } from '@n8n/nodes/googleGemini';`;
 		});
 	});
 
-	describe('lockNodeContracts', () => {
-		const nodes = [
-			{
-				id: '1',
-				name: 'Start',
-				type: 'n8n-nodes-base.manualTrigger',
-				typeVersion: 1,
-				position: [0, 0],
-			},
-			{
-				id: '2',
-				name: 'Get',
-				type: '@n8n/nodes-base-next.notionDatabasePageGetAll',
-				typeVersion: 1,
-				position: [0, 0],
-			},
-		] as WorkflowJSON['nodes'];
-
-		it('locks contract nodes by name to the bundled version', () => {
-			const locked = lockNodeContracts({ name: 'wf', nodes, connections: {} });
-			const [head] = versionsOf('notion.databasePage.getAll');
-			const { semver, bundleHash, contractHash } = head.manifest;
-
-			expect(locked.meta).toEqual({
-				nodeContracts: {
-					Get: { action: 'notion.databasePage.getAll', version: semver, bundleHash, contractHash },
-				},
-			});
-		});
-
-		it('locks a contract tool node to the version of its action', () => {
-			const tool = {
-				id: '3',
-				name: 'Fetch',
-				type: '@n8n/nodes-base-next.httpRequestGetTool',
-				typeVersion: 3,
-				position: [0, 0] as [number, number],
-			};
-			const locked = lockNodeContracts({ name: 'wf', nodes: [nodes[0], tool], connections: {} });
-			const [head] = versionsOf('httpRequest.get');
-
-			expect(locked.meta).toEqual({
-				nodeContracts: {
-					Fetch: {
-						action: 'httpRequest.get',
-						version: head.manifest.semver,
-						bundleHash: head.manifest.bundleHash,
-						contractHash: head.manifest.contractHash,
-					},
-				},
-			});
-		});
-
-		it('leaves a workflow without contract nodes unchanged', () => {
-			const workflow = { name: 'wf', nodes: [nodes[0]], connections: {} };
-			expect(lockNodeContracts(workflow)).toBe(workflow);
-		});
-
-		it('locks the owned slot of a composed node by name, and no other slot', () => {
+	describe('composed nodes', () => {
+		it('synthesizes fixtures for the owned slot of a composed node only', () => {
 			const composed = (name: string, operation: string) => ({
 				id: name,
 				name,
@@ -880,23 +821,19 @@ import { googleGemini } from '@n8n/nodes/googleGemini';`;
 				position: [0, 0] as [number, number],
 				parameters: { resource: 'databasePage', operation, database: 'x' },
 			});
+			const trigger = {
+				id: '1',
+				name: 'Start',
+				type: 'n8n-nodes-base.manualTrigger',
+				typeVersion: 1,
+				position: [0, 0] as [number, number],
+			};
 			const workflow = {
 				name: 'wf',
-				nodes: [nodes[0], composed('Get', 'getAll'), composed('Create', 'create')],
+				nodes: [trigger, composed('Get', 'getAll'), composed('Create', 'create')],
 				connections: {},
 			};
-			const [head] = versionsOf('notion.databasePage.getAll');
 
-			expect(lockNodeContracts(workflow).meta).toEqual({
-				nodeContracts: {
-					Get: {
-						action: 'notion.databasePage.getAll',
-						version: head.manifest.semver,
-						bundleHash: head.manifest.bundleHash,
-						contractHash: head.manifest.contractHash,
-					},
-				},
-			});
 			expect(Object.keys(synthesizedFixtures(workflow))).toEqual(['Get']);
 		});
 	});

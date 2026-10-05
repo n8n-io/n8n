@@ -920,7 +920,10 @@ export function parseFixtures(text: string): ContractFixtures {
 	return value;
 }
 
-/** What a workflow pins per contract node, in `meta.nodeContracts[nodeName]`. */
+/**
+ * The identity of the version that a contract node pins, from the manifest of the pin on the
+ * node (`INode.contract`). The update policy compares candidates with it.
+ */
 export interface NodeContractLock {
 	/** The contract id, e.g. `notion.databasePage.getAll`. */
 	readonly action: string;

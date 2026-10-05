@@ -4,25 +4,39 @@ import { OnLeaderTakeover } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import {
 	isContractNodeType,
-	locksOf,
+	isNodeContractPin,
 	nodeTypeOf,
 	runsNodeContract,
 	syncContractStore,
 	type ContractStore,
 	type ContractSyncResult,
-	type LockedNode,
-	type NodeContractLock,
+	type PinnedNode,
 	type VersionManifest,
 } from '@n8n/nodes-base-next';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { InstanceSettings } from 'n8n-core';
-import { UserError, type INode, type IWorkflowBase } from 'n8n-workflow';
+import {
+	UserError,
+	type INode,
+	type INodeContractPin,
+	type IWorkflowBase,
+	type NodeLoader,
+} from 'n8n-workflow';
 
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
-import { NodeContractsStore } from '@/node-contracts-registry';
+import { contractActionOf, NodeContractsStore } from '@/node-contracts-registry';
 
 const PAGE_SIZE = 100;
 const NO_RESULT: ContractSyncResult = { added: [], failed: [], unsupported: [] };
+
+/** The contract nodes of `nodes` that have a pin, with their action. */
+const pinnedOf = (loaders: Readonly<Record<string, NodeLoader>>, nodes: readonly INode[]) =>
+	nodes.flatMap((node) => {
+		const action = contractActionOf(loaders, node);
+		return action && isNodeContractPin(node.contract)
+			? [{ node, action: action.id, pin: node.contract }]
+			: [];
+	});
 
 const merge = (a: ContractSyncResult, b: ContractSyncResult): ContractSyncResult => ({
 	added: [...a.added, ...b.added],
@@ -38,8 +52,9 @@ export interface NodeContractsSyncOptions {
 }
 
 /**
- * Puts the bundles that saved workflows lock into the node contracts store. n8n ships only the
- * HEAD of each action, so an older locked version comes from the registry.
+ * Puts the versions that the nodes of saved workflows and of their published versions pin into
+ * the node contracts store. n8n ships only the HEAD of each action, so an older pinned version
+ * comes from the registry.
  */
 @Service()
 export class NodeContractsSync {
@@ -80,7 +95,7 @@ export class NodeContractsSync {
 		published: boolean,
 		afterId: string | undefined,
 	): Promise<ContractSyncResult> {
-		const { nodes, next } = await this.lockedPage(published, afterId);
+		const { nodes, next } = await this.pinnedPage(published, afterId);
 		const result = nodes.length > 0 ? await syncContractStore(store, nodes, since) : NO_RESULT;
 		this.report(result);
 		const newMajor = () => !this.listsAll(result.added);
@@ -91,57 +106,71 @@ export class NodeContractsSync {
 		return merge(result, await this.syncPages(store, options, since, published, next));
 	}
 
-	/** The locked nodes of one page of workflows, and the id that the next page starts after. */
-	private async lockedPage(published: boolean, afterId: string | undefined) {
-		const workflows = await this.workflowRepository.findNodeContractMetaPage({
+	/**
+	 * The pinned nodes of one page of workflows, of the draft and of the published version, and
+	 * the id that the next page starts after.
+	 */
+	private async pinnedPage(published: boolean, afterId: string | undefined) {
+		const workflows = await this.workflowRepository.findNodeContractNodesPage({
 			published,
 			afterId,
 			take: PAGE_SIZE,
 		});
-		const nodes: LockedNode[] = workflows.flatMap(({ id, name, meta }) =>
-			locksOf(meta).map(([node, lock]) => ({ workflowId: id, workflowName: name, node, lock })),
-		);
+		const { loaders } = this.loadNodesAndCredentials;
+		const nodes = workflows.flatMap(({ id, name, nodes: draft, activeVersion }) => {
+			const all = pinnedOf(loaders, [...draft, ...(activeVersion?.nodes ?? [])]);
+			return all
+				.filter(
+					({ node, pin }, index) =>
+						all.findIndex(
+							(other) => other.node.name === node.name && other.pin.digest === pin.digest,
+						) === index,
+				)
+				.map(
+					({ node, action, pin }): PinnedNode => ({
+						workflowId: id,
+						workflowName: name,
+						node: node.name,
+						action,
+						pin,
+					}),
+				);
+		});
 		const last = workflows.at(-1);
 		return { nodes, next: workflows.length < PAGE_SIZE ? undefined : last?.id };
 	}
 
-	/** The locks of all saved workflows. */
-	async locks(): Promise<NodeContractLock[]> {
+	/** The pinned nodes of all saved workflows and of their published versions. */
+	async pinnedNodes(): Promise<PinnedNode[]> {
 		return [
-			...(await this.locksOfPages(true, undefined)),
-			...(await this.locksOfPages(false, undefined)),
+			...(await this.pinnedNodesOfPages(true, undefined)),
+			...(await this.pinnedNodesOfPages(false, undefined)),
 		];
 	}
 
-	private async locksOfPages(
+	private async pinnedNodesOfPages(
 		published: boolean,
 		afterId: string | undefined,
-	): Promise<NodeContractLock[]> {
-		const { nodes, next } = await this.lockedPage(published, afterId);
-		const locks = nodes.map(({ lock }) => lock);
-		if (next === undefined) return locks;
-		return [...locks, ...(await this.locksOfPages(published, next))];
+	): Promise<PinnedNode[]> {
+		const { nodes, next } = await this.pinnedPage(published, afterId);
+		if (next === undefined) return nodes;
+		return [...nodes, ...(await this.pinnedNodesOfPages(published, next))];
 	}
 
 	private report({ added, failed, unsupported }: ContractSyncResult) {
 		added.forEach(({ id, semver, bundleHash }) =>
 			this.logger.info(`Added ${id}@${semver} to the node contracts store`, { bundleHash }),
 		);
-		failed.forEach(({ workflowId, workflowName, node, lock, error }) =>
+		failed.forEach(({ workflowId, workflowName, node, action, pin, error }) =>
 			this.logger.warn(
 				`Workflow "${workflowName}" (${workflowId}) cannot run node "${node}": ${error}`,
-				{
-					workflowId,
-					action: lock.action,
-					version: lock.version,
-					bundleHash: lock.bundleHash,
-				},
+				{ workflowId, action, version: pin.version, digest: pin.digest },
 			),
 		);
-		unsupported.forEach(({ workflowId, workflowName, node, lock, nodeContract }) =>
+		unsupported.forEach(({ workflowId, workflowName, node, action, pin, nodeContract }) =>
 			this.logger.warn(
-				`Workflow "${workflowName}" (${workflowId}) locks node "${node}" to ${lock.action}@${lock.version}, which needs Node Contract ${nodeContract}. This host does not run it.`,
-				{ workflowId, action: lock.action, version: lock.version, bundleHash: lock.bundleHash },
+				`Workflow "${workflowName}" (${workflowId}) pins node "${node}" to ${action}@${pin.version}, which needs Node Contract ${nodeContract}. This host does not run it.`,
+				{ workflowId, action, version: pin.version, digest: pin.digest },
 			),
 		);
 	}
@@ -165,27 +194,22 @@ export class NodeContractsSync {
 	}
 
 	/**
-	 * Before a run: puts the locked bundle of each contract node whose major no node type lists
+	 * Before a run: puts the pinned version of each contract node whose major no node type lists
 	 * into the store, then rebuilds the node types. The store fetch has a short timeout. Its
-	 * error names the action, version, bundle hash, and registry.
+	 * error names the action, version, digest, and registry.
 	 */
-	async prepareRun({ id, nodes }: Pick<IWorkflowBase, 'id' | 'nodes'>) {
+	async prepareRun({ nodes }: Pick<IWorkflowBase, 'nodes'>) {
 		const missing = nodes.filter(
 			({ type, typeVersion }) => isContractNodeType(type) && !this.listsVersion(type, typeVersion),
 		);
-		if (missing.length === 0 || !id) return;
-		const [workflow] = await this.workflowRepository.findByIds([id], { fields: ['meta'] });
-		const locks = new Map(locksOf(workflow?.meta));
-		const locked = missing.flatMap((node) => {
-			const lock = locks.get(node.name);
-			return lock ? [{ node, lock }] : [];
-		});
-		if (locked.length === 0) return;
+		if (missing.length === 0) return;
+		const pinned = pinnedOf(this.loadNodesAndCredentials.loaders, missing);
+		if (pinned.length === 0) return;
 		const store = await this.nodeContractsStore.open();
 		const manifests = await Promise.all(
-			locked.map(async ({ node, lock }) => {
-				const { manifest } = await store.locked(lock);
-				assertRunsAs(node, lock, manifest);
+			pinned.map(async ({ node, action, pin }) => {
+				const { manifest } = await store.locked(action, pin);
+				assertRunsAs(node, action, pin, manifest);
 				return manifest;
 			}),
 		);
@@ -199,7 +223,12 @@ export class NodeContractsSync {
 }
 
 /** A stored version that cannot give the node its major would rebuild the node types for nothing. */
-function assertRunsAs(node: INode, lock: NodeContractLock, manifest: VersionManifest) {
+function assertRunsAs(
+	node: INode,
+	action: string,
+	pin: INodeContractPin,
+	manifest: VersionManifest,
+) {
 	const checks: ReadonlyArray<readonly [boolean, string]> = [
 		[nodeTypeOf(manifest) === node.type, `is a version of ${nodeTypeOf(manifest)}`],
 		[manifest.contract.version === node.typeVersion, `is major ${manifest.contract.version}`],
@@ -211,7 +240,7 @@ function assertRunsAs(node: INode, lock: NodeContractLock, manifest: VersionMani
 	const reason = checks.find(([passes]) => !passes)?.[1];
 	if (reason) {
 		throw new UserError(
-			`Node "${node.name}" cannot run on version ${node.typeVersion}: its lock ${lock.action}@${lock.version} (bundle ${lock.bundleHash}) ${reason}`,
+			`Node "${node.name}" cannot run on version ${node.typeVersion}: its pin ${action}@${pin.version} (${pin.digest}) ${reason}`,
 		);
 	}
 }

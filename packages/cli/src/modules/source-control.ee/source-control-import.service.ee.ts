@@ -55,6 +55,7 @@ import { DataTable } from '@/modules/data-table/data-table.entity';
 import { DataTableRepository } from '@/modules/data-table/data-table.repository';
 import { isValidColumnName, isValidDataTableId } from '@/modules/data-table/utils/sql-utils';
 import { RedactionEnforcementService } from '@/modules/redaction/redaction-enforcement.service';
+import { pinNodeContracts } from '@/node-contracts-run';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { PolicyViolationError } from '@/policy/policy-violation.error';
 import { isUniqueConstraintError } from '@/response-helper';
@@ -828,6 +829,9 @@ export class SourceControlImportService {
 		this.logger.debug(`Importing workflow file ${candidate.file}`);
 
 		const importedWorkflow = await this.parseWorkflowFromFile(candidate.file);
+		if (importedWorkflow.nodes) {
+			importedWorkflow.nodes = await pinNodeContracts(importedWorkflow.nodes);
+		}
 
 		importedWorkflow.nodeGroups ??= [];
 

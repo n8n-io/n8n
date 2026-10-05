@@ -10,6 +10,11 @@ export const workflowNodeFieldDocs = {
 	name: { example: 'Jira' },
 	type: { example: 'n8n-nodes-base.jira' },
 	typeVersion: { example: 1 },
+	contract: {
+		description:
+			'The exact contract version that a contract node runs. n8n writes it at save when node contracts are enabled.',
+		example: { version: '1.0.0', digest: 'sha256:<64 hex characters>' },
+	},
 	executeOnce: { example: false },
 	alwaysOutputData: { example: false },
 	retryOnFail: { example: false },

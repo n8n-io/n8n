@@ -24,6 +24,7 @@ import {
 	isContractNodeType,
 	isStoreStatusRecord,
 	MIGRATED_NODES,
+	migratedSlotOf,
 	nodeNameOf,
 	nodeTypeOf,
 	packageOf,
@@ -649,10 +650,10 @@ async function containerOciOf({
 }
 
 /**
- * Lets each contract node run the version that the lock in `meta.nodeContracts` resolves to, in
- * the runtime that `N8N_NODES_NEXT_RUNTIMES_*` allows for its trust class.
- * Known limit: the lock comes from the saved workflow. An execution of an unsaved change or
- * of a published history version uses the meta of the current saved workflow.
+ * Lets each contract node run the version that its pin (`INode.contract`) resolves to, in the
+ * runtime that `N8N_NODES_NEXT_RUNTIMES_*` allows for its trust class. The workflow policy
+ * `meta.nodeContractsPolicy` comes from the current saved workflow, also for a run of a history
+ * version.
  */
 export async function useNodeContractsRegistry() {
 	const globalConfig = Container.get(GlobalConfig);
@@ -819,6 +820,65 @@ export function contractPermissionsOf(
 		.frozenVersionsOf(name)
 		.find(({ manifest }) => manifest.contract.version === typeVersion);
 	return version && permissionsOf(version.manifest.contract);
+}
+
+/**
+ * The action and the major that a node runs as a contract: a contract node type, its agent tool
+ * type, or a slot of a migrated legacy node. `undefined` for any other node, and for a trigger,
+ * which runs the version that its node type projects.
+ */
+export function contractActionOf(
+	loaders: Readonly<Record<string, NodeLoader>>,
+	node: Pick<INode, 'type' | 'typeVersion' | 'parameters'>,
+): { readonly id: string; readonly major: number } | undefined {
+	const slot = migratedSlotOf(node);
+	if (slot) return { id: slot.action.id, major: slot.major };
+	const separator = node.type.lastIndexOf('.');
+	const contracts = loaders[node.type.slice(0, separator)];
+	if (!(contracts instanceof ContractNodeLoader)) return undefined;
+	const tool = toolActionOfNode(node);
+	// Any major gives the id, also when the node type does not list the major of the node.
+	const [version] = contracts.frozenVersionsOf(
+		tool ? nodeNameOf(tool.id) : node.type.slice(separator + 1),
+	);
+	if (!version || version.manifest.kind === 'trigger') return undefined;
+	return { id: version.manifest.id, major: node.typeVersion };
+}
+
+/**
+ * The nodes of a save with the pin of each contract node, see `ContractStore.pinOf`. A node
+ * without a pin takes the pin of the stored node with its id and type, so a client that drops
+ * the field keeps the pin. A pin that no source has stays only when it is new to this save, so
+ * that a sync can fetch it; a stored one, e.g. of a HEAD that a release replaced, is re-pinned.
+ * Any other node loses its pin.
+ */
+export async function pinnedNodesOf(
+	nodes: readonly INode[],
+	storedNodes: readonly INode[] = [],
+): Promise<INode[]> {
+	const mayPin = ({ type, contract }: INode) =>
+		contract !== undefined || isContractNodeType(type) || type in MIGRATED_NODES;
+	if (!nodes.some(mayPin)) return [...nodes];
+	const { loaders } = Container.get(LoadNodesAndCredentials);
+	const actions = nodes.map((node) => contractActionOf(loaders, node));
+	if (nodes.every((node, index) => !actions[index] && node.contract === undefined)) {
+		return [...nodes];
+	}
+	const store = await Container.get(NodeContractsStore).open();
+	const stored = new Map(storedNodes.map((node) => [node.id, node]));
+	return await Promise.all(
+		nodes.map(async (node, index) => {
+			const action = actions[index];
+			const previous = stored.get(node.id);
+			const saved = previous?.type === node.type ? previous.contract : undefined;
+			const current = node.contract ?? saved;
+			const keepUnknown = current?.digest !== saved?.digest;
+			const pin = action && (await store.pinOf(action.id, action.major, current, { keepUnknown }));
+			if (pin === node.contract) return node;
+			const { contract: _, ...rest } = node;
+			return pin ? { ...rest, contract: pin } : rest;
+		}),
+	);
 }
 
 /**

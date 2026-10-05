@@ -59,6 +59,7 @@ import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { ExternalHooks, toWorkflowLifecycleHookActor } from '@/external-hooks';
 import { validateEntity } from '@/generic-helpers';
 import { RedactionEnforcementService } from '@/modules/redaction/redaction-enforcement.service';
+import { pinNodeContracts } from '@/node-contracts-run';
 import { NodeTypes } from '@/node-types';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import { enforceWorkflowPublishPolicy } from '@/policy/enforce-workflow-publish';
@@ -552,6 +553,10 @@ export class WorkflowService {
 				workflowId,
 				user,
 			);
+		}
+
+		if (workflowUpdateData.nodes) {
+			workflowUpdateData.nodes = await pinNodeContracts(workflowUpdateData.nodes, workflow.nodes);
 		}
 
 		// Update the workflow's version when changing nodes, connections, or nodeGroups

@@ -53,7 +53,7 @@ flowchart LR
 | Version | Of what | Where | At run time |
 |---|---|---|---|
 | Node Contract version | the spec | `nodeContract` in each manifest; the WIT package version | Yes: the host range `N8N_NODE_CONTRACT_RANGE` (default `>=2.0.0 <3.0.0`) and the newest minor that the host implements |
-| action, trigger, provider version | the content | `semver` (the major is the n8n `typeVersion`). The source sets the major and the minor. Freeze sets the patch: the newest published patch of that minor, plus one when the bundle changed. A build without `N8N_NODE_CONTRACTS_REGISTRY_URL` sets patch 0, so `tolerant` does not take that HEAD for a lock of an older bundle of the same minor | Yes: a workflow pins it |
+| action, trigger, provider version | the content | `semver` (the major is the n8n `typeVersion`). The source sets the major and the minor. Freeze sets the patch: the newest published patch of that minor, plus one when the bundle changed. A build without `N8N_NODE_CONTRACTS_REGISTRY_URL` sets patch 0, so `tolerant` does not take that HEAD for a pin of an older bundle of the same minor | Yes: a workflow pins it |
 | credential version | the content | `semver` of the credential manifest; an action pins `<id>@<major>` in `credentials`, e.g. `notion.token@1` | Yes: the pin |
 | SDK version | `@n8n/node-sdk` | `sdk` in each manifest | No: for traceability only |
 | n8n version | the product | — | Only through the Node Contract range it supports |
@@ -117,10 +117,11 @@ nodes-base-next):
 {"id":"gmail.message.get","deprecate":"1","message":"Use major 2","use":"gmail.message.get@2","at":"…","signatures":[…]}
 ```
 
-- **Yank**: the host runs the version as no newer patch. A node that has a pin of it still runs
-  it. For a major that only the store has, the node type lists the newest version that is not
-  withdrawn, so a new node does not get the version. The embedded HEAD stays the version of its
-  major: a node without a pin and the AI builder still use a yanked HEAD.
+- **Yank**: the host runs the version as no newer patch, and a save pins no node to it. A node
+  that has a pin of it still runs it. For a major that only the store has, the node type lists
+  the newest version that is not withdrawn. The embedded HEAD stays the projected version of its
+  major: when a major has no other version, a save leaves the node without a pin, and the node
+  runs the yanked HEAD.
 - **Revoke**: a yank, and the host also refuses to run the version. An admin can allow it with
   `N8N_NODE_CONTRACTS_REVOKED_ALLOW=<id>@<version>,…`.
 - **Deprecate**: `major`, `major.minor` or `major.minor.patch`. The reader gives the line
@@ -133,7 +134,7 @@ it, or every line when no key is set. A line applies to a version only when its 
 least the origin of the version: only the first-party key withdraws a first-party version, and
 an unsigned line applies only to a private version. The lines arrive with
 `n8n contracts:import`, with `contracts:export`, and from the registry index of each id that
-the leader main reads (a sync of the locked ids, a download, a newer-patch check).
+the leader main reads (a sync of the pinned ids, a download, a newer-patch check).
 `contracts:export` writes only the yank and revoke lines of the versions that it writes. An
 embedded HEAD is not a stored version, so the export drops its lines. To move such a line to a
 host without a registry, import a copy of the registry folder.

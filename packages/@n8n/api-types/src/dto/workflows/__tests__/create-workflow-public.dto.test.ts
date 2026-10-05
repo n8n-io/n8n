@@ -27,6 +27,23 @@ describe('CreateWorkflowPublicDto', () => {
 		expect(CreateWorkflowPublicDto.safeParse(validPayload).success).toBe(true);
 	});
 
+	test('accepts the contract pin of a node copied back from a workflow response', () => {
+		const contract = { version: '3.2.0', digest: `sha256:${'a'.repeat(64)}` };
+		const [node] = validPayload.nodes;
+		const withPin = { ...validPayload, nodes: [{ ...node, contract }] };
+
+		expect(CreateWorkflowPublicDto.safeParse(withPin)).toMatchObject({
+			success: true,
+			data: { nodes: [{ contract }] },
+		});
+		expect(
+			CreateWorkflowPublicDto.safeParse({
+				...validPayload,
+				nodes: [{ ...node, contract: { ...contract, extra: 1 } }],
+			}).success,
+		).toBe(false);
+	});
+
 	test('rejects a non-string workflow description', () => {
 		expect(CreateWorkflowPublicDto.safeParse({ ...validPayload, description: 42 }).success).toBe(
 			false,

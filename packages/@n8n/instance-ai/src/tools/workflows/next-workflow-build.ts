@@ -15,15 +15,8 @@ import {
 	resourceLookupsOf,
 	type ResourceLookupCall,
 } from '@n8n/node-sdk/host';
-import { toContract, type NodeContractLock } from '@n8n/node-sdk/registry';
-import {
-	actionOfNode,
-	actions,
-	isContractNodeType,
-	migratedSlotOf,
-	toolActionOfNode,
-	versionsOf,
-} from '@n8n/nodes-base-next';
+import { toContract } from '@n8n/node-sdk/registry';
+import { actionOfNode, actions, isContractNodeType, toolActionOfNode } from '@n8n/nodes-base-next';
 import { isRecord } from '@n8n/utils/is-record';
 import { hasPlaceholderDeep } from '@n8n/utils/placeholder';
 import { sublimeSearch } from '@n8n/utils/search/sublime-search';
@@ -1467,28 +1460,4 @@ export async function typecheckWorkflowSource(
 			...(detail ? [detail] : []),
 		].join('\n'),
 	};
-}
-
-/**
- * Locks each contract node, by node name, to the bundled version it was built and verified
- * with. The instance update policy decides later if a newer patch may run instead.
- */
-export function lockNodeContracts(workflow: WorkflowJSON): WorkflowJSON {
-	const nodeContracts = Object.fromEntries(
-		workflow.nodes.flatMap((node): Array<[string, NodeContractLock]> => {
-			const action = actionOfNode(node) ?? toolActionOfNode(node);
-			// A composed node version runs a fixed action major; a contract node type runs its own.
-			const major = migratedSlotOf(node)?.major ?? node.typeVersion;
-			const manifest = action
-				? versionsOf(action.id).find(({ manifest }) => manifest.contract.version === major)
-						?.manifest
-				: undefined;
-			if (!manifest || !node.name) return [];
-			const { id, semver, bundleHash, contractHash } = manifest;
-			return [[node.name, { action: id, version: semver, bundleHash, contractHash }]];
-		}),
-	);
-	if (Object.keys(nodeContracts).length === 0) return workflow;
-	const meta = { ...workflow.meta, nodeContracts };
-	return { ...workflow, meta };
 }

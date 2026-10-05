@@ -221,16 +221,17 @@ describe('compileWorkflowSource', () => {
 			});
 		});
 
-		it('locks each contract node to its bundled version', async () => {
+		it('accepts valid contract input and leaves the pins to the host save', async () => {
 			const result = await compileWorkflowSource(
 				makeContext({ nodeContractsEnabled: true }),
 				'src/workflows/contract.workflow.json',
 				contractJson({ messageId: 'abc' }),
 			);
-			expect(result).toMatchObject({
-				success: true,
-				workflow: { meta: { nodeContracts: { Get: { action: 'gmail.message.get' } } } },
-			});
+			expect(result.success).toBe(true);
+			expect(result.success && result.workflow.meta).toBeUndefined();
+			expect(result.success && result.workflow.nodes.some((node) => 'contract' in node)).toBe(
+				false,
+			);
 		});
 
 		it('keeps the JSON as written without the flag', async () => {
@@ -242,7 +243,7 @@ describe('compileWorkflowSource', () => {
 			expect(result.success && result.workflow.meta).toBeUndefined();
 		});
 
-		it('builds a legacy SDK source without the typed build, then checks and locks its contract nodes', async () => {
+		it('builds a legacy SDK source without the typed build, then checks its contract nodes', async () => {
 			const built = (messageId: unknown) =>
 				({
 					exitCode: 0,
@@ -255,7 +256,7 @@ describe('compileWorkflowSource', () => {
 			const source = "import { workflow, node } from '@n8n/workflow-sdk';\n";
 			vi.mocked(runInSandbox).mockResolvedValueOnce(built('abc')).mockResolvedValueOnce(built(42));
 
-			const locked = await compileWorkflowSource(
+			const accepted = await compileWorkflowSource(
 				makeContext({ nodeContractsEnabled: true }),
 				'src/workflows/main.workflow.ts',
 				source,
@@ -270,11 +271,7 @@ describe('compileWorkflowSource', () => {
 				"node --import tsx build.mjs '/home/daytona/workspace/src/workflows/main.workflow.ts'",
 				"node --import tsx build.mjs '/home/daytona/workspace/src/workflows/main.workflow.ts'",
 			]);
-			expect(locked).toMatchObject({
-				success: true,
-				compiler: 'sandbox-tsx',
-				workflow: { meta: { nodeContracts: { Get: { action: 'gmail.message.get' } } } },
-			});
+			expect(accepted).toMatchObject({ success: true, compiler: 'sandbox-tsx' });
 			expect(rejected).toMatchObject({
 				success: false,
 				reason: 'workflow_source_type_errors',

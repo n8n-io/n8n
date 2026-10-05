@@ -25,9 +25,13 @@ import type { INode, INodeType } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 import { mock } from 'vitest-mock-extended';
 
+import { versionsOf } from '@n8n/nodes-base-next';
+
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import type { ExternalHooks } from '@/external-hooks';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
+import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import { ContractNodeLoader } from '@/node-contracts-registry';
 import { NodeTypes } from '@/node-types';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { OwnershipService } from '@/services/ownership.service';
@@ -358,6 +362,92 @@ describe('update()', () => {
 		expect(workflowData.nodes).toEqual(workflow.nodes);
 		expect(workflowData.versionId).not.toBe(workflow.versionId);
 		expect(addRecordSpy).not.toBeCalled();
+	});
+});
+
+describe('update() with node contracts', () => {
+	const { instanceAi } = Container.get(GlobalConfig);
+	const [head] = versionsOf('httpRequest.get');
+	const headPin = head && { version: head.manifest.semver, digest: head.digest };
+	const nodeOf = (name: string, type: string, contract?: INode['contract']): INode => ({
+		id: name,
+		name,
+		type,
+		typeVersion: 3,
+		position: [0, 0],
+		parameters: {},
+		...(contract && { contract }),
+	});
+	const get = (contract?: INode['contract']) =>
+		nodeOf('Get', '@n8n/nodes-base-next.httpRequestGet', contract);
+	const tool = nodeOf('Tool', '@n8n/nodes-base-next.httpRequestGetTool');
+	const set = nodeOf('Set', 'n8n-nodes-base.set');
+
+	beforeAll(async () => {
+		const loader = new ContractNodeLoader([], [], async () => ({
+			versions: async () => new Map(),
+			credentials: async () => new Map(),
+		}));
+		await loader.loadAll();
+		Container.set(
+			LoadNodesAndCredentials,
+			Object.assign(mock<LoadNodesAndCredentials>(), { loaders: { [loader.packageName]: loader } }),
+		);
+	});
+
+	afterEach(() => {
+		instanceAi.nodeContractsEnabled = true;
+	});
+
+	const save = async (
+		nodes: INode[],
+		workflowId: string,
+		owner: Awaited<ReturnType<typeof createOwner>>,
+	) => {
+		await workflowService.update(owner, { nodes } as WorkflowEntity, workflowId, {
+			forceSave: true,
+		});
+		const saved = await workflowRepository.findOneByOrFail({ id: workflowId });
+		const history = await Container.get(WorkflowHistoryRepository).findOneByOrFail({
+			versionId: saved.versionId,
+		});
+		return { saved: saved.nodes, history: history.nodes };
+	};
+
+	test('pins every contract node and keeps the pins in the history version', async () => {
+		const owner = await createOwner();
+		const workflow = await createWorkflowWithHistory({}, owner);
+
+		const { saved, history } = await save([get(), tool, set], workflow.id, owner);
+
+		expect(saved.map((node) => node.contract)).toEqual([headPin, headPin, undefined]);
+		expect(history).toEqual(saved);
+	});
+
+	test('keeps a new pin of the same major, re-pins a pin of another major, keeps a dropped pin, and re-pins a saved pin that no source has', async () => {
+		const owner = await createOwner();
+		const workflow = await createWorkflowWithHistory({}, owner);
+		const unknown = { version: '3.0.1', digest: `sha256:${'b'.repeat(64)}` };
+
+		const first = await save(
+			[get(unknown), { ...tool, contract: { ...unknown, version: '2.0.0' } }],
+			workflow.id,
+			owner,
+		);
+		const second = await save([get(unknown), tool], workflow.id, owner);
+
+		expect(first.saved.map((node) => node.contract)).toEqual([unknown, headPin]);
+		expect(second.saved.map((node) => node.contract)).toEqual([headPin, headPin]);
+	});
+
+	test('writes no pin with node contracts off', async () => {
+		instanceAi.nodeContractsEnabled = false;
+		const owner = await createOwner();
+		const workflow = await createWorkflowWithHistory({}, owner);
+
+		const { saved } = await save([get(), tool], workflow.id, owner);
+
+		expect(saved.map((node) => 'contract' in node)).toEqual([false, false]);
 	});
 });
 
