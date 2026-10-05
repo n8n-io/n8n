@@ -70,6 +70,31 @@ describe('LeaseHeartbeat', () => {
 		heartbeat.stop();
 	});
 
+	it('lands a third renewal before the lease expires when the first two fail slowly', async () => {
+		const leaseDurationMs = 60_000;
+		const slowFailure = async () =>
+			await new Promise<boolean>((_, reject) =>
+				setTimeout(() => reject(new Error('db down')), 10_000),
+			);
+		const renew = vi
+			.fn()
+			.mockImplementationOnce(slowFailure)
+			.mockImplementationOnce(slowFailure)
+			.mockResolvedValue(true);
+		const onRenewal = vi.fn();
+		const heartbeat = new LeaseHeartbeat(
+			renew,
+			{ leaseDurationMs, leaseSetAt: performance.now() },
+			{ onRenewal },
+		);
+
+		await vi.advanceTimersByTimeAsync(leaseDurationMs);
+		expect(onRenewal).toHaveBeenCalledWith('renewed');
+		expect(onRenewal).not.toHaveBeenCalledWith('expired');
+
+		heartbeat.stop();
+	});
+
 	it('waits at least five seconds between renewals, so a short lease expires before its first one', async () => {
 		const renew = vi.fn().mockResolvedValue(true);
 		const onRenewal = vi.fn();

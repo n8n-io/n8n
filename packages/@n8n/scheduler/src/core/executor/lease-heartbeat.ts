@@ -87,12 +87,12 @@ export class LeaseHeartbeat {
 		this.expiryTimer.unref();
 	}
 
-	private scheduleBeat(): void {
+	private scheduleBeat(delayMs = this.intervalMs): void {
 		this.beatTimer = setTimeout(
 			() => {
 				this.beat().catch((error: unknown) => this.hooks.onRenewalError?.(error));
 			},
-			Math.min(this.intervalMs, MAX_INTEGER_32BITS_SIGNED),
+			Math.min(delayMs, MAX_INTEGER_32BITS_SIGNED),
 		);
 		this.beatTimer.unref();
 	}
@@ -118,6 +118,7 @@ export class LeaseHeartbeat {
 			}
 			this.hooks.onRenewalError?.(error);
 		}
-		this.scheduleBeat();
+		// Count the interval from this beat's start, so a slow renewal does not delay the next one.
+		this.scheduleBeat(Math.max(0, startedAt + this.intervalMs - performance.now()));
 	}
 }
