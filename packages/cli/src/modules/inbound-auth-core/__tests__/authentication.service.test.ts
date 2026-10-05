@@ -156,6 +156,7 @@ describe('OAuth2AuthenticationService', () => {
 			const result = await serviceWith([bearerFake, secondBearer]).authenticate(input);
 
 			expect(result).toBe(expected);
+			expect(bearerFake.selectSource).toHaveBeenCalledWith(input);
 			expect(secondBearer.verify).toHaveBeenCalledWith(input, src);
 			expect(bearerFake.verify).not.toHaveBeenCalled();
 		});

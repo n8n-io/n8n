@@ -224,13 +224,17 @@ export default defineConfig(
 		},
 	},
 	{
-		// The two places that hold the raw signing API. NEVER add to this list.
+		// The places that hold the raw signing API. The one admitted reason to be here besides
+		// JwtService itself: verifying tokens signed by a foreign key, which JwtService cannot
+		// verify. Do NOT add a file for any other reason.
 		files: [
 			// Owns the signing key and derives every audience from a purpose.
 			'./src/services/jwt.service.ts',
 			// Verifies subject tokens with a foreign key from the trusted-key store,
 			// against the audience that key is registered for.
 			'./src/modules/token-exchange/services/token-exchange.service.ts',
+			// Verifies bearer tokens with the JWKS discovered for a trusted source.
+			'./src/modules/inbound-auth-core/oauth2-bearer.driver.ts',
 		],
 		rules: {
 			'@typescript-eslint/no-restricted-imports': [

@@ -18,7 +18,6 @@ import { mock } from 'vitest-mock-extended';
 // Importing the module runs the @BackendModule decorator, registering its metadata.
 import { OAuth2AuthenticationService } from '../authentication.service';
 import { InboundAuthCoreModule } from '../inbound-auth-core.module';
-import { TrustedSourceDiscoveryService } from '../trusted-source-discovery.service';
 import { TrustedSourceDiscoveryTask } from '../trusted-source-discovery.task';
 import { TrustedSourceDbStore } from '../trusted-source.store';
 
@@ -36,7 +35,6 @@ describe('InboundAuthCoreModule', () => {
 
 		beforeAll(async () => {
 			Container.set(TrustedSourceDbStore, dbStore);
-			Container.set(TrustedSourceDiscoveryService, mock<TrustedSourceDiscoveryService>());
 			await new InboundAuthCoreModule().init();
 		});
 
