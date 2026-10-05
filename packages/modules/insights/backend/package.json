@@ -15,6 +15,11 @@
       "import": "./dist/insights.module.js",
       "require": "./dist/insights.module.js"
     },
+    "./config": {
+      "types": "./dist/insights.config.d.ts",
+      "import": "./dist/insights.config.js",
+      "require": "./dist/insights.config.js"
+    },
     "./testing": {
       "types": "./dist/testing.d.ts",
       "import": "./dist/testing.js",
@@ -23,6 +28,9 @@
   },
   "typesVersions": {
     "*": {
+      "config": [
+        "dist/insights.config.d.ts"
+      ],
       "module": [
         "dist/insights.module.d.ts"
       ],

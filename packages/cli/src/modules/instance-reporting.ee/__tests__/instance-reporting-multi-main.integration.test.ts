@@ -11,7 +11,8 @@ import { Tracing, type InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
 import type { License } from '@/license';
-import { InsightsConfig, type InsightsService } from '@n8n/backend-module-insights';
+import type { InsightsService } from '@n8n/backend-module-insights';
+import { InsightsConfig } from '@n8n/backend-module-insights/config';
 import { packagedModules } from '@/modules/modules.manifest';
 import { DurableJobProvisioner } from '@/scheduling/durable-job-provisioner';
 import { buildMaterializerTransaction } from '@/scheduling/durable-scheduler';

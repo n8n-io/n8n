@@ -3,7 +3,7 @@ import type { Settings, SettingsRepository } from '@n8n/db';
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import { InsightsConfig } from '@n8n/backend-module-insights';
+import { InsightsConfig } from '@n8n/backend-module-insights/config';
 import { InstanceReportingSettingsService } from '../instance-reporting-settings.service';
 import { CENTRAL_INSTANCE_MONITORING_SETTINGS_KEY } from '../instance-reporting.constants';
 

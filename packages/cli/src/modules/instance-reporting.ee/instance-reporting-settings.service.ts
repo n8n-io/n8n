@@ -4,7 +4,7 @@ import { Service } from '@n8n/di';
 import { randomInt } from 'node:crypto';
 import { jsonParse } from 'n8n-workflow';
 
-import { InsightsConfig } from '@n8n/backend-module-insights';
+import { InsightsConfig } from '@n8n/backend-module-insights/config';
 import { CENTRAL_INSTANCE_MONITORING_SETTINGS_KEY } from './instance-reporting.constants';
 
 /** `HH:mm`, 24-hour. ISO 8601's local-time form; this instance reads it as UTC. */

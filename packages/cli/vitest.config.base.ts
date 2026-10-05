@@ -22,6 +22,10 @@ const alias = {
 		__dirname,
 		'../modules/insights/backend/src/insights.module.ts',
 	),
+	'@n8n/backend-module-insights/config': path.resolve(
+		__dirname,
+		'../modules/insights/backend/src/insights.config.ts',
+	),
 	'@n8n/backend-module-insights': path.resolve(
 		__dirname,
 		'../modules/insights/backend/src/index.ts',
