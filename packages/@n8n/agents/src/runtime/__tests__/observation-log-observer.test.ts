@@ -15,6 +15,7 @@ import {
 	renderObserverTranscript,
 	runObservationLogObserver,
 } from '../memory/observation-log-observer';
+import { MAX_MODEL_TOOL_RESULT_TOKENS } from '../tools/tool-result-guard';
 
 type GenerateTextCall = Record<string, unknown>;
 type GenerateTextResult = {
@@ -270,7 +271,9 @@ describe('renderObserverTranscript', () => {
 		expect(transcript).toContain('"blob":"[omitted large blob]"');
 	});
 
-	it('redacts credential-looking tool inputs and outputs before serialization', () => {
+	it('preserves document fields while redacting credentials and omitting binary data', () => {
+		const document = 'A complete document paragraph. '.repeat(30);
+		const binary = 'YWJj'.repeat(300);
 		const transcript = renderObserverTranscript([
 			{
 				id: 'a1',
@@ -293,6 +296,26 @@ describe('renderObserverTranscript', () => {
 						output: {
 							access_token: 'output-access-token',
 							message: 'Authorization: Basic output-basic-token',
+							data: document,
+							fileContent: document,
+							textDocument: { mimeType: 'text/plain', data: 'Decoded text' },
+							jsonDocument: {
+								mediaType: 'application/json',
+								data: { paragraph: 'Decoded object' },
+							},
+							arrayDocument: { mimeType: 'application/json', data: ['Decoded array'] },
+							nodeData: [{ json: { mimeType: 'text/plain', data: 'Decoded node output' } }],
+							content: Array.from({ length: 21 }, (_, index) => ({
+								type: 'text',
+								text: `Section ${index}: ${document}`,
+							})),
+							sections: Object.fromEntries(
+								Array.from({ length: 41 }, (_, index) => [`section${index}`, document]),
+							),
+							image: { type: 'image-data', data: binary, mediaType: 'image/png' },
+							file: { type: 'file-data', data: binary, mediaType: 'application/pdf' },
+							blob: binary,
+							imageUrl: `data:image/png;base64,${binary}`,
 						},
 					},
 				],
@@ -302,6 +325,16 @@ describe('renderObserverTranscript', () => {
 		expect(transcript).toContain('[REDACTED]');
 		expect(transcript).toContain('"x-safe-header":"keep-me"');
 		expect(transcript).toContain('safe=1');
+		expect(transcript).toContain(`"data":"${document}"`);
+		expect(transcript).toContain(`"fileContent":"${document}"`);
+		expect(transcript).toContain('"data":"Decoded text"');
+		expect(transcript).toContain('"data":{"paragraph":"Decoded object"}');
+		expect(transcript).toContain('"data":["Decoded array"]');
+		expect(transcript).toContain('"data":"Decoded node output"');
+		expect(transcript).toContain(`"text":"Section 20: ${document}"`);
+		expect(transcript).toContain(`"section40":"${document}"`);
+		expect(transcript).toContain('"data":"[omitted large blob]"');
+		expect(transcript).not.toContain(binary);
 		expect(transcript).not.toContain('sk-live-input-secret');
 		expect(transcript).not.toContain('input-token');
 		expect(transcript).not.toContain('inline-secret');
@@ -429,6 +462,58 @@ describe('renderObserverTranscript', () => {
 });
 
 describe('runObservationLogObserver', () => {
+	it.each(['document', 'media'] as const)(
+		'bounds oversized %s results before observation',
+		async (kind) => {
+			const store = new InMemoryMemory();
+			const document = `DOCUMENT_START ${'Document text. '.repeat(6_000)} DOCUMENT_END`;
+			const output =
+				kind === 'document'
+					? { content: document }
+					: {
+							type: 'content',
+							value: [{ type: 'file-url', url: document, mediaType: 'text/plain' }],
+						};
+			await store.saveThread({ id: 'thread-1', resourceId: 'user-1' });
+			await store.saveMessages({
+				threadId: 'thread-1',
+				resourceId: 'user-1',
+				messages: [
+					{
+						id: 'm1',
+						createdAt: new Date(0),
+						role: 'assistant',
+						content: [
+							{
+								type: 'tool-call',
+								toolCallId: 'tc1',
+								toolName: 'fetch_report',
+								providerExecuted: true,
+								input: {},
+								state: 'resolved',
+								output,
+							},
+						],
+					},
+				],
+			});
+
+			await runObservationLogObserver({
+				memory: store,
+				observationScopeId: 'thread-1',
+				observationLogTailLimit: 20,
+				tokenCounter: (text) => text.length,
+				observe: async ({ transcript }) => {
+					expect(transcript).toContain('"_truncated":true');
+					expect(transcript).toContain('DOCUMENT_START');
+					expect(transcript).toContain('DOCUMENT_END');
+					expect(transcript.length).toBeLessThan(MAX_MODEL_TOOL_RESULT_TOKENS + 1_000);
+					return 'NO_OBSERVATIONS';
+				},
+			});
+		},
+	);
+
 	it('writes parsed observations and advances the cursor after observing', async () => {
 		const store = new InMemoryMemory();
 		const parentText = 'User needs the current request remembered.';

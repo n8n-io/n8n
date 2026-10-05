@@ -91,6 +91,19 @@ const renderModelDialog = ({ props }: { props: Record<string, unknown> }) =>
 const renderSearchDialog = ({ props }: { props: Record<string, unknown> }) =>
 	renderConnectionDialog({ props: { kind: 'search', ...props } });
 
+async function selectOption(select: HTMLElement, label: string) {
+	// N8nSelect2 portals the menu and mounts it when the trigger opens.
+	await userEvent.click(select);
+	const option = await waitFor(() => {
+		const match = Array.from(document.querySelectorAll('[data-test-id="select-item"]')).find(
+			(element) => element.textContent?.includes(label),
+		);
+		expect(match).toBeTruthy();
+		return match as HTMLElement;
+	});
+	await userEvent.click(option);
+}
+
 function setModuleSettings(
 	settingsStore: ReturnType<typeof useSettingsStore>,
 	instanceAi: FrontendModuleSettings['instance-ai'],
@@ -239,7 +252,7 @@ describe('SettingsInstanceAiView', () => {
 		});
 
 		it('chains missing setup steps while keeping settings-style actions', async () => {
-			vi.mocked(store.fetch).mockResolvedValue(undefined);
+			vi.mocked(store.fetch).mockResolvedValue(true);
 			vi.mocked(store.verifyModel).mockResolvedValue({ ok: true });
 			vi.mocked(store.verifySandbox).mockResolvedValue({ ok: true });
 			vi.mocked(store.save).mockImplementation(async () => {
@@ -461,6 +474,9 @@ describe('SettingsInstanceAiView', () => {
 			await waitFor(() => expect(store.isLoading).toBe(false));
 			expect(getByTestId('n8n-agent-model-env-value')).toBeVisible();
 			expect(getByTestId('n8n-agent-sandbox-env-value')).toBeVisible();
+			expect(getByTestId('n8n-agent-sandbox-env-value')).toHaveTextContent(
+				'instanceAi.onboarding.foundOnServer',
+			);
 
 			await fireEvent.click(getByTestId('n8n-agent-model-row'));
 			await fireEvent.click(getByTestId('n8n-agent-sandbox-row'));
@@ -584,22 +600,69 @@ describe('SettingsInstanceAiView', () => {
 			expect(save).toHaveBeenCalled();
 		});
 
-		it('shows the Execute MCP tools permission when the group is expanded', async () => {
-			const { getByTestId, getByLabelText } = renderComponent();
+		it('shows the MCP tool category permissions when the group is expanded', async () => {
+			const { getByTestId, getByLabelText, queryByTestId } = renderComponent();
 
 			await fireEvent.click(getByLabelText('Toggle settings.n8nAgent.permissions.group.mcp'));
 
-			await waitFor(() => expect(getByTestId('n8n-agent-permission-executeMcpTool')).toBeVisible());
+			await waitFor(() => {
+				expect(getByTestId('n8n-agent-permission-mcpRead')).toBeVisible();
+				expect(getByTestId('n8n-agent-permission-mcpWrite')).toBeVisible();
+			});
+			expect(queryByTestId('n8n-agent-permission-executeMcpTool')).toBeNull();
+		});
+
+		it.each([
+			{
+				permissions: { mcpRead: 'always_allow' as const, mcpWrite: 'require_approval' as const },
+				summary: 'settings.n8nAgent.permissions.group.default',
+			},
+			{
+				permissions: { mcpRead: 'blocked' as const, mcpWrite: 'require_approval' as const },
+				summary: 'settings.n8nAgent.permissions.group.exception',
+			},
+			{
+				permissions: { mcpRead: 'blocked' as const, mcpWrite: 'always_allow' as const },
+				summary: 'settings.n8nAgent.permissions.group.exceptions',
+			},
+		])('shows $summary for MCP tool category permissions', ({ permissions, summary }) => {
+			store.$patch({
+				settings: {
+					...store.settings!,
+					permissions,
+				},
+			});
+
+			const { getByTestId } = renderComponent();
+
+			expect(getByTestId('n8n-agent-permission-group-mcp').textContent).toContain(summary);
 		});
 
 		it('locks the MCP permission group when MCP access is disabled', () => {
 			store.$patch({ settings: { ...store.settings!, mcpAccessEnabled: false } });
 
-			const { getByText, queryByTestId, queryByLabelText } = renderComponent();
+			const { queryByTestId, queryByLabelText } = renderComponent();
 
-			expect(getByText('settings.n8nAgent.permissions.group.mcpDisabled')).toBeVisible();
 			expect(queryByLabelText('Toggle settings.n8nAgent.permissions.group.mcp')).toBeNull();
-			expect(queryByTestId('n8n-agent-permission-executeMcpTool')).toBeNull();
+			expect(queryByTestId('n8n-agent-permission-mcpRead')).toBeNull();
+			expect(queryByTestId('n8n-agent-permission-mcpWrite')).toBeNull();
+		});
+
+		it('persists an MCP tool category permission change', async () => {
+			const setPermission = vi.spyOn(store, 'setPermission');
+			const save = vi.spyOn(store, 'save').mockResolvedValue(true);
+			const { getByTestId, getByLabelText } = renderComponent();
+
+			await fireEvent.click(getByLabelText('Toggle settings.n8nAgent.permissions.group.mcp'));
+			await waitFor(() => expect(getByTestId('n8n-agent-permission-mcpWrite')).toBeVisible());
+
+			await selectOption(
+				getByTestId('n8n-agent-permission-mcpWrite'),
+				'settings.n8nAgent.permissions.blocked',
+			);
+
+			expect(setPermission).toHaveBeenCalledWith('mcpWrite', 'blocked');
+			expect(save).toHaveBeenCalled();
 		});
 
 		it('offers only always_allow and blocked for createPreference', async () => {

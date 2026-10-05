@@ -435,12 +435,12 @@
 				"hash": "4a6882cb8d62"
 			}
 		],
-		"packages/@n8n/benchmark/package.json": [
+		"packages/quality/efficiency/scale/benchmark/package.json": [
 			{
 				"rule": "catalog-violations",
 				"line": 38,
 				"message": "@oclif/core appears in 4 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
-				"hash": "67f9d81d9528"
+				"hash": "e07bb1da47d7"
 			}
 		],
 		"packages/@n8n/cli/package.json": [
@@ -2043,48 +2043,48 @@
 				"hash": "0f94a71d5ae8"
 			}
 		],
-		"packages/testing/playwright/eslint.config.mjs": [
+		"packages/quality/testing/playwright/eslint.config.mjs": [
 			{
 				"rule": "lint-config-layering",
 				"line": 21,
-				"message": "packages/testing/playwright turns '@typescript-eslint/no-unused-expressions' down to 'off' for the whole package.",
-				"hash": "e2f93b5b591a"
+				"message": "packages/quality/testing/playwright turns '@typescript-eslint/no-unused-expressions' down to 'off' for the whole package.",
+				"hash": "c789a142996b"
 			},
 			{
 				"rule": "lint-config-layering",
 				"line": 22,
-				"message": "packages/testing/playwright turns '@typescript-eslint/no-use-before-define' down to 'off' for the whole package.",
-				"hash": "75d3ec1677ba"
+				"message": "packages/quality/testing/playwright turns '@typescript-eslint/no-use-before-define' down to 'off' for the whole package.",
+				"hash": "fcc3a69d8a2e"
 			},
 			{
 				"rule": "lint-config-layering",
 				"line": 23,
-				"message": "packages/testing/playwright turns '@typescript-eslint/promise-function-async' down to 'off' for the whole package.",
-				"hash": "35dbe9e44ada"
+				"message": "packages/quality/testing/playwright turns '@typescript-eslint/promise-function-async' down to 'off' for the whole package.",
+				"hash": "5ab4c080de15"
 			},
 			{
 				"rule": "lint-config-layering",
 				"line": 24,
-				"message": "packages/testing/playwright turns 'playwright/expect-expect' down to 'warn' for the whole package.",
-				"hash": "e8b5f4b0f0dd"
+				"message": "packages/quality/testing/playwright turns 'playwright/expect-expect' down to 'warn' for the whole package.",
+				"hash": "3a584940f6c7"
 			},
 			{
 				"rule": "lint-config-layering",
 				"line": 25,
-				"message": "packages/testing/playwright turns 'playwright/max-nested-describe' down to 'warn' for the whole package.",
-				"hash": "77d82ee8a802"
+				"message": "packages/quality/testing/playwright turns 'playwright/max-nested-describe' down to 'warn' for the whole package.",
+				"hash": "8ea7fd515ed8"
 			},
 			{
 				"rule": "lint-config-layering",
 				"line": 27,
-				"message": "packages/testing/playwright turns 'playwright/no-skipped-test' down to 'warn' for the whole package.",
-				"hash": "14eb9eecd1b4"
+				"message": "packages/quality/testing/playwright turns 'playwright/no-skipped-test' down to 'warn' for the whole package.",
+				"hash": "6ce1d38312f9"
 			},
 			{
 				"rule": "lint-config-layering",
 				"line": 78,
-				"message": "packages/testing/playwright turns 'unicorn/filename-case' down to 'off' for the whole package.",
-				"hash": "de86b9645930"
+				"message": "packages/quality/testing/playwright turns 'unicorn/filename-case' down to 'off' for the whole package.",
+				"hash": "949214800425"
 			}
 		],
 		"packages/frontend/@n8n/design-system/eslint.config.mjs": [

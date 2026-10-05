@@ -26,6 +26,99 @@ describe('SharedWorkflowRepository', () => {
 		vi.spyOn(sharedWorkflowRepository, 'createQueryBuilder').mockReturnValue(queryBuilder);
 	});
 
+	describe('workflow access IDs', () => {
+		const rows = [
+			mock<SharedWorkflow>({ workflowId: 'workflow-1' }),
+			mock<SharedWorkflow>({ workflowId: 'workflow-2' }),
+		];
+
+		it('finds all workflow IDs for global access', async () => {
+			entityManager.find.mockResolvedValue(rows);
+
+			const result = await sharedWorkflowRepository.findWorkflowIdsForGlobalAccess();
+
+			expect(entityManager.find).toHaveBeenCalledWith(SharedWorkflow, {
+				select: ['workflowId'],
+			});
+			expect(result).toEqual(['workflow-1', 'workflow-2']);
+		});
+
+		it('limits global access workflow IDs to a project', async () => {
+			entityManager.find.mockResolvedValue(rows);
+
+			await sharedWorkflowRepository.findWorkflowIdsForGlobalAccess('project-1');
+
+			expect(entityManager.find).toHaveBeenCalledWith(SharedWorkflow, {
+				select: ['workflowId'],
+				where: { projectId: 'project-1' },
+			});
+		});
+
+		it('finds workflow IDs accessible through project and workflow roles', async () => {
+			entityManager.find.mockResolvedValue(rows);
+
+			const result = await sharedWorkflowRepository.findWorkflowIdsAccessibleToUser(
+				'user-1',
+				['workflow:owner'],
+				['project:viewer'],
+			);
+
+			expect(entityManager.find).toHaveBeenCalledWith(SharedWorkflow, {
+				select: ['workflowId'],
+				where: {
+					role: In(['workflow:owner']),
+					project: {
+						projectRelations: {
+							userId: 'user-1',
+							role: { slug: In(['project:viewer']) },
+						},
+					},
+				},
+			});
+			expect(result).toEqual(['workflow-1', 'workflow-2']);
+		});
+
+		it('finds workflow IDs shared with a user', async () => {
+			entityManager.find.mockResolvedValue(rows);
+
+			const result = await sharedWorkflowRepository.findWorkflowIdsSharedWithUser('user-1');
+
+			expect(entityManager.find).toHaveBeenCalledWith(SharedWorkflow, {
+				select: ['workflowId'],
+				where: {
+					role: 'workflow:editor',
+					project: {
+						projectRelations: {
+							userId: 'user-1',
+							role: { slug: 'project:personalOwner' },
+						},
+					},
+				},
+			});
+			expect(result).toEqual(['workflow-1', 'workflow-2']);
+		});
+
+		it('finds workflow IDs owned in a personal project', async () => {
+			entityManager.find.mockResolvedValue(rows);
+
+			const result = await sharedWorkflowRepository.findOwnedWorkflowIdsInPersonalProject('user-1');
+
+			expect(entityManager.find).toHaveBeenCalledWith(SharedWorkflow, {
+				select: ['workflowId'],
+				where: {
+					role: 'workflow:owner',
+					project: {
+						projectRelations: {
+							userId: 'user-1',
+							role: { slug: 'project:personalOwner' },
+						},
+					},
+				},
+			});
+			expect(result).toEqual(['workflow-1', 'workflow-2']);
+		});
+	});
+
 	describe('findOwnedWorkflowRemovalCandidates', () => {
 		const rootWorkflow = mock<WorkflowEntity>({
 			id: 'root',

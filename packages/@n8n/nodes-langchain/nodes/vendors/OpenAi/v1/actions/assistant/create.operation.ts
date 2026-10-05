@@ -45,7 +45,7 @@ const properties: INodeProperties[] = [
 		type: 'boolean',
 		default: false,
 		description:
-			'Whether to enable the code interpreter that allows the assistants to write and run Python code in a sandboxed execution environment, find more <a href="https://platform.openai.com/docs/assistants/tools/code-interpreter" target="_blank">here</a>',
+			'Whether to enable the code interpreter that allows the assistants to write and run Python code in a sandboxed execution environment, find more <a href="https://developers.openai.com/api/docs/guides/tools-code-interpreter" target="_blank">here</a>',
 	},
 	{
 		displayName: 'Knowledge Retrieval',
@@ -53,7 +53,7 @@ const properties: INodeProperties[] = [
 		type: 'boolean',
 		default: false,
 		description:
-			'Whether to augments the assistant with knowledge from outside its model, such as proprietary product information or documents, find more <a href="https://platform.openai.com/docs/assistants/tools/knowledge-retrieval" target="_blank">here</a>',
+			'Whether to augments the assistant with knowledge from outside its model, such as proprietary product information or documents, find more <a href="https://developers.openai.com/api/docs/guides/tools-file-search" target="_blank">here</a>',
 	},
 	//we want to display Files selector only when codeInterpreter true or knowledgeRetrieval true or both
 	{

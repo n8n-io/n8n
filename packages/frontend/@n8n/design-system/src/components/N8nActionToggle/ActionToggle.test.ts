@@ -29,4 +29,27 @@ describe('N8nActionToggle', () => {
 		expect(getByText('Duplicate')).toBeInTheDocument();
 		expect(getByText('Delete')).toBeInTheDocument();
 	});
+	it('defaults icon to horizontal orientation and is ellipsis', function () {
+		const { getByRole } = render(ActionToggle, {
+			props: {
+				actions: [{ label: 'Duplicate', value: 'duplicate' }],
+			},
+		});
+
+		expect(getByRole('button').querySelector('svg')).toHaveAttribute('data-icon', 'ellipsis');
+	});
+	it('should have bottom-end as default placement', async function () {
+		const { container, getByRole } = render(ActionToggle, {
+			props: {
+				actions: [{ label: 'Duplicate', value: 'duplicate' }],
+			},
+		});
+
+		await openMenu(container);
+
+		await waitFor(function () {
+			expect(getByRole('menu')).toHaveAttribute('data-side', 'bottom');
+			expect(getByRole('menu')).toHaveAttribute('data-align', 'end');
+		});
+	});
 });

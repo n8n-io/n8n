@@ -92,9 +92,10 @@ type Props = {
 	 *  instead of reading as a list to choose from. Existing credentials stay
 	 *  selectable — the user may change their mind once they see them. */
 	preferNewCredential?: boolean;
-	/** Workflow this credential slot belongs to, for telemetry attribution. Standalone
-	 *  hosts (Instance AI setup card) must pass it — they render without a provided
-	 *  workflow document; other hosts fall back to the injected document. */
+	/** Workflow this credential slot belongs to. Scopes the usable-credentials fetch
+	 *  and telemetry attribution. Standalone hosts (Instance AI setup card) must pass
+	 *  it — they render without a provided workflow document; other hosts fall back
+	 *  to the injected document. */
 	workflowId?: string;
 	/** When true, skip all global store writes (workflowsStore, nodeHelpers).
 	 *  Used by Instance AI to render credential selection without polluting the active workflow. */

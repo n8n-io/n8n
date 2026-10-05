@@ -4,13 +4,11 @@ import type { GlobalConfig } from '@n8n/config';
 import { type User, type SharedWorkflowRepository, WorkflowEntity } from '@n8n/db';
 import { hasGlobalScope } from '@n8n/permissions';
 import isEqual from 'lodash/isEqual';
-import { Workflow, type INode, type IWorkflowSettings } from 'n8n-workflow';
+import type { IWorkflowSettings } from 'n8n-workflow';
 import { z } from 'zod';
 
 import type { CollaborationService } from '@/collaboration/collaboration.service';
 import type { CredentialsService } from '@/credentials/credentials.service';
-import { SubworkflowPolicyDenialError } from '@/errors/subworkflow-policy-denial.error';
-import type { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks/subworkflow-policy-checker';
 import type { DataTableUserOperations } from '@/modules/data-table/data-table-proxy.service';
 import type { McpPostSaveMetricsService } from '@/modules/mcp/mcp-post-save-metrics.service';
 import type { NodeTypes } from '@/node-types';
@@ -24,8 +22,12 @@ import {
 	removeDefaultValues,
 	resolveNodeWebhookIds,
 } from '@/workflow-helpers';
+import {
+	isExpressionErrorWorkflowId,
+	staticErrorWorkflowId,
+	type ErrorWorkflowValidationService,
+} from '@/workflows/error-workflow-validation.service';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
-import type { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
 import type { WorkflowService } from '@/workflows/workflow.service';
 
 import { buildInvalidAiToolSourceErrorResponse } from './connection-structure-check';
@@ -366,119 +368,67 @@ type UpdateWorkflowOutput = z.infer<z.ZodObject<typeof outputSchema>>;
 
 /**
  * Validates a freshly-set `errorWorkflow` reference. Throws a teaching-oriented
- * error when the target does not exist / is inaccessible, has no active Error
- * Trigger node, or cannot be called by this workflow due to its sub-workflow
- * caller policy — each of which would otherwise silently prevent the error
- * workflow from running on failure. A 'DEFAULT' / cleared value skips the check.
- * An archived target, or one that is not available in MCP, is rejected like in
- * the by-id MCP tools.
+ * error when the value is an expression, or when the target does not exist / is
+ * inaccessible, has no active Error Trigger node, or cannot be called by this
+ * workflow due to its sub-workflow caller policy — each of which would otherwise
+ * silently prevent the error workflow from running on failure. A 'DEFAULT' /
+ * cleared value skips the check.
  */
 async function assertErrorWorkflowIsUsable({
 	errorWorkflowId,
 	parentWorkflowId,
 	user,
 	workflowFinderService,
-	workflowPublishedDataService,
-	useWorkflowPublicationService,
-	nodeTypes,
-	subworkflowPolicyChecker,
-	errorTriggerType,
+	errorWorkflowValidationService,
 }: {
 	errorWorkflowId: string | undefined;
 	parentWorkflowId: string;
 	user: User;
 	workflowFinderService: WorkflowFinderService;
-	workflowPublishedDataService: WorkflowPublishedDataService;
-	useWorkflowPublicationService: boolean;
-	nodeTypes: NodeTypes;
-	subworkflowPolicyChecker: SubworkflowPolicyChecker;
-	errorTriggerType: string;
+	errorWorkflowValidationService: ErrorWorkflowValidationService;
 }): Promise<void> {
-	if (!errorWorkflowId || errorWorkflowId === 'DEFAULT') {
-		return;
+	// The setting is never evaluated — an expression is used as a literal workflow
+	// id, so the handler would never run. Caught before `staticErrorWorkflowId`,
+	// which reports "no id to validate" for an expression and a cleared value alike.
+	if (isExpressionErrorWorkflowId(errorWorkflowId)) {
+		throw new Error(
+			`errorWorkflow does not accept expressions, and '${errorWorkflowId}' would be stored as a literal workflow ID that never matches, so the error workflow would never run. Pass a plain workflow ID (find one with search_workflows), or "DEFAULT" to clear it.`,
+		);
 	}
 
-	// Read access is required intentionally, mirroring the editor UI (the error
-	// workflow picker only lists workflows the user can read). Resolving the
-	// target without an access check would let callers probe arbitrary workflow
-	// IDs and learn their name / published / trigger / policy state from the
-	// validation errors below. Runtime not requiring read access is separate: it
-	// runs the error workflow under the owner project's context, gated by caller
-	// policy, which is about execution — not about who may configure the link.
-	const errorWorkflow = await workflowFinderService.findWorkflowForUser(
-		errorWorkflowId,
+	const staticId = staticErrorWorkflowId(errorWorkflowId);
+	if (!staticId) return;
+
+	const errorWorkflow = await workflowFinderService.findWorkflowForUser(staticId, user, [
+		'workflow:read',
+	]);
+	if (errorWorkflow) validateMcpWorkflow(errorWorkflow);
+
+	const problem = await errorWorkflowValidationService.findProblem({
+		errorWorkflowId: staticId,
+		parentWorkflowId,
 		user,
-		['workflow:read'],
-		// activeVersion is only the published source of truth when the publication
-		// service is off; otherwise we read it from the service below.
-		{ includeActiveVersion: !useWorkflowPublicationService },
-	);
-
-	if (!errorWorkflow) {
-		throw new Error(
-			`Error workflow '${errorWorkflowId}' was not found or you do not have access to it. Find a valid workflow ID with search_workflows, or create an error-handler workflow first.`,
-		);
-	}
-	validateMcpWorkflow(errorWorkflow);
-
-	// Runtime runs the PUBLISHED version of the error workflow, not its draft, and
-	// resolves it differently depending on the publication service flag — mirror
-	// WorkflowExecutionService.loadErrorWorkflowData exactly so we neither reject a
-	// workflow runtime would run nor accept a version runtime will not use.
-	let publishedNodes: INode[] | undefined;
-
-	if (useWorkflowPublicationService) {
-		const published = await workflowPublishedDataService.getPublishedWorkflowData(errorWorkflowId);
-		publishedNodes = published?.publishedVersion.nodes;
-	} else if (errorWorkflow.activeVersionId && errorWorkflow.activeVersion) {
-		publishedNodes = errorWorkflow.activeVersion.nodes ?? [];
-	}
-
-	if (!publishedNodes) {
-		throw new Error(
-			`Error workflow '${errorWorkflow.name}' (${errorWorkflowId}) has no published version, so n8n cannot run it when this workflow fails. Publish that workflow first (publish_workflow), then set it as the error workflow.`,
-		);
-	}
-
-	const hasErrorTrigger = publishedNodes.some(
-		(node) => node.type === errorTriggerType && node.disabled !== true,
-	);
-
-	if (!hasErrorTrigger) {
-		throw new Error(
-			`The published version of workflow '${errorWorkflow.name}' (${errorWorkflowId}) has no active Error Trigger node, so it would never run when this workflow fails. Add an Error Trigger node (${errorTriggerType}) and publish it, pick a different error workflow, or create a new error-handler workflow.`,
-		);
-	}
-
-	// Runtime blocks the error workflow if this workflow may not call it as a
-	// sub-workflow (see WorkflowExecutionService.executeErrorWorkflow). The
-	// policy checker only reads the target's id + settings, so an empty-node
-	// Workflow instance is sufficient.
-	const errorWorkflowInstance = new Workflow({
-		id: errorWorkflow.id,
-		name: errorWorkflow.name,
-		nodeTypes,
-		nodes: [],
-		connections: {},
-		active: false,
-		settings: errorWorkflow.settings ?? {},
 	});
 
-	try {
-		await subworkflowPolicyChecker.check(
-			errorWorkflowInstance,
-			parentWorkflowId,
-			undefined,
-			user.id,
-		);
-	} catch (error) {
-		if (error instanceof SubworkflowPolicyDenialError) {
-			throw new Error(
-				`Error workflow '${errorWorkflow.name}' (${errorWorkflowId}) cannot be called by this workflow because of its caller policy, so n8n would block it at runtime. Update that workflow's settings ("This workflow can be called by …") to allow this one — set it to any workflow, or add this workflow to its allowlist — or pick a different error workflow.`,
-			);
-		}
+	if (!problem) return;
 
-		throw error;
+	switch (problem.reason) {
+		case 'not-found':
+			throw new Error(
+				`Error workflow '${staticId}' was not found or you do not have access to it. Find a valid workflow ID with search_workflows, or create an error-handler workflow first.`,
+			);
+		case 'not-published':
+			throw new Error(
+				`Error workflow '${problem.name}' (${staticId}) has no published version, so n8n cannot run it when this workflow fails. Publish that workflow first (publish_workflow), then set it as the error workflow.`,
+			);
+		case 'no-error-trigger':
+			throw new Error(
+				`The published version of workflow '${problem.name}' (${staticId}) has no active Error Trigger node, so it would never run when this workflow fails. Add an Error Trigger node (${problem.errorTriggerType}) and publish it, pick a different error workflow, or create a new error-handler workflow.`,
+			);
+		case 'caller-policy':
+			throw new Error(
+				`Error workflow '${problem.name}' (${staticId}) cannot be called by this workflow because of its caller policy, so n8n would block it at runtime. Update that workflow's settings ("This workflow can be called by …") to allow this one — set it to any workflow, or add this workflow to its allowlist — or pick a different error workflow.`,
+			);
 	}
 }
 
@@ -536,11 +486,9 @@ function assertExecutionTimeoutWithinMax(
  */
 type WorkflowSettingsGuardDependencies = {
 	user: User;
-	nodeTypes: NodeTypes;
 	globalConfig: GlobalConfig;
 	workflowFinderService: WorkflowFinderService;
-	workflowPublishedDataService: WorkflowPublishedDataService;
-	subworkflowPolicyChecker: SubworkflowPolicyChecker;
+	errorWorkflowValidationService: ErrorWorkflowValidationService;
 };
 
 /**
@@ -565,11 +513,9 @@ async function assertWorkflowSettingsValid(
 	},
 	{
 		user,
-		nodeTypes,
 		globalConfig,
 		workflowFinderService,
-		workflowPublishedDataService,
-		subworkflowPolicyChecker,
+		errorWorkflowValidationService,
 	}: WorkflowSettingsGuardDependencies,
 ): Promise<void> {
 	// Validate a freshly-set error workflow so the agent can self-correct in
@@ -585,11 +531,7 @@ async function assertWorkflowSettingsValid(
 			parentWorkflowId: workflowId,
 			user,
 			workflowFinderService,
-			workflowPublishedDataService,
-			useWorkflowPublicationService: globalConfig.workflows.useWorkflowPublicationService,
-			nodeTypes,
-			subworkflowPolicyChecker,
-			errorTriggerType: globalConfig.nodes.errorTriggerType,
+			errorWorkflowValidationService,
 		});
 	}
 
@@ -1116,8 +1058,7 @@ export const createUpdateWorkflowTool = (
 	dataTableOps: DataTableUserOperations,
 	tagService: TagService,
 	globalConfig: GlobalConfig,
-	subworkflowPolicyChecker: SubworkflowPolicyChecker,
-	workflowPublishedDataService: WorkflowPublishedDataService,
+	errorWorkflowValidationService: ErrorWorkflowValidationService,
 	aiGatewayService: AiGatewayService,
 	options: {
 		/**
@@ -1136,11 +1077,9 @@ export const createUpdateWorkflowTool = (
 	// what is being validated.
 	const settingsGuardDependencies: WorkflowSettingsGuardDependencies = {
 		user,
-		nodeTypes,
 		globalConfig,
 		workflowFinderService,
-		workflowPublishedDataService,
-		subworkflowPolicyChecker,
+		errorWorkflowValidationService,
 	};
 
 	return {

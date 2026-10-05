@@ -1,4 +1,4 @@
-import { BaseRepository, TransactionRunner } from '@n8n/db';
+import { BaseRepository, OperationContext, TransactionRunner } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 
@@ -8,14 +8,23 @@ class TrustedSourceIdentityStore extends BaseRepository<TrustedSourceIdentityEnt
 	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
 		super(TrustedSourceIdentityEntity, dataSource.manager, transactionRunner);
 	}
+
+	override managerFor(ctx: OperationContext) {
+		return super.managerFor(ctx);
+	}
 }
 
 @Service()
 export class TrustedSourceIdentityRepository {
-	// ponytail: protected only so noUnusedLocals accepts a field nothing reads yet; private with the first method
-	protected readonly store: TrustedSourceIdentityStore;
+	private readonly store: TrustedSourceIdentityStore;
 
 	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
 		this.store = new TrustedSourceIdentityStore(dataSource, transactionRunner);
+	}
+
+	async clearByTrustedSourceId(trustedSourceId: string, ctx: OperationContext = {}): Promise<void> {
+		await this.store
+			.managerFor(ctx)
+			.delete(TrustedSourceIdentityEntity, { sourceId: trustedSourceId });
 	}
 }

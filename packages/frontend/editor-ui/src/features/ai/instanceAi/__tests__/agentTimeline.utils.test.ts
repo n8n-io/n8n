@@ -8,6 +8,7 @@ import type {
 import {
 	buildTimelineBlocks,
 	extractArtifacts,
+	extractBuiltWorkflowArtifacts,
 	isStreamingTimelineEntry,
 } from '../agentTimeline.utils';
 
@@ -307,6 +308,47 @@ describe('extractArtifacts', () => {
 			],
 		});
 		expect(extractArtifacts(node)).toEqual([]);
+	});
+});
+
+describe('extractBuiltWorkflowArtifacts', () => {
+	test('returns each successfully built workflow once', () => {
+		const toolCalls = [
+			makeToolCall({
+				toolCallId: 'tc-1',
+				toolName: 'build-workflow',
+				result: { success: true, workflowId: 'wf-1', workflowName: 'Hello World' },
+				completedAt: '2026-10-01T10:00:00.000Z',
+			}),
+			makeToolCall({
+				toolCallId: 'tc-2',
+				toolName: 'build-workflow',
+				result: { success: true, workflowId: 'wf-1', workflowName: 'Hello World' },
+			}),
+			makeToolCall({
+				toolCallId: 'tc-3',
+				toolName: 'build-workflow',
+				result: { success: false, workflowId: 'wf-2', errors: ['invalid'] },
+			}),
+			makeToolCall({ toolCallId: 'tc-4', toolName: 'workflows', result: { workflowId: 'wf-3' } }),
+		];
+
+		expect(extractBuiltWorkflowArtifacts(toolCalls)).toEqual([
+			{
+				type: 'workflow',
+				resourceId: 'wf-1',
+				name: 'Hello World',
+				completedAt: '2026-10-01T10:00:00.000Z',
+			},
+		]);
+	});
+
+	test('ignores build-workflow calls that have no result yet', () => {
+		expect(
+			extractBuiltWorkflowArtifacts([
+				makeToolCall({ toolName: 'build-workflow', isLoading: true }),
+			]),
+		).toEqual([]);
 	});
 });
 

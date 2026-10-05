@@ -130,6 +130,7 @@ describe('workflow_execution table (integration)', () => {
 			triggerOutputs: [{ foo: 'bar' }],
 			callerContext: { hostMode: 'trigger' },
 			responseExpectation: { kind: 'runEnd' },
+			finishedAt: null,
 		});
 	});
 
@@ -205,10 +206,10 @@ describe('workflow_execution table (integration)', () => {
 
 		const finished = await new TypeOrmExecutionStore(repo).finishExecution(created.id, 'failed');
 
-		expect(finished).toBe(true);
 		const row = await repo.findOneOrFail({ where: { id: created.id } });
 		expect(row.status).toBe('failed');
 		expect(row.finishedAt).toBeInstanceOf(Date);
+		expect(finished).toEqual({ finishedAt: row.finishedAt });
 	});
 
 	it.each<ExecutionStatus>(['completed', 'queued'])(
@@ -233,7 +234,7 @@ describe('workflow_execution table (integration)', () => {
 
 			const finished = await new TypeOrmExecutionStore(repo).finishExecution(created.id, 'failed');
 
-			expect(finished).toBe(false);
+			expect(finished).toBeNull();
 			const row = await repo.findOneOrFail({ where: { id: created.id } });
 			expect(row.status).toBe(status);
 			expect(row.finishedAt).toEqual(finishedAt);
@@ -248,10 +249,11 @@ describe('workflow_execution table (integration)', () => {
 
 			const cancelled = await new TypeOrmExecutionStore(repo).cancelExecution(id);
 
-			expect(cancelled).toBe(true);
 			const row = await repo.findOneOrFail({ where: { id } });
 			expect(row.status).toBe('cancelled');
 			expect(row.finishedAt).toBeInstanceOf(Date);
+			// the caller reports the time the row records, not a second reading of the clock
+			expect(cancelled).toEqual({ finishedAt: row.finishedAt });
 		},
 	);
 
@@ -264,7 +266,7 @@ describe('workflow_execution table (integration)', () => {
 
 			const cancelled = await new TypeOrmExecutionStore(repo).cancelExecution(id);
 
-			expect(cancelled).toBe(false);
+			expect(cancelled).toBeNull();
 			const row = await repo.findOneOrFail({ where: { id } });
 			expect(row.status).toBe(status);
 			expect(row.finishedAt).toEqual(finishedAt);

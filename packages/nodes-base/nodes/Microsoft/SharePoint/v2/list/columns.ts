@@ -8,7 +8,7 @@ import type {
 
 import { assertPathSegment } from '../helpers/utils';
 import { resolveSiteId } from '../site';
-import { microsoftApiRequest } from '../transport';
+import { microsoftApiRequest } from '../../transport';
 import { untilListSelected, untilSiteSelected } from './index';
 
 export interface SharePointListColumn {

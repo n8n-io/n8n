@@ -234,13 +234,16 @@ describe('WorkflowHistoryCompactionService', () => {
 	});
 
 	describe('compactHistories', () => {
-		const createService = (workflowHistoryRepository: WorkflowHistoryRepository) => {
+		const createService = (
+			workflowHistoryRepository: WorkflowHistoryRepository,
+			isLeader = true,
+		) => {
 			const eventService = mock<EventService>();
 			const compactingService = new WorkflowHistoryCompactionService(
 				config,
 				globalConfig,
 				mockLogger(),
-				mock<InstanceSettings>({ isLeader: true, instanceType: 'main', isMultiMain: true }),
+				mock<InstanceSettings>({ isLeader, instanceType: 'main', isMultiMain: true }),
 				dbConnection,
 				workflowHistoryRepository,
 				eventService,
@@ -260,6 +263,17 @@ describe('WorkflowHistoryCompactionService', () => {
 				new Date(now - 26 * Time.hours.toMilliseconds),
 				new Date(now - 24 * Time.hours.toMilliseconds),
 			);
+		});
+
+		it('should optimize on a main that is not the leader', async () => {
+			const workflowHistoryRepository = mock<WorkflowHistoryRepository>();
+			workflowHistoryRepository.getWorkflowIdsInRange.mockResolvedValue(['wf-1']);
+			workflowHistoryRepository.pruneHistory.mockResolvedValue({ seen: 2, deleted: 1 });
+			const { compactingService } = createService(workflowHistoryRepository, false);
+
+			await compactingService.optimizeHistories(new AbortController().signal);
+
+			expect(workflowHistoryRepository.pruneHistory).toHaveBeenCalledOnce();
 		});
 
 		it('should trim over the window between trimmingMinimumAge and the time window', async () => {

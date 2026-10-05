@@ -132,6 +132,64 @@ describe('diffMigrationFindings', () => {
 		expect(diff).toEqual({ toInsert: [], toMarkFixed: [], toReopen: [] });
 	});
 
+	describe('unknown pairs', () => {
+		it('keeps an open row open when the check is unknown', () => {
+			const diff = diffMigrationFindings({
+				targetVersion: TARGET_VERSION,
+				workflowIds: ['wf-1'],
+				hits: [],
+				existing: [existingRow(1, 'rule-a', 'wf-1', 'open')],
+				unknown: [{ ruleId: 'rule-a', workflowId: 'wf-1' }],
+			});
+
+			expect(diff).toEqual({ toInsert: [], toMarkFixed: [], toReopen: [] });
+		});
+
+		it('inserts nothing for an unknown check without a row, even when a hit is given', () => {
+			const diff = diffMigrationFindings({
+				targetVersion: TARGET_VERSION,
+				workflowIds: ['wf-1'],
+				hits: [{ ruleId: 'rule-a', workflowId: 'wf-1' }],
+				existing: [],
+				unknown: [{ ruleId: 'rule-a', workflowId: 'wf-1' }],
+			});
+
+			expect(diff).toEqual({ toInsert: [], toMarkFixed: [], toReopen: [] });
+		});
+
+		it('does not reopen a fixed row when the check is unknown', () => {
+			const diff = diffMigrationFindings({
+				targetVersion: TARGET_VERSION,
+				workflowIds: ['wf-1'],
+				hits: [{ ruleId: 'rule-a', workflowId: 'wf-1' }],
+				existing: [existingRow(3, 'rule-a', 'wf-1', 'fixed')],
+				unknown: [{ ruleId: 'rule-a', workflowId: 'wf-1' }],
+			});
+
+			expect(diff).toEqual({ toInsert: [], toMarkFixed: [], toReopen: [] });
+		});
+
+		it('still transitions the other rules on the same workflow', () => {
+			const diff = diffMigrationFindings({
+				targetVersion: TARGET_VERSION,
+				workflowIds: ['wf-1'],
+				hits: [{ ruleId: 'rule-b', workflowId: 'wf-1' }],
+				existing: [
+					existingRow(1, 'rule-a', 'wf-1', 'open'),
+					existingRow(2, 'rule-c', 'wf-1', 'open'),
+					existingRow(3, 'rule-d', 'wf-1', 'fixed'),
+				],
+				unknown: [{ ruleId: 'rule-a', workflowId: 'wf-1' }],
+			});
+
+			expect(diff).toEqual({
+				toInsert: [{ targetVersion: TARGET_VERSION, ruleId: 'rule-b', workflowId: 'wf-1' }],
+				toMarkFixed: [2],
+				toReopen: [],
+			});
+		});
+	});
+
 	it('returns an empty diff for empty inputs', () => {
 		const diff = diffMigrationFindings({
 			targetVersion: TARGET_VERSION,

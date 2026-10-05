@@ -38,7 +38,7 @@ describe('createResponseEmitter', () => {
 		expect(emitter.send(() => ({ ok: true }))).toEqual({ ok: false, error });
 	});
 
-	it.each(['none', 'runEnd'] as const)(
+	it.each(['none', 'runEnd', 'stream'] as const)(
 		'drops the response without building it when the caller expects %s',
 		(kind) => {
 			const sender = newSender();
@@ -49,6 +49,53 @@ describe('createResponseEmitter', () => {
 			});
 
 			const result = emitter.send(build);
+
+			expect(result.ok).toBe(true);
+			expect(build).not.toHaveBeenCalled();
+			expect(sender.send).not.toHaveBeenCalled();
+		},
+	);
+
+	it('builds and sends a chunk when the caller expects a stream', () => {
+		const sender = newSender();
+		const emitter = createResponseEmitter(sender, {
+			id: 'exec-1',
+			responseExpectation: { kind: 'stream' },
+		});
+
+		const result = emitter.chunk(() => ({ type: 'item', content: 'hi' }));
+
+		expect(result.ok).toBe(true);
+		expect(sender.send).toHaveBeenCalledExactlyOnceWith({
+			type: 'chunk',
+			executionId: 'exec-1',
+			payload: { type: 'item', content: 'hi' },
+		});
+	});
+
+	it('returns the error of the sender for a chunk', () => {
+		const error = new Error('Too large');
+		const sender = newSender();
+		vi.mocked(sender.send).mockReturnValue({ ok: false, error });
+		const emitter = createResponseEmitter(sender, {
+			id: 'exec-1',
+			responseExpectation: { kind: 'stream' },
+		});
+
+		expect(emitter.chunk(() => ({ ok: true }))).toEqual({ ok: false, error });
+	});
+
+	it.each(['none', 'runEnd', 'stepResponse'] as const)(
+		'drops a chunk without building it when the caller expects %s',
+		(kind) => {
+			const sender = newSender();
+			const build = vi.fn(() => ({ ok: true }));
+			const emitter = createResponseEmitter(sender, {
+				id: 'exec-1',
+				responseExpectation: { kind },
+			});
+
+			const result = emitter.chunk(build);
 
 			expect(result.ok).toBe(true);
 			expect(build).not.toHaveBeenCalled();

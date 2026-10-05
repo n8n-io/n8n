@@ -114,6 +114,7 @@ erDiagram
   varchar_64_ parentPrincipalHash
   varchar_255_ parentResourceId
   varchar_128_ parentThreadId
+  varchar pauseRequestId
   TEXT result
   datetime_3_ settledAt
   varchar_16_ status
