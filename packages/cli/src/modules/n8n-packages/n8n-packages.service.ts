@@ -1,3 +1,4 @@
+import { EventService } from '@n8n/backend-services';
 import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 

@@ -51,6 +51,13 @@ export class SlackApi implements ICredentialType {
 			type: 'hidden',
 			default: '',
 		},
+		{
+			// Set when n8n builds the Slack app for an Agent: the app sends its events to that Agent only
+			displayName: 'Agent ID',
+			name: 'agentId',
+			type: 'hidden',
+			default: '',
+		},
 	];
 
 	authenticate: IAuthenticateGeneric = {

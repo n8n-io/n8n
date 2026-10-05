@@ -179,6 +179,11 @@ export function useNodeExecution(
 			return '';
 		}
 
+		// An unusable credential blocks the whole run, so it outranks per-node reasons.
+		if (unusableCredentialReason.value) {
+			return unusableCredentialReason.value;
+		}
+
 		if (nodeRef.value?.disabled) {
 			return i18n.baseText('ndv.execute.nodeIsDisabled');
 		}
