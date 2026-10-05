@@ -71,17 +71,6 @@ const keyTypeItems = [
 	{ value: 'rsa', label: 'RSA' },
 ];
 
-type AuthType = (typeof authTypeItems.value)[number]['value'];
-type KeyType = (typeof keyTypeItems)[number]['value'];
-
-function onAuthType(value: AuthType) {
-	form.authType = value;
-}
-
-function onKeyType(value: KeyType) {
-	form.keyType = value;
-}
-
 const step = ref<'form' | 'key'>('form');
 const current = ref<PromotionProvider | null>(null);
 const usedBy = ref<PromotionConnectionSummary[]>([]);
@@ -362,12 +351,11 @@ async function onDelete() {
 			>
 				<N8nSelect2
 					id="promotion-provider-auth-type"
-					:model-value="form.authType"
+					v-model="form.authType"
 					:items="authTypeItems"
 					:disabled="isLoading || isEdit"
 					size="medium"
 					data-test-id="promotion-provider-auth-type-select"
-					@update:model-value="onAuthType"
 				/>
 			</N8nInputLabel>
 
@@ -379,12 +367,11 @@ async function onDelete() {
 				>
 					<N8nSelect2
 						id="promotion-provider-key-type"
-						:model-value="form.keyType"
+						v-model="form.keyType"
 						:items="keyTypeItems"
 						:disabled="isLoading"
 						size="medium"
 						data-test-id="promotion-provider-key-type-select"
-						@update:model-value="onKeyType"
 					/>
 				</N8nInputLabel>
 
