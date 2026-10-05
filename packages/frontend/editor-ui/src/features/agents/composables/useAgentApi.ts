@@ -20,6 +20,7 @@ import type {
 	AgentIntegrationStatusResponse,
 	AgentWhatsAppVerifyTokenResponse,
 	AgentJsonVectorStoreConfig,
+	AgentN8nChatAgentDetails,
 	AgentN8nChatThreadSummary,
 	AgentN8nChatThreadsResponse,
 	AgentSkill,
@@ -127,8 +128,8 @@ export const listAgentsPageGlobal = async (
 export const getN8nChatAgent = async (
 	context: IRestApiContext,
 	agentId: string,
-): Promise<AgentChatListItem> => {
-	return await makeRestApiRequest<AgentChatListItem>(
+): Promise<AgentN8nChatAgentDetails> => {
+	return await makeRestApiRequest<AgentN8nChatAgentDetails>(
 		context,
 		'GET',
 		`/agents/v2/n8n-chat/agents/${encodeURIComponent(agentId)}`,

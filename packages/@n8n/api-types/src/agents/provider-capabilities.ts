@@ -206,6 +206,19 @@ export function isAttachmentMediaTypeSupported(
 	return false;
 }
 
+/** Build a file-input `accept` string from a provider's attachment capabilities. */
+export function acceptedMimeTypesFromCapabilities(
+	capabilities: ProviderAttachmentCapabilities,
+): string {
+	return [
+		capabilities.image ? 'image/*' : null,
+		capabilities.pdf ? 'application/pdf' : null,
+		capabilities.audio ? 'audio/*' : null,
+	]
+		.filter((entry): entry is string => entry !== null)
+		.join(',');
+}
+
 export const REASONING_EFFORT_OPTIONS = ['low', 'medium', 'high'] as const;
 export type ReasoningEffort = (typeof REASONING_EFFORT_OPTIONS)[number];
 

@@ -5,7 +5,11 @@ import Draggable from 'vuedraggable';
 import { createMemoryHistory, createRouter } from 'vue-router';
 import { AGENT_SESSION_DETAIL_VIEW } from '../constants';
 import { APPROVAL_TOOL_NAME, N8N_CHAT_ACTION_TOOL_NAME, WAIT_TOOL_NAME } from '@n8n/api-types';
-import type { AgentChatQueueItem, AgentBackgroundJobDto } from '@n8n/api-types';
+import type {
+	AgentChatQueueItem,
+	AgentBackgroundJobDto,
+	ProviderAttachmentCapabilities,
+} from '@n8n/api-types';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type { ChatMessage } from '@/features/ai/shared/agentsChat/types';
 import AgentChatPanel from '../components/AgentChatPanel.vue';
@@ -95,6 +99,7 @@ vi.mock('@n8n/i18n', () => {
 		const translations: Record<string, string> = {
 			'agents.chat.input.placeholder.withAgent': `Message ${options?.interpolate?.agentName}…`,
 			'chat.messageQueue.title': `${options?.interpolate?.count} ${options?.adjustToNumber === 1 ? 'message' : 'messages'} up next`,
+			'agents.chat.attachments.unsupportedType': `${options?.interpolate?.fileName} is not a supported file type`,
 			'agents.chat.misconfigured.issuesPrefix': 'Check:',
 			'agents.chat.misconfigured.missing.tools': 'Tool configuration',
 			'agents.chat.misconfigured.missing.mcpServers': 'MCP server',
@@ -197,8 +202,9 @@ vi.mock('../composables/useAgentSessionLangSmithExport', () => ({
 }));
 
 // Reads a Pinia store for notifications — irrelevant to panel behavior.
+const showMessageMock = vi.fn();
 vi.mock('@n8n/composables/useToast', () => ({
-	useToast: () => ({ showMessage: vi.fn(), showError: showErrorMock }),
+	useToast: () => ({ showMessage: showMessageMock, showError: showErrorMock }),
 }));
 
 vi.mock('@/features/ai/shared/components/ChatInputBase.vue', async () => {
@@ -216,6 +222,8 @@ vi.mock('@/features/ai/shared/components/ChatInputBase.vue', async () => {
 				'canSubmit',
 				'disabled',
 				'maxLength',
+				'showAttach',
+				'acceptedMimeTypes',
 			],
 			emits: ['submit', 'stop', 'update:modelValue', 'files-selected'],
 			setup(_, { expose }) {
@@ -336,6 +344,7 @@ describe('AgentChatPanel', () => {
 			visible: boolean;
 			continueSessionId: string;
 			agentConfig: AgentJsonConfig | null;
+			attachmentCapabilities: ProviderAttachmentCapabilities;
 			beforeSend: () => Promise<void> | void;
 			backgroundJobsActive: boolean;
 			increaseBudget: (payload: {
@@ -673,7 +682,7 @@ describe('AgentChatPanel', () => {
 	it('drops only a blocked hand-off own files when its target is abandoned, keeping user picks', async () => {
 		isLoadingHistoryMock.value = true;
 		const wrapper = mountPanel({ continueSessionId: 's1' });
-		const handOffFile = new File(['a'], 'hand-off.txt', { type: 'text/plain' });
+		const handOffFile = new File(['a'], 'hand-off.png', { type: 'image/png' });
 
 		(wrapper.vm as unknown as PanelVm).sendMessageFromOutside('hello agent', [handOffFile]);
 		await flushPromises();
@@ -684,7 +693,7 @@ describe('AgentChatPanel', () => {
 		isLoadingHistoryMock.value = false;
 
 		const input = wrapper.findComponent({ name: 'ChatInputBase' });
-		const userFile = new File(['b'], 'user-picked.txt', { type: 'text/plain' });
+		const userFile = new File(['b'], 'user-picked.png', { type: 'image/png' });
 		input.vm.$emit('files-selected', [userFile]);
 		input.vm.$emit('update:modelValue', 'new message');
 		input.vm.$emit('submit');
@@ -1871,7 +1880,7 @@ describe('AgentChatPanel', () => {
 
 	it('sends files queued with an outside message, surviving the blocked-on-history-load retry', async () => {
 		isLoadingHistoryMock.value = true;
-		const file = new File(['content'], 'notes.txt', { type: 'text/plain' });
+		const file = new File(['content'], 'notes.png', { type: 'image/png' });
 		const wrapper = mountPanel();
 
 		(
@@ -1893,7 +1902,7 @@ describe('AgentChatPanel', () => {
 	});
 
 	it('sends an outside message that carries only files', async () => {
-		const file = new File(['content'], 'notes.txt', { type: 'text/plain' });
+		const file = new File(['content'], 'notes.png', { type: 'image/png' });
 		const wrapper = mountPanel();
 
 		(
@@ -2017,7 +2026,7 @@ describe('AgentChatPanel', () => {
 		const wrapper = mountPanel();
 		const chatInput = wrapper.findComponent({ name: 'ChatInputBase' });
 		const draft = '  keep this draft  ';
-		const file = new File(['notes'], 'notes.txt', { type: 'text/plain' });
+		const file = new File(['notes'], 'notes.png', { type: 'image/png' });
 		chatInput.vm.$emit('update:modelValue', draft);
 		chatInput.vm.$emit('files-selected', [file]);
 		chatInput.vm.$emit('submit');
@@ -2077,7 +2086,7 @@ describe('AgentChatPanel', () => {
 			});
 			const wrapper = mountPanel();
 			const input = wrapper.findComponent({ name: 'ChatInputBase' });
-			const file = new File(['notes'], 'notes.txt', { type: 'text/plain' });
+			const file = new File(['notes'], 'notes.png', { type: 'image/png' });
 			input.vm.$emit('update:modelValue', 'original draft');
 			input.vm.$emit('files-selected', [file]);
 			input.vm.$emit('submit');
@@ -2085,7 +2094,7 @@ describe('AgentChatPanel', () => {
 			expect(input.props('disabled')).toBe(false);
 			expect(input.props('canSubmit')).toBe(false);
 			input.vm.$emit('update:modelValue', 'edited draft');
-			const nextFile = new File(['more'], 'more.txt', { type: 'text/plain' });
+			const nextFile = new File(['more'], 'more.png', { type: 'image/png' });
 			input.vm.$emit('files-selected', [nextFile]);
 			messagesMock.value = [
 				{ id: 'snapshot', role: 'assistant', content: 'progress', status: 'streaming' },
@@ -2248,7 +2257,7 @@ describe('AgentChatPanel', () => {
 			try {
 				const composer = wrapper.findComponent({ name: 'ChatInputBase' });
 				composer.vm.$emit('update:modelValue', 'Keep this draft');
-				const file = new File(['notes'], 'notes.txt', { type: 'text/plain' });
+				const file = new File(['notes'], 'notes.png', { type: 'image/png' });
 				composer.vm.$emit('files-selected', [file]);
 				messagesMock.value = [
 					{
@@ -2779,7 +2788,7 @@ describe('AgentChatPanel', () => {
 
 		expect(chatInput.props('isStreaming')).toBe(false);
 		expect(chatInput.props('showStopButton')).toBe(true);
-		const file = new File(['notes'], 'notes.txt', { type: 'text/plain' });
+		const file = new File(['notes'], 'notes.png', { type: 'image/png' });
 		chatInput.vm.$emit('files-selected', [file]);
 		await nextTick();
 		expect(chatInput.props('showStopButton')).toBe(false);
@@ -2842,6 +2851,55 @@ describe('AgentChatPanel', () => {
 		expect(wrapper.text()).toContain('MCP server');
 		expect(wrapper.text()).toContain('Sub-agent');
 		expect(wrapper.text()).toContain('integrations.0.credentialId');
+	});
+
+	describe('attachment capabilities', () => {
+		it('shows the attach button from the prop even with an empty model', () => {
+			const wrapper = mountPanel({
+				agentConfig: { ...defaultAgentConfig, model: '' },
+				attachmentCapabilities: { image: true, pdf: true, audio: false },
+			});
+			const chatInput = wrapper.findComponent({ name: 'ChatInputBase' });
+
+			expect(chatInput.props('showAttach')).toBe(true);
+			expect(chatInput.props('acceptedMimeTypes')).toBe('image/*,application/pdf');
+		});
+
+		it('hides the attach button when every family in the prop is false', () => {
+			const wrapper = mountPanel({
+				agentConfig: { ...defaultAgentConfig, model: '' },
+				attachmentCapabilities: { image: false, pdf: false, audio: false },
+			});
+			const chatInput = wrapper.findComponent({ name: 'ChatInputBase' });
+
+			expect(chatInput.props('showAttach')).toBe(false);
+		});
+
+		it('rejects a file whose type the capabilities do not accept, with a toast, and keeps a supported one', async () => {
+			const wrapper = mountPanel({
+				agentConfig: { ...defaultAgentConfig, model: '' },
+				attachmentCapabilities: { image: true, pdf: false, audio: false },
+			});
+			const unsupported = new File(['%PDF'], 'report.pdf', { type: 'application/pdf' });
+			const supported = new File(['img'], 'photo.png', { type: 'image/png' });
+
+			(
+				wrapper.vm as unknown as {
+					sendMessageFromOutside: (message: string, files?: File[]) => void;
+				}
+			).sendMessageFromOutside('', [unsupported, supported]);
+			await flushPromises();
+
+			expect(showMessageMock).toHaveBeenCalledExactlyOnceWith({
+				type: 'error',
+				title: 'report.pdf is not a supported file type',
+			});
+			expect(sendMessageMock).toHaveBeenCalledExactlyOnceWith(
+				'',
+				[supported],
+				expect.any(Function),
+			);
+		});
 	});
 });
 

@@ -113,6 +113,8 @@ const props = withDefaults(
 		mentionArtifacts?: readonly WorkflowArtifactReference[];
 		mentionActiveWorkflowId?: string;
 		reservedAttachmentCount?: number;
+		/** Undefined keeps the default "+" menu; a string replaces it with a plain attach button restricted to those MIME types (`''` hides attaching). */
+		attachOnlyMimeTypes?: string;
 	}>(),
 	{
 		isStreaming: false,
@@ -330,6 +332,11 @@ const isComposerDirty = computed(() => hasNonWhitespaceDraftText.value || hasAtt
 watch(isComposerDirty, (hasContent) => emit('content-change', hasContent));
 const isGatedBySetup = computed(
 	() => props.isAwaitingConfirmation || !props.isWorkflowBuilderAvailable,
+);
+const showAttach = computed(
+	() =>
+		!props.isAwaitingPlanReview &&
+		(props.attachOnlyMimeTypes === undefined || props.attachOnlyMimeTypes.length > 0),
 );
 const shouldShowMentions = computed(
 	() => props.mentionsEnabled && Boolean(props.mentionProjectId) && !props.isAwaitingPlanReview,
@@ -913,8 +920,9 @@ const resizable = computed(() => {
 			:active-requires-focus="props.submitActiveRequiresFocus"
 			:max-length="EXTENDED_PROMPT_MAX_LENGTH"
 			show-voice
-			:show-attach="!props.isAwaitingPlanReview"
-			:show-attach-button="false"
+			:show-attach="showAttach"
+			:show-attach-button="props.attachOnlyMimeTypes !== undefined"
+			:accepted-mime-types="props.attachOnlyMimeTypes"
 			:attached-encoded-bytes="attachedEncodedBytes"
 			@update:model-value="mentions.handleTextChange"
 			@submit="handleSubmit"
@@ -953,7 +961,10 @@ const resizable = computed(() => {
 					/>
 				</div>
 			</template>
-			<template v-if="!props.isAwaitingPlanReview" #footer-start>
+			<template
+				v-if="!props.isAwaitingPlanReview && props.attachOnlyMimeTypes === undefined"
+				#footer-start
+			>
 				<InstanceAiInputMenu
 					:disabled="isBusy || isGatedBySetup"
 					:is-streaming="props.isStreaming"

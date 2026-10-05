@@ -25,12 +25,14 @@ import { useI18n } from '@n8n/i18n';
 import {
 	type AgentChatQueueItem,
 	type AgentBuilderOpenSuspension,
+	type ProviderAttachmentCapabilities,
 	APPROVAL_TOOL_NAME,
 	WAIT_TOOL_NAME,
 	MAX_AGENT_CHAT_ATTACHMENT_SIZE_BYTES,
 	MAX_AGENT_CHAT_ATTACHMENT_SIZE_MB,
 	MAX_AGENT_CHAT_ATTACHMENTS_PER_MESSAGE,
-	PROVIDER_CAPABILITIES,
+	getProviderAttachmentCapabilities,
+	acceptedMimeTypesFromCapabilities,
 } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useToast } from '@n8n/composables/useToast';
@@ -51,6 +53,7 @@ import {
 import AgentChatEmptyState from './AgentChatEmptyState.vue';
 import type { ChatMessage } from '@/features/ai/shared/agentsChat/types';
 import { resolveFileMimeType } from '@/app/utils/fileUtils';
+import { isFileAcceptedByAccept } from '@/features/ai/shared/utils/fileAccept';
 import AgentChatMessageList from './AgentChatMessageList.vue';
 import AgentChatPlan from './AgentChatPlan.vue';
 import { selectLatestAgentPlan } from '../utils/agent-plan';
@@ -83,6 +86,8 @@ const props = withDefaults(
 		continueSessionId?: string;
 		newSession?: boolean;
 		agentConfig: AgentJsonConfig | null;
+		/** Replaces the model-derived attachment support, for pages that get no model. */
+		attachmentCapabilities?: ProviderAttachmentCapabilities;
 		agentStatus: 'draft' | 'production';
 		connectedTriggers: string[];
 		canSendToAssistant?: boolean;
@@ -657,8 +662,9 @@ watch(
 );
 
 const attachmentCapabilities = computed(() => {
+	if (props.attachmentCapabilities) return props.attachmentCapabilities;
 	const provider = props.agentConfig?.model?.split('/')[0];
-	return provider ? PROVIDER_CAPABILITIES[provider]?.attachments : undefined;
+	return provider ? getProviderAttachmentCapabilities(provider) : undefined;
 });
 const showAttach = computed(() => {
 	const capabilities = attachmentCapabilities.value;
@@ -666,14 +672,7 @@ const showAttach = computed(() => {
 });
 const acceptedMimeTypes = computed(() => {
 	const capabilities = attachmentCapabilities.value;
-	if (!capabilities) return undefined;
-	return [
-		capabilities.image ? 'image/*' : null,
-		capabilities.pdf ? 'application/pdf' : null,
-		capabilities.audio ? 'audio/*' : null,
-	]
-		.filter((entry): entry is string => entry !== null)
-		.join(',');
+	return capabilities ? acceptedMimeTypesFromCapabilities(capabilities) : undefined;
 });
 
 function handleFilesSelected(files: File[]) {
@@ -686,6 +685,23 @@ function handleFilesSelected(files: File[]) {
 				}),
 			});
 			break;
+		}
+		// Handed-off files (n8n Assistant picker) skip the composer's `accept` filter.
+		if (
+			!showAttach.value ||
+			!isFileAcceptedByAccept(
+				file.name,
+				resolveFileMimeType(file.name, file.type),
+				acceptedMimeTypes.value ?? '',
+			)
+		) {
+			toast.showMessage({
+				type: 'error',
+				title: locale.baseText('agents.chat.attachments.unsupportedType', {
+					interpolate: { fileName: file.name },
+				}),
+			});
+			continue;
 		}
 		if (file.size > MAX_AGENT_CHAT_ATTACHMENT_SIZE_BYTES) {
 			toast.showMessage({

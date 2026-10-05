@@ -52,10 +52,11 @@ describe('InstanceAiInput — staged node attachments', () => {
 		telemetryTrack.mockClear();
 	});
 
-	it('keeps the existing input menu enabled outside the mentions rollout', () => {
-		const { getByTestId } = renderComponent();
+	it('keeps the existing input menu enabled outside the mentions rollout, with no paperclip', () => {
+		const { getByTestId, queryByTestId } = renderComponent();
 
 		expect(getByTestId('instance-ai-input-menu')).toBeEnabled();
+		expect(queryByTestId('chat-input-attach-button')).not.toBeInTheDocument();
 	});
 
 	it('consumes staged attachments into the draft without touching already-typed text', async () => {
@@ -153,6 +154,33 @@ describe('InstanceAiInput — staged node attachments', () => {
 		expect(restoreDraft).toBeTypeOf('function');
 		expect(restoreDraft()).toBe(true);
 		await waitFor(() => expect(textbox).toHaveValue('Drop the third workflow'));
+	});
+});
+
+describe('attach-only composer', () => {
+	beforeEach(() => {
+		setActivePinia(createTestingPinia({ stubActions: false }));
+	});
+
+	it('replaces the "+" menu with a paperclip restricted to the agent\'s file types', () => {
+		const { getByTestId, queryByTestId, container } = renderComponent({
+			props: { attachOnlyMimeTypes: 'image/*,application/pdf' },
+		});
+
+		expect(queryByTestId('instance-ai-input-menu')).not.toBeInTheDocument();
+		expect(getByTestId('chat-input-attach-button')).toBeInTheDocument();
+		const fileInput = container.querySelector('input[type="file"]');
+		expect(fileInput).toHaveAttribute('accept', 'image/*,application/pdf');
+	});
+
+	it('hides attaching entirely when the agent accepts no file types', () => {
+		const { queryByTestId, container } = renderComponent({
+			props: { attachOnlyMimeTypes: '' },
+		});
+
+		expect(queryByTestId('instance-ai-input-menu')).not.toBeInTheDocument();
+		expect(queryByTestId('chat-input-attach-button')).not.toBeInTheDocument();
+		expect(container.querySelector('input[type="file"]')).not.toBeInTheDocument();
 	});
 });
 
