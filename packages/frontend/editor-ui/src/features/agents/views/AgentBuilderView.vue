@@ -1178,6 +1178,31 @@ async function replayPendingExternalRefresh() {
 
 agentsEventBus.on('agentUpdated', onExternalAgentUpdated);
 
+// Serves a request from the Checks card to show the Agent tab, where the model is picked.
+watch(
+	[() => agentEvalsStore.pendingAgentTab, agentId, initialized],
+	() => {
+		if (!initialized.value || !agentEvalsStore.pendingAgentTab) return;
+		if (agentEvalsStore.consumeAgentTab(agentId.value)) activeMainTab.value = 'agent';
+	},
+	{ immediate: true },
+);
+
+// Serves a request from the Checks card in the builder thread to open the preview chat.
+watch(
+	[() => agentEvalsStore.pendingPreviewOpen, agentId, initialized],
+	() => {
+		if (!initialized.value || !agentEvalsStore.pendingPreviewOpen) return;
+		const request = agentEvalsStore.consumePreviewOpen(agentId.value);
+		if (!request) return;
+		if (request.fresh) {
+			startNewPreviewSession();
+			persistedPreviewOpen.value = true;
+		} else openArtifactPreview();
+	},
+	{ immediate: true },
+);
+
 // Serves a request from outside the builder to focus the eval surface (the
 // assistant's post-setup suggestion). `immediate` so a request raised before
 // this builder mounted is still honoured — which is the normal case, since the

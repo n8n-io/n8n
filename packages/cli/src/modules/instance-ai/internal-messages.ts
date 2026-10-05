@@ -32,6 +32,8 @@ export const CREDENTIAL_CONTEXT_OPEN_TAG = '<credential-context>';
 export const CREDENTIAL_CONTEXT_CLOSE_TAG = '</credential-context>';
 export const AGENT_PREVIEW_CONTEXT_OPEN_TAG = '<agent-preview-context>';
 export const AGENT_PREVIEW_CONTEXT_CLOSE_TAG = '</agent-preview-context>';
+export const CHECKS_FIX_CONTEXT_OPEN_TAG = '<checks-fix-context>';
+export const CHECKS_FIX_CONTEXT_CLOSE_TAG = '</checks-fix-context>';
 
 /**
  * Matches internal task-context prefix blocks injected by the service. The
@@ -40,7 +42,7 @@ export const AGENT_PREVIEW_CONTEXT_CLOSE_TAG = '</agent-preview-context>';
  * content is the workflow context).
  */
 const TASK_CONTEXT_BLOCK =
-	/^(?:<running-tasks>\n[\s\S]*?\n<\/running-tasks>|<planned-task-follow-up[\s\S]*?\n<\/planned-task-follow-up>|<planning-blueprint>\n[\s\S]*?\n<\/planning-blueprint>|<background-task-completed>\n[\s\S]*?\n<\/background-task-completed>|<workflow-verification-follow-up>\n[\s\S]*?\n<\/workflow-verification-follow-up>|<workflow-setup-required>\n[\s\S]*?\n<\/workflow-setup-required>|<editor-context>\n[\s\S]*?\n<\/editor-context>|<credential-context>\n[\s\S]*?\n<\/credential-context>|<agent-preview-context>\n[\s\S]*?\n<\/agent-preview-context>)(?:\n\n|$)/;
+	/^(?:<running-tasks>\n[\s\S]*?\n<\/running-tasks>|<planned-task-follow-up[\s\S]*?\n<\/planned-task-follow-up>|<planning-blueprint>\n[\s\S]*?\n<\/planning-blueprint>|<background-task-completed>\n[\s\S]*?\n<\/background-task-completed>|<workflow-verification-follow-up>\n[\s\S]*?\n<\/workflow-verification-follow-up>|<workflow-setup-required>\n[\s\S]*?\n<\/workflow-setup-required>|<editor-context>\n[\s\S]*?\n<\/editor-context>|<credential-context>\n[\s\S]*?\n<\/credential-context>|<agent-preview-context>\n[\s\S]*?\n<\/agent-preview-context>|<checks-fix-context>\n[\s\S]*?\n<\/checks-fix-context>)(?:\n\n|$)/;
 
 /** Captures the leading JSON line inside an editor-context block. */
 const EDITOR_CONTEXT_JSON = /^<editor-context>\n(\[[\s\S]*?\])\n/;

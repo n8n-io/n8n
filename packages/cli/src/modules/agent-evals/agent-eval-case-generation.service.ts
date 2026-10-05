@@ -64,6 +64,9 @@ const KIND_LABEL: Record<CaseInputFlavor, string> = {
 	adversarial: 'Pushes the rules',
 };
 
+// The kind for a check the user wrote as a rule.
+const USER_RULE_KIND = 'Your check';
+
 type CaseRowExtras = { kind: string; suggested: boolean };
 
 // How many name variants ("… (2)", "… (3)") to try before giving up on a
@@ -120,32 +123,33 @@ export class AgentEvalCaseGenerationService {
 		const config = await this.agentConfigService.getConfig(agentId, projectId);
 		const modelConfig = await this.resolveAgentModel(config, projectId, user);
 
-		const count = clampCount(options.count);
+		const rule = options.rule?.trim() || undefined;
+		const count = rule ? 1 : clampCount(options.count);
 		const capabilities = deriveCapabilities(config);
 		const tuples = sampleDimensionTuples(capabilities, count);
 
 		const summary = buildAgentSummary(config);
 		const generated = await this.invokeModel(
 			modelConfig,
-			buildCaseGenerationUserPrompt(summary, tuples),
+			buildCaseGenerationUserPrompt(summary, tuples, rule),
 			tuples.length,
 		);
 		// Cap to the requested count and bound each field: the model output is
 		// untrusted, so a runaway or prompt-injected response can't balloon the
 		// persisted dataset.
-		const cases = boundCases(generated, tuples.length);
+		const bounded = boundCases(generated, tuples.length);
+		// A typed rule is kept exactly as the user wrote it; the model only wrote the message.
+		const cases = rule ? bounded.map((draft) => ({ ...draft, whatToCheck: rule })) : bounded;
 
 		// Blank/whitespace names fall back to the agent-derived default.
 		const trimmedName = options.datasetName?.trim();
 		const baseName =
 			trimmedName && trimmedName.length > 0 ? trimmedName : defaultDatasetName(config.name);
 
-		const extras: CaseRowExtras[] = tuples
-			.slice(0, cases.length)
-			.map((tuple) => ({
-				kind: KIND_LABEL[tuple.flavor],
-				suggested: options.asSuggestions === true,
-			}));
+		const extras: CaseRowExtras[] = tuples.slice(0, cases.length).map((tuple) => ({
+			kind: rule ? USER_RULE_KIND : KIND_LABEL[tuple.flavor],
+			suggested: options.asSuggestions === true,
+		}));
 
 		const { datasetId, dataTableId } = options.datasetId
 			? await this.appendToDataset(options.datasetId, agentId, cases, extras)

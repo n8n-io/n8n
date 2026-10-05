@@ -291,6 +291,33 @@ describe('AgentEvalCaseGenerationService', () => {
 		);
 	});
 
+	it('writes one case for a typed rule and keeps the rule verbatim as the criteria', async () => {
+		generateMock.mockResolvedValue({
+			structuredOutput: {
+				cases: [{ input: 'Can I get a refund?', whatToCheck: 'reworded', checkName: 'Refunds' }],
+			},
+		});
+
+		await service.generateDraftCases(user, 'project-1', 'agent-1', {
+			count: 6,
+			rule: '  Never promise a refund  ',
+		});
+
+		expect(generateMock).toHaveBeenCalledWith(
+			expect.stringContaining('Never promise a refund'),
+			expect.anything(),
+		);
+		expect(dataTableService.insertRows).toHaveBeenCalledWith('dt-1', 'project-1', [
+			{
+				input: 'Can I get a refund?',
+				criteria: 'Never promise a refund',
+				check: 'Refunds',
+				kind: 'Your check',
+				suggested: false,
+			},
+		]);
+	});
+
 	it('retries once on invalid structured output, then succeeds', async () => {
 		generateMock
 			.mockResolvedValueOnce({ structuredOutput: { not: 'valid' } })

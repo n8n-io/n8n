@@ -1,220 +1,236 @@
 <script setup lang="ts">
 /**
- * Prepared checks not yet added, in a grey strip under the table: the only
- * place to add checks. Closed it shows how many are waiting and "Add all";
- * open it lists each with "Add", then a row to add your own.
+ * "Add a check" under the list: closed, one quiet dashed row (with how many
+ * prepared checks are ready); open, one section for both ways in. The input
+ * takes a rule of your own; under it, the checks we prepared are examples to
+ * start from. Both add with the same button. Three prepared checks show; the
+ * rest open in place.
  */
-import { ref } from 'vue';
-import { N8nButton, N8nIcon } from '@n8n/design-system';
+import { computed, ref } from 'vue';
+import { N8nButton, N8nIconButton, N8nInput } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 
 import type { AgentEvalCase } from '../../agentEvals.types';
 import AgentReaction from './AgentReaction.vue';
 
+const VISIBLE = 3;
+
 const props = defineProps<{
 	suggestions: AgentEvalCase[];
 	open: boolean;
 	disabled?: boolean;
+	/** An example is being written for the rule the user just added. */
+	writing?: boolean;
 }>();
 
 const emit = defineEmits<{
 	toggle: [];
 	add: [suggestion: AgentEvalCase];
-	addAll: [];
-	addOwn: [input: string];
+	addOwn: [rule: string];
 }>();
 
 const i18n = useI18n();
 const own = ref('');
+const expanded = ref(false);
+
+const shown = computed(() =>
+	props.open ? props.suggestions : props.suggestions.slice(0, VISIBLE),
+);
+const hidden = computed(() => Math.max(0, props.suggestions.length - VISIBLE));
 
 const submitOwn = () => {
 	const value = own.value.trim();
-	if (!value || props.disabled) return;
+	if (!value || props.disabled || props.writing) return;
 	emit('addOwn', value);
 	own.value = '';
 };
 </script>
 
 <template>
-	<div :class="[$style.strip, { [$style.open]: open }]" data-testid="agent-check-suggestions">
-		<div
-			:class="$style.head"
-			role="button"
-			tabindex="0"
-			:aria-expanded="open"
-			data-testid="agent-check-suggestions-toggle"
-			@click="emit('toggle')"
-			@keydown.enter.prevent="emit('toggle')"
-			@keydown.space.prevent="emit('toggle')"
+	<!-- Closed: the Agent tab's add pattern (a ghost button in the lighter text colour). -->
+	<div v-if="!expanded && !writing">
+		<N8nButton
+			variant="ghost"
+			size="medium"
+			icon="plus"
+			:class="$style.opener"
+			:disabled="disabled"
+			data-testid="agent-check-add-open"
+			@click="expanded = true"
 		>
-			<span v-if="suggestions.length" :class="$style.faces">
-				<AgentReaction
-					v-for="i in Math.min(3, suggestions.length)"
-					:key="i"
-					kind="idle"
-					size="xs"
-				/>
-			</span>
-			<span :class="$style.label">
-				{{
-					suggestions.length
-						? i18n.baseText('agents.builder.agentChecks.suggestions.count', {
-								adjustToNumber: suggestions.length,
-								interpolate: { count: String(suggestions.length) },
-							})
-						: i18n.baseText('agents.builder.agentChecks.suggestions.ownTitle')
-				}}
-			</span>
-			<N8nButton
-				v-if="suggestions.length"
-				variant="outline"
+			{{ i18n.baseText('agents.builder.agentChecks.suggestions.openAdd') }}
+			<span v-if="suggestions.length" :class="$style.ready">{{
+				i18n.baseText('agents.builder.agentChecks.suggestions.ready', {
+					interpolate: { count: String(suggestions.length) },
+				})
+			}}</span>
+		</N8nButton>
+	</div>
+	<section v-else :class="$style.add" data-testid="agent-check-suggestions">
+		<div :class="$style.head">
+			<b :class="$style.title">{{
+				i18n.baseText('agents.builder.agentChecks.suggestions.title')
+			}}</b>
+			<N8nIconButton
+				icon="x"
+				variant="ghost"
 				size="small"
-				:disabled="disabled"
-				data-testid="agent-check-suggestions-add-all"
-				@click.stop="emit('addAll')"
-			>
-				{{
-					i18n.baseText('agents.builder.agentChecks.suggestions.addAll', {
-						interpolate: { count: String(suggestions.length) },
-					})
-				}}
-			</N8nButton>
-			<N8nIcon :icon="open ? 'chevron-up' : 'chevron-down'" size="small" :class="$style.chev" />
+				:aria-label="i18n.baseText('agents.builder.agentChecks.suggestions.close')"
+				data-testid="agent-check-add-close"
+				@click="expanded = false"
+			/>
 		</div>
-		<div v-if="open" :class="$style.list">
-			<div v-for="suggestion in suggestions" :key="suggestion.rowId" :class="$style.row">
-				<AgentReaction kind="idle" size="row" />
-				<span :class="$style.kind">{{ suggestion.kind }}</span>
-				<span :class="$style.prompt">{{ suggestion.input }}</span>
+
+		<N8nInput
+			v-model="own"
+			autofocus
+			:disabled="disabled || writing"
+			:aria-label="i18n.baseText('agents.builder.agentChecks.suggestions.title')"
+			:placeholder="
+				writing
+					? i18n.baseText('agents.builder.agentChecks.suggestions.writing')
+					: i18n.baseText('agents.builder.agentChecks.suggestions.own')
+			"
+			data-testid="agent-check-suggestion-own"
+			@keydown.enter.prevent="submitOwn"
+		>
+			<template #suffix>
 				<N8nButton
-					variant="ghost"
+					variant="outline"
 					size="small"
-					:disabled="disabled"
-					data-testid="agent-check-suggestion-add"
-					@click="emit('add', suggestion)"
+					:disabled="disabled || !own.trim()"
+					:loading="writing"
+					data-testid="agent-check-own-add"
+					@click="submitOwn"
 				>
 					{{ i18n.baseText('agents.builder.agentChecks.suggestions.add') }}
 				</N8nButton>
+			</template>
+		</N8nInput>
+
+		<template v-if="suggestions.length">
+			<span :class="$style.label">{{
+				i18n.baseText('agents.builder.agentChecks.suggestions.prepared')
+			}}</span>
+			<div :class="$style.list">
+				<div v-for="suggestion in shown" :key="suggestion.rowId" :class="$style.row">
+					<AgentReaction kind="idle" size="sm" />
+					<span :class="$style.text">
+						<span :class="$style.kind">{{ suggestion.kind }}</span>
+						<span :class="$style.prompt">{{ suggestion.input }}</span>
+					</span>
+					<N8nButton
+						variant="outline"
+						size="small"
+						:disabled="disabled"
+						data-testid="agent-check-suggestion-add"
+						@click="emit('add', suggestion)"
+					>
+						{{ i18n.baseText('agents.builder.agentChecks.suggestions.add') }}
+					</N8nButton>
+				</div>
 			</div>
-			<label :class="[$style.row, $style.ownRow]">
-				<AgentReaction kind="idle" size="row" />
-				<span :class="$style.kind">{{
-					i18n.baseText('agents.builder.agentChecks.suggestions.custom')
-				}}</span>
-				<input
-					v-model="own"
-					:class="$style.ownInput"
-					type="text"
-					:disabled="disabled"
-					:placeholder="i18n.baseText('agents.builder.agentChecks.suggestions.own')"
-					data-testid="agent-check-suggestion-own"
-					@keydown.enter.prevent="submitOwn"
-				/>
-			</label>
-		</div>
-	</div>
+			<div v-if="hidden > 0">
+				<N8nButton
+					variant="ghost"
+					size="small"
+					:icon="open ? 'chevron-up' : 'chevron-down'"
+					data-testid="agent-check-suggestions-toggle"
+					@click="emit('toggle')"
+				>
+					{{
+						open
+							? i18n.baseText('agents.builder.agentChecks.onboarding.fewer')
+							: i18n.baseText('agents.builder.agentChecks.onboarding.moreCount', {
+									interpolate: { count: String(hidden) },
+								})
+					}}
+				</N8nButton>
+			</div>
+		</template>
+	</section>
 </template>
 
 <style lang="scss" module>
-.strip {
-	border-radius: var(--radius--lg);
-	background: var(--background--subtle);
+// Lines up with the list's left edge above it.
+.opener {
+	--button--color: var(--text-color--subtle);
+}
+
+.ready {
+	margin-inline-start: var(--spacing--4xs);
+	color: var(--text-color--subtler);
+	font-weight: var(--font-weight--regular);
 }
 
 .head {
 	display: flex;
 	align-items: center;
+	justify-content: space-between;
 	gap: var(--spacing--xs);
-	min-height: var(--height--3xl);
-	padding: var(--spacing--3xs) var(--spacing--xs);
-	border-radius: var(--radius--lg);
-	color: var(--text-color--subtle);
-	font-size: var(--font-size--sm);
-	cursor: pointer;
-
-	&:hover {
-		background: var(--background--hover);
-	}
-
-	&:focus-visible {
-		outline: var(--focus--border-width) solid var(--color--primary);
-		outline-offset: -2px;
-	}
 }
 
-.faces {
-	display: inline-flex;
+.add {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--2xs);
+	padding: var(--spacing--sm);
+	border: var(--border-width) var(--border-style) var(--border-color);
+	border-radius: var(--radius);
+	background: var(--background--surface);
+}
 
-	> * + * {
-		margin-left: calc(-1 * var(--spacing--3xs));
-	}
+.title {
+	font-size: var(--font-size--sm);
+	font-weight: var(--font-weight--bold);
 }
 
 .label {
-	flex: 1;
-	min-width: 0;
-}
-
-.chev {
-	color: var(--text-color--subtler);
+	margin-top: var(--spacing--2xs);
+	color: var(--text-color--subtle);
+	font-size: var(--font-size--2xs);
+	font-weight: var(--font-weight--bold);
+	line-height: var(--line-height--md);
 }
 
 .list {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--4xs);
-	padding: 0 var(--spacing--2xs) var(--spacing--2xs);
+	overflow: hidden;
+	border: var(--border-width) var(--border-style) var(--border-color--subtle);
+	border-radius: var(--radius);
+
+	> * + * {
+		border-top: var(--border-width) var(--border-style) var(--border-color--subtle);
+	}
 }
 
 .row {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--2xs);
-	min-height: var(--height--lg);
-	padding: var(--spacing--4xs) var(--spacing--2xs);
-	border: var(--border-width) var(--border-style) var(--border-color--subtle);
-	border-radius: var(--radius);
-	background: var(--background--surface);
+	padding: var(--spacing--2xs) var(--spacing--2xs) var(--spacing--2xs) var(--spacing--xs);
 	font-size: var(--font-size--sm);
 }
 
+// Kind on top, the message under it on up to two lines.
+.text {
+	display: flex;
+	flex: 1;
+	flex-direction: column;
+	min-width: 0;
+}
+
 .kind {
-	flex-shrink: 0;
-	max-width: 38%;
-	overflow: hidden;
 	color: var(--text-color--subtler);
 	font-size: var(--font-size--2xs);
-	text-overflow: ellipsis;
-	white-space: nowrap;
+	line-height: var(--line-height--md);
 }
 
 .prompt {
-	flex: 1;
-	min-width: 0;
+	display: -webkit-box;
+	-webkit-box-orient: vertical;
+	-webkit-line-clamp: 2;
+	line-clamp: 2;
 	overflow: hidden;
-	text-overflow: ellipsis;
-	white-space: nowrap;
-}
-
-.ownRow {
-	cursor: text;
-
-	&:focus-within {
-		border-color: var(--color--primary);
-	}
-}
-
-.ownInput {
-	flex: 1;
-	min-width: 0;
-	border: 0;
-	outline: 0;
-	background: transparent;
-	font: inherit;
-	color: var(--text-color);
-
-	&::placeholder {
-		color: var(--text-color--subtler);
-	}
+	line-height: var(--line-height--xl);
 }
 </style>

@@ -10,6 +10,10 @@ export function handoffContextKey(context: InstanceAiHandoffContext): string {
 		return `${context.source}:${context.agentId}:${context.threadId}:${context.executionId ?? ''}`;
 	}
 
+	if (context.source === 'agent-checks-fix') {
+		return `${context.source}:${context.agentId}:${context.fixes.map((item) => item.check).join('|')}`;
+	}
+
 	return `${context.source}:${context.credential.credentialType}:${context.credential.id ?? context.credential.displayName}`;
 }
 

@@ -84,6 +84,8 @@ export const AGENT_EVAL_VERDICT_METRIC = 'verdict';
 export const agentEvalVerdictSchema = z.object({
 	result: z.enum(['pass', 'needs_work']),
 	reason: z.string(),
+	// With needs_work, one instruction the agent could add to follow the rule.
+	suggestedFix: z.string().optional(),
 	judgedBy: z.enum(['agent_model', 'eval_model']),
 });
 export type AgentEvalVerdict = z.infer<typeof agentEvalVerdictSchema>;
@@ -281,11 +283,14 @@ export type AgentEvalDraftCase = z.infer<typeof agentEvalDraftCaseSchema>;
 // service clamps it to its supported maximum rather than rejecting.
 // `datasetId` appends the cases to that dataset's table instead of creating a new
 // dataset; `asSuggestions` saves them as prepared rows the user adds later.
+// `rule` writes one case for a rule the user typed: the rule is kept verbatim as
+// what to check, and the model only writes a message that tests it.
 const generateDraftCasesOptionsShape = {
 	count: z.number().int().min(1).optional(),
 	datasetName: z.string().min(1).optional(),
 	datasetId: z.string().min(1).optional(),
 	asSuggestions: z.boolean().optional(),
+	rule: z.string().trim().min(1).max(1000).optional(),
 };
 export const generateDraftCasesOptionsSchema = z.object(generateDraftCasesOptionsShape);
 export type GenerateDraftCasesOptions = z.infer<typeof generateDraftCasesOptionsSchema>;

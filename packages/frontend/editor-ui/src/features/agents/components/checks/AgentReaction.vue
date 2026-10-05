@@ -11,11 +11,24 @@ const props = withDefaults(
 	defineProps<{
 		kind: 'pass' | 'needs_work' | 'failed' | 'idle' | 'strong' | 'waiting';
 		size?: 'xs' | 'row' | 'sm' | 'md';
+		/** Bob like a waiting head while keeping this face (the fixing step's worried head). */
+		moving?: boolean;
 	}>(),
-	{ size: 'row' },
+	{ size: 'row', moving: false },
 );
 
 const i18n = useI18n();
+
+// Each waiting head gets its own timing, so a row of them never moves in step.
+const rand = (min: number, max: number) => min + Math.random() * (max - min);
+const bob = rand(1.4, 2);
+const look = rand(2.6, 4.2);
+const motion = {
+	'--bob-duration': `${bob.toFixed(2)}s`,
+	'--bob-delay': `-${rand(0, bob).toFixed(2)}s`,
+	'--look-duration': `${look.toFixed(2)}s`,
+	'--look-delay': `-${rand(0, look).toFixed(2)}s`,
+};
 
 const label = computed(() => {
 	switch (props.kind) {
@@ -36,7 +49,8 @@ const label = computed(() => {
 
 <template>
 	<span
-		:class="[$style.head, $style[kind], $style[size]]"
+		:class="[$style.head, $style[kind], $style[size], { [$style.moving]: moving }]"
+		:style="kind === 'waiting' || moving ? motion : undefined"
 		role="img"
 		:aria-label="label"
 		:title="label"
@@ -65,8 +79,7 @@ const label = computed(() => {
 			<path v-else-if="kind === 'needs_work'" d="M20.8 32.1l6.4-1.5" />
 			<path v-else-if="kind !== 'failed'" d="M21.2 31.4h5.6" />
 		</svg>
-		<i v-if="kind === 'needs_work'" :class="$style.badge">!</i>
-		<i v-else-if="kind === 'strong'" :class="[$style.badge, $style.spark]">✦</i>
+		<i v-if="kind === 'strong'" :class="[$style.badge, $style.spark]">✦</i>
 	</span>
 </template>
 
@@ -148,14 +161,16 @@ const label = computed(() => {
 	right: -5px;
 }
 
-.waiting svg {
-	animation: bob 1.6s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+.waiting svg,
+.moving svg {
+	animation: bob var(--bob-duration, 1.6s) cubic-bezier(0.45, 0, 0.55, 1) var(--bob-delay, 0s)
+		infinite;
 }
 
 .eyes {
 	transform-box: fill-box;
 	transform-origin: center;
-	animation: look 3.2s ease-in-out infinite;
+	animation: look var(--look-duration, 3.2s) ease-in-out var(--look-delay, 0s) infinite;
 }
 
 @keyframes bob {

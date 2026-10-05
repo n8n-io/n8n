@@ -183,6 +183,7 @@ import IconLucideMessageCircle from '~icons/lucide/message-circle';
 import IconLucideMessageCirclePlus from '~icons/lucide/message-circle-plus';
 import IconLucideMessageSquare from '~icons/lucide/message-square';
 import IconLucideMessageSquarePlus from '~icons/lucide/message-square-plus';
+import IconLucideMessageSquareShare from '~icons/lucide/message-square-share';
 import IconLucideMessagesSquare from '~icons/lucide/messages-square';
 import IconLucideMic from '~icons/lucide/mic';
 import IconLucideMilestone from '~icons/lucide/milestone';
@@ -687,6 +688,7 @@ export const updatedIconSet = {
 	'message-circle': IconLucideMessageCircle,
 	'message-square': IconLucideMessageSquare,
 	'message-square-plus': IconLucideMessageSquarePlus,
+	'message-square-share': IconLucideMessageSquareShare,
 	'message-circle-plus': IconLucideMessageCirclePlus,
 	'messages-square': IconLucideMessagesSquare,
 	mic: IconLucideMic,

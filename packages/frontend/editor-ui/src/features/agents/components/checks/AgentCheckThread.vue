@@ -7,17 +7,24 @@
  * run in a footer; once dismissed, every surface keeps a folded corner instead.
  */
 import { ref } from 'vue';
-import { N8nButton, N8nIcon } from '@n8n/design-system';
+import { N8nButton, N8nIcon, N8nIconButton } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 
 import { useAgentChecksPractice } from '../../composables/useAgentChecksPractice';
 import type { AgentCheckExample } from '../../utils/agentChecks.utils';
 import { toolCallParts } from '../../utils/agentChecks.utils';
+import AgentClampText from './AgentClampText.vue';
 import AgentReaction from './AgentReaction.vue';
 
 defineProps<{
 	example: AgentCheckExample;
 	verdict?: boolean;
+	/** Offer a thumbs-down next to a passing reply, for when the verdict is wrong. */
+	flaggable?: boolean;
+}>();
+
+const emit = defineEmits<{
+	flag: [example: AgentCheckExample];
 }>();
 
 const i18n = useI18n();
@@ -35,67 +42,83 @@ const callLabel = (call: AgentCheckExample['toolCalls'][number]) => {
 </script>
 
 <template>
-	<div
-		:class="[$style.thread, { [$style.cut]: seen, [$style.cutOpen]: seen && curled }]"
-		data-testid="agent-check-thread"
-	>
-		<div :class="$style.you">{{ example.input }}</div>
+	<div :class="$style.threadWrap">
 		<div
-			v-for="(call, index) in example.toolCalls"
-			:key="index"
-			:class="[$style.call, { [$style.callError]: !!call.error }]"
+			:class="[$style.thread, { [$style.cut]: seen, [$style.cutOpen]: seen && curled }]"
+			data-testid="agent-check-thread"
 		>
-			<N8nIcon icon="wrench" size="small" />
-			<span :class="$style.callLabel">{{ callLabel(call) }}</span>
-		</div>
-		<div v-if="example.reply !== null" :class="$style.agent">
-			<AgentReaction
-				:kind="example.state === 'needs_work' ? 'needs_work' : 'pass'"
-				size="xs"
-				:class="$style.agentHead"
-			/>
-			<div :class="$style.answer">
-				<div :class="[$style.reply, { [$style.flagged]: example.state === 'needs_work' }]">
-					{{ example.reply }}
-				</div>
-				<div
-					v-if="verdict && example.state === 'needs_work'"
-					:class="[$style.verdict, $style.verdictBad]"
-					data-testid="agent-check-verdict"
-				>
-					<b>{{ i18n.baseText('agents.builder.agentChecks.verdict.breaks') }}</b>
-					{{ example.reason }}
-				</div>
-				<div
-					v-else-if="verdict && example.state === 'pass'"
-					:class="[$style.verdict, $style.verdictOk]"
-					data-testid="agent-check-verdict"
-				>
-					<b>{{ i18n.baseText('agents.builder.agentChecks.verdict.follows') }}</b>
+			<div :class="$style.you"><AgentClampText :text="example.input" :lines="3" /></div>
+			<div
+				v-for="(call, index) in example.toolCalls"
+				:key="index"
+				:class="[$style.call, { [$style.callError]: !!call.error }]"
+			>
+				<N8nIcon icon="wrench" size="small" />
+				<span :class="$style.callLabel">{{ callLabel(call) }}</span>
+			</div>
+			<div v-if="example.reply !== null" :class="$style.agent">
+				<AgentReaction
+					:kind="example.state === 'needs_work' ? 'needs_work' : 'pass'"
+					size="xs"
+					:class="$style.agentHead"
+				/>
+				<div :class="$style.answer">
+					<div :class="$style.replyRow">
+						<div :class="[$style.reply, { [$style.flagged]: example.state === 'needs_work' }]">
+							<AgentClampText :text="example.reply" markdown />
+						</div>
+						<N8nIconButton
+							v-if="flaggable && example.state === 'pass'"
+							icon="thumbs-down"
+							variant="ghost"
+							size="small"
+							:aria-label="i18n.baseText('agents.builder.agentChecks.onboarding.notRight')"
+							:title="i18n.baseText('agents.builder.agentChecks.onboarding.notRight')"
+							:class="$style.flag"
+							data-testid="agent-check-flag"
+							@click="emit('flag', example)"
+						/>
+					</div>
+					<div
+						v-if="verdict && example.state === 'needs_work'"
+						:class="[$style.verdict, $style.verdictBad]"
+						data-testid="agent-check-verdict"
+					>
+						<b>{{ i18n.baseText('agents.builder.agentChecks.verdict.breaks') }}</b>
+						{{ example.reason }}
+					</div>
+					<div
+						v-else-if="verdict && example.state === 'pass'"
+						:class="[$style.verdict, $style.verdictOk]"
+						data-testid="agent-check-verdict"
+					>
+						<b>{{ i18n.baseText('agents.builder.agentChecks.verdict.follows') }}</b>
+					</div>
 				</div>
 			</div>
-		</div>
-		<div v-else :class="$style.empty">
-			{{ i18n.baseText('agents.builder.agentChecks.thread.noReply') }}
-		</div>
+			<div v-else :class="$style.empty">
+				{{ i18n.baseText('agents.builder.agentChecks.thread.noReply') }}
+			</div>
 
-		<Transition :leave-active-class="$style.footerLeave" :leave-to-class="$style.footerGone">
-			<div v-if="!seen" :class="$style.footer" data-testid="agent-check-practice-footer">
-				<span :class="$style.footerText">
-					<b>{{ i18n.baseText('agents.builder.agentChecks.practice.title') }}</b>
-					{{ i18n.baseText('agents.builder.agentChecks.practice.body') }}
-				</span>
-				<N8nButton
-					variant="ghost"
-					size="small"
-					:class="$style.footerButton"
-					data-testid="agent-check-practice-dismiss"
-					@click="dismiss"
-				>
-					{{ i18n.baseText('agents.builder.agentChecks.practice.gotIt') }}
-				</N8nButton>
-			</div>
-		</Transition>
+			<Transition :leave-active-class="$style.footerLeave" :leave-to-class="$style.footerGone">
+				<div v-if="!seen" :class="$style.footer" data-testid="agent-check-practice-footer">
+					<span :class="$style.footerText">
+						<b>{{ i18n.baseText('agents.builder.agentChecks.practice.title') }}</b>
+						{{ i18n.baseText('agents.builder.agentChecks.practice.body') }}
+					</span>
+					<N8nButton
+						variant="ghost"
+						size="small"
+						:class="$style.footerButton"
+						data-testid="agent-check-practice-dismiss"
+						@click="dismiss"
+					>
+						{{ i18n.baseText('agents.builder.agentChecks.practice.gotIt') }}
+					</N8nButton>
+				</div>
+			</Transition>
+		</div>
+		<!-- Outside the clipped surface, so the cut corner never drops the hover. -->
 		<button
 			v-if="seen"
 			type="button"
@@ -116,6 +139,22 @@ const callLabel = (call: AgentCheckExample['toolCalls'][number]) => {
 </template>
 
 <style lang="scss" module>
+// The reply with its thumbs-down beside it, at the bubble's foot.
+.replyRow {
+	display: flex;
+	align-items: flex-end;
+	gap: var(--spacing--4xs);
+	min-width: 0;
+
+	> :first-child {
+		min-width: 0;
+	}
+}
+
+.flag {
+	flex-shrink: 0;
+}
+
 .thread {
 	position: relative;
 	display: flex;
@@ -277,11 +316,16 @@ const callLabel = (call: AgentCheckExample['toolCalls'][number]) => {
 		0 100%
 	);
 	transition: clip-path 0.22s ease;
+}
 
-	&:has(.corner:hover),
-	&:has(.corner:focus-visible) {
-		--cut: 22px;
-	}
+.threadWrap {
+	position: relative;
+	min-width: 0;
+}
+
+.threadWrap:has(.corner:hover) > .cut,
+.threadWrap:has(.corner:focus-visible) > .cut {
+	--cut: 22px;
 }
 
 .cutOpen {

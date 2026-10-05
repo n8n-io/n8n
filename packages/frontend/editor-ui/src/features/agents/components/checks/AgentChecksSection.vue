@@ -10,23 +10,27 @@
  * dataset or a few rows), and ratings for "Actually fine".
  */
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
-import { N8nButton, N8nLoading } from '@n8n/design-system';
+import { N8nActionDropdown, N8nButton, N8nLoading, N8nSpinner } from '@n8n/design-system';
+import type { ActionDropdownItem } from '@n8n/design-system';
 import { useToast } from '@n8n/composables/useToast';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 
+import { useRouter } from 'vue-router';
+import { MODAL_CONFIRM } from '@/app/constants';
+import { INSTANCE_AI_THREAD_VIEW } from '@/features/ai/instanceAi/constants';
 import { useInstanceAiHandoff } from '@/features/ai/instanceAi/composables/useInstanceAiHandoff';
 
 import * as agentEvalsApi from '../../agentEvals.api';
 import { useAgentEvalsStore } from '../../agentEvals.store';
+import { getAgent } from '../../composables/useAgentApi';
+import { useAgentConfirmationModal } from '../../composables/useAgentConfirmationModal';
 import type { AgentEvalCase, AgentEvalResultRecord } from '../../agentEvals.types';
 import { isDataTableDataset, toCaseSource } from '../../utils/agentEvalCases.utils';
 import {
-	LOW_COVERAGE_THRESHOLD,
 	buildChecks,
 	checkCounts,
 	matchesFilter,
-	nameFromRule,
 	suggestionsOf,
 	type AgentCheck,
 	type AgentCheckExample,
@@ -61,6 +65,8 @@ const DEFAULT_COUNT = 4;
 
 const i18n = useI18n();
 const toast = useToast();
+const { openAgentConfirmationModal } = useAgentConfirmationModal();
+const router = useRouter();
 const rootStore = useRootStore();
 const store = useAgentEvalsStore();
 const { openAgentArtifactThread } = useInstanceAiHandoff();
@@ -100,9 +106,6 @@ const checks = computed(() =>
 const counts = computed(() => checkCounts(checks.value));
 const visibleChecks = computed(() =>
 	checks.value.filter((check) => matchesFilter(check, filter.value)),
-);
-const lowCoverage = computed(
-	() => counts.value.total < LOW_COVERAGE_THRESHOLD && !runInFlight.value,
 );
 const sliderMax = computed(() => Math.max(1, suggestions.value.length));
 const picked = computed(() => suggestions.value.slice(0, count.value));
@@ -146,11 +149,7 @@ const setFixPending = (since: string | null) => {
 	}
 };
 const showFixAll = computed(
-	() =>
-		counts.value.needsWork > 0 &&
-		(filter.value === 'needs_work' || counts.value.needsWork === counts.value.total) &&
-		!runInFlight.value &&
-		fixPending.value === null,
+	() => counts.value.needsWork > 0 && !runInFlight.value && fixPending.value === null,
 );
 
 function schedulePoll() {
@@ -278,26 +277,31 @@ const addSuggestions = async (picks: AgentEvalCase[]) => {
 	}
 };
 
-/** A check of the user's own: the message is the example, the rule comes later. */
-const addOwn = async (input: string) => {
-	if (!caseSource.value) return;
-	busy.value = true;
+/**
+ * A check of the user's own, typed as a rule: the agent's model writes one
+ * message that tests it, the check runs, and a failure opens with Fix the agent.
+ */
+const writingOwn = ref(false);
+const addOwn = async (rule: string) => {
+	writingOwn.value = true;
 	try {
-		const created = await store.createCase(props.projectId, caseSource.value, {
-			input,
-			whatToCheck: '',
-			check: nameFromRule(input),
-			kind: i18n.baseText('agents.builder.agentChecks.kind.yours'),
-			suggested: false,
+		const before = new Set(cases.value.map((evalCase) => evalCase.rowId));
+		await store.generateDraftCases(props.projectId, props.agentId, {
+			count: 1,
+			rule,
+			...(dataset.value ? { datasetId: dataset.value.id } : {}),
 		});
+		await loadCases();
+		const created = cases.value.find((evalCase) => !before.has(evalCase.rowId));
 		if (created) {
-			openKey.value = created.check ?? null;
+			openKey.value = created.check?.trim() || created.whatToCheck.trim() || null;
+			filter.value = 'all';
 			await startRun([created.rowId]);
 		}
 	} catch (error) {
 		toast.showError(error, i18n.baseText('agents.builder.agentChecks.addError'));
 	} finally {
-		busy.value = false;
+		writingOwn.value = false;
 	}
 };
 
@@ -320,7 +324,37 @@ const onAddExample = async (check: AgentCheck, input: string) => {
 	}
 };
 
-const onEditRule = async (check: AgentCheck, rule: string) => {
+// Deleting a check removes every example under it, so it asks first, like deleting an agent.
+const onRemove = async (check: AgentCheck) => {
+	const source = caseSource.value;
+	if (!source) return;
+	const confirmed = await openAgentConfirmationModal({
+		title: i18n.baseText('agents.builder.agentChecks.delete.title', {
+			interpolate: { name: check.name },
+		}),
+		description: i18n.baseText('agents.builder.agentChecks.delete.description', {
+			adjustToNumber: check.examples.length,
+			interpolate: { count: String(check.examples.length) },
+		}),
+		confirmButtonText: i18n.baseText('agents.builder.agentChecks.delete.confirm'),
+		cancelButtonText: i18n.baseText('generic.cancel'),
+	});
+	if (confirmed !== MODAL_CONFIRM) return;
+	busy.value = true;
+	try {
+		for (const example of check.examples) {
+			await store.deleteCase(props.projectId, source, example.rowId);
+		}
+		if (openKey.value === check.key) openKey.value = null;
+		await loadCases();
+	} catch (error) {
+		toast.showError(error, i18n.baseText('agents.builder.agentChecks.delete.error'));
+	} finally {
+		busy.value = false;
+	}
+};
+
+const onEditRule = async (check: AgentCheck, rule: string, recheck = false) => {
 	if (!caseSource.value) return;
 	busy.value = true;
 	try {
@@ -332,9 +366,12 @@ const onEditRule = async (check: AgentCheck, rule: string) => {
 		}
 	} catch (error) {
 		toast.showError(error, i18n.baseText('agents.builder.agentChecks.ruleError'));
+		return;
 	} finally {
 		busy.value = false;
 	}
+	// From a thumbs-down: the rule now says what should have happened, so check again.
+	if (recheck) await startRun(check.examples.map((ex) => ex.rowId));
 };
 
 const onRunCheck = async (check: AgentCheck) => {
@@ -370,75 +407,118 @@ const builderLaunch = () =>
 		sourceContext: { agentId: props.agentId },
 	}) as const;
 
-const fixItem = (check: AgentCheck, example: AgentCheckExample) =>
-	i18n.baseText('agents.builder.agentChecks.fixAllItem', {
-		interpolate: {
-			check: check.name,
-			rule: check.rule,
-			input: example.input,
-			reply: example.reply ?? '',
-			reason: example.reason ?? '',
-		},
-	});
+// The person read the suggested fix (in the row, or in each row behind "Apply N fixes")
+// and applied it, so the builder makes the change without asking again. Once the
+// agent is saved, every check runs again.
+const fixItem = (check: AgentCheck, example: AgentCheckExample) => ({
+	check: check.name,
+	rule: check.rule,
+	input: example.input,
+	reason: example.reason ?? '',
+	fix:
+		example.suggestedFix ||
+		i18n.baseText('agents.builder.agentChecks.applyFixFallback', {
+			interpolate: { rule: check.rule },
+		}),
+});
 
-// Sends the fix request to the builder right away; the builder proposes the
-// change and asks before applying it. Once the agent is saved, every check runs again.
-const sendFix = async (message: string) => {
+// One short line in the new builder thread; the builder reads the fixes from the context.
+const sendFix = async (fixes: Array<ReturnType<typeof fixItem>>) => {
+	if (fixes.length === 0) return;
 	const opened = await openAgentArtifactThread(agentAttachment(), builderLaunch(), {
-		sendMessage: message,
+		sendMessage: i18n.baseText('agents.builder.agentChecks.applyFixShort', {
+			adjustToNumber: fixes.length,
+			interpolate: { count: String(fixes.length) },
+		}),
+		context: { source: 'agent-checks-fix', agentId: props.agentId, fixes },
+		// The builder works in the background; the person stays on Checks and the rows rerun here.
+		stay: true,
+		onThread: (threadId) => (fixThreadId.value = threadId),
 	});
-	if (opened) setFixPending(props.agentUpdatedAt ?? new Date().toISOString());
+	if (!opened) return;
+	fixingCount.value = fixes.length;
+	const since = (await currentUpdatedAt()) ?? props.agentUpdatedAt ?? new Date().toISOString();
+	setFixPending(since);
+	pollAgent();
 };
 
-const onFix = async (check: AgentCheck, example: AgentCheckExample) => {
+const fixingCount = ref(0);
+const fixThreadId = ref<string | null>(null);
+let agentPoll: ReturnType<typeof setTimeout> | null = null;
+
+const currentUpdatedAt = async () =>
+	await getAgent(rootStore.restApiContext, props.projectId, props.agentId)
+		.then((agent) => agent.updatedAt)
+		.catch(() => null);
+
+// The builder saves the agent once the fix is in; then every check runs again here.
+const onAgentSaved = async (updatedAt: string | null | undefined) => {
+	if (!fixPending.value || !updatedAt || updatedAt === fixPending.value) return;
+	setFixPending(null);
+	if (agentPoll) clearTimeout(agentPoll);
+	filter.value = 'all';
+	await startRun();
+};
+
+function pollAgent() {
+	if (agentPoll) clearTimeout(agentPoll);
+	agentPoll = setTimeout(() => {
+		agentPoll = null;
+		void (async () => {
+			if (!fixPending.value) return;
+			await onAgentSaved(await currentUpdatedAt());
+			if (fixPending.value) pollAgent();
+		})();
+	}, POLL_MS);
+}
+
+const onFix = async (check: AgentCheck, example: AgentCheckExample) =>
+	await sendFix([fixItem(check, example)]);
+
+const onFixAll = async () =>
 	await sendFix(
-		i18n.baseText('agents.builder.agentChecks.fixPrompt', {
-			interpolate: {
-				check: check.name,
-				rule: check.rule,
-				input: example.input,
-				reply: example.reply ?? '',
-				reason: example.reason ?? '',
-			},
+		checks.value.flatMap((check) => {
+			const bad = check.examples.find((ex) => ex.state === 'needs_work');
+			return bad ? [fixItem(check, bad)] : [];
 		}),
 	);
+
+// With fixes to apply, Run all moves into the menu so the toolbar has one primary action.
+type ToolbarAction = 'run-all' | 'view-builder';
+const toolbarMenu = computed(
+	(): Array<ActionDropdownItem<ToolbarAction>> => [
+		...(fixPending.value && fixThreadId.value
+			? [
+					{
+						id: 'view-builder' as const,
+						label: i18n.baseText('agents.builder.agentChecks.viewInBuilder'),
+					},
+				]
+			: []),
+		{
+			id: 'run-all',
+			label: i18n.baseText('agents.builder.agentChecks.runAll'),
+			disabled: !props.canRun || runInFlight.value || busy.value || !!fixPending.value,
+		},
+	],
+);
+const onToolbarMenu = async (action: ToolbarAction) => {
+	if (action === 'run-all') await startRun();
+	else if (fixThreadId.value) {
+		await router.push({ name: INSTANCE_AI_THREAD_VIEW, params: { threadId: fixThreadId.value } });
+	}
 };
 
-const onFixAll = async () => {
-	const failing = checks.value.filter((check) => check.needsWork > 0);
-	const items = failing.flatMap((check) => {
-		const bad = check.examples.find((ex) => ex.state === 'needs_work');
-		return bad ? [fixItem(check, bad)] : [];
-	});
-	if (items.length === 0) return;
-	await sendFix(
-		i18n.baseText('agents.builder.agentChecks.fixAllPrompt', {
-			interpolate: { count: String(items.length), list: items.join('\n\n') },
-		}),
-	);
-};
+watch(() => props.agentUpdatedAt, onAgentSaved);
 
+// The thread card ran checks: pick up its rows and results here too.
 watch(
-	() => props.agentUpdatedAt,
-	async (updatedAt) => {
-		if (!fixPending.value || !updatedAt || updatedAt === fixPending.value) return;
-		setFixPending(null);
-		filter.value = 'all';
-		await startRun();
+	() => store.checksVersion,
+	async () => {
+		await loadCases();
+		await loadRuns();
 	},
 );
-
-const scrollTo = async (testId: string) => {
-	await nextTick();
-	sectionEl.value
-		?.querySelector(`[data-testid="${testId}"]`)
-		?.scrollIntoView({ block: 'center', behavior: 'smooth' });
-};
-
-const onSeeSuggestions = async () => {
-	suggestionsOpen.value = true;
-	await scrollTo('agent-check-suggestions');
-};
 
 const submitOwnFromEmpty = async () => {
 	const value = ownDraft.value.trim();
@@ -458,10 +538,48 @@ watch(
 	},
 );
 
-onMounted(load);
+// The builder thread asks to show rows here (a run it started, an example to see, or
+// "See in Checks" while this tab is already open): reload, then point at those checks
+// for a moment. One check opens; several are only highlighted, so the list stays scannable.
+const flashKeys = ref(new Set<string>());
+let flashTimer: ReturnType<typeof setTimeout> | null = null;
+const focusRows = async (rowIds: number[]) => {
+	await loadCases();
+	await loadRuns();
+	const targets = checks.value.filter((check) =>
+		check.examples.some((ex) => rowIds.includes(ex.rowId)),
+	);
+	const [first] = targets;
+	if (!first) return;
+	filter.value = 'all';
+	if (targets.length === 1) openKey.value = first.key;
+	flashKeys.value = new Set(targets.map((check) => check.key));
+	if (flashTimer) clearTimeout(flashTimer);
+	flashTimer = setTimeout(() => (flashKeys.value = new Set()), 1600);
+	await nextTick();
+	sectionEl.value
+		?.querySelector(`[data-check-key="${CSS.escape(first.key)}"]`)
+		?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+};
+watch(
+	() => store.checksFocus,
+	(request) => {
+		if (request?.agentId === props.agentId) void focusRows(request.rowIds);
+	},
+);
+
+onMounted(async () => {
+	await load();
+	// A fix asked for before a reload is still on its way: keep watching for the save.
+	if (fixPending.value) pollAgent();
+	const request = store.checksFocus;
+	if (request?.agentId === props.agentId) await focusRows(request.rowIds);
+});
 watch(() => props.agentId, load);
 onBeforeUnmount(() => {
 	if (pollTimer) clearTimeout(pollTimer);
+	if (agentPoll) clearTimeout(agentPoll);
+	if (flashTimer) clearTimeout(flashTimer);
 });
 </script>
 
@@ -471,45 +589,57 @@ onBeforeUnmount(() => {
 
 		<template v-else-if="checks.length > 0">
 			<div :class="$style.toolbar">
+				<AgentCheckFilters v-model="filter" :counts="counts" :running="runInFlight" />
 				<span :class="$style.tools">
-					<AgentCheckFilters v-model="filter" :counts="counts" :running="runInFlight" />
-					<template v-if="lowCoverage">
-						<span :class="$style.low">{{
-							i18n.baseText('agents.builder.agentChecks.health.lowCoverage', {
-								adjustToNumber: counts.total,
-								interpolate: { count: String(counts.total) },
-							})
-						}}</span>
+					<!-- While the builder fixes, the main button says so (no status text in the toolbar). -->
+					<template v-if="fixPending">
 						<N8nButton
-							v-if="suggestions.length > 0"
 							variant="outline"
 							size="small"
-							data-testid="agent-checks-see-suggestions"
-							@click="onSeeSuggestions"
+							disabled
+							data-testid="agent-checks-fix-pending"
 						>
-							{{ i18n.baseText('agents.builder.agentChecks.health.seeSuggestions') }}
+							<N8nSpinner size="small" :class="$style.spin" />
+							{{
+								fixingCount
+									? i18n.baseText('agents.builder.agentChecks.fixingCount', {
+											adjustToNumber: fixingCount,
+											interpolate: { count: String(fixingCount) },
+										})
+									: i18n.baseText('agents.builder.agentChecks.fixingChecks')
+							}}
 						</N8nButton>
+						<N8nActionDropdown
+							:items="toolbarMenu"
+							activator-icon="ellipsis"
+							data-testid="agent-checks-toolbar-more"
+							@select="onToolbarMenu"
+						/>
 					</template>
-				</span>
-				<span :class="$style.tools">
-					<span v-if="fixPending" :class="$style.low" data-testid="agent-checks-fix-pending">{{
-						i18n.baseText('agents.builder.agentChecks.fixPending')
-					}}</span>
+					<template v-else-if="showFixAll">
+						<N8nButton
+							variant="solid"
+							size="small"
+							:disabled="disabled || busy"
+							data-testid="agent-checks-fix-all"
+							@click="onFixAll"
+						>
+							{{
+								i18n.baseText('agents.builder.agentChecks.onboarding.applyFixes', {
+									adjustToNumber: counts.needsWork,
+									interpolate: { count: String(counts.needsWork) },
+								})
+							}}
+						</N8nButton>
+						<N8nActionDropdown
+							:items="toolbarMenu"
+							activator-icon="ellipsis"
+							data-testid="agent-checks-toolbar-more"
+							@select="onToolbarMenu"
+						/>
+					</template>
 					<N8nButton
-						v-if="showFixAll"
-						variant="solid"
-						size="small"
-						:disabled="disabled || busy"
-						data-testid="agent-checks-fix-all"
-						@click="onFixAll"
-					>
-						{{
-							i18n.baseText('agents.builder.agentChecks.fixAll', {
-								interpolate: { count: String(counts.needsWork) },
-							})
-						}}
-					</N8nButton>
-					<N8nButton
+						v-else
 						variant="outline"
 						size="small"
 						:disabled="!canRun || runInFlight || busy"
@@ -527,16 +657,19 @@ onBeforeUnmount(() => {
 					v-for="check in visibleChecks"
 					:key="check.key"
 					role="listitem"
+					:data-check-key="check.key"
+					:class="{ [$style.flash]: flashKeys.has(check.key) }"
 					:check="check"
 					:open="openKey === check.key"
 					:running="check.examples.some((ex) => ex.state === 'running')"
-					:disabled="disabled || busy"
-					:can-run="canRun && !runInFlight"
+					:disabled="disabled || busy || !!fixPending"
+					:can-run="canRun && !runInFlight && !fixPending"
 					@toggle="openKey = openKey === check.key ? null : check.key"
 					@run="onRunCheck"
 					@fix="onFix"
 					@fine="onFine"
 					@edit-rule="onEditRule"
+					@remove="onRemove"
 					@add-example="onAddExample"
 				/>
 			</div>
@@ -545,9 +678,9 @@ onBeforeUnmount(() => {
 				:suggestions="suggestions"
 				:open="suggestionsOpen"
 				:disabled="disabled || busy"
+				:writing="writingOwn"
 				@toggle="suggestionsOpen = !suggestionsOpen"
 				@add="addSuggestions([$event])"
-				@add-all="addSuggestions(suggestions)"
 				@add-own="addOwn"
 			/>
 		</template>
@@ -585,17 +718,18 @@ onBeforeUnmount(() => {
 				<AgentCheckStack :items="pickedNewestFirst" :class="$style.picks">
 					<template #top>
 						<label :class="$style.ownPick">
-							<AgentReaction kind="idle" size="row" />
-							<span :class="$style.pickKind">{{
-								i18n.baseText('agents.builder.agentChecks.suggestions.custom')
-							}}</span>
+							<AgentReaction :kind="writingOwn ? 'waiting' : 'idle'" size="row" />
 							<input
 								ref="ownInput"
 								v-model="ownDraft"
 								:class="$style.ownInput"
 								type="text"
-								:disabled="disabled || busy"
-								:placeholder="i18n.baseText('agents.builder.agentChecks.empty.ownPlaceholder')"
+								:disabled="disabled || busy || writingOwn"
+								:placeholder="
+									writingOwn
+										? i18n.baseText('agents.builder.agentChecks.suggestions.writing')
+										: i18n.baseText('agents.builder.agentChecks.suggestions.own')
+								"
 								data-testid="agent-checks-own"
 								@keydown.enter.prevent="submitOwnFromEmpty"
 							/>
@@ -638,24 +772,57 @@ onBeforeUnmount(() => {
 
 <style lang="scss" module>
 .section {
+	container: checks / inline-size;
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--sm);
 	width: 100%;
+	min-width: 0;
+}
+
+.spin {
+	margin-inline-end: var(--spacing--4xs);
 }
 
 .toolbar {
 	display: flex;
+	flex-wrap: wrap;
 	align-items: center;
 	justify-content: space-between;
 	gap: var(--spacing--xs);
 }
 
+// Same corner radius as the filter buttons and toolbar above it.
 .list {
 	overflow: hidden;
 	border: var(--border-width) var(--border-style) var(--border-color);
-	border-radius: var(--radius--lg);
+	border-radius: var(--radius);
 	background: var(--background--surface);
+}
+
+// With one check open, the closed ones step back so the open one is the focus.
+.list:has(> [data-open]) > :not([data-open]) {
+	background: var(--background--subtle);
+}
+
+.flash {
+	animation: flash 1.6s ease-out;
+}
+
+@keyframes flash {
+	0%,
+	40% {
+		background-color: color-mix(in srgb, var(--color--primary) 8%, transparent);
+	}
+	100% {
+		background-color: transparent;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.flash {
+		animation: none;
+	}
 }
 
 .low {

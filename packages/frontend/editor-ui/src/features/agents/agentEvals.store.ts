@@ -186,6 +186,50 @@ export const useAgentEvalsStore = defineStore(STORES.AGENT_EVALS, () => {
 		pendingEvalsFocus.value = null;
 	};
 
+	/**
+	 * A request from the Checks card in the builder thread to open this agent's
+	 * preview chat. Held like `pendingEvalsFocus`, since the builder that opens
+	 * the dock may mount only after the artifact panel reveals it.
+	 */
+	// `fresh` opens a new, empty session instead of the last one ("Try agent yourself").
+	const pendingPreviewOpen = ref<{ agentId: string; fresh: boolean } | null>(null);
+	const requestPreviewOpen = (agentId: string, options: { fresh?: boolean } = {}) => {
+		pendingPreviewOpen.value = { agentId, fresh: options.fresh === true };
+	};
+	const consumePreviewOpen = (agentId: string) => {
+		const request = pendingPreviewOpen.value;
+		if (request?.agentId !== agentId) return null;
+		pendingPreviewOpen.value = null;
+		return request;
+	};
+
+	/**
+	 * Rows the builder thread wants shown in the Checks tab: a run it just started,
+	 * or an example the person asked to see. The tab reloads and opens the check;
+	 * `nonce` lets the same rows be asked for twice.
+	 */
+	/** Bumped when the thread card starts or finishes a run, so an open Checks tab reloads. */
+	const checksVersion = ref(0);
+	const bumpChecks = () => {
+		checksVersion.value += 1;
+	};
+
+	const checksFocus = ref<{ agentId: string; rowIds: number[]; nonce: number } | null>(null);
+	const focusChecks = (agentId: string, rowIds: number[]) => {
+		checksFocus.value = { agentId, rowIds, nonce: (checksFocus.value?.nonce ?? 0) + 1 };
+	};
+
+	/** A request from the Checks card to show this agent's Agent tab (to pick a model). */
+	const pendingAgentTab = ref<string | null>(null);
+	const requestAgentTab = (agentId: string) => {
+		pendingAgentTab.value = agentId;
+	};
+	const consumeAgentTab = (agentId: string) => {
+		if (pendingAgentTab.value !== agentId) return false;
+		pendingAgentTab.value = null;
+		return true;
+	};
+
 	const getDatasets = (agentId: string) => datasetsByAgentId.value[agentId] ?? [];
 
 	// Absence of a cache entry is "not loaded yet", not "none" — callers that
@@ -997,6 +1041,16 @@ export const useAgentEvalsStore = defineStore(STORES.AGENT_EVALS, () => {
 		requestEvalsFocus,
 		consumeEvalsFocus,
 		clearEvalsFocus,
+		pendingPreviewOpen,
+		checksFocus,
+		focusChecks,
+		checksVersion,
+		bumpChecks,
+		pendingAgentTab,
+		requestAgentTab,
+		consumeAgentTab,
+		requestPreviewOpen,
+		consumePreviewOpen,
 	};
 });
 

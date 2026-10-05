@@ -1256,9 +1256,32 @@ export type InstanceAiAgentPreviewHandoffContext = z.infer<
 	typeof instanceAiAgentPreviewHandoffContextSchema
 >;
 
+// Fixes the person approved in the Checks card: the visible message stays one line,
+// and the builder reads each check, its rule and the fix to apply from here.
+export const instanceAiChecksFixHandoffContextSchema = z.object({
+	source: z.literal('agent-checks-fix'),
+	agentId: z.string().min(1).max(128),
+	fixes: z
+		.array(
+			z.object({
+				check: z.string().max(300),
+				rule: z.string().max(1000),
+				input: z.string().max(4000),
+				reason: z.string().max(1000),
+				fix: z.string().max(1000),
+			}),
+		)
+		.min(1)
+		.max(20),
+});
+export type InstanceAiChecksFixHandoffContext = z.infer<
+	typeof instanceAiChecksFixHandoffContextSchema
+>;
+
 export const instanceAiHandoffContextSchema = z.discriminatedUnion('source', [
 	instanceAiCredentialHandoffContextSchema,
 	instanceAiAgentPreviewHandoffContextSchema,
+	instanceAiChecksFixHandoffContextSchema,
 ]);
 export type InstanceAiHandoffContext = z.infer<typeof instanceAiHandoffContextSchema>;
 

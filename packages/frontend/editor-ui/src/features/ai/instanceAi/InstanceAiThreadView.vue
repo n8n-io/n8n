@@ -25,7 +25,7 @@ import {
 import {
 	onClickOutside,
 	useElementSize,
-	useIntersectionObserver,
+	useEventListener,
 	useScroll,
 	useWindowSize,
 } from '@vueuse/core';
@@ -33,6 +33,7 @@ import { useI18n } from '@n8n/i18n';
 import type {
 	InstanceAiAgentAttachment,
 	InstanceAiAttachment,
+	InstanceAiChecksFixHandoffContext,
 	InstanceAiHandoffContext,
 } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -279,16 +280,29 @@ watch(activeChecksOnboarding, (target) => {
 	if (target) checksOnboardingShownFor.value = target.agentId;
 });
 
-function openChecksTab() {
+// Checks conversations live in the Checks tab beside the thread; with rows, that check opens.
+function openChecksTab(rowIds: number[] = []) {
 	const target = activeChecksOnboarding.value;
 	if (!target) return;
+	if (rowIds.length) agentEvalsStore.focusChecks(target.agentId, rowIds);
 	agentEvalsStore.requestEvalsFocus(target.agentId, false);
 	preview.openAgentPreview(target.agentId, target.projectId);
 }
 
+// Reveals the agent on its Agent tab, where a model is picked.
+function openOnboardingAgent() {
+	const target = activeChecksOnboarding.value;
+	if (!target) return;
+	agentEvalsStore.requestAgentTab(target.agentId);
+	preview.openAgentPreview(target.agentId, target.projectId);
+}
+
+// Reveals the agent and opens a fresh preview chat, so the person can try it themselves.
 function openOnboardingPreview() {
 	const target = activeChecksOnboarding.value;
-	if (target) preview.openAgentPreview(target.agentId, target.projectId);
+	if (!target) return;
+	agentEvalsStore.requestPreviewOpen(target.agentId, { fresh: true });
+	preview.openAgentPreview(target.agentId, target.projectId);
 }
 
 /*
@@ -305,15 +319,88 @@ const checksCardEl = computed(() => {
 	return el instanceof HTMLElement ? el : null;
 });
 
+/*
+ * Once the checks card is done it stays where it finished: remember the message it
+ * came after, and when the conversation moves on, render it there instead of at the end.
+ */
+const checksAnchorKey = (agentId: string) => `N8N_AGENT_CHECKS_ANCHOR:${agentId}`;
+const checksAnchor = ref<string | null>(null);
+watch(
+	() => activeChecksOnboarding.value?.agentId,
+	(agentId) => {
+		if (!agentId) return;
+		try {
+			checksAnchor.value = window.localStorage.getItem(checksAnchorKey(agentId));
+		} catch {
+			checksAnchor.value = null;
+		}
+	},
+	{ immediate: true },
+);
+const anchorChecks = (agentId: string) => {
+	const last = displayedMessages[displayedMessages.length - 1];
+	if (!last || checksAnchor.value) return;
+	checksAnchor.value = last.id;
+	try {
+		window.localStorage.setItem(checksAnchorKey(agentId), last.id);
+	} catch {
+		// Without storage the card stays at the end of the thread.
+	}
+};
+const clearChecksAnchor = (agentId: string) => {
+	checksAnchor.value = null;
+	try {
+		window.localStorage.removeItem(checksAnchorKey(agentId));
+	} catch {
+		// Nothing stored to clear.
+	}
+};
+
+// The card can report "done" before the thread's messages have loaded; anchor once they're there.
+watch(
+	() => displayedMessages.length,
+	() => {
+		const target = activeChecksOnboarding.value;
+		if (target && checksProgress.value?.settled) anchorChecks(target.agentId);
+	},
+);
+
+// Inline only once something came after it; until then the end of the thread is the same place.
+const checksAnchorIndex = computed(() =>
+	checksAnchor.value
+		? displayedMessages.findIndex((message) => message.id === checksAnchor.value)
+		: -1,
+);
+// Only while it's done: a card that is working again belongs at the end of the thread.
+const checksInline = computed(
+	() =>
+		checksProgress.value?.busy !== true &&
+		checksAnchorIndex.value >= 0 &&
+		checksAnchorIndex.value < displayedMessages.length - 1,
+);
+const messagesUpToChecks = computed(() =>
+	checksInline.value ? displayedMessages.slice(0, checksAnchorIndex.value + 1) : displayedMessages,
+);
+const messagesAfterChecks = computed(() =>
+	checksInline.value ? displayedMessages.slice(checksAnchorIndex.value + 1) : [],
+);
+
 function onChecksProgress(next: AgentChecksOnboardingProgress) {
 	const finishedNow = next.finished && checksProgress.value?.running === true;
 	checksProgress.value = next;
+	const target = activeChecksOnboarding.value;
+	if (target && next.settled) anchorChecks(target.agentId);
+	// Working again (or a moment of "done" that wasn't): free the spot so it settles fresh later.
+	// A card that is only loading says nothing yet, so it keeps the spot.
+	else if (target && next.busy && checksAnchor.value) clearChecksAnchor(target.agentId);
+	measureChecksCard();
 	if (finishedNow) checksDoneSeen.value = checksCardInView.value;
 }
 
 const checksChip = computed(() => {
 	const progress = checksProgress.value;
-	if (!progress || checksCardInView.value) return null;
+	// Settled into the thread's history: nothing left to point at.
+	if (!progress || checksCardInView.value || checksInline.value) return null;
 	if (progress.running) {
 		return {
 			kind: 'waiting' as const,
@@ -686,14 +773,24 @@ const { arrivedState } = useScroll(scrollContainerRef, {
 });
 const userScrolledUp = ref(false);
 
-useIntersectionObserver(
-	checksCardEl,
-	([entry]) => {
-		checksCardInView.value = entry?.isIntersecting ?? true;
-		if (checksCardInView.value && checksProgress.value?.finished) checksDoneSeen.value = true;
-	},
-	{ root: scrollContainerRef, threshold: 0.15 },
-);
+// Whether the first-check card is on screen, measured against the thread's scroll
+// container on scroll, resize and every progress update.
+function measureChecksCard() {
+	const el = checksCardEl.value;
+	const container = scrollContainerRef.value;
+	if (!el || !container) {
+		checksCardInView.value = true;
+		return;
+	}
+	const card = el.getBoundingClientRect();
+	const view = container.getBoundingClientRect();
+	const margin = 40;
+	checksCardInView.value = card.bottom > view.top + margin && card.top < view.bottom - margin;
+	if (checksCardInView.value && checksProgress.value?.finished) checksDoneSeen.value = true;
+}
+useEventListener(scrollContainerRef, 'scroll', measureChecksCard, { passive: true });
+useEventListener(window, 'resize', measureChecksCard);
+watch([checksCardEl, checksProgress], () => void nextTick(measureChecksCard));
 
 watch(
 	() => arrivedState.bottom,
@@ -993,6 +1090,12 @@ function handleStop() {
 	void thread.cancelRun();
 }
 
+// The checks card asks for a fix in this thread; the builder proposes it and waits for the user.
+function sendChecksFix(message: string, context: InstanceAiChecksFixHandoffContext) {
+	userScrolledUp.value = false;
+	void thread.sendMessage(message, undefined, rootStore.pushRef, context);
+}
+
 function handleFixWithAiFromOffer() {
 	const offer = activeFixWithAiOffer.value;
 	if (!offer) return;
@@ -1254,7 +1357,26 @@ async function dismissComposerContextChip() {
 							<div :class="$style.messageList">
 								<TransitionGroup name="message-slide">
 									<InstanceAiMessage
-										v-for="message in displayedMessages"
+										v-for="message in messagesUpToChecks"
+										:key="message.id"
+										:message="message"
+									/>
+								</TransitionGroup>
+								<!-- A finished checks card stays where it finished; later messages follow it. -->
+								<AgentChecksOnboardingCard
+									v-if="checksInline && activeChecksOnboarding"
+									:key="`checks-${activeChecksOnboarding.agentId}`"
+									:project-id="activeChecksOnboarding.projectId"
+									:agent-id="activeChecksOnboarding.agentId"
+									@open-preview="openOnboardingPreview"
+									@open-agent="openOnboardingAgent"
+									@open-checks="openChecksTab"
+									@fix="sendChecksFix"
+									@progress="onChecksProgress"
+								/>
+								<TransitionGroup v-if="checksInline" name="message-slide">
+									<InstanceAiMessage
+										v-for="message in messagesAfterChecks"
 										:key="message.id"
 										:message="message"
 									/>
@@ -1288,13 +1410,15 @@ async function dismissComposerContextChip() {
 
 								<Transition name="confirmation-slide">
 									<AgentChecksOnboardingCard
-										v-if="activeChecksOnboarding"
+										v-if="activeChecksOnboarding && !checksInline"
 										ref="checksCardRef"
 										:key="activeChecksOnboarding.agentId"
 										:project-id="activeChecksOnboarding.projectId"
 										:agent-id="activeChecksOnboarding.agentId"
 										@open-preview="openOnboardingPreview"
+										@open-agent="openOnboardingAgent"
 										@open-checks="openChecksTab"
+										@fix="sendChecksFix"
 										@progress="onChecksProgress"
 									/>
 									<InstanceAiTestAgentPanel

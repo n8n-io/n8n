@@ -154,6 +154,18 @@ function contextEntryFor(context: InstanceAiHandoffContext): ContextEntry {
 		};
 	}
 
+	if (context.source === 'agent-checks-fix') {
+		return {
+			key,
+			icon: 'wrench',
+			name: i18n.baseText('instanceAi.artifactsPanel.context.checksFix', {
+				adjustToNumber: context.fixes.length,
+				interpolate: { count: String(context.fixes.length) },
+			}),
+			subtitle: i18n.baseText('instanceAi.artifactsPanel.context.addedToContext'),
+		};
+	}
+
 	return {
 		key,
 		icon: 'key-round',

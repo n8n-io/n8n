@@ -125,6 +125,15 @@ describe('agentChecks.utils', () => {
 			expect(exampleState(result('a', 1, null, { status: 'cancelled' }))).toBe('not_run');
 			expect(exampleState(result('a', 1, null))).toBe('pass');
 		});
+
+		it('counts a result the judge failed on as failed, not as a pass', () => {
+			const unjudged = result('a', 1, null, {
+				metrics: { judgeError: 'The judge returned an unreadable verdict.' },
+			});
+
+			expect(exampleState(unjudged)).toBe('failed');
+			expect(exampleState(unjudged, true)).toBe('pass');
+		});
 	});
 
 	describe('checkCounts, matchesFilter and singleState', () => {

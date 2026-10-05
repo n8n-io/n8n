@@ -522,6 +522,7 @@ export type {
 	InstanceAiCredentialHandoffContext,
 	InstanceAiAgentPreviewHandoffContext,
 	InstanceAiHandoffContext,
+	InstanceAiChecksFixHandoffContext,
 	GatewayConfirmationRequiredWirePayload,
 	GatewayConfirmationRequiredPayload,
 	InstanceGatewayResourceDecision,

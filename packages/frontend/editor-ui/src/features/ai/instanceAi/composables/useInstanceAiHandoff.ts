@@ -296,6 +296,12 @@ export function useInstanceAiHandoff() {
 			initialDraft?: string;
 			/** Sent as the first message instead of being drafted, with the agent attached. */
 			sendMessage?: string;
+			/**
+			 * With `sendMessage`: start the thread in the background and stay on the
+			 * current page; `onThread` gets its id so the caller can link to it.
+			 */
+			stay?: boolean;
+			onThread?: (threadId: string) => void;
 		},
 	): Promise<boolean> {
 		if (handoffInFlight) return false;
@@ -342,6 +348,10 @@ export function useInstanceAiHandoff() {
 				stashPendingAgentAttachment(threadId, attachment);
 				if (options?.context) stashPendingHandoffContext(threadId, options.context);
 				if (options?.initialDraft) stashPendingComposerDraft(threadId, options.initialDraft);
+			}
+			if (options?.sendMessage && options.stay) {
+				options.onThread?.(threadId);
+				return true;
 			}
 			try {
 				const failure = await router.push({

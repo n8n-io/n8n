@@ -66,7 +66,11 @@ describe('AgentEvalJudgeService', () => {
 	it("judges with the agent's own model when it has an API-key credential", async () => {
 		resolveByokMock.mockResolvedValue({ id: 'anthropic/claude' });
 		generateMock.mockResolvedValue({
-			structuredOutput: { result: 'needs_work', reason: '  It answered without asking.  ' },
+			structuredOutput: {
+				result: 'needs_work',
+				reason: '  It answered without asking.  ',
+				suggestedFix: '',
+			},
 		});
 
 		const judge = await service.resolveJudge('agent-1', 'project-1', user);
@@ -83,7 +87,9 @@ describe('AgentEvalJudgeService', () => {
 
 	it('falls back to the instance eval model when the agent has no usable key', async () => {
 		resolveByokMock.mockRejectedValue(new UserError('managed credential'));
-		generateMock.mockResolvedValue({ structuredOutput: { result: 'pass', reason: 'Asked.' } });
+		generateMock.mockResolvedValue({
+			structuredOutput: { result: 'pass', reason: 'Asked.', suggestedFix: '' },
+		});
 
 		const judge = await service.resolveJudge('agent-1', 'project-1', user);
 
@@ -102,6 +108,35 @@ describe('AgentEvalJudgeService', () => {
 		});
 
 		await expect(service.resolveJudge('agent-1', 'project-1', user)).resolves.toBeUndefined();
+	});
+
+	it('keeps the suggested fix only when the result needs work', async () => {
+		resolveByokMock.mockResolvedValue({ id: 'anthropic/claude' });
+		generateMock
+			.mockResolvedValueOnce({
+				structuredOutput: {
+					result: 'needs_work',
+					reason: 'It answered without asking.',
+					suggestedFix: '  Ask which ticket before summarizing.  ',
+				},
+			})
+			.mockResolvedValueOnce({
+				structuredOutput: { result: 'pass', reason: 'Asked.', suggestedFix: 'Keep asking.' },
+			});
+
+		const judge = await service.resolveJudge('agent-1', 'project-1', user);
+
+		await expect(judge?.judge(judgeInput)).resolves.toEqual({
+			result: 'needs_work',
+			reason: 'It answered without asking.',
+			suggestedFix: 'Ask which ticket before summarizing.',
+			judgedBy: 'agent_model',
+		});
+		await expect(judge?.judge(judgeInput)).resolves.toEqual({
+			result: 'pass',
+			reason: 'Asked.',
+			judgedBy: 'agent_model',
+		});
 	});
 
 	it('rejects a verdict it cannot read', async () => {

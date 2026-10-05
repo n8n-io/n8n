@@ -23,6 +23,8 @@ export type AgentCheckExample = {
 	state: AgentCheckExampleState;
 	reply: string | null;
 	reason: string | null;
+	/** The judge's suggested instruction when the example needs work. */
+	suggestedFix?: string | null;
 	toolCalls: InstanceAiEvalAgentToolCallRecord[];
 	result: AgentEvalResultRecord | null;
 };
@@ -77,9 +79,12 @@ export const exampleState = (
 	if (!result) return 'not_run';
 	if (result.status === 'new' || result.status === 'running') return 'running';
 	if (result.status !== 'success') return result.status === 'cancelled' ? 'not_run' : 'failed';
-	// "Actually fine" overrides the judge; an unjudged result counts as passing.
+	// "Actually fine" overrides the judge. A result with no judge counts as passing, but
+	// one the judge failed on wasn't checked, so it must not look like a pass.
 	if (markedFine) return 'pass';
-	return readVerdict(result)?.result === 'needs_work' ? 'needs_work' : 'pass';
+	const verdict = readVerdict(result);
+	if (!verdict && result.metrics?.judgeError) return 'failed';
+	return verdict?.result === 'needs_work' ? 'needs_work' : 'pass';
 };
 
 /** Shortens a rule into a check name when the dataset maps no check column. */
@@ -149,6 +154,7 @@ export const buildChecks = (
 			state,
 			reply: readReply(result),
 			reason: readVerdict(result)?.reason ?? null,
+			suggestedFix: readVerdict(result)?.suggestedFix ?? null,
 			toolCalls: readToolCalls(result),
 			result,
 		});
@@ -168,9 +174,11 @@ export const buildChecks = (
 	return [...groups.values()].sort((a, b) => Number(b.needsWork > 0) - Number(a.needsWork > 0));
 };
 
-const isUnrun = (check: AgentCheck) => check.examples.every((ex) => ex.state === 'not_run');
+// Still running counts as not run: nothing is judged yet, so it can't count as a pass.
+const isUnrun = (check: AgentCheck) =>
+	check.examples.every((ex) => ex.state === 'not_run' || ex.state === 'running');
 
-/** Counts for the filter buttons: a check needs work if any example does; one never run counts as not run. */
+/** Counts for the filter buttons: a check needs work if any example does; one never run (or still running) counts as not run. */
 export const checkCounts = (checks: AgentCheck[]): AgentCheckCounts => {
 	const needsWork = checks.filter((check) => check.needsWork > 0).length;
 	const notRun = checks.filter((check) => check.needsWork === 0 && isUnrun(check)).length;

@@ -137,7 +137,21 @@ export const CASE_GENERATION_SYSTEM_PROMPT = [
 export function buildCaseGenerationUserPrompt(
 	summary: AgentConfigSummary,
 	tuples: DimensionTuple[],
+	rule?: string,
 ): string {
+	if (rule) {
+		return [
+			'Here is the agent to write a test case for:',
+			JSON.stringify(summary),
+			'',
+			'The user wrote this rule the agent should follow:',
+			JSON.stringify(rule),
+			'',
+			'Write exactly 1 test case. Its `input` must be a realistic message an end user would send that tests whether the agent follows this rule. Set `whatToCheck` to the rule as written, and name the check after the rule.',
+			'',
+			'Return a JSON object of the form { "cases": [ { "input": "…", "whatToCheck": "…", "checkName": "…" } ] }.',
+		].join('\n');
+	}
 	const scenarios = tuples.map((tuple, i) => `${i + 1}. ${describeTuple(tuple)}`).join('\n');
 	return [
 		'Here is the agent to write test cases for:',
