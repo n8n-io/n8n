@@ -1,5 +1,5 @@
 import { createPinia } from 'pinia';
-import { fireEvent, waitFor } from '@testing-library/vue';
+import { fireEvent, waitFor, within } from '@testing-library/vue';
 import { waitAllPromises, getTooltip, hoverTooltipTrigger } from '@/__tests__/utils';
 import SettingsPersonalView from './SettingsPersonalView.vue';
 import { confirmPasswordEventBus } from '../auth.eventBus';
@@ -26,6 +26,7 @@ const currentUser = {
 	id: '1',
 	firstName: 'John',
 	lastName: 'Doe',
+	fullName: 'John Doe',
 	email: 'joh.doe@example.com',
 	createdAt: Date().toString(),
 	role: ROLE.Owner,
@@ -34,6 +35,27 @@ const currentUser = {
 	isPending: false,
 	mfaEnabled: false,
 };
+
+const SAVE_BAR = 'settings-save-bar';
+const SAVE_BUTTON = 'settings-save-bar-save';
+const DISCARD_BUTTON = 'settings-save-bar-discard';
+
+function getEmailInput(container: Element) {
+	return container.querySelector<HTMLInputElement>('input[name="email"]');
+}
+
+function getFirstNameInput(container: Element) {
+	return container.querySelector<HTMLInputElement>('input[name="firstName"]');
+}
+
+async function selectTheme(container: Element, label: string) {
+	const select = within(container as HTMLElement).getByTestId('theme-select');
+	const trigger = select.querySelector('input') ?? select;
+	await fireEvent.click(trigger);
+	const option = await within(document.body).findByText(label);
+	await fireEvent.click(option);
+	await waitAllPromises();
+}
 
 describe('SettingsPersonalView', () => {
 	beforeAll(() => {
@@ -69,11 +91,30 @@ describe('SettingsPersonalView', () => {
 	});
 
 	it('should enable email and pw change', async () => {
-		const { getByTestId, getAllByRole } = renderComponent({ pinia });
+		const { getByTestId, container } = renderComponent({ pinia });
 		await waitAllPromises();
 
-		expect(getAllByRole('textbox').find((el) => el.getAttribute('type') === 'email')).toBeEnabled();
+		expect(getEmailInput(container)).toBeEnabled();
 		expect(getByTestId('change-password-link')).toBeInTheDocument();
+	});
+
+	it('should render the page with the shared settings layout', async () => {
+		vi.spyOn(settingsStore, 'isMfaFeatureEnabled', 'get').mockReturnValue(true);
+
+		const { getByTestId, getByRole, queryByTestId } = renderComponent({ pinia });
+		await waitAllPromises();
+
+		expect(getByRole('heading', { level: 1, name: 'Personal settings' })).toBeInTheDocument();
+		expect(getByTestId('current-user-name')).toHaveTextContent('John Doe');
+		expect(getByRole('heading', { level: 2, name: 'Basic information' })).toBeInTheDocument();
+		expect(getByRole('heading', { level: 2, name: 'Security' })).toBeInTheDocument();
+		expect(getByRole('heading', { level: 2, name: 'Personalization' })).toBeInTheDocument();
+		expect(getByTestId('personal-data-form')).toBeInTheDocument();
+		expect(getByTestId('change-password-link')).toBeInTheDocument();
+		expect(getByTestId('mfa-section')).toBeInTheDocument();
+		expect(getByTestId('theme-select')).toBeInTheDocument();
+		// Nothing has changed yet, so there is nothing to save.
+		expect(queryByTestId(SAVE_BAR)).not.toBeInTheDocument();
 	});
 
 	describe('when saving basic info', () => {
@@ -83,14 +124,13 @@ describe('SettingsPersonalView', () => {
 				.mockResolvedValue({ id: '1', isPending: false });
 			const requestEmailChangeSpy = vi.spyOn(usersStore, 'requestEmailChange');
 
-			const { getByTestId, getAllByRole } = renderComponent({ pinia });
+			const { getByTestId, container } = renderComponent({ pinia });
 			await waitAllPromises();
 
-			const firstNameInput = getAllByRole('textbox')[0];
-			await fireEvent.update(firstNameInput, 'Jane');
+			await fireEvent.update(getFirstNameInput(container)!, 'Jane');
 			await waitAllPromises();
 
-			getByTestId('save-settings-button').click();
+			getByTestId(SAVE_BUTTON).click();
 			await waitAllPromises();
 
 			expect(updateUserNameSpy).toHaveBeenCalledWith({ firstName: 'Jane', lastName: 'Doe' });
@@ -103,14 +143,13 @@ describe('SettingsPersonalView', () => {
 				.mockResolvedValue({ status: 'confirmation-sent' });
 			const updateUserSpy = vi.spyOn(usersStore, 'updateUser');
 
-			const { getByTestId, getAllByRole } = renderComponent({ pinia });
+			const { getByTestId, container } = renderComponent({ pinia });
 			await waitAllPromises();
 
-			const emailInput = getAllByRole('textbox').find((el) => el.getAttribute('type') === 'email')!;
-			await fireEvent.update(emailInput, 'new@example.com');
+			await fireEvent.update(getEmailInput(container)!, 'new@example.com');
 			await waitAllPromises();
 
-			getByTestId('save-settings-button').click();
+			getByTestId(SAVE_BUTTON).click();
 			await waitAllPromises();
 
 			// The password modal collects the current password; simulate confirming it.
@@ -123,37 +162,119 @@ describe('SettingsPersonalView', () => {
 			});
 			expect(updateUserSpy).not.toHaveBeenCalled();
 		});
+
+		it('should put the email back once the confirmation has been sent', async () => {
+			vi.spyOn(usersStore, 'requestEmailChange').mockResolvedValue({
+				status: 'confirmation-sent',
+			});
+
+			const { getByTestId, queryByTestId, container } = renderComponent({ pinia });
+			await waitAllPromises();
+
+			await fireEvent.update(getEmailInput(container)!, 'new@example.com');
+			await waitAllPromises();
+			getByTestId(SAVE_BUTTON).click();
+			await waitAllPromises();
+			confirmPasswordEventBus.emit('close', { currentPassword: 'secret' });
+			await waitAllPromises();
+
+			// The change only applies after the link is clicked, so nothing is left unsaved.
+			expect(getEmailInput(container)).toHaveValue(currentUser.email);
+			expect(queryByTestId(SAVE_BAR)).not.toBeInTheDocument();
+		});
+
+		it('should save when pressing Enter in a field', async () => {
+			const updateUserNameSpy = vi
+				.spyOn(usersStore, 'updateUserName')
+				.mockResolvedValue({ id: '1', isPending: false });
+
+			const { container } = renderComponent({ pinia });
+			await waitAllPromises();
+
+			const firstNameInput = getFirstNameInput(container)!;
+			await fireEvent.update(firstNameInput, 'Jane');
+			await fireEvent.keyDown(firstNameInput, { key: 'Enter' });
+			await waitAllPromises();
+
+			expect(updateUserNameSpy).toHaveBeenCalledWith({ firstName: 'Jane', lastName: 'Doe' });
+		});
+
+		it('should discard unsaved changes', async () => {
+			const updateUserNameSpy = vi.spyOn(usersStore, 'updateUserName');
+
+			const { getByTestId, queryByTestId, container } = renderComponent({ pinia });
+			await waitAllPromises();
+
+			await fireEvent.update(getFirstNameInput(container)!, 'Jane');
+			await waitAllPromises();
+			expect(getByTestId(SAVE_BAR)).toBeInTheDocument();
+
+			getByTestId(DISCARD_BUTTON).click();
+			await waitAllPromises();
+
+			expect(getFirstNameInput(container)).toHaveValue('John');
+			expect(queryByTestId(SAVE_BAR)).not.toBeInTheDocument();
+			expect(updateUserNameSpy).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('when validating basic info', () => {
+		it('should block saving an empty name and explain why after leaving the field', async () => {
+			const { getByTestId, queryByRole, getByRole, container } = renderComponent({ pinia });
+			await waitAllPromises();
+
+			const firstNameInput = getFirstNameInput(container)!;
+			await fireEvent.update(firstNameInput, '');
+			await waitAllPromises();
+
+			// Flagging while still typing would be noise; the message waits for blur.
+			expect(getByTestId(SAVE_BUTTON)).toBeDisabled();
+			expect(queryByRole('alert')).not.toBeInTheDocument();
+
+			await fireEvent.blur(firstNameInput);
+			await waitAllPromises();
+
+			expect(getByRole('alert')).toHaveTextContent('This field is required');
+			expect(firstNameInput).toHaveAttribute('aria-invalid', 'true');
+		});
+
+		it('should block saving an invalid email', async () => {
+			const { getByTestId, getByRole, container } = renderComponent({ pinia });
+			await waitAllPromises();
+
+			const emailInput = getEmailInput(container)!;
+			await fireEvent.update(emailInput, 'not-an-email');
+			await fireEvent.blur(emailInput);
+			await waitAllPromises();
+
+			expect(getByTestId(SAVE_BUTTON)).toBeDisabled();
+			expect(getByRole('alert')).toHaveTextContent('Enter a valid email address');
+		});
 	});
 
 	describe('when changing theme', () => {
-		it('should disable save button when theme has not been changed', async () => {
-			const { getByTestId } = renderComponent({ pinia });
+		it('should not show the save bar when theme has not been changed', async () => {
+			const { queryByTestId } = renderComponent({ pinia });
 			await waitAllPromises();
 
-			expect(getByTestId('save-settings-button')).toBeDisabled();
+			expect(queryByTestId(SAVE_BAR)).not.toBeInTheDocument();
 		});
 
-		it('should enable save button when theme is changed', async () => {
-			const { getByTestId, getByPlaceholderText, findByText } = renderComponent({ pinia });
+		it('should show the save bar when theme is changed', async () => {
+			const { getByTestId, container } = renderComponent({ pinia });
 			await waitAllPromises();
 
-			getByPlaceholderText('Select').click();
-			const darkThemeOption = await findByText('Dark theme');
-			darkThemeOption.click();
+			await selectTheme(container, 'Dark theme');
 
-			await waitAllPromises();
-			expect(getByTestId('save-settings-button')).toBeEnabled();
+			expect(getByTestId(SAVE_BUTTON)).toBeEnabled();
 		});
 
 		it('should not update theme after changing the selected theme', async () => {
-			const { getByPlaceholderText, findByText } = renderComponent({ pinia });
+			const { container } = renderComponent({ pinia });
 			await waitAllPromises();
 
-			getByPlaceholderText('Select').click();
-			const darkThemeOption = await findByText('Dark theme');
-			darkThemeOption.click();
+			await selectTheme(container, 'Dark theme');
 
-			await waitAllPromises();
 			expect(uiStore.theme).toBe('system');
 		});
 
@@ -161,20 +282,41 @@ describe('SettingsPersonalView', () => {
 			vi.spyOn(usersStore, 'updateUser').mockReturnValue(
 				Promise.resolve({ id: '123', isPending: false }),
 			);
-			const { getByPlaceholderText, findByText, getByTestId } = renderComponent({ pinia });
+			const { getByTestId, queryByTestId, container } = renderComponent({ pinia });
 			await waitAllPromises();
 
-			getByPlaceholderText('Select').click();
-			const darkThemeOption = await findByText('Dark theme');
-			darkThemeOption.click();
+			await selectTheme(container, 'Dark theme');
 
-			await waitAllPromises();
-
-			getByTestId('save-settings-button').click();
-
+			getByTestId(SAVE_BUTTON).click();
 			await waitAllPromises();
 
 			expect(uiStore.theme).toBe('dark');
+			expect(queryByTestId(SAVE_BAR)).not.toBeInTheDocument();
+		});
+	});
+
+	describe('when the account is managed via environment variables', () => {
+		beforeEach(() => {
+			usersStore.usersById[currentUser.id] = { ...currentUser, isManagedByEnv: true };
+		});
+
+		it('should show the notice, lock the fields, and hide the security section', async () => {
+			const { getByTestId, queryByTestId, queryByText, container } = renderComponent({
+				pinia,
+			});
+			await waitAllPromises();
+
+			expect(getByTestId('managed-by-env-notice')).toBeInTheDocument();
+			expect(getFirstNameInput(container)).toBeNull();
+			expect(getEmailInput(container)).toBeNull();
+			expect(getByTestId('personal-firstName-value')).toHaveTextContent('John');
+			expect(getByTestId('personal-email-value')).toHaveTextContent(currentUser.email);
+			// The notice already explains the lock, so the rows don't repeat it.
+			expect(queryByText('Managed by your identity provider.')).not.toBeInTheDocument();
+			expect(queryByTestId('change-password-link')).not.toBeInTheDocument();
+			expect(queryByTestId('mfa-section')).not.toBeInTheDocument();
+			// The theme is still the user's own to pick.
+			expect(getByTestId('theme-select')).toBeInTheDocument();
 		});
 	});
 
@@ -188,25 +330,28 @@ describe('SettingsPersonalView', () => {
 		it('should not be disabled for the instance owner', async () => {
 			vi.spyOn(usersStore, 'isInstanceOwner', 'get').mockReturnValue(true);
 
-			const { queryByTestId, getAllByRole } = renderComponent({ pinia });
+			const { queryByTestId, getAllByText, container } = renderComponent({ pinia });
 			await waitAllPromises();
 
-			expect(
-				getAllByRole('textbox').find((el) => el.getAttribute('type') === 'email'),
-			).toBeEnabled();
+			expect(getEmailInput(container)).toBeEnabled();
 			expect(queryByTestId('change-password-link')).toBeInTheDocument();
 			expect(queryByTestId('mfa-section')).toBeInTheDocument();
+			// The name still comes from the identity provider, and the rows say so.
+			expect(getFirstNameInput(container)).toBeNull();
+			expect(getAllByText('Managed by your identity provider.')).toHaveLength(2);
 		});
 
 		it('should be disabled for members', async () => {
 			vi.spyOn(usersStore, 'isInstanceOwner', 'get').mockReturnValue(false);
 
-			const { queryByTestId, getAllByRole } = renderComponent({ pinia });
+			const { queryByTestId, getByTestId, getAllByText, container } = renderComponent({
+				pinia,
+			});
 			await waitAllPromises();
 
-			expect(
-				getAllByRole('textbox').find((el) => el.getAttribute('type') === 'email'),
-			).toBeDisabled();
+			expect(getEmailInput(container)).toBeNull();
+			expect(getByTestId('personal-email-value')).toHaveTextContent(currentUser.email);
+			expect(getAllByText('Managed by your identity provider.')).toHaveLength(3);
 			expect(queryByTestId('change-password-link')).not.toBeInTheDocument();
 			expect(queryByTestId('mfa-section')).not.toBeInTheDocument();
 		});
@@ -222,16 +367,27 @@ describe('SettingsPersonalView', () => {
 		it('should let a member configure MFA while hiding password change', async () => {
 			vi.spyOn(usersStore, 'isInstanceOwner', 'get').mockReturnValue(false);
 
-			const { queryByTestId, getAllByRole } = renderComponent({ pinia });
+			const { queryByTestId, container } = renderComponent({ pinia });
 			await waitAllPromises();
 
 			// LDAP has no native 2FA, so n8n's own MFA stays configurable...
 			expect(queryByTestId('mfa-section')).toBeInTheDocument();
 			// ...but password/email remain managed externally.
 			expect(queryByTestId('change-password-link')).not.toBeInTheDocument();
-			expect(
-				getAllByRole('textbox').find((el) => el.getAttribute('type') === 'email'),
-			).toBeDisabled();
+			expect(getEmailInput(container)).toBeNull();
+		});
+	});
+
+	describe('when 2FA is enforced', () => {
+		it('should ask the user to set it up while it is still disabled', async () => {
+			vi.spyOn(settingsStore, 'isMfaFeatureEnabled', 'get').mockReturnValue(true);
+			vi.spyOn(settingsStore, 'isMFAEnforced', 'get').mockReturnValue(true);
+
+			const { getByTestId } = renderComponent({ pinia });
+			await waitAllPromises();
+
+			expect(getByTestId('mfa-enforced-notice')).toBeInTheDocument();
+			expect(getByTestId('enable-mfa-button')).toBeInTheDocument();
 		});
 	});
 

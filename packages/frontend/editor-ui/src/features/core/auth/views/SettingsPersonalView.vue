@@ -1,12 +1,13 @@
 <script lang="ts" setup>
-import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
+import { ref, computed, reactive, onMounted, onBeforeUnmount } from 'vue';
 import { ROLE, type Role, type ChangeEmailRequestDto } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
+import type { BaseTextKey } from '@n8n/i18n';
 import { useToast } from '@n8n/composables/useToast';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
-import type { IFormInputs, ThemeOption } from '@/Interface';
+import type { ThemeOption } from '@/Interface';
 import type { IUser } from '@n8n/rest-api-client/api/users';
-import { MFA_DOCS_URL } from '@/app/constants';
+import { MFA_DOCS_URL, VALID_EMAIL_REGEX } from '@/app/constants';
 import {
 	CHANGE_PASSWORD_MODAL_KEY,
 	CONFIRM_PASSWORD_MODAL_KEY,
@@ -18,32 +19,31 @@ import { useUsersStore } from '@n8n/stores/users.store';
 import { useRolesStore } from '@n8n/stores/roles.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useCloudPlanStore } from '@n8n/stores/cloudPlan.store';
-import { createFormEventBus } from '@n8n/design-system';
-import type { MfaModalEvents } from '../auth.eventBus';
-import { promptMfaCodeBus } from '../auth.eventBus';
-import type { BaseTextKey } from '@n8n/i18n';
+import type { ConfirmPasswordModalEvents, MfaModalEvents } from '../auth.eventBus';
+import { confirmPasswordEventBus, promptMfaCodeBus } from '../auth.eventBus';
 import { useSSOStore } from '@/features/settings/sso/sso.store';
-import type { ConfirmPasswordModalEvents } from '../auth.eventBus';
-import { confirmPasswordEventBus } from '../auth.eventBus';
 
+import type { IconName } from '@n8n/design-system';
 import {
 	N8nAvatar,
 	N8nButton,
-	N8nFormInputs,
-	N8nHeading,
-	N8nInputLabel,
+	N8nIcon,
+	N8nInput,
 	N8nLink,
 	N8nNotice,
 	N8nOption,
 	N8nSelect,
+	N8nSettingsLayout,
+	N8nSettingsPageHeader,
+	N8nSettingsRow,
+	N8nSettingsRowGroup,
+	N8nSettingsSaveBar,
+	N8nSettingsSection,
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
-type UserBasicDetailsForm = {
-	firstName: string;
-	lastName: string;
-	email: string;
-};
+
+type ProfileField = 'firstName' | 'lastName' | 'email';
 
 type RoleContent = {
 	name: string;
@@ -54,27 +54,6 @@ const i18n = useI18n();
 const { showToast, showError } = useToast();
 const documentTitle = useDocumentTitle();
 
-const isActive = ref<boolean>(true);
-const hasAnyBasicInfoChanges = ref<boolean>(false);
-const formInputs = ref<null | IFormInputs>(null);
-const formBus = createFormEventBus();
-const readyToSubmit = ref(false);
-const currentSelectedTheme = ref(useUIStore().theme);
-const themeOptions = ref<Array<{ name: ThemeOption; label: BaseTextKey }>>([
-	{
-		name: 'system',
-		label: 'settings.personal.theme.systemDefault',
-	},
-	{
-		name: 'light',
-		label: 'settings.personal.theme.light',
-	},
-	{
-		name: 'dark',
-		label: 'settings.personal.theme.dark',
-	},
-]);
-
 const uiStore = useUIStore();
 const usersStore = useUsersStore();
 const rolesStore = useRolesStore();
@@ -82,13 +61,13 @@ const settingsStore = useSettingsStore();
 const ssoStore = useSSOStore();
 const cloudPlanStore = useCloudPlanStore();
 
-const currentUser = computed((): IUser | null => {
-	return usersStore.currentUser;
-});
+const isActive = ref(true);
+const saving = ref(false);
 
-const isManagedByEnv = computed((): boolean => {
-	return currentUser.value?.isManagedByEnv ?? false;
-});
+const currentUser = computed((): IUser | null => usersStore.currentUser);
+
+// Who manages this account decides which fields are editable here.
+const isManagedByEnv = computed((): boolean => currentUser.value?.isManagedByEnv ?? false);
 
 const isLdapCurrentAuthMethod = computed((): boolean => {
 	return ssoStore.isEnterpriseLdapEnabled && currentUser.value?.signInType === 'ldap';
@@ -103,19 +82,25 @@ const isExternalAuthEnabled = computed((): boolean => {
 	return isLdapCurrentAuthMethod.value || isSamlEnabled || isOidcEnabled;
 });
 
+// The owner keeps email and password control under external auth so they can't be locked out.
 const isPersonalSecurityEnabled = computed((): boolean => {
 	return usersStore.isInstanceOwner || !isExternalAuthEnabled.value;
 });
 
-const mfaDisabled = computed((): boolean => {
-	return !usersStore.mfaEnabled;
-});
-const mfaEnforced = computed((): boolean => {
-	return settingsStore.isMFAEnforced;
-});
-const isMfaFeatureEnabled = computed((): boolean => {
-	return settingsStore.isMfaFeatureEnabled;
-});
+const canEditName = computed((): boolean => !isManagedByEnv.value && !isExternalAuthEnabled.value);
+const canEditEmail = computed(
+	(): boolean => !isManagedByEnv.value && isPersonalSecurityEnabled.value,
+);
+
+// Why a field is read-only, shown as that row's description. Accounts managed via environment
+// variables are explained once by the notice above the section, so their rows stay quiet.
+const lockedFieldDescription = computed((): string | undefined =>
+	isManagedByEnv.value ? undefined : i18n.baseText('settings.personal.managedBy.identityProvider'),
+);
+
+const mfaDisabled = computed((): boolean => !usersStore.mfaEnabled);
+const mfaEnforced = computed((): boolean => settingsStore.isMFAEnforced);
+const isMfaFeatureEnabled = computed((): boolean => settingsStore.isMfaFeatureEnabled);
 
 // Unlike SAML/OIDC, LDAP has no native 2FA, so n8n's own 2FA must stay
 // configurable for LDAP users even though password management is external.
@@ -127,14 +112,6 @@ const canConfigureMfa = computed((): boolean => {
 
 const isSecuritySectionVisible = computed((): boolean => {
 	return !isManagedByEnv.value && (isPersonalSecurityEnabled.value || canConfigureMfa.value);
-});
-
-const hasAnyPersonalisationChanges = computed((): boolean => {
-	return currentSelectedTheme.value !== uiStore.theme;
-});
-
-const hasAnyChanges = computed(() => {
-	return hasAnyBasicInfoChanges.value || hasAnyPersonalisationChanges.value;
 });
 
 const currentUserRole = computed<RoleContent>(() => {
@@ -179,93 +156,162 @@ const currentUserRole = computed<RoleContent>(() => {
 	};
 });
 
-function buildFormInputs(): IFormInputs {
-	return [
-		{
-			name: 'firstName',
-			initialValue: currentUser.value?.firstName,
-			properties: {
-				label: i18n.baseText('auth.firstName'),
-				maxlength: 32,
-				required: true,
-				autocomplete: 'given-name',
-				capitalize: true,
-				disabled: isManagedByEnv.value || isExternalAuthEnabled.value,
-			},
-		},
-		{
-			name: 'lastName',
-			initialValue: currentUser.value?.lastName,
-			properties: {
-				label: i18n.baseText('auth.lastName'),
-				maxlength: 32,
-				required: true,
-				autocomplete: 'family-name',
-				capitalize: true,
-				disabled: isManagedByEnv.value || isExternalAuthEnabled.value,
-			},
-		},
-		{
-			name: 'email',
-			initialValue: currentUser.value?.email,
-			properties: {
-				label: i18n.baseText('auth.email'),
-				type: 'email',
-				required: true,
-				validationRules: [{ name: 'VALID_EMAIL' }],
-				autocomplete: 'email',
-				capitalize: true,
-				disabled: isManagedByEnv.value || !isPersonalSecurityEnabled.value,
-			},
-		},
-	];
+/**
+ * Draft/saved pattern: edits land in `draft` and the save bar appears while the draft differs
+ * from what the stores hold. Saving commits the draft; discarding resets it.
+ */
+const draft = reactive<Record<ProfileField, string> & { theme: ThemeOption }>({
+	firstName: '',
+	lastName: '',
+	email: '',
+	theme: uiStore.theme,
+});
+
+// Validation messages wait for the first blur so a field isn't flagged while it is being typed.
+const touched = reactive<Record<ProfileField, boolean>>({
+	firstName: false,
+	lastName: false,
+	email: false,
+});
+
+const savedValues = computed(
+	(): Record<ProfileField, string> => ({
+		firstName: currentUser.value?.firstName ?? '',
+		lastName: currentUser.value?.lastName ?? '',
+		email: currentUser.value?.email ?? '',
+	}),
+);
+
+function resetDraft() {
+	Object.assign(draft, savedValues.value, { theme: uiStore.theme });
+	touched.firstName = false;
+	touched.lastName = false;
+	touched.email = false;
 }
+
+const profileFields = computed(() => [
+	{
+		name: 'firstName' as const,
+		title: i18n.baseText('settings.personal.firstName'),
+		type: 'text' as const,
+		autocomplete: 'given-name' as const,
+		maxlength: 32,
+		editable: canEditName.value,
+	},
+	{
+		name: 'lastName' as const,
+		title: i18n.baseText('settings.personal.lastName'),
+		type: 'text' as const,
+		autocomplete: 'family-name' as const,
+		maxlength: 32,
+		editable: canEditName.value,
+	},
+	{
+		name: 'email' as const,
+		title: i18n.baseText('auth.email'),
+		type: 'email' as const,
+		autocomplete: 'email' as const,
+		maxlength: undefined,
+		editable: canEditEmail.value,
+	},
+]);
+
+const fieldErrors = computed((): Partial<Record<ProfileField, string>> => {
+	const errors: Partial<Record<ProfileField, string>> = {};
+	const required = i18n.baseText('settings.personal.validation.fieldRequired');
+
+	if (canEditName.value) {
+		if (!draft.firstName.trim()) errors.firstName = required;
+		if (!draft.lastName.trim()) errors.lastName = required;
+	}
+	if (canEditEmail.value) {
+		if (!draft.email.trim()) {
+			errors.email = required;
+		} else if (!VALID_EMAIL_REGEX.test(draft.email.trim().toLowerCase())) {
+			errors.email = i18n.baseText('settings.personal.validation.validEmailRequired');
+		}
+	}
+
+	return errors;
+});
+
+const isFormValid = computed((): boolean => Object.keys(fieldErrors.value).length === 0);
+
+function visibleError(field: ProfileField): string | undefined {
+	return touched[field] ? fieldErrors.value[field] : undefined;
+}
+
+const hasNameChanges = computed(
+	(): boolean =>
+		canEditName.value &&
+		(draft.firstName !== savedValues.value.firstName ||
+			draft.lastName !== savedValues.value.lastName),
+);
+const hasEmailChanges = computed(
+	(): boolean => canEditEmail.value && draft.email !== savedValues.value.email,
+);
+const hasThemeChanges = computed((): boolean => draft.theme !== uiStore.theme);
+
+const hasAnyChanges = computed(
+	(): boolean => hasNameChanges.value || hasEmailChanges.value || hasThemeChanges.value,
+);
+
+const themeOptions: Array<{ value: ThemeOption; label: BaseTextKey; icon: IconName }> = [
+	{ value: 'system', label: 'settings.personal.theme.systemDefault', icon: 'monitor' },
+	{ value: 'light', label: 'settings.personal.theme.light', icon: 'sun' },
+	{ value: 'dark', label: 'settings.personal.theme.dark', icon: 'moon' },
+];
+
+const selectedThemeIcon = computed(
+	(): IconName => themeOptions.find((option) => option.value === draft.theme)?.icon ?? 'monitor',
+);
 
 onMounted(() => {
 	documentTitle.set(i18n.baseText('settings.personal.personalSettings'));
-	formInputs.value = buildFormInputs();
+	resetDraft();
 });
 
-function onInput() {
-	hasAnyBasicInfoChanges.value = true;
-}
+async function onSave() {
+	if (!hasAnyChanges.value || !isFormValid.value || saving.value) return;
 
-function onReadyToSubmit(ready: boolean) {
-	readyToSubmit.value = ready;
-}
+	const newEmail = hasEmailChanges.value ? draft.email.trim() : null;
 
-async function onSubmit(data: Record<string, string | number | boolean | null | undefined>) {
-	const form = data as UserBasicDetailsForm;
-	const emailChanged = usersStore.currentUser?.email !== form.email;
-
-	// Name and theme save immediately - they need no re-authentication.
-	await saveNameAndPersonalisation(form);
+	saving.value = true;
+	try {
+		// Name and theme save immediately - they need no re-authentication.
+		await saveNameAndPersonalisation();
+	} finally {
+		saving.value = false;
+	}
 
 	// Email changes go through the confirmation flow, gated by password or MFA.
 	// Skip if the view unmounted during the awaited save, so the modal never
 	// opens on a departed page.
-	if (emailChanged && isActive.value) {
-		startEmailChange(form.email);
+	if (newEmail && isActive.value) {
+		startEmailChange(newEmail);
 	}
 }
 
-/** Saves name and personalization settings, only when they changed. */
-async function saveNameAndPersonalisation(form: UserBasicDetailsForm) {
-	const current = usersStore.currentUser;
-	const nameChanged = current?.firstName !== form.firstName || current?.lastName !== form.lastName;
+function onDiscard() {
+	resetDraft();
+}
 
-	if (!nameChanged && !hasAnyPersonalisationChanges.value) {
+/** Saves name and personalization settings, only when they changed. */
+async function saveNameAndPersonalisation() {
+	if (!hasNameChanges.value && !hasThemeChanges.value) {
 		return;
 	}
 
 	try {
-		if (nameChanged && usersStore.currentUserId) {
-			await usersStore.updateUserName({ firstName: form.firstName, lastName: form.lastName });
+		if (hasNameChanges.value && usersStore.currentUserId) {
+			await usersStore.updateUserName({ firstName: draft.firstName, lastName: draft.lastName });
+			// Adopt what the server stored, so the draft and the saved state agree again.
+			draft.firstName = savedValues.value.firstName;
+			draft.lastName = savedValues.value.lastName;
 		}
-		if (hasAnyPersonalisationChanges.value) {
-			uiStore.setTheme(currentSelectedTheme.value);
+		if (hasThemeChanges.value) {
+			uiStore.setTheme(draft.theme);
 		}
-		hasAnyBasicInfoChanges.value = false;
 
 		showToast({
 			title: i18n.baseText('settings.personal.personalSettingsUpdated'),
@@ -310,7 +356,7 @@ async function submitEmailChange(params: ChangeEmailRequestDto) {
 
 		if (result.status === 'confirmation-sent') {
 			// The change is not applied yet, so put the field back to the current email.
-			revertEmailField();
+			draft.email = savedValues.value.email;
 			showToast({
 				title: i18n.baseText('settings.personal.emailChange.confirmationSent.title'),
 				message: i18n.baseText('settings.personal.emailChange.confirmationSent.message'),
@@ -327,15 +373,6 @@ async function submitEmailChange(params: ChangeEmailRequestDto) {
 	} catch (e) {
 		showError(e, i18n.baseText('settings.personal.personalSettingsUpdatedError'));
 	}
-}
-
-function revertEmailField() {
-	formInputs.value = buildFormInputs();
-	hasAnyBasicInfoChanges.value = false;
-}
-
-function onSaveClick() {
-	formBus.emit('submit');
 }
 
 function openPasswordModal() {
@@ -394,160 +431,217 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-	<div :class="$style.container" data-test-id="personal-settings-container">
-		<div :class="$style.header">
-			<N8nHeading size="2xlarge">{{
-				i18n.baseText('settings.personal.personalSettings')
-			}}</N8nHeading>
-			<div v-if="currentUser" :class="$style.user">
-				<span :class="$style.username" data-test-id="current-user-name">
-					<N8nText color="text-base" bold>{{ currentUser.fullName }}</N8nText>
-					<N8nTooltip placement="bottom" :disabled="!currentUserRole.description">
-						<template #content>{{ currentUserRole.description }}</template>
-						<N8nText :class="$style.tooltip" color="text-light" data-test-id="current-user-role">{{
-							currentUserRole.name
-						}}</N8nText>
-					</N8nTooltip>
-				</span>
-				<N8nAvatar
-					:first-name="currentUser.firstName"
-					:last-name="currentUser.lastName"
-					size="large"
-				/>
-			</div>
-		</div>
-		<div>
-			<div class="mb-s">
-				<N8nHeading size="large">{{
-					i18n.baseText('settings.personal.basicInformation')
-				}}</N8nHeading>
-			</div>
-			<N8nNotice
-				v-if="isManagedByEnv"
-				:content="i18n.baseText('settings.personal.managedByEnv')"
-				data-test-id="managed-by-env-notice"
-			/>
-			<div data-test-id="personal-data-form">
-				<N8nFormInputs
-					v-if="formInputs"
-					:inputs="formInputs"
-					:event-bus="formBus"
-					@update="onInput"
-					@ready="onReadyToSubmit"
-					@submit="onSubmit"
-				/>
-			</div>
-		</div>
-		<div v-if="isSecuritySectionVisible">
-			<div class="mb-s">
-				<N8nHeading size="large">{{ i18n.baseText('settings.personal.security') }}</N8nHeading>
-			</div>
-			<div v-if="isPersonalSecurityEnabled" class="mb-s">
-				<N8nInputLabel :label="i18n.baseText('auth.password')">
-					<N8nLink data-test-id="change-password-link" @click="openPasswordModal">{{
-						i18n.baseText('auth.changePassword')
-					}}</N8nLink>
-				</N8nInputLabel>
-			</div>
-			<div v-if="canConfigureMfa" data-test-id="mfa-section">
-				<div class="mb-xs">
-					<N8nInputLabel :label="i18n.baseText('settings.personal.mfa.section.title')" />
-					<N8nText :bold="false" :class="$style.infoText">
-						{{
-							mfaDisabled
-								? i18n.baseText('settings.personal.mfa.button.disabled.infobox')
-								: i18n.baseText('settings.personal.mfa.button.enabled.infobox')
-						}}
-						<N8nLink :to="MFA_DOCS_URL" size="small" :bold="true">
-							{{ i18n.baseText('generic.learnMore') }}
-						</N8nLink>
-					</N8nText>
+	<N8nSettingsLayout :class="$style.layout" data-test-id="personal-settings-container">
+		<N8nSettingsPageHeader
+			:title="i18n.baseText('settings.personal.personalSettings')"
+			:description="i18n.baseText('settings.personal.description')"
+			:show-docs-link="false"
+		>
+			<template #titleTrailing>
+				<div v-if="currentUser" :class="$style.user">
+					<span :class="$style.username" data-test-id="current-user-name">
+						<N8nText color="text-base" bold>{{ currentUser.fullName }}</N8nText>
+						<N8nTooltip placement="bottom" :disabled="!currentUserRole.description">
+							<template #content>{{ currentUserRole.description }}</template>
+							<N8nText :class="$style.role" color="text-light" data-test-id="current-user-role">{{
+								currentUserRole.name
+							}}</N8nText>
+						</N8nTooltip>
+					</span>
+					<N8nAvatar
+						:first-name="currentUser.firstName"
+						:last-name="currentUser.lastName"
+						size="large"
+					/>
 				</div>
-				<N8nNotice
-					v-if="mfaDisabled && mfaEnforced"
-					:content="i18n.baseText('settings.personal.mfa.enforced')"
-				/>
+			</template>
+		</N8nSettingsPageHeader>
 
-				<N8nButton
-					variant="subtle"
-					v-if="mfaDisabled"
-					:class="$style.button"
-					:label="i18n.baseText('settings.personal.mfa.button.enabled')"
-					data-test-id="enable-mfa-button"
-					@click="onMfaEnableClick"
-				/>
-				<N8nButton
-					variant="subtle"
-					v-else
-					:class="$style.disableMfaButton"
-					:label="i18n.baseText('settings.personal.mfa.button.disabled')"
-					data-test-id="disable-mfa-button"
-					@click="onMfaDisableClick"
-				/>
-			</div>
-		</div>
-		<div>
-			<div class="mb-s">
-				<N8nHeading size="large">{{
-					i18n.baseText('settings.personal.personalisation')
-				}}</N8nHeading>
-			</div>
-			<div>
-				<N8nInputLabel :label="i18n.baseText('settings.personal.theme')">
-					<N8nSelect
-						v-model="currentSelectedTheme"
-						:class="$style.themeSelect"
-						data-test-id="theme-select"
-						size="small"
-						filterable
-					>
-						<N8nOption
-							v-for="item in themeOptions"
-							:key="item.name"
-							:label="i18n.baseText(item.label)"
-							:value="item.name"
+		<N8nNotice
+			v-if="isManagedByEnv"
+			:content="i18n.baseText('settings.personal.managedByEnv')"
+			data-test-id="managed-by-env-notice"
+		/>
+
+		<N8nSettingsSection
+			:title="i18n.baseText('settings.personal.basicInformation')"
+			data-test-id="personal-data-form"
+		>
+			<N8nSettingsRowGroup>
+				<N8nSettingsRow
+					v-for="field in profileFields"
+					:key="field.name"
+					:title="field.title"
+					:description="field.editable ? undefined : lockedFieldDescription"
+					action-fill
+					:data-test-id="`personal-${field.name}-row`"
+				>
+					<template #action>
+						<div
+							v-if="field.editable"
+							:class="[$style.field, { [$style.fieldInvalid]: visibleError(field.name) }]"
 						>
-						</N8nOption>
-					</N8nSelect>
-				</N8nInputLabel>
-			</div>
-		</div>
-		<div>
-			<N8nButton
-				float="right"
-				:label="i18n.baseText('settings.personal.save')"
-				size="large"
-				:disabled="!hasAnyChanges || !readyToSubmit"
-				data-test-id="save-settings-button"
-				@click="onSaveClick"
+							<N8nInput
+								v-model="draft[field.name]"
+								size="medium"
+								:name="field.name"
+								:type="field.type"
+								:autocomplete="field.autocomplete"
+								:maxlength="field.maxlength"
+								:aria-label="field.title"
+								:aria-invalid="Boolean(visibleError(field.name))"
+								:aria-describedby="
+									visibleError(field.name) ? `personal-${field.name}-error` : undefined
+								"
+								@blur="touched[field.name] = true"
+								@keydown.enter="onSave"
+							/>
+							<N8nText
+								v-if="visibleError(field.name)"
+								:id="`personal-${field.name}-error`"
+								size="small"
+								color="danger"
+								role="alert"
+							>
+								{{ visibleError(field.name) }}
+							</N8nText>
+						</div>
+						<N8nText
+							v-else
+							:class="$style.value"
+							size="medium"
+							color="text-base"
+							:title="savedValues[field.name]"
+							:data-test-id="`personal-${field.name}-value`"
+						>
+							{{ savedValues[field.name] }}
+						</N8nText>
+					</template>
+				</N8nSettingsRow>
+			</N8nSettingsRowGroup>
+		</N8nSettingsSection>
+
+		<N8nSettingsSection
+			v-if="isSecuritySectionVisible"
+			:title="i18n.baseText('settings.personal.security')"
+		>
+			<N8nNotice
+				v-if="canConfigureMfa && mfaDisabled && mfaEnforced"
+				:content="i18n.baseText('settings.personal.mfa.enforced')"
+				data-test-id="mfa-enforced-notice"
 			/>
-		</div>
-	</div>
+			<N8nSettingsRowGroup>
+				<N8nSettingsRow
+					v-if="isPersonalSecurityEnabled"
+					:title="i18n.baseText('auth.password')"
+					:description="i18n.baseText('settings.personal.password.description')"
+				>
+					<template #action>
+						<N8nButton
+							variant="outline"
+							size="medium"
+							:label="i18n.baseText('auth.changePassword')"
+							data-test-id="change-password-link"
+							@click="openPasswordModal"
+						/>
+					</template>
+				</N8nSettingsRow>
+				<N8nSettingsRow v-if="canConfigureMfa" data-test-id="mfa-section">
+					<template #info>
+						<N8nText bold size="medium" color="text-dark">
+							{{ i18n.baseText('settings.personal.mfa.section.title') }}
+						</N8nText>
+						<N8nText size="small" color="text-light">
+							{{
+								mfaDisabled
+									? i18n.baseText('settings.personal.mfa.description.disabled')
+									: i18n.baseText('settings.personal.mfa.description.enabled')
+							}}
+							<N8nLink :to="MFA_DOCS_URL" size="small" new-window>
+								{{ i18n.baseText('generic.learnMore') }}
+							</N8nLink>
+						</N8nText>
+					</template>
+					<template #action>
+						<N8nButton
+							v-if="mfaDisabled"
+							variant="outline"
+							size="medium"
+							:label="i18n.baseText('settings.personal.mfa.button.enabled')"
+							data-test-id="enable-mfa-button"
+							@click="onMfaEnableClick"
+						/>
+						<N8nButton
+							v-else
+							variant="outline"
+							size="medium"
+							:label="i18n.baseText('settings.personal.mfa.button.disabled')"
+							data-test-id="disable-mfa-button"
+							@click="onMfaDisableClick"
+						/>
+					</template>
+				</N8nSettingsRow>
+			</N8nSettingsRowGroup>
+		</N8nSettingsSection>
+
+		<N8nSettingsSection :title="i18n.baseText('settings.personal.personalisation')">
+			<N8nSettingsRowGroup>
+				<N8nSettingsRow
+					:title="i18n.baseText('settings.personal.theme')"
+					:description="i18n.baseText('settings.personal.theme.description')"
+					action-fill
+					action-max-width="12.5rem"
+				>
+					<template #action>
+						<N8nSelect v-model="draft.theme" size="medium" data-test-id="theme-select">
+							<template #prefix>
+								<N8nIcon :icon="selectedThemeIcon" size="small" :class="$style.themeIcon" />
+							</template>
+							<N8nOption
+								v-for="option in themeOptions"
+								:key="option.value"
+								:value="option.value"
+								:label="i18n.baseText(option.label)"
+							>
+								<span :class="$style.themeOption">
+									<N8nIcon :icon="option.icon" size="small" :class="$style.themeIcon" />
+									<span>{{ i18n.baseText(option.label) }}</span>
+								</span>
+							</N8nOption>
+						</N8nSelect>
+					</template>
+				</N8nSettingsRow>
+			</N8nSettingsRowGroup>
+		</N8nSettingsSection>
+
+		<N8nSettingsSaveBar
+			floating
+			:visible="hasAnyChanges"
+			:saving="saving"
+			:save-disabled="!isFormValid"
+			:message="i18n.baseText('settings.personal.saveBar.unsavedChanges')"
+			:save-label="i18n.baseText('settings.personal.saveBar.save')"
+			:discard-label="i18n.baseText('settings.personal.saveBar.discard')"
+			@save="onSave"
+			@discard="onDiscard"
+		/>
+	</N8nSettingsLayout>
 </template>
 
 <style lang="scss" module>
 @use '@/app/css/variables' as *;
 
-.container {
-	padding-bottom: 100px;
-
-	> * {
-		margin-bottom: var(--spacing--2xl);
-	}
+/* Collapse the layout's own top inset; the settings shell already pads the page top. */
+.layout {
+	padding-top: 0;
 }
 
-.header {
-	display: flex;
-	align-items: center;
-	white-space: nowrap;
-	*:first-child {
-		flex-grow: 1;
-	}
-}
-
+/* The signed-in identity sits beside the title, so the page reads as "Personal settings — you". */
 .user {
 	display: flex;
 	align-items: center;
+	gap: var(--spacing--sm);
+	margin-inline-start: var(--spacing--2xs);
 
 	@media (max-width: $breakpoint-2xs) {
 		display: none;
@@ -557,7 +651,7 @@ onBeforeUnmount(() => {
 .username {
 	display: grid;
 	grid-template-columns: 1fr;
-	margin-right: var(--spacing--sm);
+	min-width: 0;
 
 	@media (max-width: $breakpoint-sm) {
 		max-width: 100px;
@@ -566,29 +660,44 @@ onBeforeUnmount(() => {
 	}
 }
 
-.tooltip {
+.role {
 	justify-self: start;
 }
 
-.disableMfaButton {
-	> span {
-		font-weight: var(--font-weight--bold);
-	}
+/* Read-only value of a locked field; long emails truncate instead of pushing the row wider. */
+.value {
+	display: block;
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
 }
 
-.button {
-	font-size: var(--spacing--xs);
-	> span {
-		font-weight: var(--font-weight--bold);
-	}
+/* Input plus its validation message, filling the row's action width. */
+.field {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--4xs);
+	width: 100%;
 }
 
-.infoText {
-	font-size: var(--font-size--2xs);
-	color: var(--color--text--tint-1);
+/*
+ * The input declares its own border variable, so an ancestor value is shadowed; target the
+ * input element itself with a more specific selector to turn the border red.
+ */
+.fieldInvalid :global(.n8n-input) {
+	--input--border-color: var(--color--danger);
+	--input--border-color--hover: var(--color--danger);
 }
 
-.themeSelect {
-	max-width: 50%;
+.themeOption {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+}
+
+/* The select's own prefix color is near-invisible; use the standard icon tone instead. */
+.themeIcon {
+	color: var(--icon-color);
 }
 </style>

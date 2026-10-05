@@ -41,8 +41,9 @@ export class SettingsPersonalPage extends BasePage {
 		return this.getPersonalDataForm().locator('input[name="email"]');
 	}
 
+	/** The save action of the floating save bar, shown once there are unsaved changes. */
 	getSaveSettingsButton(): Locator {
-		return this.page.getByTestId('save-settings-button');
+		return this.page.getByTestId('settings-save-bar-save');
 	}
 
 	async fillPersonalData(firstName: string, lastName: string): Promise<void> {
