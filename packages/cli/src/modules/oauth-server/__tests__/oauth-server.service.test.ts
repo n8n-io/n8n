@@ -311,6 +311,7 @@ describe('OAuthServerService', () => {
 					resolveByUrl: async (url) =>
 						new URL(url).pathname.replace(/\/$/, '') === '/form/abc'
 							? {
+									surface: 'trigger',
 									id: 'form-abc',
 									isFirstParty: true,
 									getResourceUrl: () => FIRST_PARTY_URL,
