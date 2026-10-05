@@ -26,4 +26,12 @@ describe('WorkflowProjectCacheService', () => {
 		expect(cacheService.deleteFromHash).toHaveBeenCalledWith('workflow-project', 'workflow-1');
 		expect(cacheService.deleteFromHash).toHaveBeenCalledWith('workflow-project', 'workflow-2');
 	});
+
+	it('does not invalidate cache entries when the project has no workflows', async () => {
+		sharedWorkflowRepository.find.mockResolvedValueOnce([]);
+
+		await service.invalidateForProject('project-1');
+
+		expect(cacheService.deleteFromHash).not.toHaveBeenCalled();
+	});
 });

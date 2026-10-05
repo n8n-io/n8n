@@ -58,13 +58,10 @@ export class DynamicCredentialsModule implements ModuleInterface {
 			Container.get(CredentialConnectionStatusService),
 		);
 
-		const { CredentialConnectionStatusRegistry } = await import('@n8n/backend-services');
-		Container.get(CredentialConnectionStatusRegistry).registerCleanup(
-			async (userIds) =>
-				await Container.get(CredentialConnectionStatusService).cleanupOrphanedEntriesForUsers(
-					userIds,
-				),
+		const { CredentialConnectionStatusCleanupListener } = await import(
+			'./services/credential-connection-status-cleanup-listener.js'
 		);
+		Container.get(CredentialConnectionStatusCleanupListener).init();
 
 		// Register the executing-user identifier so the redaction layer can attribute
 		// a run to its user from the established identity carrier — the same source

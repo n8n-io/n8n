@@ -19,10 +19,6 @@ export { ProjectScopeService } from './services/project-scope.service';
 export { ProjectNotFoundError } from './errors/project-not-found.error';
 export { WorkflowProjectCacheService } from './services/workflow-project-cache.service';
 export {
-	CredentialConnectionStatusRegistry,
-	type CredentialConnectionStatusCleanup,
-} from './services/credential-connection-status-registry.service';
-export {
 	WorkflowSharingService,
 	type ShareWorkflowOptions,
 } from './services/workflow-sharing.service';

@@ -26,7 +26,15 @@ export class WorkflowFailureNotificationEventRelay extends EventRelay {
 			'instance-first-production-workflow-failed': async (event) =>
 				await this.onFirstProductionWorkflowFailed(event),
 			'team-project-shared': async (event) => {
-				await this.mailer.notifyProjectShared(event);
+				try {
+					await this.mailer.notifyProjectShared(event);
+				} catch (error) {
+					this.logger.error('Failed to send project shared email', {
+						projectId: event.project.id,
+						sharerId: event.sharer.id,
+						error: error instanceof Error ? error.message : String(error),
+					});
+				}
 			},
 		});
 	}

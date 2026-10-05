@@ -1,6 +1,8 @@
 import { EventService, type EventMap } from '@n8n/backend-services';
 import { expectTypeOf } from 'vitest';
 
+import type { CredentialConnectionStatusEventMap } from '@/credentials/credential-connection-status-provider.interface';
+
 import type { AiEventMap } from '../maps/ai.event-map';
 import type { ExecutionDataEventMap } from '../maps/execution-data.event-map';
 import type { InstanceAiEventMap } from '../maps/instance-ai.event-map';
@@ -14,6 +16,7 @@ import type { WorkflowPublicationMetricsEventMap } from '../maps/workflow-public
 describe('CLI event map', () => {
 	it('registers all existing event payloads on the shared service', () => {
 		type CliEventMap = RelayEventMap &
+			CredentialConnectionStatusEventMap &
 			QueueMetricsEventMap &
 			AiEventMap &
 			ExecutionDataEventMap &

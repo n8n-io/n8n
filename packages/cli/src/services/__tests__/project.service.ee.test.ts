@@ -1,7 +1,7 @@
 import type { ProjectRelation } from '@n8n/api-types';
 import type { Logger, ModuleRegistry } from '@n8n/backend-common';
 import type {
-	CredentialConnectionStatusRegistry,
+	EventMap,
 	EventService,
 	RoleService,
 	WorkflowProjectCacheService,
@@ -47,7 +47,6 @@ describe('ProjectService', () => {
 	const workflowProjectCacheService = mock<WorkflowProjectCacheService>();
 	const logger = mock<Logger>();
 	const eventService = mock<EventService>();
-	const credentialConnectionStatusRegistry = mock<CredentialConnectionStatusRegistry>();
 	const userRepository = mock<UserRepository>();
 	const roleRepository = mock<RoleRepository>();
 	const user = mock<User>({ id: 'actor-user', role: mock({ slug: 'global:owner' }) });
@@ -63,19 +62,27 @@ describe('ProjectService', () => {
 		workflowProjectCacheService,
 		logger,
 		eventService,
-		credentialConnectionStatusRegistry,
 		userRepository,
 		roleRepository,
 	);
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+		eventService.emit.mockReset();
 		projectRelationRepository.find.mockResolvedValue([]);
 		userRepository.findManyByIds.mockResolvedValue([]);
 	});
 
 	const instanceUser = (id: string, slug: string, disabled = false) =>
 		mock<User>({ id, disabled, role: mock({ slug }) });
+
+	const completeCredentialCleanupWith = (error?: unknown) => {
+		eventService.emit.mockImplementation((eventName, payload) => {
+			if (eventName !== 'credential-connection-status-cleanup-requested') return false;
+			(payload as EventMap['credential-connection-status-cleanup-requested']).complete(error);
+			return true;
+		});
+	};
 
 	describe('getAccessibleProjectsAndCount', () => {
 		const options = { skip: 0, take: 10, search: 'test' };
@@ -336,6 +343,7 @@ describe('ProjectService', () => {
 					}),
 				);
 				roleService.isRoleLicensed.mockReturnValue(true);
+				completeCredentialCleanupWith();
 
 				// ACT
 				await projectService.syncProjectRelations(projectId, [
@@ -343,9 +351,10 @@ describe('ProjectService', () => {
 				]);
 
 				// ASSERT — user2 was removed → cleanup must run for user2
-				expect(
-					credentialConnectionStatusRegistry.cleanupOrphanedEntriesForUsers,
-				).toHaveBeenCalledWith(['user2']);
+				expect(eventService.emit).toHaveBeenCalledWith(
+					'credential-connection-status-cleanup-requested',
+					expect.objectContaining({ userIds: ['user2'], entityManager: manager }),
+				);
 			});
 
 			it('calls cleanupOrphanedEntriesForUsers with union of removed and role-changed IDs', async () => {
@@ -370,12 +379,13 @@ describe('ProjectService', () => {
 				]);
 
 				// ASSERT — both user2 (removed) and user3 (role changed) are in the set
-				expect(
-					credentialConnectionStatusRegistry.cleanupOrphanedEntriesForUsers,
-				).toHaveBeenCalledWith(expect.arrayContaining(['user2', 'user3']));
-				const [affectedIds] =
-					credentialConnectionStatusRegistry.cleanupOrphanedEntriesForUsers.mock.calls[0];
-				expect(affectedIds).toHaveLength(2);
+				expect(eventService.emit).toHaveBeenCalledWith(
+					'credential-connection-status-cleanup-requested',
+					expect.objectContaining({
+						userIds: ['user2', 'user3'],
+						entityManager: manager,
+					}),
+				);
 			});
 
 			it('does not call cleanupOrphanedEntriesForUsers when no members are affected', async () => {
@@ -399,9 +409,26 @@ describe('ProjectService', () => {
 				]);
 
 				// ASSERT — no affected users → cleanup must not be called
-				expect(
-					credentialConnectionStatusRegistry.cleanupOrphanedEntriesForUsers,
-				).not.toHaveBeenCalled();
+				expect(eventService.emit).not.toHaveBeenCalledWith(
+					'credential-connection-status-cleanup-requested',
+					expect.anything(),
+				);
+			});
+
+			it('rejects the relation transaction when credential cleanup fails', async () => {
+				projectRepository.findOne.mockResolvedValueOnce(
+					mock<Project>({
+						id: projectId,
+						type: 'team',
+						projectRelations: [{ userId: 'user1', role: PROJECT_ADMIN_ROLE }],
+					}),
+				);
+				roleService.isRoleLicensed.mockReturnValue(true);
+				completeCredentialCleanupWith(new Error('Cleanup failed'));
+
+				await expect(projectService.syncProjectRelations(projectId, [])).rejects.toThrow(
+					'Cleanup failed',
+				);
 			});
 		});
 	});
@@ -496,9 +523,10 @@ describe('ProjectService', () => {
 			await projectService.deleteUserFromProject(user, projectId, userId);
 
 			// ASSERT — member removed → cleanup must run for the removed user
-			expect(
-				credentialConnectionStatusRegistry.cleanupOrphanedEntriesForUsers,
-			).toHaveBeenCalledWith([userId]);
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'credential-connection-status-cleanup-requested',
+				expect.objectContaining({ userIds: [userId], entityManager: manager }),
+			);
 		});
 
 		it('throws when trying to remove the project owner', async () => {
@@ -519,9 +547,10 @@ describe('ProjectService', () => {
 			await expect(projectService.deleteUserFromProject(user, projectId, ownerId)).rejects.toThrow(
 				'Project owner cannot be removed from the project',
 			);
-			expect(
-				credentialConnectionStatusRegistry.cleanupOrphanedEntriesForUsers,
-			).not.toHaveBeenCalled();
+			expect(eventService.emit).not.toHaveBeenCalledWith(
+				'credential-connection-status-cleanup-requested',
+				expect.anything(),
+			);
 		});
 
 		it('throws when trying to remove an instance admin', async () => {
@@ -722,9 +751,10 @@ describe('ProjectService', () => {
 				{ projectId, userId: 'user2' },
 				{ role: { slug: 'project:admin' } },
 			);
-			expect(
-				credentialConnectionStatusRegistry.cleanupOrphanedEntriesForUsers,
-			).toHaveBeenCalledWith(['user2']);
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'credential-connection-status-cleanup-requested',
+				expect.objectContaining({ userIds: ['user2'], entityManager: manager }),
+			);
 
 			expect(eventService.emit).toHaveBeenCalledWith('team-project-updated', {
 				userId: 'actor-user',
@@ -814,12 +844,9 @@ describe('ProjectService', () => {
 
 			// ASSERT — project removed first, then cleanup for former members
 			expect(projectRepository.remove).toHaveBeenCalledWith(project);
-			expect(
-				credentialConnectionStatusRegistry.cleanupOrphanedEntriesForUsers,
-			).toHaveBeenCalledWith(['member-1', 'member-2']);
-			expect(projectRepository.remove.mock.invocationCallOrder[0]).toBeLessThan(
-				credentialConnectionStatusRegistry.cleanupOrphanedEntriesForUsers.mock
-					.invocationCallOrder[0],
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'credential-connection-status-cleanup-requested',
+				expect.objectContaining({ userIds: ['member-1', 'member-2'] }),
 			);
 
 			expect(eventService.emit).toHaveBeenCalledWith('team-project-deleted', {
@@ -846,9 +873,10 @@ describe('ProjectService', () => {
 
 			// ASSERT — no members → cleanup must not be called
 			expect(projectRepository.remove).toHaveBeenCalledWith(project);
-			expect(
-				credentialConnectionStatusRegistry.cleanupOrphanedEntriesForUsers,
-			).not.toHaveBeenCalled();
+			expect(eventService.emit).not.toHaveBeenCalledWith(
+				'credential-connection-status-cleanup-requested',
+				expect.anything(),
+			);
 		});
 
 		it('cleans agent knowledge files before project deletion cascades agent files', async () => {

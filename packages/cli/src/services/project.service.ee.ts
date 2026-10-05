@@ -1,7 +1,6 @@
 import type { CreateProjectDto, ProjectType, UpdateProjectDto } from '@n8n/api-types';
 import { LicenseState, Logger, ModuleRegistry } from '@n8n/backend-common';
 import {
-	CredentialConnectionStatusRegistry,
 	EventService,
 	ProjectNotFoundError,
 	RoleService,
@@ -88,10 +87,29 @@ export class ProjectService {
 		private readonly workflowProjectCacheService: WorkflowProjectCacheService,
 		private readonly logger: Logger,
 		private readonly eventService: EventService,
-		private readonly credentialConnectionStatusRegistry: CredentialConnectionStatusRegistry,
 		private readonly userRepository: UserRepository,
 		private readonly roleRepository: RoleRepository,
 	) {}
+
+	private async cleanupCredentialConnectionStatus(
+		userIds: string[],
+		entityManager?: EntityManager,
+	): Promise<void> {
+		if (userIds.length === 0) return;
+
+		await new Promise<void>((resolve, reject) => {
+			const hasListener = this.eventService.emit('credential-connection-status-cleanup-requested', {
+				userIds,
+				entityManager,
+				complete: (error) => {
+					if (error) reject(error);
+					else resolve();
+				},
+			});
+
+			if (!hasListener) resolve();
+		});
+	}
 
 	private get workflowService() {
 		return import('@/workflows/workflow.service.js').then(({ WorkflowService }) =>
@@ -305,7 +323,7 @@ export class ProjectService {
 
 		// 11. delete orphaned per-user credential entries for former members
 		if (memberUserIds.length > 0) {
-			await this.credentialConnectionStatusRegistry.cleanupOrphanedEntriesForUsers(memberUserIds);
+			await this.cleanupCredentialConnectionStatus(memberUserIds);
 		}
 
 		this.eventService.emit('team-project-deleted', {
@@ -587,11 +605,8 @@ export class ProjectService {
 		await this.projectRelationRepository.manager.transaction(async (em) => {
 			await this.pruneRelations(em, project);
 			await this.addManyRelations(em, project, relations);
+			await this.cleanupCredentialConnectionStatus(affectedUserIds, em);
 		});
-
-		if (affectedUserIds.length > 0) {
-			await this.credentialConnectionStatusRegistry.cleanupOrphanedEntriesForUsers(affectedUserIds);
-		}
 
 		const newRelations = relations.filter(
 			(relation) => !project.projectRelations.some((r) => r.userId === relation.userId),
@@ -809,8 +824,8 @@ export class ProjectService {
 
 		await this.projectRelationRepository.manager.transaction(async (em) => {
 			await em.delete(ProjectRelation, { projectId: project.id, userId });
+			await this.cleanupCredentialConnectionStatus([userId], em);
 		});
-		await this.credentialConnectionStatusRegistry.cleanupOrphanedEntriesForUsers([userId]);
 
 		await this.emitProjectMembersUpdated(user, projectId);
 	}
@@ -850,8 +865,8 @@ export class ProjectService {
 
 		await this.projectRelationRepository.manager.transaction(async (em) => {
 			await em.update(ProjectRelation, { projectId, userId }, { role: { slug: role } });
+			await this.cleanupCredentialConnectionStatus([userId], em);
 		});
-		await this.credentialConnectionStatusRegistry.cleanupOrphanedEntriesForUsers([userId]);
 
 		await this.emitProjectMembersUpdated(user, projectId);
 	}
