@@ -115,6 +115,7 @@ export const InstanceAiInputStub = defineComponent({
 		isSubmitting: { type: Boolean, required: false },
 		isWorkflowBuilderAvailable: { type: Boolean, required: false },
 		contextChip: { type: Object, required: false },
+		placeholderKey: { type: String, required: false },
 		mentionsEnabled: { type: Boolean, required: false },
 		mentionProjectId: { type: String, required: false },
 		mentionArtifacts: { type: Array, required: false },
@@ -186,6 +187,11 @@ export const InstanceAiInputStub = defineComponent({
 					'span',
 					{ 'data-test-id': 'instance-ai-input-context-chip-icon' },
 					props.contextChip?.icon ?? '',
+				),
+				h(
+					'span',
+					{ 'data-test-id': 'instance-ai-input-placeholder-key' },
+					props.placeholderKey ?? 'unset',
 				),
 				h('span', { 'data-test-id': 'instance-ai-input-draft' }, inputDraft.value),
 				h(

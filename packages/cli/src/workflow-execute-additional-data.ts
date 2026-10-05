@@ -696,6 +696,7 @@ async function startExecution(
 		const fullExecutionData: UpdateExecutionPayload = {
 			data: fullRunData.data,
 			mode: fullRunData.mode,
+			// oxlint-disable-next-line typescript/no-deprecated
 			finished: fullRunData.finished ? fullRunData.finished : false,
 			startedAt: fullRunData.startedAt,
 			stoppedAt: fullRunData.stoppedAt,
@@ -732,6 +733,7 @@ async function startExecution(
 	}
 
 	// subworkflow either finished, or is in status waiting due to a wait node, both cases are considered successes here
+	// oxlint-disable-next-line typescript/no-deprecated
 	if (data.finished === true || data.status === 'waiting') {
 		// Workflow did finish successfully
 

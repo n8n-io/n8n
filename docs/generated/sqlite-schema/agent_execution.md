@@ -64,8 +64,8 @@ CREATE TABLE "agent_execution" ("id" varchar(36) PRIMARY KEY NOT NULL, "threadId
 erDiagram
 
 "agent_execution_message_links" |o--|| "agent_execution" : "FOREIGN KEY (executionId) REFERENCES agent_execution (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
-"agent_message_queue" }o--o| "agent_execution" : "FOREIGN KEY (steeringExecutionId) REFERENCES agent_execution (id) ON UPDATE NO ACTION ON DELETE NO ACTION MATCH NONE"
 "agent_message_queue" }o--o| "agent_execution" : "FOREIGN KEY (executionId) REFERENCES agent_execution (id) ON UPDATE NO ACTION ON DELETE NO ACTION MATCH NONE"
+"agent_message_queue" }o--o| "agent_execution" : "FOREIGN KEY (steeringExecutionId) REFERENCES agent_execution (id) ON UPDATE NO ACTION ON DELETE NO ACTION MATCH NONE"
 "agent_execution" }o--|| "agent_execution_threads" : "FOREIGN KEY (threadId) REFERENCES agent_execution_threads (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 
 "agent_execution" {

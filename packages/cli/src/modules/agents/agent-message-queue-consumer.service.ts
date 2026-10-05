@@ -10,6 +10,7 @@ import { userHasScopes } from '@/permissions.ee/check-access';
 
 import { AgentsCredentialProvider } from './adapters/agents-credential-provider';
 import { AgentChatExecutionService } from './agent-chat-execution.service';
+import { AgentExecutionOrchestratorService } from './agent-execution-orchestrator.service';
 import { AgentExecutionService } from './agent-execution.service';
 import { AgentMessageQueueService, type ClaimedAgentMessage } from './agent-message-queue.service';
 import { AgentQueuedPreviewStreamService } from './agent-queued-preview-stream.service';
@@ -37,6 +38,7 @@ export class AgentMessageQueueConsumer {
 		private readonly credentialsService: CredentialsService,
 		private readonly chatExecutionService: AgentChatExecutionService,
 		private readonly integrations: ChatIntegrationService,
+		private readonly orchestrator: AgentExecutionOrchestratorService,
 		private readonly logger: Logger,
 	) {}
 
@@ -95,7 +97,7 @@ export class AgentMessageQueueConsumer {
 		try {
 			const claim = await this.queue.claimNext(threadId, async (item, thread, ctx) => {
 				if (this.stopped) return false;
-				if (item.payload.kind === 'preview') return true;
+				if (item.payload.kind !== 'integration') return true;
 				const source = item.message.origin?.source;
 				if (!source) throw new UnexpectedError('Queued integration input has no source');
 				const connection = await this.repository.findPublishedConnection(
@@ -132,10 +134,10 @@ export class AgentMessageQueueConsumer {
 			this.executionService.getAbortSignal(admission.executionId),
 		]);
 		const sender =
-			payload.kind === 'preview' ? this.previewStreams.createSender(item.id) : undefined;
+			payload.kind === 'integration' ? undefined : this.previewStreams.createSender(item.id);
 		try {
-			if (payload.kind === 'preview' && sender) {
-				const user = await this.getPreviewOwner(thread);
+			if (sender) {
+				const user = await this.getThreadOwner(thread);
 				this.chatExecutionService.register(
 					{
 						projectId: thread.projectId,
@@ -143,6 +145,7 @@ export class AgentMessageQueueConsumer {
 						threadId: thread.id,
 						userId: user.id,
 						executionId: admission.executionId,
+						productionN8nChat: payload.kind === 'n8n_chat',
 					},
 					controller,
 				);
@@ -153,9 +156,10 @@ export class AgentMessageQueueConsumer {
 					inputMessageIds: admission.inputMessageIds,
 					message: payload.message,
 				});
-				await this.chatExecutionService.settle(
-					admission.executionId,
-					async () => await this.consumePreview(claim, user, signal, sender.send),
+				await this.chatExecutionService.settle(admission.executionId, async () =>
+					payload.kind === 'n8n_chat'
+						? await this.consumeN8nChat(claim, user, signal, sender.send)
+						: await this.consumePreview(claim, user, signal, sender.send),
 				);
 			} else {
 				await this.consumeIntegration(claim, signal, bridge);
@@ -177,7 +181,7 @@ export class AgentMessageQueueConsumer {
 		}
 	}
 
-	private async getPreviewOwner(thread: AgentExecutionThread): Promise<User> {
+	private async getThreadOwner(thread: AgentExecutionThread): Promise<User> {
 		if (!thread.ownerId) throw new UserError('You can no longer execute this agent');
 		const user = await this.userRepository.findByIdWithRole(thread.ownerId);
 		if (
@@ -242,9 +246,36 @@ export class AgentMessageQueueConsumer {
 			abortSignal: signal,
 			errorMode: 'forward',
 			onChunk: (chunk) => emitChunkEvents(chunk, send),
+			onBudgetNotice: () => send({ type: 'budget-notice', code: 'budget.alert' }),
 		});
 		if (result.status === 'completed')
 			send({ type: 'done', sessionId: thread.id, executionId: admission.executionId });
+	}
+
+	private async consumeN8nChat(
+		claim: ClaimedAgentMessage,
+		user: User,
+		signal: AbortSignal,
+		send: (event: AgentSseEvent) => void,
+	): Promise<void> {
+		const { thread, admission, payload } = claim;
+		const stream = this.orchestrator.executeForN8nChatPublished({
+			agentId: thread.agentId,
+			projectId: thread.projectId,
+			user,
+			message: payload.message,
+			memory: { threadId: thread.id, resourceId: payload.resourceId },
+			attachments: payload.attachments,
+			sessionMode: 'existing',
+			admittedExecution: admission,
+			abortSignal: signal,
+		});
+		let completed = true;
+		for await (const chunk of stream) {
+			emitChunkEvents(chunk, send);
+			if (chunk.type === 'tool-call-suspended' || chunk.type === 'error') completed = false;
+		}
+		if (completed) send({ type: 'done', sessionId: thread.id, executionId: admission.executionId });
 	}
 
 	private async consumeIntegration(

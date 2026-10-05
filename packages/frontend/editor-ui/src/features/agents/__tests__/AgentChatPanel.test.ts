@@ -15,6 +15,8 @@ import {
 	type AgentConfigFingerprint,
 } from '../composables/agentTelemetry.utils';
 import type { AgentJsonConfig } from '../types';
+import AgentChatPlan from '../components/AgentChatPlan.vue';
+import { planMessage, planView } from './fixtures/agent-plan';
 
 const sendMessageMock = vi.fn();
 const stopGeneratingMock = vi.fn();
@@ -25,6 +27,17 @@ const resumeMock = vi.fn();
 const cancelAndSteerMock = vi.fn();
 const focusInputMock = vi.fn();
 const messagesMock = ref<ChatMessage[]>([]);
+// Mirrors the real composable: clearing drops the codes from the live
+// messages (and, untestable here, the pending-restore bucket).
+const clearBudgetNoticesMock = vi.fn((codes: ReadonlySet<string>) => {
+	messagesMock.value = messagesMock.value.map((message) => {
+		if (!message.budgetNotices?.some((notice) => codes.has(notice.code))) return message;
+		return {
+			...message,
+			budgetNotices: message.budgetNotices.filter((notice) => !codes.has(notice.code)),
+		};
+	});
+});
 const isStreamingMock = ref(false);
 const isSubmittingMock = ref(false);
 const isLoadingHistoryMock = ref(false);
@@ -40,11 +53,15 @@ const steeringQueueIdsMock = ref(new Set<string>());
 const isCancellingMock = ref(false);
 const backgroundJobsMock = ref<AgentBackgroundJobDto[]>([]);
 const respondToApprovalMock = vi.fn();
+const stopAllMock = vi.fn();
+const isStoppingMock = ref(false);
 const showErrorMock = vi.fn();
 vi.mock('../composables/useAgentBackgroundJobs', () => ({
 	useAgentBackgroundJobs: () => ({
 		jobs: backgroundJobsMock,
 		respondToApproval: respondToApprovalMock,
+		stopAll: stopAllMock,
+		isStopping: isStoppingMock,
 	}),
 }));
 let onHistoryLoaded: ((count: number) => void) | undefined;
@@ -72,13 +89,17 @@ vi.mock('@n8n/i18n', () => {
 			'agents.chat.backgroundTasks.finished':
 				options?.adjustToNumber === 1 ? 'Background task finished' : 'Background tasks finished',
 			'agents.chat.backgroundTasks.runningCount': `Running ${options?.interpolate?.count} background ${String(options?.interpolate?.count) === '1' ? 'task' : 'tasks'}`,
+			'agents.chat.backgroundTasks.stoppingCount': `Stopping ${options?.interpolate?.count} background ${options?.adjustToNumber === 1 ? 'task' : 'tasks'}…`,
 			'agents.chat.backgroundTasks.subagent': `Sub-agent — ${options?.interpolate?.title}`,
 			'agents.chat.backgroundTasks.workflow': `Workflow — ${options?.interpolate?.title}`,
 			'agents.chat.backgroundTasks.viewTrace': 'View trace',
+			'agents.chat.backgroundTasks.stopAll': 'Stop all tasks',
 			'agents.chat.backgroundTasks.status.waiting': 'Waiting',
 			'agents.chat.backgroundTasks.status.suspended': 'Waiting for approval',
 			'agents.chat.backgroundTasks.approvalFor': `Approval for ${options?.interpolate?.title}`,
 			'agents.chat.backgroundTasks.status.running': 'Running',
+			'agents.chat.backgroundTasks.status.stopping': 'Stopping…',
+			'agents.chat.backgroundTasks.status.paused': 'Stopped',
 			'agents.chat.backgroundTasks.status.completed': 'Completed',
 			'agents.chat.backgroundTasks.status.failed': 'Failed',
 			'agents.chat.backgroundTasks.status.cancelled': 'Canceled',
@@ -204,8 +225,8 @@ vi.mock('../components/AgentChatMessageList.vue', () => ({
 	default: {
 		name: 'AgentChatMessageList',
 		template: '<div data-testid="message-list-stub" />',
-		props: ['messages'],
-		emits: ['send-to-assistant'],
+		props: ['messages', 'canIncreaseBudget', 'budgetIncreasePending'],
+		emits: ['send-to-assistant', 'increase-budget'],
 	},
 }));
 
@@ -237,6 +258,7 @@ vi.mock('../composables/useAgentChatStream', () => ({
 			resume: resumeMock,
 			cancelAndSteer: cancelAndSteerMock,
 			dismissFatalError: vi.fn(),
+			clearBudgetNotices: clearBudgetNoticesMock,
 		};
 	},
 }));
@@ -273,6 +295,8 @@ describe('AgentChatPanel', () => {
 		steeringQueueIdsMock.value = new Set();
 		isCancellingMock.value = false;
 		backgroundJobsMock.value = [];
+		stopAllMock.mockReset();
+		isStoppingMock.value = false;
 		respondToApprovalMock.mockReset().mockResolvedValue(undefined);
 		fatalErrorMock.value = null;
 		onHistoryLoaded = undefined;
@@ -285,6 +309,10 @@ describe('AgentChatPanel', () => {
 			agentConfig: AgentJsonConfig | null;
 			beforeSend: () => Promise<void> | void;
 			backgroundJobsActive: boolean;
+			increaseBudget: (payload: {
+				field: 'monthlyBudgetUsd' | 'sessionCostCapUsd';
+				amount: number;
+			}) => Promise<boolean>;
 		}> = {},
 		attachTo?: HTMLElement,
 	) {
@@ -640,6 +668,98 @@ describe('AgentChatPanel', () => {
 		},
 	);
 
+	describe('plan card', () => {
+		it('renders live plan results above the input without changing submission', async () => {
+			const wrapper = mountPanel();
+			expect(wrapper.findComponent(AgentChatPlan).exists()).toBe(false);
+			messagesMock.value = [planMessage(planView(), { state: 'running', output: undefined })];
+			await nextTick();
+			expect(wrapper.findComponent(AgentChatPlan).exists()).toBe(false);
+			messagesMock.value[0].toolCalls![0].state = 'done';
+			messagesMock.value[0].toolCalls![0].output = planView();
+			await nextTick();
+			const card = wrapper.getComponent(AgentChatPlan);
+			expect(card.props('plan').revision).toBe(1);
+			expect(wrapper.get('[data-testid="chat-input"]').findComponent(AgentChatPlan).exists()).toBe(
+				true,
+			);
+			const chatInput = wrapper.getComponent({ name: 'ChatInputBase' });
+			chatInput.vm.$emit('update:modelValue', 'Continue the research');
+			await nextTick();
+			await wrapper.get('form').trigger('submit');
+			expect(sendMessageMock).toHaveBeenCalled();
+			wrapper.unmount();
+		});
+
+		it('restores history, preserves expansion across updates, and clears with the conversation', async () => {
+			messagesMock.value = [planMessage(planView())];
+			const wrapper = mountPanel({ continueSessionId: 't1' });
+			await wrapper.get('[data-testid="agent-chat-plan"] button').trigger('click');
+			messagesMock.value.push(planMessage(planView({ revision: 2 }), { tool: 'update_plan' }));
+			await nextTick();
+			expect(wrapper.getComponent(AgentChatPlan).props('plan').revision).toBe(2);
+			expect(
+				wrapper.get('[data-testid="agent-chat-plan"] button').attributes('aria-expanded'),
+			).toBe('true');
+			messagesMock.value.push(planMessage({ error: 'conflict' }, { tool: 'update_plan' }));
+			await nextTick();
+			expect(wrapper.getComponent(AgentChatPlan).props('plan').revision).toBe(2);
+			await wrapper.setProps({ continueSessionId: 't2' });
+			expect(
+				wrapper.get('[data-testid="agent-chat-plan"] button').attributes('aria-expanded'),
+			).toBe('false');
+			messagesMock.value = [];
+			await nextTick();
+			expect(wrapper.findComponent(AgentChatPlan).exists()).toBe(false);
+			wrapper.unmount();
+		});
+
+		it('keeps background jobs visible and independent of the plan', async () => {
+			messagesMock.value = [planMessage(planView({ closed: true }))];
+			backgroundJobsMock.value = [
+				{
+					id: 'job-1',
+					kind: 'subagent',
+					title: 'Separate work',
+					status: 'running',
+					startedAt: '2026-09-30T10:00:00Z',
+				},
+			];
+			const wrapper = mountPanel({ backgroundJobsActive: true, continueSessionId: 't1' });
+			const card = wrapper.getComponent(AgentChatPlan);
+			const job = wrapper.get('[data-testid="agent-background-jobs"]');
+			expect(
+				card.element.compareDocumentPosition(job.element) & Node.DOCUMENT_POSITION_PRECEDING,
+			).toBeTruthy();
+			await job.get('button').trigger('click');
+			expect(card.get('button').attributes('aria-expanded')).toBe('false');
+			expect(job.text()).toContain('Separate work');
+			messagesMock.value.push(planMessage(null, { tool: 'read_plan' }));
+			await nextTick();
+			expect(wrapper.findComponent(AgentChatPlan).exists()).toBe(false);
+			expect(wrapper.find('[data-testid="agent-background-jobs"]').exists()).toBe(true);
+			wrapper.unmount();
+		});
+
+		it('links a plan to the current session trace only when the session is available', async () => {
+			messagesMock.value = [planMessage(planView())];
+			const wrapper = mountPanel();
+			await wrapper.get('[data-testid="agent-chat-plan"] button').trigger('click');
+			expect(wrapper.find('[data-testid="agent-chat-plan-trace"]').exists()).toBe(false);
+			await wrapper.setProps({ continueSessionId: 't1' });
+			await wrapper.get('[data-testid="agent-chat-plan"] button').trigger('click');
+			expect(wrapper.get('[data-testid="agent-chat-plan-trace"]').attributes('href')).toBe(
+				'/projects/p1/agents/a1/sessions/t1',
+			);
+			await wrapper.setProps({ continueSessionId: 't2' });
+			await wrapper.get('[data-testid="agent-chat-plan"] button').trigger('click');
+			expect(wrapper.get('[data-testid="agent-chat-plan-trace"]').attributes('href')).toBe(
+				'/projects/p1/agents/a1/sessions/t2',
+			);
+			wrapper.unmount();
+		});
+	});
+
 	describe('background task panel', () => {
 		afterEach(() => vi.useRealTimers());
 		const job: AgentBackgroundJobDto = {
@@ -659,6 +779,140 @@ describe('AgentChatPanel', () => {
 				args: { to: 'team@example.com' },
 			},
 		};
+
+		it('restores composer focus when the pending stop disables the focused button', async () => {
+			backgroundJobsMock.value = [job];
+			const wrapper = mountPanel(
+				{ backgroundJobsActive: true, continueSessionId: 't1' },
+				document.body,
+			);
+			try {
+				await wrapper.get('[data-testid="agent-background-jobs"] button').trigger('click');
+				const stop = wrapper.get<HTMLButtonElement>('[data-testid="agent-background-jobs-stop"]');
+				stop.element.focus();
+				stopAllMock.mockImplementationOnce(async () => {
+					stop.element.blur();
+					backgroundJobsMock.value = [];
+				});
+				await stop.trigger('click');
+				await flushPromises();
+				expect(document.activeElement).toBe(wrapper.get('textarea').element);
+			} finally {
+				wrapper.unmount();
+			}
+		});
+
+		it('restores composer focus when workflows stop and a completed task remains', async () => {
+			const workflow: AgentBackgroundJobDto = { ...job, id: 'workflow', kind: 'workflow' };
+			const completed: AgentBackgroundJobDto = { ...job, status: 'completed' };
+			backgroundJobsMock.value = [completed, workflow];
+			const wrapper = mountPanel(
+				{ backgroundJobsActive: true, continueSessionId: 't1' },
+				document.body,
+			);
+			try {
+				await wrapper.get('[data-testid="agent-background-jobs"] button').trigger('click');
+				const stop = wrapper.get<HTMLButtonElement>('[data-testid="agent-background-jobs-stop"]');
+				stop.element.focus();
+				await stop.trigger('click');
+				await flushPromises();
+				expect(document.activeElement).toBe(stop.element);
+
+				backgroundJobsMock.value = [completed];
+				await flushPromises();
+				expect(wrapper.find('[data-testid="agent-background-jobs-stop"]').exists()).toBe(false);
+				expect(wrapper.find('[data-testid="agent-background-jobs"]').exists()).toBe(true);
+				expect(document.activeElement).toBe(wrapper.get('textarea').element);
+			} finally {
+				wrapper.unmount();
+			}
+		});
+
+		it.each(['subagent', 'workflow'] as const)(
+			'stops a %s group and keeps failures retryable',
+			async (kind) => {
+				backgroundJobsMock.value = [{ ...job, kind }];
+				const wrapper = mountPanel({ backgroundJobsActive: true }, document.body);
+				await wrapper.get('[data-testid="agent-background-jobs"] button').trigger('click');
+				const stop = wrapper.get('button[data-testid="agent-background-jobs-stop"]');
+				expect(stop.text()).toBe('Stop all tasks');
+				isStoppingMock.value = true;
+				await nextTick();
+				expect(stop.attributes('disabled')).toBeDefined();
+				expect(wrapper.text()).toContain('Stopping 1 background task…');
+				expect(wrapper.get('[aria-label="Stopping…"]').isVisible()).toBe(true);
+				isStoppingMock.value = false;
+				const error = new Error('Request failed');
+				stopAllMock.mockRejectedValueOnce(error);
+				await nextTick();
+				await stop.trigger('click');
+				await flushPromises();
+				expect(showErrorMock).toHaveBeenCalledWith(error, 'agents.chat.backgroundTasks.stopError');
+				expect(stop.attributes('disabled')).toBeUndefined();
+				expect(wrapper.text()).toContain(job.title);
+				expect(wrapper.text()).not.toContain('Stopping');
+				wrapper.unmount();
+			},
+		);
+
+		it.each(['running', 'suspended'] as const)(
+			'keeps stopped rows visible while a %s sub-agent is still stopping',
+			async (status) => {
+				const workflow: AgentBackgroundJobDto = {
+					...job,
+					id: 'workflow',
+					kind: 'workflow',
+					pauseRequested: true,
+				};
+				const stopping = { ...job, status, pauseRequested: true };
+				const sibling = { ...job, id: 'sibling', title: 'Second task', pauseRequested: true };
+				backgroundJobsMock.value = [stopping, sibling, workflow];
+				const wrapper = mountPanel(
+					{ backgroundJobsActive: true, continueSessionId: 't1' },
+					document.body,
+				);
+				try {
+					expect(wrapper.text()).toContain('Stopping 3 background tasks…');
+					await wrapper.get('[data-testid="agent-background-jobs"] button').trigger('click');
+					expect(wrapper.findAll('[aria-label="Stopping…"]')).toHaveLength(3);
+					expect(wrapper.get('li').text()).toContain('Stopping…');
+
+					const later = { ...job, id: 'later', title: 'Another task' };
+					backgroundJobsMock.value = [
+						stopping,
+						{ ...sibling, status: 'paused' },
+						{ ...workflow, status: 'cancelled' },
+						later,
+					];
+					await nextTick();
+					expect(wrapper.text()).toContain('Stopping 1 background task…');
+					expect(wrapper.findAll('li')).toHaveLength(4);
+					expect(wrapper.findAll('[aria-label="Stopping…"]')).toHaveLength(1);
+					expect(wrapper.findAll('[aria-label="Stopped"]')).toHaveLength(2);
+					expect(wrapper.get('[data-status="cancelled"]').attributes('aria-label')).toBe('Stopped');
+					expect(wrapper.findAll('li')[1].text()).toContain('Second task');
+					expect(wrapper.findAll('li')[1].text()).toContain('Stopped');
+					expect(wrapper.findAll('[aria-label="Running"]')).toHaveLength(1);
+
+					backgroundJobsMock.value = [later];
+					await nextTick();
+					expect(wrapper.text()).not.toContain('Stopping');
+					expect(wrapper.text()).not.toContain('Stopped');
+					expect(wrapper.find('[data-testid="agent-background-jobs"]').exists()).toBe(true);
+					backgroundJobsMock.value = [
+						job,
+						{ ...workflow, id: 'replacement', pauseRequested: false },
+						later,
+					];
+					await nextTick();
+					expect(wrapper.text()).not.toContain('Stopping');
+					expect(wrapper.findAll('[aria-label="Running"]')).toHaveLength(2);
+					expect(wrapper.get('[aria-label="Waiting"]').isVisible()).toBe(true);
+				} finally {
+					wrapper.unmount();
+				}
+			},
+		);
 
 		it.each([
 			{ action: 'allow-once', decision: { approved: true } },
@@ -1544,6 +1798,229 @@ describe('AgentChatPanel', () => {
 			wrapper.unmount();
 		},
 	);
+
+	it('blocks sending while a budget stop card is showing', async () => {
+		messagesMock.value = [
+			{
+				id: 'assistant-1',
+				role: 'assistant',
+				content: '',
+				status: 'success',
+				budgetNotices: [{ id: 'notice-1', code: 'budget.monthly' }],
+			},
+		];
+		const increaseBudget = vi.fn().mockResolvedValue(true);
+		const wrapper = mountPanel({ increaseBudget });
+		const chatInput = wrapper.findComponent({ name: 'ChatInputBase' });
+		chatInput.vm.$emit('update:modelValue', 'keep going');
+		await nextTick();
+
+		expect(chatInput.props('canSubmit')).toBe(false);
+		chatInput.vm.$emit('submit');
+		await flushPromises();
+		expect(sendMessageMock).not.toHaveBeenCalled();
+
+		wrapper.getComponent({ name: 'AgentChatMessageList' }).vm.$emit('increase-budget', {
+			field: 'monthlyBudgetUsd',
+			amount: 50,
+		});
+		await flushPromises();
+		expect(increaseBudget).toHaveBeenCalledWith({ field: 'monthlyBudgetUsd', amount: 50 });
+		expect(messagesMock.value[0]?.budgetNotices).toEqual([]);
+		expect(chatInput.props('canSubmit')).toBe(true);
+	});
+
+	it('keeps the stop card and the block when the budget increase save fails', async () => {
+		messagesMock.value = [
+			{
+				id: 'assistant-1',
+				role: 'assistant',
+				content: '',
+				status: 'success',
+				budgetNotices: [{ id: 'notice-1', code: 'budget.monthly' }],
+			},
+		];
+		const increaseBudget = vi.fn().mockResolvedValue(false);
+		const wrapper = mountPanel({ increaseBudget });
+		const chatInput = wrapper.findComponent({ name: 'ChatInputBase' });
+		chatInput.vm.$emit('update:modelValue', 'keep going');
+		await nextTick();
+
+		wrapper.getComponent({ name: 'AgentChatMessageList' }).vm.$emit('increase-budget', {
+			field: 'monthlyBudgetUsd',
+			amount: 50,
+		});
+		await flushPromises();
+		expect(messagesMock.value[0]?.budgetNotices).toEqual([
+			{ id: 'notice-1', code: 'budget.monthly' },
+		]);
+		expect(chatInput.props('canSubmit')).toBe(false);
+	});
+
+	it('does not clear the stop when the panel session changes during the save', async () => {
+		messagesMock.value = [
+			{
+				id: 'assistant-1',
+				role: 'assistant',
+				content: '',
+				status: 'success',
+				budgetNotices: [{ id: 'notice-1', code: 'budget.monthly' }],
+			},
+		];
+		const save = createDeferredPromise<boolean>();
+		const wrapper = mountPanel({
+			continueSessionId: 'session-a',
+			increaseBudget: () => save.promise,
+		});
+
+		wrapper.getComponent({ name: 'AgentChatMessageList' }).vm.$emit('increase-budget', {
+			field: 'monthlyBudgetUsd',
+			amount: 50,
+		});
+		await flushPromises();
+		await wrapper.setProps({ continueSessionId: 'session-b' });
+		save.resolve(true);
+		await flushPromises();
+
+		expect(clearBudgetNoticesMock).not.toHaveBeenCalled();
+		expect(messagesMock.value[0]?.budgetNotices).toEqual([
+			{ id: 'notice-1', code: 'budget.monthly' },
+		]);
+		wrapper.unmount();
+	});
+
+	it('does not clear the stop when the panel unmounts during the save', async () => {
+		messagesMock.value = [
+			{
+				id: 'assistant-1',
+				role: 'assistant',
+				content: '',
+				status: 'success',
+				budgetNotices: [{ id: 'notice-1', code: 'budget.session' }],
+			},
+		];
+		const save = createDeferredPromise<boolean>();
+		const wrapper = mountPanel({ increaseBudget: () => save.promise });
+
+		wrapper.getComponent({ name: 'AgentChatMessageList' }).vm.$emit('increase-budget', {
+			field: 'sessionCostCapUsd',
+			amount: 10,
+		});
+		await flushPromises();
+		wrapper.unmount();
+		save.resolve(true);
+		await flushPromises();
+
+		expect(clearBudgetNoticesMock).not.toHaveBeenCalled();
+		expect(messagesMock.value[0]?.budgetNotices).toEqual([
+			{ id: 'notice-1', code: 'budget.session' },
+		]);
+	});
+
+	it('clears only the matching stop via the exposed clearBudgetStops', async () => {
+		messagesMock.value = [
+			{
+				id: 'assistant-1',
+				role: 'assistant',
+				content: '',
+				status: 'success',
+				budgetNotices: [
+					{ id: 'notice-1', code: 'budget.session' },
+					{ id: 'notice-2', code: 'budget.monthly' },
+				],
+			},
+		];
+		const wrapper = mountPanel();
+		const chatInput = wrapper.findComponent({ name: 'ChatInputBase' });
+		chatInput.vm.$emit('update:modelValue', 'keep going');
+		await nextTick();
+		expect(chatInput.props('canSubmit')).toBe(false);
+
+		(
+			wrapper.vm as unknown as {
+				clearBudgetStops: (fields: Array<'monthlyBudgetUsd' | 'sessionCostCapUsd'>) => void;
+			}
+		).clearBudgetStops(['sessionCostCapUsd']);
+		await nextTick();
+
+		expect(clearBudgetNoticesMock).toHaveBeenCalledExactlyOnceWith(new Set(['budget.session']));
+		expect(messagesMock.value[0]?.budgetNotices).toEqual([
+			{ id: 'notice-2', code: 'budget.monthly' },
+		]);
+		expect(chatInput.props('canSubmit')).toBe(false);
+	});
+
+	it('clears the monthly stop and its alert via the exposed clearBudgetStops', async () => {
+		messagesMock.value = [
+			{
+				id: 'assistant-1',
+				role: 'assistant',
+				content: '',
+				status: 'success',
+				budgetNotices: [
+					{ id: 'notice-1', code: 'budget.monthly' },
+					{ id: 'notice-2', code: 'budget.alert' },
+				],
+			},
+		];
+		const wrapper = mountPanel();
+		const chatInput = wrapper.findComponent({ name: 'ChatInputBase' });
+		chatInput.vm.$emit('update:modelValue', 'keep going');
+		await nextTick();
+		expect(chatInput.props('canSubmit')).toBe(false);
+
+		(
+			wrapper.vm as unknown as {
+				clearBudgetStops: (fields: Array<'monthlyBudgetUsd' | 'sessionCostCapUsd'>) => void;
+			}
+		).clearBudgetStops(['monthlyBudgetUsd']);
+		await nextTick();
+
+		expect(clearBudgetNoticesMock).toHaveBeenCalledExactlyOnceWith(
+			new Set(['budget.monthly', 'budget.alert']),
+		);
+		expect(messagesMock.value[0]?.budgetNotices).toEqual([]);
+		expect(chatInput.props('canSubmit')).toBe(true);
+	});
+
+	it('offers the increase action only when an increaseBudget handler is provided', async () => {
+		messagesMock.value = [
+			{
+				id: 'assistant-1',
+				role: 'assistant',
+				content: '',
+				status: 'success',
+				budgetNotices: [{ id: 'notice-1', code: 'budget.monthly' }],
+			},
+		];
+		const readOnly = mountPanel();
+		expect(readOnly.getComponent({ name: 'AgentChatMessageList' }).props('canIncreaseBudget')).toBe(
+			false,
+		);
+
+		const editable = mountPanel({ increaseBudget: vi.fn().mockResolvedValue(true) });
+		expect(editable.getComponent({ name: 'AgentChatMessageList' }).props('canIncreaseBudget')).toBe(
+			true,
+		);
+	});
+
+	it('still allows sending when only the budget alert card is showing', async () => {
+		messagesMock.value = [
+			{
+				id: 'assistant-1',
+				role: 'assistant',
+				content: 'still going',
+				status: 'success',
+				budgetNotices: [{ id: 'notice-1', code: 'budget.alert' }],
+			},
+		];
+		const wrapper = mountPanel();
+		const chatInput = wrapper.findComponent({ name: 'ChatInputBase' });
+		chatInput.vm.$emit('update:modelValue', 'continue');
+		await nextTick();
+
+		expect(chatInput.props('canSubmit')).toBe(true);
+	});
 
 	it('enables chat input while an interactive card is unresolved (cancel-and-steer mode)', () => {
 		messagesMock.value = [openInteractiveMessage()];

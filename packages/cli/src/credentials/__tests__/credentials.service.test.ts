@@ -2,7 +2,11 @@ import { CredentialDescriptionsService } from '@/credentials/credential-descript
 import type { PostHogClient } from '@/posthog';
 import { CREDENTIAL_DESCRIPTION_MAX_LENGTH } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
-import { type EventService, type RoleService } from '@n8n/backend-services';
+import {
+	type EventService,
+	type RoleService,
+	type CredentialsFinderService,
+} from '@n8n/backend-services';
 import type {
 	CredentialsRepository,
 	ICredentialsDb,
@@ -44,7 +48,6 @@ import { mock } from 'vitest-mock-extended';
 import type { CredentialTypes } from '@/credential-types';
 import type { CredentialConnectionStatusProxy } from '@/credentials/credential-connection-status-proxy';
 import type { CredentialDependencyService } from '@/credentials/credential-dependency.service';
-import type { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { CredentialsService } from '@/credentials/credentials.service';
 import type { InstanceCredentialUseRegistry } from '@/credentials/instance-credential-use.registry';
 import * as validation from '@/credentials/validation';
@@ -365,6 +368,100 @@ describe('CredentialsService', () => {
 
 			const preparedData = prepared.data as unknown as ICredentialDataDecryptedObject;
 			expect(preparedData.authentication).toBeUndefined();
+		});
+	});
+
+	describe('prepareUpdateData with the client credentials grant', () => {
+		const CREDENTIAL_TYPE = 'oAuth2Api';
+
+		const oauthTokenData = { access_token: 'token-of-the-old-client' };
+
+		const storedClient = {
+			grantType: 'clientCredentials',
+			clientId: 'old-client-id',
+			clientSecret: 'old-client-secret',
+			accessTokenUrl: 'https://auth.example.com/token',
+			scope: 'read',
+		};
+
+		function storedCredential(data: ICredentialDataDecryptedObject) {
+			vi.spyOn(Credentials.prototype, 'getData').mockResolvedValue(data);
+			return mock<CredentialsEntity>({
+				id: 'cred-1',
+				name: 'Acme API',
+				type: CREDENTIAL_TYPE,
+				usageScope: 'project',
+				shared: [{ role: 'credential:owner', projectId: 'project-1' }],
+			});
+		}
+
+		async function prepare(
+			data: ICredentialDataDecryptedObject,
+			stored: ICredentialDataDecryptedObject = { ...storedClient, oauthTokenData },
+		) {
+			const prepared = await service.prepareUpdateData(
+				ownerUser,
+				{ name: 'Acme API', type: CREDENTIAL_TYPE, data },
+				storedCredential(stored),
+			);
+			return prepared.data as unknown as ICredentialDataDecryptedObject;
+		}
+
+		beforeEach(() => {
+			credentialTypes.getByName.mockReturnValue(
+				mock<ICredentialType>({ extends: [], properties: [] }),
+			);
+			credentialsRepository.create.mockImplementation(
+				(data) => Object.assign(new CredentialsEntity(), data) as CredentialsEntity,
+			);
+			// The grant is user-owned here, so every field the diff reads is displayed.
+			credentialsHelper.getCredentialsProperties.mockReturnValue(new OAuth2Api().properties);
+		});
+
+		it.each([
+			['clientId', 'new-client-id'],
+			['clientSecret', 'new-client-secret'],
+			['accessTokenUrl', 'https://other-auth.example.com/token'],
+			['scope', 'read write'],
+		])('drops the stored token when %s changes', async (field, value) => {
+			const preparedData = await prepare({ ...storedClient, [field]: value });
+
+			// The grant fetches a token only when none is stored, so the next
+			// execution has to find the slot empty to use the new client.
+			expect(preparedData.oauthTokenData).toBeUndefined();
+		});
+
+		it('keeps the token when the editor sends the unchanged secret back redacted', async () => {
+			const preparedData = await prepare({
+				...storedClient,
+				clientSecret: CREDENTIAL_BLANKING_VALUE,
+			});
+
+			expect(preparedData.oauthTokenData).toEqual(oauthTokenData);
+		});
+
+		it('keeps the token when a field the token does not depend on changes', async () => {
+			const preparedData = await prepare({ ...storedClient, ignoreSSLIssues: true });
+
+			expect(preparedData.oauthTokenData).toEqual(oauthTokenData);
+		});
+
+		it('drops a token minted under another grant when the grant type changes', async () => {
+			const preparedData = await prepare(
+				{ ...storedClient, grantType: 'clientCredentials' },
+				{ ...storedClient, grantType: 'authorizationCode', oauthTokenData },
+			);
+
+			expect(preparedData.oauthTokenData).toBeUndefined();
+		});
+
+		it('leaves the authorization code grant alone, which reconnects through its own flow', async () => {
+			const preparedData = await prepare(
+				{ ...storedClient, grantType: 'authorizationCode', clientId: 'new-client-id' },
+				{ ...storedClient, grantType: 'authorizationCode', oauthTokenData },
+			);
+
+			expect(preparedData.oauthTokenData).toEqual(oauthTokenData);
 		});
 	});
 

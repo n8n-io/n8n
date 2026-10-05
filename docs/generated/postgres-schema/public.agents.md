@@ -112,6 +112,7 @@ erDiagram
   varchar_64_ parentPrincipalHash
   varchar_255_ parentResourceId
   varchar_128_ parentThreadId
+  uuid pauseRequestId
   text result
   timestamp_3__with_time_zone settledAt
   varchar_16_ status

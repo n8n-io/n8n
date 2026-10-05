@@ -1,16 +1,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { saveAs } from 'file-saver';
-import {
-	N8nButton,
-	N8nCopyInput,
-	N8nIcon,
-	N8nInput,
-	N8nStepper,
-	N8nText,
-	N8nTooltip,
-} from '@n8n/design-system';
-import { TEAMS_DESCRIPTION_MAX, TEAMS_DISPLAY_NAME_MAX } from '@n8n/api-types';
+import { N8nButton, N8nCopyInput, N8nIcon, N8nStepper, N8nText } from '@n8n/design-system';
 import type {
 	AgentJsonConfig,
 	AgentTeamsIntegrationSettings,
@@ -21,15 +12,20 @@ import type {
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@n8n/composables/useToast';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import {
+	listenForCredentialChanges,
+	useCredentialsStore,
+} from '@/features/credentials/credentials.store';
 import type { PermissionsRecord } from '@n8n/permissions';
-import AgentPersonalisationIcon from '../../components/AgentPersonalisationIcon.vue';
 import AgentIntegrationCredentialConnection from '../../components/AgentIntegrationCredentialConnection.vue';
 import type { AgentCredentialOption } from '../../components/AgentCredentialSelect.vue';
 import AgentChannelTeamsAvailability, {
 	type TeamsAvailability,
 } from './AgentChannelTeamsAvailability.vue';
+import AgentChannelTeamsIdentityCard from './AgentChannelTeamsIdentityCard.vue';
 import { useAgentTelemetry } from '../../composables/useAgentTelemetry';
 import { checkTeamsCredential, fetchTeamsAppPackage, getTeamsSetupState } from './api';
+import { OFFER_READ_PERMISSIONS } from './constants';
 
 const credentialId = defineModel<string>({ default: '' });
 
@@ -85,23 +81,35 @@ const setupState = ref<TeamsAgentSetupState | null>(null);
 const setupLoadFailed = ref(false);
 const showEndpoint = ref(false);
 
-const availability = ref<TeamsAvailability>({
-	teamChannels: props.savedSettings?.teamChannels ?? false,
-	groupChats: props.savedSettings?.groupChats ?? false,
-	readAllChannelMessages: props.savedSettings?.readAllChannelMessages ?? false,
-	readAllGroupMessages: props.savedSettings?.readAllGroupMessages ?? false,
-});
+// A hidden read permission is never kept on: nothing here could turn it off.
+function availabilityFrom(saved?: AgentTeamsIntegrationSettings): TeamsAvailability {
+	return {
+		teamChannels: saved?.teamChannels ?? false,
+		groupChats: saved?.groupChats ?? false,
+		readAllChannelMessages: OFFER_READ_PERMISSIONS && (saved?.readAllChannelMessages ?? false),
+		readAllGroupMessages: OFFER_READ_PERMISSIONS && (saved?.readAllGroupMessages ?? false),
+	};
+}
 
-const displayName = ref(props.savedSettings?.displayName ?? '');
-const description = ref(props.savedSettings?.description ?? '');
+const availability = ref<TeamsAvailability>(availabilityFrom(props.savedSettings));
 
-/**
- * Shown as placeholders rather than written into the fields. Filling them in
- * would save them as overrides on the first connect, and the Teams app would
- * then keep the agent's old name after a rename.
- */
+// The credential the saved channel runs on, so a swap counts as an app change.
+const savedCredentialId = credentialId.value;
+
 const defaultDisplayName = computed(() => setupState.value?.defaultDisplayName ?? '');
 const defaultDescription = computed(() => setupState.value?.defaultDescription ?? '');
+
+// The identity comes from the agent. An override saved by an earlier version
+// still shows here, because the installed app still carries it until the next save.
+const savedIdentityOverride = computed(() =>
+	Boolean(props.savedSettings?.displayName || props.savedSettings?.description),
+);
+const effectiveDisplayName = computed(
+	() => props.savedSettings?.displayName || defaultDisplayName.value,
+);
+const effectiveDescription = computed(
+	() => props.savedSettings?.description || defaultDescription.value,
+);
 
 const messagingEndpointUrl = computed(() => {
 	if (setupState.value) return setupState.value.messagingEndpointUrl;
@@ -139,26 +147,31 @@ const checking = ref(false);
 let latestCheck = 0;
 let latestSetupState = 0;
 
-/**
- * Tracked per field, so an edit to one does not stop the others adopting
- * settings that arrive afterwards.
- */
-const touched = ref(new Set<'availability' | 'displayName' | 'description'>());
+// An edit made here wins over settings that arrive afterwards.
+const availabilityTouched = ref(false);
 
 function editAvailability(value: TeamsAvailability) {
 	availability.value = value;
-	touched.value.add('availability');
+	availabilityTouched.value = true;
 }
 
-function editDisplayName(value: string) {
-	displayName.value = value;
-	touched.value.add('displayName');
-}
-
-function editDescription(value: string) {
-	description.value = value;
-	touched.value.add('description');
-}
+/**
+ * Whether saving changes what the installed app carries: its scopes, its bot,
+ * or an identity override this view no longer keeps. Teams only picks that up
+ * from a new package.
+ */
+const manifestChanged = computed(() => {
+	if (props.mode !== 'edit') return false;
+	const saved = props.savedSettings;
+	return (
+		availability.value.teamChannels !== (saved?.teamChannels ?? false) ||
+		availability.value.groupChats !== (saved?.groupChats ?? false) ||
+		availability.value.readAllChannelMessages !== (saved?.readAllChannelMessages ?? false) ||
+		availability.value.readAllGroupMessages !== (saved?.readAllGroupMessages ?? false) ||
+		credentialId.value !== savedCredentialId ||
+		savedIdentityOverride.value
+	);
+});
 
 /**
  * Saving is gated on the credential actually reaching Microsoft. Without this
@@ -223,7 +236,10 @@ async function runCredentialCheck(trigger: 'auto' | 'recheck') {
 	});
 }
 
-async function downloadPackage(): Promise<boolean> {
+async function downloadPackage(
+	settings: AgentTeamsIntegrationSettings | undefined = currentSettings.value,
+	packageCredentialId: string = credentialId.value,
+): Promise<boolean> {
 	downloading.value = true;
 	downloadError.value = '';
 	try {
@@ -231,8 +247,8 @@ async function downloadPackage(): Promise<boolean> {
 			rootStore.restApiContext,
 			props.projectId,
 			props.agentId,
-			credentialId.value || undefined,
-			currentSettings.value,
+			packageCredentialId || undefined,
+			settings,
 		);
 		saveAs(blob, 'n8n-agent-teams-app.zip');
 		agentTelemetry.trackDownloadedTeamsAppPackage({ agentId: props.agentId, status: 'success' });
@@ -314,33 +330,25 @@ watch(
 	() => loadSetupState(),
 );
 
-watch(
-	credentialId,
-	async () => {
-		await Promise.all([runCredentialCheck('auto'), loadSetupState()]);
-	},
-	{ immediate: true },
-);
+async function refreshForCredential() {
+	await Promise.all([runCredentialCheck('auto'), loadSetupState()]);
+}
 
-/**
- * Re-synced rather than read once, so settings that arrive after this mounts
- * are not overwritten by the empty defaults the refs started with. Edits
- * already made here win: only an untouched field follows the saved value.
- */
+watch(credentialId, refreshForCredential, { immediate: true });
+
+// Saving the picked credential keeps its ID, so the watch above does not see the edit.
+listenForCredentialChanges({
+	store: useCredentialsStore(),
+	onCredentialUpdated: async (credential) => {
+		if (credential.id === credentialId.value) await refreshForCredential();
+	},
+});
+
+// Settings can arrive after this mounts, so the empty defaults must not stick.
 watch(
 	() => props.savedSettings,
 	(saved) => {
-		if (!saved) return;
-		if (!touched.value.has('availability')) {
-			availability.value = {
-				teamChannels: saved.teamChannels ?? false,
-				groupChats: saved.groupChats ?? false,
-				readAllChannelMessages: saved.readAllChannelMessages ?? false,
-				readAllGroupMessages: saved.readAllGroupMessages ?? false,
-			};
-		}
-		if (!touched.value.has('displayName')) displayName.value = saved.displayName ?? '';
-		if (!touched.value.has('description')) description.value = saved.description ?? '';
+		if (saved && !availabilityTouched.value) availability.value = availabilityFrom(saved);
 	},
 );
 
@@ -375,28 +383,68 @@ const steps = computed(() => [
 /**
  * Built on the saved settings, because connecting replaces the settings object
  * wholesale: a field this form does not render would otherwise be dropped the
- * first time someone saves from here.
- *
- * Empty strings are absent rather than values: the schema requires a non-empty
- * string when the field is present, and both fall back server-side.
+ * first time someone saves from here. The identity keys are left out, so the
+ * app falls back to the agent's own name and description.
  */
-const currentSettings = computed(() => {
-	// The identity keys are dropped from the base: an empty field means "fall
-	// back to the agent", and the saved value would otherwise reinstate itself.
-	const {
-		displayName: _saved,
-		description: _savedDescription,
-		...rest
-	} = props.savedSettings ?? {};
-	return {
-		...rest,
-		...availability.value,
-		...(displayName.value.trim() ? { displayName: displayName.value.trim() } : {}),
-		...(description.value.trim() ? { description: description.value.trim() } : {}),
-	};
+const currentSettings = computed<AgentTeamsIntegrationSettings>(() => {
+	const { displayName: _name, description: _description, ...rest } = props.savedSettings ?? {};
+	return { ...rest, ...availability.value };
 });
 
-defineExpose({ credentialId, validationError: null, currentSettings });
+function showDownloaded() {
+	toast.showMessage({
+		type: 'success',
+		title: i18n.baseText('agents.channels.teams.setup.install.downloaded'),
+	});
+}
+
+// The package matches what n8n has saved, not the unsaved form, so an
+// installed app never runs on settings that were never saved.
+async function downloadSaved() {
+	if (await downloadPackage(props.savedSettings, savedCredentialId)) showDownloaded();
+}
+
+const saveLabel = computed(() =>
+	manifestChanged.value
+		? i18n.baseText('agents.channels.teams.settings.saveAndDownload')
+		: undefined,
+);
+
+// Captured before the save, because the saved settings then catch up with the form.
+let pendingPackage: { settings: AgentTeamsIntegrationSettings; credentialId: string } | null = null;
+
+async function beforeSave() {
+	pendingPackage = manifestChanged.value
+		? { settings: currentSettings.value, credentialId: credentialId.value }
+		: null;
+}
+
+/**
+ * Runs only once the save succeeded, so the package never gets ahead of n8n.
+ * It never throws: the settings are saved, and a failed download is reported
+ * here and can be repeated from the card.
+ */
+async function afterSave() {
+	const pending = pendingPackage;
+	pendingPackage = null;
+	// Attempted even without a bot ID here: the server builds the package from
+	// the credential itself, and its failure is reported below.
+	if (!pending) return;
+	if (await downloadPackage(pending.settings, pending.credentialId)) {
+		showDownloaded();
+		return;
+	}
+	toast.showMessage({ type: 'error', title: downloadError.value });
+}
+
+defineExpose({
+	credentialId,
+	validationError: null,
+	currentSettings,
+	saveLabel,
+	beforeSave,
+	afterSave,
+});
 </script>
 
 <template>
@@ -583,36 +631,15 @@ defineExpose({ credentialId, validationError: null, currentSettings });
 							{{ i18n.baseText('agents.channels.teams.setup.install.hint') }}
 						</N8nText>
 
-						<div
-							:class="[$style.identity, ready ? $style.identityReady : $style.locked]"
-							data-testid="teams-identity"
-						>
-							<AgentPersonalisationIcon :personalisation="personalisation" :size="36" />
-							<div :class="$style.identityText">
-								<N8nText size="small" bold>
-									{{ defaultDisplayName }}
-									<N8nTooltip
-										:content="i18n.baseText('agents.channels.teams.setup.install.identityTooltip')"
-									>
-										<N8nIcon icon="info" size="xsmall" :class="$style.hint" />
-									</N8nTooltip>
-								</N8nText>
-								<N8nText size="small" :class="$style.hint">
-									{{ defaultDescription }}
-								</N8nText>
-							</div>
-							<N8nButton
-								variant="outline"
-								size="medium"
-								:disabled="!ready || loading"
-								:loading="downloading || loading"
-								data-testid="teams-download-package"
-								@click="downloadAndConnect"
-							>
-								{{ i18n.baseText('agents.channels.teams.setup.install.button') }}
-								<N8nIcon icon="download" size="medium" />
-							</N8nButton>
-						</div>
+						<AgentChannelTeamsIdentityCard
+							:name="defaultDisplayName"
+							:description="defaultDescription"
+							:personalisation="personalisation"
+							:tooltip="i18n.baseText('agents.channels.teams.setup.install.identityTooltip')"
+							:ready="ready"
+							:loading="downloading || loading"
+							@download="downloadAndConnect"
+						/>
 
 						<N8nText
 							v-if="staleDownload"
@@ -673,88 +700,55 @@ defineExpose({ credentialId, validationError: null, currentSettings });
 		</N8nStepper>
 
 		<div v-else :class="$style.formContent">
-			<N8nText size="small" :class="$style.hint" data-testid="teams-update-notice">
-				{{ i18n.baseText('agents.channels.teams.settings.updateNotice') }}
-			</N8nText>
-
-			<div :class="$style.field" data-testid="teams-display-name">
-				<label for="teams-display-name">
-					<N8nText size="small" bold>
-						{{ i18n.baseText('agents.channels.teams.settings.displayName') }}
-					</N8nText>
-				</label>
-				<N8nInput
-					id="teams-display-name"
-					:model-value="displayName"
-					@update:model-value="editDisplayName"
-					size="large"
-					:maxlength="TEAMS_DISPLAY_NAME_MAX"
-					:placeholder="defaultDisplayName"
-					show-word-limit
+			<div :class="$style.field" data-testid="teams-availability-field">
+				<N8nText size="small" bold>
+					{{ i18n.baseText('agents.channels.teams.settings.availabilityLabel') }}
+				</N8nText>
+				<AgentChannelTeamsAvailability
+					:model-value="availability"
+					start-collapsed
+					@update:model-value="editAvailability"
 				/>
+				<N8nText
+					size="small"
+					:class="manifestChanged ? undefined : $style.hint"
+					data-testid="teams-update-notice"
+				>
+					{{
+						i18n.baseText(
+							manifestChanged
+								? 'agents.channels.teams.settings.updateNoticeChanged'
+								: 'agents.channels.teams.settings.updateNotice',
+						)
+					}}
+				</N8nText>
 			</div>
 
-			<div :class="$style.field" data-testid="teams-description">
-				<label for="teams-description">
-					<N8nText size="small" bold>
-						{{ i18n.baseText('agents.channels.teams.settings.description') }}
-					</N8nText>
-				</label>
-				<N8nInput
-					id="teams-description"
-					:model-value="description"
-					@update:model-value="editDescription"
-					size="large"
-					:maxlength="TEAMS_DESCRIPTION_MAX"
-					:placeholder="defaultDescription"
-					show-word-limit
+			<div :class="$style.field" data-testid="teams-identity-field">
+				<N8nText size="small" bold>
+					{{ i18n.baseText('agents.channels.teams.settings.identityLabel') }}
+				</N8nText>
+				<AgentChannelTeamsIdentityCard
+					:name="effectiveDisplayName"
+					:description="effectiveDescription"
+					:personalisation="personalisation"
+					:tooltip="
+						savedIdentityOverride
+							? ''
+							: i18n.baseText('agents.channels.teams.setup.install.identityTooltip')
+					"
+					:ready="canDownloadPackage"
+					:loading="downloading"
+					@download="downloadSaved"
 				/>
-			</div>
-
-			<AgentChannelTeamsAvailability
-				:model-value="availability"
-				start-collapsed
-				@update:model-value="editAvailability"
-			/>
-
-			<N8nButton
-				v-if="canDownloadPackage"
-				variant="subtle"
-				size="small"
-				icon="download"
-				:loading="downloading"
-				data-testid="teams-download-package"
-				@click="downloadPackage"
-			>
-				{{ i18n.baseText('agents.channels.teams.setup.install.button') }}
-			</N8nButton>
-			<N8nText v-if="downloadError" size="small" :class="$style.error">
-				{{ downloadError }}
-			</N8nText>
-
-			<N8nButton
-				v-if="!showEndpoint"
-				variant="ghost"
-				size="small"
-				data-testid="teams-show-endpoint"
-				@click="showEndpoint = true"
-			>
-				{{ i18n.baseText('agents.channels.teams.setup.createBot.existingBot') }}
-			</N8nButton>
-			<div v-else :class="$style.field" data-testid="teams-endpoint-field">
-				<label for="teams-messaging-endpoint-url">
-					<N8nText size="small" bold>
-						{{ i18n.baseText('agents.channels.teams.messagingEndpointUrl.label') }}
-					</N8nText>
-				</label>
-				<N8nCopyInput
-					id="teams-messaging-endpoint-url"
-					:value="messagingEndpointUrl"
-					size="large"
-					:class="$style.urlInput"
-					:copy-label="i18n.baseText('agents.builder.addTrigger.copy')"
-					:copied-label="i18n.baseText('agents.builder.addTrigger.copied')"
-				/>
+				<N8nText
+					v-if="downloadError"
+					size="small"
+					:class="$style.error"
+					data-testid="teams-download-error"
+				>
+					{{ downloadError }}
+				</N8nText>
 			</div>
 		</div>
 	</div>
@@ -766,6 +760,10 @@ defineExpose({ credentialId, validationError: null, currentSettings });
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--sm);
+}
+
+.formContent {
+	gap: var(--spacing--md);
 }
 
 .stepContent {
@@ -813,35 +811,6 @@ defineExpose({ credentialId, validationError: null, currentSettings });
 .locked {
 	opacity: 0.45;
 	pointer-events: none;
-}
-
-.identity {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--xs);
-	width: 100%;
-	padding: var(--spacing--xs);
-	/* Matches the availability panel above it. */
-	border: var(--border-width, 1px) solid var(--border-color--subtle);
-	border-radius: var(--radius--xs);
-}
-
-/*
- * One step off the modal in both themes. The semantic tokens are relative to
- * the page, and the dark modal is lighter than the dark page surface.
- */
-.identityReady {
-	background: light-dark(var(--color--neutral-50), var(--color--white-alpha-50));
-	/* The dark fill matches the subtle border, which would hide it. */
-	border-color: light-dark(var(--border-color--subtle), var(--border-color));
-}
-
-.identityText {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--5xs);
-	flex: 1;
-	min-width: 0;
 }
 
 .urlInput {

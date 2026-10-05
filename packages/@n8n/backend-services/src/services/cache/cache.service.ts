@@ -181,7 +181,12 @@ export class CacheService extends TypedEmitter<CacheEvents> {
 		{
 			fallbackValue,
 			refreshFn,
-		}: { fallbackValue?: T; refreshFn?: (key: string) => Promise<T | undefined> } = {},
+			ttl,
+		}: {
+			fallbackValue?: T;
+			refreshFn?: (key: string) => Promise<T | undefined>;
+			ttl?: number;
+		} = {},
 	) {
 		if (!this.cache) await this.init();
 
@@ -201,7 +206,7 @@ export class CacheService extends TypedEmitter<CacheEvents> {
 			this.emit('metrics.cache.update');
 
 			const refreshValue = await refreshFn(key);
-			await this.set(key, refreshValue);
+			await this.set(key, refreshValue, ttl);
 
 			return refreshValue;
 		}

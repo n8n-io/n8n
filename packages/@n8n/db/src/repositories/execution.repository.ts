@@ -594,6 +594,7 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 			if (Object.keys(executionInformation).length > 0) {
 				const whereCondition: FindOptionsWhere<ExecutionEntity> = { id: executionId };
 				if (conditions?.requireStatus) whereCondition.status = conditions.requireStatus;
+				// oxlint-disable-next-line typescript/no-deprecated
 				if (conditions?.requireNotFinished) whereCondition.finished = false;
 				if (conditions?.requireNotCanceled) whereCondition.status = Not('canceled');
 
@@ -1420,6 +1421,15 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 			.getRawMany<{ workflowVersionId: string }>();
 
 		return result.map((r) => r.workflowVersionId);
+	}
+
+	/** IDs of executions still in progress (`running` or `unknown` status). */
+	async findUnfinishedIds(): Promise<string[]> {
+		const rows = await this.find({
+			select: ['id'],
+			where: { status: In(['running', 'unknown']) },
+		});
+		return rows.map(({ id }) => id);
 	}
 
 	async findStatusesByIds(ids: string[]): Promise<Array<Pick<ExecutionEntity, 'id' | 'status'>>> {

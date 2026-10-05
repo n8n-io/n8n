@@ -92,6 +92,15 @@ paths:
   /data-tables/{dataTableId}/rows/upsert:
     post:
       $ref: ./handlers/data-tables/spec/paths/upsertDataTableRow.generated.yml
+  /data-tables/{dataTableId}/rows/update:
+    patch:
+      $ref: ./handlers/data-tables/spec/paths/updateDataTableRows.generated.yml
+  /data-tables/{dataTableId}/rows/clear:
+    delete:
+      $ref: ./handlers/data-tables/spec/paths/clearDataTableRows.generated.yml
+  /data-tables/{dataTableId}/rows/delete:
+    delete:
+      $ref: ./handlers/data-tables/spec/paths/deleteDataTableRows.generated.yml
   /discover:
     get:
       $ref: ./handlers/discover/spec/paths/getDiscover.generated.yml
@@ -146,6 +155,19 @@ paths:
   /insights/summary:
     get:
       $ref: ./handlers/insights/spec/paths/getInsightsSummary.generated.yml
+  /settings/ldap:
+    get:
+      $ref: ./handlers/settings/spec/paths/getLdapConfiguration.generated.yml
+    put:
+      $ref: ./handlers/settings/spec/paths/updateLdapConfiguration.generated.yml
+  /settings/ldap/sync:
+    get:
+      $ref: ./handlers/settings/spec/paths/getLdapSync.generated.yml
+    post:
+      $ref: ./handlers/settings/spec/paths/runLdapSync.generated.yml
+  /settings/log-streaming/event-types:
+    get:
+      $ref: ./handlers/settings/spec/paths/getLogStreamingEventTypes.generated.yml
   /node-type-policies/instance:
     get:
       $ref: ./handlers/node-type-policies/spec/paths/getNodeTypeInstancePolicy.generated.yml
@@ -261,6 +283,12 @@ paths:
   /promotions/projects/{projectId}/promote:
     post:
       $ref: ./handlers/promotions/spec/paths/promoteProjectSelection.generated.yml
+  /promotions/projects/{projectId}/apply:
+    post:
+      $ref: ./handlers/promotions/spec/paths/applyProjectSelection.generated.yml
+  /promotions/projects/{projectId}/apply/continue:
+    post:
+      $ref: ./handlers/promotions/spec/paths/continueApplyProjectSelection.generated.yml
   /role-mapping-rules:
     get:
       $ref: ./handlers/role-mapping-rules/spec/paths/getRoleMappingRules.generated.yml

@@ -25,11 +25,35 @@ the chip text before the action moves outside the panel.
 Show session details on separate lines when the session list is narrow. Keep the
 title, origin, date, token count, and actions visible without overlap.
 
+## Preview history
+
+Use the shared `ChatHistoryDropdownTrigger` in the Preview dock and the Assistant.
+The shared button shows the history icon and the chat title. Click the title or
+the icon to open history. Show only “Chat history” when no chat title exists. Do
+not show “New session” before the Preview session starts. Truncate long titles
+inside the shared button. Keep the header actions visible.
+Use the `x` icon for the Preview close action, as the Assistant does.
+
 ## Item context menus
 
 Use `AgentItemContextMenu` for removable configuration chips. It wraps the
 Design System context menu and shows one destructive `Remove` action.
 Keep normal-click editing and existing modal removal controls.
+
+In the standalone Agent Builder, put `Activate` or `Deactivate` before `Remove`
+for tools, workflow references, skills, sub-agents, and schedules. Use `play` for
+`Activate`, `timer` for `Deactivate`, and `trash-2` for `Remove`.
+Put `Remove` in a separate group below a divider.
+Keep these actions out of inline Agent editors and channel,
+MCP, vector store, and memory menus. Schedules use this menu instead of a modal
+switch. Activation edits the draft and takes effect in production after publish.
+
+Keep deactivated items editable and removable. Use the same reduced opacity as
+a disabled Design System button. Apply it to the whole chip in both themes.
+Do not show a status tag on the chip. Keep `Deactivated` in its accessible
+description. Each grouped tool has its own activation action. The group menu
+has no activation action. Mark the group deactivated only when all its tools
+are off.
 
 For grouped tools, put the menu on the group chip and each item in its dropdown.
 Remove on the group removes all its tool references in one configuration update.
@@ -39,7 +63,8 @@ their existing removal flows. Keep the managed Slack confirmation and its
 external app choice.
 
 Disable the menu under edit locks and read-only access. Check this state again
-when the user selects Remove. Configuration errors must not block removal.
+when the user selects an action. Configuration errors must not block removal
+or deactivation.
 
 ## Modal patterns
 
@@ -187,6 +212,15 @@ skill, What the skill does, and Allowed tools. Use `Save skill` to confirm.
 - Confirm success closes silently.
 - Confirm UI text uses i18n.
 - Confirm the layout works at 375 by 667 pixels in light and dark themes.
+
+## Recoverable plan errors
+
+Show rejected plan input and revision conflicts in the normal tool-call row.
+Keep the warning icon and use a short tooltip. Do not show a separate error
+callout or a Fix with Assistant action for these errors. Keep the full input
+and output in the collapsed details and the trace. Keep earlier failed calls
+visible after a successful retry. Unexpected failures keep the existing error
+treatment.
 
 ## Extend this document
 

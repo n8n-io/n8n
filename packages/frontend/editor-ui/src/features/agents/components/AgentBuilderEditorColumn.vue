@@ -15,6 +15,7 @@ import type { ToolOpenTarget, ToolPickerMode } from './AgentCapabilitiesSection.
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import AgentSessionsListView from '../views/AgentSessionsListView.vue';
 import AgentAdvancedPanel from './AgentAdvancedPanel.vue';
+import AgentBudgetPanel from './AgentBudgetPanel.vue';
 import AgentCapabilitiesSection from './AgentCapabilitiesSection.vue';
 import AgentTriggersSection from './AgentTriggersSection.vue';
 import AgentIdentityHeader from './AgentIdentityHeader.vue';
@@ -42,7 +43,7 @@ const props = defineProps<{
 	agentFilesUploading: boolean;
 	knowledgeBaseEnabled: boolean;
 	deletingAgentFileId?: string | null;
-	appliedSkills: Array<{ id: string; skill: AgentSkill }>;
+	appliedSkills: Array<{ id: string; skill: AgentSkill; enabled?: boolean }>;
 	connectedTriggers: string[];
 	canEditAgent: boolean;
 	/** `agent:execute`, which a project viewer holds without holding update. */
@@ -57,6 +58,10 @@ const props = defineProps<{
 	agentUnsaved?: boolean;
 	ensureAgentPersisted?: () => Promise<void>;
 	configValidationIssues?: AgentConfigValidationIssue[];
+	/** n8n Chat's saved description, forwarded to the channel modal. */
+	savedDescription?: string;
+	/** Persists n8n Chat's description, forwarded to the channel modal. */
+	saveDescription?: (description: string) => Promise<void>;
 }>();
 
 const childrenDisabled = computed(() => !props.canEditAgent);
@@ -70,6 +75,8 @@ const isMcpAvailable = computed(
 const emit = defineEmits<{
 	'update:activeMainTab': [tab: AgentBuilderMainTab];
 	'update:config': [updates: Partial<AgentJsonConfig>, meta?: { source: 'auto' }];
+	/** A budget settings modal saved — the view clears matching budget stops once the save persists. */
+	'update:budget-config': [updates: Partial<AgentJsonConfig>];
 	'draft:config': [];
 	'open-tool': [target: ToolOpenTarget];
 	'open-skill': [id: string];
@@ -77,6 +84,7 @@ const emit = defineEmits<{
 	'add-skill': [];
 	'remove-tool': [index: number];
 	'remove-skill': [id: string];
+	'toggle-skill': [payload: { id: string; enabled: boolean }];
 	'upload-files': [files: File[]];
 	'delete-file': [file: AgentFileDto];
 	'add-vector-store': [];
@@ -138,6 +146,7 @@ const i18n = useI18n();
 						data-testid="agent-skills-panel"
 					>
 						<AgentSkillsSection
+							supports-activation
 							:skills="appliedSkills"
 							:disabled="childrenDisabled"
 							:show-label="false"
@@ -145,6 +154,7 @@ const i18n = useI18n();
 							@open-skill="emit('open-skill', $event)"
 							@add-skill="emit('add-skill')"
 							@remove-skill="emit('remove-skill', $event)"
+							@toggle-skill="emit('toggle-skill', $event)"
 						/>
 					</AgentPanel>
 
@@ -173,6 +183,8 @@ const i18n = useI18n();
 							:simple-channel-setup="artifactMode"
 							:agent-unsaved="agentUnsaved"
 							:ensure-agent-persisted="ensureAgentPersisted"
+							:saved-description="savedDescription"
+							:save-description="saveDescription"
 							:task-refs="localConfig?.tasks ?? []"
 							:personalisation="localConfig?.personalisation ?? agent?.schema?.personalisation"
 							:reload-key="tasksReloadKey"
@@ -190,6 +202,7 @@ const i18n = useI18n();
 						:description="i18n.baseText('agents.builder.capabilities.description')"
 					>
 						<AgentCapabilitiesSection
+							supports-activation
 							:config="localConfig"
 							:tools="localConfig?.tools ?? []"
 							:custom-tools="agent?.tools ?? {}"
@@ -294,6 +307,13 @@ const i18n = useI18n();
 					data-testid="agent-settings-tab-content"
 				>
 					<div :class="$style.settingsCards">
+						<AgentBudgetPanel
+							:config="localConfig"
+							:project-id="projectId"
+							:agent-id="agentId"
+							:disabled="childrenDisabled"
+							@update:config="emit('update:budget-config', $event)"
+						/>
 						<AgentSubAgentsPanel
 							:config="localConfig"
 							:disabled="childrenDisabled"

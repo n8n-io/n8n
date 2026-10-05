@@ -182,6 +182,7 @@ ${trimmed}
 		messages: [{ role: 'user', content: wrappedMessage }],
 	});
 	incrementTokenCountFromUsage(opts?.executionCounter, result.usage);
+	// oxlint-disable-next-line typescript/no-deprecated
 	const usage = toTokenUsage(result.usage, result.providerMetadata);
 
 	let text = result.text?.trim();

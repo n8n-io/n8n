@@ -262,6 +262,7 @@ export class FrontendService {
 				this.globalConfig.personalization.enabled && this.globalConfig.diagnostics.enabled,
 			defaultLocale: this.globalConfig.defaultLocale,
 			userManagement: {
+				// oxlint-disable-next-line typescript/no-deprecated
 				quota: this.license.getUsersLimit(),
 				showSetupOnFirstLoad: await this.getShowSetupOnFirstLoad(),
 				smtpSetup: this.mailer.isEmailSetUp,
@@ -483,6 +484,7 @@ export class FrontendService {
 
 		// refresh user management status
 		Object.assign(this.settings.userManagement, {
+			// oxlint-disable-next-line typescript/no-deprecated
 			quota: this.license.getUsersLimit(),
 			authenticationMethod: getCurrentAuthenticationMethod(),
 			showSetupOnFirstLoad: await this.getShowSetupOnFirstLoad(),
@@ -512,9 +514,13 @@ export class FrontendService {
 
 		const isS3Selected = this.binaryDataConfig.mode === 's3';
 		const isS3Available = this.binaryDataConfig.availableModes.includes('s3');
+		// oxlint-disable-next-line typescript/no-deprecated
 		const isS3Licensed = this.license.isBinaryDataS3Licensed();
+		// oxlint-disable-next-line typescript/no-deprecated
 		const isAiAssistantEnabled = this.license.isAiAssistantEnabled();
+		// oxlint-disable-next-line typescript/no-deprecated
 		const isAskAiEnabled = this.license.isAskAiEnabled();
+		// oxlint-disable-next-line typescript/no-deprecated
 		const isAiCreditsEnabled = this.license.isAiCreditsEnabled();
 		const isAiBuilderEnabled = this.license.isLicensed(LICENSE_FEATURES.AI_BUILDER);
 
@@ -531,21 +537,32 @@ export class FrontendService {
 
 		// refresh enterprise status
 		Object.assign(this.settings.enterprise, {
+			// oxlint-disable-next-line typescript/no-deprecated
 			sharing: this.license.isSharingEnabled(),
+			// oxlint-disable-next-line typescript/no-deprecated
 			logStreaming: this.license.isLogStreamingEnabled(),
+			// oxlint-disable-next-line typescript/no-deprecated
 			ldap: this.license.isLdapEnabled(),
+			// oxlint-disable-next-line typescript/no-deprecated
 			saml: this.license.isSamlEnabled(),
 			oidc: this.licenseState.isOidcLicensed(),
 			mfaEnforcement: this.licenseState.isMFAEnforcementLicensed(),
 			provisioning: false, // temporarily disabled until this feature is ready for release
+			// oxlint-disable-next-line typescript/no-deprecated
 			advancedExecutionFilters: this.license.isAdvancedExecutionFiltersEnabled(),
+			// oxlint-disable-next-line typescript/no-deprecated
 			variables: this.license.isVariablesEnabled(),
+			// oxlint-disable-next-line typescript/no-deprecated
 			sourceControl: this.license.isSourceControlLicensed(),
+			// oxlint-disable-next-line typescript/no-deprecated
 			externalSecrets: this.license.isExternalSecretsEnabled(),
 			showNonProdBanner: this.license.isLicensed(LICENSE_FEATURES.SHOW_NON_PROD_BANNER),
+			// oxlint-disable-next-line typescript/no-deprecated
 			debugInEditor: this.license.isDebugInEditorLicensed(),
 			binaryDataS3: isS3Available && isS3Selected && isS3Licensed,
+			// oxlint-disable-next-line typescript/no-deprecated
 			workerView: this.license.isWorkerViewLicensed(),
+			// oxlint-disable-next-line typescript/no-deprecated
 			advancedPermissions: this.license.isAdvancedPermissionsLicensed(),
 
 			workflowDiffs: this.licenseState.isWorkflowDiffsLicensed(),
@@ -560,6 +577,7 @@ export class FrontendService {
 		this.settings.workerPools.enabled =
 			this.globalConfig.queue.workerPool.enabled && this.licenseState.isWorkerPoolsLicensed();
 
+		// oxlint-disable-next-line typescript/no-deprecated
 		if (this.license.isLdapEnabled()) {
 			Object.assign(this.settings.sso.ldap, {
 				loginLabel: this.globalConfig.sso.ldap.loginLabel,
@@ -567,6 +585,7 @@ export class FrontendService {
 			});
 		}
 
+		// oxlint-disable-next-line typescript/no-deprecated
 		if (this.license.isSamlEnabled()) {
 			Object.assign(this.settings.sso.saml, {
 				loginLabel: getSamlLoginLabel(),
@@ -580,7 +599,9 @@ export class FrontendService {
 			});
 		}
 
+		// oxlint-disable-next-line typescript/no-deprecated
 		if (this.license.isVariablesEnabled()) {
+			// oxlint-disable-next-line typescript/no-deprecated
 			this.settings.variables.limit = this.license.getVariablesLimit();
 		}
 
@@ -593,11 +614,13 @@ export class FrontendService {
 		}
 
 		if (isAskAiEnabled) {
+			// oxlint-disable-next-line typescript/no-deprecated
 			this.settings.askAi.enabled = isAskAiEnabled;
 		}
 
 		if (isAiCreditsEnabled) {
 			this.settings.aiCredits.enabled = isAiCreditsEnabled;
+			// oxlint-disable-next-line typescript/no-deprecated
 			this.settings.aiCredits.credits = this.license.getAiCredits();
 			this.settings.aiCredits.setup = !!this.globalConfig.aiAssistant.baseUrl;
 		}
@@ -635,8 +658,10 @@ export class FrontendService {
 
 		this.settings.binaryDataMode = this.binaryDataConfig.mode;
 
+		// oxlint-disable-next-line typescript/no-deprecated
 		this.settings.enterprise.projects.team.limit = this.license.getTeamProjectLimit();
 
+		// oxlint-disable-next-line typescript/no-deprecated
 		this.settings.folders.enabled = this.license.isFoldersEnabled();
 
 		// Refresh evaluation settings

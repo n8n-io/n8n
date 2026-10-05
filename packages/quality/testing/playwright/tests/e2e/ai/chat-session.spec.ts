@@ -3,7 +3,7 @@ import { test, expect } from '../../../fixtures/base';
 test.describe(
 	'Chat session ID reset',
 	{
-		annotation: [{ type: 'owner', description: 'AI' }],
+		annotation: [{ type: 'owner', description: 'Agent' }],
 	},
 	() => {
 		test.beforeEach(async ({ n8n }) => {
