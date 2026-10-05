@@ -971,6 +971,31 @@ describe('LogStreamingEventRelay', () => {
 			});
 		});
 
+		it('should log on `user-logged-in-with-sso-fallback` event', () => {
+			const event: RelayEventMap['user-logged-in-with-sso-fallback'] = {
+				user: {
+					id: 'user405',
+					email: 'fallback@example.com',
+					firstName: 'Fallback',
+					lastName: 'Owner',
+					role: { slug: GLOBAL_OWNER_ROLE.slug },
+				},
+			};
+
+			eventService.emit('user-logged-in-with-sso-fallback', event);
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.audit.user.login.ssoFallback',
+				payload: {
+					userId: 'user405',
+					_email: 'fallback@example.com',
+					_firstName: 'Fallback',
+					_lastName: 'Owner',
+					globalRole: 'global:owner',
+				},
+			});
+		});
+
 		it('should log on `user-mfa-enabled` event', () => {
 			const event: RelayEventMap['user-mfa-enabled'] = {
 				user: {
