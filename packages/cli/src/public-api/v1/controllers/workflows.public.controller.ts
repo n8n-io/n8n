@@ -3,6 +3,7 @@ import {
 	CreatedWorkflowPublicDto,
 	CreateWorkflowPublicDto,
 	DeletedWorkflowPublicDto,
+	DeprecatedWorkflowVersionPublicDto,
 	GetWorkflowQueryDto,
 	ListWorkflowHistoryQueryDto,
 	ListWorkflowsQueryDto,
@@ -844,14 +845,14 @@ export class WorkflowsPublicController {
 			'Retrieves a specific version of a workflow from workflow history.',
 	)
 	@ApiTags(['Workflow'])
-	@ApiResponse(200, WorkflowVersionPublicDto)
+	@ApiResponse(200, DeprecatedWorkflowVersionPublicDto)
 	@ApiErrorResponse(404)
 	async getDeprecatedWorkflowVersion(
 		req: AuthenticatedRequest,
 		res: Response,
 		@Param('workflowId', workflowIdParamSchema) workflowId: string,
 		@Param('workflowVersionId', workflowVersionIdParamSchema) workflowVersionId: string,
-	): Promise<WorkflowVersionPublicDto> {
+	): Promise<DeprecatedWorkflowVersionPublicDto> {
 		try {
 			return await this.getWorkflowVersion(req, res, workflowId, workflowVersionId);
 		} catch (error) {
