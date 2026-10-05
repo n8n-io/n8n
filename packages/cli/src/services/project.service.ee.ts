@@ -924,6 +924,14 @@ export class ProjectService {
 	 * Throws if you the project is a personal project.
 	 * Throws if the relations contain `project:personalOwner`.
 	 */
+	async addUser(
+		projectId: string,
+		{ userId, role }: { userId: string; role: AssignableProjectRole },
+		ctx: OperationContext = {},
+	) {
+		return await this.projectRelationRepository.addProjectMember(projectId, userId, role, ctx);
+	}
+
 	async getProject(projectId: string): Promise<Project> {
 		return await this.projectRepository.findByIdOrFail(projectId);
 	}
