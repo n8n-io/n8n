@@ -7,6 +7,7 @@ import {
 	HTTP_REQUEST_NODE_TYPE,
 	SIMPLE_MEMORY_NODE_TYPE,
 } from '@/app/constants';
+import groupBy from 'lodash/groupBy';
 import memoize from 'lodash/memoize';
 import startCase from 'lodash/startCase';
 import {
@@ -18,6 +19,7 @@ import {
 	type INodePropertyCollection,
 	type INodePropertyOptions,
 	type INodeTypeDescription,
+	SEND_AND_WAIT_OPERATION,
 } from 'n8n-workflow';
 
 import { i18n } from '@n8n/i18n';
@@ -326,6 +328,42 @@ function resourceCategories(nodeTypeDescription: INodeTypeDescription): ActionTy
 	return transformedNodes;
 }
 
+/** A node type as an action of the node creator item that it names in `nodeCreatorItem`. */
+function itemActionOf(nodeTypeDescription: INodeTypeDescription): ActionTypeDescription {
+	return {
+		...getNodeTypeBase(nodeTypeDescription),
+		actionKey: nodeTypeDescription.name,
+		description: nodeTypeDescription.description,
+		displayName: nodeTypeDescription.defaults.name ?? nodeTypeDescription.displayName,
+	};
+}
+
+/**
+ * Splits node types into node creator items and the node types that an item lists as actions
+ * (`nodeCreatorItem`). Only an app item gets the actions of other node types. A trigger item keeps
+ * its own. A node type whose item is not in the list stays an item.
+ */
+export function groupByNodeCreatorItem(nodeTypes: INodeTypeDescription[]) {
+	const itemNames = new Set(
+		nodeTypes
+			.filter((node) => node.nodeCreatorItem === undefined && !node.group.includes('trigger'))
+			.map(({ name }) => name),
+	);
+	const isItemAction = ({ nodeCreatorItem }: INodeTypeDescription) =>
+		nodeCreatorItem !== undefined && itemNames.has(nodeCreatorItem);
+	const actionTypes = groupBy(nodeTypes.filter(isItemAction), 'nodeCreatorItem');
+	const actionTypesOf = (itemName: string) => actionTypes[itemName] ?? [];
+	return {
+		itemTypes: nodeTypes.filter((node) => !isItemAction(node)),
+		actionTypesOf,
+		/** An item with one node type adds that node type, so it takes the key of that node type. */
+		keyOf: (itemName: string) => {
+			const types = actionTypesOf(itemName);
+			return types.length === 1 ? types[0].name : itemName;
+		},
+	};
+}
+
 export function useActionsGenerator() {
 	function generateNodeActions(node: INodeTypeDescription | undefined) {
 		if (!node) {
@@ -415,14 +453,13 @@ export function useActionsGenerator() {
 			return true;
 		});
 
+		const { itemTypes, actionTypesOf, keyOf } = groupByNodeCreatorItem(visibleNodeTypes);
+
 		const actions: ActionsRecord<typeof mergedNodes> = {};
 		const mergedNodes: SimplifiedNodeType[] = [];
-		visibleNodeTypes
+		itemTypes
 			.filter((node) => !node.group.includes('trigger'))
 			.forEach((app) => {
-				const appActions = generateNodeActions(app);
-				actions[app.name] = appActions;
-
 				if (app.name === HTTP_REQUEST_NODE_TYPE) {
 					const credentialOnlyNodes = httpOnlyCredentials.map((credentialType) => {
 						const credsOnlyNode = getCredentialOnlyNodeType(app, credentialType);
@@ -437,10 +474,20 @@ export function useActionsGenerator() {
 					mergedNodes.push(...filteredNodes);
 				}
 
-				mergedNodes.push(getSimplifiedNodeType(app));
+				const appActions = generateNodeActions(app);
+				const replacing = actionTypesOf(app.name);
+				const key = keyOf(app.name);
+				// No node type replaces send-and-wait, so the Human review section keeps the legacy action.
+				const itemActions = [
+					...replacing.map(itemActionOf),
+					...appActions.filter(({ actionKey }) => actionKey === SEND_AND_WAIT_OPERATION),
+				];
+				if (replacing.length === 0) actions[key] = appActions;
+				else if (itemActions.length > 1) actions[key] = itemActions;
+				mergedNodes.push({ ...getSimplifiedNodeType(app), name: key });
 			});
 
-		visibleNodeTypes
+		itemTypes
 			.filter((node) => node.group.includes('trigger'))
 			.forEach((trigger) => {
 				const normalizedName = trigger.name.replace('Trigger', '');

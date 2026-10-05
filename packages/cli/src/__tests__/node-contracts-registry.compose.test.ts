@@ -26,8 +26,10 @@ async function postProcessed(nodeContractsEnabled: boolean, excludeContractNodes
 		mock(),
 	);
 	const nodesBase = new LazyPackageDirectoryLoader(path.join(PACKAGES, 'nodes-base'));
-	const legacyLoaders = { 'n8n-nodes-base': nodesBase };
+	const langchain = new LazyPackageDirectoryLoader(path.join(PACKAGES, '@n8n/nodes-langchain'));
+	const legacyLoaders = { 'n8n-nodes-base': nodesBase, '@n8n/n8n-nodes-langchain': langchain };
 	await nodesBase.loadAll();
+	await langchain.loadAll();
 	// As in production, n8n builds no contract loader when node contracts are off.
 	if (nodeContractsEnabled) {
 		const next = new ContractNodeLoader(
@@ -48,6 +50,22 @@ async function postProcessed(nodeContractsEnabled: boolean, excludeContractNodes
 }
 
 const versionOf = ({ version }: INodeTypeDescription) => [version].flat().join(',');
+
+const NEXT = '@n8n/nodes-base-next';
+
+/** The nodes panel items and the node types that each lists as its actions, as the editor reads them. */
+function nodesPanelOf({ types }: LoadNodesAndCredentials) {
+	const visible = types.nodes.filter(({ hidden }) => !hidden);
+	const items = new Set(
+		visible.filter(({ nodeCreatorItem }) => !nodeCreatorItem).map(({ name }) => name),
+	);
+	const listedUnder = (item: string) => [
+		...new Set(
+			visible.filter(({ nodeCreatorItem }) => nodeCreatorItem === item).map(({ name }) => name),
+		),
+	];
+	return new Map([...items].map((item) => [item, listedUnder(item)]));
+}
 
 /** The actions the nodes panel lists: each operation option shown for each resource option. */
 function panelActions({ properties }: INodeTypeDescription) {
@@ -93,14 +111,42 @@ describe('composeContractNodes', () => {
 		);
 	});
 
-	it('hides the node type of each single action from the nodes panel', async () => {
+	it('lists each action and trigger under the nodes panel item of its legacy node', async () => {
 		const instance = await postProcessed(true);
-		const next = instance.types.nodes.filter(({ name }) =>
-			name.startsWith('@n8n/nodes-base-next.'),
+		const panel = nodesPanelOf(instance);
+
+		const slack = panel.get('n8n-nodes-base.slack');
+		expect(slack).toHaveLength(11);
+		expect(slack).toEqual(
+			expect.arrayContaining([`${NEXT}.slackMessageSend`, `${NEXT}.slackMessageUpdate`]),
 		);
-		expect(next.length).toBeGreaterThan(0);
-		expect(next.every(({ hidden }) => hidden === true)).toBe(true);
-		expect(instance.getNode('@n8n/nodes-base-next.notionDatabasePageGetAll').type).toBeDefined();
+		expect(panel.get('n8n-nodes-base.github')).toContain(`${NEXT}.githubRepositoryEvent`);
+		expect(panel.get('n8n-nodes-base.notion')).toContain(`${NEXT}.notionDataSourcePageAdded`);
+		expect(panel.get('n8n-nodes-base.if')).toEqual([`${NEXT}.conditionIf`]);
+		expect(panel.get('@n8n/n8n-nodes-langchain.openAi')).toEqual(
+			expect.arrayContaining([`${NEXT}.openAiTextMessage`]),
+		);
+		expect(panel.get('n8n-nodes-base.discord')).toEqual([]);
+		expect(panel.get('@n8n/n8n-nodes-langchain.lmChatAnthropic')).toEqual([]);
+		expect([...panel.keys()].filter((name) => name.startsWith(`${NEXT}.`))).toEqual([]);
+		expect(instance.getNode(`${NEXT}.slackMessageSend`).type).toBeDefined();
+	});
+
+	it('hides the tool variants, the providers and the contract node types without a legacy node', async () => {
+		const instance = await postProcessed(true);
+		const typesOf = (name: string) =>
+			instance.types.nodes.filter((type) => type.name === `${NEXT}.${name}`);
+
+		for (const name of [
+			'httpRequestGetTool',
+			'anthropicChatModel',
+			'openAiChatModel',
+			'aiPrompt',
+		]) {
+			expect(typesOf(name).length).toBeGreaterThan(0);
+			expect(typesOf(name).every((type) => type.hidden && !type.nodeCreatorItem)).toBe(true);
+		}
+		expect(instance.recognizesNode(`${NEXT}.anthropicChatModel`)).toBe(true);
 	});
 
 	it('adds an agent tool node type for each tool action, which supplies its tool', async () => {
@@ -202,13 +248,14 @@ describe('composeContractNodes', () => {
 		expect(notion.map(versionOf)).toEqual(['2,2.1,2.2', '3', '1']);
 		expect(notion.map(({ defaultVersion }) => defaultVersion)).toEqual([3, 3, 3]);
 		expect(
-			instance.types.nodes.some(({ hidden, name }) => hidden && name.startsWith('@n8n/')),
+			instance.types.nodes.some(({ hidden, name }) => hidden && name.startsWith(`${NEXT}.`)),
 		).toBe(false);
 		expect(
 			instance.types.nodes
 				.filter(({ name }) => name === 'n8n-nodes-base.noOp')
 				.map(({ hidden }) => hidden ?? false),
 		).toEqual([false]);
+		expect(instance.types.nodes.some(({ nodeCreatorItem }) => nodeCreatorItem)).toBe(false);
 		const loaded = instance.getNode(NOTION).type as IVersionedNodeType;
 		expect(Object.keys(loaded.nodeVersions)).not.toContain('4');
 	});

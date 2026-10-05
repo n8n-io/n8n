@@ -81,6 +81,7 @@ import camelCase from 'lodash/camelCase';
 import type { INodeTypeDescription, NodeConnectionType, Themed } from 'n8n-workflow';
 import { EVALUATION_TRIGGER_NODE_TYPE, isHitlToolType, NodeConnectionTypes } from 'n8n-workflow';
 import { getAiTemplatesCallout, getSendAndWaitNodes } from '../nodeCreator.utils';
+import { groupByNodeCreatorItem } from '../composables/useActionsGeneration';
 
 export interface NodeViewItemSection {
 	key: string;
@@ -137,13 +138,13 @@ export interface NodeView {
 	nodeIcon?: NodeIconSource;
 }
 
-function getNodeView(node: INodeTypeDescription | SimplifiedNodeType) {
+function getNodeView(node: INodeTypeDescription | SimplifiedNodeType, key = node.name) {
 	return {
-		key: node.name,
+		key,
 		type: 'node',
 		properties: {
 			group: [],
-			name: node.name,
+			name: key,
 			displayName: node.displayName,
 			title: node.displayName,
 			description: node.description,
@@ -155,11 +156,10 @@ function getNodeView(node: INodeTypeDescription | SimplifiedNodeType) {
 }
 
 function getAiNodesBySubcategory(nodes: INodeTypeDescription[], subcategory: string) {
-	return nodes
-		.filter(
-			(node) => !node.hidden && node.codex?.subcategories?.[AI_SUBCATEGORY]?.includes(subcategory),
-		)
-		.map(getNodeView)
+	const { itemTypes, keyOf } = groupByNodeCreatorItem(nodes.filter((node) => !node.hidden));
+	return itemTypes
+		.filter((node) => node.codex?.subcategories?.[AI_SUBCATEGORY]?.includes(subcategory))
+		.map((node) => getNodeView(node, keyOf(node.name)))
 		.sort((a, b) => a.properties.displayName.localeCompare(b.properties.displayName));
 }
 
@@ -703,7 +703,7 @@ export function HitlToolView(nodes: SimplifiedNodeType[]): NodeView {
 	// Filter nodes whose name ends with 'HitlTool'
 	const hitlToolNodes = nodes
 		.filter((node) => isHitlToolType(node.name))
-		.map(getNodeView)
+		.map((node) => getNodeView(node))
 		.sort((a, b) => a.properties.displayName.localeCompare(b.properties.displayName));
 
 	return {

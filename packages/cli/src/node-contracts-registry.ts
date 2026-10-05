@@ -63,6 +63,7 @@ import {
 } from 'n8n-core';
 import {
 	deepCopy,
+	isToolType,
 	jsonParse,
 	type VersionedNodeType,
 	type ICredentialType,
@@ -276,7 +277,7 @@ type Presentation = Pick<INodeTypeDescription, 'icon' | 'iconUrl' | 'iconColor' 
 
 /**
  * The presentation of a description. The codex has no aliases: the AI builder search ranks node
- * types by them, and the nodes panel does not list contract node types.
+ * types by them, and the nodes panel lists a contract node type under its legacy node item.
  */
 const presentationOf = ({
 	icon,
@@ -327,28 +328,26 @@ async function legacyDescriptionsOf(loaders: Readonly<Record<string, NodeLoader>
 }
 
 /**
- * The presentation of the node type of a contract: that of the legacy node it stands for, else the
- * icon of its node. The legacy node has the node id as name (`n8n-nodes-base.slack` for
- * `slack.message.send`), or the action name for an action without a resource
- * (`n8n-nodes-base.set` for `items.set`).
+ * The full node type of the legacy node that a contract stands for, if n8n has it. The legacy node
+ * has the node id as name (`n8n-nodes-base.slack` for `slack.message.send`), or the action name for
+ * an action without a resource (`n8n-nodes-base.set` for `items.set`).
  */
-function contractPresentationOf(
+function legacyNodeTypeOf(
 	{ id, node }: Pick<FrozenVersion['manifest']['contract'], 'id' | 'node'>,
 	legacy: ReadonlyMap<string, INodeTypeDescription>,
-): Presentation | undefined {
+) {
 	const [, ...segments] = id.split('.');
 	const names = segments.length === 1 ? [node, ...segments] : [node];
-	const twin = names
-		.flatMap((name) => LEGACY_PACKAGES.flatMap((pkg) => legacy.get(`${pkg}.${name}`) ?? []))
-		.at(0);
-	if (twin) return presentationOf(twin);
-	const icon = nodeIconOf(node);
-	return icon && { icon };
+	return names
+		.flatMap((name) => LEGACY_PACKAGES.map((pkg) => `${pkg}.${name}`))
+		.find((nodeType) => legacy.has(nodeType));
 }
 
 /**
- * The node type of the frozen versions of one id, with the presentation of its legacy node and the
- * parameters n8n adds to every node.
+ * The node type of the frozen versions of one id, with the presentation of its legacy node, else
+ * the icon of its node, and the parameters n8n adds to every node. The nodes panel lists an action
+ * or a trigger as an action of its legacy node item. A provider is a sub-node, so the panel does
+ * not list it under an app item.
  */
 function contractNodeTypeOf(
 	versions: readonly FrozenVersion[],
@@ -357,9 +356,14 @@ function contractNodeTypeOf(
 	const [head] = versions;
 	const typeOf = head?.manifest.kind === 'trigger' ? toVersionedTriggerType : toVersionedNodeType;
 	const type = new (typeOf(versions))();
-	const presentation = head && contractPresentationOf(head.manifest.contract, legacy);
+	const legacyNodeType = head && legacyNodeTypeOf(head.manifest.contract, legacy);
+	const twin = legacyNodeType && legacy.get(legacyNodeType);
+	const icon = head && nodeIconOf(head.manifest.contract.node);
+	const presentation = twin ? presentationOf(twin) : icon && { icon };
+	const nodeCreatorItem = head?.manifest.kind === 'provider' ? undefined : legacyNodeType;
 	for (const version of Object.values(type.nodeVersions)) {
 		if (presentation) version.description = presented(version.description, presentation);
+		if (nodeCreatorItem) version.description = { ...version.description, nodeCreatorItem };
 		DirectoryLoader.applySpecialNodeParameters(version);
 		validateNodeDescription(version.description);
 	}
@@ -867,9 +871,9 @@ function toolNodesOf(loaders: Readonly<Record<string, NodeLoader>>) {
 
 /**
  * Adds the composed versions of legacy nodes, for example Notion v4, and the agent tool node
- * types of actions to the node classes and to the types that the editor reads. The node type of
- * each single action stays for the AI builder and saved workflows, but the nodes panel no
- * longer lists it.
+ * types of actions to the node classes and to the types that the editor reads. The nodes panel
+ * lists a contract node type only under its legacy node item. It does not list the other contract
+ * node types, but the AI builder and saved workflows can use them.
  */
 export function composeContractNodes(
 	loaders: Readonly<Record<string, NodeLoader>>,
@@ -907,7 +911,12 @@ export function composeContractNodes(
 				? nodes.get(description.name)?.type.description.defaultVersion
 				: undefined;
 		if (defaultVersion !== undefined) return { ...description, defaultVersion };
-		return isContractNodeType(description.name) ? { ...description, hidden: true } : description;
+		if (!isContractNodeType(description.name)) return description;
+		// The AI tools copy the item of the action to its tool variant, which the panel lists apart.
+		const { nodeCreatorItem, ...unlisted } = description;
+		return nodeCreatorItem !== undefined && !isToolType(description.name)
+			? description
+			: { ...unlisted, hidden: true };
 	});
 	return { nodes, types: [...patched, ...added] };
 }

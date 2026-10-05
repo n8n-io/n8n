@@ -23,6 +23,7 @@ import { useTemplatesStore } from '@/features/workflows/templates/templates.stor
 import type { SimplifiedNodeType } from '@/Interface';
 
 const getNodeType = vi.fn();
+const allLatestNodeTypes = vi.fn<() => INodeTypeDescription[]>();
 
 const aiTransformNode = mockNodeTypeDescription({ name: AI_TRANSFORM_NODE_TYPE });
 const messageAnAgentNode = mockNodeTypeDescription({
@@ -62,7 +63,9 @@ const otherNodes = (
 vi.mock('@/app/stores/nodeTypes.store', () => ({
 	useNodeTypesStore: vi.fn(() => ({
 		getNodeType,
-		allLatestNodeTypes: [aiTransformNode, ...otherNodes],
+		get allLatestNodeTypes() {
+			return allLatestNodeTypes();
+		},
 		getAllNodeTypes: vi.fn().mockReturnValue({
 			nodeTypes: {},
 			init: async () => {},
@@ -84,6 +87,7 @@ describe('viewsData', () => {
 		vi.spyOn(templatesStore, 'constructTemplateRepositoryURL').mockImplementation(
 			(params) => `template-repository-url.n8n.io?${params.toString()}`,
 		);
+		allLatestNodeTypes.mockReturnValue([aiTransformNode, ...otherNodes]);
 		getNodeType.mockImplementation((nodeName: string) => {
 			if (nodeName === AI_TRANSFORM_NODE_TYPE) {
 				return aiTransformNode;
@@ -169,6 +173,30 @@ describe('viewsData', () => {
 				.mocked(templatesStore.constructTemplateRepositoryURL)
 				.mock.calls.at(-1)!;
 			expect(lastCallParams.toString()).toBe('test=value&utm_user_role=AdvancedAI');
+		});
+
+		test('lists the node types that name an AI item under that item', () => {
+			const nodeTypeOf = (name: string, nodeCreatorItem?: string) =>
+				({
+					name,
+					displayName: name,
+					group: [],
+					codex: { subcategories: { AI: [AI_CATEGORY_AGENTS] } },
+					nodeCreatorItem,
+				}) as Partial<INodeTypeDescription> as INodeTypeDescription;
+			allLatestNodeTypes.mockReturnValue([
+				nodeTypeOf('agent'),
+				nodeTypeOf('agentContract', 'agent'),
+				nodeTypeOf('openAi'),
+				nodeTypeOf('openAiImage', 'openAi'),
+				nodeTypeOf('openAiMessage', 'openAi'),
+			]);
+
+			const nodeKeys = AIView([])
+				.items.filter(({ type }) => type === 'node')
+				.map(({ key }) => key);
+
+			expect(nodeKeys).toEqual(['agentContract', 'openAi']);
 		});
 	});
 

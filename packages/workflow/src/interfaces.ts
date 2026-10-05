@@ -2859,6 +2859,13 @@ export interface INodeTypeBaseDescription {
 	hidden?: true;
 
 	/**
+	 * The node type of the node creator item that lists this node type as one of its actions, e.g.
+	 * `n8n-nodes-base.slack`. The node creator then shows no item for this node type, and the item
+	 * lists only the node types that name it, not its own actions.
+	 */
+	nodeCreatorItem?: string;
+
+	/**
 	 * Whether the node will be wrapped for tool-use by AI Agents,
 	 * optionally replacing provided parts of the description
 	 */

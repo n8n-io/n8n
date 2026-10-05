@@ -1,4 +1,10 @@
-import { NodeConnectionTypes, type INodeProperties, type INodeTypeDescription } from 'n8n-workflow';
+import {
+	NodeConnectionTypes,
+	SEND_AND_WAIT_OPERATION,
+	type INodeProperties,
+	type INodeTypeDescription,
+} from 'n8n-workflow';
+import type { ActionTypeDescription } from '@/Interface';
 import { useActionsGenerator } from './useActionsGeneration';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
@@ -632,6 +638,147 @@ describe('useActionsGenerator', () => {
 			const nodeNames = mergedNodes.map((n) => n.name);
 			expect(nodeNames).not.toContain(SIMPLE_MEMORY_NODE_TYPE);
 			expect(nodeNames).toContain('n8n-nodes-base.regularNode');
+		});
+	});
+
+	describe('Node types that name a node creator item', () => {
+		const SLACK = 'n8n-nodes-base.slack';
+		const slack: INodeTypeDescription = {
+			...baseV2NodeWoProps,
+			name: SLACK,
+			displayName: 'Slack',
+			codex: { categories: ['Communication'], alias: ['chat'] },
+			properties: [
+				{
+					displayName: 'Operation',
+					name: 'operation',
+					type: 'options',
+					options: [{ name: 'Post', value: 'post', action: 'Post a message' }],
+					default: 'post',
+				},
+			],
+		};
+		const slackTrigger: INodeTypeDescription = {
+			...baseV2NodeWoProps,
+			name: 'n8n-nodes-base.slackTrigger',
+			displayName: 'Slack Trigger',
+			group: ['trigger'],
+		};
+		const contractOf = (
+			name: string,
+			action: string,
+			nodeCreatorItem: string | undefined,
+		): INodeTypeDescription => ({
+			...baseV2NodeWoProps,
+			name: `@n8n/nodes-base-next.${name}`,
+			displayName: `Slack: ${action}`,
+			defaults: { name: action },
+			nodeCreatorItem,
+		});
+		const send = contractOf('slackMessageSend', 'Send a message', SLACK);
+		const update = contractOf('slackMessageUpdate', 'Update a message', SLACK);
+
+		it('lists the node types that name an item as its actions, instead of its own', () => {
+			const { mergedNodes, actions } = generateMergedNodesAndActions(
+				[slack, send, update, baseV2NodeWoProps],
+				[],
+			);
+
+			expect(mergedNodes.map(({ name }) => name)).toEqual([SLACK, NODE_NAME]);
+			expect(mergedNodes[0]).toMatchObject({ displayName: 'Slack', codex: slack.codex });
+			expect(actions[SLACK]).toEqual([
+				expect.objectContaining({
+					name: send.name,
+					actionKey: send.name,
+					displayName: 'Send a message',
+				}),
+				expect.objectContaining({ name: update.name, displayName: 'Update a message' }),
+			]);
+		});
+
+		it('gives the item the key of the node type when one node type names it', () => {
+			const { mergedNodes, actions } = generateMergedNodesAndActions([slack, send], []);
+
+			expect(mergedNodes).toEqual([
+				expect.objectContaining({ name: send.name, displayName: 'Slack', codex: slack.codex }),
+			]);
+			expect(actions[send.name] ?? []).toEqual([]);
+		});
+
+		it('keeps the send-and-wait action of the item', () => {
+			const slackWithApproval: INodeTypeDescription = {
+				...slack,
+				properties: [
+					{
+						displayName: 'Operation',
+						name: 'operation',
+						type: 'options',
+						options: [
+							{ name: 'Post', value: 'post', action: 'Post a message' },
+							{ name: 'Send and Wait', value: SEND_AND_WAIT_OPERATION, action: 'Send and wait' },
+						],
+						default: 'post',
+					},
+				],
+			};
+			const actionKeysOf = (actions: ActionTypeDescription[] = []) =>
+				actions.map(({ actionKey }) => actionKey);
+
+			const many = generateMergedNodesAndActions([slackWithApproval, send, update], []);
+			const one = generateMergedNodesAndActions([slackWithApproval, send], []);
+
+			expect(actionKeysOf(many.actions[SLACK])).toEqual([
+				send.name,
+				update.name,
+				SEND_AND_WAIT_OPERATION,
+			]);
+			expect(one.mergedNodes.map(({ name }) => name)).toEqual([send.name]);
+			expect(actionKeysOf(one.actions[send.name])).toEqual([send.name, SEND_AND_WAIT_OPERATION]);
+		});
+
+		it('merges the trigger of the item into its actions', () => {
+			const trigger = {
+				...slackTrigger,
+				properties: [
+					{
+						displayName: 'Trigger On',
+						name: 'trigger',
+						type: 'options',
+						options: [{ name: 'New Message', value: 'message' }],
+						default: 'message',
+					},
+				],
+			} satisfies INodeTypeDescription;
+			const { mergedNodes, actions } = generateMergedNodesAndActions(
+				[slack, send, update, trigger],
+				[],
+			);
+
+			expect(mergedNodes.map(({ name }) => name)).toEqual([SLACK]);
+			expect(actions[SLACK]?.map(({ name }) => name)).toEqual([
+				send.name,
+				update.name,
+				trigger.name,
+			]);
+		});
+
+		it('lists a node type as its own item when its item is not listed', () => {
+			const orphan = contractOf('slackUserGet', 'Get a user', 'n8n-nodes-base.unknown');
+			const { mergedNodes } = generateMergedNodesAndActions(
+				[orphan, contractOf('x', 'X', undefined)],
+				[],
+			);
+
+			expect(mergedNodes.map(({ name }) => name)).toEqual([orphan.name, '@n8n/nodes-base-next.x']);
+		});
+
+		it('keeps the actions of an item that no node type names', () => {
+			const { mergedNodes, actions } = generateMergedNodesAndActions([slack], []);
+
+			expect(mergedNodes.map(({ name }) => name)).toEqual([SLACK]);
+			expect(actions[SLACK]).toEqual([
+				expect.objectContaining({ name: SLACK, displayName: 'Post a message' }),
+			]);
 		});
 	});
 });
