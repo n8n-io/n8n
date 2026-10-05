@@ -146,6 +146,7 @@
     "@chat-adapter/telegram": "catalog:",
     "@google-cloud/secret-manager": "5.6.0",
     "@grpc/grpc-js": "^1.14.3",
+    "@iconify-json/lucide": "catalog:",
     "@joplin/turndown-plugin-gfm": "catalog:",
     "@langchain/core": "catalog:",
     "@modelcontextprotocol/node": "catalog:",

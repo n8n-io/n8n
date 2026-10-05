@@ -4741,6 +4741,9 @@ importers:
       '@grpc/grpc-js':
         specifier: ^1.14.3
         version: 1.14.4
+      '@iconify-json/lucide':
+        specifier: 'catalog:'
+        version: 1.2.114
       '@joplin/turndown-plugin-gfm':
         specifier: 'catalog:'
         version: 1.0.64
