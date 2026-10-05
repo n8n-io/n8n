@@ -9,7 +9,6 @@ import { Time } from '@n8n/constants';
 import { TransactionRunner, User, UserRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
-import type { Algorithm } from 'jsonwebtoken';
 import { JsonWebTokenError } from 'jsonwebtoken';
 import type { OAuthResourceGrant } from 'n8n-workflow';
 import { UnexpectedError } from 'n8n-workflow';
@@ -502,16 +501,13 @@ export class OAuthTokenService implements OAuthTokenVerifier {
 	// have expired. Drops the legacy audiences and the per-audience fallback
 	// for tokens minted before n8n v2.19 at the same time.
 	private verifyLegacyHmacJwt(token: string, audiences: string[]): unknown {
-		const algorithms: Algorithm[] = ['HS256'];
 		try {
-			return this.jwtService.verifyForResource(token, audiences, {
-				algorithms,
-			});
+			return this.jwtService.verifyLegacyHmacAccessToken(token, audiences as [string, ...string[]]);
 		} catch (error) {
 			// Some jsonwebtoken builds reject the array form for tokens signed with a single-string aud.
 			for (const audience of audiences) {
 				try {
-					return this.jwtService.verifyForResource(token, audience, { algorithms });
+					return this.jwtService.verifyLegacyHmacAccessToken(token, audience);
 				} catch {
 					continue;
 				}

@@ -1,6 +1,6 @@
 import { InvalidTargetError } from '@modelcontextprotocol/sdk/server/auth/errors.js';
 import type { Mocked } from 'vitest';
-import jwt from 'jsonwebtoken';
+import jwt, { type SignOptions } from 'jsonwebtoken';
 import { Logger, type LicenseState, type ModuleRegistry } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { GlobalConfig } from '@n8n/config';
@@ -11,7 +11,7 @@ import type { InstanceSettings } from 'n8n-core';
 import type { KeyObject } from 'node:crypto';
 import { createHmac, createPublicKey, generateKeyPairSync } from 'node:crypto';
 
-import { JwtService, type PurposedSignOptions } from '@/services/jwt.service';
+import { JwtService } from '@/services/jwt.service';
 
 import type { AccessToken } from '../database/entities/oauth-access-token.entity';
 import type { RefreshToken } from '../database/entities/oauth-refresh-token.entity';
@@ -34,8 +34,17 @@ import { ProtectedResourceRegistry } from '@/services/protected-resource.registr
 import type { UrlService } from '@n8n/backend-services';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
+const LEGACY_HMAC_SECRET = 'legacy-hmac-secret';
 const instanceSettings = mock<InstanceSettings>({ encryptionKey: 'test-key' });
-const jwtService = new JwtService(instanceSettings, mock(), mock());
+const jwtService = new JwtService(
+	instanceSettings,
+	mock<GlobalConfig>({ userManagement: { jwtSecret: LEGACY_HMAC_SECRET } }),
+	mock(),
+);
+
+/** Signs an access token the way n8n did before ES256: HS256 with the HMAC secret. */
+const signLegacyHmac = (payload: object, audience: string, options: SignOptions = {}) =>
+	jwt.sign(payload, LEGACY_HMAC_SECRET, { algorithm: 'HS256', ...options, audience });
 
 let logger: Mocked<Logger>;
 let userRepository: Mocked<UserRepository>;
@@ -495,7 +504,7 @@ describe('OAuthTokenService', () => {
 		});
 
 		it('should throw error for wrong audience', async () => {
-			const wrongAudienceToken = jwtService.signForResource(
+			const wrongAudienceToken = signLegacyHmac(
 				{ sub: 'user-123', client_id: 'client-456' },
 				'wrong-audience',
 			); // Matches neither legacy literal nor resource URL;
@@ -507,7 +516,7 @@ describe('OAuthTokenService', () => {
 
 		it('should accept tokens with canonical audience when expected audience is provided', async () => {
 			const audience = 'https://n8n.example.com/mcp-server/http';
-			const canonicalAudienceToken = jwtService.signForResource(
+			const canonicalAudienceToken = signLegacyHmac(
 				{ sub: 'user-123', client_id: 'client-456' },
 				audience,
 			);
@@ -532,7 +541,7 @@ describe('OAuthTokenService', () => {
 
 		it('should accept legacy audience when expected audience is provided', async () => {
 			const audience = 'https://n8n.example.com/mcp-server/http';
-			const legacyAudienceToken = jwtService.signForResource(
+			const legacyAudienceToken = signLegacyHmac(
 				{ sub: 'user-123', client_id: 'client-456' },
 				'mcp-server-api',
 			);
@@ -556,10 +565,7 @@ describe('OAuthTokenService', () => {
 		it('should accept token whose aud is the legacy literal (backward compat)', async () => {
 			const userId = 'user-123';
 			const clientId = 'client-456';
-			const legacyToken = jwtService.signForResource(
-				{ sub: userId, client_id: clientId },
-				'mcp-server-api',
-			);
+			const legacyToken = signLegacyHmac({ sub: userId, client_id: clientId }, 'mcp-server-api');
 			accessTokenRepository.findOne.mockResolvedValue(
 				mock<AccessToken>({ token: legacyToken, clientId, userId }),
 			);
@@ -573,10 +579,7 @@ describe('OAuthTokenService', () => {
 		it('should accept token whose aud is the resource URL', async () => {
 			const userId = 'user-123';
 			const clientId = 'client-456';
-			const urlToken = jwtService.signForResource(
-				{ sub: userId, client_id: clientId },
-				TEST_RESOURCE_URL,
-			);
+			const urlToken = signLegacyHmac({ sub: userId, client_id: clientId }, TEST_RESOURCE_URL);
 			accessTokenRepository.findOne.mockResolvedValue(
 				mock<AccessToken>({ token: urlToken, clientId, userId }),
 			);
@@ -817,7 +820,7 @@ describe('OAuthTokenService', () => {
 		});
 
 		it('should reject a token whose aud belongs to another resource', async () => {
-			const tokenForResourceA = jwtService.signForResource(
+			const tokenForResourceA = signLegacyHmac(
 				{ sub: 'user-123', client_id: 'client-456' },
 				RESOURCE_A_URL,
 			);
@@ -828,7 +831,7 @@ describe('OAuthTokenService', () => {
 		});
 
 		it('should not accept the legacy audience at a non-default resource', async () => {
-			const legacyToken = jwtService.signForResource(
+			const legacyToken = signLegacyHmac(
 				{ sub: 'user-123', client_id: 'client-456' },
 				LEGACY_AUDIENCE,
 			);
@@ -839,7 +842,7 @@ describe('OAuthTokenService', () => {
 		});
 
 		it('should accept a token at its own resource', async () => {
-			const tokenForResourceB = jwtService.signForResource(
+			const tokenForResourceB = signLegacyHmac(
 				{ sub: 'user-123', client_id: 'client-456' },
 				RESOURCE_B_URL,
 			);
@@ -853,7 +856,7 @@ describe('OAuthTokenService', () => {
 		});
 
 		it('should still accept the legacy audience at the default (instance MCP) resource', async () => {
-			const legacyToken = jwtService.signForResource(
+			const legacyToken = signLegacyHmac(
 				{ sub: 'user-123', client_id: 'client-456' },
 				LEGACY_AUDIENCE,
 			);
@@ -922,7 +925,7 @@ describe('OAuthTokenService', () => {
 		it('treats a token without a scope claim as having no scopes', async () => {
 			// cannot occur legitimately: migration 1784000000047 deleted every
 			// access token minted before scoping shipped
-			const legacyToken = jwtService.signForResource(
+			const legacyToken = signLegacyHmac(
 				{ sub: 'user-123', client_id: 'client-456' },
 				TEST_RESOURCE_URL,
 			);
@@ -1024,10 +1027,7 @@ describe('OAuthTokenService', () => {
 			['the instance-base-URL-derived resource URL', TEST_RESOURCE_URL],
 			['the legacy audience', LEGACY_AUDIENCE],
 		])('should accept a token whose aud is %s', async (_, audience) => {
-			const token = jwtService.signForResource(
-				{ sub: 'user-123', client_id: 'client-456' },
-				audience,
-			);
+			const token = signLegacyHmac({ sub: 'user-123', client_id: 'client-456' }, audience);
 			accessTokenRepository.findOne.mockResolvedValue(
 				mock<AccessToken>({ token, clientId: 'client-456', userId: 'user-123' }),
 			);
@@ -1038,7 +1038,7 @@ describe('OAuthTokenService', () => {
 		});
 
 		it('should reject a token whose aud is an unconfigured host', async () => {
-			const token = jwtService.signForResource(
+			const token = signLegacyHmac(
 				{ sub: 'user-123', client_id: 'client-456' },
 				'https://other.example.com/mcp-server/http',
 			);
@@ -1078,9 +1078,9 @@ describe('OAuthTokenService', () => {
 			createHmac('sha256', secret).update(signingInput).digest();
 
 		/** Signs with the HMAC secret, the way n8n minted access tokens before ES256. */
-		const signHmac = (options: PurposedSignOptions) => {
+		const signHmac = (options: SignOptions) => {
 			const { aud, ...claims } = validClaims();
-			return jwtService.signForResource(claims, aud, options);
+			return signLegacyHmac(claims, aud, options);
 		};
 
 		const storeToken = (token: string) => {
@@ -1108,7 +1108,7 @@ describe('OAuthTokenService', () => {
 				const { accessToken } = service.generateTokenPair(USER_ID, CLIENT_ID, undefined, []);
 				storeToken(accessToken);
 				const signingVerify = vi.spyOn(signingKeyService, 'verifyAccessToken');
-				const hmacVerify = vi.spyOn(jwtService, 'verify');
+				const hmacVerify = vi.spyOn(jwtService, 'verifyLegacyHmacAccessToken');
 
 				try {
 					await expect(

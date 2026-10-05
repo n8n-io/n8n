@@ -104,7 +104,7 @@ export class OAuthSigningKeyService {
 		}
 
 		const { kid, privateKey } = this.activeKey;
-		return this.jwtService.signForResourceWithKey(payload, audience, privateKey, {
+		return this.jwtService.signForResource(payload, audience, privateKey, {
 			algorithm: OAUTH_SIGNING_ALGORITHM,
 			header: { alg: OAUTH_SIGNING_ALGORITHM, typ: 'at+jwt', kid },
 		});
@@ -139,9 +139,9 @@ export class OAuthSigningKeyService {
 			throw new JsonWebTokenError('kid is unknown');
 		}
 
-		const verified = this.jwtService.verifyForResourceWithKey(
+		const verified = this.jwtService.verifyForResource(
 			token,
-			audiences,
+			audiences as [string, ...string[]],
 			this.getPublicKeyObject(key),
 			{ algorithms: [OAUTH_SIGNING_ALGORITHM], issuer },
 		);
