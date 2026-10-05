@@ -30,6 +30,7 @@ import { AgentSetupCompletionService } from './agent-setup-completion.service';
 import { AgentSkillsService } from './agent-skills.service';
 import { AgentUpdateBroadcaster } from './agent-update-broadcaster';
 import type { Agent } from './entities/agent.entity';
+import type { AgentTask } from './entities/agent-task.entity';
 import { syncAgentIntegrations } from './integrations/integrations-sync';
 import { composeJsonConfig, decomposeJsonConfig } from './json-config/agent-config-composition';
 import { NodeToolAiGatewayService } from './json-config/node-tool-ai-gateway.service';
@@ -56,6 +57,15 @@ interface AgentConfigUpdateOptions {
 	modifiedBy: AgentActor;
 	/** Push connection of the tab that made the change; excluded from the `agentUpdated` broadcast. */
 	pushRef?: string;
+}
+
+export interface AgentDefinition {
+	name: string;
+	config: AgentJsonConfig | null;
+	availableInMCP: boolean;
+	skills: Agent['skills'];
+	tools: Agent['tools'];
+	tasks: Array<Pick<AgentTask, 'id' | 'name' | 'objective' | 'cronExpression' | 'timezone'>>;
 }
 
 interface ConfigReplacement {
@@ -98,6 +108,50 @@ export class AgentConfigService {
 			throw new UserError('Agent has no JSON config yet.');
 		}
 		return config;
+	}
+
+	/** Restore a validated definition without dropping references to its separate bodies. */
+	async replaceDefinition(
+		agentId: string,
+		projectId: string,
+		definition: AgentDefinition,
+		user: User,
+	): Promise<Agent> {
+		const agent = await getAgentOrThrow(this.agentRepository, agentId, projectId);
+		const previousSchema = agent.schema;
+		const previousIntegrations = agent.integrations ?? [];
+		const decomposed = definition.config ? decomposeJsonConfig(definition.config) : null;
+		agent.name = definition.name;
+		agent.schema = decomposed?.schemaConfig ?? null;
+		agent.integrations = decomposed?.integrations ?? [];
+		agent.skills = definition.skills;
+		agent.tools = definition.tools;
+		agent.availableInMCP = definition.availableInMCP;
+		markAgentDraftDirty(agent);
+		if (!(await this.agentRepository.replaceDraftDefinition(agent, definition.tasks))) {
+			throw new ConflictError(
+				'Agent config was changed elsewhere; reload to get the latest version',
+			);
+		}
+		this.runtimeCacheService.clearRuntimes(agentId);
+		this.eventService.emit('agent-saved', { agentId });
+		this.agentUpdateBroadcaster.notify({ projectId, agentId, source: 'user' });
+		this.modificationTelemetry.record({
+			agent,
+			projectId,
+			user,
+			by: 'user',
+			changedParts: diffAgentConfigParts(
+				previousSchema,
+				agent.schema,
+				previousIntegrations,
+				agent.integrations,
+				{ tools: true, skills: true, tasks: true },
+			),
+			wasUnconfigured: isUnconfiguredAgent(previousSchema, previousIntegrations),
+		});
+		await syncAgentIntegrations(agent, previousIntegrations, agent.integrations, this.logger);
+		return agent;
 	}
 
 	/**

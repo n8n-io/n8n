@@ -15,6 +15,7 @@
 | schema | json |  | true |  |  |  |
 | setupCompletedAt | timestamp(3) with time zone |  | true |  |  | When this agent first reached a complete, publishable setup |
 | skills | json | '{}'::json | false |  |  |  |
+| sourceAgentId | varchar(36) |  | true |  |  | Agent ID on the source instance; null for locally created agents |
 | tools | json | '{}'::json | false |  |  |  |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | versionId | varchar(36) |  | true |  |  |  |
@@ -85,6 +86,7 @@ erDiagram
   json schema
   timestamp_3__with_time_zone setupCompletedAt
   json skills
+  varchar_36_ sourceAgentId
   json tools
   timestamp_3__with_time_zone updatedAt
   varchar_36_ versionId

@@ -1,18 +1,19 @@
 import { N8N_CHAT_INTEGRATION_TYPE } from '@n8n/api-types';
 import type { AgentIntegrationConfig, ListAgentsQueryDto } from '@n8n/api-types';
 import { Service } from '@n8n/di';
+import { BaseRepository, TransactionRunner } from '@n8n/db';
 import {
 	DataSource,
 	In,
 	IsNull,
 	Not,
-	Repository,
 	type EntityManager,
 	type SelectQueryBuilder,
 } from '@n8n/typeorm';
 import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
 
 import { Agent } from '../entities/agent.entity';
+import { AgentTask } from '../entities/agent-task.entity';
 
 export interface AgentListResult {
 	count: number;
@@ -35,9 +36,9 @@ export type AgentSummaryFilters = {
 };
 
 @Service()
-export class AgentRepository extends Repository<Agent> {
-	constructor(dataSource: DataSource) {
-		super(Agent, dataSource.manager);
+export class AgentRepository extends BaseRepository<Agent> {
+	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
+		super(Agent, dataSource.manager, transactionRunner);
 	}
 
 	/**
@@ -76,6 +77,45 @@ export class AgentRepository extends Repository<Agent> {
 		if (ids.length === 0) return new Set();
 		const agents = await this.find({ where: { id: In(ids) }, select: ['id'] });
 		return new Set(agents.map(({ id }) => id));
+	}
+
+	async findImportCandidates(projectId: string, sourceIds: string[]): Promise<Agent[]> {
+		if (sourceIds.length === 0) return [];
+		return await this.find({
+			where: [
+				{ projectId, sourceAgentId: In(sourceIds) },
+				{ projectId, id: In(sourceIds), sourceAgentId: IsNull() },
+			],
+			relations: { activeVersion: true },
+		});
+	}
+
+	/** Replace draft bodies together. Published snapshots keep their own task bodies. */
+	async replaceDraftDefinition(
+		agent: Agent,
+		tasks: Array<Pick<AgentTask, 'id' | 'name' | 'objective' | 'cronExpression' | 'timezone'>>,
+	): Promise<boolean> {
+		return await this.runInTransaction({}, async (manager) => {
+			if (!(await this.saveDraftFenced(agent, manager))) return false;
+			await manager.update(Agent, agent.id, { availableInMCP: agent.availableInMCP });
+			const existing = await manager.find(AgentTask, {
+				where: { agentId: agent.id },
+				select: ['id'],
+			});
+			const existingIds = new Set(existing.map(({ id }) => id));
+			const incomingIds = new Set(tasks.map(({ id }) => id));
+			const removed = [...existingIds].filter((id) => !incomingIds.has(id));
+			if (removed.length > 0)
+				await manager.delete(AgentTask, { agentId: agent.id, id: In(removed) });
+			for (const task of tasks) {
+				if (existingIds.has(task.id)) {
+					await manager.update(AgentTask, { id: task.id, agentId: agent.id }, task);
+				} else {
+					await manager.insert(AgentTask, { ...task, agentId: agent.id });
+				}
+			}
+			return true;
+		});
 	}
 
 	/**

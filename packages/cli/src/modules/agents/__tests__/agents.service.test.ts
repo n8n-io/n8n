@@ -132,6 +132,7 @@ describe('AgentsService', () => {
 		expect(agentRepository.create).toHaveBeenCalledWith({
 			name: 'Support Agent',
 			projectId,
+			sourceAgentId: null,
 			schema: {
 				name: 'Support Agent',
 				model: '',

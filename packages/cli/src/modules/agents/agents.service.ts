@@ -51,6 +51,7 @@ import { SubAgentCleanupService } from './sub-agents/sub-agent-cleanup.service';
 import { createAgentCredentialProvider } from './utils/agent-credential-provider';
 
 type CreateAgentOptions = {
+	sourceAgentId?: string;
 	availableInMCP?: boolean;
 	id?: string;
 	adoptOnCollision?: boolean;
@@ -125,6 +126,7 @@ export class AgentsService {
 		name: string,
 		{
 			availableInMCP = false,
+			sourceAgentId,
 			id,
 			adoptOnCollision = false,
 			defaultModel,
@@ -146,6 +148,7 @@ export class AgentsService {
 			name,
 			projectId,
 			schema: schemaConfig,
+			sourceAgentId: sourceAgentId ?? null,
 			...(integrations.length > 0 ? { integrations } : {}),
 			...(skills ? { skills } : {}),
 			...(tools ? { tools: tools as Agent['tools'] } : {}),
@@ -231,6 +234,14 @@ export class AgentsService {
 
 	async findExistingIds(ids: string[]): Promise<Set<string>> {
 		return await this.agentRepository.findExistingIds(ids);
+	}
+
+	async findImportCandidates(projectId: string, sourceIds: string[]): Promise<Agent[]> {
+		return await this.agentRepository.findImportCandidates(projectId, sourceIds);
+	}
+
+	async findTaskOwners(ids: string[]): Promise<Map<string, string>> {
+		return await this.agentTaskRepository.findOwners(ids);
 	}
 
 	async getTaskDefinitions(

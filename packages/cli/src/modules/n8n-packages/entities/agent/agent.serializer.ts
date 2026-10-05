@@ -34,6 +34,7 @@ type AgentPackageKeyHandling = {
 	availableInMCP: 'copy';
 	project: 'exclude';
 	projectId: 'exclude';
+	sourceAgentId: 'exclude';
 	createdAt: 'exclude';
 	updatedAt: 'exclude';
 	versionId: 'exclude';

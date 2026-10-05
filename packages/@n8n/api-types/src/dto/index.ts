@@ -725,3 +725,5 @@ export {
 	promotePackageResultSchema,
 	promotionGitResultSchema,
 } from './promotions/promotion-operations.dto';
+
+export type * from './packages/import-package-result';

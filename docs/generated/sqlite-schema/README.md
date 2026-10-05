@@ -32,7 +32,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [agent_task_snapshot](agent_task_snapshot.md) | 9 |  | table |
 | [agent_thread_grants](agent_thread_grants.md) | 4 |  | table |
 | [agent_workflow_dependency](agent_workflow_dependency.md) | 3 |  | table |
-| [agents](agents.md) | 14 |  | table |
+| [agents](agents.md) | 15 |  | table |
 | [agents_memory_entries](agents_memory_entries.md) | 13 |  | table |
 | [agents_memory_entry_candidates](agents_memory_entry_candidates.md) | 14 |  | table |
 | [agents_memory_entry_locks](agents_memory_entry_locks.md) | 6 |  | table |
@@ -691,6 +691,7 @@ erDiagram
   TEXT schema
   datetime_3_ setupCompletedAt
   TEXT skills
+  varchar_36_ sourceAgentId
   TEXT tools
   datetime_3_ updatedAt
   varchar_36_ versionId

@@ -17,6 +17,14 @@ export class Agent extends WithTimestampsAndStringId {
 	@Column()
 	projectId: string;
 
+	@Column({
+		type: 'varchar',
+		length: 36,
+		nullable: true,
+		comment: 'Agent ID on the source instance; null for locally created agents',
+	})
+	sourceAgentId: string | null;
+
 	@JsonColumn({ nullable: true, default: null })
 	schema: AgentJsonConfig | null;
 
