@@ -406,6 +406,7 @@ export class AgentChatBridge {
 		this.chat.onSubscribedMessage(async (thread, message) => {
 			try {
 				if (!this.canUserAccess(message.author)) return;
+				if (!message.isMention && !this.acceptsUnmentionedMessage(thread, message)) return;
 				const anchoredThread = this.anchorInboundThread(thread, message);
 				await this.handleInboundMessage(anchoredThread, message, { isNewMention: false });
 			} catch (error) {
@@ -418,12 +419,8 @@ export class AgentChatBridge {
 			// decides each time, and turning read-all off takes effect at once.
 			this.chat.onNewMessage(/[\s\S]*/, async (thread, message) => {
 				try {
-					const accepted = this.integrationImpl?.shouldHandleUnmentionedMessage?.({
-						thread,
-						message,
-						integration: this.integration,
-					});
-					if (!accepted || !this.canUserAccess(message.author)) return;
+					if (!this.acceptsUnmentionedMessage(thread, message)) return;
+					if (!this.canUserAccess(message.author)) return;
 					const anchoredThread = this.anchorInboundThread(thread, message);
 					await this.handleInboundMessage(anchoredThread, message, { isNewMention: false });
 				} catch (error) {
@@ -462,6 +459,17 @@ export class AgentChatBridge {
 				await this.postErrorToThread(thread, error);
 			}
 		});
+	}
+
+	/** Platforms without the hook accept every message they deliver. */
+	private acceptsUnmentionedMessage(thread: Thread, message: Message): boolean {
+		return (
+			this.integrationImpl?.shouldHandleUnmentionedMessage?.({
+				thread,
+				message,
+				integration: this.integration,
+			}) ?? true
+		);
 	}
 
 	private canUserAccess(author: Author): boolean {

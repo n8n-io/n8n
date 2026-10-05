@@ -3932,4 +3932,32 @@ describe('AgentChatBridge — un-mentioned messages', () => {
 
 		expect(queue.enqueue).not.toHaveBeenCalled();
 	});
+
+	it('asks the platform before running an un-mentioned follow-up in a subscribed thread', async () => {
+		const { handlers, queue } = makeBridge('test-listening');
+		const author = { userId: 'u1', userName: 'user1' };
+
+		await handlers.subscribed!(makeThread(), { id: 'm1', text: 'ignore me', author });
+		expect(queue.enqueue).not.toHaveBeenCalled();
+
+		await handlers.subscribed!(makeThread(), {
+			id: 'm2',
+			text: 'ignore me',
+			isMention: true,
+			author,
+		});
+		expect(queue.enqueue).toHaveBeenCalledTimes(1);
+	});
+
+	it('runs every subscribed follow-up when the platform has no hook', async () => {
+		const { handlers, queue } = makeBridge('test-streaming');
+
+		await handlers.subscribed!(makeThread(), {
+			id: 'm1',
+			text: 'ignore me',
+			author: { userId: 'u1', userName: 'user1' },
+		});
+
+		expect(queue.enqueue).toHaveBeenCalledTimes(1);
+	});
 });

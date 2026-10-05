@@ -7,9 +7,12 @@ import {
 } from '../../../__tests__/helpers/teams/replay-test-context';
 import {
 	cardAction,
+	channelBotPost,
 	channelFollowUp,
 	channelMention,
+	channelRootPost,
 	channelSecondThreadMention,
+	channelUnjoinedReply,
 	dmFollowUp,
 	dmMessage,
 	groupChatFollowUp,
@@ -32,6 +35,15 @@ vi.mock('../../../esm-loader', () => ({
 	loadMemoryState: async () => await import('@chat-adapter/state-memory'),
 	loadTeamsAdapter: async () => await import('@chat-adapter/teams'),
 }));
+
+const READ_ALL = {
+	teamChannels: true,
+	readAllChannelMessages: true,
+	groupChats: true,
+	readAllGroupMessages: true,
+};
+
+const SILENT: StreamChunk[] = [{ type: 'finish', finishReason: 'stop' }];
 
 function cardActions(body: unknown): Array<Record<string, unknown>> {
 	const found: Array<Record<string, unknown>> = [];
@@ -377,7 +389,7 @@ describe('Microsoft Teams integration scenarios', () => {
 	});
 
 	it('routes an unmentioned follow-up in a subscribed channel thread to the same session', async () => {
-		const ctx = await createTeamsReplayContext();
+		const ctx = await createTeamsReplayContext({ settings: READ_ALL });
 		try {
 			await ctx.sendWebhook(channelMention);
 			const firstThreadId = ctx.latestThreadId();
@@ -410,7 +422,7 @@ describe('Microsoft Teams integration scenarios', () => {
 	});
 
 	it('keeps one session for a whole group chat', async () => {
-		const ctx = await createTeamsReplayContext();
+		const ctx = await createTeamsReplayContext({ settings: READ_ALL });
 		try {
 			await ctx.sendWebhook(groupChatMention);
 			const firstThreadId = ctx.latestThreadId();
@@ -436,7 +448,7 @@ describe('Microsoft Teams integration scenarios', () => {
 
 	it('reads a group chat whose id does not start with 19: as a group chat', async () => {
 		const { decodeThreadId } = await import('@chat-adapter/teams');
-		const ctx = await createTeamsReplayContext();
+		const ctx = await createTeamsReplayContext({ settings: READ_ALL });
 		try {
 			await ctx.sendWebhook(legacyGroupChatMention);
 			const firstThreadId = ctx.latestThreadId();
@@ -675,6 +687,108 @@ describe('Microsoft Teams streaming', () => {
 						call.body.text.includes('Waiting on you.'),
 				);
 			expect(trailing).toHaveLength(1);
+		} finally {
+			await ctx.shutdown();
+		}
+	});
+});
+
+describe('Microsoft Teams messages without a mention', () => {
+	it('runs a new channel post and a reply in an unjoined thread, with an optional reply', async () => {
+		const ctx = await createTeamsReplayContext({ settings: READ_ALL });
+		try {
+			await ctx.sendWebhook(channelRootPost);
+			expect(ctx.latestContext()?.replyExpectation).toBe('optional');
+
+			await ctx.sendWebhook(channelUnjoinedReply);
+
+			expect(ctx.agentExecutor.executeForChatPublished).toHaveBeenCalledTimes(2);
+			expect(ctx.latestContext()?.replyExpectation).toBe('optional');
+		} finally {
+			await ctx.shutdown();
+		}
+	});
+
+	it('runs an unmentioned group chat message', async () => {
+		const ctx = await createTeamsReplayContext({ settings: READ_ALL });
+		try {
+			await ctx.sendWebhook(groupChatFollowUp);
+
+			expect(ctx.agentExecutor.executeForChatPublished).toHaveBeenCalledTimes(1);
+			expect(ctx.latestContext()?.replyExpectation).toBe('optional');
+		} finally {
+			await ctx.shutdown();
+		}
+	});
+
+	it('keeps a reply required for a mention when reading all messages', async () => {
+		const ctx = await createTeamsReplayContext({ settings: READ_ALL });
+		try {
+			await ctx.sendWebhook(channelMention);
+
+			expect(ctx.agentExecutor.executeForChatPublished).toHaveBeenCalledTimes(1);
+			expect(ctx.latestContext()?.replyExpectation).toBe('required');
+		} finally {
+			await ctx.shutdown();
+		}
+	});
+
+	it('stays mention-only on a surface whose read-all setting is off', async () => {
+		const ctx = await createTeamsReplayContext({
+			settings: { teamChannels: true, readAllChannelMessages: false, groupChats: true },
+		});
+		try {
+			await ctx.sendWebhook(channelRootPost);
+			await ctx.sendWebhook(groupChatFollowUp);
+			expect(ctx.agentExecutor.executeForChatPublished).not.toHaveBeenCalled();
+
+			await ctx.sendWebhook(channelMention);
+			expect(ctx.agentExecutor.executeForChatPublished).toHaveBeenCalledTimes(1);
+
+			// The mention subscribed the thread, but read-all is off.
+			await ctx.sendWebhook(channelFollowUp);
+			expect(ctx.agentExecutor.executeForChatPublished).toHaveBeenCalledTimes(1);
+		} finally {
+			await ctx.shutdown();
+		}
+	});
+
+	it('does not let one surface open the other', async () => {
+		const ctx = await createTeamsReplayContext({
+			settings: { teamChannels: true, readAllChannelMessages: true, groupChats: true },
+		});
+		try {
+			await ctx.sendWebhook(groupChatFollowUp);
+			expect(ctx.agentExecutor.executeForChatPublished).not.toHaveBeenCalled();
+
+			await ctx.sendWebhook(channelRootPost);
+			expect(ctx.agentExecutor.executeForChatPublished).toHaveBeenCalledTimes(1);
+		} finally {
+			await ctx.shutdown();
+		}
+	});
+
+	it('ignores a post from another bot and from itself', async () => {
+		const ctx = await createTeamsReplayContext({ settings: READ_ALL });
+		try {
+			await ctx.sendWebhook(channelBotPost);
+			await ctx.sendWebhook(selfMessage);
+
+			expect(ctx.agentExecutor.executeForChatPublished).not.toHaveBeenCalled();
+		} finally {
+			await ctx.shutdown();
+		}
+	});
+
+	it('posts nothing at all when the agent stays silent', async () => {
+		const ctx = await createTeamsReplayContext({ settings: READ_ALL, stream: SILENT });
+		try {
+			await ctx.sendWebhook(channelRootPost);
+
+			expect(ctx.agentExecutor.executeForChatPublished).toHaveBeenCalledTimes(1);
+			// No typing indicator either: every activity, typing included, is a post.
+			expect(ctx.activities()).toEqual([]);
+			expect(ctx.edits()).toEqual([]);
 		} finally {
 			await ctx.shutdown();
 		}

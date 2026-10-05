@@ -521,10 +521,10 @@ export abstract class AgentChatIntegration {
 	}): boolean;
 
 	/**
-	 * Whether a message that neither mentions the bot nor arrives in a
-	 * subscribed thread should run the agent. Only platforms that deliver every
-	 * message implement this (Teams with read-all permissions). Without it the
-	 * bridge never listens for such messages.
+	 * Whether a message that does not mention the bot should run the agent,
+	 * in a subscribed thread or not. Only platforms that deliver every message
+	 * implement this (Teams with read-all permissions). Without it the bridge
+	 * runs every subscribed follow-up and never listens for other messages.
 	 */
 	shouldHandleUnmentionedMessage?(params: {
 		thread: Thread<unknown, unknown>;

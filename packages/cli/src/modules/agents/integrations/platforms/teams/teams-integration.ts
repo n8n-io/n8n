@@ -1,6 +1,7 @@
-import type { RichCardComponentType } from '@n8n/api-types';
+import type { AgentIntegrationConfig, RichCardComponentType } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
+import { isRecord } from '@n8n/utils/is-record';
 import { UserError } from 'n8n-workflow';
 
 import { AgentRepository } from '../../../repositories/agent.repository';
@@ -18,6 +19,7 @@ import { expandSelectsToButtons, type SuspendComponent } from '../../component-m
 import { assertCredentialNotClaimed } from '../../credential-claim';
 import { loadTeamsAdapter } from '../../esm-loader';
 import { resolveIntegrationActionDefinitions } from '../../integration-tool-definitions';
+import type { ReplyExpectation } from '../../integration-tool-types';
 import { startTypingIndicator } from '../typing-indicator';
 
 /** Pinned so a stray TEAMS_API_URL env var cannot redirect proactive sends. */
@@ -37,6 +39,24 @@ const TEAMS_TYPING_REFRESH_MS = 8000;
  * or `..` passes an alphabet check, and URL normalization then drops the tenant
  * segment entirely. Two labels minimum, each starting and ending alphanumeric.
  */
+type TeamsConversationType = 'personal' | 'groupChat' | 'channel';
+
+function conversationTypeOf(activity: unknown): TeamsConversationType | undefined {
+	if (!isRecord(activity) || !isRecord(activity.conversation)) return undefined;
+	const type = activity.conversation.conversationType;
+	return type === 'personal' || type === 'groupChat' || type === 'channel' ? type : undefined;
+}
+
+/**
+ * The adapter reports every inbound author as a person, so the activity is
+ * read instead. Bot Framework gives bot accounts a `28:` id.
+ */
+function isFromBot(activity: unknown): boolean {
+	if (!isRecord(activity) || !isRecord(activity.from)) return false;
+	const { id, role } = activity.from;
+	return role === 'bot' || (typeof id === 'string' && id.startsWith('28:'));
+}
+
 const TENANT_ID_GUID = /^[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}$/;
 const TENANT_ID_DOMAIN =
 	/^[A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])?(\.[A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])?)+$/;
@@ -47,17 +67,16 @@ const TENANT_ID_DOMAIN =
  * register or release it and no `onAfterConnect`/`onBeforeDisconnect` hook.
  *
  * Direct messages, team channels and group chats are all supported. Outside a
- * DM the bot must be @-mentioned once; the mention subscribes the conversation,
- * so later messages reach the agent without a mention. In a channel that
- * subscription covers the one thread, because the thread id carries the root
- * message id. In a group chat it covers the whole chat.
+ * DM the bot must be @-mentioned, and the mention subscribes the conversation.
+ * In a channel that subscription covers the one thread, because the thread id
+ * carries the root message id. In a group chat it covers the whole chat.
  *
- * Whether a later message arrives at all is a setup choice. The manifest
- * carries `ChannelMessage.Read.Group` and `ChatMessage.Read.Chat` only when
- * `readAllChannelMessages` and `readAllGroupMessages` are on. Teams grants them
- * when the app is added to a team or a chat, and they also make Teams deliver
- * every message instead of mentions alone. Without them Teams delivers only the
- * mention, and the subscription stays inert.
+ * Reading messages without a mention is a setup choice for each surface. The
+ * manifest carries `ChannelMessage.Read.Group` and `ChatMessage.Read.Chat` only
+ * when `readAllChannelMessages` and `readAllGroupMessages` are on. Teams grants
+ * them when the app is added to a team or a chat, and they make Teams deliver
+ * every message instead of mentions alone. Each such message runs the agent
+ * with an optional reply, so the agent decides whether to speak.
  */
 @Service()
 export class TeamsIntegration extends AgentChatIntegration {
@@ -77,6 +96,8 @@ export class TeamsIntegration extends AgentChatIntegration {
 			'Receive Microsoft Teams direct messages, team channel messages and group chat messages as agent triggers.',
 			'Respond in the same Microsoft Teams conversation, and in the same channel thread.',
 			'Stay in the conversation after an @-mention, so later messages need no mention.',
+			'When the setup turns on reading all messages, run on every team channel or group chat message and decide whether to reply, or stay silent.',
+			'Add emoji reactions to messages.',
 			'Render Adaptive Cards with buttons.',
 		],
 		useIntegrationWhen: [
@@ -128,6 +149,42 @@ export class TeamsIntegration extends AgentChatIntegration {
 	 * the message being edited above it.
 	 */
 	readonly singleStreamedRunPerTurn = true;
+
+	/**
+	 * A message without a mention runs only on a surface whose read-all setting
+	 * is on, and never when another bot wrote it. Two listening bots in one
+	 * channel would otherwise answer each other.
+	 */
+	shouldHandleUnmentionedMessage({
+		message,
+		integration,
+	}: {
+		message: { raw: unknown };
+		integration: AgentIntegrationConfig;
+	}): boolean {
+		if (isFromBot(message.raw)) return false;
+		const settings = integration.type === 'teams' ? integration.settings : undefined;
+		switch (conversationTypeOf(message.raw)) {
+			case 'channel':
+				return settings?.teamChannels === true && settings.readAllChannelMessages === true;
+			case 'groupChat':
+				return settings?.groupChats === true && settings.readAllGroupMessages === true;
+			default:
+				return false;
+		}
+	}
+
+	/** Only a direct message or a mention obliges the agent to answer. */
+	getReplyExpectation({
+		message,
+		isNewMention,
+	}: {
+		message: { isMention?: boolean; raw: unknown };
+		isNewMention: boolean;
+	}): ReplyExpectation {
+		if (isNewMention || message.isMention === true) return 'required';
+		return conversationTypeOf(message.raw) === 'personal' ? 'required' : 'optional';
+	}
 
 	constructor(
 		private readonly logger: Logger,
