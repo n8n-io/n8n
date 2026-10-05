@@ -561,7 +561,14 @@ function removeOverride(clearField = false) {
 						@drop="onDrop"
 					>
 						<template v-if="showOverrideButton && isSingleLineInput" #overrideButton>
-							<FromAiOverrideButton @click="applyOverride" />
+							<FromAiOverrideButton
+								:size="
+									!isExpression && ['number', 'multiOptions'].includes(parameter.type)
+										? 'small'
+										: 'medium'
+								"
+								@click="applyOverride"
+							/>
 						</template>
 					</ParameterInputWrapper>
 				</div>

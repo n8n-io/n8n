@@ -7,8 +7,9 @@ const i18n = useI18n();
 withDefaults(
 	defineProps<{
 		position?: 'inline' | 'standalone';
+		size?: 'small' | 'medium';
 	}>(),
-	{ position: 'inline' },
+	{ position: 'inline', size: 'medium' },
 );
 
 const emit = defineEmits<{
@@ -25,8 +26,9 @@ const emit = defineEmits<{
 		<N8nIconButton
 			icon="sparkles"
 			variant="ghost"
-			size="small"
-			:class="[$style.overrideButton, $style[position]]"
+			:size="size"
+			icon-size="small"
+			:class="[$style.overrideButton, $style[position], $style[size]]"
 			:aria-label="i18n.baseText('parameterOverride.applyOverrideButtonTooltip')"
 			data-test-id="from-ai-override-button"
 			@click="emit('click')"
@@ -39,8 +41,8 @@ const emit = defineEmits<{
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	height: 30px;
-	width: 30px;
+	height: var(--from-ai-button-size);
+	width: var(--from-ai-button-size);
 	background-color: var(--color--foreground);
 	color: var(--color--foreground--shade-2);
 	cursor: pointer;
@@ -54,6 +56,14 @@ const emit = defineEmits<{
 			color: var(--color--neutral-250);
 		}
 	}
+}
+
+.small {
+	--from-ai-button-size: var(--height--sm);
+}
+
+.medium {
+	--from-ai-button-size: var(--height--md);
 }
 
 .inline {

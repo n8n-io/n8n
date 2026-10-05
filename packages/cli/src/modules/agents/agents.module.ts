@@ -20,6 +20,7 @@ export class AgentsModule implements ModuleInterface {
 		await import('./agents-catalog.controller.js');
 		await import('./agent-threads.controller.js');
 		await import('./agents.controller.js');
+		await import('./agents-settings.controller.js');
 		await import('./agents-config.controller.js');
 		await import('./agents-skills.controller.js');
 		await import('./agent-knowledge.controller.js');
@@ -214,12 +215,13 @@ export class AgentsModule implements ModuleInterface {
 
 	async settings() {
 		const config = Container.get(AgentsConfig);
+		const { AgentsSettingsService } = await import('./agents-settings.service.js');
 		const { AiService } = await import('@/services/ai.service.js');
 		const { SandboxSettingsService } = await import('@/services/sandbox-settings.service.js');
 		const aiService = Container.get(AiService);
 		const proxyEnabled = aiService.isProxyEnabled();
 		return {
-			enabled: true,
+			enabled: await Container.get(AgentsSettingsService).getEnabled(),
 			modules: [...config.modules],
 			knowledgeBaseEnabled: Container.get(SandboxSettingsService).isAgentSandboxEnabled(),
 			proxyEnabled,
@@ -244,6 +246,8 @@ export class AgentsModule implements ModuleInterface {
 		const { AgentExecution } = await import('./entities/agent-execution.entity.js');
 		const { AgentMessageQueue } = await import('./entities/agent-message-queue.entity.js');
 		const { AgentBackgroundJob } = await import('./entities/agent-background-job.entity.js');
+		const { AgentPlan } = await import('./entities/agent-plan.entity.js');
+		const { AgentPlanHistory } = await import('./entities/agent-plan-history.entity.js');
 		const { AgentHistory } = await import('./entities/agent-history.entity.js');
 		const { AgentCredentialDependency } = await import(
 			'./entities/agent-credential-dependency.entity.js'
@@ -288,6 +292,8 @@ export class AgentsModule implements ModuleInterface {
 			AgentExecution,
 			AgentMessageQueue,
 			AgentBackgroundJob,
+			AgentPlan,
+			AgentPlanHistory,
 			AgentHistory,
 			AgentCredentialDependency,
 			AgentWorkflowDependency,

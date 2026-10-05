@@ -34,8 +34,8 @@ export class AgentMessageQueueRepository extends BaseRepository<AgentMessageQueu
 		);
 	}
 
-	async listPending(threadId: string) {
-		return await this.find({
+	async listPending(threadId: string, ctx: OperationContext = {}) {
+		return await this.managerFor(ctx).find(AgentMessageQueue, {
 			where: { threadId, executionId: IsNull() },
 			relations: { message: true },
 			order: { position: 'ASC', id: 'ASC' },
@@ -168,8 +168,9 @@ export class AgentMessageQueueRepository extends BaseRepository<AgentMessageQueu
 		});
 	}
 
-	async findThreadIds(): Promise<string[]> {
-		const rows = await this.createQueryBuilder('queue')
+	async findThreadIds(ctx: OperationContext = {}): Promise<string[]> {
+		const rows = await this.managerFor(ctx)
+			.createQueryBuilder(AgentMessageQueue, 'queue')
 			.select('queue.threadId', 'threadId')
 			.distinct(true)
 			.getRawMany<{ threadId: string }>();

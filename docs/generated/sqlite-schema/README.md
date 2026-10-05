@@ -9,7 +9,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | Name | Columns | Comment | Type |
 | ---- | ------- | ------- | ---- |
 | [activity_event](activity_event.md) | 11 |  | table |
-| [agent_background_job](agent_background_job.md) | 19 |  | table |
+| [agent_background_job](agent_background_job.md) | 20 |  | table |
 | [agent_channel_status](agent_channel_status.md) | 11 |  | table |
 | [agent_chat_attachments](agent_chat_attachments.md) | 12 |  | table |
 | [agent_chat_subscriptions](agent_chat_subscriptions.md) | 6 |  | table |
@@ -25,6 +25,8 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [agent_files](agent_files.md) | 10 |  | table |
 | [agent_history](agent_history.md) | 9 |  | table |
 | [agent_message_queue](agent_message_queue.md) | 10 |  | table |
+| [agent_plan](agent_plan.md) | 8 |  | table |
+| [agent_plan_history](agent_plan_history.md) | 6 |  | table |
 | [agent_task_definition](agent_task_definition.md) | 8 |  | table |
 | [agent_task_run_lock](agent_task_run_lock.md) | 6 |  | table |
 | [agent_task_snapshot](agent_task_snapshot.md) | 9 |  | table |
@@ -196,6 +198,8 @@ erDiagram
 "agent_message_queue" }o--|| "agent_execution_threads" : "FOREIGN KEY (threadId) REFERENCES agent_execution_threads (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agent_message_queue" }o--|| "agents_messages" : "FOREIGN KEY (messageId) REFERENCES agents_messages (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agent_message_queue" }o--o| "agent_execution" : "FOREIGN KEY (steeringExecutionId) REFERENCES agent_execution (id) ON UPDATE NO ACTION ON DELETE NO ACTION MATCH NONE"
+"agent_plan" }o--|| "agent_execution_threads" : "FOREIGN KEY (threadId) REFERENCES agent_execution_threads (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"agent_plan_history" |o--|| "agent_plan" : "FOREIGN KEY (planId) REFERENCES agent_plan (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agent_task_definition" }o--|| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agent_task_run_lock" |o--|| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agent_task_snapshot" |o--|| "agent_history" : "FOREIGN KEY (versionId) REFERENCES agent_history (versionId) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
@@ -415,6 +419,7 @@ erDiagram
   varchar_64_ parentPrincipalHash
   varchar_255_ parentResourceId
   varchar_128_ parentThreadId
+  varchar pauseRequestId
   TEXT result
   datetime_3_ settledAt
   varchar_16_ status
@@ -615,6 +620,24 @@ erDiagram
   INTEGER steeringOrder
   varchar_128_ threadId FK
   datetime_3_ updatedAt
+}
+"agent_plan" {
+  datetime_3_ closedAt
+  datetime_3_ createdAt
+  TEXT data
+  INTEGER formatVersion
+  varchar id PK
+  INTEGER revision
+  varchar_128_ threadId FK
+  datetime_3_ updatedAt
+}
+"agent_plan_history" {
+  datetime_3_ closedAt
+  datetime_3_ createdAt
+  TEXT data
+  INTEGER formatVersion
+  varchar planId PK
+  INTEGER revision PK
 }
 "agent_task_definition" {
   varchar_36_ agentId FK

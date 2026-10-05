@@ -10,7 +10,7 @@ Modules give these benefits:
 - **Independence:** You typecheck, lint and test one feature in seconds. You do not run all of
   editor-ui (~770K lines of `.ts` and `.vue`; `src/features/` holds ~600K of that).
 - **Decoupling:** A module cannot read the shell or another module. Features stay separate.
-- **Ownership:** One package has one CODEOWNERS line.
+- **Ownership:** One package has one `OWNERS` line.
 - **Parity:** The frontend module id is the same as the backend module id. Both read
   `/rest/module-settings`.
 
@@ -477,7 +477,7 @@ const isEnabled = computed(
 ## Register the module with the shell
 
 A module does nothing until the shell can see it. The shell needs **four file edits and one
-CODEOWNERS line**. The CLI makes the four edits. Read this section when you register a module by
+`OWNERS` line**. The CLI makes the four edits. Read this section when you register a module by
 hand, or when you debug a CI failure.
 
 | # | Where                                          | What                                      | Scaffolded? |
@@ -486,10 +486,10 @@ hand, or when you debug a CI failure.
 | 2 | `editor-ui/package.json`                       | `"@n8n/frontend-module-x": "workspace:*"`  | ✅          |
 | 3 | `editor-ui/tsconfig.json`                      | two `paths` entries (bare + `/*`)          | ✅          |
 | 4 | `editor-ui/src/app/modules.manifest.ts`        | import + array entry                       | ✅          |
-| 5 | `.github/CODEOWNERS`                           | one line for the new package               | ❌ do this  |
+| 5 | `OWNERS`                                       | one line for the new package               | ❌ do this  |
 
-The frontend has no CODEOWNERS entries today, so you cannot copy a line for #5. Add your line when
-you create the module. A package with no owner is the start of an incomplete migration.
+Add the ownership line when you create the module. A package with no owner is the start of an
+incomplete migration.
 
 **Put #1, #2 and #3 in the same PR.** They are not alternatives. Each one serves a different
 resolver:
@@ -696,7 +696,7 @@ Keep `"license": "LicenseRef-n8n-sustainable-use"`. Do not add `private`.
    can become a static map of dynamic imports. Vite then emits one chunk for each module. The
    decision point is the end of wave 2, with bundle data. The team decided against a module load
    at run time.
-5. **CODEOWNERS is a manual step.** An addition to the CLI is a small and clear follow-up.
+5. **Updating `OWNERS` is a manual step.** An addition to the CLI is a small and clear follow-up.
 6. **`@n8n/module-cli` has no `lint` script.** Type-aware lint on a package with no types gives
    only `no-unsafe-*` noise. Ten other `@n8n/*` packages ship in the same way, and Biome still
    formats this one. Review this decision if the CLI grows past a few hundred lines.

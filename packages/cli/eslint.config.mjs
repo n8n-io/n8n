@@ -161,7 +161,6 @@ export default defineConfig(
 		// `@PublicApiController` classes (API-70). NEVER add to this list — a new tuple handler
 		// must fail CI. Entries are removed as each handler becomes a controller.
 		files: [
-			'./src/public-api/v1/handlers/ldap/ldap.handler.ts',
 			'./src/public-api/v1/handlers/log-streaming/log-streaming.handler.ts',
 			'./src/public-api/v1/handlers/n8n-packages/n8n-packages.handler.ts',
 			'./src/public-api/v1/handlers/workflows/workflows.handler.ts',
@@ -351,7 +350,6 @@ export default defineConfig(
 			'./src/modules/dynamic-credentials.ee/services/credential-resolver.service.ts',
 			'./src/modules/external-secrets.ee/secrets-providers-connections.service.ee.ts',
 			'./src/modules/favorites/favorites.service.ts',
-			'./src/modules/insights/insights-collection.service.ts',
 			'./src/modules/instance-ai/instance-ai.adapter.service.ts',
 			'./src/modules/instance-ai/mcp/instance-ai-mcp-registry.service.ts',
 			'./src/modules/instance-ai/storage/typeorm-agent-checkpoint-store.ts',

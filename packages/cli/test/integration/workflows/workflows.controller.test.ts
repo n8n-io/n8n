@@ -142,7 +142,7 @@ beforeEach(async () => {
 	authMemberAgent = testServer.authAgentFor(member);
 	anotherMember = await createMember();
 
-	workflowValidationService.validateForActivation.mockReturnValue({ isValid: true });
+	workflowValidationService.validateForActivation.mockResolvedValue({ isValid: true });
 	workflowValidationService.validateDynamicCredentials.mockResolvedValue({ isValid: true });
 	workflowValidationService.validatePublisherCredentialAccess.mockResolvedValue({ isValid: true });
 	workflowValidationService.validateSubWorkflowReferences.mockResolvedValue({ isValid: true });
@@ -5121,6 +5121,7 @@ describe('POST /workflows/:workflowId/run', () => {
 				startExecution,
 				getExecution,
 				searchExecutions: vi.fn().mockResolvedValue({ items: [], nextCursor: null, total: 0 }),
+				cancelExecution: vi.fn(),
 			});
 		});
 

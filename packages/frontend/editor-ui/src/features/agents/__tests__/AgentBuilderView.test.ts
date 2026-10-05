@@ -260,6 +260,11 @@ vi.mock('@/features/ai/evaluation.ee/composables/useAgentEvalsFlag', () => ({
 	}),
 }));
 
+const n8nChatFlag = vi.hoisted(() => ({ value: false }));
+vi.mock('../composables/useAgentsN8nChatFlag', () => ({
+	useAgentsN8nChatFlag: () => n8nChatFlag,
+}));
+
 const builderTelemetryMock = vi.hoisted(() => ({
 	fetchInitialTriggersBaseline: vi.fn().mockResolvedValue(null),
 	trackTriggerAdded: vi.fn(),
@@ -810,6 +815,7 @@ function resetViewMocks() {
 	routeGuards.leave = undefined;
 	routeGuards.update = undefined;
 	agentEvalsFlagMock.enabled = false;
+	n8nChatFlag.value = false;
 	generateDraftCasesMock.mockReset();
 	generateDraftCasesMock.mockResolvedValue({ cases: [] });
 	for (const key of Object.keys(routeQuery)) delete routeQuery[key];
@@ -4795,6 +4801,79 @@ describe('AgentBuilderView — three-column shell', () => {
 				expect.objectContaining({ description: 'Answers support tickets' }),
 				'hash-1',
 			),
+		);
+	});
+
+	it('saves the n8n Chat description through the write-locked config path and flushes before returning', async () => {
+		const wrapper = await renderView();
+		await flushPromises();
+
+		await (
+			wrapper.vm as unknown as { saveN8nChatDescription: (description: string) => Promise<void> }
+		).saveN8nChatDescription('Handles support tickets');
+
+		expect(updateConfigMock).toHaveBeenCalledWith(
+			'p1',
+			'a1',
+			expect.objectContaining({ description: 'Handles support tickets' }),
+			'hash-1',
+		);
+	});
+
+	it('skips the n8n Chat description save when nothing changed', async () => {
+		const wrapper = await renderView();
+		await flushPromises();
+		updateConfigMock.mockClear();
+
+		await (
+			wrapper.vm as unknown as { saveN8nChatDescription: (description: string) => Promise<void> }
+		).saveN8nChatDescription('');
+
+		expect(updateConfigMock).not.toHaveBeenCalled();
+	});
+
+	it('rejects the n8n Chat description save when the config save fails', async () => {
+		const wrapper = await renderView();
+		await flushPromises();
+		updateConfigMock.mockRejectedValueOnce(new Error('network'));
+
+		await expect(
+			(
+				wrapper.vm as unknown as { saveN8nChatDescription: (description: string) => Promise<void> }
+			).saveN8nChatDescription('Handles support tickets'),
+		).rejects.toThrow();
+	});
+
+	it('rejects the n8n Chat description save after a failed debounced save of it', async () => {
+		const wrapper = await renderView();
+		await flushPromises();
+		const vm = wrapper.vm as unknown as {
+			onConfigFieldUpdate: (updates: { description: string }) => void;
+			saveN8nChatDescription: (description: string) => Promise<void>;
+		};
+		updateConfigMock.mockRejectedValueOnce(new Error('network'));
+		vm.onConfigFieldUpdate({ description: 'Handles support tickets' });
+		await vi.waitFor(() => expect(updateConfigMock).toHaveBeenCalled());
+		await flushPromises();
+
+		await expect(vm.saveN8nChatDescription('Handles support tickets')).rejects.toThrow();
+	});
+
+	it('includes n8n Chat in the initial trigger baseline when its flag is on', async () => {
+		n8nChatFlag.value = true;
+		await renderView();
+
+		expect(builderTelemetryMock.fetchInitialTriggersBaseline).toHaveBeenCalledWith(
+			expect.arrayContaining(['n8n_chat']),
+		);
+	});
+
+	it('excludes n8n Chat from the initial trigger baseline when its flag is off', async () => {
+		n8nChatFlag.value = false;
+		await renderView();
+
+		expect(builderTelemetryMock.fetchInitialTriggersBaseline).not.toHaveBeenCalledWith(
+			expect.arrayContaining(['n8n_chat']),
 		);
 	});
 

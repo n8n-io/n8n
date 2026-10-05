@@ -26,6 +26,7 @@ import { OperationalError, UserError } from 'n8n-workflow';
 import type { InstanceSettings } from 'n8n-core';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
+import type { AgentsSettingsService } from '../agents-settings.service';
 
 import type { ExternalHooks } from '@/external-hooks';
 import type { Telemetry } from '@/telemetry';
@@ -188,6 +189,7 @@ function makeRuntime(
 }
 
 function makeService(sandboxEnabled = false) {
+	const settingsService = mock<AgentsSettingsService>();
 	const checkpointStorage = mock<N8NCheckpointStorage>();
 	const toolApprovalService = mock<AgentToolApprovalService>();
 	const executionService = mock<AgentExecutionService>();
@@ -276,10 +278,12 @@ function makeService(sandboxEnabled = false) {
 		chatExecutionService,
 		backgroundJobRepository,
 		backgroundJobs,
+		settingsService,
 	);
 
 	return {
 		service,
+		settingsService,
 		backgroundJobRepository,
 		backgroundJobs,
 		chatExecutionService,
@@ -571,6 +575,70 @@ describe('AgentExecutionOrchestratorService', () => {
 		Container.reset();
 	});
 
+	it.each(['chat', 'schedule'] as const)(
+		'rejects a disabled %s run before reconstruction',
+		async (source) => {
+			const { service, runtimeCacheService, settingsService, executionService, agentRepository } =
+				makeService();
+			runtimeCacheService.getRuntime.mockRejectedValue(new Error('runtime setup failed'));
+			agentRepository.findByIdAndProjectId.mockResolvedValue({
+				id: agentId,
+				name: 'Support Agent',
+				schema,
+				activeVersion: { schema },
+				integrations: [],
+			} as unknown as Agent);
+			settingsService.assertEnabled.mockRejectedValue(new UserError('Agents are disabled'));
+			const input = {
+				agentId,
+				projectId,
+				message: 'hello',
+				memory: { threadId: 'thread-1', resourceId: 'draft-chat:user-1' },
+			};
+			const stream =
+				source === 'chat'
+					? service.executeForChat({ ...input, user })
+					: service.executeForTaskPublished({
+							...input,
+							taskId: 'task-1',
+							taskVersionId: 'version-1',
+						});
+
+			await expect(collect(stream)).rejects.toThrow('Agents are disabled');
+			expect(runtimeCacheService.getRuntime).not.toHaveBeenCalled();
+			expect(executionService.startExecutionRecording).not.toHaveBeenCalled();
+		},
+	);
+
+	it('finishes an admitted queued run after Agents is disabled', async () => {
+		const { service, runtimeCacheService, settingsService, executionService } = makeService();
+		runtimeCacheService.getRuntime.mockResolvedValue(makeRuntime());
+		settingsService.assertEnabled.mockRejectedValue(new UserError('Agents are disabled'));
+
+		await collect(
+			service.executeForChat({
+				agentId,
+				projectId,
+				user,
+				message: 'Already admitted',
+				memory: { threadId: 'thread-1', resourceId: 'draft-chat:user-1' },
+				admittedExecution: {
+					executionId: 'admitted-1',
+					startedAt: new Date(),
+					inputMessageIds: ['message-1'],
+				},
+			}),
+		);
+
+		expect(executionService.startExecutionRecording).not.toHaveBeenCalled();
+		expect(executionService.finalizeExecution).toHaveBeenCalledWith(
+			'admitted-1',
+			expect.objectContaining({
+				record: expect.objectContaining({ finishReason: 'stop' }),
+			}),
+		);
+	});
+
 	describe.each(['start', 'resume'] as const)('%s turn lifecycle', (operation) => {
 		function makeTurn({
 			abortSignal,
@@ -635,6 +703,23 @@ describe('AgentExecutionOrchestratorService', () => {
 				sdkStart: operation === 'start' ? runtime.agent.stream : runtime.agent.resume,
 			};
 		}
+
+		it('finishes an admitted turn when Agents is disabled', async () => {
+			const { stream, settingsService, onExecutionStarted, executionService } = makeTurn();
+			onExecutionStarted.mockImplementation(() => {
+				settingsService.assertEnabled.mockRejectedValue(new UserError('Agents are disabled'));
+			});
+			if (operation === 'resume') {
+				settingsService.assertEnabled.mockRejectedValue(new UserError('Agents are disabled'));
+			}
+
+			await collect(stream);
+
+			expect(executionService.finalizeExecution).toHaveBeenCalledWith(
+				'execution-1',
+				expect.objectContaining({ record: expect.objectContaining({ finishReason: 'stop' }) }),
+			);
+		});
 
 		it('announces the recorded execution before the SDK starts', async () => {
 			const {
@@ -2095,8 +2180,10 @@ describe('AgentExecutionOrchestratorService', () => {
 		},
 	);
 
-	it('finalizes an admitted execution with its telemetry when the runtime build fails', async () => {
-		const { service, runtimeCacheService, executionService, agentRepository } = makeService();
+	it('finalizes an admitted execution when disabled and the runtime build fails', async () => {
+		const { service, runtimeCacheService, executionService, agentRepository, settingsService } =
+			makeService();
+		settingsService.assertEnabled.mockRejectedValue(new UserError('Agents are disabled'));
 		const buildError = new UserError('Credential "OpenAI" not found');
 		runtimeCacheService.getRuntime.mockRejectedValue(buildError);
 		agentRepository.findByIdAndProjectId.mockResolvedValue({
@@ -2294,8 +2381,44 @@ describe('AgentExecutionOrchestratorService', () => {
 		).resolves.toEqual(expect.any(Array));
 	});
 
-	it('records the background signal before the model produces any output', async () => {
-		const { service, runtimeCacheService, executionService } = makeService();
+	it('blocks tools and rejects a pause report interrupted by its guardrail', async () => {
+		const { service, runtimeCacheService } = makeService();
+		const runtime = makeRuntime([
+			{
+				type: 'finish',
+				finishReason: 'guardrail',
+				guardrail: { code: 'background-pause-report' },
+			},
+		]);
+		runtimeCacheService.getRuntime.mockResolvedValue(runtime);
+		await expect(
+			service.executeForWake({
+				backgroundJobSignal: { tasks: [] },
+				pauseReport: true,
+				agentId,
+				projectId,
+				message: 'Report the stopped tasks.',
+				memory: { threadId: 'thread-1', resourceId: 'draft-chat:user-1' },
+				identity: { type: 'draft', user, principalHash: userPrincipalHash },
+				abortSignal: new AbortController().signal,
+			}),
+		).rejects.toMatchObject({
+			constructor: OperationalError,
+			message: 'Background job wake failed',
+			cause: { guardrail: { code: 'background-pause-report' } },
+		});
+		const options = runtime.agent.stream.mock.calls[0][1] as ExecutionOptions;
+		expect(options.toolsEnabled).toBe(false);
+		const hook = options.guardrails?.hooks?.find((candidate) => candidate.beforeTool);
+		expect(await hook?.beforeTool?.(mock())).toMatchObject({
+			action: 'stop',
+			code: 'background-pause-report',
+		});
+	});
+
+	it('records a background continuation while Agents is disabled', async () => {
+		const { service, runtimeCacheService, executionService, settingsService } = makeService();
+		settingsService.assertEnabled.mockRejectedValue(new UserError('Agents are disabled'));
 		const runtime = makeRuntime();
 		let streamController!: ReadableStreamDefaultController<StreamChunk>;
 		vi.mocked(runtime.agent.stream).mockResolvedValue({

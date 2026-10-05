@@ -155,6 +155,7 @@ export class WaitTracker {
 		if (!fullExecutionData) {
 			throw new UnexpectedError('Execution does not exist.', { extra: { executionId } });
 		}
+		// oxlint-disable-next-line typescript/no-deprecated
 		if (fullExecutionData.finished) {
 			throw new UnexpectedError('The execution did succeed and can so not be started again.');
 		}
@@ -378,6 +379,7 @@ export class WaitTracker {
 			startedAt: child.startedAt,
 			stoppedAt: child.stoppedAt,
 			status: child.status,
+			// oxlint-disable-next-line typescript/no-deprecated
 			finished: child.finished,
 			storedAt: child.storedAt,
 		};

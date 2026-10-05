@@ -34,6 +34,7 @@ import { Telemetry } from '@/telemetry';
 import type { StartExecutionParams } from './agent-execution.service';
 import { AgentRunTracingService } from './agent-run-tracing.service';
 import { AgentRuntimeReconstructionService } from './agent-runtime-reconstruction.service';
+import { AgentsSettingsService } from './agents-settings.service';
 import {
 	encodeAgentSandboxHostMetadata,
 	type AgentSandboxPrincipalHash,
@@ -167,6 +168,7 @@ export class AgentWorkflowExecutionService {
 		private readonly nodeToolAiGatewayService: NodeToolAiGatewayService,
 		private readonly aiConfig: AiConfig,
 		private readonly integrationMessageContextService: IntegrationMessageContextService,
+		private readonly settingsService: AgentsSettingsService,
 	) {}
 
 	private normalizeWorkflowStreamError(error: unknown, outputSchema?: JSONSchema7): Error {
@@ -257,7 +259,7 @@ export class AgentWorkflowExecutionService {
 				sandboxPrincipalHash,
 				// A workflow execution cannot resume a suspended run — it throws
 				// instead (see `recorder.suspended` below).
-				{ supportsHitl: false },
+				{ supportsHitl: false, allowPlanTools: false },
 			);
 			const applied = this.applyPerCallAgentExtras(reconstructed.agent, outputSchema, extraTools);
 			if (!applied.ok) return applied;
@@ -485,6 +487,7 @@ export class AgentWorkflowExecutionService {
 	private async streamWorkflowAgent(
 		params: WorkflowAgentStreamParams,
 	): Promise<WorkflowAgentRunOutcome> {
+		await this.settingsService.assertEnabled();
 		const { recordingParams } = params;
 		const streamAdapter = new WorkflowAgentStreamAdapter(params.streamObserver);
 		let agentExecutionId: string | undefined;
@@ -647,6 +650,7 @@ export class AgentWorkflowExecutionService {
 	}
 
 	private async prepareStoredWorkflowRun(params: StoredWorkflowExecutionContext) {
+		await this.settingsService.assertEnabled();
 		const {
 			agentId,
 			projectId,
@@ -775,6 +779,7 @@ export class AgentWorkflowExecutionService {
 		workflowContext?: ExecuteAgentWorkflowContext,
 		streamObserver?: WorkflowAgentStreamObserver,
 	): Promise<ExecuteAgentData> {
+		await this.settingsService.assertEnabled();
 		const { runtimeConfig, skills, credentialProvider } = await this.prepareInlineRuntime(
 			inlineAgent,
 			projectId,
