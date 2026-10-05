@@ -1,0 +1,33 @@
+packages/frontend/editor-ui/src/features/workflow-reviews/components/PromotionReviewDetail.vue
+  s_97fae976194563::t_339fd1b34954ad 211-235
+packages/frontend/editor-ui/src/features/workflow-reviews/views/WorkflowReviewRequestsView.vue
+  s_97fae976194563::t_b4e957b6e84af4 236
+  ai_agent 50
+  s_97fae976194563::t_65da4a228b7f6d 165
+  s_97fae976194563::t_cce2bf105731fb 75-77
+  s_97fae976194563::t_96aedbfb230e4f 20-21
+  s_97fae976194563::t_975690f1f8695b 44-49,51,53
+  s_97fae976194563::t_81039fc1c7c1b9 52
+  s_97fae976194563::t_3eae3372ee37ac 212
+  s_97fae976194563::t_863a81efe08132 125
+  s_97fae976194563::t_0f1763b76c32e4 408
+packages/cli/src/modules/promotions.ee/docs/poc-gitlab-promotion-review.md
+  s_97fae976194563::t_8c899f80d2f11d 396
+  s_97fae976194563::t_95b8be92568523 376-380
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "4d8930c65323cc7d8fc9c30aacebf4b642e25041",
+  "prompts": {},
+  "sessions": {
+    "s_97fae976194563": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "afcd727d-38fa-4638-966d-feb3e6311121",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}
