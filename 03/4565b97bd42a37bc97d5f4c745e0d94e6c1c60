@@ -1,0 +1,16 @@
+packages/@n8n/decorators/src/controller/args.ts
+  h_5d40c27a8fdfd1 45
+packages/cli/src/public-api/media-types/request-body/json.request-body.ts
+  h_5d40c27a8fdfd1 8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "034565b97bd42a37bc97d5f4c745e0d94e6c1c60",
+  "prompts": {},
+  "humans": {
+    "h_5d40c27a8fdfd1": {
+      "author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}
