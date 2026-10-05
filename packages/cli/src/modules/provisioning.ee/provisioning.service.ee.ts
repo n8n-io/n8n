@@ -28,7 +28,6 @@ import { ZodError } from 'zod';
 
 import { BadRequestError } from '@n8n/errors';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
-import { ProjectService } from '@/services/project.service.ee';
 import { UserService } from '@/services/user.service';
 
 import { PROVISIONING_PREFERENCES_DB_KEY } from './constants';
@@ -47,7 +46,6 @@ export class ProvisioningService {
 		private readonly settingsRepository: SettingsRepository,
 		private readonly projectRepository: ProjectRepository,
 		private readonly projectRelationRepository: ProjectRelationRepository,
-		private readonly projectService: ProjectService,
 		private readonly roleRepository: RoleRepository,
 		private readonly userRepository: UserRepository,
 		private readonly userService: UserService,

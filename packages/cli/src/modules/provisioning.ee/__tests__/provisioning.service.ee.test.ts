@@ -25,7 +25,6 @@ import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.serv
 import { type RoleMappingRuleService } from '@/modules/provisioning.ee/role-mapping-rule.service.ee';
 import { type RoleResolverService } from '@/modules/provisioning.ee/role-resolver.service.ee';
 import { type Publisher } from '@/scaling/pubsub/publisher.service';
-import { type ProjectService } from '@/services/project.service.ee';
 import { type UserService } from '@/services/user.service';
 
 import { PROVISIONING_PREFERENCES_DB_KEY } from '../constants';
@@ -38,7 +37,6 @@ const userService = mock<UserService>();
 const entityManager = mock<EntityManager>();
 const projectRepository = mock<ProjectRepository>({ manager: entityManager });
 const projectRelationRepository = mock<ProjectRelationRepository>();
-const projectService = mock<ProjectService>();
 const eventService = mock<EventService>();
 
 const logger = mock<Logger>();
@@ -57,7 +55,6 @@ const provisioningService = new ProvisioningService(
 	settingsRepository,
 	projectRepository,
 	projectRelationRepository,
-	projectService,
 	roleRepository,
 	userRepository,
 	userService,
