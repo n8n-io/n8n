@@ -1,6 +1,13 @@
 import { getWorkspaceRoot } from '@n8n/agents/sandbox';
+import { TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE } from '@n8n/api-types';
 import { hasPageValue, validate, type JsonSchema, type ResourceField } from '@n8n/node-sdk';
-import { modelCatalogDeclaration, outputItemSchema, toTs } from '@n8n/node-sdk/codegen';
+import {
+	isProviderConnection,
+	modelCatalogDeclaration,
+	outputItemSchema,
+	PROVIDER_FIELDS,
+	toTs,
+} from '@n8n/node-sdk/codegen';
 import {
 	credentialHostsOf,
 	egressIssuesOf,
@@ -12,18 +19,23 @@ import { toContract, type NodeContractLock } from '@n8n/node-sdk/registry';
 import {
 	actionOfNode,
 	actions,
+	isContractNodeType,
 	migratedSlotOf,
 	toolActionOfNode,
 	versionsOf,
 } from '@n8n/nodes-base-next';
 import { isRecord } from '@n8n/utils/is-record';
 import { hasPlaceholderDeep } from '@n8n/utils/placeholder';
+import { sublimeSearch } from '@n8n/utils/search/sublime-search';
 import { toEngineConnections, type WorkflowJSON } from '@n8n/workflow-sdk';
 import {
 	getChildNodes,
 	isFromAIOnlyExpression,
 	NodeConnectionTypes,
+	NodeVersionNotFoundError,
 	safeRegex,
+	type INodeTypeDescription,
+	type INodeTypes,
 } from 'n8n-workflow';
 import { z } from 'zod';
 
@@ -112,7 +124,7 @@ export async function missingNodeTypeErrors(
 	);
 	return [...imported, ...named]
 		.filter(({ nodeType }) => !isInstalledNodeType(nodeType, deriveSource))
-		.map(({ at, nodeType }) => `${at}: ${missingNodeTypeIssue(nodeType)}`);
+		.map(({ at, nodeType }) => `${at}: ${missingNodeTypeIssue(nodeType, deriveSource)}`);
 }
 
 /** Files to write before the build: the tsconfig, the imported node modules, empty outputs. */
@@ -844,6 +856,199 @@ export async function legacyNodeIssues(
 			},
 		];
 	});
+}
+
+/** The connection types of description inputs or outputs. An expression gives the `builderHint` keys, if any. */
+const connectionTypesOf = (
+	entries: string | ReadonlyArray<string | { readonly type: string }>,
+	hint: object | undefined,
+): ReadonlySet<string> | undefined =>
+	typeof entries === 'string'
+		? hint && new Set(Object.keys(hint))
+		: new Set(entries.map((entry) => (typeof entry === 'string' ? entry : entry.type)));
+
+const slotOf = (connection: string) =>
+	isProviderConnection(connection) ? PROVIDER_FIELDS[connection] : connection;
+
+/** The description of a node at its version, or why the instance has no such node type or version. */
+function descriptionAt(
+	nodeTypes: INodeTypes,
+	node: WorkflowJSON['nodes'][number],
+	source: DeriveSource,
+): INodeTypeDescription | string {
+	const { type, typeVersion } = node;
+	const noVersion = (versions: readonly number[]) =>
+		`${type} has no version ${typeVersion}. Versions: ${versions.join(', ')}.`;
+	try {
+		// A node type with one class returns that class for any version, so the version list decides.
+		const { description } = nodeTypes.getByNameAndVersion(type, typeVersion);
+		const versions = [description.version].flat();
+		return versions.includes(typeVersion) ? description : noVersion(versions);
+	} catch (error) {
+		return error instanceof NodeVersionNotFoundError
+			? noVersion(error.availableVersions)
+			: missingNodeTypeIssue(type, source);
+	}
+}
+
+const UNKNOWN_PARAMETER_CODE = 'UNKNOWN_PARAMETER';
+const NODE_VERSION_NOT_FOUND_CODE = 'NODE_VERSION_NOT_FOUND';
+const PROVIDER_SLOT_MISMATCH_CODE = 'PROVIDER_SLOT_MISMATCH';
+const CREDENTIAL_TYPE_NOT_FOUND_CODE = 'CREDENTIAL_TYPE_NOT_FOUND';
+
+type DescribedNode = {
+	node: WorkflowJSON['nodes'][number];
+	description: INodeTypeDescription;
+};
+
+/**
+ * The checks of the nodes that `node()`, `provider()` or `trigger()` writes, which `tsc` cannot
+ * type. Blocking warnings: a version that the node type does not have, a provider that does not
+ * give the connection type of its slot or a root node that has no such slot, and a credential type
+ * that the instance does not have. They are warnings, not compile errors, so that an edit build
+ * can downgrade them on a saved node that it did not change. Informational warnings: top-level
+ * parameters that the node type does not have.
+ */
+export async function untypedNodeIssues(
+	source: string,
+	workflow: WorkflowJSON,
+	context: Pick<InstanceAiContext, 'nodeTypesProvider' | 'credentialService'>,
+): Promise<ValidationWarning[]> {
+	const nodeTypes = context.nodeTypesProvider;
+	if (!nodeTypes) return [];
+	const blocking = (code: string, nodeName: string, message: string): ValidationWarning => ({
+		code,
+		nodeName,
+		severity: 'warning',
+		message,
+	});
+	const { locateNextNodes } = await import('@n8n/workflow-sdk/next');
+	const lines = new Map(
+		locateNextNodes(source).flatMap(
+			({ name, type, line }): Array<[string, number]> => (type === undefined ? [] : [[name, line]]),
+		),
+	);
+	const at = (name: string) => `"${name}" (line ${lines.get(name)})`;
+	const written = workflow.nodes.flatMap((node) =>
+		node.name && lines.has(node.name) && !isContractNodeType(node.type)
+			? [{ node, name: node.name, description: descriptionAt(nodeTypes, node, context) }]
+			: [],
+	);
+	const described = new Map(
+		written.flatMap(
+			({ node, name, description }): Array<[string, DescribedNode]> =>
+				typeof description === 'string' ? [] : [[name, { node, description }]],
+		),
+	);
+
+	const versionIssues = written.flatMap(({ name, description }) =>
+		typeof description === 'string'
+			? [blocking(NODE_VERSION_NOT_FOUND_CODE, name, `${at(name)}: ${description}`)]
+			: [],
+	);
+
+	const providerEdges = Object.entries(toEngineConnections(workflow.connections)).flatMap(
+		([from, byType]) =>
+			Object.entries(byType).flatMap(([connection, groups]) =>
+				connection === NodeConnectionTypes.Main
+					? []
+					: groups
+							.flatMap((group) => group ?? [])
+							.map(({ node: to }) => ({ from, to, connection })),
+			),
+	);
+	const slotIssues = providerEdges.flatMap(({ from, to, connection }) => {
+		const provider = described.get(from);
+		const root = described.get(to);
+		const gives =
+			provider &&
+			connectionTypesOf(provider.description.outputs, provider.description.builderHint?.outputs);
+		const takes =
+			root && connectionTypesOf(root.description.inputs, root.description.builderHint?.inputs);
+		const slots = [...(takes ?? [])].filter((type) => type !== NodeConnectionTypes.Main);
+		return [
+			...(provider && gives && !gives.has(connection)
+				? [
+						blocking(
+							PROVIDER_SLOT_MISMATCH_CODE,
+							from,
+							`${at(from)}: ${provider.node.type} gives ${[...gives].join(', ')}, not ${connection}. It cannot be the ${slotOf(connection)} of "${to}".`,
+						),
+					]
+				: []),
+			...(root && takes && !takes.has(connection)
+				? [
+						blocking(
+							PROVIDER_SLOT_MISMATCH_CODE,
+							to,
+							`${at(to)}: ${root.node.type} has no ${slotOf(connection)} slot (${connection}). Its slots: ${slots.map(slotOf).join(', ') || 'none'}.`,
+						),
+					]
+				: []),
+		];
+	});
+
+	const credentialTypeExists = context.credentialService.credentialTypeExists?.bind(
+		context.credentialService,
+	);
+	const credentialChecks = [...described].flatMap(([name, { node, description }]) =>
+		[
+			...new Set(
+				description.properties
+					.filter(({ type }) => type === 'credentialsSelect')
+					.map((property) => property.name),
+			),
+		].flatMap((parameter) => {
+			const value = node.parameters?.[parameter];
+			return typeof value === 'string' &&
+				value !== '' &&
+				!value.startsWith('=') &&
+				value !== TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE
+				? [{ name, parameter, value }]
+				: [];
+		}),
+	);
+	const credentialIssues = credentialTypeExists
+		? (
+				await Promise.all(
+					credentialChecks.map(async ({ name, parameter, value }) =>
+						// A failed lookup does not block the build.
+						(await credentialTypeExists(value).catch(() => true))
+							? []
+							: [
+									blocking(
+										CREDENTIAL_TYPE_NOT_FOUND_CODE,
+										name,
+										`${at(name)}: ${parameter} "${value}" is not a credential type of this instance. Find the type with credentials(action="search-types").`,
+									),
+								],
+					),
+				)
+			).flat()
+		: [];
+
+	const parameterIssues = [...described].flatMap(
+		([name, { node, description }]): ValidationWarning[] => {
+			const known = new Set(description.properties.map((property) => property.name));
+			const unknown = Object.keys(node.parameters ?? {}).filter((key) => !known.has(key));
+			if (unknown.length === 0) return [];
+			const entries = [...known].map((key) => ({ key }));
+			const keys = unknown.map((key) => {
+				const [nearest] = sublimeSearch(key, entries, [{ key: 'key', weight: 1 }], 1);
+				return nearest ? `"${key}" (did you mean "${nearest.item.key}"?)` : `"${key}"`;
+			});
+			return [
+				{
+					code: UNKNOWN_PARAMETER_CODE,
+					nodeName: name,
+					severity: 'informational',
+					message: `${at(name)}: ${node.type} has no parameter ${keys.join(', ')}. Find its parameters with nodes(action="type-definition").`,
+				},
+			];
+		},
+	);
+
+	return [...versionIssues, ...slotIssues, ...credentialIssues, ...parameterIssues];
 }
 
 const TYPECHECK_TIMEOUT_MS = 60_000;

@@ -1987,6 +1987,82 @@ describe('createBuildWorkflowTool', () => {
 		expect(result.errors?.some((e) => e.includes('Missing discriminator'))).toBe(true);
 	});
 
+	describe('edit build of a /next source', () => {
+		const nextSource =
+			"export default workflow('W', manual(), node({ name: 'Webhook', type: 'n8n-nodes-base.webhook', version: 2 }));";
+		const slotFinding: ValidationWarning = {
+			code: 'PROVIDER_SLOT_MISMATCH',
+			nodeName: 'Webhook',
+			severity: 'warning',
+			message: '"Webhook" (line 1): n8n-nodes-base.webhook has no model slot (ai_languageModel).',
+		};
+
+		const editBuild = async (
+			finding: ValidationWarning,
+			saved: WorkflowJSON,
+			nodeContractsEnabled = true,
+		) => {
+			vi.mocked(partitionWarnings).mockImplementation((warnings: ValidationWarning[]) => ({
+				blocking: warnings.filter((w) => w.severity !== 'informational'),
+				informational: warnings.filter((w) => w.severity === 'informational'),
+			}));
+			const built = structuredClone(generatedWorkflow);
+			// A `/next` build mints new node ids.
+			built.nodes[0].id = 'minted-id';
+			vi.mocked(compileWorkflowSource).mockResolvedValueOnce({
+				success: true,
+				workflow: built,
+				warnings: [finding],
+				compiler: 'sandbox-tsx',
+			});
+			const { context, filePath } = makeContext({
+				source: nextSource,
+				overrides: { nodeContractsEnabled },
+			});
+			vi.mocked(context.workflowService.getAsWorkflowJSON).mockResolvedValue({
+				...saved,
+				name: 'Target workflow',
+			});
+			return await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
+				filePath,
+				workflowId: 'wf-bound',
+			});
+		};
+
+		it('saves when a saved node that the build did not change has a slot problem', async () => {
+			const result = await editBuild(slotFinding, structuredClone(generatedWorkflow));
+
+			expect(result).toMatchObject({ success: true, workflowId: 'wf-bound' });
+			expect(result.warnings?.some((w) => w.includes('pre-existing node'))).toBe(true);
+		});
+
+		it('blocks the save when a new node has a slot problem', async () => {
+			const result = await editBuild(slotFinding, { ...generatedWorkflow, nodes: [] });
+
+			expect(result.success).toBe(false);
+			expect(result.errors?.some((e) => e.includes('has no model slot'))).toBe(true);
+		});
+
+		const parameterFinding: ValidationWarning = {
+			code: 'INVALID_PARAMETER',
+			nodeName: 'Webhook',
+			message: 'Node "Webhook": Missing discriminator "parameters.resource".',
+		};
+
+		it('downgrades INVALID_PARAMETER on a saved node that the build did not change', async () => {
+			const result = await editBuild(parameterFinding, structuredClone(generatedWorkflow));
+
+			expect(result).toMatchObject({ success: true, workflowId: 'wf-bound' });
+		});
+
+		it('keeps INVALID_PARAMETER blocking on new node ids with the flag off', async () => {
+			const result = await editBuild(parameterFinding, structuredClone(generatedWorkflow), false);
+
+			expect(result.success).toBe(false);
+			expect(result.errors?.some((e) => e.includes('Missing discriminator'))).toBe(true);
+		});
+	});
+
 	it('does not require setup for pending nodes the build did not change', async () => {
 		vi.mocked(analyzeWorkflow).mockResolvedValueOnce([
 			{

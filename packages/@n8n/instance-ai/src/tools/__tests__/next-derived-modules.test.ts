@@ -271,6 +271,18 @@ describe('derived node modules', () => {
 			).toContain('/// <reference path="../../node-outputs.d.ts" />');
 		});
 
+		it('names the nearest known node types for a node type the instance does not have', () => {
+			const nodeTypesProvider = derivedNodeTypes([], aiNodeTypes);
+			vi.mocked(nodeTypesProvider.getKnownTypes).mockReturnValue({
+				'n8n-nodes-base.mattermost': {},
+				'n8n-nodes-base.matrix': {},
+				'n8n-nodes-base.slack': {},
+			});
+			expect(missingNodeTypeIssue('n8n-nodes-base.matermost', { nodeTypesProvider })).toBe(
+				'n8n has no node type n8n-nodes-base.matermost. Nearest types: n8n-nodes-base.mattermost. Find the type with nodes(action="search").',
+			);
+		});
+
 		it('derives a node type that the instance gets after a failed lookup', () => {
 			const nodeTypesProvider = derivedNodeTypes([], aiNodeTypes);
 			nodeTypesProvider.getByNameAndVersion.mockImplementationOnce(() => {
@@ -283,7 +295,7 @@ describe('derived node modules', () => {
 		it('fails the build in one line for a node type the instance does not have', async () => {
 			expect(isInstalledNodeType(ACME, source)).toBe(true);
 			expect(isInstalledNodeType('n8n-nodes-other.widget', source)).toBe(false);
-			expect(missingNodeTypeIssue('n8n-nodes-base.nope')).toBe(
+			expect(missingNodeTypeIssue('n8n-nodes-base.nope', source)).toBe(
 				'n8n has no node type n8n-nodes-base.nope. Find the type with nodes(action="search").',
 			);
 			const code = [

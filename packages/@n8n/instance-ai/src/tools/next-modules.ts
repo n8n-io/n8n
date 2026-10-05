@@ -11,6 +11,7 @@ import {
 	type DerivedAction,
 } from '@n8n/node-contract-compat';
 import { isRecord } from '@n8n/utils/is-record';
+import { sublimeSearch } from '@n8n/utils/search/sublime-search';
 import type { OutputSchemaLookup } from '@n8n/workflow-sdk';
 import type { ContractRead } from '@n8n/workflow-sdk/next';
 import { isNodeParameters, type INodeTypeDescription, type INodeTypes } from 'n8n-workflow';
@@ -625,12 +626,32 @@ const BUILT_IN_PACKAGES: ReadonlySet<string> = new Set([
 	'@n8n/n8n-nodes-langchain',
 ]);
 
+const NEAREST_NODE_TYPES = 3;
+
+/** The known node types of the instance whose names are nearest to the name of `nodeType`. */
+function nearestNodeTypes(nodeType: string, source: DeriveSource): string[] {
+	const nameOf = (type: string) => type.slice(type.lastIndexOf('.') + 1);
+	const known = Object.keys(source.nodeTypesProvider?.getKnownTypes() ?? {}).map((type) => ({
+		type,
+		name: nameOf(type),
+	}));
+	return sublimeSearch(
+		nameOf(nodeType),
+		known,
+		[{ key: 'name', weight: 1 }],
+		NEAREST_NODE_TYPES,
+	).map(({ item }) => item.type);
+}
+
 /** Why a node type that the instance does not have cannot build, in one line. */
-export function missingNodeTypeIssue(nodeType: string): string {
+export function missingNodeTypeIssue(nodeType: string, source: DeriveSource): string {
 	const packageName = nodeType.slice(0, nodeType.lastIndexOf('.'));
-	return BUILT_IN_PACKAGES.has(packageName) || !packageName
-		? `n8n has no node type ${nodeType}. Find the type with nodes(action="search").`
-		: `Node type ${nodeType} is not installed. Install package ${packageName} first.`;
+	if (!BUILT_IN_PACKAGES.has(packageName) && packageName) {
+		return `Node type ${nodeType} is not installed. Install package ${packageName} first.`;
+	}
+	const nearest = nearestNodeTypes(nodeType, source);
+	const hint = nearest.length > 0 ? ` Nearest types: ${nearest.join(', ')}.` : '';
+	return `n8n has no node type ${nodeType}.${hint} Find the type with nodes(action="search").`;
 }
 
 /** The node type has a derived module: no typed module or SDK step replaces it, and it derives. */

@@ -135,6 +135,28 @@ describe('downgradeUnchangedNodeBlockers', () => {
 		expect(result[0].severity).toBeUndefined();
 	});
 
+	it.each(['NODE_VERSION_NOT_FOUND', 'PROVIDER_SLOT_MISMATCH', 'CREDENTIAL_TYPE_NOT_FOUND'])(
+		'downgrades %s on an unchanged node and keeps it blocking on a new node',
+		(code) => {
+			const node = makeNode();
+			const finding = { ...blocker('Send a message', code), severity: 'warning' as const };
+
+			const unchanged = downgradeUnchangedNodeBlockers(
+				[finding],
+				makeWorkflow([node]),
+				makeWorkflow([{ ...node }]),
+			);
+			const added = downgradeUnchangedNodeBlockers(
+				[finding],
+				makeWorkflow([node]),
+				makeWorkflow([]),
+			);
+
+			expect(unchanged[0].severity).toBe('informational');
+			expect(added).toEqual([finding]);
+		},
+	);
+
 	it.each([
 		'UNKNOWN_CONFIG_KEY',
 		'ARRAY_INPUT_COLLAPSED_TO_FIRST_ITEM',

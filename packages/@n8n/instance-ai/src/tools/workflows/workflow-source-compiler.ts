@@ -42,6 +42,7 @@ import {
 	staticInputIssues,
 	synthesizedFixtures,
 	typecheckWorkflowSource,
+	untypedNodeIssues,
 	workflowExpressions,
 } from './next-workflow-build';
 
@@ -543,6 +544,7 @@ async function compileNextWorkflowSource(
 		};
 	}
 	if (!built.success) return built;
+	const untyped = await untypedNodeIssues(source, built.workflow, context);
 	const fixtures = synthesizedFixtures(
 		built.workflow,
 		built.declaredOutputFixtures,
@@ -562,6 +564,7 @@ async function compileNextWorkflowSource(
 		liveReadNodeNames: liveReadNodeNames(built.workflow, built.declaredOutputFixtures),
 		warnings: [
 			...built.warnings,
+			...untyped,
 			...sampledReadIssues(built.workflow, built.declaredOutputFixtures),
 		],
 	};

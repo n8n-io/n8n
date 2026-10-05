@@ -1217,6 +1217,15 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 					// Prior state unreadable — treat every node as changed (unscoped).
 				}
 			}
+			// A `/next` node has no id in the source, so each build gets new ids. Recover the saved ids
+			// before the downgrade below pairs the built nodes with the saved nodes.
+			if (sourceSdk === 'next' && savedWorkflowSnapshot) {
+				try {
+					await preserveExistingNodeIds(compiled.workflow, targetWorkflowId, context);
+				} catch {
+					// The save step loads the saved workflow again and reports the failure.
+				}
+			}
 
 			const partitionedWarnings = partitionWarnings(
 				downgradeUnchangedNodeBlockers(compiled.warnings, compiled.workflow, savedWorkflowSnapshot),

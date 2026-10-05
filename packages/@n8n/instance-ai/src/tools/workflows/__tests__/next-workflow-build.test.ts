@@ -1,10 +1,22 @@
 import { versionsOf } from '@n8n/nodes-base-next';
 import type { IDataObject, WorkflowJSON } from '@n8n/workflow-sdk';
-import { Workflow, type IConnections, type INode, type INodeTypes } from 'n8n-workflow';
+import * as flowSdk from '@n8n/workflow-sdk/next';
+import {
+	NodeVersionNotFoundError,
+	Workflow,
+	type IConnections,
+	type INode,
+	type INodeTypeDescription,
+	type INodeTypes,
+} from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import type { InstanceAiContext } from '../../../types';
-import { derivedNodeTypes } from '../../__tests__/derived-node-types';
+import {
+	aiNodeTypes,
+	derivedNodeTypes,
+	mattermostDescription,
+} from '../../__tests__/derived-node-types';
 import {
 	contractEgressWarnings,
 	EMPTY_OUTPUTS,
@@ -22,6 +34,7 @@ import {
 	FLOW_MACROS,
 	tscHintOf,
 	typecheckWorkflowSource,
+	untypedNodeIssues,
 	usedNodeIds,
 	withTscHints,
 	workflowExpressions,
@@ -1230,5 +1243,207 @@ describe('tsc hints', () => {
 			'src/workflow.ts',
 		);
 		expect(result.errors).toEqual([`${error}\nHint: ${tscHintOf(error, [])}`]);
+	});
+});
+
+describe('untypedNodeIssues', () => {
+	const MATTERMOST = 'n8n-nodes-base.mattermost';
+	const AGENT = '@n8n/n8n-nodes-langchain.agentRoot';
+	const CHAT = '@n8n/n8n-nodes-langchain.lmChatAcme';
+	const httpDescription: INodeTypeDescription = {
+		...mattermostDescription,
+		displayName: 'HTTP Request',
+		name: 'httpRequest',
+		version: 4.2,
+		credentials: [],
+		properties: [
+			{ displayName: 'URL', name: 'url', type: 'string', default: '' },
+			{
+				displayName: 'Credential Type',
+				name: 'nodeCredentialType',
+				type: 'credentialsSelect',
+				default: '',
+			},
+		],
+	};
+	const vectorStoreDescription: INodeTypeDescription = {
+		...mattermostDescription,
+		displayName: 'Acme Vector Store',
+		name: 'vectorStoreAcme',
+		version: [1, 1.1],
+		inputs: '={{ $parameter.mode === "retrieve" ? [] : ["main", "ai_embedding"] }}',
+		outputs: '={{ $parameter.mode === "retrieve" ? ["ai_vectorStore"] : ["main"] }}',
+		builderHint: {
+			inputs: { ai_embedding: { required: true } },
+			outputs: { main: {}, ai_vectorStore: {} },
+		},
+		properties: [{ displayName: 'Mode', name: 'mode', type: 'string', default: 'insert' }],
+	};
+	const embeddingDescription: INodeTypeDescription = {
+		...mattermostDescription,
+		displayName: 'Acme Embeddings',
+		name: 'embeddingsAcme',
+		version: 1,
+		inputs: [],
+		outputs: ['ai_embedding'],
+		properties: [],
+	};
+	const context = (credentialTypes: string[] = []) => ({
+		nodeTypesProvider: derivedNodeTypes(
+			[mattermostDescription, httpDescription, vectorStoreDescription, embeddingDescription],
+			aiNodeTypes,
+		),
+		credentialService: mock<InstanceAiContext['credentialService']>({
+			credentialTypeExists: async (type: string) =>
+				await Promise.resolve(credentialTypes.includes(type)),
+		}),
+	});
+
+	const messages = (issues: Array<{ message: string }>) => issues.map(({ message }) => message);
+
+	it('blocks a node() version that the node type does not have', async () => {
+		const source = `workflow('W', manual(),
+	node({ name: 'Post', type: '${MATTERMOST}', version: 9 }));`;
+		const json = flowSdk
+			.workflow('W', flowSdk.manual(), flowSdk.node({ name: 'Post', type: MATTERMOST, version: 9 }))
+			.toJSON();
+		expect(await untypedNodeIssues(source, json, context())).toEqual([
+			{
+				code: 'NODE_VERSION_NOT_FOUND',
+				nodeName: 'Post',
+				severity: 'warning',
+				message: '"Post" (line 2): n8n-nodes-base.mattermost has no version 9. Versions: 2, 2.3.',
+			},
+		]);
+
+		const versioned = context();
+		versioned.nodeTypesProvider.getByNameAndVersion.mockImplementation(() => {
+			throw new NodeVersionNotFoundError(MATTERMOST, 9, [1, 2]);
+		});
+		expect(messages(await untypedNodeIssues(source, json, versioned))).toEqual([
+			'"Post" (line 2): n8n-nodes-base.mattermost has no version 9. Versions: 1, 2.',
+		]);
+	});
+
+	it('warns about node() parameters that the node type does not have', async () => {
+		const source = `workflow('W', manual(),
+	node({ name: 'Post', type: '${MATTERMOST}', version: 2.3, parameters: { resource: 'message', mesage: 'Hi', bogus: 1 } }));`;
+		const json = flowSdk
+			.workflow(
+				'W',
+				flowSdk.manual(),
+				flowSdk.node({
+					name: 'Post',
+					type: MATTERMOST,
+					version: 2.3,
+					parameters: { resource: 'message', mesage: 'Hi', bogus: 1 },
+				}),
+			)
+			.toJSON();
+		expect(await untypedNodeIssues(source, json, context())).toEqual([
+			{
+				code: 'UNKNOWN_PARAMETER',
+				nodeName: 'Post',
+				severity: 'informational',
+				message:
+					'"Post" (line 2): n8n-nodes-base.mattermost has no parameter "mesage" (did you mean "message"?), "bogus". Find its parameters with nodes(action="type-definition").',
+			},
+		]);
+	});
+
+	it('blocks a provider() that does not give its slot, and a slot that the root node does not have', async () => {
+		const source = `workflow('W', manual(),
+	node({ name: 'Agent', type: '${AGENT}', version: 1, providers: {
+		model: provider({ name: 'Model', type: '${MATTERMOST}', version: 2.3 }) } }),
+	node({ name: 'Post', type: '${MATTERMOST}', version: 2.3, providers: {
+		model: provider({ name: 'Chat', type: '${CHAT}', version: 1.2 }) } }));`;
+		const json = flowSdk
+			.workflow(
+				'W',
+				flowSdk.manual(),
+				flowSdk.node({
+					name: 'Agent',
+					type: AGENT,
+					version: 1,
+					providers: { model: flowSdk.provider({ name: 'Model', type: MATTERMOST, version: 2.3 }) },
+				}),
+				flowSdk.node({
+					name: 'Post',
+					type: MATTERMOST,
+					version: 2.3,
+					providers: { model: flowSdk.provider({ name: 'Chat', type: CHAT, version: 1.2 }) },
+				}),
+			)
+			.toJSON();
+		expect(await untypedNodeIssues(source, json, context())).toEqual([
+			{
+				code: 'PROVIDER_SLOT_MISMATCH',
+				nodeName: 'Model',
+				severity: 'warning',
+				message:
+					'"Model" (line 3): n8n-nodes-base.mattermost gives main, not ai_languageModel. It cannot be the model of "Agent".',
+			},
+			{
+				code: 'PROVIDER_SLOT_MISMATCH',
+				nodeName: 'Post',
+				severity: 'warning',
+				message:
+					'"Post" (line 4): n8n-nodes-base.mattermost has no model slot (ai_languageModel). Its slots: none.',
+			},
+		]);
+	});
+
+	it('blocks a credential type that the instance does not have', async () => {
+		const source = `workflow('W', manual(),
+	node({ name: 'Fetch', type: 'n8n-nodes-base.httpRequest', version: 4.2, parameters: { url: 'https://api.acme.dev', nodeCredentialType: 'acmeApi' } }));`;
+		const build = (nodeCredentialType: string) =>
+			flowSdk
+				.workflow(
+					'W',
+					flowSdk.manual(),
+					flowSdk.node({
+						name: 'Fetch',
+						type: 'n8n-nodes-base.httpRequest',
+						version: 4.2,
+						parameters: { url: 'https://api.acme.dev', nodeCredentialType },
+					}),
+				)
+				.toJSON();
+		expect(await untypedNodeIssues(source, build('acmeApi'), context(['notionApi']))).toEqual([
+			{
+				code: 'CREDENTIAL_TYPE_NOT_FOUND',
+				nodeName: 'Fetch',
+				severity: 'warning',
+				message:
+					'"Fetch" (line 2): nodeCredentialType "acmeApi" is not a credential type of this instance. Find the type with credentials(action="search-types").',
+			},
+		]);
+		expect(await untypedNodeIssues(source, build('notionApi'), context(['notionApi']))).toEqual([]);
+	});
+
+	it('keeps a node() of a vector store with its embedding provider clean', async () => {
+		const source = `workflow('W', manual(),
+	node({ name: 'Store', type: 'n8n-nodes-base.vectorStoreAcme', version: 1.1, parameters: { mode: 'insert' }, providers: {
+		embedding: provider({ name: 'Embed', type: 'n8n-nodes-base.embeddingsAcme', version: 1 }) } }));`;
+		const json = flowSdk
+			.workflow(
+				'W',
+				flowSdk.manual(),
+				flowSdk.node({
+					name: 'Store',
+					type: 'n8n-nodes-base.vectorStoreAcme',
+					version: 1.1,
+					parameters: { mode: 'insert' },
+					providers: {
+						embedding: flowSdk.provider({
+							name: 'Embed',
+							type: 'n8n-nodes-base.embeddingsAcme',
+							version: 1,
+						}),
+					},
+				}),
+			)
+			.toJSON();
+		expect(await untypedNodeIssues(source, json, context())).toEqual([]);
 	});
 });

@@ -233,7 +233,13 @@ export function downgradeUnchangedNodeBlockers(
 				(builtSignatures.get(nodeKey(node)) ?? []).some((edge) => edge.startsWith('out main['))
 			)
 				return warning;
-		} else if (warning.code === 'INVALID_PARAMETER' || warning.code === 'chat_model_validation') {
+		} else if (
+			warning.code === 'INVALID_PARAMETER' ||
+			warning.code === 'chat_model_validation' ||
+			warning.code === 'NODE_VERSION_NOT_FOUND' ||
+			warning.code === 'PROVIDER_SLOT_MISMATCH' ||
+			warning.code === 'CREDENTIAL_TYPE_NOT_FOUND'
+		) {
 			if (
 				!parametersUnchanged(node, saved) ||
 				!connectionsUnchanged(node, saved, builtSignatures, savedSignatures)
