@@ -3790,14 +3790,19 @@ export interface IWorkflowExecutionDataProcess {
 	httpResponse?: express.Response; // Used for streaming responses
 	streamingEnabled?: boolean;
 	/**
+	 * Only engine v2 reads this. The data-plane execution id, set by a caller that
+	 * minted it before the run starts: to subscribe to the run's answer, or because
+	 * the trigger node already stored files under it. Without it, the dispatcher
+	 * mints one.
+	 */
+	engineV2ExecutionId?: string;
+	/**
 	 * Only engine v2 reads this. A caller that waits for the run's answer sets
-	 * it. The caller mints the data-plane execution id, so it can subscribe
-	 * before the run starts. `responseMode` tells the engine which answer the
-	 * caller waits for. Without this field, nobody waits for an answer.
+	 * it, together with `engineV2ExecutionId`. `responseMode` tells the engine
+	 * which answer the caller waits for. Without this field, nobody waits.
 	 */
 	engineV2Response?: {
-		executionId: string;
-		responseMode: 'lastNode' | 'responseNode';
+		responseMode: 'lastNode' | 'responseNode' | 'streaming';
 	};
 	startedAt?: Date;
 

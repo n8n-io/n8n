@@ -1,11 +1,13 @@
 import type {
 	AgentApproval,
+	AgentBudgetSpend,
 	AgentBackgroundJobsResponse,
 	AgentCapabilitySummary,
 	AgentChatMessagesResponse,
 	AgentChatQueueResponse,
 	AgentChatQueueUpdateDto,
 	AgentChatQueueSteerDto,
+	AgentChatQueueReorderDto,
 	AgentChatResumeDto,
 	AgentConfigMutationResponse,
 	AgentConfigResponse,
@@ -16,6 +18,7 @@ import type {
 	AgentIntegrationStatusResponse,
 	AgentJsonVectorStoreConfig,
 	AgentSkill,
+	AgentsSettingsDto,
 	AgentSkillMutationResponse,
 	AgentTaskConfig,
 	AgentTaskDto,
@@ -29,6 +32,17 @@ import type {
 import { getFullApiResponse, makeRestApiRequest } from '@n8n/rest-api-client';
 import type { IRestApiContext } from '@n8n/rest-api-client';
 import type { AgentResource, AgentJsonConfig, CustomToolEntry } from '../types';
+
+export async function getAgentsSettings(context: IRestApiContext): Promise<AgentsSettingsDto> {
+	return await makeRestApiRequest(context, 'GET', '/agents/settings');
+}
+
+export async function updateAgentsSettings(
+	context: IRestApiContext,
+	settings: AgentsSettingsDto,
+): Promise<AgentsSettingsDto> {
+	return await makeRestApiRequest(context, 'PUT', '/agents/settings', settings);
+}
 
 export type ListAgentsSortBy =
 	| 'name:asc'
@@ -448,6 +462,18 @@ export const listAgentVersions = async (
 	);
 };
 
+export const getAgentBudgetSpend = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+): Promise<AgentBudgetSpend> => {
+	return await makeRestApiRequest<AgentBudgetSpend>(
+		context,
+		'GET',
+		`/projects/${projectId}/agents/v2/${agentId}/budget`,
+	);
+};
+
 export const getAgentConfig = async (
 	context: IRestApiContext,
 	projectId: string,
@@ -588,6 +614,22 @@ export const updateAgentQueuedMessage = async (
 		context,
 		'PATCH',
 		`/projects/${encodeURIComponent(projectId)}/agents/v2/${encodeURIComponent(agentId)}/chat/${encodeURIComponent(threadId)}/queue/${encodeURIComponent(queueId)}`,
+		payload,
+	);
+};
+
+export const reorderAgentQueuedMessage = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	threadId: string,
+	queueId: string,
+	payload: AgentChatQueueReorderDto,
+): Promise<void> => {
+	await makeRestApiRequest(
+		context,
+		'POST',
+		`/projects/${encodeURIComponent(projectId)}/agents/v2/${encodeURIComponent(agentId)}/chat/${encodeURIComponent(threadId)}/queue/${encodeURIComponent(queueId)}/reorder`,
 		payload,
 	);
 };

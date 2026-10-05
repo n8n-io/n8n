@@ -342,6 +342,29 @@ export class AgentTurnExecutionService {
 		onExecutionRecorded?.(recordedId);
 	}
 
+	/** Finalize an admitted execution whose runtime could not start. */
+	async recordFailedAdmission(
+		admission: AgentExecutionAdmission,
+		params: StartExecutionParams,
+		executionError: unknown,
+	): Promise<void> {
+		const recorder = this.createRecorder(
+			undefined,
+			undefined,
+			undefined,
+			undefined,
+			admission.startedAt,
+		);
+		recorder.record({ type: 'error', error: executionError });
+		recorder.record({ type: 'finish', finishReason: 'error' });
+		await this.finalizeExecution({
+			executionId: admission.executionId,
+			executionStarted: false,
+			executionError,
+			params: { ...params, record: recorder.getMessageRecord() },
+		});
+	}
+
 	async recordFailedStart(
 		params: StartExecutionParams,
 		executionError: unknown,

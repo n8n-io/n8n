@@ -162,6 +162,26 @@ describe('spawn', () => {
 		expect(runner.run.mock.calls[1][1]).not.toHaveProperty('parentWorkspaceHandle');
 	});
 
+	it('debits the parent thread as the root budget session and forwards the root cap', async () => {
+		const { backgroundRunner, runner, context } = setup();
+
+		await backgroundRunner.spawn(request, { ...context, rootSessionCapUsd: 2 });
+		await flushDetachedRun();
+		expect(runner.run.mock.calls[0][1]).toMatchObject({
+			rootSessionId: 'thread-1',
+			rootSessionCapUsd: 2,
+			budgetForwarded: true,
+		});
+
+		await backgroundRunner.spawn(request, context);
+		await flushDetachedRun();
+		expect(runner.run.mock.calls[1][1]).toMatchObject({
+			rootSessionId: 'thread-1',
+			rootSessionCapUsd: undefined,
+			budgetForwarded: true,
+		});
+	});
+
 	it('does not start a run when the receipt is limit-reached', async () => {
 		const { backgroundRunner, runner, jobService, context } = setup();
 		jobService.registerSubAgentJob.mockResolvedValue({ status: 'limit-reached' });

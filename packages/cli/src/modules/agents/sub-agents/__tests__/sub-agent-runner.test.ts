@@ -665,6 +665,30 @@ describe('SubAgentRunner', () => {
 		expect(childAgent.close).toHaveBeenCalledTimes(1);
 	});
 
+	it('reports a guardrail stop as a completion that carries the finish reason', async () => {
+		childAgent.stream.mockResolvedValue(
+			makeStreamResult([
+				{ type: 'text-delta', id: 'text-1', delta: 'Partial answer' },
+				{ type: 'finish', finishReason: 'guardrail', guardrail: { code: 'budget.session' } },
+			]),
+		);
+
+		await expect(
+			runner.run(spawnRequest, {
+				parentAgentId,
+				projectId,
+				credentialProvider,
+				runType: 'production',
+			}),
+		).resolves.toMatchObject({
+			status: 'completed',
+			result: {
+				runId: 'child-run-1',
+				finishReason: 'guardrail',
+			},
+		});
+	});
+
 	it('applies the self-delegation model while preserving the parent draft', async () => {
 		const parentConfig: RunnableAgentJsonConfig = {
 			...runnableConfig,

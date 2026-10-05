@@ -260,12 +260,14 @@ export class ExecutionService {
 
 		if (!execution.data.executionData) throw new AbortedExecutionRetryError();
 
+		// oxlint-disable-next-line typescript/no-deprecated
 		if (execution.finished) {
 			throw new ConflictError('The execution succeeded, so it cannot be retried.');
 		}
 
 		const executionMode = 'retry';
 
+		// oxlint-disable-next-line typescript/no-deprecated
 		execution.workflowData.active = false;
 		execution.workflowData.activeVersionId = null;
 
@@ -378,6 +380,7 @@ export class ExecutionService {
 			mode: executionData.mode,
 			startedAt: executionData.startedAt,
 			workflowId: execution.workflowId,
+			// oxlint-disable-next-line typescript/no-deprecated
 			finished: executionData.finished ?? false,
 			retryOf: executionId,
 			status: executionData.status,
@@ -414,6 +417,7 @@ export class ExecutionService {
 			}
 		}
 
+		// oxlint-disable-next-line typescript/no-deprecated
 		if (requestFilters?.metadata && !this.license.isAdvancedExecutionFiltersEnabled()) {
 			delete requestFilters.metadata;
 		}
@@ -526,6 +530,7 @@ export class ExecutionService {
 
 		this.assertStoppable(execution);
 
+		// oxlint-disable-next-line typescript/no-deprecated
 		const { mode, startedAt, stoppedAt, finished, status } =
 			this.globalConfig.executions.mode === 'regular'
 				? await this.stopInRegularMode(execution)

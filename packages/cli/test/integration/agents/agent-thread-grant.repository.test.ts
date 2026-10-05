@@ -102,19 +102,14 @@ describe('Agent thread grants', () => {
 		// Template databases skip the migration wrapper setup.
 		await Container.get(DbConnection).migrate();
 		const migration = source.migrations.find(
-			({ constructor }) => constructor.name === 'CreateAgentThreadGrantTable1790837340960',
-		);
-		if (!migration) throw new Error('The agent thread grant migration is not registered.');
-		// Test this schema directly. Newer migrations must remain applied.
+			(migration) => migration.constructor.name === 'CreateAgentThreadGrantTable1790837340960',
+		)!;
 		const runner = source.createQueryRunner();
 		try {
 			await migration.down(runner);
-			try {
-				expect(await runner.hasTable(grants.metadata.tablePath)).toBe(false);
-				expect(await runner.manager.existsBy(threads.target, { id: 'parent' })).toBe(true);
-			} finally {
-				await migration.up(runner);
-			}
+			expect(await runner.hasTable(grants.metadata.tablePath)).toBe(false);
+			expect(await runner.manager.existsBy(threads.target, { id: 'parent' })).toBe(true);
+			await migration.up(runner);
 		} finally {
 			await runner.release();
 		}

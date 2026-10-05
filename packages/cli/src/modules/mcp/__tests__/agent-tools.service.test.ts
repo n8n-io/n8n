@@ -137,6 +137,7 @@ describe('McpAgentToolsService', () => {
 	const agentSecureRuntime = mockInstance(AgentSecureRuntime);
 	const integrationPersistenceService = mockInstance(AgentIntegrationPersistenceService);
 	const integrationManagementService = mockInstance(AgentIntegrationManagementService);
+	const agentModelCatalogService = mockInstance(AgentModelCatalogService);
 	const mcpRegistryService = mockInstance(McpRegistryService);
 	const outboundHttp = mockInstance(OutboundHttp);
 	const urlService = mockInstance(UrlService);
@@ -165,7 +166,7 @@ describe('McpAgentToolsService', () => {
 		agentSecureRuntime,
 		integrationPersistenceService,
 		integrationManagementService,
-		mockInstance(AgentModelCatalogService),
+		agentModelCatalogService,
 		mockInstance(AttachableWorkflowsService),
 		mcpRegistryService,
 		mockInstance(NodeTypes),
@@ -1613,6 +1614,74 @@ describe('McpAgentToolsService', () => {
 					providers: [{ provider: 'openai', name: 'OpenAI', modelCount: 2 }],
 					hint: expect.stringContaining('provider'),
 				},
+			});
+		});
+
+		it('limits a provider model list and suggests a query when truncated', async () => {
+			agentModelCatalogService.getProviderModels.mockResolvedValue({
+				provider: 'openrouter',
+				verified: true,
+				models: Array.from({ length: 385 }, (_, index) => ({
+					id: `model-${index}`,
+					name: `Model ${index}`,
+					toolCall: true,
+					reasoning: false,
+					limits: { context: 100_000 },
+					cost: { input: 1, output: 2 },
+				})),
+			});
+
+			const result = await callTool('discover_agent_assets', {
+				projectId: 'project-1',
+				kind: 'models',
+				provider: 'openrouter',
+				credentialId: 'credential-1',
+			});
+
+			expect(agentModelCatalogService.getProviderModels).toHaveBeenCalledWith(
+				user,
+				'project-1',
+				'openrouter',
+				'credential-1',
+			);
+			expect(result.structuredContent.data).toMatchObject({
+				provider: 'openrouter',
+				verified: true,
+				truncated: true,
+				hint: expect.stringContaining('query'),
+			});
+			const data = result.structuredContent.data as { models: Array<{ id: string }> };
+			expect(data.models).toHaveLength(50);
+			expect(data.models[0].id).toBe('model-0');
+			expect(JSON.stringify(result.structuredContent).length).toBeLessThan(20_000);
+		});
+
+		it('filters provider models by ID before applying the limit', async () => {
+			agentModelCatalogService.getProviderModels.mockResolvedValue({
+				provider: 'aws-bedrock',
+				verified: false,
+				models: [
+					...Array.from({ length: 55 }, (_, index) => ({
+						id: `other-${index}`,
+						name: 'Claude Other',
+						toolCall: true,
+					})),
+					{ id: 'anthropic/claude', name: 'Claude', toolCall: true },
+				],
+			});
+
+			const result = await callTool('discover_agent_assets', {
+				projectId: 'project-1',
+				kind: 'models',
+				provider: 'aws-bedrock',
+				query: ' CLAUDE ',
+			});
+
+			expect(result.structuredContent.data).toMatchObject({
+				provider: 'aws-bedrock',
+				verified: false,
+				models: [{ id: 'anthropic/claude', name: 'Claude', toolCall: true }],
+				truncated: false,
 			});
 		});
 

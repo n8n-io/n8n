@@ -2,7 +2,6 @@ import {
 	BreakingChangeInstanceRuleResult,
 	BreakingChangeLightReportResult,
 	BreakingChangeReportQueryDto,
-	BreakingChangeReportResult,
 	BreakingChangeWorkflowRuleResult,
 	WorkflowMigrationResult,
 } from '@n8n/api-types';
@@ -14,34 +13,21 @@ import { NotFoundError } from '@n8n/errors';
 
 import { BreakingChangeMigrationService } from './breaking-changes.migration.service';
 import { BreakingChangeService } from './breaking-changes.service';
+import { MigrationFindingQueryService } from './query/migration-finding-query.service';
+import { MigrationFindingSyncService } from './sync/migration-finding-sync.service';
 
 @RestController('/breaking-changes')
 export class BreakingChangesController {
 	constructor(
 		private readonly service: BreakingChangeService,
 		private readonly migrationService: BreakingChangeMigrationService,
+		private readonly syncService: MigrationFindingSyncService,
+		private readonly queryService: MigrationFindingQueryService,
 	) {}
 
-	private toLightReportResult(result: BreakingChangeReportResult): BreakingChangeLightReportResult {
-		const { report } = result;
-		const affectedWorkflowIds = new Set(
-			report.workflowResults.flatMap((r) => r.affectedWorkflows.map((w) => w.id)),
-		);
-		return {
-			...result,
-			totalAffectedWorkflows: affectedWorkflowIds.size,
-			report: {
-				...report,
-				workflowResults: report.workflowResults.map((r) => {
-					const { affectedWorkflows, ...otherFields } = r;
-					return { ...otherFields, nbAffectedWorkflows: affectedWorkflows.length };
-				}),
-			},
-		};
-	}
-
 	/**
-	 * Get all registered breaking change rules results
+	 * The report overview, read from the finding table. A first read, or a
+	 * changed rule set, fills the table before the read.
 	 */
 	@Get('/report')
 	@GlobalScope('breakingChanges:list')
@@ -50,10 +36,12 @@ export class BreakingChangesController {
 		_res: Response,
 		@Query query: BreakingChangeReportQueryDto,
 	): Promise<BreakingChangeLightReportResult> {
-		const result = await this.service.getDetectionResults(query.version ?? 'v2');
-		return this.toLightReportResult(result);
+		const version = query.version ?? 'v2';
+		await this.syncService.syncIfStale(version);
+		return await this.queryService.getLightReport(version);
 	}
 
+	/** Re-scans every workflow, updates the finding table, and returns the fresh overview. */
 	@Post('/report/refresh')
 	@GlobalScope('breakingChanges:list')
 	async refreshCache(
@@ -61,8 +49,9 @@ export class BreakingChangesController {
 		_res: Response,
 		@Query query: BreakingChangeReportQueryDto,
 	): Promise<BreakingChangeLightReportResult> {
-		const result = await this.service.refreshDetectionResults(query.version ?? 'v2');
-		return this.toLightReportResult(result);
+		const version = query.version ?? 'v2';
+		await this.syncService.sync(version);
+		return await this.queryService.getLightReport(version);
 	}
 
 	/**
