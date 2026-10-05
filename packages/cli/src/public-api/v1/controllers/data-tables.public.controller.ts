@@ -60,7 +60,7 @@ import {
 	encodeNextCursor,
 	resolveOffsetPagination,
 } from '@/public-api/v1/shared/services/pagination.service';
-import { ProjectNotFoundError } from '@/services/project.service.ee';
+import { ProjectNotFoundError } from '@n8n/backend-services';
 
 const tags = ['DataTable'];
 

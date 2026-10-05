@@ -1,6 +1,6 @@
 import type { Logger } from '@n8n/backend-common';
 import { EventService } from '@n8n/backend-services';
-import type { UserRepository } from '@n8n/db';
+import type { User, UserRepository } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
 import type { RelayEventMap } from '@/events/maps/relay.event-map';
@@ -13,12 +13,13 @@ describe('WorkflowFailureNotificationEventRelay', () => {
 	const mailer = mock<UserManagementMailer>({ isEmailSetUp: false });
 	const userRepository = mock<UserRepository>();
 	const logger = mock<Logger>();
-	const eventService = new EventService();
 
+	let eventService: EventService;
 	let relay: WorkflowFailureNotificationEventRelay;
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+		eventService = new EventService();
 		relay = new WorkflowFailureNotificationEventRelay(eventService, mailer, userRepository, logger);
 		relay.init();
 	});
@@ -155,6 +156,21 @@ describe('WorkflowFailureNotificationEventRelay', () => {
 				userId: 'user123',
 				error: 'string error',
 			});
+		});
+	});
+
+	describe('team-project-shared event', () => {
+		it('sends the project notification', async () => {
+			const event: RelayEventMap['team-project-shared'] = {
+				sharer: mock<User>(),
+				newSharees: [{ userId: 'user-1', role: 'project:viewer' }],
+				project: { id: 'project-1', name: 'Project' },
+			};
+
+			eventService.emit('team-project-shared', event);
+			await flushPromises();
+
+			expect(mailer.notifyProjectShared).toHaveBeenCalledWith(event);
 		});
 	});
 });

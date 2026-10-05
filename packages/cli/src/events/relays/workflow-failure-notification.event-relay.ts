@@ -25,6 +25,9 @@ export class WorkflowFailureNotificationEventRelay extends EventRelay {
 		this.setupListeners({
 			'instance-first-production-workflow-failed': async (event) =>
 				await this.onFirstProductionWorkflowFailed(event),
+			'team-project-shared': async (event) => {
+				await this.mailer.notifyProjectShared(event);
+			},
 		});
 	}
 

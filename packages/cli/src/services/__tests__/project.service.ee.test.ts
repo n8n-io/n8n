@@ -1,6 +1,11 @@
 import type { ProjectRelation } from '@n8n/api-types';
 import type { Logger, ModuleRegistry } from '@n8n/backend-common';
-import { type EventService, type RoleService } from '@n8n/backend-services';
+import type {
+	CredentialConnectionStatusRegistry,
+	EventService,
+	RoleService,
+	WorkflowProjectCacheService,
+} from '@n8n/backend-services';
 import {
 	type Project,
 	type ProjectRepository,
@@ -17,19 +22,15 @@ import {
 } from '@n8n/db';
 import { PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
 import type { EntityManager } from '@n8n/typeorm';
-import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import type { OwnershipService } from '../ownership.service';
 import { ProjectService } from '../project.service.ee';
 
-import type { ICredentialConnectionStatusProvider } from '@/credentials/credential-connection-status-provider.interface';
 import { BadRequestError, ForbiddenError } from '@n8n/errors';
 import type { AgentChatAttachmentService } from '@/modules/agents/agent-chat-attachment.service';
 import type { AgentExecutionService } from '@/modules/agents/agent-execution.service';
 import type { AgentKnowledgeService } from '@/modules/agents/agent-knowledge.service';
 import type { AgentRepository } from '@/modules/agents/repositories/agent.repository';
-import type { UserManagementMailer } from '@/user-management/email';
 
 describe('ProjectService', () => {
 	const manager = mock<EntityManager>();
@@ -43,10 +44,10 @@ describe('ProjectService', () => {
 	const agentKnowledgeService = mock<AgentKnowledgeService>();
 	const agentExecutionService = mock<AgentExecutionService>();
 	const agentChatAttachmentService = mock<AgentChatAttachmentService>();
-	const ownershipService = mock<OwnershipService>();
+	const workflowProjectCacheService = mock<WorkflowProjectCacheService>();
 	const logger = mock<Logger>();
 	const eventService = mock<EventService>();
-	const userManagementMailer = mock<UserManagementMailer>();
+	const credentialConnectionStatusRegistry = mock<CredentialConnectionStatusRegistry>();
 	const userRepository = mock<UserRepository>();
 	const roleRepository = mock<RoleRepository>();
 	const user = mock<User>({ id: 'actor-user', role: mock({ slug: 'global:owner' }) });
@@ -59,10 +60,10 @@ describe('ProjectService', () => {
 		mock(), // folderRepository
 		mock(), // licenseState
 		moduleRegistry,
-		ownershipService,
+		workflowProjectCacheService,
 		logger,
 		eventService,
-		userManagementMailer,
+		credentialConnectionStatusRegistry,
 		userRepository,
 		roleRepository,
 	);
@@ -181,8 +182,7 @@ describe('ProjectService', () => {
 			]);
 
 			// ASSERT: mailer called once, only for the newcomer
-			expect(userManagementMailer.notifyProjectShared).toHaveBeenCalledTimes(1);
-			expect(userManagementMailer.notifyProjectShared).toHaveBeenCalledWith({
+			expect(eventService.emit).toHaveBeenCalledWith('team-project-shared', {
 				sharer: user,
 				newSharees: [{ userId: 'newcomer', role: 'project:viewer' }],
 				project: { id: projectId, name: 'Team Project' },
@@ -208,8 +208,7 @@ describe('ProjectService', () => {
 			expect(projectRelationRepository.save).toHaveBeenCalledWith([
 				{ projectId, userId: 'member', role: { slug: 'project:viewer' } },
 			]);
-			expect(userManagementMailer.notifyProjectShared).toHaveBeenCalledTimes(1);
-			expect(userManagementMailer.notifyProjectShared).toHaveBeenCalledWith({
+			expect(eventService.emit).toHaveBeenCalledWith('team-project-shared', {
 				sharer: user,
 				newSharees: [{ userId: 'member', role: 'project:viewer' }],
 				project: { id: projectId, name: 'Team Project' },
@@ -235,7 +234,7 @@ describe('ProjectService', () => {
 			]);
 
 			// ASSERT
-			expect(userManagementMailer.notifyProjectShared).not.toHaveBeenCalled();
+			expect(eventService.emit).not.toHaveBeenCalledWith('team-project-shared', expect.anything());
 		});
 	});
 
@@ -324,16 +323,6 @@ describe('ProjectService', () => {
 		});
 
 		describe('cleanup for orphaned credential entries', () => {
-			let mockProxy: Mocked<ICredentialConnectionStatusProvider>;
-
-			beforeEach(() => {
-				mockProxy = mock<ICredentialConnectionStatusProvider>();
-				Object.defineProperty(projectService, 'connectionStatusProxy', {
-					configurable: true,
-					get: async () => mockProxy,
-				});
-			});
-
 			it('calls cleanupOrphanedEntriesForUsers with the IDs of removed members', async () => {
 				// ARRANGE — project has two members; incoming relations keep only user1
 				projectRepository.findOne.mockResolvedValueOnce(
@@ -354,7 +343,9 @@ describe('ProjectService', () => {
 				]);
 
 				// ASSERT — user2 was removed → cleanup must run for user2
-				expect(mockProxy.cleanupOrphanedEntriesForUsers).toHaveBeenCalledWith(['user2'], manager);
+				expect(
+					credentialConnectionStatusRegistry.cleanupOrphanedEntriesForUsers,
+				).toHaveBeenCalledWith(['user2']);
 			});
 
 			it('calls cleanupOrphanedEntriesForUsers with union of removed and role-changed IDs', async () => {
@@ -379,14 +370,11 @@ describe('ProjectService', () => {
 				]);
 
 				// ASSERT — both user2 (removed) and user3 (role changed) are in the set
-				expect(mockProxy.cleanupOrphanedEntriesForUsers).toHaveBeenCalledWith(
-					expect.arrayContaining(['user2', 'user3']),
-					manager,
-				);
-				const [affectedIds] = mockProxy.cleanupOrphanedEntriesForUsers.mock.calls[0] as [
-					string[],
-					EntityManager,
-				];
+				expect(
+					credentialConnectionStatusRegistry.cleanupOrphanedEntriesForUsers,
+				).toHaveBeenCalledWith(expect.arrayContaining(['user2', 'user3']));
+				const [affectedIds] =
+					credentialConnectionStatusRegistry.cleanupOrphanedEntriesForUsers.mock.calls[0];
 				expect(affectedIds).toHaveLength(2);
 			});
 
@@ -411,7 +399,9 @@ describe('ProjectService', () => {
 				]);
 
 				// ASSERT — no affected users → cleanup must not be called
-				expect(mockProxy.cleanupOrphanedEntriesForUsers).not.toHaveBeenCalled();
+				expect(
+					credentialConnectionStatusRegistry.cleanupOrphanedEntriesForUsers,
+				).not.toHaveBeenCalled();
 			});
 		});
 	});
@@ -478,14 +468,7 @@ describe('ProjectService', () => {
 	});
 
 	describe('deleteUserFromProject', () => {
-		let mockProxy: Mocked<ICredentialConnectionStatusProvider>;
-
 		beforeEach(() => {
-			mockProxy = mock<ICredentialConnectionStatusProvider>();
-			Object.defineProperty(projectService, 'connectionStatusProxy', {
-				configurable: true,
-				get: async () => mockProxy,
-			});
 			manager.transaction.mockImplementation(async (arg1: unknown, arg2?: unknown) => {
 				const runInTransaction = (arg2 ?? arg1) as (
 					entityManager: EntityManager,
@@ -512,8 +495,10 @@ describe('ProjectService', () => {
 			// ACT
 			await projectService.deleteUserFromProject(user, projectId, userId);
 
-			// ASSERT — member removed → cleanup must run inside the same transaction
-			expect(mockProxy.cleanupOrphanedEntriesForUsers).toHaveBeenCalledWith([userId], manager);
+			// ASSERT — member removed → cleanup must run for the removed user
+			expect(
+				credentialConnectionStatusRegistry.cleanupOrphanedEntriesForUsers,
+			).toHaveBeenCalledWith([userId]);
 		});
 
 		it('throws when trying to remove the project owner', async () => {
@@ -534,7 +519,9 @@ describe('ProjectService', () => {
 			await expect(projectService.deleteUserFromProject(user, projectId, ownerId)).rejects.toThrow(
 				'Project owner cannot be removed from the project',
 			);
-			expect(mockProxy.cleanupOrphanedEntriesForUsers).not.toHaveBeenCalled();
+			expect(
+				credentialConnectionStatusRegistry.cleanupOrphanedEntriesForUsers,
+			).not.toHaveBeenCalled();
 		});
 
 		it('throws when trying to remove an instance admin', async () => {
@@ -557,7 +544,7 @@ describe('ProjectService', () => {
 	describe('updateProject', () => {
 		beforeEach(() => {
 			vi.clearAllMocks();
-			ownershipService.invalidateWorkflowProjectCacheForProject.mockResolvedValue(undefined);
+			workflowProjectCacheService.invalidateForProject.mockResolvedValue(undefined);
 		});
 
 		it('should trim whitespace from tag keys on save', async () => {
@@ -617,9 +604,7 @@ describe('ProjectService', () => {
 
 			await projectService.updateProject(user, 'proj-1', { name: 'Updated' });
 
-			expect(ownershipService.invalidateWorkflowProjectCacheForProject).toHaveBeenCalledWith(
-				'proj-1',
-			);
+			expect(workflowProjectCacheService.invalidateForProject).toHaveBeenCalledWith('proj-1');
 		});
 
 		it('should throw NotFoundError when project is not found', async () => {
@@ -668,7 +653,7 @@ describe('ProjectService', () => {
 				projectService.updateProject(user, 'missing-proj', { name: 'Ghost' }),
 			).rejects.toThrow();
 
-			expect(eventService.emit).not.toHaveBeenCalled();
+			expect(eventService.emit).not.toHaveBeenCalledWith('team-project-updated', expect.anything());
 		});
 	});
 
@@ -679,14 +664,7 @@ describe('ProjectService', () => {
 			{ userId: 'user2', role: { slug: 'project:viewer' } },
 		];
 
-		let mockProxy: Mocked<ICredentialConnectionStatusProvider>;
-
 		beforeEach(() => {
-			mockProxy = mock<ICredentialConnectionStatusProvider>();
-			Object.defineProperty(projectService, 'connectionStatusProxy', {
-				configurable: true,
-				get: async () => mockProxy,
-			});
 			manager.transaction.mockImplementation(async (arg1: unknown, arg2?: unknown) => {
 				const runInTransaction = (arg2 ?? arg1) as (
 					entityManager: EntityManager,
@@ -744,7 +722,9 @@ describe('ProjectService', () => {
 				{ projectId, userId: 'user2' },
 				{ role: { slug: 'project:admin' } },
 			);
-			expect(mockProxy.cleanupOrphanedEntriesForUsers).toHaveBeenCalledWith(['user2'], manager);
+			expect(
+				credentialConnectionStatusRegistry.cleanupOrphanedEntriesForUsers,
+			).toHaveBeenCalledWith(['user2']);
 
 			expect(eventService.emit).toHaveBeenCalledWith('team-project-updated', {
 				userId: 'actor-user',
@@ -818,11 +798,6 @@ describe('ProjectService', () => {
 		it('calls cleanupOrphanedEntriesForUsers with member IDs after project is deleted', async () => {
 			// ARRANGE
 			const project = mock<Project>({ id: 'project-1', type: 'team' });
-			const mockProxy = mock<ICredentialConnectionStatusProvider>();
-			Object.defineProperty(projectService, 'connectionStatusProxy', {
-				configurable: true,
-				get: async () => mockProxy,
-			});
 			manager.findOne.mockResolvedValueOnce(project);
 			projectRepository.remove.mockResolvedValueOnce(project);
 			sharedWorkflowRepository.find.mockResolvedValueOnce([]);
@@ -839,12 +814,12 @@ describe('ProjectService', () => {
 
 			// ASSERT — project removed first, then cleanup for former members
 			expect(projectRepository.remove).toHaveBeenCalledWith(project);
-			expect(mockProxy.cleanupOrphanedEntriesForUsers).toHaveBeenCalledWith([
-				'member-1',
-				'member-2',
-			]);
+			expect(
+				credentialConnectionStatusRegistry.cleanupOrphanedEntriesForUsers,
+			).toHaveBeenCalledWith(['member-1', 'member-2']);
 			expect(projectRepository.remove.mock.invocationCallOrder[0]).toBeLessThan(
-				mockProxy.cleanupOrphanedEntriesForUsers.mock.invocationCallOrder[0],
+				credentialConnectionStatusRegistry.cleanupOrphanedEntriesForUsers.mock
+					.invocationCallOrder[0],
 			);
 
 			expect(eventService.emit).toHaveBeenCalledWith('team-project-deleted', {
@@ -859,11 +834,6 @@ describe('ProjectService', () => {
 		it('skips credential cleanup when the project had no members', async () => {
 			// ARRANGE
 			const project = mock<Project>({ id: 'project-1', type: 'team' });
-			const mockProxy = mock<ICredentialConnectionStatusProvider>();
-			Object.defineProperty(projectService, 'connectionStatusProxy', {
-				configurable: true,
-				get: async () => mockProxy,
-			});
 			manager.findOne.mockResolvedValueOnce(project);
 			projectRepository.remove.mockResolvedValueOnce(project);
 			sharedWorkflowRepository.find.mockResolvedValueOnce([]);
@@ -876,7 +846,9 @@ describe('ProjectService', () => {
 
 			// ASSERT — no members → cleanup must not be called
 			expect(projectRepository.remove).toHaveBeenCalledWith(project);
-			expect(mockProxy.cleanupOrphanedEntriesForUsers).not.toHaveBeenCalled();
+			expect(
+				credentialConnectionStatusRegistry.cleanupOrphanedEntriesForUsers,
+			).not.toHaveBeenCalled();
 		});
 
 		it('cleans agent knowledge files before project deletion cascades agent files', async () => {
@@ -964,10 +936,6 @@ describe('ProjectService', () => {
 			});
 
 			beforeEach(() => {
-				Object.defineProperty(projectService, 'connectionStatusProxy', {
-					configurable: true,
-					get: async () => mock<ICredentialConnectionStatusProvider>(),
-				});
 				// reset first: `vi.clearAllMocks()` leaves any unconsumed `...Once` queues behind
 				manager.findOne.mockReset();
 				sharedWorkflowRepository.find.mockReset();
