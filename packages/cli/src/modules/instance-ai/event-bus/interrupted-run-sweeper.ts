@@ -1,12 +1,14 @@
 import type { InstanceAiEvent } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { Service } from '@n8n/di';
-import { createSubAgentResourceIdPrefix, orchestratorAgentId } from '@n8n/instance-ai';
-import { InstanceSettings } from 'n8n-core';
+import { Container, Service } from '@n8n/di';
+import { orchestratorAgentId } from '@n8n/instance-ai';
 
 import { DurableLogMetrics } from './durable-log-metrics';
 import { InProcessEventBus } from './in-process-event-bus';
-import { InstanceAiCheckpointRepository } from '../repositories/instance-ai-checkpoint.repository';
+import { N8NCheckpointStorage } from '../../agents/integrations/n8n-checkpoint-storage';
+import { AgentExecutionRepository } from '../../agents/repositories/agent-execution.repository';
+import { AgentExecutionThreadRepository } from '../../agents/repositories/agent-execution-thread.repository';
+import { ASSISTANT_TURN_METADATA_KEY, readAssistantTurnOptions } from '../assistant-turn-options';
 import { InstanceAiEventLogRepository } from '../repositories/instance-ai-event-log.repository';
 
 export const TOOL_INTERRUPTED_MESSAGE =
@@ -78,10 +80,8 @@ export class InterruptedRunSweeper {
 	constructor(
 		private readonly logger: Logger,
 		private readonly eventLogRepo: InstanceAiEventLogRepository,
-		private readonly checkpointRepo: InstanceAiCheckpointRepository,
 		private readonly eventBus: InProcessEventBus,
 		private readonly metrics: DurableLogMetrics,
-		private readonly instanceSettings: InstanceSettings,
 	) {
 		this.logger = this.logger.scoped('instance-ai');
 	}
@@ -198,32 +198,21 @@ export class InterruptedRunSweeper {
 		// thread while the sweep was running must not shield it.
 		if (this.resumeHost?.isRunLive(threadId, runId)) return null;
 
-		const checkpoints = await this.checkpointRepo.findActiveByThreadId(threadId);
-		const subAgentPrefix = createSubAgentResourceIdPrefix(threadId);
-		// Exact hostRunId match only: every logged run post-dates the column, and
-		// sub-agent or legacy rows carry null, so they never match another run's
-		// sweep.
-		const runCheckpoints = checkpoints.filter(
-			(row) => !row.resourceId?.startsWith(subAgentPrefix) && row.hostRunId === runId,
-		);
-
-		// A run suspended at HITL is recoverable through the pending-confirmation
-		// orphan path; terminalizing it would destroy that recovery. Only this
-		// run's own checkpoint counts — another run suspended on the same thread
-		// must not shield a crashed run.
-		if (runCheckpoints.some((row) => row.state?.status === 'suspended')) return null;
-
-		// Multi-main: durable activity is the liveness heartbeat — a sibling
-		// main driving this run appends facts and upserts its checkpoint every
-		// step, so recent writes mean "not a zombie, leave it alone".
-		if (this.instanceSettings.isMultiMain) {
-			const cutoff = Date.now() - InterruptedRunSweeper.LIVENESS_GRACE_MS;
-			const lastFact = await this.eventLogRepo.lastFactAt(threadId, runId);
-			const newestCheckpointAt = runCheckpoints
-				.map((row) => row.updatedAt?.getTime() ?? 0)
-				.reduce((a, b) => Math.max(a, b), 0);
-			const lastActivity = Math.max(lastFact?.getTime() ?? 0, newestCheckpointAt);
-			if (lastActivity > cutoff) return null;
+		// The Agents runtime owns turn liveness: a running execution (kept alive by
+		// its heartbeat on any main) or a suspended checkpoint means the run is live.
+		const thread = await Container.get(AgentExecutionThreadRepository).findOneBy({ id: threadId });
+		if (thread) {
+			if (await Container.get(AgentExecutionRepository).existsRunningByThread(threadId)) {
+				return null;
+			}
+			const checkpoint = await Container.get(N8NCheckpointStorage).findSuspendedForThread(
+				thread.agentId,
+				threadId,
+			);
+			const suspended = readAssistantTurnOptions(
+				checkpoint?.persistence?.hostMetadata?.[ASSISTANT_TURN_METADATA_KEY],
+			);
+			if (suspended.runId === runId) return null;
 		}
 
 		const events = await this.eventLogRepo.getForRuns(threadId, [runId]);

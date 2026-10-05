@@ -1,6 +1,6 @@
 import { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
-import { Service } from '@n8n/di';
+import { Container, Service } from '@n8n/di';
 import type { BuilderUsageItem, TraceStatus } from '@n8n/instance-ai';
 import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
 import { sleep } from '@n8n/utils/sleep';
@@ -15,8 +15,9 @@ import { Telemetry } from '@/telemetry';
 
 import { maskCreditsForDisplay } from './instance-ai-credit-display';
 import { InstanceAiSettingsService } from './instance-ai-settings.service';
-import { InstanceAiMessageRepository } from './repositories/instance-ai-message.repository';
-import { InstanceAiThreadRepository } from './repositories/instance-ai-thread.repository';
+import { InstanceAiConversationHistoryRepository } from './repositories/instance-ai-conversation-history.repository';
+import { N8nMemory } from '../agents/integrations/n8n-memory';
+import { ASSISTANT_AGENT_ID } from './assistant-turn-options';
 
 /**
  * Owns Instance AI credit accounting: claims decimal, token-based credits per
@@ -63,10 +64,9 @@ export class InstanceAiCreditService {
 		private readonly telemetry: Telemetry,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly push: Push,
-		private readonly threadRepo: InstanceAiThreadRepository,
 		private readonly settingsService: InstanceAiSettingsService,
 		private readonly activationService: InstanceActivationService,
-		private readonly messageRepo: InstanceAiMessageRepository,
+		private readonly conversationHistoryRepo: InstanceAiConversationHistoryRepository,
 	) {
 		this.logger = logger.scoped('instance-ai');
 	}
@@ -146,9 +146,10 @@ export class InstanceAiCreditService {
 		// agent memory layer, so "N rows" is only "N times the user pressed send" if nothing else
 		// writes a `user` row. At one that assumption costs nothing; above one, over-counting would
 		// lock earlier than intended.
-		this.messageThresholdReached ||= await this.messageRepo.hasAtLeastUserMessages(
-			this.settingsService.getActivationLockMessageThreshold(),
-		);
+		this.messageThresholdReached ||=
+			await this.conversationHistoryRepo.hasAtLeastAssistantUserMessages(
+				this.settingsService.getActivationLockMessageThreshold(),
+			);
 		return !this.messageThresholdReached;
 	}
 
@@ -371,16 +372,18 @@ export class InstanceAiCreditService {
 		delta: number,
 	): Promise<number | undefined> {
 		try {
-			const thread = await this.threadRepo.updateThread({
-				threadId,
-				update: ({ metadata }) => ({
-					metadata: {
-						...metadata,
-						creditsUsed:
-							(typeof metadata?.creditsUsed === 'number' ? metadata.creditsUsed : 0) + delta,
-					},
-				}),
-			});
+			const thread = await Container.get(N8nMemory)
+				.getImplementation(ASSISTANT_AGENT_ID)
+				.patchThread({
+					threadId,
+					update: ({ metadata }) => ({
+						metadata: {
+							...metadata,
+							creditsUsed:
+								(typeof metadata?.creditsUsed === 'number' ? metadata.creditsUsed : 0) + delta,
+						},
+					}),
+				});
 			return typeof thread?.metadata?.creditsUsed === 'number'
 				? thread.metadata.creditsUsed
 				: undefined;

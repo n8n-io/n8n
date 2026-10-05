@@ -28,7 +28,10 @@ import {
 } from './instance-ai-memory.service';
 import { buildOnboardingAnswerMessage } from './internal-messages';
 import { ONBOARDING_OPENING } from './onboarding-opening';
-import { InstanceAiPendingConfirmationRepository } from './repositories/instance-ai-pending-confirmation.repository';
+import { isRecord } from '@n8n/utils/is-record';
+
+/** Thread metadata key for the unanswered onboarding card. */
+export const ONBOARDING_CARD_METADATA_KEY = 'onboardingCard';
 
 /** Folder id under `@n8n/instance-ai/skills` of the skill preloaded on onboarding threads. */
 export const ONBOARDING_SKILL_ID = 'suggest-automations';
@@ -162,7 +165,6 @@ export class InstanceAiOnboardingService {
 		private readonly memoryService: InstanceAiMemoryService,
 		private readonly eventBus: InProcessEventBus,
 		private readonly eventLog: DurableEventLog,
-		private readonly pendingConfirmationRepo: InstanceAiPendingConfirmationRepository,
 		private readonly telemetry: Telemetry,
 	) {}
 
@@ -230,6 +232,7 @@ export class InstanceAiOnboardingService {
 		userId: string,
 		requestId: string,
 		request: InstanceAiConfirmRequest,
+		threadId?: string,
 	): Promise<
 		{ threadId: string; runId: string } | { threadId: string; firstMessage: string } | undefined
 	> {
@@ -238,10 +241,22 @@ export class InstanceAiOnboardingService {
 		if (request.kind !== 'questions') {
 			throw new BadRequestError('The onboarding card takes answers of kind "questions"');
 		}
-		const row = await this.pendingConfirmationRepo.claim(requestId, userId);
-		if (!row?.toolCallId) return undefined;
-
-		const metadata = await this.memoryService.getThreadMetadata(userId, row.threadId);
+		if (!threadId) return undefined;
+		const metadata = await this.memoryService.getThreadMetadata(userId, threadId);
+		const pending = metadata?.[ONBOARDING_CARD_METADATA_KEY];
+		if (
+			!isRecord(pending) ||
+			pending.requestId !== requestId ||
+			typeof pending.toolCallId !== 'string' ||
+			typeof pending.runId !== 'string'
+		) {
+			return undefined;
+		}
+		// Claim the card: a second answer finds nothing.
+		await this.memoryService.updateThread(threadId, {
+			metadata: { [ONBOARDING_CARD_METADATA_KEY]: null },
+		});
+		const row = { threadId, runId: pending.runId, toolCallId: pending.toolCallId };
 		const { survey, surveySource } = surveyOf(metadata?.sourceContext);
 		const { questions, shown, answered } = applySurvey(ONBOARDING_OPENING.questions, survey);
 		const given = request.answers;
@@ -386,18 +401,9 @@ export class InstanceAiOnboardingService {
 			// must find the row. No expiry: nothing could revive the card after a timeout.
 			// ponytail: kind 'inline' (no checkpoint) because the column CHECK allows only 'inline' and
 			// 'suspended'; a 'seeded' kind needs a migration. The prefix above is the real marker.
-			await this.pendingConfirmationRepo.save(
-				this.pendingConfirmationRepo.create({
-					requestId,
-					threadId,
-					userId: turn.userId,
-					kind: 'inline',
-					runId,
-					messageGroupId,
-					toolCallId,
-					expiresAt: null,
-				}),
-			);
+			await this.memoryService.updateThread(threadId, {
+				metadata: { [ONBOARDING_CARD_METADATA_KEY]: { requestId, runId, toolCallId } },
+			});
 		}
 		for (const event of events) this.eventBus.publish(threadId, event);
 		// The client reads the messages right after the response; the fold reads committed rows.

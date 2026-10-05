@@ -17,7 +17,7 @@ export class AiBuilderTemporaryWorkflow extends WithTimestamps {
 	workflowId: string;
 
 	@Index()
-	@Column({ type: 'uuid' })
+	@Column({ type: 'varchar', length: 36 })
 	threadId: string;
 
 	@ManyToOne('WorkflowEntity', {

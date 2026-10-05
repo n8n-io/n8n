@@ -2,7 +2,7 @@ import type { InstanceAiThreadTabsState } from '@n8n/api-types';
 import { JsonColumn, User, WithTimestamps } from '@n8n/db';
 import { Entity, Index, JoinColumn, ManyToOne, PrimaryColumn } from '@n8n/typeorm';
 
-import { InstanceAiThread } from './instance-ai-thread.entity';
+import { AgentExecutionThread } from '../../agents/entities/agent-execution-thread.entity';
 
 /**
  * The tabs a user has open in a thread. Stored apart from the thread row, so a
@@ -14,11 +14,11 @@ import { InstanceAiThread } from './instance-ai-thread.entity';
 @Entity({ name: 'instance_ai_thread_tabs' })
 export class InstanceAiThreadTabs extends WithTimestamps {
 	// `threadId` is the composite-PK prefix, so it's already indexed for the thread cascade.
-	@ManyToOne(() => InstanceAiThread, { onDelete: 'CASCADE' })
+	@ManyToOne(() => AgentExecutionThread, { onDelete: 'CASCADE' })
 	@JoinColumn({ name: 'threadId' })
-	thread: InstanceAiThread;
+	thread: AgentExecutionThread;
 
-	@PrimaryColumn({ type: 'uuid' })
+	@PrimaryColumn({ type: 'varchar', length: 36 })
 	threadId: string;
 
 	// `userId` isn't the PK prefix, so index it explicitly for the user cascade.

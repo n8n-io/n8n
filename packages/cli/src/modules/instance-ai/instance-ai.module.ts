@@ -43,7 +43,18 @@ export class InstanceAiModule implements ModuleInterface {
 		const { InstanceAiService } = await import('./instance-ai.service.js');
 		const sweepLogger = Container.get(Logger).scoped('instance-ai');
 		const sweeper = Container.get(InterruptedRunSweeper);
-		sweeper.setResumeHost(Container.get(InstanceAiService));
+		// Live turns belong to the Agents runtime. The sweep's grace window keeps them safe.
+		sweeper.setResumeHost({ isRunLive: () => false });
+		Container.get(InstanceAiService);
+
+		// Register the Assistant as an instance agent on the Agents runtime.
+		const { SystemAgentExecutionService } = await import(
+			'../agents/system-agents/system-agent-execution.service.js'
+		);
+		const { AssistantAgentProvider } = await import('./assistant-agent.provider.js');
+		await Container.get(SystemAgentExecutionService).register(
+			Container.get(AssistantAgentProvider),
+		);
 		void sweeper.sweep().catch((error: unknown) => {
 			sweepLogger.error('Interrupted-run sweep failed on startup', { error });
 		});
@@ -93,27 +104,12 @@ export class InstanceAiModule implements ModuleInterface {
 	}
 
 	async entities() {
-		const { InstanceAiThread } = await import('./entities/instance-ai-thread.entity.js');
-		const { InstanceAiMessage } = await import('./entities/instance-ai-message.entity.js');
-		const { InstanceAiResource } = await import('./entities/instance-ai-resource.entity.js');
 		const { InstanceAiIterationLog } = await import(
 			'./entities/instance-ai-iteration-log.entity.js'
-		);
-		const { InstanceAiCheckpoint } = await import('./entities/instance-ai-checkpoint.entity.js');
-		const { InstanceAiPendingConfirmation } = await import(
-			'./entities/instance-ai-pending-confirmation.entity.js'
-		);
-		const { InstanceAiObservation } = await import('./entities/instance-ai-observation.entity.js');
-		const { InstanceAiObservationCursor } = await import(
-			'./entities/instance-ai-observation-cursor.entity.js'
-		);
-		const { InstanceAiObservationLock } = await import(
-			'./entities/instance-ai-observation-lock.entity.js'
 		);
 		const { InstanceAiMcpRegistryConnection } = await import(
 			'./entities/instance-ai-mcp-registry-connection.entity.js'
 		);
-		const { InstanceAiThreadGrant } = await import('./entities/instance-ai-thread-grant.entity.js');
 		const { InstanceAiThreadTabs } = await import('./entities/instance-ai-thread-tabs.entity.js');
 		const { InstanceAiEventLogEntry } = await import(
 			'./entities/instance-ai-event-log-entry.entity.js'
@@ -126,17 +122,8 @@ export class InstanceAiModule implements ModuleInterface {
 		);
 
 		return [
-			InstanceAiThread,
-			InstanceAiMessage,
-			InstanceAiResource,
 			InstanceAiIterationLog,
-			InstanceAiCheckpoint,
-			InstanceAiPendingConfirmation,
-			InstanceAiObservation,
-			InstanceAiObservationCursor,
-			InstanceAiObservationLock,
 			InstanceAiMcpRegistryConnection,
-			InstanceAiThreadGrant,
 			InstanceAiThreadTabs,
 			InstanceAiEventLogEntry,
 			WorkflowSuggestion,

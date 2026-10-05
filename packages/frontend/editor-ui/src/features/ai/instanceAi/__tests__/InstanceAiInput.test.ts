@@ -1175,6 +1175,24 @@ describe('InstanceAiInput', () => {
 		expect(emitted().stop).toEqual([[]]);
 	});
 
+	it('submits on Enter while a run is streaming and keeps the stop button', async () => {
+		const { emitted, getByRole, getByTestId } = renderComponent({
+			props: {
+				isStreaming: true,
+				suggestions,
+			},
+		});
+
+		const textbox = getByRole('textbox');
+		await userEvent.type(textbox, 'Also add error handling');
+		await fireEvent.keyDown(textbox, { key: 'Enter' });
+
+		await waitFor(() => {
+			expect(emitted().submit?.[0]?.[0]).toBe('Also add error handling');
+		});
+		expect(getByTestId('instance-ai-stop-button')).toBeInTheDocument();
+	});
+
 	it('clears the ghost prompt when suggestions become hidden', async () => {
 		const { getByRole, getByTestId, queryByTestId, rerender } = renderComponent({
 			props: {

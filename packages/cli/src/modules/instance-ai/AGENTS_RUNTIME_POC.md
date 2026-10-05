@@ -425,3 +425,22 @@ touched package.
 - The Assistant depends on the Agents module being active.
 - Computer use, background tasks and the build-agent builder cascade are not
   checked in the first pass.
+
+## Progress log
+
+- Step 1 done (commit "Add instance-level code-defined agents"): `agents.scope`,
+  nullable `agents.projectId`, `SystemAgentRegistry`,
+  `SystemAgentExecutionService`. Instance agents reuse the `preview` queue
+  kind, so steering, cancel and resume use the preview paths unchanged. The
+  memory resource id is `draft-chat:<userId>`.
+- Step 3/4 done: `InstanceAiService.prepareAssistantTurn` builds each turn.
+  `AgentChunkPublisher` (in `@n8n/instance-ai`) maps chunks to
+  `InstanceAiEvent`s. Settle logic runs in `settleAssistantTurn`.
+- Deviation: the HTTP surface stays on `/instance-ai/*` in milestone 1. The
+  generic `InstanceAgentsController` comes with milestone 2, when the UI moves
+  to the Agents stream anyway.
+- Deviation: `instance_ai_threads` is dropped already in milestone 1
+  (migration `MoveInstanceAiThreadsToAgents`); thread metadata lives in
+  `agents_threads.metadata` via the new `N8nMemoryImpl.patchThread`. The live
+  run (run id, message group) is in thread metadata `assistantLiveRun`.
+- `agents.projectId` keeps the TypeScript type `string` (PoC shortcut).

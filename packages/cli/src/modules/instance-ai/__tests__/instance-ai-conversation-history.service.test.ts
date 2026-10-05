@@ -2,8 +2,7 @@ import type { Logger } from '@n8n/backend-common';
 import { UserError } from 'n8n-workflow';
 import { mock, type MockProxy } from 'vitest-mock-extended';
 
-import type { InstanceAiMessage } from '../entities/instance-ai-message.entity';
-import type { InstanceAiThread } from '../entities/instance-ai-thread.entity';
+import type { AgentMessageEntity } from '../../agents/entities/agent-message.entity';
 import {
 	InstanceAiConversationHistoryService,
 	type ScopedConversationHistory,
@@ -73,20 +72,33 @@ function messageRow(overrides: {
 	content: string;
 	threadId?: string;
 	createdAt?: Date;
-}): InstanceAiMessage {
-	return mock<InstanceAiMessage>({
+}): AgentMessageEntity {
+	// A plain object: a mock proxy around the parsed content fails schema parsing.
+	return {
 		id: overrides.id ?? 'message-1',
 		threadId: overrides.threadId ?? PAST_THREAD_ID,
 		role: overrides.role,
-		content: overrides.content,
+		content: parseContent(overrides.content),
 		createdAt: overrides.createdAt ?? CREATED_AT,
-	});
+	} as AgentMessageEntity;
+}
+
+/**
+ * The JSON column hands rows over parsed. A non-JSON fixture stays a bare
+ * string, which stands in for a row that holds no LLM message.
+ */
+function parseContent(raw: string): AgentMessageEntity['content'] {
+	try {
+		return JSON.parse(raw) as AgentMessageEntity['content'];
+	} catch {
+		return raw as unknown as AgentMessageEntity['content'];
+	}
 }
 
 /** The repository applies the projector to each row, so the mock must too. */
 function givenWindow(
 	repository: MockProxy<InstanceAiConversationHistoryRepository>,
-	window: { rows: InstanceAiMessage[]; hasMoreBefore: boolean; hasMoreAfter: boolean },
+	window: { rows: AgentMessageEntity[]; hasMoreBefore: boolean; hasMoreAfter: boolean },
 ) {
 	repository.getConversationWindow.mockImplementation(async ({ project }) => ({
 		...window,
@@ -102,8 +114,8 @@ function givenSearchHit(
 	repos: { repository: MockProxy<InstanceAiConversationHistoryRepository> },
 	options: {
 		row?: ConversationThreadSearchRow;
-		candidates?: InstanceAiMessage[];
-		firstUserMessage?: InstanceAiMessage | null;
+		candidates?: AgentMessageEntity[];
+		firstUserMessage?: AgentMessageEntity | null;
 	} = {},
 ) {
 	const row = options.row ?? threadHit();
@@ -401,7 +413,7 @@ describe('InstanceAiConversationHistoryService', () => {
 			expect(hits).toEqual([]);
 		});
 
-		it('skips rows whose content is not readable JSON', async () => {
+		it('skips rows whose content is not an LLM message', async () => {
 			const repos = setup();
 			givenSearchHit(repos, {
 				candidates: [
@@ -519,17 +531,14 @@ describe('InstanceAiConversationHistoryService', () => {
 	describe('getMessages', () => {
 		function givenThread(
 			repository: MockProxy<InstanceAiConversationHistoryRepository>,
-			overrides: Partial<Pick<InstanceAiThread, 'id' | 'resourceId' | 'projectId' | 'title'>> = {},
+			overrides: Partial<ConversationThreadSearchRow> = {},
 		) {
-			repository.findOwnedThread.mockResolvedValue(
-				mock<InstanceAiThread>({
-					id: PAST_THREAD_ID,
-					resourceId: USER_ID,
-					projectId: PROJECT_ID,
-					title: 'Weekly digest',
-					...overrides,
-				}),
-			);
+			repository.findOwnedThread.mockResolvedValue({
+				id: PAST_THREAD_ID,
+				title: 'Weekly digest',
+				updatedAt: UPDATED_AT,
+				...overrides,
+			});
 		}
 
 		async function expectNotFound(history: ScopedConversationHistory) {
@@ -823,7 +832,7 @@ describe('InstanceAiConversationHistoryService', () => {
 			expect(result.messages[1].text.endsWith('…')).toBe(true);
 		});
 
-		it('drops rows whose content is not readable JSON', async () => {
+		it('drops rows whose content is not an LLM message', async () => {
 			const { history, repository } = setup();
 			givenThread(repository);
 			givenWindow(repository, {

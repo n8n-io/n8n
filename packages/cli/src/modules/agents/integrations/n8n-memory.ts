@@ -75,6 +75,9 @@ import {
 	threadMemoryResourceId,
 } from '../utils/agent-memory-scope';
 
+/** Serializes `patchThread` calls for one thread within this process. */
+const patchQueues = new Map<string, Promise<unknown>>();
+
 /** Bounds the `IN` list of thread scopes one recall reads; older threads fall out first. */
 const EPISODIC_MEMORY_MAX_THREAD_SCOPES = 200;
 
@@ -190,6 +193,38 @@ export class N8nMemoryImpl
 		});
 		const saved = await this.threadRepository.save(entity);
 		return this.toThread(saved);
+	}
+
+	/**
+	 * Read, update and write one thread in order. Unlike `saveThread`, the
+	 * update replaces the metadata, so a caller can remove keys. Updates to the
+	 * same thread run one after another in this process.
+	 */
+	async patchThread(args: {
+		threadId: string;
+		update: (
+			current: Thread,
+		) => { title?: string; metadata?: Record<string, unknown> } | null | undefined;
+	}): Promise<Thread | null> {
+		const previous = patchQueues.get(args.threadId) ?? Promise.resolve();
+		const next = previous
+			.catch(() => {})
+			.then(async () => {
+				const entity = await this.threadRepository.findOneBy({ id: args.threadId });
+				if (!entity) return null;
+				const current = this.toThread(entity);
+				const patch = args.update({ ...current, metadata: { ...(current.metadata ?? {}) } });
+				if (!patch) return current;
+				if (patch.title !== undefined) entity.title = patch.title;
+				if (patch.metadata !== undefined) entity.metadata = JSON.stringify(patch.metadata);
+				return this.toThread(await this.threadRepository.save(entity));
+			});
+		patchQueues.set(args.threadId, next);
+		try {
+			return await next;
+		} finally {
+			if (patchQueues.get(args.threadId) === next) patchQueues.delete(args.threadId);
+		}
 	}
 
 	async deleteThread(threadId: string, ctx: OperationContext = {}): Promise<void> {

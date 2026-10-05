@@ -89,7 +89,7 @@ import { InstanceAiService } from './instance-ai.service';
 import { InstanceAiOnboardingService, startsOnboardingFirstTurn } from './onboarding';
 import { CredentialsService } from '@/credentials/credentials.service';
 
-import { BadRequestError, ConflictError, ForbiddenError, NotFoundError } from '@n8n/errors';
+import { BadRequestError, ForbiddenError, NotFoundError } from '@n8n/errors';
 import { Push } from '@/push';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { ProjectService } from '@/services/project.service.ee';
@@ -227,11 +227,6 @@ export class InstanceAiController {
 			}
 		}
 
-		// One active run per thread
-		if (this.instanceAiService.hasActiveRun(threadId)) {
-			throw new ConflictError('A run is already active for this thread');
-		}
-
 		// The override is an eval knob. It changes how often the observer runs, so a
 		// plain chat caller must not be able to set it.
 		if (
@@ -241,7 +236,7 @@ export class InstanceAiController {
 			throw new ForbiddenError('observerThresholdTokens requires the instanceAi:eval scope');
 		}
 
-		const runId = this.instanceAiService.startRun(
+		const runId = await this.instanceAiService.startRun(
 			req.user,
 			threadId,
 			payload.message,
@@ -371,34 +366,18 @@ export class InstanceAiController {
 		// 5. Collect live message groups.
 		//    Multiple groups can be active simultaneously when a background task
 		//    from an older turn outlives its original turn.
-		const threadStatus = this.instanceAiService.getThreadStatus(threadId);
+		const liveRun = await this.instanceAiService.getLiveRun(threadId);
 
 		// Collect all distinct message groups that have live activity.
 		const liveGroups = new Map<
 			string,
 			{ runIds: string[]; status: 'active' | 'suspended' | 'background' }
 		>();
-
-		// The active/suspended orchestrator run's group
-		if (threadStatus.hasActiveRun || threadStatus.isSuspended) {
-			const groupId = this.instanceAiService.getMessageGroupId(threadId);
-			if (groupId) {
-				liveGroups.set(groupId, {
-					runIds: this.instanceAiService.getRunIdsForMessageGroup(groupId),
-					status: threadStatus.hasActiveRun ? 'active' : 'suspended',
-				});
-			}
-		}
-
-		// Background tasks — each may belong to a different group
-		for (const task of threadStatus.backgroundTasks) {
-			if (task.status !== 'running' || !task.messageGroupId) continue;
-			if (!liveGroups.has(task.messageGroupId)) {
-				liveGroups.set(task.messageGroupId, {
-					runIds: this.instanceAiService.getRunIdsForMessageGroup(task.messageGroupId),
-					status: 'background',
-				});
-			}
+		if (liveRun.status !== 'idle' && liveRun.messageGroupId) {
+			liveGroups.set(liveRun.messageGroupId, {
+				runIds: liveRun.runIds,
+				status: liveRun.status === 'running' ? 'active' : 'suspended',
+			});
 		}
 
 		// 6b (used by both arms below). Emit one run-sync control frame for a live
@@ -417,7 +396,7 @@ export class InstanceAiController {
 			// answered. Settle cards whose pending row is gone (same check as the
 			// history read); otherwise a client that reconnects mid-run re-arms a
 			// card the server already consumed, and every click on it fails.
-			await this.memoryService.flagExpiredConfirmations([{ agentTree }]);
+			await this.memoryService.flagExpiredConfirmations(threadId, [{ agentTree }]);
 			if (closed) return;
 			res.write(
 				`event: run-sync\ndata: ${JSON.stringify({
@@ -426,7 +405,7 @@ export class InstanceAiController {
 					runIds: group.runIds,
 					agentTree,
 					status: group.status,
-					backgroundTasks: threadStatus.backgroundTasks,
+					backgroundTasks: [],
 				})}\n\n`,
 			);
 		};
@@ -600,11 +579,18 @@ export class InstanceAiController {
 		if (startsOnboardingFirstTurn(requestId, parseResult.data)) {
 			await this.requireModelConfigured();
 		}
-		const card = await this.onboarding.answerCard(req.user.id, requestId, parseResult.data);
+		const { threadId: rawThreadId } = req.query as { threadId?: unknown };
+		const threadId = typeof rawThreadId === 'string' ? rawThreadId : undefined;
+		const card = await this.onboarding.answerCard(
+			req.user.id,
+			requestId,
+			parseResult.data,
+			threadId,
+		);
 		if (card) {
 			const runId =
 				'firstMessage' in card
-					? this.instanceAiService.startRun(req.user, card.threadId, card.firstMessage)
+					? await this.instanceAiService.startRun(req.user, card.threadId, card.firstMessage)
 					: card.runId;
 			return { ok: true, runId };
 		}
@@ -613,6 +599,7 @@ export class InstanceAiController {
 			req.user.id,
 			requestId,
 			parseResult.data,
+			threadId,
 		);
 		if (!resolved) {
 			throw new NotFoundError('Confirmation request not found or not authorized');
@@ -625,7 +612,7 @@ export class InstanceAiController {
 	async cancel(req: AuthenticatedRequest, _res: Response, @Param('threadId') threadId: string) {
 		this.requireInstanceAiEnabled();
 		await this.assertThreadAccess(req.user.id, threadId);
-		await this.instanceAiService.routeCancelRun(threadId);
+		await this.instanceAiService.routeCancelRun(req.user, threadId);
 		return { ok: true };
 	}
 
@@ -1062,19 +1049,12 @@ export class InstanceAiController {
 		// live message-group ids ride along so the durable-log fold can exclude
 		// a whole in-flight group even when the active run's own run-start row
 		// has not been persisted yet (it is the group mapping's source there).
-		const threadStatus = this.instanceAiService.getThreadStatus(threadId);
-		const activeRunId = this.instanceAiService.getActiveRunId(threadId);
+		const liveRun = await this.instanceAiService.getLiveRun(threadId);
 		const excludeRunIds: string[] = [];
 		const excludeMessageGroupIds: string[] = [];
-		if (activeRunId) {
-			excludeRunIds.push(activeRunId);
-			const activeGroupId = this.instanceAiService.getMessageGroupId(threadId);
-			if (activeGroupId) excludeMessageGroupIds.push(activeGroupId);
-		}
-		for (const t of threadStatus.backgroundTasks) {
-			if (t.status !== 'running') continue;
-			if (t.runId) excludeRunIds.push(t.runId);
-			if (t.messageGroupId) excludeMessageGroupIds.push(t.messageGroupId);
+		if (liveRun.status === 'running' && liveRun.runId) {
+			excludeRunIds.push(liveRun.runId);
+			if (liveRun.messageGroupId) excludeMessageGroupIds.push(liveRun.messageGroupId);
 		}
 
 		const result = await this.memoryService.getRichMessages(req.user.id, threadId, {
@@ -1117,7 +1097,7 @@ export class InstanceAiController {
 		this.requireInstanceAiEnabled();
 		// Allow new threads — the frontend polls status before the first message is sent
 		await this.assertThreadAccess(req.user.id, threadId, { allowNew: true });
-		return this.instanceAiService.getThreadStatus(threadId);
+		return await this.instanceAiService.getThreadStatus(threadId);
 	}
 
 	@Get('/debug/runs/:runId')

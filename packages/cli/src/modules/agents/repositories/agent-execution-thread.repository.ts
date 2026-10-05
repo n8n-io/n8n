@@ -2,7 +2,14 @@ import type { AgentSessionOrigin, AgentSessionQueryFilters } from '@n8n/api-type
 import type { SerializableAgentState } from '@n8n/agents';
 import { BaseRepository, TransactionRunner, type OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { DataSource, IsNull, Not, type EntityManager, type SelectQueryBuilder } from '@n8n/typeorm';
+import {
+	DataSource,
+	IsNull,
+	LessThan,
+	Not,
+	type EntityManager,
+	type SelectQueryBuilder,
+} from '@n8n/typeorm';
 import chunk from 'lodash/chunk';
 import { jsonParse, UserError } from 'n8n-workflow';
 
@@ -293,6 +300,50 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 			},
 			order: { updatedAt: 'DESC', id: 'DESC' },
 			...(options.limit ? { take: options.limit } : {}),
+		});
+	}
+
+	/** One page of a user's sessions with an agent, newest first, for keyset pagination. */
+	async findOwnedHistoryPage(
+		agentId: string,
+		ownerId: string,
+		limit: number,
+		search?: string,
+		before?: { updatedAt: Date; id: string },
+	): Promise<AgentExecutionThread[]> {
+		const query = this.createQueryBuilder('thread')
+			.where('thread.agentId = :agentId', { agentId })
+			.andWhere('thread.ownerId = :ownerId', { ownerId })
+			.andWhere("thread.accessScope = 'user'")
+			.andWhere('thread.parentThreadId IS NULL');
+		if (search?.trim()) {
+			query.andWhere('LOWER(thread.title) LIKE :search', {
+				search: `%${search.trim().toLowerCase()}%`,
+			});
+		}
+		if (before) {
+			query.andWhere(
+				'(thread.updatedAt < :beforeAt OR (thread.updatedAt = :beforeAt AND thread.id < :beforeId))',
+				{ beforeAt: before.updatedAt, beforeId: before.id },
+			);
+		}
+		return await query
+			.orderBy('thread.updatedAt', 'DESC')
+			.addOrderBy('thread.id', 'DESC')
+			.take(limit + 1)
+			.getMany();
+	}
+
+	/** Sessions of an agent last updated before the cutoff, oldest first. */
+	async findByAgentUpdatedBefore(
+		agentId: string,
+		cutoff: Date,
+		limit: number,
+	): Promise<AgentExecutionThread[]> {
+		return await this.find({
+			where: { agentId, updatedAt: LessThan(cutoff) },
+			order: { updatedAt: 'ASC' },
+			take: limit,
 		});
 	}
 

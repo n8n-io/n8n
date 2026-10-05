@@ -22,7 +22,6 @@ import type { Telemetry } from '@/telemetry';
 
 import type { InProcessEventBus } from './event-bus/in-process-event-bus';
 import type { InstanceAiErrorReporterService } from './instance-ai-error-reporter.service';
-import type { SuspendedThreadPersistenceService } from './suspended-thread-persistence.service';
 import type {
 	InstanceAiTracingService,
 	MessageTraceFinalization,
@@ -56,10 +55,9 @@ export type InstanceAiTerminalOutcomeRunState = Pick<
 	'getRunIdsForMessageGroup' | 'cancelThread'
 >;
 
-export type InstanceAiTerminalOutcomeSuspendedThreads = Pick<
-	SuspendedThreadPersistenceService,
-	'dropPendingConfirmationsForThread'
->;
+export interface InstanceAiTerminalOutcomeSuspendedThreads {
+	dropPendingConfirmationsForThread(threadId: string): Promise<void>;
+}
 
 export type InstanceAiTerminalOutcomeTracing = Pick<
 	InstanceAiTracingService,

@@ -1,9 +1,18 @@
 import { randomUUID } from 'node:crypto';
 
 import { createTeamProject, testDb, testModules } from '@n8n/backend-test-utils';
-import type { Project } from '@n8n/db';
+import { GLOBAL_MEMBER_ROLE, type Project } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { DataSource } from '@n8n/typeorm';
 
+import { createUserShell } from '@test-integration/db/users';
+
+import { AgentExecutionThread } from '../../../agents/entities/agent-execution-thread.entity';
+import { AgentMessageEntity } from '../../../agents/entities/agent-message.entity';
+import { AgentResourceEntity } from '../../../agents/entities/agent-resource.entity';
+import { AgentThreadEntity } from '../../../agents/entities/agent-thread.entity';
+import { AgentRepository } from '../../../agents/repositories/agent.repository';
+import { draftChatMemoryResourceId } from '../../../agents/utils/agent-memory-scope';
 import {
 	askUserContent,
 	assistantTextContent,
@@ -11,20 +20,16 @@ import {
 	toolRowContent,
 	userContent,
 } from '../../__tests__/conversation-history-content.fixtures';
-import type { InstanceAiMessage } from '../../entities/instance-ai-message.entity';
+import { ASSISTANT_AGENT_ID, ASSISTANT_AGENT_NAME } from '../../assistant-turn-options';
 import { InstanceAiConversationHistoryRepository } from '../instance-ai-conversation-history.repository';
-import { InstanceAiMessageRepository } from '../instance-ai-message.repository';
-import { InstanceAiThreadRepository } from '../instance-ai-thread.repository';
-
-const USER_ID = 'user-1';
-const OTHER_USER_ID = 'user-2';
 
 describe('InstanceAiConversationHistoryRepository', () => {
 	let repository: InstanceAiConversationHistoryRepository;
-	// Entity repositories are fixture setup only — the reads under test all
+	// Fixture rows go straight into the Agents tables — the reads under test all
 	// belong to the conversation-history repository.
-	let messageRepository: InstanceAiMessageRepository;
-	let threadRepository: InstanceAiThreadRepository;
+	let dataSource: DataSource;
+	let userId: string;
+	let otherUserId: string;
 	let project: Project;
 	let otherProject: Project;
 	let currentThreadId: string;
@@ -33,18 +38,24 @@ describe('InstanceAiConversationHistoryRepository', () => {
 	const at = (offsetMs: number) => new Date(base.getTime() + offsetMs);
 
 	beforeAll(async () => {
-		await testModules.loadModules(['instance-ai']);
+		await testModules.loadModules(['agents', 'instance-ai']);
 		await testDb.init();
 		repository = Container.get(InstanceAiConversationHistoryRepository);
-		messageRepository = Container.get(InstanceAiMessageRepository);
-		threadRepository = Container.get(InstanceAiThreadRepository);
+		dataSource = Container.get(DataSource);
+		await Container.get(AgentRepository).ensureInstanceAgent(
+			ASSISTANT_AGENT_ID,
+			ASSISTANT_AGENT_NAME,
+		);
+		userId = (await createUserShell(GLOBAL_MEMBER_ROLE)).id;
+		otherUserId = (await createUserShell(GLOBAL_MEMBER_ROLE)).id;
 		project = await createTeamProject();
 		otherProject = await createTeamProject();
 	});
 
 	beforeEach(async () => {
-		await messageRepository.delete({});
-		await threadRepository.delete({});
+		await dataSource.getRepository(AgentMessageEntity).delete({});
+		await dataSource.getRepository(AgentThreadEntity).delete({});
+		await dataSource.getRepository(AgentExecutionThread).delete({});
 		currentThreadId = await createThread({ title: 'Current conversation' });
 	});
 
@@ -54,24 +65,39 @@ describe('InstanceAiConversationHistoryRepository', () => {
 
 	/** A thread with one opening message, as a thread the user actually sent to. */
 	async function createThread(options: {
-		resourceId?: string;
+		ownerId?: string;
 		projectId?: string;
 		title?: string;
 		updatedAt?: Date;
+		/** Set for a delegated child run, which is not a conversation of its own. */
+		parentThreadId?: string;
 		/** `false` mimics a thread created by the client whose first send never happened. */
 		withOpeningMessage?: boolean;
 	}): Promise<string> {
 		const id = randomUUID();
-		await threadRepository.save(
-			threadRepository.create({
-				id,
-				resourceId: options.resourceId ?? USER_ID,
-				projectId: options.projectId ?? project.id,
-				title: options.title ?? '',
-				metadata: null,
-				updatedAt: options.updatedAt ?? base,
-			}),
-		);
+		const ownerId = options.ownerId ?? userId;
+		const resourceId = draftChatMemoryResourceId(ownerId);
+		await dataSource
+			.getRepository(AgentResourceEntity)
+			.createQueryBuilder()
+			.insert()
+			.values({ id: resourceId, metadata: null })
+			.orIgnore()
+			.execute();
+		await dataSource
+			.getRepository(AgentThreadEntity)
+			.insert({ id, resourceId, title: null, metadata: null });
+		await dataSource.getRepository(AgentExecutionThread).insert({
+			id,
+			agentId: ASSISTANT_AGENT_ID,
+			agentName: ASSISTANT_AGENT_NAME,
+			ownerId,
+			accessScope: 'user',
+			projectId: options.projectId ?? project.id,
+			title: options.title ?? '',
+			parentThreadId: options.parentThreadId ?? null,
+			updatedAt: options.updatedAt ?? base,
+		});
 		if (options.withOpeningMessage !== false) {
 			await createMessage({ threadId: id, role: 'user', content: userContent('opening message') });
 		}
@@ -86,14 +112,15 @@ describe('InstanceAiConversationHistoryRepository', () => {
 		createdAt?: Date;
 	}): Promise<string> {
 		const id = options.id ?? randomUUID();
-		await messageRepository.save(
-			messageRepository.create({
+		const messages = dataSource.getRepository(AgentMessageEntity);
+		await messages.save(
+			messages.create({
 				id,
 				threadId: options.threadId,
-				content: options.content,
+				content: JSON.parse(options.content) as AgentMessageEntity['content'],
 				role: options.role,
 				type: null,
-				resourceId: USER_ID,
+				resourceId: draftChatMemoryResourceId(userId),
 				createdAt: options.createdAt ?? base,
 				updatedAt: options.createdAt ?? base,
 			}),
@@ -101,9 +128,13 @@ describe('InstanceAiConversationHistoryRepository', () => {
 		return id;
 	}
 
+	async function setTitle(threadId: string, title: string) {
+		await dataSource.getRepository(AgentExecutionThread).update({ id: threadId }, { title });
+	}
+
 	async function search(query: string, limit = 10) {
 		return await repository.searchProjectThreadsForUser({
-			userId: USER_ID,
+			userId,
 			projectId: project.id,
 			excludeThreadId: currentThreadId,
 			query,
@@ -114,7 +145,7 @@ describe('InstanceAiConversationHistoryRepository', () => {
 	describe('searchProjectThreadsForUser', () => {
 		it('returns only threads of this user in this project', async () => {
 			const mine = await createThread({ title: 'Slack digest workflow' });
-			await createThread({ title: 'Slack alerts', resourceId: OTHER_USER_ID });
+			await createThread({ title: 'Slack alerts', ownerId: otherUserId });
 			await createThread({ title: 'Slack reports', projectId: otherProject.id });
 
 			const rows = await search('slack');
@@ -123,7 +154,7 @@ describe('InstanceAiConversationHistoryRepository', () => {
 		});
 
 		it('excludes the thread the user is currently in', async () => {
-			await threadRepository.update({ id: currentThreadId }, { title: 'Slack digest' });
+			await setTitle(currentThreadId, 'Slack digest');
 			const other = await createThread({ title: 'Slack archive' });
 
 			const rows = await search('slack');
@@ -134,7 +165,7 @@ describe('InstanceAiConversationHistoryRepository', () => {
 		it('excludes sub-agent threads', async () => {
 			const subAgentThread = await createThread({
 				title: 'Slack sub-agent work',
-				resourceId: `instance-ai-subagent:${USER_ID}:run-1`,
+				parentThreadId: currentThreadId,
 			});
 			await createMessage({
 				threadId: subAgentThread,
@@ -244,7 +275,7 @@ describe('InstanceAiConversationHistoryRepository', () => {
 	describe('listRecentProjectThreadsForUser', () => {
 		async function listRecent(limit = 5) {
 			return await repository.listRecentProjectThreadsForUser({
-				userId: USER_ID,
+				userId,
 				projectId: project.id,
 				excludeThreadId: currentThreadId,
 				limit,
@@ -253,11 +284,11 @@ describe('InstanceAiConversationHistoryRepository', () => {
 
 		it('returns only this user and project, excluding the current thread', async () => {
 			const mine = await createThread({ title: 'Mine' });
-			await createThread({ title: 'Other user', resourceId: OTHER_USER_ID });
+			await createThread({ title: 'Other user', ownerId: otherUserId });
 			await createThread({ title: 'Other project', projectId: otherProject.id });
 			await createThread({
 				title: 'Sub-agent',
-				resourceId: `instance-ai-subagent:${currentThreadId}:builder`,
+				parentThreadId: currentThreadId,
 			});
 
 			const rows = await listRecent();
@@ -289,13 +320,13 @@ describe('InstanceAiConversationHistoryRepository', () => {
 		it('counts exactly the threads the listing pages over', async () => {
 			await createThread({ title: 'A' });
 			await createThread({ title: 'B' });
-			await createThread({ title: 'Other user', resourceId: OTHER_USER_ID });
+			await createThread({ title: 'Other user', ownerId: otherUserId });
 			await createThread({ title: 'Other project', projectId: otherProject.id });
 			await createThread({ title: 'Never sent', withOpeningMessage: false });
 
 			await expect(
 				repository.countProjectThreadsForUser({
-					userId: USER_ID,
+					userId,
 					projectId: project.id,
 					excludeThreadId: currentThreadId,
 				}),
@@ -308,7 +339,7 @@ describe('InstanceAiConversationHistoryRepository', () => {
 		it('returns the thread for its owner in its project', async () => {
 			const threadId = await createThread({ title: 'Mine' });
 
-			await expect(repository.findOwnedThread(threadId, USER_ID, project.id)).resolves.toEqual(
+			await expect(repository.findOwnedThread(threadId, userId, project.id)).resolves.toEqual(
 				expect.objectContaining({ id: threadId }),
 			);
 		});
@@ -317,13 +348,13 @@ describe('InstanceAiConversationHistoryRepository', () => {
 			const threadId = await createThread({ title: 'Mine' });
 
 			await expect(
-				repository.findOwnedThread(threadId, OTHER_USER_ID, project.id),
+				repository.findOwnedThread(threadId, otherUserId, project.id),
 			).resolves.toBeNull();
 			await expect(
-				repository.findOwnedThread(threadId, USER_ID, otherProject.id),
+				repository.findOwnedThread(threadId, userId, otherProject.id),
 			).resolves.toBeNull();
 			await expect(
-				repository.findOwnedThread(randomUUID(), USER_ID, project.id),
+				repository.findOwnedThread(randomUUID(), userId, project.id),
 			).resolves.toBeNull();
 		});
 	});
@@ -715,8 +746,8 @@ describe('InstanceAiConversationHistoryRepository', () => {
 				title: 'Auto follow-ups',
 				withOpeningMessage: false,
 			});
-			const project = (row: InstanceAiMessage) =>
-				row.content.includes('(continue)') ? undefined : row;
+			const project = (row: AgentMessageEntity) =>
+				JSON.stringify(row.content).includes('(continue)') ? undefined : row;
 
 			await createMessage({
 				threadId: mixedThread,
@@ -780,6 +811,45 @@ describe('InstanceAiConversationHistoryRepository', () => {
 			});
 			expect(whole.rows.map((row) => row.id)).toEqual([realOne, realTwo, realThree]);
 			expect(whole.hasMoreBefore).toBe(false);
+		});
+	});
+
+	describe('hasAtLeastAssistantUserMessages', () => {
+		it('counts user messages in Assistant threads only', async () => {
+			// `beforeEach` gives the current thread one opening user message.
+			await expect(repository.hasAtLeastAssistantUserMessages(1)).resolves.toBe(true);
+			await expect(repository.hasAtLeastAssistantUserMessages(2)).resolves.toBe(false);
+
+			// A memory thread with no Assistant session row belongs to another agent.
+			const foreignThreadId = randomUUID();
+			await dataSource.getRepository(AgentThreadEntity).insert({
+				id: foreignThreadId,
+				resourceId: draftChatMemoryResourceId(userId),
+				title: null,
+				metadata: null,
+			});
+			await createMessage({
+				threadId: foreignThreadId,
+				role: 'user',
+				content: userContent('hello other agent'),
+			});
+			await createMessage({
+				threadId: currentThreadId,
+				role: 'assistant',
+				content: assistantTextContent('hi'),
+			});
+			await expect(repository.hasAtLeastAssistantUserMessages(2)).resolves.toBe(false);
+
+			await createMessage({
+				threadId: currentThreadId,
+				role: 'user',
+				content: userContent('second message'),
+			});
+			await expect(repository.hasAtLeastAssistantUserMessages(2)).resolves.toBe(true);
+		});
+
+		it('is true for a threshold of zero', async () => {
+			await expect(repository.hasAtLeastAssistantUserMessages(0)).resolves.toBe(true);
 		});
 	});
 });

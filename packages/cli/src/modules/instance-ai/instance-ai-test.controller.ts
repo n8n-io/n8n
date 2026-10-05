@@ -7,7 +7,8 @@ import { ForbiddenError } from '@n8n/errors';
 
 import { InstanceAiMemoryService } from './instance-ai-memory.service';
 import { InstanceAiService } from './instance-ai.service';
-import { InstanceAiThreadRepository } from './repositories/instance-ai-thread.repository';
+import { AgentExecutionThreadRepository } from '../agents/repositories/agent-execution-thread.repository';
+import { ASSISTANT_AGENT_ID } from './assistant-turn-options';
 
 /**
  * Test-only endpoints for trace replay in Instance AI e2e tests.
@@ -17,7 +18,7 @@ import { InstanceAiThreadRepository } from './repositories/instance-ai-thread.re
 export class InstanceAiTestController {
 	constructor(
 		private readonly instanceAiService: InstanceAiService,
-		private readonly threadRepo: InstanceAiThreadRepository,
+		private readonly threadRepo: AgentExecutionThreadRepository,
 		private readonly workflowRepo: WorkflowRepository,
 		private readonly userRepo: UserRepository,
 		private readonly memoryService: InstanceAiMemoryService,
@@ -95,14 +96,17 @@ export class InstanceAiTestController {
 		this.instanceAiService.cancelAllBackgroundTasks();
 		this.instanceAiService.clearTraceContextsForTest();
 
-		const threads = await this.threadRepo.find({ select: ['id'] });
+		const threads = await this.threadRepo.find({
+			where: { agentId: ASSISTANT_AGENT_ID },
+			select: ['id'],
+		});
 		for (const { id } of threads) {
 			await this.instanceAiService.clearThreadState(id);
 		}
 		// `repo.clear()` issues TRUNCATE without CASCADE, which Postgres rejects
 		// when child tables (messages, snapshots, …) still reference these rows.
 		// QueryBuilder DELETE fires the FK CASCADE/SET-NULL actions correctly.
-		await this.threadRepo.createQueryBuilder().delete().execute();
+		await this.threadRepo.delete({ agentId: ASSISTANT_AGENT_ID });
 
 		const workflowIds = await this.workflowRepo.find({ select: ['id'] });
 		for (const { id } of workflowIds) {

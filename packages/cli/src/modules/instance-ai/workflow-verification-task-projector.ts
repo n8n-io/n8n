@@ -14,7 +14,6 @@ import {
 import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
 
 import type { InProcessEventBus } from './event-bus/in-process-event-bus';
-import type { TypeORMAgentMemory } from './storage/typeorm-agent-memory';
 import {
 	parseWorkflowBuildOutcome,
 	type WorkflowVerificationObligationService,
@@ -216,7 +215,7 @@ function taskItemsEqual(first: TaskItem, second: TaskItem): boolean {
  */
 export class WorkflowVerificationTaskProjector {
 	constructor(
-		private readonly agentMemory: TypeORMAgentMemory,
+		private readonly agentMemory: ConstructorParameters<typeof WorkflowLoopStorage>[0],
 		private readonly eventBus: InProcessEventBus,
 		private readonly logger: Logger,
 		private readonly obligations: WorkflowVerificationObligationService,

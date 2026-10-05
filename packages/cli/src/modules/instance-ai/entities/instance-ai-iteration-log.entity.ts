@@ -7,7 +7,7 @@ export class InstanceAiIterationLog extends WithTimestamps {
 	@PrimaryColumn({ type: 'varchar', length: 36 })
 	id: string;
 
-	@Column({ type: 'uuid' })
+	@Column({ type: 'varchar', length: 36 })
 	threadId: string;
 
 	@Column({ type: 'varchar' })

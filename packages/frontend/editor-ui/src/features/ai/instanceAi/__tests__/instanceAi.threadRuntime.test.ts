@@ -1854,6 +1854,23 @@ describe('createThreadRuntime - SSE and hydration', () => {
 
 		await sendPromise;
 	});
+
+	test('sendMessage during an active run keeps the current run active', async () => {
+		const runtime = activeRuntime(registry);
+		runtime.activeRunId = 'run-current';
+		mockPostMessage.mockResolvedValue({ runId: 'run-steered' });
+
+		const sent = await runtime.sendMessage('mid-run note', {
+			authorship: USER_TYPED_MESSAGE,
+		});
+
+		expect(sent).toBe(true);
+		expect(mockPostMessage).toHaveBeenCalled();
+		expect(runtime.messages.some((m) => m.role === 'user' && m.content === 'mid-run note')).toBe(
+			true,
+		);
+		expect(runtime.activeRunId).toBe('run-current');
+	});
 });
 
 describe('createThreadRuntime - response timing telemetry', () => {
@@ -2522,20 +2539,30 @@ describe('createThreadRuntime - gateway resource-decision confirmation', () => {
 		});
 
 		expect(mockPostConfirmation).toHaveBeenCalledOnce();
-		expect(mockPostConfirmation).toHaveBeenCalledWith(expect.anything(), 'req-1', {
-			kind: 'resourceDecision',
-			resourceDecision: 'allowOnce',
-		});
+		expect(mockPostConfirmation).toHaveBeenCalledWith(
+			expect.anything(),
+			'thread-confirmation',
+			'req-1',
+			{
+				kind: 'resourceDecision',
+				resourceDecision: 'allowOnce',
+			},
+		);
 	});
 
 	it('confirmResourceDecision calls postConfirmation with the decision token', async () => {
 		await activeRuntime(registry).confirmResourceDecision('req-2', 'allowForSession');
 
 		expect(mockPostConfirmation).toHaveBeenCalledOnce();
-		expect(mockPostConfirmation).toHaveBeenCalledWith(expect.anything(), 'req-2', {
-			kind: 'resourceDecision',
-			resourceDecision: 'allowForSession',
-		});
+		expect(mockPostConfirmation).toHaveBeenCalledWith(
+			expect.anything(),
+			expect.any(String),
+			'req-2',
+			{
+				kind: 'resourceDecision',
+				resourceDecision: 'allowForSession',
+			},
+		);
 	});
 
 	it('confirmResourceDecision does not call postConfirmation when confirmAction throws', async () => {
@@ -2790,10 +2817,15 @@ describe('createThreadRuntime - session always-allow', () => {
 		await vi.waitFor(() => {
 			expect(runtime.resolvedConfirmationIds.get('req-auto')).toBe('approved');
 		});
-		expect(mockPostConfirmation).toHaveBeenCalledWith(expect.anything(), 'req-auto', {
-			kind: 'approval',
-			approved: true,
-		});
+		expect(mockPostConfirmation).toHaveBeenCalledWith(
+			expect.anything(),
+			expect.any(String),
+			'req-auto',
+			{
+				kind: 'approval',
+				approved: true,
+			},
+		);
 	});
 
 	it('does not auto-approve credential-flow confirmations even when the key matches', async () => {
@@ -3036,10 +3068,15 @@ describe('createThreadRuntime - session always-allow', () => {
 		});
 
 		await vi.waitFor(() => {
-			expect(mockPostConfirmation).toHaveBeenCalledWith(expect.anything(), 'req-fail', {
-				kind: 'approval',
-				approved: true,
-			});
+			expect(mockPostConfirmation).toHaveBeenCalledWith(
+				expect.anything(),
+				expect.any(String),
+				'req-fail',
+				{
+					kind: 'approval',
+					approved: true,
+				},
+			);
 		});
 		expect(runtime.resolvedConfirmationIds.has('req-fail')).toBe(false);
 	});
@@ -3669,11 +3706,16 @@ describe('createThreadRuntime - requestPlanChanges', () => {
 		const ok = await runtime.requestPlanChanges('req-plan', 'Drop the third workflow');
 
 		expect(ok).toBe(true);
-		expect(mockPostConfirmation).toHaveBeenCalledWith(expect.anything(), 'req-plan', {
-			kind: 'approval',
-			approved: false,
-			userInput: 'Drop the third workflow',
-		});
+		expect(mockPostConfirmation).toHaveBeenCalledWith(
+			expect.anything(),
+			expect.any(String),
+			'req-plan',
+			{
+				kind: 'approval',
+				approved: false,
+				userInput: 'Drop the third workflow',
+			},
+		);
 		expect(runtime.resolvedConfirmationIds.get('req-plan')).toBe('changes-requested');
 	});
 

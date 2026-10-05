@@ -9,8 +9,9 @@ import {
 	buildVisibleRowCondition,
 	VISIBLE_ROW_MARKERS,
 } from './conversation-history-search';
-import { InstanceAiMessage } from '../entities/instance-ai-message.entity';
-import { InstanceAiThread } from '../entities/instance-ai-thread.entity';
+import { AgentExecutionThread } from '../../agents/entities/agent-execution-thread.entity';
+import { AgentMessageEntity } from '../../agents/entities/agent-message.entity';
+import { ASSISTANT_AGENT_ID } from '../assistant-turn-options';
 
 /** The rows a human reads back: tool/system rows carry no conversation text. */
 const CONVERSATION_ROLES = ['user', 'assistant'];
@@ -53,7 +54,7 @@ export interface ConversationWindowParams<T> {
 	 * Maps a fetched row to what the window returns, or `undefined` to drop it.
 	 * The SQL filter is only a coarse pre-filter.
 	 */
-	project: (row: InstanceAiMessage) => T | undefined;
+	project: (row: AgentMessageEntity) => T | undefined;
 }
 
 export interface ConversationWindow<T> {
@@ -63,7 +64,11 @@ export interface ConversationWindow<T> {
 	hasMoreAfter: boolean;
 }
 
-/** Reads backing the `conversation-history` tool, over threads and messages. */
+/**
+ * Reads backing the `conversation-history` tool. Assistant conversations live in
+ * the Agents tables: `agent_execution_threads` rows with the Assistant agent id
+ * and `agents_messages` rows keyed by the same thread id.
+ */
 @Service()
 export class InstanceAiConversationHistoryRepository {
 	constructor(private readonly dataSource: DataSource) {}
@@ -97,12 +102,37 @@ export class InstanceAiConversationHistoryRepository {
 		threadId: string,
 		userId: string,
 		projectId: string,
-	): Promise<InstanceAiThread | null> {
-		return await this.threads()
-			.where('t.id = :threadId', { threadId })
-			.andWhere('t.resourceId = :userId', { userId })
+	): Promise<ConversationThreadSearchRow | null> {
+		const thread = await this.assistantThreads(userId)
+			.andWhere('t.id = :threadId', { threadId })
 			.andWhere('t.projectId = :projectId', { projectId })
 			.getOne();
+		return thread ? toThreadRow(thread) : null;
+	}
+
+	/**
+	 * Whether users sent the Assistant at least `threshold` messages, across
+	 * the whole instance. Stops reading at `threshold` rows.
+	 */
+	async hasAtLeastAssistantUserMessages(threshold: number): Promise<boolean> {
+		if (threshold <= 0) return true;
+
+		const qb = this.messages();
+		const assistantThread = qb
+			.subQuery()
+			.select('1')
+			.from(AgentExecutionThread, 't')
+			.where('t.id = m.threadId')
+			.andWhere('t.agentId = :agentId')
+			.getQuery();
+
+		const rows = await qb
+			.select('m.id')
+			.where("m.role = 'user'")
+			.andWhere(`EXISTS ${assistantThread}`, { agentId: ASSISTANT_AGENT_ID })
+			.take(threshold)
+			.getMany();
+		return rows.length >= threshold;
 	}
 
 	/**
@@ -118,8 +148,8 @@ export class InstanceAiConversationHistoryRepository {
 		threadIds: string[],
 		query: string,
 		maxRowsPerThread: number,
-	): Promise<Map<string, InstanceAiMessage[]>> {
-		const byThread = new Map<string, InstanceAiMessage[]>();
+	): Promise<Map<string, AgentMessageEntity[]>> {
+		const byThread = new Map<string, AgentMessageEntity[]>();
 		if (maxRowsPerThread <= 0) return byThread;
 
 		for (const threadId of threadIds) {
@@ -141,8 +171,8 @@ export class InstanceAiConversationHistoryRepository {
 	 * per-thread reads use. One `take(1)` query per thread, sequential like
 	 * {@link findSearchMatchRows}: a correlated `MIN` goes quadratic on long threads.
 	 */
-	async findFirstUserMessages(threadIds: string[]): Promise<Map<string, InstanceAiMessage>> {
-		const byThread = new Map<string, InstanceAiMessage>();
+	async findFirstUserMessages(threadIds: string[]): Promise<Map<string, AgentMessageEntity>> {
+		const byThread = new Map<string, AgentMessageEntity>();
 		for (const threadId of threadIds) {
 			const row = await this.orderMessages(this.messages(), 'ASC')
 				.where('m.threadId = :threadId', { threadId })
@@ -162,7 +192,7 @@ export class InstanceAiConversationHistoryRepository {
 	async findMessageInThread(
 		threadId: string,
 		messageId: string,
-	): Promise<InstanceAiMessage | null> {
+	): Promise<AgentMessageEntity | null> {
 		return await this.conversationRows(threadId)
 			.andWhere('m.id = :messageId', { messageId })
 			.getOne();
@@ -212,7 +242,7 @@ export class InstanceAiConversationHistoryRepository {
 
 	/** One page of threads, most recently updated first. */
 	private async pageByRecency(
-		scope: () => SelectQueryBuilder<InstanceAiThread>,
+		scope: () => SelectQueryBuilder<AgentExecutionThread>,
 		limit: number,
 	): Promise<ConversationThreadSearchRow[]> {
 		const threads = await scope()
@@ -222,30 +252,23 @@ export class InstanceAiConversationHistoryRepository {
 			.limit(limit)
 			.getMany();
 
-		return threads.map((thread) => ({
-			id: thread.id,
-			title: thread.title,
-			updatedAt: thread.updatedAt,
-		}));
+		return threads.map(toThreadRow);
 	}
 
 	/**
 	 * One user, one project, never the current thread, and only threads that
 	 * hold a message (the client creates the thread row before the first send).
-	 * Sub-agent threads drop out implicitly: their synthetic
-	 * `instance-ai-subagent:*` resource id never equals a user id.
 	 */
-	private scopedThreads(scope: ConversationThreadScope): SelectQueryBuilder<InstanceAiThread> {
-		const qb = this.threads();
+	private scopedThreads(scope: ConversationThreadScope): SelectQueryBuilder<AgentExecutionThread> {
+		const qb = this.assistantThreads(scope.userId);
 		const hasMessages = qb
 			.subQuery()
 			.select('1')
-			.from(InstanceAiMessage, 'started')
+			.from(AgentMessageEntity, 'started')
 			.where('started.threadId = t.id')
 			.getQuery();
 
 		return qb
-			.where('t.resourceId = :userId', { userId: scope.userId })
 			.andWhere('t.projectId = :projectId', { projectId: scope.projectId })
 			.andWhere('t.id != :excludeThreadId', { excludeThreadId: scope.excludeThreadId })
 			.andWhere(`EXISTS ${hasMessages}`);
@@ -258,13 +281,13 @@ export class InstanceAiConversationHistoryRepository {
 	 */
 	private buildSearchQuery(
 		params: ConversationThreadScope & { query: string },
-	): SelectQueryBuilder<InstanceAiThread> {
+	): SelectQueryBuilder<AgentExecutionThread> {
 		const qb = this.scopedThreads(params);
 
 		const messageMatch = qb
 			.subQuery()
 			.select('1')
-			.from(InstanceAiMessage, 'm')
+			.from(AgentMessageEntity, 'm')
 			.where('m.threadId = t.id')
 			.andWhere(buildMessageMatchCondition('m'))
 			.getQuery();
@@ -290,7 +313,7 @@ export class InstanceAiConversationHistoryRepository {
 		threadId: string,
 		direction: 'older' | 'newer',
 		limit: number,
-		project: (row: InstanceAiMessage) => T | undefined,
+		project: (row: AgentMessageEntity) => T | undefined,
 		boundary?: { anchor: ConversationWindowAnchor; includeAnchor?: boolean },
 	): Promise<{ rows: T[]; hasMore: boolean }> {
 		const qb = this.conversationRows(threadId);
@@ -326,22 +349,35 @@ export class InstanceAiConversationHistoryRepository {
 		return { rows: direction === 'older' ? rows.reverse() : rows, hasMore };
 	}
 
-	private conversationRows(threadId: string): SelectQueryBuilder<InstanceAiMessage> {
+	private conversationRows(threadId: string): SelectQueryBuilder<AgentMessageEntity> {
 		return this.messages()
 			.where('m.threadId = :threadId', { threadId })
 			.andWhere('m.role IN (:...roles)', { roles: CONVERSATION_ROLES })
 			.andWhere(buildVisibleRowCondition('m'), VISIBLE_ROW_MARKERS);
 	}
 
-	private orderMessages(qb: SelectQueryBuilder<InstanceAiMessage>, order: 'ASC' | 'DESC') {
+	private orderMessages(qb: SelectQueryBuilder<AgentMessageEntity>, order: 'ASC' | 'DESC') {
 		return qb.orderBy('m.createdAt', order).addOrderBy('m.id', order);
 	}
 
-	private threads(): SelectQueryBuilder<InstanceAiThread> {
-		return this.dataSource.createQueryBuilder(InstanceAiThread, 't');
+	/**
+	 * The user's private, top-level Assistant conversations. Delegated child
+	 * runs carry a `parentThreadId` and are not conversations of their own.
+	 */
+	private assistantThreads(userId: string): SelectQueryBuilder<AgentExecutionThread> {
+		return this.dataSource
+			.createQueryBuilder(AgentExecutionThread, 't')
+			.where('t.agentId = :agentId', { agentId: ASSISTANT_AGENT_ID })
+			.andWhere('t.ownerId = :userId', { userId })
+			.andWhere("t.accessScope = 'user'")
+			.andWhere('t.parentThreadId IS NULL');
 	}
 
-	private messages(): SelectQueryBuilder<InstanceAiMessage> {
-		return this.dataSource.createQueryBuilder(InstanceAiMessage, 'm');
+	private messages(): SelectQueryBuilder<AgentMessageEntity> {
+		return this.dataSource.createQueryBuilder(AgentMessageEntity, 'm');
 	}
+}
+
+function toThreadRow(thread: AgentExecutionThread): ConversationThreadSearchRow {
+	return { id: thread.id, title: thread.title ?? '', updatedAt: thread.updatedAt };
 }

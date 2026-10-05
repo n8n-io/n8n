@@ -30,6 +30,10 @@ import type {
 	SystemAgentTurnStatus,
 } from './system-agent.types';
 
+function combineSignals(signal: AbortSignal, extra: AbortSignal | undefined): AbortSignal {
+	return extra ? AbortSignal.any([signal, extra]) : signal;
+}
+
 /** Transcript source of an instance agent turn. Preview access rules accept it. */
 const SYSTEM_AGENT_SOURCE = 'chat';
 
@@ -274,7 +278,7 @@ export class SystemAgentExecutionService {
 			options: {
 				persistence: { threadId: thread.id, resourceId, hostMetadata: handle.hostMetadata },
 				...handle.runOptions,
-				abortSignal: signal,
+				abortSignal: combineSignals(signal, handle.runOptions?.abortSignal),
 			},
 			recording: {
 				...claim.recording,
@@ -300,7 +304,12 @@ export class SystemAgentExecutionService {
 			thread.id,
 		);
 		const pending = Object.values(checkpoint?.pendingToolCalls ?? {}).find(
-			(toolCall): toolCall is Extract<SerializableAgentState['pendingToolCalls'][string], { suspended: true }> =>
+			(
+				toolCall,
+			): toolCall is Extract<
+				SerializableAgentState['pendingToolCalls'][string],
+				{ suspended: true }
+			> =>
 				toolCall.suspended &&
 				(params.toolCallId === undefined || toolCall.toolCallId === params.toolCallId),
 		);
@@ -347,7 +356,7 @@ export class SystemAgentExecutionService {
 					runId,
 					toolCallId: pending.toolCallId,
 					hostMetadata: handle.hostMetadata,
-					abortSignal: controller.signal,
+					abortSignal: combineSignals(controller.signal, handle.runOptions?.abortSignal),
 				},
 				recording,
 			}),

@@ -1,7 +1,7 @@
 import { WithTimestamps } from '@n8n/db';
 import { Column, Entity, Index, JoinColumn, ManyToOne, PrimaryColumn } from '@n8n/typeorm';
 
-import { InstanceAiThread } from './instance-ai-thread.entity';
+import { AgentExecutionThread } from '../../agents/entities/agent-execution-thread.entity';
 
 /**
  * Append-only log of durable Instance AI events — the source of truth for
@@ -17,11 +17,11 @@ import { InstanceAiThread } from './instance-ai-thread.entity';
 @Entity({ name: 'instance_ai_events' })
 @Index(['threadId', 'runId'])
 export class InstanceAiEventLogEntry extends WithTimestamps {
-	@ManyToOne(() => InstanceAiThread, { onDelete: 'CASCADE' })
+	@ManyToOne(() => AgentExecutionThread, { onDelete: 'CASCADE' })
 	@JoinColumn({ name: 'threadId' })
-	thread: InstanceAiThread;
+	thread: AgentExecutionThread;
 
-	@PrimaryColumn({ type: 'uuid' })
+	@PrimaryColumn({ type: 'varchar', length: 36 })
 	threadId: string;
 
 	/** Per-thread monotonic sequence — the SSE replay cursor. */

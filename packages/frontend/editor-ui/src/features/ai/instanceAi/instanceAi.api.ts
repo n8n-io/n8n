@@ -110,19 +110,20 @@ export async function postCancelTask(
 }
 
 /**
- * POST /instance-ai/confirm/:requestId -> 200 OK
+ * POST /instance-ai/confirm/:requestId?threadId=:threadId -> 200 OK
  * Resolve a confirmation request (HITL). The request body is a discriminated
- * union on `kind`.
+ * union on `kind`. The backend needs the thread id to find the suspended run.
  */
 export async function postConfirmation(
 	context: IRestApiContext,
+	threadId: string,
 	requestId: string,
 	payload: InstanceAiConfirmRequest,
 ): Promise<InstanceAiConfirmResponse> {
 	return await makeRestApiRequest<InstanceAiConfirmResponse>(
 		context,
 		'POST',
-		`/instance-ai/confirm/${requestId}`,
+		`/instance-ai/confirm/${requestId}?threadId=${encodeURIComponent(threadId)}`,
 		payload,
 	);
 }

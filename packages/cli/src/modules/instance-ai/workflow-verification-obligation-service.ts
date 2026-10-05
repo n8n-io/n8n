@@ -14,8 +14,6 @@ import {
 	type WorkflowVerificationObligationSource,
 } from '@n8n/instance-ai';
 
-import type { TypeORMAgentMemory } from './storage/typeorm-agent-memory';
-
 export function parseWorkflowBuildOutcome(
 	outcome: Record<string, unknown> | undefined,
 ): WorkflowBuildOutcome | undefined {
@@ -25,7 +23,7 @@ export function parseWorkflowBuildOutcome(
 
 export class WorkflowVerificationObligationService {
 	constructor(
-		private readonly agentMemory: TypeORMAgentMemory,
+		private readonly agentMemory: ConstructorParameters<typeof WorkflowLoopStorage>[0],
 		private readonly isSetupPanelEnabled: (threadId: string) => boolean = () => false,
 	) {}
 

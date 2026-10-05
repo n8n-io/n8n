@@ -529,7 +529,8 @@ function resetDraftComposer({ keepAttachments = false } = {}) {
 
 /** The single submission gate — `canSubmit` is this predicate over the draft. */
 function canSubmitMessage(message: string, attachmentCount = 0) {
-	if (isBusy.value || isGatedBySetup.value) return false;
+	// A running turn does not block sending: the backend steers the message into it.
+	if (isSubmissionInFlight.value || isGatedBySetup.value) return false;
 	// Plan feedback travels as a plain string, so an attachment cannot carry it.
 	if (props.isAwaitingPlanReview) return message.length > 0;
 	return message.length > 0 || attachmentCount > 0;

@@ -27,6 +27,7 @@ import type * as InstanceContextReachMod from './stream/instance-context-reach';
 import type * as MapChunkMod from './stream/map-chunk';
 import type * as UsageAccumulatorMod from './stream/usage-accumulator';
 import type * as WorkSummaryAccumulatorMod from './stream/work-summary-accumulator';
+import type * as AgentChunkPublisherMod from './stream/agent-chunk-publisher';
 import type * as AgentPersistenceMod from './tools/orchestration/agent-persistence';
 import type * as AgentContextToolMod from './tools/agent-context.tool';
 import type * as SanitizeWebContentMod from './tools/web-research/sanitize-web-content';
@@ -130,6 +131,9 @@ const loadUsageAccumulator = lazyModule(
 );
 const loadWorkSummaryAccumulator = lazyModule<typeof WorkSummaryAccumulatorMod>(() =>
 	require('./stream/work-summary-accumulator'),
+);
+const loadAgentChunkPublisher = lazyModule<typeof AgentChunkPublisherMod>(() =>
+	require('./stream/agent-chunk-publisher'),
 );
 const loadInstanceContextReach = lazyModule<typeof InstanceContextReachMod>(() =>
 	require('./stream/instance-context-reach'),
@@ -595,6 +599,14 @@ export type {
 	TraceStatus,
 } from './runtime/resumable-stream-executor';
 export type { WorkSummary, ToolCallSummary } from './stream/work-summary-accumulator';
+export type {
+	AgentChunkPublisherOptions,
+	AgentChunkPublisherResult,
+} from './stream/agent-chunk-publisher';
+export type AgentChunkPublisher = AgentChunkPublisherMod.AgentChunkPublisher;
+export const AgentChunkPublisher: typeof AgentChunkPublisherMod.AgentChunkPublisher = lazyClass(
+	() => loadAgentChunkPublisher().AgentChunkPublisher,
+);
 export type WorkSummaryAccumulator = WorkSummaryAccumulatorMod.WorkSummaryAccumulator;
 export const WorkSummaryAccumulator: typeof WorkSummaryAccumulatorMod.WorkSummaryAccumulator =
 	lazyClass(() => loadWorkSummaryAccumulator().WorkSummaryAccumulator);

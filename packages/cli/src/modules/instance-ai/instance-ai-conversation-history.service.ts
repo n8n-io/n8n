@@ -13,11 +13,11 @@ import type {
 	InstanceAiConversationHistoryReader,
 } from '@n8n/instance-ai';
 import { isRecord } from '@n8n/utils/is-record';
-import { jsonParse, UserError } from 'n8n-workflow';
+import { UserError } from 'n8n-workflow';
 import { z } from 'zod';
 
 import { ASK_USER_TOOL_NAME, TOOL_CALL_PART_TYPES } from './conversation-history-content';
-import type { InstanceAiMessage } from './entities/instance-ai-message.entity';
+import type { AgentMessageEntity } from '../agents/entities/agent-message.entity';
 import { cleanStoredUserMessage, sanitisePromptText } from './internal-messages';
 import { extractTextFromContent } from './message-parser';
 import {
@@ -120,13 +120,14 @@ interface ExtractedExcerpts {
 	matchedInAnswers: boolean;
 }
 
-/** Parsed row content, or undefined when the row is not readable JSON. */
-function parseStoredContent(raw: string): { content: unknown } | undefined {
-	// `null`, not `undefined`: jsonParse treats an undefined fallback as absent
-	// and rethrows. `isRecord` rejects the null on the next line.
-	const parsed = jsonParse<unknown>(raw, { fallbackValue: null });
-	if (!isRecord(parsed)) return undefined;
-	return { content: parsed.content };
+/**
+ * The content parts of a stored message, or undefined when the row does not
+ * hold an LLM message. The JSON column is already parsed; custom messages
+ * (`type: 'custom'`) carry no content parts.
+ */
+function parseStoredContent(raw: unknown): { content: unknown } | undefined {
+	if (!isRecord(raw) || !('content' in raw)) return undefined;
+	return { content: raw.content };
 }
 
 /**
@@ -205,7 +206,7 @@ function clampWindowSide(value: number): number {
 }
 
 /** The opening user message rendered for a hit, or undefined when unreadable. */
-function firstMessageExcerpt(first: InstanceAiMessage | undefined): string | undefined {
+function firstMessageExcerpt(first: AgentMessageEntity | undefined): string | undefined {
 	if (!first) return undefined;
 
 	const parsed = parseStoredContent(first.content);
@@ -400,7 +401,7 @@ export class InstanceAiConversationHistoryService {
 	 * Re-check each candidate row against its extracted text — the SQL filter
 	 * matched serialized JSON, this matches what a reader would actually see.
 	 */
-	private buildExcerpts(candidates: InstanceAiMessage[], query: string): ExtractedExcerpts {
+	private buildExcerpts(candidates: AgentMessageEntity[], query: string): ExtractedExcerpts {
 		const needle = query.toLowerCase();
 		const excerpts: ConversationHistoryExcerpt[] = [];
 		let matchedInMessages = false;
@@ -499,7 +500,7 @@ export class InstanceAiConversationHistoryService {
 /** The match-independent part of a hit — also the whole hit for a listing. */
 function baseHit(
 	row: ConversationThreadSearchRow,
-	firstUserMessages: Map<string, InstanceAiMessage>,
+	firstUserMessages: Map<string, AgentMessageEntity>,
 ): ConversationHistorySearchHit {
 	const openingExcerpt = firstMessageExcerpt(firstUserMessages.get(row.id));
 
@@ -515,7 +516,7 @@ function baseHit(
 
 function buildHit(
 	hit: ExtractedThreadMatch,
-	firstUserMessages: Map<string, InstanceAiMessage>,
+	firstUserMessages: Map<string, AgentMessageEntity>,
 ): ConversationHistorySearchHit {
 	const { row, titleMatched, excerpts, matchedInMessages, matchedInAnswers } = hit;
 
@@ -538,7 +539,7 @@ function buildHit(
  * loop only continues on tool calls, so a row carrying them is narration, not
  * the reply). Also the window's projector, so each row is parsed once.
  */
-function toHistoryMessage(row: InstanceAiMessage): ConversationHistoryMessage | undefined {
+function toHistoryMessage(row: AgentMessageEntity): ConversationHistoryMessage | undefined {
 	if (row.role !== 'user' && row.role !== 'assistant') return undefined;
 
 	const parsed = parseStoredContent(row.content);

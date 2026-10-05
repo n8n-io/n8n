@@ -213,7 +213,7 @@ export class RunStateRegistry<TUser = unknown> {
 	 * so a run resumed after a restart (where these maps start empty) repopulates
 	 * the group association the SSE bootstrap relies on.
 	 */
-	private indexRunInGroup(threadId: string, messageGroupId: string, runId: string): void {
+	indexRunInGroup(threadId: string, messageGroupId: string, runId: string): void {
 		this.threadMessageGroupId.set(threadId, messageGroupId);
 		let groupRunIds = this.runIdsByMessageGroup.get(messageGroupId);
 		if (!groupRunIds) {

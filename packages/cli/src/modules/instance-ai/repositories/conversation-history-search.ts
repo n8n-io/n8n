@@ -12,11 +12,20 @@ export function buildSearchLikePattern(query: string): string {
 	return `%${escapeLike(query.toLowerCase())}%`;
 }
 
+/**
+ * Message content is a JSON column (`json` on Postgres), so LIKE matches run
+ * over the content cast to text.
+ */
+function contentText(alias: string): string {
+	return `CAST(${alias}.content AS TEXT)`;
+}
+
 export function buildVisibleRowCondition(alias: string): string {
+	const content = contentText(alias);
 	return (
 		`(${alias}.role = 'user'` +
-		` OR (${alias}.content NOT LIKE :toolCallMarker AND ${alias}.content NOT LIKE :invalidToolCallMarker)` +
-		` OR ${alias}.content LIKE :askUserMarker)`
+		` OR (${content} NOT LIKE :toolCallMarker AND ${content} NOT LIKE :invalidToolCallMarker)` +
+		` OR ${content} LIKE :askUserMarker)`
 	);
 }
 
@@ -27,9 +36,10 @@ export const VISIBLE_ROW_MARKERS = {
 };
 
 export function buildMessageMatchCondition(alias: string): string {
+	const content = contentText(alias);
 	return (
-		`((${alias}.role = 'user' AND LOWER(${alias}.content) LIKE :pattern ${LIKE_ESCAPE_CLAUSE})` +
-		` OR (${alias}.role = 'assistant' AND ${alias}.content LIKE :askUserMarker` +
-		` AND LOWER(${alias}.content) LIKE :pattern ${LIKE_ESCAPE_CLAUSE}))`
+		`((${alias}.role = 'user' AND LOWER(${content}) LIKE :pattern ${LIKE_ESCAPE_CLAUSE})` +
+		` OR (${alias}.role = 'assistant' AND ${content} LIKE :askUserMarker` +
+		` AND LOWER(${content}) LIKE :pattern ${LIKE_ESCAPE_CLAUSE}))`
 	);
 }

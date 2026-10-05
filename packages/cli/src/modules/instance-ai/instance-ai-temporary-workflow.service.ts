@@ -4,7 +4,7 @@ import { Service } from '@n8n/di';
 import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
 
 import { InstanceAiAdapterService } from './instance-ai.adapter.service';
-import { InstanceAiThreadRepository } from './repositories/instance-ai-thread.repository';
+import { AgentExecutionThreadRepository } from '../agents/repositories/agent-execution-thread.repository';
 
 /**
  * Owns the lifecycle of the throwaway workflows the AI builder creates while
@@ -32,7 +32,7 @@ export class InstanceAiTemporaryWorkflowService {
 	constructor(
 		logger: Logger,
 		private readonly adapterService: InstanceAiAdapterService,
-		private readonly threadRepo: InstanceAiThreadRepository,
+		private readonly threadRepo: AgentExecutionThreadRepository,
 		private readonly userRepository: UserRepository,
 		private readonly aiBuilderTemporaryWorkflowRepository: AiBuilderTemporaryWorkflowRepository,
 	) {
@@ -96,7 +96,7 @@ export class InstanceAiTemporaryWorkflowService {
 
 		if (markedWorkflows.length === 0) return;
 
-		let thread: Awaited<ReturnType<InstanceAiThreadRepository['findOneBy']>>;
+		let thread: { ownerId: string | null } | null;
 		try {
 			thread = await this.threadRepo.findOneBy({ id: threadId });
 		} catch (error) {
@@ -107,7 +107,7 @@ export class InstanceAiTemporaryWorkflowService {
 			});
 			return;
 		}
-		if (!thread?.resourceId) {
+		if (!thread?.ownerId) {
 			this.logger.warn('Skipping AI-builder temporary workflow cleanup for thread without owner', {
 				threadId,
 				markedWorkflowCount: markedWorkflows.length,
@@ -117,11 +117,11 @@ export class InstanceAiTemporaryWorkflowService {
 
 		let user: User | null;
 		try {
-			user = await this.userRepository.findOneBy({ id: thread.resourceId });
+			user = await this.userRepository.findOneBy({ id: thread.ownerId });
 		} catch (error) {
 			this.logger.warn('Failed to load user for AI-builder temporary workflow cleanup', {
 				threadId,
-				userId: thread.resourceId,
+				userId: thread.ownerId,
 				markedWorkflowCount: markedWorkflows.length,
 				error: getErrorMessage(error),
 			});
@@ -130,7 +130,7 @@ export class InstanceAiTemporaryWorkflowService {
 		if (!user) {
 			this.logger.warn('Skipping AI-builder temporary workflow cleanup for missing thread owner', {
 				threadId,
-				userId: thread.resourceId,
+				userId: thread.ownerId,
 				markedWorkflowCount: markedWorkflows.length,
 			});
 			return;

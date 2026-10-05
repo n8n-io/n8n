@@ -2,6 +2,7 @@ import type { Mock } from 'vitest';
 import type { Thread } from '@n8n/agents';
 import { UNLIMITED_CREDITS } from '@n8n/api-types';
 import type { User } from '@n8n/db';
+import { Container } from '@n8n/di';
 import type { BuilderUsageItem } from '@n8n/instance-ai';
 import { mock } from 'vitest-mock-extended';
 
@@ -9,8 +10,10 @@ import type { InstanceActivationService } from '@/services/instance-activation.s
 
 import { InstanceAiCreditService } from '../instance-ai-credit.service';
 import type { InstanceAiSettingsService } from '../instance-ai-settings.service';
-import type { InstanceAiMessageRepository } from '../repositories/instance-ai-message.repository';
-import type { InstanceAiThreadRepository } from '../repositories/instance-ai-thread.repository';
+import { N8nMemory } from '../../agents/integrations/n8n-memory';
+import type { InstanceAiConversationHistoryRepository } from '../repositories/instance-ai-conversation-history.repository';
+
+type PatchThread = ReturnType<N8nMemory['getImplementation']>['patchThread'];
 
 // Skip the real backoff sleeps so retry tests run instantly.
 vi.mock('@n8n/utils/sleep', () => ({
@@ -22,7 +25,7 @@ vi.mock('@n8n/utils/sleep', () => ({
 // ---------------------------------------------------------------------------
 
 function createService(deps: {
-	threadRepo: Partial<InstanceAiThreadRepository>;
+	threadRepo: { updateThread: PatchThread };
 	aiService: { isProxyEnabled: Mock; getClient: Mock };
 	push: { sendToUsers: Mock };
 	telemetry: { track: Mock };
@@ -37,17 +40,19 @@ function createService(deps: {
 	// producing `undefined` and sending the caller down its catch. Neither is exercised
 	// by the claim path this file covers — the lock has its own suite.
 	const activationService = mock<InstanceActivationService>();
-	const messageRepo = mock<InstanceAiMessageRepository>();
+	const conversationHistoryRepo = mock<InstanceAiConversationHistoryRepository>();
+	// The credit total lives in the Agents memory thread metadata.
+	const memoryImpl = { patchThread: deps.threadRepo.updateThread };
+	Container.set(N8nMemory, { getImplementation: () => memoryImpl } as unknown as N8nMemory);
 	return new InstanceAiCreditService(
 		logger as never,
 		deps.aiService as never,
 		deps.telemetry as never,
 		{ instanceId: 'inst-1' } as never,
 		deps.push as never,
-		deps.threadRepo as never,
 		settingsService,
 		activationService,
-		messageRepo,
+		conversationHistoryRepo,
 	);
 }
 
@@ -68,7 +73,7 @@ function createMockThreadRepo(
 			}
 		: null;
 	return {
-		updateThread: vi.fn<InstanceAiThreadRepository['updateThread']>(async ({ update }) => {
+		updateThread: vi.fn<PatchThread>(async ({ update }) => {
 			if (!current) return null;
 			const patch = update(structuredClone(current));
 			if (patch) current = { ...current, ...patch };

@@ -9,8 +9,7 @@ import type { Telemetry } from '@/telemetry';
 
 import { InstanceAiCreditService } from '../instance-ai-credit.service';
 import type { InstanceAiSettingsService } from '../instance-ai-settings.service';
-import type { InstanceAiMessageRepository } from '../repositories/instance-ai-message.repository';
-import type { InstanceAiThreadRepository } from '../repositories/instance-ai-thread.repository';
+import type { InstanceAiConversationHistoryRepository } from '../repositories/instance-ai-conversation-history.repository';
 
 describe('InstanceAiCreditService activation lock', () => {
 	const user = mock<User>({ id: 'user-1' });
@@ -46,8 +45,10 @@ describe('InstanceAiCreditService activation lock', () => {
 		const activationService = mock<InstanceActivationService>();
 		activationService.getActivatedAt.mockResolvedValue(opts.activatedAt);
 
-		const messageRepo = mock<InstanceAiMessageRepository>();
-		messageRepo.hasAtLeastUserMessages.mockResolvedValue(opts.messageThresholdMet ?? false);
+		const messageRepo = mock<InstanceAiConversationHistoryRepository>();
+		messageRepo.hasAtLeastAssistantUserMessages.mockResolvedValue(
+			opts.messageThresholdMet ?? false,
+		);
 
 		// `info` matters: the success path logs through it, so omitting it makes every happy-path
 		// test fall into the catch instead — silently, and taking the push branch with it.
@@ -61,7 +62,6 @@ describe('InstanceAiCreditService activation lock', () => {
 			mock<Telemetry>(),
 			{ instanceId: 'inst-1' } as never,
 			push,
-			mock<InstanceAiThreadRepository>(),
 			settingsService,
 			activationService,
 			messageRepo,
@@ -149,7 +149,7 @@ describe('InstanceAiCreditService activation lock', () => {
 
 			await service.ensureQuotaLockApplied(user);
 
-			expect(messageRepo.hasAtLeastUserMessages).toHaveBeenCalledWith(3);
+			expect(messageRepo.hasAtLeastAssistantUserMessages).toHaveBeenCalledWith(3);
 		});
 
 		it('defaults to a single message when the operator sets nothing', async () => {
@@ -157,7 +157,7 @@ describe('InstanceAiCreditService activation lock', () => {
 
 			await service.ensureQuotaLockApplied(user);
 
-			expect(messageRepo.hasAtLeastUserMessages).toHaveBeenCalledWith(1);
+			expect(messageRepo.hasAtLeastAssistantUserMessages).toHaveBeenCalledWith(1);
 		});
 
 		it('does not lock on activation alone', async () => {
@@ -181,7 +181,7 @@ describe('InstanceAiCreditService activation lock', () => {
 
 			expect(aiService.lockInstanceAiQuota).not.toHaveBeenCalled();
 			// Short-circuits before the message lookup, so the cheap check runs first.
-			expect(messageRepo.hasAtLeastUserMessages).not.toHaveBeenCalled();
+			expect(messageRepo.hasAtLeastAssistantUserMessages).not.toHaveBeenCalled();
 		});
 
 		it('locks as soon as the outstanding half arrives', async () => {
@@ -193,7 +193,7 @@ describe('InstanceAiCreditService activation lock', () => {
 			await service.ensureQuotaLockApplied(user);
 			expect(aiService.lockInstanceAiQuota).not.toHaveBeenCalled();
 
-			messageRepo.hasAtLeastUserMessages.mockResolvedValue(true);
+			messageRepo.hasAtLeastAssistantUserMessages.mockResolvedValue(true);
 			await service.ensureQuotaLockApplied(user);
 
 			expect(aiService.lockInstanceAiQuota).toHaveBeenCalledTimes(1);
@@ -212,7 +212,7 @@ describe('InstanceAiCreditService activation lock', () => {
 
 			expect(aiService.lockInstanceAiQuota).not.toHaveBeenCalled();
 			expect(activationService.getActivatedAt).not.toHaveBeenCalled();
-			expect(messageRepo.hasAtLeastUserMessages).not.toHaveBeenCalled();
+			expect(messageRepo.hasAtLeastAssistantUserMessages).not.toHaveBeenCalled();
 		});
 	});
 
@@ -229,7 +229,7 @@ describe('InstanceAiCreditService activation lock', () => {
 
 		it('swallows a message-count read failure', async () => {
 			const { service, messageRepo, scopedLogger } = setup({ activatedAt: 1_700_000_000 });
-			messageRepo.hasAtLeastUserMessages.mockRejectedValue(new Error('db unavailable'));
+			messageRepo.hasAtLeastAssistantUserMessages.mockRejectedValue(new Error('db unavailable'));
 
 			await expect(service.ensureQuotaLockApplied(user)).resolves.toBeUndefined();
 			expect(scopedLogger.warn).toHaveBeenCalled();

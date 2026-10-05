@@ -1736,12 +1736,17 @@ export function createThreadRuntime(
 				attachmentCount,
 			);
 
+			// A message sent during a run is steered into that run or queued behind
+			// it. The steered case may never get a `run-start` for the returned id,
+			// so keep the current run active and let SSE `run-start` adopt a new run.
+			const runIdAtSend = activeRunId.value;
 			const runId = await dispatchUserMessage(message, attachments, handoffContext, pushRef);
 			if (!runId) {
 				removeOptimisticMessage(optimistic);
 				return false;
 			}
 			if (metricGeneration !== responseMetricGeneration) return true;
+			if (runIdAtSend !== null) return true;
 			if (!earlyTerminalRunIds.has(runId)) activeRunId.value = runId;
 			registerResponseMetric(runId, {
 				startedAtEpochMs: responseStartedAtEpochMs,
@@ -1866,6 +1871,7 @@ export function createThreadRuntime(
 		try {
 			const response: InstanceAiConfirmResponse = await postConfirmation(
 				rootStore.restApiContext,
+				threadId,
 				requestId,
 				payload,
 			);

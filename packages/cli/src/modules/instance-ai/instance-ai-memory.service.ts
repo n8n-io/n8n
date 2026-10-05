@@ -14,12 +14,11 @@ import type {
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import type { InstanceAiConfig } from '@n8n/config';
-import { Service } from '@n8n/di';
+import { Container, Service } from '@n8n/di';
 import { z } from 'zod';
 import { randomUUID } from 'node:crypto';
 import {
 	buildAgentTreeFromEvents,
-	createSubAgentResourceIdPrefix,
 	patchThread,
 	withBoundAgentTarget,
 	type AgentBuilderTarget,
@@ -28,7 +27,20 @@ import {
 
 import { BadRequestError, ForbiddenError, NotFoundError } from '@n8n/errors';
 
-import type { InstanceAiCheckpoint } from './entities/instance-ai-checkpoint.entity';
+import { UserRepository } from '@n8n/db';
+import { isRecord } from '@n8n/utils/is-record';
+
+import type { AgentExecutionThread } from '../agents/entities/agent-execution-thread.entity';
+import { N8NCheckpointStorage } from '../agents/integrations/n8n-checkpoint-storage';
+import { N8nMemory, type N8nMemoryImpl } from '../agents/integrations/n8n-memory';
+import { AgentExecutionThreadRepository } from '../agents/repositories/agent-execution-thread.repository';
+import { SystemAgentExecutionService } from '../agents/system-agents/system-agent-execution.service';
+import { draftChatMemoryResourceId } from '../agents/utils/agent-memory-scope';
+import {
+	ASSISTANT_AGENT_ID,
+	ASSISTANT_TURN_METADATA_KEY,
+	readAssistantTurnOptions,
+} from './assistant-turn-options';
 import { DurableLogMetrics } from './event-bus/durable-log-metrics';
 import { AUTO_FOLLOW_UP_MESSAGE } from './internal-messages';
 import {
@@ -36,10 +48,7 @@ import {
 	markExpiredConfirmations,
 	parseStoredMessages,
 } from './message-parser';
-import { InstanceAiCheckpointRepository } from './repositories/instance-ai-checkpoint.repository';
 import { InstanceAiEventLogRepository } from './repositories/instance-ai-event-log.repository';
-import { InstanceAiPendingConfirmationRepository } from './repositories/instance-ai-pending-confirmation.repository';
-import { TypeORMAgentMemory } from './storage/typeorm-agent-memory';
 
 /** Write-path launch attribution. `unknown` is reserved for legacy rows on read. */
 export interface InstanceAiThreadLaunchMetadata {
@@ -156,20 +165,6 @@ function collectUnfinishedRunIds(rows: Array<{ runId: string; event: InstanceAiE
 	return unfinished;
 }
 
-/** Host run ids whose own checkpoint is HITL-suspended — the same predicate the
- *  interrupted-run sweeper uses to spare a run, so "keeps folding" and "won't
- *  be swept" stay one definition. Sub-agent and legacy rows carry a null
- *  hostRunId and never match. */
-function collectSuspendedHostRunIds(checkpoints: InstanceAiCheckpoint[]): Set<string> {
-	const suspended = new Set<string>();
-	for (const checkpoint of checkpoints) {
-		if (checkpoint.state?.status === 'suspended' && checkpoint.hostRunId) {
-			suspended.add(checkpoint.hostRunId);
-		}
-	}
-	return suspended;
-}
-
 /** Snapshot-shaped entries derived from the log, grouped the way the snapshot
  *  writer groups its rows: by run-start messageGroupId, else one entry per
  *  run. Events keep their thread (seq) order within each group — runs of one
@@ -277,17 +272,76 @@ export class InstanceAiMemoryService {
 	constructor(
 		private readonly logger: Logger,
 		globalConfig: GlobalConfig,
-		private readonly agentMemory: TypeORMAgentMemory,
-		private readonly checkpointRepository: InstanceAiCheckpointRepository,
-		private readonly pendingConfirmationRepository: InstanceAiPendingConfirmationRepository,
 		private readonly eventLogRepository: InstanceAiEventLogRepository,
 		private readonly durableLogMetrics: DurableLogMetrics,
 	) {
 		this.instanceAiConfig = globalConfig.instanceAi;
 	}
 
+	/** Assistant memory lives in the Agents tables, scoped to the Assistant agent. */
+	private get agentMemory(): N8nMemoryImpl {
+		return Container.get(N8nMemory).getImplementation(ASSISTANT_AGENT_ID);
+	}
+
+	private get threads(): AgentExecutionThreadRepository {
+		return Container.get(AgentExecutionThreadRepository);
+	}
+
+	private get checkpoints(): N8NCheckpointStorage {
+		return Container.get(N8NCheckpointStorage);
+	}
+
+	/** Session row (owner, project, title) plus memory thread (metadata). */
+	private async loadThread(threadId: string) {
+		const session = await this.threads.findOneBy({ id: threadId, agentId: ASSISTANT_AGENT_ID });
+		if (!session) return null;
+		const memoryThread = await this.agentMemory.getThread(threadId);
+		return {
+			id: session.id,
+			title: session.title ?? memoryThread?.title ?? undefined,
+			resourceId: session.ownerId ?? '',
+			projectId: session.projectId,
+			metadata: memoryThread?.metadata,
+			createdAt: session.createdAt,
+			updatedAt: session.updatedAt,
+		};
+	}
+
+	private async toThreadInfos(sessions: AgentExecutionThread[]): Promise<InstanceAiThreadInfo[]> {
+		return await Promise.all(
+			sessions.map(async (session) => {
+				const memoryThread = await this.agentMemory.getThread(session.id);
+				return this.toThreadInfo({
+					id: session.id,
+					title: session.title ?? memoryThread?.title ?? undefined,
+					resourceId: session.ownerId ?? '',
+					metadata: memoryThread?.metadata,
+					createdAt: session.createdAt,
+					updatedAt: session.updatedAt,
+				});
+			}),
+		);
+	}
+
+	/** Paged message read over the Assistant memory, oldest first within the page. */
+	private async listMessages(args: {
+		threadId: string;
+		limit?: number;
+		page?: number;
+		withNewerBoundary?: boolean;
+	}): Promise<{ messages: AgentDbMessage[]; newerBoundaryAt?: Date }> {
+		const limit = args.limit ?? 50;
+		const page = args.page ?? 0;
+		const all = await this.agentMemory.getMessages(args.threadId);
+		const end = all.length - page * limit;
+		if (end <= 0) return { messages: [] };
+		const start = Math.max(0, end - limit);
+		const boundary = args.withNewerBoundary && page > 0 ? all[end] : undefined;
+		return { messages: all.slice(start, end), newerBoundaryAt: boundary?.createdAt };
+	}
+
 	async getThreadInfo(threadId: string): Promise<InstanceAiThreadInfo> {
-		const thread = await this.agentMemory.getThread(threadId);
+		const thread = await this.loadThread(threadId);
 		if (!thread) throw new NotFoundError('Thread not found');
 		return this.toThreadInfo(thread);
 	}
@@ -307,14 +361,15 @@ export class InstanceAiMemoryService {
 				throw new BadRequestError('Invalid thread history cursor');
 			}
 		}
-		const rows = await this.agentMemory.listThreadHistory(
+		const rows = await this.threads.findOwnedHistoryPage(
+			ASSISTANT_AGENT_ID,
 			userId,
 			query.limit,
 			query.search,
 			before,
 		);
 		const hasMore = rows.length > query.limit;
-		const threads = rows.slice(0, query.limit).map((thread) => this.toThreadInfo(thread));
+		const threads = await this.toThreadInfos(rows.slice(0, query.limit));
 		const last = threads.at(-1);
 		return {
 			threads,
@@ -333,21 +388,16 @@ export class InstanceAiMemoryService {
 		page = 0,
 		perPage = 100,
 	): Promise<InstanceAiThreadListResponse> {
-		const result = await this.agentMemory.listThreads({
-			filter: { resourceId: userId },
-			perPage,
-			page,
-			orderBy: { field: 'updatedAt', direction: 'DESC' },
-		});
+		const all = await this.threads.findOwnedByAgent(ASSISTANT_AGENT_ID, userId);
+		const slice = all.slice(page * perPage, (page + 1) * perPage);
 		return {
-			threads: result.threads.map((t) => this.toThreadInfo(t)),
-			total: result.total,
-			page: result.page,
-			hasMore: result.hasMore,
+			threads: await this.toThreadInfos(slice),
+			total: all.length,
+			page,
+			hasMore: (page + 1) * perPage < all.length,
 		};
 	}
 
-	/** `title` names a host-opened thread from the start: the header never shows the first user message. */
 	async ensureThread(
 		userId: string,
 		threadId: string,
@@ -355,36 +405,35 @@ export class InstanceAiMemoryService {
 		launchMetadata: InstanceAiThreadLaunchMetadata,
 		title = '',
 	): Promise<InstanceAiEnsureThreadResponse> {
-		const existing = await this.agentMemory.getThread(threadId);
+		const existing = await this.loadThread(threadId);
 		if (existing) {
 			if (existing.resourceId !== userId) {
 				throw new Error(`Thread ${threadId} is not owned by user ${userId}`);
 			}
-
-			return {
-				thread: this.toThreadInfo(existing),
-				created: false,
-			};
+			return { thread: this.toThreadInfo(existing), created: false };
 		}
-
-		const created = await this.agentMemory.saveThreadWithProject(
-			{
-				id: threadId,
-				resourceId: userId,
-				title,
-				metadata: {
-					source: launchMetadata.source,
-					origin: launchMetadata.origin,
-					...(launchMetadata.sourceContext ? { sourceContext: launchMetadata.sourceContext } : {}),
-				},
-			},
+		const user = await Container.get(UserRepository).findByIdWithRole(userId);
+		if (!user) throw new NotFoundError('User not found');
+		await Container.get(SystemAgentExecutionService).createThread({
+			agentId: ASSISTANT_AGENT_ID,
+			user,
 			projectId,
-		);
-
-		return {
-			thread: this.toThreadInfo(created),
-			created: true,
-		};
+			threadId,
+			...(title ? { title } : {}),
+		});
+		await this.agentMemory.saveThread({
+			id: threadId,
+			resourceId: draftChatMemoryResourceId(userId),
+			title,
+			metadata: {
+				source: launchMetadata.source,
+				origin: launchMetadata.origin,
+				...(launchMetadata.sourceContext ? { sourceContext: launchMetadata.sourceContext } : {}),
+			},
+		});
+		const created = await this.loadThread(threadId);
+		if (!created) throw new NotFoundError('Thread not found');
+		return { thread: this.toThreadInfo(created), created: true };
 	}
 
 	/**
@@ -406,7 +455,7 @@ export class InstanceAiMemoryService {
 		const userMessageId = randomUUID();
 		await this.agentMemory.saveMessages({
 			threadId,
-			resourceId: userId,
+			resourceId: draftChatMemoryResourceId(userId),
 			messages: [
 				{
 					id: userMessageId,
@@ -446,13 +495,16 @@ export class InstanceAiMemoryService {
 			restorable.push(message);
 		}
 
-		await this.agentMemory.saveMessages({ threadId, resourceId: userId, messages: restorable });
+		await this.agentMemory.saveMessages({
+			threadId,
+			resourceId: draftChatMemoryResourceId(userId),
+			messages: restorable,
+		});
 		return { restored: restorable.length };
 	}
 
-	/** Project a thread is bound to (undefined for legacy unbound threads). */
 	async getThreadProjectId(threadId: string): Promise<string | undefined> {
-		return (await this.agentMemory.getThreadProjectId(threadId)) ?? undefined;
+		return (await this.loadThread(threadId))?.projectId;
 	}
 
 	async getThreadMessages(
@@ -460,7 +512,7 @@ export class InstanceAiMemoryService {
 		threadId: string,
 		options?: { limit?: number; page?: number },
 	): Promise<InstanceAiThreadMessagesResponse> {
-		const result = await this.agentMemory.listMessages({
+		const result = await this.listMessages({
 			threadId,
 			limit: options?.limit ?? 50,
 			page: options?.page ?? 0,
@@ -485,7 +537,7 @@ export class InstanceAiMemoryService {
 		},
 	): Promise<Omit<InstanceAiRichMessagesResponse, 'nextEventId'>> {
 		const page = options?.page ?? 0;
-		const result = await this.agentMemory.listMessages({
+		const result = await this.listMessages({
 			threadId,
 			limit: options?.limit ?? 50,
 			page,
@@ -499,7 +551,7 @@ export class InstanceAiMemoryService {
 		// The fold's suspension carve-out: a HITL-suspended run legitimately has
 		// no run-finish, so its turn still folds (the confirmation card and the
 		// in-flight work are durable facts) instead of being skipped as in-flight.
-		const activeCheckpoints = await this.loadActiveCheckpoints(threadId);
+		const suspendedRunIds = await this.loadSuspendedRunIds(threadId);
 
 		// No window means an out-of-range older page: it has no message rows for
 		// a tree to pair with, and hydrating it unbounded would read the whole
@@ -510,17 +562,17 @@ export class InstanceAiMemoryService {
 			? []
 			: await this.foldSnapshotsFromLog(
 					threadId,
-					collectSuspendedHostRunIds(activeCheckpoints),
+					suspendedRunIds,
 					pageWindow,
 					options?.excludeRunIds,
 					options?.excludeMessageGroupIds,
 				);
 
 		const messages = parseStoredMessages(result.messages, snapshots);
-		await this.flagExpiredConfirmations(messages);
+		await this.flagExpiredConfirmations(threadId, messages);
 
-		const projectId = await this.agentMemory.getThreadProjectId(threadId);
-		return { threadId, projectId: projectId ?? undefined, messages };
+		const projectId = await this.getThreadProjectId(threadId);
+		return { threadId, projectId, messages };
 	}
 
 	/**
@@ -586,21 +638,15 @@ export class InstanceAiMemoryService {
 		return entries;
 	}
 
-	/** Cross-check every confirmation card against `instance_ai_pending_confirmations`
-	 *  and flip `confirmation.expired = true` on the ones with no live row. Shared
-	 *  by the history read and the SSE run-sync frame so both render a settled
-	 *  card the same way. */
 	async flagExpiredConfirmations(
+		threadId: string,
 		messages: Parameters<typeof markExpiredConfirmations>[0],
 	): Promise<void> {
 		const requestIds = collectConfirmationRequestIds(messages);
 		if (requestIds.length === 0) return;
 		try {
-			const live = await this.pendingConfirmationRepository.findLiveRequestIds(
-				requestIds,
-				new Date(),
-			);
-			markExpiredConfirmations(messages, live);
+			// A card is live while the suspended Agents checkpoint still waits for it.
+			markExpiredConfirmations(messages, await this.loadLiveRequestIds(threadId));
 		} catch (error) {
 			this.logger.warn('Failed to flag expired confirmation cards', {
 				error: error instanceof Error ? error.message : String(error),
@@ -608,18 +654,45 @@ export class InstanceAiMemoryService {
 		}
 	}
 
-	/** Live checkpoints for the thread; [] on failure — the consumers (suspension
-	 *  carve-out, in-flight message merge) degrade rather than fail the read. */
-	private async loadActiveCheckpoints(threadId: string): Promise<InstanceAiCheckpoint[]> {
+	private async loadSuspendedCheckpoint(threadId: string) {
 		try {
-			return await this.checkpointRepository.findActiveByThreadId(threadId);
+			return await this.checkpoints.findSuspendedForThread(ASSISTANT_AGENT_ID, threadId);
 		} catch (error) {
-			this.logger.warn('Failed to load in-flight checkpoints', {
+			this.logger.warn('Failed to load the suspended checkpoint', {
 				threadId,
 				error: error instanceof Error ? error.message : String(error),
 			});
-			return [];
+			return null;
 		}
+	}
+
+	/** Run ids of the suspended turn. Its run has no run-finish, but its card is a durable fact. */
+	private async loadSuspendedRunIds(threadId: string): Promise<Set<string>> {
+		const checkpoint = await this.loadSuspendedCheckpoint(threadId);
+		const options = readAssistantTurnOptions(
+			checkpoint?.persistence?.hostMetadata?.[ASSISTANT_TURN_METADATA_KEY],
+		);
+		return new Set(options.runId ? [options.runId] : []);
+	}
+
+	async loadLiveRequestIds(threadId: string): Promise<Set<string>> {
+		const checkpoint = await this.loadSuspendedCheckpoint(threadId);
+		const live = new Set<string>();
+		// The seeded onboarding card waits in thread metadata, not in a checkpoint.
+		const onboardingCard = (await this.agentMemory.getThread(threadId))?.metadata?.onboardingCard;
+		if (isRecord(onboardingCard) && typeof onboardingCard.requestId === 'string') {
+			live.add(onboardingCard.requestId);
+		}
+		for (const toolCall of Object.values(checkpoint?.pendingToolCalls ?? {})) {
+			if (
+				toolCall.suspended &&
+				isRecord(toolCall.suspendPayload) &&
+				typeof toolCall.suspendPayload.requestId === 'string'
+			) {
+				live.add(toolCall.suspendPayload.requestId);
+			}
+		}
+		return live;
 	}
 
 	/**
@@ -630,36 +703,26 @@ export class InstanceAiMemoryService {
 		return (await this.checkThreadOwnership(userId, threadId)) === 'owned';
 	}
 
-	/**
-	 * Check thread ownership with three possible outcomes:
-	 * - 'owned': thread exists and belongs to this user
-	 * - 'not_found': thread doesn't exist yet (new conversation)
-	 * - 'other_user': thread exists but belongs to someone else
-	 */
 	async checkThreadOwnership(
 		userId: string,
 		threadId: string,
 	): Promise<'owned' | 'not_found' | 'other_user'> {
-		const thread = await this.agentMemory.getThread(threadId);
-		if (!thread) return 'not_found';
-		return thread.resourceId === userId ? 'owned' : 'other_user';
+		const session = await this.threads.findOneBy({ id: threadId });
+		if (!session) return 'not_found';
+		return session.agentId === ASSISTANT_AGENT_ID && session.ownerId === userId
+			? 'owned'
+			: 'other_user';
 	}
 
 	async deleteThread(threadId: string): Promise<void> {
-		await this.agentMemory.deleteThreadsByResourceIdPrefix(
-			createSubAgentResourceIdPrefix(threadId),
-		);
 		await this.agentMemory.deleteThread(threadId);
+		await this.threads.delete({ id: threadId, agentId: ASSISTANT_AGENT_ID });
 	}
 
-	/**
-	 * Remove every thread owned by a user, the sub-agent threads spawned under
-	 * them, and their working-memory resources. Invoked on user deletion to
-	 * avoid orphaning Instance AI data. Returns the number of owner threads
-	 * deleted.
-	 */
 	async deleteThreadsForUser(userId: string): Promise<number> {
-		return await this.agentMemory.deleteThreadsByResourceId(userId);
+		const sessions = await this.threads.findOwnedByAgent(ASSISTANT_AGENT_ID, userId);
+		for (const session of sessions) await this.deleteThread(session.id);
+		return sessions.length;
 	}
 
 	async renameThread(threadId: string, title: string): Promise<InstanceAiThreadInfo> {
@@ -686,7 +749,10 @@ export class InstanceAiMemoryService {
 		if (!updated) {
 			throw new NotFoundError(`Thread ${threadId} not found`);
 		}
-		return this.toThreadInfo(updated);
+		if (updates.title !== undefined) {
+			await this.threads.updateOwned(threadId, { title: updates.title });
+		}
+		return await this.getThreadInfo(threadId);
 	}
 
 	/**
@@ -706,7 +772,7 @@ export class InstanceAiMemoryService {
 			update: (thread) => {
 				// A `null` patch means "leave the thread alone", which would answer a
 				// non-owner with a success — throw instead.
-				if (thread.resourceId !== userId) {
+				if (thread.resourceId !== draftChatMemoryResourceId(userId)) {
 					throw new ForbiddenError('Not authorized for this thread');
 				}
 				return { metadata: withBoundAgentTarget(thread.metadata ?? {}, target) };
@@ -715,14 +781,14 @@ export class InstanceAiMemoryService {
 		if (!updated) {
 			throw new NotFoundError(`Thread ${threadId} not found`);
 		}
-		return this.toThreadInfo(updated);
+		return await this.getThreadInfo(updated.id);
 	}
 
 	async getThreadMetadata(
 		userId: string,
 		threadId: string,
 	): Promise<Record<string, unknown> | undefined> {
-		const thread = await this.agentMemory.getThread(threadId);
+		const thread = await this.loadThread(threadId);
 		if (!thread || thread.resourceId !== userId) return undefined;
 		return thread.metadata;
 	}
@@ -750,11 +816,12 @@ export class InstanceAiMemoryService {
 		let hasMore = true;
 
 		while (hasMore && !signal?.aborted) {
-			const result = await this.agentMemory.listThreads({
+			const expired = await this.threads.findByAgentUpdatedBefore(
+				ASSISTANT_AGENT_ID,
+				cutoff,
 				perPage,
-				page: 0,
-				orderBy: { field: 'updatedAt', direction: 'ASC' },
-			});
+			);
+			const result = { threads: expired, hasMore: expired.length === perPage };
 			let deletedInPage = 0;
 			for (const thread of result.threads) {
 				if (signal?.aborted) break;
