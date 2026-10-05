@@ -28,6 +28,7 @@ describe('LeaseHeartbeat', () => {
 
 		await vi.advanceTimersByTimeAsync(1 + 2 * INTERVAL_MS);
 		expect(renew).toHaveBeenCalledTimes(3);
+		expect(renew).toHaveBeenCalledWith(LEASE_MS);
 		expect(onRenewal).toHaveBeenCalledTimes(3);
 		expect(onRenewal).toHaveBeenCalledWith('renewed');
 
@@ -37,14 +38,17 @@ describe('LeaseHeartbeat', () => {
 	it('does not keep the process alive', async () => {
 		const renew = vi.fn().mockResolvedValue(true);
 		const heartbeat = new LeaseHeartbeat(renew, options());
-		const timers = heartbeat as unknown as Record<'beatTimer' | 'expiryTimer', NodeJS.Timeout>;
-		expect(timers.beatTimer.hasRef()).toBe(false);
-		expect(timers.expiryTimer.hasRef()).toBe(false);
+		const alarms = heartbeat as unknown as Record<
+			'beatAlarm' | 'expiryAlarm',
+			{ timer: NodeJS.Timeout }
+		>;
+		expect(alarms.beatAlarm.timer.hasRef()).toBe(false);
+		expect(alarms.expiryAlarm.timer.hasRef()).toBe(false);
 
 		await vi.advanceTimersByTimeAsync(INTERVAL_MS);
 		expect(renew).toHaveBeenCalledTimes(1);
-		expect(timers.beatTimer.hasRef()).toBe(false);
-		expect(timers.expiryTimer.hasRef()).toBe(false);
+		expect(alarms.beatAlarm.timer.hasRef()).toBe(false);
+		expect(alarms.expiryAlarm.timer.hasRef()).toBe(false);
 
 		heartbeat.stop();
 	});
@@ -236,6 +240,20 @@ describe('LeaseHeartbeat', () => {
 
 		await vi.advanceTimersByTimeAsync(1);
 		expect(onRenewal.mock.calls).toEqual([['renewed'], ['expired']]);
+
+		heartbeat.stop();
+	});
+
+	it('counts the first beat from the lease write, so a late start does not delay it', async () => {
+		const renew = vi.fn().mockResolvedValue(true);
+		const heartbeat = new LeaseHeartbeat(renew, {
+			leaseDurationMs: LEASE_MS,
+			leaseSetAt: performance.now() - INTERVAL_MS + 1,
+		});
+
+		expect(renew).not.toHaveBeenCalled();
+		await vi.advanceTimersByTimeAsync(1);
+		expect(renew).toHaveBeenCalledTimes(1);
 
 		heartbeat.stop();
 	});

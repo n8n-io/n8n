@@ -1,7 +1,6 @@
-import { MAX_INTEGER_32BITS_SIGNED } from '@n8n/constants';
-
 import { MIN_RENEWAL_INTERVAL_MS, RENEWALS_PER_LEASE } from './lease-constants';
 import { InvalidLeaseDurationError } from '../errors';
+import { Alarm } from '../lifecycle/alarm';
 
 /**
  * How the claim stands:
@@ -28,7 +27,8 @@ export interface LeaseHeartbeatHooks {
 /**
  * Keeps a claim's lease alive while its handler runs.
  *
- * It calls `renew` {@link RENEWALS_PER_LEASE} times per lease, one beat at a time.
+ * It calls `renew` {@link RENEWALS_PER_LEASE} times per lease, one beat at a time,
+ * with `leaseDurationMs` as the new lease length.
  * It reports `lost` and stops when `renew` reports `false`.
  * It reports `expired` when `leaseDurationMs` passes without a successful renewal,
  * since the reaper may then hand the claim to another instance,
@@ -40,16 +40,16 @@ export interface LeaseHeartbeatHooks {
  * @throws {InvalidLeaseDurationError} when `leaseDurationMs` is not a positive integer
  */
 export class LeaseHeartbeat {
-	private beatTimer?: NodeJS.Timeout;
+	private readonly beatAlarm = new Alarm(() => performance.now());
 
-	private expiryTimer?: NodeJS.Timeout;
+	private readonly expiryAlarm = new Alarm(() => performance.now());
 
 	private stopped = false;
 
 	private readonly intervalMs: number;
 
 	constructor(
-		private readonly renew: () => Promise<boolean>,
+		private readonly renew: (expiresInMs: number) => Promise<boolean>,
 		private readonly options: LeaseHeartbeatOptions,
 		private readonly hooks: LeaseHeartbeatHooks = {},
 	) {
@@ -62,13 +62,13 @@ export class LeaseHeartbeat {
 			Math.floor(options.leaseDurationMs / (RENEWALS_PER_LEASE + 1)),
 		);
 		this.armExpiry(options.leaseSetAt);
-		this.scheduleBeat();
+		this.scheduleBeat(options.leaseSetAt);
 	}
 
 	stop(): void {
 		this.stopped = true;
-		clearTimeout(this.beatTimer);
-		clearTimeout(this.expiryTimer);
+		this.beatAlarm.cancel();
+		this.expiryAlarm.cancel();
 	}
 
 	private lose(): void {
@@ -77,30 +77,21 @@ export class LeaseHeartbeat {
 	}
 
 	private armExpiry(leaseSetAt: number): void {
-		clearTimeout(this.expiryTimer);
-		const remainingMs = leaseSetAt + this.options.leaseDurationMs - performance.now();
-		// `setTimeout` fires a longer delay at once, so a long lease is waited out in steps.
-		this.expiryTimer =
-			remainingMs > MAX_INTEGER_32BITS_SIGNED
-				? setTimeout(() => this.armExpiry(leaseSetAt), MAX_INTEGER_32BITS_SIGNED)
-				: setTimeout(() => this.hooks.onRenewal?.('expired'), Math.max(0, remainingMs));
-		this.expiryTimer.unref();
+		this.expiryAlarm.set(leaseSetAt + this.options.leaseDurationMs, () =>
+			this.hooks.onRenewal?.('expired'),
+		);
 	}
 
-	private scheduleBeat(delayMs = this.intervalMs): void {
-		this.beatTimer = setTimeout(
-			() => {
-				this.beat().catch((error: unknown) => this.hooks.onRenewalError?.(error));
-			},
-			Math.min(delayMs, MAX_INTEGER_32BITS_SIGNED),
-		);
-		this.beatTimer.unref();
+	private scheduleBeat(intervalStartAt: number): void {
+		this.beatAlarm.set(intervalStartAt + this.intervalMs, () => {
+			this.beat().catch((error: unknown) => this.hooks.onRenewalError?.(error));
+		});
 	}
 
 	private async beat(): Promise<void> {
 		const startedAt = performance.now();
 		try {
-			const renewed = await this.renew();
+			const renewed = await this.renew(this.options.leaseDurationMs);
 			// The handler settled while the renewal was in flight, so a refusal here can
 			// be its own terminal write, not a lost claim.
 			if (this.stopped) {
@@ -119,6 +110,6 @@ export class LeaseHeartbeat {
 			this.hooks.onRenewalError?.(error);
 		}
 		// Count the interval from this beat's start, so a slow renewal does not delay the next one.
-		this.scheduleBeat(Math.max(0, startedAt + this.intervalMs - performance.now()));
+		this.scheduleBeat(startedAt);
 	}
 }
