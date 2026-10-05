@@ -179,8 +179,9 @@ function resolveTrial(routingCase: RoutingCase, trial: RoutingTrial): PendingRes
 		};
 	}
 
-	if (trial.finalText === '') {
-		return resolved('none', `no committing call and no final text (${trial.streamStatus})`);
+	// The text of a run that did not finish (for example a timeout) is mid-work narration, not a reply.
+	if (trial.streamStatus !== 'completed' || trial.finalText === '') {
+		return resolved('none', `no committing call and no finished reply (${trial.streamStatus})`);
 	}
 
 	return {

@@ -185,6 +185,19 @@ describe('resolveRoute', () => {
 		expect(judge).not.toHaveBeenCalled();
 	});
 
+	it('returns none without the judge when the run ends before a committing call', async () => {
+		const judge = judgeReturning({ kind: 'answer', steer: 'none', reason: 'unused' });
+		const timedOut: RoutingTrial = { ...trial([call('search-nodes')]), streamStatus: 'timed-out' };
+
+		const resolution = await resolveRoute(routingCase('answer'), timedOut, judge);
+
+		expect(resolution).toMatchObject({
+			route: 'none',
+			evidence: expect.stringContaining('timed-out'),
+		});
+		expect(judge).not.toHaveBeenCalled();
+	});
+
 	it('returns none with the error when the judge fails', async () => {
 		const judge = vi.fn(async () => await Promise.reject(new Error('Routing judge failed: 529')));
 
