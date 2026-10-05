@@ -86,7 +86,7 @@ describe('N8nSettingsPageHeader', () => {
 		expect(screen.getByRole('link', { name: 'API reference' })).toBeInTheDocument();
 	});
 
-	it('renders the docs link inline as an underlined word followed by a non-underlined arrow', () => {
+	it('renders the docs link as an N8nExternalLink that opens in a new tab', () => {
 		render(N8nSettingsPageHeader, {
 			props: {
 				title: 'This instance',
@@ -96,14 +96,27 @@ describe('N8nSettingsPageHeader', () => {
 		});
 
 		const link = screen.getByRole('link', { name: 'documentation' });
+		expect(link).toHaveAttribute('target', '_blank');
+		expect(link).toHaveAttribute('rel', 'noopener noreferrer');
+	});
 
-		const label = link.querySelector('[class*="docsLabel"]') as HTMLElement;
-		expect(label).toHaveTextContent('documentation');
+	it('renders the docs link in the inline treatment, followed by the external-link icon', () => {
+		render(N8nSettingsPageHeader, {
+			props: {
+				title: 'This instance',
+				description: 'Plan, usage and version.',
+				docsUrl: 'https://docs.n8n.io',
+			},
+		});
 
-		const arrow = link.querySelector('[aria-hidden="true"]') as HTMLElement;
-		expect(arrow).toHaveTextContent('↗');
-		// The arrow is decorative, so it is hidden from assistive tech and excluded from the link name.
-		expect(arrow).toHaveAttribute('aria-hidden', 'true');
+		const link = screen.getByRole('link', { name: 'documentation' });
+		// `inline` is what sizes the link to the description text instead of the standalone pill.
+		expect(link).toHaveClass('inline');
+
+		const icon = link.querySelector('[data-icon="external-link"]') as HTMLElement;
+		expect(icon).toBeInTheDocument();
+		// The icon is decorative, so it is hidden from assistive tech and excluded from the link name.
+		expect(icon).toHaveAttribute('aria-hidden', 'true');
 		expect(link).toHaveAccessibleName('documentation');
 	});
 
@@ -114,10 +127,12 @@ describe('N8nSettingsPageHeader', () => {
 			props: { title: 'This instance', description: 'Plan, usage and version.' },
 		});
 
-		// Placeholder text is still shown to nudge the developer, but it is not a real link.
+		// Placeholder text is still shown to nudge the developer, but it is not a real link,
+		// nor a focusable no-op control.
 		const placeholder = screen.getByTestId('settings-page-header-docs');
 		expect(placeholder).toHaveTextContent('documentation');
 		expect(placeholder).not.toHaveAttribute('href');
+		expect(placeholder).toBeDisabled();
 		expect(screen.queryByRole('link')).not.toBeInTheDocument();
 		expect(warn).toHaveBeenCalledWith(expect.stringContaining('docsUrl'));
 

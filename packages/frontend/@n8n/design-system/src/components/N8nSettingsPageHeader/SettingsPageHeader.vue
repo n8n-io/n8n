@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, useSlots, watchEffect } from 'vue';
 
+import N8nExternalLink from '../N8nExternalLink';
 import N8nHeading from '../N8nHeading';
 import N8nText from '../N8nText';
 
@@ -41,6 +42,8 @@ const hasDescription = computed(() => Boolean(props.description || slots.descrip
 
 // Default-on means a developer who forgets to wire a docs URL is nudged (not silently broken):
 // the link word still renders as a placeholder and a dev-only warning prompts them to act.
+// Without an href N8nExternalLink falls back to a <button>, so the placeholder is rendered
+// disabled: still visible as the nudge, but not a focusable no-op control.
 if (import.meta.env.DEV) {
 	watchEffect(() => {
 		if (props.showDocsLink && !props.docsUrl) {
@@ -70,21 +73,21 @@ if (import.meta.env.DEV) {
 			</slot>
 			<!--
 				The separating space sits OUTSIDE the nowrap docs phrase so the whole "leading copy +
-				link + arrow" can wrap to the next line as a single unit; only added after a description.
+				link + icon" can wrap to the next line as a single unit; only added after a description.
+				The link sits inside the N8nText so it inherits the description's font and line height.
 			-->
 			<template v-if="showDocsLink"
 				>{{ hasDescription ? ' ' : ''
-				}}<span :class="$style.docsPhrase"
-					><N8nText size="medium" color="text-base">{{ docsLeadingText }}</N8nText
-					><a
-						:class="$style.docsLink"
+				}}<N8nText size="medium" color="text-base" :class="$style.docsPhrase"
+					>{{ docsLeadingText
+					}}<N8nExternalLink
+						inline
+						size="small"
 						:href="docsUrl || undefined"
-						target="_blank"
-						rel="noopener noreferrer"
+						:disabled="docsUrl ? undefined : true"
 						data-test-id="settings-page-header-docs"
-						><span :class="$style.docsLabel">{{ docsLabel }}</span
-						><span aria-hidden="true">↗</span></a
-					></span
+						>{{ docsLabel }}</N8nExternalLink
+					></N8nText
 				></template
 			>
 		</p>
@@ -128,22 +131,8 @@ if (import.meta.env.DEV) {
 	line-height: var(--line-height--lg);
 }
 
-/* Keeps "leading copy + link + arrow" together so the docs sentence wraps as a single unit. */
+/* Keeps "leading copy + link + icon" together so the docs sentence wraps as a single unit. */
 .docsPhrase {
 	white-space: nowrap;
-}
-
-.docsLink {
-	/* Reads as part of the description: same base text color, no link/primary color. */
-	color: var(--text-color--subtle);
-	font-size: var(--font-size--sm);
-	line-height: var(--line-height--lg);
-	text-decoration: none;
-	cursor: pointer;
-}
-
-/* Only the link word is underlined; the ↗ indicator (plain span) stays bare. */
-.docsLabel {
-	text-decoration: underline;
 }
 </style>
