@@ -11,7 +11,9 @@ import {
 	type Role,
 	type Project,
 	type ProjectRepository,
-	ProjectRelation,
+	type OperationContext,
+	type ProjectRelation,
+	type TransactionRunner,
 } from '@n8n/db';
 import type { EntityManager } from '@n8n/typeorm';
 import { type InstanceSettings } from 'n8n-core';
@@ -44,6 +46,8 @@ const instanceSettings = mock<InstanceSettings>();
 const roleMappingRuleRepository = mock<RoleMappingRuleRepository>();
 const roleResolverService = mock<RoleResolverService>();
 const roleMappingRuleService = mock<RoleMappingRuleService>();
+const transactionRunner = mock<TransactionRunner>();
+const transactionContext: OperationContext = {};
 
 const provisioningService = new ProvisioningService(
 	eventService,
@@ -60,15 +64,13 @@ const provisioningService = new ProvisioningService(
 	roleMappingRuleRepository,
 	roleResolverService,
 	roleMappingRuleService,
+	transactionRunner,
 );
 
 describe('ProvisioningService', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
-		entityManager.transaction.mockImplementation(async (cb) => {
-			// @ts-expect-error Mock
-			await cb(entityManager);
-		});
+		transactionRunner.run.mockImplementation(async (_ctx, fn) => await fn(transactionContext));
 		settingsEntityManager.transaction.mockImplementation(async (cb) => {
 			// @ts-expect-error Mock
 			await cb(settingsEntityManager);
@@ -739,7 +741,7 @@ describe('ProvisioningService', () => {
 			expect(projectService.addUser).toHaveBeenCalledWith(
 				'teamProject1',
 				{ userId, role: 'project:editor' },
-				entityManager,
+				transactionContext,
 			);
 			expect(logger.warn).toHaveBeenCalledWith(
 				'Skipped provisioning project role for project with ID personalProject1, because project does not exist or is a personal project.',
@@ -770,12 +772,12 @@ describe('ProvisioningService', () => {
 			expect(projectService.addUser).toHaveBeenCalledWith(
 				'project-1',
 				{ userId, role: 'project:viewer' },
-				entityManager,
+				transactionContext,
 			);
 			expect(projectService.addUser).toHaveBeenCalledWith(
 				'project-2',
 				{ userId, role: 'project:editor' },
-				entityManager,
+				transactionContext,
 			);
 		});
 		it('should filter out non-project roles', async () => {
@@ -813,15 +815,16 @@ describe('ProvisioningService', () => {
 
 			await provisioningService.provisionProjectRolesForUser(userId, projectIdToRole);
 
-			expect(entityManager.transaction).toHaveBeenCalledTimes(1);
-			expect(entityManager.delete).toHaveBeenCalledWith(ProjectRelation, {
-				projectId: 'project-2',
+			expect(transactionRunner.run).toHaveBeenCalledTimes(1);
+			expect(projectService.deleteProjectMember).toHaveBeenCalledWith(
+				'project-2',
 				userId,
-			});
+				transactionContext,
+			);
 			expect(projectService.addUser).toHaveBeenCalledWith(
 				'project-1',
 				{ userId, role: 'project:viewer' },
-				entityManager,
+				transactionContext,
 			);
 		});
 
@@ -861,10 +864,11 @@ describe('ProvisioningService', () => {
 
 			await provisioningService['applyExpressionMappedProjectRoles'](userId, new Map());
 
-			expect(entityManager.delete).toHaveBeenCalledWith(ProjectRelation, {
-				projectId: 'project-1',
+			expect(projectService.deleteProjectMember).toHaveBeenCalledWith(
+				'project-1',
 				userId,
-			});
+				transactionContext,
+			);
 			expect(projectService.addUser).not.toHaveBeenCalled();
 			expect(eventService.emit).toHaveBeenCalledWith('sso-user-project-access-updated', {
 				projectsAdded: 0,
@@ -887,10 +891,11 @@ describe('ProvisioningService', () => {
 				new Map([['nonExistentProject', 'project:viewer']]),
 			);
 
-			expect(entityManager.delete).toHaveBeenCalledWith(ProjectRelation, {
-				projectId: 'project-existing',
+			expect(projectService.deleteProjectMember).toHaveBeenCalledWith(
+				'project-existing',
 				userId,
-			});
+				transactionContext,
+			);
 			expect(projectService.addUser).not.toHaveBeenCalled();
 		});
 
@@ -900,7 +905,7 @@ describe('ProvisioningService', () => {
 
 			await provisioningService['applyExpressionMappedProjectRoles'](userId, new Map());
 
-			expect(entityManager.delete).not.toHaveBeenCalled();
+			expect(projectService.deleteProjectMember).not.toHaveBeenCalled();
 			expect(projectService.addUser).not.toHaveBeenCalled();
 			expect(eventService.emit).not.toHaveBeenCalled();
 		});
@@ -1494,7 +1499,7 @@ describe('ProvisioningService', () => {
 			await provisioningService.provisionExpressionMappedRolesForUser(user, context);
 
 			// No project rules => project roles are not managed => manual access must survive.
-			expect(entityManager.delete).not.toHaveBeenCalled();
+			expect(projectService.deleteProjectMember).not.toHaveBeenCalled();
 			expect(eventService.emit).toHaveBeenCalledWith(
 				'expression-mapping-roles-resolved',
 				expect.objectContaining({ projectRoles: [], removedProjectIds: [] }),
