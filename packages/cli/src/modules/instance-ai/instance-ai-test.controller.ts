@@ -1,11 +1,9 @@
-import { ProjectRepository, UserRepository, WorkflowRepository } from '@n8n/db';
-import { Body, Delete, Get, Param, Post, RestController } from '@n8n/decorators';
+import { WorkflowRepository } from '@n8n/db';
+import { Delete, Get, Param, Post, RestController } from '@n8n/decorators';
 import type { Request, Response } from 'express';
-import { v4 as uuidv4 } from 'uuid';
 
 import { ForbiddenError } from '@n8n/errors';
 
-import { InstanceAiMemoryService } from './instance-ai-memory.service';
 import { InstanceAiService } from './instance-ai.service';
 import { AgentExecutionThreadRepository } from '../agents/repositories/agent-execution-thread.repository';
 import { ASSISTANT_AGENT_ID } from './assistant-turn-options';
@@ -20,9 +18,6 @@ export class InstanceAiTestController {
 		private readonly instanceAiService: InstanceAiService,
 		private readonly threadRepo: AgentExecutionThreadRepository,
 		private readonly workflowRepo: WorkflowRepository,
-		private readonly userRepo: UserRepository,
-		private readonly memoryService: InstanceAiMemoryService,
-		private readonly projectRepo: ProjectRepository,
 	) {}
 
 	@Post('/test/tool-trace', { skipAuth: true })
@@ -44,30 +39,18 @@ export class InstanceAiTestController {
 	}
 
 	@Get('/test/idle', { skipAuth: true })
-	getIdleState() {
+	async getIdleState() {
 		this.assertTraceReplayEnabled();
-		return { idle: !this.instanceAiService.hasRunningWorkForTest() };
-	}
-
-	@Post('/test/background-timeout/start', { skipAuth: true })
-	async startBackgroundTimeoutSimulation(@Body payload: { userId: string; threadId?: string }) {
-		this.assertTraceReplayEnabled();
-		const threadId = payload.threadId ?? uuidv4();
-		const user = await this.userRepo.findOneByOrFail({ id: payload.userId });
-		const personalProject = await this.projectRepo.getPersonalProjectForUserOrFail(user.id);
-
-		await this.memoryService.ensureThread(user.id, threadId, personalProject.id, {
-			source: 'playwright',
-			origin: 'internal',
+		const threads = await this.threadRepo.find({
+			where: { agentId: ASSISTANT_AGENT_ID },
+			select: ['id'],
 		});
-		return await this.instanceAiService.startStuckBackgroundTaskForTest(user, threadId);
-	}
-
-	@Post('/test/liveness-sweep', { skipAuth: true })
-	async runLivenessSweep(@Body payload: { now?: number } = {}) {
-		this.assertTraceReplayEnabled();
-		await this.instanceAiService.runLivenessSweepForTest(payload.now);
-		return { ok: true };
+		for (const { id } of threads) {
+			if ((await this.instanceAiService.getLiveRun(id)).status === 'running') {
+				return { idle: false };
+			}
+		}
+		return { idle: true };
 	}
 
 	@Delete('/test/tool-trace/:slug', { skipAuth: true })
@@ -86,14 +69,13 @@ export class InstanceAiTestController {
 	 * test's recorded responses (observed: a follow-up test's recording referencing
 	 * the previous test's workflow name).
 	 *
-	 * This endpoint cancels background tasks, clears per-thread in-memory state,
-	 * and deletes all thread + workflow rows.
+	 * This endpoint clears per-thread in-memory state and deletes all thread +
+	 * workflow rows.
 	 */
 	@Post('/test/reset', { skipAuth: true })
 	async reset() {
 		this.assertTraceReplayEnabled();
 
-		this.instanceAiService.cancelAllBackgroundTasks();
 		this.instanceAiService.clearTraceContextsForTest();
 
 		const threads = await this.threadRepo.find({

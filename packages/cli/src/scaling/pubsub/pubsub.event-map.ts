@@ -239,20 +239,6 @@ export type PubSubCommandMap = {
 	};
 
 	/**
-	 * Relay an Instance AI task-control action (correction / cancel / clear) to
-	 * sibling mains. The action may target a background task or run held
-	 * in another main's in-memory state. Broadcast + local-gate: every main applies
-	 * it only to its own local slice of the thread.
-	 */
-	'relay-instance-ai-task-control': {
-		threadId: string;
-		userId?: string;
-		taskId?: string;
-		action: 'correct' | 'cancel-task' | 'cancel-thread' | 'clear-thread';
-		correction?: string;
-	};
-
-	/**
 	 * Relay human message events between main instances.
 	 * Used for cross-client synchronization when a user sends a message
 	 * from one browser window and other windows need to be updated.

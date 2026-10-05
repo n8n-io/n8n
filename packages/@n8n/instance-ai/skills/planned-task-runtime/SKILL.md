@@ -45,12 +45,6 @@ If a task appears stuck, tell the user and stop; do not try to detect completion
 yourself. Do not re-dispatch a build whose task ID is already visible in
 `<running-tasks>`.
 
-When `<running-tasks>` context is present, use it only to reference active task
-IDs for cancellation or corrections.
-
-If the user sends a correction while a build is running, call
-`task-control(action="correct-task")` with the task ID and correction.
-
 ## Synthesize follow-up
 
 When `<planned-task-follow-up type="synthesize">` is present, all planned tasks

@@ -21,7 +21,6 @@ import {
 	type InstanceAiTracingAiService,
 	type InstanceAiTracingEventLog,
 	type InstanceAiTracingEventReader,
-	type InstanceAiTracingRunState,
 } from '../tracing';
 
 type FakeTraceRun = {
@@ -53,7 +52,6 @@ function createService(
 	overrides: {
 		logger?: Partial<Logger>;
 		eventReader?: Partial<InstanceAiTracingEventReader>;
-		runState?: Partial<InstanceAiTracingRunState>;
 		eventLog?: Partial<InstanceAiTracingEventLog>;
 		aiService?: Partial<InstanceAiTracingAiService>;
 	} = {},
@@ -62,10 +60,6 @@ function createService(
 	const eventReader: InstanceAiTracingEventReader = {
 		getEventsForRun: vi.fn(async () => []),
 		...overrides.eventReader,
-	};
-	const runState: InstanceAiTracingRunState = {
-		attachTracing: vi.fn(),
-		...overrides.runState,
 	};
 	const eventLog: InstanceAiTracingEventLog = {
 		findLangsmithAnchor: vi.fn(async () => undefined),
@@ -80,12 +74,11 @@ function createService(
 	const service = new InstanceAiTracingService({
 		logger,
 		eventReader,
-		runState,
 		eventLog,
 		aiService,
 	});
 
-	return { service, logger, eventReader, runState, eventLog, aiService };
+	return { service, logger, eventReader, eventLog, aiService };
 }
 
 describe('InstanceAiTracingService', () => {
@@ -120,7 +113,7 @@ describe('InstanceAiTracingService', () => {
 
 		it('degrades instead of throwing when the events read fails', async () => {
 			// Most callers run inside a run's terminal catch block: a throw here
-			// would skip run-finish and hang the client until the liveness sweep.
+			// would skip run-finish and hang the client.
 			const { service, logger } = createService({
 				eventReader: {
 					getEventsForRun: vi.fn(async () => {
@@ -132,7 +125,6 @@ describe('InstanceAiTracingService', () => {
 			await expect(
 				service.buildMessageTraceMetadata('thread-1', 'run-1', {
 					status: 'cancelled',
-					cancellationReason: 'timeout',
 				}),
 			).resolves.toEqual({
 				completion_source: 'orchestrator',
@@ -140,7 +132,7 @@ describe('InstanceAiTracingService', () => {
 				// it can't be read as a genuinely empty run.
 				first_visible_state: 'empty',
 				first_visible_state_unavailable: true,
-				cancellation_type: 'idle_timeout',
+				cancellation_type: 'explicit',
 			});
 			expect(logger.warn).toHaveBeenCalledWith(
 				'Failed to read run events for Instance AI trace metadata',
@@ -171,7 +163,7 @@ describe('InstanceAiTracingService', () => {
 
 	describe('resume trace registration', () => {
 		it('keeps a resume trace detached until the checkpoint claim succeeds', async () => {
-			const { service, runState } = createService();
+			const { service } = createService();
 			const baseTracing = makeTraceContext({
 				rootRun: { id: 'root-base', traceId: 'trace-base' },
 			});
@@ -195,13 +187,11 @@ describe('InstanceAiTracingService', () => {
 
 			expect(result).toBe(resumeTracing);
 			expect(service.getTraceContext('run-1')).toBeUndefined();
-			expect(runState.attachTracing).not.toHaveBeenCalled();
 
 			service.registerTraceContext('run-1', 'thread-a', resumeTracing, 'group-1');
 
 			expect(service.getTraceContext('run-1')).toBe(resumeTracing);
 			expect(service.getMessageGroupId('run-1')).toBe('group-1');
-			expect(runState.attachTracing).toHaveBeenCalledWith('thread-a', resumeTracing);
 		});
 	});
 

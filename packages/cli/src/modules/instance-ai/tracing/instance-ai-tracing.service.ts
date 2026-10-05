@@ -8,9 +8,7 @@ import {
 	submitLangsmithUserFeedback,
 	type BrowserExtensionTraceContext,
 	type InstanceAiTraceContext,
-	type ManagedBackgroundTask,
 	type ModelConfig,
-	type RunStateRegistry,
 	type ServiceProxyConfig,
 } from '@n8n/instance-ai';
 import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
@@ -63,8 +61,6 @@ export type InstanceAiTracingEventReader = {
 	getEventsForRun: (threadId: string, runId: string) => Promise<InstanceAiEvent[]>;
 };
 
-export type InstanceAiTracingRunState = Pick<RunStateRegistry<User>, 'attachTracing'>;
-
 export type InstanceAiTracingEventLog = Pick<InstanceAiEventLogRepository, 'findLangsmithAnchor'>;
 
 export type InstanceAiTracingAiService = Pick<AiService, 'isProxyEnabled' | 'getClient'>;
@@ -72,7 +68,6 @@ export type InstanceAiTracingAiService = Pick<AiService, 'isProxyEnabled' | 'get
 export type InstanceAiTracingServiceOptions = {
 	logger: Logger;
 	eventReader: InstanceAiTracingEventReader;
-	runState: InstanceAiTracingRunState;
 	eventLog: InstanceAiTracingEventLog;
 	aiService: InstanceAiTracingAiService;
 };
@@ -84,7 +79,7 @@ export type InstanceAiTracingServiceOptions = {
  * ID that started an orchestration turn) and the test-only trace replay state.
  * Responsible for creating resume trace contexts, finalizing message- and
  * run-level trace roots, releasing trace clients, and submitting LangSmith user
- * feedback. Collaborators (run state, event bus, event log, AI service)
+ * feedback. Collaborators (event reader, event log, AI service)
  * are supplied via the options bag because the run-context registry it manages
  * is process-local and not suitable for dependency injection.
  */
@@ -107,8 +102,6 @@ export class InstanceAiTracingService {
 
 	private readonly eventReader: InstanceAiTracingEventReader;
 
-	private readonly runState: InstanceAiTracingRunState;
-
 	private readonly eventLog: InstanceAiTracingEventLog;
 
 	private readonly aiService: InstanceAiTracingAiService;
@@ -116,7 +109,6 @@ export class InstanceAiTracingService {
 	constructor(options: InstanceAiTracingServiceOptions) {
 		this.logger = options.logger;
 		this.eventReader = options.eventReader;
-		this.runState = options.runState;
 		this.eventLog = options.eventLog;
 		this.aiService = options.aiService;
 	}
@@ -184,7 +176,6 @@ export class InstanceAiTracingService {
 		messageGroupId?: string,
 	): void {
 		this.storeTraceContext(runId, threadId, tracing, messageGroupId);
-		this.runState.attachTracing(threadId, tracing);
 	}
 
 	async createOrchestratorResumeTraceContext(options: {
@@ -297,7 +288,6 @@ export class InstanceAiTracingService {
 			...(options.cancellationReason !== undefined
 				? { cancellationReason: options.cancellationReason }
 				: {}),
-			...(options.runTimeout !== undefined ? { runTimeout: options.runTimeout } : {}),
 		};
 
 		// The events read hits the DB under the durable log, and most callers run
@@ -374,57 +364,6 @@ export class InstanceAiTracingService {
 		this.traceContextsByRunId.clear();
 	}
 
-	async finalizeDetachedTraceRun(
-		taskId: string,
-		traceContext: InstanceAiTraceContext | undefined,
-		options: {
-			status: 'completed' | 'failed' | 'cancelled';
-			outputs?: Record<string, unknown>;
-			error?: string;
-			metadata?: Record<string, unknown>;
-		},
-	): Promise<void> {
-		if (!traceContext) return;
-
-		try {
-			if (
-				traceContext.actorRun.id !== traceContext.rootRun.id &&
-				traceContext.actorRun.endTime === undefined
-			) {
-				await traceContext.finishRun(traceContext.actorRun, {
-					outputs: {
-						status: options.status,
-						...options.outputs,
-					},
-					metadata: {
-						final_status: options.status,
-						...options.metadata,
-					},
-					...(options.error ? { error: options.error } : {}),
-				});
-			}
-			await traceContext.finishRun(traceContext.rootRun, {
-				outputs: {
-					status: options.status,
-					...options.outputs,
-				},
-				metadata: {
-					final_status: options.status,
-					...options.metadata,
-				},
-				...(options.error ? { error: options.error } : {}),
-			});
-		} catch (error) {
-			this.logger.warn('Failed to finalize Instance AI detached trace run', {
-				taskId,
-				traceRunId: traceContext.rootRun.id,
-				error: getErrorMessage(error),
-			});
-		} finally {
-			releaseTraceClient(traceContext.rootRun.traceId);
-		}
-	}
-
 	async finalizeRunTracing(
 		runId: string,
 		tracing: InstanceAiTraceContext | undefined,
@@ -459,26 +398,6 @@ export class InstanceAiTracingService {
 				error: getErrorMessage(error),
 			});
 		}
-	}
-
-	async finalizeBackgroundTaskTracing(
-		task: ManagedBackgroundTask,
-		status: 'completed' | 'failed' | 'cancelled',
-	): Promise<void> {
-		await this.finalizeDetachedTraceRun(task.taskId, task.traceContext, {
-			status,
-			outputs: {
-				taskId: task.taskId,
-				agentId: task.agentId,
-				role: task.role,
-				...(task.result ? { result: task.result } : {}),
-			},
-			...(status === 'failed' && task.error ? { error: task.error } : {}),
-			metadata: {
-				...(task.plannedTaskId ? { planned_task_id: task.plannedTaskId } : {}),
-				...(task.workItemId ? { work_item_id: task.workItemId } : {}),
-			},
-		});
 	}
 
 	async submitLangsmithFeedback(

@@ -201,8 +201,7 @@ suite. Test cases are pulled at run time from the LangTracer suite
 keep `--source disk` for authoring). To
 re-run after pushing a fix, dispatch `ci-instance-ai-evals.yml` with the PR
 number (optionally `tier: full` for broader coverage) — results post back to
-the PR. The lighter `test-evals-discovery.yml` still runs on every push as part
-of `ci-pull-requests.yml`.
+the PR.
 
 **`ci-instance-ai-evals.yml` is the PR gate; `test-evals-instance-ai.yml` is
 the lab bench.** The gate deliberately exposes only PR re-runs. Anything that

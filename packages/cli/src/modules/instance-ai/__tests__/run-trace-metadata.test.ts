@@ -96,27 +96,4 @@ describe('buildInstanceAiRunTraceMetadata', () => {
 			first_tool_name: 'workflows',
 		});
 	});
-
-	it('records timeout cancellation type and idle tail without extra fields', () => {
-		const metadata = buildInstanceAiRunTraceMetadata([], {
-			status: 'cancelled',
-			cancellationReason: 'timeout',
-			runTimeout: {
-				timedOut: true,
-				details: {
-					reason: 'idle_timeout',
-					surface: 'active-run',
-					timeoutMs: 600_000,
-					elapsedMs: 650_200,
-					idleMs: 606_400.4,
-				},
-			},
-		});
-
-		expect(metadata).toEqual({
-			first_visible_state: 'empty',
-			cancellation_type: 'idle_timeout',
-			idle_tail_ms: 606_400,
-		});
-	});
 });

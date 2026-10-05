@@ -13,12 +13,8 @@ import type * as ValidateAttachmentsMod from './parsers/validate-attachments';
 import type * as PlannedTaskPermissionsMod from './planned-tasks/planned-task-permissions';
 import type * as PlannedTaskServiceMod from './planned-tasks/planned-task-service';
 import type * as PromptProfilesMod from './prompts/prompt-profiles';
-import type * as BackgroundTaskManagerMod from './runtime/background-task-manager';
 import type * as InstanceContextStateMod from './runtime/instance-context-state';
-import type * as LivenessPolicyMod from './runtime/liveness-policy';
-import type * as ResumableStreamExecutorMod from './runtime/resumable-stream-executor';
 import type * as RunStateRegistryMod from './runtime/run-state-registry';
-import type * as StreamRunnerMod from './runtime/stream-runner';
 import type * as TerminalResponseGuardMod from './runtime/terminal-response-guard';
 import type * as MaterializeRuntimeSkillsMod from './skills/materialize-runtime-skills';
 import type * as RuntimeSkillsMod from './skills/runtime-skills';
@@ -170,20 +166,8 @@ const loadSnapshotManager = lazyModule(
 const loadRunStateRegistry = lazyModule(
 	() => require('./runtime/run-state-registry') as typeof RunStateRegistryMod,
 );
-const loadBackgroundTaskManager = lazyModule(
-	() => require('./runtime/background-task-manager') as typeof BackgroundTaskManagerMod,
-);
 const loadTerminalResponseGuard = lazyModule(
 	() => require('./runtime/terminal-response-guard') as typeof TerminalResponseGuardMod,
-);
-const loadResumableStreamExecutor = lazyModule(
-	() => require('./runtime/resumable-stream-executor') as typeof ResumableStreamExecutorMod,
-);
-const loadStreamRunner = lazyModule(
-	() => require('./runtime/stream-runner') as typeof StreamRunnerMod,
-);
-const loadLivenessPolicy = lazyModule(
-	() => require('./runtime/liveness-policy') as typeof LivenessPolicyMod,
 );
 const loadWorkflowLoop = lazyModule(() => require('./workflow-loop') as typeof WorkflowLoopMod);
 const loadWorkflowLoopRuntime = lazyModule(
@@ -405,10 +389,6 @@ export const PlannedTaskStorage: typeof StorageMod.PlannedTaskStorage = lazyClas
 	() => loadStorage().PlannedTaskStorage,
 );
 export const getThread: typeof StorageMod.getThread = lazyFunction(() => loadStorage().getThread);
-export type TerminalOutcomeStorage = StorageMod.TerminalOutcomeStorage;
-export const TerminalOutcomeStorage: typeof StorageMod.TerminalOutcomeStorage = lazyClass(
-	() => loadStorage().TerminalOutcomeStorage,
-);
 export const patchThread: typeof StorageMod.patchThread = lazyFunction(
 	() => loadStorage().patchThread,
 );
@@ -422,7 +402,6 @@ export type {
 	IterationLog,
 	PatchableThreadMemory,
 	ThreadPatch,
-	TerminalOutcome,
 	WorkflowSetupRoutingClaim,
 	WorkflowLoopWorkItemRecord,
 } from './storage';
@@ -488,10 +467,6 @@ defineLazyExport(
 	'N8N_WORKSPACE_DIR_ENV',
 	() => loadMaterializeRuntimeSkills().N8N_WORKSPACE_DIR_ENV,
 );
-defineLazyExport(
-	'INSTANCE_AI_DEFAULT_LIVENESS_POLICY_CONFIG',
-	() => loadLivenessPolicy().INSTANCE_AI_DEFAULT_LIVENESS_POLICY_CONFIG,
-);
 defineLazyExport('workflowBuildOutcomeSchema', () => loadWorkflowLoop().workflowBuildOutcomeSchema);
 defineLazyExport(
 	'workflowVerificationEvidenceSchema',
@@ -538,20 +513,8 @@ export const SnapshotManager: typeof SnapshotManagerMod.SnapshotManager = lazyCl
 	() => loadSnapshotManager().SnapshotManager,
 );
 export type { InstanceAiEventBus, StoredEvent } from './event-bus';
-export type BackgroundTaskManager = BackgroundTaskManagerMod.BackgroundTaskManager;
-export const BackgroundTaskManager: typeof BackgroundTaskManagerMod.BackgroundTaskManager =
-	lazyClass(() => loadBackgroundTaskManager().BackgroundTaskManager);
-export const enrichMessageWithRunningTasks: typeof BackgroundTaskManagerMod.enrichMessageWithRunningTasks =
-	lazyFunction(() => loadBackgroundTaskManager().enrichMessageWithRunningTasks);
-export const enrichMessageWithBackgroundTasks: typeof BackgroundTaskManagerMod.enrichMessageWithRunningTasks =
-	enrichMessageWithRunningTasks;
-export type {
-	BackgroundTaskStatus,
-	ManagedBackgroundTask,
-	SpawnManagedBackgroundTaskOptions,
-} from './runtime/background-task-manager';
 export { MemoryTaskRegistry } from './runtime/memory-task-registry';
-export type RunStateRegistry<TUser = unknown> = RunStateRegistryMod.RunStateRegistry<TUser>;
+export type RunStateRegistry = RunStateRegistryMod.RunStateRegistry;
 export const RunStateRegistry: typeof RunStateRegistryMod.RunStateRegistry = lazyClass(
 	() => loadRunStateRegistry().RunStateRegistry,
 );
@@ -562,21 +525,7 @@ export {
 	formatWorkflowSetupStateNote,
 	observeWorkflowSetupStates,
 } from './tools/workflows/setup-panel-state';
-export type { RunDebugRecord } from './debug/run-debug-buffer';
-export {
-	RunDebugBuffer,
-	buildRunDebugLabel,
-	createRunDebugStepHooks,
-} from './debug/run-debug-buffer';
-export type {
-	ActiveRunState,
-	BackgroundTaskStatusSnapshot,
-	ConfirmationData,
-	PendingConfirmation,
-	RunStateTimeoutDetails,
-	StartedRunState,
-	SuspendedRunState,
-} from './runtime/run-state-registry';
+export type { ConfirmationData } from './runtime/run-state-registry';
 export type InstanceAiTerminalResponseGuard =
 	TerminalResponseGuardMod.InstanceAiTerminalResponseGuard;
 export const InstanceAiTerminalResponseGuard: typeof TerminalResponseGuardMod.InstanceAiTerminalResponseGuard =
@@ -586,18 +535,6 @@ export type {
 	TerminalResponseStatus,
 	TerminalVisibilitySource,
 } from './runtime/terminal-response-guard';
-export const executeResumableStream: typeof ResumableStreamExecutorMod.executeResumableStream =
-	lazyFunction(() => loadResumableStreamExecutor().executeResumableStream);
-export type {
-	AutoResumeControl,
-	ExecuteResumableStreamOptions,
-	ExecuteResumableStreamResult,
-	ManualSuspensionControl,
-	ResumableStreamContext,
-	ResumableStreamControl,
-	ResumableStreamSource,
-	TraceStatus,
-} from './runtime/resumable-stream-executor';
 export type { WorkSummary, ToolCallSummary } from './stream/work-summary-accumulator';
 export type {
 	AgentChunkPublisherOptions,
@@ -617,30 +554,6 @@ export const mergeInstanceContextReach: typeof InstanceContextReachMod.mergeInst
 export type { RunTokenUsage, BuilderUsageItem } from './stream/usage-accumulator';
 export const tokenUsageToBuilderUsageItems: typeof UsageAccumulatorMod.tokenUsageToBuilderUsageItems =
 	lazyFunction(() => loadUsageAccumulator().tokenUsageToBuilderUsageItems);
-export const resumeAgentRun: typeof StreamRunnerMod.resumeAgentRun = lazyFunction(
-	() => loadStreamRunner().resumeAgentRun,
-);
-export const streamAgentRun: typeof StreamRunnerMod.streamAgentRun = lazyFunction(
-	() => loadStreamRunner().streamAgentRun,
-);
-export const createInstanceAiLivenessPolicyConfig: typeof LivenessPolicyMod.createInstanceAiLivenessPolicyConfig =
-	lazyFunction(() => loadLivenessPolicy().createInstanceAiLivenessPolicyConfig);
-export declare const INSTANCE_AI_DEFAULT_LIVENESS_POLICY_CONFIG: typeof LivenessPolicyMod.INSTANCE_AI_DEFAULT_LIVENESS_POLICY_CONFIG;
-export type InstanceAiLivenessPolicy = LivenessPolicyMod.InstanceAiLivenessPolicy;
-export const InstanceAiLivenessPolicy: typeof LivenessPolicyMod.InstanceAiLivenessPolicy =
-	lazyClass(() => loadLivenessPolicy().InstanceAiLivenessPolicy);
-export type {
-	InstanceAiLivenessDecision,
-	InstanceAiLivenessInput,
-	InstanceAiLivenessPolicyConfig,
-	InstanceAiLivenessSurface,
-	InstanceAiLivenessTimeoutReason,
-} from './runtime/liveness-policy';
-export type {
-	StreamableAgent,
-	StreamRunOptions,
-	StreamRunResult,
-} from './runtime/stream-runner';
 export type WorkflowTaskCoordinator = WorkflowLoopMod.WorkflowTaskCoordinator;
 export const WorkflowTaskCoordinator: typeof WorkflowLoopMod.WorkflowTaskCoordinator = lazyClass(
 	() => loadWorkflowLoop().WorkflowTaskCoordinator,
@@ -728,7 +641,7 @@ export type {
 	PlannedTaskSchedulerAction,
 	PlannedTaskService,
 	OrchestrationContext,
-	BackgroundTaskResult,
+	TraceStatus,
 	InstanceAiToolTraceOptions,
 	InstanceAiTraceContext,
 	InstanceAiTraceRun,

@@ -9,7 +9,6 @@ Six harnesses live here:
 - **`eval:instance-ai`** — end-to-end build + mocked execution + LLM verification (drives a running n8n instance)
 - **`eval:agents`** — standalone Agent build cases from the LangTracer `agents` suite (author new ones in `data/agents/`)
 - **`eval:subagent`** — legacy command name for the workflow-build compatibility corpus; it drives the live orchestrator/skill build path, scored by binary checks
-- **`eval:discovery`** — orchestrator in-process, scored against required or forbidden tool/dispatch events (no n8n server)
 - **`eval:pairwise`** — live orchestrator workflow builds, scored by an LLM judge panel against do/don't lists. Intended for head-to-head comparison with `ai-workflow-builder.ee` on the same dataset
 - **`eval:computer-use`** — grades the computer-use agent (file / OAuth / doc-reading tasks) against fixtures; see [`computer-use/README.md`](computer-use/README.md)
 
@@ -20,7 +19,6 @@ Sections:
 - [Running e2e + workflow-build evals](#running-evals)
 - [Regression detection](#regression-detection)
 - [Running evals against pre-built workflows](#running-evals-against-pre-built-workflows)
-- [Running discovery evals](#discovery-evals)
 - [Running pairwise evals](#pairwise-evals)
 - [How the e2e harness works](#how-the-e2e-harness-works)
 - [How the workflow-build harness works](#how-the-workflow-build-harness-works)
@@ -545,24 +543,6 @@ mock generation, and the verifier all draw on one Anthropic budget, and running
 lanes flat-out at `lanes * 4` (each lane's per-lane build cap) starves it,
 surfacing as verifier/MCP timeouts. Treat `lanes * 4` as an aggressive upper
 bound for keys with rate-limit headroom, not the starting point.
-
-## Discovery evals
-
-Discovery evals run the orchestrator in-process and assert first-hop tool or
-background-agent routing from captured `tool-call`, `tool-result`, `tool-error`, and
-`agent-spawned` events. Use them when a regression is about which path the
-agent chooses, not whether a generated workflow executes.
-
-To inspect runtime skill loading, run a focused verbose pass:
-
-```bash
-pnpm eval:discovery --filter data-table-skill-loading --trials 3 --verbose --fail-on-zero-pass
-```
-
-Verbose output lists each trial's completed tool calls with argument previews.
-For data-table routing, look for `load_skill(skillId="data-table-manager")`
-and `data-tables(action="list")`, and verify there are no planning,
-workflow-builder, or spawned-agent entries in the spawned-agent section.
 
 ## Pairwise evals
 

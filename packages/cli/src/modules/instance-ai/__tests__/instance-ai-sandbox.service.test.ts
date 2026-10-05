@@ -32,14 +32,11 @@ import {
 	setupSandboxWorkspace,
 	withSandboxLifecycleTrace,
 	type InstanceAiContext,
-	type ManagedBackgroundTask,
 } from '@n8n/instance-ai';
 
 import {
 	InstanceAiSandboxService,
-	type InstanceAiSandboxBackgroundTasks,
 	type InstanceAiSandboxProxy,
-	type InstanceAiSandboxRunState,
 	type InstanceAiSandboxServiceOptions,
 	type InstanceAiSandboxSettings,
 } from '../sandbox';
@@ -49,8 +46,6 @@ const fakeUser = { id: 'user-1' } as User;
 type Overrides = {
 	resolveTracingConfig?: InstanceAiSandboxServiceOptions['resolveTracingConfig'];
 	config?: Partial<InstanceAiConfig>;
-	runState?: Partial<InstanceAiSandboxRunState>;
-	backgroundTasks?: Partial<InstanceAiSandboxBackgroundTasks>;
 	settingsService?: Partial<InstanceAiSandboxSettings>;
 	aiService?: Partial<InstanceAiSandboxProxy>;
 };
@@ -58,15 +53,6 @@ type Overrides = {
 function createSandboxService(overrides: Overrides = {}) {
 	const logger = { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() };
 	const errorReporter = { error: vi.fn(), warn: vi.fn() } as unknown as ErrorReporter;
-	const runState: InstanceAiSandboxRunState = {
-		getActiveRunId: vi.fn(() => undefined),
-		hasSuspendedRun: vi.fn(() => false),
-		...overrides.runState,
-	};
-	const backgroundTasks: InstanceAiSandboxBackgroundTasks = {
-		getRunningTasks: vi.fn(() => [] as ManagedBackgroundTask[]),
-		...overrides.backgroundTasks,
-	};
 	const settingsService: InstanceAiSandboxSettings = {
 		resolveDaytonaConfig: vi.fn(async () => ({ apiKey: 'test-daytona-key' })),
 		resolveN8nSandboxConfig: vi.fn(async () => ({})),
@@ -81,14 +67,12 @@ function createSandboxService(overrides: Overrides = {}) {
 		config: overrides.config as InstanceAiConfig,
 		logger,
 		errorReporter,
-		runState,
-		backgroundTasks,
 		settingsService,
 		aiService,
 		resolveTracingConfig: overrides.resolveTracingConfig,
 	};
 	const service = new InstanceAiSandboxService(options);
-	return { service, logger, errorReporter, runState, backgroundTasks, settingsService, aiService };
+	return { service, logger, errorReporter, settingsService, aiService };
 }
 
 describe('InstanceAiSandboxService', () => {
@@ -862,37 +846,6 @@ describe('InstanceAiSandboxService', () => {
 				await service.destroySandbox('thread-1');
 				// Already evicted, so destroy has nothing to tear down.
 				expect(workspace.destroy).not.toHaveBeenCalled();
-			} finally {
-				vi.useRealTimers();
-			}
-		});
-
-		it('keeps an in-use sandbox alive when the expiry timer fires', async () => {
-			vi.useFakeTimers();
-			try {
-				const getRunningTasks = vi.fn(() => [{ taskId: 'task-1' }] as ManagedBackgroundTask[]);
-				const { service } = createSandboxService({
-					config: { sandboxEnabled: true, sandboxProvider: 'daytona', builderSandboxTtlMs: 1000 },
-					backgroundTasks: { getRunningTasks },
-				});
-				const sandbox = { id: 'sandbox-1' };
-				const workspace = { init: vi.fn(async () => {}), destroy: vi.fn(async () => {}) };
-				(createSandbox as Mock).mockResolvedValue(sandbox);
-				(createWorkspace as Mock).mockReturnValue(workspace);
-				(setupSandboxWorkspace as Mock).mockResolvedValue(undefined);
-
-				await service.getOrCreateWorkspace('thread-1', fakeUser, {} as InstanceAiContext);
-
-				vi.advanceTimersByTime(1000);
-
-				// In-use sandboxes are touched (re-scheduled) rather than dropped.
-				const reused = await service.getOrCreateWorkspace(
-					'thread-1',
-					fakeUser,
-					{} as InstanceAiContext,
-				);
-				expect(reused).toBeDefined();
-				expect(createSandbox).toHaveBeenCalledTimes(1);
 			} finally {
 				vi.useRealTimers();
 			}

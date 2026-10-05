@@ -54,7 +54,6 @@ export const IMMEDIATE_COMMANDS = new Set<PubSub.Command['command']>([
 	'cancel-agent-background-job',
 	'wake-agent-background-job',
 	'relay-instance-ai-event',
-	'relay-instance-ai-task-control',
 	'agent-chat-subscription-changed',
 	'agent-chat-integration-changed',
 	// Correlated request/response pairs: the subscriber debounces by command name,

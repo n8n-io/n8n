@@ -1,9 +1,4 @@
 import type { InstanceAiEvent } from '@n8n/api-types';
-import type { InstanceAiLivenessTimeoutReason } from '@n8n/instance-ai';
-
-import type { InstanceAiRunTimeoutDetails } from './run-timeout-details';
-
-const RUN_TIMEOUT_REASON = 'timeout';
 
 export type InstanceAiFirstVisibleState =
 	| 'assistant_text'
@@ -12,17 +7,9 @@ export type InstanceAiFirstVisibleState =
 	| 'task_card'
 	| 'empty';
 
-export type InstanceAiCancellationType = 'explicit' | InstanceAiLivenessTimeoutReason;
-
-export type InstanceAiRunTimeoutTraceContext = {
-	timedOut: boolean;
-	details?: InstanceAiRunTimeoutDetails;
-};
-
 export type InstanceAiRunTraceMetadataOptions = {
 	status: 'completed' | 'cancelled' | 'error';
 	cancellationReason?: string;
-	runTimeout?: InstanceAiRunTimeoutTraceContext;
 };
 
 type FirstVisibleSummary = {
@@ -80,18 +67,6 @@ function getFirstVisibleSummary(events: InstanceAiEvent[]): FirstVisibleSummary 
 	return withFirstToolName(sawToolCall ? 'tool_call' : 'empty', firstToolName);
 }
 
-function getCancellationType(
-	options: InstanceAiRunTraceMetadataOptions,
-): InstanceAiCancellationType | undefined {
-	if (options.status !== 'cancelled') return undefined;
-
-	if (options.runTimeout?.timedOut || options.cancellationReason === RUN_TIMEOUT_REASON) {
-		return options.runTimeout?.details?.reason ?? 'idle_timeout';
-	}
-
-	return 'explicit';
-}
-
 export function buildInstanceAiRunTraceMetadata(
 	events: InstanceAiEvent[],
 	options: InstanceAiRunTraceMetadataOptions,
@@ -105,13 +80,8 @@ export function buildInstanceAiRunTraceMetadata(
 		metadata.first_tool_name = firstVisible.firstToolName;
 	}
 
-	const cancellationType = getCancellationType(options);
-	if (cancellationType) {
-		metadata.cancellation_type = cancellationType;
-	}
-
-	if (options.runTimeout?.details?.idleMs !== undefined) {
-		metadata.idle_tail_ms = Math.round(options.runTimeout.details.idleMs);
+	if (options.status === 'cancelled') {
+		metadata.cancellation_type = 'explicit';
 	}
 
 	return metadata;

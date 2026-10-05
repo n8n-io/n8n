@@ -12,7 +12,6 @@ import {
 	type ServiceProxyConfig,
 	type InstanceAiContext,
 	type Logger,
-	type ManagedBackgroundTask,
 	type SandboxConfig,
 } from '@n8n/instance-ai';
 import type { ErrorReporter } from 'n8n-core';
@@ -130,17 +129,6 @@ function withThreadScopedSandboxIdentity(config: SandboxConfig, threadId: string
 	};
 }
 
-/** Thread-run state the sandbox lifecycle consults to know when a workspace is still in use. */
-export type InstanceAiSandboxRunState = {
-	getActiveRunId: (threadId: string) => string | undefined;
-	hasSuspendedRun: (threadId: string) => boolean;
-};
-
-/** Background-task view the sandbox lifecycle consults to know when a workspace is still in use. */
-export type InstanceAiSandboxBackgroundTasks = {
-	getRunningTasks: (threadId: string) => ManagedBackgroundTask[];
-};
-
 /** Settings collaborator that resolves provider credentials from admin config. */
 export type InstanceAiSandboxSettings = {
 	resolveDaytonaConfig: () => Promise<{ apiUrl?: string; apiKey?: string }>;
@@ -164,8 +152,6 @@ export type InstanceAiSandboxServiceOptions = {
 	config: InstanceAiConfig;
 	logger: Logger;
 	errorReporter: ErrorReporter;
-	runState: InstanceAiSandboxRunState;
-	backgroundTasks: InstanceAiSandboxBackgroundTasks;
 	settingsService: InstanceAiSandboxSettings;
 	aiService: InstanceAiSandboxProxy;
 	resolveTracingConfig?: (
@@ -359,7 +345,7 @@ export class InstanceAiSandboxService {
 				if (existing) {
 					if (
 						existing.configFingerprint !== cacheState.fingerprint ||
-						(this.isSandboxEntryExpired(existing) && !this.isSandboxInUse(threadId))
+						this.isSandboxEntryExpired(existing)
 					) {
 						this.evictSandboxEntry(
 							threadId,
@@ -653,14 +639,6 @@ export class InstanceAiSandboxService {
 		this.scheduleSandboxExpiry(threadId, entry);
 	}
 
-	private isSandboxInUse(threadId: string): boolean {
-		return Boolean(
-			this.options.runState.getActiveRunId(threadId) ||
-				this.options.runState.hasSuspendedRun(threadId) ||
-				this.options.backgroundTasks.getRunningTasks(threadId).length > 0,
-		);
-	}
-
 	private scheduleSandboxExpiry(threadId: string, entry: RuntimeSandboxEntry): void {
 		if (this.sandboxTtlMs <= 0) return;
 		if (entry.cleanupTimer) clearTimeout(entry.cleanupTimer);
@@ -673,10 +651,6 @@ export class InstanceAiSandboxService {
 		entry.cleanupTimer = setTimeout(() => {
 			const current = this.sandboxes.get(threadId);
 			if (current !== entry) return;
-			if (this.isSandboxInUse(threadId)) {
-				this.touchSandboxEntry(threadId, entry);
-				return;
-			}
 			this.evictSandboxEntry(threadId, entry, 'idle', true);
 		}, delay);
 		entry.cleanupTimer.unref();

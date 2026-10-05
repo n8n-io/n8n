@@ -44,7 +44,6 @@ import type {
 	InstanceAiEvalRestoreThreadRequest,
 	InstanceAiEvalThreadMemoryResponse,
 	InstanceAiSendMessageRequest,
-	InstanceAiCorrectTaskRequest,
 	InstanceAiConfirmRequest,
 	InstanceAiEnsureThreadRequest,
 	InstanceAiThreadMessagesQuery,
@@ -1526,41 +1525,6 @@ describe('InstanceAiController', () => {
 		});
 	});
 
-	describe('cancelTask', () => {
-		it('should require instanceAi:message scope', () => {
-			expect(scopeOf('cancelTask')).toEqual({ scope: 'instanceAi:message', globalOnly: true });
-		});
-
-		it('should cancel the background task', async () => {
-			memoryService.checkThreadOwnership.mockResolvedValue('owned');
-
-			const result = await controller.cancelTask(req, res, THREAD_ID, 'task-1');
-
-			expect(result).toEqual({ ok: true });
-			expect(instanceAiService.routeCancelBackgroundTask).toHaveBeenCalledWith(THREAD_ID, 'task-1');
-		});
-	});
-
-	describe('correctTask', () => {
-		it('should require instanceAi:message scope', () => {
-			expect(scopeOf('correctTask')).toEqual({ scope: 'instanceAi:message', globalOnly: true });
-		});
-
-		it('should send correction to the task', async () => {
-			memoryService.checkThreadOwnership.mockResolvedValue('owned');
-			const payload = mock<InstanceAiCorrectTaskRequest>({ message: 'fix this' });
-
-			const result = await controller.correctTask(req, res, THREAD_ID, 'task-1', payload);
-
-			expect(result).toEqual({ ok: true });
-			expect(instanceAiService.routeCorrectionToTask).toHaveBeenCalledWith(
-				THREAD_ID,
-				'task-1',
-				'fix this',
-			);
-		});
-	});
-
 	describe('preference card routes', () => {
 		it('should require instanceAi:message scope', () => {
 			expect(scopeOf('undoPreference')).toEqual({
@@ -2290,7 +2254,6 @@ describe('InstanceAiController', () => {
 			const result = await controller.getThreadMessages(req, res, THREAD_ID, query);
 
 			expect(result).toMatchObject({ nextEventId: 42 });
-			expect(instanceAiService.replayUndeliveredTerminalOutcomes).toHaveBeenCalledWith(THREAD_ID);
 			expect(memoryService.getRichMessages).toHaveBeenCalledWith(USER_ID, THREAD_ID, {
 				limit: 50,
 				page: 0,

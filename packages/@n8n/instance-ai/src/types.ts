@@ -43,14 +43,12 @@ import type { z } from 'zod';
 // Service interfaces — dependency inversion so the package stays decoupled from n8n internals.
 // The backend module provides concrete implementations via InstanceAiAdapterService.
 
-import type { WorkflowCodeSnapshotInput } from './debug/run-debug-buffer';
 import type { DomainAccessTracker } from './domain-access/domain-access-tracker';
 import type { InstanceAiEventBus } from './event-bus/event-bus.interface';
 import type { Logger } from './logger';
 import type { AgentContextInput } from './tools/agent-context.tool';
 import type { McpClientManager } from './mcp/mcp-client-manager';
 import type { OrchestratorRunHandoffReason } from './runtime/orchestrator-run-control';
-import type { TraceStatus } from './runtime/resumable-stream-executor';
 import type { IterationLog } from './storage/iteration-log';
 import type { PatchableThreadMemory } from './storage/thread-patch';
 import type { BuilderUsageItem } from './stream/usage-accumulator';
@@ -1686,8 +1684,6 @@ export interface InstanceAiContext {
 		markCreated: (credentialType: string) => void;
 		markCreateFailed: (credentialType: string, errorCode: string) => void;
 	};
-	/** Records workflow code snapshots for the run debug buffer (dev tooling). */
-	recordWorkflowCodeSnapshot?: (snapshot: WorkflowCodeSnapshotInput) => void;
 	/**
 	 * Setup panel v2 sink for durable `setup-items` snapshots. Wired by the host
 	 * only while the setup panel flag is on, so its presence is the package-side
@@ -2149,16 +2145,6 @@ export interface InstanceAiTraceContext {
 	traceWriter?: TraceWriter;
 }
 
-// ── Background task spawning ─────────────────────────────────────────────────
-
-/** Structured result from a background task. The `text` field is the human-readable
- *  summary; `outcome` carries an optional typed payload consumed by the workflow
- *  loop controller. */
-export interface BackgroundTaskResult {
-	text: string;
-	outcome?: Record<string, unknown>;
-}
-
 export interface WorkflowTaskService {
 	reportBuildOutcome(outcome: WorkflowBuildOutcome): Promise<WorkflowLoopAction>;
 	reportVerificationVerdict(verdict: VerificationResult): Promise<WorkflowLoopAction>;
@@ -2183,6 +2169,9 @@ export interface WorkflowTaskService {
 }
 
 // ── Orchestration context (plan tools) ──────────────────────────────────────
+
+/** Terminal status of an agent stream, used to label usage claims and traces. */
+export type TraceStatus = 'completed' | 'cancelled' | 'suspended' | 'errored';
 
 export interface OrchestrationContext {
 	threadId: string;
@@ -2241,8 +2230,6 @@ export interface OrchestrationContext {
 	runtimeSkillCatalog?: RuntimeSkillSource;
 	/** OAuth2 callback URL for the n8n instance (e.g. http://localhost:5678/rest/oauth2-credential/callback) */
 	oauth2CallbackUrl?: string;
-	/** Cancel a running background task by its ID */
-	cancelBackgroundTask?: (taskId: string) => Promise<void>;
 	/** Persist and inspect dependency-aware planned tasks for this thread. */
 	plannedTaskService?: PlannedTaskService;
 	/** Run one scheduler pass after plan/task state changes. */
@@ -2272,15 +2259,6 @@ export interface OrchestrationContext {
 	domainContext?: InstanceAiContext;
 	/** Thread-scoped iteration log for accumulating attempt history across retries */
 	iterationLog?: IterationLog;
-	/** Send a correction message to a running background task */
-	sendCorrectionToTask?: (
-		taskId: string,
-		correction: string,
-	) => 'queued' | 'task-completed' | 'task-not-found';
-	/** Mark the current orchestrator run as making progress. */
-	touchRun?: () => boolean;
-	/** Mark a running background task as making progress. */
-	touchBackgroundTask?: (taskId: string) => boolean;
 	/** Shared workflow-task state service for build / verify / credential-finalize flows */
 	workflowTaskService?: WorkflowTaskService;
 	/** IANA time zone for the current user (e.g. "Europe/Helsinki"). Propagated to sub-agents

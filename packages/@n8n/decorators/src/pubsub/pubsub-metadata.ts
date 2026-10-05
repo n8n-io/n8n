@@ -34,7 +34,6 @@ export type PubSubEventName =
 	| 'resume-agent-workflow-tool'
 	| 'relay-chat-stream-event'
 	| 'relay-instance-ai-event'
-	| 'relay-instance-ai-task-control'
 	| 'relay-chat-human-message'
 	| 'relay-chat-message-edit'
 	| 'reload-sso-provisioning-configuration'

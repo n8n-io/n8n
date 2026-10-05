@@ -11,7 +11,6 @@ import {
 	InstanceAiSendMessageRequest,
 	InstanceAiEventsQuery,
 	instanceAiGatewayKeySchema,
-	InstanceAiCorrectTaskRequest,
 	InstanceAiEnsureThreadRequest,
 	InstanceAiPersistPendingAgentRequest,
 	InstanceAiThreadMessagesQuery,
@@ -154,11 +153,6 @@ export class InstanceAiController {
 		}
 	}
 
-	private requireRunDebugEnabled(): void {
-		if (!this.instanceAiService.isRunDebugEnabled()) {
-			throw new NotFoundError('Run debug is not enabled');
-		}
-	}
 	// Each BrotliCompress stream allocates ~8.6 MB of native memory for its
 	// dictionary, and the compression middleware retains streams via closures on
 	// the response object for the lifetime of the HTTP keep-alive connection.
@@ -339,12 +333,7 @@ export class InstanceAiController {
 		req.once('close', cleanup);
 		res.once('finish', cleanup);
 
-		// 2. Re-publish any terminal outcomes that never reached the client.
-		if (ownership === 'owned') {
-			await this.instanceAiService.replayUndeliveredTerminalOutcomes(threadId);
-		}
-
-		// 3. Set SSE headers.
+		// 2. Set SSE headers.
 		// Disable response compression — SSE streams small chunks where compression
 		// overhead exceeds the benefit, and each Brotli compressor retains ~8.6 MB
 		// of native memory for the lifetime of the connection.
@@ -355,7 +344,7 @@ export class InstanceAiController {
 		res.setHeader('X-Accel-Buffering', 'no');
 		res.flushHeaders();
 
-		// 4. Determine replay cursor
+		// 3. Determine replay cursor
 		//    Last-Event-ID header (browser auto-reconnect) takes precedence over query param.
 		//    Both are validated as non-negative integers; invalid values fall back to 0.
 		const headerValue = req.headers['last-event-id'];
@@ -363,7 +352,7 @@ export class InstanceAiController {
 		const cursor =
 			Number.isFinite(parsedHeader) && parsedHeader >= 0 ? parsedHeader : (query.lastEventId ?? 0);
 
-		// 5. Collect live message groups.
+		// 4. Collect live message groups.
 		//    Multiple groups can be active simultaneously when a background task
 		//    from an older turn outlives its original turn.
 		const liveRun = await this.instanceAiService.getLiveRun(threadId);
@@ -410,7 +399,7 @@ export class InstanceAiController {
 			);
 		};
 
-		// 6. Replay missed events from the durable log — survives restarts and is
+		// 5. Replay missed events from the durable log — survives restarts and is
 		//    valid on any main (the table is in the shared DB). The reads are
 		//    async, so live events can land mid-bootstrap: buffer them across
 		//    every await (the
@@ -553,7 +542,7 @@ export class InstanceAiController {
 
 		bootstrapping = false;
 
-		// 7. Keep-alive
+		// 6. Keep-alive
 		keepAlive = setInterval(() => {
 			res.write(': ping\n\n');
 			res.flush?.();
@@ -633,35 +622,6 @@ export class InstanceAiController {
 		void this.instanceAiService
 			.submitLangsmithFeedback(req.user, threadId, responseId, payload)
 			.catch(() => {});
-		return { ok: true };
-	}
-
-	@Post('/chat/:threadId/tasks/:taskId/cancel')
-	@GlobalScope('instanceAi:message')
-	async cancelTask(
-		req: AuthenticatedRequest,
-		_res: Response,
-		@Param('threadId') threadId: string,
-		@Param('taskId') taskId: string,
-	) {
-		this.requireInstanceAiEnabled();
-		await this.assertThreadAccess(req.user.id, threadId);
-		await this.instanceAiService.routeCancelBackgroundTask(threadId, taskId);
-		return { ok: true };
-	}
-
-	@Post('/chat/:threadId/tasks/:taskId/correct')
-	@GlobalScope('instanceAi:message')
-	async correctTask(
-		req: AuthenticatedRequest,
-		_res: Response,
-		@Param('threadId') threadId: string,
-		@Param('taskId') taskId: string,
-		@Body payload: InstanceAiCorrectTaskRequest,
-	) {
-		this.requireInstanceAiEnabled();
-		await this.assertThreadAccess(req.user.id, threadId);
-		await this.instanceAiService.routeCorrectionToTask(threadId, taskId, payload.message);
 		return { ok: true };
 	}
 
@@ -1033,7 +993,6 @@ export class InstanceAiController {
 	) {
 		this.requireInstanceAiEnabled();
 		await this.assertThreadAccess(req.user.id, threadId);
-		await this.instanceAiService.replayUndeliveredTerminalOutcomes(threadId);
 
 		// ?raw=true returns the old format for the thread inspector
 		if (query.raw === 'true') {
@@ -1098,35 +1057,6 @@ export class InstanceAiController {
 		// Allow new threads — the frontend polls status before the first message is sent
 		await this.assertThreadAccess(req.user.id, threadId, { allowNew: true });
 		return await this.instanceAiService.getThreadStatus(threadId);
-	}
-
-	@Get('/debug/runs/:runId')
-	@GlobalScope('instanceAi:message')
-	async getRunDebug(req: AuthenticatedRequest, _res: Response, @Param('runId') runId: string) {
-		this.requireInstanceAiEnabled();
-		this.requireRunDebugEnabled();
-		const record = this.instanceAiService.getRunDebug(runId);
-		if (!record) {
-			throw new NotFoundError('Run debug record not found');
-		}
-		await this.assertThreadAccess(req.user.id, record.threadId);
-		return record;
-	}
-
-	@Get('/debug/threads/:threadId/runs')
-	@GlobalScope('instanceAi:message')
-	async listThreadDebugRuns(
-		req: AuthenticatedRequest,
-		_res: Response,
-		@Param('threadId') threadId: string,
-	) {
-		this.requireInstanceAiEnabled();
-		this.requireRunDebugEnabled();
-		await this.assertThreadAccess(req.user.id, threadId);
-		return {
-			threadId,
-			runs: this.instanceAiService.listThreadDebugRuns(threadId),
-		};
 	}
 
 	// ── Evaluation endpoints ──────────────────────────────────────────────────

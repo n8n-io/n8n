@@ -70,7 +70,6 @@ export namespace PubSub {
 		export type WakeAgentBackgroundJob = ToCommand<'wake-agent-background-job'>;
 		export type RelayChatStreamEvent = ToCommand<'relay-chat-stream-event'>;
 		export type RelayInstanceAiEvent = ToCommand<'relay-instance-ai-event'>;
-		export type RelayInstanceAiTaskControl = ToCommand<'relay-instance-ai-task-control'>;
 		export type RelayChatHumanMessage = ToCommand<'relay-chat-human-message'>;
 		export type RelayChatMessageEdit = ToCommand<'relay-chat-message-edit'>;
 		export type ClearTestWebhooks = ToCommand<'clear-test-webhooks'>;
@@ -122,7 +121,6 @@ export namespace PubSub {
 		| Commands.WakeAgentBackgroundJob
 		| Commands.RelayChatStreamEvent
 		| Commands.RelayInstanceAiEvent
-		| Commands.RelayInstanceAiTaskControl
 		| Commands.RelayChatHumanMessage
 		| Commands.RelayChatMessageEdit
 		| Commands.ClearTestWebhooks

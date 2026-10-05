@@ -1,8 +1,6 @@
 export {
 	InstanceAiSandboxService,
-	type InstanceAiSandboxBackgroundTasks,
 	type InstanceAiSandboxProxy,
-	type InstanceAiSandboxRunState,
 	type InstanceAiSandboxServiceOptions,
 	type InstanceAiSandboxSettings,
 	type RuntimeSandboxEntry,

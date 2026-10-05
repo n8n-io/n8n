@@ -66,7 +66,6 @@ vi.mock('../storage', () => ({
 	ThreadTaskStorage: class ThreadTaskStorage {},
 	PlannedTaskStorage: class PlannedTaskStorage {},
 	getThread: () => ({ id: 'thread-1' }),
-	TerminalOutcomeStorage: class TerminalOutcomeStorage {},
 	patchThread: () => ({ id: 'thread-1' }),
 	WorkflowLoopStorage: class WorkflowLoopStorage {},
 }));
@@ -108,40 +107,10 @@ vi.mock('../workspace/sandbox-setup', () => ({
 	setupSandboxWorkspace: () => undefined,
 }));
 vi.mock('../workspace/snapshot-manager', () => ({ SnapshotManager: class SnapshotManager {} }));
-vi.mock('../runtime/background-task-manager', () => ({
-	BackgroundTaskManager: class BackgroundTaskManager {},
-	enrichMessageWithRunningTasks: () => ({ content: 'message' }),
-}));
 vi.mock('../runtime/run-state-registry', () => ({ RunStateRegistry: class RunStateRegistry {} }));
 vi.mock('../runtime/terminal-response-guard', () => ({
 	InstanceAiTerminalResponseGuard: class InstanceAiTerminalResponseGuard {},
 }));
-vi.mock('../runtime/resumable-stream-executor', () => ({
-	executeResumableStream: () => ({ status: 'done' }),
-}));
-vi.mock('../runtime/stream-runner', () => ({
-	resumeAgentRun: () => ({ status: 'resumed' }),
-	streamAgentRun: () => ({ status: 'streamed' }),
-}));
-vi.mock('../runtime/liveness-policy', () => {
-	const INSTANCE_AI_DEFAULT_LIVENESS_POLICY_CONFIG = {
-		confirmationTimeoutMs: 1,
-		backgroundTaskIdleTimeoutMs: 1,
-		backgroundTaskMaxLifetimeMs: 1,
-		activeRunIdleTimeoutMs: 0,
-		activeRunMaxLifetimeMs: 1,
-	};
-	class InstanceAiLivenessPolicy {
-		hasEnabledTimeouts() {
-			return true;
-		}
-	}
-	return {
-		INSTANCE_AI_DEFAULT_LIVENESS_POLICY_CONFIG,
-		createInstanceAiLivenessPolicyConfig: () => INSTANCE_AI_DEFAULT_LIVENESS_POLICY_CONFIG,
-		InstanceAiLivenessPolicy,
-	};
-});
 vi.mock('../workflow-loop', () => ({
 	workflowBuildOutcomeSchema: { safeParse: () => ({ success: true }) },
 	attemptRecordSchema: { safeParse: () => ({ success: false }) },
@@ -188,7 +157,6 @@ describe('@n8n/instance-ai public entrypoint', () => {
 		expect(entrypoint.getParseableAttachmentMimeTypes).toEqual(expect.any(Function));
 		expect(entrypoint.mapAgentChunkToEvent).toEqual(expect.any(Function));
 		expect(entrypoint.wrapUntrustedData).toEqual(expect.any(Function));
-		expect(entrypoint.BackgroundTaskManager).toEqual(expect.any(Function));
 		expect(entrypoint.IdRemapper).toEqual(expect.any(Function));
 		expect(entrypoint.McpClientManager).toEqual(expect.any(Function));
 		expect(entrypoint.UnsupportedAttachmentError).toEqual(expect.any(Function));
@@ -242,9 +210,6 @@ describe('@n8n/instance-ai public entrypoint', () => {
 		expect(construct(entrypoint.ThreadTaskStorage)).toBeInstanceOf(entrypoint.ThreadTaskStorage);
 		expect(construct(entrypoint.PlannedTaskStorage)).toBeInstanceOf(entrypoint.PlannedTaskStorage);
 		expect(call(entrypoint.getThread)).toEqual({ id: 'thread-1' });
-		expect(construct(entrypoint.TerminalOutcomeStorage)).toBeInstanceOf(
-			entrypoint.TerminalOutcomeStorage,
-		);
 		expect(call(entrypoint.patchThread)).toEqual({ id: 'thread-1' });
 		expect(construct(entrypoint.WorkflowLoopStorage)).toBeInstanceOf(
 			entrypoint.WorkflowLoopStorage,
@@ -277,24 +242,9 @@ describe('@n8n/instance-ai public entrypoint', () => {
 		expect(call(entrypoint.createWorkspace)).toEqual({ type: 'workspace' });
 		expect(construct(entrypoint.SnapshotManager)).toBeInstanceOf(entrypoint.SnapshotManager);
 
-		expect(construct(entrypoint.BackgroundTaskManager)).toBeInstanceOf(
-			entrypoint.BackgroundTaskManager,
-		);
-		expect(call(entrypoint.enrichMessageWithRunningTasks)).toEqual({ content: 'message' });
-		expect(call(entrypoint.enrichMessageWithBackgroundTasks)).toEqual({ content: 'message' });
 		expect(construct(entrypoint.RunStateRegistry)).toBeInstanceOf(entrypoint.RunStateRegistry);
 		expect(construct(entrypoint.InstanceAiTerminalResponseGuard)).toBeInstanceOf(
 			entrypoint.InstanceAiTerminalResponseGuard,
-		);
-		expect(call(entrypoint.executeResumableStream)).toEqual({ status: 'done' });
-		expect(call(entrypoint.resumeAgentRun)).toEqual({ status: 'resumed' });
-		expect(call(entrypoint.streamAgentRun)).toEqual({ status: 'streamed' });
-
-		expect(call(entrypoint.createInstanceAiLivenessPolicyConfig)).toEqual(
-			entrypoint.INSTANCE_AI_DEFAULT_LIVENESS_POLICY_CONFIG,
-		);
-		expect(construct(entrypoint.InstanceAiLivenessPolicy)).toBeInstanceOf(
-			entrypoint.InstanceAiLivenessPolicy,
 		);
 		expect(construct(entrypoint.WorkflowTaskCoordinator)).toBeInstanceOf(
 			entrypoint.WorkflowTaskCoordinator,
