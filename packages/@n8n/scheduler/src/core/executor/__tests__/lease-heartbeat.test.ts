@@ -38,14 +38,17 @@ describe('LeaseHeartbeat', () => {
 	it('does not keep the process alive', async () => {
 		const renew = vi.fn().mockResolvedValue(true);
 		const heartbeat = new LeaseHeartbeat(renew, options());
-		const timers = heartbeat as unknown as Record<'beatTimer' | 'expiryTimer', NodeJS.Timeout>;
-		expect(timers.beatTimer.hasRef()).toBe(false);
-		expect(timers.expiryTimer.hasRef()).toBe(false);
+		const alarms = heartbeat as unknown as Record<
+			'beatAlarm' | 'expiryAlarm',
+			{ timer: NodeJS.Timeout }
+		>;
+		expect(alarms.beatAlarm.timer.hasRef()).toBe(false);
+		expect(alarms.expiryAlarm.timer.hasRef()).toBe(false);
 
 		await vi.advanceTimersByTimeAsync(INTERVAL_MS);
 		expect(renew).toHaveBeenCalledTimes(1);
-		expect(timers.beatTimer.hasRef()).toBe(false);
-		expect(timers.expiryTimer.hasRef()).toBe(false);
+		expect(alarms.beatAlarm.timer.hasRef()).toBe(false);
+		expect(alarms.expiryAlarm.timer.hasRef()).toBe(false);
 
 		heartbeat.stop();
 	});
