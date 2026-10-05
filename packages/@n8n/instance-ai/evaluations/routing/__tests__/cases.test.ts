@@ -4,6 +4,12 @@ import { join } from 'node:path';
 
 import { loadRoutingCases } from '../cases';
 
+// List files in reverse name order, so the tests fail if the loader stops sorting.
+vi.mock('fs', async (importOriginal) => {
+	const fs = await importOriginal<typeof import('fs')>();
+	return { ...fs, readdirSync: (dir: string) => fs.readdirSync(dir).sort().reverse() };
+});
+
 /** A case as LangTracer's `export_suite` writes it. */
 function exportedCase(tags: string[] = [], overrides: Record<string, unknown> = {}) {
 	return {
@@ -26,9 +32,9 @@ function caseDir(files: Record<string, unknown>): string {
 }
 
 describe('loadRoutingCases', () => {
-	it('loads the route-*.json files in name order and reads the labels from the tags', () => {
+	it('loads the route-*.json files in name order, drops export-only keys, and reads the tags', () => {
 		const dir = caseDir({
-			'route-debug-two.json': exportedCase(),
+			'route-debug-two.json': exportedCase([], { id: 42, name: 'Two', suiteId: 64 }),
 			'route-prod-agent-one.json': exportedCase([], {
 				tags: ['routing', 'bucket:agent', 'accepts:agent', 'accepts:clarify:agent'],
 				conversation: [{ role: 'user', text: ['Answer our support inbox.', 'Use our FAQ.'] }],
@@ -72,6 +78,7 @@ describe('loadRoutingCases', () => {
 	it('returns the cases that need setup without running them', () => {
 		const dir = caseDir({
 			'route-debug-ok.json': exportedCase(),
+			'route-debug-no-accounts.json': exportedCase([], { credentials: [] }),
 			'route-debug-seeded.json': exportedCase([], {
 				seed: { mode: 'inline', messages: [{ role: 'user', text: 'Build me a daily report.' }] },
 			}),
@@ -81,7 +88,7 @@ describe('loadRoutingCases', () => {
 
 		const { cases, needsSetup } = loadRoutingCases(dir);
 
-		expect(cases.map((c) => c.id)).toEqual(['route-debug-ok']);
+		expect(cases.map((c) => c.id)).toEqual(['route-debug-no-accounts', 'route-debug-ok']);
 		expect(needsSetup).toEqual([
 			'route-debug-in-browser',
 			'route-debug-seeded',
@@ -94,7 +101,9 @@ describe('loadRoutingCases', () => {
 		const dir = caseDir({
 			'route-debug-ok.json': exportedCase(),
 			'route-debug-broken.json': '{',
-			'route-debug-extra.json': exportedCase([], { expectedToolInvocations: {} }),
+			'route-debug-assistant-turn.json': exportedCase([], {
+				conversation: [{ role: 'assistant', text: 'It failed again.' }],
+			}),
 			'route-debug-no-routing-tag.json': exportedCase([], {
 				tags: ['bucket:debug', 'accepts:debug'],
 			}),
@@ -118,7 +127,7 @@ describe('loadRoutingCases', () => {
 		expect(() => loadRoutingCases(dir)).toThrow(
 			expect.objectContaining({
 				message: expect.stringMatching(
-					/route-debug-bad-token\.json: accepts\.0[\s\S]*route-debug-broken\.json[\s\S]*route-debug-extra\.json: \(root\)[\s\S]*route-debug-no-accepts\.json: accepts: needs an accepts:<route> tag[\s\S]*route-debug-no-routing-tag\.json: has no "routing" tag[\s\S]*route-debug-two-buckets\.json: bucket: needs exactly one bucket:<route> tag[\s\S]*route-debug-two-turns\.json: needs exactly one message/,
+					/route-debug-assistant-turn\.json: needs exactly one user message[\s\S]*route-debug-bad-token\.json: accepts\.0[\s\S]*route-debug-broken\.json[\s\S]*route-debug-no-accepts\.json: accepts: needs an accepts:<route> tag[\s\S]*route-debug-no-routing-tag\.json: has no "routing" tag[\s\S]*route-debug-two-buckets\.json: bucket: needs exactly one bucket:<route> tag[\s\S]*route-debug-two-turns\.json: needs exactly one user message/,
 				),
 			}),
 		);

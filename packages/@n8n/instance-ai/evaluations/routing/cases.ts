@@ -12,6 +12,7 @@ import { basename, join, resolve } from 'path';
 import { z } from 'zod';
 
 import { EvalTestCaseSchema } from '../harness/schema';
+import { normalizeExportedCase } from '../langtracer/normalize';
 
 export const ROUTING_BUCKETS = [
 	'agent',
@@ -71,16 +72,19 @@ function parseRoutingCaseFile(filePath: string): ParsedFile {
 	} catch (error) {
 		throw new Error(`${filePath}: ${error instanceof Error ? error.message : String(error)}`);
 	}
-	const parsed = EvalTestCaseSchema.safeParse(raw);
+	// Strips export-only keys (id, name, suiteId, ...), as the LangTracer pull does.
+	const parsed = EvalTestCaseSchema.safeParse(normalizeExportedCase(raw));
 	if (!parsed.success) throw new Error(`${filePath}: ${formatIssues(parsed.error)}`);
 
 	const { tags, conversation = [], seed, credentials, credentialFixture } = parsed.data;
 	if (!tags.includes('routing')) throw new Error(`${filePath}: has no "routing" tag`);
 	// ponytail: the runner cannot create earlier messages, an open workflow or Agent, or accounts yet.
-	if (seed || credentials || credentialFixture) {
+	if (seed || credentials?.length || credentialFixture) {
 		return { kind: 'needs-setup', id };
 	}
-	if (conversation.length !== 1) throw new Error(`${filePath}: needs exactly one message`);
+	if (conversation.length !== 1 || conversation[0].role !== 'user') {
+		throw new Error(`${filePath}: needs exactly one user message`);
+	}
 
 	const labels = routingTagsSchema.safeParse({
 		bucket: tagValues(tags, 'bucket:'),
