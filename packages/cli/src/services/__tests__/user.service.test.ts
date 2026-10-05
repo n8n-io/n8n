@@ -921,6 +921,14 @@ describe('UserService', () => {
 				userService as unknown as { getOwnershipTransferService: () => unknown },
 				'getOwnershipTransferService',
 			).mockResolvedValue(ownershipTransferService);
+			vi.spyOn(
+				userService as unknown as { getWorkflowService: () => unknown },
+				'getWorkflowService',
+			).mockResolvedValue({ delete: vi.fn() });
+			vi.spyOn(
+				userService as unknown as { getCredentialsService: () => unknown },
+				'getCredentialsService',
+			).mockResolvedValue({ delete: vi.fn() });
 		});
 
 		it('checks the transferee project policy before transferring anything', async () => {

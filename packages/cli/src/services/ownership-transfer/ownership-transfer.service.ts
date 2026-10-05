@@ -60,6 +60,7 @@ export class OwnershipTransferService {
 		}
 
 		const ownedCredentials = await this.sharedCredentialsRepository.find({
+			select: { credentialsId: true, credentials: { id: true, type: true } },
 			where: { projectId: fromProjectId, role: 'credential:owner' },
 			relations: { credentials: true },
 		});

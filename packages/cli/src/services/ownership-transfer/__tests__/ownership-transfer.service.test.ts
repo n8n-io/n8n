@@ -91,8 +91,17 @@ describe('OwnershipTransferService', () => {
 		it('checks every owned workflow and credential against the destination project', async () => {
 			await service.enforceTransferPolicy('from', 'to', actor);
 
+			expect(sharedWorkflowRepository.find).toHaveBeenCalledWith({
+				select: { workflowId: true },
+				where: { projectId: 'from', role: 'workflow:owner' },
+			});
 			expect(workflowRepository.findByIds).toHaveBeenCalledWith(['wf-1', 'wf-2'], {
 				fields: ['name', 'nodes'],
+			});
+			expect(sharedCredentialsRepository.find).toHaveBeenCalledWith({
+				select: { credentialsId: true, credentials: { id: true, type: true } },
+				where: { projectId: 'from', role: 'credential:owner' },
+				relations: { credentials: true },
 			});
 			for (const workflow of workflows) {
 				expect(policyEnforcementService.enforceWorkflowTransfer).toHaveBeenCalledWith(

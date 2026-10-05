@@ -326,6 +326,37 @@ describe('DELETE /projects/:projectId?transferId', () => {
 			Container.get(ProjectRepository).findOneByOrFail({ id: sourceProject.id }),
 		).resolves.toBeDefined();
 	});
+
+	test('blocks the deletion when only a credential is denied', async () => {
+		const credential = await saveCredential(randomCredentialPayload(), {
+			project: sourceProject,
+			role: 'credential:owner',
+		});
+		deniedTargetProjectIds.add(targetProject.id);
+
+		await authMemberAgent
+			.delete(`/projects/${sourceProject.id}`)
+			.query({ transferId: targetProject.id })
+			.expect(403);
+
+		const sharings = await getCredentialSharings(credential);
+		expect(sharings).toHaveLength(1);
+		expect(sharings[0]).toMatchObject({ projectId: sourceProject.id });
+	});
+
+	test('deletes and transfers as usual when no check objects', async () => {
+		const workflow = await createWorkflow({}, sourceProject);
+
+		await authMemberAgent
+			.delete(`/projects/${sourceProject.id}`)
+			.query({ transferId: targetProject.id })
+			.expect(200);
+
+		await expectOwnedBy(workflow, targetProject);
+		await expect(
+			Container.get(ProjectRepository).findOneBy({ id: sourceProject.id }),
+		).resolves.toBeNull();
+	});
 });
 
 describe('DELETE /users/:id?transferId', () => {
@@ -348,5 +379,39 @@ describe('DELETE /users/:id?transferId', () => {
 		await expect(
 			Container.get(UserRepository).findOneByOrFail({ id: memberToDelete.id }),
 		).resolves.toBeDefined();
+	});
+
+	test('blocks the deletion when only a credential is denied', async () => {
+		const memberToDelete = await createMember();
+		const personalProject = await getPersonalProject(memberToDelete);
+		const credential = await saveCredential(randomCredentialPayload(), {
+			user: memberToDelete,
+			role: 'credential:owner',
+		});
+		deniedTargetProjectIds.add(targetProject.id);
+
+		await authOwnerAgent
+			.delete(`/users/${memberToDelete.id}`)
+			.query({ transferId: targetProject.id })
+			.expect(403);
+
+		const sharings = await getCredentialSharings(credential);
+		expect(sharings).toHaveLength(1);
+		expect(sharings[0]).toMatchObject({ projectId: personalProject.id });
+	});
+
+	test('deletes and transfers as usual when no check objects', async () => {
+		const memberToDelete = await createMember();
+		const workflow = await createWorkflow({}, memberToDelete);
+
+		await authOwnerAgent
+			.delete(`/users/${memberToDelete.id}`)
+			.query({ transferId: targetProject.id })
+			.expect(200);
+
+		await expectOwnedBy(workflow, targetProject);
+		await expect(
+			Container.get(UserRepository).findOneBy({ id: memberToDelete.id }),
+		).resolves.toBeNull();
 	});
 });
