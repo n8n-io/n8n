@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, provide, ref, toRaw, useId, watch } from 'vue';
-import { N8nIcon, N8nIconButton, N8nInput, N8nTag, N8nText, N8nTooltip } from '@n8n/design-system';
+import { N8nIconButton, N8nInput, N8nText, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { AgentJsonWorkflowToolInputField } from '@n8n/api-types';
 import { WORKFLOW_TOOL_LANGCHAIN_NODE_TYPE, type INodeProperties } from 'n8n-workflow';
@@ -25,6 +25,7 @@ import {
 	type WorkflowToolInputFieldDef,
 } from '../utils/workflowToolInputFields';
 import type { WorkflowToolRef } from '../types';
+import FromAiOverrideField from '@/features/ndv/parameters/components/ParameterInputOverrides/FromAiOverrideField.vue';
 
 const props = defineProps<{
 	fields: WorkflowToolInputFieldDef[];
@@ -105,16 +106,19 @@ function displayValue(field: WorkflowToolInputFieldDef) {
 }
 
 function setMode(field: WorkflowToolInputFieldDef, mode: AgentJsonWorkflowToolInputField['mode']) {
-	const next = { ...toRaw(inputs.value) };
+	let next = { ...toRaw(inputs.value) };
 	delete rawValues.value[field.name];
 	if (mode === 'ai') {
 		delete next[field.name];
 	} else if (mode === 'expression') {
-		next[field.name] = { mode, value: '=' };
+		next = { ...next, [field.name]: { mode, value: '=' } };
 	} else {
-		next[field.name] = {
-			mode,
-			value: field.type === 'boolean' ? false : parseWorkflowToolFixedValue('', field.type),
+		next = {
+			...next,
+			[field.name]: {
+				mode,
+				value: field.type === 'boolean' ? false : parseWorkflowToolFixedValue('', field.type),
+			},
 		};
 	}
 	inputs.value = next;
@@ -129,7 +133,7 @@ function updateValue(field: WorkflowToolInputFieldDef, update: IUpdateInformatio
 	const raw = formatWorkflowToolFixedValue(update.value);
 	const mode = bindingFor(field.name).mode;
 	if (mode === 'ai') return;
-	if (mode === 'fixed') rawValues.value[field.name] = raw;
+	if (mode === 'fixed') rawValues.value = { ...toRaw(rawValues.value), [field.name]: raw };
 	const binding: AgentJsonWorkflowToolInputField =
 		mode === 'expression'
 			? { mode, value: raw }
@@ -138,8 +142,8 @@ function updateValue(field: WorkflowToolInputFieldDef, update: IUpdateInformatio
 }
 
 function updateDescription(name: string, description: string) {
-	const next = { ...toRaw(inputs.value) };
-	if (description.trim()) next[name] = { mode: 'ai', description };
+	let next = { ...toRaw(inputs.value) };
+	if (description.trim()) next = { ...next, [name]: { mode: 'ai', description } };
 	else delete next[name];
 	inputs.value = next;
 }
@@ -215,29 +219,7 @@ watch(fieldsWithErrors, (fields) => emit('update:valid', fields.length === 0), {
 				/>
 			</div>
 			<template v-if="bindingFor(field.name).mode === 'ai'">
-				<div :class="$style.aiField">
-					<N8nTag
-						:text="i18n.baseText('agents.toolConfig.workflow.inputs.definedByModel')"
-						:clickable="false"
-						size="lg"
-						:class="$style.aiTag"
-					>
-						<template #tag>
-							<N8nIcon icon="sparkles" size="large" :class="$style.aiIcon" />
-							<N8nText :class="$style.aiLabel">
-								{{ i18n.baseText('agents.toolConfig.workflow.inputs.definedByModel') }}
-							</N8nText>
-							<N8nIconButton
-								icon="x"
-								variant="ghost"
-								size="xsmall"
-								:class="$style.aiRemove"
-								:aria-label="i18n.baseText('agents.toolConfig.workflow.inputs.mode.fixed')"
-								@click="setMode(field, 'fixed')"
-							/>
-						</template>
-					</N8nTag>
-				</div>
+				<FromAiOverrideField @close="setMode(field, 'fixed')" />
 				<label :for="`${id}-${index}-description`" :class="$style.descriptionLabel">
 					{{ i18n.baseText('agents.toolConfig.workflow.inputs.description') }}
 				</label>
@@ -284,8 +266,6 @@ watch(fieldsWithErrors, (fields) => emit('update:valid', fields.length === 0), {
 </template>
 
 <style lang="scss" module>
-@use '@n8n/design-system/css/mixins/_input.scss' as input;
-
 .fields {
 	display: flex;
 	flex-direction: column;
@@ -309,39 +289,6 @@ watch(fieldsWithErrors, (fields) => emit('update:valid', fields.length === 0), {
 
 .name {
 	overflow-wrap: anywhere;
-}
-
-.aiField {
-	@include input.size-variables;
-	@include input.theme-variables;
-	display: flex;
-	padding: var(--spacing--4xs);
-	border-radius: var(--input--radius);
-	background-color: var(--input--color--background);
-	box-shadow: inset var(--input--border--shadow);
-}
-
-.aiTag {
-	--tag--min-width: 0;
-	--tag--max-width: 100%;
-	gap: var(--spacing--3xs);
-	height: auto;
-	min-height: var(--height--sm);
-	padding-block: 0;
-}
-
-.aiIcon {
-	flex-shrink: 0;
-}
-
-.aiLabel {
-	min-width: 0;
-	overflow-wrap: anywhere;
-}
-
-.aiRemove {
-	flex-shrink: 0;
-	color: var(--text-color--subtler);
 }
 
 .descriptionLabel {

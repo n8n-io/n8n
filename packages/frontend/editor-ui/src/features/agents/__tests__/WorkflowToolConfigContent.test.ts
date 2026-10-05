@@ -3,12 +3,13 @@ import { createTestingPinia } from '@pinia/testing';
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore } from '@/__tests__/utils';
 import { fireEvent, waitFor, within } from '@testing-library/vue';
-import { defineComponent, h, ref } from 'vue';
+import { defineComponent, h, nextTick, ref, shallowRef } from 'vue';
 import { EditorView } from '@codemirror/view';
 import { SUPPORTED_WORKFLOW_TOOL_TRIGGERS } from '@n8n/api-types';
 
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import WorkflowToolConfigContent from '../components/WorkflowToolConfigContent.vue';
+import WorkflowToolInputs from '../components/WorkflowToolInputs.vue';
 import AgentToolConfigForm from '../components/AgentToolConfigForm.vue';
 import type { WorkflowToolRef } from '../types';
 
@@ -437,45 +438,65 @@ describe('WorkflowToolConfigContent', () => {
 			expect(within(field).getByRole('textbox')).toHaveValue('Jarvis');
 		});
 
-		it.each(['constructor', 'toString', 'hasOwnProperty'])(
+		it.each(['constructor', 'toString', 'hasOwnProperty', '__proto__'])(
 			'configures and reopens an input named %s',
 			async (name) => {
-				setProjectWorkflows([workflowWithInputs('Notify Sales', [{ name, type: 'string' }])]);
-				const view = renderForm(createRef());
-				const field = await view.findByTestId(`agent-workflow-tool-input-${name}`);
-				await fireEvent.click(view.getByTestId('agent-workflow-tool-advanced'));
+				const inputs = shallowRef<NonNullable<WorkflowToolRef['inputs']>>({});
+				const inputType = ref('string');
+				const render = createComponentRenderer(
+					defineComponent({
+						setup: () => () =>
+							h(WorkflowToolInputs, {
+								fields: [{ name, type: inputType.value }],
+								toolName: 'Notify Sales',
+								submitted: false,
+								modelValue: inputs.value,
+								'onUpdate:modelValue': (updated: NonNullable<WorkflowToolRef['inputs']>) => {
+									inputs.value = updated;
+								},
+							}),
+					}),
+				);
+				const view = render();
+				const field = view.getByTestId(`agent-workflow-tool-input-${name}`);
 				await fireEvent.click(
 					within(field).getByRole('button', {
-						name: 'agents.toolConfig.workflow.inputs.mode.fixed',
+						name: 'parameterOverride.editValue',
 					}),
 				);
 				expect(within(field).getByRole('textbox')).toHaveValue('');
+				expect(inputs.value).toEqual({ [name]: { mode: 'fixed', value: '' } });
 				await fireEvent.update(within(field).getByRole('textbox'), 'Literal value');
-				await fireEvent.click(view.getByRole('button', { name: 'Save' }));
-				expect(view.onConfirm).toHaveBeenCalledWith(
-					expect.objectContaining({
-						inputs: { [name]: { mode: 'fixed', value: 'Literal value' } },
-					}),
-				);
+				expect(inputs.value).toEqual({ [name]: { mode: 'fixed', value: 'Literal value' } });
 
-				const saved = view.onConfirm.mock.calls[0][0] as WorkflowToolRef;
 				view.unmount();
-				const reopened = renderForm(saved);
-				const savedField = await reopened.findByTestId(`agent-workflow-tool-input-${name}`);
-				await fireEvent.click(reopened.getByTestId('agent-workflow-tool-advanced'));
-				expect(within(savedField).getByRole('textbox')).toHaveValue('Literal value');
+				const reopened = render();
+				const savedField = reopened.getByTestId(`agent-workflow-tool-input-${name}`);
+				await waitFor(() =>
+					expect(within(savedField).getByRole('textbox')).toHaveValue('Literal value'),
+				);
 				await fireEvent.click(
 					within(savedField).getByRole('button', {
 						name: 'parameterOverride.applyOverrideButtonTooltip',
 					}),
 				);
+				expect(inputs.value).toEqual({});
 				await fireEvent.update(within(savedField).getByRole('textbox'), 'Input guidance');
-				await fireEvent.click(reopened.getByRole('button', { name: 'Save' }));
-				expect(reopened.onConfirm).toHaveBeenCalledWith(
-					expect.objectContaining({
-						inputs: { [name]: { mode: 'ai', description: 'Input guidance' } },
-					}),
+				expect(inputs.value).toEqual({ [name]: { mode: 'ai', description: 'Input guidance' } });
+
+				inputType.value = 'object';
+				await nextTick();
+				await fireEvent.click(
+					within(savedField).getByRole('button', { name: 'parameterOverride.editValue' }),
 				);
+				const rawValue = '{ "answer": 42 }';
+				editExpression(savedField, rawValue);
+				await waitFor(() =>
+					expect(inputs.value).toEqual({ [name]: { mode: 'fixed', value: { answer: 42 } } }),
+				);
+				await nextTick();
+				const content = savedField.querySelector<HTMLElement>('.cm-content')!;
+				expect(EditorView.findFromDOM(content)?.state.doc.toString()).toBe(rawValue);
 			},
 		);
 
@@ -496,13 +517,11 @@ describe('WorkflowToolConfigContent', () => {
 				'Input guidance',
 			);
 			const label = within(view.getByTestId('agent-workflow-tool-input-label'));
-			await fireEvent.click(
-				label.getByRole('button', { name: 'agents.toolConfig.workflow.inputs.mode.fixed' }),
-			);
+			await fireEvent.click(label.getByRole('button', { name: 'parameterOverride.editValue' }));
 			await fireEvent.update(label.getByRole('textbox'), '={{ literal }}');
 			const count = view.getByTestId('agent-workflow-tool-input-count');
 			await fireEvent.click(
-				within(count).getByRole('button', { name: 'agents.toolConfig.workflow.inputs.mode.fixed' }),
+				within(count).getByRole('button', { name: 'parameterOverride.editValue' }),
 			);
 			await fireEvent.click(within(count).getByText('parameterInput.expression'));
 			editExpression(count, '{{ $json.query.length }}');

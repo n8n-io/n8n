@@ -154,15 +154,19 @@ describe('configured workflow tool inputs', () => {
 		const inputs = {
 			shoppingListId: { mode: 'fixed' as const, value: 'OySx3QNU0BcCs8yz' },
 			botName: { mode: 'fixed' as const, value: 'Jarvis' },
+			['__proto__']: { mode: 'fixed' as const, value: { source: 'configured' } },
 			chatId: { mode: 'ai' as const, description: 'Input guidance' },
 			count: { mode: 'expression' as const, value: '={{ 2 }}' },
 			constructor: { mode: 'ai' as const, description: 'Removed input' },
 		};
 
-		expect(getFixedWorkflowToolInputs(inputs)).toEqual({
+		const fixedInputs = getFixedWorkflowToolInputs(inputs);
+		expect(fixedInputs).toEqual({
 			shoppingListId: 'OySx3QNU0BcCs8yz',
 			botName: 'Jarvis',
+			['__proto__']: { source: 'configured' },
 		});
+		expect(Object.getPrototypeOf(fixedInputs)).toBe(Object.prototype);
 
 		const llmSchema = buildWorkflowToolInputSchema(schema, inputs);
 		expect(Object.keys(llmSchema.shape)).toEqual(['chatId']);

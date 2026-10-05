@@ -365,13 +365,13 @@ export function getFixedWorkflowToolInputs(
 	inputs: WorkflowToolInputsConfig | undefined,
 ): Record<string, unknown> {
 	if (!inputs) return {};
-	const fixed: Record<string, unknown> = {};
+	const fixed: Array<[string, unknown]> = [];
 	for (const [name, binding] of Object.entries(inputs)) {
 		if (binding.mode === 'fixed') {
-			fixed[name] = binding.value;
+			fixed.push([name, binding.value]);
 		}
 	}
-	return fixed;
+	return Object.fromEntries(fixed);
 }
 
 /** Advertise AI inputs and their guidance. Configured values stay out of the model schema. */

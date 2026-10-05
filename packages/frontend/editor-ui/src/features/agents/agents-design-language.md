@@ -212,6 +212,13 @@ Add a section when an Agent-specific pattern applies to two or more Agent
 surfaces. Keep implementation details with the owning pattern. Do not duplicate
 global Design System guidance.
 
+## Model-defined inputs
+
+Use the shared `FromAiOverrideField` for workflow inputs that AI fills.
+Node tool parameters use the same field through the parameter editor.
+Keep mode changes and input guidance in the caller. Hide the Edit value action
+in read-only forms. Keep input issues visible beside the model label.
+
 ## Tool approvals
 
 Use `N8nApprovalCard` for Preview tool approvals, including background child
